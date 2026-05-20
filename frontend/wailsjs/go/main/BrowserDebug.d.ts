@@ -18,8 +18,6 @@ export function ConnectToTargetByID(arg1:number,arg2:string):Promise<void>;
 
 export function DeleteCookie(arg1:string,arg2:string):Promise<void>;
 
-export function DetectRunningBrowsers():Promise<Array<Record<string, any>>>;
-
 export function DisableDebugger():Promise<void>;
 
 export function Disconnect():Promise<void>;

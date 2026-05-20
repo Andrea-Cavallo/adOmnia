@@ -70,11 +70,11 @@
     --shadow-glow: 0 0 20px rgba(139, 61, 255, 0.15);
 
     /* JSON syntax highlight */
-    --color-json-key: #7CB9E8;
-    --color-json-string: #6ABF69;
-    --color-json-number: #FF9F40;
-    --color-json-bool: #C77BDF;
-    --color-json-null: #6B7280;
+    --color-json-key: #C8E6FF;
+    --color-json-string: #A8F0A8;
+    --color-json-number: #FFD280;
+    --color-json-bool: #D8B4FE;
+    --color-json-null: #94A3B8;
   }
 
   /* Light theme overrides */
@@ -109,6 +109,12 @@
     --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07);
     --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08);
     --shadow-glow: 0 0 20px rgba(124, 47, 245, 0.10);
+
+    --color-json-key: #1D4ED8;
+    --color-json-string: #15803D;
+    --color-json-number: #B45309;
+    --color-json-bool: #7C3AED;
+    --color-json-null: #64748B;
   }
 }
 

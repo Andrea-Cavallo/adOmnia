@@ -29,6 +29,8 @@ No account. No cloud sync. No telemetry. Your data stays on your machine.
 
 ### Why adOmnia?
 
+![adOmnia interface](assets/images/adOmniaInterface1.png)
+
 Modern integration work is bigger than sending HTTP requests. Real teams debug APIs, browsers, queues, databases, legacy SOAP services, certificates, environments, mocks, test datasets, and local infrastructure in the same day.
 
 adOmnia is designed as a professional desktop command center for that work.
