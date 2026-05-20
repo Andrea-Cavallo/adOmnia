@@ -227,44 +227,46 @@ export function WelcomePanel() {
             <button
               key={id}
               onClick={() => setActiveRail(id)}
-              className="relative flex flex-col gap-3 p-5 rounded-2xl text-left group overflow-hidden transition-all duration-200"
+              className="relative rounded-2xl overflow-hidden group transition-all duration-200"
               style={{
                 background: 'rgba(11,13,20,0.9)',
                 border: '1px solid rgba(255,255,255,0.06)',
+                aspectRatio: '1 / 1',
               }}
               onMouseEnter={(e) => {
-                ;(e.currentTarget as HTMLElement).style.background = 'rgba(14,17,26,0.95)'
-                ;(e.currentTarget as HTMLElement).style.border = `1px solid ${hoverGlow}40`
+                ;(e.currentTarget as HTMLElement).style.border = `1px solid ${hoverGlow}50`
               }}
               onMouseLeave={(e) => {
-                ;(e.currentTarget as HTMLElement).style.background = 'rgba(11,13,20,0.9)'
                 ;(e.currentTarget as HTMLElement).style.border = '1px solid rgba(255,255,255,0.06)'
               }}
             >
-              {/* Hover inner glow */}
-              <div
-                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-2xl"
-                style={{ background: `radial-gradient(circle at 30% 30%, ${hoverGlow}18, transparent 60%)` }}
+              {/* Full-card icon */}
+              <img
+                src={imgSrc}
+                alt={title}
+                className="absolute inset-0 w-full h-full object-contain p-7 transition-transform duration-300 group-hover:scale-105"
+                style={{ mixBlendMode: 'screen' }}
               />
 
-              {/* Tool icon image */}
-              <div className="relative z-10 w-[80px] h-[80px] flex-shrink-0">
-                <img
-                  src={imgSrc}
-                  alt={title}
-                  className="w-full h-full object-contain"
-                  style={{ mixBlendMode: 'screen' }}
-                />
-              </div>
+              {/* Hover radial glow */}
+              <div
+                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                style={{ background: `radial-gradient(circle at 50% 42%, ${hoverGlow}28, transparent 68%)` }}
+              />
 
-              <div className="flex-1 relative z-10 pb-4">
-                <p className="text-[14px] font-bold text-white mb-2 leading-snug">{title}</p>
-                <p className="text-[11.5px] text-text-3 leading-relaxed">{desc}</p>
-              </div>
+              {/* Bottom gradient overlay */}
+              <div
+                className="absolute bottom-0 left-0 right-0"
+                style={{
+                  height: '52%',
+                  background: 'linear-gradient(to top, rgba(5,7,13,0.97) 0%, rgba(5,7,13,0.72) 50%, transparent 100%)',
+                }}
+              />
 
-              {/* Arrow */}
-              <div className="absolute bottom-4 right-4 opacity-20 group-hover:opacity-60 transition-opacity">
-                <ArrowRight size={14} className="text-text-2" />
+              {/* Text overlay */}
+              <div className="absolute bottom-0 left-0 right-0 px-4 pb-4 text-center">
+                <p className="text-[13px] font-bold text-white leading-snug">{title}</p>
+                <p className="text-[10.5px] leading-snug mt-1" style={{ color: 'rgba(255,255,255,0.48)' }}>{desc}</p>
               </div>
             </button>
           ))}
