@@ -1,6 +1,5 @@
 import { useAppStore, type RailItem } from '@/stores/app'
 import {
-  Send, Box, Network, Server, Eye, Bug, Database, Puzzle,
   Radio, Code2, Play, GitBranch, BarChart2, FlaskConical,
   Shield, Zap, Lock, ArrowRight,
 } from 'lucide-react'
@@ -17,10 +16,8 @@ const PILLARS = [
 
 type ToolCard = {
   id: RailItem
-  Icon: React.ElementType
-  from: string
-  to: string
-  iconColor: string
+  imgSrc: string
+  hoverGlow: string
   title: string
   desc: string
 }
@@ -28,59 +25,59 @@ type ToolCard = {
 const TOOL_CARDS: ToolCard[] = [
   {
     id: 'collections',
-    Icon: Send,
-    from: '#3B1F6E', to: '#7C3AED', iconColor: '#DDD6FE',
+    imgSrc: '/hubIcons/apiWorkspace.png',
+    hoverGlow: '#7C3AED',
     title: 'API Workspace',
     desc: 'Design, test, and automate REST, HTTP, GraphQL APIs.',
   },
   {
     id: 'soap',
-    Icon: Box,
-    from: '#1E3A5F', to: '#2563EB', iconColor: '#BAE6FD',
+    imgSrc: '/hubIcons/soapstudio.png',
+    hoverGlow: '#2563EB',
     title: 'SOAP Studio',
     desc: 'Build, test, and explore SOAP, WSDL, XML workflows.',
   },
   {
     id: 'broker',
-    Icon: Network,
-    from: '#064E3B', to: '#059669', iconColor: '#6EE7B7',
+    imgSrc: '/hubIcons/brokerStudio.png',
+    hoverGlow: '#059669',
     title: 'Broker Studio',
     desc: 'Connect, transform, and route with message brokers.',
   },
   {
     id: 'mock',
-    Icon: Server,
-    from: '#431407', to: '#C2410C', iconColor: '#FED7AA',
+    imgSrc: '/hubIcons/mockServer.png',
+    hoverGlow: '#C2410C',
     title: 'Mock Server',
     desc: 'Simulate APIs and services with powerful mock servers.',
   },
   {
     id: 'proxy',
-    Icon: Eye,
-    from: '#4A044E', to: '#A21CAF', iconColor: '#F0ABFC',
+    imgSrc: '/hubIcons/proxyInterceptor.png',
+    hoverGlow: '#A21CAF',
     title: 'Proxy Interceptor',
-    desc: 'Intercept, inspect, and modify HTTP/S traffic in real-time.',
+    desc: 'Intercept, inspect, and modify traffic in real time.',
   },
   {
     id: 'browser',
-    Icon: Bug,
-    from: '#0C4A6E', to: '#0284C7', iconColor: '#7DD3FC',
+    imgSrc: '/hubIcons/browserStudio.png',
+    hoverGlow: '#0284C7',
     title: 'Browser Debug',
-    desc: 'Debug web apps with powerful devtools and network insight.',
+    desc: 'Debug web apps with powerful network and DOM inspection.',
   },
   {
     id: 'database',
-    Icon: Database,
-    from: '#1E1B4B', to: '#4338CA', iconColor: '#C7D2FE',
+    imgSrc: '/hubIcons/databaseStudio.png',
+    hoverGlow: '#4338CA',
     title: 'Database Studio',
     desc: 'Explore, query, and manage databases with ease.',
   },
   {
     id: 'plugins',
-    Icon: Puzzle,
-    from: '#2D1A5E', to: '#6D28D9', iconColor: '#EDE9FE',
+    imgSrc: '/hubIcons/customizationplugins.png',
+    hoverGlow: '#6D28D9',
     title: 'Customization / Plugins',
-    desc: 'Extend adOmnia with plugins, themes, and custom tooling.',
+    desc: 'Extend adOmnia with plugins, and custom integrations.',
   },
 ]
 
@@ -226,18 +223,18 @@ export function WelcomePanel() {
 
         {/* 4 × 2 tool card grid */}
         <div className="grid grid-cols-4 gap-3">
-          {TOOL_CARDS.map(({ id, Icon, from, to, iconColor, title, desc }) => (
+          {TOOL_CARDS.map(({ id, imgSrc, hoverGlow, title, desc }) => (
             <button
               key={id}
               onClick={() => setActiveRail(id)}
-              className="relative flex flex-col gap-4 p-5 rounded-2xl text-left group overflow-hidden transition-all duration-200"
+              className="relative flex flex-col gap-3 p-5 rounded-2xl text-left group overflow-hidden transition-all duration-200"
               style={{
                 background: 'rgba(11,13,20,0.9)',
                 border: '1px solid rgba(255,255,255,0.06)',
               }}
               onMouseEnter={(e) => {
                 ;(e.currentTarget as HTMLElement).style.background = 'rgba(14,17,26,0.95)'
-                ;(e.currentTarget as HTMLElement).style.border = '1px solid rgba(255,255,255,0.11)'
+                ;(e.currentTarget as HTMLElement).style.border = `1px solid ${hoverGlow}40`
               }}
               onMouseLeave={(e) => {
                 ;(e.currentTarget as HTMLElement).style.background = 'rgba(11,13,20,0.9)'
@@ -247,15 +244,17 @@ export function WelcomePanel() {
               {/* Hover inner glow */}
               <div
                 className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-2xl"
-                style={{ background: `radial-gradient(circle at 25% 25%, ${from}20, transparent 55%)` }}
+                style={{ background: `radial-gradient(circle at 30% 30%, ${hoverGlow}18, transparent 60%)` }}
               />
 
-              {/* Icon container */}
-              <div
-                className="w-[54px] h-[54px] rounded-[14px] flex items-center justify-center flex-shrink-0 relative z-10"
-                style={{ background: `linear-gradient(135deg, ${from}, ${to})` }}
-              >
-                <Icon size={22} style={{ color: iconColor }} strokeWidth={1.6} />
+              {/* Tool icon image */}
+              <div className="relative z-10 w-[80px] h-[80px] flex-shrink-0">
+                <img
+                  src={imgSrc}
+                  alt={title}
+                  className="w-full h-full object-contain"
+                  style={{ mixBlendMode: 'screen' }}
+                />
               </div>
 
               <div className="flex-1 relative z-10 pb-4">
