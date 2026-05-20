@@ -1,0 +1,39 @@
+FROM golang:1.25-bookworm
+
+# Linux deps for Wails (GTK3 + WebKit2GTK)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgtk-3-dev \
+    libwebkit2gtk-4.0-dev \
+    libayatana-appindicator3-dev \
+    librsvg2-dev \
+    pkg-config \
+    gcc \
+    curl \
+    ca-certificates \
+    imagemagick \
+    && rm -rf /var/lib/apt/lists/*
+
+# Node.js 20
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Wails CLI
+RUN go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+
+WORKDIR /app
+COPY . .
+
+# Build stripped binary
+RUN wails build -platform linux/amd64 -ldflags "-s -w" -trimpath
+
+# Genera icona 256x256 da appicon.png
+RUN convert build/appicon.png -resize 256x256 build/linux/adOmnia.png
+
+# Assembla pacchetto distribuibile
+RUN cp build/bin/adOmnia build/linux/adOmnia && \
+    chmod +x build/linux/adOmnia build/linux/install.sh && \
+    tar -czf build/bin/adOmnia-linux-amd64.tar.gz -C build/linux \
+        adOmnia adOmnia.png adOmnia.desktop install.sh && \
+    echo "=== Package ===" && \
+    du -sh build/bin/adOmnia build/bin/adOmnia-linux-amd64.tar.gz

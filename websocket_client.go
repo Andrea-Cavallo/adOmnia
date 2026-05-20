@@ -1,0 +1,322 @@
+package main
+
+import (
+	"crypto/rand"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"sync"
+	"time"
+
+	"github.com/gorilla/websocket"
+)
+
+// ── Types ────────────────────────────────────────────────────────────────────
+
+type WSEvent struct {
+	Type      string `json:"type"`      // message | ping | pong | close | error
+	Direction string `json:"direction"` // inbound | outbound | system
+	Content   string `json:"content"`
+	Timestamp int64  `json:"timestamp"`
+}
+
+type WSSession struct {
+	id        string
+	conn      *websocket.Conn
+	mu        sync.Mutex
+	clients   []chan WSEvent
+	clientsMu sync.Mutex
+	done      chan struct{}
+	closeOnce sync.Once
+}
+
+type WSConnectRequest struct {
+	URL     string            `json:"url"`
+	Headers map[string]string `json:"headers"`
+	Auth    struct {
+		Type     string `json:"type"` // none | bearer | basic
+		Token    string `json:"token"`
+		Username string `json:"username"`
+		Password string `json:"password"`
+	} `json:"auth"`
+}
+
+type WSSendRequest struct {
+	SessionID string `json:"sessionId"`
+	Content   string `json:"content"`
+}
+
+type WSPingRequest struct {
+	SessionID string `json:"sessionId"`
+}
+
+type WSDisconnectRequest struct {
+	SessionID string `json:"sessionId"`
+}
+
+// ── State ────────────────────────────────────────────────────────────────────
+
+var wsSessions sync.Map // sessionId → *WSSession
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+func wsNewSessionID() string {
+	b := make([]byte, 12)
+	rand.Read(b)
+	return base64.URLEncoding.EncodeToString(b)
+}
+
+func wsBasicAuth(username, password string) string {
+	return "Basic " + base64.StdEncoding.EncodeToString([]byte(username+":"+password))
+}
+
+func (s *WSSession) broadcast(ev WSEvent) {
+	s.clientsMu.Lock()
+	defer s.clientsMu.Unlock()
+	for _, ch := range s.clients {
+		select {
+		case ch <- ev:
+		default:
+		}
+	}
+}
+
+func (s *WSSession) addClient(ch chan WSEvent) {
+	s.clientsMu.Lock()
+	defer s.clientsMu.Unlock()
+	s.clients = append(s.clients, ch)
+}
+
+func (s *WSSession) removeClient(ch chan WSEvent) {
+	s.clientsMu.Lock()
+	defer s.clientsMu.Unlock()
+	next := s.clients[:0]
+	for _, c := range s.clients {
+		if c != ch {
+			next = append(next, c)
+		}
+	}
+	s.clients = next
+}
+
+func (s *WSSession) closeConn() {
+	s.closeOnce.Do(func() {
+		s.mu.Lock()
+		s.conn.WriteMessage(websocket.CloseMessage,
+			websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+		s.conn.Close()
+		s.mu.Unlock()
+	})
+}
+
+// ── Read pump ────────────────────────────────────────────────────────────────
+
+func wsReadPump(sess *WSSession) {
+	defer func() {
+		wsSessions.Delete(sess.id)
+		sess.broadcast(WSEvent{
+			Type:      "close",
+			Direction: "system",
+			Content:   "connection closed",
+			Timestamp: time.Now().UnixMilli(),
+		})
+		close(sess.done)
+	}()
+
+	for {
+		mt, data, err := sess.conn.ReadMessage()
+		if err != nil {
+			if !websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+				sess.broadcast(WSEvent{
+					Type:      "error",
+					Direction: "system",
+					Content:   err.Error(),
+					Timestamp: time.Now().UnixMilli(),
+				})
+			}
+			return
+		}
+		evType := "message"
+		if mt == websocket.PongMessage {
+			evType = "pong"
+		}
+		sess.broadcast(WSEvent{
+			Type:      evType,
+			Direction: "inbound",
+			Content:   string(data),
+			Timestamp: time.Now().UnixMilli(),
+		})
+	}
+}
+
+// ── Handlers ─────────────────────────────────────────────────────────────────
+
+func wsConnectHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var req WSConnectRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonError(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	headers := http.Header{}
+	for k, v := range req.Headers {
+		if k != "" {
+			headers.Set(k, v)
+		}
+	}
+	switch req.Auth.Type {
+	case "bearer":
+		headers.Set("Authorization", "Bearer "+req.Auth.Token)
+	case "basic":
+		headers.Set("Authorization", wsBasicAuth(req.Auth.Username, req.Auth.Password))
+	}
+
+	dialer := websocket.Dialer{HandshakeTimeout: 15 * time.Second}
+	conn, _, err := dialer.Dial(req.URL, headers)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadGateway)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+
+	sessionID := wsNewSessionID()
+	sess := &WSSession{
+		id:   sessionID,
+		conn: conn,
+		done: make(chan struct{}),
+	}
+	wsSessions.Store(sessionID, sess)
+	go wsReadPump(sess)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"sessionId": sessionID})
+}
+
+func wsStreamHandler(w http.ResponseWriter, r *http.Request) {
+	sessionID := r.URL.Query().Get("sessionId")
+	val, ok := wsSessions.Load(sessionID)
+	if !ok {
+		jsonError(w, "session not found", http.StatusNotFound)
+		return
+	}
+	sess := val.(*WSSession)
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
+		return
+	}
+
+	ch := make(chan WSEvent, 64)
+	sess.addClient(ch)
+	defer sess.removeClient(ch)
+
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case <-sess.done:
+			return
+		case ev := <-ch:
+			data, _ := json.Marshal(ev)
+			fmt.Fprintf(w, "data: %s\n\n", data)
+			flusher.Flush()
+		}
+	}
+}
+
+func wsSendHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var req WSSendRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonError(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	val, ok := wsSessions.Load(req.SessionID)
+	if !ok {
+		jsonError(w, "session not found", http.StatusNotFound)
+		return
+	}
+	sess := val.(*WSSession)
+	sess.mu.Lock()
+	err := sess.conn.WriteMessage(websocket.TextMessage, []byte(req.Content))
+	sess.mu.Unlock()
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	sess.broadcast(WSEvent{
+		Type:      "message",
+		Direction: "outbound",
+		Content:   req.Content,
+		Timestamp: time.Now().UnixMilli(),
+	})
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+}
+
+func wsPingHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var req WSPingRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonError(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	val, ok := wsSessions.Load(req.SessionID)
+	if !ok {
+		jsonError(w, "session not found", http.StatusNotFound)
+		return
+	}
+	sess := val.(*WSSession)
+	sess.mu.Lock()
+	err := sess.conn.WriteMessage(websocket.PingMessage, []byte("ping"))
+	sess.mu.Unlock()
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	sess.broadcast(WSEvent{
+		Type:      "ping",
+		Direction: "outbound",
+		Content:   "ping",
+		Timestamp: time.Now().UnixMilli(),
+	})
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+}
+
+func wsDisconnectHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var req WSDisconnectRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonError(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	val, ok := wsSessions.Load(req.SessionID)
+	if ok {
+		sess := val.(*WSSession)
+		sess.closeConn()
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+}
+

@@ -1,0 +1,275 @@
+name: Release
+
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g. v1.2.3)'
+        required: true
+
+env:
+  WAILS_VERSION: v2.12.0
+
+# ─────────────────────────────────────────────────────────────────────────────
+# WINDOWS · amd64
+# Builds natively, applies UPX, uploads .exe
+# ─────────────────────────────────────────────────────────────────────────────
+jobs:
+  build-windows:
+    name: Windows · amd64
+    runs-on: windows-latest
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+      tag:     ${{ steps.ver.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version
+        id: ver
+        shell: pwsh
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          if (-not $tag -or -not $tag.StartsWith('v')) { $tag = "${{ inputs.tag }}" }
+          $ver = $tag.TrimStart('v')
+          echo "tag=$tag"     >> $env:GITHUB_OUTPUT
+          echo "version=$ver" >> $env:GITHUB_OUTPUT
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+
+      - name: Build
+        run: wails build -ldflags "-s -w" -trimpath
+
+      - name: Compress with UPX
+        uses: crazy-max/ghaction-upx@v3
+        with:
+          files: build/bin/adOmnia.exe
+          args: --best --lzma
+
+      - name: Stage artifact
+        shell: pwsh
+        run: |
+          $ver = "${{ steps.ver.outputs.version }}"
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item build\bin\adOmnia.exe "dist\adOmnia-$ver-windows-amd64.exe"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-amd64
+          path: dist/adOmnia-*-windows-amd64.exe
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LINUX · amd64
+# Builds in Ubuntu 22.04 for webkit2gtk-4.0 compat, applies UPX,
+# packages tarball with hicolor icons + .desktop + install.sh
+# ─────────────────────────────────────────────────────────────────────────────
+  build-linux:
+    name: Linux · amd64
+    runs-on: ubuntu-22.04
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version
+        id: ver
+        run: |
+          TAG="${GITHUB_REF_NAME:-${{ inputs.tag }}}"
+          [[ "$TAG" != v* ]] && TAG="${{ inputs.tag }}"
+          echo "tag=$TAG"          >> $GITHUB_OUTPUT
+          echo "version=${TAG#v}"  >> $GITHUB_OUTPUT
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev upx-ucl
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+
+      - name: Build
+        run: wails build -ldflags "-s -w" -trimpath
+
+      - name: Compress with UPX
+        run: upx --best --lzma build/bin/adOmnia
+
+      - name: Package tarball
+        run: |
+          VER="${{ steps.ver.outputs.version }}"
+          TMP="dist-linux-tmp"
+          mkdir -p "$TMP/icons"
+
+          cp build/bin/adOmnia "$TMP/adOmnia"
+
+          for sz in 16 24 32 48 64 128 256 512; do
+            src="assets/icons/linux/adOmnia_${sz}x${sz}.png"
+            [ -f "$src" ] && cp "$src" "$TMP/icons/" \
+              || echo "WARNING: missing $src"
+          done
+
+          [ -f "assets/icons/linux/adOmnia_256x256.png" ] \
+            && cp "assets/icons/linux/adOmnia_256x256.png" "$TMP/adOmnia.png"
+
+          [ -f "build/linux/adOmnia.desktop" ] \
+            && cp "build/linux/adOmnia.desktop" "$TMP/"
+          [ -f "build/linux/install.sh" ] \
+            && cp "build/linux/install.sh" "$TMP/"
+
+          mkdir -p dist
+          tar -czf "dist/adOmnia-$VER-linux-amd64.tar.gz" -C "$TMP" .
+          rm -rf "$TMP"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-amd64
+          path: dist/adOmnia-*-linux-amd64.tar.gz
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MACOS · universal (arm64 + amd64 via lipo)
+# Builds both slices on the macOS runner, merges with lipo,
+# packages as DMG with create-dmg (fallback: hdiutil)
+# UPX skipped — not supported on Apple Silicon
+# ─────────────────────────────────────────────────────────────────────────────
+  build-macos:
+    name: macOS · universal
+    runs-on: macos-latest
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version
+        id: ver
+        run: |
+          TAG="${GITHUB_REF_NAME:-${{ inputs.tag }}}"
+          [[ "$TAG" != v* ]] && TAG="${{ inputs.tag }}"
+          echo "tag=$TAG"          >> $GITHUB_OUTPUT
+          echo "version=${TAG#v}"  >> $GITHUB_OUTPUT
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install create-dmg
+        run: brew install create-dmg
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+
+      - name: Build arm64 slice
+        run: |
+          wails build -ldflags "-s -w" -trimpath -platform darwin/arm64
+          cp build/bin/adOmnia.app/Contents/MacOS/adOmnia /tmp/adOmnia-arm64
+
+      - name: Build amd64 slice
+        run: |
+          wails build -ldflags "-s -w" -trimpath -platform darwin/amd64
+          cp build/bin/adOmnia.app/Contents/MacOS/adOmnia /tmp/adOmnia-amd64
+
+      - name: Merge into universal binary
+        run: |
+          lipo -create /tmp/adOmnia-arm64 /tmp/adOmnia-amd64 \
+            -output build/bin/adOmnia.app/Contents/MacOS/adOmnia
+          chmod +x build/bin/adOmnia.app/Contents/MacOS/adOmnia
+          lipo -info build/bin/adOmnia.app/Contents/MacOS/adOmnia
+
+      - name: Create DMG
+        run: |
+          VER="${{ steps.ver.outputs.version }}"
+          mkdir -p dist
+          create-dmg \
+            --volname "adOmnia $VER" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --icon "adOmnia.app" 150 190 \
+            --hide-extension "adOmnia.app" \
+            --app-drop-link 450 190 \
+            "dist/adOmnia-$VER-macos-universal.dmg" \
+            "build/bin/" \
+          || hdiutil create \
+            -volname "adOmnia $VER" \
+            -srcfolder "build/bin/adOmnia.app" \
+            -ov -format UDZO \
+            "dist/adOmnia-$VER-macos-universal.dmg"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-universal
+          path: dist/adOmnia-*-macos-universal.dmg
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PUBLISH · GitHub Release
+# Collects all three artifacts, generates SHA256SUMS.txt,
+# publishes as GitHub Release (pre-release if tag contains -rc/-beta/-alpha)
+# ─────────────────────────────────────────────────────────────────────────────
+  release:
+    name: Publish Release
+    needs: [build-windows, build-linux, build-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version
+        id: ver
+        run: |
+          TAG="${GITHUB_REF_NAME:-${{ inputs.tag }}}"
+          [[ "$TAG" != v* ]] && TAG="${{ inputs.tag }}"
+          echo "tag=$TAG"          >> $GITHUB_OUTPUT
+          echo "version=${TAG#v}"  >> $GITHUB_OUTPUT
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum * > SHA256SUMS.txt
+          echo "--- Release artifacts ---"
+          ls -lh
+
+      - name: Publish
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: adOmnia ${{ steps.ver.outputs.version }}
+          files: dist/*
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          prerelease: >-
+            ${{
+              contains(steps.ver.outputs.tag, '-rc')   ||
+              contains(steps.ver.outputs.tag, '-beta')  ||
+              contains(steps.ver.outputs.tag, '-alpha')
+            }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

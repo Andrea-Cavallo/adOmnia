@@ -1,0 +1,37 @@
+{
+  "id": "status-roaster",
+  "name": "HTTP Status Code Roaster",
+  "version": "1.0.0",
+  "description": "Roasts every HTTP status code with sarcasm, insults, and bad jokes. Because your API failures deserve mockery.",
+  "author": "adOmnia",
+  "license": "MIT",
+  "runtime": "python",
+  "python_version": ">=3.12",
+  "entrypoint": "main.py",
+  "actions": [
+    {
+      "id": "roast",
+      "name": "Roast Code",
+      "description": "Roasts a given HTTP status code with a sarcastic insult",
+      "streaming": false
+    },
+    {
+      "id": "roast_response",
+      "name": "Roast Response",
+      "description": "Reads the current request and roasts whatever status code came back",
+      "streaming": false
+    },
+    {
+      "id": "roast_all",
+      "name": "Roast All Codes",
+      "description": "Returns roasts for every single HTTP status code. Because why not.",
+      "streaming": true
+    }
+  ],
+  "ui_slots": ["response_tab"],
+  "limits": {
+    "timeout_ms": 10000,
+    "memory_mb": 64
+  },
+  "dependencies": []
+}

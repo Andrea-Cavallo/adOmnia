@@ -1,0 +1,1 @@
+export { SecretScannerPanel } from './SecretScannerPanel'

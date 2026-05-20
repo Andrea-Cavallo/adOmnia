@@ -1,0 +1,166 @@
+{
+  "version": 2,
+  "name": "adOmnia Full Local Lab",
+  "savedAt": "2026-05-15T00:00:00.000Z",
+  "notes": [
+    "Start docker/adomnia-lab/docker-compose.yml first.",
+    "Update sidecarBase with the runtime sidecar port shown by the app.",
+    "Kafka broker is localhost:19092 and topic is adomnia.lab.events."
+  ],
+  "environment": {
+    "name": "adOmnia Local Lab",
+    "variables": {
+      "sidecarBase": "http://localhost:34115",
+      "mockApiBase": "http://localhost:18080",
+      "kafkaBroker": "localhost:19092",
+      "kafkaTopic": "adomnia.lab.events",
+      "vaultPassphrase": "change-me-local-only"
+    }
+  },
+  "collections": [
+    {
+      "name": "adOmnia Sidecar Control",
+      "requests": [
+        {
+          "name": "Mock status",
+          "method": "GET",
+          "url": "{{sidecarBase}}/mock/status"
+        },
+        {
+          "name": "Start mock server",
+          "method": "POST",
+          "url": "{{sidecarBase}}/mock/start",
+          "headers": { "Content-Type": "application/json" },
+          "body": {
+            "port": 9090,
+            "password": "",
+            "endpoints": [
+              {
+                "id": "hello",
+                "path": "/api/hello",
+                "method": "GET",
+                "mode": "first_active",
+                "responses": [
+                  {
+                    "id": "ok",
+                    "name": "200 hello",
+                    "status": 200,
+                    "headers": { "Content-Type": "application/json" },
+                    "body": "{\"ok\":true,\"service\":\"adomnia-mock\"}",
+                    "delayMs": 0,
+                    "isActive": true
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "List Kafka topics",
+          "method": "POST",
+          "url": "{{sidecarBase}}/kafka/topics",
+          "headers": { "Content-Type": "application/json" },
+          "body": {
+            "brokers": ["{{kafkaBroker}}"],
+            "topic": "{{kafkaTopic}}",
+            "clientId": "adomnia-lab"
+          }
+        },
+        {
+          "name": "Produce Kafka message",
+          "method": "POST",
+          "url": "{{sidecarBase}}/kafka/produce",
+          "headers": { "Content-Type": "application/json" },
+          "body": {
+            "config": {
+              "brokers": ["{{kafkaBroker}}"],
+              "topic": "{{kafkaTopic}}",
+              "clientId": "adomnia-lab",
+              "tls": false
+            },
+            "key": "demo-key",
+            "value": "{\"source\":\"adomnia\",\"event\":\"hello\"}",
+            "headers": { "demo": "true" }
+          }
+        },
+        {
+          "name": "Run load test against lab API",
+          "method": "POST",
+          "url": "{{sidecarBase}}/loadtest",
+          "headers": { "Content-Type": "application/json" },
+          "body": {
+            "url": "{{mockApiBase}}/json",
+            "method": "GET",
+            "concurrency": 5,
+            "totalReqs": 50,
+            "timeoutMs": 5000,
+            "warmupReqs": 5
+          }
+        },
+        {
+          "name": "JSON query",
+          "method": "POST",
+          "url": "{{sidecarBase}}/json/query",
+          "headers": { "Content-Type": "application/json" },
+          "body": {
+            "json": "{\"data\":{\"items\":[{\"name\":\"alpha\"},{\"name\":\"beta\"}]}}",
+            "path": "data.items.0.name"
+          }
+        },
+        {
+          "name": "Vault encrypt sample",
+          "method": "POST",
+          "url": "{{sidecarBase}}/vault/encrypt",
+          "headers": { "Content-Type": "application/json" },
+          "body": {
+            "plaintext": "secret-from-adomnia-lab",
+            "passphrase": "{{vaultPassphrase}}"
+          }
+        },
+        {
+          "name": "Storage status",
+          "method": "GET",
+          "url": "{{sidecarBase}}/storage/status"
+        },
+        {
+          "name": "Set proxy rules",
+          "method": "PUT",
+          "url": "{{sidecarBase}}/proxy/rules",
+          "headers": { "Content-Type": "application/json" },
+          "body": {
+            "action": "set",
+            "rules": [
+              { "id": "lab-localhost", "type": "intercept", "target": "localhost", "enabled": true, "note": "Lab traffic" },
+              { "id": "lab-private", "type": "allow", "target": "127.0.0.0/8", "enabled": true, "note": "Loopback" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Docker Lab Services",
+      "requests": [
+        {
+          "name": "Lab API health",
+          "method": "GET",
+          "url": "{{mockApiBase}}/health"
+        },
+        {
+          "name": "Lab API JSON",
+          "method": "GET",
+          "url": "{{mockApiBase}}/json"
+        },
+        {
+          "name": "Lab API echo POST",
+          "method": "POST",
+          "url": "{{mockApiBase}}/echo",
+          "headers": { "Content-Type": "application/json" },
+          "body": {
+            "from": "adomnia",
+            "message": "hello docker lab"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,132 @@
+{
+  "format": "adomnia-workspace",
+  "version": "1.0",
+  "exportedAt": "2026-05-13T00:00:00.000Z",
+  "collections": [
+    {
+      "id": "col-forgecore",
+      "name": "ForgeCore Gateway API",
+      "children": [
+        {"id":"f1","name":"Health","type":"folder","children":[
+          {"id":"r1","name":"GET healthz","type":"request","method":"GET","url":"{{base_url}}/healthz","params":[],"headers":[{"id":"h1","key":"X-Request-ID","value":"{{request_id}}","enabled":true}],"bodies":[{"id":"b1","type":"none","raw":"","lang":"json","form":[],"name":"Body 1"}],"activeBodyIdx":0,"auth":{"type":"none","token":"","username":"","password":""}},
+          {"id":"r2","name":"GET readyz","type":"request","method":"GET","url":"{{base_url}}/readyz","params":[],"headers":[{"id":"h1","key":"X-Request-ID","value":"{{request_id}}","enabled":true}],"bodies":[{"id":"b1","type":"none","raw":"","lang":"json","form":[],"name":"Body 1"}],"activeBodyIdx":0,"auth":{"type":"none","token":"","username":"","password":""}}
+        ]},
+        {"id":"f2","name":"Auth","type":"folder","children":[
+          {"id":"r3","name":"POST login","type":"request","method":"POST","url":"{{base_url}}/v1/auth/login","params":[],"headers":[{"id":"h1","key":"Content-Type","value":"application/json","enabled":true},{"id":"h2","key":"X-Tenant-ID","value":"{{tenant_id}}","enabled":true},{"id":"h3","key":"X-Request-ID","value":"{{request_id}}","enabled":true}],"bodies":[{"id":"b1","type":"raw","raw":"{\"email\":\"{{email}}\",\"password\":\"{{password}}\",\"device_id\":\"adomnia\",\"user_agent\":\"adOmnia\"}","lang":"json","form":[],"name":"Body 1"}],"activeBodyIdx":0,"auth":{"type":"none","token":"","username":"","password":""}},
+          {"id":"r4","name":"POST register","type":"request","method":"POST","url":"{{base_url}}/v1/auth/register","params":[],"headers":[{"id":"h1","key":"Content-Type","value":"application/json","enabled":true},{"id":"h2","key":"X-Tenant-ID","value":"{{tenant_id}}","enabled":true}],"bodies":[{"id":"b1","type":"raw","raw":"{\"email\":\"{{email}}\",\"password\":\"{{password}}\",\"first_name\":\"Demo\",\"last_name\":\"User\"}","lang":"json","form":[],"name":"Body 1"}],"activeBodyIdx":0,"auth":{"type":"none","token":"","username":"","password":""}},
+          {"id":"r5","name":"POST refresh","type":"request","method":"POST","url":"{{base_url}}/v1/auth/refresh","params":[],"headers":[{"id":"h1","key":"Content-Type","value":"application/json","enabled":true},{"id":"h2","key":"X-Tenant-ID","value":"{{tenant_id}}","enabled":true}],"bodies":[{"id":"b1","type":"raw","raw":"{\"refresh_token\":\"{{refresh_token}}\"}","lang":"json","form":[],"name":"Body 1"}],"activeBodyIdx":0,"auth":{"type":"none","token":"","username":"","password":""}}
+        ]},
+        {"id":"f3","name":"Payments","type":"folder","children":[
+          {"id":"r6","name":"POST create payment","type":"request","method":"POST","url":"{{base_url}}/v1/payments","params":[],"headers":[{"id":"h1","key":"Content-Type","value":"application/json","enabled":true},{"id":"h2","key":"Idempotency-Key","value":"{{idempotency_key}}","enabled":true}],"bodies":[{"id":"b1","type":"raw","raw":"{\"amount\":4990,\"currency\":\"EUR\",\"customer_id\":\"{{customer_id}}\"}","lang":"json","form":[],"name":"Body 1"}],"activeBodyIdx":0,"auth":{"type":"bearer","token":"{{access_token}}","username":"","password":""}},
+          {"id":"r7","name":"GET list payments","type":"request","method":"GET","url":"{{base_url}}/v1/payments?limit=20","params":[],"headers":[{"id":"h1","key":"X-Request-ID","value":"{{request_id}}","enabled":true}],"bodies":[{"id":"b1","type":"none","raw":"","lang":"json","form":[],"name":"Body 1"}],"activeBodyIdx":0,"auth":{"type":"bearer","token":"{{access_token}}","username":"","password":""}},
+          {"id":"r8","name":"POST refund","type":"request","method":"POST","url":"{{base_url}}/v1/payments/{{payment_id}}/refund","params":[],"headers":[{"id":"h1","key":"Content-Type","value":"application/json","enabled":true}],"bodies":[{"id":"b1","type":"raw","raw":"{\"amount\":1000}","lang":"json","form":[],"name":"Body 1"}],"activeBodyIdx":0,"auth":{"type":"bearer","token":"{{access_token}}","username":"","password":""}}
+        ]},
+        {"id":"f4","name":"Subscriptions","type":"folder","children":[
+          {"id":"r9","name":"POST create subscription","type":"request","method":"POST","url":"{{base_url}}/v1/subscriptions","params":[],"headers":[{"id":"h1","key":"Content-Type","value":"application/json","enabled":true},{"id":"h2","key":"Idempotency-Key","value":"{{idempotency_key}}","enabled":true}],"bodies":[{"id":"b1","type":"raw","raw":"{\"plan_id\":\"{{plan_id}}\",\"customer_id\":\"{{customer_id}}\"}","lang":"json","form":[],"name":"Body 1"}],"activeBodyIdx":0,"auth":{"type":"bearer","token":"{{access_token}}","username":"","password":""}},
+          {"id":"r10","name":"DELETE cancel subscription","type":"request","method":"DELETE","url":"{{base_url}}/v1/subscriptions/{{subscription_id}}","params":[],"headers":[],"bodies":[{"id":"b1","type":"none","raw":"","lang":"json","form":[],"name":"Body 1"}],"activeBodyIdx":0,"auth":{"type":"bearer","token":"{{access_token}}","username":"","password":""}}
+        ]},
+        {"id":"f5","name":"Config","type":"folder","children":[
+          {"id":"r11","name":"GET config","type":"request","method":"GET","url":"{{base_url}}/v1/config/{{config_key}}","params":[],"headers":[],"bodies":[{"id":"b1","type":"none","raw":"","lang":"json","form":[],"name":"Body 1"}],"activeBodyIdx":0,"auth":{"type":"bearer","token":"{{access_token}}","username":"","password":""}},
+          {"id":"r12","name":"PUT config","type":"request","method":"PUT","url":"{{base_url}}/v1/config/{{config_key}}","params":[],"headers":[{"id":"h1","key":"Content-Type","value":"application/json","enabled":true}],"bodies":[{"id":"b1","type":"raw","raw":"{\"value\":\"dark\"}","lang":"json","form":[],"name":"Body 1"}],"activeBodyIdx":0,"auth":{"type":"bearer","token":"{{access_token}}","username":"","password":""}}
+        ]},
+        {"id":"f6","name":"Permissions","type":"folder","children":[
+          {"id":"r13","name":"POST permission check","type":"request","method":"POST","url":"{{base_url}}/v1/permissions/check","params":[],"headers":[{"id":"h1","key":"Content-Type","value":"application/json","enabled":true}],"bodies":[{"id":"b1","type":"raw","raw":"{\"resource_type\":\"project\",\"resource_id\":null,\"action\":\"read\"}","lang":"json","form":[],"name":"Body 1"}],"activeBodyIdx":0,"auth":{"type":"bearer","token":"{{access_token}}","username":"","password":""}},
+          {"id":"r14","name":"POST grant permission","type":"request","method":"POST","url":"{{base_url}}/v1/permissions/grant","params":[],"headers":[{"id":"h1","key":"Content-Type","value":"application/json","enabled":true}],"bodies":[{"id":"b1","type":"raw","raw":"{\"user_id\":\"{{user_id}}\",\"resource_type\":\"project\",\"resource_id\":null,\"action\":\"read\"}","lang":"json","form":[],"name":"Body 1"}],"activeBodyIdx":0,"auth":{"type":"bearer","token":"{{access_token}}","username":"","password":""}}
+        ]},
+        {"id":"f7","name":"Webhooks","type":"folder","children":[
+          {"id":"r15","name":"POST register endpoint","type":"request","method":"POST","url":"{{base_url}}/v1/webhooks/endpoints","params":[],"headers":[{"id":"h1","key":"Content-Type","value":"application/json","enabled":true}],"bodies":[{"id":"b1","type":"raw","raw":"{\"url\":\"{{webhook_url}}\",\"secret\":\"{{webhook_secret}}\",\"events\":[\"payment.succeeded.v1\"]}","lang":"json","form":[],"name":"Body 1"}],"activeBodyIdx":0,"auth":{"type":"bearer","token":"{{access_token}}","username":"","password":""}},
+          {"id":"r16","name":"POST deliver event","type":"request","method":"POST","url":"{{base_url}}/v1/webhooks/deliver","params":[],"headers":[{"id":"h1","key":"Content-Type","value":"application/json","enabled":true}],"bodies":[{"id":"b1","type":"raw","raw":"{\"event_type\":\"payment.succeeded.v1\",\"payload\":{\"payment_id\":\"{{payment_id}}\",\"amount\":4990}}","lang":"json","form":[],"name":"Body 1"}],"activeBodyIdx":0,"auth":{"type":"bearer","token":"{{access_token}}","username":"","password":""}}
+        ]},
+        {"id":"f8","name":"Admin","type":"folder","children":[
+          {"id":"r17","name":"GET tenants","type":"request","method":"GET","url":"{{base_url}}/v1/admin/tenants?limit=20","params":[],"headers":[],"bodies":[{"id":"b1","type":"none","raw":"","lang":"json","form":[],"name":"Body 1"}],"activeBodyIdx":0,"auth":{"type":"bearer","token":"{{access_token}}","username":"","password":""}},
+          {"id":"r18","name":"GET stats","type":"request","method":"GET","url":"{{base_url}}/v1/admin/stats","params":[],"headers":[],"bodies":[{"id":"b1","type":"none","raw":"","lang":"json","form":[],"name":"Body 1"}],"activeBodyIdx":0,"auth":{"type":"bearer","token":"{{access_token}}","username":"","password":""}}
+        ]},
+        {"id":"f9","name":"Negative Tests","type":"folder","children":[
+          {"id":"r19","name":"GET protected without token","type":"request","method":"GET","url":"{{base_url}}/v1/payments","params":[],"headers":[{"id":"h1","key":"X-Request-ID","value":"{{request_id}}","enabled":true}],"bodies":[{"id":"b1","type":"none","raw":"","lang":"json","form":[],"name":"Body 1"}],"activeBodyIdx":0,"auth":{"type":"none","token":"","username":"","password":""}},
+          {"id":"r20","name":"OPTIONS CORS preflight","type":"request","method":"OPTIONS","url":"{{base_url}}/v1/auth/login","params":[],"headers":[{"id":"h1","key":"Origin","value":"{{allowed_origin}}","enabled":true},{"id":"h2","key":"Access-Control-Request-Method","value":"POST","enabled":true}],"bodies":[{"id":"b1","type":"none","raw":"","lang":"json","form":[],"name":"Body 1"}],"activeBodyIdx":0,"auth":{"type":"none","token":"","username":"","password":""}}
+        ]}
+      ]
+    }
+  ],
+  "environments": [
+    {
+      "id": "forgecore-local",
+      "name": "ForgeCore Local",
+      "vars": [
+        {"id":"v1","key":"base_url","value":"http://localhost:8080","enabled":true},
+        {"id":"v2","key":"tenant_id","value":"00000000-0000-0000-0000-000000000001","enabled":true},
+        {"id":"v3","key":"user_id","value":"00000000-0000-0000-0000-000000000002","enabled":true},
+        {"id":"v4","key":"admin_user_id","value":"00000000-0000-0000-0000-000000000003","enabled":true},
+        {"id":"v5","key":"email","value":"demo@forgecore.local","enabled":true},
+        {"id":"v6","key":"password","value":"ChangeMe123!","enabled":true},
+        {"id":"v7","key":"access_token","value":"","enabled":true},
+        {"id":"v8","key":"refresh_token","value":"","enabled":true},
+        {"id":"v9","key":"request_id","value":"req-local","enabled":true},
+        {"id":"v10","key":"idempotency_key","value":"idem-local","enabled":true},
+        {"id":"v11","key":"payment_id","value":"00000000-0000-0000-0000-000000000010","enabled":true},
+        {"id":"v12","key":"customer_id","value":"cus_demo_001","enabled":true},
+        {"id":"v13","key":"plan_id","value":"00000000-0000-0000-0000-000000000020","enabled":true},
+        {"id":"v14","key":"subscription_id","value":"00000000-0000-0000-0000-000000000021","enabled":true},
+        {"id":"v15","key":"permission_id","value":"00000000-0000-0000-0000-000000000030","enabled":true},
+        {"id":"v16","key":"file_id","value":"00000000-0000-0000-0000-000000000040","enabled":true},
+        {"id":"v17","key":"config_key","value":"frontend.theme","enabled":true},
+        {"id":"v18","key":"webhook_secret","value":"whsec_demo_secret","enabled":true},
+        {"id":"v19","key":"webhook_url","value":"https://example.com/webhooks/forgecore","enabled":true},
+        {"id":"v20","key":"allowed_origin","value":"http://localhost:5173","enabled":true},
+        {"id":"v21","key":"blocked_origin","value":"https://evil.example","enabled":true}
+      ]
+    },
+    {
+      "id": "forgecore-mock",
+      "name": "ForgeCore Mock",
+      "vars": [
+        {"id":"v1","key":"base_url","value":"http://localhost:9090","enabled":true},
+        {"id":"v2","key":"tenant_id","value":"00000000-0000-0000-0000-000000000001","enabled":true},
+        {"id":"v3","key":"user_id","value":"00000000-0000-0000-0000-000000000002","enabled":true},
+        {"id":"v4","key":"admin_user_id","value":"00000000-0000-0000-0000-000000000003","enabled":true},
+        {"id":"v5","key":"email","value":"demo@forgecore.local","enabled":true},
+        {"id":"v6","key":"password","value":"ChangeMe123!","enabled":true},
+        {"id":"v7","key":"access_token","value":"","enabled":true},
+        {"id":"v8","key":"refresh_token","value":"","enabled":true},
+        {"id":"v9","key":"request_id","value":"req-mock","enabled":true},
+        {"id":"v10","key":"idempotency_key","value":"idem-mock","enabled":true},
+        {"id":"v11","key":"payment_id","value":"00000000-0000-0000-0000-000000000010","enabled":true},
+        {"id":"v12","key":"customer_id","value":"cus_demo_001","enabled":true},
+        {"id":"v13","key":"plan_id","value":"00000000-0000-0000-0000-000000000020","enabled":true},
+        {"id":"v14","key":"subscription_id","value":"00000000-0000-0000-0000-000000000021","enabled":true},
+        {"id":"v15","key":"permission_id","value":"00000000-0000-0000-0000-000000000030","enabled":true},
+        {"id":"v16","key":"file_id","value":"00000000-0000-0000-0000-000000000040","enabled":true},
+        {"id":"v17","key":"config_key","value":"frontend.theme","enabled":true},
+        {"id":"v18","key":"webhook_secret","value":"whsec_demo_secret","enabled":true},
+        {"id":"v19","key":"webhook_url","value":"https://example.com/webhooks/forgecore","enabled":true},
+        {"id":"v20","key":"allowed_origin","value":"http://localhost:5173","enabled":true},
+        {"id":"v21","key":"blocked_origin","value":"https://evil.example","enabled":true}
+      ]
+    }
+  ],
+  "activeEnvId": "forgecore-local",
+  "mockConfig": {
+    "port": 9090,
+    "password": "",
+    "endpoints": [
+      {"id":"mock-auth","method":"POST","path":"/v1/auth/login","description":"Mock ForgeCore login","responses":[{"id":"r1","name":"Success","status":200,"latency":100,"headers":{"Content-Type":"application/json"},"body":"{\"access_token\":\"eyJhbGciOiJIUzI1NiJ9.mock\",\"refresh_token\":\"eyJhbGciOiJIUzI1NiJ9.refresh\",\"expires_in\":3600,\"token_type\":\"Bearer\"}","enabled":true},{"id":"r2","name":"Unauthorized","status":401,"latency":50,"headers":{"Content-Type":"application/json"},"body":"{\"code\":\"UNAUTHORIZED\",\"message\":\"Invalid credentials\"}","enabled":true}],"activeResponseIdx":0,"responseMode":"first_active"},
+      {"id":"mock-health","method":"GET","path":"/healthz","description":"Mock health check","responses":[{"id":"r1","name":"OK","status":200,"latency":10,"headers":{"Content-Type":"application/json"},"body":"{\"status\":\"ok\",\"service\":\"forgecore-gateway\"}","enabled":true}],"activeResponseIdx":0,"responseMode":"first_active"},
+      {"id":"mock-payment","method":"POST","path":"/v1/payments","description":"Mock payment creation","responses":[{"id":"r1","name":"Created","status":201,"latency":200,"headers":{"Content-Type":"application/json"},"body":"{\"id\":\"pay_mock_001\",\"amount\":4990,\"currency\":\"EUR\",\"status\":\"succeeded\"}","enabled":true},{"id":"r2","name":"Bad Request","status":400,"latency":50,"headers":{"Content-Type":"application/json"},"body":"{\"code\":\"VALIDATION_ERROR\",\"message\":\"Missing required field: amount\"}","enabled":true}],"activeResponseIdx":0,"responseMode":"first_active"},
+      {"id":"mock-sub","method":"POST","path":"/v1/subscriptions","description":"Mock subscription creation","responses":[{"id":"r1","name":"Created","status":201,"latency":150,"headers":{"Content-Type":"application/json"},"body":"{\"id\":\"sub_mock_001\",\"plan_id\":\"{{plan_id}}\",\"status\":\"active\"}","enabled":true}],"activeResponseIdx":0,"responseMode":"first_active"}
+    ]
+  },
+  "flows": null,
+  "proxyConfig": {
+    "port": 8888,
+    "breakpointsStr": "*/v1/auth/*\n*/v1/payments\n*.sensitive.*",
+    "mapLocalRules": [],
+    "mapRemoteRules": [
+      {"pattern": "/v1/auth/login", "replacement": "http://localhost:9090/v1/auth/login"},
+      {"pattern": "/v1/auth/register", "replacement": "http://localhost:9090/v1/auth/register"},
+      {"pattern": "/v1/payments", "replacement": "http://localhost:9090/v1/payments"},
+      {"pattern": "/healthz", "replacement": "http://localhost:9090/healthz"}
+    ],
+    "throttleLatency": 0,
+    "throttleBandwidth": 0
+  }
+}

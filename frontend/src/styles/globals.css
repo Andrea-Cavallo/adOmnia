@@ -1,0 +1,178 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Surface / backgrounds */
+    --color-surface-0: #05070D;
+    --color-surface-1: #0B0D14;
+    --color-surface-2: #0E111A;
+    --color-surface-3: #131722;
+    --color-surface-4: #1F2333;
+
+    /* Text */
+    --color-text-1: #F8FAFC;
+    --color-text-2: #9CA3AF;
+    --color-text-3: #6B7280;
+    --color-text-4: #4B5563;
+
+    /* Borders */
+    --color-border-1: #1F2333;
+    --color-border-2: #252A3A;
+    --color-border-3: #2E3447;
+
+    /* Accent */
+    --color-accent: #8B3DFF;
+    --color-accent-light: #A855F7;
+    --color-accent-dark: #5B21D6;
+    --color-accent-glow: rgba(139, 61, 255, 0.18);
+    --color-accent-hover: #9B4FFF;
+
+    /* Status */
+    --color-success: oklch(0.78 0.15 145);
+    --color-warning: oklch(0.80 0.14 85);
+    --color-error: oklch(0.70 0.18 25);
+    --color-info: oklch(0.65 0.12 250);
+
+    /* HTTP Methods */
+    --color-method-get: #8B3DFF;
+    --color-method-post: oklch(0.78 0.15 145);
+    --color-method-put: oklch(0.80 0.14 85);
+    --color-method-patch: oklch(0.50 0.18 290);
+    --color-method-delete: oklch(0.70 0.18 25);
+    --color-method-head: oklch(0.65 0.12 250);
+
+    /* Fonts */
+    --font-ui: 'IBM Plex Mono', 'JetBrains Mono', 'Cascadia Code', ui-monospace, monospace;
+    --font-sans: 'IBM Plex Sans', 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', 'IBM Plex Mono', 'Cascadia Code', 'Consolas', ui-monospace, monospace;
+    --font-serif: 'Libre Baskerville', 'Georgia', 'Times New Roman', serif;
+
+    /* Spacing (used by components, not fluid) */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 12px;
+    --spacing-lg: 16px;
+    --spacing-xl: 24px;
+    --spacing-2xl: 32px;
+
+    /* Radius */
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 20px;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.15);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.2);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.3);
+    --shadow-glow: 0 0 20px rgba(139, 61, 255, 0.15);
+
+    /* JSON syntax highlight */
+    --color-json-key: #7CB9E8;
+    --color-json-string: #6ABF69;
+    --color-json-number: #FF9F40;
+    --color-json-bool: #C77BDF;
+    --color-json-null: #6B7280;
+  }
+
+  /* Light theme overrides */
+  .light {
+    --color-surface-0: #F8FAFC;
+    --color-surface-1: #F1F5F9;
+    --color-surface-2: #E2E8F0;
+    --color-surface-3: #CBD5E1;
+    --color-surface-4: #94A3B8;
+
+    --color-text-1: #0F172A;
+    --color-text-2: #334155;
+    --color-text-3: #64748B;
+    --color-text-4: #94A3B8;
+
+    --color-border-1: #CBD5E1;
+    --color-border-2: #E2E8F0;
+    --color-border-3: #F1F5F9;
+
+    --color-accent: #7C2FF5;
+    --color-accent-light: #9B4FFF;
+    --color-accent-dark: #4A18B8;
+    --color-accent-glow: rgba(124, 47, 245, 0.12);
+    --color-accent-hover: #8B3DFF;
+
+    --color-success: oklch(0.55 0.15 145);
+    --color-warning: oklch(0.60 0.14 85);
+    --color-error: oklch(0.50 0.18 25);
+    --color-info: oklch(0.48 0.12 250);
+
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08);
+    --shadow-glow: 0 0 20px rgba(124, 47, 245, 0.10);
+  }
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border-1);
+  }
+
+  body {
+    font-family: var(--font-ui, var(--font-sans));
+    font-size: 13px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-surface-4);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-4);
+  }
+}
+
+@layer utilities {
+  .animate-in {
+    animation-duration: 150ms;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    animation-fill-mode: both;
+  }
+  .fade-in {
+    animation-name: fadeIn;
+  }
+  .zoom-in-95 {
+    animation-name: zoomIn95;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes zoomIn95 {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes panelSlideIn {
+    from { opacity: 0; transform: translateX(8px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  .panel-enter {
+    animation: panelSlideIn 120ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}

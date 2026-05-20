@@ -1,0 +1,55 @@
+services:
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:v24.3.1
+    container_name: adomnia-redpanda
+    command:
+      - redpanda
+      - start
+      - --mode
+      - dev-container
+      - --smp
+      - "1"
+      - --memory
+      - 512M
+      - --reserve-memory
+      - 0M
+      - --overprovisioned
+      - --node-id
+      - "0"
+      - --check=false
+      - --kafka-addr
+      - internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr
+      - internal://redpanda:9092,external://localhost:19092
+    ports:
+      - "19092:19092"
+      - "9644:9644"
+
+  kafka-init:
+    image: docker.redpanda.com/redpandadata/redpanda:v24.3.1
+    depends_on:
+      - redpanda
+    entrypoint: ["/bin/sh", "-lc"]
+    command: >
+      "sleep 4 &&
+      rpk topic create adomnia.lab.events --brokers redpanda:9092 || true &&
+      rpk topic list --brokers redpanda:9092"
+
+  mock-api:
+    build:
+      context: ./mock-api
+    container_name: adomnia-mock-api
+    ports:
+      - "18080:8080"
+    environment:
+      ADOMNIA_LAB_NAME: adomnia-local-lab
+
+  redpanda-console:
+    image: docker.redpanda.com/redpandadata/console:v2.8.1
+    container_name: adomnia-redpanda-console
+    depends_on:
+      - redpanda
+    ports:
+      - "18081:8080"
+    environment:
+      KAFKA_BROKERS: redpanda:9092

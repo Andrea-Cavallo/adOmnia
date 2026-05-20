@@ -1,0 +1,14 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=adOmnia
+GenericName=API Developer Toolbox
+Comment=Local-first API client, WebSocket, Kafka, gRPC, mock server, proxy and more
+Exec=/opt/adOmnia/adOmnia
+Icon=adOmnia
+Terminal=false
+StartupNotify=true
+StartupWMClass=adOmnia
+Categories=Development;WebDevelopment;Network;
+Keywords=api;rest;grpc;kafka;http;websocket;mock;proxy;developer;soap;wsdl;
+MimeType=application/json;application/xml;

@@ -1,0 +1,37 @@
+{
+  "id": "echo-plugin",
+  "name": "Echo Plugin",
+  "version": "1.0.0",
+  "description": "Simple echo plugin for testing the Python worker system",
+  "author": "adOmnia",
+  "license": "MIT",
+  "runtime": "python",
+  "python_version": ">=3.12",
+  "entrypoint": "main.py",
+  "actions": [
+    {
+      "id": "echo",
+      "name": "Echo",
+      "description": "Returns the input payload unchanged",
+      "streaming": false
+    },
+    {
+      "id": "analyze",
+      "name": "Analyze Request",
+      "description": "Analyzes the current request and returns metadata",
+      "streaming": false
+    },
+    {
+      "id": "stream_count",
+      "name": "Stream Counter",
+      "description": "Streams numbers from 1 to N",
+      "streaming": true
+    }
+  ],
+  "ui_slots": ["response_tab"],
+  "limits": {
+    "timeout_ms": 10000,
+    "memory_mb": 128
+  },
+  "dependencies": []
+}
