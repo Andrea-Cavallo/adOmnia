@@ -98,8 +98,11 @@ Production build:
 # Windows PowerShell
 .\build.ps1
 
-# macOS / Linux
-./build.sh
+# Linux
+bash build/build-wails.sh linux
+
+# Arch Linux / WebKitGTK 4.1
+wails build -tags webkit2_41 -ldflags "-s -w" -trimpath
 ```
 
 Detailed build instructions: [docs/BUILD.md](docs/BUILD.md)
@@ -241,8 +244,9 @@ wails dev
 Compilación:
 
 ```bash
-.\build.ps1   # Windows
-./build.sh    # macOS / Linux
+.\build.ps1                 # Windows
+bash build/build-wails.sh linux # Linux
+wails build -tags webkit2_41    # Arch Linux / WebKitGTK 4.1
 ```
 
 Guía completa: [docs/BUILD.md](docs/BUILD.md)
@@ -319,8 +323,9 @@ wails dev
 Build:
 
 ```bash
-.\build.ps1   # Windows
-./build.sh    # macOS / Linux
+.\build.ps1                 # Windows
+bash build/build-wails.sh linux # Linux
+wails build -tags webkit2_41    # Arch Linux / WebKitGTK 4.1
 ```
 
 Istruzioni complete: [docs/BUILD.md](docs/BUILD.md)

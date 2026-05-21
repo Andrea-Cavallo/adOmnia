@@ -56,9 +56,13 @@ This guide covers building adOmnia for all supported platforms: Windows, macOS, 
   sudo dnf install gtk3-devel webkit2gtk4.0-devel \
     libayatana-appindicator-gtk3-devel librsvg2-devel
 
-  # Arch
-  sudo pacman -S gtk3 webkit2gtk libayatana-appindicator librsvg
+  # Arch Linux
+  sudo pacman -S --needed base-devel git go nodejs npm pkgconf \
+    gtk3 webkit2gtk-4.1 libayatana-appindicator librsvg
   ```
+
+  Arch Linux provides WebKitGTK through `webkit2gtk-4.1`; use `-tags webkit2_41`
+  when running `wails dev`, `wails build`, or `go test`.
 
 ---
 
@@ -77,13 +81,16 @@ wails dev
 
 # Build production binary (stripped, no debug info)
 wails build -ldflags "-s -w" -trimpath
+
+# Arch Linux / WebKitGTK 4.1
+wails build -tags webkit2_41 -ldflags "-s -w" -trimpath
 ```
 
 ### One-command build scripts (include ldflags automatically)
 
 ```bash
-# macOS / Linux
-./build.sh
+# Linux
+bash build/build-wails.sh linux
 
 # Windows (PowerShell)
 .\build.ps1
