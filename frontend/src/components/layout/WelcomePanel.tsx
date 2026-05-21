@@ -20,6 +20,7 @@ type ToolCard = {
   hoverGlow: string
   title: string
   desc: string
+  beta?: boolean
 }
 
 const TOOL_CARDS: ToolCard[] = [
@@ -78,6 +79,7 @@ const TOOL_CARDS: ToolCard[] = [
     hoverGlow: '#6D28D9',
     title: 'Customization / Plugins',
     desc: 'Extend adOmnia with plugins, and custom integrations.',
+    beta: true,
   },
 ]
 
@@ -180,7 +182,7 @@ export function WelcomePanel() {
           <img
             src="/icon.png"
             alt="adOmnia"
-            className="w-14 h-14 object-contain"
+            className="w-24 h-24 object-contain"
             style={{ filter: 'drop-shadow(0 0 12px rgba(168,85,247,0.7))' }}
           />
         </div>
@@ -223,7 +225,7 @@ export function WelcomePanel() {
 
         {/* 4 × 2 tool card grid */}
         <div className="grid grid-cols-4 gap-3">
-          {TOOL_CARDS.map(({ id, imgSrc, hoverGlow, title, desc }) => (
+          {TOOL_CARDS.map(({ id, imgSrc, hoverGlow, title, desc, beta }) => (
             <button
               key={id}
               onClick={() => setActiveRail(id)}
@@ -240,11 +242,26 @@ export function WelcomePanel() {
                 ;(e.currentTarget as HTMLElement).style.border = '1px solid rgba(255,255,255,0.06)'
               }}
             >
+              {/* Beta badge */}
+              {beta && (
+                <div
+                  className="absolute top-3 right-3 z-10 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider"
+                  style={{
+                    background: 'rgba(109,40,217,0.25)',
+                    border: '1px solid rgba(139,92,246,0.5)',
+                    color: '#C4B5FD',
+                    backdropFilter: 'blur(4px)',
+                  }}
+                >
+                  Beta
+                </div>
+              )}
+
               {/* Full-card icon */}
               <img
                 src={imgSrc}
                 alt={title}
-                className="absolute inset-0 w-full h-full object-contain p-7 transition-transform duration-300 group-hover:scale-105"
+                className="absolute inset-0 w-full h-full object-contain p-14 transition-transform duration-300 group-hover:scale-105"
                 style={{ mixBlendMode: 'screen' }}
               />
 

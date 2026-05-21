@@ -24,8 +24,9 @@ RUN go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
 WORKDIR /app
 COPY . .
 
-# Build stripped binary
-RUN wails build -platform linux/amd64 -ldflags "-s -w" -trimpath
+# Build plain binary. Keep this uncompressed/unstripped so release-linux.ps1
+# can produce a clean artifact for antivirus false-positive checks.
+RUN wails build -platform linux/amd64
 
 # Genera icona 256x256 da appicon.png
 RUN convert build/appicon.png -resize 256x256 build/linux/adOmnia.png

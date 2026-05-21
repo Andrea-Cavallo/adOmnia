@@ -60,7 +60,22 @@ adOmnia is designed as a professional desktop command center for that work.
 
 Full feature catalog: [docs/funzionalita.md](docs/funzionalita.md)
 
-### Quick Start
+### Download
+
+The easiest way to use adOmnia is to download the latest pre-built release — no build tools required.
+
+**[Download latest release →](../../releases/latest)**
+
+| Platform | File |
+|---|---|
+| Windows | `adOmnia-windows-amd64.zip` |
+| Linux | `adOmnia-linux-amd64.tar.gz` |
+
+Extract the archive and run the executable directly. No installation, no dependencies.
+
+### Quick Start (build from source)
+
+Only needed if you want to develop or modify adOmnia.
 
 ```bash
 git clone <repository-url>
@@ -191,7 +206,22 @@ No requiere cuenta. No tiene telemetría. No depende de la nube para tu trabajo 
 - **Preparado para enterprise:** SOAP, certificados, brokers y sistemas legacy son ciudadanos de primera clase.
 - **Producto de escritorio:** interfaz densa, rápida y pensada para trabajo técnico real.
 
-### Inicio rápido
+### Descarga
+
+La forma más sencilla de usar adOmnia es descargar la última versión precompilada — sin herramientas de compilación.
+
+**[Descargar última versión →](../../releases/latest)**
+
+| Plataforma | Archivo |
+|---|---|
+| Windows | `adOmnia-windows-amd64.zip` |
+| Linux | `adOmnia-linux-amd64.tar.gz` |
+
+Extrae el archivo y ejecuta directamente. Sin instalación, sin dependencias.
+
+### Inicio rápido (compilar desde el código)
+
+Solo necesario si quieres desarrollar o modificar adOmnia.
 
 ```bash
 git clone <repository-url>
@@ -254,7 +284,22 @@ Nessun account. Nessuna telemetria. Nessuna dipendenza cloud per lavorare.
 - **Enterprise-ready:** SOAP, certificati, broker e legacy sono trattati come casi reali, non eccezioni.
 - **Product-first:** l'obiettivo è un'app desktop professionale, coerente e utile nel lavoro quotidiano.
 
-### Avvio rapido
+### Download
+
+Il modo più semplice per usare adOmnia è scaricare l'ultima release precompilata — nessun tool di build richiesto.
+
+**[Scarica l'ultima release →](../../releases/latest)**
+
+| Piattaforma | File |
+|---|---|
+| Windows | `adOmnia-windows-amd64.zip` |
+| Linux | `adOmnia-linux-amd64.tar.gz` |
+
+Estrai l'archivio ed esegui direttamente il binario. Nessuna installazione, nessuna dipendenza.
+
+### Avvio rapido (build da sorgente)
+
+Necessario solo se vuoi sviluppare o modificare adOmnia.
 
 ```bash
 git clone <repository-url>

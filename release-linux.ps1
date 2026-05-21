@@ -1,12 +1,11 @@
-# release-linux.ps1 — Build adOmnia per Linux (via Docker)
+# release-linux.ps1 - Build Linux pulito non compresso per adOmnia (via Docker)
 # Uso: .\release-linux.ps1
 # Produce:
-#   build\bin\adOmnia                      (ELF binary, UPX compressed)
+#   build\bin\adOmnia                      (ELF binary, no UPX)
 #   build\bin\adOmnia-linux-amd64.tar.gz   (binary + icone hicolor + .desktop + install.sh)
 
 $ErrorActionPreference = "Continue"
 
-$upx     = "C:\Users\Andrea\Desktop\upx-5.1.1-win64\upx.exe"
 $image   = "adomnia-linux-builder"
 $outDir  = "build\bin"
 $tarball = "$outDir\adOmnia-linux-amd64.tar.gz"
@@ -25,33 +24,30 @@ function Fail {
 if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
     Fail "Docker non trovato nel PATH."
 }
-if (-not (Test-Path $upx)) {
-    Fail "upx.exe non trovato: $upx"
-}
 
-# --- [1/5] Icon generation ---
+# --- [1/4] Icon generation ---
 Write-Host ""
-Write-Host "==> [1/5] Generazione icone ..." -ForegroundColor Cyan
+Write-Host "==> [1/4] Generazione icone ..." -ForegroundColor Cyan
 
 $iconScript = Join-Path $PSScriptRoot "scripts\generate-icons.ps1"
 if (Test-Path $iconScript) {
     & $iconScript
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "    AVVISO: generazione icone fallita — uso icone esistenti." -ForegroundColor Yellow
+        Write-Host "    AVVISO: generazione icone fallita - uso icone esistenti." -ForegroundColor Yellow
     }
 } else {
-    Write-Host "    AVVISO: scripts\generate-icons.ps1 non trovato — uso icone esistenti." -ForegroundColor Yellow
+    Write-Host "    AVVISO: scripts\generate-icons.ps1 non trovato - uso icone esistenti." -ForegroundColor Yellow
 }
 
-# --- [2/5] Docker build ---
+# --- [2/4] Docker build ---
 Write-Host ""
-Write-Host "==> [2/5] Build immagine Docker Linux..." -ForegroundColor Cyan
+Write-Host "==> [2/4] Build immagine Docker Linux..." -ForegroundColor Cyan
 cmd /c "docker build -f Dockerfile.linux -t $image . 2>&1"
 if ($LASTEXITCODE -ne 0) { Fail "Docker build fallita." }
 
-# --- [3/5] Estrai binary dal container ---
+# --- [3/4] Estrai binary dal container ---
 Write-Host ""
-Write-Host "==> [3/5] Estrazione binary dal container..." -ForegroundColor Cyan
+Write-Host "==> [3/4] Estrazione binary dal container..." -ForegroundColor Cyan
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 
 $id = (cmd /c "docker create $image 2>&1").Trim()
@@ -63,17 +59,11 @@ cmd /c "docker rm $id > nul 2>&1"
 
 if ($copyOk -ne 0) { Fail "Copia binary dal container fallita." }
 
-# --- [4/5] UPX sul binary ---
-Write-Host ""
-Write-Host "==> [4/5] Compressione UPX --best --lzma sul binary..." -ForegroundColor Cyan
-$sizeBefore = [math]::Round((Get-Item $binary).Length / 1MB, 2)
-& $upx --best --lzma $binary
-if ($LASTEXITCODE -ne 0) { Fail "UPX fallito." }
-$sizeAfter = [math]::Round((Get-Item $binary).Length / 1MB, 2)
+$sizeBinary = [math]::Round((Get-Item $binary).Length / 1MB, 2)
 
-# --- [5/5] Costruisci tarball con icone hicolor + desktop + install.sh ---
+# --- [4/4] Costruisci tarball con icone hicolor + desktop + install.sh ---
 Write-Host ""
-Write-Host "==> [5/5] Packaging tarball con icone ufficiali..." -ForegroundColor Cyan
+Write-Host "==> [4/4] Packaging tarball con icone ufficiali..." -ForegroundColor Cyan
 
 $tmpDir = "$outDir\linux-tmp"
 Remove-Item -Recurse -Force $tmpDir -ErrorAction SilentlyContinue
@@ -105,11 +95,11 @@ tar -czf $tarball -C $tmpDir .
 Remove-Item -Recurse -Force $tmpDir
 
 $tarMB = [math]::Round((Get-Item $tarball).Length / 1MB, 2)
-$saved = [math]::Round((1 - $sizeAfter / $sizeBefore) * 100, 1)
 
 Write-Host ""
 Write-Host "==> Fatto!" -ForegroundColor Green
-Write-Host "    Binary (standalone): $sizeAfter MB  (-$saved% vs pre-UPX $sizeBefore MB)" -ForegroundColor Gray
+Write-Host "    Compressione: NO UPX" -ForegroundColor Gray
+Write-Host "    Binary standalone: $sizeBinary MB" -ForegroundColor Gray
 Write-Host "    Tarball distribuibile: $tarMB MB" -ForegroundColor Gray
 Write-Host ""
 Write-Host "    build\bin\adOmnia                     <- binary standalone" -ForegroundColor White
