@@ -77,20 +77,50 @@ fi
 build_platform() {
     local PLATFORM="$1"     # e.g. windows/amd64
     local OUTPUT="$2"       # e.g. dist/adomnia-windows-amd64.exe
+    local TAGS="${3:-}"
     local LDFLAGS="-s -w -X main.Version=${VERSION} -X main.GitCommit=${GIT_COMMIT}"
+    local OUTNAME
+    local BUILT_OUTPUT
+    local TAG_ARGS=()
+
+    OUTNAME="$(basename "$OUTPUT")"
+    BUILT_OUTPUT="build/bin/$OUTNAME"
+
+    if [ -n "$TAGS" ]; then
+        TAG_ARGS=(-tags "$TAGS")
+    fi
 
     echo -e "${YELLOW}→${NC} Building $PLATFORM..."
     "$WAILS_BIN" build \
         -platform "$PLATFORM" \
+        "${TAG_ARGS[@]}" \
         -ldflags "$LDFLAGS" \
-        -o "$(pwd)/$OUTPUT" 2>&1 | grep -v "^[[:space:]]*$" || true
+        -o "$OUTNAME" 2>&1 | grep -v "^[[:space:]]*$" || true
+
+    if [ -f "$BUILT_OUTPUT" ]; then
+        mkdir -p "$(dirname "$OUTPUT")"
+        cp "$BUILT_OUTPUT" "$OUTPUT"
+    fi
 
     if [ -f "$OUTPUT" ]; then
+        chmod +x "$OUTPUT" 2>/dev/null || true
         SIZE=$(ls -lh "$OUTPUT" | awk '{print $5}')
         echo -e "${GREEN}✓${NC} $OUTPUT ($SIZE)"
     else
         echo -e "${RED}✗${NC} Build failed for $PLATFORM"
         return 1
+    fi
+}
+
+detect_linux_webkit_tags() {
+    if [ "$(uname -s)" != "Linux" ]; then
+        return
+    fi
+
+    if command -v pkg-config &>/dev/null &&
+        pkg-config --exists webkit2gtk-4.1 &&
+        ! pkg-config --exists webkit2gtk-4.0; then
+        echo "webkit2_41"
     fi
 }
 
@@ -135,10 +165,17 @@ build_linux() {
     echo -e "${CYAN}🐧  Linux${NC}"
     if [ "$(uname -s)" != "Linux" ]; then
         echo -e "${YELLOW}⚠️  Linux Wails builds require a Linux host (WebKitGTK CGO dependency)${NC}"
-        echo "   Use the Dockerfile: docker build -f build/Dockerfile -t adomnia-build ."
+        echo "   Use the Dockerfile: docker build -f Dockerfile.linux -t adomnia-build ."
         return 1
     fi
-    build_platform "linux/amd64" "$OUT_DIR/adomnia-linux-amd64"
+
+    local TAGS
+    TAGS="$(detect_linux_webkit_tags)"
+    if [ -n "$TAGS" ]; then
+        echo -e "${GREEN}✓${NC} WebKitGTK 4.1 detected; using Go build tags: $TAGS"
+    fi
+
+    build_platform "linux/amd64" "$OUT_DIR/adomnia-linux-amd64" "$TAGS"
 }
 
 create_checksums() {
