@@ -6,8 +6,12 @@ adOmnia brings together the tools backend engineers usually keep scattered acros
 
 No account. No cloud sync. No telemetry. Your data stays on your machine.
 
+> Built with **[Wails v2](https://wails.io)** — a Go + WebView desktop framework that compiles the entire app (Go backend + React frontend) into a single native executable with no Electron overhead and no runtime dependencies.
+
 ![adOmnia interface](assets/images/adOmniaParatus.png)
 
+[![Built with Wails](https://img.shields.io/badge/Built%20with-Wails%20v2-FF3E00?logo=go&logoColor=white)](https://wails.io)
+[![Awesome Wails](https://img.shields.io/badge/Awesome-Wails-FF3E00?logo=go&logoColor=white)](https://github.com/wailsapp/awesome-wails)
 ![Local First](https://img.shields.io/badge/local--first-yes-22c55e)
 ![No Telemetry](https://img.shields.io/badge/telemetry-none-0ea5e9)
 ![Desktop](https://img.shields.io/badge/app-desktop-8b5cf6)
