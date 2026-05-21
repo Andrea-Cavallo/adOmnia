@@ -1,11 +1,26 @@
 import { create } from 'zustand'
 import type { Tab, RequestItem, ResponseData, HttpMethod } from '@/lib/types'
 import { uid, blankRequest } from '@/lib/types'
+import { StorageGet, StoragePut } from '@/wailsjs/go/main/App'
+import { useSettingsStore } from '@/stores/settings'
+
+const BUCKET = 'tabs'
+const KEY = 'session-v1'
+
+type PersistedTabsState = {
+  version: 1
+  tabs: Tab[]
+  activeTabId: string | null
+  responseHistory: ResponseData[]
+}
 
 interface TabsState {
   tabs: Tab[]
   activeTabId: string | null
   responseHistory: ResponseData[]
+  loaded: boolean
+  load: () => Promise<void>
+  save: () => Promise<void>
   openTab: (request: RequestItem, collectionId?: string) => void
   closeTab: (id: string) => void
   closeTabsToRight: (id: string) => void
@@ -18,15 +33,73 @@ interface TabsState {
   markClean: (tabId: string) => void
 }
 
+function historyLimit(): number {
+  const settings = useSettingsStore.getState().settings
+  return Math.max(0, settings.requests.maxResponseHistoryPerTab || 0)
+}
+
+function shouldSaveResponses(): boolean {
+  return useSettingsStore.getState().settings.requests.saveResponsesToHistory
+}
+
+function cleanLoadedTab(tab: Tab): Tab {
+  return { ...tab, loading: false }
+}
+
 export const useTabsStore = create<TabsState>((set, get) => ({
   tabs: [],
   activeTabId: null,
   responseHistory: [],
+  loaded: false,
+
+  load: async () => {
+    try {
+      const raw = await StorageGet(BUCKET, KEY)
+      const settings = useSettingsStore.getState().settings
+      if (!raw) {
+        set({ loaded: true })
+        return
+      }
+      const parsed = JSON.parse(raw) as PersistedTabsState
+      const restoredTabs = settings.general.restoreTabsOnStartup
+        ? (parsed.tabs ?? []).map(cleanLoadedTab)
+        : []
+      const activeTabId = restoredTabs.some((t) => t.id === parsed.activeTabId)
+        ? parsed.activeTabId
+        : restoredTabs[0]?.id ?? null
+      set({
+        tabs: restoredTabs,
+        activeTabId,
+        responseHistory: (parsed.responseHistory ?? []).slice(0, historyLimit()),
+        loaded: true,
+      })
+    } catch (e) {
+      console.error('Failed to restore tabs:', e)
+      set({ loaded: true })
+    }
+  },
+
+  save: async () => {
+    if (!get().loaded) return
+    const { tabs, activeTabId, responseHistory } = get()
+    const payload: PersistedTabsState = {
+      version: 1,
+      tabs: useSettingsStore.getState().settings.general.restoreTabsOnStartup ? tabs.map(cleanLoadedTab) : [],
+      activeTabId,
+      responseHistory: responseHistory.slice(0, historyLimit()),
+    }
+    try {
+      await StoragePut(BUCKET, KEY, JSON.stringify(payload))
+    } catch (e) {
+      console.error('Failed to persist tabs:', e)
+    }
+  },
 
   openTab: (request, collectionId) => {
     const existing = get().tabs.find((t) => t.request.id === request.id)
     if (existing) {
       set({ activeTabId: existing.id })
+      get().save()
       return
     }
     const tab: Tab = {
@@ -38,6 +111,7 @@ export const useTabsStore = create<TabsState>((set, get) => ({
       loading: false,
     }
     set((s) => ({ tabs: [...s.tabs, tab], activeTabId: tab.id }))
+    get().save()
   },
 
   closeTab: (id) => {
@@ -50,6 +124,7 @@ export const useTabsStore = create<TabsState>((set, get) => ({
       }
       return { tabs: filtered, activeTabId }
     })
+    get().save()
   },
 
   closeTabsToRight: (id) => {
@@ -63,6 +138,7 @@ export const useTabsStore = create<TabsState>((set, get) => ({
         activeTabId: activeTabStillExists ? s.activeTabId : filtered[filtered.length - 1]?.id ?? null,
       }
     })
+    get().save()
   },
 
   closeTabsToLeft: (id) => {
@@ -76,12 +152,20 @@ export const useTabsStore = create<TabsState>((set, get) => ({
         activeTabId: activeTabStillExists ? s.activeTabId : filtered[0]?.id ?? null,
       }
     })
+    get().save()
   },
 
-  setActiveTab: (id) => set({ activeTabId: id }),
+  setActiveTab: (id) => {
+    set({ activeTabId: id })
+    get().save()
+  },
 
-  newTab: (method = 'GET') => {
-    const request = blankRequest(method)
+  newTab: (method) => {
+    const effectiveMethod = method ?? (useSettingsStore.getState().settings.requests.defaultHttpMethod as HttpMethod) ?? 'GET'
+    const request = blankRequest(effectiveMethod)
+    const requestSettings = useSettingsStore.getState().settings.requests
+    request.timeout = requestSettings.defaultTimeoutMs
+    request.followRedirects = requestSettings.followRedirects
     const tab: Tab = {
       id: uid(),
       request,
@@ -90,30 +174,37 @@ export const useTabsStore = create<TabsState>((set, get) => ({
       loading: false,
     }
     set((s) => ({ tabs: [...s.tabs, tab], activeTabId: tab.id }))
+    get().save()
   },
 
   updateRequest: (tabId, request) => {
     set((s) => ({
       tabs: s.tabs.map((t) => (t.id === tabId ? { ...t, request, dirty: true } : t)),
     }))
+    get().save()
   },
 
   setLoading: (tabId, loading) => {
     set((s) => ({
       tabs: s.tabs.map((t) => (t.id === tabId ? { ...t, loading } : t)),
     }))
+    get().save()
   },
 
   setResponse: (tabId, response) => {
     set((s) => ({
       tabs: s.tabs.map((t) => (t.id === tabId ? { ...t, response, loading: false } : t)),
-      responseHistory: response ? [response, ...s.responseHistory].slice(0, 100) : s.responseHistory,
+      responseHistory: response && shouldSaveResponses()
+        ? [response, ...s.responseHistory].slice(0, historyLimit())
+        : s.responseHistory,
     }))
+    get().save()
   },
 
   markClean: (tabId) => {
     set((s) => ({
       tabs: s.tabs.map((t) => (t.id === tabId ? { ...t, dirty: false } : t)),
     }))
+    get().save()
   },
 }))

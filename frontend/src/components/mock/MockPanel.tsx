@@ -4,9 +4,10 @@ import {
   ChevronDown, ChevronRight, Download, Upload,
   Server, Radio, Zap, Copy, Mic
 } from 'lucide-react'
-import { useServerPort, serverUrl } from '@/lib/useServerPort'
+import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { useAppStore } from '@/stores/app'
 import { useCollectionsStore } from '@/stores/collections'
+import { useSettingsStore } from '@/stores/settings'
 import type { RequestItem, TreeNode } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -445,20 +446,13 @@ export function MockPanel() {
   const port = useServerPort()
   const collections = useCollectionsStore((s) => s.collections)
   const collectionsLoaded = useCollectionsStore((s) => s.loaded)
+  const settings = useSettingsStore((s) => s.settings)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [mockPort, setMockPort] = useState(9090)
-  const [password, setPassword] = useState('')
+  const [mockPort, setMockPort] = useState(settings.mock?.defaultMockPort ?? 9090)
+  const [password, setPassword] = useState(settings.mock?.mockServerPassword ?? '')
   const [status, setStatus] = useState<MockStatus>({ running: false, port: 0 })
-  const [endpoints, setEndpoints] = useState<MockEndpoint[]>(() => {
-    try {
-      const saved = localStorage.getItem('adomnia.mock.endpoints')
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed
-      }
-      return defaultRestEndpoints()
-    } catch { return defaultRestEndpoints() }
-  })
+  const [endpoints, setEndpoints] = useState<MockEndpoint[]>(defaultRestEndpoints)
+  const [endpointsLoaded, setEndpointsLoaded] = useState(false)
   const [hits, setHits] = useState<HitEntry[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -473,7 +467,7 @@ export function MockPanel() {
       const url = serverUrl(port, path)
       if (!url) return null
       try {
-        const res = await fetch(url, {
+        const res = await sidecarFetch(url, {
           method: body !== undefined ? 'POST' : 'GET',
           headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
           body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -486,12 +480,35 @@ export function MockPanel() {
     [port],
   )
 
+  // Load endpoints from bbolt on mount; one-shot migration from localStorage if bbolt is empty.
   useEffect(() => {
-    localStorage.setItem('adomnia.mock.endpoints', JSON.stringify(endpoints))
-  }, [endpoints])
+    if (!port || endpointsLoaded) return
+    void (async () => {
+      const data = await api('/storage/get?bucket=mock&key=endpoints')
+      if (Array.isArray(data) && data.length > 0) {
+        setEndpoints(data as MockEndpoint[])
+      } else {
+        try {
+          const ls = localStorage.getItem('adomnia.mock.endpoints')
+          if (ls) {
+            const parsed: unknown = JSON.parse(ls)
+            if (Array.isArray(parsed) && parsed.length > 0) setEndpoints(parsed as MockEndpoint[])
+          }
+        } catch { /* keep defaults */ }
+        localStorage.removeItem('adomnia.mock.endpoints')
+      }
+      setEndpointsLoaded(true)
+    })()
+  }, [port, api, endpointsLoaded])
+
+  // Persist endpoints to bbolt whenever they change (after initial load).
+  useEffect(() => {
+    if (!endpointsLoaded) return
+    void api('/storage/put?bucket=mock&key=endpoints', endpoints)
+  }, [endpoints, api, endpointsLoaded])
 
   useEffect(() => {
-    if (!collectionsLoaded) return
+    if (!collectionsLoaded || !endpointsLoaded) return
     const fromCollections = collections.flatMap((collection) => collectRestEndpoints(collection.children))
     if (fromCollections.length === 0) return
 
@@ -503,7 +520,7 @@ export function MockPanel() {
       return true
     })
     setEndpoints(merged)
-  }, [collections, collectionsLoaded])
+  }, [collections, collectionsLoaded, endpointsLoaded])
 
   const refreshStatus = useCallback(async () => {
     const data = await api('/mock/status')

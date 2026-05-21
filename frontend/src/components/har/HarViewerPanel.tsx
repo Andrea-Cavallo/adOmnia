@@ -17,7 +17,8 @@ import {
   X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useServerPort, serverUrl } from '@/lib/useServerPort'
+import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
+import { appendMockEndpoints } from '@/lib/mockEndpointStore'
 import { useAppStore } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
 import { useBrowserDebugStore } from '@/stores/browser-debug'
@@ -310,7 +311,7 @@ function EntryDetail({ entry, onClose }: { entry: RichEntry; onClose: () => void
     useAppStore.getState().setActiveRail('collections')
   }
 
-  const createMock = () => {
+  const createMock = async () => {
     let path = '/'
     try { path = new URL(entry.request.url).pathname || '/' } catch { /* keep root */ }
     const endpoint = {
@@ -329,9 +330,7 @@ function EntryDetail({ entry, onClose }: { entry: RichEntry; onClose: () => void
       }],
       mode: 'first_active',
     }
-    const raw = localStorage.getItem('adomnia.mock.endpoints')
-    const existing = raw ? JSON.parse(raw) : []
-    localStorage.setItem('adomnia.mock.endpoints', JSON.stringify([...existing, endpoint]))
+    await appendMockEndpoints([endpoint])
     useAppStore.getState().setActiveRail('mock')
   }
 
@@ -547,7 +546,7 @@ export function HarViewerPanel() {
     if (!port) return
     setErrMsg(''); setBusy(true)
     try {
-      const res = await fetch(serverUrl(port, '/proxy/export'), {
+      const res = await sidecarFetch(serverUrl(port, '/proxy/export'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ format: 'har', ids: [] }),

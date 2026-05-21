@@ -5,7 +5,7 @@ import {
   Loader2, Lock, MessageSquare, Plus, Radio, Send, Timer, Trash2,
   Unplug, X,
 } from 'lucide-react'
-import { useServerPort, serverUrl } from '@/lib/useServerPort'
+import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { cn } from '@/lib/utils'
 import { JsonGraph } from '@/components/ui/JsonGraph'
 import { KafkaPanel } from './KafkaPanel'
@@ -242,7 +242,7 @@ function PresetManager({
     const url = serverUrl(port, '/broker/presets/list')
     if (!url) return
     try {
-      const res = await fetch(url)
+      const res = await sidecarFetch(url)
       const data = await res.json()
       setPresets((data.presets ?? []).filter((p: MessagePreset) => p.protocol === protocol))
     } catch { /* ignore */ }
@@ -258,7 +258,7 @@ function PresetManager({
     try {
       const hdrs: Record<string, string> = {}
       headers.filter(h => h.key).forEach(h => { hdrs[h.key] = h.value })
-      await fetch(url, {
+      await sidecarFetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: saveName, protocol, content, headers: hdrs }),
@@ -273,7 +273,7 @@ function PresetManager({
   const remove = async (id: string) => {
     const url = serverUrl(port, `/broker/presets/delete?id=${encodeURIComponent(id)}`)
     if (!url) return
-    await fetch(url, { method: 'POST' })
+    await sidecarFetch(url, { method: 'POST' })
     fetchPresets()
   }
 
@@ -353,7 +353,7 @@ function RabbitMQPanel({ port, onMessages }: { port: number | null; onMessages: 
     setLoading(true)
     setResult(null)
     try {
-      const res = await fetch(url2, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      const res = await sidecarFetch(url2, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       const data = await res.json()
       setResult(data)
       if (data.messages) onMessages(data.messages)
@@ -493,7 +493,7 @@ function MQTTPanel({ port, onMessages }: { port: number | null; onMessages: (msg
     if (!url) return
     setLoading(true); setResult(null)
     try {
-      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      const res = await sidecarFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       const data = await res.json()
       setResult(data)
       if (data.messages) onMessages(data.messages)
@@ -642,7 +642,7 @@ function RedisPanel({ port, onMessages }: { port: number | null; onMessages: (ms
     if (!url) return
     setLoading(true); setResult(null)
     try {
-      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      const res = await sidecarFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       const data = await res.json()
       setResult(data)
       if (data.messages) onMessages(data.messages)
@@ -772,7 +772,7 @@ function NATSPanel({ port, onMessages }: { port: number | null; onMessages: (msg
     if (!url) return
     setLoading(true); setResult(null)
     try {
-      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      const res = await sidecarFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       const data = await res.json()
       setResult(data)
       if (data.messages) onMessages(data.messages)

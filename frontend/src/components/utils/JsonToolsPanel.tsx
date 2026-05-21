@@ -3,7 +3,7 @@ import {
   Braces, Search, GitCompare, Eye, Copy, ArrowRight,
   Network, ChevronRight, ChevronDown,
 } from 'lucide-react'
-import { useServerPort, serverUrl } from '@/lib/useServerPort'
+import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { cn } from '@/lib/utils'
 
 type Tab = 'query' | 'set' | 'diff' | 'graph' | 'human' | 'stream' | 'mime'
@@ -274,7 +274,7 @@ export function JsonToolsPanel() {
     if (!url) { setError('Backend not ready'); return }
     setLoading(true); setError(''); setResult(null)
     try {
-      const res  = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      const res  = await sidecarFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       const data = await res.json() as object
       if (!res.ok) { setError((data as { error?: string; message?: string }).error ?? (data as { message?: string }).message ?? res.statusText); return }
       setResult(data)

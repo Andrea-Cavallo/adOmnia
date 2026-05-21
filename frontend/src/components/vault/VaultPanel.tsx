@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { KeyRound, Lock, ShieldCheck, ShieldOff, Upload, Download } from 'lucide-react'
-import { useServerPort, serverUrl } from '@/lib/useServerPort'
+import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { cn } from '@/lib/utils'
 
 export function VaultPanel() {
@@ -17,7 +17,7 @@ export function VaultPanel() {
   const api = useCallback(async (path: string, body?: unknown) => {
     const url = serverUrl(port, path)
     if (!url) throw new Error('Backend not ready')
-    const res = await fetch(url, {
+    const res = await sidecarFetch(url, {
       method: body === undefined ? 'GET' : 'POST',
       headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
       body: body === undefined ? undefined : JSON.stringify(body),

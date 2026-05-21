@@ -16,7 +16,7 @@ import {
   Zap,
   ZapOff,
 } from 'lucide-react'
-import { useServerPort, serverUrl } from '@/lib/useServerPort'
+import { getSidecarToken, useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { useAppStore } from '@/stores/app'
 import { cn } from '@/lib/utils'
@@ -228,9 +228,10 @@ export function SsePanel() {
     setEvents((prev) => [...prev, item])
   }, [])
 
-  const openInternalStream = useCallback((sid: string) => {
+  const openInternalStream = useCallback(async (sid: string) => {
     esRef.current?.close()
-    const url = serverUrl(port, `/sse/stream?sessionId=${encodeURIComponent(sid)}`)
+    const token = await getSidecarToken()
+    const url = serverUrl(port, `/sse/stream?sessionId=${encodeURIComponent(sid)}&token=${encodeURIComponent(token)}`)
     if (!url) return
     const es = new EventSource(url)
     esRef.current = es
@@ -265,7 +266,7 @@ export function SsePanel() {
     }
     const resolvedUrl = substVars(config.url, vars)
     try {
-      const res = await fetch(url, {
+      const res = await sidecarFetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -296,7 +297,7 @@ export function SsePanel() {
   const disconnect = async () => {
     esRef.current?.close()
     if (port && sessionId) {
-      await fetch(serverUrl(port, '/sse/disconnect'), {
+      await sidecarFetch(serverUrl(port, '/sse/disconnect'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId }),

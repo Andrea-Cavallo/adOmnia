@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -54,22 +55,25 @@ const (
 
 // BrowserDebug manages a spawned browser process with CDP connectivity for network capture.
 type BrowserDebug struct {
-	mu        sync.Mutex
-	conn      *websocket.Conn
-	process   *exec.Cmd
-	connected bool
-	traffic   []DebugNetworkEntry
-	msgID     atomic.Int64
-	pending   map[int]chan cdpMessage
-	pendingMu sync.Mutex
-	stopCh    chan struct{}
+	mu         sync.Mutex
+	conn       *websocket.Conn
+	process    *exec.Cmd
+	connected  bool
+	traffic    []DebugNetworkEntry
+	msgID      atomic.Int64
+	pending    map[int]chan cdpMessage
+	pendingMu  sync.Mutex
+	stopCh     chan struct{}
+	debugPort  int    // dynamically assigned CDP port for this session
+	profileDir string // per-session temporary profile directory
 }
 
 // NewBrowserDebug creates a new BrowserDebug instance.
 func NewBrowserDebug() *BrowserDebug {
 	return &BrowserDebug{
-		traffic: make([]DebugNetworkEntry, 0, maxTrafficEntries),
-		pending: make(map[int]chan cdpMessage),
+		traffic:   make([]DebugNetworkEntry, 0, maxTrafficEntries),
+		pending:   make(map[int]chan cdpMessage),
+		debugPort: findFreePort(cdpDebugPort),
 	}
 }
 
@@ -87,11 +91,21 @@ func (b *BrowserDebug) LaunchBrowser(url string) error {
 		return fmt.Errorf("no supported browser found (looked for msedge.exe, chrome.exe)")
 	}
 
+	if b.debugPort == 0 {
+		b.debugPort = findFreePort(cdpDebugPort)
+	}
+
+	profileDir, err := os.MkdirTemp("", "adomnia-debug-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temp profile dir: %w", err)
+	}
+	b.profileDir = profileDir
+
 	args := []string{
-		fmt.Sprintf("--remote-debugging-port=%d", cdpDebugPort),
+		fmt.Sprintf("--remote-debugging-port=%d", b.debugPort),
 		"--no-first-run",
 		"--no-default-browser-check",
-		fmt.Sprintf("--user-data-dir=%s", filepath.Join(os.TempDir(), "adomnia-debug-profile")),
+		fmt.Sprintf("--user-data-dir=%s", profileDir),
 		url,
 	}
 
@@ -100,11 +114,13 @@ func (b *BrowserDebug) LaunchBrowser(url string) error {
 	cmd.Stderr = nil
 
 	if err := cmd.Start(); err != nil {
+		os.RemoveAll(profileDir)
+		b.profileDir = ""
 		return fmt.Errorf("failed to launch browser: %w", err)
 	}
 
 	b.process = cmd
-	log.Printf("[debug] launched browser: %s (pid %d)", browserPath, cmd.Process.Pid)
+	log.Printf("[debug] launched browser: %s (pid %d, port %d, profile %s)", browserPath, cmd.Process.Pid, b.debugPort, profileDir)
 	return nil
 }
 
@@ -118,7 +134,7 @@ func (b *BrowserDebug) Connect() error {
 	b.mu.Unlock()
 
 	// Fetch the list of debug targets
-	wsURL, err := discoverDebugTarget()
+	wsURL, err := b.discoverDebugTarget()
 	if err != nil {
 		return fmt.Errorf("failed to discover debug target: %w", err)
 	}
@@ -267,7 +283,7 @@ func (b *BrowserDebug) ClearTraffic() {
 	log.Printf("[debug] traffic cleared")
 }
 
-// StopBrowser kills the spawned browser process.
+// StopBrowser kills the spawned browser process and cleans up the temporary profile.
 func (b *BrowserDebug) StopBrowser() error {
 	b.Disconnect()
 
@@ -278,14 +294,30 @@ func (b *BrowserDebug) StopBrowser() error {
 		return nil
 	}
 
+	profileDir := b.profileDir
+
 	if b.process.Process != nil {
 		if err := b.process.Process.Kill(); err != nil {
 			return fmt.Errorf("failed to kill browser process: %w", err)
 		}
-		log.Printf("[debug] browser process killed")
+		b.process.Wait()
+		log.Printf("[debug] browser process killed (pid %d)", b.process.Process.Pid)
 	}
 
 	b.process = nil
+	b.profileDir = ""
+
+	if profileDir != "" {
+		go func(dir string) {
+			time.Sleep(2 * time.Second)
+			if err := os.RemoveAll(dir); err != nil {
+				log.Printf("[debug] failed to clean profile dir %s: %v", dir, err)
+			} else {
+				log.Printf("[debug] cleaned profile dir: %s", dir)
+			}
+		}(profileDir)
+	}
+
 	return nil
 }
 
@@ -486,14 +518,60 @@ func (b *BrowserDebug) handleLoadingFinished(params map[string]interface{}) {
 	}
 }
 
+// DebugStatus carries runtime status for the browser debug session.
+type DebugStatus struct {
+	Connected  bool   `json:"connected"`
+	Port       int    `json:"port"`
+	ProfileDir string `json:"profileDir"`
+	BrowserPID int    `json:"browserPid"`
+}
+
+// GetDebugStatus returns the current debug port, profile path, and connection state.
+func (b *BrowserDebug) GetDebugStatus() DebugStatus {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	s := DebugStatus{
+		Connected:  b.connected,
+		Port:       b.debugPort,
+		ProfileDir: b.profileDir,
+	}
+	if b.process != nil && b.process.Process != nil {
+		s.BrowserPID = b.process.Process.Pid
+	}
+	return s
+}
+
+// findFreePort tries to find an available TCP port starting from base.
+// If the base port is unavailable it scans the next 99 ports, then falls back to an OS-assigned port.
+func findFreePort(base int) int {
+	for port := base; port < base+100; port++ {
+		ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
+		if err == nil {
+			ln.Close()
+			return port
+		}
+	}
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		log.Printf("[debug] WARNING: could not bind any port: %v", err)
+		return base
+	}
+	defer ln.Close()
+	return ln.Addr().(*net.TCPAddr).Port
+}
+
 // discoverDebugTarget queries the CDP /json endpoint to find the first page target's WS URL.
-func discoverDebugTarget() (string, error) {
+func (b *BrowserDebug) discoverDebugTarget() (string, error) {
+	port := b.debugPort
+	if port == 0 {
+		port = cdpDebugPort
+	}
 	client := &http.Client{Timeout: 5 * time.Second}
 
 	// Retry a few times as the browser may still be starting
 	var lastErr error
 	for attempt := 0; attempt < 10; attempt++ {
-		resp, err := client.Get(fmt.Sprintf("http://localhost:%d/json", cdpDebugPort))
+		resp, err := client.Get(fmt.Sprintf("http://localhost:%d/json", port))
 		if err != nil {
 			lastErr = err
 			time.Sleep(500 * time.Millisecond)

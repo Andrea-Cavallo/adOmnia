@@ -12,6 +12,19 @@ import (
 	"time"
 )
 
+func writeTempPassword(dir, password string) (string, error) {
+	f, err := os.CreateTemp(dir, "pass-*")
+	if err != nil {
+		return "", err
+	}
+	if _, err := f.WriteString(password); err != nil {
+		f.Close()
+		return "", err
+	}
+	f.Close()
+	return f.Name(), nil
+}
+
 func certJksSplitHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "POST required", http.StatusMethodNotAllowed)
@@ -69,31 +82,37 @@ func certJksSplitHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	out.Close()
 
+	srcPassFile, err := writeTempPassword(dir, password)
+	if err != nil {
+		http.Error(w, "temp password file failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	args := []string{
 		"-importkeystore",
 		"-srckeystore", jksPath,
 		"-srcstoretype", "JKS",
-		"-srcstorepass", password,
+		"-srcstorepass:file", srcPassFile,
 		"-destkeystore", p12Path,
 		"-deststoretype", "PKCS12",
-		"-deststorepass", password,
-		"-destkeypass", password,
+		"-deststorepass:file", srcPassFile,
+		"-destkeypass:file", srcPassFile,
 		"-noprompt",
 	}
 	if alias != "" {
 		args = append(args, "-srcalias", alias, "-destalias", alias)
 	}
 	if output, err := exec.Command(keytool, args...).CombinedOutput(); err != nil {
-		http.Error(w, fmt.Sprintf("keytool conversion failed: %s", strings.TrimSpace(string(output))), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("keytool conversion failed: %s", sanitizeOutput(strings.TrimSpace(string(output)), password)), http.StatusBadRequest)
 		return
 	}
 
-	if output, err := exec.Command(openssl, "pkcs12", "-in", p12Path, "-clcerts", "-nokeys", "-out", certPath, "-passin", "pass:"+password).CombinedOutput(); err != nil {
-		http.Error(w, fmt.Sprintf("certificate export failed: %s", strings.TrimSpace(string(output))), http.StatusBadRequest)
+	if output, err := exec.Command(openssl, "pkcs12", "-in", p12Path, "-clcerts", "-nokeys", "-out", certPath, "-passin", "file:"+srcPassFile).CombinedOutput(); err != nil {
+		http.Error(w, fmt.Sprintf("certificate export failed: %s", sanitizeOutput(strings.TrimSpace(string(output)), password)), http.StatusBadRequest)
 		return
 	}
-	if output, err := exec.Command(openssl, "pkcs12", "-in", p12Path, "-nocerts", "-nodes", "-out", keyPath, "-passin", "pass:"+password).CombinedOutput(); err != nil {
-		http.Error(w, fmt.Sprintf("key export failed: %s", strings.TrimSpace(string(output))), http.StatusBadRequest)
+	if output, err := exec.Command(openssl, "pkcs12", "-in", p12Path, "-nocerts", "-nodes", "-out", keyPath, "-passin", "file:"+srcPassFile).CombinedOutput(); err != nil {
+		http.Error(w, fmt.Sprintf("key export failed: %s", sanitizeOutput(strings.TrimSpace(string(output)), password)), http.StatusBadRequest)
 		return
 	}
 
@@ -108,4 +127,11 @@ func certJksSplitHandler(w http.ResponseWriter, r *http.Request) {
 		"createdAt": time.Now().UTC().Format(time.RFC3339),
 		"warning":  "Private keys are extracted locally only. Protect the downloaded PEM files.",
 	})
+}
+
+func sanitizeOutput(output, password string) string {
+	if password == "" || password == "changeit" {
+		return output
+	}
+	return strings.ReplaceAll(output, password, "***")
 }

@@ -4,7 +4,8 @@ import { sendRequest } from '@/lib/sendRequest'
 import { blankRequest, type AssertionResult, type HttpMethod, type RequestItem, uid } from '@/lib/types'
 import { evaluateAssertions } from '@/lib/assertionEngine'
 import { useEnvironmentsStore } from '@/stores/environments'
-import { useServerPort, serverUrl } from '@/lib/useServerPort'
+import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
+import { safeEval } from '@/lib/safeEval'
 
 type FlowStatus = 'idle' | 'running' | 'ok' | 'error'
 type FlowStepType = 'request' | 'condition' | 'wait' | 'script'
@@ -136,18 +137,20 @@ function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, Math.max(0, ms)))
 }
 
-function runFlowScript(source: string, vars: Record<string, string>) {
-  const fn = new Function('vars', `
-    "use strict";
-    const set = (key, value) => ({ [String(key)]: String(value ?? "") });
-    ${source}
-  `)
-  const result = fn(Object.freeze({ ...vars }))
-  if (result == null) return {}
-  if (typeof result !== 'object' || Array.isArray(result)) {
-    throw new Error('Script must return an object like { token: "value" }')
+async function runFlowScript(source: string, vars: Record<string, string>): Promise<Record<string, string>> {
+  try {
+    const result = await safeEval(
+      `const set = (key, value) => ({ [String(key)]: String(value ?? "") }); return (() => { ${source} })()`,
+      { vars: Object.freeze({ ...vars }) }
+    )
+    if (result == null) return {}
+    if (typeof result !== 'object' || Array.isArray(result)) {
+      throw new Error('Script must return an object like { token: "value" }')
+    }
+    return Object.fromEntries(Object.entries(result as Record<string, unknown>).map(([key, value]) => [key, String(value ?? '')]))
+  } catch (e) {
+    throw e instanceof Error ? e : new Error(String(e))
   }
-  return Object.fromEntries(Object.entries(result as Record<string, unknown>).map(([key, value]) => [key, String(value ?? '')]))
 }
 
 function exportRunMarkdown(flowName: string, run: FlowRunEntry[], vars: Record<string, string>) {
@@ -275,7 +278,7 @@ export function FlowsPanel() {
 
       if (step.type === 'script') {
         try {
-          const extracted = runFlowScript(step.script ?? '', nextVars)
+          const extracted = await runFlowScript(step.script ?? '', nextVars)
           nextVars = { ...nextVars, ...extracted }
           const durationMs = performance.now() - start
           runEntries.push({ stepId: step.id, stepName: step.name, status: 'ok', durationMs, httpStatus: 0, assertions: [], extractedCount: Object.keys(extracted).length })
@@ -366,7 +369,7 @@ export function FlowsPanel() {
     if (!url || !recordUrl) return
     setRecordMessage('')
     try {
-      const res = await fetch(url, {
+      const res = await sidecarFetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

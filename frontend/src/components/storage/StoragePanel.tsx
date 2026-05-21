@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Database, Search, Download, Upload, Trash2, Copy, Plus, RefreshCw } from 'lucide-react'
-import { useServerPort, serverUrl } from '@/lib/useServerPort'
+import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { cn } from '@/lib/utils'
 
 interface StorageEntry {
@@ -29,7 +29,7 @@ export function StoragePanel() {
   const api = useCallback(async (path: string, body?: unknown, method?: string) => {
     const url = serverUrl(port, path)
     if (!url) throw new Error('Backend not ready')
-    const res = await fetch(url, {
+    const res = await sidecarFetch(url, {
       method: method ?? (body !== undefined ? 'POST' : 'GET'),
       headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
       body: body !== undefined ? JSON.stringify(body) : undefined,

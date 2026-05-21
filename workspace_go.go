@@ -9,6 +9,8 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	bolt "go.etcd.io/bbolt"
 )
 
 type WorkspaceMeta struct {
@@ -72,6 +74,11 @@ func workspaceSaveHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "save failed", http.StatusInternalServerError)
 		return
 	}
+	stateKey := fmt.Sprintf("ws-state/%s", req.Name)
+	if err := storePut("workspace", stateKey, []byte(req.State)); err != nil {
+		http.Error(w, "state save failed", http.StatusInternalServerError)
+		return
+	}
 
 	var tabs int
 	var state map[string]interface{}
@@ -103,7 +110,13 @@ func workspaceSaveHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func workspaceLoadHandler(w http.ResponseWriter, r *http.Request) {
-	data, _ := storeGet("workspace", "v2")
+	var data []byte
+	if name := r.URL.Query().Get("name"); name != "" {
+		data, _ = storeGet("workspace", fmt.Sprintf("ws-state/%s", name))
+	}
+	if data == nil {
+		data, _ = storeGet("workspace", "v2")
+	}
 	w.Header().Set("Content-Type", "application/json")
 	if data == nil {
 		w.Write([]byte("{}"))
@@ -118,8 +131,22 @@ func workspaceDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "name required", http.StatusBadRequest)
 		return
 	}
-	key := fmt.Sprintf("ws/%s", name)
-	storeDelete("workspace", key)
+	metaKey := []byte(fmt.Sprintf("ws/%s", name))
+	stateKey := []byte(fmt.Sprintf("ws-state/%s", name))
+	err := storeDB.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("workspace"))
+		if b == nil {
+			return fmt.Errorf("workspace bucket not found")
+		}
+		if err := b.Delete(metaKey); err != nil {
+			return err
+		}
+		return b.Delete(stateKey)
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
 }

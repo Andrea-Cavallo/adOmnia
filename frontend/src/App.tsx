@@ -13,13 +13,9 @@ import { useEnvironmentsStore } from '@/stores/environments'
 import { useTabsStore } from '@/stores/tabs'
 import { useAppStore } from '@/stores/app'
 import { useDevLogsStore } from '@/stores/devLogs'
-import { loadForgeCoreDemo } from '@/lib/demoWorkspace'
 import { clearBackendDevLogs, getBackendDevLogs } from '@/lib/devlogs-api'
-import { getBuiltinThemes, getExtendedBuiltinThemes, getThemes, setActiveThemeId } from '@/lib/themes-api'
-import { useThemesStore } from '@/stores/themes'
 import { importCollectionsFromText } from '@/lib/collectionTransfer'
-import { getAppIconForTheme } from '@/lib/brandAssets'
-import type { Theme } from '@/stores/themes'
+import { migrateCollections } from '@/stores/collections'
 import { getUIFontStack } from '@/lib/uiFonts'
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
@@ -38,8 +34,11 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
       return (
         <div style={{ padding: 32, color: '#f87171', fontFamily: 'monospace', background: '#0f0f0f', minHeight: '100vh' }}>
           <h2 style={{ marginBottom: 12, fontSize: 16 }}>Something went wrong</h2>
-          <pre style={{ fontSize: 12, whiteSpace: 'pre-wrap', opacity: 0.8 }}>{this.state.error.message}</pre>
-          <pre style={{ fontSize: 11, marginTop: 12, whiteSpace: 'pre-wrap', opacity: 0.5 }}>{this.state.error.stack}</pre>
+          <p style={{ fontSize: 12, lineHeight: 1.5, color: '#d1d5db', maxWidth: 560 }}>
+            adOmnia hit a recoverable UI error. Your local data was not sent anywhere.
+            Try recovering this view, or reload the app if the problem keeps happening.
+          </p>
+          <pre style={{ fontSize: 12, whiteSpace: 'pre-wrap', opacity: 0.8, marginTop: 12 }}>{this.state.error.message}</pre>
           <button
             onClick={() => this.setState({ error: null })}
             style={{ marginTop: 20, padding: '6px 16px', background: '#6366f1', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}
@@ -57,45 +56,22 @@ const FONT_SIZE_MAP = { small: '12px', medium: '15px', large: '20px' } as const
 const MONO_SIZE_MAP = { small: '11px', medium: '14px', large: '19px' } as const
 const DENSITY_SCALE = { compact: '0.85', comfortable: '1', spacious: '1.2' } as const
 
-function applyThemeVariables(theme: Theme) {
-  const root = document.documentElement.style
-  Object.entries(theme.colors).forEach(([key, value]) => root.setProperty(`--color-${key}`, value))
-  Object.entries(theme.spacing).forEach(([key, value]) => root.setProperty(`--spacing-${key}`, value))
-  Object.entries(theme.radii).forEach(([key, value]) => root.setProperty(`--radius-${key}`, value))
-  Object.entries(theme.shadows).forEach(([key, value]) => root.setProperty(`--shadow-${key}`, value))
-  if (theme.fonts.sans) root.setProperty('--font-sans', theme.fonts.sans)
-  if (theme.fonts.mono) root.setProperty('--font-mono', theme.fonts.mono)
-  if (theme.fonts.serif) root.setProperty('--font-serif', theme.fonts.serif)
-}
-
-function syncFavicon(themeId: string) {
-  let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]')
-  if (!link) {
-    link = document.createElement('link')
-    link.rel = 'icon'
-    document.head.appendChild(link)
-  }
-  link.href = getAppIconForTheme(themeId)
-}
-
 function App() {
   const loadSettings = useSettingsStore((s) => s.load)
+  const settingsLoaded = useSettingsStore((s) => s.loaded)
   const loadCollections = useCollectionsStore((s) => s.load)
   const loadEnvironments = useEnvironmentsStore((s) => s.load)
+  const loadTabs = useTabsStore((s) => s.load)
   const newTab = useTabsStore((s) => s.newTab)
   const appearance = useSettingsStore((s) => s.settings.appearance)
   const defaultStartupRail = useSettingsStore((s) => s.settings.general.defaultStartupRail)
+  const showWelcomeOnEmptyWorkspace = useSettingsStore((s) => s.settings.general.showWelcomeOnEmptyWorkspace)
   const devLogVisible = useAppStore((s) => s.devToolsVisible)
   const toggleDevTools = useAppStore((s) => s.toggleDevTools)
   const setActiveRail = useAppStore((s) => s.setActiveRail)
-  const activeRail = useAppStore((s) => s.activeRail)
   const mergeBackendLogs = useDevLogsStore((s) => s.mergeBackendEntries)
-  const activeThemeId = useThemesStore((s) => s.activeThemeId)
-  const setStoreActiveThemeId = useThemesStore((s) => s.setActiveThemeId)
   const backendLogsClearedRef = useRef(false)
-  const soapPreviousThemeRef = useRef<string | null>(null)
 
-  // Apply theme (dark/light)
   useEffect(() => {
     const html = document.documentElement
     if (appearance.theme === 'light') {
@@ -105,54 +81,7 @@ function App() {
       html.classList.add('dark')
       html.classList.remove('light')
     }
-    const targetThemeId = appearance.theme === 'light' ? 'builtin-light' : 'builtin-dark'
-    getBuiltinThemes().then((themes) => {
-      const theme = themes.find((t) => t.id === targetThemeId)
-      if (!theme) return
-      Object.entries(theme.colors).forEach(([key, value]) => {
-        document.documentElement.style.setProperty(`--color-${key}`, value)
-      })
-      setStoreActiveThemeId(targetThemeId)
-      void setActiveThemeId(targetThemeId)
-    }).catch(() => {})
-  }, [appearance.theme, setStoreActiveThemeId])
-
-  useEffect(() => {
-    let cancelled = false
-    const applyThemeById = async (id: string) => {
-      const [userThemes, builtins, extended] = await Promise.all([
-        getThemes(),
-        getBuiltinThemes(),
-        getExtendedBuiltinThemes(),
-      ])
-      if (cancelled) return
-      const theme = [...userThemes, ...builtins, ...extended].find((t) => t.id === id)
-      if (!theme) return
-      applyThemeVariables(theme)
-      syncFavicon(theme.id)
-      setStoreActiveThemeId(theme.id)
-    }
-
-    if (activeRail === 'soap') {
-      if (!soapPreviousThemeRef.current) {
-        soapPreviousThemeRef.current = activeThemeId || (appearance.theme === 'light' ? 'builtin-light' : 'builtin-dark')
-      }
-      void applyThemeById('builtin-win95')
-      return () => {
-        cancelled = true
-      }
-    }
-
-    const previous = soapPreviousThemeRef.current
-    if (previous) {
-      soapPreviousThemeRef.current = null
-      void applyThemeById(previous)
-    }
-
-    return () => {
-      cancelled = true
-    }
-  }, [activeRail, activeThemeId, appearance.theme, setStoreActiveThemeId])
+  }, [appearance.theme])
 
   useEffect(() => {
     localStorage.setItem('adomnia.defaultRail', defaultStartupRail)
@@ -202,6 +131,10 @@ function App() {
   }, [loadSettings, loadCollections, loadEnvironments])
 
   useEffect(() => {
+    if (settingsLoaded) void loadTabs()
+  }, [settingsLoaded, loadTabs])
+
+  useEffect(() => {
     let cancelled = false
     const syncBackendLogs = async () => {
       try {
@@ -228,10 +161,10 @@ function App() {
     if (collectionsLoadError || environmentsLoadError) return
     const collectionsEmpty = useCollectionsStore.getState().collections.length === 0
     const environmentsEmpty = useEnvironmentsStore.getState().environments.length === 0
-    if (collectionsEmpty && environmentsEmpty) {
-      loadForgeCoreDemo()
+    if (collectionsEmpty && environmentsEmpty && showWelcomeOnEmptyWorkspace) {
+      setActiveRail('welcome')
     }
-  }, [collectionsLoaded, environmentsLoaded, collectionsLoadError, environmentsLoadError])
+  }, [collectionsLoaded, environmentsLoaded, collectionsLoadError, environmentsLoadError, showWelcomeOnEmptyWorkspace, setActiveRail])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -305,14 +238,43 @@ function App() {
     }
 
     let totalImported = 0
+    let workspaceImported = false
     const errors: string[] = []
 
     for (const file of files) {
       try {
         const text = await file.text()
-        const result = importCollectionsFromText(text)
-        result.collections.forEach((c) => importCollection(c))
-        totalImported += result.collections.length
+        // Detect full workspace bundle (version:2 internal format or adomnia-workspace format)
+        let parsed: Record<string, unknown> | null = null
+        try { parsed = JSON.parse(text) as Record<string, unknown> } catch { /* not JSON */ }
+        const isWorkspace = parsed !== null &&
+          Array.isArray(parsed.collections) &&
+          (parsed.version === 2 || parsed.format === 'adomnia-workspace')
+
+        if (isWorkspace && parsed) {
+          if (Array.isArray(parsed.openTabs)) {
+            useTabsStore.setState({ tabs: parsed.openTabs as never, activeTabId: (parsed.activeTabId as string | null) ?? (parsed.openTabs as {id:string}[])[0]?.id ?? null })
+          }
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          useCollectionsStore.setState({ collections: migrateCollections(parsed.collections as any[]), loaded: true })
+          useCollectionsStore.getState().save()
+          if (Array.isArray(parsed.environments)) {
+            useEnvironmentsStore.setState({ environments: parsed.environments as never, activeEnvId: (parsed.activeEnvId as string | null) ?? null, loaded: true })
+            useEnvironmentsStore.getState().save()
+          }
+          if (parsed.settings) {
+            useSettingsStore.setState({ settings: parsed.settings as never, loaded: true })
+            useSettingsStore.getState().save()
+          }
+          if (Array.isArray(parsed.flows)) localStorage.setItem('adomnia.flows.v1', JSON.stringify(parsed.flows))
+          if (parsed.dockerLab) localStorage.setItem('adomnia.dockerlab.last', JSON.stringify(parsed.dockerLab))
+          totalImported += (parsed.collections as unknown[]).length
+          workspaceImported = true
+        } else {
+          const result = importCollectionsFromText(text)
+          result.collections.forEach((c) => importCollection(c))
+          totalImported += result.collections.length
+        }
       } catch (err: unknown) {
         errors.push(`${file.name}: ${err instanceof Error ? err.message : 'Import failed'}`)
       }
@@ -320,7 +282,8 @@ function App() {
 
     if (totalImported > 0) {
       setActiveRail('collections')
-      setDropFeedback({ msg: `Imported ${totalImported} collection${totalImported > 1 ? 's' : ''} successfully.`, ok: true })
+      const label = workspaceImported ? 'Workspace imported' : `Imported ${totalImported} collection${totalImported > 1 ? 's' : ''}`
+      setDropFeedback({ msg: `${label} successfully.`, ok: true })
     } else {
       setDropFeedback({ msg: errors[0] || 'Import failed.', ok: false })
     }

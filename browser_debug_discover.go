@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -84,7 +83,10 @@ func (b *BrowserDebug) DiscoverEndpoints() []DebugEndpoint {
 // ListTargets fetches all available debug targets from a specific port.
 func (b *BrowserDebug) ListTargets(port int) ([]DebugTarget, error) {
 	if port <= 0 {
-		port = cdpDebugPort
+		port = b.debugPort
+		if port == 0 {
+			port = cdpDebugPort
+		}
 	}
 
 	client := &http.Client{Timeout: 3 * time.Second}
@@ -139,7 +141,10 @@ func (b *BrowserDebug) ConnectToTarget(wsURL string) error {
 // ConnectToTargetByID connects to a target by its target ID on a given port.
 func (b *BrowserDebug) ConnectToTargetByID(port int, targetID string) error {
 	if port <= 0 {
-		port = cdpDebugPort
+		port = b.debugPort
+		if port == 0 {
+			port = cdpDebugPort
+		}
 	}
 
 	targets, err := b.ListTargets(port)
@@ -163,7 +168,11 @@ func (b *BrowserDebug) ConnectToTargetByID(port int, targetID string) error {
 // Unlike LaunchBrowser which opens a URL, this just enables debugging on a fresh profile.
 func (b *BrowserDebug) EnableDebuggingOnBrowser(port int) error {
 	if port <= 0 {
-		port = cdpDebugPort
+		port = b.debugPort
+		if port == 0 {
+			port = findFreePort(cdpDebugPort)
+			b.debugPort = port
+		}
 	}
 
 	if isPortOpen(port) {
@@ -175,11 +184,17 @@ func (b *BrowserDebug) EnableDebuggingOnBrowser(port int) error {
 		return fmt.Errorf("no supported browser found")
 	}
 
+	profileDir, err := os.MkdirTemp("", "adomnia-debug-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temp profile dir: %w", err)
+	}
+	b.profileDir = profileDir
+
 	args := []string{
 		fmt.Sprintf("--remote-debugging-port=%d", port),
 		"--no-first-run",
 		"--no-default-browser-check",
-		fmt.Sprintf("--user-data-dir=%s", filepath.Join(os.TempDir(), "adomnia-debug-profile")),
+		fmt.Sprintf("--user-data-dir=%s", profileDir),
 	}
 
 	cmd := exec.Command(browserPath, args...)
@@ -187,14 +202,17 @@ func (b *BrowserDebug) EnableDebuggingOnBrowser(port int) error {
 	cmd.Stderr = nil
 
 	if err := cmd.Start(); err != nil {
+		os.RemoveAll(profileDir)
+		b.profileDir = ""
 		return fmt.Errorf("failed to launch browser with debugging: %w", err)
 	}
 
 	b.mu.Lock()
 	b.process = cmd
+	b.debugPort = port
 	b.mu.Unlock()
 
-	log.Printf("[debug] launched browser with debugging on port %d (pid=%d)", port, cmd.Process.Pid)
+	log.Printf("[debug] launched browser with debugging on port %d (pid=%d, profile=%s)", port, cmd.Process.Pid, profileDir)
 	return nil
 }
 
@@ -453,7 +471,11 @@ func isPortOpen(port int) bool {
 // Returns the list of targets once the browser is ready.
 func (b *BrowserDebug) LaunchBrowserForDebug(url string, port int) ([]DebugTarget, error) {
 	if port <= 0 {
-		port = cdpDebugPort
+		port = b.debugPort
+		if port == 0 {
+			port = findFreePort(cdpDebugPort)
+			b.debugPort = port
+		}
 	}
 
 	b.mu.Lock()
@@ -468,11 +490,16 @@ func (b *BrowserDebug) LaunchBrowserForDebug(url string, port int) ([]DebugTarge
 		return nil, fmt.Errorf("no supported browser found (looked for msedge.exe, chrome.exe)")
 	}
 
+	profileDir, err := os.MkdirTemp("", "adomnia-debug-*")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temp profile dir: %w", err)
+	}
+
 	args := []string{
 		fmt.Sprintf("--remote-debugging-port=%d", port),
 		"--no-first-run",
 		"--no-default-browser-check",
-		fmt.Sprintf("--user-data-dir=%s", filepath.Join(os.TempDir(), "adomnia-debug-profile")),
+		fmt.Sprintf("--user-data-dir=%s", profileDir),
 	}
 	if url != "" {
 		args = append(args, url)
@@ -483,14 +510,17 @@ func (b *BrowserDebug) LaunchBrowserForDebug(url string, port int) ([]DebugTarge
 	cmd.Stderr = nil
 
 	if err := cmd.Start(); err != nil {
+		os.RemoveAll(profileDir)
 		return nil, fmt.Errorf("failed to launch browser: %w", err)
 	}
 
 	b.mu.Lock()
 	b.process = cmd
+	b.profileDir = profileDir
+	b.debugPort = port
 	b.mu.Unlock()
 
-	log.Printf("[debug] launched browser for debug: %s (pid %d, port %d)", browserPath, cmd.Process.Pid, port)
+	log.Printf("[debug] launched browser for debug: %s (pid %d, port %d, profile %s)", browserPath, cmd.Process.Pid, port, profileDir)
 
 	// Wait for CDP to become available
 	client := &http.Client{Timeout: 2 * time.Second}

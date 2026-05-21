@@ -1,0 +1,72 @@
+package main
+
+import (
+	"crypto/rand"
+	"encoding/hex"
+	"net/http"
+	"strings"
+	"sync"
+)
+
+var (
+	sidecarToken     string
+	sidecarTokenOnce sync.Once
+)
+
+func initSidecarToken() {
+	sidecarTokenOnce.Do(func() {
+		b := make([]byte, 32)
+		if _, err := rand.Read(b); err != nil {
+			panic("cannot generate sidecar token: " + err.Error())
+		}
+		sidecarToken = hex.EncodeToString(b)
+	})
+}
+
+// withSecurity replaces the old open CORS wildcard with origin allowlist +
+// per-request token validation + body size cap on POST/PUT.
+func withSecurity(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		// Allow: no origin (direct Wails IPC calls), wails:// scheme, localhost devserver
+		allowed := origin == "" ||
+			origin == "wails://wails" ||
+			strings.HasPrefix(origin, "http://localhost:") ||
+			strings.HasPrefix(origin, "http://127.0.0.1:")
+		if !allowed {
+			http.Error(w, "forbidden origin", http.StatusForbidden)
+			return
+		}
+		if origin != "" {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+		}
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Sidecar-Token")
+
+		// Respond to CORS preflight without token check
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		// Require valid session token on all non-OPTIONS requests.
+		// EventSource cannot set custom headers, so stream endpoints may pass it
+		// as a query parameter on the localhost-only sidecar URL.
+		token := r.Header.Get("X-Sidecar-Token")
+		if token == "" {
+			token = r.URL.Query().Get("token")
+		}
+		if token != sidecarToken {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		// Limit request bodies to 10 MB to prevent memory pressure
+		if (r.Method == http.MethodPost || r.Method == http.MethodPut) && r.Body != nil {
+			r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}

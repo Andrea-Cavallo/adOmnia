@@ -7,6 +7,7 @@ import { blankAuth, blankBody, uid } from '@/lib/types'
 import { useAppStore } from '@/stores/app'
 import { useCollectionsStore } from '@/stores/collections'
 import { useEnvironmentsStore } from '@/stores/environments'
+import { appendMockEndpoints } from '@/lib/mockEndpointStore'
 import {
   getTemplates,
   getTemplatesByCategory,
@@ -126,7 +127,7 @@ export function TemplateMarketplace() {
     filterTemplates()
   }, [activeCategory, searchQuery])
 
-  const applyTemplateContent = (template: Template, content: string) => {
+  const applyTemplateContent = async (template: Template, content: string) => {
     const payload = JSON.parse(content) as TemplatePayload
     if (payload.collection) {
       useCollectionsStore.getState().importCollection({ ...payload.collection, id: uid(), name: `${payload.collection.name ?? template.name} Template` })
@@ -161,9 +162,7 @@ export function TemplateMarketplace() {
       return
     }
     if (payload.mockConfig?.endpoints?.length) {
-      const raw = localStorage.getItem('adomnia.mock.endpoints')
-      const existing = raw ? JSON.parse(raw) as unknown[] : []
-      localStorage.setItem('adomnia.mock.endpoints', JSON.stringify([...existing, ...payload.mockConfig.endpoints]))
+      await appendMockEndpoints(payload.mockConfig.endpoints)
       useAppStore.getState().setActiveRail('mock')
       return
     }
@@ -190,7 +189,7 @@ export function TemplateMarketplace() {
   const handleInstall = async (template: Template) => {
     const content = await installTemplate(template.id)
     if (content) {
-      applyTemplateContent(template, content)
+      await applyTemplateContent(template, content)
       setInstalledIds((prev) => {
         const next = new Set([...prev, template.id])
         localStorage.setItem('adomnia.templates.installed', JSON.stringify([...next]))

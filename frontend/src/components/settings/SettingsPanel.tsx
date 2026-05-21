@@ -19,11 +19,10 @@ import {
   Keyboard,
   Info,
   Bug,
-  Eye,
-  EyeOff,
   Search,
   Terminal,
 } from 'lucide-react'
+import { Toggle, Select, NumberInput, TextInput, PasswordInput, TextAreaInput } from './SettingsFields'
 
 function appBinding() {
   return window.go?.main?.App
@@ -66,258 +65,6 @@ type SectionId =
   | 'about'
   | 'developer'
   | 'python'
-
-// --- Reusable form field components ---
-
-function Toggle({
-  label,
-  desc,
-  checked,
-  onChange,
-}: {
-  label: string
-  desc: string
-  checked: boolean
-  onChange: (v: boolean) => void
-}) {
-  return (
-    <label className="flex items-center justify-between py-2 px-1 cursor-pointer group">
-      <div>
-        <div className="text-xs text-text-1">{label}</div>
-        <div className="text-[10px] text-text-4">{desc}</div>
-      </div>
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="w-4 h-4 accent-accent rounded"
-      />
-    </label>
-  )
-}
-
-function Select({
-  label,
-  desc,
-  value,
-  options,
-  onChange,
-}: {
-  label: string
-  desc: string
-  value: string
-  options: { value: string; label: string }[]
-  onChange: (v: string) => void
-}) {
-  return (
-    <label className="flex items-center justify-between py-2 px-1">
-      <div>
-        <div className="text-xs text-text-1">{label}</div>
-        <div className="text-[10px] text-text-4">{desc}</div>
-      </div>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-7 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 focus:border-accent outline-none max-w-[160px]"
-      >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </label>
-  )
-}
-
-function NumberInput({
-  label,
-  desc,
-  value,
-  min,
-  max,
-  onChange,
-}: {
-  label: string
-  desc: string
-  value: number
-  min: number
-  max: number
-  onChange: (v: number) => void
-}) {
-  return (
-    <label className="flex items-center justify-between py-2 px-1">
-      <div>
-        <div className="text-xs text-text-1">{label}</div>
-        <div className="text-[10px] text-text-4">{desc}</div>
-      </div>
-      <input
-        type="number"
-        min={min}
-        max={max}
-        value={value}
-        onChange={(e) =>
-          onChange(Math.min(max, Math.max(min, Number(e.target.value) || min)))
-        }
-        className="w-24 h-7 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 focus:border-accent outline-none"
-      />
-    </label>
-  )
-}
-
-function TextInput({
-  label,
-  desc,
-  value,
-  placeholder,
-  onChange,
-}: {
-  label: string
-  desc: string
-  value: string
-  placeholder?: string
-  onChange: (v: string) => void
-}) {
-  return (
-    <label className="flex items-center justify-between py-2 px-1">
-      <div className="flex-1 mr-3">
-        <div className="text-xs text-text-1">{label}</div>
-        <div className="text-[10px] text-text-4">{desc}</div>
-      </div>
-      <input
-        type="text"
-        value={value}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-48 h-7 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 focus:border-accent outline-none"
-      />
-    </label>
-  )
-}
-
-function PasswordInput({
-  label,
-  desc,
-  value,
-  placeholder,
-  onChange,
-}: {
-  label: string
-  desc: string
-  value: string
-  placeholder?: string
-  onChange: (v: string) => void
-}) {
-  const [show, setShow] = useState(false)
-  return (
-    <label className="flex items-center justify-between py-2 px-1">
-      <div className="flex-1 mr-3">
-        <div className="text-xs text-text-1">{label}</div>
-        <div className="text-[10px] text-text-4">{desc}</div>
-      </div>
-      <div className="relative">
-        <input
-          type={show ? 'text' : 'password'}
-          value={value}
-          placeholder={placeholder}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-48 h-7 pl-2 pr-7 bg-surface-2 border border-border-2 rounded text-xs text-text-1 focus:border-accent outline-none"
-        />
-        <button
-          type="button"
-          onClick={() => setShow(!show)}
-          className="absolute right-1 top-1/2 -translate-y-1/2 text-text-4 hover:text-text-2"
-          tabIndex={-1}
-        >
-          {show ? <EyeOff size={12} /> : <Eye size={12} />}
-        </button>
-      </div>
-    </label>
-  )
-}
-
-function TextAreaInput({
-  label,
-  desc,
-  value,
-  placeholder,
-  rows = 3,
-  onChange,
-}: {
-  label: string
-  desc: string
-  value: string
-  placeholder?: string
-  rows?: number
-  onChange: (v: string) => void
-}) {
-  return (
-    <label className="flex flex-col gap-1 py-2 px-1">
-      <div>
-        <div className="text-xs text-text-1">{label}</div>
-        <div className="text-[10px] text-text-4">{desc}</div>
-      </div>
-      <textarea
-        value={value}
-        placeholder={placeholder}
-        rows={rows}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full px-2 py-1 bg-surface-2 border border-border-2 rounded text-xs text-text-1 focus:border-accent outline-none resize-y"
-      />
-    </label>
-  )
-}
-
-function FileInput({
-  label,
-  desc,
-  value,
-  placeholder,
-  browseLabel,
-  onChange,
-}: {
-  label: string
-  desc: string
-  value: string
-  placeholder?: string
-  browseLabel?: string
-  onChange: (v: string) => void
-}) {
-  const ref = useRef<HTMLInputElement>(null)
-  return (
-    <label className="flex items-center justify-between py-2 px-1">
-      <div className="flex-1 mr-3">
-        <div className="text-xs text-text-1">{label}</div>
-        <div className="text-[10px] text-text-4">{desc}</div>
-      </div>
-      <div className="flex items-center gap-1">
-        <input
-          type="text"
-          value={value}
-          placeholder={placeholder}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-36 h-7 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 focus:border-accent outline-none"
-        />
-        <button
-          type="button"
-          onClick={() => ref.current?.click()}
-          className="h-7 px-2 bg-surface-3 border border-border-2 rounded text-xs text-text-2 hover:text-text-1 hover:bg-surface-4"
-        >
-          {browseLabel || 'Browse...'}
-        </button>
-        <input
-          ref={ref}
-          type="file"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0]
-            if (file) onChange(file.name)
-          }}
-        />
-      </div>
-    </label>
-  )
-}
 
 function SectionHeader({ title, subtitle }: { title: string; subtitle: string }) {
   return (
@@ -552,22 +299,6 @@ export function SettingsPanel() {
                 ]}
                 onChange={(v) => updateGeneral({ defaultStartupRail: v })}
               />
-              <NumberInput
-                label={s.general.autoSaveInterval}
-                desc={s.general.autoSaveIntervalDesc}
-                value={settings.general.autoSaveIntervalMs}
-                min={1000}
-                max={60000}
-                onChange={(v) => updateGeneral({ autoSaveIntervalMs: v })}
-              />
-              <NumberInput
-                label={s.general.maxConcurrentRequests}
-                desc={s.general.maxConcurrentRequestsDesc}
-                value={settings.general.maxConcurrentRequests}
-                min={1}
-                max={50}
-                onChange={(v) => updateGeneral({ maxConcurrentRequests: v })}
-              />
             </SettingsCard>
             <SettingsCard>
               <Toggle
@@ -587,12 +318,6 @@ export function SettingsPanel() {
                 desc={s.general.confirmCloseDesc}
                 checked={settings.general.confirmBeforeClosingDirtyTabs}
                 onChange={(v) => updateGeneral({ confirmBeforeClosingDirtyTabs: v })}
-              />
-              <Toggle
-                label={s.general.backupWorkspace}
-                desc={s.general.backupWorkspaceDesc}
-                checked={settings.general.backupWorkspaceOnStartup}
-                onChange={(v) => updateGeneral({ backupWorkspaceOnStartup: v })}
               />
             </SettingsCard>
           </>
@@ -749,14 +474,6 @@ export function SettingsPanel() {
                 onChange={(v) => updateRequests({ defaultTimeoutMs: v })}
               />
               <NumberInput
-                label={s.requests.maxRedirects}
-                desc={s.requests.maxRedirectsDesc}
-                value={settings.requests.maxRedirects}
-                min={0}
-                max={50}
-                onChange={(v) => updateRequests({ maxRedirects: v })}
-              />
-              <NumberInput
                 label={s.requests.maxHistory}
                 desc={s.requests.maxHistoryDesc}
                 value={settings.requests.maxResponseHistoryPerTab}
@@ -773,65 +490,10 @@ export function SettingsPanel() {
                 onChange={(v) => updateRequests({ followRedirects: v })}
               />
               <Toggle
-                label={s.requests.stripAuthOnRedirect}
-                desc={s.requests.stripAuthOnRedirectDesc}
-                checked={settings.requests.stripAuthOnRedirect}
-                onChange={(v) => updateRequests({ stripAuthOnRedirect: v })}
-              />
-              <Toggle
                 label={s.requests.saveHistory}
                 desc={s.requests.saveHistoryDesc}
                 checked={settings.requests.saveResponsesToHistory}
                 onChange={(v) => updateRequests({ saveResponsesToHistory: v })}
-              />
-              <Toggle
-                label={s.requests.encodeUrlAutomatically}
-                desc={s.requests.encodeUrlAutomaticallyDesc}
-                checked={settings.requests.encodeUrlAutomatically}
-                onChange={(v) => updateRequests({ encodeUrlAutomatically: v })}
-              />
-              <Toggle
-                label={s.requests.sendCookiesAutomatically}
-                desc={s.requests.sendCookiesAutomaticallyDesc}
-                checked={settings.requests.sendCookiesAutomatically}
-                onChange={(v) => updateRequests({ sendCookiesAutomatically: v })}
-              />
-              <Toggle
-                label={s.requests.preserveCookiesBetweenTabs}
-                desc={s.requests.preserveCookiesBetweenTabsDesc}
-                checked={settings.requests.preserveCookiesBetweenTabs}
-                onChange={(v) => updateRequests({ preserveCookiesBetweenTabs: v })}
-              />
-              <Toggle
-                label={s.requests.trimWhitespaceInHeaders}
-                desc={s.requests.trimWhitespaceInHeadersDesc}
-                checked={settings.requests.trimWhitespaceInHeaders}
-                onChange={(v) => updateRequests({ trimWhitespaceInHeaders: v })}
-              />
-            </SettingsCard>
-            <SettingsCard>
-              <Toggle
-                label={s.requests.skipCertVerify}
-                desc={s.requests.skipCertVerifyDesc}
-                checked={settings.requests.skipCertVerify}
-                onChange={(v) => updateRequests({ skipCertVerify: v })}
-              />
-              {settings.requests.skipCertVerify && (
-                <div className="py-2 px-1 text-[10px] text-status-warn bg-status-warn/10 rounded">
-                  {s.requests.skipCertVerifyWarning}
-                </div>
-              )}
-              <FileInput
-                label={s.requests.clientCertPem}
-                desc={s.requests.clientCertPemDesc}
-                value={settings.requests.clientCertPem}
-                onChange={(v) => updateRequests({ clientCertPem: v })}
-              />
-              <PasswordInput
-                label={s.requests.clientCertPassphrase}
-                desc={s.requests.clientCertPassphraseDesc}
-                value={settings.requests.clientCertPassphrase}
-                onChange={(v) => updateRequests({ clientCertPassphrase: v })}
               />
             </SettingsCard>
           </>
