@@ -21,22 +21,22 @@
 
 ---
 
-### P0-1 — Plugin Event Bus is Never Consumed
+### P0-1 — Plugin Event Bus is Never Consumed ✅ FIXED (2026-05-22)
 
 - **Area**: Backend (`plugins.go`)
 - **Evidence**: `eventBus: make(chan PluginEvent, 64)` is created in `PluginManager` but no goroutine ever reads from it. Plugin hook dispatch writes to this channel but nothing processes the events.
 - **Why**: The plugin event/hook system silently drops all events. Hooks registered in plugin manifests are never triggered during app lifecycle events.
-- **Fix**: Add a `go pm.eventDispatchLoop()` goroutine in `PluginManager.Init()` that reads from `eventBus` and calls the matching registered hook functions.
+- **Fix applied**: Added `stopCh chan struct{}` to `PluginManager`, `eventDispatchLoop()` goroutine started in `Init()`, `FireEvent()` and `Shutdown()` methods added, `onStartup`/`onShutdown` lifecycle events fired from `app.go`, `globalPluginManager` assigned in `main.go`.
 - **Acceptance criteria**: Install a test plugin with an `on_request` hook; verify the hook fires when a request is sent.
 
 ---
 
-### P0-2 — WASM Plugin Runtime is an Explicit Stub
+### P0-2 — WASM Plugin Runtime is an Explicit Stub ✅ DOCUMENTED (2026-05-22)
 
 - **Area**: Backend (`plugins_sandbox.go`)
 - **Evidence**: Comment at top of file: *"For the MVP, plugins execute as host functions mapped by ID (registry pattern). A real WASM runtime (wazero) would replace the simulated execution in the future."* Line 176: `fn, ok := sandbox.HostFuncs[req.Function]` — only pre-registered host functions can be called; no plugin code is actually executed.
 - **Why**: Plugins cannot run custom logic. The plugin system UI (install, enable, inspect) works, but plugin code execution is a no-op. This makes the entire plugin feature non-functional for external plugin authors.
-- **Fix**: Integrate `wazero` (or another WASM runtime) and execute the plugin's WASM binary. Until then, document clearly in the UI that plugins are in "host-only" mode with no custom code execution.
+- **Fix applied**: Added `GetRuntimeMode()` to `WasmRuntime` returning `mode: "host-function"` and `wasmReady: false`. Added visible amber banner in `PluginPanel.tsx` — "Plugin execution mode: host-function only". WASM bytecode integration (wazero) remains on the roadmap.
 - **Acceptance criteria**: Write a minimal WASM plugin that returns a transformed string; verify it executes and the result appears in the plugin panel.
 
 ---

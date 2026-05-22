@@ -22,6 +22,7 @@ func main() {
 	themeManager := NewThemeManager()
 	templateStore := NewTemplateStore()
 	pluginManager := NewPluginManager()
+	globalPluginManager = pluginManager
 	wasmRuntime := NewWasmRuntime()
 	dockerLab := NewDockerLab()
 	pythonBridge := NewPythonBridge()

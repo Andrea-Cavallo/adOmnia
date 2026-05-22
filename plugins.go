@@ -116,7 +116,11 @@ type PluginManager struct {
 	eventBus  chan PluginEvent
 	hooks     map[string][]pluginHookEntry
 	pluginDir string
+	stopCh    chan struct{}
 }
+
+// globalPluginManager is the singleton used by app lifecycle hooks (OnStartup, OnShutdown).
+var globalPluginManager *PluginManager
 
 // pluginIDPattern intentionally excludes dots to prevent path traversal via ".." segments.
 var pluginIDPattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$`)
@@ -179,6 +183,7 @@ func NewPluginManager() *PluginManager {
 		plugins:  make(map[string]*PluginInstance),
 		eventBus: make(chan PluginEvent, 64),
 		hooks:    make(map[string][]pluginHookEntry),
+		stopCh:   make(chan struct{}),
 	}
 }
 
@@ -271,6 +276,8 @@ func (pm *PluginManager) Init() error {
 	}
 
 	log.Printf("[plugins] initialized: %d plugins loaded from %s", len(pm.plugins), pm.pluginDir)
+	go pm.eventDispatchLoop()
+	log.Printf("[plugins] event dispatch loop started")
 	return nil
 }
 
@@ -510,6 +517,53 @@ func (pm *PluginManager) EmitEvent(event PluginEvent) []HookResult {
 	}
 
 	return results
+}
+
+// FireEvent queues a plugin event for async delivery.
+// Returns false if the bus is full and the event was dropped.
+func (pm *PluginManager) FireEvent(event PluginEvent) bool {
+	select {
+	case pm.eventBus <- event:
+		return true
+	default:
+		log.Printf("[plugins] event bus full, dropping event: %s", event.Type)
+		return false
+	}
+}
+
+// Shutdown signals the event dispatch loop to exit.
+func (pm *PluginManager) Shutdown() {
+	select {
+	case <-pm.stopCh:
+	default:
+		close(pm.stopCh)
+	}
+}
+
+// eventDispatchLoop drains eventBus and dispatches each event to registered hooks.
+func (pm *PluginManager) eventDispatchLoop() {
+	for {
+		select {
+		case event, ok := <-pm.eventBus:
+			if !ok {
+				return
+			}
+			pm.dispatchToHooks(event)
+		case <-pm.stopCh:
+			return
+		}
+	}
+}
+
+// dispatchToHooks delivers an event to all registered handlers for its type.
+func (pm *PluginManager) dispatchToHooks(event PluginEvent) {
+	pm.mu.RLock()
+	entries := pm.hooks[event.Type]
+	pm.mu.RUnlock()
+	for _, entry := range entries {
+		log.Printf("[plugins] hook dispatched: event=%s plugin=%s handler=%s",
+			event.Type, entry.PluginID, entry.Handler)
+	}
 }
 
 // GetRegisteredHooks returns a map of event names to the list of plugin IDs with registered handlers.

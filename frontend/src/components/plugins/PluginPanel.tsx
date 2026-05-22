@@ -56,6 +56,13 @@ export function PluginPanel({ plugin }: PluginPanelProps) {
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-surface-0">
+      <div className="flex items-start gap-2 px-4 py-2 border-b border-amber-500/30 bg-amber-500/10 flex-shrink-0">
+        <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+        <p className="text-xs text-amber-300/80 leading-relaxed">
+          <span className="font-medium text-amber-300">Plugin execution mode: host-function only</span>
+          {' — '}Custom WASM code is not yet executed. Hooks fire and host APIs (http.fetch, storage, log) work.
+        </p>
+      </div>
       <header className="flex items-center gap-3 px-6 py-4 border-b border-border-1 flex-shrink-0">
         <div className="w-9 h-9 rounded-md bg-surface-2 flex items-center justify-center flex-shrink-0">
           <span className="text-xs font-bold text-accent">

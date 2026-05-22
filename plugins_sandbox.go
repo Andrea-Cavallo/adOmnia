@@ -303,6 +303,15 @@ func (wr *WasmRuntime) SetTimeLimit(pluginID string, ms int64) error {
 	return nil
 }
 
+// GetRuntimeMode returns the current execution mode of the plugin runtime.
+func (wr *WasmRuntime) GetRuntimeMode() map[string]interface{} {
+	return map[string]interface{}{
+		"mode":        "host-function",
+		"description": "Plugins can call pre-registered host functions. WASM bytecode execution (wazero) is on the roadmap.",
+		"wasmReady":   false,
+	}
+}
+
 // GetHostFunctions returns a list of available host function names.
 func (wr *WasmRuntime) GetHostFunctions() []string {
 	names := make([]string, 0, len(defaultHostFunctions))

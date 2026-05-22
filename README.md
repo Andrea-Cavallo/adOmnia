@@ -8,7 +8,7 @@ No account. No cloud sync. No telemetry. Your data stays on your machine.
 
 > Built with **[Wails v2](https://wails.io)** — a Go + WebView desktop framework that compiles the entire app (Go backend + React frontend) into a single native executable with no Electron overhead and no runtime dependencies.
 
-![adOmnia interface](assets/images/adOmniaParatus.png)
+![adOmnia interface](assets/images/icon.png)
 
 [![Built with Wails](https://img.shields.io/badge/Built%20with-Wails%20v2-FF3E00?logo=go&logoColor=white)](https://wails.io)
 [![Awesome Wails](https://img.shields.io/badge/Awesome-Wails-FF3E00?logo=go&logoColor=white)](https://github.com/wailsapp/awesome-wails)

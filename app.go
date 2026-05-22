@@ -46,6 +46,9 @@ func (a *App) OnStartup(ctx context.Context) {
 	if globalPythonBridge != nil {
 		globalPythonBridge.Init(ctx, a)
 	}
+	if globalPluginManager != nil {
+		globalPluginManager.FireEvent(PluginEvent{Type: "onStartup", Payload: map[string]interface{}{}})
+	}
 	dlogInfo("OnStartup", "avvio completato", map[string]any{"port": serverPort})
 	log.Println("[app] startup complete")
 }
@@ -265,6 +268,10 @@ func (a *App) OnDomReady(ctx context.Context) {
 
 func (a *App) OnShutdown(ctx context.Context) {
 	dlogInfo("OnShutdown", "arresto applicazione", nil)
+	if globalPluginManager != nil {
+		globalPluginManager.FireEvent(PluginEvent{Type: "onShutdown", Payload: map[string]interface{}{}})
+		globalPluginManager.Shutdown()
+	}
 	if globalPythonBridge != nil {
 		globalPythonBridge.Shutdown()
 	}
