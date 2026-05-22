@@ -16,6 +16,7 @@ export interface AppSettings {
   appearance: {
     theme: 'dark' | 'light'
     windowChrome: 'app' | 'app-xwayland' | 'system'
+    themeId: string
     density: 'compact' | 'comfortable' | 'spacious'
     uiFont: UIFontId
     fontSize: 'small' | 'medium' | 'large'
@@ -87,6 +88,7 @@ const defaultSettings: AppSettings = {
   appearance: {
     theme: 'dark',
     windowChrome: 'app',
+    themeId: 'builtin-dark',
     density: 'comfortable',
     uiFont: DEFAULT_UI_FONT_ID,
     fontSize: 'medium',
@@ -168,11 +170,15 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       const raw = await LoadSettings()
       const parsed = JSON.parse(raw)
       // Deep merge nested blocks so added keys get their defaults
+      const appearance = { ...defaultSettings.appearance, ...(parsed.appearance ?? {}) }
+      if (!appearance.themeId) {
+        appearance.themeId = appearance.theme === 'light' ? 'builtin-light' : 'builtin-dark'
+      }
       const merged: AppSettings = {
         ...defaultSettings,
         ...parsed,
         general: { ...defaultSettings.general, ...(parsed.general ?? {}) },
-        appearance: { ...defaultSettings.appearance, ...(parsed.appearance ?? {}) },
+        appearance,
         requests: { ...defaultSettings.requests, ...(parsed.requests ?? {}) },
         proxy: { ...defaultSettings.proxy, ...(parsed.proxy ?? {}) },
         mock: { ...defaultSettings.mock, ...(parsed.mock ?? {}) },

@@ -4,11 +4,15 @@ import {main} from '../models';
 
 export function ClearDevLogs():Promise<void>;
 
+export function ExecuteHTTP(arg1:string):Promise<string>;
+
 export function GetDevLogs():Promise<string>;
 
 export function GetServerPort():Promise<number>;
 
 export function GetStartupWindowChrome():Promise<string>;
+
+export function GetSidecarToken():Promise<string>;
 
 export function GetVaultTimeout():Promise<number>;
 

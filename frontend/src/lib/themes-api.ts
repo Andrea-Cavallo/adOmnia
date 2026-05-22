@@ -15,6 +15,7 @@ declare global {
       ValidateTheme: (theme: Theme) => Promise<ThemeValidationResult>
       CheckContrast: (theme: Theme) => Promise<ContrastResult[]>
       ScanSkinsDirectory: () => Promise<Theme[]>
+      ScanProjectThemesDirectory: () => Promise<Theme[]>
       GetSkinsDirectory: () => Promise<string>
       SaveSkinToDirectory: (theme: Theme) => Promise<string>
       ImportSkinFromURL: (url: string) => Promise<Theme>
@@ -202,6 +203,16 @@ export async function scanSkinsDirectory(): Promise<Theme[]> {
     const mgr = getThemeManager()
     if (!mgr) return []
     return await mgr.ScanSkinsDirectory()
+  } catch {
+    return []
+  }
+}
+
+export async function scanProjectThemesDirectory(): Promise<Theme[]> {
+  try {
+    const mgr = getThemeManager()
+    if (!mgr?.ScanProjectThemesDirectory) return []
+    return await mgr.ScanProjectThemesDirectory()
   } catch {
     return []
   }

@@ -325,8 +325,8 @@ export function Composer({ request, onChange, onSend, onSave, onLoadTest, loadin
           ))}
         </div>
 
-        {/* Tab content */}
-        <div className="max-h-[300px] overflow-y-auto">
+        {/* Tab content — body gets extra height so large JSON doesn't need excessive scrolling */}
+        <div className={cn('overflow-y-auto', activeTab === 'body' ? 'max-h-[55vh]' : 'max-h-[300px]')}>
           {activeTab === 'params' && (
             <KVEditor rows={request.params ?? []} onChange={(params) => onChange({ ...request, params })} />
           )}

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { X, Gauge, Play, Download, FileJson } from 'lucide-react'
 import type { RequestItem } from '@/lib/types'
-import { useServerPort, serverUrl } from '@/lib/useServerPort'
+import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { substVars } from '@/lib/substVars'
 import { useEnvironmentsStore } from '@/stores/environments'
 
@@ -180,7 +180,7 @@ export function LoadTestDrawer({ request, onClose }: LoadTestDrawerProps) {
       if (useDuration) payload.durationS = durationS
       else payload.totalReqs = totalReqs
 
-      const res = await fetch(apiUrl, {
+      const res = await sidecarFetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

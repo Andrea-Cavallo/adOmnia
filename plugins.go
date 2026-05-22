@@ -118,14 +118,33 @@ type PluginManager struct {
 	pluginDir string
 }
 
-var pluginIDPattern = regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)
+// pluginIDPattern intentionally excludes dots to prevent path traversal via ".." segments.
+var pluginIDPattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$`)
+
+// isUnderDir returns true when target (after Abs resolution) is inside base.
+// Used to guard against path-traversal attacks where a crafted ID escapes pluginDir.
+func isUnderDir(base, target string) bool {
+	absBase, err := filepath.Abs(base)
+	if err != nil {
+		return false
+	}
+	absTarget, err := filepath.Abs(target)
+	if err != nil {
+		return false
+	}
+	rel, err := filepath.Rel(absBase, absTarget)
+	if err != nil {
+		return false
+	}
+	return !strings.HasPrefix(rel, "..")
+}
 
 func normalizePluginManifest(manifest *PluginManifest) error {
 	if manifest.ID == "" {
 		return fmt.Errorf("manifest must have an id field")
 	}
 	if !pluginIDPattern.MatchString(manifest.ID) {
-		return fmt.Errorf("plugin id may only contain letters, numbers, dot, underscore and dash")
+		return fmt.Errorf("plugin id must match ^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$ (no dots or path separators)")
 	}
 	if manifest.Name == "" {
 		manifest.Name = manifest.ID
@@ -297,8 +316,11 @@ func (pm *PluginManager) InstallPlugin(manifestJSON string) (*PluginInstance, er
 		return nil, fmt.Errorf("plugin already installed: %s", manifest.ID)
 	}
 
-	// Create plugin directory
+	// Create plugin directory — verify the resolved path stays inside pm.pluginDir.
 	pluginPath := filepath.Join(pm.pluginDir, manifest.ID)
+	if !isUnderDir(pm.pluginDir, pluginPath) {
+		return nil, fmt.Errorf("plugin id escapes plugin directory: %s", manifest.ID)
+	}
 	if err := os.MkdirAll(pluginPath, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create plugin directory: %w", err)
 	}
@@ -349,8 +371,11 @@ func (pm *PluginManager) UninstallPlugin(id string) error {
 	// Unregister hooks
 	pm.unregisterHooksInternal(id)
 
-	// Remove plugin directory
+	// Remove plugin directory — guard against a tampered InstallDir escaping pluginDir.
 	if inst.InstallDir != "" {
+		if !isUnderDir(pm.pluginDir, inst.InstallDir) {
+			return fmt.Errorf("refusing to remove directory outside plugin dir: %s", inst.InstallDir)
+		}
 		if err := os.RemoveAll(inst.InstallDir); err != nil {
 			log.Printf("[plugins] warning: failed to remove plugin directory: %v", err)
 		}

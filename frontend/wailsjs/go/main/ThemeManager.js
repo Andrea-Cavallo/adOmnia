@@ -70,6 +70,10 @@ export function SaveTheme(arg1) {
   return window['go']['main']['ThemeManager']['SaveTheme'](arg1);
 }
 
+export function ScanProjectThemesDirectory() {
+  return window['go']['main']['ThemeManager']['ScanProjectThemesDirectory']();
+}
+
 export function ScanSkinsDirectory() {
   return window['go']['main']['ThemeManager']['ScanSkinsDirectory']();
 }

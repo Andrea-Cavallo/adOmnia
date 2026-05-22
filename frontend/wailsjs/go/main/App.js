@@ -6,6 +6,10 @@ export function ClearDevLogs() {
   return window['go']['main']['App']['ClearDevLogs']();
 }
 
+export function ExecuteHTTP(arg1) {
+  return window['go']['main']['App']['ExecuteHTTP'](arg1);
+}
+
 export function GetDevLogs() {
   return window['go']['main']['App']['GetDevLogs']();
 }
@@ -16,6 +20,9 @@ export function GetServerPort() {
 
 export function GetStartupWindowChrome() {
   return window['go']['main']['App']['GetStartupWindowChrome']();
+  
+export function GetSidecarToken() {
+  return window['go']['main']['App']['GetSidecarToken']();
 }
 
 export function GetVaultTimeout() {

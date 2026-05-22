@@ -86,6 +86,10 @@ export function GetCookies() {
   return window['go']['main']['BrowserDebug']['GetCookies']();
 }
 
+export function GetDebugStatus() {
+  return window['go']['main']['BrowserDebug']['GetDebugStatus']();
+}
+
 export function GetDocument(arg1) {
   return window['go']['main']['BrowserDebug']['GetDocument'](arg1);
 }

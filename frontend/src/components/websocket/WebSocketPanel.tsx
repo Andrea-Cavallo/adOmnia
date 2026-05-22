@@ -3,10 +3,11 @@ import {
   Zap, ZapOff, Send, Download, Trash2, Plus, X, ChevronDown, ChevronRight,
   Activity, Copy, Check, AlignLeft, Code2, Server, Play, Square,
 } from 'lucide-react'
-import { useServerPort, serverUrl } from '@/lib/useServerPort'
+import { getSidecarToken, useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { useAppStore } from '@/stores/app'
 import { cn } from '@/lib/utils'
+import { safeEval } from '@/lib/safeEval'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -365,7 +366,7 @@ function MockSection({ port, onConnectToMock }: {
     setRules(newRules)
     localStorage.setItem(MOCK_RULES_KEY, JSON.stringify(newRules))
     if (!port) return
-    await fetch(serverUrl(port, '/ws/mock/rules'), {
+    await sidecarFetch(serverUrl(port, '/ws/mock/rules'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newRules),
@@ -377,7 +378,7 @@ function MockSection({ port, onConnectToMock }: {
     if (!running || !port) { if (pollRef.current) clearInterval(pollRef.current); return }
     const poll = async () => {
       try {
-        const res = await fetch(serverUrl(port, '/ws/mock/status'))
+        const res = await sidecarFetch(serverUrl(port, '/ws/mock/status'))
         const data = await res.json()
         setHits(data.hits ?? [])
       } catch {}
@@ -390,12 +391,12 @@ function MockSection({ port, onConnectToMock }: {
   const startMock = async () => {
     if (!port) return
     // Sync current rules first
-    await fetch(serverUrl(port, '/ws/mock/rules'), {
+    await sidecarFetch(serverUrl(port, '/ws/mock/rules'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(rules),
     }).catch(() => {})
-    const res = await fetch(serverUrl(port, '/ws/mock/start'), { method: 'POST' })
+    const res = await sidecarFetch(serverUrl(port, '/ws/mock/start'), { method: 'POST' })
     const data = await res.json()
     setMockPort(data.port)
     setRunning(true)
@@ -403,14 +404,14 @@ function MockSection({ port, onConnectToMock }: {
 
   const stopMock = async () => {
     if (!port) return
-    await fetch(serverUrl(port, '/ws/mock/stop'), { method: 'POST' }).catch(() => {})
+    await sidecarFetch(serverUrl(port, '/ws/mock/stop'), { method: 'POST' }).catch(() => {})
     setRunning(false)
     setMockPort(null)
   }
 
   const clearHits = async () => {
     if (!port) return
-    await fetch(serverUrl(port, '/ws/mock/hits/clear'), { method: 'POST' }).catch(() => {})
+    await sidecarFetch(serverUrl(port, '/ws/mock/hits/clear'), { method: 'POST' }).catch(() => {})
     setHits([])
   }
 
@@ -560,7 +561,12 @@ export function WebSocketPanel() {
     setMessages(prev => [...prev, msg])
     if (ev.direction === 'inbound' && ev.type === 'message' && scriptCode.trim()) {
       try {
-        new Function('msg', scriptCode)(msg)
+        safeEval(scriptCode, { msg }).catch((e) => {
+          setMessages(prev => [...prev, {
+            id: msgId(), type: 'error', direction: 'system',
+            content: `Script error: ${e}`, timestamp: Date.now(),
+          }])
+        })
       } catch (e) {
         setMessages(prev => [...prev, {
           id: msgId(), type: 'error', direction: 'system',
@@ -570,9 +576,10 @@ export function WebSocketPanel() {
     }
   }, [scriptCode])
 
-  const openSSE = useCallback((sid: string) => {
+  const openSSE = useCallback(async (sid: string) => {
     esRef.current?.close()
-    const es = new EventSource(serverUrl(port, `/ws/stream?sessionId=${sid}`))
+    const token = await getSidecarToken()
+    const es = new EventSource(serverUrl(port, `/ws/stream?sessionId=${encodeURIComponent(sid)}&token=${encodeURIComponent(token)}`))
     esRef.current = es
     es.onmessage = (e) => {
       try {
@@ -603,7 +610,7 @@ export function WebSocketPanel() {
       if (h.enabled && h.key) resolvedHeaders[substVars(h.key, vars)] = substVars(h.value, vars)
     }
     try {
-      const res = await fetch(serverUrl(port, '/ws/connect'), {
+      const res = await sidecarFetch(serverUrl(port, '/ws/connect'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           url: resolvedUrl, headers: resolvedHeaders,
@@ -628,7 +635,7 @@ export function WebSocketPanel() {
     if (!port || !sessionId) return
     if (reconnectTimer.current) clearTimeout(reconnectTimer.current)
     esRef.current?.close()
-    await fetch(serverUrl(port, '/ws/disconnect'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId }) }).catch(() => {})
+    await sidecarFetch(serverUrl(port, '/ws/disconnect'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId }) }).catch(() => {})
     setSessionId(null)
     setStatus('disconnected')
     useAppStore.getState().setWebsocketRunning(false)
@@ -638,7 +645,7 @@ export function WebSocketPanel() {
   const handleSend = async () => {
     if (!port || !sessionId || !draft.trim()) return
     const content = jsonMode ? tryPrettyJson(draft) : draft
-    const res = await fetch(serverUrl(port, '/ws/send'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId, content }) })
+    const res = await sidecarFetch(serverUrl(port, '/ws/send'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId, content }) })
     const data = await res.json()
     if (data.error) addMsg({ type: 'error', direction: 'system', content: data.error, timestamp: Date.now() })
     else setDraft('')
@@ -646,7 +653,7 @@ export function WebSocketPanel() {
 
   const handlePing = async () => {
     if (!port || !sessionId) return
-    await fetch(serverUrl(port, '/ws/ping'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId }) }).catch(() => {})
+    await sidecarFetch(serverUrl(port, '/ws/ping'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId }) }).catch(() => {})
   }
 
   const exportJSONL = () => {

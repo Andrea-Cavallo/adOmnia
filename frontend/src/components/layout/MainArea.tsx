@@ -4,58 +4,50 @@ import { useAppStore, type RailItem } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
 import { useCollectionsStore } from '@/stores/collections'
 import { useEnvironmentsStore } from '@/stores/environments'
-import { BrowserDebugPanel } from '@/components/browser-debug'
-import { ThemePanel } from '@/components/themes/ThemePanel'
-import { TemplateMarketplace } from '@/components/templates/TemplateMarketplace'
-import { PluginManager } from '@/components/plugins/PluginManager'
-import { SettingsPanel } from '@/components/settings/SettingsPanel'
+import { useSettingsStore } from '@/stores/settings'
 import { Composer } from '@/components/composer/Composer'
 import { ApiToolsBar } from '@/components/collections/ApiToolsBar'
 import { ResponsePanel } from '@/components/response/ResponsePanel'
 import { TabBar } from '@/components/layout/TabBar'
 import { EnvBar } from '@/components/environment/EnvBar'
 import { WelcomePanel } from '@/components/layout/WelcomePanel'
-import { sendRequest } from '@/lib/sendRequest'
-import { KafkaPanel } from '@/components/kafka/KafkaPanel'
 import { LoadTestDrawer } from '@/components/loadtest/LoadTestDrawer'
-import { MockPanel } from '@/components/mock/MockPanel'
-import { ProxyPanel } from '@/components/proxy/ProxyPanel'
-import { NetToolsPanel } from '@/components/nettools/NetToolsPanel'
-import { UtilsPanel } from '@/components/utils/UtilsPanel'
-import { JsonToolsPanel } from '@/components/utils/JsonToolsPanel'
-import { XmlToolsPanel } from '@/components/utils/XmlToolsPanel'
-// OnboardingPanel removed — 'welcome' rail now shows WelcomePanel
-import { MarkdownPanel } from '@/components/markdown/MarkdownPanel'
-import { StoragePanel } from '@/components/storage/StoragePanel'
-import { VaultPanel } from '@/components/vault/VaultPanel'
-import { WorkspacePanel } from '@/components/workspace/WorkspacePanel'
-import { TestDataStudio } from '@/components/testdata/TestDataStudio'
-import { SoapPanel } from '@/components/soap/SoapPanel'
-import { RunnerPanel } from '@/components/runner/RunnerPanel'
-import { MatrixPanel } from '@/components/matrix/MatrixPanel'
-import { FlowsPanel } from '@/components/flows/FlowsPanel'
-import { WebSocketPanel } from '@/components/websocket/WebSocketPanel'
-import { SsePanel } from '@/components/sse/SsePanel'
-import { ObservabilityPanel } from '@/components/observe'
-import { SecretScannerPanel } from '@/components/secretscanner'
+import { executeRequest } from '@/lib/executeRequest'
+import { uid, type EnvVariable } from '@/lib/types'
 import { useT } from '@/lib/i18n'
 
-// Heavy panels — loaded on first open only
-const BrokerStudioPanel = React.lazy(() =>
-  import('@/components/kafka/BrokerStudioPanel').then(m => ({ default: m.BrokerStudioPanel }))
-)
-const DatabasePanel = React.lazy(() =>
-  import('@/components/database/DatabasePanel').then(m => ({ default: m.DatabasePanel }))
-)
-const GrpcPanel = React.lazy(() =>
-  import('@/components/grpc/GrpcPanel').then(m => ({ default: m.GrpcPanel }))
-)
-const DockerLabPanel = React.lazy(() =>
-  import('@/components/dockerlab/DockerLabPanel').then(m => ({ default: m.DockerLabPanel }))
-)
-const HarViewerPanel = React.lazy(() =>
-  import('@/components/har/HarViewerPanel').then(m => ({ default: m.HarViewerPanel }))
-)
+// ─── Lazy-loaded panels (loaded on first navigation) ──────────────────────────
+
+const WebSocketPanel       = React.lazy(() => import('@/components/websocket/WebSocketPanel').then(m => ({ default: m.WebSocketPanel })))
+const SsePanel             = React.lazy(() => import('@/components/sse/SsePanel').then(m => ({ default: m.SsePanel })))
+const KafkaPanel           = React.lazy(() => import('@/components/kafka/KafkaPanel').then(m => ({ default: m.KafkaPanel })))
+const BrokerStudioPanel    = React.lazy(() => import('@/components/kafka/BrokerStudioPanel').then(m => ({ default: m.BrokerStudioPanel })))
+const MockPanel            = React.lazy(() => import('@/components/mock/MockPanel').then(m => ({ default: m.MockPanel })))
+const ProxyPanel           = React.lazy(() => import('@/components/proxy/ProxyPanel').then(m => ({ default: m.ProxyPanel })))
+const GrpcPanel            = React.lazy(() => import('@/components/grpc/GrpcPanel').then(m => ({ default: m.GrpcPanel })))
+const NetToolsPanel        = React.lazy(() => import('@/components/nettools/NetToolsPanel').then(m => ({ default: m.NetToolsPanel })))
+const BrowserDebugPanel    = React.lazy(() => import('@/components/browser-debug').then(m => ({ default: m.BrowserDebugPanel })))
+const UtilsPanel           = React.lazy(() => import('@/components/utils/UtilsPanel').then(m => ({ default: m.UtilsPanel })))
+const FlowsPanel           = React.lazy(() => import('@/components/flows/FlowsPanel').then(m => ({ default: m.FlowsPanel })))
+const RunnerPanel          = React.lazy(() => import('@/components/runner/RunnerPanel').then(m => ({ default: m.RunnerPanel })))
+const MatrixPanel          = React.lazy(() => import('@/components/matrix/MatrixPanel').then(m => ({ default: m.MatrixPanel })))
+const SoapPanel            = React.lazy(() => import('@/components/soap/SoapPanel').then(m => ({ default: m.SoapPanel })))
+const TestDataStudio       = React.lazy(() => import('@/components/testdata/TestDataStudio').then(m => ({ default: m.TestDataStudio })))
+const HarViewerPanel       = React.lazy(() => import('@/components/har/HarViewerPanel').then(m => ({ default: m.HarViewerPanel })))
+const ObservabilityPanel   = React.lazy(() => import('@/components/observe').then(m => ({ default: m.ObservabilityPanel })))
+const DockerLabPanel       = React.lazy(() => import('@/components/dockerlab/DockerLabPanel').then(m => ({ default: m.DockerLabPanel })))
+const MarkdownPanel        = React.lazy(() => import('@/components/markdown/MarkdownPanel').then(m => ({ default: m.MarkdownPanel })))
+const StoragePanel         = React.lazy(() => import('@/components/storage/StoragePanel').then(m => ({ default: m.StoragePanel })))
+const DatabasePanel        = React.lazy(() => import('@/components/database/DatabasePanel').then(m => ({ default: m.DatabasePanel })))
+const JsonToolsPanel       = React.lazy(() => import('@/components/utils/JsonToolsPanel').then(m => ({ default: m.JsonToolsPanel })))
+const XmlToolsPanel        = React.lazy(() => import('@/components/utils/XmlToolsPanel').then(m => ({ default: m.XmlToolsPanel })))
+const VaultPanel           = React.lazy(() => import('@/components/vault/VaultPanel').then(m => ({ default: m.VaultPanel })))
+const WorkspacePanel       = React.lazy(() => import('@/components/workspace/WorkspacePanel').then(m => ({ default: m.WorkspacePanel })))
+const ThemePanel           = React.lazy(() => import('@/components/themes/ThemePanel').then(m => ({ default: m.ThemePanel })))
+const TemplateMarketplace  = React.lazy(() => import('@/components/templates/TemplateMarketplace').then(m => ({ default: m.TemplateMarketplace })))
+const PluginManager        = React.lazy(() => import('@/components/plugins/PluginManager').then(m => ({ default: m.PluginManager })))
+const SecretScannerPanel   = React.lazy(() => import('@/components/secretscanner').then(m => ({ default: m.SecretScannerPanel })))
+const SettingsPanel        = React.lazy(() => import('@/components/settings/SettingsPanel').then(m => ({ default: m.SettingsPanel })))
 
 function PanelSkeleton() {
   return (
@@ -118,6 +110,7 @@ function RequestWorkspace() {
   const markClean = useTabsStore((s) => s.markClean)
   const updateCollectionRequest = useCollectionsStore((s) => s.updateRequest)
   const collections = useCollectionsStore((s) => s.collections)
+  const confirmBeforeClosingDirtyTabs = useSettingsStore((s) => s.settings.general.confirmBeforeClosingDirtyTabs)
 
   const environments = useEnvironmentsStore((s) => s.environments)
   const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
@@ -148,7 +141,12 @@ function RequestWorkspace() {
     if (!activeTab) return
     setLoading(activeTab.id, true)
     const vars = getResolvedVars()
-    const response = await sendRequest(activeTab.request, vars)
+    const result = await executeRequest(activeTab.request, vars)
+    if (activeEnvId && Object.keys(result.mutations).length > 0) {
+      const env = environments.find((e) => e.id === activeEnvId)
+      if (env) updateVariables(activeEnvId, applyEnvironmentMutations(env.variables, result.mutations))
+    }
+    const response = result.response
     setResponse(activeTab.id, response)
   }
 
@@ -188,12 +186,12 @@ function RequestWorkspace() {
   // Attempt close — show dialog if there are dirty tabs
   const attemptClose = useCallback((pending: PendingClose) => {
     const dirty = getDirtyTabsForPending(pending)
-    if (dirty.length > 0) {
+    if (confirmBeforeClosingDirtyTabs && dirty.length > 0) {
       setPendingClose(pending)
     } else {
       executePendingClose(pending, false)
     }
-  }, [getDirtyTabsForPending]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [confirmBeforeClosingDirtyTabs, getDirtyTabsForPending]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const executePendingClose = useCallback((pending: PendingClose, doSave: boolean) => {
     if (doSave) {
@@ -318,6 +316,27 @@ function RequestWorkspace() {
   )
 }
 
+function applyEnvironmentMutations(
+  variables: EnvVariable[],
+  mutations: Record<string, string | null>,
+): EnvVariable[] {
+  let next = [...variables]
+  for (const [key, value] of Object.entries(mutations)) {
+    if (!key) continue
+    if (value === null) {
+      next = next.filter((v) => v.key !== key)
+      continue
+    }
+    const idx = next.findIndex((v) => v.key === key)
+    if (idx >= 0) {
+      next[idx] = { ...next[idx], value, enabled: true }
+    } else {
+      next.push({ id: uid(), key, value, enabled: true, type: 'text' })
+    }
+  }
+  return next
+}
+
 type PanelDef = {
   component: React.ReactNode
   titleKey?: string
@@ -336,7 +355,7 @@ function panelFor(activeRail: RailItem): PanelDef {
     case 'grpc':        return { component: <GrpcPanel />,            titleKey: 'grpc',      overflow: true }
     case 'nettools':    return { component: <NetToolsPanel />,        titleKey: 'nettools',  overflow: true }
     case 'browser':     return { component: <BrowserDebugPanel />,    titleKey: 'browser' }
-    case 'utils':       return { component: <UtilsPanel />,           titleKey: 'Encoders & Tools', overflow: true }
+    case 'utils':       return { component: <UtilsPanel />,           titleKey: 'Power Tools', overflow: true }
     case 'flows':     return { component: <FlowsPanel />,              titleKey: 'flows',     overflow: true }
     case 'runner':    return { component: <RunnerPanel />,            titleKey: 'runner',    overflow: true }
     case 'matrix':    return { component: <MatrixPanel />,            titleKey: 'Env Matrix', overflow: true }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Send, RefreshCw, ChevronRight, Zap, Wifi, Save, Upload } from 'lucide-react'
-import { useServerPort, serverUrl } from '@/lib/useServerPort'
+import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { cn } from '@/lib/utils'
 
 const PRESETS_KEY = 'adomnia.grpc.presets'
@@ -90,7 +90,7 @@ export function GrpcPanel() {
   const post = async (path: string, body: unknown) => {
     const url = serverUrl(port, path)
     if (!url) { setError('Backend not ready'); return null }
-    const res = await fetch(url, {
+    const res = await sidecarFetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

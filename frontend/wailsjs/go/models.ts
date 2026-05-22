@@ -284,6 +284,24 @@ export namespace main {
 	        this.completed = source["completed"];
 	    }
 	}
+	export class DebugStatus {
+	    connected: boolean;
+	    port: number;
+	    profileDir: string;
+	    browserPid: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new DebugStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.connected = source["connected"];
+	        this.port = source["port"];
+	        this.profileDir = source["profileDir"];
+	        this.browserPid = source["browserPid"];
+	    }
+	}
 	
 	export class HealthCheck {
 	    test: string[];

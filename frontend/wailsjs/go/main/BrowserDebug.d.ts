@@ -44,6 +44,8 @@ export function GetConsoleLogs():Promise<Array<main.ConsoleEntry>>;
 
 export function GetCookies():Promise<Array<main.CookieEntry>>;
 
+export function GetDebugStatus():Promise<main.DebugStatus>;
+
 export function GetDocument(arg1:number):Promise<main.DOMNode>;
 
 export function GetIndexedDBDatabases():Promise<Array<string>>;

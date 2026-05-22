@@ -7,10 +7,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -24,13 +26,15 @@ type SSEEvent struct {
 }
 
 type SSESession struct {
-	id        string
-	ctx       context.Context
-	cancel    context.CancelFunc
-	clients   []chan SSEEvent
-	clientsMu sync.Mutex
-	done      chan struct{}
-	closeOnce sync.Once
+	id         string
+	ctx        context.Context
+	cancel     context.CancelFunc
+	clients    []chan SSEEvent
+	clientsMu  sync.Mutex
+	done       chan struct{}
+	closeOnce  sync.Once
+	createdAt  int64       // UnixNano — immutable after creation
+	lastActive atomic.Int64 // UnixNano — updated on any I/O
 }
 
 type SSEConnectRequest struct {
@@ -48,6 +52,11 @@ type SSEDisconnectRequest struct {
 	SessionID string `json:"sessionId"`
 }
 
+const (
+	maxSSESessions       = 20
+	sseSessionIdleTimeout = 5 * time.Minute
+)
+
 var sseSessions sync.Map // sessionId -> *SSESession
 
 func sseNewSessionID() string {
@@ -58,6 +67,16 @@ func sseNewSessionID() string {
 
 func sseBasicAuth(username, password string) string {
 	return "Basic " + base64.StdEncoding.EncodeToString([]byte(username+":"+password))
+}
+
+func (s *SSESession) touch() {
+	s.lastActive.Store(time.Now().UnixNano())
+}
+
+func sseSessionCount() int {
+	n := 0
+	sseSessions.Range(func(_, _ interface{}) bool { n++; return true })
+	return n
 }
 
 func (s *SSESession) broadcast(ev SSEEvent) {
@@ -95,6 +114,84 @@ func (s *SSESession) close() {
 	})
 }
 
+// ── Session management ───────────────────────────────────────────────────────
+
+type sseSessionInfo struct {
+	SessionID string `json:"sessionId"`
+	CreatedAt int64  `json:"createdAt"`
+	Clients   int    `json:"clients"`
+}
+
+var sseReaperOnce sync.Once
+
+func ensureSSEReaper() {
+	sseReaperOnce.Do(func() {
+		go sseSessionReaper()
+	})
+}
+
+func sseSessionReaper() {
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+	for range ticker.C {
+		now := time.Now().UnixNano()
+		sseSessions.Range(func(key, value interface{}) bool {
+			sess := value.(*SSESession)
+			last := sess.lastActive.Load()
+			if now-last > int64(sseSessionIdleTimeout) {
+				log.Printf("[sse] reaping idle session %s (idle %v)", sess.id, time.Duration(now-last))
+				sess.close()
+			}
+			return true
+		})
+	}
+}
+
+// SseShutdown closes every active SSE session. Safe to call multiple times.
+func SseShutdown() {
+	sseSessions.Range(func(key, value interface{}) bool {
+		sess := value.(*SSESession)
+		sess.close()
+		return true
+	})
+}
+
+// SseListHandler lists all active SSE sessions (GET /sse/list).
+func SseListHandler(w http.ResponseWriter, r *http.Request) {
+	sessions := make([]sseSessionInfo, 0)
+	sseSessions.Range(func(key, value interface{}) bool {
+		sess := value.(*SSESession)
+		sess.clientsMu.Lock()
+		clientCount := len(sess.clients)
+		sess.clientsMu.Unlock()
+		sessions = append(sessions, sseSessionInfo{
+			SessionID: sess.id,
+			CreatedAt: sess.createdAt,
+			Clients:   clientCount,
+		})
+		return true
+	})
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(sessions)
+}
+
+// SseCloseAllHandler closes every active SSE session (POST /sse/close-all).
+func SseCloseAllHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	count := 0
+	sseSessions.Range(func(key, value interface{}) bool {
+		sess := value.(*SSESession)
+		sess.close()
+		count++
+		return true
+	})
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"closed": count})
+}
+
 func sseConnectHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		jsonError(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -107,6 +204,11 @@ func sseConnectHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if strings.TrimSpace(req.URL) == "" {
 		jsonError(w, "url required", http.StatusBadRequest)
+		return
+	}
+
+	if sseSessionCount() >= maxSSESessions {
+		jsonError(w, "max SSE sessions reached", http.StatusTooManyRequests)
 		return
 	}
 
@@ -147,9 +249,12 @@ func sseConnectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	now := time.Now().UnixNano()
 	sessionID := sseNewSessionID()
-	sess := &SSESession{id: sessionID, ctx: ctx, cancel: cancel, done: make(chan struct{})}
+	sess := &SSESession{id: sessionID, ctx: ctx, cancel: cancel, done: make(chan struct{}), createdAt: now}
+	sess.lastActive.Store(now)
 	sseSessions.Store(sessionID, sess)
+	ensureSSEReaper()
 	go sseReadPump(sess, resp)
 
 	w.Header().Set("Content-Type", "application/json")
@@ -182,6 +287,7 @@ func sseReadPump(sess *SSESession, resp *http.Response) {
 		if t == "" {
 			t = "message"
 		}
+		sess.touch()
 		sess.broadcast(SSEEvent{
 			Type:      t,
 			ID:        eventID,

@@ -17,8 +17,9 @@ import (
 )
 
 type App struct {
-	ctx   context.Context
-	store *bolt.DB
+	ctx          context.Context
+	store        *bolt.DB
+	browserDebug *BrowserDebug
 }
 
 func NewApp() *App {
@@ -35,6 +36,8 @@ func (a *App) OnStartup(ctx context.Context) {
 		a.store = storeDB
 		dlog("OnStartup", "bbolt DB aperto con successo", nil)
 	}
+	initSidecarToken()
+	dlog("OnStartup", "sidecar token generato", nil)
 	initProxyRules()
 	dlog("OnStartup", "regole proxy inizializzate", nil)
 	autoLoadCA()
@@ -50,6 +53,10 @@ func (a *App) OnStartup(ctx context.Context) {
 func (a *App) GetServerPort() int {
 	dlog("GetServerPort", "porta HTTP sidecar richiesta dal frontend", map[string]any{"port": serverPort})
 	return serverPort
+}
+
+func (a *App) GetSidecarToken() string {
+	return sidecarToken
 }
 
 func (a *App) SelectFolder(title string) (string, error) {
@@ -261,6 +268,13 @@ func (a *App) OnShutdown(ctx context.Context) {
 	if globalPythonBridge != nil {
 		globalPythonBridge.Shutdown()
 	}
+	if a.browserDebug != nil {
+		if err := a.browserDebug.StopBrowser(); err != nil {
+			log.Printf("[app] browser debug stop error: %v", err)
+		}
+	}
+	WsShutdown()
+	SseShutdown()
 	closeStore()
 	log.Println("[app] shutdown complete")
 }

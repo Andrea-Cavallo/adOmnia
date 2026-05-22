@@ -45,9 +45,13 @@ func startHTTPServer() {
 	mux.HandleFunc("/ws/send", wsSendHandler)
 	mux.HandleFunc("/ws/ping", wsPingHandler)
 	mux.HandleFunc("/ws/stream", wsStreamHandler)
+	mux.HandleFunc("/ws/list", WsListHandler)
+	mux.HandleFunc("/ws/close-all", WsCloseAllHandler)
 	mux.HandleFunc("/sse/connect", sseConnectHandler)
 	mux.HandleFunc("/sse/disconnect", sseDisconnectHandler)
 	mux.HandleFunc("/sse/stream", sseStreamHandler)
+	mux.HandleFunc("/sse/list", SseListHandler)
+	mux.HandleFunc("/sse/close-all", SseCloseAllHandler)
 
 	// WebSocket Mock Server
 	mux.HandleFunc("/ws/mock/start", wsMockStartHandler)
@@ -159,7 +163,7 @@ func startHTTPServer() {
 	mux.HandleFunc("/grpc/describe", grpcDescribeHandler)
 	mux.HandleFunc("/grpc/invoke", grpcInvokeHandler)
 
-	handler := withCORS(mux)
+	handler := withSecurity(mux)
 
 	go func() {
 		log.Printf("[server] HTTP sidecar on port %d", serverPort)
@@ -171,15 +175,3 @@ func startHTTPServer() {
 	}()
 }
 
-func withCORS(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
-}

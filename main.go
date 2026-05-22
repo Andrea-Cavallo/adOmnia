@@ -18,6 +18,7 @@ func main() {
 
 	app := NewApp()
 	browserDebug := NewBrowserDebug()
+	app.browserDebug = browserDebug
 	themeManager := NewThemeManager()
 	templateStore := NewTemplateStore()
 	pluginManager := NewPluginManager()

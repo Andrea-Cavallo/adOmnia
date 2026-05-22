@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Download, FileCode, FileJson, FileText, GitBranch, Play, Plus, Save, Trash2, X } from 'lucide-react'
 import type { Environment, HttpMethod, RequestItem, ResponseData, TreeNode } from '@/lib/types'
 import { blankRequest, uid } from '@/lib/types'
-import { sendRequest } from '@/lib/sendRequest'
+import { executeRequest } from '@/lib/executeRequest'
 import { useCollectionsStore } from '@/stores/collections'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { cn } from '@/lib/utils'
@@ -259,7 +259,12 @@ export function MatrixPanel() {
     const runOne = async (env: Environment, itemName: string, request: RequestItem, vars: Record<string, string>) => {
       const start = performance.now()
       try {
-        const response = await sendRequest(request, vars)
+        const execution = await executeRequest(request, vars)
+        const response = execution.response
+        for (const [key, value] of Object.entries(execution.mutations)) {
+          if (value === null) delete vars[key]
+          else vars[key] = value
+        }
         nextEntries.push({ envId: env.id, envName: env.name, itemName, response, durationMs: Math.round(performance.now() - start), error: response.error?.message })
       } catch (error) {
         nextEntries.push({ envId: env.id, envName: env.name, itemName, response: null, durationMs: Math.round(performance.now() - start), error: error instanceof Error ? error.message : String(error) })

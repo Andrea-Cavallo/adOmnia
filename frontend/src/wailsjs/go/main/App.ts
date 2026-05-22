@@ -22,6 +22,14 @@ export function GetStartupWindowChrome(): Promise<string> {
   return window['go']['main']['App']['GetStartupWindowChrome']()
 }
 
+export function GetSidecarToken(): Promise<string> {
+  return (window['go']['main']['App'] as unknown as Record<string, () => Promise<string>>)['GetSidecarToken']()
+}
+
+export function ExecuteHTTP(reqJSON: string): Promise<string> {
+  return (window['go']['main']['App'] as unknown as Record<string, (a: string) => Promise<string>>)['ExecuteHTTP'](reqJSON)
+}
+
 export function SelectFolder(title: string): Promise<string> {
   return window['go']['main']['App']['SelectFolder'](title)
 }

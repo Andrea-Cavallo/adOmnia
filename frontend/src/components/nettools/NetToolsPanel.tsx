@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Globe, Search, Radio, Shield, Copy, ArrowRight, Database, Trash2, GitBranch } from 'lucide-react'
-import { useServerPort, serverUrl } from '@/lib/useServerPort'
+import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { cn } from '@/lib/utils'
 
 type Tab = 'dns' | 'trace' | 'compare' | 'cache' | 'portscan' | 'cors'
@@ -61,7 +61,7 @@ export function NetToolsPanel() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch(url, {
+      const res = await sidecarFetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -81,7 +81,7 @@ export function NetToolsPanel() {
     try {
       const url = serverUrl(port, '/dns/cache')
       if (!url) { setError('Backend not ready'); setCacheLoading(false); return }
-      const res = await fetch(url)
+      const res = await sidecarFetch(url)
       const data = await res.json()
       setCacheData(data)
     } catch (e) {
@@ -96,7 +96,7 @@ export function NetToolsPanel() {
     try {
       const url = serverUrl(port, '/dns/cache/clear')
       if (!url) return
-      await fetch(url, { method: 'POST' })
+      await sidecarFetch(url, { method: 'POST' })
       setCacheData(null)
     } catch (e) {
       setError(String(e))

@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Clock, Download, FolderOpen, RefreshCw, Save, Shield, ShieldAlert, Trash2, Undo2, Upload } from 'lucide-react'
-import { useServerPort, serverUrl } from '@/lib/useServerPort'
+import { Clock, Download, FolderOpen, LogIn, RefreshCw, Save, Shield, ShieldAlert, Trash2, Undo2, Upload } from 'lucide-react'
+import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { useCollectionsStore, migrateCollections } from '@/stores/collections'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { useSettingsStore } from '@/stores/settings'
 import { useTabsStore } from '@/stores/tabs'
-import { getForgeCoreCollections, getForgeCoreEnvironments, getForgeCoreActiveEnvId } from '@/lib/demoWorkspace'
 import { cn } from '@/lib/utils'
 import { parseInteropFile, redactSecrets, summarizeBundle, type InteropBundle } from '@/lib/interopHub'
 import { scanWorkspace, maskSecretValues } from '@/lib/secretScanner'
@@ -47,7 +46,7 @@ export function WorkspacePanel() {
   const api = useCallback(async (path: string, body?: unknown) => {
     const url = serverUrl(port, path)
     if (!url) throw new Error('Backend not ready')
-    const res = await fetch(url, {
+    const res = await sidecarFetch(url, {
       method: body === undefined ? 'GET' : 'POST',
       headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
       body: body === undefined ? undefined : JSON.stringify(body),
@@ -88,8 +87,9 @@ export function WorkspacePanel() {
     refresh()
   })
 
-  const load = () => run(async () => {
-    const state = await api('/workspace/load')
+  const load = (wsName?: string) => run(async () => {
+    const path = wsName ? `/workspace/load?name=${encodeURIComponent(wsName)}` : '/workspace/load'
+    const state = await api(path)
     const text = JSON.stringify(state, null, 2)
     setLoadedState(text)
     if (Array.isArray(state.openTabs)) {
@@ -130,6 +130,8 @@ export function WorkspacePanel() {
       setError('Demo workspace already loaded')
       return
     }
+
+    const { getForgeCoreCollections, getForgeCoreEnvironments, getForgeCoreActiveEnvId } = await import('@/lib/demoWorkspace')
 
     const cols = getForgeCoreCollections()
     for (const col of cols) {
@@ -274,7 +276,7 @@ export function WorkspacePanel() {
           </div>
 
           <button
-            onClick={load}
+            onClick={() => load()}
             className="w-full flex items-center justify-center gap-1.5 px-3 py-2 border border-border-2 rounded-lg text-xs text-text-3 hover:text-text-1 hover:border-border-1 transition-colors"
           >
             <Clock size={11} /> Load Last Saved State
@@ -372,6 +374,13 @@ export function WorkspacePanel() {
                   <div className="text-[10px] text-text-4 mt-0.5">
                     {ws.tabs} tab{ws.tabs !== 1 ? 's' : ''} · {new Date(ws.updatedAt).toLocaleString()}
                   </div>
+                </button>
+                <button
+                  onClick={() => load(ws.name)}
+                  className="opacity-0 group-hover:opacity-100 w-6 h-6 flex items-center justify-center text-text-4 hover:text-accent rounded-md transition-all"
+                  title="Load this workspace"
+                >
+                  <LogIn size={12} />
                 </button>
                 <button
                   onClick={() => remove(ws.name)}

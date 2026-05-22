@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Plus, Trash2, Save, List, FileDown, GitCompare } from 'lucide-react'
-import { useServerPort, serverUrl } from '@/lib/useServerPort'
+import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 
 interface ThroughputBucket {
   second: number
@@ -100,14 +100,14 @@ export function LoadTestPanel() {
   const apiGet = async (path: string) => {
     const u = baseApi(path)
     if (!u) return null
-    const r = await fetch(u)
+    const r = await sidecarFetch(u)
     return r.json()
   }
 
   const apiPost = async (path: string, body: unknown) => {
     const u = baseApi(path)
     if (!u) return null
-    const r = await fetch(u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    const r = await sidecarFetch(u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     return r.json()
   }
 
@@ -184,7 +184,7 @@ export function LoadTestPanel() {
       } else {
         payload.totalReqs = totalReqs
       }
-      const res = await fetch(apiUrl, {
+      const res = await sidecarFetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

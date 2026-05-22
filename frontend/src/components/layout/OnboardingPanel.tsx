@@ -61,7 +61,7 @@ const DEBUG: ToolDef[] = [
   { id: 'nettools',  icon: Globe,     color: '#22d3ee', status: 'Stable',   label: 'Net Tools',      desc: 'DNS lookup, port scan and CORS test, all local.' },
   { id: 'jsontools', icon: Braces,    color: '#34d399', status: 'Stable',   label: 'JSON Tools',     desc: 'Query, format, diff and inspect JSON with tree views.' },
   { id: 'xmltools',  icon: FileCode,  color: '#fbbf24', status: 'Stable',   label: 'XML Tools',      desc: 'Format, diff, XPath query and encode XML entities.' },
-  { id: 'utils',     icon: Wrench,    color: '#f87171', status: 'Stable',   label: 'Dev Utilities',  desc: 'Base64, URL codecs, JWT inspector, UUIDs, hashes and more.' },
+  { id: 'utils',     icon: Wrench,    color: '#f87171', status: 'Stable',   label: 'Power Tools',    desc: 'Base64, URL codecs, JWT inspector, UUIDs, hashes and more.' },
   { id: 'secretscanner', icon: Shield, color: '#ef4444', status: 'Stable', label: 'Secret Scanner', desc: 'Scan workspace for exposed secrets: API keys, tokens, passwords, high-entropy strings.' },
 ]
 

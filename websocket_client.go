@@ -5,14 +5,21 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
 )
 
 // ── Types ────────────────────────────────────────────────────────────────────
+
+const (
+	maxWSSessions       = 20
+	wsSessionIdleTimeout = 5 * time.Minute
+)
 
 type WSEvent struct {
 	Type      string `json:"type"`      // message | ping | pong | close | error
@@ -22,13 +29,15 @@ type WSEvent struct {
 }
 
 type WSSession struct {
-	id        string
-	conn      *websocket.Conn
-	mu        sync.Mutex
-	clients   []chan WSEvent
-	clientsMu sync.Mutex
-	done      chan struct{}
-	closeOnce sync.Once
+	id         string
+	conn       *websocket.Conn
+	mu         sync.Mutex
+	clients    []chan WSEvent
+	clientsMu  sync.Mutex
+	done       chan struct{}
+	closeOnce  sync.Once
+	createdAt  int64       // UnixNano — immutable after creation
+	lastActive atomic.Int64 // UnixNano — updated on any I/O
 }
 
 type WSConnectRequest struct {
@@ -65,6 +74,16 @@ func wsNewSessionID() string {
 	b := make([]byte, 12)
 	rand.Read(b)
 	return base64.URLEncoding.EncodeToString(b)
+}
+
+func (s *WSSession) touch() {
+	s.lastActive.Store(time.Now().UnixNano())
+}
+
+func wsSessionCount() int {
+	n := 0
+	wsSessions.Range(func(_, _ interface{}) bool { n++; return true })
+	return n
 }
 
 func wsBasicAuth(username, password string) string {
@@ -110,6 +129,84 @@ func (s *WSSession) closeConn() {
 	})
 }
 
+// ── Session management ───────────────────────────────────────────────────────
+
+type wsSessionInfo struct {
+	SessionID string `json:"sessionId"`
+	CreatedAt int64  `json:"createdAt"`
+	Clients   int    `json:"clients"`
+}
+
+var wsReaperOnce sync.Once
+
+func ensureWSReaper() {
+	wsReaperOnce.Do(func() {
+		go wsSessionReaper()
+	})
+}
+
+func wsSessionReaper() {
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+	for range ticker.C {
+		now := time.Now().UnixNano()
+		wsSessions.Range(func(key, value interface{}) bool {
+			sess := value.(*WSSession)
+			last := sess.lastActive.Load()
+			if now-last > int64(wsSessionIdleTimeout) {
+				log.Printf("[ws] reaping idle session %s (idle %v)", sess.id, time.Duration(now-last))
+				sess.closeConn()
+			}
+			return true
+		})
+	}
+}
+
+// WsShutdown closes every active WebSocket session. Safe to call multiple times.
+func WsShutdown() {
+	wsSessions.Range(func(key, value interface{}) bool {
+		sess := value.(*WSSession)
+		sess.closeConn()
+		return true
+	})
+}
+
+// WsListHandler lists all active WebSocket sessions (GET /ws/list).
+func WsListHandler(w http.ResponseWriter, r *http.Request) {
+	sessions := make([]wsSessionInfo, 0)
+	wsSessions.Range(func(key, value interface{}) bool {
+		sess := value.(*WSSession)
+		sess.clientsMu.Lock()
+		clientCount := len(sess.clients)
+		sess.clientsMu.Unlock()
+		sessions = append(sessions, wsSessionInfo{
+			SessionID: sess.id,
+			CreatedAt: sess.createdAt,
+			Clients:   clientCount,
+		})
+		return true
+	})
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(sessions)
+}
+
+// WsCloseAllHandler closes every active WebSocket session (POST /ws/close-all).
+func WsCloseAllHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	count := 0
+	wsSessions.Range(func(key, value interface{}) bool {
+		sess := value.(*WSSession)
+		sess.closeConn()
+		count++
+		return true
+	})
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"closed": count})
+}
+
 // ── Read pump ────────────────────────────────────────────────────────────────
 
 func wsReadPump(sess *WSSession) {
@@ -137,6 +234,7 @@ func wsReadPump(sess *WSSession) {
 			}
 			return
 		}
+		sess.touch()
 		evType := "message"
 		if mt == websocket.PongMessage {
 			evType = "pong"
@@ -163,6 +261,11 @@ func wsConnectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if wsSessionCount() >= maxWSSessions {
+		jsonError(w, "max WebSocket sessions reached", http.StatusTooManyRequests)
+		return
+	}
+
 	headers := http.Header{}
 	for k, v := range req.Headers {
 		if k != "" {
@@ -185,13 +288,17 @@ func wsConnectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	now := time.Now().UnixNano()
 	sessionID := wsNewSessionID()
 	sess := &WSSession{
-		id:   sessionID,
-		conn: conn,
-		done: make(chan struct{}),
+		id:         sessionID,
+		conn:       conn,
+		done:       make(chan struct{}),
+		createdAt:  now,
 	}
+	sess.lastActive.Store(now)
 	wsSessions.Store(sessionID, sess)
+	ensureWSReaper()
 	go wsReadPump(sess)
 
 	w.Header().Set("Content-Type", "application/json")
@@ -258,6 +365,7 @@ func wsSendHandler(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	sess.touch()
 	sess.broadcast(WSEvent{
 		Type:      "message",
 		Direction: "outbound",
@@ -291,6 +399,7 @@ func wsPingHandler(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	sess.touch()
 	sess.broadcast(WSEvent{
 		Type:      "ping",
 		Direction: "outbound",

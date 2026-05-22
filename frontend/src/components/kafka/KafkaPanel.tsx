@@ -13,7 +13,7 @@ import {
   Timer,
   Trash2,
 } from 'lucide-react'
-import { useServerPort, serverUrl } from '@/lib/useServerPort'
+import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/app'
 
@@ -314,7 +314,7 @@ export function KafkaPanel({ onMessages }: { onMessages?: (msgs: BrokerMessage[]
     setError('')
     setResult(null)
     try {
-      const res = await fetch(url, {
+      const res = await sidecarFetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

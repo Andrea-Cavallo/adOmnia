@@ -4,6 +4,7 @@ import { useAppStore } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
 import { cn } from '@/lib/utils'
 import { uid } from '@/lib/types'
+import { appendMockEndpoints } from '@/lib/mockEndpointStore'
 import type { RequestItem, HttpMethod } from '@/lib/types'
 import {
   launchBrowserForDebug,
@@ -415,7 +416,7 @@ export function BrowserDebugPanel() {
   )
 
   const handleAddAsMock = useCallback(
-    (data: { url: string; status: number; headers: Record<string, string>; body: string }) => {
+    async (data: { url: string; status: number; headers: Record<string, string>; body: string }) => {
       let path = '/'
       try { path = new URL(data.url).pathname } catch { /* use default */ }
       const newEndpoint = {
@@ -423,12 +424,7 @@ export function BrowserDebugPanel() {
         responses: [{ id: uid(), name: `Status ${data.status}`, status: data.status, headers: data.headers, body: data.body, delayMs: 0, isActive: true }],
         mode: 'first_active',
       }
-      try {
-        const raw = localStorage.getItem('adomnia.mock.endpoints')
-        const existing = raw ? JSON.parse(raw) : []
-        existing.push(newEndpoint)
-        localStorage.setItem('adomnia.mock.endpoints', JSON.stringify(existing))
-      } catch { /* ignore */ }
+      await appendMockEndpoints([newEndpoint]).catch(() => {})
       useAppStore.getState().setActiveRail('mock')
     }, []
   )

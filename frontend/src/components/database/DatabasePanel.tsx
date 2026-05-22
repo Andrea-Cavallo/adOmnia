@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { AlertTriangle, Bookmark, CheckCircle2, Clock, Database, Download, Play, Plus, RefreshCw, Save, Shield, Trash2 } from 'lucide-react'
-import { useServerPort, serverUrl } from '@/lib/useServerPort'
+import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { StorageGet, StoragePut } from '@/wailsjs/go/main/App'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { useAppStore } from '@/stores/app'
@@ -234,7 +234,7 @@ export function DatabasePanel() {
   const api = async (path: string, body: unknown) => {
     const url = serverUrl(port, path)
     if (!url) throw new Error('Backend not ready')
-    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    const res = await sidecarFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     const text = await res.text()
     if (!res.ok) throw new Error(text.trim() || res.statusText)
     return text ? JSON.parse(text) : {}

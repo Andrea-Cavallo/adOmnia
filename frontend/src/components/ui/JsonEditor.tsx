@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react'
+import { useRef, useCallback, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 
 interface JsonEditorProps {
@@ -131,6 +131,7 @@ const SHARED_STYLE: React.CSSProperties = {
 
 export function JsonEditor({ value, onChange, placeholder, error, className, minHeight = '280px' }: JsonEditorProps) {
   const taRef = useRef<HTMLTextAreaElement>(null)
+  const preRef = useRef<HTMLPreElement>(null)
 
   const highlight = useCallback((text: string) => {
     if (!text.trim()) return `<span style="color:var(--color-text-4)">${placeholder ?? ''}</span>`
@@ -141,6 +142,32 @@ export function JsonEditor({ value, onChange, placeholder, error, className, min
       return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     }
   }, [placeholder])
+
+  // Keep the highlight layer in sync with the textarea's scroll position.
+  // Even with overflow:hidden, scrollTop can be set programmatically in Chromium/WebKit.
+  const syncScroll = useCallback(() => {
+    const ta = taRef.current
+    const pre = preRef.current
+    if (!ta || !pre) return
+    pre.scrollTop = ta.scrollTop
+    pre.scrollLeft = ta.scrollLeft
+  }, [])
+
+  // Attach a non-passive wheel listener so we can call preventDefault() and
+  // apply a speed multiplier. Mouse wheel events arrive with |deltaY| > 50 px;
+  // trackpad gestures are smaller so they pass through at normal speed.
+  useEffect(() => {
+    const ta = taRef.current
+    if (!ta) return
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const multiplier = Math.abs(e.deltaY) > 50 ? 2.5 : 1.0
+      ta.scrollTop += e.deltaY * multiplier
+      syncScroll()
+    }
+    ta.addEventListener('wheel', onWheel, { passive: false })
+    return () => ta.removeEventListener('wheel', onWheel)
+  }, [syncScroll])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Tab') {
@@ -167,8 +194,9 @@ export function JsonEditor({ value, onChange, placeholder, error, className, min
       )}
       style={{ minHeight }}
     >
-      {/* Highlighted layer */}
+      {/* Highlighted layer — scrolled in sync with the textarea via syncScroll */}
       <pre
+        ref={preRef}
         aria-hidden
         style={{
           ...SHARED_STYLE,
@@ -187,6 +215,7 @@ export function JsonEditor({ value, onChange, placeholder, error, className, min
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
+        onScroll={syncScroll}
         spellCheck={false}
         style={{
           ...SHARED_STYLE,

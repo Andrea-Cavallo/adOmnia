@@ -77,6 +77,26 @@ export interface AssertionResult {
   expected: string
 }
 
+export interface ScriptTestResult {
+  name: string
+  passed: boolean
+  error?: string
+}
+
+export interface ScriptRunResult {
+  phase: 'pre' | 'post' | 'tests'
+  passed: boolean
+  durationMs: number
+  tests: ScriptTestResult[]
+  logs: string[]
+  error?: string
+}
+
+export interface ScriptRunSummary {
+  runs: ScriptRunResult[]
+  mutations: Record<string, string | null>
+}
+
 export interface FolderItem {
   id: string
   name: string
@@ -117,6 +137,7 @@ export interface ResponseData {
   ms: number
   size: number
   error?: { code: string; message: string }
+  scripts?: ScriptRunSummary
 }
 
 export interface Tab {

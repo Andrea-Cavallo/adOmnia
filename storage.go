@@ -27,10 +27,35 @@ var (
 
 // Bucket names
 var storeBuckets = []string{
-	"workspace",  // collections, environments, settings
-	"history",    // request/response history
-	"mock",       // mock server config + hits
-	"proxy",      // proxy/interceptor config + traffic
+	"workspace",    // workspace payloads, app settings
+	"collections",  // collection tree
+	"environments", // environments and active env
+	"tabs",         // open request tabs and response history
+	"database",     // database studio connections/history/favorites
+	"history",      // request/response history
+	"mock",         // mock server config + hits
+	"proxy",        // proxy/interceptor config + traffic
+}
+
+const storagePutMaxBodyBytes = 10 * 1024 * 1024
+
+func isStoreBucketAllowed(bucket string) bool {
+	for _, name := range storeBuckets {
+		if bucket == name {
+			return true
+		}
+	}
+	return false
+}
+
+func validateStoreBucket(bucket string) error {
+	if bucket == "" {
+		return fmt.Errorf("bucket required")
+	}
+	if !isStoreBucketAllowed(bucket) {
+		return fmt.Errorf("unknown storage bucket %q", bucket)
+	}
+	return nil
 }
 
 func storeDir() string {
@@ -92,11 +117,14 @@ func closeStore() {
 // --- generic helpers ---
 
 func storeGet(bucket, key string) ([]byte, error) {
+	if err := validateStoreBucket(bucket); err != nil {
+		return nil, err
+	}
 	var val []byte
 	err := storeDB.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(bucket))
 		if b == nil {
-			return nil
+			return fmt.Errorf("bucket %s not found", bucket)
 		}
 		v := b.Get([]byte(key))
 		if v != nil {
@@ -112,10 +140,13 @@ func storeGet(bucket, key string) ([]byte, error) {
 }
 
 func storePut(bucket, key string, value []byte) error {
+	if err := validateStoreBucket(bucket); err != nil {
+		return err
+	}
 	err := storeDB.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(bucket))
 		if b == nil {
-			return nil
+			return fmt.Errorf("bucket %s not found", bucket)
 		}
 		return b.Put([]byte(key), value)
 	})
@@ -126,10 +157,13 @@ func storePut(bucket, key string, value []byte) error {
 }
 
 func storeDelete(bucket, key string) error {
+	if err := validateStoreBucket(bucket); err != nil {
+		return err
+	}
 	err := storeDB.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(bucket))
 		if b == nil {
-			return nil
+			return fmt.Errorf("bucket %s not found", bucket)
 		}
 		return b.Delete([]byte(key))
 	})
@@ -140,11 +174,14 @@ func storeDelete(bucket, key string) error {
 }
 
 func storeList(bucket, prefix string) ([]string, error) {
+	if err := validateStoreBucket(bucket); err != nil {
+		return nil, err
+	}
 	var keys []string
 	err := storeDB.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(bucket))
 		if b == nil {
-			return nil
+			return fmt.Errorf("bucket %s not found", bucket)
 		}
 		c := b.Cursor()
 		p := []byte(prefix)
@@ -157,11 +194,14 @@ func storeList(bucket, prefix string) ([]string, error) {
 }
 
 func storeCount(bucket, prefix string) (int, error) {
+	if err := validateStoreBucket(bucket); err != nil {
+		return 0, err
+	}
 	count := 0
 	err := storeDB.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(bucket))
 		if b == nil {
-			return nil
+			return fmt.Errorf("bucket %s not found", bucket)
 		}
 		c := b.Cursor()
 		p := []byte(prefix)
@@ -280,7 +320,7 @@ func storageGetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	data, err := storeGet(bucket, key)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	if data == nil {
@@ -300,15 +340,15 @@ func storagePutHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bucket and key required", http.StatusBadRequest)
 		return
 	}
-	body, err := io.ReadAll(r.Body)
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, storagePutMaxBodyBytes))
 	if err != nil {
 		dlogErr("storagePutHandler", "lettura body fallita", err, map[string]any{"bucket": bucket, "key": key})
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("storage value too large or unreadable: max %d bytes", storagePutMaxBodyBytes), http.StatusRequestEntityTooLarge)
 		return
 	}
 	if err := storePut(bucket, key, body); err != nil {
 		dlogErr("storagePutHandler", "storePut fallito", err, map[string]any{"bucket": bucket, "key": key})
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	dlog("storagePutHandler", "valore salvato correttamente", map[string]any{"bucket": bucket, "key": key, "bytes": len(body)})
@@ -326,7 +366,7 @@ func storageDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := storeDelete(bucket, key); err != nil {
 		dlogErr("storageDeleteHandler", "storeDelete fallito", err, map[string]any{"bucket": bucket, "key": key})
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	dlog("storageDeleteHandler", "chiave eliminata correttamente", map[string]any{"bucket": bucket, "key": key})
@@ -343,7 +383,7 @@ func storageListHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	keys, err := storeList(bucket, prefix)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	if keys == nil {
@@ -379,22 +419,25 @@ func storageMigrateHandler(w http.ResponseWriter, r *http.Request) {
 
 func storageExportHandler(w http.ResponseWriter, r *http.Request) {
 	bucket := r.URL.Query().Get("bucket")
-	if bucket == "" {
-		http.Error(w, "bucket required", http.StatusBadRequest)
+	if err := validateStoreBucket(bucket); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	export := map[string]string{}
-	_ = storeDB.View(func(tx *bolt.Tx) error {
+	if err := storeDB.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(bucket))
 		if b == nil {
-			return nil
+			return fmt.Errorf("bucket %s not found", bucket)
 		}
 		c := b.Cursor()
 		for k, v := c.First(); k != nil; k, v = c.Next() {
 			export[string(k)] = string(v)
 		}
 		return nil
-	})
+	}); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(export)
 }
@@ -405,8 +448,8 @@ func storageImportHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	bucket := r.URL.Query().Get("bucket")
-	if bucket == "" {
-		http.Error(w, "bucket required", http.StatusBadRequest)
+	if err := validateStoreBucket(bucket); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	var data map[string]json.RawMessage
@@ -415,7 +458,7 @@ func storageImportHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	count := 0
-	_ = storeDB.Update(func(tx *bolt.Tx) error {
+	if err := storeDB.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(bucket))
 		if b == nil {
 			return fmt.Errorf("bucket %s not found", bucket)
@@ -427,7 +470,10 @@ func storageImportHandler(w http.ResponseWriter, r *http.Request) {
 			count++
 		}
 		return nil
-	})
+	}); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "imported": count})
 }
@@ -466,7 +512,11 @@ func storageRestoreHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "POST required", http.StatusMethodNotAllowed)
 		return
 	}
-	body, _ := io.ReadAll(io.LimitReader(r.Body, 50*1024*1024)) // 50MB max
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 50*1024*1024)) // 50MB max
+	if err != nil {
+		http.Error(w, "snapshot too large or unreadable", http.StatusRequestEntityTooLarge)
+		return
+	}
 	var data map[string]string
 	if err := json.Unmarshal(body, &data); err != nil {
 		http.Error(w, "invalid snapshot: "+err.Error(), http.StatusBadRequest)
@@ -477,10 +527,13 @@ func storageRestoreHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	restored := 0
-	_ = storeDB.Update(func(tx *bolt.Tx) error {
+	if err := storeDB.Update(func(tx *bolt.Tx) error {
 		for key, val := range data {
 			parts := strings.SplitN(key, "/", 2)
 			if len(parts) != 2 {
+				continue
+			}
+			if !isStoreBucketAllowed(parts[0]) {
 				continue
 			}
 			b := tx.Bucket([]byte(parts[0]))
@@ -493,7 +546,10 @@ func storageRestoreHandler(w http.ResponseWriter, r *http.Request) {
 			restored++
 		}
 		return nil
-	})
+	}); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	log.Printf("[store] restored %d keys from snapshot", restored)
 	w.Header().Set("Content-Type", "application/json")
@@ -511,6 +567,12 @@ func storageSearchHandler(w http.ResponseWriter, r *http.Request) {
 	if storeDB == nil {
 		http.Error(w, "storage not available", http.StatusInternalServerError)
 		return
+	}
+	if bucket != "" {
+		if err := validateStoreBucket(bucket); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 	}
 
 	type hit struct {

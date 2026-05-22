@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -12,6 +13,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
+	"time"
 )
 
 type folderDiffFile struct {
@@ -48,6 +51,55 @@ type fileMeta struct {
 	mtime  int64
 	hash   string
 	binary bool
+}
+
+var (
+	folderDiffScans   sync.Map
+	folderDiffExpiry  = 5 * time.Minute
+)
+
+type folderDiffSession struct {
+	leftRoot  string
+	rightRoot string
+	expiresAt time.Time
+}
+
+func generateScanID() string {
+	b := make([]byte, 16)
+	rand.Read(b)
+	return hex.EncodeToString(b)
+}
+
+func storeFolderDiffSession(sessionID string, session folderDiffSession) {
+	folderDiffScans.Store(sessionID, session)
+}
+
+func getFolderDiffSession(sessionID string) (folderDiffSession, bool) {
+	v, ok := folderDiffScans.Load(sessionID)
+	if !ok {
+		return folderDiffSession{}, false
+	}
+	s, ok := v.(folderDiffSession)
+	if !ok || time.Now().After(s.expiresAt) {
+		folderDiffScans.Delete(sessionID)
+		return folderDiffSession{}, false
+	}
+	return s, true
+}
+
+func init() {
+	go func() {
+		for {
+			time.Sleep(2 * time.Minute)
+			folderDiffScans.Range(func(key, value interface{}) bool {
+				s, ok := value.(folderDiffSession)
+				if !ok || time.Now().After(s.expiresAt) {
+					folderDiffScans.Delete(key)
+				}
+				return true
+			})
+		}
+	}()
 }
 
 func folderDiffHandler(w http.ResponseWriter, r *http.Request) {
@@ -104,12 +156,19 @@ func folderDiffHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	w.Header().Set("Content-Type", "application/json")
+	scanID := generateScanID()
+	storeFolderDiffSession(scanID, folderDiffSession{
+		leftRoot:  leftRoot,
+		rightRoot: rightRoot,
+		expiresAt: time.Now().Add(folderDiffExpiry),
+	})
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"leftRoot":  leftRoot,
-		"rightRoot": rightRoot,
-		"tree":      tree,
-		"flat":      flat,
-		"counts":    counts,
+		"scanId":     scanID,
+		"leftRoot":   leftRoot,
+		"rightRoot":  rightRoot,
+		"tree":       tree,
+		"flat":       flat,
+		"counts":     counts,
 	})
 }
 
@@ -119,20 +178,30 @@ func folderDiffFileHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		LeftRoot  string `json:"leftRoot"`
-		RightRoot string `json:"rightRoot"`
-		Path      string `json:"path"`
-		MaxBytes  int64  `json:"maxBytes"`
+		ScanID   string `json:"scanId"`
+		Path     string `json:"path"`
+		MaxBytes int64  `json:"maxBytes"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
+	if req.ScanID == "" {
+		http.Error(w, "scanId required", http.StatusBadRequest)
+		return
+	}
 	if req.MaxBytes <= 0 {
 		req.MaxBytes = 512 * 1024
 	}
-	leftRoot, _ := filepath.Abs(req.LeftRoot)
-	rightRoot, _ := filepath.Abs(req.RightRoot)
+
+	session, ok := getFolderDiffSession(req.ScanID)
+	if !ok {
+		http.Error(w, "invalid or expired scan", http.StatusBadRequest)
+		return
+	}
+
+	leftRoot, _ := filepath.Abs(session.leftRoot)
+	rightRoot, _ := filepath.Abs(session.rightRoot)
 	rel := filepath.Clean(req.Path)
 	if rel == "." || strings.HasPrefix(rel, "..") || filepath.IsAbs(rel) {
 		http.Error(w, "invalid relative path", http.StatusBadRequest)
@@ -140,6 +209,18 @@ func folderDiffFileHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	leftPath := filepath.Join(leftRoot, rel)
 	rightPath := filepath.Join(rightRoot, rel)
+
+	if !strings.HasPrefix(filepath.Clean(leftPath)+string(os.PathSeparator), leftRoot+string(os.PathSeparator)) &&
+		leftPath != leftRoot {
+		http.Error(w, "path traversal denied", http.StatusForbidden)
+		return
+	}
+	if !strings.HasPrefix(filepath.Clean(rightPath)+string(os.PathSeparator), rightRoot+string(os.PathSeparator)) &&
+		rightPath != rightRoot {
+		http.Error(w, "path traversal denied", http.StatusForbidden)
+		return
+	}
+
 	leftText, leftErr := readSmallText(leftPath, req.MaxBytes)
 	rightText, rightErr := readSmallText(rightPath, req.MaxBytes)
 	w.Header().Set("Content-Type", "application/json")

@@ -36,6 +36,8 @@ export function SaveSkinToDirectory(arg1:main.Theme):Promise<string>;
 
 export function SaveTheme(arg1:main.Theme):Promise<void>;
 
+export function ScanProjectThemesDirectory():Promise<Array<main.Theme>>;
+
 export function ScanSkinsDirectory():Promise<Array<main.Theme>>;
 
 export function SetActiveThemeID(arg1:string):Promise<void>;

@@ -4,9 +4,10 @@ import {
   Filter, Activity, ShieldCheck, ShieldOff, Plus, Download,
   Map, Zap, Copy, RotateCcw,
 } from 'lucide-react'
-import { useServerPort, serverUrl } from '@/lib/useServerPort'
+import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/app'
+import { useSettingsStore } from '@/stores/settings'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -106,7 +107,7 @@ function TrafficTab({
     if (!url) return null
     try {
       const m = method ?? (body !== undefined ? 'POST' : 'GET')
-      const res = await fetch(url, {
+      const res = await sidecarFetch(url, {
         method: m,
         headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
         body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -243,7 +244,7 @@ function RulesTab({ port }: { port: number | null }) {
     if (!url) return null
     try {
       const m = method ?? (body !== undefined ? 'POST' : 'GET')
-      const res = await fetch(url, { method: m, headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined, body: body !== undefined ? JSON.stringify(body) : undefined })
+      const res = await sidecarFetch(url, { method: m, headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined, body: body !== undefined ? JSON.stringify(body) : undefined })
       return res.json()
     } catch { return null }
   }, [port])
@@ -375,7 +376,7 @@ function CATab({ port }: { port: number | null }) {
     if (!url) return null
     try {
       const m = method ?? (body !== undefined ? 'POST' : 'GET')
-      const res = await fetch(url, { method: m, headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined, body: body !== undefined ? JSON.stringify(body) : undefined })
+      const res = await sidecarFetch(url, { method: m, headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined, body: body !== undefined ? JSON.stringify(body) : undefined })
       return res.json()
     } catch { return null }
   }, [port])
@@ -488,7 +489,7 @@ function MapLocalTab({ port }: { port: number | null }) {
     if (!url) return null
     try {
       const m = method ?? (body !== undefined ? 'POST' : 'GET')
-      const res = await fetch(url, { method: m, headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined, body: body !== undefined ? JSON.stringify(body) : undefined })
+      const res = await sidecarFetch(url, { method: m, headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined, body: body !== undefined ? JSON.stringify(body) : undefined })
       return res.json()
     } catch { return null }
   }, [port])
@@ -554,7 +555,7 @@ function MapRemoteTab({ port }: { port: number | null }) {
     if (!url) return null
     try {
       const m = method ?? (body !== undefined ? 'POST' : 'GET')
-      const res = await fetch(url, { method: m, headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined, body: body !== undefined ? JSON.stringify(body) : undefined })
+      const res = await sidecarFetch(url, { method: m, headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined, body: body !== undefined ? JSON.stringify(body) : undefined })
       return res.json()
     } catch { return null }
   }, [port])
@@ -620,7 +621,7 @@ function ThrottleTab({ port }: { port: number | null }) {
     if (!url) return null
     try {
       const m = method ?? (body !== undefined ? 'POST' : 'GET')
-      const res = await fetch(url, { method: m, headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined, body: body !== undefined ? JSON.stringify(body) : undefined })
+      const res = await sidecarFetch(url, { method: m, headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined, body: body !== undefined ? JSON.stringify(body) : undefined })
       return res.json()
     } catch { return null }
   }, [port])
@@ -712,7 +713,8 @@ const PROXY_TABS: { id: ProxyTab; label: string }[] = [
 
 export function ProxyPanel() {
   const port = useServerPort()
-  const [proxyPort, setProxyPort] = useState(8888)
+  const settings = useSettingsStore((s) => s.settings)
+  const [proxyPort, setProxyPort] = useState(settings.proxy?.defaultProxyPort ?? 8888)
   const [status, setStatus] = useState<ProxyStatus>({ running: false, port: 0 })
   const [loading, setLoading] = useState(false)
   const [tab, setTab] = useState<ProxyTab>('traffic')
@@ -722,7 +724,7 @@ export function ProxyPanel() {
     if (!url) return null
     try {
       const m = method ?? (body !== undefined ? 'POST' : 'GET')
-      const res = await fetch(url, { method: m, headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined, body: body !== undefined ? JSON.stringify(body) : undefined })
+      const res = await sidecarFetch(url, { method: m, headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined, body: body !== undefined ? JSON.stringify(body) : undefined })
       return res.json()
     } catch { return null }
   }, [port])

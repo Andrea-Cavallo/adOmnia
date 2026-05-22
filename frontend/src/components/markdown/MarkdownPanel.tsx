@@ -2,6 +2,21 @@ import { useState, useMemo, useEffect } from 'react'
 import { Bold, Italic, Code, Link, Image, Heading, Eye, Columns } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
+function sanitizeUrl(url: string): string {
+  const trimmed = url.trim()
+  if (/[\u0000-\u001f"'<>\\]/.test(trimmed)) return '#'
+  if (/^(https?:|#|\/|\.\/|\.\.\/|mailto:)/i.test(trimmed)) return trimmed
+  return '#'
+}
+
+function escapeAttr(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
 function renderMarkdown(md: string): string {
   let html = md
     .replace(/&/g, '&amp;')
@@ -27,11 +42,15 @@ function renderMarkdown(md: string): string {
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
   html = html.replace(/\*(.+?)\*/g, '<em>$1</em>')
 
-  // Links
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-accent-light underline">$1</a>')
+  // Links — sanitize href to block javascript:/data:/vbscript: URLs
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, text, href) =>
+    `<a href="${escapeAttr(sanitizeUrl(href))}" class="text-accent-light underline">${text}</a>`
+  )
 
-  // Images
-  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="max-w-full rounded my-2" />')
+  // Images — sanitize src and escape alt to prevent attribute injection
+  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_m, alt, src) =>
+    `<img src="${escapeAttr(sanitizeUrl(src))}" alt="${escapeAttr(alt)}" class="max-w-full rounded my-2" />`
+  )
 
   // HR
   html = html.replace(/^---$/gm, '<hr class="border-border-1 my-3" />')

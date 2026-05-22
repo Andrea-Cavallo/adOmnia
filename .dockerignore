@@ -1,4 +1,13 @@
-frontend/node_modules
-build/bin
 .git
-*.exe
+.github
+adOmniaAPP
+adOmnia-exe
+build/bin
+data
+dist
+frontend/dist
+frontend/node_modules
+node_modules
+tmp
+*.log
+*.tmp

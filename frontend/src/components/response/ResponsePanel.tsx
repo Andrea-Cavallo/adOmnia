@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { Copy, Loader2, Maximize2, GitBranch, GitCompare, Sparkles, X, ShieldCheck, ShieldAlert, ShieldOff, AlertTriangle, Check, XCircle, FileText, FileCode, FileJson } from 'lucide-react'
-import type { ResponseData, ContractValidationResult, AssertionResult } from '@/lib/types'
+import type { ResponseData, ContractValidationResult, AssertionResult, ScriptRunResult } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { Prompt } from '@/components/ui/prompt'
 import { JsonGraph } from '@/components/ui/JsonGraph'
@@ -188,6 +188,11 @@ export function ResponsePanel({ response, loading, oaSpec, oaPath, oaMethod, ass
     if (!response) return []
     return evaluateAssertions(assertions, response)
   }, [response, assertions])
+  const scriptRuns = response?.scripts?.runs ?? []
+  const scriptTests = scriptRuns.flatMap((run) => run.tests)
+  const testResultCount = assertionResults.length + scriptTests.length + scriptRuns.filter((run) => run.error).length
+  const testPassCount = assertionResults.filter((r) => r.passed).length + scriptTests.filter((r) => r.passed).length
+  const allTestsPassed = assertionResults.every((r) => r.passed) && scriptRuns.every((run) => run.passed)
 
   const isJson = response ? (response.contentType.includes('json') || response.body.trim().match(/^[\[{]/) != null) : false
   let validationBadge: string | null = null
@@ -229,6 +234,7 @@ export function ResponsePanel({ response, loading, oaSpec, oaPath, oaMethod, ass
       NO_URL:      'Enter a URL in the address bar and try again.',
       INVALID_URL: 'Check the URL syntax — it must start with http:// or https://',
       AUTH_ERR:    'Check your authentication settings (token, credentials, or OAuth2 config).',
+      SCRIPT_ERR:  'Fix the pre-request script and run the request again.',
     }
     const humanCode: Record<string, string> = {
       CONN_ERR:    'Connection refused',
@@ -236,6 +242,7 @@ export function ResponsePanel({ response, loading, oaSpec, oaPath, oaMethod, ass
       NO_URL:      'No URL',
       INVALID_URL: 'Invalid URL',
       AUTH_ERR:    'Auth error',
+      SCRIPT_ERR:  'Script error',
       ERR:         'Request error',
     }
     return (
@@ -351,7 +358,7 @@ export function ResponsePanel({ response, loading, oaSpec, oaPath, oaMethod, ass
             </button>
           )}
 
-          {assertionResults.length > 0 && (
+          {testResultCount > 0 && (
             <button
               onClick={() => setTab('assertions')}
               className={cn('px-3 py-2 text-xs relative', tab === 'assertions' ? 'text-text-1' : 'text-text-3 hover:text-text-2')}
@@ -359,11 +366,11 @@ export function ResponsePanel({ response, loading, oaSpec, oaPath, oaMethod, ass
               Tests
               <span className={cn(
                 'ml-1 px-1 py-0.5 text-[9px] rounded',
-                assertionResults.every((r) => r.passed)
+                allTestsPassed
                   ? 'bg-success/20 text-success'
                   : 'bg-error/20 text-error'
               )}>
-                {assertionResults.filter((r) => r.passed).length}/{assertionResults.length}
+                {testPassCount}/{testResultCount}
               </span>
               {tab === 'assertions' && <span className="absolute bottom-0 left-2 right-2 h-[2px] bg-accent rounded-t" />}
             </button>
@@ -464,8 +471,8 @@ export function ResponsePanel({ response, loading, oaSpec, oaPath, oaMethod, ass
           {tab === 'contract' && !contractResult && (
             <NoContractView />
           )}
-          {tab === 'assertions' && assertionResults.length > 0 && (
-            <AssertionsView results={assertionResults} />
+          {tab === 'assertions' && testResultCount > 0 && (
+            <AssertionsView results={assertionResults} scriptRuns={scriptRuns} />
           )}
         </div>
       </div>
@@ -652,21 +659,36 @@ function downloadBlob(content: string, filename: string, mime: string) {
   URL.revokeObjectURL(url)
 }
 
-function AssertionsView({ results }: { results: AssertionResult[] }) {
-  const passed = results.filter((r) => r.passed).length
+function AssertionsView({ results, scriptRuns }: { results: AssertionResult[]; scriptRuns: ScriptRunResult[] }) {
+  const scriptTests = scriptRuns.flatMap((run) => run.tests.map((test) => ({ ...test, phase: run.phase })))
+  const scriptErrors = scriptRuns.filter((run) => run.error)
+  const total = results.length + scriptTests.length + scriptErrors.length
+  const passed = results.filter((r) => r.passed).length + scriptTests.filter((r) => r.passed).length
 
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-3 p-2 rounded-md bg-surface-2 border border-border-1">
-        <span className={cn('text-xs font-medium', passed === results.length ? 'text-success' : 'text-error')}>
-          {passed}/{results.length} passed
+        <span className={cn('text-xs font-medium', passed === total ? 'text-success' : 'text-error')}>
+          {passed}/{total} passed
         </span>
-        {passed === results.length ? (
+        {passed === total ? (
           <Check size={14} className="text-success" />
         ) : (
           <X className="text-error" size={14} />
         )}
       </div>
+      {scriptRuns.length > 0 && (
+        <div className="flex flex-col gap-1">
+          {scriptRuns.map((run, idx) => (
+            <div key={`${run.phase}-${idx}`} className="flex items-center gap-2 px-3 py-1.5 rounded bg-surface-2 border border-border-1 text-[10px]">
+              <span className={cn('font-medium uppercase', run.passed ? 'text-success' : 'text-error')}>{run.phase}</span>
+              <span className="text-text-4">{run.durationMs} ms</span>
+              {run.logs.length > 0 && <span className="text-text-4 truncate">logs: {run.logs.join(' | ')}</span>}
+              {run.error && <span className="text-error truncate">{run.error}</span>}
+            </div>
+          ))}
+        </div>
+      )}
       {results.map((r) => (
         <div
           key={r.assertionId}
@@ -682,6 +704,25 @@ function AssertionsView({ results }: { results: AssertionResult[] }) {
             <span className="text-text-2">{r.label}</span>
             <span className="text-[10px] text-text-4">
               actual: {r.actual} {r.passed ? '' : `| expected: ${r.expected}`}
+            </span>
+          </div>
+        </div>
+      ))}
+      {scriptTests.map((r, i) => (
+        <div
+          key={`${r.phase}-${r.name}-${i}`}
+          className={cn(
+            'flex items-start gap-2 px-3 py-2 rounded border text-[11px] font-mono',
+            r.passed
+              ? 'bg-success/5 border-success/10 text-success'
+              : 'bg-error/5 border-error/10 text-error'
+          )}
+        >
+          {r.passed ? <Check size={12} className="mt-0.5 flex-shrink-0" /> : <X size={12} className="mt-0.5 flex-shrink-0" />}
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <span className="text-text-2">{r.name}</span>
+            <span className="text-[10px] text-text-4">
+              script: {r.phase}{r.error ? ` | ${r.error}` : ''}
             </span>
           </div>
         </div>

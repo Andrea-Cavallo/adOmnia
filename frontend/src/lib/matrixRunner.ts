@@ -1,5 +1,5 @@
 import type { RequestItem, ResponseData } from '@/lib/types'
-import { sendRequest } from '@/lib/sendRequest'
+import { executeRequest } from '@/lib/executeRequest'
 
 export interface MatrixEnv {
   id: string
@@ -77,7 +77,8 @@ export async function* runMatrix(
     let result: MatrixResult
 
     try {
-      const response = await sendRequest(request, env.vars)
+      const execution = await executeRequest(request, { ...env.vars })
+      const response = execution.response
       result = {
         envId: env.id,
         envName: env.name,

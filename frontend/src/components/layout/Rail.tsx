@@ -100,10 +100,10 @@ const CATEGORIES: CategoryDef[] = [
         { id: 'plugins',    icon: Puzzle,         label: 'Plugins' },
         { id: 'themes',     icon: Paintbrush,     label: 'Themes' },
       ]},
-      { title: 'Utilities', items: [
+      { title: 'Power Tools', items: [
         { id: 'jsontools', icon: Braces,   label: 'JSON Tools' },
         { id: 'xmltools',  icon: FileCode, label: 'XML Tools' },
-        { id: 'utils',     icon: Wrench,   label: 'Encoders & Tools' },
+        { id: 'utils',     icon: Wrench,   label: 'Power Tools' },
         { id: 'markdown',  icon: FileText, label: 'Markdown' },
       ]},
     ],
