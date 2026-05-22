@@ -66,16 +66,24 @@ Full feature catalog: [docs/funzionalita.md](docs/funzionalita.md)
 
 ### Download
 
-The easiest way to use adOmnia is to download the latest pre-built release — no build tools required.
+The easiest way to use adOmnia is to download a pre-built desktop artifact. No Go, Node.js, Wails CLI, or source build is required.
 
 **[Download latest release →](../../releases/latest)**
 
 | Platform | File |
 |---|---|
-| Windows | `adOmnia-windows-amd64.zip` |
-| Linux | `adOmnia-linux-amd64.tar.gz` |
+| Windows | `adOmnia-<version>-windows-amd64.exe` |
+| Linux | `adOmnia-<version>-linux-amd64.tar.gz` or `adOmnia-<version>-linux-amd64` |
+| macOS | `adOmnia-<version>-macos-universal.dmg` |
 
-Extract the archive and run the executable directly. No installation, no dependencies.
+For normal users, download from **Releases**. For builds generated on every push, open **Actions -> Build Desktop Artifacts -> latest successful run -> Artifacts** and download:
+
+- `adOmnia-windows-amd64`
+- `adOmnia-linux-amd64`
+- `adOmnia-macos-universal`
+- `adOmnia-desktop-artifacts` for the full bundle plus `SHA256SUMS.txt`
+
+Pushes to `master`, `main`, or `develop` create CI artifacts. Tags like `v0.1.0` also publish the files to GitHub Releases.
 
 ### Quick Start (build from source)
 
@@ -215,16 +223,24 @@ No requiere cuenta. No tiene telemetría. No depende de la nube para tu trabajo 
 
 ### Descarga
 
-La forma más sencilla de usar adOmnia es descargar la última versión precompilada — sin herramientas de compilación.
+La forma mas sencilla de usar adOmnia es descargar un artefacto de escritorio precompilado. No necesitas Go, Node.js, Wails CLI ni compilar el proyecto.
 
 **[Descargar última versión →](../../releases/latest)**
 
 | Plataforma | Archivo |
 |---|---|
-| Windows | `adOmnia-windows-amd64.zip` |
-| Linux | `adOmnia-linux-amd64.tar.gz` |
+| Windows | `adOmnia-<version>-windows-amd64.exe` |
+| Linux | `adOmnia-<version>-linux-amd64.tar.gz` o `adOmnia-<version>-linux-amd64` |
+| macOS | `adOmnia-<version>-macos-universal.dmg` |
 
-Extrae el archivo y ejecuta directamente. Sin instalación, sin dependencias.
+Para usuarios normales, descarga desde **Releases**. Para builds generadas en cada push, abre **Actions -> Build Desktop Artifacts -> ultima run correcta -> Artifacts** y descarga:
+
+- `adOmnia-windows-amd64`
+- `adOmnia-linux-amd64`
+- `adOmnia-macos-universal`
+- `adOmnia-desktop-artifacts` para el bundle completo con `SHA256SUMS.txt`
+
+Los push a `master`, `main` o `develop` crean artefactos CI. Los tags como `v0.1.0` publican tambien los archivos en GitHub Releases.
 
 ### Inicio rápido (compilar desde el código)
 
@@ -294,16 +310,24 @@ Nessun account. Nessuna telemetria. Nessuna dipendenza cloud per lavorare.
 
 ### Download
 
-Il modo più semplice per usare adOmnia è scaricare l'ultima release precompilata — nessun tool di build richiesto.
+Il modo piu semplice per usare adOmnia e scaricare un artefatto desktop gia compilato. Non servono Go, Node.js, Wails CLI o build da sorgente.
 
 **[Scarica l'ultima release →](../../releases/latest)**
 
 | Piattaforma | File |
 |---|---|
-| Windows | `adOmnia-windows-amd64.zip` |
-| Linux | `adOmnia-linux-amd64.tar.gz` |
+| Windows | `adOmnia-<version>-windows-amd64.exe` |
+| Linux | `adOmnia-<version>-linux-amd64.tar.gz` oppure `adOmnia-<version>-linux-amd64` |
+| macOS | `adOmnia-<version>-macos-universal.dmg` |
 
-Estrai l'archivio ed esegui direttamente il binario. Nessuna installazione, nessuna dipendenza.
+Per gli utenti normali, scarica da **Releases**. Per le build generate a ogni push, apri **Actions -> Build Desktop Artifacts -> ultima run riuscita -> Artifacts** e scarica:
+
+- `adOmnia-windows-amd64`
+- `adOmnia-linux-amd64`
+- `adOmnia-macos-universal`
+- `adOmnia-desktop-artifacts` per il bundle completo con `SHA256SUMS.txt`
+
+I push su `master`, `main` o `develop` creano gli artifact CI. I tag come `v0.1.0` pubblicano anche i file nella pagina GitHub Releases.
 
 ### Avvio rapido (build da sorgente)
 

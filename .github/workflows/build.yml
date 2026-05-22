@@ -91,6 +91,7 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           if [ "${GITHUB_REF_TYPE}" != "tag" ]; then VERSION="${GITHUB_SHA::7}"; fi
           BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          mkdir -p dist
           docker build \
             -f Dockerfile.linux \
             --build-arg WAILS_VERSION="${WAILS_VERSION}" \
@@ -98,11 +99,8 @@ jobs:
             --build-arg GIT_COMMIT="${GITHUB_SHA}" \
             --build-arg BUILD_DATE="${BUILD_DATE}" \
             --target artifact \
-            -t adomnia-linux-artifact .
-          cid="$(docker create adomnia-linux-artifact)"
-          mkdir -p dist
-          docker cp "$cid:/." dist/
-          docker rm "$cid"
+            --output type=local,dest=dist \
+            .
           ls -lh dist
 
       - uses: actions/upload-artifact@v4
