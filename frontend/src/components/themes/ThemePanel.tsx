@@ -7,8 +7,8 @@ import { cn } from '@/lib/utils'
 import { useThemesStore, type Theme } from '@/stores/themes'
 import { useThemeContext } from './ThemeProvider'
 import { ThemeEditor } from './ThemeEditor'
+import { loadAvailableThemes } from '@/lib/themeCatalog'
 import {
-  getThemes,
   getBuiltinThemes,
   getExtendedBuiltinThemes,
   saveTheme,
@@ -56,7 +56,7 @@ export function ThemePanel() {
   const loadThemes = useCallback(async () => {
     setLoading(true)
     const [all, builtins, extended] = await Promise.all([
-      getThemes(),
+      loadAvailableThemes(),
       getBuiltinThemes(),
       getExtendedBuiltinThemes(),
     ])

@@ -17,6 +17,7 @@ import { clearBackendDevLogs, getBackendDevLogs } from '@/lib/devlogs-api'
 import { importCollectionsFromText } from '@/lib/collectionTransfer'
 import { migrateCollections } from '@/stores/collections'
 import { getUIFontStack } from '@/lib/uiFonts'
+import { loadDefaultPostmanDemo } from '@/lib/demoWorkspace'
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   constructor(props: { children: ReactNode }) {
@@ -161,6 +162,10 @@ function App() {
     if (collectionsLoadError || environmentsLoadError) return
     const collectionsEmpty = useCollectionsStore.getState().collections.length === 0
     const environmentsEmpty = useEnvironmentsStore.getState().environments.length === 0
+    if (collectionsEmpty && environmentsEmpty && loadDefaultPostmanDemo()) {
+      setActiveRail('collections')
+      return
+    }
     if (collectionsEmpty && environmentsEmpty && showWelcomeOnEmptyWorkspace) {
       setActiveRail('welcome')
     }

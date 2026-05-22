@@ -55,7 +55,7 @@ const DOCK_ITEMS: DockItemDef[] = [
   { id: 'testdata',    icon: FlaskConical,   label: 'Test Data',        color: '#c084fc' },
   { id: 'jsontools',   icon: Braces,         label: 'JSON Tools',       color: '#34d399' },
   { id: 'xmltools',    icon: FileCode,       label: 'XML Tools',        color: '#fbbf24' },
-  { id: 'utils',       icon: Wrench,         label: 'Utilities',        color: '#f87171' },
+  { id: 'utils',       icon: Wrench,         label: 'Power Tools',      color: '#f87171' },
   { id: 'nettools',    icon: Globe,          label: 'Net Tools',        color: '#22d3ee' },
   { id: 'har',         icon: BarChart2,      label: 'HAR Viewer',       color: '#f97316' },
   { id: 'observe',     icon: Activity,       label: 'Observability',    color: '#38bdf8' },

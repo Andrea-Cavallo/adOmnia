@@ -1,20 +1,22 @@
-name: CI
+name: Build Desktop Artifacts
 
 on:
   push:
     branches: [main, develop]
+    tags: ['v*']
   pull_request:
-    branches: [main]
+    branches: [main, develop]
   workflow_dispatch:
 
 env:
+  APP_NAME: adOmnia
   WAILS_VERSION: v2.12.0
+  NODE_VERSION: '20'
 
 jobs:
-  # ── Lint & type check ──────────────────────────────────────────────────────
-  test:
-    name: Lint & Type Check
-    runs-on: ubuntu-latest
+  checks:
+    name: Checks
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
 
@@ -23,49 +25,28 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      # webkit headers required for CGO even in go vet
-      - name: Install Linux deps
-        run: sudo apt-get update -q && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
-      - name: go vet
-        run: go vet ./...
-
-      - name: Check Go formatting
+      - name: Install Linux Wails dependencies
         run: |
-          unformatted=$(gofmt -l .)
-          if [ -n "$unformatted" ]; then
-            echo "Unformatted files:"
-            echo "$unformatted"
-            exit 1
-          fi
+          sudo apt-get update -q
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libayatana-appindicator3-dev
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Frontend type check
+      - name: Frontend build
         working-directory: frontend
-        run: npm ci && npx tsc --noEmit
+        run: npm ci && npm run build
 
-  # ── Native build per platform ──────────────────────────────────────────────
-  build:
-    name: Build (${{ matrix.name }})
-    needs: test
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: windows-latest
-            name: windows-amd64
-            artifact: build/bin/adomnia.exe
-          - os: macos-latest
-            name: macos-arm64
-            zip: adomnia-macos-arm64.zip
-          - os: ubuntu-latest
-            name: linux-amd64
-            artifact: build/bin/adomnia
+      - name: Go tests
+        run: go test ./...
 
+  windows:
+    name: Windows exe
+    needs: checks
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -76,63 +57,159 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
 
-      - name: Install Linux deps
-        if: runner.os == 'Linux'
-        run: sudo apt-get update -q && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+      - name: Build Windows exe
+        shell: pwsh
+        run: |
+          $version = if ("${{ github.ref_type }}" -eq "tag") { "${{ github.ref_name }}".TrimStart("v") } else { "${{ github.sha }}".Substring(0, 7) }
+          $date = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+          wails build -clean -platform windows/amd64 -ldflags "-s -w -H windowsgui -X main.Version=$version -X main.BuildDate=$date -X main.GitCommit=${{ github.sha }}"
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item build\bin\adOmnia.exe "dist\adOmnia-$version-windows-amd64.exe"
 
-      # wails build: installs frontend deps, builds frontend, embeds into binary
-      - name: Build
-        run: wails build -clean
-
-      # macOS produces a .app bundle (directory) — zip before upload
-      - name: Zip macOS app
-        if: runner.os == 'macOS'
-        run: zip -r ${{ matrix.zip }} build/bin/adomnia.app
-
-      - name: Upload (Windows / Linux)
-        if: runner.os != 'macOS'
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: adomnia-${{ matrix.name }}
-          path: ${{ matrix.artifact }}
+          name: adOmnia-windows-amd64
+          path: dist/*.exe
           retention-days: 30
 
-      - name: Upload (macOS)
-        if: runner.os == 'macOS'
-        uses: actions/upload-artifact@v4
-        with:
-          name: adomnia-${{ matrix.name }}
-          path: ${{ matrix.zip }}
-          retention-days: 30
-
-  # ── GitHub Release (tags only) ─────────────────────────────────────────────
-  release:
-    name: GitHub Release
-    needs: build
-    if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
+  linux:
+    name: Linux executable
+    needs: checks
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
 
+      - name: Build Linux artifact in Docker
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [ "${GITHUB_REF_TYPE}" != "tag" ]; then VERSION="${GITHUB_SHA::7}"; fi
+          BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          docker build \
+            -f Dockerfile.linux \
+            --build-arg WAILS_VERSION="${WAILS_VERSION}" \
+            --build-arg VERSION="${VERSION}" \
+            --build-arg GIT_COMMIT="${GITHUB_SHA}" \
+            --build-arg BUILD_DATE="${BUILD_DATE}" \
+            --target artifact \
+            -t adomnia-linux-artifact .
+          cid="$(docker create adomnia-linux-artifact)"
+          mkdir -p dist
+          docker cp "$cid:/." dist/
+          docker rm "$cid"
+          ls -lh dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: adOmnia-linux-amd64
+          path: |
+            dist/*.tar.gz
+            dist/adOmnia-*-linux-amd64
+          retention-days: 30
+
+  macos:
+    name: macOS dmg
+    needs: checks
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install packaging tools
+        run: |
+          brew list create-dmg >/dev/null 2>&1 || brew install create-dmg
+          go install github.com/wailsapp/wails/v2/cmd/wails@${WAILS_VERSION}
+
+      - name: Build Apple Silicon app
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [ "${GITHUB_REF_TYPE}" != "tag" ]; then VERSION="${GITHUB_SHA::7}"; fi
+          BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          wails build -clean -platform darwin/arm64 -ldflags "-s -w -X main.Version=${VERSION} -X main.BuildDate=${BUILD_DATE} -X main.GitCommit=${GITHUB_SHA}"
+          cp build/bin/adOmnia.app/Contents/MacOS/adOmnia /tmp/adOmnia-arm64
+
+      - name: Build Intel app
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [ "${GITHUB_REF_TYPE}" != "tag" ]; then VERSION="${GITHUB_SHA::7}"; fi
+          BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          wails build -clean -platform darwin/amd64 -ldflags "-s -w -X main.Version=${VERSION} -X main.BuildDate=${BUILD_DATE} -X main.GitCommit=${GITHUB_SHA}"
+          cp build/bin/adOmnia.app/Contents/MacOS/adOmnia /tmp/adOmnia-amd64
+
+      - name: Create universal dmg
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [ "${GITHUB_REF_TYPE}" != "tag" ]; then VERSION="${GITHUB_SHA::7}"; fi
+          lipo -create /tmp/adOmnia-arm64 /tmp/adOmnia-amd64 -output build/bin/adOmnia.app/Contents/MacOS/adOmnia
+          chmod +x build/bin/adOmnia.app/Contents/MacOS/adOmnia
+          lipo -info build/bin/adOmnia.app/Contents/MacOS/adOmnia
+          mkdir -p dist
+          create-dmg \
+            --volname "adOmnia ${VERSION}" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --icon "adOmnia.app" 150 190 \
+            --hide-extension "adOmnia.app" \
+            --app-drop-link 450 190 \
+            "dist/adOmnia-${VERSION}-macos-universal.dmg" \
+            "build/bin/" \
+          || hdiutil create \
+            -volname "adOmnia ${VERSION}" \
+            -srcfolder "build/bin/adOmnia.app" \
+            -ov -format UDZO \
+            "dist/adOmnia-${VERSION}-macos-universal.dmg"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: adOmnia-macos-universal
+          path: dist/*.dmg
+          retention-days: 30
+
+  bundle:
+    name: Bundle artifacts
+    needs: [windows, linux, macos]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
       - uses: actions/download-artifact@v4
         with:
           path: dist
           merge-multiple: true
 
       - name: Generate checksums
-        run: cd dist && sha256sum * > SHA256SUMS.txt && ls -lh
+        run: |
+          cd dist
+          sha256sum * > SHA256SUMS.txt
+          ls -lh
 
-      - uses: softprops/action-gh-release@v2
+      - uses: actions/upload-artifact@v4
+        with:
+          name: adOmnia-desktop-artifacts
+          path: dist/*
+          retention-days: 30
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
         with:
           files: dist/*
           generate_release_notes: true
-          prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-beta') || contains(github.ref, '-alpha') }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          prerelease: ${{ contains(github.ref_name, '-rc') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-alpha') }}

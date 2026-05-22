@@ -12,7 +12,7 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 | A | [API Core](#a-api-core) | HTTP Client, Autenticazione, Assertions, Runner, Flows, Matrix, Test Data | ~74 |
 | B | [Protocolli & Streaming](#b-protocolli--streaming) | gRPC, SOAP, WebSocket, SSE, Broker Studio | ~65 |
 | C | [Infrastruttura & Simulazione](#c-infrastruttura--simulazione) | Mock Server, Proxy/Interceptor, Docker Lab, Load Testing | ~44 |
-| D | [Debugging & Analisi](#d-debugging--analisi) | Browser Debug (+ Discovery), HAR Viewer, Network Tools, JSON Tools, XML Tools, Dev Utilities, Dev Logs, Observability, Secret Scanner | ~90 |
+| D | [Debugging & Analisi](#d-debugging--analisi) | Browser Debug (+ Discovery), HAR Viewer, Network Tools, JSON Tools, XML Tools, Power Tools, Dev Logs, Observability, Secret Scanner | ~90 |
 | E | [Dati Locali](#e-dati-locali) | Database Studio, Storage Inspector, Workspace, Vault, Markdown | ~44 |
 | F | [Personalizzazione & Estendibilità](#f-personalizzazione--estendibilità) | Temi, Plugin WASM, Template, Python Plugin SDK | ~51 |
 | G | [Piattaforma](#g-piattaforma) | Impostazioni, Infrastruttura, UI Framework | ~76 |
@@ -469,7 +469,7 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 
 ---
 
-### D6. Dev Utilities (UtilsPanel)
+### D6. Power Tools (UtilsPanel)
 
 | # | Funzionalità | Descrizione |
 |---|-------------|-------------|

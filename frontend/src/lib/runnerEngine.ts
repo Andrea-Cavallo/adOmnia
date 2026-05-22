@@ -1,5 +1,5 @@
 import type { RequestItem, ResponseData, AssertionResult, ContractValidationResult } from '@/lib/types'
-import { sendRequest } from '@/lib/sendRequest'
+import { executeRequest } from '@/lib/executeRequest'
 import { evaluateAssertions } from '@/lib/assertionEngine'
 import { validateContract } from '@/lib/contractValidator'
 
@@ -28,6 +28,7 @@ export interface RunnerRequestResult {
   error?: string
   assertionResults?: AssertionResult[]
   contractResult?: ContractValidationResult
+  scriptRuns?: import('@/lib/types').ScriptRunResult[]
 }
 
 export interface RunnerSummary {
@@ -59,6 +60,7 @@ export async function* runCollection(
   let step = 0
   const allResults: RunnerRequestResult[] = []
   let aborted = false
+  const runnerVars = { ...vars }
 
   const dataset = config.dataset && config.dataset.length > 0
     ? config.dataset
@@ -73,10 +75,11 @@ export async function* runCollection(
       for (const request of requests) {
         if (aborted) break
 
-        const mergedVars = { ...vars, ...(dataset[di] ?? {}) }
+        const mergedVars = { ...runnerVars, ...(dataset[di] ?? {}) }
 
         let lastError = ''
         let result: ResponseData | null = null
+        let scriptRuns: import('@/lib/types').ScriptRunResult[] = []
         let success = false
 
         for (let attempt = 0; attempt <= config.retryCount && !success; attempt++) {
@@ -85,7 +88,13 @@ export async function* runCollection(
               await sleep(config.delayMs)
             }
 
-            result = await sendRequest(request, mergedVars)
+            const execution = await executeRequest(request, mergedVars)
+            result = execution.response
+            scriptRuns = execution.scriptRuns
+            for (const [key, value] of Object.entries(execution.mutations)) {
+              if (value === null) delete runnerVars[key]
+              else runnerVars[key] = value
+            }
 
             if (result.error) {
               lastError = result.error.message || result.error.code
@@ -102,7 +111,8 @@ export async function* runCollection(
         const assertions = result ? evaluateAssertions(request.assertions, result) : undefined
         const contract = (result && oaSpec && request._openapiPath) ? validateContract(oaSpec, request._openapiPath, request.method, result) : undefined
         const allAssertionsPassed = assertions ? assertions.every((a) => a.passed) : true
-        const itemPassed = result ? !result.error && allAssertionsPassed : false
+        const scriptsPassed = scriptRuns.every((run) => run.passed)
+        const itemPassed = result ? !result.error && allAssertionsPassed && scriptsPassed : false
 
         const itemResult: RunnerRequestResult = result
           ? {
@@ -119,9 +129,10 @@ export async function* runCollection(
               body: result.body,
               contentType: result.contentType,
               headers: result.headers,
-              error: result.error?.message || (allAssertionsPassed ? undefined : 'Assertion failures'),
+              error: result.error?.message || (!allAssertionsPassed ? 'Assertion failures' : !scriptsPassed ? 'Script failures' : undefined),
               assertionResults: assertions,
               contractResult: contract,
+              scriptRuns,
             }
           : {
               requestName: request.name,

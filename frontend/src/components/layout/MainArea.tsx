@@ -12,7 +12,8 @@ import { TabBar } from '@/components/layout/TabBar'
 import { EnvBar } from '@/components/environment/EnvBar'
 import { WelcomePanel } from '@/components/layout/WelcomePanel'
 import { LoadTestDrawer } from '@/components/loadtest/LoadTestDrawer'
-import { sendRequest } from '@/lib/sendRequest'
+import { executeRequest } from '@/lib/executeRequest'
+import { uid, type EnvVariable } from '@/lib/types'
 import { useT } from '@/lib/i18n'
 
 // ─── Lazy-loaded panels (loaded on first navigation) ──────────────────────────
@@ -140,7 +141,12 @@ function RequestWorkspace() {
     if (!activeTab) return
     setLoading(activeTab.id, true)
     const vars = getResolvedVars()
-    const response = await sendRequest(activeTab.request, vars)
+    const result = await executeRequest(activeTab.request, vars)
+    if (activeEnvId && Object.keys(result.mutations).length > 0) {
+      const env = environments.find((e) => e.id === activeEnvId)
+      if (env) updateVariables(activeEnvId, applyEnvironmentMutations(env.variables, result.mutations))
+    }
+    const response = result.response
     setResponse(activeTab.id, response)
   }
 
@@ -310,6 +316,27 @@ function RequestWorkspace() {
   )
 }
 
+function applyEnvironmentMutations(
+  variables: EnvVariable[],
+  mutations: Record<string, string | null>,
+): EnvVariable[] {
+  let next = [...variables]
+  for (const [key, value] of Object.entries(mutations)) {
+    if (!key) continue
+    if (value === null) {
+      next = next.filter((v) => v.key !== key)
+      continue
+    }
+    const idx = next.findIndex((v) => v.key === key)
+    if (idx >= 0) {
+      next[idx] = { ...next[idx], value, enabled: true }
+    } else {
+      next.push({ id: uid(), key, value, enabled: true, type: 'text' })
+    }
+  }
+  return next
+}
+
 type PanelDef = {
   component: React.ReactNode
   titleKey?: string
@@ -328,7 +355,7 @@ function panelFor(activeRail: RailItem): PanelDef {
     case 'grpc':        return { component: <GrpcPanel />,            titleKey: 'grpc',      overflow: true }
     case 'nettools':    return { component: <NetToolsPanel />,        titleKey: 'nettools',  overflow: true }
     case 'browser':     return { component: <BrowserDebugPanel />,    titleKey: 'browser' }
-    case 'utils':       return { component: <UtilsPanel />,           titleKey: 'Encoders & Tools', overflow: true }
+    case 'utils':       return { component: <UtilsPanel />,           titleKey: 'Power Tools', overflow: true }
     case 'flows':     return { component: <FlowsPanel />,              titleKey: 'flows',     overflow: true }
     case 'runner':    return { component: <RunnerPanel />,            titleKey: 'runner',    overflow: true }
     case 'matrix':    return { component: <MatrixPanel />,            titleKey: 'Env Matrix', overflow: true }

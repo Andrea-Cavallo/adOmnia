@@ -401,6 +401,320 @@ const FORGE_CORE_WORKSPACE: WorkspaceV1 = {
   activeEnvId: 'forgecore-local',
 }
 
+function jsonBody(id: string, name: string, data: unknown) {
+  return {
+    id,
+    name,
+    type: 'raw' as const,
+    raw: JSON.stringify(data, null, 2),
+    lang: 'json' as const,
+    form: [],
+  }
+}
+
+function lineItems(count: number, prefix: string) {
+  return Array.from({ length: count }, (_, idx) => ({
+    sku: `${prefix}-${String(idx + 1).padStart(4, '0')}`,
+    name: `Integration test item ${idx + 1}`,
+    quantity: (idx % 5) + 1,
+    unitPrice: 1299 + idx * 37,
+    taxCode: idx % 3 === 0 ? 'VAT22' : 'VAT10',
+    costCenter: `CC-${100 + (idx % 8)}`,
+    metadata: {
+      source: 'postman-demo',
+      batchIndex: idx,
+      notes: 'Large body sample for editor stress and scroll testing',
+    },
+  }))
+}
+
+function auditTrail(count: number, actor = '{{operator_id}}') {
+  return Array.from({ length: count }, (_, idx) => ({
+    at: `2026-05-${String((idx % 22) + 1).padStart(2, '0')}T${String(idx % 24).padStart(2, '0')}:15:00Z`,
+    actor,
+    action: idx % 2 === 0 ? 'validated' : 'enriched',
+    field: ['status', 'riskScore', 'shippingAddress', 'paymentMethod'][idx % 4],
+    previous: idx % 2 === 0 ? 'pending' : 'draft',
+    next: idx % 2 === 0 ? 'approved' : 'reviewed',
+    correlationId: `corr-demo-${idx + 1}`,
+  }))
+}
+
+const POSTMAN_DEMO_COLLECTION: Collection = {
+  id: 'col-adomnia-postman-demo',
+  name: 'adOmnia Postman Demo Collection',
+  color: '#34d399',
+  children: [
+    {
+      id: 'demo-folder-commerce',
+      name: 'Commerce Platform',
+      type: 'folder',
+      children: [
+        {
+          id: 'demo-req-payment-batch',
+          name: 'POST create payment batch',
+          type: 'request',
+          method: 'POST',
+          url: '{{base_url}}/v1/tenants/{{tenant_id}}/payment-batches',
+          params: [
+            { id: 'p1', key: 'dry_run', value: '{{dry_run}}', enabled: true },
+            { id: 'p2', key: 'include_validation_report', value: 'true', enabled: true },
+          ],
+          headers: [
+            { id: 'h1', key: 'Content-Type', value: 'application/json', enabled: true },
+            { id: 'h2', key: 'Authorization', value: 'Bearer {{access_token}}', enabled: true },
+            { id: 'h3', key: 'Idempotency-Key', value: '{{idempotency_key}}', enabled: true },
+            { id: 'h4', key: 'X-Request-ID', value: '{{request_id}}', enabled: true },
+          ],
+          bodies: [
+            jsonBody('b1', 'Card settlement - 40 lines', {
+              batchReference: '{{batch_reference}}',
+              currency: 'EUR',
+              settlementDate: '2026-05-22',
+              merchant: {
+                id: '{{merchant_id}}',
+                legalName: 'Demo Retail Italia S.p.A.',
+                mcc: '5734',
+              },
+              payments: lineItems(40, 'PAY').map((item, idx) => ({
+                paymentId: `pay_demo_${idx + 1}`,
+                customerId: `cus_demo_${String(idx + 1).padStart(3, '0')}`,
+                amount: item.unitPrice * item.quantity,
+                currency: 'EUR',
+                capture: true,
+                statementDescriptor: `ADOMNIA DEMO ${idx + 1}`,
+                lineItem: item,
+              })),
+              audit: auditTrail(18),
+            }),
+            jsonBody('b2', 'SEPA transfer batch', {
+              batchReference: '{{batch_reference}}-sepa',
+              scheme: 'SEPA_CREDIT_TRANSFER',
+              debtorAccount: '{{iban_primary}}',
+              requestedExecutionDate: '2026-05-23',
+              transfers: lineItems(34, 'INV').map((item, idx) => ({
+                creditorName: `Supplier ${idx + 1} S.r.l.`,
+                creditorIban: `IT60X0542811101000000${String(650000 + idx).padStart(6, '0')}`,
+                remittanceInformation: `Invoice ${item.sku}`,
+                amount: item.unitPrice * item.quantity,
+                endToEndId: `E2E-${item.sku}`,
+              })),
+              audit: auditTrail(14),
+            }),
+            jsonBody('b3', 'Marketplace payout preview', {
+              batchReference: '{{batch_reference}}-marketplace',
+              marketplace: {
+                id: '{{merchant_id}}',
+                country: 'IT',
+                payoutModel: 'split-settlement',
+              },
+              sellers: lineItems(38, 'SELLER').map((item, idx) => ({
+                sellerId: `seller_${String(idx + 1).padStart(3, '0')}`,
+                grossAmount: item.unitPrice * item.quantity,
+                platformFee: Math.round(item.unitPrice * item.quantity * 0.085),
+                reservePercent: idx % 4 === 0 ? 12 : 5,
+                descriptor: item.name,
+              })),
+              audit: auditTrail(16),
+            }),
+          ],
+          activeBodyIdx: 0,
+          auth: { type: 'bearer', token: '{{access_token}}', username: '', password: '' },
+          timeout: 30000,
+          followRedirects: true,
+        },
+        {
+          id: 'demo-req-risk-profile',
+          name: 'PUT customer risk profile',
+          type: 'request',
+          method: 'PUT',
+          url: '{{base_url}}/v1/customers/{{customer_id}}/risk-profile',
+          params: [],
+          headers: [
+            { id: 'h5', key: 'Content-Type', value: 'application/json', enabled: true },
+            { id: 'h6', key: 'Authorization', value: 'Bearer {{access_token}}', enabled: true },
+            { id: 'h7', key: 'X-Tenant-ID', value: '{{tenant_id}}', enabled: true },
+          ],
+          bodies: [
+            jsonBody('b4', 'KYC refresh with documents', {
+              customerId: '{{customer_id}}',
+              profileVersion: 7,
+              riskTier: 'medium',
+              kyc: {
+                legalName: 'Mario Rossi',
+                fiscalCode: 'RSSMRA80A01H501U',
+                documentChecks: lineItems(24, 'DOC').map((item, idx) => ({
+                  documentId: item.sku,
+                  type: idx % 2 === 0 ? 'identity_card' : 'proof_of_address',
+                  status: idx % 5 === 0 ? 'manual_review' : 'verified',
+                  extractedFields: item,
+                })),
+              },
+              audit: auditTrail(26),
+            }),
+            jsonBody('b5', 'High-value merchant review', {
+              customerId: '{{customer_id}}',
+              profileVersion: 8,
+              riskTier: 'high',
+              merchantActivity: {
+                monthlyVolume: 24500000,
+                averageTicket: 18900,
+                chargebackRatio: 0.0068,
+                countries: ['IT', 'DE', 'FR', 'ES', 'NL'],
+                counterparties: lineItems(36, 'CP'),
+              },
+              audit: auditTrail(22),
+            }),
+            jsonBody('b6', 'Low-risk consumer update', {
+              customerId: '{{customer_id}}',
+              profileVersion: 9,
+              riskTier: 'low',
+              preferences: {
+                channels: ['email', 'push', 'sms'],
+                consents: lineItems(30, 'CONSENT').map((item, idx) => ({
+                  code: item.sku,
+                  granted: idx % 4 !== 0,
+                  evidence: item.metadata,
+                })),
+              },
+              audit: auditTrail(20),
+            }),
+          ],
+          activeBodyIdx: 0,
+          auth: { type: 'bearer', token: '{{access_token}}', username: '', password: '' },
+          timeout: 30000,
+          followRedirects: true,
+        },
+        {
+          id: 'demo-req-event-ingest',
+          name: 'POST bulk event ingest',
+          type: 'request',
+          method: 'POST',
+          url: '{{base_url}}/v1/events/bulk',
+          params: [
+            { id: 'p3', key: 'partition_key', value: '{{tenant_id}}', enabled: true },
+          ],
+          headers: [
+            { id: 'h8', key: 'Content-Type', value: 'application/json', enabled: true },
+            { id: 'h9', key: 'Authorization', value: 'Bearer {{access_token}}', enabled: true },
+            { id: 'h10', key: 'X-Source-System', value: 'adomnia-demo', enabled: true },
+          ],
+          bodies: [
+            jsonBody('b7', 'Order lifecycle events', {
+              stream: 'commerce.order.lifecycle',
+              events: lineItems(45, 'ORD').map((item, idx) => ({
+                id: `evt_order_${idx + 1}`,
+                type: ['order.created', 'order.paid', 'order.shipped'][idx % 3],
+                aggregateId: item.sku,
+                occurredAt: `2026-05-22T10:${String(idx % 60).padStart(2, '0')}:00Z`,
+                payload: item,
+              })),
+            }),
+            jsonBody('b8', 'Security audit events', {
+              stream: 'security.audit',
+              events: auditTrail(52).map((entry, idx) => ({
+                id: `evt_security_${idx + 1}`,
+                severity: idx % 9 === 0 ? 'warning' : 'info',
+                category: ['auth', 'vault', 'proxy', 'workspace'][idx % 4],
+                payload: entry,
+              })),
+            }),
+            jsonBody('b9', 'Webhook replay events', {
+              stream: 'webhook.replay',
+              replayId: '{{request_id}}',
+              events: lineItems(42, 'WEBHOOK').map((item, idx) => ({
+                id: `evt_webhook_${idx + 1}`,
+                destination: '{{webhook_url}}',
+                signatureHeader: 'X-Adomnia-Signature',
+                payload: {
+                  item,
+                  retry: idx % 3,
+                  deliveryWindowSeconds: 30,
+                },
+              })),
+            }),
+          ],
+          activeBodyIdx: 0,
+          auth: { type: 'bearer', token: '{{access_token}}', username: '', password: '' },
+          timeout: 45000,
+          followRedirects: true,
+        },
+        {
+          id: 'demo-req-search',
+          name: 'POST advanced product search',
+          type: 'request',
+          method: 'POST',
+          url: '{{base_url}}/v1/search/products',
+          params: [
+            { id: 'p4', key: 'explain', value: 'true', enabled: true },
+          ],
+          headers: [
+            { id: 'h11', key: 'Content-Type', value: 'application/json', enabled: true },
+            { id: 'h12', key: 'Authorization', value: 'Bearer {{access_token}}', enabled: true },
+          ],
+          bodies: [
+            jsonBody('b10', 'Faceted catalog search', {
+              query: 'enterprise laptop docking station',
+              locale: 'it-IT',
+              pagination: { page: 1, size: 50 },
+              filters: {
+                categories: ['hardware', 'workstations', 'accessories'],
+                price: { min: 5000, max: 250000, currency: 'EUR' },
+                attributes: lineItems(32, 'ATTR'),
+              },
+              ranking: { strategy: 'hybrid', boostInStock: true, boostContractItems: true },
+            }),
+            jsonBody('b11', 'Procurement compliance search', {
+              query: 'firewall appliance high availability',
+              locale: 'en-US',
+              buyer: { id: '{{operator_id}}', company: 'Demo Enterprise Group' },
+              complianceRules: lineItems(36, 'RULE').map((item, idx) => ({
+                ruleId: item.sku,
+                required: idx % 2 === 0,
+                evidence: item.metadata,
+              })),
+            }),
+            jsonBody('b12', 'Legacy ERP enrichment search', {
+              query: 'spare parts',
+              locale: 'it-IT',
+              erpContext: {
+                system: 'SAP ECC demo',
+                plant: 'IT01',
+                purchasingOrg: 'P100',
+                contracts: lineItems(40, 'CONTRACT'),
+              },
+              include: ['availability', 'substitutions', 'supplier_scores', 'historic_prices'],
+            }),
+          ],
+          activeBodyIdx: 0,
+          auth: { type: 'bearer', token: '{{access_token}}', username: '', password: '' },
+          timeout: 30000,
+          followRedirects: true,
+        },
+      ],
+    },
+  ],
+}
+
+const POSTMAN_DEMO_ENVIRONMENT: Environment = {
+  id: 'env-adomnia-postman-demo',
+  name: 'adOmnia Demo Environment',
+  variables: [
+    { id: 'dv1', key: 'base_url', value: 'http://localhost:8080', enabled: true },
+    { id: 'dv2', key: 'tenant_id', value: 'tenant_demo_italia', enabled: true },
+    { id: 'dv3', key: 'access_token', value: 'demo-token-replace-me', enabled: true, type: 'secret' },
+    { id: 'dv4', key: 'request_id', value: 'req-demo-2026-05-22', enabled: true },
+    { id: 'dv5', key: 'idempotency_key', value: 'idem-demo-001', enabled: true },
+    { id: 'dv6', key: 'batch_reference', value: 'batch-2026-05-demo', enabled: true },
+    { id: 'dv7', key: 'merchant_id', value: 'mrc_demo_001', enabled: true },
+    { id: 'dv8', key: 'customer_id', value: 'cus_demo_001', enabled: true },
+    { id: 'dv9', key: 'operator_id', value: 'ops_adomnia_demo', enabled: true },
+    { id: 'dv10', key: 'dry_run', value: 'true', enabled: true },
+    { id: 'dv11', key: 'iban_primary', value: 'IT60X0542811101000000123456', enabled: true },
+    { id: 'dv12', key: 'webhook_url', value: 'https://webhooks.example.test/adomnia', enabled: true },
+  ],
+}
+
 export function getForgeCoreCollections(): Collection[] {
   return FORGE_CORE_WORKSPACE.collections as Collection[]
 }
@@ -415,6 +729,36 @@ export function getForgeCoreEnvironments(): Environment[] {
 
 export function getForgeCoreActiveEnvId(): string {
   return FORGE_CORE_WORKSPACE.activeEnvId
+}
+
+export function getDefaultPostmanDemoCollection(): Collection {
+  return JSON.parse(JSON.stringify(POSTMAN_DEMO_COLLECTION)) as Collection
+}
+
+export function getDefaultPostmanDemoEnvironment(): Environment {
+  return JSON.parse(JSON.stringify(POSTMAN_DEMO_ENVIRONMENT)) as Environment
+}
+
+export function loadDefaultPostmanDemo(): boolean {
+  const colStore = useCollectionsStore.getState()
+  const envStore = useEnvironmentsStore.getState()
+  if (!colStore.loaded || !envStore.loaded) return false
+  if (colStore.collections.length > 0 || envStore.environments.length > 0) return false
+
+  useCollectionsStore.setState({
+    collections: [getDefaultPostmanDemoCollection()],
+    loaded: true,
+    loadError: false,
+  })
+  useEnvironmentsStore.setState({
+    environments: [getDefaultPostmanDemoEnvironment()],
+    activeEnvId: POSTMAN_DEMO_ENVIRONMENT.id,
+    loaded: true,
+    loadError: false,
+  })
+  void useCollectionsStore.getState().save()
+  void useEnvironmentsStore.getState().save()
+  return true
 }
 
 export function loadForgeCoreDemo() {

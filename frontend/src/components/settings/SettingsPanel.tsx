@@ -1,10 +1,13 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import type { AppSettings } from '@/stores/settings'
 import { useSettingsStore } from '@/stores/settings'
+import { useThemesStore } from '@/stores/themes'
 import { useT } from '@/lib/i18n'
 import { UI_FONTS, type UIFontId } from '@/lib/uiFonts'
 import { cn } from '@/lib/utils'
 import { useAppIcon } from '@/lib/brandAssets'
+import { useThemeContext } from '@/components/themes/ThemeProvider'
+import { inferThemeMode, loadAvailableThemes } from '@/lib/themeCatalog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { getRuntimeInfo, type RuntimeInfo } from '@/lib/python-bridge-api'
 import {
@@ -118,10 +121,33 @@ export function SettingsPanel() {
   const updateMock = useSettingsStore((s) => s.updateMock)
   const updateVault = useSettingsStore((s) => s.updateVault)
   const updateEditor = useSettingsStore((s) => s.updateEditor)
+  const { themes, activeThemeId, setThemes, setLoading } = useThemesStore()
+  const { applyTheme } = useThemeContext()
   const t = useT()
   const appIcon = useAppIcon()
 
   const s = t.settings
+  const selectedThemeId = settings.appearance.themeId
+    || activeThemeId
+    || (settings.appearance.theme === 'light' ? 'builtin-light' : 'builtin-dark')
+  const themeOptions = useMemo(() => themes.map((theme) => {
+    const source = theme.meta?.source === 'data/themes'
+      ? 'data/themes'
+      : theme.meta?.builtin === 'true'
+        ? 'built-in'
+        : 'skin'
+    return { value: theme.id, label: `${theme.name} - ${source}` }
+  }), [themes])
+
+  const handleThemeChange = useCallback((themeId: string) => {
+    const theme = themes.find((candidate) => candidate.id === themeId)
+    if (!theme) {
+      updateAppearance({ themeId })
+      return
+    }
+    applyTheme(theme)
+    updateAppearance({ themeId: theme.id, theme: inferThemeMode(theme) })
+  }, [applyTheme, themes, updateAppearance])
 
   // Confirm dialogs for danger actions
   const [confirmClearHistory, setConfirmClearHistory] = useState(false)
@@ -156,6 +182,15 @@ export function SettingsPanel() {
       loadPythonInfo()
     }
   }, [section, pythonInfo, loadPythonInfo])
+
+  useEffect(() => {
+    if (section !== 'appearance') return
+    if (themes.length > 0) return
+    setLoading(true)
+    loadAvailableThemes()
+      .then(setThemes)
+      .finally(() => setLoading(false))
+  }, [section, themes.length, setThemes, setLoading])
 
   // Sync vault timeout to backend on mount
   useEffect(() => {
@@ -341,12 +376,11 @@ export function SettingsPanel() {
               <Select
                 label={s.appearance.theme}
                 desc={s.appearance.themeDesc}
-                value={settings.appearance.theme}
-                options={[
-                  { value: 'dark', label: s.appearance.themeOptions.dark },
-                  { value: 'light', label: s.appearance.themeOptions.light },
-                ]}
-                onChange={(v) => updateAppearance({ theme: v as 'dark' | 'light' })}
+                value={selectedThemeId}
+                options={themeOptions.length
+                  ? themeOptions
+                  : [{ value: selectedThemeId, label: s.appearance.themeOptions.loading }]}
+                onChange={handleThemeChange}
               />
               <Select
                 label={s.appearance.density}

@@ -279,6 +279,88 @@ func (tm *ThemeManager) ScanSkinsDirectory() ([]Theme, error) {
 	return themes, nil
 }
 
+// ScanProjectThemesDirectory scans bundled repository themes under data/themes.
+func (tm *ThemeManager) ScanProjectThemesDirectory() ([]Theme, error) {
+	dirs := projectThemeDirectories()
+	seenDirs := make(map[string]bool)
+	themes := make([]Theme, 0)
+
+	for _, dir := range dirs {
+		cleanDir := filepath.Clean(dir)
+		if seenDirs[cleanDir] {
+			continue
+		}
+		seenDirs[cleanDir] = true
+
+		dirThemes, err := scanThemeDirectory(cleanDir)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			log.Printf("[themes] failed to scan project themes directory %s: %v", cleanDir, err)
+			continue
+		}
+		themes = append(themes, dirThemes...)
+	}
+
+	log.Printf("[themes] scanned project theme directories: found %d themes", len(themes))
+	return themes, nil
+}
+
+func projectThemeDirectories() []string {
+	dirs := []string{filepath.Join("data", "themes")}
+
+	if cwd, err := os.Getwd(); err == nil {
+		dirs = append(dirs, filepath.Join(cwd, "data", "themes"))
+	}
+
+	if exe, err := os.Executable(); err == nil {
+		dir := filepath.Dir(exe)
+		for i := 0; i < 4; i++ {
+			dirs = append(dirs, filepath.Join(dir, "data", "themes"))
+			dir = filepath.Dir(dir)
+		}
+	}
+
+	return dirs
+}
+
+func scanThemeDirectory(dir string) ([]Theme, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	themes := make([]Theme, 0)
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(strings.ToLower(entry.Name()), ".json") {
+			continue
+		}
+
+		data, err := os.ReadFile(filepath.Join(dir, entry.Name()))
+		if err != nil {
+			log.Printf("[themes] failed to read project theme file %s: %v", entry.Name(), err)
+			continue
+		}
+
+		var theme Theme
+		if err := json.Unmarshal(data, &theme); err != nil {
+			log.Printf("[themes] failed to parse project theme file %s: %v", entry.Name(), err)
+			continue
+		}
+		if theme.ID == "" {
+			theme.ID = strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name()))
+		}
+		if theme.Meta == nil {
+			theme.Meta = map[string]string{}
+		}
+		theme.Meta["source"] = "data/themes"
+		themes = append(themes, theme)
+	}
+
+	return themes, nil
+}
+
 // SaveSkinToDirectory saves a theme as a JSON file in the skins directory.
 func (tm *ThemeManager) SaveSkinToDirectory(theme Theme) (string, error) {
 	skinsDir := tm.GetSkinsDirectory()

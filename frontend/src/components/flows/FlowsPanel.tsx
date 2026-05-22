@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Download, FileJson, FileText, FolderOpen, Play, Plus, Save, Trash2 } from 'lucide-react'
-import { sendRequest } from '@/lib/sendRequest'
+import { executeRequest } from '@/lib/executeRequest'
 import { blankRequest, type AssertionResult, type HttpMethod, type RequestItem, uid } from '@/lib/types'
 import { evaluateAssertions } from '@/lib/assertionEngine'
 import { useEnvironmentsStore } from '@/stores/environments'
@@ -298,17 +298,19 @@ export function FlowsPanel() {
         continue
       }
 
-      const response = await sendRequest(step.request, nextVars)
+      const execution = await executeRequest(step.request, nextVars)
+      const response = execution.response
+      nextVars = execution.vars
       const durationMs = performance.now() - start
       const assertions = evaluateAssertions(step.request.assertions, response)
       const failedAssertions = assertions.filter((assertion) => !assertion.passed)
+      const failedScripts = execution.scriptRuns.filter((run) => !run.passed)
 
-      if (response.error || response.status >= 400 || failedAssertions.length > 0) {
-        const error = response.error
-          ? response.error.message
-          : failedAssertions.length > 0
-            ? `${failedAssertions.length} assertion failed`
-            : `HTTP ${response.status}`
+      if (response.error || response.status >= 400 || failedAssertions.length > 0 || failedScripts.length > 0) {
+        let error = `HTTP ${response.status}`
+        if (response.error) error = response.error.message
+        else if (failedAssertions.length > 0) error = `${failedAssertions.length} assertion failed`
+        else if (failedScripts.length > 0) error = failedScripts[0]?.error || `${failedScripts.length} script failed`
         const entry: FlowRunEntry = {
           stepId: step.id,
           stepName: step.name,
