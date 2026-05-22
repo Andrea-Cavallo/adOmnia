@@ -68,7 +68,6 @@ function App() {
   const loadTabs = useTabsStore((s) => s.load)
   const newTab = useTabsStore((s) => s.newTab)
   const appearance = useSettingsStore((s) => s.settings.appearance)
-  const settingsLoaded = useSettingsStore((s) => s.loaded)
   const defaultStartupRail = useSettingsStore((s) => s.settings.general.defaultStartupRail)
   const showWelcomeOnEmptyWorkspace = useSettingsStore((s) => s.settings.general.showWelcomeOnEmptyWorkspace)
   const devLogVisible = useAppStore((s) => s.devToolsVisible)

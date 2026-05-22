@@ -421,15 +421,6 @@ export function SettingsPanel() {
                   updateAppearance({ windowChrome: v as AppSettings['appearance']['windowChrome'] })
                 }
               />
-              <Select
-                label={s.appearance.windowChrome}
-                desc={s.appearance.windowChromeDesc}
-                value={windowChromeValue}
-                options={windowChromeOptions}
-                onChange={(v) =>
-                  updateAppearance({ windowChrome: v as AppSettings['appearance']['windowChrome'] })
-                }
-              />
               {startupWindowChrome !== null && startupWindowChrome !== windowChromeValue && (
                 <div className="mx-1 mb-1 rounded border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[10px] text-amber-200">
                   {s.appearance.windowChromeRestart}
