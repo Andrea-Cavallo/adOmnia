@@ -8,6 +8,14 @@
   "frontend:dev:serverUrl": "auto",
   "frontend:dev:vite": true,
   "author": {
-    "name": "adOmnia"
+    "name": "Andrea Cavallo",
+    "email": "a.cavallo@outlook.it"
+  },
+  "info": {
+    "productVersion": "1.0.0",
+    "copyright": "© 2026 Andrea Cavallo. All rights reserved.",
+    "comments": "Local-first API developer toolbox — REST, gRPC, WebSocket, Kafka, mock server, browser debugging and more.",
+    "productName": "adOmnia",
+    "companyName": "Andrea Cavallo"
   }
 }

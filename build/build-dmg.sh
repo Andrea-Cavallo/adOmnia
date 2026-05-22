@@ -104,7 +104,14 @@ cat > "$APP_BUNDLE/Contents/Info.plist" << 'PLISTEOF'
     <key>LSMinimumSystemVersion</key>
     <string>10.15</string>
     <key>NSHumanReadableCopyright</key>
-    <string>Sviluppato da Andrea Cavallo</string>
+    <string>© 2026 Andrea Cavallo. All rights reserved.</string>
+    <key>CFBundleIconFile</key>
+    <string>icon</string>
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsLocalNetworking</key>
+        <true/>
+    </dict>
 </dict>
 </plist>
 PLISTEOF
@@ -168,10 +175,35 @@ fi
 # Cleanup
 rm -rf "$DMG_DIR"
 
-# Check code signing (optional)
-echo ""
-echo -e "${CYAN}💡  Code signing (optional):${NC}"
-echo -e "   codesign --sign \"Developer ID Application: Andrea Cavallo\" \"$DMG_PATH\""
-echo ""
+# ── Code signing ───────────────────────────────────────────────────────────────
+# Set APPLE_SIGN_IDENTITY env var to enable:
+#   export APPLE_SIGN_IDENTITY="Developer ID Application: Andrea Cavallo (TEAMID)"
+#   export APPLE_NOTARIZE=1   # optional: also notarize after signing
+if [ -n "$APPLE_SIGN_IDENTITY" ]; then
+    echo -e "${CYAN}✍️   Signing DMG...${NC}"
+    codesign \
+        --sign "$APPLE_SIGN_IDENTITY" \
+        --timestamp \
+        --options runtime \
+        "$DMG_PATH"
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}✓${NC} DMG signed: $APPLE_SIGN_IDENTITY"
+    else
+        echo -e "${YELLOW}⚠️  Signing failed (continuing)${NC}"
+    fi
 
+    if [ "${APPLE_NOTARIZE:-0}" = "1" ] && [ -n "$APPLE_NOTARIZE_PROFILE" ]; then
+        echo -e "${CYAN}☁️   Notarizing DMG (this may take a few minutes)...${NC}"
+        xcrun notarytool submit "$DMG_PATH" \
+            --keychain-profile "$APPLE_NOTARIZE_PROFILE" \
+            --wait
+        xcrun stapler staple "$DMG_PATH"
+        echo -e "${GREEN}✓${NC} Notarization complete"
+    fi
+else
+    echo -e "${YELLOW}ℹ️   No signing — set APPLE_SIGN_IDENTITY to sign the DMG${NC}"
+    echo -e "   export APPLE_SIGN_IDENTITY=\"Developer ID Application: Andrea Cavallo (TEAMID)\""
+fi
+
+echo ""
 echo -e "${GREEN}✅  DMG ready: $DMG_PATH${NC}"

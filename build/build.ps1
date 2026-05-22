@@ -375,6 +375,49 @@ function Create-Checksums {
     Write-ColorOutput Green "✓ SHA256SUMS.txt created"
 }
 
+# Sign Windows EXE with Authenticode (optional)
+# Set $env:WIN_SIGN_CERT_PATH and $env:WIN_SIGN_CERT_PASSWORD to enable
+function Sign-Binaries {
+    if (-not $env:WIN_SIGN_CERT_PATH) {
+        Write-ColorOutput Yellow "ℹ️   No signing — set WIN_SIGN_CERT_PATH to sign the EXE"
+        Write-Host "   `$env:WIN_SIGN_CERT_PATH = 'path\to\cert.pfx'"
+        Write-Host "   `$env:WIN_SIGN_CERT_PASSWORD = 'password'"
+        return
+    }
+
+    $signtool = Get-Command signtool -ErrorAction SilentlyContinue
+    if (-not $signtool) {
+        Write-ColorOutput Yellow "⚠️  signtool.exe not found (install Windows SDK)"
+        return
+    }
+
+    Write-Host ""
+    Write-ColorOutput Cyan "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    Write-ColorOutput Cyan "✍️   Signing Windows binaries..."
+    Write-ColorOutput Cyan "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+    Get-ChildItem "$BuildDir\*.exe" | ForEach-Object {
+        Write-ColorOutput Yellow "→ Signing $($_.Name)..."
+        $args = @(
+            "sign",
+            "/f", $env:WIN_SIGN_CERT_PATH,
+            "/p", $env:WIN_SIGN_CERT_PASSWORD,
+            "/tr", "http://timestamp.digicert.com",
+            "/td", "sha256",
+            "/fd", "sha256",
+            "/d", "adOmnia — Local-first API developer toolbox",
+            "/du", "https://github.com/Andrea-Cavallo/adOmnia",
+            $_.FullName
+        )
+        & signtool @args
+        if ($LASTEXITCODE -eq 0) {
+            Write-ColorOutput Green "✓ $($_.Name) signed"
+        } else {
+            Write-ColorOutput Yellow "⚠️  Signing failed for $($_.Name)"
+        }
+    }
+}
+
 # Show summary
 function Show-Summary {
     Write-Host ""
@@ -398,22 +441,24 @@ Clean-BuildDir
 switch ($Target.ToLower()) {
     "all" {
         Build-Windows | Out-Null
+        Sign-Binaries
         Build-MacOS | Out-Null
         Build-Linux | Out-Null
-        
+
         if ($Compress) {
             Compress-Binaries
         }
-        
+
         Create-Checksums
     }
     "windows" {
         Build-Windows | Out-Null
-        
+        Sign-Binaries
+
         if ($Compress) {
             Compress-Binaries
         }
-        
+
         Create-Checksums
     }
     "macos" {
@@ -426,6 +471,7 @@ switch ($Target.ToLower()) {
     }
     "current" {
         if (Build-Current) {
+            Sign-Binaries
             Create-Checksums
         } else {
             exit 1
