@@ -26,7 +26,7 @@ require (
 	github.com/xdg-go/scram v1.2.0
 	go.etcd.io/bbolt v1.4.3
 	go.mongodb.org/mongo-driver/v2 v2.6.0
-	golang.org/x/sys v0.44.0
+	golang.org/x/sys v0.45.0
 	google.golang.org/grpc v1.81.1
 	modernc.org/sqlite v1.50.1
 )
