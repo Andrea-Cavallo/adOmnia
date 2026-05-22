@@ -335,6 +335,7 @@ if (request.auth.type === 'aws4') {
 - **Dimensional consistency:** same spacing, same font sizes, same interaction patterns
 - **Immediate visual feedback:** every action needs perceptible feedback (hover, active, loading, success, error)
 - **No "cheap" UI:** no misaligned borders, no off-palette colors, no inconsistent spacing
+- **Wails/WebKitGTK cross-platform cohesion:** treat every user-visible WebKitGTK rendering difference on Linux as a product-quality issue, not as a secondary technical detail. Prefer global token-based normalization for recurring issues in `frontend/src/styles/globals.css`; use local workarounds only when the affected component is truly isolated. In particular, Linux can render native form controls with a light system appearance inside dark themes: for `select`, `input`, `textarea`, checkbox/radio, and number inputs, keep `color-scheme`, rely on the global normalizations, use `surface/text/border/accent/status` tokens, and avoid hardcoded Tailwind palette colors in primary UI (`bg-white/*`, `text-purple-*`, `bg-green-*`, etc.) unless they are intentional semantic states.
 
 ---
 

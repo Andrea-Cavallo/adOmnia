@@ -4,6 +4,8 @@
 
 @layer base {
   :root {
+    color-scheme: dark;
+
     /* Surface / backgrounds */
     --color-surface-0: #05070D;
     --color-surface-1: #0B0D14;
@@ -79,6 +81,8 @@
 
   /* Light theme overrides */
   .light {
+    color-scheme: light;
+
     --color-surface-0: #F8FAFC;
     --color-surface-1: #F1F5F9;
     --color-surface-2: #E2E8F0;
@@ -123,11 +127,80 @@
     border-color: var(--color-border-1);
   }
 
+  html.dark {
+    color-scheme: dark;
+  }
+
+  html.light {
+    color-scheme: light;
+  }
+
   body {
     font-family: var(--font-ui, var(--font-sans));
     font-size: 13px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  input,
+  select,
+  textarea {
+    background-color: var(--color-surface-2);
+    color: var(--color-text-1);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-text-4);
+  }
+
+  select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image:
+      linear-gradient(45deg, transparent 50%, var(--color-text-2) 50%),
+      linear-gradient(135deg, var(--color-text-2) 50%, transparent 50%);
+    background-position:
+      calc(100% - 14px) calc(50% - 2px),
+      calc(100% - 9px) calc(50% - 2px);
+    background-repeat: no-repeat;
+    background-size: 5px 5px, 5px 5px;
+    padding-right: 28px;
+  }
+
+  select option {
+    background-color: var(--color-surface-2);
+    color: var(--color-text-1);
+  }
+
+  input[type='checkbox'],
+  input[type='radio'] {
+    accent-color: var(--color-accent);
+  }
+
+  input[type='number'] {
+    appearance: textfield;
+    -moz-appearance: textfield;
+  }
+
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  button:disabled,
+  input:disabled,
+  select:disabled,
+  textarea:disabled {
+    cursor: not-allowed;
   }
 
   ::-webkit-scrollbar {

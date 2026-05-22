@@ -306,6 +306,7 @@ go test ./...
 - **Coerenza dimensionale:** stessi spacing, stesse dimensioni font, stessi pattern di interazione
 - **Feedback visivo immediato:** ogni azione deve avere un feedback percepibile (hover, active, loading, success, error)
 - **Niente UI "cheap":** no bordi storti, no colori fuori palette, no spaziature inconsistenti
+- **Coerenza cross-platform Wails/WebKitGTK:** tratta ogni differenza WebKitGTK visibile nella UI Linux come un problema di qualita' prodotto, non come un dettaglio tecnico secondario. Preferisci normalizzazioni globali token-based per problemi ricorrenti in `frontend/src/styles/globals.css`; usa workaround locali solo quando il componente e' davvero isolato. In particolare, Linux puo' renderizzare controlli nativi chiari dentro temi scuri: per `select`, `input`, `textarea`, checkbox/radio e number input mantieni `color-scheme`, le normalizzazioni globali, token `surface/text/border/accent/status`, ed evita colori Tailwind hardcoded nella UI primaria (`bg-white/*`, `text-purple-*`, `bg-green-*`, ecc.) salvo stati semantici intenzionali.
 
 ---
 

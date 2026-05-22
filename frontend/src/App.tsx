@@ -18,6 +18,7 @@ import { importCollectionsFromText } from '@/lib/collectionTransfer'
 import { migrateCollections } from '@/stores/collections'
 import { getUIFontStack } from '@/lib/uiFonts'
 import { GetStartupWindowChrome } from '@/wailsjs/go/main/App'
+import { UploadCloud } from 'lucide-react'
 
 type WindowChromeMode = 'app' | 'app-xwayland' | 'system'
 import { loadDefaultPostmanDemo } from '@/lib/demoWorkspace'
@@ -36,16 +37,16 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
   render() {
     if (this.state.error) {
       return (
-        <div style={{ padding: 32, color: '#f87171', fontFamily: 'monospace', background: '#0f0f0f', minHeight: '100vh' }}>
-          <h2 style={{ marginBottom: 12, fontSize: 16 }}>Something went wrong</h2>
-          <p style={{ fontSize: 12, lineHeight: 1.5, color: '#d1d5db', maxWidth: 560 }}>
+        <div className="min-h-screen bg-surface-0 p-8 font-mono text-error">
+          <h2 className="mb-3 text-base font-semibold">Something went wrong</h2>
+          <p className="max-w-xl text-xs leading-5 text-text-2">
             adOmnia hit a recoverable UI error. Your local data was not sent anywhere.
             Try recovering this view, or reload the app if the problem keeps happening.
           </p>
-          <pre style={{ fontSize: 12, whiteSpace: 'pre-wrap', opacity: 0.8, marginTop: 12 }}>{this.state.error.message}</pre>
+          <pre className="mt-3 whitespace-pre-wrap text-xs text-error/80">{this.state.error.message}</pre>
           <button
             onClick={() => this.setState({ error: null })}
-            style={{ marginTop: 20, padding: '6px 16px', background: '#6366f1', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}
+            className="mt-5 h-8 rounded-md bg-accent px-4 text-xs font-medium text-white transition-colors hover:bg-accent-hover"
           >
             Try to recover
           </button>
@@ -369,12 +370,8 @@ function App() {
           {/* Drop overlay */}
           {dragOver && (
             <div className="absolute inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm pointer-events-none">
-              <div className="flex flex-col items-center gap-3 p-8 bg-surface-1 border-2 border-dashed border-accent rounded-2xl shadow-2xl">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-accent">
-                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" strokeLinecap="round" strokeLinejoin="round"/>
-                  <polyline points="7 10 12 15 17 10" strokeLinecap="round" strokeLinejoin="round"/>
-                  <line x1="12" y1="15" x2="12" y2="3" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
+              <div className="flex flex-col items-center gap-3 rounded-lg border-2 border-dashed border-accent bg-surface-1 p-8 shadow-2xl">
+                <UploadCloud size={48} strokeWidth={1.5} className="text-accent" />
                 <p className="text-sm font-semibold text-text-1">Drop to import collection</p>
                 <p className="text-[10px] text-text-3">Postman, Insomnia, Bruno, OpenAPI, adOmnia</p>
               </div>
@@ -383,7 +380,7 @@ function App() {
 
           {/* Import feedback toast */}
           {dropFeedback && (
-            <div className={`absolute bottom-16 left-1/2 -translate-x-1/2 z-[9999] px-4 py-2 rounded-lg shadow-xl text-xs font-medium transition-all ${dropFeedback.ok ? 'bg-green-600/90 text-white' : 'bg-red-600/90 text-white'}`}>
+            <div className={`absolute bottom-16 left-1/2 z-[9999] -translate-x-1/2 rounded-md border px-4 py-2 text-xs font-medium shadow-xl transition-all ${dropFeedback.ok ? 'border-success/30 bg-success/15 text-success' : 'border-error/30 bg-error/15 text-error'}`}>
               {dropFeedback.msg}
             </div>
           )}
