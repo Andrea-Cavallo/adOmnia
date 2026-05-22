@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { Environment, EnvVariable } from '@/lib/types'
 import { uid, blankEnvVar } from '@/lib/types'
 import { StorageGet, StoragePut } from '@/wailsjs/go/main/App'
+import { debouncedSave } from '@/lib/storeSave'
 
 const BUCKET = 'environments'
 const KEY = 'all'
@@ -12,7 +13,7 @@ interface EnvironmentsState {
   loaded: boolean
   loadError: boolean
   load: () => Promise<void>
-  save: () => Promise<void>
+  save: () => void
   setActiveEnv: (id: string | null) => void
   addEnvironment: (name: string) => Environment
   deleteEnvironment: (id: string) => void
@@ -46,15 +47,11 @@ export const useEnvironmentsStore = create<EnvironmentsState>((set, get) => ({
     }
   },
 
-  save: async () => {
+  save: () => {
     const s = get()
     if (!s.loaded || s.loadError) return
     const { environments, activeEnvId } = s
-    try {
-      await StoragePut(BUCKET, KEY, JSON.stringify({ environments, activeEnvId }))
-    } catch (e) {
-      console.error('Failed to save environments:', e)
-    }
+    debouncedSave('environments', () => StoragePut(BUCKET, KEY, JSON.stringify({ environments, activeEnvId })))
   },
 
   setActiveEnv: (id) => {

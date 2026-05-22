@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   Play, Square, RefreshCw, Trash2, ChevronDown, ChevronRight,
   Filter, Activity, ShieldCheck, ShieldOff, Plus, Download,
-  Map, Zap, Copy, RotateCcw,
+  Map, Zap, Copy, RotateCcw, PauseCircle, X,
 } from 'lucide-react'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { cn } from '@/lib/utils'
@@ -27,6 +27,15 @@ interface TrafficEntry {
 }
 
 interface ProxyStatus { running: boolean; port: number }
+
+interface PendingBreakpoint {
+  id: string
+  timestamp: string
+  method: string
+  url: string
+  headers: Record<string, string>
+  body: string
+}
 
 interface ProxyRule {
   id: string
@@ -99,6 +108,8 @@ function TrafficTab({
   port, status,
 }: { port: number | null; status: ProxyStatus }) {
   const [traffic, setTraffic] = useState<TrafficEntry[]>([])
+  const [pending, setPending] = useState<PendingBreakpoint[]>([])
+  const [pendingDrafts, setPendingDrafts] = useState<Record<string, { url: string; body: string }>>({})
   const [selected, setSelected] = useState<TrafficEntry | null>(null)
   const [filter, setFilter] = useState('')
 
@@ -121,12 +132,31 @@ function TrafficTab({
     if (data && Array.isArray(data.entries)) setTraffic(data.entries)
   }, [api])
 
+  const refreshPending = useCallback(async () => {
+    const data = await api('/proxy/breakpoint/pending')
+    if (data && Array.isArray(data.pending)) {
+      setPending(data.pending)
+      setPendingDrafts((current) => {
+        const next = { ...current }
+        for (const item of data.pending as PendingBreakpoint[]) {
+          if (!next[item.id]) next[item.id] = { url: item.url, body: item.body || '' }
+        }
+        for (const id of Object.keys(next)) {
+          if (!(data.pending as PendingBreakpoint[]).some((item) => item.id === id)) delete next[id]
+        }
+        return next
+      })
+    }
+  }, [api])
+
   useEffect(() => {
     if (!port) return
     refresh()
+    refreshPending()
     const t = setInterval(refresh, 1500)
-    return () => clearInterval(t)
-  }, [port, refresh])
+    const p = setInterval(refreshPending, 700)
+    return () => { clearInterval(t); clearInterval(p) }
+  }, [port, refresh, refreshPending])
 
   const handleClear = async () => {
     await api('/proxy/traffic', undefined, 'DELETE')
@@ -136,6 +166,30 @@ function TrafficTab({
   const handleRepeat = async (id: string) => {
     await api('/proxy/repeat', { id })
     refresh()
+  }
+
+  const updatePendingDraft = (id: string, patch: Partial<{ url: string; body: string }>) => {
+    setPendingDrafts((current) => ({ ...current, [id]: { ...(current[id] || { url: '', body: '' }), ...patch } }))
+  }
+
+  const resumePending = async (item: PendingBreakpoint) => {
+    const draft = pendingDrafts[item.id] || { url: item.url, body: item.body || '' }
+    await api('/proxy/breakpoint/resume', {
+      id: item.id,
+      action: 'resume',
+      method: item.method,
+      url: draft.url,
+      headers: item.headers,
+      body: draft.body,
+    })
+    await refreshPending()
+    await refresh()
+  }
+
+  const dropPending = async (item: PendingBreakpoint) => {
+    await api('/proxy/breakpoint/resume', { id: item.id, action: 'drop' })
+    await refreshPending()
+    await refresh()
   }
 
   const handleExport = async () => {
@@ -171,6 +225,44 @@ function TrafficTab({
           <Trash2 size={13} />
         </button>
       </div>
+
+      {pending.length > 0 && (
+        <div className="shrink-0 border-b border-warning/25 bg-warning/8 px-3 py-2">
+          <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold text-warning">
+            <PauseCircle size={13} />
+            {pending.length} paused request{pending.length === 1 ? '' : 's'} waiting for resume
+          </div>
+          <div className="flex flex-col gap-2">
+            {pending.map((item) => {
+              const draft = pendingDrafts[item.id] || { url: item.url, body: item.body || '' }
+              return (
+                <div key={item.id} className="rounded-lg border border-warning/25 bg-surface-0/70 p-2">
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className={cn('w-14 shrink-0 font-bold text-[10px]', methodColor(item.method))}>{item.method}</span>
+                    <input
+                      value={draft.url}
+                      onChange={(e) => updatePendingDraft(item.id, { url: e.target.value })}
+                      className="h-7 flex-1 rounded-md border border-border-2 bg-surface-2 px-2 font-mono text-[10px] text-text-1 outline-none focus:border-warning"
+                    />
+                    <button onClick={() => resumePending(item)} className="h-7 rounded-md bg-warning px-3 text-[10px] font-semibold text-black transition-colors hover:bg-warning/90">
+                      Resume
+                    </button>
+                    <button onClick={() => dropPending(item)} title="Drop request" className="grid h-7 w-7 place-items-center rounded-md border border-error/25 text-error hover:bg-error/10">
+                      <X size={12} />
+                    </button>
+                  </div>
+                  <textarea
+                    value={draft.body}
+                    onChange={(e) => updatePendingDraft(item.id, { body: e.target.value })}
+                    placeholder="Request body"
+                    className="h-16 w-full resize-none rounded-md border border-border-2 bg-surface-2 px-2 py-1 font-mono text-[10px] text-text-2 outline-none focus:border-warning"
+                  />
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-1 overflow-hidden min-h-0">
         <div className="w-[45%] border-r border-border-1 overflow-y-auto flex flex-col">

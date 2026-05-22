@@ -18,6 +18,10 @@ export function GetHostFunctions() {
   return window['go']['main']['WasmRuntime']['GetHostFunctions']();
 }
 
+export function GetRuntimeMode() {
+  return window['go']['main']['WasmRuntime']['GetRuntimeMode']();
+}
+
 export function GetSandboxStatus(arg1) {
   return window['go']['main']['WasmRuntime']['GetSandboxStatus'](arg1);
 }

@@ -143,6 +143,22 @@ func isUnderDir(base, target string) bool {
 	return !strings.HasPrefix(rel, "..")
 }
 
+func resolvePluginEntryPoint(pluginDir, entryPoint string) (string, error) {
+	entryPoint = strings.TrimSpace(entryPoint)
+	if entryPoint == "" {
+		return "", fmt.Errorf("plugin entryPoint is required")
+	}
+	target := entryPoint
+	if !filepath.IsAbs(target) {
+		target = filepath.Join(pluginDir, entryPoint)
+	}
+	target = filepath.Clean(target)
+	if !isUnderDir(pluginDir, target) {
+		return "", fmt.Errorf("plugin entryPoint escapes plugin directory: %s", entryPoint)
+	}
+	return target, nil
+}
+
 func normalizePluginManifest(manifest *PluginManifest) error {
 	if manifest.ID == "" {
 		return fmt.Errorf("manifest must have an id field")
@@ -247,17 +263,22 @@ func (pm *PluginManager) Init() error {
 			log.Printf("[plugins] skipping %s: invalid manifest: %v", entry.Name(), err)
 			continue
 		}
+		installDir := filepath.Join(pm.pluginDir, entry.Name())
+		if _, err := resolvePluginEntryPoint(installDir, manifest.EntryPoint); err != nil {
+			log.Printf("[plugins] skipping %s: invalid entrypoint: %v", entry.Name(), err)
+			continue
+		}
 
 		// Merge with persisted state if it exists
 		if existing, ok := pm.plugins[manifest.ID]; ok {
 			existing.Manifest = manifest
-			existing.InstallDir = filepath.Join(pm.pluginDir, entry.Name())
+			existing.InstallDir = installDir
 		} else {
 			instance := &PluginInstance{
 				Manifest:    manifest,
 				Enabled:     false,
 				Settings:    make(map[string]string),
-				InstallDir:  filepath.Join(pm.pluginDir, entry.Name()),
+				InstallDir:  installDir,
 				InstalledAt: time.Now().UTC().Format(time.RFC3339),
 			}
 			// Apply default settings
@@ -327,6 +348,9 @@ func (pm *PluginManager) InstallPlugin(manifestJSON string) (*PluginInstance, er
 	pluginPath := filepath.Join(pm.pluginDir, manifest.ID)
 	if !isUnderDir(pm.pluginDir, pluginPath) {
 		return nil, fmt.Errorf("plugin id escapes plugin directory: %s", manifest.ID)
+	}
+	if _, err := resolvePluginEntryPoint(pluginPath, manifest.EntryPoint); err != nil {
+		return nil, err
 	}
 	if err := os.MkdirAll(pluginPath, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create plugin directory: %w", err)
@@ -675,7 +699,11 @@ func (pm *PluginManager) InstallPythonPlugin(manifestJSON string) error {
 	}
 
 	// Step 4: Verify entrypoint is importable
-	entrypointPath := filepath.Join(inst.InstallDir, manifest.EntryPoint)
+	entrypointPath, err := resolvePluginEntryPoint(inst.InstallDir, manifest.EntryPoint)
+	if err != nil {
+		pm.setPluginError(manifest.ID, err.Error())
+		return err
+	}
 	if _, err := os.Stat(entrypointPath); os.IsNotExist(err) {
 		pm.setPluginError(manifest.ID, fmt.Sprintf("entrypoint not found: %s", manifest.EntryPoint))
 		return fmt.Errorf("entrypoint file not found: %s", entrypointPath)
@@ -797,6 +825,9 @@ func (pm *PluginManager) installRequirements(venvDir string, requirementsPath st
 
 // verifyPythonImport checks that the plugin entrypoint can be imported without errors.
 func (pm *PluginManager) verifyPythonImport(venvDir string, pluginDir string, entrypoint string) error {
+	if _, err := resolvePluginEntryPoint(pluginDir, entrypoint); err != nil {
+		return err
+	}
 	pythonPath := pm.venvPythonPath(venvDir)
 	if _, err := os.Stat(pythonPath); os.IsNotExist(err) {
 		return fmt.Errorf("python not found in virtualenv: %s", pythonPath)
@@ -849,6 +880,11 @@ func (pm *PluginManager) setPluginError(pluginID string, errMsg string) {
 // --- internal helpers (must be called with lock held) ---
 
 func (pm *PluginManager) registerHooksInternal(inst *PluginInstance) {
+	if _, err := resolvePluginEntryPoint(inst.InstallDir, inst.Manifest.EntryPoint); err != nil {
+		inst.Error = err.Error()
+		log.Printf("[plugins] refusing to register hooks for %s: %v", inst.Manifest.ID, err)
+		return
+	}
 	for _, hook := range inst.Manifest.Hooks {
 		entry := pluginHookEntry{
 			PluginID: inst.Manifest.ID,

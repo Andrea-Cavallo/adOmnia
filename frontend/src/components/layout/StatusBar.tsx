@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { useTabsStore } from '@/stores/tabs'
 
@@ -7,6 +8,17 @@ export function StatusBar() {
   const tabs = useTabsStore((s) => s.tabs)
   const activeTabId = useTabsStore((s) => s.activeTabId)
   const responseHistory = useTabsStore((s) => s.responseHistory)
+  const [saveError, setSaveError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const msg = (e as CustomEvent<string>).detail
+      setSaveError(msg)
+      setTimeout(() => setSaveError(null), 5000)
+    }
+    window.addEventListener('adomnia:save-error', handler)
+    return () => window.removeEventListener('adomnia:save-error', handler)
+  }, [])
 
   const activeEnv = environments.find((e) => e.id === activeEnvId)
   const activeTab = tabs.find((t) => t.id === activeTabId)
@@ -25,7 +37,8 @@ export function StatusBar() {
           </>
         )}
         {response?.error && <span className="text-error">{response.error.code}</span>}
-        {!response && <span>Ready</span>}
+        {!response && !saveError && <span>Ready</span>}
+        {saveError && <span className="text-error">Save error: {saveError}</span>}
         {responseHistory.length > 0 && (
           <span className="flex items-center gap-1 text-text-4">
             <span className="w-1.5 h-1.5 rounded-full bg-success inline-block" />

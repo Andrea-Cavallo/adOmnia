@@ -43,23 +43,26 @@ var (
 )
 
 type proxyMatchLog struct {
-	Time      string `json:"time"`
-	Target    string `json:"target"`
-	RuleType  string `json:"ruleType"`
-	RuleID    string `json:"ruleId"`
-	Matched   bool   `json:"matched"`
+	Time     string `json:"time"`
+	Target   string `json:"target"`
+	RuleType string `json:"ruleType"`
+	RuleID   string `json:"ruleId"`
+	Matched  bool   `json:"matched"`
 }
 
 func initProxyRules() {
 	proxyTbl = &bart.Table[string]{}
 }
 
-func buildCIDRTable() {
+func snapshotProxyRules() []ProxyRule {
 	proxyRulesMu.RLock()
 	rules := make([]ProxyRule, len(proxyRules))
 	copy(rules, proxyRules)
 	proxyRulesMu.RUnlock()
+	return rules
+}
 
+func buildCIDRTable(rules []ProxyRule) {
 	t := &bart.Table[string]{}
 	cidrCount := 0
 	compiled := make([]compiledRegexRule, 0)
@@ -96,6 +99,23 @@ func buildCIDRTable() {
 	proxyRegexMu.Unlock()
 
 	log.Printf("[proxy-rules] rebuilt: %d CIDR, %d regex rules", cidrCount, len(compiled))
+}
+
+func syncBreakpointsFromInterceptRules(rules []ProxyRule) {
+	next := make([]string, 0)
+	seen := make(map[string]bool)
+
+	for _, rule := range rules {
+		if !rule.Enabled || rule.Type != "intercept" || rule.Target == "" || seen[rule.Target] {
+			continue
+		}
+		next = append(next, rule.Target)
+		seen[rule.Target] = true
+	}
+
+	breakpointsMu.Lock()
+	breakpoints = next
+	breakpointsMu.Unlock()
 }
 
 func matchIP(ipStr string) (bool, string) {
@@ -189,10 +209,12 @@ func proxyRulesPutHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	proxyRulesMu.Unlock()
 
-	go buildCIDRTable()
+	rulesSnapshot := snapshotProxyRules()
+	syncBreakpointsFromInterceptRules(rulesSnapshot)
+	buildCIDRTable(rulesSnapshot)
 
 	if storeDB != nil {
-		data, _ := json.Marshal(proxyRules)
+		data, _ := json.Marshal(rulesSnapshot)
 		_ = storePut("proxy", "rules", data)
 	}
 

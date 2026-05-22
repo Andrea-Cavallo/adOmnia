@@ -14,6 +14,10 @@ export function EnablePlugin(arg1) {
   return window['go']['main']['PluginManager']['EnablePlugin'](arg1);
 }
 
+export function FireEvent(arg1) {
+  return window['go']['main']['PluginManager']['FireEvent'](arg1);
+}
+
 export function GetAvailableEvents() {
   return window['go']['main']['PluginManager']['GetAvailableEvents']();
 }
@@ -60,6 +64,10 @@ export function SavePluginState() {
 
 export function SetPluginSetting(arg1, arg2, arg3) {
   return window['go']['main']['PluginManager']['SetPluginSetting'](arg1, arg2, arg3);
+}
+
+export function Shutdown() {
+  return window['go']['main']['PluginManager']['Shutdown']();
 }
 
 export function UninstallPlugin(arg1) {

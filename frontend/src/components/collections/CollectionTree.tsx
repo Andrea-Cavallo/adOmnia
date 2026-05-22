@@ -12,11 +12,13 @@ import {
   Search,
   Trash2,
   Upload,
+  X,
 } from 'lucide-react'
 import type { Collection, FolderItem, HttpMethod, RequestItem, TreeNode } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { Prompt } from '@/components/ui/prompt'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { DialogOverlay, DialogContent, DialogHeader, DialogBody } from '@/components/ui/dialog'
 import { copyToClipboard, generateCode } from '@/lib/codegen'
 import {
   cloneCollection,
@@ -111,6 +113,54 @@ function listFolders(nodes: TreeNode[]): FolderItem[] {
     }
   }
   return folders
+}
+
+function MoveToFolderDialog({
+  open,
+  folders,
+  onSelect,
+  onCancel,
+}: {
+  open: boolean
+  folders: FolderItem[]
+  onSelect: (folderId: string | null) => void
+  onCancel: () => void
+}) {
+  return (
+    <DialogOverlay open={open} onClose={onCancel}>
+      <DialogContent size="sm">
+        <DialogHeader>
+          <span className="text-sm font-semibold text-text-1">Move to Folder</span>
+          <button onClick={onCancel} className="text-text-4 hover:text-text-1 transition-colors">
+            <X size={16} />
+          </button>
+        </DialogHeader>
+        <DialogBody className="p-0 max-h-64 overflow-y-auto">
+          <button
+            onClick={() => onSelect(null)}
+            className="flex w-full items-center gap-2 px-3 py-2 text-xs text-text-2 hover:bg-surface-2 transition-colors border-b border-border-1"
+          >
+            <Folder size={12} className="shrink-0 text-text-4" />
+            <span className="italic">Collection Root</span>
+          </button>
+          {folders.length === 0 ? (
+            <p className="px-3 py-4 text-xs text-text-4 text-center">No folders in this collection</p>
+          ) : (
+            folders.map((folder) => (
+              <button
+                key={folder.id}
+                onClick={() => onSelect(folder.id)}
+                className="flex w-full items-center gap-2 px-3 py-2 text-xs text-text-2 hover:bg-surface-2 transition-colors"
+              >
+                <Folder size={12} className="shrink-0 text-accent" />
+                {folder.name}
+              </button>
+            ))
+          )}
+        </DialogBody>
+      </DialogContent>
+    </DialogOverlay>
+  )
 }
 
 function downloadText(filename: string, text: string, type = 'application/json') {
@@ -323,6 +373,8 @@ export function CollectionTree({
   const [openIds, setOpenIds] = useState<Set<string>>(() => new Set(collections.map((c) => c.id)))
   const [editingId, setEditingId] = useState<string | null>(null)
   const [folderPrompt, setFolderPrompt] = useState<{ collectionId: string; parentId: string | null } | null>(null)
+  const [moveTarget, setMoveTarget] = useState<{ collectionId: string; requestId: string; folders: FolderItem[] } | null>(null)
+  const [importError, setImportError] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ContextTarget | null>(null)
   const [context, setContext] = useState<ContextTarget | null>(null)
   const [dragPayload, setDragPayload] = useState<DragPayload | null>(null)
@@ -347,6 +399,12 @@ export function CollectionTree({
     return () => document.removeEventListener('mousedown', close)
   }, [context])
 
+  useEffect(() => {
+    if (!importError) return
+    const timer = setTimeout(() => setImportError(null), 4000)
+    return () => clearTimeout(timer)
+  }, [importError])
+
   const filtered = useMemo(() => {
     if (!query.trim()) return collections
     return collections
@@ -370,9 +428,8 @@ export function CollectionTree({
         const exists = collections.some((current) => current.name === collection.name)
         onImportCollection(exists ? cloneCollection(collection, `${collection.name} Import`) : collection)
       }
-      console.info(`Imported ${result.collections.length} ${result.format} collection(s)`)
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : 'Import failed')
+      setImportError(err instanceof Error ? err.message : 'Import failed')
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
@@ -395,20 +452,21 @@ export function CollectionTree({
     setContext(null)
   }
 
-  const moveRequestByPrompt = (collectionId: string, requestId: string) => {
+  const openMoveDialog = (collectionId: string, requestId: string) => {
     const collection = collections.find((item) => item.id === collectionId)
     if (!collection) return
-    const folders = listFolders(collection.children)
-    const names = folders.map((folder) => folder.name).join(', ')
-    const target = window.prompt(`Move to folder name. Leave empty for collection root.${names ? `\nAvailable: ${names}` : ''}`, '')
-    if (target === null) return
-    const folder = folders.find((item) => item.name.toLowerCase() === target.trim().toLowerCase())
-    if (target.trim() && !folder) {
-      window.alert('Folder not found in this collection.')
-      return
-    }
-    onMoveNode(collectionId, requestId, collectionId, folder?.id ?? null, folder ? folder.children.length : collection.children.length)
+    setMoveTarget({ collectionId, requestId, folders: listFolders(collection.children) })
     setContext(null)
+  }
+
+  const handleMoveSelect = (folderId: string | null) => {
+    if (!moveTarget) return
+    const { collectionId, requestId, folders } = moveTarget
+    const collection = collections.find((c) => c.id === collectionId)
+    if (!collection) return
+    const folder = folderId ? folders.find((f) => f.id === folderId) ?? null : null
+    onMoveNode(collectionId, requestId, collectionId, folderId, folder ? folder.children.length : collection.children.length)
+    setMoveTarget(null)
   }
 
   const dragPosition = (event: React.DragEvent, node: TreeNode): DropPosition => {
@@ -474,7 +532,7 @@ export function CollectionTree({
   )
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="relative flex h-full flex-col">
       <div className="flex items-center gap-1 border-b border-border-1 px-2 py-2">
         <span className="flex-1 text-[10px] font-semibold uppercase tracking-wider text-text-3">Collections</span>
         <input ref={fileInputRef} type="file" accept=".json,.yaml,.yml,.bru" className="hidden" onChange={(event) => void handleImport(event.target.files?.[0])} />
@@ -603,7 +661,7 @@ export function CollectionTree({
             <>
               <MenuButton onClick={() => { setEditingId(context.node.id); setContext(null) }}><Copy size={12} /> Rename</MenuButton>
               <MenuButton onClick={() => { onDuplicateRequest(context.collectionId, context.node); setContext(null) }}><Copy size={12} /> Duplicate</MenuButton>
-              <MenuButton onClick={() => moveRequestByPrompt(context.collectionId, context.node.id)}><FolderPlus size={12} /> Move to Folder</MenuButton>
+              <MenuButton onClick={() => openMoveDialog(context.collectionId, context.node.id)}><FolderPlus size={12} /> Move to Folder</MenuButton>
               <MenuButton onClick={() => { void copyToClipboard(generateCode(context.node, 'curl')); setContext(null) }}><Code size={12} /> Copy as cURL</MenuButton>
               <MenuButton onClick={() => { void copyToClipboard(context.node.url); setContext(null) }}><Link size={12} /> Copy URL</MenuButton>
               <MenuButton onClick={() => { onOpenRequest(context.node, context.collectionId); setContext(null) }}><Plus size={12} /> Open in New Tab</MenuButton>
@@ -611,6 +669,15 @@ export function CollectionTree({
               <MenuButton danger onClick={() => { setDeleteTarget(context); setContext(null) }}><Trash2 size={12} /> Delete</MenuButton>
             </>
           )}
+        </div>
+      )}
+
+      {importError && (
+        <div className="absolute bottom-10 left-2 right-2 z-50 flex items-start gap-2 rounded-md border border-error/30 bg-error/15 px-3 py-2 text-xs text-error shadow-xl">
+          <span className="flex-1">{importError}</span>
+          <button onClick={() => setImportError(null)} className="shrink-0 opacity-70 hover:opacity-100 transition-opacity">
+            <X size={12} />
+          </button>
         </div>
       )}
 
@@ -624,6 +691,13 @@ export function CollectionTree({
           setFolderPrompt(null)
         }}
         onCancel={() => setFolderPrompt(null)}
+      />
+
+      <MoveToFolderDialog
+        open={Boolean(moveTarget)}
+        folders={moveTarget?.folders ?? []}
+        onSelect={handleMoveSelect}
+        onCancel={() => setMoveTarget(null)}
       />
 
       <ConfirmDialog

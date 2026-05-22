@@ -1,10 +1,25 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net"
 	"net/http"
+	"time"
 )
+
+var httpSidecar *http.Server
+
+func stopHTTPServer() {
+	if httpSidecar == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if err := httpSidecar.Shutdown(ctx); err != nil {
+		log.Printf("[server] HTTP sidecar shutdown error: %v", err)
+	}
+}
 
 func startHTTPServer() {
 	dlogInfo("startHTTPServer", "avvio HTTP sidecar", nil)
@@ -87,6 +102,8 @@ func startHTTPServer() {
 	mux.HandleFunc("/proxy/stop", proxyStopHandler)
 	mux.HandleFunc("/proxy/traffic", proxyTrafficHandler)
 	mux.HandleFunc("/proxy/breakpoints", proxyBreakpointsHandler)
+	mux.HandleFunc("/proxy/breakpoint/pending", proxyBreakpointPendingHandler)
+	mux.HandleFunc("/proxy/breakpoint/resume", proxyBreakpointResumeHandler)
 	mux.HandleFunc("/proxy/export", proxyExportHandler)
 	mux.HandleFunc("/proxy/rules", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPut {
@@ -165,13 +182,13 @@ func startHTTPServer() {
 
 	handler := withSecurity(mux)
 
+	httpSidecar = &http.Server{Handler: handler}
 	go func() {
 		log.Printf("[server] HTTP sidecar on port %d", serverPort)
 		dlogInfo("startHTTPServer.goroutine", "HTTP sidecar in ascolto", map[string]any{"port": serverPort})
-		if err := http.Serve(ln, handler); err != nil {
+		if err := httpSidecar.Serve(ln); err != nil && err != http.ErrServerClosed {
 			log.Printf("[server] HTTP sidecar stopped: %v", err)
 			dlogErr("startHTTPServer.goroutine", "HTTP sidecar terminato", err, nil)
 		}
 	}()
 }
-

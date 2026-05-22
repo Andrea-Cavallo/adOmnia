@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { Collection, TreeNode, RequestItem, FolderItem, RequestBody } from '@/lib/types'
 import { uid, blankBody, blankKVRow, blankAuth } from '@/lib/types'
 import { StorageGet, StoragePut } from '@/wailsjs/go/main/App'
+import { debouncedSave } from '@/lib/storeSave'
 
 const BUCKET = 'collections'
 const KEY = 'all'
@@ -11,7 +12,7 @@ interface CollectionsState {
   loaded: boolean
   loadError: boolean
   load: () => Promise<void>
-  save: () => Promise<void>
+  save: () => void
   addCollection: (name: string) => Collection
   deleteCollection: (id: string) => void
   renameCollection: (id: string, name: string) => void
@@ -171,14 +172,10 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
     }
   },
 
-  save: async () => {
+  save: () => {
     const s = get()
     if (!s.loaded || s.loadError) return
-    try {
-      await StoragePut(BUCKET, KEY, JSON.stringify(s.collections))
-    } catch (e) {
-      console.error('Failed to save collections:', e)
-    }
+    debouncedSave('collections', () => StoragePut(BUCKET, KEY, JSON.stringify(s.collections)))
   },
 
   addCollection: (name) => {

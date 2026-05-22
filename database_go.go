@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -186,10 +187,11 @@ func openDatabase(c dbConnectionRequest) (*sql.DB, string, error) {
 		if path == "" {
 			path = strings.TrimSpace(c.DSN)
 		}
-		if path == "" {
-			return nil, "", fmt.Errorf("SQLite path is required")
+		safePath, err := sanitizeSQLitePath(path)
+		if err != nil {
+			return nil, "", err
 		}
-		db, err := sql.Open("sqlite", path)
+		db, err := sql.Open("sqlite", safePath)
 		return db, "sqlite", err
 	case "postgres", "postgresql", "pg":
 		dsn := strings.TrimSpace(c.DSN)
@@ -231,6 +233,28 @@ func openDatabase(c dbConnectionRequest) (*sql.DB, string, error) {
 	default:
 		return nil, "", fmt.Errorf("unsupported database driver: %s", c.Driver)
 	}
+}
+
+func sanitizeSQLitePath(raw string) (string, error) {
+	path := strings.TrimSpace(raw)
+	if path == "" {
+		return "", fmt.Errorf("SQLite path is required")
+	}
+	if path == ":memory:" {
+		return path, nil
+	}
+	if strings.ContainsRune(path, 0) {
+		return "", fmt.Errorf("SQLite path contains an invalid character")
+	}
+	lower := strings.ToLower(path)
+	if strings.HasPrefix(lower, "file:") {
+		return "", fmt.Errorf("SQLite URI DSNs are not allowed; select or enter an absolute .db file path")
+	}
+	cleaned := filepath.Clean(path)
+	if !filepath.IsAbs(cleaned) {
+		return "", fmt.Errorf("SQLite path must be absolute")
+	}
+	return cleaned, nil
 }
 
 type mongoQueryCommand struct {

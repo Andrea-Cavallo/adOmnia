@@ -282,6 +282,7 @@ func (a *App) OnShutdown(ctx context.Context) {
 	}
 	WsShutdown()
 	SseShutdown()
+	stopHTTPServer()
 	closeStore()
 	log.Println("[app] shutdown complete")
 }

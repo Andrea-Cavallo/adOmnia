@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAppStore } from '@/stores/app'
+import { useSettingsStore } from '@/stores/settings'
 import { useCollectionsStore } from '@/stores/collections'
 import { useTabsStore } from '@/stores/tabs'
 import { CollectionTree } from '@/components/collections/CollectionTree'
@@ -9,7 +10,7 @@ import { Prompt } from '@/components/ui/prompt'
 
 export function Sidebar() {
   const activeRail = useAppStore((s) => s.activeRail)
-  const collapsed = useAppStore((s) => s.sidebarCollapsed)
+  const collapsed = useSettingsStore((s) => s.settings.appearance.sidebarCollapsed)
   const collections = useCollectionsStore((s) => s.collections)
   const addCollection = useCollectionsStore((s) => s.addCollection)
   const deleteCollection = useCollectionsStore((s) => s.deleteCollection)

@@ -17,6 +17,13 @@ const AUTH_TYPES = [
   { value: 'digest', label: 'Digest Auth' },
 ] as const
 
+const OAUTH2_GRANTS = [
+  { value: 'client_credentials', label: 'Client Credentials' },
+  { value: 'authorization_code_pkce', label: 'Authorization Code + PKCE' },
+  { value: 'refresh_token', label: 'Refresh Token' },
+  { value: 'password', label: 'Password' },
+] as const
+
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-3 px-3">
@@ -109,6 +116,19 @@ export function AuthEditor({ auth, onChange }: AuthEditorProps) {
 
       {auth.type === 'oauth2' && (
         <>
+          <Field label="Grant">
+            <select
+              value={auth.oauth2GrantType || 'client_credentials'}
+              onChange={(e) => onChange({ ...auth, oauth2GrantType: e.target.value })}
+              className="flex-1 h-7 px-2 bg-surface-2 border border-border-2 rounded text-text-1 text-xs focus:border-accent outline-none"
+            >
+              {OAUTH2_GRANTS.map((grant) => (
+                <option key={grant.value} value={grant.value}>
+                  {grant.label}
+                </option>
+              ))}
+            </select>
+          </Field>
           <Field label="Token URL">
             <Input
               value={auth.oauth2TokenUrl ?? ''}
@@ -136,6 +156,63 @@ export function AuthEditor({ auth, onChange }: AuthEditorProps) {
               placeholder="openid profile"
             />
           </Field>
+          {auth.oauth2GrantType === 'password' && (
+            <>
+              <Field label="Username">
+                <Input
+                  value={auth.username ?? ''}
+                  onChange={(e) => onChange({ ...auth, username: e.target.value })}
+                />
+              </Field>
+              <Field label="Password">
+                <Input
+                  type="password"
+                  value={auth.password ?? ''}
+                  onChange={(e) => onChange({ ...auth, password: e.target.value })}
+                />
+              </Field>
+            </>
+          )}
+          {auth.oauth2GrantType === 'refresh_token' && (
+            <Field label="Refresh Token">
+              <Input
+                value={auth.oauth2RefreshToken ?? ''}
+                onChange={(e) => onChange({ ...auth, oauth2RefreshToken: e.target.value })}
+              />
+            </Field>
+          )}
+          {auth.oauth2GrantType === 'authorization_code_pkce' && (
+            <>
+              <Field label="Auth URL">
+                <Input
+                  value={auth.oauth2AuthUrl ?? ''}
+                  onChange={(e) => onChange({ ...auth, oauth2AuthUrl: e.target.value })}
+                  placeholder="https://auth.your-domain.com/oauth/authorize"
+                />
+              </Field>
+              <Field label="Redirect URI">
+                <Input
+                  value={auth.oauth2RedirectUri ?? ''}
+                  onChange={(e) => onChange({ ...auth, oauth2RedirectUri: e.target.value })}
+                  placeholder="http://localhost/callback"
+                />
+              </Field>
+              <Field label="Auth Code">
+                <Input
+                  value={auth.oauth2AuthCode ?? ''}
+                  onChange={(e) => onChange({ ...auth, oauth2AuthCode: e.target.value })}
+                  placeholder="Paste the returned code"
+                />
+              </Field>
+              <Field label="PKCE Verifier">
+                <Input
+                  value={auth.oauth2CodeVerifier ?? ''}
+                  onChange={(e) => onChange({ ...auth, oauth2CodeVerifier: e.target.value })}
+                  placeholder="Code verifier used for the authorization request"
+                />
+              </Field>
+            </>
+          )}
           <div className="flex items-center gap-3 px-3">
             <span className="w-28 shrink-0" />
             <button

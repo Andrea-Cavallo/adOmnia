@@ -117,7 +117,7 @@ async function applyAuth(
       break
     }
     case 'oauth2': {
-      const token = await fetchOAuth2Token(auth)
+      const token = await fetchOAuth2Token(auth, vars)
       headers['Authorization'] = `Bearer ${token}`
       break
     }
@@ -128,17 +128,89 @@ async function applyAuth(
   }
 }
 
+type OAuth2GrantType = 'client_credentials' | 'password' | 'refresh_token' | 'authorization_code_pkce'
+
+interface OAuth2CacheEntry {
+  token: string
+  expiresAt: number
+}
+
+const oauth2TokenCache = new Map<string, OAuth2CacheEntry>()
+const OAUTH2_EXPIRY_SKEW_MS = 30000
+const DEFAULT_OAUTH2_TTL_MS = 300000
+
+function oauth2GrantType(auth: RequestAuth): OAuth2GrantType {
+  const grant = auth.oauth2GrantType || 'client_credentials'
+  if (
+    grant === 'password' ||
+    grant === 'refresh_token' ||
+    grant === 'authorization_code_pkce' ||
+    grant === 'client_credentials'
+  ) {
+    return grant
+  }
+  return 'client_credentials'
+}
+
+function oauth2CacheKey(auth: RequestAuth, vars: Record<string, string>): string {
+  return [
+    substVars(auth.oauth2TokenUrl ?? '', vars),
+    oauth2GrantType(auth),
+    substVars(auth.oauth2ClientId ?? '', vars),
+    substVars(auth.oauth2Scope ?? '', vars),
+    substVars(auth.username ?? '', vars),
+    substVars(auth.oauth2RedirectUri ?? '', vars),
+  ].join('\u001f')
+}
+
 // OAuth2 token fetch routes through Go to avoid browser CORS on token endpoints
-async function fetchOAuth2Token(auth: RequestAuth): Promise<string> {
+async function fetchOAuth2Token(
+  auth: RequestAuth,
+  vars: Record<string, string> = {},
+  options: { forceRefresh?: boolean } = {}
+): Promise<string> {
   if (!auth.oauth2TokenUrl) throw new Error('OAuth2 Token URL is required')
-  const bodyParams = new URLSearchParams({ grant_type: 'client_credentials' })
-  if (auth.oauth2ClientId) bodyParams.append('client_id', auth.oauth2ClientId)
-  if (auth.oauth2ClientSecret) bodyParams.append('client_secret', auth.oauth2ClientSecret)
-  if (auth.oauth2Scope) bodyParams.append('scope', auth.oauth2Scope)
+  const cacheKey = oauth2CacheKey(auth, vars)
+  const cached = oauth2TokenCache.get(cacheKey)
+  if (!options.forceRefresh && cached && cached.expiresAt > Date.now() + OAUTH2_EXPIRY_SKEW_MS) {
+    return cached.token
+  }
+
+  const grant = oauth2GrantType(auth)
+  const bodyParams = new URLSearchParams({
+    grant_type: grant === 'authorization_code_pkce' ? 'authorization_code' : grant,
+  })
+
+  const tokenUrl = substVars(auth.oauth2TokenUrl, vars)
+  const clientId = substVars(auth.oauth2ClientId ?? '', vars)
+  const clientSecret = substVars(auth.oauth2ClientSecret ?? '', vars)
+  const scope = substVars(auth.oauth2Scope ?? '', vars)
+  if (clientId) bodyParams.append('client_id', clientId)
+  if (clientSecret) bodyParams.append('client_secret', clientSecret)
+  if (scope && grant !== 'refresh_token') bodyParams.append('scope', scope)
+
+  if (grant === 'password') {
+    bodyParams.append('username', substVars(auth.username ?? '', vars))
+    bodyParams.append('password', substVars(auth.password ?? '', vars))
+  } else if (grant === 'refresh_token') {
+    const refreshToken = substVars(auth.oauth2RefreshToken ?? '', vars)
+    if (!refreshToken) throw new Error('OAuth2 Refresh Token is required')
+    bodyParams.append('refresh_token', refreshToken)
+  } else if (grant === 'authorization_code_pkce') {
+    const code = substVars(auth.oauth2AuthCode ?? '', vars)
+    const redirectUri = substVars(auth.oauth2RedirectUri ?? '', vars)
+    const verifier = substVars(auth.oauth2CodeVerifier ?? '', vars)
+    if (!code) throw new Error('OAuth2 authorization code is required')
+    if (!redirectUri) throw new Error('OAuth2 redirect URI is required')
+    if (!verifier) throw new Error('OAuth2 PKCE code verifier is required')
+    bodyParams.append('code', code)
+    bodyParams.append('redirect_uri', redirectUri)
+    bodyParams.append('code_verifier', verifier)
+  }
 
   const execReq = {
     method: 'POST',
-    url: auth.oauth2TokenUrl,
+    url: tokenUrl,
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: bodyParams.toString(),
     timeoutMs: 15000,
@@ -150,7 +222,16 @@ async function fetchOAuth2Token(auth: RequestAuth): Promise<string> {
   const resp = JSON.parse(respJSON) as GoHTTPResponse
   if (resp.error) throw new Error(resp.error.message)
   const data = JSON.parse(resp.body) as Record<string, unknown>
-  if (typeof data.access_token === 'string') return data.access_token
+  if (typeof data.access_token === 'string') {
+    const expiresIn = typeof data.expires_in === 'number' && Number.isFinite(data.expires_in)
+      ? data.expires_in * 1000
+      : DEFAULT_OAUTH2_TTL_MS
+    oauth2TokenCache.set(cacheKey, {
+      token: data.access_token,
+      expiresAt: Date.now() + Math.max(0, expiresIn),
+    })
+    return data.access_token
+  }
   const errMsg = typeof data.error_description === 'string' ? data.error_description
     : typeof data.error === 'string' ? data.error
     : 'Failed to fetch OAuth2 token'
@@ -158,7 +239,7 @@ async function fetchOAuth2Token(auth: RequestAuth): Promise<string> {
 }
 
 export async function fetchOAuth2TokenManual(auth: RequestAuth): Promise<string> {
-  return fetchOAuth2Token(auth)
+  return fetchOAuth2Token(auth, {}, { forceRefresh: true })
 }
 
 // --- Browser fetch fallback (FormData / file uploads) ---

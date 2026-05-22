@@ -94,6 +94,7 @@ export function LoadTestPanel() {
   const [scenarioName, setScenarioName] = useState('')
   const [scenarios, setScenarios] = useState<string[]>([])
   const [compareResult, setCompareResult] = useState<object | null>(null)
+  const [baselineResult, setBaselineResult] = useState<LoadTestResult | null>(null)
 
   const baseApi = (path: string) => serverUrl(port, path)
 
@@ -153,10 +154,8 @@ export function LoadTestPanel() {
   }
 
   const handleCompare = async () => {
-    // Re-run a quick comparison: current result vs a fresh run
-    const freshResult = result // use last result for now
-    if (!freshResult) return
-    const data = await apiPost('/loadtest/compare', { result1: freshResult, result2: freshResult })
+    if (!result || !baselineResult) return
+    const data = await apiPost('/loadtest/compare', { result1: baselineResult, result2: result })
     if (data) setCompareResult(data)
   }
 
@@ -475,9 +474,24 @@ export function LoadTestPanel() {
             <summary className="text-[11px] text-text-2 font-medium cursor-pointer hover:text-text-1 select-none flex items-center gap-2">
               <GitCompare size={12} className="text-accent" /> Compare
             </summary>
-            <button onClick={handleCompare} className="self-start px-3 py-1.5 bg-surface-2 border border-border-2 rounded text-xs text-text-3 hover:text-text-1 mt-2">
-              Compare this result
-            </button>
+            <div className="flex gap-2 mt-2 items-center flex-wrap">
+              <button
+                onClick={() => setBaselineResult(result)}
+                className="px-3 py-1.5 bg-surface-2 border border-border-2 rounded text-xs text-text-3 hover:text-text-1"
+              >
+                Set as Baseline
+              </button>
+              <button
+                onClick={handleCompare}
+                disabled={!baselineResult || !result}
+                className="px-3 py-1.5 bg-surface-2 border border-border-2 rounded text-xs text-text-3 hover:text-text-1 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Compare with Baseline
+              </button>
+              {baselineResult && (
+                <span className="text-[10px] text-text-4">Baseline set — {baselineResult.totalRequests} req, avg {baselineResult.avgMs.toFixed(1)}ms</span>
+              )}
+            </div>
             {compareResult && (
               <pre className="p-3 bg-surface-2 rounded text-xs text-text-2 font-mono whitespace-pre-wrap overflow-auto max-h-64 mt-2">
                 {JSON.stringify(compareResult, null, 2)}

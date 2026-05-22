@@ -10,6 +10,8 @@ export function Execute(arg1:main.ExecRequest):Promise<main.ExecResult>;
 
 export function GetHostFunctions():Promise<Array<string>>;
 
+export function GetRuntimeMode():Promise<Record<string, any>>;
+
 export function GetSandboxStatus(arg1:string):Promise<main.PluginSandbox>;
 
 export function Init():Promise<void>;

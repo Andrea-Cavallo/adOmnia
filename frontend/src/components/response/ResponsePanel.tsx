@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Copy, Loader2, Maximize2, GitBranch, GitCompare, Sparkles, X, ShieldCheck, ShieldAlert, ShieldOff, AlertTriangle, Check, XCircle, FileText, FileCode, FileJson } from 'lucide-react'
 import type { ResponseData, ContractValidationResult, AssertionResult, ScriptRunResult } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -84,6 +84,19 @@ function JsonHighlight({ text }: { text: string }) {
 }
 
 type ViewTab = 'body' | 'headers' | 'contract' | 'assertions'
+
+function formatXmlLike(text: string): string {
+  const normalized = text.replace(/>\s*</g, '><').replace(/(>)(<)(\/*)/g, '$1\n$2$3')
+  let depth = 0
+  return normalized.split('\n').map((line) => {
+    const trimmed = line.trim()
+    if (!trimmed) return ''
+    if (/^<\//.test(trimmed)) depth = Math.max(0, depth - 1)
+    const out = `${'  '.repeat(depth)}${trimmed}`
+    if (/^<[^!?/][^>]*[^/]?>$/.test(trimmed) && !trimmed.includes('</')) depth += 1
+    return out
+  }).join('\n')
+}
 
 function DiffModal({
   left,
@@ -174,10 +187,15 @@ function FullscreenBodyModal({
 export function ResponsePanel({ response, loading, oaSpec, oaPath, oaMethod, assertions }: ResponsePanelProps) {
   const [tab, setTab] = useState<ViewTab>('body')
   const [view, setView] = useState<'pretty' | 'raw' | 'graph'>('pretty')
+  const [beautifiedBody, setBeautifiedBody] = useState<string | null>(null)
   const [showFullscreen, setShowFullscreen] = useState(false)
   const [showDiff, setShowDiff] = useState(false)
   const [diffOther, setDiffOther] = useState('')
   const [showDiffPrompt, setShowDiffPrompt] = useState(false)
+
+  useEffect(() => {
+    setBeautifiedBody(null)
+  }, [response?.body])
 
   const contractResult = useMemo(() => {
     if (!response) return null
@@ -194,10 +212,11 @@ export function ResponsePanel({ response, loading, oaSpec, oaPath, oaMethod, ass
   const testPassCount = assertionResults.filter((r) => r.passed).length + scriptTests.filter((r) => r.passed).length
   const allTestsPassed = assertionResults.every((r) => r.passed) && scriptRuns.every((run) => run.passed)
 
-  const isJson = response ? (response.contentType.includes('json') || response.body.trim().match(/^[\[{]/) != null) : false
+  const displayBody = response ? (beautifiedBody ?? response.body) : ''
+  const isJson = response ? (response.contentType.includes('json') || displayBody.trim().match(/^[\[{]/) != null) : false
   let validationBadge: string | null = null
   if (response && isJson) {
-    try { JSON.parse(response.body); validationBadge = 'valid' } catch { validationBadge = 'invalid' }
+    try { JSON.parse(displayBody); validationBadge = 'valid' } catch { validationBadge = 'invalid' }
   }
 
   if (loading) {
@@ -267,14 +286,14 @@ export function ResponsePanel({ response, loading, oaSpec, oaPath, oaMethod, ass
     )
   }
 
-  let prettyBody = response.body
+  let prettyBody = displayBody
   if (isJson && view === 'pretty') {
-    try { prettyBody = JSON.stringify(JSON.parse(response.body), null, 2) } catch { /* keep raw */ }
+    try { prettyBody = JSON.stringify(JSON.parse(displayBody), null, 2) } catch { /* keep raw */ }
   }
 
   let graphData: unknown = null
   if (isJson) {
-    try { graphData = JSON.parse(response.body) } catch { /* not valid */ }
+    try { graphData = JSON.parse(displayBody) } catch { /* not valid */ }
   }
 
   return (
@@ -405,13 +424,20 @@ export function ResponsePanel({ response, loading, oaSpec, oaPath, oaMethod, ass
               <button
                 onClick={() => {
                   if (isJson) {
-                    try { const p = JSON.stringify(JSON.parse(response.body), null, 2); navigator.clipboard.writeText(p).then(() => setView('pretty')) } catch { /* ignore */ }
-                  } else {
-                    navigator.clipboard.writeText(response.body)
+                    try {
+                      setBeautifiedBody(JSON.stringify(JSON.parse(displayBody), null, 2))
+                      setView('pretty')
+                    } catch { /* invalid JSON notice is shown in the body view */ }
+                    return
+                  }
+                  const trimmed = displayBody.trim()
+                  if (response.contentType.includes('xml') || response.contentType.includes('html') || trimmed.startsWith('<')) {
+                    setBeautifiedBody(formatXmlLike(displayBody))
+                    setView('pretty')
                   }
                 }}
                 className="p-1 text-text-4 hover:text-text-2 rounded hover:bg-surface-2"
-                title="Beautify / Copy formatted"
+                title="Beautify response body"
               >
                 <Sparkles size={12} />
               </button>
@@ -445,14 +471,22 @@ export function ResponsePanel({ response, loading, oaSpec, oaPath, oaMethod, ass
         <div className="flex-1 overflow-auto p-3">
           {tab === 'body' && (
             view === 'graph' && graphData ? (
-              <JsonGraph json={response.body} className="h-full min-h-[260px]" />
+              <JsonGraph json={displayBody} className="h-full min-h-[260px]" />
             ) : (
-              <pre className="text-xs font-mono whitespace-pre-wrap break-all">
-                {isJson && view === 'pretty'
-                  ? <JsonHighlight text={prettyBody} />
-                  : <span className="text-text-1">{prettyBody}</span>
-                }
-              </pre>
+              <>
+                {validationBadge === 'invalid' && view === 'pretty' && (
+                  <div className="mb-2 flex items-center gap-2 rounded border border-warning/20 bg-warning/10 px-3 py-2 text-[11px] text-warning">
+                    <AlertTriangle size={12} />
+                    <span>Response is not valid JSON - showing raw body.</span>
+                  </div>
+                )}
+                <pre className="text-xs font-mono whitespace-pre-wrap break-all">
+                  {isJson && view === 'pretty' && validationBadge === 'valid'
+                    ? <JsonHighlight text={prettyBody} />
+                    : <span className="text-text-1">{prettyBody}</span>
+                  }
+                </pre>
+              </>
             )
           )}
           {tab === 'headers' && (

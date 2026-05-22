@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { LoadSettings, SaveSettings } from '../wailsjs/go/main/App'
+import { debouncedSave } from '@/lib/storeSave'
 import { DEFAULT_UI_FONT_ID, type UIFontId } from '@/lib/uiFonts'
 
 export interface AppSettings {
@@ -25,6 +26,7 @@ export interface AppSettings {
     sidebarWidth: number
     showRailIconsOnly: boolean
     accentColorPreset: string
+    sidebarCollapsed: boolean
   }
   requests: {
     defaultTimeoutMs: number
@@ -97,6 +99,7 @@ const defaultSettings: AppSettings = {
     sidebarWidth: 280,
     showRailIconsOnly: false,
     accentColorPreset: 'default',
+    sidebarCollapsed: false,
   },
   requests: {
     defaultTimeoutMs: 30000,
@@ -150,7 +153,7 @@ interface SettingsState {
   settings: AppSettings
   loaded: boolean
   load: () => Promise<void>
-  save: () => Promise<void>
+  save: () => void
   update: (patch: Partial<AppSettings>) => void
   updateGeneral: (patch: Partial<AppSettings['general']>) => void
   updateAppearance: (patch: Partial<AppSettings['appearance']>) => void
@@ -191,12 +194,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     }
   },
 
-  save: async () => {
-    try {
-      await SaveSettings(JSON.stringify(get().settings))
-    } catch (e) {
-      console.error('Failed to save settings:', e)
-    }
+  save: () => {
+    const s = get().settings
+    debouncedSave('settings', () => SaveSettings(JSON.stringify(s)))
   },
 
   update: (patch) => {

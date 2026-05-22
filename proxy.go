@@ -121,16 +121,19 @@ var (
 	proxyThrottle   throttleConfig
 	proxyThrottleMu sync.RWMutex
 
-	interceptProxy     *http.Server
-	interceptProxyMu   sync.Mutex
-	interceptProxyPort int
-	trafficLog         []trafficEntry
-	trafficMu          sync.RWMutex
-	trafficSeq         int64
-	breakpoints        []string
-	breakpointsMu      sync.RWMutex
-	proxySettings      = proxySettingsState{MaxTrafficEntries: 500, ReqBodyLimitKB: 32, RespBodyLimitKB: 64, MapLocalEnabled: true, MapRemoteEnabled: true}
-	proxySettingsMu    sync.RWMutex
+	interceptProxy       *http.Server
+	interceptProxyMu     sync.Mutex
+	interceptProxyPort   int
+	trafficLog           []trafficEntry
+	trafficMu            sync.RWMutex
+	trafficSeq           int64
+	breakpoints          []string
+	breakpointsMu        sync.RWMutex
+	pendingBreakpoints   = make(map[string]*pendingBreakpoint)
+	pendingBreakpointsMu sync.Mutex
+	breakpointSeq        int64
+	proxySettings        = proxySettingsState{MaxTrafficEntries: 500, ReqBodyLimitKB: 32, RespBodyLimitKB: 64, MapLocalEnabled: true, MapRemoteEnabled: true}
+	proxySettingsMu      sync.RWMutex
 
 	caCertPEM       []byte
 	caKeyPEM        []byte
@@ -140,6 +143,24 @@ var (
 	httpsEnabled    bool
 	httpsEnableMu   sync.RWMutex
 )
+
+type pendingBreakpoint struct {
+	ID        string            `json:"id"`
+	Timestamp string            `json:"timestamp"`
+	Method    string            `json:"method"`
+	URL       string            `json:"url"`
+	Headers   map[string]string `json:"headers"`
+	Body      string            `json:"body"`
+	resumeCh  chan breakpointResume
+}
+
+type breakpointResume struct {
+	Action  string            `json:"action"`
+	Method  string            `json:"method"`
+	URL     string            `json:"url"`
+	Headers map[string]string `json:"headers"`
+	Body    *string           `json:"body"`
+}
 
 // --- Server Lifecycle ---
 
@@ -162,9 +183,17 @@ func proxyStartHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	dlog("proxyStartHandler", "configurazione proxy decodificata", map[string]any{"port": cfg.Port, "enableHTTPS": cfg.EnableHTTPS})
 
-	breakpointsMu.Lock()
-	breakpoints = cfg.Breakpoints
-	breakpointsMu.Unlock()
+	if len(cfg.Breakpoints) > 0 {
+		breakpointsMu.Lock()
+		breakpoints = cfg.Breakpoints
+		breakpointsMu.Unlock()
+	} else {
+		proxyRulesMu.RLock()
+		rules := make([]ProxyRule, len(proxyRules))
+		copy(rules, proxyRules)
+		proxyRulesMu.RUnlock()
+		syncBreakpointsFromInterceptRules(rules)
+	}
 
 	if cfg.Settings != nil {
 		proxySettingsMu.Lock()
@@ -185,6 +214,7 @@ func proxyStartHandler(w http.ResponseWriter, r *http.Request) {
 		cancel()
 		interceptProxy = nil
 	}
+	clearPendingBreakpoints()
 
 	ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", cfg.Port))
 	if err != nil {
@@ -220,6 +250,7 @@ func proxyStopHandler(w http.ResponseWriter, r *http.Request) {
 	defer interceptProxyMu.Unlock()
 
 	if interceptProxy != nil {
+		clearPendingBreakpoints()
 		interceptProxy.Close()
 		interceptProxy = nil
 		dlogInfo("proxyStopHandler", "proxy intercettore fermato", nil)
@@ -291,6 +322,138 @@ func proxyBreakpointsHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
 }
 
+func proxyBreakpointPendingHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "GET only", http.StatusMethodNotAllowed)
+		return
+	}
+
+	pendingBreakpointsMu.Lock()
+	pending := make([]pendingBreakpoint, 0, len(pendingBreakpoints))
+	for _, p := range pendingBreakpoints {
+		pending = append(pending, pendingBreakpoint{
+			ID:        p.ID,
+			Timestamp: p.Timestamp,
+			Method:    p.Method,
+			URL:       p.URL,
+			Headers:   p.Headers,
+			Body:      p.Body,
+		})
+	}
+	pendingBreakpointsMu.Unlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "pending": pending, "count": len(pending)})
+}
+
+func proxyBreakpointResumeHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST only", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var body struct {
+		ID      string            `json:"id"`
+		Action  string            `json:"action"`
+		Method  string            `json:"method"`
+		URL     string            `json:"url"`
+		Headers map[string]string `json:"headers"`
+		Body    *string           `json:"body"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		jsonError(w, "invalid JSON: "+err.Error(), 400)
+		return
+	}
+	if body.ID == "" {
+		jsonError(w, "id is required", 400)
+		return
+	}
+	if body.Action == "" {
+		body.Action = "resume"
+	}
+
+	pendingBreakpointsMu.Lock()
+	pending := pendingBreakpoints[body.ID]
+	pendingBreakpointsMu.Unlock()
+	if pending == nil {
+		jsonError(w, "pending breakpoint not found", 404)
+		return
+	}
+
+	resume := breakpointResume{
+		Action:  body.Action,
+		Method:  body.Method,
+		URL:     body.URL,
+		Headers: body.Headers,
+		Body:    body.Body,
+	}
+	select {
+	case pending.resumeCh <- resume:
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
+	case <-time.After(2 * time.Second):
+		jsonError(w, "request is no longer waiting", 409)
+	}
+}
+
+func clearPendingBreakpoints() {
+	pendingBreakpointsMu.Lock()
+	defer pendingBreakpointsMu.Unlock()
+	for id, pending := range pendingBreakpoints {
+		delete(pendingBreakpoints, id)
+		select {
+		case pending.resumeCh <- breakpointResume{Action: "abort"}:
+		default:
+		}
+	}
+}
+
+func waitForBreakpoint(ctx context.Context, method, targetURL string, headers map[string]string, body []byte) (string, string, map[string]string, []byte, bool, error) {
+	pendingBreakpointsMu.Lock()
+	breakpointSeq++
+	pending := &pendingBreakpoint{
+		ID:        fmt.Sprintf("bp-%d", breakpointSeq),
+		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
+		Method:    method,
+		URL:       targetURL,
+		Headers:   headers,
+		Body:      string(body),
+		resumeCh:  make(chan breakpointResume, 1),
+	}
+	pendingBreakpoints[pending.ID] = pending
+	pendingBreakpointsMu.Unlock()
+
+	defer func() {
+		pendingBreakpointsMu.Lock()
+		delete(pendingBreakpoints, pending.ID)
+		pendingBreakpointsMu.Unlock()
+	}()
+
+	select {
+	case resume := <-pending.resumeCh:
+		if resume.Action == "abort" || resume.Action == "drop" {
+			return method, targetURL, headers, body, true, nil
+		}
+		if resume.Method != "" {
+			method = resume.Method
+		}
+		if resume.URL != "" {
+			targetURL = resume.URL
+		}
+		if resume.Headers != nil {
+			headers = resume.Headers
+		}
+		if resume.Body != nil {
+			body = []byte(*resume.Body)
+		}
+		return method, targetURL, headers, body, false, nil
+	case <-ctx.Done():
+		return method, targetURL, headers, body, true, ctx.Err()
+	case <-time.After(5 * time.Minute):
+		return method, targetURL, headers, body, true, fmt.Errorf("breakpoint timed out")
+	}
+}
+
 // --- HTTP Intercept Handler ---
 
 func interceptHandler(w http.ResponseWriter, r *http.Request) {
@@ -323,6 +486,22 @@ func interceptHandler(w http.ResponseWriter, r *http.Request) {
 	breakpointsMu.RLock()
 	matched := matchesAnyPattern(targetURL, breakpoints)
 	breakpointsMu.RUnlock()
+	if matched {
+		var aborted bool
+		var waitErr error
+		method := r.Method
+		method, targetURL, reqHeaders, reqBodyBytes, aborted, waitErr = waitForBreakpoint(r.Context(), method, targetURL, reqHeaders, reqBodyBytes)
+		if aborted {
+			errMsg := "breakpoint aborted"
+			if waitErr != nil {
+				errMsg = waitErr.Error()
+			}
+			recordEntry(targetURL, method, reqHeaders, string(reqBodyBytes), 0, nil, "", time.Since(start), errMsg, matched)
+			http.Error(w, errMsg, http.StatusGatewayTimeout)
+			return
+		}
+		r.Method = method
+	}
 
 	// Map Local: serve from file if URL matches
 	mapLocalRulesMu.RLock()
@@ -371,14 +550,12 @@ func interceptHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for k, vs := range r.Header {
+	for k, v := range reqHeaders {
 		lk := strings.ToLower(k)
 		if lk == "host" || lk == "connection" || lk == "proxy-connection" {
 			continue
 		}
-		for _, v := range vs {
-			outReq.Header.Add(k, v)
-		}
+		outReq.Header.Set(k, v)
 	}
 
 	// Capture request timeline phases
@@ -417,6 +594,7 @@ func interceptHandler(w http.ResponseWriter, r *http.Request) {
 	defer resp.Body.Close()
 
 	respBodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 1024*1024))
+	bodyReadEnd := time.Now()
 
 	timing := &requestTiming{}
 	if !dnsStart.IsZero() && !dnsEnd.IsZero() {
@@ -437,7 +615,7 @@ func interceptHandler(w http.ResponseWriter, r *http.Request) {
 	if !gotFirstByte.IsZero() {
 		timing.Waiting = float64(respEnd.Sub(gotFirstByte).Microseconds()) / 1000.0
 	}
-	timing.ResponseRecv = float64(time.Since(respEnd).Microseconds()) / 1000.0
+	timing.ResponseRecv = float64(bodyReadEnd.Sub(respEnd).Microseconds()) / 1000.0
 
 	applyThrottleLatency()
 
@@ -537,6 +715,23 @@ func handleConnect(w http.ResponseWriter, r *http.Request) {
 	breakpointsMu.RLock()
 	matched := matchesAnyPattern(targetURL, breakpoints)
 	breakpointsMu.RUnlock()
+	if matched {
+		var aborted bool
+		var waitErr error
+		method := req.Method
+		method, targetURL, reqHeaders, reqBodyBytes, aborted, waitErr = waitForBreakpoint(r.Context(), method, targetURL, reqHeaders, reqBodyBytes)
+		if aborted {
+			errMsg := "breakpoint aborted"
+			if waitErr != nil {
+				errMsg = waitErr.Error()
+			}
+			recordEntry(targetURL, method, reqHeaders, string(reqBodyBytes), 0, nil, "", time.Since(startTime), errMsg, matched)
+			response := buildHTTPResponse(http.StatusGatewayTimeout, map[string]string{"Content-Type": "text/plain"}, []byte(errMsg))
+			tlsConn.Write(response)
+			return
+		}
+		req.Method = method
+	}
 
 	// Check Map Local
 	mapLocalRulesMu.RLock()
@@ -579,14 +774,12 @@ func handleConnect(w http.ResponseWriter, r *http.Request) {
 		recordEntry(targetURL, req.Method, reqHeaders, string(reqBodyBytes), 0, nil, "", time.Since(startTime), uerr.Error(), matched)
 		return
 	}
-	for k, vs := range req.Header {
+	for k, v := range reqHeaders {
 		lk := strings.ToLower(k)
 		if lk == "host" || lk == "connection" || lk == "proxy-connection" {
 			continue
 		}
-		for _, v := range vs {
-			upstreamReq.Header.Add(k, v)
-		}
+		upstreamReq.Header.Set(k, v)
 	}
 
 	upClient := &http.Client{Timeout: 30 * time.Second}

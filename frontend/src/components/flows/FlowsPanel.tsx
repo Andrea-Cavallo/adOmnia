@@ -6,6 +6,7 @@ import { evaluateAssertions } from '@/lib/assertionEngine'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { safeEval } from '@/lib/safeEval'
+import { StorageGet, StoragePut } from '@/wailsjs/go/main/App'
 
 type FlowStatus = 'idle' | 'running' | 'ok' | 'error'
 type FlowStepType = 'request' | 'condition' | 'wait' | 'script'
@@ -53,6 +54,8 @@ const STEP_TYPES: { value: FlowStepType; label: string }[] = [
 ]
 const CONDITION_OPERATORS: ConditionOperator[] = ['exists', 'eq', 'neq', 'contains', 'gt', 'lt', 'gte', 'lte']
 const FLOW_STORAGE_KEY = 'adomnia.flows.v1'
+const FLOW_STORAGE_BUCKET = 'flows'
+const FLOW_STORAGE_ITEM = 'all'
 
 function newStep(index: number, type: FlowStepType = 'request'): FlowStep {
   const request = blankRequest('GET')
@@ -104,13 +107,24 @@ function downloadBlob(content: string, filename: string, type: string) {
   URL.revokeObjectURL(url)
 }
 
-function loadSavedFlows(): SavedFlow[] {
+async function loadSavedFlows(): Promise<SavedFlow[]> {
   try {
-    const parsed = JSON.parse(localStorage.getItem(FLOW_STORAGE_KEY) || '[]')
+    const raw = await StorageGet(FLOW_STORAGE_BUCKET, FLOW_STORAGE_ITEM)
+    const parsed = JSON.parse(raw || '[]')
     return Array.isArray(parsed) ? parsed : []
   } catch {
-    return []
+    try {
+      const parsed = JSON.parse(localStorage.getItem(FLOW_STORAGE_KEY) || '[]')
+      return Array.isArray(parsed) ? parsed : []
+    } catch {
+      return []
+    }
   }
+}
+
+async function saveSavedFlows(flows: SavedFlow[]) {
+  await StoragePut(FLOW_STORAGE_BUCKET, FLOW_STORAGE_ITEM, JSON.stringify(flows))
+  try { localStorage.removeItem(FLOW_STORAGE_KEY) } catch { /* old migration cache cleanup */ }
 }
 
 function resolveVar(name: string, vars: Record<string, string>) {
@@ -177,13 +191,18 @@ export function FlowsPanel() {
   const [vars, setVars] = useState<Record<string, string>>({})
   const [lastRun, setLastRun] = useState<FlowRunEntry[]>([])
   const [running, setRunning] = useState(false)
+  const [saveError, setSaveError] = useState('')
   const [recordUrl, setRecordUrl] = useState('')
   const [recordMethod, setRecordMethod] = useState<HttpMethod>('GET')
   const [recordPath, setRecordPath] = useState('')
   const [recordMessage, setRecordMessage] = useState('')
 
   useEffect(() => {
-    setSavedFlows(loadSavedFlows())
+    let cancelled = false
+    loadSavedFlows().then((flows) => {
+      if (!cancelled) setSavedFlows(flows)
+    })
+    return () => { cancelled = true }
   }, [])
 
   const sortedSavedFlows = useMemo(
@@ -191,9 +210,14 @@ export function FlowsPanel() {
     [savedFlows],
   )
 
-  const persistFlows = (next: SavedFlow[]) => {
+  const persistFlows = async (next: SavedFlow[]) => {
     setSavedFlows(next)
-    localStorage.setItem(FLOW_STORAGE_KEY, JSON.stringify(next))
+    setSaveError('')
+    try {
+      await saveSavedFlows(next)
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : String(e))
+    }
   }
 
   const updateStep = (id: string, patch: Partial<FlowStep>) => {
@@ -214,7 +238,7 @@ export function FlowsPanel() {
       steps: steps.map(resetStepRuntime),
       updatedAt: new Date().toISOString(),
     }
-    persistFlows([saved, ...savedFlows.filter((flow) => flow.id !== id)])
+    void persistFlows([saved, ...savedFlows.filter((flow) => flow.id !== id)])
     setActiveFlowId(id)
     setFlowName(saved.name)
   }
@@ -228,7 +252,7 @@ export function FlowsPanel() {
   }
 
   const deleteFlow = (id: string) => {
-    persistFlows(savedFlows.filter((flow) => flow.id !== id))
+    void persistFlows(savedFlows.filter((flow) => flow.id !== id))
     if (activeFlowId === id) setActiveFlowId(null)
   }
 
@@ -429,6 +453,11 @@ export function FlowsPanel() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+          {saveError && (
+            <div className="rounded border border-error/30 bg-error/10 px-3 py-2 text-xs text-error">
+              Flow save failed: {saveError}
+            </div>
+          )}
           {steps.map((step, index) => (
             <div key={step.id} className="bg-surface-1 border border-border-1 rounded p-3 flex flex-col gap-3">
               <div className="flex items-center gap-2">

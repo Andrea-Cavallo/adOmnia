@@ -25,7 +25,7 @@ import (
 // ThemeValidationResult holds the outcome of validating a theme against the schema.
 type ThemeValidationResult struct {
 	Valid    bool     `json:"valid"`
-	Errors  []string `json:"errors"`
+	Errors   []string `json:"errors"`
 	Warnings []string `json:"warnings"`
 }
 
@@ -47,7 +47,7 @@ var optionalColorTokens = []string{
 func (tm *ThemeManager) ValidateTheme(theme Theme) ThemeValidationResult {
 	result := ThemeValidationResult{
 		Valid:    true,
-		Errors:  make([]string, 0),
+		Errors:   make([]string, 0),
 		Warnings: make([]string, 0),
 	}
 
@@ -474,7 +474,8 @@ func (tm *ThemeManager) StartWatching() error {
 		return fmt.Errorf("failed to create skins directory: %w", err)
 	}
 
-	watcher.stopCh = make(chan struct{})
+	stopCh := make(chan struct{})
+	watcher.stopCh = stopCh
 	watcher.active = true
 	watcher.modTimes = make(map[string]time.Time)
 	watcher.changedIDs = make([]string, 0)
@@ -482,7 +483,7 @@ func (tm *ThemeManager) StartWatching() error {
 	// Initial scan to populate mod times
 	tm.populateModTimes(skinsDir)
 
-	go tm.watchLoop(skinsDir)
+	go tm.watchLoop(skinsDir, stopCh)
 
 	log.Printf("[themes] started watching skins directory: %s", skinsDir)
 	return nil
@@ -494,10 +495,11 @@ func (tm *ThemeManager) StopWatching() error {
 	defer watcher.mu.Unlock()
 
 	if !watcher.active {
-		return fmt.Errorf("watcher is not active")
+		return nil
 	}
 
 	close(watcher.stopCh)
+	watcher.stopCh = nil
 	watcher.active = false
 
 	log.Printf("[themes] stopped watching skins directory")
@@ -548,13 +550,13 @@ func (tm *ThemeManager) populateModTimes(skinsDir string) {
 }
 
 // watchLoop polls the skins directory every 2 seconds for changes.
-func (tm *ThemeManager) watchLoop(skinsDir string) {
+func (tm *ThemeManager) watchLoop(skinsDir string, stopCh <-chan struct{}) {
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 
 	for {
 		select {
-		case <-watcher.stopCh:
+		case <-stopCh:
 			return
 		case <-ticker.C:
 			tm.checkForChanges(skinsDir)
@@ -570,6 +572,8 @@ func (tm *ThemeManager) checkForChanges(skinsDir string) {
 	}
 
 	currentFiles := make(map[string]bool)
+	watcher.mu.Lock()
+	defer watcher.mu.Unlock()
 
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(strings.ToLower(entry.Name()), ".json") {
@@ -846,17 +850,17 @@ func (tm *ThemeManager) GetExtendedBuiltinThemes() []Theme {
 			},
 			Spacing: map[string]string{},
 			Radii: map[string]string{
-				"sm":  "0px",
-				"md":  "0px",
-				"lg":  "0px",
-				"xl":  "0px",
+				"sm":   "0px",
+				"md":   "0px",
+				"lg":   "0px",
+				"xl":   "0px",
 				"full": "0px",
 			},
 			Shadows: map[string]string{
-				"sm":  "none",
-				"md":  "none",
-				"lg":  "none",
-				"xl":  "none",
+				"sm": "none",
+				"md": "none",
+				"lg": "none",
+				"xl": "none",
 			},
 			Meta: map[string]string{"builtin": "true", "style": "enterprise"},
 		},
@@ -1013,9 +1017,9 @@ func (tm *ThemeManager) GetExtendedBuiltinThemes() []Theme {
 				"full": "2px",
 			},
 			Shadows: map[string]string{
-				"sm":  "inset -1px -1px 0 #808080, inset 1px 1px 0 #FFFFFF",
-				"md":  "inset -2px -2px 0 #808080, inset 2px 2px 0 #FFFFFF",
-				"lg":  "inset -2px -2px 0 #808080, inset 2px 2px 0 #FFFFFF",
+				"sm":   "inset -1px -1px 0 #808080, inset 1px 1px 0 #FFFFFF",
+				"md":   "inset -2px -2px 0 #808080, inset 2px 2px 0 #FFFFFF",
+				"lg":   "inset -2px -2px 0 #808080, inset 2px 2px 0 #FFFFFF",
 				"glow": "none",
 			},
 			Meta: map[string]string{"builtin": "true", "style": "retro-win95"},

@@ -70,7 +70,6 @@ function App() {
   const newTab = useTabsStore((s) => s.newTab)
   const setActiveTab = useTabsStore((s) => s.setActiveTab)
   const appearance = useSettingsStore((s) => s.settings.appearance)
-  const defaultStartupRail = useSettingsStore((s) => s.settings.general.defaultStartupRail)
   const showWelcomeOnEmptyWorkspace = useSettingsStore((s) => s.settings.general.showWelcomeOnEmptyWorkspace)
   const devLogVisible = useAppStore((s) => s.devToolsVisible)
   const toggleDevTools = useAppStore((s) => s.toggleDevTools)
@@ -113,10 +112,6 @@ function App() {
       html.classList.remove('light')
     }
   }, [appearance.theme])
-
-  useEffect(() => {
-    localStorage.setItem('adomnia.defaultRail', defaultStartupRail)
-  }, [defaultStartupRail])
 
   useEffect(() => {
     const handler = (event: Event) => {

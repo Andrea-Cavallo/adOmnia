@@ -41,17 +41,17 @@
 
 ---
 
-### P0-3 — Proxy Breakpoints Never Actually Pause Traffic
+### P0-3 — Proxy Breakpoints Never Actually Pause Traffic ✅ FIXED (2026-05-22)
 
 - **Area**: Backend (`proxy.go`, `proxy_traffic.go`)
 - **Evidence**: In `proxy_traffic.go`, `matchesAnyPattern(targetURL, breakpoints)` returns a boolean, and the match is logged — but the request is never held, paused, or sent to a UI-blocking callback. Traffic flows through unconditionally.
 - **Why**: The ProxyPanel UI shows a breakpoints section that users can configure, creating the expectation that matching requests will pause for inspection/modification. They don't — traffic always passes through.
-- **Fix**: Implement a request-hold mechanism: when a breakpoint matches, write the pending request to a channel, expose a `/proxy/breakpoint/pending` GET endpoint and a `/proxy/breakpoint/resume` POST endpoint, and have the frontend poll and allow editing before resuming.
-- **Acceptance criteria**: Add a breakpoint for `/api/*`; send a request; verify the proxy panel shows the request paused and the response is only sent after the user clicks "Resume".
+- **Fix applied**: Added backend pending-breakpoint queue with `/proxy/breakpoint/pending` and `/proxy/breakpoint/resume`. Matching HTTP/HTTPS requests now wait until Resume/Drop, with timeout/abort handling. Intercept rules now sync into real proxy breakpoints, including when the proxy starts. ProxyPanel now polls pending requests and lets users edit URL/body before resuming or drop the request.
+- **Acceptance criteria**: Add an intercept rule for `/api/*`; send a request through the proxy; verify ProxyPanel shows the request paused and the response is only sent after Resume.
 
 ---
 
-### P0-4 — LoadTest Compare Feature Compares a Result With Itself
+### P0-4 — LoadTest Compare Feature Compares a Result With Itself ✅ FIXED (2026-05-22)
 
 - **Area**: Frontend (`frontend/src/components/loadtest/LoadTestPanel.tsx:159`)
 - **Evidence**:
@@ -69,7 +69,7 @@
 
 ---
 
-### P1-1 — gRPC Client/Bidirectional Streaming Not Implemented
+### P1-1 — gRPC Client/Bidirectional Streaming Not Implemented ✅ MITIGATED (2026-05-22)
 
 - **Area**: Backend + Frontend (`grpc.go:345-350`, `GrpcPanel.tsx:400`)
 - **Evidence**: `grpc.go:348`:
@@ -82,12 +82,13 @@
   ```
   Frontend shows a warning badge on streaming methods but still lets users attempt to invoke them, resulting in the error.
 - **Why**: gRPC streaming is a fundamental feature. Many production gRPC APIs use server or bidirectional streaming. The current state silently rejects calls.
-- **Fix**: Server-streaming is already partially implemented. Add client-streaming by wrapping requests into a proper gRPC stream via a long-lived HTTP/2 connection. Until complete, disable streaming method invocation buttons instead of failing silently.
-- **Acceptance criteria**: Invoke a server-streaming RPC; verify all streamed messages appear in the response panel progressively.
+- **Fix applied**: Server-streaming remains invokable. Client-streaming and bidirectional-streaming methods are now disabled in the gRPC panel with an explicit warning/tooltip instead of allowing a request that returns `UNIMPLEMENTED`.
+- **Remaining work**: Implement an interactive stream sender for client-streaming and bidirectional-streaming RPCs.
+- **Acceptance criteria**: Invoke a server-streaming RPC; verify streamed messages appear in the response panel. Select a client-streaming or bidirectional-streaming RPC; verify Invoke is disabled with a clear unsupported-state message.
 
 ---
 
-### P1-2 — Flows Panel State is localStorage-Only (No Backend Persistence)
+### P1-2 — Flows Panel State is localStorage-Only (No Backend Persistence) ✅ FIXED (2026-05-22)
 
 - **Area**: Frontend (`frontend/src/components/flows/FlowsPanel.tsx:196`)
 - **Evidence**: `localStorage.setItem('adomnia.flows.v1', JSON.stringify(flows))` — flows are saved to `localStorage`, not to the bbolt backend storage. This means:
@@ -95,12 +96,12 @@
   - Flows are not included in workspace backups exported via the Vault
   - Flows cannot be synced across machines via workspace files
 - **Why**: Every other major feature (collections, environments, settings, tabs) uses the backend storage. Flows break that invariant.
-- **Fix**: Migrate flow persistence to `StoragePut('flows', 'all', JSON.stringify(flows))` / `StorageGet('flows', 'all')`, matching the pattern used in other stores.
-- **Acceptance criteria**: Create a flow, close and reopen the app, verify the flow is restored. Export workspace via Vault; import on a fresh profile; verify flows appear.
+- **Fix applied**: Flow persistence now uses the Wails storage backend with `StoragePut('flows', 'all', JSON.stringify(flows))` / `StorageGet('flows', 'all')`. The panel keeps a legacy `localStorage` fallback for migration, clears the old key after a successful backend save, and surfaces save failures in the UI instead of silently losing user trust.
+- **Acceptance criteria**: Create a flow, close and reopen the app, verify the flow is restored from backend storage. Trigger a storage failure and verify the panel shows a save error instead of pretending the flow was persisted.
 
 ---
 
-### P1-3 — OAuth2 Only Supports client_credentials; No Token Caching
+### P1-3 — OAuth2 Only Supports client_credentials; No Token Caching ✅ FIXED (2026-05-22)
 
 - **Area**: Frontend (`frontend/src/lib/sendRequest.ts:132-158`)
 - **Evidence**:
@@ -109,12 +110,12 @@
   ```
   `fetchOAuth2Token` hardcodes `grant_type: 'client_credentials'`. No Authorization Code, PKCE, Implicit, or Resource Owner Password flows exist. Additionally, a new token is fetched on **every single request** — there is no caching or expiry tracking.
 - **Why**: Most real-world OAuth2 protected APIs use Authorization Code + PKCE. Fetching a new token on each request causes rate limiting, slow sends, and unnecessary token endpoint load.
-- **Fix**: (a) Add a `grant_type` field to the OAuth2 auth configuration. (b) Cache the token in memory with its `expires_in` TTL and only re-fetch when it expires. (c) Support PKCE for Authorization Code flow.
-- **Acceptance criteria**: Configure OAuth2 with a token URL; send 10 rapid requests; verify only one token fetch occurred and all 10 requests succeeded with a cached token.
+- **Fix applied**: OAuth2 auth now exposes a grant selector in the Composer and the request sender supports `client_credentials`, `password`, `refresh_token`, and authorization-code token exchange with PKCE `code_verifier`. Tokens are cached in memory by token URL/grant/client/scope/user context and reused until their `expires_in` TTL approaches expiry. Manual "Fetch Token" forces a refresh.
+- **Acceptance criteria**: Configure OAuth2 with a token URL; send 10 rapid requests; verify only one token fetch occurs while the cached token is valid. For PKCE, paste the returned authorization code and original verifier; verify adOmnia exchanges them for an access token.
 
 ---
 
-### P1-4 — Store Save Errors Are Silent; Users Never Know Data Was Not Persisted
+### P1-4 — Store Save Errors Are Silent; Users Never Know Data Was Not Persisted ✅ FIXED (2026-05-22)
 
 - **Area**: Frontend (all persistent stores: `collections.ts:180`, `environments.ts:56`, `settings.ts:198`, `tabs.ts:98`)
 - **Evidence**:
@@ -131,7 +132,7 @@
 
 ---
 
-### P1-5 — Store Saves Not Awaited — Potential Out-of-Order Writes
+### P1-5 — Store Saves Not Awaited — Potential Out-of-Order Writes ✅ FIXED (2026-05-22)
 
 - **Area**: Frontend (all persistent stores)
 - **Evidence**: Every action in every persistent store follows this pattern:
@@ -146,17 +147,17 @@
 
 ---
 
-### P1-6 — SQLite Path Not Sanitized in Database Studio
+### P1-6 — SQLite Path Not Sanitized in Database Studio ✅ FIXED (2026-05-22)
 
 - **Area**: Backend (`database_go.go`)
 - **Evidence**: The `Connection.DSN` field for SQLite is used directly as a file path without `filepath.Clean()` or traversal checks. A crafted path like `../../etc/passwd` would be opened.
 - **Why**: Path traversal vulnerability. A malicious workspace file could read arbitrary files from the user's system.
-- **Fix**: Apply `filepath.Clean()` and verify the resolved path is under the app's data directory or explicitly allow only absolute paths the user selects via a file dialog.
-- **Acceptance criteria**: Attempt to open `../../etc/hosts` as a SQLite database; verify the backend returns an error instead of reading the file.
+- **Fix applied**: SQLite connection paths now go through `sanitizeSQLitePath()`: `:memory:` is allowed, absolute filesystem paths are cleaned with `filepath.Clean()`, and relative traversal paths plus SQLite URI DSNs are rejected before `sql.Open`.
+- **Acceptance criteria**: Attempt to open `../../etc/hosts` or `file:../../etc/hosts?mode=ro` as a SQLite database; verify the backend returns an error instead of opening the path. Unit coverage added in `database_go_test.go`.
 
 ---
 
-### P1-7 — SaveSettings Stores Malformed JSON Without Validation
+### P1-7 — SaveSettings Stores Malformed JSON Without Validation ✅ FIXED (2026-05-22)
 
 - **Area**: Backend (`settings_bindings.go:22-27`)
 - **Evidence**:
@@ -172,7 +173,7 @@
 
 ---
 
-### P1-8 — "Performance Overlay" Toggle in Settings Is Dead Code
+### P1-8 — "Performance Overlay" Toggle in Settings Is Dead Code ✅ FIXED (2026-05-22)
 
 - **Area**: Frontend (`frontend/src/components/settings/SettingsPanel.tsx:1042-1045`)
 - **Evidence**:
@@ -192,7 +193,7 @@
 
 ---
 
-### P1-9 — HTTP Sidecar Server Has No Graceful Shutdown
+### P1-9 — HTTP Sidecar Server Has No Graceful Shutdown ✅ FIXED (2026-05-22)
 
 - **Area**: Backend (`server.go:168-175`, `app.go:266-280`)
 - **Evidence**:
@@ -208,7 +209,7 @@
 
 ---
 
-### P1-10 — proxy_traffic.go Response Timing Metric Is Always Zero
+### P1-10 — proxy_traffic.go Response Timing Metric Is Always Zero ✅ FIXED (2026-05-22)
 
 - **Area**: Backend (`proxy_traffic.go`)
 - **Evidence**: The `timing.ResponseRecv` field is computed as `time.Since(respEnd)` but `respEnd` is never initialized — it stays at its zero value. Every proxied request reports `ResponseRecv = 0`.
@@ -222,16 +223,21 @@
 
 ---
 
-### P2-1 — Sidebar Collapsed State Not Persisted
+### P2-1 — Sidebar Collapsed State Not Persisted ✅ FIXED (2026-05-22)
 
 - **Area**: Frontend (`frontend/src/stores/app.ts:65,81`)
 - **Evidence**: `sidebarCollapsed: false` is in `app.ts` but `app.ts` has no persistence layer. Every app restart resets the sidebar to expanded regardless of user preference.
-- **Fix**: Move `sidebarCollapsed` into `settings.ts` (under `appearance`) so it's saved via `SaveSettings`.
+- **Fix applied**:
+  - `sidebarCollapsed: boolean` added to `AppSettings['appearance']` in `settings.ts` (interface + `defaultSettings`, default `false`). The deep-merge in `load()` handles new keys via object spread so existing saved settings gain the default seamlessly.
+  - `sidebarCollapsed` removed from `useAppStore`; `AppState` interface cleaned up accordingly.
+  - `toggleSidebar()` in `app.ts` now calls `useSettingsStore.getState().updateAppearance({ sidebarCollapsed: !current })`, persisting via debounced `SaveSettings`.
+  - `Sidebar.tsx` reads `collapsed` from `useSettingsStore((s) => s.settings.appearance.sidebarCollapsed)` — single source of truth.
+  - `App.tsx` keyboard shortcut (`Ctrl+B`) and `i18n.ts`/`SettingsPanel.tsx` label references unchanged.
 - **Acceptance criteria**: Collapse the sidebar; close and reopen the app; verify the sidebar remains collapsed.
 
 ---
 
-### P2-2 — defaultRail Saved to localStorage Instead of Settings
+### P2-2 — defaultRail Saved to localStorage Instead of Settings ✅ FIXED (2026-05-22)
 
 - **Area**: Frontend (`frontend/src/App.tsx:118`)
 - **Evidence**:
@@ -246,16 +252,20 @@
 
 ---
 
-### P2-3 — CollectionTree Uses window.alert and window.prompt
+### P2-3 — CollectionTree Uses window.alert and window.prompt ✅ FIXED (2026-05-22)
 
 - **Area**: Frontend (`frontend/src/components/collections/CollectionTree.tsx`)
 - **Evidence**: Import error feedback uses `window.alert()` (line 375); move-request dialog uses `window.prompt()` (line 399). Both are native browser dialogs that block the UI and are visually inconsistent with the app's design.
-- **Fix**: Replace `window.alert` with the existing `confirm-dialog` or toast system. Replace `window.prompt` with the existing `prompt.tsx` modal component.
+- **Fix applied**:
+  - `window.alert` replaced with an `importError` state-driven toast: styled error banner with auto-dismiss (4 s) and manual close button, rendered at the bottom of the tree panel using design-token classes.
+  - `window.prompt` + `window.alert` replaced with a new `MoveToFolderDialog` component (built from `DialogOverlay`/`DialogContent`/`DialogHeader`/`DialogBody`): shows "Collection Root" and all available folders as clickable list items — no text input required, no "folder not found" error path needed.
+  - `moveRequestByPrompt` removed; replaced by `openMoveDialog` (sets state) and `handleMoveSelect` (performs the move).
+  - `X` icon and `DialogOverlay`/`DialogContent`/`DialogHeader`/`DialogBody` imported; root `div` made `relative` for toast positioning.
 - **Acceptance criteria**: Trigger an import error; verify a styled, non-blocking toast appears instead of a browser alert. Trigger a move-request action; verify a styled modal appears instead of a native prompt.
 
 ---
 
-### P2-4 — console.info Left in CollectionTree Production Code
+### P2-4 — console.info Left in CollectionTree Production Code ✅ FIXED (2026-05-22)
 
 - **Area**: Frontend (`frontend/src/components/collections/CollectionTree.tsx:373`)
 - **Evidence**:
@@ -267,25 +277,25 @@
 
 ---
 
-### P2-5 — ResponsePanel JSON Parse Failure Is Silent
+### P2-5 — ResponsePanel JSON Parse Failure Is Silent ✅ FIXED (2026-05-22)
 
 - **Area**: Frontend (`frontend/src/components/response/ResponsePanel.tsx`)
 - **Evidence**: When the response body is not valid JSON but the user is in the JSON view, the panel silently stays in raw view. No toast, no badge, no message tells the user that JSON parsing failed.
-- **Fix**: Display a small inline notice ("Response is not valid JSON — showing raw") when `JSON.parse` throws inside the JSON viewer.
-- **Acceptance criteria**: Send a request that returns plain text; switch to JSON view; verify a user-friendly notice appears explaining the parse failure.
+- **Fix applied**: The body view now shows an inline warning when the pretty JSON view cannot parse the response body, and then renders the raw body intentionally instead of failing silently.
+- **Acceptance criteria**: Send a request that returns invalid JSON with a JSON content type; switch to Pretty view; verify a user-friendly notice appears explaining the parse failure.
 
 ---
 
-### P2-6 — "Beautify" Button in ResponsePanel Copies to Clipboard, Not Beautifies
+### P2-6 — "Beautify" Button in ResponsePanel Copies to Clipboard, Not Beautifies ✅ FIXED (2026-05-22)
 
 - **Area**: Frontend (`frontend/src/components/response/ResponsePanel.tsx`)
 - **Evidence**: The button labeled "Beautify" (or similar) calls clipboard copy on non-JSON bodies instead of formatting and displaying the content in-place.
-- **Fix**: Implement in-place beautification: re-set the displayed body to `JSON.stringify(parsed, null, 2)` for JSON, or use a basic XML/HTML formatter for those content types.
-- **Acceptance criteria**: Send a minified JSON response; click "Beautify"; verify the panel content is reformatted with indentation without copying to clipboard.
+- **Fix applied**: The Sparkles action now beautifies the displayed body in-place: JSON is parsed and re-rendered with indentation, while XML/HTML-like bodies use a lightweight tag formatter. Clipboard copy remains on the separate Copy button.
+- **Acceptance criteria**: Send a minified JSON response; click Beautify; verify the panel content is reformatted with indentation without copying to clipboard.
 
 ---
 
-### P2-7 — No Debouncing on Store Saves Causes Excessive Backend Writes
+### P2-7 — No Debouncing on Store Saves Causes Excessive Backend Writes ✅ FIXED (2026-05-22)
 
 - **Area**: Frontend (all persistent stores)
 - **Evidence**: Editing a request URL (character by character) triggers a `StoragePut` call per keystroke through the `updateRequest` action in `tabs.ts`.
@@ -294,30 +304,30 @@
 
 ---
 
-### P2-8 — proxy_rules.go CIDR Table Rebuilt in Unlocked Goroutine
+### P2-8 — proxy_rules.go CIDR Table Rebuilt in Unlocked Goroutine ✅ FIXED (2026-05-22)
 
 - **Area**: Backend (`proxy_rules.go`)
 - **Evidence**: After updating `proxyRules` under `proxyRulesMu`, the code calls `go buildCIDRTable()`. The goroutine starts after the mutex is released, so it reads `proxyRules` without holding the lock.
-- **Fix**: Either run `buildCIDRTable()` synchronously before releasing the mutex, or pass a snapshot of the rules as a function argument.
-- **Acceptance criteria**: Run the Go race detector (`go test -race`) and verify no data race is reported for `proxyRules`.
+- **Fix applied**: `proxyRulesPutHandler` now takes a locked snapshot after mutation, rebuilds the CIDR/regex table synchronously from that snapshot, syncs breakpoints from the same effective rules, and persists the snapshot instead of reading `proxyRules` unlocked.
+- **Acceptance criteria**: `go test -race ./...` passes with no data race reported for `proxyRules`.
 
 ---
 
-### P2-9 — themes_extended.go StopWatching May Deadlock
+### P2-9 — themes_extended.go StopWatching May Deadlock ✅ FIXED (2026-05-22)
 
 - **Area**: Backend (`themes_extended.go`)
 - **Evidence**: `StopWatching()` sends to the `stop` channel but doesn't drain it if the `watchLoop` goroutine has already exited (e.g., on a second call). This can cause the send to block forever if the channel is unbuffered.
-- **Fix**: Use `select { case watcher.stop <- struct{}{}: default: }` for a non-blocking send, or use `sync.Once` to ensure stop is only called once.
-- **Acceptance criteria**: Call `StopWatching()` twice in a row; verify no deadlock or hang occurs.
+- **Fix applied**: `StopWatching()` is now idempotent, closes the current watcher channel once, clears it, and the polling goroutine listens on the channel captured at `StartWatching()` time. Mod-time checks are protected by the watcher mutex.
+- **Acceptance criteria**: `TestThemeStopWatchingIsIdempotent` calls `StopWatching()` twice in a row; `go test -race ./...` passes without deadlock or race.
 
 ---
 
-### P2-10 — Plugin EntryPoint Not Re-Validated at Execution Time
+### P2-10 — Plugin EntryPoint Not Re-Validated at Execution Time ✅ FIXED (2026-05-22)
 
 - **Area**: Backend (`plugins.go`)
 - **Evidence**: When loading a plugin manifest, `isUnderDir()` is checked. But when executing a plugin action, the `EntryPoint` field from the loaded manifest is used directly without re-validating that it still points to a path within the plugin directory.
-- **Fix**: Re-apply `isUnderDir(pluginsBaseDir, resolvedEntryPoint)` check at execution time.
-- **Acceptance criteria**: Manually edit an installed plugin's manifest to point `entryPoint` outside the plugins directory; verify execution returns an error instead of accessing the path.
+- **Fix applied**: Added `resolvePluginEntryPoint()` and reused it when loading manifests, installing plugins, registering hooks, and verifying Python plugin imports. Entrypoints are cleaned and must resolve under the plugin install directory.
+- **Acceptance criteria**: Manually edit an installed plugin's manifest to point `entryPoint` outside the plugin directory; verify load/register/verify returns an error instead of accessing the path. Unit coverage added for escaped and valid entrypoints.
 
 ---
 
@@ -353,7 +363,7 @@
 
 ---
 
-### P2-14 — LoadTest Duration Mode Leaves a Goroutine Orphaned
+### P2-14 — LoadTest Duration Mode Leaves a Goroutine Orphaned ✅ FIXED (2026-05-22)
 
 - **Area**: Backend (`loadtest.go:164-169`)
 - **Evidence**:

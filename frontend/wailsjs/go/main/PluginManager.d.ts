@@ -8,6 +8,8 @@ export function EmitEvent(arg1:main.PluginEvent):Promise<Array<main.HookResult>>
 
 export function EnablePlugin(arg1:string):Promise<void>;
 
+export function FireEvent(arg1:main.PluginEvent):Promise<boolean>;
+
 export function GetAvailableEvents():Promise<Array<string>>;
 
 export function GetPlugin(arg1:string):Promise<main.PluginInstance>;
@@ -31,5 +33,7 @@ export function LoadPluginState():Promise<void>;
 export function SavePluginState():Promise<void>;
 
 export function SetPluginSetting(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function Shutdown():Promise<void>;
 
 export function UninstallPlugin(arg1:string):Promise<void>;

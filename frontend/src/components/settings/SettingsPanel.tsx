@@ -1036,14 +1036,6 @@ export function SettingsPanel() {
                   safeSetDevMode(v).catch(() => {})
                 }}
               />
-              <Toggle
-                label={s.developer.showPerfOverlay}
-                desc={s.developer.showPerfOverlayDesc}
-                checked={false}
-                onChange={() => {
-                  console.log('Toggle perf overlay — not yet implemented')
-                }}
-              />
             </SettingsCard>
             <SettingsCard>
               <div className="py-2 px-1 flex items-center justify-between">

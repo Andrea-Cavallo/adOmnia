@@ -167,6 +167,7 @@ export function GrpcPanel() {
 
   const currentService = services.find((s) => s.name === selectedService)
   const currentMethod = currentService?.methods.find((m) => m.name === selectedMethod)
+  const unsupportedClientStreaming = Boolean(currentMethod?.client_streaming)
 
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -390,13 +391,20 @@ export function GrpcPanel() {
               <div className="flex items-center gap-3">
                 <button
                   onClick={handleInvoke}
-                  disabled={loading || !selectedMethod}
+                  disabled={loading || !selectedMethod || unsupportedClientStreaming}
                   className="flex items-center gap-1.5 px-4 py-1.5 bg-accent text-white rounded text-xs font-medium disabled:opacity-40 hover:bg-accent-hover"
+                  title={unsupportedClientStreaming ? 'Client-streaming and bidirectional-streaming calls need an interactive stream sender and are not available yet' : undefined}
                 >
                   <Send size={11} />
                   {loading ? 'Invoking…' : 'Invoke'}
                 </button>
-                {currentMethod && (currentMethod.client_streaming || currentMethod.server_streaming) && (
+                {unsupportedClientStreaming && (
+                  <span className="text-[10px] text-warning border border-warning/30 bg-warning/10 rounded px-2 py-0.5">Client/bidi streaming not available yet</span>
+                )}
+                {currentMethod?.server_streaming && !unsupportedClientStreaming && (
+                  <span className="text-[10px] text-success border border-success/30 bg-success/10 rounded px-2 py-0.5">Server streaming supported</span>
+                )}
+                {false && currentMethod && (currentMethod?.client_streaming || currentMethod?.server_streaming) && (
                   <span className="text-[10px] text-warning border border-warning/30 bg-warning/10 rounded px-2 py-0.5">Streaming · unary mode only</span>
                 )}
                 <button

@@ -167,6 +167,8 @@ func loadTestHandler(w http.ResponseWriter, r *http.Request) {
 			time.Sleep(time.Duration(req.DurationS) * time.Second)
 			close(done)
 		}()
+	} else {
+		close(done)
 	}
 
 	for i := 0; i < req.TotalReqs; i++ {

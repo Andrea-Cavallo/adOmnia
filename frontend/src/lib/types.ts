@@ -27,6 +27,8 @@ export interface RequestAuth {
   oauth2ClientSecret?: string
   oauth2Scope?: string
   oauth2RedirectUri?: string
+  oauth2AuthCode?: string
+  oauth2CodeVerifier?: string
   oauth2RefreshToken?: string
   oauth2ExpiresAt?: number | null
   awsAccessKeyId?: string

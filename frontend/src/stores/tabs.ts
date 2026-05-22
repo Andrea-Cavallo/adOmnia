@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { Tab, RequestItem, ResponseData, HttpMethod } from '@/lib/types'
 import { uid, blankRequest } from '@/lib/types'
 import { StorageGet, StoragePut } from '@/wailsjs/go/main/App'
+import { debouncedSave } from '@/lib/storeSave'
 import { useSettingsStore } from '@/stores/settings'
 
 const BUCKET = 'tabs'
@@ -21,7 +22,7 @@ interface TabsState {
   loaded: boolean
   loadError: boolean
   load: () => Promise<void>
-  save: () => Promise<void>
+  save: () => void
   openTab: (request: RequestItem, collectionId?: string) => void
   closeTab: (id: string) => void
   closeTabsToRight: (id: string) => void
@@ -82,21 +83,17 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     }
   },
 
-  save: async () => {
+  save: () => {
     const s = get()
     if (!s.loaded || s.loadError) return
-    const { tabs, activeTabId, responseHistory } = get()
+    const { tabs, activeTabId, responseHistory } = s
     const payload: PersistedTabsState = {
       version: 1,
       tabs: useSettingsStore.getState().settings.general.restoreTabsOnStartup ? tabs.map(cleanLoadedTab) : [],
       activeTabId,
       responseHistory: responseHistory.slice(0, historyLimit()),
     }
-    try {
-      await StoragePut(BUCKET, KEY, JSON.stringify(payload))
-    } catch (e) {
-      console.error('Failed to persist tabs:', e)
-    }
+    debouncedSave('tabs', () => StoragePut(BUCKET, KEY, JSON.stringify(payload)))
   },
 
   openTab: (request, collectionId) => {
