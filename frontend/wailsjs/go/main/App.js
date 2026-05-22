@@ -18,6 +18,9 @@ export function GetServerPort() {
   return window['go']['main']['App']['GetServerPort']();
 }
 
+export function GetStartupWindowChrome() {
+  return window['go']['main']['App']['GetStartupWindowChrome']();
+  
 export function GetSidecarToken() {
   return window['go']['main']['App']['GetSidecarToken']();
 }

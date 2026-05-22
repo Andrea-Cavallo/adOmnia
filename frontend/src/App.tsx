@@ -17,6 +17,9 @@ import { clearBackendDevLogs, getBackendDevLogs } from '@/lib/devlogs-api'
 import { importCollectionsFromText } from '@/lib/collectionTransfer'
 import { migrateCollections } from '@/stores/collections'
 import { getUIFontStack } from '@/lib/uiFonts'
+import { GetStartupWindowChrome } from '@/wailsjs/go/main/App'
+
+type WindowChromeMode = 'app' | 'app-xwayland' | 'system'
 import { loadDefaultPostmanDemo } from '@/lib/demoWorkspace'
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
@@ -72,6 +75,31 @@ function App() {
   const setActiveRail = useAppStore((s) => s.setActiveRail)
   const mergeBackendLogs = useDevLogsStore((s) => s.mergeBackendEntries)
   const backendLogsClearedRef = useRef(false)
+  const [activeWindowChrome, setActiveWindowChrome] = useState<WindowChromeMode | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    const loadStartupWindowChrome = async () => {
+      try {
+        const mode = await GetStartupWindowChrome()
+        if (!cancelled) {
+          setActiveWindowChrome(mode === 'system' ? 'system' : mode === 'app-xwayland' ? 'app-xwayland' : 'app')
+        }
+      } catch {
+        // Browser-only fallback is handled after settings finish loading.
+      }
+    }
+    void loadStartupWindowChrome()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (activeWindowChrome === null && settingsLoaded) {
+      setActiveWindowChrome(appearance.windowChrome ?? 'app')
+    }
+  }, [activeWindowChrome, appearance.windowChrome, settingsLoaded])
 
   useEffect(() => {
     const html = document.documentElement
@@ -306,7 +334,7 @@ function App() {
           onDragOver={handleDragOver}
           onDrop={handleDrop}
         >
-          <Titlebar />
+          {activeWindowChrome !== 'system' && <Titlebar />}
           <div className="flex flex-1 min-h-0">
             <Rail />
             <Sidebar />

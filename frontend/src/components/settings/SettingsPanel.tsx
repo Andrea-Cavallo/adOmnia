@@ -51,6 +51,11 @@ async function safeGetServerPort(): Promise<number | null> {
   return await appBinding()?.GetServerPort?.() ?? null
 }
 
+async function safeGetStartupWindowChrome(): Promise<AppSettings['appearance']['windowChrome'] | null> {
+  const value = await appBinding()?.GetStartupWindowChrome?.()
+  return value === 'system' ? 'system' : value === 'app-xwayland' ? 'app-xwayland' : value === 'app' ? 'app' : null
+}
+
 async function safeClearDevLogs(): Promise<void> {
   await appBinding()?.ClearDevLogs?.()
 }
@@ -170,6 +175,8 @@ export function SettingsPanel() {
   // Python runtime state
   const [pythonInfo, setPythonInfo] = useState<RuntimeInfo | null>(null)
   const [pythonLoading, setPythonLoading] = useState(false)
+  const [startupWindowChrome, setStartupWindowChrome] = useState<AppSettings['appearance']['windowChrome'] | null>(null)
+  const [runtimePlatform, setRuntimePlatform] = useState<string | null>(null)
   const loadPythonInfo = useCallback(() => {
     setPythonLoading(true)
     getRuntimeInfo()
@@ -182,6 +189,15 @@ export function SettingsPanel() {
       loadPythonInfo()
     }
   }, [section, pythonInfo, loadPythonInfo])
+
+  useEffect(() => {
+    safeGetStartupWindowChrome()
+      .then((mode) => setStartupWindowChrome(mode))
+      .catch(() => setStartupWindowChrome(null))
+    import('@/wailsjs/runtime/runtime').then(({ Environment }) => Environment())
+      .then((env) => setRuntimePlatform(env.platform))
+      .catch(() => setRuntimePlatform(null))
+  }, [])
 
   useEffect(() => {
     if (section !== 'appearance') return
@@ -276,6 +292,20 @@ export function SettingsPanel() {
     }
     return (total / 1024).toFixed(1)
   })()
+  const isLinuxRuntime = runtimePlatform === 'linux'
+  const windowChromeValue = isLinuxRuntime
+    ? (settings.appearance.windowChrome ?? 'app')
+    : (settings.appearance.windowChrome === 'system' ? 'system' : 'app')
+  const windowChromeOptions = isLinuxRuntime
+    ? [
+        { value: 'app', label: s.appearance.windowChromeOptions.appWayland },
+        { value: 'app-xwayland', label: s.appearance.windowChromeOptions.appXWayland },
+        { value: 'system', label: s.appearance.windowChromeOptions.system },
+      ]
+    : [
+        { value: 'app', label: s.appearance.windowChromeOptions.app },
+        { value: 'system', label: s.appearance.windowChromeOptions.system },
+      ]
 
   return (
     <div className="flex h-full">
@@ -382,6 +412,20 @@ export function SettingsPanel() {
                   : [{ value: selectedThemeId, label: s.appearance.themeOptions.loading }]}
                 onChange={handleThemeChange}
               />
+              <Select
+                label={s.appearance.windowChrome}
+                desc={s.appearance.windowChromeDesc}
+                value={windowChromeValue}
+                options={windowChromeOptions}
+                onChange={(v) =>
+                  updateAppearance({ windowChrome: v as AppSettings['appearance']['windowChrome'] })
+                }
+              />
+              {startupWindowChrome !== null && startupWindowChrome !== windowChromeValue && (
+                <div className="mx-1 mb-1 rounded border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[10px] text-amber-200">
+                  {s.appearance.windowChromeRestart}
+                </div>
+              )}
               <Select
                 label={s.appearance.density}
                 desc={s.appearance.densityDesc}
