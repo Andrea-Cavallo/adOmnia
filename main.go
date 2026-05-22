@@ -14,6 +14,8 @@ import (
 var assets embed.FS
 
 func main() {
+	configureWindowChromeBackend(startupWindowChrome)
+
 	app := NewApp()
 	browserDebug := NewBrowserDebug()
 	app.browserDebug = browserDebug
@@ -24,7 +26,7 @@ func main() {
 	dockerLab := NewDockerLab()
 	pythonBridge := NewPythonBridge()
 
-	err := wails.Run(&options.App{
+	appOptions := &options.App{
 		Title:     "adOmnia paratus.",
 		Width:     1400,
 		Height:    900,
@@ -34,7 +36,7 @@ func main() {
 			Assets: assets,
 		},
 		OnStartup:  app.OnStartup,
-		OnDomReady:  app.OnDomReady,
+		OnDomReady: app.OnDomReady,
 		OnShutdown: app.OnShutdown,
 		Bind: []interface{}{
 			app,
@@ -54,8 +56,11 @@ func main() {
 			WebviewUserDataPath:               dataDir(),
 			Theme:                             windows.Dark,
 		},
-		Frameless: true,
-	})
+		Frameless: isAppChrome(startupWindowChrome),
+	}
+	applyPlatformOptions(appOptions)
+
+	err := wails.Run(appOptions)
 	if err != nil {
 		log.Fatal("[app] ", err)
 	}

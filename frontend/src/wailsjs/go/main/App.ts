@@ -18,6 +18,10 @@ export function GetServerPort(): Promise<number> {
   return window['go']['main']['App']['GetServerPort']()
 }
 
+export function GetStartupWindowChrome(): Promise<string> {
+  return window['go']['main']['App']['GetStartupWindowChrome']()
+}
+
 export function GetSidecarToken(): Promise<string> {
   return (window['go']['main']['App'] as unknown as Record<string, () => Promise<string>>)['GetSidecarToken']()
 }

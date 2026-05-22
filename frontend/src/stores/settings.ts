@@ -15,6 +15,7 @@ export interface AppSettings {
   }
   appearance: {
     theme: 'dark' | 'light'
+    windowChrome: 'app' | 'app-xwayland' | 'system'
     themeId: string
     density: 'compact' | 'comfortable' | 'spacious'
     uiFont: UIFontId
@@ -86,6 +87,7 @@ const defaultSettings: AppSettings = {
   },
   appearance: {
     theme: 'dark',
+    windowChrome: 'app',
     themeId: 'builtin-dark',
     density: 'comfortable',
     uiFont: DEFAULT_UI_FONT_ID,

@@ -27,6 +27,17 @@ BUILD_DIR="dist/linux"
 # ICON SOURCE — replace assets/images/logoExe.png to update the app icon
 ICON_SRC_PNG="assets/images/logoExe.png"
 ICON_256="assets/icons/linux/adOmnia_256x256.png"
+REQUIRED_ICONS=(
+    "build/appicon.png"
+    "assets/icons/linux/adOmnia_16x16.png"
+    "assets/icons/linux/adOmnia_24x24.png"
+    "assets/icons/linux/adOmnia_32x32.png"
+    "assets/icons/linux/adOmnia_48x48.png"
+    "assets/icons/linux/adOmnia_64x64.png"
+    "assets/icons/linux/adOmnia_128x128.png"
+    "assets/icons/linux/adOmnia_256x256.png"
+    "assets/icons/linux/adOmnia_512x512.png"
+)
 BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 
@@ -38,13 +49,24 @@ echo -e "${CYAN}╚════════════════════�
 echo ""
 
 # ── Icon generation ────────────────────────────────────────────────────────────
-if [ -f "scripts/generate-icons.sh" ]; then
-    echo -e "${CYAN}🎨  Generating icons...${NC}"
+ICONS_MISSING=false
+for icon in "${REQUIRED_ICONS[@]}"; do
+    if [ ! -f "$icon" ]; then
+        ICONS_MISSING=true
+        break
+    fi
+done
+
+if [ "$ICONS_MISSING" = true ] && [ -f "scripts/generate-icons.sh" ]; then
+    echo -e "${CYAN}🎨  Generating missing icons...${NC}"
     bash scripts/generate-icons.sh
     echo ""
-elif [ ! -f "$ICON_256" ]; then
-    echo -e "${YELLOW}⚠️  scripts/generate-icons.sh not found and $ICON_256 missing${NC}"
+elif [ "$ICONS_MISSING" = true ]; then
+    echo -e "${YELLOW}⚠️  scripts/generate-icons.sh not found and one or more icon assets are missing${NC}"
     echo -e "    Run: bash scripts/generate-icons.sh"
+else
+    echo -e "${GREEN}✓${NC} Icon assets already present"
+    echo ""
 fi
 
 # Check Go
@@ -57,6 +79,25 @@ echo -e "${GREEN}✓${NC} Go: $(go version | awk '{print $3}')"
 echo -e "${GREEN}✓${NC} Version: $VERSION"
 echo ""
 
+if ! command -v npm &> /dev/null; then
+    echo -e "${RED}❌ npm is not installed${NC}"
+    exit 1
+fi
+
+if ! command -v wails &> /dev/null; then
+    echo -e "${YELLOW}⚠️  Wails CLI not found in PATH, checking GOPATH/bin...${NC}"
+    WAILS_BIN="$(go env GOPATH)/bin/wails"
+    if [ ! -x "$WAILS_BIN" ]; then
+        echo -e "${RED}❌ Wails is not installed${NC}"
+        echo -e "    Run: go install github.com/wailsapp/wails/v2/cmd/wails@latest"
+        exit 1
+    fi
+else
+    WAILS_BIN="wails"
+fi
+echo -e "${GREEN}✓${NC} Wails: $($WAILS_BIN version 2>/dev/null | head -1)"
+echo ""
+
 # Clean
 echo -e "${YELLOW}🗑️  Cleaning previous builds...${NC}"
 rm -rf "$BUILD_DIR"
@@ -65,12 +106,26 @@ mkdir -p "$BUILD_DIR"
 build_arch() {
     local GOARCH=$1
     local OUTPUT="$BUILD_DIR/$APP_NAME-linux-$GOARCH"
+    local OUTNAME="$APP_NAME-linux-$GOARCH"
+    local BUILT_OUTPUT="build/bin/$OUTNAME"
+    local TAGS
+    local TAG_ARGS=()
+
+    TAGS="$(detect_linux_webkit_tags)"
+    if [ -n "$TAGS" ]; then
+        TAG_ARGS=(-tags "$TAGS")
+        echo -e "${GREEN}✓${NC} WebKitGTK 4.1 detected; using Go build tags: $TAGS"
+    fi
     
     echo -e "${YELLOW}→${NC} Building Linux $GOARCH..."
-    GOOS=linux GOARCH=$GOARCH CGO_ENABLED=1 \
-        go build -ldflags "$LDFLAGS" -o "$OUTPUT" .
+    "$WAILS_BIN" build \
+        -platform "linux/$GOARCH" \
+        "${TAG_ARGS[@]}" \
+        -ldflags "$LDFLAGS" \
+        -o "$OUTNAME"
     
-    if [ $? -eq 0 ]; then
+    if [ -f "$BUILT_OUTPUT" ]; then
+        cp "$BUILT_OUTPUT" "$OUTPUT"
         chmod +x "$OUTPUT"
         SIZE=$(ls -lh "$OUTPUT" | awk '{print $5}')
         echo -e "${GREEN}✓${NC} $APP_NAME-linux-$GOARCH ($SIZE)"
@@ -82,19 +137,14 @@ build_arch() {
 
 build_arch_static() {
     local GOARCH=$1
-    local OUTPUT="$BUILD_DIR/$APP_NAME-linux-$GOARCH-static"
-    
-    echo -e "${YELLOW}→${NC} Building Linux $GOARCH (static)..."
-    GOOS=linux GOARCH=$GOARCH CGO_ENABLED=0 \
-        go build -ldflags "$LDFLAGS" -o "$OUTPUT" .
-    
-    if [ $? -eq 0 ]; then
-        chmod +x "$OUTPUT"
-        SIZE=$(ls -lh "$OUTPUT" | awk '{print $5}')
-        echo -e "${GREEN}✓${NC} $APP_NAME-linux-$GOARCH-static ($SIZE)"
-    else
-        echo -e "${RED}✗${NC} Linux $GOARCH static build failed"
-        return 1
+    echo -e "${YELLOW}⚠️  Static Linux build skipped for $GOARCH: Wails/WebKitGTK requires CGO${NC}"
+}
+
+detect_linux_webkit_tags() {
+    if command -v pkg-config &> /dev/null &&
+        pkg-config --exists webkit2gtk-4.1 &&
+        ! pkg-config --exists webkit2gtk-4.0; then
+        echo "webkit2_41"
     fi
 }
 
@@ -288,7 +338,9 @@ echo ""
 echo -e "${CYAN}🔐  Generating checksums...${NC}"
 cd "$BUILD_DIR"
 sha256sum adomnia-* > SHA256SUMS.txt 2>/dev/null || \
+    sha256sum adOmnia-* > SHA256SUMS.txt 2>/dev/null || \
     shasum -a 256 adomnia-* > SHA256SUMS.txt 2>/dev/null || \
+    shasum -a 256 adOmnia-* > SHA256SUMS.txt 2>/dev/null || \
     echo -e "${YELLOW}⚠️  Could not generate checksums${NC}"
 cd - > /dev/null
 echo -e "${GREEN}✓${NC} SHA256SUMS.txt created"
@@ -301,7 +353,7 @@ echo -e "${CYAN}Artifacts:${NC}"
 ls -lh "$BUILD_DIR/" | tail -n +2
 echo ""
 echo -e "${CYAN}Portable usage:${NC}"
-echo -e "  1. Extract: ${YELLOW}tar xzf adomnia-$VERSION-linux-amd64.tar.gz${NC}"
+echo -e "  1. Extract: ${YELLOW}tar xzf adOmnia-$VERSION-linux-amd64.tar.gz${NC}"
 echo -e "  2. Install deps: ${YELLOW}sudo apt-get install libgtk-3-0 libwebkit2gtk-4.0-37${NC}"
-echo -e "  3. Run: ${YELLOW}./adomnia-$VERSION-linux-amd64/adomnia${NC}"
+echo -e "  3. Run: ${YELLOW}./adOmnia-$VERSION-linux-amd64/adOmnia${NC}"
 echo ""
