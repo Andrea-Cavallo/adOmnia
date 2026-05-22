@@ -24,7 +24,7 @@ APP_NAME="adOmnia"
 BUILD_DIR="dist"
 DMG_DIR="$BUILD_DIR/dmg"
 APP_BUNDLE="$DMG_DIR/$APP_NAME.app"
-ICON_SRC="winres/icon.ico"
+ICON_SRC="assets/images/icon.png"
 BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 

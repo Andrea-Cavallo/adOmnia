@@ -254,4 +254,18 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  @keyframes icon-glow-breathe {
+    0%, 100% {
+      filter: drop-shadow(0 0 28px rgba(167,139,250,.75)) drop-shadow(0 0 64px rgba(139,92,246,.40));
+      transform: scale(1);
+    }
+    50% {
+      filter: drop-shadow(0 0 48px rgba(196,181,253,.95)) drop-shadow(0 0 100px rgba(167,139,250,.60));
+      transform: scale(1.035);
+    }
+  }
+  .icon-glow-breathe {
+    animation: icon-glow-breathe 4s ease-in-out infinite;
+  }
 }

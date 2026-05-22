@@ -168,7 +168,7 @@ export function WelcomePanel() {
 
       <div className="relative z-10 mx-auto max-w-[1280px] px-8 py-7">
         <main className="min-w-0">
-          <header className="relative mb-5 flex min-h-[168px] items-start gap-6 border-b border-dashed border-white/10 pb-5 lg:pr-[230px]">
+          <header className="relative mb-5 flex min-h-[200px] items-center gap-6 border-b border-dashed border-white/10 pb-5 lg:pr-[310px]">
             <div className="min-w-0">
               <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-violet-300/20 bg-violet-400/10 px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-violet-200">
                 <Layers size={12} />
@@ -186,13 +186,29 @@ export function WelcomePanel() {
                 <MetricPill label="cloud sync" value="0" />
               </div>
             </div>
-            <div className="pointer-events-none absolute right-0 top-[-10px] hidden h-[190px] w-[210px] place-items-center lg:grid">
-              <div className="absolute inset-0 rounded-full bg-violet-500/20 blur-3xl" />
-              <div className="absolute h-[128px] w-[128px] rounded-full border border-violet-200/15 bg-violet-300/10 blur-sm" />
+
+            {/* App icon — prominent hero treatment */}
+            <div className="pointer-events-none absolute right-0 top-1/2 hidden -translate-y-1/2 h-[280px] w-[290px] place-items-center lg:grid">
+              {/* outer halo */}
+              <div className="absolute inset-0 rounded-full bg-violet-600/25 blur-[56px]" />
+              {/* mid ring glow */}
+              <div className="absolute h-[210px] w-[210px] rounded-full bg-violet-500/20 blur-2xl" />
+              {/* orbit rings — slow spin via Tailwind animate-spin + custom duration */}
+              <div
+                className="absolute h-[252px] w-[252px] animate-spin rounded-full border border-violet-300/20"
+                style={{ animationDuration: '20s' }}
+              />
+              <div
+                className="absolute h-[224px] w-[224px] animate-spin rounded-full border border-violet-400/12"
+                style={{ animationDuration: '14s', animationDirection: 'reverse' }}
+              />
+              {/* inner glow disc */}
+              <div className="absolute h-[160px] w-[160px] rounded-full border border-violet-200/15 bg-violet-300/[0.07] blur-sm" />
+              {/* icon — breathing glow */}
               <img
                 src="/icon.png"
-                alt=""
-                className="relative h-[170px] w-[170px] object-contain drop-shadow-[0_0_28px_rgba(168,85,247,.65)]"
+                alt="adOmnia"
+                className="icon-glow-breathe relative z-10 h-[215px] w-[215px] object-contain"
               />
             </div>
           </header>

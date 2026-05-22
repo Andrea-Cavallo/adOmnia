@@ -24,8 +24,8 @@ VERSION=${1:-"dev"}
 TARGET=${2:-"current"}
 APP_NAME="adOmnia"
 BUILD_DIR="dist/linux"
-# ICON SOURCE — replace assets/images/logoExe.png to update the app icon
-ICON_SRC_PNG="assets/images/logoExe.png"
+# ICON SOURCE — single source of truth for all Linux icons
+ICON_SRC_PNG="assets/images/icon.png"
 ICON_256="assets/icons/linux/adOmnia_256x256.png"
 REQUIRED_ICONS=(
     "build/appicon.png"
