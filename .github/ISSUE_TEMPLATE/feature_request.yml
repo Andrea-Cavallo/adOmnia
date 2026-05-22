@@ -1,0 +1,50 @@
+name: Feature request
+description: Suggest a product improvement for adOmnia.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or workflow
+      description: What real workflow would this improve?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Describe the behavior you want.
+    validations:
+      required: true
+  - type: dropdown
+    id: pillar
+    attributes:
+      label: Product pillar
+      description: Which adOmnia pillar does this strengthen most?
+      options:
+        - Local-first
+        - User-extensible
+        - Browser debugging integrated
+        - Enterprise / legacy first-class
+        - Product polish / workflow cohesion
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: textarea
+    id: examples
+    attributes:
+      label: Examples or references
+      description: Screenshots, comparable tools, API examples, or rough sketches.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing feature requests.
+          required: true
+        - label: This does not require telemetry or mandatory cloud sync.
+          required: true

@@ -173,6 +173,17 @@ adOmnia is built for local and regulated workflows.
 
 Security policy: [.github/SECURITY.md](.github/SECURITY.md)
 
+### Documentation
+
+- Install guide: [docs/INSTALL.md](docs/INSTALL.md)
+- Build from source: [docs/BUILD.md](docs/BUILD.md)
+- Release process: [docs/RELEASE.md](docs/RELEASE.md)
+- Privacy policy: [PRIVACY.md](PRIVACY.md)
+- Architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- Public roadmap: [docs/ROADMAP.md](docs/ROADMAP.md)
+- Troubleshooting: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
+- FAQ: [docs/FAQ.md](docs/FAQ.md)
+
 ### Contributing
 
 High-quality contributions are welcome. The best changes improve the real product experience: clearer workflows, better UI cohesion, stronger local-first behavior, safer integrations, and better documentation.
@@ -274,6 +285,15 @@ Guía completa: [docs/BUILD.md](docs/BUILD.md)
 - Roadmap del proyecto: [docs/adomnia-roadmap-checkbox.md](docs/adomnia-roadmap-checkbox.md)
 - Tareas abiertas: [docs/TODO.md](docs/TODO.md)
 
+Documentos adicionales:
+
+- Instalacion: [docs/INSTALL.md](docs/INSTALL.md)
+- Build desde codigo: [docs/BUILD.md](docs/BUILD.md)
+- Release: [docs/RELEASE.md](docs/RELEASE.md)
+- Privacidad: [PRIVACY.md](PRIVACY.md)
+- Arquitectura: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- FAQ: [docs/FAQ.md](docs/FAQ.md)
+
 ### Licencia
 
 MIT. Ver [LICENSE.md](LICENSE.md).
@@ -360,6 +380,15 @@ Istruzioni complete: [docs/BUILD.md](docs/BUILD.md)
 - Visione prodotto: [docs/SOUL.md](docs/SOUL.md)
 - Roadmap del progetto: [docs/adomnia-roadmap-checkbox.md](docs/adomnia-roadmap-checkbox.md)
 - Coda lavori e bug aperti: [docs/TODO.md](docs/TODO.md)
+
+Documenti aggiuntivi:
+
+- Installazione: [docs/INSTALL.md](docs/INSTALL.md)
+- Build da sorgente: [docs/BUILD.md](docs/BUILD.md)
+- Processo release: [docs/RELEASE.md](docs/RELEASE.md)
+- Privacy: [PRIVACY.md](PRIVACY.md)
+- Architettura: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- FAQ: [docs/FAQ.md](docs/FAQ.md)
 
 ### Licenza
 

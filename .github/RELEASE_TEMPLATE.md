@@ -1,128 +1,48 @@
-# Release v{VERSION} - {DATE}
+# adOmnia v{VERSION}
 
-## 🎉 What's New
+## Download
 
-### Features
-- Feature 1 description
-- Feature 2 description
+Choose the artifact for your platform:
 
-### Improvements
-- Improvement 1
-- Improvement 2
+| Platform | File |
+|---|---|
+| Windows | `adOmnia-{VERSION}-windows-amd64.exe` |
+| Linux | `adOmnia-{VERSION}-linux-amd64.tar.gz` or `adOmnia-{VERSION}-linux-amd64` |
+| macOS | `adOmnia-{VERSION}-macos-universal.dmg` |
 
-### Bug Fixes
-- Fix 1: Description
-- Fix 2: Description
+Checksums are available in `SHA256SUMS.txt`.
 
----
-
-## 📥 Installation
-
-### Download
-
-Choose the binary for your platform:
-
-| Platform | File | Size |
-|----------|------|------|
-| 🪟 Windows (64-bit) | `adomnia-windows-amd64.exe` | ~5 MB |
-| 🍎 macOS (Intel) | `adomnia-darwin-amd64` | ~5 MB |
-| 🍎 macOS (Apple Silicon) | `adomnia-darwin-arm64` | ~5 MB |
-| 🐧 Linux (64-bit) | `adomnia-linux-amd64` | ~5 MB |
-| 🐧 Linux (ARM64) | `adomnia-linux-arm64` | ~5 MB |
-
-### Verify Download
-
-Check integrity with SHA256 checksums:
 ```bash
 sha256sum -c SHA256SUMS.txt
 ```
 
-### Quick Start
+## Highlights
 
-**Windows:**
-```powershell
-.\adomnia-windows-amd64.exe
-```
+- Add release highlights here.
 
-**macOS / Linux:**
-```bash
-chmod +x adomnia-darwin-arm64
-./adomnia-darwin-arm64
-```
+## Changes
 
----
+### Added
+- 
 
-## 📝 Full Changelog
+### Changed
+- 
 
-See [CHANGELOG.md](https://github.com/yourusername/adomnia/blob/main/CHANGELOG.md) for complete version history.
+### Fixed
+- 
 
----
+## Upgrade Notes
 
-## 🔄 Upgrade Instructions
+Download the new artifact for your platform and replace the previous application. Local workspaces and settings are preserved.
 
-### From v1.x.x
-Simply download the new binary and replace the old one. All data is preserved in your system's app data folder.
+## Known Issues
 
-### First-time Install
-1. Download the appropriate binary for your platform
-2. Make it executable (macOS/Linux only)
-3. Run the binary
-4. The app opens automatically
+- Unsigned Windows/macOS builds may show OS security warnings until code signing and notarization are configured.
+- Linux portable builds may require system WebKitGTK/GTK runtime libraries.
 
----
+## Links
 
-## 🐛 Known Issues
-
-- None reported for this version
-
-Report issues at: https://github.com/yourusername/adomnia/issues
-
----
-
-## 🤝 Contributors
-
-Thank you to everyone who contributed to this release:
-
-- @username1 - Feature implementation
-- @username2 - Bug fixes
-- @username3 - Documentation
-
----
-
-## 🔐 Security
-
-This release includes no known security vulnerabilities.
-
-For security reports, see [SECURITY.md](https://github.com/yourusername/adomnia/blob/main/SECURITY.md)
-
----
-
-## 📊 Release Stats
-
-- **Lines of code changed**: X
-- **Commits**: X
-- **Contributors**: X
-- **Issues closed**: X
-
----
-
-## 🙏 Acknowledgments
-
-Special thanks to:
-- The Go community
-- WebView2/WebKit maintainers
-- All users who provided feedback
-
----
-
-## 📞 Support
-
-- 🐛 **Bug reports**: [Open an issue](https://github.com/yourusername/adomnia/issues)
-- 💡 **Feature requests**: [Start a discussion](https://github.com/yourusername/adomnia/discussions)
-- 📧 **Contact**: your.email@example.com
-
----
-
-**Star ⭐ the repo if you find adOmnia useful!**
-
-https://github.com/yourusername/adomnia
+- Full changelog: https://github.com/Andrea-Cavallo/adOmnia/blob/master/CHANGELOG.md
+- Install guide: https://github.com/Andrea-Cavallo/adOmnia/blob/master/docs/INSTALL.md
+- Report issues: https://github.com/Andrea-Cavallo/adOmnia/issues
+- Security policy: https://github.com/Andrea-Cavallo/adOmnia/blob/master/.github/SECURITY.md

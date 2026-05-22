@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+title: "adOmnia"
+message: "If you reference adOmnia in a publication, product comparison, or technical report, please cite the project repository."
+type: software
+authors:
+  - family-names: "Cavallo"
+    given-names: "Andrea"
+license: "MIT"
+repository-code: "https://github.com/Andrea-Cavallo/adOmnia"
+abstract: "A local-first desktop toolbox for API development, backend integration, protocol debugging, and enterprise workflows."

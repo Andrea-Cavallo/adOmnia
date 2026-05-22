@@ -6,66 +6,47 @@ labels: ''
 assignees: ''
 ---
 
-## Description
-Brief description of what this PR does.
+## Summary
 
-## Related Issue
-Fixes #(issue number)
-Closes #(issue number)
-Related to #(issue number)
+Describe what changed and why.
 
-## Type of Change
-- [ ] Bug fix (non-breaking change which fixes an issue)
-- [ ] New feature (non-breaking change which adds functionality)
-- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [ ] Documentation update
-- [ ] Code refactoring
-- [ ] Performance improvement
-- [ ] Other (please describe):
+## Product Impact
 
-## Changes Made
-- Change 1
-- Change 2
-- Change 3
+What user workflow improves? Include screenshots or recordings for UI changes.
 
-## Screenshots (if applicable)
-Add screenshots or GIFs demonstrating the changes.
+## Type
 
-## Testing
-Describe the tests you ran to verify your changes:
+- [ ] Bug fix
+- [ ] Feature
+- [ ] UI/UX polish
+- [ ] Documentation
+- [ ] Build/release
+- [ ] Refactor
+- [ ] Security/privacy
 
-- [ ] Test A
-- [ ] Test B
-- [ ] Test C
+## Verification
 
-### Test Configuration
-- **OS**: [e.g., Windows 11, macOS 13.2, Ubuntu 22.04]
-- **Go Version**: [e.g., 1.22.1]
-- **Architecture**: [e.g., AMD64, ARM64]
+- [ ] `cd frontend && npm run build`
+- [ ] `go test ./...`
+- [ ] Manual smoke test performed
+- [ ] Not applicable
+
+Manual test notes:
+
+## Risk
+
+- [ ] Low: isolated change
+- [ ] Medium: shared UI/state/build behavior
+- [ ] High: storage, workspace format, security, release pipeline, or network behavior
 
 ## Checklist
-- [ ] My code follows the style guidelines of this project
-- [ ] I have performed a self-review of my code
-- [ ] I have commented my code, particularly in hard-to-understand areas
-- [ ] I have made corresponding changes to the documentation
-- [ ] My changes generate no new warnings
-- [ ] I have added tests that prove my fix is effective or that my feature works
-- [ ] New and existing unit tests pass locally with my changes
-- [ ] Any dependent changes have been merged and published
-- [ ] I have updated CHANGELOG.md under `[Unreleased]`
 
-## Breaking Changes
-If this PR introduces breaking changes, describe them here and provide migration instructions.
+- [ ] The change preserves local-first behavior.
+- [ ] User-facing behavior is documented.
+- [ ] Screenshots are included for visible UI changes.
+- [ ] `CHANGELOG.md` is updated under `[Unreleased]` if release-worthy.
+- [ ] Secrets, tokens, cookies, and private URLs are not included in logs/screenshots.
 
-## Performance Impact
-Does this change affect performance? If so, describe the impact:
+## Related Issues
 
-- [ ] No performance impact
-- [ ] Improves performance
-- [ ] May decrease performance (justified because...)
-
-## Additional Notes
-Any additional information that reviewers should know.
-
-## Reviewers
-@username1 @username2
+Fixes #

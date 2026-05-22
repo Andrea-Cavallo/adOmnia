@@ -1,0 +1,65 @@
+name: Bug report
+description: Report a reproducible problem in adOmnia.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a problem. Please include enough detail to reproduce it.
+  - type: input
+    id: version
+    attributes:
+      label: adOmnia version
+      description: Version, Git SHA, or artifact name.
+      placeholder: "v0.1.0 or adOmnia-5c8d2ae-windows-amd64.exe"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the problem clearly.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open ...
+        2. Click ...
+        3. See ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Paste logs, screenshots, or short recordings if useful. Remove secrets first.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues.
+          required: true
+        - label: I removed secrets, tokens, cookies, and private URLs from logs/screenshots.
+          required: true

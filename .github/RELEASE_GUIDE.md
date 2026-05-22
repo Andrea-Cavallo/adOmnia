@@ -61,10 +61,10 @@ make release VERSION=1.0.0
 
 ### 4. Test Binaries
 Test each binary on its target platform:
-- [ ] Windows: `adomnia-windows-amd64.exe`
-- [ ] macOS Intel: `adomnia-darwin-amd64`
-- [ ] macOS Apple Silicon: `adomnia-darwin-arm64`
-- [ ] Linux: `adomnia-linux-amd64`
+- [ ] Windows: `adOmnia-<version>-windows-amd64.exe`
+- [ ] macOS: `adOmnia-<version>-macos-universal.dmg`
+- [ ] Linux: `adOmnia-<version>-linux-amd64`
+- [ ] Linux package: `adOmnia-<version>-linux-amd64.tar.gz`
 
 **Basic smoke tests:**
 1. Application launches
@@ -87,7 +87,7 @@ git push origin v1.0.0
 ```
 
 ### 6. Monitor GitHub Actions
-1. Go to: https://github.com/yourusername/adomnia/actions
+1. Go to: https://github.com/Andrea-Cavallo/adOmnia/actions
 2. Wait for build workflow to complete
 3. Verify all platform builds succeeded
 4. Check that release was created automatically
@@ -292,4 +292,4 @@ Follow hotfix procedure above, or revert to previous version.
 
 ---
 
-**Questions?** Open a discussion: https://github.com/yourusername/adomnia/discussions
+**Questions?** Open a discussion: https://github.com/Andrea-Cavallo/adOmnia/discussions
