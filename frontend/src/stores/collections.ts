@@ -172,9 +172,10 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
   },
 
   save: async () => {
-    if (!get().loaded) return
+    const s = get()
+    if (!s.loaded || s.loadError) return
     try {
-      await StoragePut(BUCKET, KEY, JSON.stringify(get().collections))
+      await StoragePut(BUCKET, KEY, JSON.stringify(s.collections))
     } catch (e) {
       console.error('Failed to save collections:', e)
     }

@@ -1,3 +1,5 @@
+import { ExecuteHTTP } from '../wailsjs/go/main/App'
+
 // ─── WSDL Parser & SOAP Client ───────────────────────────────
 
 export interface WsdlPort {
@@ -377,8 +379,6 @@ export async function sendSoapRequest(
   timeoutMs: number = 30000,
 ): Promise<SoapResponse> {
   const t0 = performance.now()
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), timeoutMs)
 
   try {
     const ct = req.soapVersion === '1.2'
@@ -393,27 +393,38 @@ export async function sendSoapRequest(
       Object.assign(headers, req.customHeaders)
     }
 
-    const response = await fetch(req.url, {
+    const execReq = {
       method: 'POST',
+      url: req.url,
       headers,
       body: req.envelope,
-      signal: controller.signal,
-    })
+      timeoutMs,
+      followRedirects: true,
+      skipTlsVerify: false,
+    }
 
-    const body = await response.text()
+    const respJSON = await ExecuteHTTP(JSON.stringify(execReq))
+    const resp = JSON.parse(respJSON) as { status: number; statusText: string; headers: Record<string, string>; body: string; ms: number; size: number; error?: { code: string; message: string } }
 
-    const respHeaders: Record<string, string> = {}
-    response.headers.forEach((v, k) => {
-      respHeaders[k] = v
-    })
+    if (resp.error) {
+      return {
+        status: 0,
+        statusText: 'Error',
+        headers: {},
+        body: '',
+        ms: Math.round(performance.now() - t0),
+        size: 0,
+        error: resp.error.message,
+      }
+    }
 
     return {
-      status: response.status,
-      statusText: response.statusText,
-      headers: respHeaders,
-      body,
-      ms: Math.round(performance.now() - t0),
-      size: new Blob([body]).size,
+      status: resp.status,
+      statusText: resp.statusText,
+      headers: resp.headers ?? {},
+      body: resp.body ?? '',
+      ms: resp.ms ?? Math.round(performance.now() - t0),
+      size: resp.size ?? 0,
     }
   } catch (e) {
     return {
@@ -425,8 +436,6 @@ export async function sendSoapRequest(
       size: 0,
       error: e instanceof Error ? e.message : String(e),
     }
-  } finally {
-    clearTimeout(timer)
   }
 }
 

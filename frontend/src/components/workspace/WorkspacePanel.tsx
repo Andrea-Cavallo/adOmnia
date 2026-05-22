@@ -113,6 +113,9 @@ export function WorkspacePanel() {
     if (state.dockerLab) {
       localStorage.setItem('adomnia.dockerlab.last', JSON.stringify(state.dockerLab))
     }
+    if (state.websocket) {
+      localStorage.setItem('adomnia.websocket', JSON.stringify(state.websocket))
+    }
     setMessage('Workspace loaded into the frontend')
   })
 

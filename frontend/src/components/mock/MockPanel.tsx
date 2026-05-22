@@ -28,6 +28,7 @@ interface MockEndpoint {
   description: string
   responses: MockResponse[]
   mode: string
+  enabled: boolean
 }
 
 interface MockStatus {
@@ -115,6 +116,7 @@ function endpointFromRequest(req: RequestItem): MockEndpoint | null {
       isActive: true,
     }],
     mode: 'first_active',
+    enabled: true,
   }
 }
 
@@ -154,6 +156,7 @@ function defaultRestEndpoints(): MockEndpoint[] {
       isActive: true,
     }],
     mode: 'first_active',
+    enabled: true,
   }))
 }
 
@@ -345,6 +348,7 @@ function EndpointCard({
 }) {
   const [open, setOpen] = useState(true)
   const upd = (patch: Partial<MockEndpoint>) => onChange({ ...ep, ...patch })
+  const enabled = ep.enabled !== false // default true for old data
 
   const updateResponse = (id: string, patch: Partial<MockResponse>) =>
     upd({ responses: ep.responses.map((r) => (r.id === id ? { ...r, ...patch } : r)) })
@@ -361,10 +365,27 @@ function EndpointCard({
   const activeCount = ep.responses.filter((r) => r.isActive).length
 
   return (
-    <div className="bg-surface-1 border border-border-1 rounded-md overflow-hidden">
+    <div className={cn(
+      'border rounded-md overflow-hidden transition-opacity',
+      enabled ? 'bg-surface-1 border-border-1' : 'bg-surface-0 border-border-1 opacity-50',
+    )}>
       <div className="flex items-center gap-2 px-3 py-2">
         <button onClick={() => setOpen(!open)} className="text-text-4 hover:text-text-2">
           {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+        </button>
+
+        {/* Enable/disable toggle */}
+        <button
+          onClick={() => upd({ enabled: !enabled })}
+          title={enabled ? 'Click to disable this endpoint' : 'Click to enable this endpoint'}
+          className={cn(
+            'px-1.5 py-0.5 text-[9px] font-bold rounded border transition-colors flex-shrink-0',
+            enabled
+              ? 'bg-success/15 border-success/30 text-success hover:bg-success/25'
+              : 'bg-surface-3 border-border-2 text-text-4 hover:text-text-2 hover:bg-surface-2',
+          )}
+        >
+          {enabled ? 'ON' : 'OFF'}
         </button>
 
         <select
@@ -546,7 +567,8 @@ export function MockPanel() {
   const handleStart = async () => {
     setLoading(true)
     setError('')
-    const data = await api('/mock/start', { port: mockPort, password, endpoints })
+    const activeEndpoints = endpoints.filter((e) => e.enabled !== false)
+    const data = await api('/mock/start', { port: mockPort, password, endpoints: activeEndpoints })
     if (data?.error) setError(data.error)
     await refreshStatus()
     setLoading(false)
@@ -594,6 +616,7 @@ export function MockPanel() {
               isActive: true,
             }],
             mode: 'first_active',
+            enabled: true,
           }
           setEndpoints([...endpoints, newEp])
         }
@@ -634,6 +657,7 @@ export function MockPanel() {
       description: '',
       responses: [defaultResponse(1)],
       mode: 'first_active',
+      enabled: true,
     }])
   }
 
@@ -776,7 +800,9 @@ export function MockPanel() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium text-text-2">Endpoints</span>
-              <span className="text-[10px] text-text-4">({endpoints.length})</span>
+              <span className="text-[10px] text-text-4">
+                ({endpoints.filter(e => e.enabled !== false).length}/{endpoints.length} enabled)
+              </span>
             </div>
             <button
               onClick={addEndpoint}
@@ -793,6 +819,21 @@ export function MockPanel() {
               <button onClick={addEndpoint} className="text-xs text-accent hover:text-accent-light flex items-center gap-1">
                 <Plus size={12} /> Create your first endpoint
               </button>
+            </div>
+          )}
+          {endpoints.length > 0 && (
+            <div className="flex items-center gap-2 text-[10px] text-text-4">
+              <span className="text-success font-medium">{endpoints.filter(e => e.enabled !== false).length} enabled</span>
+              <span>·</span>
+              <span>{endpoints.filter(e => e.enabled === false).length} disabled</span>
+              {endpoints.some(e => e.enabled === false) && (
+                <button
+                  onClick={() => setEndpoints(endpoints.map(e => ({ ...e, enabled: true })))}
+                  className="text-accent hover:text-accent-light ml-1"
+                >
+                  Enable all
+                </button>
+              )}
             </div>
           )}
 

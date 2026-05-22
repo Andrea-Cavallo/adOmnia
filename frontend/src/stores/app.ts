@@ -22,6 +22,7 @@ export type RailItem =
   | 'soap'
   | 'testdata'
   | 'markdown'
+  | 'powertools'
   | 'storage'
   | 'database'
   | 'vault'

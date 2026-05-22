@@ -47,8 +47,9 @@ export const useEnvironmentsStore = create<EnvironmentsState>((set, get) => ({
   },
 
   save: async () => {
-    if (!get().loaded) return
-    const { environments, activeEnvId } = get()
+    const s = get()
+    if (!s.loaded || s.loadError) return
+    const { environments, activeEnvId } = s
     try {
       await StoragePut(BUCKET, KEY, JSON.stringify({ environments, activeEnvId }))
     } catch (e) {

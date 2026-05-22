@@ -239,9 +239,9 @@ const BTN = 'px-4 py-1.5 bg-accent text-white rounded text-xs font-medium hover:
 
 // ── Panel ─────────────────────────────────────────────────────────────────────
 
-export function JsonToolsPanel() {
+export function JsonToolsPanel({ initialTab }: { initialTab?: Tab } = {}) {
   const port = useServerPort()
-  const [tab,     setTab    ] = useState<Tab>('query')
+  const [tab,     setTab    ] = useState<Tab>(initialTab ?? 'query')
   const [loading, setLoading] = useState(false)
   const [error,   setError  ] = useState('')
   const [result,  setResult ] = useState<object | null>(null)

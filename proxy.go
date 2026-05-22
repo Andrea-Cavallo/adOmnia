@@ -359,7 +359,7 @@ func interceptHandler(w http.ResponseWriter, r *http.Request) {
 
 	for _, rule := range remoteRules {
 		if matchesGlob(targetURL, rule.Pattern) {
-			targetURL = strings.Replace(targetURL, rule.Pattern, rule.Replacement, 1)
+			targetURL = globRewrite(targetURL, rule.Pattern, rule.Replacement)
 			break
 		}
 	}
@@ -568,7 +568,7 @@ func handleConnect(w http.ResponseWriter, r *http.Request) {
 	mapRemoteRulesMu.RUnlock()
 	for _, rule := range remoteRules {
 		if matchesGlob(targetURL, rule.Pattern) {
-			targetURL = strings.Replace(targetURL, rule.Pattern, rule.Replacement, 1)
+			targetURL = globRewrite(targetURL, rule.Pattern, rule.Replacement)
 			break
 		}
 	}

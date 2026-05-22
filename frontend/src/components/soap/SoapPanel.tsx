@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { Upload, Globe, Send, Copy, RefreshCw, ChevronRight, BookmarkPlus, Plus, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { ExecuteHTTP } from '@/wailsjs/go/main/App'
 import {
   parseWsdl,
   generateEnvelopeWithSchema,
@@ -76,9 +77,12 @@ export function SoapPanel() {
     setLoadingWsdl(true)
     setWsdlError('')
     try {
-      const res = await fetch(wsdlUrl)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const text = await res.text()
+      const execReq = { method: 'GET', url: wsdlUrl, headers: {}, body: '', timeoutMs: 30000, followRedirects: true, skipTlsVerify: false }
+      const respJSON = await ExecuteHTTP(JSON.stringify(execReq))
+      const res = JSON.parse(respJSON) as { status: number; body: string; error?: { message: string } }
+      if (res.error) throw new Error(res.error.message)
+      if (res.status >= 400) throw new Error(`HTTP ${res.status}`)
+      const text = res.body
       setWsdlText(text)
       const parsed = parseWsdl(text)
       setWsdl(parsed)

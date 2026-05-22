@@ -19,6 +19,7 @@ interface TabsState {
   activeTabId: string | null
   responseHistory: ResponseData[]
   loaded: boolean
+  loadError: boolean
   load: () => Promise<void>
   save: () => Promise<void>
   openTab: (request: RequestItem, collectionId?: string) => void
@@ -51,13 +52,14 @@ export const useTabsStore = create<TabsState>((set, get) => ({
   activeTabId: null,
   responseHistory: [],
   loaded: false,
+  loadError: false,
 
   load: async () => {
     try {
       const raw = await StorageGet(BUCKET, KEY)
       const settings = useSettingsStore.getState().settings
       if (!raw) {
-        set({ loaded: true })
+        set({ loaded: true, loadError: false })
         return
       }
       const parsed = JSON.parse(raw) as PersistedTabsState
@@ -72,15 +74,17 @@ export const useTabsStore = create<TabsState>((set, get) => ({
         activeTabId,
         responseHistory: (parsed.responseHistory ?? []).slice(0, historyLimit()),
         loaded: true,
+        loadError: false,
       })
     } catch (e) {
       console.error('Failed to restore tabs:', e)
-      set({ loaded: true })
+      set({ loaded: true, loadError: true })
     }
   },
 
   save: async () => {
-    if (!get().loaded) return
+    const s = get()
+    if (!s.loaded || s.loadError) return
     const { tabs, activeTabId, responseHistory } = get()
     const payload: PersistedTabsState = {
       version: 1,

@@ -92,6 +92,59 @@ func matchesGlob(url, pattern string) bool {
 	return strings.Contains(url, pattern)
 }
 
+// globRewrite rewrites url using a source glob pattern and a replacement glob.
+// Both may contain `*` wildcards. Captured segments from source are substituted
+// into replacement in order. Example:
+//
+//	globRewrite("https://api.prod/v1/users", "https://api.prod/*", "https://api.stage/*")
+//	=> "https://api.stage/v1/users"
+func globRewrite(url, pattern, replacement string) string {
+	if !strings.Contains(pattern, "*") {
+		return strings.Replace(url, pattern, replacement, 1)
+	}
+	parts := strings.Split(pattern, "*")
+	captures := make([]string, 0, len(parts))
+	remaining := url
+	for i, part := range parts {
+		if part == "" {
+			if i == 0 {
+				continue
+			}
+			if i == len(parts)-1 {
+				captures = append(captures, remaining)
+				remaining = ""
+				continue
+			}
+			continue
+		}
+		idx := strings.Index(remaining, part)
+		if idx < 0 {
+			return url
+		}
+		if i > 0 || (i == 0 && strings.Contains(pattern[:strings.Index(pattern, part)], "*")) {
+			captures = append(captures, remaining[:idx])
+		}
+		remaining = remaining[idx+len(part):]
+	}
+	if strings.HasSuffix(pattern, "*") {
+		captures = append(captures, remaining)
+	}
+
+	result := replacement
+	for _, cap := range captures {
+		idx := strings.Index(result, "*")
+		if idx < 0 {
+			result += cap
+			break
+		}
+		result = result[:idx] + cap + result[idx+1:]
+	}
+	for strings.Contains(result, "*") {
+		result = strings.Replace(result, "*", "", 1)
+	}
+	return result
+}
+
 func matchesAnyPattern(url string, patterns []string) bool {
 	for _, p := range patterns {
 		if matchesGlob(url, p) {

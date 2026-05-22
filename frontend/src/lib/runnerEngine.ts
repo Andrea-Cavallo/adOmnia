@@ -56,15 +56,14 @@ export async function* runCollection(
   vars: Record<string, string>,
   oaSpec?: string,
 ): AsyncGenerator<RunnerProgress, RunnerSummary, void> {
-  const totalSteps = requests.length * config.iterations
+  const dataset = config.dataset && config.dataset.length > 0
+    ? config.dataset
+    : [{}]
+  const totalSteps = requests.length * config.iterations * dataset.length
   let step = 0
   const allResults: RunnerRequestResult[] = []
   let aborted = false
   const runnerVars = { ...vars }
-
-  const dataset = config.dataset && config.dataset.length > 0
-    ? config.dataset
-    : [{}]
 
   for (let iter = 1; iter <= config.iterations; iter++) {
     if (aborted) break
@@ -191,15 +190,66 @@ export async function* runCollection(
 }
 
 export function parseCsvDataset(text: string): Record<string, string>[] {
-  const lines = text.split(/\r?\n/).filter((l) => l.trim())
-  if (lines.length < 2) return []
-  const headers = lines[0].split(',').map((h) => h.trim().replace(/^"(.*)"$/, '$1'))
-  return lines.slice(1).map((line) => {
-    const values = line.split(',').map((v) => v.trim().replace(/^"(.*)"$/, '$1'))
+  const rows = parseCsvRows(text)
+  if (rows.length < 2) return []
+  const headers = rows[0]
+  return rows.slice(1).map((values) => {
     const row: Record<string, string> = {}
     headers.forEach((h, i) => { row[h] = values[i] ?? '' })
     return row
   })
+}
+
+function parseCsvRows(text: string): string[][] {
+  const rows: string[][] = []
+  let i = 0
+  while (i < text.length) {
+    const { row, next } = parseCsvLine(text, i)
+    if (row.length > 0 || rows.length > 0) rows.push(row)
+    i = next
+  }
+  return rows
+}
+
+function parseCsvLine(text: string, start: number): { row: string[]; next: number } {
+  const fields: string[] = []
+  let i = start
+  while (i < text.length) {
+    if (text[i] === '\r' || text[i] === '\n') {
+      i++
+      if (text[i - 1] === '\r' && text[i] === '\n') i++
+      break
+    }
+    if (text[i] === '"') {
+      i++
+      let val = ''
+      while (i < text.length) {
+        if (text[i] === '"') {
+          if (text[i + 1] === '"') {
+            val += '"'
+            i += 2
+          } else {
+            i++
+            break
+          }
+        } else {
+          val += text[i]
+          i++
+        }
+      }
+      fields.push(val)
+      if (text[i] === ',') i++
+    } else {
+      let val = ''
+      while (i < text.length && text[i] !== ',' && text[i] !== '\r' && text[i] !== '\n') {
+        val += text[i]
+        i++
+      }
+      fields.push(val.trim())
+      if (text[i] === ',') i++
+    }
+  }
+  return { row: fields, next: i }
 }
 
 export function parseJsonDataset(text: string): Record<string, string>[] {

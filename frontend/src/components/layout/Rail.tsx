@@ -100,11 +100,25 @@ const CATEGORIES: CategoryDef[] = [
         { id: 'plugins',    icon: Puzzle,         label: 'Plugins' },
         { id: 'themes',     icon: Paintbrush,     label: 'Themes' },
       ]},
-      { title: 'Power Tools', items: [
-        { id: 'jsontools', icon: Braces,   label: 'JSON Tools' },
-        { id: 'xmltools',  icon: FileCode, label: 'XML Tools' },
-        { id: 'utils',     icon: Wrench,   label: 'Power Tools' },
-        { id: 'markdown',  icon: FileText, label: 'Markdown' },
+    ],
+  },
+  {
+    key: 'powertools', label: 'Power Tools', icon: Wrench, code: 'PWR',
+    groups: [
+      { title: 'Data Tools', items: [
+        { id: 'jsontools',   icon: Braces,   label: 'JSON Tools' },
+        { id: 'xmltools',    icon: FileCode, label: 'XML Tools' },
+      ]},
+      { title: 'Utilities', items: [
+        { id: 'powertools',  icon: Wrench,  label: 'All Utilities' },
+      ]},
+    ],
+  },
+  {
+    key: 'markdown', label: 'Markdown', icon: FileText, code: 'MD',
+    groups: [
+      { title: 'Editor', items: [
+        { id: 'markdown', icon: FileText, label: 'Markdown Editor' },
       ]},
     ],
   },

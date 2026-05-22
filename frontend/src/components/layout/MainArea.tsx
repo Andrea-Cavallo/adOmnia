@@ -355,7 +355,8 @@ function panelFor(activeRail: RailItem): PanelDef {
     case 'grpc':        return { component: <GrpcPanel />,            titleKey: 'grpc',      overflow: true }
     case 'nettools':    return { component: <NetToolsPanel />,        titleKey: 'nettools',  overflow: true }
     case 'browser':     return { component: <BrowserDebugPanel />,    titleKey: 'browser' }
-    case 'utils':       return { component: <UtilsPanel />,           titleKey: 'Power Tools', overflow: true }
+    case 'utils':
+    case 'powertools':  return { component: <UtilsPanel />,           titleKey: 'Power Tools', overflow: true }
     case 'flows':     return { component: <FlowsPanel />,              titleKey: 'flows',     overflow: true }
     case 'runner':    return { component: <RunnerPanel />,            titleKey: 'runner',    overflow: true }
     case 'matrix':    return { component: <MatrixPanel />,            titleKey: 'Env Matrix', overflow: true }

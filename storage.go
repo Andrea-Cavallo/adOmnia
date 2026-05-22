@@ -80,7 +80,7 @@ func openStore() error {
 	}
 
 	db, err := bolt.Open(storePath(), 0600, &bolt.Options{
-		Timeout:      1 * time.Second,
+		Timeout:      5 * time.Second,
 		NoGrowSync:   false,
 		FreelistType: bolt.FreelistMapType,
 	})

@@ -22,10 +22,11 @@ const (
 )
 
 type WSEvent struct {
-	Type      string `json:"type"`      // message | ping | pong | close | error
-	Direction string `json:"direction"` // inbound | outbound | system
+	Type      string `json:"type"`           // message | ping | pong | close | error
+	Direction string `json:"direction"`      // inbound | outbound | system
 	Content   string `json:"content"`
 	Timestamp int64  `json:"timestamp"`
+	Binary    bool   `json:"binary,omitempty"` // true when payload is base64-encoded binary
 }
 
 type WSSession struct {
@@ -41,9 +42,10 @@ type WSSession struct {
 }
 
 type WSConnectRequest struct {
-	URL     string            `json:"url"`
-	Headers map[string]string `json:"headers"`
-	Auth    struct {
+	URL          string            `json:"url"`
+	Headers      map[string]string `json:"headers"`
+	Subprotocols []string          `json:"subprotocols,omitempty"`
+	Auth         struct {
 		Type     string `json:"type"` // none | bearer | basic
 		Token    string `json:"token"`
 		Username string `json:"username"`
@@ -52,8 +54,9 @@ type WSConnectRequest struct {
 }
 
 type WSSendRequest struct {
-	SessionID string `json:"sessionId"`
-	Content   string `json:"content"`
+	SessionID   string `json:"sessionId"`
+	Content     string `json:"content"`
+	MessageType string `json:"messageType,omitempty"` // "text" | "binary" (base64 payload)
 }
 
 type WSPingRequest struct {
@@ -239,11 +242,17 @@ func wsReadPump(sess *WSSession) {
 		if mt == websocket.PongMessage {
 			evType = "pong"
 		}
+		isBinary := mt == websocket.BinaryMessage
+		content := string(data)
+		if isBinary {
+			content = base64.StdEncoding.EncodeToString(data)
+		}
 		sess.broadcast(WSEvent{
 			Type:      evType,
 			Direction: "inbound",
-			Content:   string(data),
+			Content:   content,
 			Timestamp: time.Now().UnixMilli(),
+			Binary:    isBinary,
 		})
 	}
 }
@@ -279,7 +288,10 @@ func wsConnectHandler(w http.ResponseWriter, r *http.Request) {
 		headers.Set("Authorization", wsBasicAuth(req.Auth.Username, req.Auth.Password))
 	}
 
-	dialer := websocket.Dialer{HandshakeTimeout: 15 * time.Second}
+	dialer := websocket.Dialer{
+		HandshakeTimeout: 15 * time.Second,
+		Subprotocols:     req.Subprotocols,
+	}
 	conn, _, err := dialer.Dial(req.URL, headers)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
@@ -358,8 +370,22 @@ func wsSendHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	sess := val.(*WSSession)
+
+	msgType := websocket.TextMessage
+	payload := []byte(req.Content)
+	isBinary := req.MessageType == "binary"
+	if isBinary {
+		decoded, decErr := base64.StdEncoding.DecodeString(req.Content)
+		if decErr != nil {
+			jsonError(w, "invalid base64 payload: "+decErr.Error(), http.StatusBadRequest)
+			return
+		}
+		msgType = websocket.BinaryMessage
+		payload = decoded
+	}
+
 	sess.mu.Lock()
-	err := sess.conn.WriteMessage(websocket.TextMessage, []byte(req.Content))
+	err := sess.conn.WriteMessage(msgType, payload)
 	sess.mu.Unlock()
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
@@ -371,6 +397,7 @@ func wsSendHandler(w http.ResponseWriter, r *http.Request) {
 		Direction: "outbound",
 		Content:   req.Content,
 		Timestamp: time.Now().UnixMilli(),
+		Binary:    isBinary,
 	})
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]bool{"ok": true})

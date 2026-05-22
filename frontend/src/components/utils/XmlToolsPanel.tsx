@@ -229,8 +229,8 @@ const SAMPLE_XML = `<root>
   </user>
 </root>`
 
-export function XmlToolsPanel() {
-  const [tab, setTab] = useState<Tab>('format')
+export function XmlToolsPanel({ initialTab }: { initialTab?: Tab } = {}) {
+  const [tab, setTab] = useState<Tab>(initialTab ?? 'format')
 
   // Format
   const [fmtInput, setFmtInput]   = useState(SAMPLE_XML)

@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import {
   Zap, ZapOff, Send, Download, Trash2, Plus, X, ChevronDown, ChevronRight,
-  Activity, Copy, Check, AlignLeft, Code2, Server, Play, Square,
+  Activity, Copy, Check, AlignLeft, Code2, Server, Play, Square, Search, Clock,
 } from 'lucide-react'
 import { getSidecarToken, useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { useEnvironmentsStore } from '@/stores/environments'
@@ -26,6 +26,7 @@ interface WSConfig {
   headers: KVRow[]
   autoReconnect: boolean
   reconnectDelay: number
+  subprotocols: string
 }
 
 interface WSMessage {
@@ -34,6 +35,7 @@ interface WSMessage {
   direction: 'inbound' | 'outbound' | 'system'
   content: string
   timestamp: number
+  binary?: boolean
 }
 
 interface WSEvent {
@@ -41,6 +43,7 @@ interface WSEvent {
   direction: string
   content: string
   timestamp: number
+  binary?: boolean
 }
 
 interface MockCondition {
@@ -72,6 +75,8 @@ interface MockHit {
 const STORAGE_KEY = 'adomnia.websocket'
 const CONVERSATION_KEY = 'adomnia.websocket.conversation'
 const MOCK_RULES_KEY = 'adomnia.wsmock.rules'
+const URL_HISTORY_KEY = 'adomnia.websocket.urlhistory'
+const MAX_URL_HISTORY = 10
 
 function loadConversation(): WSMessage[] {
   try {
@@ -105,7 +110,22 @@ function defaultConfig(): WSConfig {
     headers: [],
     autoReconnect: false,
     reconnectDelay: 3,
+    subprotocols: '',
   }
+}
+
+function loadUrlHistory(): string[] {
+  try {
+    const raw = localStorage.getItem(URL_HISTORY_KEY)
+    if (raw) return JSON.parse(raw)
+  } catch {}
+  return []
+}
+
+function saveUrlToHistory(url: string) {
+  const history = loadUrlHistory().filter(u => u !== url)
+  history.unshift(url)
+  localStorage.setItem(URL_HISTORY_KEY, JSON.stringify(history.slice(0, MAX_URL_HISTORY)))
 }
 
 function loadRules(): MockRule[] {
@@ -175,7 +195,7 @@ function HeadersEditor({ headers, onChange }: { headers: KVRow[]; onChange: (h: 
 function MessageBubble({ msg }: { msg: WSMessage }) {
   const [expanded, setExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
-  const isJSON = (() => { try { JSON.parse(msg.content); return true } catch { return false } })()
+  const isJSON = !msg.binary && (() => { try { JSON.parse(msg.content); return true } catch { return false } })()
   const copy = () => { navigator.clipboard.writeText(msg.content); setCopied(true); setTimeout(() => setCopied(false), 1200) }
   const dirStyles: Record<string, string> = {
     inbound: 'border-l-2 border-l-blue-500/40 bg-surface-1',
@@ -197,9 +217,14 @@ function MessageBubble({ msg }: { msg: WSMessage }) {
           <span className={cn('text-[9px] font-mono font-semibold w-10', dir.color)}>{dir.text}</span>
           <span className="text-[9px] text-text-4 font-mono">{fmt(msg.timestamp)}</span>
           {msg.type !== 'message' && <span className={cn('text-[9px] font-semibold uppercase', tc)}>{msg.type}</span>}
+          {msg.binary && <span className="text-[9px] text-purple-400 font-semibold">BIN</span>}
         </div>
         <div className="flex-1 min-w-0">
-          {isJSON && msg.direction !== 'system' ? (
+          {msg.binary ? (
+            <p className="text-[10px] font-mono text-purple-300 break-all leading-4">
+              [binary] {msg.content.slice(0, 80)}{msg.content.length > 80 ? '…' : ''}
+            </p>
+          ) : isJSON && msg.direction !== 'system' ? (
             <div>
               <button onClick={() => setExpanded(v => !v)} className="flex items-center gap-1 text-[10px] text-text-3 hover:text-text-1">
                 {expanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
@@ -531,24 +556,41 @@ export function WebSocketPanel() {
   const [messages, setMessages] = useState<WSMessage[]>(loadConversation)
   const [draft, setDraft] = useState('')
   const [jsonMode, setJsonMode] = useState(false)
+  const [binaryMode, setBinaryMode] = useState(false)
   const [scriptCode, setScriptCode] = useState('')
   const [showScript, setShowScript] = useState(false)
   const [showHeaders, setShowHeaders] = useState(false)
   const [showAuth, setShowAuth] = useState(false)
   const [showMock, setShowMock] = useState(false)
+  const [filterText, setFilterText] = useState('')
+  const [filterDir, setFilterDir] = useState<'all' | 'inbound' | 'outbound' | 'system'>('all')
+  const [urlHistory, setUrlHistory] = useState<string[]>(loadUrlHistory)
+  const [showUrlHistory, setShowUrlHistory] = useState(false)
 
   const esRef = useRef<EventSource | null>(null)
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const logRef = useRef<HTMLDivElement | null>(null)
+  const configRef = useRef(config)
 
   useEffect(() => {
     return () => { useAppStore.getState().setWebsocketRunning(false) }
   }, [])
 
+  useEffect(() => { configRef.current = config }, [config])
   useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(config)) }, [config])
   useEffect(() => { if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight }, [messages])
   useEffect(() => { saveConversation(messages) }, [messages])
   useEffect(() => () => { esRef.current?.close(); if (reconnectTimer.current) clearTimeout(reconnectTimer.current) }, [])
+
+  const filteredMessages = useMemo(() => {
+    let result = messages
+    if (filterDir !== 'all') result = result.filter(m => m.direction === filterDir)
+    if (filterText.trim()) {
+      const q = filterText.toLowerCase()
+      result = result.filter(m => m.content.toLowerCase().includes(q))
+    }
+    return result
+  }, [messages, filterText, filterDir])
 
   const addMsg = useCallback((ev: WSEvent) => {
     const msg: WSMessage = {
@@ -557,6 +599,7 @@ export function WebSocketPanel() {
       direction: ev.direction as WSMessage['direction'],
       content: ev.content,
       timestamp: ev.timestamp,
+      binary: ev.binary,
     }
     setMessages(prev => [...prev, msg])
     if (ev.direction === 'inbound' && ev.type === 'message' && scriptCode.trim()) {
@@ -590,14 +633,15 @@ export function WebSocketPanel() {
           useAppStore.getState().setWebsocketRunning(false)
           setSessionId(null)
           es.close()
-          if (config.autoReconnect) {
-            reconnectTimer.current = setTimeout(() => handleConnect(), config.reconnectDelay * 1000)
+          const cfg = configRef.current
+          if (cfg.autoReconnect) {
+            reconnectTimer.current = setTimeout(() => handleConnect(), cfg.reconnectDelay * 1000)
           }
         }
       } catch {}
     }
     es.onerror = () => es.close()
-  }, [port, addMsg, config.autoReconnect, config.reconnectDelay])
+  }, [port, addMsg])
 
   const handleConnect = useCallback(async (overrideUrl?: string) => {
     if (!port) return
@@ -609,11 +653,13 @@ export function WebSocketPanel() {
     for (const h of config.headers) {
       if (h.enabled && h.key) resolvedHeaders[substVars(h.key, vars)] = substVars(h.value, vars)
     }
+    const subprotocols = config.subprotocols.split(',').map(s => s.trim()).filter(Boolean)
     try {
       const res = await sidecarFetch(serverUrl(port, '/ws/connect'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           url: resolvedUrl, headers: resolvedHeaders,
+          subprotocols: subprotocols.length ? subprotocols : undefined,
           auth: { type: config.authType, token: substVars(config.token, vars), username: substVars(config.username, vars), password: substVars(config.password, vars) },
         }),
       })
@@ -623,6 +669,8 @@ export function WebSocketPanel() {
       setStatus('connected')
       useAppStore.getState().setWebsocketRunning(true)
       addMsg({ type: 'message', direction: 'system', content: `Connected to ${resolvedUrl}`, timestamp: Date.now() })
+      saveUrlToHistory(resolvedUrl)
+      setUrlHistory(loadUrlHistory())
       openSSE(data.sessionId)
     } catch (e) {
       setStatus('error')
@@ -644,8 +692,10 @@ export function WebSocketPanel() {
 
   const handleSend = async () => {
     if (!port || !sessionId || !draft.trim()) return
-    const content = jsonMode ? tryPrettyJson(draft) : draft
-    const res = await sidecarFetch(serverUrl(port, '/ws/send'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId, content }) })
+    const content = binaryMode ? draft.trim() : (jsonMode ? tryPrettyJson(draft) : draft)
+    const body: Record<string, string> = { sessionId, content }
+    if (binaryMode) body.messageType = 'binary'
+    const res = await sidecarFetch(serverUrl(port, '/ws/send'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     const data = await res.json()
     if (data.error) addMsg({ type: 'error', direction: 'system', content: data.error, timestamp: Date.now() })
     else setDraft('')
@@ -676,16 +726,41 @@ export function WebSocketPanel() {
 
         {/* URL row */}
         <div className="flex items-center gap-2">
-          <div className="flex-1 flex items-center gap-1 bg-surface-0 border border-border-2 rounded px-2 h-7 focus-within:border-accent/40">
-            <span className="text-[9px] font-semibold text-accent flex-shrink-0">WS</span>
-            <input
-              value={config.url}
-              onChange={e => setConfig(c => ({ ...c, url: e.target.value }))}
-              placeholder="ws://localhost:8080/ws"
-              disabled={connected}
-              className="flex-1 bg-transparent text-[11px] text-text-1 placeholder:text-text-4 focus:outline-none font-mono"
-              onKeyDown={e => { if (e.key === 'Enter' && !connected) handleConnect() }}
-            />
+          <div className="relative flex-1">
+            <div className="flex items-center gap-1 bg-surface-0 border border-border-2 rounded px-2 h-7 focus-within:border-accent/40">
+              <span className="text-[9px] font-semibold text-accent flex-shrink-0">WS</span>
+              <input
+                value={config.url}
+                onChange={e => setConfig(c => ({ ...c, url: e.target.value }))}
+                placeholder="ws://localhost:8080/ws"
+                disabled={connected}
+                className="flex-1 bg-transparent text-[11px] text-text-1 placeholder:text-text-4 focus:outline-none font-mono"
+                onKeyDown={e => { if (e.key === 'Enter' && !connected) handleConnect() }}
+                onFocus={() => setShowUrlHistory(true)}
+                onBlur={() => setTimeout(() => setShowUrlHistory(false), 150)}
+              />
+              {urlHistory.length > 0 && !connected && (
+                <button
+                  onClick={() => setShowUrlHistory(v => !v)}
+                  className="flex-shrink-0 text-text-4 hover:text-text-2 transition-colors"
+                >
+                  <Clock size={10} />
+                </button>
+              )}
+            </div>
+            {showUrlHistory && urlHistory.length > 0 && !connected && (
+              <div className="absolute top-full left-0 right-0 z-20 mt-0.5 bg-surface-2 border border-border-1 rounded shadow-lg overflow-hidden">
+                {urlHistory.map((u, i) => (
+                  <button
+                    key={i}
+                    onMouseDown={() => { setConfig(c => ({ ...c, url: u })); setShowUrlHistory(false) }}
+                    className="w-full text-left px-2 py-1 text-[11px] font-mono text-text-2 hover:bg-surface-3 hover:text-text-1 truncate"
+                  >
+                    {u}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           {connected ? (
             <button onClick={handleDisconnect} className="h-7 px-3 bg-error/10 border border-error/30 text-error rounded text-[11px] font-semibold hover:bg-error/20 transition-colors flex items-center gap-1.5">
@@ -706,7 +781,7 @@ export function WebSocketPanel() {
             { key: 'showScript', label: 'On message', state: showScript, set: setShowScript },
             { key: 'showMock', label: 'Mock Server', state: showMock, set: setShowMock },
           ].map(({ key, label, state, set }) => (
-            <button key={key} onClick={() => set(v => !v)} className={cn('text-[10px] flex items-center gap-1 transition-colors', state ? 'text-accent' : 'text-text-4 hover:text-text-2')}>
+            <button key={key} onClick={() => set((v: boolean) => !v)} className={cn('text-[10px] flex items-center gap-1 transition-colors', state ? 'text-accent' : 'text-text-4 hover:text-text-2')}>
               {key === 'showMock' && <Server size={9} />}
               {key !== 'showMock' && <ChevronRight size={10} className={cn('transition-transform', state && 'rotate-90')} />}
               {label}
@@ -743,6 +818,20 @@ export function WebSocketPanel() {
           </div>
         )}
 
+        {/* Sub-protocol */}
+        {showAuth && (
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-text-4 w-20 flex-shrink-0">Sub-protocols</span>
+            <input
+              value={config.subprotocols}
+              onChange={e => setConfig(c => ({ ...c, subprotocols: e.target.value }))}
+              placeholder="e.g. graphql-ws, chat"
+              disabled={connected}
+              className="flex-1 h-6 px-2 bg-surface-0 border border-border-2 rounded text-[11px] text-text-1 placeholder:text-text-4 focus:outline-none focus:border-accent/40 font-mono"
+            />
+          </div>
+        )}
+
         {/* Headers */}
         {showHeaders && <div className="pt-1 border-t border-border-2"><HeadersEditor headers={config.headers} onChange={h => setConfig(c => ({ ...c, headers: h }))} /></div>}
 
@@ -768,10 +857,37 @@ export function WebSocketPanel() {
         </span>
         {connected && sessionId && <span className="text-[9px] text-text-4 font-mono ml-1">#{sessionId.slice(0, 8)}</span>}
         <div className="flex-1" />
-        <span className="text-[10px] text-text-4">{messages.length} messages</span>
+        <span className="text-[10px] text-text-4">{filteredMessages.length !== messages.length ? `${filteredMessages.length}/${messages.length}` : messages.length} messages</span>
         {connected && <button onClick={handlePing} className="h-5 px-2 rounded text-[10px] text-text-3 hover:text-text-1 hover:bg-surface-2 transition-colors flex items-center gap-1"><Activity size={10} />Ping</button>}
         <button onClick={exportJSONL} disabled={messages.length === 0} className="h-5 px-2 rounded text-[10px] text-text-3 hover:text-text-1 hover:bg-surface-2 transition-colors flex items-center gap-1 disabled:opacity-30"><Download size={10} />Export JSONL</button>
         <button onClick={() => setMessages([])} disabled={messages.length === 0} className="h-5 px-2 rounded text-[10px] text-text-3 hover:text-error hover:bg-surface-2 transition-colors flex items-center gap-1 disabled:opacity-30"><Trash2 size={10} />Clear</button>
+      </div>
+
+      {/* ── Filter bar ── */}
+      <div className="flex items-center gap-2 px-3 py-1 border-b border-border-1 bg-surface-0 flex-shrink-0">
+        <Search size={10} className="text-text-4 flex-shrink-0" />
+        <input
+          value={filterText}
+          onChange={e => setFilterText(e.target.value)}
+          placeholder="Filter messages…"
+          className="flex-1 bg-transparent text-[11px] text-text-1 placeholder:text-text-4 focus:outline-none font-mono"
+        />
+        {filterText && (
+          <button onClick={() => setFilterText('')} className="text-text-4 hover:text-text-1 transition-colors">
+            <X size={10} />
+          </button>
+        )}
+        <div className="flex items-center gap-0.5">
+          {(['all', 'inbound', 'outbound', 'system'] as const).map(d => (
+            <button
+              key={d}
+              onClick={() => setFilterDir(d)}
+              className={cn('h-5 px-1.5 rounded text-[9px] font-mono transition-colors', filterDir === d ? 'bg-accent/20 text-accent' : 'text-text-4 hover:text-text-2')}
+            >
+              {d === 'all' ? 'all' : d === 'inbound' ? 'in' : d === 'outbound' ? 'out' : 'sys'}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* ── Message log ── */}
@@ -784,15 +900,35 @@ export function WebSocketPanel() {
               <p className="text-[10px] text-text-4 mt-1">Connect to a WebSocket endpoint to start</p>
             </div>
           </div>
-        ) : messages.map(m => <MessageBubble key={m.id} msg={m} />)}
+        ) : filteredMessages.length === 0 ? (
+          <div className="flex-1 flex items-center justify-center">
+            <p className="text-xs text-text-4">No messages match filter</p>
+          </div>
+        ) : filteredMessages.map(m => <MessageBubble key={m.id} msg={m} />)}
       </div>
 
       {/* ── Composer ── */}
       <div className="flex-shrink-0 border-t border-border-1 bg-surface-1 px-3 py-2 flex flex-col gap-2">
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1">
-            <button onClick={() => setJsonMode(false)} className={cn('h-5 px-2 rounded text-[10px] transition-colors flex items-center gap-1', !jsonMode ? 'bg-surface-3 text-text-1' : 'text-text-4 hover:text-text-2')}><AlignLeft size={9} />Text</button>
-            <button onClick={() => setJsonMode(true)} className={cn('h-5 px-2 rounded text-[10px] transition-colors flex items-center gap-1', jsonMode ? 'bg-surface-3 text-text-1' : 'text-text-4 hover:text-text-2')}><Code2 size={9} />JSON</button>
+            <button
+              onClick={() => { setJsonMode(false); setBinaryMode(false) }}
+              className={cn('h-5 px-2 rounded text-[10px] transition-colors flex items-center gap-1', !jsonMode && !binaryMode ? 'bg-surface-3 text-text-1' : 'text-text-4 hover:text-text-2')}
+            >
+              <AlignLeft size={9} />Text
+            </button>
+            <button
+              onClick={() => { setJsonMode(true); setBinaryMode(false) }}
+              className={cn('h-5 px-2 rounded text-[10px] transition-colors flex items-center gap-1', jsonMode ? 'bg-surface-3 text-text-1' : 'text-text-4 hover:text-text-2')}
+            >
+              <Code2 size={9} />JSON
+            </button>
+            <button
+              onClick={() => { setBinaryMode(true); setJsonMode(false) }}
+              className={cn('h-5 px-2 rounded text-[10px] transition-colors flex items-center gap-1', binaryMode ? 'bg-purple-500/20 text-purple-300' : 'text-text-4 hover:text-text-2')}
+            >
+              Bin
+            </button>
           </div>
           <div className="flex-1" />
           {jsonMode && <button onClick={() => { setDraft(tryPrettyJson(draft)); setJsonMode(true) }} className="h-5 px-2 rounded text-[10px] text-text-4 hover:text-accent hover:bg-surface-2 transition-colors">Prettify</button>}
@@ -801,19 +937,22 @@ export function WebSocketPanel() {
           <textarea
             value={draft}
             onChange={e => setDraft(e.target.value)}
-            placeholder={jsonMode ? '{"key": "value"}' : 'Type a message…'}
+            placeholder={binaryMode ? 'Base64-encoded binary payload…' : jsonMode ? '{"key": "value"}' : 'Type a message…'}
             rows={jsonMode ? 4 : 2}
             disabled={!connected}
-            className="flex-1 font-mono text-[11px] bg-surface-0 border border-border-2 rounded p-2 text-text-1 placeholder:text-text-4 resize-none focus:outline-none focus:border-accent/40 disabled:opacity-40"
-            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !jsonMode) { e.preventDefault(); handleSend() } }}
+            className={cn(
+              'flex-1 font-mono text-[11px] bg-surface-0 border rounded p-2 text-text-1 placeholder:text-text-4 resize-none focus:outline-none disabled:opacity-40',
+              binaryMode ? 'border-purple-500/30 focus:border-purple-500/60 text-purple-200' : 'border-border-2 focus:border-accent/40',
+            )}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !jsonMode && !binaryMode) { e.preventDefault(); handleSend() } }}
           />
-          <button onClick={handleSend} disabled={!connected || !draft.trim()} className="w-9 bg-accent text-white rounded flex items-center justify-center hover:bg-accent-hover transition-colors disabled:opacity-40 self-end h-8">
+          <button onClick={handleSend} disabled={!connected || !draft.trim()} className={cn('w-9 text-white rounded flex items-center justify-center transition-colors disabled:opacity-40 self-end h-8', binaryMode ? 'bg-purple-600 hover:bg-purple-500' : 'bg-accent hover:bg-accent-hover')}>
             <Send size={14} />
           </button>
         </div>
         <p className="text-[9px] text-text-4">
-          {jsonMode ? 'Shift+Enter for new line' : 'Enter to send · Shift+Enter for new line'}
-          {' · '}Supports <span className="text-accent font-mono">{'{{variables}}'}</span>
+          {binaryMode ? 'Paste base64-encoded binary data to send as binary WebSocket frame' : jsonMode ? 'Shift+Enter for new line' : 'Enter to send · Shift+Enter for new line'}
+          {!binaryMode && <>{' · '}Supports <span className="text-accent font-mono">{'{{variables}}'}</span></>}
         </p>
       </div>
     </div>

@@ -273,6 +273,7 @@ function App() {
           }
           if (Array.isArray(parsed.flows)) localStorage.setItem('adomnia.flows.v1', JSON.stringify(parsed.flows))
           if (parsed.dockerLab) localStorage.setItem('adomnia.dockerlab.last', JSON.stringify(parsed.dockerLab))
+          if (parsed.websocket) localStorage.setItem('adomnia.websocket', JSON.stringify(parsed.websocket))
           totalImported += (parsed.collections as unknown[]).length
           workspaceImported = true
         } else {
