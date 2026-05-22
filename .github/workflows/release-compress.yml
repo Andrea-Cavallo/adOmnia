@@ -50,7 +50,7 @@ jobs:
         run: wails build -ldflags "-s -w" -trimpath
 
       - name: Compress with UPX
-        uses: crazy-max/ghaction-upx@v3
+        uses: crazy-max/ghaction-upx@v4
         with:
           files: build/bin/adOmnia.exe
           args: --best --lzma
