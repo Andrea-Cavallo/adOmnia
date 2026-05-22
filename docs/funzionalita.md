@@ -804,7 +804,7 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 | G2.2 | **Database bbolt Embedded** | Key-value ACID single-file con bucket multipli; auto-creazione e migrazione. |
 | G2.3 | **HTTP Sidecar Go** | Server HTTP locale su porta casuale SO per comunicazione frontend↔backend. |
 | G2.4 | **Binario Unico** | Eseguibile desktop autocontenuto; nessuna dipendenza runtime esterna. |
-| G2.5 | **Finestra Frameless** | Titlebar personalizzata con dark mode Windows DWM. |
+| G2.5 | **Titlebar configurabile** | Default frameless con titlebar dell'app; su Linux scelta esplicita tra Wayland nativo, XWayland e titlebar di sistema al riavvio. |
 | G2.6 | **Nasconde Console Windows** | Sopprime la finestra console in produzione. |
 | G2.7 | **Internazionalizzazione** | Supporto Inglese e Italiano; dizionario traduzioni completo. |
 | G2.8 | **State Management Zustand** | Store: app, collezioni, ambienti, tab, impostazioni, devLogs, temi, plugin, browser-debug. |

@@ -8,6 +8,8 @@ export function GetDevLogs():Promise<string>;
 
 export function GetServerPort():Promise<number>;
 
+export function GetStartupWindowChrome():Promise<string>;
+
 export function GetVaultTimeout():Promise<number>;
 
 export function IsDevMode():Promise<boolean>;

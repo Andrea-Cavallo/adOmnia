@@ -11,6 +11,7 @@ interface WailsGoMain {
     StorageList: (bucket: string, prefix: string) => Promise<string[]>
     StorageGetAll: (bucket: string) => Promise<Array<{ bucket: string; key: string; value: string }>>
     GetServerPort: () => Promise<number>
+    GetStartupWindowChrome: () => Promise<string>
     SelectFolder: (title: string) => Promise<string>
     GetDevLogs: () => Promise<string>
     ClearDevLogs: () => Promise<void>

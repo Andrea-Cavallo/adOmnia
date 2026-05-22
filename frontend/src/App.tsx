@@ -21,6 +21,9 @@ import { importCollectionsFromText } from '@/lib/collectionTransfer'
 import { getAppIconForTheme } from '@/lib/brandAssets'
 import type { Theme } from '@/stores/themes'
 import { getUIFontStack } from '@/lib/uiFonts'
+import { GetStartupWindowChrome } from '@/wailsjs/go/main/App'
+
+type WindowChromeMode = 'app' | 'app-xwayland' | 'system'
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   constructor(props: { children: ReactNode }) {
@@ -84,6 +87,7 @@ function App() {
   const loadEnvironments = useEnvironmentsStore((s) => s.load)
   const newTab = useTabsStore((s) => s.newTab)
   const appearance = useSettingsStore((s) => s.settings.appearance)
+  const settingsLoaded = useSettingsStore((s) => s.loaded)
   const defaultStartupRail = useSettingsStore((s) => s.settings.general.defaultStartupRail)
   const devLogVisible = useAppStore((s) => s.devToolsVisible)
   const toggleDevTools = useAppStore((s) => s.toggleDevTools)
@@ -94,6 +98,31 @@ function App() {
   const setStoreActiveThemeId = useThemesStore((s) => s.setActiveThemeId)
   const backendLogsClearedRef = useRef(false)
   const soapPreviousThemeRef = useRef<string | null>(null)
+  const [activeWindowChrome, setActiveWindowChrome] = useState<WindowChromeMode | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    const loadStartupWindowChrome = async () => {
+      try {
+        const mode = await GetStartupWindowChrome()
+        if (!cancelled) {
+          setActiveWindowChrome(mode === 'system' ? 'system' : mode === 'app-xwayland' ? 'app-xwayland' : 'app')
+        }
+      } catch {
+        // Browser-only fallback is handled after settings finish loading.
+      }
+    }
+    void loadStartupWindowChrome()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (activeWindowChrome === null && settingsLoaded) {
+      setActiveWindowChrome(appearance.windowChrome ?? 'app')
+    }
+  }, [activeWindowChrome, appearance.windowChrome, settingsLoaded])
 
   // Apply theme (dark/light)
   useEffect(() => {
@@ -337,7 +366,7 @@ function App() {
           onDragOver={handleDragOver}
           onDrop={handleDrop}
         >
-          <Titlebar />
+          {activeWindowChrome !== 'system' && <Titlebar />}
           <div className="flex flex-1 min-h-0">
             <Rail />
             <Sidebar />
