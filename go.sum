@@ -10,8 +10,8 @@ git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3 h1:N3IGoHHp9pb6mj1cbXbuaSXV/UMKwmbKLf
 git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3/go.mod h1:QtOLZGz8olr4qH2vWK0QH0w0O4T9fEIjMuWpKUsH7nc=
 github.com/HdrHistogram/hdrhistogram-go v1.2.0 h1:XMJkDWuz6bM9Fzy7zORuVFKH7ZJY41G2q8KWhVGkNiY=
 github.com/HdrHistogram/hdrhistogram-go v1.2.0/go.mod h1:CiIeGiHSd06zjX+FypuEJ5EQ07KKtxZ+8J6hszwVQig=
-github.com/IBM/sarama v1.48.1 h1:x1dSWebprjjE7Wr7n8RVAxwa4mt4O9JejRxnZrGIXk0=
-github.com/IBM/sarama v1.48.1/go.mod h1:m/Q1aFezH82/AglfTpJbw/fO0ZybYXhPgTmvajiZX50=
+github.com/IBM/sarama v1.49.0 h1:FhLbVia5yi426qttj0kNTI86vPc3v+/3mGHkif1Fsao=
+github.com/IBM/sarama v1.49.0/go.mod h1:m/Q1aFezH82/AglfTpJbw/fO0ZybYXhPgTmvajiZX50=
 github.com/bep/debounce v1.2.1 h1:v67fRdBA9UQu2NhLFXrSg0Brw7CexQekrBwDMM8bzeY=
 github.com/bep/debounce v1.2.1/go.mod h1:H8yggRPQKLUhUoqrJC1bO2xNya7vanpDl7xR3ISbCJ0=
 github.com/bsm/ginkgo/v2 v2.12.0 h1:Ny8MWAHyOepLGlLKYmXG4IEkioBysk6GpaRTLC8zwWs=

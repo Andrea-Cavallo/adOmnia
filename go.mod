@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	filippo.io/age v1.3.1
 	github.com/HdrHistogram/hdrhistogram-go v1.2.0
-	github.com/IBM/sarama v1.48.1
+	github.com/IBM/sarama v1.49.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/eclipse/paho.mqtt.golang v1.5.1
 	github.com/gabriel-vasile/mimetype v1.4.13
