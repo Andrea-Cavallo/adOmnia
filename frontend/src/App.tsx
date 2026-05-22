@@ -64,6 +64,7 @@ function App() {
   const loadEnvironments = useEnvironmentsStore((s) => s.load)
   const loadTabs = useTabsStore((s) => s.load)
   const newTab = useTabsStore((s) => s.newTab)
+  const setActiveTab = useTabsStore((s) => s.setActiveTab)
   const appearance = useSettingsStore((s) => s.settings.appearance)
   const defaultStartupRail = useSettingsStore((s) => s.settings.general.defaultStartupRail)
   const showWelcomeOnEmptyWorkspace = useSettingsStore((s) => s.settings.general.showWelcomeOnEmptyWorkspace)
@@ -201,6 +202,27 @@ function App() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [newTab, setActiveRail, toggleDevTools])
+
+  useEffect(() => {
+    const handleMouseDown = (e: MouseEvent) => {
+      // button 3 = back, button 4 = forward (side mouse buttons)
+      if (e.button !== 3 && e.button !== 4) return
+      e.preventDefault()
+      const { tabs, activeTabId } = useTabsStore.getState()
+      if (tabs.length < 2) return
+      const idx = tabs.findIndex((t) => t.id === activeTabId)
+      if (idx === -1) return
+      if (e.button === 3) {
+        const prev = tabs[idx - 1]
+        if (prev) setActiveTab(prev.id)
+      } else {
+        const next = tabs[idx + 1]
+        if (next) setActiveTab(next.id)
+      }
+    }
+    window.addEventListener('mousedown', handleMouseDown)
+    return () => window.removeEventListener('mousedown', handleMouseDown)
+  }, [setActiveTab])
 
   // ── Global drag-and-drop collection import ──────────────────────────────────
   const importCollection = useCollectionsStore((s) => s.importCollection)
