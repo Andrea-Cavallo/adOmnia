@@ -15,6 +15,7 @@ export namespace main {
 	export class BreakpointInfo {
 	    id: string;
 	    scriptUrl: string;
+	    scriptId?: string;
 	    lineNumber: number;
 	    columnNumber: number;
 	    condition?: string;
@@ -27,6 +28,7 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
 	        this.scriptUrl = source["scriptUrl"];
+	        this.scriptId = source["scriptId"];
 	        this.lineNumber = source["lineNumber"];
 	        this.columnNumber = source["columnNumber"];
 	        this.condition = source["condition"];
@@ -36,6 +38,7 @@ export namespace main {
 	    id: string;
 	    functionName: string;
 	    url: string;
+	    scriptId: string;
 	    lineNumber: number;
 	    columnNumber: number;
 	
@@ -48,6 +51,7 @@ export namespace main {
 	        this.id = source["id"];
 	        this.functionName = source["functionName"];
 	        this.url = source["url"];
+	        this.scriptId = source["scriptId"];
 	        this.lineNumber = source["lineNumber"];
 	        this.columnNumber = source["columnNumber"];
 	    }
@@ -144,11 +148,26 @@ export namespace main {
 	        this.sameSite = source["sameSite"];
 	    }
 	}
+export class DOMBreakpointInfo {
+    nodeId: number;
+    type: string;
+
+    static createFrom(source: any = {}) {
+        return new DOMBreakpointInfo(source);
+    }
+
+    constructor(source: any = {}) {
+        if ('string' === typeof source) source = JSON.parse(source);
+        this.nodeId = source["nodeId"];
+	        this.type = source["type"];
+	    }
+	}
 	export class DOMNode {
 	    nodeId: number;
 	    nodeType: number;
 	    nodeName: string;
 	    localName: string;
+	    nodeValue: string;
 	    attributes: string[];
 	    childCount: number;
 	    children?: DOMNode[];
@@ -163,6 +182,7 @@ export namespace main {
 	        this.nodeType = source["nodeType"];
 	        this.nodeName = source["nodeName"];
 	        this.localName = source["localName"];
+	        this.nodeValue = source["nodeValue"];
 	        this.attributes = source["attributes"];
 	        this.childCount = source["childCount"];
 	        this.children = this.convertValues(source["children"], DOMNode);
@@ -491,6 +511,7 @@ export namespace main {
 	    reason: string;
 	    callFrames: CallFrame[];
 	    scriptUrl: string;
+	    scriptId: string;
 	    lineNumber: number;
 	
 	    static createFrom(source: any = {}) {
@@ -503,6 +524,7 @@ export namespace main {
 	        this.reason = source["reason"];
 	        this.callFrames = this.convertValues(source["callFrames"], CallFrame);
 	        this.scriptUrl = source["scriptUrl"];
+	        this.scriptId = source["scriptId"];
 	        this.lineNumber = source["lineNumber"];
 	    }
 	
@@ -776,6 +798,58 @@ export namespace main {
 	        this.venvReady = source["venvReady"];
 	    }
 	}
+export class ScriptInfo {
+    scriptId: string;
+    url: string;
+    startLine: number;
+    endLine: number;
+    executionContextId: number;
+    hash: string;
+
+    static createFrom(source: any = {}) {
+        return new ScriptInfo(source);
+    }
+
+    constructor(source: any = {}) {
+        if ('string' === typeof source) source = JSON.parse(source);
+        this.scriptId = source["scriptId"];
+	        this.url = source["url"];
+	        this.startLine = source["startLine"];
+	        this.endLine = source["endLine"];
+	        this.executionContextId = source["executionContextId"];
+	        this.hash = source["hash"];
+	    }
+	}
+	export class SourceFileInfo {
+	    id: string;
+	    url: string;
+	    type: string;
+	    mimeType: string;
+	    scriptId?: string;
+	    frameId?: string;
+    startLine: number;
+    endLine: number;
+    canSetBreakpoint: boolean;
+    fromDebugger: boolean;
+
+    static createFrom(source: any = {}) {
+        return new SourceFileInfo(source);
+    }
+
+    constructor(source: any = {}) {
+        if ('string' === typeof source) source = JSON.parse(source);
+        this.id = source["id"];
+	        this.url = source["url"];
+	        this.type = source["type"];
+	        this.mimeType = source["mimeType"];
+	        this.scriptId = source["scriptId"];
+	        this.frameId = source["frameId"];
+	        this.startLine = source["startLine"];
+	        this.endLine = source["endLine"];
+	        this.canSetBreakpoint = source["canSetBreakpoint"];
+	        this.fromDebugger = source["fromDebugger"];
+	    }
+	}
 	export class StorageEntry {
 	    bucket: string;
 	    key: string;
@@ -981,4 +1055,3 @@ export namespace main {
 	}
 
 }
-

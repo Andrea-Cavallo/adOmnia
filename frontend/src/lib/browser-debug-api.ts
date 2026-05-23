@@ -33,6 +33,7 @@ export interface ConsoleEntry {
 export interface BreakpointInfo {
   id: string
   scriptUrl: string
+  scriptId?: string
   lineNumber: number
   columnNumber: number
   condition?: string
@@ -42,6 +43,7 @@ export interface CallFrame {
   id: string
   functionName: string
   url: string
+  scriptId: string
   lineNumber: number
   columnNumber: number
 }
@@ -51,7 +53,30 @@ export interface PausedState {
   reason: string
   callFrames: CallFrame[]
   scriptUrl: string
+  scriptId: string
   lineNumber: number
+}
+
+export interface ScriptInfo {
+  scriptId: string
+  url: string
+  startLine: number
+  endLine: number
+  executionContextId: number
+  hash: string
+}
+
+export interface SourceFileInfo {
+  id: string
+  url: string
+  type: string
+  mimeType: string
+  scriptId?: string
+  frameId?: string
+  startLine: number
+  endLine: number
+  canSetBreakpoint: boolean
+  fromDebugger: boolean
 }
 
 export interface DOMNode {
@@ -59,9 +84,17 @@ export interface DOMNode {
   nodeType: number
   nodeName: string
   localName: string
+  nodeValue: string
   attributes: string[]
   childCount: number
   children?: DOMNode[]
+}
+
+export type DOMBreakpointType = 'subtree-modified' | 'attribute-modified' | 'node-removed'
+
+export interface DOMBreakpointInfo {
+  nodeId: number
+  type: DOMBreakpointType
 }
 
 export interface CookieEntry {
@@ -115,8 +148,14 @@ declare global {
       EnableDebugger: () => Promise<void>
       DisableDebugger: () => Promise<void>
       SetBreakpoint: (url: string, line: number, condition: string) => Promise<string>
+      SetBreakpointByScriptID: (scriptId: string, line: number, column: number, condition: string) => Promise<string>
       RemoveBreakpoint: (breakpointId: string) => Promise<void>
       GetBreakpoints: () => Promise<BreakpointInfo[]>
+      GetScripts: () => Promise<ScriptInfo[]>
+      GetScriptSource: (scriptId: string) => Promise<string>
+      GetSourceFiles: () => Promise<SourceFileInfo[]>
+      GetSourceFileContent: (sourceId: string) => Promise<string>
+      ReloadPageNoCache: () => Promise<void>
       Resume: () => Promise<void>
       StepOver: () => Promise<void>
       StepInto: () => Promise<void>
@@ -127,10 +166,14 @@ declare global {
       EnableDOM: () => Promise<void>
       GetDocument: (depth: number) => Promise<DOMNode>
       GetNodeHTML: (nodeId: number) => Promise<string>
+      GetPageSource: () => Promise<string>
       QuerySelector: (selector: string) => Promise<DOMNode>
       GetComputedStyle: (nodeId: number) => Promise<Record<string, string>>
       HighlightNode: (nodeId: number) => Promise<void>
       HideHighlight: () => Promise<void>
+      SetDOMBreakpoint: (nodeId: number, breakpointType: DOMBreakpointType) => Promise<void>
+      RemoveDOMBreakpoint: (nodeId: number, breakpointType: DOMBreakpointType) => Promise<void>
+      GetDOMBreakpoints: () => Promise<DOMBreakpointInfo[]>
 
       // Storage
       GetCookies: () => Promise<CookieEntry[]>
@@ -368,6 +411,21 @@ export async function setBreakpoint(
   }
 }
 
+export async function setBreakpointByScriptID(
+  scriptId: string,
+  line: number,
+  column: number,
+  condition: string
+): Promise<string> {
+  try {
+    const binding = getBrowserDebugBinding()
+    if (!binding?.SetBreakpointByScriptID) return ''
+    return await binding.SetBreakpointByScriptID(scriptId, line, column, condition)
+  } catch {
+    return ''
+  }
+}
+
 export async function removeBreakpoint(breakpointId: string): Promise<void> {
   try {
     const binding = getBrowserDebugBinding()
@@ -385,6 +443,56 @@ export async function getBreakpoints(): Promise<BreakpointInfo[]> {
     return await binding.GetBreakpoints()
   } catch {
     return []
+  }
+}
+
+export async function getScripts(): Promise<ScriptInfo[]> {
+  try {
+    const binding = getBrowserDebugBinding()
+    if (!binding?.GetScripts) return []
+    return await binding.GetScripts()
+  } catch {
+    return []
+  }
+}
+
+export async function getScriptSource(scriptId: string): Promise<string> {
+  try {
+    const binding = getBrowserDebugBinding()
+    if (!binding?.GetScriptSource) return ''
+    return await binding.GetScriptSource(scriptId)
+  } catch {
+    return ''
+  }
+}
+
+export async function getSourceFiles(): Promise<SourceFileInfo[]> {
+  try {
+    const binding = getBrowserDebugBinding()
+    if (!binding?.GetSourceFiles) return []
+    return await binding.GetSourceFiles()
+  } catch {
+    return []
+  }
+}
+
+export async function getSourceFileContent(sourceId: string): Promise<string> {
+  try {
+    const binding = getBrowserDebugBinding()
+    if (!binding?.GetSourceFileContent) return ''
+    return await binding.GetSourceFileContent(sourceId)
+  } catch {
+    return ''
+  }
+}
+
+export async function reloadPageNoCache(): Promise<void> {
+  try {
+    const binding = getBrowserDebugBinding()
+    if (!binding?.ReloadPageNoCache) return
+    await binding.ReloadPageNoCache()
+  } catch {
+    // silently ignore
   }
 }
 
@@ -432,11 +540,11 @@ export async function getPausedState(): Promise<PausedState> {
   try {
     const binding = getBrowserDebugBinding()
     if (!binding) {
-      return { paused: false, reason: '', callFrames: [], scriptUrl: '', lineNumber: 0 }
+      return { paused: false, reason: '', callFrames: [], scriptUrl: '', scriptId: '', lineNumber: 0 }
     }
     return await binding.GetPausedState()
   } catch {
-    return { paused: false, reason: '', callFrames: [], scriptUrl: '', lineNumber: 0 }
+    return { paused: false, reason: '', callFrames: [], scriptUrl: '', scriptId: '', lineNumber: 0 }
   }
 }
 
@@ -467,6 +575,16 @@ export async function getNodeHTML(nodeId: number): Promise<string> {
     const binding = getBrowserDebugBinding()
     if (!binding) return ''
     return await binding.GetNodeHTML(nodeId)
+  } catch {
+    return ''
+  }
+}
+
+export async function getPageSource(): Promise<string> {
+  try {
+    const binding = getBrowserDebugBinding()
+    if (!binding?.GetPageSource) return ''
+    return await binding.GetPageSource()
   } catch {
     return ''
   }
@@ -511,6 +629,42 @@ export async function hideHighlight(): Promise<void> {
     await binding.HideHighlight()
   } catch {
     // silently ignore
+  }
+}
+
+export async function setDOMBreakpoint(
+  nodeId: number,
+  breakpointType: DOMBreakpointType
+): Promise<void> {
+  try {
+    const binding = getBrowserDebugBinding()
+    if (!binding?.SetDOMBreakpoint) return
+    await binding.SetDOMBreakpoint(nodeId, breakpointType)
+  } catch {
+    // silently ignore
+  }
+}
+
+export async function removeDOMBreakpoint(
+  nodeId: number,
+  breakpointType: DOMBreakpointType
+): Promise<void> {
+  try {
+    const binding = getBrowserDebugBinding()
+    if (!binding?.RemoveDOMBreakpoint) return
+    await binding.RemoveDOMBreakpoint(nodeId, breakpointType)
+  } catch {
+    // silently ignore
+  }
+}
+
+export async function getDOMBreakpoints(): Promise<DOMBreakpointInfo[]> {
+  try {
+    const binding = getBrowserDebugBinding()
+    if (!binding?.GetDOMBreakpoints) return []
+    return await binding.GetDOMBreakpoints()
+  } catch {
+    return []
   }
 }
 
