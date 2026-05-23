@@ -37,7 +37,7 @@ const METHOD_COLORS: Record<string, string> = {
   TRACE: 'text-info',
 }
 
-type TabId = 'params' | 'headers' | 'body' | 'auth' | 'scripts' | 'tests'
+type TabId = 'params' | 'headers' | 'cookies' | 'body' | 'auth' | 'scripts' | 'tests'
 
 function CurlImportModal({ onClose, onImport }: { onClose: () => void; onImport: (curl: string) => void }) {
   const [value, setValue] = useState('')
@@ -155,6 +155,7 @@ export function Composer({ request, onChange, onSend, onSave, onLoadTest, loadin
   const commonTabs = [
     { id: 'auth' as TabId, label: 'Auth', count: request.auth?.type !== 'none' ? 1 : 0 },
     { id: 'headers' as TabId, label: 'Headers', count: (request.headers ?? []).filter((h) => h.enabled && h.key).length },
+    { id: 'cookies' as TabId, label: 'Cookies', count: (request.cookies ?? []).filter((c) => c.enabled && c.key).length },
     { id: 'params' as TabId, label: 'Params', count: (request.params ?? []).filter((p) => p.enabled && p.key).length },
     { id: 'scripts' as TabId, label: 'Scripts', count: (scripts.pre || scripts.post || scripts.tests) ? 1 : 0 },
     { id: 'tests' as TabId, label: 'Tests', count: (request.assertions ?? []).length },
@@ -335,6 +336,14 @@ export function Composer({ request, onChange, onSend, onSave, onLoadTest, loadin
               rows={request.headers ?? []}
               onChange={(headers) => onChange({ ...request, headers })}
               keyPlaceholder="Header"
+            />
+          )}
+          {activeTab === 'cookies' && (
+            <KVEditor
+              rows={request.cookies ?? []}
+              onChange={(cookies) => onChange({ ...request, cookies })}
+              keyPlaceholder="Cookie name"
+              valuePlaceholder="Cookie value"
             />
           )}
           {activeTab === 'body' && (

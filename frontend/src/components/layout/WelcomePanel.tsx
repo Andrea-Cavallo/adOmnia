@@ -296,7 +296,7 @@ function LayerBand({
         />
       </button>
 
-      <div className={cn('grid overflow-hidden transition-all duration-300 ease-out', open ? 'max-h-[620px] opacity-100' : 'max-h-0 opacity-0')}>
+      <div className={cn('grid overflow-hidden transition-all duration-300 ease-out', open ? 'max-h-[960px] opacity-100' : 'max-h-0 opacity-0')}>
         <div className="grid grid-cols-[296px_1fr] border-t border-white/[0.06] max-xl:grid-cols-1">
           <aside className="border-r border-dashed border-white/10 bg-white/[0.015] p-5 max-xl:border-b max-xl:border-r-0">
             <p className="font-mono text-[11px] leading-relaxed text-white/55">{layer.desc}</p>

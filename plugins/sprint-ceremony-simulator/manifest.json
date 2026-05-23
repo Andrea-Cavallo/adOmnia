@@ -1,0 +1,76 @@
+{
+  "id": "sprint-ceremony-simulator",
+  "name": "Sprint Ceremony Simulator",
+  "version": "0.1.0",
+  "author": "adOmnia Labs",
+  "description": "Simulatore completo di cerimonie Agile. Standup gonfiati, planning poker assurdi, retro action items inutili, e ticket Jira con acceptance criteria ridicoli. Perche' il 73% dello sprint e' ceremony.",
+  "homepage": "https://adomnia.dev/plugins/sprint-ceremony",
+  "license": "MIT",
+  "minAppVersion": "0.1.0",
+  "runtime": "python",
+  "entryPoint": "main.py",
+  "icon": "🃏",
+  "permissions": ["storage", "log", "events"],
+  "hooks": [
+    "onStartup"
+  ],
+  "ui_slots": ["panel"],
+  "actions": [
+    {
+      "id": "standup",
+      "name": "Daily Standup",
+      "description": "Gonfia il tuo aggiornamento in corporate-speak da 200K/anno",
+      "streaming": false
+    },
+    {
+      "id": "planning_poker",
+      "name": "Planning Poker",
+      "description": "Genera stime di planning poker assurde con giustificazioni",
+      "streaming": false
+    },
+    {
+      "id": "retro",
+      "name": "Sprint Retrospective",
+      "description": "Genera action items da retro completamente inutili",
+      "streaming": true
+    },
+    {
+      "id": "jira_ticket",
+      "name": "Genera Ticket Jira",
+      "description": "Crea un ticket Jira con acceptance criteria ridicoli",
+      "streaming": false
+    },
+    {
+      "id": "sprint_report",
+      "name": "Sprint Report",
+      "description": "Genera un report di sprint pieno di metriche inventate",
+      "streaming": true
+    }
+  ],
+  "settings": [
+    {
+      "key": "seniority_level",
+      "label": "Livello Seniority",
+      "type": "select",
+      "default": "staff_engineer",
+      "options": ["junior", "mid", "senior", "staff_engineer", "principal", "cto"],
+      "description": "Più sei senior, più i tuoi aggiornamenti sono vaghi"
+    },
+    {
+      "key": "team_size",
+      "label": "Dimensione Team",
+      "type": "number",
+      "default": 8,
+      "min": 1,
+      "max": 50,
+      "description": "Più il team è grande, più meeting sono necessari"
+    },
+    {
+      "key": "include_buzzwords",
+      "label": "Includi Buzzwords",
+      "type": "boolean",
+      "default": true,
+      "description": "Synergy. Alignment. Bandwidth. Deep-dive."
+    }
+  ]
+}

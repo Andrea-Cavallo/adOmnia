@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
@@ -101,4 +104,72 @@ func currentDevLogPath() string {
 
 func devLogDir() string {
 	return filepath.Join(dataDir(), "logs")
+}
+
+// devLogStreamHandler handles GET /devlogs/stream
+// Streams new log entries via Server-Sent Events by tailing the current log file.
+func devLogStreamHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "GET required", http.StatusMethodNotAllowed)
+		return
+	}
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
+
+	path := currentDevLogPath()
+	f, err := os.Open(path)
+	if err != nil {
+		fmt.Fprintf(w, "data: %s\n\n", `{"error":"cannot open log file"}`)
+		flusher.Flush()
+		return
+	}
+	defer f.Close()
+
+	// Seek to end to only stream new entries
+	f.Seek(0, io.SeekEnd)
+	reader := bufio.NewReader(f)
+
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case <-ticker.C:
+			// Check if file has been rotated (new day)
+			currentPath := currentDevLogPath()
+			if currentPath != path {
+				f.Close()
+				newF, err := os.Open(currentPath)
+				if err != nil {
+					return
+				}
+				f = newF
+				path = currentPath
+				reader = bufio.NewReader(f)
+			}
+
+			for {
+				line, err := reader.ReadString('\n')
+				if err != nil {
+					// No more data or error — wait for next tick
+					break
+				}
+				if len(line) > 0 {
+					fmt.Fprintf(w, "data: %s\n\n", line)
+				}
+			}
+			flusher.Flush()
+		}
+	}
 }

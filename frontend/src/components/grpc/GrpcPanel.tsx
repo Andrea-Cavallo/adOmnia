@@ -24,28 +24,22 @@ function savePresets(presets: GrpcPreset[]) {
   localStorage.setItem(PRESETS_KEY, JSON.stringify(presets))
 }
 
-function parseProtoServices(source: string): ServiceInfo[] {
-  const pkg = source.match(/^\s*package\s+([A-Za-z0-9_.]+)\s*;/m)?.[1] ?? ''
-  const services: ServiceInfo[] = []
-  const serviceRegex = /service\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{([\s\S]*?)\}/g
-  let svcMatch: RegExpExecArray | null
-  while ((svcMatch = serviceRegex.exec(source))) {
-    const serviceName = pkg ? `${pkg}.${svcMatch[1]}` : svcMatch[1]
-    const methods: ServiceInfo['methods'] = []
-    const rpcRegex = /rpc\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(\s*(stream\s+)?([A-Za-z0-9_.]+)\s*\)\s*returns\s*\(\s*(stream\s+)?([A-Za-z0-9_.]+)\s*\)/g
-    let rpcMatch: RegExpExecArray | null
-    while ((rpcMatch = rpcRegex.exec(svcMatch[2]))) {
-      methods.push({
-        name: rpcMatch[1],
-        input_type: rpcMatch[3],
-        output_type: rpcMatch[5],
-        client_streaming: !!rpcMatch[2],
-        server_streaming: !!rpcMatch[4],
-      })
-    }
-    services.push({ name: serviceName, methods })
+async function parseProtoFromBackend(port: number | null, source: string): Promise<ServiceInfo[]> {
+  if (!port) throw new Error('Backend not ready')
+  const url = serverUrl(port, '/grpc/parse-proto')
+  const res = await sidecarFetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ source }),
+  })
+  const data = await res.json()
+  if (!res.ok) {
+    const msg = typeof data === 'object' && data !== null && 'error' in data
+      ? String((data as Record<string, unknown>).error)
+      : `Parse failed (${res.status})`
+    throw new Error(msg)
   }
-  return services
+  return (data as { services: ServiceInfo[] }).services ?? []
 }
 
 interface ServiceInfo {
@@ -121,7 +115,7 @@ export function GrpcPanel() {
     setLoading(true)
     setError('')
     try {
-      const parsed = parseProtoServices(await file.text())
+      const parsed = await parseProtoFromBackend(port, await file.text())
       if (parsed.length === 0) {
         setError('No service/rpc definitions found in .proto file')
         return

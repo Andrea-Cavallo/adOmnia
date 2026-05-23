@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/jhump/protoreflect/desc"
+	"github.com/jhump/protoreflect/desc/protoparse"
 	"github.com/jhump/protoreflect/dynamic"
 	"github.com/jhump/protoreflect/grpcreflect"
 	"google.golang.org/grpc"
@@ -496,4 +497,85 @@ func grpcInvokeHandler(w http.ResponseWriter, r *http.Request) {
 		TimeMs:           elapsed,
 		ResponseMetadata: respMeta,
 	})
+}
+
+// --- Proto file parsing (no server required) ---
+
+type grpcParseProtoRequest struct {
+	Source string `json:"source"`
+}
+
+type grpcParseProtoMethod struct {
+	Name            string `json:"name"`
+	InputType       string `json:"input_type"`
+	OutputType      string `json:"output_type"`
+	ClientStreaming bool   `json:"client_streaming"`
+	ServerStreaming bool   `json:"server_streaming"`
+}
+
+type grpcParseProtoService struct {
+	Name    string                 `json:"name"`
+	Methods []grpcParseProtoMethod `json:"methods"`
+}
+
+type grpcParseProtoResponse struct {
+	Services []grpcParseProtoService `json:"services"`
+}
+
+// grpcParseProtoHandler handles POST /grpc/parse-proto
+// Parses a .proto source file and returns all services and methods found.
+func grpcParseProtoHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST required", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req grpcParseProtoRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	if req.Source == "" {
+		http.Error(w, "source required", http.StatusBadRequest)
+		return
+	}
+
+	parser := protoparse.Parser{
+		Accessor: protoparse.FileContentsFromMap(map[string]string{
+			"input.proto": req.Source,
+		}),
+	}
+
+	fds, err := parser.ParseFiles("input.proto")
+	if err != nil {
+		http.Error(w, "parse proto: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var services []grpcParseProtoService
+	for _, fd := range fds {
+		pkg := fd.GetPackage()
+		for _, sd := range fd.GetServices() {
+			name := sd.GetName()
+			if pkg != "" {
+				name = pkg + "." + name
+			}
+			var methods []grpcParseProtoMethod
+			for _, md := range sd.GetMethods() {
+				methods = append(methods, grpcParseProtoMethod{
+					Name:            md.GetName(),
+					InputType:       md.GetInputType().GetFullyQualifiedName(),
+					OutputType:      md.GetOutputType().GetFullyQualifiedName(),
+					ClientStreaming: md.IsClientStreaming(),
+					ServerStreaming: md.IsServerStreaming(),
+				})
+			}
+			services = append(services, grpcParseProtoService{
+				Name:    name,
+				Methods: methods,
+			})
+		}
+	}
+
+	writeJSON(w, http.StatusOK, grpcParseProtoResponse{Services: services})
 }

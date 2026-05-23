@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Plus, Power, AlertTriangle, ChevronDown, ChevronRight, Trash2, Cpu, LayoutPanelLeft, ArrowLeft } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Plus, Power, AlertTriangle, ChevronDown, ChevronRight, Trash2, Cpu, LayoutPanelLeft, ArrowLeft, Upload, FileJson, Code2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePluginsStore, type PluginInstance } from '@/stores/plugins'
 import {
@@ -13,14 +13,350 @@ import { PluginSettings } from './PluginSettings'
 import { PluginDevTools } from './PluginDevTools'
 import { PluginPanel } from './PluginPanel'
 
+// ─── Install modal (3 modes) ──────────────────────────────────────────────────
+
+type InstallTab = 'file' | 'form' | 'json'
+
+const PERMISSIONS = ['http', 'storage', 'clipboard', 'notifications', 'env', 'hooks']
+const RUNTIMES    = ['python', 'js', 'wasm', 'none']
+
+interface PluginFormState {
+  id: string
+  name: string
+  version: string
+  author: string
+  description: string
+  entryPoint: string
+  runtime: string
+  license: string
+  homepage: string
+  permissions: string[]
+}
+
+function slugify(v: string) {
+  return v.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+}
+
+function formToJson(f: PluginFormState): string {
+  const manifest = {
+    id: f.id || slugify(f.name),
+    name: f.name,
+    version: f.version || '1.0.0',
+    author: f.author,
+    description: f.description,
+    homepage: f.homepage,
+    license: f.license || 'MIT',
+    minAppVersion: '1.0.0',
+    runtime: f.runtime !== 'none' ? f.runtime : undefined,
+    permissions: f.permissions,
+    hooks: [],
+    settings: [],
+    entryPoint: f.entryPoint,
+    icon: '',
+  }
+  return JSON.stringify(manifest, null, 2)
+}
+
+function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstalled: () => void }) {
+  const [tab, setTab] = useState<InstallTab>('file')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [dragging, setDragging] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Form state
+  const [form, setForm] = useState<PluginFormState>({
+    id: '', name: '', version: '1.0.0', author: '', description: '',
+    entryPoint: 'main.py', runtime: 'python', license: 'MIT', homepage: '', permissions: [],
+  })
+
+  // Raw JSON state
+  const [rawJson, setRawJson] = useState('')
+
+  const setF = (key: keyof PluginFormState, value: string | string[]) =>
+    setForm(p => ({ ...p, [key]: value }))
+
+  const doInstall = useCallback(async (json: string) => {
+    setBusy(true)
+    setError('')
+    const result = await installPlugin(json.trim())
+    setBusy(false)
+    if (result) {
+      onInstalled()
+      onClose()
+    } else {
+      setError('Manifest non valido o plugin già installato.')
+    }
+  }, [onInstalled, onClose])
+
+  // File drop / file pick
+  const handleFile = useCallback((file: File) => {
+    if (!file.name.endsWith('.json')) {
+      setError('Seleziona un file manifest.json')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const text = e.target?.result as string
+      try {
+        JSON.parse(text) // validate
+        doInstall(text)
+      } catch {
+        setError('Il file non contiene JSON valido.')
+      }
+    }
+    reader.readAsText(file)
+  }, [doInstall])
+
+  const onDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setDragging(false)
+    const file = e.dataTransfer.files[0]
+    if (file) handleFile(file)
+  }, [handleFile])
+
+  const handleFormInstall = () => {
+    if (!form.name.trim() || !form.author.trim()) {
+      setError('Nome e autore sono obbligatori.')
+      return
+    }
+    doInstall(formToJson(form))
+  }
+
+  const TABS: { id: InstallTab; icon: React.ElementType; label: string }[] = [
+    { id: 'file', icon: Upload,   label: 'Da file'  },
+    { id: 'form', icon: FileJson, label: 'Form'     },
+    { id: 'json', icon: Code2,    label: 'JSON raw' },
+  ]
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="bg-surface-0 border border-border-1 rounded-xl shadow-2xl w-[520px] flex flex-col max-h-[90vh]">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-3 flex-shrink-0">
+          <h2 className="text-sm font-semibold text-text-1">Installa plugin</h2>
+          <button onClick={onClose} className="text-text-3 hover:text-text-1 transition-colors">
+            <X size={15} />
+          </button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-1 px-5 pb-0 flex-shrink-0">
+          {TABS.map(({ id, icon: Icon, label }) => (
+            <button
+              key={id}
+              onClick={() => { setTab(id); setError('') }}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-t-md border-b-2 transition-colors',
+                tab === id
+                  ? 'border-accent text-accent bg-accent/5'
+                  : 'border-transparent text-text-3 hover:text-text-2 hover:bg-surface-2'
+              )}
+            >
+              <Icon size={12} />
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div className="border-t border-border-1 mx-0" />
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+          {error && (
+            <div className="rounded border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+              {error}
+            </div>
+          )}
+
+          {/* ── Tab: file ─────────────────────────────────────── */}
+          {tab === 'file' && (
+            <div className="space-y-3">
+              <p className="text-xs text-text-3">
+                Trascina qui il file <span className="font-mono text-text-2">manifest.json</span> del plugin, oppure clicca per sfogliare.
+              </p>
+              <div
+                className={cn(
+                  'flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed py-10 cursor-pointer transition-colors',
+                  dragging ? 'border-accent bg-accent/5' : 'border-border-2 hover:border-accent/50 hover:bg-surface-1'
+                )}
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={onDrop}
+              >
+                <Upload size={28} className={cn('transition-colors', dragging ? 'text-accent' : 'text-text-4')} />
+                <span className="text-xs text-text-3">
+                  {dragging ? 'Rilascia qui' : 'Trascina manifest.json o clicca per sfogliare'}
+                </span>
+                <span className="text-[10px] text-text-4">Solo file .json</span>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json,application/json"
+                className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
+              />
+            </div>
+          )}
+
+          {/* ── Tab: form ─────────────────────────────────────── */}
+          {tab === 'form' && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Nome *" value={form.name} onChange={v => { setF('name', v); setF('id', slugify(v)) }} placeholder="My Plugin" />
+                <Field label="ID" value={form.id} onChange={v => setF('id', v)} placeholder="auto" mono />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Autore *" value={form.author} onChange={v => setF('author', v)} placeholder="Nome Cognome" />
+                <Field label="Versione" value={form.version} onChange={v => setF('version', v)} placeholder="1.0.0" mono />
+              </div>
+              <Field label="Descrizione" value={form.description} onChange={v => setF('description', v)} placeholder="Cosa fa il plugin..." />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-medium text-text-3 mb-1 uppercase tracking-wider">Runtime</label>
+                  <select
+                    value={form.runtime}
+                    onChange={(e) => setF('runtime', e.target.value)}
+                    className="w-full h-7 px-2 rounded bg-surface-1 border border-border-1 text-xs text-text-1 focus:outline-none focus:border-accent"
+                  >
+                    {RUNTIMES.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                </div>
+                <Field label="Entry point" value={form.entryPoint} onChange={v => setF('entryPoint', v)} placeholder="main.py" mono />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Licenza" value={form.license} onChange={v => setF('license', v)} placeholder="MIT" />
+                <Field label="Homepage" value={form.homepage} onChange={v => setF('homepage', v)} placeholder="https://..." />
+              </div>
+              <div>
+                <label className="block text-[10px] font-medium text-text-3 mb-1.5 uppercase tracking-wider">Permessi</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {PERMISSIONS.map(p => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setF('permissions', form.permissions.includes(p)
+                        ? form.permissions.filter(x => x !== p)
+                        : [...form.permissions, p]
+                      )}
+                      className={cn(
+                        'px-2 py-0.5 text-[10px] font-mono rounded border transition-colors',
+                        form.permissions.includes(p)
+                          ? 'border-accent bg-accent/15 text-accent'
+                          : 'border-border-2 text-text-3 hover:border-accent/40'
+                      )}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* JSON preview */}
+              <details className="group">
+                <summary className="cursor-pointer text-[10px] text-text-4 hover:text-text-3 select-none">
+                  Anteprima JSON generato
+                </summary>
+                <pre className="mt-2 p-2 rounded bg-surface-1 border border-border-1 text-[10px] font-mono text-text-3 overflow-auto max-h-40">
+                  {formToJson(form)}
+                </pre>
+              </details>
+            </div>
+          )}
+
+          {/* ── Tab: json raw ─────────────────────────────────── */}
+          {tab === 'json' && (
+            <div className="space-y-2">
+              <p className="text-xs text-text-3">
+                Incolla il manifest JSON completo. Per sviluppatori avanzati.
+              </p>
+              <textarea
+                value={rawJson}
+                onChange={(e) => setRawJson(e.target.value)}
+                className="w-full h-56 px-3 py-2 text-xs font-mono bg-surface-1 border border-border-1 rounded-md text-text-1 focus:outline-none focus:border-accent resize-none"
+                placeholder='{"id": "my-plugin", "name": "My Plugin", ...}'
+                spellCheck={false}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end gap-2 px-5 py-4 border-t border-border-1 flex-shrink-0">
+          <button
+            onClick={onClose}
+            className="px-3 py-1.5 text-xs text-text-2 hover:text-text-1 transition-colors"
+          >
+            Annulla
+          </button>
+          {tab === 'form' && (
+            <button
+              onClick={handleFormInstall}
+              disabled={busy || !form.name.trim()}
+              className={cn(
+                'px-4 py-1.5 text-xs font-medium rounded-md transition-colors',
+                !busy && form.name.trim()
+                  ? 'bg-accent text-white hover:opacity-90'
+                  : 'bg-surface-2 text-text-4 cursor-not-allowed'
+              )}
+            >
+              {busy ? 'Installazione…' : 'Installa'}
+            </button>
+          )}
+          {tab === 'json' && (
+            <button
+              onClick={() => doInstall(rawJson)}
+              disabled={busy || !rawJson.trim()}
+              className={cn(
+                'px-4 py-1.5 text-xs font-medium rounded-md transition-colors',
+                !busy && rawJson.trim()
+                  ? 'bg-accent text-white hover:opacity-90'
+                  : 'bg-surface-2 text-text-4 cursor-not-allowed'
+              )}
+            >
+              {busy ? 'Installazione…' : 'Installa'}
+            </button>
+          )}
+          {tab === 'file' && (
+            <span className="px-4 py-1.5 text-xs text-text-4 italic">
+              Seleziona o trascina un file
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Field({
+  label, value, onChange, placeholder, mono,
+}: {
+  label: string; value: string; onChange: (v: string) => void; placeholder?: string; mono?: boolean
+}) {
+  return (
+    <div>
+      <label className="block text-[10px] font-medium text-text-3 mb-1 uppercase tracking-wider">{label}</label>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className={cn(
+          'w-full h-7 px-2 rounded bg-surface-1 border border-border-1 text-xs text-text-1 focus:outline-none focus:border-accent placeholder:text-text-4',
+          mono && 'font-mono'
+        )}
+      />
+    </div>
+  )
+}
+
 export function PluginManager() {
   const { plugins, setPlugins, setLoading, loading } = usePluginsStore()
   const [view, setView] = useState<'plugins' | 'runtime'>('plugins')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [installMode, setInstallMode] = useState(false)
-  const [manifestJson, setManifestJson] = useState('')
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
-  const [installError, setInstallError] = useState('')
   const [activePanelPlugin, setActivePanelPlugin] = useState<PluginInstance | null>(null)
 
   const loadPlugins = useCallback(async () => {
@@ -41,19 +377,6 @@ export function PluginManager() {
       await enablePlugin(plugin.manifest.id)
     }
     await loadPlugins()
-  }
-
-  const handleInstall = async () => {
-    if (!manifestJson.trim()) return
-    setInstallError('')
-    const result = await installPlugin(manifestJson.trim())
-    if (result) {
-      await loadPlugins()
-      setInstallMode(false)
-      setManifestJson('')
-    } else {
-      setInstallError('Plugin manifest is invalid or already installed.')
-    }
   }
 
   const handleUninstall = async (id: string) => {
@@ -350,43 +673,10 @@ export function PluginManager() {
       )}
 
       {installMode && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-surface-0 border border-border-1 rounded-xl shadow-2xl w-[500px] p-6 space-y-4">
-            <h2 className="text-sm font-semibold text-text-1">Install Plugin</h2>
-            <p className="text-xs text-text-3">Paste the plugin manifest JSON below:</p>
-            {installError && (
-              <div className="rounded border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-300">
-                {installError}
-              </div>
-            )}
-            <textarea
-              value={manifestJson}
-              onChange={(e) => setManifestJson(e.target.value)}
-              className="w-full h-56 px-3 py-2 text-xs font-mono bg-surface-1 border border-border-1 rounded-md text-text-1 focus:outline-none focus:border-accent resize-none"
-              placeholder='{"id": "my-plugin", "name": "My Plugin", ...}'
-            />
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => { setInstallMode(false); setManifestJson(''); setInstallError('') }}
-                className="px-3 py-1.5 text-xs text-text-2 hover:text-text-1 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleInstall}
-                disabled={!manifestJson.trim()}
-                className={cn(
-                  'px-3 py-1.5 text-xs font-medium rounded-md transition-colors',
-                  manifestJson.trim()
-                    ? 'bg-accent text-white hover:opacity-90'
-                    : 'bg-surface-2 text-text-4 cursor-not-allowed'
-                )}
-              >
-                Install
-              </button>
-            </div>
-          </div>
-        </div>
+        <InstallModal
+          onClose={() => setInstallMode(false)}
+          onInstalled={loadPlugins}
+        />
       )}
     </div>
   )

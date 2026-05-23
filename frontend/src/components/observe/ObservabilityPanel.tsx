@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import {
   listLogFiles,
@@ -6,6 +6,7 @@ import {
   type LogFileInfo,
 } from '@/lib/devlogs-api'
 import type { BackendDevLogEntry } from '@/stores/devLogs'
+import { useServerPort, getSidecarToken } from '@/lib/useServerPort'
 import {
   FileText,
   RefreshCw,
@@ -22,6 +23,7 @@ import {
   FileDigit,
   X,
   FolderOpen,
+  Radio,
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -134,16 +136,77 @@ function extractTraceSpans(entries: BackendDevLogEntry[]): TraceSpan[] {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function ObservabilityPanel() {
+  const port = useServerPort()
   const [files, setFiles] = useState<LogFileInfo[]>([])
   const [selectedFile, setSelectedFile] = useState<string>('')
   const [entries, setEntries] = useState<BackendDevLogEntry[]>([])
   const [loading, setLoading] = useState(false)
+  const [live, setLive] = useState(false)
+  const eventSourceRef = useRef<EventSource | null>(null)
+  const entriesRef = useRef<BackendDevLogEntry[]>([])
   const [filters, setFilters] = useState<FilterState>({
     level: 'all',
     source: 'all',
     search: '',
     correlationId: '',
   })
+
+  // Keep entriesRef in sync
+  entriesRef.current = entries
+
+  // Streaming effect
+  useEffect(() => {
+    if (!port || !live) {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close()
+        eventSourceRef.current = null
+      }
+      return
+    }
+
+    let cancelled = false
+    let es: EventSource | null = null
+
+    getSidecarToken().then((token) => {
+      if (cancelled) return
+      const url = `http://localhost:${port}/devlogs/stream?token=${encodeURIComponent(token)}`
+      es = new EventSource(url)
+      eventSourceRef.current = es
+
+      es.onmessage = (event) => {
+        try {
+          const entry = JSON.parse(event.data) as BackendDevLogEntry
+          if (entry.i && entry.ts) {
+            setEntries((prev) => {
+              // Avoid duplicates by checking counter
+              if (prev.some((e) => e.i === entry.i)) return prev
+              const next = [...prev, entry]
+              // Keep size bounded (max 5000 entries in UI)
+              if (next.length > 5000) return next.slice(next.length - 5000)
+              return next
+            })
+          }
+        } catch { /* ignore malformed lines */ }
+      }
+
+      es.onerror = () => {
+        // EventSource auto-reconnects; if it fails permanently, close
+        if (es && es.readyState === EventSource.CLOSED) {
+          es.close()
+          eventSourceRef.current = null
+          if (!cancelled) setLive(false)
+        }
+      }
+    })
+
+    return () => {
+      cancelled = true
+      if (es) {
+        es.close()
+        eventSourceRef.current = null
+      }
+    }
+  }, [port, live])
 
   // Load file list on mount
   const loadFiles = useCallback(async () => {
@@ -257,6 +320,19 @@ export function ObservabilityPanel() {
           className="h-7 w-7 rounded flex items-center justify-center text-text-3 hover:text-text-1 hover:bg-surface-2 transition-colors flex-shrink-0"
         >
           <RefreshCw size={12} />
+        </button>
+
+        <button
+          onClick={() => setLive((v) => !v)}
+          title={live ? 'Stop live streaming' : 'Start live streaming'}
+          className={cn(
+            'h-7 w-7 rounded flex items-center justify-center transition-colors flex-shrink-0',
+            live
+              ? 'text-accent bg-accent/10'
+              : 'text-text-3 hover:text-text-1 hover:bg-surface-2'
+          )}
+        >
+          <Radio size={12} />
         </button>
 
         {/* Stats */}

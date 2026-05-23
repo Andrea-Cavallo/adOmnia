@@ -179,6 +179,10 @@ func startHTTPServer() {
 	mux.HandleFunc("/grpc/reflect", grpcReflectHandler)
 	mux.HandleFunc("/grpc/describe", grpcDescribeHandler)
 	mux.HandleFunc("/grpc/invoke", grpcInvokeHandler)
+	mux.HandleFunc("/grpc/parse-proto", grpcParseProtoHandler)
+
+	// DevLogs streaming
+	mux.HandleFunc("/devlogs/stream", devLogStreamHandler)
 
 	handler := withSecurity(mux)
 

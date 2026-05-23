@@ -17,6 +17,15 @@ export async function sendRequest(
     }
   }
 
+  // Serialize cookies into Cookie header (runs before both Go and browser fetch paths)
+  const cookies = request.cookies ?? []
+  const enabledCookies = cookies.filter((c) => c.enabled && c.key)
+  if (enabledCookies.length > 0) {
+    headers['Cookie'] = enabledCookies
+      .map((c) => `${substVars(c.key, vars)}=${substVars(c.value, vars)}`)
+      .join('; ')
+  }
+
   let enabledParams = request.params.filter((p) => p.enabled && p.key)
   const usp = new URLSearchParams()
   for (const p of enabledParams) {

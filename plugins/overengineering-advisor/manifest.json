@@ -1,0 +1,76 @@
+{
+  "id": "overengineering-advisor",
+  "name": "OverEngineering Advisor",
+  "version": "0.1.0",
+  "author": "adOmnia Labs",
+  "description": "Trasforma qualsiasi task semplice in un'architettura enterprise ridicolmente complessa. Kafka, Redis, Rust: tutto obbligatorio.",
+  "homepage": "https://adomnia.dev/plugins/overengineering-advisor",
+  "license": "MIT",
+  "minAppVersion": "0.1.0",
+  "runtime": "python",
+  "entryPoint": "main.py",
+  "icon": "🏗️",
+  "permissions": [
+    "storage",
+    "log",
+    "http",
+    "events"
+  ],
+  "hooks": [
+    "onSend",
+    "onResponse"
+  ],
+  "ui_slots": ["panel"],
+  "actions": [
+    {
+      "id": "analyze",
+      "name": "Analizza Task",
+      "description": "Prendi un task semplice e produci un'architettura over-engineered",
+      "streaming": false
+    },
+    {
+      "id": "analyze_stream",
+      "name": "Analizza (streaming)",
+      "description": "Versione streaming — vedi l'overengineering in tempo reale",
+      "streaming": true
+    },
+    {
+      "id": "generate_kafka_topics",
+      "name": "Genera Kafka Topics",
+      "description": "Genera topic Kafka obbligatori per il task",
+      "streaming": false
+    },
+    {
+      "id": "rust_proposal",
+      "name": "Proposta Rewrite Rust",
+      "description": "Genera una proposta di rewrite in Rust con vantaggi gonfiati",
+      "streaming": false
+    }
+  ],
+  "settings": [
+    {
+      "key": "enterprise_mode",
+      "label": "Enterprise Mode",
+      "type": "boolean",
+      "default": true,
+      "description": "Aggiunge compliance, audit trail, e 47 microservizi"
+    },
+    {
+      "key": "kafka_replication",
+      "label": "Kafka Replication Factor",
+      "type": "number",
+      "default": 3,
+      "min": 1,
+      "max": 9,
+      "description": "Fattore di replicazione Kafka (default: 3, ma 7 e' piu' enterprise)"
+    },
+    {
+      "key": "complexity_level",
+      "label": "Livello Complessita'",
+      "type": "select",
+      "default": "maximum",
+      "options": ["moderate", "high", "extreme", "maximum"],
+      "description": "Quanto vuoi complicare le cose?"
+    }
+  ]
+}

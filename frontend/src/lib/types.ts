@@ -51,6 +51,7 @@ export interface RequestItem {
   bodies: RequestBody[]
   activeBodyIdx: number
   auth: RequestAuth
+  cookies?: KVRow[]
   scripts?: { pre?: string; post?: string; tests?: string }
   timeout?: number
   followRedirects?: boolean
@@ -198,6 +199,7 @@ export function blankRequest(method: HttpMethod = 'GET', name = 'New Request'): 
     url: '',
     params: [blankKVRow()],
     headers: [blankKVRow()],
+    cookies: [blankKVRow()],
     bodies: [blankBody()],
     activeBodyIdx: 0,
     auth: blankAuth(),
