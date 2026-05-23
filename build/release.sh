@@ -51,8 +51,6 @@ if [[ -n "${WAILS_BIN:-}" ]]; then
   WAILS_CMD=("$WAILS_BIN")
 elif command -v wails >/dev/null 2>&1; then
   WAILS_CMD=(wails)
-elif [[ -x "/mnt/c/Users/Andrea/Documents/Workspaces/GO-LANG-WORKSPACE/bin/wails.exe" ]]; then
-  WAILS_CMD=("/mnt/c/Users/Andrea/Documents/Workspaces/GO-LANG-WORKSPACE/bin/wails.exe")
 else
   echo "ERROR: wails not found. Set WAILS_BIN=/path/to/wails." >&2
   exit 1

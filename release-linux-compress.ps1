@@ -6,7 +6,6 @@
 
 $ErrorActionPreference = "Continue"
 
-$upx     = "C:\Users\Andrea\Desktop\upx-5.1.1-win64\upx.exe"
 $image   = "adomnia-linux-builder"
 $outDir  = "build\bin"
 $tarball = "$outDir\adOmnia-linux-amd64.tar.gz"
@@ -25,8 +24,8 @@ function Fail {
 if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
     Fail "Docker non trovato nel PATH."
 }
-if (-not (Test-Path $upx)) {
-    Fail "upx.exe non trovato: $upx"
+if (-not (Get-Command upx -ErrorAction SilentlyContinue)) {
+    Fail "upx non trovato nel PATH. Installa UPX: https://upx.github.io/"
 }
 
 # --- [1/5] Icon generation ---
@@ -67,7 +66,7 @@ if ($copyOk -ne 0) { Fail "Copia binary dal container fallita." }
 Write-Host ""
 Write-Host "==> [4/5] Compressione UPX --best --lzma sul binary..." -ForegroundColor Cyan
 $sizeBefore = [math]::Round((Get-Item $binary).Length / 1MB, 2)
-& $upx --best --lzma $binary
+upx --best --lzma $binary
 if ($LASTEXITCODE -ne 0) { Fail "UPX fallito." }
 $sizeAfter = [math]::Round((Get-Item $binary).Length / 1MB, 2)
 

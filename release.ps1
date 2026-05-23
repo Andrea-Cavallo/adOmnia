@@ -4,8 +4,7 @@
 
 $ErrorActionPreference = "Continue"
 
-$wails = "C:\Users\Andrea\Documents\Workspaces\GO-LANG-WORKSPACE\bin\wails.exe"
-$exe   = "build\bin\adOmnia.exe"
+$exe = "build\bin\adOmnia.exe"
 
 function Fail([string]$msg) {
     Write-Host ""
@@ -16,7 +15,9 @@ function Fail([string]$msg) {
 }
 
 # --- sanity checks ---
-if (-not (Test-Path $wails)) { Fail "wails.exe non trovato: $wails" }
+if (-not (Get-Command wails -ErrorAction SilentlyContinue)) {
+    Fail "wails non trovato nel PATH. Installa Wails: go install github.com/wailsapp/wails/v2/cmd/wails@latest"
+}
 
 # --- step 1: icon generation (non bloccante se ImageMagick manca) ---
 Write-Host ""
@@ -38,7 +39,7 @@ if (Test-Path $iconScript) {
 # --- step 2: build plain ---
 Write-Host ""
 Write-Host "==> [2/2] Build pulito non compresso..." -ForegroundColor Cyan
-& $wails build
+wails build
 if ($LASTEXITCODE -ne 0) { Fail "Wails build fallita. Controlla output sopra." }
 
 if (-not (Test-Path $exe)) { Fail "Binary non trovato dopo il build: $exe" }
