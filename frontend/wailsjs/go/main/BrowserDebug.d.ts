@@ -44,6 +44,8 @@ export function GetConsoleLogs():Promise<Array<main.ConsoleEntry>>;
 
 export function GetCookies():Promise<Array<main.CookieEntry>>;
 
+export function GetDOMBreakpoints():Promise<Array<main.DOMBreakpointInfo>>;
+
 export function GetDebugStatus():Promise<main.DebugStatus>;
 
 export function GetDocument(arg1:number):Promise<main.DOMNode>;
@@ -64,7 +66,15 @@ export function GetRequestBody(arg1:string):Promise<string>;
 
 export function GetResponseBody(arg1:string):Promise<string>;
 
+export function GetScriptSource(arg1:string):Promise<string>;
+
+export function GetScripts():Promise<Array<main.ScriptInfo>>;
+
 export function GetSessionStorage():Promise<Array<main.StorageItem>>;
+
+export function GetSourceFileContent(arg1:string):Promise<string>;
+
+export function GetSourceFiles():Promise<Array<main.SourceFileInfo>>;
 
 export function GetTargetInfo():Promise<Record<string, any>>;
 
@@ -94,11 +104,19 @@ export function NavigateTarget(arg1:string):Promise<void>;
 
 export function QuerySelector(arg1:string):Promise<main.DOMNode>;
 
+export function ReloadPageNoCache():Promise<void>;
+
 export function RemoveBreakpoint(arg1:string):Promise<void>;
+
+export function RemoveDOMBreakpoint(arg1:number,arg2:string):Promise<void>;
 
 export function Resume():Promise<void>;
 
 export function SetBreakpoint(arg1:string,arg2:number,arg3:string):Promise<string>;
+
+export function SetBreakpointByScriptID(arg1:string,arg2:number,arg3:number,arg4:string):Promise<string>;
+
+export function SetDOMBreakpoint(arg1:number,arg2:string):Promise<void>;
 
 export function SetThrottling(arg1:number,arg2:number,arg3:number):Promise<void>;
 

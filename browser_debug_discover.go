@@ -133,8 +133,11 @@ func (b *BrowserDebug) ConnectToTarget(wsURL string) error {
 	if err := b.sendCommand("Network.enable", nil); err != nil {
 		log.Printf("[debug] warning: failed to enable Network domain: %v", err)
 	}
+	if err := b.disableBrowserCache(); err != nil {
+		log.Printf("[debug] warning: failed to disable browser cache: %v", err)
+	}
 
-	log.Printf("[debug] connected to target, Network domain enabled")
+	log.Printf("[debug] connected to target, Network domain enabled, cache disabled")
 	return nil
 }
 

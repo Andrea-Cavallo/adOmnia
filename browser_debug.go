@@ -163,8 +163,11 @@ func (b *BrowserDebug) Connect() error {
 		b.Disconnect()
 		return fmt.Errorf("failed to enable Network domain: %w", err)
 	}
+	if err := b.disableBrowserCache(); err != nil {
+		log.Printf("[debug] warning: failed to disable browser cache: %v", err)
+	}
 
-	log.Printf("[debug] CDP connected and Network domain enabled")
+	log.Printf("[debug] CDP connected, Network domain enabled, cache disabled")
 	return nil
 }
 
@@ -434,7 +437,7 @@ func (b *BrowserDebug) handleEvent(msg cdpMessage) {
 		b.handleLoadingFinished(msg.Params)
 	case "Runtime.consoleAPICalled":
 		b.HandleConsoleEvent(msg.Params)
-	case "Debugger.paused", "Debugger.resumed":
+	case "Debugger.paused", "Debugger.resumed", "Debugger.scriptParsed":
 		b.HandleDebuggerEvent(msg.Method, msg.Params)
 	}
 }
@@ -587,7 +590,7 @@ func (b *BrowserDebug) discoverDebugTarget() (string, error) {
 		}
 
 		var targets []struct {
-			Type                string `json:"type"`
+			Type                 string `json:"type"`
 			WebSocketDebuggerURL string `json:"webSocketDebuggerUrl"`
 		}
 		if err := json.Unmarshal(body, &targets); err != nil {

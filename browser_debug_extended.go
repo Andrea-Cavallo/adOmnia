@@ -1,9 +1,11 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -48,9 +50,9 @@ func (b *BrowserDebug) EvalJS(expression string) (ConsoleEntry, error) {
 
 	var resp struct {
 		Result struct {
-			Type  string          `json:"type"`
-			Value json.RawMessage `json:"value"`
-			Description string   `json:"description"`
+			Type        string          `json:"type"`
+			Value       json.RawMessage `json:"value"`
+			Description string          `json:"description"`
 		} `json:"result"`
 		ExceptionDetails *struct {
 			Text      string `json:"text"`
@@ -178,6 +180,7 @@ func (b *BrowserDebug) HandleConsoleEvent(params map[string]interface{}) {
 type BreakpointInfo struct {
 	ID           string `json:"id"`
 	ScriptURL    string `json:"scriptUrl"`
+	ScriptID     string `json:"scriptId,omitempty"`
 	LineNumber   int    `json:"lineNumber"`
 	ColumnNumber int    `json:"columnNumber"`
 	Condition    string `json:"condition,omitempty"`
@@ -189,6 +192,7 @@ type PausedState struct {
 	Reason     string      `json:"reason"`
 	CallFrames []CallFrame `json:"callFrames"`
 	ScriptURL  string      `json:"scriptUrl"`
+	ScriptID   string      `json:"scriptId"`
 	LineNumber int         `json:"lineNumber"`
 }
 
@@ -197,8 +201,33 @@ type CallFrame struct {
 	ID           string `json:"id"`
 	FunctionName string `json:"functionName"`
 	URL          string `json:"url"`
+	ScriptID     string `json:"scriptId"`
 	LineNumber   int    `json:"lineNumber"`
 	ColumnNumber int    `json:"columnNumber"`
+}
+
+// ScriptInfo represents a JavaScript source known by the Debugger domain.
+type ScriptInfo struct {
+	ScriptID           string `json:"scriptId"`
+	URL                string `json:"url"`
+	StartLine          int    `json:"startLine"`
+	EndLine            int    `json:"endLine"`
+	ExecutionContextID int    `json:"executionContextId"`
+	Hash               string `json:"hash"`
+}
+
+// SourceFileInfo represents a source/resource visible in the debugger source view.
+type SourceFileInfo struct {
+	ID               string `json:"id"`
+	URL              string `json:"url"`
+	Type             string `json:"type"`
+	MimeType         string `json:"mimeType"`
+	ScriptID         string `json:"scriptId,omitempty"`
+	FrameID          string `json:"frameId,omitempty"`
+	StartLine        int    `json:"startLine"`
+	EndLine          int    `json:"endLine"`
+	CanSetBreakpoint bool   `json:"canSetBreakpoint"`
+	FromDebugger     bool   `json:"fromDebugger"`
 }
 
 var (
@@ -207,6 +236,9 @@ var (
 
 	pausedState   PausedState
 	pausedStateMu sync.RWMutex
+
+	debugScripts   map[string]ScriptInfo
+	debugScriptsMu sync.Mutex
 )
 
 // EnableDebugger enables the Debugger domain.
@@ -220,6 +252,9 @@ func (b *BrowserDebug) EnableDebugger() error {
 
 	if err := b.sendCommand("Debugger.enable", nil); err != nil {
 		return fmt.Errorf("failed to enable Debugger domain: %w", err)
+	}
+	if err := b.disableBrowserCache(); err != nil {
+		log.Printf("[debug] warning: failed to disable browser cache: %v", err)
 	}
 
 	log.Printf("[debug] Debugger domain enabled")
@@ -286,12 +321,13 @@ func (b *BrowserDebug) SetBreakpoint(url string, line int, condition string) (st
 	}
 
 	info := BreakpointInfo{
-		ID:        resp.BreakpointID,
-		ScriptURL: url,
+		ID:         resp.BreakpointID,
+		ScriptURL:  url,
 		LineNumber: line,
-		Condition: condition,
+		Condition:  condition,
 	}
 	if len(resp.Locations) > 0 {
+		info.ScriptID = resp.Locations[0].ScriptID
 		info.LineNumber = resp.Locations[0].LineNumber
 		info.ColumnNumber = resp.Locations[0].ColumnNumber
 	}
@@ -301,6 +337,82 @@ func (b *BrowserDebug) SetBreakpoint(url string, line int, condition string) (st
 	debugBreakpointsMu.Unlock()
 
 	log.Printf("[debug] breakpoint set: id=%s url=%s line=%d", resp.BreakpointID, url, line)
+	return resp.BreakpointID, nil
+}
+
+// SetBreakpointByScriptID sets a breakpoint directly in a parsed script.
+func (b *BrowserDebug) SetBreakpointByScriptID(scriptId string, line int, column int, condition string) (string, error) {
+	b.mu.Lock()
+	if !b.connected {
+		b.mu.Unlock()
+		return "", fmt.Errorf("not connected to CDP")
+	}
+	b.mu.Unlock()
+
+	if strings.TrimSpace(scriptId) == "" {
+		return "", fmt.Errorf("script id is required")
+	}
+	if line < 0 {
+		return "", fmt.Errorf("line must be greater than or equal to zero")
+	}
+	if column < 0 {
+		column = 0
+	}
+
+	params := map[string]interface{}{
+		"location": map[string]interface{}{
+			"scriptId":     scriptId,
+			"lineNumber":   line,
+			"columnNumber": column,
+		},
+	}
+	if condition != "" {
+		params["condition"] = condition
+	}
+
+	result, err := b.sendCommandWithResult("Debugger.setBreakpoint", params)
+	if err != nil {
+		return "", fmt.Errorf("failed to set script breakpoint: %w", err)
+	}
+
+	var resp struct {
+		BreakpointID   string `json:"breakpointId"`
+		ActualLocation struct {
+			ScriptID     string `json:"scriptId"`
+			LineNumber   int    `json:"lineNumber"`
+			ColumnNumber int    `json:"columnNumber"`
+		} `json:"actualLocation"`
+	}
+	if err := json.Unmarshal(result, &resp); err != nil {
+		return "", fmt.Errorf("failed to parse breakpoint response: %w", err)
+	}
+
+	scriptURL := ""
+	debugScriptsMu.Lock()
+	if script, ok := debugScripts[scriptId]; ok {
+		scriptURL = script.URL
+	}
+	debugScriptsMu.Unlock()
+
+	info := BreakpointInfo{
+		ID:           resp.BreakpointID,
+		ScriptID:     scriptId,
+		ScriptURL:    scriptURL,
+		LineNumber:   line,
+		ColumnNumber: column,
+		Condition:    condition,
+	}
+	if resp.ActualLocation.ScriptID != "" {
+		info.ScriptID = resp.ActualLocation.ScriptID
+		info.LineNumber = resp.ActualLocation.LineNumber
+		info.ColumnNumber = resp.ActualLocation.ColumnNumber
+	}
+
+	debugBreakpointsMu.Lock()
+	debugBreakpoints = append(debugBreakpoints, info)
+	debugBreakpointsMu.Unlock()
+
+	log.Printf("[debug] script breakpoint set: id=%s scriptId=%s line=%d", resp.BreakpointID, scriptId, line)
 	return resp.BreakpointID, nil
 }
 
@@ -339,6 +451,251 @@ func (b *BrowserDebug) GetBreakpoints() []BreakpointInfo {
 	result := make([]BreakpointInfo, len(debugBreakpoints))
 	copy(result, debugBreakpoints)
 	return result
+}
+
+// GetScripts returns the JavaScript sources seen by the Debugger domain.
+func (b *BrowserDebug) GetScripts() []ScriptInfo {
+	debugScriptsMu.Lock()
+	defer debugScriptsMu.Unlock()
+
+	result := make([]ScriptInfo, 0, len(debugScripts))
+	for _, script := range debugScripts {
+		result = append(result, script)
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		leftURL := result[i].URL
+		rightURL := result[j].URL
+		if leftURL == "" {
+			leftURL = "inline:" + result[i].ScriptID
+		}
+		if rightURL == "" {
+			rightURL = "inline:" + result[j].ScriptID
+		}
+		if leftURL == rightURL {
+			return result[i].ScriptID < result[j].ScriptID
+		}
+		return leftURL < rightURL
+	})
+
+	return result
+}
+
+// GetScriptSource returns the source text for a Debugger scriptId.
+func (b *BrowserDebug) GetScriptSource(scriptId string) (string, error) {
+	b.mu.Lock()
+	if !b.connected {
+		b.mu.Unlock()
+		return "", fmt.Errorf("not connected to CDP")
+	}
+	b.mu.Unlock()
+
+	if strings.TrimSpace(scriptId) == "" {
+		return "", fmt.Errorf("script id is required")
+	}
+
+	result, err := b.sendCommandWithResult("Debugger.getScriptSource", map[string]interface{}{
+		"scriptId": scriptId,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to get script source: %w", err)
+	}
+
+	var resp struct {
+		ScriptSource string `json:"scriptSource"`
+		Bytecode     string `json:"bytecode"`
+	}
+	if err := json.Unmarshal(result, &resp); err != nil {
+		return "", fmt.Errorf("failed to parse script source response: %w", err)
+	}
+	if resp.ScriptSource == "" && resp.Bytecode != "" {
+		return "[compiled bytecode source is not available]", nil
+	}
+	return resp.ScriptSource, nil
+}
+
+// GetSourceFiles returns debugger scripts merged with the page resource tree.
+func (b *BrowserDebug) GetSourceFiles() ([]SourceFileInfo, error) {
+	b.mu.Lock()
+	if !b.connected {
+		b.mu.Unlock()
+		return nil, fmt.Errorf("not connected to CDP")
+	}
+	b.mu.Unlock()
+
+	if err := b.disableBrowserCache(); err != nil {
+		return nil, err
+	}
+	_ = b.sendCommand("Page.enable", nil)
+
+	scripts := b.GetScripts()
+	filesByID := make(map[string]SourceFileInfo)
+	resourceByURL := make(map[string]string)
+
+	result, err := b.sendCommandWithResult("Page.getResourceTree", nil)
+	if err == nil {
+		var resp struct {
+			FrameTree pageFrameTree `json:"frameTree"`
+		}
+		if err := json.Unmarshal(result, &resp); err == nil {
+			collectPageResources(resp.FrameTree, filesByID, resourceByURL)
+		}
+	}
+
+	for _, script := range scripts {
+		id := "script:" + script.ScriptID
+		file := SourceFileInfo{
+			ID:               id,
+			URL:              script.URL,
+			Type:             "Script",
+			MimeType:         "text/javascript",
+			ScriptID:         script.ScriptID,
+			StartLine:        script.StartLine,
+			EndLine:          script.EndLine,
+			CanSetBreakpoint: true,
+			FromDebugger:     true,
+		}
+		if script.URL != "" {
+			if resourceID, ok := resourceByURL[script.URL]; ok {
+				resource := filesByID[resourceID]
+				file.Type = resource.Type
+				if file.Type == "" {
+					file.Type = "Script"
+				}
+				if resource.MimeType != "" {
+					file.MimeType = resource.MimeType
+				}
+				file.FrameID = resource.FrameID
+				delete(filesByID, resourceID)
+			}
+		}
+		filesByID[file.ID] = file
+	}
+
+	files := make([]SourceFileInfo, 0, len(filesByID))
+	for _, file := range filesByID {
+		files = append(files, file)
+	}
+
+	sort.Slice(files, func(i, j int) bool {
+		leftRank := sourceTypeRank(files[i].Type)
+		rightRank := sourceTypeRank(files[j].Type)
+		if leftRank != rightRank {
+			return leftRank < rightRank
+		}
+		left := files[i].URL
+		right := files[j].URL
+		if left == "" {
+			left = files[i].ID
+		}
+		if right == "" {
+			right = files[j].ID
+		}
+		return left < right
+	})
+
+	return files, nil
+}
+
+// GetSourceFileContent returns source/resource text for a source file ID from GetSourceFiles.
+func (b *BrowserDebug) GetSourceFileContent(sourceId string) (string, error) {
+	b.mu.Lock()
+	if !b.connected {
+		b.mu.Unlock()
+		return "", fmt.Errorf("not connected to CDP")
+	}
+	b.mu.Unlock()
+
+	if err := b.disableBrowserCache(); err != nil {
+		return "", err
+	}
+
+	if strings.HasPrefix(sourceId, "script:") {
+		return b.GetScriptSource(strings.TrimPrefix(sourceId, "script:"))
+	}
+
+	if !strings.HasPrefix(sourceId, "resource:") {
+		return "", fmt.Errorf("unknown source id: %s", sourceId)
+	}
+
+	payload, err := base64.RawURLEncoding.DecodeString(strings.TrimPrefix(sourceId, "resource:"))
+	if err != nil {
+		return "", fmt.Errorf("invalid resource id: %w", err)
+	}
+	parts := strings.SplitN(string(payload), "\n", 2)
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		return "", fmt.Errorf("invalid resource id payload")
+	}
+
+	result, err := b.sendCommandWithResult("Page.getResourceContent", map[string]interface{}{
+		"frameId": parts[0],
+		"url":     parts[1],
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to get resource content: %w", err)
+	}
+
+	var resp struct {
+		Content       string `json:"content"`
+		Base64Encoded bool   `json:"base64Encoded"`
+	}
+	if err := json.Unmarshal(result, &resp); err != nil {
+		return "", fmt.Errorf("failed to parse resource content response: %w", err)
+	}
+	if resp.Base64Encoded {
+		return "[binary resource content is not displayed in the source viewer]", nil
+	}
+	return resp.Content, nil
+}
+
+// ReloadPageNoCache clears collected source metadata and reloads the current page without cache.
+func (b *BrowserDebug) ReloadPageNoCache() error {
+	b.mu.Lock()
+	if !b.connected {
+		b.mu.Unlock()
+		return fmt.Errorf("not connected to CDP")
+	}
+	b.mu.Unlock()
+
+	if err := b.disableBrowserCache(); err != nil {
+		return err
+	}
+
+	clearDebuggerSources()
+
+	if err := b.sendCommand("Page.enable", nil); err != nil {
+		return fmt.Errorf("failed to enable Page domain: %w", err)
+	}
+	if err := b.sendCommand("Page.reload", map[string]interface{}{
+		"ignoreCache": true,
+	}); err != nil {
+		return fmt.Errorf("failed to reload page without cache: %w", err)
+	}
+
+	pausedStateMu.Lock()
+	pausedState = PausedState{Paused: false}
+	pausedStateMu.Unlock()
+
+	log.Printf("[debug] page reloaded with cache disabled")
+	return nil
+}
+
+func (b *BrowserDebug) disableBrowserCache() error {
+	if err := b.sendCommand("Network.enable", nil); err != nil {
+		return fmt.Errorf("failed to enable Network domain: %w", err)
+	}
+	if err := b.sendCommand("Network.setCacheDisabled", map[string]interface{}{
+		"cacheDisabled": true,
+	}); err != nil {
+		return fmt.Errorf("failed to disable browser cache: %w", err)
+	}
+	return nil
+}
+
+func clearDebuggerSources() {
+	debugScriptsMu.Lock()
+	debugScripts = make(map[string]ScriptInfo)
+	debugScriptsMu.Unlock()
 }
 
 // Resume resumes execution after a breakpoint pause.
@@ -417,6 +774,28 @@ func (b *BrowserDebug) GetPausedState() PausedState {
 // msg.Method starts with "Debugger.".
 func (b *BrowserDebug) HandleDebuggerEvent(method string, params map[string]interface{}) {
 	switch method {
+	case "Debugger.scriptParsed":
+		scriptID, _ := params["scriptId"].(string)
+		if scriptID == "" {
+			return
+		}
+
+		script := ScriptInfo{
+			ScriptID:           scriptID,
+			URL:                stringFromMap(params, "url"),
+			StartLine:          intFromMap(params, "startLine"),
+			EndLine:            intFromMap(params, "endLine"),
+			ExecutionContextID: intFromMap(params, "executionContextId"),
+			Hash:               stringFromMap(params, "hash"),
+		}
+
+		debugScriptsMu.Lock()
+		if debugScripts == nil {
+			debugScripts = make(map[string]ScriptInfo)
+		}
+		debugScripts[scriptID] = script
+		debugScriptsMu.Unlock()
+
 	case "Debugger.paused":
 		reason, _ := params["reason"].(string)
 		callFramesRaw, _ := params["callFrames"].([]interface{})
@@ -432,11 +811,19 @@ func (b *BrowserDebug) HandleDebuggerEvent(method string, params map[string]inte
 				FunctionName: stringFromMap(cfMap, "functionName"),
 			}
 			if loc, ok := cfMap["location"].(map[string]interface{}); ok {
+				frame.ScriptID = stringFromMap(loc, "scriptId")
 				frame.LineNumber = intFromMap(loc, "lineNumber")
 				frame.ColumnNumber = intFromMap(loc, "columnNumber")
 			}
 			if urlVal, ok := cfMap["url"].(string); ok {
 				frame.URL = urlVal
+			}
+			if frame.URL == "" && frame.ScriptID != "" {
+				debugScriptsMu.Lock()
+				if script, ok := debugScripts[frame.ScriptID]; ok {
+					frame.URL = script.URL
+				}
+				debugScriptsMu.Unlock()
 			}
 			frames = append(frames, frame)
 		}
@@ -448,6 +835,7 @@ func (b *BrowserDebug) HandleDebuggerEvent(method string, params map[string]inte
 		}
 		if len(frames) > 0 {
 			state.ScriptURL = frames[0].URL
+			state.ScriptID = frames[0].ScriptID
 			state.LineNumber = frames[0].LineNumber
 		}
 
@@ -466,6 +854,84 @@ func (b *BrowserDebug) HandleDebuggerEvent(method string, params map[string]inte
 	}
 }
 
+type pageFrameTree struct {
+	Frame       pageFrame       `json:"frame"`
+	Resources   []pageResource  `json:"resources"`
+	ChildFrames []pageFrameTree `json:"childFrames"`
+}
+
+type pageFrame struct {
+	ID       string `json:"id"`
+	URL      string `json:"url"`
+	MimeType string `json:"mimeType"`
+}
+
+type pageResource struct {
+	URL      string  `json:"url"`
+	Type     string  `json:"type"`
+	MimeType string  `json:"mimeType"`
+	Size     float64 `json:"contentSize"`
+}
+
+func collectPageResources(tree pageFrameTree, filesByID map[string]SourceFileInfo, resourceByURL map[string]string) {
+	if tree.Frame.ID != "" && tree.Frame.URL != "" {
+		addPageResource(filesByID, resourceByURL, SourceFileInfo{
+			URL:      tree.Frame.URL,
+			Type:     "Document",
+			MimeType: tree.Frame.MimeType,
+			FrameID:  tree.Frame.ID,
+		})
+	}
+
+	for _, resource := range tree.Resources {
+		if resource.URL == "" {
+			continue
+		}
+		addPageResource(filesByID, resourceByURL, SourceFileInfo{
+			URL:      resource.URL,
+			Type:     resource.Type,
+			MimeType: resource.MimeType,
+			FrameID:  tree.Frame.ID,
+		})
+	}
+
+	for _, child := range tree.ChildFrames {
+		collectPageResources(child, filesByID, resourceByURL)
+	}
+}
+
+func addPageResource(filesByID map[string]SourceFileInfo, resourceByURL map[string]string, file SourceFileInfo) {
+	if file.FrameID == "" || file.URL == "" {
+		return
+	}
+	file.ID = makeResourceSourceID(file.FrameID, file.URL)
+	file.CanSetBreakpoint = strings.EqualFold(file.Type, "Script") || strings.Contains(file.MimeType, "javascript")
+	filesByID[file.ID] = file
+	resourceByURL[file.URL] = file.ID
+}
+
+func makeResourceSourceID(frameID string, url string) string {
+	payload := base64.RawURLEncoding.EncodeToString([]byte(frameID + "\n" + url))
+	return "resource:" + payload
+}
+
+func sourceTypeRank(sourceType string) int {
+	switch strings.ToLower(sourceType) {
+	case "document":
+		return 0
+	case "script":
+		return 1
+	case "stylesheet":
+		return 2
+	case "xhr", "fetch":
+		return 3
+	case "image", "font", "media":
+		return 5
+	default:
+		return 4
+	}
+}
+
 // =============================================================================
 // DOM Inspector
 // =============================================================================
@@ -476,14 +942,24 @@ type DOMNode struct {
 	NodeType   int       `json:"nodeType"`
 	NodeName   string    `json:"nodeName"`
 	LocalName  string    `json:"localName"`
+	NodeValue  string    `json:"nodeValue"`
 	Attributes []string  `json:"attributes"`
 	ChildCount int       `json:"childCount"`
 	Children   []DOMNode `json:"children,omitempty"`
 }
 
+// DOMBreakpointInfo represents a DOM mutation breakpoint bound to a node.
+type DOMBreakpointInfo struct {
+	NodeID int    `json:"nodeId"`
+	Type   string `json:"type"`
+}
+
 var (
 	domRootNodeID   int
 	domRootNodeIDMu sync.Mutex
+
+	domBreakpoints   []DOMBreakpointInfo
+	domBreakpointsMu sync.Mutex
 )
 
 // EnableDOM enables the DOM domain and gets the document root.
@@ -723,6 +1199,97 @@ func (b *BrowserDebug) HideHighlight() error {
 		return fmt.Errorf("failed to hide highlight: %w", err)
 	}
 	return nil
+}
+
+// SetDOMBreakpoint pauses JavaScript execution when a DOM mutation touches nodeId.
+func (b *BrowserDebug) SetDOMBreakpoint(nodeId int, breakpointType string) error {
+	b.mu.Lock()
+	if !b.connected {
+		b.mu.Unlock()
+		return fmt.Errorf("not connected to CDP")
+	}
+	b.mu.Unlock()
+
+	if nodeId <= 0 {
+		return fmt.Errorf("node id must be greater than zero")
+	}
+	if !isValidDOMBreakpointType(breakpointType) {
+		return fmt.Errorf("invalid DOM breakpoint type: %s", breakpointType)
+	}
+
+	// DOM breakpoints surface as debugger pauses, so keep Debugger enabled.
+	if err := b.sendCommand("Debugger.enable", nil); err != nil {
+		return fmt.Errorf("failed to enable Debugger domain: %w", err)
+	}
+
+	if err := b.sendCommand("DOMDebugger.setDOMBreakpoint", map[string]interface{}{
+		"nodeId": nodeId,
+		"type":   breakpointType,
+	}); err != nil {
+		return fmt.Errorf("failed to set DOM breakpoint: %w", err)
+	}
+
+	domBreakpointsMu.Lock()
+	defer domBreakpointsMu.Unlock()
+	for _, bp := range domBreakpoints {
+		if bp.NodeID == nodeId && bp.Type == breakpointType {
+			return nil
+		}
+	}
+	domBreakpoints = append(domBreakpoints, DOMBreakpointInfo{NodeID: nodeId, Type: breakpointType})
+	return nil
+}
+
+// RemoveDOMBreakpoint removes a DOM mutation breakpoint from nodeId.
+func (b *BrowserDebug) RemoveDOMBreakpoint(nodeId int, breakpointType string) error {
+	b.mu.Lock()
+	if !b.connected {
+		b.mu.Unlock()
+		return fmt.Errorf("not connected to CDP")
+	}
+	b.mu.Unlock()
+
+	if nodeId <= 0 {
+		return fmt.Errorf("node id must be greater than zero")
+	}
+	if !isValidDOMBreakpointType(breakpointType) {
+		return fmt.Errorf("invalid DOM breakpoint type: %s", breakpointType)
+	}
+
+	if err := b.sendCommand("DOMDebugger.removeDOMBreakpoint", map[string]interface{}{
+		"nodeId": nodeId,
+		"type":   breakpointType,
+	}); err != nil {
+		return fmt.Errorf("failed to remove DOM breakpoint: %w", err)
+	}
+
+	domBreakpointsMu.Lock()
+	defer domBreakpointsMu.Unlock()
+	for i, bp := range domBreakpoints {
+		if bp.NodeID == nodeId && bp.Type == breakpointType {
+			domBreakpoints = append(domBreakpoints[:i], domBreakpoints[i+1:]...)
+			break
+		}
+	}
+	return nil
+}
+
+// GetDOMBreakpoints returns all active DOM mutation breakpoints.
+func (b *BrowserDebug) GetDOMBreakpoints() []DOMBreakpointInfo {
+	domBreakpointsMu.Lock()
+	defer domBreakpointsMu.Unlock()
+	result := make([]DOMBreakpointInfo, len(domBreakpoints))
+	copy(result, domBreakpoints)
+	return result
+}
+
+func isValidDOMBreakpointType(breakpointType string) bool {
+	switch breakpointType {
+	case "subtree-modified", "attribute-modified", "node-removed":
+		return true
+	default:
+		return false
+	}
 }
 
 // =============================================================================
@@ -1058,6 +1625,7 @@ func parseDOMNode(raw json.RawMessage) (*DOMNode, error) {
 		NodeType   int               `json:"nodeType"`
 		NodeName   string            `json:"nodeName"`
 		LocalName  string            `json:"localName"`
+		NodeValue  string            `json:"nodeValue"`
 		Attributes []string          `json:"attributes"`
 		ChildCount int               `json:"childNodeCount"`
 		Children   []json.RawMessage `json:"children"`
@@ -1071,6 +1639,7 @@ func parseDOMNode(raw json.RawMessage) (*DOMNode, error) {
 		NodeType:   nodeMap.NodeType,
 		NodeName:   nodeMap.NodeName,
 		LocalName:  nodeMap.LocalName,
+		NodeValue:  nodeMap.NodeValue,
 		Attributes: nodeMap.Attributes,
 		ChildCount: nodeMap.ChildCount,
 	}

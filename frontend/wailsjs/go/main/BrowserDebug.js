@@ -86,6 +86,10 @@ export function GetCookies() {
   return window['go']['main']['BrowserDebug']['GetCookies']();
 }
 
+export function GetDOMBreakpoints() {
+  return window['go']['main']['BrowserDebug']['GetDOMBreakpoints']();
+}
+
 export function GetDebugStatus() {
   return window['go']['main']['BrowserDebug']['GetDebugStatus']();
 }
@@ -126,8 +130,24 @@ export function GetResponseBody(arg1) {
   return window['go']['main']['BrowserDebug']['GetResponseBody'](arg1);
 }
 
+export function GetScriptSource(arg1) {
+  return window['go']['main']['BrowserDebug']['GetScriptSource'](arg1);
+}
+
+export function GetScripts() {
+  return window['go']['main']['BrowserDebug']['GetScripts']();
+}
+
 export function GetSessionStorage() {
   return window['go']['main']['BrowserDebug']['GetSessionStorage']();
+}
+
+export function GetSourceFileContent(arg1) {
+  return window['go']['main']['BrowserDebug']['GetSourceFileContent'](arg1);
+}
+
+export function GetSourceFiles() {
+  return window['go']['main']['BrowserDebug']['GetSourceFiles']();
 }
 
 export function GetTargetInfo() {
@@ -186,8 +206,16 @@ export function QuerySelector(arg1) {
   return window['go']['main']['BrowserDebug']['QuerySelector'](arg1);
 }
 
+export function ReloadPageNoCache() {
+  return window['go']['main']['BrowserDebug']['ReloadPageNoCache']();
+}
+
 export function RemoveBreakpoint(arg1) {
   return window['go']['main']['BrowserDebug']['RemoveBreakpoint'](arg1);
+}
+
+export function RemoveDOMBreakpoint(arg1, arg2) {
+  return window['go']['main']['BrowserDebug']['RemoveDOMBreakpoint'](arg1, arg2);
 }
 
 export function Resume() {
@@ -196,6 +224,14 @@ export function Resume() {
 
 export function SetBreakpoint(arg1, arg2, arg3) {
   return window['go']['main']['BrowserDebug']['SetBreakpoint'](arg1, arg2, arg3);
+}
+
+export function SetBreakpointByScriptID(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['BrowserDebug']['SetBreakpointByScriptID'](arg1, arg2, arg3, arg4);
+}
+
+export function SetDOMBreakpoint(arg1, arg2) {
+  return window['go']['main']['BrowserDebug']['SetDOMBreakpoint'](arg1, arg2);
 }
 
 export function SetThrottling(arg1, arg2, arg3) {

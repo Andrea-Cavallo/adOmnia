@@ -389,8 +389,8 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 | D1.3 | **Network Monitor** | Cattura traffico pagina: URL, metodo, status, MIME, headers, timing, dimensione. Filtrabile per URL/metodo/tipo MIME (XHR, Doc, CSS, JS, Img, Font). Max 500 voci. |
 | D1.4 | **Body Richieste/Risposte** | Recupero body completi (POST data e response body) per voci catturate. |
 | D1.5 | **Console JavaScript** | Cattura eventi `consoleAPICalled` (log/error/warn/info). Eval espressioni JS nel contesto pagina con REPL. Max 200 voci. |
-| D1.6 | **Debugger JS** | Set/remove breakpoint con condizioni, pause/resume/step-over/step-into/step-out, stack call. |
-| D1.7 | **DOM Inspector** | Albero DOM con profondità configurabile, querySelector CSS, stili computati, highlight nodi. |
+| D1.6 | **Debugger JS** | Vista Sources combinata da script CDP e resource tree pagina, cache browser disabilitata via CDP, reload Sources senza cache, visualizzazione codice con numeri riga e syntax highlight minimale theme-aware, breakpoint cliccabili/condizionali anche via `scriptId`, riga corrente evidenziata in pausa, pause/resume/step-over/step-into/step-out, stack call. |
+| D1.7 | **DOM Inspector** | Albero DOM con profondità configurabile, nodi non-elemento visibili (document, doctype, text, comment), querySelector CSS, sorgente HTML formattata, stili computati, highlight nodi e breakpoint DOM su subtree/attributi/rimozione. |
 | D1.8 | **Storage Viewer** | Cookies (dominio, path, scadenza, HttpOnly, Secure, SameSite), localStorage, sessionStorage, IndexedDB. Elimina cookie. |
 | D1.9 | **Network Throttling** | Profili: No Throttling, Slow 3G, Fast 3G, Regular 4G, WiFi, Offline. Kbps/latenza custom. |
 | D1.10 | **Discovery Browser Attivi** | Scansiona porte 9222–9230 per trovare istanze browser con remote debugging già attivo. Mostra lista target (tab/pagine) per ogni browser scoperto con titolo, URL, favicon. |
