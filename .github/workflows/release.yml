@@ -56,7 +56,7 @@ jobs:
           New-Item -ItemType Directory -Force dist | Out-Null
           Copy-Item build\bin\adOmnia.exe "dist\adOmnia-$ver-windows-amd64.exe"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: windows-amd64
           path: dist/adOmnia-*-windows-amd64.exe
@@ -128,7 +128,7 @@ jobs:
           tar -czf "dist/adOmnia-$VER-linux-amd64.tar.gz" -C "$TMP" .
           rm -rf "$TMP"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: linux-amd64
           path: dist/adOmnia-*-linux-amd64.tar.gz
@@ -207,7 +207,7 @@ jobs:
             -ov -format UDZO \
             "dist/adOmnia-$VER-macos-universal.dmg"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: macos-universal
           path: dist/adOmnia-*-macos-universal.dmg
@@ -234,7 +234,7 @@ jobs:
           echo "tag=$TAG"          >> $GITHUB_OUTPUT
           echo "version=${TAG#v}"  >> $GITHUB_OUTPUT
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true

@@ -73,7 +73,7 @@ jobs:
           New-Item -ItemType Directory -Force dist | Out-Null
           Copy-Item build\bin\adOmnia.exe "dist\adOmnia-$version-windows-amd64.exe"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: adOmnia-windows-amd64
           path: dist/*.exe
@@ -103,7 +103,7 @@ jobs:
             .
           ls -lh dist
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: adOmnia-linux-amd64
           path: |
@@ -174,7 +174,7 @@ jobs:
             -ov -format UDZO \
             "dist/adOmnia-${VERSION}-macos-universal.dmg"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: adOmnia-macos-universal
           path: dist/*.dmg
@@ -187,7 +187,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
@@ -198,7 +198,7 @@ jobs:
           sha256sum * > SHA256SUMS.txt
           ls -lh
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: adOmnia-desktop-artifacts
           path: dist/*
