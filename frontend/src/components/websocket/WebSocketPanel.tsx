@@ -12,7 +12,7 @@ import { safeEval } from '@/lib/safeEval'
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type AuthType = 'none' | 'bearer' | 'basic'
-type ConnStatus = 'disconnected' | 'connecting' | 'connected' | 'error'
+type ConnStatus = 'disconnected' | 'connecting' | 'connected' | 'error' | 'reconnecting'
 type ConditionType = 'any' | 'exact' | 'contains' | 'regex' | 'jsonpath_eq' | 'jsonpath_exists'
 
 interface KVRow { key: string; value: string; enabled: boolean }
@@ -168,7 +168,7 @@ function tryPrettyJson(s: string): string {
 function StatusDot({ status }: { status: ConnStatus }) {
   const colors: Record<ConnStatus, string> = {
     connected: 'bg-success', connecting: 'bg-warning animate-pulse',
-    disconnected: 'bg-text-4', error: 'bg-error',
+    disconnected: 'bg-text-4', error: 'bg-error', reconnecting: 'bg-warning animate-pulse',
   }
   return <span className={cn('w-2 h-2 rounded-full flex-shrink-0', colors[status])} />
 }
@@ -566,6 +566,9 @@ export function WebSocketPanel() {
   const [filterDir, setFilterDir] = useState<'all' | 'inbound' | 'outbound' | 'system'>('all')
   const [urlHistory, setUrlHistory] = useState<string[]>(loadUrlHistory)
   const [showUrlHistory, setShowUrlHistory] = useState(false)
+  const [reconnectAttempts, setReconnectAttempts] = useState(0)
+
+  const MAX_RECONNECT_ATTEMPTS = 10
 
   const esRef = useRef<EventSource | null>(null)
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -634,14 +637,34 @@ export function WebSocketPanel() {
           setSessionId(null)
           es.close()
           const cfg = configRef.current
-          if (cfg.autoReconnect) {
+          if (cfg.autoReconnect && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+            setReconnectAttempts(a => a + 1)
+            setStatus('reconnecting')
             reconnectTimer.current = setTimeout(() => handleConnect(), cfg.reconnectDelay * 1000)
+          } else {
+            setReconnectAttempts(0)
           }
         }
       } catch {}
     }
-    es.onerror = () => es.close()
-  }, [port, addMsg])
+    es.onerror = () => {
+      es.close()
+      const s = esRef.current
+      if (s && s.readyState === EventSource.CLOSED) {
+        useAppStore.getState().setWebsocketRunning(false)
+        setSessionId(null)
+        setStatus('disconnected')
+        const cfg = configRef.current
+        if (cfg.autoReconnect && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+          setReconnectAttempts(a => a + 1)
+          setStatus('reconnecting')
+          reconnectTimer.current = setTimeout(() => handleConnect(), cfg.reconnectDelay * 1000)
+        } else {
+          setReconnectAttempts(0)
+        }
+      }
+    }
+  }, [port, addMsg, reconnectAttempts])
 
   const handleConnect = useCallback(async (overrideUrl?: string) => {
     if (!port) return
@@ -664,9 +687,10 @@ export function WebSocketPanel() {
         }),
       })
       const data = await res.json()
-      if (data.error) { setStatus('error'); useAppStore.getState().setWebsocketRunning(false); addMsg({ type: 'error', direction: 'system', content: data.error, timestamp: Date.now() }); return }
+      if (data.error) { setStatus('error'); useAppStore.getState().setWebsocketRunning(false); addMsg({ type: 'error', direction: 'system', content: data.error, timestamp: Date.now() }); setReconnectAttempts(0); return }
       setSessionId(data.sessionId)
       setStatus('connected')
+      setReconnectAttempts(0)
       useAppStore.getState().setWebsocketRunning(true)
       addMsg({ type: 'message', direction: 'system', content: `Connected to ${resolvedUrl}`, timestamp: Date.now() })
       saveUrlToHistory(resolvedUrl)
@@ -716,7 +740,7 @@ export function WebSocketPanel() {
   }
 
   const connected = status === 'connected'
-  const statusLabel: Record<ConnStatus, string> = { connected: 'Connected', connecting: 'Connecting…', disconnected: 'Disconnected', error: 'Error' }
+  const statusLabel: Record<ConnStatus, string> = { connected: 'Connected', connecting: 'Connecting…', disconnected: 'Disconnected', error: 'Error', reconnecting: 'Reconnecting…' }
 
   return (
     <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -818,19 +842,17 @@ export function WebSocketPanel() {
           </div>
         )}
 
-        {/* Sub-protocol */}
-        {showAuth && (
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-text-4 w-20 flex-shrink-0">Sub-protocols</span>
-            <input
-              value={config.subprotocols}
-              onChange={e => setConfig(c => ({ ...c, subprotocols: e.target.value }))}
-              placeholder="e.g. graphql-ws, chat"
-              disabled={connected}
-              className="flex-1 h-6 px-2 bg-surface-0 border border-border-2 rounded text-[11px] text-text-1 placeholder:text-text-4 focus:outline-none focus:border-accent/40 font-mono"
+        {/* Sub-protocol — always visible, independent of auth */}
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-text-4 w-20 flex-shrink-0">Sub-protocols</span>
+          <input
+            value={config.subprotocols}
+            onChange={e => setConfig(c => ({ ...c, subprotocols: e.target.value }))}
+            placeholder="e.g. graphql-ws, chat"
+            disabled={connected}
+            className="flex-1 h-6 px-2 bg-surface-0 border border-border-2 rounded text-[11px] text-text-1 placeholder:text-text-4 focus:outline-none focus:border-accent/40 font-mono"
             />
-          </div>
-        )}
+        </div>
 
         {/* Headers */}
         {showHeaders && <div className="pt-1 border-t border-border-2"><HeadersEditor headers={config.headers} onChange={h => setConfig(c => ({ ...c, headers: h }))} /></div>}
@@ -852,7 +874,7 @@ export function WebSocketPanel() {
       {/* ── Status bar ── */}
       <div className="flex items-center gap-2 px-3 py-1 border-b border-border-1 bg-surface-0 flex-shrink-0">
         <StatusDot status={status} />
-        <span className={cn('text-[10px] font-medium', status === 'connected' && 'text-success', status === 'error' && 'text-error', status === 'connecting' && 'text-warning', status === 'disconnected' && 'text-text-4')}>
+        <span className={cn('text-[10px] font-medium', status === 'connected' && 'text-success', status === 'error' && 'text-error', status === 'connecting' && 'text-warning', status === 'reconnecting' && 'text-warning', status === 'disconnected' && 'text-text-4')}>
           {statusLabel[status]}
         </span>
         {connected && sessionId && <span className="text-[9px] text-text-4 font-mono ml-1">#{sessionId.slice(0, 8)}</span>}

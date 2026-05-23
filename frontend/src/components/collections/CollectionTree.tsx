@@ -234,6 +234,7 @@ function TreeNodeRow({
   editingId,
   dragPayload,
   dropTarget,
+  focusedId,
   onToggle,
   onOpenRequest,
   onSetEditing,
@@ -243,6 +244,7 @@ function TreeNodeRow({
   onDropNode,
   onDragOverNode,
   onClearDrop,
+  onSetFocused,
 }: {
   node: TreeNode
   collection: Collection
@@ -254,6 +256,7 @@ function TreeNodeRow({
   editingId: string | null
   dragPayload: DragPayload | null
   dropTarget: { id: string; position: DropPosition } | null
+  focusedId: string | null
   onToggle: (id: string) => void
   onOpenRequest: (request: RequestItem, collectionId: string) => void
   onSetEditing: (id: string | null) => void
@@ -263,6 +266,7 @@ function TreeNodeRow({
   onDropNode: (event: React.DragEvent, collectionId: string, node: TreeNode, parentId: string | null, index: number) => void
   onDragOverNode: (event: React.DragEvent, collectionId: string, node: TreeNode) => void
   onClearDrop: () => void
+  onSetFocused: (id: string) => void
 }) {
   const isFolder = node.type === 'folder'
   const isOpen = isFolder && openIds.has(node.id)
@@ -272,13 +276,14 @@ function TreeNodeRow({
   return (
     <div>
       <div
+        data-node-id={node.id}
         draggable
         onDragStart={(event) => onDragStartNode(event, { type: 'node', collectionId: collection.id, nodeId: node.id, nodeType: node.type })}
         onDragOver={(event) => onDragOverNode(event, collection.id, node)}
         onDrop={(event) => onDropNode(event, collection.id, node, parentId, index)}
         onDragLeave={onClearDrop}
         onDragEnd={onClearDrop}
-        onClick={() => (isFolder ? onToggle(node.id) : onOpenRequest(node as RequestItem, collection.id))}
+        onClick={() => { onSetFocused(node.id); isFolder ? onToggle(node.id) : onOpenRequest(node as RequestItem, collection.id) }}
         onContextMenu={(event) => {
           event.preventDefault()
           event.stopPropagation()
@@ -289,6 +294,7 @@ function TreeNodeRow({
           activeRequestId === node.id ? 'bg-accent/10 text-text-1' : 'text-text-2 hover:bg-surface-2',
           target === 'inside' && !isInvalidDrop && 'ring-1 ring-accent/70 bg-accent/10',
           isInvalidDrop && target && 'ring-1 ring-error/60 bg-error/8',
+          focusedId === node.id && 'ring-1 ring-inset ring-accent/50',
         )}
         style={{ paddingLeft: depth * 12 + 4 }}
       >
@@ -334,6 +340,7 @@ function TreeNodeRow({
               editingId={editingId}
               dragPayload={dragPayload}
               dropTarget={dropTarget}
+              focusedId={focusedId}
               onToggle={onToggle}
               onOpenRequest={onOpenRequest}
               onSetEditing={onSetEditing}
@@ -343,6 +350,7 @@ function TreeNodeRow({
               onDropNode={onDropNode}
               onDragOverNode={onDragOverNode}
               onClearDrop={onClearDrop}
+              onSetFocused={onSetFocused}
             />
           ))}
         </div>
@@ -379,6 +387,7 @@ export function CollectionTree({
   const [context, setContext] = useState<ContextTarget | null>(null)
   const [dragPayload, setDragPayload] = useState<DragPayload | null>(null)
   const [dropTarget, setDropTarget] = useState<{ id: string; position: DropPosition } | null>(null)
+  const [focusedId, setFocusedId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -412,12 +421,81 @@ export function CollectionTree({
       .filter((collection) => collection.name.toLowerCase().includes(query.toLowerCase()) || collection.children.length)
   }, [collections, query])
 
+  type FlatItem = { id: string; kind: 'collection' | 'folder' | 'request'; collectionId: string; data: Collection | TreeNode }
+
+  const flatItems = useMemo(() => {
+    const items: FlatItem[] = []
+    const addNodes = (nodes: TreeNode[], collectionId: string) => {
+      for (const node of nodes) {
+        items.push({ id: node.id, kind: node.type === 'folder' ? 'folder' : 'request', collectionId, data: node })
+        if (node.type === 'folder' && openIds.has(node.id)) addNodes((node as FolderItem).children, collectionId)
+      }
+    }
+    for (const col of filtered) {
+      items.push({ id: col.id, kind: 'collection', collectionId: col.id, data: col })
+      if (openIds.has(col.id)) addNodes(col.children, col.id)
+    }
+    return items
+  }, [filtered, openIds])
+
+  // Auto-scroll focused item into view
+  useEffect(() => {
+    if (!focusedId) return
+    const el = document.querySelector(`[data-node-id="${focusedId}"]`)
+    el?.scrollIntoView({ block: 'nearest' })
+  }, [focusedId])
+
   const toggle = (id: string) => {
     setOpenIds((current) => {
       const next = new Set(current)
       next.has(id) ? next.delete(id) : next.add(id)
       return next
     })
+  }
+
+  const handleTreeKeyDown = (event: React.KeyboardEvent) => {
+    if (editingId) return
+    const idx = focusedId ? flatItems.findIndex((i) => i.id === focusedId) : -1
+    const current = flatItems[idx] ?? null
+    switch (event.key) {
+      case 'ArrowDown': {
+        event.preventDefault()
+        const next = flatItems[idx + 1] ?? (idx < 0 ? flatItems[0] : null)
+        if (next) setFocusedId(next.id)
+        break
+      }
+      case 'ArrowUp': {
+        event.preventDefault()
+        if (idx < 0 && flatItems.length > 0) { setFocusedId(flatItems[0].id); break }
+        if (idx > 0) setFocusedId(flatItems[idx - 1].id)
+        break
+      }
+      case 'ArrowRight': {
+        event.preventDefault()
+        if (current && (current.kind === 'collection' || current.kind === 'folder') && !openIds.has(current.id)) toggle(current.id)
+        break
+      }
+      case 'ArrowLeft': {
+        event.preventDefault()
+        if (current && (current.kind === 'collection' || current.kind === 'folder') && openIds.has(current.id)) toggle(current.id)
+        break
+      }
+      case 'Enter': {
+        event.preventDefault()
+        if (!current) { if (flatItems.length > 0) setFocusedId(flatItems[0].id); break }
+        if (current.kind === 'request') onOpenRequest(current.data as RequestItem, current.collectionId)
+        else toggle(current.id)
+        break
+      }
+      case 'Delete': {
+        event.preventDefault()
+        if (!current) break
+        if (current.kind === 'collection') setDeleteTarget({ kind: 'collection', collection: current.data as Collection, x: 0, y: 0 })
+        else if (current.kind === 'folder') setDeleteTarget({ kind: 'folder', collectionId: current.collectionId, node: current.data as FolderItem, x: 0, y: 0 })
+        else setDeleteTarget({ kind: 'request', collectionId: current.collectionId, node: current.data as RequestItem, x: 0, y: 0 })
+        break
+      }
+    }
   }
 
   const handleImport = async (file: File | undefined) => {
@@ -557,7 +635,7 @@ export function CollectionTree({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-1 pb-2">
+      <div className="flex-1 overflow-y-auto px-1 pb-2 outline-none" tabIndex={0} onKeyDown={handleTreeKeyDown}>
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
             <p className="text-xs text-text-4">No collections yet</p>
@@ -577,7 +655,8 @@ export function CollectionTree({
             onDragEnd={() => { setDragPayload(null); setDropTarget(null) }}
           >
             <div
-              onClick={() => toggle(collection.id)}
+              data-node-id={collection.id}
+              onClick={() => { setFocusedId(collection.id); toggle(collection.id) }}
               onContextMenu={(event) => {
                 event.preventDefault()
                 setContext({ kind: 'collection', collection, x: event.clientX, y: event.clientY })
@@ -585,6 +664,7 @@ export function CollectionTree({
               className={cn(
                 'group relative flex h-7 cursor-pointer items-center gap-1 rounded px-1 text-xs font-medium text-text-1 hover:bg-surface-2',
                 dropTarget?.id === collection.id && dragPayload?.type === 'node' && 'ring-1 ring-accent/70 bg-accent/10',
+                focusedId === collection.id && 'ring-1 ring-inset ring-accent/50',
               )}
             >
               {collection.color && <span className="absolute bottom-0.5 left-0 top-0.5 w-[2px] rounded-r" style={{ backgroundColor: collection.color }} />}
@@ -611,6 +691,7 @@ export function CollectionTree({
                 editingId={editingId}
                 dragPayload={dragPayload}
                 dropTarget={dropTarget}
+                focusedId={focusedId}
                 onToggle={toggle}
                 onOpenRequest={onOpenRequest}
                 onSetEditing={setEditingId}
@@ -620,6 +701,7 @@ export function CollectionTree({
                 onDropNode={handleNodeDrop}
                 onDragOverNode={handleNodeDragOver}
                 onClearDrop={clearDrop}
+                onSetFocused={setFocusedId}
               />
             ))}
             {collectionIndex === filtered.length - 1 && dragPayload?.type === 'node' && collection.children.length === 0 && (

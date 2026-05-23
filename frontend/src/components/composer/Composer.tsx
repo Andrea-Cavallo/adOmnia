@@ -414,6 +414,8 @@ export function Composer({ request, onChange, onSend, onSave, onLoadTest, loadin
                   key={activeBody.id}
                   body={activeBody}
                   isWebSocket={request.method === 'WS'}
+                  requestUrl={request.url}
+                  requestMethod={request.method}
                   onChange={(updated) => {
                     const newBodies = bodies.map((b, i) =>
                       i === bodyIndex ? { ...b, ...updated } : b

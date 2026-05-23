@@ -9,6 +9,8 @@ export interface RunnerConfig {
   stopOnFailure: boolean
   retryCount: number
   dataset?: Record<string, string>[]
+  /** Max requests to fire concurrently per batch. 1 = sequential (default). */
+  maxParallel?: number
 }
 
 export interface RunnerRequestResult {
@@ -50,15 +52,98 @@ export interface RunnerProgress {
   phase: 'running' | 'done' | 'error'
 }
 
+/**
+ * Execute a single request with retries and return its result + any variable
+ * mutations emitted by post-scripts. Never throws — all errors are captured
+ * inside the returned result.
+ */
+async function runSingleRequest(
+  request: RequestItem,
+  mergedVars: Record<string, string>,
+  config: RunnerConfig,
+  iter: number,
+  datasetIndex: number,
+  oaSpec?: string,
+): Promise<{ result: RunnerRequestResult; mutations: Record<string, string | null> }> {
+  let lastError = ''
+  let response: ResponseData | null = null
+  let scriptRuns: import('@/lib/types').ScriptRunResult[] = []
+  let success = false
+  const mutations: Record<string, string | null> = {}
+
+  for (let attempt = 0; attempt <= config.retryCount && !success; attempt++) {
+    try {
+      if (attempt > 0 && config.delayMs > 0) await sleep(config.delayMs)
+      const execution = await executeRequest(request, mergedVars)
+      response = execution.response
+      scriptRuns = execution.scriptRuns
+      Object.assign(mutations, execution.mutations)
+      if (response.error) {
+        lastError = response.error.message || response.error.code
+      } else {
+        success = true
+      }
+    } catch (e) {
+      lastError = e instanceof Error ? e.message : String(e)
+    }
+  }
+
+  const assertions = response ? evaluateAssertions(request.assertions, response) : undefined
+  const contract = (response && oaSpec && request._openapiPath)
+    ? validateContract(oaSpec, request._openapiPath, request.method, response)
+    : undefined
+  const allAssertionsPassed = assertions ? assertions.every((a) => a.passed) : true
+  const scriptsPassed = scriptRuns.every((run) => run.passed)
+  const itemPassed = response ? !response.error && allAssertionsPassed && scriptsPassed : false
+
+  const result: RunnerRequestResult = response
+    ? {
+        requestName: request.name,
+        method: request.method,
+        url: request.url,
+        status: response.status,
+        statusText: response.statusText,
+        passed: itemPassed,
+        durationMs: response.ms,
+        size: response.size,
+        iteration: iter,
+        datasetIndex,
+        body: response.body,
+        contentType: response.contentType,
+        headers: response.headers,
+        error: response.error?.message || (!allAssertionsPassed ? 'Assertion failures' : !scriptsPassed ? 'Script failures' : undefined),
+        assertionResults: assertions,
+        contractResult: contract,
+        scriptRuns,
+      }
+    : {
+        requestName: request.name,
+        method: request.method,
+        url: request.url,
+        status: 0,
+        statusText: 'Error',
+        passed: false,
+        durationMs: 0,
+        size: 0,
+        iteration: iter,
+        datasetIndex,
+        body: '',
+        contentType: '',
+        headers: {},
+        error: lastError || 'Unknown error',
+      }
+
+  return { result, mutations }
+}
+
 export async function* runCollection(
   requests: RequestItem[],
   config: RunnerConfig,
   vars: Record<string, string>,
   oaSpec?: string,
 ): AsyncGenerator<RunnerProgress, RunnerSummary, void> {
-  const dataset = config.dataset && config.dataset.length > 0
-    ? config.dataset
-    : [{}]
+  const parallel = Math.max(1, config.maxParallel ?? 1)
+  const dataset = config.dataset && config.dataset.length > 0 ? config.dataset : [{}]
   const totalSteps = requests.length * config.iterations * dataset.length
   let step = 0
   const allResults: RunnerRequestResult[] = []
@@ -71,104 +156,84 @@ export async function* runCollection(
     for (let di = 0; di < dataset.length; di++) {
       if (aborted) break
 
-      for (const request of requests) {
-        if (aborted) break
+      if (parallel <= 1) {
+        // ── Sequential: variable mutations chain request-to-request ──
+        for (const request of requests) {
+          if (aborted) break
+          const mergedVars = { ...runnerVars, ...(dataset[di] ?? {}) }
+          const { result: itemResult, mutations } = await runSingleRequest(request, mergedVars, config, iter, di, oaSpec)
+          for (const [key, value] of Object.entries(mutations)) {
+            if (value === null) delete runnerVars[key]
+            else runnerVars[key] = value
+          }
+          allResults.push(itemResult)
+          step++
+          yield { current: step, total: totalSteps, currentRequest: request.name, lastResult: itemResult, phase: 'running' }
+          if (config.stopOnFailure && !itemResult.passed) aborted = true
+          if (config.delayMs > 0 && !aborted) await sleep(config.delayMs)
+        }
+      } else {
+        // ── Parallel batched: up to `parallel` requests fire concurrently ──
+        // All requests in a batch share the same vars snapshot taken before the
+        // batch starts. Mutations are applied back in request order after the
+        // batch settles (last writer within a batch wins).
+        const snapVars = { ...runnerVars, ...(dataset[di] ?? {}) }
 
-        const mergedVars = { ...runnerVars, ...(dataset[di] ?? {}) }
+        for (let bi = 0; bi < requests.length; bi += parallel) {
+          if (aborted) break
+          const batch = requests.slice(bi, bi + parallel)
 
-        let lastError = ''
-        let result: ResponseData | null = null
-        let scriptRuns: import('@/lib/types').ScriptRunResult[] = []
-        let success = false
+          // Fire all requests in the batch at the same time
+          const settled = await Promise.allSettled(
+            batch.map((req) => runSingleRequest(req, snapVars, config, iter, di, oaSpec))
+          )
 
-        for (let attempt = 0; attempt <= config.retryCount && !success; attempt++) {
-          try {
-            if (attempt > 0 && config.delayMs > 0) {
-              await sleep(config.delayMs)
-            }
+          // Process results in request order so the log is deterministic
+          for (let si = 0; si < settled.length; si++) {
+            if (aborted) break
+            const outcome = settled[si]
+            const { result: itemResult, mutations } = outcome.status === 'fulfilled'
+              ? outcome.value
+              : {
+                  result: {
+                    requestName: batch[si].name,
+                    method: batch[si].method,
+                    url: batch[si].url,
+                    status: 0,
+                    statusText: 'Error',
+                    passed: false,
+                    durationMs: 0,
+                    size: 0,
+                    iteration: iter,
+                    datasetIndex: di,
+                    body: '',
+                    contentType: '',
+                    headers: {},
+                    error: String(outcome.reason) || 'Unknown error',
+                  } as RunnerRequestResult,
+                  mutations: {} as Record<string, string | null>,
+                }
 
-            const execution = await executeRequest(request, mergedVars)
-            result = execution.response
-            scriptRuns = execution.scriptRuns
-            for (const [key, value] of Object.entries(execution.mutations)) {
+            // Apply mutations back to runnerVars so later batches can see them
+            for (const [key, value] of Object.entries(mutations)) {
               if (value === null) delete runnerVars[key]
               else runnerVars[key] = value
             }
 
-            if (result.error) {
-              lastError = result.error.message || result.error.code
-              if (config.stopOnFailure) break
-            } else {
-              success = true
+            allResults.push(itemResult)
+            step++
+            yield {
+              current: step,
+              total: totalSteps,
+              currentRequest: itemResult.requestName,
+              lastResult: itemResult,
+              phase: 'running',
             }
-          } catch (e) {
-            lastError = e instanceof Error ? e.message : String(e)
-            if (config.stopOnFailure) break
+            if (config.stopOnFailure && !itemResult.passed) aborted = true
           }
-        }
 
-        const assertions = result ? evaluateAssertions(request.assertions, result) : undefined
-        const contract = (result && oaSpec && request._openapiPath) ? validateContract(oaSpec, request._openapiPath, request.method, result) : undefined
-        const allAssertionsPassed = assertions ? assertions.every((a) => a.passed) : true
-        const scriptsPassed = scriptRuns.every((run) => run.passed)
-        const itemPassed = result ? !result.error && allAssertionsPassed && scriptsPassed : false
-
-        const itemResult: RunnerRequestResult = result
-          ? {
-              requestName: request.name,
-              method: request.method,
-              url: request.url,
-              status: result.status,
-              statusText: result.statusText,
-              passed: itemPassed,
-              durationMs: result.ms,
-              size: result.size,
-              iteration: iter,
-              datasetIndex: di,
-              body: result.body,
-              contentType: result.contentType,
-              headers: result.headers,
-              error: result.error?.message || (!allAssertionsPassed ? 'Assertion failures' : !scriptsPassed ? 'Script failures' : undefined),
-              assertionResults: assertions,
-              contractResult: contract,
-              scriptRuns,
-            }
-          : {
-              requestName: request.name,
-              method: request.method,
-              url: request.url,
-              status: 0,
-              statusText: 'Error',
-              passed: false,
-              durationMs: 0,
-              size: 0,
-              iteration: iter,
-              datasetIndex: di,
-              body: '',
-              contentType: '',
-              headers: {},
-              error: lastError || 'Unknown error',
-            }
-
-        if (config.stopOnFailure && !itemResult.passed) {
-          aborted = true
-        }
-
-        allResults.push(itemResult)
-        step++
-
-        const progress: RunnerProgress = {
-          current: step,
-          total: totalSteps,
-          currentRequest: request.name,
-          lastResult: itemResult,
-          phase: 'running',
-        }
-
-        yield progress
-
-        if (config.delayMs > 0 && !aborted) {
-          await sleep(config.delayMs)
+          // Inter-batch delay (same as inter-request delay in sequential mode)
+          if (config.delayMs > 0 && !aborted) await sleep(config.delayMs)
         }
       }
     }

@@ -9,6 +9,7 @@ import { useAppIcon } from '@/lib/brandAssets'
 import { useThemeContext } from '@/components/themes/ThemeProvider'
 import { inferThemeMode, loadAvailableThemes } from '@/lib/themeCatalog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { useTabsStore } from '@/stores/tabs'
 import { getRuntimeInfo, type RuntimeInfo } from '@/lib/python-bridge-api'
 import {
   Settings,
@@ -158,6 +159,7 @@ export function SettingsPanel() {
   const [confirmClearHistory, setConfirmClearHistory] = useState(false)
   const [confirmResetDefaults, setConfirmResetDefaults] = useState(false)
   const [confirmClearAll, setConfirmClearAll] = useState(false)
+  const [confirmDisableTabRestore, setConfirmDisableTabRestore] = useState(false)
 
   // Search filter in sidebar
   const [search, setSearch] = useState('')
@@ -370,7 +372,13 @@ export function SettingsPanel() {
                 label={s.general.restoreTabs}
                 desc={s.general.restoreTabsDesc}
                 checked={settings.general.restoreTabsOnStartup}
-                onChange={(v) => updateGeneral({ restoreTabsOnStartup: v })}
+                onChange={(v) => {
+                  if (!v) {
+                    setConfirmDisableTabRestore(true)
+                  } else {
+                    updateGeneral({ restoreTabsOnStartup: true })
+                  }
+                }}
               />
               <Toggle
                 label={s.general.showWelcome}
@@ -1185,6 +1193,20 @@ export function SettingsPanel() {
           </>
         )}
       </div>
+      <ConfirmDialog
+        open={confirmDisableTabRestore}
+        title="Disable tab restoration?"
+        message="Tabs will not be restored on next startup. Open tabs in this session are not affected."
+        confirmLabel="Disable"
+        variant="danger"
+        onConfirm={() => {
+          updateGeneral({ restoreTabsOnStartup: false })
+          // Force-save with empty tabs immediately so the next startup starts clean
+          useTabsStore.getState().save()
+          setConfirmDisableTabRestore(false)
+        }}
+        onCancel={() => setConfirmDisableTabRestore(false)}
+      />
     </div>
   )
 }

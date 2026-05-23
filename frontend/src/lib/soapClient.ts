@@ -546,7 +546,7 @@ const options = {
 const req = https.request("${url}", options, (res) => {
   let data = '';
   res.on('data', (chunk) => { data += chunk; });
-  res.on('end', () => { console.log(res.statusCode, data); });
+  res.on('end', () => { console.log(data); }); // handle response data
 });
 req.write(envelope);
 req.end();

@@ -31,6 +31,8 @@ export function RunnerPanel() {
   const [datasetText, setDatasetText] = useState('')
   const [datasetType, setDatasetType] = useState<'csv' | 'json'>('csv')
 
+  const [maxParallel, setMaxParallel] = useState(1)
+
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState<RunnerProgress | null>(null)
   const [summary, setSummary] = useState<RunnerSummary | null>(null)
@@ -75,6 +77,7 @@ export function RunnerPanel() {
       delayMs: delay,
       stopOnFailure,
       retryCount,
+      maxParallel,
     }
 
     if (datasetText.trim()) {
@@ -117,7 +120,7 @@ export function RunnerPanel() {
     } finally {
       setRunning(false)
     }
-  }, [selectedCol, iterations, delay, stopOnFailure, retryCount, datasetText, datasetType, getResolvedVars])
+  }, [selectedCol, iterations, delay, stopOnFailure, retryCount, maxParallel, datasetText, datasetType, getResolvedVars])
 
   const stop = () => {
     abortRef.current?.abort()
@@ -184,6 +187,20 @@ export function RunnerPanel() {
             onChange={(e) => setRetryCount(Math.max(0, parseInt(e.target.value) || 0))}
             className="w-12 h-7 px-1 text-xs bg-surface-2 border border-border-1 rounded text-text-1 text-center"
             disabled={running}
+          />
+        </div>
+
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] text-text-4">Parallel:</span>
+          <input
+            type="number"
+            min={1}
+            max={20}
+            value={maxParallel}
+            onChange={(e) => setMaxParallel(Math.max(1, Math.min(20, parseInt(e.target.value) || 1)))}
+            className="w-12 h-7 px-1 text-xs bg-surface-2 border border-border-1 rounded text-text-1 text-center"
+            disabled={running}
+            title="Max concurrent requests per batch (1 = sequential)"
           />
         </div>
 

@@ -7,6 +7,13 @@ import { debouncedSave } from '@/lib/storeSave'
 const BUCKET = 'collections'
 const KEY = 'all'
 
+const CURRENT_COLLECTIONS_SCHEMA_VERSION = 1
+
+interface PersistedCollections {
+  version: number
+  collections: Collection[]
+}
+
 interface CollectionsState {
   collections: Collection[]
   loaded: boolean
@@ -161,9 +168,38 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
     try {
       const raw = await StorageGet(BUCKET, KEY)
       if (raw) {
-        const parsed = JSON.parse(raw) as Collection[]
-        const migrated = migrateCollections(parsed)
-        set({ collections: migrated, loaded: true, loadError: false })
+        const parsed = JSON.parse(raw)
+        let collections: Collection[]
+        let needsVersionUpgrade = false
+        if (Array.isArray(parsed)) {
+          // Legacy format: bare array, no version envelope — migrate and upgrade
+          collections = migrateCollections(parsed)
+          needsVersionUpgrade = true
+        } else if (parsed && typeof parsed === 'object' && parsed.version !== undefined) {
+          const { version, collections: cols } = parsed as PersistedCollections
+          if (version < CURRENT_COLLECTIONS_SCHEMA_VERSION) {
+            collections = migrateCollections(cols)
+            needsVersionUpgrade = true
+          } else {
+            collections = cols
+          }
+        } else {
+          collections = []
+        }
+        // Persist the migrated data immediately so the next load sees the current
+        // schema version and does NOT re-run migrations (acceptance: idempotent load).
+        if (needsVersionUpgrade) {
+          const upgraded: PersistedCollections = {
+            version: CURRENT_COLLECTIONS_SCHEMA_VERSION,
+            collections,
+          }
+          try {
+            await StoragePut(BUCKET, KEY, JSON.stringify(upgraded))
+          } catch {
+            // Non-fatal: data is in memory; will be persisted on the next mutation.
+          }
+        }
+        set({ collections, loaded: true, loadError: false })
       } else {
         set({ loaded: true, loadError: false })
       }
@@ -175,7 +211,11 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
   save: () => {
     const s = get()
     if (!s.loaded || s.loadError) return
-    debouncedSave('collections', () => StoragePut(BUCKET, KEY, JSON.stringify(s.collections)))
+    const persisted: PersistedCollections = {
+      version: CURRENT_COLLECTIONS_SCHEMA_VERSION,
+      collections: s.collections,
+    }
+    debouncedSave('collections', () => StoragePut(BUCKET, KEY, JSON.stringify(persisted)))
   },
 
   addCollection: (name) => {

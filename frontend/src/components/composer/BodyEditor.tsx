@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { ChevronDown, ChevronRight, AlertCircle, CheckCircle2, GitBranch } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { ChevronDown, ChevronRight, AlertCircle, CheckCircle2, GitBranch, Database, Loader2, RefreshCw } from 'lucide-react'
 import type { RequestBody } from '@/lib/types'
 import { KVEditor } from './KVEditor'
 import { JsonEditor } from '@/components/ui/JsonEditor'
@@ -11,6 +11,69 @@ interface BodyEditorProps {
   body: RequestBody
   onChange: (body: RequestBody) => void
   isWebSocket?: boolean
+  requestUrl?: string
+  requestMethod?: string
+}
+
+// ── GraphQL introspection types ──────────────────────────────────────────────
+
+interface GQLTypeRef {
+  kind: string
+  name?: string
+  ofType?: GQLTypeRef
+}
+
+interface GQLFieldArg {
+  name: string
+  type: GQLTypeRef
+}
+
+interface GQLField {
+  name: string
+  description?: string
+  args: GQLFieldArg[]
+  type: GQLTypeRef
+}
+
+interface GQLType {
+  name: string
+  kind: string
+  description?: string
+  fields?: GQLField[]
+  enumValues?: { name: string; description?: string }[]
+}
+
+interface GQLIntrospectionResult {
+  __schema: {
+    queryType: { name: string } | null
+    mutationType: { name: string } | null
+    subscriptionType: { name: string } | null
+    types: GQLType[]
+  }
+}
+
+const GRAPHQL_INTROSPECTION_QUERY = `{
+  __schema {
+    queryType { name }
+    mutationType { name }
+    subscriptionType { name }
+    types {
+      name
+      kind
+      description
+      fields(includeDeprecated: false) { name description args { name type { name kind ofType { name kind ofType { name kind } } } } type { name kind ofType { name kind ofType { name kind } } } }
+      enumValues { name description }
+    }
+  }
+}`
+
+function gqlTypeString(t: GQLTypeRef): string {
+  if (t.name) return t.name
+  if (t.ofType) {
+    if (t.kind === 'LIST') return `[${gqlTypeString(t.ofType)}]`
+    if (t.kind === 'NON_NULL') return `${gqlTypeString(t.ofType)}!`
+  }
+  return t.kind
 }
 
 const ALL_BODY_TYPES = [
@@ -117,8 +180,71 @@ function JsonRawEditor({ body, onChange }: { body: RequestBody; onChange: (b: Re
   )
 }
 
-function GraphQLEditor({ body, onChange }: { body: RequestBody; onChange: (b: RequestBody) => void }) {
+function GraphQLEditor({ body, onChange, requestUrl }: { body: RequestBody; onChange: (b: RequestBody) => void; requestUrl?: string }) {
   const [varsOpen, setVarsOpen] = useState(true)
+  const [schema, setSchema] = useState<GQLIntrospectionResult | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [showSchema, setShowSchema] = useState(false)
+
+  const toggleExpand = (key: string) => {
+    setExpanded(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
+  const introspect = async () => {
+    if (!requestUrl) { setError('No request URL configured'); return }
+    setLoading(true); setError('')
+    try {
+      const res = await fetch(requestUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ query: GRAPHQL_INTROSPECTION_QUERY }),
+      })
+      if (!res.ok) {
+        const text = await res.text()
+        setError(`HTTP ${res.status}: ${text.slice(0, 200)}`)
+        return
+      }
+      const json = await res.json()
+      if (json.errors && json.errors.length) {
+        setError(json.errors[0].message ?? 'Introspection failed')
+        return
+      }
+      setSchema(json.data)
+      setShowSchema(true)
+    } catch (e) {
+      setError(String(e))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const typeMap = useMemo(() => {
+    if (!schema) return new Map<string, GQLType>()
+    const m = new Map<string, GQLType>()
+    for (const t of schema.__schema.types) m.set(t.name, t)
+    return m
+  }, [schema])
+
+  const rootTypes = useMemo(() => {
+    if (!schema) return []
+    const result: { label: string; type: GQLType | undefined }[] = []
+    const s = schema.__schema
+    if (s.queryType) result.push({ label: 'Query', type: typeMap.get(s.queryType.name) })
+    if (s.mutationType) result.push({ label: 'Mutation', type: typeMap.get(s.mutationType.name) })
+    if (s.subscriptionType) result.push({ label: 'Subscription', type: typeMap.get(s.subscriptionType.name) })
+    return result
+  }, [schema, typeMap])
+
+  const insertField = (path: string) => {
+    onChange({ ...body, raw: (body.raw ?? '') + path })
+  }
 
   return (
     <div className="flex flex-col gap-2 px-2 pb-2">
@@ -130,13 +256,49 @@ function GraphQLEditor({ body, onChange }: { body: RequestBody; onChange: (b: Re
         onChange={e => onChange({ ...body, raw: e.target.value })}
         spellCheck={false}
       />
-      <button
-        onClick={() => setVarsOpen(v => !v)}
-        className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-text-4 hover:text-text-2 px-1"
-      >
-        {varsOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-        Variables (JSON)
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => setVarsOpen(v => !v)}
+          className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-text-4 hover:text-text-2 px-1"
+        >
+          {varsOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+          Variables (JSON)
+        </button>
+        {!schema && (
+          <button
+            onClick={introspect}
+            disabled={loading || !requestUrl}
+            className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-accent/15 text-accent hover:bg-accent/25 disabled:opacity-40 transition-colors"
+          >
+            {loading ? <Loader2 size={10} className="animate-spin" /> : <Database size={10} />}
+            Load Schema
+          </button>
+        )}
+        {schema && (
+          <>
+            <button
+              onClick={() => setShowSchema(s => !s)}
+              className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-accent/15 text-accent hover:bg-accent/25 transition-colors"
+            >
+              {showSchema ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
+              Schema Explorer
+            </button>
+            <button
+              onClick={introspect}
+              disabled={loading}
+              className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] text-text-4 hover:text-text-2 transition-colors"
+            >
+              <RefreshCw size={10} className={loading ? 'animate-spin' : ''} />
+            </button>
+            <button
+              onClick={() => { setSchema(null); setShowSchema(false); }}
+              className="text-[10px] text-text-4 hover:text-error transition-colors"
+            >
+              Clear
+            </button>
+          </>
+        )}
+      </div>
       {varsOpen && (
         <textarea
           className="min-h-[80px] p-3 bg-surface-2 border border-border-2 rounded font-mono text-xs text-text-1 placeholder:text-text-4 resize-y focus:border-accent outline-none"
@@ -145,6 +307,45 @@ function GraphQLEditor({ body, onChange }: { body: RequestBody; onChange: (b: Re
           onChange={e => onChange({ ...body, graphqlVariables: e.target.value })}
           spellCheck={false}
         />
+      )}
+      {error && (
+        <div className="px-2 py-1.5 rounded border border-error/30 bg-error/8 text-[11px] text-error font-mono">{error}</div>
+      )}
+      {showSchema && schema && (
+        <div className="border border-border-2 rounded bg-surface-1 max-h-[400px] overflow-y-auto">
+          <div className="px-3 py-1.5 border-b border-border-2 text-[10px] text-text-4 font-medium uppercase tracking-wider">
+            Schema
+          </div>
+          {rootTypes.map(rt => rt.type && (
+            <div key={rt.label}>
+              <button
+                onClick={() => toggleExpand(rt.label)}
+                className="flex items-center gap-1 w-full px-3 py-1 hover:bg-surface-2 text-left transition-colors"
+              >
+                {expanded.has(rt.label) ? <ChevronDown size={10} className="text-text-4" /> : <ChevronRight size={10} className="text-text-4" />}
+                <span className="text-[11px] font-semibold text-text-2">{rt.label}</span>
+                <span className="text-[9px] text-accent ml-auto">{rt.type.fields?.length ?? 0} fields</span>
+              </button>
+              {expanded.has(rt.label) && rt.type.fields?.map(f => (
+                <div key={f.name} className="pl-5 pr-2">
+                  <button
+                    onClick={() => insertField(f.name)}
+                    className="flex items-center gap-1 w-full py-1 hover:bg-surface-2 text-left group transition-colors rounded"
+                  >
+                    <span className="text-[11px] text-text-2 font-mono group-hover:text-accent cursor-pointer">{f.name}</span>
+                    {f.args.length > 0 && (
+                      <span className="text-[9px] text-text-4">({f.args.map(a => `${a.name}: ${gqlTypeString(a.type)}`).join(', ')})</span>
+                    )}
+                    <span className="text-[9px] text-accent ml-auto">: {gqlTypeString(f.type)}</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          ))}
+          {rootTypes.filter(rt => !rt.type).length > 0 && (
+            <p className="px-3 py-2 text-[10px] text-text-4 italic">No root types found</p>
+          )}
+        </div>
       )}
     </div>
   )
@@ -193,7 +394,7 @@ function RawEditor({ body, onChange }: { body: RequestBody; onChange: (b: Reques
   )
 }
 
-export function BodyEditor({ body, onChange, isWebSocket }: BodyEditorProps) {
+export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEditorProps) {
   const BODY_TYPES = isWebSocket ? WS_BODY_TYPES : ALL_BODY_TYPES
 
   const activeType: BodyTypeId = body.type === 'raw' && body.lang === 'json' ? 'json'
@@ -242,7 +443,7 @@ export function BodyEditor({ body, onChange, isWebSocket }: BodyEditorProps) {
       )}
 
       {body.type === 'graphql' && (
-        <GraphQLEditor body={body} onChange={onChange} />
+        <GraphQLEditor body={body} onChange={onChange} requestUrl={requestUrl} />
       )}
 
       {(body.type === 'urlencoded' || body.type === 'formdata') && (

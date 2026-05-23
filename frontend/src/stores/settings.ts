@@ -76,6 +76,17 @@ export interface AppSettings {
   }
 }
 
+function mergeBlock<T extends Record<string, unknown>>(defaults: T, saved: Partial<T> | undefined): T {
+  const merged = { ...defaults, ...(saved ?? {}) }
+  for (const key of Object.keys(defaults)) {
+    const k = key as keyof T
+    if (Array.isArray(defaults[k]) && !Array.isArray(merged[k])) {
+      ;(merged as Record<string, unknown>)[key] = defaults[k]
+    }
+  }
+  return merged
+}
+
 const defaultSettings: AppSettings = {
   version: 2,
   general: {
@@ -172,21 +183,20 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     try {
       const raw = await LoadSettings()
       const parsed = JSON.parse(raw)
-      // Deep merge nested blocks so added keys get their defaults
-      const appearance = { ...defaultSettings.appearance, ...(parsed.appearance ?? {}) }
+      const appearance = mergeBlock(defaultSettings.appearance, parsed.appearance)
       if (!appearance.themeId) {
         appearance.themeId = appearance.theme === 'light' ? 'builtin-light' : 'builtin-dark'
       }
       const merged: AppSettings = {
         ...defaultSettings,
         ...parsed,
-        general: { ...defaultSettings.general, ...(parsed.general ?? {}) },
+        general: mergeBlock(defaultSettings.general, parsed.general),
         appearance,
-        requests: { ...defaultSettings.requests, ...(parsed.requests ?? {}) },
-        proxy: { ...defaultSettings.proxy, ...(parsed.proxy ?? {}) },
-        mock: { ...defaultSettings.mock, ...(parsed.mock ?? {}) },
-        vault: { ...defaultSettings.vault, ...(parsed.vault ?? {}) },
-        editor: { ...defaultSettings.editor, ...(parsed.editor ?? {}) },
+        requests: mergeBlock(defaultSettings.requests, parsed.requests),
+        proxy: mergeBlock(defaultSettings.proxy, parsed.proxy),
+        mock: mergeBlock(defaultSettings.mock, parsed.mock),
+        vault: mergeBlock(defaultSettings.vault, parsed.vault),
+        editor: mergeBlock(defaultSettings.editor, parsed.editor),
       }
       set({ settings: merged, loaded: true })
     } catch {
