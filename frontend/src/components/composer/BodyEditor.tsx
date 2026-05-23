@@ -163,6 +163,8 @@ function JsonRawEditor({ body, onChange }: { body: RequestBody; onChange: (b: Re
         error={error}
         className="flex-1"
         minHeight="280px"
+        resolvedVars={resolvedVars}
+        hasActiveEnv={!!activeEnvId}
       />
       {unresolvedVars.length > 0 && (
         <div className={cn(

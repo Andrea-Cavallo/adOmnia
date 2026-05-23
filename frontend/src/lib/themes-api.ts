@@ -72,16 +72,6 @@ export async function getThemes(): Promise<Theme[]> {
   }
 }
 
-export async function getTheme(id: string): Promise<Theme | null> {
-  try {
-    const mgr = getThemeManager()
-    if (!mgr) return null
-    return await mgr.GetTheme(id)
-  } catch {
-    return null
-  }
-}
-
 export async function saveTheme(theme: Theme): Promise<boolean> {
   try {
     const mgr = getThemeManager()
@@ -223,16 +213,6 @@ export async function getSkinsDirectory(): Promise<string> {
     const mgr = getThemeManager()
     if (!mgr) return ''
     return await mgr.GetSkinsDirectory()
-  } catch {
-    return ''
-  }
-}
-
-export async function saveSkinToDirectory(theme: Theme): Promise<string> {
-  try {
-    const mgr = getThemeManager()
-    if (!mgr) return ''
-    return await mgr.SaveSkinToDirectory(theme)
   } catch {
     return ''
   }

@@ -8,6 +8,7 @@ import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/app'
 import { useSettingsStore } from '@/stores/settings'
+import { uid } from '@/lib/types'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -71,8 +72,6 @@ function methodColor(m: string) {
     default: return 'text-text-3'
   }
 }
-
-function uid() { return Math.random().toString(36).slice(2, 10) }
 
 function HeaderTable({ headers }: { headers: Record<string, string> }) {
   const entries = Object.entries(headers || {})

@@ -34,7 +34,6 @@ var (
 	proxyRules   = make([]ProxyRule, 0)
 	proxyTbl     *bart.Table[string]
 	proxyTblMu   sync.RWMutex
-	proxyTblLen  int
 	proxyRegex   []compiledRegexRule
 	proxyRegexMu sync.RWMutex
 	proxyLog     []proxyMatchLog
@@ -91,7 +90,6 @@ func buildCIDRTable(rules []ProxyRule) {
 
 	proxyTblMu.Lock()
 	proxyTbl = t
-	proxyTblLen = cidrCount
 	proxyTblMu.Unlock()
 
 	proxyRegexMu.Lock()
@@ -256,21 +254,6 @@ func matchRegex(host string) (bool, string) {
 		}
 	}
 	return false, ""
-}
-
-func addProxyLog(target, ruleType, ruleID string, matched bool) {
-	proxyLogMu.Lock()
-	defer proxyLogMu.Unlock()
-	proxyLog = append(proxyLog, proxyMatchLog{
-		Time:     timeNowStr(),
-		Target:   target,
-		RuleType: ruleType,
-		RuleID:   ruleID,
-		Matched:  matched,
-	})
-	if len(proxyLog) > proxyLogMax {
-		proxyLog = proxyLog[len(proxyLog)-proxyLogMax:]
-	}
 }
 
 func proxyRulesLogHandler(w http.ResponseWriter, r *http.Request) {

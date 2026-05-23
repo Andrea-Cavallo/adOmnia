@@ -13,7 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	bolt "go.etcd.io/bbolt"
@@ -21,8 +20,6 @@ import (
 
 var (
 	storeDB    *bolt.DB
-	storeDBMu  sync.RWMutex
-	storeDBEnc = false
 )
 
 // Bucket names
@@ -191,38 +188,6 @@ func storeList(bucket, prefix string) ([]string, error) {
 		return nil
 	})
 	return keys, err
-}
-
-func storeCount(bucket, prefix string) (int, error) {
-	if err := validateStoreBucket(bucket); err != nil {
-		return 0, err
-	}
-	count := 0
-	err := storeDB.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(bucket))
-		if b == nil {
-			return fmt.Errorf("bucket %s not found", bucket)
-		}
-		c := b.Cursor()
-		p := []byte(prefix)
-		for k, _ := c.Seek(p); k != nil && strings.HasPrefix(string(k), prefix); k, _ = c.Next() {
-			count++
-		}
-		return nil
-	})
-	return count, err
-}
-
-// storeJSONGet reads a key and unmarshals it as JSON into v.
-func storeJSONGet(bucket, key string, v interface{}) error {
-	data, err := storeGet(bucket, key)
-	if err != nil {
-		return err
-	}
-	if data == nil {
-		return nil // not found is not an error
-	}
-	return json.Unmarshal(data, v)
 }
 
 // storeJSONPut marshals v as JSON and stores it.

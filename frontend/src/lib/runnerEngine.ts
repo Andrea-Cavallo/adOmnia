@@ -2,6 +2,7 @@ import type { RequestItem, ResponseData, AssertionResult, ContractValidationResu
 import { executeRequest } from '@/lib/executeRequest'
 import { evaluateAssertions } from '@/lib/assertionEngine'
 import { validateContract } from '@/lib/contractValidator'
+import { escapeXml } from '@/lib/soapClient'
 
 export interface RunnerConfig {
   iterations: number
@@ -425,14 +426,10 @@ export function exportRunnerReportJunit(summary: RunnerSummary): string {
     const name = `[${r.method}] ${r.requestName} (iter ${r.iteration})`
     const timeMs = (r.durationMs / 1000).toFixed(3)
     if (r.passed) {
-      return `    <testcase name="${xmlEscape(name)}" classname="${suiteName}" time="${timeMs}" />`
+      return `    <testcase name="${escapeXml(name)}" classname="${suiteName}" time="${timeMs}" />`
     }
-    return `    <testcase name="${xmlEscape(name)}" classname="${suiteName}" time="${timeMs}">\n      <failure message="${xmlEscape(r.error || `Status ${r.status}`)}" />\n    </testcase>`
+    return `    <testcase name="${escapeXml(name)}" classname="${suiteName}" time="${timeMs}">\n      <failure message="${escapeXml(r.error || `Status ${r.status}`)}" />\n    </testcase>`
   }).join('\n')
 
   return `<?xml version="1.0" encoding="UTF-8"?>\n<testsuite name="${suiteName}" tests="${tests}" failures="${failures}" time="${time}">\n${cases}\n</testsuite>`
-}
-
-function xmlEscape(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;')
 }

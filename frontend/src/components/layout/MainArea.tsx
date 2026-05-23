@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, Suspense } from 'react'
+import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import { ArrowLeft, X } from 'lucide-react'
 import { useAppStore, type RailItem } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
@@ -96,6 +96,26 @@ type PendingClose =
   | { kind: 'right'; tabId: string }
   | { kind: 'left'; tabId: string }
 
+// ─── Resizable divider between Composer and ResponsePanel ────────────────────
+
+const RESPONSE_HEIGHT_KEY = 'adomnia.responseHeight'
+const RESPONSE_HEIGHT_MIN  = 80
+const RESPONSE_HEIGHT_MAX  = 0.88  // fraction of window.innerHeight
+
+function clampResponseHeight(h: number): number {
+  return Math.max(RESPONSE_HEIGHT_MIN, Math.min(h, Math.round(window.innerHeight * RESPONSE_HEIGHT_MAX)))
+}
+
+function loadResponseHeight(): number {
+  try {
+    const stored = localStorage.getItem(RESPONSE_HEIGHT_KEY)
+    if (stored) return clampResponseHeight(parseInt(stored, 10))
+  } catch { /* ignore */ }
+  return Math.round(window.innerHeight * 0.38)
+}
+
+// ─── RequestWorkspace ─────────────────────────────────────────────────────────
+
 function RequestWorkspace() {
   const tabs = useTabsStore((s) => s.tabs)
   const activeTabId = useTabsStore((s) => s.activeTabId)
@@ -123,6 +143,52 @@ function RequestWorkspace() {
 
   const [showLoadTest, setShowLoadTest] = useState(false)
   const [pendingClose, setPendingClose] = useState<PendingClose | null>(null)
+
+  // ── Resizable response panel ────────────────────────────────────────────────
+  const [responseHeight, setResponseHeight] = useState<number>(loadResponseHeight)
+  const dragRef = useRef<{ startY: number; startHeight: number } | null>(null)
+  const isDraggingRef = useRef(false)
+
+  const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    dragRef.current = { startY: e.clientY, startHeight: responseHeight }
+    isDraggingRef.current = true
+
+    const handleMove = (me: MouseEvent) => {
+      if (!dragRef.current) return
+      // Dragging UP → delta > 0 → taller response panel
+      const delta = dragRef.current.startY - me.clientY
+      const newH = clampResponseHeight(dragRef.current.startHeight + delta)
+      setResponseHeight(newH)
+      try { localStorage.setItem(RESPONSE_HEIGHT_KEY, String(newH)) } catch { /* ignore */ }
+    }
+
+    const handleUp = () => {
+      isDraggingRef.current = false
+      dragRef.current = null
+      document.removeEventListener('mousemove', handleMove)
+      document.removeEventListener('mouseup', handleUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+
+    document.body.style.cursor = 'ns-resize'
+    document.body.style.userSelect = 'none'
+    document.addEventListener('mousemove', handleMove)
+    document.addEventListener('mouseup', handleUp)
+  }, [responseHeight])
+
+  // Clamp height on window resize
+  useEffect(() => {
+    const onResize = () => {
+      if (!isDraggingRef.current) {
+        setResponseHeight((h) => clampResponseHeight(h))
+      }
+    }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+  // ── End resizable panel ─────────────────────────────────────────────────────
 
   const activeTab = tabs.find((t) => t.id === activeTabId)
 
@@ -222,7 +288,7 @@ function RequestWorkspace() {
   }
 
   return (
-    <div className="flex-1 flex flex-col min-w-0">
+    <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
       <EnvBar
         environments={environments}
         activeEnvId={activeEnvId}
@@ -245,26 +311,63 @@ function RequestWorkspace() {
         activeRequest={activeTab?.request ?? null}
         onApplyRequest={(request) => activeTab && updateRequest(activeTab.id, request)}
       />
-      {activeTab && (
-        <>
-          <Composer
-            request={activeTab.request}
-            onChange={(req) => updateRequest(activeTab.id, req)}
-            onSend={handleSend}
-            onSave={handleSave}
-            onLoadTest={() => setShowLoadTest((v) => !v)}
-            loading={activeTab.loading}
-          />
+
+      {activeTab ? (
+        /* ── Split layout: Composer (flex-1, scrollable) + drag handle + ResponsePanel ── */
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          {/* Composer area — grows to fill remaining space; scrolls when content overflows */}
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <Composer
+              request={activeTab.request}
+              onChange={(req) => updateRequest(activeTab.id, req)}
+              onSend={handleSend}
+              onSave={handleSave}
+              onLoadTest={() => setShowLoadTest((v) => !v)}
+              loading={activeTab.loading}
+            />
+          </div>
+
           {showLoadTest ? (
             <LoadTestDrawer
               request={activeTab.request}
               onClose={() => setShowLoadTest(false)}
             />
           ) : (
-            <ResponsePanel response={activeTab.response} loading={activeTab.loading} oaSpec={oaSpec} oaPath={oaPath} oaMethod={oaMethod} assertions={activeTab.request.assertions} />
+            <>
+              {/* ── Drag handle ────────────────────────────────────────────── */}
+              <div
+                role="separator"
+                aria-label="Resize response panel"
+                title="Drag to resize response panel"
+                onMouseDown={handleResizeMouseDown}
+                className="h-[6px] shrink-0 flex items-center justify-center cursor-ns-resize group hover:bg-accent/10 transition-colors border-y border-border-1"
+              >
+                {/* Grip dots */}
+                <div className="flex gap-[3px] items-center opacity-40 group-hover:opacity-80 transition-opacity">
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <div key={i} className="w-[3px] h-[3px] rounded-full bg-text-3 group-hover:bg-accent transition-colors" />
+                  ))}
+                </div>
+              </div>
+
+              {/* ── Response panel — explicit height, internally scrollable ── */}
+              <div
+                className="shrink-0 flex flex-col min-h-0 overflow-hidden"
+                style={{ height: responseHeight }}
+              >
+                <ResponsePanel
+                  response={activeTab.response}
+                  loading={activeTab.loading}
+                  oaSpec={oaSpec}
+                  oaPath={oaPath}
+                  oaMethod={oaMethod}
+                  assertions={activeTab.request.assertions}
+                />
+              </div>
+            </>
           )}
-        </>
-      )}
+        </div>
+      ) : null}
 
       {/* Save-before-close dialog */}
       {pendingClose && (

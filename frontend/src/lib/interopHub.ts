@@ -57,7 +57,7 @@ function tryJson(text: string): unknown | null {
   try { return JSON.parse(text) } catch { return null }
 }
 
-export function detectInteropFormat(filename: string, text: string): InteropFormat {
+function detectInteropFormat(filename: string, text: string): InteropFormat {
   const lower = filename.toLowerCase()
   const trimmed = text.trim()
   const json = tryJson(trimmed) as Record<string, unknown> | null

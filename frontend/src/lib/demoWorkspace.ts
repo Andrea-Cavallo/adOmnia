@@ -731,11 +731,11 @@ export function getForgeCoreActiveEnvId(): string {
   return FORGE_CORE_WORKSPACE.activeEnvId
 }
 
-export function getDefaultPostmanDemoCollection(): Collection {
+function getDefaultPostmanDemoCollection(): Collection {
   return JSON.parse(JSON.stringify(POSTMAN_DEMO_COLLECTION)) as Collection
 }
 
-export function getDefaultPostmanDemoEnvironment(): Environment {
+function getDefaultPostmanDemoEnvironment(): Environment {
   return JSON.parse(JSON.stringify(POSTMAN_DEMO_ENVIRONMENT)) as Environment
 }
 
@@ -759,25 +759,4 @@ export function loadDefaultPostmanDemo(): boolean {
   void useCollectionsStore.getState().save()
   void useEnvironmentsStore.getState().save()
   return true
-}
-
-export function loadForgeCoreDemo() {
-  const colStore = useCollectionsStore.getState()
-  if (colStore.collections.length === 0 && !colStore.loaded) return
-  if (colStore.collections.some((c) => c.id === 'col-forgecore')) return
-
-  const envStore = useEnvironmentsStore.getState()
-  if (envStore.environments.length === 0 && !envStore.loaded) return
-  if (envStore.environments.some((e) => e.id === 'forgecore-local')) return
-
-  const cols = getForgeCoreCollections()
-  for (const col of cols) {
-    colStore.importCollection(col)
-  }
-
-  const es = useEnvironmentsStore.getState()
-  const envs = getForgeCoreEnvironments()
-  useEnvironmentsStore.setState({ environments: envs, activeEnvId: getForgeCoreActiveEnvId(), loaded: true })
-  es.save()
-  es.setActiveEnv(getForgeCoreActiveEnvId())
 }

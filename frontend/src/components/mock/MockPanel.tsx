@@ -9,6 +9,7 @@ import { useAppStore } from '@/stores/app'
 import { useCollectionsStore } from '@/stores/collections'
 import { useSettingsStore } from '@/stores/settings'
 import type { RequestItem, TreeNode } from '@/lib/types'
+import { uid } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 interface MockResponse {
@@ -45,8 +46,6 @@ interface HitEntry {
   responseId: string
   status: number
 }
-
-const uid = () => Math.random().toString(36).slice(2, 10)
 
 const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'ANY']
 const REST_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'])

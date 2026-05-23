@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
+import { copyToClipboard } from '@/lib/codegen'
 import {
   getCookies,
   deleteCookie,
@@ -36,10 +37,6 @@ function truncate(text: string, maxLen: number): string {
 function formatExpires(ts: number): string {
   if (ts <= 0) return 'Session'
   return new Date(ts * 1000).toLocaleDateString()
-}
-
-function copyToClipboard(text: string): void {
-  navigator.clipboard.writeText(text)
 }
 
 export function StoragePanel() {

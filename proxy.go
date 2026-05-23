@@ -28,24 +28,6 @@ func safeReadFile(filePath string) ([]byte, error) {
 	return os.ReadFile(cleaned)
 }
 
-func isValidPort(port int) bool {
-	return port >= 1024 && port <= 65535
-}
-
-func isValidHostPort(address string) bool {
-	if address == "" || !strings.Contains(address, ":") {
-		return false
-	}
-	host, port, err := net.SplitHostPort(address)
-	if err != nil || port == "" || host == "" {
-		return false
-	}
-	if _, err := fmt.Sscanf(port, "%d", new(int)); err != nil {
-		return false
-	}
-	return true
-}
-
 // --- Types ---
 
 type mapLocalRule struct {

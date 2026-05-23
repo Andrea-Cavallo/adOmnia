@@ -2,29 +2,29 @@ import { ExecuteHTTP } from '../wailsjs/go/main/App'
 
 // ─── WSDL Parser & SOAP Client ───────────────────────────────
 
-export interface WsdlPort {
+interface WsdlPort {
   name: string
   bindingName: string
   location: string
 }
 
-export interface WsdlService {
+interface WsdlService {
   name: string
   ports: WsdlPort[]
 }
 
-export interface WsdlMessagePart {
+interface WsdlMessagePart {
   name: string
   element?: string
   type?: string
 }
 
-export interface WsdlMessage {
+interface WsdlMessage {
   name: string
   parts: WsdlMessagePart[]
 }
 
-export interface WsdlOperation {
+interface WsdlOperation {
   name: string
   soapAction: string
   inputMessage?: WsdlMessage
@@ -32,12 +32,12 @@ export interface WsdlOperation {
   documentation?: string
 }
 
-export interface WsdlPortType {
+interface WsdlPortType {
   name: string
   operations: WsdlOperation[]
 }
 
-export interface WsdlBinding {
+interface WsdlBinding {
   name: string
   portTypeName: string
   operations: { name: string; soapAction: string }[]
@@ -51,7 +51,7 @@ export interface WsdlDocument {
   schemaElements: Record<string, XmlSchemaElement>
 }
 
-export interface XmlSchemaElement {
+interface XmlSchemaElement {
   name: string
   type?: string
   namespace?: string
@@ -61,7 +61,7 @@ export interface XmlSchemaElement {
   enumValues?: string[]
 }
 
-export interface SoapRequest {
+interface SoapRequest {
   url: string
   soapAction: string
   envelope: string
@@ -69,7 +69,7 @@ export interface SoapRequest {
   customHeaders?: Record<string, string>
 }
 
-export interface SoapResponse {
+interface SoapResponse {
   status: number
   statusText: string
   headers: Record<string, string>
@@ -265,39 +265,6 @@ function findChildren(el: Element, localName: string): Element[] {
     if (ln === localName) result.push(c)
   }
   return result
-}
-
-// ─── Envelope generators ─────────────────────────────────────
-
-export function generateSoapEnvelope(
-  wsdl: WsdlDocument,
-  operation: WsdlOperation,
-  values: Record<string, string>,
-  soapVersion: '1.1' | '1.2',
-): string {
-  const ns = wsdl.targetNamespace || 'urn:temp'
-  const is12 = soapVersion === '1.2'
-  const envNs = is12 ? 'http://www.w3.org/2003/05/soap-envelope' : 'http://schemas.xmlsoap.org/soap/envelope/'
-
-  let bodyContent = `<ns0:${operation.name} xmlns:ns0="${ns}">`
-  if (operation.inputMessage) {
-    for (const part of operation.inputMessage.parts) {
-      bodyContent += `\n    <${part.name}>`
-      const val = values[part.name] ?? ''
-      bodyContent += val
-      bodyContent += `</${part.name}>`
-    }
-  }
-  bodyContent += `\n  </ns0:${operation.name}>`
-
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<soap:Envelope xmlns:soap="${envNs}">
-  <soap:Header>
-  </soap:Header>
-  <soap:Body>
-    ${bodyContent}
-  </soap:Body>
-</soap:Envelope>`
 }
 
 export function generateEnvelopeWithSchema(
@@ -575,7 +542,7 @@ export function loadSoapHistory(): SoapHistoryEntry[] {
   } catch { return [] }
 }
 
-export function saveSoapHistory(entries: SoapHistoryEntry[]): void {
+function saveSoapHistory(entries: SoapHistoryEntry[]): void {
   try {
     localStorage.setItem(HISTORY_KEY, JSON.stringify(entries.slice(0, HISTORY_MAX)))
   } catch { /* quota exceeded */ }

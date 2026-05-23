@@ -27,14 +27,6 @@ var (
 	vaultTimer    *time.Timer
 )
 
-// VaultEntry stores a named secret.
-type VaultEntry struct {
-	Name  string `json:"name"`
-	Value string `json:"value"`
-	Type  string `json:"type"` // "token", "apikey", "password", "oauth2"
-	Note  string `json:"note,omitempty"`
-}
-
 func resetVaultTimer() {
 	if vaultTimer != nil {
 		vaultTimer.Stop()
@@ -96,14 +88,6 @@ func decryptWithAge(cipherB64, passphrase string) (string, error) {
 		return "", err
 	}
 	return string(plaintext), nil
-}
-
-func generateAgeIdentity() (*age.X25519Identity, string, error) {
-	identity, err := age.GenerateX25519Identity()
-	if err != nil {
-		return nil, "", err
-	}
-	return identity, identity.Recipient().String(), nil
 }
 
 // --- HTTP handlers ---

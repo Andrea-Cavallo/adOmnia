@@ -8,8 +8,6 @@ import { FileDropZone } from '@/components/utils/FileDropZone'
 import { RegexTester } from '@/components/utils/RegexTester'
 import { HmacTool } from '@/components/utils/HmacTool'
 import { DockerGenerator } from '@/components/utils/DockerGenerator'
-import { JsonToolsPanel } from '@/components/utils/JsonToolsPanel'
-import { XmlToolsPanel } from '@/components/utils/XmlToolsPanel'
 import { parseDocument } from 'yaml'
 
 const copy = (s: string) => navigator.clipboard.writeText(s).catch(() => {})
@@ -47,29 +45,6 @@ interface YamlFileResult {
 }
 
 const CATEGORIES: Category[] = [
-  {
-    label: 'JSON Tools',
-    marker: 'json',
-    tools: [
-      { id: 'json-query',  label: 'Query (JSONPath)' },
-      { id: 'json-set',    label: 'Set Value' },
-      { id: 'json-diff',   label: 'Diff' },
-      { id: 'json-tree',   label: 'Tree View' },
-      { id: 'json-human',  label: 'Humanize' },
-      { id: 'json-stream', label: 'Stream / NDJSON' },
-      { id: 'json-mime',   label: 'MIME Sniffer' },
-    ],
-  },
-  {
-    label: 'XML Tools',
-    marker: 'xml',
-    tools: [
-      { id: 'xml-format',   label: 'Format' },
-      { id: 'xml-diff',     label: 'Diff' },
-      { id: 'xml-entities', label: 'Entities' },
-      { id: 'xml-xpath',    label: 'XPath Query' },
-    ],
-  },
   {
     label: 'Encoding & Formats',
     tools: [
@@ -1519,21 +1494,6 @@ export function UtilsPanel() {
       case 'folderdiff':
         return <FolderDiffTool />
 
-      // ---- JSON Tools ----
-      case 'json-query':  return <JsonToolsPanel initialTab="query" />
-      case 'json-set':    return <JsonToolsPanel initialTab="set" />
-      case 'json-diff':   return <JsonToolsPanel initialTab="diff" />
-      case 'json-tree':   return <JsonToolsPanel initialTab="graph" />
-      case 'json-human':  return <JsonToolsPanel initialTab="human" />
-      case 'json-stream': return <JsonToolsPanel initialTab="stream" />
-      case 'json-mime':   return <JsonToolsPanel initialTab="mime" />
-
-      // ---- XML Tools ----
-      case 'xml-format':   return <XmlToolsPanel initialTab="format" />
-      case 'xml-diff':     return <XmlToolsPanel initialTab="diff" />
-      case 'xml-entities': return <XmlToolsPanel initialTab="entities" />
-      case 'xml-xpath':    return <XmlToolsPanel initialTab="xpath" />
-
       // ---- Playground ----
       case 'easter':
         return (
@@ -1553,13 +1513,13 @@ export function UtilsPanel() {
     <div className="flex-1 flex flex-col min-h-0 bg-surface-0">
       <div className="h-8 px-4 border-b border-border-1 flex items-center gap-2 text-[11px] font-semibold tracking-wider">
         <span className="text-accent">PWR / TOOLS</span>
-        <span className="text-text-4 font-normal">JSON · XML · utilities · generators · crypto</span>
+        <span className="text-text-4 font-normal">encoding · crypto · generators · network · validation</span>
       </div>
       <div className="h-10 px-4 border-b border-border-1 flex items-center gap-3">
         <span className="text-accent text-sm leading-none">/</span>
         <div className="min-w-0">
           <h1 className="text-sm font-semibold text-text-1 leading-tight">Power Tools</h1>
-          <p className="text-[10px] text-text-4 leading-tight">{totalTools} tools — JSON, XML, encoding, crypto, generators</p>
+          <p className="text-[10px] text-text-4 leading-tight">{totalTools} tools — encoding, crypto, generators, network, validation</p>
         </div>
       </div>
 
