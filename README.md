@@ -6,7 +6,7 @@
 
 ![adOmnia interface](assets/images/icon.png)
 
-[![Built with Wails](https://img.shields.io/badge/Built%20with-Wails%20v2-FF3E00?logo=go&logoColor=white)](https://wails.io)
+[![Website](https://img.shields.io/badge/Get%20started%20for%20free-8A2BE2)](https://www.adomnia-dev.com)
 [![Awesome Wails](https://img.shields.io/badge/Awesome-Wails-FF3E00?logo=go&logoColor=white)](https://github.com/wailsapp/awesome-wails)
 [![Awesome HTTP Clients](https://img.shields.io/badge/Awesome-HTTP_Clients-4285F4?logo=googlechrome&logoColor=white)](https://github.com/mrmykey/awesome-http-clients/tree/main)
 ![Local First](https://img.shields.io/badge/local--first-yes-22c55e)
@@ -29,6 +29,11 @@
 
 ![adOmnia interface](assets/images/adOmniaInterface1.png)
 
+or white skin: 
+
+![adOmnia interface white](assets/images/white.png)
+
+
 REST, SOAP, gRPC, WebSocket, SSE, GraphQL, Kafka, RabbitMQ, MQTT, Redis, NATS — adOmnia handles them all. Mock servers, proxy interception, browser debugging via CDP, database access, load testing, encrypted vault, secret scanner. Built with **Wails v2** (Go + React), compiles into a single portable binary. Zero Electron overhead.
 
 | Area | Highlights |
@@ -41,7 +46,7 @@ REST, SOAP, gRPC, WebSocket, SSE, GraphQL, Kafka, RabbitMQ, MQTT, Redis, NATS �
 | **Data & Security** | Database Studio, encrypted vault, secret scanner, cert tools (PEM/JKS). |
 | **Customization** | Themes, skins, template marketplace, WASM plugins, Python SDK. |
 
-Full catalog: [docs/funzionalita.md](docs/funzionalita.md)
+Full catalog: [docs/adomnia-feature-catalog.en.md](docs/adomnia-feature-catalog.en.md)
 
 ### Principles
 
@@ -91,7 +96,7 @@ Import Postman, Insomnia, Bruno, OpenAPI workspaces. Drag & drop `.json`, `.yaml
 
 ### Contribute
 
-Read [AGENTS.md](AGENTS.md) and [CLAUDE.md](CLAUDE.md). Check [TODO.md](docs/TODO.md) before starting. Keep changes focused, product-oriented. PRs welcome.
+Read [AGENTS.md](AGENTS.md) and [CLAUDE.md](CLAUDE.md). before starting. Keep changes focused, product-oriented. PRs welcome.
 
 ### License
 
@@ -200,3 +205,7 @@ Guida: [docs/BUILD.md](docs/BUILD.md)
 [Funzionalità](docs/funzionalita.md) · [Build](docs/BUILD.md) · [Roadmap](docs/adomnia-roadmap-checkbox.md) · [FAQ](docs/FAQ.md) · [Privacy](PRIVACY.md)
 
 MIT © Andrea Cavallo — [LICENSE.md](LICENSE.md).
+
+special thanks to: 
+- https://github.com/albertize
+- https://github.com/plunix
