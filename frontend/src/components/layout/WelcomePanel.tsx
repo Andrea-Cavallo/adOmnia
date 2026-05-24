@@ -25,6 +25,8 @@ import {
 } from 'lucide-react'
 import { useAppStore, type RailItem } from '@/stores/app'
 import { useSettingsStore } from '@/stores/settings'
+import { useThemesStore } from '@/stores/themes'
+import { inferThemeMode } from '@/lib/themeCatalog'
 import { cn } from '@/lib/utils'
 
 type LayerId = 'network' | 'logic' | 'storage' | 'observability'
@@ -141,8 +143,11 @@ const HUB_LAYERS: HubLayer[] = [
 export function WelcomePanel() {
   const setActiveRail = useAppStore((s) => s.setActiveRail)
   const [openLayers, setOpenLayers] = useState<Set<LayerId>>(() => new Set())
-  const themeMode = useSettingsStore((s) => s.settings.appearance.theme)
-  const isLight = themeMode === 'light'
+  const legacyTheme = useSettingsStore((s) => s.settings.appearance.theme)
+  const themes = useThemesStore((s) => s.themes)
+  const activeThemeId = useThemesStore((s) => s.activeThemeId)
+  const activeTheme = themes.find((t) => t.id === activeThemeId)
+  const isLight = activeTheme ? inferThemeMode(activeTheme) === 'light' : legacyTheme === 'light'
 
   const toggleLayer = (id: LayerId) => {
     setOpenLayers((current) => {
@@ -175,7 +180,7 @@ export function WelcomePanel() {
         <main className="min-w-0">
           <header className="relative mb-5 flex min-h-[200px] items-center gap-6 border-b border-dashed border-border-2 pb-5 lg:pr-[310px]">
             <div className="min-w-0">
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-violet-300/20 bg-violet-400/10 px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-violet-200 dark:text-violet-200">
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/10 px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-accent">
                 <Layers size={12} />
                 Local developer toolbox
               </div>
@@ -186,9 +191,9 @@ export function WelcomePanel() {
                 adOmnia brings API clients, mocks, brokers, proxy inspection, browser debugging and local data tools into a single offline-first environment. Your collections, secrets, traffic captures and workspaces stay on your machine.
               </p>
               <div className="mt-5 hidden items-center gap-3 xl:flex">
-                <MetricPill label="modules" value="28" isLight={isLight} />
-                <MetricPill label="features" value="444+" isLight={isLight} />
-                <MetricPill label="cloud sync" value="0" isLight={isLight} />
+                <MetricPill label="modules" value="28" />
+                <MetricPill label="features" value="444+" />
+                <MetricPill label="cloud sync" value="0" />
               </div>
             </div>
 
@@ -261,17 +266,11 @@ export function WelcomePanel() {
   )
 }
 
-function MetricPill({ label, value, isLight }: { label: string; value: string; isLight: boolean }) {
+function MetricPill({ label, value }: { label: string; value: string }) {
   return (
-    <div className={cn(
-      'rounded-full border px-3 py-1.5 font-mono',
-      isLight ? 'border-border-1 bg-surface-1' : 'border-white/10 bg-white/[0.03]',
-    )}>
-      <span className={cn(
-        'mr-2 text-[10px] uppercase tracking-[0.12em]',
-        isLight ? 'text-text-4' : 'text-white/35',
-      )}>{label}</span>
-      <b className={cn('text-[11px]', isLight ? 'text-text-2' : 'text-white/75')}>{value}</b>
+    <div className="rounded-full border border-border-1 bg-surface-1 px-3 py-1.5 font-mono">
+      <span className="mr-2 text-[10px] uppercase tracking-[0.12em] text-text-4">{label}</span>
+      <b className="text-[11px] text-text-2">{value}</b>
     </div>
   )
 }
@@ -295,7 +294,7 @@ function LayerBand({
         'relative overflow-hidden rounded-2xl border shadow-lg transition-colors',
         isLight
           ? 'bg-surface-1 shadow-black/5'
-          : 'bg-[#16121f]/88 shadow-[0_24px_60px_-38px_rgba(0,0,0,.75)]',
+          : 'bg-surface-1 shadow-[0_24px_60px_-38px_rgba(0,0,0,.75)]',
       )}
       style={{ borderColor: open ? `${layer.accent}55` : `var(--color-border-2)` }}
     >
@@ -303,8 +302,7 @@ function LayerBand({
       <button
         onClick={onToggle}
         className={cn(
-          'grid w-full grid-cols-[70px_minmax(180px,240px)_1fr_32px] items-center gap-4 px-5 py-4 text-left transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-inset max-lg:grid-cols-[58px_1fr_32px]',
-          isLight ? 'hover:bg-surface-2/60' : 'hover:bg-white/[0.025]',
+          'grid w-full grid-cols-[70px_minmax(180px,240px)_1fr_32px] items-center gap-4 px-5 py-4 text-left transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-inset max-lg:grid-cols-[58px_1fr_32px] hover:bg-surface-2/60',
         )}
         style={{ ['--tw-ring-color' as string]: `${layer.accent}88` }}
       >
@@ -335,13 +333,10 @@ function LayerBand({
         <div className="grid grid-cols-[296px_1fr] border-t border-border-2 max-xl:grid-cols-1">
           <aside className={cn(
             'border-r border-dashed border-border-1 p-5 max-xl:border-b max-xl:border-r-0',
-            isLight ? 'bg-surface-0/50' : 'bg-white/[0.015]',
+            isLight ? 'bg-surface-0/50' : 'bg-surface-2',
           )}>
             <p className="font-mono text-[11px] leading-relaxed text-text-3">{layer.desc}</p>
-            <div className={cn(
-              'mt-4 rounded-xl border p-3 font-mono text-[10px]',
-              isLight ? 'border-border-1 bg-surface-2 text-text-4' : 'border-white/10 bg-black/20 text-white/35',
-            )}>
+            <div className="mt-4 rounded-xl border border-border-1 bg-surface-2 p-3 font-mono text-[10px] text-text-4">
               {layer.flow.map((step, index) => (
                 <span key={step}>
                   <b style={{ color: layer.accent }}>{step}</b>
@@ -372,12 +367,12 @@ function ToolTile({ tool, accent, isLight, onClick }: { tool: HubTool; accent: s
         'group flex min-h-[132px] flex-col rounded-xl border p-4 text-left transition-all hover:-translate-y-0.5 focus:outline-none focus-visible:ring-1',
         isLight
           ? 'bg-surface-1 border-border-1 hover:bg-surface-2 hover:border-accent/30 shadow-sm'
-          : 'bg-[#110d1a]/90 border-white/[0.07] hover:bg-[#1c1729]',
+          : 'bg-surface-2 border-border-2 hover:bg-surface-3',
       )}
       style={{ ['--tile-accent' as string]: accent, ['--tw-ring-color' as string]: `${accent}88` }}
       onMouseEnter={(event) => { event.currentTarget.style.borderColor = `${accent}55` }}
       onMouseLeave={(event) => {
-        event.currentTarget.style.borderColor = isLight ? 'var(--color-border-1)' : 'rgba(255,255,255,.07)'
+        event.currentTarget.style.borderColor = isLight ? 'var(--color-border-1)' : 'var(--color-border-2)'
       }}
     >
       <div className="mb-3 flex items-center gap-2">

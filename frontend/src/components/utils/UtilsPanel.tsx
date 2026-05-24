@@ -367,14 +367,18 @@ function buildJsonDiff(left: string, right: string): JsonDiffModel {
 }
 
 function flattenXml(input: string): Record<string, string> {
-  const doc = new DOMParser().parseFromString(input, 'application/xml')
-  const parserError = doc.querySelector('parsererror')
-  if (parserError) throw new Error(parserError.textContent?.trim() || 'Invalid XML')
+  const trimmed = input.trim()
+  if (!trimmed) throw new Error('Invalid XML')
+  const doc = new DOMParser().parseFromString(trimmed, 'application/xml')
+  const parseErr = doc.querySelector('parsererror')
+  if (parseErr || !doc.documentElement || doc.documentElement.tagName === 'parsererror') {
+    throw new Error(parseErr?.textContent?.trim() || 'Invalid XML')
+  }
   const out: Record<string, string> = {}
 
   const visit = (node: Element, path: string) => {
     for (const attr of Array.from(node.attributes)) {
-      out[`${path}.@${attr.name}`] = JSON.stringify(attr.value)
+      out[`${path}.@${attr.name}`] = attr.value
     }
 
     const text = Array.from(node.childNodes)
@@ -382,14 +386,14 @@ function flattenXml(input: string): Record<string, string> {
       .map((child) => child.textContent?.trim() ?? '')
       .filter(Boolean)
       .join(' ')
-    if (text) out[`${path}.#text`] = JSON.stringify(text)
+    if (text) out[`${path}.#text`] = text
 
     const counts = new Map<string, number>()
-    Array.from(node.children).forEach((child) => {
+    for (const child of Array.from(node.children)) {
       const next = (counts.get(child.tagName) ?? 0) + 1
       counts.set(child.tagName, next)
       visit(child, `${path}/${child.tagName}[${next}]`)
-    })
+    }
 
     if (!node.attributes.length && !node.children.length && !text) out[path] = '<empty />'
   }
@@ -482,7 +486,7 @@ function xmlFormat(xml: string): string {
     const parser = new DOMParser()
     const doc = parser.parseFromString(xml, 'text/xml')
     const error = doc.querySelector('parsererror')
-    if (error) return `XML Error: ${error.textContent}`
+    if (error || !doc.documentElement || doc.documentElement.tagName === 'parsererror') return `XML Error: ${error?.textContent || 'Invalid XML'}`
     const serializer = new XMLSerializer()
     let result = serializer.serializeToString(doc)
     // Basic indent
@@ -505,7 +509,8 @@ function xmlValidate(xml: string): string {
     const parser = new DOMParser()
     const doc = parser.parseFromString(xml, 'text/xml')
     const error = doc.querySelector('parsererror')
-    return error ? `Invalid XML: ${error.textContent}` : 'Valid XML'
+    if (error || !doc.documentElement || doc.documentElement.tagName === 'parsererror') return `Invalid XML: ${error?.textContent || 'Invalid XML'}`
+    return 'Valid XML'
   } catch {
     return 'Failed to parse XML'
   }

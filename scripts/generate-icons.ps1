@@ -2,7 +2,7 @@
 # Generates all icon assets from the source PNG before any build step.
 #
 # ICON SOURCE — to update the app icon, replace this file:
-#   assets\images\logoExe.png
+#   assets\images\icon.png
 #
 # OUTPUTS:
 #   build\appicon.png              Wails runtime icon (512x512)
@@ -10,7 +10,7 @@
 #   assets\icons\linux\*.png       Linux desktop icon sizes
 
 param(
-    [string]$SourceIcon = "assets\images\logoExe.png"
+    [string]$SourceIcon = "assets\images\icon.png"
 )
 
 $ErrorActionPreference = "Stop"

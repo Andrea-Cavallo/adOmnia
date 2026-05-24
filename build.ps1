@@ -32,9 +32,17 @@ $ProjectRoot = $PSScriptRoot
 $FrontendDir = Join-Path $ProjectRoot "frontend"
 $WailsOutDir = Join-Path $ProjectRoot "build\bin"
 $WailsOutExe = Join-Path $WailsOutDir "adOmnia.exe"
+$AppIcon = Join-Path $ProjectRoot "build\appicon.png"
+$WindowsIcon = Join-Path $ProjectRoot "build\windows\icon.ico"
+$SourceIcon = Join-Path $ProjectRoot "assets\images\icon.png"
 
 if ($Output -eq "") {
     $Output = Join-Path $ProjectRoot "adOmnia.exe"
+}
+
+$OutputParent = Split-Path -Parent $Output
+if ($OutputParent -and -not (Test-Path $OutputParent)) {
+    New-Item -ItemType Directory -Force -Path $OutputParent | Out-Null
 }
 
 # ---- Clean mode --------------------------------------------------------------
@@ -112,6 +120,33 @@ if (-not $GoOnly) {
 
 Write-Host ""
 
+# ---- Icon assets -------------------------------------------------------------
+$iconScript = Join-Path $ProjectRoot "scripts\generate-icons.ps1"
+$iconsMissing = -not (Test-Path $AppIcon) -or -not (Test-Path $WindowsIcon)
+$iconsStale = $false
+if ((Test-Path $SourceIcon) -and (Test-Path $AppIcon) -and (Test-Path $WindowsIcon)) {
+    $sourceTime = (Get-Item $SourceIcon).LastWriteTimeUtc
+    $iconsStale = ((Get-Item $AppIcon).LastWriteTimeUtc -lt $sourceTime) -or ((Get-Item $WindowsIcon).LastWriteTimeUtc -lt $sourceTime)
+}
+
+if ($iconsMissing -or $iconsStale) {
+    if (Test-Path $iconScript) {
+        Write-Host "==> Preparing app icons..." -ForegroundColor Cyan
+        & $iconScript -SourceIcon $SourceIcon
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "ERR Icon generation failed." -ForegroundColor Red
+            exit 1
+        }
+    }
+}
+
+if (-not (Test-Path $WindowsIcon)) {
+    Write-Host "ERR Windows icon not found at: $WindowsIcon" -ForegroundColor Red
+    exit 1
+}
+Write-Host "OK  Windows icon: $WindowsIcon" -ForegroundColor Green
+Write-Host ""
+
 # ---- Build info --------------------------------------------------------------
 $gitCommit = try { git rev-parse --short HEAD 2>$null } catch { "unknown" }
 $buildDate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
@@ -135,7 +170,19 @@ if ($wailsBin -and (-not $GoOnly)) {
     }
 
     if (Test-Path $WailsOutExe) {
-        Copy-Item $WailsOutExe $Output -Force
+        try {
+            Copy-Item $WailsOutExe $Output -Force
+        } catch {
+            Start-Sleep -Milliseconds 750
+            try {
+                Copy-Item $WailsOutExe $Output -Force
+            } catch {
+                Write-Host "ERR Built Wails binary, but could not overwrite: $Output" -ForegroundColor Red
+                Write-Host "    Windows is still holding that file open. Close any running adOmnia.exe or choose a different -Output path." -ForegroundColor Yellow
+                Write-Host "    Fresh Wails output is available at: $WailsOutExe" -ForegroundColor Yellow
+                exit 1
+            }
+        }
         Write-Host "OK  Copied: $WailsOutExe -> $Output" -ForegroundColor Green
     } else {
         Write-Host "ERR Expected output not found at: $WailsOutExe" -ForegroundColor Red

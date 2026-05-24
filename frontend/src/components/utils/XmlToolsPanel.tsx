@@ -36,10 +36,12 @@ function serializeXml(node: Element, depth: number): string {
 
 function formatXml(raw: string): string {
   try {
+    const trimmed = raw.trim()
+    if (!trimmed) return raw
     const parser = new DOMParser()
-    const doc    = parser.parseFromString(raw.trim(), 'application/xml')
+    const doc    = parser.parseFromString(trimmed, 'application/xml')
     const err    = doc.querySelector('parsererror')
-    if (err) return raw
+    if (err || !doc.documentElement || doc.documentElement.tagName === 'parsererror') return raw
     return serializeXml(doc.documentElement, 0)
   } catch { return raw }
 }
@@ -68,7 +70,7 @@ function evalXPath(xmlStr: string, xpath: string): { nodes: string[]; type: stri
   const parser  = new DOMParser()
   const doc     = parser.parseFromString(xmlStr, 'application/xml')
   const parseErr = doc.querySelector('parsererror')
-  if (parseErr) throw new Error('Invalid XML')
+  if (parseErr || !doc.documentElement || doc.documentElement.tagName === 'parsererror') throw new Error('Invalid XML')
 
   const result = doc.evaluate(xpath, doc, null, XPathResult.ANY_TYPE, null)
   switch (result.resultType) {
@@ -248,7 +250,7 @@ export function XmlToolsPanel({ initialTab }: { initialTab?: Tab } = {}) {
         const parser = new DOMParser()
         const doc    = parser.parseFromString(fmtInput.trim(), 'application/xml')
         const err    = doc.querySelector('parsererror')
-        if (err) { setFmtError(err.textContent ?? 'Parse error'); setFmtOutput(''); return }
+        if (err || !doc.documentElement || doc.documentElement.tagName === 'parsererror') { setFmtError(err?.textContent ?? 'Parse error'); setFmtOutput(''); return }
         setFmtOutput(serializeXml(doc.documentElement, 0))
         setFmtError('')
       } catch (e) { setFmtError(String(e)); setFmtOutput('') }

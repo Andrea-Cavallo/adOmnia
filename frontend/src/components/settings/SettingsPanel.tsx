@@ -1001,12 +1001,22 @@ export function SettingsPanel() {
             <SettingsCard>
               <div className="py-2 px-1">
                 <a
-                  href="https://github.com/anomalyco/adomnia"
+                  href="https://www.andrea-cavallo.com/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs text-accent hover:underline"
                 >
-                  {s.about.linkGitHub}
+                  andrea-cavallo.com
+                </a>
+              </div>
+              <div className="py-2 px-1">
+                <a
+                  href="https://github.com/Andrea-Cavallo/adOmnia"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-accent hover:underline"
+                >
+                  Andrea-Cavallo/adOmnia
                 </a>
               </div>
               <div className="py-2 px-1">

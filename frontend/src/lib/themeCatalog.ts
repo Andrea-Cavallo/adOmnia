@@ -33,6 +33,7 @@ export function inferThemeMode(theme?: Theme | null): 'dark' | 'light' {
   if (metaMode === 'light' || metaMode === 'dark') return metaMode
   if (theme.id.includes('light') || theme.name.toLowerCase().includes('light')) return 'light'
   const surface = theme.colors?.['surface-0'] ?? ''
+
   if (surface.startsWith('#')) {
     const hex = surface.slice(1)
     const full = hex.length === 3
@@ -46,5 +47,20 @@ export function inferThemeMode(theme?: Theme | null): 'dark' | 'light' {
       return luminance > 0.58 ? 'light' : 'dark'
     }
   }
+
+  const oklchMatch = surface.match(/oklch\(([\d.]+)%\s/)
+  if (oklchMatch) {
+    return parseFloat(oklchMatch[1]) > 60 ? 'light' : 'dark'
+  }
+
+  const rgbMatch = surface.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/)
+  if (rgbMatch) {
+    const r = parseInt(rgbMatch[1], 10)
+    const g = parseInt(rgbMatch[2], 10)
+    const b = parseInt(rgbMatch[3], 10)
+    const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255
+    return luminance > 0.58 ? 'light' : 'dark'
+  }
+
   return 'dark'
 }
