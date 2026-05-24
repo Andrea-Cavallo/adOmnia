@@ -20,6 +20,7 @@ type HTTPExecRequest struct {
 	TimeoutMs       int               `json:"timeoutMs"`
 	FollowRedirects bool              `json:"followRedirects"`
 	SkipTLSVerify   bool              `json:"skipTlsVerify"`
+	HostsMap        []HostMapEntry    `json:"hostsMap,omitempty"`
 }
 
 // HTTPExecResponse is the result returned by ExecuteHTTP.
@@ -58,7 +59,10 @@ func mustJSON(v any) string {
 
 func executeHTTPRequest(req HTTPExecRequest) HTTPExecResponse {
 	tlsCfg := &tls.Config{InsecureSkipVerify: req.SkipTLSVerify} //nolint:gosec
-	transport := &http.Transport{TLSClientConfig: tlsCfg}
+	transport := &http.Transport{
+		TLSClientConfig: tlsCfg,
+		DialContext:     buildDialerWithHosts(req.HostsMap),
+	}
 
 	client := &http.Client{Transport: transport}
 	if !req.FollowRedirects {

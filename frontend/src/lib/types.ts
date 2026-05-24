@@ -182,6 +182,24 @@ export function blankEnvVar(): EnvVariable {
   return { id: uid(), key: '', value: '', enabled: true, type: 'text' }
 }
 
+export interface HostEntry {
+  id: string
+  host: string     // "hostname" o "hostname:porta"
+  ip: string
+  enabled: boolean
+  note: string
+}
+
+export interface HostsProfile {
+  id: string
+  name: string
+  entries: HostEntry[]
+}
+
+export function blankHostEntry(): HostEntry {
+  return { id: uid(), host: '', ip: '', enabled: true, note: '' }
+}
+
 export function blankBody(name = 'Body 1'): RequestBody {
   return { id: uid(), name, type: 'none', raw: '', lang: 'json', form: [] }
 }
