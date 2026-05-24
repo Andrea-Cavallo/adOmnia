@@ -176,21 +176,25 @@ function XmlDiffView({ left, right }: { left: string; right: string }) {
           ✓ No differences
         </div>
       )}
-      <div className="grid grid-cols-2 divide-x divide-border-1 overflow-auto max-h-[55vh]">
-        {(['left', 'right'] as const).map(side => (
-          <div key={side}>
-            <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-text-4 bg-surface-1 border-b border-border-1 sticky top-0 z-10">
-              {side === 'left' ? 'Left (original)' : 'Right (modified)'}
+      <div className="overflow-auto max-h-[55vh]">
+        {/* Single unified header — sticky so it stays visible on scroll */}
+        <div className="grid grid-cols-2 sticky top-0 z-10 border-b border-border-1 bg-surface-1">
+          <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-text-4">
+            Left (original)
+          </div>
+          <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-text-4 border-l border-border-1">
+            Right (modified)
+          </div>
+        </div>
+        {/* Each diff row is ONE grid-cols-2 container — guarantees pixel-perfect alignment */}
+        {rows.map((row, idx) => (
+          <div key={idx} className="grid grid-cols-2">
+            <div className={cn('px-3 py-[2px] whitespace-pre leading-5 min-h-[21px]', LINE_CLS[row.leftType])}>
+              {row.left || ' '}
             </div>
-            {rows.map((row, idx) => {
-              const cls  = side === 'left' ? row.leftType  : row.rightType
-              const text = side === 'left' ? row.left      : row.right
-              return (
-                <div key={idx} className={cn('px-3 py-[2px] whitespace-pre leading-5 min-h-[21px]', LINE_CLS[cls])}>
-                  {text || ' '}
-                </div>
-              )
-            })}
+            <div className={cn('px-3 py-[2px] whitespace-pre leading-5 min-h-[21px] border-l border-border-1', LINE_CLS[row.rightType])}>
+              {row.right || ' '}
+            </div>
           </div>
         ))}
       </div>

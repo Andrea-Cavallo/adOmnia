@@ -24,6 +24,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { useAppStore, type RailItem } from '@/stores/app'
+import { useSettingsStore } from '@/stores/settings'
 import { cn } from '@/lib/utils'
 
 type LayerId = 'network' | 'logic' | 'storage' | 'observability'
@@ -140,6 +141,8 @@ const HUB_LAYERS: HubLayer[] = [
 export function WelcomePanel() {
   const setActiveRail = useAppStore((s) => s.setActiveRail)
   const [openLayers, setOpenLayers] = useState<Set<LayerId>>(() => new Set())
+  const themeMode = useSettingsStore((s) => s.settings.appearance.theme)
+  const isLight = themeMode === 'light'
 
   const toggleLayer = (id: LayerId) => {
     setOpenLayers((current) => {
@@ -152,59 +155,74 @@ export function WelcomePanel() {
 
   return (
     <div
-      className="relative flex-1 overflow-auto bg-[#07050b] text-[#f4f1fb] select-none"
+      className="relative flex-1 overflow-auto bg-surface-0 text-text-1 select-none"
       style={{
-        background:
-          'radial-gradient(900px 600px at 88% 8%, rgba(124,58,237,.16), transparent 55%), radial-gradient(700px 500px at 4% 92%, rgba(91,33,182,.13), transparent 55%), #07050b',
+        background: isLight
+          ? 'radial-gradient(900px 600px at 88% 8%, rgba(124,58,237,.06), transparent 55%), radial-gradient(700px 500px at 4% 92%, rgba(91,33,182,.04), transparent 55%), var(--color-surface-0)'
+          : 'radial-gradient(900px 600px at 88% 8%, rgba(124,58,237,.16), transparent 55%), radial-gradient(700px 500px at 4% 92%, rgba(91,33,182,.13), transparent 55%), #07050b',
       }}
     >
-      <div className="pointer-events-none absolute inset-0 opacity-40">
+      <div className="pointer-events-none absolute inset-0" style={{ opacity: isLight ? 0.22 : 0.4 }}>
         <div className="absolute inset-0" style={{
-          background:
-            'linear-gradient(118deg, transparent 0 38%, rgba(183,148,255,.38) 38.2%, transparent 38.6%), linear-gradient(118deg, transparent 0 62%, rgba(183,148,255,.2) 62.2%, transparent 62.5%)',
+          background: isLight
+            ? 'linear-gradient(118deg, transparent 0 38%, rgba(124,58,237,.15) 38.2%, transparent 38.6%), linear-gradient(118deg, transparent 0 62%, rgba(124,58,237,.08) 62.2%, transparent 62.5%)'
+            : 'linear-gradient(118deg, transparent 0 38%, rgba(183,148,255,.38) 38.2%, transparent 38.6%), linear-gradient(118deg, transparent 0 62%, rgba(183,148,255,.2) 62.2%, transparent 62.5%)',
           maskImage: 'linear-gradient(180deg, transparent 0, #000 12%, #000 78%, transparent 100%)',
         }} />
       </div>
 
       <div className="relative z-10 mx-auto max-w-[1280px] px-8 py-7">
         <main className="min-w-0">
-          <header className="relative mb-5 flex min-h-[200px] items-center gap-6 border-b border-dashed border-white/10 pb-5 lg:pr-[310px]">
+          <header className="relative mb-5 flex min-h-[200px] items-center gap-6 border-b border-dashed border-border-2 pb-5 lg:pr-[310px]">
             <div className="min-w-0">
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-violet-300/20 bg-violet-400/10 px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-violet-200">
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-violet-300/20 bg-violet-400/10 px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-violet-200 dark:text-violet-200">
                 <Layers size={12} />
                 Local developer toolbox
               </div>
-              <h1 className="m-0 font-sans text-[34px] font-semibold leading-none tracking-[-0.02em] text-white">
+              <h1 className="m-0 font-sans text-[34px] font-semibold leading-none tracking-[-0.02em] text-text-1">
                 Build, test and debug APIs from one private desktop workspace.
               </h1>
-              <p className="mt-3 max-w-2xl font-mono text-[12px] leading-relaxed text-white/55">
+              <p className="mt-3 max-w-2xl font-mono text-[12px] leading-relaxed text-text-3">
                 adOmnia brings API clients, mocks, brokers, proxy inspection, browser debugging and local data tools into a single offline-first environment. Your collections, secrets, traffic captures and workspaces stay on your machine.
               </p>
               <div className="mt-5 hidden items-center gap-3 xl:flex">
-                <MetricPill label="modules" value="28" />
-                <MetricPill label="features" value="444+" />
-                <MetricPill label="cloud sync" value="0" />
+                <MetricPill label="modules" value="28" isLight={isLight} />
+                <MetricPill label="features" value="444+" isLight={isLight} />
+                <MetricPill label="cloud sync" value="0" isLight={isLight} />
               </div>
             </div>
 
-            {/* App icon — prominent hero treatment */}
             <div className="pointer-events-none absolute right-0 top-1/2 hidden -translate-y-1/2 h-[280px] w-[290px] place-items-center lg:grid">
-              {/* outer halo */}
-              <div className="absolute inset-0 rounded-full bg-violet-600/25 blur-[56px]" />
-              {/* mid ring glow */}
-              <div className="absolute h-[210px] w-[210px] rounded-full bg-violet-500/20 blur-2xl" />
-              {/* orbit rings — slow spin via Tailwind animate-spin + custom duration */}
-              <div
-                className="absolute h-[252px] w-[252px] animate-spin rounded-full border border-violet-300/20"
-                style={{ animationDuration: '20s' }}
-              />
-              <div
-                className="absolute h-[224px] w-[224px] animate-spin rounded-full border border-violet-400/12"
-                style={{ animationDuration: '14s', animationDirection: 'reverse' }}
-              />
-              {/* inner glow disc */}
-              <div className="absolute h-[160px] w-[160px] rounded-full border border-violet-200/15 bg-violet-300/[0.07] blur-sm" />
-              {/* icon — breathing glow */}
+              {isLight ? (
+                <>
+                  <div className="absolute inset-0 rounded-full bg-violet-500/10 blur-[56px]" />
+                  <div className="absolute h-[210px] w-[210px] rounded-full bg-violet-400/8 blur-2xl" />
+                  <div
+                    className="absolute h-[252px] w-[252px] animate-spin rounded-full border border-violet-300/18"
+                    style={{ animationDuration: '20s' }}
+                  />
+                  <div
+                    className="absolute h-[224px] w-[224px] animate-spin rounded-full border border-violet-400/10"
+                    style={{ animationDuration: '14s', animationDirection: 'reverse' }}
+                  />
+                  <div className="absolute h-[160px] w-[160px] rounded-full border border-violet-300/12 bg-violet-300/[0.05] blur-sm" />
+                  <div className="absolute h-[120px] w-[120px] rounded-full bg-surface-0/80 backdrop-blur-sm" />
+                </>
+              ) : (
+                <>
+                  <div className="absolute inset-0 rounded-full bg-violet-600/25 blur-[56px]" />
+                  <div className="absolute h-[210px] w-[210px] rounded-full bg-violet-500/20 blur-2xl" />
+                  <div
+                    className="absolute h-[252px] w-[252px] animate-spin rounded-full border border-violet-300/20"
+                    style={{ animationDuration: '20s' }}
+                  />
+                  <div
+                    className="absolute h-[224px] w-[224px] animate-spin rounded-full border border-violet-400/12"
+                    style={{ animationDuration: '14s', animationDirection: 'reverse' }}
+                  />
+                  <div className="absolute h-[160px] w-[160px] rounded-full border border-violet-200/15 bg-violet-300/[0.07] blur-sm" />
+                </>
+              )}
               <img
                 src="/icon.png"
                 alt="adOmnia"
@@ -221,20 +239,21 @@ export function WelcomePanel() {
                 open={openLayers.has(layer.id)}
                 onToggle={() => toggleLayer(layer.id)}
                 onOpenTool={setActiveRail}
+                isLight={isLight}
               />
             ))}
           </div>
 
-          <footer className="mt-5 flex flex-wrap items-center gap-3 border-t border-white/10 pt-4 font-mono text-[10px] text-white/38">
+          <footer className="mt-5 flex flex-wrap items-center gap-3 border-t border-border-1 pt-4 font-mono text-[10px] text-text-4">
             <span className="inline-flex items-center gap-2">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,.8)]" />
               Ready
             </span>
-            <span className="h-3 w-px bg-white/10" />
-            <span>stack mode: <b className="text-white/70">layers</b></span>
-            <span className="h-3 w-px bg-white/10" />
+            <span className="h-3 w-px bg-border-2" />
+            <span>stack mode: <b className="text-text-2">layers</b></span>
+            <span className="h-3 w-px bg-border-2" />
             <span>select a layer to open its tools</span>
-            <span className="ml-auto hidden text-white/30 md:inline">local-first / no account / no telemetry</span>
+            <span className="ml-auto hidden text-text-4 md:inline">local-first / no account / no telemetry</span>
           </footer>
         </main>
       </div>
@@ -242,11 +261,17 @@ export function WelcomePanel() {
   )
 }
 
-function MetricPill({ label, value }: { label: string; value: string }) {
+function MetricPill({ label, value, isLight }: { label: string; value: string; isLight: boolean }) {
   return (
-    <div className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 font-mono">
-      <span className="mr-2 text-[10px] uppercase tracking-[0.12em] text-white/35">{label}</span>
-      <b className="text-[11px] text-white/75">{value}</b>
+    <div className={cn(
+      'rounded-full border px-3 py-1.5 font-mono',
+      isLight ? 'border-border-1 bg-surface-1' : 'border-white/10 bg-white/[0.03]',
+    )}>
+      <span className={cn(
+        'mr-2 text-[10px] uppercase tracking-[0.12em]',
+        isLight ? 'text-text-4' : 'text-white/35',
+      )}>{label}</span>
+      <b className={cn('text-[11px]', isLight ? 'text-text-2' : 'text-white/75')}>{value}</b>
     </div>
   )
 }
@@ -256,55 +281,71 @@ function LayerBand({
   open,
   onToggle,
   onOpenTool,
+  isLight,
 }: {
   layer: HubLayer
   open: boolean
   onToggle: () => void
   onOpenTool: (id: RailItem) => void
+  isLight: boolean
 }) {
   return (
     <section
-      className="relative overflow-hidden rounded-2xl border bg-[#16121f]/88 shadow-[0_24px_60px_-38px_rgba(0,0,0,.75)] transition-colors"
-      style={{ borderColor: open ? `${layer.accent}55` : 'rgba(255,255,255,.07)' }}
+      className={cn(
+        'relative overflow-hidden rounded-2xl border shadow-lg transition-colors',
+        isLight
+          ? 'bg-surface-1 shadow-black/5'
+          : 'bg-[#16121f]/88 shadow-[0_24px_60px_-38px_rgba(0,0,0,.75)]',
+      )}
+      style={{ borderColor: open ? `${layer.accent}55` : `var(--color-border-2)` }}
     >
       <div className="absolute inset-y-0 left-0 w-[3px]" style={{ background: layer.accent }} />
       <button
         onClick={onToggle}
-        className="grid w-full grid-cols-[70px_minmax(180px,240px)_1fr_32px] items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-white/[0.025] focus:outline-none focus-visible:ring-1 focus-visible:ring-inset max-lg:grid-cols-[58px_1fr_32px]"
+        className={cn(
+          'grid w-full grid-cols-[70px_minmax(180px,240px)_1fr_32px] items-center gap-4 px-5 py-4 text-left transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-inset max-lg:grid-cols-[58px_1fr_32px]',
+          isLight ? 'hover:bg-surface-2/60' : 'hover:bg-white/[0.025]',
+        )}
         style={{ ['--tw-ring-color' as string]: `${layer.accent}88` }}
       >
-        <div className="font-mono text-[11px] uppercase tracking-[0.12em] text-white/25">
+        <div className="font-mono text-[11px] uppercase tracking-[0.12em] text-text-3">
           {layer.index.split('/')[0]} / <b style={{ color: layer.accent }}>{layer.index.split('/')[1]?.trim()}</b>
         </div>
         <div className="min-w-0">
-          <p className="font-sans text-[18px] font-semibold uppercase tracking-[0.06em] text-white">{layer.title}</p>
-          <p className="mt-0.5 font-mono text-[10.5px] text-white/45">{layer.tag}</p>
+          <p className="font-sans text-[18px] font-semibold uppercase tracking-[0.06em] text-text-1">{layer.title}</p>
+          <p className="mt-0.5 font-mono text-[10.5px] text-text-3">{layer.tag}</p>
         </div>
         <div className="flex items-center gap-6 max-lg:hidden">
           {layer.stats.map((stat) => (
             <div key={stat.label} className="font-mono">
-              <b className={cn('block text-[13px] font-semibold', stat.live ? '' : 'text-white/80')} style={stat.live ? { color: layer.accent } : undefined}>
+              <b className={cn('block text-[13px] font-semibold', stat.live ? '' : 'text-text-2')} style={stat.live ? { color: layer.accent } : undefined}>
                 {stat.value}
               </b>
-              <span className="text-[9px] uppercase tracking-[0.12em] text-white/32">{stat.label}</span>
+              <span className="text-[9px] uppercase tracking-[0.12em] text-text-4">{stat.label}</span>
             </div>
           ))}
         </div>
         <ChevronDown
           size={16}
-          className={cn('justify-self-end text-white/35 transition-transform', !open && '-rotate-90')}
+          className={cn('justify-self-end text-text-4 transition-transform', !open && '-rotate-90')}
         />
       </button>
 
       <div className={cn('grid overflow-hidden transition-all duration-300 ease-out', open ? 'max-h-[960px] opacity-100' : 'max-h-0 opacity-0')}>
-        <div className="grid grid-cols-[296px_1fr] border-t border-white/[0.06] max-xl:grid-cols-1">
-          <aside className="border-r border-dashed border-white/10 bg-white/[0.015] p-5 max-xl:border-b max-xl:border-r-0">
-            <p className="font-mono text-[11px] leading-relaxed text-white/55">{layer.desc}</p>
-            <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3 font-mono text-[10px] text-white/35">
+        <div className="grid grid-cols-[296px_1fr] border-t border-border-2 max-xl:grid-cols-1">
+          <aside className={cn(
+            'border-r border-dashed border-border-1 p-5 max-xl:border-b max-xl:border-r-0',
+            isLight ? 'bg-surface-0/50' : 'bg-white/[0.015]',
+          )}>
+            <p className="font-mono text-[11px] leading-relaxed text-text-3">{layer.desc}</p>
+            <div className={cn(
+              'mt-4 rounded-xl border p-3 font-mono text-[10px]',
+              isLight ? 'border-border-1 bg-surface-2 text-text-4' : 'border-white/10 bg-black/20 text-white/35',
+            )}>
               {layer.flow.map((step, index) => (
                 <span key={step}>
                   <b style={{ color: layer.accent }}>{step}</b>
-                  {index < layer.flow.length - 1 && <span className="px-1 text-white/20">-&gt;</span>}
+                  {index < layer.flow.length - 1 && <span className="px-1 text-text-4">-&gt;</span>}
                 </span>
               ))}
             </div>
@@ -312,7 +353,7 @@ function LayerBand({
 
           <div className="grid grid-cols-2 gap-3 p-4 2xl:grid-cols-4">
             {layer.tools.map((tool) => (
-              <ToolTile key={tool.id} tool={tool} accent={layer.accent} onClick={() => onOpenTool(tool.id)} />
+              <ToolTile key={tool.id} tool={tool} accent={layer.accent} isLight={isLight} onClick={() => onOpenTool(tool.id)} />
             ))}
           </div>
         </div>
@@ -321,26 +362,33 @@ function LayerBand({
   )
 }
 
-function ToolTile({ tool, accent, onClick }: { tool: HubTool; accent: string; onClick: () => void }) {
+function ToolTile({ tool, accent, isLight, onClick }: { tool: HubTool; accent: string; isLight: boolean; onClick: () => void }) {
   const Icon = tool.icon
 
   return (
     <button
       onClick={onClick}
-      className="group flex min-h-[132px] flex-col rounded-xl border border-white/[0.07] bg-[#110d1a]/90 p-4 text-left transition-all hover:-translate-y-0.5 hover:bg-[#1c1729] focus:outline-none focus-visible:ring-1"
+      className={cn(
+        'group flex min-h-[132px] flex-col rounded-xl border p-4 text-left transition-all hover:-translate-y-0.5 focus:outline-none focus-visible:ring-1',
+        isLight
+          ? 'bg-surface-1 border-border-1 hover:bg-surface-2 hover:border-accent/30 shadow-sm'
+          : 'bg-[#110d1a]/90 border-white/[0.07] hover:bg-[#1c1729]',
+      )}
       style={{ ['--tile-accent' as string]: accent, ['--tw-ring-color' as string]: `${accent}88` }}
       onMouseEnter={(event) => { event.currentTarget.style.borderColor = `${accent}55` }}
-      onMouseLeave={(event) => { event.currentTarget.style.borderColor = 'rgba(255,255,255,.07)' }}
+      onMouseLeave={(event) => {
+        event.currentTarget.style.borderColor = isLight ? 'var(--color-border-1)' : 'rgba(255,255,255,.07)'
+      }}
     >
       <div className="mb-3 flex items-center gap-2">
         <span className="grid h-8 w-8 place-items-center rounded-lg border" style={{ color: accent, borderColor: `${accent}33`, background: `${accent}18` }}>
           <Icon size={15} />
         </span>
-        <h3 className="font-sans text-[14px] font-semibold text-white">{tool.title}</h3>
+        <h3 className="font-sans text-[14px] font-semibold text-text-1">{tool.title}</h3>
       </div>
-      <p className="line-clamp-3 flex-1 font-mono text-[10.5px] leading-relaxed text-white/48">{tool.desc}</p>
-      <div className="mt-3 flex items-center justify-between border-t border-white/[0.06] pt-3 font-mono text-[10px]">
-        <span className="text-white/30">{tool.foot}</span>
+      <p className="line-clamp-3 flex-1 font-mono text-[10.5px] leading-relaxed text-text-3">{tool.desc}</p>
+      <div className="mt-3 flex items-center justify-between border-t border-border-2 pt-3 font-mono text-[10px]">
+        <span className="text-text-4">{tool.foot}</span>
         <b style={{ color: accent }}>open -&gt;</b>
       </div>
     </button>
