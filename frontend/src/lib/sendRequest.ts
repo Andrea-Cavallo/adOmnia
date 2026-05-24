@@ -1,6 +1,7 @@
 import type { RequestItem, ResponseData, RequestAuth } from '@/lib/types'
 import { substVars } from '@/lib/substVars'
 import { useSettingsStore } from '@/stores/settings'
+import { useHostsStore } from '@/stores/hosts'
 import { ExecuteHTTP } from '../wailsjs/go/main/App'
 
 export async function sendRequest(
@@ -69,6 +70,8 @@ export async function sendRequest(
     ? request.timeout
     : requestSettings.defaultTimeoutMs
 
+  const activeHostEntries = useHostsStore.getState().getActiveEntries()
+
   const execReq = {
     method: request.method,
     url: fullUrl,
@@ -77,6 +80,7 @@ export async function sendRequest(
     timeoutMs: timeoutMs > 0 ? timeoutMs : 30000,
     followRedirects: request.followRedirects ?? requestSettings.followRedirects,
     skipTlsVerify: requestSettings.skipCertVerify ?? false,
+    hostsMap: activeHostEntries.map((e) => ({ host: e.host, ip: e.ip, enabled: e.enabled })),
   }
 
   try {

@@ -4,12 +4,14 @@ import { useAppStore, type RailItem } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
 import { useCollectionsStore } from '@/stores/collections'
 import { useEnvironmentsStore } from '@/stores/environments'
+import { useHostsStore } from '@/stores/hosts'
 import { useSettingsStore } from '@/stores/settings'
 import { Composer } from '@/components/composer/Composer'
 import { ApiToolsBar } from '@/components/collections/ApiToolsBar'
 import { ResponsePanel } from '@/components/response/ResponsePanel'
 import { TabBar } from '@/components/layout/TabBar'
 import { EnvBar } from '@/components/environment/EnvBar'
+import { HostBar } from '@/components/hosts/HostBar'
 import { WelcomePanel } from '@/components/layout/WelcomePanel'
 import { LoadTestDrawer } from '@/components/loadtest/LoadTestDrawer'
 import { executeRequest } from '@/lib/executeRequest'
@@ -140,6 +142,14 @@ function RequestWorkspace() {
   const renameEnvironment = useEnvironmentsStore((s) => s.renameEnvironment)
   const updateVariables = useEnvironmentsStore((s) => s.updateVariables)
   const getResolvedVars = useEnvironmentsStore((s) => s.getResolvedVars)
+
+  const hostsProfiles = useHostsStore((s) => s.profiles)
+  const activeHostProfileId = useHostsStore((s) => s.activeProfileId)
+  const setActiveHostProfile = useHostsStore((s) => s.setActiveProfile)
+  const addHostProfile = useHostsStore((s) => s.addProfile)
+  const deleteHostProfile = useHostsStore((s) => s.deleteProfile)
+  const renameHostProfile = useHostsStore((s) => s.renameProfile)
+  const updateHostEntries = useHostsStore((s) => s.updateEntries)
 
   const [showLoadTest, setShowLoadTest] = useState(false)
   const [pendingClose, setPendingClose] = useState<PendingClose | null>(null)
@@ -289,15 +299,30 @@ function RequestWorkspace() {
 
   return (
     <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-      <EnvBar
-        environments={environments}
-        activeEnvId={activeEnvId}
-        onSetActive={setActiveEnv}
-        onAdd={(name) => addEnvironment(name)}
-        onDelete={deleteEnvironment}
-        onRename={renameEnvironment}
-        onUpdateVars={updateVariables}
-      />
+      <div className="flex">
+        <div className="flex-1">
+          <EnvBar
+            environments={environments}
+            activeEnvId={activeEnvId}
+            onSetActive={setActiveEnv}
+            onAdd={(name) => addEnvironment(name)}
+            onDelete={deleteEnvironment}
+            onRename={renameEnvironment}
+            onUpdateVars={updateVariables}
+          />
+        </div>
+        <div className="flex-1 border-l border-border-1">
+          <HostBar
+            profiles={hostsProfiles}
+            activeProfileId={activeHostProfileId}
+            onSetActive={setActiveHostProfile}
+            onAdd={(name) => addHostProfile(name)}
+            onDelete={deleteHostProfile}
+            onRename={renameHostProfile}
+            onUpdateEntries={updateHostEntries}
+          />
+        </div>
+      </div>
       <TabBar
         tabs={tabs}
         activeTabId={activeTabId}

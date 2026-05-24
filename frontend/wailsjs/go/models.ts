@@ -148,17 +148,17 @@ export namespace main {
 	        this.sameSite = source["sameSite"];
 	    }
 	}
-export class DOMBreakpointInfo {
-    nodeId: number;
-    type: string;
-
-    static createFrom(source: any = {}) {
-        return new DOMBreakpointInfo(source);
-    }
-
-    constructor(source: any = {}) {
-        if ('string' === typeof source) source = JSON.parse(source);
-        this.nodeId = source["nodeId"];
+	export class DOMBreakpointInfo {
+	    nodeId: number;
+	    type: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DOMBreakpointInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.nodeId = source["nodeId"];
 	        this.type = source["type"];
 	    }
 	}
@@ -798,21 +798,21 @@ export class DOMBreakpointInfo {
 	        this.venvReady = source["venvReady"];
 	    }
 	}
-export class ScriptInfo {
-    scriptId: string;
-    url: string;
-    startLine: number;
-    endLine: number;
-    executionContextId: number;
-    hash: string;
-
-    static createFrom(source: any = {}) {
-        return new ScriptInfo(source);
-    }
-
-    constructor(source: any = {}) {
-        if ('string' === typeof source) source = JSON.parse(source);
-        this.scriptId = source["scriptId"];
+	export class ScriptInfo {
+	    scriptId: string;
+	    url: string;
+	    startLine: number;
+	    endLine: number;
+	    executionContextId: number;
+	    hash: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ScriptInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.scriptId = source["scriptId"];
 	        this.url = source["url"];
 	        this.startLine = source["startLine"];
 	        this.endLine = source["endLine"];
@@ -827,18 +827,18 @@ export class ScriptInfo {
 	    mimeType: string;
 	    scriptId?: string;
 	    frameId?: string;
-    startLine: number;
-    endLine: number;
-    canSetBreakpoint: boolean;
-    fromDebugger: boolean;
-
-    static createFrom(source: any = {}) {
-        return new SourceFileInfo(source);
-    }
-
-    constructor(source: any = {}) {
-        if ('string' === typeof source) source = JSON.parse(source);
-        this.id = source["id"];
+	    startLine: number;
+	    endLine: number;
+	    canSetBreakpoint: boolean;
+	    fromDebugger: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new SourceFileInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
 	        this.url = source["url"];
 	        this.type = source["type"];
 	        this.mimeType = source["mimeType"];
@@ -1055,3 +1055,4 @@ export class ScriptInfo {
 	}
 
 }
+

@@ -10,6 +10,7 @@ import { DevLogOverlay } from '@/components/ui/DevLogOverlay'
 import { useSettingsStore } from '@/stores/settings'
 import { useCollectionsStore } from '@/stores/collections'
 import { useEnvironmentsStore } from '@/stores/environments'
+import { useHostsStore } from '@/stores/hosts'
 import { useTabsStore } from '@/stores/tabs'
 import { useAppStore } from '@/stores/app'
 import { useDevLogsStore } from '@/stores/devLogs'
@@ -66,6 +67,7 @@ function App() {
   const settingsLoaded = useSettingsStore((s) => s.loaded)
   const loadCollections = useCollectionsStore((s) => s.load)
   const loadEnvironments = useEnvironmentsStore((s) => s.load)
+  const loadHosts = useHostsStore((s) => s.load)
   const loadTabs = useTabsStore((s) => s.load)
   const newTab = useTabsStore((s) => s.newTab)
   const setActiveTab = useTabsStore((s) => s.setActiveTab)
@@ -154,7 +156,8 @@ function App() {
     loadSettings()
     loadCollections()
     loadEnvironments()
-  }, [loadSettings, loadCollections, loadEnvironments])
+    loadHosts()
+  }, [loadSettings, loadCollections, loadEnvironments, loadHosts])
 
   useEffect(() => {
     if (settingsLoaded) void loadTabs()
