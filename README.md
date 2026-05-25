@@ -139,7 +139,7 @@ CI: **Actions → Build Desktop Artifacts → última run → Artifacts**.
 ### Build desde código
 
 ```bash
-git clone <repo-url> && cd adomnia
+git clone https://github.com/Andrea-Cavallo/adOmnia.git && cd adomnia
 cd frontend && npm install && cd ..
 wails dev
 .\build.ps1  # Windows
@@ -191,7 +191,7 @@ CI: **Actions → Build Desktop Artifacts → ultima run → Artifacts**.
 ### Build da sorgente
 
 ```bash
-git clone <repo-url> && cd adomnia
+git clone https://github.com/Andrea-Cavallo/adOmnia.git && cd adomnia
 cd frontend && npm install && cd ..
 wails dev
 .\build.ps1  # Windows
