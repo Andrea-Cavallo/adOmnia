@@ -49,9 +49,9 @@ A desktop toolbox for API development, testing, and debugging. REST, SOAP, gRPC,
 |---|---|---|
 | Windows | `adOmnia-*-windows-amd64.exe` | Download → double-click → done |
 | macOS | `adOmnia-*-macos-universal.dmg` | Download → open DMG → drag to Applications |
-| Linux | `adOmnia-*-linux-amd64.tar.gz` | Download → extract → `chmod +x` → run |
+| Linux | `adOmnia-*-linux-amd64.AppImage` | Download → `chmod +x` → double-click or run |
 
-No Go, Node.js, or any other tool needed. Single portable binary.
+No installation, no dependencies. The Linux AppImage bundles everything (including WebKitGTK) — it runs on any distro out of the box.
 
 ### Build from source
 
@@ -99,9 +99,9 @@ Toolbox desktop para desarrollo, pruebas y debugging de APIs. REST, SOAP, gRPC, 
 |---|---|---|
 | Windows | `adOmnia-*-windows-amd64.exe` | Descarga → doble clic → listo |
 | macOS | `adOmnia-*-macos-universal.dmg` | Descarga → abre el DMG → arrastra a Aplicaciones |
-| Linux | `adOmnia-*-linux-amd64.tar.gz` | Descarga → extrae → `chmod +x` → ejecuta |
+| Linux | `adOmnia-*-linux-amd64.AppImage` | Descarga → `chmod +x` → doble clic o ejecuta |
 
-Sin Go, Node.js ni nada más. Binario portable único.
+Sin instalación, sin dependencias. El AppImage incluye todo (WebKitGTK incluido) y funciona en cualquier distribución.
 
 ### Compilar desde el código fuente
 
@@ -149,9 +149,9 @@ Una toolbox desktop per sviluppare, testare e fare debug di API. REST, SOAP, gRP
 |---|---|---|
 | Windows | `adOmnia-*-windows-amd64.exe` | Scarica → doppio clic → fatto |
 | macOS | `adOmnia-*-macos-universal.dmg` | Scarica → apri il DMG → trascina in Applicazioni |
-| Linux | `adOmnia-*-linux-amd64.tar.gz` | Scarica → estrai → `chmod +x` → avvia |
+| Linux | `adOmnia-*-linux-amd64.AppImage` | Scarica → `chmod +x` → doppio clic o avvia da terminale |
 
-Non serve Go, Node.js né nessun altro tool. Binario singolo e portabile.
+Nessuna installazione, nessuna dipendenza. L'AppImage porta tutto dentro (WebKitGTK incluso) — funziona su qualsiasi distro senza installare nulla.
 
 ### Build da sorgente
 
