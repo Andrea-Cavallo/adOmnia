@@ -64,7 +64,7 @@ RUN set -e && \
     fi && \
     printf '[Desktop Entry]\nType=Application\nName=adOmnia\nExec=adOmnia\nIcon=adOmnia\nTerminal=false\nCategories=Development;Network;\n' \
         > /appdir/usr/share/applications/adOmnia.desktop && \
-    linuxdeploy --appdir /appdir --plugin appimage --output appimage && \
+    linuxdeploy --appdir /appdir --output appimage && \
     mkdir -p /out && \
     mv *.AppImage "/out/adOmnia-${VERSION}-linux-amd64.AppImage"
 
