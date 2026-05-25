@@ -1,4 +1,8 @@
 # syntax=docker/dockerfile:1
+#
+# Produces a self-contained Linux AppImage that bundles WebKitGTK and all
+# other shared library dependencies. Users need nothing installed.
+#
 
 FROM golang:1.25-bookworm AS builder
 
@@ -10,18 +14,12 @@ ARG BUILD_DATE=unknown
 ENV DEBIAN_FRONTEND=noninteractive
 ENV CGO_ENABLED=1
 ENV PATH="/go/bin:${PATH}"
+# Run AppImage tools without FUSE (required inside Docker)
+ENV APPIMAGE_EXTRACT_AND_RUN=1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    curl \
-    file \
-    gcc \
-    g++ \
-    git \
-    imagemagick \
-    libayatana-appindicator3-dev \
-    libgtk-3-dev \
-    libwebkit2gtk-4.0-dev \
+    ca-certificates curl file gcc g++ git imagemagick \
+    libayatana-appindicator3-dev libgtk-3-dev libwebkit2gtk-4.0-dev \
     pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
@@ -30,6 +28,13 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && rm -rf /var/lib/apt/lists/*
 
 RUN go install github.com/wailsapp/wails/v2/cmd/wails@${WAILS_VERSION}
+
+# linuxdeploy bundles all .so deps (webkit, gtk, etc.) into the AppImage
+RUN curl -fsSL -o /usr/local/bin/linuxdeploy \
+        https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage \
+    && curl -fsSL -o /usr/local/bin/linuxdeploy-plugin-appimage \
+        https://github.com/linuxdeploy/linuxdeploy-plugin-appimage/releases/download/continuous/linuxdeploy-plugin-appimage-x86_64.AppImage \
+    && chmod +x /usr/local/bin/linuxdeploy /usr/local/bin/linuxdeploy-plugin-appimage
 
 WORKDIR /src
 
@@ -46,19 +51,22 @@ RUN wails build \
     -platform linux/amd64 \
     -ldflags "-s -w -X main.Version=${VERSION} -X main.BuildDate=${BUILD_DATE} -X main.GitCommit=${GIT_COMMIT}"
 
-RUN mkdir -p /out/package/icons && \
-    cp build/bin/adOmnia /out/package/adOmnia && \
-    chmod +x /out/package/adOmnia && \
-    if [ -f build/linux/adOmnia.desktop ]; then cp build/linux/adOmnia.desktop /out/package/adOmnia.desktop; fi && \
-    if [ -f build/linux/install.sh ]; then cp build/linux/install.sh /out/package/install.sh && chmod +x /out/package/install.sh; fi && \
-    for size in 16 24 32 48 64 128 256 512; do \
-      src="assets/icons/linux/adOmnia_${size}x${size}.png"; \
-      if [ -f "$src" ]; then cp "$src" "/out/package/icons/"; fi; \
-    done && \
-    if [ -f assets/icons/linux/adOmnia_256x256.png ]; then cp assets/icons/linux/adOmnia_256x256.png /out/package/adOmnia.png; \
-    elif [ -f build/appicon.png ]; then convert build/appicon.png -resize 256x256 /out/package/adOmnia.png; fi && \
-    tar -czf "/out/adOmnia-${VERSION}-linux-amd64.tar.gz" -C /out/package . && \
-    cp build/bin/adOmnia "/out/adOmnia-${VERSION}-linux-amd64"
+RUN set -e && \
+    mkdir -p /appdir/usr/bin \
+             /appdir/usr/share/applications \
+             /appdir/usr/share/icons/hicolor/256x256/apps && \
+    cp build/bin/adOmnia /appdir/usr/bin/adOmnia && \
+    chmod +x /appdir/usr/bin/adOmnia && \
+    if   [ -f assets/icons/linux/adOmnia_256x256.png ]; then \
+        cp assets/icons/linux/adOmnia_256x256.png /appdir/usr/share/icons/hicolor/256x256/apps/adOmnia.png; \
+    elif [ -f build/appicon.png ]; then \
+        convert build/appicon.png -resize 256x256 /appdir/usr/share/icons/hicolor/256x256/apps/adOmnia.png; \
+    fi && \
+    printf '[Desktop Entry]\nType=Application\nName=adOmnia\nExec=adOmnia\nIcon=adOmnia\nTerminal=false\nCategories=Development;Network;\n' \
+        > /appdir/usr/share/applications/adOmnia.desktop && \
+    linuxdeploy --appdir /appdir --plugin appimage --output appimage && \
+    mkdir -p /out && \
+    mv *.AppImage "/out/adOmnia-${VERSION}-linux-amd64.AppImage"
 
 FROM scratch AS artifact
 COPY --from=builder /out /
