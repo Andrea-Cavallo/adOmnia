@@ -106,9 +106,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: adOmnia-linux-amd64
-          path: |
-            dist/*.tar.gz
-            dist/adOmnia-*-linux-amd64
+          path: dist/*.AppImage
           retention-days: 30
 
   macos:
