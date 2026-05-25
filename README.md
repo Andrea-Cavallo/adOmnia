@@ -4,15 +4,11 @@
 
 > Proudly listed on **[Awesome Wails](https://github.com/wailsapp/awesome-wails)** and **[Awesome HTTP Clients](https://github.com/mrmykey/awesome-http-clients/tree/main)**.
 
-![adOmnia interface](assets/images/icon.png)
-
 [![Website](https://img.shields.io/badge/Get%20started%20for%20free-8A2BE2)](https://www.adomnia-dev.com)
 [![Awesome Wails](https://img.shields.io/badge/Awesome-Wails-FF3E00?logo=go&logoColor=white)](https://github.com/wailsapp/awesome-wails)
 [![Awesome HTTP Clients](https://img.shields.io/badge/Awesome-HTTP_Clients-4285F4?logo=googlechrome&logoColor=white)](https://github.com/mrmykey/awesome-http-clients/tree/main)
 ![Local First](https://img.shields.io/badge/local--first-yes-22c55e)
 ![No Telemetry](https://img.shields.io/badge/telemetry-none-0ea5e9)
-![Go](https://img.shields.io/badge/backend-Go-00ADD8)
-![React](https://img.shields.io/badge/frontend-React%2BTypeScript-61DAFB)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
 ---
@@ -25,78 +21,51 @@
 
 ## English
 
-### One toolbox. Every protocol.
-
 ![adOmnia interface](assets/images/adOmniaInterface1.png)
 
-or white skin: 
+or white skin:
 
 ![adOmnia interface white](assets/images/white.png)
 
+### What is adOmnia
 
-REST, SOAP, gRPC, WebSocket, SSE, GraphQL, Kafka, RabbitMQ, MQTT, Redis, NATS — adOmnia handles them all. Mock servers, proxy interception, browser debugging via CDP, database access, load testing, encrypted vault, secret scanner. Built with **Wails v2** (Go + React), compiles into a single portable binary. Zero Electron overhead.
+A desktop toolbox for API development, testing, and debugging. REST, SOAP, gRPC, WebSocket, SSE, GraphQL, Kafka, RabbitMQ, MQTT, Redis, NATS — all in one app. Mock servers, proxy interception, browser debugging, database access, load testing, encrypted vault. No account required, no telemetry, nothing leaves your machine.
 
-| Area | Highlights |
+| Area | What you get |
 |---|---|
-| **API Workspace** | Collections, environments, variables, auth, scripts, assertions, cURL & OpenAPI import. |
-| **Protocols** | SOAP/WSDL Studio, gRPC, WebSocket client & mock, SSE. |
-| **Brokers** | Kafka, RabbitMQ, MQTT, Redis, NATS — produce, consume, inspect. |
-| **Simulation** | Mock server, proxy/interceptor, record & replay, Docker Lab. |
-| **Debugging** | Browser DevTools (CDP), HAR viewer, DNS, CORS, port scanner. |
-| **Data & Security** | Database Studio, encrypted vault, secret scanner, cert tools (PEM/JKS). |
-| **Customization** | Themes, skins, template marketplace, WASM plugins, Python SDK. |
-
-Full catalog: [docs/adomnia-feature-catalog.en.md](docs/adomnia-feature-catalog.en.md)
-
-### Principles
-
-**Local-first.** Everything stays on your machine. **Privacy-first.** No account, no telemetry, no sync. **Extensible.** Themes, plugins, templates. **Enterprise-ready.** SOAP, WS-Security, mTLS, JKS, legacy protocols are first-class citizens.
+| **API Workspace** | Collections, environments, variables, auth, scripts, assertions, cURL & OpenAPI import |
+| **Protocols** | SOAP/WSDL Studio, gRPC, WebSocket, SSE |
+| **Brokers** | Kafka, RabbitMQ, MQTT, Redis, NATS |
+| **Simulation** | Mock server, proxy/interceptor, record & replay, Docker Lab |
+| **Debugging** | Browser DevTools (CDP), HAR viewer, DNS, CORS, port scanner |
+| **Data & Security** | Database Studio, encrypted vault, secret scanner, cert tools (PEM/JKS) |
+| **Customization** | Themes, skins, WASM plugins, Python SDK |
 
 ### Download
 
-Pre-built binaries — no Go, Node.js, or build tools needed.
+**[→ Go to Releases](../../releases/latest)** and download the file for your platform. No installation required.
 
-**[Download latest release →](../../releases/latest)**
+| Platform | File | Steps |
+|---|---|---|
+| Windows | `adOmnia-*-windows-amd64.exe` | Download → double-click → done |
+| macOS | `adOmnia-*-macos-universal.dmg` | Download → open DMG → drag to Applications |
+| Linux | `adOmnia-*-linux-amd64.tar.gz` | Download → extract → `chmod +x` → run |
 
-| Platform | File |
-|---|---|
-| Windows | `adOmnia-*-windows-amd64.exe` |
-| macOS | `adOmnia-*-macos-universal.dmg` |
-| Linux | `adOmnia-*-linux-amd64.tar.gz` |
-
-CI builds: **Actions → Build Desktop Artifacts → latest run → Artifacts**.
+No Go, Node.js, or any other tool needed. Single portable binary.
 
 ### Build from source
 
+Only needed if you want to compile it yourself. Requires Go, Node.js, and Wails.
+
 ```bash
-git clone <repo-url> && cd adomnia
+git clone https://github.com/Andrea-Cavallo/adOmnia.git && cd adomnia
 cd frontend && npm install && cd ..
-wails dev          # dev mode with hot reload
-.\build.ps1        # Windows
-bash build/build-wails.sh linux  # Linux
+wails dev          # dev mode
+.\build.ps1        # Windows production build
+bash build/build-wails.sh linux  # Linux production build
 ```
 
-Details: [docs/BUILD.md](docs/BUILD.md)
-
-### Tech & structure
-
-| Layer | Stack |
-|---|---|
-| Shell | Wails 2 |
-| Backend | Go |
-| Frontend | React 18, TypeScript, Vite, Zustand |
-| Storage | bbolt, local files, portable `.adomnia` workspaces |
-| Distribution | Single native binary (Windows/macOS/Linux) |
-
-Import Postman, Insomnia, Bruno, OpenAPI workspaces. Drag & drop `.json`, `.yaml`, `.adomnia` files.
-
-### Docs
-
-[Install](docs/INSTALL.md) · [Build](docs/BUILD.md) · [Architecture](docs/ARCHITECTURE.md) · [Roadmap](docs/ROADMAP.md) · [FAQ](docs/FAQ.md) · [Privacy](PRIVACY.md) · [Security](.github/SECURITY.md)
-
-### Contribute
-
-Read [AGENTS.md](AGENTS.md) and [CLAUDE.md](CLAUDE.md). before starting. Keep changes focused, product-oriented. PRs welcome.
+Full instructions: [docs/BUILD.md](docs/BUILD.md)
 
 ### License
 
@@ -106,51 +75,49 @@ MIT © Andrea Cavallo — [LICENSE.md](LICENSE.md).
 
 ## Español
 
+![adOmnia interface](assets/images/adOmniaInterface1.png)
+
 ### Qué es adOmnia
 
-Toolbox desktop local-first para APIs, backend y protocolos. REST, SOAP, gRPC, WebSocket, Kafka, mock servers, proxy, browser debugging, base de datos — todo en una sola app. Sin cuenta, sin telemetría, sin nube.
+Toolbox desktop para desarrollo, pruebas y debugging de APIs. REST, SOAP, gRPC, WebSocket, Kafka, mock servers, proxy, browser debugging, bases de datos — todo en una sola app. Sin cuenta, sin telemetría, sin nube.
 
-| Área | Capacidades |
+| Área | Qué incluye |
 |---|---|
-| **APIs** | Colecciones, entornos, variables, auth, scripts, cURL & OpenAPI import. |
-| **Protocolos** | SOAP/WSDL, gRPC, WebSocket, SSE. |
-| **Mensajería** | Kafka, RabbitMQ, MQTT, Redis, NATS. |
-| **Debugging** | Proxy, HAR viewer, DevTools (CDP), DNS, CORS, port scan. |
-| **Simulación** | Mock server, record/replay, Docker Lab. |
-| **Datos** | Database Studio, vault cifrado, secret scanner, PEM/JKS. |
-| **Customización** | Temas, skins, plugins WASM, SDK Python. |
-
-### Principios
-
-**Local-first.** Datos en tu máquina. **Privacidad real.** Sin telemetría ni cuentas. **Extensible.** Temas, plugins, plantillas. **Enterprise.** SOAP, certificados, brokers como ciudadanos de primera clase.
+| **API Workspace** | Colecciones, entornos, variables, auth, scripts, import cURL y OpenAPI |
+| **Protocolos** | SOAP/WSDL Studio, gRPC, WebSocket, SSE |
+| **Mensajería** | Kafka, RabbitMQ, MQTT, Redis, NATS |
+| **Simulación** | Mock server, proxy/interceptor, record & replay, Docker Lab |
+| **Debugging** | Browser DevTools (CDP), HAR viewer, DNS, CORS, port scanner |
+| **Datos y seguridad** | Database Studio, vault cifrado, secret scanner, PEM/JKS |
+| **Personalización** | Temas, skins, plugins WASM, SDK Python |
 
 ### Descarga
 
-**[Descargar →](../../releases/latest)** — binarios precompilados, sin dependencias.
+**[→ Ir a Releases](../../releases/latest)** y descarga el archivo para tu plataforma. Sin instalación.
 
-| Plataforma | Archivo |
-|---|---|
-| Windows | `adOmnia-*-windows-amd64.exe` |
-| macOS | `adOmnia-*-macos-universal.dmg` |
-| Linux | `adOmnia-*-linux-amd64.tar.gz` |
+| Plataforma | Archivo | Pasos |
+|---|---|---|
+| Windows | `adOmnia-*-windows-amd64.exe` | Descarga → doble clic → listo |
+| macOS | `adOmnia-*-macos-universal.dmg` | Descarga → abre el DMG → arrastra a Aplicaciones |
+| Linux | `adOmnia-*-linux-amd64.tar.gz` | Descarga → extrae → `chmod +x` → ejecuta |
 
-CI: **Actions → Build Desktop Artifacts → última run → Artifacts**.
+Sin Go, Node.js ni nada más. Binario portable único.
 
-### Build desde código
+### Compilar desde el código fuente
+
+Solo necesario si quieres compilarlo tú mismo. Requiere Go, Node.js y Wails.
 
 ```bash
 git clone https://github.com/Andrea-Cavallo/adOmnia.git && cd adomnia
 cd frontend && npm install && cd ..
 wails dev
-.\build.ps1  # Windows
+.\build.ps1        # Windows
 bash build/build-wails.sh linux  # Linux
 ```
 
-Guía: [docs/BUILD.md](docs/BUILD.md)
+Guía completa: [docs/BUILD.md](docs/BUILD.md)
 
-### Docs
-
-[Funcionalidades](docs/funzionalita.md) · [Build](docs/BUILD.md) · [Roadmap](docs/adomnia-roadmap-checkbox.md) · [FAQ](docs/FAQ.md) · [Privacidad](PRIVACY.md)
+### Licencia
 
 MIT © Andrea Cavallo — [LICENSE.md](LICENSE.md).
 
@@ -158,54 +125,54 @@ MIT © Andrea Cavallo — [LICENSE.md](LICENSE.md).
 
 ## Italiano
 
+![adOmnia interface](assets/images/adOmniaInterface1.png)
+
 ### Cos'è adOmnia
 
-Toolbox desktop local-first per API, backend e protocolli. REST, SOAP, gRPC, WebSocket, Kafka, mock server, proxy, browser debugging, database — tutto in un'unica app. Niente account, niente telemetria, niente cloud.
+Una toolbox desktop per sviluppare, testare e fare debug di API. REST, SOAP, gRPC, WebSocket, Kafka, mock server, proxy, browser debugging, database — tutto in un'unica app. Nessun account, nessuna telemetria, nessun dato esce dalla tua macchina.
 
-| Area | Cosa offre |
+| Area | Cosa include |
 |---|---|
-| **API** | Collezioni, ambienti, variabili, auth, scripts, import cURL e OpenAPI. |
-| **Protocolli** | SOAP/WSDL Studio, gRPC, WebSocket, SSE. |
-| **Broker** | Kafka, RabbitMQ, MQTT, Redis, NATS. |
-| **Debugging** | Proxy, HAR viewer, DevTools (CDP), DNS, CORS, port scan. |
-| **Simulazione** | Mock server, record/replay, Docker Lab. |
-| **Dati** | Database Studio, vault cifrato, secret scanner, PEM/JKS. |
-| **Personalizzazione** | Temi, skin, plugin WASM, SDK Python. |
-
-### Filosofia
-
-**Local-first.** Dati sulla tua macchina. **Privacy-first.** Zero telemetria, zero account. **Estendibile.** Temi, plugin, template. **Enterprise-ready.** SOAP, certificati, broker first-class.
+| **API Workspace** | Collezioni, ambienti, variabili, auth, script, assertion, import cURL e OpenAPI |
+| **Protocolli** | SOAP/WSDL Studio, gRPC, WebSocket, SSE |
+| **Broker** | Kafka, RabbitMQ, MQTT, Redis, NATS |
+| **Simulazione** | Mock server, proxy/interceptor, record & replay, Docker Lab |
+| **Debugging** | Browser DevTools (CDP), HAR viewer, DNS, CORS, port scanner |
+| **Dati e sicurezza** | Database Studio, vault cifrato, secret scanner, PEM/JKS |
+| **Personalizzazione** | Temi, skin, plugin WASM, SDK Python |
 
 ### Download
 
-**[Scarica →](../../releases/latest)** — binari precompilati, nessuna dipendenza.
+**[→ Vai alle Releases](../../releases/latest)** e scarica il file per la tua piattaforma. Nessuna installazione richiesta.
 
-| Piattaforma | File |
-|---|---|
-| Windows | `adOmnia-*-windows-amd64.exe` |
-| macOS | `adOmnia-*-macos-universal.dmg` |
-| Linux | `adOmnia-*-linux-amd64.tar.gz` |
+| Piattaforma | File | Passi |
+|---|---|---|
+| Windows | `adOmnia-*-windows-amd64.exe` | Scarica → doppio clic → fatto |
+| macOS | `adOmnia-*-macos-universal.dmg` | Scarica → apri il DMG → trascina in Applicazioni |
+| Linux | `adOmnia-*-linux-amd64.tar.gz` | Scarica → estrai → `chmod +x` → avvia |
 
-CI: **Actions → Build Desktop Artifacts → ultima run → Artifacts**.
+Non serve Go, Node.js né nessun altro tool. Binario singolo e portabile.
 
 ### Build da sorgente
+
+Solo se vuoi compilarlo tu. Richiede Go, Node.js e Wails.
 
 ```bash
 git clone https://github.com/Andrea-Cavallo/adOmnia.git && cd adomnia
 cd frontend && npm install && cd ..
 wails dev
-.\build.ps1  # Windows
+.\build.ps1        # Windows
 bash build/build-wails.sh linux  # Linux
 ```
 
-Guida: [docs/BUILD.md](docs/BUILD.md)
+Guida completa: [docs/BUILD.md](docs/BUILD.md)
 
-### Docs
-
-[Funzionalità](docs/funzionalita.md) · [Build](docs/BUILD.md) · [Roadmap](docs/adomnia-roadmap-checkbox.md) · [FAQ](docs/FAQ.md) · [Privacy](PRIVACY.md)
+### Licenza
 
 MIT © Andrea Cavallo — [LICENSE.md](LICENSE.md).
 
-special thanks to: 
+---
+
+Special thanks to:
 - https://github.com/albertize
 - https://github.com/plunix
