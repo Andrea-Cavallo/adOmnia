@@ -371,9 +371,15 @@ func kafkaLoadTestHandler(w http.ResponseWriter, r *http.Request) {
 				if req.DurationS > 0 && time.Now().After(deadline) {
 					return
 				}
-				idx := int(sequence.Add(1) - 1)
-				if req.DurationS == 0 && idx >= req.TotalMsgs {
-					return
+				var idx int
+				if req.DurationS == 0 {
+					var ok bool
+					idx, ok = reserveKafkaMessageIndex(&sequence, req.TotalMsgs)
+					if !ok {
+						return
+					}
+				} else {
+					idx = int(sequence.Add(1) - 1)
 				}
 
 				value := req.Value
@@ -456,6 +462,18 @@ func kafkaLoadTestHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(result)
+}
+
+func reserveKafkaMessageIndex(sequence *atomic.Int64, total int) (int, bool) {
+	for {
+		current := sequence.Load()
+		if current >= int64(total) {
+			return 0, false
+		}
+		if sequence.CompareAndSwap(current, current+1) {
+			return int(current), true
+		}
+	}
 }
 
 func varyJsonField(jsonStr, field string, idx int) string {

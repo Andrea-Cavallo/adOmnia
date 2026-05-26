@@ -78,10 +78,14 @@ export function StatusBar() {
         {!response && !saveError && <span>Ready</span>}
         {saveError && <span className="text-error">Save error: {saveError}</span>}
         {responseHistory.length > 0 && (
-          <span className="flex items-center gap-1 text-text-4">
+          <button
+            onClick={() => setActiveRail('history')}
+            title="Open Request History"
+            className="flex items-center gap-1 text-text-4 hover:text-text-2 transition-colors"
+          >
             <span className="w-1.5 h-1.5 rounded-full bg-success inline-block" />
-            cache {responseHistory.length} reqs
-          </span>
+            history {responseHistory.length} reqs
+          </button>
         )}
       </div>
       <div className="flex items-center gap-2">

@@ -702,17 +702,13 @@ export function MockPanel() {
 
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border-1">
-        <div className="flex items-center gap-2">
-          <Server size={16} className="text-accent" />
-          <h2 className="text-sm font-semibold text-text-1">Mock Server</h2>
-        </div>
-
+      {/* Action toolbar: the panel title/navigation lives in MainArea. */}
+      <div className="flex h-12 items-center gap-3 px-4 border-b border-border-1 shrink-0">
         <div className={cn(
           'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium',
           status.running ? 'bg-success/15 text-success' : 'bg-surface-2 text-text-4',
         )}>
+          <Server size={11} className={status.running ? 'text-success' : 'text-text-4'} />
           <span className={cn('w-1.5 h-1.5 rounded-full', status.running ? 'bg-success animate-pulse' : 'bg-text-4')} />
           {status.running ? `Listening on :${status.port}` : 'Stopped'}
         </div>

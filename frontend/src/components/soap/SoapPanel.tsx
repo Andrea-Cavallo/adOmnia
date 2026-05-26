@@ -1,11 +1,10 @@
 import { useState, useCallback, useEffect } from 'react'
-import { Upload, Globe, Send, Copy, RefreshCw, ChevronRight, BookmarkPlus, Plus, X } from 'lucide-react'
+import { Upload, Globe, Send, Copy, RefreshCw, ChevronRight, BookmarkPlus, Plus, X, ShieldCheck, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ExecuteHTTP } from '@/wailsjs/go/main/App'
 import {
   parseWsdl,
   generateEnvelopeWithSchema,
-  addWsSecurityUsernameToken,
   sendSoapRequest,
   soapXmlToJson,
   validateSoapXml,
@@ -13,9 +12,12 @@ import {
   generateSoapClientCode,
   addSoapHistoryEntry,
   loadSoapHistory,
+  defaultWssConfig,
+  applyWssSecurity,
   type WsdlDocument,
   type SoapHistoryEntry,
-
+  type WssConfig,
+  type WssMode,
 } from '@/lib/soapClient'
 import { useCollectionsStore } from '@/stores/collections'
 import { blankRequest, uid } from '@/lib/types'
@@ -33,9 +35,9 @@ export function SoapPanel() {
   const [selectedOp, setSelectedOp] = useState('')
   const [soapVersion, setSoapVersion] = useState<'1.1' | '1.2'>('1.1')
   const [envelope, setEnvelope] = useState('')
-  const [wsSecurity, setWsSecurity] = useState(false)
-  const [wsUser, setWsUser] = useState('')
-  const [wsPass, setWsPass] = useState('')
+  const [wssConfig, setWssConfig] = useState<WssConfig>(defaultWssConfig)
+  const [showSecurity, setShowSecurity] = useState(false)
+  const [wssError, setWssError] = useState('')
   const [sending, setSending] = useState(false)
   const [response, setResponse] = useState('')
   const [responseInfo, setResponseInfo] = useState<{ status: number; ms: number; size: number } | null>(null)
@@ -135,8 +137,8 @@ export function SoapPanel() {
       wsdl.targetNamespace,
       soapVersion,
     )
-    setEnvelope(wsSecurity ? addWsSecurityUsernameToken(env, wsUser, wsPass, soapVersion) : env)
-  }, [wsdl, selectedOp, soapVersion, wsSecurity, wsUser, wsPass])
+    setEnvelope(env)
+  }, [wsdl, selectedOp, soapVersion])
 
   const sendRequest = useCallback(async () => {
     if (!currentPort || !currentOp || !envelope.trim()) return
@@ -144,6 +146,19 @@ export function SoapPanel() {
     setResponse('')
     setResponseInfo(null)
     setResponseJson(null)
+    setWssError('')
+
+    let securedEnvelope = envelope
+    if (wssConfig.mode !== 'none') {
+      try {
+        securedEnvelope = await applyWssSecurity(envelope, wssConfig)
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        setWssError(msg)
+        setSending(false)
+        return
+      }
+    }
 
     const activeHeaders: Record<string, string> = {}
     for (const h of customHeaders) {
@@ -153,7 +168,7 @@ export function SoapPanel() {
     const res = await sendSoapRequest({
       url: currentPort.location,
       soapAction: currentOp.soapAction,
-      envelope,
+      envelope: securedEnvelope,
       soapVersion,
       customHeaders: Object.keys(activeHeaders).length > 0 ? activeHeaders : undefined,
     })
@@ -172,7 +187,7 @@ export function SoapPanel() {
     })
     setHistory(h)
     setSending(false)
-  }, [currentPort, currentOp, envelope, soapVersion])
+  }, [currentPort, currentOp, envelope, soapVersion, customHeaders, wssConfig])
 
   const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -183,6 +198,16 @@ export function SoapPanel() {
     }
     reader.readAsText(file)
   }, [acceptWsdlText])
+
+  const handlePemFile = useCallback((field: 'pemCert' | 'pemKey') => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => setWssConfig((c) => ({ ...c, [field]: reader.result as string }))
+    reader.readAsText(file)
+    // Reset input so the same file can be re-selected
+    e.target.value = ''
+  }, [])
 
   if (!wsdl) {
     return (
@@ -326,33 +351,22 @@ export function SoapPanel() {
             <option value="1.2">SOAP 1.2</option>
           </select>
 
-          <label className="flex items-center gap-1 text-[10px] text-text-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={wsSecurity}
-              onChange={(e) => setWsSecurity(e.target.checked)}
-              className="w-3 h-3"
-            />
-            WS-Security
-          </label>
-
-          {wsSecurity && (
-            <>
-              <input
-                value={wsUser}
-                onChange={(e) => setWsUser(e.target.value)}
-                placeholder="username"
-                className="w-24 h-6 px-1.5 text-[10px] bg-surface-2 border border-border-1 rounded text-text-1"
-              />
-              <input
-                value={wsPass}
-                onChange={(e) => setWsPass(e.target.value)}
-                type="password"
-                placeholder="password"
-                className="w-24 h-6 px-1.5 text-[10px] bg-surface-2 border border-border-1 rounded text-text-1"
-              />
-            </>
-          )}
+          <button
+            onClick={() => setShowSecurity((v) => !v)}
+            className={cn(
+              'flex items-center gap-1 px-2 py-1 text-[10px] rounded border transition-colors',
+              showSecurity || wssConfig.mode !== 'none'
+                ? 'bg-surface-3 border-border-2 text-text-1'
+                : 'bg-surface-2 border-border-1 text-text-3 hover:text-text-2',
+            )}
+            title="WS-Security configuration"
+          >
+            <ShieldCheck size={10} />
+            Security
+            {wssConfig.mode !== 'none' && (
+              <span className="w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0" />
+            )}
+          </button>
 
           {showCustomHeaders && (
             <div className="flex flex-col gap-1 px-3 py-2 border-b border-border-1 bg-surface-0">
@@ -444,6 +458,119 @@ export function SoapPanel() {
             <Send size={10} /> {sending ? 'Sending...' : 'Send'}
           </button>
         </div>
+
+        {/* WS-Security panel */}
+        {showSecurity && (
+          <div className="border-b border-border-1 bg-surface-0 px-3 py-2 flex flex-col gap-2 text-[10px]">
+            <div className="flex items-center gap-3">
+              <span className="text-text-4 w-14 flex-shrink-0">Mode</span>
+              <select
+                value={wssConfig.mode}
+                onChange={(e) => setWssConfig((c) => ({ ...c, mode: e.target.value as WssMode }))}
+                className="h-6 px-1.5 bg-surface-2 border border-border-1 rounded text-text-1 text-[10px]"
+              >
+                <option value="none">None</option>
+                <option value="username_text">UsernameToken (PasswordText)</option>
+                <option value="username_digest">UsernameToken (PasswordDigest)</option>
+                <option value="timestamp">Timestamp only</option>
+                <option value="x509">X.509 Signature (RSA-SHA256)</option>
+              </select>
+            </div>
+
+            {(wssConfig.mode === 'username_text' || wssConfig.mode === 'username_digest') && (
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="text-text-4 w-14 flex-shrink-0">Username</span>
+                <input
+                  value={wssConfig.username}
+                  onChange={(e) => setWssConfig((c) => ({ ...c, username: e.target.value }))}
+                  placeholder="username"
+                  className="w-36 h-6 px-1.5 bg-surface-2 border border-border-1 rounded text-text-1 text-[10px] outline-none"
+                />
+                <span className="text-text-4">Password</span>
+                <input
+                  value={wssConfig.password}
+                  onChange={(e) => setWssConfig((c) => ({ ...c, password: e.target.value }))}
+                  type="password"
+                  placeholder="password"
+                  className="w-36 h-6 px-1.5 bg-surface-2 border border-border-1 rounded text-text-1 text-[10px] outline-none"
+                />
+              </div>
+            )}
+
+            {wssConfig.mode === 'x509' && (
+              <>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <FileText size={10} className="text-text-4" />
+                    <span className="text-text-3 font-medium">PEM Certificate</span>
+                    <label className="ml-auto text-accent hover:text-accent-light cursor-pointer flex items-center gap-1">
+                      <Upload size={9} /> Load file
+                      <input type="file" accept=".pem,.crt,.cer" className="hidden" onChange={handlePemFile('pemCert')} />
+                    </label>
+                  </div>
+                  <textarea
+                    value={wssConfig.pemCert}
+                    onChange={(e) => setWssConfig((c) => ({ ...c, pemCert: e.target.value }))}
+                    placeholder="-----BEGIN CERTIFICATE-----&#10;...&#10;-----END CERTIFICATE-----"
+                    rows={3}
+                    spellCheck={false}
+                    className="w-full p-1.5 font-mono text-[10px] bg-surface-2 border border-border-1 rounded resize-none outline-none text-text-2 placeholder-text-4"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <FileText size={10} className="text-text-4" />
+                    <span className="text-text-3 font-medium">PEM Private Key (PKCS#8)</span>
+                    <label className="ml-auto text-accent hover:text-accent-light cursor-pointer flex items-center gap-1">
+                      <Upload size={9} /> Load file
+                      <input type="file" accept=".pem,.key" className="hidden" onChange={handlePemFile('pemKey')} />
+                    </label>
+                  </div>
+                  <textarea
+                    value={wssConfig.pemKey}
+                    onChange={(e) => setWssConfig((c) => ({ ...c, pemKey: e.target.value }))}
+                    placeholder="-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----"
+                    rows={3}
+                    spellCheck={false}
+                    className="w-full p-1.5 font-mono text-[10px] bg-surface-2 border border-border-1 rounded resize-none outline-none text-text-2 placeholder-text-4"
+                  />
+                </div>
+              </>
+            )}
+
+            {wssConfig.mode !== 'none' && (
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-1 cursor-pointer text-text-3">
+                  <input
+                    type="checkbox"
+                    checked={wssConfig.includeTimestamp}
+                    onChange={(e) => setWssConfig((c) => ({ ...c, includeTimestamp: e.target.checked }))}
+                    className="w-3 h-3"
+                  />
+                  Include Timestamp
+                </label>
+                {wssConfig.includeTimestamp && (
+                  <>
+                    <span className="text-text-4">TTL</span>
+                    <input
+                      type="number"
+                      min={30}
+                      max={86400}
+                      value={wssConfig.ttlSeconds}
+                      onChange={(e) => setWssConfig((c) => ({ ...c, ttlSeconds: Number(e.target.value) }))}
+                      className="w-16 h-6 px-1.5 bg-surface-2 border border-border-1 rounded text-text-1 text-[10px] outline-none"
+                    />
+                    <span className="text-text-4">sec</span>
+                  </>
+                )}
+              </div>
+            )}
+
+            {wssError && (
+              <div className="px-2 py-1 rounded bg-error/10 border border-error/20 text-error text-[10px]">{wssError}</div>
+            )}
+          </div>
+        )}
 
         {/* Envelope editor + Response */}
         <div className="flex-1 flex flex-col overflow-hidden">

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Database, Search, Download, Upload, Trash2, Copy, Plus, RefreshCw } from 'lucide-react'
+import { Search, Download, Upload, Trash2, Copy, Plus, RefreshCw } from 'lucide-react'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { cn } from '@/lib/utils'
 
@@ -149,11 +149,6 @@ export function StoragePanel() {
 
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border-1">
-        <Database size={16} className="text-accent" />
-        <h2 className="text-sm font-semibold text-text-1">Storage</h2>
-      </div>
-
       <div className="flex-1 flex flex-col p-4 gap-4 overflow-auto">
         {/* Status bar */}
         {status && (

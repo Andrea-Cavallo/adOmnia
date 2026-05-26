@@ -86,6 +86,7 @@ export function KVEditor({ rows, onChange, keyPlaceholder = 'Key', valuePlacehol
           </div>
           <button
             onClick={() => remove(r.id)}
+            title="Remove row"
             className="w-6 h-6 flex items-center justify-center text-text-4 hover:text-error rounded opacity-0 group-hover:opacity-100 transition-opacity"
           >
             <Trash2 size={12} />

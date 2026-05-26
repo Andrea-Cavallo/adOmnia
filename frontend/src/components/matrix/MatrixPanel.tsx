@@ -317,7 +317,7 @@ export function MatrixPanel() {
       <aside className="w-80 shrink-0 overflow-y-auto border-r border-border-1 bg-surface-1 p-3">
         <div className="mb-3 flex items-center gap-2">
           <GitBranch size={15} className="text-accent" />
-          <h2 className="text-sm font-semibold text-text-1">Environment Matrix</h2>
+          <h2 className="text-sm font-semibold text-text-1">Compare configuration</h2>
         </div>
 
         <div className="mb-3 grid grid-cols-3 gap-1 rounded bg-surface-0 p-1">

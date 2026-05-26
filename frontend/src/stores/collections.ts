@@ -50,6 +50,7 @@ function migrateBody(b: RequestBody): RequestBody {
 function migrateRequest(r: RequestItem): RequestItem {
   return {
     ...r,
+    description: r.description ?? '',
     params: r.params ?? [blankKVRow()],
     headers: r.headers ?? [blankKVRow()],
     bodies: r.bodies?.length ? r.bodies.map(migrateBody) : [blankBody()],

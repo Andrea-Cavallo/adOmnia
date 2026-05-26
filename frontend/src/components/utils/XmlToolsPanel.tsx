@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FileCode, GitCompare, Code, Search, Copy, AlignLeft } from 'lucide-react'
+import { GitCompare, Code, Search, Copy, AlignLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type Tab = 'format' | 'diff' | 'entities' | 'xpath'
@@ -296,12 +296,6 @@ export function XmlToolsPanel({ initialTab }: { initialTab?: Tab } = {}) {
 
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border-1">
-        <FileCode size={16} className="text-accent" />
-        <h2 className="text-sm font-semibold text-text-1">XML Tools</h2>
-      </div>
-
       <div className="flex-1 flex flex-col p-4 gap-4 overflow-auto">
         {/* Tab bar */}
         <div className="flex gap-0.5 border-b border-border-1 flex-wrap">

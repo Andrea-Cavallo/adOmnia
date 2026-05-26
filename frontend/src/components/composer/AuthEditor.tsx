@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { RequestAuth } from '@/lib/types'
 import { fetchOAuth2TokenManual } from '@/lib/sendRequest'
+import { authorizeOAuth2Pkce } from '@/lib/oauth2Flow'
+import { useServerPort } from '@/lib/useServerPort'
 
 interface AuthEditorProps {
   auth: RequestAuth
@@ -43,19 +45,39 @@ function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
 }
 
 export function AuthEditor({ auth, onChange }: AuthEditorProps) {
+  const port = useServerPort()
   const [fetching, setFetching] = useState(false)
   const [fetchError, setFetchError] = useState('')
+  const [fetchStatus, setFetchStatus] = useState('')
+  const authController = useRef<AbortController | null>(null)
+
+  useEffect(() => () => authController.current?.abort(), [])
 
   const handleFetchToken = async () => {
+    authController.current?.abort()
+    const controller = new AbortController()
+    authController.current = controller
     setFetching(true)
     setFetchError('')
+    setFetchStatus('')
     try {
-      const token = await fetchOAuth2TokenManual(auth)
-      onChange({ ...auth, token })
+      if (auth.oauth2GrantType === 'authorization_code_pkce') {
+        const result = await authorizeOAuth2Pkce(auth, port, setFetchStatus, controller.signal)
+        onChange(result.auth)
+      } else {
+        const token = await fetchOAuth2TokenManual(auth)
+        onChange({ ...auth, token })
+      }
+      setFetchStatus('Access token received.')
     } catch (e) {
-      setFetchError(e instanceof Error ? e.message : String(e))
+      if (!(e instanceof DOMException && e.name === 'AbortError')) {
+        setFetchError(e instanceof Error ? e.message : String(e))
+      }
     } finally {
-      setFetching(false)
+      if (authController.current === controller) {
+        authController.current = null
+        setFetching(false)
+      }
     }
   }
 
@@ -190,40 +212,34 @@ export function AuthEditor({ auth, onChange }: AuthEditorProps) {
                   placeholder="https://auth.your-domain.com/oauth/authorize"
                 />
               </Field>
-              <Field label="Redirect URI">
-                <Input
-                  value={auth.oauth2RedirectUri ?? ''}
-                  onChange={(e) => onChange({ ...auth, oauth2RedirectUri: e.target.value })}
-                  placeholder="http://localhost/callback"
-                />
-              </Field>
-              <Field label="Auth Code">
-                <Input
-                  value={auth.oauth2AuthCode ?? ''}
-                  onChange={(e) => onChange({ ...auth, oauth2AuthCode: e.target.value })}
-                  placeholder="Paste the returned code"
-                />
-              </Field>
-              <Field label="PKCE Verifier">
-                <Input
-                  value={auth.oauth2CodeVerifier ?? ''}
-                  onChange={(e) => onChange({ ...auth, oauth2CodeVerifier: e.target.value })}
-                  placeholder="Code verifier used for the authorization request"
-                />
-              </Field>
+              <div className="mx-3 rounded border border-border-1 bg-surface-1 px-3 py-2 text-[11px] text-text-3">
+                adOmnia generates PKCE and listens on a temporary loopback callback. Register a redirect URI
+                beginning with <span className="font-mono text-text-2">http://127.0.0.1</span> in your provider.
+              </div>
             </>
           )}
           <div className="flex items-center gap-3 px-3">
             <span className="w-28 shrink-0" />
             <button
               onClick={handleFetchToken}
-              disabled={fetching || !auth.oauth2TokenUrl}
+              disabled={fetching || !auth.oauth2TokenUrl || (auth.oauth2GrantType === 'authorization_code_pkce' && !port)}
               className="px-3 py-1 bg-accent text-white rounded text-xs font-medium disabled:opacity-50"
             >
-              {fetching ? 'Fetching…' : 'Fetch Token'}
+              {fetching ? 'Waiting...' : auth.oauth2GrantType === 'authorization_code_pkce' ? 'Authorize & Fetch Token' : 'Fetch Token'}
             </button>
+            {fetching && auth.oauth2GrantType === 'authorization_code_pkce' && (
+              <button
+                onClick={() => authController.current?.abort()}
+                className="px-2 py-1 rounded border border-border-2 text-xs text-text-3 hover:text-text-1"
+              >
+                Cancel
+              </button>
+            )}
             {fetchError && <span className="text-xs text-error">{fetchError}</span>}
           </div>
+          {fetchStatus && (
+            <div className="px-3 pl-[132px] text-[11px] text-success">{fetchStatus}</div>
+          )}
           {auth.token && (
             <Field label="Access Token">
               <Input value={auth.token} readOnly className="opacity-70 cursor-default" />

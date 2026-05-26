@@ -341,7 +341,7 @@ function EntryDetail({ entry, onClose }: { entry: RichEntry; onClose: () => void
         <span className="flex-1 truncate font-mono text-[10px] text-text-2" title={entry.request.url}>{pathname}</span>
         <button onClick={sendToComposer} className="text-text-4 hover:text-accent" title="Send to Composer"><Send size={12} /></button>
         <button onClick={createMock} className="text-text-4 hover:text-success" title="Create mock endpoint"><Server size={12} /></button>
-        <button onClick={onClose} className="text-text-4 hover:text-error"><X size={12} /></button>
+        <button onClick={onClose} title="Close" className="text-text-4 hover:text-error"><X size={12} /></button>
       </div>
       <div className="flex shrink-0 border-b border-border-1 bg-surface-0">
         {(['timings', 'request', 'response'] as const).map((t) => (

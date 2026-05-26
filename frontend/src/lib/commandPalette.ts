@@ -10,6 +10,7 @@ export interface PalettePanel {
 export const COMMAND_PALETTE_PANELS: PalettePanel[] = [
   { id: 'welcome', title: 'Home', group: 'Navigation', keywords: 'welcome onboarding start' },
   { id: 'collections', title: 'API Workspace', group: 'API Core', keywords: 'collections requests http rest' },
+  { id: 'history', title: 'Request History', group: 'API Core', keywords: 'responses history saved previous reopen search' },
   { id: 'runner', title: 'Runner', group: 'API Core', keywords: 'collection run regression test' },
   { id: 'flows', title: 'Flows', group: 'API Core', keywords: 'workflow sequence auth extract script wait condition' },
   { id: 'matrix', title: 'Environment Matrix', group: 'API Core', keywords: 'matrix environments compare' },

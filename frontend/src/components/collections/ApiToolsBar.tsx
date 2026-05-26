@@ -148,7 +148,7 @@ export function ApiToolsBar({ activeRequest, onApplyRequest }: ApiToolsBarProps)
             <div className="flex h-10 items-center gap-2 border-b border-border-1 bg-surface-1 px-3">
               <span className="text-xs font-semibold text-text-1">{TOOLS.find((tool) => tool.id === activeTool)?.label}</span>
               <div className="flex-1" />
-              <button onClick={() => setActiveTool(null)} className="grid h-6 w-6 place-items-center rounded text-text-4 hover:bg-surface-2 hover:text-text-1">
+              <button onClick={() => setActiveTool(null)} title="Close" className="grid h-6 w-6 place-items-center rounded text-text-4 hover:bg-surface-2 hover:text-text-1">
                 <X size={13} />
               </button>
             </div>

@@ -1,6 +1,10 @@
 import { ExecuteHTTP } from '../wailsjs/go/main/App'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 
+// Re-export WS-Security types and functions so consumers only need to import from soapClient
+export type { WssMode, WssConfig } from './soapWssSigning'
+export { defaultWssConfig, applyWssSecurity } from './soapWssSigning'
+
 // ─── WSDL Parser & SOAP Client ───────────────────────────────
 
 interface WsdlPort {

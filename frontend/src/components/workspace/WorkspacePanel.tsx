@@ -8,16 +8,9 @@ import { useTabsStore } from '@/stores/tabs'
 import { cn } from '@/lib/utils'
 import { parseInteropFile, redactSecrets, summarizeBundle, type InteropBundle } from '@/lib/interopHub'
 import { scanWorkspace, maskSecretValues } from '@/lib/secretScanner'
-import { loadFlowDefinitions, saveFlowDefinitions, type SavedFlowDefinition } from '@/lib/flowStorage'
-import { safeSetItem } from '@/lib/safeLocalStorage'
-
-interface WorkspaceMeta {
-  id: string
-  name: string
-  createdAt: string
-  updatedAt: string
-  tabs: number
-}
+import { loadFlowDefinitions, type SavedFlowDefinition } from '@/lib/flowStorage'
+import { applyWorkspaceState, type WorkspaceState } from '@/lib/workspaceState'
+import { rememberRecentWorkspace, removeRecentWorkspace, type WorkspaceMeta } from '@/lib/workspaceRecents'
 
 export function WorkspacePanel() {
   const port = useServerPort()
@@ -95,39 +88,21 @@ export function WorkspacePanel() {
   })
 
   const load = (wsName?: string) => run(async () => {
-    const path = wsName ? `/workspace/load?name=${encodeURIComponent(wsName)}` : '/workspace/load'
-    const state = await api(path)
+    const target = wsName ?? workspaces[0]?.name
+    const path = target ? `/workspace/load?name=${encodeURIComponent(target)}` : '/workspace/load'
+    const state = await api(path) as WorkspaceState
     const text = JSON.stringify(state, null, 2)
     setLoadedState(text)
-    if (Array.isArray(state.openTabs)) {
-      useTabsStore.setState({ tabs: state.openTabs, activeTabId: state.activeTabId ?? state.openTabs[0]?.id ?? null })
-    }
-    if (Array.isArray(state.collections)) {
-      useCollectionsStore.setState({ collections: migrateCollections(state.collections), loaded: true })
-      useCollectionsStore.getState().save()
-    }
-    if (Array.isArray(state.environments)) {
-      useEnvironmentsStore.setState({ environments: state.environments, activeEnvId: state.activeEnvId ?? null, loaded: true })
-      useEnvironmentsStore.getState().save()
-    }
-    if (state.settings) {
-      useSettingsStore.setState({ settings: state.settings, loaded: true })
-      useSettingsStore.getState().save()
-    }
-    if (Array.isArray(state.flows)) {
-      setFlowDefinitions(await saveFlowDefinitions(state.flows))
-    }
-    if (state.dockerLab) {
-      safeSetItem('adomnia.dockerlab.last', JSON.stringify(state.dockerLab))
-    }
-    if (state.websocket) {
-      safeSetItem('adomnia.websocket', JSON.stringify(state.websocket))
-    }
+    const restoredFlows = await applyWorkspaceState(state)
+    if (restoredFlows) setFlowDefinitions(restoredFlows)
+    const meta = target && workspaces.find((workspace) => workspace.name === target)
+    if (meta) rememberRecentWorkspace(meta)
     setMessage('Workspace loaded into the frontend')
   })
 
   const remove = (wsName: string) => run(async () => {
     await api(`/workspace/delete?name=${encodeURIComponent(wsName)}`)
+    removeRecentWorkspace(wsName)
     setMessage(`Deleted "${wsName}"`)
     refresh()
   })
@@ -261,7 +236,7 @@ export function WorkspacePanel() {
         <div className="p-4 border-b border-border-1 flex flex-col gap-3 shrink-0">
           <div className="flex items-center gap-2">
             <FolderOpen size={14} className="text-accent" />
-            <h2 className="text-sm font-semibold text-text-1">Workspaces</h2>
+            <h2 className="text-xs font-semibold text-text-2">Saved workspaces</h2>
             <button onClick={refresh} className="ml-auto w-6 h-6 flex items-center justify-center text-text-4 hover:text-text-1 hover:bg-surface-2 rounded-md transition-colors" title="Refresh">
               <RefreshCw size={13} />
             </button>

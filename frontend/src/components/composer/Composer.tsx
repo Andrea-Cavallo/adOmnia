@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react'
-import { Send, Save, FileCode, Gauge, X, Plus, Check, CornerDownRight, Clock, Code, Copy, CheckCheck } from 'lucide-react'
+import { useState, useRef, useEffect, useMemo } from 'react'
+import { Send, Save, FileCode, Gauge, X, Plus, Check, CornerDownRight, Clock, Code, Copy, CheckCheck, FileText } from 'lucide-react'
 import type { RequestItem, HttpMethod } from '@/lib/types'
 import { uid, blankBody, blankAuth } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -13,8 +13,13 @@ import { Prompt } from '@/components/ui/prompt'
 import { generateCode, LANGUAGES, copyToClipboard } from '@/lib/codegen'
 import { VarHighlightInput } from '@/components/ui/VarHighlightInput'
 import { useEnvironmentsStore } from '@/stores/environments'
+import { prepareRequestForCodegen } from '@/lib/sendRequest'
+import { useTabsStore, type ComposerSection } from '@/stores/tabs'
+import { useCookieJarStore, type JarEntry } from '@/lib/cookieJar'
+import { useSettingsStore } from '@/stores/settings'
 
 interface ComposerProps {
+  tabId: string
   request: RequestItem
   onChange: (request: RequestItem) => void
   onSend: () => void
@@ -37,8 +42,6 @@ const METHOD_COLORS: Record<string, string> = {
   TRACE: 'text-info',
 }
 
-type TabId = 'params' | 'headers' | 'cookies' | 'body' | 'auth' | 'scripts' | 'tests'
-
 function CurlImportModal({ onClose, onImport }: { onClose: () => void; onImport: (curl: string) => void }) {
   const [value, setValue] = useState('')
   const [error, setError] = useState('')
@@ -55,7 +58,7 @@ function CurlImportModal({ onClose, onImport }: { onClose: () => void; onImport:
       <div className="w-[560px] bg-surface-1 border border-border-1 rounded-lg shadow-xl flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2 px-4 py-3 border-b border-border-1">
           <span className="text-sm font-semibold text-text-1 flex-1">Import from cURL</span>
-          <button onClick={onClose} className="text-text-4 hover:text-text-1"><X size={16} /></button>
+          <button onClick={onClose} title="Close" className="text-text-4 hover:text-text-1"><X size={16} /></button>
         </div>
         <div className="p-4 flex flex-col gap-3">
           <textarea
@@ -84,9 +87,11 @@ function CurlImportModal({ onClose, onImport }: { onClose: () => void; onImport:
   )
 }
 
-function CopyAsDropdown({ request }: { request: RequestItem }) {
+function CopyAsDropdown({ request, vars }: { request: RequestItem; vars: Record<string, string> }) {
   const [open, setOpen] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
+  const [preparing, setPreparing] = useState<string | null>(null)
+  const [error, setError] = useState('')
   const ref = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -99,11 +104,22 @@ function CopyAsDropdown({ request }: { request: RequestItem }) {
   }, [open])
 
   const handleCopy = async (langId: string) => {
-    const code = generateCode(request, langId as typeof LANGUAGES[number]['id'])
-    const ok = await copyToClipboard(code)
-    if (ok) {
-      setCopied(langId)
-      setTimeout(() => setCopied(null), 1500)
+    setPreparing(langId)
+    setError('')
+    try {
+      const prepared = await prepareRequestForCodegen(request, vars)
+      const code = generateCode(prepared, langId as typeof LANGUAGES[number]['id'])
+      const ok = await copyToClipboard(code)
+      if (ok) {
+        setCopied(langId)
+        setTimeout(() => setCopied(null), 1500)
+      } else {
+        setError('Clipboard unavailable.')
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause))
+    } finally {
+      setPreparing(null)
     }
   }
 
@@ -121,12 +137,104 @@ function CopyAsDropdown({ request }: { request: RequestItem }) {
           {LANGUAGES.map((lang) => (
             <button
               key={lang.id}
-              onClick={() => handleCopy(lang.id)}
-              className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-text-3 hover:text-text-1 hover:bg-surface-2 transition-colors text-left"
+              onClick={() => void handleCopy(lang.id)}
+              disabled={preparing !== null}
+              className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-text-3 hover:text-text-1 hover:bg-surface-2 transition-colors text-left disabled:opacity-55"
             >
               {copied === lang.id ? <CheckCheck size={12} className="text-success" /> : <Copy size={12} />}
               <span>{lang.label}</span>
+              {preparing === lang.id && <span className="ml-auto text-[10px] text-accent">Preparing...</span>}
             </button>
+          ))}
+          {error && <p className="border-t border-error/20 px-3 py-2 text-[10px] text-error">{error}</p>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Displays session-jar cookies for the request's domain, with delete controls. */
+function CookieJarSection({ requestUrl }: { requestUrl: string }) {
+  const sendCookiesAutomatically = useSettingsStore((s) => s.settings.requests.sendCookiesAutomatically)
+  // Select `entries` (a stable reference) rather than calling getCookiesForUrl() inside the
+  // selector.  getCookiesForUrl always returns a new array via .filter(), so using it as a
+  // Zustand selector causes Zustand 5 / useSyncExternalStore to see a different snapshot on
+  // every tearing-check call → infinite re-render loop → React error #185.
+  const allEntries = useCookieJarStore((s) => s.entries)
+  const deleteCookie = useCookieJarStore((s) => s.deleteCookie)
+  const clearDomain = useCookieJarStore((s) => s.clearDomain)
+
+  let domain = ''
+  try { domain = new URL(requestUrl).hostname } catch { /* invalid url while typing */ }
+
+  // Filter entries with useMemo so we only recompute when the stable deps actually change.
+  const jarEntries = useMemo((): JarEntry[] => {
+    if (!sendCookiesAutomatically || !domain || !allEntries.length) return []
+    let host: string, reqPath: string, isHttps: boolean
+    try {
+      const u = new URL(requestUrl)
+      host = u.hostname.toLowerCase()
+      reqPath = u.pathname || '/'
+      isHttps = u.protocol === 'https:'
+    } catch {
+      return []
+    }
+    const now = Date.now()
+    return allEntries.filter((e) => {
+      if (e.expires !== undefined && e.expires < now) return false
+      if (e.secure && !isHttps) return false
+      if (host !== e.domain && !host.endsWith(`.${e.domain}`)) return false
+      if (e.path === '/') return true
+      if (reqPath === e.path) return true
+      const prefix = e.path.endsWith('/') ? e.path : `${e.path}/`
+      return reqPath.startsWith(prefix)
+    })
+  }, [allEntries, sendCookiesAutomatically, requestUrl, domain])
+
+  if (!domain) return null
+
+  return (
+    <div className="border-t border-border-1 mt-1">
+      <div className="flex items-center gap-2 px-3 py-1.5">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-text-4 flex-1">
+          Session Jar · {domain}
+        </span>
+        {!sendCookiesAutomatically && (
+          <span className="text-[9px] text-warning">disabled in Settings</span>
+        )}
+        {jarEntries.length > 0 && (
+          <button
+            onClick={() => clearDomain(domain)}
+            className="text-[10px] text-error hover:opacity-75 transition-opacity"
+            title="Clear all cookies for this domain"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+      {jarEntries.length === 0 ? (
+        <p className="px-3 pb-2 text-[10px] text-text-4">
+          {sendCookiesAutomatically ? 'No cookies captured yet for this domain' : 'Cookie jar is off'}
+        </p>
+      ) : (
+        <div className="px-2 pb-2 flex flex-col gap-0.5">
+          {jarEntries.map((e) => (
+            <div
+              key={`${e.domain}-${e.path}-${e.name}`}
+              className="group flex items-center gap-2 h-6 px-2 rounded hover:bg-surface-2"
+            >
+              <span className="font-mono text-[10px] text-text-3 shrink-0">{e.name}</span>
+              <span className="text-[10px] text-text-4">=</span>
+              <span className="font-mono text-[10px] text-text-2 min-w-0 flex-1 truncate">{e.value}</span>
+              {e.secure && <span className="text-[9px] text-success shrink-0">S</span>}
+              <button
+                onClick={() => deleteCookie(e.domain, e.name)}
+                className="shrink-0 text-text-4 opacity-0 group-hover:opacity-100 hover:text-error transition-all"
+                title="Remove from jar"
+              >
+                <X size={10} />
+              </button>
+            </div>
           ))}
         </div>
       )}
@@ -134,17 +242,23 @@ function CopyAsDropdown({ request }: { request: RequestItem }) {
   )
 }
 
-export function Composer({ request, onChange, onSend, onSave, onLoadTest, loading }: ComposerProps) {
+export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest, loading }: ComposerProps) {
   const getResolvedVars = useEnvironmentsStore((s) => s.getResolvedVars)
   const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
   const resolvedVars = getResolvedVars()
   const hasActiveEnv = activeEnvId !== null
 
-  const [activeTab, setActiveTab] = useState<TabId>('params')
+  const updateViewState = useTabsStore((s) => s.updateViewState)
+  const [activeTab, setActiveTab] = useState<ComposerSection>(
+    () => useTabsStore.getState().getViewState(tabId).composerSection,
+  )
   const [showCurlImport, setShowCurlImport] = useState(false)
   const [renameBodyPrompt, setRenameBodyPrompt] = useState<{ show: boolean; index: number } | null>(null)
   const [savedFlash, setSavedFlash] = useState(false)
   const urlInputRef = useRef<HTMLInputElement>(null)
+  const contentScrollRef = useRef<HTMLDivElement>(null)
+
+  const isDirty = useTabsStore((s) => s.tabs.find((t) => t.id === tabId)?.dirty ?? false)
 
   const isWriteMethod = ['POST', 'PUT', 'PATCH'].includes(request.method)
 
@@ -152,18 +266,24 @@ export function Composer({ request, onChange, onSend, onSave, onLoadTest, loadin
 
   const bodies = request.bodies ?? []
   const bodyCount = bodies.filter((b) => b.type !== 'none').length
+
+  const jarCount = useCookieJarStore((s) => {
+    try { return s.getCookiesForUrl(request.url).length } catch { return 0 }
+  })
+
   const commonTabs = [
-    { id: 'auth' as TabId, label: 'Auth', count: request.auth?.type !== 'none' ? 1 : 0 },
-    { id: 'headers' as TabId, label: 'Headers', count: (request.headers ?? []).filter((h) => h.enabled && h.key).length },
-    { id: 'cookies' as TabId, label: 'Cookies', count: (request.cookies ?? []).filter((c) => c.enabled && c.key).length },
-    { id: 'params' as TabId, label: 'Params', count: (request.params ?? []).filter((p) => p.enabled && p.key).length },
-    { id: 'scripts' as TabId, label: 'Scripts', count: (scripts.pre || scripts.post || scripts.tests) ? 1 : 0 },
-    { id: 'tests' as TabId, label: 'Tests', count: (request.assertions ?? []).length },
-    { id: 'body' as TabId, label: 'Body', count: bodyCount },
+    { id: 'auth' as ComposerSection, label: 'Auth', count: request.auth?.type !== 'none' ? 1 : 0 },
+    { id: 'headers' as ComposerSection, label: 'Headers', count: (request.headers ?? []).filter((h) => h.enabled && h.key).length },
+    { id: 'cookies' as ComposerSection, label: 'Cookies', count: (request.cookies ?? []).filter((c) => c.enabled && c.key).length + jarCount },
+    { id: 'params' as ComposerSection, label: 'Params', count: (request.params ?? []).filter((p) => p.enabled && p.key).length },
+    { id: 'scripts' as ComposerSection, label: 'Scripts', count: (scripts.pre || scripts.post || scripts.tests) ? 1 : 0 },
+    { id: 'tests' as ComposerSection, label: 'Tests', count: (request.assertions ?? []).length },
+    { id: 'notes' as ComposerSection, label: 'Notes', count: request.description?.trim() ? 1 : 0 },
+    { id: 'body' as ComposerSection, label: 'Body', count: bodyCount },
   ]
 
   const tabs = isWriteMethod
-    ? [{ id: 'body' as TabId, label: 'Body', count: bodyCount }, ...commonTabs.filter((t) => t.id !== 'body')]
+    ? [{ id: 'body' as ComposerSection, label: 'Body', count: bodyCount }, ...commonTabs.filter((t) => t.id !== 'body')]
     : commonTabs
 
   const bodyIndex = bodies.length
@@ -181,6 +301,13 @@ export function Composer({ request, onChange, onSend, onSave, onLoadTest, loadin
     document.addEventListener('adomnia:focus-url', focusUrl)
     return () => document.removeEventListener('adomnia:focus-url', focusUrl)
   }, [])
+
+  useEffect(() => {
+    if (contentScrollRef.current) {
+      contentScrollRef.current.scrollTop =
+        useTabsStore.getState().getViewState(tabId).composerContentScrollTop[activeTab] ?? 0
+    }
+  }, [tabId, activeTab])
 
   return (
     <>
@@ -270,12 +397,14 @@ export function Composer({ request, onChange, onSend, onSave, onLoadTest, loadin
               setSavedFlash(true)
               setTimeout(() => setSavedFlash(false), 1000)
             }}
-            title="Save to collection (Ctrl+S)"
+            title={isDirty ? 'Unsaved changes — Save to collection (Ctrl+S)' : 'Save to collection (Ctrl+S)'}
             className={cn(
               'h-8 w-8 flex items-center justify-center rounded transition-all',
               savedFlash
                 ? 'text-success bg-success/10'
-                : 'text-text-3 hover:text-text-1 hover:bg-surface-2'
+                : isDirty
+                  ? 'text-warning bg-warning/15 hover:bg-warning/25 border border-warning/30'
+                  : 'text-text-3 hover:text-text-1 hover:bg-surface-2'
             )}
           >
             {savedFlash ? <Check size={14} /> : <Save size={14} />}
@@ -289,7 +418,7 @@ export function Composer({ request, onChange, onSend, onSave, onLoadTest, loadin
             <FileCode size={14} />
           </button>
 
-          <CopyAsDropdown request={request} />
+          <CopyAsDropdown request={request} vars={resolvedVars} />
 
           {onLoadTest && (
             <button
@@ -307,7 +436,10 @@ export function Composer({ request, onChange, onSend, onSave, onLoadTest, loadin
           {tabs.map((t) => (
             <button
               key={t.id}
-              onClick={() => setActiveTab(t.id)}
+              onClick={() => {
+                setActiveTab(t.id)
+                updateViewState(tabId, { composerSection: t.id })
+              }}
               className={cn(
                 'px-3 py-2 text-xs transition-colors relative',
                 activeTab === t.id ? 'text-text-1' : 'text-text-3 hover:text-text-2'
@@ -327,7 +459,19 @@ export function Composer({ request, onChange, onSend, onSave, onLoadTest, loadin
         </div>
 
         {/* Tab content — body gets extra height so large JSON doesn't need excessive scrolling */}
-        <div className={cn('overflow-y-auto', activeTab === 'body' ? 'max-h-[55vh]' : 'max-h-[300px]')}>
+        <div
+          ref={contentScrollRef}
+          onScroll={(e) => {
+            const viewState = useTabsStore.getState().getViewState(tabId)
+            updateViewState(tabId, {
+              composerContentScrollTop: {
+                ...viewState.composerContentScrollTop,
+                [activeTab]: e.currentTarget.scrollTop,
+              },
+            })
+          }}
+          className={cn('overflow-y-auto', activeTab === 'body' ? 'max-h-[55vh]' : 'max-h-[300px]')}
+        >
           {activeTab === 'params' && (
             <KVEditor rows={request.params ?? []} onChange={(params) => onChange({ ...request, params })} />
           )}
@@ -339,12 +483,15 @@ export function Composer({ request, onChange, onSend, onSave, onLoadTest, loadin
             />
           )}
           {activeTab === 'cookies' && (
-            <KVEditor
-              rows={request.cookies ?? []}
-              onChange={(cookies) => onChange({ ...request, cookies })}
-              keyPlaceholder="Cookie name"
-              valuePlaceholder="Cookie value"
-            />
+            <>
+              <KVEditor
+                rows={request.cookies ?? []}
+                onChange={(cookies) => onChange({ ...request, cookies })}
+                keyPlaceholder="Cookie name"
+                valuePlaceholder="Cookie value"
+              />
+              <CookieJarSection requestUrl={request.url} />
+            </>
           )}
           {activeTab === 'body' && (
             <>
@@ -451,6 +598,21 @@ export function Composer({ request, onChange, onSend, onSave, onLoadTest, loadin
               assertions={request.assertions ?? []}
               onChange={(assertions) => onChange({ ...request, assertions })}
             />
+          )}
+          {activeTab === 'notes' && (
+            <div className="flex flex-col gap-2 p-3">
+              <div className="flex items-center gap-2 text-[11px] font-medium text-text-3">
+                <FileText size={12} className="text-accent" />
+                Request documentation
+              </div>
+              <textarea
+                value={request.description ?? ''}
+                onChange={(event) => onChange({ ...request, description: event.target.value })}
+                placeholder="Document constraints, token lifetime, batch windows, examples, or handoff notes for this request..."
+                className="min-h-24 w-full resize-y rounded border border-border-2 bg-surface-2 px-3 py-2 text-xs leading-relaxed text-text-1 outline-none placeholder:text-text-4 focus:border-accent"
+              />
+              <p className="text-[10px] text-text-4">Stored locally with this request and preserved in workspace or Postman collection exports.</p>
+            </div>
           )}
         </div>
       </div>

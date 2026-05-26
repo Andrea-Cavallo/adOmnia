@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   Play, Square, RefreshCw, Trash2, ChevronDown, ChevronRight,
   Filter, Activity, ShieldCheck, ShieldOff, Plus, Download,
-  Map, Zap, Copy, RotateCcw, PauseCircle, X,
+  Map, Zap, Copy, RotateCcw, PauseCircle, X, BarChart2,
 } from 'lucide-react'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { cn } from '@/lib/utils'
@@ -201,6 +201,15 @@ function TrafficTab({
     a.click()
   }
 
+  const handleOpenInHarViewer = async () => {
+    // Fetch traffic in HAR format (same endpoint the HAR Viewer uses internally)
+    const data = await api('/proxy/export', { format: 'har', ids: [] }) as { ok: boolean; data?: unknown; error?: string } | null
+    if (!data?.ok || !data?.data) return
+    // Queue for the HAR Viewer panel and navigate there in one step
+    useAppStore.getState().queueFileImport({ kind: 'har', name: 'Proxy Traffic', text: JSON.stringify(data.data) })
+    useAppStore.getState().setActiveRail('har')
+  }
+
   const filtered = filter
     ? traffic.filter((t) => t.url.includes(filter) || t.method.includes(filter.toUpperCase()))
     : traffic
@@ -214,8 +223,16 @@ function TrafficTab({
             className="flex-1 bg-transparent text-xs text-text-1 outline-none placeholder:text-text-4" />
         </div>
         <div className="flex-1" />
-        <button onClick={handleExport} title="Export traffic" className="flex items-center gap-1 px-2.5 py-1.5 border border-border-2 rounded-lg text-xs text-text-3 hover:text-text-1 transition-colors">
+        <button onClick={handleExport} title="Export traffic as JSON" className="flex items-center gap-1 px-2.5 py-1.5 border border-border-2 rounded-lg text-xs text-text-3 hover:text-text-1 transition-colors">
           <Download size={11} /> Export
+        </button>
+        <button
+          onClick={() => void handleOpenInHarViewer()}
+          disabled={traffic.length === 0}
+          title="Open current traffic in HAR Viewer"
+          className="flex items-center gap-1 px-2.5 py-1.5 border border-border-2 rounded-lg text-xs text-text-3 hover:text-text-1 hover:border-accent/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        >
+          <BarChart2 size={11} /> HAR Viewer
         </button>
         <button onClick={refresh} className="w-7 h-7 flex items-center justify-center rounded-lg text-text-4 hover:text-text-1 hover:bg-surface-2 transition-colors">
           <RefreshCw size={13} />
@@ -863,14 +880,11 @@ export function ProxyPanel() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Toolbar */}
-      <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border-1 shrink-0">
-        <div className="flex items-center gap-2">
-          <Activity size={14} className="text-accent" />
-          <h2 className="text-sm font-semibold text-text-1">Proxy Interceptor</h2>
-        </div>
+      {/* Action toolbar: the panel title/navigation lives in MainArea. */}
+      <div className="flex h-12 items-center gap-3 px-4 border-b border-border-1 shrink-0">
         <div className={cn('flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold border',
           status.running ? 'bg-success/10 text-success border-success/25' : 'bg-surface-2 text-text-4 border-border-2')}>
+          <Activity size={11} />
           {status.running && <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />}
           {status.running ? `Running :${status.port}` : 'Stopped'}
         </div>

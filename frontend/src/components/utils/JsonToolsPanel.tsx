@@ -309,12 +309,6 @@ export function JsonToolsPanel({ initialTab }: { initialTab?: Tab } = {}) {
 
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border-1">
-        <Braces size={16} className="text-accent" />
-        <h2 className="text-sm font-semibold text-text-1">JSON Tools</h2>
-      </div>
-
       <div className="flex-1 flex flex-col p-4 gap-4 overflow-auto">
         {/* Tab bar */}
         <div className="flex gap-0.5 border-b border-border-1 flex-wrap">

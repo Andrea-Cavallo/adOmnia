@@ -115,7 +115,7 @@ export function VaultPanel() {
             <KeyRound size={15} className="text-accent" />
           </div>
           <div>
-            <h2 className="text-sm font-semibold text-text-1 leading-none">Vault</h2>
+            <h2 className="text-sm font-semibold text-text-1 leading-none">Encryption status</h2>
             <p className="text-[10px] text-text-4 mt-0.5">age/scrypt local encryption</p>
           </div>
         </div>

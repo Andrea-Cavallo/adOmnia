@@ -75,6 +75,35 @@ function countRequests(nodes: TreeNode[]): number {
   return nodes.reduce((count, node) => count + (node.type === 'request' ? 1 : countRequests(node.children)), 0)
 }
 
+function requestMatchesQuery(node: RequestItem, lower: string): boolean {
+  if (node.name.toLowerCase().includes(lower)) return true
+  if (node.url.toLowerCase().includes(lower)) return true
+  if (node.headers?.some((h) => h.key.toLowerCase().includes(lower) || h.value.toLowerCase().includes(lower))) return true
+  if (node.params?.some((p) => p.key.toLowerCase().includes(lower) || p.value.toLowerCase().includes(lower))) return true
+  const body = node.bodies?.[node.activeBodyIdx ?? 0]
+  if (body?.raw?.toLowerCase().includes(lower)) return true
+  if (body?.form?.some((f) => f.key.toLowerCase().includes(lower) || f.value.toLowerCase().includes(lower))) return true
+  if (node.description?.toLowerCase().includes(lower)) return true
+  return false
+}
+
+/** Returns a short hint string if the match is NOT in name/url, so the user knows why it appeared. */
+function getMatchHint(node: RequestItem, lower: string): string | null {
+  if (node.name.toLowerCase().includes(lower) || node.url.toLowerCase().includes(lower)) return null
+  const hdr = node.headers?.find((h) => h.key.toLowerCase().includes(lower) || h.value.toLowerCase().includes(lower))
+  if (hdr) return `hdr:${hdr.key || hdr.value}`
+  const param = node.params?.find((p) => p.key.toLowerCase().includes(lower) || p.value.toLowerCase().includes(lower))
+  if (param) return `param:${param.key || param.value}`
+  const body = node.bodies?.[node.activeBodyIdx ?? 0]
+  if (body?.form?.length) {
+    const f = body.form.find((r) => r.key.toLowerCase().includes(lower) || r.value.toLowerCase().includes(lower))
+    if (f) return `form:${f.key || f.value}`
+  }
+  if (body?.raw?.toLowerCase().includes(lower)) return 'body'
+  if (node.description?.toLowerCase().includes(lower)) return 'notes'
+  return null
+}
+
 function filterTree(nodes: TreeNode[], query: string): TreeNode[] {
   const lower = query.toLowerCase()
   return nodes
@@ -84,7 +113,7 @@ function filterTree(nodes: TreeNode[], query: string): TreeNode[] {
         if (children.length || node.name.toLowerCase().includes(lower)) return { ...node, children }
         return null
       }
-      return node.name.toLowerCase().includes(lower) || node.url.toLowerCase().includes(lower) ? node : null
+      return requestMatchesQuery(node as RequestItem, lower) ? node : null
     })
     .filter(Boolean) as TreeNode[]
 }
@@ -131,7 +160,7 @@ function MoveToFolderDialog({
       <DialogContent size="sm">
         <DialogHeader>
           <span className="text-sm font-semibold text-text-1">Move to Folder</span>
-          <button onClick={onCancel} className="text-text-4 hover:text-text-1 transition-colors">
+          <button onClick={onCancel} title="Close" className="text-text-4 hover:text-text-1 transition-colors">
             <X size={16} />
           </button>
         </DialogHeader>
@@ -235,6 +264,7 @@ function TreeNodeRow({
   dragPayload,
   dropTarget,
   focusedId,
+  query,
   onToggle,
   onOpenRequest,
   onSetEditing,
@@ -257,6 +287,7 @@ function TreeNodeRow({
   dragPayload: DragPayload | null
   dropTarget: { id: string; position: DropPosition } | null
   focusedId: string | null
+  query: string
   onToggle: (id: string) => void
   onOpenRequest: (request: RequestItem, collectionId: string) => void
   onSetEditing: (id: string | null) => void
@@ -272,6 +303,7 @@ function TreeNodeRow({
   const isOpen = isFolder && openIds.has(node.id)
   const isInvalidDrop = dragPayload?.type === 'node' && (dragPayload.nodeId === node.id || (dragPayload.nodeType === 'folder' && containsNode(node, dragPayload.nodeId)))
   const target = dropTarget?.id === node.id ? dropTarget.position : null
+  const matchHint = query && !isFolder ? getMatchHint(node as RequestItem, query.toLowerCase()) : null
 
   return (
     <div>
@@ -323,6 +355,11 @@ function TreeNodeRow({
             {node.name}
           </span>
         )}
+        {matchHint && (
+          <span className="shrink-0 rounded bg-surface-3 px-1 py-0.5 font-mono text-[8px] text-text-4 truncate max-w-[72px]" title={matchHint}>
+            {matchHint}
+          </span>
+        )}
         {isFolder && <span className="text-[10px] text-text-4">{countRequests((node as FolderItem).children)}</span>}
       </div>
       {isFolder && isOpen && (
@@ -341,6 +378,7 @@ function TreeNodeRow({
               dragPayload={dragPayload}
               dropTarget={dropTarget}
               focusedId={focusedId}
+              query={query}
               onToggle={onToggle}
               onOpenRequest={onOpenRequest}
               onSetEditing={onSetEditing}
@@ -598,12 +636,12 @@ export function CollectionTree({
 
   const contextExportMenu = (target: ContextTarget) => (
     <div className="border-t border-border-1 py-1">
-      {(['adomnia', 'postman', 'insomnia', 'bruno'] as ExportFormat[]).map((format) => (
+      {(['adomnia', 'postman', 'insomnia', 'bruno', 'openapi'] as ExportFormat[]).map((format) => (
         <MenuButton
           key={format}
           onClick={() => target.kind === 'collection' ? exportCollection(target.collection, format) : exportNode(target.collectionId, target.node, format)}
         >
-          <Download size={12} /> Export {format}
+          <Download size={12} /> Export {format === 'openapi' ? 'OpenAPI 3' : format}
         </MenuButton>
       ))}
     </div>
@@ -692,6 +730,7 @@ export function CollectionTree({
                 dragPayload={dragPayload}
                 dropTarget={dropTarget}
                 focusedId={focusedId}
+                query={query}
                 onToggle={toggle}
                 onOpenRequest={onOpenRequest}
                 onSetEditing={setEditingId}

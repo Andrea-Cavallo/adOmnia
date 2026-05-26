@@ -50,16 +50,23 @@ func withSecurity(next http.Handler) http.Handler {
 			return
 		}
 
-		// Require valid session token on all non-OPTIONS requests.
+		// The OAuth redirect is opened by an external identity provider and
+		// authenticates itself with the one-time state stored by /oauth/start.
+		publicOAuthCallback := r.Method == http.MethodGet && r.URL.Path == "/oauth/callback"
+
+		// Require valid session token on all non-OPTIONS requests except the
+		// provider redirect callback.
 		// EventSource cannot set custom headers, so stream endpoints may pass it
 		// as a query parameter on the localhost-only sidecar URL.
-		token := r.Header.Get("X-Sidecar-Token")
-		if token == "" {
-			token = r.URL.Query().Get("token")
-		}
-		if token != sidecarToken {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
-			return
+		if !publicOAuthCallback {
+			token := r.Header.Get("X-Sidecar-Token")
+			if token == "" {
+				token = r.URL.Query().Get("token")
+			}
+			if token != sidecarToken {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
 		}
 
 		// Limit request bodies to 10 MB to prevent memory pressure

@@ -412,7 +412,7 @@ export function KafkaPanel({
           {!embedded && <div className="mb-5 flex items-center justify-between border-b border-border-1 pb-4">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-accent">PUB / SUB</p>
-              <h2 className="mt-1 text-lg font-semibold text-text-1">Kafka Workbench</h2>
+              <h2 className="mt-1 text-lg font-semibold text-text-1">Producer workspace</h2>
               <p className="mt-1 text-xs text-text-4">Produce, bulk produce, consume with groups, and inspect topics through the local backend.</p>
             </div>
             <div className="flex items-center gap-2">

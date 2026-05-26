@@ -1,7 +1,8 @@
-import type { RequestItem, ResponseData, RequestAuth } from '@/lib/types'
+import { uid, type RequestItem, type ResponseData, type RequestAuth } from '@/lib/types'
 import { substVars } from '@/lib/substVars'
 import { useSettingsStore } from '@/stores/settings'
 import { useHostsStore } from '@/stores/hosts'
+import { useCookieJarStore } from '@/lib/cookieJar'
 import { ExecuteHTTP } from '../wailsjs/go/main/App'
 
 export async function sendRequest(
@@ -18,14 +19,9 @@ export async function sendRequest(
     }
   }
 
-  // Serialize cookies into Cookie header (runs before both Go and browser fetch paths)
+  // Collect explicit per-request cookies (deferred — we need fullUrl first for jar lookup)
   const cookies = request.cookies ?? []
   const enabledCookies = cookies.filter((c) => c.enabled && c.key)
-  if (enabledCookies.length > 0) {
-    headers['Cookie'] = enabledCookies
-      .map((c) => `${substVars(c.key, vars)}=${substVars(c.value, vars)}`)
-      .join('; ')
-  }
 
   let enabledParams = request.params.filter((p) => p.enabled && p.key)
   const usp = new URLSearchParams()
@@ -34,6 +30,17 @@ export async function sendRequest(
   }
   const queryString = enabledParams.length ? usp.toString() : ''
   const fullUrl = queryString ? (url.includes('?') ? `${url}&${queryString}` : `${url}?${queryString}`) : url
+
+  // Build Cookie header: explicit cookies + jar cookies (explicit take priority)
+  {
+    const parts = enabledCookies.map((c) => `${substVars(c.key, vars)}=${substVars(c.value, vars)}`)
+    const explicitKeys = new Set(enabledCookies.map((c) => substVars(c.key, vars).toLowerCase()))
+    const jarCookies = useCookieJarStore.getState().getCookiesForUrl(fullUrl)
+    for (const jc of jarCookies) {
+      if (!explicitKeys.has(jc.name.toLowerCase())) parts.push(`${jc.name}=${jc.value}`)
+    }
+    if (parts.length > 0) headers['Cookie'] = parts.join('; ')
+  }
 
   const rawBody = getBody(request, vars, headers)
 
@@ -89,6 +96,11 @@ export async function sendRequest(
     if (resp.error) {
       return { status: 0, statusText: '', headers: {}, body: '', contentType: '', ms: resp.ms ?? 0, size: 0, error: resp.error }
     }
+    // Capture Set-Cookie into the session jar
+    const rawSetCookie = resp.headers?.['Set-Cookie'] ?? resp.headers?.['set-cookie'] ?? ''
+    if (rawSetCookie) {
+      useCookieJarStore.getState().capture(fullUrl, [rawSetCookie])
+    }
     return {
       status: resp.status,
       statusText: resp.statusText,
@@ -105,6 +117,51 @@ export async function sendRequest(
 }
 
 // --- Auth ---
+
+export async function prepareRequestForCodegen(
+  request: RequestItem,
+  vars: Record<string, string>,
+): Promise<RequestItem> {
+  const headers: Record<string, string> = {}
+  for (const header of request.headers) {
+    if (header.enabled && header.key) {
+      headers[substVars(header.key, vars)] = substVars(header.value, vars)
+    }
+  }
+  const cookies = (request.cookies ?? []).filter((cookie) => cookie.enabled && cookie.key)
+  if (cookies.length > 0) {
+    headers.Cookie = cookies
+      .map((cookie) => `${substVars(cookie.key, vars)}=${substVars(cookie.value, vars)}`)
+      .join('; ')
+  }
+  const baseUrl = substVars(request.url, vars)
+  const query = new URLSearchParams()
+  for (const param of request.params.filter((item) => item.enabled && item.key)) {
+    query.append(substVars(param.key, vars), substVars(param.value, vars))
+  }
+  const queryString = query.toString()
+  const url = queryString
+    ? (baseUrl.includes('?') ? `${baseUrl}&${queryString}` : `${baseUrl}?${queryString}`)
+    : baseUrl
+  const body = getBody(request, vars, headers)
+  await applyAuth(request, headers, vars, url, body)
+  const serializedBody = body instanceof URLSearchParams
+    ? body.toString()
+    : typeof body === 'string'
+      ? body
+      : undefined
+  const bodies = request.bodies.map((item, index) => index === request.activeBodyIdx && serializedBody !== undefined
+    ? { ...item, type: 'raw' as const, raw: serializedBody }
+    : item)
+
+  return {
+    ...request,
+    url,
+    params: [],
+    headers: Object.entries(headers).map(([key, value]) => ({ id: uid(), key, value, enabled: true })),
+    bodies,
+  }
+}
 
 async function applyAuth(
   request: RequestItem,

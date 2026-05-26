@@ -370,7 +370,7 @@ export function DiffPickerModal({ currentTabId, onConfirm, onCancel }: DiffPicke
         <div className="flex items-center gap-2 px-4 py-3 border-b border-border-1">
           <GitCompare size={14} className="text-accent" />
           <span className="text-sm font-semibold text-text-1 flex-1">Compare Response With…</span>
-          <button onClick={onCancel} className="p-1 rounded text-text-4 hover:text-text-1"><X size={14} /></button>
+          <button onClick={onCancel} title="Close" className="p-1 rounded text-text-4 hover:text-text-1"><X size={14} /></button>
         </div>
 
         {/* Mode toggle */}

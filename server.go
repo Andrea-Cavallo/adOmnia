@@ -186,6 +186,11 @@ func startHTTPServer() {
 	mux.HandleFunc("/grpc/invoke", grpcInvokeHandler)
 	mux.HandleFunc("/grpc/parse-proto", grpcParseProtoHandler)
 
+	// OAuth 2.0 Authorization Code + PKCE
+	mux.HandleFunc("/oauth/start", oauthStartHandler)
+	mux.HandleFunc("/oauth/callback", oauthCallbackHandler)
+	mux.HandleFunc("/oauth/status", oauthStatusHandler)
+
 	// DevLogs streaming
 	mux.HandleFunc("/devlogs/stream", devLogStreamHandler)
 

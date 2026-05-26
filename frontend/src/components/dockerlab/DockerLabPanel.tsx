@@ -248,7 +248,7 @@ export function DockerLabPanel() {
         <div className="px-4 py-3 border-b border-border-1">
           <div className="flex items-center gap-2">
             <Cpu size={16} className="text-accent" />
-            <h2 className="text-sm font-semibold text-text-1">Docker Lab</h2>
+            <h2 className="text-sm font-semibold text-text-1">Lab presets</h2>
           </div>
           <p className="text-[10px] text-text-4 mt-0.5">
             Lancia stack Docker precofigurati direttamente da adOmnia — nessun terminale necessario.

@@ -34,7 +34,7 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 | A1.7 | **Script Pre/Post Richiesta** | Editor script pre-request e post-response con API `pm.*` compatibile Postman. |
 | A1.8 | **Visualizzatore Risposta** | Badge stato colorato, metriche dimensione/tempo, body JSON con syntax highlighting e token espandibili, vista raw, vista headers, copia negli appunti. |
 | A1.9 | **Cronologia Risposte** | Navigazione tra risposte precedenti per tab, numero massimo configurabile. |
-| A1.10 | **Generazione Codice** | Snippet equivalente in 13 linguaggi: cURL, JavaScript, Node.js, Python, Go, PHP, C#, Java, Ruby, Rust, Swift, Kotlin, Shell. |
+| A1.10 | **Generazione Codice** | Snippet equivalente in 13 linguaggi con URL/body risolti e header auth effettivi, inclusa la firma AWS Signature v4 calcolata al momento della copia. |
 | A1.11 | **Import cURL** | Parser comandi cURL: estrae metodo, URL, headers, body, auth (Bearer, Basic). |
 | A1.12 | **Albero Collezioni** | Organizzazione gerarchica cartelle/richieste, ricerca, menu contestuali CRUD, colori per collezione. |
 | A1.13 | **Drag & Drop Riordino** | Riordina richieste e cartelle trascinando nell'albero. |
@@ -44,6 +44,7 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 | A1.16 | **Input Highlight Variabili** | Campo URL evidenzia visivamente i pattern `{{variabile}}` inline. |
 | A1.17 | **Timeout & Redirect** | Timeout configurabile per richiesta, toggle segui/blocca redirect, max redirect configurabile. |
 | A1.18 | **Workspace Demo adOmnia Lab** | Workspace demo precaricato con collezioni e ambienti di esempio. |
+| A1.19 | **Note Richiesta** | Tab Notes per documentazione multi-riga persistita con la richiesta; preserva descrizioni da OpenAPI e Postman import/export. |
 
 ---
 
@@ -55,7 +56,7 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 | A2.2 | **Bearer Token** | Header `Authorization: Bearer <token>`. |
 | A2.3 | **Basic Auth** | HTTP Basic con username/password, codifica Base64 automatica. |
 | A2.4 | **API Key (Header/Query)** | Autenticazione via header personalizzato o query param. |
-| A2.5 | **OAuth 2.0** | Grant type, token URL, auth URL, client ID/secret, scope, redirect URI, refresh token, tracciamento scadenza. |
+| A2.5 | **OAuth 2.0** | Grant client credentials/password/refresh e Authorization Code + PKCE: apre il browser di sistema, genera challenge/state, intercetta automaticamente il callback loopback locale e scambia il codice senza copia-incolla. |
 | A2.6 | **AWS Signature v4** | Firma AWS4: access key, secret key, regione, servizio, token di sessione opzionale. |
 | A2.7 | **Digest Auth** | HTTP Digest con challenge-response. |
 
@@ -591,7 +592,7 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 |---|-------------|-------------|
 | E3.1 | **Workspace Nominati** | Salva e commuta tra workspace multipli; ognuno include collezioni, ambienti, tab, impostazioni. |
 | E3.2 | **Salva Workspace** | Snapshot corrente con nome, timestamp, conteggio tab. |
-| E3.3 | **Carica Workspace** | Ripristina stato da workspace nominato. |
+| E3.3 | **Carica Workspace** | Ripristina stato da workspace nominato e aggiorna la cronologia locale dei workspace aperti di recente. |
 | E3.4 | **Elimina Workspace** | Rimuove workspace dal registro. |
 | E3.5 | **Import/Export `.adomnia`** | Formato JSON portabile (v1.0): collezioni, ambienti, activeEnvId, mockConfig, proxyConfig, flows. |
 | E3.6 | **Import OpenAPI 3.0** | Parsing spec JSON/YAML; operazioni convertite in cartelle raggruppate per tag. |
@@ -795,6 +796,7 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 | G1.53 | Shortcut Tastiera |
 | G1.54 | About (versione, build, crediti) |
 | G1.55 | Developer (developer mode, dev tools) |
+| G1.56 | Ricerca impostazioni per sezione, etichetta e descrizione con apertura automatica del risultato |
 
 ---
 
@@ -810,7 +812,7 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 | G2.6 | **Nasconde Console Windows** | Sopprime la finestra console in produzione. |
 | G2.7 | **Internazionalizzazione** | Supporto Inglese e Italiano; dizionario traduzioni completo. |
 | G2.8 | **State Management Zustand** | Store: app, collezioni, ambienti, tab, impostazioni, devLogs, temi, plugin, browser-debug. |
-| G2.9 | **Pannello Onboarding / Welcome** | Home con catalogo funzionalità, quick-start, shortcut, import workspace e metriche live di collezioni, richieste, ambienti, tab, risposte e servizi locali attivi. |
+| G2.9 | **Pannello Onboarding / Welcome** | Home con catalogo funzionalità, quick-start, shortcut, metriche live e sezione Recent Workspaces per riaprire in un click gli ultimi workspace locali. |
 | G2.10 | **Shortcut Tastiera** | Ctrl/Cmd+K apre la Command Palette; Ctrl+N nuovo tab, Ctrl+Enter invia, Alt+← indietro, Ctrl+Shift+D dev logs. |
 | G2.11 | **Confirm Dialog** | Componente riutilizzabile per azioni distruttive con messaggio personalizzabile. |
 | G2.12 | **Command Palette** | Ricerca fuzzy istantanea per pannelli, richieste recenti, collection, ambienti e azioni rapide come avvio Mock/Proxy. |

@@ -22,6 +22,7 @@ import { safeSetItem } from '@/lib/safeLocalStorage'
 // ─── Lazy-loaded panels (loaded on first navigation) ──────────────────────────
 
 const WebSocketPanel       = React.lazy(() => import('@/components/websocket/WebSocketPanel').then(m => ({ default: m.WebSocketPanel })))
+const RequestHistoryPanel  = React.lazy(() => import('@/components/history/RequestHistoryPanel').then(m => ({ default: m.RequestHistoryPanel })))
 const SsePanel             = React.lazy(() => import('@/components/sse/SsePanel').then(m => ({ default: m.SsePanel })))
 const KafkaPanel           = React.lazy(() => import('@/components/kafka/KafkaPanel').then(m => ({ default: m.KafkaPanel })))
 const BrokerStudioPanel    = React.lazy(() => import('@/components/kafka/BrokerStudioPanel').then(m => ({ default: m.BrokerStudioPanel })))
@@ -72,7 +73,7 @@ function PanelHeader({ titleKey }: { titleKey?: string }) {
     ? t.rail[titleKey as keyof typeof t.rail]
     : titleKey || ''
   return (
-    <div className="h-8 flex items-center gap-1 px-2 border-b border-border-1 bg-surface-1 flex-shrink-0">
+    <div className="h-10 flex items-center gap-2 px-3 border-b border-border-1 bg-surface-1 flex-shrink-0">
       <button
         onClick={goBack}
         disabled={!hasHistory}
@@ -81,7 +82,7 @@ function PanelHeader({ titleKey }: { titleKey?: string }) {
       >
         <ArrowLeft size={13} />
       </button>
-      <span className="text-xs text-text-3 font-medium flex-1 px-1">{label}</span>
+      <span className="flex-1 px-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-text-2">{label}</span>
       <button
         onClick={() => { if (hasHistory) goBack(); else setActiveRail('collections') }}
         title="Close panel"
@@ -132,6 +133,7 @@ function RequestWorkspace() {
   const setLoading = useTabsStore((s) => s.setLoading)
   const setResponse = useTabsStore((s) => s.setResponse)
   const markClean = useTabsStore((s) => s.markClean)
+  const updateViewState = useTabsStore((s) => s.updateViewState)
   const updateCollectionRequest = useCollectionsStore((s) => s.updateRequest)
   const collections = useCollectionsStore((s) => s.collections)
   const confirmBeforeClosingDirtyTabs = useSettingsStore((s) => s.settings.general.confirmBeforeClosingDirtyTabs)
@@ -155,6 +157,7 @@ function RequestWorkspace() {
 
   const [showLoadTest, setShowLoadTest] = useState(false)
   const [pendingClose, setPendingClose] = useState<PendingClose | null>(null)
+  const composerScrollRef = useRef<HTMLDivElement>(null)
 
   // ── Resizable response panel ────────────────────────────────────────────────
   const [responseHeight, setResponseHeight] = useState<number>(loadResponseHeight)
@@ -214,6 +217,12 @@ function RequestWorkspace() {
   useEffect(() => {
     setShowLoadTest(false)
   }, [activeTabId])
+
+  useEffect(() => {
+    if (activeTab && composerScrollRef.current) {
+      composerScrollRef.current.scrollTop = useTabsStore.getState().getViewState(activeTab.id).composerScrollTop
+    }
+  }, [activeTab?.id])
 
   const handleSend = async () => {
     if (!activeTab) return
@@ -344,8 +353,14 @@ function RequestWorkspace() {
         /* ── Split layout: Composer (flex-1, scrollable) + drag handle + ResponsePanel ── */
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           {/* Composer area — grows to fill remaining space; scrolls when content overflows */}
-          <div className="flex-1 min-h-0 overflow-y-auto">
+          <div
+            ref={composerScrollRef}
+            onScroll={(e) => updateViewState(activeTab.id, { composerScrollTop: e.currentTarget.scrollTop })}
+            className="flex-1 min-h-0 overflow-y-auto"
+          >
             <Composer
+              key={activeTab.id}
+              tabId={activeTab.id}
               request={activeTab.request}
               onChange={(req) => updateRequest(activeTab.id, req)}
               onSend={handleSend}
@@ -384,6 +399,8 @@ function RequestWorkspace() {
                 style={{ height: responseHeight }}
               >
                 <ResponsePanel
+                  key={activeTab.id}
+                  tabId={activeTab.id}
                   response={activeTab.response}
                   loading={activeTab.loading}
                   oaSpec={oaSpec}
@@ -477,6 +494,7 @@ type PanelDef = {
 function panelFor(activeRail: RailItem): PanelDef {
   switch (activeRail) {
     case 'collections': return { component: <RequestWorkspace /> }
+    case 'history':     return { component: <RequestHistoryPanel />,  titleKey: 'Request History', overflow: true }
     case 'websocket':   return { component: <WebSocketPanel />,       titleKey: 'WebSocket',     overflow: true }
     case 'sse':         return { component: <SsePanel />,             titleKey: 'SSE Client',    overflow: true }
     case 'kafka':       return { component: <KafkaPanel />,          titleKey: 'kafka',         overflow: true }

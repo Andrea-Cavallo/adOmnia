@@ -43,6 +43,7 @@ export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 
 export interface RequestItem {
   id: string
   name: string
+  description?: string
   type: 'request'
   method: HttpMethod
   url: string
@@ -56,6 +57,7 @@ export interface RequestItem {
   timeout?: number
   followRedirects?: boolean
   _openapiPath?: string
+  _xExtensions?: Record<string, unknown>
   assertions?: RequestAssertion[]
 }
 
@@ -143,6 +145,13 @@ export interface ResponseData {
   scripts?: ScriptRunSummary
 }
 
+export interface RequestHistoryEntry {
+  id: string
+  recordedAt: string | null
+  request?: RequestItem
+  response: ResponseData
+}
+
 export interface Tab {
   id: string
   request: RequestItem
@@ -212,6 +221,7 @@ export function blankRequest(method: HttpMethod = 'GET', name = 'New Request'): 
   return {
     id: uid(),
     name,
+    description: '',
     type: 'request',
     method,
     url: '',

@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react'
 import {
   Activity,
+  ArrowRight,
   BarChart2,
   Braces,
   Bug,
   ChevronDown,
+  Clock,
   Code2,
   Container,
   Database,
@@ -33,6 +35,9 @@ import { inferThemeMode } from '@/lib/themeCatalog'
 import { useAppIcon } from '@/lib/brandAssets'
 import type { TreeNode } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
+import { applyWorkspaceState, type WorkspaceState } from '@/lib/workspaceState'
+import { loadRecentWorkspaces, rememberRecentWorkspace, type RecentWorkspace } from '@/lib/workspaceRecents'
 
 type LayerId = 'network' | 'logic' | 'storage' | 'observability'
 
@@ -116,6 +121,7 @@ const HUB_LAYERS: Array<Omit<HubLayer, 'stats'>> = [
       { id: 'browser', icon: Bug, title: 'Browser Debug', desc: 'Chrome DevTools Protocol, network capture, console and page context.', foot: 'unique pillar' },
       { id: 'har', icon: BarChart2, title: 'HAR Viewer', desc: 'Import captures, inspect waterfalls and create requests or mocks.', foot: 'traffic evidence' },
       { id: 'observe', icon: Activity, title: 'Trace Waterfall', desc: 'Read local JSONL logs, inspect traces and filter correlated events.', foot: 'local logs' },
+      { id: 'history', icon: Clock, title: 'Request History', desc: 'Search saved responses and reopen a previous HTTP request with its captured result.', foot: 'local evidence' },
       { id: 'secretscanner', icon: Shield, title: 'Secret Scanner', desc: 'Scan workspaces for tokens, API keys and high entropy strings.', foot: 'safety pass' },
       { id: 'jsontools', icon: Braces, title: 'JSON Tools', desc: 'Query, format, diff and inspect JSON with tree views.', foot: 'data analysis' },
       { id: 'xmltools', icon: FileCode, title: 'XML Tools', desc: 'Format, diff, XPath query and encode XML entities.', foot: 'legacy data' },
@@ -131,6 +137,7 @@ function countRequests(nodes: TreeNode[]): number {
 
 export function WelcomePanel() {
   const setActiveRail = useAppStore((s) => s.setActiveRail)
+  const port = useServerPort()
   const mockRunning = useAppStore((s) => s.mockRunning)
   const proxyRunning = useAppStore((s) => s.proxyRunning)
   const websocketRunning = useAppStore((s) => s.websocketRunning)
@@ -142,6 +149,9 @@ export function WelcomePanel() {
   const tabs = useTabsStore((s) => s.tabs)
   const responseHistory = useTabsStore((s) => s.responseHistory)
   const [openLayers, setOpenLayers] = useState<Set<LayerId>>(() => new Set())
+  const [recentWorkspaces, setRecentWorkspaces] = useState<RecentWorkspace[]>(loadRecentWorkspaces)
+  const [workspaceLoading, setWorkspaceLoading] = useState<string | null>(null)
+  const [workspaceError, setWorkspaceError] = useState('')
   const legacyTheme = useSettingsStore((s) => s.settings.appearance.theme)
   const themes = useThemesStore((s) => s.themes)
   const activeThemeId = useThemesStore((s) => s.activeThemeId)
@@ -191,6 +201,28 @@ export function WelcomePanel() {
       else next.add(id)
       return next
     })
+  }
+
+  const openRecentWorkspace = async (workspace: RecentWorkspace) => {
+    const url = serverUrl(port, `/workspace/load?name=${encodeURIComponent(workspace.name)}`)
+    if (!url) {
+      setWorkspaceError('Workspace backend is not ready yet.')
+      return
+    }
+    setWorkspaceLoading(workspace.name)
+    setWorkspaceError('')
+    try {
+      const response = await sidecarFetch(url)
+      const text = await response.text()
+      if (!response.ok) throw new Error(text || response.statusText)
+      await applyWorkspaceState((text ? JSON.parse(text) : {}) as WorkspaceState)
+      setRecentWorkspaces(rememberRecentWorkspace(workspace))
+      setActiveRail('collections')
+    } catch (error) {
+      setWorkspaceError(error instanceof Error ? error.message : String(error))
+    } finally {
+      setWorkspaceLoading(null)
+    }
   }
 
   return (
@@ -271,6 +303,60 @@ export function WelcomePanel() {
               />
             </div>
           </header>
+
+          <section className="mb-5 overflow-hidden rounded-2xl border border-border-1 bg-surface-1 shadow-lg shadow-black/5">
+            <div className="flex items-center justify-between gap-4 border-b border-border-1 px-5 py-3.5">
+              <div className="flex items-center gap-2">
+                <Clock size={14} className="text-accent" />
+                <div>
+                  <h2 className="text-sm font-semibold text-text-1">Recent Workspaces</h2>
+                  <p className="font-mono text-[10px] text-text-4">Reopen a local workspace without hunting through menus.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setActiveRail('workspace')}
+                className="flex items-center gap-1 rounded-lg border border-border-2 px-3 py-1.5 text-[11px] font-medium text-text-3 transition-colors hover:border-accent/40 hover:text-text-1"
+              >
+                Manage <ArrowRight size={11} />
+              </button>
+            </div>
+            {recentWorkspaces.length === 0 ? (
+              <div className="flex items-center justify-between gap-4 px-5 py-4">
+                <p className="font-mono text-[11px] text-text-4">No recently opened workspaces. Load one once and it will stay within reach here.</p>
+                <button
+                  onClick={() => setActiveRail('workspace')}
+                  className="shrink-0 rounded-lg bg-accent/12 px-3 py-2 text-xs font-medium text-accent transition-colors hover:bg-accent/20"
+                >
+                  Open Workspaces
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-3 p-4 md:grid-cols-3">
+                {recentWorkspaces.slice(0, 3).map((workspace) => (
+                  <button
+                    key={workspace.name}
+                    onClick={() => void openRecentWorkspace(workspace)}
+                    disabled={workspaceLoading !== null}
+                    className="group flex min-w-0 items-center gap-3 rounded-xl border border-border-1 bg-surface-2 px-4 py-3 text-left transition-colors hover:border-accent/35 hover:bg-surface-3 disabled:opacity-55"
+                  >
+                    <FolderOpen size={16} className="shrink-0 text-accent" />
+                    <span className="min-w-0 flex-1">
+                      <b className="block truncate text-xs font-semibold text-text-1">{workspace.name}</b>
+                      <span className="block truncate font-mono text-[10px] text-text-4">
+                        {workspaceLoading === workspace.name
+                          ? 'Opening workspace...'
+                          : `${workspace.tabs} tab${workspace.tabs === 1 ? '' : 's'} / opened ${new Date(workspace.openedAt).toLocaleString()}`}
+                      </span>
+                    </span>
+                    <ArrowRight size={12} className="shrink-0 text-text-4 transition-transform group-hover:translate-x-0.5 group-hover:text-accent" />
+                  </button>
+                ))}
+              </div>
+            )}
+            {workspaceError && (
+              <div className="border-t border-error/20 bg-error/10 px-5 py-2 text-[11px] text-error">{workspaceError}</div>
+            )}
+          </section>
 
           <div className="flex flex-col gap-3">
             {HUB_LAYERS.map((layer) => (

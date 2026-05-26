@@ -35,9 +35,9 @@ export async function routeGlobalDropFile(file: File): Promise<GlobalDropFile> {
   if (lower.endsWith('.wsdl') || isWsdlDocument(text)) {
     return { kind: 'wsdl', name: file.name, text }
   }
-  if (/\.(json|ya?ml|adomnia)$/i.test(lower)) {
+  if (/\.(json|ya?ml|adomnia|bru)$/i.test(lower)) {
     return { kind: 'collection', name: file.name, text }
   }
 
-  throw new Error('Unsupported file. Drop a collection JSON/YAML, .har, .wsdl, or Java .class file.')
+  throw new Error('Unsupported file. Drop a collection JSON/YAML/.bru, .har, .wsdl, or Java .class file.')
 }

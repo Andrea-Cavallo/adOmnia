@@ -1,9 +1,10 @@
 import type { Collection, HttpMethod, KVRow, RequestAuth, RequestItem, TreeNode } from '@/lib/types'
 import { blankAuth, blankBody, uid } from '@/lib/types'
 import { openApiToCollection } from '@/lib/openapiImport'
+import { exportToOpenApi } from '@/lib/openapi'
 
 export type CollectionFormat = 'auto' | 'adomnia' | 'postman' | 'insomnia' | 'bruno' | 'openapi'
-export type ExportFormat = Exclude<CollectionFormat, 'auto' | 'openapi'>
+export type ExportFormat = Exclude<CollectionFormat, 'auto'>
 
 export interface ImportResult {
   collections: Collection[]
@@ -73,6 +74,9 @@ function importPostmanItem(item: any): TreeNode | null {
   }
   if (!item.request) return null
   const req = request(String(item.name || 'Request'), normalizeMethod(item.request.method), rawUrl(item.request.url))
+  req.description = typeof item.request.description === 'string'
+    ? item.request.description
+    : String(item.request.description?.content || '')
   req.headers = Array.isArray(item.request.header) && item.request.header.length
     ? item.request.header.map((h: any) => row(String(h.key || ''), String(h.value || ''), !h.disabled))
     : [row()]
@@ -344,6 +348,7 @@ export function exportCollectionPayload(collection: Collection, format: ExportFo
   if (format === 'adomnia') return JSON.stringify({ format: 'adomnia-collection', version: '1.0', collection }, null, 2)
   if (format === 'postman') return JSON.stringify(toPostmanCollection(collection), null, 2)
   if (format === 'insomnia') return JSON.stringify(toInsomniaExport(collection), null, 2)
+  if (format === 'openapi') return exportToOpenApi([collection])
   return JSON.stringify(toBrunoCollection(collection), null, 2)
 }
 
@@ -353,6 +358,7 @@ export function exportNodePayload(_collection: Collection, node: TreeNode, forma
 
 export function exportAllCollectionsPayload(collections: Collection[], format: ExportFormat): string {
   if (format === 'adomnia') return JSON.stringify({ format: 'adomnia-workspace', version: '1.0', collections }, null, 2)
+  if (format === 'openapi') return exportToOpenApi(collections)
   return JSON.stringify(collections.map((collection) => JSON.parse(exportCollectionPayload(collection, format))), null, 2)
 }
 
@@ -362,6 +368,7 @@ function toPostmanCollection(collection: Collection) {
     : {
         name: node.name,
         request: {
+          description: node.description || undefined,
           method: node.method,
           header: node.headers.filter((h) => h.key).map((h) => ({ key: h.key, value: h.value, disabled: !h.enabled })),
           url: { raw: node.url },

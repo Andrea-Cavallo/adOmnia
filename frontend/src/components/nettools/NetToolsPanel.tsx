@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Globe, Search, Radio, Shield, Copy, ArrowRight, Database, Trash2, GitBranch } from 'lucide-react'
+import { Search, Radio, Shield, Copy, ArrowRight, Database, Trash2, GitBranch } from 'lucide-react'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { cn } from '@/lib/utils'
 
@@ -127,11 +127,6 @@ export function NetToolsPanel() {
 
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border-1">
-        <Globe size={16} className="text-accent" />
-        <h2 className="text-sm font-semibold text-text-1">Net Tools</h2>
-      </div>
-
       <div className="flex-1 flex flex-col p-4 gap-4 overflow-auto">
         <div className="flex gap-0.5 border-b border-border-1 flex-wrap">
           {TABS.map(({ key, icon: Icon, label }) => (

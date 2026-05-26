@@ -91,7 +91,12 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
             <span className="text-xs truncate flex-1">
               {tab.request.name || tab.request.url || 'Untitled'}
             </span>
-            {tab.dirty && <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" />}
+            {tab.dirty && (
+              <span
+                className="w-2 h-2 rounded-full bg-warning shrink-0 animate-pulse"
+                title="Unsaved changes"
+              />
+            )}
             <button
               onClick={(e) => { e.stopPropagation(); onClose(tab.id) }}
               className="shrink-0 p-0.5 rounded text-text-4 hover:text-error transition-colors opacity-0 group-hover:opacity-100"

@@ -321,7 +321,7 @@ export function DatabasePanel() {
               <Database size={16} className="text-accent" />
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="text-sm font-semibold text-text-1">Database Studio</h2>
+              <h2 className="text-sm font-semibold text-text-1">Connections</h2>
               <p className="text-[10px] text-text-4">Local SQL client, vault-aware presets</p>
             </div>
             <button onClick={addConnection} className="grid h-7 w-7 place-items-center rounded border border-border-2 text-text-3 hover:text-text-1"><Plus size={13} /></button>

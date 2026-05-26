@@ -224,26 +224,37 @@ export function SettingsPanel() {
     setSettingsModified(current !== initialSettingsRef.current)
   }, [settings])
 
-  const allSectionDefs: { id: SectionId; label: string; icon: React.ReactNode }[] = [
-    { id: 'general', label: s.sections.general, icon: <Settings size={14} /> },
-    { id: 'appearance', label: s.sections.appearance, icon: <Monitor size={14} /> },
-    { id: 'requests', label: s.sections.requests, icon: <Globe size={14} /> },
-    { id: 'proxy', label: s.sections.proxy, icon: <Shield size={14} /> },
-    { id: 'mock', label: s.sections.mock, icon: <Server size={14} /> },
-    { id: 'vault', label: s.sections.vault, icon: <Lock size={14} /> },
-    { id: 'editor', label: s.sections.editor, icon: <Code2 size={14} /> },
-    { id: 'privacy', label: s.sections.privacy, icon: <Database size={14} /> },
-    { id: 'shortcuts', label: s.sections.shortcuts, icon: <Keyboard size={14} /> },
-    { id: 'about', label: s.sections.about, icon: <Info size={14} /> },
-    { id: 'developer', label: s.sections.developer, icon: <Bug size={14} /> },
-    { id: 'python', label: 'Python Runtime', icon: <Terminal size={14} /> },
+  const searchable = (values: object) => Object.values(values)
+    .filter((value): value is string => typeof value === 'string')
+    .join(' ')
+  const allSectionDefs: { id: SectionId; label: string; icon: React.ReactNode; terms: string }[] = [
+    { id: 'general', label: s.sections.general, icon: <Settings size={14} />, terms: searchable(s.general) },
+    { id: 'appearance', label: s.sections.appearance, icon: <Monitor size={14} />, terms: searchable(s.appearance) },
+    { id: 'requests', label: s.sections.requests, icon: <Globe size={14} />, terms: searchable(s.requests) },
+    { id: 'proxy', label: s.sections.proxy, icon: <Shield size={14} />, terms: searchable(s.proxy) },
+    { id: 'mock', label: s.sections.mock, icon: <Server size={14} />, terms: searchable(s.mock) },
+    { id: 'vault', label: s.sections.vault, icon: <Lock size={14} />, terms: searchable(s.vault) },
+    { id: 'editor', label: s.sections.editor, icon: <Code2 size={14} />, terms: searchable(s.editor) },
+    { id: 'privacy', label: s.sections.privacy, icon: <Database size={14} />, terms: searchable(s.privacy) },
+    { id: 'shortcuts', label: s.sections.shortcuts, icon: <Keyboard size={14} />, terms: searchable(s.shortcuts) },
+    { id: 'about', label: s.sections.about, icon: <Info size={14} />, terms: searchable(s.about) },
+    { id: 'developer', label: s.sections.developer, icon: <Bug size={14} />, terms: searchable(s.developer) },
+    { id: 'python', label: 'Python Runtime', icon: <Terminal size={14} />, terms: 'python runtime embedded interpreter reinstall path version plugins' },
   ]
 
+  const normalizedSearch = search.trim().toLowerCase()
   const sectionDefs = allSectionDefs.filter((sec) => {
     if (sec.id === 'developer' && devLoaded && !isDev) return false
-    if (!search) return true
-    return sec.label.toLowerCase().includes(search.toLowerCase())
+    if (!normalizedSearch) return true
+    return `${sec.label} ${sec.terms}`.toLowerCase().includes(normalizedSearch)
   })
+
+  useEffect(() => {
+    if (!normalizedSearch || sectionDefs.length === 0) return
+    if (!sectionDefs.some((item) => item.id === section)) {
+      setSection(sectionDefs[0].id)
+    }
+  }, [normalizedSearch, section, sectionDefs])
 
   const handleExportSettings = useCallback(() => {
     const blob = new Blob([JSON.stringify(settings, null, 2)], {
@@ -319,7 +330,7 @@ export function SettingsPanel() {
           <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-4" />
           <input
             type="text"
-            placeholder="Filter..."
+            placeholder="Search settings..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full h-7 pl-7 pr-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 placeholder:text-text-4 focus:border-accent outline-none"
@@ -343,6 +354,9 @@ export function SettingsPanel() {
             )}
           </button>
         ))}
+        {sectionDefs.length === 0 && (
+          <p className="px-3 py-2 text-[10px] leading-relaxed text-text-4">No setting matches "{search.trim()}".</p>
+        )}
       </div>
 
       {/* Content */}
@@ -905,7 +919,8 @@ export function SettingsPanel() {
               confirmLabel={s.actions.clear}
               variant="danger"
               onConfirm={() => {
-                localStorage.removeItem('adomnia.respHistory')
+                useTabsStore.getState().clearResponseHistory()
+                setConfirmClearHistory(false)
               }}
               onCancel={() => setConfirmClearHistory(false)}
             />

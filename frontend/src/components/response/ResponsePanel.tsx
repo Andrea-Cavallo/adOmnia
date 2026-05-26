@@ -6,9 +6,10 @@ import { JsonGraph } from '@/components/ui/JsonGraph'
 import { validateContract, exportContractReportMarkdown, exportContractReportHtml, exportContractReportJson } from '@/lib/contractValidator'
 import { evaluateAssertions } from '@/lib/assertionEngine'
 import { DiffModal, DiffPickerModal } from '@/components/response/DiffView'
-import { useTabsStore } from '@/stores/tabs'
+import { useTabsStore, type ResponseBodyView, type ResponseSection } from '@/stores/tabs'
 
 interface ResponsePanelProps {
+  tabId: string
   response: ResponseData | null
   loading?: boolean
   oaSpec?: string
@@ -122,8 +123,6 @@ function TextHighlight({ text, searchTerm = '' }: { text: string; searchTerm?: s
   )
 }
 
-type ViewTab = 'body' | 'headers' | 'contract' | 'assertions'
-
 function formatXmlLike(text: string): string {
   const normalized = text.replace(/>\s*</g, '><').replace(/(>)(<)(\/*)/g, '$1\n$2$3')
   let depth = 0
@@ -160,7 +159,7 @@ function FullscreenBodyModal({
         <div className="flex items-center gap-2 px-4 py-3 border-b border-border-1">
           <span className="text-sm font-semibold text-text-1 flex-1">Response Body</span>
           <button onClick={() => navigator.clipboard.writeText(body)} className="px-2 py-1 text-xs text-accent hover:text-accent-light">Copy</button>
-          <button onClick={onClose} className="text-text-4 hover:text-text-1"><X size={16} /></button>
+          <button onClick={onClose} title="Close" className="text-text-4 hover:text-text-1"><X size={16} /></button>
         </div>
         <div className="flex-1 overflow-auto p-4">
           <pre className="text-xs font-mono whitespace-pre-wrap break-all">
@@ -172,18 +171,21 @@ function FullscreenBodyModal({
   )
 }
 
-export function ResponsePanel({ response, loading, oaSpec, oaPath, oaMethod, assertions }: ResponsePanelProps) {
-  const [tab, setTab] = useState<ViewTab>('body')
-  const [view, setView] = useState<'pretty' | 'raw' | 'graph'>('pretty')
+export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMethod, assertions }: ResponsePanelProps) {
+  const initialViewState = useTabsStore.getState().getViewState(tabId)
+  const updateViewState = useTabsStore((s) => s.updateViewState)
+  const [tab, setTab] = useState<ResponseSection>(initialViewState.responseSection)
+  const [view, setView] = useState<ResponseBodyView>(initialViewState.responseBodyView)
   const [beautifiedBody, setBeautifiedBody] = useState<string | null>(null)
   // Lifted expansion state — survives graph↔pretty toggles and re-sends (P2-02)
-  const [graphExpanded, setGraphExpanded] = useState<Set<string>>(() => new Set(['$']))
+  const [graphExpanded, setGraphExpanded] = useState<Set<string>>(
+    () => new Set(initialViewState.responseGraphExpanded),
+  )
   const [showFullscreen, setShowFullscreen] = useState(false)
   const [showDiff, setShowDiff] = useState(false)
   const [diffRightBody, setDiffRightBody] = useState('')
   const [diffRightLabel, setDiffRightLabel] = useState('')
   const [showDiffPicker, setShowDiffPicker] = useState(false)
-  const activeTabId = useTabsStore((s) => s.activeTabId)
 
   // ── Find-in-response ──────────────────────────────────────────────────────
   const [searchOpen, setSearchOpen] = useState(false)
@@ -192,6 +194,13 @@ export function ResponsePanel({ response, loading, oaSpec, oaPath, oaMethod, ass
   const [matchIndex, setMatchIndex] = useState(0)
   const searchRef = useRef<HTMLInputElement>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (bodyRef.current) {
+      bodyRef.current.scrollTop =
+        useTabsStore.getState().getViewState(tabId).responseScrollTop[tab] ?? 0
+    }
+  }, [tabId, tab, view])
 
   // Debounce search input → query so we don't re-render on every keystroke
   useEffect(() => {
@@ -385,14 +394,14 @@ export function ResponsePanel({ response, loading, oaSpec, oaPath, oaMethod, ass
         {/* Tabs with action buttons */}
         <div className="flex items-center gap-0.5 px-3 border-b border-border-1">
           <button
-            onClick={() => setTab('body')}
+            onClick={() => { setTab('body'); updateViewState(tabId, { responseSection: 'body' }) }}
             className={cn('px-3 py-2 text-xs relative', tab === 'body' ? 'text-text-1' : 'text-text-3 hover:text-text-2')}
           >
             Body
             {tab === 'body' && <span className="absolute bottom-0 left-2 right-2 h-[2px] bg-accent rounded-t" />}
           </button>
           <button
-            onClick={() => setTab('headers')}
+            onClick={() => { setTab('headers'); updateViewState(tabId, { responseSection: 'headers' }) }}
             className={cn('px-3 py-2 text-xs relative', tab === 'headers' ? 'text-text-1' : 'text-text-3 hover:text-text-2')}
           >
             Headers
@@ -404,7 +413,7 @@ export function ResponsePanel({ response, loading, oaSpec, oaPath, oaMethod, ass
 
           {contractResult?.hasSpec && (
             <button
-              onClick={() => setTab('contract')}
+              onClick={() => { setTab('contract'); updateViewState(tabId, { responseSection: 'contract' }) }}
               className={cn('px-3 py-2 text-xs relative', tab === 'contract' ? 'text-text-1' : 'text-text-3 hover:text-text-2')}
             >
               Contract
@@ -423,7 +432,7 @@ export function ResponsePanel({ response, loading, oaSpec, oaPath, oaMethod, ass
 
           {!contractResult?.hasSpec && oaSpec && (
             <button
-              onClick={() => setTab('contract')}
+              onClick={() => { setTab('contract'); updateViewState(tabId, { responseSection: 'contract' }) }}
               className={cn('px-3 py-2 text-xs relative', tab === 'contract' ? 'text-text-1' : 'text-text-3 hover:text-text-2')}
             >
               Contract
@@ -436,7 +445,7 @@ export function ResponsePanel({ response, loading, oaSpec, oaPath, oaMethod, ass
 
           {testResultCount > 0 && (
             <button
-              onClick={() => setTab('assertions')}
+              onClick={() => { setTab('assertions'); updateViewState(tabId, { responseSection: 'assertions' }) }}
               className={cn('px-3 py-2 text-xs relative', tab === 'assertions' ? 'text-text-1' : 'text-text-3 hover:text-text-2')}
             >
               Tests
@@ -479,6 +488,7 @@ export function ResponsePanel({ response, loading, oaSpec, oaPath, oaMethod, ass
                   if (!graphData) return
                   const nextView = view === 'graph' ? 'pretty' : 'graph'
                   setView(nextView)
+                  updateViewState(tabId, { responseBodyView: nextView })
                   if (nextView === 'graph') {
                     setSearchOpen(false)
                     setSearchInput('')
@@ -503,6 +513,7 @@ export function ResponsePanel({ response, loading, oaSpec, oaPath, oaMethod, ass
                     try {
                       setBeautifiedBody(JSON.stringify(JSON.parse(displayBody), null, 2))
                       setView('pretty')
+                      updateViewState(tabId, { responseBodyView: 'pretty' })
                     } catch { /* invalid JSON notice is shown in the body view */ }
                     return
                   }
@@ -510,6 +521,7 @@ export function ResponsePanel({ response, loading, oaSpec, oaPath, oaMethod, ass
                   if (response.contentType.includes('xml') || response.contentType.includes('html') || trimmed.startsWith('<')) {
                     setBeautifiedBody(formatXmlLike(displayBody))
                     setView('pretty')
+                    updateViewState(tabId, { responseBodyView: 'pretty' })
                   }
                 }}
                 className="p-1 text-text-4 hover:text-text-2 rounded hover:bg-surface-2"
@@ -521,13 +533,13 @@ export function ResponsePanel({ response, loading, oaSpec, oaPath, oaMethod, ass
               {/* Pretty/Raw toggle */}
               <span className="text-text-4 text-[9px] mx-1">|</span>
               <button
-                onClick={() => setView('pretty')}
+                onClick={() => { setView('pretty'); updateViewState(tabId, { responseBodyView: 'pretty' }) }}
                 className={cn('px-2 py-0.5 text-[10px] rounded', view === 'pretty' ? 'bg-surface-3 text-text-1' : 'text-text-4')}
               >
                 Pretty
               </button>
               <button
-                onClick={() => setView('raw')}
+                onClick={() => { setView('raw'); updateViewState(tabId, { responseBodyView: 'raw' }) }}
                 className={cn('px-2 py-0.5 text-[10px] rounded', view === 'raw' ? 'bg-surface-3 text-text-1' : 'text-text-4')}
               >
                 Raw
@@ -602,14 +614,29 @@ export function ResponsePanel({ response, loading, oaSpec, oaPath, oaMethod, ass
         )}
 
         {/* Content */}
-        <div ref={bodyRef} className="flex-1 overflow-auto p-3">
+        <div
+          ref={bodyRef}
+          onScroll={(e) => {
+            const viewState = useTabsStore.getState().getViewState(tabId)
+            updateViewState(tabId, {
+              responseScrollTop: {
+                ...viewState.responseScrollTop,
+                [tab]: e.currentTarget.scrollTop,
+              },
+            })
+          }}
+          className="flex-1 overflow-auto p-3"
+        >
           {tab === 'body' && (
             view === 'graph' && graphData ? (
               <JsonGraph
                 json={displayBody}
                 className="h-full min-h-[260px]"
                 expandedPaths={graphExpanded}
-                onExpandedPathsChange={setGraphExpanded}
+                onExpandedPathsChange={(next) => {
+                  setGraphExpanded(next)
+                  updateViewState(tabId, { responseGraphExpanded: Array.from(next) })
+                }}
               />
             ) : (
               <>
@@ -670,7 +697,7 @@ export function ResponsePanel({ response, loading, oaSpec, oaPath, oaMethod, ass
 
       {showDiffPicker && (
         <DiffPickerModal
-          currentTabId={activeTabId}
+          currentTabId={tabId}
           onConfirm={(body, label) => {
             setDiffRightBody(body)
             setDiffRightLabel(label)
