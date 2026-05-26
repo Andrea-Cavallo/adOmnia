@@ -26,6 +26,8 @@ export function Init():Promise<void>;
 
 export function InstallPlugin(arg1:string):Promise<main.PluginInstance>;
 
+export function InstallPluginPackage(arg1:string,arg2:Record<string, string>):Promise<main.PluginInstance>;
+
 export function InstallPythonPlugin(arg1:string):Promise<void>;
 
 export function LoadPluginState():Promise<void>;

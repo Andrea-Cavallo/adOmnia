@@ -41,13 +41,9 @@ function getTemplateStore() {
 }
 
 export async function getPlugins(): Promise<PluginInstance[]> {
-  try {
-    const mgr = getPluginManager()
-    if (!mgr) return []
-    return (await mgr.GetPlugins()) as PluginInstance[]
-  } catch {
-    return []
-  }
+  const mgr = getPluginManager()
+  if (!mgr) throw new Error("Plugin Manager disponibile solo nell'applicazione desktop.")
+  return (await mgr.GetPlugins()) as PluginInstance[]
 }
 
 export async function getPlugin(id: string): Promise<PluginInstance | null> {
@@ -60,14 +56,16 @@ export async function getPlugin(id: string): Promise<PluginInstance | null> {
   }
 }
 
-export async function installPlugin(manifestJSON: string): Promise<PluginInstance | null> {
-  try {
-    const mgr = getPluginManager()
-    if (!mgr) return null
-    return (await mgr.InstallPlugin(manifestJSON)) as PluginInstance
-  } catch {
-    return null
-  }
+export async function installPlugin(manifestJSON: string): Promise<PluginInstance> {
+  const mgr = getPluginManager()
+  if (!mgr) throw new Error("Plugin Manager disponibile solo nell'applicazione desktop.")
+  return (await mgr.InstallPlugin(manifestJSON)) as PluginInstance
+}
+
+export async function installPluginPackage(manifestJSON: string, encodedFiles: Record<string, string>): Promise<PluginInstance> {
+  const mgr = getPluginManager()
+  if (!mgr) throw new Error("Plugin Manager disponibile solo nell'applicazione desktop.")
+  return (await mgr.InstallPluginPackage(manifestJSON, encodedFiles)) as PluginInstance
 }
 
 export async function uninstallPlugin(id: string): Promise<boolean> {

@@ -22,15 +22,14 @@ interface ActionState {
  */
 export function PluginPanel({ plugin }: PluginPanelProps) {
   const actions = plugin.manifest.actions ?? []
+  const runtime = plugin.manifest.runtime?.toLowerCase() ?? ''
+  const isWasm = runtime === 'wasm'
   const [actionStates, setActionStates] = useState<Record<string, ActionState>>({})
-
-  const getActionState = (actionId: string): ActionState =>
-    actionStates[actionId] ?? { status: 'idle', result: '', error: '' }
 
   const updateActionState = (actionId: string, partial: Partial<ActionState>) => {
     setActionStates((prev) => ({
       ...prev,
-      [actionId]: { ...getActionState(actionId), ...partial },
+      [actionId]: { ...(prev[actionId] ?? { status: 'idle', result: '', error: '' }), ...partial },
     }))
   }
 
@@ -56,13 +55,14 @@ export function PluginPanel({ plugin }: PluginPanelProps) {
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-surface-0">
-      <div className="flex items-start gap-2 px-4 py-2 border-b border-amber-500/30 bg-amber-500/10 flex-shrink-0">
-        <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
-        <p className="text-xs text-amber-300/80 leading-relaxed">
-          <span className="font-medium text-amber-300">Plugin execution mode: host-function only</span>
-          {' — '}Custom WASM code is not yet executed. Hooks fire and host APIs (http.fetch, storage, log) work.
-        </p>
-      </div>
+      {isWasm && (
+        <div className="flex items-start gap-2 px-4 py-2 border-b border-warning/30 bg-warning/10 flex-shrink-0">
+          <AlertTriangle className="w-4 h-4 text-warning flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-warning leading-relaxed">
+            Questo plugin WASM non puo ancora eseguire azioni personalizzate. Le integrazioni dichiarate restano visibili.
+          </p>
+        </div>
+      )}
       <header className="flex items-center gap-3 px-6 py-4 border-b border-border-1 flex-shrink-0">
         <div className="w-9 h-9 rounded-md bg-surface-2 flex items-center justify-center flex-shrink-0">
           <span className="text-xs font-bold text-accent">
@@ -81,6 +81,11 @@ export function PluginPanel({ plugin }: PluginPanelProps) {
       </header>
 
       <div className="flex-1 overflow-y-auto p-6">
+        {!isWasm && actions.length > 0 && (
+          <div className="mb-4 rounded-md border border-border-1 bg-surface-1 px-3 py-2 text-xs text-text-3">
+            Scegli un'azione e premi <span className="font-medium text-text-1">Esegui</span>. Il risultato comparira sotto l'azione.
+          </div>
+        )}
         {actions.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 gap-3">
             <Play size={32} className="text-text-4" />
@@ -92,7 +97,7 @@ export function PluginPanel({ plugin }: PluginPanelProps) {
         ) : (
           <div className="space-y-3">
             {actions.map((action) => {
-              const state = getActionState(action.id)
+              const state = actionStates[action.id] ?? { status: 'idle', result: '', error: '' }
               return (
                 <div
                   key={action.id}
@@ -116,7 +121,7 @@ export function PluginPanel({ plugin }: PluginPanelProps) {
 
                     <button
                       onClick={() => handleExecute(action)}
-                      disabled={state.status === 'running'}
+                      disabled={state.status === 'running' || isWasm}
                       className={cn(
                         'flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors',
                         state.status === 'running'
@@ -129,7 +134,7 @@ export function PluginPanel({ plugin }: PluginPanelProps) {
                       ) : (
                         <Play size={11} />
                       )}
-                      Execute
+                      {isWasm ? 'Non disponibile' : 'Esegui'}
                     </button>
                   </div>
 

@@ -83,6 +83,10 @@ export function PluginDevTools({ embedded = false }: { embedded?: boolean }) {
       )}
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="rounded-md border border-border-1 bg-surface-1 px-4 py-3 text-xs text-text-3">
+          Questa vista e dedicata agli autori dei plugin. Per usare un plugin installato, torna a
+          <span className="font-medium text-text-1"> Plugin installati</span> e apri il suo pannello azioni.
+        </div>
         <section className="space-y-3">
           <div className="flex items-center gap-2">
             <Zap size={13} className="text-accent" />

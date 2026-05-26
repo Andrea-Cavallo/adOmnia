@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { Plus, X, ChevronRight, ChevronLeft, Copy } from 'lucide-react'
 import type { Tab } from '@/lib/types'
+import type { TabDropPosition } from '@/stores/tabs'
 import { cn } from '@/lib/utils'
 
 interface TabBarProps {
@@ -10,6 +12,7 @@ interface TabBarProps {
   onClose: (id: string) => void
   onCloseToRight: (id: string) => void
   onCloseToLeft: (id: string) => void
+  onReorder: (fromId: string, toId: string, position: TabDropPosition) => void
   onNewTab: () => void
   onDuplicate: (id: string) => void
 }
@@ -32,22 +35,30 @@ interface ContextMenuState {
 }
 
 const MENU_W = 180
-const MENU_H = 150
+const MENU_H = 232
 
 function clampToViewport(x: number, y: number): { left: number; top: number } {
   const vw = window.innerWidth
   const vh = window.innerHeight
   return {
-    left: Math.min(x, vw - MENU_W - 4),
-    top: Math.min(y, vh - MENU_H - 4),
+    left: Math.max(4, Math.min(x, vw - MENU_W - 4)),
+    top: Math.max(4, Math.min(y, vh - MENU_H - 4)),
   }
 }
 
-export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, onCloseToLeft, onNewTab, onDuplicate }: TabBarProps) {
+export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, onCloseToLeft, onReorder, onNewTab, onDuplicate }: TabBarProps) {
   const [ctx, setCtx] = useState<ContextMenuState>({ open: false, x: 0, y: 0, tabId: '' })
+  const [draggingTabId, setDraggingTabId] = useState<string | null>(null)
+  const [dropTarget, setDropTarget] = useState<{ tabId: string; position: TabDropPosition } | null>(null)
+  const draggingTabRef = useRef<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
   const closeCtx = useCallback(() => setCtx((s) => ({ ...s, open: false })), [])
+  const clearDrag = useCallback(() => {
+    draggingTabRef.current = null
+    setDraggingTabId(null)
+    setDropTarget(null)
+  }, [])
 
   useEffect(() => {
     if (!ctx.open) return
@@ -73,18 +84,53 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
         return (
           <div
             key={tab.id}
+            draggable
             onClick={() => onSelect(tab.id)}
             onContextMenu={(e) => {
               e.preventDefault()
-              setCtx({ open: true, x: e.clientX, y: e.clientY + 4, tabId: tab.id })
+              setCtx({ open: true, x: e.clientX, y: e.clientY, tabId: tab.id })
             }}
+            onDragStart={(e) => {
+              e.stopPropagation()
+              e.dataTransfer.effectAllowed = 'move'
+              e.dataTransfer.setData('application/x-adomnia-tab', tab.id)
+              draggingTabRef.current = tab.id
+              setDraggingTabId(tab.id)
+              closeCtx()
+            }}
+            onDragOver={(e) => {
+              const sourceId = draggingTabRef.current || draggingTabId
+              if (!sourceId || sourceId === tab.id) return
+              e.preventDefault()
+              e.stopPropagation()
+              e.dataTransfer.dropEffect = 'move'
+              const rect = e.currentTarget.getBoundingClientRect()
+              const position: TabDropPosition = e.clientX < rect.left + rect.width / 2 ? 'before' : 'after'
+              setDropTarget({ tabId: tab.id, position })
+            }}
+            onDrop={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              const sourceId = draggingTabRef.current || draggingTabId || e.dataTransfer.getData('application/x-adomnia-tab')
+              if (sourceId && sourceId !== tab.id) {
+                const rect = e.currentTarget.getBoundingClientRect()
+                const position: TabDropPosition = e.clientX < rect.left + rect.width / 2 ? 'before' : 'after'
+                onReorder(sourceId, tab.id, position)
+              }
+              clearDrag()
+            }}
+            onDragEnd={clearDrag}
             className={cn(
-              'flex items-center gap-1.5 px-2.5 py-1 rounded-t cursor-pointer group min-w-[80px] max-w-[200px] shrink-0 border-b-2 transition-colors',
+              'relative flex items-center gap-1.5 px-2.5 py-1 rounded-t cursor-pointer group min-w-[80px] max-w-[200px] shrink-0 border-b-2 transition-colors',
               isActive
                 ? 'bg-surface-2 border-b-accent text-text-1'
-                : 'hover:bg-surface-2/60 border-b-transparent text-text-3 hover:text-text-2'
+                : 'hover:bg-surface-2/60 border-b-transparent text-text-3 hover:text-text-2',
+              draggingTabId === tab.id && 'opacity-45',
             )}
           >
+            {dropTarget?.tabId === tab.id && dropTarget.position === 'before' && (
+              <span className="absolute -left-[2px] inset-y-1 w-[2px] rounded bg-accent" />
+            )}
             <span className={cn('text-[9px] font-bold shrink-0', METHOD_COLORS[tab.request.method] ?? 'text-text-3')}>
               {tab.request.method}
             </span>
@@ -104,6 +150,9 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
             >
               <X size={10} />
             </button>
+            {dropTarget?.tabId === tab.id && dropTarget.position === 'after' && (
+              <span className="absolute -right-[2px] inset-y-1 w-[2px] rounded bg-accent" />
+            )}
           </div>
         )
       })}
@@ -115,7 +164,7 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
         <Plus size={12} />
       </button>
 
-      {ctx.open && (
+      {ctx.open && createPortal(
         <div
           ref={menuRef}
           className="fixed z-[200] w-[180px] bg-surface-1 border border-border-2 rounded-lg shadow-2xl py-1 overflow-hidden"
@@ -154,8 +203,25 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
             <ChevronLeft size={11} className="text-text-3" />
             Close to the Left
           </button>
+          <div className="my-1 border-t border-border-1" />
+          <button
+            onClick={() => { onReorder(ctx.tabId, tabs[ctxTabIdx - 1].id, 'before'); closeCtx() }}
+            disabled={ctxTabIdx <= 0}
+            className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-text-2 hover:bg-surface-2 hover:text-text-1 transition-colors text-left disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <ChevronLeft size={11} className="text-text-3" />
+            Move Left
+          </button>
+          <button
+            onClick={() => { onReorder(ctx.tabId, tabs[ctxTabIdx + 1].id, 'after'); closeCtx() }}
+            disabled={ctxTabIdx < 0 || ctxTabIdx >= tabs.length - 1}
+            className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-text-2 hover:bg-surface-2 hover:text-text-1 transition-colors text-left disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <ChevronRight size={11} className="text-text-3" />
+            Move Right
+          </button>
         </div>
-      )}
+      , document.body)}
     </div>
   )
 }

@@ -61,7 +61,7 @@ const CATEGORIES: Category[] = [
       { id: 'jwt',      label: 'JWT Decoder' },
       { id: 'password', label: 'Password Generator' },
       { id: 'pem',      label: 'PEM / JKS' },
-      { id: 'class',    label: 'Class File' },
+      { id: 'class',    label: 'Java Decompiler' },
     ],
   },
   {
@@ -111,7 +111,7 @@ const TOOL_DETAILS: Record<string, Pick<Tool, 'desc' | 'example'>> = {
   yamlval: { desc: 'Check quick YAML snippets used in examples and docker files.', example: 'services: api: image: mock-api' },
   httpstatus: { desc: 'Search status codes with practical explanations for API debugging.', example: '409 conflict, 422 validation, 429 throttling' },
   pem: { desc: 'Inspect PEM blocks and identify certificate/key boundaries.', example: '-----BEGIN CERTIFICATE-----' },
-  class: { desc: 'Check pasted Java class-file bytes for magic and version metadata.', example: 'CAFEBABE00000034' },
+  class: { desc: 'Decompile local Java class-file bytecode into readable source and inspect JVM metadata.' },
   grpcclient: { desc: 'Shortcut to the dedicated gRPC panel for unary request testing.', example: 'package.Service/GetUser' },
   docker: { desc: 'Generate a starter compose file for mock services and local dependencies.', example: 'API + Redis + Postgres lab stack' },
   folderdiff: { desc: 'Compare two local folders as a WinMerge-style tree and inspect changed files.', example: 'old-release/ vs new-release/' },
@@ -597,6 +597,7 @@ interface ClassMember {
   flags: number
   name: string
   descriptor: string
+  code?: Uint8Array
 }
 
 interface ClassStructure {
@@ -608,9 +609,21 @@ interface ClassStructure {
   interfaces: string[]
   fields: ClassMember[]
   methods: ClassMember[]
+  cp: CpEntry[]
+  bootstrapMethods: number[][]
 }
 
-type CpEntry = { tag: number; value?: string | number; nameIndex?: number; classIndex?: number; nameAndTypeIndex?: number; descriptorIndex?: number } | null
+type CpEntry = {
+  tag: number
+  value?: string | number | bigint
+  nameIndex?: number
+  classIndex?: number
+  nameAndTypeIndex?: number
+  descriptorIndex?: number
+  referenceKind?: number
+  referenceIndex?: number
+  bootstrapMethodAttrIndex?: number
+} | null
 
 function javaVersionName(major: number): string {
   const map: Record<number, string> = {
@@ -713,6 +726,38 @@ function cpClassName(cp: CpEntry[], index: number): string {
   return cpUtf8(cp, e.nameIndex).replace(/\//g, '.')
 }
 
+function cpNameAndType(cp: CpEntry[], index: number): { name: string; descriptor: string } {
+  const entry = cp[index]
+  if (!entry || entry.tag !== 12) return { name: `#${index}`, descriptor: '' }
+  return {
+    name: cpUtf8(cp, entry.nameIndex ?? 0),
+    descriptor: cpUtf8(cp, entry.descriptorIndex ?? 0),
+  }
+}
+
+function cpMember(cp: CpEntry[], index: number): { owner: string; name: string; descriptor: string } {
+  const entry = cp[index]
+  if (!entry) return { owner: '', name: `#${index}`, descriptor: '' }
+  const member = cpNameAndType(cp, entry.nameAndTypeIndex ?? 0)
+  return { owner: cpClassName(cp, entry.classIndex ?? 0), ...member }
+}
+
+function quoteJava(value: string): string {
+  return JSON.stringify(value)
+    .replace(/\u0001/g, '\\u0001')
+    .replace(/\u0002/g, '\\u0002')
+}
+
+function cpValue(cp: CpEntry[], index: number): string {
+  const entry = cp[index]
+  if (!entry) return `#${index}`
+  if (entry.tag === 8) return quoteJava(cpUtf8(cp, entry.nameIndex ?? 0))
+  if (entry.tag === 3 || entry.tag === 4) return String(entry.value)
+  if (entry.tag === 5) return `${String(entry.value)}L`
+  if (entry.tag === 6) return `${String(entry.value)}d`
+  return `#${index}`
+}
+
 function parseClassStructure(bytes: Uint8Array): ClassStructure | string {
   try {
     const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
@@ -727,13 +772,22 @@ function parseClassStructure(bytes: Uint8Array): ClassStructure | string {
           const value = new TextDecoder().decode(bytes.slice(offset, offset + len))
           offset += len; cp[i] = { tag, value }; break
         }
-        case 3: case 4: cp[i] = { tag, value: view.getUint32(offset) }; offset += 4; break
-        case 5: case 6: cp[i] = { tag }; offset += 8; i++; cp[i] = null; break
-        case 7: case 8: case 16: case 19: case 20:
+        case 3: cp[i] = { tag, value: view.getInt32(offset) }; offset += 4; break
+        case 4: cp[i] = { tag, value: view.getFloat32(offset) }; offset += 4; break
+        case 5: cp[i] = { tag, value: view.getBigInt64(offset) }; offset += 8; i++; cp[i] = null; break
+        case 6: cp[i] = { tag, value: view.getFloat64(offset) }; offset += 8; i++; cp[i] = null; break
+        case 7: case 8: case 19: case 20:
           cp[i] = { tag, nameIndex: view.getUint16(offset) }; offset += 2; break
-        case 9: case 10: case 11: case 12: case 18:
-          cp[i] = { tag, classIndex: view.getUint16(offset), nameAndTypeIndex: view.getUint16(offset + 2), nameIndex: view.getUint16(offset), descriptorIndex: view.getUint16(offset + 2) }; offset += 4; break
-        case 15: cp[i] = { tag }; offset += 3; break
+        case 9: case 10: case 11:
+          cp[i] = { tag, classIndex: view.getUint16(offset), nameAndTypeIndex: view.getUint16(offset + 2) }; offset += 4; break
+        case 12:
+          cp[i] = { tag, nameIndex: view.getUint16(offset), descriptorIndex: view.getUint16(offset + 2) }; offset += 4; break
+        case 15:
+          cp[i] = { tag, referenceKind: view.getUint8(offset), referenceIndex: view.getUint16(offset + 1) }; offset += 3; break
+        case 16:
+          cp[i] = { tag, descriptorIndex: view.getUint16(offset) }; offset += 2; break
+        case 17: case 18:
+          cp[i] = { tag, bootstrapMethodAttrIndex: view.getUint16(offset), nameAndTypeIndex: view.getUint16(offset + 2) }; offset += 4; break
         default: return `Constant pool: unsupported tag ${tag} at entry ${i}`
       }
     }
@@ -750,26 +804,178 @@ function parseClassStructure(bytes: Uint8Array): ClassStructure | string {
         const flags = view.getUint16(offset); offset += 2
         const nameIndex = view.getUint16(offset); offset += 2
         const descriptorIndex = view.getUint16(offset); offset += 2
-        members.push({ flags, name: cpUtf8(cp, nameIndex), descriptor: cpUtf8(cp, descriptorIndex) })
+        const member: ClassMember = { flags, name: cpUtf8(cp, nameIndex), descriptor: cpUtf8(cp, descriptorIndex) }
         const attrCount = view.getUint16(offset); offset += 2
         for (let a = 0; a < attrCount; a++) {
-          offset += 2
-          const len = view.getUint32(offset); offset += 4 + len
+          const attrName = cpUtf8(cp, view.getUint16(offset)); offset += 2
+          const len = view.getUint32(offset); offset += 4
+          const attrEnd = offset + len
+          if (attrName === 'Code') {
+            offset += 4
+            const codeLength = view.getUint32(offset); offset += 4
+            member.code = bytes.slice(offset, offset + codeLength)
+          }
+          offset = attrEnd
           if (offset > bytes.length) throw new Error('attribute exceeds file size')
         }
+        members.push(member)
       }
       return members
     }
     const fields = readMembers()
     const methods = readMembers()
+    const bootstrapMethods: number[][] = []
+    const classAttrCount = view.getUint16(offset); offset += 2
+    for (let i = 0; i < classAttrCount; i++) {
+      const attrName = cpUtf8(cp, view.getUint16(offset)); offset += 2
+      const len = view.getUint32(offset); offset += 4
+      const attrEnd = offset + len
+      if (attrName === 'BootstrapMethods') {
+        const count = view.getUint16(offset); offset += 2
+        for (let b = 0; b < count; b++) {
+          offset += 2
+          const argumentCount = view.getUint16(offset); offset += 2
+          const argumentsList: number[] = []
+          for (let argument = 0; argument < argumentCount; argument++) {
+            argumentsList.push(view.getUint16(offset)); offset += 2
+          }
+          bootstrapMethods.push(argumentsList)
+        }
+      }
+      offset = attrEnd
+    }
     return {
       version: { major: view.getUint16(6), minor: view.getUint16(4) },
       cpCount: cpCount - 1, accessFlags,
       thisClass: cpClassName(cp, thisClassIdx),
       superClass: superClassIdx ? cpClassName(cp, superClassIdx) : '',
-      interfaces, fields, methods,
+      interfaces, fields, methods, cp, bootstrapMethods,
     }
   } catch (e) { return `Parse error: ${e instanceof Error ? e.message : String(e)}` }
+}
+
+function methodLocalNames(method: ClassMember): Map<number, string> {
+  const locals = new Map<number, string>()
+  let slot = method.flags & 0x0008 ? 0 : 1
+  parseMethodDescriptor(method.descriptor).params.forEach((type, index) => {
+    locals.set(slot, `arg${index}`)
+    slot += type === 'long' || type === 'double' ? 2 : 1
+  })
+  return locals
+}
+
+function popArguments(stack: string[], count: number): string[] {
+  const args: string[] = []
+  for (let i = 0; i < count; i++) args.unshift(stack.pop() ?? '?')
+  return args
+}
+
+function concatExpression(recipe: string, values: string[]): string {
+  const parts = recipe.split('\u0001')
+  const expression: string[] = []
+  parts.forEach((part, index) => {
+    if (part) expression.push(quoteJava(part))
+    if (index < values.length) expression.push(values[index])
+  })
+  return expression.join(' + ') || '""'
+}
+
+function decompileMethodBody(method: ClassMember, structure: ClassStructure): string[] {
+  const code = method.code
+  if (!code?.length) return ['/* no bytecode body available */']
+  const cp = structure.cp
+  const locals = methodLocalNames(method)
+  const stack: string[] = []
+  const lines: string[] = []
+  const localValue = (slot: number) => slot === 0 && !(method.flags & 0x0008) ? 'this' : (locals.get(slot) ?? `local${slot}`)
+  const pushBinary = (operator: string) => {
+    const right = stack.pop() ?? '?'
+    const left = stack.pop() ?? '?'
+    stack.push(`(${left} ${operator} ${right})`)
+  }
+  const readIndex = (pos: number) => (code[pos] << 8) | code[pos + 1]
+  let pos = 0
+  let unsupported = ''
+  while (pos < code.length) {
+    const opStart = pos
+    const op = code[pos++]
+    if (op >= 0x1a && op <= 0x1d) { stack.push(localValue(op - 0x1a)); continue }
+    if (op >= 0x26 && op <= 0x29) { stack.push(localValue(op - 0x26)); continue }
+    if (op >= 0x2a && op <= 0x2d) { stack.push(localValue(op - 0x2a)); continue }
+    switch (op) {
+      case 0x02: stack.push('-1'); break
+      case 0x03: case 0x04: case 0x05: case 0x06: case 0x07: case 0x08: stack.push(String(op - 0x03)); break
+      case 0x0e: case 0x0f: stack.push(`${op - 0x0e}.0d`); break
+      case 0x10: stack.push(String((code[pos++] << 24) >> 24)); break
+      case 0x11: {
+        const value = (readIndex(pos) << 16) >> 16
+        pos += 2
+        stack.push(String(value))
+        break
+      }
+      case 0x12: stack.push(cpValue(cp, code[pos++])); break
+      case 0x13: case 0x14: stack.push(cpValue(cp, readIndex(pos))); pos += 2; break
+      case 0x15: case 0x18: case 0x19: stack.push(localValue(code[pos++])); break
+      case 0x60: case 0x63: pushBinary('+'); break
+      case 0x64: case 0x67: pushBinary('-'); break
+      case 0x68: case 0x6b: pushBinary('*'); break
+      case 0x6c: case 0x6f: pushBinary('/'); break
+      case 0x70: pushBinary('%'); break
+      case 0x99: case 0x9a: {
+        const condition = stack.pop() ?? '?'
+        const branchTarget = opStart + ((readIndex(pos) << 16) >> 16)
+        pos += 2
+        const fallValue = code[pos] === 0x04 ? true : code[pos] === 0x03 ? false : undefined
+        const branchValue = code[branchTarget] === 0x04 ? true : code[branchTarget] === 0x03 ? false : undefined
+        const hasBooleanJoin = fallValue != null && branchValue != null && code[pos + 1] === 0xa7 && code[branchTarget + 1] === 0xac
+        if (!hasBooleanJoin) { unsupported = `branch opcode 0x${op.toString(16)}`; pos = code.length; break }
+        const isZeroWhenTrue = op === 0x99
+        const trueWhenZero = isZeroWhenTrue ? branchValue : fallValue
+        lines.push(`return ${condition} ${trueWhenZero ? '==' : '!='} 0;`)
+        pos = code.length
+        break
+      }
+      case 0xac: case 0xad: case 0xae: case 0xaf: case 0xb0:
+        lines.push(`return ${stack.pop() ?? '?'};`)
+        break
+      case 0xb1:
+        break
+      case 0xb6: case 0xb7: case 0xb8: {
+        const member = cpMember(cp, readIndex(pos)); pos += 2
+        const signature = parseMethodDescriptor(member.descriptor)
+        const args = popArguments(stack, signature.params.length)
+        const receiver = op === 0xb8 ? member.owner : (stack.pop() ?? 'this')
+        if (member.name === '<init>') {
+          if (!(receiver === 'this' && member.owner === 'java.lang.Object')) lines.push(`${receiver}.${member.owner}(${args.join(', ')});`)
+          break
+        }
+        const call = `${receiver}.${member.name}(${args.join(', ')})`
+        if (signature.returnType === 'void') lines.push(`${call};`)
+        else stack.push(call)
+        break
+      }
+      case 0xba: {
+        const dynamic = cp[readIndex(pos)]
+        pos += 4
+        const member = cpNameAndType(cp, dynamic?.nameAndTypeIndex ?? 0)
+        const args = popArguments(stack, parseMethodDescriptor(member.descriptor).params.length)
+        if (member.name === 'makeConcatWithConstants') {
+          const bootstrap = structure.bootstrapMethods[dynamic?.bootstrapMethodAttrIndex ?? -1]
+          const recipeEntry = bootstrap?.[0] ? cp[bootstrap[0]] : null
+          const recipe = recipeEntry?.tag === 8 ? cpUtf8(cp, recipeEntry.nameIndex ?? 0) : '\u0001'.repeat(args.length)
+          stack.push(concatExpression(recipe, args))
+        } else {
+          stack.push(`${member.name}(${args.join(', ')})`)
+        }
+        break
+      }
+      default:
+        unsupported = `opcode 0x${op.toString(16).padStart(2, '0')} at byte ${opStart}`
+        pos = code.length
+    }
+  }
+  if (unsupported) lines.push(`/* Unsupported bytecode: ${unsupported} */`)
+  return lines.length ? lines : []
 }
 
 function renderClassSkeleton(s: ClassStructure): string {
@@ -806,11 +1012,19 @@ function renderClassSkeleton(s: ClassStructure): string {
       const paramStr = params.map((p, i) => `${p} arg${i}`).join(', ')
       const isAbstract = !!(m.flags & 0x0400)
       const isNative = !!(m.flags & 0x0100)
-      const body = (isAbstract || isNative) ? ';' : ' { /* ... */ }'
       if (m.name === '<init>') {
-        lines.push(`  ${mods ? mods + ' ' : ''}${simpleName}(${paramStr}) { }`)
+        const bodyLines = decompileMethodBody(m, s)
+        lines.push(`  ${mods ? mods + ' ' : ''}${simpleName}(${paramStr}) {${bodyLines.length ? '' : ' }'}`)
+        bodyLines.forEach((line) => lines.push(`    ${line}`))
+        if (bodyLines.length) lines.push('  }')
       } else {
-        lines.push(`  ${mods ? mods + ' ' : ''}${returnType} ${m.name}(${paramStr})${body}`)
+        if (isAbstract || isNative) {
+          lines.push(`  ${mods ? mods + ' ' : ''}${returnType} ${m.name}(${paramStr});`)
+        } else {
+          lines.push(`  ${mods ? mods + ' ' : ''}${returnType} ${m.name}(${paramStr}) {`)
+          decompileMethodBody(m, s).forEach((line) => lines.push(`    ${line}`))
+          lines.push('  }')
+        }
       }
     }
   }
@@ -910,7 +1124,7 @@ export function UtilsPanel() {
   const [jksPassword, setJksPassword] = useState('changeit')
   const [jksAlias, setJksAlias] = useState('')
   const [jksSplit, setJksSplit] = useState<{ certPem: string; keyPem: string; warning?: string } | null>(null)
-  const [classInput, setClassInput] = useState('CAFEBABE00000034001D')
+  const [classInput, setClassInput] = useState('')
   const [classOutput, setClassOutput] = useState('')
   const [classFileName, setClassFileName] = useState('')
   const [classViewMode, setClassViewMode] = useState<'skeleton' | 'details'>('skeleton')
@@ -1591,8 +1805,8 @@ export function UtilsPanel() {
           <div className="flex flex-col gap-3">
             <FileDropZone
               accept=".class,application/java-vm,application/octet-stream"
-              label="Drop a Java .class file here"
-              detail="Reads binary and reconstructs the class structure as readable Java"
+              label="Drop a Java .class file to decompile"
+              detail="Reads bytecode locally and reconstructs readable Java source plus JVM metadata"
               onFile={(file) => void handleClassFile(file)}
             />
             {classFileName && <p className="text-[10px] text-text-4">Loaded: <span className="font-mono text-text-2">{classFileName}</span></p>}
@@ -1618,7 +1832,7 @@ export function UtilsPanel() {
                   }}
                   className={`px-2 py-1 ${classViewMode === 'skeleton' ? 'bg-accent text-white' : 'bg-surface-2 text-text-3 hover:text-text-1'}`}
                 >
-                  Source Skeleton
+                  Decompiled Source
                 </button>
                 <button
                   onClick={() => {
@@ -1631,7 +1845,7 @@ export function UtilsPanel() {
                 </button>
               </div>
               <span className="text-[10px] text-text-4">
-                {classViewMode === 'skeleton' ? 'Decoded Java-like structure' : 'JVM descriptor format'}
+                {classViewMode === 'skeleton' ? 'Reconstructed from JVM bytecode' : 'JVM descriptor format'}
               </span>
             </div>
             {classOutput && (

@@ -5,27 +5,42 @@ full protobuf compilation. This simplifies the plugin development
 experience while maintaining gRPC transport benefits.
 """
 
+import base64
 import json
 from concurrent import futures
 
 import grpc
 
 
-class _JsonSerializer(grpc.protos_and_services):
+def _to_wire(value):
     """Not used directly — we handle serialization manually."""
-    pass
+    if isinstance(value, bytes):
+        return base64.b64encode(value).decode("ascii")
+    if isinstance(value, dict):
+        return {key: _to_wire(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_to_wire(item) for item in value]
+    return value
 
 
 def _json_serialize(msg):
     """Serialize a dict to bytes for gRPC transport."""
-    return json.dumps(msg).encode("utf-8")
+    return json.dumps(_to_wire(msg)).encode("utf-8")
 
 
 def _json_deserialize(data, _unused=None):
     """Deserialize bytes from gRPC transport to dict."""
     if not data:
         return {}
-    return json.loads(data.decode("utf-8"))
+    request = json.loads(data.decode("utf-8"))
+    payload = request.get("payload")
+    if isinstance(payload, str):
+        raw_payload = base64.b64decode(payload)
+        try:
+            request["payload"] = json.loads(raw_payload.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            request["payload"] = raw_payload
+    return request
 
 
 class _MethodHandler(grpc.RpcMethodHandler):

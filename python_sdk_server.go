@@ -42,7 +42,7 @@ func (s *SDKServer) Start() (int, error) {
 		return 0, fmt.Errorf("failed to listen on port %d: %w", port, err)
 	}
 
-	s.grpcServer = grpc.NewServer()
+	s.grpcServer = grpc.NewServer(grpc.ForceServerCodec(jsonGRPCCodec{}))
 	pb.RegisterAdOmniaAPIServer(s.grpcServer, s)
 	s.port = port
 

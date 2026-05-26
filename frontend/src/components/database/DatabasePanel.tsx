@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 
 type DbDriver = 'sqlite' | 'postgres' | 'mysql' | 'db2' | 'mongodb'
+type SelectableDbDriver = Exclude<DbDriver, 'db2'>
 
 interface DbConnection {
   id: string
@@ -49,6 +50,7 @@ const DRIVER_META: Record<DbDriver, { label: string; port: number; tone: string 
   db2: { label: 'IBM Db2', port: 50000, tone: 'text-accent border-accent/25 bg-accent/8' },
   mongodb: { label: 'MongoDB', port: 27017, tone: 'text-success border-success/25 bg-success/8' },
 }
+const SELECTABLE_DRIVERS: SelectableDbDriver[] = ['sqlite', 'postgres', 'mysql', 'mongodb']
 
 const MONGO_DEFAULT_QUERY = `{
   "operation": "find",
@@ -336,7 +338,7 @@ export function DatabasePanel() {
 
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
           <div className="mb-3 grid grid-cols-2 gap-2">
-            {(Object.keys(DRIVER_META) as DbDriver[]).map((driver) => (
+            {SELECTABLE_DRIVERS.map((driver) => (
               <button
                 key={driver}
                 onClick={() => setDriver(driver)}
@@ -391,7 +393,7 @@ export function DatabasePanel() {
             <button onClick={sendConnectionSecretToVault} className="flex h-8 items-center justify-center gap-1.5 rounded border border-border-2 text-xs text-text-3 hover:text-text-1"><Shield size={12} /> Send to Vault</button>
           </div>
           {active.savedInVault && <div className="mt-2 rounded border border-success/25 bg-success/8 px-2 py-1.5 text-[10px] text-success">Credential handoff sent to Vault. Remove plaintext here after encrypting if you do not want it stored in this connection preset.</div>}
-          {active.driver === 'db2' && <div className="mt-2 rounded border border-warning/30 bg-warning/10 px-2 py-1.5 text-[10px] text-warning">Db2 needs IBM CLI/ODBC client libraries on the machine. Portable bundled driver is not enabled yet.</div>}
+          {active.driver === 'db2' && <div className="mt-2 rounded border border-warning/30 bg-warning/10 px-2 py-1.5 text-[10px] text-warning">This saved Db2 preset is retained for compatibility, but Db2 is not available in this portable build. Select a supported driver to continue.</div>}
           {active.driver === 'mongodb' && (
             <div className="mt-2 rounded border border-success/25 bg-success/8 px-2 py-1.5 text-[10px] text-success">
               MongoDB runner enabled. Use JSON operations: find, aggregate, insertOne/Many, updateOne/Many, deleteOne/Many, count, listCollections, runCommand.

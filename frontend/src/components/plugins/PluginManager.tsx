@@ -7,6 +7,7 @@ import {
   enablePlugin,
   disablePlugin,
   installPlugin,
+  installPluginPackage,
   uninstallPlugin,
 } from '@/lib/plugins-api'
 import { PluginSettings } from './PluginSettings'
@@ -63,6 +64,7 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
   const [busy, setBusy] = useState(false)
   const [dragging, setDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const folderInputRef = useRef<HTMLInputElement>(null)
 
   // Form state
   const [form, setForm] = useState<PluginFormState>({
@@ -79,13 +81,49 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
   const doInstall = useCallback(async (json: string) => {
     setBusy(true)
     setError('')
-    const result = await installPlugin(json.trim())
-    setBusy(false)
-    if (result) {
-      onInstalled()
+    try {
+      await installPlugin(json.trim())
+      await onInstalled()
       onClose()
-    } else {
-      setError('Manifest non valido o plugin già installato.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Installazione plugin fallita.')
+    } finally {
+      setBusy(false)
+    }
+  }, [onInstalled, onClose])
+
+  const installFolder = useCallback(async (fileList: FileList) => {
+    const files = Array.from(fileList)
+    const manifestFile = files
+      .filter((file) => file.name.toLowerCase() === 'manifest.json')
+      .sort((a, b) => a.webkitRelativePath.length - b.webkitRelativePath.length)[0]
+    if (!manifestFile) {
+      setError('La cartella selezionata non contiene manifest.json.')
+      return
+    }
+
+    setBusy(true)
+    setError('')
+    try {
+      const manifestPath = manifestFile.webkitRelativePath || manifestFile.name
+      const prefix = manifestPath.slice(0, manifestPath.length - manifestFile.name.length)
+      const encodedFiles: Record<string, string> = {}
+      for (const file of files) {
+        const path = file.webkitRelativePath || file.name
+        if (prefix && !path.startsWith(prefix)) continue
+        const relativePath = prefix ? path.slice(prefix.length) : path
+        const bytes = new Uint8Array(await file.arrayBuffer())
+        let binary = ''
+        for (const byte of bytes) binary += String.fromCharCode(byte)
+        encodedFiles[relativePath] = btoa(binary)
+      }
+      await installPluginPackage(await manifestFile.text(), encodedFiles)
+      await onInstalled()
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Installazione cartella plugin fallita.')
+    } finally {
+      setBusy(false)
     }
   }, [onInstalled, onClose])
 
@@ -111,9 +149,13 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
   const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     setDragging(false)
+    if (e.dataTransfer.files.length > 1) {
+      void installFolder(e.dataTransfer.files)
+      return
+    }
     const file = e.dataTransfer.files[0]
     if (file) handleFile(file)
-  }, [handleFile])
+  }, [handleFile, installFolder])
 
   const handleFormInstall = () => {
     if (!form.name.trim() || !form.author.trim()) {
@@ -172,12 +214,31 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
           {/* ── Tab: file ─────────────────────────────────────── */}
           {tab === 'file' && (
             <div className="space-y-3">
+              <p className="text-xs text-text-3">Per plugin Python o WASM installa la cartella completa, incluso il file che il plugin esegue.</p>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => folderInputRef.current?.click()}
+                className="flex w-full items-center justify-center gap-2 rounded-md bg-accent px-3 py-2 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
+              >
+                <Upload size={13} />
+                Installa cartella plugin (consigliato)
+              </button>
+              <input
+                ref={folderInputRef}
+                type="file"
+                multiple
+                {...({ webkitdirectory: '', directory: '' } as React.InputHTMLAttributes<HTMLInputElement>)}
+                className="hidden"
+                onChange={(e) => { if (e.target.files?.length) void installFolder(e.target.files) }}
+              />
+              <p className="pt-2 text-[10px] uppercase tracking-wider text-text-4">Solo manifest</p>
               <p className="text-xs text-text-3">
-                Trascina qui il file <span className="font-mono text-text-2">manifest.json</span> del plugin, oppure clicca per sfogliare.
+                Usa questa opzione solo per registrare un plugin senza file eseguibili.
               </p>
               <div
                 className={cn(
-                  'flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed py-10 cursor-pointer transition-colors',
+                  'flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed py-5 cursor-pointer transition-colors',
                   dragging ? 'border-accent bg-accent/5' : 'border-border-2 hover:border-accent/50 hover:bg-surface-1'
                 )}
                 onClick={() => fileInputRef.current?.click()}
@@ -187,9 +248,8 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
               >
                 <Upload size={28} className={cn('transition-colors', dragging ? 'text-accent' : 'text-text-4')} />
                 <span className="text-xs text-text-3">
-                  {dragging ? 'Rilascia qui' : 'Trascina manifest.json o clicca per sfogliare'}
+                  {dragging ? 'Rilascia qui' : 'Seleziona manifest.json'}
                 </span>
-                <span className="text-[10px] text-text-4">Solo file .json</span>
               </div>
               <input
                 ref={fileInputRef}
@@ -358,12 +418,20 @@ export function PluginManager() {
   const [installMode, setInstallMode] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [activePanelPlugin, setActivePanelPlugin] = useState<PluginInstance | null>(null)
+  const [loadError, setLoadError] = useState('')
 
   const loadPlugins = useCallback(async () => {
     setLoading(true)
-    const all = await getPlugins()
-    setPlugins(all)
-    setLoading(false)
+    setLoadError('')
+    try {
+      const all = await getPlugins()
+      setPlugins(all)
+    } catch (err) {
+      setPlugins([])
+      setLoadError(err instanceof Error ? err.message : 'Impossibile caricare i plugin installati.')
+    } finally {
+      setLoading(false)
+    }
   }, [setPlugins, setLoading])
 
   useEffect(() => {
@@ -422,7 +490,7 @@ export function PluginManager() {
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-2 hover:text-text-1 bg-surface-1 hover:bg-surface-2 border border-border-1 rounded-md transition-colors"
           >
             <Cpu size={13} />
-            {view === 'plugins' ? 'Runtime Inspector' : 'Plugin List'}
+            {view === 'plugins' ? 'Dettagli sviluppatore' : 'Plugin installati'}
           </button>
           <button
             onClick={() => setInstallMode(true)}
@@ -438,6 +506,18 @@ export function PluginManager() {
         <PluginDevTools embedded />
       ) : (
       <div className="flex-1 overflow-y-auto p-6">
+        <div className="mb-5 rounded-md border border-border-1 bg-surface-1 px-4 py-3">
+          <p className="text-xs font-medium text-text-1">Come usare i plugin</p>
+          <p className="mt-1 text-xs text-text-3">
+            Installa la cartella completa del plugin, abilitalo e apri il suo pannello per eseguire le azioni disponibili.
+            Se avevi importato solo il manifest, la cartella completa ripara l'installazione. Dettagli sviluppatore serve solo per diagnosi.
+          </p>
+        </div>
+        {loadError && (
+          <div className="mb-4 rounded-md border border-error/30 bg-error/10 px-3 py-2 text-xs text-error">
+            {loadError}
+          </div>
+        )}
         {/* Panel plugin shortcuts */}
         {panelPlugins.length > 0 && (
           <div className="mb-5">

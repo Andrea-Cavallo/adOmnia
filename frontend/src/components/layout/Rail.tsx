@@ -6,7 +6,7 @@ import {
   Send, LayoutList, Shield, Server, Radio, Globe, Bug, Container, Network,
   Wrench, FileText, FileCode, Database, Braces, FlaskConical, ChevronRight,
   Lock, FolderOpen, Paintbrush, LayoutTemplate, Puzzle, Settings, GitBranch,
-  Play, Zap, BarChart2, Activity, Box, HardDrive, History,
+  Play, Zap, BarChart2, Activity, HardDrive, History,
 } from 'lucide-react'
 
 interface SubItem {
@@ -59,7 +59,6 @@ const CATEGORIES: CategoryDef[] = [
       { title: 'Protocols', items: [
         { id: 'grpc',  icon: Send,     label: 'gRPC Client' },
         { id: 'soap',  icon: Soap95Icon, label: 'SOAP Studio' },
-        { id: 'kafka', icon: Box,      label: 'Kafka Client' },
       ]},
     ],
   },
@@ -98,7 +97,6 @@ const CATEGORIES: CategoryDef[] = [
       { title: 'Workspace', items: [
         { id: 'workspace',  icon: FolderOpen,     label: 'Workspace' },
         { id: 'templates',  icon: LayoutTemplate, label: 'Templates' },
-        { id: 'plugins',    icon: Puzzle,         label: 'Plugins' },
         { id: 'themes',     icon: Paintbrush,     label: 'Themes' },
       ]},
     ],
@@ -112,6 +110,9 @@ const CATEGORIES: CategoryDef[] = [
       ]},
       { title: 'Utilities', items: [
         { id: 'powertools',  icon: Wrench,  label: 'All Utilities' },
+      ]},
+      { title: 'Extensibility', items: [
+        { id: 'plugins', icon: Puzzle, label: 'Plugins' },
       ]},
     ],
   },

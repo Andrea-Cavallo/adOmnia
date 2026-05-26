@@ -28,6 +28,18 @@ import { type HttpMethod, type RequestItem, uid } from '@/lib/types'
 
 interface HarHeader { name: string; value: string }
 
+interface HarCookie {
+  name: string
+  value: string
+  domain?: string
+  path?: string
+  expires?: string
+  httpOnly?: boolean
+  secure?: boolean
+}
+
+interface HarQueryParam { name: string; value: string }
+
 interface HarTiming {
   blocked?: number
   dns?: number
@@ -41,18 +53,29 @@ interface HarTiming {
 interface HarEntry {
   startedDateTime: string
   time: number
+  pageref?: string
+  serverIPAddress?: string
+  connection?: string
   request: {
     method: string
     url: string
+    httpVersion?: string
     headers: HarHeader[]
+    queryString?: HarQueryParam[]
+    cookies?: HarCookie[]
+    headersSize?: number
     bodySize: number
     postData?: { mimeType: string; text?: string }
   }
   response: {
     status: number
     statusText: string
+    httpVersion?: string
     headers: HarHeader[]
-    content: { size: number; mimeType: string; text?: string }
+    cookies?: HarCookie[]
+    redirectURL?: string
+    headersSize?: number
+    content: { size: number; compression?: number; mimeType: string; text?: string; encoding?: string }
     bodySize: number
   }
   timings: HarTiming
@@ -62,6 +85,12 @@ interface HarDoc {
   log: {
     version: string
     creator?: { name: string; version: string }
+    pages?: Array<{
+      id: string
+      title?: string
+      startedDateTime?: string
+      pageTimings?: { onContentLoad?: number; onLoad?: number }
+    }>
     entries: HarEntry[]
   }
 }
@@ -80,6 +109,30 @@ interface RichEntry extends HarEntry {
 
 function parseDomain(url: string) {
   try { return new URL(url).hostname } catch { return url.slice(0, 40) }
+}
+
+function removeQuery(url: string) {
+  try {
+    const parsed = new URL(url)
+    parsed.search = ''
+    return parsed.toString()
+  } catch {
+    return url.split('?')[0]
+  }
+}
+
+function queryParamsFromEntry(entry: HarEntry): HarQueryParam[] {
+  try {
+    const params = Array.from(new URL(entry.request.url).searchParams.entries(), ([name, value]) => ({ name, value }))
+    return params.length ? params : (entry.request.queryString ?? [])
+  } catch {
+    return entry.request.queryString ?? []
+  }
+}
+
+function fmtDate(value: string) {
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString()
 }
 
 function shortMime(mime: string) {
@@ -169,14 +222,20 @@ function entryToRequest(entry: HarEntry): RequestItem {
   const safeMethod = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'CONNECT', 'TRACE'].includes(method)
     ? method as HttpMethod
     : 'GET'
+  const queryParams = queryParamsFromEntry(entry)
   return {
     id: uid(),
     name: `${safeMethod} ${parseDomain(entry.request.url)}`,
     type: 'request',
     method: safeMethod,
-    url: entry.request.url,
-    params: [{ id: uid(), key: '', value: '', enabled: true }],
+    url: queryParams.length ? removeQuery(entry.request.url) : entry.request.url,
+    params: queryParams.length
+      ? queryParams.map((param) => ({ id: uid(), key: param.name, value: param.value, enabled: true }))
+      : [{ id: uid(), key: '', value: '', enabled: true }],
     headers: (entry.request.headers ?? []).map((h) => ({ id: uid(), key: h.name, value: h.value, enabled: true })),
+    cookies: entry.request.cookies?.length
+      ? entry.request.cookies.map((cookie) => ({ id: uid(), key: cookie.name, value: cookie.value, enabled: true }))
+      : [{ id: uid(), key: '', value: '', enabled: true }],
     bodies: [{ id: uid(), name: 'Body 1', type: entry.request.postData?.text ? 'raw' : 'none', raw: entry.request.postData?.text ?? '', lang: 'json', form: [] }],
     activeBodyIdx: 0,
     auth: { type: 'none', token: '', username: '', password: '' },
@@ -281,6 +340,36 @@ function HeaderTable({ headers }: { headers: HarHeader[] }) {
   )
 }
 
+function CookieTable({ cookies }: { cookies: HarCookie[] }) {
+  if (!cookies.length) return <p className="py-3 text-center text-[10px] text-text-4">No cookies</p>
+  return (
+    <div>
+      {cookies.map((cookie, i) => (
+        <div key={`${cookie.name}-${i}`} className="border-b border-border-2 py-1 text-[10px] last:border-0">
+          <div className="flex gap-2">
+            <span className="w-1/3 shrink-0 break-all font-mono font-semibold text-text-3">{cookie.name}</span>
+            <span className="min-w-0 break-all font-mono text-text-2">{cookie.value}</span>
+          </div>
+          {(cookie.domain || cookie.path || cookie.secure || cookie.httpOnly) && (
+            <p className="mt-0.5 pl-[33.333%] text-[9px] text-text-4">
+              {[cookie.domain, cookie.path, cookie.secure ? 'Secure' : '', cookie.httpOnly ? 'HttpOnly' : ''].filter(Boolean).join('  ')}
+            </p>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function MetaItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded border border-border-2 bg-surface-0 px-2 py-1">
+      <p className="text-[9px] uppercase tracking-wider text-text-4">{label}</p>
+      <p className="truncate font-mono text-[10px] text-text-2" title={value}>{value}</p>
+    </div>
+  )
+}
+
 // ── Body preview with copy ────────────────────────────────────────────────────
 
 function BodyPreview({ text }: { text?: string }) {
@@ -304,7 +393,7 @@ function BodyPreview({ text }: { text?: string }) {
 
 function EntryDetail({ entry, onClose }: { entry: RichEntry; onClose: () => void }) {
   const [tab, setTab] = useState<'timings' | 'request' | 'response'>('timings')
-  const pathname = (() => { try { return new URL(entry.request.url).pathname } catch { return entry.request.url } })()
+  const queryParams = queryParamsFromEntry(entry)
 
   const sendToComposer = () => {
     useTabsStore.getState().openTab(entryToRequest(entry))
@@ -338,7 +427,7 @@ function EntryDetail({ entry, onClose }: { entry: RichEntry; onClose: () => void
     <div className="flex min-h-0 flex-col">
       <div className="flex shrink-0 items-center gap-2 border-b border-border-1 bg-surface-1 px-3 py-2">
         <span className={cn('font-mono text-[10px] font-semibold', methodCls(entry.request.method))}>{entry.request.method}</span>
-        <span className="flex-1 truncate font-mono text-[10px] text-text-2" title={entry.request.url}>{pathname}</span>
+        <span className="flex-1 truncate font-mono text-[10px] text-text-2" title={entry.request.url}>{entry.request.url}</span>
         <button onClick={sendToComposer} className="text-text-4 hover:text-accent" title="Send to Composer"><Send size={12} /></button>
         <button onClick={createMock} className="text-text-4 hover:text-success" title="Create mock endpoint"><Server size={12} /></button>
         <button onClick={onClose} title="Close" className="text-text-4 hover:text-error"><X size={12} /></button>
@@ -351,17 +440,45 @@ function EntryDetail({ entry, onClose }: { entry: RichEntry; onClose: () => void
         ))}
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2">
-        {tab === 'timings' && <WaterfallDetail entry={entry} />}
+        {tab === 'timings' && (
+          <div className="flex flex-col gap-3">
+            <div className="grid grid-cols-2 gap-1.5">
+              <MetaItem label="Started" value={fmtDate(entry.startedDateTime)} />
+              <MetaItem label="Duration" value={fmtMs(entry.time)} />
+              <MetaItem label="Host" value={entry._domain || '-'} />
+              <MetaItem label="Transferred" value={fmtBytes(entry.response.content?.size || entry.response.bodySize)} />
+            </div>
+            <WaterfallDetail entry={entry} />
+          </div>
+        )}
         {tab === 'request' && (
           <div className="flex flex-col gap-3">
             <div>
               <p className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-text-4">URL</p>
               <p className="break-all font-mono text-[10px] text-text-2">{entry.request.url}</p>
             </div>
+            <div className="grid grid-cols-2 gap-1.5">
+              <MetaItem label="HTTP" value={entry.request.httpVersion || '-'} />
+              <MetaItem label="Headers Size" value={fmtBytes(entry.request.headersSize ?? -1)} />
+              <MetaItem label="Body Size" value={fmtBytes(entry.request.bodySize)} />
+              <MetaItem label="Started" value={fmtDate(entry.startedDateTime)} />
+            </div>
+            {!!queryParams.length && (
+              <div>
+                <p className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-text-4">Query String ({queryParams.length})</p>
+                <HeaderTable headers={queryParams} />
+              </div>
+            )}
             <div>
               <p className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-text-4">Headers ({entry.request.headers?.length ?? 0})</p>
               <HeaderTable headers={entry.request.headers ?? []} />
             </div>
+            {!!entry.request.cookies?.length && (
+              <div>
+                <p className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-text-4">Cookies ({entry.request.cookies.length})</p>
+                <CookieTable cookies={entry.request.cookies} />
+              </div>
+            )}
             {entry.request.postData?.text && (
               <div>
                 <p className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-text-4">Body</p>
@@ -377,10 +494,28 @@ function EntryDetail({ entry, onClose }: { entry: RichEntry; onClose: () => void
               <span className="text-[10px] text-text-4">{fmtBytes(entry.response.content?.size || entry.response.bodySize)}</span>
               <span className="text-[10px] text-text-4 truncate max-w-[180px]">{entry.response.content?.mimeType}</span>
             </div>
+            <div className="grid grid-cols-2 gap-1.5">
+              <MetaItem label="HTTP" value={entry.response.httpVersion || '-'} />
+              <MetaItem label="Headers Size" value={fmtBytes(entry.response.headersSize ?? -1)} />
+              <MetaItem label="Body Size" value={fmtBytes(entry.response.bodySize)} />
+              <MetaItem label="Content Size" value={fmtBytes(entry.response.content?.size)} />
+            </div>
+            {!!entry.response.redirectURL && (
+              <div>
+                <p className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-text-4">Redirect URL</p>
+                <p className="break-all font-mono text-[10px] text-text-2">{entry.response.redirectURL}</p>
+              </div>
+            )}
             <div>
               <p className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-text-4">Headers ({entry.response.headers?.length ?? 0})</p>
               <HeaderTable headers={entry.response.headers ?? []} />
             </div>
+            {!!entry.response.cookies?.length && (
+              <div>
+                <p className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-text-4">Cookies ({entry.response.cookies.length})</p>
+                <CookieTable cookies={entry.response.cookies} />
+              </div>
+            )}
             {entry.response.content?.text && (
               <div>
                 <p className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-text-4">Body</p>
@@ -397,7 +532,6 @@ function EntryDetail({ entry, onClose }: { entry: RichEntry; onClose: () => void
 // ── Entry row ─────────────────────────────────────────────────────────────────
 
 function EntryRow({ entry, selected, onClick }: { entry: RichEntry; selected: boolean; onClick: () => void }) {
-  const pathname = (() => { try { return new URL(entry.request.url).pathname } catch { return entry.request.url } })()
   return (
     <button
       onClick={onClick}
@@ -407,7 +541,7 @@ function EntryRow({ entry, selected, onClick }: { entry: RichEntry; selected: bo
         {entry.response?.status || '?'}
       </span>
       <span className={cn('w-10 shrink-0 font-mono text-[9px] font-semibold', methodCls(entry.request.method))}>{entry.request.method}</span>
-      <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-text-2" title={entry.request.url}>{pathname}</span>
+      <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-text-2" title={entry.request.url}>{entry.request.url}</span>
       <div className="flex shrink-0 items-center gap-0.5">
         {entry._error && <span title="Error"><AlertTriangle size={9} className="text-error" /></span>}
         {entry._slow  && <span title="Slow (> 1s)"><Clock size={9} className="text-warning" /></span>}
@@ -546,6 +680,17 @@ export function HarViewerPanel() {
     slow:   filtered.filter((e) => e._slow).length,
     heavy:  filtered.filter((e) => e._heavy).length,
   }), [filtered])
+
+  const captureStats = useMemo(() => {
+    if (!harA) return null
+    const page = harA.log.pages?.[0]
+    const transferred = entries.reduce((total, entry) => total + Math.max(entry.response.content?.size || entry.response.bodySize || 0, 0), 0)
+    return {
+      creator: harA.log.creator ? `${harA.log.creator.name} ${harA.log.creator.version}` : '',
+      load: page?.pageTimings?.onLoad,
+      transferred,
+    }
+  }, [entries, harA])
 
   const importFile = useCallback(async (file: File, slot: 'a' | 'b') => {
     setErrMsg(''); setBusy(true)
@@ -755,6 +900,10 @@ export function HarViewerPanel() {
 
             <div className="flex items-center gap-3 text-[10px] text-text-4">
               <span>{filtered.length}/{entries.length} requests</span>
+              <span>{domains.length} domains</span>
+              {captureStats && <span>{fmtBytes(captureStats.transferred)} transferred</span>}
+              {captureStats?.load != null && captureStats.load >= 0 && <span>{fmtMs(captureStats.load)} page load</span>}
+              {captureStats?.creator && <span className="max-w-48 truncate" title={captureStats.creator}>{captureStats.creator}</span>}
               {stats.errors > 0 && <span className="text-error">{stats.errors} errors</span>}
               {stats.slow   > 0 && <span className="text-warning">{stats.slow} slow (&gt;1s)</span>}
               {stats.heavy  > 0 && <span className="text-info">{stats.heavy} heavy (&gt;512KB)</span>}
@@ -769,7 +918,7 @@ export function HarViewerPanel() {
               <div className="flex shrink-0 items-center gap-2 border-b border-border-1 bg-surface-1 px-3 py-1 text-[9px] font-semibold uppercase tracking-wider text-text-4">
                 <span className="w-9">St</span>
                 <span className="w-10">Method</span>
-                <span className="flex-1">Path</span>
+                <span className="flex-1">URL</span>
                 <span className="w-4"></span>
                 <span className="w-8 text-right">Type</span>
                 <span className="w-14 text-right">Time</span>

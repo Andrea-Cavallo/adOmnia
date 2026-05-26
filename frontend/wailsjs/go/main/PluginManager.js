@@ -50,6 +50,10 @@ export function InstallPlugin(arg1) {
   return window['go']['main']['PluginManager']['InstallPlugin'](arg1);
 }
 
+export function InstallPluginPackage(arg1, arg2) {
+  return window['go']['main']['PluginManager']['InstallPluginPackage'](arg1, arg2);
+}
+
 export function InstallPythonPlugin(arg1) {
   return window['go']['main']['PluginManager']['InstallPythonPlugin'](arg1);
 }

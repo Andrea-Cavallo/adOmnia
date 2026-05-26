@@ -425,8 +425,8 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 | D2.9 | **Contatori Anomalie** | Badge errori, richieste lente, richieste pesanti nel set filtrato. |
 | D2.10 | **Lista Richieste** | Colonne: status, metodo, URL, icone anomalia, MIME, durata, mini timing bar. |
 | D2.11 | **Dettaglio — Timings** | Breakdown waterfall: DNS / TCP / TLS / Send / TTFB / Download con barre proporzionali. |
-| D2.12 | **Dettaglio — Request** | URL, headers, body della richiesta. |
-| D2.13 | **Dettaglio — Response** | Status, dimensione, MIME, headers, body. Copia body. |
+| D2.12 | **Dettaglio — Request** | URL completo, HTTP/versione e dimensioni, query string, headers, cookies e body della richiesta; invio al Composer con query e cookies preservati. |
+| D2.13 | **Dettaglio — Response** | Status, HTTP/versione e dimensioni, MIME, redirect URL, headers, cookies e body. Copia body. |
 | D2.14 | **Compare Mode** | Confronta due HAR affiancati: colonne metodo, URL, durata A, durata B, differenza (▼ faster / ▲ slower / ≈ simile). |
 
 ---
@@ -491,7 +491,7 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 | D6.13 | **YAML Validator** | Validazione sintassi e struttura. |
 | D6.14 | **HTTP Status Reference** | Codici 100–511 con categoria e descrizione. |
 | D6.15 | **PEM / JKS Inspector** | Identifica blocchi certificato/chiave PEM. |
-| D6.16 | **Class File Inspector** | Verifica magic bytes `CAFEBABE` e versione .class Java. |
+| D6.16 | **Java Class Decompiler** | Carica `.class` localmente, verifica magic/versione JVM, legge bytecode dei metodi e ricostruisce sorgente Java leggibile per istruzioni comuni, con vista dettagli raw. |
 | D6.17 | **Docker Compose Generator** | Genera file docker-compose.yml starter per servizi mock e dipendenze locali. |
 
 ---
@@ -551,7 +551,6 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 | E1.2 | **Driver PostgreSQL** | Host, porta, database, user, password, SSL mode. Driver `pgx/v5/stdlib`. |
 | E1.3 | **Driver MySQL / MariaDB** | Host, porta, database, user, password. Driver `go-sql-driver/mysql`. |
 | E1.4 | **Driver MongoDB** | Host, porta, database, collection, user, password. Driver `mongo-driver v2`. |
-| E1.5 | **Driver Db2** | Configurazione visibile con warning "Db2 needs IBM CLI/ODBC client libraries". |
 | E1.6 | **DSN Override** | Textarea DSN raw per override avanzato. |
 | E1.7 | **Test Connessione** | Ping al database con feedback successo/errore. |
 | E1.8 | **Gestione Connessioni** | Dropdown con connessioni salvate; aggiungi, seleziona, elimina. |
@@ -651,8 +650,8 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 
 | # | Funzionalità | Descrizione |
 |---|-------------|-------------|
-| F2.1 | **Manifest Plugin** | JSON con: ID, nome, versione, autore, descrizione, homepage, licenza, permessi, hook, impostazioni, entry point, icona. |
-| F2.2 | **Installa/Disinstalla** | Da manifest JSON; disinstalla rimuove directory e pulisce hook. |
+| F2.1 | **Manifest Plugin** | JSON con ID, metadati, permessi, hook, impostazioni, entry point, icona, pannelli `ui_slots` e azioni; accetta anche il formato Python compatto. |
+| F2.2 | **Installa/Disinstalla** | Da cartella completa per plugin eseguibili o da solo manifest per registrazione; i plugin vengono riletti all'avvio e mostrati in `PWR > Plugins`. |
 | F2.3 | **Abilita/Disabilita** | Toggle con registrazione/deregistrazione hook; stato persistito. |
 | F2.4 | **12 Hook Events** | onRequest, onResponse, onSend, onSave, onImport, onExport, onStartup, onShutdown, onThemeChange, onEnvChange, onTabOpen, onTabClose. |
 | F2.5 | **Esecuzione Hook** | Ogni gestore restituisce HookResult (modificato, dati, errore). |

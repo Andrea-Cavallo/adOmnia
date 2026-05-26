@@ -24,7 +24,6 @@ import { safeSetItem } from '@/lib/safeLocalStorage'
 const WebSocketPanel       = React.lazy(() => import('@/components/websocket/WebSocketPanel').then(m => ({ default: m.WebSocketPanel })))
 const RequestHistoryPanel  = React.lazy(() => import('@/components/history/RequestHistoryPanel').then(m => ({ default: m.RequestHistoryPanel })))
 const SsePanel             = React.lazy(() => import('@/components/sse/SsePanel').then(m => ({ default: m.SsePanel })))
-const KafkaPanel           = React.lazy(() => import('@/components/kafka/KafkaPanel').then(m => ({ default: m.KafkaPanel })))
 const BrokerStudioPanel    = React.lazy(() => import('@/components/kafka/BrokerStudioPanel').then(m => ({ default: m.BrokerStudioPanel })))
 const MockPanel            = React.lazy(() => import('@/components/mock/MockPanel').then(m => ({ default: m.MockPanel })))
 const ProxyPanel           = React.lazy(() => import('@/components/proxy/ProxyPanel').then(m => ({ default: m.ProxyPanel })))
@@ -127,6 +126,7 @@ function RequestWorkspace() {
   const closeTab = useTabsStore((s) => s.closeTab)
   const closeTabsToRight = useTabsStore((s) => s.closeTabsToRight)
   const closeTabsToLeft = useTabsStore((s) => s.closeTabsToLeft)
+  const reorderTab = useTabsStore((s) => s.reorderTab)
   const newTab = useTabsStore((s) => s.newTab)
   const duplicateTab = useTabsStore((s) => s.duplicateTab)
   const updateRequest = useTabsStore((s) => s.updateRequest)
@@ -341,6 +341,7 @@ function RequestWorkspace() {
         onClose={(id) => attemptClose({ kind: 'single', tabId: id })}
         onCloseToRight={(id) => attemptClose({ kind: 'right', tabId: id })}
         onCloseToLeft={(id) => attemptClose({ kind: 'left', tabId: id })}
+        onReorder={reorderTab}
         onNewTab={newTab}
         onDuplicate={duplicateTab}
       />
@@ -497,7 +498,7 @@ function panelFor(activeRail: RailItem): PanelDef {
     case 'history':     return { component: <RequestHistoryPanel />,  titleKey: 'Request History', overflow: true }
     case 'websocket':   return { component: <WebSocketPanel />,       titleKey: 'WebSocket',     overflow: true }
     case 'sse':         return { component: <SsePanel />,             titleKey: 'SSE Client',    overflow: true }
-    case 'kafka':       return { component: <KafkaPanel />,          titleKey: 'kafka',         overflow: true }
+    case 'kafka':       return { component: <BrokerStudioPanel />,    titleKey: 'Broker Studio', overflow: true }
     case 'broker':      return { component: <BrokerStudioPanel />,    titleKey: 'Broker Studio', overflow: true }
     case 'mock':        return { component: <MockPanel />,            titleKey: 'mock',      overflow: true }
     case 'proxy':       return { component: <ProxyPanel />,           titleKey: 'proxy',     overflow: true }

@@ -1,0 +1,104 @@
+{
+  "id": "pm-stress-simulator",
+  "name": "PM Stress Simulator",
+  "version": "0.1.0",
+  "author": "adOmnia Labs",
+  "description": "Simula un Project Manager che chiede avanzamenti, aggiornamenti, ETA e call inutili mentre il developer prova a concentrarsi.",
+  "homepage": "https://adomnia.dev/plugins/pm-stress-simulator",
+  "license": "MIT",
+  "minAppVersion": "0.1.0",
+  "runtime": "python",
+  "entryPoint": "main.py",
+  "icon": "📊",
+  "permissions": [
+    "storage",
+    "log",
+    "events"
+  ],
+  "hooks": [
+    "onSend",
+    "onResponse"
+  ],
+  "ui_slots": [
+    "panel"
+  ],
+  "actions": [
+    {
+      "id": "ask_update",
+      "name": "Chiedi Avanzamento",
+      "description": "Genera una richiesta PM-style: avanzamenti, aggiornamenti, ETA e pressione gentile",
+      "streaming": false
+    },
+    {
+      "id": "ask_update_stream",
+      "name": "Chiedi Avanzamento Streaming",
+      "description": "Il PM scrive in tempo reale mentre il developer perde concentrazione",
+      "streaming": true
+    },
+    {
+      "id": "generate_followups",
+      "name": "Genera Follow-up",
+      "description": "Genera una sequenza di follow-up sempre piu' insistenti",
+      "streaming": false
+    },
+    {
+      "id": "meeting_invite",
+      "name": "Crea Meeting Inutile",
+      "description": "Genera un invito meeting urgente, rapido e totalmente non necessario",
+      "streaming": false
+    },
+    {
+      "id": "status_report",
+      "name": "Crea Status Report",
+      "description": "Trasforma uno stato reale in un aggiornamento PM-friendly per stakeholder",
+      "streaming": false
+    }
+  ],
+  "settings": [
+    {
+      "key": "pm_mood",
+      "label": "PM Mood",
+      "type": "select",
+      "default": "chaotic",
+      "options": [
+        "friendly",
+        "corporate",
+        "chaotic",
+        "legendary"
+      ],
+      "description": "Stile del PM: da gentile a completamente ingestibile"
+    },
+    {
+      "key": "follow_up_count",
+      "label": "Numero Follow-up",
+      "type": "number",
+      "default": 5,
+      "min": 1,
+      "max": 20,
+      "description": "Quanti follow-up generare prima che il developer cambi lavoro"
+    },
+    {
+      "key": "meeting_mode",
+      "label": "Meeting Mode",
+      "type": "boolean",
+      "default": true,
+      "description": "Aggiunge call, sync, allineamenti e mini meeting"
+    },
+    {
+      "key": "stakeholder_noise",
+      "label": "Stakeholder Noise",
+      "type": "boolean",
+      "default": true,
+      "description": "Aggiunge richieste vaghe da business, sponsor e stakeholder"
+    },
+    {
+      "key": "history_limit",
+      "label": "History Limit",
+      "type": "number",
+      "default": 20,
+      "min": 5,
+      "max": 100,
+      "description": "Numero massimo di stress PM salvati nello storage"
+    }
+  ]
+}

@@ -127,8 +127,30 @@ func (pb *PythonBridge) StopWorker(pluginID string) error {
 	return pb.manager.StopWorker(pluginID)
 }
 
+func (pb *PythonBridge) ensureWorkerReady(pluginID string) error {
+	for _, worker := range pb.manager.GetWorkerStatus() {
+		if worker["plugin_id"] != pluginID {
+			continue
+		}
+		switch fmt.Sprint(worker["state"]) {
+		case string(WorkerStateReady):
+			return nil
+		case string(WorkerStateDead):
+			if err := pb.manager.StopWorker(pluginID); err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("plugin %s is not ready yet", pluginID)
+		}
+	}
+	return pb.manager.SpawnWorker(pluginID, map[string]string{})
+}
+
 func (pb *PythonBridge) Execute(pluginID string, action string, payloadJSON string) (string, error) {
 	if err := pb.ensureStarted(); err != nil {
+		return "", err
+	}
+	if err := pb.ensureWorkerReady(pluginID); err != nil {
 		return "", err
 	}
 	result, err := pb.manager.Execute(pluginID, action, []byte(payloadJSON))
@@ -140,6 +162,9 @@ func (pb *PythonBridge) Execute(pluginID string, action string, payloadJSON stri
 
 func (pb *PythonBridge) ExecuteStream(pluginID string, action string, payloadJSON string) error {
 	if err := pb.ensureStarted(); err != nil {
+		return err
+	}
+	if err := pb.ensureWorkerReady(pluginID); err != nil {
 		return err
 	}
 	return pb.manager.ExecuteStream(pluginID, action, []byte(payloadJSON), func(chunk StreamChunk) {

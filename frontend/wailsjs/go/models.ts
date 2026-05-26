@@ -546,6 +546,24 @@ export namespace main {
 		    return a;
 		}
 	}
+	export class PluginAction {
+	    id: string;
+	    name: string;
+	    description: string;
+	    streaming: boolean;
+
+	    static createFrom(source: any = {}) {
+	        return new PluginAction(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.streaming = source["streaming"];
+	    }
+	}
 	export class PluginEvent {
 	    type: string;
 	    payload: Record<string, any>;
@@ -611,6 +629,8 @@ export namespace main {
 	    settings: PluginSetting[];
 	    entryPoint: string;
 	    icon: string;
+	    ui_slots?: string[];
+	    actions?: PluginAction[];
 	
 	    static createFrom(source: any = {}) {
 	        return new PluginManifest(source);
@@ -632,6 +652,8 @@ export namespace main {
 	        this.settings = this.convertValues(source["settings"], PluginSetting);
 	        this.entryPoint = source["entryPoint"];
 	        this.icon = source["icon"];
+	        this.ui_slots = source["ui_slots"];
+	        this.actions = this.convertValues(source["actions"], PluginAction);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -1055,4 +1077,3 @@ export namespace main {
 	}
 
 }
-

@@ -232,7 +232,7 @@ export function DockerLabPanel() {
         ? { protocol: 'rabbitmq', rabbitmq: { url: 'amqp://guest:guest@localhost:5672/' } }
         : { protocol: 'redis', redis: { addr: 'localhost:6379' } }
     safeSetItem('adomnia.broker.pending', JSON.stringify(pending))
-    useAppStore.getState().setActiveRail(hasKafka ? 'kafka' : 'broker')
+    useAppStore.getState().setActiveRail('broker')
   }
 
   const isRunning = runningLab !== null && selected !== null &&

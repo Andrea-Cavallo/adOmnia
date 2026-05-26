@@ -18,6 +18,7 @@ type PersistedTabsState = {
 export type ComposerSection = 'params' | 'headers' | 'cookies' | 'body' | 'auth' | 'scripts' | 'tests' | 'notes'
 export type ResponseSection = 'body' | 'headers' | 'contract' | 'assertions'
 export type ResponseBodyView = 'pretty' | 'raw' | 'graph'
+export type TabDropPosition = 'before' | 'after'
 
 export interface TabViewState {
   composerSection: ComposerSection
@@ -42,6 +43,7 @@ interface TabsState {
   closeTab: (id: string) => void
   closeTabsToRight: (id: string) => void
   closeTabsToLeft: (id: string) => void
+  reorderTab: (fromId: string, toId: string, position: TabDropPosition) => void
   setActiveTab: (id: string) => void
   newTab: (method?: HttpMethod) => void
   duplicateTab: (id: string) => void
@@ -85,7 +87,7 @@ function normalizeHistoryEntries(history: Array<RequestHistoryEntry | ResponseDa
 
 function defaultViewState(): TabViewState {
   return {
-    composerSection: 'params',
+    composerSection: 'body',
     composerScrollTop: 0,
     composerContentScrollTop: {},
     responseSection: 'body',
@@ -212,6 +214,20 @@ export const useTabsStore = create<TabsState>((set, get) => ({
         activeTabId: activeTabStillExists ? s.activeTabId : filtered[0]?.id ?? null,
         viewStateByTabId: retainViewStates(s.viewStateByTabId, filtered),
       }
+    })
+    get().save()
+  },
+
+  reorderTab: (fromId, toId, position) => {
+    if (fromId === toId) return
+    set((s) => {
+      const moving = s.tabs.find((tab) => tab.id === fromId)
+      if (!moving || !s.tabs.some((tab) => tab.id === toId)) return s
+      const reordered = s.tabs.filter((tab) => tab.id !== fromId)
+      const targetIndex = reordered.findIndex((tab) => tab.id === toId)
+      const insertIndex = targetIndex + (position === 'after' ? 1 : 0)
+      reordered.splice(insertIndex, 0, moving)
+      return { tabs: reordered }
     })
     get().save()
   },

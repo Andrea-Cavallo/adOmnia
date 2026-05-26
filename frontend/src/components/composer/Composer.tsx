@@ -260,18 +260,36 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
 
   const isDirty = useTabsStore((s) => s.tabs.find((t) => t.id === tabId)?.dirty ?? false)
 
-  const isWriteMethod = ['POST', 'PUT', 'PATCH'].includes(request.method)
-
   const scripts = request.scripts ?? { pre: '', post: '', tests: '' }
 
   const bodies = request.bodies ?? []
   const bodyCount = bodies.filter((b) => b.type !== 'none').length
 
-  const jarCount = useCookieJarStore((s) => {
-    try { return s.getCookiesForUrl(request.url).length } catch { return 0 }
-  })
+  const cookieJarEntries = useCookieJarStore((s) => s.entries)
+  const sendCookiesAutomatically = useSettingsStore((s) => s.settings.requests.sendCookiesAutomatically)
+  const jarCount = useMemo(() => {
+    if (!sendCookiesAutomatically || !cookieJarEntries.length) return 0
+    try {
+      const url = new URL(request.url)
+      const host = url.hostname.toLowerCase()
+      const path = url.pathname || '/'
+      const https = url.protocol === 'https:'
+      const now = Date.now()
+      return cookieJarEntries.filter((entry) => {
+        if (entry.expires !== undefined && entry.expires < now) return false
+        if (entry.secure && !https) return false
+        if (host !== entry.domain && !host.endsWith(`.${entry.domain}`)) return false
+        if (entry.path === '/' || path === entry.path) return true
+        const prefix = entry.path.endsWith('/') ? entry.path : `${entry.path}/`
+        return path.startsWith(prefix)
+      }).length
+    } catch {
+      return 0
+    }
+  }, [cookieJarEntries, request.url, sendCookiesAutomatically])
 
-  const commonTabs = [
+  const tabs = [
+    { id: 'body' as ComposerSection, label: 'Body', count: bodyCount },
     { id: 'auth' as ComposerSection, label: 'Auth', count: request.auth?.type !== 'none' ? 1 : 0 },
     { id: 'headers' as ComposerSection, label: 'Headers', count: (request.headers ?? []).filter((h) => h.enabled && h.key).length },
     { id: 'cookies' as ComposerSection, label: 'Cookies', count: (request.cookies ?? []).filter((c) => c.enabled && c.key).length + jarCount },
@@ -279,12 +297,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
     { id: 'scripts' as ComposerSection, label: 'Scripts', count: (scripts.pre || scripts.post || scripts.tests) ? 1 : 0 },
     { id: 'tests' as ComposerSection, label: 'Tests', count: (request.assertions ?? []).length },
     { id: 'notes' as ComposerSection, label: 'Notes', count: request.description?.trim() ? 1 : 0 },
-    { id: 'body' as ComposerSection, label: 'Body', count: bodyCount },
   ]
-
-  const tabs = isWriteMethod
-    ? [{ id: 'body' as ComposerSection, label: 'Body', count: bodyCount }, ...commonTabs.filter((t) => t.id !== 'body')]
-    : commonTabs
 
   const bodyIndex = bodies.length
     ? Math.min(Math.max(request.activeBodyIdx, 0), bodies.length - 1)

@@ -16,6 +16,7 @@ export interface PluginManifest {
   homepage: string
   license: string
   minAppVersion: string
+  runtime?: string
   permissions: string[]
   hooks: { event: string; handler: string }[]
   settings: PluginSetting[]

@@ -30,6 +30,7 @@ declare global {
       GetPlugins: () => Promise<unknown[]>
       GetPlugin: (id: string) => Promise<unknown>
       InstallPlugin: (manifestJSON: string) => Promise<unknown>
+      InstallPluginPackage: (manifestJSON: string, encodedFiles: Record<string, string>) => Promise<unknown>
       UninstallPlugin: (id: string) => Promise<void>
       EnablePlugin: (id: string) => Promise<void>
       DisablePlugin: (id: string) => Promise<void>

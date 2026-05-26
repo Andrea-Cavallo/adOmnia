@@ -6,6 +6,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -53,6 +54,37 @@ type PluginManifest struct {
 	Settings      []PluginSetting `json:"settings"`
 	EntryPoint    string          `json:"entryPoint"`
 	Icon          string          `json:"icon"`
+	UISlots       []string        `json:"ui_slots,omitempty"`
+	Actions       []PluginAction  `json:"actions,omitempty"`
+}
+
+// UnmarshalJSON accepts both entryPoint and entrypoint, because existing local
+// Python plugin examples predate the camel-case manifest key.
+func (m *PluginManifest) UnmarshalJSON(data []byte) error {
+	type manifestAlias PluginManifest
+	var value manifestAlias
+	if err := json.Unmarshal(data, &value); err != nil {
+		return err
+	}
+	*m = PluginManifest(value)
+	var legacy struct {
+		Entrypoint string `json:"entrypoint"`
+	}
+	if err := json.Unmarshal(data, &legacy); err != nil {
+		return err
+	}
+	if m.EntryPoint == "" {
+		m.EntryPoint = legacy.Entrypoint
+	}
+	return nil
+}
+
+// PluginAction defines an executable action exposed in a plugin panel.
+type PluginAction struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Streaming   bool   `json:"streaming"`
 }
 
 // RuntimeStatus describes the state of the Python runtime for plugin execution.
@@ -70,6 +102,27 @@ type PluginHook struct {
 	Handler string `json:"handler"`
 }
 
+// UnmarshalJSON accepts both the compact "onSend" form used by Python manifests
+// and the expanded {"event":"onSend","handler":"..."} form.
+func (h *PluginHook) UnmarshalJSON(data []byte) error {
+	var event string
+	if err := json.Unmarshal(data, &event); err == nil {
+		h.Event = event
+		h.Handler = event
+		return nil
+	}
+	type hookAlias PluginHook
+	var value hookAlias
+	if err := json.Unmarshal(data, &value); err != nil {
+		return err
+	}
+	*h = PluginHook(value)
+	if h.Handler == "" {
+		h.Handler = h.Event
+	}
+	return nil
+}
+
 // PluginSetting defines a configurable setting for a plugin.
 type PluginSetting struct {
 	Key         string   `json:"key"`
@@ -78,6 +131,38 @@ type PluginSetting struct {
 	Default     string   `json:"default"`
 	Options     []string `json:"options,omitempty"`
 	Description string   `json:"description"`
+}
+
+// UnmarshalJSON normalizes string, boolean and numeric default values into
+// the string settings storage used by the existing UI and persistence layer.
+func (s *PluginSetting) UnmarshalJSON(data []byte) error {
+	type rawSetting struct {
+		Key         string          `json:"key"`
+		Label       string          `json:"label"`
+		Type        string          `json:"type"`
+		Default     json.RawMessage `json:"default"`
+		Options     []string        `json:"options,omitempty"`
+		Description string          `json:"description"`
+	}
+	var raw rawSetting
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	s.Key, s.Label, s.Type, s.Options, s.Description = raw.Key, raw.Label, raw.Type, raw.Options, raw.Description
+	if len(raw.Default) == 0 || string(raw.Default) == "null" {
+		return nil
+	}
+	var stringValue string
+	if err := json.Unmarshal(raw.Default, &stringValue); err == nil {
+		s.Default = stringValue
+		return nil
+	}
+	var value interface{}
+	if err := json.Unmarshal(raw.Default, &value); err != nil {
+		return err
+	}
+	s.Default = fmt.Sprint(value)
+	return nil
 }
 
 // PluginInstance represents an installed plugin with its runtime state.
@@ -186,6 +271,12 @@ func normalizePluginManifest(manifest *PluginManifest) error {
 	}
 	if manifest.Settings == nil {
 		manifest.Settings = []PluginSetting{}
+	}
+	if manifest.UISlots == nil {
+		manifest.UISlots = []string{}
+	}
+	if manifest.Actions == nil {
+		manifest.Actions = []PluginAction{}
 	}
 	if manifest.EntryPoint == "" {
 		manifest.EntryPoint = "plugin.wasm"
@@ -386,6 +477,109 @@ func (pm *PluginManager) InstallPlugin(manifestJSON string) (*PluginInstance, er
 	}
 
 	log.Printf("[plugins] installed: %s v%s", manifest.Name, manifest.Version)
+	return instance, nil
+}
+
+// InstallPluginPackage installs a complete local plugin folder. File contents
+// are provided as base64 so Python scripts, WASM binaries and assets survive
+// the desktop bridge without browser filesystem assumptions.
+func (pm *PluginManager) InstallPluginPackage(manifestJSON string, encodedFiles map[string]string) (*PluginInstance, error) {
+	var manifest PluginManifest
+	if err := json.Unmarshal([]byte(manifestJSON), &manifest); err != nil {
+		return nil, fmt.Errorf("invalid manifest JSON: %w", err)
+	}
+	if err := normalizePluginManifest(&manifest); err != nil {
+		return nil, err
+	}
+
+	files := make(map[string][]byte, len(encodedFiles))
+	for relativePath, encoded := range encodedFiles {
+		relativePath = filepath.Clean(filepath.FromSlash(relativePath))
+		if filepath.IsAbs(relativePath) || relativePath == "." || relativePath == ".." || strings.HasPrefix(relativePath, ".."+string(filepath.Separator)) {
+			return nil, fmt.Errorf("invalid plugin package path: %s", relativePath)
+		}
+		data, err := base64.StdEncoding.DecodeString(encoded)
+		if err != nil {
+			return nil, fmt.Errorf("invalid plugin file encoding for %s: %w", relativePath, err)
+		}
+		files[relativePath] = data
+	}
+
+	entryPoint := filepath.Clean(filepath.FromSlash(manifest.EntryPoint))
+	if manifest.Runtime != "" && manifest.Runtime != "none" && manifest.EntryPoint != "" {
+		if _, ok := files[entryPoint]; !ok {
+			return nil, fmt.Errorf("plugin package must include entrypoint %s", manifest.EntryPoint)
+		}
+	}
+
+	pm.mu.RLock()
+	instance, repairing := pm.plugins[manifest.ID]
+	pm.mu.RUnlock()
+
+	created := false
+	if !repairing {
+		var err error
+		instance, err = pm.InstallPlugin(manifestJSON)
+		if err != nil {
+			return nil, err
+		}
+		created = true
+	} else if !isUnderDir(pm.pluginDir, instance.InstallDir) {
+		return nil, fmt.Errorf("refusing to repair plugin outside plugin dir: %s", manifest.ID)
+	}
+
+	rollbackNewInstall := func() {
+		if created {
+			_ = pm.UninstallPlugin(manifest.ID)
+		}
+	}
+
+	for relativePath, data := range files {
+		if strings.EqualFold(relativePath, "manifest.json") {
+			continue
+		}
+		target := filepath.Join(instance.InstallDir, relativePath)
+		if !isUnderDir(instance.InstallDir, target) {
+			rollbackNewInstall()
+			return nil, fmt.Errorf("plugin file escapes install directory: %s", relativePath)
+		}
+		if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
+			rollbackNewInstall()
+			return nil, fmt.Errorf("failed to create plugin file directory: %w", err)
+		}
+		if err := os.WriteFile(target, data, 0644); err != nil {
+			rollbackNewInstall()
+			return nil, fmt.Errorf("failed to install plugin file %s: %w", relativePath, err)
+		}
+	}
+
+	if repairing {
+		manifestData, err := json.MarshalIndent(manifest, "", "  ")
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal repaired manifest: %w", err)
+		}
+		if err := os.WriteFile(filepath.Join(instance.InstallDir, "manifest.json"), manifestData, 0644); err != nil {
+			return nil, fmt.Errorf("failed to update repaired manifest: %w", err)
+		}
+
+		pm.mu.Lock()
+		pm.unregisterHooksInternal(manifest.ID)
+		instance.Manifest = manifest
+		instance.Error = ""
+		for _, setting := range manifest.Settings {
+			if _, ok := instance.Settings[setting.Key]; !ok {
+				instance.Settings[setting.Key] = setting.Default
+			}
+		}
+		if instance.Enabled {
+			pm.registerHooksInternal(instance)
+		}
+		if err := pm.savePluginStateInternal(); err != nil {
+			log.Printf("[plugins] warning: failed to persist state after repair: %v", err)
+		}
+		pm.mu.Unlock()
+		log.Printf("[plugins] repaired package files: %s v%s", manifest.Name, manifest.Version)
+	}
 	return instance, nil
 }
 
@@ -774,12 +968,16 @@ func (pm *PluginManager) discoverPython() string {
 		return embedded
 	}
 
-	// System PATH
-	if path, err := exec.LookPath("python3"); err == nil {
-		return path
+	// System PATH. On Windows, python3.exe may only be the Microsoft Store
+	// launcher alias even when a working python.exe is installed.
+	names := []string{"python3", "python"}
+	if runtime.GOOS == "windows" {
+		names = []string{"python", "python3"}
 	}
-	if path, err := exec.LookPath("python"); err == nil {
-		return path
+	for _, name := range names {
+		if path, err := exec.LookPath(name); err == nil {
+			return path
+		}
 	}
 
 	return ""

@@ -1,5 +1,6 @@
 """adOmnia SDK API — access adOmnia state from Python workers."""
 
+import base64
 import json
 import os
 
@@ -22,7 +23,7 @@ class _StorageAPI:
         if resp.get("found"):
             value = resp.get("value", b"")
             if isinstance(value, str):
-                return value.encode()
+                return base64.b64decode(value)
             return value
         return None
 
@@ -34,7 +35,7 @@ class _StorageAPI:
             "/adomnia.sdk.AdOmniaAPI/StorageSet",
             request_serializer=_serialize,
             response_deserializer=_deserialize,
-        )({"key": key, "value": value.decode() if isinstance(value, bytes) else value})
+        )({"key": key, "value": value})
 
 
 class _AdOmniaAPI:
@@ -78,11 +79,20 @@ class _AdOmniaAPI:
             "/adomnia.sdk.AdOmniaAPI/EmitEvent",
             request_serializer=_serialize,
             response_deserializer=_deserialize,
-        )({"name": event_name, "payload": data.decode()})
+        )({"name": event_name, "payload": data})
 
 
 def _serialize(msg: dict) -> bytes:
-    return json.dumps(msg).encode("utf-8")
+    def encode(value):
+        if isinstance(value, bytes):
+            return base64.b64encode(value).decode("ascii")
+        if isinstance(value, dict):
+            return {key: encode(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [encode(item) for item in value]
+        return value
+
+    return json.dumps(encode(msg)).encode("utf-8")
 
 
 def _deserialize(data: bytes) -> dict:

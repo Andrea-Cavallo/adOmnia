@@ -172,15 +172,15 @@ class _WorkerServicer:
             yield {"data": b"", "is_final": True, "error": str(e)}
 
     def Ping(self, request, context):
-        import psutil
-        import os
-
         uptime_ms = int((time.time() - self._start_time) * 1000)
+        memory = 0
         try:
+            import psutil
+
             proc = psutil.Process(os.getpid())
             memory = proc.memory_info().rss
         except Exception:
-            memory = 0
+            pass
 
         return {"uptime_ms": uptime_ms, "memory_bytes": memory}
 

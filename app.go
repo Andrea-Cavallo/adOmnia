@@ -36,6 +36,14 @@ func (a *App) OnStartup(ctx context.Context) {
 		a.store = storeDB
 		dlog("OnStartup", "bbolt DB aperto con successo", nil)
 	}
+	if globalPluginManager != nil {
+		if err := globalPluginManager.Init(); err != nil {
+			log.Printf("[app] WARNING: could not initialize plugins: %v", err)
+			dlogErr("OnStartup", "inizializzazione plugin fallita", err, nil)
+		} else {
+			dlog("OnStartup", "plugin manager inizializzato", nil)
+		}
+	}
 	initSidecarToken()
 	dlog("OnStartup", "sidecar token generato", nil)
 	initProxyRules()

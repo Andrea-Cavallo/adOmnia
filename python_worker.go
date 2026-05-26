@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"time"
 
@@ -152,16 +153,16 @@ func (m *PythonWorkerManager) startWorkerProcess(worker *PythonWorker, pluginID 
 		return fmt.Errorf("failed to get free port: %w", err)
 	}
 
-	pythonPath := m.getPythonPath()
-	if pythonPath == "" {
-		return fmt.Errorf("python runtime not found")
-	}
-
 	pluginDir := filepath.Join(dataDir(), "plugins", pluginID)
 	entrypoint := filepath.Join(pluginDir, "main.py")
 
 	if _, err := os.Stat(entrypoint); os.IsNotExist(err) {
 		return fmt.Errorf("plugin entrypoint not found: %s", entrypoint)
+	}
+
+	pythonPath := m.getPluginPythonPath(pluginDir)
+	if pythonPath == "" {
+		return fmt.Errorf("python runtime not found")
 	}
 
 	dataPath := filepath.Join(pluginDir, "data")
@@ -177,6 +178,13 @@ func (m *PythonWorkerManager) startWorkerProcess(worker *PythonWorker, pluginID 
 		fmt.Sprintf("ADOMNIA_PLUGIN_ID=%s", pluginID),
 		fmt.Sprintf("ADOMNIA_DATA_DIR=%s", dataPath),
 	)
+	if sdkDir := localPythonSDKDir(); sdkDir != "" {
+		pythonPathValue := sdkDir
+		if current := os.Getenv("PYTHONPATH"); current != "" {
+			pythonPathValue += string(os.PathListSeparator) + current
+		}
+		cmd.Env = append(cmd.Env, "PYTHONPATH="+pythonPathValue)
+	}
 	cmd.Dir = pluginDir
 
 	cmd.Stdout = log.Writer()
@@ -240,9 +248,16 @@ func (m *PythonWorkerManager) startWorkerProcess(worker *PythonWorker, pluginID 
 func (m *PythonWorkerManager) waitForWorkerReady(worker *PythonWorker, timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
 	addr := fmt.Sprintf("localhost:%d", worker.Port)
+	var lastErr error
 
 	for time.Now().Before(deadline) {
-		conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock(), grpc.WithTimeout(500*time.Millisecond))
+		conn, err := grpc.Dial(
+			addr,
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			grpc.WithDefaultCallOptions(grpc.ForceCodec(jsonGRPCCodec{})),
+			grpc.WithBlock(),
+			grpc.WithTimeout(500*time.Millisecond),
+		)
 		if err == nil {
 			worker.conn = conn
 			worker.client = pb.NewWorkerServiceClient(conn)
@@ -254,11 +269,17 @@ func (m *PythonWorkerManager) waitForWorkerReady(worker *PythonWorker, timeout t
 			if pingErr == nil {
 				return nil
 			}
+			lastErr = pingErr
 			conn.Close()
+		} else {
+			lastErr = err
 		}
 		time.Sleep(200 * time.Millisecond)
 	}
 
+	if lastErr != nil {
+		return fmt.Errorf("worker did not respond on %s within %s: %w", addr, timeout, lastErr)
+	}
 	return fmt.Errorf("worker did not respond on %s within %s", addr, timeout)
 }
 
@@ -458,13 +479,41 @@ func (m *PythonWorkerManager) getPythonPath() string {
 		return embedded
 	}
 
-	if path, err := exec.LookPath("python3"); err == nil {
-		return path
+	names := []string{"python3", "python"}
+	if runtime.GOOS == "windows" {
+		names = []string{"python", "python3"}
 	}
-	if path, err := exec.LookPath("python"); err == nil {
-		return path
+	for _, name := range names {
+		if path, err := exec.LookPath(name); err == nil {
+			return path
+		}
 	}
 
+	return ""
+}
+
+func (m *PythonWorkerManager) getPluginPythonPath(pluginDir string) string {
+	for _, candidate := range []string{
+		filepath.Join(pluginDir, "venv", "Scripts", "python.exe"),
+		filepath.Join(pluginDir, "venv", "bin", "python3"),
+	} {
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate
+		}
+	}
+	return m.getPythonPath()
+}
+
+func localPythonSDKDir() string {
+	candidates := []string{filepath.Join(appDir(), "python-sdk")}
+	if cwd, err := os.Getwd(); err == nil {
+		candidates = append(candidates, filepath.Join(cwd, "python-sdk"))
+	}
+	for _, candidate := range candidates {
+		if _, err := os.Stat(filepath.Join(candidate, "adomnia", "__init__.py")); err == nil {
+			return candidate
+		}
+	}
 	return ""
 }
 
