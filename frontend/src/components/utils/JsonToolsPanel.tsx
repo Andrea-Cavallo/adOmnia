@@ -85,8 +85,8 @@ function toSideBySide(diff: DiffEntry[]): SideBySideRow[] {
 
 const LINE_CLS: Record<string, string> = {
   unchanged: 'text-text-3',
-  removed:   'bg-red-500/10 text-red-400 border-l-2 border-red-500/40',
-  added:     'bg-emerald-500/10 text-emerald-400 border-l-2 border-emerald-500/40',
+  removed:   'bg-error/10 text-error border-l-2 border-error/40',
+  added:     'bg-success/10 text-success border-l-2 border-success/40',
   empty:     'bg-surface-2/20',
 }
 
@@ -105,7 +105,7 @@ function DiffView({ left, right }: { left: string; right: string }) {
   return (
     <div className="border border-border-1 rounded-md overflow-hidden text-xs font-mono">
       {equal && (
-        <div className="px-3 py-1.5 bg-emerald-500/10 border-b border-emerald-500/20 text-emerald-400 text-[10px] font-medium tracking-wide">
+        <div className="px-3 py-1.5 bg-success/10 border-b border-success/20 text-success text-[10px] font-medium tracking-wide">
           ✓ No differences
         </div>
       )}
@@ -148,11 +148,11 @@ function JsonNode({ value, keyName, depth }: { value: unknown; keyName?: string;
   const brackets = isArr ? ['[', ']'] : ['{', '}']
 
   const valCls = (): string => {
-    if (value === null) return 'text-text-4 italic'
+    if (value === null) return 'text-json-null italic'
     switch (typeof value) {
-      case 'string':  return 'text-emerald-400'
-      case 'number':  return 'text-blue-400'
-      case 'boolean': return 'text-yellow-400'
+      case 'string':  return 'text-json-string'
+      case 'number':  return 'text-json-number'
+      case 'boolean': return 'text-json-bool'
       default:        return 'text-text-2'
     }
   }

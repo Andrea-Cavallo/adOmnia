@@ -6,6 +6,7 @@ import { useT } from '@/lib/i18n'
 import { UI_FONTS, type UIFontId } from '@/lib/uiFonts'
 import { cn } from '@/lib/utils'
 import { useAppIcon } from '@/lib/brandAssets'
+import { APP_VERSION, BUILD_DATE, COMMIT_HASH, formatBuildDate } from '@/lib/buildInfo'
 import { useThemeContext } from '@/components/themes/ThemeProvider'
 import { inferThemeMode, loadAvailableThemes } from '@/lib/themeCatalog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -979,15 +980,15 @@ export function SettingsPanel() {
             <SettingsCard>
               <div className="py-2 px-1 flex items-center justify-between">
                 <span className="text-xs text-text-1">{s.about.version}</span>
-                <span className="text-xs text-text-2 font-mono">0.1.0</span>
+                <span className="text-xs text-text-2 font-mono">{APP_VERSION}</span>
               </div>
               <div className="py-2 px-1 flex items-center justify-between">
                 <span className="text-xs text-text-1">{s.about.buildDate}</span>
-                <span className="text-xs text-text-2 font-mono">{s.about.unknown}</span>
+                <span className="text-xs text-text-2 font-mono">{formatBuildDate(BUILD_DATE)}</span>
               </div>
               <div className="py-2 px-1 flex items-center justify-between">
                 <span className="text-xs text-text-1">{s.about.commitHash}</span>
-                <span className="text-xs text-text-2 font-mono">{s.about.unknown}</span>
+                <span className="text-xs text-text-2 font-mono">{COMMIT_HASH}</span>
               </div>
               <div className="py-2 px-1 flex items-center justify-between">
                 <span className="text-xs text-text-1">{s.about.stackInfo}</span>

@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Copy, Loader2, Maximize2, GitBranch, GitCompare, Sparkles, X, ShieldCheck, ShieldAlert, ShieldOff, AlertTriangle, Check, XCircle, FileText, FileCode, FileJson } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Copy, Loader2, Maximize2, GitBranch, GitCompare, Sparkles, X, ShieldCheck, ShieldAlert, ShieldOff, AlertTriangle, Check, XCircle, FileText, FileCode, FileJson, Search, ChevronUp, ChevronDown } from 'lucide-react'
 import type { ResponseData, ContractValidationResult, AssertionResult, ScriptRunResult } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { Prompt } from '@/components/ui/prompt'
 import { JsonGraph } from '@/components/ui/JsonGraph'
 import { validateContract, exportContractReportMarkdown, exportContractReportHtml, exportContractReportJson } from '@/lib/contractValidator'
 import { evaluateAssertions } from '@/lib/assertionEngine'
+import { DiffModal, DiffPickerModal } from '@/components/response/DiffView'
+import { useTabsStore } from '@/stores/tabs'
 
 interface ResponsePanelProps {
   response: ResponseData | null
@@ -63,22 +64,60 @@ function tokenizeJSON(text: string): Token[] {
 }
 
 const TOKEN_COLORS: Record<string, string> = {
-  key: 'text-blue-400',
-  string: 'text-green-400',
-  number: 'text-yellow-300',
-  boolean: 'text-purple-400',
-  null: 'text-gray-400',
+  key: 'text-json-key',
+  string: 'text-json-string',
+  number: 'text-json-number',
+  boolean: 'text-json-bool',
+  null: 'text-json-null',
   punct: 'text-text-3',
   ws: '',
 }
 
-function JsonHighlight({ text }: { text: string }) {
-  const tokens = tokenizeJSON(text)
+/** Split `value` into alternating non-match / match segments for a given search term. */
+function splitOnMatches(value: string, term: string): Array<{ text: string; match: boolean }> {
+  if (!term) return [{ text: value, match: false }]
+  const parts: Array<{ text: string; match: boolean }> = []
+  const lower = value.toLowerCase()
+  const lowerTerm = term.toLowerCase()
+  let pos = 0
+  let found: number
+  while ((found = lower.indexOf(lowerTerm, pos)) !== -1) {
+    if (found > pos) parts.push({ text: value.slice(pos, found), match: false })
+    parts.push({ text: value.slice(found, found + term.length), match: true })
+    pos = found + term.length
+  }
+  if (pos < value.length) parts.push({ text: value.slice(pos), match: false })
+  return parts
+}
+
+function JsonHighlight({ text, searchTerm = '' }: { text: string; searchTerm?: string }) {
+  const renderTokens = (value: string) => tokenizeJSON(value).map((tok, i) => (
+    <span key={i} className={TOKEN_COLORS[tok.type]}>{tok.value}</span>
+  ))
+  if (!searchTerm) return <>{renderTokens(text)}</>
+
+  const parts = splitOnMatches(text, searchTerm)
   return (
     <>
-      {tokens.map((tok, i) => (
-        <span key={i} className={TOKEN_COLORS[tok.type]}>{tok.value}</span>
-      ))}
+      {parts.map((part, i) =>
+        part.match
+          ? <mark key={i} className="bg-warning/40 text-current rounded-[2px]">{renderTokens(part.text)}</mark>
+          : <span key={i}>{renderTokens(part.text)}</span>
+      )}
+    </>
+  )
+}
+
+function TextHighlight({ text, searchTerm = '' }: { text: string; searchTerm?: string }) {
+  if (!searchTerm) return <span className="text-text-1">{text}</span>
+  const parts = splitOnMatches(text, searchTerm)
+  return (
+    <>
+      {parts.map((p, i) =>
+        p.match
+          ? <mark key={i} className="bg-warning/40 text-current rounded-[2px]">{p.text}</mark>
+          : <span key={i} className="text-text-1">{p.text}</span>
+      )}
     </>
   )
 }
@@ -98,58 +137,7 @@ function formatXmlLike(text: string): string {
   }).join('\n')
 }
 
-function DiffModal({
-  left,
-  right,
-  onClose,
-}: {
-  left: string
-  right: string
-  onClose: () => void
-}) {
-  const leftLines = left.split('\n')
-  const rightLines = right.split('\n')
-  const maxLen = Math.max(leftLines.length, rightLines.length)
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
-      <div className="w-[900px] h-[600px] bg-surface-1 border border-border-1 rounded-lg shadow-xl flex flex-col" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-border-1">
-          <span className="text-sm font-semibold text-text-1 flex-1">Response Diff</span>
-          <button onClick={onClose} className="text-text-4 hover:text-text-1"><X size={16} /></button>
-        </div>
-        <div className="flex-1 overflow-auto p-2">
-          <div className="grid grid-cols-2 gap-0 font-mono text-[10px]">
-            <div className="flex flex-col">
-              {Array.from({ length: maxLen }).map((_, i) => {
-                const line = leftLines[i] ?? ''
-                const diff = line !== (rightLines[i] ?? '')
-                return (
-                  <div key={i} className={cn('px-2 py-0.5', diff && 'bg-error/10 border-l-2 border-error')}>
-                    <span className="text-text-4 w-8 inline-block text-right mr-2">{i + 1}</span>
-                    <span className={diff ? 'text-error' : 'text-text-2'}>{line}</span>
-                  </div>
-                )
-              })}
-            </div>
-            <div className="flex flex-col border-l border-border-1">
-              {Array.from({ length: maxLen }).map((_, i) => {
-                const line = rightLines[i] ?? ''
-                const diff = line !== (leftLines[i] ?? '')
-                return (
-                  <div key={i} className={cn('px-2 py-0.5', diff && 'bg-success/10 border-l-2 border-success')}>
-                    <span className="text-text-4 w-8 inline-block text-right mr-2">{i + 1}</span>
-                    <span className={diff ? 'text-success' : 'text-text-2'}>{line}</span>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
+// DiffModal and DiffPickerModal are imported from DiffView.tsx
 
 function FullscreenBodyModal({
   body,
@@ -188,14 +176,57 @@ export function ResponsePanel({ response, loading, oaSpec, oaPath, oaMethod, ass
   const [tab, setTab] = useState<ViewTab>('body')
   const [view, setView] = useState<'pretty' | 'raw' | 'graph'>('pretty')
   const [beautifiedBody, setBeautifiedBody] = useState<string | null>(null)
+  // Lifted expansion state — survives graph↔pretty toggles and re-sends (P2-02)
+  const [graphExpanded, setGraphExpanded] = useState<Set<string>>(() => new Set(['$']))
   const [showFullscreen, setShowFullscreen] = useState(false)
   const [showDiff, setShowDiff] = useState(false)
-  const [diffOther, setDiffOther] = useState('')
-  const [showDiffPrompt, setShowDiffPrompt] = useState(false)
+  const [diffRightBody, setDiffRightBody] = useState('')
+  const [diffRightLabel, setDiffRightLabel] = useState('')
+  const [showDiffPicker, setShowDiffPicker] = useState(false)
+  const activeTabId = useTabsStore((s) => s.activeTabId)
 
+  // ── Find-in-response ──────────────────────────────────────────────────────
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchInput, setSearchInput] = useState('')   // raw typed value
+  const [searchQuery, setSearchQuery] = useState('')   // debounced 150 ms
+  const [matchIndex, setMatchIndex] = useState(0)
+  const searchRef = useRef<HTMLInputElement>(null)
+  const bodyRef = useRef<HTMLDivElement>(null)
+
+  // Debounce search input → query so we don't re-render on every keystroke
+  useEffect(() => {
+    const t = setTimeout(() => { setSearchQuery(searchInput); setMatchIndex(0) }, 150)
+    return () => clearTimeout(t)
+  }, [searchInput])
+
+  // Reset search state whenever a new response arrives
   useEffect(() => {
     setBeautifiedBody(null)
+    setSearchInput('')
+    setSearchQuery('')
+    setMatchIndex(0)
+    setSearchOpen(false)
   }, [response?.body])
+
+  // Keyboard: Ctrl/Cmd+F → open find bar; Escape → close
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        if (tab === 'body' && view !== 'graph') {
+          e.preventDefault()
+          setSearchOpen(true)
+          setTimeout(() => searchRef.current?.focus(), 30)
+        }
+      }
+      if (e.key === 'Escape' && searchOpen) {
+        setSearchOpen(false)
+        setSearchInput('')
+        setSearchQuery('')
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [tab, view, searchOpen])
 
   const contractResult = useMemo(() => {
     if (!response) return null
@@ -218,6 +249,37 @@ export function ResponsePanel({ response, loading, oaSpec, oaPath, oaMethod, ass
   if (response && isJson) {
     try { JSON.parse(displayBody); validationBadge = 'valid' } catch { validationBadge = 'invalid' }
   }
+
+  // Pretty-printed body used for both display and match counting
+  let prettyBody = displayBody
+  if (isJson && view === 'pretty') {
+    try { prettyBody = JSON.stringify(JSON.parse(displayBody), null, 2) } catch { /* keep raw */ }
+  }
+
+  // Count total matches in the displayed text
+  const matchCount = useMemo(() => {
+    if (!searchQuery || !searchOpen) return 0
+    const term = searchQuery.toLowerCase()
+    const body = prettyBody.toLowerCase()
+    let count = 0
+    let pos = 0
+    let idx: number
+    while ((idx = body.indexOf(term, pos)) !== -1) { count++; pos = idx + term.length }
+    return count
+  }, [prettyBody, searchQuery, searchOpen])
+
+  // Scroll the current match into view after each render
+  useEffect(() => {
+    if (!bodyRef.current || !searchQuery || !matchCount) return
+    const marks = bodyRef.current.querySelectorAll<HTMLElement>('mark')
+    marks.forEach((m) => { m.style.outline = '' })
+    const safeIdx = ((matchIndex % matchCount) + matchCount) % matchCount
+    const target = marks[safeIdx]
+    if (target) {
+      target.style.outline = '2px solid var(--color-accent, #7c3aed)'
+      target.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    }
+  }, [matchIndex, matchCount, searchQuery])
 
   if (loading) {
     return (
@@ -284,11 +346,6 @@ export function ResponsePanel({ response, loading, oaSpec, oaPath, oaMethod, ass
         </div>
       </div>
     )
-  }
-
-  let prettyBody = displayBody
-  if (isJson && view === 'pretty') {
-    try { prettyBody = JSON.stringify(JSON.parse(displayBody), null, 2) } catch { /* keep raw */ }
   }
 
   let graphData: unknown = null
@@ -397,6 +454,18 @@ export function ResponsePanel({ response, loading, oaSpec, oaPath, oaMethod, ass
 
           {tab === 'body' && (
             <div className="flex items-center gap-1 ml-auto">
+              {view !== 'graph' && (
+                <button
+                  onClick={() => {
+                    setSearchOpen((o) => !o)
+                    setTimeout(() => searchRef.current?.focus(), 30)
+                  }}
+                  className={cn('p-1 rounded hover:bg-surface-2', searchOpen ? 'text-accent' : 'text-text-4 hover:text-text-2')}
+                  title="Find in response (Ctrl+F)"
+                >
+                  <Search size={12} />
+                </button>
+              )}
               {/* Action buttons */}
               <button
                 onClick={() => setShowFullscreen(true)}
@@ -407,7 +476,14 @@ export function ResponsePanel({ response, loading, oaSpec, oaPath, oaMethod, ass
               </button>
               <button
                 onClick={() => {
-                  if (graphData) setView(view === 'graph' ? 'pretty' : 'graph')
+                  if (!graphData) return
+                  const nextView = view === 'graph' ? 'pretty' : 'graph'
+                  setView(nextView)
+                  if (nextView === 'graph') {
+                    setSearchOpen(false)
+                    setSearchInput('')
+                    setSearchQuery('')
+                  }
                 }}
                 className={cn('p-1 rounded hover:bg-surface-2', view === 'graph' ? 'text-accent' : 'text-text-4 hover:text-text-2')}
                 title="Graph"
@@ -415,9 +491,9 @@ export function ResponsePanel({ response, loading, oaSpec, oaPath, oaMethod, ass
                 <GitBranch size={12} />
               </button>
               <button
-                onClick={() => setShowDiffPrompt(true)}
+                onClick={() => setShowDiffPicker(true)}
                 className="p-1 text-text-4 hover:text-text-2 rounded hover:bg-surface-2"
-                title="Diff"
+                title="Compare with another response"
               >
                 <GitCompare size={12} />
               </button>
@@ -467,11 +543,74 @@ export function ResponsePanel({ response, loading, oaSpec, oaPath, oaMethod, ass
           )}
         </div>
 
+        {/* Find bar — shown only on the Body tab when open */}
+        {tab === 'body' && view !== 'graph' && searchOpen && (
+          <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-border-1 bg-surface-2">
+            <Search size={11} className="text-text-4 shrink-0" />
+            <input
+              ref={searchRef}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  if (e.shiftKey) setMatchIndex((i) => i - 1)
+                  else setMatchIndex((i) => i + 1)
+                }
+                if (e.key === 'Escape') {
+                  setSearchOpen(false)
+                  setSearchInput('')
+                  setSearchQuery('')
+                }
+              }}
+              placeholder="Find in response…"
+              className="flex-1 bg-transparent text-[11px] text-text-1 placeholder:text-text-4 outline-none min-w-0"
+              spellCheck={false}
+            />
+            {searchQuery && (
+              <span className={cn(
+                'text-[10px] shrink-0 tabular-nums',
+                matchCount === 0 ? 'text-error' : 'text-text-3'
+              )}>
+                {matchCount === 0 ? 'no matches' : `${((matchIndex % matchCount) + matchCount) % matchCount + 1} / ${matchCount}`}
+              </span>
+            )}
+            <button
+              onClick={() => setMatchIndex((i) => i - 1)}
+              disabled={matchCount === 0}
+              className="p-0.5 rounded text-text-4 hover:text-text-2 disabled:opacity-30 hover:bg-surface-3"
+              title="Previous match (Shift+Enter)"
+            >
+              <ChevronUp size={12} />
+            </button>
+            <button
+              onClick={() => setMatchIndex((i) => i + 1)}
+              disabled={matchCount === 0}
+              className="p-0.5 rounded text-text-4 hover:text-text-2 disabled:opacity-30 hover:bg-surface-3"
+              title="Next match (Enter)"
+            >
+              <ChevronDown size={12} />
+            </button>
+            <button
+              onClick={() => { setSearchOpen(false); setSearchInput(''); setSearchQuery('') }}
+              className="p-0.5 rounded text-text-4 hover:text-text-2 hover:bg-surface-3"
+              title="Close (Escape)"
+            >
+              <X size={12} />
+            </button>
+          </div>
+        )}
+
         {/* Content */}
-        <div className="flex-1 overflow-auto p-3">
+        <div ref={bodyRef} className="flex-1 overflow-auto p-3">
           {tab === 'body' && (
             view === 'graph' && graphData ? (
-              <JsonGraph json={displayBody} className="h-full min-h-[260px]" />
+              <JsonGraph
+                json={displayBody}
+                className="h-full min-h-[260px]"
+                expandedPaths={graphExpanded}
+                onExpandedPathsChange={setGraphExpanded}
+              />
             ) : (
               <>
                 {validationBadge === 'invalid' && view === 'pretty' && (
@@ -482,8 +621,8 @@ export function ResponsePanel({ response, loading, oaSpec, oaPath, oaMethod, ass
                 )}
                 <pre className="text-xs font-mono whitespace-pre-wrap break-all">
                   {isJson && view === 'pretty' && validationBadge === 'valid'
-                    ? <JsonHighlight text={prettyBody} />
-                    : <span className="text-text-1">{prettyBody}</span>
+                    ? <JsonHighlight text={prettyBody} searchTerm={searchQuery} />
+                    : <TextHighlight text={prettyBody} searchTerm={searchQuery} />
                   }
                 </pre>
               </>
@@ -521,25 +660,26 @@ export function ResponsePanel({ response, loading, oaSpec, oaPath, oaMethod, ass
 
       {showDiff && (
         <DiffModal
-          left={response.body}
-          right={diffOther}
+          leftLabel="Current"
+          rightLabel={diffRightLabel}
+          leftBody={response.body}
+          rightBody={diffRightBody}
           onClose={() => setShowDiff(false)}
         />
       )}
 
-      <Prompt
-        open={showDiffPrompt}
-        title="Diff Response"
-        placeholder="Paste the other response body to compare…"
-        confirmLabel="Compare"
-        multiline
-        onConfirm={(body) => {
-          setDiffOther(body)
-          setShowDiffPrompt(false)
-          setShowDiff(true)
-        }}
-        onCancel={() => setShowDiffPrompt(false)}
-      />
+      {showDiffPicker && (
+        <DiffPickerModal
+          currentTabId={activeTabId}
+          onConfirm={(body, label) => {
+            setDiffRightBody(body)
+            setDiffRightLabel(label)
+            setShowDiffPicker(false)
+            setShowDiff(true)
+          }}
+          onCancel={() => setShowDiffPicker(false)}
+        />
+      )}
     </>
   )
 }

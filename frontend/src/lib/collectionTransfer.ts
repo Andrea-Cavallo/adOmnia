@@ -122,6 +122,36 @@ function importPostman(json: any): Collection {
   }
 }
 
+function importInsomniaAuth(auth: any): RequestAuth {
+  const next = blankAuth()
+  if (!auth || !auth.type || auth.disabled) return next
+  switch (String(auth.type)) {
+    case 'bearer':
+      next.type = 'bearer'
+      next.token = String(auth.token || auth.prefix ? `${auth.prefix || 'Bearer'} ${auth.token || ''}`.trim() : '')
+      break
+    case 'basic':
+      next.type = 'basic'
+      next.username = String(auth.username || '')
+      next.password = String(auth.password || '')
+      break
+    case 'apikey':
+      next.type = 'apikey'
+      next.username = String(auth.key || 'X-API-Key')
+      next.token = String(auth.value || '')
+      break
+    case 'oauth2':
+      next.type = 'oauth2'
+      next.oauth2TokenUrl = String(auth.accessTokenUrl || '')
+      next.oauth2AuthUrl = String(auth.authorizationUrl || '')
+      next.oauth2ClientId = String(auth.clientId || '')
+      next.oauth2ClientSecret = String(auth.clientSecret || '')
+      next.oauth2Scope = String(auth.scope || '')
+      break
+  }
+  return next
+}
+
 function importInsomnia(json: any): Collection[] {
   const resources: any[] = Array.isArray(json.resources) ? json.resources : []
   const workspaces = resources.filter((r) => r._type === 'workspace')
@@ -132,7 +162,21 @@ function importInsomnia(json: any): Collection[] {
     ...requests.filter((r) => (r.parentId ?? null) === parentId).map((r) => {
       const req = request(String(r.name || 'Request'), normalizeMethod(r.method), String(r.url || ''))
       req.headers = Array.isArray(r.headers) && r.headers.length ? r.headers.map((h: any) => row(String(h.name || h.key || ''), String(h.value || ''), !h.disabled)) : [row()]
-      if (r.body?.text) req.bodies = [{ ...blankBody(), type: 'raw', raw: String(r.body.text), lang: r.body.mimeType?.includes('xml') ? 'xml' : 'json' }]
+      if (Array.isArray(r.parameters) && r.parameters.length) {
+        req.params = r.parameters.map((p: any) => row(String(p.name || ''), String(p.value || ''), !p.disabled))
+      }
+      const mime: string = r.body?.mimeType || ''
+      if (r.body?.text) {
+        req.bodies = [{ ...blankBody(), type: 'raw', raw: String(r.body.text), lang: mime.includes('xml') ? 'xml' : mime.includes('text') ? 'text' : 'json' }]
+      } else if (r.body?.params && mime.includes('urlencoded')) {
+        req.bodies = [{ ...blankBody(), type: 'urlencoded', form: r.body.params.map((p: any) => row(String(p.name || ''), String(p.value || ''), !p.disabled)) }]
+      } else if (r.body?.params && mime.includes('multipart')) {
+        req.bodies = [{ ...blankBody(), type: 'formdata', form: r.body.params.map((p: any) => row(String(p.name || ''), String(p.value || ''), !p.disabled)) }]
+      }
+      if (r.authentication) req.auth = importInsomniaAuth(r.authentication)
+      const pre = String(r.preRequestScript || '')
+      const post = String(r.afterResponseScript || '')
+      if (pre || post) req.scripts = { pre, tests: post }
       return req
     }),
   ]
@@ -151,9 +195,98 @@ function importBruno(json: any): Collection {
     const body = item.request?.body || item.body
     if (typeof body === 'string') req.bodies = [{ ...blankBody(), type: 'raw', raw: body, lang: 'json' }]
     else if (body?.raw) req.bodies = [{ ...blankBody(), type: 'raw', raw: String(body.raw), lang: body.mode === 'xml' ? 'xml' : 'json' }]
+    // Auth from JSON Bruno export
+    const auth = item.request?.auth
+    if (auth) {
+      if (auth.bearer && auth.bearer.token) req.auth = { ...blankAuth(), type: 'bearer', token: String(auth.bearer.token) }
+      else if (auth.basic) req.auth = { ...blankAuth(), type: 'basic', username: String(auth.basic.username || ''), password: String(auth.basic.password || '') }
+      else if (auth.apikey) req.auth = { ...blankAuth(), type: 'apikey', username: String(auth.apikey.key || 'X-API-Key'), token: String(auth.apikey.value || '') }
+    }
     return req
   })
   return { id: uid(), name: String(json.name || json.collection?.name || 'Bruno Collection'), children: walk(json.items || json.children || json.requests || []) }
+}
+
+/** Parse a single Bruno native .bru text file into a one-request Collection. */
+function parseBruFile(text: string): Collection {
+  // Split text into sections: "sectionName {" ... "}"
+  const sections = new Map<string, string[]>()
+  const lines = text.split('\n')
+  let currentSection: string | null = null
+  const buf: string[] = []
+
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (currentSection === null) {
+      const m = trimmed.match(/^([a-zA-Z][a-zA-Z0-9:_-]*)\s*\{$/)
+      if (m) { currentSection = m[1]; buf.length = 0 }
+    } else {
+      if (trimmed === '}') { sections.set(currentSection, [...buf]); currentSection = null; buf.length = 0 }
+      else buf.push(line)
+    }
+  }
+
+  const parseKV = (name: string): Record<string, string> => {
+    const result: Record<string, string> = {}
+    for (const ln of sections.get(name) ?? []) {
+      const idx = ln.indexOf(':')
+      if (idx < 1) continue
+      const k = ln.slice(0, idx).trim()
+      const v = ln.slice(idx + 1).trim()
+      if (k) result[k] = v
+    }
+    return result
+  }
+
+  const getRaw = (name: string): string => (sections.get(name) ?? []).join('\n').trim()
+
+  const meta = parseKV('meta')
+  const reqName = meta.name || 'Bruno Request'
+
+  let method: HttpMethod = 'GET'
+  let methodKV: Record<string, string> = {}
+  for (const m of ['get', 'post', 'put', 'patch', 'delete', 'head', 'options']) {
+    if (sections.has(m)) { method = m.toUpperCase() as HttpMethod; methodKV = parseKV(m); break }
+  }
+
+  const req = request(reqName, method, methodKV.url || '')
+
+  const hdrs = parseKV('headers')
+  if (Object.keys(hdrs).length) req.headers = Object.entries(hdrs).map(([k, v]) => row(k, v))
+
+  const qp = parseKV('params:query')
+  if (Object.keys(qp).length) req.params = Object.entries(qp).map(([k, v]) => row(k, v))
+
+  const authType = methodKV.auth || 'none'
+  if (authType === 'bearer') {
+    const kv = parseKV('auth:bearer')
+    req.auth = { ...blankAuth(), type: 'bearer', token: kv.token || '' }
+  } else if (authType === 'basic') {
+    const kv = parseKV('auth:basic')
+    req.auth = { ...blankAuth(), type: 'basic', username: kv.username || '', password: kv.password || '' }
+  } else if (authType === 'apikey') {
+    const kv = parseKV('auth:apikey')
+    req.auth = { ...blankAuth(), type: 'apikey', username: kv.key || 'X-API-Key', token: kv.value || '' }
+  }
+
+  const bodyType = methodKV.body || 'none'
+  if (bodyType === 'json') {
+    req.bodies = [{ ...blankBody(), type: 'raw', raw: getRaw('body:json'), lang: 'json' }]
+  } else if (bodyType === 'xml') {
+    req.bodies = [{ ...blankBody(), type: 'raw', raw: getRaw('body:xml'), lang: 'xml' }]
+  } else if (bodyType === 'text') {
+    req.bodies = [{ ...blankBody(), type: 'raw', raw: getRaw('body:text'), lang: 'text' }]
+  } else if (bodyType === 'form-urlencoded') {
+    req.bodies = [{ ...blankBody(), type: 'urlencoded', form: Object.entries(parseKV('body:form-urlencoded')).map(([k, v]) => row(k, v)) }]
+  } else if (bodyType === 'multipart-form') {
+    req.bodies = [{ ...blankBody(), type: 'formdata', form: Object.entries(parseKV('body:multipart-form')).map(([k, v]) => row(k, v)) }]
+  }
+
+  const pre = getRaw('script:pre-request')
+  const post = getRaw('script:post-response')
+  if (pre || post) req.scripts = { pre, tests: post }
+
+  return { id: uid(), name: reqName, children: [req] }
 }
 
 function importAdomnia(json: any): Collection[] {
@@ -167,6 +300,21 @@ function importAdomnia(json: any): Collection[] {
 
 export function importCollectionsFromText(text: string, forced: CollectionFormat = 'auto'): ImportResult {
   const warnings: string[] = []
+
+  // Detect Bruno .bru native text format before JSON parsing
+  const trimmed = text.trimStart()
+  const isBruText = !trimmed.startsWith('{') && !trimmed.startsWith('[') &&
+    /^(meta|get|post|put|patch|delete|head|options)\s*\{/m.test(trimmed)
+  if (isBruText || forced === 'bruno') {
+    try {
+      const col = parseBruFile(text)
+      return { collections: [col], format: 'bruno', warnings }
+    } catch (e) {
+      if (forced === 'bruno') throw e
+      // Fall through to JSON/YAML parsing
+    }
+  }
+
   let json: any
   try {
     json = JSON.parse(text)

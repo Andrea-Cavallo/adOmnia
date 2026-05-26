@@ -37,6 +37,7 @@ func startHTTPServer() {
 	// Kafka
 	mux.HandleFunc("/kafka/produce", kafkaProduceHandler)
 	mux.HandleFunc("/kafka/bulk-produce", kafkaBulkProduceHandler)
+	mux.HandleFunc("/kafka/loadtest", kafkaLoadTestHandler)
 	mux.HandleFunc("/kafka/consume", kafkaConsumeHandler)
 	mux.HandleFunc("/kafka/topics", kafkaTopicsHandler)
 
@@ -88,6 +89,10 @@ func startHTTPServer() {
 	mux.HandleFunc("/loadtest/scenario/list", loadTestScenarioListHandler)
 	mux.HandleFunc("/loadtest/scenario/load", loadTestScenarioLoadHandler)
 	mux.HandleFunc("/loadtest/compare", loadTestCompareHandler)
+	mux.HandleFunc("/loadtest/result/save", loadTestResultSaveHandler)
+	mux.HandleFunc("/loadtest/result/list", loadTestResultListHandler)
+	mux.HandleFunc("/loadtest/result/load", loadTestResultLoadHandler)
+	mux.HandleFunc("/loadtest/result/delete", loadTestResultDeleteHandler)
 	mux.HandleFunc("/loadtest/grpc", loadTestGrpcHandler)
 
 	// Mock server control

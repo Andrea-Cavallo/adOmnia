@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import {
   Plus, Trash2, RefreshCw, Play, Square,
   ChevronDown, ChevronRight, Download, Upload,
-  Server, Radio, Zap, Copy, Mic
+  Server, Radio, Zap, Copy, Mic, Search, X
 } from 'lucide-react'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { useAppStore } from '@/stores/app'
@@ -481,6 +481,20 @@ export function MockPanel() {
   const [recordHeaders, setRecordHeaders] = useState('{}')
   const [recording, setRecording] = useState(false)
   const [recordMsg, setRecordMsg] = useState('')
+  const [hitSearch, setHitSearch] = useState('')
+  const [hitMethodFilter, setHitMethodFilter] = useState<'ALL' | 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'>('ALL')
+  const [hitMatchFilter, setHitMatchFilter] = useState<'all' | 'match' | 'miss'>('all')
+
+  const filteredHits = useMemo(() => {
+    const reversed = hits.slice().reverse()
+    return reversed.filter((h) => {
+      if (hitMethodFilter !== 'ALL' && h.method !== hitMethodFilter) return false
+      if (hitSearch && !h.path.toLowerCase().includes(hitSearch.toLowerCase())) return false
+      if (hitMatchFilter === 'match' && !h.matched) return false
+      if (hitMatchFilter === 'miss' && h.matched) return false
+      return true
+    }).slice(0, 200)
+  }, [hits, hitSearch, hitMethodFilter, hitMatchFilter])
 
   const api = useCallback(
     async (path: string, body?: unknown) => {
@@ -563,7 +577,7 @@ export function MockPanel() {
     return () => clearInterval(t)
   }, [port, refreshStatus, refreshHits])
 
-  const handleStart = async () => {
+  const handleStart = useCallback(async () => {
     setLoading(true)
     setError('')
     const activeEndpoints = endpoints.filter((e) => e.enabled !== false)
@@ -571,7 +585,17 @@ export function MockPanel() {
     if (data?.error) setError(data.error)
     await refreshStatus()
     setLoading(false)
-  }
+  }, [api, endpoints, mockPort, password, refreshStatus])
+
+  useEffect(() => {
+    const startFromCommandPalette = (event: Event) => {
+      const command = event as CustomEvent<{ handled: boolean }>
+      command.detail.handled = true
+      void handleStart()
+    }
+    document.addEventListener('adomnia:start-mock', startFromCommandPalette)
+    return () => document.removeEventListener('adomnia:start-mock', startFromCommandPalette)
+  }, [handleStart])
 
   const handleStop = async () => {
     setLoading(true)
@@ -850,7 +874,12 @@ export function MockPanel() {
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-text-2">
-              Hit Log {hits.length > 0 && <span className="text-text-4">({hits.length})</span>}
+              Hit Log
+              {hits.length > 0 && (
+                <span className="text-text-4 ml-1">
+                  ({filteredHits.length}{filteredHits.length !== hits.length ? `/${hits.length}` : ''})
+                </span>
+              )}
             </span>
             <div className="flex items-center gap-2">
               {hits.length > 0 && (
@@ -864,6 +893,70 @@ export function MockPanel() {
             </div>
           </div>
 
+          {/* Filter bar */}
+          {hits.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Path search */}
+              <div className="relative flex-1 min-w-[160px]">
+                <Search size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-4 pointer-events-none" />
+                <input
+                  value={hitSearch}
+                  onChange={(e) => setHitSearch(e.target.value)}
+                  placeholder="Filter by path…"
+                  className="h-6 w-full pl-6 pr-6 bg-surface-2 border border-border-2 rounded text-[10px] text-text-1 font-mono placeholder:text-text-4 focus:border-accent outline-none"
+                />
+                {hitSearch && (
+                  <button
+                    onClick={() => setHitSearch('')}
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 text-text-4 hover:text-text-2"
+                  >
+                    <X size={9} />
+                  </button>
+                )}
+              </div>
+              {/* Method filter */}
+              <div className="flex items-center gap-0.5">
+                {(['ALL', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const).map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => setHitMethodFilter(m)}
+                    className={cn(
+                      'px-1.5 py-0.5 rounded text-[9px] font-bold transition-colors',
+                      hitMethodFilter === m
+                        ? 'bg-accent text-white'
+                        : m === 'ALL'
+                          ? 'text-text-3 hover:bg-surface-2'
+                          : cn(METHOD_COLORS[m] ?? 'text-text-3', 'hover:bg-surface-2'),
+                    )}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+              {/* Match filter */}
+              <div className="flex items-center gap-0.5">
+                {([['all', 'All'], ['match', 'OK'], ['miss', 'MISS']] as const).map(([val, label]) => (
+                  <button
+                    key={val}
+                    onClick={() => setHitMatchFilter(val)}
+                    className={cn(
+                      'px-1.5 py-0.5 rounded text-[9px] font-semibold transition-colors',
+                      hitMatchFilter === val
+                        ? val === 'miss'
+                          ? 'bg-error/20 text-error'
+                          : val === 'match'
+                            ? 'bg-success/20 text-success'
+                            : 'bg-surface-3 text-text-1'
+                        : 'text-text-4 hover:bg-surface-2',
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="bg-surface-1 border border-border-1 rounded-md overflow-hidden min-h-[80px] max-h-[320px] overflow-y-auto">
             {hits.length === 0 ? (
               <div className="flex flex-col items-center gap-2 py-6">
@@ -871,6 +964,11 @@ export function MockPanel() {
                 <p className="text-[11px] text-text-4">
                   {status.running ? 'Waiting for requests...' : 'Start the server to see incoming hits'}
                 </p>
+              </div>
+            ) : filteredHits.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 py-6">
+                <Search size={16} className="text-text-4" />
+                <p className="text-[11px] text-text-4">No hits match the current filters</p>
               </div>
             ) : (
               <table className="w-full text-xs">
@@ -884,7 +982,7 @@ export function MockPanel() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-1/30">
-                  {hits.slice().reverse().slice(0, 100).map((h) => (
+                  {filteredHits.map((h) => (
                     <tr key={h.id} className="hover:bg-surface-2/40 transition-colors">
                       <td className="py-1.5 px-3 text-[10px] text-text-4 font-mono whitespace-nowrap">
                         {h.timestamp}

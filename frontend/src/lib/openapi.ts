@@ -116,6 +116,7 @@ interface OpenAPIOperation {
   summary?: string
   description?: string
   tags?: string[]
+  security?: Array<Record<string, string[]>>
   parameters?: Array<{
     name: string
     in: 'query' | 'header' | 'path' | 'cookie'
@@ -130,20 +131,31 @@ interface OpenAPIOperation {
   responses?: Record<string, unknown>
 }
 
+interface SecurityScheme {
+  type: string
+  scheme?: string
+  bearerFormat?: string
+  name?: string
+  in?: string
+  flows?: Record<string, {
+    authorizationUrl?: string
+    tokenUrl?: string
+    scopes?: Record<string, string>
+  }>
+}
+
 interface OpenAPISpec {
   openapi: string
   info: { title: string; version?: string; description?: string }
-  servers?: Array<{ url: string; description?: string }>
+  servers?: Array<{
+    url: string
+    description?: string
+    variables?: Record<string, { default: string; enum?: string[]; description?: string }>
+  }>
+  security?: Array<Record<string, string[]>>
   paths?: Record<string, Record<string, OpenAPIOperation>>
   components?: {
-    securitySchemes?: Record<string, {
-      type: string
-      scheme?: string
-      bearerFormat?: string
-      name?: string
-      in?: string
-      flows?: Record<string, unknown>
-    }>
+    securitySchemes?: Record<string, SecurityScheme>
   }
   tags?: Array<{ name: string; description?: string }>
 }
@@ -157,11 +169,7 @@ function getExample(body: OpenAPIOperation['requestBody']): string | undefined {
   return undefined
 }
 
-function inferAuth(spec: OpenAPISpec): RequestAuth {
-  const schemes = spec.components?.securitySchemes
-  if (!schemes) return blankAuth()
-  const scheme = Object.values(schemes)[0]
-  if (!scheme) return blankAuth()
+function schemeToAuth(scheme: SecurityScheme): RequestAuth {
   switch (scheme.type) {
     case 'http':
       if (scheme.scheme === 'bearer') return { ...blankAuth(), type: 'bearer' }
@@ -169,8 +177,47 @@ function inferAuth(spec: OpenAPISpec): RequestAuth {
       break
     case 'apiKey':
       return { ...blankAuth(), type: 'apikey', username: scheme.name || 'X-API-Key' }
+    case 'oauth2': {
+      const flows = scheme.flows ?? {}
+      const flow = flows.authorizationCode ?? flows.clientCredentials ?? flows.implicit ?? flows.password ?? {}
+      return {
+        ...blankAuth(),
+        type: 'oauth2',
+        oauth2AuthUrl: flow.authorizationUrl ?? '',
+        oauth2TokenUrl: flow.tokenUrl ?? '',
+        oauth2Scope: Object.keys(flow.scopes ?? {}).join(' '),
+      }
+    }
+    case 'openIdConnect':
+      return { ...blankAuth(), type: 'oauth2' }
   }
   return blankAuth()
+}
+
+function inferAuth(
+  security: Array<Record<string, string[]>> | undefined,
+  schemes: Record<string, SecurityScheme> | undefined,
+): RequestAuth {
+  if (!security || !security.length || !schemes) return blankAuth()
+  // Use first non-empty security requirement
+  for (const req of security) {
+    const schemeName = Object.keys(req)[0]
+    if (schemeName && schemes[schemeName]) return schemeToAuth(schemes[schemeName])
+  }
+  // Fallback: first scheme in components
+  const first = Object.values(schemes)[0]
+  return first ? schemeToAuth(first) : blankAuth()
+}
+
+/** Expand server URL variables to their defaults. */
+function resolveServerUrl(server: NonNullable<OpenAPISpec['servers']>[number]): string {
+  let url = server.url
+  if (server.variables) {
+    for (const [varName, varDef] of Object.entries(server.variables)) {
+      url = url.split(`{${varName}}`).join(varDef.default)
+    }
+  }
+  return url.replace(/\/$/, '')
 }
 
 function ctFromSchema(body: OpenAPIOperation['requestBody']): 'json' | 'xml' | 'text' {
@@ -187,8 +234,12 @@ export function parseOpenAPI(raw: string): Collection[] {
   if (!spec.openapi) throw new Error('Not a valid OpenAPI spec: missing "openapi" field')
   if (!spec.paths) throw new Error('No paths found in OpenAPI spec')
 
-  const baseUrl = spec.servers?.[0]?.url ?? ''
-  const auth = inferAuth(spec)
+  const schemes = spec.components?.securitySchemes
+  const globalSecurity = spec.security
+  const server = spec.servers?.[0]
+  const baseUrl = server ? resolveServerUrl(server) : ''
+  // Global auth used as fallback when an operation has no security override
+  const globalAuth = inferAuth(globalSecurity ?? (schemes ? [Object.fromEntries(Object.keys(schemes).map(k => [k, []]))] : undefined), schemes)
 
   const untaggedCol: Collection = {
     id: uid(),
@@ -209,7 +260,13 @@ export function parseOpenAPI(raw: string): Collection[] {
       if (!['get','post','put','patch','delete','head','options'].includes(method)) continue
 
       const name = op.summary || op.operationId || `${method.toUpperCase()} ${path}`
-      const fullUrl = baseUrl ? `${baseUrl.replace(/\/$/, '')}${path}` : path
+      const fullUrl = baseUrl ? `${baseUrl}${path}` : path
+
+      // Per-operation security overrides the global auth
+      // An empty security array [] means "no auth" for that operation
+      const auth = op.security !== undefined
+        ? (op.security.length === 0 ? blankAuth() : inferAuth(op.security, schemes))
+        : globalAuth
 
       const headers: KVRow[] = []
       const params: KVRow[] = []
@@ -219,7 +276,7 @@ export function parseOpenAPI(raw: string): Collection[] {
           const row: KVRow = {
             id: uid(),
             key: p.name,
-            value: p.example != null ? String(p.example) : '',
+            value: p.example != null ? String(p.example) : (p.schema?.default != null ? String(p.schema.default) : ''),
             enabled: p.required ?? false,
           }
           if (p.in === 'query') params.push(row)

@@ -1,4 +1,5 @@
 ﻿import { useState, useMemo } from 'react'
+import { useEffect } from 'react'
 import { Copy, ChevronRight, ChevronDown, Download } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
@@ -9,6 +10,7 @@ import { RegexTester } from '@/components/utils/RegexTester'
 import { HmacTool } from '@/components/utils/HmacTool'
 import { DockerGenerator } from '@/components/utils/DockerGenerator'
 import { parseDocument } from 'yaml'
+import { useAppStore } from '@/stores/app'
 
 const copy = (s: string) => navigator.clipboard.writeText(s).catch(() => {})
 
@@ -438,7 +440,7 @@ function JsonGraphView({ json }: { json: string }) {
       if (obj === null) return <span className="text-gray-400">null</span>
       if (typeof obj === 'boolean') return <span className="text-purple-400">{String(obj)}</span>
       if (typeof obj === 'number') return <span className="text-yellow-300">{obj}</span>
-      if (typeof obj === 'string') return <span className="text-green-400">"{obj}"</span>
+      if (typeof obj === 'string') return <span className="text-json-string">"{obj}"</span>
       if (Array.isArray(obj)) {
         return (
           <div className="ml-4">
@@ -591,166 +593,276 @@ function pemOrJksInspect(text: string, bytes?: Uint8Array, name?: string): strin
 
 // =========== Class File Inspector ===========
 
-function classInspect(hex: string): string {
-  const cleanHex = hex.replace(/[^0-9a-f]/gi, '')
-  const info: string[] = []
-  const magic = cleanHex.slice(0, 8)
-  if (magic.toUpperCase() !== 'CAFEBABE') {
-    info.push('Magic: ' + magic + ' (expected CAFEBABE)')
-    info.push('Not a valid Java class file')
-    return info.join('\n')
-  }
-  info.push('Magic: CAFEBABE (valid)')
-  const bytes = new Uint8Array(cleanHex.match(/.{1,2}/g)?.map((b) => parseInt(b, 16)) ?? [])
-  const view = new DataView(bytes.buffer)
-  const minor = view.getUint16(4)
-  const major = view.getUint16(6)
-  info.push(`Version: major ${major}, minor ${minor}${javaVersionName(major)}`)
-  const parsed = parseClassFile(bytes)
-  if (parsed) info.push(...parsed)
-  return info.join('\n')
+interface ClassMember {
+  flags: number
+  name: string
+  descriptor: string
 }
+
+interface ClassStructure {
+  version: { major: number; minor: number }
+  cpCount: number
+  accessFlags: number
+  thisClass: string
+  superClass: string
+  interfaces: string[]
+  fields: ClassMember[]
+  methods: ClassMember[]
+}
+
+type CpEntry = { tag: number; value?: string | number; nameIndex?: number; classIndex?: number; nameAndTypeIndex?: number; descriptorIndex?: number } | null
 
 function javaVersionName(major: number): string {
   const map: Record<number, string> = {
-    45: ' (Java 1.1)',
-    46: ' (Java 1.2)',
-    47: ' (Java 1.3)',
-    48: ' (Java 1.4)',
-    49: ' (Java 5)',
-    50: ' (Java 6)',
-    51: ' (Java 7)',
-    52: ' (Java 8)',
-    53: ' (Java 9)',
-    54: ' (Java 10)',
-    55: ' (Java 11)',
-    56: ' (Java 12)',
-    57: ' (Java 13)',
-    58: ' (Java 14)',
-    59: ' (Java 15)',
-    60: ' (Java 16)',
-    61: ' (Java 17)',
-    62: ' (Java 18)',
-    63: ' (Java 19)',
-    64: ' (Java 20)',
-    65: ' (Java 21)',
+    45: ' (Java 1.1)', 46: ' (Java 1.2)', 47: ' (Java 1.3)', 48: ' (Java 1.4)',
+    49: ' (Java 5)', 50: ' (Java 6)', 51: ' (Java 7)', 52: ' (Java 8)',
+    53: ' (Java 9)', 54: ' (Java 10)', 55: ' (Java 11)', 56: ' (Java 12)',
+    57: ' (Java 13)', 58: ' (Java 14)', 59: ' (Java 15)', 60: ' (Java 16)',
+    61: ' (Java 17)', 62: ' (Java 18)', 63: ' (Java 19)', 64: ' (Java 20)',
+    65: ' (Java 21)', 66: ' (Java 22)', 67: ' (Java 23)',
   }
   return map[major] ?? ''
 }
 
-function parseClassFile(bytes: Uint8Array): string[] | null {
+function jvmTypeToJava(desc: string, pos = 0): { type: string; end: number } {
+  const c = desc[pos]
+  switch (c) {
+    case 'B': return { type: 'byte', end: pos + 1 }
+    case 'C': return { type: 'char', end: pos + 1 }
+    case 'D': return { type: 'double', end: pos + 1 }
+    case 'F': return { type: 'float', end: pos + 1 }
+    case 'I': return { type: 'int', end: pos + 1 }
+    case 'J': return { type: 'long', end: pos + 1 }
+    case 'S': return { type: 'short', end: pos + 1 }
+    case 'Z': return { type: 'boolean', end: pos + 1 }
+    case 'V': return { type: 'void', end: pos + 1 }
+    case 'L': {
+      const end = desc.indexOf(';', pos)
+      if (end === -1) return { type: '?', end: desc.length }
+      const raw = desc.slice(pos + 1, end).replace(/\//g, '.')
+      const simple = raw.startsWith('java.lang.') ? raw.slice(10) : raw
+      return { type: simple, end: end + 1 }
+    }
+    case '[': {
+      const inner = jvmTypeToJava(desc, pos + 1)
+      return { type: inner.type + '[]', end: inner.end }
+    }
+    default: return { type: '?', end: pos + 1 }
+  }
+}
+
+function parseMethodDescriptor(desc: string): { params: string[]; returnType: string } {
+  if (!desc.startsWith('(')) return { params: [], returnType: '?' }
+  const closeIdx = desc.indexOf(')')
+  if (closeIdx === -1) return { params: [], returnType: '?' }
+  const paramStr = desc.slice(1, closeIdx)
+  const params: string[] = []
+  let pos = 0
+  while (pos < paramStr.length) {
+    const { type, end } = jvmTypeToJava(paramStr, pos)
+    params.push(type)
+    if (end <= pos) break
+    pos = end
+  }
+  const { type: returnType } = jvmTypeToJava(desc.slice(closeIdx + 1))
+  return { params, returnType }
+}
+
+function decodeClassModifiers(flags: number): string {
+  const mods: string[] = []
+  if (flags & 0x0001) mods.push('public')
+  if (flags & 0x4000) { mods.push('enum'); return mods.join(' ') }
+  if (flags & 0x2000) { mods.push('@interface'); return mods.join(' ') }
+  if (flags & 0x0200) {
+    if (flags & 0x0400) mods.push('abstract')
+    mods.push('interface')
+    return mods.join(' ')
+  }
+  if (flags & 0x0400) mods.push('abstract')
+  else if (flags & 0x0010) mods.push('final')
+  mods.push('class')
+  return mods.join(' ')
+}
+
+function decodeMemberModifiers(flags: number, isMethod = false): string {
+  const mods: string[] = []
+  if (flags & 0x0001) mods.push('public')
+  else if (flags & 0x0002) mods.push('private')
+  else if (flags & 0x0004) mods.push('protected')
+  if (flags & 0x0008) mods.push('static')
+  if (flags & 0x0010) mods.push('final')
+  if (isMethod) {
+    if (flags & 0x0020) mods.push('synchronized')
+    if (flags & 0x0100) mods.push('native')
+    if (flags & 0x0400) mods.push('abstract')
+  } else {
+    if (flags & 0x0020) mods.push('volatile')
+    if (flags & 0x0040) mods.push('transient')
+  }
+  return mods.join(' ')
+}
+
+function cpUtf8(cp: CpEntry[], index: number): string {
+  const e = cp[index]
+  return e?.tag === 1 ? String(e.value) : `#${index}`
+}
+
+function cpClassName(cp: CpEntry[], index: number): string {
+  const e = cp[index]
+  if (!e || e.tag !== 7 || !e.nameIndex) return `#${index}`
+  return cpUtf8(cp, e.nameIndex).replace(/\//g, '.')
+}
+
+function parseClassStructure(bytes: Uint8Array): ClassStructure | string {
   try {
     const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
     let offset = 8
     const cpCount = view.getUint16(offset); offset += 2
-    const cp: Array<{ tag: number; value?: string | number; nameIndex?: number; descriptorIndex?: number; classIndex?: number; nameAndTypeIndex?: number } | null> = [null]
+    const cp: CpEntry[] = [null]
     for (let i = 1; i < cpCount; i++) {
       const tag = view.getUint8(offset); offset += 1
       switch (tag) {
         case 1: {
           const len = view.getUint16(offset); offset += 2
           const value = new TextDecoder().decode(bytes.slice(offset, offset + len))
-          offset += len
-          cp[i] = { tag, value }
-          break
+          offset += len; cp[i] = { tag, value }; break
         }
-        case 3:
-        case 4:
-          cp[i] = { tag, value: view.getUint32(offset) }; offset += 4
-          break
-        case 5:
-        case 6:
-          cp[i] = { tag }; offset += 8; i++; cp[i] = null
-          break
-        case 7:
-        case 8:
-        case 16:
-        case 19:
-        case 20:
-          cp[i] = { tag, nameIndex: view.getUint16(offset) }; offset += 2
-          break
-        case 9:
-        case 10:
-        case 11:
-        case 12:
-        case 18:
-          cp[i] = { tag, classIndex: view.getUint16(offset), nameAndTypeIndex: view.getUint16(offset + 2), nameIndex: view.getUint16(offset), descriptorIndex: view.getUint16(offset + 2) }; offset += 4
-          break
-        case 15:
-          cp[i] = { tag }; offset += 3
-          break
-        default:
-          return [`Constant pool: unsupported tag ${tag} at index ${i}`]
+        case 3: case 4: cp[i] = { tag, value: view.getUint32(offset) }; offset += 4; break
+        case 5: case 6: cp[i] = { tag }; offset += 8; i++; cp[i] = null; break
+        case 7: case 8: case 16: case 19: case 20:
+          cp[i] = { tag, nameIndex: view.getUint16(offset) }; offset += 2; break
+        case 9: case 10: case 11: case 12: case 18:
+          cp[i] = { tag, classIndex: view.getUint16(offset), nameAndTypeIndex: view.getUint16(offset + 2), nameIndex: view.getUint16(offset), descriptorIndex: view.getUint16(offset + 2) }; offset += 4; break
+        case 15: cp[i] = { tag }; offset += 3; break
+        default: return `Constant pool: unsupported tag ${tag} at entry ${i}`
       }
     }
     const accessFlags = view.getUint16(offset); offset += 2
-    const thisClass = view.getUint16(offset); offset += 2
-    const superClass = view.getUint16(offset); offset += 2
-    const lines = [
-      `Constant pool entries: ${cpCount - 1}`,
-      `Access flags: 0x${accessFlags.toString(16).padStart(4, '0')}`,
-      `Class: ${className(cp, thisClass)}`,
-      `Extends: ${superClass ? className(cp, superClass) : '(none)'}`,
-    ]
-    const interfaceCount = view.getUint16(offset); offset += 2
-    if (interfaceCount) {
-      const names: string[] = []
-      for (let i = 0; i < interfaceCount; i++) {
-        names.push(className(cp, view.getUint16(offset)))
-        offset += 2
+    const thisClassIdx = view.getUint16(offset); offset += 2
+    const superClassIdx = view.getUint16(offset); offset += 2
+    const interfaces: string[] = []
+    const ifaceCount = view.getUint16(offset); offset += 2
+    for (let i = 0; i < ifaceCount; i++) { interfaces.push(cpClassName(cp, view.getUint16(offset))); offset += 2 }
+    const readMembers = (): ClassMember[] => {
+      const count = view.getUint16(offset); offset += 2
+      const members: ClassMember[] = []
+      for (let i = 0; i < count; i++) {
+        const flags = view.getUint16(offset); offset += 2
+        const nameIndex = view.getUint16(offset); offset += 2
+        const descriptorIndex = view.getUint16(offset); offset += 2
+        members.push({ flags, name: cpUtf8(cp, nameIndex), descriptor: cpUtf8(cp, descriptorIndex) })
+        const attrCount = view.getUint16(offset); offset += 2
+        for (let a = 0; a < attrCount; a++) {
+          offset += 2
+          const len = view.getUint32(offset); offset += 4 + len
+          if (offset > bytes.length) throw new Error('attribute exceeds file size')
+        }
       }
-      lines.push(`Implements: ${names.join(', ')}`)
+      return members
     }
-    const fields = memberNames(view, bytes, cp, offset)
-    lines.push(...fields.lines)
-    offset = fields.offset
-    const methods = memberNames(view, bytes, cp, offset, 'Methods')
-    lines.push(...methods.lines)
-    return lines
-  } catch (e) {
-    return [`Class parser stopped: ${e instanceof Error ? e.message : String(e)}`]
-  }
+    const fields = readMembers()
+    const methods = readMembers()
+    return {
+      version: { major: view.getUint16(6), minor: view.getUint16(4) },
+      cpCount: cpCount - 1, accessFlags,
+      thisClass: cpClassName(cp, thisClassIdx),
+      superClass: superClassIdx ? cpClassName(cp, superClassIdx) : '',
+      interfaces, fields, methods,
+    }
+  } catch (e) { return `Parse error: ${e instanceof Error ? e.message : String(e)}` }
 }
 
-function utf8(cp: Array<{ tag: number; value?: string | number; nameIndex?: number } | null>, index: number): string {
-  const entry = cp[index]
-  return entry?.tag === 1 ? String(entry.value) : `#${index}`
-}
-
-function className(cp: Array<{ tag: number; value?: string | number; nameIndex?: number } | null>, index: number): string {
-  const entry = cp[index]
-  if (!entry || entry.tag !== 7 || !entry.nameIndex) return `#${index}`
-  return utf8(cp, entry.nameIndex).replace(/\//g, '.')
-}
-
-function memberNames(
-  view: DataView,
-  bytes: Uint8Array,
-  cp: Array<{ tag: number; value?: string | number; nameIndex?: number } | null>,
-  offset: number,
-  label = 'Fields',
-): { offset: number; lines: string[] } {
-  const count = view.getUint16(offset); offset += 2
-  const names: string[] = []
-  for (let i = 0; i < count; i++) {
-    offset += 2
-    const nameIndex = view.getUint16(offset); offset += 2
-    const descriptorIndex = view.getUint16(offset); offset += 2
-    names.push(`${utf8(cp, nameIndex)} ${utf8(cp, descriptorIndex)}`)
-    const attrCount = view.getUint16(offset); offset += 2
-    for (let a = 0; a < attrCount; a++) {
-      offset += 2
-      const len = view.getUint32(offset); offset += 4 + len
-      if (offset > bytes.length) throw new Error('member attribute exceeds file size')
+function renderClassSkeleton(s: ClassStructure): string {
+  const jvRaw = javaVersionName(s.version.major).trim()
+  const jvLabel = jvRaw ? jvRaw.slice(1, -1) : `major ${s.version.major}, minor ${s.version.minor}`
+  const lines: string[] = [
+    `// ${jvLabel}`,
+    `// Constant pool: ${s.cpCount} entries — ${s.fields.length} field(s), ${s.methods.length} method(s)`,
+    '',
+  ]
+  const simpleName = s.thisClass.includes('.')
+    ? s.thisClass.slice(s.thisClass.lastIndexOf('.') + 1) : s.thisClass
+  const pkg = s.thisClass.includes('.')
+    ? s.thisClass.slice(0, s.thisClass.lastIndexOf('.')) : ''
+  if (pkg) { lines.push(`package ${pkg};`); lines.push('') }
+  const superPart = s.superClass && s.superClass !== 'Object' && s.superClass !== 'java.lang.Object'
+    ? ` extends ${s.superClass}` : ''
+  const implPart = s.interfaces.length ? ` implements ${s.interfaces.join(', ')}` : ''
+  lines.push(`${decodeClassModifiers(s.accessFlags)} ${simpleName}${superPart}${implPart} {`)
+  if (s.fields.length) {
+    lines.push('')
+    for (const f of s.fields) {
+      const mods = decodeMemberModifiers(f.flags, false)
+      const { type } = jvmTypeToJava(f.descriptor)
+      lines.push(`  ${mods ? mods + ' ' : ''}${type} ${f.name};`)
     }
   }
-  return { offset, lines: [`${label}: ${count}`, ...names.slice(0, 20).map((name) => `  - ${name}`), ...(names.length > 20 ? [`  ... ${names.length - 20} more`] : [])] }
+  if (s.methods.length) {
+    lines.push('')
+    for (const m of s.methods) {
+      if (m.name === '<clinit>') { lines.push(`  static { /* static initializer */ }`); continue }
+      const mods = decodeMemberModifiers(m.flags, true)
+      const { params, returnType } = parseMethodDescriptor(m.descriptor)
+      const paramStr = params.map((p, i) => `${p} arg${i}`).join(', ')
+      const isAbstract = !!(m.flags & 0x0400)
+      const isNative = !!(m.flags & 0x0100)
+      const body = (isAbstract || isNative) ? ';' : ' { /* ... */ }'
+      if (m.name === '<init>') {
+        lines.push(`  ${mods ? mods + ' ' : ''}${simpleName}(${paramStr}) { }`)
+      } else {
+        lines.push(`  ${mods ? mods + ' ' : ''}${returnType} ${m.name}(${paramStr})${body}`)
+      }
+    }
+  }
+  lines.push('}')
+  return lines.join('\n')
+}
+
+function renderClassDetails(s: ClassStructure): string {
+  const lines = [
+    `Version: major ${s.version.major}, minor ${s.version.minor}${javaVersionName(s.version.major)}`,
+    `Constant pool entries: ${s.cpCount}`,
+    `Access flags: 0x${s.accessFlags.toString(16).padStart(4, '0')} (${decodeClassModifiers(s.accessFlags)})`,
+    `Class: ${s.thisClass}`,
+    `Extends: ${s.superClass || '(none)'}`,
+  ]
+  if (s.interfaces.length) lines.push(`Implements: ${s.interfaces.join(', ')}`)
+  lines.push(`\nFields: ${s.fields.length}`)
+  for (const f of s.fields.slice(0, 30)) {
+    const mods = decodeMemberModifiers(f.flags, false)
+    const { type } = jvmTypeToJava(f.descriptor)
+    lines.push(`  [${mods || 'package'}] ${type} ${f.name}  (raw: ${f.descriptor})`)
+  }
+  if (s.fields.length > 30) lines.push(`  ... ${s.fields.length - 30} more`)
+  lines.push(`\nMethods: ${s.methods.length}`)
+  for (const m of s.methods.slice(0, 30)) {
+    const mods = decodeMemberModifiers(m.flags, true)
+    const { params, returnType } = parseMethodDescriptor(m.descriptor)
+    const sig = m.name === '<init>' || m.name === '<clinit>'
+      ? `${m.name}(${params.join(', ')})`
+      : `${returnType} ${m.name}(${params.join(', ')})`
+    lines.push(`  [${mods || 'package'}] ${sig}  (raw: ${m.descriptor})`)
+  }
+  if (s.methods.length > 30) lines.push(`  ... ${s.methods.length - 30} more`)
+  return lines.join('\n')
+}
+
+function classInspect(hex: string, mode: 'skeleton' | 'details'): string {
+  const cleanHex = hex.replace(/[^0-9a-f]/gi, '')
+  if (cleanHex.slice(0, 8).toUpperCase() !== 'CAFEBABE') {
+    return `Magic: ${cleanHex.slice(0, 8) || '(empty)'} — expected CAFEBABE\nNot a valid Java class file.`
+  }
+  const bytes = new Uint8Array(cleanHex.match(/.{1,2}/g)?.map((b) => parseInt(b, 16)) ?? [])
+  const result = parseClassStructure(bytes)
+  if (typeof result === 'string') return result
+  return mode === 'skeleton' ? renderClassSkeleton(result) : renderClassDetails(result)
 }
 
 // =========== Main Panel ===========
 
 export function UtilsPanel() {
   const port = useServerPort()
+  const pendingFileImport = useAppStore((state) => state.pendingFileImport)
   const [activeTool, setActiveTool] = useState('json-query')
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
 
@@ -801,6 +913,7 @@ export function UtilsPanel() {
   const [classInput, setClassInput] = useState('CAFEBABE00000034001D')
   const [classOutput, setClassOutput] = useState('')
   const [classFileName, setClassFileName] = useState('')
+  const [classViewMode, setClassViewMode] = useState<'skeleton' | 'details'>('skeleton')
   const [httpFilter, setHttpFilter] = useState('')
 
   // Network tools
@@ -867,8 +980,18 @@ export function UtilsPanel() {
     const hex = bytesToHex(bytes)
     setClassFileName(file.name)
     setClassInput(hex)
-    setClassOutput(classInspect(hex))
+    setClassOutput(classInspect(hex, classViewMode))
   }
+
+  useEffect(() => {
+    const routed = useAppStore.getState().consumeFileImport('class')
+    if (routed?.kind !== 'class') return
+    const hex = bytesToHex(routed.bytes)
+    setActiveTool('class')
+    setClassFileName(routed.name)
+    setClassInput(hex)
+    setClassOutput(classInspect(hex, classViewMode))
+  }, [pendingFileImport])
 
   const handleYamlFiles = async (files: File[]) => {
     const results: YamlFileResult[] = []
@@ -1469,7 +1592,7 @@ export function UtilsPanel() {
             <FileDropZone
               accept=".class,application/java-vm,application/octet-stream"
               label="Drop a Java .class file here"
-              detail="It will be read as binary and analyzed immediately"
+              detail="Reads binary and reconstructs the class structure as readable Java"
               onFile={(file) => void handleClassFile(file)}
             />
             {classFileName && <p className="text-[10px] text-text-4">Loaded: <span className="font-mono text-text-2">{classFileName}</span></p>}
@@ -1480,8 +1603,42 @@ export function UtilsPanel() {
               rows={4}
               className="px-2 py-1.5 bg-surface-2 border border-border-2 rounded text-xs text-text-1 font-mono focus:border-accent outline-none resize-none"
             />
-            <button onClick={() => setClassOutput(classInspect(classInput.trim()))} className="self-start px-3 py-1.5 bg-accent text-white rounded text-xs font-medium">Inspect</button>
-            {classOutput && <pre className="px-3 py-2 bg-surface-1 border border-border-1 rounded text-xs text-text-1 font-mono whitespace-pre-wrap">{classOutput}</pre>}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setClassOutput(classInspect(classInput.trim(), classViewMode))}
+                className="px-3 py-1.5 bg-accent text-white rounded text-xs font-medium"
+              >
+                Inspect
+              </button>
+              <div className="flex rounded border border-border-2 overflow-hidden text-xs">
+                <button
+                  onClick={() => {
+                    setClassViewMode('skeleton')
+                    if (classOutput) setClassOutput(classInspect(classInput.trim(), 'skeleton'))
+                  }}
+                  className={`px-2 py-1 ${classViewMode === 'skeleton' ? 'bg-accent text-white' : 'bg-surface-2 text-text-3 hover:text-text-1'}`}
+                >
+                  Source Skeleton
+                </button>
+                <button
+                  onClick={() => {
+                    setClassViewMode('details')
+                    if (classOutput) setClassOutput(classInspect(classInput.trim(), 'details'))
+                  }}
+                  className={`px-2 py-1 border-l border-border-2 ${classViewMode === 'details' ? 'bg-accent text-white' : 'bg-surface-2 text-text-3 hover:text-text-1'}`}
+                >
+                  Raw Details
+                </button>
+              </div>
+              <span className="text-[10px] text-text-4">
+                {classViewMode === 'skeleton' ? 'Decoded Java-like structure' : 'JVM descriptor format'}
+              </span>
+            </div>
+            {classOutput && (
+              <pre className="px-3 py-2 bg-surface-1 border border-border-1 rounded text-xs text-text-1 font-mono whitespace-pre-wrap leading-relaxed">
+                {classOutput}
+              </pre>
+            )}
           </div>
         )
 

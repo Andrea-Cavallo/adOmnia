@@ -16,8 +16,10 @@ import {
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/app'
+import { ConnectionProfiles } from './ConnectionProfiles'
+import { safeSetItem } from '@/lib/safeLocalStorage'
 
-type Tab = 'produce' | 'bulk' | 'consume' | 'topics'
+type Tab = 'produce' | 'bulk' | 'load' | 'consume' | 'topics'
 
 interface BrokerConfig {
   brokers: string
@@ -57,6 +59,15 @@ interface KafkaResult {
   failures?: number
   totalMs?: number
   throughput?: number
+  totalMessages?: number
+  concurrency?: number
+  avgMs?: number
+  p50Ms?: number
+  p95Ms?: number
+  p99Ms?: number
+  errorRate?: number
+  throughputTimeline?: Array<{ second: number; reqs: number; avgMs: number }>
+  errors?: string[]
   lastPartition?: number
   lastOffset?: number
   messages?: KafkaMessage[]
@@ -68,7 +79,7 @@ const mechanisms = ['PLAIN', 'SCRAM-SHA-256', 'SCRAM-SHA-512']
 
 function sendKafkaSecretToVault(name: string, value: string, note: string) {
   if (!value) return
-  localStorage.setItem('adomnia.vault.pendingSecret', JSON.stringify({ name, value, note }))
+  safeSetItem('adomnia.vault.pendingSecret', JSON.stringify({ name, value, note }))
   useAppStore.getState().setActiveRail('vault')
 }
 
@@ -116,37 +127,17 @@ function InfoPill({ icon: Icon, label, value }: { icon: React.ElementType; label
   )
 }
 
-function BackendContract() {
-  const rows = [
-    ['/kafka/produce', 'Single message', 'key, value, headers, optional partition'],
-    ['/kafka/bulk-produce', 'Bulk producer', 'count capped at 10,000, optional delay and JSON vary field'],
-    ['/kafka/consume', 'Consumer group', 'maxWait capped at 30s, maxMsgs capped at 100'],
-    ['/kafka/topics', 'Discovery', 'topic list plus broker id/address metadata'],
-  ]
-
-  return (
-    <div className="rounded border border-border-1 bg-surface-1 p-3">
-      <div className="mb-3 flex items-center gap-2">
-        <Database size={14} className="text-accent" />
-        <h3 className="text-xs font-semibold text-text-1">Backend contract</h3>
-      </div>
-      <div className="space-y-2">
-        {rows.map(([path, title, detail]) => (
-          <div key={path} className="rounded border border-border-1 bg-surface-0 px-3 py-2">
-            <div className="flex items-center justify-between gap-3">
-              <span className="font-mono text-[11px] text-accent-light">{path}</span>
-              <span className="shrink-0 text-[11px] font-semibold text-text-2">{title}</span>
-            </div>
-            <p className="mt-1 text-[11px] leading-relaxed text-text-4">{detail}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function ResultPanel({ result }: { result: KafkaResult | null }) {
+function ResultPanel({
+  result,
+  compact = false,
+  onSelectTopic,
+}: {
+  result: KafkaResult | null
+  compact?: boolean
+  onSelectTopic?: (topic: string) => void
+}) {
   if (!result) {
+    if (compact) return null
     return (
       <div className="flex min-h-[220px] flex-col items-center justify-center rounded border border-dashed border-border-2 bg-surface-1/60 text-center">
         <Radio size={22} className="mb-2 text-text-4" />
@@ -161,27 +152,71 @@ function ResultPanel({ result }: { result: KafkaResult | null }) {
       <div className="flex items-center justify-between border-b border-border-1 px-3 py-2">
         <div className="flex items-center gap-2">
           <CheckCircle2 size={14} className={result.ok === false ? 'text-error' : 'text-success'} />
-          <span className="text-xs font-semibold text-text-1">{result.ok === false ? 'Request failed' : 'Backend response'}</span>
+          <span className="text-xs font-semibold text-text-1">
+            {result.totalMessages !== undefined
+              ? (result.ok === false ? 'Load completed with failures' : 'Load completed')
+              : (result.ok === false ? 'Request failed' : 'Backend response')}
+          </span>
         </div>
         {result.topic && <span className="font-mono text-[11px] text-text-4">{result.topic}</span>}
       </div>
 
-      {(result.offset !== undefined || result.partition !== undefined || result.successes !== undefined || result.count !== undefined) && (
+      {(result.offset !== undefined || result.partition !== undefined || result.successes !== undefined || result.count !== undefined || result.totalMessages !== undefined) && (
         <div className="grid grid-cols-4 gap-2 border-b border-border-1 p-3">
           <InfoPill icon={ListTree} label="Partition" value={String(result.partition ?? result.lastPartition ?? '-')} />
           <InfoPill icon={Activity} label="Offset" value={String(result.offset ?? result.lastOffset ?? '-')} />
-          <InfoPill icon={Send} label="Success" value={String(result.successes ?? result.count ?? '-')} />
+          <InfoPill icon={Send} label="Success" value={String(result.successes ?? result.count ?? result.totalMessages ?? '-')} />
           <InfoPill icon={Timer} label="Throughput" value={result.throughput !== undefined ? `${result.throughput}/s` : '-'} />
         </div>
       )}
 
+      {result.totalMessages !== undefined && (
+        <>
+          <div className="grid grid-cols-4 gap-2 border-b border-border-1 p-3">
+            <InfoPill icon={Timer} label="Average" value={`${result.avgMs ?? '-'} ms`} />
+            <InfoPill icon={Timer} label="P50" value={`${result.p50Ms ?? '-'} ms`} />
+            <InfoPill icon={Timer} label="P95" value={`${result.p95Ms ?? '-'} ms`} />
+            <InfoPill icon={Timer} label="P99" value={`${result.p99Ms ?? '-'} ms`} />
+          </div>
+          <div className="flex items-center justify-between gap-4 border-b border-border-1 px-3 py-2 text-[11px] text-text-3">
+            <span>{result.totalMessages} messages with {result.concurrency ?? '-'} concurrent producers</span>
+            <span className={cn((result.errorRate ?? 0) > 0 ? 'text-error' : 'text-success')}>
+              {result.failures ?? 0} failed / {result.errorRate ?? 0}% error rate
+            </span>
+          </div>
+          {result.throughputTimeline && result.throughputTimeline.length > 0 && (
+            <div className="border-b border-border-1 p-3">
+              <p className={labelClass}>Messages per second</p>
+              <div className="mt-3 flex h-20 items-end gap-1">
+                {result.throughputTimeline.map((bucket) => {
+                  const peak = Math.max(...(result.throughputTimeline ?? []).map((point) => point.reqs), 1)
+                  return (
+                    <div key={bucket.second} className="flex flex-1 flex-col items-center justify-end gap-1">
+                      <span className="text-[9px] text-text-4">{bucket.reqs}</span>
+                      <div className="w-full rounded-t bg-accent/70" style={{ height: `${Math.max((bucket.reqs / peak) * 52, 3)}px` }} />
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
       {result.topics && (
-        <div className="grid grid-cols-[1fr_260px] gap-3 p-3">
+        <div className={cn('grid gap-3 p-3', compact ? 'grid-cols-[1fr_180px]' : 'grid-cols-[1fr_260px]')}>
           <div>
             <p className={labelClass}>Topics</p>
             <div className="mt-2 max-h-52 overflow-auto rounded border border-border-1 bg-surface-0">
               {result.topics.map((topic) => (
-                <div key={topic} className="border-b border-border-1/50 px-3 py-2 font-mono text-xs text-text-1 last:border-b-0">{topic}</div>
+                <button
+                  key={topic}
+                  onClick={() => onSelectTopic?.(topic)}
+                  className="flex w-full items-center justify-between gap-3 border-b border-border-1/50 px-3 py-2 text-left font-mono text-xs text-text-1 transition-colors last:border-b-0 hover:bg-surface-2"
+                >
+                  <span className="truncate">{topic}</span>
+                  {onSelectTopic && <span className="shrink-0 text-[10px] text-accent">Use topic</span>}
+                </button>
               ))}
             </div>
           </div>
@@ -199,7 +234,15 @@ function ResultPanel({ result }: { result: KafkaResult | null }) {
         </div>
       )}
 
-      {result.messages && (
+      {result.messages && compact && (
+        <div className="border-t border-border-1 px-3 py-3 text-xs text-text-3">
+          {result.messages.length === 0
+            ? 'No messages received before timeout.'
+            : `${result.messages.length} message${result.messages.length === 1 ? '' : 's'} added to the shared message log.`}
+        </div>
+      )}
+
+      {result.messages && !compact && (
         <div className="p-3">
           <p className={labelClass}>Messages</p>
           <div className="mt-2 max-h-72 overflow-auto rounded border border-border-1 bg-surface-0">
@@ -238,7 +281,13 @@ interface BrokerMessage {
   metadata?: Record<string, string>
 }
 
-export function KafkaPanel({ onMessages }: { onMessages?: (msgs: BrokerMessage[]) => void }) {
+export function KafkaPanel({
+  onMessages,
+  embedded = false,
+}: {
+  onMessages?: (msgs: BrokerMessage[]) => void
+  embedded?: boolean
+}) {
   const port = useServerPort()
   const [tab, setTab] = useState<Tab>('produce')
   const [cfg, setCfg] = useState<BrokerConfig>({
@@ -259,6 +308,11 @@ export function KafkaPanel({ onMessages }: { onMessages?: (msgs: BrokerMessage[]
   const [bulkCount, setBulkCount] = useState(10)
   const [bulkDelayMs, setBulkDelayMs] = useState(0)
   const [bulkVaryField, setBulkVaryField] = useState('sequence')
+  const [loadConcurrency, setLoadConcurrency] = useState(8)
+  const [loadTotalMsgs, setLoadTotalMsgs] = useState(1000)
+  const [loadUseDuration, setLoadUseDuration] = useState(false)
+  const [loadDurationS, setLoadDurationS] = useState(15)
+  const [loadRampUpMs, setLoadRampUpMs] = useState(1000)
   const [maxWait, setMaxWait] = useState(5)
   const [maxMsgs, setMaxMsgs] = useState(10)
   const [fromStart, setFromStart] = useState(false)
@@ -352,10 +406,10 @@ export function KafkaPanel({ onMessages }: { onMessages?: (msgs: BrokerMessage[]
     )
 
   return (
-    <div className="flex-1 min-h-0 overflow-auto bg-surface-0">
-      <div className="grid min-h-full grid-cols-[minmax(620px,1fr)_420px]">
-        <section className="min-w-0 p-5">
-          <div className="mb-5 flex items-center justify-between border-b border-border-1 pb-4">
+    <div className={cn('flex-1 min-h-0 bg-surface-0', embedded ? '' : 'overflow-auto')}>
+      <div className={cn('grid min-h-full', !embedded && 'grid-cols-[minmax(620px,1fr)_360px]')}>
+        <section className={cn('min-w-0', !embedded && 'p-5')}>
+          {!embedded && <div className="mb-5 flex items-center justify-between border-b border-border-1 pb-4">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-accent">PUB / SUB</p>
               <h2 className="mt-1 text-lg font-semibold text-text-1">Kafka Workbench</h2>
@@ -365,13 +419,13 @@ export function KafkaPanel({ onMessages }: { onMessages?: (msgs: BrokerMessage[]
               <span className={cn('h-2 w-2 rounded-full', port ? 'bg-success' : 'bg-error')} />
               <span className="text-[11px] text-text-4">{port ? `Backend :${port}` : 'Backend offline'}</span>
             </div>
-          </div>
+          </div>}
 
-          <div className="mb-4 grid grid-cols-4 gap-2">
+          <div className={cn('mb-4 grid gap-2', embedded ? 'grid-cols-3' : 'grid-cols-4')}>
             <InfoPill icon={Database} label="Brokers" value={brokers.length ? brokers.join(', ') : 'required'} />
             <InfoPill icon={ListTree} label="Topic" value={cfg.topic || 'required'} />
             <InfoPill icon={KeyRound} label="Group" value={cfg.groupId || 'ephemeral'} />
-            <InfoPill icon={ShieldCheck} label="Security" value={`${cfg.tls ? 'TLS' : 'PLAINTEXT'} / ${cfg.saslEnabled ? cfg.saslMechanism : 'NO SASL'}`} />
+            {!embedded && <InfoPill icon={ShieldCheck} label="Security" value={`${cfg.tls ? 'TLS' : 'PLAINTEXT'} / ${cfg.saslEnabled ? cfg.saslMechanism : 'NO SASL'}`} />}
           </div>
 
           <div className="rounded border border-border-1 bg-surface-1 p-3">
@@ -379,6 +433,11 @@ export function KafkaPanel({ onMessages }: { onMessages?: (msgs: BrokerMessage[]
               <Radio size={14} className="text-accent" />
               <h3 className="text-xs font-semibold text-text-1">Connection</h3>
             </div>
+            <ConnectionProfiles
+              protocol="kafka"
+              config={cfg}
+              onLoad={(saved) => setCfg((current) => ({ ...current, ...saved }))}
+            />
             <div className="grid grid-cols-4 gap-3">
               <label className="flex flex-col gap-1">
                 <span className={labelClass}>Brokers</span>
@@ -398,7 +457,7 @@ export function KafkaPanel({ onMessages }: { onMessages?: (msgs: BrokerMessage[]
               </label>
             </div>
 
-            <div className="mt-3 grid grid-cols-[120px_120px_150px_1fr_1fr] gap-3">
+            <div className="mt-3 flex gap-3">
               <label className="flex items-center gap-2 rounded border border-border-2 bg-surface-2 px-2 text-xs text-text-2">
                 <input type="checkbox" checked={cfg.tls} onChange={(e) => setCfg({ ...cfg, tls: e.target.checked })} className="accent-accent" />
                 TLS
@@ -407,24 +466,31 @@ export function KafkaPanel({ onMessages }: { onMessages?: (msgs: BrokerMessage[]
                 <input type="checkbox" checked={cfg.saslEnabled} onChange={(e) => setCfg({ ...cfg, saslEnabled: e.target.checked })} className="accent-accent" />
                 SASL
               </label>
-              <select value={cfg.saslMechanism} disabled={!cfg.saslEnabled} onChange={(e) => setCfg({ ...cfg, saslMechanism: e.target.value })} className={cn(inputClass, !cfg.saslEnabled && 'opacity-50')}>
-                {mechanisms.map((item) => <option key={item}>{item}</option>)}
-              </select>
-              <input value={cfg.saslUsername} disabled={!cfg.saslEnabled} onChange={(e) => setCfg({ ...cfg, saslUsername: e.target.value })} placeholder="username" className={cn(inputClass, !cfg.saslEnabled && 'opacity-50')} />
-              <input type="password" value={cfg.saslPassword} disabled={!cfg.saslEnabled} onChange={(e) => setCfg({ ...cfg, saslPassword: e.target.value })} placeholder="password" className={cn(inputClass, !cfg.saslEnabled && 'opacity-50')} />
             </div>
-            <button
-              onClick={() => sendKafkaSecretToVault('Kafka SASL password', cfg.saslPassword, `Kafka brokers ${cfg.brokers}`)}
-              disabled={!cfg.saslEnabled || !cfg.saslPassword}
-              className="mt-2 text-[10px] text-text-4 hover:text-accent disabled:opacity-40"
-            >
-              Send SASL password to Vault
-            </button>
+            {cfg.saslEnabled && (
+              <>
+                <div className="mt-3 grid grid-cols-3 gap-3">
+                  <select value={cfg.saslMechanism} onChange={(e) => setCfg({ ...cfg, saslMechanism: e.target.value })} className={inputClass}>
+                    {mechanisms.map((item) => <option key={item}>{item}</option>)}
+                  </select>
+                  <input value={cfg.saslUsername} onChange={(e) => setCfg({ ...cfg, saslUsername: e.target.value })} placeholder="username" className={inputClass} />
+                  <input type="password" value={cfg.saslPassword} onChange={(e) => setCfg({ ...cfg, saslPassword: e.target.value })} placeholder="password" className={inputClass} />
+                </div>
+                <button
+                  onClick={() => sendKafkaSecretToVault('Kafka SASL password', cfg.saslPassword, `Kafka brokers ${cfg.brokers}`)}
+                  disabled={!cfg.saslPassword}
+                  className="mt-2 text-[10px] text-text-4 hover:text-accent disabled:opacity-40"
+                >
+                  Send SASL password to Vault
+                </button>
+              </>
+            )}
           </div>
 
           <div className="my-4 flex gap-2">
             <button className={tabClass('produce')} onClick={() => setTab('produce')}><Send size={14} /> Produce</button>
             <button className={tabClass('bulk')} onClick={() => setTab('bulk')}><Activity size={14} /> Bulk</button>
+            <button className={tabClass('load')} onClick={() => setTab('load')}><Activity size={14} /> Load</button>
             <button className={tabClass('consume')} onClick={() => setTab('consume')}><Timer size={14} /> Consume</button>
             <button className={tabClass('topics')} onClick={() => setTab('topics')}><ListTree size={14} /> Topics</button>
           </div>
@@ -481,6 +547,61 @@ export function KafkaPanel({ onMessages }: { onMessages?: (msgs: BrokerMessage[]
             </div>
           )}
 
+          {tab === 'load' && (
+            <div className="rounded border border-border-1 bg-surface-1 p-3">
+              <div className="mb-3">
+                <h3 className="text-xs font-semibold text-text-1">Producer load test</h3>
+                <p className="mt-1 text-[11px] text-text-4">Send messages concurrently and measure broker acknowledgement latency and throughput.</p>
+              </div>
+              <div className="grid grid-cols-4 gap-3">
+                <label className="flex flex-col gap-1">
+                  <span className={labelClass}>Concurrency</span>
+                  <input type="number" value={loadConcurrency} min={1} max={100} onChange={(e) => setLoadConcurrency(Number(e.target.value))} className={inputClass} />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className={labelClass}>{loadUseDuration ? 'Duration seconds' : 'Total messages'}</span>
+                  {loadUseDuration
+                    ? <input type="number" value={loadDurationS} min={1} max={300} onChange={(e) => setLoadDurationS(Number(e.target.value))} className={inputClass} />
+                    : <input type="number" value={loadTotalMsgs} min={1} max={100000} onChange={(e) => setLoadTotalMsgs(Number(e.target.value))} className={inputClass} />}
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className={labelClass}>Ramp-up ms</span>
+                  <input type="number" value={loadRampUpMs} min={0} onChange={(e) => setLoadRampUpMs(Number(e.target.value))} className={inputClass} />
+                </label>
+                <label className="flex items-end gap-2 pb-2 text-xs text-text-2">
+                  <input type="checkbox" checked={loadUseDuration} onChange={(e) => setLoadUseDuration(e.target.checked)} className="accent-accent" />
+                  Run for duration
+                </label>
+              </div>
+              <div className="mt-3 grid grid-cols-[220px_1fr] items-end gap-3">
+                <label className="flex flex-col gap-1">
+                  <span className={labelClass}>JSON vary field</span>
+                  <input
+                    value={bulkVaryField}
+                    onChange={(e) => setBulkVaryField(e.target.value)}
+                    placeholder="optional"
+                    className={inputClass}
+                  />
+                </label>
+                <p className="pb-2 text-[11px] text-text-4">Uses the current message value, key and headers; the key and selected JSON field are incremented for each event.</p>
+              </div>
+              <button
+                onClick={() => post('/kafka/loadtest', {
+                  ...producePayload,
+                  concurrency: loadConcurrency,
+                  totalMsgs: loadUseDuration ? undefined : loadTotalMsgs,
+                  durationS: loadUseDuration ? loadDurationS : undefined,
+                  rampUpMs: loadRampUpMs,
+                  varyField: bulkVaryField,
+                })}
+                disabled={loading || !cfg.topic || brokers.length === 0}
+                className="mt-4 inline-flex items-center gap-2 rounded bg-accent px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
+              >
+                <Activity size={14} /> {loading ? 'Running load...' : 'Run Kafka Load'}
+              </button>
+            </div>
+          )}
+
           {tab === 'consume' && (
             <div className="rounded border border-border-1 bg-surface-1 p-3">
               <div className="grid grid-cols-[140px_140px_1fr] gap-3">
@@ -505,35 +626,56 @@ export function KafkaPanel({ onMessages }: { onMessages?: (msgs: BrokerMessage[]
 
           {tab === 'topics' && (
             <div className="rounded border border-border-1 bg-surface-1 p-3">
-              <p className="text-xs text-text-3">Uses Sarama client discovery and returns every topic plus broker id/address metadata.</p>
+              <p className="text-xs text-text-3">Discover cluster topics and select one to use it immediately for produce or consume operations.</p>
               <button onClick={() => post('/kafka/topics', configPayload)} disabled={loading || brokers.length === 0} className="mt-4 inline-flex items-center gap-2 rounded bg-accent px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">
                 <ListTree size={14} /> {loading ? 'Loading...' : 'List Topics'}
               </button>
             </div>
           )}
+
+          {embedded && error && <div className="mt-4 rounded border border-error/30 bg-error/10 px-3 py-2 text-xs text-error">{error}</div>}
+          {embedded && result && (
+            <div className="mt-4">
+              <ResultPanel
+                compact
+                result={result}
+                onSelectTopic={(topic) => {
+                  setCfg((current) => ({ ...current, topic }))
+                  setTab('produce')
+                }}
+              />
+            </div>
+          )}
         </section>
 
-        <aside className="border-l border-border-1 bg-surface-0 p-5">
-          <BackendContract />
-
-          <div className="mt-4 rounded border border-border-1 bg-surface-1 p-3">
-            <div className="mb-3 flex items-center gap-2">
-              <Lock size={14} className="text-accent" />
-              <h3 className="text-xs font-semibold text-text-1">Security mapping</h3>
-            </div>
-            <div className="space-y-2 text-[11px] text-text-4">
-              <p><span className="font-mono text-text-2">tls</span> enables Sarama TLS transport.</p>
-              <p><span className="font-mono text-text-2">sasl.mechanism</span> supports PLAIN, SCRAM-SHA-256, SCRAM-SHA-512.</p>
-              <p><span className="font-mono text-text-2">clientId</span> is sent to Kafka for broker-side logs and quotas.</p>
-            </div>
+        {!embedded && <aside className="border-l border-border-1 bg-surface-0 p-5">
+          <div className="mb-4">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-accent">Activity</p>
+            <h3 className="mt-1 text-sm font-semibold text-text-1">Kafka result</h3>
+            <p className="mt-1 text-[11px] leading-relaxed text-text-4">Responses, discovered topics and consumed messages appear here.</p>
           </div>
-
           {error && <div className="mt-4 rounded border border-error/30 bg-error/10 px-3 py-2 text-xs text-error">{error}</div>}
-
-          <div className="mt-4">
-            <ResultPanel result={result} />
+          <div>
+            <ResultPanel
+              result={result}
+              onSelectTopic={(topic) => {
+                setCfg((current) => ({ ...current, topic }))
+                setTab('produce')
+              }}
+            />
           </div>
-        </aside>
+          <details className="mt-4 rounded border border-border-1 bg-surface-1 p-3">
+            <summary className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-text-2">
+              <Lock size={13} className="text-accent" />
+              Connection security details
+            </summary>
+            <div className="mt-3 space-y-2 text-[11px] text-text-4">
+              <p><span className="font-mono text-text-2">TLS</span> encrypts the transport to the configured broker.</p>
+              <p><span className="font-mono text-text-2">SASL</span> supports PLAIN and SCRAM authentication mechanisms.</p>
+              <p>Credentials remain local; save secrets to Vault when reuse is needed.</p>
+            </div>
+          </details>
+        </aside>}
       </div>
     </div>
   )

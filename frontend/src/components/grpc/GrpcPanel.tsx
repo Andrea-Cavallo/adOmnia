@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Send, RefreshCw, ChevronRight, Zap, Wifi, Save, Upload } from 'lucide-react'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { cn } from '@/lib/utils'
+import { safeSetItem } from '@/lib/safeLocalStorage'
 
 const PRESETS_KEY = 'adomnia.grpc.presets'
 
@@ -21,7 +22,7 @@ function loadPresets(): GrpcPreset[] {
 }
 
 function savePresets(presets: GrpcPreset[]) {
-  localStorage.setItem(PRESETS_KEY, JSON.stringify(presets))
+  safeSetItem(PRESETS_KEY, JSON.stringify(presets))
 }
 
 async function parseProtoFromBackend(port: number | null, source: string): Promise<ServiceInfo[]> {
@@ -70,6 +71,7 @@ export function GrpcPanel() {
   const [selectedService, setSelectedService] = useState('')
   const [selectedMethod, setSelectedMethod] = useState('')
   const [payload, setPayload] = useState('{}')
+  const [streamPayloads, setStreamPayloads] = useState('{}\n{}')
   const [metadata, setMetadata] = useState<MetadataRow[]>([])
   const [invokeResult, setInvokeResult] = useState<object | null>(null)
   const [loading, setLoading] = useState(false)
@@ -138,8 +140,28 @@ export function GrpcPanel() {
     setLoading(true)
     setError('')
     setInvokeResult(null)
-    let payloadObj = {}
-    try { payloadObj = JSON.parse(payload) } catch { setError('Invalid JSON payload'); setLoading(false); return }
+    const isClientStream = Boolean(currentMethod?.client_streaming)
+    let payloadObj: object = {}
+    let messages: object[] | undefined
+    if (isClientStream) {
+      const lines = streamPayloads.split('\n').map((line) => line.trim()).filter(Boolean)
+      if (lines.length === 0) {
+        setError('Enter at least one JSON message for the stream')
+        setLoading(false)
+        return
+      }
+      try {
+        messages = lines.map((line, index) => {
+          try { return JSON.parse(line) as object } catch { throw new Error(`Invalid JSON message on line ${index + 1}`) }
+        })
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Invalid JSON stream messages')
+        setLoading(false)
+        return
+      }
+    } else {
+      try { payloadObj = JSON.parse(payload) as object } catch { setError('Invalid JSON payload'); setLoading(false); return }
+    }
 
     const metaObj: Record<string, string> = {}
     for (const m of metadata) { if (m.key) metaObj[m.key] = m.value }
@@ -150,6 +172,7 @@ export function GrpcPanel() {
       service: selectedService,
       method: selectedMethod,
       payload: payloadObj,
+      messages,
       metadata: metaObj,
     })
     if (data) {
@@ -161,7 +184,15 @@ export function GrpcPanel() {
 
   const currentService = services.find((s) => s.name === selectedService)
   const currentMethod = currentService?.methods.find((m) => m.name === selectedMethod)
-  const unsupportedClientStreaming = Boolean(currentMethod?.client_streaming)
+  const clientStreaming = Boolean(currentMethod?.client_streaming)
+  const serverStreaming = Boolean(currentMethod?.server_streaming)
+  const streamMode = clientStreaming && serverStreaming
+    ? 'Bidirectional stream'
+    : clientStreaming
+      ? 'Client stream'
+      : serverStreaming
+        ? 'Server stream'
+        : 'Unary'
 
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -369,41 +400,48 @@ export function GrpcPanel() {
               {/* Payload */}
               <div className="flex flex-col gap-1">
                 <label className="text-[10px] text-text-4 uppercase tracking-wider">
-                  Request payload (JSON)
+                  {clientStreaming ? 'Stream messages (JSONL - one JSON object per line)' : 'Request payload (JSON)'}
                 </label>
                 <textarea
-                  value={payload}
-                  onChange={(e) => setPayload(e.target.value)}
+                  value={clientStreaming ? streamPayloads : payload}
+                  onChange={(e) => clientStreaming ? setStreamPayloads(e.target.value) : setPayload(e.target.value)}
                   rows={8}
                   className="px-3 py-2 bg-surface-2 border border-border-2 rounded-md text-xs text-text-1 font-mono outline-none focus:border-accent resize-y min-h-[120px]"
-                  placeholder='{"key": "value"}'
+                  placeholder={clientStreaming ? '{"id": 1}\n{"id": 2}' : '{"key": "value"}'}
                   spellCheck={false}
                 />
+                {clientStreaming && (
+                  <span className="text-[10px] text-text-4">Messages are sent in order; bidi responses are received while sending is active.</span>
+                )}
               </div>
 
               {/* Actions row */}
               <div className="flex items-center gap-3">
                 <button
                   onClick={handleInvoke}
-                  disabled={loading || !selectedMethod || unsupportedClientStreaming}
+                  disabled={loading || !selectedMethod}
                   className="flex items-center gap-1.5 px-4 py-1.5 bg-accent text-white rounded text-xs font-medium disabled:opacity-40 hover:bg-accent-hover"
-                  title={unsupportedClientStreaming ? 'Client-streaming and bidirectional-streaming calls need an interactive stream sender and are not available yet' : undefined}
                 >
                   <Send size={11} />
-                  {loading ? 'Invoking…' : 'Invoke'}
+                  {loading ? 'Invoking…' : streamMode === 'Unary' ? 'Invoke' : 'Invoke Stream'}
                 </button>
-                {unsupportedClientStreaming && (
-                  <span className="text-[10px] text-warning border border-warning/30 bg-warning/10 rounded px-2 py-0.5">Client/bidi streaming not available yet</span>
-                )}
-                {currentMethod?.server_streaming && !unsupportedClientStreaming && (
-                  <span className="text-[10px] text-success border border-success/30 bg-success/10 rounded px-2 py-0.5">Server streaming supported</span>
-                )}
-                {false && currentMethod && (currentMethod?.client_streaming || currentMethod?.server_streaming) && (
-                  <span className="text-[10px] text-warning border border-warning/30 bg-warning/10 rounded px-2 py-0.5">Streaming · unary mode only</span>
+                {streamMode !== 'Unary' && (
+                  <span className="text-[10px] text-success border border-success/30 bg-success/10 rounded px-2 py-0.5">{streamMode} supported</span>
                 )}
                 <button
                   onClick={() => {
-                    try { setPayload(JSON.stringify(JSON.parse(payload), null, 2)) } catch { /* skip */ }
+                    if (clientStreaming) {
+                      try {
+                        const formatted = streamPayloads.split('\n')
+                          .map((line) => line.trim())
+                          .filter(Boolean)
+                          .map((line) => JSON.stringify(JSON.parse(line)))
+                          .join('\n')
+                        setStreamPayloads(formatted)
+                      } catch { /* skip */ }
+                    } else {
+                      try { setPayload(JSON.stringify(JSON.parse(payload), null, 2)) } catch { /* skip */ }
+                    }
                   }}
                   className="text-[10px] text-text-4 hover:text-text-2"
                 >
@@ -415,7 +453,7 @@ export function GrpcPanel() {
               {invokeResult && (
                 <div className="bg-surface-1 border border-border-1 rounded-md overflow-hidden">
                   <div className="px-3 py-1.5 border-b border-border-1 text-[10px] text-text-4 uppercase tracking-wider flex items-center gap-2">
-                    Response
+                    {streamMode === 'Unary' ? 'Response' : 'Stream responses'}
                     <button
                       onClick={() => navigator.clipboard.writeText(JSON.stringify(invokeResult, null, 2))}
                       className="text-accent hover:text-accent-light"

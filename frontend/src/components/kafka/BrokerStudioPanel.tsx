@@ -9,7 +9,9 @@ import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { cn } from '@/lib/utils'
 import { JsonGraph } from '@/components/ui/JsonGraph'
 import { KafkaPanel } from './KafkaPanel'
+import { ConnectionProfiles } from './ConnectionProfiles'
 import { useAppStore } from '@/stores/app'
+import { safeSetItem } from '@/lib/safeLocalStorage'
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
@@ -34,7 +36,7 @@ interface MessagePreset {
 
 function sendBrokerSecretToVault(name: string, value: string, note: string) {
   if (!value) return
-  localStorage.setItem('adomnia.vault.pendingSecret', JSON.stringify({ name, value, note }))
+  safeSetItem('adomnia.vault.pendingSecret', JSON.stringify({ name, value, note }))
   useAppStore.getState().setActiveRail('vault')
 }
 
@@ -374,6 +376,15 @@ function RabbitMQPanel({ port, onMessages }: { port: number | null; onMessages: 
           <Unplug size={13} className="text-[#f87171]" />
           <h3 className="text-xs font-semibold text-text-1">Connection</h3>
         </div>
+        <ConnectionProfiles
+          protocol="rabbitmq"
+          config={{ url, exchange, queue }}
+          onLoad={(saved) => {
+            if (saved.url !== undefined) setUrl(saved.url)
+            if (saved.exchange !== undefined) setExchange(saved.exchange)
+            if (saved.queue !== undefined) setQueue(saved.queue)
+          }}
+        />
         <div className="grid grid-cols-3 gap-3">
           <div className="col-span-3">
             <Field label="AMQP URL">
@@ -511,6 +522,16 @@ function MQTTPanel({ port, onMessages }: { port: number | null; onMessages: (msg
           <Unplug size={13} className="text-[#34d399]" />
           <h3 className="text-xs font-semibold text-text-1">Connection</h3>
         </div>
+        <ConnectionProfiles
+          protocol="mqtt"
+          config={{ broker, clientId, username, password }}
+          onLoad={(saved) => {
+            if (saved.broker !== undefined) setBroker(saved.broker)
+            if (saved.clientId !== undefined) setClientId(saved.clientId)
+            if (saved.username !== undefined) setUsername(saved.username)
+            if (saved.password !== undefined) setPassword(saved.password)
+          }}
+        />
         <div className="grid grid-cols-2 gap-3">
           <Field label="Broker URL">
             <input value={broker} onChange={e => setBroker(e.target.value)} className={inputClass} placeholder="tcp://localhost:1883" />
@@ -660,6 +681,15 @@ function RedisPanel({ port, onMessages }: { port: number | null; onMessages: (ms
           <Database size={13} className="text-[#60a5fa]" />
           <h3 className="text-xs font-semibold text-text-1">Connection</h3>
         </div>
+        <ConnectionProfiles
+          protocol="redis"
+          config={{ addr, password, dbNum }}
+          onLoad={(saved) => {
+            if (saved.addr !== undefined) setAddr(saved.addr)
+            if (saved.password !== undefined) setPassword(saved.password)
+            if (saved.dbNum !== undefined) setDbNum(saved.dbNum)
+          }}
+        />
         <div className="grid grid-cols-3 gap-3">
           <div className="col-span-1">
             <Field label="Address">
@@ -790,6 +820,16 @@ function NATSPanel({ port, onMessages }: { port: number | null; onMessages: (msg
           <Activity size={13} className="text-[#a78bfa]" />
           <h3 className="text-xs font-semibold text-text-1">Connection</h3>
         </div>
+        <ConnectionProfiles
+          protocol="nats"
+          config={{ natsUrl, username, password, token }}
+          onLoad={(saved) => {
+            if (saved.natsUrl !== undefined) setNatsUrl(saved.natsUrl)
+            if (saved.username !== undefined) setUsername(saved.username)
+            if (saved.password !== undefined) setPassword(saved.password)
+            if (saved.token !== undefined) setToken(saved.token)
+          }}
+        />
         <div className="grid grid-cols-3 gap-3">
           <div className="col-span-1">
             <Field label="NATS URL">
@@ -997,7 +1037,7 @@ export function BrokerStudioPanel() {
         <div className="flex-1 min-h-0 grid grid-cols-[1fr_320px]">
           {/* left: protocol panels */}
           <div className="overflow-y-auto p-5 border-r border-border-1">
-            {protocol === 'kafka'    && <KafkaPanel onMessages={addMessages} />}
+            {protocol === 'kafka'    && <KafkaPanel embedded onMessages={addMessages} />}
             {protocol === 'rabbitmq' && <RabbitMQPanel port={port} onMessages={addMessages} />}
             {protocol === 'mqtt'     && <MQTTPanel     port={port} onMessages={addMessages} />}
             {protocol === 'redis'    && <RedisPanel    port={port} onMessages={addMessages} />}
@@ -1016,7 +1056,7 @@ export function BrokerStudioPanel() {
             {/* local credential scope */}
             <div className="px-3 py-2 border-t border-border-1 flex items-center gap-2 text-[10px] text-text-4">
               <Lock size={10} />
-              <span>Broker credentials stay local and are used only for the current connection unless saved in presets.</span>
+              <span>Connection profiles, including credentials, stay in local storage only. Use Vault for managed secret reuse.</span>
             </div>
           </div>
         </div>

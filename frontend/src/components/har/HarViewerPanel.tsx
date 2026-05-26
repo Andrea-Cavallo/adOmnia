@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertTriangle,
   BarChart2,
@@ -488,6 +488,7 @@ function CompareView({ harA, harB }: { harA: HarDoc; harB: HarDoc }) {
 
 export function HarViewerPanel() {
   const port = useServerPort()
+  const pendingFileImport = useAppStore((state) => state.pendingFileImport)
   const fileARef = useRef<HTMLInputElement | null>(null)
   const fileBRef = useRef<HTMLInputElement | null>(null)
   const [harA, setHarA] = useState<HarDoc | null>(null)
@@ -503,6 +504,21 @@ export function HarViewerPanel() {
   const [search, setSearch] = useState('')
   const [errMsg, setErrMsg] = useState('')
   const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    const routed = useAppStore.getState().consumeFileImport('har')
+    if (routed?.kind !== 'har') return
+    try {
+      const doc = JSON.parse(routed.text) as HarDoc
+      if (!doc?.log?.entries) throw new Error('Invalid HAR: missing log.entries')
+      setHarA(doc)
+      setNameA(routed.name)
+      setSelected(null)
+      setErrMsg('')
+    } catch (error) {
+      setErrMsg(error instanceof Error ? error.message : 'Import failed')
+    }
+  }, [pendingFileImport])
 
   const entries  = useMemo(() => harA ? enrich(harA.log.entries) : [], [harA])
   const domains  = useMemo(() => Array.from(new Set(entries.map((e) => e._domain))).sort(), [entries])

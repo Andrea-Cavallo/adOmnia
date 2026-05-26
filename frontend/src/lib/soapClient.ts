@@ -1,4 +1,5 @@
 import { ExecuteHTTP } from '../wailsjs/go/main/App'
+import { safeSetItem } from '@/lib/safeLocalStorage'
 
 // ─── WSDL Parser & SOAP Client ───────────────────────────────
 
@@ -543,9 +544,7 @@ export function loadSoapHistory(): SoapHistoryEntry[] {
 }
 
 function saveSoapHistory(entries: SoapHistoryEntry[]): void {
-  try {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(entries.slice(0, HISTORY_MAX)))
-  } catch { /* quota exceeded */ }
+  safeSetItem(HISTORY_KEY, JSON.stringify(entries.slice(0, HISTORY_MAX)))
 }
 
 export function addSoapHistoryEntry(entry: SoapHistoryEntry): SoapHistoryEntry[] {

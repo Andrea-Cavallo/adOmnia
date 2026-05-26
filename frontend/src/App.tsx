@@ -4,9 +4,11 @@ import { Titlebar } from '@/components/layout/Titlebar'
 import { Rail } from '@/components/layout/Rail'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { MainArea } from '@/components/layout/MainArea'
+import { CommandPalette } from '@/components/layout/CommandPalette'
 import { StatusBar } from '@/components/layout/StatusBar'
 import { ThemeProvider } from '@/components/themes/ThemeProvider'
 import { DevLogOverlay } from '@/components/ui/DevLogOverlay'
+import { StorageQuotaBanner } from '@/components/layout/StorageQuotaBanner'
 import { useSettingsStore } from '@/stores/settings'
 import { useCollectionsStore } from '@/stores/collections'
 import { useEnvironmentsStore } from '@/stores/environments'
@@ -20,6 +22,9 @@ import { migrateCollections } from '@/stores/collections'
 import { getUIFontStack } from '@/lib/uiFonts'
 import { GetStartupWindowChrome } from '@/wailsjs/go/main/App'
 import { UploadCloud } from 'lucide-react'
+import { routeGlobalDropFile } from '@/lib/globalFileRouter'
+import { saveFlowDefinitions } from '@/lib/flowStorage'
+import { safeSetItem } from '@/lib/safeLocalStorage'
 
 type WindowChromeMode = 'app' | 'app-xwayland' | 'system'
 import { loadDefaultPostmanDemo } from '@/lib/demoWorkspace'
@@ -79,6 +84,7 @@ function App() {
   const mergeBackendLogs = useDevLogsStore((s) => s.mergeBackendEntries)
   const backendLogsClearedRef = useRef(false)
   const [activeWindowChrome, setActiveWindowChrome] = useState<WindowChromeMode | null>(null)
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -201,6 +207,11 @@ function App() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setCommandPaletteOpen((open) => !open)
+        return
+      }
       if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
         e.preventDefault()
         newTab()
@@ -220,6 +231,14 @@ function App() {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'b') {
         e.preventDefault()
         useAppStore.getState().toggleSidebar()
+      }
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'd') {
+        const rail = useAppStore.getState().activeRail
+        if (rail === 'collections') {
+          e.preventDefault()
+          const activeTabId = useTabsStore.getState().activeTabId
+          if (activeTabId) useTabsStore.getState().duplicateTab(activeTabId)
+        }
       }
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'd') {
         e.preventDefault()
@@ -282,11 +301,9 @@ function App() {
     setDragOver(false)
     dragCounter.current = 0
 
-    const files = Array.from(e.dataTransfer.files).filter((f) =>
-      f.name.endsWith('.json') || f.name.endsWith('.yaml') || f.name.endsWith('.yml') || f.name.endsWith('.adomnia')
-    )
+    const files = Array.from(e.dataTransfer.files)
     if (!files.length) {
-      setDropFeedback({ msg: 'No collection file detected. Drop .json, .yaml or .adomnia files.', ok: false })
+      setDropFeedback({ msg: 'No file detected.', ok: false })
       setTimeout(() => setDropFeedback(null), 3000)
       return
     }
@@ -294,10 +311,26 @@ function App() {
     let totalImported = 0
     let workspaceImported = false
     const errors: string[] = []
+    let routedTool = false
 
     for (const file of files) {
       try {
-        const text = await file.text()
+        const routed = await routeGlobalDropFile(file)
+        if (routed.kind !== 'collection') {
+          if (routedTool || totalImported > 0) {
+            errors.push(`${file.name}: drop tool files one at a time.`)
+            continue
+          }
+          useAppStore.getState().queueFileImport(routed)
+          const target = routed.kind === 'har' ? 'har' : routed.kind === 'wsdl' ? 'soap' : 'powertools'
+          const label = routed.kind === 'har' ? 'HAR Viewer' : routed.kind === 'wsdl' ? 'SOAP Studio' : 'Class File Inspector'
+          setActiveRail(target)
+          setDropFeedback({ msg: `${file.name} opened in ${label}.`, ok: true })
+          routedTool = true
+          continue
+        }
+
+        const text = routed.text
         // Detect full workspace bundle (version:2 internal format or adomnia-workspace format)
         let parsed: Record<string, unknown> | null = null
         try { parsed = JSON.parse(text) as Record<string, unknown> } catch { /* not JSON */ }
@@ -320,9 +353,9 @@ function App() {
             useSettingsStore.setState({ settings: parsed.settings as never, loaded: true })
             useSettingsStore.getState().save()
           }
-          if (Array.isArray(parsed.flows)) localStorage.setItem('adomnia.flows.v1', JSON.stringify(parsed.flows))
-          if (parsed.dockerLab) localStorage.setItem('adomnia.dockerlab.last', JSON.stringify(parsed.dockerLab))
-          if (parsed.websocket) localStorage.setItem('adomnia.websocket', JSON.stringify(parsed.websocket))
+          if (Array.isArray(parsed.flows)) await saveFlowDefinitions(parsed.flows)
+          if (parsed.dockerLab) safeSetItem('adomnia.dockerlab.last', JSON.stringify(parsed.dockerLab))
+          if (parsed.websocket) safeSetItem('adomnia.websocket', JSON.stringify(parsed.websocket))
           totalImported += (parsed.collections as unknown[]).length
           workspaceImported = true
         } else {
@@ -335,7 +368,9 @@ function App() {
       }
     }
 
-    if (totalImported > 0) {
+    if (routedTool) {
+      // The lazy destination panel consumes the queued file when it mounts.
+    } else if (totalImported > 0) {
       setActiveRail('collections')
       const label = workspaceImported ? 'Workspace imported' : `Imported ${totalImported} collection${totalImported > 1 ? 's' : ''}`
       setDropFeedback({ msg: `${label} successfully.`, ok: true })
@@ -356,6 +391,7 @@ function App() {
           onDrop={handleDrop}
         >
           {activeWindowChrome !== 'system' && <Titlebar />}
+          <StorageQuotaBanner />
           <div className="flex flex-1 min-h-0">
             <Rail />
             <Sidebar />
@@ -370,8 +406,8 @@ function App() {
             <div className="absolute inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm pointer-events-none">
               <div className="flex flex-col items-center gap-3 rounded-lg border-2 border-dashed border-accent bg-surface-1 p-8 shadow-2xl">
                 <UploadCloud size={48} strokeWidth={1.5} className="text-accent" />
-                <p className="text-sm font-semibold text-text-1">Drop to import collection</p>
-                <p className="text-[10px] text-text-3">Postman, Insomnia, Bruno, OpenAPI, adOmnia</p>
+                <p className="text-sm font-semibold text-text-1">Drop a file to open it</p>
+                <p className="text-[10px] text-text-3">Collections / HAR / WSDL / Java Class</p>
               </div>
             </div>
           )}
@@ -383,6 +419,7 @@ function App() {
             </div>
           )}
         </div>
+        <CommandPalette open={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} />
         <DevLogOverlay visible={devLogVisible} onClose={toggleDevTools} />
       </ThemeProvider>
     </ErrorBoundary>

@@ -71,6 +71,7 @@ type grpcInvokeRequest struct {
 	Service  string            `json:"service"`
 	Method   string            `json:"method"`
 	Payload  json.RawMessage   `json:"payload"`
+	Messages []json.RawMessage `json:"messages,omitempty"`
 	Metadata map[string]string `json:"metadata,omitempty"`
 }
 
@@ -281,8 +282,8 @@ func grpcDescribeHandler(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, grpcDescribeResponse{Fields: fields})
 }
 
-// grpcInvokeHandler handles POST /grpc/invoke
-// Invokes a unary gRPC method with a JSON payload and returns the response.
+// grpcInvokeHandler handles POST /grpc/invoke.
+// Unary and server-streaming calls use payload; client and bidi streams use messages.
 func grpcInvokeHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "POST required", http.StatusMethodNotAllowed)
@@ -343,24 +344,30 @@ func grpcInvokeHandler(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	inputPayloads := []json.RawMessage{req.Payload}
 	if methodDesc.IsClientStreaming() {
-		writeJSON(w, http.StatusOK, grpcInvokeResponse{
-			Error:  "client-streaming and bidirectional-streaming calls require an interactive stream sender and are not supported by this beta client yet",
-			Status: "UNIMPLEMENTED",
-		})
-		return
-	}
-
-	// Build dynamic request message from JSON payload
-	inputMsg := dynamic.NewMessage(methodDesc.GetInputType())
-	if len(req.Payload) > 0 && string(req.Payload) != "null" {
-		if err := inputMsg.UnmarshalJSON(req.Payload); err != nil {
-			writeJSON(w, http.StatusOK, grpcInvokeResponse{
-				Error:  "unmarshal payload: " + err.Error(),
-				Status: "INVALID_ARGUMENT",
-			})
-			return
+		inputPayloads = req.Messages
+		if len(inputPayloads) == 0 {
+			inputPayloads = []json.RawMessage{req.Payload}
 		}
+	}
+	inputMessages := make([]*dynamic.Message, 0, len(inputPayloads))
+	for index, rawPayload := range inputPayloads {
+		inputMsg := dynamic.NewMessage(methodDesc.GetInputType())
+		if len(rawPayload) > 0 && string(rawPayload) != "null" {
+			if err := inputMsg.UnmarshalJSON(rawPayload); err != nil {
+				label := "payload"
+				if methodDesc.IsClientStreaming() {
+					label = fmt.Sprintf("message %d", index+1)
+				}
+				writeJSON(w, http.StatusOK, grpcInvokeResponse{
+					Error:  "unmarshal " + label + ": " + err.Error(),
+					Status: "INVALID_ARGUMENT",
+				})
+				return
+			}
+		}
+		inputMessages = append(inputMessages, inputMsg)
 	}
 
 	// Prepare output message
@@ -372,11 +379,11 @@ func grpcInvokeHandler(w http.ResponseWriter, r *http.Request) {
 	// Invoke the RPC
 	start := time.Now()
 	var respHeaders metadata.MD
-	if methodDesc.IsServerStreaming() {
+	if methodDesc.IsClientStreaming() || methodDesc.IsServerStreaming() {
 		streamDesc := &grpc.StreamDesc{
 			StreamName:    req.Method,
-			ServerStreams: true,
-			ClientStreams: false,
+			ServerStreams: methodDesc.IsServerStreaming(),
+			ClientStreams: methodDesc.IsClientStreaming(),
 		}
 		stream, err := conn.NewStream(ctx, streamDesc, fullMethod, grpc.Header(&respHeaders))
 		if err != nil {
@@ -388,14 +395,48 @@ func grpcInvokeHandler(w http.ResponseWriter, r *http.Request) {
 			})
 			return
 		}
-		if err := stream.SendMsg(inputMsg); err != nil {
-			st, _ := status.FromError(err)
-			writeJSON(w, http.StatusOK, grpcInvokeResponse{
-				Error:  st.Message(),
-				Status: st.Code().String(),
-				TimeMs: time.Since(start).Milliseconds(),
-			})
-			return
+		type streamResult struct {
+			messages []interface{}
+			err      error
+		}
+		recvDone := make(chan streamResult, 1)
+		go func() {
+			messages := make([]interface{}, 0)
+			for {
+				msg := dynamic.NewMessage(methodDesc.GetOutputType())
+				err := stream.RecvMsg(msg)
+				if err == io.EOF {
+					recvDone <- streamResult{messages: messages}
+					return
+				}
+				if err != nil {
+					recvDone <- streamResult{messages: messages, err: err}
+					return
+				}
+				msgJSON, err := msg.MarshalJSON()
+				if err != nil {
+					recvDone <- streamResult{messages: messages, err: fmt.Errorf("marshal stream message: %w", err)}
+					return
+				}
+				var item interface{}
+				if err := json.Unmarshal(msgJSON, &item); err != nil {
+					recvDone <- streamResult{messages: messages, err: fmt.Errorf("decode stream message: %w", err)}
+					return
+				}
+				messages = append(messages, item)
+			}
+		}()
+
+		for _, inputMsg := range inputMessages {
+			if err := stream.SendMsg(inputMsg); err != nil {
+				st, _ := status.FromError(err)
+				writeJSON(w, http.StatusOK, grpcInvokeResponse{
+					Error:  st.Message(),
+					Status: st.Code().String(),
+					TimeMs: time.Since(start).Milliseconds(),
+				})
+				return
+			}
 		}
 		if err := stream.CloseSend(); err != nil {
 			st, _ := status.FromError(err)
@@ -407,36 +448,22 @@ func grpcInvokeHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		messages := make([]interface{}, 0)
-		for {
-			msg := dynamic.NewMessage(methodDesc.GetOutputType())
-			err := stream.RecvMsg(msg)
-			if err == io.EOF {
-				break
+		result := <-recvDone
+		if result.err != nil {
+			st, ok := status.FromError(result.err)
+			statusCode := "INTERNAL"
+			errorMessage := result.err.Error()
+			if ok {
+				statusCode = st.Code().String()
+				errorMessage = st.Message()
 			}
-			if err != nil {
-				st, _ := status.FromError(err)
-				writeJSON(w, http.StatusOK, grpcInvokeResponse{
-					Messages: messages,
-					Error:    st.Message(),
-					Status:   st.Code().String(),
-					TimeMs:   time.Since(start).Milliseconds(),
-				})
-				return
-			}
-			msgJSON, err := msg.MarshalJSON()
-			if err != nil {
-				writeJSON(w, http.StatusOK, grpcInvokeResponse{
-					Messages: messages,
-					Error:    "marshal stream message: " + err.Error(),
-					Status:   "INTERNAL",
-					TimeMs:   time.Since(start).Milliseconds(),
-				})
-				return
-			}
-			var item interface{}
-			json.Unmarshal(msgJSON, &item)
-			messages = append(messages, item)
+			writeJSON(w, http.StatusOK, grpcInvokeResponse{
+				Messages: result.messages,
+				Error:    errorMessage,
+				Status:   statusCode,
+				TimeMs:   time.Since(start).Milliseconds(),
+			})
+			return
 		}
 
 		respMeta := make(map[string]string)
@@ -446,7 +473,7 @@ func grpcInvokeHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		writeJSON(w, http.StatusOK, grpcInvokeResponse{
-			Messages:         messages,
+			Messages:         result.messages,
 			Status:           "OK",
 			TimeMs:           time.Since(start).Milliseconds(),
 			ResponseMetadata: respMeta,
@@ -454,7 +481,7 @@ func grpcInvokeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = conn.Invoke(ctx, fullMethod, inputMsg, outputMsg,
+	err = conn.Invoke(ctx, fullMethod, inputMessages[0], outputMsg,
 		grpc.Header(&respHeaders),
 	)
 	elapsed := time.Since(start).Milliseconds()

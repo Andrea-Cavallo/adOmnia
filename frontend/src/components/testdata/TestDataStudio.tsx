@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react'
 import { Copy, RefreshCw, Download, Play } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/app'
+import { safeSetItem } from '@/lib/safeLocalStorage'
 
 // ─── Faker generators (no external lib) ──────────────────────
 
@@ -168,7 +169,7 @@ export function TestDataStudio() {
     const p: Preset = { name: presetName, fields, count, format }
     const updated = [p, ...presets.filter((x) => x.name !== presetName)].slice(0, 20)
     setPresets(updated)
-    try { localStorage.setItem(PRESETS_KEY, JSON.stringify(updated)) } catch { /* */ }
+    safeSetItem(PRESETS_KEY, JSON.stringify(updated))
   }
 
   const loadPreset = (p: Preset) => {

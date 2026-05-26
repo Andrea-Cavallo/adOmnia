@@ -29,6 +29,7 @@ interface TabsState {
   closeTabsToLeft: (id: string) => void
   setActiveTab: (id: string) => void
   newTab: (method?: HttpMethod) => void
+  duplicateTab: (id: string) => void
   updateRequest: (tabId: string, request: RequestItem) => void
   setLoading: (tabId: string, loading: boolean) => void
   setResponse: (tabId: string, response: ResponseData | null) => void
@@ -175,6 +176,30 @@ export const useTabsStore = create<TabsState>((set, get) => ({
       loading: false,
     }
     set((s) => ({ tabs: [...s.tabs, tab], activeTabId: tab.id }))
+    get().save()
+  },
+
+  duplicateTab: (id) => {
+    const src = get().tabs.find((t) => t.id === id)
+    if (!src) return
+    const newRequest = {
+      ...src.request,
+      id: uid(),
+      name: src.request.name ? `${src.request.name} (Copy)` : 'Copy',
+    }
+    const newTab: Tab = {
+      id: uid(),
+      request: newRequest,
+      dirty: true,
+      response: null,
+      loading: false,
+    }
+    const idx = get().tabs.findIndex((t) => t.id === id)
+    set((s) => {
+      const updated = [...s.tabs]
+      updated.splice(idx + 1, 0, newTab)
+      return { tabs: updated, activeTabId: newTab.id }
+    })
     get().save()
   },
 

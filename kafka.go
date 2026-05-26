@@ -4,10 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	hdr "github.com/HdrHistogram/hdrhistogram-go"
 	"github.com/IBM/sarama"
 )
 
@@ -165,6 +168,36 @@ type KafkaBulkProduceRequest struct {
 	VaryField string            `json:"varyField"`
 }
 
+type KafkaLoadTestRequest struct {
+	Config      KafkaBrokerConfig `json:"config"`
+	Key         string            `json:"key"`
+	Value       string            `json:"value"`
+	Headers     map[string]string `json:"headers,omitempty"`
+	Concurrency int               `json:"concurrency"`
+	TotalMsgs   int               `json:"totalMsgs"`
+	DurationS   int               `json:"durationS"`
+	RampUpMs    int               `json:"rampUpMs"`
+	VaryField   string            `json:"varyField"`
+}
+
+type KafkaLoadTestResult struct {
+	OK                 bool               `json:"ok"`
+	Topic              string             `json:"topic"`
+	Concurrency        int                `json:"concurrency"`
+	TotalMessages      int                `json:"totalMessages"`
+	Successful         int                `json:"successes"`
+	Failed             int                `json:"failures"`
+	TotalMs            float64            `json:"totalMs"`
+	AvgMs              float64            `json:"avgMs"`
+	P50Ms              float64            `json:"p50Ms"`
+	P95Ms              float64            `json:"p95Ms"`
+	P99Ms              float64            `json:"p99Ms"`
+	Throughput         float64            `json:"throughput"`
+	ErrorRate          float64            `json:"errorRate"`
+	ThroughputTimeline []throughputBucket `json:"throughputTimeline,omitempty"`
+	Errors             []string           `json:"errors,omitempty"`
+}
+
 func kafkaBulkProduceHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "POST only", http.StatusMethodNotAllowed)
@@ -261,6 +294,168 @@ func kafkaBulkProduceHandler(w http.ResponseWriter, r *http.Request) {
 		"lastOffset":    lastOffset,
 		"topic":         req.Config.Topic,
 	})
+}
+
+func kafkaLoadTestHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST only", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req KafkaLoadTestRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonError(w, "invalid JSON: "+err.Error(), 400)
+		return
+	}
+	if len(req.Config.Brokers) == 0 || req.Config.Topic == "" {
+		jsonError(w, "brokers and topic required", 400)
+		return
+	}
+	if req.Concurrency < 1 {
+		req.Concurrency = 1
+	}
+	if req.Concurrency > 100 {
+		req.Concurrency = 100
+	}
+	if req.DurationS < 0 {
+		req.DurationS = 0
+	}
+	if req.DurationS > 300 {
+		req.DurationS = 300
+	}
+	if req.DurationS == 0 {
+		if req.TotalMsgs < 1 {
+			req.TotalMsgs = 1000
+		}
+		if req.TotalMsgs > 100000 {
+			req.TotalMsgs = 100000
+		}
+	}
+	if req.RampUpMs < 0 {
+		req.RampUpMs = 0
+	}
+
+	producer, err := sarama.NewSyncProducer(req.Config.Brokers, newSaramaConfig(req.Config))
+	if err != nil {
+		jsonError(w, "connect failed: "+err.Error(), 502)
+		return
+	}
+	defer producer.Close()
+
+	start := time.Now()
+	var sequence atomic.Int64
+	var mu sync.Mutex
+	hist := hdr.New(1, 60000, 3)
+	successes := 0
+	failures := 0
+	errorSamples := make([]string, 0, 3)
+	buckets := make(map[int]struct {
+		count   int
+		totalMs float64
+	})
+	var deadline time.Time
+	if req.DurationS > 0 {
+		deadline = start.Add(time.Duration(req.DurationS) * time.Second)
+	}
+
+	var wg sync.WaitGroup
+	for worker := 0; worker < req.Concurrency; worker++ {
+		wg.Add(1)
+		go func(workerIndex int) {
+			defer wg.Done()
+			if req.RampUpMs > 0 && req.Concurrency > 1 {
+				delay := time.Duration(req.RampUpMs*workerIndex/(req.Concurrency-1)) * time.Millisecond
+				time.Sleep(delay)
+			}
+			for {
+				if req.DurationS > 0 && time.Now().After(deadline) {
+					return
+				}
+				idx := int(sequence.Add(1) - 1)
+				if req.DurationS == 0 && idx >= req.TotalMsgs {
+					return
+				}
+
+				value := req.Value
+				key := req.Key
+				if req.VaryField != "" {
+					value = varyJsonField(value, req.VaryField, idx)
+				}
+				if key != "" {
+					key = fmt.Sprintf("%s-%d", key, idx)
+				}
+				msg := &sarama.ProducerMessage{Topic: req.Config.Topic, Value: sarama.StringEncoder(value)}
+				if key != "" {
+					msg.Key = sarama.StringEncoder(key)
+				}
+				for k, v := range req.Headers {
+					msg.Headers = append(msg.Headers, sarama.RecordHeader{Key: []byte(k), Value: []byte(v)})
+				}
+
+				msgStart := time.Now()
+				_, _, sendErr := producer.SendMessage(msg)
+				latencyMs := float64(time.Since(msgStart).Microseconds()) / 1000
+				if latencyMs < 1 {
+					latencyMs = 1
+				}
+				second := int(time.Since(start).Seconds())
+
+				mu.Lock()
+				_ = hist.RecordValue(int64(latencyMs))
+				bucket := buckets[second]
+				bucket.count++
+				bucket.totalMs += latencyMs
+				buckets[second] = bucket
+				if sendErr != nil {
+					failures++
+					if len(errorSamples) < cap(errorSamples) {
+						errorSamples = append(errorSamples, sendErr.Error())
+					}
+				} else {
+					successes++
+				}
+				mu.Unlock()
+			}
+		}(worker)
+	}
+	wg.Wait()
+
+	totalMs := float64(time.Since(start).Microseconds()) / 1000
+	total := successes + failures
+	timeline := make([]throughputBucket, 0, len(buckets))
+	for second := 0; second <= int(totalMs/1000); second++ {
+		if bucket, ok := buckets[second]; ok {
+			timeline = append(timeline, throughputBucket{
+				Second: second,
+				Reqs:   bucket.count,
+				AvgMs:  math.Round(bucket.totalMs/float64(bucket.count)*100) / 100,
+			})
+		}
+	}
+	result := KafkaLoadTestResult{
+		OK:                 failures == 0,
+		Topic:              req.Config.Topic,
+		Concurrency:        req.Concurrency,
+		TotalMessages:      total,
+		Successful:         successes,
+		Failed:             failures,
+		TotalMs:            math.Round(totalMs*100) / 100,
+		ThroughputTimeline: timeline,
+		Errors:             errorSamples,
+	}
+	if total > 0 {
+		result.AvgMs = math.Round(hist.Mean()*100) / 100
+		result.P50Ms = float64(hist.ValueAtQuantile(50))
+		result.P95Ms = float64(hist.ValueAtQuantile(95))
+		result.P99Ms = float64(hist.ValueAtQuantile(99))
+		result.ErrorRate = math.Round(float64(failures)/float64(total)*10000) / 100
+	}
+	if totalMs > 0 {
+		result.Throughput = math.Round(float64(total)/(totalMs/1000)*100) / 100
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
 }
 
 func varyJsonField(jsonStr, field string, idx int) string {

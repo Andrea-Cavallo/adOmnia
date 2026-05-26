@@ -5,6 +5,7 @@ import { StorageGet, StoragePut } from '@/wailsjs/go/main/App'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { useAppStore } from '@/stores/app'
 import { cn } from '@/lib/utils'
+import { safeSetItem } from '@/lib/safeLocalStorage'
 
 type DbDriver = 'sqlite' | 'postgres' | 'mysql' | 'db2' | 'mongodb'
 
@@ -291,7 +292,7 @@ export function DatabasePanel() {
       setError('No DSN or password to send to Vault')
       return
     }
-    localStorage.setItem('adomnia.vault.pendingSecret', JSON.stringify({
+    safeSetItem('adomnia.vault.pendingSecret', JSON.stringify({
       name: `${active.name} ${active.dsn ? 'DSN' : 'password'}`,
       value,
       note: `Database ${DRIVER_META[active.driver].label} credential. Original connection remains in Database Studio until you remove or mask it.`,

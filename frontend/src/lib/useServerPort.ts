@@ -13,10 +13,14 @@ export function useServerPort(): number | null {
       setPort(cachedPort)
       return
     }
-    GetServerPort().then((p) => {
-      cachedPort = p
-      setPort(p)
-    }).catch(() => {})
+    try {
+      GetServerPort().then((p) => {
+        cachedPort = p
+        setPort(p)
+      }).catch(() => {})
+    } catch {
+      // The frontend preview can render without a Wails bridge.
+    }
   }, [])
 
   return port

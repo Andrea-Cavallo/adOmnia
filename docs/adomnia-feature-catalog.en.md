@@ -38,7 +38,7 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | A1.11 | **cURL Import** | cURL command parser: extracts method, URL, headers, body, and auth (Bearer, Basic). |
 | A1.12 | **Collections Tree** | Hierarchical organization of folders/requests, search, CRUD context menus, collection colors. |
 | A1.13 | **Drag & Drop Reordering** | Reorder requests and folders by dragging them in the tree. |
-| A1.13b | **Drag & Drop Import** | Drag .json/.yaml/.adomnia files anywhere in the window to instantly import collections (Postman, Insomnia, Bruno, OpenAPI, adOmnia). Visual overlay + toast feedback. |
+| A1.13b | **Drag & Drop Import** | Drag a file anywhere in the window: `.json`/`.yaml`/`.adomnia` import collections or workspaces, `.har` opens HAR Viewer, `.wsdl` opens SOAP Studio, and `.class` opens Class File Inspector. Visual overlay + toast feedback. |
 | A1.14 | **Tab Management** | Multi-tab navigation, dirty-state indicator, close/close others/close all, pinning, tab reordering. |
 | A1.15 | **Variable Substitution** | Resolves `{{variableName}}` from the active environment in URL, headers, params, body, and auth before every request. |
 | A1.16 | **Variable Highlight Input** | The URL field visually highlights inline `{{variable}}` patterns. |
@@ -103,9 +103,9 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | A5.5 | **Environment Variables** | Replaces `{{var}}` variables from the active environment in URL and body. |
 | A5.6 | **Per-Step Assertions** | Assertions configured on requests are evaluated for each step. |
 | A5.7 | **Step CRUD Management** | Add, rename, delete, and reorder steps. |
-| A5.8 | **Save / Load Flow** | Persists named flows in localStorage; sidebar of saved flows with timestamp. |
+| A5.8 | **Save / Load Flow** | Persists flow definitions locally in bbolt, migrates legacy data, and retains Request, Condition, Wait, and Script steps across restart. |
 | A5.9 | **Variables Panel** | Sidebar shows variables extracted from runs as key/value pairs. |
-| A5.10 | **Last Run Panel** | Results sidebar: status, duration, pass/fail assertions, error per step. |
+| A5.10 | **Last Run Panel** | Results sidebar kept separate from saved definitions: status, duration, pass/fail assertions, error per step. |
 | A5.11 | **Inline Mock Recorder** | Records a real request/response and automatically creates a mock endpoint (method, real URL, mock path). |
 | A5.12 | **Export Flow JSON** | Exports the flow definition as a JSON file. |
 | A5.13 | **Export Markdown Report** | Exports the last run result as a Markdown report. |
@@ -166,8 +166,8 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | B1.5 | **TLS Support** | TLS on/off toggle for the connection. |
 | B1.6 | **Metadata Headers** | Key-value editor for custom gRPC metadata (sent with every request). |
 | B1.7 | **Prettify Payload** | Formats JSON in the payload with indentation. |
-| B1.8 | **Connection Presetss** | Save address+TLS as a local preset; chips for quick loading. |
-| B1.9 | **Streaming Warning** | Informational badge for streaming methods (currently unary mode only). |
+| B1.8 | **Connection Presets** | Save address+TLS as a local preset; chips for quick loading. |
+| B1.9 | **Streaming Invocation** | Runs server, client and bidirectional streaming calls; client/bidi streams accept ordered JSONL messages and display streamed responses. |
 | B1.10 | **Copy Response** | Copy JSON response to the clipboard. |
 
 ---
@@ -251,9 +251,10 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | B5.0.3 | **Message Expansion** | Click to expand a message: payload, headers, metadata, JSON visualization with JsonGraph. |
 | B5.0.4 | **Export Messages** | Exports all log messages as JSON. |
 | B5.0.5 | **Message Presets** | Save/load/delete message presets per protocol through the bbolt backend. |
-| B5.0.6 | **Message Counter** | Badge with the number of messages in the log; clear button. |
-| B5.0.7 | **Backend Status** | Connection indicator for the local sidecar with port. |
-| B5.0.8 | **Credential Note** | Banner reminding that credentials remain local. |
+| B5.0.6 | **Persistent Connection Profiles** | Autosaves and restores the last connection for Kafka, RabbitMQ, MQTT, Redis and NATS; saves/loads/deletes named profiles in local bbolt storage. |
+| B5.0.7 | **Message Counter** | Badge with the number of messages in the log; clear button. |
+| B5.0.8 | **Backend Status** | Connection indicator for the local sidecar with port. |
+| B5.0.9 | **Credential Note** | Explains that profiles, including credentials, remain local and directs users to Vault for managed secrets. |
 
 #### B5.1 Kafka
 
@@ -265,6 +266,7 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | B5.1.4 | **Topics** | Lists cluster topics and brokers. |
 | B5.1.5 | **Connessione** | Lista broker, topic, group ID, client ID, TLS, SASL (PLAIN, SCRAM-SHA-256, SCRAM-SHA-512). |
 | B5.1.6 | **Info Broker** | Shows the ID and address of all connected brokers. |
+| B5.1.7 | **Producer Load Test** | Runs concurrent publishes by count or duration with ramp-up, JSON variation, and throughput/latency metrics (P50/P95/P99, error rate, timeline). |
 
 #### B5.2 RabbitMQ
 
@@ -808,9 +810,10 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | G2.6 | **Nasconde Console Windows** | Sopprime la finestra console in produzione. |
 | G2.7 | **Internazionalizzazione** | Supporto Inglese e Italiano; dizionario traduzioni completo. |
 | G2.8 | **State Management Zustand** | Stores: app, collections, environments, tabs, settings, devLogs, themes, plugin, browser-debug. |
-| G2.9 | **Onboarding Panel** | Home with feature catalog, quick-start, shortcuts, workspace import, load demo. |
-| G2.10 | **Shortcut Tastiera** | Ctrl+N nuovo tab, Ctrl+Enter invia, Ctrl+K import/export, Alt+← indietro, Ctrl+Shift+D dev logs. |
+| G2.9 | **Onboarding / Welcome Panel** | Home with feature catalog, quick-start, shortcuts, workspace import, and live counts for collections, requests, environments, tabs, responses and active local services. |
+| G2.10 | **Keyboard Shortcuts** | Ctrl/Cmd+K opens the Command Palette; Ctrl+N creates a tab, Ctrl+Enter sends, Alt+← navigates back, Ctrl+Shift+D opens dev logs. |
 | G2.11 | **Confirm Dialog** | Reusable component for destructive actions with customizable message. |
+| G2.12 | **Command Palette** | Instant fuzzy search across panels, recent requests, collections, environments, and quick actions such as starting Mock/Proxy. |
 
 ---
 

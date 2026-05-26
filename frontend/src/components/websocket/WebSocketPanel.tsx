@@ -8,6 +8,7 @@ import { useEnvironmentsStore } from '@/stores/environments'
 import { useAppStore } from '@/stores/app'
 import { cn } from '@/lib/utils'
 import { safeEval } from '@/lib/safeEval'
+import { safeSetItem } from '@/lib/safeLocalStorage'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -87,9 +88,7 @@ function loadConversation(): WSMessage[] {
 }
 
 function saveConversation(msgs: WSMessage[]) {
-  try {
-    localStorage.setItem(CONVERSATION_KEY, JSON.stringify(msgs.slice(-500)))
-  } catch {}
+  safeSetItem(CONVERSATION_KEY, JSON.stringify(msgs.slice(-500)))
 }
 
 function loadConfig(): WSConfig {
@@ -125,7 +124,7 @@ function loadUrlHistory(): string[] {
 function saveUrlToHistory(url: string) {
   const history = loadUrlHistory().filter(u => u !== url)
   history.unshift(url)
-  localStorage.setItem(URL_HISTORY_KEY, JSON.stringify(history.slice(0, MAX_URL_HISTORY)))
+  safeSetItem(URL_HISTORY_KEY, JSON.stringify(history.slice(0, MAX_URL_HISTORY)))
 }
 
 function loadRules(): MockRule[] {
@@ -204,7 +203,7 @@ function MessageBubble({ msg }: { msg: WSMessage }) {
   }
   const dirLabel: Record<string, { text: string; color: string }> = {
     inbound:  { text: '← IN',  color: 'text-blue-400' },
-    outbound: { text: '→ OUT', color: 'text-green-400' },
+    outbound: { text: '→ OUT', color: 'text-success' },
     system:   { text: '• SYS', color: 'text-text-4' },
   }
   const typeColor: Record<string, string> = { error: 'text-error', close: 'text-warning', ping: 'text-accent', pong: 'text-accent', message: '' }
@@ -389,7 +388,7 @@ function MockSection({ port, onConnectToMock }: {
   // Save rules to localStorage and sync to backend
   const syncRules = useCallback(async (newRules: MockRule[]) => {
     setRules(newRules)
-    localStorage.setItem(MOCK_RULES_KEY, JSON.stringify(newRules))
+    safeSetItem(MOCK_RULES_KEY, JSON.stringify(newRules))
     if (!port) return
     await sidecarFetch(serverUrl(port, '/ws/mock/rules'), {
       method: 'POST',
@@ -580,7 +579,7 @@ export function WebSocketPanel() {
   }, [])
 
   useEffect(() => { configRef.current = config }, [config])
-  useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(config)) }, [config])
+  useEffect(() => { safeSetItem(STORAGE_KEY, JSON.stringify(config)) }, [config])
   useEffect(() => { if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight }, [messages])
   useEffect(() => { saveConversation(messages) }, [messages])
   useEffect(() => () => { esRef.current?.close(); if (reconnectTimer.current) clearTimeout(reconnectTimer.current) }, [])

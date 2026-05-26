@@ -280,7 +280,7 @@ if (request.auth.type === 'aws4') {
 | `adomnia.settings` | Settings (versioned schema) |
 | `adomnia.mock` | Mock server config |
 | `adomnia.respHistory` | Response history (size-limited) |
-| `adomnia.flow` | Flow builder state (currently disabled) |
+| bbolt `flows/all` | Saved flow definitions; runtime results stay session-only |
 
 ---
 
@@ -413,7 +413,7 @@ What we DON'T chase:
 - localStorage size limits (≈5-10MB) — large workspaces may hit this
 - Wails build requires Go, Node.js, and platform-native dependencies
 - HTTPS interception CA export incomplete (TODO)
-- Flow builder parked/disabled (complex state management)
+- Flow Builder definitions persist in bbolt; keep runtime results separate from saved definitions
 - Plugin system architecture in progress
 - Browser debugging integration early stage
 

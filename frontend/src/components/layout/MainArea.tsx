@@ -17,6 +17,7 @@ import { LoadTestDrawer } from '@/components/loadtest/LoadTestDrawer'
 import { executeRequest } from '@/lib/executeRequest'
 import { uid, type EnvVariable } from '@/lib/types'
 import { useT } from '@/lib/i18n'
+import { safeSetItem } from '@/lib/safeLocalStorage'
 
 // ─── Lazy-loaded panels (loaded on first navigation) ──────────────────────────
 
@@ -82,7 +83,7 @@ function PanelHeader({ titleKey }: { titleKey?: string }) {
       </button>
       <span className="text-xs text-text-3 font-medium flex-1 px-1">{label}</span>
       <button
-        onClick={() => setActiveRail('collections')}
+        onClick={() => { if (hasHistory) goBack(); else setActiveRail('collections') }}
         title="Close panel"
         className="h-6 w-6 flex items-center justify-center rounded text-text-3 hover:text-text-1 hover:bg-surface-3 transition-colors"
       >
@@ -126,6 +127,7 @@ function RequestWorkspace() {
   const closeTabsToRight = useTabsStore((s) => s.closeTabsToRight)
   const closeTabsToLeft = useTabsStore((s) => s.closeTabsToLeft)
   const newTab = useTabsStore((s) => s.newTab)
+  const duplicateTab = useTabsStore((s) => s.duplicateTab)
   const updateRequest = useTabsStore((s) => s.updateRequest)
   const setLoading = useTabsStore((s) => s.setLoading)
   const setResponse = useTabsStore((s) => s.setResponse)
@@ -170,7 +172,7 @@ function RequestWorkspace() {
       const delta = dragRef.current.startY - me.clientY
       const newH = clampResponseHeight(dragRef.current.startHeight + delta)
       setResponseHeight(newH)
-      try { localStorage.setItem(RESPONSE_HEIGHT_KEY, String(newH)) } catch { /* ignore */ }
+      safeSetItem(RESPONSE_HEIGHT_KEY, String(newH))
     }
 
     const handleUp = () => {
@@ -331,6 +333,7 @@ function RequestWorkspace() {
         onCloseToRight={(id) => attemptClose({ kind: 'right', tabId: id })}
         onCloseToLeft={(id) => attemptClose({ kind: 'left', tabId: id })}
         onNewTab={newTab}
+        onDuplicate={duplicateTab}
       />
       <ApiToolsBar
         activeRequest={activeTab?.request ?? null}

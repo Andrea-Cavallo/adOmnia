@@ -507,6 +507,127 @@ func deltaPct(a, b float64) float64 {
 	return math.Round((b-a)/a*10000) / 100
 }
 
+// ─── Persisted Load Test Results ─────────────────────────────────────────────
+
+const ltResultBucket = "workspace"
+const ltResultPrefix = "ltresult/"
+
+type savedLoadTestResult struct {
+	Name      string         `json:"name"`
+	Timestamp string         `json:"timestamp"`
+	URL       string         `json:"url"`
+	Method    string         `json:"method"`
+	Result    loadTestResult `json:"result"`
+}
+
+// POST /loadtest/result/save
+// Body: { name, url, method, result }
+func loadTestResultSaveHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST required", http.StatusMethodNotAllowed)
+		return
+	}
+	var req struct {
+		Name   string         `json:"name"`
+		URL    string         `json:"url"`
+		Method string         `json:"method"`
+		Result loadTestResult `json:"result"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	if req.Name == "" {
+		http.Error(w, "name required", http.StatusBadRequest)
+		return
+	}
+	saved := savedLoadTestResult{
+		Name:      req.Name,
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+		URL:       req.URL,
+		Method:    req.Method,
+		Result:    req.Result,
+	}
+	data, err := json.Marshal(saved)
+	if err != nil {
+		http.Error(w, "marshal error", http.StatusInternalServerError)
+		return
+	}
+	storePut(ltResultBucket, ltResultPrefix+req.Name, data)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "name": req.Name, "timestamp": saved.Timestamp})
+}
+
+// GET /loadtest/result/list
+func loadTestResultListHandler(w http.ResponseWriter, r *http.Request) {
+	keys, _ := storeList(ltResultBucket, ltResultPrefix)
+	type resultSummary struct {
+		Name      string `json:"name"`
+		Timestamp string `json:"timestamp"`
+		URL       string `json:"url"`
+		Method    string `json:"method"`
+		AvgMs     float64 `json:"avgMs"`
+		P95Ms     float64 `json:"p95Ms"`
+		ErrorRate float64 `json:"errorRate"`
+		Total     int     `json:"total"`
+	}
+	summaries := make([]resultSummary, 0, len(keys))
+	for _, k := range keys {
+		data, err := storeGet(ltResultBucket, k)
+		if err != nil || data == nil {
+			continue
+		}
+		var saved savedLoadTestResult
+		if err := json.Unmarshal(data, &saved); err != nil {
+			continue
+		}
+		summaries = append(summaries, resultSummary{
+			Name:      saved.Name,
+			Timestamp: saved.Timestamp,
+			URL:       saved.URL,
+			Method:    saved.Method,
+			AvgMs:     saved.Result.AvgMs,
+			P95Ms:     saved.Result.P95Ms,
+			ErrorRate: saved.Result.ErrorRate,
+			Total:     saved.Result.TotalRequests,
+		})
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"results": summaries, "count": len(summaries)})
+}
+
+// GET /loadtest/result/load?name=xxx
+func loadTestResultLoadHandler(w http.ResponseWriter, r *http.Request) {
+	name := r.URL.Query().Get("name")
+	if name == "" {
+		http.Error(w, "name required", http.StatusBadRequest)
+		return
+	}
+	data, err := storeGet(ltResultBucket, ltResultPrefix+name)
+	if err != nil || data == nil {
+		http.Error(w, "result not found", http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(data)
+}
+
+// DELETE /loadtest/result/delete?name=xxx
+func loadTestResultDeleteHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete && r.Method != http.MethodPost {
+		http.Error(w, "DELETE or POST required", http.StatusMethodNotAllowed)
+		return
+	}
+	name := r.URL.Query().Get("name")
+	if name == "" {
+		http.Error(w, "name required", http.StatusBadRequest)
+		return
+	}
+	storeDelete(ltResultBucket, ltResultPrefix+name)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
+}
+
 // gRPC load test endpoint
 // POST /loadtest/grpc
 func loadTestGrpcHandler(w http.ResponseWriter, r *http.Request) {

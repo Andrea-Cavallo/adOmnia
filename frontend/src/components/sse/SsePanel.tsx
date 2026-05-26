@@ -20,6 +20,7 @@ import { getSidecarToken, useServerPort, serverUrl, sidecarFetch } from '@/lib/u
 import { useEnvironmentsStore } from '@/stores/environments'
 import { useAppStore } from '@/stores/app'
 import { cn } from '@/lib/utils'
+import { safeSetItem } from '@/lib/safeLocalStorage'
 
 type AuthType = 'none' | 'bearer' | 'basic'
 type ConnStatus = 'disconnected' | 'connecting' | 'connected' | 'error'
@@ -210,8 +211,8 @@ export function SsePanel() {
   const bufferRef = useRef<SSEEventItem[]>([])
   const logRef = useRef<HTMLDivElement | null>(null)
 
-  useEffect(() => localStorage.setItem(CONFIG_KEY, JSON.stringify(config)), [config])
-  useEffect(() => localStorage.setItem(SAVED_KEY, JSON.stringify(savedStreams)), [savedStreams])
+  useEffect(() => safeSetItem(CONFIG_KEY, JSON.stringify(config)), [config])
+  useEffect(() => safeSetItem(SAVED_KEY, JSON.stringify(savedStreams)), [savedStreams])
   useEffect(() => { pausedRef.current = paused }, [paused])
   useEffect(() => {
     if (!paused && logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight

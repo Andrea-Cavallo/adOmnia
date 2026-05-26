@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { useSettingsStore } from '@/stores/settings'
+import type { RoutedToolFile } from '@/lib/globalFileRouter'
 
 export type RailItem =
   | 'collections'
@@ -46,7 +47,10 @@ interface AppState {
   websocketRunning: boolean
   sseRunning: boolean
   browserRunning: boolean
+  pendingFileImport: RoutedToolFile | null
   setActiveRail: (rail: RailItem) => void
+  queueFileImport: (file: RoutedToolFile) => void
+  consumeFileImport: (kind: RoutedToolFile['kind']) => RoutedToolFile | null
   goBack: () => void
   toggleSidebar: () => void
   toggleDevTools: () => void
@@ -59,7 +63,7 @@ interface AppState {
 
 const initialRail: RailItem = 'welcome'
 
-export const useAppStore = create<AppState>(() => ({
+export const useAppStore = create<AppState>((set, get) => ({
   activeRail: initialRail,
   railHistory: [],
   devToolsVisible: false,
@@ -68,11 +72,19 @@ export const useAppStore = create<AppState>(() => ({
   websocketRunning: false,
   sseRunning: false,
   browserRunning: false,
-  setActiveRail: (rail) => useAppStore.setState((s) => ({
+  pendingFileImport: null,
+  setActiveRail: (rail) => set((s) => ({
     activeRail: rail,
     railHistory: s.activeRail !== rail ? [...s.railHistory.slice(-19), s.activeRail] : s.railHistory,
   })),
-  goBack: () => useAppStore.setState((s) => {
+  queueFileImport: (file) => set({ pendingFileImport: file }),
+  consumeFileImport: (kind) => {
+    const file = get().pendingFileImport
+    if (!file || file.kind !== kind) return null
+    set({ pendingFileImport: null })
+    return file
+  },
+  goBack: () => set((s) => {
     if (s.railHistory.length === 0) return s
     const prev = s.railHistory[s.railHistory.length - 1]
     return { activeRail: prev, railHistory: s.railHistory.slice(0, -1) }
@@ -81,10 +93,10 @@ export const useAppStore = create<AppState>(() => ({
     const current = useSettingsStore.getState().settings.appearance.sidebarCollapsed
     useSettingsStore.getState().updateAppearance({ sidebarCollapsed: !current })
   },
-  toggleDevTools: () => useAppStore.setState((s) => ({ devToolsVisible: !s.devToolsVisible })),
-  setMockRunning: (v) => useAppStore.setState({ mockRunning: v }),
-  setProxyRunning: (v) => useAppStore.setState({ proxyRunning: v }),
-  setWebsocketRunning: (v) => useAppStore.setState({ websocketRunning: v }),
-  setSseRunning: (v) => useAppStore.setState({ sseRunning: v }),
-  setBrowserRunning: (v) => useAppStore.setState({ browserRunning: v }),
+  toggleDevTools: () => set((s) => ({ devToolsVisible: !s.devToolsVisible })),
+  setMockRunning: (v) => set({ mockRunning: v }),
+  setProxyRunning: (v) => set({ proxyRunning: v }),
+  setWebsocketRunning: (v) => set({ websocketRunning: v }),
+  setSseRunning: (v) => set({ sseRunning: v }),
+  setBrowserRunning: (v) => set({ browserRunning: v }),
 }))

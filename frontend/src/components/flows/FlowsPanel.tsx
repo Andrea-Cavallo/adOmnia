@@ -6,32 +6,23 @@ import { evaluateAssertions } from '@/lib/assertionEngine'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { safeEval } from '@/lib/safeEval'
-import { StorageGet, StoragePut } from '@/wailsjs/go/main/App'
+import {
+  loadFlowDefinitions,
+  saveFlowDefinitions,
+  type ConditionOperator,
+  type FlowStepDefinition,
+  type FlowStepType,
+  type SavedFlowDefinition,
+} from '@/lib/flowStorage'
 
 type FlowStatus = 'idle' | 'running' | 'ok' | 'error'
-type FlowStepType = 'request' | 'condition' | 'wait' | 'script'
-type ConditionOperator = 'exists' | 'eq' | 'neq' | 'contains' | 'gt' | 'lt' | 'gte' | 'lte'
 
-interface FlowStep {
-  id: string
-  type: FlowStepType
-  name: string
-  request: RequestItem
-  condition?: { variable: string; operator: ConditionOperator; value: string }
-  waitMs?: number
-  script?: string
+interface FlowStepRuntime {
   status: FlowStatus
   durationMs?: number
   error?: string
   assertionsPassed?: number
   assertionsTotal?: number
-}
-
-interface SavedFlow {
-  id: string
-  name: string
-  steps: FlowStep[]
-  updatedAt: string
 }
 
 interface FlowRunEntry {
@@ -53,11 +44,7 @@ const STEP_TYPES: { value: FlowStepType; label: string }[] = [
   { value: 'script', label: 'Script' },
 ]
 const CONDITION_OPERATORS: ConditionOperator[] = ['exists', 'eq', 'neq', 'contains', 'gt', 'lt', 'gte', 'lte']
-const FLOW_STORAGE_KEY = 'adomnia.flows.v1'
-const FLOW_STORAGE_BUCKET = 'flows'
-const FLOW_STORAGE_ITEM = 'all'
-
-function newStep(index: number, type: FlowStepType = 'request'): FlowStep {
+function newStep(index: number, type: FlowStepType = 'request'): FlowStepDefinition {
   const request = blankRequest('GET')
   return {
     id: uid(),
@@ -67,18 +54,6 @@ function newStep(index: number, type: FlowStepType = 'request'): FlowStep {
     condition: { variable: '', operator: 'exists', value: '' },
     waitMs: 500,
     script: 'return { nextValue: vars["step1.status"] || "" }',
-    status: 'idle',
-  }
-}
-
-function resetStepRuntime(step: FlowStep): FlowStep {
-  return {
-    ...step,
-    status: 'idle',
-    durationMs: undefined,
-    error: undefined,
-    assertionsPassed: undefined,
-    assertionsTotal: undefined,
   }
 }
 
@@ -107,31 +82,11 @@ function downloadBlob(content: string, filename: string, type: string) {
   URL.revokeObjectURL(url)
 }
 
-async function loadSavedFlows(): Promise<SavedFlow[]> {
-  try {
-    const raw = await StorageGet(FLOW_STORAGE_BUCKET, FLOW_STORAGE_ITEM)
-    const parsed = JSON.parse(raw || '[]')
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    try {
-      const parsed = JSON.parse(localStorage.getItem(FLOW_STORAGE_KEY) || '[]')
-      return Array.isArray(parsed) ? parsed : []
-    } catch {
-      return []
-    }
-  }
-}
-
-async function saveSavedFlows(flows: SavedFlow[]) {
-  await StoragePut(FLOW_STORAGE_BUCKET, FLOW_STORAGE_ITEM, JSON.stringify(flows))
-  try { localStorage.removeItem(FLOW_STORAGE_KEY) } catch { /* old migration cache cleanup */ }
-}
-
 function resolveVar(name: string, vars: Record<string, string>) {
   return vars[name] ?? vars[name.replace(/^\{\{|\}\}$/g, '')] ?? ''
 }
 
-function evaluateCondition(condition: FlowStep['condition'], vars: Record<string, string>) {
+function evaluateCondition(condition: FlowStepDefinition['condition'], vars: Record<string, string>) {
   if (!condition?.variable) return { passed: false, message: 'Condition variable is required' }
   const actual = resolveVar(condition.variable, vars)
   const expected = condition.value
@@ -154,7 +109,7 @@ function wait(ms: number) {
 async function runFlowScript(source: string, vars: Record<string, string>): Promise<Record<string, string>> {
   try {
     const result = await safeEval(
-      `const set = (key, value) => ({ [String(key)]: String(value ?? "") }); return (() => { ${source} })()`,
+      `const vars = ctx.vars || {}; const set = (key, value) => ({ [String(key)]: String(value ?? "") }); return (() => { ${source} })()`,
       { vars: Object.freeze({ ...vars }) }
     )
     if (result == null) return {}
@@ -186,8 +141,9 @@ export function FlowsPanel() {
   const envVars = useEnvironmentsStore((s) => s.getResolvedVars)
   const [flowName, setFlowName] = useState('Untitled flow')
   const [activeFlowId, setActiveFlowId] = useState<string | null>(null)
-  const [savedFlows, setSavedFlows] = useState<SavedFlow[]>([])
-  const [steps, setSteps] = useState<FlowStep[]>([newStep(1)])
+  const [savedFlows, setSavedFlows] = useState<SavedFlowDefinition[]>([])
+  const [steps, setSteps] = useState<FlowStepDefinition[]>([newStep(1)])
+  const [stepRuntime, setStepRuntime] = useState<Record<string, FlowStepRuntime>>({})
   const [vars, setVars] = useState<Record<string, string>>({})
   const [lastRun, setLastRun] = useState<FlowRunEntry[]>([])
   const [running, setRunning] = useState(false)
@@ -199,7 +155,7 @@ export function FlowsPanel() {
 
   useEffect(() => {
     let cancelled = false
-    loadSavedFlows().then((flows) => {
+    loadFlowDefinitions().then((flows) => {
       if (!cancelled) setSavedFlows(flows)
     })
     return () => { cancelled = true }
@@ -210,17 +166,17 @@ export function FlowsPanel() {
     [savedFlows],
   )
 
-  const persistFlows = async (next: SavedFlow[]) => {
+  const persistFlows = async (next: SavedFlowDefinition[]) => {
     setSavedFlows(next)
     setSaveError('')
     try {
-      await saveSavedFlows(next)
+      await saveFlowDefinitions(next)
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : String(e))
     }
   }
 
-  const updateStep = (id: string, patch: Partial<FlowStep>) => {
+  const updateStep = (id: string, patch: Partial<FlowStepDefinition>) => {
     setSteps((current) => current.map((step) => step.id === id ? { ...step, ...patch } : step))
   }
 
@@ -230,12 +186,19 @@ export function FlowsPanel() {
     )))
   }
 
+  const updateStepRuntime = (id: string, patch: Partial<FlowStepRuntime>) => {
+    setStepRuntime((current) => ({
+      ...current,
+      [id]: { ...(current[id] ?? { status: 'idle' }), ...patch },
+    }))
+  }
+
   const saveFlow = () => {
     const id = activeFlowId ?? uid()
-    const saved: SavedFlow = {
+    const saved: SavedFlowDefinition = {
       id,
       name: flowName.trim() || 'Untitled flow',
-      steps: steps.map(resetStepRuntime),
+      steps,
       updatedAt: new Date().toISOString(),
     }
     void persistFlows([saved, ...savedFlows.filter((flow) => flow.id !== id)])
@@ -243,10 +206,11 @@ export function FlowsPanel() {
     setFlowName(saved.name)
   }
 
-  const loadFlow = (flow: SavedFlow) => {
+  const loadFlow = (flow: SavedFlowDefinition) => {
     setActiveFlowId(flow.id)
     setFlowName(flow.name)
-    setSteps(flow.steps.map(resetStepRuntime))
+    setSteps(flow.steps)
+    setStepRuntime({})
     setVars({})
     setLastRun([])
   }
@@ -259,12 +223,12 @@ export function FlowsPanel() {
   const runFlow = async () => {
     setRunning(true)
     setLastRun([])
-    setSteps((current) => current.map(resetStepRuntime))
+    setStepRuntime({})
     let nextVars = { ...envVars(), ...vars }
     const runEntries: FlowRunEntry[] = []
 
     for (const step of steps) {
-      updateStep(step.id, { status: 'running', error: undefined })
+      updateStepRuntime(step.id, { status: 'running', error: undefined })
       const start = performance.now()
 
       if (step.type === 'condition') {
@@ -282,7 +246,7 @@ export function FlowsPanel() {
         }
         runEntries.push(entry)
         setLastRun([...runEntries])
-        updateStep(step.id, { status: result.passed ? 'ok' : 'error', durationMs, error: result.passed ? undefined : result.message })
+        updateStepRuntime(step.id, { status: result.passed ? 'ok' : 'error', durationMs, error: result.passed ? undefined : result.message })
         if (!result.passed) {
           setRunning(false)
           setVars(nextVars)
@@ -296,7 +260,7 @@ export function FlowsPanel() {
         const durationMs = performance.now() - start
         runEntries.push({ stepId: step.id, stepName: step.name, status: 'ok', durationMs, httpStatus: 0, assertions: [], extractedCount: 0 })
         setLastRun([...runEntries])
-        updateStep(step.id, { status: 'ok', durationMs })
+        updateStepRuntime(step.id, { status: 'ok', durationMs })
         continue
       }
 
@@ -308,13 +272,13 @@ export function FlowsPanel() {
           runEntries.push({ stepId: step.id, stepName: step.name, status: 'ok', durationMs, httpStatus: 0, assertions: [], extractedCount: Object.keys(extracted).length })
           setVars(nextVars)
           setLastRun([...runEntries])
-          updateStep(step.id, { status: 'ok', durationMs })
+          updateStepRuntime(step.id, { status: 'ok', durationMs })
         } catch (e) {
           const durationMs = performance.now() - start
           const error = e instanceof Error ? e.message : String(e)
           runEntries.push({ stepId: step.id, stepName: step.name, status: 'error', durationMs, httpStatus: 0, error, assertions: [], extractedCount: 0 })
           setLastRun([...runEntries])
-          updateStep(step.id, { status: 'error', durationMs, error })
+          updateStepRuntime(step.id, { status: 'error', durationMs, error })
           setRunning(false)
           setVars(nextVars)
           return
@@ -347,7 +311,7 @@ export function FlowsPanel() {
         }
         runEntries.push(entry)
         setLastRun([...runEntries])
-        updateStep(step.id, {
+        updateStepRuntime(step.id, {
           status: 'error',
           durationMs,
           error,
@@ -380,7 +344,7 @@ export function FlowsPanel() {
       }
       runEntries.push(entry)
       setLastRun([...runEntries])
-      updateStep(step.id, {
+      updateStepRuntime(step.id, {
         status: 'ok',
         durationMs,
         assertionsPassed: assertions.length,
@@ -414,7 +378,7 @@ export function FlowsPanel() {
   }
 
   const exportFlowJson = () => downloadBlob(
-    JSON.stringify({ name: flowName, steps: steps.map(resetStepRuntime), vars, lastRun }, null, 2),
+    JSON.stringify({ format: 'adomnia-flow', version: 2, definition: { name: flowName, steps }, lastRun: { vars, steps: lastRun } }, null, 2),
     `${flowName.replace(/[^\w.-]+/g, '-').toLowerCase() || 'flow'}.json`,
     'application/json',
   )
@@ -458,10 +422,12 @@ export function FlowsPanel() {
               Flow save failed: {saveError}
             </div>
           )}
-          {steps.map((step, index) => (
+          {steps.map((step, index) => {
+            const runtime = stepRuntime[step.id] ?? { status: 'idle' }
+            return (
             <div key={step.id} className="bg-surface-1 border border-border-1 rounded p-3 flex flex-col gap-3">
               <div className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${step.status === 'ok' ? 'bg-green-400' : step.status === 'error' ? 'bg-error' : step.status === 'running' ? 'bg-accent' : 'bg-text-4'}`} />
+                <span className={`w-2 h-2 rounded-full ${runtime.status === 'ok' ? 'bg-success' : runtime.status === 'error' ? 'bg-error' : runtime.status === 'running' ? 'bg-accent' : 'bg-text-4'}`} />
                 <input value={step.name} onChange={(e) => updateStep(step.id, { name: e.target.value })} className="w-32 h-7 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 font-mono" />
                 <select value={step.type} onChange={(e) => updateStep(step.id, { type: e.target.value as FlowStepType })} className="h-7 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1">
                   {STEP_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
@@ -520,12 +486,13 @@ export function FlowsPanel() {
               <div className="flex items-center gap-3 text-[10px] text-text-4">
                 <span>#{index + 1}</span>
                 <span>{step.type}</span>
-                {step.durationMs !== undefined && <span>{step.durationMs.toFixed(0)}ms</span>}
-                {step.assertionsTotal !== undefined && <span>{step.assertionsPassed}/{step.assertionsTotal} assertions</span>}
-                {step.error && <span className="text-error">{step.error}</span>}
+                {runtime.durationMs !== undefined && <span>{runtime.durationMs.toFixed(0)}ms</span>}
+                {runtime.assertionsTotal !== undefined && <span>{runtime.assertionsPassed}/{runtime.assertionsTotal} assertions</span>}
+                {runtime.error && <span className="text-error">{runtime.error}</span>}
               </div>
             </div>
-          ))}
+            )
+          })}
         </div>
       </div>
 
@@ -576,7 +543,7 @@ export function FlowsPanel() {
             {lastRun.map((entry) => (
               <div key={entry.stepId} className="rounded border border-border-1 bg-surface-1 px-2 py-1 text-[10px]">
                 <div className="flex items-center gap-2">
-                  <span className={entry.status === 'ok' ? 'text-green-400' : 'text-error'}>{entry.status.toUpperCase()}</span>
+                  <span className={entry.status === 'ok' ? 'text-success' : 'text-error'}>{entry.status.toUpperCase()}</span>
                   <span className="text-text-2 truncate">{entry.stepName}</span>
                   <span className="ml-auto text-text-4">{entry.durationMs.toFixed(0)}ms</span>
                 </div>

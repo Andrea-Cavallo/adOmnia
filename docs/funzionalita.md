@@ -38,7 +38,7 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 | A1.11 | **Import cURL** | Parser comandi cURL: estrae metodo, URL, headers, body, auth (Bearer, Basic). |
 | A1.12 | **Albero Collezioni** | Organizzazione gerarchica cartelle/richieste, ricerca, menu contestuali CRUD, colori per collezione. |
 | A1.13 | **Drag & Drop Riordino** | Riordina richieste e cartelle trascinando nell'albero. |
-| A1.13b | **Drag & Drop Import** | Trascina file .json/.yaml/.adomnia ovunque nella finestra per importare istantaneamente collection (Postman, Insomnia, Bruno, OpenAPI, adOmnia). Overlay visivo + feedback toast. |
+| A1.13b | **Drag & Drop Import** | Trascina un file ovunque nella finestra: `.json`/`.yaml`/`.adomnia` importano collection o workspace, `.har` apre HAR Viewer, `.wsdl` apre SOAP Studio e `.class` apre Class File Inspector. Overlay visivo + feedback toast. |
 | A1.14 | **Gestione Tab** | Navigazione multi-tab, indicatore dirty-state, chiudi/chiudi-altri/chiudi-tutti, pinning, riordina tab. |
 | A1.15 | **Sostituzione Variabili** | Risoluzione `{{nomeVariabile}}` dall'ambiente attivo in URL, headers, params, body, auth, prima di ogni richiesta. |
 | A1.16 | **Input Highlight Variabili** | Campo URL evidenzia visivamente i pattern `{{variabile}}` inline. |
@@ -103,9 +103,9 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 | A5.5 | **Variabili Ambiente** | Sostituisce variabili `{{var}}` dall'ambiente attivo in URL e body. |
 | A5.6 | **Assertions per Step** | Assertions configurate sulle richieste vengono valutate per ogni step. |
 | A5.7 | **Gestione Step CRUD** | Aggiungi, rinomina, elimina, riordina step. |
-| A5.8 | **Salva / Carica Flow** | Persiste flow con nome in localStorage; sidebar flow salvati con timestamp. |
+| A5.8 | **Salva / Carica Flow** | Persiste localmente le definizioni dei flow in bbolt, migra i dati legacy e mantiene intatti Request, Condition, Wait e Script al riavvio. |
 | A5.9 | **Pannello Variabili** | Sidebar mostra le variabili estratte dai run con chiave/valore. |
-| A5.10 | **Pannello Ultimo Run** | Sidebar risultati: status, durata, pass/fail assertions, errore per step. |
+| A5.10 | **Pannello Ultimo Run** | Sidebar risultati separata dalla definizione salvata: status, durata, pass/fail assertions, errore per step. |
 | A5.11 | **Mock Recorder Inline** | Registra richiesta/risposta reale e crea automaticamente un endpoint mock (metodo, URL reale, path mock). |
 | A5.12 | **Export Flow JSON** | Esporta definizione flow come file JSON. |
 | A5.13 | **Export Report Markdown** | Esporta risultato dell'ultimo run come report Markdown. |
@@ -167,7 +167,7 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 | B1.6 | **Metadata Headers** | Editor key-value per metadata gRPC custom (inviati con ogni richiesta). |
 | B1.7 | **Prettify Payload** | Formatta JSON nel payload con indentazione. |
 | B1.8 | **Presets Connessione** | Salva indirizzo+TLS come preset locale; chip per caricamento rapido. |
-| B1.9 | **Warning Streaming** | Badge informativo per metodi streaming (al momento solo unary mode). |
+| B1.9 | **Invocazione Streaming** | Esegue server-streaming, client-streaming e bidirectional-streaming; gli stream client/bidi accettano messaggi JSONL ordinati e mostrano la sequenza di risposte. |
 | B1.10 | **Copia Risposta** | Copia risposta JSON negli appunti. |
 
 ---
@@ -251,9 +251,10 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 | B5.0.3 | **Espansione Messaggio** | Click per espandere un messaggio: payload, headers, metadata, visualizzazione JSON con JsonGraph. |
 | B5.0.4 | **Export Messaggi** | Esporta tutti i messaggi del log come JSON. |
 | B5.0.5 | **Preset Messaggi** | Salva/carica/elimina preset messaggi per protocollo via backend bbolt. |
-| B5.0.6 | **Contatore Messaggi** | Badge con numero messaggi nel log; pulsante clear. |
-| B5.0.7 | **Stato Backend** | Indicatore connessione al sidecar locale con porta. |
-| B5.0.8 | **Note Credenziali** | Banner che ricorda che le credenziali restano locali. |
+| B5.0.6 | **Profili Connessione Persistenti** | Autosalva e ripristina l'ultima connessione per Kafka, RabbitMQ, MQTT, Redis e NATS; salva/carica/elimina profili nominati in bbolt locale. |
+| B5.0.7 | **Contatore Messaggi** | Badge con numero messaggi nel log; pulsante clear. |
+| B5.0.8 | **Stato Backend** | Indicatore connessione al sidecar locale con porta. |
+| B5.0.9 | **Note Credenziali** | Specifica che i profili, incluse le credenziali, restano locali e indica Vault per la gestione dei segreti. |
 
 #### B5.1 Kafka
 
@@ -265,6 +266,7 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 | B5.1.4 | **Topics** | Elenca topic e broker del cluster. |
 | B5.1.5 | **Connessione** | Lista broker, topic, group ID, client ID, TLS, SASL (PLAIN, SCRAM-SHA-256, SCRAM-SHA-512). |
 | B5.1.6 | **Info Broker** | Mostra ID e indirizzo di tutti i broker connessi. |
+| B5.1.7 | **Load Test Producer** | Esegue publish concorrenti con conteggio o durata, ramp-up, variazione JSON e metriche throughput/latenza (P50/P95/P99, error rate, timeline). |
 
 #### B5.2 RabbitMQ
 
@@ -808,9 +810,10 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 | G2.6 | **Nasconde Console Windows** | Sopprime la finestra console in produzione. |
 | G2.7 | **Internazionalizzazione** | Supporto Inglese e Italiano; dizionario traduzioni completo. |
 | G2.8 | **State Management Zustand** | Store: app, collezioni, ambienti, tab, impostazioni, devLogs, temi, plugin, browser-debug. |
-| G2.9 | **Pannello Onboarding** | Home con catalogo funzionalità, quick-start, shortcut, import workspace, carica demo. |
-| G2.10 | **Shortcut Tastiera** | Ctrl+N nuovo tab, Ctrl+Enter invia, Ctrl+K import/export, Alt+← indietro, Ctrl+Shift+D dev logs. |
+| G2.9 | **Pannello Onboarding / Welcome** | Home con catalogo funzionalità, quick-start, shortcut, import workspace e metriche live di collezioni, richieste, ambienti, tab, risposte e servizi locali attivi. |
+| G2.10 | **Shortcut Tastiera** | Ctrl/Cmd+K apre la Command Palette; Ctrl+N nuovo tab, Ctrl+Enter invia, Alt+← indietro, Ctrl+Shift+D dev logs. |
 | G2.11 | **Confirm Dialog** | Componente riutilizzabile per azioni distruttive con messaggio personalizzabile. |
+| G2.12 | **Command Palette** | Ricerca fuzzy istantanea per pannelli, richieste recenti, collection, ambienti e azioni rapide come avvio Mock/Proxy. |
 
 ---
 

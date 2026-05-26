@@ -1,5 +1,6 @@
 import type { RequestItem, ResponseData } from '@/lib/types'
 import { executeRequest } from '@/lib/executeRequest'
+import { safeSetItem } from '@/lib/safeLocalStorage'
 
 export interface MatrixEnv {
   id: string
@@ -161,7 +162,7 @@ export interface MatrixConfig {
 const MATRIX_CONFIG_KEY = 'adomnia.matrix.config'
 
 export function saveMatrixConfig(config: MatrixConfig): void {
-  try { localStorage.setItem(MATRIX_CONFIG_KEY, JSON.stringify(config)) } catch { /* */ }
+  safeSetItem(MATRIX_CONFIG_KEY, JSON.stringify(config))
 }
 
 export function loadMatrixConfig(): MatrixConfig | null {

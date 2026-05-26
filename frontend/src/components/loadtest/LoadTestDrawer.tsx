@@ -390,7 +390,7 @@ export function LoadTestDrawer({ request, onClose }: LoadTestDrawerProps) {
                   .sort()
                   .map(([code, count]) => {
                     const n = Number(code)
-                    const color = n < 300 ? 'text-green-400' : n < 500 ? 'text-yellow-400' : 'text-error'
+                    const color = n < 300 ? 'text-success' : n < 500 ? 'text-warning' : 'text-error'
                     return (
                       <span
                         key={code}

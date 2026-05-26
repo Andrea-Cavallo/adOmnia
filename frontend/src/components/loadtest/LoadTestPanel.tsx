@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Trash2, Save, List, FileDown, GitCompare } from 'lucide-react'
+import { Plus, Trash2, Save, List, FileDown, GitCompare, Database, Clock, X } from 'lucide-react'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 
 interface ThroughputBucket {
@@ -32,6 +32,17 @@ interface LoadTestResult {
 interface KVRow {
   key: string
   value: string
+}
+
+interface SavedResultSummary {
+  name: string
+  timestamp: string
+  url: string
+  method: string
+  avgMs: number
+  p95Ms: number
+  errorRate: number
+  total: number
 }
 
 function HeadersEditor({ rows, onChange }: { rows: KVRow[]; onChange: (r: KVRow[]) => void }) {
@@ -95,6 +106,9 @@ export function LoadTestPanel() {
   const [scenarios, setScenarios] = useState<string[]>([])
   const [compareResult, setCompareResult] = useState<object | null>(null)
   const [baselineResult, setBaselineResult] = useState<LoadTestResult | null>(null)
+  const [savedResults, setSavedResults] = useState<SavedResultSummary[]>([])
+  const [saveResultName, setSaveResultName] = useState('')
+  const [savingResult, setSavingResult] = useState(false)
 
   const baseApi = (path: string) => serverUrl(port, path)
 
@@ -117,7 +131,13 @@ export function LoadTestPanel() {
     if (data?.scenarios) setScenarios(data.scenarios)
   }
 
-  useEffect(() => { if (port) loadScenarios() }, [port])
+  useEffect(() => {
+    if (port) {
+      void loadScenarios()
+      void loadSavedResults()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [port])
 
   const saveScenario = async () => {
     if (!scenarioName) return
@@ -146,6 +166,41 @@ export function LoadTestPanel() {
       if (c.body) setBody(c.body)
       if (c.headers) setHeaders(Object.entries(c.headers as Record<string, string>).map(([k, v]) => ({ key: k, value: v })))
     }
+  }
+
+  const loadSavedResults = async () => {
+    const data = await apiGet('/loadtest/result/list')
+    if (data?.results) setSavedResults(data.results as SavedResultSummary[])
+  }
+
+  const saveResult = async () => {
+    if (!result || !saveResultName) return
+    setSavingResult(true)
+    try {
+      await apiPost('/loadtest/result/save', { name: saveResultName, url, method, result })
+      setSaveResultName('')
+      await loadSavedResults()
+    } finally {
+      setSavingResult(false)
+    }
+  }
+
+  const loadSavedResult = async (name: string, asBaseline = false) => {
+    const data = await apiGet(`/loadtest/result/load?name=${encodeURIComponent(name)}`)
+    if (data?.result) {
+      if (asBaseline) {
+        setBaselineResult(data.result as LoadTestResult)
+      } else {
+        setResult(data.result as LoadTestResult)
+      }
+    }
+  }
+
+  const deleteSavedResult = async (name: string) => {
+    const u = baseApi(`/loadtest/result/delete?name=${encodeURIComponent(name)}`)
+    if (!u) return
+    await sidecarFetch(u, { method: 'DELETE' })
+    await loadSavedResults()
   }
 
   const generateReport = async () => {
@@ -410,7 +465,7 @@ export function LoadTestPanel() {
             <div className="flex flex-wrap gap-2">
               {Object.entries(result.statusCodes).sort().map(([code, count]) => {
                 const n = Number(code)
-                const color = n < 300 ? 'text-green-400' : n < 500 ? 'text-yellow-400' : 'text-error'
+                const color = n < 300 ? 'text-success' : n < 500 ? 'text-warning' : 'text-error'
                 return (
                   <span key={code} className="px-2 py-1 bg-surface-2 rounded text-xs font-mono flex items-center gap-1.5">
                     <span className={color}>{code}</span>
@@ -498,7 +553,83 @@ export function LoadTestPanel() {
               </pre>
             )}
           </details>
+
+          {/* Save Result */}
+          <div className="bg-surface-1 border border-border-1 rounded p-3 flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <Database size={12} className="text-accent" />
+              <span className="text-[11px] text-text-2 font-medium">Save Result</span>
+            </div>
+            <div className="flex gap-2">
+              <input
+                value={saveResultName}
+                onChange={(e) => setSaveResultName(e.target.value)}
+                placeholder={`${method} ${url || 'endpoint'} — result name`}
+                className="flex-1 h-7 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 outline-none focus:border-accent"
+              />
+              <button
+                onClick={saveResult}
+                disabled={!saveResultName || savingResult}
+                className="px-3 py-1.5 bg-accent text-white rounded text-xs font-medium disabled:opacity-40 flex items-center gap-1"
+              >
+                <Save size={10} /> {savingResult ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
         </div>
+      )}
+
+      {/* Saved Results */}
+      {savedResults.length > 0 && (
+        <details className="bg-surface-1 border border-border-1 rounded p-3 flex flex-col gap-2">
+          <summary className="text-[11px] text-text-2 font-medium cursor-pointer hover:text-text-1 select-none flex items-center gap-2">
+            <Database size={12} className="text-accent" /> Saved Results ({savedResults.length})
+          </summary>
+          <div className="flex flex-col gap-1 mt-2 max-h-64 overflow-auto">
+            {savedResults.map((s) => (
+              <div key={s.name} className="flex items-center gap-2 px-2 py-1.5 bg-surface-2 rounded hover:bg-surface-3 transition-colors group">
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs text-text-1 font-medium truncate">{s.name}</div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-[9px] font-bold text-method-get">{s.method}</span>
+                    <span className="text-[10px] text-text-4 truncate font-mono">{s.url}</span>
+                    <Clock size={9} className="text-text-4 shrink-0" />
+                    <span className="text-[10px] text-text-4 shrink-0">{new Date(s.timestamp).toLocaleDateString()}</span>
+                  </div>
+                  <div className="flex gap-3 mt-0.5 text-[10px] text-text-3">
+                    <span>avg {s.avgMs.toFixed(1)}ms</span>
+                    <span>p95 {s.p95Ms.toFixed(1)}ms</span>
+                    <span className={s.errorRate > 0.01 ? 'text-error' : ''}>{(s.errorRate * 100).toFixed(1)}% err</span>
+                    <span>{s.total} req</span>
+                  </div>
+                </div>
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                  <button
+                    onClick={() => loadSavedResult(s.name)}
+                    title="Load as current result"
+                    className="px-2 py-1 bg-accent/20 hover:bg-accent/40 text-accent rounded text-[10px] font-medium"
+                  >
+                    Load
+                  </button>
+                  <button
+                    onClick={() => loadSavedResult(s.name, true)}
+                    title="Load as baseline for compare"
+                    className="px-2 py-1 bg-surface-1 hover:bg-surface-3 border border-border-2 text-text-3 hover:text-text-1 rounded text-[10px]"
+                  >
+                    Baseline
+                  </button>
+                  <button
+                    onClick={() => deleteSavedResult(s.name)}
+                    title="Delete saved result"
+                    className="p-1 text-text-4 hover:text-error rounded"
+                  >
+                    <X size={10} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </details>
       )}
     </div>
   )

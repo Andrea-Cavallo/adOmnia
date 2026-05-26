@@ -371,19 +371,34 @@ function walkAllPaths(value: unknown, path: string, set: Set<string>) {
   else Object.entries(value as Record<string, unknown>).forEach(([k, v]) => walkAllPaths(v, `${path}.${k}`, set))
 }
 
-function TreeView({ parsed }: { parsed: unknown }) {
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set(['$']))
+interface TreeViewProps {
+  parsed: unknown
+  /** Controlled expansion state. When provided, the caller owns the Set. */
+  expanded?: Set<string>
+  onExpandedChange?: (next: Set<string>) => void
+}
+
+function TreeView({ parsed, expanded: expandedProp, onExpandedChange }: TreeViewProps) {
+  const [internalExpanded, setInternalExpanded] = useState<Set<string>>(() => new Set(['$']))
+  const isControlled = expandedProp !== undefined
+  const expanded = isControlled ? expandedProp! : internalExpanded
+
+  const setExpanded = useCallback((next: Set<string>) => {
+    if (isControlled) onExpandedChange?.(next)
+    else setInternalExpanded(next)
+  }, [isControlled, onExpandedChange])
+
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<string | null>(null)
 
   const toggle = useCallback((path: string) => {
-    setExpanded(prev => {
-      const next = new Set(prev)
+    setExpanded((() => {
+      const next = new Set(expanded)
       if (next.has(path)) next.delete(path)
       else next.add(path)
       return next
-    })
-  }, [])
+    })())
+  }, [expanded, setExpanded])
 
   const expandAll = () => {
     const all = new Set<string>()
@@ -529,7 +544,18 @@ export function JsonGraphModal({ title, json, onClose }: { title: string; json: 
 }
 
 // ─── Inline JsonGraph (tree-only, used in ResponsePanel etc.) ────────────────
-export function JsonGraph({ json, className }: { json: string; className?: string }) {
+export function JsonGraph({
+  json,
+  className,
+  expandedPaths,
+  onExpandedPathsChange,
+}: {
+  json: string
+  className?: string
+  /** Optional controlled expansion state — lifted to parent to survive unmount/remount */
+  expandedPaths?: Set<string>
+  onExpandedPathsChange?: (paths: Set<string>) => void
+}) {
   const parsed = useMemo(() => {
     try { return { value: JSON.parse(json), error: '' } }
     catch (e) { return { value: null, error: e instanceof Error ? e.message : 'Invalid JSON' } }
@@ -541,7 +567,11 @@ export function JsonGraph({ json, className }: { json: string; className?: strin
 
   return (
     <div className={cn('rounded border border-border-1 bg-surface-0 overflow-hidden flex flex-col', className)} style={{ minHeight: 200 }}>
-      <TreeView parsed={parsed.value} />
+      <TreeView
+        parsed={parsed.value}
+        expanded={expandedPaths}
+        onExpandedChange={onExpandedPathsChange}
+      />
     </div>
   )
 }

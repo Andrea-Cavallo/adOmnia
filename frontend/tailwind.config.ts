@@ -54,6 +54,14 @@ const config: Config = {
           warn: 'var(--color-warning)',
           err: 'var(--color-error)',
         },
+        // JSON syntax highlight — theme-aware, override per skin
+        json: {
+          key:    'var(--color-json-key)',
+          string: 'var(--color-json-string)',
+          number: 'var(--color-json-number)',
+          bool:   'var(--color-json-bool)',
+          null:   'var(--color-json-null)',
+        },
       },
       fontFamily: {
         sans: ['var(--font-ui)', 'var(--font-sans)'],

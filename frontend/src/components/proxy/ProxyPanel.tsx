@@ -835,13 +835,23 @@ export function ProxyPanel() {
     return () => clearInterval(t)
   }, [port, refreshStatus])
 
-  const handleStart = async () => {
+  const handleStart = useCallback(async () => {
     setLoading(true)
     await api('/proxy/start', { port: proxyPort, breakpoints: [] })
     setStatus({ running: true, port: proxyPort })
     useAppStore.getState().setProxyRunning(true)
     setLoading(false)
-  }
+  }, [api, proxyPort])
+
+  useEffect(() => {
+    const startFromCommandPalette = (event: Event) => {
+      const command = event as CustomEvent<{ handled: boolean }>
+      command.detail.handled = true
+      void handleStart()
+    }
+    document.addEventListener('adomnia:start-proxy', startFromCommandPalette)
+    return () => document.removeEventListener('adomnia:start-proxy', startFromCommandPalette)
+  }, [handleStart])
 
   const handleStop = async () => {
     setLoading(true)

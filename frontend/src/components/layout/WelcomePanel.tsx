@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Activity,
   BarChart2,
@@ -24,9 +24,14 @@ import {
   Zap,
 } from 'lucide-react'
 import { useAppStore, type RailItem } from '@/stores/app'
+import { useCollectionsStore } from '@/stores/collections'
+import { useEnvironmentsStore } from '@/stores/environments'
 import { useSettingsStore } from '@/stores/settings'
 import { useThemesStore } from '@/stores/themes'
+import { useTabsStore } from '@/stores/tabs'
 import { inferThemeMode } from '@/lib/themeCatalog'
+import { useAppIcon } from '@/lib/brandAssets'
+import type { TreeNode } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 type LayerId = 'network' | 'logic' | 'storage' | 'observability'
@@ -51,24 +56,19 @@ type HubLayer = {
   tools: HubTool[]
 }
 
-const HUB_LAYERS: HubLayer[] = [
+const HUB_LAYERS: Array<Omit<HubLayer, 'stats'>> = [
   {
     id: 'network',
     index: 'L1 / 04',
     title: 'Network',
     tag: 'transport / protocols / wire format',
     accent: '#b794ff',
-    stats: [
-      { value: 'REST', label: 'http core', live: true },
-      { value: '04', label: 'protocols' },
-      { value: '<30ms', label: 'local UX' },
-    ],
     desc: 'Everything that speaks over the wire. Compose requests, inspect frames and work with REST, SOAP, gRPC and streaming from one desktop surface.',
     flow: ['request', 'auth', 'transport', 'response'],
     tools: [
       { id: 'collections', icon: Network, title: 'API Workspace', desc: 'REST, HTTP and GraphQL with collections, scripts, environments and assertions.', foot: 'core workflow' },
       { id: 'soap', icon: FileCode, title: 'SOAP Studio', desc: 'WSDL parser, envelope builder, XML tools and WS-Security workflows.', foot: 'enterprise ready' },
-      { id: 'grpc', icon: Send, title: 'gRPC Client', desc: 'Server reflection, metadata, TLS and unary service invocation.', foot: 'service calls' },
+      { id: 'grpc', icon: Send, title: 'gRPC Client', desc: 'Server reflection, metadata, TLS and unary or streaming invocation.', foot: 'service calls' },
       { id: 'websocket', icon: Zap, title: 'Streaming', desc: 'WebSocket and Server-Sent Events with live frame inspection.', foot: 'realtime' },
     ],
   },
@@ -78,11 +78,6 @@ const HUB_LAYERS: HubLayer[] = [
     title: 'Logic',
     tag: 'route / transform / simulate / verify',
     accent: '#6ee7b7',
-    stats: [
-      { value: '5', label: 'engines', live: true },
-      { value: '0', label: 'cloud deps' },
-      { value: '100%', label: 'local' },
-    ],
     desc: 'The behavioural middle. Route messages, mock services you do not have yet, run suites, compare environments and generate realistic data.',
     flow: ['input', 'simulate', 'assert', 'report'],
     tools: [
@@ -99,11 +94,6 @@ const HUB_LAYERS: HubLayer[] = [
     title: 'Storage',
     tag: 'persist / query / secrets / workspace',
     accent: '#5eead4',
-    stats: [
-      { value: '5', label: 'stores', live: true },
-      { value: '.adomnia', label: 'portable' },
-      { value: 'age', label: 'vault' },
-    ],
     desc: 'Where things rest. Browse databases, encrypt secrets, inspect local storage and keep complete workspaces exportable as files.',
     flow: ['workspace', 'vault', 'database', 'export'],
     tools: [
@@ -120,11 +110,6 @@ const HUB_LAYERS: HubLayer[] = [
     title: 'Observability',
     tag: 'cross-cutting / inspects every layer',
     accent: '#fb923c',
-    stats: [
-      { value: 'live', label: 'debug', live: true },
-      { value: 'HAR', label: 'captures' },
-      { value: '0', label: 'telemetry' },
-    ],
     desc: 'The vertical layer. Anything happening in Network, Logic or Storage can show up here: browser debug, HAR, logs, secrets and developer utilities.',
     flow: ['capture', 'inspect', 'diagnose', 'fix'],
     tools: [
@@ -140,14 +125,64 @@ const HUB_LAYERS: HubLayer[] = [
   },
 ]
 
+function countRequests(nodes: TreeNode[]): number {
+  return nodes.reduce((total, node) => total + (node.type === 'folder' ? countRequests(node.children) : 1), 0)
+}
+
 export function WelcomePanel() {
   const setActiveRail = useAppStore((s) => s.setActiveRail)
+  const mockRunning = useAppStore((s) => s.mockRunning)
+  const proxyRunning = useAppStore((s) => s.proxyRunning)
+  const websocketRunning = useAppStore((s) => s.websocketRunning)
+  const sseRunning = useAppStore((s) => s.sseRunning)
+  const browserRunning = useAppStore((s) => s.browserRunning)
+  const collections = useCollectionsStore((s) => s.collections)
+  const environments = useEnvironmentsStore((s) => s.environments)
+  const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
+  const tabs = useTabsStore((s) => s.tabs)
+  const responseHistory = useTabsStore((s) => s.responseHistory)
   const [openLayers, setOpenLayers] = useState<Set<LayerId>>(() => new Set())
   const legacyTheme = useSettingsStore((s) => s.settings.appearance.theme)
   const themes = useThemesStore((s) => s.themes)
   const activeThemeId = useThemesStore((s) => s.activeThemeId)
   const activeTheme = themes.find((t) => t.id === activeThemeId)
   const isLight = activeTheme ? inferThemeMode(activeTheme) === 'light' : legacyTheme === 'light'
+  const appIcon = useAppIcon()
+  const requestCount = useMemo(
+    () => collections.reduce((total, collection) => total + countRequests(collection.children), 0),
+    [collections],
+  )
+  const activeEnvironment = environments.find((environment) => environment.id === activeEnvId)
+  const runningServices = [
+    mockRunning && 'Mock',
+    proxyRunning && 'Proxy',
+    websocketRunning && 'WebSocket',
+    sseRunning && 'SSE',
+    browserRunning && 'Browser Debug',
+  ].filter(Boolean) as string[]
+  const runningServiceCount = runningServices.length
+  const layerStats: Record<LayerId, HubLayer['stats']> = {
+    network: [
+      { value: String(requestCount), label: 'requests', live: true },
+      { value: String(tabs.length), label: 'open tabs' },
+      { value: activeEnvironment?.name ?? 'none', label: 'active env' },
+    ],
+    logic: [
+      { value: String(runningServiceCount), label: 'services live', live: runningServiceCount > 0 },
+      { value: mockRunning ? 'running' : 'idle', label: 'mock', live: mockRunning },
+      { value: proxyRunning ? 'running' : 'idle', label: 'proxy', live: proxyRunning },
+    ],
+    storage: [
+      { value: String(collections.length), label: 'collections', live: true },
+      { value: String(environments.length), label: 'environments' },
+      { value: activeEnvironment ? 'selected' : 'none', label: 'active env' },
+    ],
+    observability: [
+      { value: String(responseHistory.length), label: 'saved responses', live: responseHistory.length > 0 },
+      { value: browserRunning ? 'live' : 'idle', label: 'browser debug', live: browserRunning },
+      { value: '0', label: 'telemetry' },
+    ],
+  }
 
   const toggleLayer = (id: LayerId) => {
     setOpenLayers((current) => {
@@ -191,9 +226,10 @@ export function WelcomePanel() {
                 adOmnia brings API clients, mocks, brokers, proxy inspection, browser debugging and local data tools into a single offline-first environment. Your collections, secrets, traffic captures and workspaces stay on your machine.
               </p>
               <div className="mt-5 hidden items-center gap-3 xl:flex">
-                <MetricPill label="modules" value="28" />
-                <MetricPill label="features" value="444+" />
-                <MetricPill label="cloud sync" value="0" />
+                <MetricPill label="collections" value={String(collections.length)} />
+                <MetricPill label="requests" value={String(requestCount)} />
+                <MetricPill label="environments" value={String(environments.length)} />
+                <MetricPill label="services live" value={String(runningServiceCount)} />
               </div>
             </div>
 
@@ -229,7 +265,7 @@ export function WelcomePanel() {
                 </>
               )}
               <img
-                src="/icon.png"
+                src={appIcon}
                 alt="adOmnia"
                 className="icon-glow-breathe relative z-10 h-[215px] w-[215px] object-contain"
               />
@@ -240,7 +276,7 @@ export function WelcomePanel() {
             {HUB_LAYERS.map((layer) => (
               <LayerBand
                 key={layer.id}
-                layer={layer}
+                layer={{ ...layer, stats: layerStats[layer.id] }}
                 open={openLayers.has(layer.id)}
                 onToggle={() => toggleLayer(layer.id)}
                 onOpenTool={setActiveRail}
@@ -257,7 +293,7 @@ export function WelcomePanel() {
             <span className="h-3 w-px bg-border-2" />
             <span>stack mode: <b className="text-text-2">layers</b></span>
             <span className="h-3 w-px bg-border-2" />
-            <span>select a layer to open its tools</span>
+            <span>{runningServices.length > 0 ? `${runningServices.join(', ')} running locally` : 'no local services running'}</span>
             <span className="ml-auto hidden text-text-4 md:inline">local-first / no account / no telemetry</span>
           </footer>
         </main>

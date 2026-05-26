@@ -8,6 +8,7 @@ import { useAppStore } from '@/stores/app'
 import { useCollectionsStore } from '@/stores/collections'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { appendMockEndpoints } from '@/lib/mockEndpointStore'
+import { loadFlowDefinitions, saveFlowDefinitions } from '@/lib/flowStorage'
 import {
   getTemplates,
   getTemplatesByCategory,
@@ -17,6 +18,7 @@ import {
   installTemplate,
 } from '@/lib/plugins-api'
 import { TemplateDetail } from './TemplateDetail'
+import { safeSetItem } from '@/lib/safeLocalStorage'
 
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
   all: Package,
@@ -167,8 +169,7 @@ export function TemplateMarketplace() {
       return
     }
     if (payload.steps?.length || payload.nodes?.length) {
-      const raw = localStorage.getItem('adomnia.flows.v1')
-      const existing = raw ? JSON.parse(raw) as unknown[] : []
+      const existing = await loadFlowDefinitions()
       const steps = payload.steps ?? payload.nodes?.map((node, index) => ({
         id: uid(),
         type: node.type === 'condition' ? 'condition' : 'request',
@@ -177,9 +178,8 @@ export function TemplateMarketplace() {
         condition: { variable: '', operator: 'exists', value: '' },
         waitMs: 500,
         script: '',
-        status: 'idle',
       }))
-      localStorage.setItem('adomnia.flows.v1', JSON.stringify([...existing, { id: uid(), name: payload.name ?? template.name, steps, updatedAt: new Date().toISOString() }]))
+      await saveFlowDefinitions([...existing, { id: uid(), name: payload.name ?? template.name, steps, updatedAt: new Date().toISOString() }])
       useAppStore.getState().setActiveRail('flows')
       return
     }
@@ -192,7 +192,7 @@ export function TemplateMarketplace() {
       await applyTemplateContent(template, content)
       setInstalledIds((prev) => {
         const next = new Set([...prev, template.id])
-        localStorage.setItem('adomnia.templates.installed', JSON.stringify([...next]))
+        safeSetItem('adomnia.templates.installed', JSON.stringify([...next]))
         return next
       })
     }

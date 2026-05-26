@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Plus, X, ChevronRight, ChevronLeft } from 'lucide-react'
+import { Plus, X, ChevronRight, ChevronLeft, Copy } from 'lucide-react'
 import type { Tab } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -11,6 +11,7 @@ interface TabBarProps {
   onCloseToRight: (id: string) => void
   onCloseToLeft: (id: string) => void
   onNewTab: () => void
+  onDuplicate: (id: string) => void
 }
 
 const METHOD_COLORS: Record<string, string> = {
@@ -31,7 +32,7 @@ interface ContextMenuState {
 }
 
 const MENU_W = 180
-const MENU_H = 120
+const MENU_H = 150
 
 function clampToViewport(x: number, y: number): { left: number; top: number } {
   const vw = window.innerWidth
@@ -42,7 +43,7 @@ function clampToViewport(x: number, y: number): { left: number; top: number } {
   }
 }
 
-export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, onCloseToLeft, onNewTab }: TabBarProps) {
+export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, onCloseToLeft, onNewTab, onDuplicate }: TabBarProps) {
   const [ctx, setCtx] = useState<ContextMenuState>({ open: false, x: 0, y: 0, tabId: '' })
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -118,6 +119,13 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
           <div className="px-3 py-1.5 border-b border-border-1 mb-1">
             <span className="text-[9px] font-semibold text-text-4 uppercase tracking-wider">Tab</span>
           </div>
+          <button
+            onClick={() => { onDuplicate(ctx.tabId); closeCtx() }}
+            className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-text-1 hover:bg-surface-2 transition-colors text-left"
+          >
+            <Copy size={11} className="text-text-3" />
+            Duplicate
+          </button>
           <button
             onClick={() => { onClose(ctx.tabId); closeCtx() }}
             className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-text-1 hover:bg-surface-2 transition-colors text-left"

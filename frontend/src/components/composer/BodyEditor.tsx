@@ -5,6 +5,7 @@ import { KVEditor } from './KVEditor'
 import { JsonEditor } from '@/components/ui/JsonEditor'
 import { JsonGraphModal } from '@/components/ui/JsonGraph'
 import { cn } from '@/lib/utils'
+import { diagnoseJson } from '@/lib/jsonDiagnostics'
 import { useEnvironmentsStore } from '@/stores/environments'
 
 interface BodyEditorProps {
@@ -99,11 +100,13 @@ const RAW_LANGUAGES = [
 ] as const
 
 function JsonRawEditor({ body, onChange }: { body: RequestBody; onChange: (b: RequestBody) => void }) {
-  const [error, setError] = useState('')
   const [showGraph, setShowGraph] = useState(false)
   const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
   const getResolvedVars = useEnvironmentsStore((s) => s.getResolvedVars)
   const resolvedVars = getResolvedVars()
+  const diagnostics = useMemo(() => diagnoseJson(body.raw ?? ''), [body.raw])
+  const hasContent = !!(body.raw ?? '').trim()
+  const hasErrors = diagnostics.length > 0
   const unresolvedVars = Array.from(new Set(
     Array.from((body.raw ?? '').matchAll(/\{\{([^}]+)\}\}/g))
       .map((m) => m[1].trim())
@@ -114,7 +117,6 @@ function JsonRawEditor({ body, onChange }: { body: RequestBody; onChange: (b: Re
     try {
       const p = JSON.stringify(JSON.parse(body.raw ?? ''), null, 2)
       onChange({ ...body, raw: p })
-      setError('')
     } catch { /* keep as is */ }
   }
 
@@ -130,8 +132,6 @@ function JsonRawEditor({ body, onChange }: { body: RequestBody; onChange: (b: Re
 
   const handleChange = (v: string) => {
     onChange({ ...body, raw: v })
-    try { JSON.parse(v); setError('') }
-    catch (e) { setError(e instanceof Error ? e.message : 'Invalid JSON') }
   }
 
   return (
@@ -145,22 +145,27 @@ function JsonRawEditor({ body, onChange }: { body: RequestBody; onChange: (b: Re
         </button>
         <button
           onClick={() => setShowGraph(true)}
-          disabled={!!error || !(body.raw ?? '').trim()}
+          disabled={hasErrors || !hasContent}
           className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] text-text-3 hover:text-accent rounded hover:bg-accent/10 transition-colors disabled:opacity-40 disabled:hover:text-text-3"
           title="Open JSON graph"
         >
           <GitBranch size={11} /> Graph
         </button>
-        {error
+        {hasErrors
           ? <AlertCircle size={12} className="text-error" />
-          : (body.raw ?? '').trim() && <CheckCircle2 size={12} className="text-success" />
+          : hasContent && <CheckCircle2 size={12} className="text-success" />
         }
+        {hasErrors && (
+          <span className="text-[10px] font-mono text-error">
+            {diagnostics.length} {diagnostics.length === 1 ? 'issue' : 'issues'}
+          </span>
+        )}
       </div>
       <JsonEditor
         value={body.raw ?? ''}
         onChange={handleChange}
         placeholder={'{\n  "key": "value"\n}'}
-        error={error}
+        error={hasErrors ? 'Invalid JSON' : undefined}
         className="flex-1"
         minHeight="280px"
         resolvedVars={resolvedVars}
@@ -176,7 +181,19 @@ function JsonRawEditor({ body, onChange }: { body: RequestBody; onChange: (b: Re
           {unresolvedVars.length > 8 ? ` +${unresolvedVars.length - 8} more` : ''}
         </div>
       )}
-      {error && <p className="text-[10px] text-error font-mono px-1">{error}</p>}
+      {hasErrors && (
+        <div className="rounded border border-error/35 bg-error/8 px-2 py-1.5 font-mono text-[10px] text-error">
+          <p className="mb-1 font-semibold">Malformed JSON because:</p>
+          <ol className="max-h-32 list-decimal space-y-0.5 overflow-y-auto pl-4 pr-1">
+            {diagnostics.map((diagnostic) => (
+              <li key={`${diagnostic.index}:${diagnostic.message}`}>
+                <span className="text-text-3">Line {diagnostic.line}, column {diagnostic.column}:</span>{' '}
+                {diagnostic.message}
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
       {showGraph && <JsonGraphModal title="Request Body JSON Graph" json={body.raw} onClose={() => setShowGraph(false)} />}
     </div>
   )

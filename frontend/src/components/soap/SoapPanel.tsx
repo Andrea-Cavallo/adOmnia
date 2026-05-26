@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Upload, Globe, Send, Copy, RefreshCw, ChevronRight, BookmarkPlus, Plus, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ExecuteHTTP } from '@/wailsjs/go/main/App'
@@ -19,8 +19,10 @@ import {
 } from '@/lib/soapClient'
 import { useCollectionsStore } from '@/stores/collections'
 import { blankRequest, uid } from '@/lib/types'
+import { useAppStore } from '@/stores/app'
 
 export function SoapPanel() {
+  const pendingFileImport = useAppStore((state) => state.pendingFileImport)
   const [wsdl, setWsdl] = useState<WsdlDocument | null>(null)
   const [wsdlText, setWsdlText] = useState('')
   const [wsdlUrl, setWsdlUrl] = useState('')
@@ -44,6 +46,29 @@ export function SoapPanel() {
   const [showCodeGen, setShowCodeGen] = useState(false)
   const [customHeaders, setCustomHeaders] = useState<{ id: string; key: string; value: string }[]>([])
   const [showCustomHeaders, setShowCustomHeaders] = useState(false)
+
+  const acceptWsdlText = useCallback((text: string) => {
+    setWsdlText(text)
+    try {
+      const parsed = parseWsdl(text)
+      setWsdl(parsed)
+      setWsdlError('')
+      if (parsed.services.length > 0) {
+        setSelectedService(parsed.services[0].name)
+        if (parsed.services[0].ports.length > 0) setSelectedPort(parsed.services[0].ports[0].name)
+      }
+      if (parsed.portTypes.length > 0 && parsed.portTypes[0].operations.length > 0) {
+        setSelectedOp(parsed.portTypes[0].operations[0].name)
+      }
+    } catch (e) {
+      setWsdlError(e instanceof Error ? e.message : 'Parse error')
+    }
+  }, [])
+
+  useEffect(() => {
+    const routed = useAppStore.getState().consumeFileImport('wsdl')
+    if (routed?.kind === 'wsdl') acceptWsdlText(routed.text)
+  }, [acceptWsdlText, pendingFileImport])
 
   // Current endpoint URL
   const currentPort = wsdl?.services
@@ -154,24 +179,10 @@ export function SoapPanel() {
     if (!file) return
     const reader = new FileReader()
     reader.onload = () => {
-      setWsdlText(reader.result as string)
-      try {
-        const parsed = parseWsdl(reader.result as string)
-        setWsdl(parsed)
-        setWsdlError('')
-        if (parsed.services.length > 0) {
-          setSelectedService(parsed.services[0].name)
-          if (parsed.services[0].ports.length > 0) setSelectedPort(parsed.services[0].ports[0].name)
-        }
-        if (parsed.portTypes.length > 0 && parsed.portTypes[0].operations.length > 0) {
-          setSelectedOp(parsed.portTypes[0].operations[0].name)
-        }
-      } catch (e) {
-        setWsdlError(e instanceof Error ? e.message : 'Parse error')
-      }
+      acceptWsdlText(reader.result as string)
     }
     reader.readAsText(file)
-  }, [])
+  }, [acceptWsdlText])
 
   if (!wsdl) {
     return (

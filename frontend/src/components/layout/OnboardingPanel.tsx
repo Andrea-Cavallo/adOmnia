@@ -11,6 +11,7 @@ import {
   Code2, Layers, Box, Activity, HardDrive,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { safeSetItem } from '@/lib/safeLocalStorage'
 
 export const ONBOARDED_KEY = 'adomnia.onboarded'
 
@@ -41,7 +42,7 @@ const API_CORE: ToolDef[] = [
 ]
 
 const PROTOCOLS: ToolDef[] = [
-  { id: 'grpc',      icon: Send,     color: '#a78bfa', status: 'Stable', label: 'gRPC Client',    desc: 'Call services via server reflection. Unary calls and metadata.' },
+  { id: 'grpc',      icon: Send,     color: '#a78bfa', status: 'Stable', label: 'gRPC Client',    desc: 'Call services via reflection with unary, server, client and bidirectional streaming.' },
   { id: 'soap',      icon: FileCode, color: '#38bdf8', status: 'Stable', label: 'SOAP Studio',    desc: 'SOAP, WSDL and XML workflows with WS-Security support.' },
   { id: 'websocket', icon: Zap,      color: '#22c55e', status: 'Stable', label: 'WebSocket',      desc: 'Open live sockets, send messages and inspect frames.' },
   { id: 'sse',       icon: Radio,    color: '#fb7185', status: 'Stable', label: 'SSE Client',     desc: 'Subscribe to event streams, filter by type and export JSONL.' },
@@ -210,7 +211,7 @@ export function OnboardingPanel() {
   const port = useServerPort()
 
   const openTool = (id: RailItem) => {
-    localStorage.setItem(ONBOARDED_KEY, '1')
+    safeSetItem(ONBOARDED_KEY, '1')
     setActiveRail(id)
     if (id === 'collections') newTab()
   }
@@ -220,7 +221,7 @@ export function OnboardingPanel() {
     useCollectionsStore.setState({ collections: migrateCollections(demo.collections), loaded: true })
     useEnvironmentsStore.setState({ environments: demo.environments, activeEnvId: demo.activeEnvId, loaded: true })
     await Promise.all([saveCollections(), saveEnvironments()])
-    localStorage.setItem(ONBOARDED_KEY, '1')
+    safeSetItem(ONBOARDED_KEY, '1')
     setActiveRail('collections')
   }
 

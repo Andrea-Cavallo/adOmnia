@@ -8,6 +8,8 @@ import { useTabsStore } from '@/stores/tabs'
 import { cn } from '@/lib/utils'
 import { parseInteropFile, redactSecrets, summarizeBundle, type InteropBundle } from '@/lib/interopHub'
 import { scanWorkspace, maskSecretValues } from '@/lib/secretScanner'
+import { loadFlowDefinitions, saveFlowDefinitions, type SavedFlowDefinition } from '@/lib/flowStorage'
+import { safeSetItem } from '@/lib/safeLocalStorage'
 
 interface WorkspaceMeta {
   id: string
@@ -27,6 +29,7 @@ export function WorkspacePanel() {
   const [importBundle, setImportBundle] = useState<InteropBundle | null>(null)
   const [undoState, setUndoState] = useState<string | null>(null)
   const [exportConfirm, setExportConfirm] = useState<{ state: string; secrets: number } | null>(null)
+  const [flowDefinitions, setFlowDefinitions] = useState<SavedFlowDefinition[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const makeState = () => JSON.stringify({
@@ -39,7 +42,7 @@ export function WorkspacePanel() {
     activeEnvId: useEnvironmentsStore.getState().activeEnvId,
     settings: useSettingsStore.getState().settings,
     websocket: (() => { try { const raw = localStorage.getItem('adomnia.websocket'); return raw ? JSON.parse(raw) : null } catch { return null } })(),
-    flows: (() => { try { const raw = localStorage.getItem('adomnia.flows.v1'); return raw ? JSON.parse(raw) : [] } catch { return [] } })(),
+    flows: flowDefinitions,
     dockerLab: (() => { try { const raw = localStorage.getItem('adomnia.dockerlab.last'); return raw ? JSON.parse(raw) : null } catch { return null } })(),
   }, null, 2)
 
@@ -68,6 +71,10 @@ export function WorkspacePanel() {
   useEffect(() => {
     if (port) refresh()
   }, [port, refresh])
+
+  useEffect(() => {
+    void loadFlowDefinitions().then(setFlowDefinitions)
+  }, [])
 
   const run = async (fn: () => Promise<void>) => {
     setError('')
@@ -108,13 +115,13 @@ export function WorkspacePanel() {
       useSettingsStore.getState().save()
     }
     if (Array.isArray(state.flows)) {
-      localStorage.setItem('adomnia.flows.v1', JSON.stringify(state.flows))
+      setFlowDefinitions(await saveFlowDefinitions(state.flows))
     }
     if (state.dockerLab) {
-      localStorage.setItem('adomnia.dockerlab.last', JSON.stringify(state.dockerLab))
+      safeSetItem('adomnia.dockerlab.last', JSON.stringify(state.dockerLab))
     }
     if (state.websocket) {
-      localStorage.setItem('adomnia.websocket', JSON.stringify(state.websocket))
+      safeSetItem('adomnia.websocket', JSON.stringify(state.websocket))
     }
     setMessage('Workspace loaded into the frontend')
   })
