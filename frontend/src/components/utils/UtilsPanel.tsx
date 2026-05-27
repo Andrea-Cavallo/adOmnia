@@ -536,36 +536,352 @@ function yamlValidateResult(yaml: string): { ok: boolean; message: string } {
   return { ok: message.startsWith('Valid YAML'), message }
 }
 
-// =========== PEM/JKS Inspector ===========
+// =========== PEM/JKS Inspector — pure-JS ASN.1/X.509 parser ===========
 
-function pemInspect(pem: string): string {
-  const lines = pem.trim().split('\n')
-  const info: string[] = []
-  let blockType = ''
-  for (const line of lines) {
-    if (line.startsWith('-----BEGIN ')) {
-      blockType = line.replace('-----BEGIN ', '').replace('-----', '')
-      info.push(`Type: ${blockType}`)
-    } else if (line.startsWith('-----END ')) {
-      const b64 = lines.filter((l) => !l.startsWith('-----')).join('')
-      info.push(`Base64 size: ${b64.length} chars`)
-      try {
-        const raw = atob(b64)
-        info.push(`Decoded: ${raw.length} bytes`)
-        if (raw.length < 200) info.push(`Content: ${raw}`)
-      } catch {
-        info.push('(could not decode base64)')
+// ── ASN.1 DER primitives ──────────────────────────────────────────────────────
+
+function asn1Len(buf: Uint8Array, pos: number): { len: number; consumed: number } {
+  const b = buf[pos]
+  if ((b & 0x80) === 0) return { len: b, consumed: 1 }
+  const n = b & 0x7f
+  let len = 0
+  for (let i = 0; i < n; i++) len = len * 256 + buf[pos + 1 + i]
+  return { len, consumed: 1 + n }
+}
+
+function asn1Node(buf: Uint8Array, pos: number) {
+  const tag = buf[pos]
+  const { len, consumed } = asn1Len(buf, pos + 1)
+  const vStart = pos + 1 + consumed
+  return { tag, vStart, vEnd: vStart + len, end: vStart + len }
+}
+
+function asn1Kids(buf: Uint8Array, start: number, end: number) {
+  const items: ReturnType<typeof asn1Node>[] = []
+  let p = start
+  while (p < end && p < buf.length) { const n = asn1Node(buf, p); items.push(n); p = n.end }
+  return items
+}
+
+function parseOID(buf: Uint8Array, s: number, e: number): string {
+  if (e <= s) return ''
+  const parts: number[] = [Math.floor(buf[s] / 40), buf[s] % 40]
+  let v = 0
+  for (let i = s + 1; i < e; i++) {
+    v = v * 128 + (buf[i] & 0x7f)
+    if ((buf[i] & 0x80) === 0) { parts.push(v); v = 0 }
+  }
+  return parts.join('.')
+}
+
+function decodeStr(buf: Uint8Array, s: number, e: number): string {
+  try { return new TextDecoder('utf-8', { fatal: true }).decode(buf.slice(s, e)) } catch { /**/ }
+  try { return new TextDecoder('latin1').decode(buf.slice(s, e)) } catch { /**/ }
+  return ''
+}
+
+function parseTime(tag: number, buf: Uint8Array, s: number, e: number): { str: string; date: Date } {
+  const raw = decodeStr(buf, s, e)
+  let year: number, mo: string, d: string, h: string, mi: string, sec: string
+  if (tag === 0x17) { // UTCTime YYMMDDHHMMSS
+    year = parseInt(raw.slice(0, 2)) + (parseInt(raw.slice(0, 2)) >= 50 ? 1900 : 2000)
+    ;[mo, d, h, mi, sec] = [raw.slice(2, 4), raw.slice(4, 6), raw.slice(6, 8), raw.slice(8, 10), raw.slice(10, 12)]
+  } else { // GeneralizedTime YYYYMMDDHHMMSS
+    year = parseInt(raw.slice(0, 4))
+    ;[mo, d, h, mi, sec] = [raw.slice(4, 6), raw.slice(6, 8), raw.slice(8, 10), raw.slice(10, 12), raw.slice(12, 14)]
+  }
+  return {
+    str: `${year}-${mo}-${d} ${h}:${mi}:${sec} UTC`,
+    date: new Date(`${year}-${mo}-${d}T${h}:${mi}:${sec}Z`),
+  }
+}
+
+// ── OID dictionaries ──────────────────────────────────────────────────────────
+
+const OID_ATTR: Record<string, string> = {
+  '2.5.4.3': 'cn', '2.5.4.6': 'c', '2.5.4.7': 'l',
+  '2.5.4.8': 'st', '2.5.4.10': 'o', '2.5.4.11': 'ou',
+}
+const OID_SIG: Record<string, string> = {
+  '1.2.840.113549.1.1.5': 'SHA1withRSA', '1.2.840.113549.1.1.11': 'SHA256withRSA',
+  '1.2.840.113549.1.1.12': 'SHA384withRSA', '1.2.840.113549.1.1.13': 'SHA512withRSA',
+  '1.2.840.10045.4.3.2': 'ECDSAwithSHA256', '1.2.840.10045.4.3.3': 'ECDSAwithSHA384',
+  '1.2.840.10045.4.3.4': 'ECDSAwithSHA512', '1.3.101.112': 'Ed25519', '1.3.101.113': 'Ed448',
+}
+const OID_KEY: Record<string, string> = {
+  '1.2.840.113549.1.1.1': 'RSA', '1.2.840.10045.2.1': 'ECDSA',
+  '1.3.101.112': 'Ed25519', '1.3.101.113': 'Ed448', '1.2.840.10040.4.1': 'DSA',
+}
+const OID_CURVE: Record<string, number> = {
+  '1.2.840.10045.3.1.7': 256, '1.3.132.0.34': 384, '1.3.132.0.35': 521,
+}
+const OID_EKU: Record<string, string> = {
+  '1.3.6.1.5.5.7.3.1': 'TLS Server Auth', '1.3.6.1.5.5.7.3.2': 'TLS Client Auth',
+  '1.3.6.1.5.5.7.3.3': 'Code Signing', '1.3.6.1.5.5.7.3.4': 'Email Protection',
+  '1.3.6.1.5.5.7.3.8': 'Time Stamping', '1.3.6.1.5.5.7.3.9': 'OCSP Signing',
+}
+
+// ── X.509 parser ──────────────────────────────────────────────────────────────
+
+interface CertRDN { cn: string; o: string; ou: string; c: string; st: string; l: string; [k: string]: string }
+interface ParsedCert {
+  error?: string
+  serial: string; subject: CertRDN; issuer: CertRDN
+  notBefore: string; notAfter: string
+  sigAlg: string; keyAlg: string; keyBits: number
+  sans: string[]; keyUsage: string[]; extKeyUsage: string[]
+  isCA: boolean; isExpired: boolean; isNotYetValid: boolean; daysRemaining: number
+  sha256: string; sha1: string
+}
+
+function parseName(buf: Uint8Array, s: number, e: number): CertRDN {
+  const r: CertRDN = { cn: '', o: '', ou: '', c: '', st: '', l: '' }
+  for (const rdn of asn1Kids(buf, s, e))
+    for (const atv of asn1Kids(buf, rdn.vStart, rdn.vEnd)) {
+      const ch = asn1Kids(buf, atv.vStart, atv.vEnd)
+      if (ch.length < 2) continue
+      const oid = parseOID(buf, ch[0].vStart, ch[0].vEnd)
+      const key = OID_ATTR[oid]
+      if (key) (r as Record<string, string>)[key] = decodeStr(buf, ch[1].vStart, ch[1].vEnd)
+    }
+  return r
+}
+
+async function parseCertDER(raw: Uint8Array): Promise<ParsedCert> {
+  const empty: ParsedCert = {
+    serial: '', subject: { cn:'', o:'', ou:'', c:'', st:'', l:'' },
+    issuer: { cn:'', o:'', ou:'', c:'', st:'', l:'' },
+    notBefore: '', notAfter: '', sigAlg: '', keyAlg: '', keyBits: 0,
+    sans: [], keyUsage: [], extKeyUsage: [],
+    isCA: false, isExpired: false, isNotYetValid: false, daysRemaining: 0,
+    sha256: '', sha1: '',
+  }
+  try {
+    const cert   = asn1Node(raw, 0)
+    const top    = asn1Kids(raw, cert.vStart, cert.vEnd)
+    if (top.length < 3) return { ...empty, error: 'Truncated certificate structure' }
+
+    const tbs    = top[0]
+    const ch     = asn1Kids(raw, tbs.vStart, tbs.vEnd)
+    let i = 0
+    if (ch[i].tag === 0xA0) i++   // optional version
+
+    // serial
+    const snNode = ch[i++]
+    const snBytes = raw.slice(snNode.vStart, snNode.vEnd)
+    const snTrimmed = snBytes[0] === 0 ? snBytes.slice(1) : snBytes
+    const serial = Array.from(snTrimmed).map(b => b.toString(16).padStart(2, '0')).join(':')
+
+    // signature algorithm (in TBS)
+    const sigAlgNode = ch[i++]
+    const sigAlgCh = asn1Kids(raw, sigAlgNode.vStart, sigAlgNode.vEnd)
+    const sigAlgOID = parseOID(raw, sigAlgCh[0].vStart, sigAlgCh[0].vEnd)
+    const sigAlg = OID_SIG[sigAlgOID] ?? sigAlgOID
+
+    // issuer
+    const issuerNode = ch[i++]
+    const issuer = parseName(raw, issuerNode.vStart, issuerNode.vEnd)
+
+    // validity
+    const valNode = ch[i++]
+    const valCh = asn1Kids(raw, valNode.vStart, valNode.vEnd)
+    const nb = parseTime(valCh[0].tag, raw, valCh[0].vStart, valCh[0].vEnd)
+    const na = parseTime(valCh[1].tag, raw, valCh[1].vStart, valCh[1].vEnd)
+
+    // subject
+    const subjNode = ch[i++]
+    const subject = parseName(raw, subjNode.vStart, subjNode.vEnd)
+
+    // SPKI
+    const spkiNode = ch[i++]
+    const spkiCh = asn1Kids(raw, spkiNode.vStart, spkiNode.vEnd)
+    const algCh = asn1Kids(raw, spkiCh[0].vStart, spkiCh[0].vEnd)
+    const keyAlgOID = parseOID(raw, algCh[0].vStart, algCh[0].vEnd)
+    const keyAlg = OID_KEY[keyAlgOID] ?? keyAlgOID
+    let keyBits = 0
+    if (keyAlgOID === '1.2.840.113549.1.1.1') {
+      // RSA: BIT STRING → RSAPublicKey SEQUENCE → modulus INTEGER
+      const bs = spkiCh[1]
+      const rsaSeq = asn1Node(raw, bs.vStart + 1)  // skip unused-bits byte
+      const rsaCh = asn1Kids(raw, rsaSeq.vStart, rsaSeq.vEnd)
+      if (rsaCh.length >= 1 && rsaCh[0].tag === 0x02) {
+        const modLen = rsaCh[0].vEnd - rsaCh[0].vStart
+        keyBits = (modLen - (raw[rsaCh[0].vStart] === 0 ? 1 : 0)) * 8
+      }
+    } else if (keyAlgOID === '1.2.840.10045.2.1' && algCh.length > 1) {
+      const curveOID = parseOID(raw, algCh[1].vStart, algCh[1].vEnd)
+      keyBits = OID_CURVE[curveOID] ?? 0
+    } else if (keyAlgOID === '1.3.101.112') {
+      keyBits = 255
+    }
+
+    // extensions [3]
+    const sans: string[] = [], keyUsage: string[] = [], extKeyUsage: string[] = []
+    let isCA = false
+    for (let j = i; j < ch.length; j++) {
+      if (ch[j].tag !== 0xA3) continue
+      const extsSeq = asn1Node(raw, ch[j].vStart)
+      for (const ext of asn1Kids(raw, extsSeq.vStart, extsSeq.vEnd)) {
+        const extCh = asn1Kids(raw, ext.vStart, ext.vEnd)
+        if (extCh.length < 2) continue
+        const oid = parseOID(raw, extCh[0].vStart, extCh[0].vEnd)
+        const valOctet = extCh[extCh.length - 1]   // last child is always OCTET STRING
+        if (valOctet.tag !== 0x04) continue
+        const ev = raw.slice(valOctet.vStart, valOctet.vEnd)
+
+        if (oid === '2.5.29.17') {                  // SubjectAltName
+          const sanSeq = asn1Node(ev, 0)
+          for (const gn of asn1Kids(ev, sanSeq.vStart, sanSeq.vEnd)) {
+            const t = gn.tag & 0x1f
+            if (t === 2) sans.push('DNS: ' + decodeStr(ev, gn.vStart, gn.vEnd))
+            else if (t === 1) sans.push('Email: ' + decodeStr(ev, gn.vStart, gn.vEnd))
+            else if (t === 6) sans.push('URI: ' + decodeStr(ev, gn.vStart, gn.vEnd))
+            else if (t === 7) {
+              const ip = ev.slice(gn.vStart, gn.vEnd)
+              if (ip.length === 4) sans.push(`IP: ${ip[0]}.${ip[1]}.${ip[2]}.${ip[3]}`)
+            }
+          }
+        } else if (oid === '2.5.29.15') {           // KeyUsage
+          const kuNode = asn1Node(ev, 0)
+          if (kuNode.tag === 0x03) {
+            const b1 = ev[kuNode.vStart + 1] ?? 0, b2 = ev[kuNode.vStart + 2] ?? 0
+            const KU = [[0x80,'Digital Signature'],[0x40,'Content Commitment'],[0x20,'Key Encipherment'],
+              [0x10,'Data Encipherment'],[0x08,'Key Agreement'],[0x04,'Certificate Sign'],
+              [0x02,'CRL Sign'],[0x01,'Encipher Only']] as const
+            for (const [m, n] of KU) if (b1 & m) keyUsage.push(n)
+            if (b2 & 0x80) keyUsage.push('Decipher Only')
+          }
+        } else if (oid === '2.5.29.37') {           // ExtKeyUsage
+          const ekuSeq = asn1Node(ev, 0)
+          for (const o of asn1Kids(ev, ekuSeq.vStart, ekuSeq.vEnd))
+            extKeyUsage.push(OID_EKU[parseOID(ev, o.vStart, o.vEnd)] ?? parseOID(ev, o.vStart, o.vEnd))
+        } else if (oid === '2.5.29.19') {           // BasicConstraints
+          const bcSeq = asn1Node(ev, 0)
+          for (const c of asn1Kids(ev, bcSeq.vStart, bcSeq.vEnd))
+            if (c.tag === 0x01) isCA = ev[c.vStart] !== 0
+        }
       }
     }
+
+    // Fingerprints via SubtleCrypto (always available in WebView)
+    const rawBuf: ArrayBuffer = raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength) as ArrayBuffer
+    const [sha256Buf, sha1Buf] = await Promise.all([
+      crypto.subtle.digest('SHA-256', rawBuf),
+      crypto.subtle.digest('SHA-1', rawBuf),
+    ])
+    const fpHex = (b: ArrayBuffer) =>
+      Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join(':')
+
+    const now = new Date()
+    const daysRemaining = Math.floor((na.date.getTime() - now.getTime()) / 86_400_000)
+
+    return {
+      serial, subject, issuer,
+      notBefore: nb.str, notAfter: na.str,
+      sigAlg, keyAlg, keyBits,
+      sans, keyUsage, extKeyUsage, isCA,
+      isExpired: now > na.date, isNotYetValid: now < nb.date,
+      daysRemaining,
+      sha256: fpHex(sha256Buf), sha1: fpHex(sha1Buf),
+    }
+  } catch (e) {
+    return { ...empty, error: `Parse error: ${e instanceof Error ? e.message : String(e)}` }
   }
-  return info.join('\n') || 'No PEM block detected'
+}
+
+function formatParsedCert(r: ParsedCert, index: number, total: number): string {
+  const sep = '─'.repeat(52)
+  const lines: string[] = []
+  if (total > 1) lines.push(sep, `  Certificate ${index + 1} of ${total}`, sep)
+  else           lines.push(sep, `  CERTIFICATE`, sep)
+
+  if (r.error) { lines.push(`  ⚠  ${r.error}`, sep); return lines.join('\n') }
+
+  const f = (label: string, value?: string) => {
+    if (value?.trim()) lines.push(`  ${label.padEnd(20)} ${value}`)
+  }
+
+  lines.push('', '  Subject')
+  f('  Common Name:', r.subject.cn); f('  Organization:', r.subject.o)
+  f('  Org. Unit:', r.subject.ou);   f('  Locality:', r.subject.l)
+  f('  State:', r.subject.st);        f('  Country:', r.subject.c)
+
+  lines.push('', '  Issuer')
+  f('  Common Name:', r.issuer.cn);  f('  Organization:', r.issuer.o)
+  f('  Org. Unit:', r.issuer.ou);    f('  Locality:', r.issuer.l)
+  f('  State:', r.issuer.st);         f('  Country:', r.issuer.c)
+
+  lines.push('', '  Validity')
+  f('  Not Before:', r.notBefore); f('  Not After:', r.notAfter)
+  if (r.isExpired)
+    lines.push(`  ${''.padEnd(20)} ⚠  EXPIRED  (${Math.abs(r.daysRemaining)} day${Math.abs(r.daysRemaining) !== 1 ? 's' : ''} ago)`)
+  else if (r.isNotYetValid)
+    lines.push(`  ${''.padEnd(20)} ⚠  NOT YET VALID`)
+  else
+    lines.push(`  ${''.padEnd(20)} ✓  Valid  (${r.daysRemaining} day${r.daysRemaining !== 1 ? 's' : ''} remaining)`)
+
+  lines.push('', '  Identity')
+  f('  Serial Number:', r.serial)
+  if (r.isCA) f('  Role:', 'Certificate Authority (CA)')
+
+  lines.push('', '  Public Key')
+  f('  Algorithm:', r.keyBits > 0 ? `${r.keyAlg}  ${r.keyBits}-bit` : r.keyAlg)
+  f('  Signature:', r.sigAlg)
+
+  if (r.sans.length > 0) {
+    lines.push('', '  Subject Alternative Names')
+    r.sans.forEach(s => lines.push(`    ${s}`))
+  }
+  if (r.keyUsage.length > 0) {
+    lines.push('', '  Key Usage')
+    r.keyUsage.forEach(u => lines.push(`    ${u}`))
+  }
+  if (r.extKeyUsage.length > 0) {
+    lines.push('', '  Extended Key Usage')
+    r.extKeyUsage.forEach(u => lines.push(`    ${u}`))
+  }
+
+  lines.push('', '  Fingerprints')
+  f('  SHA-256:', r.sha256); f('  SHA-1:', r.sha1)
+  lines.push('', sep)
+  return lines.join('\n')
+}
+
+/** Parse all PEM blocks in a text — pure JS, no network required. */
+async function pemInspectPure(pemText: string): Promise<string> {
+  const blockRe = /-----BEGIN ([A-Z0-9 ]+)-----\r?\n([\s\S]+?)\r?\n?-----END \1-----/g
+  const results: string[] = []
+  let certCount = 0, match: RegExpExecArray | null
+
+  // Count certs first for the "N of M" header
+  const allCerts = [...pemText.matchAll(/-----BEGIN CERTIFICATE-----/g)].length
+
+  while ((match = blockRe.exec(pemText)) !== null) {
+    const type = match[1].trim()
+    const b64  = match[2].replace(/\s+/g, '')
+    try {
+      const bin = atob(b64)
+      const raw = Uint8Array.from(bin, c => c.charCodeAt(0))
+      if (type === 'CERTIFICATE') {
+        const parsed = await parseCertDER(raw)
+        results.push(formatParsedCert(parsed, certCount, allCerts))
+        certCount++
+      } else {
+        // Keys, CSRs, etc. — show type + size only
+        results.push(`Type: ${type}\nSize: ${raw.length} bytes  (${b64.length} base64 chars)\n(Paste a CERTIFICATE block for full inspection)`)
+      }
+    } catch (e) {
+      results.push(`Type: ${type}\nError decoding block: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+  return results.length > 0 ? results.join('\n\n') : 'No PEM block detected'
 }
 
 function jksInspect(bytes: Uint8Array, name?: string): string {
   const info: string[] = []
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
   const magic = bytes.length >= 4 ? view.getUint32(0, false) : 0
-  info.push(`File: ${name || 'dropped file'}`)
+  info.push(`File: ${name ?? 'dropped file'}`)
   info.push(`Size: ${bytes.length} bytes`)
   if (magic === 0xfeedfeed) {
     info.push('Format: Java KeyStore (JKS)')
@@ -573,22 +889,16 @@ function jksInspect(bytes: Uint8Array, name?: string): string {
       info.push(`Version: ${view.getUint32(4, false)}`)
       info.push(`Entry count: ${view.getUint32(8, false)}`)
     }
-    info.push('Content is binary and encrypted/integrity protected; aliases/certificates require the store password.')
+    info.push('Content is binary/encrypted — extract via JKS split below.')
     return info.join('\n')
   }
   if (magic === 0x308201 || bytes[0] === 0x30) {
-    info.push('Format: DER/ASN.1 certificate or PKCS container candidate')
+    info.push('Format: DER/ASN.1 — try renaming to .pem and re-dropping')
     return info.join('\n')
   }
   info.push(`Magic: ${bytesToHex(bytes.slice(0, Math.min(8, bytes.length))).toUpperCase()}`)
-  info.push('Format: unknown binary certificate/key container')
+  info.push('Format: unknown binary container')
   return info.join('\n')
-}
-
-function pemOrJksInspect(text: string, bytes?: Uint8Array, name?: string): string {
-  if (text.includes('-----BEGIN ')) return pemInspect(text)
-  if (bytes) return jksInspect(bytes, name)
-  return pemInspect(text)
 }
 
 // =========== Class File Inspector ===========
@@ -1160,9 +1470,18 @@ export function UtilsPanel() {
   const handlePemFile = async (file: File) => {
     const { text, bytes } = await readFileSmart(file)
     setPemFileName(file.name)
-    setPemInput(text.includes('-----BEGIN ') ? text : bytesToHex(bytes))
-    setPemOutput(pemOrJksInspect(text, bytes, file.name))
+    const pemText = text.includes('-----BEGIN ') ? text : bytesToHex(bytes)
+    setPemInput(pemText)
     setJksSplit(null)
+
+    // Show initial JKS info synchronously; for PEM/cert files call backend
+    if (!text.includes('-----BEGIN ')) {
+      setPemOutput(jksInspect(bytes, file.name))
+    } else {
+      setPemOutput('Inspecting…')
+      const out = await pemInspectPure(pemText)
+      setPemOutput(out)
+    }
     if (file.name.toLowerCase().endsWith('.jks')) {
       const url = serverUrl(port, '/cert/jks-split')
       if (!url) {
@@ -1784,7 +2103,16 @@ export function UtilsPanel() {
               rows={8}
               className="px-2 py-1.5 bg-surface-2 border border-border-2 rounded text-xs text-text-1 font-mono focus:border-accent outline-none resize-none"
             />
-            <button onClick={() => setPemOutput(pemOrJksInspect(pemInput))} className="self-start px-3 py-1.5 bg-accent text-white rounded text-xs font-medium">Inspect</button>
+            <button
+              onClick={async () => {
+                setPemOutput('Inspecting…')
+                const out = await pemInspectPure(pemInput)
+                setPemOutput(out)
+              }}
+              className="self-start px-3 py-1.5 bg-accent text-white rounded text-xs font-medium"
+            >
+              Inspect
+            </button>
             {jksSplit && (
               <div className="flex flex-wrap gap-2 rounded border border-success/30 bg-success/8 p-2">
                 <span className="w-full text-[10px] text-success">{jksSplit.warning ?? 'JKS split completed locally.'}</span>

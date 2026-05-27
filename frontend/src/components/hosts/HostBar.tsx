@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
-import { Plus, Check, X } from 'lucide-react'
+import { Plus, Check, X, ChevronDown } from 'lucide-react'
 import type { HostsProfile, HostEntry } from '@/lib/types'
 import { HostModal } from './HostModal'
+import { cn } from '@/lib/utils'
 
 interface HostBarProps {
   profiles: HostsProfile[]
@@ -25,44 +26,88 @@ export function HostBar({
   const [showModal, setShowModal] = useState(false)
   const [adding, setAdding] = useState(false)
   const [newName, setNewName] = useState('')
+  const [dropOpen, setDropOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const dropRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (adding) inputRef.current?.focus()
   }, [adding])
 
-  const handleAdd = () => {
-    setNewName('')
-    setAdding(true)
-  }
+  useEffect(() => {
+    if (!dropOpen) return
+    const handler = (e: MouseEvent) => {
+      if (!dropRef.current?.contains(e.target as Node)) setDropOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [dropOpen])
 
+  const handleAdd = () => { setNewName(''); setAdding(true) }
   const confirmAdd = () => {
     if (newName.trim()) onAdd(newName.trim())
     setAdding(false)
     setNewName('')
   }
+  const cancelAdd = () => { setAdding(false); setNewName('') }
 
-  const cancelAdd = () => {
-    setAdding(false)
-    setNewName('')
-  }
+  const activeLabel = activeProfileId
+    ? (profiles.find(p => p.id === activeProfileId)?.name ?? 'Unknown')
+    : 'No Hosts'
 
   return (
     <>
       <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border-1">
-        <span className="text-[10px] text-text-4 uppercase tracking-wider">Hosts</span>
-        <select
-          value={activeProfileId ?? ''}
-          onChange={(e) => onSetActive(e.target.value || null)}
-          className="h-6 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 focus:border-accent outline-none"
-        >
-          <option value="">No Hosts</option>
-          {profiles.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+        <span className="text-[10px] text-text-4 uppercase tracking-wider shrink-0">Hosts</span>
+
+        {/* Custom dropdown */}
+        <div ref={dropRef} className="relative">
+          <button
+            onClick={() => setDropOpen(v => !v)}
+            className={cn(
+              'flex items-center gap-1.5 h-6 px-2 rounded text-xs transition-colors outline-none',
+              'bg-surface-2 border border-border-2 text-text-1',
+              'hover:border-border-3 hover:bg-surface-3',
+              dropOpen && 'border-accent'
+            )}
+          >
+            <span className="max-w-[160px] truncate">{activeLabel}</span>
+            <ChevronDown
+              size={11}
+              className={cn('shrink-0 text-text-4 transition-transform', dropOpen && 'rotate-180')}
+            />
+          </button>
+
+          {dropOpen && (
+            <div className="absolute top-full left-0 mt-0.5 z-50 min-w-full w-max max-w-52 rounded-md border border-border-2 bg-surface-2 shadow-xl py-0.5 overflow-hidden">
+              <button
+                onClick={() => { onSetActive(null); setDropOpen(false) }}
+                className={cn(
+                  'w-full px-3 py-1.5 text-left text-xs transition-colors',
+                  !activeProfileId
+                    ? 'bg-surface-3 text-text-1'
+                    : 'text-text-3 hover:bg-surface-3 hover:text-text-1'
+                )}
+              >
+                No Hosts
+              </button>
+              {profiles.map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => { onSetActive(p.id); setDropOpen(false) }}
+                  className={cn(
+                    'w-full px-3 py-1.5 text-left text-xs transition-colors',
+                    activeProfileId === p.id
+                      ? 'bg-surface-3 text-text-1'
+                      : 'text-text-2 hover:bg-surface-3 hover:text-text-1'
+                  )}
+                >
+                  {p.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         {adding ? (
           <div className="flex items-center gap-1">

@@ -100,7 +100,7 @@ const defaultSettings: AppSettings = {
   },
   appearance: {
     theme: 'dark',
-    windowChrome: 'app',
+    windowChrome: 'system',
     themeId: 'builtin-dark',
     density: 'comfortable',
     uiFont: DEFAULT_UI_FONT_ID,
