@@ -1,6 +1,7 @@
 package main
 
 import (
+	"adomnia/internal/oauth"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -9,22 +10,19 @@ import (
 )
 
 func resetOAuthSessionsForTest() {
-	oauthSessionsMu.Lock()
-	oauthSessions = make(map[string]oauthAuthorizationSession)
-	oauthSessionsMu.Unlock()
+	oauth.ResetSessions()
 }
 
 func TestOAuthAuthorizationCallbackReturnsCodeOnce(t *testing.T) {
 	resetOAuthSessionsForTest()
-	originalPort := serverPort
-	serverPort = 45123
+	oauth.SetServerPort(45123)
 	t.Cleanup(func() {
-		serverPort = originalPort
+		oauth.SetServerPort(0)
 		resetOAuthSessionsForTest()
 	})
 
 	startRecorder := httptest.NewRecorder()
-	oauthStartHandler(startRecorder, httptest.NewRequest(http.MethodPost, "/oauth/start", nil))
+	oauth.StartHandler(startRecorder, httptest.NewRequest(http.MethodPost, "/oauth/start", nil))
 	if startRecorder.Code != http.StatusOK {
 		t.Fatalf("start status = %d, body = %s", startRecorder.Code, startRecorder.Body.String())
 	}
@@ -41,14 +39,14 @@ func TestOAuthAuthorizationCallbackReturnsCodeOnce(t *testing.T) {
 
 	callbackURL := "/oauth/callback?state=" + url.QueryEscape(started["state"]) + "&code=returned-code"
 	callbackRecorder := httptest.NewRecorder()
-	oauthCallbackHandler(callbackRecorder, httptest.NewRequest(http.MethodGet, callbackURL, nil))
+	oauth.CallbackHandler(callbackRecorder, httptest.NewRequest(http.MethodGet, callbackURL, nil))
 	if callbackRecorder.Code != http.StatusOK {
 		t.Fatalf("callback status = %d, body = %s", callbackRecorder.Code, callbackRecorder.Body.String())
 	}
 
 	statusURL := "/oauth/status?state=" + url.QueryEscape(started["state"])
 	statusRecorder := httptest.NewRecorder()
-	oauthStatusHandler(statusRecorder, httptest.NewRequest(http.MethodGet, statusURL, nil))
+	oauth.StatusHandler(statusRecorder, httptest.NewRequest(http.MethodGet, statusURL, nil))
 	var completed map[string]string
 	if err := json.Unmarshal(statusRecorder.Body.Bytes(), &completed); err != nil {
 		t.Fatalf("decode status response: %v", err)
@@ -58,7 +56,7 @@ func TestOAuthAuthorizationCallbackReturnsCodeOnce(t *testing.T) {
 	}
 
 	consumedRecorder := httptest.NewRecorder()
-	oauthStatusHandler(consumedRecorder, httptest.NewRequest(http.MethodGet, statusURL, nil))
+	oauth.StatusHandler(consumedRecorder, httptest.NewRequest(http.MethodGet, statusURL, nil))
 	if consumedRecorder.Code != http.StatusNotFound {
 		t.Fatalf("consumed status = %d, want %d", consumedRecorder.Code, http.StatusNotFound)
 	}
@@ -69,14 +67,14 @@ func TestSecurityAllowsOnlyValidOAuthCallbackWithoutSidecarToken(t *testing.T) {
 	initSidecarToken()
 
 	startRecorder := httptest.NewRecorder()
-	oauthStartHandler(startRecorder, httptest.NewRequest(http.MethodPost, "/oauth/start", nil))
+	oauth.StartHandler(startRecorder, httptest.NewRequest(http.MethodPost, "/oauth/start", nil))
 	var started map[string]string
 	if err := json.Unmarshal(startRecorder.Body.Bytes(), &started); err != nil {
 		t.Fatalf("decode start response: %v", err)
 	}
 
 	handler := withSecurity(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		oauthCallbackHandler(w, r)
+		oauth.CallbackHandler(w, r)
 	}))
 	valid := httptest.NewRecorder()
 	handler.ServeHTTP(valid, httptest.NewRequest(http.MethodGet, "/oauth/callback?state="+url.QueryEscape(started["state"])+"&code=ok", nil))

@@ -2,10 +2,19 @@ package main
 
 import (
 	"adomnia/internal/broker"
+	"adomnia/internal/database"
 	"adomnia/internal/devlog"
 	igrpc "adomnia/internal/grpc"
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/kafka"
+	"adomnia/internal/loadtest"
+	"adomnia/internal/mock"
+	"adomnia/internal/nettools"
+	"adomnia/internal/oauth"
+	"adomnia/internal/proxy"
 	"adomnia/internal/sse"
+	"adomnia/internal/storage"
+	"adomnia/internal/vault"
 	"adomnia/internal/ws"
 	"context"
 	"log"
@@ -36,6 +45,7 @@ func startHTTPServer() {
 		return
 	}
 	serverPort = ln.Addr().(*net.TCPAddr).Port
+	oauth.SetServerPort(serverPort)
 	dlogInfo("startHTTPServer", "porta assegnata dal SO", map[string]any{"port": serverPort})
 
 	mux := http.NewServeMux()
@@ -51,124 +61,39 @@ func startHTTPServer() {
 	ws.RegisterHandlers(mux)
 	sse.RegisterHandlers(mux)
 
-	// WebSocket Mock Server
-	mux.HandleFunc("/ws/mock/start", wsMockStartHandler)
-	mux.HandleFunc("/ws/mock/stop", wsMockStopHandler)
-	mux.HandleFunc("/ws/mock/status", wsMockStatusHandler)
-	mux.HandleFunc("/ws/mock/rules", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost {
-			wsMockRulesSaveHandler(w, r)
-		} else {
-			wsMockRulesGetHandler(w, r)
-		}
-	})
-	mux.HandleFunc("/ws/mock/hits/clear", wsMockHitsClearHandler)
-
 	// Load Test
-	mux.HandleFunc("/loadtest", loadTestHandler)
-	mux.HandleFunc("/loadtest/report", loadTestReportHandler)
-	mux.HandleFunc("/loadtest/scenario/save", loadTestScenarioSaveHandler)
-	mux.HandleFunc("/loadtest/scenario/list", loadTestScenarioListHandler)
-	mux.HandleFunc("/loadtest/scenario/load", loadTestScenarioLoadHandler)
-	mux.HandleFunc("/loadtest/compare", loadTestCompareHandler)
-	mux.HandleFunc("/loadtest/result/save", loadTestResultSaveHandler)
-	mux.HandleFunc("/loadtest/result/list", loadTestResultListHandler)
-	mux.HandleFunc("/loadtest/result/load", loadTestResultLoadHandler)
-	mux.HandleFunc("/loadtest/result/delete", loadTestResultDeleteHandler)
-	mux.HandleFunc("/loadtest/grpc", loadTestGrpcHandler)
+	loadtest.Configure(storePut, storeGet, storeList, storeDelete, serverPort)
+	loadtest.RegisterHandlers(mux)
 
 	// Mock server control
-	mux.HandleFunc("/mock/start", mockStartHandler)
-	mux.HandleFunc("/mock/stop", mockStopHandler)
-	mux.HandleFunc("/mock/status", mockStatusHandler)
-	mux.HandleFunc("/mock/hits", mockHitsHandler)
-	mux.HandleFunc("/mock/record", recordReplayHandler)
+	mock.SetPersistConfig(func(data []byte) error {
+		return storePut("mock", "config", data)
+	})
+	mock.RegisterHandlers(mux)
 
 	// Proxy
-	mux.HandleFunc("/proxy/start", proxyStartHandler)
-	mux.HandleFunc("/proxy/stop", proxyStopHandler)
-	mux.HandleFunc("/proxy/traffic", proxyTrafficHandler)
-	mux.HandleFunc("/proxy/breakpoints", proxyBreakpointsHandler)
-	mux.HandleFunc("/proxy/breakpoint/pending", proxyBreakpointPendingHandler)
-	mux.HandleFunc("/proxy/breakpoint/resume", proxyBreakpointResumeHandler)
-	mux.HandleFunc("/proxy/export", proxyExportHandler)
-	mux.HandleFunc("/proxy/rules", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPut {
-			proxyRulesPutHandler(w, r)
-		} else {
-			proxyRulesGetHandler(w, r)
-		}
-	})
-	mux.HandleFunc("/proxy/rules/test", proxyRulesTestHandler)
-	mux.HandleFunc("/proxy/rules/log", proxyRulesLogHandler)
-	mux.HandleFunc("/proxy/map/local", proxyMapLocalHandler)
-	mux.HandleFunc("/proxy/map/remote", proxyMapRemoteHandler)
-	mux.HandleFunc("/proxy/throttle", proxyThrottleHandler)
-	mux.HandleFunc("/proxy/repeat", proxyRepeatHandler)
-	mux.HandleFunc("/proxy/ca/status", caStatusHandler)
-	mux.HandleFunc("/proxy/ca/generate", caGenerateHandler)
-	mux.HandleFunc("/proxy/ca/export", caExportHandler)
-	mux.HandleFunc("/proxy/ca/delete", caDeleteHandler)
+	proxy.RegisterHandlers(mux)
 
-	// Storage
-	mux.HandleFunc("/storage/status", storageStatusHandler)
-	mux.HandleFunc("/storage/get", storageGetHandler)
-	mux.HandleFunc("/storage/put", storagePutHandler)
-	mux.HandleFunc("/storage/delete", storageDeleteHandler)
-	mux.HandleFunc("/storage/list", storageListHandler)
-	mux.HandleFunc("/storage/migrate", storageMigrateHandler)
-	mux.HandleFunc("/storage/export", storageExportHandler)
-	mux.HandleFunc("/storage/import", storageImportHandler)
-	mux.HandleFunc("/storage/snapshot", storageSnapshotHandler)
-	mux.HandleFunc("/storage/restore", storageRestoreHandler)
-	mux.HandleFunc("/storage/search", storageSearchHandler)
+	// Storage and workspaces
+	storage.RegisterHandlers(mux)
 
 	// Database Studio
-	mux.HandleFunc("/database/test", databaseTestHandler)
-	mux.HandleFunc("/database/query", databaseQueryHandler)
-
-	// Workspace
-	mux.HandleFunc("/workspace/list", workspaceListHandler)
-	mux.HandleFunc("/workspace/save", workspaceSaveHandler)
-	mux.HandleFunc("/workspace/load", workspaceLoadHandler)
-	mux.HandleFunc("/workspace/delete", workspaceDeleteHandler)
+	database.RegisterHandlers(mux)
 
 	// Vault
-	mux.HandleFunc("/vault/status", vaultStatusHandler)
-	mux.HandleFunc("/vault/unlock", vaultUnlockHandler)
-	mux.HandleFunc("/vault/lock", vaultLockHandler)
-	mux.HandleFunc("/vault/encrypt", vaultEncryptHandler)
-	mux.HandleFunc("/vault/decrypt", vaultDecryptHandler)
-	mux.HandleFunc("/vault/export", vaultExportHandler)
-	mux.HandleFunc("/vault/import", vaultImportHandler)
+	vault.RegisterHandlers(mux)
 
 	// JSON tools
-	mux.HandleFunc("/json/query", jsonQueryHandler)
-	mux.HandleFunc("/json/set", jsonSetHandler)
-	mux.HandleFunc("/json/diff", jsonDiffHandler)
-	mux.HandleFunc("/json/human", jsonHumanHandler)
-	mux.HandleFunc("/json/stream", jsonStreamHandler)
-	mux.HandleFunc("/json/mimetype", mimeDetectHandler)
-	mux.HandleFunc("/cert/jks-split", certJksSplitHandler)
-	mux.HandleFunc("/folderdiff/scan", folderDiffHandler)
-	mux.HandleFunc("/folderdiff/file", folderDiffFileHandler)
+	jsonutil.RegisterHandlers(mux)
 
 	// Net Tools
-	mux.HandleFunc("/dns/lookup", dnsLookupHandler)
-	mux.HandleFunc("/dns/trace", dnsTraceHandler)
-	mux.HandleFunc("/dns/compare", dnsCompareHandler)
-	mux.HandleFunc("/dns/cache", dnsCacheGetHandler)
-	mux.HandleFunc("/dns/cache/clear", dnsCacheClearHandler)
-	mux.HandleFunc("/portscan", portScanHandler)
-	mux.HandleFunc("/cors", corsTestHandler)
+	nettools.RegisterHandlers(mux)
 
 	// gRPC
 	igrpc.RegisterHandlers(mux)
 
 	// OAuth 2.0 Authorization Code + PKCE
-	mux.HandleFunc("/oauth/start", oauthStartHandler)
-	mux.HandleFunc("/oauth/callback", oauthCallbackHandler)
-	mux.HandleFunc("/oauth/status", oauthStatusHandler)
+	oauth.RegisterHandlers(mux)
 
 	// DevLogs streaming
 	devlog.RegisterHandlers(mux)

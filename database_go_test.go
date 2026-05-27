@@ -1,25 +1,27 @@
 package main
 
 import (
+	"adomnia/internal/database"
+	"adomnia/internal/themes"
 	"path/filepath"
 	"testing"
 )
 
 func TestSanitizeSQLitePathRejectsRelativeTraversal(t *testing.T) {
-	if _, err := sanitizeSQLitePath(filepath.Join("..", "..", "etc", "hosts")); err == nil {
+	if _, err := database.SanitizeSQLitePath(filepath.Join("..", "..", "etc", "hosts")); err == nil {
 		t.Fatal("expected relative traversal path to be rejected")
 	}
 }
 
 func TestSanitizeSQLitePathRejectsURI(t *testing.T) {
-	if _, err := sanitizeSQLitePath("file:../../etc/hosts?mode=ro"); err == nil {
+	if _, err := database.SanitizeSQLitePath("file:../../etc/hosts?mode=ro"); err == nil {
 		t.Fatal("expected SQLite URI DSN to be rejected")
 	}
 }
 
 func TestSanitizeSQLitePathAllowsAbsolutePath(t *testing.T) {
 	input := filepath.Join(t.TempDir(), "app.db")
-	got, err := sanitizeSQLitePath(input)
+	got, err := database.SanitizeSQLitePath(input)
 	if err != nil {
 		t.Fatalf("expected absolute path to be accepted: %v", err)
 	}
@@ -29,7 +31,7 @@ func TestSanitizeSQLitePathAllowsAbsolutePath(t *testing.T) {
 }
 
 func TestSanitizeSQLitePathAllowsInMemory(t *testing.T) {
-	got, err := sanitizeSQLitePath(":memory:")
+	got, err := database.SanitizeSQLitePath(":memory:")
 	if err != nil {
 		t.Fatalf("expected :memory: to be accepted: %v", err)
 	}
@@ -39,7 +41,7 @@ func TestSanitizeSQLitePathAllowsInMemory(t *testing.T) {
 }
 
 func TestThemeStopWatchingIsIdempotent(t *testing.T) {
-	tm := NewThemeManager()
+	tm := themes.NewThemeManager()
 	_ = tm.StopWatching()
 	if err := tm.StartWatching(); err != nil {
 		t.Fatalf("start watching: %v", err)

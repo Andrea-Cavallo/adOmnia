@@ -12,8 +12,11 @@ import (
 	"strings"
 	"time"
 
+	"adomnia/internal/browser"
 	"adomnia/internal/devlog"
+	"adomnia/internal/proxy"
 	"adomnia/internal/sse"
+	"adomnia/internal/vault"
 	"adomnia/internal/ws"
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 	bolt "go.etcd.io/bbolt"
@@ -22,7 +25,7 @@ import (
 type App struct {
 	ctx          context.Context
 	store        *bolt.DB
-	browserDebug *BrowserDebug
+	browserDebug *browser.BrowserDebug
 }
 
 func NewApp() *App {
@@ -50,9 +53,12 @@ func (a *App) OnStartup(ctx context.Context) {
 	}
 	initSidecarToken()
 	dlog("OnStartup", "sidecar token generato", nil)
-	initProxyRules()
+	proxy.Configure(dataDir(), func(data []byte) error {
+		return storePut("proxy", "rules", data)
+	})
+	proxy.InitRules()
 	dlog("OnStartup", "regole proxy inizializzate", nil)
-	autoLoadCA()
+	proxy.AutoLoadCA()
 	dlog("OnStartup", "CA proxy caricato", nil)
 	startHTTPServer()
 	if globalPythonBridge != nil {
@@ -171,7 +177,7 @@ func (a *App) OpenDevLogsFolder() {
 
 // GetVaultTimeout returns the vault auto-lock timeout in minutes.
 func (a *App) GetVaultTimeout() int {
-	return int(vaultTimeout.Minutes())
+	return vault.TimeoutMinutes()
 }
 
 // SetVaultTimeout sets the vault auto-lock timeout in minutes.
@@ -182,7 +188,7 @@ func (a *App) SetVaultTimeout(minutes int) {
 	if minutes > 120 {
 		minutes = 120
 	}
-	vaultTimeout = time.Duration(minutes) * time.Minute
+	vault.SetTimeoutMinutes(minutes)
 	dlogInfo("SetVaultTimeout", "vault timeout aggiornato", map[string]any{"minutes": minutes})
 }
 
