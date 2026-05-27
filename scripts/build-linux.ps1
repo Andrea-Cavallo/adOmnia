@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     adOmnia Linux build script (runs from Windows via Docker)
 .DESCRIPTION
@@ -47,16 +47,18 @@ Write-Host "===========================================" -ForegroundColor Cyan
 Write-Host ""
 
 # ---- Prerequisites -----------------------------------------------------------
-$dockerBin = Get-Command docker -ErrorAction SilentlyContinue
-if (-not $dockerBin) {
+if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
     Fail "Docker not found in PATH. Install Docker Desktop: https://www.docker.com/products/docker-desktop/"
 }
-Write-Host "OK   Docker: $(docker --version 2>$null)" -ForegroundColor Green
+$dockerVer = (& docker --version 2>$null)
+Write-Host "OK   Docker: $dockerVer" -ForegroundColor Green
 
 if ($Compress) {
-    $upxBin = Get-Command upx -ErrorAction SilentlyContinue
-    if (-not $upxBin) { Fail "UPX not found in PATH (required by -Compress). Install: https://upx.github.io/" }
-    Write-Host "OK   UPX: $(upx --version 2>$null | Select-Object -First 1)" -ForegroundColor Green
+    if (-not (Get-Command upx -ErrorAction SilentlyContinue)) {
+        Fail "UPX not found in PATH (required by -Compress). Install: https://upx.github.io/"
+    }
+    $upxVer = (& upx --version 2>$null | Select-Object -First 1)
+    Write-Host "OK   UPX: $upxVer" -ForegroundColor Green
 }
 
 # ---- [1] Icon generation -----------------------------------------------------
@@ -70,7 +72,7 @@ if (-not $SkipIcons) {
             Write-Host "WARN Icon generation failed (ImageMagick missing?). Using existing icons." -ForegroundColor Yellow
         }
     } else {
-        Write-Host "WARN generate-icons.ps1 not found — using existing icons." -ForegroundColor Yellow
+        Write-Host "WARN generate-icons.ps1 not found  -  using existing icons." -ForegroundColor Yellow
     }
 } else {
     Write-Host "SKIP Icon generation (-SkipIcons)" -ForegroundColor DarkGray
@@ -90,7 +92,7 @@ if (-not (Test-Path $dockerfilePath)) {
 }
 
 Push-Location $ProjectRoot
-cmd /c "docker build -f $dockerfilePath -t $Image . 2>&1"
+& docker build -f $dockerfilePath -t $Image .
 if ($LASTEXITCODE -ne 0) { Pop-Location; Fail "Docker build failed." }
 Pop-Location
 
@@ -99,12 +101,12 @@ Write-Host ""
 Write-Host "==> [3/$stepTotal] Extracting binary from container..." -ForegroundColor Cyan
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 
-$containerId = (cmd /c "docker create $Image 2>&1").Trim()
+$containerId = (& docker create $Image | Out-String).Trim()
 if ($LASTEXITCODE -ne 0) { Fail "docker create failed." }
 
-cmd /c "docker cp ${containerId}:/app/build/bin/adOmnia $Binary 2>&1"
+& docker cp "${containerId}:/app/build/bin/adOmnia" $Binary
 $copyOk = $LASTEXITCODE
-cmd /c "docker rm $containerId > nul 2>&1"
+& docker rm $containerId | Out-Null
 
 if ($copyOk -ne 0) { Fail "Failed to copy binary from container." }
 
@@ -116,11 +118,11 @@ if ($Compress) {
     Write-Host ""
     Write-Host "==> [4/$stepTotal] Compressing with UPX --best --lzma..." -ForegroundColor Cyan
     $sizeBefore = $sizeBinary
-    upx --best --lzma $Binary
+    & upx --best --lzma $Binary
     if ($LASTEXITCODE -ne 0) { Fail "UPX compression failed." }
     $sizeAfter = [math]::Round((Get-Item $Binary).Length / 1MB, 2)
     $saved = [math]::Round((1 - $sizeAfter / $sizeBefore) * 100, 1)
-    Write-Host "OK   $sizeBefore MB  ->  $sizeAfter MB  (-$saved%)" -ForegroundColor Green
+    Write-Host ("OK   {0} MB  ->  {1} MB  (-{2}%)" -f $sizeBefore, $sizeAfter, $saved) -ForegroundColor Green
 }
 
 # ---- [last] Package tarball --------------------------------------------------
@@ -152,7 +154,7 @@ $installFile = Join-Path $ProjectRoot "build\linux\install.sh"
 if (Test-Path $desktopFile) { Copy-Item $desktopFile "$tmpDir\adOmnia.desktop" -Force }
 if (Test-Path $installFile) { Copy-Item $installFile "$tmpDir\install.sh"      -Force }
 
-tar -czf $Tarball -C $tmpDir .
+& tar -czf $Tarball -C $tmpDir .
 Remove-Item -Recurse -Force $tmpDir
 
 $tarMB = [math]::Round((Get-Item $Tarball).Length / 1MB, 2)
@@ -163,8 +165,8 @@ Write-Host "===========================================" -ForegroundColor Green
 Write-Host "  Linux Build Complete!" -ForegroundColor Green
 Write-Host "===========================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "  Binary (standalone)     $Binary  ($sizeBinary MB)" -ForegroundColor Cyan
-Write-Host "  Tarball (distributable) $Tarball  ($tarMB MB)" -ForegroundColor Cyan
+Write-Host ("  Binary (standalone)     {0} ({1} MB)" -f $Binary, $sizeBinary) -ForegroundColor Cyan
+Write-Host ("  Tarball (distributable) {0} ({1} MB)" -f $Tarball, $tarMB) -ForegroundColor Cyan
 Write-Host ""
 Write-Host "  Install on Linux:" -ForegroundColor DarkGray
 Write-Host "    tar -xzf adOmnia-linux-amd64.tar.gz" -ForegroundColor DarkGray
