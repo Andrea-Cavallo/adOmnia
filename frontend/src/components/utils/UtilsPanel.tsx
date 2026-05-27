@@ -1,4 +1,4 @@
-﻿import { useState, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { useEffect } from 'react'
 import { Copy, ChevronRight, ChevronDown, Download } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -538,27 +538,327 @@ function yamlValidateResult(yaml: string): { ok: boolean; message: string } {
 
 // =========== PEM/JKS Inspector ===========
 
-function pemInspect(pem: string): string {
-  const lines = pem.trim().split('\n')
-  const info: string[] = []
-  let blockType = ''
-  for (const line of lines) {
-    if (line.startsWith('-----BEGIN ')) {
-      blockType = line.replace('-----BEGIN ', '').replace('-----', '')
-      info.push(`Type: ${blockType}`)
-    } else if (line.startsWith('-----END ')) {
-      const b64 = lines.filter((l) => !l.startsWith('-----')).join('')
-      info.push(`Base64 size: ${b64.length} chars`)
-      try {
-        const raw = atob(b64)
-        info.push(`Decoded: ${raw.length} bytes`)
-        if (raw.length < 200) info.push(`Content: ${raw}`)
-      } catch {
-        info.push('(could not decode base64)')
-      }
+// --- ASN.1 minimal parser helpers ---
+
+function asn1ReadLen(buf: Uint8Array, pos: number): [number, number] {
+  if (buf[pos] < 0x80) return [buf[pos], 1]
+  const n = buf[pos] & 0x7f
+  let len = 0
+  for (let i = 0; i < n; i++) len = (len << 8) | buf[pos + 1 + i]
+  return [len, 1 + n]
+}
+
+function asn1OidToStr(data: Uint8Array): string {
+  if (!data.length) return ''
+  const parts = [Math.floor(data[0] / 40), data[0] % 40]
+  let val = 0
+  for (let i = 1; i < data.length; i++) {
+    val = (val << 7) | (data[i] & 0x7f)
+    if (!(data[i] & 0x80)) { parts.push(val); val = 0 }
+  }
+  return parts.join('.')
+}
+
+const PEM_OIDS: Record<string, string> = {
+  '1.2.840.113549.1.1.1':  'RSA',
+  '1.2.840.113549.1.1.5':  'sha1WithRSA',
+  '1.2.840.113549.1.1.11': 'sha256WithRSA',
+  '1.2.840.113549.1.1.12': 'sha384WithRSA',
+  '1.2.840.113549.1.1.13': 'sha512WithRSA',
+  '1.2.840.10045.2.1':     'EC',
+  '1.2.840.10045.4.3.2':   'sha256WithECDSA',
+  '1.2.840.10045.3.1.7':   'P-256 (secp256r1)',
+  '1.3.132.0.34':          'P-384 (secp384r1)',
+  '1.3.132.0.35':          'P-521 (secp521r1)',
+  '1.3.132.0.10':          'secp256k1',
+  '1.3.101.110':           'X25519',
+  '1.3.101.112':           'Ed25519',
+  '2.5.4.3':  'CN',
+  '2.5.4.6':  'C',
+  '2.5.4.7':  'L',
+  '2.5.4.8':  'ST',
+  '2.5.4.10': 'O',
+  '2.5.4.11': 'OU',
+  '2.5.4.17': 'PostalCode',
+}
+
+function asn1ReadOid(buf: Uint8Array, pos: number): string {
+  if (buf[pos] !== 0x06) return ''
+  const [len, lb] = asn1ReadLen(buf, pos + 1)
+  return PEM_OIDS[asn1OidToStr(buf.slice(pos + 1 + lb, pos + 1 + lb + len))] ??
+         asn1OidToStr(buf.slice(pos + 1 + lb, pos + 1 + lb + len))
+}
+
+function asn1SkipNode(buf: Uint8Array, pos: number): number {
+  const [len, lb] = asn1ReadLen(buf, pos + 1)
+  return pos + 1 + lb + len
+}
+
+function asn1ParseDN(dn: Uint8Array): string {
+  const parts: string[] = []
+  let pos = 0
+  while (pos < dn.length) {
+    if (dn[pos] !== 0x31) { pos = asn1SkipNode(dn, pos); continue }
+    const [sl, slb] = asn1ReadLen(dn, pos + 1)
+    const set = dn.slice(pos + 1 + slb, pos + 1 + slb + sl)
+    pos += 1 + slb + sl
+    if (set[0] !== 0x30) continue
+    const [seql, seqlb] = asn1ReadLen(set, 1)
+    const seq = set.slice(1 + seqlb, 1 + seqlb + seql)
+    const oidName = asn1ReadOid(seq, 0)
+    if (!['CN','C','L','ST','O','OU'].includes(oidName)) continue
+    const vpos = asn1SkipNode(seq, 0)
+    const [vl, vlb] = asn1ReadLen(seq, vpos + 1)
+    const val = new TextDecoder().decode(seq.slice(vpos + 1 + vlb, vpos + 1 + vlb + vl))
+    parts.push(`${oidName}=${val}`)
+  }
+  return parts.join(', ') || '(empty)'
+}
+
+function asn1ParseTime(tag: number, data: Uint8Array): string {
+  const s = new TextDecoder().decode(data)
+  try {
+    let ts: number
+    if (tag === 0x17 && s.length >= 12) {
+      const y = parseInt(s.slice(0, 2)); const year = y >= 50 ? 1900 + y : 2000 + y
+      ts = Date.UTC(year, +s.slice(2,4)-1, +s.slice(4,6), +s.slice(6,8), +s.slice(8,10), +s.slice(10,12))
+    } else if (tag === 0x18 && s.length >= 14) {
+      ts = Date.UTC(+s.slice(0,4), +s.slice(4,6)-1, +s.slice(6,8), +s.slice(8,10), +s.slice(10,12), +s.slice(12,14))
+    } else return s
+    return new Date(ts).toISOString().replace('T',' ').slice(0,19) + ' UTC'
+  } catch { return s }
+}
+
+// --- PEM block decoder ---
+
+function pemDecodeBlocks(pem: string): { type: string; der: Uint8Array }[] {
+  const blocks: { type: string; der: Uint8Array }[] = []
+  const clean = pem.replace(/\r/g, '')
+  const re = /-----BEGIN ([^-\n]+)-----\n([\s\S]+?)\n-----END [^-\n]+-----/g
+  let m: RegExpExecArray | null
+  while ((m = re.exec(clean)) !== null) {
+    const type = m[1].trim()
+    const b64 = m[2].replace(/\n/g, '').replace(/\s/g, '')
+    try {
+      const bin = atob(b64)
+      blocks.push({ type, der: Uint8Array.from(bin, c => c.charCodeAt(0)) })
+    } catch {
+      blocks.push({ type, der: new Uint8Array(0) })
     }
   }
-  return info.join('\n') || 'No PEM block detected'
+  return blocks
+}
+
+// --- Per-block ASN.1 analysis ---
+
+function analyzeBlock(type: string, der: Uint8Array): string[] {
+  const out: string[] = [`▸ ${type}`, `  DER size: ${der.length} bytes`]
+  if (!der.length) { out.push('  ⚠ base64 decode failed (check for \r\\n or corrupt data)'); return out }
+
+  try {
+    if (type === 'RSA PRIVATE KEY') {
+      // PKCS#1: SEQUENCE { version, modulus, e, d, p, q, ... }
+      const [, olb] = asn1ReadLen(der, 1)
+      let p = 1 + olb
+      if (der[p] === 0x02) p = asn1SkipNode(der, p) // skip version
+      if (der[p] === 0x02) {
+        const [ml, mlb] = asn1ReadLen(der, p + 1)
+        const leadingZero = der[p + 1 + mlb] === 0x00 ? 1 : 0
+        out.push(`  Algorithm: RSA`)
+        out.push(`  Key size:  ${(ml - leadingZero) * 8} bits`)
+      }
+      out.push(`  Use:       Private key (PKCS#1)`)
+
+    } else if (type === 'EC PRIVATE KEY') {
+      // RFC 5915: SEQUENCE { version, OCTET STRING key, [0] OID curve, [1] BITSTRING pub }
+      const [, olb] = asn1ReadLen(der, 1)
+      let p = 1 + olb
+      if (der[p] === 0x02) p = asn1SkipNode(der, p)
+      if (der[p] === 0x04) p = asn1SkipNode(der, p)
+      if (der[p] === 0xa0) {
+        const [cl, clb] = asn1ReadLen(der, p + 1)
+        const ctx = der.slice(p + 1 + clb, p + 1 + clb + cl)
+        out.push(`  Algorithm: EC`)
+        out.push(`  Curve:     ${asn1ReadOid(ctx, 0)}`)
+      }
+      out.push(`  Use:       Private key (SEC1/RFC5915)`)
+
+    } else if (type === 'PRIVATE KEY') {
+      // PKCS#8: SEQUENCE { version, AlgorithmIdentifier SEQUENCE { OID, params }, OCTET STRING }
+      const [, olb] = asn1ReadLen(der, 1)
+      let p = 1 + olb
+      if (der[p] === 0x02) p = asn1SkipNode(der, p) // version
+      if (der[p] === 0x30) {
+        const [al, alb] = asn1ReadLen(der, p + 1)
+        const algSeq = der.slice(p + 1 + alb, p + 1 + alb + al)
+        const alg = asn1ReadOid(algSeq, 0)
+        out.push(`  Algorithm: ${alg}`)
+        const paramPos = asn1SkipNode(algSeq, 0)
+        if (algSeq[paramPos] === 0x06) out.push(`  Curve:     ${asn1ReadOid(algSeq, paramPos)}`)
+        p += 1 + alb + al
+      }
+      // For RSA PKCS#8, get key size from nested PKCS#1
+      if (der[p] === 0x04) {
+        const [ikl, iklb] = asn1ReadLen(der, p + 1)
+        const inner = der.slice(p + 1 + iklb, p + 1 + iklb + ikl)
+        if (inner[0] === 0x30) {
+          const [, ilb] = asn1ReadLen(inner, 1)
+          let ip = 1 + ilb
+          if (inner[ip] === 0x02) ip = asn1SkipNode(inner, ip) // version
+          if (inner[ip] === 0x02) {
+            const [ml, mlb] = asn1ReadLen(inner, ip + 1)
+            const lz = inner[ip + 1 + mlb] === 0x00 ? 1 : 0
+            out.push(`  Key size:  ${(ml - lz) * 8} bits`)
+          }
+        }
+      }
+      out.push(`  Use:       Private key (PKCS#8)`)
+
+    } else if (type === 'ENCRYPTED PRIVATE KEY') {
+      out.push(`  Use:       Encrypted private key (PKCS#8) — requires passphrase to inspect`)
+
+    } else if (type === 'PUBLIC KEY') {
+      // SubjectPublicKeyInfo
+      const [, olb] = asn1ReadLen(der, 1)
+      let p = 1 + olb
+      if (der[p] === 0x30) {
+        const [al, alb] = asn1ReadLen(der, p + 1)
+        const algSeq = der.slice(p + 1 + alb, p + 1 + alb + al)
+        const alg = asn1ReadOid(algSeq, 0)
+        out.push(`  Algorithm: ${alg}`)
+        const paramPos = asn1SkipNode(algSeq, 0)
+        if (algSeq[paramPos] === 0x06) out.push(`  Curve:     ${asn1ReadOid(algSeq, paramPos)}`)
+        p += 1 + alb + al
+      }
+      // RSA: parse modulus from BITSTRING
+      if (der[p] === 0x03) {
+        const [bsl, bslb] = asn1ReadLen(der, p + 1)
+        const bs = der.slice(p + 1 + bslb + 1, p + 1 + bslb + bsl) // skip unused-bits byte
+        if (bs[0] === 0x30 && bs[2] === 0x02) {
+          const [, islb] = asn1ReadLen(bs, 1); let ip = 1 + islb
+          if (bs[ip] === 0x02) {
+            const [ml, mlb] = asn1ReadLen(bs, ip + 1)
+            const lz = bs[ip + 1 + mlb] === 0x00 ? 1 : 0
+            out.push(`  Key size:  ${(ml - lz) * 8} bits`)
+          }
+        }
+      }
+      out.push(`  Use:       Public key (SPKI)`)
+
+    } else if (type === 'RSA PUBLIC KEY') {
+      // PKCS#1 public key: SEQUENCE { modulus, exponent }
+      const [, olb] = asn1ReadLen(der, 1)
+      const p = 1 + olb
+      if (der[p] === 0x02) {
+        const [ml, mlb] = asn1ReadLen(der, p + 1)
+        const lz = der[p + 1 + mlb] === 0x00 ? 1 : 0
+        out.push(`  Algorithm: RSA`)
+        out.push(`  Key size:  ${(ml - lz) * 8} bits`)
+      }
+      out.push(`  Use:       Public key (PKCS#1)`)
+
+    } else if (type === 'CERTIFICATE') {
+      // TBSCertificate: SEQUENCE(outer) → SEQUENCE(TBS) → [version] serial sigAlg issuer validity subject pubKeyInfo
+      const [, olb] = asn1ReadLen(der, 1)
+      let p = 1 + olb
+      if (der[p] === 0x30) {
+        const [tbsl, tbslb] = asn1ReadLen(der, p + 1)
+        const tbs = der.slice(p + 1 + tbslb, p + 1 + tbslb + tbsl)
+        let tp = 0
+        if (tbs[tp] === 0xa0) { // version
+          const [vl, vlb] = asn1ReadLen(tbs, tp + 1)
+          out.push(`  Version:   v${tbs[tp + 1 + vlb + 2] + 1}`)
+          tp += 1 + vlb + vl
+        }
+        if (tbs[tp] === 0x02) { // serial
+          const [sl, slb] = asn1ReadLen(tbs, tp + 1)
+          out.push(`  Serial:    ${bytesToHex(tbs.slice(tp + 1 + slb, tp + 1 + slb + sl)).toUpperCase()}`)
+          tp = asn1SkipNode(tbs, tp)
+        }
+        if (tbs[tp] === 0x30) { // signature algorithm
+          const [al, alb] = asn1ReadLen(tbs, tp + 1)
+          out.push(`  Signature: ${asn1ReadOid(tbs.slice(tp + 1 + alb, tp + 1 + alb + al), 0)}`)
+          tp = asn1SkipNode(tbs, tp)
+        }
+        if (tbs[tp] === 0x30) { // issuer
+          const [il, ilb] = asn1ReadLen(tbs, tp + 1)
+          out.push(`  Issuer:    ${asn1ParseDN(tbs.slice(tp + 1 + ilb, tp + 1 + ilb + il))}`)
+          tp = asn1SkipNode(tbs, tp)
+        }
+        if (tbs[tp] === 0x30) { // validity
+          const [vl, vlb] = asn1ReadLen(tbs, tp + 1)
+          const val = tbs.slice(tp + 1 + vlb, tp + 1 + vlb + vl)
+          let vp = 0
+          const [nb1, nblb] = asn1ReadLen(val, vp + 1)
+          const nbStr = asn1ParseTime(val[vp], val.slice(vp + 1 + nblb, vp + 1 + nblb + nb1))
+          vp = asn1SkipNode(val, vp)
+          const [na1, nalb] = asn1ReadLen(val, vp + 1)
+          const naStr = asn1ParseTime(val[vp], val.slice(vp + 1 + nalb, vp + 1 + nalb + na1))
+          out.push(`  Not Before: ${nbStr}`)
+          out.push(`  Not After:  ${naStr}`)
+          try {
+            const naMs = new Date(naStr.replace(' UTC', 'Z')).getTime()
+            const diff = Math.floor((naMs - Date.now()) / 86400000)
+            out.push(diff < 0 ? `  ⚠ EXPIRED ${Math.abs(diff)} days ago` : `  Expires in: ${diff} days`)
+          } catch { /* ignore */ }
+          tp = asn1SkipNode(tbs, tp)
+        }
+        if (tbs[tp] === 0x30) { // subject
+          const [sl, slb] = asn1ReadLen(tbs, tp + 1)
+          out.push(`  Subject:   ${asn1ParseDN(tbs.slice(tp + 1 + slb, tp + 1 + slb + sl))}`)
+          tp = asn1SkipNode(tbs, tp)
+        }
+        if (tbs[tp] === 0x30) { // SubjectPublicKeyInfo
+          const [pkl, pklb] = asn1ReadLen(tbs, tp + 1)
+          const pki = tbs.slice(tp + 1 + pklb, tp + 1 + pklb + pkl)
+          if (pki[0] === 0x30) {
+            const [al, alb] = asn1ReadLen(pki, 1)
+            const alg = asn1ReadOid(pki.slice(1 + alb, 1 + alb + al), 0)
+            const bsPos = 1 + alb + al
+            if (pki[bsPos] === 0x03 && alg === 'RSA') {
+              const [bsl, bslb] = asn1ReadLen(pki, bsPos + 1)
+              const bs = pki.slice(bsPos + 1 + bslb + 1, bsPos + 1 + bslb + bsl)
+              if (bs[0] === 0x30 && bs[2] === 0x02) {
+                const [, islb] = asn1ReadLen(bs, 1); let ip = 1 + islb
+                const [ml, mlb] = asn1ReadLen(bs, ip + 1)
+                const lz = bs[ip + 1 + mlb] === 0x00 ? 1 : 0
+                out.push(`  Public Key: RSA ${(ml - lz) * 8} bits`)
+              } else out.push(`  Public Key: ${alg}`)
+            } else out.push(`  Public Key: ${alg}`)
+          }
+        }
+      }
+      out.push(`  Use:       X.509 Certificate`)
+
+    } else if (type === 'CERTIFICATE REQUEST') {
+      const [, olb] = asn1ReadLen(der, 1)
+      let p = 1 + olb
+      if (der[p] === 0x30) {
+        const [cil, cilb] = asn1ReadLen(der, p + 1)
+        const ci = der.slice(p + 1 + cilb, p + 1 + cilb + cil)
+        let cp = 0
+        if (ci[cp] === 0x02) cp = asn1SkipNode(ci, cp) // version
+        if (ci[cp] === 0x30) {
+          const [sl, slb] = asn1ReadLen(ci, cp + 1)
+          out.push(`  Subject:   ${asn1ParseDN(ci.slice(cp + 1 + slb, cp + 1 + slb + sl))}`)
+        }
+      }
+      out.push(`  Use:       Certificate Signing Request (CSR)`)
+
+    } else {
+      out.push(`  (no detailed parser for this block type)`)
+    }
+  } catch (e) {
+    out.push(`  ⚠ ASN.1 parse error: ${e instanceof Error ? e.message : 'unexpected structure'}`)
+  }
+  return out
+}
+
+function pemInspect(pem: string): string {
+  const blocks = pemDecodeBlocks(pem)
+  if (!blocks.length) return 'No PEM block detected.\nExpected: -----BEGIN <TYPE>-----\\n<base64>\\n-----END <TYPE>-----'
+  const sep = '\n' + '─'.repeat(52) + '\n'
+  return blocks.map(b => analyzeBlock(b.type, b.der).join('\n')).join(sep)
 }
 
 function jksInspect(bytes: Uint8Array, name?: string): string {
