@@ -1,17 +1,5 @@
-export namespace main {
-	
-	export class App {
-	
-	
-	    static createFrom(source: any = {}) {
-	        return new App(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	
-	    }
-	}
+export namespace browser {
+
 	export class BreakpointInfo {
 	    id: string;
 	    scriptUrl: string;
@@ -19,11 +7,11 @@ export namespace main {
 	    lineNumber: number;
 	    columnNumber: number;
 	    condition?: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new BreakpointInfo(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -41,11 +29,11 @@ export namespace main {
 	    scriptId: string;
 	    lineNumber: number;
 	    columnNumber: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new CallFrame(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -61,63 +49,17 @@ export namespace main {
 	    type: string;
 	    text: string;
 	    timestamp: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ConsoleEntry(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
 	        this.type = source["type"];
 	        this.text = source["text"];
 	        this.timestamp = source["timestamp"];
-	    }
-	}
-	export class ContainerStatus {
-	    id: string;
-	    name: string;
-	    image: string;
-	    state: string;
-	    status: string;
-	    ports: string;
-	    running: boolean;
-	
-	    static createFrom(source: any = {}) {
-	        return new ContainerStatus(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.name = source["name"];
-	        this.image = source["image"];
-	        this.state = source["state"];
-	        this.status = source["status"];
-	        this.ports = source["ports"];
-	        this.running = source["running"];
-	    }
-	}
-	export class ContrastResult {
-	    pair: string;
-	    ratio: number;
-	    aaNormal: boolean;
-	    aaLarge: boolean;
-	    aaaNormal: boolean;
-	    level: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new ContrastResult(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.pair = source["pair"];
-	        this.ratio = source["ratio"];
-	        this.aaNormal = source["aaNormal"];
-	        this.aaLarge = source["aaLarge"];
-	        this.aaaNormal = source["aaaNormal"];
-	        this.level = source["level"];
 	    }
 	}
 	export class CookieEntry {
@@ -130,11 +72,11 @@ export namespace main {
 	    httpOnly: boolean;
 	    secure: boolean;
 	    sameSite: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new CookieEntry(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.name = source["name"];
@@ -151,11 +93,11 @@ export namespace main {
 	export class DOMBreakpointInfo {
 	    nodeId: number;
 	    type: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new DOMBreakpointInfo(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.nodeId = source["nodeId"];
@@ -171,11 +113,11 @@ export namespace main {
 	    attributes: string[];
 	    childCount: number;
 	    children?: DOMNode[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new DOMNode(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.nodeId = source["nodeId"];
@@ -187,7 +129,7 @@ export namespace main {
 	        this.childCount = source["childCount"];
 	        this.children = this.convertValues(source["children"], DOMNode);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -215,11 +157,11 @@ export namespace main {
 	    devtoolsFrontendUrl: string;
 	    faviconUrl: string;
 	    attached: boolean;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new DebugTarget(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -238,11 +180,11 @@ export namespace main {
 	    browserName: string;
 	    version: string;
 	    targets: DebugTarget[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new DebugEndpoint(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.port = source["port"];
@@ -251,7 +193,7 @@ export namespace main {
 	        this.version = source["version"];
 	        this.targets = this.convertValues(source["targets"], DebugTarget);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -283,11 +225,11 @@ export namespace main {
 	    duration: number;
 	    size: number;
 	    completed: boolean;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new DebugNetworkEntry(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -309,11 +251,11 @@ export namespace main {
 	    port: number;
 	    profileDir: string;
 	    browserPid: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new DebugStatus(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.connected = source["connected"];
@@ -322,17 +264,170 @@ export namespace main {
 	        this.browserPid = source["browserPid"];
 	    }
 	}
-	
+
+	export class PausedState {
+	    paused: boolean;
+	    reason: string;
+	    callFrames: CallFrame[];
+	    scriptUrl: string;
+	    scriptId: string;
+	    lineNumber: number;
+
+	    static createFrom(source: any = {}) {
+	        return new PausedState(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.paused = source["paused"];
+	        this.reason = source["reason"];
+	        this.callFrames = this.convertValues(source["callFrames"], CallFrame);
+	        this.scriptUrl = source["scriptUrl"];
+	        this.scriptId = source["scriptId"];
+	        this.lineNumber = source["lineNumber"];
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ScriptInfo {
+	    scriptId: string;
+	    url: string;
+	    startLine: number;
+	    endLine: number;
+	    executionContextId: number;
+	    hash: string;
+
+	    static createFrom(source: any = {}) {
+	        return new ScriptInfo(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.scriptId = source["scriptId"];
+	        this.url = source["url"];
+	        this.startLine = source["startLine"];
+	        this.endLine = source["endLine"];
+	        this.executionContextId = source["executionContextId"];
+	        this.hash = source["hash"];
+	    }
+	}
+	export class SourceFileInfo {
+	    id: string;
+	    url: string;
+	    type: string;
+	    mimeType: string;
+	    scriptId?: string;
+	    frameId?: string;
+	    startLine: number;
+	    endLine: number;
+	    canSetBreakpoint: boolean;
+	    fromDebugger: boolean;
+
+	    static createFrom(source: any = {}) {
+	        return new SourceFileInfo(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.url = source["url"];
+	        this.type = source["type"];
+	        this.mimeType = source["mimeType"];
+	        this.scriptId = source["scriptId"];
+	        this.frameId = source["frameId"];
+	        this.startLine = source["startLine"];
+	        this.endLine = source["endLine"];
+	        this.canSetBreakpoint = source["canSetBreakpoint"];
+	        this.fromDebugger = source["fromDebugger"];
+	    }
+	}
+	export class StorageItem {
+	    key: string;
+	    value: string;
+
+	    static createFrom(source: any = {}) {
+	        return new StorageItem(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
+	        this.value = source["value"];
+	    }
+	}
+	export class ThrottleProfile {
+	    name: string;
+	    downloadKbps: number;
+	    uploadKbps: number;
+	    latencyMs: number;
+
+	    static createFrom(source: any = {}) {
+	        return new ThrottleProfile(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.downloadKbps = source["downloadKbps"];
+	        this.uploadKbps = source["uploadKbps"];
+	        this.latencyMs = source["latencyMs"];
+	    }
+	}
+
+}
+
+export namespace docker {
+
+	export class ContainerStatus {
+	    id: string;
+	    name: string;
+	    image: string;
+	    state: string;
+	    status: string;
+	    ports: string;
+	    running: boolean;
+
+	    static createFrom(source: any = {}) {
+	        return new ContainerStatus(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.image = source["image"];
+	        this.state = source["state"];
+	        this.status = source["status"];
+	        this.ports = source["ports"];
+	        this.running = source["running"];
+	    }
+	}
 	export class HealthCheck {
 	    test: string[];
 	    interval: string;
 	    timeout: string;
 	    retries: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new HealthCheck(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.test = source["test"];
@@ -351,11 +446,11 @@ export namespace main {
 	    restart?: string;
 	    healthCheck?: HealthCheck;
 	    networks?: string[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new DockerService(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.image = source["image"];
@@ -368,7 +463,7 @@ export namespace main {
 	        this.healthCheck = this.convertValues(source["healthCheck"], HealthCheck);
 	        this.networks = source["networks"];
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -387,15 +482,168 @@ export namespace main {
 		    return a;
 		}
 	}
+
+	export class LabInfo {
+	    projectName: string;
+	    status: string;
+	    configFiles: string;
+
+	    static createFrom(source: any = {}) {
+	        return new LabInfo(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.projectName = source["projectName"];
+	        this.status = source["status"];
+	        this.configFiles = source["configFiles"];
+	    }
+	}
+	export class LabOutput {
+	    composeContent: string;
+	    envContent: string;
+	    readmeContent: string;
+
+	    static createFrom(source: any = {}) {
+	        return new LabOutput(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.composeContent = source["composeContent"];
+	        this.envContent = source["envContent"];
+	        this.readmeContent = source["readmeContent"];
+	    }
+	}
+	export class LabRunResult {
+	    projectName: string;
+	    dir: string;
+	    ids: string[];
+	    output: string;
+
+	    static createFrom(source: any = {}) {
+	        return new LabRunResult(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.projectName = source["projectName"];
+	        this.dir = source["dir"];
+	        this.ids = source["ids"];
+	        this.output = source["output"];
+	    }
+	}
+	export class PresetDef {
+	    id: string;
+	    name: string;
+	    description: string;
+	    tag: string;
+	    services: Record<string, DockerService>;
+	    volumes?: string[];
+	    networks?: string[];
+	    envVars: Record<string, string>;
+	    readmeIntro: string;
+	    readmeSteps: string[];
+
+	    static createFrom(source: any = {}) {
+	        return new PresetDef(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.tag = source["tag"];
+	        this.services = this.convertValues(source["services"], DockerService, true);
+	        this.volumes = source["volumes"];
+	        this.networks = source["networks"];
+	        this.envVars = source["envVars"];
+	        this.readmeIntro = source["readmeIntro"];
+	        this.readmeSteps = source["readmeSteps"];
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+}
+
+export namespace main {
+
+	export class App {
+
+
+	    static createFrom(source: any = {}) {
+	        return new App(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+
+	    }
+	}
+	export class LogFileEntry {
+	    name: string;
+	    size: number;
+	    modTime: string;
+
+	    static createFrom(source: any = {}) {
+	        return new LogFileEntry(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.size = source["size"];
+	        this.modTime = source["modTime"];
+	    }
+	}
+	export class StorageEntry {
+	    bucket: string;
+	    key: string;
+	    value: string;
+
+	    static createFrom(source: any = {}) {
+	        return new StorageEntry(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.bucket = source["bucket"];
+	        this.key = source["key"];
+	        this.value = source["value"];
+	    }
+	}
+
+}
+
+export namespace plugins {
+
 	export class ExecRequest {
 	    pluginId: string;
 	    function: string;
 	    args: Record<string, any>;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ExecRequest(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.pluginId = source["pluginId"];
@@ -409,11 +657,11 @@ export namespace main {
 	    error?: string;
 	    memUsed: number;
 	    timeMs: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ExecResult(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.success = source["success"];
@@ -423,128 +671,21 @@ export namespace main {
 	        this.timeMs = source["timeMs"];
 	    }
 	}
-	
 	export class HookResult {
 	    modified: boolean;
 	    data?: Record<string, any>;
 	    error?: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new HookResult(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.modified = source["modified"];
 	        this.data = source["data"];
 	        this.error = source["error"];
 	    }
-	}
-	export class LabInfo {
-	    projectName: string;
-	    status: string;
-	    configFiles: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new LabInfo(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.projectName = source["projectName"];
-	        this.status = source["status"];
-	        this.configFiles = source["configFiles"];
-	    }
-	}
-	export class LabOutput {
-	    composeContent: string;
-	    envContent: string;
-	    readmeContent: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new LabOutput(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.composeContent = source["composeContent"];
-	        this.envContent = source["envContent"];
-	        this.readmeContent = source["readmeContent"];
-	    }
-	}
-	export class LabRunResult {
-	    projectName: string;
-	    dir: string;
-	    ids: string[];
-	    output: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new LabRunResult(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.projectName = source["projectName"];
-	        this.dir = source["dir"];
-	        this.ids = source["ids"];
-	        this.output = source["output"];
-	    }
-	}
-	export class LogFileEntry {
-	    name: string;
-	    size: number;
-	    modTime: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new LogFileEntry(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.name = source["name"];
-	        this.size = source["size"];
-	        this.modTime = source["modTime"];
-	    }
-	}
-	export class PausedState {
-	    paused: boolean;
-	    reason: string;
-	    callFrames: CallFrame[];
-	    scriptUrl: string;
-	    scriptId: string;
-	    lineNumber: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new PausedState(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.paused = source["paused"];
-	        this.reason = source["reason"];
-	        this.callFrames = this.convertValues(source["callFrames"], CallFrame);
-	        this.scriptUrl = source["scriptUrl"];
-	        this.scriptId = source["scriptId"];
-	        this.lineNumber = source["lineNumber"];
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
 	}
 	export class PluginAction {
 	    id: string;
@@ -567,11 +708,11 @@ export namespace main {
 	export class PluginEvent {
 	    type: string;
 	    payload: Record<string, any>;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new PluginEvent(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.type = source["type"];
@@ -581,11 +722,11 @@ export namespace main {
 	export class PluginHook {
 	    event: string;
 	    handler: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new PluginHook(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.event = source["event"];
@@ -599,11 +740,11 @@ export namespace main {
 	    default: string;
 	    options?: string[];
 	    description: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new PluginSetting(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.key = source["key"];
@@ -631,11 +772,11 @@ export namespace main {
 	    icon: string;
 	    ui_slots?: string[];
 	    actions?: PluginAction[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new PluginManifest(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -655,7 +796,7 @@ export namespace main {
 	        this.ui_slots = source["ui_slots"];
 	        this.actions = this.convertValues(source["actions"], PluginAction);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -681,11 +822,11 @@ export namespace main {
 	    installDir: string;
 	    installedAt: string;
 	    error?: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new PluginInstance(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.manifest = this.convertValues(source["manifest"], PluginManifest);
@@ -695,7 +836,7 @@ export namespace main {
 	        this.installedAt = source["installedAt"];
 	        this.error = source["error"];
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -714,17 +855,17 @@ export namespace main {
 		    return a;
 		}
 	}
-	
+
 	export class PluginSandbox {
 	    pluginId: string;
 	    memory: number;
 	    maxMemory: number;
 	    running: boolean;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new PluginSandbox(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.pluginId = source["pluginId"];
@@ -733,84 +874,18 @@ export namespace main {
 	        this.running = source["running"];
 	    }
 	}
-	
-	export class PresetDef {
-	    id: string;
-	    name: string;
-	    description: string;
-	    tag: string;
-	    services: Record<string, DockerService>;
-	    volumes?: string[];
-	    networks?: string[];
-	    envVars: Record<string, string>;
-	    readmeIntro: string;
-	    readmeSteps: string[];
-	
-	    static createFrom(source: any = {}) {
-	        return new PresetDef(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.name = source["name"];
-	        this.description = source["description"];
-	        this.tag = source["tag"];
-	        this.services = this.convertValues(source["services"], DockerService, true);
-	        this.volumes = source["volumes"];
-	        this.networks = source["networks"];
-	        this.envVars = source["envVars"];
-	        this.readmeIntro = source["readmeIntro"];
-	        this.readmeSteps = source["readmeSteps"];
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
-	export class RuntimeInfo {
-	    available: boolean;
-	    path: string;
-	    version: string;
-	    source: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new RuntimeInfo(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.available = source["available"];
-	        this.path = source["path"];
-	        this.version = source["version"];
-	        this.source = source["source"];
-	    }
-	}
+
 	export class RuntimeStatus {
 	    available: boolean;
 	    path: string;
 	    version: string;
 	    embedded: boolean;
 	    venvReady: boolean;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new RuntimeStatus(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.available = source["available"];
@@ -820,88 +895,50 @@ export namespace main {
 	        this.venvReady = source["venvReady"];
 	    }
 	}
-	export class ScriptInfo {
-	    scriptId: string;
-	    url: string;
-	    startLine: number;
-	    endLine: number;
-	    executionContextId: number;
-	    hash: string;
-	
+
+}
+
+export namespace python {
+
+	export class RuntimeInfo {
+	    available: boolean;
+	    path: string;
+	    version: string;
+	    source: string;
+
 	    static createFrom(source: any = {}) {
-	        return new ScriptInfo(source);
+	        return new RuntimeInfo(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.scriptId = source["scriptId"];
-	        this.url = source["url"];
-	        this.startLine = source["startLine"];
-	        this.endLine = source["endLine"];
-	        this.executionContextId = source["executionContextId"];
-	        this.hash = source["hash"];
+	        this.available = source["available"];
+	        this.path = source["path"];
+	        this.version = source["version"];
+	        this.source = source["source"];
 	    }
 	}
-	export class SourceFileInfo {
-	    id: string;
-	    url: string;
-	    type: string;
-	    mimeType: string;
-	    scriptId?: string;
-	    frameId?: string;
-	    startLine: number;
-	    endLine: number;
-	    canSetBreakpoint: boolean;
-	    fromDebugger: boolean;
-	
+	export class WorkerLimits {
+	    timeout_ms: number;
+	    memory_mb: number;
+	    max_workers: number;
+
 	    static createFrom(source: any = {}) {
-	        return new SourceFileInfo(source);
+	        return new WorkerLimits(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.url = source["url"];
-	        this.type = source["type"];
-	        this.mimeType = source["mimeType"];
-	        this.scriptId = source["scriptId"];
-	        this.frameId = source["frameId"];
-	        this.startLine = source["startLine"];
-	        this.endLine = source["endLine"];
-	        this.canSetBreakpoint = source["canSetBreakpoint"];
-	        this.fromDebugger = source["fromDebugger"];
+	        this.timeout_ms = source["timeout_ms"];
+	        this.memory_mb = source["memory_mb"];
+	        this.max_workers = source["max_workers"];
 	    }
 	}
-	export class StorageEntry {
-	    bucket: string;
-	    key: string;
-	    value: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new StorageEntry(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.bucket = source["bucket"];
-	        this.key = source["key"];
-	        this.value = source["value"];
-	    }
-	}
-	export class StorageItem {
-	    key: string;
-	    value: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new StorageItem(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.key = source["key"];
-	        this.value = source["value"];
-	    }
-	}
+
+}
+
+export namespace templates {
+
 	export class Template {
 	    id: string;
 	    name: string;
@@ -915,11 +952,11 @@ export namespace main {
 	    downloads: number;
 	    createdAt: string;
 	    updatedAt: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Template(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -941,11 +978,11 @@ export namespace main {
 	    name: string;
 	    icon: string;
 	    count: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new TemplateCategory(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -954,15 +991,42 @@ export namespace main {
 	        this.count = source["count"];
 	    }
 	}
+
+}
+
+export namespace themes {
+
+	export class ContrastResult {
+	    pair: string;
+	    ratio: number;
+	    aaNormal: boolean;
+	    aaLarge: boolean;
+	    aaaNormal: boolean;
+	    level: string;
+
+	    static createFrom(source: any = {}) {
+	        return new ContrastResult(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.pair = source["pair"];
+	        this.ratio = source["ratio"];
+	        this.aaNormal = source["aaNormal"];
+	        this.aaLarge = source["aaLarge"];
+	        this.aaaNormal = source["aaaNormal"];
+	        this.level = source["level"];
+	    }
+	}
 	export class ThemeFonts {
 	    sans: string;
 	    mono: string;
 	    serif: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ThemeFonts(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.sans = source["sans"];
@@ -984,11 +1048,11 @@ export namespace main {
 	    meta: Record<string, string>;
 	    createdAt: string;
 	    updatedAt: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Theme(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -1005,7 +1069,7 @@ export namespace main {
 	        this.createdAt = source["createdAt"];
 	        this.updatedAt = source["updatedAt"];
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -1024,55 +1088,21 @@ export namespace main {
 		    return a;
 		}
 	}
-	
+
 	export class ThemeValidationResult {
 	    valid: boolean;
 	    errors: string[];
 	    warnings: string[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ThemeValidationResult(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.valid = source["valid"];
 	        this.errors = source["errors"];
 	        this.warnings = source["warnings"];
-	    }
-	}
-	export class ThrottleProfile {
-	    name: string;
-	    downloadKbps: number;
-	    uploadKbps: number;
-	    latencyMs: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new ThrottleProfile(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.name = source["name"];
-	        this.downloadKbps = source["downloadKbps"];
-	        this.uploadKbps = source["uploadKbps"];
-	        this.latencyMs = source["latencyMs"];
-	    }
-	}
-	export class WorkerLimits {
-	    timeout_ms: number;
-	    memory_mb: number;
-	    max_workers: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new WorkerLimits(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.timeout_ms = source["timeout_ms"];
-	        this.memory_mb = source["memory_mb"];
-	        this.max_workers = source["max_workers"];
 	    }
 	}
 
