@@ -51,18 +51,23 @@ export function EnvBar({
     <>
       <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border-1">
         <span className="text-[10px] text-text-4 uppercase tracking-wider">Env</span>
-        <select
-          value={activeEnvId ?? ''}
-          onChange={(e) => onSetActive(e.target.value || null)}
-          className="h-6 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 focus:border-accent outline-none"
-        >
-          <option value="">No Environment</option>
-          {environments.map((env) => (
-            <option key={env.id} value={env.id}>
-              {env.name}
-            </option>
-          ))}
-        </select>
+        <div className="relative flex items-center">
+          <select
+            value={activeEnvId ?? ''}
+            onChange={(e) => onSetActive(e.target.value || null)}
+            className="h-6 pl-2 pr-6 appearance-none bg-surface-2 border border-border-2 rounded text-xs text-text-1 focus:border-accent outline-none cursor-pointer"
+          >
+            <option value="">No Environment</option>
+            {environments.map((env) => (
+              <option key={env.id} value={env.id}>
+                {env.name}
+              </option>
+            ))}
+          </select>
+          <svg className="pointer-events-none absolute right-1.5 text-text-4" width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+            <path d="M5 6.5L1.5 3h7L5 6.5z" />
+          </svg>
+        </div>
 
         {adding ? (
           <div className="flex items-center gap-1">
