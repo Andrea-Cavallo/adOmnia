@@ -1,5 +1,6 @@
-import { DialogOverlay, DialogContent, DialogHeader, DialogBody, DialogFooter } from './dialog'
-import { Button } from './button'
+import { useEffect } from 'react'
+import { Trash2, AlertTriangle } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface ConfirmDialogProps {
   open: boolean
@@ -22,31 +23,79 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const isDanger = variant === 'danger'
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onCancel() }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [open, onCancel])
+
+  if (!open) return null
+
   return (
-    <DialogOverlay open={open} onClose={onCancel}>
-      <DialogContent size="sm">
-        <DialogHeader>
-          <h2 className="text-sm font-semibold text-text-1">{title}</h2>
-        </DialogHeader>
-        <DialogBody>
-          <p className="text-sm text-text-2">{message}</p>
-        </DialogBody>
-        <DialogFooter>
-          <Button variant="ghost" size="sm" onClick={onCancel}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-[2px] animate-in fade-in duration-150"
+      onClick={onCancel}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="w-[320px] overflow-hidden rounded-xl border border-border-2 bg-surface-1 shadow-2xl animate-in zoom-in-95 duration-150"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Top accent line */}
+        <div className={cn('h-px', isDanger ? 'bg-status-err/60' : 'bg-accent/60')} />
+
+        <div className="px-5 pt-5 pb-4">
+          {/* Icon badge */}
+          <div
+            className={cn(
+              'mb-4 flex h-9 w-9 items-center justify-center rounded-full ring-1',
+              isDanger
+                ? 'bg-status-err/10 ring-status-err/20'
+                : 'bg-accent/10 ring-accent/20'
+            )}
+          >
+            {isDanger
+              ? <Trash2 size={16} className="text-status-err" />
+              : <AlertTriangle size={16} className="text-accent" />
+            }
+          </div>
+
+          {/* Title */}
+          <h2 className="mb-1.5 text-[13px] font-semibold leading-snug text-text-1">
+            {title}
+          </h2>
+
+          {/* Body */}
+          <p className="text-xs leading-relaxed text-text-3">
+            {message}
+          </p>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center justify-end gap-2 border-t border-border-1 bg-surface-0 px-4 py-3">
+          <button
+            onClick={onCancel}
+            className="h-7 rounded px-3 text-xs font-medium text-text-2 transition-colors hover:bg-surface-3 hover:text-text-1"
+          >
             {cancelLabel}
-          </Button>
-          <Button
-            variant={variant === 'danger' ? 'destructive' : 'default'}
-            size="sm"
-            onClick={() => {
-              onConfirm()
-              onCancel()
-            }}
+          </button>
+          <button
+            onClick={() => { onConfirm(); onCancel() }}
+            className={cn(
+              'h-7 rounded px-3 text-xs font-medium text-white transition-colors',
+              isDanger
+                ? 'bg-status-err hover:bg-status-err/85'
+                : 'bg-accent hover:bg-accent-light'
+            )}
           >
             {confirmLabel}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </DialogOverlay>
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }

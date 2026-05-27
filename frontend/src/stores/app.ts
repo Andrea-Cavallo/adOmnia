@@ -4,6 +4,7 @@ import type { RoutedToolFile } from '@/lib/globalFileRouter'
 
 export type RailItem =
   | 'collections'
+  | 'scenarios'
   | 'history'
   | 'kafka'
   | 'broker'

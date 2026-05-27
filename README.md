@@ -34,6 +34,7 @@ A desktop toolbox for API development, testing, and debugging. REST, SOAP, gRPC,
 | Area | What you get |
 |---|---|
 | **API Workspace** | Collections, environments, variables, auth, scripts, assertions, cURL & OpenAPI import |
+| **Daily Scenarios** | Configure four quick-access steps from any tools you use in a repeatable daily verification routine |
 | **Protocols** | SOAP/WSDL Studio, gRPC, WebSocket, SSE |
 | **Brokers** | Kafka, RabbitMQ, MQTT, Redis, NATS |
 | **Simulation** | Mock server, proxy/interceptor, record & replay, Docker Lab |

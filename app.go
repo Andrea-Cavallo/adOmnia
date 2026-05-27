@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -12,13 +13,20 @@ import (
 	"strings"
 	"time"
 
+	"adomnia/internal/devlog"
+	"adomnia/internal/httpexec"
+	"adomnia/internal/proxy"
+	"adomnia/internal/sidecar"
+	"adomnia/internal/sse"
+	"adomnia/internal/storage"
+	"adomnia/internal/vault"
+	"adomnia/internal/ws"
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
-	bolt "go.etcd.io/bbolt"
 )
 
 type App struct {
 	ctx          context.Context
-	store        *bolt.DB
+	serverPort   int
 	browserDebug *BrowserDebug
 }
 
@@ -27,47 +35,50 @@ func NewApp() *App {
 }
 
 func (a *App) OnStartup(ctx context.Context) {
+	devlog.Init(dataDir())
 	a.ctx = ctx
-	dlogInfo("OnStartup", "avvio applicazione in corso", nil)
-	if err := openStore(); err != nil {
+	devlog.Info("OnStartup", "avvio applicazione in corso", nil)
+	if err := storage.Open(dataDir()); err != nil {
 		log.Printf("[app] WARNING: could not open bbolt DB: %v", err)
-		dlogErr("OnStartup", "apertura bbolt DB fallita", err, nil)
+		devlog.Err("OnStartup", "apertura bbolt DB fallita", err, nil)
 	} else {
-		a.store = storeDB
-		dlog("OnStartup", "bbolt DB aperto con successo", nil)
+		devlog.Log("OnStartup", "bbolt DB aperto con successo", nil)
 	}
 	if globalPluginManager != nil {
 		if err := globalPluginManager.Init(); err != nil {
 			log.Printf("[app] WARNING: could not initialize plugins: %v", err)
-			dlogErr("OnStartup", "inizializzazione plugin fallita", err, nil)
+			devlog.Err("OnStartup", "inizializzazione plugin fallita", err, nil)
 		} else {
-			dlog("OnStartup", "plugin manager inizializzato", nil)
+			devlog.Log("OnStartup", "plugin manager inizializzato", nil)
 		}
 	}
-	initSidecarToken()
-	dlog("OnStartup", "sidecar token generato", nil)
-	initProxyRules()
-	dlog("OnStartup", "regole proxy inizializzate", nil)
-	autoLoadCA()
-	dlog("OnStartup", "CA proxy caricato", nil)
-	startHTTPServer()
+	sidecar.InitToken()
+	devlog.Log("OnStartup", "sidecar token generato", nil)
+	proxy.Configure(dataDir(), func(data []byte) error {
+		return storage.Put("proxy", "rules", data)
+	})
+	proxy.InitRules()
+	devlog.Log("OnStartup", "regole proxy inizializzate", nil)
+	proxy.AutoLoadCA()
+	devlog.Log("OnStartup", "CA proxy caricato", nil)
+	a.serverPort = sidecar.Start()
 	if globalPythonBridge != nil {
 		globalPythonBridge.Init(ctx, a)
 	}
 	if globalPluginManager != nil {
 		globalPluginManager.FireEvent(PluginEvent{Type: "onStartup", Payload: map[string]interface{}{}})
 	}
-	dlogInfo("OnStartup", "avvio completato", map[string]any{"port": serverPort})
+	devlog.Info("OnStartup", "avvio completato", map[string]any{"port": a.serverPort})
 	log.Println("[app] startup complete")
 }
 
 func (a *App) GetServerPort() int {
-	dlog("GetServerPort", "porta HTTP sidecar richiesta dal frontend", map[string]any{"port": serverPort})
-	return serverPort
+	devlog.Log("GetServerPort", "porta HTTP sidecar richiesta dal frontend", map[string]any{"port": a.serverPort})
+	return a.serverPort
 }
 
 func (a *App) GetSidecarToken() string {
-	return sidecarToken
+	return sidecar.Token()
 }
 
 func (a *App) SelectFolder(title string) (string, error) {
@@ -76,23 +87,23 @@ func (a *App) SelectFolder(title string) (string, error) {
 	}
 	path, err := wailsRuntime.OpenDirectoryDialog(a.ctx, wailsRuntime.OpenDialogOptions{Title: title})
 	if err != nil {
-		dlogErr("SelectFolder", "selezione cartella fallita", err, map[string]any{"title": title})
+		devlog.Err("SelectFolder", "selezione cartella fallita", err, map[string]any{"title": title})
 		return "", err
 	}
-	dlog("SelectFolder", "cartella selezionata", map[string]any{"path": path})
+	devlog.Log("SelectFolder", "cartella selezionata", map[string]any{"path": path})
 	return path, nil
 }
 
 func (a *App) GetDevLogs() string {
-	path := currentDevLogPath()
+	path := devlog.CurrentPath()
 	file, err := os.Open(path)
 	if err != nil {
-		dlogErr("GetDevLogs", "lettura file dev logs fallita", err, map[string]any{"path": path})
+		devlog.Err("GetDevLogs", "lettura file dev logs fallita", err, map[string]any{"path": path})
 		return "[]"
 	}
 	defer file.Close()
 
-	entries := make([]devLogEntry, 0, 256)
+	entries := make([]devlog.Entry, 0, 256)
 	scanner := bufio.NewScanner(file)
 	buf := make([]byte, 0, 64*1024)
 	scanner.Buffer(buf, 1024*1024)
@@ -101,7 +112,7 @@ func (a *App) GetDevLogs() string {
 		if line == "" {
 			continue
 		}
-		var entry devLogEntry
+		var entry devlog.Entry
 		if err := json.Unmarshal([]byte(line), &entry); err == nil {
 			if entry.Source == "" {
 				entry.Source = "backend"
@@ -110,27 +121,22 @@ func (a *App) GetDevLogs() string {
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		dlogErr("GetDevLogs", "scansione file dev logs fallita", err, map[string]any{"path": path})
+		devlog.Err("GetDevLogs", "scansione file dev logs fallita", err, map[string]any{"path": path})
 	}
 	if len(entries) > 2000 {
 		entries = entries[len(entries)-2000:]
 	}
 	out, err := json.Marshal(entries)
 	if err != nil {
-		dlogErr("GetDevLogs", "serializzazione dev logs fallita", err, nil)
+		devlog.Err("GetDevLogs", "serializzazione dev logs fallita", err, nil)
 		return "[]"
 	}
 	return string(out)
 }
 
 func (a *App) ClearDevLogs() {
-	devLogMu.Lock()
-	if devLogFile != nil {
-		_ = devLogFile.Truncate(0)
-		_, _ = devLogFile.Seek(0, 0)
-	}
-	devLogMu.Unlock()
-	dlogInfo("ClearDevLogs", "dev logs puliti", nil)
+	devlog.Clear()
+	devlog.Info("ClearDevLogs", "dev logs puliti", nil)
 }
 
 func (a *App) RecordFrontendLog(level string, message string) {
@@ -138,7 +144,7 @@ func (a *App) RecordFrontendLog(level string, message string) {
 	if level == "" {
 		level = "LOG"
 	}
-	writeDevLogSource("frontend", level, "console", message, nil)
+	devlog.WriteSource("frontend", level, "console", message, nil)
 }
 
 // IsDevMode returns whether developer mode is enabled.
@@ -149,12 +155,12 @@ func (a *App) IsDevMode() bool {
 // SetDevMode enables or disables developer mode.
 func (a *App) SetDevMode(enabled bool) {
 	isDevMode = enabled
-	dlogInfo("SetDevMode", "developer mode changed", map[string]any{"enabled": enabled})
+	devlog.Info("SetDevMode", "developer mode changed", map[string]any{"enabled": enabled})
 }
 
 // OpenDevLogsFolder opens the dev logs directory in the OS file manager.
 func (a *App) OpenDevLogsFolder() {
-	logsDir := devLogDir()
+	logsDir := devlog.Dir()
 	var cmd *exec.Cmd
 	switch stdRuntime.GOOS {
 	case "darwin":
@@ -165,14 +171,14 @@ func (a *App) OpenDevLogsFolder() {
 		cmd = exec.Command("explorer", logsDir)
 	}
 	if err := cmd.Start(); err != nil {
-		dlogErr("OpenDevLogsFolder", "apertura cartella log fallita", err, map[string]any{"path": logsDir})
+		devlog.Err("OpenDevLogsFolder", "apertura cartella log fallita", err, map[string]any{"path": logsDir})
 	}
-	dlogInfo("OpenDevLogsFolder", "cartella log aperta", map[string]any{"path": logsDir})
+	devlog.Info("OpenDevLogsFolder", "cartella log aperta", map[string]any{"path": logsDir})
 }
 
 // GetVaultTimeout returns the vault auto-lock timeout in minutes.
 func (a *App) GetVaultTimeout() int {
-	return int(vaultTimeout.Minutes())
+	return vault.TimeoutMinutes()
 }
 
 // SetVaultTimeout sets the vault auto-lock timeout in minutes.
@@ -183,8 +189,8 @@ func (a *App) SetVaultTimeout(minutes int) {
 	if minutes > 120 {
 		minutes = 120
 	}
-	vaultTimeout = time.Duration(minutes) * time.Minute
-	dlogInfo("SetVaultTimeout", "vault timeout aggiornato", map[string]any{"minutes": minutes})
+	vault.SetTimeoutMinutes(minutes)
+	devlog.Info("SetVaultTimeout", "vault timeout aggiornato", map[string]any{"minutes": minutes})
 }
 
 // LogFileEntry represents a log file in the logs directory.
@@ -196,10 +202,10 @@ type LogFileEntry struct {
 
 // ListLogFiles returns the list of JSONL log files in the logs directory.
 func (a *App) ListLogFiles() []LogFileEntry {
-	dir := devLogDir()
+	dir := devlog.Dir()
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		dlogErr("ListLogFiles", "lettura cartella log fallita", err, map[string]any{"dir": dir})
+		devlog.Err("ListLogFiles", "lettura cartella log fallita", err, map[string]any{"dir": dir})
 		return nil
 	}
 
@@ -218,7 +224,7 @@ func (a *App) ListLogFiles() []LogFileEntry {
 			ModTime: info.ModTime().UTC().Format(time.RFC3339),
 		})
 	}
-	dlog("ListLogFiles", "elenco file log", map[string]any{"count": len(result)})
+	devlog.Log("ListLogFiles", "elenco file log", map[string]any{"count": len(result)})
 	return result
 }
 
@@ -227,19 +233,19 @@ func (a *App) ReadLogFile(filename string) string {
 	// Prevent path traversal
 	cleaned := filepath.Clean(filename)
 	if strings.Contains(cleaned, "..") || filepath.IsAbs(cleaned) {
-		dlogErr("ReadLogFile", "percorso file non valido", nil, map[string]any{"filename": filename})
+		devlog.Err("ReadLogFile", "percorso file non valido", nil, map[string]any{"filename": filename})
 		return "[]"
 	}
 
-	path := filepath.Join(devLogDir(), cleaned)
+	path := filepath.Join(devlog.Dir(), cleaned)
 	file, err := os.Open(path)
 	if err != nil {
-		dlogErr("ReadLogFile", "apertura file fallita", err, map[string]any{"path": path})
+		devlog.Err("ReadLogFile", "apertura file fallita", err, map[string]any{"path": path})
 		return "[]"
 	}
 	defer file.Close()
 
-	entries := make([]devLogEntry, 0, 256)
+	entries := make([]devlog.Entry, 0, 256)
 	scanner := bufio.NewScanner(file)
 	buf := make([]byte, 0, 64*1024)
 	scanner.Buffer(buf, 1024*1024)
@@ -248,7 +254,7 @@ func (a *App) ReadLogFile(filename string) string {
 		if line == "" {
 			continue
 		}
-		var entry devLogEntry
+		var entry devlog.Entry
 		if err := json.Unmarshal([]byte(line), &entry); err == nil {
 			if entry.Source == "" {
 				entry.Source = "backend"
@@ -257,25 +263,25 @@ func (a *App) ReadLogFile(filename string) string {
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		dlogErr("ReadLogFile", "scansione file fallita", err, map[string]any{"path": path})
+		devlog.Err("ReadLogFile", "scansione file fallita", err, map[string]any{"path": path})
 	}
 
 	out, err := json.Marshal(entries)
 	if err != nil {
-		dlogErr("ReadLogFile", "serializzazione fallita", err, nil)
+		devlog.Err("ReadLogFile", "serializzazione fallita", err, nil)
 		return "[]"
 	}
-	dlog("ReadLogFile", "file log letto", map[string]any{"path": cleaned, "count": len(entries)})
+	devlog.Log("ReadLogFile", "file log letto", map[string]any{"path": cleaned, "count": len(entries)})
 	return string(out)
 }
 
 func (a *App) OnDomReady(ctx context.Context) {
-	dlogInfo("OnDomReady", "DOM frontend pronto", nil)
+	devlog.Info("OnDomReady", "DOM frontend pronto", nil)
 	log.Println("[app] frontend DOM ready")
 }
 
 func (a *App) OnShutdown(ctx context.Context) {
-	dlogInfo("OnShutdown", "arresto applicazione", nil)
+	devlog.Info("OnShutdown", "arresto applicazione", nil)
 	if globalPluginManager != nil {
 		globalPluginManager.FireEvent(PluginEvent{Type: "onShutdown", Payload: map[string]interface{}{}})
 		globalPluginManager.Shutdown()
@@ -288,9 +294,95 @@ func (a *App) OnShutdown(ctx context.Context) {
 			log.Printf("[app] browser debug stop error: %v", err)
 		}
 	}
-	WsShutdown()
-	SseShutdown()
-	stopHTTPServer()
-	closeStore()
+	ws.WsShutdown()
+	sse.SseShutdown()
+	sidecar.Stop()
+	storage.Close()
 	log.Println("[app] shutdown complete")
+}
+
+// ExecuteHTTP preserves the public Wails binding while execution lives in the HTTP module.
+func (a *App) ExecuteHTTP(reqJSON string) string {
+	return httpexec.Execute(reqJSON)
+}
+
+func (a *App) GetStartupWindowChrome() string {
+	return startupWindowChrome
+}
+
+func (a *App) LoadSettings() (string, error) {
+	if storage.DB() == nil {
+		return "{}", nil
+	}
+	data, err := storage.Get(settingsBucket, settingsKey)
+	if err != nil {
+		return "{}", fmt.Errorf("failed to load settings: %w", err)
+	}
+	if data == nil {
+		return "{}", nil
+	}
+	return string(data), nil
+}
+
+func (a *App) SaveSettings(settingsJSON string) error {
+	if storage.DB() == nil {
+		return fmt.Errorf("storage not initialized")
+	}
+	if !json.Valid([]byte(settingsJSON)) {
+		return fmt.Errorf("invalid settings JSON")
+	}
+	return storage.Put(settingsBucket, settingsKey, []byte(settingsJSON))
+}
+
+type StorageEntry struct {
+	Bucket string `json:"bucket"`
+	Key    string `json:"key"`
+	Value  string `json:"value"`
+}
+
+func (a *App) StorageGet(bucket, key string) (string, error) {
+	if storage.DB() == nil {
+		return "", fmt.Errorf("storage not initialized")
+	}
+	data, err := storage.Get(bucket, key)
+	if err != nil || data == nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
+func (a *App) StoragePut(bucket, key, value string) error {
+	if storage.DB() == nil {
+		return fmt.Errorf("storage not initialized")
+	}
+	return storage.Put(bucket, key, []byte(value))
+}
+
+func (a *App) StorageDelete(bucket, key string) error {
+	if storage.DB() == nil {
+		return fmt.Errorf("storage not initialized")
+	}
+	return storage.Delete(bucket, key)
+}
+
+func (a *App) StorageList(bucket, prefix string) ([]string, error) {
+	if storage.DB() == nil {
+		return nil, fmt.Errorf("storage not initialized")
+	}
+	return storage.List(bucket, prefix)
+}
+
+func (a *App) StorageGetAll(bucket string) ([]StorageEntry, error) {
+	keys, err := a.StorageList(bucket, "")
+	if err != nil {
+		return nil, err
+	}
+	entries := make([]StorageEntry, 0, len(keys))
+	for _, key := range keys {
+		value, err := storage.Get(bucket, key)
+		if err == nil {
+			entries = append(entries, StorageEntry{Bucket: bucket, Key: key, Value: string(value)})
+		}
+	}
+	return entries, nil
 }

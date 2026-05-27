@@ -6,7 +6,7 @@ import {
   Send, LayoutList, Shield, Server, Radio, Globe, Bug, Container, Network,
   Wrench, FileText, FileCode, Database, Braces, FlaskConical, ChevronRight,
   Lock, FolderOpen, Paintbrush, LayoutTemplate, Puzzle, Settings, GitBranch,
-  Play, Zap, BarChart2, Activity, HardDrive, History,
+  Play, Zap, BarChart2, Activity, HardDrive, History, Layers,
 } from 'lucide-react'
 
 interface SubItem {
@@ -38,6 +38,7 @@ const CATEGORIES: CategoryDef[] = [
     groups: [
       { title: 'Requests', items: [
         { id: 'collections', icon: LayoutList, label: 'API Workspace' },
+        { id: 'scenarios',   icon: Layers,     label: 'Daily Scenarios' },
         { id: 'history',     icon: History,    label: 'Request History' },
         { id: 'runner',      icon: Play,       label: 'Runner' },
         { id: 'flows',       icon: GitBranch,  label: 'Flows' },

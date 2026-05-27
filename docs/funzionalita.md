@@ -154,6 +154,18 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 
 ---
 
+### A8. Daily Scenarios (Scrivania Operativa)
+
+| # | Funzionalita | Descrizione |
+|---|-------------|-------------|
+| A8.1 | **Scenario Quotidiani Locali** | Salva una scrivania con quattro slot liberamente configurabili dall'utente scegliendo i tool utili al proprio giro di lavoro. |
+| A8.2 | **Environment Associato** | Ogni scenario puo' attivare rapidamente l'ambiente corretto prima di aprire strumenti o inviare una request. |
+| A8.3 | **Slot Multi-Tool** | Ogni slot puo' aprire API Workspace, Broker Studio, Database, Mock, Proxy, Browser Debug, Flows, Runner o altri strumenti del toolbox. |
+| A8.4 | **Azioni Rapide Contestuali** | Uno slot REST puo' inviare la request collegata; uno slot Mock puo' avviare immediatamente il server locale. |
+| A8.5 | **Shared Variable Opzionale** | Mantiene visibile una variabile condivisa quando il workflow la usa, ad esempio `{{orderId}}`, senza imporla a ogni scenario. |
+
+---
+
 ## B. PROTOCOLLI & STREAMING
 
 ### B1. Client gRPC
