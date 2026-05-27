@@ -483,7 +483,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
               },
             })
           }}
-          className={cn('overflow-y-auto', activeTab === 'body' ? 'max-h-[55vh]' : 'max-h-[300px]')}
+          className="overflow-y-auto"
         >
           {activeTab === 'params' && (
             <KVEditor rows={request.params ?? []} onChange={(params) => onChange({ ...request, params })} />
