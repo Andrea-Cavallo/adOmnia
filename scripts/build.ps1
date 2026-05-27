@@ -12,10 +12,14 @@
     Remove build artifacts before building
 .PARAMETER GoOnly
     Skip Wails, use plain go build (no metadata embedding)
+.PARAMETER Compress
+    Run UPX compression on the output binary after build (requires UPX in PATH)
 .EXAMPLE
     .\build.ps1
     .\build.ps1 -Version "1.2.3"
     .\build.ps1 -Clean
+    .\build.ps1 -Compress
+    .\build.ps1 -Version "1.2.3" -Compress
 #>
 
 [CmdletBinding()]
@@ -23,12 +27,13 @@ param(
     [switch]$Clean,
     [string]$Output   = "",
     [string]$Version  = "dev",
-    [switch]$GoOnly
+    [switch]$GoOnly,
+    [switch]$Compress
 )
 
 $ErrorActionPreference = "Stop"
 
-$ProjectRoot = $PSScriptRoot
+$ProjectRoot = Split-Path -Parent $PSScriptRoot
 $FrontendDir = Join-Path $ProjectRoot "frontend"
 $WailsOutDir = Join-Path $ProjectRoot "build\bin"
 $WailsOutExe = Join-Path $WailsOutDir "adOmnia.exe"
@@ -162,7 +167,9 @@ if ($wailsBin -and (-not $GoOnly)) {
     $ldflags = "-X main.Version=$Version -X main.BuildDate=$buildDate -X main.GitCommit=$gitCommit"
 
     Set-Location $ProjectRoot
-    & $wailsBin build -ldflags $ldflags -clean
+    # Normal builds preserve the previous executable until replacement succeeds.
+    # Use this script's -Clean switch when an explicit cleanup is required.
+    & $wailsBin build -ldflags $ldflags
 
     if ($LASTEXITCODE -ne 0) {
         Write-Host "ERR Wails build failed." -ForegroundColor Red
@@ -231,6 +238,27 @@ if ($wailsBin -and (-not $GoOnly)) {
     if ($LASTEXITCODE -ne 0) {
         Write-Host "ERR Go build failed." -ForegroundColor Red
         exit 1
+    }
+}
+
+# ---- UPX compression (optional) ---------------------------------------------
+if ($Compress) {
+    $upxBin = Get-Command upx -ErrorAction SilentlyContinue
+    if (-not $upxBin) {
+        Write-Host "WARN -Compress requested but UPX not found in PATH -- skipping." -ForegroundColor Yellow
+        Write-Host "     Install UPX: https://upx.github.io/" -ForegroundColor Yellow
+    } else {
+        Write-Host ""
+        Write-Host "--- Compressing with UPX --best --lzma..." -ForegroundColor Cyan
+        $sizeBefore = [math]::Round((Get-Item $Output).Length / 1MB, 2)
+        upx --best --lzma $Output
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "ERR UPX compression failed." -ForegroundColor Red
+            exit 1
+        }
+        $sizeAfter = [math]::Round((Get-Item $Output).Length / 1MB, 2)
+        $saved = [math]::Round((1 - $sizeAfter / $sizeBefore) * 100, 1)
+        Write-Host "OK  Compressed: $sizeBefore MB -> $sizeAfter MB  (-$saved%)" -ForegroundColor Green
     }
 }
 
