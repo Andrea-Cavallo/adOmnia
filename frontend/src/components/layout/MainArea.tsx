@@ -23,6 +23,7 @@ import { safeSetItem } from '@/lib/safeLocalStorage'
 
 const WebSocketPanel       = React.lazy(() => import('@/components/websocket/WebSocketPanel').then(m => ({ default: m.WebSocketPanel })))
 const RequestHistoryPanel  = React.lazy(() => import('@/components/history/RequestHistoryPanel').then(m => ({ default: m.RequestHistoryPanel })))
+const DailyScenariosPanel  = React.lazy(() => import('@/components/scenarios/DailyScenariosPanel').then(m => ({ default: m.DailyScenariosPanel })))
 const SsePanel             = React.lazy(() => import('@/components/sse/SsePanel').then(m => ({ default: m.SsePanel })))
 const BrokerStudioPanel    = React.lazy(() => import('@/components/kafka/BrokerStudioPanel').then(m => ({ default: m.BrokerStudioPanel })))
 const MockPanel            = React.lazy(() => import('@/components/mock/MockPanel').then(m => ({ default: m.MockPanel })))
@@ -236,6 +237,16 @@ function RequestWorkspace() {
     const response = result.response
     setResponse(activeTab.id, response)
   }
+
+  useEffect(() => {
+    const onSendActiveRequest = (event: Event) => {
+      const command = event as CustomEvent<{ handled: boolean }>
+      command.detail.handled = true
+      void handleSend()
+    }
+    document.addEventListener('adomnia:send-active-request', onSendActiveRequest)
+    return () => document.removeEventListener('adomnia:send-active-request', onSendActiveRequest)
+  })
 
   const saveTab = useCallback((tabId: string) => {
     const tab = tabs.find((t) => t.id === tabId)
@@ -495,6 +506,7 @@ type PanelDef = {
 function panelFor(activeRail: RailItem): PanelDef {
   switch (activeRail) {
     case 'collections': return { component: <RequestWorkspace /> }
+    case 'scenarios':   return { component: <DailyScenariosPanel />, titleKey: 'Daily Scenarios', overflow: true }
     case 'history':     return { component: <RequestHistoryPanel />,  titleKey: 'Request History', overflow: true }
     case 'websocket':   return { component: <WebSocketPanel />,       titleKey: 'WebSocket',     overflow: true }
     case 'sse':         return { component: <SsePanel />,             titleKey: 'SSE Client',    overflow: true }

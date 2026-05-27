@@ -770,6 +770,7 @@ func RegisterHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/portscan", portScanHandler)
 	mux.HandleFunc("/cors", corsTestHandler)
 	mux.HandleFunc("/cert/jks-split", certJksSplitHandler)
+	mux.HandleFunc("/cert/inspect", certInspectHandler)
 	mux.HandleFunc("/folderdiff/scan", folderDiffHandler)
 	mux.HandleFunc("/folderdiff/file", folderDiffFileHandler)
 }

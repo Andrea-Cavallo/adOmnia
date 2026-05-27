@@ -60,7 +60,7 @@ export function useAppInit(): AppInitResult {
 
   useEffect(() => {
     if (activeWindowChrome === null && settingsLoaded) {
-      setActiveWindowChrome(appearance.windowChrome ?? 'app')
+      setActiveWindowChrome(appearance.windowChrome ?? 'system')
     }
   }, [activeWindowChrome, appearance.windowChrome, settingsLoaded])
 
