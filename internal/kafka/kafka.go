@@ -1,6 +1,8 @@
-package main
+package kafka
 
 import (
+	"adomnia/internal/devlog"
+	"adomnia/internal/httputil"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -97,7 +99,7 @@ func newSaramaConfig(cfg KafkaBrokerConfig) *sarama.Config {
 }
 
 func kafkaProduceHandler(w http.ResponseWriter, r *http.Request) {
-	dlog("kafkaProduceHandler", "richiesta produce Kafka ricevuta", map[string]any{"remote": r.RemoteAddr})
+	devlog.Log("kafkaProduceHandler", "richiesta produce Kafka ricevuta", map[string]any{"remote": r.RemoteAddr})
 	if r.Method != http.MethodPost {
 		http.Error(w, "POST only", http.StatusMethodNotAllowed)
 		return
@@ -105,22 +107,22 @@ func kafkaProduceHandler(w http.ResponseWriter, r *http.Request) {
 
 	var req KafkaProduceRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		dlogErr("kafkaProduceHandler", "decode JSON fallito", err, nil)
-		jsonError(w, "invalid JSON: "+err.Error(), 400)
+		devlog.Err("kafkaProduceHandler", "decode JSON fallito", err, nil)
+		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
-	dlog("kafkaProduceHandler", "payload decodificato", map[string]any{"brokers": req.Config.Brokers, "topic": req.Config.Topic, "key": req.Key})
+	devlog.Log("kafkaProduceHandler", "payload decodificato", map[string]any{"brokers": req.Config.Brokers, "topic": req.Config.Topic, "key": req.Key})
 
 	if len(req.Config.Brokers) == 0 || req.Config.Topic == "" {
-		jsonError(w, "brokers and topic required", 400)
+		httputil.JSONError(w, "brokers and topic required", 400)
 		return
 	}
 
 	sc := newSaramaConfig(req.Config)
 	producer, err := sarama.NewSyncProducer(req.Config.Brokers, sc)
 	if err != nil {
-		dlogErr("kafkaProduceHandler", "connessione al broker Kafka fallita", err, map[string]any{"brokers": req.Config.Brokers})
-		jsonError(w, "connect failed: "+err.Error(), 502)
+		devlog.Err("kafkaProduceHandler", "connessione al broker Kafka fallita", err, map[string]any{"brokers": req.Config.Brokers})
+		httputil.JSONError(w, "connect failed: "+err.Error(), 502)
 		return
 	}
 	defer producer.Close()
@@ -144,7 +146,7 @@ func kafkaProduceHandler(w http.ResponseWriter, r *http.Request) {
 
 	partition, offset, err := producer.SendMessage(msg)
 	if err != nil {
-		jsonError(w, "produce failed: "+err.Error(), 502)
+		httputil.JSONError(w, "produce failed: "+err.Error(), 502)
 		return
 	}
 
@@ -198,6 +200,12 @@ type KafkaLoadTestResult struct {
 	Errors             []string           `json:"errors,omitempty"`
 }
 
+type throughputBucket struct {
+	Second int     `json:"second"`
+	Reqs   int     `json:"reqs"`
+	AvgMs  float64 `json:"avgMs"`
+}
+
 func kafkaBulkProduceHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "POST only", http.StatusMethodNotAllowed)
@@ -206,12 +214,12 @@ func kafkaBulkProduceHandler(w http.ResponseWriter, r *http.Request) {
 
 	var req KafkaBulkProduceRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		jsonError(w, "invalid JSON: "+err.Error(), 400)
+		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
 
 	if len(req.Config.Brokers) == 0 || req.Config.Topic == "" {
-		jsonError(w, "brokers and topic required", 400)
+		httputil.JSONError(w, "brokers and topic required", 400)
 		return
 	}
 	if req.Count < 1 {
@@ -224,7 +232,7 @@ func kafkaBulkProduceHandler(w http.ResponseWriter, r *http.Request) {
 	sc := newSaramaConfig(req.Config)
 	producer, err := sarama.NewSyncProducer(req.Config.Brokers, sc)
 	if err != nil {
-		jsonError(w, "connect failed: "+err.Error(), 502)
+		httputil.JSONError(w, "connect failed: "+err.Error(), 502)
 		return
 	}
 	defer producer.Close()
@@ -304,11 +312,11 @@ func kafkaLoadTestHandler(w http.ResponseWriter, r *http.Request) {
 
 	var req KafkaLoadTestRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		jsonError(w, "invalid JSON: "+err.Error(), 400)
+		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
 	if len(req.Config.Brokers) == 0 || req.Config.Topic == "" {
-		jsonError(w, "brokers and topic required", 400)
+		httputil.JSONError(w, "brokers and topic required", 400)
 		return
 	}
 	if req.Concurrency < 1 {
@@ -337,7 +345,7 @@ func kafkaLoadTestHandler(w http.ResponseWriter, r *http.Request) {
 
 	producer, err := sarama.NewSyncProducer(req.Config.Brokers, newSaramaConfig(req.Config))
 	if err != nil {
-		jsonError(w, "connect failed: "+err.Error(), 502)
+		httputil.JSONError(w, "connect failed: "+err.Error(), 502)
 		return
 	}
 	defer producer.Close()
@@ -503,7 +511,7 @@ func varyJsonField(jsonStr, field string, idx int) string {
 }
 
 func kafkaConsumeHandler(w http.ResponseWriter, r *http.Request) {
-	dlog("kafkaConsumeHandler", "richiesta consume Kafka ricevuta", map[string]any{"remote": r.RemoteAddr})
+	devlog.Log("kafkaConsumeHandler", "richiesta consume Kafka ricevuta", map[string]any{"remote": r.RemoteAddr})
 	if r.Method != http.MethodPost {
 		http.Error(w, "POST only", http.StatusMethodNotAllowed)
 		return
@@ -511,11 +519,11 @@ func kafkaConsumeHandler(w http.ResponseWriter, r *http.Request) {
 
 	var req KafkaConsumeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		dlogErr("kafkaConsumeHandler", "decode JSON fallito", err, nil)
-		jsonError(w, "invalid JSON: "+err.Error(), 400)
+		devlog.Err("kafkaConsumeHandler", "decode JSON fallito", err, nil)
+		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
-	dlog("kafkaConsumeHandler", "parametri consume decodificati", map[string]any{
+	devlog.Log("kafkaConsumeHandler", "parametri consume decodificati", map[string]any{
 		"brokers":   req.Config.Brokers,
 		"topic":     req.Config.Topic,
 		"maxMsgs":   req.MaxMsgs,
@@ -523,7 +531,7 @@ func kafkaConsumeHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if len(req.Config.Brokers) == 0 || req.Config.Topic == "" {
-		jsonError(w, "brokers and topic required", 400)
+		httputil.JSONError(w, "brokers and topic required", 400)
 		return
 	}
 
@@ -550,7 +558,7 @@ func kafkaConsumeHandler(w http.ResponseWriter, r *http.Request) {
 
 	group, err := sarama.NewConsumerGroup(req.Config.Brokers, groupID, sc)
 	if err != nil {
-		jsonError(w, "connect failed: "+err.Error(), 502)
+		httputil.JSONError(w, "connect failed: "+err.Error(), 502)
 		return
 	}
 	defer group.Close()
@@ -589,26 +597,26 @@ func kafkaTopicsHandler(w http.ResponseWriter, r *http.Request) {
 
 	var cfg KafkaBrokerConfig
 	if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
-		jsonError(w, "invalid JSON: "+err.Error(), 400)
+		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
 
 	if len(cfg.Brokers) == 0 {
-		jsonError(w, "brokers required", 400)
+		httputil.JSONError(w, "brokers required", 400)
 		return
 	}
 
 	sc := newSaramaConfig(cfg)
 	client, err := sarama.NewClient(cfg.Brokers, sc)
 	if err != nil {
-		jsonError(w, "connect failed: "+err.Error(), 502)
+		httputil.JSONError(w, "connect failed: "+err.Error(), 502)
 		return
 	}
 	defer client.Close()
 
 	topics, err := client.Topics()
 	if err != nil {
-		jsonError(w, "list topics failed: "+err.Error(), 502)
+		httputil.JSONError(w, "list topics failed: "+err.Error(), 502)
 		return
 	}
 
@@ -625,15 +633,6 @@ func kafkaTopicsHandler(w http.ResponseWriter, r *http.Request) {
 		"ok":      true,
 		"topics":  topics,
 		"brokers": brokerList,
-	})
-}
-
-func jsonError(w http.ResponseWriter, msg string, code int) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"ok":    false,
-		"error": msg,
 	})
 }
 
@@ -682,4 +681,13 @@ func (h *consumerGroupHandler) getMessages() []KafkaMessage {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	return h.messages
+}
+
+// RegisterHandlers registers the Kafka HTTP sidecar endpoints.
+func RegisterHandlers(mux *http.ServeMux) {
+	mux.HandleFunc("/kafka/produce", kafkaProduceHandler)
+	mux.HandleFunc("/kafka/bulk-produce", kafkaBulkProduceHandler)
+	mux.HandleFunc("/kafka/loadtest", kafkaLoadTestHandler)
+	mux.HandleFunc("/kafka/consume", kafkaConsumeHandler)
+	mux.HandleFunc("/kafka/topics", kafkaTopicsHandler)
 }

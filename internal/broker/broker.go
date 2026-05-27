@@ -1,16 +1,17 @@
-package main
+package broker
 
 import (
+	"adomnia/internal/httputil"
 	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
 
-	amqp "github.com/rabbitmq/amqp091-go"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
-	"github.com/redis/go-redis/v9"
 	"github.com/nats-io/nats.go"
+	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/redis/go-redis/v9"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -34,6 +35,12 @@ type MessagePreset struct {
 }
 
 var brokerPresetsBucket = []byte("broker_presets")
+var db *bolt.DB
+
+// SetDB supplies local persistence for broker presets.
+func SetDB(database *bolt.DB) {
+	db = database
+}
 
 // ─── presets ─────────────────────────────────────────────────────────────────
 
@@ -44,21 +51,21 @@ func brokerPresetsSaveHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var preset MessagePreset
 	if err := json.NewDecoder(r.Body).Decode(&preset); err != nil {
-		jsonError(w, "invalid JSON: "+err.Error(), 400)
+		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
 	if preset.ID == "" {
 		preset.ID = fmt.Sprintf("preset-%d", time.Now().UnixNano())
 	}
 	data, _ := json.Marshal(preset)
-	if err := storeDB.Update(func(tx *bolt.Tx) error {
+	if err := db.Update(func(tx *bolt.Tx) error {
 		b, err := tx.CreateBucketIfNotExists(brokerPresetsBucket)
 		if err != nil {
 			return err
 		}
 		return b.Put([]byte(preset.ID), data)
 	}); err != nil {
-		jsonError(w, "save failed: "+err.Error(), 500)
+		httputil.JSONError(w, "save failed: "+err.Error(), 500)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -67,7 +74,7 @@ func brokerPresetsSaveHandler(w http.ResponseWriter, r *http.Request) {
 
 func brokerPresetsListHandler(w http.ResponseWriter, r *http.Request) {
 	presets := []MessagePreset{}
-	_ = storeDB.View(func(tx *bolt.Tx) error {
+	_ = db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(brokerPresetsBucket)
 		if b == nil {
 			return nil
@@ -87,17 +94,17 @@ func brokerPresetsListHandler(w http.ResponseWriter, r *http.Request) {
 func brokerPresetsDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
 	if id == "" {
-		jsonError(w, "id required", 400)
+		httputil.JSONError(w, "id required", 400)
 		return
 	}
-	if err := storeDB.Update(func(tx *bolt.Tx) error {
+	if err := db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(brokerPresetsBucket)
 		if b == nil {
 			return nil
 		}
 		return b.Delete([]byte(id))
 	}); err != nil {
-		jsonError(w, "delete failed: "+err.Error(), 500)
+		httputil.JSONError(w, "delete failed: "+err.Error(), 500)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -107,7 +114,7 @@ func brokerPresetsDeleteHandler(w http.ResponseWriter, r *http.Request) {
 // ─── RabbitMQ ────────────────────────────────────────────────────────────────
 
 type RabbitConfig struct {
-	URL      string `json:"url"`     // amqp://user:pass@host:5672/vhost
+	URL      string `json:"url"` // amqp://user:pass@host:5672/vhost
 	Exchange string `json:"exchange"`
 	Queue    string `json:"queue"`
 	Vhost    string `json:"vhost,omitempty"`
@@ -123,10 +130,10 @@ type RabbitPublishRequest struct {
 }
 
 type RabbitConsumeRequest struct {
-	Config   RabbitConfig `json:"config"`
-	MaxWait  int          `json:"maxWait"`
-	MaxMsgs  int          `json:"maxMsgs"`
-	AutoAck  bool         `json:"autoAck"`
+	Config  RabbitConfig `json:"config"`
+	MaxWait int          `json:"maxWait"`
+	MaxMsgs int          `json:"maxMsgs"`
+	AutoAck bool         `json:"autoAck"`
 }
 
 func rabbitPublishHandler(w http.ResponseWriter, r *http.Request) {
@@ -136,11 +143,11 @@ func rabbitPublishHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var req RabbitPublishRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		jsonError(w, "invalid JSON: "+err.Error(), 400)
+		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
 	if req.Config.URL == "" {
-		jsonError(w, "url required", 400)
+		httputil.JSONError(w, "url required", 400)
 		return
 	}
 
@@ -148,14 +155,14 @@ func rabbitPublishHandler(w http.ResponseWriter, r *http.Request) {
 		Dial: amqp.DefaultDial(10 * time.Second),
 	})
 	if err != nil {
-		jsonError(w, "connect failed: "+err.Error(), 502)
+		httputil.JSONError(w, "connect failed: "+err.Error(), 502)
 		return
 	}
 	defer conn.Close()
 
 	ch, err := conn.Channel()
 	if err != nil {
-		jsonError(w, "channel failed: "+err.Error(), 502)
+		httputil.JSONError(w, "channel failed: "+err.Error(), 502)
 		return
 	}
 	defer ch.Close()
@@ -187,16 +194,16 @@ func rabbitPublishHandler(w http.ResponseWriter, r *http.Request) {
 		},
 	)
 	if err != nil {
-		jsonError(w, "publish failed: "+err.Error(), 502)
+		httputil.JSONError(w, "publish failed: "+err.Error(), 502)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"ok":        true,
-		"exchange":  req.Config.Exchange,
+		"ok":         true,
+		"exchange":   req.Config.Exchange,
 		"routingKey": req.RoutingKey,
-		"timestamp": time.Now().UTC().Format(time.RFC3339),
+		"timestamp":  time.Now().UTC().Format(time.RFC3339),
 	})
 }
 
@@ -207,11 +214,11 @@ func rabbitConsumeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var req RabbitConsumeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		jsonError(w, "invalid JSON: "+err.Error(), 400)
+		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
 	if req.Config.URL == "" || req.Config.Queue == "" {
-		jsonError(w, "url and queue required", 400)
+		httputil.JSONError(w, "url and queue required", 400)
 		return
 	}
 	if req.MaxWait <= 0 || req.MaxWait > 30 {
@@ -225,21 +232,21 @@ func rabbitConsumeHandler(w http.ResponseWriter, r *http.Request) {
 		Dial: amqp.DefaultDial(10 * time.Second),
 	})
 	if err != nil {
-		jsonError(w, "connect failed: "+err.Error(), 502)
+		httputil.JSONError(w, "connect failed: "+err.Error(), 502)
 		return
 	}
 	defer conn.Close()
 
 	ch, err := conn.Channel()
 	if err != nil {
-		jsonError(w, "channel failed: "+err.Error(), 502)
+		httputil.JSONError(w, "channel failed: "+err.Error(), 502)
 		return
 	}
 	defer ch.Close()
 
 	msgs, err := ch.Consume(req.Config.Queue, "adomnia-consumer", req.AutoAck, false, false, false, nil)
 	if err != nil {
-		jsonError(w, "consume failed: "+err.Error(), 502)
+		httputil.JSONError(w, "consume failed: "+err.Error(), 502)
 		return
 	}
 
@@ -296,11 +303,11 @@ func rabbitExchangesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var cfg RabbitConfig
 	if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
-		jsonError(w, "invalid JSON: "+err.Error(), 400)
+		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
 	if cfg.URL == "" {
-		jsonError(w, "url required", 400)
+		httputil.JSONError(w, "url required", 400)
 		return
 	}
 
@@ -308,7 +315,7 @@ func rabbitExchangesHandler(w http.ResponseWriter, r *http.Request) {
 		Dial: amqp.DefaultDial(10 * time.Second),
 	})
 	if err != nil {
-		jsonError(w, "connect failed: "+err.Error(), 502)
+		httputil.JSONError(w, "connect failed: "+err.Error(), 502)
 		return
 	}
 	defer conn.Close()
@@ -324,7 +331,7 @@ func rabbitExchangesHandler(w http.ResponseWriter, r *http.Request) {
 // ─── MQTT ─────────────────────────────────────────────────────────────────────
 
 type MQTTConfig struct {
-	Broker   string `json:"broker"`   // tcp://host:1883
+	Broker   string `json:"broker"` // tcp://host:1883
 	ClientID string `json:"clientId"`
 	Username string `json:"username,omitempty"`
 	Password string `json:"password,omitempty"`
@@ -380,17 +387,17 @@ func mqttPublishHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var req MQTTPublishRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		jsonError(w, "invalid JSON: "+err.Error(), 400)
+		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
 	if req.Topic == "" {
-		jsonError(w, "topic required", 400)
+		httputil.JSONError(w, "topic required", 400)
 		return
 	}
 
 	client, err := mqttClient(req.Config)
 	if err != nil {
-		jsonError(w, "connect failed: "+err.Error(), 502)
+		httputil.JSONError(w, "connect failed: "+err.Error(), 502)
 		return
 	}
 	defer client.Disconnect(250)
@@ -398,7 +405,7 @@ func mqttPublishHandler(w http.ResponseWriter, r *http.Request) {
 	token := client.Publish(req.Topic, req.QoS, req.Retained, req.Payload)
 	token.Wait()
 	if token.Error() != nil {
-		jsonError(w, "publish failed: "+token.Error().Error(), 502)
+		httputil.JSONError(w, "publish failed: "+token.Error().Error(), 502)
 		return
 	}
 
@@ -419,11 +426,11 @@ func mqttSubscribeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var req MQTTSubscribeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		jsonError(w, "invalid JSON: "+err.Error(), 400)
+		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
 	if req.Topic == "" {
-		jsonError(w, "topic required", 400)
+		httputil.JSONError(w, "topic required", 400)
 		return
 	}
 	if req.MaxWait <= 0 || req.MaxWait > 30 {
@@ -435,7 +442,7 @@ func mqttSubscribeHandler(w http.ResponseWriter, r *http.Request) {
 
 	client, err := mqttClient(req.Config)
 	if err != nil {
-		jsonError(w, "connect failed: "+err.Error(), 502)
+		httputil.JSONError(w, "connect failed: "+err.Error(), 502)
 		return
 	}
 	defer client.Disconnect(250)
@@ -451,7 +458,7 @@ func mqttSubscribeHandler(w http.ResponseWriter, r *http.Request) {
 	})
 	token.Wait()
 	if token.Error() != nil {
-		jsonError(w, "subscribe failed: "+token.Error().Error(), 502)
+		httputil.JSONError(w, "subscribe failed: "+token.Error().Error(), 502)
 		return
 	}
 
@@ -465,8 +472,8 @@ func mqttSubscribeHandler(w http.ResponseWriter, r *http.Request) {
 				Topic:     msg.Topic(),
 				Content:   string(msg.Payload()),
 				Metadata: map[string]string{
-					"qos":      fmt.Sprintf("%d", msg.Qos()),
-					"retained": fmt.Sprintf("%v", msg.Retained()),
+					"qos":       fmt.Sprintf("%d", msg.Qos()),
+					"retained":  fmt.Sprintf("%v", msg.Retained()),
 					"duplicate": fmt.Sprintf("%v", msg.Duplicate()),
 				},
 			})
@@ -489,7 +496,7 @@ done:
 // ─── Redis Pub/Sub ────────────────────────────────────────────────────────────
 
 type RedisConfig struct {
-	Addr     string `json:"addr"`     // host:6379
+	Addr     string `json:"addr"` // host:6379
 	Password string `json:"password,omitempty"`
 	DB       int    `json:"db"`
 	TLS      bool   `json:"tls"`
@@ -528,11 +535,11 @@ func redisPublishHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var req RedisPublishRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		jsonError(w, "invalid JSON: "+err.Error(), 400)
+		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
 	if req.Channel == "" {
-		jsonError(w, "channel required", 400)
+		httputil.JSONError(w, "channel required", 400)
 		return
 	}
 
@@ -544,7 +551,7 @@ func redisPublishHandler(w http.ResponseWriter, r *http.Request) {
 
 	receivers, err := rdb.Publish(ctx, req.Channel, req.Message).Result()
 	if err != nil {
-		jsonError(w, "publish failed: "+err.Error(), 502)
+		httputil.JSONError(w, "publish failed: "+err.Error(), 502)
 		return
 	}
 
@@ -564,11 +571,11 @@ func redisSubscribeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var req RedisSubscribeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		jsonError(w, "invalid JSON: "+err.Error(), 400)
+		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
 	if len(req.Channels) == 0 {
-		jsonError(w, "channels required", 400)
+		httputil.JSONError(w, "channels required", 400)
 		return
 	}
 	if req.MaxWait <= 0 || req.MaxWait > 30 {
@@ -624,7 +631,7 @@ redisDone:
 // ─── NATS ─────────────────────────────────────────────────────────────────────
 
 type NATSConfig struct {
-	URL      string `json:"url"`      // nats://host:4222
+	URL      string `json:"url"` // nats://host:4222
 	Username string `json:"username,omitempty"`
 	Password string `json:"password,omitempty"`
 	Token    string `json:"token,omitempty"`
@@ -668,17 +675,17 @@ func natsPublishHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var req NATSPublishRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		jsonError(w, "invalid JSON: "+err.Error(), 400)
+		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
 	if req.Subject == "" {
-		jsonError(w, "subject required", 400)
+		httputil.JSONError(w, "subject required", 400)
 		return
 	}
 
 	nc, err := natsConnect(req.Config)
 	if err != nil {
-		jsonError(w, "connect failed: "+err.Error(), 502)
+		httputil.JSONError(w, "connect failed: "+err.Error(), 502)
 		return
 	}
 	defer nc.Close()
@@ -695,11 +702,11 @@ func natsPublishHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := nc.PublishMsg(msg); err != nil {
-		jsonError(w, "publish failed: "+err.Error(), 502)
+		httputil.JSONError(w, "publish failed: "+err.Error(), 502)
 		return
 	}
 	if err := nc.Flush(); err != nil {
-		jsonError(w, "flush failed: "+err.Error(), 502)
+		httputil.JSONError(w, "flush failed: "+err.Error(), 502)
 		return
 	}
 
@@ -718,11 +725,11 @@ func natsSubscribeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var req NATSSubscribeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		jsonError(w, "invalid JSON: "+err.Error(), 400)
+		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
 	if req.Subject == "" {
-		jsonError(w, "subject required", 400)
+		httputil.JSONError(w, "subject required", 400)
 		return
 	}
 	if req.MaxWait <= 0 || req.MaxWait > 30 {
@@ -734,7 +741,7 @@ func natsSubscribeHandler(w http.ResponseWriter, r *http.Request) {
 
 	nc, err := natsConnect(req.Config)
 	if err != nil {
-		jsonError(w, "connect failed: "+err.Error(), 502)
+		httputil.JSONError(w, "connect failed: "+err.Error(), 502)
 		return
 	}
 	defer nc.Close()
@@ -749,7 +756,7 @@ func natsSubscribeHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	})
 	if err != nil {
-		jsonError(w, "subscribe failed: "+err.Error(), 502)
+		httputil.JSONError(w, "subscribe failed: "+err.Error(), 502)
 		return
 	}
 	defer sub.Unsubscribe()
@@ -786,4 +793,20 @@ natsDone:
 		"messages": collected,
 		"count":    len(collected),
 	})
+}
+
+// RegisterHandlers registers Broker Studio sidecar endpoints.
+func RegisterHandlers(mux *http.ServeMux) {
+	mux.HandleFunc("/broker/rabbitmq/publish", rabbitPublishHandler)
+	mux.HandleFunc("/broker/rabbitmq/consume", rabbitConsumeHandler)
+	mux.HandleFunc("/broker/rabbitmq/exchanges", rabbitExchangesHandler)
+	mux.HandleFunc("/broker/mqtt/publish", mqttPublishHandler)
+	mux.HandleFunc("/broker/mqtt/subscribe", mqttSubscribeHandler)
+	mux.HandleFunc("/broker/redis/publish", redisPublishHandler)
+	mux.HandleFunc("/broker/redis/subscribe", redisSubscribeHandler)
+	mux.HandleFunc("/broker/nats/publish", natsPublishHandler)
+	mux.HandleFunc("/broker/nats/subscribe", natsSubscribeHandler)
+	mux.HandleFunc("/broker/presets/save", brokerPresetsSaveHandler)
+	mux.HandleFunc("/broker/presets/list", brokerPresetsListHandler)
+	mux.HandleFunc("/broker/presets/delete", brokerPresetsDeleteHandler)
 }

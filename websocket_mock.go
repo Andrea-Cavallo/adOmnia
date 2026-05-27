@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -90,11 +92,17 @@ func wsMockMatch(rule WsMockRule, msg string) bool {
 
 var jsltFieldRe = regexp.MustCompile(`\{\{\.([^}]+)\}\}`)
 
+func wsMockNewID() string {
+	b := make([]byte, 12)
+	_, _ = rand.Read(b)
+	return base64.URLEncoding.EncodeToString(b)
+}
+
 func wsMockRender(tmpl, incoming string) string {
 	out := tmpl
 	out = strings.ReplaceAll(out, "{{$MSG}}", incoming)
 	out = strings.ReplaceAll(out, "{{$NOW}}", fmt.Sprintf("%d", time.Now().UnixMilli()))
-	out = strings.ReplaceAll(out, "{{$UUID}}", wsNewSessionID())
+	out = strings.ReplaceAll(out, "{{$UUID}}", wsMockNewID())
 	out = jsltFieldRe.ReplaceAllStringFunc(out, func(match string) string {
 		path := jsltFieldRe.FindStringSubmatch(match)[1]
 		val := gjson.Get(incoming, path)

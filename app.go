@@ -12,6 +12,9 @@ import (
 	"strings"
 	"time"
 
+	"adomnia/internal/devlog"
+	"adomnia/internal/sse"
+	"adomnia/internal/ws"
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 	bolt "go.etcd.io/bbolt"
 )
@@ -27,6 +30,7 @@ func NewApp() *App {
 }
 
 func (a *App) OnStartup(ctx context.Context) {
+	devlog.Init(dataDir())
 	a.ctx = ctx
 	dlogInfo("OnStartup", "avvio applicazione in corso", nil)
 	if err := openStore(); err != nil {
@@ -84,7 +88,7 @@ func (a *App) SelectFolder(title string) (string, error) {
 }
 
 func (a *App) GetDevLogs() string {
-	path := currentDevLogPath()
+	path := devlog.CurrentPath()
 	file, err := os.Open(path)
 	if err != nil {
 		dlogErr("GetDevLogs", "lettura file dev logs fallita", err, map[string]any{"path": path})
@@ -92,7 +96,7 @@ func (a *App) GetDevLogs() string {
 	}
 	defer file.Close()
 
-	entries := make([]devLogEntry, 0, 256)
+	entries := make([]devlog.Entry, 0, 256)
 	scanner := bufio.NewScanner(file)
 	buf := make([]byte, 0, 64*1024)
 	scanner.Buffer(buf, 1024*1024)
@@ -101,7 +105,7 @@ func (a *App) GetDevLogs() string {
 		if line == "" {
 			continue
 		}
-		var entry devLogEntry
+		var entry devlog.Entry
 		if err := json.Unmarshal([]byte(line), &entry); err == nil {
 			if entry.Source == "" {
 				entry.Source = "backend"
@@ -124,12 +128,7 @@ func (a *App) GetDevLogs() string {
 }
 
 func (a *App) ClearDevLogs() {
-	devLogMu.Lock()
-	if devLogFile != nil {
-		_ = devLogFile.Truncate(0)
-		_, _ = devLogFile.Seek(0, 0)
-	}
-	devLogMu.Unlock()
+	devlog.Clear()
 	dlogInfo("ClearDevLogs", "dev logs puliti", nil)
 }
 
@@ -138,7 +137,7 @@ func (a *App) RecordFrontendLog(level string, message string) {
 	if level == "" {
 		level = "LOG"
 	}
-	writeDevLogSource("frontend", level, "console", message, nil)
+	devlog.WriteSource("frontend", level, "console", message, nil)
 }
 
 // IsDevMode returns whether developer mode is enabled.
@@ -154,7 +153,7 @@ func (a *App) SetDevMode(enabled bool) {
 
 // OpenDevLogsFolder opens the dev logs directory in the OS file manager.
 func (a *App) OpenDevLogsFolder() {
-	logsDir := devLogDir()
+	logsDir := devlog.Dir()
 	var cmd *exec.Cmd
 	switch stdRuntime.GOOS {
 	case "darwin":
@@ -196,7 +195,7 @@ type LogFileEntry struct {
 
 // ListLogFiles returns the list of JSONL log files in the logs directory.
 func (a *App) ListLogFiles() []LogFileEntry {
-	dir := devLogDir()
+	dir := devlog.Dir()
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		dlogErr("ListLogFiles", "lettura cartella log fallita", err, map[string]any{"dir": dir})
@@ -231,7 +230,7 @@ func (a *App) ReadLogFile(filename string) string {
 		return "[]"
 	}
 
-	path := filepath.Join(devLogDir(), cleaned)
+	path := filepath.Join(devlog.Dir(), cleaned)
 	file, err := os.Open(path)
 	if err != nil {
 		dlogErr("ReadLogFile", "apertura file fallita", err, map[string]any{"path": path})
@@ -239,7 +238,7 @@ func (a *App) ReadLogFile(filename string) string {
 	}
 	defer file.Close()
 
-	entries := make([]devLogEntry, 0, 256)
+	entries := make([]devlog.Entry, 0, 256)
 	scanner := bufio.NewScanner(file)
 	buf := make([]byte, 0, 64*1024)
 	scanner.Buffer(buf, 1024*1024)
@@ -248,7 +247,7 @@ func (a *App) ReadLogFile(filename string) string {
 		if line == "" {
 			continue
 		}
-		var entry devLogEntry
+		var entry devlog.Entry
 		if err := json.Unmarshal([]byte(line), &entry); err == nil {
 			if entry.Source == "" {
 				entry.Source = "backend"
@@ -288,8 +287,8 @@ func (a *App) OnShutdown(ctx context.Context) {
 			log.Printf("[app] browser debug stop error: %v", err)
 		}
 	}
-	WsShutdown()
-	SseShutdown()
+	ws.WsShutdown()
+	sse.SseShutdown()
 	stopHTTPServer()
 	closeStore()
 	log.Println("[app] shutdown complete")

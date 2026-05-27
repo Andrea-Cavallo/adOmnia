@@ -1,6 +1,7 @@
-package main
+package sse
 
 import (
+	"adomnia/internal/httputil"
 	"bufio"
 	"context"
 	"crypto/rand"
@@ -33,7 +34,7 @@ type SSESession struct {
 	clientsMu  sync.Mutex
 	done       chan struct{}
 	closeOnce  sync.Once
-	createdAt  int64       // UnixNano — immutable after creation
+	createdAt  int64        // UnixNano — immutable after creation
 	lastActive atomic.Int64 // UnixNano — updated on any I/O
 }
 
@@ -53,7 +54,7 @@ type SSEDisconnectRequest struct {
 }
 
 const (
-	maxSSESessions       = 20
+	maxSSESessions        = 20
 	sseSessionIdleTimeout = 5 * time.Minute
 )
 
@@ -194,21 +195,21 @@ func SseCloseAllHandler(w http.ResponseWriter, r *http.Request) {
 
 func sseConnectHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		jsonError(w, "method not allowed", http.StatusMethodNotAllowed)
+		httputil.JSONError(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 	var req SSEConnectRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		jsonError(w, "invalid request", http.StatusBadRequest)
+		httputil.JSONError(w, "invalid request", http.StatusBadRequest)
 		return
 	}
 	if strings.TrimSpace(req.URL) == "" {
-		jsonError(w, "url required", http.StatusBadRequest)
+		httputil.JSONError(w, "url required", http.StatusBadRequest)
 		return
 	}
 
 	if sseSessionCount() >= maxSSESessions {
-		jsonError(w, "max SSE sessions reached", http.StatusTooManyRequests)
+		httputil.JSONError(w, "max SSE sessions reached", http.StatusTooManyRequests)
 		return
 	}
 
@@ -216,7 +217,7 @@ func sseConnectHandler(w http.ResponseWriter, r *http.Request) {
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, req.URL, nil)
 	if err != nil {
 		cancel()
-		jsonError(w, "invalid url: "+err.Error(), http.StatusBadRequest)
+		httputil.JSONError(w, "invalid url: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 	httpReq.Header.Set("Accept", "text/event-stream")
@@ -239,13 +240,13 @@ func sseConnectHandler(w http.ResponseWriter, r *http.Request) {
 	resp, err := client.Do(httpReq)
 	if err != nil {
 		cancel()
-		jsonError(w, "connect failed: "+err.Error(), http.StatusBadGateway)
+		httputil.JSONError(w, "connect failed: "+err.Error(), http.StatusBadGateway)
 		return
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		resp.Body.Close()
 		cancel()
-		jsonError(w, fmt.Sprintf("SSE endpoint returned HTTP %d", resp.StatusCode), http.StatusBadGateway)
+		httputil.JSONError(w, fmt.Sprintf("SSE endpoint returned HTTP %d", resp.StatusCode), http.StatusBadGateway)
 		return
 	}
 
@@ -345,7 +346,7 @@ func sseStreamHandler(w http.ResponseWriter, r *http.Request) {
 	sessionID := r.URL.Query().Get("sessionId")
 	val, ok := sseSessions.Load(sessionID)
 	if !ok {
-		jsonError(w, "session not found", http.StatusNotFound)
+		httputil.JSONError(w, "session not found", http.StatusNotFound)
 		return
 	}
 	sess := val.(*SSESession)
@@ -380,12 +381,12 @@ func sseStreamHandler(w http.ResponseWriter, r *http.Request) {
 
 func sseDisconnectHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		jsonError(w, "method not allowed", http.StatusMethodNotAllowed)
+		httputil.JSONError(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 	var req SSEDisconnectRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		jsonError(w, "invalid request", http.StatusBadRequest)
+		httputil.JSONError(w, "invalid request", http.StatusBadRequest)
 		return
 	}
 	if val, ok := sseSessions.Load(req.SessionID); ok {
@@ -393,4 +394,13 @@ func sseDisconnectHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+}
+
+// RegisterHandlers registers Server-Sent Events client sidecar endpoints.
+func RegisterHandlers(mux *http.ServeMux) {
+	mux.HandleFunc("/sse/connect", sseConnectHandler)
+	mux.HandleFunc("/sse/disconnect", sseDisconnectHandler)
+	mux.HandleFunc("/sse/stream", sseStreamHandler)
+	mux.HandleFunc("/sse/list", SseListHandler)
+	mux.HandleFunc("/sse/close-all", SseCloseAllHandler)
 }

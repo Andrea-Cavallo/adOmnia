@@ -1,4 +1,4 @@
-package main
+package grpc
 
 import (
 	"context"
@@ -605,4 +605,12 @@ func grpcParseProtoHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, grpcParseProtoResponse{Services: services})
+}
+
+// RegisterHandlers registers gRPC HTTP sidecar endpoints.
+func RegisterHandlers(mux *http.ServeMux) {
+	mux.HandleFunc("/grpc/reflect", grpcReflectHandler)
+	mux.HandleFunc("/grpc/describe", grpcDescribeHandler)
+	mux.HandleFunc("/grpc/invoke", grpcInvokeHandler)
+	mux.HandleFunc("/grpc/parse-proto", grpcParseProtoHandler)
 }

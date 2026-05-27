@@ -1,6 +1,12 @@
 package main
 
 import (
+	"adomnia/internal/broker"
+	"adomnia/internal/devlog"
+	igrpc "adomnia/internal/grpc"
+	"adomnia/internal/kafka"
+	"adomnia/internal/sse"
+	"adomnia/internal/ws"
 	"context"
 	"log"
 	"net"
@@ -35,39 +41,15 @@ func startHTTPServer() {
 	mux := http.NewServeMux()
 
 	// Kafka
-	mux.HandleFunc("/kafka/produce", kafkaProduceHandler)
-	mux.HandleFunc("/kafka/bulk-produce", kafkaBulkProduceHandler)
-	mux.HandleFunc("/kafka/loadtest", kafkaLoadTestHandler)
-	mux.HandleFunc("/kafka/consume", kafkaConsumeHandler)
-	mux.HandleFunc("/kafka/topics", kafkaTopicsHandler)
+	kafka.RegisterHandlers(mux)
 
 	// Broker Studio — RabbitMQ, MQTT, Redis, NATS, Presets
-	mux.HandleFunc("/broker/rabbitmq/publish", rabbitPublishHandler)
-	mux.HandleFunc("/broker/rabbitmq/consume", rabbitConsumeHandler)
-	mux.HandleFunc("/broker/rabbitmq/exchanges", rabbitExchangesHandler)
-	mux.HandleFunc("/broker/mqtt/publish", mqttPublishHandler)
-	mux.HandleFunc("/broker/mqtt/subscribe", mqttSubscribeHandler)
-	mux.HandleFunc("/broker/redis/publish", redisPublishHandler)
-	mux.HandleFunc("/broker/redis/subscribe", redisSubscribeHandler)
-	mux.HandleFunc("/broker/nats/publish", natsPublishHandler)
-	mux.HandleFunc("/broker/nats/subscribe", natsSubscribeHandler)
-	mux.HandleFunc("/broker/presets/save", brokerPresetsSaveHandler)
-	mux.HandleFunc("/broker/presets/list", brokerPresetsListHandler)
-	mux.HandleFunc("/broker/presets/delete", brokerPresetsDeleteHandler)
+	broker.SetDB(storeDB)
+	broker.RegisterHandlers(mux)
 
 	// WebSocket Client
-	mux.HandleFunc("/ws/connect", wsConnectHandler)
-	mux.HandleFunc("/ws/disconnect", wsDisconnectHandler)
-	mux.HandleFunc("/ws/send", wsSendHandler)
-	mux.HandleFunc("/ws/ping", wsPingHandler)
-	mux.HandleFunc("/ws/stream", wsStreamHandler)
-	mux.HandleFunc("/ws/list", WsListHandler)
-	mux.HandleFunc("/ws/close-all", WsCloseAllHandler)
-	mux.HandleFunc("/sse/connect", sseConnectHandler)
-	mux.HandleFunc("/sse/disconnect", sseDisconnectHandler)
-	mux.HandleFunc("/sse/stream", sseStreamHandler)
-	mux.HandleFunc("/sse/list", SseListHandler)
-	mux.HandleFunc("/sse/close-all", SseCloseAllHandler)
+	ws.RegisterHandlers(mux)
+	sse.RegisterHandlers(mux)
 
 	// WebSocket Mock Server
 	mux.HandleFunc("/ws/mock/start", wsMockStartHandler)
@@ -181,10 +163,7 @@ func startHTTPServer() {
 	mux.HandleFunc("/cors", corsTestHandler)
 
 	// gRPC
-	mux.HandleFunc("/grpc/reflect", grpcReflectHandler)
-	mux.HandleFunc("/grpc/describe", grpcDescribeHandler)
-	mux.HandleFunc("/grpc/invoke", grpcInvokeHandler)
-	mux.HandleFunc("/grpc/parse-proto", grpcParseProtoHandler)
+	igrpc.RegisterHandlers(mux)
 
 	// OAuth 2.0 Authorization Code + PKCE
 	mux.HandleFunc("/oauth/start", oauthStartHandler)
@@ -192,7 +171,7 @@ func startHTTPServer() {
 	mux.HandleFunc("/oauth/status", oauthStatusHandler)
 
 	// DevLogs streaming
-	mux.HandleFunc("/devlogs/stream", devLogStreamHandler)
+	devlog.RegisterHandlers(mux)
 
 	handler := withSecurity(mux)
 

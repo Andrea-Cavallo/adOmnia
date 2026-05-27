@@ -1,6 +1,7 @@
-package main
+package ws
 
 import (
+	"adomnia/internal/httputil"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
@@ -17,13 +18,13 @@ import (
 // ── Types ────────────────────────────────────────────────────────────────────
 
 const (
-	maxWSSessions       = 20
+	maxWSSessions        = 20
 	wsSessionIdleTimeout = 5 * time.Minute
 )
 
 type WSEvent struct {
-	Type      string `json:"type"`           // message | ping | pong | close | error
-	Direction string `json:"direction"`      // inbound | outbound | system
+	Type      string `json:"type"`      // message | ping | pong | close | error
+	Direction string `json:"direction"` // inbound | outbound | system
 	Content   string `json:"content"`
 	Timestamp int64  `json:"timestamp"`
 	Binary    bool   `json:"binary,omitempty"` // true when payload is base64-encoded binary
@@ -37,7 +38,7 @@ type WSSession struct {
 	clientsMu  sync.Mutex
 	done       chan struct{}
 	closeOnce  sync.Once
-	createdAt  int64       // UnixNano — immutable after creation
+	createdAt  int64        // UnixNano — immutable after creation
 	lastActive atomic.Int64 // UnixNano — updated on any I/O
 }
 
@@ -266,12 +267,12 @@ func wsConnectHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var req WSConnectRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		jsonError(w, "invalid request", http.StatusBadRequest)
+		httputil.JSONError(w, "invalid request", http.StatusBadRequest)
 		return
 	}
 
 	if wsSessionCount() >= maxWSSessions {
-		jsonError(w, "max WebSocket sessions reached", http.StatusTooManyRequests)
+		httputil.JSONError(w, "max WebSocket sessions reached", http.StatusTooManyRequests)
 		return
 	}
 
@@ -303,10 +304,10 @@ func wsConnectHandler(w http.ResponseWriter, r *http.Request) {
 	now := time.Now().UnixNano()
 	sessionID := wsNewSessionID()
 	sess := &WSSession{
-		id:         sessionID,
-		conn:       conn,
-		done:       make(chan struct{}),
-		createdAt:  now,
+		id:        sessionID,
+		conn:      conn,
+		done:      make(chan struct{}),
+		createdAt: now,
 	}
 	sess.lastActive.Store(now)
 	wsSessions.Store(sessionID, sess)
@@ -321,7 +322,7 @@ func wsStreamHandler(w http.ResponseWriter, r *http.Request) {
 	sessionID := r.URL.Query().Get("sessionId")
 	val, ok := wsSessions.Load(sessionID)
 	if !ok {
-		jsonError(w, "session not found", http.StatusNotFound)
+		httputil.JSONError(w, "session not found", http.StatusNotFound)
 		return
 	}
 	sess := val.(*WSSession)
@@ -361,12 +362,12 @@ func wsSendHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var req WSSendRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		jsonError(w, "invalid request", http.StatusBadRequest)
+		httputil.JSONError(w, "invalid request", http.StatusBadRequest)
 		return
 	}
 	val, ok := wsSessions.Load(req.SessionID)
 	if !ok {
-		jsonError(w, "session not found", http.StatusNotFound)
+		httputil.JSONError(w, "session not found", http.StatusNotFound)
 		return
 	}
 	sess := val.(*WSSession)
@@ -377,7 +378,7 @@ func wsSendHandler(w http.ResponseWriter, r *http.Request) {
 	if isBinary {
 		decoded, decErr := base64.StdEncoding.DecodeString(req.Content)
 		if decErr != nil {
-			jsonError(w, "invalid base64 payload: "+decErr.Error(), http.StatusBadRequest)
+			httputil.JSONError(w, "invalid base64 payload: "+decErr.Error(), http.StatusBadRequest)
 			return
 		}
 		msgType = websocket.BinaryMessage
@@ -388,7 +389,7 @@ func wsSendHandler(w http.ResponseWriter, r *http.Request) {
 	err := sess.conn.WriteMessage(msgType, payload)
 	sess.mu.Unlock()
 	if err != nil {
-		jsonError(w, err.Error(), http.StatusInternalServerError)
+		httputil.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	sess.touch()
@@ -410,12 +411,12 @@ func wsPingHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var req WSPingRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		jsonError(w, "invalid request", http.StatusBadRequest)
+		httputil.JSONError(w, "invalid request", http.StatusBadRequest)
 		return
 	}
 	val, ok := wsSessions.Load(req.SessionID)
 	if !ok {
-		jsonError(w, "session not found", http.StatusNotFound)
+		httputil.JSONError(w, "session not found", http.StatusNotFound)
 		return
 	}
 	sess := val.(*WSSession)
@@ -423,7 +424,7 @@ func wsPingHandler(w http.ResponseWriter, r *http.Request) {
 	err := sess.conn.WriteMessage(websocket.PingMessage, []byte("ping"))
 	sess.mu.Unlock()
 	if err != nil {
-		jsonError(w, err.Error(), http.StatusInternalServerError)
+		httputil.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	sess.touch()
@@ -444,7 +445,7 @@ func wsDisconnectHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var req WSDisconnectRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		jsonError(w, "invalid request", http.StatusBadRequest)
+		httputil.JSONError(w, "invalid request", http.StatusBadRequest)
 		return
 	}
 	val, ok := wsSessions.Load(req.SessionID)
@@ -456,3 +457,13 @@ func wsDisconnectHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]bool{"ok": true})
 }
 
+// RegisterHandlers registers WebSocket client sidecar endpoints.
+func RegisterHandlers(mux *http.ServeMux) {
+	mux.HandleFunc("/ws/connect", wsConnectHandler)
+	mux.HandleFunc("/ws/disconnect", wsDisconnectHandler)
+	mux.HandleFunc("/ws/send", wsSendHandler)
+	mux.HandleFunc("/ws/ping", wsPingHandler)
+	mux.HandleFunc("/ws/stream", wsStreamHandler)
+	mux.HandleFunc("/ws/list", WsListHandler)
+	mux.HandleFunc("/ws/close-all", WsCloseAllHandler)
+}
