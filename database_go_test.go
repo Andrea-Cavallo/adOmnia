@@ -2,7 +2,6 @@ package main
 
 import (
 	"adomnia/internal/database"
-	"adomnia/internal/themes"
 	"path/filepath"
 	"testing"
 )
@@ -41,7 +40,7 @@ func TestSanitizeSQLitePathAllowsInMemory(t *testing.T) {
 }
 
 func TestThemeStopWatchingIsIdempotent(t *testing.T) {
-	tm := themes.NewThemeManager()
+	tm := NewThemeManager()
 	_ = tm.StopWatching()
 	if err := tm.StartWatching(); err != nil {
 		t.Fatalf("start watching: %v", err)

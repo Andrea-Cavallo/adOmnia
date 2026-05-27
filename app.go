@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/browser"
 	"adomnia/internal/devlog"
 	"adomnia/internal/proxy"
 	"adomnia/internal/sse"
@@ -25,7 +24,7 @@ import (
 type App struct {
 	ctx          context.Context
 	store        *bolt.DB
-	browserDebug *browser.BrowserDebug
+	browserDebug *BrowserDebug
 }
 
 func NewApp() *App {

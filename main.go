@@ -1,10 +1,6 @@
 package main
 
 import (
-	"adomnia/internal/browser"
-	"adomnia/internal/docker"
-	"adomnia/internal/templates"
-	"adomnia/internal/themes"
 	"embed"
 	"log"
 
@@ -21,14 +17,14 @@ func main() {
 	configureWindowChromeBackend(startupWindowChrome)
 
 	app := NewApp()
-	browserDebug := browser.NewBrowserDebug()
+	browserDebug := NewBrowserDebug()
 	app.browserDebug = browserDebug
-	themeManager := themes.NewThemeManager()
-	templateStore := templates.NewTemplateStore()
+	themeManager := NewThemeManager()
+	templateStore := NewTemplateStore()
 	pluginManager := NewPluginManager()
 	globalPluginManager = pluginManager
 	wasmRuntime := NewWasmRuntime()
-	dockerLab := docker.NewDockerLab()
+	dockerLab := NewDockerLab()
 	pythonBridge := NewPythonBridge()
 
 	appOptions := &options.App{

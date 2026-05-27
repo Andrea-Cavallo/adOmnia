@@ -75,8 +75,8 @@ func storePath() string {
 // Path returns the local database file path.
 func Path() string { return storePath() }
 
-// DataDir returns the configured application data directory.
-func DataDir() string { return baseDir }
+// DataDir returns the application data directory used by the storage engine.
+func DataDir() string { return storeDir() }
 
 // Buckets returns the stable list of persisted application buckets.
 func Buckets() []string {
