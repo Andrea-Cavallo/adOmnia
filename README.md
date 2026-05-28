@@ -14,7 +14,6 @@
 ---
 
 ## Languages · Idiomas · Lingue
-
 [English](#english) · [Español](#español) · [Italiano](#italiano)
 
 ---
