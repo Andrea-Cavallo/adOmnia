@@ -122,11 +122,11 @@ func normalizeWindowChrome(value string) string {
 func readStartupWindowChrome() string {
 	path := filepath.Join(dataDir(), "adomnia", "adomnia.db")
 	if _, err := os.Stat(path); err != nil {
-		return windowChromeApp
+		return windowChromeSystem
 	}
 	db, err := bolt.Open(path, 0600, &bolt.Options{ReadOnly: true, Timeout: 250 * time.Millisecond})
 	if err != nil {
-		return windowChromeApp
+		return windowChromeSystem
 	}
 	defer db.Close()
 	var settingsJSON []byte
@@ -143,7 +143,10 @@ func readStartupWindowChrome() string {
 		} `json:"appearance"`
 	}
 	if json.Unmarshal(settingsJSON, &parsed) != nil {
-		return windowChromeApp
+		return windowChromeSystem
+	}
+	if parsed.Appearance.WindowChrome == "" {
+		return windowChromeSystem
 	}
 	return normalizeWindowChrome(parsed.Appearance.WindowChrome)
 }
