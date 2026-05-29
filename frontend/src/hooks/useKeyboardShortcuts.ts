@@ -34,7 +34,7 @@ export function useKeyboardShortcuts({ setCommandPaletteOpen }: KeyboardShortcut
         }
         return
       }
-      if (mod && e.shiftKey && e.key.toLowerCase() === 'd') { e.preventDefault(); toggleDevTools(); return }
+      if (import.meta.env.DEV && mod && e.shiftKey && e.key.toLowerCase() === 'd') { e.preventDefault(); toggleDevTools(); return }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)

@@ -324,7 +324,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
 
   return (
     <>
-      <div className="flex flex-col border-b border-border-1">
+      <div className="flex-1 min-h-0 flex flex-col border-b border-border-1">
         {/* Request name */}
         <div className="flex items-center gap-2 px-3 pt-2 pb-0.5">
           <input
@@ -483,7 +483,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
               },
             })
           }}
-          className="overflow-y-auto"
+          className="flex-1 min-h-0 overflow-y-auto flex flex-col"
         >
           {activeTab === 'params' && (
             <KVEditor rows={request.params ?? []} onChange={(params) => onChange({ ...request, params })} />

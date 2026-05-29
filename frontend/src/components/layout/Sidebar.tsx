@@ -45,7 +45,7 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="w-64 flex-shrink-0 bg-surface-0 border-r border-border-1 flex flex-col">
+    <aside className="w-full flex-shrink-0 bg-surface-0 border-r border-border-1 flex flex-col">
       <CollectionTree
         collections={collections}
         activeRequestId={activeRequestId}
