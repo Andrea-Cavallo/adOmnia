@@ -100,22 +100,22 @@ type PendingClose =
   | { kind: 'right'; tabId: string }
   | { kind: 'left'; tabId: string }
 
-// ─── Resizable divider between Composer and ResponsePanel ────────────────────
+// ─── Resizable divider between Composer (left) and ResponsePanel (right) ─────
 
-const RESPONSE_HEIGHT_KEY = 'adomnia.responseHeight'
-const RESPONSE_HEIGHT_MIN  = 80
-const RESPONSE_HEIGHT_MAX  = 0.88  // fraction of window.innerHeight
+const COMPOSER_WIDTH_KEY = 'adomnia.composerWidth'
+const COMPOSER_WIDTH_MIN  = 280
+const COMPOSER_WIDTH_MAX  = 0.78  // fraction of window.innerWidth
 
-function clampResponseHeight(h: number): number {
-  return Math.max(RESPONSE_HEIGHT_MIN, Math.min(h, Math.round(window.innerHeight * RESPONSE_HEIGHT_MAX)))
+function clampComposerWidth(w: number): number {
+  return Math.max(COMPOSER_WIDTH_MIN, Math.min(w, Math.round(window.innerWidth * COMPOSER_WIDTH_MAX)))
 }
 
-function loadResponseHeight(): number {
+function loadComposerWidth(): number {
   try {
-    const stored = localStorage.getItem(RESPONSE_HEIGHT_KEY)
-    if (stored) return clampResponseHeight(parseInt(stored, 10))
+    const stored = localStorage.getItem(COMPOSER_WIDTH_KEY)
+    if (stored) return clampComposerWidth(parseInt(stored, 10))
   } catch { /* ignore */ }
-  return Math.round(window.innerHeight * 0.38)
+  return Math.round(window.innerWidth * 0.50)
 }
 
 // ─── RequestWorkspace ─────────────────────────────────────────────────────────
@@ -160,23 +160,22 @@ function RequestWorkspace() {
   const [pendingClose, setPendingClose] = useState<PendingClose | null>(null)
   const composerScrollRef = useRef<HTMLDivElement>(null)
 
-  // ── Resizable response panel ────────────────────────────────────────────────
-  const [responseHeight, setResponseHeight] = useState<number>(loadResponseHeight)
-  const dragRef = useRef<{ startY: number; startHeight: number } | null>(null)
+  // ── Resizable horizontal split: Composer (left) | drag | Response (right) ──
+  const [composerWidth, setComposerWidth] = useState<number>(loadComposerWidth)
+  const dragRef = useRef<{ startX: number; startWidth: number } | null>(null)
   const isDraggingRef = useRef(false)
 
   const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
-    dragRef.current = { startY: e.clientY, startHeight: responseHeight }
+    dragRef.current = { startX: e.clientX, startWidth: composerWidth }
     isDraggingRef.current = true
 
     const handleMove = (me: MouseEvent) => {
       if (!dragRef.current) return
-      // Dragging UP → delta > 0 → taller response panel
-      const delta = dragRef.current.startY - me.clientY
-      const newH = clampResponseHeight(dragRef.current.startHeight + delta)
-      setResponseHeight(newH)
-      safeSetItem(RESPONSE_HEIGHT_KEY, String(newH))
+      const delta = me.clientX - dragRef.current.startX
+      const newW = clampComposerWidth(dragRef.current.startWidth + delta)
+      setComposerWidth(newW)
+      safeSetItem(COMPOSER_WIDTH_KEY, String(newW))
     }
 
     const handleUp = () => {
@@ -188,23 +187,23 @@ function RequestWorkspace() {
       document.body.style.userSelect = ''
     }
 
-    document.body.style.cursor = 'ns-resize'
+    document.body.style.cursor = 'ew-resize'
     document.body.style.userSelect = 'none'
     document.addEventListener('mousemove', handleMove)
     document.addEventListener('mouseup', handleUp)
-  }, [responseHeight])
+  }, [composerWidth])
 
-  // Clamp height on window resize
+  // Clamp width on window resize
   useEffect(() => {
     const onResize = () => {
       if (!isDraggingRef.current) {
-        setResponseHeight((h) => clampResponseHeight(h))
+        setComposerWidth((w) => clampComposerWidth(w))
       }
     }
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
-  // ── End resizable panel ─────────────────────────────────────────────────────
+  // ── End resizable split ─────────────────────────────────────────────────────
 
   const activeTab = tabs.find((t) => t.id === activeTabId)
 
@@ -362,13 +361,14 @@ function RequestWorkspace() {
       />
 
       {activeTab ? (
-        /* ── Split layout: Composer (flex-1, scrollable) + drag handle + ResponsePanel ── */
-        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-          {/* Composer area — grows to fill remaining space; scrolls when content overflows */}
+        /* ── Horizontal split: Composer (left, fixed width) | drag | Response (right, flex-1) ── */
+        <div className="flex-1 min-h-0 flex flex-row overflow-hidden">
+          {/* Composer pane — left side, fixed width, independently scrollable */}
           <div
             ref={composerScrollRef}
             onScroll={(e) => updateViewState(activeTab.id, { composerScrollTop: e.currentTarget.scrollTop })}
-            className="flex-1 min-h-0 overflow-y-auto"
+            className="shrink-0 min-h-0 overflow-hidden flex flex-col border-r border-border-1"
+            style={{ width: composerWidth }}
           >
             <Composer
               key={activeTab.id}
@@ -383,33 +383,32 @@ function RequestWorkspace() {
           </div>
 
           {showLoadTest ? (
-            <LoadTestDrawer
-              request={activeTab.request}
-              onClose={() => setShowLoadTest(false)}
-            />
+            <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <LoadTestDrawer
+                request={activeTab.request}
+                onClose={() => setShowLoadTest(false)}
+              />
+            </div>
           ) : (
             <>
-              {/* ── Drag handle ────────────────────────────────────────────── */}
+              {/* ── Vertical drag handle ────────────────────────────────────── */}
               <div
                 role="separator"
-                aria-label="Resize response panel"
-                title="Drag to resize response panel"
+                aria-label="Resize panels"
+                title="Drag to resize panels"
                 onMouseDown={handleResizeMouseDown}
-                className="h-[6px] shrink-0 flex items-center justify-center cursor-ns-resize group hover:bg-accent/10 transition-colors border-y border-border-1"
+                className="w-[6px] shrink-0 flex items-center justify-center cursor-ew-resize group hover:bg-accent/10 transition-colors"
               >
-                {/* Grip dots */}
-                <div className="flex gap-[3px] items-center opacity-40 group-hover:opacity-80 transition-opacity">
+                {/* Grip dots — vertical arrangement */}
+                <div className="flex flex-col gap-[3px] items-center opacity-40 group-hover:opacity-80 transition-opacity">
                   {[0, 1, 2, 3, 4].map((i) => (
                     <div key={i} className="w-[3px] h-[3px] rounded-full bg-text-3 group-hover:bg-accent transition-colors" />
                   ))}
                 </div>
               </div>
 
-              {/* ── Response panel — explicit height, internally scrollable ── */}
-              <div
-                className="shrink-0 flex flex-col min-h-0 overflow-hidden"
-                style={{ height: responseHeight }}
-              >
+              {/* ── Response pane — right side, fills remaining space ── */}
+              <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
                 <ResponsePanel
                   key={activeTab.id}
                   tabId={activeTab.id}

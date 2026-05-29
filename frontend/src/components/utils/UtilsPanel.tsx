@@ -1204,14 +1204,22 @@ function decompileMethodBody(method: ClassMember, structure: ClassStructure): st
     stack.push(`(${left} ${operator} ${right})`)
   }
   const readIndex = (pos: number) => (code[pos] << 8) | code[pos + 1]
+  const simpleOwner = (owner: string) => owner.includes('.') ? owner.slice(owner.lastIndexOf('.') + 1) : owner
   let pos = 0
   let unsupported = ''
   while (pos < code.length) {
     const opStart = pos
     const op = code[pos++]
-    if (op >= 0x1a && op <= 0x1d) { stack.push(localValue(op - 0x1a)); continue }
-    if (op >= 0x26 && op <= 0x29) { stack.push(localValue(op - 0x26)); continue }
-    if (op >= 0x2a && op <= 0x2d) { stack.push(localValue(op - 0x2a)); continue }
+    if (op >= 0x1a && op <= 0x1d) { stack.push(localValue(op - 0x1a)); continue } // iload_0-3
+    if (op >= 0x1e && op <= 0x25) { stack.push(localValue((op - 0x1e) % 4)); continue } // lload_0-3, fload_0-3
+    if (op >= 0x26 && op <= 0x29) { stack.push(localValue(op - 0x26)); continue }  // dload_0-3
+    if (op >= 0x2a && op <= 0x2d) { stack.push(localValue(op - 0x2a)); continue }  // aload_0-3
+    if (op >= 0x3b && op <= 0x4e) { // *store_0-3 (istore, lstore, fstore, dstore, astore)
+      const slot = (op - 0x3b) % 4
+      const value = stack.pop() ?? '?'
+      if (!value.startsWith('__')) lines.push(`${localValue(slot)} = ${value};`)
+      continue
+    }
     switch (op) {
       case 0x02: stack.push('-1'); break
       case 0x03: case 0x04: case 0x05: case 0x06: case 0x07: case 0x08: stack.push(String(op - 0x03)); break
@@ -1225,12 +1233,46 @@ function decompileMethodBody(method: ClassMember, structure: ClassStructure): st
       }
       case 0x12: stack.push(cpValue(cp, code[pos++])); break
       case 0x13: case 0x14: stack.push(cpValue(cp, readIndex(pos))); pos += 2; break
-      case 0x15: case 0x18: case 0x19: stack.push(localValue(code[pos++])); break
-      case 0x60: case 0x63: pushBinary('+'); break
-      case 0x64: case 0x67: pushBinary('-'); break
-      case 0x68: case 0x6b: pushBinary('*'); break
-      case 0x6c: case 0x6f: pushBinary('/'); break
-      case 0x70: pushBinary('%'); break
+      case 0x15: case 0x16: case 0x17: case 0x18: case 0x19: stack.push(localValue(code[pos++])); break
+      // *store with byte index (istore, lstore, fstore, dstore, astore)
+      case 0x36: case 0x37: case 0x38: case 0x39: case 0x3a: {
+        const slot = code[pos++]
+        const value = stack.pop() ?? '?'
+        if (!value.startsWith('__')) lines.push(`${localValue(slot)} = ${value};`)
+        break
+      }
+      // stack ops
+      case 0x57: { // pop — emit void calls left on stack
+        const val = stack.pop()
+        if (val && !val.startsWith('__') && val.includes('(')) lines.push(`${val};`)
+        break
+      }
+      case 0x58: stack.pop(); stack.pop(); break // pop2
+      case 0x59: { // dup — track new-object markers for constructor reconstruction
+        const top = stack[stack.length - 1]
+        stack.push(top?.startsWith('__NEW__:') ? `__DUP__:${top.slice(8)}` : (top ?? '?'))
+        break
+      }
+      // arithmetic (all four JVM types: int, long, float, double)
+      case 0x60: case 0x61: case 0x62: case 0x63: pushBinary('+'); break
+      case 0x64: case 0x65: case 0x66: case 0x67: pushBinary('-'); break
+      case 0x68: case 0x69: case 0x6a: case 0x6b: pushBinary('*'); break
+      case 0x6c: case 0x6d: case 0x6e: case 0x6f: pushBinary('/'); break
+      case 0x70: case 0x71: pushBinary('%'); break
+      case 0x74: case 0x75: case 0x76: case 0x77: { // *neg
+        const val = stack.pop() ?? '?'
+        stack.push(`-${val}`)
+        break
+      }
+      case 0x84: { // iinc local, delta
+        const slot = code[pos++]
+        const delta = (code[pos++] << 24) >> 24
+        const name = localValue(slot)
+        if (delta === 1) lines.push(`${name}++;`)
+        else if (delta === -1) lines.push(`${name}--;`)
+        else lines.push(`${name} += ${delta};`)
+        break
+      }
       case 0x99: case 0x9a: {
         const condition = stack.pop() ?? '?'
         const branchTarget = opStart + ((readIndex(pos) << 16) >> 16)
@@ -1245,20 +1287,81 @@ function decompileMethodBody(method: ClassMember, structure: ClassStructure): st
         pos = code.length
         break
       }
+      // single-value comparisons vs zero (iflt, ifge, ifgt, ifle)
+      case 0x9b: case 0x9c: case 0x9d: case 0x9e: {
+        const val = stack.pop() ?? '?'
+        const cmpOps = ['< 0', '>= 0', '> 0', '<= 0']
+        pos += 2
+        lines.push(`/* if (${val} ${cmpOps[op - 0x9b]}) */`)
+        break
+      }
+      // two-value int comparisons (if_icmp*)
+      case 0x9f: case 0xa0: case 0xa1: case 0xa2: case 0xa3: case 0xa4: {
+        const right = stack.pop() ?? '?'; const left = stack.pop() ?? '?'
+        const cmpOps = ['==', '!=', '<', '>=', '>', '<=']
+        pos += 2
+        lines.push(`/* if (${left} ${cmpOps[op - 0x9f]} ${right}) */`)
+        break
+      }
+      case 0xa5: case 0xa6: {
+        const right = stack.pop() ?? '?'; const left = stack.pop() ?? '?'
+        pos += 2
+        lines.push(`/* if (${left} ${op === 0xa5 ? '==' : '!='} ${right}) */`)
+        break
+      }
+      case 0xa7: pos += 2; break // goto — skip branch offset
       case 0xac: case 0xad: case 0xae: case 0xaf: case 0xb0:
         lines.push(`return ${stack.pop() ?? '?'};`)
         break
       case 0xb1:
         break
+      // field access
+      case 0xb2: { // getstatic
+        const member = cpMember(cp, readIndex(pos)); pos += 2
+        stack.push(`${simpleOwner(member.owner)}.${member.name}`)
+        break
+      }
+      case 0xb3: { // putstatic
+        const member = cpMember(cp, readIndex(pos)); pos += 2
+        lines.push(`${simpleOwner(member.owner)}.${member.name} = ${stack.pop() ?? '?'};`)
+        break
+      }
+      case 0xb4: { // getfield
+        const member = cpMember(cp, readIndex(pos)); pos += 2
+        const recv = stack.pop() ?? 'this'
+        stack.push(recv === 'this' ? member.name : `${recv}.${member.name}`)
+        break
+      }
+      case 0xb5: { // putfield
+        const member = cpMember(cp, readIndex(pos)); pos += 2
+        const value = stack.pop() ?? '?'
+        const recv = stack.pop() ?? 'this'
+        lines.push(`${recv === 'this' ? 'this.' : `${recv}.`}${member.name} = ${value};`)
+        break
+      }
       case 0xb6: case 0xb7: case 0xb8: {
         const member = cpMember(cp, readIndex(pos)); pos += 2
         const signature = parseMethodDescriptor(member.descriptor)
         const args = popArguments(stack, signature.params.length)
-        const receiver = op === 0xb8 ? member.owner : (stack.pop() ?? 'this')
         if (member.name === '<init>') {
-          if (!(receiver === 'this' && member.owner === 'java.lang.Object')) lines.push(`${receiver}.${member.owner}(${args.join(', ')});`)
+          const recv = stack.pop() ?? 'this'
+          if (typeof recv === 'string' && recv.startsWith('__DUP__:')) {
+            // new X(args) — resolve the __NEW__:X placeholder into the full constructor expression
+            const className = recv.slice(8)
+            const topIdx = stack.length - 1
+            if (stack[topIdx]?.startsWith('__NEW__:')) {
+              stack[topIdx] = `new ${simpleOwner(className)}(${args.join(', ')})`
+            } else {
+              stack.push(`new ${simpleOwner(className)}(${args.join(', ')})`)
+            }
+          } else if (recv === 'this') {
+            if (member.owner !== 'java.lang.Object') lines.push(`super(${args.join(', ')});`)
+          } else {
+            lines.push(`${recv}.${simpleOwner(member.owner)}(${args.join(', ')});`)
+          }
           break
         }
+        const receiver = op === 0xb8 ? simpleOwner(member.owner) : (stack.pop() ?? 'this')
         const call = `${receiver}.${member.name}(${args.join(', ')})`
         if (signature.returnType === 'void') lines.push(`${call};`)
         else stack.push(call)
@@ -1277,6 +1380,33 @@ function decompileMethodBody(method: ClassMember, structure: ClassStructure): st
         } else {
           stack.push(`${member.name}(${args.join(', ')})`)
         }
+        break
+      }
+      case 0xbb: { // new — push marker; dup+invokespecial<init> resolves it
+        const className = cpClassName(cp, readIndex(pos)); pos += 2
+        stack.push(`__NEW__:${className}`)
+        break
+      }
+      case 0xbf: { // athrow
+        lines.push(`throw ${stack.pop() ?? '?'};`)
+        pos = code.length
+        break
+      }
+      case 0xc0: { // checkcast
+        const className = cpClassName(cp, readIndex(pos)); pos += 2
+        const val = stack.pop() ?? '?'
+        stack.push(`((${simpleOwner(className)}) ${val})`)
+        break
+      }
+      case 0xc1: { // instanceof
+        const className = cpClassName(cp, readIndex(pos)); pos += 2
+        stack.push(`${stack.pop() ?? '?'} instanceof ${simpleOwner(className)}`)
+        break
+      }
+      case 0xc6: case 0xc7: { // ifnull, ifnonnull
+        const val = stack.pop() ?? '?'
+        pos += 2
+        lines.push(`/* if (${val} ${op === 0xc6 ? '==' : '!='} null) */`)
         break
       }
       default:

@@ -321,29 +321,31 @@ export function Rail() {
         </span>
       </button>
 
-      {/* Dev Log Toggle */}
-      <button
-        onClick={toggleDevTools}
-        title="Toggle Dev Logs"
-        className={cn(
-          'w-11 h-11 rounded-lg flex flex-col items-center justify-center gap-[2px] relative transition-all group/btn mb-1',
-          devToolsVisible
-            ? 'text-accent bg-accent/10 shadow-sm'
-            : 'text-text-3 hover:text-text-1 hover:bg-surface-2',
-        )}
-      >
-        <span className={cn(
-          'absolute left-full ml-3 px-2 py-1 bg-surface-2 border border-border-2 rounded text-[10px] text-text-1 whitespace-nowrap z-50',
-          'opacity-0 group-hover/btn:opacity-100 transition-opacity pointer-events-none shadow-lg',
-        )}>
-          Dev Logs
-        </span>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="4 17 10 11 4 5" />
-          <line x1="12" y1="19" x2="20" y2="19" />
-        </svg>
-        <span className="text-[7px] font-semibold leading-none tracking-wider opacity-60">LOG</span>
-      </button>
+      {/* Dev Log Toggle — dev-only */}
+      {import.meta.env.DEV && (
+        <button
+          onClick={toggleDevTools}
+          title="Toggle Dev Logs"
+          className={cn(
+            'w-11 h-11 rounded-lg flex flex-col items-center justify-center gap-[2px] relative transition-all group/btn mb-1',
+            devToolsVisible
+              ? 'text-accent bg-accent/10 shadow-sm'
+              : 'text-text-3 hover:text-text-1 hover:bg-surface-2',
+          )}
+        >
+          <span className={cn(
+            'absolute left-full ml-3 px-2 py-1 bg-surface-2 border border-border-2 rounded text-[10px] text-text-1 whitespace-nowrap z-50',
+            'opacity-0 group-hover/btn:opacity-100 transition-opacity pointer-events-none shadow-lg',
+          )}>
+            Dev Logs
+          </span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="4 17 10 11 4 5" />
+            <line x1="12" y1="19" x2="20" y2="19" />
+          </svg>
+          <span className="text-[7px] font-semibold leading-none tracking-wider opacity-60">LOG</span>
+        </button>
+      )}
     </nav>
   )
 }

@@ -325,6 +325,8 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
       INVALID_URL: 'Check the URL syntax — it must start with http:// or https://',
       AUTH_ERR:    'Check your authentication settings (token, credentials, or OAuth2 config).',
       SCRIPT_ERR:  'Fix the pre-request script and run the request again.',
+      READ_ERR:    'The server started responding but the connection dropped before the body was fully received.',
+      PARSE_ERR:   'Internal request encoding error. Try refreshing the request and sending again.',
     }
     const humanCode: Record<string, string> = {
       CONN_ERR:    'Connection refused',
@@ -333,23 +335,32 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
       INVALID_URL: 'Invalid URL',
       AUTH_ERR:    'Auth error',
       SCRIPT_ERR:  'Script error',
+      READ_ERR:    'Read error',
+      PARSE_ERR:   'Parse error',
       ERR:         'Request error',
     }
+    // Detect connection-refused patterns in raw ERR messages for better display
+    const effectiveCode = code === 'ERR' && (
+      message.toLowerCase().includes('connection refused') ||
+      message.toLowerCase().includes('dial tcp') ||
+      message.toLowerCase().includes('no such host') ||
+      message.toLowerCase().includes('network unreachable')
+    ) ? 'CONN_ERR' : code
     return (
       <div className="flex-1 flex flex-col">
         <div className="flex items-center gap-2 px-3 py-2 border-b border-border-1">
           <span className="text-xs font-medium text-text-2">Response</span>
           <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-error/20 text-error">
-            {humanCode[code] ?? code}
+            {humanCode[effectiveCode] ?? effectiveCode}
           </span>
         </div>
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center max-w-sm">
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="text-center max-w-sm w-full">
             <div className="text-3xl mb-3 text-error/40">⚠</div>
-            <p className="text-sm font-medium text-text-1 mb-1">{humanCode[code] ?? 'Request failed'}</p>
-            <p className="text-xs text-text-3 font-mono break-all mb-3">{message}</p>
-            {hint[code] && (
-              <p className="text-xs text-text-4 leading-relaxed">{hint[code]}</p>
+            <p className="text-sm font-medium text-text-1 mb-2">{humanCode[effectiveCode] ?? 'Request failed'}</p>
+            <p className="text-xs text-text-3 font-mono break-all mb-3 px-3 py-2 bg-surface-2 rounded border border-border-1 text-left">{message}</p>
+            {hint[effectiveCode] && (
+              <p className="text-xs text-text-4 leading-relaxed border-t border-border-1 pt-3">{hint[effectiveCode]}</p>
             )}
           </div>
         </div>

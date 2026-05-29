@@ -135,7 +135,7 @@ function JsonRawEditor({ body, onChange }: { body: RequestBody; onChange: (b: Re
   }
 
   return (
-    <div className="flex flex-col gap-2 px-2 pb-2 flex-1">
+    <div className="flex flex-col gap-2 px-2 pb-2 flex-1 min-h-0">
       <div className="flex items-center gap-2">
         <button
           onClick={prettify}
