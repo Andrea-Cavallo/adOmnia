@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { Bold, Italic, Code, Link, Image, Heading, Eye, Columns } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -146,6 +146,30 @@ export function MarkdownPanel() {
   const [content, setContent] = useState('')
   const [mode, setMode] = useState<'split' | 'edit' | 'preview'>('split')
 
+  const editorRef  = useRef<HTMLTextAreaElement>(null)
+  const previewRef = useRef<HTMLDivElement>(null)
+  const syncLock   = useRef(false)
+
+  const onEditorScroll = useCallback(() => {
+    if (syncLock.current || !editorRef.current || !previewRef.current) return
+    const ed = editorRef.current
+    const pr = previewRef.current
+    const pct = ed.scrollTop / Math.max(1, ed.scrollHeight - ed.clientHeight)
+    syncLock.current = true
+    pr.scrollTop = pct * (pr.scrollHeight - pr.clientHeight)
+    requestAnimationFrame(() => { syncLock.current = false })
+  }, [])
+
+  const onPreviewScroll = useCallback(() => {
+    if (syncLock.current || !editorRef.current || !previewRef.current) return
+    const ed = editorRef.current
+    const pr = previewRef.current
+    const pct = pr.scrollTop / Math.max(1, pr.scrollHeight - pr.clientHeight)
+    syncLock.current = true
+    ed.scrollTop = pct * (ed.scrollHeight - ed.clientHeight)
+    requestAnimationFrame(() => { syncLock.current = false })
+  }, [])
+
   useEffect(() => {
     fetch('/README.md')
       .then((res) => (res.ok ? res.text() : Promise.reject()))
@@ -212,6 +236,7 @@ export function MarkdownPanel() {
       <div className="flex-1 flex min-h-0 overflow-hidden">
         {mode !== 'preview' && (
           <textarea
+            ref={editorRef}
             className={cn(
               'md-editor-textarea p-4 bg-surface-0 font-mono text-xs text-text-1',
               'placeholder:text-text-4 resize-none focus:outline-none overflow-y-auto leading-relaxed',
@@ -219,13 +244,16 @@ export function MarkdownPanel() {
             )}
             value={content}
             onChange={(e) => setContent(e.target.value)}
+            onScroll={mode === 'split' ? onEditorScroll : undefined}
             placeholder="Write markdown here…"
             spellCheck={false}
           />
         )}
         {mode !== 'edit' && (
           <div
+            ref={previewRef}
             className={cn('p-5 overflow-y-auto bg-surface-0', mode === 'split' ? 'w-1/2' : 'flex-1')}
+            onScroll={mode === 'split' ? onPreviewScroll : undefined}
             dangerouslySetInnerHTML={{ __html: html }}
           />
         )}
