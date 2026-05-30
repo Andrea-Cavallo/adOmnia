@@ -2,8 +2,9 @@ import type { Collection, HttpMethod, KVRow, RequestAuth, RequestItem, TreeNode 
 import { blankAuth, blankBody, uid } from '@/lib/types'
 import { openApiToCollection } from '@/lib/openapiImport'
 import { exportToOpenApi } from '@/lib/openapi'
+import { exportToSwagger2 } from '@/lib/swagger2'
 
-export type CollectionFormat = 'auto' | 'adomnia' | 'postman' | 'insomnia' | 'bruno' | 'openapi'
+export type CollectionFormat = 'auto' | 'adomnia' | 'postman' | 'insomnia' | 'bruno' | 'openapi' | 'swagger2'
 export type ExportFormat = Exclude<CollectionFormat, 'auto'>
 
 export interface ImportResult {
@@ -349,6 +350,7 @@ export function exportCollectionPayload(collection: Collection, format: ExportFo
   if (format === 'postman') return JSON.stringify(toPostmanCollection(collection), null, 2)
   if (format === 'insomnia') return JSON.stringify(toInsomniaExport(collection), null, 2)
   if (format === 'openapi') return exportToOpenApi([collection])
+  if (format === 'swagger2') return exportToSwagger2([collection])
   return JSON.stringify(toBrunoCollection(collection), null, 2)
 }
 
@@ -359,6 +361,7 @@ export function exportNodePayload(_collection: Collection, node: TreeNode, forma
 export function exportAllCollectionsPayload(collections: Collection[], format: ExportFormat): string {
   if (format === 'adomnia') return JSON.stringify({ format: 'adomnia-workspace', version: '1.0', collections }, null, 2)
   if (format === 'openapi') return exportToOpenApi(collections)
+  if (format === 'swagger2') return exportToSwagger2(collections)
   return JSON.stringify(collections.map((collection) => JSON.parse(exportCollectionPayload(collection, format))), null, 2)
 }
 
