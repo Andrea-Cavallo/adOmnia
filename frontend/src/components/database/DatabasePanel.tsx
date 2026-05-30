@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { AlertTriangle, Bookmark, CheckCircle2, Clock, Database, Download, Play, Plus, RefreshCw, Save, Shield, Trash2 } from 'lucide-react'
+import { AlertTriangle, Bookmark, CheckCircle2, Clock, Database, Download, Play, Plus, RefreshCw, Shield, Trash2 } from 'lucide-react'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { StorageGet, StoragePut } from '@/wailsjs/go/main/App'
 import { useEnvironmentsStore } from '@/stores/environments'
@@ -44,11 +44,11 @@ const HISTORY_KEY = 'history'
 const FAVORITES_KEY = 'favorites'
 
 const DRIVER_META: Record<DbDriver, { label: string; port: number; tone: string }> = {
-  sqlite: { label: 'SQLite', port: 0, tone: 'text-success border-success/25 bg-success/8' },
-  postgres: { label: 'PostgreSQL', port: 5432, tone: 'text-info border-info/25 bg-info/8' },
-  mysql: { label: 'MySQL / MariaDB', port: 3306, tone: 'text-warning border-warning/25 bg-warning/8' },
-  db2: { label: 'IBM Db2', port: 50000, tone: 'text-accent border-accent/25 bg-accent/8' },
-  mongodb: { label: 'MongoDB', port: 27017, tone: 'text-success border-success/25 bg-success/8' },
+  sqlite:   { label: 'SQLite',        port: 0,     tone: 'text-success border-success/35 bg-success/9' },
+  postgres: { label: 'PostgreSQL',    port: 5432,  tone: 'text-info border-info/35 bg-info/9' },
+  mysql:    { label: 'MySQL',         port: 3306,  tone: 'text-warning border-warning/35 bg-warning/9' },
+  db2:      { label: 'IBM Db2',       port: 50000, tone: 'text-accent border-accent/25 bg-accent/8' },
+  mongodb:  { label: 'MongoDB',       port: 27017, tone: 'text-success border-success/35 bg-success/9' },
 }
 const SELECTABLE_DRIVERS: SelectableDbDriver[] = ['sqlite', 'postgres', 'mysql', 'mongodb']
 
@@ -112,22 +112,66 @@ function csvEscape(value: unknown) {
   return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
 }
 
+// ── type-detection helpers ─────────────────────────────────────────────────
+function detectColType(col: string): string {
+  const l = col.toLowerCase()
+  if (l === 'id' || l.endsWith('_id') || l.endsWith('id')) return 'id'
+  if (l.includes('_at') || l.includes('date') || l.includes('time') || l.includes('created') || l.includes('updated')) return 'date'
+  return 'text'
+}
+
+function detectCellType(value: unknown): 'null' | 'num' | 'bool' | 'date' | 'text' {
+  if (value == null) return 'null'
+  if (typeof value === 'boolean') return 'bool'
+  if (typeof value === 'number') return 'num'
+  const s = String(value)
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return 'date'
+  if (!isNaN(Number(s)) && s.trim() !== '') return 'num'
+  return 'text'
+}
+
+function CellValue({ value, colType }: { value: unknown; colType: string }) {
+  const type = detectCellType(value)
+  if (type === 'null') return <span className="italic text-text-4">NULL</span>
+  if (type === 'bool') {
+    const b = value === true || value === 'true'
+    return (
+      <span className={cn('inline-flex items-center gap-1 font-ui text-[10px]', b ? 'text-success' : 'text-text-4')}>
+        <span className={cn('inline-grid h-3 w-3 place-items-center rounded-sm border', b ? 'border-success bg-success/15' : 'border-text-4')}>
+          {b && (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} className="h-2 w-2">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          )}
+        </span>
+        {b ? 'true' : 'false'}
+      </span>
+    )
+  }
+  const s = String(value)
+  if (type === 'date') return <span className="text-info">{s}</span>
+  if (type === 'num' || colType === 'id') return <span className={cn('tabular-nums', colType === 'id' ? 'text-text-3' : 'text-warning')}>{s}</span>
+  return <span>{s}</span>
+}
+
+// ── SQL syntax highlight ───────────────────────────────────────────────────
 const SQL_KEYWORDS = new Set([
   'SELECT', 'FROM', 'WHERE', 'JOIN', 'LEFT', 'RIGHT', 'INNER', 'OUTER', 'ON', 'GROUP', 'BY', 'ORDER', 'LIMIT',
   'INSERT', 'INTO', 'VALUES', 'UPDATE', 'SET', 'DELETE', 'CREATE', 'ALTER', 'DROP', 'TABLE', 'INDEX',
   'AND', 'OR', 'NOT', 'NULL', 'IS', 'AS', 'DISTINCT', 'COUNT', 'SUM', 'AVG', 'MIN', 'MAX', 'HAVING', 'RETURNING',
+  'TRUE', 'FALSE', 'ASC', 'DESC', 'CASE', 'WHEN', 'THEN', 'ELSE', 'END', 'WITH', 'UNION', 'ALL', 'EXISTS',
 ])
 
 function highlightedSql(query: string): ReactNode[] {
   return query.split(/(\s+|--.*?$|\/\*[\s\S]*?\*\/|'(?:''|[^'])*'|"(?:\\"|[^"])*"|\b\d+(?:\.\d+)?\b|[(),;=*<>+-])/gm).map((token, index) => {
     if (!token) return null
     const upper = token.toUpperCase()
-    if (/^--|^\/\*/.test(token)) return <span key={index} className="text-text-4">{token}</span>
-    if (/^'.*'$|^".*"$/.test(token)) return <span key={index} className="text-success">{token}</span>
-    if (/^\d/.test(token)) return <span key={index} className="text-warning">{token}</span>
-    if (SQL_KEYWORDS.has(upper)) return <span key={index} className="font-semibold text-accent">{token}</span>
-    if (/^[(),;=*<>+-]$/.test(token)) return <span key={index} className="text-text-4">{token}</span>
-    return <span key={index}>{token}</span>
+    if (/^--|^\/\*/.test(token)) return <span key={index} style={{ color: '#4B5563' }}>{token}</span>
+    if (/^'.*'$|^".*"$/.test(token)) return <span key={index} style={{ color: '#A8F0A8' }}>{token}</span>
+    if (/^\d/.test(token)) return <span key={index} style={{ color: '#FFD280' }}>{token}</span>
+    if (SQL_KEYWORDS.has(upper)) return <span key={index} style={{ color: '#C8A8FF', fontWeight: 600 }}>{token}</span>
+    if (/^[(),;=*<>+-]$/.test(token)) return <span key={index} style={{ color: '#4B5563' }}>{token}</span>
+    return <span key={index} style={{ color: '#C8E6FF' }}>{token}</span>
   })
 }
 
@@ -136,17 +180,18 @@ function highlightedJson(query: string): ReactNode {
     const pretty = JSON.stringify(JSON.parse(query), null, 2)
     return pretty.split(/("(?:\\"|[^"])*"\s*:|"(?:\\"|[^"])*"|true|false|null|-?\d+(?:\.\d+)?)/g).map((token, index) => {
       if (!token) return null
-      if (/^".*"\s*:$/.test(token)) return <span key={index} className="text-accent">{token}</span>
-      if (/^"/.test(token)) return <span key={index} className="text-success">{token}</span>
-      if (/^(true|false|null)$/.test(token)) return <span key={index} className="text-warning">{token}</span>
-      if (/^-?\d/.test(token)) return <span key={index} className="text-info">{token}</span>
+      if (/^".*"\s*:$/.test(token)) return <span key={index} style={{ color: '#C8E6FF' }}>{token}</span>
+      if (/^"/.test(token)) return <span key={index} style={{ color: '#A8F0A8' }}>{token}</span>
+      if (/^(true|false|null)$/.test(token)) return <span key={index} style={{ color: '#C8A8FF', fontWeight: 600 }}>{token}</span>
+      if (/^-?\d/.test(token)) return <span key={index} style={{ color: '#FFD280' }}>{token}</span>
       return <span key={index}>{token}</span>
     })
   } catch {
-    return <span className="text-error">Invalid JSON. Runner will show the exact parser error when executed.</span>
+    return <span style={{ color: 'var(--color-error)' }}>Invalid JSON. Runner will show the exact parser error when executed.</span>
   }
 }
 
+// ── main component ─────────────────────────────────────────────────────────
 export function DatabasePanel() {
   const port = useServerPort()
   const getResolvedVars = useEnvironmentsStore((s) => s.getResolvedVars)
@@ -167,6 +212,7 @@ export function DatabasePanel() {
   const renderedQuery = useMemo(() => substituteVars(query, vars), [query, vars])
   const dangerous = active.driver === 'mongodb' ? isDangerousMongo(renderedQuery) : isDangerous(renderedQuery)
   const isMongo = active.driver === 'mongodb'
+  const lineCount = query.split('\n').length
 
   useEffect(() => {
     const load = async () => {
@@ -273,7 +319,7 @@ export function DatabasePanel() {
     setMessage('')
     setRunning(true)
     try {
-      const data = await api('/database/test', active)
+      const data = await api('/database/test', active) as { driver: string; durationMs: number }
       setMessage(`Connected to ${data.driver} in ${data.durationMs} ms`)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -290,10 +336,7 @@ export function DatabasePanel() {
 
   const sendConnectionSecretToVault = () => {
     const value = active.dsn || active.password
-    if (!value) {
-      setError('No DSN or password to send to Vault')
-      return
-    }
+    if (!value) { setError('No DSN or password to send to Vault'); return }
     safeSetItem('adomnia.vault.pendingSecret', JSON.stringify({
       name: `${active.name} ${active.dsn ? 'DSN' : 'password'}`,
       value,
@@ -314,167 +357,379 @@ export function DatabasePanel() {
     download('database-result.csv', lines.join('\n'), 'text/csv')
   }
 
+  // ── render ──────────────────────────────────────────────────────────────
   return (
     <div className="grid min-h-0 flex-1 grid-cols-[320px_1fr] overflow-hidden bg-surface-0">
+
+      {/* ── Connections sidebar ──────────────────────────────────────── */}
       <aside className="flex min-h-0 flex-col border-r border-border-1 bg-surface-1">
+        {/* header */}
         <div className="border-b border-border-1 p-4">
           <div className="mb-3 flex items-center gap-2">
-            <div className="grid h-8 w-8 place-items-center rounded-lg border border-accent/25 bg-accent/10">
+            <div className="grid h-8 w-8 flex-none place-items-center rounded-lg border border-accent/25 bg-accent/10">
               <Database size={16} className="text-accent" />
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="text-sm font-semibold text-text-1">Connections</h2>
-              <p className="text-[10px] text-text-4">Local SQL client, vault-aware presets</p>
+              <h2 className="text-[13px] font-semibold text-text-1">Connections</h2>
+              <p className="mt-px text-[10px] text-text-4">Local SQL client, vault-aware presets</p>
             </div>
-            <button onClick={addConnection} className="grid h-7 w-7 place-items-center rounded border border-border-2 text-text-3 hover:text-text-1"><Plus size={13} /></button>
+            <button onClick={addConnection} title="New connection" className="grid h-7 w-7 flex-none place-items-center rounded border border-border-2 text-text-3 hover:border-border-3 hover:text-text-1">
+              <Plus size={13} />
+            </button>
           </div>
           <div className="space-y-2">
-            <select value={activeId} onChange={(e) => setActiveId(e.target.value)} className="h-8 w-full rounded border border-border-2 bg-surface-2 px-2 text-xs text-text-1 outline-none">
-              {connections.map((conn) => <option key={conn.id} value={conn.id}>{conn.name}</option>)}
+            <select
+              value={activeId}
+              onChange={(e) => setActiveId(e.target.value)}
+              className="h-8 w-full rounded border border-border-2 bg-surface-2 px-2.5 text-xs text-text-1 outline-none focus:border-accent/60"
+              style={{ appearance: 'none', WebkitAppearance: 'none', backgroundImage: 'linear-gradient(45deg,transparent 50%,#6B7280 50%),linear-gradient(135deg,#6B7280 50%,transparent 50%)', backgroundPosition: 'calc(100% - 14px) calc(50% - 1px),calc(100% - 9px) calc(50% - 1px)', backgroundRepeat: 'no-repeat', backgroundSize: '5px 5px,5px 5px', paddingRight: 26 }}
+            >
+              {connections.map((conn) => <option key={conn.id} value={conn.id}>{conn.name} · {DRIVER_META[conn.driver]?.label ?? conn.driver}</option>)}
             </select>
-            <input value={active.name} onChange={(e) => updateActive({ name: e.target.value })} className="h-8 w-full rounded border border-border-2 bg-surface-2 px-2 text-xs text-text-1 outline-none" placeholder="Connection name" />
+            <input
+              value={active.name}
+              onChange={(e) => updateActive({ name: e.target.value })}
+              className="h-8 w-full rounded border border-border-2 bg-surface-2 px-2.5 text-xs text-text-1 outline-none focus:border-accent/60"
+              placeholder="Connection name"
+            />
           </div>
         </div>
 
+        {/* body */}
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
-          <div className="mb-3 grid grid-cols-2 gap-2">
-            {SELECTABLE_DRIVERS.map((driver) => (
-              <button
-                key={driver}
-                onClick={() => setDriver(driver)}
-                className={cn('rounded border px-2 py-2 text-left text-[11px] transition-colors', active.driver === driver ? DRIVER_META[driver].tone : 'border-border-2 bg-surface-2 text-text-3 hover:text-text-1')}
-              >
-                {DRIVER_META[driver].label}
-              </button>
-            ))}
+          {/* driver grid */}
+          <div className="mb-3.5 grid grid-cols-2 gap-2">
+            {SELECTABLE_DRIVERS.map((driver) => {
+              const isActive = active.driver === driver
+              return (
+                <button
+                  key={driver}
+                  onClick={() => setDriver(driver)}
+                  className={cn(
+                    'flex items-center gap-1.5 rounded border px-2.5 py-[9px] text-left text-[11px] font-ui transition-colors',
+                    isActive ? DRIVER_META[driver].tone : 'border-border-2 bg-surface-2 text-text-3 hover:text-text-1'
+                  )}
+                >
+                  <span
+                    className="h-[7px] w-[7px] flex-none rounded-full"
+                    style={{
+                      background: 'currentColor',
+                      opacity: isActive ? 1 : 0.55,
+                      boxShadow: isActive ? '0 0 6px currentColor' : 'none',
+                    }}
+                  />
+                  {DRIVER_META[driver].label}
+                </button>
+              )
+            })}
           </div>
 
+          {/* connection fields */}
           {active.driver === 'sqlite' ? (
             <label className="mb-3 block">
               <span className="mb-1 block text-[10px] uppercase tracking-wider text-text-4">SQLite file path</span>
-              <input value={active.sqlitePath} onChange={(e) => updateActive({ sqlitePath: e.target.value })} className="h-8 w-full rounded border border-border-2 bg-surface-2 px-2 font-mono text-xs text-text-1 outline-none" placeholder="C:\data\app.db" />
+              <input value={active.sqlitePath} onChange={(e) => updateActive({ sqlitePath: e.target.value })} className="h-8 w-full rounded border border-border-2 bg-surface-2 px-2.5 font-mono text-xs text-text-1 outline-none focus:border-accent/60" placeholder="C:\data\app.db" />
             </label>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               <div className="grid grid-cols-[1fr_72px] gap-2">
                 <label>
                   <span className="mb-1 block text-[10px] uppercase tracking-wider text-text-4">Host</span>
-                  <input value={active.host} onChange={(e) => updateActive({ host: e.target.value })} className="h-8 w-full rounded border border-border-2 bg-surface-2 px-2 text-xs text-text-1 outline-none" />
+                  <input value={active.host} onChange={(e) => updateActive({ host: e.target.value })} className="h-8 w-full rounded border border-border-2 bg-surface-2 px-2.5 text-xs text-text-1 outline-none focus:border-accent/60" />
                 </label>
                 <label>
                   <span className="mb-1 block text-[10px] uppercase tracking-wider text-text-4">Port</span>
-                  <input type="number" value={active.port} onChange={(e) => updateActive({ port: Number(e.target.value) })} className="h-8 w-full rounded border border-border-2 bg-surface-2 px-2 text-xs text-text-1 outline-none" />
+                  <input type="number" value={active.port} onChange={(e) => updateActive({ port: Number(e.target.value) })} className="h-8 w-full rounded border border-border-2 bg-surface-2 px-2.5 text-xs text-text-1 outline-none focus:border-accent/60" />
                 </label>
               </div>
               <label className="block">
                 <span className="mb-1 block text-[10px] uppercase tracking-wider text-text-4">Database</span>
-                <input value={active.database} onChange={(e) => updateActive({ database: e.target.value })} className="h-8 w-full rounded border border-border-2 bg-surface-2 px-2 text-xs text-text-1 outline-none" />
+                <input value={active.database} onChange={(e) => updateActive({ database: e.target.value })} className="h-8 w-full rounded border border-border-2 bg-surface-2 px-2.5 text-xs text-text-1 outline-none focus:border-accent/60" />
               </label>
               {active.driver === 'mongodb' && (
                 <label className="block">
                   <span className="mb-1 block text-[10px] uppercase tracking-wider text-text-4">Default collection</span>
-                  <input value={active.collection ?? ''} onChange={(e) => updateActive({ collection: e.target.value })} className="h-8 w-full rounded border border-border-2 bg-surface-2 px-2 text-xs text-text-1 outline-none" placeholder="users" />
+                  <input value={active.collection ?? ''} onChange={(e) => updateActive({ collection: e.target.value })} className="h-8 w-full rounded border border-border-2 bg-surface-2 px-2.5 text-xs text-text-1 outline-none focus:border-accent/60" placeholder="users" />
                 </label>
               )}
               <div className="grid grid-cols-2 gap-2">
-                <input value={active.user} onChange={(e) => updateActive({ user: e.target.value })} className="h-8 rounded border border-border-2 bg-surface-2 px-2 text-xs text-text-1 outline-none" placeholder="User" />
-                <input type="password" value={active.password} onChange={(e) => updateActive({ password: e.target.value, savedInVault: false })} className="h-8 rounded border border-border-2 bg-surface-2 px-2 text-xs text-text-1 outline-none" placeholder="Password" />
+                <label>
+                  <span className="mb-1 block text-[10px] uppercase tracking-wider text-text-4">User</span>
+                  <input value={active.user} onChange={(e) => updateActive({ user: e.target.value })} className="h-8 w-full rounded border border-border-2 bg-surface-2 px-2.5 text-xs text-text-1 outline-none focus:border-accent/60" />
+                </label>
+                <label>
+                  <span className="mb-1 block text-[10px] uppercase tracking-wider text-text-4">Password</span>
+                  <input type="password" value={active.password} onChange={(e) => updateActive({ password: e.target.value, savedInVault: false })} className="h-8 w-full rounded border border-border-2 bg-surface-2 px-2.5 text-xs text-text-1 outline-none focus:border-accent/60" />
+                </label>
               </div>
             </div>
           )}
 
           <label className="mt-3 block">
             <span className="mb-1 block text-[10px] uppercase tracking-wider text-text-4">Raw DSN override</span>
-            <textarea value={active.dsn} onChange={(e) => updateActive({ dsn: e.target.value })} rows={3} className="w-full resize-none rounded border border-border-2 bg-surface-2 px-2 py-1.5 font-mono text-xs text-text-1 outline-none" placeholder="Optional full connection string" />
+            <textarea
+              value={active.dsn}
+              onChange={(e) => updateActive({ dsn: e.target.value })}
+              rows={2}
+              className="w-full resize-none rounded border border-border-2 bg-surface-2 px-2.5 py-2 font-mono text-xs leading-relaxed text-text-1 outline-none focus:border-accent/60"
+              placeholder="Optional full connection string"
+            />
           </label>
 
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <button onClick={testConnection} disabled={running} className="flex h-8 items-center justify-center gap-1.5 rounded border border-border-2 text-xs text-text-3 hover:text-text-1 disabled:opacity-40"><RefreshCw size={12} /> Test</button>
-            <button onClick={sendConnectionSecretToVault} className="flex h-8 items-center justify-center gap-1.5 rounded border border-border-2 text-xs text-text-3 hover:text-text-1"><Shield size={12} /> Send to Vault</button>
+          {/* actions */}
+          <div className="mt-3.5 grid grid-cols-2 gap-2">
+            <button onClick={testConnection} disabled={running} className="flex h-8 items-center justify-center gap-1.5 rounded border border-border-2 bg-surface-2 text-xs text-text-3 hover:border-border-3 hover:text-text-1 disabled:opacity-40">
+              <RefreshCw size={12} /> Test
+            </button>
+            <button onClick={sendConnectionSecretToVault} className="flex h-8 items-center justify-center gap-1.5 rounded border border-border-2 bg-surface-2 text-xs text-text-3 hover:border-border-3 hover:text-text-1">
+              <Shield size={12} /> Vault
+            </button>
           </div>
-          {active.savedInVault && <div className="mt-2 rounded border border-success/25 bg-success/8 px-2 py-1.5 text-[10px] text-success">Credential handoff sent to Vault. Remove plaintext here after encrypting if you do not want it stored in this connection preset.</div>}
-          {active.driver === 'db2' && <div className="mt-2 rounded border border-warning/30 bg-warning/10 px-2 py-1.5 text-[10px] text-warning">This saved Db2 preset is retained for compatibility, but Db2 is not available in this portable build. Select a supported driver to continue.</div>}
+
+          {/* status notes */}
+          {message && !error && (
+            <div className="mt-2.5 rounded border border-success/25 bg-success/8 px-2.5 py-2 text-[10px] leading-relaxed text-success">
+              {message}. Credential can be encrypted to Vault from here.
+            </div>
+          )}
+          {active.savedInVault && (
+            <div className="mt-2 rounded border border-success/25 bg-success/8 px-2.5 py-1.5 text-[10px] text-success">
+              Credential handoff sent to Vault. Remove plaintext here after encrypting.
+            </div>
+          )}
+          {active.driver === 'db2' && (
+            <div className="mt-2 rounded border border-warning/30 bg-warning/10 px-2.5 py-1.5 text-[10px] text-warning">
+              This saved Db2 preset is retained for compatibility, but Db2 is not available in this portable build. Select a supported driver to continue.
+            </div>
+          )}
           {active.driver === 'mongodb' && (
-            <div className="mt-2 rounded border border-success/25 bg-success/8 px-2 py-1.5 text-[10px] text-success">
+            <div className="mt-2 rounded border border-success/25 bg-success/8 px-2.5 py-1.5 text-[10px] text-success">
               MongoDB runner enabled. Use JSON operations: find, aggregate, insertOne/Many, updateOne/Many, deleteOne/Many, count, listCollections, runCommand.
             </div>
           )}
-          <button onClick={deleteConnection} disabled={connections.length <= 1} className="mt-3 flex h-8 w-full items-center justify-center gap-1.5 rounded border border-error/25 text-xs text-error hover:bg-error/10 disabled:opacity-40"><Trash2 size={12} /> Delete connection</button>
+
+          <button
+            onClick={deleteConnection}
+            disabled={connections.length <= 1}
+            className="mt-3.5 flex h-8 w-full items-center justify-center gap-1.5 rounded border border-error/25 text-xs text-error hover:bg-error/10 disabled:opacity-40"
+          >
+            <Trash2 size={12} /> Delete connection
+          </button>
         </div>
       </aside>
 
+      {/* ── Editor + Results ──────────────────────────────────────────── */}
       <section className="flex min-w-0 flex-col">
-        <div className="grid grid-cols-[1fr_280px] gap-3 border-b border-border-1 bg-surface-1 p-3">
+
+        {/* editor region */}
+        <div className="grid grid-cols-[1fr_280px] gap-3.5 border-b border-border-1 bg-surface-1 p-3.5">
+
+          {/* left: editor */}
           <div className="min-w-0">
-            <div className="mb-2 flex items-center gap-2">
-              <span className="rounded border border-border-2 bg-surface-2 px-2 py-1 text-[10px] uppercase tracking-wider text-text-4">{isMongo ? 'Mongo JSON Runner' : 'SQL Editor'}</span>
-              {dangerous && <span className="flex items-center gap-1 rounded border border-error/30 bg-error/10 px-2 py-1 text-[10px] text-error"><AlertTriangle size={11} /> destructive</span>}
-              <span className="ml-auto text-[10px] text-text-4">Variables: {Object.keys(vars).length}</span>
+            {/* meta bar */}
+            <div className="mb-2.5 flex items-center gap-2">
+              <span className="rounded border border-border-2 bg-surface-2 px-2 py-1 text-[10px] uppercase tracking-wider text-text-4">
+                {isMongo ? 'Mongo JSON Runner' : 'SQL Editor'}
+              </span>
+              {result && (
+                <span className="flex items-center gap-1.5 rounded border border-success/30 px-2 py-1 text-[10px] text-success">
+                  <span className="h-1.5 w-1.5 rounded-full bg-success" style={{ boxShadow: '0 0 6px currentColor' }} />
+                  {DRIVER_META[active.driver]?.label ?? active.driver}
+                </span>
+              )}
+              {dangerous && (
+                <span className="flex items-center gap-1 rounded border border-error/30 bg-error/10 px-2 py-1 text-[10px] text-error">
+                  <AlertTriangle size={11} /> destructive
+                </span>
+              )}
+              <span className="ml-auto text-[10px] text-text-4">
+                Variables: <b className="font-semibold text-accent">{Object.keys(vars).length}</b>
+              </span>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <textarea value={query} onChange={(e) => setQuery(e.target.value)} spellCheck={false} className="h-44 w-full resize-none rounded-lg border border-border-1 bg-surface-0 p-3 font-mono text-xs leading-5 text-text-1 outline-none focus:border-accent" />
-              <pre className="h-44 overflow-auto rounded-lg border border-border-1 bg-surface-0 p-3 font-mono text-xs leading-5 text-text-2">
-                {isMongo ? highlightedJson(renderedQuery) : highlightedSql(renderedQuery)}
-              </pre>
+
+            {/* editor with gutter */}
+            <div
+              className="flex overflow-hidden rounded-lg border border-border-1 bg-surface-0"
+              style={{ height: 188 }}
+            >
+              {/* gutter */}
+              <div
+                className="w-[42px] flex-none select-none border-r border-border-1 bg-surface-1 pt-3"
+                style={{ fontFamily: 'var(--font-mono, ui-monospace)', fontSize: 12, lineHeight: '20px' }}
+              >
+                {Array.from({ length: lineCount }, (_, i) => (
+                  <div key={i} className="pr-[11px] text-right text-text-4">{i + 1}</div>
+                ))}
+              </div>
+
+              {/* mirror: pre (highlight) + textarea (input) */}
+              <div className="relative flex-1 overflow-auto">
+                <pre
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 overflow-visible whitespace-pre p-3 font-mono text-[12.5px] leading-5"
+                  style={{ tabSize: 2 }}
+                >
+                  {isMongo ? highlightedJson(query) : highlightedSql(query)}
+                  {'\n'}
+                </pre>
+                <textarea
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  spellCheck={false}
+                  className="absolute inset-0 h-full w-full resize-none bg-transparent p-3 font-mono text-[12.5px] leading-5 text-transparent outline-none"
+                  style={{ tabSize: 2, caretColor: '#A855F7' }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Tab') {
+                      e.preventDefault()
+                      const t = e.currentTarget
+                      const start = t.selectionStart
+                      const end = t.selectionEnd
+                      const next = query.slice(0, start) + '  ' + query.slice(end)
+                      setQuery(next)
+                      requestAnimationFrame(() => { t.selectionStart = t.selectionEnd = start + 2 })
+                    }
+                  }}
+                />
+              </div>
             </div>
+
             {isMongo && (
-    <div className="mt-2 rounded border border-border-2 bg-surface-2 px-2 py-1.5 text-[10px] leading-relaxed text-text-4">
+              <div className="mt-2 rounded border border-border-2 bg-surface-2 px-2.5 py-1.5 text-[10px] leading-relaxed text-text-4">
                 Examples: <span className="font-mono text-text-3">{'{"operation":"listDatabases"}'}</span>, <span className="font-mono text-text-3">{'{"operation":"listCollections"}'}</span>, <span className="font-mono text-text-3">{'{"operation":"count","collection":"users","filter":{}}'}</span>
               </div>
             )}
           </div>
+
+          {/* right: controls */}
           <div className="flex flex-col gap-2">
-            <label className="grid grid-cols-[1fr_80px] items-center gap-2 rounded border border-border-2 bg-surface-2 px-2 text-[10px] uppercase tracking-wider text-text-4">
+            <div className="grid grid-cols-[1fr_80px] items-center gap-2 rounded border border-border-2 bg-surface-2 px-2.5 text-[10px] uppercase tracking-wider text-text-4">
               Auto limit
-              <input type="number" min={1} max={5000} value={limit} onChange={(e) => setLimit(Number(e.target.value) || 200)} className="h-8 bg-transparent text-right text-xs text-text-1 outline-none" />
-            </label>
-            <label className="grid grid-cols-[1fr_80px] items-center gap-2 rounded border border-border-2 bg-surface-2 px-2 text-[10px] uppercase tracking-wider text-text-4">
+              <input type="number" min={1} max={5000} value={limit} onChange={(e) => setLimit(Number(e.target.value) || 200)} className="h-8 bg-transparent text-right font-mono text-xs text-text-1 outline-none" />
+            </div>
+            <div className="grid grid-cols-[1fr_80px] items-center gap-2 rounded border border-border-2 bg-surface-2 px-2.5 text-[10px] uppercase tracking-wider text-text-4">
               Timeout ms
-              <input type="number" min={1000} value={timeoutMs} onChange={(e) => setTimeoutMs(Number(e.target.value) || 30000)} className="h-8 bg-transparent text-right text-xs text-text-1 outline-none" />
-            </label>
-            <button onClick={() => void runQuery(false)} disabled={running} className="flex h-9 items-center justify-center gap-2 rounded bg-accent text-xs font-semibold text-white disabled:opacity-40"><Play size={13} /> Run query</button>
-            <button onClick={() => void runQuery(true)} disabled={running || isMongo} className="flex h-8 items-center justify-center gap-2 rounded border border-border-2 text-xs text-text-3 hover:text-text-1 disabled:opacity-40"><Clock size={12} /> Explain plan</button>
-            <button onClick={toggleFavorite} className="flex h-8 items-center justify-center gap-2 rounded border border-border-2 text-xs text-text-3 hover:text-text-1"><Bookmark size={12} /> {favorites.includes(query) ? 'Unfavorite' : 'Favorite'}</button>
+              <input type="number" min={1000} value={timeoutMs} onChange={(e) => setTimeoutMs(Number(e.target.value) || 30000)} className="h-8 bg-transparent text-right font-mono text-xs text-text-1 outline-none" />
+            </div>
+            <div className="flex-1" />
+            <button
+              onClick={() => void runQuery(false)}
+              disabled={running}
+              className="flex h-9 items-center justify-center gap-2 rounded bg-accent text-xs font-semibold text-white hover:bg-accent/90 disabled:opacity-40"
+              style={{ boxShadow: '0 0 14px rgba(139,61,255,0.18)' }}
+            >
+              <Play size={13} fill="currentColor" /> Run query
+            </button>
+            <button onClick={() => void runQuery(true)} disabled={running || isMongo} className="flex h-8 items-center justify-center gap-2 rounded border border-border-2 bg-surface-2 text-xs text-text-3 hover:border-border-3 hover:text-text-1 disabled:opacity-40">
+              <Clock size={12} /> Explain plan
+            </button>
+            <button onClick={toggleFavorite} className="flex h-8 items-center justify-center gap-2 rounded border border-border-2 bg-surface-2 text-xs text-text-3 hover:border-border-3 hover:text-text-1">
+              <Bookmark size={12} /> {favorites.includes(query) ? 'Unfavorite' : 'Favorite'}
+            </button>
           </div>
         </div>
 
+        {/* status banner */}
         {(message || error) && (
-          <div className={cn('flex items-center gap-2 border-b px-3 py-2 text-xs', error ? 'border-error/25 bg-error/8 text-error' : 'border-success/20 bg-success/8 text-success')}>
+          <div className={cn('flex items-center gap-2 border-b px-3.5 py-2 text-xs', error ? 'border-error/25 bg-error/8 text-error' : 'border-success/20 bg-success/8 text-success')}>
             {error ? <AlertTriangle size={13} /> : <CheckCircle2 size={13} />}
-            {error || message}
+            <span>{error || message}</span>
           </div>
         )}
 
+        {/* result region */}
         <div className="grid min-h-0 flex-1 grid-cols-[1fr_260px]">
-          <div className="min-w-0 overflow-hidden">
-            <div className="flex h-9 items-center gap-2 border-b border-border-1 bg-surface-1 px-3">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-text-4">Result grid</span>
-              {result && <span className="text-[10px] text-text-4">{result.rows.length} rows · {result.durationMs} ms</span>}
-              <button onClick={exportJson} disabled={!result} className="ml-auto rounded px-2 py-1 text-[10px] text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-30"><Download size={11} className="mr-1 inline" />JSON</button>
-              <button onClick={exportCsv} disabled={!result} className="rounded px-2 py-1 text-[10px] text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-30"><Download size={11} className="mr-1 inline" />CSV</button>
+
+          {/* result grid */}
+          <div className="flex min-w-0 flex-col overflow-hidden">
+            <div className="flex h-9 flex-none items-center gap-2.5 border-b border-border-1 bg-surface-1 px-3.5">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-text-3">Result grid</span>
+              {result && (
+                <span className="font-mono text-[10px] text-text-4">
+                  <b className="font-semibold text-text-2">{result.rows.length}</b> rows ·{' '}
+                  <b className="font-semibold text-text-2">{result.durationMs}</b> ms
+                </span>
+              )}
+              <button onClick={exportJson} disabled={!result} className="ml-auto flex items-center gap-1 rounded px-2 py-1 text-[10.5px] text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-30">
+                <Download size={12} /> JSON
+              </button>
+              <button onClick={exportCsv} disabled={!result} className="flex items-center gap-1 rounded px-2 py-1 text-[10.5px] text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-30">
+                <Download size={12} /> CSV
+              </button>
             </div>
-            <div className="h-full overflow-auto">
+
+            <div className="min-h-0 flex-1 overflow-auto">
               {result?.columns?.length ? (
-                <table className="min-w-full border-separate border-spacing-0 text-left text-xs">
-                  <thead className="sticky top-0 z-10 bg-surface-2 text-[10px] uppercase tracking-wider text-text-4">
-                    <tr>{result.columns.map((col) => <th key={col} className="border-b border-border-1 px-3 py-2 font-semibold">{col}</th>)}</tr>
+                <table className="min-w-full border-separate border-spacing-0 text-left">
+                  <thead className="sticky top-0 z-10">
+                    <tr>
+                      {/* row-number header */}
+                      <th className="sticky left-0 z-20 w-11 min-w-[44px] border-b border-r border-border-2 bg-surface-2" style={{ height: 30 }} />
+                      {result.columns.map((col, ci) => {
+                        const isPk = ci === 0 && (col === 'id' || col.endsWith('_id') || col === '_id')
+                        const colType = detectColType(col)
+                        return (
+                          <th key={col} className="border-b border-r border-border-2 bg-surface-2 px-3 text-left" style={{ height: 30 }}>
+                            <div className="flex items-center gap-1.5 whitespace-nowrap">
+                              {isPk && (
+                                <span className="text-warning">
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-[11px] w-[11px]">
+                                    <circle cx="7.5" cy="15.5" r="4.5" />
+                                    <path d="M10.5 12.5 19 4l2 2-3 3 2 2" />
+                                  </svg>
+                                </span>
+                              )}
+                              <span className="text-[10px] font-semibold uppercase tracking-wider text-text-4">{col}</span>
+                              {colType === 'id' && <span className="font-mono text-[9px] normal-case tracking-normal text-text-4 opacity-70">int8</span>}
+                              {colType === 'date' && <span className="font-mono text-[9px] normal-case tracking-normal text-text-4 opacity-70">ts</span>}
+                            </div>
+                          </th>
+                        )
+                      })}
+                    </tr>
                   </thead>
                   <tbody>
                     {result.rows.map((row, idx) => (
-                      <tr key={idx} className="hover:bg-surface-1">
-                        {result.columns.map((col) => <td key={col} className="max-w-[360px] truncate border-b border-border-1/50 px-3 py-2 font-mono text-[11px] text-text-2">{row[col] == null ? <span className="text-text-4">NULL</span> : String(row[col])}</td>)}
+                      <tr key={idx} className="group">
+                        {/* row number */}
+                        <td
+                          className="sticky left-0 w-11 min-w-[44px] border-b border-r border-border-2 bg-surface-1 pr-2.5 text-right font-mono text-[10px] text-text-4 group-hover:bg-surface-2"
+                          style={{ height: 29 }}
+                        >
+                          {idx + 1}
+                        </td>
+                        {result.columns.map((col) => {
+                          const colType = detectColType(col)
+                          const isRight = colType === 'id' || detectCellType(row[col]) === 'num'
+                          return (
+                            <td
+                              key={col}
+                              className={cn(
+                                'max-w-[360px] truncate border-b border-r border-border-1 px-3 font-mono text-[11px] text-text-2 group-hover:bg-surface-1',
+                                isRight && 'text-right'
+                              )}
+                              style={{ height: 29 }}
+                            >
+                              <CellValue value={row[col]} colType={colType} />
+                            </td>
+                          )
+                        })}
                       </tr>
                     ))}
                   </tbody>
                 </table>
               ) : result ? (
-                <div className="flex h-full items-center justify-center text-xs text-text-4">Statement executed. Rows affected: {result.rowsAffected}</div>
+                <div className="flex h-full items-center justify-center text-xs text-text-4">
+                  Statement executed. Rows affected: {result.rowsAffected}
+                </div>
               ) : (
-                <div className="flex h-full items-center justify-center text-xs text-text-4">Run a query to see results.</div>
+                <div className="flex h-full items-center justify-center text-xs text-text-4">
+                  Run a query to see results.
+                </div>
               )}
             </div>
           </div>
 
+          {/* favorites + history */}
           <aside className="min-h-0 overflow-y-auto border-l border-border-1 bg-surface-1">
             <QueryList title="Favorites" items={favorites} onPick={setQuery} empty="No favorites yet." />
             <QueryList title="History" items={history} onPick={setQuery} empty="Query history is empty." />
@@ -485,20 +740,26 @@ export function DatabasePanel() {
   )
 }
 
+// ── QueryList ──────────────────────────────────────────────────────────────
 function QueryList({ title, items, onPick, empty }: { title: string; items: string[]; onPick: (query: string) => void; empty: string }) {
+  const Icon = title === 'Favorites' ? Bookmark : Clock
   return (
     <div className="border-b border-border-1 p-3">
       <div className="mb-2 flex items-center gap-2">
-        <Save size={12} className="text-text-4" />
+        <Icon size={12} className="text-text-4" />
         <span className="text-[10px] font-semibold uppercase tracking-wider text-text-4">{title}</span>
       </div>
       {items.length === 0 ? (
         <div className="rounded border border-border-1 bg-surface-0 px-2 py-3 text-center text-[10px] text-text-4">{empty}</div>
       ) : (
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           {items.slice(0, 12).map((item) => (
-            <button key={item} onClick={() => onPick(item)} className="w-full rounded border border-border-1 bg-surface-0 px-2 py-1.5 text-left font-mono text-[10px] leading-4 text-text-3 hover:border-accent/30 hover:text-text-1">
-              <span className="line-clamp-2">{item}</span>
+            <button
+              key={item}
+              onClick={() => onPick(item)}
+              className="block w-full overflow-hidden text-ellipsis whitespace-nowrap rounded border border-border-1 bg-surface-0 px-2 py-1.5 text-left font-mono text-[10px] leading-5 text-text-3 hover:border-accent/30 hover:text-text-1"
+            >
+              {item}
             </button>
           ))}
         </div>
