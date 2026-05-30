@@ -12,6 +12,7 @@ export type InteropFormat =
   | 'hoppscotch'
   | 'openapi'
   | 'swagger'
+  | 'swagger2'
   | 'wsdl'
   | 'graphql'
   | 'grpc'

@@ -636,12 +636,12 @@ export function CollectionTree({
 
   const contextExportMenu = (target: ContextTarget) => (
     <div className="border-t border-border-1 py-1">
-      {(['adomnia', 'postman', 'insomnia', 'bruno', 'openapi'] as ExportFormat[]).map((format) => (
+      {(['adomnia', 'postman', 'insomnia', 'bruno', 'openapi', 'swagger2'] as ExportFormat[]).map((format) => (
         <MenuButton
           key={format}
           onClick={() => target.kind === 'collection' ? exportCollection(target.collection, format) : exportNode(target.collectionId, target.node, format)}
         >
-          <Download size={12} /> Export {format === 'openapi' ? 'OpenAPI 3' : format}
+          <Download size={12} /> Export {format === 'openapi' ? 'OpenAPI 3' : format === 'swagger2' ? 'Swagger 2.0' : format}
         </MenuButton>
       ))}
     </div>

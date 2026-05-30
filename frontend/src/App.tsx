@@ -39,7 +39,7 @@ function App() {
   const devLogVisible  = useAppStore((s) => s.devToolsVisible)
   const toggleDevTools = useAppStore((s) => s.toggleDevTools)
   const activeRail     = useAppStore((s) => s.activeRail)
-  const showSidebar    = activeRail !== 'welcome'
+  const showSidebar    = activeRail === 'collections'
   useAppearance()
   useKeyboardShortcuts({ setCommandPaletteOpen })
 

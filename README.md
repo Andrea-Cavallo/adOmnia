@@ -20,6 +20,20 @@
 
 ## English
 
+### ⬇️ Download
+
+**[→ Go to Releases](../../releases/latest)** and download the file for your platform. No installation required.
+
+| Platform | File | Steps |
+|---|---|---|
+| Windows | `adOmnia-*-windows-amd64.exe` | Download → double-click → done |
+| macOS | `adOmnia-*-macos-universal.dmg` | Download → open DMG → drag to Applications |
+| Linux | `adOmnia-*-linux-amd64.AppImage` | Download → `chmod +x` → double-click or run |
+
+No dependencies. The Linux AppImage bundles everything and runs on any distro out of the box.
+
+---
+
 ![adOmnia interface](assets/images/adOmniaInterface1.png)
 
 or white skin:
