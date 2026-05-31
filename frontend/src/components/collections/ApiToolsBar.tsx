@@ -125,15 +125,15 @@ export function ApiToolsBar({ activeRequest, onApplyRequest }: ApiToolsBarProps)
 
   return (
     <>
-      <div className="flex h-9 items-center gap-1 border-b border-border-1 bg-surface-1 px-2">
-        <span className="mr-1 text-[10px] font-semibold uppercase tracking-wider text-text-4">API Tools</span>
+      <div className="flex h-8 items-center gap-1 border-b border-border-1 bg-surface-0/80 px-3">
+        <span className="mr-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-text-4">API Tools</span>
         {TOOLS.map((tool) => {
           const Icon = tool.icon
           return (
             <button
               key={tool.id}
               onClick={() => openTool(tool.id)}
-              className="inline-flex h-6 items-center gap-1 rounded border border-border-1 bg-surface-0 px-2 text-[10px] text-text-3 transition-colors hover:border-accent/40 hover:text-text-1"
+              className="inline-flex h-5 items-center gap-1 rounded border border-border-1 bg-surface-1 px-2 text-[10px] text-text-3 transition-colors hover:border-accent/40 hover:text-text-1"
             >
               <Icon size={11} />
               {tool.label}

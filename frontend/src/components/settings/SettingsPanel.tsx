@@ -26,8 +26,10 @@ import {
   Bug,
   Search,
   Terminal,
+  Sparkles,
 } from 'lucide-react'
 import { Toggle, Select, NumberInput, TextInput, PasswordInput, TextAreaInput } from './SettingsFields'
+import { AISettings } from './AISettings'
 
 function appBinding() {
   return window.go?.main?.App
@@ -75,6 +77,7 @@ type SectionId =
   | 'about'
   | 'developer'
   | 'python'
+  | 'ai'
 
 function SectionHeader({ title, subtitle }: { title: string; subtitle: string }) {
   return (
@@ -240,6 +243,7 @@ export function SettingsPanel() {
     { id: 'about', label: s.sections.about, icon: <Info size={14} />, terms: searchable(s.about) },
     { id: 'developer', label: s.sections.developer, icon: <Bug size={14} />, terms: searchable(s.developer) },
     { id: 'python', label: 'Python Runtime', icon: <Terminal size={14} />, terms: 'python runtime embedded interpreter reinstall path version plugins' },
+    { id: 'ai', label: 'AI Engine', icon: <Sparkles size={14} />, terms: 'ai engine provider openai anthropic gemini ollama model api key' },
   ]
 
   const normalizedSearch = search.trim().toLowerCase()
@@ -1217,6 +1221,11 @@ export function SettingsPanel() {
               </div>
             </SettingsCard>
           </>
+        )}
+
+        {/* AI Engine */}
+        {section === 'ai' && (
+          <AISettings />
         )}
       </div>
       <ConfirmDialog

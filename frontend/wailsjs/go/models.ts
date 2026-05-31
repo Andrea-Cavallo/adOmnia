@@ -1,3 +1,135 @@
+export namespace apis {
+	
+	export class  {
+	    name: string;
+	    url: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new (source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.url = source["url"];
+	    }
+	}
+	export class ApiEntry {
+	    name: string;
+	    slug: string;
+	    description: string;
+	    categories: string[];
+	    type: string;
+	    isFree: boolean;
+	    links: [];
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiEntry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.slug = source["slug"];
+	        this.description = source["description"];
+	        this.categories = source["categories"];
+	        this.type = source["type"];
+	        this.isFree = source["isFree"];
+	        this.links = this.convertValues(source["links"], );
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiCategory {
+	    name: string;
+	    emoji: string;
+	    count: number;
+	    apis: ApiEntry[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiCategory(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.emoji = source["emoji"];
+	        this.count = source["count"];
+	        this.apis = this.convertValues(source["apis"], ApiEntry);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiCatalog {
+	    categories: ApiCategory[];
+	    emojiMap: Record<string, string>;
+	    total: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiCatalog(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.categories = this.convertValues(source["categories"], ApiCategory);
+	        this.emojiMap = source["emojiMap"];
+	        this.total = source["total"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+
+}
+
 export namespace browser {
 	
 	export class BreakpointInfo {

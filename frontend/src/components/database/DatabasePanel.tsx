@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { AlertTriangle, Bookmark, CheckCircle2, Clock, Database, Download, Play, Plus, RefreshCw, Shield, Trash2 } from 'lucide-react'
+import { AlertTriangle, Bookmark, CheckCircle2, Clock, Database, Download, Play, Plus, RefreshCw, Shield, Trash2, X } from 'lucide-react'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { StorageGet, StoragePut } from '@/wailsjs/go/main/App'
 import { useEnvironmentsStore } from '@/stores/environments'
@@ -207,6 +207,7 @@ export function DatabasePanel() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [running, setRunning] = useState(false)
+  const [connectionStatus, setConnectionStatus] = useState<{ driver: string; durationMs: number } | null>(null)
 
   const active = connections.find((c) => c.id === activeId) ?? connections[0] ?? blankConnection()
   const renderedQuery = useMemo(() => substituteVars(query, vars), [query, vars])
@@ -258,6 +259,7 @@ export function DatabasePanel() {
   const setDriver = (driver: DbDriver) => {
     updateActive({ driver, port: DRIVER_META[driver].port })
     setResult(null)
+    setConnectionStatus(null)
     setMessage('')
     setError('')
     if (driver === 'mongodb' && !query.trim().startsWith('{')) {
@@ -303,6 +305,7 @@ export function DatabasePanel() {
     try {
       const data = await api('/database/query', { connection: active, query: renderedQuery, limit, timeoutMs, explain, confirm: confirmed }) as DbResult
       setResult(data)
+      setConnectionStatus(null)
       const nextHistory = [query, ...history.filter((item) => item !== query)].slice(0, 50)
       setHistory(nextHistory)
       await StoragePut(STORAGE_BUCKET, HISTORY_KEY, JSON.stringify(nextHistory))
@@ -320,8 +323,10 @@ export function DatabasePanel() {
     setRunning(true)
     try {
       const data = await api('/database/test', active) as { driver: string; durationMs: number }
+      setConnectionStatus(data)
       setMessage(`Connected to ${data.driver} in ${data.durationMs} ms`)
     } catch (e) {
+      setConnectionStatus(null)
       setError(e instanceof Error ? e.message : String(e))
     } finally {
       setRunning(false)
@@ -531,10 +536,10 @@ export function DatabasePanel() {
               <span className="rounded border border-border-2 bg-surface-2 px-2 py-1 text-[10px] uppercase tracking-wider text-text-4">
                 {isMongo ? 'Mongo JSON Runner' : 'SQL Editor'}
               </span>
-              {result && (
+              {(result || connectionStatus) && (
                 <span className="flex items-center gap-1.5 rounded border border-success/30 px-2 py-1 text-[10px] text-success">
                   <span className="h-1.5 w-1.5 rounded-full bg-success" style={{ boxShadow: '0 0 6px currentColor' }} />
-                  {DRIVER_META[active.driver]?.label ?? active.driver}
+                  {connectionStatus ? `Connected · ${connectionStatus.durationMs}ms` : DRIVER_META[active.driver]?.label ?? active.driver}
                 </span>
               )}
               {dangerous && (
@@ -587,6 +592,10 @@ export function DatabasePanel() {
                       const next = query.slice(0, start) + '  ' + query.slice(end)
                       setQuery(next)
                       requestAnimationFrame(() => { t.selectionStart = t.selectionEnd = start + 2 })
+                    }
+                    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                      e.preventDefault()
+                      void runQuery(false)
                     }
                   }}
                 />
@@ -643,13 +652,36 @@ export function DatabasePanel() {
           <div className="flex min-w-0 flex-col overflow-hidden">
             <div className="flex h-9 flex-none items-center gap-2.5 border-b border-border-1 bg-surface-1 px-3.5">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-text-3">Result grid</span>
-              {result && (
-                <span className="font-mono text-[10px] text-text-4">
-                  <b className="font-semibold text-text-2">{result.rows.length}</b> rows ·{' '}
-                  <b className="font-semibold text-text-2">{result.durationMs}</b> ms
+              {result && !result.columns?.length && result.statementType && (
+                <span className={cn('rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider', result.statementType === 'MONGO' || result.destructive ? 'border-warning/30 bg-warning/10 text-warning' : 'border-info/30 bg-info/10 text-info')}>
+                  {result.statementType}
                 </span>
               )}
-              <button onClick={exportJson} disabled={!result} className="ml-auto flex items-center gap-1 rounded px-2 py-1 text-[10.5px] text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-30">
+              {result && (
+                <>
+                  {result.columns?.length ? (
+                    <span className="font-mono text-[10px] text-text-4">
+                      <b className="font-semibold text-text-2">{result.rows.length}</b> rows ·{' '}
+                      <b className="font-semibold text-text-2">{result.durationMs}</b> ms
+                      {result.limited && <span className="ml-1 text-warning">· auto-limited</span>}
+                    </span>
+                  ) : (
+                    <span className="font-mono text-[10px] text-text-4">
+                      <b className="font-semibold text-text-2">{result.rowsAffected}</b> affected ·{' '}
+                      <b className="font-semibold text-text-2">{result.durationMs}</b> ms
+                    </span>
+                  )}
+                </>
+              )}
+              {result?.warning && (
+                <span className="flex items-center gap-1 rounded border border-warning/25 bg-warning/8 px-2 py-0.5 text-[10px] text-warning">
+                  <AlertTriangle size={10} /> {result.warning}
+                </span>
+              )}
+              <button onClick={() => { setResult(null); setConnectionStatus(null); setMessage(''); setError('') }} className="ml-auto grid h-6 w-6 flex-none place-items-center rounded text-text-4 hover:bg-surface-2 hover:text-text-1" title="Clear result">
+                <X size={12} />
+              </button>
+              <button onClick={exportJson} disabled={!result} className="flex items-center gap-1 rounded px-2 py-1 text-[10.5px] text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-30">
                 <Download size={12} /> JSON
               </button>
               <button onClick={exportCsv} disabled={!result} className="flex items-center gap-1 rounded px-2 py-1 text-[10.5px] text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-30">

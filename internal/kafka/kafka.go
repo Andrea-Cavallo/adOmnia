@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -56,8 +57,54 @@ type KafkaMessage struct {
 	Headers   map[string]string `json:"headers,omitempty"`
 }
 
+type KafkaAdminRequest struct {
+	Config KafkaBrokerConfig `json:"config"`
+}
+
+type KafkaTopicAdminRequest struct {
+	Config            KafkaBrokerConfig `json:"config"`
+	Topic             string            `json:"topic"`
+	Partitions        int32             `json:"partitions,omitempty"`
+	ReplicationFactor int16             `json:"replicationFactor,omitempty"`
+	Configs           map[string]string `json:"configs,omitempty"`
+	DeleteConfigs     []string          `json:"deleteConfigs,omitempty"`
+	ValidateOnly      bool              `json:"validateOnly,omitempty"`
+}
+
+type KafkaConsumerGroupRequest struct {
+	Config KafkaBrokerConfig `json:"config"`
+	Group  string            `json:"group,omitempty"`
+	Topic  string            `json:"topic,omitempty"`
+}
+
+type KafkaResetOffsetRequest struct {
+	Config    KafkaBrokerConfig `json:"config"`
+	Group     string            `json:"group"`
+	Topic     string            `json:"topic"`
+	Partition int32             `json:"partition"`
+	Mode      string            `json:"mode"`
+	Offset    int64             `json:"offset,omitempty"`
+}
+
+type KafkaBrowseRequest struct {
+	Config        KafkaBrokerConfig `json:"config"`
+	Topic         string            `json:"topic"`
+	Partition     *int32            `json:"partition,omitempty"`
+	Offset        *int64            `json:"offset,omitempty"`
+	TimestampMs   *int64            `json:"timestampMs,omitempty"`
+	MaxMsgs       int               `json:"maxMsgs"`
+	Tail          bool              `json:"tail"`
+	MaxWait       int               `json:"maxWait"`
+	KeyContains   string            `json:"keyContains,omitempty"`
+	ValueContains string            `json:"valueContains,omitempty"`
+	HeaderKey     string            `json:"headerKey,omitempty"`
+	HeaderValue   string            `json:"headerValue,omitempty"`
+}
+
 func newSaramaConfig(cfg KafkaBrokerConfig) *sarama.Config {
 	sc := sarama.NewConfig()
+	sc.Version = sarama.V2_8_0_0
+	sc.Metadata.Full = true
 	sc.Producer.Return.Successes = true
 	sc.Producer.Return.Errors = true
 	sc.Consumer.Return.Errors = true
@@ -636,6 +683,702 @@ func kafkaTopicsHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func kafkaAdminAndClient(cfg KafkaBrokerConfig) (sarama.ClusterAdmin, sarama.Client, error) {
+	sc := newSaramaConfig(cfg)
+	client, err := sarama.NewClient(cfg.Brokers, sc)
+	if err != nil {
+		return nil, nil, err
+	}
+	admin, err := sarama.NewClusterAdminFromClient(client)
+	if err != nil {
+		_ = client.Close()
+		return nil, nil, err
+	}
+	return admin, client, nil
+}
+
+func kafkaClusterOverviewHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST only", http.StatusMethodNotAllowed)
+		return
+	}
+	var req KafkaAdminRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
+		return
+	}
+	if len(req.Config.Brokers) == 0 {
+		httputil.JSONError(w, "brokers required", 400)
+		return
+	}
+
+	admin, client, err := kafkaAdminAndClient(req.Config)
+	if err != nil {
+		httputil.JSONError(w, "connect failed: "+err.Error(), 502)
+		return
+	}
+	defer admin.Close()
+	defer client.Close()
+
+	clusterBrokers, controllerID, err := admin.DescribeCluster()
+	if err != nil {
+		httputil.JSONError(w, "cluster overview failed: "+err.Error(), 502)
+		return
+	}
+	topics, err := admin.ListTopics()
+	if err != nil {
+		httputil.JSONError(w, "list topics failed: "+err.Error(), 502)
+		return
+	}
+
+	partitionCount := 0
+	internalTopics := 0
+	underReplicated := 0
+	offlinePartitions := 0
+	topicNames := make([]string, 0, len(topics))
+	for name, detail := range topics {
+		topicNames = append(topicNames, name)
+		if len(name) > 0 && name[0] == '_' {
+			internalTopics++
+		}
+		partitionCount += int(detail.NumPartitions)
+	}
+	sort.Strings(topicNames)
+	metadata, _ := admin.DescribeTopics(topicNames)
+	for _, topic := range metadata {
+		for _, partition := range topic.Partitions {
+			if partition.Leader < 0 || len(partition.OfflineReplicas) > 0 {
+				offlinePartitions++
+			}
+			if len(partition.Isr) < len(partition.Replicas) {
+				underReplicated++
+			}
+		}
+	}
+
+	brokers := make([]map[string]interface{}, 0, len(clusterBrokers))
+	for _, broker := range clusterBrokers {
+		brokers = append(brokers, map[string]interface{}{
+			"id":         broker.ID(),
+			"addr":       broker.Addr(),
+			"controller": broker.ID() == controllerID,
+		})
+	}
+
+	health := "healthy"
+	if offlinePartitions > 0 {
+		health = "critical"
+	} else if underReplicated > 0 {
+		health = "degraded"
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"ok":                 true,
+		"health":             health,
+		"controllerId":       controllerID,
+		"brokerCount":        len(brokers),
+		"topicCount":         len(topics),
+		"internalTopicCount": internalTopics,
+		"partitionCount":     partitionCount,
+		"underReplicated":    underReplicated,
+		"offlinePartitions":  offlinePartitions,
+		"brokers":            brokers,
+		"topics":             topicNames,
+	})
+}
+
+func kafkaTopicDetailHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST only", http.StatusMethodNotAllowed)
+		return
+	}
+	var req KafkaTopicAdminRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
+		return
+	}
+	if len(req.Config.Brokers) == 0 || req.Topic == "" {
+		httputil.JSONError(w, "brokers and topic required", 400)
+		return
+	}
+
+	admin, client, err := kafkaAdminAndClient(req.Config)
+	if err != nil {
+		httputil.JSONError(w, "connect failed: "+err.Error(), 502)
+		return
+	}
+	defer admin.Close()
+	defer client.Close()
+
+	metadata, err := admin.DescribeTopics([]string{req.Topic})
+	if err != nil {
+		httputil.JSONError(w, "describe topic failed: "+err.Error(), 502)
+		return
+	}
+	if len(metadata) == 0 || metadata[0].Err != sarama.ErrNoError {
+		httputil.JSONError(w, "topic not found or unavailable", 404)
+		return
+	}
+
+	offsetReq := map[string]map[int32]int64{req.Topic: {}}
+	for _, partition := range metadata[0].Partitions {
+		offsetReq[req.Topic][partition.ID] = sarama.OffsetNewest
+	}
+	newest, _ := admin.ListOffsets(offsetReq, nil)
+	for partition := range offsetReq[req.Topic] {
+		offsetReq[req.Topic][partition] = sarama.OffsetOldest
+	}
+	oldest, _ := admin.ListOffsets(offsetReq, nil)
+
+	partitions := make([]map[string]interface{}, 0, len(metadata[0].Partitions))
+	for _, partition := range metadata[0].Partitions {
+		latestOffset := int64(-1)
+		oldestOffset := int64(-1)
+		if newest[req.Topic] != nil && newest[req.Topic][partition.ID] != nil {
+			latestOffset = newest[req.Topic][partition.ID].Offset
+		}
+		if oldest[req.Topic] != nil && oldest[req.Topic][partition.ID] != nil {
+			oldestOffset = oldest[req.Topic][partition.ID].Offset
+		}
+		partitions = append(partitions, map[string]interface{}{
+			"id":              partition.ID,
+			"leader":          partition.Leader,
+			"replicas":        partition.Replicas,
+			"isr":             partition.Isr,
+			"offlineReplicas": partition.OfflineReplicas,
+			"oldestOffset":    oldestOffset,
+			"latestOffset":    latestOffset,
+			"messages":        maxInt64(0, latestOffset-oldestOffset),
+		})
+	}
+	sort.Slice(partitions, func(i, j int) bool { return partitions[i]["id"].(int32) < partitions[j]["id"].(int32) })
+
+	configEntries, err := admin.DescribeConfig(sarama.ConfigResource{Type: sarama.TopicResource, Name: req.Topic})
+	if err != nil {
+		httputil.JSONError(w, "describe topic configs failed: "+err.Error(), 502)
+		return
+	}
+	configs := make([]map[string]interface{}, 0, len(configEntries))
+	for _, entry := range configEntries {
+		configs = append(configs, map[string]interface{}{
+			"name":      entry.Name,
+			"value":     entry.Value,
+			"readOnly":  entry.ReadOnly,
+			"default":   entry.Default,
+			"source":    entry.Source.String(),
+			"sensitive": entry.Sensitive,
+		})
+	}
+	sort.Slice(configs, func(i, j int) bool { return configs[i]["name"].(string) < configs[j]["name"].(string) })
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"ok":         true,
+		"topic":      req.Topic,
+		"isInternal": metadata[0].IsInternal,
+		"partitions": partitions,
+		"configs":    configs,
+	})
+}
+
+func kafkaCreateTopicHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST only", http.StatusMethodNotAllowed)
+		return
+	}
+	var req KafkaTopicAdminRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
+		return
+	}
+	if len(req.Config.Brokers) == 0 || req.Topic == "" {
+		httputil.JSONError(w, "brokers and topic required", 400)
+		return
+	}
+	if req.Partitions < 1 {
+		req.Partitions = 1
+	}
+	if req.ReplicationFactor < 1 {
+		req.ReplicationFactor = 1
+	}
+	configEntries := make(map[string]*string)
+	for key, value := range req.Configs {
+		configValue := value
+		configEntries[key] = &configValue
+	}
+	admin, client, err := kafkaAdminAndClient(req.Config)
+	if err != nil {
+		httputil.JSONError(w, "connect failed: "+err.Error(), 502)
+		return
+	}
+	defer admin.Close()
+	defer client.Close()
+
+	err = admin.CreateTopic(req.Topic, &sarama.TopicDetail{
+		NumPartitions:     req.Partitions,
+		ReplicationFactor: req.ReplicationFactor,
+		ConfigEntries:     configEntries,
+	}, req.ValidateOnly)
+	if err != nil {
+		httputil.JSONError(w, "create topic failed: "+err.Error(), 502)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "topic": req.Topic})
+}
+
+func kafkaUpdateTopicHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST only", http.StatusMethodNotAllowed)
+		return
+	}
+	var req KafkaTopicAdminRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
+		return
+	}
+	if len(req.Config.Brokers) == 0 || req.Topic == "" {
+		httputil.JSONError(w, "brokers and topic required", 400)
+		return
+	}
+	admin, client, err := kafkaAdminAndClient(req.Config)
+	if err != nil {
+		httputil.JSONError(w, "connect failed: "+err.Error(), 502)
+		return
+	}
+	defer admin.Close()
+	defer client.Close()
+
+	if req.Partitions > 0 {
+		if err := admin.CreatePartitions(req.Topic, req.Partitions, nil, req.ValidateOnly); err != nil {
+			httputil.JSONError(w, "create partitions failed: "+err.Error(), 502)
+			return
+		}
+	}
+	changes := make(map[string]sarama.IncrementalAlterConfigsEntry)
+	for key, value := range req.Configs {
+		configValue := value
+		changes[key] = sarama.IncrementalAlterConfigsEntry{Operation: sarama.IncrementalAlterConfigsOperationSet, Value: &configValue}
+	}
+	for _, key := range req.DeleteConfigs {
+		changes[key] = sarama.IncrementalAlterConfigsEntry{Operation: sarama.IncrementalAlterConfigsOperationDelete}
+	}
+	if len(changes) > 0 {
+		if err := admin.IncrementalAlterConfig(sarama.TopicResource, req.Topic, changes, req.ValidateOnly); err != nil {
+			httputil.JSONError(w, "update topic configs failed: "+err.Error(), 502)
+			return
+		}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "topic": req.Topic})
+}
+
+func kafkaDeleteTopicHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST only", http.StatusMethodNotAllowed)
+		return
+	}
+	var req KafkaTopicAdminRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
+		return
+	}
+	if len(req.Config.Brokers) == 0 || req.Topic == "" {
+		httputil.JSONError(w, "brokers and topic required", 400)
+		return
+	}
+	admin, client, err := kafkaAdminAndClient(req.Config)
+	if err != nil {
+		httputil.JSONError(w, "connect failed: "+err.Error(), 502)
+		return
+	}
+	defer admin.Close()
+	defer client.Close()
+	if err := admin.DeleteTopic(req.Topic); err != nil {
+		httputil.JSONError(w, "delete topic failed: "+err.Error(), 502)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "topic": req.Topic})
+}
+
+func kafkaConsumerGroupsHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST only", http.StatusMethodNotAllowed)
+		return
+	}
+	var req KafkaConsumerGroupRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
+		return
+	}
+	if len(req.Config.Brokers) == 0 {
+		httputil.JSONError(w, "brokers required", 400)
+		return
+	}
+	admin, client, err := kafkaAdminAndClient(req.Config)
+	if err != nil {
+		httputil.JSONError(w, "connect failed: "+err.Error(), 502)
+		return
+	}
+	defer admin.Close()
+	defer client.Close()
+
+	groupStates, err := admin.ListConsumerGroups()
+	if err != nil {
+		httputil.JSONError(w, "list consumer groups failed: "+err.Error(), 502)
+		return
+	}
+	groupIDs := make([]string, 0, len(groupStates))
+	if req.Group != "" {
+		groupIDs = append(groupIDs, req.Group)
+	} else {
+		for groupID := range groupStates {
+			groupIDs = append(groupIDs, groupID)
+		}
+	}
+	sort.Strings(groupIDs)
+	if len(groupIDs) > 50 {
+		groupIDs = groupIDs[:50]
+	}
+	descriptions, _ := admin.DescribeConsumerGroups(groupIDs)
+	descByID := map[string]*sarama.GroupDescription{}
+	for _, desc := range descriptions {
+		descByID[desc.GroupId] = desc
+	}
+
+	groups := make([]map[string]interface{}, 0, len(groupIDs))
+	for _, groupID := range groupIDs {
+		topicPartitions := map[string][]int32(nil)
+		if req.Topic != "" {
+			partitions, err := client.Partitions(req.Topic)
+			if err == nil {
+				topicPartitions = map[string][]int32{req.Topic: partitions}
+			}
+		}
+		offsets, _ := admin.ListConsumerGroupOffsets(groupID, topicPartitions)
+		partitions := flattenGroupOffsets(offsets)
+		latestReq := make(map[string]map[int32]int64)
+		for _, item := range partitions {
+			topic := item["topic"].(string)
+			partition := item["partition"].(int32)
+			if latestReq[topic] == nil {
+				latestReq[topic] = make(map[int32]int64)
+			}
+			latestReq[topic][partition] = sarama.OffsetNewest
+		}
+		latest, _ := admin.ListOffsets(latestReq, nil)
+		totalLag := int64(0)
+		for _, item := range partitions {
+			topic := item["topic"].(string)
+			partition := item["partition"].(int32)
+			current := item["offset"].(int64)
+			latestOffset := int64(-1)
+			if latest[topic] != nil && latest[topic][partition] != nil {
+				latestOffset = latest[topic][partition].Offset
+			}
+			lag := int64(-1)
+			if latestOffset >= 0 && current >= 0 {
+				lag = maxInt64(0, latestOffset-current)
+				totalLag += lag
+			}
+			item["latestOffset"] = latestOffset
+			item["lag"] = lag
+		}
+
+		members := []map[string]interface{}{}
+		if desc := descByID[groupID]; desc != nil {
+			for _, member := range desc.Members {
+				assignments := map[string][]int32{}
+				if assignment, err := member.GetMemberAssignment(); err == nil && assignment != nil {
+					assignments = assignment.Topics
+				}
+				members = append(members, map[string]interface{}{
+					"memberId":        member.MemberId,
+					"clientId":        member.ClientId,
+					"clientHost":      member.ClientHost,
+					"groupInstanceId": member.GroupInstanceId,
+					"assignments":     assignments,
+				})
+			}
+		}
+		state := groupStates[groupID]
+		if desc := descByID[groupID]; desc != nil && desc.State != "" {
+			state = desc.State
+		}
+		groups = append(groups, map[string]interface{}{
+			"groupId":     groupID,
+			"state":       state,
+			"protocol":    valueOrEmpty(descByID[groupID], func(d *sarama.GroupDescription) string { return d.Protocol }),
+			"members":     members,
+			"memberCount": len(members),
+			"partitions":  partitions,
+			"totalLag":    totalLag,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "groups": groups})
+}
+
+func kafkaResetOffsetHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST only", http.StatusMethodNotAllowed)
+		return
+	}
+	var req KafkaResetOffsetRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
+		return
+	}
+	if len(req.Config.Brokers) == 0 || req.Group == "" || req.Topic == "" {
+		httputil.JSONError(w, "brokers, group and topic required", 400)
+		return
+	}
+	admin, client, err := kafkaAdminAndClient(req.Config)
+	if err != nil {
+		httputil.JSONError(w, "connect failed: "+err.Error(), 502)
+		return
+	}
+	defer admin.Close()
+	defer client.Close()
+	offset := req.Offset
+	if req.Mode == "earliest" || req.Mode == "latest" {
+		which := sarama.OffsetNewest
+		if req.Mode == "earliest" {
+			which = sarama.OffsetOldest
+		}
+		found, err := admin.ListOffsets(map[string]map[int32]int64{req.Topic: {req.Partition: which}}, nil)
+		if err != nil || found[req.Topic] == nil || found[req.Topic][req.Partition] == nil {
+			httputil.JSONError(w, "offset lookup failed", 502)
+			return
+		}
+		offset = found[req.Topic][req.Partition].Offset
+	}
+	resp, err := admin.AlterConsumerGroupOffsets(req.Group, map[string]map[int32]sarama.OffsetAndMetadata{
+		req.Topic: {req.Partition: {Offset: offset, Metadata: "adomnia reset", LeaderEpoch: -1}},
+	}, nil)
+	if err != nil {
+		httputil.JSONError(w, "reset offset failed: "+err.Error(), 502)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "group": req.Group, "topic": req.Topic, "partition": req.Partition, "offset": offset, "response": resp})
+}
+
+func kafkaBrowseMessagesHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST only", http.StatusMethodNotAllowed)
+		return
+	}
+	var req KafkaBrowseRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
+		return
+	}
+	if len(req.Config.Brokers) == 0 || req.Topic == "" {
+		httputil.JSONError(w, "brokers and topic required", 400)
+		return
+	}
+	if req.MaxMsgs <= 0 || req.MaxMsgs > 500 {
+		req.MaxMsgs = 50
+	}
+	if req.MaxWait <= 0 || req.MaxWait > 30 {
+		req.MaxWait = 5
+	}
+
+	client, err := sarama.NewClient(req.Config.Brokers, newSaramaConfig(req.Config))
+	if err != nil {
+		httputil.JSONError(w, "connect failed: "+err.Error(), 502)
+		return
+	}
+	defer client.Close()
+	consumer, err := sarama.NewConsumerFromClient(client)
+	if err != nil {
+		httputil.JSONError(w, "consumer failed: "+err.Error(), 502)
+		return
+	}
+	defer consumer.Close()
+
+	partitions := []int32{}
+	if req.Partition != nil {
+		partitions = append(partitions, *req.Partition)
+	} else if partitions, err = client.Partitions(req.Topic); err != nil {
+		httputil.JSONError(w, "list partitions failed: "+err.Error(), 502)
+		return
+	}
+
+	deadline := time.After(time.Duration(req.MaxWait) * time.Second)
+	messages := make([]KafkaMessage, 0, req.MaxMsgs)
+	for _, partition := range partitions {
+		startOffset := sarama.OffsetOldest
+		if req.Tail {
+			startOffset = sarama.OffsetNewest
+		}
+		if req.Offset != nil {
+			startOffset = *req.Offset
+		}
+		if req.TimestampMs != nil {
+			if offset, err := client.GetOffset(req.Topic, partition, *req.TimestampMs); err == nil {
+				startOffset = offset
+			}
+		}
+		pc, err := consumer.ConsumePartition(req.Topic, partition, startOffset)
+		if err != nil {
+			continue
+		}
+		defer pc.Close()
+	collect:
+		for len(messages) < req.MaxMsgs {
+			select {
+			case msg := <-pc.Messages():
+				if msg == nil {
+					break collect
+				}
+				candidate := kafkaMessageFromSarama(msg)
+				if kafkaMessageMatches(candidate, req) {
+					messages = append(messages, candidate)
+				}
+			case <-deadline:
+				break collect
+			}
+		}
+		if len(messages) >= req.MaxMsgs {
+			break
+		}
+	}
+	sort.Slice(messages, func(i, j int) bool {
+		if messages[i].Partition == messages[j].Partition {
+			return messages[i].Offset < messages[j].Offset
+		}
+		return messages[i].Partition < messages[j].Partition
+	})
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "topic": req.Topic, "messages": messages, "count": len(messages)})
+}
+
+func flattenGroupOffsets(resp *sarama.OffsetFetchResponse) []map[string]interface{} {
+	items := []map[string]interface{}{}
+	if resp == nil {
+		return items
+	}
+	for topic, partitions := range resp.Blocks {
+		for partition, block := range partitions {
+			items = append(items, map[string]interface{}{
+				"topic":       topic,
+				"partition":   partition,
+				"offset":      block.Offset,
+				"leaderEpoch": block.LeaderEpoch,
+				"metadata":    block.Metadata,
+				"error":       block.Err.Error(),
+			})
+		}
+	}
+	for _, group := range resp.Groups {
+		for topic, partitions := range group.Blocks {
+			for partition, block := range partitions {
+				items = append(items, map[string]interface{}{
+					"topic":       topic,
+					"partition":   partition,
+					"offset":      block.Offset,
+					"leaderEpoch": block.LeaderEpoch,
+					"metadata":    block.Metadata,
+					"error":       block.Err.Error(),
+				})
+			}
+		}
+	}
+	sort.Slice(items, func(i, j int) bool {
+		if items[i]["topic"].(string) == items[j]["topic"].(string) {
+			return items[i]["partition"].(int32) < items[j]["partition"].(int32)
+		}
+		return items[i]["topic"].(string) < items[j]["topic"].(string)
+	})
+	return items
+}
+
+func kafkaMessageFromSarama(msg *sarama.ConsumerMessage) KafkaMessage {
+	headers := make(map[string]string)
+	for _, hdr := range msg.Headers {
+		headers[string(hdr.Key)] = string(hdr.Value)
+	}
+	return KafkaMessage{
+		Key:       string(msg.Key),
+		Value:     string(msg.Value),
+		Partition: msg.Partition,
+		Offset:    msg.Offset,
+		Timestamp: msg.Timestamp.UTC().Format(time.RFC3339),
+		Headers:   headers,
+	}
+}
+
+func kafkaMessageMatches(msg KafkaMessage, req KafkaBrowseRequest) bool {
+	if req.KeyContains != "" && !containsFold(msg.Key, req.KeyContains) {
+		return false
+	}
+	if req.ValueContains != "" && !containsFold(msg.Value, req.ValueContains) {
+		return false
+	}
+	if req.HeaderKey != "" {
+		value, ok := msg.Headers[req.HeaderKey]
+		if !ok {
+			return false
+		}
+		if req.HeaderValue != "" && !containsFold(value, req.HeaderValue) {
+			return false
+		}
+	}
+	return true
+}
+
+func containsFold(haystack, needle string) bool {
+	return len(needle) == 0 || len(haystack) >= len(needle) && containsLower(haystack, needle)
+}
+
+func containsLower(haystack, needle string) bool {
+	h := []rune(haystack)
+	n := []rune(needle)
+	for i := range h {
+		if i+len(n) > len(h) {
+			return false
+		}
+		match := true
+		for j := range n {
+			if lowerRune(h[i+j]) != lowerRune(n[j]) {
+				match = false
+				break
+			}
+		}
+		if match {
+			return true
+		}
+	}
+	return false
+}
+
+func lowerRune(r rune) rune {
+	if r >= 'A' && r <= 'Z' {
+		return r + 32
+	}
+	return r
+}
+
+func maxInt64(a, b int64) int64 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func valueOrEmpty(desc *sarama.GroupDescription, getter func(*sarama.GroupDescription) string) string {
+	if desc == nil {
+		return ""
+	}
+	return getter(desc)
+}
+
 type consumerGroupHandler struct {
 	maxMsgs  int
 	mu       sync.Mutex
@@ -690,4 +1433,12 @@ func RegisterHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/kafka/loadtest", kafkaLoadTestHandler)
 	mux.HandleFunc("/kafka/consume", kafkaConsumeHandler)
 	mux.HandleFunc("/kafka/topics", kafkaTopicsHandler)
+	mux.HandleFunc("/kafka/cluster-overview", kafkaClusterOverviewHandler)
+	mux.HandleFunc("/kafka/topic-detail", kafkaTopicDetailHandler)
+	mux.HandleFunc("/kafka/topic-create", kafkaCreateTopicHandler)
+	mux.HandleFunc("/kafka/topic-update", kafkaUpdateTopicHandler)
+	mux.HandleFunc("/kafka/topic-delete", kafkaDeleteTopicHandler)
+	mux.HandleFunc("/kafka/consumer-groups", kafkaConsumerGroupsHandler)
+	mux.HandleFunc("/kafka/reset-offset", kafkaResetOffsetHandler)
+	mux.HandleFunc("/kafka/browse", kafkaBrowseMessagesHandler)
 }
