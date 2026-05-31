@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react'
-import { ArrowLeft, X } from 'lucide-react'
+import { ArrowLeft, Check, Clock, CornerDownRight, Gauge, Save, Send, X } from 'lucide-react'
 import { useAppStore, type RailItem } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
 import { useCollectionsStore } from '@/stores/collections'
@@ -15,9 +15,11 @@ import { HostBar } from '@/components/hosts/HostBar'
 import { WelcomePanel } from '@/components/layout/WelcomePanel'
 import { LoadTestDrawer } from '@/components/loadtest/LoadTestDrawer'
 import { executeRequest } from '@/lib/executeRequest'
-import { uid, type EnvVariable } from '@/lib/types'
+import { uid, type EnvVariable, type HttpMethod, type RequestItem } from '@/lib/types'
 import { useT } from '@/lib/i18n'
 import { safeSetItem } from '@/lib/safeLocalStorage'
+import { VarHighlightInput } from '@/components/ui/VarHighlightInput'
+import { cn } from '@/lib/utils'
 
 // ─── Lazy-loaded panels (loaded on first navigation) ──────────────────────────
 
@@ -52,6 +54,9 @@ const TemplateMarketplace  = React.lazy(() => import('@/components/templates/Tem
 const PluginManager        = React.lazy(() => import('@/components/plugins/PluginManager').then(m => ({ default: m.PluginManager })))
 const SecretScannerPanel   = React.lazy(() => import('@/components/secretscanner').then(m => ({ default: m.SecretScannerPanel })))
 const SettingsPanel        = React.lazy(() => import('@/components/settings/SettingsPanel').then(m => ({ default: m.SettingsPanel })))
+const GitSyncPanel         = React.lazy(() => import('@/components/workspace/GitSyncPanel').then(m => ({ default: m.GitSyncPanel })))
+const McpPanel             = React.lazy(() => import('@/components/mcp/McpPanel').then(m => ({ default: m.McpPanel })))
+const InstallPanel         = React.lazy(() => import('@/components/apis/InstallPanel').then(m => ({ default: m.InstallPanel })))
 
 function PanelSkeleton() {
   return (
@@ -106,6 +111,22 @@ const COMPOSER_WIDTH_KEY = 'adomnia.composerWidth'
 const COMPOSER_WIDTH_MIN  = 280
 const COMPOSER_WIDTH_MAX  = 0.78  // fraction of window.innerWidth
 
+const METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'CONNECT', 'TRACE']
+
+const METHOD_COLORS: Record<HttpMethod, string> = {
+  GET: 'text-method-get',
+  POST: 'text-method-post',
+  PUT: 'text-method-put',
+  PATCH: 'text-method-patch',
+  DELETE: 'text-method-delete',
+  HEAD: 'text-method-head',
+  OPTIONS: 'text-method-head',
+  CONNECT: 'text-warning',
+  TRACE: 'text-info',
+  WS: 'text-info',
+  SOAP: 'text-method-post',
+}
+
 function clampComposerWidth(w: number): number {
   return Math.max(COMPOSER_WIDTH_MIN, Math.min(w, Math.round(window.innerWidth * COMPOSER_WIDTH_MAX)))
 }
@@ -116,6 +137,147 @@ function loadComposerWidth(): number {
     if (stored) return clampComposerWidth(parseInt(stored, 10))
   } catch { /* ignore */ }
   return Math.round(window.innerWidth * 0.50)
+}
+
+function ActiveRequestBar({
+  request,
+  isDirty,
+  loading,
+  vars,
+  hasActiveEnv,
+  onChange,
+  onSend,
+  onSave,
+  onLoadTest,
+}: {
+  request: RequestItem
+  isDirty: boolean
+  loading?: boolean
+  vars: Record<string, string>
+  hasActiveEnv: boolean
+  onChange: (request: RequestItem) => void
+  onSend: () => void
+  onSave: () => void
+  onLoadTest: () => void
+}) {
+  const [savedFlash, setSavedFlash] = useState(false)
+  const urlInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const focusUrl = () => urlInputRef.current?.focus()
+    document.addEventListener('adomnia:focus-url', focusUrl)
+    return () => document.removeEventListener('adomnia:focus-url', focusUrl)
+  }, [])
+
+  const handleSave = () => {
+    onSave()
+    setSavedFlash(true)
+    window.setTimeout(() => setSavedFlash(false), 1000)
+  }
+
+  return (
+    <div className="border-b border-border-1 bg-surface-1/95 px-3 py-2">
+      <div className="flex min-w-0 items-center gap-2">
+        <div className="flex min-w-[150px] max-w-[240px] flex-col gap-0.5">
+          <span className="text-[9px] font-semibold uppercase tracking-[0.14em] text-accent">Active Request</span>
+          <input
+            className="h-5 min-w-0 bg-transparent text-[12px] font-semibold text-text-1 outline-none placeholder:text-text-4"
+            value={request.name}
+            onChange={(e) => onChange({ ...request, name: e.target.value })}
+            placeholder="Request name..."
+            title={request.name || 'Request name'}
+          />
+        </div>
+
+        <select
+          value={request.method}
+          onChange={(e) => onChange({ ...request, method: e.target.value as HttpMethod })}
+          className={cn(
+            'h-9 w-[92px] rounded-md border border-border-2 bg-surface-2 px-2 text-xs font-bold outline-none transition-colors focus:border-accent',
+            METHOD_COLORS[request.method] ?? 'text-text-1',
+          )}
+          title="HTTP method"
+        >
+          {METHODS.map((method) => (
+            <option key={method} value={method}>{method}</option>
+          ))}
+        </select>
+
+        <div className="h-9 min-w-0 flex-1 overflow-hidden rounded-md border border-border-2 bg-surface-2 transition-colors focus-within:border-accent">
+          <VarHighlightInput
+            value={request.url}
+            onChange={(url) => onChange({ ...request, url })}
+            onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') onSend() }}
+            resolvedVars={vars}
+            hasActiveEnv={hasActiveEnv}
+            placeholder="https://api.your-domain.com/v1/users or {{base_url}}/health"
+            className="h-full"
+            inputRef={urlInputRef}
+          />
+        </div>
+
+        <div className="flex h-9 items-center gap-1 rounded-md border border-border-2 bg-surface-2 px-2">
+          <Clock size={12} className="text-text-4" />
+          <input
+            type="number"
+            min="0"
+            max="300000"
+            step="1000"
+            value={request.timeout ?? 0}
+            onChange={(e) => onChange({ ...request, timeout: Number(e.target.value) || 0 })}
+            className="w-14 bg-transparent font-mono text-xs text-text-1 outline-none placeholder:text-text-4"
+            placeholder="ms"
+            title="Request timeout (ms, 0 = no timeout)"
+          />
+        </div>
+
+        <button
+          onClick={() => onChange({ ...request, followRedirects: !(request.followRedirects ?? true) })}
+          title={request.followRedirects ?? true ? 'Follow redirects (on)' : 'Follow redirects (off)'}
+          className={cn(
+            'grid h-9 w-9 place-items-center rounded-md border border-border-2 transition-colors',
+            (request.followRedirects ?? true)
+              ? 'bg-surface-2 text-text-3 hover:text-text-1'
+              : 'border-error/30 bg-error/10 text-error',
+          )}
+        >
+          <CornerDownRight size={14} />
+        </button>
+
+        <button
+          onClick={onSend}
+          disabled={!request.url || loading}
+          className="flex h-9 min-w-[98px] items-center justify-center gap-1.5 rounded-md bg-accent px-4 text-xs font-bold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <Send size={14} />
+          {loading ? 'Sending...' : 'Send'}
+        </button>
+
+        <button
+          onClick={handleSave}
+          title={isDirty ? 'Unsaved changes - Save to collection (Ctrl+S)' : 'Save to collection (Ctrl+S)'}
+          className={cn(
+            'grid h-9 w-9 place-items-center rounded-md transition-all',
+            savedFlash
+              ? 'bg-success/10 text-success'
+              : isDirty
+                ? 'border border-warning/30 bg-warning/15 text-warning hover:bg-warning/25'
+                : 'text-text-3 hover:bg-surface-2 hover:text-text-1',
+          )}
+        >
+          {savedFlash ? <Check size={15} /> : <Save size={15} />}
+        </button>
+
+        <button
+          onClick={onLoadTest}
+          title="Load Test"
+          className="grid h-9 w-9 place-items-center rounded-md text-text-3 transition-colors hover:bg-surface-2 hover:text-text-1"
+        >
+          <Gauge size={15} />
+        </button>
+      </div>
+    </div>
+  )
 }
 
 // ─── RequestWorkspace ─────────────────────────────────────────────────────────
@@ -355,6 +517,19 @@ function RequestWorkspace() {
         onNewTab={newTab}
         onDuplicate={duplicateTab}
       />
+      {activeTab && (
+        <ActiveRequestBar
+          request={activeTab.request}
+          isDirty={activeTab.dirty}
+          loading={activeTab.loading}
+          vars={getResolvedVars()}
+          hasActiveEnv={activeEnvId !== null}
+          onChange={(request) => updateRequest(activeTab.id, request)}
+          onSend={handleSend}
+          onSave={handleSave}
+          onLoadTest={() => setShowLoadTest((v) => !v)}
+        />
+      )}
       <ApiToolsBar
         activeRequest={activeTab?.request ?? null}
         onApplyRequest={(request) => activeTab && updateRequest(activeTab.id, request)}
@@ -379,6 +554,7 @@ function RequestWorkspace() {
               onSave={handleSave}
               onLoadTest={() => setShowLoadTest((v) => !v)}
               loading={activeTab.loading}
+              hideRequestBar
             />
           </div>
 
@@ -537,7 +713,10 @@ function panelFor(activeRail: RailItem): PanelDef {
     case 'themes':      return { component: <ThemePanel />,           titleKey: 'themes' }
     case 'templates':   return { component: <TemplateMarketplace />,  titleKey: 'templates' }
     case 'plugins':     return { component: <PluginManager />,        titleKey: 'plugins' }
+    case 'apis':        return { component: <InstallPanel />,         titleKey: 'API Catalog' }
     case 'secretscanner': return { component: <SecretScannerPanel />,  titleKey: 'secretscanner', overflow: true }
+    case 'gitsync':     return { component: <GitSyncPanel />,         titleKey: 'Git Sync', overflow: true }
+    case 'mcp':         return { component: <McpPanel />,             titleKey: 'MCP Client', overflow: true }
     case 'settings':    return { component: <SettingsPanel />,        titleKey: 'settings' }
     default:            return { component: <WelcomePanel /> }
   }

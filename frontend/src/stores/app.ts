@@ -34,11 +34,14 @@ export type RailItem =
   | 'themes'
   | 'templates'
   | 'plugins'
+  | 'apis'
   | 'har'
   | 'observe'
   | 'secretscanner'
   | 'settings'
   | 'welcome'
+  | 'gitsync'
+  | 'mcp'
 
 interface AppState {
   activeRail: RailItem

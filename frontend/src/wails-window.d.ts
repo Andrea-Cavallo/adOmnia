@@ -28,6 +28,29 @@ interface WailsGoMain {
     GetPresets: () => Promise<PresetDef[]>
     GenerateLab: (ids: string[]) => Promise<LabOutput>
   }
+  AIEngine: {
+    Configure: (configJSON: string) => Promise<void>
+    TestConnection: (configJSON: string) => Promise<string>
+    Complete: (provider: string, prompt: string, maxTokens: number) => Promise<string>
+    GenerateMockEndpoints: (inputType: string, userInput: string) => Promise<string>
+  }
+  GitSync: {
+    IsGitInstalled: () => Promise<boolean>
+    InitRepo: (repoPath: string) => Promise<void>
+    GetStatus: (repoPath: string) => Promise<string>
+    CommitAll: (repoPath: string, message: string) => Promise<string>
+    Push: (repoPath: string, remote: string) => Promise<void>
+    Pull: (repoPath: string, remote: string) => Promise<void>
+    Log: (repoPath: string, limit: number) => Promise<string>
+  }
+  MCPClient: {
+    Connect: (serverConfigJSON: string) => Promise<string>
+    Disconnect: () => Promise<void>
+    ListTools: () => Promise<string>
+    CallTool: (toolName: string, argsJSON: string) => Promise<string>
+    ListResources: () => Promise<string>
+    ListPrompts: () => Promise<string>
+  }
 }
 
 interface DockerService {

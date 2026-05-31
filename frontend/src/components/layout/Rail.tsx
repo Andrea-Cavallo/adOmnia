@@ -6,7 +6,7 @@ import {
   Send, LayoutList, Shield, Server, Radio, Globe, Bug, Container, Network,
   Wrench, FileText, FileCode, Database, Braces, FlaskConical, ChevronRight,
   Lock, FolderOpen, Paintbrush, LayoutTemplate, Puzzle, Settings, GitBranch,
-  Play, Zap, BarChart2, Activity, HardDrive, History, Layers,
+  Play, Zap, BarChart2, Activity, HardDrive, History, Layers, Package,
 } from 'lucide-react'
 
 interface SubItem {
@@ -60,6 +60,7 @@ const CATEGORIES: CategoryDef[] = [
       { title: 'Protocols', items: [
         { id: 'grpc',  icon: Send,     label: 'gRPC Client' },
         { id: 'soap',  icon: Soap95Icon, label: 'SOAP Studio' },
+        { id: 'mcp',   icon: Network,  label: 'MCP Client' },
       ]},
     ],
   },
@@ -97,8 +98,10 @@ const CATEGORIES: CategoryDef[] = [
       ]},
       { title: 'Workspace', items: [
         { id: 'workspace',  icon: FolderOpen,     label: 'Workspace' },
+        { id: 'gitsync',    icon: GitBranch,      label: 'Git Sync' },
         { id: 'templates',  icon: LayoutTemplate, label: 'Templates' },
         { id: 'themes',     icon: Paintbrush,     label: 'Themes' },
+        { id: 'apis',       icon: Package,        label: 'API Catalog' },
       ]},
     ],
   },

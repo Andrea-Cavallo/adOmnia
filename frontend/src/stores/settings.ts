@@ -74,6 +74,13 @@ export interface AppSettings {
     formatResponseAuto: boolean
     responseMaxRenderSizeKB: number
   }
+  ai: {
+    provider: 'anthropic' | 'openai' | 'gemini' | 'ollama'
+    model: string
+    apiKey: string
+    baseURL: string
+    enabled: boolean
+  }
 }
 
 function mergeBlock<T extends Record<string, unknown>>(defaults: T, saved: Partial<T> | undefined): T {
@@ -158,6 +165,13 @@ const defaultSettings: AppSettings = {
     formatResponseAuto: true,
     responseMaxRenderSizeKB: 2048,
   },
+  ai: {
+    provider: 'ollama' as const,
+    model: '',
+    apiKey: '',
+    baseURL: 'http://localhost:11434',
+    enabled: false,
+  },
 }
 
 interface SettingsState {
@@ -173,6 +187,7 @@ interface SettingsState {
   updateMock: (patch: Partial<AppSettings['mock']>) => void
   updateVault: (patch: Partial<AppSettings['vault']>) => void
   updateEditor: (patch: Partial<AppSettings['editor']>) => void
+  updateAi: (patch: Partial<AppSettings['ai']>) => void
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -197,6 +212,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         mock: mergeBlock(defaultSettings.mock, parsed.mock),
         vault: mergeBlock(defaultSettings.vault, parsed.vault),
         editor: mergeBlock(defaultSettings.editor, parsed.editor),
+        ai: mergeBlock(defaultSettings.ai, parsed.ai),
       }
       set({ settings: merged, loaded: true })
     } catch {
@@ -262,6 +278,13 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   updateEditor: (patch) => {
     set((s) => ({
       settings: { ...s.settings, editor: { ...s.settings.editor, ...patch } },
+    }))
+    get().save()
+  },
+
+  updateAi: (patch) => {
+    set((s) => ({
+      settings: { ...s.settings, ai: { ...s.settings.ai, ...patch } },
     }))
     get().save()
   },

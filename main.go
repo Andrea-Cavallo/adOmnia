@@ -1,6 +1,7 @@
 package main
 
 import (
+	"adomnia/internal/apis"
 	"adomnia/internal/browser"
 	"adomnia/internal/docker"
 	"adomnia/internal/plugins"
@@ -56,6 +57,11 @@ func main() {
 	wasmRuntime := NewWasmRuntime()
 	dockerLab := NewDockerLab()
 	pythonBridge := NewPythonBridge()
+	aiEngine := NewAIEngine()
+	globalAIEngine = aiEngine
+	gitSync := NewGitSync(dataDir())
+	mcpClient := NewMCPClient()
+	apiCollectionStore := NewApiCollectionStore()
 
 	appOptions := &options.App{
 		Title:     "adOmnia paratus.",
@@ -78,6 +84,10 @@ func main() {
 			wasmRuntime,
 			dockerLab,
 			pythonBridge,
+			aiEngine,
+			gitSync,
+			mcpClient,
+			apiCollectionStore,
 		},
 		Windows: &windows.Options{
 			WebviewIsTransparent:              false,
@@ -201,4 +211,10 @@ func NewPythonBridge() *PythonBridge {
 
 func (pb *PythonBridge) Init(ctx context.Context, _ *App) {
 	pb.PythonBridge.Init(ctx)
+}
+
+type ApiCollectionStore struct{ *apis.CollectionStore }
+
+func NewApiCollectionStore() *ApiCollectionStore {
+	return &ApiCollectionStore{CollectionStore: apis.NewCollectionStore("")}
 }

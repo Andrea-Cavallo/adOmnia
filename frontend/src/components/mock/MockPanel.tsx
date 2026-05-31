@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import {
   Plus, Trash2, RefreshCw, Play, Square,
   ChevronDown, ChevronRight, Download, Upload,
-  Server, Radio, Zap, Copy, Mic, Search, X
+  Server, Radio, Zap, Copy, Mic, Search, X, Sparkles
 } from 'lucide-react'
+import { AiMockDialog } from './AiMockDialog'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { useAppStore } from '@/stores/app'
 import { useCollectionsStore } from '@/stores/collections'
@@ -484,6 +485,7 @@ export function MockPanel() {
   const [hitSearch, setHitSearch] = useState('')
   const [hitMethodFilter, setHitMethodFilter] = useState<'ALL' | 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'>('ALL')
   const [hitMatchFilter, setHitMatchFilter] = useState<'all' | 'match' | 'miss'>('all')
+  const [showAiDialog, setShowAiDialog] = useState(false)
 
   const filteredHits = useMemo(() => {
     const reversed = hits.slice().reverse()
@@ -672,6 +674,10 @@ export function MockPanel() {
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
+  const handleAiImport = (imported: MockEndpoint[]) => {
+    setEndpoints(prev => [...prev, ...imported])
+  }
+
   const addEndpoint = () => {
     setEndpoints([...endpoints, {
       id: uid(),
@@ -701,6 +707,7 @@ export function MockPanel() {
   const clearHits = () => setHits([])
 
   return (
+    <>
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
       {/* Action toolbar: the panel title/navigation lives in MainArea. */}
       <div className="flex h-12 items-center gap-3 px-4 border-b border-border-1 shrink-0">
@@ -823,12 +830,21 @@ export function MockPanel() {
                 ({endpoints.filter(e => e.enabled !== false).length}/{endpoints.length} enabled)
               </span>
             </div>
-            <button
-              onClick={addEndpoint}
-              className="flex items-center gap-1 text-xs text-accent hover:text-accent-light"
-            >
-              <Plus size={12} /> New endpoint
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowAiDialog(true)}
+                className="flex items-center gap-1 text-xs text-text-3 hover:text-accent transition-colors"
+                title="Generate endpoints with AI"
+              >
+                <Sparkles size={12} /> Generate with AI
+              </button>
+              <button
+                onClick={addEndpoint}
+                className="flex items-center gap-1 text-xs text-accent hover:text-accent-light"
+              >
+                <Plus size={12} /> New endpoint
+              </button>
+            </div>
           </div>
 
           {endpoints.length === 0 && (
@@ -1016,5 +1032,12 @@ export function MockPanel() {
         </div>
       </div>
     </div>
+    {showAiDialog && (
+      <AiMockDialog
+        onClose={() => setShowAiDialog(false)}
+        onImport={handleAiImport}
+      />
+    )}
+    </>
   )
 }

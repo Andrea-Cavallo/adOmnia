@@ -26,6 +26,7 @@ interface ComposerProps {
   onSave: () => void
   onLoadTest?: () => void
   loading?: boolean
+  hideRequestBar?: boolean
 }
 
 const METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'CONNECT', 'TRACE']
@@ -242,7 +243,7 @@ function CookieJarSection({ requestUrl }: { requestUrl: string }) {
   )
 }
 
-export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest, loading }: ComposerProps) {
+export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest, loading, hideRequestBar = false }: ComposerProps) {
   const getResolvedVars = useEnvironmentsStore((s) => s.getResolvedVars)
   const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
   const resolvedVars = getResolvedVars()
@@ -325,30 +326,32 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
   return (
     <>
       <div className="flex-1 min-h-0 flex flex-col border-b border-border-1">
-        {/* Request name */}
-        <div className="flex items-center gap-2 px-3 pt-2 pb-0.5">
-          <input
-            className="flex-1 text-xs text-text-3 bg-transparent outline-none placeholder:text-text-4 hover:text-text-1 focus:text-text-1"
-            value={request.name}
-            onChange={(e) => onChange({ ...request, name: e.target.value })}
-            placeholder="Request name..."
-          />
-        </div>
+        {!hideRequestBar && (
+          <>
+            {/* Request name */}
+            <div className="flex items-center gap-2 px-3 pt-2 pb-0.5">
+              <input
+                className="flex-1 text-xs text-text-3 bg-transparent outline-none placeholder:text-text-4 hover:text-text-1 focus:text-text-1"
+                value={request.name}
+                onChange={(e) => onChange({ ...request, name: e.target.value })}
+                placeholder="Request name..."
+              />
+            </div>
 
-        {/* URL Bar */}
-        <div className="flex items-center gap-2 px-3 py-2">
-          <select
-            value={request.method}
-            onChange={(e) => onChange({ ...request, method: e.target.value as HttpMethod })}
-            className={cn(
-              'h-8 px-2 bg-surface-2 border border-border-2 rounded text-xs font-semibold focus:border-accent outline-none',
-              METHOD_COLORS[request.method] ?? 'text-text-1'
-            )}
-          >
-            {METHODS.map((m) => (
-              <option key={m} value={m}>{m}</option>
-            ))}
-          </select>
+            {/* URL Bar */}
+            <div className="flex items-center gap-2 px-3 py-2">
+              <select
+                value={request.method}
+                onChange={(e) => onChange({ ...request, method: e.target.value as HttpMethod })}
+                className={cn(
+                  'h-8 px-2 bg-surface-2 border border-border-2 rounded text-xs font-semibold focus:border-accent outline-none',
+                  METHOD_COLORS[request.method] ?? 'text-text-1'
+                )}
+              >
+                {METHODS.map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
 
           <div className="flex-1 h-8 bg-surface-2 border border-border-2 rounded focus-within:border-accent transition-colors overflow-hidden">
             <VarHighlightInput
@@ -433,16 +436,18 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
 
           <CopyAsDropdown request={request} vars={resolvedVars} />
 
-          {onLoadTest && (
-            <button
-              onClick={onLoadTest}
-              title="Load Test"
-              className="h-8 w-8 flex items-center justify-center text-text-3 hover:text-text-1 rounded hover:bg-surface-2 transition-colors"
-            >
-              <Gauge size={14} />
-            </button>
-          )}
-        </div>
+              {onLoadTest && (
+                <button
+                  onClick={onLoadTest}
+                  title="Load Test"
+                  className="h-8 w-8 flex items-center justify-center text-text-3 hover:text-text-1 rounded hover:bg-surface-2 transition-colors"
+                >
+                  <Gauge size={14} />
+                </button>
+              )}
+            </div>
+          </>
+        )}
 
         {/* Section tabs */}
         <div className="flex items-center gap-0.5 px-3 border-t border-border-1">

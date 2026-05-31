@@ -97,19 +97,19 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 
 | # | Funzionalità | Descrizione |
 |---|-------------|-------------|
-| A5.1 | **Step Request** | Aggiungi step con nome, metodo HTTP, URL e body (POST/PUT/PATCH). |
-| A5.2 | **Esecuzione Sequenziale** | Esegui il flow dall'inizio alla fine, oppure singolo step isolato. |
-| A5.3 | **Stato per Step** | Indicatore idle / running / ok / error con messaggio errore e durata. |
-| A5.4 | **Estrazione Variabili** | Estrai automaticamente variabili dalle risposte per passarle agli step successivi. |
-| A5.5 | **Variabili Ambiente** | Sostituisce variabili `{{var}}` dall'ambiente attivo in URL e body. |
-| A5.6 | **Assertions per Step** | Assertions configurate sulle richieste vengono valutate per ogni step. |
-| A5.7 | **Gestione Step CRUD** | Aggiungi, rinomina, elimina, riordina step. |
-| A5.8 | **Salva / Carica Flow** | Persiste localmente le definizioni dei flow in bbolt, migra i dati legacy e mantiene intatti Request, Condition, Wait e Script al riavvio. |
-| A5.9 | **Pannello Variabili** | Sidebar mostra le variabili estratte dai run con chiave/valore. |
-| A5.10 | **Pannello Ultimo Run** | Sidebar risultati separata dalla definizione salvata: status, durata, pass/fail assertions, errore per step. |
-| A5.11 | **Mock Recorder Inline** | Registra richiesta/risposta reale e crea automaticamente un endpoint mock (metodo, URL reale, path mock). |
-| A5.12 | **Export Flow JSON** | Esporta definizione flow come file JSON. |
-| A5.13 | **Export Report Markdown** | Esporta risultato dell'ultimo run come report Markdown. |
+| A5.1 | **Canvas Visuale** | La sezione Flows e' un editor grafico con nodi trascinabili e connessioni SVG, ispirato alla leggerezza di Excalidraw. |
+| A5.2 | **Nodi API Request** | Ogni nodo richiesta contiene nome, metodo, URL, headers, body, status atteso ed estrazioni variabili. |
+| A5.3 | **Nodi Condizionali IF** | I blocchi IF sono nodi diamond con branch true/false basati su status, header, body, variabili o espressioni compatibili. |
+| A5.4 | **Esecuzione su Grafo** | Il runner segue le connessioni del grafo da Start a End, scegliendo branch success/error/true/false. |
+| A5.5 | **Stati Runtime Visuali** | Ogni nodo mostra pending, running, success, failed o skipped con durata e messaggio sintetico. |
+| A5.6 | **Estrazione Variabili** | Estrai `{{token}}`, `{{userId}}` e altri valori da body, headers, status o expression path per riusarli nei nodi successivi. |
+| A5.7 | **Variabili Ambiente** | Riusa il motore richiesta esistente, quindi `{{var}}`, auth, cookies, scripts e assertions restano compatibili. |
+| A5.8 | **Inspector Laterale** | Il pannello laterale modifica il nodo selezionato: richiesta, headers, body, expected status, condition, end state ed estrazioni. |
+| A5.9 | **Run / Debug Panel** | Il pannello debug mostra ordine esecuzione, request, response, headers, body, assertions, variabili estratte ed errori. |
+| A5.10 | **Validazione Flow** | Segnala start mancante, nodi disconnessi, URL richieste mancanti, condizioni incomplete, branch mancanti e cicli non supportati. |
+| A5.11 | **Salva / Carica Flow** | Persiste localmente definizioni JSON versione 3 in bbolt e migra i vecchi flow a step nella nuova struttura a grafo. |
+| A5.12 | **Export Flow JSON** | Esporta definizione flow come file JSON serializzabile con nodes, edges, config e settings. |
+| A5.13 | **Export Report Markdown** | Esporta risultato dell'ultimo run come report Markdown con variabili finali. |
 
 ---
 
@@ -280,6 +280,10 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 | B5.1.5 | **Connessione** | Lista broker, topic, group ID, client ID, TLS, SASL (PLAIN, SCRAM-SHA-256, SCRAM-SHA-512). |
 | B5.1.6 | **Info Broker** | Mostra ID e indirizzo di tutti i broker connessi. |
 | B5.1.7 | **Load Test Producer** | Esegue publish concorrenti con conteggio o durata, ramp-up, variazione JSON e metriche throughput/latenza (P50/P95/P99, error rate, timeline). |
+| B5.1.8 | **Cluster Overview** | Dashboard Kafka con broker, controller, conteggio topic/partizioni, topic interni e health base su partizioni offline/under-replicated. |
+| B5.1.9 | **Topic Explorer** | Dettaglio topic con partizioni, leader, replicas, ISR, offset range, config; create/delete topic e update config/partizioni. |
+| B5.1.10 | **Consumer Groups** | Lista gruppi, stato, membri, offset commit, latest offset, lag e reset offset per partizione. |
+| B5.1.11 | **Message Browser** | Lettura messaggi per partition/offset/timestamp, tail dal latest offset e filtri su key, value e headers. |
 
 #### B5.2 RabbitMQ
 
