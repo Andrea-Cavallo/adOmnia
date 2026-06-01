@@ -3,9 +3,18 @@ import { useBrowserDebugStore, type TypeFilter } from '@/stores/browser-debug'
 import { useAppStore } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
 import { cn } from '@/lib/utils'
-import { uid } from '@/lib/types'
+import { blankRequest, uid } from '@/lib/types'
 import { appendMockEndpoints } from '@/lib/mockEndpointStore'
 import type { RequestItem, HttpMethod } from '@/lib/types'
+import {
+  DEFAULT_FLOW_SETTINGS,
+  loadFlowDefinitions,
+  saveFlowDefinitions,
+  type FlowEdgeBranch,
+  type FlowGraphDefinition,
+  type FlowNodeDefinition,
+  type SavedFlowDefinition,
+} from '@/lib/flowStorage'
 import {
   launchBrowserForDebug,
   discoverEndpoints,
@@ -63,6 +72,8 @@ const TYPE_FILTERS: { id: TypeFilter; label: string }[] = [
   { id: 'other', label: 'Other' },
 ]
 
+const CAPTURED_BROWSER_FLOW_NAME = 'Browser captured flow'
+
 function mimeMatchesType(mime: string, type: TypeFilter): boolean {
   if (type === 'all') return true
   if (type === 'xhr')  return mime.includes('json') || mime.includes('xml')
@@ -73,6 +84,125 @@ function mimeMatchesType(mime: string, type: TypeFilter): boolean {
   if (type === 'font') return mime.includes('font') || mime.includes('woff')
   return !mime.includes('json') && !mime.includes('xml') && !mime.includes('html') &&
     !mime.includes('css') && !mime.includes('javascript') && !mime.includes('image') && !mime.includes('font')
+}
+
+function safeHttpMethod(method: string): HttpMethod {
+  const safe = ['GET','POST','PUT','PATCH','DELETE','HEAD','OPTIONS','CONNECT','TRACE']
+  return safe.includes(method.toUpperCase()) ? method.toUpperCase() as HttpMethod : 'GET'
+}
+
+function requestFromCapture(data: { method: string; url: string; headers: Record<string, string>; body: string }): RequestItem {
+  const method = safeHttpMethod(data.method)
+  const request = blankRequest(method, `${method} ${data.url}`)
+  return {
+    ...request,
+    url: data.url,
+    headers: Object.entries(data.headers).map(([key, value]) => ({ id: uid(), key, value, enabled: true })),
+    bodies: [{ id: uid(), name: 'Body 1', type: data.body ? 'raw' : 'none', raw: data.body, lang: 'json', form: [] }],
+    activeBodyIdx: 0,
+  }
+}
+
+function endpointNodes(x: number) {
+  const success: FlowNodeDefinition = {
+    id: uid(),
+    type: 'end',
+    label: 'End success',
+    x,
+    y: 170,
+    width: 146,
+    height: 74,
+    config: { endState: 'success' },
+  }
+  const failed: FlowNodeDefinition = {
+    id: uid(),
+    type: 'end',
+    label: 'End failed',
+    x,
+    y: 330,
+    width: 146,
+    height: 74,
+    config: { endState: 'failed' },
+  }
+  return { success, failed }
+}
+
+function createCapturedFlow(request: RequestItem): SavedFlowDefinition {
+  const start: FlowNodeDefinition = {
+    id: uid(),
+    type: 'start',
+    label: 'Start',
+    x: 90,
+    y: 250,
+    width: 130,
+    height: 74,
+    config: {},
+  }
+  const requestNode: FlowNodeDefinition = {
+    id: uid(),
+    type: 'request',
+    label: request.name,
+    x: 330,
+    y: 225,
+    width: 230,
+    height: 126,
+    config: { request, expectedStatus: '2xx', stopOnFailure: true, extractions: [] },
+  }
+  const { success, failed } = endpointNodes(670)
+  return {
+    id: uid(),
+    name: CAPTURED_BROWSER_FLOW_NAME,
+    graph: {
+      nodes: [start, requestNode, success, failed],
+      edges: [
+        { id: uid(), source: start.id, target: requestNode.id, branch: 'next', label: '' },
+        { id: uid(), source: requestNode.id, target: success.id, branch: 'success', label: 'success' },
+        { id: uid(), source: requestNode.id, target: failed.id, branch: 'error', label: 'error' },
+      ],
+      viewport: { x: 0, y: 0, zoom: 1 },
+      settings: DEFAULT_FLOW_SETTINGS,
+    },
+    updatedAt: new Date().toISOString(),
+    version: 3,
+  }
+}
+
+function branchForSource(node: FlowNodeDefinition): FlowEdgeBranch {
+  if (node.type === 'request') return 'success'
+  if (node.type === 'condition') return 'true'
+  return 'next'
+}
+
+function appendRequestToGraph(graph: FlowGraphDefinition, request: RequestItem): FlowGraphDefinition {
+  const successEnd = graph.nodes.find((node) => node.type === 'end' && node.config.endState !== 'failed')
+  const failedEnd = graph.nodes.find((node) => node.type === 'end' && node.config.endState === 'failed')
+  const incomingSuccess = successEnd ? graph.edges.find((edge) => edge.target === successEnd.id) : undefined
+  const previous = graph.nodes.find((node) => node.id === incomingSuccess?.source)
+    ?? [...graph.nodes].reverse().find((node) => node.type === 'request')
+    ?? graph.nodes.find((node) => node.type === 'start')
+  const maxX = Math.max(330, ...graph.nodes.map((node) => node.x))
+  const requestNode: FlowNodeDefinition = {
+    id: uid(),
+    type: 'request',
+    label: request.name,
+    x: maxX + 260,
+    y: previous?.y ?? 225,
+    width: 230,
+    height: 126,
+    config: { request, expectedStatus: '2xx', stopOnFailure: true, extractions: [] },
+  }
+  const nextSuccess = successEnd ? { ...successEnd, x: requestNode.x + 320, y: 170 } : endpointNodes(requestNode.x + 320).success
+  const nextFailed = failedEnd ? { ...failedEnd, x: requestNode.x + 320, y: 330 } : endpointNodes(requestNode.x + 320).failed
+  const nodes = graph.nodes
+    .filter((node) => node.id !== nextSuccess.id && node.id !== nextFailed.id)
+    .concat(requestNode, nextSuccess, nextFailed)
+  const edges = graph.edges.filter((edge) => edge.id !== incomingSuccess?.id && edge.source !== requestNode.id)
+  if (previous) edges.push({ id: uid(), source: previous.id, target: requestNode.id, branch: branchForSource(previous), label: branchForSource(previous) === 'next' ? '' : branchForSource(previous) })
+  edges.push(
+    { id: uid(), source: requestNode.id, target: nextSuccess.id, branch: 'success', label: 'success' },
+    { id: uid(), source: requestNode.id, target: nextFailed.id, branch: 'error', label: 'error' },
+  )
+  return { ...graph, nodes, edges }
 }
 
 // ── Tab picker panel ──────────────────────────────────────────────────────────
@@ -399,8 +529,7 @@ export function BrowserDebugPanel() {
 
   const handleSendToComposer = useCallback(
     (data: { method: string; url: string; headers: Record<string, string>; body: string }) => {
-      const safe = ['GET','POST','PUT','PATCH','DELETE','HEAD','OPTIONS','CONNECT','TRACE']
-      const method = safe.includes(data.method.toUpperCase()) ? data.method.toUpperCase() as HttpMethod : 'GET'
+      const method = safeHttpMethod(data.method)
       const request: RequestItem = {
         id: uid(), name: '', type: 'request', method, url: data.url,
         params: [{ id: uid(), key: '', value: '', enabled: true }],
@@ -412,6 +541,25 @@ export function BrowserDebugPanel() {
       }
       useTabsStore.getState().openTab(request)
       useAppStore.getState().setActiveRail('collections')
+    }, []
+  )
+
+  const handleAddToFlow = useCallback(
+    async (data: { method: string; url: string; headers: Record<string, string>; body: string }) => {
+      const request = requestFromCapture(data)
+      const flows = await loadFlowDefinitions()
+      const existing = flows.find((flow) => flow.name === CAPTURED_BROWSER_FLOW_NAME)
+      const saved: SavedFlowDefinition = existing
+        ? {
+            ...existing,
+            graph: appendRequestToGraph(existing.graph, request),
+            updatedAt: new Date().toISOString(),
+            version: 3,
+          }
+        : createCapturedFlow(request)
+
+      await saveFlowDefinitions([saved, ...flows.filter((flow) => flow.id !== saved.id)])
+      useAppStore.getState().setActiveRail('flows')
     }, []
   )
 
@@ -482,7 +630,7 @@ export function BrowserDebugPanel() {
           </div>
           <div className="w-[40%] overflow-hidden bg-surface-1">
             {selectedEntry
-              ? <NetworkDetail entry={selectedEntry} onSendToComposer={handleSendToComposer} onAddAsMock={handleAddAsMock} />
+              ? <NetworkDetail entry={selectedEntry} onSendToComposer={handleSendToComposer} onAddAsMock={handleAddAsMock} onAddToFlow={handleAddToFlow} />
               : <div className="flex items-center justify-center h-full text-text-3 text-sm">Select a request to view details</div>
             }
           </div>

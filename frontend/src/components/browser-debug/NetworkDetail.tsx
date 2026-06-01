@@ -20,7 +20,12 @@ interface NetworkDetailProps {
     headers: Record<string, string>
     body: string
   }) => void
-  onAddToFlow?: (data: { method: string; url: string }) => void
+  onAddToFlow?: (data: {
+    method: string
+    url: string
+    headers: Record<string, string>
+    body: string
+  }) => void | Promise<void>
 }
 
 const tabs: { id: DetailTab; label: string }[] = [
@@ -89,6 +94,7 @@ export function NetworkDetail({
   const [responseBody, setResponseBody] = useState('')
   const [loadingRequest, setLoadingRequest] = useState(false)
   const [loadingResponse, setLoadingResponse] = useState(false)
+  const [flowStatus, setFlowStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
 
   useEffect(() => {
     setRequestBody('')
@@ -136,8 +142,22 @@ export function NetworkDetail({
     })
   }
 
-  const handleAddToFlow = () => {
-    onAddToFlow?.({ method: entry.method, url: entry.url })
+  const handleAddToFlow = async () => {
+    if (!onAddToFlow) return
+    setFlowStatus('saving')
+    try {
+      const body = requestBody || (await getRequestBody(entry.id))
+      await onAddToFlow({
+        method: entry.method,
+        url: entry.url,
+        headers: entry.requestHeaders,
+        body,
+      })
+      setFlowStatus('saved')
+      window.setTimeout(() => setFlowStatus('idle'), 1800)
+    } catch {
+      setFlowStatus('error')
+    }
   }
 
   return (
@@ -227,11 +247,14 @@ export function NetworkDetail({
 
             <button
               onClick={handleAddToFlow}
+              disabled={!onAddToFlow || flowStatus === 'saving'}
               className="flex items-center gap-2 w-full px-3 py-2 rounded bg-surface-0 border border-border-1 text-sm text-text-1 hover:bg-surface-2 transition-colors"
             >
               <Workflow size={14} className="text-accent" />
               <div className="text-left">
-                <div className="font-medium">Add to Flow</div>
+                <div className="font-medium">
+                  {flowStatus === 'saving' ? 'Adding to Flow...' : flowStatus === 'saved' ? 'Added to Flow' : flowStatus === 'error' ? 'Could not add to Flow' : 'Add to Flow'}
+                </div>
                 <div className="text-xs text-text-3">
                   Add this request as a step in the flow builder
                 </div>

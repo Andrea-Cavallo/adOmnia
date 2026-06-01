@@ -9,7 +9,6 @@ import {
   FileJson,
   FileText,
   GitBranch,
-  Link2,
   Play,
   Plus,
   Save,
@@ -94,6 +93,14 @@ function cx(node: FlowNodeDefinition) {
 
 function cy(node: FlowNodeDefinition) {
   return node.y + (node.height ?? NODE_H) / 2
+}
+
+function nodeSizeFor(type: FlowNodeType) {
+  if (type === 'condition') return { width: 156, height: 156 }
+  if (type === 'start') return { width: 130, height: 74 }
+  if (type === 'end') return { width: 146, height: 74 }
+  if (type === 'extract') return { width: NODE_W, height: 112 }
+  return { width: NODE_W, height: NODE_H }
 }
 
 function normalizeName(text: string) {
@@ -475,6 +482,38 @@ export function FlowsPanel() {
     patchNode(node.id, { config: { request: { ...(node.config.request ?? blankRequest()), ...patch } } })
   }
 
+  const scrollToNode = (node: FlowNodeDefinition) => {
+    window.requestAnimationFrame(() => {
+      const viewport = canvasScrollRef.current
+      if (!viewport) return
+      viewport.scrollTo({
+        left: Math.max(0, (node.x - 220) * zoom),
+        top: Math.max(0, (node.y - 180) * zoom),
+        behavior: 'smooth',
+      })
+    })
+  }
+
+  const resetFlow = () => {
+    const next = createDefaultFlowGraph()
+    updateGraph(next)
+    setActiveFlowId(null)
+    setFlowName('Untitled visual flow')
+    setSelectedNodeId(next.nodes[1]?.id ?? next.nodes[0]?.id)
+    setConnectDraft(null)
+    setRuntime({})
+    setVars({})
+    setLastRun([])
+    setTab('edit')
+    window.requestAnimationFrame(() => {
+      const viewport = canvasScrollRef.current
+      if (viewport) {
+        viewport.scrollLeft = 0
+        viewport.scrollTop = 0
+      }
+    })
+  }
+
   const screenToCanvas = (clientX: number, clientY: number) => {
     const rect = canvasContentRef.current?.getBoundingClientRect()
     if (!rect) return { x: clientX, y: clientY }
@@ -526,12 +565,79 @@ export function FlowsPanel() {
   }
 
   const addNode = (type: FlowNodeType) => {
+    if (type === 'start') {
+      const existingStart = graph.nodes.find((node) => node.type === 'start')
+      if (existingStart) {
+        setSelectedNodeId(existingStart.id)
+        scrollToNode(existingStart)
+        return
+      }
+    }
+
+    const source = connectDraft
+      ? graph.nodes.find((node) => node.id === connectDraft.source)
+      : graph.nodes.find((node) => node.id === selectedNodeId)
+    const branch: FlowEdgeBranch | null = connectDraft?.branch
+      ?? (source?.type === 'condition'
+        ? 'true'
+        : source?.type === 'request'
+          ? 'success'
+          : source && source.type !== 'end'
+            ? 'next'
+            : null)
+    const existingBranchEdge = source && branch ? graph.edges.find((edge) => edge.source === source.id && edge.branch === branch) : undefined
+    const size = nodeSizeFor(type)
     const viewport = canvasScrollRef.current
-    const x = viewport ? (viewport.scrollLeft + viewport.clientWidth / 2) / zoom - 110 : 260 + graph.nodes.length * 32
-    const y = viewport ? (viewport.scrollTop + viewport.clientHeight / 2) / zoom - 70 : 180 + graph.nodes.length * 18
-    const node = newNode(type, Math.round(x), Math.round(y))
-    setGraph((current) => ({ ...current, nodes: [...current.nodes, node] }))
+    let x = source ? source.x + (source.width ?? NODE_W) + 190 : viewport ? viewport.scrollLeft / zoom + 90 : 140
+    let y = source ? source.y : viewport ? viewport.scrollTop / zoom + 120 : 180
+    if (source && existingBranchEdge) x = source.x + (source.width ?? NODE_W) + 115
+    if (branch === 'error' || branch === 'false' || branch === 'else') y += 170
+    if (branch === 'true' || branch === 'success') y -= source?.type === 'condition' ? 70 : 0
+
+    const collides = (left: number, top: number) => graph.nodes.some((node) => {
+      if (existingBranchEdge && source && node.x > source.x) return false
+      const nodeW = node.width ?? NODE_W
+      const nodeH = node.height ?? NODE_H
+      return left < node.x + nodeW + 42 && left + size.width + 42 > node.x && top < node.y + nodeH + 42 && top + size.height + 42 > node.y
+    })
+    let guard = 0
+    while (collides(x, y) && guard < 12) {
+      y += 92
+      if (y > CANVAS_H - 220) {
+        y = 120
+        x += 260
+      }
+      guard += 1
+    }
+
+    const node = newNode(type, Math.round(clamp(x, 40, CANVAS_W - size.width - 40)), Math.round(clamp(y, 80, CANVAS_H - size.height - 40)))
+    const shouldAutoConnect = source && branch && source.type !== 'end'
+    const insertedNextBranch: FlowEdgeBranch = type === 'condition' ? 'true' : type === 'request' ? 'success' : 'next'
+    const shiftX = existingBranchEdge ? size.width + 120 : 0
+    setGraph((current) => ({
+      ...current,
+      nodes: [
+        ...current.nodes.map((item) => (
+          shiftX > 0 && source && item.id !== source.id && item.x > source.x
+            ? { ...item, x: Math.min(CANVAS_W - (item.width ?? NODE_W) - 40, item.x + shiftX) }
+            : item
+        )),
+        node,
+      ],
+      edges: shouldAutoConnect
+        ? [
+          ...current.edges.filter((edge) => !(edge.source === source.id && edge.branch === branch)),
+          { id: uid(), source: source.id, target: node.id, branch, label: branch === 'next' ? '' : branch },
+          ...(existingBranchEdge && type !== 'end'
+            ? [{ id: uid(), source: node.id, target: existingBranchEdge.target, branch: insertedNextBranch, label: insertedNextBranch === 'next' ? '' : insertedNextBranch }]
+            : []),
+        ]
+        : current.edges,
+    }))
     setSelectedNodeId(node.id)
+    setConnectDraft(null)
+    setCanvasMenu(null)
+    scrollToNode(node)
   }
 
   const removeNode = (id: string) => {
@@ -851,7 +957,7 @@ export function FlowsPanel() {
           <button onClick={exportRun} disabled={lastRun.length === 0} title="Export run report" className="flex h-8 flex-1 items-center justify-center rounded border border-border-2 text-text-3 hover:text-text-1 disabled:opacity-40"><Download size={14} /></button>
         </div>
         <div className="border-b border-border-1 p-2">
-          <button onClick={() => { const next = createDefaultFlowGraph(); updateGraph(next); setActiveFlowId(null); setFlowName('Untitled visual flow'); setSelectedNodeId(next.nodes[1]?.id ?? next.nodes[0]?.id) }} className="flex h-8 w-full items-center justify-center gap-1.5 rounded bg-accent px-3 text-xs font-medium text-white hover:opacity-90">
+          <button onClick={resetFlow} className="flex h-8 w-full items-center justify-center gap-1.5 rounded bg-accent px-3 text-xs font-medium text-white hover:opacity-90">
             <Plus size={13} /> New flow
           </button>
         </div>
@@ -887,8 +993,8 @@ export function FlowsPanel() {
           onContextMenu={(event) => { event.preventDefault(); setCanvasMenu(null) }}
           className="relative min-h-0 flex-1 cursor-grab overflow-auto bg-[radial-gradient(circle_at_1px_1px,var(--color-border-2)_1px,transparent_0)] [background-size:22px_22px] active:cursor-grabbing"
         >
-          {validationErrors.length > 0 && (
-            <div className="absolute left-3 top-3 z-20 max-w-md rounded border border-warning/30 bg-surface-1/95 px-3 py-2 shadow-lg">
+          {validationErrors.length > 0 && !connectDraft && (
+            <div className="pointer-events-none absolute bottom-3 left-3 z-20 max-w-[360px] rounded border border-warning/30 bg-surface-1/95 px-3 py-2 shadow-lg">
               <div className="mb-1 flex items-center gap-2 text-xs font-semibold text-warning"><AlertTriangle size={13} /> Flow needs attention</div>
               <div className="space-y-0.5 text-[10px] text-text-3">{validationErrors.slice(0, 4).map((error) => <div key={error}>{error}</div>)}</div>
             </div>
@@ -900,7 +1006,7 @@ export function FlowsPanel() {
             <button onClick={() => setCanvasZoom(1)} title="Reset zoom" className="h-7 rounded px-2 text-[10px] text-text-3 hover:bg-surface-2 hover:text-text-1">100</button>
           </div>
           {connectDraft && (
-            <div className="absolute left-3 top-[84px] z-20 rounded border border-accent/40 bg-accent/10 px-3 py-2 text-[11px] text-text-2 shadow-lg">
+            <div className="pointer-events-none absolute left-1/2 top-3 z-30 -translate-x-1/2 rounded border border-accent/40 bg-surface-1/95 px-3 py-2 text-[11px] text-text-2 shadow-lg">
               Click another node or its left port to connect <span className="font-semibold text-accent">{connectDraft.branch}</span>. Press Esc to cancel.
             </div>
           )}
@@ -1079,6 +1185,7 @@ function FlowNode({
       : 'rounded-lg'
   return (
     <div
+      data-flow-node={node.type}
       onMouseDown={onMouseDown}
       onClick={onSelect}
       onContextMenu={onContextMenu}
@@ -1123,15 +1230,9 @@ function FlowNode({
           ))}
         </div>
       )}
-      <button data-flow-control onClick={(e) => { e.stopPropagation(); onConnectEnd() }} className={`absolute -left-4 top-1/2 z-10 h-8 w-8 -translate-y-1/2 rounded-full border-2 shadow-lg transition-colors ${connectDraft ? 'border-accent bg-accent/25 hover:bg-accent/35' : 'border-border-3 bg-surface-2 hover:border-accent/60'}`} title="Connect here" />
-      <div data-flow-control className="absolute -right-5 top-1/2 z-10 flex -translate-y-1/2 flex-col gap-1.5">
-        {branches.map((branch) => (
-          <button key={branch} onClick={(e) => { e.stopPropagation(); onConnectStart(branch) }} title={`Connect ${branch}`} className="flex h-8 min-w-8 items-center justify-center gap-1 rounded-full border border-border-3 bg-surface-2 px-2 text-[9px] font-semibold uppercase text-text-3 shadow-lg transition-colors hover:border-accent hover:text-accent">
-            <Link2 size={11} />
-            {branches.length > 1 && <span>{branch === 'success' ? 'ok' : branch === 'error' ? 'err' : branch}</span>}
-          </button>
-        ))}
-      </div>
+      {connectDraft && connectDraft.source !== node.id && (
+        <button data-flow-control onClick={(e) => { e.stopPropagation(); onConnectEnd() }} className="absolute -left-4 top-1/2 z-10 h-8 w-8 -translate-y-1/2 rounded-full border-2 border-accent bg-accent/25 shadow-lg transition-colors hover:bg-accent/35" title="Connect here" />
+      )}
     </div>
   )
 }
