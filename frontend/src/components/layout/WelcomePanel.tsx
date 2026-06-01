@@ -83,14 +83,14 @@ const HUB_LAYERS: Array<Omit<HubLayer, 'stats'>> = [
     title: 'Logic',
     tag: 'route / transform / simulate / verify',
     accent: '#6ee7b7',
-    desc: 'The behavioural middle. Route messages, mock services you do not have yet, run suites, compare environments and generate realistic data.',
+    desc: 'The behavioural middle. Route messages, mock services you do not have yet, run suites, model API flows and generate realistic data.',
     flow: ['input', 'simulate', 'assert', 'report'],
     tools: [
       { id: 'broker', icon: Radio, title: 'Broker Studio', desc: 'Kafka, RabbitMQ, MQTT, Redis Pub/Sub and NATS in one console.', foot: 'multi-broker' },
       { id: 'mock', icon: Server, title: 'Mock Server', desc: 'Stub APIs with dynamic templates, path params, hit logs and scenarios.', foot: 'local simulation' },
       { id: 'proxy', icon: Shield, title: 'Proxy Interceptor', desc: 'Capture, inspect, rewrite and export traffic without leaving the app.', foot: 'traffic control' },
       { id: 'runner', icon: Play, title: 'Runner', desc: 'Run collections with datasets, retries, assertions and local reports.', foot: 'suite execution' },
-      { id: 'matrix', icon: GitBranch, title: 'Environment Matrix', desc: 'Compare requests, collections and flows across environments.', foot: 'diff reports' },
+      { id: 'flows', icon: GitBranch, title: 'API Flows', desc: 'Generate executable API flows from Mermaid definitions.', foot: 'sequence tests' },
     ],
   },
   {

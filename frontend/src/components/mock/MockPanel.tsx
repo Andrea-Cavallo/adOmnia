@@ -667,8 +667,15 @@ export function MockPanel() {
     reader.onload = () => {
       try {
         const data = JSON.parse(reader.result as string)
-        if (Array.isArray(data)) setEndpoints(data)
-      } catch { alert('Invalid JSON file') }
+        if (Array.isArray(data)) {
+          setError('')
+          setEndpoints(data)
+        } else {
+          setError('Invalid mock config: expected an array of endpoints.')
+        }
+      } catch {
+        setError('Invalid JSON file.')
+      }
     }
     reader.readAsText(file)
     if (fileInputRef.current) fileInputRef.current.value = ''

@@ -1,4 +1,4 @@
-// vault.go — local secret vault using age encryption.
+// vault.go - local secret vault using age encryption.
 // Tokens, API keys, and passwords are encrypted at rest with a passphrase.
 // In-memory key is held only while the vault is unlocked.
 
@@ -90,6 +90,22 @@ func decryptWithAge(cipherB64, passphrase string) (string, error) {
 		return "", err
 	}
 
+	r, err := age.Decrypt(bytes.NewReader(ciphertext), identity)
+	if err != nil {
+		return "", err
+	}
+	plaintext, err := io.ReadAll(r)
+	if err != nil {
+		return "", err
+	}
+	return string(plaintext), nil
+}
+
+func decryptWithIdentity(cipherB64 string, identity age.Identity) (string, error) {
+	ciphertext, err := base64.StdEncoding.DecodeString(cipherB64)
+	if err != nil {
+		return "", err
+	}
 	r, err := age.Decrypt(bytes.NewReader(ciphertext), identity)
 	if err != nil {
 		return "", err
@@ -207,12 +223,27 @@ func vaultDecryptHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Ciphertext == "" || req.Passphrase == "" {
-		http.Error(w, "ciphertext and passphrase required", http.StatusBadRequest)
+	if req.Ciphertext == "" {
+		http.Error(w, "ciphertext required", http.StatusBadRequest)
 		return
 	}
 
-	plaintext, err := decryptWithAge(req.Ciphertext, req.Passphrase)
+	var plaintext string
+	var err error
+	if req.Passphrase != "" {
+		plaintext, err = decryptWithAge(req.Ciphertext, req.Passphrase)
+	} else {
+		vaultMu.RLock()
+		unlocked := vaultUnlocked
+		identity := vaultIdentity
+		vaultMu.RUnlock()
+		if !unlocked || identity == nil {
+			http.Error(w, "vault is locked", http.StatusLocked)
+			return
+		}
+		plaintext, err = decryptWithIdentity(req.Ciphertext, identity)
+		resetVaultTimer()
+	}
 	if err != nil {
 		http.Error(w, "decryption failed: invalid passphrase or corrupted data", http.StatusBadRequest)
 		return

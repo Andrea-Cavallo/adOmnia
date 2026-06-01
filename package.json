@@ -1,0 +1,11 @@
+{
+  "name": "adomnia",
+  "private": true,
+  "version": "0.0.1",
+  "scripts": {
+    "frontend:build": "npm --prefix frontend run build",
+    "frontend:test": "npm --prefix frontend run test",
+    "go:test": "go test ./...",
+    "check": "npm --prefix frontend run build && go test ./..."
+  }
+}

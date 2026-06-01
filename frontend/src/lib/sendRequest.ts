@@ -3,38 +3,47 @@ import { substVars } from '@/lib/substVars'
 import { useSettingsStore } from '@/stores/settings'
 import { useHostsStore } from '@/stores/hosts'
 import { useCookieJarStore } from '@/lib/cookieJar'
+import { resolveVaultReferences } from '@/lib/vaultRefs'
 import { ExecuteHTTP } from '../wailsjs/go/main/App'
 
 export async function sendRequest(
   request: RequestItem,
   vars: Record<string, string>
 ): Promise<ResponseData> {
-  const url = substVars(request.url, vars)
+  let resolvedVars: Record<string, string>
+  try {
+    resolvedVars = await resolveVaultReferences(vars)
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    return errResp('VAULT_ERR', msg)
+  }
+
+  const url = substVars(request.url, resolvedVars)
   const headers: Record<string, string> = {}
   const requestSettings = useSettingsStore.getState().settings.requests
 
   for (const h of request.headers) {
     if (h.enabled && h.key) {
-      headers[substVars(h.key, vars)] = substVars(h.value, vars)
+      headers[substVars(h.key, resolvedVars)] = substVars(h.value, resolvedVars)
     }
   }
 
-  // Collect explicit per-request cookies (deferred — we need fullUrl first for jar lookup)
+  // Collect explicit per-request cookies after fullUrl is known for jar lookup.
   const cookies = request.cookies ?? []
   const enabledCookies = cookies.filter((c) => c.enabled && c.key)
 
   let enabledParams = request.params.filter((p) => p.enabled && p.key)
   const usp = new URLSearchParams()
   for (const p of enabledParams) {
-    usp.append(substVars(p.key, vars), substVars(p.value, vars))
+    usp.append(substVars(p.key, resolvedVars), substVars(p.value, resolvedVars))
   }
   const queryString = enabledParams.length ? usp.toString() : ''
   const fullUrl = queryString ? (url.includes('?') ? `${url}&${queryString}` : `${url}?${queryString}`) : url
 
   // Build Cookie header: explicit cookies + jar cookies (explicit take priority)
   {
-    const parts = enabledCookies.map((c) => `${substVars(c.key, vars)}=${substVars(c.value, vars)}`)
-    const explicitKeys = new Set(enabledCookies.map((c) => substVars(c.key, vars).toLowerCase()))
+    const parts = enabledCookies.map((c) => `${substVars(c.key, resolvedVars)}=${substVars(c.value, resolvedVars)}`)
+    const explicitKeys = new Set(enabledCookies.map((c) => substVars(c.key, resolvedVars).toLowerCase()))
     const jarCookies = useCookieJarStore.getState().getCookiesForUrl(fullUrl)
     for (const jc of jarCookies) {
       if (!explicitKeys.has(jc.name.toLowerCase())) parts.push(`${jc.name}=${jc.value}`)
@@ -42,12 +51,12 @@ export async function sendRequest(
     if (parts.length > 0) headers['Cookie'] = parts.join('; ')
   }
 
-  const rawBody = getBody(request, vars, headers)
+  const rawBody = getBody(request, resolvedVars, headers)
 
   // FormData (file uploads) still needs browser fetch; Go binding handles strings only.
   if (rawBody instanceof FormData) {
     try {
-      await applyAuth(request, headers, vars, fullUrl, rawBody)
+      await applyAuth(request, headers, resolvedVars, fullUrl, rawBody)
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
       return errResp('AUTH_ERR', msg)
@@ -67,7 +76,7 @@ export async function sendRequest(
   }
 
   try {
-    await applyAuth(request, headers, vars, fullUrl, rawBody)
+    await applyAuth(request, headers, resolvedVars, fullUrl, rawBody)
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
     return errResp('AUTH_ERR', msg)
@@ -122,29 +131,37 @@ export async function prepareRequestForCodegen(
   request: RequestItem,
   vars: Record<string, string>,
 ): Promise<RequestItem> {
+  let resolvedVars: Record<string, string>
+  try {
+    resolvedVars = await resolveVaultReferences(vars)
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    throw new Error(`Unable to resolve Vault references: ${msg}`)
+  }
+
   const headers: Record<string, string> = {}
   for (const header of request.headers) {
     if (header.enabled && header.key) {
-      headers[substVars(header.key, vars)] = substVars(header.value, vars)
+      headers[substVars(header.key, resolvedVars)] = substVars(header.value, resolvedVars)
     }
   }
   const cookies = (request.cookies ?? []).filter((cookie) => cookie.enabled && cookie.key)
   if (cookies.length > 0) {
     headers.Cookie = cookies
-      .map((cookie) => `${substVars(cookie.key, vars)}=${substVars(cookie.value, vars)}`)
+      .map((cookie) => `${substVars(cookie.key, resolvedVars)}=${substVars(cookie.value, resolvedVars)}`)
       .join('; ')
   }
-  const baseUrl = substVars(request.url, vars)
+  const baseUrl = substVars(request.url, resolvedVars)
   const query = new URLSearchParams()
   for (const param of request.params.filter((item) => item.enabled && item.key)) {
-    query.append(substVars(param.key, vars), substVars(param.value, vars))
+    query.append(substVars(param.key, resolvedVars), substVars(param.value, resolvedVars))
   }
   const queryString = query.toString()
   const url = queryString
     ? (baseUrl.includes('?') ? `${baseUrl}&${queryString}` : `${baseUrl}?${queryString}`)
     : baseUrl
-  const body = getBody(request, vars, headers)
-  await applyAuth(request, headers, vars, url, body)
+  const body = getBody(request, resolvedVars, headers)
+  await applyAuth(request, headers, resolvedVars, url, body)
   const serializedBody = body instanceof URLSearchParams
     ? body.toString()
     : typeof body === 'string'

@@ -1,4 +1,10 @@
-// apis-api.ts — Wrapper for ApiCollectionStore Wails bindings.
+// apis-api.ts - Wrapper for ApiCollectionStore Wails bindings.
+import {
+  GetApiBySlug,
+  GetCatalog,
+  GetCatalogFromPath,
+  SearchApis,
+} from '@/wailsjs/go/main/ApiCollectionStore'
 
 export interface ApiLink {
   name: string
@@ -35,34 +41,23 @@ declare global {
       GetCatalogFromPath: (dirPath: string) => Promise<ApiCatalog>
       GetApiBySlug: (slug: string) => Promise<ApiEntry>
       SearchApis: (query: string) => Promise<ApiEntry[]>
+      SetCollectionsDir: (dirPath: string) => Promise<void>
     }
   }
 }
 
-function getApiCollectionStore() {
-  return window.go?.main?.ApiCollectionStore
-}
-
 export async function getCatalog(): Promise<ApiCatalog> {
-  const store = getApiCollectionStore()
-  if (!store) throw new Error('ApiCollectionStore available only in desktop app.')
-  return (await store.GetCatalog()) as ApiCatalog
+  return GetCatalog()
 }
 
 export async function getCatalogFromPath(dirPath: string): Promise<ApiCatalog> {
-  const store = getApiCollectionStore()
-  if (!store) throw new Error('ApiCollectionStore available only in desktop app.')
-  return (await store.GetCatalogFromPath(dirPath)) as ApiCatalog
+  return GetCatalogFromPath(dirPath)
 }
 
 export async function getApiBySlug(slug: string): Promise<ApiEntry> {
-  const store = getApiCollectionStore()
-  if (!store) throw new Error('ApiCollectionStore available only in desktop app.')
-  return (await store.GetApiBySlug(slug)) as ApiEntry
+  return GetApiBySlug(slug)
 }
 
 export async function searchApis(query: string): Promise<ApiEntry[]> {
-  const store = getApiCollectionStore()
-  if (!store) throw new Error('ApiCollectionStore available only in desktop app.')
-  return (await store.SearchApis(query)) as ApiEntry[]
+  return SearchApis(query)
 }

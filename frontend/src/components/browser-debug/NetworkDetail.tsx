@@ -19,8 +19,13 @@ interface NetworkDetailProps {
     status: number
     headers: Record<string, string>
     body: string
-  }) => void
-  onAddToFlow?: (data: { method: string; url: string }) => void
+  }) => void | Promise<void>
+  onAddToFlow?: (data: {
+    method: string
+    url: string
+    headers: Record<string, string>
+    body: string
+  }) => void | Promise<void>
 }
 
 const tabs: { id: DetailTab; label: string }[] = [
@@ -54,11 +59,19 @@ function HeadersSection({ title, headers }: { title: string; headers: Record<str
   )
 }
 
-function BodyViewer({ body, loading }: { body: string; loading: boolean }) {
+function BodyViewer({ body, loading, error }: { body: string; loading: boolean; error?: string }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-32 text-text-3 text-sm">
         Loading...
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="rounded border border-error/30 bg-error/10 p-3 text-xs text-error">
+        {error}
       </div>
     )
   }
@@ -89,55 +102,90 @@ export function NetworkDetail({
   const [responseBody, setResponseBody] = useState('')
   const [loadingRequest, setLoadingRequest] = useState(false)
   const [loadingResponse, setLoadingResponse] = useState(false)
+  const [requestError, setRequestError] = useState('')
+  const [responseError, setResponseError] = useState('')
+  const [flowStatus, setFlowStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [actionError, setActionError] = useState('')
 
   useEffect(() => {
     setRequestBody('')
     setResponseBody('')
+    setRequestError('')
+    setResponseError('')
+    setActionError('')
     setActiveTab('headers')
   }, [entry.id])
 
   useEffect(() => {
     if (activeTab === 'request' && !requestBody) {
       setLoadingRequest(true)
-      getRequestBody(entry.id).then((body) => {
-        setRequestBody(body)
-        setLoadingRequest(false)
-      })
+      setRequestError('')
+      getRequestBody(entry.id)
+        .then((body) => setRequestBody(body))
+        .catch((err: unknown) => setRequestError(err instanceof Error ? err.message : 'Failed to read request body'))
+        .finally(() => setLoadingRequest(false))
     }
   }, [activeTab, entry.id, requestBody])
 
   useEffect(() => {
     if (activeTab === 'response' && !responseBody) {
       setLoadingResponse(true)
-      getResponseBody(entry.id).then((body) => {
-        setResponseBody(body)
-        setLoadingResponse(false)
-      })
+      setResponseError('')
+      getResponseBody(entry.id)
+        .then((body) => setResponseBody(body))
+        .catch((err: unknown) => setResponseError(err instanceof Error ? err.message : 'Failed to read response body'))
+        .finally(() => setLoadingResponse(false))
     }
   }, [activeTab, entry.id, responseBody])
 
   const handleSendToComposer = async () => {
-    const body = requestBody || (await getRequestBody(entry.id))
-    onSendToComposer?.({
-      method: entry.method,
-      url: entry.url,
-      headers: entry.requestHeaders,
-      body,
-    })
+    try {
+      setActionError('')
+      const body = requestBody || (await getRequestBody(entry.id))
+      onSendToComposer?.({
+        method: entry.method,
+        url: entry.url,
+        headers: entry.requestHeaders,
+        body,
+      })
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : 'Failed to send request to composer')
+    }
   }
 
   const handleAddAsMock = async () => {
-    const body = responseBody || (await getResponseBody(entry.id))
-    onAddAsMock?.({
-      url: entry.url,
-      status: entry.status,
-      headers: entry.responseHeaders,
-      body,
-    })
+    try {
+      setActionError('')
+      const body = responseBody || (await getResponseBody(entry.id))
+      await onAddAsMock?.({
+        url: entry.url,
+        status: entry.status,
+        headers: entry.responseHeaders,
+        body,
+      })
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : 'Failed to add response as mock')
+    }
   }
 
-  const handleAddToFlow = () => {
-    onAddToFlow?.({ method: entry.method, url: entry.url })
+  const handleAddToFlow = async () => {
+    if (!onAddToFlow) return
+    setFlowStatus('saving')
+    try {
+      setActionError('')
+      const body = requestBody || (await getRequestBody(entry.id))
+      await onAddToFlow({
+        method: entry.method,
+        url: entry.url,
+        headers: entry.requestHeaders,
+        body,
+      })
+      setFlowStatus('saved')
+      window.setTimeout(() => setFlowStatus('idle'), 1800)
+    } catch (err: unknown) {
+      setFlowStatus('error')
+      setActionError(err instanceof Error ? err.message : 'Failed to add this request to Flow')
+    }
   }
 
   return (
@@ -186,11 +234,11 @@ export function NetworkDetail({
         )}
 
         {activeTab === 'request' && (
-          <BodyViewer body={requestBody} loading={loadingRequest} />
+          <BodyViewer body={requestBody} loading={loadingRequest} error={requestError} />
         )}
 
         {activeTab === 'response' && (
-          <BodyViewer body={responseBody} loading={loadingResponse} />
+          <BodyViewer body={responseBody} loading={loadingResponse} error={responseError} />
         )}
 
         {activeTab === 'actions' && (
@@ -198,6 +246,11 @@ export function NetworkDetail({
             <p className="text-xs text-text-3 mb-4">
               Use captured request data in other parts of the application.
             </p>
+            {actionError && (
+              <div className="rounded border border-error/30 bg-error/10 p-3 text-xs text-error">
+                {actionError}
+              </div>
+            )}
 
             <button
               onClick={handleSendToComposer}
@@ -227,11 +280,14 @@ export function NetworkDetail({
 
             <button
               onClick={handleAddToFlow}
+              disabled={!onAddToFlow || flowStatus === 'saving'}
               className="flex items-center gap-2 w-full px-3 py-2 rounded bg-surface-0 border border-border-1 text-sm text-text-1 hover:bg-surface-2 transition-colors"
             >
               <Workflow size={14} className="text-accent" />
               <div className="text-left">
-                <div className="font-medium">Add to Flow</div>
+                <div className="font-medium">
+                  {flowStatus === 'saving' ? 'Adding to Flow...' : flowStatus === 'saved' ? 'Added to Flow' : flowStatus === 'error' ? 'Could not add to Flow' : 'Add to Flow'}
+                </div>
                 <div className="text-xs text-text-3">
                   Add this request as a step in the flow builder
                 </div>

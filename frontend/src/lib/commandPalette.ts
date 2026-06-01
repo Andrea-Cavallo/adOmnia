@@ -14,7 +14,6 @@ export const COMMAND_PALETTE_PANELS: PalettePanel[] = [
   { id: 'history', title: 'Request History', group: 'API Core', keywords: 'responses history saved previous reopen search' },
   { id: 'runner', title: 'Runner', group: 'API Core', keywords: 'collection run regression test' },
   { id: 'flows', title: 'Flows', group: 'API Core', keywords: 'workflow sequence auth extract script wait condition' },
-  { id: 'matrix', title: 'Environment Matrix', group: 'API Core', keywords: 'matrix environments compare' },
   { id: 'testdata', title: 'Test Data', group: 'API Core', keywords: 'fixture fake generator' },
   { id: 'websocket', title: 'WebSocket', group: 'Protocols', keywords: 'ws realtime socket' },
   { id: 'sse', title: 'SSE Client', group: 'Protocols', keywords: 'events stream server sent' },

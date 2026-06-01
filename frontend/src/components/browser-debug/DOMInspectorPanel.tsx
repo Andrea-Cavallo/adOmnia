@@ -226,26 +226,38 @@ export function DOMInspectorPanel() {
   const [sourceLoading, setSourceLoading] = useState(false)
   const [selectedHTML, setSelectedHTML] = useState('')
   const [domBreakpoints, setDomBreakpoints] = useState<DOMBreakpointInfo[]>([])
+  const [error, setError] = useState('')
 
   // Initialize DOM domain
   useEffect(() => {
     const init = async () => {
-      await enableDOM()
-      const doc = await getDocument(3)
-      if (doc) {
-        setRootNode(doc)
-        setInitialized(true)
+      try {
+        await enableDOM()
+        const doc = await getDocument(3)
+        if (doc) {
+          setRootNode(doc)
+          setInitialized(true)
+        }
+        setDomBreakpoints(await getDOMBreakpoints())
+        setError('')
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to initialize DOM inspector')
       }
-      setDomBreakpoints(await getDOMBreakpoints())
     }
     init()
   }, [])
 
   const refreshSource = useCallback(async () => {
     setSourceLoading(true)
-    const source = await getPageSource()
-    setPageSource(source ? formatHTMLSource(source) : '')
-    setSourceLoading(false)
+    try {
+      const source = await getPageSource()
+      setPageSource(source ? formatHTMLSource(source) : '')
+      setError('')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to read page source')
+    } finally {
+      setSourceLoading(false)
+    }
   }, [])
 
   useEffect(() => {
@@ -261,12 +273,17 @@ export function DOMInspectorPanel() {
       setSelectedHTML(node.nodeValue || node.nodeName || 'No node value available')
       return
     }
-    const [styles, html] = await Promise.all([
-      getComputedStyleForNode(node.nodeId),
-      getNodeHTML(node.nodeId),
-    ])
-    setComputedStyles(styles)
-    setSelectedHTML(html)
+    try {
+      const [styles, html] = await Promise.all([
+        getComputedStyleForNode(node.nodeId),
+        getNodeHTML(node.nodeId),
+      ])
+      setComputedStyles(styles)
+      setSelectedHTML(html)
+      setError('')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to inspect selected node')
+    }
   }, [])
 
   const handleExpand = useCallback(
@@ -281,9 +298,14 @@ export function DOMInspectorPanel() {
       } else {
         // If children are not yet loaded, fetch deeper
         if (!node.children || node.children.length === 0) {
-          const doc = await getDocument(6)
-          if (doc) {
-            setRootNode(doc)
+          try {
+            const doc = await getDocument(6)
+            if (doc) {
+              setRootNode(doc)
+            }
+            setError('')
+          } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Failed to expand DOM node')
           }
         }
         setExpandedNodes((prev) => {
@@ -298,27 +320,42 @@ export function DOMInspectorPanel() {
 
   const handleSearch = useCallback(async () => {
     if (!selectorQuery.trim()) return
-    const result = await querySelector(selectorQuery.trim())
-    if (result) {
-      setSelectedNode(result)
-      const [styles, html] = await Promise.all([
-        getComputedStyleForNode(result.nodeId),
-        getNodeHTML(result.nodeId),
-      ])
-      setComputedStyles(styles)
-      setSelectedHTML(html)
-      await highlightNode(result.nodeId)
+    try {
+      const result = await querySelector(selectorQuery.trim())
+      if (result) {
+        setSelectedNode(result)
+        const [styles, html] = await Promise.all([
+          getComputedStyleForNode(result.nodeId),
+          getNodeHTML(result.nodeId),
+        ])
+        setComputedStyles(styles)
+        setSelectedHTML(html)
+        await highlightNode(result.nodeId)
+      }
+      setError('')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to query DOM selector')
     }
   }, [selectorQuery])
 
   const handleHighlight = useCallback(async () => {
     if (selectedNode) {
-      await highlightNode(selectedNode.nodeId)
+      try {
+        await highlightNode(selectedNode.nodeId)
+        setError('')
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to highlight node')
+      }
     }
   }, [selectedNode])
 
   const handleHideHighlight = useCallback(async () => {
-    await hideHighlight()
+    try {
+      await hideHighlight()
+      setError('')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to hide highlight')
+    }
   }, [])
 
   const handleToggleDOMBreakpoint = useCallback(
@@ -327,12 +364,17 @@ export function DOMInspectorPanel() {
       const active = domBreakpoints.some(
         (bp) => bp.nodeId === selectedNode.nodeId && bp.type === type
       )
-      if (active) {
-        await removeDOMBreakpoint(selectedNode.nodeId, type)
-      } else {
-        await setDOMBreakpoint(selectedNode.nodeId, type)
+      try {
+        if (active) {
+          await removeDOMBreakpoint(selectedNode.nodeId, type)
+        } else {
+          await setDOMBreakpoint(selectedNode.nodeId, type)
+        }
+        setDomBreakpoints(await getDOMBreakpoints())
+        setError('')
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to update DOM breakpoint')
       }
-      setDomBreakpoints(await getDOMBreakpoints())
     },
     [domBreakpoints, selectedNode]
   )
@@ -414,6 +456,11 @@ export function DOMInspectorPanel() {
       </div>
 
       {/* Main content */}
+      {error && (
+        <div className="mx-3 mt-3 rounded border border-error/30 bg-error/10 px-3 py-2 text-xs text-error">
+          {error}
+        </div>
+      )}
       <div className="flex flex-1 min-h-0">
         {/* DOM Tree */}
         <div className="flex-1 overflow-y-auto py-1 border-r border-border-1">

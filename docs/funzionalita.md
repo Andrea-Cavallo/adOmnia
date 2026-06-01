@@ -9,7 +9,7 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 
 | # | Categoria | Sezioni | Funzionalità |
 |---|-----------|---------|-------------|
-| A | [API Core](#a-api-core) | HTTP Client, Autenticazione, Assertions, Runner, Flows, Matrix, Test Data | ~74 |
+| A | [API Core](#a-api-core) | HTTP Client, Autenticazione, Assertions, Runner, Flows, Test Data | ~64 |
 | B | [Protocolli & Streaming](#b-protocolli--streaming) | gRPC, SOAP, WebSocket, SSE, Broker Studio | ~65 |
 | C | [Infrastruttura & Simulazione](#c-infrastruttura--simulazione) | Mock Server, Proxy/Interceptor, Docker Lab, Load Testing | ~44 |
 | D | [Debugging & Analisi](#d-debugging--analisi) | Browser Debug (+ Discovery), HAR Viewer, Network Tools, JSON Tools, XML Tools, Power Tools, Dev Logs, Observability, Secret Scanner | ~90 |
@@ -97,36 +97,19 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 
 | # | Funzionalità | Descrizione |
 |---|-------------|-------------|
-| A5.1 | **Canvas Visuale** | La sezione Flows e' un editor grafico con nodi trascinabili e connessioni SVG, ispirato alla leggerezza di Excalidraw. |
-| A5.2 | **Nodi API Request** | Ogni nodo richiesta contiene nome, metodo, URL, headers, body, status atteso ed estrazioni variabili. |
-| A5.3 | **Nodi Condizionali IF** | I blocchi IF sono nodi diamond con branch true/false basati su status, header, body, variabili o espressioni compatibili. |
-| A5.4 | **Esecuzione su Grafo** | Il runner segue le connessioni del grafo da Start a End, scegliendo branch success/error/true/false. |
-| A5.5 | **Stati Runtime Visuali** | Ogni nodo mostra pending, running, success, failed o skipped con durata e messaggio sintetico. |
-| A5.6 | **Estrazione Variabili** | Estrai `{{token}}`, `{{userId}}` e altri valori da body, headers, status o expression path per riusarli nei nodi successivi. |
+| A5.1 | **Input Mermaid** | La sezione Flows usa Mermaid come sorgente: l'utente incolla o importa un diagramma e non disegna manualmente il grafo. |
+| A5.2 | **Generazione Automatica** | Il diagramma viene convertito in un flow visuale read-only con step API, condizioni, branch e ordine di esecuzione. |
+| A5.3 | **Binding API Catalog** | Gli step API vengono collegati automaticamente alle richieste reali presenti nelle collection/API catalog locali, con override manuale leggero quando serve. |
+| A5.4 | **Condizioni da Risposte** | I nodi decisionali valutano status, header, body JSON, variabili o espressioni basate sulle risposte reali. |
+| A5.5 | **Esecuzione End-to-End** | Il runner segue il Mermaid flow, esegue le API con il motore HTTP esistente e sceglie i branch true/false/success/error. |
+| A5.6 | **Stati Runtime Visuali** | Ogni step mostra pending, running, success, failed o skipped con durata, status HTTP e messaggio sintetico. |
 | A5.7 | **Variabili Ambiente** | Riusa il motore richiesta esistente, quindi `{{var}}`, auth, cookies, scripts e assertions restano compatibili. |
-| A5.8 | **Inspector Laterale** | Il pannello laterale modifica il nodo selezionato: richiesta, headers, body, expected status, condition, end state ed estrazioni. |
-| A5.9 | **Run / Debug Panel** | Il pannello debug mostra ordine esecuzione, request, response, headers, body, assertions, variabili estratte ed errori. |
-| A5.10 | **Validazione Flow** | Segnala start mancante, nodi disconnessi, URL richieste mancanti, condizioni incomplete, branch mancanti e cicli non supportati. |
-| A5.11 | **Salva / Carica Flow** | Persiste localmente definizioni JSON versione 3 in bbolt e migra i vecchi flow a step nella nuova struttura a grafo. |
-| A5.12 | **Export Flow JSON** | Esporta definizione flow come file JSON serializzabile con nodes, edges, config e settings. |
-| A5.13 | **Export Report Markdown** | Esporta risultato dell'ultimo run come report Markdown con variabili finali. |
-
----
-
-### A6. Environment Matrix (Test Cross-Ambiente)
-
-| # | Funzionalità | Descrizione |
-|---|-------------|-------------|
-| A6.1 | **Modalità** | Esegui in matrix mode: singola richiesta, collection completa o flow multi-step. |
-| A6.2 | **Selezione Ambienti** | Checkbox multi-selezione degli ambienti disponibili; ogni spunta aggiunge una colonna al risultato. |
-| A6.3 | **Esclusione Campi** | Lista campi da escludere dal confronto (separati da virgola o newline). |
-| A6.4 | **Configurazione Flow** | Editor step inline (metodo, URL, body) per la modalità flow senza aprire il pannello Flows. |
-| A6.5 | **Esecuzione Parallela** | Lancia le stesse richieste su tutti gli ambienti selezionati in parallelo. |
-| A6.6 | **Tabella Risultati** | Colonne: item, ambiente, status HTTP, durata ms, dimensione bytes, Content-Type. |
-| A6.7 | **Rilevamento Differenze** | Confronta i valori per campo tra ambienti; evidenzia differenze con badge critical/normal. |
-| A6.8 | **Contatori Anomalie** | Badge con conteggio errori, risposte lente e risposte pesanti. |
-| A6.9 | **Salva Configurazione** | Persiste l'ultima configurazione matrix. |
-| A6.10 | **Export** | Esporta risultati in Markdown, HTML, JSON completo, JSON raw. |
+| A5.8 | **Inspector Laterale** | Il pannello laterale mostra mapping della richiesta, configurazione condizione e catalogo richieste locale. |
+| A5.9 | **Run Log** | Il pannello mostra ordine esecuzione, request, response status, durata, assertions ed errori leggibili. |
+| A5.10 | **Validazione Flow** | Segnala Mermaid vuoto, URL richieste mancanti, condizioni incomplete e branch mancanti. |
+| A5.11 | **Salva / Carica Flow** | Persiste localmente definizioni JSON versione 3 con sorgente Mermaid e grafo generato. |
+| A5.12 | **Export Flow JSON** | Esporta definizione flow come file JSON serializzabile con Mermaid, nodes, edges, config e settings. |
+| A5.13 | **Export Report Markdown** | Esporta risultato dell'ultimo run come report Markdown. |
 
 ---
 
@@ -855,7 +838,7 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 
 | Categoria | Sezioni | Funzionalità |
 |-----------|---------|-------------|
-| **A — API Core** | HTTP Client, Auth, Assertions, Runner, Flows, Matrix, Test Data | 74 |
+| **A — API Core** | HTTP Client, Auth, Assertions, Runner, Flows, Test Data | 64 |
 | **B — Protocolli & Streaming** | gRPC, SOAP, WebSocket, SSE, Broker Studio (5 broker) | 65 |
 | **C — Infrastruttura & Simulazione** | Mock Server, Proxy, Docker Lab, Load Testing | 44 |
 | **D — Debugging & Analisi** | Browser Debug (+ Discovery), HAR, Network Tools, JSON Tools, XML Tools, Dev Utils, Dev Logs, Observability, Secret Scanner | 90 |
