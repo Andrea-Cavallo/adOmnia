@@ -9,7 +9,7 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 
 | # | Category | Sections | Features |
 |---|-----------|---------|-------------|
-| A | [API Core](#a-api-core) | HTTP Client, Authentication, Assertions, Runner, Flows, Matrix, Test Data | ~74 |
+| A | [API Core](#a-api-core) | HTTP Client, Authentication, Assertions, Runner, Flows, Test Data | ~64 |
 | B | [Protocols & Streaming](#b-protocols--streaming) | gRPC, SOAP, WebSocket, SSE, Broker Studio | ~65 |
 | C | [Infrastructure & Simulation](#c-infrastructure--simulation) | Mock Server, Proxy/Interceptor, Docker Lab, Load Testing | ~44 |
 | D | [Debugging & Analysis](#d-debugging--analysis) | Browser Debug (+ Discovery), HAR Viewer, Network Tools, JSON Tools, XML Tools, Power Tools, Dev Logs, Observability, Secret Scanner | ~90 |
@@ -97,36 +97,19 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 
 | # | Feature | Description |
 |---|-------------|-------------|
-| A5.1 | **Request Step** | Add a step with name, HTTP method, URL, and body (POST/PUT/PATCH). |
-| A5.2 | **Sequential Execution** | Run the flow from start to finish, or a single isolated step. |
-| A5.3 | **Step Status** | idle / running / ok / error indicator with error message and duration. |
-| A5.4 | **Variable Extraction** | Automatically extract variables from responses and pass them to subsequent steps. |
-| A5.5 | **Environment Variables** | Replaces `{{var}}` variables from the active environment in URL and body. |
-| A5.6 | **Per-Step Assertions** | Assertions configured on requests are evaluated for each step. |
-| A5.7 | **Step CRUD Management** | Add, rename, delete, and reorder steps. |
-| A5.8 | **Save / Load Flow** | Persists flow definitions locally in bbolt, migrates legacy data, and retains Request, Condition, Wait, and Script steps across restart. |
-| A5.9 | **Variables Panel** | Sidebar shows variables extracted from runs as key/value pairs. |
-| A5.10 | **Last Run Panel** | Results sidebar kept separate from saved definitions: status, duration, pass/fail assertions, error per step. |
-| A5.11 | **Inline Mock Recorder** | Records a real request/response and automatically creates a mock endpoint (method, real URL, mock path). |
-| A5.12 | **Export Flow JSON** | Exports the flow definition as a JSON file. |
+| A5.1 | **Mermaid Input** | Paste or import a Mermaid diagram as the source of truth; users are not forced to draw a graph manually. |
+| A5.2 | **Automatic Generation** | Converts the diagram into a mostly read-only visual API flow with steps, conditions, branches, and execution order. |
+| A5.3 | **API Catalog Binding** | Automatically matches API steps to real local collection/API catalog requests, with a light override when needed. |
+| A5.4 | **Response Conditions** | Decision nodes evaluate status, headers, JSON body paths, variables, or expressions from real API responses. |
+| A5.5 | **End-to-End Execution** | The runner follows the Mermaid sequence and chooses success/error/true/false branches. |
+| A5.6 | **Runtime Status** | Each step shows pending, running, success, failed, or skipped with duration, HTTP status, and readable messages. |
+| A5.7 | **Environment Variables** | Reuses the existing request engine, so `{{var}}`, auth, cookies, scripts, and assertions stay compatible. |
+| A5.8 | **Side Inspector** | Shows request mapping, condition configuration, and the local request catalog. |
+| A5.9 | **Run Log** | Shows execution order, request/response status, duration, assertions, and readable errors. |
+| A5.10 | **Flow Validation** | Flags empty Mermaid, missing request URLs, incomplete conditions, and missing branches. |
+| A5.11 | **Save / Load Flow** | Persists version 3 flow definitions locally with Mermaid source and generated graph. |
+| A5.12 | **Export Flow JSON** | Exports the flow definition as JSON with Mermaid, nodes, edges, config, and settings. |
 | A5.13 | **Export Markdown Report** | Exports the last run result as a Markdown report. |
-
----
-
-### A6. Environment Matrix (Cross-Environment Testing)
-
-| # | Feature | Description |
-|---|-------------|-------------|
-| A6.1 | **Mode** | Run in matrix mode: single request, full collection, or multi-step flow. |
-| A6.2 | **Environment Selection** | Multi-select checkboxes for available environments; each selected item adds a column to the result. |
-| A6.3 | **Field Exclusion** | List of fields to exclude from comparison (comma- or newline-separated). |
-| A6.4 | **Flow Configuration** | Inline step editor (method, URL, body) for flow mode without opening the Flows panel. |
-| A6.5 | **Parallel Execution** | Launches the same requests across all selected environments in parallel. |
-| A6.6 | **Results Table** | Columns: item, environment, HTTP status, duration ms, size bytes, Content-Type. |
-| A6.7 | **Difference Detection** | Compares field values across environments; highlights differences with critical/normal badges. |
-| A6.8 | **Anomaly Counters** | Badges with counts for errors, slow responses, and heavy responses. |
-| A6.9 | **Save Configuration** | Persists the last matrix configuration. |
-| A6.10 | **Export** | Exports results as Markdown, HTML, full JSON, raw JSON. |
 
 ---
 
@@ -839,7 +822,7 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 
 | Category | Sections | Features |
 |-----------|---------|-------------|
-| **A — API Core** | HTTP Client, Auth, Assertions, Runner, Flows, Matrix, Test Data | 74 |
+| **A — API Core** | HTTP Client, Auth, Assertions, Runner, Flows, Test Data | 64 |
 | **B — Protocols & Streaming** | gRPC, SOAP, WebSocket, SSE, Broker Studio (5 broker) | 65 |
 | **C — Infrastructure & Simulation** | Mock Server, Proxy, Docker Lab, Load Testing | 44 |
 | **D — Debugging & Analysis** | Browser Debug (+ Discovery), HAR, Network Tools, JSON Tools, XML Tools, Dev Utils, Dev Logs, Observability, Secret Scanner | 90 |

@@ -3,11 +3,11 @@ import type { Collection, TreeNode, RequestItem, FolderItem, RequestBody } from 
 import { uid, blankBody, blankKVRow, blankAuth } from '@/lib/types'
 import { StorageGet, StoragePut } from '@/wailsjs/go/main/App'
 import { debouncedSave } from '@/lib/storeSave'
+import { storageSchema, versionedEnvelope } from '@/lib/storageSchemas'
 
-const BUCKET = 'collections'
-const KEY = 'all'
-
-const CURRENT_COLLECTIONS_SCHEMA_VERSION = 1
+const COLLECTIONS_SCHEMA = storageSchema('collections')
+const BUCKET = COLLECTIONS_SCHEMA.bucket
+const KEY = COLLECTIONS_SCHEMA.item
 
 interface PersistedCollections {
   version: number
@@ -173,12 +173,12 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
         let collections: Collection[]
         let needsVersionUpgrade = false
         if (Array.isArray(parsed)) {
-          // Legacy format: bare array, no version envelope — migrate and upgrade
+          // Legacy format: bare array, no version envelope; migrate and upgrade.
           collections = migrateCollections(parsed)
           needsVersionUpgrade = true
         } else if (parsed && typeof parsed === 'object' && parsed.version !== undefined) {
           const { version, collections: cols } = parsed as PersistedCollections
-          if (version < CURRENT_COLLECTIONS_SCHEMA_VERSION) {
+          if (version < COLLECTIONS_SCHEMA.currentVersion) {
             collections = migrateCollections(cols)
             needsVersionUpgrade = true
           } else {
@@ -191,7 +191,7 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
         // schema version and does NOT re-run migrations (acceptance: idempotent load).
         if (needsVersionUpgrade) {
           const upgraded: PersistedCollections = {
-            version: CURRENT_COLLECTIONS_SCHEMA_VERSION,
+            version: COLLECTIONS_SCHEMA.currentVersion,
             collections,
           }
           try {
@@ -212,10 +212,7 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
   save: () => {
     const s = get()
     if (!s.loaded || s.loadError) return
-    const persisted: PersistedCollections = {
-      version: CURRENT_COLLECTIONS_SCHEMA_VERSION,
-      collections: s.collections,
-    }
+    const persisted = versionedEnvelope(COLLECTIONS_SCHEMA, 'collections', s.collections) as unknown as PersistedCollections
     debouncedSave('collections', () => StoragePut(BUCKET, KEY, JSON.stringify(persisted)))
   },
 

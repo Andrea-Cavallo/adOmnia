@@ -859,7 +859,10 @@ export function WebSocketPanel() {
         {/* Script */}
         {showScript && (
           <div className="pt-1 border-t border-border-2 flex flex-col gap-1">
-            <p className="text-[10px] text-text-4">Script runs on every inbound message. Variable: <code className="text-accent">msg</code> (type, direction, content, timestamp)</p>
+            <p className="text-[10px] text-text-4 leading-relaxed">
+              Script runs locally on every inbound message and can inspect message data. Use trusted code only.
+              Variable: <code className="text-accent">msg</code> (type, direction, content, timestamp)
+            </p>
             <textarea value={scriptCode} onChange={e => setScriptCode(e.target.value)} placeholder={'// console.log(msg.content)'} rows={3} className="w-full font-mono text-[11px] bg-surface-0 border border-border-2 rounded p-2 text-text-1 placeholder:text-text-4 resize-none focus:outline-none focus:border-accent/40" />
           </div>
         )}

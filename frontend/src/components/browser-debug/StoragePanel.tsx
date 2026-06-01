@@ -45,29 +45,35 @@ export function StoragePanel() {
   const [localItems, setLocalItems] = useState<StorageItem[]>([])
   const [sessionItems, setSessionItems] = useState<StorageItem[]>([])
   const [indexedDBNames, setIndexedDBNames] = useState<string[]>([])
+  const [error, setError] = useState('')
 
   const refresh = useCallback(async () => {
-    switch (activeTab) {
-      case 'cookies': {
-        const data = await getCookies()
-        setCookies(data)
-        break
+    try {
+      switch (activeTab) {
+        case 'cookies': {
+          const data = await getCookies()
+          setCookies(data)
+          break
+        }
+        case 'localStorage': {
+          const data = await getLocalStorage()
+          setLocalItems(data)
+          break
+        }
+        case 'sessionStorage': {
+          const data = await getSessionStorage()
+          setSessionItems(data)
+          break
+        }
+        case 'indexedDB': {
+          const data = await getIndexedDBDatabases()
+          setIndexedDBNames(data)
+          break
+        }
       }
-      case 'localStorage': {
-        const data = await getLocalStorage()
-        setLocalItems(data)
-        break
-      }
-      case 'sessionStorage': {
-        const data = await getSessionStorage()
-        setSessionItems(data)
-        break
-      }
-      case 'indexedDB': {
-        const data = await getIndexedDBDatabases()
-        setIndexedDBNames(data)
-        break
-      }
+      setError('')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load browser storage')
     }
   }, [activeTab])
 
@@ -77,9 +83,14 @@ export function StoragePanel() {
 
   const handleDeleteCookie = useCallback(
     async (name: string, domain: string) => {
-      await deleteCookie(name, domain)
-      const data = await getCookies()
-      setCookies(data)
+      try {
+        await deleteCookie(name, domain)
+        const data = await getCookies()
+        setCookies(data)
+        setError('')
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to delete cookie')
+      }
     },
     []
   )
@@ -115,6 +126,11 @@ export function StoragePanel() {
 
       {/* Content */}
       <div className="flex-1 overflow-auto">
+        {error && (
+          <div className="m-3 rounded border border-error/30 bg-error/10 px-3 py-2 text-xs text-error">
+            {error}
+          </div>
+        )}
         {activeTab === 'cookies' && (
           <CookiesTable cookies={cookies} onDelete={handleDeleteCookie} />
         )}

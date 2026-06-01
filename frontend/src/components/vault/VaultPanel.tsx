@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { KeyRound, Lock, ShieldCheck, ShieldOff, Upload, Download } from 'lucide-react'
+import { Clipboard, KeyRound, Lock, ShieldCheck, ShieldOff, Upload, Download } from 'lucide-react'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { cn } from '@/lib/utils'
 
@@ -91,6 +91,12 @@ export function VaultPanel() {
     setMessage('Decrypted')
   })
 
+  const copyEnvRef = () => run(async () => {
+    if (!cipher) return
+    await navigator.clipboard.writeText(`vault:${cipher}`)
+    setMessage('Vault environment reference copied')
+  })
+
   const exportVault = () => run(async () => {
     const data = await api('/vault/export', { passphrase })
     const text = JSON.stringify(data, null, 2)
@@ -169,7 +175,7 @@ export function VaultPanel() {
           value={passphrase}
           onChange={(e) => setPassphrase(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && !unlocked && passphrase) unlock() }}
-          placeholder="Enter your vault passphrase…"
+          placeholder="Enter your vault passphrase..."
           className="w-full h-9 px-3 bg-surface-2 border border-border-2 rounded-lg text-sm text-text-1 outline-none focus:border-accent focus:ring-1 focus:ring-accent/20 placeholder:text-text-4 transition-all"
         />
         <p className="text-[10px] text-text-4">
@@ -187,14 +193,14 @@ export function VaultPanel() {
               disabled={!plain || !passphrase}
               className="flex items-center gap-1 px-3 py-1.5 bg-accent/10 hover:bg-accent/20 text-accent border border-accent/25 rounded-md text-[10px] font-semibold disabled:opacity-40 transition-colors"
             >
-              Encrypt →
+              Encrypt &gt;
             </button>
           </div>
           <textarea
             value={plain}
             onChange={(e) => setPlain(e.target.value)}
             className="flex-1 p-4 bg-transparent text-xs text-text-1 font-mono resize-none outline-none min-h-[240px]"
-            placeholder="Paste plaintext here…"
+            placeholder="Paste plaintext here..."
           />
         </div>
 
@@ -202,18 +208,26 @@ export function VaultPanel() {
           <div className="flex items-center gap-2 px-4 py-3 border-b border-border-1">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-text-4 flex-1">Ciphertext</span>
             <button
+              onClick={copyEnvRef}
+              disabled={!cipher}
+              className="flex items-center gap-1 px-3 py-1.5 border border-border-2 rounded-md text-[10px] font-semibold text-text-3 hover:text-text-1 hover:border-border-1 disabled:opacity-40 transition-colors"
+              title="Copy vault: reference for environment variables"
+            >
+              <Clipboard size={11} /> Env Ref
+            </button>
+            <button
               onClick={decrypt}
               disabled={!cipher || !passphrase}
               className="flex items-center gap-1 px-3 py-1.5 bg-accent/10 hover:bg-accent/20 text-accent border border-accent/25 rounded-md text-[10px] font-semibold disabled:opacity-40 transition-colors"
             >
-              ← Decrypt
+              &lt; Decrypt
             </button>
           </div>
           <textarea
             value={cipher}
             onChange={(e) => setCipher(e.target.value)}
             className="flex-1 p-4 bg-transparent text-xs text-text-1 font-mono resize-none outline-none min-h-[240px]"
-            placeholder="Paste ciphertext here…"
+            placeholder="Paste ciphertext here..."
           />
         </div>
       </div>
@@ -245,7 +259,7 @@ export function VaultPanel() {
           onChange={(e) => setExportData(e.target.value)}
           rows={5}
           className="w-full p-4 bg-surface-0 text-[10px] text-text-2 font-mono resize-none outline-none"
-          placeholder="Encrypted workspace export appears here and is copied to clipboard automatically…"
+          placeholder="Encrypted workspace export appears here and is copied to clipboard automatically..."
         />
       </div>
     </div>

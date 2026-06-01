@@ -44,7 +44,6 @@ const CATEGORIES: CategoryDef[] = [
         { id: 'flows',       icon: GitBranch,  label: 'Flows' },
       ]},
       { title: 'Testing', items: [
-        { id: 'matrix',   icon: Network,      label: 'Env Matrix' },
         { id: 'testdata', icon: FlaskConical, label: 'Test Data' },
       ]},
     ],

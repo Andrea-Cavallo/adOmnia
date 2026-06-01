@@ -7,7 +7,7 @@ import { useServerPort, serverUrl } from '@/lib/useServerPort'
 import {
   LayoutList, Radio, Shield, Server, Send, Globe, Bug, Braces, FileCode, Wrench, Lock,
   Database, FolderOpen, FileText, GitBranch, ArrowRight, FileDown, Download, Keyboard,
-  Container, Network, FlaskConical, Play, Zap, BarChart2, Paintbrush, LayoutTemplate, Puzzle,
+  Container, FlaskConical, Play, Zap, BarChart2, Paintbrush, LayoutTemplate, Puzzle,
   Code2, Layers, Box, Activity, HardDrive,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -36,8 +36,7 @@ const COLLECTIONS: ToolDef = {
 
 const API_CORE: ToolDef[] = [
   { id: 'runner',   icon: Play,        color: '#60a5fa', status: 'Stable',  label: 'Runner',             desc: 'Run suites with datasets, retries, assertions and local reports.' },
-  { id: 'flows',    icon: GitBranch,   color: '#c084fc', status: 'Stable',  label: 'Flows',              desc: 'Chain requests with condition, wait and script steps, then export run reports.' },
-  { id: 'matrix',   icon: Network,     color: '#2dd4bf', status: 'Stable',  label: 'Env Matrix',         desc: 'Run requests, collections and flows across local environments with diff reports.' },
+  { id: 'flows',    icon: GitBranch,   color: '#c084fc', status: 'Stable',  label: 'Flows',              desc: 'Generate executable API flows from Mermaid diagrams with conditions and run reports.' },
   { id: 'testdata', icon: FlaskConical,color: '#c084fc', status: 'Stable',  label: 'Test Data Studio',   desc: 'Generate reusable JSON/CSV datasets and send them into the Runner workflow.' },
 ]
 

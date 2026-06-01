@@ -1,6 +1,6 @@
 import type { DebugNetworkEntry } from '@/stores/browser-debug'
 
-// ─── Discovery types ──────────────────────────────────────────────────────────
+// Discovery types
 
 export interface DebugTarget {
   id: string
@@ -21,7 +21,7 @@ export interface DebugEndpoint {
   targets: DebugTarget[]
 }
 
-// ─── Shared types ─────────────────────────────────────────────────────────────
+// Shared types
 
 export interface ConsoleEntry {
   id: string
@@ -121,7 +121,7 @@ export interface ThrottleProfile {
   latencyMs: number
 }
 
-// ─── Window type augmentation ─────────────────────────────────────────────────
+// Window type augmentation
 
 declare global {
   interface WailsGoMain {
@@ -190,13 +190,19 @@ declare global {
   }
 }
 
-// ─── Binding accessor ─────────────────────────────────────────────────────────
+// Binding accessor
 
 function getBrowserDebugBinding() {
-  return window?.go?.main?.BrowserDebug
+  const binding = window?.go?.main?.BrowserDebug
+  if (!binding) throw new Error('Browser Debug backend is not available')
+  return binding
 }
 
-// ─── Existing wrappers ────────────────────────────────────────────────────────
+function browserDebugError(err: unknown, fallback = 'Browser Debug operation failed'): Error {
+  return new Error(err instanceof Error ? err.message : fallback)
+}
+
+// Existing wrappers
 
 export async function launchBrowser(url: string): Promise<void> {
   try {
@@ -246,8 +252,8 @@ export async function getTraffic(): Promise<DebugNetworkEntry[]> {
     const binding = getBrowserDebugBinding()
     if (!binding) return []
     return await binding.GetTraffic()
-  } catch {
-    return []
+  } catch (err: unknown) {
+    throw new Error(err instanceof Error ? err.message : 'Failed to read browser traffic')
   }
 }
 
@@ -256,8 +262,8 @@ export async function getTrafficFiltered(filter: string): Promise<DebugNetworkEn
     const binding = getBrowserDebugBinding()
     if (!binding) return []
     return await binding.GetTrafficFiltered(filter)
-  } catch {
-    return []
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -266,8 +272,8 @@ export async function getRequestBody(requestId: string): Promise<string> {
     const binding = getBrowserDebugBinding()
     if (!binding) return ''
     return await binding.GetRequestBody(requestId)
-  } catch {
-    return ''
+  } catch (err: unknown) {
+    throw new Error(err instanceof Error ? err.message : 'Failed to read request body')
   }
 }
 
@@ -276,8 +282,8 @@ export async function getResponseBody(requestId: string): Promise<string> {
     const binding = getBrowserDebugBinding()
     if (!binding) return ''
     return await binding.GetResponseBody(requestId)
-  } catch {
-    return ''
+  } catch (err: unknown) {
+    throw new Error(err instanceof Error ? err.message : 'Failed to read response body')
   }
 }
 
@@ -286,8 +292,8 @@ export async function clearTraffic(): Promise<void> {
     const binding = getBrowserDebugBinding()
     if (!binding) return
     await binding.ClearTraffic()
-  } catch {
-    // silently ignore
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -296,20 +302,20 @@ export async function stopBrowser(): Promise<void> {
     const binding = getBrowserDebugBinding()
     if (!binding) return
     await binding.StopBrowser()
-  } catch {
-    // silently ignore
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
-// ─── Discovery & target-connect wrappers ─────────────────────────────────────
+// Discovery and target-connect wrappers
 
 export async function discoverEndpoints(): Promise<DebugEndpoint[]> {
   try {
     const b = window?.go?.main?.BrowserDebug as Record<string, (...a: unknown[]) => Promise<unknown>> | undefined
     if (!b?.DiscoverEndpoints) return []
     return ((await b.DiscoverEndpoints()) as DebugEndpoint[]) ?? []
-  } catch {
-    return []
+  } catch (err: unknown) {
+    throw new Error(err instanceof Error ? err.message : 'Failed to discover browser debug endpoints')
   }
 }
 
@@ -333,15 +339,15 @@ export async function launchBrowserForDebug(url: string, port: number): Promise<
   }
 }
 
-// ─── Console wrappers ─────────────────────────────────────────────────────────
+// Console wrappers
 
 export async function evalJS(expression: string): Promise<ConsoleEntry | null> {
   try {
     const binding = getBrowserDebugBinding()
     if (!binding) return null
     return await binding.EvalJS(expression)
-  } catch {
-    return null
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -350,8 +356,8 @@ export async function enableConsole(): Promise<void> {
     const binding = getBrowserDebugBinding()
     if (!binding) return
     await binding.EnableConsole()
-  } catch {
-    // silently ignore
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -360,8 +366,8 @@ export async function getConsoleLogs(): Promise<ConsoleEntry[]> {
     const binding = getBrowserDebugBinding()
     if (!binding) return []
     return await binding.GetConsoleLogs()
-  } catch {
-    return []
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -370,20 +376,20 @@ export async function clearConsoleLogs(): Promise<void> {
     const binding = getBrowserDebugBinding()
     if (!binding) return
     await binding.ClearConsoleLogs()
-  } catch {
-    // silently ignore
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
-// ─── Debugger wrappers ────────────────────────────────────────────────────────
+// Debugger wrappers
 
 export async function enableDebugger(): Promise<void> {
   try {
     const binding = getBrowserDebugBinding()
     if (!binding) return
     await binding.EnableDebugger()
-  } catch {
-    // silently ignore
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -392,8 +398,8 @@ export async function disableDebugger(): Promise<void> {
     const binding = getBrowserDebugBinding()
     if (!binding) return
     await binding.DisableDebugger()
-  } catch {
-    // silently ignore
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -406,8 +412,8 @@ export async function setBreakpoint(
     const binding = getBrowserDebugBinding()
     if (!binding) return ''
     return await binding.SetBreakpoint(url, line, condition)
-  } catch {
-    return ''
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -421,8 +427,8 @@ export async function setBreakpointByScriptID(
     const binding = getBrowserDebugBinding()
     if (!binding?.SetBreakpointByScriptID) return ''
     return await binding.SetBreakpointByScriptID(scriptId, line, column, condition)
-  } catch {
-    return ''
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -431,8 +437,8 @@ export async function removeBreakpoint(breakpointId: string): Promise<void> {
     const binding = getBrowserDebugBinding()
     if (!binding) return
     await binding.RemoveBreakpoint(breakpointId)
-  } catch {
-    // silently ignore
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -441,8 +447,8 @@ export async function getBreakpoints(): Promise<BreakpointInfo[]> {
     const binding = getBrowserDebugBinding()
     if (!binding) return []
     return await binding.GetBreakpoints()
-  } catch {
-    return []
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -451,8 +457,8 @@ export async function getScripts(): Promise<ScriptInfo[]> {
     const binding = getBrowserDebugBinding()
     if (!binding?.GetScripts) return []
     return await binding.GetScripts()
-  } catch {
-    return []
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -461,8 +467,8 @@ export async function getScriptSource(scriptId: string): Promise<string> {
     const binding = getBrowserDebugBinding()
     if (!binding?.GetScriptSource) return ''
     return await binding.GetScriptSource(scriptId)
-  } catch {
-    return ''
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -471,8 +477,8 @@ export async function getSourceFiles(): Promise<SourceFileInfo[]> {
     const binding = getBrowserDebugBinding()
     if (!binding?.GetSourceFiles) return []
     return await binding.GetSourceFiles()
-  } catch {
-    return []
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -481,8 +487,8 @@ export async function getSourceFileContent(sourceId: string): Promise<string> {
     const binding = getBrowserDebugBinding()
     if (!binding?.GetSourceFileContent) return ''
     return await binding.GetSourceFileContent(sourceId)
-  } catch {
-    return ''
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -491,8 +497,8 @@ export async function reloadPageNoCache(): Promise<void> {
     const binding = getBrowserDebugBinding()
     if (!binding?.ReloadPageNoCache) return
     await binding.ReloadPageNoCache()
-  } catch {
-    // silently ignore
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -501,8 +507,8 @@ export async function resume(): Promise<void> {
     const binding = getBrowserDebugBinding()
     if (!binding) return
     await binding.Resume()
-  } catch {
-    // silently ignore
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -511,8 +517,8 @@ export async function stepOver(): Promise<void> {
     const binding = getBrowserDebugBinding()
     if (!binding) return
     await binding.StepOver()
-  } catch {
-    // silently ignore
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -521,8 +527,8 @@ export async function stepInto(): Promise<void> {
     const binding = getBrowserDebugBinding()
     if (!binding) return
     await binding.StepInto()
-  } catch {
-    // silently ignore
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -531,8 +537,8 @@ export async function stepOut(): Promise<void> {
     const binding = getBrowserDebugBinding()
     if (!binding) return
     await binding.StepOut()
-  } catch {
-    // silently ignore
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -543,20 +549,20 @@ export async function getPausedState(): Promise<PausedState> {
       return { paused: false, reason: '', callFrames: [], scriptUrl: '', scriptId: '', lineNumber: 0 }
     }
     return await binding.GetPausedState()
-  } catch {
-    return { paused: false, reason: '', callFrames: [], scriptUrl: '', scriptId: '', lineNumber: 0 }
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
-// ─── DOM wrappers ─────────────────────────────────────────────────────────────
+// DOM wrappers
 
 export async function enableDOM(): Promise<void> {
   try {
     const binding = getBrowserDebugBinding()
     if (!binding) return
     await binding.EnableDOM()
-  } catch {
-    // silently ignore
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -565,8 +571,8 @@ export async function getDocument(depth: number): Promise<DOMNode | null> {
     const binding = getBrowserDebugBinding()
     if (!binding) return null
     return await binding.GetDocument(depth)
-  } catch {
-    return null
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -575,8 +581,8 @@ export async function getNodeHTML(nodeId: number): Promise<string> {
     const binding = getBrowserDebugBinding()
     if (!binding) return ''
     return await binding.GetNodeHTML(nodeId)
-  } catch {
-    return ''
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -585,8 +591,8 @@ export async function getPageSource(): Promise<string> {
     const binding = getBrowserDebugBinding()
     if (!binding?.GetPageSource) return ''
     return await binding.GetPageSource()
-  } catch {
-    return ''
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -595,8 +601,8 @@ export async function querySelector(selector: string): Promise<DOMNode | null> {
     const binding = getBrowserDebugBinding()
     if (!binding) return null
     return await binding.QuerySelector(selector)
-  } catch {
-    return null
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -607,8 +613,8 @@ export async function getComputedStyleForNode(
     const binding = getBrowserDebugBinding()
     if (!binding) return {}
     return await binding.GetComputedStyle(nodeId)
-  } catch {
-    return {}
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -617,8 +623,8 @@ export async function highlightNode(nodeId: number): Promise<void> {
     const binding = getBrowserDebugBinding()
     if (!binding) return
     await binding.HighlightNode(nodeId)
-  } catch {
-    // silently ignore
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -627,8 +633,8 @@ export async function hideHighlight(): Promise<void> {
     const binding = getBrowserDebugBinding()
     if (!binding) return
     await binding.HideHighlight()
-  } catch {
-    // silently ignore
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -640,8 +646,8 @@ export async function setDOMBreakpoint(
     const binding = getBrowserDebugBinding()
     if (!binding?.SetDOMBreakpoint) return
     await binding.SetDOMBreakpoint(nodeId, breakpointType)
-  } catch {
-    // silently ignore
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -653,8 +659,8 @@ export async function removeDOMBreakpoint(
     const binding = getBrowserDebugBinding()
     if (!binding?.RemoveDOMBreakpoint) return
     await binding.RemoveDOMBreakpoint(nodeId, breakpointType)
-  } catch {
-    // silently ignore
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -663,20 +669,20 @@ export async function getDOMBreakpoints(): Promise<DOMBreakpointInfo[]> {
     const binding = getBrowserDebugBinding()
     if (!binding?.GetDOMBreakpoints) return []
     return await binding.GetDOMBreakpoints()
-  } catch {
-    return []
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
-// ─── Storage wrappers ─────────────────────────────────────────────────────────
+// Storage wrappers
 
 export async function getCookies(): Promise<CookieEntry[]> {
   try {
     const binding = getBrowserDebugBinding()
     if (!binding) return []
     return await binding.GetCookies()
-  } catch {
-    return []
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -685,8 +691,8 @@ export async function deleteCookie(name: string, domain: string): Promise<void> 
     const binding = getBrowserDebugBinding()
     if (!binding) return
     await binding.DeleteCookie(name, domain)
-  } catch {
-    // silently ignore
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -695,8 +701,8 @@ export async function getLocalStorage(): Promise<StorageItem[]> {
     const binding = getBrowserDebugBinding()
     if (!binding) return []
     return await binding.GetLocalStorage()
-  } catch {
-    return []
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -705,8 +711,8 @@ export async function getSessionStorage(): Promise<StorageItem[]> {
     const binding = getBrowserDebugBinding()
     if (!binding) return []
     return await binding.GetSessionStorage()
-  } catch {
-    return []
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -715,12 +721,12 @@ export async function getIndexedDBDatabases(): Promise<string[]> {
     const binding = getBrowserDebugBinding()
     if (!binding) return []
     return await binding.GetIndexedDBDatabases()
-  } catch {
-    return []
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
-// ─── Throttling wrappers ──────────────────────────────────────────────────────
+// Throttling wrappers
 
 export async function setThrottling(
   downloadKbps: number,
@@ -731,8 +737,8 @@ export async function setThrottling(
     const binding = getBrowserDebugBinding()
     if (!binding) return
     await binding.SetThrottling(downloadKbps, uploadKbps, latencyMs)
-  } catch {
-    // silently ignore
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -741,8 +747,8 @@ export async function clearThrottling(): Promise<void> {
     const binding = getBrowserDebugBinding()
     if (!binding) return
     await binding.ClearThrottling()
-  } catch {
-    // silently ignore
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }
 
@@ -751,7 +757,7 @@ export async function getThrottleProfiles(): Promise<ThrottleProfile[]> {
     const binding = getBrowserDebugBinding()
     if (!binding) return []
     return await binding.GetThrottleProfiles()
-  } catch {
-    return []
+  } catch (err: unknown) {
+    throw browserDebugError(err)
   }
 }

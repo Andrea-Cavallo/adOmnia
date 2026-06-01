@@ -13,7 +13,12 @@ function sanitizeUrl(url: string): string {
   if (!t) return '#'
   const lower = t.toLowerCase()
   if (lower.startsWith('javascript:') || lower.startsWith('vbscript:')) return '#'
-  if (lower.startsWith('data:') && !lower.startsWith('data:image/')) return '#'
+  if (
+    lower.startsWith('data:')
+    && !/^data:image\/(png|jpe?g|gif|webp);base64,/i.test(t)
+  ) {
+    return '#'
+  }
   return t
 }
 
@@ -61,10 +66,10 @@ function renderMarkdown(md: string): string {
     s = s.replace(/\*([^*\n]+)\*/g, '<em class="italic text-text-2">$1</em>')
     // images (before links)
     s = s.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_m, alt, src) =>
-      `<img src="${sanitizeUrl(src)}" alt="${esc(alt)}" class="max-w-full rounded my-2 block" loading="lazy" />`)
+      `<img src="${esc(sanitizeUrl(src))}" alt="${esc(alt)}" class="max-w-full rounded my-2 block" loading="lazy" />`)
     // links
     s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, href) =>
-      `<a href="${sanitizeUrl(href)}" class="text-accent underline hover:opacity-80 transition-opacity">${label}</a>`)
+      `<a href="${esc(sanitizeUrl(href))}" class="text-accent underline hover:opacity-80 transition-opacity">${label}</a>`)
     // restore inline codes
     inlineCodes.forEach((h, i) => { s = s.replace(`\x00IC${i}\x00`, h) })
     return s

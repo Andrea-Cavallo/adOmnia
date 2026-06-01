@@ -18,7 +18,9 @@ function installedApiIds() {
 
 function apiToCollection(api: ApiEntry): Collection {
   const method: HttpMethod = 'GET'
-  const docsUrl = api.links?.find((l: { name: string; url: string }) => l.name?.toLowerCase().includes('docs') || l.name?.toLowerCase().includes('website'))?.url ?? ''
+  const apiUrl = api.links?.find((l: { name: string; url: string }) => l.name?.toLowerCase().includes('api'))?.url
+    ?? api.links?.find((l: { name: string; url: string }) => l.name?.toLowerCase().includes('docs') || l.name?.toLowerCase().includes('website'))?.url
+    ?? ''
 
   const request: RequestItem = {
     id: uid(),
@@ -26,7 +28,7 @@ function apiToCollection(api: ApiEntry): Collection {
     name: api.name,
     description: api.description,
     method,
-    url: docsUrl || '',
+    url: apiUrl || '',
     params: [],
     headers: [],
     bodies: [blankBody()],

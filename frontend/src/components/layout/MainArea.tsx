@@ -36,7 +36,6 @@ const BrowserDebugPanel    = React.lazy(() => import('@/components/browser-debug
 const UtilsPanel           = React.lazy(() => import('@/components/utils/UtilsPanel').then(m => ({ default: m.UtilsPanel })))
 const FlowsPanel           = React.lazy(() => import('@/components/flows/FlowsPanel').then(m => ({ default: m.FlowsPanel })))
 const RunnerPanel          = React.lazy(() => import('@/components/runner/RunnerPanel').then(m => ({ default: m.RunnerPanel })))
-const MatrixPanel          = React.lazy(() => import('@/components/matrix/MatrixPanel').then(m => ({ default: m.MatrixPanel })))
 const SoapPanel            = React.lazy(() => import('@/components/soap/SoapPanel').then(m => ({ default: m.SoapPanel })))
 const TestDataStudio       = React.lazy(() => import('@/components/testdata/TestDataStudio').then(m => ({ default: m.TestDataStudio })))
 const HarViewerPanel       = React.lazy(() => import('@/components/har/HarViewerPanel').then(m => ({ default: m.HarViewerPanel })))
@@ -696,7 +695,6 @@ function panelFor(activeRail: RailItem): PanelDef {
     case 'powertools':  return { component: <UtilsPanel />,           titleKey: 'Power Tools', overflow: true }
     case 'flows':     return { component: <FlowsPanel />,              titleKey: 'flows',     overflow: true }
     case 'runner':    return { component: <RunnerPanel />,            titleKey: 'runner',    overflow: true }
-    case 'matrix':    return { component: <MatrixPanel />,            titleKey: 'Env Matrix', overflow: true }
     case 'soap':      return { component: <SoapPanel />,             titleKey: 'soap',      overflow: true }
     case 'testdata':  return { component: <TestDataStudio />,        titleKey: 'testdata',  overflow: true }
     case 'har':         return { component: <HarViewerPanel />,       titleKey: 'HAR Viewer', overflow: true }

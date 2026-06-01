@@ -10,11 +10,9 @@ import {
   DEFAULT_FLOW_SETTINGS,
   loadFlowDefinitions,
   saveFlowDefinitions,
-  type FlowEdgeBranch,
-  type FlowGraphDefinition,
-  type FlowNodeDefinition,
   type SavedFlowDefinition,
 } from '@/lib/flowStorage'
+import { graphFromMermaid, type ApiCatalogRequest } from '@/lib/flowMermaid'
 import {
   launchBrowserForDebug,
   discoverEndpoints,
@@ -103,116 +101,69 @@ function requestFromCapture(data: { method: string; url: string; headers: Record
   }
 }
 
-function endpointNodes(x: number) {
-  const success: FlowNodeDefinition = {
-    id: uid(),
-    type: 'end',
-    label: 'End success',
-    x,
-    y: 170,
-    width: 146,
-    height: 74,
-    config: { endState: 'success' },
+function capturedRequestLabel(request: RequestItem) {
+  try {
+    const url = new URL(request.url)
+    return `${request.method} ${url.pathname || '/'}`
+  } catch {
+    return `${request.method} ${request.url || request.name}`
   }
-  const failed: FlowNodeDefinition = {
-    id: uid(),
-    type: 'end',
-    label: 'End failed',
-    x,
-    y: 330,
-    width: 146,
-    height: 74,
-    config: { endState: 'failed' },
-  }
-  return { success, failed }
 }
 
-function createCapturedFlow(request: RequestItem): SavedFlowDefinition {
-  const start: FlowNodeDefinition = {
-    id: uid(),
-    type: 'start',
-    label: 'Start',
-    x: 90,
-    y: 250,
-    width: 130,
-    height: 74,
-    config: {},
-  }
-  const requestNode: FlowNodeDefinition = {
-    id: uid(),
-    type: 'request',
-    label: request.name,
-    x: 330,
-    y: 225,
-    width: 230,
-    height: 126,
-    config: { request, expectedStatus: '2xx', stopOnFailure: true, extractions: [] },
-  }
-  const { success, failed } = endpointNodes(670)
+function mermaidQuote(label: string) {
+  return label.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+}
+
+function capturedRequestsFromFlow(flow: SavedFlowDefinition | undefined): RequestItem[] {
+  if (!flow) return []
+  return flow.graph.nodes
+    .filter((node) => node.type === 'request' && node.config.request)
+    .map((node) => node.config.request as RequestItem)
+}
+
+function capturedCatalog(requests: RequestItem[]): ApiCatalogRequest[] {
+  return requests.map((request, index) => ({
+    id: `browser-capture-${index + 1}`,
+    label: capturedRequestLabel(request),
+    source: 'Browser Debug',
+    request,
+  }))
+}
+
+function capturedMermaid(requests: RequestItem[]) {
+  const lines = ['flowchart TD', '  S((Start))']
+  requests.forEach((request, index) => {
+    const key = `R${index + 1}`
+    const previous = index === 0 ? 'S' : `R${index}`
+    lines.push(`  ${key}["${mermaidQuote(capturedRequestLabel(request))}"]`)
+    lines.push(`  ${previous} -->${index === 0 ? '' : '|success|'} ${key}`)
+    lines.push(`  ${key} -->|error| ERR["Show Error / Stop Flow"]`)
+  })
+  if (requests.length > 0) lines.push(`  R${requests.length} -->|success| OK((End success))`)
+  return lines.join('\n')
+}
+
+function createCapturedFlow(requests: RequestItem[], existing?: SavedFlowDefinition): SavedFlowDefinition {
+  const mermaidSource = capturedMermaid(requests)
   return {
-    id: uid(),
+    id: existing?.id ?? uid(),
     name: CAPTURED_BROWSER_FLOW_NAME,
-    graph: {
-      nodes: [start, requestNode, success, failed],
-      edges: [
-        { id: uid(), source: start.id, target: requestNode.id, branch: 'next', label: '' },
-        { id: uid(), source: requestNode.id, target: success.id, branch: 'success', label: 'success' },
-        { id: uid(), source: requestNode.id, target: failed.id, branch: 'error', label: 'error' },
-      ],
-      viewport: { x: 0, y: 0, zoom: 1 },
-      settings: DEFAULT_FLOW_SETTINGS,
-    },
+    graph: { ...graphFromMermaid(mermaidSource, capturedCatalog(requests)), settings: DEFAULT_FLOW_SETTINGS },
+    mermaidSource,
     updatedAt: new Date().toISOString(),
     version: 3,
   }
 }
 
-function branchForSource(node: FlowNodeDefinition): FlowEdgeBranch {
-  if (node.type === 'request') return 'success'
-  if (node.type === 'condition') return 'true'
-  return 'next'
-}
-
-function appendRequestToGraph(graph: FlowGraphDefinition, request: RequestItem): FlowGraphDefinition {
-  const successEnd = graph.nodes.find((node) => node.type === 'end' && node.config.endState !== 'failed')
-  const failedEnd = graph.nodes.find((node) => node.type === 'end' && node.config.endState === 'failed')
-  const incomingSuccess = successEnd ? graph.edges.find((edge) => edge.target === successEnd.id) : undefined
-  const previous = graph.nodes.find((node) => node.id === incomingSuccess?.source)
-    ?? [...graph.nodes].reverse().find((node) => node.type === 'request')
-    ?? graph.nodes.find((node) => node.type === 'start')
-  const maxX = Math.max(330, ...graph.nodes.map((node) => node.x))
-  const requestNode: FlowNodeDefinition = {
-    id: uid(),
-    type: 'request',
-    label: request.name,
-    x: maxX + 260,
-    y: previous?.y ?? 225,
-    width: 230,
-    height: 126,
-    config: { request, expectedStatus: '2xx', stopOnFailure: true, extractions: [] },
-  }
-  const nextSuccess = successEnd ? { ...successEnd, x: requestNode.x + 320, y: 170 } : endpointNodes(requestNode.x + 320).success
-  const nextFailed = failedEnd ? { ...failedEnd, x: requestNode.x + 320, y: 330 } : endpointNodes(requestNode.x + 320).failed
-  const nodes = graph.nodes
-    .filter((node) => node.id !== nextSuccess.id && node.id !== nextFailed.id)
-    .concat(requestNode, nextSuccess, nextFailed)
-  const edges = graph.edges.filter((edge) => edge.id !== incomingSuccess?.id && edge.source !== requestNode.id)
-  if (previous) edges.push({ id: uid(), source: previous.id, target: requestNode.id, branch: branchForSource(previous), label: branchForSource(previous) === 'next' ? '' : branchForSource(previous) })
-  edges.push(
-    { id: uid(), source: requestNode.id, target: nextSuccess.id, branch: 'success', label: 'success' },
-    { id: uid(), source: requestNode.id, target: nextFailed.id, branch: 'error', label: 'error' },
-  )
-  return { ...graph, nodes, edges }
-}
-
-// ── Tab picker panel ──────────────────────────────────────────────────────────
+// Tab picker panel
 
 interface TabPickerProps {
   onConnect: (target: DebugTarget) => void
   onCancel: () => void
+  connectionError?: string
 }
 
-function TabPicker({ onConnect, onCancel }: TabPickerProps) {
+function TabPicker({ onConnect, onCancel, connectionError }: TabPickerProps) {
   const [launchUrl, setLaunchUrl]         = useState('https://')
   const [scanning, setScanning]           = useState(false)
   const [launching, setLaunching]         = useState(false)
@@ -224,12 +175,18 @@ function TabPicker({ onConnect, onCancel }: TabPickerProps) {
     setScanning(true)
     setError('')
     setLaunchTargets([])
-    const result = await discoverEndpoints()
-    const safe = result ?? []
-    setEndpoints(safe)
-    setScanning(false)
-    if (safe.length === 0) {
-      setError('No browser found with remote debugging enabled. Launch a new one below, or start Chrome/Edge with --remote-debugging-port=9222')
+    try {
+      const result = await discoverEndpoints()
+      const safe = result ?? []
+      setEndpoints(safe)
+      if (safe.length === 0) {
+        setError('No browser found with remote debugging enabled. Launch a new one below, or start Chrome/Edge with --remote-debugging-port=9222')
+      }
+    } catch (err: unknown) {
+      setEndpoints([])
+      setError(err instanceof Error ? err.message : 'Failed to scan browser debug endpoints')
+    } finally {
+      setScanning(false)
     }
   }, [])
 
@@ -259,7 +216,7 @@ function TabPicker({ onConnect, onCancel }: TabPickerProps) {
     ...(endpoints ?? []).flatMap((ep) =>
       (ep.targets ?? [])
         .filter((t) => t.type === 'page')
-        .map((t) => ({ endpoint: `${ep.browserName} — port ${ep.port}`, target: t }))
+        .map((t) => ({ endpoint: `${ep.browserName} - port ${ep.port}`, target: t }))
     ),
   ]
 
@@ -290,13 +247,13 @@ function TabPicker({ onConnect, onCancel }: TabPickerProps) {
               className="flex items-center gap-1 h-6 px-2 rounded bg-surface-2 border border-border-1 text-[10px] text-text-2 hover:text-text-1 disabled:opacity-50 transition-colors"
             >
               <RefreshCw size={10} className={scanning ? 'animate-spin' : ''} />
-              {scanning ? 'Scanning…' : 'Scan again'}
+              {scanning ? 'Scanning...' : 'Scan again'}
             </button>
           </div>
 
-          {error && (
+          {(connectionError || error) && (
             <p className="text-[10px] text-text-3 bg-surface-2 border border-border-1 rounded px-3 py-2 mb-2 leading-relaxed">
-              {error}
+              {connectionError || error}
             </p>
           )}
 
@@ -361,7 +318,7 @@ function TabPicker({ onConnect, onCancel }: TabPickerProps) {
               disabled={launching}
               className="h-8 px-3 rounded bg-accent text-white text-xs font-medium hover:bg-accent/80 disabled:opacity-50 transition-colors whitespace-nowrap"
             >
-              {launching ? 'Launching…' : 'Launch'}
+              {launching ? 'Launching...' : 'Launch'}
             </button>
           </div>
           <p className="text-[10px] text-text-4 mt-1.5 leading-relaxed">
@@ -376,7 +333,7 @@ function TabPicker({ onConnect, onCancel }: TabPickerProps) {
   )
 }
 
-// ── Connected toolbar ─────────────────────────────────────────────────────────
+// Connected toolbar
 
 interface ConnectedToolbarProps {
   connectedTab: DebugTarget | null
@@ -428,7 +385,7 @@ function ConnectedToolbar({
               type="text"
               value={filter}
               onChange={(e) => onFilterChange(e.target.value)}
-              placeholder="Filter URLs…"
+              placeholder="Filter URLs..."
               className="h-7 w-full pl-7 pr-2 rounded bg-surface-1 border border-border-1 text-xs text-text-1 placeholder:text-text-3 focus:outline-none focus:border-accent"
             />
           </div>
@@ -470,7 +427,7 @@ function ConnectedToolbar({
   )
 }
 
-// ── Main panel ────────────────────────────────────────────────────────────────
+// Main panel
 
 export function BrowserDebugPanel() {
   const {
@@ -482,9 +439,11 @@ export function BrowserDebugPanel() {
   const [showPicker, setShowPicker]       = useState(!connected)
   const [connectedTab, setConnectedTab]   = useState<DebugTarget | null>(null)
   const [activeTab, setActiveTab]         = useState<DebugTab>('network')
+  const [connectionError, setConnectionError] = useState('')
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const handleConnect = useCallback(async (target: DebugTarget) => {
+    setConnectionError('')
     try {
       await connectToTarget(target.webSocketDebuggerUrl)
       await enableConsole()
@@ -492,12 +451,17 @@ export function BrowserDebugPanel() {
       setConnected(true)
       setShowPicker(false)
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Connection failed')
+      setConnectionError(err instanceof Error ? err.message : 'Connection failed')
     }
   }, [setConnected])
 
   const handleDisconnect = useCallback(async () => {
-    await disconnectDebugger()
+    try {
+      await disconnectDebugger()
+      setConnectionError('')
+    } catch (err: unknown) {
+      setConnectionError(err instanceof Error ? err.message : 'Disconnect failed')
+    }
     setConnected(false)
     setConnectedTab(null)
     setShowPicker(true)
@@ -505,16 +469,28 @@ export function BrowserDebugPanel() {
   }, [setConnected])
 
   const handleClear = useCallback(async () => {
-    await clearTraffic()
-    clearEntries()
+    try {
+      await clearTraffic()
+      clearEntries()
+      setConnectionError('')
+    } catch (err: unknown) {
+      setConnectionError(err instanceof Error ? err.message : 'Failed to clear browser traffic')
+    }
   }, [clearEntries])
 
   // Poll traffic while connected
   useEffect(() => {
     if (connected) {
       const poll = async () => {
-        const traffic = await getTraffic()
-        if (traffic.length > 0) setEntries(traffic)
+        try {
+          const traffic = await getTraffic()
+          if (traffic.length > 0) {
+            setEntries(traffic)
+            setConnectionError('')
+          }
+        } catch (err: unknown) {
+          setConnectionError(err instanceof Error ? err.message : 'Failed to read browser traffic')
+        }
       }
       poll()
       pollRef.current = setInterval(poll, 1000)
@@ -549,14 +525,7 @@ export function BrowserDebugPanel() {
       const request = requestFromCapture(data)
       const flows = await loadFlowDefinitions()
       const existing = flows.find((flow) => flow.name === CAPTURED_BROWSER_FLOW_NAME)
-      const saved: SavedFlowDefinition = existing
-        ? {
-            ...existing,
-            graph: appendRequestToGraph(existing.graph, request),
-            updatedAt: new Date().toISOString(),
-            version: 3,
-          }
-        : createCapturedFlow(request)
+      const saved = createCapturedFlow([...capturedRequestsFromFlow(existing), request], existing)
 
       await saveFlowDefinitions([saved, ...flows.filter((flow) => flow.id !== saved.id)])
       useAppStore.getState().setActiveRail('flows')
@@ -572,8 +541,13 @@ export function BrowserDebugPanel() {
         responses: [{ id: uid(), name: `Status ${data.status}`, status: data.status, headers: data.headers, body: data.body, delayMs: 0, isActive: true }],
         mode: 'first_active',
       }
-      await appendMockEndpoints([newEndpoint]).catch(() => {})
-      useAppStore.getState().setActiveRail('mock')
+      try {
+        await appendMockEndpoints([newEndpoint])
+        useAppStore.getState().setActiveRail('mock')
+        setConnectionError('')
+      } catch (err: unknown) {
+        setConnectionError(err instanceof Error ? err.message : 'Failed to add captured response as mock')
+      }
     }, []
   )
 
@@ -588,6 +562,7 @@ export function BrowserDebugPanel() {
       <TabPicker
         onConnect={handleConnect}
         onCancel={connected ? () => setShowPicker(false) : () => {}}
+        connectionError={connectionError}
       />
     )
   }
@@ -604,6 +579,11 @@ export function BrowserDebugPanel() {
         onTypeFilterChange={setTypeFilter}
         onClear={handleClear}
       />
+      {connectionError && (
+        <div className="border-b border-error/30 bg-error/10 px-3 py-2 text-xs text-error">
+          {connectionError}
+        </div>
+      )}
 
       {/* Debug tab bar */}
       <div className="flex items-center h-8 px-3 gap-0.5 border-b border-border-1 bg-surface-0 flex-shrink-0">

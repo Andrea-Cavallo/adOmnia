@@ -1,6 +1,7 @@
 import { blankRequest, type RequestItem, uid } from '@/lib/types'
 import { StorageGet, StoragePut } from '@/wailsjs/go/main/App'
 import { safeSetItem } from '@/lib/safeLocalStorage'
+import { storageSchema } from '@/lib/storageSchemas'
 
 export type FlowNodeType = 'start' | 'end' | 'request' | 'condition' | 'extract'
 export type FlowRunStatus = 'pending' | 'running' | 'success' | 'failed' | 'skipped'
@@ -34,6 +35,7 @@ export interface FlowNodeConfig {
 
 export interface FlowNodeDefinition {
   id: string
+  mermaidKey?: string
   type: FlowNodeType
   label: string
   x: number
@@ -68,6 +70,7 @@ export interface SavedFlowDefinition {
   id: string
   name: string
   graph: FlowGraphDefinition
+  mermaidSource?: string
   updatedAt: string
   version: 3
 }
@@ -84,9 +87,10 @@ export interface FlowStepDefinition {
   script?: string
 }
 
-const LEGACY_STORAGE_KEY = 'adomnia.flows.v1'
-const STORAGE_BUCKET = 'flows'
-const STORAGE_ITEM = 'all'
+const FLOW_STORAGE_SCHEMA = storageSchema('flows')
+const LEGACY_STORAGE_KEY = FLOW_STORAGE_SCHEMA.legacyKeys?.[0] ?? 'adomnia.flows.v1'
+const STORAGE_BUCKET = FLOW_STORAGE_SCHEMA.bucket
+const STORAGE_ITEM = FLOW_STORAGE_SCHEMA.item
 const NODE_TYPES: FlowNodeType[] = ['start', 'end', 'request', 'condition', 'extract']
 const EDGE_BRANCHES: FlowEdgeBranch[] = ['next', 'success', 'error', 'true', 'false', 'else']
 const CONDITION_OPERATORS: ConditionOperator[] = ['exists', 'not_exists', 'eq', 'neq', 'contains', 'gt', 'lt', 'gte', 'lte']
@@ -157,6 +161,7 @@ function normalizeNode(value: unknown, index: number): FlowNodeDefinition {
   const type = typeof rawType === 'string' && NODE_TYPES.includes(rawType as FlowNodeType) ? rawType as FlowNodeType : 'request'
   return {
     id: stringValue(source.id, uid()),
+    mermaidKey: stringValue(source.mermaidKey),
     type,
     label: stringValue(source.label, type === 'start' ? 'Start' : type === 'end' ? 'End' : `Node ${index + 1}`),
     x: numberValue(source.x, 120 + index * 260),
@@ -361,8 +366,9 @@ export function normalizeFlowDefinitions(value: unknown): SavedFlowDefinition[] 
       id,
       name,
       graph,
+      mermaidSource: stringValue(source.mermaidSource),
       updatedAt: stringValue(source.updatedAt, new Date().toISOString()),
-      version: 3,
+      version: FLOW_STORAGE_SCHEMA.currentVersion as 3,
     }
   })
 }

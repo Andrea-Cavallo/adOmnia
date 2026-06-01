@@ -30,6 +30,7 @@ import {
 } from 'lucide-react'
 import { Toggle, Select, NumberInput, TextInput, PasswordInput, TextAreaInput } from './SettingsFields'
 import { AISettings } from './AISettings'
+import { DangerZone, SectionHeader, SettingsCard } from './SettingsLayout'
 
 function appBinding() {
   return window.go?.main?.App
@@ -78,31 +79,6 @@ type SectionId =
   | 'developer'
   | 'python'
   | 'ai'
-
-function SectionHeader({ title, subtitle }: { title: string; subtitle: string }) {
-  return (
-    <div className="mb-3 pb-2 border-b border-border-1">
-      <h2 className="text-sm font-semibold text-text-1">{title}</h2>
-      <p className="text-[10px] text-text-4 mt-0.5">{subtitle}</p>
-    </div>
-  )
-}
-
-function SettingsCard({ children, className }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div className={cn('bg-surface-1 border border-border-2 rounded-md p-3 mb-3', className)}>
-      <div className="flex flex-col divide-y divide-border-1">{children}</div>
-    </div>
-  )
-}
-
-function DangerZone({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="border border-status-err/30 rounded-md p-3 mb-3 bg-status-err/5">
-      <div className="flex flex-col divide-y divide-border-1">{children}</div>
-    </div>
-  )
-}
 
 // --- Keyboard shortcuts data ---
 

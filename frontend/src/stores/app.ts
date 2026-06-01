@@ -22,7 +22,6 @@ export type RailItem =
   | 'utils'
   | 'flows'
   | 'runner'
-  | 'matrix'
   | 'soap'
   | 'testdata'
   | 'markdown'

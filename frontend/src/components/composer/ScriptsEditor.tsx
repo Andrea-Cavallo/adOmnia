@@ -31,6 +31,9 @@ export function ScriptsEditor({ pre, post, tests, onChange }: ScriptsEditorProps
         <button className={tabClass('post')} onClick={() => setTab('post')}>Post-response</button>
         <button className={tabClass('tests')} onClick={() => setTab('tests')}>Tests</button>
       </div>
+      <div className="rounded border border-warning/25 bg-warning/10 px-3 py-2 text-[11px] leading-relaxed text-text-2">
+        Scripts run locally for this workspace and can read or modify request, response, and environment data. Use code you trust.
+      </div>
       <textarea
         className="min-h-[160px] p-3 bg-surface-2 border border-border-2 rounded font-mono text-xs text-text-1 placeholder:text-text-4 resize-y focus:border-accent outline-none"
         placeholder={

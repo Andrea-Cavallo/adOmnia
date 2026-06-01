@@ -46,12 +46,18 @@ export function ThrottlingPanel() {
   const [customDownload, setCustomDownload] = useState('')
   const [customUpload, setCustomUpload] = useState('')
   const [customLatency, setCustomLatency] = useState('')
+  const [error, setError] = useState('')
 
   useEffect(() => {
     const load = async () => {
-      const fetched = await getThrottleProfiles()
-      if (fetched.length > 0) {
-        setProfiles(fetched)
+      try {
+        const fetched = await getThrottleProfiles()
+        if (fetched.length > 0) {
+          setProfiles(fetched)
+        }
+        setError('')
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to load throttle profiles')
       }
     }
     load()
@@ -60,14 +66,19 @@ export function ThrottlingPanel() {
   const handleSelectProfile = useCallback(
     async (profile: ThrottleProfile) => {
       setSelectedProfile(profile.name)
-      if (profile.name === 'No Throttling') {
-        await clearThrottling()
-      } else {
-        await setThrottling(
-          profile.downloadKbps,
-          profile.uploadKbps,
-          profile.latencyMs
-        )
+      try {
+        if (profile.name === 'No Throttling') {
+          await clearThrottling()
+        } else {
+          await setThrottling(
+            profile.downloadKbps,
+            profile.uploadKbps,
+            profile.latencyMs
+          )
+        }
+        setError('')
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to apply throttling')
       }
     },
     []
@@ -81,12 +92,22 @@ export function ThrottlingPanel() {
     if (isNaN(download) || isNaN(upload) || isNaN(latency)) return
 
     setSelectedProfile('Custom')
-    await setThrottling(download, upload, latency)
+    try {
+      await setThrottling(download, upload, latency)
+      setError('')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to apply custom throttling')
+    }
   }, [customDownload, customUpload, customLatency])
 
   const handleClear = useCallback(async () => {
     setSelectedProfile('No Throttling')
-    await clearThrottling()
+    try {
+      await clearThrottling()
+      setError('')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to clear throttling')
+    }
   }, [])
 
   return (
@@ -110,6 +131,11 @@ export function ThrottlingPanel() {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
+        {error && (
+          <div className="rounded border border-error/30 bg-error/10 px-3 py-2 text-xs text-error">
+            {error}
+          </div>
+        )}
         {/* Preset profiles grid */}
         <div>
           <div className="text-[10px] text-text-3 uppercase tracking-wide font-medium mb-2">

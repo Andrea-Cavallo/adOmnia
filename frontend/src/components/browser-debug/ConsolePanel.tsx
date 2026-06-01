@@ -42,6 +42,7 @@ export function ConsolePanel() {
   const [input, setInput] = useState('')
   const [commandHistory, setCommandHistory] = useState<string[]>([])
   const [historyIndex, setHistoryIndex] = useState(-1)
+  const [error, setError] = useState('')
 
   const logEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -54,9 +55,14 @@ export function ConsolePanel() {
   // Poll for console logs every 1s
   useEffect(() => {
     const poll = async () => {
-      const entries = await getConsoleLogs()
-      if (entries.length > 0) {
-        setLogs(entries)
+      try {
+        const entries = await getConsoleLogs()
+        setError('')
+        if (entries.length > 0) {
+          setLogs(entries)
+        }
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to read console logs')
       }
     }
     poll()
@@ -83,9 +89,14 @@ export function ConsolePanel() {
     setHistoryIndex(-1)
     setInput('')
 
-    const result = await evalJS(expression)
-    if (result) {
-      setLogs((prev) => [...prev, result])
+    try {
+      const result = await evalJS(expression)
+      setError('')
+      if (result) {
+        setLogs((prev) => [...prev, result])
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to evaluate JavaScript')
     }
   }, [input])
 
@@ -120,8 +131,13 @@ export function ConsolePanel() {
   )
 
   const handleClear = useCallback(async () => {
-    await clearConsoleLogs()
-    setLogs([])
+    try {
+      await clearConsoleLogs()
+      setLogs([])
+      setError('')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to clear console logs')
+    }
   }, [])
 
   return (
@@ -145,6 +161,11 @@ export function ConsolePanel() {
 
       {/* Log area */}
       <div className="flex-1 overflow-y-auto px-3 py-1 font-mono text-xs">
+        {error && (
+          <div className="mb-2 rounded border border-error/30 bg-error/10 px-3 py-2 text-[11px] text-error font-sans">
+            {error}
+          </div>
+        )}
         {logs.length === 0 && (
           <div className="flex items-center justify-center h-full text-text-3 text-xs">
             Console output will appear here

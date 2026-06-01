@@ -238,23 +238,34 @@ export function DebuggerPanel() {
   const [bpUrl, setBpUrl] = useState('')
   const [bpLine, setBpLine] = useState('')
   const [bpCondition, setBpCondition] = useState('')
+  const [error, setError] = useState('')
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const activeLineRef = useRef<HTMLDivElement | null>(null)
 
   const refreshBreakpoints = useCallback(async () => {
-    setBreakpoints(await getBreakpoints())
+    try {
+      setBreakpoints(await getBreakpoints())
+      setError('')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to refresh breakpoints')
+    }
   }, [])
 
   const refreshSources = useCallback(async () => {
-    const nextSources = await getSourceFiles()
-    setSources(nextSources)
-    setSelectedSource((current) => {
-      if (current && nextSources.some((source) => source.id === current.id)) {
-        return current
-      }
-      return nextSources[0] ?? null
-    })
+    try {
+      const nextSources = await getSourceFiles()
+      setSources(nextSources)
+      setSelectedSource((current) => {
+        if (current && nextSources.some((source) => source.id === current.id)) {
+          return current
+        }
+        return nextSources[0] ?? null
+      })
+      setError('')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to refresh sources')
+    }
   }, [])
 
   const hardReloadSources = useCallback(async () => {
@@ -265,7 +276,14 @@ export function DebuggerPanel() {
     setBreakpoints([])
     setPausedState(null)
 
-    await reloadPageNoCache()
+    try {
+      await reloadPageNoCache()
+      setError('')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to reload page')
+      setSourceLoading(false)
+      return
+    }
     window.setTimeout(() => {
       void refreshSources()
       void refreshBreakpoints()
@@ -279,9 +297,15 @@ export function DebuggerPanel() {
       return
     }
     setSourceLoading(true)
-    const content = await getSourceFileContent(source.id)
-    setSourceContent(content)
-    setSourceLoading(false)
+    try {
+      const content = await getSourceFileContent(source.id)
+      setSourceContent(content)
+      setError('')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load source content')
+    } finally {
+      setSourceLoading(false)
+    }
   }, [])
 
   useEffect(() => {
@@ -291,8 +315,13 @@ export function DebuggerPanel() {
     }
 
     const poll = async () => {
-      const state = await getPausedState()
-      setPausedState(state)
+      try {
+        const state = await getPausedState()
+        setPausedState(state)
+        setError('')
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to read debugger pause state')
+      }
     }
     poll()
     pollRef.current = setInterval(poll, 500)
@@ -335,19 +364,29 @@ export function DebuggerPanel() {
 
   const handleToggleDebugger = useCallback(async () => {
     if (enabled) {
-      await disableDebugger()
+      try {
+        await disableDebugger()
+        setError('')
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to disable debugger')
+      }
       setEnabled(false)
       setBreakpoints([])
       setSources([])
       setSelectedSource(null)
       setSourceContent('')
     } else {
-      await enableDebugger()
-      setEnabled(true)
-      setTimeout(() => {
-        void refreshSources()
-        void refreshBreakpoints()
-      }, 250)
+      try {
+        await enableDebugger()
+        setEnabled(true)
+        setError('')
+        setTimeout(() => {
+          void refreshSources()
+          void refreshBreakpoints()
+        }, 250)
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to enable debugger')
+      }
     }
   }, [enabled, refreshBreakpoints, refreshSources])
 
@@ -355,35 +394,65 @@ export function DebuggerPanel() {
     const displayLine = parseInt(bpLine, 10)
     if (!bpUrl || Number.isNaN(displayLine) || displayLine < 1) return
 
-    await setBreakpoint(bpUrl, displayLine - 1, bpCondition)
-    setBpUrl('')
-    setBpLine('')
-    setBpCondition('')
-    await refreshBreakpoints()
+    try {
+      await setBreakpoint(bpUrl, displayLine - 1, bpCondition)
+      setBpUrl('')
+      setBpLine('')
+      setBpCondition('')
+      await refreshBreakpoints()
+      setError('')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to add breakpoint')
+    }
   }, [bpUrl, bpLine, bpCondition, refreshBreakpoints])
 
   const handleRemoveBreakpoint = useCallback(
     async (id: string) => {
-      await removeBreakpoint(id)
-      await refreshBreakpoints()
+      try {
+        await removeBreakpoint(id)
+        await refreshBreakpoints()
+        setError('')
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to remove breakpoint')
+      }
     },
     [refreshBreakpoints]
   )
 
   const handleResume = useCallback(async () => {
-    await resume()
+    try {
+      await resume()
+      setError('')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to resume debugger')
+    }
   }, [])
 
   const handleStepOver = useCallback(async () => {
-    await stepOver()
+    try {
+      await stepOver()
+      setError('')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to step over')
+    }
   }, [])
 
   const handleStepInto = useCallback(async () => {
-    await stepInto()
+    try {
+      await stepInto()
+      setError('')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to step into')
+    }
   }, [])
 
   const handleStepOut = useCallback(async () => {
-    await stepOut()
+    try {
+      await stepOut()
+      setError('')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to step out')
+    }
   }, [])
 
   const handleToggleLineBreakpoint = useCallback(
@@ -395,16 +464,21 @@ export function DebuggerPanel() {
           ((selectedSource.scriptId && bp.scriptId === selectedSource.scriptId) ||
             (selectedSource.url && bp.scriptUrl === selectedSource.url))
       )
-      if (existing) {
-        await removeBreakpoint(existing.id)
-      } else if (selectedSource.scriptId) {
-        await setBreakpointByScriptID(selectedSource.scriptId, lineIndex, 0, '')
-      } else if (selectedSource.url) {
-        await setBreakpoint(selectedSource.url, lineIndex, '')
-      } else {
-        return
+      try {
+        if (existing) {
+          await removeBreakpoint(existing.id)
+        } else if (selectedSource.scriptId) {
+          await setBreakpointByScriptID(selectedSource.scriptId, lineIndex, 0, '')
+        } else if (selectedSource.url) {
+          await setBreakpoint(selectedSource.url, lineIndex, '')
+        } else {
+          return
+        }
+        await refreshBreakpoints()
+        setError('')
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to toggle breakpoint')
       }
-      await refreshBreakpoints()
     },
     [breakpoints, refreshBreakpoints, selectedSource]
   )
@@ -506,7 +580,12 @@ export function DebuggerPanel() {
         )}
       </div>
 
-      <div className="flex flex-1 min-h-0">
+      <div className="relative flex flex-1 min-h-0">
+        {error && (
+          <div className="absolute right-4 top-12 z-10 max-w-md rounded border border-error/30 bg-error/10 px-3 py-2 text-xs text-error shadow-lg">
+            {error}
+          </div>
+        )}
         <aside className="w-[280px] flex-shrink-0 border-r border-border-1 bg-surface-0 flex flex-col min-h-0">
           <div className="h-8 px-2 border-b border-border-1 flex items-center gap-2">
             <FileCode2 size={12} className="text-text-3" />
