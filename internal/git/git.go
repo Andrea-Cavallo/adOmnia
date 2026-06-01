@@ -61,17 +61,37 @@ func Init(cfg Config) error {
 	if cfg.RemoteURL != "" {
 		existing, _ := runGit(cfg.RepoPath, "remote", "get-url", "origin")
 		if existing == "" {
-			_, _ = runGit(cfg.RepoPath, "remote", "add", "origin", cfg.RemoteURL)
+			if _, err := runGit(cfg.RepoPath, "remote", "add", "origin", cfg.RemoteURL); err != nil {
+				return fmt.Errorf("set remote origin: %w", err)
+			}
 		} else if existing != cfg.RemoteURL {
-			_, _ = runGit(cfg.RepoPath, "remote", "set-url", "origin", cfg.RemoteURL)
+			if _, err := runGit(cfg.RepoPath, "remote", "set-url", "origin", cfg.RemoteURL); err != nil {
+				return fmt.Errorf("update remote origin: %w", err)
+			}
 		}
 	}
 	return nil
 }
 
 func GetStatus(repoPath string) (Status, error) {
-	branch, _ := runGit(repoPath, "rev-parse", "--abbrev-ref", "HEAD")
-	porcelain, _ := runGit(repoPath, "status", "--porcelain")
+	if repoPath == "" {
+		return Status{}, fmt.Errorf("repository path is empty")
+	}
+	// Fail clearly when the path is not a git working tree, instead of
+	// returning an empty-but-valid-looking status the UI would misread.
+	if _, err := runGit(repoPath, "rev-parse", "--is-inside-work-tree"); err != nil {
+		return Status{}, fmt.Errorf("not a git repository: %s", repoPath)
+	}
+
+	branch, err := runGit(repoPath, "rev-parse", "--abbrev-ref", "HEAD")
+	if err != nil {
+		// A freshly-initialized repo with no commits has no HEAD yet.
+		branch = ""
+	}
+	porcelain, err := runGit(repoPath, "status", "--porcelain")
+	if err != nil {
+		return Status{}, err
+	}
 
 	var modified, untracked []string
 	for _, line := range strings.Split(porcelain, "\n") {

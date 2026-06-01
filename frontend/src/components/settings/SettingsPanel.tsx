@@ -83,15 +83,18 @@ type SectionId =
 // --- Keyboard shortcuts data ---
 
 const shortcutsList = [
+  { win: 'Ctrl+K', mac: 'Cmd+K', labelKey: 'commandPalette' },
   { win: 'Ctrl+Enter', mac: 'Cmd+Enter', labelKey: 'sendRequest' },
   { win: 'Ctrl+N', mac: 'Cmd+N', labelKey: 'newTab' },
   { win: 'Ctrl+W', mac: 'Cmd+W', labelKey: 'closeTab' },
+  { win: 'Ctrl+D', mac: 'Cmd+D', labelKey: 'duplicateTab' },
   { win: 'Ctrl+S', mac: 'Cmd+S', labelKey: 'saveTab' },
   { win: 'Ctrl+L', mac: 'Cmd+L', labelKey: 'focusUrlBar' },
   { win: 'Ctrl+B', mac: 'Cmd+B', labelKey: 'toggleSidebar' },
   { win: 'Ctrl+,', mac: 'Cmd+,', labelKey: 'openSettings' },
   { win: 'Ctrl+1', mac: 'Cmd+1', labelKey: 'openCollections' },
-  { win: 'Ctrl+Tab', mac: 'Cmd+Option+Right', labelKey: 'nextTab' },
+  { win: 'Ctrl+Shift+]', mac: 'Cmd+Shift+]', labelKey: 'nextTab' },
+  { win: 'Ctrl+Shift+[', mac: 'Cmd+Shift+[', labelKey: 'prevTab' },
   { win: 'Ctrl+Shift+D', mac: 'Cmd+Shift+D', labelKey: 'devLogs' },
 ] as const
 

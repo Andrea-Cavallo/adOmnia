@@ -1,8 +1,10 @@
 import { useState } from 'react'
-import { Sparkles, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react'
+import { Sparkles, CheckCircle, AlertCircle, RefreshCw, Lock, ShieldCheck } from 'lucide-react'
 import { useSettingsStore } from '@/stores/settings'
 import * as AIEngine from '@/wailsjs/go/main/AIEngine'
 import { Select, TextInput, PasswordInput, Toggle } from './SettingsFields'
+import { isVaultRef, encryptToVaultRef } from '@/lib/vaultRefs'
+import { buildAIConfig } from '@/lib/aiEngine'
 
 const PROVIDERS = [
   { value: 'anthropic', label: 'Anthropic' },
@@ -23,6 +25,11 @@ export function AISettings() {
   const updateAi = useSettingsStore((s) => s.updateAi)
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null)
+  const [vaultPassphrase, setVaultPassphrase] = useState('')
+  const [securing, setSecuring] = useState(false)
+  const [secureError, setSecureError] = useState('')
+
+  const keyIsSecured = isVaultRef(ai.apiKey)
 
   const handleProviderChange = (provider: string) => {
     updateAi({
@@ -36,13 +43,7 @@ export function AISettings() {
     setTesting(true)
     setTestResult(null)
     try {
-      const config = JSON.stringify({
-        provider: ai.provider,
-        model: ai.model,
-        api_key: ai.apiKey,
-        base_url: ai.baseURL,
-      })
-      const msg = await AIEngine.TestConnection(config)
+      const msg = await AIEngine.TestConnection(await buildAIConfig())
       setTestResult({ ok: true, msg })
     } catch (e) {
       setTestResult({ ok: false, msg: String(e) })
@@ -52,13 +53,34 @@ export function AISettings() {
   }
 
   const handleSave = async () => {
-    const config = JSON.stringify({
-      provider: ai.provider,
-      model: ai.model,
-      api_key: ai.apiKey,
-      base_url: ai.baseURL,
-    })
-    await AIEngine.Configure(config).catch(() => { /* non-fatal */ })
+    try {
+      await AIEngine.Configure(await buildAIConfig())
+      setTestResult({ ok: true, msg: 'AI engine configured.' })
+    } catch (e) {
+      setTestResult({ ok: false, msg: String(e) })
+    }
+  }
+
+  // Encrypt the currently-entered plaintext key with the vault passphrase and
+  // replace it in settings with a vault: reference, so it is never stored
+  // in plaintext localStorage.
+  const handleSecureKey = async () => {
+    setSecureError('')
+    setSecuring(true)
+    try {
+      const ref = await encryptToVaultRef(ai.apiKey, vaultPassphrase)
+      updateAi({ apiKey: ref })
+      setVaultPassphrase('')
+    } catch (e) {
+      setSecureError(String(e))
+    } finally {
+      setSecuring(false)
+    }
+  }
+
+  const handleReplaceKey = () => {
+    updateAi({ apiKey: '' })
+    setTestResult(null)
   }
 
   const needsApiKey = ai.provider !== 'ollama'
@@ -95,14 +117,64 @@ export function AISettings() {
           placeholder={DEFAULT_MODELS[ai.provider] ?? 'model-name'}
         />
 
-        {needsApiKey && (
-          <PasswordInput
-            label="API Key"
-            desc="Your API key — stored locally, never sent anywhere except the provider"
-            value={ai.apiKey}
-            onChange={v => updateAi({ apiKey: v })}
-            placeholder="sk-…"
-          />
+        {needsApiKey && keyIsSecured && (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between gap-2 px-3 py-2 rounded border border-green-500/30 bg-green-500/10">
+              <div className="flex items-center gap-2 text-xs text-green-400">
+                <ShieldCheck size={14} className="flex-shrink-0" />
+                <span>API key is encrypted in the Vault. Unlock the Vault to use AI features.</span>
+              </div>
+              <button
+                onClick={handleReplaceKey}
+                className="px-2.5 py-1 text-[11px] rounded border border-border-1 text-text-2 hover:text-text-1 hover:bg-surface-3 transition-colors flex-shrink-0"
+              >
+                Replace
+              </button>
+            </div>
+          </div>
+        )}
+
+        {needsApiKey && !keyIsSecured && (
+          <div className="flex flex-col gap-3">
+            <PasswordInput
+              label="API Key"
+              desc="Encrypt it into the Vault below — avoid leaving it in plaintext settings."
+              value={ai.apiKey}
+              onChange={v => updateAi({ apiKey: v })}
+              placeholder="sk-…"
+            />
+            {ai.apiKey.trim() !== '' && (
+              <div className="flex flex-col gap-2 px-3 py-3 rounded border border-border-1 bg-surface-2">
+                <div className="flex items-center gap-2 text-[11px] text-text-2">
+                  <Lock size={12} className="text-accent flex-shrink-0" />
+                  <span>Secure this key in the Vault (stored encrypted as a <code className="text-accent">vault:</code> reference)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="password"
+                    value={vaultPassphrase}
+                    onChange={e => setVaultPassphrase(e.target.value)}
+                    placeholder="Vault passphrase…"
+                    className="flex-1 h-7 px-2 bg-surface-0 border border-border-1 rounded text-xs text-text-1 placeholder:text-text-4 outline-none focus:border-accent"
+                  />
+                  <button
+                    onClick={handleSecureKey}
+                    disabled={securing || !vaultPassphrase}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white rounded text-xs hover:bg-accent-light disabled:opacity-40 transition-colors flex-shrink-0"
+                  >
+                    {securing ? <RefreshCw size={12} className="animate-spin" /> : <Lock size={12} />}
+                    Secure in Vault
+                  </button>
+                </div>
+                {secureError && (
+                  <div className="flex items-start gap-1.5 text-[11px] text-red-400">
+                    <AlertCircle size={11} className="flex-shrink-0 mt-0.5" />
+                    <span>{secureError}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         )}
 
         {needsBaseURL && (

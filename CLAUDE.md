@@ -59,8 +59,8 @@ Use these files as the fastest way to understand adOmnia before changing behavio
 |------|---------|
 | `docs/SOUL.md` | Product soul, UX philosophy, visual/product expectations, and long-term direction. Read this for any UX, theme, workflow, or product-quality decision. |
 | `docs/funzionalita.md` | Complete feature inventory. Read this when you need to quickly understand all project capabilities or avoid duplicating an existing tool. |
-| `docs/adomnia-roadmap-checkbox.md` | Roadmap and completion status across product areas. |
-| `docs/TODO.md` | Current open issues, bugs, and active work queue. |
+| `docs/ROADMAP.md` | Roadmap and completion status across product areas. |
+| `docs/ISSUES.md` | Current open issues, bugs, and active work queue. |
 | `README.md` | Public product positioning and quick-start overview. |
 | `AGENTS.md` | Practical operating guide for AI agents in this repo. |
 
@@ -140,9 +140,9 @@ adomnia/
 ├── docs/                      # Documentation
 │   ├── BUILD.md
 │   ├── SOUL.md
-│   ├── TODO.md
+│   ├── ISSUES.md
 │   ├── funzionalita.md
-│   └── adomnia-roadmap-checkbox.md
+│   └── ROADMAP.md
 ├── AGENTS.md                  # Detailed agent guidance (architecture, patterns)
 ├── CLAUDE.md                  # This file
 ├── README.md                  # User-facing overview
@@ -425,10 +425,9 @@ Update docs when behavior changes:
 
 - `README.md` for user-visible features
 - `docs/BUILD.md` for build/distribution changes
-- `docs/CHANGELOG.md` for release-worthy changes
-- `docs/SECURITY.md` for security posture changes
-- `docs/TAILWIND.md` when completing or parking CSS/theming decisions
-- `docs/TODO.md` and `docs/adomnia-roadmap-checkbox.md` when feature status changes
+- `docs/RELEASE.md` for release-worthy changes
+- `.github/SECURITY.md` for security posture changes
+- `docs/ISSUES.md` and `docs/ROADMAP.md` when feature status changes
 - `docs/SOUL.md` when product vision or UX philosophy evolves
 - `AGENTS.md` for detailed architecture/pattern guidance
 
@@ -479,9 +478,12 @@ Four files live at the root — everything else is under `docs/`:
 |------|---------|
 | `docs/SOUL.md` | Product philosophy, UX principles, long-term vision |
 | `docs/funzionalita.md` | Fast complete catalog of product features and modules |
-| `docs/adomnia-roadmap-checkbox.md` | Roadmap/checklist of completion by product area |
-| `docs/TODO.md` | Open bugs and missing features — the active work queue |
-| `docs/REFACTORING.md` | Go backend refactoring plan (phases 3–6 still open) |
+| `docs/ROADMAP.md` | Roadmap/checklist of completion by product area |
+| `docs/ISSUES.md` | Open bugs and missing features — the active work queue |
 | `docs/BUILD.md` | Build instructions for all platforms |
-| `docs/CHANGELOG.md` | Release history |
+| `docs/INSTALL.md` | End-user installation guide |
+| `docs/RELEASE.md` | Release notes and history |
+| `docs/FAQ.md` | Frequently asked questions |
+| `docs/TROUBLESHOOTING.md` | Common problems and fixes |
+| `docs/ARCHITECTURE.md` | High-level architecture overview |
 | `.github/SECURITY.md` | Security policy (picked up by GitHub's Security tab) |

@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
-import { X, Plus, Trash2, Upload, FileJson, Check, Eye, EyeOff } from 'lucide-react'
+import { X, Plus, Trash2, Upload, FileJson, Check, Eye, EyeOff, ShieldCheck } from 'lucide-react'
 import type { Environment, EnvVariable } from '@/lib/types'
 import { uid, blankEnvVar } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { isVaultRef } from '@/lib/vaultRefs'
 
 interface EnvModalProps {
   environments: Environment[]
@@ -309,7 +310,8 @@ export function EnvModal({
                       <span />
                     </div>
                     {selectedEnv.variables.map((v) => {
-                      const isSecret = v.type === 'secret'
+                      const vaultRef = isVaultRef(v.value)
+                      const isSecret = v.type === 'secret' || vaultRef
                       return (
                         <div key={v.id} className="grid grid-cols-[20px_1fr_2fr_24px_20px] gap-2 items-center group">
                           <input
@@ -330,9 +332,18 @@ export function EnvModal({
                               value={v.value}
                               onChange={(e) => handleUpdateVar(v.id, { value: e.target.value })}
                               type={isSecret ? 'password' : 'text'}
-                              placeholder="Value"
-                              className="h-6 px-2 pr-6 bg-surface-2 border border-border-2 rounded text-xs text-text-1 font-mono placeholder:text-text-4 focus:border-accent outline-none w-full"
+                              placeholder="Value or paste a vault: reference"
+                              className={cn(
+                                'h-6 px-2 bg-surface-2 border rounded text-xs text-text-1 font-mono placeholder:text-text-4 focus:border-accent outline-none w-full',
+                                vaultRef ? 'pl-6 pr-2 border-accent/40' : 'pr-6 border-border-2'
+                              )}
                             />
+                            {vaultRef && (
+                              <ShieldCheck
+                                size={11}
+                                className="absolute left-2 top-1/2 -translate-y-1/2 text-accent pointer-events-none"
+                              />
+                            )}
                           </div>
                           <button
                             onClick={() => handleUpdateVar(v.id, { type: isSecret ? 'text' : 'secret' })}

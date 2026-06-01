@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { ArrowRight, Check, Clock3, Copy, History, Search, Trash2 } from 'lucide-react'
+import { confirm } from '@/lib/confirmDialog'
 import { useAppStore } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
 import type { RequestHistoryEntry } from '@/lib/types'
@@ -70,8 +71,14 @@ export function RequestHistoryPanel() {
     window.setTimeout(() => setCopiedId((id) => id === entry.id ? null : id), 1500)
   }
 
-  const clearAll = () => {
-    if (window.confirm('Clear every saved response from Request History?')) {
+  const clearAll = async () => {
+    const ok = await confirm({
+      title: 'Clear Request History',
+      message: 'Clear every saved response from Request History? This cannot be undone.',
+      confirmLabel: 'Clear history',
+      variant: 'danger',
+    })
+    if (ok) {
       clearResponseHistory()
       setSelectedId(null)
     }

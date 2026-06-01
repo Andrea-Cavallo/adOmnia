@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { AlertTriangle, Bookmark, CheckCircle2, Clock, Database, Download, Play, Plus, RefreshCw, Shield, Trash2, X } from 'lucide-react'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
+import { confirm } from '@/lib/confirmDialog'
 import { StorageGet, StoragePut } from '@/wailsjs/go/main/App'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { useAppStore } from '@/stores/app'
@@ -295,9 +296,14 @@ export function DatabasePanel() {
     setError('')
     setMessage('')
     if (dangerous && !confirmed) {
-      const ok = window.confirm(isMongo
-        ? 'MongoDB write operation detected. updateMany/deleteMany require explicit confirmation, and writes change local or remote data. Continue?'
-        : 'Dangerous query detected. DROP/TRUNCATE or DELETE/UPDATE without WHERE requires confirmation. Continue?')
+      const ok = await confirm({
+        title: isMongo ? 'Confirm write operation' : 'Confirm dangerous query',
+        message: isMongo
+          ? 'MongoDB write operation detected. updateMany/deleteMany change local or remote data. Continue?'
+          : 'Dangerous query detected. DROP/TRUNCATE or DELETE/UPDATE without WHERE changes data. Continue?',
+        confirmLabel: 'Run query',
+        variant: 'danger',
+      })
       if (!ok) return
       confirmed = true
     }

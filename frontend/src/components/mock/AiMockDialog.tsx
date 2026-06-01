@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Sparkles, X, RefreshCw, Download, AlertCircle } from 'lucide-react'
 import * as AIEngine from '@/wailsjs/go/main/AIEngine'
+import { ensureAIConfigured } from '@/lib/aiEngine'
 import { uid } from '@/lib/types'
 
 interface GeneratedEndpoint {
@@ -78,6 +79,9 @@ export function AiMockDialog({ onClose, onImport }: Props) {
     setGenerating(true)
     setGenerated([])
     try {
+      // Make sure the engine reflects current settings (incl. a vault-secured
+      // key) even if the user has not re-saved AI settings this session.
+      await ensureAIConfigured()
       const raw = await AIEngine.GenerateMockEndpoints(inputType, userInput)
       const parsed: GeneratedEndpoint[] = JSON.parse(raw)
       setGenerated(parsed)
