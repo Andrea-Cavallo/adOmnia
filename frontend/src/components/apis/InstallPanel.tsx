@@ -8,6 +8,8 @@ import { uid, type Collection, type RequestItem, type HttpMethod, blankBody } fr
 import { useAppStore } from '@/stores/app'
 import { useCollectionsStore } from '@/stores/collections'
 
+const PUBLIC_APIS_SOURCE_URL = 'https://github.com/public-apis/public-apis'
+
 function installedApiIds() {
   try {
     return new Set(JSON.parse(localStorage.getItem('adomnia.apis.installed') ?? '[]') as string[])
@@ -26,7 +28,7 @@ function apiToCollection(api: ApiEntry): Collection {
     id: uid(),
     type: 'request',
     name: api.name,
-    description: api.description,
+    description: api.source ? `${api.description}\n\nSource: ${api.source}` : api.description,
     method,
     url: apiUrl || '',
     params: [],
@@ -194,6 +196,26 @@ export function InstallPanel() {
           </button>
         </header>
 
+        <div className="px-6 py-3 border-b border-border-1 bg-surface-1/40">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <div className="text-xs font-medium text-text-1">Installable public API starters</div>
+              <p className="mt-0.5 text-[11px] text-text-3">
+                Curated no-auth/free REST endpoints inspired by public-apis, ready to install as adOmnia requests.
+              </p>
+            </div>
+            <a
+              href={PUBLIC_APIS_SOURCE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex flex-shrink-0 items-center gap-1.5 px-2.5 py-1.5 text-[11px] text-text-2 hover:text-text-1 border border-border-1 bg-surface-0 hover:bg-surface-2 rounded-md transition-colors"
+            >
+              <ExternalLink size={12} />
+              Source list
+            </a>
+          </div>
+        </div>
+
         {/* API Grid */}
         <div className="flex-1 overflow-y-auto p-5">
           {loading ? (
@@ -230,6 +252,7 @@ export function InstallPanel() {
                 {allApis.map((api: ApiEntry) => {
                   const isInstalled = installedIds.has(api.slug)
                   const docsUrl = api.links?.find((l: { name: string; url: string }) => l.name?.toLowerCase().includes('docs') || l.name?.toLowerCase().includes('website'))?.url
+                  const sourceUrl = api.links?.find((l: { name: string; url: string }) => l.name?.toLowerCase().includes('source'))?.url
 
                   return (
                     <div
@@ -257,6 +280,11 @@ export function InstallPanel() {
                                 Installed
                               </span>
                             )}
+                            {api.source && (
+                              <span className="flex-shrink-0 px-1.5 py-0.5 text-[10px] font-medium bg-accent/10 text-accent rounded">
+                                PUBLIC
+                              </span>
+                            )}
                           </div>
                           <p className="text-xs text-text-3 line-clamp-2 mb-2">{api.description}</p>
                           <div className="flex items-center gap-2 flex-wrap">
@@ -268,6 +296,11 @@ export function InstallPanel() {
                             {api.type && (
                               <span className="px-1.5 py-0.5 text-[10px] font-medium bg-accent/10 text-accent rounded uppercase">
                                 {api.type}
+                              </span>
+                            )}
+                            {api.source && (
+                              <span className="px-1.5 py-0.5 text-[10px] font-medium bg-surface-2 text-text-3 rounded">
+                                {api.source}
                               </span>
                             )}
                           </div>
@@ -286,6 +319,18 @@ export function InstallPanel() {
                             className="flex items-center justify-center w-6 h-6 rounded text-text-3 hover:text-text-1 hover:bg-surface-2 transition-colors"
                           >
                             <ExternalLink size={12} />
+                          </a>
+                        )}
+                        {sourceUrl && sourceUrl !== docsUrl && (
+                          <a
+                            href={sourceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            title="Open source list"
+                            className="flex items-center justify-center w-6 h-6 rounded text-text-3 hover:text-text-1 hover:bg-surface-2 transition-colors"
+                          >
+                            <Globe size={12} />
                           </a>
                         )}
                         <button

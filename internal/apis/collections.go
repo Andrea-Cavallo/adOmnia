@@ -22,6 +22,7 @@ type ApiEntry struct {
 	Categories  []string `json:"categories" yaml:"categories"`
 	Type        string   `json:"type" yaml:"type"`
 	IsFree      bool     `json:"isFree" yaml:"is_free"`
+	Source      string   `json:"source,omitempty" yaml:"source"`
 	Links       []struct {
 		Name string `json:"name" yaml:"name"`
 		URL  string `json:"url" yaml:"url"`
@@ -38,9 +39,9 @@ type ApiCategory struct {
 
 // ApiCatalog holds the full catalog with categories and emoji map.
 type ApiCatalog struct {
-	Categories []ApiCategory       `json:"categories"`
-	EmojiMap   map[string]string   `json:"emojiMap"`
-	Total      int                 `json:"total"`
+	Categories []ApiCategory     `json:"categories"`
+	EmojiMap   map[string]string `json:"emojiMap"`
+	Total      int               `json:"total"`
 }
 
 // CategoryTOC is the ordered list of categories matching the README Table of Contents.
@@ -125,82 +126,82 @@ var CategoryTOC = []string{
 
 // DefaultCategoryEmojis maps categories to emoji icons.
 var DefaultCategoryEmojis = map[string]string{
-	"Adult":                           "🍓",
-	"AI & ML":                         "🤖",
-	"Analytics":                       "📈",
-	"Animals":                         "🐈",
-	"Art & Design":                    "🎨",
+	"Adult":                            "🍓",
+	"AI & ML":                          "🤖",
+	"Analytics":                        "📈",
+	"Animals":                          "🐈",
+	"Art & Design":                     "🎨",
 	"Authentication & User Management": "👥",
-	"Bar & QR Codes":                  "🏪",
-	"Blockchain & Cryptocurrencies":   "📒️",
-	"Bookmarks":                       "📑",
-	"Books":                           "📚",
-	"Bots":                            "📝",
-	"Business":                        "👔",
-	"Calendar & Time":                 "📅",
-	"Captcha":                         "🔒",
-	"Casino & Gambling":               "🎰",
-	"Chats & Messaging":               "💬",
-	"Collaboration":                   "👨‍👩‍👦‍👦",
-	"Comics & Anime":                  "🦸",
-	"Commerce":                        "💰",
-	"Content & Dictionaries":          "📖",
-	"CRM":                             "🤝",
-	"Databases":                       "🗄️",
-	"Development":                     "👨‍💻",
-	"Documents & Productivity":        "📋",
-	"Education":                       "🎓",
-	"Email & SMS":                     "📨",
-	"Entertainment":                   "🍿",
-	"Environment & Nature":            "🌲",
-	"Events":                          "🏟️",
-	"Files & Storage":                 "💾",
-	"Finance & Economics":             "🏦",
-	"Food & Drinks":                   "🍹",
-	"Forms & Surveys":                 "📝",
-	"Fun":                             "🤪",
-	"Games":                           "🎮",
-	"Government":                      "🏛️",
-	"Hardware":                        "⚙️",
-	"Health":                          "💊",
-	"Images & Photography":            "📸",
-	"IoT & Home Automation":           "🏠",
-	"Jobs":                            "🛠️",
-	"Maps & Geo":                      "📌",
-	"Marketing & SEO":                 "💰",
-	"Music & Audio":                   "🎸",
-	"News & Feeds":                    "📰",
-	"Open Source":                     "🔓",
-	"Payments":                        "💳",
-	"Point of Interest":               "🍺",
-	"Post & Logistics":                "📬",
-	"Project Management":              "🚧",
-	"Random":                          "🎲",
-	"Real Estate":                     "🏗️",
-	"Recognition":                     "👁️",
-	"Science & Math":                  "🔬",
-	"Scrapers & Data Mining":          "🕸️",
-	"Search":                          "🔎",
-	"Security":                        "🛡️",
-	"Social":                          "👥",
-	"Space":                           "🚀",
-	"Sport & Fitness":                 "⚾",
-	"Statistics & Data":               "🗃️",
-	"Testing":                         "🐞",
-	"Text Analysis & Tools":           "📖",
-	"Translation":                     "㊗️",
-	"Transportation":                  "🚇",
-	"Travel":                          "✈️",
-	"URLs":                            "🔗",
-	"Validation & Verification":       "✅",
-	"Vehicles":                        "🚗",
-	"Video & Media":                   "🎥",
-	"Virtual & Augmented Reality":     "📱",
-	"Visualizations":                  "📊",
-	"Voice":                           "🎙️",
-	"Weather":                         "☔",
-	"Wiki":                            "📗",
-	"Other":                           "✨",
+	"Bar & QR Codes":                   "🏪",
+	"Blockchain & Cryptocurrencies":    "📒️",
+	"Bookmarks":                        "📑",
+	"Books":                            "📚",
+	"Bots":                             "📝",
+	"Business":                         "👔",
+	"Calendar & Time":                  "📅",
+	"Captcha":                          "🔒",
+	"Casino & Gambling":                "🎰",
+	"Chats & Messaging":                "💬",
+	"Collaboration":                    "👨‍👩‍👦‍👦",
+	"Comics & Anime":                   "🦸",
+	"Commerce":                         "💰",
+	"Content & Dictionaries":           "📖",
+	"CRM":                              "🤝",
+	"Databases":                        "🗄️",
+	"Development":                      "👨‍💻",
+	"Documents & Productivity":         "📋",
+	"Education":                        "🎓",
+	"Email & SMS":                      "📨",
+	"Entertainment":                    "🍿",
+	"Environment & Nature":             "🌲",
+	"Events":                           "🏟️",
+	"Files & Storage":                  "💾",
+	"Finance & Economics":              "🏦",
+	"Food & Drinks":                    "🍹",
+	"Forms & Surveys":                  "📝",
+	"Fun":                              "🤪",
+	"Games":                            "🎮",
+	"Government":                       "🏛️",
+	"Hardware":                         "⚙️",
+	"Health":                           "💊",
+	"Images & Photography":             "📸",
+	"IoT & Home Automation":            "🏠",
+	"Jobs":                             "🛠️",
+	"Maps & Geo":                       "📌",
+	"Marketing & SEO":                  "💰",
+	"Music & Audio":                    "🎸",
+	"News & Feeds":                     "📰",
+	"Open Source":                      "🔓",
+	"Payments":                         "💳",
+	"Point of Interest":                "🍺",
+	"Post & Logistics":                 "📬",
+	"Project Management":               "🚧",
+	"Random":                           "🎲",
+	"Real Estate":                      "🏗️",
+	"Recognition":                      "👁️",
+	"Science & Math":                   "🔬",
+	"Scrapers & Data Mining":           "🕸️",
+	"Search":                           "🔎",
+	"Security":                         "🛡️",
+	"Social":                           "👥",
+	"Space":                            "🚀",
+	"Sport & Fitness":                  "⚾",
+	"Statistics & Data":                "🗃️",
+	"Testing":                          "🐞",
+	"Text Analysis & Tools":            "📖",
+	"Translation":                      "㊗️",
+	"Transportation":                   "🚇",
+	"Travel":                           "✈️",
+	"URLs":                             "🔗",
+	"Validation & Verification":        "✅",
+	"Vehicles":                         "🚗",
+	"Video & Media":                    "🎥",
+	"Virtual & Augmented Reality":      "📱",
+	"Visualizations":                   "📊",
+	"Voice":                            "🎙️",
+	"Weather":                          "☔",
+	"Wiki":                             "📗",
+	"Other":                            "✨",
 }
 
 // CollectionStore provides Wails-bound methods for browsing API collections.
@@ -312,7 +313,9 @@ func (cs *CollectionStore) SearchApis(query string) ([]ApiEntry, error) {
 	for _, entry := range entries {
 		if strings.Contains(strings.ToLower(entry.Name), q) ||
 			strings.Contains(strings.ToLower(entry.Description), q) ||
-			strings.Contains(strings.ToLower(entry.Slug), q) {
+			strings.Contains(strings.ToLower(entry.Slug), q) ||
+			strings.Contains(strings.ToLower(entry.Source), q) ||
+			containsFold(entry.Categories, q) {
 			results = append(results, entry)
 		}
 	}
@@ -456,6 +459,15 @@ func (cs *CollectionStore) buildCatalog(entries []ApiEntry) *ApiCatalog {
 func isInTOC(cat string) bool {
 	for _, c := range CategoryTOC {
 		if c == cat {
+			return true
+		}
+	}
+	return false
+}
+
+func containsFold(values []string, query string) bool {
+	for _, value := range values {
+		if strings.Contains(strings.ToLower(value), query) {
 			return true
 		}
 	}

@@ -18,6 +18,7 @@ export interface ApiEntry {
   categories: string[]
   type: string
   isFree: boolean
+  source?: string
   links?: ApiLink[]
 }
 

@@ -59,6 +59,7 @@ check rest apis:
 | Area | What you get |
 |---|---|
 | **API Workspace** | HTTP client (all methods), collections, environments, `{{variable}}` substitution, OAuth2 PKCE, AWS Signature v4, Digest, cURL import, OpenAPI import, pre/post scripts, assertions, code generation (13 languages), response history |
+| **API Catalog** | Installable public REST API starters, including curated no-auth/free endpoints inspired by `public-apis/public-apis`, imported directly into local adOmnia collections |
 | **Collection Runner & Testing** | Test runner with iterations/delay/retry/CSV datasets, assertion editor (JSONPath, XPath, schema), Mermaid-generated API flows, test data studio (fake data generator) |
 | **Protocols** | SOAP/WSDL Studio (1.1 & 1.2, WS-Security), gRPC (server reflection, unary + streaming), WebSocket client + mock server, SSE client, **MCP Client** (AI tool testing, stdio + HTTP transport) |
 | **Brokers** | Kafka (produce/consume/bulk/load test), RabbitMQ, MQTT, Redis Pub/Sub, NATS — shared message log, persistent connection profiles |
