@@ -43,3 +43,41 @@ export async function resolveVaultReferences(vars: Record<string, string>): Prom
   }))
   return Object.fromEntries(entries)
 }
+
+/**
+ * Resolve a single value that may be a `vault:` reference to its plaintext.
+ * Plain (non-reference) values are returned unchanged. Requires the Vault to be
+ * unlocked when the value is a reference.
+ */
+export async function resolveSecret(value: string): Promise<string> {
+  if (!isVaultRef(value)) return value
+  return decryptVaultRef(value)
+}
+
+/**
+ * Encrypt a plaintext secret with the given Vault passphrase and return it as a
+ * `vault:<ciphertext>` reference suitable for storing at rest (settings, env).
+ * The plaintext is never persisted by the caller.
+ */
+export async function encryptToVaultRef(plaintext: string, passphrase: string): Promise<string> {
+  if (!plaintext) throw new Error('Nothing to encrypt')
+  if (!passphrase) throw new Error('Vault passphrase is required to encrypt the secret')
+  let port = 0
+  try {
+    port = await GetServerPort()
+  } catch {
+    port = 0
+  }
+  const url = serverUrl(port || null, '/vault/encrypt')
+  if (!url) throw new Error('Vault backend is not available')
+  const res = await sidecarFetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ plaintext, passphrase }),
+  })
+  const text = await res.text()
+  if (!res.ok) throw new Error(text || res.statusText)
+  const parsed = text ? JSON.parse(text) as { ciphertext?: string } : {}
+  if (!parsed.ciphertext) throw new Error('Vault returned no ciphertext')
+  return `${VAULT_REF_PREFIX}${parsed.ciphertext}`
+}

@@ -1000,9 +1000,9 @@ func (tm *ThemeManager) GetExtendedBuiltinThemes() []Theme {
 				"json-number":    "#8B0000",
 				"json-bool":      "#6600AA",
 				"json-null":      "#444444",
-				"json-bracket-1": "#000000",
-				"json-bracket-2": "#000000",
-				"json-bracket-3": "#000000",
+				"json-bracket-1": "#000080",
+				"json-bracket-2": "#8B0000",
+				"json-bracket-3": "#006464",
 			},
 			Fonts: ThemeFonts{
 				Sans:  "'MS Sans Serif', 'Arial', sans-serif",

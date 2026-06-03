@@ -7,6 +7,7 @@ import { CommandPalette } from '@/components/layout/CommandPalette'
 import { StatusBar } from '@/components/layout/StatusBar'
 import { ThemeProvider } from '@/components/themes/ThemeProvider'
 import { DevLogOverlay } from '@/components/ui/DevLogOverlay'
+import { ConfirmDialogHost } from '@/components/ui/ConfirmDialogHost'
 import { StorageQuotaBanner } from '@/components/layout/StorageQuotaBanner'
 import { ErrorBoundary } from '@/components/layout/ErrorBoundary'
 import { DropOverlay } from '@/components/layout/DropOverlay'
@@ -116,6 +117,7 @@ function App() {
           {dropFeedback && <DropToast feedback={dropFeedback} />}
         </div>
         <CommandPalette open={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} />
+        <ConfirmDialogHost />
         {import.meta.env.DEV && <DevLogOverlay visible={devLogVisible} onClose={toggleDevTools} />}
       </ThemeProvider>
     </ErrorBoundary>

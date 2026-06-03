@@ -64,6 +64,7 @@ build/*/dist/
 dist/
 release/
 
+*.exe
 *.exe~
 *.dll
 *.so

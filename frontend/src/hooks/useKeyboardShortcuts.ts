@@ -25,6 +25,24 @@ export function useKeyboardShortcuts({ setCommandPaletteOpen }: KeyboardShortcut
       if (mod && e.key === ',') { e.preventDefault(); setActiveRail('settings'); return }
       if (mod && e.key === '1') { e.preventDefault(); setActiveRail('collections'); return }
       if (mod && e.key.toLowerCase() === 'b') { e.preventDefault(); useAppStore.getState().toggleSidebar(); return }
+      if (mod && e.key.toLowerCase() === 'l') { e.preventDefault(); document.dispatchEvent(new CustomEvent('adomnia:focus-url')); return }
+      if (mod && e.key.toLowerCase() === 'w') {
+        const { activeTabId, closeTab } = useTabsStore.getState()
+        if (activeTabId) { e.preventDefault(); closeTab(activeTabId) }
+        return
+      }
+      if (mod && e.shiftKey && (e.key === ']' || e.key === '[')) {
+        const { tabs, activeTabId, setActiveTab: setTab } = useTabsStore.getState()
+        const idx = tabs.findIndex((t) => t.id === activeTabId)
+        if (idx !== -1 && tabs.length > 1) {
+          e.preventDefault()
+          const nextIdx = e.key === ']'
+            ? (idx + 1) % tabs.length
+            : (idx - 1 + tabs.length) % tabs.length
+          setTab(tabs[nextIdx].id)
+        }
+        return
+      }
       if (mod && !e.shiftKey && e.key.toLowerCase() === 'd') {
         const rail = useAppStore.getState().activeRail
         if (rail === 'collections') {

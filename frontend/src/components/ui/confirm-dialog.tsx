@@ -86,23 +86,13 @@ export function ConfirmDialog({
           <button
             onClick={() => { onConfirm(); onCancel() }}
             className={cn(
-              'h-7 rounded px-3 text-xs font-medium text-white transition-colors',
+              'flex h-7 items-center gap-1.5 rounded px-3 text-xs font-medium text-white transition-colors',
               isDanger
                 ? 'bg-status-err hover:bg-status-err/85'
                 : 'bg-accent hover:bg-accent-light'
             )}
           >
-            {cancelLabel}
-          </button>
-          <button
-            onClick={() => { onConfirm(); onCancel() }}
-            className={
-              variant === 'danger'
-                ? 'h-8 px-4 rounded text-xs font-medium flex items-center gap-1.5 bg-error text-white hover:bg-error/85 transition-colors'
-                : 'h-8 px-4 rounded text-xs font-medium bg-accent text-white hover:bg-accent-hover transition-colors'
-            }
-          >
-            {variant === 'danger' && <Trash2 size={11} />}
+            {isDanger && <Trash2 size={11} />}
             {confirmLabel}
           </button>
         </div>

@@ -25,6 +25,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
+import { confirm } from '@/lib/confirmDialog'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/app'
 import { safeSetItem } from '@/lib/safeLocalStorage'
@@ -406,7 +407,14 @@ export function KafkaPanel({
   }
 
   const deleteTopic = async () => {
-    if (!cfg.topic || !window.confirm(`Delete topic "${cfg.topic}"? This cannot be undone from adOmnia.`)) return
+    if (!cfg.topic) return
+    const ok = await confirm({
+      title: 'Delete topic',
+      message: `Delete topic "${cfg.topic}"? This cannot be undone from adOmnia.`,
+      confirmLabel: 'Delete topic',
+      variant: 'danger',
+    })
+    if (!ok) return
     const data = await post<KafkaResult>('/kafka/topic-delete', { config: configPayload, topic: cfg.topic }, 'topic-delete')
     if (data?.ok) {
       setTopicDetail(null)
