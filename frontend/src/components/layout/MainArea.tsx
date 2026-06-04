@@ -15,7 +15,7 @@ import { HostBar } from '@/components/hosts/HostBar'
 import { WelcomePanel } from '@/components/layout/WelcomePanel'
 import { LoadTestDrawer } from '@/components/loadtest/LoadTestDrawer'
 import { executeRequest } from '@/lib/executeRequest'
-import { uid, type Collection, type EnvVariable, type HttpMethod, type RequestItem, type TreeNode } from '@/lib/types'
+import { uid, type EnvVariable, type HttpMethod, type RequestItem } from '@/lib/types'
 import { useT } from '@/lib/i18n'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 import { VarHighlightInput } from '@/components/ui/VarHighlightInput'
@@ -108,7 +108,18 @@ type PendingClose =
 
 const COMPOSER_WIDTH_KEY = 'adomnia.composerWidth'
 const COMPOSER_WIDTH_MIN  = 280
-const COMPOSER_WIDTH_MAX  = 0.78  // fraction of window.innerWidth
+
+function composerWidthMaxRatio(): number {
+  if (window.innerWidth < 1180) return 0.60
+  if (window.innerWidth < 1440) return 0.66
+  return 0.74
+}
+
+function defaultComposerWidthRatio(): number {
+  if (window.innerWidth < 1180) return 0.54
+  if (window.innerWidth < 1440) return 0.60
+  return 0.66
+}
 
 const METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'CONNECT', 'TRACE']
 
@@ -127,7 +138,7 @@ const METHOD_COLORS: Record<HttpMethod, string> = {
 }
 
 function clampComposerWidth(w: number): number {
-  return Math.max(COMPOSER_WIDTH_MIN, Math.min(w, Math.round(window.innerWidth * COMPOSER_WIDTH_MAX)))
+  return Math.max(COMPOSER_WIDTH_MIN, Math.min(w, Math.round(window.innerWidth * composerWidthMaxRatio())))
 }
 
 function loadComposerWidth(): number {
@@ -135,12 +146,11 @@ function loadComposerWidth(): number {
     const stored = localStorage.getItem(COMPOSER_WIDTH_KEY)
     if (stored) return clampComposerWidth(parseInt(stored, 10))
   } catch { /* ignore */ }
-  return Math.round(window.innerWidth * 0.50)
+  return Math.round(window.innerWidth * defaultComposerWidthRatio())
 }
 
 function ActiveRequestBar({
   request,
-  breadcrumb,
   isDirty,
   loading,
   vars,
@@ -148,10 +158,8 @@ function ActiveRequestBar({
   onChange,
   onSend,
   onSave,
-  onLoadTest,
 }: {
   request: RequestItem
-  breadcrumb: string[]
   isDirty: boolean
   loading?: boolean
   vars: Record<string, string>
@@ -159,7 +167,6 @@ function ActiveRequestBar({
   onChange: (request: RequestItem) => void
   onSend: () => void
   onSave: () => void
-  onLoadTest: () => void
 }) {
   const [savedFlash, setSavedFlash] = useState(false)
   const urlInputRef = useRef<HTMLInputElement>(null)
@@ -177,32 +184,13 @@ function ActiveRequestBar({
   }
 
   return (
-    <div className="border-b border-border-1 bg-surface-1/95 px-3 py-2">
-      <div className="mb-1.5 flex min-w-0 items-center gap-1 font-mono text-[10px] text-text-4">
-        {(breadcrumb.length ? breadcrumb : ['Unsaved request']).map((part, index) => (
-          <span key={`${part}-${index}`} className="flex min-w-0 items-center gap-1">
-            {index > 0 && <ChevronRight size={10} className="shrink-0 text-text-4" />}
-            <span className={cn('truncate', index === breadcrumb.length - 1 ? 'text-text-2' : 'text-text-4')}>{part}</span>
-          </span>
-        ))}
-      </div>
+    <div className="border-b border-border-1 bg-surface-1/95 px-2.5 py-1.5">
       <div className="flex min-w-0 items-center gap-2">
-        <div className="flex min-w-[150px] max-w-[240px] flex-col gap-0.5">
-          <span className="text-[9px] font-semibold uppercase tracking-[0.14em] text-accent">Active Request</span>
-          <input
-            className="h-5 min-w-0 bg-transparent text-[12px] font-semibold text-text-1 outline-none placeholder:text-text-4"
-            value={request.name}
-            onChange={(e) => onChange({ ...request, name: e.target.value })}
-            placeholder="Request name..."
-            title={request.name || 'Request name'}
-          />
-        </div>
-
         <select
           value={request.method}
           onChange={(e) => onChange({ ...request, method: e.target.value as HttpMethod })}
           className={cn(
-            'h-9 w-[92px] rounded-md border border-border-2 bg-surface-2 px-2 text-xs font-bold outline-none transition-colors focus:border-accent',
+            'h-[var(--ui-control-h)] w-[82px] rounded-md border border-border-2 bg-surface-2 px-2 text-[11px] font-bold outline-none transition-colors focus:border-accent',
             METHOD_COLORS[request.method] ?? 'text-text-1',
           )}
           title="HTTP method"
@@ -212,7 +200,7 @@ function ActiveRequestBar({
           ))}
         </select>
 
-        <div className="h-9 min-w-0 flex-1 overflow-hidden rounded-md border border-border-2 bg-surface-2 transition-colors focus-within:border-accent">
+        <div className="h-[var(--ui-control-h)] min-w-0 flex-1 overflow-hidden rounded-md border border-border-2 bg-surface-2 transition-colors focus-within:border-accent">
           <VarHighlightInput
             value={request.url}
             onChange={(url) => onChange({ ...request, url })}
@@ -225,38 +213,10 @@ function ActiveRequestBar({
           />
         </div>
 
-        <div className="flex h-9 items-center gap-1 rounded-md border border-border-2 bg-surface-2 px-2">
-          <Clock size={12} className="text-text-4" />
-          <input
-            type="number"
-            min="0"
-            max="300000"
-            step="1000"
-            value={request.timeout ?? 0}
-            onChange={(e) => onChange({ ...request, timeout: Number(e.target.value) || 0 })}
-            className="w-14 bg-transparent font-mono text-xs text-text-1 outline-none placeholder:text-text-4"
-            placeholder="ms"
-            title="Request timeout (ms, 0 = no timeout)"
-          />
-        </div>
-
-        <button
-          onClick={() => onChange({ ...request, followRedirects: !(request.followRedirects ?? true) })}
-          title={request.followRedirects ?? true ? 'Follow redirects (on)' : 'Follow redirects (off)'}
-          className={cn(
-            'grid h-9 w-9 place-items-center rounded-md border border-border-2 transition-colors',
-            (request.followRedirects ?? true)
-              ? 'bg-surface-2 text-text-3 hover:text-text-1'
-              : 'border-error/30 bg-error/10 text-error',
-          )}
-        >
-          <CornerDownRight size={14} />
-        </button>
-
         <button
           onClick={onSend}
           disabled={!request.url || loading}
-          className="flex h-9 min-w-[98px] items-center justify-center gap-1.5 rounded-md bg-accent px-4 text-xs font-bold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex h-[var(--ui-control-h)] min-w-[88px] items-center justify-center gap-1.5 rounded-md bg-accent px-3 text-[11px] font-bold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
         >
           <Send size={14} />
           {loading ? 'Sending...' : 'Send'}
@@ -266,7 +226,7 @@ function ActiveRequestBar({
           onClick={handleSave}
           title={isDirty ? 'Unsaved changes - Save to collection (Ctrl+S)' : 'Save to collection (Ctrl+S)'}
           className={cn(
-            'grid h-9 w-9 place-items-center rounded-md transition-all',
+            'grid h-[var(--ui-control-h)] w-[var(--ui-control-h)] place-items-center rounded-md transition-all',
             savedFlash
               ? 'bg-success/10 text-success'
               : isDirty
@@ -276,32 +236,9 @@ function ActiveRequestBar({
         >
           {savedFlash ? <Check size={15} /> : <Save size={15} />}
         </button>
-
-        <button
-          onClick={onLoadTest}
-          title="Load Test"
-          className="grid h-9 w-9 place-items-center rounded-md text-text-3 transition-colors hover:bg-surface-2 hover:text-text-1"
-        >
-          <Gauge size={15} />
-        </button>
       </div>
     </div>
   )
-}
-
-function findRequestPath(collection: Collection, requestId: string): string[] | null {
-  const walk = (nodes: TreeNode[], trail: string[]): string[] | null => {
-    for (const node of nodes) {
-      if (node.type === 'request' && node.id === requestId) return [...trail, node.name || 'Untitled']
-      if (node.type === 'folder') {
-        const found = walk(node.children, [...trail, node.name])
-        if (found) return found
-      }
-    }
-    return null
-  }
-  const found = walk(collection.children, [collection.name])
-  return found
 }
 
 // ─── RequestWorkspace ─────────────────────────────────────────────────────────
@@ -397,13 +334,6 @@ function RequestWorkspace() {
   // ── End resizable split ─────────────────────────────────────────────────────
 
   const activeTab = tabs.find((t) => t.id === activeTabId)
-  const activeBreadcrumb = activeTab?.collectionId
-    ? (() => {
-        const collection = collections.find((item) => item.id === activeTab.collectionId)
-        return collection ? findRequestPath(collection, activeTab.request.id) ?? [collection.name, activeTab.request.name || 'Untitled'] : []
-      })()
-    : []
-
   const oaSpec =
     activeTab?.collectionId
       ? collections.find((c) => c.id === activeTab.collectionId)?._openapiSpec
@@ -555,7 +485,6 @@ function RequestWorkspace() {
       {activeTab && (
         <ActiveRequestBar
           request={activeTab.request}
-          breadcrumb={activeBreadcrumb}
           isDirty={activeTab.dirty}
           loading={activeTab.loading}
           vars={getResolvedVars()}
@@ -563,12 +492,13 @@ function RequestWorkspace() {
           onChange={(request) => updateRequest(activeTab.id, request)}
           onSend={handleSend}
           onSave={handleSave}
-          onLoadTest={() => setShowLoadTest((v) => !v)}
         />
       )}
       <ApiToolsBar
         activeRequest={activeTab?.request ?? null}
+        onChangeRequest={(request) => activeTab && updateRequest(activeTab.id, request)}
         onApplyRequest={(request) => activeTab && updateRequest(activeTab.id, request)}
+        onLoadTest={() => setShowLoadTest((v) => !v)}
       />
 
       {activeTab ? (

@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useTabsStore } from '@/stores/tabs'
-import { useAppStore } from '@/stores/app'
+import { useAppStore, RAIL_QUICK_NAV } from '@/stores/app'
 
 export interface KeyboardShortcutsOptions {
   setCommandPaletteOpen: (open: boolean | ((prev: boolean) => boolean)) => void
@@ -23,9 +23,21 @@ export function useKeyboardShortcuts({ setCommandPaletteOpen }: KeyboardShortcut
       if (mod && e.key === 'n') { e.preventDefault(); newTab(); return }
       if (mod && e.key === 's') { e.preventDefault(); document.dispatchEvent(new CustomEvent('adomnia:save-active-tab')); return }
       if (mod && e.key === ',') { e.preventDefault(); setActiveRail('settings'); return }
-      if (mod && e.key === '1') { e.preventDefault(); setActiveRail('collections'); return }
+      // Cmd/Ctrl+1..9 → jump to each rail category's primary tool (visible rail order).
+      if (mod && !e.shiftKey && e.key >= '1' && e.key <= '9') {
+        const target = RAIL_QUICK_NAV[Number(e.key) - 1]
+        if (target) { e.preventDefault(); setActiveRail(target) }
+        return
+      }
       if (mod && e.key.toLowerCase() === 'b') { e.preventDefault(); useAppStore.getState().toggleSidebar(); return }
       if (mod && e.key.toLowerCase() === 'l') { e.preventDefault(); document.dispatchEvent(new CustomEvent('adomnia:focus-url')); return }
+      if (mod && e.shiftKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault()
+        setActiveRail('collections')
+        // Defer so the collections rail/search input is mounted before focusing.
+        setTimeout(() => document.dispatchEvent(new CustomEvent('adomnia:focus-search')), 0)
+        return
+      }
       if (mod && e.key.toLowerCase() === 'w') {
         const { activeTabId, closeTab } = useTabsStore.getState()
         if (activeTabId) { e.preventDefault(); closeTab(activeTabId) }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { ChevronDown, ChevronRight, AlertCircle, CheckCircle2, GitBranch, Database, Loader2, RefreshCw } from 'lucide-react'
 import type { RequestBody } from '@/lib/types'
 import { KVEditor } from './KVEditor'
@@ -7,6 +7,7 @@ import { JsonGraphModal } from '@/components/ui/JsonGraph'
 import { cn } from '@/lib/utils'
 import { diagnoseJson } from '@/lib/jsonDiagnostics'
 import { useEnvironmentsStore } from '@/stores/environments'
+import { useGraphqlCacheStore } from '@/stores/graphqlCache'
 
 interface BodyEditorProps {
   body: RequestBody
@@ -207,6 +208,34 @@ function GraphQLEditor({ body, onChange, requestUrl }: { body: RequestBody; onCh
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [showSchema, setShowSchema] = useState(false)
 
+  const loadCache          = useGraphqlCacheStore((s) => s.load)
+  const cacheLoaded        = useGraphqlCacheStore((s) => s.loaded)
+  const getCacheEntry      = useGraphqlCacheStore((s) => s.getEntry)
+  const setCachedSchema    = useGraphqlCacheStore((s) => s.setSchema)
+  const setCachedVariables = useGraphqlCacheStore((s) => s.setVariables)
+  const clearCachedSchema  = useGraphqlCacheStore((s) => s.clearSchema)
+  const restoredVarsRef    = useRef(false)
+
+  // Hydrate the persistent introspection cache once.
+  useEffect(() => { void loadCache() }, [loadCache])
+
+  // Restore a cached schema + last variables for this endpoint so they survive
+  // tab close/reopen and app restart without a re-fetch.
+  useEffect(() => {
+    if (!cacheLoaded || !requestUrl) return
+    const entry = getCacheEntry(requestUrl)
+    if (!entry) return
+    if (!schema && entry.schema) {
+      setSchema(entry.schema as GQLIntrospectionResult)
+      setShowSchema(true)
+    }
+    if (!restoredVarsRef.current && !(body.graphqlVariables ?? '').trim() && (entry.variables ?? '').trim()) {
+      restoredVarsRef.current = true
+      onChange({ ...body, graphqlVariables: entry.variables })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cacheLoaded, requestUrl])
+
   const toggleExpand = (key: string) => {
     setExpanded(prev => {
       const next = new Set(prev)
@@ -237,6 +266,7 @@ function GraphQLEditor({ body, onChange, requestUrl }: { body: RequestBody; onCh
       }
       setSchema(json.data)
       setShowSchema(true)
+      setCachedSchema(requestUrl, json.data)
     } catch (e) {
       setError(String(e))
     } finally {
@@ -310,7 +340,7 @@ function GraphQLEditor({ body, onChange, requestUrl }: { body: RequestBody; onCh
               <RefreshCw size={10} className={loading ? 'animate-spin' : ''} />
             </button>
             <button
-              onClick={() => { setSchema(null); setShowSchema(false); }}
+              onClick={() => { setSchema(null); setShowSchema(false); if (requestUrl) clearCachedSchema(requestUrl) }}
               className="text-[10px] text-text-4 hover:text-error transition-colors"
             >
               Clear
@@ -323,7 +353,7 @@ function GraphQLEditor({ body, onChange, requestUrl }: { body: RequestBody; onCh
           className="min-h-[80px] p-3 bg-surface-2 border border-border-2 rounded font-mono text-xs text-text-1 placeholder:text-text-4 resize-y focus:border-accent outline-none"
           placeholder={'{\n  "id": "123"\n}'}
           value={body.graphqlVariables ?? ''}
-          onChange={e => onChange({ ...body, graphqlVariables: e.target.value })}
+          onChange={e => { onChange({ ...body, graphqlVariables: e.target.value }); if (requestUrl) setCachedVariables(requestUrl, e.target.value) }}
           spellCheck={false}
         />
       )}

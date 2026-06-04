@@ -434,6 +434,14 @@ export function CollectionTree({
   const [focusedId, setFocusedId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  // Focus the request search on Cmd/Ctrl+Shift+F (dispatched by the global shortcuts hook).
+  useEffect(() => {
+    const focusSearch = () => { searchInputRef.current?.focus(); searchInputRef.current?.select() }
+    document.addEventListener('adomnia:focus-search', focusSearch)
+    return () => document.removeEventListener('adomnia:focus-search', focusSearch)
+  }, [])
 
   useEffect(() => {
     setOpenIds((current) => {
@@ -675,7 +683,7 @@ export function CollectionTree({
       <div className="px-2 py-1.5">
         <div className="flex h-7 items-center gap-1.5 rounded border border-border-2 bg-surface-2 px-2">
           <Search size={12} className="text-text-4" />
-          <input className="flex-1 bg-transparent text-xs text-text-1 outline-none placeholder:text-text-4" placeholder="Search requests..." value={query} onChange={(event) => setQuery(event.target.value)} />
+          <input ref={searchInputRef} className="flex-1 bg-transparent text-xs text-text-1 outline-none placeholder:text-text-4" placeholder="Search requests..." value={query} onChange={(event) => setQuery(event.target.value)} />
         </div>
       </div>
 

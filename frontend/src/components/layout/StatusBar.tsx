@@ -10,8 +10,6 @@ import { inferThemeMode } from '@/lib/themeCatalog'
 import { cn } from '@/lib/utils'
 
 export function StatusBar() {
-  const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
-  const environments = useEnvironmentsStore((s) => s.environments)
   const tabs = useTabsStore((s) => s.tabs)
   const activeTabId = useTabsStore((s) => s.activeTabId)
   const responseHistory = useTabsStore((s) => s.responseHistory)
@@ -67,7 +65,7 @@ export function StatusBar() {
   }, [toggleTheme])
 
   return (
-    <footer className="h-6 flex items-center justify-between px-3 bg-surface-1 border-t border-border-1 text-[11px] text-text-3 select-none">
+    <footer className="flex h-5 items-center justify-between border-t border-border-1 bg-surface-1 px-2.5 text-[10px] text-text-3 select-none">
       <div className="flex items-center gap-3">
         {response && !response.error && (
           <>
@@ -130,15 +128,6 @@ export function StatusBar() {
         )}
         {(mockRunning || proxyRunning) && (
           <span className="h-3 w-px bg-border-2" />
-        )}
-        {/* Active environment */}
-        {activeEnv ? (
-          <span className="flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-accent inline-block" />
-            {activeEnv.name}
-          </span>
-        ) : (
-          <span>No Environment</span>
         )}
         {/* Dark / Light toggle */}
         <button

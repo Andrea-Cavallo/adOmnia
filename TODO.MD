@@ -78,13 +78,32 @@ browser-integrated, enterprise/legacy), close visible UX gaps, then code health.
 
 ---
 
-## OPEN — still to do
+## DONE — 2026-06-04 session
 
-### P2 - Product UX (larger efforts)
-- [ ] **P2-11 (remaining) - broaden shortcut coverage.** Per-rail navigation
-  (`Cmd+2..9`), search focus, and a fuller catalog beyond the current set.
-- [ ] **P2-09 - GraphQL schema and query variables are not persisted.** Cache
-  the introspection result and persist variables across tab close/reopen.
+- [x] **P2-11 (remaining) - broaden shortcut coverage.** `Cmd/Ctrl+1..7` now jump
+  to each rail category's primary tool (API Workspace, WebSocket, Mock, Browser
+  Debug, Database, JSON Tools, Markdown), driven by the canonical
+  `RAIL_QUICK_NAV` map in `stores/app.ts` (kept in sync with the visible rail
+  order in `layout/Rail.tsx`). Added `Cmd/Ctrl+Shift+F` to focus the request
+  search (switches to the API Workspace rail, then focuses + selects the
+  `CollectionTree` search box via a new `adomnia:focus-search` event). The
+  Settings shortcut catalog and `i18n` (EN/IT) document both additions.
+  - Files: `hooks/useKeyboardShortcuts.ts`, `stores/app.ts`,
+    `components/collections/CollectionTree.tsx`,
+    `components/settings/SettingsPanel.tsx`, `lib/i18n.ts`.
+
+- [x] **P2-09 - GraphQL schema and query variables now persist.** New local-first
+  `stores/graphqlCache.ts` caches the introspection result and last-used
+  variables per endpoint URL in the bbolt `graphql` bucket (LRU-capped at 40
+  endpoints). `GraphQLEditor` restores a cached schema (and empty variables)
+  on mount — surviving tab close/reopen and app restart with no re-fetch —
+  caches on every successful introspection and variables edit, and evicts the
+  cached schema when the user clicks **Clear**.
+  - Files: `stores/graphqlCache.ts` (new), `components/composer/BodyEditor.tsx`.
+
+---
+
+## OPEN — still to do
 
 ### P3 - Code health (lowest priority per product-first philosophy)
 - [ ] **Split oversized components (>800-line guideline).**

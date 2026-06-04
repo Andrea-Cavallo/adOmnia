@@ -42,6 +42,19 @@ export type RailItem =
   | 'gitsync'
   | 'mcp'
 
+// Canonical Cmd/Ctrl+1..9 quick-navigation targets, ordered to match the
+// visible rail category order (each entry is that category's primary tool).
+// Keep in sync with the category order in components/layout/Rail.tsx.
+export const RAIL_QUICK_NAV: RailItem[] = [
+  'collections', // 1 · API Core
+  'websocket',   // 2 · Protocols & Streaming
+  'mock',        // 3 · Infrastructure & Simulation
+  'browser',     // 4 · Debugging & Analysis
+  'database',    // 5 · Local Data & Workspace
+  'jsontools',   // 6 · Power Tools
+  'markdown',    // 7 · Markdown
+]
+
 interface AppState {
   activeRail: RailItem
   railHistory: RailItem[]
