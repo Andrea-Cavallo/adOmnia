@@ -78,7 +78,7 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
   const pos = clampToViewport(ctx.x, ctx.y)
 
   return (
-    <div className="flex items-center gap-0.5 px-2 py-0.5 border-b border-border-1 overflow-x-auto">
+    <div className="flex h-[30px] items-center gap-0.5 overflow-x-auto border-b border-border-1 px-1.5 no-scrollbar">
       {tabs.map((tab) => {
         const isActive = activeTabId === tab.id
         return (
@@ -121,7 +121,7 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
             }}
             onDragEnd={clearDrag}
             className={cn(
-              'relative flex items-center gap-1.5 px-2.5 py-1 rounded-t cursor-pointer group min-w-[80px] max-w-[200px] shrink-0 border-b-2 transition-colors',
+              'relative flex h-[28px] items-center gap-1.5 rounded-t px-2 text-[11px] cursor-pointer group min-w-[74px] max-w-[180px] shrink-0 border-b-2 transition-colors',
               isActive
                 ? 'bg-surface-2 border-b-accent text-text-1'
                 : 'hover:bg-surface-2/60 border-b-transparent text-text-3 hover:text-text-2',
@@ -134,7 +134,7 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
             <span className={cn('text-[9px] font-bold shrink-0', METHOD_COLORS[tab.request.method] ?? 'text-text-3')}>
               {tab.request.method}
             </span>
-            <span className="text-xs truncate flex-1">
+            <span className="truncate flex-1">
               {tab.request.name || tab.request.url || 'Untitled'}
             </span>
             {tab.dirty && (
@@ -159,7 +159,7 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
       <button
         onClick={() => onNewTab()}
         title="New tab (Ctrl+N)"
-        className="shrink-0 w-6 h-6 flex items-center justify-center text-text-4 hover:text-text-1 hover:bg-surface-2 rounded transition-colors ml-0.5"
+        className="ml-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded text-text-4 transition-colors hover:bg-surface-2 hover:text-text-1"
       >
         <Plus size={12} />
       </button>

@@ -252,8 +252,8 @@ export function VarHighlightInput({
   }, [editPopover])
 
   const SHARED: React.CSSProperties = {
-    fontFamily:    'var(--font-ui, var(--font-sans))',
-    fontSize:      '13px',
+    fontFamily:    'var(--font-mono)',
+    fontSize:      '12px',
     lineHeight:    '1.5',
     padding:       '0 8px',
     letterSpacing: 'normal',

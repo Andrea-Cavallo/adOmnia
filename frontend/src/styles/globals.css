@@ -59,6 +59,13 @@
     --spacing-xl: 24px;
     --spacing-2xl: 32px;
 
+    /* Desktop density */
+    --ui-font-size: 12px;
+    --ui-toolbar-h: 32px;
+    --ui-control-h: 30px;
+    --ui-panel-pad: 12px;
+    --ui-compact-pad: 8px;
+
     /* Radius */
     --radius-sm: 6px;
     --radius-md: 8px;
@@ -136,8 +143,8 @@
   }
 
   body {
-    font-family: var(--font-ui, var(--font-sans));
-    font-size: 13px;
+    font-family: var(--font-sans);
+    font-size: var(--ui-font-size);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -253,6 +260,16 @@
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  @media (max-width: 1440px), (max-height: 820px) {
+    :root {
+      --ui-font-size: 11.5px;
+      --ui-toolbar-h: 30px;
+      --ui-control-h: 28px;
+      --ui-panel-pad: 10px;
+      --ui-compact-pad: 6px;
+    }
   }
 
   @keyframes icon-glow-breathe {

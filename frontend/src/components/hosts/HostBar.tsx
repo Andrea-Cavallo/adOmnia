@@ -57,7 +57,7 @@ export function HostBar({
 
   return (
     <>
-      <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border-1">
+      <div className="flex h-[var(--ui-toolbar-h)] items-center gap-1.5 border-b border-border-1 px-2.5">
         <span className="text-[10px] text-text-4 uppercase tracking-wider shrink-0">Hosts</span>
 
         {/* Custom dropdown */}
@@ -65,7 +65,7 @@ export function HostBar({
           <button
             onClick={() => setDropOpen(v => !v)}
             className={cn(
-              'flex items-center gap-1.5 h-6 px-2 rounded text-xs transition-colors outline-none',
+              'flex h-6 items-center gap-1.5 rounded px-2 text-[11px] transition-colors outline-none',
               'bg-surface-2 border border-border-2 text-text-1',
               'hover:border-border-3 hover:bg-surface-3',
               dropOpen && 'border-accent'
@@ -141,7 +141,7 @@ export function HostBar({
 
         <button
           onClick={() => setShowModal(true)}
-          className="text-xs text-accent hover:text-accent-light ml-auto"
+          className="ml-auto text-[11px] text-accent hover:text-accent-light"
           title="Manage hosts profiles"
         >
           Hosts

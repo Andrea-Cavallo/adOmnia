@@ -299,8 +299,8 @@ function RequestOverview({
   ]
 
   return (
-    <div className="flex flex-col gap-4 p-5">
-      <section className="border-b border-border-1 pb-4">
+    <div className="flex flex-col gap-3 p-[var(--ui-panel-pad)]">
+      <section className="border-b border-border-1 pb-3">
         <div className="mb-2 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.12em] text-text-4">
           <span className={cn('font-bold', METHOD_COLORS[request.method] ?? 'text-text-2')}>{request.method}</span>
           <span>{hostFromUrl(request.url)}</span>
@@ -309,28 +309,28 @@ function RequestOverview({
           value={request.name}
           onChange={(event) => onChange({ ...request, name: event.target.value })}
           placeholder="Request title"
-          className="w-full bg-transparent text-[26px] font-semibold leading-tight text-text-1 outline-none placeholder:text-text-4"
+          className="w-full bg-transparent text-[22px] font-semibold leading-tight text-text-1 outline-none placeholder:text-text-4"
         />
         <textarea
           value={request.description ?? ''}
           onChange={(event) => onChange({ ...request, description: event.target.value })}
           placeholder="Add a clear description: what this request does, when to use it, required setup, examples or edge cases..."
-          className="mt-3 min-h-20 w-full resize-y rounded border border-border-2 bg-surface-1 px-3 py-2 text-xs leading-relaxed text-text-2 outline-none placeholder:text-text-4 focus:border-accent"
+          className="mt-2 min-h-16 w-full resize-y rounded-md border border-border-2 bg-surface-1 px-3 py-2 text-[12px] leading-relaxed text-text-2 outline-none placeholder:text-text-4 focus:border-accent"
         />
       </section>
 
-      <section className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_300px]">
-        <div className="rounded-lg border border-border-1 bg-surface-1">
+      <section className="grid gap-2.5 xl:grid-cols-[minmax(0,1fr)_280px]">
+        <div className="rounded-md border border-border-1 bg-surface-1">
           <div className="flex items-center gap-2 border-b border-border-1 px-3 py-2">
             <ListChecks size={13} className="text-accent" />
-            <h3 className="text-xs font-semibold text-text-1">Setup</h3>
+            <h3 className="text-[12px] font-semibold text-text-1">Setup</h3>
           </div>
           <div className="divide-y divide-border-1">
             {setupItems.map((item) => (
               <button
                 key={item.label}
                 onClick={() => item.section && onOpenSection(item.section)}
-                className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs text-text-2 transition-colors hover:bg-surface-2"
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[12px] text-text-2 transition-colors hover:bg-surface-2"
               >
                 {item.ok ? <Check size={13} className="text-success" /> : <Circle size={13} className="text-warning" />}
                 <span className="flex-1">{item.label}</span>
@@ -340,10 +340,10 @@ function RequestOverview({
           </div>
         </div>
 
-        <div className="rounded-lg border border-border-1 bg-surface-1">
+        <div className="rounded-md border border-border-1 bg-surface-1">
           <div className="flex items-center gap-2 border-b border-border-1 px-3 py-2">
             <ShieldCheck size={13} className="text-accent" />
-            <h3 className="text-xs font-semibold text-text-1">Request context</h3>
+            <h3 className="text-[12px] font-semibold text-text-1">Request context</h3>
           </div>
           <dl className="grid grid-cols-[92px_1fr] gap-x-3 gap-y-2 px-3 py-3 font-mono text-[10px]">
             <dt className="text-text-4">Auth</dt><dd className="truncate text-text-2">{authLabel}</dd>
@@ -357,7 +357,7 @@ function RequestOverview({
       </section>
 
       {variables.length > 0 && (
-        <section className="rounded-lg border border-border-1 bg-surface-1">
+        <section className="rounded-md border border-border-1 bg-surface-1">
           <div className="flex items-center justify-between gap-2 border-b border-border-1 px-3 py-2">
             <h3 className="text-xs font-semibold text-text-1">Variables</h3>
             <span className="font-mono text-[10px] text-text-4">{hasActiveEnv ? `${unresolved.length} unresolved` : 'No environment selected'}</span>
@@ -377,22 +377,6 @@ function RequestOverview({
         </section>
       )}
 
-      <section className="grid gap-2 sm:grid-cols-4">
-        {([
-          { label: 'Auth', section: 'auth' },
-          { label: 'Headers', section: 'headers' },
-          { label: 'Body', section: 'body' },
-          { label: 'Tests', section: 'tests' },
-        ] satisfies Array<{ label: string; section: ComposerSection }>).map(({ label, section }) => (
-          <button
-            key={section}
-            onClick={() => onOpenSection(section)}
-            className="rounded-lg border border-border-2 bg-surface-1 px-3 py-2 text-left text-xs text-text-2 transition-colors hover:border-accent/30 hover:bg-surface-2 hover:text-text-1"
-          >
-            {label}
-          </button>
-        ))}
-      </section>
     </div>
   )
 }
@@ -610,7 +594,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
         )}
 
         {/* Section tabs */}
-        <div className="flex items-center gap-0.5 px-3 border-t border-border-1">
+        <div className="flex items-center gap-0.5 overflow-x-auto border-t border-border-1 px-2.5 no-scrollbar">
           {tabs.map((t) => (
             <button
               key={t.id}
@@ -619,7 +603,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
                 updateViewState(tabId, { composerSection: t.id })
               }}
               className={cn(
-                'px-3 py-2 text-xs transition-colors relative',
+                'relative px-2.5 py-1.5 text-[11px] transition-colors shrink-0',
                 activeTab === t.id ? 'text-text-1' : 'text-text-3 hover:text-text-2'
               )}
             >
