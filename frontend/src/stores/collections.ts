@@ -1,9 +1,9 @@
 import { create } from 'zustand'
-import type { Collection, TreeNode, RequestItem, FolderItem, RequestBody } from '@/lib/types'
+import type { Collection, CollectionWorkspace, TreeNode, RequestItem, FolderItem, RequestBody } from '@/lib/types'
 import { uid, blankBody, blankKVRow, blankAuth } from '@/lib/types'
 import { StorageGet, StoragePut } from '@/wailsjs/go/main/App'
 import { debouncedSave } from '@/lib/storeSave'
-import { storageSchema, versionedEnvelope } from '@/lib/storageSchemas'
+import { storageSchema } from '@/lib/storageSchemas'
 
 const COLLECTIONS_SCHEMA = storageSchema('collections')
 const BUCKET = COLLECTIONS_SCHEMA.bucket
@@ -11,15 +11,24 @@ const KEY = COLLECTIONS_SCHEMA.item
 
 interface PersistedCollections {
   version: number
-  collections: Collection[]
+  activeWorkspaceId: string
+  workspaces: CollectionWorkspace[]
 }
 
 interface CollectionsState {
   collections: Collection[]
+  workspaces: CollectionWorkspace[]
+  activeWorkspaceId: string
   loaded: boolean
   loadError: boolean
   load: () => Promise<void>
   save: () => void
+  replaceCollections: (collections: Collection[]) => void
+  addWorkspace: (name: string) => CollectionWorkspace
+  renameWorkspace: (id: string, name: string) => void
+  deleteWorkspace: (id: string) => string | null
+  setActiveWorkspace: (id: string) => void
+  moveCollectionToWorkspace: (collectionId: string, targetWorkspaceId: string) => void
   addCollection: (name: string) => Collection
   deleteCollection: (id: string) => void
   renameCollection: (id: string, name: string) => void
@@ -33,6 +42,37 @@ interface CollectionsState {
   deleteNodes: (collectionId: string, nodeIds: string[]) => void
   duplicateNode: (collectionId: string, nodeId: string) => TreeNode | null
   reorderCollections: (fromId: string, toId: string) => void
+}
+
+export const DEFAULT_WORKSPACE_ID = 'workspace-default'
+const DEFAULT_WORKSPACE_NAME = 'Default Workspace'
+
+function makeWorkspace(name: string, collections: Collection[] = [], id = uid()): CollectionWorkspace {
+  const now = new Date().toISOString()
+  return { id, name, collections, createdAt: now, updatedAt: now }
+}
+
+function migrateWorkspaces(workspaces: CollectionWorkspace[]): CollectionWorkspace[] {
+  return workspaces.map((workspace) => ({
+    ...workspace,
+    name: workspace.name || 'Untitled Workspace',
+    collections: migrateCollections(Array.isArray(workspace.collections) ? workspace.collections : []),
+    createdAt: workspace.createdAt || new Date().toISOString(),
+    updatedAt: workspace.updatedAt || workspace.createdAt || new Date().toISOString(),
+  }))
+}
+
+function syncActiveWorkspace(
+  workspaces: CollectionWorkspace[],
+  activeWorkspaceId: string,
+  collections: Collection[],
+): CollectionWorkspace[] {
+  const now = new Date().toISOString()
+  return workspaces.map((workspace) => (
+    workspace.id === activeWorkspaceId
+      ? { ...workspace, collections, updatedAt: now }
+      : workspace
+  ))
 }
 
 function migrateBody(b: RequestBody): RequestBody {
@@ -162,6 +202,8 @@ function insertIntoTree(nodes: TreeNode[], parentId: string | null, item: TreeNo
 
 export const useCollectionsStore = create<CollectionsState>((set, get) => ({
   collections: [],
+  workspaces: [],
+  activeWorkspaceId: DEFAULT_WORKSPACE_ID,
   loaded: false,
   loadError: false,
 
@@ -171,28 +213,47 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
       if (raw) {
         const parsed = JSON.parse(raw)
         let collections: Collection[]
+        let workspaces: CollectionWorkspace[]
+        let activeWorkspaceId: string
         let needsVersionUpgrade = false
         if (Array.isArray(parsed)) {
           // Legacy format: bare array, no version envelope; migrate and upgrade.
           collections = migrateCollections(parsed)
+          workspaces = [makeWorkspace(DEFAULT_WORKSPACE_NAME, collections, DEFAULT_WORKSPACE_ID)]
+          activeWorkspaceId = DEFAULT_WORKSPACE_ID
           needsVersionUpgrade = true
         } else if (parsed && typeof parsed === 'object' && parsed.version !== undefined) {
-          const { version, collections: cols } = parsed as PersistedCollections
-          if (version < COLLECTIONS_SCHEMA.currentVersion) {
-            collections = migrateCollections(cols)
+          const version = Number(parsed.version)
+          if (version < 2 || !Array.isArray(parsed.workspaces)) {
+            collections = migrateCollections(Array.isArray(parsed.collections) ? parsed.collections : [])
+            workspaces = [makeWorkspace(DEFAULT_WORKSPACE_NAME, collections, DEFAULT_WORKSPACE_ID)]
+            activeWorkspaceId = DEFAULT_WORKSPACE_ID
             needsVersionUpgrade = true
           } else {
-            collections = cols
+            workspaces = migrateWorkspaces(parsed.workspaces as CollectionWorkspace[])
+            if (workspaces.length === 0) {
+              workspaces = [makeWorkspace(DEFAULT_WORKSPACE_NAME, [], DEFAULT_WORKSPACE_ID)]
+              needsVersionUpgrade = true
+            }
+            activeWorkspaceId = typeof parsed.activeWorkspaceId === 'string' && workspaces.some((workspace) => workspace.id === parsed.activeWorkspaceId)
+              ? parsed.activeWorkspaceId
+              : workspaces[0].id
+            if (activeWorkspaceId !== parsed.activeWorkspaceId) needsVersionUpgrade = true
+            collections = workspaces.find((workspace) => workspace.id === activeWorkspaceId)?.collections ?? []
           }
         } else {
           collections = []
+          workspaces = [makeWorkspace(DEFAULT_WORKSPACE_NAME, [], DEFAULT_WORKSPACE_ID)]
+          activeWorkspaceId = DEFAULT_WORKSPACE_ID
+          needsVersionUpgrade = true
         }
         // Persist the migrated data immediately so the next load sees the current
         // schema version and does NOT re-run migrations (acceptance: idempotent load).
         if (needsVersionUpgrade) {
           const upgraded: PersistedCollections = {
             version: COLLECTIONS_SCHEMA.currentVersion,
-            collections,
+            activeWorkspaceId,
+            workspaces,
           }
           try {
             await StoragePut(BUCKET, KEY, JSON.stringify(upgraded))
@@ -200,20 +261,109 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
             // Non-fatal: data is in memory; will be persisted on the next mutation.
           }
         }
-        set({ collections, loaded: true, loadError: false })
+        set({ collections, workspaces, activeWorkspaceId, loaded: true, loadError: false })
       } else {
-        set({ loaded: true, loadError: false })
+        const workspace = makeWorkspace(DEFAULT_WORKSPACE_NAME, [], DEFAULT_WORKSPACE_ID)
+        set({
+          collections: [],
+          workspaces: [workspace],
+          activeWorkspaceId: workspace.id,
+          loaded: true,
+          loadError: false,
+        })
       }
     } catch {
-      set({ loaded: true, loadError: true })
+      const workspace = makeWorkspace(DEFAULT_WORKSPACE_NAME, [], DEFAULT_WORKSPACE_ID)
+      set({
+        collections: [],
+        workspaces: [workspace],
+        activeWorkspaceId: workspace.id,
+        loaded: true,
+        loadError: true,
+      })
     }
   },
 
   save: () => {
     const s = get()
     if (!s.loaded || s.loadError) return
-    const persisted = versionedEnvelope(COLLECTIONS_SCHEMA, 'collections', s.collections) as unknown as PersistedCollections
+    const workspaces = syncActiveWorkspace(s.workspaces, s.activeWorkspaceId, s.collections)
+    set({ workspaces })
+    const persisted: PersistedCollections = {
+      version: COLLECTIONS_SCHEMA.currentVersion,
+      activeWorkspaceId: s.activeWorkspaceId,
+      workspaces,
+    }
     debouncedSave('collections', () => StoragePut(BUCKET, KEY, JSON.stringify(persisted)))
+  },
+
+  replaceCollections: (collections) => {
+    const migrated = migrateCollections(collections)
+    set((s) => ({
+      collections: migrated,
+      workspaces: syncActiveWorkspace(s.workspaces, s.activeWorkspaceId, migrated),
+    }))
+    get().save()
+  },
+
+  addWorkspace: (name) => {
+    const workspace = makeWorkspace(name.trim() || 'Untitled Workspace')
+    set((s) => ({ workspaces: [...s.workspaces, workspace] }))
+    get().save()
+    return workspace
+  },
+
+  renameWorkspace: (id, name) => {
+    const trimmed = name.trim()
+    if (!trimmed) return
+    set((s) => ({
+      workspaces: s.workspaces.map((workspace) => (
+        workspace.id === id ? { ...workspace, name: trimmed, updatedAt: new Date().toISOString() } : workspace
+      )),
+    }))
+    get().save()
+  },
+
+  deleteWorkspace: (id) => {
+    const state = get()
+    if (state.workspaces.length <= 1 || !state.workspaces.some((workspace) => workspace.id === id)) return null
+    const remaining = state.workspaces.filter((workspace) => workspace.id !== id)
+    const nextActiveId = state.activeWorkspaceId === id ? remaining[0].id : state.activeWorkspaceId
+    const nextCollections = remaining.find((workspace) => workspace.id === nextActiveId)?.collections ?? []
+    set({ workspaces: remaining, activeWorkspaceId: nextActiveId, collections: nextCollections })
+    get().save()
+    return nextActiveId
+  },
+
+  setActiveWorkspace: (id) => {
+    const state = get()
+    if (id === state.activeWorkspaceId) return
+    const target = state.workspaces.find((workspace) => workspace.id === id)
+    if (!target) return
+    const synced = syncActiveWorkspace(state.workspaces, state.activeWorkspaceId, state.collections)
+    set({ workspaces: synced, activeWorkspaceId: id, collections: target.collections })
+    get().save()
+  },
+
+  moveCollectionToWorkspace: (collectionId, targetWorkspaceId) => {
+    const state = get()
+    if (targetWorkspaceId === state.activeWorkspaceId) return
+    const collection = state.collections.find((item) => item.id === collectionId)
+    if (!collection || !state.workspaces.some((workspace) => workspace.id === targetWorkspaceId)) return
+    const remaining = state.collections.filter((item) => item.id !== collectionId)
+    set((s) => ({
+      collections: remaining,
+      workspaces: s.workspaces.map((workspace) => {
+        if (workspace.id === s.activeWorkspaceId) {
+          return { ...workspace, collections: remaining, updatedAt: new Date().toISOString() }
+        }
+        if (workspace.id === targetWorkspaceId) {
+          return { ...workspace, collections: [...workspace.collections, collection], updatedAt: new Date().toISOString() }
+        }
+        return workspace
+      }),
+    }))
+    get().save()
   },
 
   addCollection: (name) => {

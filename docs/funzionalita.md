@@ -588,13 +588,14 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 
 | # | Funzionalità | Descrizione |
 |---|-------------|-------------|
-| E3.1 | **Workspace Nominati** | Salva e commuta tra workspace multipli; ognuno include collezioni, ambienti, tab, impostazioni. |
-| E3.2 | **Salva Workspace** | Snapshot corrente con nome, timestamp, conteggio tab. |
+| E3.1 | **Workspace Nominati Multi-Collection** | Crea, rinomina, elimina e commuta tra workspace locali; ogni workspace contiene un insieme indipendente di collection. I dati esistenti vengono migrati automaticamente nel workspace predefinito. |
+| E3.2 | **Tab Separate per Workspace** | Le tab aperte seguono il workspace di appartenenza e vengono ripristinate quando si torna a quel workspace. |
 | E3.3 | **Carica Workspace** | Ripristina stato da workspace nominato e aggiorna la cronologia locale dei workspace aperti di recente. |
-| E3.4 | **Elimina Workspace** | Rimuove workspace dal registro. |
+| E3.4 | **Sposta Collection tra Workspace** | Dal menu contestuale di una collection la sposta in un altro workspace mantenendo le relative tab aperte. |
 | E3.5 | **Import/Export `.adomnia`** | Formato JSON portabile (v1.0): collezioni, ambienti, activeEnvId, mockConfig, proxyConfig, flows. |
 | E3.6 | **Import OpenAPI 3.0** | Parsing spec JSON/YAML; operazioni convertite in cartelle raggruppate per tag. |
 | E3.7 | **Reset Demo** | Carica workspace demo adOmnia Lab con un click. |
+| E3.8 | **Snapshot Workspace Attivo** | Salva e carica backup nominati dello stato del workspace attivo, inclusi collection e tab del relativo contesto. |
 
 ---
 

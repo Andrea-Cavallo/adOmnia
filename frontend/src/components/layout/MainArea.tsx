@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, useRef, Suspense } from 'react'
 import { ArrowLeft, Check, ChevronRight, Clock, CornerDownRight, Gauge, Save, Send, X } from 'lucide-react'
 import { useAppStore, type RailItem } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
@@ -307,7 +307,7 @@ function findRequestPath(collection: Collection, requestId: string): string[] | 
 // ─── RequestWorkspace ─────────────────────────────────────────────────────────
 
 function RequestWorkspace() {
-  const tabs = useTabsStore((s) => s.tabs)
+  const allTabs = useTabsStore((s) => s.tabs)
   const activeTabId = useTabsStore((s) => s.activeTabId)
   const setActiveTab = useTabsStore((s) => s.setActiveTab)
   const closeTab = useTabsStore((s) => s.closeTab)
@@ -323,6 +323,11 @@ function RequestWorkspace() {
   const updateViewState = useTabsStore((s) => s.updateViewState)
   const updateCollectionRequest = useCollectionsStore((s) => s.updateRequest)
   const collections = useCollectionsStore((s) => s.collections)
+  const activeWorkspaceId = useCollectionsStore((s) => s.activeWorkspaceId)
+  const tabs = useMemo(
+    () => allTabs.filter((tab) => (tab.workspaceId ?? activeWorkspaceId) === activeWorkspaceId),
+    [activeWorkspaceId, allTabs],
+  )
   const confirmBeforeClosingDirtyTabs = useSettingsStore((s) => s.settings.general.confirmBeforeClosingDirtyTabs)
 
   const environments = useEnvironmentsStore((s) => s.environments)

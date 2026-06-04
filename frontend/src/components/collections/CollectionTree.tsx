@@ -8,6 +8,7 @@ import {
   FolderPlus,
   GripVertical,
   Link,
+  Layers,
   Plus,
   Search,
   Trash2,
@@ -45,6 +46,8 @@ interface CollectionTreeProps {
   onDuplicateNode: (collectionId: string, nodeId: string) => TreeNode | null
   onAddRequestToFolder: (collectionId: string, parentId: string | null, method?: HttpMethod) => void
   onImportCollection: (collection: Collection) => void
+  workspaceTargets: Array<{ id: string; name: string }>
+  onMoveCollectionToWorkspace: (collectionId: string, workspaceId: string) => void
   onReorderCollections: (fromId: string, toId: string) => void
   onMoveNode: (collectionId: string, nodeId: string, targetCollectionId: string, targetParentId: string | null, targetIndex: number) => void
 }
@@ -413,6 +416,8 @@ export function CollectionTree({
   onDuplicateNode,
   onAddRequestToFolder,
   onImportCollection,
+  workspaceTargets,
+  onMoveCollectionToWorkspace,
   onReorderCollections,
   onMoveNode,
 }: CollectionTreeProps) {
@@ -649,7 +654,7 @@ export function CollectionTree({
   )
 
   return (
-    <div className="relative flex h-full flex-col">
+    <div className="relative flex min-h-0 flex-1 flex-col">
       <div className="flex items-center gap-1 border-b border-border-1 px-2 py-2">
         <span className="flex-1 text-[10px] font-semibold uppercase tracking-wider text-text-4">Collections</span>
         <input ref={fileInputRef} type="file" accept=".json,.yaml,.yml,.bru" className="hidden" onChange={(event) => void handleImport(event.target.files?.[0])} />
@@ -770,13 +775,29 @@ export function CollectionTree({
       </div>
 
       {context && (
-        <div ref={menuRef} className="fixed z-50 w-52 rounded-md border border-border-1 bg-surface-1 py-1 shadow-xl" style={{ left: context.x, top: context.y }}>
+        <div ref={menuRef} className="fixed z-50 max-h-[70vh] w-52 overflow-y-auto rounded-md border border-border-1 bg-surface-1 py-1 shadow-xl" style={{ left: context.x, top: context.y }}>
           {context.kind === 'collection' && (
             <>
               <MenuButton onClick={() => { setEditingId(context.collection.id); setContext(null) }}><Copy size={12} /> Rename</MenuButton>
               <MenuButton onClick={() => { onImportCollection(cloneCollection(context.collection)); setContext(null) }}><Copy size={12} /> Duplicate</MenuButton>
               <MenuButton onClick={() => { setFolderPrompt({ collectionId: context.collection.id, parentId: null }); setContext(null) }}><FolderPlus size={12} /> New Folder</MenuButton>
               <MenuButton onClick={() => { onAddRequestToFolder(context.collection.id, null); setContext(null) }}><Plus size={12} /> New Request</MenuButton>
+              {workspaceTargets.length > 0 && (
+                <div className="border-t border-border-1 py-1">
+                  <div className="px-3 py-1 text-[9px] font-semibold uppercase tracking-wider text-text-4">Move to workspace</div>
+                  {workspaceTargets.map((workspace) => (
+                    <MenuButton
+                      key={workspace.id}
+                      onClick={() => {
+                        onMoveCollectionToWorkspace(context.collection.id, workspace.id)
+                        setContext(null)
+                      }}
+                    >
+                      <Layers size={12} /> {workspace.name}
+                    </MenuButton>
+                  ))}
+                </div>
+              )}
               {contextExportMenu(context)}
               <MenuButton danger onClick={() => { setDeleteTarget(context); setContext(null) }}><Trash2 size={12} /> Delete</MenuButton>
             </>
