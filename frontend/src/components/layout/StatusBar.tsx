@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
 import { FolderKanban, Moon, Sun } from 'lucide-react'
-import { useEnvironmentsStore } from '@/stores/environments'
 import { useCollectionsStore } from '@/stores/collections'
 import { useTabsStore } from '@/stores/tabs'
 import { useAppStore } from '@/stores/app'
@@ -33,7 +32,6 @@ export function StatusBar() {
     return () => window.removeEventListener('adomnia:save-error', handler)
   }, [])
 
-  const activeEnv = environments.find((e) => e.id === activeEnvId)
   const activeWorkspace = workspaces.find((workspace) => workspace.id === activeWorkspaceId)
   const activeTab = tabs.find((t) => t.id === activeTabId)
   const response = activeTab?.response

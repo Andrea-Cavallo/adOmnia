@@ -47,6 +47,43 @@ export interface MarkdownGraphEdge {
   resolved: boolean
 }
 
+export type AgentMemoryRelationType = 'references' | 'updates' | 'extends' | 'derives' | 'unresolved'
+
+export interface AgentMemoryEntry {
+  id: string
+  type: 'document' | 'heading' | 'tag' | 'unresolved-link'
+  text: string
+  documentId: string
+  line?: number
+  level?: number
+  current: boolean
+}
+
+export interface AgentMemoryDocument {
+  id: string
+  title: string
+  path: string
+  source: 'markdown'
+  contentType: 'text/markdown'
+  updatedAt: string
+  tags: string[]
+  memoryEntries: AgentMemoryEntry[]
+}
+
+export interface AgentMemoryRelation {
+  id: string
+  from: string
+  to: string
+  type: AgentMemoryRelationType
+  resolved: boolean
+  label: string
+  evidence: {
+    documentId: string
+    linkType: 'markdown' | 'wiki'
+    text: string
+  }
+}
+
 export interface MarkdownTreeNode {
   name: string
   relPath: string
@@ -82,6 +119,15 @@ export interface AgentGraphFile {
   }
   workspace: MarkdownWorkspace
   links: MarkdownLink[]
+  memory: {
+    format: 'adomnia.supermemory-compatible'
+    version: 1
+    entrypoint?: string
+    readOrder: string[]
+    unresolved: string[]
+    documents: AgentMemoryDocument[]
+    relations: AgentMemoryRelation[]
+  }
   graph: {
     nodes: MarkdownGraphNode[]
     edges: MarkdownGraphEdge[]
@@ -365,6 +411,15 @@ export function extractMarkdownEdges(
   return edges
 }
 
+export function classifyMemoryRelation(edge: Pick<MarkdownEdge, 'to' | 'label' | 'resolved'>): AgentMemoryRelationType {
+  if (!edge.resolved) return 'unresolved'
+  const text = `${edge.to} ${edge.label}`.toLowerCase()
+  if (/\b(update|updates|updated|changelog|release|roadmap|migration|migrate)\b/.test(text)) return 'updates'
+  if (/\b(architecture|design|concept|concepts|spec|docs?|guide|readme|manual|reference)\b/.test(text)) return 'extends'
+  if (/\b(derived|derives|from|source|based|fork|origin)\b/.test(text)) return 'derives'
+  return 'references'
+}
+
 export function buildMarkdownTree(files: MarkdownFileEntry[]): MarkdownTreeNode[] {
   const root: MarkdownTreeNode = { name: '', relPath: '', children: [] }
   for (const file of files) {
@@ -469,6 +524,74 @@ export function extractTags(content: string): string[] {
   return Array.from(tags).sort((a, b) => a.localeCompare(b))
 }
 
+function noteMemoryText(content: string, title: string): string {
+  const body = content
+    .replace(/^---\r?\n[\s\S]*?\r?\n---/, '')
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/\[[^\]]+]\([^)]+\)/g, (match) => match.replace(/^\[|\]\([^)]+\)$/g, ''))
+    .replace(/\[\[([^\]|#]+)(?:#[^\]|]+)?(?:\|([^\]]+))?]]/g, (_m, target, alias) => alias || target)
+    .replace(/\s+/g, ' ')
+    .trim()
+  return body || title
+}
+
+function buildMemoryDocuments(
+  files: MarkdownFileEntry[],
+  contentsByPath: Record<string, string>,
+  edges: MarkdownEdge[],
+): AgentMemoryDocument[] {
+  return files.map((file) => {
+    const content = contentsByPath[file.path] || ''
+    const title = noteTitle(file)
+    const headings = extractHeadings(content)
+    const tags = extractTags(content)
+    const unresolvedOutgoing = edges.filter((edge) => edge.from === file.relPath && !edge.resolved)
+    const memoryEntries: AgentMemoryEntry[] = [
+      {
+        id: `${file.relPath}#document`,
+        type: 'document',
+        text: noteMemoryText(content, title).slice(0, 360),
+        documentId: file.relPath,
+        current: true,
+      },
+      ...headings.map((heading) => ({
+        id: `${file.relPath}#heading-${heading.line}`,
+        type: 'heading' as const,
+        text: heading.text,
+        documentId: file.relPath,
+        line: heading.line,
+        level: heading.level,
+        current: true,
+      })),
+      ...tags.map((tag) => ({
+        id: `${file.relPath}#tag-${tag}`,
+        type: 'tag' as const,
+        text: tag,
+        documentId: file.relPath,
+        current: true,
+      })),
+      ...unresolvedOutgoing.map((edge, index) => ({
+        id: `${file.relPath}#unresolved-${index}`,
+        type: 'unresolved-link' as const,
+        text: edge.to,
+        documentId: file.relPath,
+        current: false,
+      })),
+    ]
+    return {
+      id: file.relPath,
+      title,
+      path: file.path,
+      source: 'markdown',
+      contentType: 'text/markdown',
+      updatedAt: file.modifiedAt,
+      tags,
+      memoryEntries,
+    }
+  })
+}
+
 export function buildAgentGraph(
   root: string,
   files: MarkdownFileEntry[],
@@ -477,6 +600,20 @@ export function buildAgentGraph(
 ): AgentGraphFile {
   const allTags = new Set<string>()
   const unresolved = new Set(edges.filter((edge) => !edge.resolved).map((edge) => edge.to))
+  const memoryDocuments = buildMemoryDocuments(files, contentsByPath, edges)
+  const memoryRelations: AgentMemoryRelation[] = edges.map((edge, index) => ({
+    id: `${edge.from}->${edge.to}#${index}`,
+    from: edge.from,
+    to: edge.to,
+    type: classifyMemoryRelation(edge),
+    resolved: edge.resolved,
+    label: edge.label,
+    evidence: {
+      documentId: edge.from,
+      linkType: edge.type,
+      text: edge.label,
+    },
+  }))
   const nodes = files.map((file) => {
     const content = contentsByPath[file.path] || ''
     const tags = extractTags(content)
@@ -519,6 +656,15 @@ export function buildAgentGraph(
       type: edge.type,
       resolved: edge.resolved,
     })),
+    memory: {
+      format: 'adomnia.supermemory-compatible',
+      version: 1,
+      entrypoint: files[0]?.relPath,
+      readOrder: files.map((file) => file.relPath),
+      unresolved: Array.from(unresolved).sort(),
+      documents: memoryDocuments,
+      relations: memoryRelations,
+    },
     graph: {
       nodes: nodes.map((node) => ({
         id: node.id,

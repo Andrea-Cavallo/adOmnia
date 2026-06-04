@@ -1,8 +1,8 @@
-import { useCallback, useMemo, useRef, useState, type Dispatch, type PointerEvent as ReactPointerEvent, type SetStateAction } from 'react'
-import { GitBranch } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type PointerEvent as ReactPointerEvent, type SetStateAction } from 'react'
+import { GitBranch, Maximize2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { MarkdownFileEntry } from '@/lib/markdown-api'
-import type { GraphNode, MarkdownEdge } from '@/lib/markdownDoc'
+import { classifyMemoryRelation, type GraphNode, type MarkdownEdge, type AgentMemoryRelationType } from '@/lib/markdownDoc'
 
 interface MarkdownGraphViewProps {
   activeFile: MarkdownFileEntry | null
@@ -54,6 +54,7 @@ export function MarkdownGraphView({
   const graphSvgRef = useRef<SVGSVGElement>(null)
   const graphPointerRef = useRef({ x: 0, y: 0 })
   const [draggingNode, setDraggingNode] = useState('')
+  const [expanded, setExpanded] = useState(false)
   const [isPanning, setIsPanning] = useState(false)
   const graphNodeMap = useMemo(() => new Map(graphNodes.map((node) => [node.id, node])), [graphNodes])
 
@@ -76,142 +77,208 @@ export function MarkdownGraphView({
     setGraphScale((current) => Math.max(0.55, Math.min(2.4, current + delta)))
   }, [setGraphScale])
 
-  return (
-    <>
-      <div className="px-3 py-2 border-b border-border-1">
-        <div className="flex items-center gap-2 text-xs font-semibold text-text-2">
-          <GitBranch size={13} className="text-accent" />
-          Graph
-        </div>
-        <div className="mt-1 text-[10px] text-text-4">{filesCount} notes / {edgesCount} links / {unresolvedCount} unresolved</div>
-        {agentGraphPath && <div className="mt-1 truncate text-[9px] text-text-4" title={agentGraphPath}>agent graph saved</div>}
-        <div className="mt-2 flex flex-wrap gap-1">
-          <button onClick={fitGraph} className="rounded border border-border-2 px-1.5 py-0.5 text-[10px] text-text-3 hover:text-text-1">Fit</button>
-          <button onClick={onResetLayout} className="rounded border border-border-2 px-1.5 py-0.5 text-[10px] text-text-3 hover:text-text-1">Reset</button>
-          <button onClick={() => zoomGraph(0.15)} className="rounded border border-border-2 px-1.5 py-0.5 text-[10px] text-text-3 hover:text-text-1">+</button>
-          <button onClick={() => zoomGraph(-0.15)} className="rounded border border-border-2 px-1.5 py-0.5 text-[10px] text-text-3 hover:text-text-1">-</button>
-          <button onClick={() => setShowUnresolved((value) => !value)} className={cn('rounded border px-1.5 py-0.5 text-[10px]', showUnresolved ? 'border-accent/60 text-accent' : 'border-border-2 text-text-4')}>Unresolved</button>
-          <button onClick={() => setShowOrphans((value) => !value)} className={cn('rounded border px-1.5 py-0.5 text-[10px]', showOrphans ? 'border-accent/60 text-accent' : 'border-border-2 text-text-4')}>Orphans</button>
-          <select
-            value={folderFilter}
-            onChange={(event) => onFolderFilterChange(event.target.value)}
-            className="h-5 max-w-full rounded border border-border-2 bg-surface-0 px-1 text-[10px] text-text-3 outline-none"
-            title="Filter graph by folder"
-          >
-            <option value="">All folders</option>
-            {folderOptions.map((folder) => <option key={folder} value={folder}>{folder}</option>)}
-          </select>
-        </div>
-      </div>
-      <div className="h-64 border-b border-border-1 bg-surface-0">
-        {graphNodes.length === 0 ? (
-          <div className="px-3 py-5 text-[11px] text-text-4">Open a folder to build the graph.</div>
-        ) : (
-          <svg
-            ref={graphSvgRef}
-            viewBox="0 0 300 184"
-            className="h-full w-full cursor-grab touch-none"
-            onWheel={(event) => {
-              event.preventDefault()
-              zoomGraph(event.deltaY < 0 ? 0.12 : -0.12)
-            }}
-            onPointerDown={(event) => {
-              const point = graphPoint(event)
-              graphPointerRef.current = point
-              setIsPanning(true)
-              event.currentTarget.setPointerCapture(event.pointerId)
-            }}
-            onPointerMove={(event) => {
-              const point = graphPoint(event)
-              const prev = graphPointerRef.current
-              const dx = point.x - prev.x
-              const dy = point.y - prev.y
-              graphPointerRef.current = point
-              if (draggingNode) {
-                setGraphPositions((positions) => ({
-                  ...positions,
-                  [draggingNode]: {
-                    x: (point.x - graphOffset.x) / graphScale,
-                    y: (point.y - graphOffset.y) / graphScale,
-                  },
-                }))
-              } else if (isPanning) {
-                setGraphOffset((offset) => ({ x: offset.x + dx, y: offset.y + dy }))
-              }
-            }}
-            onPointerUp={(event) => {
-              setDraggingNode('')
-              setIsPanning(false)
-              event.currentTarget.releasePointerCapture(event.pointerId)
-            }}
-            onPointerLeave={() => {
-              setDraggingNode('')
-              setIsPanning(false)
-            }}
-          >
-            <rect x="0" y="0" width="300" height="184" fill="var(--color-surface-0)" />
-            <g transform={`translate(${graphOffset.x} ${graphOffset.y}) scale(${graphScale})`}>
-              {visibleEdges.slice(0, 160).map((edge, index) => {
-                const from = graphNodeMap.get(edge.from)
-                const to = graphNodeMap.get(edge.to)
-                if (!from || !to) return null
-                return (
-                  <line
-                    key={`${edge.from}-${edge.to}-${index}`}
-                    x1={from.x}
-                    y1={from.y}
-                    x2={to.x}
-                    y2={to.y}
-                    stroke={edge.resolved ? 'var(--color-border-2)' : 'var(--color-warning)'}
-                    opacity={edge.resolved ? 0.8 : 0.55}
+  useEffect(() => {
+    if (!expanded) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setExpanded(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [expanded])
+
+  const relationColor = useCallback((type: AgentMemoryRelationType) => ({
+    references: 'var(--color-border-2)',
+    updates: 'var(--color-warning)',
+    extends: 'var(--color-accent)',
+    derives: '#8b5cf6',
+    unresolved: 'var(--color-warning)',
+  }[type]), [])
+
+  const controls = (large: boolean) => (
+    <div className="flex flex-wrap items-center gap-1">
+      <button onClick={fitGraph} className={cn('rounded border border-border-2 text-text-3 hover:text-text-1', large ? 'px-2 py-1 text-[11px]' : 'px-1.5 py-0.5 text-[10px]')}>Fit</button>
+      <button onClick={onResetLayout} className={cn('rounded border border-border-2 text-text-3 hover:text-text-1', large ? 'px-2 py-1 text-[11px]' : 'px-1.5 py-0.5 text-[10px]')}>Reset</button>
+      <button onClick={() => zoomGraph(0.15)} className={cn('rounded border border-border-2 text-text-3 hover:text-text-1', large ? 'px-2 py-1 text-[11px]' : 'px-1.5 py-0.5 text-[10px]')}>+</button>
+      <button onClick={() => zoomGraph(-0.15)} className={cn('rounded border border-border-2 text-text-3 hover:text-text-1', large ? 'px-2 py-1 text-[11px]' : 'px-1.5 py-0.5 text-[10px]')}>-</button>
+      <button onClick={() => setShowUnresolved((value) => !value)} className={cn('rounded border', large ? 'px-2 py-1 text-[11px]' : 'px-1.5 py-0.5 text-[10px]', showUnresolved ? 'border-accent/60 text-accent' : 'border-border-2 text-text-4')}>Unresolved</button>
+      <button onClick={() => setShowOrphans((value) => !value)} className={cn('rounded border', large ? 'px-2 py-1 text-[11px]' : 'px-1.5 py-0.5 text-[10px]', showOrphans ? 'border-accent/60 text-accent' : 'border-border-2 text-text-4')}>Orphans</button>
+      <select
+        value={folderFilter}
+        onChange={(event) => onFolderFilterChange(event.target.value)}
+        className={cn('max-w-full rounded border border-border-2 bg-surface-0 text-text-3 outline-none', large ? 'h-7 px-2 text-[11px]' : 'h-5 px-1 text-[10px]')}
+        title="Filter graph by folder"
+      >
+        <option value="">All folders</option>
+        {folderOptions.map((folder) => <option key={folder} value={folder}>{folder}</option>)}
+      </select>
+    </div>
+  )
+
+  const graphCanvas = (large: boolean) => (
+    <div className={cn('bg-surface-0', large ? 'h-[calc(100vh-98px)]' : 'h-64 border-b border-border-1')}>
+      {graphNodes.length === 0 ? (
+        <div className="px-3 py-5 text-[11px] text-text-4">Open a folder to build the graph.</div>
+      ) : (
+        <svg
+          ref={graphSvgRef}
+          viewBox="0 0 300 184"
+          className="h-full w-full cursor-grab touch-none"
+          onWheel={(event) => {
+            event.preventDefault()
+            zoomGraph(event.deltaY < 0 ? 0.12 : -0.12)
+          }}
+          onPointerDown={(event) => {
+            const point = graphPoint(event)
+            graphPointerRef.current = point
+            setIsPanning(true)
+            event.currentTarget.setPointerCapture(event.pointerId)
+          }}
+          onPointerMove={(event) => {
+            const point = graphPoint(event)
+            const prev = graphPointerRef.current
+            const dx = point.x - prev.x
+            const dy = point.y - prev.y
+            graphPointerRef.current = point
+            if (draggingNode) {
+              setGraphPositions((positions) => ({
+                ...positions,
+                [draggingNode]: {
+                  x: (point.x - graphOffset.x) / graphScale,
+                  y: (point.y - graphOffset.y) / graphScale,
+                },
+              }))
+            } else if (isPanning) {
+              setGraphOffset((offset) => ({ x: offset.x + dx, y: offset.y + dy }))
+            }
+          }}
+          onPointerUp={(event) => {
+            setDraggingNode('')
+            setIsPanning(false)
+            event.currentTarget.releasePointerCapture(event.pointerId)
+          }}
+          onPointerLeave={() => {
+            setDraggingNode('')
+            setIsPanning(false)
+          }}
+        >
+          <rect x="0" y="0" width="300" height="184" fill="var(--color-surface-0)" />
+          <g transform={`translate(${graphOffset.x} ${graphOffset.y}) scale(${graphScale})`}>
+            {visibleEdges.slice(0, large ? 500 : 160).map((edge, index) => {
+              const from = graphNodeMap.get(edge.from)
+              const to = graphNodeMap.get(edge.to)
+              if (!from || !to) return null
+              const relation = classifyMemoryRelation(edge)
+              return (
+                <line
+                  key={`${edge.from}-${edge.to}-${index}`}
+                  x1={from.x}
+                  y1={from.y}
+                  x2={to.x}
+                  y2={to.y}
+                  stroke={relationColor(relation)}
+                  opacity={edge.resolved ? 0.82 : 0.62}
+                  strokeWidth={large ? '1.35' : '1'}
+                />
+              )
+            })}
+            {graphNodes.map((node) => {
+              const active = activeFile?.relPath === node.id
+              return (
+                <g
+                  key={node.id}
+                  role={node.file ? 'button' : 'img'}
+                  className={cn(node.file && 'cursor-pointer')}
+                  onPointerDown={(event) => {
+                    event.stopPropagation()
+                    setDraggingNode(node.id)
+                    graphPointerRef.current = graphPoint(event)
+                    event.currentTarget.ownerSVGElement?.setPointerCapture(event.pointerId)
+                  }}
+                  onDoubleClick={(event) => {
+                    event.stopPropagation()
+                    if (node.file) onOpenFile(node.file)
+                  }}
+                >
+                  <circle
+                    cx={node.x}
+                    cy={node.y}
+                    r={active ? (large ? 9 : 8) : (large ? 6.4 : 5.5)}
+                    fill={active ? 'var(--color-accent)' : node.unresolved ? 'var(--color-warning)' : 'var(--color-surface-3)'}
+                    stroke="var(--color-border-1)"
                     strokeWidth="1"
                   />
-                )
-              })}
-              {graphNodes.map((node) => {
-                const active = activeFile?.relPath === node.id
-                return (
-                  <g
-                    key={node.id}
-                    role={node.file ? 'button' : 'img'}
-                    className={cn(node.file && 'cursor-pointer')}
-                    onPointerDown={(event) => {
-                      event.stopPropagation()
-                      setDraggingNode(node.id)
-                      graphPointerRef.current = graphPoint(event)
-                      event.currentTarget.ownerSVGElement?.setPointerCapture(event.pointerId)
-                    }}
-                    onDoubleClick={(event) => {
-                      event.stopPropagation()
-                      if (node.file) onOpenFile(node.file)
-                    }}
-                  >
-                    <circle
-                      cx={node.x}
-                      cy={node.y}
-                      r={active ? 8 : 5.5}
-                      fill={active ? 'var(--color-accent)' : node.unresolved ? 'var(--color-warning)' : 'var(--color-surface-3)'}
-                      stroke="var(--color-border-1)"
-                      strokeWidth="1"
-                    />
-                    {(active || graphNodes.length <= 24) && (
-                      <text
-                        x={node.x + 8}
-                        y={node.y + 3}
-                        fill="var(--color-text-3)"
-                        fontSize="8"
-                        pointerEvents="none"
-                      >
-                        {node.label.slice(0, 22)}
-                      </text>
-                    )}
-                  </g>
-                )
-              })}
-            </g>
-          </svg>
-        )}
+                  {(large || active || graphNodes.length <= 24) && (
+                    <text
+                      x={node.x + (large ? 9 : 8)}
+                      y={node.y + 3}
+                      fill={active ? 'var(--color-text-1)' : 'var(--color-text-3)'}
+                      fontSize={large ? '5.8' : '8'}
+                      pointerEvents="none"
+                    >
+                      {node.label.slice(0, large ? 34 : 22)}
+                    </text>
+                  )}
+                </g>
+              )
+            })}
+          </g>
+        </svg>
+      )}
+    </div>
+  )
+
+  const legend = (
+    <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-text-4">
+      {(['references', 'updates', 'extends', 'derives', 'unresolved'] as AgentMemoryRelationType[]).map((type) => (
+        <span key={type} className="inline-flex items-center gap-1">
+          <span className="h-1.5 w-4 rounded-full" style={{ background: relationColor(type) }} />
+          {type}
+        </span>
+      ))}
+    </div>
+  )
+
+  return (
+    <>
+      <div className="border-b border-border-1 px-3 py-2">
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="flex w-full items-center justify-between gap-2 rounded px-1 py-0.5 text-left hover:bg-surface-2"
+          title="Open graph fullscreen"
+        >
+          <span className="flex items-center gap-2 text-xs font-semibold text-text-2">
+            <GitBranch size={13} className="text-accent" />
+            Graph
+          </span>
+          <Maximize2 size={13} className="text-text-4" />
+        </button>
+        <div className="mt-1 text-[10px] text-text-4">{filesCount} notes / {edgesCount} links / {unresolvedCount} unresolved</div>
+        {agentGraphPath && <div className="mt-1 truncate text-[9px] text-text-4" title={agentGraphPath}>agent graph saved</div>}
+        <div className="mt-2">{controls(false)}</div>
       </div>
+      {graphCanvas(false)}
+      {expanded && (
+        <div className="fixed inset-0 z-[90] flex flex-col bg-surface-0">
+          <div className="flex min-h-12 items-center justify-between gap-3 border-b border-border-1 px-4 py-2">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 text-sm font-semibold text-text-1">
+                <GitBranch size={15} className="text-accent" />
+                Markdown Graph
+              </div>
+              <div className="mt-0.5 text-[10px] text-text-4">{filesCount} notes / {edgesCount} links / {unresolvedCount} unresolved</div>
+            </div>
+            <div className="flex items-center gap-3">
+              {controls(true)}
+              <button type="button" onClick={() => setExpanded(false)} className="rounded border border-border-2 p-1.5 text-text-3 hover:text-text-1" title="Close graph">
+                <X size={15} />
+              </button>
+            </div>
+          </div>
+          <div className="border-b border-border-1 px-4 py-2">{legend}</div>
+          {graphCanvas(true)}
+        </div>
+      )}
     </>
   )
 }

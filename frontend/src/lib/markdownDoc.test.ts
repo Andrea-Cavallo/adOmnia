@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildAgentGraph,
   buildFileLookup,
   buildGraphNodes,
   buildMarkdownTree,
+  classifyMemoryRelation,
   extractHeadings,
   extractMarkdownEdges,
   extractTags,
@@ -144,6 +146,29 @@ describe('graph build', () => {
     const centered = buildGraphNodes(files, edges, active).find((n) => n.id === 'concepts.md')
     expect(centered?.x).toBe(150)
     expect(centered?.y).toBe(92)
+  })
+})
+
+describe('agent-readable graph export', () => {
+  it('exports a supermemory-compatible memory graph alongside visual nodes and edges', () => {
+    const graph = buildAgentGraph('/ws', files, contentsByPath, allEdges())
+    expect(graph.schema).toBe('adomnia.markdown.graph')
+    expect(graph.memory.format).toBe('adomnia.supermemory-compatible')
+    expect(graph.memory.documents.length).toBe(files.length)
+    expect(graph.memory.relations.length).toBe(graph.edges.length)
+    expect(graph.memory.unresolved).toContain('does-not-exist.md')
+
+    const indexMemory = graph.memory.documents.find((doc) => doc.id === 'index.md')
+    expect(indexMemory?.contentType).toBe('text/markdown')
+    expect(indexMemory?.memoryEntries.some((entry) => entry.type === 'document' && entry.current)).toBe(true)
+    expect(indexMemory?.memoryEntries.some((entry) => entry.type === 'unresolved-link' && !entry.current)).toBe(true)
+  })
+
+  it('classifies memory relations so agents can reason over graph edges', () => {
+    expect(classifyMemoryRelation({ to: 'docs/architecture.md', label: 'Architecture', resolved: true })).toBe('extends')
+    expect(classifyMemoryRelation({ to: 'CHANGELOG.md', label: 'Release notes', resolved: true })).toBe('updates')
+    expect(classifyMemoryRelation({ to: 'source-plan.md', label: 'Based on source', resolved: true })).toBe('derives')
+    expect(classifyMemoryRelation({ to: 'missing.md', label: 'Missing', resolved: false })).toBe('unresolved')
   })
 })
 
