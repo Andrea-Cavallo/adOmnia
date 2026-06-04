@@ -23,6 +23,7 @@ import {
   Send,
   Server,
   Shield,
+  UploadCloud,
   Zap,
 } from 'lucide-react'
 import { useAppStore, type RailItem } from '@/stores/app'
@@ -147,6 +148,7 @@ export function WelcomePanel() {
   const environments = useEnvironmentsStore((s) => s.environments)
   const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
   const tabs = useTabsStore((s) => s.tabs)
+  const newTab = useTabsStore((s) => s.newTab)
   const responseHistory = useTabsStore((s) => s.responseHistory)
   const [openLayers, setOpenLayers] = useState<Set<LayerId>>(() => new Set())
   const [recentWorkspaces, setRecentWorkspaces] = useState<RecentWorkspace[]>(loadRecentWorkspaces)
@@ -162,6 +164,7 @@ export function WelcomePanel() {
     () => collections.reduce((total, collection) => total + countRequests(collection.children), 0),
     [collections],
   )
+  const isEmptyWorkspace = collections.length === 0 && environments.length === 0 && tabs.length === 0
   const activeEnvironment = environments.find((environment) => environment.id === activeEnvId)
   const runningServices = [
     mockRunning && 'Mock',
@@ -249,13 +252,17 @@ export function WelcomePanel() {
             <div className="min-w-0">
               <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/10 px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-accent">
                 <Layers size={12} />
-                Local developer toolbox
+                Local-first developer toolbox
               </div>
               <h1 className="m-0 font-sans text-[34px] font-semibold leading-none tracking-[-0.02em] text-text-1">
-                Build, test and debug APIs from one private desktop workspace.
+                {isEmptyWorkspace
+                  ? 'Drop your API files and start from your real workspace.'
+                  : 'Build, test and debug APIs from one private desktop workspace.'}
               </h1>
               <p className="mt-3 max-w-2xl font-mono text-[12px] leading-relaxed text-text-3">
-                adOmnia brings API clients, mocks, brokers, proxy inspection, browser debugging and local data tools into a single offline-first environment. Your collections, secrets, traffic captures and workspaces stay on your machine.
+                {isEmptyWorkspace
+                  ? 'Start clean: drag Postman, Insomnia, Bruno, OpenAPI, .adomnia, .har or .wsdl files anywhere in this window. adOmnia imports them locally, with no account and no cloud sync.'
+                  : 'adOmnia brings API clients, mocks, brokers, proxy inspection, browser debugging and local data tools into a single offline-first environment. Your collections, secrets, traffic captures and workspaces stay on your machine.'}
               </p>
               <div className="mt-5 hidden items-center gap-3 xl:flex">
                 <MetricPill label="collections" value={String(collections.length)} />
@@ -303,6 +310,44 @@ export function WelcomePanel() {
               />
             </div>
           </header>
+
+          {isEmptyWorkspace && (
+            <section className="mb-5 grid gap-4 overflow-hidden rounded-2xl border border-accent/25 bg-accent/[0.06] p-5 shadow-lg shadow-black/5 lg:grid-cols-[minmax(0,1fr)_auto]">
+              <div className="flex min-w-0 gap-4">
+                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-accent/30 bg-accent/10 text-accent">
+                  <UploadCloud size={22} />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-sm font-semibold text-text-1">Start with an import</h2>
+                  <p className="mt-1 max-w-3xl font-mono text-[11px] leading-relaxed text-text-3">
+                    Drop files directly on the app to populate the API workspace, open HAR captures, or route WSDL files into SOAP Studio. You can also create a blank request if you want to test a single URL first.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2 font-mono text-[10px] text-text-3">
+                    {['Postman', 'OpenAPI', 'Insomnia', 'Bruno', '.adomnia', '.har', '.wsdl'].map((format) => (
+                      <span key={format} className="rounded border border-border-2 bg-surface-1 px-2 py-1">{format}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    newTab()
+                    setActiveRail('collections')
+                  }}
+                  className="rounded-lg border border-border-2 bg-surface-1 px-3 py-2 text-xs font-medium text-text-2 transition-colors hover:border-accent/40 hover:text-text-1"
+                >
+                  Blank request
+                </button>
+                <button
+                  onClick={() => setActiveRail('workspace')}
+                  className="rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-accent-hover"
+                >
+                  Workspace import
+                </button>
+              </div>
+            </section>
+          )}
 
           <section className="mb-5 overflow-hidden rounded-2xl border border-border-1 bg-surface-1 shadow-lg shadow-black/5">
             <div className="flex items-center justify-between gap-4 border-b border-border-1 px-5 py-3.5">

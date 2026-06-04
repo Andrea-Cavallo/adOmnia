@@ -12,6 +12,7 @@ import {
   Search,
   Trash2,
   Upload,
+  UploadCloud,
   X,
 } from 'lucide-react'
 import type { Collection, FolderItem, HttpMethod, RequestItem, TreeNode } from '@/lib/types'
@@ -323,7 +324,7 @@ function TreeNodeRow({
         }}
         className={cn(
           'group relative flex h-7 items-center gap-1 rounded px-1 text-xs transition-colors',
-          activeRequestId === node.id ? 'bg-accent/10 text-text-1' : 'text-text-2 hover:bg-surface-2',
+          activeRequestId === node.id ? 'bg-surface-2 text-text-1 shadow-[inset_2px_0_0_var(--color-accent)]' : 'text-text-2 hover:bg-surface-2/70',
           target === 'inside' && !isInvalidDrop && 'ring-1 ring-accent/70 bg-accent/10',
           isInvalidDrop && target && 'ring-1 ring-error/60 bg-error/8',
           focusedId === node.id && 'ring-1 ring-inset ring-accent/50',
@@ -336,7 +337,7 @@ function TreeNodeRow({
         {isFolder ? (
           <>
             <ChevronRight size={12} className={cn('shrink-0 text-text-4 transition-transform', isOpen && 'rotate-90')} />
-            <Folder size={13} className="shrink-0 text-accent" />
+            <Folder size={13} className="shrink-0 text-text-3" />
           </>
         ) : (
           <span className={cn('w-9 shrink-0 text-[9px] font-bold', METHOD_COLORS[(node as RequestItem).method] ?? 'text-text-3')}>{(node as RequestItem).method}</span>
@@ -650,7 +651,7 @@ export function CollectionTree({
   return (
     <div className="relative flex h-full flex-col">
       <div className="flex items-center gap-1 border-b border-border-1 px-2 py-2">
-        <span className="flex-1 text-[10px] font-semibold uppercase tracking-wider text-text-3">Collections</span>
+        <span className="flex-1 text-[10px] font-semibold uppercase tracking-wider text-text-4">Collections</span>
         <input ref={fileInputRef} type="file" accept=".json,.yaml,.yml,.bru" className="hidden" onChange={(event) => void handleImport(event.target.files?.[0])} />
         <button onClick={() => fileInputRef.current?.click()} title="Import Postman, Insomnia, Bruno, adOmnia or OpenAPI" className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-2 hover:text-text-1">
           <Upload size={14} />
@@ -675,9 +676,21 @@ export function CollectionTree({
 
       <div className="flex-1 overflow-y-auto px-1 pb-2 outline-none" tabIndex={0} onKeyDown={handleTreeKeyDown}>
         {filtered.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
-            <p className="text-xs text-text-4">No collections yet</p>
-            <button onClick={onAddCollection} className="text-xs text-accent hover:text-accent-light">Create collection</button>
+          <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
+            <div className="grid h-10 w-10 place-items-center rounded-lg border border-dashed border-border-2 bg-surface-1 text-text-3">
+              <UploadCloud size={18} />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-text-3">No collections yet</p>
+              <p className="mt-1 text-[10px] leading-relaxed text-text-4">
+                Drop Postman, OpenAPI, Insomnia, Bruno, .adomnia or HAR files anywhere in adOmnia.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={() => fileInputRef.current?.click()} className="text-xs text-accent hover:text-accent-light">Import file</button>
+              <span className="text-text-4">/</span>
+              <button onClick={onAddCollection} className="text-xs text-accent hover:text-accent-light">Create collection</button>
+            </div>
           </div>
         ) : filtered.map((collection, collectionIndex) => (
           <div
@@ -700,7 +713,7 @@ export function CollectionTree({
                 setContext({ kind: 'collection', collection, x: event.clientX, y: event.clientY })
               }}
               className={cn(
-                'group relative flex h-7 cursor-pointer items-center gap-1 rounded px-1 text-xs font-medium text-text-1 hover:bg-surface-2',
+                'group relative flex h-7 cursor-pointer items-center gap-1 rounded px-1 text-xs font-medium text-text-2 hover:bg-surface-2/70 hover:text-text-1',
                 dropTarget?.id === collection.id && dragPayload?.type === 'node' && 'ring-1 ring-accent/70 bg-accent/10',
                 focusedId === collection.id && 'ring-1 ring-inset ring-accent/50',
               )}
@@ -708,7 +721,7 @@ export function CollectionTree({
               {collection.color && <span className="absolute bottom-0.5 left-0 top-0.5 w-[2px] rounded-r" style={{ backgroundColor: collection.color }} />}
               <GripVertical size={11} className="shrink-0 cursor-grab text-text-4 opacity-0 group-hover:opacity-60" />
               <ChevronRight size={12} className={cn('shrink-0 text-text-4 transition-transform', openIds.has(collection.id) && 'rotate-90')} />
-              <Folder size={13} className="shrink-0 text-accent" style={collection.color ? { color: collection.color } : undefined} />
+              <Folder size={13} className="shrink-0 text-text-3" style={collection.color ? { color: collection.color } : undefined} />
               {editingId === collection.id ? (
                 <InlineEdit value={collection.name} onCommit={(name) => { onRenameCollection(collection.id, name); setEditingId(null) }} onCancel={() => setEditingId(null)} />
               ) : (

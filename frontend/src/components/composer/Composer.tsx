@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { Send, Save, FileCode, Gauge, X, Plus, Check, CornerDownRight, Clock, Code, Copy, CheckCheck, FileText } from 'lucide-react'
-import type { RequestItem, HttpMethod } from '@/lib/types'
+import { Send, Save, FileCode, Gauge, X, Plus, Check, CornerDownRight, Clock, Code, Copy, CheckCheck, FileText, Circle, ListChecks, ShieldCheck } from 'lucide-react'
+import type { RequestItem, HttpMethod, KVRow } from '@/lib/types'
 import { uid, blankBody, blankAuth } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { KVEditor } from './KVEditor'
@@ -243,6 +243,160 @@ function CookieJarSection({ requestUrl }: { requestUrl: string }) {
   )
 }
 
+function enabledRows(rows: KVRow[] | undefined): KVRow[] {
+  return (rows ?? []).filter((row) => row.enabled && row.key.trim())
+}
+
+function requestVariables(request: RequestItem): string[] {
+  const values = [
+    request.url,
+    request.description ?? '',
+    ...(request.headers ?? []).flatMap((row) => [row.key, row.value]),
+    ...(request.params ?? []).flatMap((row) => [row.key, row.value]),
+    ...(request.cookies ?? []).flatMap((row) => [row.key, row.value]),
+    ...(request.bodies ?? []).flatMap((body) => [body.raw, body.graphqlVariables ?? '', ...(body.form ?? []).flatMap((row) => [row.key, row.value])]),
+  ]
+  const names = new Set<string>()
+  for (const value of values) {
+    for (const match of String(value ?? '').matchAll(/\{\{\s*([^}\s]+)\s*\}\}/g)) {
+      names.add(match[1])
+    }
+  }
+  return [...names].sort((a, b) => a.localeCompare(b))
+}
+
+function hostFromUrl(url: string): string {
+  try { return new URL(url).host } catch { return 'No host yet' }
+}
+
+function RequestOverview({
+  request,
+  vars,
+  hasActiveEnv,
+  onChange,
+  onOpenSection,
+}: {
+  request: RequestItem
+  vars: Record<string, string>
+  hasActiveEnv: boolean
+  onChange: (request: RequestItem) => void
+  onOpenSection: (section: ComposerSection) => void
+}) {
+  const variables = requestVariables(request)
+  const unresolved = variables.filter((name) => vars[name] === undefined)
+  const headers = enabledRows(request.headers)
+  const params = enabledRows(request.params)
+  const cookies = enabledRows(request.cookies)
+  const activeBody = request.bodies?.[request.activeBodyIdx ?? 0]
+  const hasBody = Boolean(activeBody && activeBody.type !== 'none')
+  const docsFilled = Boolean(request.description?.trim())
+  const authLabel = request.auth?.type && request.auth.type !== 'none' ? request.auth.type.toUpperCase() : 'No auth'
+  const setupItems = [
+    { label: 'URL is ready', ok: Boolean(request.url.trim()), section: null },
+    { label: variables.length ? `${variables.length} variable${variables.length === 1 ? '' : 's'} detected` : 'No variables needed', ok: unresolved.length === 0, section: 'params' as ComposerSection | null },
+    { label: request.auth?.type && request.auth.type !== 'none' ? `${authLabel} configured` : 'Auth intentionally empty', ok: true, section: 'auth' as ComposerSection | null },
+    { label: docsFilled ? 'Documentation present' : 'Add request notes', ok: docsFilled, section: 'notes' as ComposerSection | null },
+  ]
+
+  return (
+    <div className="flex flex-col gap-4 p-5">
+      <section className="border-b border-border-1 pb-4">
+        <div className="mb-2 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.12em] text-text-4">
+          <span className={cn('font-bold', METHOD_COLORS[request.method] ?? 'text-text-2')}>{request.method}</span>
+          <span>{hostFromUrl(request.url)}</span>
+        </div>
+        <input
+          value={request.name}
+          onChange={(event) => onChange({ ...request, name: event.target.value })}
+          placeholder="Request title"
+          className="w-full bg-transparent text-[26px] font-semibold leading-tight text-text-1 outline-none placeholder:text-text-4"
+        />
+        <textarea
+          value={request.description ?? ''}
+          onChange={(event) => onChange({ ...request, description: event.target.value })}
+          placeholder="Add a clear description: what this request does, when to use it, required setup, examples or edge cases..."
+          className="mt-3 min-h-20 w-full resize-y rounded border border-border-2 bg-surface-1 px-3 py-2 text-xs leading-relaxed text-text-2 outline-none placeholder:text-text-4 focus:border-accent"
+        />
+      </section>
+
+      <section className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="rounded-lg border border-border-1 bg-surface-1">
+          <div className="flex items-center gap-2 border-b border-border-1 px-3 py-2">
+            <ListChecks size={13} className="text-accent" />
+            <h3 className="text-xs font-semibold text-text-1">Setup</h3>
+          </div>
+          <div className="divide-y divide-border-1">
+            {setupItems.map((item) => (
+              <button
+                key={item.label}
+                onClick={() => item.section && onOpenSection(item.section)}
+                className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs text-text-2 transition-colors hover:bg-surface-2"
+              >
+                {item.ok ? <Check size={13} className="text-success" /> : <Circle size={13} className="text-warning" />}
+                <span className="flex-1">{item.label}</span>
+                {item.section && <span className="font-mono text-[10px] text-text-4">open</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-border-1 bg-surface-1">
+          <div className="flex items-center gap-2 border-b border-border-1 px-3 py-2">
+            <ShieldCheck size={13} className="text-accent" />
+            <h3 className="text-xs font-semibold text-text-1">Request context</h3>
+          </div>
+          <dl className="grid grid-cols-[92px_1fr] gap-x-3 gap-y-2 px-3 py-3 font-mono text-[10px]">
+            <dt className="text-text-4">Auth</dt><dd className="truncate text-text-2">{authLabel}</dd>
+            <dt className="text-text-4">Headers</dt><dd className="text-text-2">{headers.length}</dd>
+            <dt className="text-text-4">Params</dt><dd className="text-text-2">{params.length}</dd>
+            <dt className="text-text-4">Cookies</dt><dd className="text-text-2">{cookies.length}</dd>
+            <dt className="text-text-4">Body</dt><dd className="text-text-2">{hasBody ? activeBody?.type : 'none'}</dd>
+            <dt className="text-text-4">Tests</dt><dd className="text-text-2">{request.assertions?.length ?? 0}</dd>
+          </dl>
+        </div>
+      </section>
+
+      {variables.length > 0 && (
+        <section className="rounded-lg border border-border-1 bg-surface-1">
+          <div className="flex items-center justify-between gap-2 border-b border-border-1 px-3 py-2">
+            <h3 className="text-xs font-semibold text-text-1">Variables</h3>
+            <span className="font-mono text-[10px] text-text-4">{hasActiveEnv ? `${unresolved.length} unresolved` : 'No environment selected'}</span>
+          </div>
+          <div className="grid grid-cols-1 gap-2 p-3 md:grid-cols-2">
+            {variables.map((name) => {
+              const resolved = vars[name]
+              return (
+                <div key={name} className="flex min-w-0 items-center gap-2 rounded border border-border-2 bg-surface-2 px-2 py-1.5 font-mono text-[10px]">
+                  <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', resolved === undefined ? 'bg-warning' : 'bg-success')} />
+                  <span className="truncate text-accent">{`{{${name}}}`}</span>
+                  <span className="min-w-0 flex-1 truncate text-right text-text-4">{resolved === undefined ? 'unresolved' : resolved}</span>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
+      <section className="grid gap-2 sm:grid-cols-4">
+        {([
+          { label: 'Auth', section: 'auth' },
+          { label: 'Headers', section: 'headers' },
+          { label: 'Body', section: 'body' },
+          { label: 'Tests', section: 'tests' },
+        ] satisfies Array<{ label: string; section: ComposerSection }>).map(({ label, section }) => (
+          <button
+            key={section}
+            onClick={() => onOpenSection(section)}
+            className="rounded-lg border border-border-2 bg-surface-1 px-3 py-2 text-left text-xs text-text-2 transition-colors hover:border-accent/30 hover:bg-surface-2 hover:text-text-1"
+          >
+            {label}
+          </button>
+        ))}
+      </section>
+    </div>
+  )
+}
+
 export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest, loading, hideRequestBar = false }: ComposerProps) {
   const getResolvedVars = useEnvironmentsStore((s) => s.getResolvedVars)
   const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
@@ -290,6 +444,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
   }, [cookieJarEntries, request.url, sendCookiesAutomatically])
 
   const tabs = [
+    { id: 'overview' as ComposerSection, label: 'Overview', count: request.description?.trim() ? 1 : 0 },
     { id: 'body' as ComposerSection, label: 'Body', count: bodyCount },
     { id: 'auth' as ComposerSection, label: 'Auth', count: request.auth?.type !== 'none' ? 1 : 0 },
     { id: 'headers' as ComposerSection, label: 'Headers', count: (request.headers ?? []).filter((h) => h.enabled && h.key).length },
@@ -308,6 +463,11 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
   const handleCurlImport = (curlStr: string) => {
     const parsed = parseCurl(curlStr)
     if (parsed) onChange(applyParsedCurl(parsed, request))
+  }
+
+  const openSection = (section: ComposerSection) => {
+    setActiveTab(section)
+    updateViewState(tabId, { composerSection: section })
   }
 
   useEffect(() => {
@@ -490,6 +650,15 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
           }}
           className="flex-1 min-h-0 overflow-y-auto flex flex-col"
         >
+          {activeTab === 'overview' && (
+            <RequestOverview
+              request={request}
+              vars={resolvedVars}
+              hasActiveEnv={hasActiveEnv}
+              onChange={onChange}
+              onOpenSection={openSection}
+            />
+          )}
           {activeTab === 'params' && (
             <KVEditor rows={request.params ?? []} onChange={(params) => onChange({ ...request, params })} />
           )}
