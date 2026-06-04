@@ -119,6 +119,14 @@ export interface Collection {
   _openapiSpec?: string
 }
 
+export interface CollectionWorkspace {
+  id: string
+  name: string
+  collections: Collection[]
+  createdAt: string
+  updatedAt: string
+}
+
 export interface EnvVariable {
   id: string
   key: string
@@ -156,6 +164,7 @@ export interface Tab {
   id: string
   request: RequestItem
   collectionId?: string
+  workspaceId?: string
   dirty: boolean
   response: ResponseData | null
   loading: boolean

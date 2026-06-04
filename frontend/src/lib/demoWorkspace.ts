@@ -745,18 +745,13 @@ export function loadDefaultPostmanDemo(): boolean {
   if (!colStore.loaded || !envStore.loaded) return false
   if (colStore.collections.length > 0 || envStore.environments.length > 0) return false
 
-  useCollectionsStore.setState({
-    collections: [getDefaultPostmanDemoCollection()],
-    loaded: true,
-    loadError: false,
-  })
+  useCollectionsStore.getState().replaceCollections([getDefaultPostmanDemoCollection()])
   useEnvironmentsStore.setState({
     environments: [getDefaultPostmanDemoEnvironment()],
     activeEnvId: POSTMAN_DEMO_ENVIRONMENT.id,
     loaded: true,
     loadError: false,
   })
-  void useCollectionsStore.getState().save()
   void useEnvironmentsStore.getState().save()
   return true
 }

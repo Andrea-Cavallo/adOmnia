@@ -1,6 +1,6 @@
 import type { Collection, Environment, Tab } from '@/lib/types'
 import type { AppSettings } from '@/stores/settings'
-import { useCollectionsStore, migrateCollections } from '@/stores/collections'
+import { useCollectionsStore } from '@/stores/collections'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { useSettingsStore } from '@/stores/settings'
 import { useTabsStore } from '@/stores/tabs'
@@ -8,6 +8,7 @@ import { saveFlowDefinitions, type SavedFlowDefinition } from '@/lib/flowStorage
 import { safeSetItem } from '@/lib/safeLocalStorage'
 
 export interface WorkspaceState {
+  workspace?: { id: string; name: string }
   openTabs?: Tab[]
   activeTabId?: string | null
   collections?: Collection[]
@@ -21,15 +22,20 @@ export interface WorkspaceState {
 
 export async function applyWorkspaceState(state: WorkspaceState): Promise<SavedFlowDefinition[] | undefined> {
   if (Array.isArray(state.openTabs)) {
+    const workspaceId = useCollectionsStore.getState().activeWorkspaceId
+    const workspaceTabs = state.openTabs.map((tab) => ({ ...tab, workspaceId }))
+    const otherTabs = useTabsStore.getState().tabs.filter((tab) => tab.workspaceId !== workspaceId)
+    const activeTabId = workspaceTabs.some((tab) => tab.id === state.activeTabId)
+      ? state.activeTabId ?? null
+      : workspaceTabs[0]?.id ?? null
     useTabsStore.setState({
-      tabs: state.openTabs,
-      activeTabId: state.activeTabId ?? state.openTabs[0]?.id ?? null,
+      tabs: [...otherTabs, ...workspaceTabs],
+      activeTabId,
     })
     useTabsStore.getState().save()
   }
   if (Array.isArray(state.collections)) {
-    useCollectionsStore.setState({ collections: migrateCollections(state.collections), loaded: true })
-    useCollectionsStore.getState().save()
+    useCollectionsStore.getState().replaceCollections(state.collections)
   }
   if (Array.isArray(state.environments)) {
     useEnvironmentsStore.setState({

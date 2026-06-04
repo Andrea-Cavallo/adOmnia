@@ -9,6 +9,7 @@ import { importCollectionsFromText } from '@/lib/collectionTransfer'
 import { routeGlobalDropFile } from '@/lib/globalFileRouter'
 import { saveFlowDefinitions } from '@/lib/flowStorage'
 import { safeSetItem } from '@/lib/safeLocalStorage'
+import type { Tab } from '@/lib/types'
 
 export interface DropFeedback {
   msg: string
@@ -87,11 +88,16 @@ export function useFileDrop(): FileDropResult {
             (parsed.version === 2 || parsed.format === 'adomnia-workspace')
           if (isWorkspace && parsed) {
             if (Array.isArray(parsed.openTabs)) {
-              useTabsStore.setState({ tabs: parsed.openTabs as never, activeTabId: (parsed.activeTabId as string | null) ?? (parsed.openTabs as {id:string}[])[0]?.id ?? null })
+              const workspaceId = useCollectionsStore.getState().activeWorkspaceId
+              const incomingTabs: Tab[] = (parsed.openTabs as Tab[]).map((tab) => ({ ...tab, workspaceId }))
+              const otherTabs = useTabsStore.getState().tabs.filter((tab) => tab.workspaceId !== workspaceId)
+              const importedActiveTabId = incomingTabs.some((tab) => tab.id === parsed.activeTabId)
+                ? parsed.activeTabId as string
+                : incomingTabs[0]?.id ?? null
+              useTabsStore.setState({ tabs: [...otherTabs, ...incomingTabs], activeTabId: importedActiveTabId })
             }
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            useCollectionsStore.setState({ collections: migrateCollections(parsed.collections as any[]), loaded: true })
-            useCollectionsStore.getState().save()
+            useCollectionsStore.getState().replaceCollections(migrateCollections(parsed.collections as any[]))
             if (Array.isArray(parsed.environments)) {
               useEnvironmentsStore.setState({ environments: parsed.environments as never, activeEnvId: (parsed.activeEnvId as string | null) ?? null, loaded: true })
               useEnvironmentsStore.getState().save()

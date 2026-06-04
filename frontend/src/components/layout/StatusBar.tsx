@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Moon, Sun } from 'lucide-react'
+import { FolderKanban, Moon, Sun } from 'lucide-react'
 import { useEnvironmentsStore } from '@/stores/environments'
+import { useCollectionsStore } from '@/stores/collections'
 import { useTabsStore } from '@/stores/tabs'
 import { useAppStore } from '@/stores/app'
 import { useThemesStore } from '@/stores/themes'
@@ -14,6 +15,8 @@ export function StatusBar() {
   const tabs = useTabsStore((s) => s.tabs)
   const activeTabId = useTabsStore((s) => s.activeTabId)
   const responseHistory = useTabsStore((s) => s.responseHistory)
+  const workspaces = useCollectionsStore((s) => s.workspaces)
+  const activeWorkspaceId = useCollectionsStore((s) => s.activeWorkspaceId)
   const mockRunning = useAppStore((s) => s.mockRunning)
   const proxyRunning = useAppStore((s) => s.proxyRunning)
   const setActiveRail = useAppStore((s) => s.setActiveRail)
@@ -33,6 +36,7 @@ export function StatusBar() {
   }, [])
 
   const activeEnv = environments.find((e) => e.id === activeEnvId)
+  const activeWorkspace = workspaces.find((workspace) => workspace.id === activeWorkspaceId)
   const activeTab = tabs.find((t) => t.id === activeTabId)
   const response = activeTab?.response
   const activeTheme = themes.find((t) => t.id === activeThemeId)
@@ -89,6 +93,19 @@ export function StatusBar() {
         )}
       </div>
       <div className="flex items-center gap-2">
+        {activeWorkspace && (
+          <>
+            <button
+              onClick={() => setActiveRail('collections')}
+              title="Open active workspace"
+              className="flex max-w-44 items-center gap-1 text-text-4 transition-colors hover:text-text-2"
+            >
+              <FolderKanban size={10} className="shrink-0 text-accent" />
+              <span className="truncate">{activeWorkspace.name}</span>
+            </button>
+            <span className="h-3 w-px bg-border-2" />
+          </>
+        )}
         {/* Mock running indicator — click to navigate */}
         {mockRunning && (
           <button

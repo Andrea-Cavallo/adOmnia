@@ -145,9 +145,10 @@ export function WelcomePanel() {
   const sseRunning = useAppStore((s) => s.sseRunning)
   const browserRunning = useAppStore((s) => s.browserRunning)
   const collections = useCollectionsStore((s) => s.collections)
+  const activeWorkspaceId = useCollectionsStore((s) => s.activeWorkspaceId)
   const environments = useEnvironmentsStore((s) => s.environments)
   const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
-  const tabs = useTabsStore((s) => s.tabs)
+  const allTabs = useTabsStore((s) => s.tabs)
   const newTab = useTabsStore((s) => s.newTab)
   const responseHistory = useTabsStore((s) => s.responseHistory)
   const [openLayers, setOpenLayers] = useState<Set<LayerId>>(() => new Set())
@@ -163,6 +164,10 @@ export function WelcomePanel() {
   const requestCount = useMemo(
     () => collections.reduce((total, collection) => total + countRequests(collection.children), 0),
     [collections],
+  )
+  const tabs = useMemo(
+    () => allTabs.filter((tab) => (tab.workspaceId ?? activeWorkspaceId) === activeWorkspaceId),
+    [activeWorkspaceId, allTabs],
   )
   const isEmptyWorkspace = collections.length === 0 && environments.length === 0 && tabs.length === 0
   const activeEnvironment = environments.find((environment) => environment.id === activeEnvId)

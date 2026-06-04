@@ -4,6 +4,7 @@ import { uid, blankRequest } from '@/lib/types'
 import { StorageGet, StoragePut } from '@/wailsjs/go/main/App'
 import { debouncedSave } from '@/lib/storeSave'
 import { useSettingsStore } from '@/stores/settings'
+import { useCollectionsStore } from '@/stores/collections'
 
 const BUCKET = 'tabs'
 const KEY = 'session-v1'
@@ -39,6 +40,9 @@ interface TabsState {
   loadError: boolean
   load: () => Promise<void>
   save: () => void
+  activateWorkspace: (workspaceId: string) => void
+  deleteWorkspaceTabs: (workspaceId: string) => void
+  moveCollectionTabs: (collectionId: string, targetWorkspaceId: string) => void
   openTab: (request: RequestItem, collectionId?: string) => void
   closeTab: (id: string) => void
   closeTabsToRight: (id: string) => void
@@ -68,7 +72,19 @@ function shouldSaveResponses(): boolean {
 }
 
 function cleanLoadedTab(tab: Tab): Tab {
-  return { ...tab, loading: false }
+  return {
+    ...tab,
+    workspaceId: tab.workspaceId ?? useCollectionsStore.getState().activeWorkspaceId,
+    loading: false,
+  }
+}
+
+function activeWorkspaceId(): string {
+  return useCollectionsStore.getState().activeWorkspaceId
+}
+
+function belongsToWorkspace(tab: Tab, workspaceId = activeWorkspaceId()): boolean {
+  return (tab.workspaceId ?? workspaceId) === workspaceId
 }
 
 function isHistoryEntry(value: RequestHistoryEntry | ResponseData): value is RequestHistoryEntry {
@@ -126,9 +142,9 @@ export const useTabsStore = create<TabsState>((set, get) => ({
       const restoredTabs = settings.general.restoreTabsOnStartup
         ? (parsed.tabs ?? []).map(cleanLoadedTab)
         : []
-      const activeTabId = restoredTabs.some((t) => t.id === parsed.activeTabId)
+      const activeTabId = restoredTabs.some((t) => t.id === parsed.activeTabId && belongsToWorkspace(t))
         ? parsed.activeTabId
-        : restoredTabs[0]?.id ?? null
+        : restoredTabs.find((tab) => belongsToWorkspace(tab))?.id ?? null
       set({
         tabs: restoredTabs,
         activeTabId,
@@ -155,8 +171,54 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     debouncedSave('tabs', () => StoragePut(BUCKET, KEY, JSON.stringify(payload)))
   },
 
+  activateWorkspace: (workspaceId) => {
+    set((s) => ({
+      activeTabId: s.tabs.find((tab) => belongsToWorkspace(tab, workspaceId))?.id ?? null,
+    }))
+    get().save()
+  },
+
+  deleteWorkspaceTabs: (workspaceId) => {
+    set((s) => {
+      const tabs = s.tabs.filter((tab) => tab.workspaceId !== workspaceId)
+      const activeTabId = tabs.some((tab) => tab.id === s.activeTabId)
+        ? s.activeTabId
+        : tabs.find((tab) => belongsToWorkspace(tab))?.id ?? null
+      return {
+        tabs,
+        activeTabId,
+        viewStateByTabId: retainViewStates(s.viewStateByTabId, tabs),
+      }
+    })
+    get().save()
+  },
+
+  moveCollectionTabs: (collectionId, targetWorkspaceId) => {
+    const sourceWorkspaceId = activeWorkspaceId()
+    set((s) => {
+      const tabs = s.tabs.map((tab) => (
+        tab.collectionId === collectionId && belongsToWorkspace(tab, sourceWorkspaceId)
+          ? { ...tab, workspaceId: targetWorkspaceId }
+          : tab
+      ))
+      const activeTabMoved = s.tabs.some((tab) => (
+        tab.id === s.activeTabId &&
+        tab.collectionId === collectionId &&
+        belongsToWorkspace(tab, sourceWorkspaceId)
+      ))
+      return {
+        tabs,
+        activeTabId: activeTabMoved
+          ? tabs.find((tab) => belongsToWorkspace(tab) && tab.collectionId !== collectionId)?.id ?? null
+          : s.activeTabId,
+      }
+    })
+    get().save()
+  },
+
   openTab: (request, collectionId) => {
-    const existing = get().tabs.find((t) => t.request.id === request.id)
+    const workspaceId = activeWorkspaceId()
+    const existing = get().tabs.find((t) => t.request.id === request.id && belongsToWorkspace(t, workspaceId))
     if (existing) {
       set({ activeTabId: existing.id })
       get().save()
@@ -166,6 +228,7 @@ export const useTabsStore = create<TabsState>((set, get) => ({
       id: uid(),
       request: { ...request },
       collectionId,
+      workspaceId,
       dirty: false,
       response: null,
       loading: false,
@@ -179,8 +242,10 @@ export const useTabsStore = create<TabsState>((set, get) => ({
       const filtered = s.tabs.filter((t) => t.id !== id)
       let activeTabId = s.activeTabId
       if (activeTabId === id) {
-        const idx = s.tabs.findIndex((t) => t.id === id)
-        activeTabId = filtered[Math.min(idx, filtered.length - 1)]?.id ?? null
+        const visibleTabs = s.tabs.filter((tab) => belongsToWorkspace(tab))
+        const idx = visibleTabs.findIndex((t) => t.id === id)
+        const remainingVisibleTabs = filtered.filter((tab) => belongsToWorkspace(tab))
+        activeTabId = remainingVisibleTabs[Math.min(idx, remainingVisibleTabs.length - 1)]?.id ?? null
       }
       return { tabs: filtered, activeTabId }
     })
@@ -190,13 +255,16 @@ export const useTabsStore = create<TabsState>((set, get) => ({
 
   closeTabsToRight: (id) => {
     set((s) => {
-      const idx = s.tabs.findIndex((t) => t.id === id)
+      const workspaceTabs = s.tabs.filter((tab) => belongsToWorkspace(tab))
+      const idx = workspaceTabs.findIndex((t) => t.id === id)
       if (idx === -1) return s
-      const filtered = s.tabs.filter((_, i) => i <= idx)
+      const removeIds = new Set(workspaceTabs.slice(idx + 1).map((tab) => tab.id))
+      const filtered = s.tabs.filter((tab) => !removeIds.has(tab.id))
       const activeTabStillExists = filtered.some((t) => t.id === s.activeTabId)
+      const remainingWorkspaceTabs = filtered.filter((tab) => belongsToWorkspace(tab))
       return {
         tabs: filtered,
-        activeTabId: activeTabStillExists ? s.activeTabId : filtered[filtered.length - 1]?.id ?? null,
+        activeTabId: activeTabStillExists ? s.activeTabId : remainingWorkspaceTabs[remainingWorkspaceTabs.length - 1]?.id ?? null,
         viewStateByTabId: retainViewStates(s.viewStateByTabId, filtered),
       }
     })
@@ -205,13 +273,15 @@ export const useTabsStore = create<TabsState>((set, get) => ({
 
   closeTabsToLeft: (id) => {
     set((s) => {
-      const idx = s.tabs.findIndex((t) => t.id === id)
+      const workspaceTabs = s.tabs.filter((tab) => belongsToWorkspace(tab))
+      const idx = workspaceTabs.findIndex((t) => t.id === id)
       if (idx === -1) return s
-      const filtered = s.tabs.filter((_, i) => i >= idx)
+      const removeIds = new Set(workspaceTabs.slice(0, idx).map((tab) => tab.id))
+      const filtered = s.tabs.filter((tab) => !removeIds.has(tab.id))
       const activeTabStillExists = filtered.some((t) => t.id === s.activeTabId)
       return {
         tabs: filtered,
-        activeTabId: activeTabStillExists ? s.activeTabId : filtered[0]?.id ?? null,
+        activeTabId: activeTabStillExists ? s.activeTabId : filtered.find((tab) => belongsToWorkspace(tab))?.id ?? null,
         viewStateByTabId: retainViewStates(s.viewStateByTabId, filtered),
       }
     })
@@ -246,6 +316,7 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     const tab: Tab = {
       id: uid(),
       request,
+      workspaceId: activeWorkspaceId(),
       dirty: false,
       response: null,
       loading: false,
@@ -265,6 +336,7 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     const newTab: Tab = {
       id: uid(),
       request: newRequest,
+      workspaceId: src.workspaceId ?? activeWorkspaceId(),
       dirty: true,
       response: null,
       loading: false,
@@ -321,6 +393,7 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     const tab: Tab = {
       id: uid(),
       request,
+      workspaceId: activeWorkspaceId(),
       dirty: false,
       response: cloneForHistory(entry.response),
       loading: false,

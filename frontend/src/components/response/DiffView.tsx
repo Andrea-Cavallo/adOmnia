@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { X, ChevronUp, ChevronDown, EyeOff, Eye, GitCompare } from 'lucide-react'
 import { useTabsStore } from '@/stores/tabs'
+import { useCollectionsStore } from '@/stores/collections'
 import { cn } from '@/lib/utils'
 
 // ─── Diff algorithm ───────────────────────────────────────────────────────────
@@ -337,12 +338,13 @@ const METHOD_COLORS: Record<string, string> = {
 
 export function DiffPickerModal({ currentTabId, onConfirm, onCancel }: DiffPickerModalProps) {
   const tabs = useTabsStore((s) => s.tabs)
+  const activeWorkspaceId = useCollectionsStore((s) => s.activeWorkspaceId)
   const [pasteText, setPasteText] = useState('')
   const [mode, setMode] = useState<'tabs' | 'paste'>('tabs')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const candidateTabs = tabs.filter(
-    (t) => t.id !== currentTabId && t.response && !t.response.error,
+    (t) => (t.workspaceId ?? activeWorkspaceId) === activeWorkspaceId && t.id !== currentTabId && t.response && !t.response.error,
   )
 
   useEffect(() => {

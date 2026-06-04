@@ -58,7 +58,7 @@ check rest apis:
 
 | Area | What you get |
 |---|---|
-| **API Workspace** | HTTP client (all methods), collections, environments, `{{variable}}` substitution, OAuth2 PKCE, AWS Signature v4, Digest, cURL import, OpenAPI import, pre/post scripts, assertions, code generation (13 languages), response history |
+| **API Workspace** | Multiple local workspaces with independent collections and tabs, HTTP client (all methods), environments, `{{variable}}` substitution, OAuth2 PKCE, AWS Signature v4, Digest, cURL/OpenAPI import, scripts, assertions, code generation, response history |
 | **API Catalog** | Installable public REST API starters, including curated no-auth/free endpoints inspired by `public-apis/public-apis`, imported directly into local adOmnia collections |
 | **Collection Runner & Testing** | Test runner with iterations/delay/retry/CSV datasets, assertion editor (JSONPath, XPath, schema), Mermaid-generated API flows, test data studio (fake data generator) |
 | **Protocols** | SOAP/WSDL Studio (1.1 & 1.2, WS-Security), gRPC (server reflection, unary + streaming), WebSocket client + mock server, SSE client, **MCP Client** (AI tool testing, stdio + HTTP transport) |
@@ -111,7 +111,7 @@ adOmnia es un **toolbox profesional de desarrollo de APIs** para desarrolladores
 
 | Área | Qué incluye |
 |---|---|
-| **API Workspace** | Cliente HTTP completo, colecciones, entornos, sustitución `{{variable}}`, OAuth2 PKCE, AWS v4, import cURL/OpenAPI, scripts pre/post, assertions, generación de código (13 lenguajes) |
+| **API Workspace** | Workspaces locales múltiples con colecciones y pestañas independientes, cliente HTTP completo, entornos, sustitución `{{variable}}`, OAuth2 PKCE, AWS v4, import cURL/OpenAPI, scripts, assertions, generación de código |
 | **Testing y Runner** | Runner con iteraciones/delay/CSV, assertion editor (JSONPath, XPath, schema), flows API desde Mermaid, test data studio |
 | **Protocolos** | SOAP/WSDL Studio (WS-Security), gRPC (reflection + streaming), WebSocket + mock server, SSE, **MCP Client** (prueba servidores MCP de IA) |
 | **Mensajería** | Kafka, RabbitMQ, MQTT, Redis Pub/Sub, NATS — log compartido, perfiles persistentes |
@@ -163,7 +163,7 @@ adOmnia è un **toolbox professionale per lo sviluppo di API** pensato per chi v
 
 | Area | Cosa include |
 |---|---|
-| **API Workspace** | Client HTTP completo, collezioni, ambienti, sostituzione `{{variabile}}`, OAuth2 PKCE, AWS Signature v4, import cURL/OpenAPI, script pre/post, assertion, generazione codice (13 linguaggi) |
+| **API Workspace** | Workspace locali multipli con collection e tab indipendenti, client HTTP completo, ambienti, sostituzione `{{variabile}}`, OAuth2 PKCE, AWS Signature v4, import cURL/OpenAPI, script, assertion, generazione codice |
 | **Testing e Runner** | Runner con iterazioni/delay/CSV, assertion editor (JSONPath, XPath, schema), flow API generati da Mermaid, test data studio |
 | **Protocolli** | SOAP/WSDL Studio (WS-Security), gRPC (server reflection + streaming), WebSocket + mock server, SSE, **MCP Client** (test server MCP per IA) |
 | **Broker** | Kafka, RabbitMQ, MQTT, Redis Pub/Sub, NATS — log messaggi condiviso, profili connessione persistenti |
