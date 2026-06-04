@@ -15,7 +15,7 @@ type PersistedTabsState = {
   responseHistory: Array<RequestHistoryEntry | ResponseData>
 }
 
-export type ComposerSection = 'params' | 'headers' | 'cookies' | 'body' | 'auth' | 'scripts' | 'tests' | 'notes'
+export type ComposerSection = 'overview' | 'params' | 'headers' | 'cookies' | 'body' | 'auth' | 'scripts' | 'tests' | 'notes'
 export type ResponseSection = 'body' | 'headers' | 'contract' | 'assertions'
 export type ResponseBodyView = 'pretty' | 'raw' | 'graph'
 export type TabDropPosition = 'before' | 'after'
@@ -87,7 +87,7 @@ function normalizeHistoryEntries(history: Array<RequestHistoryEntry | ResponseDa
 
 function defaultViewState(): TabViewState {
   return {
-    composerSection: 'body',
+    composerSection: 'overview',
     composerScrollTop: 0,
     composerContentScrollTop: {},
     responseSection: 'body',

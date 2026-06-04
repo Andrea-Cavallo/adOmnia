@@ -7,7 +7,6 @@ import { useTabsStore } from '@/stores/tabs'
 import { useAppStore } from '@/stores/app'
 import { useDevLogsStore } from '@/stores/devLogs'
 import { getBackendDevLogs, clearBackendDevLogs } from '@/lib/devlogs-api'
-import { loadDefaultPostmanDemo } from '@/lib/demoWorkspace'
 import { GetStartupWindowChrome } from '@/wailsjs/go/main/App'
 
 type WindowChromeMode = 'app' | 'app-xwayland' | 'system'
@@ -111,10 +110,6 @@ export function useAppInit(): AppInitResult {
     if (collectionsLoadError || environmentsLoadError) return
     const collectionsEmpty = useCollectionsStore.getState().collections.length === 0
     const environmentsEmpty = useEnvironmentsStore.getState().environments.length === 0
-    if (collectionsEmpty && environmentsEmpty && loadDefaultPostmanDemo()) {
-      setActiveRail('collections')
-      return
-    }
     if (collectionsEmpty && environmentsEmpty && showWelcomeOnEmpty) {
       setActiveRail('welcome')
     }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react'
-import { ArrowLeft, Check, Clock, CornerDownRight, Gauge, Save, Send, X } from 'lucide-react'
+import { ArrowLeft, Check, ChevronRight, Clock, CornerDownRight, Gauge, Save, Send, X } from 'lucide-react'
 import { useAppStore, type RailItem } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
 import { useCollectionsStore } from '@/stores/collections'
@@ -15,7 +15,7 @@ import { HostBar } from '@/components/hosts/HostBar'
 import { WelcomePanel } from '@/components/layout/WelcomePanel'
 import { LoadTestDrawer } from '@/components/loadtest/LoadTestDrawer'
 import { executeRequest } from '@/lib/executeRequest'
-import { uid, type EnvVariable, type HttpMethod, type RequestItem } from '@/lib/types'
+import { uid, type Collection, type EnvVariable, type HttpMethod, type RequestItem, type TreeNode } from '@/lib/types'
 import { useT } from '@/lib/i18n'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 import { VarHighlightInput } from '@/components/ui/VarHighlightInput'
@@ -140,6 +140,7 @@ function loadComposerWidth(): number {
 
 function ActiveRequestBar({
   request,
+  breadcrumb,
   isDirty,
   loading,
   vars,
@@ -150,6 +151,7 @@ function ActiveRequestBar({
   onLoadTest,
 }: {
   request: RequestItem
+  breadcrumb: string[]
   isDirty: boolean
   loading?: boolean
   vars: Record<string, string>
@@ -176,6 +178,14 @@ function ActiveRequestBar({
 
   return (
     <div className="border-b border-border-1 bg-surface-1/95 px-3 py-2">
+      <div className="mb-1.5 flex min-w-0 items-center gap-1 font-mono text-[10px] text-text-4">
+        {(breadcrumb.length ? breadcrumb : ['Unsaved request']).map((part, index) => (
+          <span key={`${part}-${index}`} className="flex min-w-0 items-center gap-1">
+            {index > 0 && <ChevronRight size={10} className="shrink-0 text-text-4" />}
+            <span className={cn('truncate', index === breadcrumb.length - 1 ? 'text-text-2' : 'text-text-4')}>{part}</span>
+          </span>
+        ))}
+      </div>
       <div className="flex min-w-0 items-center gap-2">
         <div className="flex min-w-[150px] max-w-[240px] flex-col gap-0.5">
           <span className="text-[9px] font-semibold uppercase tracking-[0.14em] text-accent">Active Request</span>
@@ -279,6 +289,21 @@ function ActiveRequestBar({
   )
 }
 
+function findRequestPath(collection: Collection, requestId: string): string[] | null {
+  const walk = (nodes: TreeNode[], trail: string[]): string[] | null => {
+    for (const node of nodes) {
+      if (node.type === 'request' && node.id === requestId) return [...trail, node.name || 'Untitled']
+      if (node.type === 'folder') {
+        const found = walk(node.children, [...trail, node.name])
+        if (found) return found
+      }
+    }
+    return null
+  }
+  const found = walk(collection.children, [collection.name])
+  return found
+}
+
 // ─── RequestWorkspace ─────────────────────────────────────────────────────────
 
 function RequestWorkspace() {
@@ -367,6 +392,12 @@ function RequestWorkspace() {
   // ── End resizable split ─────────────────────────────────────────────────────
 
   const activeTab = tabs.find((t) => t.id === activeTabId)
+  const activeBreadcrumb = activeTab?.collectionId
+    ? (() => {
+        const collection = collections.find((item) => item.id === activeTab.collectionId)
+        return collection ? findRequestPath(collection, activeTab.request.id) ?? [collection.name, activeTab.request.name || 'Untitled'] : []
+      })()
+    : []
 
   const oaSpec =
     activeTab?.collectionId
@@ -519,6 +550,7 @@ function RequestWorkspace() {
       {activeTab && (
         <ActiveRequestBar
           request={activeTab.request}
+          breadcrumb={activeBreadcrumb}
           isDirty={activeTab.dirty}
           loading={activeTab.loading}
           vars={getResolvedVars()}

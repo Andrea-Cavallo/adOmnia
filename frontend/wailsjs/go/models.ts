@@ -21,6 +21,7 @@ export namespace apis {
 	    categories: string[];
 	    type: string;
 	    isFree: boolean;
+	    source?: string;
 	    links: [];
 	
 	    static createFrom(source: any = {}) {
@@ -35,6 +36,7 @@ export namespace apis {
 	        this.categories = source["categories"];
 	        this.type = source["type"];
 	        this.isFree = source["isFree"];
+	        this.source = source["source"];
 	        this.links = this.convertValues(source["links"], );
 	    }
 	
