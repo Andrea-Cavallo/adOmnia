@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Clock, Download, FolderOpen, LogIn, RefreshCw, Save, Shield, ShieldAlert, Trash2, Undo2, Upload } from 'lucide-react'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
-import { useCollectionsStore, migrateCollections } from '@/stores/collections'
+import { useCollectionsStore } from '@/stores/collections'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { useSettingsStore } from '@/stores/settings'
 import { useTabsStore } from '@/stores/tabs'
@@ -25,19 +25,27 @@ export function WorkspacePanel() {
   const [flowDefinitions, setFlowDefinitions] = useState<SavedFlowDefinition[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const makeState = () => JSON.stringify({
-    version: 2,
-    savedAt: new Date().toISOString(),
-    openTabs: useTabsStore.getState().tabs,
-    activeTabId: useTabsStore.getState().activeTabId,
-    collections: useCollectionsStore.getState().collections,
-    environments: useEnvironmentsStore.getState().environments,
-    activeEnvId: useEnvironmentsStore.getState().activeEnvId,
-    settings: useSettingsStore.getState().settings,
-    websocket: (() => { try { const raw = localStorage.getItem('adomnia.websocket'); return raw ? JSON.parse(raw) : null } catch { return null } })(),
-    flows: flowDefinitions,
-    dockerLab: (() => { try { const raw = localStorage.getItem('adomnia.dockerlab.last'); return raw ? JSON.parse(raw) : null } catch { return null } })(),
-  }, null, 2)
+  const makeState = () => {
+    const collectionState = useCollectionsStore.getState()
+    const workspaceId = collectionState.activeWorkspaceId
+    const activeWorkspace = collectionState.workspaces.find((workspace) => workspace.id === workspaceId)
+    const workspaceTabs = useTabsStore.getState().tabs.filter((tab) => (tab.workspaceId ?? workspaceId) === workspaceId)
+    const activeTabId = useTabsStore.getState().activeTabId
+    return JSON.stringify({
+      version: 2,
+      savedAt: new Date().toISOString(),
+      workspace: activeWorkspace ? { id: activeWorkspace.id, name: activeWorkspace.name } : undefined,
+      openTabs: workspaceTabs,
+      activeTabId: workspaceTabs.some((tab) => tab.id === activeTabId) ? activeTabId : workspaceTabs[0]?.id ?? null,
+      collections: collectionState.collections,
+      environments: useEnvironmentsStore.getState().environments,
+      activeEnvId: useEnvironmentsStore.getState().activeEnvId,
+      settings: useSettingsStore.getState().settings,
+      websocket: (() => { try { const raw = localStorage.getItem('adomnia.websocket'); return raw ? JSON.parse(raw) : null } catch { return null } })(),
+      flows: flowDefinitions,
+      dockerLab: (() => { try { const raw = localStorage.getItem('adomnia.dockerlab.last'); return raw ? JSON.parse(raw) : null } catch { return null } })(),
+    }, null, 2)
+  }
 
   const api = useCallback(async (path: string, body?: unknown) => {
     const url = serverUrl(port, path)
@@ -178,8 +186,7 @@ export function WorkspacePanel() {
     if (!undoState) return
     const state = JSON.parse(undoState)
     if (Array.isArray(state.collections)) {
-      useCollectionsStore.setState({ collections: migrateCollections(state.collections), loaded: true })
-      useCollectionsStore.getState().save()
+      useCollectionsStore.getState().replaceCollections(state.collections)
     }
     if (Array.isArray(state.environments)) {
       useEnvironmentsStore.setState({ environments: state.environments, activeEnvId: state.activeEnvId ?? null, loaded: true })
@@ -236,7 +243,7 @@ export function WorkspacePanel() {
         <div className="p-4 border-b border-border-1 flex flex-col gap-3 shrink-0">
           <div className="flex items-center gap-2">
             <FolderOpen size={14} className="text-accent" />
-            <h2 className="text-xs font-semibold text-text-2">Saved workspaces</h2>
+            <h2 className="text-xs font-semibold text-text-2">Saved workspace snapshots</h2>
             <button onClick={refresh} className="ml-auto w-6 h-6 flex items-center justify-center text-text-4 hover:text-text-1 hover:bg-surface-2 rounded-md transition-colors" title="Refresh">
               <RefreshCw size={13} />
             </button>
@@ -348,8 +355,8 @@ export function WorkspacePanel() {
           {workspaces.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 py-12 text-center px-4">
               <FolderOpen size={24} className="text-text-4 opacity-40" />
-              <p className="text-xs text-text-4">No saved workspaces yet</p>
-              <p className="text-[10px] text-text-4">Type a name above and click Save</p>
+              <p className="text-xs text-text-4">No saved snapshots yet</p>
+              <p className="text-[10px] text-text-4">Save a point-in-time backup of the active workspace</p>
             </div>
           ) : (
             workspaces.map((ws) => (

@@ -9,7 +9,7 @@ export const STORAGE_SCHEMAS = {
   collections: {
     bucket: 'collections',
     item: 'all',
-    currentVersion: 1,
+    currentVersion: 2,
   },
   flows: {
     bucket: 'flows',

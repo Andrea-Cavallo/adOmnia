@@ -41,6 +41,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const collections = useCollectionsStore((s) => s.collections)
+  const activeWorkspaceId = useCollectionsStore((s) => s.activeWorkspaceId)
   const environments = useEnvironmentsStore((s) => s.environments)
   const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
   const setActiveEnv = useEnvironmentsStore((s) => s.setActiveEnv)
@@ -98,7 +99,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       group: 'Panels', keywords: `${panel.keywords} ${panel.group}`, icon: ArrowRight,
       run: () => setActiveRail(panel.id),
     }))
-    const recentRequests = tabs.slice().reverse().map<PaletteCommand>((tab) => ({
+    const recentRequests = tabs.filter((tab) => (tab.workspaceId ?? activeWorkspaceId) === activeWorkspaceId).reverse().map<PaletteCommand>((tab) => ({
       id: `recent:${tab.id}`, title: tab.request.name || tab.request.url || 'Untitled Request',
       subtitle: `${tab.request.method} ${tab.request.url || 'No URL'}`, group: 'Recent Requests',
       keywords: `${tab.request.method} ${tab.request.url} ${tab.request.name}`, icon: ArrowRight,
@@ -125,7 +126,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       run: () => setActiveEnv(environment.id),
     }))
     return [...actions, ...panels, ...recentRequests, ...collectionEntries, ...environmentEntries]
-  }, [activeEnvId, collections, environments, newTab, openTab, setActiveEnv, setActiveRail, tabs])
+  }, [activeEnvId, activeWorkspaceId, collections, environments, newTab, openTab, setActiveEnv, setActiveRail, tabs])
 
   const results = useMemo(() => commands
     .map((command) => ({ command, score: fuzzyScore(query, `${command.title} ${command.subtitle ?? ''} ${command.keywords}`) }))

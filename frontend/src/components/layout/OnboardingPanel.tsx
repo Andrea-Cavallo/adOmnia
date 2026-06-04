@@ -205,7 +205,6 @@ function ToolCard({ tool, onClick, topAccent = false }: {
 export function OnboardingPanel() {
   const setActiveRail = useAppStore((s) => s.setActiveRail)
   const newTab = useTabsStore((s) => s.newTab)
-  const saveCollections = useCollectionsStore((s) => s.save)
   const saveEnvironments = useEnvironmentsStore((s) => s.save)
   const port = useServerPort()
 
@@ -217,9 +216,9 @@ export function OnboardingPanel() {
 
   const loadDemo = async () => {
     const demo = createAdomniaLabWorkspace(serverUrl(port, ''))
-    useCollectionsStore.setState({ collections: migrateCollections(demo.collections), loaded: true })
+    useCollectionsStore.getState().replaceCollections(migrateCollections(demo.collections))
     useEnvironmentsStore.setState({ environments: demo.environments, activeEnvId: demo.activeEnvId, loaded: true })
-    await Promise.all([saveCollections(), saveEnvironments()])
+    await saveEnvironments()
     safeSetItem(ONBOARDED_KEY, '1')
     setActiveRail('collections')
   }
