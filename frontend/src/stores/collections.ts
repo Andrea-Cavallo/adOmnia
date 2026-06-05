@@ -32,6 +32,7 @@ interface CollectionsState {
   addCollection: (name: string) => Collection
   deleteCollection: (id: string) => void
   renameCollection: (id: string, name: string) => void
+  updateCollection: (id: string, patch: Partial<Collection>) => void
   addFolder: (collectionId: string, parentId: string | null, name: string) => void
   addRequest: (collectionId: string, parentId: string | null, request: RequestItem) => void
   deleteNode: (collectionId: string, nodeId: string) => void
@@ -381,6 +382,13 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
   renameCollection: (id, name) => {
     set((s) => ({
       collections: s.collections.map((c) => (c.id === id ? { ...c, name } : c)),
+    }))
+    get().save()
+  },
+
+  updateCollection: (id, patch) => {
+    set((s) => ({
+      collections: s.collections.map((c) => (c.id === id ? { ...c, ...patch, id: c.id } : c)),
     }))
     get().save()
   },

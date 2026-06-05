@@ -49,6 +49,7 @@ const XmlToolsPanel        = React.lazy(() => import('@/components/utils/XmlTool
 const VaultPanel           = React.lazy(() => import('@/components/vault/VaultPanel').then(m => ({ default: m.VaultPanel })))
 const WorkspacePanel       = React.lazy(() => import('@/components/workspace/WorkspacePanel').then(m => ({ default: m.WorkspacePanel })))
 const SchemasPanel         = React.lazy(() => import('@/components/workspace/SchemasPanel').then(m => ({ default: m.SchemasPanel })))
+const ApiEditorPanel       = React.lazy(() => import('@/components/apis/ApiEditorPanel').then(m => ({ default: m.ApiEditorPanel })))
 const ThemePanel           = React.lazy(() => import('@/components/themes/ThemePanel').then(m => ({ default: m.ThemePanel })))
 const TemplateMarketplace  = React.lazy(() => import('@/components/templates/TemplateMarketplace').then(m => ({ default: m.TemplateMarketplace })))
 const PluginManager        = React.lazy(() => import('@/components/plugins/PluginManager').then(m => ({ default: m.PluginManager })))
@@ -677,6 +678,7 @@ function panelFor(activeRail: RailItem): PanelDef {
     case 'vault':       return { component: <VaultPanel />,           titleKey: 'vault',     overflow: true }
     case 'workspace':   return { component: <WorkspacePanel />,       titleKey: 'workspace', overflow: true }
     case 'schemas':     return { component: <SchemasPanel />,          titleKey: 'Schema Components', overflow: true }
+    case 'apieditor':   return { component: <ApiEditorPanel />,        titleKey: 'API Editor', overflow: true }
     case 'themes':      return { component: <ThemePanel />,           titleKey: 'themes' }
     case 'templates':   return { component: <TemplateMarketplace />,  titleKey: 'templates' }
     case 'plugins':     return { component: <PluginManager />,        titleKey: 'plugins' }
