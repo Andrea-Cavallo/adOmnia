@@ -5,6 +5,7 @@ import {
   Server, Radio, Zap, Copy, Mic, Search, X, Sparkles
 } from 'lucide-react'
 import { AiMockDialog } from './AiMockDialog'
+import { MockSchemaEditor, STARTER_SCHEMA } from './MockSchemaEditor'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { useAppStore } from '@/stores/app'
 import { useCollectionsStore } from '@/stores/collections'
@@ -19,6 +20,8 @@ interface MockResponse {
   status: number
   headers: Record<string, string>
   body: string
+  generationMode?: 'static' | 'schema'
+  bodySchema?: string
   delayMs: number
   isActive: boolean
 }
@@ -172,6 +175,11 @@ function statusBg(status: number): string {
   return 'bg-success/15'
 }
 
+const BODY_MODES = [
+  { value: 'static', label: 'Static' },
+  { value: 'schema', label: 'Schema' },
+] as const
+
 function HeadersEditor({
   headers,
   onChange,
@@ -321,15 +329,44 @@ function ResponseCard({
 
           <details className="flex flex-col gap-1" open>
             <summary className="text-[10px] text-text-4 cursor-pointer hover:text-text-2 select-none">
-              Body ({resp.body.length} chars)
+              {resp.generationMode === 'schema'
+                ? `Body schema (${(resp.bodySchema || '').length} chars)`
+                : `Body (${resp.body.length} chars)`}
             </summary>
-            <textarea
-              value={resp.body}
-              onChange={(e) => upd({ body: e.target.value })}
-              rows={Math.min(12, Math.max(3, resp.body.split('\n').length))}
-              className="w-full mt-1 px-2.5 py-2 bg-surface-2 border border-border-2 rounded text-[11px] text-text-1 font-mono outline-none focus:border-accent resize-y leading-relaxed"
-              spellCheck={false}
-            />
+            <div className="mt-1 flex items-center gap-1 rounded border border-border-1 bg-surface-2 p-0.5 w-fit">
+              {BODY_MODES.map((mode) => (
+                <button
+                  key={mode.value}
+                  onClick={() => upd({
+                    generationMode: mode.value,
+                    bodySchema: mode.value === 'schema' && !resp.bodySchema ? STARTER_SCHEMA : resp.bodySchema,
+                  })}
+                  className={cn(
+                    'h-5 px-2 rounded-sm text-[10px] font-medium transition-colors',
+                    (resp.generationMode || 'static') === mode.value
+                      ? 'bg-accent text-white'
+                      : 'text-text-4 hover:text-text-1 hover:bg-surface-3',
+                  )}
+                  type="button"
+                >
+                  {mode.label}
+                </button>
+              ))}
+            </div>
+            {(resp.generationMode || 'static') === 'schema' ? (
+              <MockSchemaEditor
+                value={resp.bodySchema || ''}
+                onChange={(bodySchema) => upd({ bodySchema })}
+              />
+            ) : (
+              <textarea
+                value={resp.body}
+                onChange={(e) => upd({ body: e.target.value })}
+                rows={Math.min(12, Math.max(3, resp.body.split('\n').length))}
+                className="w-full mt-1 px-2.5 py-2 bg-surface-2 border border-border-2 rounded text-[11px] text-text-1 font-mono outline-none focus:border-accent resize-y leading-relaxed"
+                spellCheck={false}
+              />
+            )}
           </details>
         </div>
       )}

@@ -16,13 +16,15 @@ import (
 )
 
 type mockResponse struct {
-	ID       string            `json:"id"`
-	Name     string            `json:"name"`
-	Status   int               `json:"status"`
-	Headers  map[string]string `json:"headers"`
-	Body     string            `json:"body"`
-	DelayMs  int               `json:"delayMs"`
-	IsActive bool              `json:"isActive"`
+	ID             string            `json:"id"`
+	Name           string            `json:"name"`
+	Status         int               `json:"status"`
+	Headers        map[string]string `json:"headers"`
+	Body           string            `json:"body"`
+	GenerationMode string            `json:"generationMode"`
+	BodySchema     string            `json:"bodySchema"`
+	DelayMs        int               `json:"delayMs"`
+	IsActive       bool              `json:"isActive"`
 }
 
 type mockEndpoint struct {
@@ -217,8 +219,10 @@ func mockRequestHandler(w http.ResponseWriter, r *http.Request) {
 	for k, v := range resp.Headers {
 		w.Header().Set(k, v)
 	}
+
+	responseBody := renderMockResponseBody(resp)
 	if w.Header().Get("Content-Type") == "" {
-		if len(resp.Body) > 0 && (resp.Body[0] == '{' || resp.Body[0] == '[') {
+		if len(responseBody) > 0 && (responseBody[0] == '{' || responseBody[0] == '[') {
 			w.Header().Set("Content-Type", "application/json")
 		} else {
 			w.Header().Set("Content-Type", "text/plain")
@@ -230,9 +234,56 @@ func mockRequestHandler(w http.ResponseWriter, r *http.Request) {
 		status = 200
 	}
 	w.WriteHeader(status)
-	w.Write([]byte(resp.Body))
+	w.Write([]byte(responseBody))
 
 	recordHit(reqMethod, reqPath, true, resp.ID, status)
+}
+
+func renderMockResponseBody(resp *mockResponse) string {
+	if resp.GenerationMode != "schema" || strings.TrimSpace(resp.BodySchema) == "" {
+		return resp.Body
+	}
+
+	var schema map[string]interface{}
+	if err := json.Unmarshal([]byte(resp.BodySchema), &schema); err != nil {
+		return resp.Body
+	}
+
+	body, err := GenerateFromSchema(schema)
+	if err != nil {
+		return resp.Body
+	}
+	return body
+}
+
+func mockPreviewSchemaHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST only", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		Schema string `json:"schema"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httputil.JSONError(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var schema map[string]interface{}
+	if err := json.Unmarshal([]byte(req.Schema), &schema); err != nil {
+		httputil.JSONError(w, "invalid schema JSON: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	body, err := GenerateFromSchema(schema)
+	if err != nil {
+		httputil.JSONError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(body))
 }
 
 func pickResponse(ep *mockEndpoint) *mockResponse {
@@ -332,6 +383,7 @@ func RegisterHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/mock/status", mockStatusHandler)
 	mux.HandleFunc("/mock/hits", mockHitsHandler)
 	mux.HandleFunc("/mock/record", recordReplayHandler)
+	mux.HandleFunc("/mock/preview-schema", mockPreviewSchemaHandler)
 	mux.HandleFunc("/ws/mock/start", wsMockStartHandler)
 	mux.HandleFunc("/ws/mock/stop", wsMockStopHandler)
 	mux.HandleFunc("/ws/mock/status", wsMockStatusHandler)
