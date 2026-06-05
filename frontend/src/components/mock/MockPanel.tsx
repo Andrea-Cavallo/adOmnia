@@ -5,12 +5,13 @@ import {
   Server, Radio, Zap, Copy, Mic, Search, X, Sparkles
 } from 'lucide-react'
 import { AiMockDialog } from './AiMockDialog'
+import { MockConditionEditor } from './MockConditionEditor'
 import { MockSchemaEditor, STARTER_SCHEMA } from './MockSchemaEditor'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { useAppStore } from '@/stores/app'
 import { useCollectionsStore } from '@/stores/collections'
 import { useSettingsStore } from '@/stores/settings'
-import type { RequestItem, TreeNode } from '@/lib/types'
+import type { MockCondition, RequestItem, TreeNode } from '@/lib/types'
 import { uid } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -22,6 +23,7 @@ interface MockResponse {
   body: string
   generationMode?: 'static' | 'schema'
   bodySchema?: string
+  conditions?: MockCondition[]
   delayMs: number
   isActive: boolean
 }
@@ -271,6 +273,12 @@ function ResponseCard({
           placeholder="Response name"
         />
 
+        {(resp.conditions?.length ?? 0) > 0 && (
+          <span className="px-1.5 py-0.5 rounded bg-accent/15 text-[9px] font-semibold text-accent">
+            {resp.conditions!.length} cond
+          </span>
+        )}
+
         <button
           onClick={() => upd({ isActive: !resp.isActive })}
           className={cn(
@@ -324,6 +332,18 @@ function ResponseCard({
             </summary>
             <div className="mt-1">
               <HeadersEditor headers={resp.headers} onChange={(h) => upd({ headers: h })} />
+            </div>
+          </details>
+
+          <details className="flex flex-col gap-1">
+            <summary className="text-[10px] text-text-4 cursor-pointer hover:text-text-2 select-none">
+              Conditions ({resp.conditions?.length ?? 0})
+            </summary>
+            <div className="mt-1">
+              <MockConditionEditor
+                conditions={resp.conditions ?? []}
+                onChange={(conditions) => upd({ conditions })}
+              />
             </div>
           </details>
 

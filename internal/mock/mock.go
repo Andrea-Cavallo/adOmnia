@@ -3,12 +3,15 @@ package mock
 import (
 	"adomnia/internal/devlog"
 	"adomnia/internal/httputil"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math/rand"
 	"net"
 	"net/http"
+	"regexp"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -23,8 +26,16 @@ type mockResponse struct {
 	Body           string            `json:"body"`
 	GenerationMode string            `json:"generationMode"`
 	BodySchema     string            `json:"bodySchema"`
+	Conditions     []mockCondition   `json:"conditions"`
 	DelayMs        int               `json:"delayMs"`
 	IsActive       bool              `json:"isActive"`
+}
+
+type mockCondition struct {
+	Source   string `json:"source"`
+	Field    string `json:"field"`
+	Operator string `json:"operator"`
+	Value    string `json:"value"`
 }
 
 type mockEndpoint struct {
@@ -184,13 +195,16 @@ func mockRequestHandler(w http.ResponseWriter, r *http.Request) {
 	reqMethod := strings.ToUpper(r.Method)
 
 	var matched *mockEndpoint
+	pathParams := map[string]string{}
 	for i := range cfg.Endpoints {
 		ep := &cfg.Endpoints[i]
 		if strings.ToUpper(ep.Method) != reqMethod && ep.Method != "*" {
 			continue
 		}
-		if matchPath(ep.Path, reqPath) {
+		params, ok := matchPathParams(ep.Path, reqPath)
+		if ok {
 			matched = ep
+			pathParams = params
 			break
 		}
 	}
@@ -203,11 +217,22 @@ func mockRequestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := pickResponse(matched)
+	bodyBytes, err := readAndRestoreBody(r)
+	if err != nil {
+		httputil.JSONError(w, "cannot read request body: "+err.Error(), http.StatusBadRequest)
+		recordHit(reqMethod, reqPath, true, "", 400)
+		return
+	}
+
+	resp, conditionMode := pickResponseForRequest(matched, r, pathParams, bodyBytes)
 	if resp == nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(`{"error":"no active response for endpoint"}`))
+		if conditionMode {
+			w.Write([]byte(`{"error":"no matching condition"}`))
+		} else {
+			w.Write([]byte(`{"error":"no active response for endpoint"}`))
+		}
 		recordHit(reqMethod, reqPath, true, "", 404)
 		return
 	}
@@ -237,6 +262,18 @@ func mockRequestHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(responseBody))
 
 	recordHit(reqMethod, reqPath, true, resp.ID, status)
+}
+
+func readAndRestoreBody(r *http.Request) ([]byte, error) {
+	if r.Body == nil {
+		return nil, nil
+	}
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		return nil, err
+	}
+	r.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+	return bodyBytes, nil
 }
 
 func renderMockResponseBody(resp *mockResponse) string {
@@ -310,28 +347,176 @@ func pickResponse(ep *mockEndpoint) *mockResponse {
 	}
 }
 
-func matchPath(pattern, reqPath string) bool {
-	pattern = normalizePath(pattern)
-	if pattern == reqPath {
+func pickResponseForRequest(ep *mockEndpoint, r *http.Request, pathParams map[string]string, bodyBytes []byte) (*mockResponse, bool) {
+	hasConditions := false
+	for _, resp := range ep.Responses {
+		if len(resp.Conditions) > 0 {
+			hasConditions = true
+			break
+		}
+	}
+	if !hasConditions {
+		return pickResponse(ep), false
+	}
+
+	for i := range ep.Responses {
+		resp := &ep.Responses[i]
+		if !resp.IsActive {
+			continue
+		}
+		if matchesAllConditions(r, *resp, pathParams, bodyBytes) {
+			return resp, true
+		}
+	}
+	return nil, true
+}
+
+func extractField(r *http.Request, cond mockCondition, pathParams map[string]string, bodyBytes []byte) (string, bool) {
+	switch cond.Source {
+	case "query":
+		values := r.URL.Query()
+		if !values.Has(cond.Field) {
+			return "", false
+		}
+		return values.Get(cond.Field), true
+	case "header":
+		v := r.Header.Get(cond.Field)
+		return v, v != ""
+	case "path_param":
+		v, ok := pathParams[cond.Field]
+		return v, ok
+	case "body_jsonpath":
+		return extractJSONPath(bodyBytes, cond.Field)
+	default:
+		return "", false
+	}
+}
+
+func extractJSONPath(body []byte, path string) (string, bool) {
+	if len(body) == 0 || strings.TrimSpace(path) == "" {
+		return "", false
+	}
+
+	var obj interface{}
+	if err := json.Unmarshal(body, &obj); err != nil {
+		return "", false
+	}
+
+	parts := strings.Split(strings.TrimPrefix(path, "."), ".")
+	current := obj
+	for _, part := range parts {
+		if part == "" {
+			continue
+		}
+		m, ok := current.(map[string]interface{})
+		if !ok {
+			return "", false
+		}
+		current, ok = m[part]
+		if !ok {
+			return "", false
+		}
+	}
+
+	switch v := current.(type) {
+	case string:
+		return v, true
+	case float64:
+		return fmt.Sprintf("%g", v), true
+	case bool:
+		return fmt.Sprintf("%t", v), true
+	case nil:
+		return "", false
+	default:
+		raw, err := json.Marshal(v)
+		if err != nil {
+			return "", false
+		}
+		return string(raw), true
+	}
+}
+
+func evaluateCondition(r *http.Request, cond mockCondition, pathParams map[string]string, bodyBytes []byte) bool {
+	actual, exists := extractField(r, cond, pathParams, bodyBytes)
+
+	switch cond.Operator {
+	case "exists":
+		return exists
+	case "not_exists":
+		return !exists
+	case "eq":
+		return exists && actual == cond.Value
+	case "neq":
+		return !exists || actual != cond.Value
+	case "contains":
+		return exists && strings.Contains(actual, cond.Value)
+	case "not_contains":
+		return !exists || !strings.Contains(actual, cond.Value)
+	case "regex":
+		if !exists {
+			return false
+		}
+		re, err := regexp.Compile(cond.Value)
+		if err != nil {
+			return false
+		}
+		return re.MatchString(actual)
+	default:
+		return false
+	}
+}
+
+func matchesAllConditions(r *http.Request, resp mockResponse, pathParams map[string]string, bodyBytes []byte) bool {
+	if len(resp.Conditions) == 0 {
 		return true
+	}
+	for _, cond := range resp.Conditions {
+		if !evaluateCondition(r, cond, pathParams, bodyBytes) {
+			return false
+		}
+	}
+	return true
+}
+
+func matchPath(pattern, reqPath string) bool {
+	_, ok := matchPathParams(pattern, reqPath)
+	return ok
+}
+
+func matchPathParams(pattern, reqPath string) (map[string]string, bool) {
+	params := map[string]string{}
+	pattern = normalizePath(pattern)
+	reqPath = normalizePath(reqPath)
+	if pattern == reqPath {
+		return params, true
 	}
 	patParts := strings.Split(pattern, "/")
 	reqParts := strings.Split(reqPath, "/")
 	if len(patParts) != len(reqParts) {
 		if len(patParts) > 0 && patParts[len(patParts)-1] == "**" {
-			return len(reqParts) >= len(patParts)-1 && matchPrefix(patParts[:len(patParts)-1], reqParts)
+			if len(reqParts) >= len(patParts)-1 && matchPrefix(patParts[:len(patParts)-1], reqParts) {
+				collectPathParams(params, patParts[:len(patParts)-1], reqParts)
+				return params, true
+			}
 		}
-		return false
+		return nil, false
 	}
 	for i, p := range patParts {
 		if p == "*" || (len(p) > 1 && p[0] == ':') {
+			if len(p) > 1 && p[0] == ':' {
+				params[p[1:]] = reqParts[i]
+			}
+			continue
+		}
+		if isBracePathParam(p) {
+			params[p[1:len(p)-1]] = reqParts[i]
 			continue
 		}
 		if !strings.EqualFold(p, reqParts[i]) {
-			return false
+			return nil, false
 		}
 	}
-	return true
+	return params, true
 }
 
 func matchPrefix(patParts, reqParts []string) bool {
@@ -339,11 +524,33 @@ func matchPrefix(patParts, reqParts []string) bool {
 		if p == "*" || (len(p) > 1 && p[0] == ':') {
 			continue
 		}
+		if isBracePathParam(p) {
+			continue
+		}
 		if i >= len(reqParts) || !strings.EqualFold(p, reqParts[i]) {
 			return false
 		}
 	}
 	return true
+}
+
+func collectPathParams(params map[string]string, patParts, reqParts []string) {
+	for i, p := range patParts {
+		if i >= len(reqParts) {
+			return
+		}
+		if len(p) > 1 && p[0] == ':' {
+			params[p[1:]] = reqParts[i]
+			continue
+		}
+		if isBracePathParam(p) {
+			params[p[1:len(p)-1]] = reqParts[i]
+		}
+	}
+}
+
+func isBracePathParam(part string) bool {
+	return len(part) > 2 && part[0] == '{' && part[len(part)-1] == '}'
 }
 
 func normalizePath(p string) string {

@@ -190,6 +190,13 @@ export interface ContractWarning {
 
 // ─── Visual Test Orchestration (P16) ───────────────────────────────────────
 
+export interface MockCondition {
+  source: 'query' | 'header' | 'path_param' | 'body_jsonpath'
+  field: string
+  operator: 'eq' | 'neq' | 'contains' | 'not_contains' | 'regex' | 'exists' | 'not_exists'
+  value: string
+}
+
 export type BlockType = 'request' | 'assert' | 'setvar' | 'if' | 'loop'
 
 export type BlockRunState = 'idle' | 'running' | 'passed' | 'failed' | 'skipped'
