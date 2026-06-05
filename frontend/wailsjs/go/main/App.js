@@ -6,6 +6,14 @@ export function ClearDevLogs() {
   return window['go']['main']['App']['ClearDevLogs']();
 }
 
+export function CreateMarkdownFile(arg1, arg2, arg3) {
+  return window['go']['main']['App']['CreateMarkdownFile'](arg1, arg2, arg3);
+}
+
+export function DeleteMarkdownFile(arg1, arg2) {
+  return window['go']['main']['App']['DeleteMarkdownFile'](arg1, arg2);
+}
+
 export function ExecuteHTTP(arg1) {
   return window['go']['main']['App']['ExecuteHTTP'](arg1);
 }
@@ -30,12 +38,20 @@ export function GetVaultTimeout() {
   return window['go']['main']['App']['GetVaultTimeout']();
 }
 
+export function ImportMarkdownFolderToWorkspace(arg1) {
+  return window['go']['main']['App']['ImportMarkdownFolderToWorkspace'](arg1);
+}
+
 export function IsDevMode() {
   return window['go']['main']['App']['IsDevMode']();
 }
 
 export function ListLogFiles() {
   return window['go']['main']['App']['ListLogFiles']();
+}
+
+export function ListMarkdownFiles(arg1) {
+  return window['go']['main']['App']['ListMarkdownFiles'](arg1);
 }
 
 export function LoadSettings() {
@@ -50,8 +66,20 @@ export function ReadLogFile(arg1) {
   return window['go']['main']['App']['ReadLogFile'](arg1);
 }
 
+export function ReadMarkdownFile(arg1) {
+  return window['go']['main']['App']['ReadMarkdownFile'](arg1);
+}
+
 export function RecordFrontendLog(arg1, arg2) {
   return window['go']['main']['App']['RecordFrontendLog'](arg1, arg2);
+}
+
+export function RenameMarkdownFile(arg1, arg2, arg3) {
+  return window['go']['main']['App']['RenameMarkdownFile'](arg1, arg2, arg3);
+}
+
+export function SaveMarkdownFileAs(arg1, arg2) {
+  return window['go']['main']['App']['SaveMarkdownFileAs'](arg1, arg2);
 }
 
 export function SaveSettings(arg1) {
@@ -88,4 +116,12 @@ export function StorageList(arg1, arg2) {
 
 export function StoragePut(arg1, arg2, arg3) {
   return window['go']['main']['App']['StoragePut'](arg1, arg2, arg3);
+}
+
+export function WriteMarkdownAgentGraph(arg1, arg2) {
+  return window['go']['main']['App']['WriteMarkdownAgentGraph'](arg1, arg2);
+}
+
+export function WriteMarkdownFile(arg1, arg2) {
+  return window['go']['main']['App']['WriteMarkdownFile'](arg1, arg2);
 }

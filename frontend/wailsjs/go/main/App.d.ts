@@ -4,6 +4,10 @@ import {main} from '../models';
 
 export function ClearDevLogs():Promise<void>;
 
+export function CreateMarkdownFile(arg1:string,arg2:string,arg3:string):Promise<main.MarkdownFileEntry>;
+
+export function DeleteMarkdownFile(arg1:string,arg2:string):Promise<void>;
+
 export function ExecuteHTTP(arg1:string):Promise<string>;
 
 export function GetDevLogs():Promise<string>;
@@ -16,9 +20,13 @@ export function GetStartupWindowChrome():Promise<string>;
 
 export function GetVaultTimeout():Promise<number>;
 
+export function ImportMarkdownFolderToWorkspace(arg1:string):Promise<main.MarkdownWorkspaceInfo>;
+
 export function IsDevMode():Promise<boolean>;
 
 export function ListLogFiles():Promise<Array<main.LogFileEntry>>;
+
+export function ListMarkdownFiles(arg1:string):Promise<Array<main.MarkdownFileEntry>>;
 
 export function LoadSettings():Promise<string>;
 
@@ -26,7 +34,13 @@ export function OpenDevLogsFolder():Promise<void>;
 
 export function ReadLogFile(arg1:string):Promise<string>;
 
+export function ReadMarkdownFile(arg1:string):Promise<string>;
+
 export function RecordFrontendLog(arg1:string,arg2:string):Promise<void>;
+
+export function RenameMarkdownFile(arg1:string,arg2:string,arg3:string):Promise<main.MarkdownFileEntry>;
+
+export function SaveMarkdownFileAs(arg1:string,arg2:string):Promise<main.MarkdownFileEntry>;
 
 export function SaveSettings(arg1:string):Promise<void>;
 
@@ -45,3 +59,7 @@ export function StorageGetAll(arg1:string):Promise<Array<main.StorageEntry>>;
 export function StorageList(arg1:string,arg2:string):Promise<Array<string>>;
 
 export function StoragePut(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function WriteMarkdownAgentGraph(arg1:string,arg2:string):Promise<string>;
+
+export function WriteMarkdownFile(arg1:string,arg2:string):Promise<void>;

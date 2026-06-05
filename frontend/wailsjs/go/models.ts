@@ -748,6 +748,44 @@ export namespace main {
 	        this.modTime = source["modTime"];
 	    }
 	}
+	export class MarkdownFileEntry {
+	    name: string;
+	    path: string;
+	    relPath: string;
+	    dir: string;
+	    size: number;
+	    modifiedAt: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new MarkdownFileEntry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.path = source["path"];
+	        this.relPath = source["relPath"];
+	        this.dir = source["dir"];
+	        this.size = source["size"];
+	        this.modifiedAt = source["modifiedAt"];
+	    }
+	}
+	export class MarkdownWorkspaceInfo {
+	    root: string;
+	    name: string;
+	    files: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new MarkdownWorkspaceInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.root = source["root"];
+	        this.name = source["name"];
+	        this.files = source["files"];
+	    }
+	}
 	export class StorageEntry {
 	    bucket: string;
 	    key: string;

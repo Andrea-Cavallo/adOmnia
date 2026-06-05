@@ -76,13 +76,14 @@ export function MarkdownPanel() {
   const [showUnresolved, setShowUnresolved] = useState(true)
   const [showOrphans, setShowOrphans] = useState(true)
   const [agentGraphPath, setAgentGraphPath] = useState('')
+  const [graphOpen, setGraphOpen] = useState(false)
 
   const editorRef = useRef<HTMLTextAreaElement>(null)
   const previewRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const syncLock = useRef(false)
 
-  const html = useMemo(() => renderMarkdown(content), [content])
+  const html = useMemo(() => renderMarkdown(content, activeFile?.path), [activeFile?.path, content])
   const effectiveContentsByPath = useMemo(() => {
     if (!activeFile) return contentsByPath
     return { ...contentsByPath, [activeFile.path]: content }
@@ -617,6 +618,7 @@ export function MarkdownPanel() {
         onSaveAs={() => void saveAs()}
         onInsert={insertAtCursor}
         onModeChange={setMode}
+        onOpenGraph={() => setGraphOpen(true)}
       />
 
       {(isCreating || error || !hasMarkdownBackend()) && (
@@ -732,30 +734,33 @@ export function MarkdownPanel() {
           />
         )}
 
+        <MarkdownGraphView
+          activeFile={activeFile}
+          agentGraphPath={agentGraphPath}
+          edgesCount={edges.length}
+          filesCount={files.length}
+          folderFilter={folderFilter}
+          folderOptions={folderOptions}
+          graphNodes={graphNodes}
+          graphOffset={graphOffset}
+          graphScale={graphScale}
+          open={graphOpen}
+          showOrphans={showOrphans}
+          showUnresolved={showUnresolved}
+          unresolvedCount={unresolvedCount}
+          visibleEdges={visibleEdges}
+          onFolderFilterChange={setFolderFilter}
+          onOpenChange={setGraphOpen}
+          onOpenFile={(file) => void openFile(file)}
+          onResetLayout={resetGraphLayout}
+          setGraphOffset={setGraphOffset}
+          setGraphPositions={setGraphPositions}
+          setGraphScale={setGraphScale}
+          setShowOrphans={setShowOrphans}
+          setShowUnresolved={setShowUnresolved}
+        />
+
         <aside className="w-52 shrink-0 border-l border-border-1 bg-surface-0 flex flex-col min-h-0 lg:w-60 xl:w-64">
-          <MarkdownGraphView
-            activeFile={activeFile}
-            agentGraphPath={agentGraphPath}
-            edgesCount={edges.length}
-            filesCount={files.length}
-            folderFilter={folderFilter}
-            folderOptions={folderOptions}
-            graphNodes={graphNodes}
-            graphOffset={graphOffset}
-            graphScale={graphScale}
-            showOrphans={showOrphans}
-            showUnresolved={showUnresolved}
-            unresolvedCount={unresolvedCount}
-            visibleEdges={visibleEdges}
-            onFolderFilterChange={setFolderFilter}
-            onOpenFile={(file) => void openFile(file)}
-            onResetLayout={resetGraphLayout}
-            setGraphOffset={setGraphOffset}
-            setGraphPositions={setGraphPositions}
-            setGraphScale={setGraphScale}
-            setShowOrphans={setShowOrphans}
-            setShowUnresolved={setShowUnresolved}
-          />
           <div className="border-b border-border-1 p-2">
             <div className="mb-1.5 text-xs font-semibold text-text-2">Tags</div>
             {tags.length === 0 ? (

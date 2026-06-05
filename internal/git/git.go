@@ -26,6 +26,48 @@ type Status struct {
 	Untracked   []string `json:"untracked"`
 }
 
+type FileChange struct {
+	Path       string `json:"path"`
+	Index      string `json:"index"`
+	Worktree   string `json:"worktree"`
+	Status     string `json:"status"`
+	Conflicted bool   `json:"conflicted"`
+}
+
+type BranchInfo struct {
+	Name       string `json:"name"`
+	Remote     bool   `json:"remote"`
+	Current    bool   `json:"current"`
+	Upstream   string `json:"upstream"`
+	CommitHash string `json:"commitHash"`
+	Updated    string `json:"updated"`
+}
+
+type RemoteInfo struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
+}
+
+type CommitInfo struct {
+	Hash       string   `json:"hash"`
+	FullHash   string   `json:"fullHash"`
+	Parents    []string `json:"parents"`
+	Author     string   `json:"author"`
+	Date       string   `json:"date"`
+	Message    string   `json:"message"`
+	Decorations []string `json:"decorations"`
+}
+
+type Overview struct {
+	Status    Status       `json:"status"`
+	Changes   []FileChange `json:"changes"`
+	Conflicts []FileChange `json:"conflicts"`
+	Branches  []BranchInfo `json:"branches"`
+	Remotes   []RemoteInfo `json:"remotes"`
+	Stashes   []string     `json:"stashes"`
+	Commits   []CommitInfo `json:"commits"`
+}
+
 type CommitResult struct {
 	Hash    string `json:"hash"`
 	Message string `json:"message"`
@@ -122,6 +164,134 @@ func GetStatus(repoPath string) (Status, error) {
 	}, nil
 }
 
+func parsePorcelain(porcelain string) []FileChange {
+	var changes []FileChange
+	conflictCodes := map[string]bool{"DD": true, "AU": true, "UD": true, "UA": true, "DU": true, "AA": true, "UU": true}
+	for _, line := range strings.Split(porcelain, "\n") {
+		if len(line) < 4 || strings.HasPrefix(line, "##") {
+			continue
+		}
+		code := line[:2]
+		path := strings.TrimSpace(line[3:])
+		change := FileChange{
+			Path:       path,
+			Index:      strings.TrimSpace(code[:1]),
+			Worktree:   strings.TrimSpace(code[1:2]),
+			Status:     code,
+			Conflicted: conflictCodes[code],
+		}
+		changes = append(changes, change)
+	}
+	return changes
+}
+
+func GetOverview(repoPath string, n int) (Overview, error) {
+	status, err := GetStatus(repoPath)
+	if err != nil {
+		return Overview{}, err
+	}
+	if n <= 0 {
+		n = 80
+	}
+
+	porcelain, _ := runGit(repoPath, "status", "--porcelain")
+	changes := parsePorcelain(porcelain)
+	var conflicts []FileChange
+	for _, change := range changes {
+		if change.Conflicted {
+			conflicts = append(conflicts, change)
+		}
+	}
+
+	var branches []BranchInfo
+	if out, err := runGit(repoPath, "branch", "--all", "--format=%(refname:short)|%(upstream:short)|%(objectname:short)|%(committerdate:relative)"); err == nil {
+		for _, line := range strings.Split(out, "\n") {
+			if strings.TrimSpace(line) == "" {
+				continue
+			}
+			parts := strings.Split(line, "|")
+			name := strings.TrimSpace(parts[0])
+			if name == "" || strings.Contains(name, "HEAD ->") {
+				continue
+			}
+			info := BranchInfo{Name: name, Remote: strings.HasPrefix(name, "remotes/"), Current: name == status.Branch}
+			if len(parts) > 1 {
+				info.Upstream = strings.TrimSpace(parts[1])
+			}
+			if len(parts) > 2 {
+				info.CommitHash = strings.TrimSpace(parts[2])
+			}
+			if len(parts) > 3 {
+				info.Updated = strings.TrimSpace(parts[3])
+			}
+			branches = append(branches, info)
+		}
+	}
+
+	remoteURLs := map[string]string{}
+	if out, err := runGit(repoPath, "remote", "-v"); err == nil {
+		for _, line := range strings.Split(out, "\n") {
+			fields := strings.Fields(line)
+			if len(fields) >= 3 && fields[2] == "(fetch)" {
+				remoteURLs[fields[0]] = fields[1]
+			}
+		}
+	}
+	var remotes []RemoteInfo
+	for name, url := range remoteURLs {
+		remotes = append(remotes, RemoteInfo{Name: name, URL: url})
+	}
+
+	var stashes []string
+	if out, err := runGit(repoPath, "stash", "list"); err == nil && out != "" {
+		stashes = strings.Split(out, "\n")
+	}
+
+	var commits []CommitInfo
+	if out, err := runGit(repoPath, "log", fmt.Sprintf("--max-count=%d", n), "--date=short", "--pretty=format:%h%x1f%H%x1f%P%x1f%an%x1f%ad%x1f%s%x1f%D"); err == nil && out != "" {
+		for _, line := range strings.Split(out, "\n") {
+			parts := strings.Split(line, "\x1f")
+			if len(parts) < 7 {
+				continue
+			}
+			var parents []string
+			if p := strings.TrimSpace(parts[2]); p != "" {
+				for _, parent := range strings.Fields(p) {
+					if len(parent) > 7 {
+						parent = parent[:7]
+					}
+					parents = append(parents, parent)
+				}
+			}
+			var decorations []string
+			for _, decoration := range strings.Split(parts[6], ",") {
+				if trimmed := strings.TrimSpace(decoration); trimmed != "" {
+					decorations = append(decorations, trimmed)
+				}
+			}
+			commits = append(commits, CommitInfo{
+				Hash:        parts[0],
+				FullHash:    parts[1],
+				Parents:     parents,
+				Author:      parts[3],
+				Date:        parts[4],
+				Message:     parts[5],
+				Decorations: decorations,
+			})
+		}
+	}
+
+	return Overview{
+		Status:    status,
+		Changes:   changes,
+		Conflicts: conflicts,
+		Branches:  branches,
+		Remotes:   remotes,
+		Stashes:   stashes,
+		Commits:   commits,
+	}, nil
+}
+
 func CommitAll(repoPath, message string) (CommitResult, error) {
 	if _, err := runGit(repoPath, "add", "."); err != nil {
 		return CommitResult{}, err
@@ -147,6 +317,35 @@ func Pull(repoPath, branch string) error {
 	}
 	_, err := runGit(repoPath, "pull", "--rebase", "origin", branch)
 	return err
+}
+
+func StageFile(repoPath, path string) error {
+	if path == "" {
+		return fmt.Errorf("file path is empty")
+	}
+	_, err := runGit(repoPath, "add", "--", path)
+	return err
+}
+
+func CheckoutConflictSide(repoPath, path, side string) error {
+	if path == "" {
+		return fmt.Errorf("file path is empty")
+	}
+	if side != "ours" && side != "theirs" {
+		return fmt.Errorf("invalid conflict side: %s", side)
+	}
+	_, err := runGit(repoPath, "checkout", "--"+side, "--", path)
+	return err
+}
+
+func AbortIntegration(repoPath string) error {
+	if _, err := runGit(repoPath, "merge", "--abort"); err == nil {
+		return nil
+	}
+	if _, err := runGit(repoPath, "rebase", "--abort"); err == nil {
+		return nil
+	}
+	return fmt.Errorf("no merge or rebase operation to abort")
 }
 
 func Log(repoPath string, n int) ([]string, error) {

@@ -1,4 +1,4 @@
-import { Bold, Code, Columns, Eye, FilePlus, FolderOpen, Heading, Image, Italic, Link, Save, Upload } from 'lucide-react'
+import { Bold, Code, Columns, Eye, FilePlus, FolderOpen, GitBranch, Heading, Image, Italic, Link, Save, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { MarkdownFileEntry } from '@/lib/markdown-api'
 import type { MarkdownViewMode } from '@/lib/markdownDoc'
@@ -15,6 +15,7 @@ interface MarkdownToolbarProps {
   onSaveAs: () => void
   onInsert: (wrapper: (selected: string) => string) => void
   onModeChange: (mode: MarkdownViewMode) => void
+  onOpenGraph: () => void
 }
 
 export function MarkdownToolbar({
@@ -29,6 +30,7 @@ export function MarkdownToolbar({
   onSaveAs,
   onInsert,
   onModeChange,
+  onOpenGraph,
 }: MarkdownToolbarProps) {
   return (
     <div className="flex items-center gap-1 overflow-x-auto px-3 py-2 border-b border-border-1 bg-surface-1 flex-shrink-0 no-scrollbar">
@@ -46,6 +48,7 @@ export function MarkdownToolbar({
       <button onClick={() => onInsert((s) => s ? `![${s}](image.png)` : '![alt](image.png)')} className="w-6 h-6 flex items-center justify-center text-text-3 hover:text-text-1 rounded hover:bg-surface-2 transition-colors" title="Image"><Image size={13} /></button>
       <button onClick={() => onInsert((s) => s ? `## ${s}` : '## Heading')} className="w-6 h-6 flex items-center justify-center text-text-3 hover:text-text-1 rounded hover:bg-surface-2 transition-colors" title="Heading"><Heading size={13} /></button>
       <button onClick={() => onInsert(() => '```\n\n```')} className="w-6 h-6 flex items-center justify-center text-text-3 hover:text-text-1 rounded hover:bg-surface-2 transition-colors font-mono text-[9px]" title="Code block">{'{ }'}</button>
+      <button onClick={onOpenGraph} className="w-6 h-6 flex items-center justify-center text-text-3 hover:text-text-1 rounded hover:bg-surface-2 transition-colors" title="Open graph"><GitBranch size={13} /></button>
 
       <div className="min-w-[160px] flex-1 truncate px-2 text-[11px] text-text-4">{contentStatus}{dirty ? ' - unsaved' : ''}</div>
 

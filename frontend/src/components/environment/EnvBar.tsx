@@ -54,24 +54,41 @@ export function EnvBar({
   const activeLabel = activeEnvId
     ? (environments.find(e => e.id === activeEnvId)?.name ?? 'Unknown')
     : 'No Environment'
+  const activeEnv = activeEnvId ? environments.find(e => e.id === activeEnvId) : null
+  const activeVarCount = activeEnv?.variables.filter(v => v.enabled && v.key.trim()).length ?? 0
 
   return (
     <>
       <div className="flex h-[var(--ui-toolbar-h)] items-center gap-1.5 border-b border-border-1 px-2.5">
         <span className="text-[10px] text-text-4 uppercase tracking-wider shrink-0">Env</span>
 
-        {/* Custom dropdown */}
-        <div ref={dropRef} className="relative">
+        <div ref={dropRef} className="relative flex">
           <button
-            onClick={() => setDropOpen(v => !v)}
+            onClick={() => setShowModal(true)}
             className={cn(
-              'flex h-6 items-center gap-1.5 rounded px-2 text-[11px] transition-colors outline-none',
+              'flex h-6 min-w-0 items-center gap-1.5 rounded-l px-2 text-[11px] transition-colors outline-none',
               'bg-surface-2 border border-border-2 text-text-1',
               'hover:border-border-3 hover:bg-surface-3',
               dropOpen && 'border-accent'
             )}
+            title="Open environment editor"
           >
             <span className="max-w-[160px] truncate">{activeLabel}</span>
+            {activeEnv && (
+              <span className="shrink-0 rounded-sm border border-border-2 bg-surface-1 px-1 text-[9px] text-text-4">
+                {activeVarCount}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setDropOpen(v => !v)}
+            className={cn(
+              '-ml-px flex h-6 w-6 items-center justify-center rounded-r border border-border-2 bg-surface-2 text-text-4 transition-colors outline-none',
+              'hover:border-border-3 hover:bg-surface-3 hover:text-text-1',
+              dropOpen && 'border-accent text-accent'
+            )}
+            title="Switch environment"
+          >
             <ChevronDown
               size={11}
               className={cn('shrink-0 text-text-4 transition-transform', dropOpen && 'rotate-180')}
@@ -79,7 +96,15 @@ export function EnvBar({
           </button>
 
           {dropOpen && (
-            <div className="absolute top-full left-0 mt-0.5 z-50 min-w-full w-max max-w-52 rounded-md border border-border-2 bg-surface-2 shadow-xl py-0.5 overflow-hidden">
+            <div className="absolute top-full left-0 mt-0.5 z-50 min-w-full w-max max-w-56 rounded-md border border-border-2 bg-surface-2 shadow-xl py-0.5 overflow-hidden">
+              {activeEnv && (
+                <button
+                  onClick={() => { setShowModal(true); setDropOpen(false) }}
+                  className="w-full border-b border-border-1 px-3 py-1.5 text-left text-xs text-accent transition-colors hover:bg-surface-3 hover:text-accent-light"
+                >
+                  Edit current environment
+                </button>
+              )}
               <button
                 onClick={() => { onSetActive(null); setDropOpen(false) }}
                 className={cn(

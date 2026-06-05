@@ -46,6 +46,18 @@ func (g *GitSync) GetStatus(repoPath string) (string, error) {
 	return string(raw), nil
 }
 
+func (g *GitSync) Overview(repoPath string, n int) (string, error) {
+	if repoPath == "" {
+		repoPath = g.defaultRepoPath()
+	}
+	overview, err := git.GetOverview(repoPath, n)
+	if err != nil {
+		return "", err
+	}
+	raw, _ := json.Marshal(overview)
+	return string(raw), nil
+}
+
 func (g *GitSync) CommitAll(repoPath, message string) (string, error) {
 	if repoPath == "" {
 		repoPath = g.defaultRepoPath()
@@ -70,6 +82,27 @@ func (g *GitSync) Pull(repoPath, branch string) error {
 		repoPath = g.defaultRepoPath()
 	}
 	return git.Pull(repoPath, branch)
+}
+
+func (g *GitSync) StageFile(repoPath, path string) error {
+	if repoPath == "" {
+		repoPath = g.defaultRepoPath()
+	}
+	return git.StageFile(repoPath, path)
+}
+
+func (g *GitSync) CheckoutConflictSide(repoPath, path, side string) error {
+	if repoPath == "" {
+		repoPath = g.defaultRepoPath()
+	}
+	return git.CheckoutConflictSide(repoPath, path, side)
+}
+
+func (g *GitSync) AbortIntegration(repoPath string) error {
+	if repoPath == "" {
+		repoPath = g.defaultRepoPath()
+	}
+	return git.AbortIntegration(repoPath)
 }
 
 func (g *GitSync) Log(repoPath string, n int) (string, error) {

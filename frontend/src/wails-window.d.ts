@@ -38,10 +38,14 @@ interface WailsGoMain {
     IsGitInstalled: () => Promise<boolean>
     InitRepo: (repoPath: string) => Promise<void>
     GetStatus: (repoPath: string) => Promise<string>
+    Overview: (repoPath: string, limit: number) => Promise<string>
     CommitAll: (repoPath: string, message: string) => Promise<string>
     Push: (repoPath: string, remote: string) => Promise<void>
     Pull: (repoPath: string, remote: string) => Promise<void>
     Log: (repoPath: string, limit: number) => Promise<string>
+    StageFile: (repoPath: string, path: string) => Promise<void>
+    CheckoutConflictSide: (repoPath: string, path: string, side: string) => Promise<void>
+    AbortIntegration: (repoPath: string) => Promise<void>
   }
   MCPClient: {
     Connect: (serverConfigJSON: string) => Promise<string>

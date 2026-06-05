@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type PointerEvent as ReactPointerEvent, type SetStateAction } from 'react'
-import { GitBranch, Maximize2, X } from 'lucide-react'
+import { GitBranch, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { MarkdownFileEntry } from '@/lib/markdown-api'
 import { classifyMemoryRelation, type GraphNode, type MarkdownEdge, type AgentMemoryRelationType } from '@/lib/markdownDoc'
@@ -19,8 +19,10 @@ interface MarkdownGraphViewProps {
   unresolvedCount: number
   visibleEdges: MarkdownEdge[]
   onFolderFilterChange: (value: string) => void
+  onOpenChange: (open: boolean) => void
   onOpenFile: (file: MarkdownFileEntry) => void
   onResetLayout: () => void
+  open: boolean
   setGraphOffset: Dispatch<SetStateAction<{ x: number; y: number }>>
   setGraphPositions: Dispatch<SetStateAction<Record<string, { x: number; y: number }>>>
   setGraphScale: Dispatch<SetStateAction<number>>
@@ -43,8 +45,10 @@ export function MarkdownGraphView({
   unresolvedCount,
   visibleEdges,
   onFolderFilterChange,
+  onOpenChange,
   onOpenFile,
   onResetLayout,
+  open,
   setGraphOffset,
   setGraphPositions,
   setGraphScale,
@@ -54,7 +58,6 @@ export function MarkdownGraphView({
   const graphSvgRef = useRef<SVGSVGElement>(null)
   const graphPointerRef = useRef({ x: 0, y: 0 })
   const [draggingNode, setDraggingNode] = useState('')
-  const [expanded, setExpanded] = useState(false)
   const [isPanning, setIsPanning] = useState(false)
   const graphNodeMap = useMemo(() => new Map(graphNodes.map((node) => [node.id, node])), [graphNodes])
 
@@ -78,13 +81,13 @@ export function MarkdownGraphView({
   }, [setGraphScale])
 
   useEffect(() => {
-    if (!expanded) return
+    if (!open) return
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setExpanded(false)
+      if (event.key === 'Escape') onOpenChange(false)
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [expanded])
+  }, [onOpenChange, open])
 
   const relationColor = useCallback((type: AgentMemoryRelationType) => ({
     references: 'var(--color-border-2)',
@@ -240,25 +243,7 @@ export function MarkdownGraphView({
 
   return (
     <>
-      <div className="border-b border-border-1 px-3 py-2">
-        <button
-          type="button"
-          onClick={() => setExpanded(true)}
-          className="flex w-full items-center justify-between gap-2 rounded px-1 py-0.5 text-left hover:bg-surface-2"
-          title="Open graph fullscreen"
-        >
-          <span className="flex items-center gap-2 text-xs font-semibold text-text-2">
-            <GitBranch size={13} className="text-accent" />
-            Graph
-          </span>
-          <Maximize2 size={13} className="text-text-4" />
-        </button>
-        <div className="mt-1 text-[10px] text-text-4">{filesCount} notes / {edgesCount} links / {unresolvedCount} unresolved</div>
-        {agentGraphPath && <div className="mt-1 truncate text-[9px] text-text-4" title={agentGraphPath}>agent graph saved</div>}
-        <div className="mt-2">{controls(false)}</div>
-      </div>
-      {graphCanvas(false)}
-      {expanded && (
+      {open && (
         <div className="fixed inset-0 z-[90] flex flex-col bg-surface-0">
           <div className="flex min-h-12 items-center justify-between gap-3 border-b border-border-1 px-4 py-2">
             <div className="min-w-0">
@@ -267,10 +252,11 @@ export function MarkdownGraphView({
                 Markdown Graph
               </div>
               <div className="mt-0.5 text-[10px] text-text-4">{filesCount} notes / {edgesCount} links / {unresolvedCount} unresolved</div>
+              {agentGraphPath && <div className="mt-0.5 truncate text-[9px] text-text-4" title={agentGraphPath}>agent graph saved</div>}
             </div>
             <div className="flex items-center gap-3">
               {controls(true)}
-              <button type="button" onClick={() => setExpanded(false)} className="rounded border border-border-2 p-1.5 text-text-3 hover:text-text-1" title="Close graph">
+              <button type="button" onClick={() => onOpenChange(false)} className="rounded border border-border-2 p-1.5 text-text-3 hover:text-text-1" title="Close graph">
                 <X size={15} />
               </button>
             </div>

@@ -182,7 +182,26 @@ export function sanitizeUrl(url: string): string {
   return t
 }
 
-export function renderMarkdown(md: string): string {
+export function pathToFileUrl(path: string): string {
+  const normalized = path.replace(/\\/g, '/')
+  const prefixed = normalized.startsWith('/') ? normalized : `/${normalized}`
+  return `file://${prefixed.split('/').map((part) => encodeURIComponent(part)).join('/')}`
+}
+
+function resolveMarkdownAssetUrl(src: string, sourcePath?: string): string {
+  const clean = src.trim()
+  if (!clean || /^(https?:|mailto:|tel:|data:|file:|#|adomnia-md:)/i.test(clean)) return clean
+  if (!sourcePath) return clean
+  const baseParts = sourcePath.replace(/\\/g, '/').split('/').slice(0, -1)
+  for (const part of clean.replace(/\\/g, '/').split('/')) {
+    if (!part || part === '.') continue
+    if (part === '..') baseParts.pop()
+    else baseParts.push(part)
+  }
+  return pathToFileUrl(baseParts.join('/'))
+}
+
+export function renderMarkdown(md: string, sourcePath?: string): string {
   const codeBlocks: string[] = []
   const withFrontmatter = md.replace(/^---\r?\n([\s\S]*?)\r?\n---(?=\r?\n|$)/, (_m, body) => {
     const safe = esc(body.trim())
@@ -226,7 +245,7 @@ export function renderMarkdown(md: string): string {
     s = s.replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-text-1">$1</strong>')
     s = s.replace(/\*([^*\n]+)\*/g, '<em class="italic text-text-2">$1</em>')
     s = s.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_m, alt, src) =>
-      `<img src="${esc(sanitizeUrl(src))}" alt="${esc(alt)}" class="max-w-full rounded my-2 block" loading="lazy" />`)
+      `<img src="${esc(sanitizeUrl(resolveMarkdownAssetUrl(src, sourcePath)))}" alt="${esc(alt)}" class="max-w-full rounded border border-border-1 bg-surface-1 my-2 block" loading="lazy" />`)
     s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, href) =>
       `<a href="${esc(sanitizeUrl(href))}" class="text-accent underline hover:opacity-80 transition-opacity">${label}</a>`)
     s = s.replace(/\[\[([^\]|#]+)(?:#[^\]|]+)?(?:\|([^\]]+))?\]\]/g, (_m, target, alias) =>
