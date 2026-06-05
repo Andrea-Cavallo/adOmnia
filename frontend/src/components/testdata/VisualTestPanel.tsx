@@ -1,11 +1,24 @@
 import { useState } from 'react'
-import { Plus, Play, Trash2, ChevronDown } from 'lucide-react'
-import { uid } from '@/lib/types'
+import { Plus, Play, Trash2, ChevronDown, GitBranch } from 'lucide-react'
+import { uid, type RequestItem } from '@/lib/types'
 import { useVisualTestsStore } from '@/stores/visualTests'
+import { useCollectionsStore } from '@/stores/collections'
 import { runVisualTest } from '@/lib/visualTestRunner'
+import { visualTestToFlow } from '@/lib/visualTestToFlow'
+import { loadFlowDefinitions, saveFlowDefinitions } from '@/lib/flowStorage'
 import { TestBlockCard } from './TestBlockCard'
 import type { TestBlock, BlockResult, BlockType } from '@/lib/types'
 import { cn } from '@/lib/utils'
+
+function flattenRequests(children: unknown[]): RequestItem[] {
+  const result: RequestItem[] = []
+  for (const child of children) {
+    const c = child as { type?: string; children?: unknown[] } & RequestItem
+    if (c.type === 'request' || !c.children) result.push(c)
+    else if (c.children) result.push(...flattenRequests(c.children))
+  }
+  return result
+}
 
 const ADD_BLOCK_OPTIONS: { type: BlockType; label: string }[] = [
   { type: 'request', label: 'Request' },
@@ -33,8 +46,23 @@ export function VisualTestPanel() {
   const [running, setRunning] = useState(false)
   const [showAddMenu, setShowAddMenu] = useState(false)
   const [runSummary, setRunSummary] = useState<{ passed: boolean; durationMs: number } | null>(null)
+  const [exportMsg, setExportMsg] = useState('')
 
   const test = tests.find((t) => t.id === selectedTestId)
+
+  const handleExportToFlow = async () => {
+    if (!test) return
+    setExportMsg('')
+    try {
+      const allRequests = useCollectionsStore.getState().collections.flatMap((c) => flattenRequests(c.children ?? []))
+      const flow = visualTestToFlow(test, allRequests)
+      const existing = await loadFlowDefinitions()
+      await saveFlowDefinitions([...existing, flow])
+      setExportMsg(`Exported to Flows as "${flow.name}"`)
+    } catch (e) {
+      setExportMsg(`Export failed: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
 
   const handleRun = async () => {
     if (!test) return
@@ -73,6 +101,7 @@ export function VisualTestPanel() {
                 setSelectedTestId(t.id)
                 setBlockResults({})
                 setRunSummary(null)
+                setExportMsg('')
               }}
               className={cn(
                 'group flex items-center gap-2 px-3 py-2 cursor-pointer text-[11px] transition-colors',
@@ -123,6 +152,15 @@ export function VisualTestPanel() {
               </span>
             )}
             <button
+              onClick={() => void handleExportToFlow()}
+              disabled={test.blocks.length === 0}
+              className="flex items-center gap-1.5 h-7 px-3 text-[10px] text-text-3 rounded border border-border-2 hover:text-text-1 hover:bg-surface-2 disabled:opacity-40 transition-colors"
+              title="Export this test as a new Flow"
+            >
+              <GitBranch size={11} />
+              Export to Flow
+            </button>
+            <button
               onClick={handleRun}
               disabled={running || test.blocks.length === 0}
               className="flex items-center gap-1.5 h-7 px-3 text-[10px] bg-accent text-white rounded hover:bg-accent-hover disabled:opacity-40 transition-colors"
@@ -131,6 +169,10 @@ export function VisualTestPanel() {
               {running ? 'Running…' : 'Run Test'}
             </button>
           </div>
+
+          {exportMsg && (
+            <div className="px-4 py-1.5 text-[10px] text-text-3 border-b border-border-1 bg-surface-1">{exportMsg}</div>
+          )}
 
           <div className="flex-1 overflow-y-auto p-4 space-y-2">
             {test.blocks.map((block, idx) => (

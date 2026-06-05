@@ -46,7 +46,8 @@
   - **AC:** Blocks as vertical cards; "Add block" dropdown; up/down reorder buttons; delete block button
 - [x] **Block runner with per-block status**
   - **AC:** "Run Test" executes blocks sequentially; each card shows spinner → PASS/FAIL with message; SetVar/extracted vars flow to later blocks; request responses flow to later asserts
-- [ ] **Export to Mermaid** — _DEFERRED: the plan lists this AC but provides **no task or spec** for it (Tasks 1–6 don't implement it). Flows use a node/edge graph model, not raw Mermaid, so a faithful export needs its own design. Left for a follow-up._
+- [x] **Export to Flow** *(implemented as a graph export, not raw Mermaid)*
+  - **AC:** "Export to Flow" button in VisualTestPanel converts the test to a `SavedFlowDefinition` (`visualTestToFlow`) and appends it to the flows store via `loadFlowDefinitions`/`saveFlowDefinitions`. Request blocks → `request` nodes (resolved RequestItem + extractions), Assert → `condition` nodes, SetVar → `extract` nodes; chained Start→…→End(success). Flows use a node/edge graph (not raw Mermaid text), and the Flow editor already renders Mermaid from that graph, so exporting to the graph model is the faithful integration. if/loop blocks are omitted from the export (consistent with the v1 runner).
 - [x] **Persistence**
   - **AC:** Tests stored in `adomnia.visualTests`; survive reload
 
