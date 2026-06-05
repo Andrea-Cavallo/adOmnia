@@ -56,6 +56,12 @@ export interface McpCallEntry {
 export type McpConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error'
 export type McpSelectedTab = 'tools' | 'resources' | 'prompts'
 
+export interface McpSessionInfo {
+  id: string
+  transport: string
+  status: string
+}
+
 interface McpState {
   savedConfigs: McpSavedConfig[]
   activeConfigId: string | null
@@ -67,6 +73,8 @@ interface McpState {
   selectedTab: McpSelectedTab
   history: McpCallEntry[]
   selectedHistoryId: string | null
+  sessions: Record<string, McpSessionInfo>
+  restartingIds: Set<string>
   addConfig: (cfg: Omit<McpSavedConfig, 'id'>) => McpSavedConfig
   removeConfig: (id: string) => void
   setActiveConfig: (id: string | null) => void
@@ -78,6 +86,8 @@ interface McpState {
   appendHistory: (entry: McpCallEntry) => void
   setSelectedHistory: (id: string | null) => void
   clearHistory: () => void
+  setSessions: (sessions: McpSessionInfo[]) => void
+  setRestarting: (id: string, value: boolean) => void
 }
 
 const STORAGE_KEY = 'adomnia.mcp'
@@ -114,6 +124,8 @@ export const useMcpStore = create<McpState>((set, get) => ({
   selectedTab: 'tools',
   history: [],
   selectedHistoryId: null,
+  sessions: {},
+  restartingIds: new Set<string>(),
 
   addConfig: (cfg) => {
     const entry: McpSavedConfig = { ...cfg, id: makeId() }
@@ -146,4 +158,16 @@ export const useMcpStore = create<McpState>((set, get) => ({
   })),
   setSelectedHistory: (id) => set({ selectedHistoryId: id }),
   clearHistory: () => set({ history: [], selectedHistoryId: null }),
+  setSessions: (sessions) => set({
+    sessions: Object.fromEntries(sessions.map((session) => [session.id, session])),
+  }),
+  setRestarting: (id, value) => set((state) => {
+    const restartingIds = new Set(state.restartingIds)
+    if (value) {
+      restartingIds.add(id)
+    } else {
+      restartingIds.delete(id)
+    }
+    return { restartingIds }
+  }),
 }))

@@ -10,8 +10,20 @@ export function Connect(arg1) {
   return window['go']['main']['MCPClient']['Connect'](arg1);
 }
 
+export function ConnectSession(arg1, arg2) {
+  return window['go']['main']['MCPClient']['ConnectSession'](arg1, arg2);
+}
+
 export function Disconnect() {
   return window['go']['main']['MCPClient']['Disconnect']();
+}
+
+export function DisconnectSession(arg1) {
+  return window['go']['main']['MCPClient']['DisconnectSession'](arg1);
+}
+
+export function GetSessionStatus(arg1) {
+  return window['go']['main']['MCPClient']['GetSessionStatus'](arg1);
 }
 
 export function ListPrompts() {
@@ -22,6 +34,14 @@ export function ListResources() {
   return window['go']['main']['MCPClient']['ListResources']();
 }
 
+export function ListSessions() {
+  return window['go']['main']['MCPClient']['ListSessions']();
+}
+
 export function ListTools() {
   return window['go']['main']['MCPClient']['ListTools']();
+}
+
+export function RestartSession(arg1) {
+  return window['go']['main']['MCPClient']['RestartSession'](arg1);
 }

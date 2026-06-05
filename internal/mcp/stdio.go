@@ -74,6 +74,18 @@ func (t *stdioTransport) Send(_ context.Context, req JSONRPCRequest) (JSONRPCRes
 	return resp, nil
 }
 
+func (t *stdioTransport) ProcessState() string {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.cmd == nil || t.cmd.Process == nil {
+		return "unknown"
+	}
+	if t.cmd.ProcessState != nil {
+		return "stopped"
+	}
+	return "running"
+}
+
 func (t *stdioTransport) Close() error {
 	_ = t.stdin.Close()
 	_ = t.cmd.Process.Kill()

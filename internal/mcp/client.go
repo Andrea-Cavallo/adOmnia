@@ -13,8 +13,9 @@ type Transport interface {
 }
 
 type Client struct {
-	transport Transport
-	idCounter atomic.Int64
+	transport     Transport
+	transportType TransportType
+	idCounter     atomic.Int64
 }
 
 func NewClient(cfg ConnectionConfig) (*Client, error) {
@@ -31,7 +32,7 @@ func NewClient(cfg ConnectionConfig) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Client{transport: t}, nil
+	return &Client{transport: t, transportType: cfg.Transport}, nil
 }
 
 func (c *Client) nextID() int64 {
@@ -137,4 +138,15 @@ func (c *Client) ListPrompts(ctx context.Context) ([]Prompt, error) {
 
 func (c *Client) Close() error {
 	return c.transport.Close()
+}
+
+func (c *Client) Transport() string {
+	return string(c.transportType)
+}
+
+func (c *Client) ProcessState() string {
+	if stateful, ok := c.transport.(interface{ ProcessState() string }); ok {
+		return stateful.ProcessState()
+	}
+	return "n/a"
 }

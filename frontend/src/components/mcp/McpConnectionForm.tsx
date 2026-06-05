@@ -1,7 +1,9 @@
 import { useState } from 'react'
-import { AlertCircle, CheckCircle2, Plug, PlugZap, Plus, Server, Trash2 } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Plug, PlugZap, Plus, RefreshCw, Server, Trash2 } from 'lucide-react'
 import * as MCPClientBinding from '@/wailsjs/go/main/MCPClient'
 import { useMcpStore, type McpPrompt, type McpResource, type McpSavedConfig, type McpTool } from '@/stores/mcp'
+import { substVars } from '@/lib/substVars'
+import { useEnvironmentsStore } from '@/stores/environments'
 import { cn } from '@/lib/utils'
 
 const DEFAULT_FORM: Omit<McpSavedConfig, 'id'> = {
@@ -14,6 +16,8 @@ const DEFAULT_FORM: Omit<McpSavedConfig, 'id'> = {
   bearerToken: '',
 }
 
+const DEFAULT_SESSION_ID = 'default'
+
 export function McpConnectionForm() {
   const {
     savedConfigs,
@@ -21,46 +25,69 @@ export function McpConnectionForm() {
     status,
     statusError,
     serverInfo,
+    restartingIds,
     addConfig,
     removeConfig,
     setActiveConfig,
     setStatus,
     setServerInfo,
     setCapabilities,
+    setSessions,
+    setRestarting,
   } = useMcpStore()
 
   const [showForm, setShowForm] = useState(savedConfigs.length === 0)
   const [form, setForm] = useState<Omit<McpSavedConfig, 'id'>>(DEFAULT_FORM)
   const activeConfig = savedConfigs.find((cfg) => cfg.id === activeConfigId) ?? null
+  const isRestarting = restartingIds.has(DEFAULT_SESSION_ID)
+
+  const refreshSessions = async () => {
+    try {
+      const raw = await MCPClientBinding.ListSessions()
+      const parsed = JSON.parse(raw)
+      setSessions(Array.isArray(parsed) ? parsed : [])
+    } catch {
+      setSessions([])
+    }
+  }
+
+  const buildResolvedConfigJSON = (config: McpSavedConfig): string => {
+    const envVars = useEnvironmentsStore.getState().getResolvedVars()
+    const stripMissing = (text: string) => substVars(text, envVars).replace(/\{\{[^}]+\}\}/g, '')
+    return JSON.stringify({
+      transport: config.transport,
+      command: config.command,
+      args: config.args,
+      env: config.env.map(stripMissing),
+      baseURL: stripMissing(config.baseURL),
+      bearerToken: stripMissing(config.bearerToken),
+    })
+  }
+
+  const loadCapabilities = async () => {
+    const [toolsRaw, resourcesRaw, promptsRaw] = await Promise.allSettled([
+      MCPClientBinding.ListTools(),
+      MCPClientBinding.ListResources(),
+      MCPClientBinding.ListPrompts(),
+    ])
+
+    setCapabilities({
+      tools: toolsRaw.status === 'fulfilled' ? parseList<McpTool>(toolsRaw.value, 'tools') : [],
+      resources: resourcesRaw.status === 'fulfilled' ? parseList<McpResource>(resourcesRaw.value, 'resources') : [],
+      prompts: promptsRaw.status === 'fulfilled' ? parseList<McpPrompt>(promptsRaw.value, 'prompts') : [],
+    })
+  }
 
   const handleConnect = async () => {
     if (!activeConfig) return
     setStatus('connecting')
     setServerInfo('')
     try {
-      const cfgJSON = JSON.stringify({
-        transport: activeConfig.transport,
-        command: activeConfig.command,
-        args: activeConfig.args,
-        env: activeConfig.env,
-        baseURL: activeConfig.baseURL,
-        bearerToken: activeConfig.bearerToken,
-      })
-      const info = await MCPClientBinding.Connect(cfgJSON)
+      const info = await MCPClientBinding.ConnectSession(DEFAULT_SESSION_ID, buildResolvedConfigJSON(activeConfig))
       setServerInfo(info)
       setStatus('connected')
-
-      const [toolsRaw, resourcesRaw, promptsRaw] = await Promise.allSettled([
-        MCPClientBinding.ListTools(),
-        MCPClientBinding.ListResources(),
-        MCPClientBinding.ListPrompts(),
-      ])
-
-      setCapabilities({
-        tools: toolsRaw.status === 'fulfilled' ? parseList<McpTool>(toolsRaw.value, 'tools') : [],
-        resources: resourcesRaw.status === 'fulfilled' ? parseList<McpResource>(resourcesRaw.value, 'resources') : [],
-        prompts: promptsRaw.status === 'fulfilled' ? parseList<McpPrompt>(promptsRaw.value, 'prompts') : [],
-      })
+      await loadCapabilities()
+      await refreshSessions()
     } catch (error) {
       setStatus('error', error instanceof Error ? error.message : String(error))
     }
@@ -68,13 +95,30 @@ export function McpConnectionForm() {
 
   const handleDisconnect = async () => {
     try {
-      await MCPClientBinding.Disconnect()
+      await MCPClientBinding.DisconnectSession(DEFAULT_SESSION_ID)
     } catch {
       // The backend may already be disconnected; the UI should still reset.
     }
     setStatus('disconnected')
     setServerInfo('')
     setCapabilities({ tools: [], resources: [], prompts: [] })
+    await refreshSessions()
+  }
+
+  const handleRestart = async () => {
+    setRestarting(DEFAULT_SESSION_ID, true)
+    try {
+      setStatus('connecting')
+      const info = await MCPClientBinding.RestartSession(DEFAULT_SESSION_ID)
+      setServerInfo(info)
+      setStatus('connected')
+      await loadCapabilities()
+      await refreshSessions()
+    } catch (error) {
+      setStatus('error', error instanceof Error ? error.message : String(error))
+    } finally {
+      setRestarting(DEFAULT_SESSION_ID, false)
+    }
   }
 
   const handleSave = () => {
@@ -156,7 +200,7 @@ export function McpConnectionForm() {
           )}
 
           <textarea
-            placeholder="Env entries, one per line"
+            placeholder={'Env vars (KEY=VALUE, one per line)\nUse {{VAR}} from the active environment'}
             value={form.env.join('\n')}
             rows={2}
             onChange={(event) => setForm((current) => ({ ...current, env: event.target.value.split('\n').filter(Boolean) }))}
@@ -221,14 +265,25 @@ export function McpConnectionForm() {
         <div className="flex items-center gap-1.5">
           {statusIcon}
           {status === 'connected' ? (
-            <button
-              type="button"
-              onClick={handleDisconnect}
-              className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded bg-surface-2 text-[11px] font-medium text-text-2 transition-colors hover:bg-surface-3"
-            >
-              <PlugZap size={12} />
-              Disconnect
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={handleRestart}
+                disabled={isRestarting}
+                className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded bg-surface-2 text-[11px] font-medium text-text-2 transition-colors hover:bg-surface-3 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <RefreshCw size={12} className={isRestarting ? 'animate-spin' : ''} />
+                Restart
+              </button>
+              <button
+                type="button"
+                onClick={handleDisconnect}
+                className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded bg-surface-2 text-[11px] font-medium text-text-2 transition-colors hover:bg-surface-3"
+              >
+                <PlugZap size={12} />
+                Disconnect
+              </button>
+            </>
           ) : (
             <button
               type="button"

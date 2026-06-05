@@ -51,11 +51,16 @@ interface WailsGoMain {
   }
   MCPClient: {
     Connect: (serverConfigJSON: string) => Promise<string>
+    ConnectSession: (sessionID: string, serverConfigJSON: string) => Promise<string>
     Disconnect: () => Promise<void>
+    DisconnectSession: (sessionID: string) => Promise<void>
+    GetSessionStatus: (sessionID: string) => Promise<string>
     ListTools: () => Promise<string>
     CallTool: (toolName: string, argsJSON: string) => Promise<string>
     ListResources: () => Promise<string>
     ListPrompts: () => Promise<string>
+    ListSessions: () => Promise<string>
+    RestartSession: (sessionID: string) => Promise<string>
   }
 }
 
