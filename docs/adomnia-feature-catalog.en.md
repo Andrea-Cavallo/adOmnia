@@ -9,13 +9,15 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 
 | # | Category | Sections | Features |
 |---|-----------|---------|-------------|
-| A | [API Core](#a-api-core) | HTTP Client, Authentication, Assertions, Runner, Flows, Test Data | ~64 |
+| A | [API Core](#a-api-core) | HTTP Client, Authentication, Assertions, Runner, Flows, Test Data, Visual Tests, Scheduled Tasks, Contract Validation | ~78 |
 | B | [Protocols & Streaming](#b-protocols--streaming) | gRPC, SOAP, WebSocket, SSE, Broker Studio | ~65 |
-| C | [Infrastructure & Simulation](#c-infrastructure--simulation) | Mock Server, Proxy/Interceptor, Docker Lab, Load Testing | ~44 |
+| C | [Infrastructure & Simulation](#c-infrastructure--simulation) | Mock Server (+ Smart Mock), Proxy/Interceptor, Docker Lab, Load Testing | ~47 |
 | D | [Debugging & Analysis](#d-debugging--analysis) | Browser Debug (+ Discovery), HAR Viewer, Network Tools, JSON Tools, XML Tools, Power Tools, Dev Logs, Observability, Secret Scanner | ~90 |
 | E | [Local Data](#e-local-data) | Database Studio, Storage Inspector, Workspace, Vault, Markdown | ~44 |
 | F | [Customization & Extensibility](#f-customization--extensibility) | Themes, Plugin WASM, Template, Python Plugin SDK | ~51 |
 | G | [Platform](#g-platform) | Settings, Infrastructure, UI Framework | ~76 |
+| H | [API Design](#h-api-design) | OpenAPI Import/Export, Schema Components, Visual OpenAPI Editor | ~10 |
+| I | [MCP (Model Context Protocol)](#i-mcp-model-context-protocol) | MCP Client/Debugger, Sessions & Transport, Server Generator | ~12 |
 
 ---
 
@@ -134,6 +136,41 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | A7.15 | **Copy** | Copy output to the clipboard. |
 | A7.16 | **Send to Runner** | Opens the Runner directly with the generated dataset preloaded. |
 | A7.17 | **Presets** | Save/load named field configurations; sidebar shows field and record counts. |
+
+---
+
+### A8. Visual Test Orchestration (No-Code)
+
+| # | Feature | Description |
+|---|-------------|-------------|
+| A8.1 | **Block Types** | Build multi-step tests from cards: Request (pick a saved collection request), Assert (body/status/header + operator + expected), Set Variable (name = expression with `${var}` resolution). |
+| A8.2 | **Visual Canvas** | Vertical card stack with an "Add block" dropdown, up/down reorder, and per-card delete — no scripting required. |
+| A8.3 | **Sequential Runner** | "Run Test" executes blocks in order; each card shows running → pass/fail with a message. Request responses feed subsequent asserts; SetVar/extracted variables flow to later blocks. |
+| A8.4 | **Export to Flow** | Converts a visual test into a Flow graph definition (request → request node with extractions, assert → condition node, setvar → extract node) and appends it to the Flows store. |
+| A8.5 | **Persistence** | Tests stored locally in `adomnia.visualTests`; survive reloads. |
+
+---
+
+### A9. Scheduled Tasks (Cron Runner)
+
+| # | Feature | Description |
+|---|-------------|-------------|
+| A9.1 | **Cron Jobs** | Schedule a saved request to run automatically on a standard 5-field cron expression (`0 * * * *`) or convenience shorthand (`@hourly`, `@every 5m`). Expressions are validated on save. |
+| A9.2 | **In-Process Scheduler** | Runs inside the Wails process (no external daemon); starts on app launch and drains gracefully on shutdown. Executes via the same CORS-free HTTP stack used by normal requests. |
+| A9.3 | **Run History** | Per-job capped ring buffer (50 runs): started timestamp, duration, status code, error, success flag. |
+| A9.4 | **Job Management** | Enable/disable (pause/resume), next-run time, edit, delete; left job list with status dot and 10s auto-refresh. |
+| A9.5 | **Persistence** | Job definitions and history persist to the bbolt `scheduler` bucket. (v1: scheduled runs send the stored request as-is — no env substitution, auth, or scripts.) |
+
+---
+
+### A10. Response Schema Validation (Contract)
+
+| # | Feature | Description |
+|---|-------------|-------------|
+| A10.1 | **Auto-Validation** | After each response, validates it against the endpoint's OpenAPI schema (status code, content type, headers, body structure) when a spec is present on the collection. |
+| A10.2 | **Contract Tab** | Dedicated response tab with a PASS/FAIL badge, violations grouped by category (status/contentType/header/body) with detail, and warnings. |
+| A10.3 | **Report Export** | Export the contract validation result as Markdown, HTML, or JSON. |
+| A10.4 | **Toggle** | Settings → Requests → "Auto-validate response schema" (default on) enables/disables validation globally. |
 
 ---
 
@@ -304,6 +341,9 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | C1.8 | **Authentication Server** | Protection via `X-Mock-Auth` header. |
 | C1.9 | **Auto CORS** | Automatic CORS header injection in mock responses. |
 | C1.10 | **Real-Time Status** | Queries running/stopped status and active port. |
+| C1.11 | **Smart Mock Engine** | Schema-driven response generation: when a response is set to `schema` mode, the server generates a realistic JSON body from a JSON Schema on every request, using Go-based Faker logic (string formats email/uuid/date-time/name/uri, number ranges, enum values, required fields, nested objects/arrays). |
+| C1.12 | **Conditional Expectations** | Each response can carry conditions evaluated against the incoming request (query, header, path param, body via JSONPath) with AND logic; responses are tried in order and the first full match wins. An unconditional response acts as the fallback. |
+| C1.13 | **Schema Editor + Live Preview** | Per-response JSON Schema editor with a live preview of a generated sample body. |
 
 ---
 
@@ -818,15 +858,81 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 
 ---
 
+## H. API DESIGN
+
+Spec-first design module: define and maintain OpenAPI specs and reusable models, and round-trip them with collections.
+
+### H1. OpenAPI Import / Export
+
+| # | Feature | Description |
+|---|-------------|-------------|
+| H1.1 | **First-Class Import** | Import dialog with three modes — File (`.yaml`/`.json`), URL (fetch a remote spec), and Paste — for OpenAPI 3.x and Swagger 2.x, converting the spec into a collection. |
+| H1.2 | **Export to OpenAPI** | Export a collection back to OpenAPI 3 from its context menu, as JSON or YAML; emits paths, parameters, request bodies, and security schemes. |
+| H1.3 | **Round-Trip** | Import → export → re-import preserves endpoint names and paths via a shared mapping. |
+
+### H2. Schema Components (Reusable Models)
+
+| # | Feature | Description |
+|---|-------------|-------------|
+| H2.1 | **Schema Registry** | Workspace-level registry of named JSON Schema models, persisted in `adomnia.schemas`. |
+| H2.2 | **`$ref` Resolver** | Resolves `#/components/schemas/<name>` references (including nested), depth-limited to prevent circular loops. |
+| H2.3 | **Schemas Panel** | List + JSON Schema editor with name/description, Ctrl+S save, JSON validation, and a copyable `$ref` hint. |
+| H2.4 | **OAS Export Integration** | Registered schemas are injected into `components.schemas` of exported OpenAPI documents. |
+
+### H3. Visual OpenAPI Editor
+
+| # | Feature | Description |
+|---|-------------|-------------|
+| H3.1 | **Endpoint List** | Lists endpoints from the collection's stored spec, or synthesizes them from the collection's requests when no spec exists yet. |
+| H3.2 | **Form Editor** | Edit an operation without writing YAML: method, path, path/query/header parameter tables, request body (content type + schema), and responses (status + description + schema/`$ref`). |
+| H3.3 | **Save & Merge** | Saving merges the edited operation back into the collection's `_openapiSpec` (handles add and method/path rename), feeding export, validation, and docs. |
+
+---
+
+## I. MCP (MODEL CONTEXT PROTOCOL)
+
+AI-integration module: connect to, debug, and generate MCP servers — exposing API endpoints as AI-invocable tools.
+
+### I1. MCP Client / Debugger
+
+| # | Feature | Description |
+|---|-------------|-------------|
+| I1.1 | **Connection Manager** | Sidebar of saved MCP server configurations with connect/disconnect. |
+| I1.2 | **Tool Browser + Form Caller** | Structured browser of exposed tools with a form-based call interface (no raw JSON textarea). |
+| I1.3 | **Resources Browser** | Inspects resources exposed by the connected server. |
+| I1.4 | **Call History** | History panel with a request/response inspector for each tool call. |
+
+### I2. MCP Sessions & Transport
+
+| # | Feature | Description |
+|---|-------------|-------------|
+| I2.1 | **Multi-Session** | Connect to multiple MCP servers simultaneously, each as an independent session. |
+| I2.2 | **STDIO Transport + Process State** | STDIO (local process) transport with exposed process health status. |
+| I2.3 | **Restart Without Reconnect** | Restart a session's process without losing its saved configuration. |
+| I2.4 | **Env Injection** | Injects adOmnia environment variables into the STDIO `Env` before launching the server process. |
+
+### I3. MCP Server Generator
+
+| # | Feature | Description |
+|---|-------------|-------------|
+| I3.1 | **Collection → MCP Server** | Generates a self-contained TypeScript/Node.js MCP server from a collection (optionally with `_openapiSpec`) or a bare list of requests. |
+| I3.2 | **Endpoints as Tools** | Each endpoint becomes an AI-invocable tool, ready for Cursor, Claude Code, Windsurf, or any MCP-compatible agent. |
+| I3.3 | **Auth Passthrough** | The generated server passes through authentication for the mapped requests. |
+| I3.4 | **Output Directory Picker** | Choose the output directory; generation runs from the "Generate Server" tab in the MCP panel. |
+
+---
+
 ## SUMMARY
 
 | Category | Sections | Features |
 |-----------|---------|-------------|
-| **A — API Core** | HTTP Client, Auth, Assertions, Runner, Flows, Test Data | 64 |
+| **A — API Core** | HTTP Client, Auth, Assertions, Runner, Flows, Test Data, Visual Tests, Scheduled Tasks, Contract Validation | 78 |
 | **B — Protocols & Streaming** | gRPC, SOAP, WebSocket, SSE, Broker Studio (5 broker) | 65 |
-| **C — Infrastructure & Simulation** | Mock Server, Proxy, Docker Lab, Load Testing | 44 |
+| **C — Infrastructure & Simulation** | Mock Server (+ Smart Mock), Proxy, Docker Lab, Load Testing | 47 |
 | **D — Debugging & Analysis** | Browser Debug (+ Discovery), HAR, Network Tools, JSON Tools, XML Tools, Dev Utils, Dev Logs, Observability, Secret Scanner | 90 |
 | **E — Local Data** | Database Studio, Storage Inspector, Workspace, Vault, Markdown | 44 |
 | **F — Customization & Extensibility** | Themes, Plugin WASM, Template, Python Plugin SDK | 51 |
 | **G — Platform** | Settings, Infrastructure, UI Framework | 76 |
-| **Total** | 33 sezioni | **~444** |
+| **H — API Design** | OpenAPI Import/Export, Schema Components, Visual OpenAPI Editor | 10 |
+| **I — MCP (Model Context Protocol)** | Client/Debugger, Sessions & Transport, Server Generator | 12 |
+| **Total** | 38 sezioni | **~507** |
