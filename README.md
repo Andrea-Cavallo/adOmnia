@@ -54,6 +54,9 @@ check rest apis:
 
 ![adOmnia rest](assets/images/REST.png)
 
+![adOmnia rest](assets/images/REST1.png)
+
+
 **444+ features across 7 categories:**
 
 | Area | What you get |
