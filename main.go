@@ -61,6 +61,7 @@ func main() {
 	globalAIEngine = aiEngine
 	gitSync := NewGitSync(dataDir())
 	mcpClient := NewMCPClient()
+	mcpServerGenerator := NewMCPServerGenerator()
 	apiCollectionStore := NewApiCollectionStore()
 
 	appOptions := &options.App{
@@ -87,6 +88,7 @@ func main() {
 			aiEngine,
 			gitSync,
 			mcpClient,
+			mcpServerGenerator,
 			apiCollectionStore,
 		},
 		Windows: &windows.Options{

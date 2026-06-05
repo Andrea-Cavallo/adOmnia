@@ -62,6 +62,9 @@ interface WailsGoMain {
     ListSessions: () => Promise<string>
     RestartSession: (sessionID: string) => Promise<string>
   }
+  MCPServerGenerator: {
+    Generate: (inputJSON: string, outputDir: string) => Promise<string>
+  }
 }
 
 interface DockerService {

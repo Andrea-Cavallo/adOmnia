@@ -1,0 +1,53 @@
+// Auto-generated MCP Server by adOmnia
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+import * as dotenv from "dotenv";
+
+dotenv.config();
+
+const server = new Server(
+  { name: "{{.ServerName}}", version: "1.0.0" },
+  { capabilities: { tools: {} } }
+);
+
+server.setRequestHandler(ListToolsRequestSchema, async () => ({
+  tools: [
+{{- range .Tools}}
+    {
+      name: "{{.Name}}",
+      description: "{{.Description}}",
+      inputSchema: {
+        type: "object",
+        properties: {{.InputSchemaJSON}},
+        required: {{.RequiredJSON}},
+      },
+    },
+{{- end}}
+  ],
+}));
+
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  const { name, arguments: args } = request.params;
+  const a = (args ?? {}) as Record<string, string>;
+
+{{- range .Tools}}
+  if (name === "{{.Name}}") {
+    const url = {{.URLTemplate}};
+    const headers: Record<string, string> = { "Content-Type": "application/json"{{- if .AuthHeader}}, {{.AuthHeader}}{{- end}} };
+{{- if .HasBody}}
+    const body = JSON.stringify({{.BodyTemplate}});
+    const resp = await fetch(url, { method: "{{.Method}}", headers, body });
+{{- else}}
+    const resp = await fetch(url, { method: "{{.Method}}", headers });
+{{- end}}
+    const text = await resp.text();
+    return { content: [{ type: "text", text }] };
+  }
+{{- end}}
+
+  throw new Error(`Unknown tool: ${name}`);
+});
+
+const transport = new StdioServerTransport();
+await server.connect(transport);
