@@ -4,9 +4,10 @@
 
 REST · gRPC · SOAP · GraphQL · WebSocket · SSE · Kafka · RabbitMQ · MQTT · Redis · NATS  
 Mock servers · HTTPS proxy · Browser DevTools · Load testing · Database Studio · Encrypted vault  
-AI mock generation · Git Sync · MCP Client · WASM + Python plugins · 11 themes
+OpenAPI design · Visual test builder · Scheduled tasks · AI mock generation · Git Sync  
+MCP Client + Server Generator · WASM + Python plugins · 11 themes
 
-> No account. No telemetry. No subscription. One portable executable. **444+ features.**
+> No account. No telemetry. No subscription. One portable executable. **507+ features.**
 
 > Proudly listed on **[Awesome Wails](https://github.com/wailsapp/awesome-wails)** and **[Awesome HTTP Clients](https://github.com/mrmykey/awesome-http-clients/tree/main)**.
 
@@ -57,16 +58,17 @@ check rest apis:
 ![adOmnia rest](assets/images/REST1.png)
 
 
-**444+ features across 7 categories:**
+**507+ features across 9 areas:**
 
 | Area | What you get |
 |---|---|
 | **API Workspace** | Multiple local workspaces with independent collections and tabs, HTTP client (all methods), environments, `{{variable}}` substitution, OAuth2 PKCE, AWS Signature v4, Digest, cURL/OpenAPI import, scripts, assertions, code generation, response history |
+| **API Design (spec-first)** | Native OpenAPI 3.x / Swagger 2.x import (file/URL/paste) and round-trip export (JSON/YAML), **Visual OpenAPI Editor** (form-based endpoints, no YAML), reusable **Schema Components** with `$ref` resolution |
 | **API Catalog** | Installable public REST API starters, including curated no-auth/free endpoints inspired by `public-apis/public-apis`, imported directly into local adOmnia collections |
-| **Collection Runner & Testing** | Test runner with iterations/delay/retry/CSV datasets, assertion editor (JSONPath, XPath, schema), Mermaid-generated API flows, test data studio (fake data generator) |
-| **Protocols** | SOAP/WSDL Studio (1.1 & 1.2, WS-Security), gRPC (server reflection, unary + streaming), WebSocket client + mock server, SSE client, **MCP Client** (AI tool testing, stdio + HTTP transport) |
+| **Collection Runner & Testing** | Test runner with iterations/delay/retry/CSV datasets, assertion editor (JSONPath, XPath, schema), Mermaid-generated API flows, **no-code Visual Test builder** (block-based, export to Flow), **Scheduled Tasks** (local cron runner with history), **response schema/contract validation**, test data studio |
+| **Protocols** | SOAP/WSDL Studio (1.1 & 1.2, WS-Security), gRPC (server reflection, unary + streaming), WebSocket client + mock server, SSE client, **MCP Client/Debugger** + **MCP Server Generator** (collection/OAS → runnable MCP server; stdio multi-session + HTTP transport) |
 | **Brokers** | Kafka (produce/consume/bulk/load test), RabbitMQ, MQTT, Redis Pub/Sub, NATS — shared message log, persistent connection profiles |
-| **Simulation & Infrastructure** | Mock server (pattern matching, record & replay, round-robin), HTTPS proxy/interceptor (MITM CA, breakpoints, map local/remote, throttling), Docker Lab (14 presets), load testing (HTTP + gRPC, HDR histogram, P99, side-by-side comparison) |
+| **Simulation & Infrastructure** | Mock server with **Smart Mock Engine** (schema-driven Faker generation) and **conditional expectations** (per-field matching), record & replay, round-robin; HTTPS proxy/interceptor (MITM CA, breakpoints, map local/remote, throttling), Docker Lab (14 presets), load testing (HTTP + gRPC, HDR histogram, P99, side-by-side comparison) |
 | **Debugging & Analysis** | Browser DevTools via CDP (network, console, JS debugger, DOM inspector, storage, screenshots), HAR viewer, DNS lookup/trace/compare, port scanner, CORS tester, JSON/XML/YAML tools, observability panel, secret scanner |
 | **Data, Security & Extensibility** | Database Studio (SQLite/PostgreSQL/MySQL/MongoDB), bbolt storage inspector, encrypted vault (age/scrypt), **Git Sync** (commit/push/pull to any repo), **AI engine** (Anthropic/OpenAI/Gemini/Ollama — AI mock generation), WASM plugin sandbox, Python Plugin SDK, 11 built-in themes + custom skin system |
 
@@ -110,15 +112,16 @@ MIT © Andrea Cavallo — [LICENSE.md](LICENSE.md).
 
 adOmnia es un **toolbox profesional de desarrollo de APIs** para desarrolladores que exigen privacidad, potencia y cero dependencia de la nube. Reemplaza Postman, Insomnia, un proxy HTTPS, DevTools del navegador, un cliente de base de datos y un gestor de secretos — todo en un único ejecutable portable que nunca envía datos.
 
-**444+ funciones en 7 categorías:**
+**507+ funciones en 9 áreas:**
 
 | Área | Qué incluye |
 |---|---|
 | **API Workspace** | Workspaces locales múltiples con colecciones y pestañas independientes, cliente HTTP completo, entornos, sustitución `{{variable}}`, OAuth2 PKCE, AWS v4, import cURL/OpenAPI, scripts, assertions, generación de código |
-| **Testing y Runner** | Runner con iteraciones/delay/CSV, assertion editor (JSONPath, XPath, schema), flows API desde Mermaid, test data studio |
-| **Protocolos** | SOAP/WSDL Studio (WS-Security), gRPC (reflection + streaming), WebSocket + mock server, SSE, **MCP Client** (prueba servidores MCP de IA) |
+| **Diseño de API (spec-first)** | Import nativo OpenAPI 3.x / Swagger 2.x (archivo/URL/pegar) y export round-trip (JSON/YAML), **Editor OpenAPI visual** (endpoints por formulario, sin YAML), **Schema Components** reutilizables con resolución `$ref` |
+| **Testing y Runner** | Runner con iteraciones/delay/CSV, assertion editor (JSONPath, XPath, schema), flows API desde Mermaid, **constructor de tests visual no-code** (por bloques, export a Flow), **Tareas Programadas** (cron local con historial), **validación de schema/contract de la respuesta**, test data studio |
+| **Protocolos** | SOAP/WSDL Studio (WS-Security), gRPC (reflection + streaming), WebSocket + mock server, SSE, **MCP Client/Debugger** + **MCP Server Generator** (colección/OAS → servidor MCP ejecutable; stdio multi-sesión + HTTP) |
 | **Mensajería** | Kafka, RabbitMQ, MQTT, Redis Pub/Sub, NATS — log compartido, perfiles persistentes |
-| **Simulación e Infraestructura** | Mock server (record & replay, round-robin), proxy HTTPS (MITM CA, breakpoints, throttling), Docker Lab (14 presets), load testing (HTTP + gRPC, P99, HDR histogram) |
+| **Simulación e Infraestructura** | Mock server con **Smart Mock Engine** (generación Faker desde schema) y **expectations condicionales** (match por campo), record & replay, round-robin; proxy HTTPS (MITM CA, breakpoints, throttling), Docker Lab (14 presets), load testing (HTTP + gRPC, P99, HDR histogram) |
 | **Debugging y Análisis** | Browser DevTools vía CDP (red, consola, debugger JS, DOM, storage, screenshots), HAR viewer, DNS, port scanner, CORS tester, herramientas JSON/XML, secret scanner |
 | **Datos, Seguridad y Extensibilidad** | Database Studio (SQLite/PostgreSQL/MySQL/MongoDB), vault cifrado (age/scrypt), **Git Sync**, **IA** (Anthropic/OpenAI/Gemini/Ollama — generación de mocks), plugins WASM, SDK Python, 11 temas |
 
@@ -162,15 +165,16 @@ MIT © Andrea Cavallo — [LICENSE.md](LICENSE.md).
 
 adOmnia è un **toolbox professionale per lo sviluppo di API** pensato per chi vuole potenza, privacy e zero dipendenza dal cloud. Sostituisce Postman, Insomnia, un proxy HTTPS, i DevTools del browser, un client database e un gestore di segreti — in un unico eseguibile portatile che non invia mai dati fuori dalla tua macchina.
 
-**444+ funzionalità in 7 categorie:**
+**507+ funzionalità in 9 aree:**
 
 | Area | Cosa include |
 |---|---|
 | **API Workspace** | Workspace locali multipli con collection e tab indipendenti, client HTTP completo, ambienti, sostituzione `{{variabile}}`, OAuth2 PKCE, AWS Signature v4, import cURL/OpenAPI, script, assertion, generazione codice |
-| **Testing e Runner** | Runner con iterazioni/delay/CSV, assertion editor (JSONPath, XPath, schema), flow API generati da Mermaid, test data studio |
-| **Protocolli** | SOAP/WSDL Studio (WS-Security), gRPC (server reflection + streaming), WebSocket + mock server, SSE, **MCP Client** (test server MCP per IA) |
+| **API Design (spec-first)** | Import nativo OpenAPI 3.x / Swagger 2.x (file/URL/incolla) ed export round-trip (JSON/YAML), **Editor OpenAPI visuale** (endpoint a form, senza YAML), **Schema Components** riusabili con risoluzione `$ref` |
+| **Testing e Runner** | Runner con iterazioni/delay/CSV, assertion editor (JSONPath, XPath, schema), flow API generati da Mermaid, **builder di test visuale no-code** (a blocchi, export verso Flow), **Attività Pianificate** (cron locale con storico), **validazione schema/contract della risposta**, test data studio |
+| **Protocolli** | SOAP/WSDL Studio (WS-Security), gRPC (server reflection + streaming), WebSocket + mock server, SSE, **MCP Client/Debugger** + **MCP Server Generator** (collection/OAS → server MCP eseguibile; stdio multi-sessione + HTTP) |
 | **Broker** | Kafka, RabbitMQ, MQTT, Redis Pub/Sub, NATS — log messaggi condiviso, profili connessione persistenti |
-| **Simulazione e Infrastruttura** | Mock server (record & replay, round-robin), proxy HTTPS (MITM CA, breakpoint, map local/remote, throttling), Docker Lab (14 preset), load testing (HTTP + gRPC, P99, istogramma HDR) |
+| **Simulazione e Infrastruttura** | Mock server con **Smart Mock Engine** (generazione Faker da schema) ed **expectations condizionali** (match per campo), record & replay, round-robin; proxy HTTPS (MITM CA, breakpoint, map local/remote, throttling), Docker Lab (14 preset), load testing (HTTP + gRPC, P99, istogramma HDR) |
 | **Debugging e Analisi** | Browser DevTools via CDP (rete, console, debugger JS, DOM, storage, screenshot), HAR viewer, DNS, port scanner, CORS tester, strumenti JSON/XML, secret scanner |
 | **Dati, Sicurezza e Estendibilità** | Database Studio (SQLite/PostgreSQL/MySQL/MongoDB), vault cifrato (age/scrypt), **Git Sync**, **AI engine** (Anthropic/OpenAI/Gemini/Ollama — generazione mock AI), plugin WASM, SDK Python, 11 temi + skin custom |
 
