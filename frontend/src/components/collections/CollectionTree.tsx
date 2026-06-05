@@ -30,6 +30,7 @@ import {
   importCollectionsFromText,
   type ExportFormat,
 } from '@/lib/collectionTransfer'
+import { collectionToOAS } from '@/lib/oasExport'
 
 interface CollectionTreeProps {
   collections: Collection[]
@@ -570,6 +571,11 @@ export function CollectionTree({
     setContext(null)
   }
 
+  const exportCollectionOASYaml = (collection: Collection) => {
+    downloadText(`${slug(collection.name)}.openapi.yaml`, collectionToOAS(collection, 'yaml'), 'text/yaml')
+    setContext(null)
+  }
+
   const exportNode = (collectionId: string, node: TreeNode, format: ExportFormat) => {
     const collection = collections.find((item) => item.id === collectionId)
     if (!collection) return
@@ -658,6 +664,11 @@ export function CollectionTree({
           <Download size={12} /> Export {format === 'openapi' ? 'OpenAPI 3' : format === 'swagger2' ? 'Swagger 2.0' : format}
         </MenuButton>
       ))}
+      {target.kind === 'collection' && (
+        <MenuButton onClick={() => exportCollectionOASYaml(target.collection)}>
+          <Download size={12} /> Export OpenAPI 3 (YAML)
+        </MenuButton>
+      )}
     </div>
   )
 

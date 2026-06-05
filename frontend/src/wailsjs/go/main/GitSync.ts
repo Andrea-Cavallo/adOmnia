@@ -41,3 +41,11 @@ export function CheckoutConflictSide(repoPath: string, path: string, side: strin
 export function AbortIntegration(repoPath: string): Promise<void> {
   return window['go']['main']['GitSync']['AbortIntegration'](repoPath)
 }
+
+export function CompareRefs(repoPath: string, refA: string, refB: string): Promise<string> {
+  return window['go']['main']['GitSync']['CompareRefs'](repoPath, refA, refB)
+}
+
+export function GetFileDiff(repoPath: string, refA: string, refB: string, filePath: string): Promise<string> {
+  return window['go']['main']['GitSync']['GetFileDiff'](repoPath, refA, refB, filePath)
+}

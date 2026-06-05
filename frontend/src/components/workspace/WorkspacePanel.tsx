@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Clock, Download, FolderOpen, LogIn, RefreshCw, Save, Shield, ShieldAlert, Trash2, Undo2, Upload } from 'lucide-react'
+import { Clock, Download, FileCode, FolderOpen, LogIn, RefreshCw, Save, Shield, ShieldAlert, Trash2, Undo2, Upload } from 'lucide-react'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { useCollectionsStore } from '@/stores/collections'
 import { useEnvironmentsStore } from '@/stores/environments'
@@ -11,6 +11,7 @@ import { scanWorkspace, maskSecretValues } from '@/lib/secretScanner'
 import { loadFlowDefinitions, type SavedFlowDefinition } from '@/lib/flowStorage'
 import { applyWorkspaceState, type WorkspaceState } from '@/lib/workspaceState'
 import { rememberRecentWorkspace, removeRecentWorkspace, type WorkspaceMeta } from '@/lib/workspaceRecents'
+import { OasImportModal } from './OasImportModal'
 
 export function WorkspacePanel() {
   const port = useServerPort()
@@ -23,6 +24,7 @@ export function WorkspacePanel() {
   const [undoState, setUndoState] = useState<string | null>(null)
   const [exportConfirm, setExportConfirm] = useState<{ state: string; secrets: number } | null>(null)
   const [flowDefinitions, setFlowDefinitions] = useState<SavedFlowDefinition[]>([])
+  const [showOasImport, setShowOasImport] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const makeState = () => {
@@ -304,6 +306,14 @@ export function WorkspacePanel() {
           </div>
 
           <button
+            onClick={() => setShowOasImport(true)}
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-border-2 px-3 py-2 text-xs text-text-3 transition-colors hover:border-accent/40 hover:text-text-1"
+            title="Import an OpenAPI 3.x or Swagger 2.x spec (file, URL, or paste) as a collection"
+          >
+            <FileCode size={11} /> Import OAS
+          </button>
+
+          <button
             onClick={undoImport}
             disabled={!undoState}
             className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-border-2 px-3 py-2 text-xs text-text-3 transition-colors hover:text-text-1 disabled:opacity-40"
@@ -450,6 +460,13 @@ export function WorkspacePanel() {
           className="flex-1 p-4 bg-surface-0 text-text-1 text-xs font-mono resize-none outline-none"
         />
       </div>
+
+      {showOasImport && (
+        <OasImportModal
+          onClose={() => setShowOasImport(false)}
+          onImported={(collectionName) => setMessage(`Imported OpenAPI spec "${collectionName}" as a collection.`)}
+        />
+      )}
     </div>
   )
 }

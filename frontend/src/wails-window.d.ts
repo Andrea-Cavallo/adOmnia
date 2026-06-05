@@ -46,6 +46,8 @@ interface WailsGoMain {
     StageFile: (repoPath: string, path: string) => Promise<void>
     CheckoutConflictSide: (repoPath: string, path: string, side: string) => Promise<void>
     AbortIntegration: (repoPath: string) => Promise<void>
+    CompareRefs: (repoPath: string, refA: string, refB: string) => Promise<string>
+    GetFileDiff: (repoPath: string, refA: string, refB: string, filePath: string) => Promise<string>
   }
   MCPClient: {
     Connect: (serverConfigJSON: string) => Promise<string>
