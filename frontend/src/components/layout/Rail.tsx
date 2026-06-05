@@ -7,7 +7,7 @@ import {
   Send, LayoutList, Shield, Server, Radio, Globe, Bug, Container, Network,
   Wrench, FileText, FileCode, Database, Braces, FlaskConical, ChevronRight,
   Lock, FolderOpen, Paintbrush, LayoutTemplate, Puzzle, Settings, GitBranch,
-  Play, Zap, BarChart2, Activity, HardDrive, History, Layers, Package, Boxes, Code2, ListChecks,
+  Play, Zap, BarChart2, Activity, HardDrive, History, Layers, Package, Boxes, Code2, ListChecks, CalendarClock,
 } from 'lucide-react'
 
 interface SubItem {
@@ -48,8 +48,9 @@ const CATEGORIES: CategoryDef[] = [
         { id: 'apieditor', icon: Code2, label: 'API Editor' },
       ]},
       { title: 'Testing', items: [
-        { id: 'testdata',    icon: FlaskConical, label: 'Test Data' },
-        { id: 'visualtests', icon: ListChecks,   label: 'Visual Tests' },
+        { id: 'testdata',    icon: FlaskConical,  label: 'Test Data' },
+        { id: 'visualtests', icon: ListChecks,    label: 'Visual Tests' },
+        { id: 'scheduler',   icon: CalendarClock, label: 'Scheduled Tasks' },
       ]},
     ],
   },

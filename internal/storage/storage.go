@@ -34,6 +34,7 @@ var storeBuckets = []string{
 	"history",      // request/response history
 	"mock",         // mock server config + hits
 	"proxy",        // proxy/interceptor config + traffic
+	"scheduler",    // scheduled job definitions + run history
 }
 
 const storagePutMaxBodyBytes = 10 * 1024 * 1024

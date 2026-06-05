@@ -65,6 +65,15 @@ interface WailsGoMain {
   MCPServerGenerator: {
     Generate: (inputJSON: string, outputDir: string) => Promise<string>
   }
+  SchedulerBinding: {
+    AddJob: (name: string, cronExpr: string, requestID: string) => Promise<import('@/wailsjs/go/main/SchedulerBinding').ScheduledJob>
+    UpdateJob: (id: string, name: string, cronExpr: string, requestID: string) => Promise<import('@/wailsjs/go/main/SchedulerBinding').ScheduledJob>
+    DeleteJob: (id: string) => Promise<void>
+    EnableJob: (id: string) => Promise<void>
+    DisableJob: (id: string) => Promise<void>
+    ListJobs: () => Promise<import('@/wailsjs/go/main/SchedulerBinding').ScheduledJob[]>
+    GetHistory: (jobID: string) => Promise<import('@/wailsjs/go/main/SchedulerBinding').JobRun[]>
+  }
 }
 
 interface DockerService {

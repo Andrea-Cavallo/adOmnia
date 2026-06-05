@@ -63,6 +63,8 @@ func main() {
 	mcpClient := NewMCPClient()
 	mcpServerGenerator := NewMCPServerGenerator()
 	apiCollectionStore := NewApiCollectionStore()
+	scheduler := NewSchedulerBinding()
+	app.scheduler = scheduler
 
 	appOptions := &options.App{
 		Title:     "adOmnia paratus.",
@@ -90,6 +92,7 @@ func main() {
 			mcpClient,
 			mcpServerGenerator,
 			apiCollectionStore,
+			scheduler,
 		},
 		Windows: &windows.Options{
 			WebviewIsTransparent:              false,

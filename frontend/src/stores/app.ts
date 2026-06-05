@@ -44,6 +44,7 @@ export type RailItem =
   | 'schemas'
   | 'apieditor'
   | 'visualtests'
+  | 'scheduler'
 
 // Canonical Cmd/Ctrl+1..9 quick-navigation targets, ordered to match the
 // visible rail category order (each entry is that category's primary tool).

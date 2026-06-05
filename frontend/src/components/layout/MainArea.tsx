@@ -51,6 +51,7 @@ const WorkspacePanel       = React.lazy(() => import('@/components/workspace/Wor
 const SchemasPanel         = React.lazy(() => import('@/components/workspace/SchemasPanel').then(m => ({ default: m.SchemasPanel })))
 const ApiEditorPanel       = React.lazy(() => import('@/components/apis/ApiEditorPanel').then(m => ({ default: m.ApiEditorPanel })))
 const VisualTestPanel      = React.lazy(() => import('@/components/testdata/VisualTestPanel').then(m => ({ default: m.VisualTestPanel })))
+const SchedulerPanel       = React.lazy(() => import('@/components/runner/SchedulerPanel').then(m => ({ default: m.SchedulerPanel })))
 const ThemePanel           = React.lazy(() => import('@/components/themes/ThemePanel').then(m => ({ default: m.ThemePanel })))
 const TemplateMarketplace  = React.lazy(() => import('@/components/templates/TemplateMarketplace').then(m => ({ default: m.TemplateMarketplace })))
 const PluginManager        = React.lazy(() => import('@/components/plugins/PluginManager').then(m => ({ default: m.PluginManager })))
@@ -681,6 +682,7 @@ function panelFor(activeRail: RailItem): PanelDef {
     case 'schemas':     return { component: <SchemasPanel />,          titleKey: 'Schema Components', overflow: true }
     case 'apieditor':   return { component: <ApiEditorPanel />,        titleKey: 'API Editor', overflow: true }
     case 'visualtests': return { component: <VisualTestPanel />,       titleKey: 'Visual Tests', overflow: true }
+    case 'scheduler':   return { component: <SchedulerPanel />,         titleKey: 'Scheduled Tasks', overflow: true }
     case 'themes':      return { component: <ThemePanel />,           titleKey: 'themes' }
     case 'templates':   return { component: <TemplateMarketplace />,  titleKey: 'templates' }
     case 'plugins':     return { component: <PluginManager />,        titleKey: 'plugins' }
