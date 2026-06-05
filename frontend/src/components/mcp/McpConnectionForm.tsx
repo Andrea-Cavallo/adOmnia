@@ -16,19 +16,20 @@ const DEFAULT_FORM: Omit<McpSavedConfig, 'id'> = {
   bearerToken: '',
 }
 
-const DEFAULT_SESSION_ID = 'default'
-
 export function McpConnectionForm() {
   const {
     savedConfigs,
     activeConfigId,
+    activeSessionId,
     status,
     statusError,
     serverInfo,
+    sessions,
     restartingIds,
     addConfig,
     removeConfig,
     setActiveConfig,
+    setActiveSession,
     setStatus,
     setServerInfo,
     setCapabilities,
@@ -39,7 +40,7 @@ export function McpConnectionForm() {
   const [showForm, setShowForm] = useState(savedConfigs.length === 0)
   const [form, setForm] = useState<Omit<McpSavedConfig, 'id'>>(DEFAULT_FORM)
   const activeConfig = savedConfigs.find((cfg) => cfg.id === activeConfigId) ?? null
-  const isRestarting = restartingIds.has(DEFAULT_SESSION_ID)
+  const isRestarting = activeSessionId ? restartingIds.has(activeSessionId) : false
 
   const refreshSessions = async () => {
     try {
@@ -64,11 +65,11 @@ export function McpConnectionForm() {
     })
   }
 
-  const loadCapabilities = async () => {
+  const loadCapabilities = async (sessionID: string) => {
     const [toolsRaw, resourcesRaw, promptsRaw] = await Promise.allSettled([
-      MCPClientBinding.ListTools(),
-      MCPClientBinding.ListResources(),
-      MCPClientBinding.ListPrompts(),
+      MCPClientBinding.ListToolsSession(sessionID),
+      MCPClientBinding.ListResourcesSession(sessionID),
+      MCPClientBinding.ListPromptsSession(sessionID),
     ])
 
     setCapabilities({
@@ -78,46 +79,53 @@ export function McpConnectionForm() {
     })
   }
 
-  const handleConnect = async () => {
-    if (!activeConfig) return
+  const handleConnect = async (config = activeConfig) => {
+    if (!config) return
+    const sessionID = config.id
+    setActiveSession(sessionID)
     setStatus('connecting')
     setServerInfo('')
     try {
-      const info = await MCPClientBinding.ConnectSession(DEFAULT_SESSION_ID, buildResolvedConfigJSON(activeConfig))
+      const info = await MCPClientBinding.ConnectSession(sessionID, buildResolvedConfigJSON(config))
       setServerInfo(info)
       setStatus('connected')
-      await loadCapabilities()
+      await loadCapabilities(sessionID)
       await refreshSessions()
     } catch (error) {
       setStatus('error', error instanceof Error ? error.message : String(error))
     }
   }
 
-  const handleDisconnect = async () => {
+  const handleDisconnect = async (sessionID = activeSessionId) => {
+    if (!sessionID) return
     try {
-      await MCPClientBinding.DisconnectSession(DEFAULT_SESSION_ID)
+      await MCPClientBinding.DisconnectSession(sessionID)
     } catch {
       // The backend may already be disconnected; the UI should still reset.
     }
-    setStatus('disconnected')
-    setServerInfo('')
-    setCapabilities({ tools: [], resources: [], prompts: [] })
+    if (sessionID === activeSessionId) {
+      setStatus('disconnected')
+      setServerInfo('')
+      setCapabilities({ tools: [], resources: [], prompts: [] })
+    }
     await refreshSessions()
   }
 
-  const handleRestart = async () => {
-    setRestarting(DEFAULT_SESSION_ID, true)
+  const handleRestart = async (sessionID = activeSessionId) => {
+    if (!sessionID) return
+    setActiveSession(sessionID)
+    setRestarting(sessionID, true)
     try {
       setStatus('connecting')
-      const info = await MCPClientBinding.RestartSession(DEFAULT_SESSION_ID)
+      const info = await MCPClientBinding.RestartSession(sessionID)
       setServerInfo(info)
       setStatus('connected')
-      await loadCapabilities()
+      await loadCapabilities(sessionID)
       await refreshSessions()
     } catch (error) {
       setStatus('error', error instanceof Error ? error.message : String(error))
     } finally {
-      setRestarting(DEFAULT_SESSION_ID, false)
+      setRestarting(sessionID, false)
     }
   }
 
@@ -218,31 +226,81 @@ export function McpConnectionForm() {
       )}
 
       <div className="flex-1 overflow-y-auto py-1">
-        {savedConfigs.map((cfg) => (
+        {savedConfigs.map((cfg) => {
+          const session = sessions[cfg.id]
+          const connected = session?.status === 'connected'
+          const restarting = restartingIds.has(cfg.id)
+          return (
           <div
             key={cfg.id}
             onClick={() => setActiveConfig(cfg.id)}
             className={cn(
-              'group flex cursor-pointer items-center gap-2 px-3 py-2 text-left text-[11px] transition-colors',
+              'group cursor-pointer px-3 py-2 text-left text-[11px] transition-colors',
               activeConfigId === cfg.id ? 'bg-accent/10 text-accent' : 'text-text-2 hover:bg-surface-2',
             )}
           >
-            <Server size={12} className="shrink-0" />
-            <span className="min-w-0 flex-1 truncate">{cfg.name}</span>
-            <span className="rounded border border-border-1 px-1 py-0.5 font-mono text-[9px] text-text-4">{cfg.transport}</span>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation()
-                removeConfig(cfg.id)
-              }}
-              className="rounded p-0.5 text-text-4 opacity-0 transition-all hover:bg-surface-3 hover:text-danger group-hover:opacity-100"
-              title="Remove server"
-            >
-              <Trash2 size={10} />
-            </button>
+            <div className="flex items-center gap-2">
+              <Server size={12} className="shrink-0" />
+              <span className="min-w-0 flex-1 truncate">{cfg.name}</span>
+              <span className="rounded border border-border-1 px-1 py-0.5 font-mono text-[9px] text-text-4">{cfg.transport}</span>
+              <span className={cn(
+                'h-1.5 w-1.5 rounded-full',
+                connected ? 'bg-success' : session ? 'bg-warning' : 'bg-text-4',
+              )} />
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  removeConfig(cfg.id)
+                }}
+                className="rounded p-0.5 text-text-4 opacity-0 transition-all hover:bg-surface-3 hover:text-danger group-hover:opacity-100"
+                title="Remove server"
+              >
+                <Trash2 size={10} />
+              </button>
+            </div>
+            <div className="mt-1 flex items-center gap-1 pl-5">
+              {connected ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      void handleRestart(cfg.id)
+                    }}
+                    disabled={restarting}
+                    className="rounded border border-border-1 px-1.5 py-0.5 text-[9px] text-text-3 hover:bg-surface-3 hover:text-text-1 disabled:opacity-40"
+                  >
+                    Restart
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      void handleDisconnect(cfg.id)
+                    }}
+                    className="rounded border border-border-1 px-1.5 py-0.5 text-[9px] text-text-3 hover:bg-surface-3 hover:text-text-1"
+                  >
+                    Disconnect
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    void handleConnect(cfg)
+                  }}
+                  className="rounded border border-border-1 px-1.5 py-0.5 text-[9px] text-accent hover:bg-accent/10"
+                >
+                  Connect
+                </button>
+              )}
+              {session && <span className="truncate text-[9px] text-text-4">{session.status}</span>}
+            </div>
           </div>
-        ))}
+          )
+        })}
 
         {savedConfigs.length === 0 && (
           <p className="px-4 py-5 text-center text-[11px] text-text-4">
@@ -268,8 +326,8 @@ export function McpConnectionForm() {
             <>
               <button
                 type="button"
-                onClick={handleRestart}
-                disabled={isRestarting}
+              onClick={() => void handleRestart()}
+              disabled={isRestarting}
                 className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded bg-surface-2 text-[11px] font-medium text-text-2 transition-colors hover:bg-surface-3 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <RefreshCw size={12} className={isRestarting ? 'animate-spin' : ''} />
@@ -277,7 +335,7 @@ export function McpConnectionForm() {
               </button>
               <button
                 type="button"
-                onClick={handleDisconnect}
+              onClick={() => void handleDisconnect()}
                 className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded bg-surface-2 text-[11px] font-medium text-text-2 transition-colors hover:bg-surface-3"
               >
                 <PlugZap size={12} />
@@ -287,7 +345,7 @@ export function McpConnectionForm() {
           ) : (
             <button
               type="button"
-              onClick={handleConnect}
+              onClick={() => void handleConnect()}
               disabled={!activeConfig || status === 'connecting'}
               className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded bg-accent text-[11px] font-medium text-white transition-colors hover:bg-accent-light disabled:cursor-not-allowed disabled:opacity-40"
             >

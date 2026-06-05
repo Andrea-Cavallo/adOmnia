@@ -136,6 +136,21 @@ func (c *Client) ListPrompts(ctx context.Context) ([]Prompt, error) {
 	return result.Prompts, nil
 }
 
+func (c *Client) GetPrompt(ctx context.Context, name string, args map[string]any) (GetPromptResult, error) {
+	raw, err := c.call(ctx, "prompts/get", map[string]any{
+		"name":      name,
+		"arguments": args,
+	})
+	if err != nil {
+		return GetPromptResult{}, err
+	}
+	var result GetPromptResult
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return GetPromptResult{}, err
+	}
+	return result, nil
+}
+
 func (c *Client) Close() error {
 	return c.transport.Close()
 }

@@ -55,6 +55,17 @@ type Prompt struct {
 	} `json:"arguments"`
 }
 
+type GetPromptResult struct {
+	Description string `json:"description"`
+	Messages    []struct {
+		Role    string `json:"role"`
+		Content struct {
+			Type string `json:"type"`
+			Text string `json:"text"`
+		} `json:"content"`
+	} `json:"messages"`
+}
+
 type CallToolResult struct {
 	Content []struct {
 		Type string `json:"type"`

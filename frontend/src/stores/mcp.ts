@@ -65,11 +65,13 @@ export interface McpSessionInfo {
 interface McpState {
   savedConfigs: McpSavedConfig[]
   activeConfigId: string | null
+  activeSessionId: string | null
   status: McpConnectionStatus
   statusError: string
   serverInfo: string
   capabilities: McpCapabilities
   selectedTool: string | null
+  selectedPrompt: string | null
   selectedTab: McpSelectedTab
   history: McpCallEntry[]
   selectedHistoryId: string | null
@@ -78,10 +80,12 @@ interface McpState {
   addConfig: (cfg: Omit<McpSavedConfig, 'id'>) => McpSavedConfig
   removeConfig: (id: string) => void
   setActiveConfig: (id: string | null) => void
+  setActiveSession: (id: string | null) => void
   setStatus: (status: McpConnectionStatus, error?: string) => void
   setServerInfo: (info: string) => void
   setCapabilities: (capabilities: Partial<McpCapabilities>) => void
   setSelectedTool: (name: string | null) => void
+  setSelectedPrompt: (name: string | null) => void
   setSelectedTab: (tab: McpSelectedTab) => void
   appendHistory: (entry: McpCallEntry) => void
   setSelectedHistory: (id: string | null) => void
@@ -116,11 +120,13 @@ function persistConfigs(configs: McpSavedConfig[]): void {
 export const useMcpStore = create<McpState>((set, get) => ({
   savedConfigs: loadConfigs(),
   activeConfigId: null,
+  activeSessionId: null,
   status: 'disconnected',
   statusError: '',
   serverInfo: '',
   capabilities: { tools: [], resources: [], prompts: [] },
   selectedTool: null,
+  selectedPrompt: null,
   selectedTab: 'tools',
   history: [],
   selectedHistoryId: null,
@@ -140,17 +146,21 @@ export const useMcpStore = create<McpState>((set, get) => ({
     set({
       savedConfigs: next,
       activeConfigId: state.activeConfigId === id ? null : state.activeConfigId,
+      activeSessionId: state.activeSessionId === id ? null : state.activeSessionId,
     })
     persistConfigs(next)
   },
-  setActiveConfig: (id) => set({ activeConfigId: id }),
+  setActiveConfig: (id) => set({ activeConfigId: id, activeSessionId: id }),
+  setActiveSession: (id) => set({ activeSessionId: id, activeConfigId: id }),
   setStatus: (status, error = '') => set({ status, statusError: error }),
   setServerInfo: (info) => set({ serverInfo: info }),
   setCapabilities: (capabilities) => set((state) => ({
     capabilities: { ...state.capabilities, ...capabilities },
     selectedTool: capabilities.tools?.[0]?.name ?? state.selectedTool,
+    selectedPrompt: capabilities.prompts?.[0]?.name ?? state.selectedPrompt,
   })),
   setSelectedTool: (name) => set({ selectedTool: name }),
+  setSelectedPrompt: (name) => set({ selectedPrompt: name }),
   setSelectedTab: (tab) => set({ selectedTab: tab }),
   appendHistory: (entry) => set((state) => ({
     history: [entry, ...state.history].slice(0, HISTORY_LIMIT),

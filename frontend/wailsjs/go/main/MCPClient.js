@@ -6,6 +6,10 @@ export function CallTool(arg1, arg2) {
   return window['go']['main']['MCPClient']['CallTool'](arg1, arg2);
 }
 
+export function CallToolSession(arg1, arg2, arg3) {
+  return window['go']['main']['MCPClient']['CallToolSession'](arg1, arg2, arg3);
+}
+
 export function Connect(arg1) {
   return window['go']['main']['MCPClient']['Connect'](arg1);
 }
@@ -26,12 +30,28 @@ export function GetSessionStatus(arg1) {
   return window['go']['main']['MCPClient']['GetSessionStatus'](arg1);
 }
 
+export function GetPrompt(arg1, arg2) {
+  return window['go']['main']['MCPClient']['GetPrompt'](arg1, arg2);
+}
+
+export function GetPromptSession(arg1, arg2, arg3) {
+  return window['go']['main']['MCPClient']['GetPromptSession'](arg1, arg2, arg3);
+}
+
 export function ListPrompts() {
   return window['go']['main']['MCPClient']['ListPrompts']();
 }
 
+export function ListPromptsSession(arg1) {
+  return window['go']['main']['MCPClient']['ListPromptsSession'](arg1);
+}
+
 export function ListResources() {
   return window['go']['main']['MCPClient']['ListResources']();
+}
+
+export function ListResourcesSession(arg1) {
+  return window['go']['main']['MCPClient']['ListResourcesSession'](arg1);
 }
 
 export function ListSessions() {
@@ -40,6 +60,10 @@ export function ListSessions() {
 
 export function ListTools() {
   return window['go']['main']['MCPClient']['ListTools']();
+}
+
+export function ListToolsSession(arg1) {
+  return window['go']['main']['MCPClient']['ListToolsSession'](arg1);
 }
 
 export function RestartSession(arg1) {

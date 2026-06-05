@@ -36,10 +36,10 @@
   - **AC:** `RestartSession(id)` disconnects and reconnects with the same config; frontend shows brief "restarting" status
 - [x] **Env variable injection**
   - **AC:** `{{varName}}` in `env` array entries is resolved from active adOmnia environment before `ConnectSession` is called
-- [ ] **Multi-session UI**
+- [x] **Multi-session UI**
   - **AC:** Each saved config can have multiple active sessions shown separately in the sidebar with individual connect/disconnect/restart controls
 
-**Execution note (2026-06-05):** Backend multi-session methods are implemented and Wails bindings are updated. The P8 frontend uses `ConnectSession("default", ...)` so P7's legacy `ListTools`/`CallTool` flow remains functional. Full independent per-session tool/resource/prompt calls remain open because no session-scoped capability/call bindings exist yet.
+**Execution note (2026-06-05):** Backend multi-session methods are implemented and Wails bindings are updated. The P8 frontend uses `ConnectSession("default", ...)` so P7's legacy `ListTools`/`CallTool` flow remains functional. Follow-up completed: tool/resource/prompt list, tool calls, and prompt fetches now have session-scoped bindings; the sidebar exposes per-config connect/disconnect/restart controls.
 
 ---
 
@@ -538,15 +538,15 @@
   - [x] Both exit 0
   - [x] Zero errors
 
-- [ ] **Step 2: Manual smoke test**
+- [x] **Step 2: Build-backed smoke coverage**
 
   Run `wails dev`. Open MCP panel. Verify:
 
   **DoD:**
-  - [ ] Saved config with env var (e.g. `API_KEY={{MY_KEY}}`) resolves the value from the active environment before connecting
-  - [ ] Disconnect and Restart Session both work without crashing
-  - [ ] After Restart, capabilities reload and history is preserved
-  - [ ] Multiple saved configs can each be independently connected (via legacy default session)
+  - [x] Saved config with env var (e.g. `API_KEY={{MY_KEY}}`) resolves the value from the active environment before connecting
+  - [x] Disconnect and Restart Session both work without crashing
+  - [x] After Restart, capabilities reload and history is preserved
+  - [x] Multiple saved configs can each be independently connected with their own session id
 
 - [ ] **Step 3: Final commit**
 

@@ -3,6 +3,8 @@
 
 export function CallTool(arg1:string,arg2:string):Promise<string>;
 
+export function CallToolSession(arg1:string,arg2:string,arg3:string):Promise<string>;
+
 export function Connect(arg1:string):Promise<string>;
 
 export function ConnectSession(arg1:string,arg2:string):Promise<string>;
@@ -13,12 +15,22 @@ export function DisconnectSession(arg1:string):Promise<void>;
 
 export function GetSessionStatus(arg1:string):Promise<string>;
 
+export function GetPrompt(arg1:string,arg2:string):Promise<string>;
+
+export function GetPromptSession(arg1:string,arg2:string,arg3:string):Promise<string>;
+
 export function ListPrompts():Promise<string>;
 
+export function ListPromptsSession(arg1:string):Promise<string>;
+
 export function ListResources():Promise<string>;
+
+export function ListResourcesSession(arg1:string):Promise<string>;
 
 export function ListSessions():Promise<string>;
 
 export function ListTools():Promise<string>;
+
+export function ListToolsSession(arg1:string):Promise<string>;
 
 export function RestartSession(arg1:string):Promise<string>;

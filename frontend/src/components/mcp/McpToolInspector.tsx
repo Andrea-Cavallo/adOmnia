@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AlertCircle, FileJson, Play, RefreshCw } from 'lucide-react'
 import * as MCPClientBinding from '@/wailsjs/go/main/MCPClient'
-import { useMcpStore, type McpTool } from '@/stores/mcp'
+import { useMcpStore, type McpPrompt, type McpTool } from '@/stores/mcp'
 import { cn } from '@/lib/utils'
 
 type SchemaProperty = {
@@ -25,6 +25,10 @@ function readRequired(tool: McpTool | null): string[] {
   return Array.isArray(raw) ? raw.filter((item): item is string => typeof item === 'string') : []
 }
 
+function readPromptArgs(prompt: McpPrompt | null): Record<string, string> {
+  return Object.fromEntries((prompt?.arguments ?? []).map((arg) => [arg.name, '']))
+}
+
 function coerceValue(value: string, type?: string): unknown {
   if (value === '') return undefined
   if (type === 'number') return Number(value)
@@ -44,10 +48,13 @@ function formatJSON(raw: string): string {
 export function McpToolInspector() {
   const {
     status,
+    activeSessionId,
     capabilities,
     selectedTool,
+    selectedPrompt,
     selectedTab,
     setSelectedTool,
+    setSelectedPrompt,
     setSelectedTab,
     appendHistory,
   } = useMcpStore()
@@ -57,8 +64,12 @@ export function McpToolInspector() {
   const [rawArgs, setRawArgs] = useState('{}')
   const [calling, setCalling] = useState(false)
   const [lastResult, setLastResult] = useState<{ raw: string; isError: boolean } | null>(null)
+  const [promptArgs, setPromptArgs] = useState<Record<string, string>>({})
+  const [gettingPrompt, setGettingPrompt] = useState(false)
+  const [promptResult, setPromptResult] = useState<string>('')
 
   const tool = capabilities.tools.find((item) => item.name === selectedTool) ?? null
+  const prompt = capabilities.prompts.find((item) => item.name === selectedPrompt) ?? null
   const properties = useMemo(() => readProperties(tool), [tool])
   const required = useMemo(() => readRequired(tool), [tool])
 
@@ -69,13 +80,24 @@ export function McpToolInspector() {
   }, [capabilities.tools, setSelectedTool, tool])
 
   useEffect(() => {
+    if (!prompt && capabilities.prompts.length > 0) {
+      setSelectedPrompt(capabilities.prompts[0].name)
+    }
+  }, [capabilities.prompts, prompt, setSelectedPrompt])
+
+  useEffect(() => {
     setArgValues(Object.fromEntries(Object.keys(properties).map((key) => [key, ''])))
     setRawArgs('{}')
     setLastResult(null)
   }, [properties, selectedTool])
 
+  useEffect(() => {
+    setPromptArgs(readPromptArgs(prompt))
+    setPromptResult('')
+  }, [prompt])
+
   const handleCallTool = async () => {
-    if (!tool || status !== 'connected') return
+    if (!tool || !activeSessionId || status !== 'connected') return
     setCalling(true)
     setLastResult(null)
     const startedAt = Date.now()
@@ -93,7 +115,7 @@ export function McpToolInspector() {
         )
       }
 
-      const result = await MCPClientBinding.CallTool(tool.name, JSON.stringify(args))
+      const result = await MCPClientBinding.CallToolSession(activeSessionId, tool.name, JSON.stringify(args))
       const parsedResult = (() => {
         try {
           return JSON.parse(result) as { isError?: boolean }
@@ -126,6 +148,23 @@ export function McpToolInspector() {
       })
     } finally {
       setCalling(false)
+    }
+  }
+
+  const handleGetPrompt = async () => {
+    if (!prompt || !activeSessionId || status !== 'connected') return
+    setGettingPrompt(true)
+    setPromptResult('')
+    try {
+      const args = Object.fromEntries(
+        Object.entries(promptArgs).filter(([, value]) => value !== ''),
+      )
+      const result = await MCPClientBinding.GetPromptSession(activeSessionId, prompt.name, JSON.stringify(args))
+      setPromptResult(result)
+    } catch (error) {
+      setPromptResult(error instanceof Error ? error.message : String(error))
+    } finally {
+      setGettingPrompt(false)
     }
   }
 
@@ -181,11 +220,19 @@ export function McpToolInspector() {
           ))}
 
           {selectedTab === 'prompts' && capabilities.prompts.map((prompt) => (
-            <div key={prompt.name} className="border-b border-border-0 px-3 py-2 text-[11px]">
+            <button
+              type="button"
+              key={prompt.name}
+              onClick={() => setSelectedPrompt(prompt.name)}
+              className={cn(
+                'w-full border-b border-border-0 px-3 py-2 text-left text-[11px] transition-colors',
+                selectedPrompt === prompt.name ? 'bg-accent/10 text-accent' : 'text-text-2 hover:bg-surface-2',
+              )}
+            >
               <div className="truncate font-mono text-text-1">{prompt.name}</div>
               {prompt.description && <div className="mt-0.5 text-[10px] text-text-4">{prompt.description}</div>}
               {prompt.arguments.length > 0 && <div className="mt-1 text-[10px] text-text-3">{prompt.arguments.length} args</div>}
-            </div>
+            </button>
           ))}
 
           {status !== 'connected' && (
@@ -285,9 +332,52 @@ export function McpToolInspector() {
                 </button>
               </div>
             </>
+          ) : prompt && selectedTab === 'prompts' ? (
+            <>
+              <div className="border-b border-border-1 px-4 py-3">
+                <span className="truncate font-mono text-[13px] font-semibold text-text-1">{prompt.name}</span>
+                {prompt.description && <p className="mt-1 text-[11px] text-text-3">{prompt.description}</p>}
+              </div>
+              <div className="flex-1 space-y-3 overflow-y-auto p-4">
+                {prompt.arguments.length > 0 ? prompt.arguments.map((arg) => (
+                  <div key={arg.name}>
+                    <label className="flex items-center gap-1 text-[11px] font-medium text-text-2">
+                      {arg.name}
+                      {arg.required && <span className="text-danger">*</span>}
+                    </label>
+                    {arg.description && <p className="mb-1 mt-0.5 text-[10px] text-text-4">{arg.description}</p>}
+                    <input
+                      value={promptArgs[arg.name] ?? ''}
+                      onChange={(event) => setPromptArgs((current) => ({ ...current, [arg.name]: event.target.value }))}
+                      className="h-8 w-full rounded border border-border-2 bg-surface-1 px-2 font-mono text-[11px] text-text-1 outline-none focus:border-accent"
+                    />
+                  </div>
+                )) : (
+                  <p className="text-[11px] text-text-4">This prompt does not declare arguments.</p>
+                )}
+              </div>
+              {promptResult && (
+                <div className="border-t border-border-1 p-3">
+                  <pre className="max-h-[260px] overflow-auto whitespace-pre-wrap break-words rounded border border-border-1 bg-surface-1 p-2 font-mono text-[11px] text-text-1">
+                    {formatJSON(promptResult)}
+                  </pre>
+                </div>
+              )}
+              <div className="border-t border-border-1 p-3">
+                <button
+                  type="button"
+                  onClick={handleGetPrompt}
+                  disabled={gettingPrompt || status !== 'connected'}
+                  className="flex h-8 w-full items-center justify-center gap-2 rounded bg-accent text-[11px] font-medium text-white transition-colors hover:bg-accent-light disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {gettingPrompt ? <RefreshCw size={13} className="animate-spin" /> : <Play size={13} />}
+                  {gettingPrompt ? 'Getting...' : 'Get Prompt'}
+                </button>
+              </div>
+            </>
           ) : (
             <div className="flex flex-1 items-center justify-center px-6 text-center text-[11px] text-text-4">
-              {status === 'connected' ? 'Select a tool to inspect it.' : 'Connect to an MCP server first.'}
+              {status === 'connected' ? `Select a ${selectedTab === 'prompts' ? 'prompt' : 'tool'} to inspect it.` : 'Connect to an MCP server first.'}
             </div>
           )}
         </div>

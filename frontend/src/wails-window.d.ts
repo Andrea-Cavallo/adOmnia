@@ -56,9 +56,15 @@ interface WailsGoMain {
     DisconnectSession: (sessionID: string) => Promise<void>
     GetSessionStatus: (sessionID: string) => Promise<string>
     ListTools: () => Promise<string>
+    ListToolsSession: (sessionID: string) => Promise<string>
     CallTool: (toolName: string, argsJSON: string) => Promise<string>
+    CallToolSession: (sessionID: string, toolName: string, argsJSON: string) => Promise<string>
     ListResources: () => Promise<string>
+    ListResourcesSession: (sessionID: string) => Promise<string>
     ListPrompts: () => Promise<string>
+    ListPromptsSession: (sessionID: string) => Promise<string>
+    GetPrompt: (promptName: string, argsJSON: string) => Promise<string>
+    GetPromptSession: (sessionID: string, promptName: string, argsJSON: string) => Promise<string>
     ListSessions: () => Promise<string>
     RestartSession: (sessionID: string) => Promise<string>
   }

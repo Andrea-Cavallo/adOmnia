@@ -22,16 +22,40 @@ export function ListTools(): Promise<string> {
   return window['go']['main']['MCPClient']['ListTools']()
 }
 
+export function ListToolsSession(sessionID: string): Promise<string> {
+  return window['go']['main']['MCPClient']['ListToolsSession'](sessionID)
+}
+
 export function CallTool(toolName: string, argsJSON: string): Promise<string> {
   return window['go']['main']['MCPClient']['CallTool'](toolName, argsJSON)
+}
+
+export function CallToolSession(sessionID: string, toolName: string, argsJSON: string): Promise<string> {
+  return window['go']['main']['MCPClient']['CallToolSession'](sessionID, toolName, argsJSON)
 }
 
 export function ListResources(): Promise<string> {
   return window['go']['main']['MCPClient']['ListResources']()
 }
 
+export function ListResourcesSession(sessionID: string): Promise<string> {
+  return window['go']['main']['MCPClient']['ListResourcesSession'](sessionID)
+}
+
 export function ListPrompts(): Promise<string> {
   return window['go']['main']['MCPClient']['ListPrompts']()
+}
+
+export function ListPromptsSession(sessionID: string): Promise<string> {
+  return window['go']['main']['MCPClient']['ListPromptsSession'](sessionID)
+}
+
+export function GetPrompt(promptName: string, argsJSON: string): Promise<string> {
+  return window['go']['main']['MCPClient']['GetPrompt'](promptName, argsJSON)
+}
+
+export function GetPromptSession(sessionID: string, promptName: string, argsJSON: string): Promise<string> {
+  return window['go']['main']['MCPClient']['GetPromptSession'](sessionID, promptName, argsJSON)
 }
 
 export function ListSessions(): Promise<string> {

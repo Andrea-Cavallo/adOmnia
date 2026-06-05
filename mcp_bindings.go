@@ -121,16 +121,24 @@ func (m *MCPClient) Disconnect() error {
 }
 
 func (m *MCPClient) getDefault() *mcp.Client {
+	return m.getSessionClient(defaultMCPSessionID)
+}
+
+func (m *MCPClient) getSessionClient(sessionID string) *mcp.Client {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	if session, ok := m.sessions[defaultMCPSessionID]; ok {
+	if session, ok := m.sessions[sessionID]; ok {
 		return session.client
 	}
 	return nil
 }
 
 func (m *MCPClient) ListTools() (string, error) {
-	c := m.getDefault()
+	return m.ListToolsSession(defaultMCPSessionID)
+}
+
+func (m *MCPClient) ListToolsSession(sessionID string) (string, error) {
+	c := m.getSessionClient(sessionID)
 	if c == nil {
 		return "", fmt.Errorf("not connected")
 	}
@@ -143,7 +151,11 @@ func (m *MCPClient) ListTools() (string, error) {
 }
 
 func (m *MCPClient) CallTool(name, argsJSON string) (string, error) {
-	c := m.getDefault()
+	return m.CallToolSession(defaultMCPSessionID, name, argsJSON)
+}
+
+func (m *MCPClient) CallToolSession(sessionID, name, argsJSON string) (string, error) {
+	c := m.getSessionClient(sessionID)
 	if c == nil {
 		return "", fmt.Errorf("not connected")
 	}
@@ -162,7 +174,11 @@ func (m *MCPClient) CallTool(name, argsJSON string) (string, error) {
 }
 
 func (m *MCPClient) ListResources() (string, error) {
-	c := m.getDefault()
+	return m.ListResourcesSession(defaultMCPSessionID)
+}
+
+func (m *MCPClient) ListResourcesSession(sessionID string) (string, error) {
+	c := m.getSessionClient(sessionID)
 	if c == nil {
 		return "", fmt.Errorf("not connected")
 	}
@@ -175,7 +191,11 @@ func (m *MCPClient) ListResources() (string, error) {
 }
 
 func (m *MCPClient) ListPrompts() (string, error) {
-	c := m.getDefault()
+	return m.ListPromptsSession(defaultMCPSessionID)
+}
+
+func (m *MCPClient) ListPromptsSession(sessionID string) (string, error) {
+	c := m.getSessionClient(sessionID)
 	if c == nil {
 		return "", fmt.Errorf("not connected")
 	}
@@ -184,6 +204,29 @@ func (m *MCPClient) ListPrompts() (string, error) {
 		return "", err
 	}
 	raw, _ := json.Marshal(prompts)
+	return string(raw), nil
+}
+
+func (m *MCPClient) GetPrompt(name, argsJSON string) (string, error) {
+	return m.GetPromptSession(defaultMCPSessionID, name, argsJSON)
+}
+
+func (m *MCPClient) GetPromptSession(sessionID, name, argsJSON string) (string, error) {
+	c := m.getSessionClient(sessionID)
+	if c == nil {
+		return "", fmt.Errorf("not connected")
+	}
+	var args map[string]any
+	if argsJSON != "" {
+		if err := json.Unmarshal([]byte(argsJSON), &args); err != nil {
+			return "", fmt.Errorf("invalid args JSON: %w", err)
+		}
+	}
+	result, err := c.GetPrompt(context.Background(), name, args)
+	if err != nil {
+		return "", err
+	}
+	raw, _ := json.Marshal(result)
 	return string(raw), nil
 }
 

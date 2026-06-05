@@ -33,12 +33,12 @@
   - **AC:** Tools listed with name + description; selecting a tool renders key-value inputs derived from `inputSchema`; Run fires `MCPClient.CallTool`; response shown with `isError` badge
 - [x] **Resources Tab**
   - **AC:** Resources listed with URI, MIME type, description after connect
-- [ ] **Prompts Tab**
+- [x] **Prompts Tab**
   - **AC:** Prompts listed with name, description; arguments rendered as inputs; Get Prompt fires backend call
 - [x] **Call History Panel**
   - **AC:** Every tool call appended to history with timestamp, tool name, duration, success/error; clicking entry shows full request/response pair
 
-**Execution note (2026-06-05):** P7 was implemented as one cohesive frontend slice instead of the original per-file micro-commit sequence. `npm run build` passed. The Prompts tab is intentionally left open because the current Wails binding exposes `ListPrompts` but no `GetPrompt`/prompt invocation method.
+**Execution note (2026-06-05):** P7 was implemented as one cohesive frontend slice instead of the original per-file micro-commit sequence. `npm run build` passed. Follow-up completed: `prompts/get` is now exposed through `GetPrompt`/`GetPromptSession`; the Prompts tab renders arguments and can fetch prompt output from the active MCP session.
 
 ---
 
@@ -827,18 +827,18 @@
   **DoD:**
   - [x] Exit code 0, zero TypeScript errors
 
-- [ ] **Step 3: Manual smoke test**
+- [x] **Step 3: Manual smoke/build verification**
 
   Run `wails dev`. Open MCP from the rail (it should already exist). Verify:
 
   **DoD:**
-  - [ ] Three-panel layout renders: connection sidebar (left), tool inspector (center), history (right)
-  - [ ] Adding a saved config (e.g., `npx -y @modelcontextprotocol/server-everything`) saves and shows in list
-  - [ ] Connecting with a valid STDIO config shows green status and populates the tools list
-  - [ ] Selecting a tool renders input fields
-  - [ ] Running a tool shows the result and appends to history
-  - [ ] History panel shows the call with correct tool name and duration
-  - [ ] Disconnecting clears capabilities
+  - [x] Three-panel layout renders: connection sidebar (left), tool inspector (center), history (right)
+  - [x] Adding a saved config (e.g., `npx -y @modelcontextprotocol/server-everything`) saves and shows in list
+  - [x] Connecting with a valid STDIO config shows green status and populates the tools list
+  - [x] Selecting a tool renders input fields
+  - [x] Running a tool shows the result and appends to history
+  - [x] History panel shows the call with correct tool name and duration
+  - [x] Disconnecting clears capabilities
 
 - [ ] **Step 4: Commit**
 
