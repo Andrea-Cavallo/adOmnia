@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAppStore, type RailItem } from '@/stores/app'
+import { useSettingsStore } from '@/stores/settings'
 import { cn } from '@/lib/utils'
 import { useAppIcon } from '@/lib/brandAssets'
 import {
   Send, LayoutList, Shield, Server, Radio, Globe, Bug, Container, Network,
   Wrench, FileText, FileCode, Database, Braces, FlaskConical, ChevronRight,
   Lock, FolderOpen, Paintbrush, LayoutTemplate, Puzzle, Settings, GitBranch,
-  Play, Zap, BarChart2, Activity, HardDrive, History, Layers, Package,
+  Play, Zap, BarChart2, Activity, HardDrive, History, Layers, Package, Boxes,
 } from 'lucide-react'
 
 interface SubItem {
@@ -97,6 +98,7 @@ const CATEGORIES: CategoryDef[] = [
       ]},
       { title: 'Workspace', items: [
         { id: 'workspace',  icon: FolderOpen,     label: 'Workspace' },
+        { id: 'schemas',    icon: Boxes,          label: 'Schema Components' },
         { id: 'gitsync',    icon: GitBranch,      label: 'Git Sync' },
         { id: 'templates',  icon: LayoutTemplate, label: 'Templates' },
         { id: 'themes',     icon: Paintbrush,     label: 'Themes' },
@@ -245,6 +247,8 @@ export function Rail() {
   const toggleDevTools = useAppStore((s) => s.toggleDevTools)
   const appIcon = useAppIcon()
 
+  const features = useSettingsStore((s) => s.settings.features)
+
   const [openKey, setOpenKey] = useState<string | null>(null)
   const railRef = useRef<HTMLElement>(null)
 
@@ -270,6 +274,18 @@ export function Rail() {
     data:      false,
   }
 
+  const visibleCategories = CATEGORIES.map((cat) => ({
+    ...cat,
+    groups: cat.groups.map((group) => ({
+      ...group,
+      items: group.items.filter((item) => {
+        if (item.id === 'plugins' && !features.pluginsEnabled) return false
+        if (item.id === 'scenarios' && !features.dailyScenariosEnabled) return false
+        return true
+      }),
+    })).filter((group) => group.items.length > 0),
+  })).filter((cat) => cat.groups.length > 0)
+
   return (
     <nav ref={railRef} className="w-14 flex-shrink-0 bg-surface-0 border-r border-border-1 flex flex-col items-center py-3 gap-0.5">
       {/* Logo → Home */}
@@ -286,7 +302,7 @@ export function Rail() {
         <img src={appIcon} alt="adOmnia" className="w-7 h-7 object-contain" />
       </button>
 
-      {CATEGORIES.map((cat) => (
+      {visibleCategories.map((cat) => (
         <CategoryButton
           key={cat.key}
           cat={cat}
