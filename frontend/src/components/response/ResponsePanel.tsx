@@ -7,6 +7,7 @@ import { validateContract, exportContractReportMarkdown, exportContractReportHtm
 import { evaluateAssertions } from '@/lib/assertionEngine'
 import { DiffModal, DiffPickerModal } from '@/components/response/DiffView'
 import { useTabsStore, type ResponseBodyView, type ResponseSection } from '@/stores/tabs'
+import { useSettingsStore } from '@/stores/settings'
 
 interface ResponsePanelProps {
   tabId: string
@@ -237,10 +238,11 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
     return () => window.removeEventListener('keydown', handler)
   }, [tab, view, searchOpen])
 
+  const autoValidateSchema = useSettingsStore((s) => s.settings.requests.autoValidateSchema ?? true)
   const contractResult = useMemo(() => {
-    if (!response) return null
+    if (!response || !autoValidateSchema) return null
     return validateContract(oaSpec, oaPath, oaMethod, response)
-  }, [response, oaSpec, oaPath, oaMethod])
+  }, [response, oaSpec, oaPath, oaMethod, autoValidateSchema])
 
   const assertionResults = useMemo(() => {
     if (!response) return []

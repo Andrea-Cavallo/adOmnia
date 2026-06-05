@@ -43,6 +43,7 @@ export interface AppSettings {
     trimWhitespaceInHeaders: boolean
     maxRedirects: number
     stripAuthOnRedirect: boolean
+    autoValidateSchema: boolean
   }
   proxy: {
     defaultProxyPort: number
@@ -80,6 +81,13 @@ export interface AppSettings {
     apiKey: string
     baseURL: string
     enabled: boolean
+  }
+  features: {
+    pluginsEnabled: boolean
+    dailyScenariosEnabled: boolean
+  }
+  markdown: {
+    templatesFolder: string
   }
 }
 
@@ -134,6 +142,7 @@ const defaultSettings: AppSettings = {
     trimWhitespaceInHeaders: true,
     maxRedirects: 10,
     stripAuthOnRedirect: true,
+    autoValidateSchema: true,
   },
   proxy: {
     defaultProxyPort: 8080,
@@ -172,6 +181,13 @@ const defaultSettings: AppSettings = {
     baseURL: 'http://localhost:11434',
     enabled: false,
   },
+  features: {
+    pluginsEnabled: false,
+    dailyScenariosEnabled: false,
+  },
+  markdown: {
+    templatesFolder: '',
+  },
 }
 
 interface SettingsState {
@@ -188,6 +204,8 @@ interface SettingsState {
   updateVault: (patch: Partial<AppSettings['vault']>) => void
   updateEditor: (patch: Partial<AppSettings['editor']>) => void
   updateAi: (patch: Partial<AppSettings['ai']>) => void
+  updateFeatures: (patch: Partial<AppSettings['features']>) => void
+  updateMarkdown: (patch: Partial<AppSettings['markdown']>) => void
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -213,6 +231,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         vault: mergeBlock(defaultSettings.vault, parsed.vault),
         editor: mergeBlock(defaultSettings.editor, parsed.editor),
         ai: mergeBlock(defaultSettings.ai, parsed.ai),
+        features: mergeBlock(defaultSettings.features, parsed.features),
+        markdown: mergeBlock(defaultSettings.markdown, parsed.markdown),
       }
       set({ settings: merged, loaded: true })
     } catch {
@@ -285,6 +305,20 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   updateAi: (patch) => {
     set((s) => ({
       settings: { ...s.settings, ai: { ...s.settings.ai, ...patch } },
+    }))
+    get().save()
+  },
+
+  updateFeatures: (patch) => {
+    set((s) => ({
+      settings: { ...s.settings, features: { ...s.settings.features, ...patch } },
+    }))
+    get().save()
+  },
+
+  updateMarkdown: (patch) => {
+    set((s) => ({
+      settings: { ...s.settings, markdown: { ...s.settings.markdown, ...patch } },
     }))
     get().save()
   },
