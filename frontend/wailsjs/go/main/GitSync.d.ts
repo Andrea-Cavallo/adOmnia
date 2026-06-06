@@ -3,9 +3,33 @@
 
 export function AbortIntegration(arg1:string):Promise<void>;
 
+export function AddIgnorePattern(arg1:string,arg2:string):Promise<void>;
+
+export function AddRemote(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function CheckoutBranch(arg1:string,arg2:string):Promise<void>;
+
 export function CheckoutConflictSide(arg1:string,arg2:string,arg3:string):Promise<void>;
 
+export function Clone(arg1:string,arg2:string):Promise<void>;
+
 export function CommitAll(arg1:string,arg2:string):Promise<string>;
+
+export function CompareRefs(arg1:string,arg2:string,arg3:string):Promise<string>;
+
+export function ConfigureUser(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function CreateAndCheckoutBranch(arg1:string,arg2:string):Promise<void>;
+
+export function CreateBranch(arg1:string,arg2:string):Promise<void>;
+
+export function CreateTag(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function DeleteTag(arg1:string,arg2:string):Promise<void>;
+
+export function Fetch(arg1:string):Promise<void>;
+
+export function GetFileDiff(arg1:string,arg2:string,arg3:string,arg4:string):Promise<string>;
 
 export function GetStatus(arg1:string):Promise<string>;
 
@@ -15,10 +39,34 @@ export function IsGitInstalled():Promise<boolean>;
 
 export function Log(arg1:string,arg2:number):Promise<string>;
 
+export function MergeBranch(arg1:string,arg2:string):Promise<void>;
+
+export function MoveFile(arg1:string,arg2:string,arg3:string):Promise<void>;
+
 export function Overview(arg1:string,arg2:number):Promise<string>;
 
 export function Pull(arg1:string,arg2:string):Promise<void>;
 
 export function Push(arg1:string,arg2:string):Promise<void>;
 
+export function RebaseBranch(arg1:string,arg2:string):Promise<void>;
+
+export function RemoveFile(arg1:string,arg2:string):Promise<void>;
+
+export function RemoveRemote(arg1:string,arg2:string):Promise<void>;
+
+export function ResetHard(arg1:string,arg2:string):Promise<void>;
+
+export function RestoreFile(arg1:string,arg2:string):Promise<void>;
+
+export function Show(arg1:string,arg2:string):Promise<string>;
+
 export function StageFile(arg1:string,arg2:string):Promise<void>;
+
+export function Stash(arg1:string):Promise<void>;
+
+export function StashDrop(arg1:string,arg2:string):Promise<void>;
+
+export function StashPop(arg1:string):Promise<void>;
+
+export function UnstageFile(arg1:string,arg2:string):Promise<void>;

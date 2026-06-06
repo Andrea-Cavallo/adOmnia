@@ -1,0 +1,10 @@
+name: Climacell Micro Weather
+slug: climacell-micro-weather
+description: Historical, real-time and nowcast weather data.
+categories:
+  - Weather
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://developer.climacell.co

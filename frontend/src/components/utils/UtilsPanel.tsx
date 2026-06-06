@@ -1,6 +1,31 @@
 import { useState, useMemo } from 'react'
 import { useEffect } from 'react'
-import { Copy, ChevronRight, ChevronDown, Download } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowDownUp,
+  Box,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  Clipboard,
+  Copy,
+  Download,
+  FileText,
+  History,
+  Info,
+  Link as LinkIcon,
+  Plus,
+  Save,
+  Search,
+  Settings,
+  Sparkles,
+  Star,
+  Trash2,
+  Type,
+  Wand2,
+  X,
+  Zap,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { downloadText, readFileSmart } from '@/lib/fileUtils'
@@ -123,6 +148,9 @@ const TOOL_DETAILS: Record<string, Pick<Tool, 'desc' | 'example'>> = {
 
 const CATEGORY_MARKERS: Record<string, string> = {
   'Encoding & Formats': '<>',
+  'Security & Crypto': '#',
+  Generators: '@',
+  'Reference & Validation': '/',
   'Compare & Inspect': '==',
   'Security & Identity': '#',
   'Network & HTTP': '~',
@@ -349,9 +377,9 @@ function JsonGraphView({ json }: { json: string }) {
   try {
     const data = JSON.parse(json)
     const renderNode = (obj: unknown, depth: number = 0): React.ReactNode => {
-      if (obj === null) return <span className="text-gray-400">null</span>
-      if (typeof obj === 'boolean') return <span className="text-purple-400">{String(obj)}</span>
-      if (typeof obj === 'number') return <span className="text-yellow-300">{obj}</span>
+      if (obj === null) return <span className="text-json-null">null</span>
+      if (typeof obj === 'boolean') return <span className="text-json-bool">{String(obj)}</span>
+      if (typeof obj === 'number') return <span className="text-json-number">{obj}</span>
       if (typeof obj === 'string') return <span className="text-json-string">"{obj}"</span>
       if (Array.isArray(obj)) {
         return (
@@ -375,7 +403,7 @@ function JsonGraphView({ json }: { json: string }) {
             <span className="text-text-3">{'{'}</span>
             {keys.map((k) => (
               <div key={k} className="flex gap-1">
-                <span className="text-blue-400">"{k}"</span>
+                <span className="text-json-key">"{k}"</span>
                 <span className="text-text-3">:</span>
                 {renderNode((obj as Record<string, unknown>)[k], depth + 1)}
                 {k !== keys[keys.length - 1] && <span className="text-text-3">,</span>}
@@ -1429,8 +1457,11 @@ function classInspect(hex: string, mode: 'skeleton' | 'details'): string {
 export function UtilsPanel() {
   const port = useServerPort()
   const pendingFileImport = useAppStore((state) => state.pendingFileImport)
-  const [activeTool, setActiveTool] = useState('json-query')
+  const [activeTool, setActiveTool] = useState('base64')
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
+  const [toolSearch, setToolSearch] = useState('')
+  const [binarySafe, setBinarySafe] = useState(false)
+  const [lastToolRun, setLastToolRun] = useState('')
 
   // Tool state
   const [uuids, setUuids] = useState<string[]>([uuidv4()])
@@ -1637,29 +1668,144 @@ export function UtilsPanel() {
   )
   const activeMeta = allTools.find((tool) => tool.id === activeTool) ?? allTools[0]
   const totalTools = allTools.length
+  const pinnedToolIds = ['base64', 'jwt', 'regex', 'uuid', 'timestamp']
+  const favoriteToolIds = ['base64', 'jwt', 'regex', 'uuid', 'timestamp', 'hash']
+  const recentRuns = [
+    { id: 'base64', label: 'Base64 Encode', detail: b64Output ? `${b64Output.length} chars` : 'Ready', ago: lastToolRun || 'now' },
+    { id: 'jwt', label: 'JWT Decode', detail: 'Local decode', ago: '25m ago' },
+    { id: 'hash', label: 'Hash SHA-256', detail: 'Payload digest', ago: '1h ago' },
+    { id: 'uuid', label: 'UUID Generate', detail: `${uuids.length} id${uuids.length === 1 ? '' : 's'}`, ago: '2h ago' },
+  ]
+  const filteredCategories = useMemo(() => {
+    const query = toolSearch.trim().toLowerCase()
+    if (!query) return CATEGORIES
+    return CATEGORIES.map((cat) => ({
+      ...cat,
+      tools: cat.tools.filter((tool) => {
+        const details = TOOL_DETAILS[tool.id]
+        return tool.label.toLowerCase().includes(query)
+          || tool.id.toLowerCase().includes(query)
+          || cat.label.toLowerCase().includes(query)
+          || details?.desc?.toLowerCase().includes(query)
+      }),
+    })).filter((cat) => cat.tools.length > 0)
+  }, [toolSearch])
+  const activeInput = activeTool === 'base64' ? b64Input : ''
+  const activeOutput = activeTool === 'base64' ? b64Output : ''
+  const b64InputChars = b64Input.length
+  const b64OutputChars = b64Output.length
+  const b64Ratio = b64InputChars > 0 && b64OutputChars > 0 ? (b64OutputChars / b64InputChars).toFixed(2) : '-'
   const liveDiff = useMemo(
     () => diffMode === 'json' ? buildJsonDiff(diffLeft, diffRight) : buildXmlDiff(xmlDiffLeft, xmlDiffRight),
     [diffLeft, diffRight, diffMode, xmlDiffLeft, xmlDiffRight],
   )
   const liveDiffCounts = useMemo(() => diffCounts(liveDiff.rows), [liveDiff.rows])
 
+  const selectTool = (toolId: string) => {
+    setActiveTool(toolId)
+  }
+
+  const runBase64 = (mode: 'encode' | 'decode') => {
+    try {
+      setB64Output(mode === 'encode'
+        ? btoa(unescape(encodeURIComponent(b64Input)))
+        : decodeURIComponent(escape(atob(b64Input)))
+      )
+      setLastToolRun('just now')
+    } catch {
+      setB64Output(mode === 'encode' ? 'Invalid input' : 'Invalid base64')
+      setLastToolRun('just now')
+    }
+  }
+
   const renderTool = () => {
     switch (activeTool) {
       // ---- Encoding ----
       case 'base64':
         return (
-          <div className="flex flex-col gap-3">
-            <textarea value={b64Input} onChange={(e) => setB64Input(e.target.value)} placeholder="Enter text or base64..." rows={4} className="px-2 py-1.5 bg-surface-2 border border-border-2 rounded text-xs text-text-1 font-mono focus:border-accent outline-none resize-none" />
-            <div className="flex gap-2">
-              <button onClick={() => { try { setB64Output(btoa(unescape(encodeURIComponent(b64Input)))) } catch { setB64Output('Invalid input') } }} className="px-3 py-1.5 bg-accent text-white rounded text-xs font-medium">Encode</button>
-              <button onClick={() => { try { setB64Output(decodeURIComponent(escape(atob(b64Input)))) } catch { setB64Output('Invalid base64') } }} className="px-3 py-1.5 bg-surface-2 text-text-2 border border-border-2 rounded text-xs">Decode</button>
+          <div className="flex min-h-0 flex-col gap-4">
+            <div className="flex flex-wrap items-center gap-2 border-b border-border-1 pb-3">
+              <button onClick={() => runBase64('encode')} className="inline-flex h-9 items-center gap-2 rounded-md border border-accent/40 bg-accent px-4 text-xs font-semibold text-white shadow-[0_0_24px_rgba(139,92,246,.28)] hover:bg-accent-light">
+                <FileText size={14} /> Encode
+              </button>
+              <button onClick={() => runBase64('decode')} className="inline-flex h-9 items-center gap-2 rounded-md border border-border-2 bg-surface-2 px-4 text-xs font-semibold text-text-2 hover:border-accent/40 hover:text-text-1">
+                <ArrowDown size={14} /> Decode
+              </button>
+              <div className="mx-1 h-6 w-px bg-border-1" />
+              <button onClick={() => { setB64Input(b64Output); setB64Output(b64Input) }} className="inline-flex h-9 items-center gap-2 rounded-md border border-border-2 bg-surface-2 px-3 text-xs text-text-3 hover:text-text-1">
+                <ArrowDownUp size={14} /> Swap
+              </button>
+              <button onClick={() => setB64Input(b64Input.trim())} className="inline-flex h-9 items-center gap-2 rounded-md border border-border-2 bg-surface-2 px-3 text-xs text-text-3 hover:text-text-1">
+                <Wand2 size={14} /> Beautify
+              </button>
+              <button onClick={() => copy(b64Output)} disabled={!b64Output} className="ml-auto inline-flex h-9 items-center gap-2 rounded-md border border-border-2 bg-surface-2 px-3 text-xs text-text-3 hover:text-text-1 disabled:cursor-not-allowed disabled:opacity-45">
+                <Copy size={14} /> Copy Result
+              </button>
+              <button onClick={() => setB64Output('')} className="inline-flex h-9 items-center gap-2 rounded-md border border-border-2 bg-surface-2 px-3 text-xs text-text-3 hover:text-text-1">
+                <Trash2 size={14} /> Clear Output
+              </button>
             </div>
-            {b64Output && (
-              <div className="relative group">
-                <pre className="px-3 py-2 bg-surface-1 border border-border-1 rounded text-xs text-text-1 font-mono whitespace-pre-wrap break-all">{b64Output}</pre>
-                <button onClick={() => copy(b64Output)} className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1 text-text-4 hover:text-text-1"><Copy size={12} /></button>
+
+            <div className="grid min-h-[360px] grid-cols-1 gap-3 xl:grid-cols-2">
+              <div className="flex min-w-0 flex-col overflow-hidden rounded-lg border border-border-1 bg-surface-0/80">
+                <div className="flex h-10 items-center justify-between border-b border-border-1 bg-surface-1/70 px-3">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-text-3">Input</span>
+                  <span className="inline-flex items-center gap-1 text-[10px] text-text-4">UTF-8 <span className="h-1.5 w-1.5 rounded-full bg-success" /></span>
+                </div>
+                <textarea
+                  value={b64Input}
+                  onChange={(e) => setB64Input(e.target.value)}
+                  placeholder="Enter text or Base64..."
+                  spellCheck={false}
+                  className="min-h-[300px] flex-1 resize-none bg-transparent px-4 py-3 font-mono text-xs leading-6 text-text-1 outline-none placeholder:text-text-4"
+                />
+                <div className="flex h-8 items-center justify-between border-t border-border-1 bg-surface-1/60 px-3 font-mono text-[10px] text-text-4">
+                  <span>Line 1, Col 1</span>
+                  <span>{b64InputChars} chars · {new Blob([b64Input]).size} bytes</span>
+                </div>
               </div>
-            )}
+
+              <div className="flex min-w-0 flex-col overflow-hidden rounded-lg border border-border-1 bg-surface-0/80">
+                <div className="flex h-10 items-center justify-between border-b border-border-1 bg-surface-1/70 px-3">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-text-3">Output</span>
+                  <span className="inline-flex items-center gap-1 text-[10px] text-text-4">Base64 <span className="h-1.5 w-1.5 rounded-full bg-success" /></span>
+                </div>
+                <pre className="min-h-[300px] flex-1 overflow-auto whitespace-pre-wrap break-all px-4 py-3 font-mono text-xs leading-6 text-accent-light">
+                  {b64Output || 'Run Encode or Decode to generate output.'}
+                </pre>
+                <div className="flex h-8 items-center justify-between border-t border-border-1 bg-surface-1/60 px-3 font-mono text-[10px] text-text-4">
+                  <span>Line 1, Col 1</span>
+                  <span>{b64OutputChars} chars · {new Blob([b64Output]).size} bytes</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 border-b border-border-1 pb-3">
+              <button onClick={() => navigator.clipboard.readText().then(setB64Input).catch(() => {})} className="inline-flex h-8 items-center gap-2 rounded-md border border-border-2 bg-surface-2 px-3 text-xs text-text-3 hover:text-text-1">
+                <Clipboard size={13} /> Paste
+              </button>
+              <button onClick={() => setB64Input('')} className="inline-flex h-8 items-center gap-2 rounded-md border border-border-2 bg-surface-2 px-3 text-xs text-text-3 hover:text-text-1">
+                <Trash2 size={13} /> Clear
+              </button>
+              <button onClick={() => setB64Input('Authorization: Bearer demo-token\nUser: alice@example.com\nRole: admin\nEnvironment: production')} className="inline-flex h-8 items-center gap-2 rounded-md border border-border-2 bg-surface-2 px-3 text-xs text-text-3 hover:text-text-1">
+                <Download size={13} /> Load Sample
+              </button>
+            </div>
+
+            <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-5">
+              {[
+                ['JWT Header', 'eyJhbGciOiJIUzI1NiIs...'],
+                ['JWT Payload', 'eyJzdWIiOiJkZW1v...'],
+                ['Basic Auth', 'user:password'],
+                ['JSON Sample', '{"service":"api"}'],
+                ['More Samples', 'View all examples'],
+              ].map(([title, detail]) => (
+                <button key={title} onClick={() => setB64Input(detail)} className="min-w-0 rounded-md border border-border-1 bg-surface-1 px-3 py-2 text-left hover:border-accent/40 hover:bg-surface-2">
+                  <span className="block truncate text-xs font-semibold text-text-2">{title}</span>
+                  <span className="mt-1 block truncate font-mono text-[10px] text-text-4">{detail}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )
 
@@ -2254,6 +2400,244 @@ export function UtilsPanel() {
         return <p className="text-xs text-text-4 p-4">Select a tool from the sidebar.</p>
     }
   }
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-surface-0 text-text-2">
+      <div className="flex h-14 shrink-0 items-center justify-between border-b border-border-1 bg-surface-1/95 px-5">
+        <div className="min-w-0">
+          <div className="flex items-center gap-3">
+            <h1 className="text-lg font-semibold text-text-1">Power Tools Studio</h1>
+            <span className="hidden text-xs text-text-4 md:inline">Encoding · Crypto · Generators · Network · Validation</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button className="inline-flex h-8 items-center gap-2 rounded-md border border-border-2 bg-surface-1 px-3 text-xs text-text-2 hover:border-accent/40 hover:text-text-1">
+            <Box size={13} /> Workspace <ChevronDown size={13} />
+          </button>
+          <button title="Power Tools settings" className="grid h-8 w-8 place-items-center rounded-md border border-border-2 bg-surface-1 text-text-3 hover:text-text-1">
+            <Settings size={14} />
+          </button>
+        </div>
+      </div>
+
+      <div className="grid min-h-0 flex-1 grid-cols-[280px_minmax(0,1fr)] 2xl:grid-cols-[280px_minmax(0,1fr)_300px]">
+        <nav className="flex min-h-0 flex-col border-r border-border-1 bg-surface-1 p-3">
+          <div className="relative mb-3">
+            <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-4" />
+            <input
+              value={toolSearch}
+              onChange={(e) => setToolSearch(e.target.value)}
+              placeholder="Search tools..."
+              className="h-9 w-full rounded-md border border-border-2 bg-surface-0 pl-9 pr-12 text-xs text-text-1 outline-none placeholder:text-text-4 focus:border-accent/70"
+            />
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 rounded border border-border-2 bg-surface-1 px-1.5 py-0.5 font-mono text-[10px] text-text-4">Ctrl K</span>
+          </div>
+
+          <div className="mb-3 rounded-lg border border-border-1 bg-surface-0/55 p-2">
+            <div className="mb-2 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-text-4">
+              <span className="inline-flex items-center gap-1.5"><Star size={11} /> Pinned</span>
+              <button className="text-accent-light hover:text-accent">Manage</button>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {pinnedToolIds.map((toolId) => {
+                const tool = allTools.find((item) => item.id === toolId)
+                if (!tool) return null
+                return (
+                  <button
+                    key={toolId}
+                    onClick={() => selectTool(toolId)}
+                    className={cn(
+                      'rounded-md border px-2.5 py-1 text-xs transition-colors',
+                      activeTool === toolId ? 'border-accent/50 bg-accent/30 text-white' : 'border-border-2 bg-surface-1 text-text-3 hover:text-text-1',
+                    )}
+                  >
+                    {tool.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+            {filteredCategories.map((cat) => (
+              <div key={cat.label} className="mb-1">
+                <button
+                  onClick={() => toggleCat(cat.label)}
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-[11px] font-semibold uppercase tracking-wider text-text-3 hover:bg-surface-1 hover:text-text-1"
+                >
+                  {collapsed[cat.label] ? <ChevronRight size={11} /> : <ChevronDown size={11} />}
+                  <span className="w-5 text-center font-mono text-accent-light">{CATEGORY_MARKERS[cat.label] ?? '*'}</span>
+                  <span className="min-w-0 flex-1 truncate text-left">{cat.label}</span>
+                  <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[10px] text-text-4">{cat.tools.length}</span>
+                </button>
+                {!collapsed[cat.label] && (
+                  <div className="flex flex-col gap-0.5 pb-1">
+                    {cat.tools.map((tool) => (
+                      <button
+                        key={tool.id}
+                        onClick={() => selectTool(tool.id)}
+                        className={cn(
+                          'mx-1 rounded-md px-8 py-1.5 text-left text-xs transition-colors',
+                          activeTool === tool.id
+                            ? 'bg-accent/25 text-white shadow-[inset_2px_0_0_rgba(139,92,246,.9)]'
+                            : 'text-text-3 hover:bg-surface-1 hover:text-text-1',
+                        )}
+                      >
+                        {tool.id === 'jsonyaml' ? 'JSON <> YAML' : tool.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </nav>
+
+        <main className="min-h-0 min-w-0 overflow-auto bg-surface-0">
+          <div className="mx-auto flex min-h-full max-w-[1280px] flex-col gap-4 p-4">
+            <div className="flex h-10 items-end gap-1 border-b border-border-1">
+              <div className="inline-flex h-10 min-w-0 items-center gap-2 rounded-t-lg border border-b-0 border-accent/40 bg-accent/20 px-4 text-sm font-semibold text-text-1">
+                <Zap size={15} className="text-accent-light" />
+                <span className="truncate">{activeMeta?.id === 'jsonyaml' ? 'JSON <> YAML' : activeMeta?.label}</span>
+                <button title="Close tab" className="ml-2 text-text-4 hover:text-text-1"><X size={13} /></button>
+              </div>
+              <button className="inline-flex h-9 items-center gap-2 rounded-t-md border border-b-0 border-border-2 bg-surface-1 px-4 text-xs text-text-3 hover:text-text-1">
+                <Plus size={13} /> New Tool
+              </button>
+            </div>
+
+            <section className="overflow-hidden rounded-xl border border-border-1 bg-surface-2/92 shadow-[0_20px_80px_rgba(0,0,0,.25)]">
+              <div className="border-b border-border-1 px-4 py-4">
+                <div className="flex flex-wrap items-start gap-3">
+                  <div className="grid h-10 w-10 place-items-center rounded-lg border border-accent/20 bg-accent/10 text-accent-light">
+                    <Zap size={20} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-text-4">{activeMeta?.category}</p>
+                    <h2 className="mt-1 text-lg font-semibold text-text-1">{activeMeta?.id === 'jsonyaml' ? 'JSON <> YAML' : activeMeta?.label}</h2>
+                    <p className="mt-1 max-w-3xl text-xs text-text-3">{activeMeta?.desc}</p>
+                  </div>
+                  {activeTool === 'base64' && (
+                    <div className="flex items-center gap-2">
+                      <button className="inline-flex h-8 items-center gap-2 rounded-md border border-accent/35 bg-accent/15 px-3 text-xs font-semibold text-accent-light">
+                        <Type size={14} /> Text
+                      </button>
+                      <button
+                        onClick={() => setBinarySafe((value) => !value)}
+                        className={cn(
+                          'inline-flex h-8 items-center gap-2 rounded-md border px-3 text-xs font-semibold',
+                          binarySafe ? 'border-accent/40 bg-accent/20 text-accent-light' : 'border-border-2 bg-surface-1 text-text-3 hover:text-text-1',
+                        )}
+                      >
+                        <Box size={14} /> Binary-safe
+                      </button>
+                      <button title="Tool info" className="grid h-8 w-8 place-items-center rounded-md border border-border-2 bg-surface-1 text-text-4 hover:text-text-1">
+                        <Info size={14} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="p-4">
+                {renderTool()}
+              </div>
+            </section>
+
+            {activeTool === 'base64' && (
+              <section className="grid gap-3 rounded-xl border border-border-1 bg-surface-2/92 p-4 md:grid-cols-3 xl:grid-cols-6">
+                {[
+                  ['Input stats', b64InputChars, `${new Blob([b64Input]).size} bytes`],
+                  ['Output stats', b64OutputChars, `${new Blob([b64Output]).size} bytes`],
+                  ['Encoding', 'Base64', 'RFC 4648'],
+                  ['Ratio', `${b64Ratio} : 1`, 'Encoded / Raw'],
+                  ['Last run', lastToolRun || 'Not run yet', lastToolRun ? 'local' : '-'],
+                  ['Validation', b64Output ? 'Valid UTF-8' : 'Ready', b64Output ? 'No errors detected' : 'Waiting'],
+                ].map(([label, value, detail]) => (
+                  <div key={label} className="border-r border-border-1 last:border-r-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-text-4">{label}</p>
+                    <p className="mt-2 font-mono text-lg text-text-1">{value}</p>
+                    <p className="mt-1 text-xs text-text-4">{detail}</p>
+                  </div>
+                ))}
+              </section>
+            )}
+          </div>
+        </main>
+
+        <aside className="hidden min-h-0 flex-col gap-3 overflow-y-auto border-l border-border-1 bg-surface-1 p-3 2xl:flex">
+          <div className="rounded-lg border border-border-1 bg-surface-0/60 p-3">
+            <div className="mb-3 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-text-4">
+              <span className="inline-flex items-center gap-2"><Clipboard size={12} /> Tool actions</span>
+              <X size={12} />
+            </div>
+            <div className="flex flex-col gap-1">
+              <button onClick={() => copy(activeInput)} disabled={!activeInput} className="inline-flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-text-3 hover:bg-surface-1 hover:text-text-1 disabled:opacity-40">
+                <Copy size={13} /> Copy Input
+              </button>
+              <button onClick={() => copy(activeOutput)} disabled={!activeOutput} className="inline-flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-text-3 hover:bg-surface-1 hover:text-text-1 disabled:opacity-40">
+                <Copy size={13} /> Copy Output
+              </button>
+              <button onClick={() => activeOutput && downloadText(`${activeTool}-output.txt`, activeOutput, 'text/plain')} disabled={!activeOutput} className="inline-flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-text-3 hover:bg-surface-1 hover:text-text-1 disabled:opacity-40">
+                <Save size={13} /> Save Output...
+              </button>
+              <button onClick={() => copy(`adomnia://powertools/${activeTool}`)} className="inline-flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-text-3 hover:bg-surface-1 hover:text-text-1">
+                <LinkIcon size={13} /> Share Tool Link
+              </button>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-border-1 bg-surface-0/60 p-3">
+            <div className="mb-3 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-text-4">
+              <span className="inline-flex items-center gap-2"><History size={12} /> Recent history</span>
+              <button className="text-accent-light hover:text-accent">View all</button>
+            </div>
+            <div className="flex flex-col gap-2">
+              {recentRuns.map((item) => (
+                <button key={`${item.id}-${item.label}`} onClick={() => selectTool(item.id)} className="grid grid-cols-[28px_1fr_auto] items-center gap-2 rounded-md px-1 py-1 text-left hover:bg-surface-1">
+                  <span className="grid h-7 w-7 place-items-center rounded-md border border-accent/20 bg-accent/10 text-accent-light"><Zap size={13} /></span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-xs font-semibold text-text-2">{item.label}</span>
+                    <span className="block truncate text-[10px] text-text-4">{item.detail}</span>
+                  </span>
+                  <span className="flex items-center gap-2 text-[10px] text-text-4">{item.ago}<CheckCircle2 size={12} className="text-success" /></span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-border-1 bg-surface-0/60 p-3">
+            <div className="mb-3 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-text-4">
+              <span className="inline-flex items-center gap-2"><Sparkles size={12} /> Favorite tools</span>
+              <button className="text-accent-light hover:text-accent">Edit</button>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {favoriteToolIds.map((toolId) => {
+                const tool = allTools.find((item) => item.id === toolId)
+                if (!tool) return null
+                return (
+                  <button key={toolId} onClick={() => selectTool(toolId)} className="rounded-md border border-border-1 bg-surface-1 px-2 py-2 text-center hover:border-accent/40 hover:bg-surface-2">
+                    <span className="mx-auto mb-1 grid h-7 w-7 place-items-center rounded-md bg-accent/15 text-accent-light"><Zap size={13} /></span>
+                    <span className="block truncate text-[10px] text-text-3">{tool.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-border-1 bg-surface-0/60 p-3">
+            <div className="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-text-4">
+              <Info size={12} /> Tips & shortcuts
+            </div>
+            <div className="grid grid-cols-[76px_1fr] gap-y-2 text-xs text-text-4">
+              <span className="rounded bg-surface-1 px-1.5 py-0.5 font-mono text-[10px]">Ctrl Enter</span><span>Encode</span>
+              <span className="rounded bg-surface-1 px-1.5 py-0.5 font-mono text-[10px]">Ctrl Shift</span><span>Decode</span>
+              <span className="rounded bg-surface-1 px-1.5 py-0.5 font-mono text-[10px]">Ctrl L</span><span>Clear output</span>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  )
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-surface-0">

@@ -1,0 +1,10 @@
+name: Mastercard
+slug: mastercard
+description: Mastercard official API
+categories:
+  - Payments
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://developer.mastercard.com/apis

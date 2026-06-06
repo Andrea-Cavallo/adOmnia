@@ -1,0 +1,13 @@
+name: Harry Potter
+slug: harry-potter
+description: Harry Potter API
+categories:
+  - Video & Media
+  - Entertainment
+  - Books
+type: REST
+is_free: true
+logo: null
+links:
+  - name: Docs / Website
+    url: https://www.potterapi.com/

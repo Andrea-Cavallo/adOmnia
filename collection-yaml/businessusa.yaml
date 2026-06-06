@@ -1,0 +1,14 @@
+name: BusinessUSA
+slug: businessusa
+description: Software developers and researchers can use these APIs and data feeds to help people find useful government information
+categories:
+  - Government
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://business.usa.gov/developer
+libraries:
+  - name: Official GitHub Account
+    documentation_url: https://github.com/usagov/

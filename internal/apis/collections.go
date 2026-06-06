@@ -5,6 +5,7 @@ package apis
 
 import (
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
@@ -207,6 +208,10 @@ var DefaultCategoryEmojis = map[string]string{
 // CollectionStore provides Wails-bound methods for browsing API collections.
 type CollectionStore struct {
 	CollectionsDir string
+	// Embedded is the bundled YAML catalog, used when no on-disk collections
+	// directory is configured or available. It lets the portable binary ship
+	// the full catalog without depending on the working directory.
+	Embedded fs.FS
 }
 
 var fallbackEntries = []ApiEntry{
@@ -267,6 +272,11 @@ func (cs *CollectionStore) SetCollectionsDir(dir string) {
 	cs.CollectionsDir = dir
 }
 
+// SetEmbeddedFS sets the bundled YAML catalog filesystem.
+func (cs *CollectionStore) SetEmbeddedFS(fsys fs.FS) {
+	cs.Embedded = fsys
+}
+
 // GetCatalog reads all YAML files from the collection directory and returns a catalog grouped by category.
 func (cs *CollectionStore) GetCatalog() (*ApiCatalog, error) {
 	entries, err := cs.readAllEntries()
@@ -323,41 +333,65 @@ func (cs *CollectionStore) SearchApis(query string) ([]ApiEntry, error) {
 	return results, nil
 }
 
-// readAllEntries reads all YAML files from the collection directory.
+// readAllEntries reads all YAML files from the configured collection directory,
+// falling back to the embedded catalog and finally to a small built-in list.
 func (cs *CollectionStore) readAllEntries() ([]ApiEntry, error) {
-	entries := make([]ApiEntry, 0)
-
-	entriesDir := cs.CollectionsDir
-
-	files, err := os.ReadDir(entriesDir)
-	if err != nil {
-		// Try fallback paths
-		fallbacks := []string{
-			filepath.Join("apis-collection", "collection"),
-			filepath.Join("assets", "apis", "collection"),
-			"collection",
-		}
-		for _, fb := range fallbacks {
-			if fb == "" || fb == entriesDir {
-				continue
-			}
-			files, err = os.ReadDir(fb)
-			if err == nil {
-				entriesDir = fb
-				break
-			}
-		}
-		if err != nil {
-			return fallbackEntries, nil
+	// 1. Explicit on-disk directory (e.g. a user-supplied path via
+	//    GetCatalogFromPath) takes precedence so custom collections still work.
+	if dir := cs.resolveDiskDir(); dir != "" {
+		if entries := readEntriesFromFS(os.DirFS(dir), dir); len(entries) > 0 {
+			return entries, nil
 		}
 	}
 
+	// 2. Bundled catalog shipped inside the binary.
+	if cs.Embedded != nil {
+		if entries := readEntriesFromFS(cs.Embedded, "<embedded>"); len(entries) > 0 {
+			return entries, nil
+		}
+	}
+
+	// 3. Minimal built-in starters so the panel is never empty.
+	return fallbackEntries, nil
+}
+
+// resolveDiskDir returns the first readable on-disk collections directory, or ""
+// if none is available.
+func (cs *CollectionStore) resolveDiskDir() string {
+	candidates := []string{
+		cs.CollectionsDir,
+		"collection-yaml",
+		filepath.Join("apis-collection", "collection"),
+		filepath.Join("assets", "apis", "collection"),
+		"collection",
+	}
+	seen := make(map[string]bool)
+	for _, dir := range candidates {
+		if dir == "" || seen[dir] {
+			continue
+		}
+		seen[dir] = true
+		if info, err := os.Stat(dir); err == nil && info.IsDir() {
+			return dir
+		}
+	}
+	return ""
+}
+
+// readEntriesFromFS reads and parses every .yaml file at the root of fsys.
+func readEntriesFromFS(fsys fs.FS, label string) []ApiEntry {
+	files, err := fs.ReadDir(fsys, ".")
+	if err != nil {
+		log.Printf("[apis] failed to read collection dir %s: %v", label, err)
+		return nil
+	}
+
+	entries := make([]ApiEntry, 0, len(files))
 	for _, f := range files {
 		if f.IsDir() || !strings.HasSuffix(f.Name(), ".yaml") {
 			continue
 		}
-		filePath := filepath.Join(entriesDir, f.Name())
-		data, err := os.ReadFile(filePath)
+		data, err := fs.ReadFile(fsys, f.Name())
 		if err != nil {
 			log.Printf("[apis] failed to read %s: %v", f.Name(), err)
 			continue
@@ -376,11 +410,7 @@ func (cs *CollectionStore) readAllEntries() ([]ApiEntry, error) {
 		entries = append(entries, entry)
 	}
 
-	if len(entries) == 0 {
-		return fallbackEntries, nil
-	}
-
-	return entries, nil
+	return entries
 }
 
 // buildCatalog groups entries by category following the TOC order.

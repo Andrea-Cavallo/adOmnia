@@ -4,6 +4,11 @@ import { cn } from '@/lib/utils'
 import type { MarkdownFileEntry } from '@/lib/markdown-api'
 import { classifyMemoryRelation, type GraphNode, type MarkdownEdge, type AgentMemoryRelationType } from '@/lib/markdownDoc'
 
+const GRAPH_WIDTH = 1200
+const GRAPH_HEIGHT = 720
+const SOURCE_WIDTH = 300
+const SOURCE_HEIGHT = 184
+
 interface MarkdownGraphViewProps {
   activeFile: MarkdownFileEntry | null
   agentGraphPath: string
@@ -66,18 +71,37 @@ export function MarkdownGraphView({
     if (!svg) return { x: 0, y: 0 }
     const rect = svg.getBoundingClientRect()
     return {
-      x: ((event.clientX - rect.left) / rect.width) * 300,
-      y: ((event.clientY - rect.top) / rect.height) * 184,
+      x: ((event.clientX - rect.left) / rect.width) * GRAPH_WIDTH,
+      y: ((event.clientY - rect.top) / rect.height) * GRAPH_HEIGHT,
     }
   }, [])
 
   const fitGraph = useCallback(() => {
-    setGraphScale(1)
-    setGraphOffset({ x: 0, y: 0 })
-  }, [setGraphOffset, setGraphScale])
+    if (graphNodes.length === 0) {
+      setGraphScale(1)
+      setGraphOffset({ x: 0, y: 0 })
+      return
+    }
+    const projected = graphNodes.map((node) => ({
+      x: (node.x / SOURCE_WIDTH) * GRAPH_WIDTH,
+      y: (node.y / SOURCE_HEIGHT) * GRAPH_HEIGHT,
+    }))
+    const minX = Math.min(...projected.map((node) => node.x))
+    const maxX = Math.max(...projected.map((node) => node.x))
+    const minY = Math.min(...projected.map((node) => node.y))
+    const maxY = Math.max(...projected.map((node) => node.y))
+    const width = Math.max(1, maxX - minX)
+    const height = Math.max(1, maxY - minY)
+    const nextScale = Math.max(0.45, Math.min(1.8, Math.min((GRAPH_WIDTH - 120) / width, (GRAPH_HEIGHT - 100) / height)))
+    setGraphScale(nextScale)
+    setGraphOffset({
+      x: (GRAPH_WIDTH - width * nextScale) / 2 - minX * nextScale,
+      y: (GRAPH_HEIGHT - height * nextScale) / 2 - minY * nextScale,
+    })
+  }, [graphNodes, setGraphOffset, setGraphScale])
 
   const zoomGraph = useCallback((delta: number) => {
-    setGraphScale((current) => Math.max(0.55, Math.min(2.4, current + delta)))
+    setGraphScale((current) => Math.max(0.45, Math.min(2.8, current + delta)))
   }, [setGraphScale])
 
   useEffect(() => {
@@ -124,7 +148,7 @@ export function MarkdownGraphView({
       ) : (
         <svg
           ref={graphSvgRef}
-          viewBox="0 0 300 184"
+          viewBox={`0 0 ${GRAPH_WIDTH} ${GRAPH_HEIGHT}`}
           className="h-full w-full cursor-grab touch-none"
           onWheel={(event) => {
             event.preventDefault()
@@ -146,8 +170,8 @@ export function MarkdownGraphView({
               setGraphPositions((positions) => ({
                 ...positions,
                 [draggingNode]: {
-                  x: (point.x - graphOffset.x) / graphScale,
-                  y: (point.y - graphOffset.y) / graphScale,
+                  x: (((point.x - graphOffset.x) / graphScale) / GRAPH_WIDTH) * SOURCE_WIDTH,
+                  y: (((point.y - graphOffset.y) / graphScale) / GRAPH_HEIGHT) * SOURCE_HEIGHT,
                 },
               }))
             } else if (isPanning) {
@@ -164,28 +188,36 @@ export function MarkdownGraphView({
             setIsPanning(false)
           }}
         >
-          <rect x="0" y="0" width="300" height="184" fill="var(--color-surface-0)" />
+          <rect x="0" y="0" width={GRAPH_WIDTH} height={GRAPH_HEIGHT} fill="var(--color-surface-0)" />
           <g transform={`translate(${graphOffset.x} ${graphOffset.y}) scale(${graphScale})`}>
             {visibleEdges.slice(0, large ? 500 : 160).map((edge, index) => {
               const from = graphNodeMap.get(edge.from)
               const to = graphNodeMap.get(edge.to)
               if (!from || !to) return null
               const relation = classifyMemoryRelation(edge)
+              const fromX = (from.x / SOURCE_WIDTH) * GRAPH_WIDTH
+              const fromY = (from.y / SOURCE_HEIGHT) * GRAPH_HEIGHT
+              const toX = (to.x / SOURCE_WIDTH) * GRAPH_WIDTH
+              const toY = (to.y / SOURCE_HEIGHT) * GRAPH_HEIGHT
               return (
                 <line
                   key={`${edge.from}-${edge.to}-${index}`}
-                  x1={from.x}
-                  y1={from.y}
-                  x2={to.x}
-                  y2={to.y}
+                  x1={fromX}
+                  y1={fromY}
+                  x2={toX}
+                  y2={toY}
                   stroke={relationColor(relation)}
                   opacity={edge.resolved ? 0.82 : 0.62}
-                  strokeWidth={large ? '1.35' : '1'}
+                  strokeWidth={large ? '3' : '2'}
                 />
               )
             })}
             {graphNodes.map((node) => {
               const active = activeFile?.relPath === node.id
+              const x = (node.x / SOURCE_WIDTH) * GRAPH_WIDTH
+              const y = (node.y / SOURCE_HEIGHT) * GRAPH_HEIGHT
+              const showLabel = active || graphNodes.length <= 36 || graphScale >= 1.15
+              const label = node.label.slice(0, large ? 30 : 22)
               return (
                 <g
                   key={node.id}
@@ -202,24 +234,37 @@ export function MarkdownGraphView({
                     if (node.file) onOpenFile(node.file)
                   }}
                 >
+                  <title>{node.label}</title>
                   <circle
-                    cx={node.x}
-                    cy={node.y}
-                    r={active ? (large ? 9 : 8) : (large ? 6.4 : 5.5)}
+                    cx={x}
+                    cy={y}
+                    r={active ? (large ? 20 : 16) : (large ? 13 : 11)}
                     fill={active ? 'var(--color-accent)' : node.unresolved ? 'var(--color-warning)' : 'var(--color-surface-3)'}
                     stroke="var(--color-border-1)"
-                    strokeWidth="1"
+                    strokeWidth="3"
                   />
-                  {(large || active || graphNodes.length <= 24) && (
-                    <text
-                      x={node.x + (large ? 9 : 8)}
-                      y={node.y + 3}
-                      fill={active ? 'var(--color-text-1)' : 'var(--color-text-3)'}
-                      fontSize={large ? '5.8' : '8'}
-                      pointerEvents="none"
-                    >
-                      {node.label.slice(0, large ? 34 : 22)}
-                    </text>
+                  {showLabel && (
+                    <>
+                      <rect
+                        x={x + 18}
+                        y={y - 12}
+                        width={Math.max(56, label.length * 7.1)}
+                        height="23"
+                        rx="5"
+                        fill="var(--color-surface-0)"
+                        opacity="0.88"
+                      />
+                      <text
+                        x={x + 24}
+                        y={y + 4}
+                        fill={active ? 'var(--color-text-1)' : 'var(--color-text-2)'}
+                        fontSize={large ? '14' : '12'}
+                        fontWeight={active ? 700 : 500}
+                        pointerEvents="none"
+                      >
+                        {label}
+                      </text>
+                    </>
                   )}
                 </g>
               )

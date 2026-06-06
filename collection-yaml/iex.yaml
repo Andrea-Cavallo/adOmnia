@@ -1,0 +1,13 @@
+name: IEX Trading
+slug: iex
+description: Free Stocks and Market Data. IEX Cloud is a financial data infrastructure platform that connects developers
+  and financial data creators
+categories:
+  - Finance & Economics
+  - Blockchain & Cryptocurrencies
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://iextrading.com/developer/

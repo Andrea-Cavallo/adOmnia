@@ -1,0 +1,11 @@
+name: Hacker News GraphQL
+slug: hacker-news-graphql
+description: Convenient HackerNews GraphQL wrapper API. Filter, sort, search and relations
+categories:
+  - Social
+type: GraphQL
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://metamate.io/blog/most-advanced-hackernews-api/

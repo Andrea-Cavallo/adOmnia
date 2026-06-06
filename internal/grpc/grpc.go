@@ -3,10 +3,13 @@ package grpc
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -20,14 +23,19 @@ import (
 	"google.golang.org/grpc/metadata"
 	rpb "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/descriptorpb"
 )
 
 // --- Request / Response types ---
 
 type grpcReflectRequest struct {
-	Address  string            `json:"address"`
-	TLS      bool              `json:"tls"`
-	Metadata map[string]string `json:"metadata,omitempty"`
+	Address        string            `json:"address"`
+	TLS            bool              `json:"tls"`
+	CACertPath     string            `json:"ca_cert_path,omitempty"`
+	ClientCertPath string            `json:"client_cert_path,omitempty"`
+	ClientKeyPath  string            `json:"client_key_path,omitempty"`
+	Metadata       map[string]string `json:"metadata,omitempty"`
 }
 
 type grpcMethodInfo struct {
@@ -44,35 +52,66 @@ type grpcServiceInfo struct {
 }
 
 type grpcReflectResponse struct {
-	Services []grpcServiceInfo `json:"services"`
+	Services []grpcServiceInfo          `json:"services"`
+	Schemas  map[string][]grpcFieldInfo `json:"schemas,omitempty"`
+	Enums    map[string][]grpcEnumValue `json:"enums,omitempty"`
+	Files    []string                   `json:"files,omitempty"`
 }
 
 type grpcDescribeRequest struct {
-	Address     string            `json:"address"`
-	TLS         bool              `json:"tls"`
-	MessageType string            `json:"message_type"`
-	Metadata    map[string]string `json:"metadata,omitempty"`
+	Address        string            `json:"address"`
+	TLS            bool              `json:"tls"`
+	CACertPath     string            `json:"ca_cert_path,omitempty"`
+	ClientCertPath string            `json:"client_cert_path,omitempty"`
+	ClientKeyPath  string            `json:"client_key_path,omitempty"`
+	MessageType    string            `json:"message_type"`
+	Metadata       map[string]string `json:"metadata,omitempty"`
 }
 
 type grpcFieldInfo struct {
-	Name     string `json:"name"`
-	Type     string `json:"type"`
-	Number   int32  `json:"number"`
-	Repeated bool   `json:"repeated"`
+	Name         string          `json:"name"`
+	ProtoName    string          `json:"proto_name,omitempty"`
+	Type         string          `json:"type"`
+	Kind         string          `json:"kind,omitempty"`
+	Number       int32           `json:"number"`
+	Repeated     bool            `json:"repeated"`
+	Map          bool            `json:"map,omitempty"`
+	Required     bool            `json:"required,omitempty"`
+	Optional     bool            `json:"optional,omitempty"`
+	Oneof        bool            `json:"oneof,omitempty"`
+	OneofName    string          `json:"oneof_name,omitempty"`
+	OneofFields  []grpcFieldInfo `json:"oneof_fields,omitempty"`
+	MessageType  string          `json:"message_type,omitempty"`
+	EnumType     string          `json:"enum_type,omitempty"`
+	EnumValues   []grpcEnumValue `json:"enum_values,omitempty"`
+	KeyType      string          `json:"key_type,omitempty"`
+	ValueType    string          `json:"value_type,omitempty"`
+	DefaultValue interface{}     `json:"default_value,omitempty"`
+	Description  string          `json:"description,omitempty"`
 }
 
 type grpcDescribeResponse struct {
-	Fields []grpcFieldInfo `json:"fields"`
+	Fields  []grpcFieldInfo            `json:"fields"`
+	Schemas map[string][]grpcFieldInfo `json:"schemas,omitempty"`
+	Enums   map[string][]grpcEnumValue `json:"enums,omitempty"`
+}
+
+type grpcEnumValue struct {
+	Name   string `json:"name"`
+	Number int32  `json:"number"`
 }
 
 type grpcInvokeRequest struct {
-	Address  string            `json:"address"`
-	TLS      bool              `json:"tls"`
-	Service  string            `json:"service"`
-	Method   string            `json:"method"`
-	Payload  json.RawMessage   `json:"payload"`
-	Messages []json.RawMessage `json:"messages,omitempty"`
-	Metadata map[string]string `json:"metadata,omitempty"`
+	Address        string            `json:"address"`
+	TLS            bool              `json:"tls"`
+	CACertPath     string            `json:"ca_cert_path,omitempty"`
+	ClientCertPath string            `json:"client_cert_path,omitempty"`
+	ClientKeyPath  string            `json:"client_key_path,omitempty"`
+	Service        string            `json:"service"`
+	Method         string            `json:"method"`
+	Payload        json.RawMessage   `json:"payload"`
+	Messages       []json.RawMessage `json:"messages,omitempty"`
+	Metadata       map[string]string `json:"metadata,omitempty"`
 }
 
 type grpcInvokeResponse struct {
@@ -86,7 +125,33 @@ type grpcInvokeResponse struct {
 
 // --- Helpers ---
 
-func grpcDial(address string, useTLS bool, timeout time.Duration) (*grpc.ClientConn, error) {
+func grpcTLSConfig(caCertPath, clientCertPath, clientKeyPath string) (*tls.Config, error) {
+	config := &tls.Config{MinVersion: tls.VersionTLS12}
+	if caCertPath != "" {
+		pemBytes, err := os.ReadFile(caCertPath)
+		if err != nil {
+			return nil, fmt.Errorf("read CA certificate: %w", err)
+		}
+		pool := x509.NewCertPool()
+		if !pool.AppendCertsFromPEM(pemBytes) {
+			return nil, fmt.Errorf("CA certificate is not valid PEM")
+		}
+		config.RootCAs = pool
+	}
+	if clientCertPath != "" || clientKeyPath != "" {
+		if clientCertPath == "" || clientKeyPath == "" {
+			return nil, fmt.Errorf("client certificate and client key must be provided together for mTLS")
+		}
+		cert, err := tls.LoadX509KeyPair(clientCertPath, clientKeyPath)
+		if err != nil {
+			return nil, fmt.Errorf("load client certificate/key: %w", err)
+		}
+		config.Certificates = []tls.Certificate{cert}
+	}
+	return config, nil
+}
+
+func grpcDial(address string, useTLS bool, timeout time.Duration, caCertPath, clientCertPath, clientKeyPath string) (*grpc.ClientConn, error) {
 	if address == "" || !strings.Contains(address, ":") {
 		return nil, fmt.Errorf("invalid gRPC address: %s (expected host:port)", address)
 	}
@@ -95,7 +160,11 @@ func grpcDial(address string, useTLS bool, timeout time.Duration) (*grpc.ClientC
 
 	var opts []grpc.DialOption
 	if useTLS {
-		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})))
+		tlsConfig, err := grpcTLSConfig(caCertPath, clientCertPath, clientKeyPath)
+		if err != nil {
+			return nil, err
+		}
+		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
 	} else {
 		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
@@ -139,6 +208,198 @@ func fieldTypeName(fd *desc.FieldDescriptor) string {
 	}
 }
 
+func fieldKind(fd *desc.FieldDescriptor) string {
+	name := strings.TrimPrefix(fd.GetType().String(), "TYPE_")
+	return lowercase(name)
+}
+
+func normalizeDefaultValue(v interface{}) interface{} {
+	switch value := v.(type) {
+	case int64:
+		return fmt.Sprintf("%d", value)
+	case uint64:
+		return fmt.Sprintf("%d", value)
+	case []byte:
+		if value == nil {
+			return ""
+		}
+		return base64.StdEncoding.EncodeToString(value)
+	default:
+		return value
+	}
+}
+
+func enumValues(ed *desc.EnumDescriptor) []grpcEnumValue {
+	if ed == nil {
+		return nil
+	}
+	values := make([]grpcEnumValue, 0, len(ed.GetValues()))
+	for _, val := range ed.GetValues() {
+		values = append(values, grpcEnumValue{Name: val.GetName(), Number: val.GetNumber()})
+	}
+	return values
+}
+
+func mapKeyValueTypes(fd *desc.FieldDescriptor) (string, string) {
+	if !fd.IsMap() || fd.GetMessageType() == nil {
+		return "", ""
+	}
+	key := fd.GetMessageType().FindFieldByName("key")
+	value := fd.GetMessageType().FindFieldByName("value")
+	keyType := ""
+	valueType := ""
+	if key != nil {
+		keyType = fieldTypeName(key)
+	}
+	if value != nil {
+		valueType = fieldTypeName(value)
+	}
+	return keyType, valueType
+}
+
+func buildFieldInfo(fd *desc.FieldDescriptor) grpcFieldInfo {
+	info := grpcFieldInfo{
+		Name:         fd.GetJSONName(),
+		ProtoName:    fd.GetName(),
+		Type:         fieldTypeName(fd),
+		Kind:         fieldKind(fd),
+		Number:       fd.GetNumber(),
+		Repeated:     fd.IsRepeated(),
+		Map:          fd.IsMap(),
+		Required:     fd.IsRequired(),
+		Optional:     fd.IsProto3Optional() || (!fd.GetFile().IsProto3() && !fd.IsRequired() && !fd.IsRepeated()),
+		DefaultValue: normalizeDefaultValue(fd.GetDefaultValue()),
+	}
+	if fd.GetMessageType() != nil {
+		info.MessageType = fd.GetMessageType().GetFullyQualifiedName()
+	}
+	if fd.GetEnumType() != nil {
+		info.EnumType = fd.GetEnumType().GetFullyQualifiedName()
+		info.EnumValues = enumValues(fd.GetEnumType())
+	}
+	if fd.GetOneOf() != nil {
+		info.OneofName = fd.GetOneOf().GetName()
+	}
+	if fd.IsMap() {
+		info.KeyType, info.ValueType = mapKeyValueTypes(fd)
+		info.DefaultValue = map[string]interface{}{}
+	}
+	label := ""
+	if info.Required {
+		label = "required "
+	} else if info.Repeated {
+		label = "repeated "
+	} else if info.Optional {
+		label = "optional "
+	}
+	info.Description = fmt.Sprintf("%s%s %s = %d;", label, info.Type, info.ProtoName, info.Number)
+	return info
+}
+
+func buildOneofInfo(ood *desc.OneOfDescriptor) grpcFieldInfo {
+	choices := make([]grpcFieldInfo, 0, len(ood.GetChoices()))
+	for _, choice := range ood.GetChoices() {
+		field := buildFieldInfo(choice)
+		field.Oneof = true
+		field.OneofName = ood.GetName()
+		choices = append(choices, field)
+	}
+	return grpcFieldInfo{
+		Name:        ood.GetName(),
+		ProtoName:   ood.GetName(),
+		Type:        "oneof",
+		Kind:        "oneof",
+		Oneof:       true,
+		OneofName:   ood.GetName(),
+		OneofFields: choices,
+		Description: fmt.Sprintf("oneof %s", ood.GetName()),
+	}
+}
+
+func collectMessageSchema(md *desc.MessageDescriptor, schemas map[string][]grpcFieldInfo, enums map[string][]grpcEnumValue) {
+	if md == nil {
+		return
+	}
+	name := md.GetFullyQualifiedName()
+	if _, seen := schemas[name]; seen {
+		return
+	}
+	fields := make([]grpcFieldInfo, 0, len(md.GetFields()))
+	schemas[name] = fields
+	oneofsSeen := map[*desc.OneOfDescriptor]struct{}{}
+	for _, fd := range md.GetFields() {
+		if fd.GetEnumType() != nil {
+			enums[fd.GetEnumType().GetFullyQualifiedName()] = enumValues(fd.GetEnumType())
+		}
+		if fd.GetOneOf() != nil {
+			ood := fd.GetOneOf()
+			if _, seen := oneofsSeen[ood]; seen {
+				continue
+			}
+			oneofsSeen[ood] = struct{}{}
+			fields = append(fields, buildOneofInfo(ood))
+			for _, choice := range ood.GetChoices() {
+				if choice.GetMessageType() != nil && !choice.IsMap() {
+					collectMessageSchema(choice.GetMessageType(), schemas, enums)
+				}
+			}
+			continue
+		}
+		fields = append(fields, buildFieldInfo(fd))
+		if fd.GetMessageType() != nil && !fd.IsMap() {
+			collectMessageSchema(fd.GetMessageType(), schemas, enums)
+		}
+	}
+	schemas[name] = fields
+	for _, nested := range md.GetNestedMessageTypes() {
+		collectMessageSchema(nested, schemas, enums)
+	}
+	for _, enumDesc := range md.GetNestedEnumTypes() {
+		enums[enumDesc.GetFullyQualifiedName()] = enumValues(enumDesc)
+	}
+}
+
+func collectFileSchemas(fds []*desc.FileDescriptor) (map[string][]grpcFieldInfo, map[string][]grpcEnumValue, []string) {
+	schemas := map[string][]grpcFieldInfo{}
+	enums := map[string][]grpcEnumValue{}
+	files := make([]string, 0, len(fds))
+	for _, fd := range fds {
+		files = append(files, fd.GetName())
+		for _, enumDesc := range fd.GetEnumTypes() {
+			enums[enumDesc.GetFullyQualifiedName()] = enumValues(enumDesc)
+		}
+		for _, msg := range fd.GetMessageTypes() {
+			collectMessageSchema(msg, schemas, enums)
+		}
+	}
+	return schemas, enums, files
+}
+
+func grpcParseServicesFromFiles(fds []*desc.FileDescriptor) []grpcParseProtoService {
+	var services []grpcParseProtoService
+	for _, fd := range fds {
+		pkg := fd.GetPackage()
+		for _, sd := range fd.GetServices() {
+			name := sd.GetName()
+			if pkg != "" {
+				name = pkg + "." + name
+			}
+			methods := make([]grpcParseProtoMethod, 0, len(sd.GetMethods()))
+			for _, md := range sd.GetMethods() {
+				methods = append(methods, grpcParseProtoMethod{
+					Name:            md.GetName(),
+					InputType:       md.GetInputType().GetFullyQualifiedName(),
+					OutputType:      md.GetOutputType().GetFullyQualifiedName(),
+					ClientStreaming: md.IsClientStreaming(),
+					ServerStreaming: md.IsServerStreaming(),
+				})
+			}
+			services = append(services, grpcParseProtoService{Name: name, Methods: methods})
+		}
+	}
+	return services
+}
+
 func lowercase(s string) string {
 	b := []byte(s)
 	for i, c := range b {
@@ -175,7 +436,7 @@ func grpcReflectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conn, err := grpcDial(req.Address, req.TLS, 10*time.Second)
+	conn, err := grpcDial(req.Address, req.TLS, 10*time.Second, req.CACertPath, req.ClientCertPath, req.ClientKeyPath)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
@@ -196,6 +457,7 @@ func grpcReflectHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var services []grpcServiceInfo
+	fileSet := map[string]*desc.FileDescriptor{}
 	for _, svcName := range serviceNames {
 		// Skip the reflection service itself
 		if svcName == "grpc.reflection.v1alpha.ServerReflection" || svcName == "grpc.reflection.v1.ServerReflection" {
@@ -205,6 +467,9 @@ func grpcReflectHandler(w http.ResponseWriter, r *http.Request) {
 		svcDesc, err := refClient.ResolveService(svcName)
 		if err != nil {
 			continue
+		}
+		if svcDesc.GetFile() != nil {
+			fileSet[svcDesc.GetFile().GetName()] = svcDesc.GetFile()
 		}
 
 		var methods []grpcMethodInfo
@@ -224,7 +489,12 @@ func grpcReflectHandler(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	writeJSON(w, http.StatusOK, grpcReflectResponse{Services: services})
+	files := make([]*desc.FileDescriptor, 0, len(fileSet))
+	for _, fd := range fileSet {
+		files = append(files, fd)
+	}
+	schemas, enums, fileNames := collectFileSchemas(files)
+	writeJSON(w, http.StatusOK, grpcReflectResponse{Services: services, Schemas: schemas, Enums: enums, Files: fileNames})
 }
 
 // grpcDescribeHandler handles POST /grpc/describe
@@ -249,7 +519,7 @@ func grpcDescribeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conn, err := grpcDial(req.Address, req.TLS, 10*time.Second)
+	conn, err := grpcDial(req.Address, req.TLS, 10*time.Second, req.CACertPath, req.ClientCertPath, req.ClientKeyPath)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
@@ -269,17 +539,10 @@ func grpcDescribeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var fields []grpcFieldInfo
-	for _, fd := range msgDesc.GetFields() {
-		fields = append(fields, grpcFieldInfo{
-			Name:     fd.GetName(),
-			Type:     fieldTypeName(fd),
-			Number:   fd.GetNumber(),
-			Repeated: fd.IsRepeated(),
-		})
-	}
-
-	writeJSON(w, http.StatusOK, grpcDescribeResponse{Fields: fields})
+	schemas := map[string][]grpcFieldInfo{}
+	enums := map[string][]grpcEnumValue{}
+	collectMessageSchema(msgDesc, schemas, enums)
+	writeJSON(w, http.StatusOK, grpcDescribeResponse{Fields: schemas[msgDesc.GetFullyQualifiedName()], Schemas: schemas, Enums: enums})
 }
 
 // grpcInvokeHandler handles POST /grpc/invoke.
@@ -308,7 +571,7 @@ func grpcInvokeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conn, err := grpcDial(req.Address, req.TLS, 10*time.Second)
+	conn, err := grpcDial(req.Address, req.TLS, 10*time.Second, req.CACertPath, req.ClientCertPath, req.ClientKeyPath)
 	if err != nil {
 		writeJSON(w, http.StatusOK, grpcInvokeResponse{
 			Error:  err.Error(),
@@ -529,7 +792,13 @@ func grpcInvokeHandler(w http.ResponseWriter, r *http.Request) {
 // --- Proto file parsing (no server required) ---
 
 type grpcParseProtoRequest struct {
-	Source string `json:"source"`
+	Source     string            `json:"source"`
+	Files      map[string]string `json:"files,omitempty"`
+	EntryFiles []string          `json:"entry_files,omitempty"`
+}
+
+type grpcParseProtosetRequest struct {
+	Base64 string `json:"base64"`
 }
 
 type grpcParseProtoMethod struct {
@@ -546,7 +815,10 @@ type grpcParseProtoService struct {
 }
 
 type grpcParseProtoResponse struct {
-	Services []grpcParseProtoService `json:"services"`
+	Services []grpcParseProtoService    `json:"services"`
+	Schemas  map[string][]grpcFieldInfo `json:"schemas,omitempty"`
+	Enums    map[string][]grpcEnumValue `json:"enums,omitempty"`
+	Files    []string                   `json:"files,omitempty"`
 }
 
 // grpcParseProtoHandler handles POST /grpc/parse-proto
@@ -563,48 +835,108 @@ func grpcParseProtoHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.Source == "" {
-		http.Error(w, "source required", http.StatusBadRequest)
+		if len(req.Files) == 0 {
+			http.Error(w, "source or files required", http.StatusBadRequest)
+			return
+		}
+	}
+
+	files := map[string]string{}
+	for name, source := range req.Files {
+		if strings.TrimSpace(name) != "" {
+			files[strings.ReplaceAll(name, "\\", "/")] = source
+		}
+	}
+	if req.Source != "" && len(files) == 0 {
+		files["input.proto"] = req.Source
+	}
+	if req.Source != "" && len(files) > 0 && len(req.EntryFiles) == 0 {
+		files["input.proto"] = req.Source
+	}
+	entryFiles := make([]string, 0, len(req.EntryFiles))
+	for _, name := range req.EntryFiles {
+		normalized := strings.ReplaceAll(name, "\\", "/")
+		if normalized != "" {
+			entryFiles = append(entryFiles, normalized)
+		}
+	}
+	if len(entryFiles) == 0 {
+		if _, ok := files["input.proto"]; ok {
+			entryFiles = append(entryFiles, "input.proto")
+		} else {
+			for name := range files {
+				entryFiles = append(entryFiles, name)
+			}
+		}
+	}
+	if len(entryFiles) == 0 {
+		http.Error(w, "no proto entry files provided", http.StatusBadRequest)
 		return
 	}
 
 	parser := protoparse.Parser{
-		Accessor: protoparse.FileContentsFromMap(map[string]string{
-			"input.proto": req.Source,
-		}),
+		Accessor: protoparse.FileContentsFromMap(files),
 	}
 
-	fds, err := parser.ParseFiles("input.proto")
+	fds, err := parser.ParseFiles(entryFiles...)
 	if err != nil {
 		http.Error(w, "parse proto: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	var services []grpcParseProtoService
-	for _, fd := range fds {
-		pkg := fd.GetPackage()
-		for _, sd := range fd.GetServices() {
-			name := sd.GetName()
-			if pkg != "" {
-				name = pkg + "." + name
-			}
-			var methods []grpcParseProtoMethod
-			for _, md := range sd.GetMethods() {
-				methods = append(methods, grpcParseProtoMethod{
-					Name:            md.GetName(),
-					InputType:       md.GetInputType().GetFullyQualifiedName(),
-					OutputType:      md.GetOutputType().GetFullyQualifiedName(),
-					ClientStreaming: md.IsClientStreaming(),
-					ServerStreaming: md.IsServerStreaming(),
-				})
-			}
-			services = append(services, grpcParseProtoService{
-				Name:    name,
-				Methods: methods,
-			})
-		}
+	schemas, enums, fileNames := collectFileSchemas(fds)
+	writeJSON(w, http.StatusOK, grpcParseProtoResponse{
+		Services: grpcParseServicesFromFiles(fds),
+		Schemas:  schemas,
+		Enums:    enums,
+		Files:    fileNames,
+	})
+}
+
+// grpcParseProtosetHandler handles POST /grpc/parse-protoset
+// Parses a binary FileDescriptorSet/protoset and returns all services and methods found.
+func grpcParseProtosetHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST required", http.StatusMethodNotAllowed)
+		return
 	}
 
-	writeJSON(w, http.StatusOK, grpcParseProtoResponse{Services: services})
+	var req grpcParseProtosetRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	if req.Base64 == "" {
+		http.Error(w, "base64 required", http.StatusBadRequest)
+		return
+	}
+	raw, err := base64.StdEncoding.DecodeString(req.Base64)
+	if err != nil {
+		http.Error(w, "decode protoset: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	var set descriptorpb.FileDescriptorSet
+	if err := proto.Unmarshal(raw, &set); err != nil {
+		http.Error(w, "parse FileDescriptorSet: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	linked, err := desc.CreateFileDescriptorsFromSet(&set)
+	if err != nil {
+		http.Error(w, "link FileDescriptorSet: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	fds := make([]*desc.FileDescriptor, 0, len(linked))
+	for _, fd := range linked {
+		fds = append(fds, fd)
+	}
+	schemas, enums, fileNames := collectFileSchemas(fds)
+	writeJSON(w, http.StatusOK, grpcParseProtoResponse{
+		Services: grpcParseServicesFromFiles(fds),
+		Schemas:  schemas,
+		Enums:    enums,
+		Files:    fileNames,
+	})
 }
 
 // RegisterHandlers registers gRPC HTTP sidecar endpoints.
@@ -613,4 +945,5 @@ func RegisterHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/grpc/describe", grpcDescribeHandler)
 	mux.HandleFunc("/grpc/invoke", grpcInvokeHandler)
 	mux.HandleFunc("/grpc/parse-proto", grpcParseProtoHandler)
+	mux.HandleFunc("/grpc/parse-protoset", grpcParseProtosetHandler)
 }

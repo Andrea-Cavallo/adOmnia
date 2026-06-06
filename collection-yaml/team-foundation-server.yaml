@@ -1,0 +1,11 @@
+name: Team Foundation Server
+slug: team-foundation-server
+description: Overview of integrating with Azure DevOps. . TFS APIs are based on REST, OAuth, Json and service hooks
+categories:
+  - Development
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://www.visualstudio.com/en-us/docs/integrate/get-started/overview

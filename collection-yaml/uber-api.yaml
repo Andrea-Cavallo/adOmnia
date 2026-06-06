@@ -1,0 +1,11 @@
+name: Uber API
+slug: uber-api
+description: API to request Uber rides. Discover how the Uber API can easily enhance your app’s user experience and take
+  your innovation further with a wide range of new capabilities
+categories:
+  - Transportation
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://developer.uber.com

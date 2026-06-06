@@ -1,0 +1,11 @@
+name: OpenUV
+slug: openuv
+description: The minimalistic JSON real-time UV Index API
+categories:
+  - Weather
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://www.openuv.io

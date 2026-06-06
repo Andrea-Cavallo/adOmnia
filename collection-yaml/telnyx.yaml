@@ -1,0 +1,12 @@
+name: Telnyx
+slug: telnyx
+description: Build Voice, SMS, Fax, Networking and Cellular IoT applications on a private, purpose-built global
+  communications network. Access documentation and API references to develop applications with the Telnyx API
+categories:
+  - Email & SMS
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://developers.telnyx.com/

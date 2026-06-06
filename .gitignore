@@ -94,3 +94,6 @@ temp/
 .claude/
 .superpowers/
 
+# Standalone UI prototype (not part of the built frontend)
+apiflownuovo/
+

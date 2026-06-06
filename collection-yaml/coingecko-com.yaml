@@ -1,0 +1,12 @@
+name: Coingecko.com
+slug: coingecko-com
+description: Free, comprehensive cryptocurrency API. Access free crypto API such as real-time market price, historical
+  trading, tickers, and exchange data for cryptocurrencies
+categories:
+  - Blockchain & Cryptocurrencies
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://www.coingecko.com/en/api

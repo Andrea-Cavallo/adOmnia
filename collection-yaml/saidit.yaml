@@ -1,0 +1,12 @@
+name: Saidit
+slug: saidit
+description: Raw Saidit API Wrapper. Raw Saidit API Wrapper. Contribute to IThinkImOKAY/rsaw development by creating an
+  account on GitHub
+categories:
+  - Social
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://github.com/IThinkImOKAY/rsaw

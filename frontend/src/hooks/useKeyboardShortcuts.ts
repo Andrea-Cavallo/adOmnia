@@ -15,7 +15,7 @@ export function useKeyboardShortcuts({ setCommandPaletteOpen }: KeyboardShortcut
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey
-      if (mod && e.key.toLowerCase() === 'k') {
+      if (mod && (e.key.toLowerCase() === 'k' || e.key.toLowerCase() === 'p')) {
         e.preventDefault()
         setCommandPaletteOpen((open) => !open)
         return

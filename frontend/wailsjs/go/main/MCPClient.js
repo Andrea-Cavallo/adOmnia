@@ -26,16 +26,16 @@ export function DisconnectSession(arg1) {
   return window['go']['main']['MCPClient']['DisconnectSession'](arg1);
 }
 
-export function GetSessionStatus(arg1) {
-  return window['go']['main']['MCPClient']['GetSessionStatus'](arg1);
-}
-
 export function GetPrompt(arg1, arg2) {
   return window['go']['main']['MCPClient']['GetPrompt'](arg1, arg2);
 }
 
 export function GetPromptSession(arg1, arg2, arg3) {
   return window['go']['main']['MCPClient']['GetPromptSession'](arg1, arg2, arg3);
+}
+
+export function GetSessionStatus(arg1) {
+  return window['go']['main']['MCPClient']['GetSessionStatus'](arg1);
 }
 
 export function ListPrompts() {

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Boxes, FileCode, Plus } from 'lucide-react'
 import { parse, stringify } from 'yaml'
 import { useCollectionsStore } from '@/stores/collections'
 import { collectionToOAS } from '@/lib/oasExport'
@@ -99,7 +99,6 @@ function specToEndpointDef(spec: string, method: string, path: string): Endpoint
   return blank
 }
 
-/** Parse a JSON schema string, returning an empty object schema on failure. */
 function parseSchema(raw: string): unknown {
   if (!raw.trim()) return { type: 'object' }
   try {
@@ -109,7 +108,6 @@ function parseSchema(raw: string): unknown {
   }
 }
 
-/** Build an OAS operation object from the form definition. */
 function endpointDefToOperation(def: EndpointDef): Record<string, unknown> {
   const parameters = [...def.pathParams, ...def.queryParams, ...def.headerParams]
     .filter((p) => p.name.trim())
@@ -153,10 +151,8 @@ export function ApiEditorPanel() {
   const [selectedEndpoint, setSelectedEndpoint] = useState<{ method: string; path: string } | null>(null)
 
   const collection = collections.find((c) => c.id === selectedCollectionId)
-  // Derive the live spec: stored _openapiSpec wins, otherwise synthesize from collection requests.
   const liveSpec = collection ? (collection._openapiSpec || collectionToOAS(collection, 'yaml')) : ''
   const endpoints = liveSpec ? specToEndpointList(liveSpec) : []
-
   const endpointDef =
     selectedEndpoint && liveSpec ? specToEndpointDef(liveSpec, selectedEndpoint.method, selectedEndpoint.path) : null
 
@@ -174,7 +170,6 @@ export function ApiEditorPanel() {
     }
     doc.paths = doc.paths ?? {}
 
-    // If method/path changed, drop the original operation.
     if (selectedEndpoint && (selectedEndpoint.path !== updated.path || selectedEndpoint.method !== updated.method)) {
       const oldMethods = doc.paths[selectedEndpoint.path]
       if (oldMethods) {
@@ -201,8 +196,8 @@ export function ApiEditorPanel() {
     }
     doc.paths = doc.paths ?? {}
     const methodsForPath = doc.paths[newPath] ?? {}
-    if (!methodsForPath['get']) {
-      methodsForPath['get'] = { summary: 'New endpoint', responses: { '200': { description: 'OK' } } }
+    if (!methodsForPath.get) {
+      methodsForPath.get = { summary: 'New endpoint', responses: { '200': { description: 'OK' } } }
     }
     doc.paths[newPath] = methodsForPath
     persistSpec(doc)
@@ -210,25 +205,43 @@ export function ApiEditorPanel() {
   }
 
   return (
-    <div className="flex h-full overflow-hidden">
-      {/* Left: collection + endpoint list */}
-      <div className="w-[220px] border-r border-border-1 flex flex-col bg-surface-0">
-        <div className="p-2 border-b border-border-1">
+    <div className="flex h-full overflow-hidden bg-surface-0">
+      <div className="w-[300px] border-r border-border-1 flex flex-col bg-surface-1">
+        <div className="border-b border-border-1 p-3">
+          <div className="mb-3 flex items-start gap-2">
+            <FileCode size={15} className="mt-0.5 shrink-0 text-accent" />
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold text-text-1">OpenAPI Contract Editor</h2>
+              <p className="mt-1 text-[11px] leading-relaxed text-text-4">
+                Edit the spec behind a collection: endpoints, parameters, request body and response schemas.
+              </p>
+            </div>
+          </div>
           <select
             value={selectedCollectionId}
             onChange={(e) => {
               setSelectedCollectionId(e.target.value)
               setSelectedEndpoint(null)
             }}
-            className="w-full h-7 px-2 text-[10px] bg-surface-2 border border-border-2 rounded text-text-1 focus:border-accent outline-none"
+            className="w-full h-9 px-2 text-xs bg-surface-2 border border-border-2 rounded-md text-text-1 focus:border-accent outline-none"
           >
-            <option value="">— Select collection —</option>
+            <option value="">Select collection...</option>
             {collections.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
+              <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
+          {collection && (
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <div className="rounded-md border border-border-1 bg-surface-0 px-2 py-1.5">
+                <div className="text-[10px] uppercase tracking-[0.12em] text-text-4">Endpoints</div>
+                <div className="text-sm font-semibold text-text-1">{endpoints.length}</div>
+              </div>
+              <div className="rounded-md border border-border-1 bg-surface-0 px-2 py-1.5">
+                <div className="text-[10px] uppercase tracking-[0.12em] text-text-4">Source</div>
+                <div className="truncate text-sm font-semibold text-text-1">{collection._openapiSpec ? 'OpenAPI' : 'Generated'}</div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto py-1">
@@ -237,20 +250,23 @@ export function ApiEditorPanel() {
               key={`${ep.method}:${ep.path}`}
               onClick={() => setSelectedEndpoint({ method: ep.method, path: ep.path })}
               className={cn(
-                'w-full text-left flex items-center gap-2 px-3 py-2 transition-colors',
+                'w-full text-left flex items-start gap-2 px-3 py-2.5 transition-colors',
                 selectedEndpoint?.method === ep.method && selectedEndpoint?.path === ep.path
                   ? 'bg-accent/10'
-                  : 'hover:bg-surface-1',
+                  : 'hover:bg-surface-2',
               )}
             >
-              <span className={cn('text-[8px] font-mono font-bold shrink-0 w-8', METHOD_COLORS[ep.method] ?? 'text-text-4')}>
+              <span className={cn('mt-0.5 text-[10px] font-mono font-bold shrink-0 w-10', METHOD_COLORS[ep.method] ?? 'text-text-4')}>
                 {ep.method.slice(0, 4)}
               </span>
-              <span className="text-[10px] font-mono text-text-1 truncate">{ep.path}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-mono text-[11px] text-text-1" title={ep.path}>{ep.path}</span>
+                <span className="mt-0.5 block truncate text-[10px] text-text-4">{ep.summary || 'No summary'}</span>
+              </span>
             </button>
           ))}
           {endpoints.length === 0 && selectedCollectionId && (
-            <p className="px-3 py-3 text-[10px] text-text-4 text-center">
+            <p className="px-3 py-3 text-center text-[11px] text-text-4">
               No endpoints yet.
               <br />
               Add one below.
@@ -262,21 +278,30 @@ export function ApiEditorPanel() {
           <div className="p-2 border-t border-border-1">
             <button
               onClick={handleNewEndpoint}
-              className="w-full h-7 flex items-center justify-center gap-1.5 text-[10px] bg-surface-2 text-text-3 rounded hover:bg-surface-3 hover:text-text-1 transition-colors"
+              className="w-full h-8 flex items-center justify-center gap-1.5 text-xs bg-surface-2 text-text-3 rounded-md hover:bg-surface-3 hover:text-text-1 transition-colors"
             >
-              <Plus size={12} />
+              <Plus size={13} />
               New Endpoint
             </button>
           </div>
         )}
       </div>
 
-      {/* Right: form editor */}
       {endpointDef ? (
         <EndpointFormEditor endpoint={endpointDef} onSave={handleSave} />
       ) : (
-        <div className="flex-1 flex items-center justify-center text-[10px] text-text-4">
-          {selectedCollectionId ? 'Select an endpoint to edit it.' : 'Select a collection to start editing.'}
+        <div className="flex-1 flex items-center justify-center p-8">
+          <div className="max-w-md rounded-lg border border-border-1 bg-surface-1 p-6 text-center">
+            <Boxes size={28} className="mx-auto mb-3 text-accent" />
+            <h3 className="text-sm font-semibold text-text-1">
+              {selectedCollectionId ? 'Choose an operation' : 'Select a collection'}
+            </h3>
+            <p className="mt-2 text-xs leading-relaxed text-text-4">
+              {selectedCollectionId
+                ? 'Pick an endpoint on the left to edit the OpenAPI operation that powers contract validation and exports.'
+                : 'The editor works on a collection contract. Existing OpenAPI specs are preserved; plain collections get a generated spec you can refine.'}
+            </p>
+          </div>
         </div>
       )}
     </div>

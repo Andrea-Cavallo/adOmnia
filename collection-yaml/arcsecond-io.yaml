@@ -1,0 +1,12 @@
+name: arcsecond.io
+slug: arcsecond-io
+description: Unified REST APIs for world-wide astronomy data
+categories:
+  - Science & Math
+  - Space
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://api.arcsecond.io/

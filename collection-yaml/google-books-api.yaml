@@ -1,0 +1,11 @@
+name: Google Books
+slug: google-books-api
+description: Access the full text of the Google Books repository.
+categories:
+  - Books
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://developers.google.com/books/

@@ -1,0 +1,11 @@
+name: mod.io
+slug: mod-io
+description: Cross-platform mod support
+categories:
+  - Entertainment
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://docs.mod.io

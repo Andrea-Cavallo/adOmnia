@@ -1,0 +1,12 @@
+name: The Cat Api
+slug: the-cat-api
+description: A public service API all about cat pictures. A public service API all about Cats, free to use when making
+  your fancy new App, Website or Service
+categories:
+  - Animals
+  - Fun
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://TheCatAPI.com

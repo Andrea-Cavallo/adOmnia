@@ -1,0 +1,10 @@
+name: SMMRY
+slug: smmry
+description: Summarize articles, text, websites, essays and documents online for free with SMMRY.
+categories:
+  - Text Analysis & Tools
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://smmry.com/api

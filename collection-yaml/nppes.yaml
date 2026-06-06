@@ -1,0 +1,11 @@
+name: NPPES
+slug: nppes
+description: National Plan & Provider Enumeration System, info on healthcare providers registered in US
+categories:
+  - Health
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://npiregistry.cms.hhs.gov/registry/help-api

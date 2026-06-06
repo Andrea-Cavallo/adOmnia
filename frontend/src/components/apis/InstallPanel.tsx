@@ -56,6 +56,7 @@ export function InstallPanel() {
   const [searchResults, setSearchResults] = useState<ApiEntry[] | null>(null)
   const [searching, setSearching] = useState(false)
   const [installedIds, setInstalledIds] = useState<Set<string>>(() => installedApiIds())
+  const [toast, setToast] = useState<string | null>(null)
 
   const loadCatalog = useCallback(async () => {
     setLoading(true)
@@ -99,7 +100,14 @@ export function InstallPanel() {
       safeSetItem('adomnia.apis.installed', JSON.stringify([...next]))
       return next
     })
+    setToast(`Installed "${api.name}" — open it in API Workspace`)
   }
+
+  useEffect(() => {
+    if (!toast) return
+    const timer = setTimeout(() => setToast(null), 3000)
+    return () => clearTimeout(timer)
+  }, [toast])
 
   const handleViewInWorkspace = () => {
     useAppStore.getState().setActiveRail('collections')
@@ -142,7 +150,21 @@ export function InstallPanel() {
   }
 
   return (
-    <div className="flex-1 flex min-h-0 bg-surface-0">
+    <div className="relative flex-1 flex min-h-0 bg-surface-0">
+      {/* Install confirmation toast */}
+      {toast && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-3.5 py-2 rounded-lg bg-surface-2 border border-border-2 shadow-xl text-xs text-text-1 animate-in fade-in slide-in-from-bottom-2">
+          <Check size={13} className="text-green-400" />
+          <span>{toast}</span>
+          <button
+            onClick={() => { setToast(null); handleViewInWorkspace() }}
+            className="ml-1 text-accent font-medium hover:underline"
+          >
+            Open
+          </button>
+        </div>
+      )}
+
       {/* Category Sidebar */}
       <aside className="w-52 flex-shrink-0 border-r border-border-1 py-4 overflow-y-auto">
         <h3 className="px-4 text-[10px] font-medium uppercase tracking-wider text-text-4 mb-2">
@@ -199,9 +221,9 @@ export function InstallPanel() {
         <div className="px-6 py-3 border-b border-border-1 bg-surface-1/40">
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
-              <div className="text-xs font-medium text-text-1">Installable public API starters</div>
+              <div className="text-xs font-medium text-text-1">Installable public API catalog</div>
               <p className="mt-0.5 text-[11px] text-text-3">
-                Curated no-auth/free REST endpoints inspired by public-apis, ready to install as adOmnia requests.
+                The full public-apis directory, organized by category and ready to install as adOmnia requests.
               </p>
             </div>
             <a
@@ -257,7 +279,7 @@ export function InstallPanel() {
                   return (
                     <div
                       key={api.slug}
-                      className="group relative rounded-lg border border-border-1 bg-surface-1 hover:border-border-2 hover:shadow-sm p-4 transition-all"
+                      className="group relative flex flex-col rounded-lg border border-border-1 bg-surface-1 hover:border-border-2 hover:shadow-sm p-4 transition-all"
                     >
                       <div className="flex items-start gap-3">
                         <div className="w-8 h-8 rounded-md bg-surface-2 flex items-center justify-center flex-shrink-0 text-sm">
@@ -298,17 +320,12 @@ export function InstallPanel() {
                                 {api.type}
                               </span>
                             )}
-                            {api.source && (
-                              <span className="px-1.5 py-0.5 text-[10px] font-medium bg-surface-2 text-text-3 rounded">
-                                {api.source}
-                              </span>
-                            )}
                           </div>
                         </div>
                       </div>
 
-                      {/* Action buttons */}
-                      <div className="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {/* Action row — always visible so Install is always clickable */}
+                      <div className="mt-3 pt-3 border-t border-border-1/60 flex items-center justify-end gap-1.5">
                         {docsUrl && (
                           <a
                             href={docsUrl}
@@ -316,9 +333,9 @@ export function InstallPanel() {
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
                             title="Open documentation"
-                            className="flex items-center justify-center w-6 h-6 rounded text-text-3 hover:text-text-1 hover:bg-surface-2 transition-colors"
+                            className="flex items-center justify-center w-7 h-7 rounded text-text-3 hover:text-text-1 hover:bg-surface-2 transition-colors"
                           >
-                            <ExternalLink size={12} />
+                            <ExternalLink size={13} />
                           </a>
                         )}
                         {sourceUrl && sourceUrl !== docsUrl && (
@@ -328,9 +345,9 @@ export function InstallPanel() {
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
                             title="Open source list"
-                            className="flex items-center justify-center w-6 h-6 rounded text-text-3 hover:text-text-1 hover:bg-surface-2 transition-colors"
+                            className="flex items-center justify-center w-7 h-7 rounded text-text-3 hover:text-text-1 hover:bg-surface-2 transition-colors"
                           >
-                            <Globe size={12} />
+                            <Globe size={13} />
                           </a>
                         )}
                         <button
@@ -340,13 +357,13 @@ export function InstallPanel() {
                           }}
                           disabled={isInstalled}
                           className={cn(
-                            'flex items-center gap-1 px-2 py-1 text-[10px] font-medium rounded transition-colors',
+                            'flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium rounded transition-colors',
                             isInstalled
                               ? 'bg-surface-2 text-text-4 cursor-not-allowed'
                               : 'bg-accent text-white hover:opacity-90'
                           )}
                         >
-                          <Download size={10} />
+                          {isInstalled ? <Check size={11} /> : <Download size={11} />}
                           {isInstalled ? 'Installed' : 'Install'}
                         </button>
                       </div>

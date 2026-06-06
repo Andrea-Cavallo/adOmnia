@@ -1,0 +1,12 @@
+name: City, New York Opendata
+slug: city-new-york-opendata
+description: NYC Open Data helps New Yorkers use and learn about City data. NYC Open Data helps New Yorkers use and
+  learn about City data
+categories:
+  - Government
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://opendata.cityofnewyork.us/

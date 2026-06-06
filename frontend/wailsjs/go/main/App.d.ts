@@ -4,6 +4,8 @@ import {main} from '../models';
 
 export function ClearDevLogs():Promise<void>;
 
+export function CompareFolders(arg1:string,arg2:string,arg3:number):Promise<string>;
+
 export function CreateMarkdownFile(arg1:string,arg2:string,arg3:string):Promise<main.MarkdownFileEntry>;
 
 export function DeleteMarkdownFile(arg1:string,arg2:string):Promise<void>;
@@ -31,6 +33,8 @@ export function ListMarkdownFiles(arg1:string):Promise<Array<main.MarkdownFileEn
 export function LoadSettings():Promise<string>;
 
 export function OpenDevLogsFolder():Promise<void>;
+
+export function ReadFolderDiffFile(arg1:string,arg2:string,arg3:number):Promise<string>;
 
 export function ReadLogFile(arg1:string):Promise<string>;
 

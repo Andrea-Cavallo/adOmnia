@@ -1,11 +1,39 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Search, Download, Upload, Trash2, Copy, Plus, RefreshCw } from 'lucide-react'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
+import {
+  StorageDelete,
+  StorageGet,
+  StorageGetAll,
+  StorageList,
+  StoragePut,
+  type StorageEntry as WailsStorageEntry,
+} from '@/wailsjs/go/main/App'
 import { cn } from '@/lib/utils'
 
 interface StorageEntry {
   key: string
   value: string
+}
+
+const STORAGE_BUCKETS = ['workspace', 'collections', 'environments', 'history', 'mock', 'proxy']
+
+function hasWailsStorage() {
+  return Boolean((window as unknown as {
+    go?: { main?: { App?: { StorageGet?: unknown; StorageList?: unknown; StoragePut?: unknown } } }
+  }).go?.main?.App?.StorageGet)
+}
+
+function parseStorageValue(value: string) {
+  try {
+    return JSON.parse(value)
+  } catch {
+    return value
+  }
+}
+
+function stringifyStorageValue(value: unknown) {
+  return typeof value === 'string' ? value : JSON.stringify(value, null, 2)
 }
 
 export function StoragePanel() {
@@ -26,24 +54,114 @@ export function StoragePanel() {
   const [loading, setLoading] = useState(false)
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
 
+  const wailsApi = useCallback(async (path: string, body?: unknown) => {
+    if (!hasWailsStorage()) {
+      throw new Error('Storage backend is not reachable. Start the app through Wails or reload after the sidecar is ready.')
+    }
+    const [route, query = ''] = path.split('?')
+    const params = new URLSearchParams(query)
+    const bucketName = params.get('bucket') || (body as { bucket?: string } | undefined)?.bucket || bucket
+    const key = params.get('key') || (body as { key?: string } | undefined)?.key || ''
+
+    if (route === '/storage/status') {
+      const all = await Promise.all(STORAGE_BUCKETS.map(async (name) => {
+        try {
+          const entries = await StorageGetAll(name)
+          return { bucket: name, entries }
+        } catch {
+          return { bucket: name, entries: [] as WailsStorageEntry[] }
+        }
+      }))
+      const totalKeys = all.reduce((sum, item) => sum + item.entries.length, 0)
+      const sizeBytes = all.reduce((sum, item) => sum + item.entries.reduce((inner, entry) => inner + entry.value.length, 0), 0)
+      return { buckets: all.filter((item) => item.entries.length > 0).length, totalKeys, sizeBytes, mode: 'wails-fallback' }
+    }
+    if (route === '/storage/list') return { bucket: bucketName, keys: await StorageList(bucketName, '') }
+    if (route === '/storage/get') return parseStorageValue(await StorageGet(bucketName, key))
+    if (route === '/storage/put') {
+      const payload = body as { bucket?: string; key?: string; value?: string }
+      await StoragePut(payload.bucket || bucketName, payload.key || key, payload.value ?? '')
+      return { ok: true }
+    }
+    if (route === '/storage/delete') {
+      const payload = body as { bucket?: string; key?: string }
+      await StorageDelete(payload.bucket || bucketName, payload.key || key)
+      return { ok: true }
+    }
+    if (route === '/storage/export') {
+      const entries = await StorageGetAll(bucketName)
+      return Object.fromEntries(entries.map((entry) => [entry.key, parseStorageValue(entry.value)]))
+    }
+    if (route === '/storage/import') {
+      const data = body && typeof body === 'object' ? body as Record<string, unknown> : {}
+      await Promise.all(Object.entries(data).map(([itemKey, value]) => StoragePut(bucketName, itemKey, stringifyStorageValue(value))))
+      return { ok: true, imported: Object.keys(data).length }
+    }
+    if (route === '/storage/search') {
+      const q = (params.get('q') || '').toLowerCase()
+      const hits: Array<{ bucket: string; key: string; value: string }> = []
+      for (const name of STORAGE_BUCKETS) {
+        const entries = await StorageGetAll(name).catch(() => [] as WailsStorageEntry[])
+        for (const entry of entries) {
+          if (entry.key.toLowerCase().includes(q) || entry.value.toLowerCase().includes(q)) {
+            hits.push({ bucket: name, key: entry.key, value: entry.value.slice(0, 200) })
+            if (hits.length >= 50) break
+          }
+        }
+        if (hits.length >= 50) break
+      }
+      return { q, results: hits, count: hits.length }
+    }
+    throw new Error(`Unsupported storage route: ${route}`)
+  }, [bucket])
+
   const api = useCallback(async (path: string, body?: unknown, method?: string) => {
     const url = serverUrl(port, path)
-    if (!url) throw new Error('Backend not ready')
-    const res = await sidecarFetch(url, {
-      method: method ?? (body !== undefined ? 'POST' : 'GET'),
-      headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-    })
-    const text = await res.text()
-    if (!res.ok) throw new Error(text || res.statusText)
-    return text ? JSON.parse(text) : {}
-  }, [port])
+    if (!url) return wailsApi(path, body)
+    try {
+      const [route] = path.split('?')
+      let target = url
+      let requestBody: BodyInit | undefined
+      let headers: HeadersInit | undefined
+      const requestMethod = method ?? (body !== undefined ? 'POST' : 'GET')
+
+      if (route === '/storage/put') {
+        const payload = body as { bucket?: string; key?: string; value?: string }
+        target = serverUrl(port, `/storage/put?bucket=${encodeURIComponent(payload.bucket ?? '')}&key=${encodeURIComponent(payload.key ?? '')}`)
+        requestBody = payload.value ?? ''
+      } else if (route === '/storage/delete') {
+        const payload = body as { bucket?: string; key?: string }
+        target = serverUrl(port, `/storage/delete?bucket=${encodeURIComponent(payload.bucket ?? '')}&key=${encodeURIComponent(payload.key ?? '')}`)
+      } else if (route === '/storage/import') {
+        target = serverUrl(port, `/storage/import?bucket=${encodeURIComponent(bucket)}`)
+        headers = { 'Content-Type': 'application/json' }
+        requestBody = JSON.stringify(body ?? {})
+      } else {
+        headers = body !== undefined ? { 'Content-Type': 'application/json' } : undefined
+        requestBody = body !== undefined ? JSON.stringify(body) : undefined
+      }
+
+      const res = await sidecarFetch(target, {
+        method: requestMethod,
+        headers,
+        body: requestBody,
+      })
+      const text = await res.text()
+      if (!res.ok) throw new Error(text || res.statusText)
+      return text ? parseStorageValue(text) : {}
+    } catch (error) {
+      if (error instanceof TypeError && String(error.message).includes('Failed to fetch')) {
+        return wailsApi(path, body)
+      }
+      throw error
+    }
+  }, [bucket, port, wailsApi])
 
   const loadStatus = useCallback(async () => {
     try {
       const data = await api('/storage/status')
       setStatus(data)
-    } catch (e) { setError(String(e)) }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)) }
   }, [api])
 
   const loadEntries = useCallback(async () => {
@@ -62,11 +180,16 @@ export function StoragePanel() {
         }
         setEntries(items)
       }
-    } catch (e) { setError(String(e)) }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)) }
     setLoading(false)
   }, [api, bucket])
 
-  useEffect(() => { if (port) { loadStatus(); loadEntries() } }, [port, loadStatus, loadEntries])
+  useEffect(() => {
+    if (port || hasWailsStorage()) {
+      loadStatus()
+      loadEntries()
+    }
+  }, [port, loadStatus, loadEntries])
 
   const handleSelect = (key: string, value: string) => {
     setSelectedKey(key)
@@ -79,7 +202,7 @@ export function StoragePanel() {
       await api('/storage/put', { bucket, key: selectedKey, value: editValue })
       setMsg(`Saved ${selectedKey}`)
       loadEntries()
-    } catch (e) { setError(String(e)) }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)) }
   }
 
   const handleDelete = () => {
@@ -94,7 +217,7 @@ export function StoragePanel() {
       setSelectedKey('')
       setEditValue('')
       loadEntries()
-    } catch (e) { setError(String(e)) }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)) }
   }
 
   const handleAdd = async () => {
@@ -105,7 +228,7 @@ export function StoragePanel() {
       setNewKey('')
       setNewValue('')
       loadEntries()
-    } catch (e) { setError(String(e)) }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)) }
   }
 
   const handleSearch = async () => {
@@ -115,19 +238,19 @@ export function StoragePanel() {
     try {
       const data = await api(`/storage/search?q=${encodeURIComponent(searchQuery)}`)
       setSearchResults(data)
-    } catch (e) { setError(String(e)) }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)) }
     setLoading(false)
   }
 
   const handleExport = async () => {
     try {
-      const data = await api('/storage/export')
+      const data = await api(`/storage/export?bucket=${encodeURIComponent(bucket)}`)
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url; a.download = `adomnia-storage-export.json`; a.click()
       URL.revokeObjectURL(url)
-    } catch (e) { setError(String(e)) }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)) }
   }
 
   const handleImport = () => {
@@ -142,7 +265,7 @@ export function StoragePanel() {
         setMsg('Import completed')
         loadEntries()
         loadStatus()
-      } catch (err) { setError(String(err)) }
+      } catch (err) { setError(err instanceof Error ? err.message : String(err)) }
     }
     input.click()
   }

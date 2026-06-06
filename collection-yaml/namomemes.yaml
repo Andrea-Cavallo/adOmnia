@@ -1,0 +1,11 @@
+name: NaMoMemes
+slug: namomemes
+description: Is a description required ? Hail NaMo ! Contribute to theIYD/NaMoMemes development by creating an account on GitHub
+categories:
+  - Health
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://github.com/theIYD/NaMoMemes

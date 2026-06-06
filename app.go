@@ -15,6 +15,7 @@ import (
 
 	"adomnia/internal/devlog"
 	"adomnia/internal/httpexec"
+	"adomnia/internal/nettools"
 	"adomnia/internal/proxy"
 	"adomnia/internal/sidecar"
 	"adomnia/internal/sse"
@@ -84,6 +85,30 @@ func (a *App) GetServerPort() int {
 
 func (a *App) GetSidecarToken() string {
 	return sidecar.Token()
+}
+
+func (a *App) CompareFolders(left, right string, maxFileMB int64) (string, error) {
+	result, err := nettools.ScanFolderDiff(left, right, maxFileMB)
+	if err != nil {
+		return "", err
+	}
+	data, err := json.Marshal(result)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
+func (a *App) ReadFolderDiffFile(scanID, path string, maxBytes int64) (string, error) {
+	result, err := nettools.ReadFolderDiffFile(scanID, path, maxBytes)
+	if err != nil {
+		return "", err
+	}
+	data, err := json.Marshal(result)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
 }
 
 func (a *App) SelectFolder(title string) (string, error) {

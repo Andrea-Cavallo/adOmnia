@@ -33,7 +33,6 @@ export type RailItem =
   | 'themes'
   | 'templates'
   | 'plugins'
-  | 'apis'
   | 'har'
   | 'observe'
   | 'secretscanner'

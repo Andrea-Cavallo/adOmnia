@@ -1,8 +1,10 @@
 package git
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -94,6 +96,57 @@ func TestLog_DefaultsCount(t *testing.T) {
 	// No commits yet: Log should error (no HEAD), not panic.
 	if _, err := Log(dir, 0); err == nil {
 		t.Logf("Log returned no error on empty repo (acceptable on some git versions)")
+	}
+}
+
+func TestGetOverview_EmptySlicesSerializeAsArrays(t *testing.T) {
+	gitAvailable(t)
+	dir := filepath.Join(t.TempDir(), "repo")
+	if err := Init(Config{RepoPath: dir, Branch: "main", AuthorName: "T", AuthorEmail: "t@e.com"}); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+
+	// On a fresh, clean repo every collection is empty. The frontend reads
+	// these as arrays (overview.changes.length, status.modified, etc). Go nil
+	// slices marshal to JSON null, which crashes the UI with
+	// "Cannot read properties of null (reading 'length')". Guarantee [].
+	ov, err := GetOverview(dir, 50)
+	if err != nil {
+		t.Fatalf("GetOverview: %v", err)
+	}
+	raw, err := json.Marshal(ov)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	for _, bad := range []string{
+		`"changes":null`, `"conflicts":null`, `"branches":null`,
+		`"remotes":null`, `"stashes":null`, `"commits":null`,
+		`"modified":null`, `"untracked":null`,
+	} {
+		if strings.Contains(string(raw), bad) {
+			t.Fatalf("overview JSON contains %s; nil slices must marshal as []: %s", bad, raw)
+		}
+	}
+}
+
+func TestCompareRefs_EmptyResultIsNonNil(t *testing.T) {
+	gitAvailable(t)
+	dir := filepath.Join(t.TempDir(), "repo")
+	if err := Init(Config{RepoPath: dir, Branch: "main", AuthorName: "T", AuthorEmail: "t@e.com"}); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	writeFile(t, filepath.Join(dir, "a.txt"), "x")
+	if _, err := CommitAll(dir, "c1"); err != nil {
+		t.Fatalf("CommitAll: %v", err)
+	}
+	// Comparing a ref to itself yields zero changed files; must be [] not nil
+	// so the compare tab does not crash on files.filter(...).
+	files, err := CompareRefs(dir, "HEAD", "HEAD")
+	if err != nil {
+		t.Fatalf("CompareRefs: %v", err)
+	}
+	if files == nil {
+		t.Fatalf("CompareRefs returned nil slice; expected empty non-nil slice")
 	}
 }
 

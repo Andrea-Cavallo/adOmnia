@@ -2,6 +2,7 @@ import {
   CheckCircle2,
   ChevronRight,
   GitFork,
+  Loader2,
   Square,
   XCircle,
 } from 'lucide-react'
@@ -56,12 +57,13 @@ export function FlowConnector({ graph, node }: { graph: FlowGraphDefinition; nod
   return <ChevronRight size={18} className="text-text-4" />
 }
 
-export function FlowNodeCard({ node, runtime, selected, match, onSelect }: {
+export function FlowNodeCard({ node, runtime, selected, match, onSelect, onShiftClick }: {
   node: FlowNodeDefinition
   runtime?: RuntimeByNode[string]
   selected: boolean
   match: ApiCatalogRequest | null
   onSelect: () => void
+  onShiftClick?: () => void
 }) {
   const request = node.config.request
   const status = runtime?.status ?? 'pending'
@@ -69,9 +71,15 @@ export function FlowNodeCard({ node, runtime, selected, match, onSelect }: {
   const isEnd = node.type === 'end'
   return (
     <button
-      onClick={onSelect}
+      onClick={(e) => {
+        if (e.shiftKey && onShiftClick) {
+          onShiftClick()
+        } else {
+          onSelect()
+        }
+      }}
       className={cn(
-        'w-[232px] rounded-md border p-3 text-left shadow-sm transition-colors',
+        'relative w-[232px] rounded-md border p-3 text-left shadow-sm transition-colors',
         statusTone(status),
         selected && 'ring-1 ring-accent',
         isCondition && 'w-[190px]',
@@ -97,6 +105,22 @@ export function FlowNodeCard({ node, runtime, selected, match, onSelect }: {
         </div>
       )}
       {runtime?.message && <div className="mt-2 truncate text-[10px] text-text-3">{runtime.message}</div>}
+      {/* Run-state indicator */}
+      {status === 'running' && (
+        <div className="absolute top-1.5 right-1.5">
+          <Loader2 size={11} className="animate-spin text-accent" />
+        </div>
+      )}
+      {status === 'success' && (
+        <div className="absolute top-1.5 right-1.5">
+          <CheckCircle2 size={11} className="text-success" />
+        </div>
+      )}
+      {status === 'failed' && (
+        <div className="absolute top-1.5 right-1.5">
+          <XCircle size={11} className="text-error" />
+        </div>
+      )}
     </button>
   )
 }

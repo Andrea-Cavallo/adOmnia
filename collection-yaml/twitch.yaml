@@ -1,0 +1,12 @@
+name: Twitch
+slug: twitch
+description: The Twitch API enables you to develop your own applications using the rich feature set that Twitch
+  provides. Twitch Developer Documentation
+categories:
+  - Social
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://dev.twitch.tv/docs

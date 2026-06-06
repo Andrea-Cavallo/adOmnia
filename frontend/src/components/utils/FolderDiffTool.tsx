@@ -3,8 +3,10 @@ import { FolderTree, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { safeSelectFolder, downloadText } from '@/lib/fileUtils'
+import { CompareFolders, ReadFolderDiffFile } from '@/wailsjs/go/main/App'
 
 export type FolderDiffStatus = 'same' | 'modified' | 'left-only' | 'right-only' | 'type-change'
+type FolderDiffPreviewState = 'ok' | 'missing' | 'binary' | 'too-large' | 'directory' | 'error'
 
 export interface FolderDiffNode {
   path: string
@@ -43,6 +45,8 @@ export interface FolderDiffPreview {
   path: string
   left: string
   right: string
+  leftState?: FolderDiffPreviewState
+  rightState?: FolderDiffPreviewState
   leftError?: string
   rightError?: string
 }
@@ -63,17 +67,97 @@ const FOLDER_DIFF_STATUS_CLASS: Record<FolderDiffStatus, string> = {
   'type-change': 'border-error/30 bg-error/10 text-error',
 }
 
+const EMPTY_COUNTS: Record<FolderDiffStatus, number> = {
+  same: 0,
+  modified: 0,
+  'left-only': 0,
+  'right-only': 0,
+  'type-change': 0,
+}
+
+function normalizeStatus(status: unknown): FolderDiffStatus {
+  return status === 'modified' || status === 'left-only' || status === 'right-only' || status === 'type-change' ? status : 'same'
+}
+
+function normalizePreviewState(value: unknown, error?: string, text?: string): FolderDiffPreviewState {
+  if (value === 'ok' || value === 'missing' || value === 'binary' || value === 'too-large' || value === 'directory' || value === 'error') return value
+  const lower = (error ?? '').toLowerCase()
+  if (lower.includes('cannot find') || lower.includes('not found') || lower.includes('no such file')) return 'missing'
+  if (lower.includes('binary')) return 'binary'
+  if (lower.includes('too large')) return 'too-large'
+  if (lower.includes('directory')) return 'directory'
+  if (error) return 'error'
+  return text ? 'ok' : 'ok'
+}
+
+function previewStateLabel(state: FolderDiffPreviewState) {
+  if (state === 'ok') return 'Present'
+  if (state === 'missing') return 'Missing'
+  if (state === 'binary') return 'Binary'
+  if (state === 'too-large') return 'Too large'
+  if (state === 'directory') return 'Directory'
+  return 'Error'
+}
+
+function cleanPreviewError(state: FolderDiffPreviewState, error?: string) {
+  if (!error || state === 'missing') return ''
+  return error
+}
+
+function normalizeNode(node: Partial<FolderDiffNode> | null | undefined): FolderDiffNode {
+  return {
+    path: node?.path ?? '',
+    name: node?.name ?? node?.path ?? '',
+    isDir: node?.isDir ?? false,
+    status: normalizeStatus(node?.status),
+    leftSize: node?.leftSize,
+    rightSize: node?.rightSize,
+    leftModified: node?.leftModified,
+    rightModified: node?.rightModified,
+    binary: node?.binary ?? false,
+    children: Array.isArray(node?.children) ? node.children.map((child) => normalizeNode(child)) : [],
+  }
+}
+
+function normalizeFlat(entry: Partial<FolderDiffFlat> | null | undefined): FolderDiffFlat {
+  return {
+    path: entry?.path ?? '',
+    status: normalizeStatus(entry?.status),
+    isDir: entry?.isDir ?? false,
+    leftSize: entry?.leftSize,
+    rightSize: entry?.rightSize,
+    leftModified: entry?.leftModified,
+    rightModified: entry?.rightModified,
+    binary: entry?.binary ?? false,
+  }
+}
+
+function normalizeFolderDiffResult(data: Partial<FolderDiffResult> | null | undefined): FolderDiffResult {
+  return {
+    scanId: data?.scanId ?? '',
+    leftRoot: data?.leftRoot ?? '',
+    rightRoot: data?.rightRoot ?? '',
+    tree: Array.isArray(data?.tree) ? data.tree.map((node) => normalizeNode(node)) : [],
+    flat: Array.isArray(data?.flat) ? data.flat.map((entry) => normalizeFlat(entry)).filter((entry) => entry.path) : [],
+    counts: { ...EMPTY_COUNTS, ...(data?.counts ?? {}) },
+  }
+}
+
+async function parseResponseJson<T>(res: Response): Promise<T> {
+  if (!res.ok) throw new Error((await res.text()).trim() || `Request failed with HTTP ${res.status}`)
+  return await res.json() as T
+}
+
+async function parseWailsJson<T>(raw: string): Promise<T> {
+  return JSON.parse(raw) as T
+}
+
 function formatDiffBytes(size?: number) {
   if (size == null) return '-'
   if (size === 0) return '0 B'
   if (size < 1024) return `${size} B`
   if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`
   return `${(size / 1024 / 1024).toFixed(1)} MB`
-}
-
-function formatDiffDate(value?: number) {
-  if (!value) return '-'
-  return new Date(value).toLocaleString()
 }
 
 function findFolderDiffNode(nodes: FolderDiffNode[], path: string): FolderDiffNode | null {
@@ -86,8 +170,10 @@ function findFolderDiffNode(nodes: FolderDiffNode[], path: string): FolderDiffNo
 }
 
 function FolderDiffPreviewPane({ preview }: { preview: FolderDiffPreview }) {
-  const leftLines = preview.left.split(/\r?\n/)
-  const rightLines = preview.right.split(/\r?\n/)
+  const leftState = preview.leftState ?? normalizePreviewState(undefined, preview.leftError, preview.left)
+  const rightState = preview.rightState ?? normalizePreviewState(undefined, preview.rightError, preview.right)
+  const leftLines = leftState === 'ok' ? preview.left.split(/\r?\n/) : []
+  const rightLines = rightState === 'ok' ? preview.right.split(/\r?\n/) : []
   const total = Math.max(leftLines.length, rightLines.length)
   const lines = Array.from({ length: Math.min(total, 500) }, (_, index) => ({
     number: index + 1,
@@ -101,28 +187,53 @@ function FolderDiffPreviewPane({ preview }: { preview: FolderDiffPreview }) {
   return (
     <div className="grid min-h-0 grid-cols-1 gap-3 lg:grid-cols-2">
       {(['left', 'right'] as const).map((side) => (
-        <div key={side} className="min-h-0 rounded border border-border-1 bg-surface-1">
-          <div className="flex h-8 items-center justify-between border-b border-border-1 px-3 text-[11px] font-semibold uppercase tracking-wider text-text-3">
-            <span>{side === 'left' ? 'Left' : 'Right'}</span>
-            {(side === 'left' ? preview.leftError : preview.rightError) && (
-              <span className="normal-case tracking-normal text-error">{side === 'left' ? preview.leftError : preview.rightError}</span>
-            )}
-          </div>
+        <div key={side} className="min-h-0 overflow-hidden rounded border border-border-1 bg-surface-1">
+          {(() => {
+            const state = side === 'left' ? leftState : rightState
+            const rawError = side === 'left' ? preview.leftError : preview.rightError
+            const error = cleanPreviewError(state, rawError)
+            return (
+              <div className="flex h-9 min-w-0 items-center gap-2 border-b border-border-1 px-3 text-[11px] font-semibold uppercase tracking-wider text-text-3">
+                <span>{side === 'left' ? 'Left' : 'Right'}</span>
+                <span
+                  title={error || previewStateLabel(state)}
+                  className={cn(
+                    'ml-auto rounded border px-2 py-0.5 text-[10px] normal-case tracking-normal',
+                    state === 'ok' && 'border-success/30 bg-success/10 text-success',
+                    state === 'missing' && 'border-error/30 bg-error/10 text-error',
+                    state === 'binary' && 'border-warning/30 bg-warning/10 text-warning',
+                    state === 'too-large' && 'border-warning/30 bg-warning/10 text-warning',
+                    state === 'directory' && 'border-border-2 bg-surface-2 text-text-4',
+                    state === 'error' && 'border-error/30 bg-error/10 text-error',
+                  )}
+                >
+                  {previewStateLabel(state)}
+                </span>
+                {error && <span className="max-w-[220px] truncate normal-case tracking-normal text-error" title={error}>{error}</span>}
+              </div>
+            )
+          })()}
           <div className="max-h-[420px] overflow-auto text-[11px]">
-            {lines.map((line) => {
+            {total === 0 ? (
+              <div className="grid min-h-[180px] place-items-center px-4 text-center text-xs text-text-4">
+                {side === 'left' ? previewStateLabel(leftState) : previewStateLabel(rightState)}
+              </div>
+            ) : lines.map((line) => {
               const text = side === 'left' ? line.left : line.right
               const missing = side === 'left' ? line.leftMissing : line.rightMissing
               return (
                 <div
                   key={`${side}-${line.number}`}
                   className={cn(
-                    'grid grid-cols-[48px_1fr] border-b border-border-1/50 font-mono leading-5',
-                    line.changed && !missing ? 'bg-warning/10 text-text-1' : 'text-text-2',
-                    missing && 'bg-error/10 text-text-4',
+                    'grid grid-cols-[44px_minmax(0,1fr)] border-b border-border-1/50 font-mono leading-5',
+                    line.changed && !missing && side === 'left' && 'bg-error/10 text-text-1',
+                    line.changed && !missing && side === 'right' && 'bg-success/10 text-text-1',
+                    !line.changed && !missing && 'text-text-2',
+                    missing && 'bg-surface-2 text-text-4',
                   )}
                 >
                   <span className="select-none border-r border-border-1 px-2 text-right text-text-4">{line.number}</span>
-                  <span className="whitespace-pre px-2">{missing ? '(missing)' : text}</span>
+                  <span className={cn('min-w-0 overflow-x-auto whitespace-pre px-2', missing && 'italic')}>{missing ? '(missing)' : text}</span>
                 </div>
               )
             })}
@@ -164,11 +275,6 @@ export function FolderDiffTool() {
   }
 
   const scan = async () => {
-    const url = serverUrl(port, '/folderdiff/scan')
-    if (!url) {
-      setError('Backend helper not ready.')
-      return
-    }
     if (!left.trim() || !right.trim()) {
       setError('Select or type both left and right folder paths before comparing.')
       return
@@ -177,13 +283,29 @@ export function FolderDiffTool() {
     setError('')
     setPreview(null)
     try {
-      const res = await sidecarFetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ left, right, maxFileMB }),
-      })
-      if (!res.ok) throw new Error(await res.text())
-      const data = await res.json() as FolderDiffResult
+      let data: FolderDiffResult | null = null
+      let sidecarError = ''
+      const url = serverUrl(port, '/folderdiff/scan')
+      if (url) {
+        try {
+          const res = await sidecarFetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ left, right, maxFileMB }),
+          })
+          data = normalizeFolderDiffResult(await parseResponseJson<FolderDiffResult>(res))
+        } catch (err) {
+          sidecarError = err instanceof Error ? err.message.trim() : 'Sidecar request failed.'
+        }
+      }
+      if (!data) {
+        try {
+          data = normalizeFolderDiffResult(await parseWailsJson<FolderDiffResult>(await CompareFolders(left, right, maxFileMB)))
+        } catch (err) {
+          const fallbackError = err instanceof Error ? err.message.trim() : 'Folder comparison failed.'
+          throw new Error(sidecarError ? `${fallbackError} Sidecar error: ${sidecarError}` : fallbackError)
+        }
+      }
       setResult(data)
       const firstInteresting = data.flat.find((item) => item.status !== 'same')
       setSelected(firstInteresting ? findFolderDiffNode(data.tree, firstInteresting.path) : data.tree[0] ?? null)
@@ -198,23 +320,49 @@ export function FolderDiffTool() {
 
   const loadPreview = async (node: FolderDiffNode) => {
     if (!result || node.isDir || node.binary) return
-    const url = serverUrl(port, '/folderdiff/file')
-    if (!url) return
     setPreviewLoading(true)
     setPreview(null)
     try {
-      const res = await sidecarFetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scanId: result.scanId, path: node.path, maxBytes: maxFileMB * 1024 * 1024 }),
+      let previewData: FolderDiffPreview | null = null
+      let sidecarError = ''
+      const payload = { scanId: result.scanId, path: node.path, maxBytes: maxFileMB * 1024 * 1024 }
+      const url = serverUrl(port, '/folderdiff/file')
+      if (url) {
+        try {
+          const res = await sidecarFetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          })
+          previewData = await parseResponseJson<FolderDiffPreview>(res)
+        } catch (err) {
+          sidecarError = err instanceof Error ? err.message.trim() : 'Sidecar preview failed.'
+        }
+      }
+      if (!previewData) {
+        try {
+          previewData = await parseWailsJson<FolderDiffPreview>(await ReadFolderDiffFile(payload.scanId, payload.path, payload.maxBytes))
+        } catch (err) {
+          const fallbackError = err instanceof Error ? err.message.trim() : 'Preview failed'
+          throw new Error(sidecarError ? `${fallbackError} Sidecar error: ${sidecarError}` : fallbackError)
+        }
+      }
+      setPreview({
+        path: previewData.path ?? node.path,
+        left: previewData.left ?? '',
+        right: previewData.right ?? '',
+        leftState: normalizePreviewState(previewData.leftState, previewData.leftError, previewData.left),
+        rightState: normalizePreviewState(previewData.rightState, previewData.rightError, previewData.right),
+        leftError: cleanPreviewError(normalizePreviewState(previewData.leftState, previewData.leftError, previewData.left), previewData.leftError),
+        rightError: cleanPreviewError(normalizePreviewState(previewData.rightState, previewData.rightError, previewData.right), previewData.rightError),
       })
-      if (!res.ok) throw new Error(await res.text())
-      setPreview(await res.json() as FolderDiffPreview)
     } catch (err) {
       setPreview({
         path: node.path,
         left: '',
         right: '',
+        leftState: 'error',
+        rightState: 'error',
         leftError: err instanceof Error ? err.message.trim() : 'Preview failed',
       })
     } finally {
@@ -281,7 +429,7 @@ export function FolderDiffTool() {
       {result && (
         <>
           <div className="flex flex-wrap items-center gap-2 rounded border border-border-1 bg-surface-1 p-2">
-            {(['all', 'left-only', 'right-only', 'modified', 'same'] as const).map((status) => (
+            {(['all', 'left-only', 'right-only', 'modified', 'type-change', 'same'] as const).map((status) => (
               <button
                 key={status}
                 onClick={() => setFilter(status)}
@@ -307,14 +455,14 @@ export function FolderDiffTool() {
             <div className="rounded border border-success/30 bg-success/10 px-3 py-2 text-xs text-success">No differences found. The two folders contain the same files.</div>
           )}
 
-          <div className="grid min-h-[560px] gap-3 xl:grid-cols-[minmax(640px,1.15fr)_minmax(420px,.85fr)]">
+          <div className="grid min-h-[560px] gap-3 xl:grid-cols-[minmax(540px,.95fr)_minmax(560px,1.05fr)]">
             <div className="min-h-0 overflow-hidden rounded border border-border-1 bg-surface-1">
               <div className="flex h-8 items-center justify-between border-b border-border-1 px-3 text-[11px] font-semibold uppercase tracking-wider text-text-3">
                 <span>Comparative diff</span>
                 <span>{visibleEntries.length} / {result.flat.length} entries</span>
               </div>
               <div className="max-h-[560px] overflow-auto">
-                <table className="min-w-[980px] w-full border-separate border-spacing-0 text-left text-[11px]">
+                <table className="min-w-[760px] w-full border-separate border-spacing-0 text-left text-[11px]">
                   <thead className="sticky top-0 z-10 bg-surface-2 text-[10px] uppercase tracking-wider text-text-4">
                     <tr>
                       <th className="border-b border-border-1 px-3 py-2 font-semibold">Relative path</th>
@@ -323,8 +471,6 @@ export function FolderDiffTool() {
                       <th className="border-b border-border-1 px-2 py-2 font-semibold">Right</th>
                       <th className="border-b border-border-1 px-2 py-2 text-right font-semibold">Left size</th>
                       <th className="border-b border-border-1 px-2 py-2 text-right font-semibold">Right size</th>
-                      <th className="border-b border-border-1 px-2 py-2 font-semibold">Left modified</th>
-                      <th className="border-b border-border-1 px-2 py-2 font-semibold">Right modified</th>
                       <th className="border-b border-border-1 px-2 py-2 font-semibold">Action</th>
                     </tr>
                   </thead>
@@ -338,11 +484,11 @@ export function FolderDiffTool() {
                           onClick={() => node && selectNode(node)}
                           className={cn(
                             'cursor-pointer border-b border-border-1/60 text-text-2 hover:bg-surface-2',
-                            selectedRow && 'bg-accent/10 text-text-1',
-                            entry.status === 'left-only' && 'bg-accent/5',
-                            entry.status === 'right-only' && 'bg-info/5',
-                            entry.status === 'modified' && 'bg-warning/5',
-                            entry.status === 'type-change' && 'bg-error/5',
+                            entry.status === 'left-only' && 'border-l-4 border-l-accent bg-accent/10',
+                            entry.status === 'right-only' && 'border-l-4 border-l-info bg-info/10',
+                            entry.status === 'modified' && 'border-l-4 border-l-warning bg-warning/10',
+                            entry.status === 'type-change' && 'border-l-4 border-l-error bg-error/10',
+                            selectedRow && 'bg-accent/20 text-text-1 ring-1 ring-inset ring-accent/40',
                           )}
                         >
                           <td className="border-b border-border-1/50 px-3 py-2">
@@ -360,8 +506,6 @@ export function FolderDiffTool() {
                           <td className="border-b border-border-1/50 px-2 py-2">{entry.status !== 'left-only' ? 'Yes' : '-'}</td>
                           <td className="border-b border-border-1/50 px-2 py-2 text-right font-mono text-text-3">{entry.isDir ? '-' : formatDiffBytes(entry.leftSize)}</td>
                           <td className="border-b border-border-1/50 px-2 py-2 text-right font-mono text-text-3">{entry.isDir ? '-' : formatDiffBytes(entry.rightSize)}</td>
-                          <td className="border-b border-border-1/50 px-2 py-2 text-text-3">{formatDiffDate(entry.leftModified)}</td>
-                          <td className="border-b border-border-1/50 px-2 py-2 text-text-3">{formatDiffDate(entry.rightModified)}</td>
                           <td className="border-b border-border-1/50 px-2 py-2">
                             {!entry.isDir && !entry.binary ? (
                               <button onClick={(e) => { e.stopPropagation(); if (node) selectNode(node) }} className="rounded border border-border-2 bg-surface-2 px-2 py-1 text-[10px] text-text-2 hover:text-text-1">

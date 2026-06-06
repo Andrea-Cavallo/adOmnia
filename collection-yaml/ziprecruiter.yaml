@@ -1,0 +1,11 @@
+name: ZipRecruiter
+slug: ziprecruiter
+description: Jobs API
+categories:
+  - Jobs
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://www.ziprecruiter.com/publishers

@@ -1,0 +1,12 @@
+name: Request Kittens
+slug: request-kittens
+description: A randomized set of category-specific cat images.
+categories:
+  - Images & Photography
+  - Animals
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: http://joshwcomeau.github.io/RequestKittensDocs/public/

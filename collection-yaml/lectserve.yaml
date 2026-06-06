@@ -1,0 +1,11 @@
+name: LectServe
+slug: lectserve
+description: Your daily lectionary readings…. Your daily lectionary readings…
+categories:
+  - Calendar & Time
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: http://www.lectserve.com

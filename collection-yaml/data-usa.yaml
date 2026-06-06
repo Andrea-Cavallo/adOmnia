@@ -1,0 +1,12 @@
+name: Data USA
+slug: data-usa
+description: public data. Data USA provides an open, easy-to-use platform that turns data into knowledge. The most
+  comprehensive visualization of U. The most comprehensive visualization of U. S
+categories:
+  - Government
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://datausa.io/about/api/

@@ -15,6 +15,8 @@ interface WailsGoMain {
     SelectFolder: (title: string) => Promise<string>
     GetDevLogs: () => Promise<string>
     ClearDevLogs: () => Promise<void>
+    CompareFolders: (left: string, right: string, maxFileMB: number) => Promise<string>
+    ReadFolderDiffFile: (scanID: string, path: string, maxBytes: number) => Promise<string>
     RecordFrontendLog: (level: string, message: string) => Promise<void>
     ListLogFiles: () => Promise<Array<{ name: string; size: number; modTime: string }>>
     ReadLogFile: (filename: string) => Promise<string>
@@ -37,17 +39,39 @@ interface WailsGoMain {
   GitSync: {
     IsGitInstalled: () => Promise<boolean>
     InitRepo: (repoPath: string) => Promise<void>
+    Clone: (remoteURL: string, destination: string) => Promise<void>
+    ConfigureUser: (repoPath: string, name: string, email: string) => Promise<void>
+    AddIgnorePattern: (repoPath: string, pattern: string) => Promise<void>
     GetStatus: (repoPath: string) => Promise<string>
     Overview: (repoPath: string, limit: number) => Promise<string>
     CommitAll: (repoPath: string, message: string) => Promise<string>
+    Fetch: (repoPath: string) => Promise<void>
+    AddRemote: (repoPath: string, name: string, remoteURL: string) => Promise<void>
+    RemoveRemote: (repoPath: string, name: string) => Promise<void>
     Push: (repoPath: string, remote: string) => Promise<void>
     Pull: (repoPath: string, remote: string) => Promise<void>
+    Stash: (repoPath: string) => Promise<void>
+    StashPop: (repoPath: string) => Promise<void>
+    StashDrop: (repoPath: string, stashRef: string) => Promise<void>
     Log: (repoPath: string, limit: number) => Promise<string>
+    Show: (repoPath: string, ref: string) => Promise<string>
     StageFile: (repoPath: string, path: string) => Promise<void>
+    UnstageFile: (repoPath: string, path: string) => Promise<void>
+    RestoreFile: (repoPath: string, path: string) => Promise<void>
+    RemoveFile: (repoPath: string, path: string) => Promise<void>
+    MoveFile: (repoPath: string, oldPath: string, newPath: string) => Promise<void>
+    CreateBranch: (repoPath: string, branch: string) => Promise<void>
+    CheckoutBranch: (repoPath: string, branch: string) => Promise<void>
+    CreateAndCheckoutBranch: (repoPath: string, branch: string) => Promise<void>
+    MergeBranch: (repoPath: string, branch: string) => Promise<void>
+    RebaseBranch: (repoPath: string, branch: string) => Promise<void>
+    ResetHard: (repoPath: string, ref: string) => Promise<void>
     CheckoutConflictSide: (repoPath: string, path: string, side: string) => Promise<void>
     AbortIntegration: (repoPath: string) => Promise<void>
     CompareRefs: (repoPath: string, refA: string, refB: string) => Promise<string>
     GetFileDiff: (repoPath: string, refA: string, refB: string, filePath: string) => Promise<string>
+    CreateTag: (repoPath: string, name: string, ref: string) => Promise<void>
+    DeleteTag: (repoPath: string, name: string) => Promise<void>
   }
   MCPClient: {
     Connect: (serverConfigJSON: string) => Promise<string>

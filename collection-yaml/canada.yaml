@@ -1,0 +1,11 @@
+name: Canada
+slug: canada
+description: Central bank of Canada
+categories:
+  - Government
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://www.bankofcanada.ca/rates/

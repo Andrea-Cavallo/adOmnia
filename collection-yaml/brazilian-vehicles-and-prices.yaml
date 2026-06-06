@@ -1,0 +1,12 @@
+name: Brazilian Vehicles and Prices
+slug: brazilian-vehicles-and-prices
+description: Table FIPE Consultation API provides average vehicle prices in the brazilian market through a RESTful HTTP
+  Json service. Updated monthly with data extracted from the FIPE table
+categories:
+  - Vehicles
+type: REST
+is_free: true
+logo: null
+links:
+  - name: Docs / Website
+    url: https://deividfortuna.github.io/fipe/

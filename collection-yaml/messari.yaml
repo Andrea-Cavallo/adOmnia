@@ -1,0 +1,12 @@
+name: Messari
+slug: messari
+description: Messari provides an institutional grade Bitcoin and blockchain data API, ranging from market data to
+  fundamentals, blockchain metrics and news. Gain an edge over the crypto market with professional grade data, tools,
+  and research
+categories:
+  - Blockchain & Cryptocurrencies
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://messari.io/api

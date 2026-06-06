@@ -5,6 +5,7 @@ import {
   Check,
   CheckCircle,
   Download,
+  Eye,
   FileWarning,
   FolderOpen,
   GitBranch,
@@ -20,6 +21,9 @@ import {
 } from 'lucide-react'
 import * as GitSync from '@/wailsjs/go/main/GitSync'
 import { cn } from '@/lib/utils'
+import { GitCompareTab } from './GitCompareTab'
+import { GitActionsTab } from './GitActionsTab'
+import { DiffModal } from '@/components/response/DiffView'
 
 interface GitStatus {
   branch: string
@@ -72,7 +76,14 @@ interface GitOverview {
   commits: CommitInfo[]
 }
 
+interface CommitChangedFile {
+  status: string
+  path: string
+  oldPath?: string
+}
+
 const emptyStatus: GitStatus = { branch: '', dirty: false, aheadCount: 0, behindCount: 0, modified: [], untracked: [] }
+const EMPTY_TREE_REF = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
 
 function parseJSON<T>(raw: string, fallback: T): T {
   try {
@@ -95,6 +106,76 @@ function changeLabel(change: FileChange): string {
   if (change.index === 'D' || change.worktree === 'D') return 'Deleted'
   if (change.index === 'R' || change.worktree === 'R') return 'Renamed'
   return 'Modified'
+}
+
+function changedFileLabel(status: string): string {
+  if (status === 'A') return 'Added'
+  if (status === 'D') return 'Deleted'
+  if (status === 'R') return 'Renamed'
+  if (status === 'C') return 'Copied'
+  if (status === 'U') return 'Conflict'
+  return 'Modified'
+}
+
+function changedFileClass(status: string): string {
+  if (status === 'A') return 'bg-success/15 text-success'
+  if (status === 'D') return 'bg-error/15 text-error'
+  if (status === 'R' || status === 'C') return 'bg-accent/15 text-accent'
+  if (status === 'U') return 'bg-warning/15 text-warning'
+  return 'bg-surface-3 text-text-3'
+}
+
+function extractOldContent(diff: string): string {
+  if (!diff) return '(empty or binary file)'
+  return diff
+    .split('\n')
+    .filter((line) => !line.startsWith('+++') && !line.startsWith('---') && !line.startsWith('@@') && !line.startsWith('diff') && !line.startsWith('index'))
+    .filter((line) => line.startsWith(' ') || line.startsWith('-'))
+    .map((line) => line.slice(1))
+    .join('\n')
+}
+
+function extractNewContent(diff: string): string {
+  if (!diff) return '(empty or binary file)'
+  return diff
+    .split('\n')
+    .filter((line) => !line.startsWith('+++') && !line.startsWith('---') && !line.startsWith('@@') && !line.startsWith('diff') && !line.startsWith('index'))
+    .filter((line) => line.startsWith(' ') || line.startsWith('+'))
+    .map((line) => line.slice(1))
+    .join('\n')
+}
+
+function normalizeCommit(commit: Partial<CommitInfo>): CommitInfo {
+  return {
+    hash: commit.hash ?? '',
+    fullHash: commit.fullHash ?? commit.hash ?? '',
+    parents: Array.isArray(commit.parents) ? commit.parents : [],
+    author: commit.author ?? '',
+    date: commit.date ?? '',
+    message: commit.message ?? '',
+    decorations: Array.isArray(commit.decorations) ? commit.decorations : [],
+  }
+}
+
+function normalizeBranch(branch: Partial<BranchInfo>): BranchInfo {
+  return {
+    name: branch.name ?? '',
+    remote: branch.remote ?? false,
+    current: branch.current ?? false,
+    upstream: branch.upstream ?? '',
+    commitHash: branch.commitHash ?? '',
+    updated: branch.updated ?? '',
+  }
+}
+
+function normalizeChange(change: Partial<FileChange>): FileChange {
+  return {
+    path: change.path ?? '',
+    index: change.index ?? '',
+    worktree: change.worktree ?? '',
+    status: change.status ?? '',
+    conflicted: change.conflicted ?? false,
+  }
 }
 
 function shortBranch(name: string): string {
@@ -128,6 +209,11 @@ export function GitSyncPanel() {
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
   const [gitAvailable, setGitAvailable] = useState<boolean | null>(null)
+  const [activeTab, setActiveTab] = useState<'sync' | 'actions' | 'compare'>('sync')
+  const [commitFiles, setCommitFiles] = useState<CommitChangedFile[]>([])
+  const [commitFilesLoading, setCommitFilesLoading] = useState(false)
+  const [commitDiffFile, setCommitDiffFile] = useState<CommitChangedFile | null>(null)
+  const [commitDiffText, setCommitDiffText] = useState('')
 
   const status = overview?.status ?? emptyStatus
   const selectedCommit = useMemo(
@@ -145,9 +231,33 @@ export function GitSyncPanel() {
     )
   }, [overview, query])
 
+  const selectedCommitBaseRef = selectedCommit?.parents[0] || EMPTY_TREE_REF
+
   useEffect(() => {
     GitSync.IsGitInstalled().then(setGitAvailable).catch(() => setGitAvailable(false))
   }, [])
+
+  useEffect(() => {
+    if (!repoPath || !selectedCommit) {
+      setCommitFiles([])
+      return
+    }
+    let cancelled = false
+    setCommitFilesLoading(true)
+    setCommitFiles([])
+    GitSync.CompareRefs(repoPath, selectedCommitBaseRef, selectedCommit.fullHash || selectedCommit.hash)
+      .then((raw) => {
+        if (cancelled) return
+        setCommitFiles(parseJSON<CommitChangedFile[]>(raw, []))
+      })
+      .catch(() => {
+        if (!cancelled) setCommitFiles([])
+      })
+      .finally(() => {
+        if (!cancelled) setCommitFilesLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [repoPath, selectedCommit, selectedCommitBaseRef])
 
   const clearFeedback = () => { setError(''); setInfo('') }
 
@@ -157,15 +267,25 @@ export function GitSyncPanel() {
     setLoading(true)
     try {
       const raw = await GitSync.Overview(repoPath, 120)
-      const next = parseJSON<GitOverview>(raw, {
-        status: emptyStatus,
-        changes: [],
-        conflicts: [],
-        branches: [],
-        remotes: [],
-        stashes: [],
-        commits: [],
-      })
+      const parsed = parseJSON<Partial<GitOverview>>(raw, {})
+      // Backend nil slices can serialize as null; coerce every collection to an
+      // array so render-time `.length`/`.map` never hit null.
+      const next: GitOverview = {
+        status: parsed.status
+          ? {
+              ...emptyStatus,
+              ...parsed.status,
+              modified: parsed.status.modified ?? [],
+              untracked: parsed.status.untracked ?? [],
+            }
+          : emptyStatus,
+        changes: (parsed.changes ?? []).map((change) => normalizeChange(change ?? {})),
+        conflicts: (parsed.conflicts ?? []).map((change) => normalizeChange(change ?? {})),
+        branches: (parsed.branches ?? []).map((branch) => normalizeBranch(branch ?? {})),
+        remotes: (parsed.remotes ?? []).map((remote) => ({ name: remote?.name ?? '', url: remote?.url ?? '' })),
+        stashes: parsed.stashes ?? [],
+        commits: (parsed.commits ?? []).map((commit) => normalizeCommit(commit ?? {})),
+      }
       setOverview(next)
       setSelectedHash((current) => current || next.commits[0]?.hash || '')
     } catch (e) {
@@ -201,6 +321,18 @@ export function GitSyncPanel() {
     setCommitMsg('')
   }, 'Commit created.')
 
+  const openCommitDiff = async (file: CommitChangedFile) => {
+    if (!repoPath || !selectedCommit) return
+    clearFeedback()
+    try {
+      const diff = await GitSync.GetFileDiff(repoPath, selectedCommitBaseRef, selectedCommit.fullHash || selectedCommit.hash, file.path)
+      setCommitDiffFile(file)
+      setCommitDiffText(diff)
+    } catch (e) {
+      setError(String(e))
+    }
+  }
+
   const currentBranch = status.branch || 'master'
 
   if (gitAvailable === false) {
@@ -222,7 +354,7 @@ export function GitSyncPanel() {
           <GitBranch size={15} className="text-accent" />
           <span className="text-sm font-semibold text-text-1">Git Sync</span>
         </div>
-        <button onClick={refreshStatus} disabled={!repoPath || loading} className="flex h-8 items-center gap-1.5 rounded px-2 text-xs text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-40">
+        <button onClick={() => runAction(() => GitSync.Fetch(repoPath), 'Fetch complete.')} disabled={!repoPath || loading} className="flex h-8 items-center gap-1.5 rounded px-2 text-xs text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-40">
           <RefreshCw size={13} className={cn(loading && 'animate-spin')} /> Fetch
         </button>
         <button onClick={() => runAction(() => GitSync.Pull(repoPath, currentBranch), 'Pull complete.')} disabled={!repoPath || loading} className="flex h-8 items-center gap-1.5 rounded px-2 text-xs text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-40">
@@ -231,7 +363,7 @@ export function GitSyncPanel() {
         <button onClick={() => runAction(() => GitSync.Push(repoPath, currentBranch), 'Push complete.')} disabled={!repoPath || loading} className="flex h-8 items-center gap-1.5 rounded px-2 text-xs text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-40">
           <Upload size={13} /> Push
         </button>
-        <button disabled className="flex h-8 items-center gap-1.5 rounded px-2 text-xs text-text-4 opacity-60">
+        <button onClick={() => runAction(() => GitSync.Stash(repoPath), 'Working changes stashed.')} disabled={!repoPath || loading || !status.dirty} className="flex h-8 items-center gap-1.5 rounded px-2 text-xs text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:text-text-4 disabled:opacity-40">
           <Archive size={13} /> Stash
         </button>
         <div className="mx-2 h-6 w-px bg-border-2" />
@@ -248,6 +380,53 @@ export function GitSyncPanel() {
         </div>
       </div>
 
+      {/* Tab bar */}
+      <div className="flex border-b border-border-1 bg-surface-1 flex-shrink-0">
+        <button
+          onClick={() => setActiveTab('sync')}
+          className={cn(
+            'px-4 py-2 text-[11px] font-medium transition-colors',
+            activeTab === 'sync' ? 'text-accent border-b-2 border-accent' : 'text-text-4 hover:text-text-2',
+          )}
+        >
+          Sync
+        </button>
+        <button
+          onClick={() => setActiveTab('compare')}
+          className={cn(
+            'px-4 py-2 text-[11px] font-medium transition-colors',
+            activeTab === 'compare' ? 'text-accent border-b-2 border-accent' : 'text-text-4 hover:text-text-2',
+          )}
+        >
+          Compare
+        </button>
+        <button
+          onClick={() => setActiveTab('actions')}
+          className={cn(
+            'px-4 py-2 text-[11px] font-medium transition-colors',
+            activeTab === 'actions' ? 'text-accent border-b-2 border-accent' : 'text-text-4 hover:text-text-2',
+          )}
+        >
+          Actions
+        </button>
+      </div>
+
+      {activeTab === 'compare' ? (
+        <GitCompareTab repoPath={repoPath} />
+      ) : activeTab === 'actions' ? (
+        <GitActionsTab
+          repoPath={repoPath}
+          currentBranch={currentBranch}
+          changes={overview?.changes ?? []}
+          branches={overview?.branches ?? []}
+          remotes={overview?.remotes ?? []}
+          stashes={overview?.stashes ?? []}
+          loading={loading}
+          setRepoPath={setRepoPath}
+          runAction={runAction}
+        />
+      ) : (
+        <>
       {(error || info) && (
         <div className={cn('flex items-center gap-2 border-b px-3 py-2 text-xs', error ? 'border-error/30 bg-error/10 text-error' : 'border-success/30 bg-success/10 text-success')}>
           {error ? <XCircle size={13} /> : <CheckCircle size={13} />}
@@ -343,28 +522,56 @@ export function GitSyncPanel() {
             {!repoPath && <div className="p-8 text-center text-xs text-text-4">Load a repository to inspect the graph.</div>}
           </div>
 
-          <section className="h-60 shrink-0 overflow-y-auto border-t border-border-1 bg-surface-1 p-4">
+          <section className="h-72 shrink-0 overflow-hidden border-t border-border-1 bg-surface-1">
             {selectedCommit ? (
-              <div>
-                <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-text-1">
-                  {selectedCommit.parents.length > 1 ? <GitMerge size={15} className="text-warning" /> : <GitCommit size={15} className="text-accent" />}
-                  <span className="truncate">{selectedCommit.message}</span>
-                </div>
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div className="rounded border border-border-1 bg-surface-0 p-3">
-                    <div className="mb-1 text-[10px] uppercase tracking-wider text-text-4">Author</div>
-                    <div className="text-text-1">{selectedCommit.author}</div>
-                    <div className="mt-1 text-text-4">{selectedCommit.date}</div>
+              <div className="grid h-full grid-cols-[minmax(260px,.85fr)_minmax(320px,1.15fr)]">
+                <div className="min-w-0 overflow-y-auto border-r border-border-1 p-4">
+                  <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-text-1">
+                    {selectedCommit.parents.length > 1 ? <GitMerge size={15} className="text-warning" /> : <GitCommit size={15} className="text-accent" />}
+                    <span className="truncate">{selectedCommit.message}</span>
                   </div>
-                  <div className="rounded border border-border-1 bg-surface-0 p-3">
-                    <div className="mb-1 text-[10px] uppercase tracking-wider text-text-4">Dependencies</div>
-                    <div className="font-mono text-text-2">sha {selectedCommit.fullHash}</div>
-                    <div className="mt-1 font-mono text-text-4">parents {selectedCommit.parents.join(', ') || 'none'}</div>
+                  <div className="grid gap-3 text-xs">
+                    <div className="rounded border border-border-1 bg-surface-0 p-3">
+                      <div className="mb-1 text-[10px] uppercase tracking-wider text-text-4">Author</div>
+                      <div className="text-text-1">{selectedCommit.author}</div>
+                      <div className="mt-1 text-text-4">{selectedCommit.date}</div>
+                    </div>
+                    <div className="rounded border border-border-1 bg-surface-0 p-3">
+                      <div className="mb-1 text-[10px] uppercase tracking-wider text-text-4">Refs</div>
+                      <div className="font-mono text-text-2">sha {selectedCommit.fullHash}</div>
+                      <div className="mt-1 font-mono text-text-4">base {selectedCommit.parents[0] || 'empty tree'}</div>
+                      {selectedCommit.parents.length > 1 && <div className="mt-1 text-warning">Merge commit: showing files against first parent.</div>}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex min-w-0 flex-col">
+                  <div className="flex h-10 shrink-0 items-center justify-between border-b border-border-1 px-3">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-text-4">Files changed by this commit</div>
+                    <span className="text-[10px] text-text-4">{commitFilesLoading ? 'loading...' : `${commitFiles.length} files`}</span>
+                  </div>
+                  <div className="min-h-0 flex-1 overflow-y-auto p-3">
+                    {commitFilesLoading && <div className="rounded border border-border-1 bg-surface-0 p-4 text-center text-xs text-text-4">Loading commit files...</div>}
+                    {!commitFilesLoading && commitFiles.length === 0 && <div className="rounded border border-border-1 bg-surface-0 p-4 text-center text-xs text-text-4">No file changes found for this commit.</div>}
+                    <div className="space-y-1">
+                      {commitFiles.map((file) => (
+                        <button
+                          key={`${file.status}-${file.path}-${file.oldPath ?? ''}`}
+                          onClick={() => void openCommitDiff(file)}
+                          className="flex w-full items-center gap-2 rounded border border-border-1 bg-surface-0 px-2 py-1.5 text-left hover:bg-surface-2"
+                        >
+                          <span className={cn('w-14 rounded px-1.5 py-0.5 text-center text-[9px]', changedFileClass(file.status))}>{changedFileLabel(file.status)}</span>
+                          <span className="min-w-0 flex-1 truncate font-mono text-xs text-text-2">{file.path}</span>
+                          {file.oldPath && <span className="max-w-[150px] truncate text-[10px] text-text-4">from {file.oldPath}</span>}
+                          <Eye size={12} className="shrink-0 text-text-4" />
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="text-xs text-text-4">Select a commit to inspect details.</div>
+              <div className="p-4 text-xs text-text-4">Select a commit to inspect details.</div>
             )}
           </section>
         </main>
@@ -422,6 +629,20 @@ export function GitSyncPanel() {
           </section>
         </aside>
       </div>
+        </>
+      )}
+      {commitDiffFile && (
+        <DiffModal
+          leftLabel={`${selectedCommitBaseRef} - ${commitDiffFile.path}`}
+          rightLabel={`${selectedCommit?.hash ?? 'commit'} - ${commitDiffFile.path}`}
+          leftBody={extractOldContent(commitDiffText)}
+          rightBody={extractNewContent(commitDiffText)}
+          onClose={() => {
+            setCommitDiffFile(null)
+            setCommitDiffText('')
+          }}
+        />
+      )}
     </div>
   )
 }

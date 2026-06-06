@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   ChevronRight,
   Code,
@@ -429,7 +429,10 @@ export function CollectionTree({
   const [moveTarget, setMoveTarget] = useState<{ collectionId: string; requestId: string; folders: FolderItem[] } | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ContextTarget | null>(null)
+  const [selectedCollectionIds, setSelectedCollectionIds] = useState<Set<string>>(() => new Set())
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
   const [context, setContext] = useState<ContextTarget | null>(null)
+  const [menuPos, setMenuPos] = useState<{ left: number; top: number } | null>(null)
   const [dragPayload, setDragPayload] = useState<DragPayload | null>(null)
   const [dropTarget, setDropTarget] = useState<{ id: string; position: DropPosition } | null>(null)
   const [focusedId, setFocusedId] = useState<string | null>(null)
@@ -466,6 +469,40 @@ export function CollectionTree({
     const timer = setTimeout(() => setImportError(null), 4000)
     return () => clearTimeout(timer)
   }, [importError])
+
+  // Keep the context menu fully inside the viewport: after it mounts, measure it
+  // and shift left/up so the bottom (Delete) is never clipped off-screen.
+  useLayoutEffect(() => {
+    if (!context) {
+      setMenuPos(null)
+      return
+    }
+    const el = menuRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const pad = 8
+    const left = Math.max(pad, Math.min(context.x, window.innerWidth - rect.width - pad))
+    const top = Math.max(pad, Math.min(context.y, window.innerHeight - rect.height - pad))
+    setMenuPos({ left, top })
+  }, [context])
+
+  // Drop collections from the selection once they no longer exist.
+  useEffect(() => {
+    setSelectedCollectionIds((prev) => {
+      if (prev.size === 0) return prev
+      const live = new Set(collections.map((c) => c.id))
+      const next = new Set([...prev].filter((id) => live.has(id)))
+      return next.size === prev.size ? prev : next
+    })
+  }, [collections])
+
+  const clearSelection = () => setSelectedCollectionIds(new Set())
+
+  const deleteSelectedCollections = () => {
+    for (const id of selectedCollectionIds) onDeleteCollection(id)
+    clearSelection()
+    setBulkDeleteOpen(false)
+  }
 
   const filtered = useMemo(() => {
     if (!query.trim()) return collections
@@ -542,6 +579,7 @@ export function CollectionTree({
       }
       case 'Delete': {
         event.preventDefault()
+        if (selectedCollectionIds.size > 0) { setBulkDeleteOpen(true); break }
         if (!current) break
         if (current.kind === 'collection') setDeleteTarget({ kind: 'collection', collection: current.data as Collection, x: 0, y: 0 })
         else if (current.kind === 'folder') setDeleteTarget({ kind: 'folder', collectionId: current.collectionId, node: current.data as FolderItem, x: 0, y: 0 })
@@ -698,6 +736,26 @@ export function CollectionTree({
         </div>
       </div>
 
+      {selectedCollectionIds.size > 0 && (
+        <div className="flex items-center gap-2 border-b border-border-1 bg-accent/5 px-2 py-1.5">
+          <span className="flex-1 text-[11px] font-medium text-text-2">
+            {selectedCollectionIds.size} collection{selectedCollectionIds.size !== 1 ? 's' : ''} selected
+          </span>
+          <button
+            onClick={() => setBulkDeleteOpen(true)}
+            className="flex items-center gap-1 rounded bg-error/15 px-2 py-1 text-[11px] font-medium text-error hover:bg-error/25 transition-colors"
+          >
+            <Trash2 size={12} /> Delete
+          </button>
+          <button
+            onClick={clearSelection}
+            className="rounded px-2 py-1 text-[11px] text-text-3 hover:bg-surface-2 hover:text-text-1 transition-colors"
+          >
+            Clear
+          </button>
+        </div>
+      )}
+
       <div className="flex-1 overflow-y-auto px-1 pb-2 outline-none" tabIndex={0} onKeyDown={handleTreeKeyDown}>
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
@@ -731,7 +789,21 @@ export function CollectionTree({
           >
             <div
               data-node-id={collection.id}
-              onClick={() => { setFocusedId(collection.id); toggle(collection.id) }}
+              onClick={(event) => {
+                if (event.ctrlKey || event.metaKey) {
+                  event.preventDefault()
+                  setFocusedId(collection.id)
+                  setSelectedCollectionIds((prev) => {
+                    const next = new Set(prev)
+                    next.has(collection.id) ? next.delete(collection.id) : next.add(collection.id)
+                    return next
+                  })
+                  return
+                }
+                if (selectedCollectionIds.size > 0) clearSelection()
+                setFocusedId(collection.id)
+                toggle(collection.id)
+              }}
               onContextMenu={(event) => {
                 event.preventDefault()
                 setContext({ kind: 'collection', collection, x: event.clientX, y: event.clientY })
@@ -739,7 +811,8 @@ export function CollectionTree({
               className={cn(
                 'group relative flex h-7 cursor-pointer items-center gap-1 rounded px-1 text-xs font-medium text-text-2 hover:bg-surface-2/70 hover:text-text-1',
                 dropTarget?.id === collection.id && dragPayload?.type === 'node' && 'ring-1 ring-accent/70 bg-accent/10',
-                focusedId === collection.id && 'ring-1 ring-inset ring-accent/50',
+                selectedCollectionIds.has(collection.id) && 'bg-accent/15 text-text-1 ring-1 ring-inset ring-accent/50',
+                focusedId === collection.id && !selectedCollectionIds.has(collection.id) && 'ring-1 ring-inset ring-accent/50',
               )}
             >
               {collection.color && <span className="absolute bottom-0.5 left-0 top-0.5 w-[2px] rounded-r" style={{ backgroundColor: collection.color }} />}
@@ -794,7 +867,7 @@ export function CollectionTree({
       </div>
 
       {context && (
-        <div ref={menuRef} className="fixed z-50 max-h-[70vh] w-52 overflow-y-auto rounded-md border border-border-1 bg-surface-1 py-1 shadow-xl" style={{ left: context.x, top: context.y }}>
+        <div ref={menuRef} className="fixed z-50 max-h-[70vh] w-52 overflow-y-auto rounded-md border border-border-1 bg-surface-1 py-1 shadow-xl" style={{ left: menuPos?.left ?? context.x, top: menuPos?.top ?? context.y, visibility: menuPos ? 'visible' : 'hidden' }}>
           {context.kind === 'collection' && (
             <>
               <MenuButton onClick={() => { setEditingId(context.collection.id); setContext(null) }}><Copy size={12} /> Rename</MenuButton>
@@ -894,6 +967,16 @@ export function CollectionTree({
           else onDeleteNode(deleteTarget.collectionId, deleteTarget.node.id)
         }}
         onCancel={() => setDeleteTarget(null)}
+      />
+
+      <ConfirmDialog
+        open={bulkDeleteOpen}
+        title={`Delete ${selectedCollectionIds.size} collection${selectedCollectionIds.size !== 1 ? 's' : ''}?`}
+        message={`Are you sure you want to delete ${selectedCollectionIds.size} selected collection${selectedCollectionIds.size !== 1 ? 's' : ''}? All nested folders and requests will be deleted. This cannot be undone.`}
+        confirmLabel="Delete all"
+        variant="danger"
+        onConfirm={deleteSelectedCollections}
+        onCancel={() => setBulkDeleteOpen(false)}
       />
     </div>
   )

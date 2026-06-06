@@ -1,0 +1,12 @@
+name: Ergast F1
+slug: ergast-f1
+description: Please read the terms and conditions of use. The API pro. The Ergast Developer API is an experimental web
+  service which provides a historical record of motor racing data for non-commercial purposes
+categories:
+  - Sport & Fitness
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: http://ergast.com/mrd/

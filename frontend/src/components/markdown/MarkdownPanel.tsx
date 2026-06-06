@@ -22,6 +22,7 @@ import { MarkdownGraphView } from '@/components/markdown/MarkdownGraphView'
 import { MarkdownOutline } from '@/components/markdown/MarkdownOutline'
 import { MarkdownPreview } from '@/components/markdown/MarkdownPreview'
 import { MarkdownToolbar } from '@/components/markdown/MarkdownToolbar'
+import { TemplatePickerModal } from '@/components/markdown/TemplatePickerModal'
 import {
   EMPTY_FOLDER_NOTE,
   MARKDOWN_UI_STATE_KEY,
@@ -77,6 +78,7 @@ export function MarkdownPanel() {
   const [showOrphans, setShowOrphans] = useState(true)
   const [agentGraphPath, setAgentGraphPath] = useState('')
   const [graphOpen, setGraphOpen] = useState(false)
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false)
 
   const editorRef = useRef<HTMLTextAreaElement>(null)
   const previewRef = useRef<HTMLDivElement>(null)
@@ -458,6 +460,28 @@ export function MarkdownPanel() {
     if (resolved) void openFile(resolved)
   }, [activeFile, lookup, openFile])
 
+  const handleCreateFromTemplate = useCallback(async (templateContent: string, filename: string) => {
+    setShowTemplatePicker(false)
+    setError('')
+    try {
+      let folderPath = root
+      if (!folderPath) {
+        folderPath = await selectMarkdownFolder()
+        if (!folderPath) return
+        setRoot(folderPath)
+        window.localStorage.setItem(RECENT_MARKDOWN_ROOT_KEY, folderPath)
+      }
+      const created = await createMarkdownFile(folderPath, filename, templateContent)
+      await loadFolderIndex(folderPath)
+      setActiveFile(created)
+      setContent(templateContent)
+      setDirty(false)
+      setStatus(`Created ${created.relPath}`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not create file from template')
+    }
+  }, [loadFolderIndex, root])
+
   const insertAtCursor = (wrapper: (s: string) => string) => {
     const ta = editorRef.current
     if (!ta) return
@@ -619,6 +643,7 @@ export function MarkdownPanel() {
         onInsert={insertAtCursor}
         onModeChange={setMode}
         onOpenGraph={() => setGraphOpen(true)}
+        onOpenTemplates={() => setShowTemplatePicker(true)}
       />
 
       {(isCreating || error || !hasMarkdownBackend()) && (
@@ -783,6 +808,13 @@ export function MarkdownPanel() {
           <BacklinksPanel backlinks={backlinks} files={files} onOpenFile={(file) => void openFile(file)} />
         </aside>
       </div>
+
+      {showTemplatePicker && (
+        <TemplatePickerModal
+          onSelect={(templateContent, filename) => void handleCreateFromTemplate(templateContent, filename)}
+          onClose={() => setShowTemplatePicker(false)}
+        />
+      )}
     </div>
   )
 }

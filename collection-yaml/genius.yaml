@@ -1,0 +1,14 @@
+name: Genius
+slug: genius
+description: Allows users to find details about Genius artists and songs. Use our API and help build the world's
+  greatest public knowledge project since Wikipedia
+categories:
+  - Music & Audio
+  - Open Source
+  - Wiki
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://docs.genius.com/#/getting-started-h1

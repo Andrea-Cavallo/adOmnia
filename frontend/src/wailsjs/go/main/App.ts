@@ -30,6 +30,14 @@ export function ExecuteHTTP(reqJSON: string): Promise<string> {
   return (window['go']['main']['App'] as unknown as Record<string, (a: string) => Promise<string>>)['ExecuteHTTP'](reqJSON)
 }
 
+export function CompareFolders(left: string, right: string, maxFileMB: number): Promise<string> {
+  return (window['go']['main']['App'] as unknown as Record<string, (a: string, b: string, c: number) => Promise<string>>)['CompareFolders'](left, right, maxFileMB)
+}
+
+export function ReadFolderDiffFile(scanID: string, path: string, maxBytes: number): Promise<string> {
+  return (window['go']['main']['App'] as unknown as Record<string, (a: string, b: string, c: number) => Promise<string>>)['ReadFolderDiffFile'](scanID, path, maxBytes)
+}
+
 export function SelectFolder(title: string): Promise<string> {
   return window['go']['main']['App']['SelectFolder'](title)
 }

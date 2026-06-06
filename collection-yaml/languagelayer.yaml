@@ -1,0 +1,12 @@
+name: languagelayer
+slug: languagelayer
+description: Free, powerful language detection JSON API for 173 languages, supporting single and batch requests, PHP,
+  JavaScript, Python, Ruby, Java, and more.
+categories:
+  - Text Analysis & Tools
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://languagelayer.com

@@ -8,7 +8,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { X, ChevronUp, ChevronDown, EyeOff, Eye, GitCompare } from 'lucide-react'
+import { X, ChevronUp, ChevronDown, EyeOff, Eye, GitCompare, Copy } from 'lucide-react'
 import { useTabsStore } from '@/stores/tabs'
 import { useCollectionsStore } from '@/stores/collections'
 import { cn } from '@/lib/utils'
@@ -95,6 +95,126 @@ export function collapseDiff(entries: DiffEntry[]): Array<DiffEntry | { kind: 'e
   return result
 }
 
+// ─── Word-level diff ──────────────────────────────────────────────────────────
+
+export type WordToken =
+  | { kind: 'same'; text: string }
+  | { kind: 'removed'; text: string }
+  | { kind: 'added'; text: string }
+
+export function computeWordDiff(a: string, b: string, side: 'left' | 'right'): WordToken[] {
+  const ac = [...a]
+  const bc = [...b]
+  const n = ac.length
+  const m = bc.length
+
+  if (n * m > 200_000) {
+    return side === 'left'
+      ? [{ kind: 'removed', text: a }]
+      : [{ kind: 'added', text: b }]
+  }
+
+  const dp: number[][] = Array.from({ length: n + 1 }, () => new Array<number>(m + 1).fill(0))
+  for (let i = 1; i <= n; i++) {
+    for (let j = 1; j <= m; j++) {
+      dp[i][j] = ac[i - 1] === bc[j - 1]
+        ? dp[i - 1][j - 1] + 1
+        : Math.max(dp[i - 1][j], dp[i][j - 1])
+    }
+  }
+
+  const leftTokens: WordToken[] = []
+  const rightTokens: WordToken[] = []
+  let i = n, j = m
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && ac[i - 1] === bc[j - 1]) {
+      leftTokens.unshift({ kind: 'same', text: ac[i - 1] })
+      rightTokens.unshift({ kind: 'same', text: bc[j - 1] })
+      i--; j--
+    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+      rightTokens.unshift({ kind: 'added', text: bc[j - 1] })
+      j--
+    } else {
+      leftTokens.unshift({ kind: 'removed', text: ac[i - 1] })
+      i--
+    }
+  }
+  return side === 'left' ? leftTokens : rightTokens
+}
+
+function InlineTokens({ tokens }: { tokens: WordToken[] }) {
+  return (
+    <>
+      {tokens.map((tok, i) => {
+        if (tok.kind === 'removed') {
+          return <span key={i} className="bg-error/40 rounded-[2px]">{tok.text}</span>
+        }
+        if (tok.kind === 'added') {
+          return <span key={i} className="bg-success/40 rounded-[2px]">{tok.text}</span>
+        }
+        return <span key={i}>{tok.text}</span>
+      })}
+    </>
+  )
+}
+
+// ─── Unified view ─────────────────────────────────────────────────────────────
+
+interface DiffUnifiedViewProps {
+  displayEntries: Array<DiffEntry | { kind: 'ellipsis'; count: number }>
+  containerRef: React.RefObject<HTMLDivElement>
+}
+
+function DiffUnifiedView({ displayEntries, containerRef }: DiffUnifiedViewProps) {
+  return (
+    <div ref={containerRef} className="flex-1 overflow-auto font-mono text-[11px] leading-5">
+      {displayEntries.map((entry, idx) => {
+        if (entry.kind === 'ellipsis') {
+          return (
+            <div key={idx} className="bg-surface-1 border-y border-border-1/40 px-3 py-0.5 text-[9px] text-text-4">
+              … {entry.count} unchanged line{entry.count !== 1 ? 's' : ''} …
+            </div>
+          )
+        }
+        const isRemoved = entry.kind === 'removed'
+        const isAdded = entry.kind === 'added'
+        const lineNum = entry.kind === 'context'
+          ? `${entry.leftIdx}`
+          : isRemoved
+          ? `${entry.leftIdx}`
+          : `${entry.rightIdx}`
+
+        return (
+          <div
+            key={idx}
+            data-diff-row
+            className={cn(
+              'flex items-start',
+              isRemoved ? 'bg-error/10' : isAdded ? 'bg-success/10' : '',
+            )}
+          >
+            <span className="w-10 shrink-0 text-right pr-2 py-0.5 text-text-4 select-none border-r border-border-1/30 text-[9px]">
+              {lineNum}
+            </span>
+            <span className={cn(
+              'w-5 shrink-0 text-center py-0.5 select-none text-[10px]',
+              isRemoved ? 'text-error' : isAdded ? 'text-success' : 'text-text-4',
+            )}>
+              {isRemoved ? '−' : isAdded ? '+' : ' '}
+            </span>
+            <span className={cn(
+              'flex-1 px-2 py-0.5 whitespace-pre-wrap break-all',
+              isRemoved ? 'text-error' : isAdded ? 'text-success' : 'text-text-2',
+            )}>
+              {entry.text}
+            </span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 // ─── DiffModal ────────────────────────────────────────────────────────────────
 
 interface DiffModalProps {
@@ -108,6 +228,7 @@ interface DiffModalProps {
 export function DiffModal({ leftLabel, rightLabel, leftBody, rightBody, onClose }: DiffModalProps) {
   const [diffOnly, setDiffOnly] = useState(true)
   const [diffPos, setDiffPos] = useState(0)
+  const [viewMode, setViewMode] = useState<'side-by-side' | 'unified'>('side-by-side')
   const containerRef = useRef<HTMLDivElement>(null)
 
   // Pretty-print JSON if possible
@@ -139,6 +260,14 @@ export function DiffModal({ leftLabel, rightLabel, leftBody, rightBody, onClose 
     }, []),
     [displayEntries],
   )
+
+  const copyLeft = useCallback(() => {
+    navigator.clipboard.writeText(leftPretty).catch(() => undefined)
+  }, [leftPretty])
+
+  const copyRight = useCallback(() => {
+    navigator.clipboard.writeText(rightPretty).catch(() => undefined)
+  }, [rightPretty])
 
   const scrollToDiff = useCallback((pos: number) => {
     if (!containerRef.current || diffPositions.length === 0) return
@@ -185,6 +314,24 @@ export function DiffModal({ leftLabel, rightLabel, leftBody, rightBody, onClose 
 
           <span className="w-px h-4 bg-border-2 mx-1" />
 
+          {/* Side-by-side / Unified toggle */}
+          <div className="flex items-center bg-surface-2 rounded p-0.5 text-[10px]">
+            <button
+              onClick={() => setViewMode('side-by-side')}
+              className={cn('px-2 py-0.5 rounded transition-colors',
+                viewMode === 'side-by-side' ? 'bg-surface-3 text-text-1' : 'text-text-4 hover:text-text-2')}
+            >
+              Side
+            </button>
+            <button
+              onClick={() => setViewMode('unified')}
+              className={cn('px-2 py-0.5 rounded transition-colors',
+                viewMode === 'unified' ? 'bg-surface-3 text-text-1' : 'text-text-4 hover:text-text-2')}
+            >
+              Unified
+            </button>
+          </div>
+
           {/* Diff-only toggle */}
           <button
             onClick={() => setDiffOnly((v) => !v)}
@@ -227,84 +374,105 @@ export function DiffModal({ leftLabel, rightLabel, leftBody, rightBody, onClose 
 
         {/* Column labels */}
         <div className="grid grid-cols-2 border-b border-border-1 bg-surface-1 flex-shrink-0">
-          <div className="px-3 py-1.5 text-[10px] font-medium text-text-3 truncate border-r border-border-1">
-            ← {leftLabel}
+          <div className="flex items-center justify-between px-3 py-1.5 border-r border-border-1">
+            <span className="text-[10px] font-medium text-text-3 truncate">← {leftLabel}</span>
+            <button
+              onClick={copyLeft}
+              className="p-0.5 rounded text-text-4 hover:text-text-1 hover:bg-surface-2 transition-colors flex-shrink-0 ml-2"
+              title="Copy left side"
+            >
+              <Copy size={11} />
+            </button>
           </div>
-          <div className="px-3 py-1.5 text-[10px] font-medium text-text-3 truncate">
-            {rightLabel} →
+          <div className="flex items-center justify-between px-3 py-1.5">
+            <span className="text-[10px] font-medium text-text-3 truncate">{rightLabel} →</span>
+            <button
+              onClick={copyRight}
+              className="p-0.5 rounded text-text-4 hover:text-text-1 hover:bg-surface-2 transition-colors flex-shrink-0 ml-2"
+              title="Copy right side"
+            >
+              <Copy size={11} />
+            </button>
           </div>
         </div>
 
         {/* Diff body */}
-        <div ref={containerRef} className="flex-1 overflow-auto font-mono text-[11px] leading-5">
-          {identical ? (
-            <div className="flex items-center justify-center h-full text-text-3 text-xs gap-2">
-              <span className="text-success text-lg">✓</span> Responses are identical
-            </div>
-          ) : (
-            displayEntries.map((entry, idx) => {
-              if (entry.kind === 'ellipsis') {
+        {viewMode === 'unified' ? (
+          <DiffUnifiedView displayEntries={displayEntries} containerRef={containerRef} />
+        ) : (
+          <div ref={containerRef} className="flex-1 overflow-auto font-mono text-[11px] leading-5">
+            {identical ? (
+              <div className="flex items-center justify-center h-full text-text-3 text-xs gap-2">
+                <span className="text-success text-lg">✓</span> Responses are identical
+              </div>
+            ) : (
+              displayEntries.map((entry, idx) => {
+                if (entry.kind === 'ellipsis') {
+                  return (
+                    <div key={idx} className="grid grid-cols-2 bg-surface-1 border-y border-border-1/40">
+                      <div className="px-3 py-0.5 text-[9px] text-text-4 col-span-2">
+                        … {entry.count} unchanged line{entry.count !== 1 ? 's' : ''} …
+                      </div>
+                    </div>
+                  )
+                }
+
+                const isRemoved = entry.kind === 'removed'
+                const isAdded = entry.kind === 'added'
+
+                const leftNum = entry.kind === 'context' ? entry.leftIdx : (isRemoved ? entry.leftIdx : null)
+                const rightNum = entry.kind === 'context' ? entry.rightIdx : (isAdded ? entry.rightIdx : null)
+                const leftText = entry.kind !== 'added' ? entry.text : ''
+                const rightText = entry.kind !== 'removed' ? entry.text : ''
+
+                const leftTokens = isRemoved ? computeWordDiff(entry.text, '', 'left') : null
+                const rightTokens = isAdded ? computeWordDiff('', entry.text, 'right') : null
+
                 return (
-                  <div key={idx} className="grid grid-cols-2 bg-surface-1 border-y border-border-1/40">
-                    <div className="px-3 py-0.5 text-[9px] text-text-4 col-span-2">
-                      … {entry.count} unchanged line{entry.count !== 1 ? 's' : ''} …
+                  <div key={idx} data-diff-row className="grid grid-cols-2">
+                    {/* Left cell */}
+                    <div className={cn(
+                      'flex items-start border-r border-border-1/40',
+                      isRemoved ? 'bg-error/10' : 'bg-transparent',
+                    )}>
+                      <span className="w-10 shrink-0 text-right pr-2 py-0.5 text-text-4 select-none border-r border-border-1/30 text-[9px]">
+                        {leftNum ?? ''}
+                      </span>
+                      <span className={cn(
+                        'flex-1 px-2 py-0.5 whitespace-pre-wrap break-all',
+                        isRemoved ? 'text-error' : 'text-text-2',
+                      )}>
+                        {isRemoved && <span className="mr-1 text-error/60 select-none">−</span>}
+                        {isRemoved && leftTokens
+                          ? <InlineTokens tokens={leftTokens} />
+                          : leftText}
+                      </span>
+                    </div>
+
+                    {/* Right cell */}
+                    <div className={cn(
+                      'flex items-start',
+                      isAdded ? 'bg-success/10' : 'bg-transparent',
+                    )}>
+                      <span className="w-10 shrink-0 text-right pr-2 py-0.5 text-text-4 select-none border-r border-border-1/30 text-[9px]">
+                        {rightNum ?? ''}
+                      </span>
+                      <span className={cn(
+                        'flex-1 px-2 py-0.5 whitespace-pre-wrap break-all',
+                        isAdded ? 'text-success' : 'text-text-2',
+                      )}>
+                        {isAdded && <span className="mr-1 text-success/60 select-none">+</span>}
+                        {isAdded && rightTokens
+                          ? <InlineTokens tokens={rightTokens} />
+                          : rightText}
+                      </span>
                     </div>
                   </div>
                 )
-              }
-
-              const isRemoved = entry.kind === 'removed'
-              const isAdded = entry.kind === 'added'
-
-              const leftNum = entry.kind === 'context' ? entry.leftIdx : (isRemoved ? entry.leftIdx : null)
-              const rightNum = entry.kind === 'context' ? entry.rightIdx : (isAdded ? entry.rightIdx : null)
-              const leftText = entry.kind !== 'added' ? entry.text : ''
-              const rightText = entry.kind !== 'removed' ? entry.text : ''
-
-              return (
-                <div
-                  key={idx}
-                  data-diff-row
-                  className="grid grid-cols-2"
-                >
-                  {/* Left cell */}
-                  <div className={cn(
-                    'flex items-start border-r border-border-1/40',
-                    isRemoved ? 'bg-error/10' : 'bg-transparent',
-                  )}>
-                    <span className="w-10 shrink-0 text-right pr-2 py-0.5 text-text-4 select-none border-r border-border-1/30 text-[9px]">
-                      {leftNum ?? ''}
-                    </span>
-                    <span className={cn(
-                      'flex-1 px-2 py-0.5 whitespace-pre-wrap break-all',
-                      isRemoved ? 'text-error' : 'text-text-2',
-                    )}>
-                      {isRemoved && <span className="mr-1 text-error/60 select-none">−</span>}
-                      {leftText}
-                    </span>
-                  </div>
-
-                  {/* Right cell */}
-                  <div className={cn(
-                    'flex items-start',
-                    isAdded ? 'bg-success/10' : 'bg-transparent',
-                  )}>
-                    <span className="w-10 shrink-0 text-right pr-2 py-0.5 text-text-4 select-none border-r border-border-1/30 text-[9px]">
-                      {rightNum ?? ''}
-                    </span>
-                    <span className={cn(
-                      'flex-1 px-2 py-0.5 whitespace-pre-wrap break-all',
-                      isAdded ? 'text-success' : 'text-text-2',
-                    )}>
-                      {isAdded && <span className="mr-1 text-success/60 select-none">+</span>}
-                      {rightText}
-                    </span>
-                  </div>
-                </div>
-              )
-            })
-          )}
-        </div>
+              })
+            )}
+          </div>
+        )}
 
         {/* Footer hint */}
         {!identical && (

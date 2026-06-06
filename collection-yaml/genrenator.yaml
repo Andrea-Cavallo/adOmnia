@@ -1,0 +1,11 @@
+name: Genrenator
+slug: genrenator
+description: Binary Jazz genrenator
+categories:
+  - Music & Audio
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://binaryjazz.us/genrenator-api/

@@ -1,0 +1,13 @@
+name: Clash of Clans
+slug: clash-of-clans
+description: Access Clan Search, Global and Local Leaderboards, Clan and Player Profiles and Leagues. Channel Your Inner
+  Builder with the Clash of Clans API
+categories:
+  - Entertainment
+  - Games
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://developer.clashofclans.com

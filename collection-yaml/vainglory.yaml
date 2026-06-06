@@ -1,0 +1,10 @@
+name: Vainglory
+slug: vainglory
+description: Vainglory Players, Matches and Telemetry
+categories:
+  - Games
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://developer.vainglorygame.com

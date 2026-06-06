@@ -53,13 +53,12 @@ const ApiEditorPanel       = React.lazy(() => import('@/components/apis/ApiEdito
 const VisualTestPanel      = React.lazy(() => import('@/components/testdata/VisualTestPanel').then(m => ({ default: m.VisualTestPanel })))
 const SchedulerPanel       = React.lazy(() => import('@/components/runner/SchedulerPanel').then(m => ({ default: m.SchedulerPanel })))
 const ThemePanel           = React.lazy(() => import('@/components/themes/ThemePanel').then(m => ({ default: m.ThemePanel })))
-const TemplateMarketplace  = React.lazy(() => import('@/components/templates/TemplateMarketplace').then(m => ({ default: m.TemplateMarketplace })))
+const TemplatesWorkspace   = React.lazy(() => import('@/components/templates/TemplatesWorkspace').then(m => ({ default: m.TemplatesWorkspace })))
 const PluginManager        = React.lazy(() => import('@/components/plugins/PluginManager').then(m => ({ default: m.PluginManager })))
 const SecretScannerPanel   = React.lazy(() => import('@/components/secretscanner').then(m => ({ default: m.SecretScannerPanel })))
 const SettingsPanel        = React.lazy(() => import('@/components/settings/SettingsPanel').then(m => ({ default: m.SettingsPanel })))
 const GitSyncPanel         = React.lazy(() => import('@/components/workspace/GitSyncPanel').then(m => ({ default: m.GitSyncPanel })))
 const McpPanel             = React.lazy(() => import('@/components/mcp/McpPanel').then(m => ({ default: m.McpPanel })))
-const InstallPanel         = React.lazy(() => import('@/components/apis/InstallPanel').then(m => ({ default: m.InstallPanel })))
 
 function PanelSkeleton() {
   return (
@@ -684,9 +683,8 @@ function panelFor(activeRail: RailItem): PanelDef {
     case 'visualtests': return { component: <VisualTestPanel />,       titleKey: 'Visual Tests', overflow: true }
     case 'scheduler':   return { component: <SchedulerPanel />,         titleKey: 'Scheduled Tasks', overflow: true }
     case 'themes':      return { component: <ThemePanel />,           titleKey: 'themes' }
-    case 'templates':   return { component: <TemplateMarketplace />,  titleKey: 'templates' }
+    case 'templates':   return { component: <TemplatesWorkspace />,   titleKey: 'templates' }
     case 'plugins':     return { component: <PluginManager />,        titleKey: 'plugins' }
-    case 'apis':        return { component: <InstallPanel />,         titleKey: 'API Catalog' }
     case 'secretscanner': return { component: <SecretScannerPanel />,  titleKey: 'secretscanner', overflow: true }
     case 'gitsync':     return { component: <GitSyncPanel />,         titleKey: 'Git Sync', overflow: true }
     case 'mcp':         return { component: <McpPanel />,             titleKey: 'MCP Client', overflow: true }

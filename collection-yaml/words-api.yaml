@@ -1,0 +1,12 @@
+name: Words API
+slug: words-api
+description: An API for the english language. Definitions, related words, rhymes, and more. Use it to find definitions
+  for more than 150,000 words
+categories:
+  - Content & Dictionaries
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://www.wordsapi.com/

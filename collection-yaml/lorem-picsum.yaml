@@ -1,0 +1,13 @@
+name: Lorem Picsum
+slug: lorem-picsum
+description: Lorem Ipsum, but for photos.
+categories:
+  - Art & Design
+  - Random
+  - Images & Photography
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://picsum.photos/

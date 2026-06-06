@@ -1,0 +1,11 @@
+name: Scoop.it
+slug: scoop-it
+description: Enables professionals and businesses to research and publish content through its content curation tool
+categories:
+  - Marketing & SEO
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: http://www.scoop.it/dev

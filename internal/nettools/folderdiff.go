@@ -116,60 +116,13 @@ func folderDiffHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
-	if req.MaxFileMB <= 0 {
-		req.MaxFileMB = 20
-	}
-	leftRoot, err := filepath.Abs(strings.TrimSpace(req.Left))
-	if err != nil || leftRoot == "" {
-		http.Error(w, "invalid left path", http.StatusBadRequest)
-		return
-	}
-	rightRoot, err := filepath.Abs(strings.TrimSpace(req.Right))
-	if err != nil || rightRoot == "" {
-		http.Error(w, "invalid right path", http.StatusBadRequest)
-		return
-	}
-	if err := ensureDir(leftRoot); err != nil {
-		http.Error(w, "left path: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-	if err := ensureDir(rightRoot); err != nil {
-		http.Error(w, "right path: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	left, err := scanFolder(leftRoot, req.MaxFileMB)
+	result, err := ScanFolderDiff(req.Left, req.Right, req.MaxFileMB)
 	if err != nil {
-		http.Error(w, "scan left failed: "+err.Error(), http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
-	}
-	right, err := scanFolder(rightRoot, req.MaxFileMB)
-	if err != nil {
-		http.Error(w, "scan right failed: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-	tree, flat := buildFolderDiff(left, right)
-	counts := map[string]int{"same": 0, "modified": 0, "left-only": 0, "right-only": 0, "type-change": 0}
-	for _, item := range flat {
-		if !item.IsDir {
-			counts[item.Status]++
-		}
 	}
 	w.Header().Set("Content-Type", "application/json")
-	scanID := generateScanID()
-	storeFolderDiffSession(scanID, folderDiffSession{
-		leftRoot:  leftRoot,
-		rightRoot: rightRoot,
-		expiresAt: time.Now().Add(folderDiffExpiry),
-	})
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"scanId":    scanID,
-		"leftRoot":  leftRoot,
-		"rightRoot": rightRoot,
-		"tree":      tree,
-		"flat":      flat,
-		"counts":    counts,
-	})
+	json.NewEncoder(w).Encode(result)
 }
 
 func folderDiffFileHandler(w http.ResponseWriter, r *http.Request) {
@@ -186,51 +139,107 @@ func folderDiffFileHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
-	if req.ScanID == "" {
-		http.Error(w, "scanId required", http.StatusBadRequest)
+	result, err := ReadFolderDiffFile(req.ScanID, req.Path, req.MaxBytes)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if req.MaxBytes <= 0 {
-		req.MaxBytes = 512 * 1024
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}
+
+func ScanFolderDiff(leftPath, rightPath string, maxFileMB int64) (map[string]interface{}, error) {
+	if maxFileMB <= 0 {
+		maxFileMB = 20
+	}
+	leftRoot, err := filepath.Abs(strings.TrimSpace(leftPath))
+	if err != nil || leftRoot == "" {
+		return nil, fmt.Errorf("invalid left path")
+	}
+	rightRoot, err := filepath.Abs(strings.TrimSpace(rightPath))
+	if err != nil || rightRoot == "" {
+		return nil, fmt.Errorf("invalid right path")
+	}
+	if err := ensureDir(leftRoot); err != nil {
+		return nil, fmt.Errorf("left path: %w", err)
+	}
+	if err := ensureDir(rightRoot); err != nil {
+		return nil, fmt.Errorf("right path: %w", err)
 	}
 
-	session, ok := getFolderDiffSession(req.ScanID)
+	left, err := scanFolder(leftRoot, maxFileMB)
+	if err != nil {
+		return nil, fmt.Errorf("scan left failed: %w", err)
+	}
+	right, err := scanFolder(rightRoot, maxFileMB)
+	if err != nil {
+		return nil, fmt.Errorf("scan right failed: %w", err)
+	}
+	tree, flat := buildFolderDiff(left, right)
+	counts := map[string]int{"same": 0, "modified": 0, "left-only": 0, "right-only": 0, "type-change": 0}
+	for _, item := range flat {
+		if !item.IsDir {
+			counts[item.Status]++
+		}
+	}
+	scanID := generateScanID()
+	storeFolderDiffSession(scanID, folderDiffSession{
+		leftRoot:  leftRoot,
+		rightRoot: rightRoot,
+		expiresAt: time.Now().Add(folderDiffExpiry),
+	})
+	return map[string]interface{}{
+		"scanId":    scanID,
+		"leftRoot":  leftRoot,
+		"rightRoot": rightRoot,
+		"tree":      tree,
+		"flat":      flat,
+		"counts":    counts,
+	}, nil
+}
+
+func ReadFolderDiffFile(scanID, relativePath string, maxBytes int64) (map[string]interface{}, error) {
+	if scanID == "" {
+		return nil, fmt.Errorf("scanId required")
+	}
+	if maxBytes <= 0 {
+		maxBytes = 512 * 1024
+	}
+
+	session, ok := getFolderDiffSession(scanID)
 	if !ok {
-		http.Error(w, "invalid or expired scan", http.StatusBadRequest)
-		return
+		return nil, fmt.Errorf("invalid or expired scan")
 	}
 
 	leftRoot, _ := filepath.Abs(session.leftRoot)
 	rightRoot, _ := filepath.Abs(session.rightRoot)
-	rel := filepath.Clean(req.Path)
+	rel := filepath.Clean(relativePath)
 	if rel == "." || strings.HasPrefix(rel, "..") || filepath.IsAbs(rel) {
-		http.Error(w, "invalid relative path", http.StatusBadRequest)
-		return
+		return nil, fmt.Errorf("invalid relative path")
 	}
-	leftPath := filepath.Join(leftRoot, rel)
-	rightPath := filepath.Join(rightRoot, rel)
+	leftFilePath := filepath.Join(leftRoot, rel)
+	rightFilePath := filepath.Join(rightRoot, rel)
 
-	if !strings.HasPrefix(filepath.Clean(leftPath)+string(os.PathSeparator), leftRoot+string(os.PathSeparator)) &&
-		leftPath != leftRoot {
-		http.Error(w, "path traversal denied", http.StatusForbidden)
-		return
+	if !strings.HasPrefix(filepath.Clean(leftFilePath)+string(os.PathSeparator), leftRoot+string(os.PathSeparator)) &&
+		leftFilePath != leftRoot {
+		return nil, fmt.Errorf("path traversal denied")
 	}
-	if !strings.HasPrefix(filepath.Clean(rightPath)+string(os.PathSeparator), rightRoot+string(os.PathSeparator)) &&
-		rightPath != rightRoot {
-		http.Error(w, "path traversal denied", http.StatusForbidden)
-		return
+	if !strings.HasPrefix(filepath.Clean(rightFilePath)+string(os.PathSeparator), rightRoot+string(os.PathSeparator)) &&
+		rightFilePath != rightRoot {
+		return nil, fmt.Errorf("path traversal denied")
 	}
 
-	leftText, leftErr := readSmallText(leftPath, req.MaxBytes)
-	rightText, rightErr := readSmallText(rightPath, req.MaxBytes)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	leftText, leftState, leftErr := readPreviewText(leftFilePath, maxBytes)
+	rightText, rightState, rightErr := readPreviewText(rightFilePath, maxBytes)
+	return map[string]interface{}{
 		"path":       rel,
 		"left":       leftText,
 		"right":      rightText,
+		"leftState":  leftState,
+		"rightState": rightState,
 		"leftError":  errString(leftErr),
 		"rightError": errString(rightErr),
-	})
+	}, nil
 }
 
 func ensureDir(path string) error {
@@ -420,25 +429,28 @@ func propagateDirStatus(nodes []folderDiffFile) bool {
 	return changed
 }
 
-func readSmallText(path string, maxBytes int64) (string, error) {
+func readPreviewText(path string, maxBytes int64) (string, string, error) {
 	info, err := os.Stat(path)
 	if err != nil {
-		return "", err
+		if os.IsNotExist(err) {
+			return "", "missing", nil
+		}
+		return "", "error", fmt.Errorf("cannot read file metadata")
 	}
 	if info.IsDir() {
-		return "", fmt.Errorf("directory")
+		return "", "directory", fmt.Errorf("directory")
 	}
 	if info.Size() > maxBytes {
-		return "", fmt.Errorf("file too large for preview")
+		return "", "too-large", fmt.Errorf("file too large for preview")
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return "", err
+		return "", "error", fmt.Errorf("cannot read file")
 	}
 	if bytes.IndexByte(data[:min(len(data), 4096)], 0) >= 0 {
-		return "", fmt.Errorf("binary file")
+		return "", "binary", fmt.Errorf("binary file")
 	}
-	return string(data), nil
+	return string(data), "ok", nil
 }
 
 func errString(err error) string {

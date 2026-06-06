@@ -732,6 +732,28 @@ export namespace main {
 	
 	    }
 	}
+	export class JobRun {
+	    jobId: string;
+	    startedAt: string;
+	    durationMs: number;
+	    statusCode: number;
+	    error?: string;
+	    success: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new JobRun(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.jobId = source["jobId"];
+	        this.startedAt = source["startedAt"];
+	        this.durationMs = source["durationMs"];
+	        this.statusCode = source["statusCode"];
+	        this.error = source["error"];
+	        this.success = source["success"];
+	    }
+	}
 	export class LogFileEntry {
 	    name: string;
 	    size: number;
@@ -784,6 +806,34 @@ export namespace main {
 	        this.root = source["root"];
 	        this.name = source["name"];
 	        this.files = source["files"];
+	    }
+	}
+	export class ScheduledJob {
+	    id: string;
+	    name: string;
+	    cronExpr: string;
+	    requestId: string;
+	    collectionId?: string;
+	    enabled: boolean;
+	    createdAt: string;
+	    lastRunAt?: string;
+	    nextRunAt?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ScheduledJob(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.cronExpr = source["cronExpr"];
+	        this.requestId = source["requestId"];
+	        this.collectionId = source["collectionId"];
+	        this.enabled = source["enabled"];
+	        this.createdAt = source["createdAt"];
+	        this.lastRunAt = source["lastRunAt"];
+	        this.nextRunAt = source["nextRunAt"];
 	    }
 	}
 	export class StorageEntry {

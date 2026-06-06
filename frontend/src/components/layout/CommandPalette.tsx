@@ -212,7 +212,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         <footer className="flex items-center gap-4 border-t border-border-1 px-4 py-2 text-[10px] text-text-4">
           <span><kbd className="text-text-3">Up/Down</kbd> select</span>
           <span><kbd className="text-text-3">Enter</kbd> open</span>
-          <span className="ml-auto">Ctrl/Cmd + K</span>
+          <span className="ml-auto">Ctrl/Cmd + K or P</span>
         </footer>
       </section>
     </div>

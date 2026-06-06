@@ -6,6 +6,10 @@ export function ClearDevLogs() {
   return window['go']['main']['App']['ClearDevLogs']();
 }
 
+export function CompareFolders(arg1, arg2, arg3) {
+  return window['go']['main']['App']['CompareFolders'](arg1, arg2, arg3);
+}
+
 export function CreateMarkdownFile(arg1, arg2, arg3) {
   return window['go']['main']['App']['CreateMarkdownFile'](arg1, arg2, arg3);
 }
@@ -60,6 +64,10 @@ export function LoadSettings() {
 
 export function OpenDevLogsFolder() {
   return window['go']['main']['App']['OpenDevLogsFolder']();
+}
+
+export function ReadFolderDiffFile(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ReadFolderDiffFile'](arg1, arg2, arg3);
 }
 
 export function ReadLogFile(arg1) {

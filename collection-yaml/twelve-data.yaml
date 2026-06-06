@@ -1,0 +1,12 @@
+name: Twelve Data
+slug: twelve-data
+description: Stock market data (real-time & historical). Explore real time stock market data, forex, and cryptocurrency
+  exchanges, available in JSON & CSV formats. Complete documentation of Twelve Data API
+categories:
+  - Blockchain & Cryptocurrencies
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://twelvedata.com/docs/

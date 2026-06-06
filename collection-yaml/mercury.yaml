@@ -1,0 +1,12 @@
+name: Mercury
+slug: mercury
+description: Mercury Web Parser turns web articles into structured content reliably and easily. Make semantic sense out
+  of any web article
+categories:
+  - Scrapers & Data Mining
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://mercury.postlight.com/web-parser/

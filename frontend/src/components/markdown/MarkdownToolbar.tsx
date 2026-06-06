@@ -1,4 +1,4 @@
-import { Bold, Code, Columns, Eye, FilePlus, FolderOpen, GitBranch, Heading, Image, Italic, Link, Save, Upload } from 'lucide-react'
+import { Bold, Code, Columns, Eye, FilePlus, FolderOpen, GitBranch, Heading, Image, Italic, LayoutTemplate, Link, Save, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { MarkdownFileEntry } from '@/lib/markdown-api'
 import type { MarkdownViewMode } from '@/lib/markdownDoc'
@@ -16,6 +16,7 @@ interface MarkdownToolbarProps {
   onInsert: (wrapper: (selected: string) => string) => void
   onModeChange: (mode: MarkdownViewMode) => void
   onOpenGraph: () => void
+  onOpenTemplates: () => void
 }
 
 export function MarkdownToolbar({
@@ -31,12 +32,14 @@ export function MarkdownToolbar({
   onInsert,
   onModeChange,
   onOpenGraph,
+  onOpenTemplates,
 }: MarkdownToolbarProps) {
   return (
     <div className="flex items-center gap-1 overflow-x-auto px-3 py-2 border-b border-border-1 bg-surface-1 flex-shrink-0 no-scrollbar">
       <button onClick={onOpenFolder} className="h-7 px-2 flex items-center gap-1.5 text-[11px] text-text-2 hover:text-text-1 rounded hover:bg-surface-2 transition-colors" title="Open Markdown folder"><FolderOpen size={13} /> Open</button>
       <button onClick={onImportFolder} className="h-7 px-2 flex items-center gap-1.5 text-[11px] text-text-2 hover:text-text-1 rounded hover:bg-surface-2 transition-colors" title="Copy a Markdown folder into adOmnia workspace"><Upload size={13} /> Import</button>
       <button onClick={onToggleCreate} className="h-7 px-2 flex items-center gap-1.5 text-[11px] text-text-2 hover:text-text-1 rounded hover:bg-surface-2 transition-colors" title="New Markdown note"><FilePlus size={13} /> New</button>
+      <button onClick={onOpenTemplates} className="h-7 px-2 flex items-center gap-1.5 text-[11px] text-text-2 hover:text-text-1 rounded hover:bg-surface-2 transition-colors" title="New from template"><LayoutTemplate size={13} /> Template</button>
       <button onClick={onSave} disabled={!activeFile || !dirty} className={cn('h-7 px-2 flex items-center gap-1.5 text-[11px] rounded transition-colors', activeFile && dirty ? 'text-accent hover:bg-surface-2' : 'text-text-4 opacity-60')} title="Save Markdown note"><Save size={13} /> Save</button>
       <button onClick={onSaveAs} className="h-7 px-2 flex items-center gap-1.5 text-[11px] text-text-2 hover:text-text-1 rounded hover:bg-surface-2 transition-colors" title="Save Markdown note as"><Save size={13} /> As</button>
 

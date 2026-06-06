@@ -60,14 +60,14 @@ export function EndpointFormEditor({ endpoint, onSave }: Props) {
     update({ responses: form.responses.map((r, idx) => (idx === i ? { ...r, ...patch } : r)) })
 
   return (
-    <div className="flex flex-col h-full overflow-hidden flex-1">
+    <div className="flex h-full flex-1 flex-col overflow-hidden bg-surface-0">
       {/* Method + Path */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-border-1 bg-surface-1">
+      <div className="flex items-center gap-2 border-b border-border-1 bg-surface-1 px-4 py-3">
         <select
           value={form.method}
           onChange={(e) => update({ method: e.target.value })}
           className={cn(
-            'h-7 px-2 text-[10px] font-mono font-bold bg-surface-2 rounded border border-border-2 focus:border-accent outline-none',
+            'h-9 w-[92px] px-2 text-[12px] font-mono font-bold bg-surface-2 rounded-md border border-border-2 focus:border-accent outline-none',
             METHOD_COLORS[form.method] ?? 'text-text-2',
           )}
         >
@@ -81,25 +81,39 @@ export function EndpointFormEditor({ endpoint, onSave }: Props) {
           value={form.path}
           onChange={(e) => update({ path: e.target.value })}
           placeholder="/api/users/{id}"
-          className="flex-1 h-7 px-2 text-[10px] font-mono bg-surface-2 border border-border-2 rounded text-text-1 placeholder:text-text-4 focus:border-accent outline-none"
+          className="h-9 min-w-0 flex-1 rounded-md border border-border-2 bg-surface-2 px-3 font-mono text-[12px] text-text-1 placeholder:text-text-4 outline-none focus:border-accent"
         />
         <button
           onClick={() => onSave(form)}
-          className="h-7 px-3 flex items-center gap-1.5 text-[10px] bg-accent text-white rounded hover:bg-accent-hover transition-colors"
+          className="flex h-9 items-center gap-1.5 rounded-md bg-accent px-3 text-xs font-semibold text-white transition-colors hover:bg-accent-hover"
         >
-          <Save size={11} />
+          <Save size={13} />
           Save
         </button>
       </div>
 
       {/* Summary */}
-      <div className="px-4 py-2 border-b border-border-1 space-y-2">
-        <input
-          value={form.summary}
-          onChange={(e) => update({ summary: e.target.value })}
-          placeholder="Summary (short description)"
-          className="w-full h-6 px-2 text-[10px] bg-surface-2 border border-border-2 rounded text-text-1 placeholder:text-text-4 focus:border-accent outline-none"
-        />
+      <div className="border-b border-border-1 px-4 py-3">
+        <div className="grid max-w-[980px] grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3">
+          <label className="min-w-0">
+            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.12em] text-text-4">Operation summary</span>
+            <input
+              value={form.summary}
+              onChange={(e) => update({ summary: e.target.value })}
+              placeholder="Create user, Refresh token, List invoices..."
+              className="h-8 w-full rounded-md border border-border-2 bg-surface-2 px-2 text-xs text-text-1 placeholder:text-text-4 outline-none focus:border-accent"
+            />
+          </label>
+          <label className="min-w-0">
+            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.12em] text-text-4">Description</span>
+            <input
+              value={form.description}
+              onChange={(e) => update({ description: e.target.value })}
+              placeholder="Optional contract note shown in exported OpenAPI"
+              className="h-8 w-full rounded-md border border-border-2 bg-surface-2 px-2 text-xs text-text-1 placeholder:text-text-4 outline-none focus:border-accent"
+            />
+          </label>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -119,21 +133,22 @@ export function EndpointFormEditor({ endpoint, onSave }: Props) {
       </div>
 
       {/* Tab content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="max-w-[1080px] space-y-4">
         {tab === 'parameters' && (
           <>
             {form.pathParams.length > 0 && (
               <div>
-                <p className="text-[10px] font-medium text-text-2 mb-2">Path Parameters</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-text-3 mb-2">Path Parameters</p>
                 <ParameterTable params={form.pathParams} onChange={(p) => update({ pathParams: p })} disableInChange />
               </div>
             )}
             <div>
-              <p className="text-[10px] font-medium text-text-2 mb-2">Query Parameters</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-text-3 mb-2">Query Parameters</p>
               <ParameterTable params={form.queryParams} onChange={(p) => update({ queryParams: p })} />
             </div>
             <div>
-              <p className="text-[10px] font-medium text-text-2 mb-2">Header Parameters</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-text-3 mb-2">Header Parameters</p>
               <ParameterTable params={form.headerParams} onChange={(p) => update({ headerParams: p })} />
             </div>
           </>
@@ -141,7 +156,7 @@ export function EndpointFormEditor({ endpoint, onSave }: Props) {
 
         {tab === 'body' && (
           <div className="space-y-3">
-            <label className="flex items-center gap-2 text-[10px] text-text-2 cursor-pointer">
+            <label className="flex items-center gap-2 text-xs text-text-2 cursor-pointer">
               <input
                 type="checkbox"
                 checked={form.hasRequestBody}
@@ -153,11 +168,11 @@ export function EndpointFormEditor({ endpoint, onSave }: Props) {
             {form.hasRequestBody && (
               <>
                 <div>
-                  <label className="text-[10px] font-medium text-text-2 block mb-1">Content Type</label>
+                  <label className="text-[11px] font-medium text-text-2 block mb-1">Content Type</label>
                   <select
                     value={form.requestBodyContentType}
                     onChange={(e) => update({ requestBodyContentType: e.target.value })}
-                    className="h-7 px-2 text-[10px] bg-surface-2 border border-border-2 rounded text-text-1 focus:border-accent outline-none"
+                    className="h-8 px-2 text-xs bg-surface-2 border border-border-2 rounded text-text-1 focus:border-accent outline-none"
                   >
                     <option value="application/json">application/json</option>
                     <option value="application/x-www-form-urlencoded">application/x-www-form-urlencoded</option>
@@ -166,13 +181,13 @@ export function EndpointFormEditor({ endpoint, onSave }: Props) {
                   </select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-medium text-text-2 block mb-1">Schema (JSON Schema or $ref)</label>
+                  <label className="text-[11px] font-medium text-text-2 block mb-1">Schema (JSON Schema or $ref)</label>
                   <textarea
                     value={form.requestBodySchema}
                     onChange={(e) => update({ requestBodySchema: e.target.value })}
                     placeholder={'{"type":"object","properties":{"name":{"type":"string"}}}'}
                     rows={6}
-                    className="w-full px-2 py-1.5 text-[10px] font-mono bg-surface-1 border border-border-2 rounded text-text-1 placeholder:text-text-4 focus:border-accent outline-none resize-y"
+                    className="w-full px-3 py-2 text-[12px] font-mono bg-surface-1 border border-border-2 rounded text-text-1 placeholder:text-text-4 focus:border-accent outline-none resize-y"
                   />
                 </div>
               </>
@@ -183,23 +198,23 @@ export function EndpointFormEditor({ endpoint, onSave }: Props) {
         {tab === 'responses' && (
           <div className="space-y-3">
             {form.responses.map((resp, i) => (
-              <div key={i} className="border border-border-1 rounded p-3 space-y-2">
+              <div key={i} className="border border-border-1 rounded-md bg-surface-1 p-3 space-y-2">
                 <div className="flex items-center gap-2">
                   <input
                     value={resp.statusCode}
                     onChange={(e) => updateResponse(i, { statusCode: e.target.value })}
                     placeholder="200"
-                    className="h-6 px-2 text-[10px] font-mono bg-surface-2 border border-border-2 rounded text-text-1 focus:border-accent outline-none w-[60px]"
+                    className="h-8 w-[72px] rounded border border-border-2 bg-surface-2 px-2 font-mono text-xs text-text-1 outline-none focus:border-accent"
                   />
                   <input
                     value={resp.description}
                     onChange={(e) => updateResponse(i, { description: e.target.value })}
                     placeholder="Description"
-                    className="flex-1 h-6 px-2 text-[10px] bg-surface-2 border border-border-2 rounded text-text-1 placeholder:text-text-4 focus:border-accent outline-none"
+                    className="h-8 flex-1 rounded border border-border-2 bg-surface-2 px-2 text-xs text-text-1 placeholder:text-text-4 outline-none focus:border-accent"
                   />
                   <button
                     onClick={() => removeResponse(i)}
-                    className="h-6 w-6 flex items-center justify-center rounded hover:bg-surface-3 text-text-4 hover:text-error transition-colors"
+                    className="h-8 w-8 flex items-center justify-center rounded hover:bg-surface-3 text-text-4 hover:text-error transition-colors"
                     title="Remove response"
                   >
                     <span className="text-[11px]">×</span>
@@ -210,19 +225,20 @@ export function EndpointFormEditor({ endpoint, onSave }: Props) {
                   onChange={(e) => updateResponse(i, { schema: e.target.value })}
                   placeholder={'{"type":"object"} or {"$ref":"#/components/schemas/User"}'}
                   rows={3}
-                  className="w-full px-2 py-1 text-[9px] font-mono bg-surface-1 border border-border-1 rounded text-text-1 placeholder:text-text-4 focus:border-accent outline-none resize-y"
+                  className="w-full px-3 py-2 text-[12px] font-mono bg-surface-0 border border-border-1 rounded text-text-1 placeholder:text-text-4 focus:border-accent outline-none resize-y"
                 />
               </div>
             ))}
             <button
               onClick={addResponse}
-              className="flex items-center gap-1.5 h-6 px-2 text-[9px] text-text-3 hover:text-text-1 hover:bg-surface-2 rounded transition-colors"
+              className="flex items-center gap-1.5 h-8 px-2 text-[11px] text-text-3 hover:text-text-1 hover:bg-surface-2 rounded transition-colors"
             >
               <span className="text-[14px] leading-none">+</span>
               Add response
             </button>
           </div>
         )}
+        </div>
       </div>
     </div>
   )

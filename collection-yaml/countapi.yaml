@@ -1,0 +1,12 @@
+name: CountAPI
+slug: countapi
+description: You can use it to track page hits, and specific events among other things. CountAPI is a free counting
+  service. . CountAPI is a free counting service
+categories:
+  - Development
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://countapi.xyz

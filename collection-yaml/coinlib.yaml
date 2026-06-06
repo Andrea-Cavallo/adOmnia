@@ -1,0 +1,11 @@
+name: Coinlib
+slug: coinlib
+description: Coinlib - Crypto Prices, Charts, Lists & Crypto Market News
+categories:
+  - Blockchain & Cryptocurrencies
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://coinlib.io/apidocs

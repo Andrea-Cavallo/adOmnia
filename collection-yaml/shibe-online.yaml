@@ -1,0 +1,11 @@
+name: Shibe.Online
+slug: shibe-online
+description: In this day and age, everyone and their dog has an API. So why not have an API for dogs? Shibe. online is that API
+categories:
+  - Animals
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: http://shibe.online/

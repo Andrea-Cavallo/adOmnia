@@ -221,5 +221,7 @@ func (pb *PythonBridge) Init(ctx context.Context, _ *App) {
 type ApiCollectionStore struct{ *apis.CollectionStore }
 
 func NewApiCollectionStore() *ApiCollectionStore {
-	return &ApiCollectionStore{CollectionStore: apis.NewCollectionStore("")}
+	store := apis.NewCollectionStore("")
+	store.SetEmbeddedFS(apiCollectionsFS())
+	return &ApiCollectionStore{CollectionStore: store}
 }

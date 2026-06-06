@@ -1,0 +1,12 @@
+name: Open Collective
+slug: open-collective
+description: "Learn more about it here: https://medium. GraphQL API The future of the Open Collective API is our public
+  GraphQL API. You can check the documentation on https://graphql-docs-v2. opencollective. com"
+categories:
+  - Social
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://docs.opencollective.com/help/developers/api

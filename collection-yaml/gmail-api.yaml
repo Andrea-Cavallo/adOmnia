@@ -1,0 +1,12 @@
+name: Gmail API
+slug: gmail-api
+description: "The Gmail API: modern, fast, RESTful. The Gmail API: modern, fast, RESTful"
+categories:
+  - Email & SMS
+type: REST
+is_free: false
+logo: null
+contact: support@goog.io
+links:
+  - name: Docs / Website
+    url: https://developers.google.com/gmail/api/?hl=en

@@ -1,0 +1,11 @@
+name: Mixcloud
+slug: mixcloud
+description: Music
+categories:
+  - Music & Audio
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://www.mixcloud.com/developers/

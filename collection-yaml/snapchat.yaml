@@ -1,0 +1,12 @@
+name: Snapchat
+slug: snapchat
+description: "Snapchat’s private API. Contribute to mgp25/SC-API development by creating an account on GitHub. PHP
+  library of Snapchat’s private API. #Private"
+categories:
+  - Social
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://github.com/mgp25/SC-API

@@ -1,0 +1,14 @@
+name: Quantumdigital
+slug: quantumdigital
+description: QuantumDigital’s APIs make navigating the USPS, securing national consumer and business lists, uploading
+  your own designs or lists, and shipping small order marketing materials a breeze
+categories:
+  - Marketing & SEO
+  - Business
+  - Post & Logistics
+  - Commerce
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://developer.quantumdigital.com

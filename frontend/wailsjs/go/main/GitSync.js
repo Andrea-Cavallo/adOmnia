@@ -6,12 +6,60 @@ export function AbortIntegration(arg1) {
   return window['go']['main']['GitSync']['AbortIntegration'](arg1);
 }
 
+export function AddIgnorePattern(arg1, arg2) {
+  return window['go']['main']['GitSync']['AddIgnorePattern'](arg1, arg2);
+}
+
+export function AddRemote(arg1, arg2, arg3) {
+  return window['go']['main']['GitSync']['AddRemote'](arg1, arg2, arg3);
+}
+
+export function CheckoutBranch(arg1, arg2) {
+  return window['go']['main']['GitSync']['CheckoutBranch'](arg1, arg2);
+}
+
 export function CheckoutConflictSide(arg1, arg2, arg3) {
   return window['go']['main']['GitSync']['CheckoutConflictSide'](arg1, arg2, arg3);
 }
 
+export function Clone(arg1, arg2) {
+  return window['go']['main']['GitSync']['Clone'](arg1, arg2);
+}
+
 export function CommitAll(arg1, arg2) {
   return window['go']['main']['GitSync']['CommitAll'](arg1, arg2);
+}
+
+export function CompareRefs(arg1, arg2, arg3) {
+  return window['go']['main']['GitSync']['CompareRefs'](arg1, arg2, arg3);
+}
+
+export function ConfigureUser(arg1, arg2, arg3) {
+  return window['go']['main']['GitSync']['ConfigureUser'](arg1, arg2, arg3);
+}
+
+export function CreateAndCheckoutBranch(arg1, arg2) {
+  return window['go']['main']['GitSync']['CreateAndCheckoutBranch'](arg1, arg2);
+}
+
+export function CreateBranch(arg1, arg2) {
+  return window['go']['main']['GitSync']['CreateBranch'](arg1, arg2);
+}
+
+export function CreateTag(arg1, arg2, arg3) {
+  return window['go']['main']['GitSync']['CreateTag'](arg1, arg2, arg3);
+}
+
+export function DeleteTag(arg1, arg2) {
+  return window['go']['main']['GitSync']['DeleteTag'](arg1, arg2);
+}
+
+export function Fetch(arg1) {
+  return window['go']['main']['GitSync']['Fetch'](arg1);
+}
+
+export function GetFileDiff(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['GitSync']['GetFileDiff'](arg1, arg2, arg3, arg4);
 }
 
 export function GetStatus(arg1) {
@@ -30,6 +78,14 @@ export function Log(arg1, arg2) {
   return window['go']['main']['GitSync']['Log'](arg1, arg2);
 }
 
+export function MergeBranch(arg1, arg2) {
+  return window['go']['main']['GitSync']['MergeBranch'](arg1, arg2);
+}
+
+export function MoveFile(arg1, arg2, arg3) {
+  return window['go']['main']['GitSync']['MoveFile'](arg1, arg2, arg3);
+}
+
 export function Overview(arg1, arg2) {
   return window['go']['main']['GitSync']['Overview'](arg1, arg2);
 }
@@ -42,6 +98,46 @@ export function Push(arg1, arg2) {
   return window['go']['main']['GitSync']['Push'](arg1, arg2);
 }
 
+export function RebaseBranch(arg1, arg2) {
+  return window['go']['main']['GitSync']['RebaseBranch'](arg1, arg2);
+}
+
+export function RemoveFile(arg1, arg2) {
+  return window['go']['main']['GitSync']['RemoveFile'](arg1, arg2);
+}
+
+export function RemoveRemote(arg1, arg2) {
+  return window['go']['main']['GitSync']['RemoveRemote'](arg1, arg2);
+}
+
+export function ResetHard(arg1, arg2) {
+  return window['go']['main']['GitSync']['ResetHard'](arg1, arg2);
+}
+
+export function RestoreFile(arg1, arg2) {
+  return window['go']['main']['GitSync']['RestoreFile'](arg1, arg2);
+}
+
+export function Show(arg1, arg2) {
+  return window['go']['main']['GitSync']['Show'](arg1, arg2);
+}
+
 export function StageFile(arg1, arg2) {
   return window['go']['main']['GitSync']['StageFile'](arg1, arg2);
+}
+
+export function Stash(arg1) {
+  return window['go']['main']['GitSync']['Stash'](arg1);
+}
+
+export function StashDrop(arg1, arg2) {
+  return window['go']['main']['GitSync']['StashDrop'](arg1, arg2);
+}
+
+export function StashPop(arg1) {
+  return window['go']['main']['GitSync']['StashPop'](arg1);
+}
+
+export function UnstageFile(arg1, arg2) {
+  return window['go']['main']['GitSync']['UnstageFile'](arg1, arg2);
 }

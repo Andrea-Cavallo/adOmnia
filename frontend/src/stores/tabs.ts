@@ -1,8 +1,8 @@
 import { create } from 'zustand'
 import type { Tab, RequestItem, RequestHistoryEntry, ResponseData, HttpMethod } from '@/lib/types'
 import { uid, blankRequest } from '@/lib/types'
-import { StorageGet, StoragePut } from '@/wailsjs/go/main/App'
 import { debouncedSave } from '@/lib/storeSave'
+import { safeStorageGet, safeStoragePut } from '@/lib/wailsStorage'
 import { useSettingsStore } from '@/stores/settings'
 import { useCollectionsStore } from '@/stores/collections'
 
@@ -132,7 +132,7 @@ export const useTabsStore = create<TabsState>((set, get) => ({
 
   load: async () => {
     try {
-      const raw = await StorageGet(BUCKET, KEY)
+      const raw = await safeStorageGet(BUCKET, KEY)
       const settings = useSettingsStore.getState().settings
       if (!raw) {
         set({ loaded: true, loadError: false })
@@ -168,7 +168,7 @@ export const useTabsStore = create<TabsState>((set, get) => ({
       activeTabId,
       responseHistory: responseHistory.slice(0, historyLimit()),
     }
-    debouncedSave('tabs', () => StoragePut(BUCKET, KEY, JSON.stringify(payload)))
+    debouncedSave('tabs', () => safeStoragePut(BUCKET, KEY, JSON.stringify(payload)))
   },
 
   activateWorkspace: (workspaceId) => {

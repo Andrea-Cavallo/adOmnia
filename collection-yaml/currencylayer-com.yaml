@@ -1,0 +1,12 @@
+name: CurrencyLayer.com
+slug: currencylayer-com
+description: Currencylayer provides a simple REST API with real-time and historical exchange rates for 168 world
+  currencies, delivering currency pairs in universally usable JSON format
+categories:
+  - Finance & Economics
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://currencylayer.com/documentation

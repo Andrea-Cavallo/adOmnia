@@ -1,0 +1,12 @@
+name: qKast Channel Content
+slug: qkast-channel-content
+description: qKast API documentation and examples. Contribute to egfx/qKast development by creating an account on
+  GitHub. Access live content collections sourced from any page around the web
+categories:
+  - Content & Dictionaries
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://github.com/egfx/qKast

@@ -7,7 +7,7 @@ import {
   Send, LayoutList, Shield, Server, Radio, Globe, Bug, Container, Network,
   Wrench, FileText, FileCode, Database, Braces, FlaskConical, ChevronRight,
   Lock, FolderOpen, Paintbrush, LayoutTemplate, Puzzle, Settings, GitBranch,
-  Play, Zap, BarChart2, Activity, HardDrive, History, Layers, Package, Boxes, Code2, ListChecks, CalendarClock,
+  Play, Zap, BarChart2, Activity, HardDrive, History, Layers, Boxes, Code2, ListChecks, CalendarClock,
 } from 'lucide-react'
 
 interface SubItem {
@@ -104,10 +104,8 @@ const CATEGORIES: CategoryDef[] = [
       { title: 'Workspace', items: [
         { id: 'workspace',  icon: FolderOpen,     label: 'Workspace' },
         { id: 'schemas',    icon: Boxes,          label: 'Schema Components' },
-        { id: 'gitsync',    icon: GitBranch,      label: 'Git Sync' },
         { id: 'templates',  icon: LayoutTemplate, label: 'Templates' },
         { id: 'themes',     icon: Paintbrush,     label: 'Themes' },
-        { id: 'apis',       icon: Package,        label: 'API Catalog' },
       ]},
     ],
   },
@@ -131,6 +129,14 @@ const CATEGORIES: CategoryDef[] = [
     groups: [
       { title: 'Editor', items: [
         { id: 'markdown', icon: FileText, label: 'Markdown Editor' },
+      ]},
+    ],
+  },
+  {
+    key: 'gitsync', label: 'Git Sync', icon: GitBranch, code: 'GIT',
+    groups: [
+      { title: 'Sync', items: [
+        { id: 'gitsync', icon: GitBranch, label: 'Git Sync' },
       ]},
     ],
   },

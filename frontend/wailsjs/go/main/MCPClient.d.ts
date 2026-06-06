@@ -13,11 +13,11 @@ export function Disconnect():Promise<void>;
 
 export function DisconnectSession(arg1:string):Promise<void>;
 
-export function GetSessionStatus(arg1:string):Promise<string>;
-
 export function GetPrompt(arg1:string,arg2:string):Promise<string>;
 
 export function GetPromptSession(arg1:string,arg2:string,arg3:string):Promise<string>;
+
+export function GetSessionStatus(arg1:string):Promise<string>;
 
 export function ListPrompts():Promise<string>;
 

@@ -85,7 +85,7 @@ type SectionId =
 // --- Keyboard shortcuts data ---
 
 const shortcutsList = [
-  { win: 'Ctrl+K', mac: 'Cmd+K', labelKey: 'commandPalette' },
+  { win: 'Ctrl+K / Ctrl+P', mac: 'Cmd+K / Cmd+P', labelKey: 'commandPalette' },
   { win: 'Ctrl+Enter', mac: 'Cmd+Enter', labelKey: 'sendRequest' },
   { win: 'Ctrl+N', mac: 'Cmd+N', labelKey: 'newTab' },
   { win: 'Ctrl+W', mac: 'Cmd+W', labelKey: 'closeTab' },

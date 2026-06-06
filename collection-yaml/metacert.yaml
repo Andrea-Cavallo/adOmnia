@@ -1,0 +1,11 @@
+name: Metacert
+slug: metacert
+description: MetaCert reduces the risk of identity theft, data breaches, phishing, malware and ransomware attacks, by more than 98%
+categories:
+  - Security
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://metacert.com/

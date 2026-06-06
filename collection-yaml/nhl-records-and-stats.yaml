@@ -1,0 +1,11 @@
+name: NHL Records and Stats
+slug: nhl-records-and-stats
+description: Documenting the publicly accessible portions of the NHL API
+categories:
+  - Sport & Fitness
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://gitlab.com/dword4/nhlapi

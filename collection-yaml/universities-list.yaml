@@ -1,0 +1,11 @@
+name: Universities List
+slug: universities-list
+description: List of universities and their domain names
+categories:
+  - Education
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://github.com/Hipo/university-domains-list

@@ -1,0 +1,11 @@
+name: Peru
+slug: peru
+description: Central bank of Peru
+categories:
+  - Government
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://estadisticas.bcrp.gob.pe/estadisticas/series/ayuda/api

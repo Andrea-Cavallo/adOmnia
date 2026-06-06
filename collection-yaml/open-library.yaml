@@ -1,0 +1,12 @@
+name: Open Library
+slug: open-library
+description: Open Library is an open, editable library catalog, building towards a web page for every book ever
+  published. Read, borrow, and discover more than 3M books for free
+categories:
+  - Books
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://openlibrary.org/developers/api

@@ -1,0 +1,12 @@
+name: District of Columbia Open Data
+slug: district-of-columbia-open-data
+description: Goal is for this API is to be your platform for developing apps around DC’s freely available, machine readable data
+categories:
+  - Statistics & Data
+  - Government
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: http://opendata.dc.gov/pages/using-apis

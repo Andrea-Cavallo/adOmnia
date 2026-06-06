@@ -1,0 +1,11 @@
+name: Stakdek's QR generator API
+slug: stakdeks-qr-generator-api
+description: The QR-Code generator gets your data and generates a QR-Code
+categories:
+  - Bar & QR Codes
+type: REST
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://api.stakdek.de/blog?id=1006

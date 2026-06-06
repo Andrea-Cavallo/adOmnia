@@ -33,6 +33,7 @@ interface FlowContext {
 
 export interface RunApiFlowOptions {
   initialVars: Record<string, string>
+  startNodeId?: string
   execute?: (request: RequestItem, vars: Record<string, string>) => Promise<ExecuteRequestResult>
   onRuntime?: (runtime: RuntimeByNode) => void
   onEntry?: (entries: RunEntry[]) => void
@@ -148,7 +149,9 @@ export async function runApiFlow(graph: FlowGraphDefinition, options: RunApiFlow
   const entries: RunEntry[] = []
   const runtime: RuntimeByNode = Object.fromEntries(graph.nodes.map((node) => [node.id, { status: 'pending' as FlowRunStatus }]))
   let ctx: FlowContext = { vars: { ...options.initialVars }, responses: {} }
-  let current = graph.nodes.find((node) => node.type === 'start') ?? graph.nodes.find((node) => node.type !== 'end')
+  let current = (options.startNodeId ? graph.nodes.find((node) => node.id === options.startNodeId) : undefined)
+    ?? graph.nodes.find((node) => node.type === 'start')
+    ?? graph.nodes.find((node) => node.type !== 'end')
   let steps = 0
 
   const publishRuntime = () => options.onRuntime?.({ ...runtime })

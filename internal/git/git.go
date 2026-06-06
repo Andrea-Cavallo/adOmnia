@@ -2,11 +2,13 @@ package git
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 type Config struct {
@@ -49,12 +51,12 @@ type RemoteInfo struct {
 }
 
 type CommitInfo struct {
-	Hash       string   `json:"hash"`
-	FullHash   string   `json:"fullHash"`
-	Parents    []string `json:"parents"`
-	Author     string   `json:"author"`
-	Date       string   `json:"date"`
-	Message    string   `json:"message"`
+	Hash        string   `json:"hash"`
+	FullHash    string   `json:"fullHash"`
+	Parents     []string `json:"parents"`
+	Author      string   `json:"author"`
+	Date        string   `json:"date"`
+	Message     string   `json:"message"`
 	Decorations []string `json:"decorations"`
 }
 
@@ -73,9 +75,16 @@ type CommitResult struct {
 	Message string `json:"message"`
 }
 
+type ChangedFile struct {
+	Status  string `json:"status"` // M, A, D, R, C, U
+	Path    string `json:"path"`
+	OldPath string `json:"oldPath"` // only set for renames (R)
+}
+
 func runGit(dir string, args ...string) (string, error) {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
+	configureHiddenCommand(cmd)
 	var out, errBuf bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
@@ -115,6 +124,61 @@ func Init(cfg Config) error {
 	return nil
 }
 
+func Clone(remoteURL, destination string) error {
+	remoteURL = strings.TrimSpace(remoteURL)
+	destination = strings.TrimSpace(destination)
+	if remoteURL == "" {
+		return fmt.Errorf("remote URL is empty")
+	}
+	if destination == "" {
+		return fmt.Errorf("destination path is empty")
+	}
+	cmd := exec.Command("git", "clone", remoteURL, destination)
+	configureHiddenCommand(cmd)
+	var errBuf bytes.Buffer
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("git clone: %w\n%s", err, errBuf.String())
+	}
+	return nil
+}
+
+func ConfigureUser(repoPath, name, email string) error {
+	name = strings.TrimSpace(name)
+	email = strings.TrimSpace(email)
+	if name == "" && email == "" {
+		return fmt.Errorf("name or email is required")
+	}
+	if name != "" {
+		if _, err := runGit(repoPath, "config", "user.name", name); err != nil {
+			return err
+		}
+	}
+	if email != "" {
+		if _, err := runGit(repoPath, "config", "user.email", email); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func AddIgnorePattern(repoPath, pattern string) error {
+	pattern = strings.TrimSpace(pattern)
+	if pattern == "" {
+		return fmt.Errorf("ignore pattern is empty")
+	}
+	ignorePath := filepath.Join(repoPath, ".gitignore")
+	f, err := os.OpenFile(ignorePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return fmt.Errorf("open .gitignore: %w", err)
+	}
+	defer f.Close()
+	if _, err := fmt.Fprintln(f, pattern); err != nil {
+		return fmt.Errorf("write .gitignore: %w", err)
+	}
+	return nil
+}
+
 func GetStatus(repoPath string) (Status, error) {
 	if repoPath == "" {
 		return Status{}, fmt.Errorf("repository path is empty")
@@ -135,7 +199,9 @@ func GetStatus(repoPath string) (Status, error) {
 		return Status{}, err
 	}
 
-	var modified, untracked []string
+	// Non-nil so JSON marshals empty collections as [] (not null), which the
+	// frontend reads with .length without guarding.
+	modified, untracked := []string{}, []string{}
 	for _, line := range strings.Split(porcelain, "\n") {
 		if len(line) < 4 {
 			continue
@@ -165,7 +231,7 @@ func GetStatus(repoPath string) (Status, error) {
 }
 
 func parsePorcelain(porcelain string) []FileChange {
-	var changes []FileChange
+	changes := []FileChange{}
 	conflictCodes := map[string]bool{"DD": true, "AU": true, "UD": true, "UA": true, "DU": true, "AA": true, "UU": true}
 	for _, line := range strings.Split(porcelain, "\n") {
 		if len(line) < 4 || strings.HasPrefix(line, "##") {
@@ -196,14 +262,14 @@ func GetOverview(repoPath string, n int) (Overview, error) {
 
 	porcelain, _ := runGit(repoPath, "status", "--porcelain")
 	changes := parsePorcelain(porcelain)
-	var conflicts []FileChange
+	conflicts := []FileChange{}
 	for _, change := range changes {
 		if change.Conflicted {
 			conflicts = append(conflicts, change)
 		}
 	}
 
-	var branches []BranchInfo
+	branches := []BranchInfo{}
 	if out, err := runGit(repoPath, "branch", "--all", "--format=%(refname:short)|%(upstream:short)|%(objectname:short)|%(committerdate:relative)"); err == nil {
 		for _, line := range strings.Split(out, "\n") {
 			if strings.TrimSpace(line) == "" {
@@ -237,17 +303,17 @@ func GetOverview(repoPath string, n int) (Overview, error) {
 			}
 		}
 	}
-	var remotes []RemoteInfo
+	remotes := []RemoteInfo{}
 	for name, url := range remoteURLs {
 		remotes = append(remotes, RemoteInfo{Name: name, URL: url})
 	}
 
-	var stashes []string
+	stashes := []string{}
 	if out, err := runGit(repoPath, "stash", "list"); err == nil && out != "" {
 		stashes = strings.Split(out, "\n")
 	}
 
-	var commits []CommitInfo
+	commits := []CommitInfo{}
 	if out, err := runGit(repoPath, "log", fmt.Sprintf("--max-count=%d", n), "--date=short", "--pretty=format:%h%x1f%H%x1f%P%x1f%an%x1f%ad%x1f%s%x1f%D"); err == nil && out != "" {
 		for _, line := range strings.Split(out, "\n") {
 			parts := strings.Split(line, "\x1f")
@@ -311,11 +377,112 @@ func Push(repoPath, branch string) error {
 	return err
 }
 
+func AddRemote(repoPath, name, remoteURL string) error {
+	name = strings.TrimSpace(name)
+	remoteURL = strings.TrimSpace(remoteURL)
+	if name == "" || remoteURL == "" {
+		return fmt.Errorf("remote name and URL are required")
+	}
+	if existing, _ := runGit(repoPath, "remote", "get-url", name); strings.TrimSpace(existing) != "" {
+		_, err := runGit(repoPath, "remote", "set-url", name, remoteURL)
+		return err
+	}
+	_, err := runGit(repoPath, "remote", "add", name, remoteURL)
+	return err
+}
+
+func RemoveRemote(repoPath, name string) error {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return fmt.Errorf("remote name is empty")
+	}
+	_, err := runGit(repoPath, "remote", "remove", name)
+	return err
+}
+
+func Fetch(repoPath string) error {
+	_, err := runGit(repoPath, "fetch", "--prune", "origin")
+	return err
+}
+
 func Pull(repoPath, branch string) error {
 	if branch == "" {
 		branch = "main"
 	}
-	_, err := runGit(repoPath, "pull", "--rebase", "origin", branch)
+	_, err := runGit(repoPath, "pull", "--rebase", "--autostash", "origin", branch)
+	return err
+}
+
+func Stash(repoPath string) error {
+	_, err := runGit(repoPath, "stash", "push", "-u", "-m", "adOmnia manual stash "+time.Now().Format("2006-01-02 15:04:05"))
+	return err
+}
+
+func StashPop(repoPath string) error {
+	_, err := runGit(repoPath, "stash", "pop")
+	return err
+}
+
+func StashDrop(repoPath, stashRef string) error {
+	stashRef = strings.TrimSpace(stashRef)
+	if stashRef == "" {
+		stashRef = "stash@{0}"
+	}
+	_, err := runGit(repoPath, "stash", "drop", stashRef)
+	return err
+}
+
+func CreateBranch(repoPath, branch string) error {
+	branch = strings.TrimSpace(branch)
+	if branch == "" {
+		return fmt.Errorf("branch name is empty")
+	}
+	_, err := runGit(repoPath, "branch", branch)
+	return err
+}
+
+func CheckoutBranch(repoPath, branch string) error {
+	branch = strings.TrimSpace(branch)
+	if branch == "" {
+		return fmt.Errorf("branch name is empty")
+	}
+	_, err := runGit(repoPath, "checkout", branch)
+	return err
+}
+
+func CreateAndCheckoutBranch(repoPath, branch string) error {
+	branch = strings.TrimSpace(branch)
+	if branch == "" {
+		return fmt.Errorf("branch name is empty")
+	}
+	_, err := runGit(repoPath, "checkout", "-b", branch)
+	return err
+}
+
+func MergeBranch(repoPath, branch string) error {
+	branch = strings.TrimSpace(branch)
+	if branch == "" {
+		return fmt.Errorf("branch name is empty")
+	}
+	_, err := runGit(repoPath, "merge", branch)
+	return err
+}
+
+func RebaseBranch(repoPath, branch string) error {
+	branch = strings.TrimSpace(branch)
+	if branch == "" {
+		return fmt.Errorf("branch name is empty")
+	}
+	_, err := runGit(repoPath, "rebase", branch)
+	return err
+}
+
+func ResetHard(repoPath, ref string) error {
+	ref = strings.TrimSpace(ref)
+	if ref == "" {
+		return fmt.Errorf("target ref is empty")
+	}
+	_, err := runGit(repoPath, "reset", "--hard", ref)
 	return err
 }
 
@@ -324,6 +491,38 @@ func StageFile(repoPath, path string) error {
 		return fmt.Errorf("file path is empty")
 	}
 	_, err := runGit(repoPath, "add", "--", path)
+	return err
+}
+
+func UnstageFile(repoPath, path string) error {
+	if path == "" {
+		return fmt.Errorf("file path is empty")
+	}
+	_, err := runGit(repoPath, "reset", "--", path)
+	return err
+}
+
+func RestoreFile(repoPath, path string) error {
+	if path == "" {
+		return fmt.Errorf("file path is empty")
+	}
+	_, err := runGit(repoPath, "restore", "--", path)
+	return err
+}
+
+func RemoveFile(repoPath, path string) error {
+	if path == "" {
+		return fmt.Errorf("file path is empty")
+	}
+	_, err := runGit(repoPath, "rm", "--", path)
+	return err
+}
+
+func MoveFile(repoPath, oldPath, newPath string) error {
+	if oldPath == "" || newPath == "" {
+		return fmt.Errorf("source and destination paths are required")
+	}
+	_, err := runGit(repoPath, "mv", "--", oldPath, newPath)
 	return err
 }
 
@@ -363,7 +562,85 @@ func Log(repoPath string, n int) ([]string, error) {
 	return strings.Split(out, "\n"), nil
 }
 
+func Show(repoPath, ref string) (string, error) {
+	ref = strings.TrimSpace(ref)
+	if ref == "" {
+		return "", fmt.Errorf("ref is empty")
+	}
+	return runGit(repoPath, "show", "--stat", "--decorate", "--oneline", ref)
+}
+
+func CreateTag(repoPath, name, ref string) error {
+	name = strings.TrimSpace(name)
+	ref = strings.TrimSpace(ref)
+	if name == "" {
+		return fmt.Errorf("tag name is empty")
+	}
+	args := []string{"tag", name}
+	if ref != "" {
+		args = append(args, ref)
+	}
+	_, err := runGit(repoPath, args...)
+	return err
+}
+
+func DeleteTag(repoPath, name string) error {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return fmt.Errorf("tag name is empty")
+	}
+	_, err := runGit(repoPath, "tag", "-d", name)
+	return err
+}
+
 func IsInstalled() bool {
 	_, err := exec.LookPath("git")
 	return err == nil
+}
+
+// CompareRefs returns files changed between refA and refB.
+func CompareRefs(repoPath, refA, refB string) ([]ChangedFile, error) {
+	cmd := exec.Command("git", "-C", repoPath, "diff", "--name-status", refA, refB)
+	configureHiddenCommand(cmd)
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("git diff --name-status: %w", err)
+	}
+	files := []ChangedFile{}
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		if line == "" {
+			continue
+		}
+		parts := strings.Fields(line)
+		if len(parts) < 2 {
+			continue
+		}
+		status := parts[0]
+		if strings.HasPrefix(status, "R") || strings.HasPrefix(status, "C") {
+			oldPath := ""
+			newPath := parts[len(parts)-1]
+			if len(parts) >= 3 {
+				oldPath = parts[1]
+			}
+			files = append(files, ChangedFile{Status: string(status[0]), Path: newPath, OldPath: oldPath})
+		} else {
+			files = append(files, ChangedFile{Status: status, Path: parts[1]})
+		}
+	}
+	return files, nil
+}
+
+// GetFileDiff returns the unified diff for a single file between two refs.
+func GetFileDiff(repoPath, refA, refB, filePath string) (string, error) {
+	cmd := exec.Command("git", "-C", repoPath, "diff", refA, refB, "--", filePath)
+	configureHiddenCommand(cmd)
+	out, err := cmd.Output()
+	if err != nil {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) && exitErr.ExitCode() == 1 {
+			return "", nil
+		}
+		return "", fmt.Errorf("git diff file: %w", err)
+	}
+	return string(out), nil
 }

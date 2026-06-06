@@ -21,3 +21,7 @@ export function SearchApis(arg1) {
 export function SetCollectionsDir(arg1) {
   return window['go']['main']['ApiCollectionStore']['SetCollectionsDir'](arg1);
 }
+
+export function SetEmbeddedFS(arg1) {
+  return window['go']['main']['ApiCollectionStore']['SetEmbeddedFS'](arg1);
+}

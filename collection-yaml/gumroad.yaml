@@ -1,0 +1,13 @@
+name: Gumroad
+slug: gumroad
+description: Gumroad helps creators do more of what they love by offering tools to get paid online, they have sent over
+  $202M to artists, designers, educators, writers, influencers and more.
+categories:
+  - Social
+  - Commerce
+  - Payments
+is_free: false
+logo: null
+links:
+  - name: Docs / Website
+    url: https://gumroad.com/api
