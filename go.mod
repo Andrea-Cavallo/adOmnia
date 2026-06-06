@@ -12,7 +12,7 @@ require (
 	github.com/gaissmai/bart v0.28.0
 	github.com/go-sql-driver/mysql v1.10.0
 	github.com/gorilla/websocket v1.5.3
-	github.com/jackc/pgx/v5 v5.9.2
+	github.com/jackc/pgx/v5 v5.10.0
 	github.com/jhump/protoreflect v1.18.0
 	github.com/miekg/dns v1.1.72
 	github.com/nats-io/nats.go v1.52.0
