@@ -129,6 +129,7 @@ const CATEGORIES: CategoryDef[] = [
     groups: [
       { title: 'Editor', items: [
         { id: 'markdown', icon: FileText, label: 'Markdown Editor' },
+        { id: 'mermaid',  icon: GitBranch, label: 'Mermaid Studio' },
       ]},
     ],
   },

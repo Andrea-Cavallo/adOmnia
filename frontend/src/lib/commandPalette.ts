@@ -45,6 +45,7 @@ export const COMMAND_PALETTE_PANELS: PalettePanel[] = [
   { id: 'xmltools', title: 'XML Tools', group: 'Power Tools', keywords: 'format validate xpath' },
   { id: 'powertools', title: 'All Utilities', group: 'Power Tools', keywords: 'encode decode jwt uuid toolbox' },
   { id: 'markdown', title: 'Markdown Editor', group: 'Markdown', keywords: 'md preview notes docs' },
+  { id: 'mermaid', title: 'Mermaid Studio', group: 'Markdown', keywords: 'diagram graph flowchart sequence mermaid mmd preview fullscreen zoom' },
   { id: 'settings', title: 'Settings', group: 'Navigation', keywords: 'preferences configuration appearance' },
 ]
 

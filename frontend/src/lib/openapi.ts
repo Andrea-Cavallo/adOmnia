@@ -1,114 +1,13 @@
 ﻿import type { Collection, TreeNode, RequestItem, KVRow, RequestBody, RequestAuth } from '@/lib/types'
 import { uid, blankBody, blankAuth } from '@/lib/types'
-
-// Basic YAML to JSON converter (handles common OpenAPI patterns)
-function basicYamlToJson(yaml: string): unknown {
-  const lines = yaml.split('\n')
-  const root: Record<string, unknown> = {}
-  const indentStack: number[] = [0]
-  const objStack: unknown[] = [root]
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
-    const trimmed = line.trim()
-    if (!trimmed || trimmed.startsWith('#')) continue
-
-    const indent = line.search(/\S/)
-    while (indentStack.length > 1 && indent < indentStack[indentStack.length - 1]) {
-      indentStack.pop()
-      objStack.pop()
-    }
-
-    const current = objStack[objStack.length - 1] as Record<string, unknown>
-
-    if (trimmed.startsWith('- ')) {
-      const value = trimmed.slice(2).trim()
-      const colonIdx = value.indexOf(':')
-      const arr = (current['__array__'] as unknown[]) || []
-      if (colonIdx > 0 && !value.startsWith('http://') && !value.startsWith('https://')) {
-        const key = value.slice(0, colonIdx).trim()
-        const val = parseValue(value.slice(colonIdx + 1).trim())
-        const item: Record<string, unknown> = { [key]: val }
-        const nextLine = i + 1 < lines.length ? lines[i + 1] : ''
-        const nextIndent = nextLine ? nextLine.search(/\S/) : -1
-        if (nextIndent > indent) {
-          arr.push(item)
-          current['__array__'] = arr
-          indentStack.push(nextIndent)
-          objStack.push(item)
-        } else {
-          arr.push(item)
-          current['__array__'] = arr
-        }
-      } else {
-        arr.push(parseValue(value))
-        current['__array__'] = arr
-      }
-      continue
-    }
-
-    const colonIdx = trimmed.indexOf(':')
-    if (colonIdx === -1) continue
-
-    const key = trimmed.slice(0, colonIdx).trim()
-    const value = trimmed.slice(colonIdx + 1).trim()
-
-    if (value === '' || value === '|' || value === '>') {
-      const newObj: Record<string, unknown> = {}
-      current[key] = newObj
-      indentStack.push(indent)
-      objStack.push(newObj)
-
-      if (value === '|' || value === '>') {
-        let literal = ''
-        i++
-        while (i < lines.length) {
-          const nl = lines[i]
-          if (nl.search(/\S/) <= indent) { i--; break }
-          literal += nl.trim() + '\n'
-          i++
-        }
-        newObj['__value__'] = literal.trim()
-      }
-    } else {
-      current[key] = parseValue(value)
-    }
-  }
-
-  return finalize(root)
-}
-
-function parseValue(val: string): unknown {
-  const t = val.trim()
-  if (t === 'true') return true
-  if (t === 'false') return false
-  if (t === 'null' || t === '~') return null
-  if (/^-?\d+$/.test(t)) return parseInt(t, 10)
-  if (/^-?\d+\.\d+$/.test(t)) return parseFloat(t)
-  if ((t.startsWith("'") && t.endsWith("'")) || (t.startsWith('"') && t.endsWith('"'))) {
-    return t.slice(1, -1)
-  }
-  return t
-}
-
-function finalize(obj: unknown): unknown {
-  if (obj === null || typeof obj !== 'object') return obj
-  if (Array.isArray(obj)) return obj.map(finalize)
-  const result: Record<string, unknown> = {}
-  for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
-    if (k === '__array__') return (v as unknown[]).map(finalize)
-    if (k === '__value__') return v
-    result[k] = finalize(v)
-  }
-  return result
-}
+import { parse as parseYaml } from 'yaml'
 
 function tryParseYaml(text: string): unknown {
   const t = text.trim()
   if (t.startsWith('{') || t.startsWith('[')) {
     try { return JSON.parse(t) } catch { throw new Error('Invalid JSON') }
   }
-  try { return basicYamlToJson(t) } catch { throw new Error('Invalid OpenAPI spec format (must be JSON or YAML)') }
+  try { return parseYaml(t) } catch { throw new Error('Invalid OpenAPI spec format (must be JSON or YAML)') }
 }
 
 interface OpenAPIOperation {

@@ -42,6 +42,7 @@ const HarViewerPanel       = React.lazy(() => import('@/components/har/HarViewer
 const ObservabilityPanel   = React.lazy(() => import('@/components/observe').then(m => ({ default: m.ObservabilityPanel })))
 const DockerLabPanel       = React.lazy(() => import('@/components/dockerlab/DockerLabPanel').then(m => ({ default: m.DockerLabPanel })))
 const MarkdownPanel        = React.lazy(() => import('@/components/markdown/MarkdownPanel').then(m => ({ default: m.MarkdownPanel })))
+const MermaidPanel         = React.lazy(() => import('@/components/mermaid/MermaidPanel').then(m => ({ default: m.MermaidPanel })))
 const StoragePanel         = React.lazy(() => import('@/components/storage/StoragePanel').then(m => ({ default: m.StoragePanel })))
 const DatabasePanel        = React.lazy(() => import('@/components/database/DatabasePanel').then(m => ({ default: m.DatabasePanel })))
 const JsonToolsPanel       = React.lazy(() => import('@/components/utils/JsonToolsPanel').then(m => ({ default: m.JsonToolsPanel })))
@@ -671,6 +672,7 @@ function panelFor(activeRail: RailItem): PanelDef {
     case 'observe':     return { component: <ObservabilityPanel />,   titleKey: 'Observability', overflow: true }
     case 'dockerlab':   return { component: <DockerLabPanel />,       titleKey: 'Docker Lab', overflow: true }
     case 'markdown':    return { component: <MarkdownPanel />,        titleKey: 'markdown',  overflow: true }
+    case 'mermaid':     return { component: <MermaidPanel />,         titleKey: 'mermaid',   overflow: true }
     case 'storage':     return { component: <StoragePanel />,         titleKey: 'storage',   overflow: true }
     case 'database':    return { component: <DatabasePanel />,        titleKey: 'Database Studio', overflow: true }
     case 'jsontools':   return { component: <JsonToolsPanel />,       titleKey: 'jsontools', overflow: true }
