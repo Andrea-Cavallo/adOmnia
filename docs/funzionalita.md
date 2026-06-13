@@ -919,6 +919,17 @@ Modulo di progettazione spec-first: definisci e mantieni spec OpenAPI e modelli 
 | H3.2 | **Editor a Form** | Modifica un'operazione senza scrivere YAML: metodo, path, tabelle parametri path/query/header, request body (content type + schema) e responses (status + descrizione + schema/`$ref`). |
 | H3.3 | **Salva & Merge** | Il salvataggio fonde l'operazione modificata nel `_openapiSpec` della collection (gestisce aggiunta e rinomina metodo/path), alimentando export, validazione e documentazione. |
 
+### H4. API Docs / Swagger Viewer
+
+| # | Funzionalità | Descrizione |
+|---|-------------|-------------|
+| H4.1 | **Surface dedicata** | Voce di rail propria (API Core → Design) per una reference read-only stile Swagger-UI/Redoc, con stile token-native adOmnia (no framework esterni). |
+| H4.2 | **Tre sorgenti** | Genera lo spec da una collection (`collectionsToOAS`), carica da URL via engine HTTP Go (niente CORS browser), oppure incolla/apre un file `.json`/`.yaml`/`.yml`. |
+| H4.3 | **OpenAPI 3 + Swagger 2.0** | Parser dedicato (`lib/apidocs/parseSpec.ts`) che normalizza entrambi i formati in un modello raggruppato per tag, con server, parametri, request body e responses. |
+| H4.4 | **Operazioni espandibili** | Card per operazione con badge metodo colorato, path, summary, deprecated, e dettaglio espandibile di parametri (path/query/header/cookie), body e responses con status colorati. |
+| H4.5 | **Render schema ricorsivo** | `SchemaView` mostra oggetti/array/primitivi, campi required, enum e risoluzione `$ref` (`#/components/schemas/*` e `#/definitions/*`) con guardia di profondità anti-loop. |
+| H4.6 | **Esempi & ricerca** | Mostra gli example di request/response e filtra le operazioni per path/metodo/summary; nav laterale per tag. |
+
 ---
 
 ## I. MCP (MODEL CONTEXT PROTOCOL)

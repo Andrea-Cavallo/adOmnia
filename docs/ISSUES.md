@@ -18,14 +18,6 @@ This file contains only work that is still open. Completed items are archived in
 _No verified-open issues. The previously-listed backlog items were re-checked against
 the current codebase on 2026-06-13 and found already resolved (see below)._
 
-## Queued (needs brainstorm before implementation)
-
-### API Docs / Swagger viewer
-A dedicated read-only Swagger-UI / Redoc-style reference surface (own rail entry),
-generating specs from collections (`lib/openapi.ts` / `lib/swagger2.ts`) and loading
-from a running server URL. Open design decisions remain ("Try it" wiring, renderer
-approach), so this needs its own brainstorm + spec before implementation.
-
 ## Recently Resolved (verified against code 2026-06-13)
 
 | # | Title | Evidence |
@@ -42,3 +34,11 @@ View + edit PDFs (free text, highlight, shapes, ink, AcroForm fill, visible sign
 re-editable project persistence (bbolt `pdfprojects`), flattened export. Pending: manual
 `wails dev` smoke of the full open→annotate→export→reopen loop. Spec:
 `docs/superpowers/specs/2026-06-13-pdf-editor-design.md`.
+
+### API Docs / Swagger viewer — shipped (branch `feat/pdf-editor`)
+Dedicated read-only OpenAPI 3 / Swagger 2.0 reference (rail: API Core → Design),
+token-native (no external Swagger-UI/Redoc framework). Sources: generate from a
+collection, fetch from URL via the Go request engine, or paste/open a JSON/YAML file.
+Grouped by tag with params, request/response schemas (recursive `$ref` resolution),
+examples, and an operation filter. v1 is read-only ("Try it" deferred). Files:
+`lib/apidocs/parseSpec.ts`, `components/apidocs/*`. Pending: manual `wails dev` smoke.

@@ -44,6 +44,7 @@ export type RailItem =
   | 'mcp'
   | 'schemas'
   | 'apieditor'
+  | 'apidocs'
   | 'visualtests'
   | 'scheduler'
 
