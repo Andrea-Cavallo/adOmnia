@@ -115,6 +115,7 @@ const CATEGORIES: CategoryDef[] = [
       { title: 'Data Tools', items: [
         { id: 'jsontools',   icon: Braces,   label: 'JSON Tools' },
         { id: 'xmltools',    icon: FileCode, label: 'XML Tools' },
+        { id: 'pdfeditor',   icon: FileText, label: 'PDF Editor' },
       ]},
       { title: 'Utilities', items: [
         { id: 'powertools',  icon: Wrench,  label: 'All Utilities' },

@@ -189,6 +189,28 @@ Runtime render output (canvases) is session-only and never persisted.
 
 ---
 
+## 11b. Implementation notes / deviations from the original design
+
+These choices were made during implementation and supersede the design where they differ:
+
+- **Persistence:** instead of a new `pdfeditor.go` bbolt module, the feature reuses
+  the existing generic `Storage*` bindings (bbolt) with a new `pdfprojects` bucket.
+  The only Go change is registering that bucket in `internal/storage/storage.go`'s
+  whitelist (buckets are whitelisted; an unlisted bucket is rejected). Each project
+  is one item keyed by id, with the PDF bytes base64-encoded inside the JSON.
+- **Save size limit:** the storage layer caps a single value at 10 MB. A base64 PDF
+  larger than that fails to save with a surfaced error; export is unaffected (it does
+  not go through storage). Raising this is a post-v1 follow-up.
+- **File open:** drag-drop (`.pdf` via `globalFileRouter`) plus a hidden `<input
+  type="file">` in the panel — no native Go open dialog.
+- **Export:** the flattened PDF is delivered via a Blob download (`<a download>`),
+  not a native Wails save dialog. A native save dialog is a post-v1 polish item.
+- **Open from API response:** best-effort — the response body is a string over the
+  Go transport, reconstructed to bytes via latin1 mapping. Reliable for the disk and
+  drag-drop paths; binary responses may need a backend base64 path later.
+- **Fonts:** export uses StandardFonts.Helvetica (WinAnsi); non-WinAnsi characters are
+  replaced with `?`. Full Unicode via fontkit is a post-v1 follow-up.
+
 ## 12. Open follow-ups (post-v1)
 
 - Cryptographic / eIDAS signing tied into existing `certtools`.

@@ -17,6 +17,12 @@ export const STORAGE_SCHEMAS = {
     currentVersion: 3,
     legacyKeys: ['adomnia.flows.v1'],
   },
+  pdfprojects: {
+    // One item per project (item = project id); see lib/pdf/pdfProjects.ts.
+    bucket: 'pdfprojects',
+    item: 'all',
+    currentVersion: 1,
+  },
 } as const satisfies Record<string, StorageSchemaDefinition>
 
 export type StorageSchemaName = keyof typeof STORAGE_SCHEMAS

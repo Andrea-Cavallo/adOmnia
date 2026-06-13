@@ -3,6 +3,7 @@ export type RoutedToolFile =
   | { kind: 'wsdl'; name: string; text: string }
   | { kind: 'mermaid'; name: string; text: string }
   | { kind: 'class'; name: string; bytes: Uint8Array }
+  | { kind: 'pdf'; name: string; bytes: Uint8Array }
 
 export type GlobalDropFile =
   | RoutedToolFile
@@ -28,6 +29,9 @@ export async function routeGlobalDropFile(file: File): Promise<GlobalDropFile> {
   if (lower.endsWith('.class')) {
     return { kind: 'class', name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) }
   }
+  if (lower.endsWith('.pdf')) {
+    return { kind: 'pdf', name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) }
+  }
 
   const text = await file.text()
   if (lower.endsWith('.har') || isHarDocument(text)) {
@@ -43,5 +47,5 @@ export async function routeGlobalDropFile(file: File): Promise<GlobalDropFile> {
     return { kind: 'collection', name: file.name, text }
   }
 
-  throw new Error('Unsupported file. Drop a collection JSON/YAML/.bru, Mermaid .mmd/.mermaid, .har, .wsdl, or Java .class file.')
+  throw new Error('Unsupported file. Drop a collection JSON/YAML/.bru, Mermaid .mmd/.mermaid, .har, .wsdl, .pdf, or Java .class file.')
 }

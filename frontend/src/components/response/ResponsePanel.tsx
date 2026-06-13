@@ -8,6 +8,7 @@ import { evaluateAssertions } from '@/lib/assertionEngine'
 import { DiffModal, DiffPickerModal } from '@/components/response/DiffView'
 import { useTabsStore, type ResponseBodyView, type ResponseSection } from '@/stores/tabs'
 import { useSettingsStore } from '@/stores/settings'
+import { useAppStore } from '@/stores/app'
 
 interface ResponsePanelProps {
   tabId: string
@@ -564,6 +565,19 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
               >
                 <Copy size={12} />
               </button>
+              {response.contentType.includes('pdf') && (
+                <button
+                  onClick={() => {
+                    const bytes = Uint8Array.from(response.body, (c) => c.charCodeAt(0) & 0xff)
+                    useAppStore.getState().queueFileImport({ kind: 'pdf', name: 'response.pdf', bytes })
+                    useAppStore.getState().setActiveRail('pdfeditor')
+                  }}
+                  className="ml-0.5 p-1 text-text-4 hover:text-accent rounded"
+                  title="Open in PDF Editor"
+                >
+                  <FileText size={12} />
+                </button>
+              )}
             </div>
           )}
         </div>

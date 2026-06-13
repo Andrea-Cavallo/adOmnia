@@ -578,6 +578,21 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 | D9.7 | **Copia Finding** | Copia dettagli del finding negli appunti. |
 | D9.8 | **Mascheramento Automatico** | I valori sensibili sono mascherati di default nella UI. |
 
+### D10. PDF Editor
+
+| ID | Funzionalità | Descrizione |
+|----|--------------|-------------|
+| D10.1 | **Apertura PDF** | Apre un PDF da disco (drag-drop `.pdf` o file picker) e lo renderizza pagina per pagina con pdf.js (rendering lazy on-scroll). |
+| D10.2 | **Apri da Risposta API** | Una risposta HTTP `application/pdf` può essere aperta direttamente nell'editor dal ResponsePanel. |
+| D10.3 | **Testo Libero** | Inserisce text box posizionabili e ridimensionabili in qualsiasi punto della pagina, con colore e doppio-click per editare. |
+| D10.4 | **Annotazioni** | Evidenziatore, rettangolo, ellisse, linea, freccia e disegno a mano libera (ink). |
+| D10.5 | **Compilazione Form** | Rileva i campi AcroForm esistenti (testo, checkbox, radio, dropdown) e li rende compilabili in overlay. |
+| D10.6 | **Firma Visibile** | Aggiunge una firma disegnata a mano o caricata come immagine, posizionabile sulla pagina. |
+| D10.7 | **Layer Ri-modificabile** | Le annotazioni restano un layer separato: il progetto si salva (byte PDF + annotazioni) in bbolt e si riapre per ulteriori modifiche. |
+| D10.8 | **Export PDF Appiattito** | Esporta un nuovo `.pdf` con testo/annotazioni/firma disegnati e i campi form compilati e appiattiti via pdf-lib. |
+| D10.9 | **Zoom & Navigazione** | Zoom in/out/reset e scorrimento multi-pagina con dimensioni coerenti indipendenti dallo zoom. |
+| D10.10 | **Gestione Progetti** | Elenco laterale dei progetti salvati con apertura ed eliminazione. |
+
 ---
 
 ## E. DATI LOCALI
