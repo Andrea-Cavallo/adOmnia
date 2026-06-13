@@ -1,8 +1,8 @@
 # adOmnia - Open Issues & Missing Features
 *Perspective: a developer who uses adOmnia daily as their primary API tool.*
-*Last reviewed: 2026-05-26*
+*Last reviewed: 2026-06-13*
 
-This file contains only work that is still open. Completed items are archived in [`HISTORY_ISSUES.md`](./HISTORY_ISSUES.md).
+This file contains only work that is still open. Completed items are archived in the "Recently Resolved" section below.
 
 ## Priority Guide
 
@@ -13,54 +13,32 @@ This file contains only work that is still open. Completed items are archived in
 | P2 - Medium | Quality gap with a workaround. |
 | P3 - Polish | Product still feels unfinished. |
 
-## P1 - High Priority
+## Open Queue
 
-## P2 - Medium Priority
+_No verified-open issues. The previously-listed backlog items were re-checked against
+the current codebase on 2026-06-13 and found already resolved (see below)._
 
-### P2-09 - GraphQL has no persisted query variables or schema cache
+## Queued (needs brainstorm before implementation)
 
-**User story:**
-> I run schema introspection for a large GraphQL API. I close the tab and reopen it; the schema is gone, so I have to fetch it again every session.
+### API Docs / Swagger viewer
+A dedicated read-only Swagger-UI / Redoc-style reference surface (own rail entry),
+generating specs from collections (`lib/openapi.ts` / `lib/swagger2.ts`) and loading
+from a running server URL. Open design decisions remain ("Try it" wiring, renderer
+approach), so this needs its own brainstorm + spec before implementation.
 
-### P2-11 - Keyboard shortcuts are incomplete and not consistently discoverable
+## Recently Resolved (verified against code 2026-06-13)
 
-**User story:**
-> I look at Settings -> Keyboard Shortcuts to learn what is available. I see only a few shortcuts, while most panels and frequent actions are absent.
+| # | Title | Evidence |
+|---|-------|----------|
+| P2-09 | GraphQL schema/variables not persisted | `useGraphqlCacheStore` persists introspection; `BodyEditor.tsx` hydrates the cache on mount and re-uses the stored schema. |
+| P2-11 | Keyboard shortcuts incomplete | `SettingsPanel.tsx shortcutsList` now documents 14 shortcuts (command palette, send, tab nav, url bar, search, sidebar, settings, rail switch, dev logs), up from 5. |
+| P3-08 | Vault ↔ Environment bridge missing | `lib/vaultRefs.ts` resolves `vault:` references; wired into the send path (`sendRequest.ts`) and the environment editor (`EnvModal.tsx` detects/marks `vault:` refs). |
+| N03 | Win95 JSON bracket depth colors collapsed | `internal/themes/extended.go` json-bracket-1/2/3 are distinct (`#000080`/`#8B0000`/`#006464`), not all `#000000`. |
 
-**What's broken:**
-`G2.10` documents only five keyboard shortcuts. `docs/SOUL.md` states that actions should be keyboard-accessible, but the product does not yet meet that expectation.
+## New This Cycle
 
-## P3 - Polish
-
-### P3-08 - Vault and Environment variables have no bridge
-
-**User story:**
-> I store `PROD_DB_PASSWORD` in the Vault. I want to reference it through `{{PROD_DB_PASSWORD}}` in requests, but there is no way to link the Vault secret into an environment variable.
-
-**What's missing:**
-Vault and environment substitution exist independently, but the Vault-to-Environment workflow is not wired into the UI.
-
-## New Audit Issues
-
-### N03 - JSON bracket nesting colors lost in Win95 theme
-
-**File:** `themes_extended.go:1004-1006`
-
-**What's broken:**
-`json-bracket-1`, `json-bracket-2`, and `json-bracket-3` all render as `#000000`. Bracket depth levels no longer have distinct visual nesting colors in deeply nested JSON.
-
-## Open Summary
-
-| # | Title | Priority | Area |
-|---|-------|----------|------|
-| P2-09 | GraphQL schema and variables are not persisted | P2 | GraphQL |
-| P2-11 | Keyboard shortcuts incomplete | P2 | UX |
-| P3-08 | Vault to Environment bridge missing | P3 | Integration |
-| N03 | Win95 JSON bracket depth colors collapsed | P3 | Visual |
-
-## Suggested Fix Order
-
-1. `P3-08` - Vault to Environment variable bridge.
-2. `P2-09` - GraphQL persistence and schema caching.
-3. `P2-11` - Shortcut coverage and discoverability.
-4. `N03` - Visual clarity (Win95 bracket depth colors).
+### PDF Editor — shipped (branch `feat/pdf-editor`)
+View + edit PDFs (free text, highlight, shapes, ink, AcroForm fill, visible signature),
+re-editable project persistence (bbolt `pdfprojects`), flattened export. Pending: manual
+`wails dev` smoke of the full open→annotate→export→reopen loop. Spec:
+`docs/superpowers/specs/2026-06-13-pdf-editor-design.md`.
