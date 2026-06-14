@@ -12,8 +12,8 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 | A | [API Core](#a-api-core) | HTTP Client, Autenticazione, Assertions, Runner, Flows, Test Data, Daily Scenarios, Visual Test, Scheduled, Contract | ~78 |
 | B | [Protocolli & Streaming](#b-protocolli--streaming) | gRPC, SOAP, WebSocket, SSE, Broker Studio | ~65 |
 | C | [Infrastruttura & Simulazione](#c-infrastruttura--simulazione) | Mock Server (+ Smart Mock), Proxy/Interceptor, Docker Lab, Load Testing | ~47 |
-| D | [Debugging & Analisi](#d-debugging--analisi) | Browser Debug (+ Discovery), HAR Viewer, Network Tools, JSON Tools, XML Tools, Power Tools, Dev Logs, Observability, Secret Scanner | ~90 |
-| E | [Dati Locali](#e-dati-locali) | Database Studio, Storage Inspector, Workspace, Vault, Markdown | ~44 |
+| D | [Debugging & Analisi](#d-debugging--analisi) | Browser Debug (+ Discovery), HAR Viewer, Network Tools, JSON Tools, XML Tools, Power Tools, Dev Logs, Observability, Secret Scanner, PDF Editor | ~110 |
+| E | [Dati Locali](#e-dati-locali) | Database Studio, Storage Inspector, Workspace, Vault, Document Studio | ~51 |
 | F | [Personalizzazione & Estendibilità](#f-personalizzazione--estendibilità) | Temi, Plugin WASM, Template, Python Plugin SDK | ~51 |
 | G | [Piattaforma](#g-piattaforma) | Impostazioni, Infrastruttura, UI Framework | ~76 |
 | H | [API Design](#h-api-design) | Import/Export OpenAPI, Schema Components, Editor OpenAPI Visuale | ~10 |
@@ -592,6 +592,16 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 | D10.8 | **Export PDF Appiattito** | Esporta un nuovo `.pdf` con testo/annotazioni/firma disegnati e i campi form compilati e appiattiti via pdf-lib. |
 | D10.9 | **Zoom & Navigazione** | Zoom in/out/reset e scorrimento multi-pagina con dimensioni coerenti indipendenti dallo zoom. |
 | D10.10 | **Gestione Progetti** | Elenco laterale dei progetti salvati con apertura ed eliminazione. |
+| D10.11 | **Operazioni Pagine** | Ruota, riordina, elimina, unisce e divide pagine PDF senza uscire dall'editor. |
+| D10.12 | **Ricerca Testo PDF** | Cerca testo nel documento, salta ai risultati e copia il testo estratto dalle pagine. |
+| D10.13 | **Export Nativo Desktop** | Salva il PDF tramite dialog Wails nativo invece di affidarsi solo al download Blob del browser. |
+| D10.14 | **Storage PDF Grandi** | Separa metadati e byte PDF in storage locale per supportare progetti piu grandi del limite localStorage. |
+| D10.15 | **PDF da Risposte API Base64** | Gestisce risposte PDF binarie/base64 in modo piu robusto dal client HTTP al viewer. |
+| D10.16 | **Unicode Export** | Usa fallback font per esportare testo non-Latin quando i font standard PDF non bastano. |
+| D10.17 | **Firma Digitale Crittografica** | Firma documenti PDF con certificato P12/PFX o PEM/key usando backend Go locale. |
+| D10.18 | **Verifica Firme PDF** | Controlla firme presenti nel documento e mostra risultati leggibili nella UI. |
+| D10.19 | **Supporto JKS/Certificate Tools** | Usa gli strumenti certificati esistenti per ispezionare/estrarre materiale utile al workflow di firma. |
+| D10.20 | **Hub Document Studio** | PDF vive nello stesso hub laterale di Markdown e Mermaid, cosi documenti, diagrammi e firme restano vicini. |
 
 ---
 
@@ -668,14 +678,20 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 
 ---
 
-### E5. Editor Markdown
+### E5. Document Studio
 
 | # | Funzionalità | Descrizione |
 |---|-------------|-------------|
-| E5.1 | **Editor Live** | Scrittura Markdown con anteprima in tempo reale. |
+| E5.1 | **Markdown Notes** | Scrittura Markdown con anteprima in tempo reale. |
 | E5.2 | **Sintassi Supportata** | H1–H4, bold, italic, inline code, code block con linguaggio, link, immagini, HR, blockquote, liste. |
 | E5.3 | **Toolbar** | Pulsanti Bold, Italic, Code, Link, Immagine, Heading. |
 | E5.4 | **Split View** | Editor e anteprima affiancati. |
+| E5.5 | **Colonne Ridimensionabili** | I pannelli del workspace Markdown possono essere allargati o stretti trascinando le colonne verso sinistra/destra. |
+| E5.6 | **Layout Persistente** | Le dimensioni delle colonne restano salvate localmente e tornano uguali alla riapertura. |
+| E5.7 | **Mermaid Diagrams** | Lo stesso hub raccoglie lo studio Mermaid per diagrammi, preview, zoom e fullscreen. |
+| E5.8 | **PDF Editor & Sign** | Lo stesso hub include editor PDF, annotazioni, pagine, ricerca testo e firme. |
+| E5.9 | **Nome Menu Piu Chiaro** | Il menu laterale non e piu un generico "Markdown": diventa "Document Studio". |
+| E5.10 | **Drop PDF Diretto** | Il router file globale accetta PDF insieme a Postman, OpenAPI, Mermaid, HAR, WSDL e Java class. |
 
 ---
 
@@ -972,10 +988,10 @@ Modulo di integrazione AI: connetti, debugga e genera MCP server — esponendo g
 | **A — API Core** | HTTP Client, Auth, Assertions, Runner, Flows, Test Data, Daily Scenarios, Visual Tests, Scheduled, Contract | 78 |
 | **B — Protocolli & Streaming** | gRPC, SOAP, WebSocket, SSE, Broker Studio (5 broker) | 65 |
 | **C — Infrastruttura & Simulazione** | Mock Server (+ Smart Mock), Proxy, Docker Lab, Load Testing | 47 |
-| **D — Debugging & Analisi** | Browser Debug (+ Discovery), HAR, Network Tools, JSON Tools, XML Tools, Dev Utils, Dev Logs, Observability, Secret Scanner | 90 |
-| **E — Dati Locali** | Database Studio, Storage Inspector, Workspace, Vault, Markdown | 44 |
+| **D — Debugging & Analisi** | Browser Debug (+ Discovery), HAR, Network Tools, JSON Tools, XML Tools, Dev Utils, Dev Logs, Observability, Secret Scanner, PDF Editor | 110 |
+| **E — Dati Locali** | Database Studio, Storage Inspector, Workspace, Vault, Document Studio | 51 |
 | **F — Personalizzazione & Estendibilità** | Temi, Plugin WASM, Template, Python Plugin SDK | 51 |
 | **G — Piattaforma** | Impostazioni, Infrastruttura, UI Framework | 76 |
 | **H — API Design** | Import/Export OpenAPI, Schema Components, Editor OpenAPI Visuale | 10 |
 | **I — MCP (Model Context Protocol)** | Client/Debugger, Sessioni & Trasporto, Server Generator | 12 |
-| **Totale** | 38 sezioni | **~507** |
+| **Totale** | 38 sezioni | **~534** |

@@ -117,7 +117,7 @@ const HUB_LAYERS: Array<Omit<HubLayer, 'stats'>> = [
       { id: 'gitsync', icon: GitBranch, title: 'Git Sync', desc: 'Compare, track and synchronize workspace changes with local Git workflows.', foot: 'versioned work' },
       { id: 'templates', icon: Layers, title: 'Templates & APIs', desc: 'Reuse local templates for requests, collections, flows and mocks, or install from the full public-API catalog.', foot: 'reuse & install' },
       { id: 'storage', icon: HardDrive, title: 'Storage Inspector', desc: 'Browse and repair raw app storage with clear warnings.', foot: 'maintenance' },
-      { id: 'markdown', icon: FileText, title: 'Markdown Notes', desc: 'Local notes and API documentation with live preview.', foot: 'docs nearby' },
+      { id: 'markdown', icon: FileText, title: 'Document Studio', desc: 'Markdown notes, Mermaid diagrams and local PDF editing/signing in one hub.', foot: 'docs nearby' },
     ],
   },
   {

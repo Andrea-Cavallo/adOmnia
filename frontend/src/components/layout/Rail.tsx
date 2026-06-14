@@ -117,7 +117,6 @@ const CATEGORIES: CategoryDef[] = [
       { title: 'Data Tools', items: [
         { id: 'jsontools',   icon: Braces,   label: 'JSON Tools' },
         { id: 'xmltools',    icon: FileCode, label: 'XML Tools' },
-        { id: 'pdfeditor',   icon: FileText, label: 'PDF Editor' },
       ]},
       { title: 'Utilities', items: [
         { id: 'powertools',  icon: Wrench,  label: 'All Utilities' },
@@ -128,11 +127,12 @@ const CATEGORIES: CategoryDef[] = [
     ],
   },
   {
-    key: 'markdown', label: 'Markdown', icon: FileText, code: 'MD',
+    key: 'markdown', label: 'Document Studio', icon: FileText, code: 'DOC',
     groups: [
-      { title: 'Editor', items: [
-        { id: 'markdown', icon: FileText, label: 'Markdown Editor' },
-        { id: 'mermaid',  icon: GitBranch, label: 'Mermaid Studio' },
+      { title: 'Documents & Diagrams', items: [
+        { id: 'markdown',  icon: FileText,  label: 'Markdown Notes' },
+        { id: 'mermaid',   icon: GitBranch, label: 'Mermaid Diagrams' },
+        { id: 'pdfeditor', icon: FileText,  label: 'PDF Editor & Sign' },
       ]},
     ],
   },

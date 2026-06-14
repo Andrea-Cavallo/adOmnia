@@ -12,8 +12,8 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | A | [API Core](#a-api-core) | HTTP Client, Authentication, Assertions, Runner, Flows, Test Data, Visual Tests, Scheduled Tasks, Contract Validation | ~78 |
 | B | [Protocols & Streaming](#b-protocols--streaming) | gRPC, SOAP, WebSocket, SSE, Broker Studio | ~65 |
 | C | [Infrastructure & Simulation](#c-infrastructure--simulation) | Mock Server (+ Smart Mock), Proxy/Interceptor, Docker Lab, Load Testing | ~47 |
-| D | [Debugging & Analysis](#d-debugging--analysis) | Browser Debug (+ Discovery), HAR Viewer, Network Tools, JSON Tools, XML Tools, Power Tools, Dev Logs, Observability, Secret Scanner | ~90 |
-| E | [Local Data](#e-local-data) | Database Studio, Storage Inspector, Workspace, Vault, Markdown | ~44 |
+| D | [Debugging & Analysis](#d-debugging--analysis) | Browser Debug (+ Discovery), HAR Viewer, Network Tools, JSON Tools, XML Tools, Power Tools, Dev Logs, Observability, Secret Scanner, PDF Editor | ~110 |
+| E | [Local Data](#e-local-data) | Database Studio, Storage Inspector, Workspace, Vault, Document Studio | ~51 |
 | F | [Customization & Extensibility](#f-customization--extensibility) | Themes, Plugin WASM, Template, Python Plugin SDK | ~51 |
 | G | [Platform](#g-platform) | Settings, Infrastructure, UI Framework | ~76 |
 | H | [API Design](#h-api-design) | OpenAPI Import/Export, Schema Components, Visual OpenAPI Editor | ~10 |
@@ -564,6 +564,32 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 
 ---
 
+### D10. PDF Editor
+
+| # | Feature | Description |
+|---|-------------|-------------|
+| D10.1 | **Open PDF** | Opens a PDF from disk through drag-and-drop or file picker and renders pages lazily with pdf.js. |
+| D10.2 | **Open from API Response** | Opens `application/pdf` HTTP responses directly from the Response panel, including robust base64-backed bodies. |
+| D10.3 | **Free Text** | Adds movable and resizable text boxes on any page, with color controls and double-click editing. |
+| D10.4 | **Annotations** | Supports highlight, rectangle, ellipse, line, arrow, and freehand ink annotations. |
+| D10.5 | **Form Filling** | Detects AcroForm text, checkbox, radio, and dropdown fields and makes them editable as overlays. |
+| D10.6 | **Visible Signature** | Adds a drawn or image-based visible signature layer, positioned directly on the page. |
+| D10.7 | **Editable Layer** | Keeps annotations separate from the source PDF; projects reopen from local bbolt storage for further edits. |
+| D10.8 | **Flattened PDF Export** | Exports a new PDF with text, annotations, visible signature images, and form values flattened through pdf-lib. |
+| D10.9 | **Zoom & Navigation** | Zoom in/out/reset and multi-page scrolling with stable page dimensions. |
+| D10.10 | **Project Management** | Saved project sidebar with open/delete flows. |
+| D10.11 | **Page Operations** | Rotates, reorders, deletes, merges, appends, and splits PDF pages locally. |
+| D10.12 | **Search & Copy Text** | Searches document text, jumps to matches, and copies extracted page text. |
+| D10.13 | **Native Desktop Export** | Saves through the native Wails file dialog instead of relying only on browser Blob downloads. |
+| D10.14 | **Large PDF Storage** | Stores project metadata and PDF bytes separately to handle documents beyond localStorage limits. |
+| D10.15 | **Unicode Export** | Uses fallback font handling when standard PDF fonts cannot encode the exported text. |
+| D10.16 | **Cryptographic PDF Signing** | Signs PDFs locally with P12/PFX or PEM/key material through the Go backend. |
+| D10.17 | **Signature Verification** | Verifies existing PDF signatures and reports readable results in the UI. |
+| D10.18 | **JKS / Certificate Tools Workflow** | Works with the certificate tooling to inspect/extract material useful for signing workflows. |
+| D10.19 | **Document Studio Hub** | PDF lives beside Markdown and Mermaid in the left-side Document Studio hub. |
+
+---
+
 ## E. LOCAL DATA
 
 ### E1. Database Studio
@@ -636,14 +662,20 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 
 ---
 
-### E5. Editor Markdown
+### E5. Document Studio
 
 | # | Feature | Description |
 |---|-------------|-------------|
-| E5.1 | **Editor Live** | Markdown writing with real-time preview. |
+| E5.1 | **Markdown Notes** | Markdown writing with real-time preview. |
 | E5.2 | **Supported Syntax** | H1–H4, bold, italic, inline code, code block with language, links, images, HR, blockquote, lists. |
 | E5.3 | **Toolbar** | Pulsanti Bold, Italic, Code, Link, Immagine, Heading. |
 | E5.4 | **Split View** | Editor e anteprima affiancati. |
+| E5.5 | **Resizable Columns** | Markdown workspace columns can be widened or narrowed by dragging handles left or right. |
+| E5.6 | **Persistent Layout** | Column widths are saved locally and restored when the panel reopens. |
+| E5.7 | **Mermaid Diagrams** | The same hub includes Mermaid diagram editing, preview, zoom, and fullscreen viewing. |
+| E5.8 | **PDF Editor & Sign** | The same hub includes PDF editing, annotation, page operations, text search, and signatures. |
+| E5.9 | **Clearer Left Menu Name** | The left menu is no longer a generic "Markdown" area; it is now "Document Studio". |
+| E5.10 | **Direct PDF Drop** | The global file router accepts PDFs alongside Postman, OpenAPI, Mermaid, HAR, WSDL, and Java class files. |
 
 ---
 
@@ -929,10 +961,10 @@ AI-integration module: connect to, debug, and generate MCP servers — exposing 
 | **A — API Core** | HTTP Client, Auth, Assertions, Runner, Flows, Test Data, Visual Tests, Scheduled Tasks, Contract Validation | 78 |
 | **B — Protocols & Streaming** | gRPC, SOAP, WebSocket, SSE, Broker Studio (5 broker) | 65 |
 | **C — Infrastructure & Simulation** | Mock Server (+ Smart Mock), Proxy, Docker Lab, Load Testing | 47 |
-| **D — Debugging & Analysis** | Browser Debug (+ Discovery), HAR, Network Tools, JSON Tools, XML Tools, Dev Utils, Dev Logs, Observability, Secret Scanner | 90 |
-| **E — Local Data** | Database Studio, Storage Inspector, Workspace, Vault, Markdown | 44 |
+| **D — Debugging & Analysis** | Browser Debug (+ Discovery), HAR, Network Tools, JSON Tools, XML Tools, Dev Utils, Dev Logs, Observability, Secret Scanner, PDF Editor | 110 |
+| **E — Local Data** | Database Studio, Storage Inspector, Workspace, Vault, Document Studio | 51 |
 | **F — Customization & Extensibility** | Themes, Plugin WASM, Template, Python Plugin SDK | 51 |
 | **G — Platform** | Settings, Infrastructure, UI Framework | 76 |
 | **H — API Design** | OpenAPI Import/Export, Schema Components, Visual OpenAPI Editor | 10 |
 | **I — MCP (Model Context Protocol)** | Client/Debugger, Sessions & Transport, Server Generator | 12 |
-| **Total** | 38 sezioni | **~507** |
+| **Total** | 39 sections | **~534** |

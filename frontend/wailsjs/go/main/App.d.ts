@@ -50,6 +50,8 @@ export function SaveSettings(arg1:string):Promise<void>;
 
 export function SaveBinaryFileBase64(arg1:string,arg2:string):Promise<string>;
 
+export function SignPdfDocumentBase64(arg1:string):Promise<string>;
+
 export function SelectFolder(arg1:string):Promise<string>;
 
 export function SetDevMode(arg1:boolean):Promise<void>;
@@ -65,6 +67,10 @@ export function StorageGetAll(arg1:string):Promise<Array<main.StorageEntry>>;
 export function StorageList(arg1:string,arg2:string):Promise<Array<string>>;
 
 export function StoragePut(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function VerifyPdfSignatureBase64(arg1:string):Promise<string>;
+
+export function InspectSigningCertificateBase64(arg1:string):Promise<string>;
 
 export function WriteMarkdownAgentGraph(arg1:string,arg2:string):Promise<string>;
 

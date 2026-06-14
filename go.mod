@@ -6,6 +6,8 @@ require (
 	filippo.io/age v1.3.1
 	github.com/HdrHistogram/hdrhistogram-go v1.2.0
 	github.com/IBM/sarama v1.50.2
+	github.com/digitorus/pdf v0.1.2
+	github.com/digitorus/pdfsign v0.0.0-20260407063256-85ede6424a74
 	github.com/dustin/go-humanize v1.0.1
 	github.com/eclipse/paho.mqtt.golang v1.5.1
 	github.com/gabriel-vasile/mimetype v1.4.13
@@ -16,6 +18,7 @@ require (
 	github.com/jhump/protoreflect v1.18.0
 	github.com/miekg/dns v1.1.72
 	github.com/nats-io/nats.go v1.52.0
+	github.com/pavlo-v-chernykh/keystore-go/v4 v4.5.0
 	github.com/rabbitmq/amqp091-go v1.11.0
 	github.com/redis/go-redis/v9 v9.20.0
 	github.com/robfig/cron/v3 v3.0.1
@@ -32,6 +35,7 @@ require (
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.51.0
+	software.sslmate.com/src/go-pkcs12 v0.7.2
 )
 
 require (
@@ -41,6 +45,8 @@ require (
 	github.com/bep/debounce v1.2.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/digitorus/pkcs7 v0.0.0-20230818184609-3a137a874352 // indirect
+	github.com/digitorus/timestamp v0.0.0-20231217203849-220c5c2851b7 // indirect
 	github.com/eapache/go-resiliency v1.7.0 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
@@ -64,6 +70,7 @@ require (
 	github.com/leaanthony/gosod v1.0.4 // indirect
 	github.com/leaanthony/slicer v1.6.0 // indirect
 	github.com/leaanthony/u v1.1.1 // indirect
+	github.com/mattetti/filebuffer v1.0.1 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/nats-io/nkeys v0.4.15 // indirect
