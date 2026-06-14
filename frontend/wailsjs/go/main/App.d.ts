@@ -24,6 +24,8 @@ export function GetVaultTimeout():Promise<number>;
 
 export function ImportMarkdownFolderToWorkspace(arg1:string):Promise<main.MarkdownWorkspaceInfo>;
 
+export function InspectSigningCertificateBase64(arg1:string):Promise<string>;
+
 export function IsDevMode():Promise<boolean>;
 
 export function ListLogFiles():Promise<Array<main.LogFileEntry>>;
@@ -44,19 +46,19 @@ export function RecordFrontendLog(arg1:string,arg2:string):Promise<void>;
 
 export function RenameMarkdownFile(arg1:string,arg2:string,arg3:string):Promise<main.MarkdownFileEntry>;
 
+export function SaveBinaryFileBase64(arg1:string,arg2:string):Promise<string>;
+
 export function SaveMarkdownFileAs(arg1:string,arg2:string):Promise<main.MarkdownFileEntry>;
 
 export function SaveSettings(arg1:string):Promise<void>;
-
-export function SaveBinaryFileBase64(arg1:string,arg2:string):Promise<string>;
-
-export function SignPdfDocumentBase64(arg1:string):Promise<string>;
 
 export function SelectFolder(arg1:string):Promise<string>;
 
 export function SetDevMode(arg1:boolean):Promise<void>;
 
 export function SetVaultTimeout(arg1:number):Promise<void>;
+
+export function SignPdfDocumentBase64(arg1:string):Promise<string>;
 
 export function StorageDelete(arg1:string,arg2:string):Promise<void>;
 
@@ -69,8 +71,6 @@ export function StorageList(arg1:string,arg2:string):Promise<Array<string>>;
 export function StoragePut(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function VerifyPdfSignatureBase64(arg1:string):Promise<string>;
-
-export function InspectSigningCertificateBase64(arg1:string):Promise<string>;
 
 export function WriteMarkdownAgentGraph(arg1:string,arg2:string):Promise<string>;
 
