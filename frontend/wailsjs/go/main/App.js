@@ -46,6 +46,10 @@ export function ImportMarkdownFolderToWorkspace(arg1) {
   return window['go']['main']['App']['ImportMarkdownFolderToWorkspace'](arg1);
 }
 
+export function InspectSigningCertificateBase64(arg1) {
+  return window['go']['main']['App']['InspectSigningCertificateBase64'](arg1);
+}
+
 export function IsDevMode() {
   return window['go']['main']['App']['IsDevMode']();
 }
@@ -86,20 +90,16 @@ export function RenameMarkdownFile(arg1, arg2, arg3) {
   return window['go']['main']['App']['RenameMarkdownFile'](arg1, arg2, arg3);
 }
 
+export function SaveBinaryFileBase64(arg1, arg2) {
+  return window['go']['main']['App']['SaveBinaryFileBase64'](arg1, arg2);
+}
+
 export function SaveMarkdownFileAs(arg1, arg2) {
   return window['go']['main']['App']['SaveMarkdownFileAs'](arg1, arg2);
 }
 
 export function SaveSettings(arg1) {
   return window['go']['main']['App']['SaveSettings'](arg1);
-}
-
-export function SaveBinaryFileBase64(arg1, arg2) {
-  return window['go']['main']['App']['SaveBinaryFileBase64'](arg1, arg2);
-}
-
-export function SignPdfDocumentBase64(arg1) {
-  return window['go']['main']['App']['SignPdfDocumentBase64'](arg1);
 }
 
 export function SelectFolder(arg1) {
@@ -112,6 +112,10 @@ export function SetDevMode(arg1) {
 
 export function SetVaultTimeout(arg1) {
   return window['go']['main']['App']['SetVaultTimeout'](arg1);
+}
+
+export function SignPdfDocumentBase64(arg1) {
+  return window['go']['main']['App']['SignPdfDocumentBase64'](arg1);
 }
 
 export function StorageDelete(arg1, arg2) {
@@ -136,10 +140,6 @@ export function StoragePut(arg1, arg2, arg3) {
 
 export function VerifyPdfSignatureBase64(arg1) {
   return window['go']['main']['App']['VerifyPdfSignatureBase64'](arg1);
-}
-
-export function InspectSigningCertificateBase64(arg1) {
-  return window['go']['main']['App']['InspectSigningCertificateBase64'](arg1);
 }
 
 export function WriteMarkdownAgentGraph(arg1, arg2) {

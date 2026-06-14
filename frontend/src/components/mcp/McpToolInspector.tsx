@@ -275,7 +275,7 @@ export function McpToolInspector() {
                     <div key={key}>
                       <label className="flex items-center gap-1 text-[11px] font-medium text-text-2">
                         {key}
-                        {required.includes(key) && <span className="text-danger">*</span>}
+                        {required.includes(key) && <span className="text-error">*</span>}
                         {property.type && <span className="font-normal text-text-4">({property.type})</span>}
                       </label>
                       {property.description && <p className="mb-1 mt-0.5 text-[10px] text-text-4">{property.description}</p>}
@@ -308,7 +308,7 @@ export function McpToolInspector() {
                 <div className="border-t border-border-1 p-3">
                   <div className="mb-2 flex items-center gap-2">
                     {lastResult.isError ? (
-                      <AlertCircle size={13} className="text-danger" />
+                      <AlertCircle size={13} className="text-error" />
                     ) : (
                       <span className="rounded border border-success/30 bg-success/10 px-1.5 py-0.5 text-[10px] text-success">OK</span>
                     )}
@@ -343,7 +343,7 @@ export function McpToolInspector() {
                   <div key={arg.name}>
                     <label className="flex items-center gap-1 text-[11px] font-medium text-text-2">
                       {arg.name}
-                      {arg.required && <span className="text-danger">*</span>}
+                      {arg.required && <span className="text-error">*</span>}
                     </label>
                     {arg.description && <p className="mb-1 mt-0.5 text-[10px] text-text-4">{arg.description}</p>}
                     <input

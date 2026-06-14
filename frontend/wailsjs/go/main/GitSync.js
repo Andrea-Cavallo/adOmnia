@@ -62,12 +62,12 @@ export function GetFileDiff(arg1, arg2, arg3, arg4) {
   return window['go']['main']['GitSync']['GetFileDiff'](arg1, arg2, arg3, arg4);
 }
 
-export function GetWorkingTreeFileSnapshot(arg1, arg2, arg3) {
-  return window['go']['main']['GitSync']['GetWorkingTreeFileSnapshot'](arg1, arg2, arg3);
-}
-
 export function GetStatus(arg1) {
   return window['go']['main']['GitSync']['GetStatus'](arg1);
+}
+
+export function GetWorkingTreeFileSnapshot(arg1, arg2, arg3) {
+  return window['go']['main']['GitSync']['GetWorkingTreeFileSnapshot'](arg1, arg2, arg3);
 }
 
 export function InitRepo(arg1) {

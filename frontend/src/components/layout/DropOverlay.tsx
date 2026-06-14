@@ -6,7 +6,7 @@ export function DropOverlay() {
       <div className="flex flex-col items-center gap-3 rounded-lg border-2 border-dashed border-accent bg-surface-1 p-8 shadow-2xl">
         <UploadCloud size={48} strokeWidth={1.5} className="text-accent" />
         <p className="text-sm font-semibold text-text-1">Drop a file to open it</p>
-        <p className="text-[10px] text-text-3">Postman / OpenAPI / Insomnia / Mermaid / PDF / HAR / WSDL / Java Class</p>
+        <p className="text-[10px] text-text-3">Postman / OpenAPI / Insomnia / Mermaid / LaTeX / PDF / HAR / WSDL / Java Class</p>
       </div>
     </div>
   )

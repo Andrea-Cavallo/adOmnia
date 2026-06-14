@@ -22,7 +22,7 @@ export function McpHistoryPanel() {
           <button
             type="button"
             onClick={clearHistory}
-            className="rounded p-1 text-text-4 transition-colors hover:bg-surface-2 hover:text-danger"
+            className="rounded p-1 text-text-4 transition-colors hover:bg-surface-2 hover:text-error"
             title="Clear history"
           >
             <Trash2 size={12} />
@@ -43,7 +43,7 @@ export function McpHistoryPanel() {
           >
             <div className="flex items-center gap-1.5">
               {entry.isError ? (
-                <AlertCircle size={11} className="shrink-0 text-danger" />
+                <AlertCircle size={11} className="shrink-0 text-error" />
               ) : (
                 <CheckCircle2 size={11} className="shrink-0 text-success" />
               )}
