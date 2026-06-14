@@ -130,6 +130,10 @@ export function GetFileDiff(repoPath: string, refA: string, refB: string, filePa
   return window['go']['main']['GitSync']['GetFileDiff'](repoPath, refA, refB, filePath)
 }
 
+export function GetWorkingTreeFileSnapshot(repoPath: string, filePath: string, oldPath: string): Promise<string> {
+  return window['go']['main']['GitSync']['GetWorkingTreeFileSnapshot'](repoPath, filePath, oldPath)
+}
+
 export function CreateTag(repoPath: string, name: string, ref: string): Promise<void> {
   return window['go']['main']['GitSync']['CreateTag'](repoPath, name, ref)
 }

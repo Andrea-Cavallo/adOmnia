@@ -286,3 +286,15 @@ func (g *GitSync) GetFileDiff(repoPath, refA, refB, filePath string) (string, er
 	}
 	return git.GetFileDiff(repoPath, refA, refB, filePath)
 }
+
+func (g *GitSync) GetWorkingTreeFileSnapshot(repoPath, filePath, oldPath string) (string, error) {
+	if repoPath == "" {
+		repoPath = g.defaultRepoPath()
+	}
+	snapshot, err := git.GetWorkingTreeFileSnapshot(repoPath, filePath, oldPath)
+	if err != nil {
+		return "", err
+	}
+	raw, _ := json.Marshal(snapshot)
+	return string(raw), nil
+}

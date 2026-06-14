@@ -5,6 +5,7 @@ interface WailsGoMain {
   App: {
     LoadSettings: () => Promise<string>
     SaveSettings: (settingsJSON: string) => Promise<void>
+    SaveBinaryFileBase64: (defaultName: string, dataBase64: string) => Promise<string>
     StorageGet: (bucket: string, key: string) => Promise<string>
     StoragePut: (bucket: string, key: string, value: string) => Promise<void>
     StorageDelete: (bucket: string, key: string) => Promise<void>
@@ -70,6 +71,7 @@ interface WailsGoMain {
     AbortIntegration: (repoPath: string) => Promise<void>
     CompareRefs: (repoPath: string, refA: string, refB: string) => Promise<string>
     GetFileDiff: (repoPath: string, refA: string, refB: string, filePath: string) => Promise<string>
+    GetWorkingTreeFileSnapshot: (repoPath: string, filePath: string, oldPath: string) => Promise<string>
     CreateTag: (repoPath: string, name: string, ref: string) => Promise<void>
     DeleteTag: (repoPath: string, name: string) => Promise<void>
   }

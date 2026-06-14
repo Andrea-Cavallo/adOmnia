@@ -51,6 +51,54 @@ interface WebkitFileEntry {
   }
 }
 
+type MarkdownColumnKey = 'tree' | 'editor' | 'inspector'
+type MarkdownColumnWidths = Record<MarkdownColumnKey, number>
+
+const DEFAULT_COLUMN_WIDTHS: MarkdownColumnWidths = {
+  tree: 240,
+  editor: 560,
+  inspector: 256,
+}
+
+const COLUMN_LIMITS: Record<MarkdownColumnKey, { min: number; maxRatio: number }> = {
+  tree: { min: 168, maxRatio: 0.36 },
+  editor: { min: 300, maxRatio: 0.72 },
+  inspector: { min: 184, maxRatio: 0.34 },
+}
+
+function clampMarkdownColumnWidth(key: MarkdownColumnKey, width: number): number {
+  const limit = COLUMN_LIMITS[key]
+  return Math.max(limit.min, Math.min(width, Math.round(window.innerWidth * limit.maxRatio)))
+}
+
+function normalizeMarkdownColumnWidths(value?: Partial<MarkdownColumnWidths>): MarkdownColumnWidths {
+  return {
+    tree: clampMarkdownColumnWidth('tree', value?.tree ?? DEFAULT_COLUMN_WIDTHS.tree),
+    editor: clampMarkdownColumnWidth('editor', value?.editor ?? DEFAULT_COLUMN_WIDTHS.editor),
+    inspector: clampMarkdownColumnWidth('inspector', value?.inspector ?? DEFAULT_COLUMN_WIDTHS.inspector),
+  }
+}
+
+function MarkdownResizeHandle({
+  label,
+  onMouseDown,
+}: {
+  label: string
+  onMouseDown: (event: React.MouseEvent<HTMLDivElement>) => void
+}) {
+  return (
+    <div
+      role="separator"
+      aria-label={label}
+      title={label}
+      onMouseDown={onMouseDown}
+      className="group relative z-10 w-[5px] shrink-0 cursor-ew-resize bg-surface-0 transition-colors hover:bg-accent/20"
+    >
+      <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-border-1 transition-colors group-hover:bg-accent/60" />
+    </div>
+  )
+}
+
 export function MarkdownPanel() {
   const [content, setContent] = useState(welcomeNote)
   const [mode, setMode] = useState<'split' | 'edit' | 'preview'>('split')
@@ -79,11 +127,13 @@ export function MarkdownPanel() {
   const [agentGraphPath, setAgentGraphPath] = useState('')
   const [graphOpen, setGraphOpen] = useState(false)
   const [showTemplatePicker, setShowTemplatePicker] = useState(false)
+  const [columnWidths, setColumnWidths] = useState<MarkdownColumnWidths>(() => normalizeMarkdownColumnWidths())
 
   const editorRef = useRef<HTMLTextAreaElement>(null)
   const previewRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const syncLock = useRef(false)
+  const columnResizeRef = useRef<{ key: MarkdownColumnKey; startX: number; startWidth: number; direction: 1 | -1 } | null>(null)
 
   const html = useMemo(() => renderMarkdown(content, activeFile?.path), [activeFile?.path, content])
   const effectiveContentsByPath = useMemo(() => {
@@ -172,6 +222,34 @@ export function MarkdownPanel() {
     ed.scrollTop = pct * (ed.scrollHeight - ed.clientHeight)
     requestAnimationFrame(() => { syncLock.current = false })
   }, [])
+
+  const startColumnResize = useCallback((key: MarkdownColumnKey, direction: 1 | -1) => (event: React.MouseEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    columnResizeRef.current = { key, startX: event.clientX, startWidth: columnWidths[key], direction }
+
+    const handleMove = (moveEvent: MouseEvent) => {
+      const drag = columnResizeRef.current
+      if (!drag) return
+      const nextWidth = clampMarkdownColumnWidth(
+        drag.key,
+        drag.startWidth + (moveEvent.clientX - drag.startX) * drag.direction,
+      )
+      setColumnWidths((current) => ({ ...current, [drag.key]: nextWidth }))
+    }
+
+    const handleUp = () => {
+      columnResizeRef.current = null
+      document.removeEventListener('mousemove', handleMove)
+      document.removeEventListener('mouseup', handleUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+
+    document.body.style.cursor = 'ew-resize'
+    document.body.style.userSelect = 'none'
+    document.addEventListener('mousemove', handleMove)
+    document.addEventListener('mouseup', handleUp)
+  }, [columnWidths])
 
   const loadFolderIndex = useCallback(async (folderPath: string) => {
     const nextFiles = await listMarkdownFiles(folderPath)
@@ -536,6 +614,7 @@ export function MarkdownPanel() {
         showUnresolved?: boolean
         showOrphans?: boolean
         folderFilter?: string
+        columnWidths?: Partial<MarkdownColumnWidths>
       }
       if (parsed.mode) setMode(parsed.mode)
       if (parsed.query) setQuery(parsed.query)
@@ -546,6 +625,7 @@ export function MarkdownPanel() {
       if (typeof parsed.showUnresolved === 'boolean') setShowUnresolved(parsed.showUnresolved)
       if (typeof parsed.showOrphans === 'boolean') setShowOrphans(parsed.showOrphans)
       if (parsed.folderFilter) setFolderFilter(parsed.folderFilter)
+      if (parsed.columnWidths) setColumnWidths(normalizeMarkdownColumnWidths(parsed.columnWidths))
     } catch {
       window.localStorage.removeItem(MARKDOWN_UI_STATE_KEY)
     }
@@ -564,10 +644,19 @@ export function MarkdownPanel() {
         showUnresolved,
         showOrphans,
         folderFilter,
+        columnWidths,
       }))
     }, 250)
     return () => window.clearTimeout(handle)
-  }, [activeFile, expandedDirs, folderFilter, globalSearch, graphOffset, graphScale, mode, query, showOrphans, showUnresolved])
+  }, [activeFile, columnWidths, expandedDirs, folderFilter, globalSearch, graphOffset, graphScale, mode, query, showOrphans, showUnresolved])
+
+  useEffect(() => {
+    const onResize = () => {
+      setColumnWidths((current) => normalizeMarkdownColumnWidths(current))
+    }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   useEffect(() => {
     if (!hasMarkdownBackend()) return
@@ -719,6 +808,7 @@ export function MarkdownPanel() {
         <MarkdownFileTree
           ref={searchRef}
           activeFile={activeFile}
+          className="min-w-0"
           expandedDirs={expandedDirs}
           query={query}
           renamingPath={renamingPath}
@@ -736,27 +826,42 @@ export function MarkdownPanel() {
             setRenamingPath('')
             setRenameValue('')
           }}
+          style={{ width: columnWidths.tree }}
         />
 
+        <MarkdownResizeHandle label="Resize Markdown file list" onMouseDown={startColumnResize('tree', 1)} />
+
         {mode !== 'preview' && (
-          <MarkdownEditor
-            ref={editorRef}
-            content={content}
-            mode={mode}
-            onChange={(value) => {
-              setContent(value)
-              if (activeFile) setDirty(true)
-            }}
-            onScroll={mode === 'split' ? onEditorScroll : undefined}
-          />
+          <div
+            className="flex min-h-0 shrink-0 flex-col overflow-hidden"
+            style={mode === 'split' ? { width: columnWidths.editor } : { flex: '1 1 0', minWidth: 300 }}
+          >
+            <MarkdownEditor
+              ref={editorRef}
+              className="min-w-0"
+              content={content}
+              mode={mode}
+              onChange={(value) => {
+                setContent(value)
+                if (activeFile) setDirty(true)
+              }}
+              onScroll={mode === 'split' ? onEditorScroll : undefined}
+            />
+          </div>
+        )}
+        {mode === 'split' && (
+          <MarkdownResizeHandle label="Resize Markdown editor and preview" onMouseDown={startColumnResize('editor', 1)} />
         )}
         {mode !== 'edit' && (
-          <MarkdownPreview
-            ref={previewRef}
-            html={html}
-            onInternalLink={openInternalLink}
-            onScroll={mode === 'split' ? onPreviewScroll : undefined}
-          />
+          <div className="flex min-w-[280px] flex-1 flex-col overflow-hidden">
+            <MarkdownPreview
+              ref={previewRef}
+              className="min-w-0"
+              html={html}
+              onInternalLink={openInternalLink}
+              onScroll={mode === 'split' ? onPreviewScroll : undefined}
+            />
+          </div>
         )}
 
         <MarkdownGraphView
@@ -785,7 +890,9 @@ export function MarkdownPanel() {
           setShowUnresolved={setShowUnresolved}
         />
 
-        <aside className="w-52 shrink-0 border-l border-border-1 bg-surface-0 flex flex-col min-h-0 lg:w-60 xl:w-64">
+        <MarkdownResizeHandle label="Resize Markdown outline and backlinks" onMouseDown={startColumnResize('inspector', -1)} />
+
+        <aside className="shrink-0 border-l border-border-1 bg-surface-0 flex flex-col min-h-0" style={{ width: columnWidths.inspector }}>
           <div className="border-b border-border-1 p-2">
             <div className="mb-1.5 text-xs font-semibold text-text-2">Tags</div>
             {tags.length === 0 ? (

@@ -18,6 +18,7 @@ import {
   Plus,
   Save,
   Search,
+  Server,
   Settings,
   Square,
   Trash2,
@@ -32,6 +33,13 @@ import {
   matchCatalogRequest,
   type ApiCatalogRequest,
 } from '@/lib/flowMermaid'
+import { appendMockEndpoints } from '@/lib/mockEndpointStore'
+import {
+  createMockCommerceCollection,
+  createMockCommerceEndpoints,
+  createMockCommerceFlow,
+  MOCK_FLOW_DEMO_NAME,
+} from '@/lib/mockFlowDemo'
 import { runApiFlow, validateFlowGraph, type RunEntry, type RuntimeByNode } from '@/lib/flowRunner'
 import {
   loadFlowDefinitions,
@@ -43,10 +51,14 @@ import {
   type FlowRunStatus,
   type SavedFlowDefinition,
 } from '@/lib/flowStorage'
-import { type Collection, type RequestItem, type TreeNode, uid } from '@/lib/types'
+import { flattenApiCatalog } from '@/lib/apiCatalog'
+import { type RequestItem, uid } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { serverUrl, sidecarFetch, useServerPort } from '@/lib/useServerPort'
+import { useAppStore } from '@/stores/app'
 import { useCollectionsStore } from '@/stores/collections'
 import { useEnvironmentsStore } from '@/stores/environments'
+import { useSettingsStore } from '@/stores/settings'
 
 const NODE_SIZE: Record<FlowNodeDefinition['type'], { w: number; h: number }> = {
   start: { w: 136, h: 66 },
@@ -64,19 +76,6 @@ function normalizeName(text: string) {
 
 function nodeOverrideKey(node: FlowNodeDefinition) {
   return node.mermaidKey || normalizeName(node.label)
-}
-
-function flattenRequests(collection: Collection): ApiCatalogRequest[] {
-  const walk = (nodes: TreeNode[], path: string[]): ApiCatalogRequest[] => nodes.flatMap((node) => {
-    if (node.type === 'folder') return walk(node.children, [...path, node.name])
-    return [{
-      id: `${collection.id}:${node.id}`,
-      label: [...path, node.name].join(' / '),
-      source: collection.name,
-      request: node,
-    }]
-  })
-  return walk(collection.children, [])
 }
 
 function requestOverridesFromGraph(graph: FlowGraphDefinition): Record<string, RequestItem> {
@@ -150,6 +149,7 @@ function FlowWorkspaceSidebar({
   activeFlowId,
   saveError,
   onNew,
+  onCreateMockDemo,
   onSave,
   onLoad,
   onDelete,
@@ -164,6 +164,7 @@ function FlowWorkspaceSidebar({
   activeFlowId: string | null
   saveError: string
   onNew: () => void
+  onCreateMockDemo: () => void
   onSave: () => void
   onLoad: (flow: SavedFlowDefinition) => void
   onDelete: (id: string) => void
@@ -186,9 +187,14 @@ function FlowWorkspaceSidebar({
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-3">
-        <button onClick={onNew} className="flex h-9 items-center justify-center gap-2 rounded-lg bg-accent text-xs font-semibold text-white shadow-[0_8px_22px_rgba(139,61,255,0.24)] hover:bg-accent-hover">
-          <Plus size={15} /> New Flow
-        </button>
+        <div className="grid grid-cols-2 gap-1.5">
+          <button onClick={onNew} className="flex h-9 items-center justify-center gap-2 rounded-lg bg-accent text-xs font-semibold text-white shadow-[0_8px_22px_rgba(139,61,255,0.24)] hover:bg-accent-hover">
+            <Plus size={15} /> New Flow
+          </button>
+          <button onClick={onCreateMockDemo} className="flex h-9 items-center justify-center gap-2 rounded-lg border border-success/30 bg-success/10 text-xs font-semibold text-success hover:bg-success/15">
+            <Server size={15} /> Mock demo
+          </button>
+        </div>
 
         <div className="mt-2 grid grid-cols-4 gap-1.5">
           <button onClick={onSave} title="Save flow" className="grid h-9 place-items-center rounded-lg border border-border-2 bg-surface-0 text-text-3 hover:text-text-1"><Save size={14} /></button>
@@ -839,11 +845,15 @@ function MermaidModal({ value, onChange, onClose, onImport, catalog, graph }: {
 
 export function FlowsPanel() {
   const fileRef = useRef<HTMLInputElement>(null)
+  const sidecarPort = useServerPort()
   const collections = useCollectionsStore((s) => s.collections)
+  const importCollection = useCollectionsStore((s) => s.importCollection)
   const envVars = useEnvironmentsStore((s) => s.getResolvedVars)
   const environments = useEnvironmentsStore((s) => s.environments)
   const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
-  const catalog = useMemo(() => collections.flatMap(flattenRequests), [collections])
+  const mockSettings = useSettingsStore((s) => s.settings.mock)
+  const setMockRunning = useAppStore((s) => s.setMockRunning)
+  const catalog = useMemo(() => flattenApiCatalog(collections), [collections])
 
   const [flowName, setFlowName] = useState('Untitled API flow')
   const [activeFlowId, setActiveFlowId] = useState<string | null>(null)
@@ -936,6 +946,49 @@ export function FlowsPanel() {
     setFlowName(saved.name)
     void persist([saved, ...savedFlows.filter((flow) => flow.id !== id)])
   }
+
+  const createMockDemo = useCallback(async () => {
+    const mockPort = mockSettings.defaultMockPort || 3000
+    const mockBaseUrl = `http://127.0.0.1:${mockPort}`
+    const endpoints = createMockCommerceEndpoints()
+    const collection = createMockCommerceCollection(mockBaseUrl)
+    const demoFlow = createMockCommerceFlow(collection)
+
+    importCollection(collection)
+    await appendMockEndpoints(endpoints)
+    await persist([demoFlow, ...savedFlows.filter((flow) => flow.name !== MOCK_FLOW_DEMO_NAME)])
+    loadFlow(demoFlow)
+    setCatalogSearch('')
+
+    let startMessage = `Created ${MOCK_FLOW_DEMO_NAME}.`
+    if (sidecarPort) {
+      try {
+        const response = await sidecarFetch(serverUrl(sidecarPort, '/mock/start'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            port: mockPort,
+            password: mockSettings.mockServerPassword || '',
+            endpoints,
+          }),
+        })
+        if (response.ok) {
+          const data = await response.json() as { running?: boolean }
+          setMockRunning(Boolean(data.running))
+          startMessage = data.running
+            ? `Created ${MOCK_FLOW_DEMO_NAME} and started Mock Server on ${mockBaseUrl}.`
+            : `${startMessage} Open Mock Server and press Start, then run the flow.`
+        } else {
+          startMessage = `${startMessage} Open Mock Server and press Start, then run the flow.`
+        }
+      } catch {
+        startMessage = `${startMessage} Open Mock Server and press Start, then run the flow.`
+      }
+    } else {
+      startMessage = `${startMessage} Open Mock Server and press Start, then run the flow.`
+    }
+    setSaveError(startMessage)
+  }, [importCollection, mockSettings.defaultMockPort, mockSettings.mockServerPassword, persist, savedFlows, setMockRunning, sidecarPort])
 
   const newFlow = () => {
     setActiveFlowId(null)
@@ -1043,6 +1096,7 @@ export function FlowsPanel() {
         activeFlowId={activeFlowId}
         saveError={saveError}
         onNew={newFlow}
+        onCreateMockDemo={() => void createMockDemo()}
         onSave={saveFlow}
         onLoad={loadFlow}
         onDelete={deleteFlow}

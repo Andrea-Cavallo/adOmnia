@@ -30,6 +30,13 @@ interface OpenAPIOperation {
   responses?: Record<string, unknown>
 }
 
+type OpenAPIParameter = NonNullable<OpenAPIOperation['parameters']>[number]
+type OpenAPIPathItem = Partial<Record<HttpMethodKey, OpenAPIOperation>> & {
+  $ref?: string
+  parameters?: OpenAPIParameter[]
+}
+type HttpMethodKey = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head' | 'options'
+
 interface SecurityScheme {
   type: string
   scheme?: string
@@ -52,7 +59,7 @@ interface OpenAPISpec {
     variables?: Record<string, { default: string; enum?: string[]; description?: string }>
   }>
   security?: Array<Record<string, string[]>>
-  paths?: Record<string, Record<string, OpenAPIOperation>>
+  paths?: Record<string, OpenAPIPathItem>
   components?: {
     securitySchemes?: Record<string, SecurityScheme>
   }
@@ -127,6 +134,42 @@ function ctFromSchema(body: OpenAPIOperation['requestBody']): 'json' | 'xml' | '
   return 'json'
 }
 
+const HTTP_METHODS: HttpMethodKey[] = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options']
+
+function importableOperations(pathItem: OpenAPIPathItem): Array<[HttpMethodKey, OpenAPIOperation]> {
+  return HTTP_METHODS
+    .map((method) => [method, pathItem[method]] as const)
+    .filter((entry): entry is [HttpMethodKey, OpenAPIOperation] => Boolean(entry[1]))
+}
+
+function mergeParameters(pathParams: OpenAPIParameter[] | undefined, opParams: OpenAPIParameter[] | undefined): OpenAPIParameter[] | undefined {
+  if (!pathParams?.length) return opParams
+  if (!opParams?.length) return pathParams
+
+  const merged = new Map<string, OpenAPIParameter>()
+  for (const param of pathParams) merged.set(`${param.in}:${param.name}`, param)
+  for (const param of opParams) merged.set(`${param.in}:${param.name}`, param)
+  return [...merged.values()]
+}
+
+function isExternalPathRefOnly(pathItem: OpenAPIPathItem): boolean {
+  return Boolean(pathItem.$ref) && importableOperations(pathItem).length === 0
+}
+
+function buildUnresolvedRefOperation(path: string, ref: string): OpenAPIOperation {
+  const leaf = ref.split(/[\\/]/).pop()?.replace(/\.(ya?ml|json)$/i, '') || path
+  return {
+    summary: `Referenced path: ${path}`,
+    description: `This path is defined in an external OpenAPI file (${ref}). Import the bundled spec folder to hydrate the real method, parameters, request body, and responses.`,
+    operationId: leaf.replace(/[^a-zA-Z0-9_]+/g, '_').replace(/^_+|_+$/g, ''),
+    responses: {
+      default: {
+        description: `Unresolved external PathItem reference: ${ref}`,
+      },
+    },
+  }
+}
+
 export function parseOpenAPI(raw: string): Collection[] {
   const spec = tryParseYaml(raw) as OpenAPISpec
 
@@ -154,9 +197,14 @@ export function parseOpenAPI(raw: string): Collection[] {
     }
   }
 
-  for (const [path, methods] of Object.entries(spec.paths)) {
-    for (const [method, op] of Object.entries(methods as Record<string, OpenAPIOperation>)) {
-      if (!['get','post','put','patch','delete','head','options'].includes(method)) continue
+  for (const [path, pathItem] of Object.entries(spec.paths)) {
+    const operations = importableOperations(pathItem)
+    if (operations.length === 0 && isExternalPathRefOnly(pathItem)) {
+      operations.push(['get', buildUnresolvedRefOperation(path, pathItem.$ref!)])
+    }
+
+    for (const [method, op] of operations) {
+      const parameters = mergeParameters(pathItem.parameters, op.parameters)
 
       const name = op.summary || op.operationId || `${method.toUpperCase()} ${path}`
       const fullUrl = baseUrl ? `${baseUrl}${path}` : path
@@ -170,8 +218,8 @@ export function parseOpenAPI(raw: string): Collection[] {
       const headers: KVRow[] = []
       const params: KVRow[] = []
 
-      if (op.parameters) {
-        for (const p of op.parameters) {
+      if (parameters) {
+        for (const p of parameters) {
           const row: KVRow = {
             id: uid(),
             key: p.name,

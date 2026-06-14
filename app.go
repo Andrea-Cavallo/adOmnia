@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -418,4 +419,31 @@ func (a *App) StorageGetAll(bucket string) ([]StorageEntry, error) {
 		}
 	}
 	return entries, nil
+}
+
+func (a *App) SaveBinaryFileBase64(defaultName, dataBase64 string) (string, error) {
+	if a.ctx == nil {
+		return "", fmt.Errorf("app context not initialized")
+	}
+	if strings.TrimSpace(defaultName) == "" {
+		defaultName = "export.bin"
+	}
+	data, err := base64.StdEncoding.DecodeString(dataBase64)
+	if err != nil {
+		return "", fmt.Errorf("invalid base64 payload: %w", err)
+	}
+	path, err := wailsRuntime.SaveFileDialog(a.ctx, wailsRuntime.SaveDialogOptions{
+		Title:           "Save file",
+		DefaultFilename: filepath.Base(defaultName),
+	})
+	if err != nil {
+		return "", err
+	}
+	if path == "" {
+		return "", nil
+	}
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		return "", fmt.Errorf("failed to write file: %w", err)
+	}
+	return path, nil
 }

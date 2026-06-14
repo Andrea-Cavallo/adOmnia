@@ -94,6 +94,10 @@ export function SaveSettings(arg1) {
   return window['go']['main']['App']['SaveSettings'](arg1);
 }
 
+export function SaveBinaryFileBase64(arg1, arg2) {
+  return window['go']['main']['App']['SaveBinaryFileBase64'](arg1, arg2);
+}
+
 export function SelectFolder(arg1) {
   return window['go']['main']['App']['SelectFolder'](arg1);
 }

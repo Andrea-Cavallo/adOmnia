@@ -8,7 +8,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { X, ChevronUp, ChevronDown, EyeOff, Eye, GitCompare, Copy } from 'lucide-react'
+import { X, ChevronUp, ChevronDown, EyeOff, Eye, GitCompare, Copy, Download, Maximize2, Minimize2 } from 'lucide-react'
 import { useTabsStore } from '@/stores/tabs'
 import { useCollectionsStore } from '@/stores/collections'
 import { cn } from '@/lib/utils'
@@ -222,13 +222,40 @@ interface DiffModalProps {
   rightLabel: string
   leftBody: string
   rightBody: string
+  title?: string
+  leftDownloadName?: string
+  rightDownloadName?: string
+  defaultDiffOnly?: boolean
   onClose: () => void
 }
 
-export function DiffModal({ leftLabel, rightLabel, leftBody, rightBody, onClose }: DiffModalProps) {
-  const [diffOnly, setDiffOnly] = useState(true)
+function downloadTextFile(content: string, filename: string, mime = 'text/plain;charset=utf-8') {
+  const blob = new Blob([content], { type: mime })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
+  URL.revokeObjectURL(url)
+}
+
+export function DiffModal({
+  leftLabel,
+  rightLabel,
+  leftBody,
+  rightBody,
+  title = 'Response Compare',
+  leftDownloadName,
+  rightDownloadName,
+  defaultDiffOnly = true,
+  onClose,
+}: DiffModalProps) {
+  const [diffOnly, setDiffOnly] = useState(defaultDiffOnly)
   const [diffPos, setDiffPos] = useState(0)
   const [viewMode, setViewMode] = useState<'side-by-side' | 'unified'>('side-by-side')
+  const [fullscreen, setFullscreen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
   // Pretty-print JSON if possible
@@ -293,13 +320,18 @@ export function DiffModal({ leftLabel, rightLabel, leftBody, rightBody, onClose 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
       <div
-        className="w-[min(96vw,1100px)] h-[min(90vh,760px)] bg-surface-0 border border-border-1 rounded-xl shadow-2xl flex flex-col"
+        className={cn(
+          'bg-surface-0 border border-border-1 shadow-2xl flex flex-col',
+          fullscreen
+            ? 'h-screen w-screen rounded-none'
+            : 'w-[min(96vw,1100px)] h-[min(90vh,760px)] rounded-xl',
+        )}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-border-1 flex-shrink-0">
           <GitCompare size={14} className="text-accent" />
-          <span className="text-sm font-semibold text-text-1 flex-1">Response Compare</span>
+          <span className="text-sm font-semibold text-text-1 flex-1 truncate">{title}</span>
 
           {/* Summary badges */}
           {identical ? (
@@ -343,6 +375,37 @@ export function DiffModal({ leftLabel, rightLabel, leftBody, rightBody, onClose 
           >
             {diffOnly ? <EyeOff size={11} /> : <Eye size={11} />}
             {diffOnly ? 'Diff only' : 'Full file'}
+          </button>
+
+          {(leftDownloadName || rightDownloadName) && (
+            <>
+              {leftDownloadName && (
+                <button
+                  onClick={() => downloadTextFile(leftPretty, leftDownloadName)}
+                  className="flex items-center gap-1.5 px-2 py-1 rounded text-[10px] text-text-4 hover:text-text-1 hover:bg-surface-2"
+                  title="Download left side"
+                >
+                  <Download size={11} /> Left
+                </button>
+              )}
+              {rightDownloadName && (
+                <button
+                  onClick={() => downloadTextFile(rightPretty, rightDownloadName)}
+                  className="flex items-center gap-1.5 px-2 py-1 rounded text-[10px] text-text-4 hover:text-text-1 hover:bg-surface-2"
+                  title="Download right side"
+                >
+                  <Download size={11} /> Right
+                </button>
+              )}
+            </>
+          )}
+
+          <button
+            onClick={() => setFullscreen((value) => !value)}
+            className="p-1 rounded text-text-4 hover:text-text-1 hover:bg-surface-2"
+            title={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+          >
+            {fullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
           </button>
 
           {/* Prev / next diff */}

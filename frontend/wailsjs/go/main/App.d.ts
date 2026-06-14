@@ -48,6 +48,8 @@ export function SaveMarkdownFileAs(arg1:string,arg2:string):Promise<main.Markdow
 
 export function SaveSettings(arg1:string):Promise<void>;
 
+export function SaveBinaryFileBase64(arg1:string,arg2:string):Promise<string>;
+
 export function SelectFolder(arg1:string):Promise<string>;
 
 export function SetDevMode(arg1:boolean):Promise<void>;

@@ -8,6 +8,7 @@ import { evaluateAssertions } from '@/lib/assertionEngine'
 import { DiffModal, DiffPickerModal } from '@/components/response/DiffView'
 import { useTabsStore, type ResponseBodyView, type ResponseSection } from '@/stores/tabs'
 import { useSettingsStore } from '@/stores/settings'
+import { useAppStore } from '@/stores/app'
 
 interface ResponsePanelProps {
   tabId: string
@@ -30,6 +31,16 @@ function statusClass(status: number): string {
   if (status >= 300) return 'bg-warning/20 text-warning'
   if (status >= 200 && status < 300) return 'bg-success/20 text-success'
   return 'bg-surface-3 text-text-3'
+}
+
+function responseBytes(response: ResponseData): Uint8Array {
+  if (response.bodyBase64) {
+    const binary = atob(response.bodyBase64)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i)
+    return bytes
+  }
+  return Uint8Array.from(response.body, (c) => c.charCodeAt(0) & 0xff)
 }
 
 type Token = { type: 'key' | 'string' | 'number' | 'boolean' | 'null' | 'punct' | 'ws'; value: string }
@@ -564,6 +575,19 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
               >
                 <Copy size={12} />
               </button>
+              {response.contentType.includes('pdf') && (
+                <button
+                  onClick={() => {
+                    const bytes = responseBytes(response)
+                    useAppStore.getState().queueFileImport({ kind: 'pdf', name: 'response.pdf', bytes })
+                    useAppStore.getState().setActiveRail('pdfeditor')
+                  }}
+                  className="ml-0.5 p-1 text-text-4 hover:text-accent rounded"
+                  title="Open in PDF Editor"
+                >
+                  <FileText size={12} />
+                </button>
+              )}
             </div>
           )}
         </div>

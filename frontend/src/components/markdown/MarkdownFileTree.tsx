@@ -1,4 +1,4 @@
-import { forwardRef, type ReactNode } from 'react'
+import { forwardRef, type CSSProperties, type ReactNode } from 'react'
 import { ChevronRight, FileText, Folder, Pencil, Search, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { MarkdownFileEntry } from '@/lib/markdown-api'
@@ -6,11 +6,13 @@ import type { MarkdownTreeNode } from '@/lib/markdownDoc'
 
 interface MarkdownFileTreeProps {
   activeFile: MarkdownFileEntry | null
+  className?: string
   expandedDirs: Set<string>
   query: string
   renamingPath: string
   renameValue: string
   root: string
+  style?: CSSProperties
   tree: MarkdownTreeNode[]
   onCommitRename: () => void
   onDeleteNote: (file: MarkdownFileEntry) => void
@@ -24,11 +26,13 @@ interface MarkdownFileTreeProps {
 
 export const MarkdownFileTree = forwardRef<HTMLInputElement, MarkdownFileTreeProps>(function MarkdownFileTree({
   activeFile,
+  className,
   expandedDirs,
   query,
   renamingPath,
   renameValue,
   root,
+  style,
   tree,
   onCommitRename,
   onDeleteNote,
@@ -109,7 +113,7 @@ export const MarkdownFileTree = forwardRef<HTMLInputElement, MarkdownFileTreePro
   }
 
   return (
-    <aside className="w-48 shrink-0 border-r border-border-1 bg-surface-0 flex flex-col min-h-0 lg:w-56 xl:w-60">
+    <aside className={cn('shrink-0 border-r border-border-1 bg-surface-0 flex flex-col min-h-0', className)} style={style}>
       <div className="p-2 border-b border-border-1">
         <div className="flex items-center gap-1.5 rounded border border-border-2 bg-surface-1 px-2 h-7">
           <Search size={12} className="text-text-4" />

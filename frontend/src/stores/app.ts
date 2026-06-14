@@ -26,6 +26,7 @@ export type RailItem =
   | 'testdata'
   | 'markdown'
   | 'mermaid'
+  | 'pdfeditor'
   | 'powertools'
   | 'storage'
   | 'database'
@@ -43,6 +44,7 @@ export type RailItem =
   | 'mcp'
   | 'schemas'
   | 'apieditor'
+  | 'apidocs'
   | 'visualtests'
   | 'scheduler'
 

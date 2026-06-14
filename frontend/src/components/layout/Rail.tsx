@@ -8,6 +8,7 @@ import {
   Wrench, FileText, FileCode, Database, Braces, FlaskConical, ChevronRight,
   Lock, FolderOpen, Paintbrush, LayoutTemplate, Puzzle, Settings, GitBranch,
   Play, Zap, BarChart2, Activity, HardDrive, History, Layers, Boxes, Code2, ListChecks, CalendarClock,
+  BookOpen,
 } from 'lucide-react'
 
 interface SubItem {
@@ -46,6 +47,7 @@ const CATEGORIES: CategoryDef[] = [
       ]},
       { title: 'Design', items: [
         { id: 'apieditor', icon: Code2, label: 'API Editor' },
+        { id: 'apidocs', icon: BookOpen, label: 'API Docs / Swagger' },
       ]},
       { title: 'Testing', items: [
         { id: 'testdata',    icon: FlaskConical,  label: 'Test Data' },
@@ -115,6 +117,7 @@ const CATEGORIES: CategoryDef[] = [
       { title: 'Data Tools', items: [
         { id: 'jsontools',   icon: Braces,   label: 'JSON Tools' },
         { id: 'xmltools',    icon: FileCode, label: 'XML Tools' },
+        { id: 'pdfeditor',   icon: FileText, label: 'PDF Editor' },
       ]},
       { title: 'Utilities', items: [
         { id: 'powertools',  icon: Wrench,  label: 'All Utilities' },

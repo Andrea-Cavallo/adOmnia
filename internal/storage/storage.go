@@ -35,9 +35,10 @@ var storeBuckets = []string{
 	"mock",         // mock server config + hits
 	"proxy",        // proxy/interceptor config + traffic
 	"scheduler",    // scheduled job definitions + run history
+	"pdfprojects",  // PDF Editor projects (base64 PDF bytes + annotation layer)
 }
 
-const storagePutMaxBodyBytes = 10 * 1024 * 1024
+const storagePutMaxBodyBytes = 100 * 1024 * 1024
 
 func isStoreBucketAllowed(bucket string) bool {
 	for _, name := range storeBuckets {

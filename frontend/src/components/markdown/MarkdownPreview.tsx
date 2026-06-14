@@ -1,12 +1,16 @@
 import { forwardRef, type UIEventHandler } from 'react'
 
+import { cn } from '@/lib/utils'
+
 interface MarkdownPreviewProps {
+  className?: string
   html: string
   onInternalLink: (href: string) => void
   onScroll?: UIEventHandler<HTMLDivElement>
 }
 
 export const MarkdownPreview = forwardRef<HTMLDivElement, MarkdownPreviewProps>(function MarkdownPreview({
+  className,
   html,
   onInternalLink,
   onScroll,
@@ -14,7 +18,7 @@ export const MarkdownPreview = forwardRef<HTMLDivElement, MarkdownPreviewProps>(
   return (
     <div
       ref={ref}
-      className="flex-1 p-5 overflow-y-auto bg-surface-0"
+      className={cn('flex-1 p-5 overflow-y-auto bg-surface-0', className)}
       onScroll={onScroll}
       onClick={(event) => {
         const anchor = (event.target as HTMLElement).closest('a')
