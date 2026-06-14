@@ -10,6 +10,18 @@ export function SaveBinaryFileBase64(defaultName: string, dataBase64: string): P
   return window['go']['main']['App']['SaveBinaryFileBase64'](defaultName, dataBase64)
 }
 
+export function SignPdfDocumentBase64(reqJSON: string): Promise<string> {
+  return window['go']['main']['App']['SignPdfDocumentBase64'](reqJSON)
+}
+
+export function VerifyPdfSignatureBase64(pdfBase64: string): Promise<string> {
+  return window['go']['main']['App']['VerifyPdfSignatureBase64'](pdfBase64)
+}
+
+export function InspectSigningCertificateBase64(reqJSON: string): Promise<string> {
+  return window['go']['main']['App']['InspectSigningCertificateBase64'](reqJSON)
+}
+
 export function ClearDevLogs(): Promise<void> {
   return window['go']['main']['App']['ClearDevLogs']()
 }

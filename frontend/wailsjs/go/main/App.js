@@ -98,6 +98,10 @@ export function SaveBinaryFileBase64(arg1, arg2) {
   return window['go']['main']['App']['SaveBinaryFileBase64'](arg1, arg2);
 }
 
+export function SignPdfDocumentBase64(arg1) {
+  return window['go']['main']['App']['SignPdfDocumentBase64'](arg1);
+}
+
 export function SelectFolder(arg1) {
   return window['go']['main']['App']['SelectFolder'](arg1);
 }
@@ -128,6 +132,14 @@ export function StorageList(arg1, arg2) {
 
 export function StoragePut(arg1, arg2, arg3) {
   return window['go']['main']['App']['StoragePut'](arg1, arg2, arg3);
+}
+
+export function VerifyPdfSignatureBase64(arg1) {
+  return window['go']['main']['App']['VerifyPdfSignatureBase64'](arg1);
+}
+
+export function InspectSigningCertificateBase64(arg1) {
+  return window['go']['main']['App']['InspectSigningCertificateBase64'](arg1);
 }
 
 export function WriteMarkdownAgentGraph(arg1, arg2) {

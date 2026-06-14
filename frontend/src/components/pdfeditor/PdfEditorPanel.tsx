@@ -10,11 +10,13 @@ import {
   type PdfProjectSummary,
 } from '@/lib/pdf/pdfProjects'
 import { deletePdfPage, mergePdfBytes, movePdfPage, rotatePdfPage, splitPdfPage } from '@/lib/pdf/pdfPageOps'
+import { signPdfDocument, verifyPdfSignature } from '@/lib/pdf/pdfSigning'
 import { annotationId, type PdfAnnotation, type PdfToolId } from '@/lib/pdf/annotationModel'
 import { PdfToolbar } from './PdfToolbar'
 import { PdfPageView } from './PdfPageView'
 import { PdfProjectList } from './PdfProjectList'
 import { SignatureModal } from './SignatureModal'
+import { DigitalSignatureModal, type DigitalSignatureForm } from './DigitalSignatureModal'
 
 const DEFAULT_ZOOM = 1.2
 const MIN_ZOOM = 0.4
@@ -45,6 +47,7 @@ export function PdfEditorPanel() {
   const [searchMatches, setSearchMatches] = useState<PdfTextMatch[]>([])
   const [signatureImage, setSignatureImage] = useState<string | null>(null)
   const [showSignature, setShowSignature] = useState(false)
+  const [showDigitalSignature, setShowDigitalSignature] = useState(false)
   const [projects, setProjects] = useState<PdfProjectSummary[]>([])
   const [saving, setSaving] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -341,6 +344,50 @@ export function PdfEditorPanel() {
     }
   }, [currentPage, doc, flash])
 
+  const handleDigitalSign = useCallback(async (form: DigitalSignatureForm) => {
+    if (!bytes || !doc) return
+    setExporting(true)
+    try {
+      const page = await doc.getPage(currentPage)
+      const height = page.getViewport({ scale: 1 }).height
+      const box = { x: 48, y: Math.max(24, height - 120), w: 220, h: 72 }
+      const signed = await signPdfDocument(bytes, {
+        ...form,
+        page: currentPage,
+        x: box.x,
+        y: box.y,
+        w: box.w,
+        h: box.h,
+      })
+      setShowDigitalSignature(false)
+      await openBytes(signed.bytes, name.replace(/\.pdf$/i, '') + '-signed.pdf')
+      flash('PDF signed cryptographically.', true)
+    } catch (e: unknown) {
+      flash(e instanceof Error ? e.message : 'PDF signing failed', false)
+    } finally {
+      setExporting(false)
+    }
+  }, [bytes, currentPage, doc, flash, name, openBytes])
+
+  const handleVerifySignature = useCallback(async () => {
+    if (!bytes) return
+    try {
+      const result = await verifyPdfSignature(bytes)
+      const signers = result.Signers ?? []
+      if (result.Error) {
+        flash(result.Error, false)
+      } else if (signers.length === 0) {
+        flash('No digital signatures found.', false)
+      } else {
+        const valid = signers.filter((s) => s.valid_signature).length
+        const trusted = signers.filter((s) => s.trusted_issuer).length
+        flash(`${valid}/${signers.length} valid signatures, ${trusted}/${signers.length} trusted issuers.`, valid === signers.length)
+      }
+    } catch (e: unknown) {
+      flash(e instanceof Error ? e.message : 'Signature verification failed', false)
+    }
+  }, [bytes, flash])
+
   const handleApplySignature = (dataUrl: string) => {
     setSignatureImage(dataUrl)
     setShowSignature(false)
@@ -384,6 +431,8 @@ export function PdfEditorPanel() {
           onSplitPage={handleSplitPage}
           onMergeFile={handleMergeFile}
           onCopyPageText={handleCopyPageText}
+          onSignPdf={() => setShowDigitalSignature(true)}
+          onVerifySignature={handleVerifySignature}
           onOpenFile={handleOpenFile}
           onSave={handleSave}
           onExport={handleExport}
@@ -442,6 +491,14 @@ export function PdfEditorPanel() {
 
       {showSignature && (
         <SignatureModal onClose={() => setShowSignature(false)} onApply={handleApplySignature} />
+      )}
+
+      {showDigitalSignature && (
+        <DigitalSignatureModal
+          defaultName={name.replace(/\.pdf$/i, '')}
+          onClose={() => setShowDigitalSignature(false)}
+          onSign={(form) => void handleDigitalSign(form)}
+        />
       )}
 
       {toast && (

@@ -2,6 +2,7 @@ import {
   MousePointer2, Type, Highlighter, Square, Circle, Minus, ArrowUpRight,
   Pencil, PenTool, Save, Download, FolderOpen, ZoomIn, ZoomOut, Trash2,
   RotateCw, Scissors, Files, Copy, Search, ArrowUpDown, FilePlus2,
+  ShieldCheck, BadgeCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { PdfToolId } from '@/lib/pdf/annotationModel'
@@ -49,6 +50,8 @@ interface PdfToolbarProps {
   onSplitPage: () => void
   onMergeFile: () => void
   onCopyPageText: () => void
+  onSignPdf: () => void
+  onVerifySignature: () => void
   onOpenFile: () => void
   onSave: () => void
   onExport: () => void
@@ -59,6 +62,7 @@ export function PdfToolbar({
   hasDoc, tool, color, zoom, pageCount, currentPage, searchQuery, searchCount, selectedId, saving, exporting,
   onToolChange, onColorChange, onZoom, onCurrentPageChange, onSearchChange, onRotatePage,
   onDeletePage, onMovePage, onSplitPage, onMergeFile, onCopyPageText, onOpenFile, onSave, onExport, onDeleteSelected,
+  onSignPdf, onVerifySignature,
 }: PdfToolbarProps) {
   return (
     <div className="flex flex-wrap items-center gap-1.5 border-b border-border-1 bg-surface-1 px-2.5 py-1.5">
@@ -139,6 +143,15 @@ export function PdfToolbar({
       </div>
       <button onClick={onCopyPageText} disabled={!hasDoc} className="grid h-7 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-30" title="Copy active page text">
         <Copy size={14} />
+      </button>
+
+      <div className="mx-1 h-5 w-px bg-border-2" />
+
+      <button onClick={onSignPdf} disabled={!hasDoc} className="grid h-7 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-accent disabled:opacity-30" title="Cryptographically sign PDF">
+        <ShieldCheck size={14} />
+      </button>
+      <button onClick={onVerifySignature} disabled={!hasDoc} className="grid h-7 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-success disabled:opacity-30" title="Verify PDF signatures">
+        <BadgeCheck size={14} />
       </button>
 
       <div className="mx-1 h-5 w-px bg-border-2" />

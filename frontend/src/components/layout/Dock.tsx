@@ -59,7 +59,7 @@ const DOCK_ITEMS: DockItemDef[] = [
   { id: 'observe',     icon: Activity,       label: 'Observability',    color: '#38bdf8' },
   { id: 'database',    icon: Database,       label: 'Database',         color: '#6366f1' },
   { id: 'storage',     icon: Database,       label: 'Storage',          color: '#94a3b8' },
-  { id: 'markdown',    icon: FileText,       label: 'Markdown',         color: '#a3a3a3' },
+  { id: 'markdown',    icon: FileText,       label: 'Document Studio',  color: '#a3a3a3' },
   { id: 'workspace',   icon: FolderOpen,     label: 'Workspace',        color: '#38bdf8' },
   { id: 'vault',       icon: Lock,           label: 'Vault',            color: '#eab308' },
   { id: 'themes',      icon: Paintbrush,     label: 'Themes',           color: '#ec4899' },

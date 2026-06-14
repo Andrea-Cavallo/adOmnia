@@ -213,9 +213,38 @@ These choices were made during implementation and supersede the design where the
   are available in the PDF toolbar.
 - **Search/copy:** the PDF toolbar can search text extracted by pdf.js and copy text
   from the active page.
+- **Cryptographic signatures:** the PDF Editor now uses `github.com/digitorus/pdfsign`
+  in the Go backend to create real PDF digital signatures with ByteRange/CMS handling.
+  Users provide PEM certificate + PEM private key, can add metadata, can place a
+  visible signature box, and can verify signatures from the toolbar. The existing
+  PEM/JKS tools can be used to inspect/extract certificate material locally before
+  signing.
+
+## 11c. Enterprise signing tier (implemented 2026-06-14)
+
+The advanced trust workflows are now implemented, except hardware tokens:
+
+- **P12/JKS import in the signing dialog:** the dialog has a credential-source
+  toggle (PEM vs P12/JKS). Keystore files (`.p12`/`.pfx`/`.jks`) plus password are
+  read in the browser to base64 and sent to the backend; the **private key is
+  extracted in Go and never crosses the IPC boundary to JS**. Pure-Go libraries are
+  used — `software.sslmate.com/src/go-pkcs12` and
+  `github.com/pavlo-v-chernykh/keystore-go/v4` — so no `keytool`/`openssl` runtime
+  dependency. A new `InspectSigningCertificateBase64` binding returns **certificate
+  metadata only** (subject/issuer/serial/validity/chain length) so the user can
+  verify the credential before signing without exposing the key.
+- **TSA timestamping:** the dialog accepts an RFC-3161 TSA URL with optional basic
+  auth; populated into `sign.SignData.TSA`. The TSA URL (not credentials) can be
+  remembered as a preset in `localStorage` under `adomnia.pdf.tsaUrl`.
+- **LTV:** a checkbox embeds the certificate chain plus OCSP/CRL revocation data into
+  the document DSS via `sign.SignData.CertificateChains` +
+  `sign.DefaultEmbedRevocationStatusFunction`. Full PAdES B-LT validity additionally
+  relies on a reachable TSA (B-T), which the dialog notes.
+- **Still out of scope:** PKCS#11/HSM/smart-card signing (requires CGO + native OS
+  drivers, breaks the single portable exe + local-first pillars) and PAdES B-LTA
+  archive-timestamp refresh chaining.
 
 ## 12. Open follow-ups (post-v1)
 
-- Cryptographic / eIDAS signing tied into a real PDF/PAdES signing engine. The current
-  app has certificate/JKS inspection/extraction utilities, but no trustworthy PDF
-  digital-signature engine yet; this must not be faked with a visible image signature.
+- PKCS#11/HSM/smart-card signing; PAdES B-LTA document-timestamp refresh; richer
+  verification reporting (per-signer LTV/timestamp status surfaced in the toolbar).
