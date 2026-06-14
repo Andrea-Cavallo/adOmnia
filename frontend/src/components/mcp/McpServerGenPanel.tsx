@@ -207,7 +207,7 @@ export function McpServerGenPanel() {
       {result && (
         <div className={cn(
           'flex max-w-3xl items-start gap-2 rounded border px-3 py-2 text-[11px]',
-          result.success ? 'border-success/30 bg-success/10 text-success' : 'border-danger/30 bg-danger/10 text-danger',
+          result.success ? 'border-success/30 bg-success/10 text-success' : 'border-error/30 bg-error/10 text-error',
         )}>
           {result.success ? <CheckCircle2 size={13} className="mt-0.5 shrink-0" /> : <AlertCircle size={13} className="mt-0.5 shrink-0" />}
           <span>{result.message}</span>
@@ -234,14 +234,14 @@ function collectionServerName(collection: Collection): string {
 function methodBadgeClass(method: string): string {
   switch (method) {
     case 'GET':
-      return 'bg-blue-500/15 text-blue-300'
+      return 'bg-info/15 text-info'
     case 'POST':
       return 'bg-success/15 text-success'
     case 'PUT':
     case 'PATCH':
       return 'bg-warning/15 text-warning'
     case 'DELETE':
-      return 'bg-danger/15 text-danger'
+      return 'bg-error/15 text-error'
     default:
       return 'bg-surface-2 text-text-4'
   }

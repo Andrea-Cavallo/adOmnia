@@ -140,7 +140,7 @@ export function McpConnectionForm() {
     disconnected: <Plug size={11} className="text-text-4" />,
     connecting: <Plug size={11} className="text-warning animate-pulse" />,
     connected: <CheckCircle2 size={11} className="text-success" />,
-    error: <AlertCircle size={11} className="text-danger" />,
+    error: <AlertCircle size={11} className="text-error" />,
   }[status]
 
   return (
@@ -253,7 +253,7 @@ export function McpConnectionForm() {
                   event.stopPropagation()
                   removeConfig(cfg.id)
                 }}
-                className="rounded p-0.5 text-text-4 opacity-0 transition-all hover:bg-surface-3 hover:text-danger group-hover:opacity-100"
+                className="rounded p-0.5 text-text-4 opacity-0 transition-all hover:bg-surface-3 hover:text-error group-hover:opacity-100"
                 title="Remove server"
               >
                 <Trash2 size={10} />
@@ -316,7 +316,7 @@ export function McpConnectionForm() {
           </div>
         )}
         {status === 'error' && (
-          <p className="truncate px-1 text-[10px] text-danger" title={statusError}>
+          <p className="truncate px-1 text-[10px] text-error" title={statusError}>
             {statusError}
           </p>
         )}
