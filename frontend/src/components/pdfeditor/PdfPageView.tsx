@@ -15,7 +15,9 @@ interface PdfPageViewProps {
   annotations: PdfAnnotation[]
   selectedId: string | null
   formValues: Record<string, string | boolean>
+  active: boolean
   onSelect: (id: string | null) => void
+  onActivate: (page: number) => void
   onCreate: (a: PdfAnnotation) => void
   onUpdate: (a: PdfAnnotation) => void
   onFormChange: (name: string, value: string | boolean) => void
@@ -88,7 +90,13 @@ export function PdfPageView(props: PdfPageViewProps) {
   const heightPx = dims ? pointToScreen(dims.heightPt, zoom) : 792 * zoom
 
   return (
-    <div className="relative mx-auto shadow-lg" style={{ width: widthPx, height: heightPx }} data-page={page}>
+    <div
+      className={`relative mx-auto shadow-lg ${props.active ? 'ring-2 ring-accent/70' : ''}`}
+      style={{ width: widthPx, height: heightPx }}
+      data-page={page}
+      onPointerDownCapture={() => props.onActivate(page)}
+      onMouseEnter={() => props.onActivate(page)}
+    >
       <div className="absolute left-0 top-[-18px] text-[10px] font-medium text-text-4">Page {page}</div>
       <div ref={wrapRef} className="relative h-full w-full bg-white">
         <div ref={canvasHolderRef} className="absolute inset-0" />

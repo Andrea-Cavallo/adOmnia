@@ -6,6 +6,10 @@ export function SaveSettings(settingsJSON: string): Promise<void> {
   return window['go']['main']['App']['SaveSettings'](settingsJSON)
 }
 
+export function SaveBinaryFileBase64(defaultName: string, dataBase64: string): Promise<string> {
+  return window['go']['main']['App']['SaveBinaryFileBase64'](defaultName, dataBase64)
+}
+
 export function ClearDevLogs(): Promise<void> {
   return window['go']['main']['App']['ClearDevLogs']()
 }

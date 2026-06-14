@@ -12,11 +12,16 @@ import {
   type InkAnnotation,
 } from './annotationModel'
 
-// StandardFonts.Helvetica is WinAnsi-encoded; strip characters it cannot encode
-// so export never throws on stray Unicode (full Unicode is a post-v1 follow-up).
+// StandardFonts.Helvetica is WinAnsi-encoded. In the browser we render Unicode
+// annotation text to a PNG fallback so visual export keeps non-WinAnsi glyphs.
 function toWinAnsi(text: string): string {
   // eslint-disable-next-line no-control-regex
   return text.replace(/[^\x00-\xFF]/g, '?')
+}
+
+function hasNonWinAnsi(text: string): boolean {
+  // eslint-disable-next-line no-control-regex
+  return /[^\x00-\xFF]/.test(text)
 }
 
 /** Convert top-left editor Y to pdf-lib bottom-left Y for a box of height `h`. */
@@ -99,6 +104,41 @@ async function drawSignature(
   page.drawImage(png, { x: box.x, y: flipY(pageHeight, box.y, box.h), width: box.w, height: box.h })
 }
 
+async function drawUnicodeTextImage(
+  pdf: PDFDocument,
+  page: PDFPage,
+  pageHeight: number,
+  a: Extract<PdfAnnotation, { type: 'text' }>,
+): Promise<boolean> {
+  if (typeof document === 'undefined') return false
+  const scale = 2
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.max(1, Math.ceil(a.w * scale))
+  canvas.height = Math.max(1, Math.ceil(a.h * scale))
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return false
+
+  ctx.scale(scale, scale)
+  ctx.clearRect(0, 0, a.w, a.h)
+  ctx.fillStyle = a.color
+  ctx.font = `${a.fontSize}px Helvetica, Arial, sans-serif`
+  ctx.textAlign = a.align
+  ctx.textBaseline = 'top'
+
+  const x = a.align === 'center' ? a.w / 2 : a.align === 'right' ? a.w : 0
+  a.text.split('\n').forEach((line, i) => {
+    ctx.fillText(line, x, i * a.fontSize * 1.2)
+  })
+
+  const dataUrl = canvas.toDataURL('image/png')
+  const bin = atob(dataUrl.slice(dataUrl.indexOf(',') + 1))
+  const bytes = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i)
+  const png = await pdf.embedPng(bytes)
+  page.drawImage(png, { x: a.x, y: flipY(pageHeight, a.y, a.h), width: a.w, height: a.h })
+  return true
+}
+
 function fillForm(pdf: PDFDocument, formValues: Record<string, string | boolean>): void {
   let form
   try {
@@ -157,6 +197,9 @@ export async function exportPdf(
 
     if (a.type === 'text') {
       const { r, g, b } = hexToRgb01(a.color)
+      if (hasNonWinAnsi(a.text) && await drawUnicodeTextImage(pdf, page, pageHeight, a)) {
+        continue
+      }
       const lines = toWinAnsi(a.text).split('\n')
       lines.forEach((line, i) => {
         page.drawText(line, {

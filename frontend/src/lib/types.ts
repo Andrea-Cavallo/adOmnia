@@ -146,6 +146,7 @@ export interface ResponseData {
   statusText: string
   headers: Record<string, string>
   body: string
+  bodyBase64?: string
   contentType: string
   ms: number
   size: number

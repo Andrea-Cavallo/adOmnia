@@ -1,9 +1,8 @@
 // Persistence for PDF Editor projects over the existing generic Storage* (bbolt)
-// bindings. Each project is one item in the `pdfprojects` bucket; the original
-// PDF bytes are base64-encoded inside the JSON envelope (localStorage is too
-// small for multi-MB PDFs, so we use the bbolt-backed store instead).
+// bindings. New projects are split into lightweight metadata plus the original
+// PDF bytes under separate keys, so listing projects never reads multi-MB PDFs.
 
-import { StorageGet, StoragePut, StorageGetAll, StorageDelete } from '@/wailsjs/go/main/App'
+import { StorageGet, StoragePut, StorageGetAll, StorageDelete, StorageList } from '@/wailsjs/go/main/App'
 import { storageSchema } from '@/lib/storageSchemas'
 import type { PdfAnnotation } from './annotationModel'
 
@@ -27,7 +26,7 @@ export interface PdfProjectSummary {
   updatedAt: number
 }
 
-interface Envelope {
+interface ProjectMeta {
   version: number
   id: string
   name: string
@@ -35,8 +34,14 @@ interface Envelope {
   annotations: PdfAnnotation[]
   formValues: Record<string, string | boolean>
   updatedAt: number
+}
+
+interface Envelope extends ProjectMeta {
   pdfBase64: string
 }
+
+const metaKey = (id: string) => `meta:${id}`
+const bytesKey = (id: string) => `bytes:${id}`
 
 export function bytesToBase64(bytes: Uint8Array): string {
   let binary = ''
@@ -55,7 +60,7 @@ export function base64ToBytes(b64: string): Uint8Array {
 }
 
 export async function saveProject(project: StoredPdfProject): Promise<void> {
-  const envelope: Envelope = {
+  const meta: ProjectMeta = {
     version: VERSION,
     id: project.id,
     name: project.name,
@@ -63,39 +68,73 @@ export async function saveProject(project: StoredPdfProject): Promise<void> {
     annotations: project.annotations,
     formValues: project.formValues,
     updatedAt: project.updatedAt,
-    pdfBase64: bytesToBase64(project.pdfBytes),
   }
-  await StoragePut(BUCKET, project.id, JSON.stringify(envelope))
+  await StoragePut(BUCKET, bytesKey(project.id), bytesToBase64(project.pdfBytes))
+  await StoragePut(BUCKET, metaKey(project.id), JSON.stringify(meta))
+  await StorageDelete(BUCKET, project.id).catch(() => {})
 }
 
 export async function loadProject(id: string): Promise<StoredPdfProject | null> {
-  const raw = await StorageGet(BUCKET, id)
-  if (!raw) return null
-  return parseEnvelope(raw)
+  const metaRaw = await StorageGet(BUCKET, metaKey(id)).catch(() => '')
+  if (metaRaw) {
+    const bytesRaw = await StorageGet(BUCKET, bytesKey(id)).catch(() => '')
+    if (!bytesRaw) return null
+    return parseMeta(metaRaw, bytesRaw)
+  }
+  const legacyRaw = await StorageGet(BUCKET, id).catch(() => '')
+  return legacyRaw ? parseEnvelope(legacyRaw) : null
 }
 
 export async function deleteProject(id: string): Promise<void> {
-  await StorageDelete(BUCKET, id)
+  await StorageDelete(BUCKET, metaKey(id)).catch(() => {})
+  await StorageDelete(BUCKET, bytesKey(id)).catch(() => {})
+  await StorageDelete(BUCKET, id).catch(() => {})
 }
 
 export async function listProjects(): Promise<PdfProjectSummary[]> {
   let entries: Array<{ key?: string; value?: string }> = []
   try {
-    entries = (await StorageGetAll(BUCKET)) as Array<{ key?: string; value?: string }>
+    const keys = await StorageList(BUCKET, 'meta:')
+    entries = await Promise.all(keys.map(async (key) => ({ key, value: await StorageGet(BUCKET, key).catch(() => '') })))
   } catch {
-    return []
+    entries = []
+  }
+  if (entries.length === 0) {
+    try {
+      entries = (await StorageGetAll(BUCKET)) as Array<{ key?: string; value?: string }>
+    } catch {
+      return []
+    }
   }
   const summaries: PdfProjectSummary[] = []
   for (const entry of entries) {
     if (!entry.value) continue
     try {
-      const env = JSON.parse(entry.value) as Envelope
+      const env = JSON.parse(entry.value) as ProjectMeta
+      if (!env.id || !env.name) continue
       summaries.push({ id: env.id, name: env.name, pageCount: env.pageCount, updatedAt: env.updatedAt })
     } catch {
       // Skip corrupt entries.
     }
   }
   return summaries.sort((a, b) => b.updatedAt - a.updatedAt)
+}
+
+function parseMeta(metaRaw: string, pdfBase64: string): StoredPdfProject | null {
+  try {
+    const meta = JSON.parse(metaRaw) as ProjectMeta
+    return {
+      id: meta.id,
+      name: meta.name,
+      pageCount: meta.pageCount,
+      annotations: Array.isArray(meta.annotations) ? meta.annotations : [],
+      formValues: meta.formValues ?? {},
+      updatedAt: meta.updatedAt,
+      pdfBytes: base64ToBytes(pdfBase64),
+    }
+  } catch {
+    return null
+  }
 }
 
 function parseEnvelope(raw: string): StoredPdfProject | null {

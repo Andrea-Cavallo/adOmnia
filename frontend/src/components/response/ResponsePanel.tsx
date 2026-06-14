@@ -33,6 +33,16 @@ function statusClass(status: number): string {
   return 'bg-surface-3 text-text-3'
 }
 
+function responseBytes(response: ResponseData): Uint8Array {
+  if (response.bodyBase64) {
+    const binary = atob(response.bodyBase64)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i)
+    return bytes
+  }
+  return Uint8Array.from(response.body, (c) => c.charCodeAt(0) & 0xff)
+}
+
 type Token = { type: 'key' | 'string' | 'number' | 'boolean' | 'null' | 'punct' | 'ws'; value: string }
 
 function tokenizeJSON(text: string): Token[] {
@@ -568,7 +578,7 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
               {response.contentType.includes('pdf') && (
                 <button
                   onClick={() => {
-                    const bytes = Uint8Array.from(response.body, (c) => c.charCodeAt(0) & 0xff)
+                    const bytes = responseBytes(response)
                     useAppStore.getState().queueFileImport({ kind: 'pdf', name: 'response.pdf', bytes })
                     useAppStore.getState().setActiveRail('pdfeditor')
                   }}

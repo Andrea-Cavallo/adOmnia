@@ -1,6 +1,7 @@
 import {
   MousePointer2, Type, Highlighter, Square, Circle, Minus, ArrowUpRight,
   Pencil, PenTool, Save, Download, FolderOpen, ZoomIn, ZoomOut, Trash2,
+  RotateCw, Scissors, Files, Copy, Search, ArrowUpDown, FilePlus2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { PdfToolId } from '@/lib/pdf/annotationModel'
@@ -31,12 +32,23 @@ interface PdfToolbarProps {
   color: string
   zoom: number
   pageCount: number
+  currentPage: number
+  searchQuery: string
+  searchCount: number
   selectedId: string | null
   saving: boolean
   exporting: boolean
   onToolChange: (t: PdfToolId) => void
   onColorChange: (c: string) => void
   onZoom: (dir: 'in' | 'out' | 'reset') => void
+  onCurrentPageChange: (page: number) => void
+  onSearchChange: (query: string) => void
+  onRotatePage: () => void
+  onDeletePage: () => void
+  onMovePage: () => void
+  onSplitPage: () => void
+  onMergeFile: () => void
+  onCopyPageText: () => void
   onOpenFile: () => void
   onSave: () => void
   onExport: () => void
@@ -44,8 +56,9 @@ interface PdfToolbarProps {
 }
 
 export function PdfToolbar({
-  hasDoc, tool, color, zoom, pageCount, selectedId, saving, exporting,
-  onToolChange, onColorChange, onZoom, onOpenFile, onSave, onExport, onDeleteSelected,
+  hasDoc, tool, color, zoom, pageCount, currentPage, searchQuery, searchCount, selectedId, saving, exporting,
+  onToolChange, onColorChange, onZoom, onCurrentPageChange, onSearchChange, onRotatePage,
+  onDeletePage, onMovePage, onSplitPage, onMergeFile, onCopyPageText, onOpenFile, onSave, onExport, onDeleteSelected,
 }: PdfToolbarProps) {
   return (
     <div className="flex flex-wrap items-center gap-1.5 border-b border-border-1 bg-surface-1 px-2.5 py-1.5">
@@ -79,6 +92,54 @@ export function PdfToolbar({
           )
         })}
       </div>
+
+      <div className="mx-1 h-5 w-px bg-border-2" />
+
+      <div className="flex items-center gap-1">
+        <span className="text-[10px] text-text-4">Page</span>
+        <input
+          type="number"
+          min={1}
+          max={Math.max(1, pageCount)}
+          value={currentPage}
+          disabled={!hasDoc}
+          onChange={(e) => onCurrentPageChange(Number(e.target.value))}
+          className="h-7 w-14 rounded-md border border-border-2 bg-surface-0 px-1.5 text-[11px] text-text-2 disabled:opacity-40"
+          title="Active page"
+        />
+      </div>
+      <button onClick={onRotatePage} disabled={!hasDoc} className="grid h-7 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-30" title="Rotate active page 90 degrees">
+        <RotateCw size={14} />
+      </button>
+      <button onClick={onMovePage} disabled={!hasDoc || pageCount < 2} className="grid h-7 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-30" title="Move active page">
+        <ArrowUpDown size={14} />
+      </button>
+      <button onClick={onSplitPage} disabled={!hasDoc} className="grid h-7 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-30" title="Export active page as a separate PDF">
+        <Scissors size={14} />
+      </button>
+      <button onClick={onMergeFile} disabled={!hasDoc} className="grid h-7 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-30" title="Append another PDF">
+        <FilePlus2 size={14} />
+      </button>
+      <button onClick={onDeletePage} disabled={!hasDoc || pageCount < 2} className="grid h-7 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-error disabled:opacity-30" title="Delete active page">
+        <Files size={14} />
+      </button>
+
+      <div className="mx-1 h-5 w-px bg-border-2" />
+
+      <div className="flex h-7 min-w-[170px] items-center gap-1 rounded-md border border-border-2 bg-surface-0 px-1.5">
+        <Search size={12} className="text-text-4" />
+        <input
+          value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
+          disabled={!hasDoc}
+          placeholder="Search text"
+          className="min-w-0 flex-1 bg-transparent text-[11px] text-text-2 outline-none placeholder:text-text-4 disabled:opacity-40"
+        />
+        <span className="min-w-4 text-right text-[10px] text-text-4">{searchQuery ? searchCount : ''}</span>
+      </div>
+      <button onClick={onCopyPageText} disabled={!hasDoc} className="grid h-7 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-30" title="Copy active page text">
+        <Copy size={14} />
+      </button>
 
       <div className="mx-1 h-5 w-px bg-border-2" />
 

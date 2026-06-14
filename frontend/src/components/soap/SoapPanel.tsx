@@ -8,6 +8,8 @@ import {
   sendSoapRequest,
   soapXmlToJson,
   validateSoapXml,
+  describeSoapResponseProblem,
+  probeSoapEndpoint,
   exportSoapCurl,
   generateSoapClientCode,
   addSoapHistoryEntry,
@@ -16,6 +18,7 @@ import {
   applyWssSecurity,
   type WsdlDocument,
   type SoapHistoryEntry,
+  type SoapEndpointProbe,
   type WssConfig,
   type WssMode,
 } from '@/lib/soapClient'
@@ -41,9 +44,13 @@ export function SoapPanel() {
   const [sending, setSending] = useState(false)
   const [response, setResponse] = useState('')
   const [responseInfo, setResponseInfo] = useState<{ status: number; ms: number; size: number } | null>(null)
+  const [responseIssue, setResponseIssue] = useState('')
+  const [endpointProbe, setEndpointProbe] = useState<SoapEndpointProbe | null>(null)
+  const [probingEndpoint, setProbingEndpoint] = useState(false)
   const [responseJson, setResponseJson] = useState<unknown>(null)
   const [viewMode, setViewMode] = useState<'xml' | 'json'>('xml')
   const [xmlValid, setXmlValid] = useState<boolean | null>(null)
+  const [xmlValidationError, setXmlValidationError] = useState('')
   const [history, setHistory] = useState<SoapHistoryEntry[]>(() => loadSoapHistory())
   const [showCodeGen, setShowCodeGen] = useState(false)
   const [customHeaders, setCustomHeaders] = useState<{ id: string; key: string; value: string }[]>([])
@@ -78,6 +85,19 @@ export function SoapPanel() {
     ?.ports.find((p) => p.name === selectedPort)
 
   const currentOp = wsdl?.portTypes.flatMap((p) => p.operations).find((o) => o.name === selectedOp)
+
+  const testCurrentEndpoint = useCallback(async () => {
+    if (!currentPort?.location) return
+    setProbingEndpoint(true)
+    const result = await probeSoapEndpoint(currentPort.location)
+    setEndpointProbe(result)
+    setProbingEndpoint(false)
+  }, [currentPort?.location])
+
+  useEffect(() => {
+    setEndpointProbe(null)
+    if (currentPort?.location) void testCurrentEndpoint()
+  }, [currentPort?.location, testCurrentEndpoint])
 
   const loadWsdlFromText = useCallback(() => {
     if (!wsdlText.trim()) return
@@ -145,8 +165,14 @@ export function SoapPanel() {
     setSending(true)
     setResponse('')
     setResponseInfo(null)
+    setResponseIssue('')
     setResponseJson(null)
     setWssError('')
+    setXmlValidationError('')
+
+    if (!endpointProbe || endpointProbe.url !== currentPort.location) {
+      await testCurrentEndpoint()
+    }
 
     let securedEnvelope = envelope
     if (wssConfig.mode !== 'none') {
@@ -174,8 +200,11 @@ export function SoapPanel() {
     })
     setResponse(res.body)
     setResponseInfo({ status: res.status, ms: res.ms, size: res.size })
+    setResponseIssue(describeSoapResponseProblem(res))
     setResponseJson(soapXmlToJson(res.body))
-    setXmlValid(null)
+    const validation = validateSoapXml(res.body)
+    setXmlValid(validation.valid)
+    setXmlValidationError(validation.error ?? '')
     const h = addSoapHistoryEntry({
       timestamp: Date.now(),
       operation: currentOp.name,
@@ -579,10 +608,32 @@ export function SoapPanel() {
             {currentPort && (
               <span className="text-[9px] text-text-4 truncate">{currentPort.location}</span>
             )}
+            {currentPort && (
+              <button
+                onClick={() => void testCurrentEndpoint()}
+                disabled={probingEndpoint}
+                className="rounded border border-border-1 px-2 py-0.5 text-[9px] font-medium text-text-3 hover:border-accent/50 hover:text-text-1 disabled:opacity-50"
+              >
+                {probingEndpoint ? 'Testing...' : 'Test'}
+              </button>
+            )}
+            {endpointProbe && (
+              <span className={cn(
+                'rounded px-2 py-0.5 text-[9px] font-semibold',
+                endpointProbe.reachable ? 'bg-success/15 text-success' : 'bg-error/15 text-error',
+              )}>
+                {endpointProbe.reachable ? `Endpoint OK ${endpointProbe.status}` : `Endpoint ${endpointProbe.status || 'ERR'}`}
+              </span>
+            )}
             {currentOp?.soapAction && (
               <span className="text-[9px] text-accent truncate">SOAPAction: {currentOp.soapAction}</span>
             )}
           </div>
+          {endpointProbe?.problem && (
+            <div className="border-b border-warning/20 bg-warning/10 px-3 py-2 text-[10px] text-warning">
+              {endpointProbe.problem}
+            </div>
+          )}
           <textarea
             value={envelope}
             onChange={(e) => setEnvelope(e.target.value)}
@@ -630,6 +681,7 @@ export function SoapPanel() {
                   onClick={() => {
                     const v = validateSoapXml(response)
                     setXmlValid(v.valid)
+                    setXmlValidationError(v.error ?? '')
                   }}
                   className="px-2 py-0.5 text-[10px] text-text-4 hover:text-text-1"
                 >
@@ -674,6 +726,11 @@ export function SoapPanel() {
           )}
           {response && (
             <div className="flex-1 overflow-auto p-3">
+              {(responseIssue || xmlValidationError) && (
+                <div className="mb-3 rounded border border-warning/30 bg-warning/10 px-3 py-2 text-[11px] text-warning">
+                  {responseIssue || xmlValidationError}
+                </div>
+              )}
               <pre className="text-xs font-mono whitespace-pre-wrap break-all text-text-2">
                 {viewMode === 'json' && responseJson
                   ? JSON.stringify(responseJson, null, 2)
@@ -745,7 +802,10 @@ export function SoapPanel() {
               onClick={() => {
                 setResponse(h.response)
                 setResponseInfo({ status: h.status, ms: h.durationMs, size: new Blob([h.response]).size })
+                setResponseIssue('')
                 setResponseJson(soapXmlToJson(h.response))
+                setXmlValidationError('')
+                setXmlValid(null)
                 setEnvelope(h.envelope)
               }}
               className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-[10px] hover:bg-surface-2 border-b border-border-1/50"

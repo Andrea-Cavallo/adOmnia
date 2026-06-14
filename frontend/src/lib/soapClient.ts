@@ -84,6 +84,16 @@ interface SoapResponse {
   error?: string
 }
 
+export interface SoapEndpointProbe {
+  url: string
+  reachable: boolean
+  status: number
+  statusText: string
+  contentType: string
+  ms: number
+  problem: string
+}
+
 export function parseWsdl(xml: string): WsdlDocument {
   const parser = new DOMParser()
   const doc = parser.parseFromString(xml, 'text/xml')
@@ -354,11 +364,11 @@ export async function sendSoapRequest(
 
   try {
     const ct = req.soapVersion === '1.2'
-      ? 'application/soap+xml; charset=utf-8'
+      ? `application/soap+xml; charset=utf-8${req.soapAction ? `; action="${req.soapAction}"` : ''}`
       : 'text/xml; charset=utf-8'
 
     const headers: Record<string, string> = { 'Content-Type': ct }
-    if (req.soapAction) {
+    if (req.soapAction && req.soapVersion === '1.1') {
       headers['SOAPAction'] = req.soapAction
     }
     if (req.customHeaders) {
@@ -411,6 +421,63 @@ export async function sendSoapRequest(
   }
 }
 
+export async function probeSoapEndpoint(url: string, timeoutMs: number = 12000): Promise<SoapEndpointProbe> {
+  const t0 = performance.now()
+  try {
+    const respJSON = await ExecuteHTTP(JSON.stringify({
+      method: 'GET',
+      url,
+      headers: { Accept: 'text/xml, application/soap+xml, application/wsdl+xml, text/html;q=0.8, */*;q=0.5' },
+      body: '',
+      timeoutMs,
+      followRedirects: true,
+      skipTlsVerify: false,
+    }))
+    const resp = JSON.parse(respJSON) as {
+      status: number
+      statusText: string
+      headers: Record<string, string>
+      body: string
+      ms: number
+      error?: { code: string; message: string }
+    }
+
+    if (resp.error) {
+      return {
+        url,
+        reachable: false,
+        status: 0,
+        statusText: 'Error',
+        contentType: '',
+        ms: resp.ms ?? Math.round(performance.now() - t0),
+        problem: resp.error.message,
+      }
+    }
+
+    const contentType = headerValue(resp.headers, 'content-type')
+    const problem = describeEndpointProblem(resp.status, resp.statusText, contentType, resp.body)
+    return {
+      url,
+      reachable: resp.status > 0 && resp.status < 400,
+      status: resp.status,
+      statusText: resp.statusText,
+      contentType,
+      ms: resp.ms ?? Math.round(performance.now() - t0),
+      problem,
+    }
+  } catch (e) {
+    return {
+      url,
+      reachable: false,
+      status: 0,
+      statusText: 'Error',
+      contentType: '',
+      ms: Math.round(performance.now() - t0),
+      problem: e instanceof Error ? e.message : String(e),
+    }
+  }
+}
+
 export function soapXmlToJson(xml: string): unknown {
   const parser = new DOMParser()
   const doc = parser.parseFromString(xml, 'text/xml')
@@ -453,14 +520,23 @@ export function escapeXml(s: string): string {
 }
 
 export function validateSoapXml(xml: string): { valid: boolean; error?: string } {
+  if (!xml.trim()) return { valid: false, error: 'Empty response' }
+  if (looksLikeHtml(xml)) return { valid: false, error: 'Response is HTML, not SOAP XML' }
+
   const parser = new DOMParser()
   const doc = parser.parseFromString(xml, 'text/xml')
   const err = doc.querySelector('parsererror')
   if (err) return { valid: false, error: err.textContent ?? 'XML parse error' }
+
+  const envelope = doc.getElementsByTagNameNS('*', 'Envelope').item(0)
+    ?? doc.getElementsByTagName('soap:Envelope').item(0)
+    ?? doc.getElementsByTagName('soap12:Envelope').item(0)
+  if (!envelope) return { valid: false, error: 'No SOAP Envelope found' }
+
   const body = doc.getElementsByTagNameNS('*', 'Body').item(0)
     ?? doc.getElementsByTagName('soap:Body').item(0)
     ?? doc.getElementsByTagName('soap12:Body').item(0)
-  if (!body) return { valid: true, error: 'No SOAP Body found (not a SOAP response?)' }
+  if (!body) return { valid: false, error: 'No SOAP Body found' }
   const fault = doc.getElementsByTagNameNS('*', 'Fault').item(0)
     ?? doc.getElementsByTagName('soap:Fault').item(0)
     ?? doc.getElementsByTagName('soap12:Fault').item(0)
@@ -468,13 +544,47 @@ export function validateSoapXml(xml: string): { valid: boolean; error?: string }
   return { valid: true }
 }
 
+function looksLikeHtml(text: string): boolean {
+  return /^\s*(?:<!doctype\s+html|<html[\s>])/i.test(text)
+}
+
+export function describeSoapResponseProblem(response: SoapResponse): string {
+  if (response.error) return response.error
+  const contentType = headerValue(response.headers, 'content-type')
+  if (response.status >= 400 && looksLikeHtml(response.body)) {
+    return `Endpoint returned HTTP ${response.status} with an HTML error page. Check the WSDL service URL: this is not a SOAP response.`
+  }
+  if (contentType.toLowerCase().includes('text/html')) {
+    return 'Endpoint returned HTML instead of SOAP XML. The service URL may be obsolete or routed to a web app error page.'
+  }
+  const validation = validateSoapXml(response.body)
+  if (!validation.valid) return validation.error ?? 'Response is not valid SOAP XML'
+  return ''
+}
+
+function describeEndpointProblem(status: number, statusText: string, contentType: string, body: string): string {
+  if (status >= 400) {
+    const suffix = looksLikeHtml(body) ? ' It returned an HTML error page, not a SOAP service response.' : ''
+    return `Endpoint test failed: HTTP ${status}${statusText ? ` ${statusText}` : ''}.${suffix}`
+  }
+  if (status === 0) return 'Endpoint test failed before an HTTP response was received.'
+  if (contentType.toLowerCase().includes('text/html') && looksLikeHtml(body)) {
+    return 'Endpoint is reachable, but GET returned an HTML page. Send may still work if this is a SOAP service landing page.'
+  }
+  return ''
+}
+
+function headerValue(headers: Record<string, string> | undefined, name: string): string {
+  return Object.entries(headers ?? {}).find(([key]) => key.toLowerCase() === name.toLowerCase())?.[1] ?? ''
+}
+
 export function exportSoapCurl(soapReq: SoapRequest): string {
   const ct = soapReq.soapVersion === '1.2'
-    ? 'application/soap+xml'
+    ? `application/soap+xml${soapReq.soapAction ? `; action="${soapReq.soapAction}"` : ''}`
     : 'text/xml'
   let cmd = `curl -X POST "${soapReq.url}"`
   cmd += ` \\\n  -H "Content-Type: ${ct}"`
-  if (soapReq.soapAction) {
+  if (soapReq.soapAction && soapReq.soapVersion === '1.1') {
     cmd += ` \\\n  -H "SOAPAction: ${soapReq.soapAction}"`
   }
   const body = soapReq.envelope.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
@@ -488,13 +598,14 @@ export function generateSoapClientCode(
   soapAction: string,
   soapVersion: '1.1' | '1.2',
 ): { python: string; curl: string; node: string } {
-  const ct = soapVersion === '1.2' ? 'application/soap+xml' : 'text/xml'
+  const ct = soapVersion === '1.2' ? `application/soap+xml${soapAction ? `; action="${soapAction}"` : ''}` : 'text/xml'
+  const soapActionHeader = soapVersion === '1.1' && soapAction ? `\n    "SOAPAction": "${soapAction}",` : ''
 
   const python = `import requests
 
 url = "${url}"
 headers = {
-    "Content-Type": "${ct}",${soapAction ? `\n    "SOAPAction": "${soapAction}",` : ''}
+    "Content-Type": "${ct}",${soapActionHeader}
 }
 envelope = """<soap:Envelope ...>...</soap:Envelope>"""
 
@@ -510,7 +621,7 @@ const envelope = \`<soap:Envelope ...>...</soap:Envelope>\`;
 const options = {
   method: 'POST',
   headers: {
-    'Content-Type': '${ct}',${soapAction ? `\n    'SOAPAction': '${soapAction}',` : ''}
+    'Content-Type': '${ct}',${soapVersion === '1.1' && soapAction ? `\n    'SOAPAction': '${soapAction}',` : ''}
     'Content-Length': Buffer.byteLength(envelope),
   },
 };

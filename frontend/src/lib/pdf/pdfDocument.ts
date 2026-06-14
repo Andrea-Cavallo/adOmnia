@@ -37,6 +37,11 @@ export interface FormWidget {
   exportValue?: string // for radio/checkbox "on" value
 }
 
+export interface PdfTextMatch {
+  page: number
+  preview: string
+}
+
 /** Load a PDF from raw bytes. Throws a clean error for invalid/encrypted files. */
 export async function loadPdfDocument(bytes: Uint8Array): Promise<LoadedPdf> {
   try {
@@ -141,4 +146,30 @@ export async function readFormWidgets(
     widgets.push({ name: raw.fieldName, type, x: left, y: top, w, h, defaultValue, options, exportValue })
   }
   return widgets
+}
+
+export async function extractPageText(doc: PDFDocumentProxy, pageNumber: number): Promise<string> {
+  const page = await doc.getPage(pageNumber)
+  const content = await page.getTextContent()
+  return content.items
+    .map((item) => ('str' in item ? String(item.str) : ''))
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+export async function searchPdfText(doc: PDFDocumentProxy, query: string): Promise<PdfTextMatch[]> {
+  const needle = query.trim().toLowerCase()
+  if (!needle) return []
+  const matches: PdfTextMatch[] = []
+  for (let page = 1; page <= doc.numPages; page += 1) {
+    const text = await extractPageText(doc, page)
+    const idx = text.toLowerCase().indexOf(needle)
+    if (idx >= 0) {
+      const start = Math.max(0, idx - 45)
+      const end = Math.min(text.length, idx + needle.length + 45)
+      matches.push({ page, preview: text.slice(start, end) })
+    }
+  }
+  return matches
 }

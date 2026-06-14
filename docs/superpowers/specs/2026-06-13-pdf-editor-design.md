@@ -195,24 +195,27 @@ These choices were made during implementation and supersede the design where the
 
 - **Persistence:** instead of a new `pdfeditor.go` bbolt module, the feature reuses
   the existing generic `Storage*` bindings (bbolt) with a new `pdfprojects` bucket.
-  The only Go change is registering that bucket in `internal/storage/storage.go`'s
-  whitelist (buckets are whitelisted; an unlisted bucket is rejected). Each project
-  is one item keyed by id, with the PDF bytes base64-encoded inside the JSON.
-- **Save size limit:** the storage layer caps a single value at 10 MB. A base64 PDF
-  larger than that fails to save with a surfaced error; export is unaffected (it does
-  not go through storage). Raising this is a post-v1 follow-up.
+  New projects are split into `meta:<id>` and `bytes:<id>` entries so project lists
+  stay lightweight even when source PDFs are large. Legacy one-envelope project
+  entries still load.
+- **Save size limit:** the generic storage Wails/HTTP body cap is now 100 MB. PDF
+  project bytes are stored separately from metadata, reducing list-time memory churn.
 - **File open:** drag-drop (`.pdf` via `globalFileRouter`) plus a hidden `<input
   type="file">` in the panel — no native Go open dialog.
-- **Export:** the flattened PDF is delivered via a Blob download (`<a download>`),
-  not a native Wails save dialog. A native save dialog is a post-v1 polish item.
-- **Open from API response:** best-effort — the response body is a string over the
-  Go transport, reconstructed to bytes via latin1 mapping. Reliable for the disk and
-  drag-drop paths; binary responses may need a backend base64 path later.
-- **Fonts:** export uses StandardFonts.Helvetica (WinAnsi); non-WinAnsi characters are
-  replaced with `?`. Full Unicode via fontkit is a post-v1 follow-up.
+- **Export:** the flattened PDF now uses a native Wails save dialog via
+  `SaveBinaryFileBase64`.
+- **Open from API response:** HTTP execution now includes `bodyBase64`, so PDF
+  responses can be opened from the response panel without lossy string conversion.
+- **Fonts:** export still uses StandardFonts.Helvetica for normal WinAnsi text.
+  Non-WinAnsi annotation text is rendered through a canvas PNG fallback so Unicode is
+  preserved visually in exported PDFs without bundling a large font file.
+- **Page tools:** rotate, move/reorder, delete, append/merge, and split-current-page
+  are available in the PDF toolbar.
+- **Search/copy:** the PDF toolbar can search text extracted by pdf.js and copy text
+  from the active page.
 
 ## 12. Open follow-ups (post-v1)
 
-- Cryptographic / eIDAS signing tied into existing `certtools`.
-- Page manipulation (rotate / reorder / merge / split).
-- Text search and copy from the rendered layer.
+- Cryptographic / eIDAS signing tied into a real PDF/PAdES signing engine. The current
+  app has certificate/JKS inspection/extraction utilities, but no trustworthy PDF
+  digital-signature engine yet; this must not be faked with a visible image signature.

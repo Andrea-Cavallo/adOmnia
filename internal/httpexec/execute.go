@@ -3,6 +3,7 @@ package httpexec
 import (
 	"context"
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -29,6 +30,7 @@ type HTTPExecResponse struct {
 	StatusText  string            `json:"statusText"`
 	Headers     map[string]string `json:"headers"`
 	Body        string            `json:"body"`
+	BodyBase64  string            `json:"bodyBase64,omitempty"`
 	ContentType string            `json:"contentType"`
 	Ms          int64             `json:"ms"`
 	Size        int               `json:"size"`
@@ -126,6 +128,7 @@ func executeHTTPRequest(req HTTPExecRequest) HTTPExecResponse {
 		StatusText:  statusText,
 		Headers:     respHeaders,
 		Body:        string(bodyBytes),
+		BodyBase64:  base64.StdEncoding.EncodeToString(bodyBytes),
 		ContentType: httpResp.Header.Get("Content-Type"),
 		Ms:          elapsed,
 		Size:        len(bodyBytes),

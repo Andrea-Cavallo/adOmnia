@@ -115,6 +115,7 @@ export async function sendRequest(
       statusText: resp.statusText,
       headers: resp.headers ?? {},
       body: resp.body ?? '',
+      bodyBase64: resp.bodyBase64,
       contentType: resp.contentType ?? '',
       ms: resp.ms ?? 0,
       size: resp.size ?? 0,
@@ -444,6 +445,7 @@ interface GoHTTPResponse {
   statusText: string
   headers: Record<string, string>
   body: string
+  bodyBase64?: string
   contentType: string
   ms: number
   size: number

@@ -5,6 +5,7 @@ interface WailsGoMain {
   App: {
     LoadSettings: () => Promise<string>
     SaveSettings: (settingsJSON: string) => Promise<void>
+    SaveBinaryFileBase64: (defaultName: string, dataBase64: string) => Promise<string>
     StorageGet: (bucket: string, key: string) => Promise<string>
     StoragePut: (bucket: string, key: string, value: string) => Promise<void>
     StorageDelete: (bucket: string, key: string) => Promise<void>
