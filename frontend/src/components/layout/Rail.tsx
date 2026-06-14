@@ -132,6 +132,7 @@ const CATEGORIES: CategoryDef[] = [
       { title: 'Documents & Diagrams', items: [
         { id: 'markdown',  icon: FileText,  label: 'Markdown Notes' },
         { id: 'mermaid',   icon: GitBranch, label: 'Mermaid Diagrams' },
+        { id: 'latex',     icon: FileCode,  label: 'LaTeX Studio' },
         { id: 'pdfeditor', icon: FileText,  label: 'PDF Editor & Sign' },
       ]},
     ],

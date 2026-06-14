@@ -70,7 +70,7 @@ const DATA: ToolDef[] = [
   { id: 'workspace', icon: FolderOpen,  color: '#38bdf8', status: 'Stable',  label: 'Workspace',          desc: 'Export and import the whole project as a .adomnia archive.' },
   { id: 'vault',     icon: Lock,        color: '#eab308', status: 'Stable',  label: 'Vault',              desc: 'Encrypt local secrets and workspace exports with age/scrypt.' },
   { id: 'storage',   icon: Database,    color: '#94a3b8', status: 'Stable',  label: 'Storage Inspector',  desc: 'Browse, edit, search, export and import raw local storage with warnings.' },
-  { id: 'markdown',  icon: FileText,    color: '#a3a3a3', status: 'Stable',  label: 'Document Studio',     desc: 'Write Markdown notes, render Mermaid diagrams and edit or sign PDFs locally.' },
+  { id: 'markdown',  icon: FileText,    color: '#a3a3a3', status: 'Stable',  label: 'Document Studio',     desc: 'Write Markdown notes, render Mermaid diagrams, draft LaTeX CVs and edit or sign PDFs locally.' },
 ]
 
 const EXT: ToolDef[] = [

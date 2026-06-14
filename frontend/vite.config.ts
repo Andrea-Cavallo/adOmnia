@@ -23,6 +23,15 @@ function getAppVersion(): string {
   }
 }
 
+function manualChunks(id: string): string | undefined {
+  if (!id.includes('node_modules')) return undefined
+  if (/[\\/]node_modules[\\/](react|react-dom)[\\/]/.test(id)) return 'vendor-react'
+  if (/[\\/]node_modules[\\/]lucide-react[\\/]/.test(id)) return 'vendor-icons'
+  if (/[\\/]node_modules[\\/](ajv|ajv-formats)[\\/]/.test(id)) return 'vendor-schema'
+  if (/[\\/]node_modules[\\/](zustand|yaml|clsx|tailwind-merge|class-variance-authority)[\\/]/.test(id)) return 'vendor-misc'
+  return undefined
+}
+
 // Run `VITE_ANALYZE=1 npm run build` to generate a bundle size report.
 // Requires: npm install --save-dev rollup-plugin-visualizer
 export default defineConfig(async () => {
@@ -49,12 +58,7 @@ export default defineConfig(async () => {
       chunkSizeWarningLimit: 1000,
       rollupOptions: {
         output: {
-          manualChunks: {
-            'vendor-react': ['react', 'react-dom'],
-            'vendor-icons': ['lucide-react'],
-            'vendor-schema': ['ajv', 'ajv-formats'],
-            'vendor-misc': ['zustand', 'yaml', 'clsx', 'tailwind-merge', 'class-variance-authority'],
-          },
+          manualChunks,
         },
       },
     },

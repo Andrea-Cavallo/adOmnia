@@ -26,6 +26,7 @@ export type RailItem =
   | 'testdata'
   | 'markdown'
   | 'mermaid'
+  | 'latex'
   | 'pdfeditor'
   | 'powertools'
   | 'storage'

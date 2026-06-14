@@ -13,7 +13,7 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 | B | [Protocolli & Streaming](#b-protocolli--streaming) | gRPC, SOAP, WebSocket, SSE, Broker Studio | ~65 |
 | C | [Infrastruttura & Simulazione](#c-infrastruttura--simulazione) | Mock Server (+ Smart Mock), Proxy/Interceptor, Docker Lab, Load Testing | ~47 |
 | D | [Debugging & Analisi](#d-debugging--analisi) | Browser Debug (+ Discovery), HAR Viewer, Network Tools, JSON Tools, XML Tools, Power Tools, Dev Logs, Observability, Secret Scanner, PDF Editor | ~110 |
-| E | [Dati Locali](#e-dati-locali) | Database Studio, Storage Inspector, Workspace, Vault, Document Studio | ~51 |
+| E | [Dati Locali](#e-dati-locali) | Database Studio, Storage Inspector, Workspace, Vault, Document Studio | ~58 |
 | F | [Personalizzazione & Estendibilità](#f-personalizzazione--estendibilità) | Temi, Plugin WASM, Template, Python Plugin SDK | ~51 |
 | G | [Piattaforma](#g-piattaforma) | Impostazioni, Infrastruttura, UI Framework | ~76 |
 | H | [API Design](#h-api-design) | Import/Export OpenAPI, Schema Components, Editor OpenAPI Visuale | ~10 |
@@ -692,6 +692,13 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 | E5.8 | **PDF Editor & Sign** | Lo stesso hub include editor PDF, annotazioni, pagine, ricerca testo e firme. |
 | E5.9 | **Nome Menu Piu Chiaro** | Il menu laterale non e piu un generico "Markdown": diventa "Document Studio". |
 | E5.10 | **Drop PDF Diretto** | Il router file globale accetta PDF insieme a Postman, OpenAPI, Mermaid, HAR, WSDL e Java class. |
+| E5.11 | **LaTeX Studio** | Editor `.tex` locale dentro Document Studio con sorgente a sinistra e preview visuale a destra. |
+| E5.12 | **Preset CV Lorem** | Template CV modern/academic con contenuti placeholder, ispirati a workflow Awesome-CV ma proprietari e modificabili. |
+| E5.13 | **Preview A4 CV** | Rendering locale in stile pagina A4 per controllare rapidamente gerarchia, sezioni, skill, esperienza e formazione. |
+| E5.14 | **Export `.tex`** | Scarica il sorgente LaTeX pronto per compilazione esterna o condivisione file-based. |
+| E5.15 | **Import/Drop `.tex`** | Importa file LaTeX da picker o drag-and-drop globale e apre direttamente LaTeX Studio. |
+| E5.16 | **Persistenza Locale LaTeX** | Ultimo documento e preset restano salvati in localStorage per riprendere il lavoro. |
+| E5.17 | **Preset Report Tecnico** | Template LaTeX per report tecnici/API findings oltre ai CV. |
 
 ---
 
@@ -989,9 +996,9 @@ Modulo di integrazione AI: connetti, debugga e genera MCP server — esponendo g
 | **B — Protocolli & Streaming** | gRPC, SOAP, WebSocket, SSE, Broker Studio (5 broker) | 65 |
 | **C — Infrastruttura & Simulazione** | Mock Server (+ Smart Mock), Proxy, Docker Lab, Load Testing | 47 |
 | **D — Debugging & Analisi** | Browser Debug (+ Discovery), HAR, Network Tools, JSON Tools, XML Tools, Dev Utils, Dev Logs, Observability, Secret Scanner, PDF Editor | 110 |
-| **E — Dati Locali** | Database Studio, Storage Inspector, Workspace, Vault, Document Studio | 51 |
+| **E — Dati Locali** | Database Studio, Storage Inspector, Workspace, Vault, Document Studio | 58 |
 | **F — Personalizzazione & Estendibilità** | Temi, Plugin WASM, Template, Python Plugin SDK | 51 |
 | **G — Piattaforma** | Impostazioni, Infrastruttura, UI Framework | 76 |
 | **H — API Design** | Import/Export OpenAPI, Schema Components, Editor OpenAPI Visuale | 10 |
 | **I — MCP (Model Context Protocol)** | Client/Debugger, Sessioni & Trasporto, Server Generator | 12 |
-| **Totale** | 38 sezioni | **~534** |
+| **Totale** | 38 sezioni | **~541** |

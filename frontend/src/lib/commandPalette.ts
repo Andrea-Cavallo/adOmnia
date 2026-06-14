@@ -48,6 +48,7 @@ export const COMMAND_PALETTE_PANELS: PalettePanel[] = [
   { id: 'apidocs', title: 'API Docs / Swagger', group: 'Data', keywords: 'swagger openapi oas docs documentation reference redoc viewer spec api' },
   { id: 'markdown', title: 'Markdown Notes', group: 'Document Studio', keywords: 'md preview notes docs' },
   { id: 'mermaid', title: 'Mermaid Diagrams', group: 'Document Studio', keywords: 'diagram graph flowchart sequence mermaid mmd preview fullscreen zoom' },
+  { id: 'latex', title: 'LaTeX Studio', group: 'Document Studio', keywords: 'tex latex cv resume curriculum pdf document template preset awesome cv' },
   { id: 'settings', title: 'Settings', group: 'Navigation', keywords: 'preferences configuration appearance' },
 ]
 
