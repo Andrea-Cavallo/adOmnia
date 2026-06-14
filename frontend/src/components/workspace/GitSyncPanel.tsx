@@ -13,6 +13,7 @@ import {
   GitFork,
   GitMerge,
   GitPullRequest,
+  Loader2,
   RefreshCw,
   Search,
   Star,
@@ -80,6 +81,14 @@ interface CommitChangedFile {
   status: string
   path: string
   oldPath?: string
+}
+
+interface WorkingTreeFileSnapshot {
+  path: string
+  oldPath?: string
+  oldContent: string
+  newContent: string
+  diff: string
 }
 
 const emptyStatus: GitStatus = { branch: '', dirty: false, aheadCount: 0, behindCount: 0, modified: [], untracked: [] }
@@ -184,19 +193,46 @@ function shortBranch(name: string): string {
 
 function CommitGraphCell({ commit, index, count }: { commit: CommitInfo; index: number; count: number }) {
   const lane = laneFor(commit)
-  const x = 14 + lane * 14
-  const lineTop = index === 0 ? 15 : 0
-  const lineBottom = index === count - 1 ? 15 : 34
+  const x = 22 + lane * 18
+  const lineTop = index === 0 ? 24 : 0
+  const lineBottom = index === count - 1 ? 24 : 52
+  const color = commit.parents.length > 1 ? 'var(--color-warning)' : 'var(--color-accent)'
   return (
-    <svg width="58" height="34" viewBox="0 0 58 34" className="shrink-0">
-      {[0, 1, 2].map((l) => (
-        <line key={l} x1={14 + l * 14} y1="0" x2={14 + l * 14} y2="34" stroke="var(--color-border-2)" strokeWidth="1" opacity={l === lane ? 0.7 : 0.25} />
+    <svg width="104" height="52" viewBox="0 0 104 52" className="shrink-0 overflow-visible">
+      {[0, 1, 2, 3].map((l) => (
+        <line
+          key={l}
+          x1={22 + l * 18}
+          y1="0"
+          x2={22 + l * 18}
+          y2="52"
+          stroke="var(--color-border-2)"
+          strokeWidth="1"
+          opacity={l === lane ? 0.72 : 0.22}
+        />
       ))}
-      <line x1={x} y1={lineTop} x2={x} y2={lineBottom} stroke={commit.parents.length > 1 ? 'var(--color-warning)' : 'var(--color-accent)'} strokeWidth="2" />
-      {commit.parents.length > 1 && <path d={`M ${x} 17 C 42 17 42 5 48 5`} fill="none" stroke="var(--color-warning)" strokeWidth="1.5" />}
-      <circle cx={x} cy="17" r="4.2" fill={commit.parents.length > 1 ? 'var(--color-warning)' : 'var(--color-accent)'} stroke="var(--color-surface-0)" strokeWidth="2" />
+      <line x1={x} y1={lineTop} x2={x} y2={lineBottom} stroke={color} strokeWidth="2.5" />
+      {lane > 0 && (
+        <path
+          d={`M 22 26 C ${30 + lane * 8} 26 ${x - 10} 26 ${x} 26`}
+          fill="none"
+          stroke={color}
+          strokeWidth="1.8"
+          opacity="0.95"
+        />
+      )}
+      {commit.parents.length > 1 && (
+        <path d={`M ${x} 26 C 78 26 76 9 92 9`} fill="none" stroke="var(--color-warning)" strokeWidth="2" />
+      )}
+      <circle cx={x} cy="26" r="5.6" fill={color} stroke="var(--color-surface-0)" strokeWidth="2.5" />
+      <circle cx={x} cy="26" r="2" fill="var(--color-surface-0)" opacity="0.9" />
     </svg>
   )
+}
+
+function downloadSafeName(path: string, suffix: string): string {
+  const leaf = path.split(/[\\/]/).pop() || 'file'
+  return `${leaf}.${suffix}`
 }
 
 export function GitSyncPanel() {
@@ -214,6 +250,9 @@ export function GitSyncPanel() {
   const [commitFilesLoading, setCommitFilesLoading] = useState(false)
   const [commitDiffFile, setCommitDiffFile] = useState<CommitChangedFile | null>(null)
   const [commitDiffText, setCommitDiffText] = useState('')
+  const [workingDiffFile, setWorkingDiffFile] = useState<FileChange | null>(null)
+  const [workingDiffSnapshot, setWorkingDiffSnapshot] = useState<WorkingTreeFileSnapshot | null>(null)
+  const [workingDiffLoadingPath, setWorkingDiffLoadingPath] = useState('')
 
   const status = overview?.status ?? emptyStatus
   const selectedCommit = useMemo(
@@ -333,6 +372,27 @@ export function GitSyncPanel() {
     }
   }
 
+  const openWorkingTreeDiff = async (change: FileChange) => {
+    if (!repoPath) return
+    clearFeedback()
+    setWorkingDiffLoadingPath(change.path)
+    try {
+      const raw = await GitSync.GetWorkingTreeFileSnapshot(repoPath, change.path, '')
+      const snapshot = parseJSON<WorkingTreeFileSnapshot>(raw, {
+        path: change.path,
+        oldContent: '',
+        newContent: '',
+        diff: '',
+      })
+      setWorkingDiffFile(change)
+      setWorkingDiffSnapshot(snapshot)
+    } catch (e) {
+      setError(String(e))
+    } finally {
+      setWorkingDiffLoadingPath('')
+    }
+  }
+
   const currentBranch = status.branch || 'master'
 
   if (gitAvailable === false) {
@@ -434,7 +494,7 @@ export function GitSyncPanel() {
         </div>
       )}
 
-      <div className="grid min-h-0 flex-1 grid-cols-[280px_minmax(0,1fr)_360px]">
+      <div className="grid min-h-0 flex-1 grid-cols-[256px_minmax(0,1fr)_320px]">
         <aside className="min-h-0 overflow-y-auto border-r border-border-1 bg-surface-1">
           <div className="border-b border-border-1 p-3">
             <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-text-4">Repository</div>
@@ -493,53 +553,57 @@ export function GitSyncPanel() {
         </aside>
 
         <main className="flex min-h-0 flex-col overflow-hidden">
-          <div className="grid h-10 shrink-0 grid-cols-[64px_minmax(0,1fr)_170px_90px_96px] items-center border-b border-border-1 bg-surface-1 px-2 text-[10px] font-semibold uppercase tracking-wider text-text-4">
-            <span>Graph</span><span>Commit</span><span>Author</span><span>Hash</span><span>Date</span>
+          <div className="grid h-10 shrink-0 grid-cols-[112px_minmax(0,1fr)_96px] items-center border-b border-border-1 bg-surface-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-text-4">
+            <span>Graph</span><span>Commit</span><span className="text-right">Date</span>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto">
             {filteredCommits.map((commit, index) => (
               <button
                 key={commit.fullHash || commit.hash}
                 onClick={() => setSelectedHash(commit.hash)}
-                className={cn('grid w-full grid-cols-[64px_minmax(0,1fr)_170px_90px_96px] items-center border-b border-border-1 px-2 text-left hover:bg-surface-2', selectedCommit?.hash === commit.hash && 'bg-surface-2')}
+                className={cn(
+                  'grid min-h-[58px] w-full grid-cols-[112px_minmax(0,1fr)_96px] items-center border-b border-border-1 px-3 text-left transition-colors hover:bg-surface-2',
+                  selectedCommit?.hash === commit.hash && 'bg-surface-2 shadow-[inset_3px_0_0_var(--color-accent)]',
+                )}
               >
                 <CommitGraphCell commit={commit} index={index} count={filteredCommits.length} />
-                <div className="min-w-0 py-2">
-                  <div className="truncate text-xs font-medium text-text-1">{commit.message}</div>
-                  <div className="mt-1 flex flex-wrap gap-1">
+                <div className="min-w-0 py-2.5">
+                  <div className="truncate text-[12px] font-semibold leading-5 text-text-1">{commit.message}</div>
+                  <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
+                    <span className="min-w-0 max-w-[180px] truncate text-[10px] text-text-3">{commit.author}</span>
+                    <code className="rounded bg-surface-0 px-1.5 py-0.5 text-[10px] text-accent">{commit.hash}</code>
                     {commit.decorations.slice(0, 3).map((decoration) => (
-                      <span key={decoration} className="rounded border border-accent/40 px-1.5 py-0.5 text-[10px] text-accent">{decoration}</span>
+                      <span key={decoration} className="max-w-[150px] truncate rounded border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-[10px] text-accent">{decoration}</span>
                     ))}
-                    {commit.parents.length > 1 && <span className="rounded border border-warning/40 px-1.5 py-0.5 text-[10px] text-warning">merge</span>}
+                    {commit.decorations.length > 3 && <span className="rounded border border-border-2 px-1.5 py-0.5 text-[10px] text-text-4">+{commit.decorations.length - 3}</span>}
+                    {commit.parents.length > 1 && <span className="rounded border border-warning/40 bg-warning/10 px-1.5 py-0.5 text-[10px] text-warning">merge</span>}
                   </div>
                 </div>
-                <span className="truncate text-xs text-text-2">{commit.author}</span>
-                <code className="text-xs text-accent">{commit.hash}</code>
-                <span className="text-xs text-text-3">{commit.date}</span>
+                <span className="text-right text-[11px] text-text-3">{commit.date}</span>
               </button>
             ))}
             {repoPath && filteredCommits.length === 0 && <div className="p-8 text-center text-xs text-text-4">No commits found.</div>}
             {!repoPath && <div className="p-8 text-center text-xs text-text-4">Load a repository to inspect the graph.</div>}
           </div>
 
-          <section className="h-72 shrink-0 overflow-hidden border-t border-border-1 bg-surface-1">
+          <section className="h-60 shrink-0 overflow-hidden border-t border-border-1 bg-surface-1">
             {selectedCommit ? (
-              <div className="grid h-full grid-cols-[minmax(260px,.85fr)_minmax(320px,1.15fr)]">
-                <div className="min-w-0 overflow-y-auto border-r border-border-1 p-4">
+              <div className="grid h-full grid-cols-[minmax(240px,.75fr)_minmax(340px,1.25fr)]">
+                <div className="min-w-0 overflow-y-auto border-r border-border-1 p-3">
                   <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-text-1">
                     {selectedCommit.parents.length > 1 ? <GitMerge size={15} className="text-warning" /> : <GitCommit size={15} className="text-accent" />}
                     <span className="truncate">{selectedCommit.message}</span>
                   </div>
-                  <div className="grid gap-3 text-xs">
-                    <div className="rounded border border-border-1 bg-surface-0 p-3">
+                  <div className="grid gap-2 text-xs">
+                    <div className="rounded border border-border-1 bg-surface-0 p-2.5">
                       <div className="mb-1 text-[10px] uppercase tracking-wider text-text-4">Author</div>
                       <div className="text-text-1">{selectedCommit.author}</div>
                       <div className="mt-1 text-text-4">{selectedCommit.date}</div>
                     </div>
-                    <div className="rounded border border-border-1 bg-surface-0 p-3">
+                    <div className="rounded border border-border-1 bg-surface-0 p-2.5">
                       <div className="mb-1 text-[10px] uppercase tracking-wider text-text-4">Refs</div>
-                      <div className="font-mono text-text-2">sha {selectedCommit.fullHash}</div>
-                      <div className="mt-1 font-mono text-text-4">base {selectedCommit.parents[0] || 'empty tree'}</div>
+                      <div className="truncate font-mono text-text-2" title={selectedCommit.fullHash}>sha {selectedCommit.fullHash}</div>
+                      <div className="mt-1 truncate font-mono text-text-4" title={selectedCommit.parents[0] || 'empty tree'}>base {selectedCommit.parents[0] || 'empty tree'}</div>
                       {selectedCommit.parents.length > 1 && <div className="mt-1 text-warning">Merge commit: showing files against first parent.</div>}
                     </div>
                   </div>
@@ -560,8 +624,8 @@ export function GitSyncPanel() {
                           onClick={() => void openCommitDiff(file)}
                           className="flex w-full items-center gap-2 rounded border border-border-1 bg-surface-0 px-2 py-1.5 text-left hover:bg-surface-2"
                         >
-                          <span className={cn('w-14 rounded px-1.5 py-0.5 text-center text-[9px]', changedFileClass(file.status))}>{changedFileLabel(file.status)}</span>
-                          <span className="min-w-0 flex-1 truncate font-mono text-xs text-text-2">{file.path}</span>
+                          <span className={cn('w-16 rounded px-1.5 py-0.5 text-center text-[9px]', changedFileClass(file.status))}>{changedFileLabel(file.status)}</span>
+                          <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-text-2" title={file.path}>{file.path}</span>
                           {file.oldPath && <span className="max-w-[150px] truncate text-[10px] text-text-4">from {file.oldPath}</span>}
                           <Eye size={12} className="shrink-0 text-text-4" />
                         </button>
@@ -617,12 +681,18 @@ export function GitSyncPanel() {
             <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-text-4">Changes</div>
             <div className="space-y-1">
               {(overview?.changes ?? []).map((change) => (
-                <div key={`${change.status}-${change.path}`} className="flex items-center gap-2 rounded border border-border-1 bg-surface-0 px-2 py-1.5">
-                  <span className={cn('w-14 rounded px-1.5 py-0.5 text-center text-[9px]', change.conflicted ? 'bg-warning/20 text-warning' : change.status === '??' ? 'bg-accent/15 text-accent' : 'bg-surface-3 text-text-3')}>
+                <button
+                  key={`${change.status}-${change.path}`}
+                  onClick={() => void openWorkingTreeDiff(change)}
+                  className="flex w-full items-center gap-2 rounded border border-border-1 bg-surface-0 px-2 py-1.5 text-left transition-colors hover:border-accent/40 hover:bg-surface-2"
+                  title={`Open diff for ${change.path}`}
+                >
+                  <span className={cn('w-16 shrink-0 rounded px-1.5 py-0.5 text-center text-[9px]', change.conflicted ? 'bg-warning/20 text-warning' : change.status === '??' ? 'bg-accent/15 text-accent' : 'bg-surface-3 text-text-3')}>
                     {changeLabel(change)}
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-xs text-text-2">{change.path}</span>
-                </div>
+                  <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-text-2" title={change.path}>{change.path}</span>
+                  {workingDiffLoadingPath === change.path ? <Loader2 size={12} className="shrink-0 animate-spin text-accent" /> : <Eye size={12} className="shrink-0 text-text-4" />}
+                </button>
               ))}
               {(overview?.changes.length ?? 0) === 0 && <div className="rounded border border-border-1 bg-surface-0 p-4 text-center text-xs text-text-4">Working tree clean.</div>}
             </div>
@@ -633,13 +703,32 @@ export function GitSyncPanel() {
       )}
       {commitDiffFile && (
         <DiffModal
+          title={`Commit diff - ${commitDiffFile.path}`}
           leftLabel={`${selectedCommitBaseRef} - ${commitDiffFile.path}`}
           rightLabel={`${selectedCommit?.hash ?? 'commit'} - ${commitDiffFile.path}`}
           leftBody={extractOldContent(commitDiffText)}
           rightBody={extractNewContent(commitDiffText)}
+          leftDownloadName={downloadSafeName(commitDiffFile.path, 'before.txt')}
+          rightDownloadName={downloadSafeName(commitDiffFile.path, 'after.txt')}
           onClose={() => {
             setCommitDiffFile(null)
             setCommitDiffText('')
+          }}
+        />
+      )}
+      {workingDiffFile && workingDiffSnapshot && (
+        <DiffModal
+          title={`Working tree diff - ${workingDiffSnapshot.path}`}
+          leftLabel={`HEAD - ${workingDiffSnapshot.oldPath || workingDiffSnapshot.path}`}
+          rightLabel={`Working tree - ${workingDiffSnapshot.path}`}
+          leftBody={workingDiffSnapshot.oldContent}
+          rightBody={workingDiffSnapshot.newContent}
+          leftDownloadName={downloadSafeName(workingDiffSnapshot.oldPath || workingDiffSnapshot.path, 'head.txt')}
+          rightDownloadName={downloadSafeName(workingDiffSnapshot.path, 'working.txt')}
+          defaultDiffOnly={false}
+          onClose={() => {
+            setWorkingDiffFile(null)
+            setWorkingDiffSnapshot(null)
           }}
         />
       )}

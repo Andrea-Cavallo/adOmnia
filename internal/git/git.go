@@ -81,6 +81,14 @@ type ChangedFile struct {
 	OldPath string `json:"oldPath"` // only set for renames (R)
 }
 
+type WorkingTreeFileSnapshot struct {
+	Path       string `json:"path"`
+	OldPath    string `json:"oldPath,omitempty"`
+	OldContent string `json:"oldContent"`
+	NewContent string `json:"newContent"`
+	Diff       string `json:"diff"`
+}
+
 func runGit(dir string, args ...string) (string, error) {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
@@ -643,4 +651,79 @@ func GetFileDiff(repoPath, refA, refB, filePath string) (string, error) {
 		return "", fmt.Errorf("git diff file: %w", err)
 	}
 	return string(out), nil
+}
+
+func readFileAtRef(repoPath, ref, filePath string) (string, error) {
+	gitPath := filepath.ToSlash(filePath)
+	cmd := exec.Command("git", "-C", repoPath, "show", fmt.Sprintf("%s:%s", ref, gitPath))
+	configureHiddenCommand(cmd)
+	out, err := cmd.Output()
+	if err != nil {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			return "", nil
+		}
+		return "", fmt.Errorf("git show file: %w", err)
+	}
+	return string(out), nil
+}
+
+func readWorkingTreeFile(repoPath, filePath string) (string, error) {
+	cleanPath := filepath.Clean(filePath)
+	if filepath.IsAbs(cleanPath) || strings.HasPrefix(cleanPath, "..") {
+		return "", fmt.Errorf("invalid file path: %s", filePath)
+	}
+	absRepo, err := filepath.Abs(repoPath)
+	if err != nil {
+		return "", fmt.Errorf("resolve repo path: %w", err)
+	}
+	absFile, err := filepath.Abs(filepath.Join(absRepo, cleanPath))
+	if err != nil {
+		return "", fmt.Errorf("resolve file path: %w", err)
+	}
+	rel, err := filepath.Rel(absRepo, absFile)
+	if err != nil || strings.HasPrefix(rel, "..") || filepath.IsAbs(rel) {
+		return "", fmt.Errorf("file is outside repository: %s", filePath)
+	}
+	out, err := os.ReadFile(absFile)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return "", nil
+		}
+		return "", fmt.Errorf("read working file: %w", err)
+	}
+	return string(out), nil
+}
+
+func GetWorkingTreeFileSnapshot(repoPath, filePath, oldPath string) (WorkingTreeFileSnapshot, error) {
+	leftPath := oldPath
+	if leftPath == "" {
+		leftPath = filePath
+	}
+	oldContent, err := readFileAtRef(repoPath, "HEAD", leftPath)
+	if err != nil {
+		return WorkingTreeFileSnapshot{}, err
+	}
+	newContent, err := readWorkingTreeFile(repoPath, filePath)
+	if err != nil {
+		return WorkingTreeFileSnapshot{}, err
+	}
+
+	cmd := exec.Command("git", "-C", repoPath, "diff", "HEAD", "--", filePath)
+	configureHiddenCommand(cmd)
+	out, err := cmd.Output()
+	if err != nil {
+		var exitErr *exec.ExitError
+		if !errors.As(err, &exitErr) || exitErr.ExitCode() != 1 {
+			return WorkingTreeFileSnapshot{}, fmt.Errorf("git diff working file: %w", err)
+		}
+	}
+
+	return WorkingTreeFileSnapshot{
+		Path:       filePath,
+		OldPath:    oldPath,
+		OldContent: oldContent,
+		NewContent: newContent,
+		Diff:       string(out),
+	}, nil
 }

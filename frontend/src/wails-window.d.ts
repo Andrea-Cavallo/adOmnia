@@ -70,6 +70,7 @@ interface WailsGoMain {
     AbortIntegration: (repoPath: string) => Promise<void>
     CompareRefs: (repoPath: string, refA: string, refB: string) => Promise<string>
     GetFileDiff: (repoPath: string, refA: string, refB: string, filePath: string) => Promise<string>
+    GetWorkingTreeFileSnapshot: (repoPath: string, filePath: string, oldPath: string) => Promise<string>
     CreateTag: (repoPath: string, name: string, ref: string) => Promise<void>
     DeleteTag: (repoPath: string, name: string) => Promise<void>
   }
