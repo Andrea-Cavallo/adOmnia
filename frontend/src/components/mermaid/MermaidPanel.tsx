@@ -52,6 +52,32 @@ interface NodeStylePreset {
 
 const STORAGE_KEY = 'adomnia.mermaid.documents'
 
+const DEFAULT_MERMAID_SOURCE_WIDTH = 520
+
+function clampMermaidWidth(width: number): number {
+  return Math.max(320, Math.min(width, Math.round(window.innerWidth * 0.72)))
+}
+
+function MermaidResizeHandle({
+  label,
+  onMouseDown,
+}: {
+  label: string
+  onMouseDown: (event: React.MouseEvent<HTMLDivElement>) => void
+}) {
+  return (
+    <div
+      role="separator"
+      aria-label={label}
+      title={label}
+      onMouseDown={onMouseDown}
+      className="group relative z-10 w-[5px] shrink-0 cursor-ew-resize bg-surface-0 transition-colors hover:bg-accent/20"
+    >
+      <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-border-1 transition-colors group-hover:bg-accent/60" />
+    </div>
+  )
+}
+
 const NODE_STYLE_PRESETS: NodeStylePreset[] = [
   { label: 'White', fill: '#ffffff', stroke: '#334155', color: '#111827' },
   { label: 'Blue', fill: '#dbeafe', stroke: '#2563eb', color: '#0f172a' },
@@ -353,6 +379,7 @@ function MermaidPreview({
 
   const handleWheel = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
     if (error || !svg) return
+    if (!event.ctrlKey && !event.metaKey) return
     event.preventDefault()
 
     const viewport = viewportRef.current
@@ -525,9 +552,11 @@ export function MermaidPanel() {
   const [mode, setMode] = useState<'split' | 'edit' | 'preview'>('split')
   const [zoom, setZoom] = useState(1)
   const [fullscreen, setFullscreen] = useState(false)
+  const [sourceWidth, setSourceWidth] = useState(DEFAULT_MERMAID_SOURCE_WIDTH)
   const [lastSvg, setLastSvg] = useState('')
   const [status, setStatus] = useState('Ready')
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const splitResizeRef = useRef<{ startX: number; startWidth: number } | null>(null)
 
   const activeDoc = useMemo(
     () => state.documents.find((doc) => doc.id === activeId) ?? state.documents[0] ?? null,
@@ -650,6 +679,30 @@ export function MermaidPanel() {
   const setClampedZoom = (nextZoom: number) => setZoom(Math.max(0.1, Math.min(10, Number(nextZoom.toFixed(3)))))
   const zoomBy = (factor: number) => setZoom((z) => Math.max(0.1, Math.min(10, Number((z * factor).toFixed(3)))))
   const resetZoom = () => setZoom(1)
+
+  const startSplitResize = (event: React.MouseEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    splitResizeRef.current = { startX: event.clientX, startWidth: sourceWidth }
+
+    const handleMove = (moveEvent: MouseEvent) => {
+      const drag = splitResizeRef.current
+      if (!drag) return
+      setSourceWidth(clampMermaidWidth(drag.startWidth + moveEvent.clientX - drag.startX))
+    }
+
+    const handleUp = () => {
+      splitResizeRef.current = null
+      document.removeEventListener('mousemove', handleMove)
+      document.removeEventListener('mouseup', handleUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+
+    document.body.style.cursor = 'ew-resize'
+    document.body.style.userSelect = 'none'
+    document.addEventListener('mousemove', handleMove)
+    document.addEventListener('mouseup', handleUp)
+  }
 
   const styleNode = useCallback((nodeId: string, style: NodeStylePreset) => {
     if (!activeDoc) return
@@ -886,13 +939,15 @@ export function MermaidPanel() {
           ) : mode === 'preview' ? (
             preview
           ) : (
-            <div className="grid h-full min-h-0 grid-cols-[minmax(320px,42%)_1fr]">
+            <div className="flex h-full min-h-0 overflow-hidden">
               <textarea
                 value={activeDoc?.source ?? ''}
                 onChange={(event) => updateActiveSource(event.target.value)}
                 spellCheck={false}
-                className="h-full resize-none border-r border-border-1 bg-surface-0 p-4 font-mono text-[12px] leading-5 text-text-1 outline-none"
+                className="h-full shrink-0 resize-none border-r border-border-1 bg-surface-0 p-4 font-mono text-[12px] leading-5 text-text-1 outline-none"
+                style={{ width: sourceWidth }}
               />
+              <MermaidResizeHandle label="Resize Mermaid source and preview" onMouseDown={startSplitResize} />
               {preview}
             </div>
           )}
