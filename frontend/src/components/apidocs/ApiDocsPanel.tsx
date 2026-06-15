@@ -1,27 +1,36 @@
 import { useRef, useState } from 'react'
-import { BookOpen, Boxes, Link2, ClipboardPaste, AlertCircle, Loader2, X } from 'lucide-react'
+import { BookOpen, Boxes, Link2, ClipboardPaste, AlertCircle, Loader2, X, Save, Sparkles } from 'lucide-react'
 import { useCollectionsStore } from '@/stores/collections'
 import { collectionsToOAS } from '@/lib/oasExport'
 import { executeRequest } from '@/lib/executeRequest'
 import { blankRequest } from '@/lib/types'
 import { parseSpecText, buildApiDocModel, type ApiDocModel } from '@/lib/apidocs/parseSpec'
+import { generateApiDocsWithAI, improveApiDocsWithAI } from '@/lib/apidocs/aiDocs'
 import { ApiDocsViewer } from './ApiDocsViewer'
+import { useSettingsStore } from '@/stores/settings'
 
 type SourceTab = 'collection' | 'url' | 'paste'
 
 export function ApiDocsPanel() {
   const collections = useCollectionsStore((s) => s.collections)
+  const updateCollection = useCollectionsStore((s) => s.updateCollection)
+  const aiEnabled = useSettingsStore((s) => s.settings.ai.enabled)
   const [model, setModel] = useState<ApiDocModel | null>(null)
+  const [rawSpec, setRawSpec] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [aiLoading, setAiLoading] = useState(false)
+  const [saveStatus, setSaveStatus] = useState('')
   const [tab, setTab] = useState<SourceTab>('collection')
   const [selectedCollection, setSelectedCollection] = useState('__all__')
+  const [saveCollectionId, setSaveCollectionId] = useState('')
   const [url, setUrl] = useState('')
   const [pasteText, setPasteText] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
   const load = (raw: string) => {
     setError(null)
+    setSaveStatus('')
     try {
       const spec = parseSpecText(raw)
       const built = buildApiDocModel(spec)
@@ -29,6 +38,7 @@ export function ApiDocsPanel() {
         setError('Parsed the document but found no operations (paths). Is this an OpenAPI/Swagger spec?')
         return
       }
+      setRawSpec(raw)
       setModel(built)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Could not parse the document')
@@ -45,9 +55,75 @@ export function ApiDocsPanel() {
     }
     try {
       load(collectionsToOAS(source, 'json'))
+      if (source.length === 1) setSaveCollectionId(source[0].id)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Could not generate spec from collection')
     }
+  }
+
+  const generateFromCollectionsWithAI = async () => {
+    const source = selectedCollection === '__all__'
+      ? collections
+      : collections.filter((c) => c.id === selectedCollection)
+    if (source.length === 0) {
+      setError('No collection selected.')
+      return
+    }
+    if (!aiEnabled) {
+      setError('AI features are disabled. Enable them in Settings > AI Engine.')
+      return
+    }
+    setAiLoading(true)
+    setError(null)
+    setSaveStatus('')
+    try {
+      const generated = await generateApiDocsWithAI(source)
+      load(generated)
+      if (source.length === 1) setSaveCollectionId(source[0].id)
+      setSaveStatus('AI generated an OpenAPI document. Review it, then save it to a collection.')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Could not generate docs with AI')
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
+  const improveLoadedDocsWithAI = async () => {
+    if (!rawSpec.trim()) return
+    if (!aiEnabled) {
+      setError('AI features are disabled. Enable them in Settings > AI Engine.')
+      return
+    }
+    setAiLoading(true)
+    setError(null)
+    setSaveStatus('')
+    try {
+      const improved = await improveApiDocsWithAI(rawSpec)
+      load(improved)
+      setSaveStatus('AI improved this API document. Review it, then save it to a collection.')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Could not improve docs with AI')
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
+  const saveLoadedDocs = () => {
+    if (!rawSpec.trim()) {
+      setError('No API document is loaded.')
+      return
+    }
+    if (!saveCollectionId) {
+      setError('Choose a collection before saving the API documentation.')
+      return
+    }
+    const target = collections.find((collection) => collection.id === saveCollectionId)
+    if (!target) {
+      setError('Selected collection no longer exists.')
+      return
+    }
+    updateCollection(target.id, { _openapiSpec: rawSpec })
+    setSaveStatus(`Saved API documentation to ${target.name}.`)
   }
 
   const loadFromUrl = async () => {
@@ -88,13 +164,51 @@ export function ApiDocsPanel() {
         <div className="flex items-center gap-2 border-b border-border-1 bg-surface-1 px-3 py-1.5">
           <BookOpen size={14} className="text-accent" />
           <span className="text-[12px] font-medium text-text-2">API Docs</span>
+          <select
+            value={saveCollectionId}
+            onChange={(e) => {
+              setSaveCollectionId(e.target.value)
+              setSaveStatus('')
+            }}
+            className="ml-auto h-7 max-w-[220px] rounded-md border border-border-2 bg-surface-2 px-2 text-[11px] text-text-1 outline-none focus:border-accent"
+            title="Collection where this OpenAPI document will be saved"
+          >
+            <option value="">Save target...</option>
+            {collections.map((collection) => (
+              <option key={collection.id} value={collection.id}>{collection.name}</option>
+            ))}
+          </select>
           <button
-            onClick={() => setModel(null)}
-            className="ml-auto flex items-center gap-1 rounded-md border border-border-2 px-2 py-1 text-[11px] text-text-3 hover:text-text-1"
+            onClick={() => void improveLoadedDocsWithAI()}
+            disabled={aiLoading}
+            className="flex items-center gap-1 rounded-md border border-border-2 px-2 py-1 text-[11px] text-text-3 hover:text-text-1 disabled:opacity-50"
+            title="Use the configured AI engine to improve summaries and descriptions"
+          >
+            {aiLoading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />} Improve with AI
+          </button>
+          <button
+            onClick={saveLoadedDocs}
+            className="flex items-center gap-1 rounded-md bg-accent px-2 py-1 text-[11px] font-bold text-white hover:bg-accent-hover"
+            title="Save this OpenAPI document into the selected collection"
+          >
+            <Save size={12} /> Save docs
+          </button>
+          <button
+            onClick={() => {
+              setModel(null)
+              setRawSpec('')
+              setSaveStatus('')
+            }}
+            className="flex items-center gap-1 rounded-md border border-border-2 px-2 py-1 text-[11px] text-text-3 hover:text-text-1"
           >
             <X size={12} /> Load another
           </button>
         </div>
+        {(saveStatus || error) && (
+          <div className={`border-b px-3 py-2 text-[11px] ${error ? 'border-error/20 bg-error/10 text-error' : 'border-success/20 bg-success/10 text-success'}`}>
+            {error || saveStatus}
+          </div>
+        )}
         <ApiDocsViewer model={model} />
       </div>
     )
@@ -133,6 +247,16 @@ export function ApiDocsPanel() {
             <button onClick={generateFromCollections} className="h-9 w-full rounded-md bg-accent text-[12px] font-bold text-white hover:bg-accent-hover">
               Generate docs
             </button>
+            <button
+              onClick={() => void generateFromCollectionsWithAI()}
+              disabled={aiLoading}
+              className="flex h-9 w-full items-center justify-center gap-2 rounded-md border border-accent/40 bg-accent/10 text-[12px] font-bold text-accent hover:bg-accent/15 disabled:opacity-50"
+            >
+              {aiLoading ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />} Generate docs with AI
+            </button>
+            <p className="text-[11px] text-text-4">
+              AI uses the provider configured in Settings &gt; AI Engine and saves only after you review the result.
+            </p>
           </div>
         )}
 
