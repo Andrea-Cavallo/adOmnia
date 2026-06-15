@@ -1,4 +1,4 @@
-﻿import type { Collection, TreeNode, RequestItem, KVRow, RequestBody, RequestAuth } from '@/lib/types'
+import type { Collection, TreeNode, RequestItem, KVRow, RequestBody, RequestAuth } from '@/lib/types'
 import { uid, blankBody, blankAuth } from '@/lib/types'
 import { parse as parseYaml } from 'yaml'
 
@@ -50,6 +50,22 @@ interface SecurityScheme {
   }>
 }
 
+interface OpenAPISchemaObject {
+  type?: string
+  format?: string
+  properties?: Record<string, OpenAPISchemaObject>
+  items?: OpenAPISchemaObject
+  $ref?: string
+  required?: string[]
+  enum?: unknown[]
+  example?: unknown
+  default?: unknown
+  nullable?: boolean
+  allOf?: OpenAPISchemaObject[]
+  anyOf?: OpenAPISchemaObject[]
+  oneOf?: OpenAPISchemaObject[]
+}
+
 interface OpenAPISpec {
   openapi: string
   info: { title: string; version?: string; description?: string }
@@ -62,15 +78,81 @@ interface OpenAPISpec {
   paths?: Record<string, OpenAPIPathItem>
   components?: {
     securitySchemes?: Record<string, SecurityScheme>
+    schemas?: Record<string, OpenAPISchemaObject>
   }
   tags?: Array<{ name: string; description?: string }>
 }
 
-function getExample(body: OpenAPIOperation['requestBody']): string | undefined {
+function resolveRef(ref: string, schemas: Record<string, OpenAPISchemaObject> | undefined): OpenAPISchemaObject | undefined {
+  if (!ref.startsWith('#/components/schemas/') || !schemas) return undefined
+  return schemas[ref.slice('#/components/schemas/'.length)]
+}
+
+function schemaToExample(schema: OpenAPISchemaObject | undefined, schemas: Record<string, OpenAPISchemaObject> | undefined, depth = 0): unknown {
+  if (!schema || depth > 8) return undefined
+  if (schema.$ref) {
+    const resolved = resolveRef(schema.$ref, schemas)
+    return resolved ? schemaToExample(resolved, schemas, depth) : undefined
+  }
+  if (schema.example !== undefined) return schema.example
+  if (schema.default !== undefined) return schema.default
+
+  const merged = mergeCompositeSchema(schema, schemas, depth)
+  if (merged) return merged
+
+  switch (schema.type) {
+    case 'object': {
+      if (!schema.properties) return {}
+      const obj: Record<string, unknown> = {}
+      for (const [k, v] of Object.entries(schema.properties)) {
+        const val = schemaToExample(v, schemas, depth + 1)
+        if (val !== undefined) obj[k] = val
+      }
+      return obj
+    }
+    case 'array': {
+      const item = schemaToExample(schema.items, schemas, depth + 1)
+      return item !== undefined ? [item] : []
+    }
+    case 'string':
+      if (schema.enum?.length) return schema.enum[0]
+      if (schema.format === 'date') return '20240101'
+      if (schema.format === 'date-time') return '2024-01-01T00:00:00Z'
+      if (schema.format === 'uri') return 'https://example.com'
+      return ''
+    case 'integer':
+    case 'number':
+      if (schema.enum?.length) return schema.enum[0]
+      return 0
+    case 'boolean':
+      return false
+    default:
+      return undefined
+  }
+}
+
+function mergeCompositeSchema(schema: OpenAPISchemaObject, schemas: Record<string, OpenAPISchemaObject> | undefined, depth: number): unknown {
+  const composite = schema.allOf ?? schema.anyOf ?? schema.oneOf
+  if (!composite?.length) return undefined
+  const merged: Record<string, unknown> = {}
+  for (const sub of composite) {
+    const val = schemaToExample(sub, schemas, depth + 1)
+    if (val && typeof val === 'object' && !Array.isArray(val)) Object.assign(merged, val)
+  }
+  return Object.keys(merged).length > 0 ? merged : undefined
+}
+
+function getExample(body: OpenAPIOperation['requestBody'], schemas?: Record<string, OpenAPISchemaObject>): string | undefined {
   if (!body?.content) return undefined
   for (const ct of Object.keys(body.content)) {
     const c = body.content[ct]
     if (c?.example) return typeof c.example === 'string' ? c.example : JSON.stringify(c.example, null, 2)
+    // Fall back to generating an example from the schema
+    if (c?.schema) {
+      const s = c.schema as OpenAPISchemaObject
+      const generated = schemaToExample(s, schemas)
+      if (generated !== undefined) return JSON.stringify(generated, null, 2)
+    }
   }
   return undefined
 }
@@ -177,6 +259,7 @@ export function parseOpenAPI(raw: string): Collection[] {
   if (!spec.paths) throw new Error('No paths found in OpenAPI spec')
 
   const schemes = spec.components?.securitySchemes
+  const schemas = spec.components?.schemas
   const globalSecurity = spec.security
   const server = spec.servers?.[0]
   const baseUrl = server ? resolveServerUrl(server) : ''
@@ -236,7 +319,7 @@ export function parseOpenAPI(raw: string): Collection[] {
 
       if (op.requestBody) {
         const ct = ctFromSchema(op.requestBody)
-        const ex = getExample(op.requestBody)
+        const ex = getExample(op.requestBody, schemas)
         bodies = [{
           id: uid(),
           name: 'Body 1',
