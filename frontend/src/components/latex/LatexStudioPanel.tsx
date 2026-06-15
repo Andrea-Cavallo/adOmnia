@@ -67,8 +67,11 @@ function loadInitialState(): SavedLatexState {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (!raw) return { templateId: fallback.id, source: fallback.source }
     const parsed = JSON.parse(raw) as Partial<SavedLatexState>
+    const templateId = typeof parsed.templateId === 'string' ? parsed.templateId : fallback.id
+    const templateExists = LATEX_TEMPLATES.some((template) => template.id === templateId)
+    if (!templateExists) return { templateId: fallback.id, source: fallback.source }
     return {
-      templateId: typeof parsed.templateId === 'string' ? parsed.templateId : fallback.id,
+      templateId,
       source: typeof parsed.source === 'string' && parsed.source.trim() ? parsed.source : fallback.source,
     }
   } catch {
@@ -95,25 +98,25 @@ function ResumeEntryBlock({ icon: Icon, title, entries }: {
 }) {
   if (entries.length === 0) return null
   return (
-    <section className="space-y-2">
-      <div className="flex items-center gap-2 border-b border-[#d9e1e8] pb-1">
-        <Icon size={13} className="text-[#008c8c]" />
-        <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#0f172a]">{title}</h3>
+    <section className="space-y-1.5">
+      <div className="flex items-center gap-1.5 border-b border-[#111827] pb-[2px]">
+        <Icon size={11} className="text-[#111827]" />
+        <h3 className="font-serif text-[13px] uppercase tracking-[0.04em] text-[#111827]">{title}</h3>
       </div>
-      <div className="space-y-3">
+      <div className="space-y-2">
         {entries.map((entry, index) => (
           <article key={entryId(entry, index)} className="space-y-1">
             <div className="flex items-start justify-between gap-4">
-              <div>
-                <h4 className="text-[13px] font-bold text-[#0f172a]">{entry.title}</h4>
-                <p className="text-[11px] font-semibold text-[#008c8c]">{entry.organization}</p>
+              <div className="min-w-0">
+                <h4 className="font-serif text-[13px] font-bold leading-4 text-[#111827]">{entry.organization || entry.title}</h4>
+                {entry.organization && <p className="font-serif text-[11px] italic leading-4 text-[#111827]">{entry.title}</p>}
               </div>
-              <div className="shrink-0 text-right text-[10px] leading-4 text-[#64748b]">
-                <div>{entry.date}</div>
+              <div className="shrink-0 text-right font-serif text-[11px] leading-4 text-[#111827]">
                 <div>{entry.location}</div>
+                <div className="italic">{entry.date}</div>
               </div>
             </div>
-            <ul className="ml-4 list-disc space-y-0.5 text-[11px] leading-5 text-[#334155]">
+            <ul className="ml-7 list-[circle] space-y-0.5 font-serif text-[11px] leading-[15px] text-[#111827]">
               {entry.bullets.map((bullet) => <li key={bullet}>{bullet}</li>)}
             </ul>
           </article>
@@ -154,35 +157,37 @@ function LatexPreviewFrame({ children, zoom, onWheel }: {
 function ResumePreview({ source }: { source: string }) {
   const preview = useMemo(() => parseResumePreview(source), [source])
   return (
-    <div className="min-h-[980px] w-[700px] bg-white p-9 text-[#0f172a] shadow-xl">
-      <header className="border-b-2 border-[#00a3a3] pb-4">
-        <h1 className="text-[34px] font-black leading-none tracking-normal text-[#0f172a]">{preview.name}</h1>
-        <p className="mt-1 text-[16px] font-semibold text-[#008c8c]">{preview.role}</p>
-        <p className="mt-3 text-[10px] text-[#475569]">
-          {[preview.location, preview.email, preview.phone, preview.website].filter(Boolean).join(' | ')}
-        </p>
+    <div className="min-h-[980px] w-[700px] bg-white px-[54px] py-[42px] text-[#111827] shadow-xl">
+      <header className="flex items-start justify-between gap-6 font-serif text-[12px] leading-4">
+        <div>
+          <h1 className="text-[19px] leading-5 text-[#111827]">{preview.name}</h1>
+          {preview.website && <p className="text-[12px] leading-4">{preview.website}</p>}
+        </div>
+        <div className="shrink-0 text-right">
+          {preview.email && <p>Email : {preview.email}</p>}
+          {preview.phone && <p>Mobile : {preview.phone}</p>}
+        </div>
       </header>
 
-      <main className="mt-5 space-y-5">
-        <section className="text-[12px] leading-5 text-[#334155]">{preview.summary}</section>
+      <main className="mt-5 space-y-3">
+        {preview.summary && <section className="font-serif text-[12px] leading-5 text-[#111827]">{preview.summary}</section>}
 
+        <ResumeEntryBlock icon={GraduationCap} title="Education" entries={preview.education} />
+        <ResumeEntryBlock icon={BriefcaseBusiness} title="Experience" entries={preview.experience} />
+        <ResumeEntryBlock icon={BookOpen} title="Projects" entries={preview.projects} />
         {preview.skills.length > 0 && (
-          <section className="space-y-2">
-            <div className="flex items-center gap-2 border-b border-[#d9e1e8] pb-1">
-              <FileCode size={13} className="text-[#008c8c]" />
-              <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#0f172a]">Skills</h3>
+          <section className="space-y-1.5">
+            <div className="flex items-center gap-1.5 border-b border-[#111827] pb-[2px]">
+              <FileCode size={11} className="text-[#111827]" />
+              <h3 className="font-serif text-[13px] uppercase tracking-[0.04em] text-[#111827]">Programming Skills</h3>
             </div>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-x-8 gap-y-1 font-serif text-[12px] leading-4 text-[#111827]">
               {preview.skills.map((skill) => (
-                <span key={skill} className="rounded border border-[#cbd5e1] bg-[#f8fafc] px-2 py-1 text-[10px] font-semibold text-[#334155]">{skill}</span>
+                <span key={skill}>{skill}</span>
               ))}
             </div>
           </section>
         )}
-
-        <ResumeEntryBlock icon={BriefcaseBusiness} title="Experience" entries={preview.experience} />
-        <ResumeEntryBlock icon={BookOpen} title="Projects" entries={preview.projects} />
-        <ResumeEntryBlock icon={GraduationCap} title="Education" entries={preview.education} />
       </main>
     </div>
   )

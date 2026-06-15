@@ -27,6 +27,7 @@ interface CategoryDef {
   label: string
   icon: React.ElementType
   code: string
+  directItem?: RailItem
   groups: SubGroup[]
 }
 
@@ -139,6 +140,7 @@ const CATEGORIES: CategoryDef[] = [
   },
   {
     key: 'gitsync', label: 'Git Sync', icon: GitBranch, code: 'GIT',
+    directItem: 'gitsync',
     groups: [
       { title: 'Sync', items: [
         { id: 'gitsync', icon: GitBranch, label: 'Git Sync' },
@@ -213,12 +215,20 @@ function CategoryButton({ cat, activeRail, anyRunning, isOpen, onToggle, onSelec
   const Icon = cat.icon
   const allItems = cat.groups.flatMap((g) => g.items)
   const anyActive = allItems.some((item) => item.id === activeRail)
+  const handleClick = () => {
+    if (cat.directItem) {
+      onSelect(cat.directItem)
+      onClose()
+      return
+    }
+    onToggle()
+  }
 
   return (
     <div className="relative">
       <button
         title={cat.label}
-        onClick={onToggle}
+        onClick={handleClick}
         className={cn(
           'w-11 h-11 rounded-lg flex flex-col items-center justify-center gap-[2px] relative transition-all',
           isOpen || anyActive
@@ -237,7 +247,7 @@ function CategoryButton({ cat, activeRail, anyRunning, isOpen, onToggle, onSelec
         )}
       </button>
 
-      {isOpen && (
+      {isOpen && !cat.directItem && (
         <Flyout
           cat={cat}
           activeRail={activeRail}

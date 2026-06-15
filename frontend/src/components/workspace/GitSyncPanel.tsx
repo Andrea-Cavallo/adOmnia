@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertTriangle,
   Archive,
@@ -14,14 +14,18 @@ import {
   GitMerge,
   GitPullRequest,
   Loader2,
+  Plus,
   RefreshCw,
   Search,
   Star,
+  Trash2,
   Upload,
   XCircle,
 } from 'lucide-react'
 import * as GitSync from '@/wailsjs/go/main/GitSync'
 import { cn } from '@/lib/utils'
+import { safeSelectFolder } from '@/lib/fileUtils'
+import { addRepo, loadLastRepo, loadRepos, removeRepo, saveLastRepo, type SavedRepo } from '@/lib/gitRepos'
 import { GitCompareTab } from './GitCompareTab'
 import { GitActionsTab } from './GitActionsTab'
 import { DiffModal } from '@/components/response/DiffView'
@@ -93,6 +97,11 @@ interface WorkingTreeFileSnapshot {
 
 const emptyStatus: GitStatus = { branch: '', dirty: false, aheadCount: 0, behindCount: 0, modified: [], untracked: [] }
 const EMPTY_TREE_REF = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
+
+function hasGitSyncBinding(): boolean {
+  const w = window as typeof window & { go?: { main?: { GitSync?: unknown } } }
+  return Boolean(w.go?.main?.GitSync)
+}
 
 function parseJSON<T>(raw: string, fallback: T): T {
   try {
@@ -236,7 +245,8 @@ function downloadSafeName(path: string, suffix: string): string {
 }
 
 export function GitSyncPanel() {
-  const [repoPath, setRepoPath] = useState('')
+  const [repoPath, setRepoPath] = useState(() => loadLastRepo())
+  const [repos, setRepos] = useState<SavedRepo[]>(() => loadRepos())
   const [commitMsg, setCommitMsg] = useState('')
   const [overview, setOverview] = useState<GitOverview | null>(null)
   const [selectedHash, setSelectedHash] = useState('')
@@ -273,11 +283,27 @@ export function GitSyncPanel() {
   const selectedCommitBaseRef = selectedCommit?.parents[0] || EMPTY_TREE_REF
 
   useEffect(() => {
-    GitSync.IsGitInstalled().then(setGitAvailable).catch(() => setGitAvailable(false))
+    if (!hasGitSyncBinding()) {
+      setGitAvailable(false)
+      return
+    }
+    try {
+      GitSync.IsGitInstalled().then(setGitAvailable).catch(() => setGitAvailable(false))
+    } catch {
+      setGitAvailable(false)
+    }
   }, [])
 
+  const autoLoadedRef = useRef(false)
   useEffect(() => {
-    if (!repoPath || !selectedCommit) {
+    if (gitAvailable !== true || autoLoadedRef.current) return
+    autoLoadedRef.current = true
+    if (repoPath) void refreshStatus(repoPath)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gitAvailable])
+
+  useEffect(() => {
+    if (!repoPath || !selectedCommit || !hasGitSyncBinding()) {
       setCommitFiles([])
       return
     }
@@ -300,12 +326,18 @@ export function GitSyncPanel() {
 
   const clearFeedback = () => { setError(''); setInfo('') }
 
-  const refreshStatus = useCallback(async () => {
-    if (!repoPath) return
+  const refreshStatus = useCallback(async (overridePath?: string) => {
+    const targetPath = (overridePath ?? repoPath).trim()
+    if (!targetPath) return
+    if (!hasGitSyncBinding()) {
+      setError('Git Sync requires the desktop backend. Run inside Wails to use repository commands.')
+      setLoading(false)
+      return
+    }
     clearFeedback()
     setLoading(true)
     try {
-      const raw = await GitSync.Overview(repoPath, 120)
+      const raw = await GitSync.Overview(targetPath, 120)
       const parsed = parseJSON<Partial<GitOverview>>(raw, {})
       // Backend nil slices can serialize as null; coerce every collection to an
       // array so render-time `.length`/`.map` never hit null.
@@ -327,6 +359,10 @@ export function GitSyncPanel() {
       }
       setOverview(next)
       setSelectedHash((current) => current || next.commits[0]?.hash || '')
+      // A successful overview load means the path is a real repo: remember it so
+      // the user never has to re-import it and can switch back from the sidebar.
+      setRepos((current) => addRepo(current, targetPath))
+      saveLastRepo(targetPath)
     } catch (e) {
       setError(String(e))
     } finally {
@@ -336,6 +372,10 @@ export function GitSyncPanel() {
 
   const runAction = async (action: () => Promise<void>, success: string) => {
     if (!repoPath) return
+    if (!hasGitSyncBinding()) {
+      setError('Git Sync requires the desktop backend. Run inside Wails to use repository commands.')
+      return
+    }
     clearFeedback()
     setLoading(true)
     try {
@@ -348,6 +388,39 @@ export function GitSyncPanel() {
       setLoading(false)
     }
   }
+
+  const selectRepo = useCallback((path: string) => {
+    const trimmed = path.trim()
+    if (!trimmed || trimmed === repoPath) {
+      if (trimmed) void refreshStatus(trimmed)
+      return
+    }
+    setRepoPath(trimmed)
+    setOverview(null)
+    setSelectedHash('')
+    saveLastRepo(trimmed)
+    void refreshStatus(trimmed)
+  }, [repoPath, refreshStatus])
+
+  const browseFolder = useCallback(async () => {
+    try {
+      const picked = await safeSelectFolder('Select a Git repository')
+      if (picked) selectRepo(picked)
+    } catch (e) {
+      setError(String(e))
+    }
+  }, [selectRepo])
+
+  const handleRemoveRepo = useCallback((event: React.MouseEvent, path: string) => {
+    event.stopPropagation()
+    setRepos((current) => removeRepo(current, path))
+    if (path === repoPath) {
+      setRepoPath('')
+      setOverview(null)
+      setSelectedHash('')
+      saveLastRepo('')
+    }
+  }, [repoPath])
 
   const handleInit = () => runAction(
     () => GitSync.InitRepo(JSON.stringify({ repoPath, branch: status.branch || 'master' })),
@@ -362,6 +435,10 @@ export function GitSyncPanel() {
 
   const openCommitDiff = async (file: CommitChangedFile) => {
     if (!repoPath || !selectedCommit) return
+    if (!hasGitSyncBinding()) {
+      setError('Git Sync requires the desktop backend. Run inside Wails to inspect diffs.')
+      return
+    }
     clearFeedback()
     try {
       const diff = await GitSync.GetFileDiff(repoPath, selectedCommitBaseRef, selectedCommit.fullHash || selectedCommit.hash, file.path)
@@ -374,6 +451,10 @@ export function GitSyncPanel() {
 
   const openWorkingTreeDiff = async (change: FileChange) => {
     if (!repoPath) return
+    if (!hasGitSyncBinding()) {
+      setError('Git Sync requires the desktop backend. Run inside Wails to inspect diffs.')
+      return
+    }
     clearFeedback()
     setWorkingDiffLoadingPath(change.path)
     try {
@@ -400,8 +481,8 @@ export function GitSyncPanel() {
       <div className="flex flex-1 items-center justify-center p-8">
         <div className="flex max-w-sm flex-col items-center gap-3 text-center">
           <AlertTriangle size={32} className="text-warning" />
-          <p className="text-sm font-medium text-text-1">Git not found</p>
-          <p className="text-xs text-text-3">Install Git and ensure it is on your PATH to use Git Sync.</p>
+          <p className="text-sm font-medium text-text-1">Git Sync unavailable</p>
+          <p className="text-xs text-text-3">Run adOmnia as the desktop app with Git on your PATH to use repository commands.</p>
         </div>
       </div>
     )
@@ -428,15 +509,22 @@ export function GitSyncPanel() {
         </button>
         <div className="mx-2 h-6 w-px bg-border-2" />
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <FolderOpen size={13} className="shrink-0 text-text-4" />
+          <button
+            onClick={browseFolder}
+            title="Browse for a repository folder"
+            className="flex h-8 shrink-0 items-center rounded border border-border-1 px-2 text-text-3 hover:bg-surface-2 hover:text-text-1"
+          >
+            <FolderOpen size={13} />
+          </button>
           <input
             className="h-8 min-w-0 flex-1 rounded border border-border-1 bg-surface-2 px-2 text-xs text-text-1 outline-none focus:border-accent"
             placeholder="Repository path..."
             value={repoPath}
             onChange={(event) => setRepoPath(event.target.value)}
+            onKeyDown={(event) => event.key === 'Enter' && refreshStatus()}
           />
           <button onClick={handleInit} disabled={!repoPath || loading} className="h-8 rounded border border-border-1 px-3 text-xs text-text-2 hover:bg-surface-2 disabled:opacity-40">Init</button>
-          <button onClick={refreshStatus} disabled={!repoPath || loading} className="h-8 rounded bg-accent px-3 text-xs font-medium text-white hover:bg-accent-light disabled:opacity-40">Load</button>
+          <button onClick={() => refreshStatus()} disabled={!repoPath || loading} className="h-8 rounded bg-accent px-3 text-xs font-medium text-white hover:bg-accent-light disabled:opacity-40">Load</button>
         </div>
       </div>
 
@@ -496,6 +584,50 @@ export function GitSyncPanel() {
 
       <div className="grid min-h-0 flex-1 grid-cols-[256px_minmax(0,1fr)_320px]">
         <aside className="min-h-0 overflow-y-auto border-r border-border-1 bg-surface-1">
+          <div className="border-b border-border-1 p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-text-4">Workspaces</div>
+              <button
+                onClick={browseFolder}
+                title="Add a repository"
+                className="flex h-5 w-5 items-center justify-center rounded text-text-4 hover:bg-surface-2 hover:text-accent"
+              >
+                <Plus size={13} />
+              </button>
+            </div>
+            {repos.length === 0 ? (
+              <div className="rounded border border-dashed border-border-2 px-2 py-2 text-[11px] text-text-4">
+                Load a repository to save it here.
+              </div>
+            ) : (
+              <div className="space-y-0.5">
+                {repos.map((repo) => (
+                  <div
+                    key={repo.path}
+                    onClick={() => selectRepo(repo.path)}
+                    title={repo.path}
+                    className={cn(
+                      'group flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-left transition-colors',
+                      repo.path === repoPath ? 'bg-accent/10 text-accent' : 'text-text-2 hover:bg-surface-2',
+                    )}
+                  >
+                    <GitBranch size={12} className={cn('shrink-0', repo.path === repoPath ? 'text-accent' : 'text-text-4')} />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-xs font-medium">{repo.name}</div>
+                      <div className="truncate text-[10px] text-text-4">{repo.path}</div>
+                    </div>
+                    <button
+                      onClick={(event) => handleRemoveRepo(event, repo.path)}
+                      title="Remove from list"
+                      className="shrink-0 rounded p-0.5 text-text-4 opacity-0 transition-opacity hover:text-error group-hover:opacity-100"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           <div className="border-b border-border-1 p-3">
             <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-text-4">Repository</div>
             <div className="truncate text-xs font-semibold text-text-1">{repoPath ? repoPath.split(/[\\/]/).pop() : 'No repository loaded'}</div>
