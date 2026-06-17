@@ -69,7 +69,7 @@ The main CI Linux build in [.github/workflows/build.yml](../.github/workflows/bu
 - `adOmnia-<version>-linux-amd64-webkitgtk-4.0.tar.gz`
 - `adOmnia-<version>-linux-amd64-webkitgtk-4.1.tar.gz`
 
-Both tarballs include the executable, Linux icons, `.desktop` file, `install.sh`, `uninstall.sh`, and SHA256 checksum files. They rely on GTK 3 and the matching WebKitGTK runtime from the user's Linux distribution.
+Both tarballs include the executable, Linux icons, `.desktop` file, `install.sh`, `uninstall.sh`, and SHA256 checksum files. They rely on GTK 3 and the matching WebKitGTK runtime from the user's Linux distribution. The shared packaging script is [build/linux/package-native-tarballs.sh](../build/linux/package-native-tarballs.sh).
 
 The WebKitGTK 4.0 tarball uses the default Wails Linux target. The WebKitGTK 4.1 tarball passes the Wails/Go build tag `webkit2_41`.
 
@@ -84,4 +84,4 @@ The WebKitGTK 4.0 tarball uses the default Wails Linux target. The WebKitGTK 4.1
 
 Pushes to `master`, `main`, or `develop` create artifacts. Tags like `v0.1.0` also publish a GitHub Release.
 
-[.github/workflows/release.yml](../.github/workflows/release.yml) builds the standard native release artifacts, including the Linux amd64 `.tar.gz` linked against WebKitGTK 4.0 for broader compatibility.
+[.github/workflows/release.yml](../.github/workflows/release.yml) builds the standard native release artifacts, including both Linux WebKitGTK tarballs. [.github/workflows/release-compress.yml](../.github/workflows/release-compress.yml) mirrors those Linux variants with UPX-compressed binaries.
