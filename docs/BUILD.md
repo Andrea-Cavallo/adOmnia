@@ -44,7 +44,7 @@ Windows:
 wails build -clean -platform windows/amd64 -ldflags "-s -w -H windowsgui"
 ```
 
-Linux:
+Linux native build for WebKitGTK 4.0:
 
 ```bash
 wails build -clean -platform linux/amd64 -ldflags "-s -w"
@@ -62,38 +62,26 @@ macOS:
 wails build -clean -platform darwin/universal -ldflags "-s -w"
 ```
 
-## Linux Docker Build
+## Linux Native Tarballs
 
-The CI Linux build uses [Dockerfile.linux](../Dockerfile.linux). It builds and exports:
+The main CI Linux build in [.github/workflows/build.yml](../.github/workflows/build.yml) builds two native amd64 tarballs:
 
-- `adOmnia-<version>-linux-amd64.AppImage`
+- `adOmnia-<version>-linux-amd64-webkitgtk-4.0.tar.gz`
+- `adOmnia-<version>-linux-amd64-webkitgtk-4.1.tar.gz`
 
-The GitHub workflow exports files with Docker BuildKit:
+Both tarballs include the executable, Linux icons, `.desktop` file, `install.sh`, `uninstall.sh`, and SHA256 checksum files. They rely on GTK 3 and the matching WebKitGTK runtime from the user's Linux distribution.
 
-```bash
-docker build \
-  -f Dockerfile.linux \
-  --target artifact \
-  --output type=local,dest=dist \
-  .
-```
+The WebKitGTK 4.0 tarball uses the default Wails Linux target. The WebKitGTK 4.1 tarball passes the Wails/Go build tag `webkit2_41`.
 
 ## GitHub Actions
 
 [.github/workflows/build.yml](../.github/workflows/build.yml) builds:
 
 - Windows `.exe`
-- Linux `.AppImage`
+- Linux native `.tar.gz` packages for WebKitGTK 4.0 and 4.1
 - macOS universal `.dmg`
 - SHA256 checksums
 
 Pushes to `master`, `main`, or `develop` create artifacts. Tags like `v0.1.0` also publish a GitHub Release.
 
 [.github/workflows/release.yml](../.github/workflows/release.yml) builds the standard native release artifacts, including the Linux amd64 `.tar.gz` linked against WebKitGTK 4.0 for broader compatibility.
-
-[.github/workflows/linux-native-webkitgtk41.yml](../.github/workflows/linux-native-webkitgtk41.yml) builds a native Linux amd64 `.tar.gz` linked against WebKitGTK 4.1. It uses Ubuntu 24.04, installs `libwebkit2gtk-4.1-dev`, passes the Wails/Go build tag `webkit2_41`, and uploads:
-
-- `adOmnia-<version>-linux-amd64-webkitgtk-4.1.tar.gz`
-- `adOmnia-<version>-linux-amd64-webkitgtk-4.1.tar.gz.sha256`
-
-It can be run manually from GitHub Actions, or automatically by pushing a tag that starts with `webkitgtk-4.1`.

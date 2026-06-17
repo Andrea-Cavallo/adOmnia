@@ -83,33 +83,140 @@ jobs:
           retention-days: 30
 
   linux:
-    name: Linux executable
+    name: Linux tarballs
     needs: checks
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v6
 
-      - name: Build Linux artifact in Docker
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Linux native dependencies
         run: |
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            libayatana-appindicator3-dev \
+            libgtk-3-dev \
+            libwebkit2gtk-4.0-dev \
+            libwebkit2gtk-4.1-dev \
+            pkg-config
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+
+      - name: Build Linux native tarballs
+        run: |
+          set -euo pipefail
+
           VERSION="${GITHUB_REF_NAME#v}"
           if [ "${GITHUB_REF_TYPE}" != "tag" ]; then VERSION="${GITHUB_SHA::7}"; fi
           BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           mkdir -p dist
-          docker build \
-            -f Dockerfile.linux \
-            --build-arg WAILS_VERSION="${WAILS_VERSION}" \
-            --build-arg VERSION="${VERSION}" \
-            --build-arg GIT_COMMIT="${GITHUB_SHA}" \
-            --build-arg BUILD_DATE="${BUILD_DATE}" \
-            --target artifact \
-            --output type=local,dest=dist \
-            .
+
+          package_tarball() {
+            local variant="$1"
+            local readme_note="$2"
+            local basename="${APP_NAME}-${VERSION}-linux-amd64-${variant}"
+            local stage="dist/${basename}"
+
+            rm -rf "$stage"
+            mkdir -p "$stage/icons"
+
+            cp build/bin/adOmnia "$stage/adOmnia"
+            chmod +x "$stage/adOmnia"
+
+            for size in 16 24 32 48 64 128 256 512; do
+              icon="assets/icons/linux/adOmnia_${size}x${size}.png"
+              if [ -f "$icon" ]; then
+                cp "$icon" "$stage/icons/"
+              fi
+            done
+
+            if [ -f assets/icons/linux/adOmnia_256x256.png ]; then
+              cp assets/icons/linux/adOmnia_256x256.png "$stage/adOmnia.png"
+            fi
+
+            if [ -f build/linux/adOmnia.desktop ]; then
+              cp build/linux/adOmnia.desktop "$stage/"
+            fi
+
+            if [ -f build/linux/install.sh ]; then
+              cp build/linux/install.sh "$stage/"
+              chmod +x "$stage/install.sh"
+            fi
+
+            if [ -f build/linux/uninstall.sh ]; then
+              cp build/linux/uninstall.sh "$stage/"
+            else
+              {
+                printf '%s\n' '#!/usr/bin/env bash'
+                printf '%s\n' 'set -e'
+                printf '%s\n' 'if [ "$(id -u)" -ne 0 ]; then'
+                printf '%s\n' '    echo "Run with sudo: sudo ./uninstall.sh"'
+                printf '%s\n' '    exit 1'
+                printf '%s\n' 'fi'
+                printf '%s\n' 'rm -rf /opt/adOmnia'
+                printf '%s\n' 'rm -f /usr/share/applications/adOmnia.desktop'
+                printf '%s\n' 'for sz in 16 24 32 48 64 128 256 512; do'
+                printf '%s\n' '    rm -f "/usr/share/icons/hicolor/${sz}x${sz}/apps/adOmnia.png"'
+                printf '%s\n' 'done'
+                printf '%s\n' 'gtk-update-icon-cache -f -t /usr/share/icons/hicolor 2>/dev/null || true'
+                printf '%s\n' 'update-desktop-database /usr/share/applications 2>/dev/null || true'
+                printf '%s\n' 'echo "adOmnia removed."'
+              } > "$stage/uninstall.sh"
+            fi
+            chmod +x "$stage/uninstall.sh"
+
+            {
+              printf '%s\n' 'adOmnia native Linux build'
+              printf '\n'
+              printf 'Variant: %s\n' "$variant"
+              printf '%s\n' "$readme_note"
+              printf '\n'
+              printf '%s\n' 'This tarball contains a native Linux amd64 executable. GTK 3 and the'
+              printf '%s\n' 'matching WebKitGTK runtime must be available on the target system.'
+            } > "$stage/README-linux.txt"
+
+            tar -czf "dist/${basename}.tar.gz" -C "$stage" .
+            sha256sum "dist/${basename}.tar.gz" > "dist/${basename}.tar.gz.sha256"
+            rm -rf "$stage"
+          }
+
+          LDFLAGS="-s -w -X main.Version=${VERSION} -X main.BuildDate=${BUILD_DATE} -X main.GitCommit=${GITHUB_SHA}"
+
+          wails build \
+            -clean \
+            -platform linux/amd64 \
+            -trimpath \
+            -ldflags "${LDFLAGS}"
+          package_tarball "webkitgtk-4.0" "Built against WebKitGTK 4.0 using the default Wails Linux target."
+
+          wails build \
+            -clean \
+            -platform linux/amd64 \
+            -tags webkit2_41 \
+            -trimpath \
+            -ldflags "${LDFLAGS}"
+          package_tarball "webkitgtk-4.1" "Built against WebKitGTK 4.1 using the Wails build tag webkit2_41."
+
           ls -lh dist
 
       - uses: actions/upload-artifact@v7
         with:
           name: adOmnia-linux-amd64
-          path: dist/*.AppImage
+          path: |
+            dist/*.tar.gz
+            dist/*.tar.gz.sha256
           retention-days: 30
 
   macos:
