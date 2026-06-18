@@ -63,11 +63,10 @@ jobs:
 
 # ─────────────────────────────────────────────────────────────────────────────
 # LINUX · amd64
-# Builds in Ubuntu 22.04 for webkit2gtk-4.0 compat, then packages
-# a plain binary with hicolor icons + .desktop + install.sh.
+# Builds native tarballs for both WebKitGTK 4.0 and 4.1.
 # ─────────────────────────────────────────────────────────────────────────────
   build-linux:
-    name: Linux · amd64
+    name: Linux · amd64 tarballs
     runs-on: ubuntu-22.04
     outputs:
       version: ${{ steps.ver.outputs.version }}
@@ -94,44 +93,31 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            libayatana-appindicator3-dev \
+            libgtk-3-dev \
+            libwebkit2gtk-4.0-dev \
+            libwebkit2gtk-4.1-dev \
+            pkg-config
 
       - name: Install Wails
         run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
 
-      - name: Build
-        run: wails build
-
-      - name: Package tarball
+      - name: Build Linux native tarballs
         run: |
           VER="${{ steps.ver.outputs.version }}"
-          TMP="dist-linux-tmp"
-          mkdir -p "$TMP/icons"
-
-          cp build/bin/adOmnia "$TMP/adOmnia"
-
-          for sz in 16 24 32 48 64 128 256 512; do
-            src="assets/icons/linux/adOmnia_${sz}x${sz}.png"
-            [ -f "$src" ] && cp "$src" "$TMP/icons/" \
-              || echo "WARNING: missing $src"
-          done
-
-          [ -f "assets/icons/linux/adOmnia_256x256.png" ] \
-            && cp "assets/icons/linux/adOmnia_256x256.png" "$TMP/adOmnia.png"
-
-          [ -f "build/linux/adOmnia.desktop" ] \
-            && cp "build/linux/adOmnia.desktop" "$TMP/"
-          [ -f "build/linux/install.sh" ] \
-            && cp "build/linux/install.sh" "$TMP/"
-
-          mkdir -p dist
-          tar -czf "dist/adOmnia-$VER-linux-amd64.tar.gz" -C "$TMP" .
-          rm -rf "$TMP"
+          BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          BUILD_DATE="${BUILD_DATE}" GIT_COMMIT="${GITHUB_SHA}" \
+            bash build/linux/package-native-tarballs.sh "$VER"
+          ls -lh dist
 
       - uses: actions/upload-artifact@v7
         with:
           name: linux-amd64
-          path: dist/adOmnia-*-linux-amd64.tar.gz
+          path: |
+            dist/adOmnia-*-linux-amd64-webkitgtk-*.tar.gz
+            dist/adOmnia-*-linux-amd64-webkitgtk-*.tar.gz.sha256
 
 # ─────────────────────────────────────────────────────────────────────────────
 # MACOS · universal (arm64 + amd64 via lipo)
