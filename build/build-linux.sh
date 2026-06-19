@@ -26,17 +26,17 @@ APP_NAME="adomnia"
 BUILD_DIR="dist/linux"
 # ICON SOURCE — single source of truth for all Linux icons
 ICON_SRC_PNG="assets/images/icon.png"
-ICON_256="assets/icons/linux/adomnia_256x256.png"
+ICON_256="assets/icons/linux/adOmnia_256x256.png"
 REQUIRED_ICONS=(
     "build/appicon.png"
-    "assets/icons/linux/adomnia_16x16.png"
-    "assets/icons/linux/adomnia_24x24.png"
-    "assets/icons/linux/adomnia_32x32.png"
-    "assets/icons/linux/adomnia_48x48.png"
-    "assets/icons/linux/adomnia_64x64.png"
-    "assets/icons/linux/adomnia_128x128.png"
-    "assets/icons/linux/adomnia_256x256.png"
-    "assets/icons/linux/adomnia_512x512.png"
+    "assets/icons/linux/adOmnia_16x16.png"
+    "assets/icons/linux/adOmnia_24x24.png"
+    "assets/icons/linux/adOmnia_32x32.png"
+    "assets/icons/linux/adOmnia_48x48.png"
+    "assets/icons/linux/adOmnia_64x64.png"
+    "assets/icons/linux/adOmnia_128x128.png"
+    "assets/icons/linux/adOmnia_256x256.png"
+    "assets/icons/linux/adOmnia_512x512.png"
 )
 BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")

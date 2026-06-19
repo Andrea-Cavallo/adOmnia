@@ -25,14 +25,14 @@ package_tarball() {
     chmod +x "$stage/adomnia"
 
     for size in 16 24 32 48 64 128 256 512; do
-        icon="assets/icons/linux/adomnia_${size}x${size}.png"
+        icon="assets/icons/linux/adOmnia_${size}x${size}.png"
         if [ -f "$icon" ]; then
             cp "$icon" "$stage/icons/"
         fi
     done
 
-    if [ -f assets/icons/linux/adomnia_256x256.png ]; then
-        cp assets/icons/linux/adomnia_256x256.png "$stage/adomnia.png"
+    if [ -f assets/icons/linux/adOmnia_256x256.png ]; then
+        cp assets/icons/linux/adOmnia_256x256.png "$stage/adomnia.png"
     fi
 
     if [ -f build/linux/adomnia.desktop ]; then

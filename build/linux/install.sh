@@ -22,7 +22,7 @@ chmod +x "$INSTALL_DIR/adomnia"
 echo "==> Installazione icone hicolor ..."
 ICON_SIZES=(16 24 32 48 64 128 256 512)
 for sz in "${ICON_SIZES[@]}"; do
-    SRC="$SCRIPT_DIR/icons/adomnia_${sz}x${sz}.png"
+    SRC="$SCRIPT_DIR/icons/adOmnia_${sz}x${sz}.png"
     DEST_DIR="$HICOLOR_BASE/${sz}x${sz}/apps"
     if [ -f "$SRC" ]; then
         mkdir -p "$DEST_DIR"

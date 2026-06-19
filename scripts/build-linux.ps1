@@ -138,15 +138,15 @@ Copy-Item $Binary "$tmpDir\adomnia" -Force
 
 $linuxSizes = @(16, 24, 32, 48, 64, 128, 256, 512)
 foreach ($sz in $linuxSizes) {
-    $src = Join-Path $ProjectRoot "assets\icons\linux\adomnia_${sz}x${sz}.png"
+    $src = Join-Path $ProjectRoot "assets\icons\linux\adOmnia_${sz}x${sz}.png"
     if (Test-Path $src) {
-        Copy-Item $src "$tmpDir\icons\adomnia_${sz}x${sz}.png" -Force
+        Copy-Item $src "$tmpDir\icons\adOmnia_${sz}x${sz}.png" -Force
     } else {
-        Write-Host "WARN Missing icon: assets\icons\linux\adomnia_${sz}x${sz}.png" -ForegroundColor Yellow
+        Write-Host "WARN Missing icon: assets\icons\linux\adOmnia_${sz}x${sz}.png" -ForegroundColor Yellow
     }
 }
 
-$icon256 = Join-Path $ProjectRoot "assets\icons\linux\adomnia_256x256.png"
+$icon256 = Join-Path $ProjectRoot "assets\icons\linux\adOmnia_256x256.png"
 if (Test-Path $icon256) { Copy-Item $icon256 "$tmpDir\adomnia.png" -Force }
 
 $desktopFile = Join-Path $ProjectRoot "build\linux\adomnia.desktop"
