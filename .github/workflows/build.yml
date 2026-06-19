@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 env:
-  APP_NAME: adOmnia
+  APP_NAME: adomnia
   WAILS_VERSION: v2.12.0
   NODE_VERSION: '20'
 
@@ -71,11 +71,11 @@ jobs:
           $date = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
           wails build -clean -platform windows/amd64 -ldflags "-s -w -H windowsgui -X main.Version=$version -X main.BuildDate=$date -X main.GitCommit=${{ github.sha }}"
           New-Item -ItemType Directory -Force dist | Out-Null
-          Copy-Item build\bin\adOmnia.exe "dist\adOmnia-$version-windows-amd64.exe"
+          Copy-Item build\bin\adomnia.exe "dist\adomnia-$version-windows-amd64.exe"
 
       - uses: actions/upload-artifact@v7
         with:
-          name: adOmnia-windows-amd64
+          name: adomnia-windows-amd64
           path: dist/*.exe
           retention-days: 30
 
@@ -125,7 +125,7 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: adOmnia-linux-amd64
+          name: adomnia-linux-amd64
           path: |
             dist/*.tar.gz
             dist/*.tar.gz.sha256
@@ -160,7 +160,7 @@ jobs:
           if [ "${GITHUB_REF_TYPE}" != "tag" ]; then VERSION="${GITHUB_SHA::7}"; fi
           BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           wails build -clean -platform darwin/arm64 -ldflags "-s -w -X main.Version=${VERSION} -X main.BuildDate=${BUILD_DATE} -X main.GitCommit=${GITHUB_SHA}"
-          cp build/bin/adOmnia.app/Contents/MacOS/adOmnia /tmp/adOmnia-arm64
+          cp build/bin/adomnia.app/Contents/MacOS/adomnia /tmp/adomnia-arm64
 
       - name: Build Intel app
         run: |
@@ -168,35 +168,35 @@ jobs:
           if [ "${GITHUB_REF_TYPE}" != "tag" ]; then VERSION="${GITHUB_SHA::7}"; fi
           BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           wails build -clean -platform darwin/amd64 -ldflags "-s -w -X main.Version=${VERSION} -X main.BuildDate=${BUILD_DATE} -X main.GitCommit=${GITHUB_SHA}"
-          cp build/bin/adOmnia.app/Contents/MacOS/adOmnia /tmp/adOmnia-amd64
+          cp build/bin/adomnia.app/Contents/MacOS/adomnia /tmp/adomnia-amd64
 
       - name: Create universal dmg
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           if [ "${GITHUB_REF_TYPE}" != "tag" ]; then VERSION="${GITHUB_SHA::7}"; fi
-          lipo -create /tmp/adOmnia-arm64 /tmp/adOmnia-amd64 -output build/bin/adOmnia.app/Contents/MacOS/adOmnia
-          chmod +x build/bin/adOmnia.app/Contents/MacOS/adOmnia
-          lipo -info build/bin/adOmnia.app/Contents/MacOS/adOmnia
+          lipo -create /tmp/adomnia-arm64 /tmp/adomnia-amd64 -output build/bin/adomnia.app/Contents/MacOS/adomnia
+          chmod +x build/bin/adomnia.app/Contents/MacOS/adomnia
+          lipo -info build/bin/adomnia.app/Contents/MacOS/adomnia
           mkdir -p dist
           create-dmg \
-            --volname "adOmnia ${VERSION}" \
+            --volname "adomnia ${VERSION}" \
             --window-pos 200 120 \
             --window-size 600 400 \
             --icon-size 100 \
-            --icon "adOmnia.app" 150 190 \
-            --hide-extension "adOmnia.app" \
+            --icon "adomnia.app" 150 190 \
+            --hide-extension "adomnia.app" \
             --app-drop-link 450 190 \
-            "dist/adOmnia-${VERSION}-macos-universal.dmg" \
+            "dist/adomnia-${VERSION}-macos-universal.dmg" \
             "build/bin/" \
           || hdiutil create \
-            -volname "adOmnia ${VERSION}" \
-            -srcfolder "build/bin/adOmnia.app" \
+            -volname "adomnia ${VERSION}" \
+            -srcfolder "build/bin/adomnia.app" \
             -ov -format UDZO \
-            "dist/adOmnia-${VERSION}-macos-universal.dmg"
+            "dist/adomnia-${VERSION}-macos-universal.dmg"
 
       - uses: actions/upload-artifact@v7
         with:
-          name: adOmnia-macos-universal
+          name: adomnia-macos-universal
           path: dist/*.dmg
           retention-days: 30
 
@@ -220,7 +220,7 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: adOmnia-desktop-artifacts
+          name: adomnia-desktop-artifacts
           path: dist/*
           retention-days: 30
 

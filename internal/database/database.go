@@ -200,7 +200,7 @@ func databaseCreateLocalSQLiteHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "could not resolve the local application data directory", http.StatusInternalServerError)
 		return
 	}
-	path, err := createLocalSQLite(filepath.Join(configDir, "adOmnia", "databases"), req.Name)
+	path, err := createLocalSQLite(filepath.Join(configDir, "adomnia", "databases"), req.Name)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

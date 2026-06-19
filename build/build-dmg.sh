@@ -20,7 +20,7 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 
 VERSION=${1:-"dev"}
-APP_NAME="adOmnia"
+APP_NAME="adomnia"
 BUILD_DIR="dist"
 DMG_DIR="$BUILD_DIR/dmg"
 APP_BUNDLE="$DMG_DIR/$APP_NAME.app"
@@ -82,13 +82,13 @@ cat > "$APP_BUNDLE/Contents/Info.plist" << 'PLISTEOF'
 <plist version="1.0">
 <dict>
     <key>CFBundleExecutable</key>
-    <string>adOmnia</string>
+    <string>adomnia</string>
     <key>CFBundleIdentifier</key>
     <string>com.andreacavallo.adomnia</string>
     <key>CFBundleName</key>
-    <string>adOmnia</string>
+    <string>adomnia</string>
     <key>CFBundleDisplayName</key>
-    <string>adOmnia</string>
+    <string>adomnia</string>
     <key>CFBundleVersion</key>
     <string>VERSION_PLACEHOLDER</string>
     <key>CFBundleShortVersionString</key>

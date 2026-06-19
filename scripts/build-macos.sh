@@ -109,11 +109,11 @@ echo ""
 
 "$WAILS_BIN" build -ldflags "$LDFLAGS" -platform darwin/amd64,darwin/arm64
 
-APP_ARM="build/bin/adOmnia-darwin-arm64.app"
-APP_AMD="build/bin/adOmnia-darwin-amd64.app"
-APP_UNI="build/bin/adOmnia.app"
+APP_ARM="build/bin/adomnia-darwin-arm64.app"
+APP_AMD="build/bin/adomnia-darwin-amd64.app"
+APP_UNI="build/bin/adomnia.app"
 
-# Wails puts single output at build/bin/adOmnia.app when building both arches
+# Wails puts single output at build/bin/adomnia.app when building both arches
 if [[ ! -d "$APP_UNI" && ! -d "$APP_ARM" && ! -d "$APP_AMD" ]]; then
     echo -e "${RED}ERR  Expected .app bundle not found in build/bin/${NC}"; exit 1
 fi
@@ -122,14 +122,14 @@ fi
 echo ""
 echo "==> [4/4] Packaging DMG..."
 
-OUT_DMG="build/bin/adOmnia-$VERSION-macos.dmg"
+OUT_DMG="build/bin/adomnia-$VERSION-macos.dmg"
 APP_PATH="$APP_UNI"
 [[ ! -d "$APP_PATH" ]] && APP_PATH="$APP_ARM"
 [[ ! -d "$APP_PATH" ]] && APP_PATH="$APP_AMD"
 
 if command -v create-dmg &>/dev/null; then
     create-dmg \
-        --volname "adOmnia $VERSION" \
+        --volname "adomnia $VERSION" \
         --window-pos 200 120 \
         --window-size 800 400 \
         --icon-size 100 \
@@ -139,7 +139,7 @@ if command -v create-dmg &>/dev/null; then
     && echo -e "${GREEN}OK  ${NC} DMG: $OUT_DMG" \
     || echo -e "${YELLOW}WARN create-dmg failed — .app bundle is still in build/bin/${NC}"
 elif command -v hdiutil &>/dev/null; then
-    hdiutil create -volname "adOmnia $VERSION" -srcfolder "$APP_PATH" \
+    hdiutil create -volname "adomnia $VERSION" -srcfolder "$APP_PATH" \
         -ov -format UDZO "$OUT_DMG" \
     && echo -e "${GREEN}OK  ${NC} DMG: $OUT_DMG" \
     || echo -e "${YELLOW}WARN hdiutil failed — .app bundle is still in build/bin/${NC}"

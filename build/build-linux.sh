@@ -22,21 +22,21 @@ NC='\033[0m'
 
 VERSION=${1:-"dev"}
 TARGET=${2:-"current"}
-APP_NAME="adOmnia"
+APP_NAME="adomnia"
 BUILD_DIR="dist/linux"
 # ICON SOURCE — single source of truth for all Linux icons
 ICON_SRC_PNG="assets/images/icon.png"
-ICON_256="assets/icons/linux/adOmnia_256x256.png"
+ICON_256="assets/icons/linux/adomnia_256x256.png"
 REQUIRED_ICONS=(
     "build/appicon.png"
-    "assets/icons/linux/adOmnia_16x16.png"
-    "assets/icons/linux/adOmnia_24x24.png"
-    "assets/icons/linux/adOmnia_32x32.png"
-    "assets/icons/linux/adOmnia_48x48.png"
-    "assets/icons/linux/adOmnia_64x64.png"
-    "assets/icons/linux/adOmnia_128x128.png"
-    "assets/icons/linux/adOmnia_256x256.png"
-    "assets/icons/linux/adOmnia_512x512.png"
+    "assets/icons/linux/adomnia_16x16.png"
+    "assets/icons/linux/adomnia_24x24.png"
+    "assets/icons/linux/adomnia_32x32.png"
+    "assets/icons/linux/adomnia_48x48.png"
+    "assets/icons/linux/adomnia_64x64.png"
+    "assets/icons/linux/adomnia_128x128.png"
+    "assets/icons/linux/adomnia_256x256.png"
+    "assets/icons/linux/adomnia_512x512.png"
 )
 BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
@@ -253,7 +253,7 @@ Ubuntu/Debian: sudo apt-get install libgtk-3-0 libwebkit2gtk-4.0-37
 Fedora:        sudo dnf install gtk3 webkit2gtk3
 Arch:          sudo pacman -S gtk3 webkit2gtk
 
-Run: ./adOmnia
+Run: ./adomnia
 
 All data is stored locally. No cloud, no account required.
 EOF
@@ -353,7 +353,7 @@ echo -e "${CYAN}Artifacts:${NC}"
 ls -lh "$BUILD_DIR/" | tail -n +2
 echo ""
 echo -e "${CYAN}Portable usage:${NC}"
-echo -e "  1. Extract: ${YELLOW}tar xzf adOmnia-$VERSION-linux-amd64.tar.gz${NC}"
+echo -e "  1. Extract: ${YELLOW}tar xzf adomnia-$VERSION-linux-amd64.tar.gz${NC}"
 echo -e "  2. Install deps: ${YELLOW}sudo apt-get install libgtk-3-0 libwebkit2gtk-4.0-37${NC}"
-echo -e "  3. Run: ${YELLOW}./adOmnia-$VERSION-linux-amd64/adOmnia${NC}"
+echo -e "  3. Run: ${YELLOW}./adomnia-$VERSION-linux-amd64/adomnia${NC}"
 echo ""

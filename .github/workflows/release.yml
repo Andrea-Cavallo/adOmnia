@@ -54,12 +54,12 @@ jobs:
         run: |
           $ver = "${{ steps.ver.outputs.version }}"
           New-Item -ItemType Directory -Force dist | Out-Null
-          Copy-Item build\bin\adOmnia.exe "dist\adOmnia-$ver-windows-amd64.exe"
+          Copy-Item build\bin\adomnia.exe "dist\adomnia-$ver-windows-amd64.exe"
 
       - uses: actions/upload-artifact@v7
         with:
           name: windows-amd64
-          path: dist/adOmnia-*-windows-amd64.exe
+          path: dist/adomnia-*-windows-amd64.exe
 
 # ─────────────────────────────────────────────────────────────────────────────
 # LINUX · amd64
@@ -116,8 +116,8 @@ jobs:
         with:
           name: linux-amd64
           path: |
-            dist/adOmnia-*-linux-amd64-webkitgtk-*.tar.gz
-            dist/adOmnia-*-linux-amd64-webkitgtk-*.tar.gz.sha256
+            dist/adomnia-*-linux-amd64-webkitgtk-*.tar.gz
+            dist/adomnia-*-linux-amd64-webkitgtk-*.tar.gz.sha256
 
 # ─────────────────────────────────────────────────────────────────────────────
 # MACOS · universal (arm64 + amd64 via lipo)
@@ -159,44 +159,44 @@ jobs:
       - name: Build arm64 slice
         run: |
           wails build -platform darwin/arm64
-          cp build/bin/adOmnia.app/Contents/MacOS/adOmnia /tmp/adOmnia-arm64
+          cp build/bin/adomnia.app/Contents/MacOS/adomnia /tmp/adomnia-arm64
 
       - name: Build amd64 slice
         run: |
           wails build -platform darwin/amd64
-          cp build/bin/adOmnia.app/Contents/MacOS/adOmnia /tmp/adOmnia-amd64
+          cp build/bin/adomnia.app/Contents/MacOS/adomnia /tmp/adomnia-amd64
 
       - name: Merge into universal binary
         run: |
-          lipo -create /tmp/adOmnia-arm64 /tmp/adOmnia-amd64 \
-            -output build/bin/adOmnia.app/Contents/MacOS/adOmnia
-          chmod +x build/bin/adOmnia.app/Contents/MacOS/adOmnia
-          lipo -info build/bin/adOmnia.app/Contents/MacOS/adOmnia
+          lipo -create /tmp/adomnia-arm64 /tmp/adomnia-amd64 \
+            -output build/bin/adomnia.app/Contents/MacOS/adomnia
+          chmod +x build/bin/adomnia.app/Contents/MacOS/adomnia
+          lipo -info build/bin/adomnia.app/Contents/MacOS/adomnia
 
       - name: Create DMG
         run: |
           VER="${{ steps.ver.outputs.version }}"
           mkdir -p dist
           create-dmg \
-            --volname "adOmnia $VER" \
+            --volname "adomnia $VER" \
             --window-pos 200 120 \
             --window-size 600 400 \
             --icon-size 100 \
-            --icon "adOmnia.app" 150 190 \
-            --hide-extension "adOmnia.app" \
+            --icon "adomnia.app" 150 190 \
+            --hide-extension "adomnia.app" \
             --app-drop-link 450 190 \
-            "dist/adOmnia-$VER-macos-universal.dmg" \
+            "dist/adomnia-$VER-macos-universal.dmg" \
             "build/bin/" \
           || hdiutil create \
-            -volname "adOmnia $VER" \
-            -srcfolder "build/bin/adOmnia.app" \
+            -volname "adomnia $VER" \
+            -srcfolder "build/bin/adomnia.app" \
             -ov -format UDZO \
-            "dist/adOmnia-$VER-macos-universal.dmg"
+            "dist/adomnia-$VER-macos-universal.dmg"
 
       - uses: actions/upload-artifact@v7
         with:
           name: macos-universal
-          path: dist/adOmnia-*-macos-universal.dmg
+          path: dist/adomnia-*-macos-universal.dmg
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PUBLISH · GitHub Release

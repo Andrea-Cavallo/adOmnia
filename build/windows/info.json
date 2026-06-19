@@ -9,8 +9,8 @@
 			"FileDescription": "{{.Info.Comments}}",
 			"LegalCopyright": "{{.Info.Copyright}}",
 			"ProductName": "{{.Info.ProductName}}",
-			"InternalName": "adOmnia",
-			"OriginalFilename": "adOmnia.exe",
+			"InternalName": "adomnia",
+			"OriginalFilename": "adomnia.exe",
 			"Comments": "{{.Info.Comments}}"
 		}
 	}

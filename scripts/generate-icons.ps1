@@ -96,7 +96,7 @@ New-Item -ItemType Directory -Force -Path "assets\icons\linux" | Out-Null
 
 $linuxSizes = @(16, 24, 32, 48, 64, 128, 256, 512)
 foreach ($sz in $linuxSizes) {
-    $out = "assets\icons\linux\adOmnia_${sz}x${sz}.png"
+    $out = "assets\icons\linux\adomnia_${sz}x${sz}.png"
     & $magick $SourceIcon -resize "${sz}x${sz}" -filter Lanczos $out
     if ($LASTEXITCODE -ne 0) {
         Write-Host "  ERROR: failed to generate ${sz}x${sz} PNG" -ForegroundColor Red

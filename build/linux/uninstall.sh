@@ -3,8 +3,8 @@
 # Usage: sudo ./uninstall.sh
 set -e
 
-INSTALL_DIR="/opt/adOmnia"
-DESKTOP_FILE="/usr/share/applications/adOmnia.desktop"
+INSTALL_DIR="/opt/adomnia"
+DESKTOP_FILE="/usr/share/applications/adomnia.desktop"
 HICOLOR_BASE="/usr/share/icons/hicolor"
 
 if [ "$(id -u)" -ne 0 ]; then
@@ -21,7 +21,7 @@ update-desktop-database "/usr/share/applications" 2>/dev/null || true
 
 echo "==> Removing hicolor icons ..."
 for sz in 16 24 32 48 64 128 256 512; do
-    rm -f "$HICOLOR_BASE/${sz}x${sz}/apps/adOmnia.png"
+    rm -f "$HICOLOR_BASE/${sz}x${sz}/apps/adomnia.png"
 done
 
 gtk-update-icon-cache -f -t "$HICOLOR_BASE" 2>/dev/null || true

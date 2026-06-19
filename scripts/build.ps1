@@ -7,7 +7,7 @@
 .PARAMETER Version
     Version string embedded in the binary (default: dev)
 .PARAMETER Output
-    Output binary path (default: .\adOmnia.exe)
+    Output binary path (default: .\adomnia.exe)
 .PARAMETER Clean
     Remove build artifacts before building
 .PARAMETER GoOnly
@@ -36,13 +36,13 @@ $ErrorActionPreference = "Stop"
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 $FrontendDir = Join-Path $ProjectRoot "frontend"
 $WailsOutDir = Join-Path $ProjectRoot "build\bin"
-$WailsOutExe = Join-Path $WailsOutDir "adOmnia.exe"
+$WailsOutExe = Join-Path $WailsOutDir "adomnia.exe"
 $AppIcon = Join-Path $ProjectRoot "build\appicon.png"
 $WindowsIcon = Join-Path $ProjectRoot "build\windows\icon.ico"
 $SourceIcon = Join-Path $ProjectRoot "assets\images\icon.png"
 
 if ($Output -eq "") {
-    $Output = Join-Path $ProjectRoot "adOmnia.exe"
+    $Output = Join-Path $ProjectRoot "adomnia.exe"
 }
 
 $OutputParent = Split-Path -Parent $Output
@@ -53,7 +53,7 @@ if ($OutputParent -and -not (Test-Path $OutputParent)) {
 # ---- Clean mode --------------------------------------------------------------
 if ($Clean) {
     Write-Host "==> Cleaning build artifacts..." -ForegroundColor Cyan
-    Remove-Item -Force (Join-Path $ProjectRoot "adOmnia.exe") -ErrorAction SilentlyContinue
+    Remove-Item -Force (Join-Path $ProjectRoot "adomnia.exe") -ErrorAction SilentlyContinue
     if (Test-Path $WailsOutDir)      { Remove-Item -Recurse -Force $WailsOutDir }
     if (Test-Path "$FrontendDir\dist") { Remove-Item -Recurse -Force "$FrontendDir\dist" }
     Write-Host "OK  Clean complete." -ForegroundColor Green
@@ -185,7 +185,7 @@ if ($wailsBin -and (-not $GoOnly)) {
                 Copy-Item $WailsOutExe $Output -Force
             } catch {
                 Write-Host "ERR Built Wails binary, but could not overwrite: $Output" -ForegroundColor Red
-                Write-Host "    Windows is still holding that file open. Close any running adOmnia.exe or choose a different -Output path." -ForegroundColor Yellow
+                Write-Host "    Windows is still holding that file open. Close any running adomnia.exe or choose a different -Output path." -ForegroundColor Yellow
                 Write-Host "    Fresh Wails output is available at: $WailsOutExe" -ForegroundColor Yellow
                 exit 1
             }

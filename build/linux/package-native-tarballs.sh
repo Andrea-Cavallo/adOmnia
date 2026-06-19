@@ -5,7 +5,7 @@ set -euo pipefail
 VERSION="${1:?Usage: $0 <version> [artifact-suffix]}"
 ARTIFACT_SUFFIX="${2:-}"
 
-APP_NAME="${APP_NAME:-adOmnia}"
+APP_NAME="${APP_NAME:-adomnia}"
 BUILD_DATE="${BUILD_DATE:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
 GIT_COMMIT="${GIT_COMMIT:-$(git rev-parse HEAD 2>/dev/null || echo unknown)}"
 COMPRESS_WITH_UPX="${COMPRESS_WITH_UPX:-0}"
@@ -21,22 +21,22 @@ package_tarball() {
     rm -rf "$stage"
     mkdir -p "$stage/icons"
 
-    cp build/bin/adOmnia "$stage/adOmnia"
-    chmod +x "$stage/adOmnia"
+    cp build/bin/adomnia "$stage/adomnia"
+    chmod +x "$stage/adomnia"
 
     for size in 16 24 32 48 64 128 256 512; do
-        icon="assets/icons/linux/adOmnia_${size}x${size}.png"
+        icon="assets/icons/linux/adomnia_${size}x${size}.png"
         if [ -f "$icon" ]; then
             cp "$icon" "$stage/icons/"
         fi
     done
 
-    if [ -f assets/icons/linux/adOmnia_256x256.png ]; then
-        cp assets/icons/linux/adOmnia_256x256.png "$stage/adOmnia.png"
+    if [ -f assets/icons/linux/adomnia_256x256.png ]; then
+        cp assets/icons/linux/adomnia_256x256.png "$stage/adomnia.png"
     fi
 
-    if [ -f build/linux/adOmnia.desktop ]; then
-        cp build/linux/adOmnia.desktop "$stage/"
+    if [ -f build/linux/adomnia.desktop ]; then
+        cp build/linux/adomnia.desktop "$stage/"
     fi
 
     if [ -f build/linux/install.sh ]; then
@@ -54,10 +54,10 @@ package_tarball() {
             printf '%s\n' '    echo "Run with sudo: sudo ./uninstall.sh"'
             printf '%s\n' '    exit 1'
             printf '%s\n' 'fi'
-            printf '%s\n' 'rm -rf /opt/adOmnia'
-            printf '%s\n' 'rm -f /usr/share/applications/adOmnia.desktop'
+            printf '%s\n' 'rm -rf /opt/adomnia'
+            printf '%s\n' 'rm -f /usr/share/applications/adomnia.desktop'
             printf '%s\n' 'for sz in 16 24 32 48 64 128 256 512; do'
-            printf '%s\n' '    rm -f "/usr/share/icons/hicolor/${sz}x${sz}/apps/adOmnia.png"'
+            printf '%s\n' '    rm -f "/usr/share/icons/hicolor/${sz}x${sz}/apps/adomnia.png"'
             printf '%s\n' 'done'
             printf '%s\n' 'gtk-update-icon-cache -f -t /usr/share/icons/hicolor 2>/dev/null || true'
             printf '%s\n' 'xdg-icon-resource forceupdate 2>/dev/null || true'
@@ -95,7 +95,7 @@ build_and_package() {
         -ldflags "-s -w -X main.Version=${VERSION} -X main.BuildDate=${BUILD_DATE} -X main.GitCommit=${GIT_COMMIT}"
 
     if [ "$COMPRESS_WITH_UPX" = "1" ]; then
-        upx --best --lzma build/bin/adOmnia
+        upx --best --lzma build/bin/adomnia
     fi
 
     package_tarball "$variant" "$readme_note"

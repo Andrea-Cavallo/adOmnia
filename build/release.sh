@@ -146,7 +146,7 @@ else
 fi
 
 # ── Verify output ─────────────────────────────────────────────────────────────
-EXE_PATH="build/bin/adOmnia.exe"
+EXE_PATH="build/bin/adomnia.exe"
 if [[ ! -f "$EXE_PATH" ]]; then
   echo -e "${RED}ERROR: expected Windows executable not found at ${EXE_PATH}${NC}" >&2
   exit 1

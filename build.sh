@@ -57,7 +57,7 @@ abs_output_path() {
 
 if [[ "${1:-}" == "clean" ]]; then
   info "Cleaning build artifacts..."
-  rm -f "$SCRIPT_DIR/adOmnia.exe" "$SCRIPT_DIR/adOmnia"
+  rm -f "$SCRIPT_DIR/adomnia.exe" "$SCRIPT_DIR/adomnia"
   rm -rf "$SCRIPT_DIR/build/bin" "$SCRIPT_DIR/frontend/dist"
   ok "Clean complete."
   exit 0
@@ -70,7 +70,7 @@ echo -e "${CYAN}===========================================${NC}"
 echo ""
 
 if is_windows_shell && command -v powershell.exe &>/dev/null; then
-  OUTPUT="${OUTPUT:-adOmnia.exe}"
+  OUTPUT="${OUTPUT:-adomnia.exe}"
   OUTPUT_ABS="$(abs_output_path "$OUTPUT")"
   PS_SCRIPT="$(to_windows_path "$SCRIPT_DIR/build.ps1")"
   PS_OUTPUT="$(to_windows_path "$OUTPUT_ABS")"
@@ -80,7 +80,7 @@ if is_windows_shell && command -v powershell.exe &>/dev/null; then
   exit $?
 fi
 
-OUTPUT="${OUTPUT:-adOmnia}"
+OUTPUT="${OUTPUT:-adomnia}"
 FRONTEND_DIR="$SCRIPT_DIR/frontend"
 WAILS_OUT_DIR="$SCRIPT_DIR/build/bin"
 OUTNAME="$(basename "$OUTPUT")"

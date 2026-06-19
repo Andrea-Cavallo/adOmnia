@@ -30,8 +30,8 @@ $ErrorActionPreference = "Continue"
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 $Image       = "adomnia-linux-builder"
 $OutDir      = Join-Path $ProjectRoot "build\bin"
-$Binary      = Join-Path $OutDir "adOmnia"
-$Tarball     = Join-Path $OutDir "adOmnia-linux-amd64.tar.gz"
+$Binary      = Join-Path $OutDir "adomnia"
+$Tarball     = Join-Path $OutDir "adomnia-linux-amd64.tar.gz"
 
 function Fail([string]$msg) {
     Write-Host ""
@@ -104,7 +104,7 @@ New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 $containerId = (& docker create $Image | Out-String).Trim()
 if ($LASTEXITCODE -ne 0) { Fail "docker create failed." }
 
-& docker cp "${containerId}:/app/build/bin/adOmnia" $Binary
+& docker cp "${containerId}:/app/build/bin/adomnia" $Binary
 $copyOk = $LASTEXITCODE
 & docker rm $containerId | Out-Null
 
@@ -134,24 +134,24 @@ $tmpDir = Join-Path $OutDir "linux-tmp"
 Remove-Item -Recurse -Force $tmpDir -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path "$tmpDir\icons" | Out-Null
 
-Copy-Item $Binary "$tmpDir\adOmnia" -Force
+Copy-Item $Binary "$tmpDir\adomnia" -Force
 
 $linuxSizes = @(16, 24, 32, 48, 64, 128, 256, 512)
 foreach ($sz in $linuxSizes) {
-    $src = Join-Path $ProjectRoot "assets\icons\linux\adOmnia_${sz}x${sz}.png"
+    $src = Join-Path $ProjectRoot "assets\icons\linux\adomnia_${sz}x${sz}.png"
     if (Test-Path $src) {
-        Copy-Item $src "$tmpDir\icons\adOmnia_${sz}x${sz}.png" -Force
+        Copy-Item $src "$tmpDir\icons\adomnia_${sz}x${sz}.png" -Force
     } else {
-        Write-Host "WARN Missing icon: assets\icons\linux\adOmnia_${sz}x${sz}.png" -ForegroundColor Yellow
+        Write-Host "WARN Missing icon: assets\icons\linux\adomnia_${sz}x${sz}.png" -ForegroundColor Yellow
     }
 }
 
-$icon256 = Join-Path $ProjectRoot "assets\icons\linux\adOmnia_256x256.png"
-if (Test-Path $icon256) { Copy-Item $icon256 "$tmpDir\adOmnia.png" -Force }
+$icon256 = Join-Path $ProjectRoot "assets\icons\linux\adomnia_256x256.png"
+if (Test-Path $icon256) { Copy-Item $icon256 "$tmpDir\adomnia.png" -Force }
 
-$desktopFile = Join-Path $ProjectRoot "build\linux\adOmnia.desktop"
+$desktopFile = Join-Path $ProjectRoot "build\linux\adomnia.desktop"
 $installFile = Join-Path $ProjectRoot "build\linux\install.sh"
-if (Test-Path $desktopFile) { Copy-Item $desktopFile "$tmpDir\adOmnia.desktop" -Force }
+if (Test-Path $desktopFile) { Copy-Item $desktopFile "$tmpDir\adomnia.desktop" -Force }
 if (Test-Path $installFile) { Copy-Item $installFile "$tmpDir\install.sh"      -Force }
 
 & tar -czf $Tarball -C $tmpDir .
@@ -169,6 +169,6 @@ Write-Host ("  Binary (standalone)     {0} ({1} MB)" -f $Binary, $sizeBinary) -F
 Write-Host ("  Tarball (distributable) {0} ({1} MB)" -f $Tarball, $tarMB) -ForegroundColor Cyan
 Write-Host ""
 Write-Host "  Install on Linux:" -ForegroundColor DarkGray
-Write-Host "    tar -xzf adOmnia-linux-amd64.tar.gz" -ForegroundColor DarkGray
+Write-Host "    tar -xzf adomnia-linux-amd64.tar.gz" -ForegroundColor DarkGray
 Write-Host "    sudo ./install.sh" -ForegroundColor DarkGray
 Write-Host ""

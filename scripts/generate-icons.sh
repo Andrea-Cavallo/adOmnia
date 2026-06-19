@@ -43,6 +43,6 @@ done
 echo "OK  $ICO generated"
 
 for size in 16 24 32 48 64 128 256 512; do
-  "$CONVERT" "$SRC" -resize "${size}x${size}" "$ROOT/assets/icons/linux/adOmnia_${size}x${size}.png"
+  "$CONVERT" "$SRC" -resize "${size}x${size}" "$ROOT/assets/icons/linux/adomnia_${size}x${size}.png"
 done
 echo "OK  Linux icon set generated"
