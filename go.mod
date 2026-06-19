@@ -28,7 +28,7 @@ require (
 	github.com/wailsapp/wails/v2 v2.12.0
 	github.com/xdg-go/scram v1.2.0
 	go.etcd.io/bbolt v1.4.3
-	go.mongodb.org/mongo-driver/v2 v2.6.0
+	go.mongodb.org/mongo-driver/v2 v2.7.0
 	google.golang.org/grpc v1.81.1
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v3 v3.0.1
