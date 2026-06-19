@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -57,6 +58,11 @@ type dbQueryResponse struct {
 }
 
 var limitRe = regexp.MustCompile(`(?i)\blimit\s+\d+|\bfetch\s+first\s+\d+\s+rows\s+only`)
+var localDatabaseNameRe = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
+
+type createLocalSQLiteRequest struct {
+	Name string `json:"name"`
+}
 
 func databaseTestHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -179,10 +185,58 @@ func databaseQueryHandler(w http.ResponseWriter, r *http.Request) {
 	dbWriteJSON(w, resp)
 }
 
+func databaseCreateLocalSQLiteHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST required", http.StatusMethodNotAllowed)
+		return
+	}
+	var req createLocalSQLiteRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		http.Error(w, "could not resolve the local application data directory", http.StatusInternalServerError)
+		return
+	}
+	path, err := createLocalSQLite(filepath.Join(configDir, "adOmnia", "databases"), req.Name)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	dbWriteJSON(w, map[string]interface{}{"ok": true, "path": path})
+}
+
 // RegisterHandlers registers Database Studio endpoints.
 func RegisterHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/database/test", databaseTestHandler)
 	mux.HandleFunc("/database/query", databaseQueryHandler)
+	mux.HandleFunc("/database/sqlite/create-local", databaseCreateLocalSQLiteHandler)
+}
+
+func createLocalSQLite(baseDir, rawName string) (string, error) {
+	name := strings.TrimSpace(rawName)
+	if name == "" {
+		name = "adomnia-local"
+	}
+	if !localDatabaseNameRe.MatchString(name) {
+		return "", fmt.Errorf("database name may contain only letters, numbers, hyphens and underscores")
+	}
+	if err := os.MkdirAll(baseDir, 0o700); err != nil {
+		return "", fmt.Errorf("create database directory: %w", err)
+	}
+	path := filepath.Join(baseDir, name+".db")
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		return "", fmt.Errorf("create SQLite database: %w", err)
+	}
+	defer db.Close()
+	if err := db.Ping(); err != nil {
+		return "", fmt.Errorf("open SQLite database: %w", err)
+	}
+	_ = os.Chmod(path, 0o600)
+	return filepath.Clean(path), nil
 }
 
 func openDatabase(c dbConnectionRequest) (*sql.DB, string, error) {

@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { AlignLeft, ChevronDown, FilePlus2, Play, Save, Terminal, X, Zap, CheckCircle2, AlertCircle, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -16,6 +16,7 @@ interface QueryEditorProps {
   limit: number
   timeoutMs: number
   running: boolean
+  focusToken: number
   onSelectTab: (id: string) => void
   onAddTab: () => void
   onCloseTab: (id: string) => void
@@ -47,7 +48,7 @@ function ToolButton({ icon, label, onClick, disabled, active }: { icon: ReactNod
 
 export function QueryEditor(props: QueryEditorProps) {
   const {
-    tabs, activeTabId, query, isMongo, dangerous, varsCount, limit, timeoutMs, running,
+    tabs, activeTabId, query, isMongo, dangerous, varsCount, limit, timeoutMs, running, focusToken,
     onSelectTab, onAddTab, onCloseTab, onChangeQuery, onSetLimit, onSetTimeout, onRun, onFormat, onSave,
   } = props
 
@@ -56,6 +57,10 @@ export function QueryEditor(props: QueryEditorProps) {
   const [runMenu, setRunMenu] = useState(false)
   const lineCount = Math.max(query.split('\n').length, 1)
   const validity = isMongo ? jsonValidity(query) : null
+
+  useEffect(() => {
+    taRef.current?.focus()
+  }, [focusToken])
 
   const updateCaret = () => {
     const el = taRef.current
@@ -76,7 +81,7 @@ export function QueryEditor(props: QueryEditorProps) {
                 className={cn(
                   'group flex h-8 cursor-pointer items-center gap-2 rounded-md border px-3 text-[12px] transition-colors',
                   isActive
-                    ? 'border-border-2 bg-surface-3 text-text-1'
+                    ? 'border-accent/60 bg-accent/10 text-text-1 shadow-[inset_0_-2px_0_var(--color-accent)]'
                     : 'border-transparent text-text-3 hover:bg-surface-2 hover:text-text-2'
                 )}
               >
@@ -85,6 +90,7 @@ export function QueryEditor(props: QueryEditorProps) {
                 {isActive && <span className="h-1.5 w-1.5 rounded-full bg-accent" />}
                 {tabs.length > 1 && (
                   <button
+                    aria-label={`Close ${tab.name}`}
                     onClick={(e) => { e.stopPropagation(); onCloseTab(tab.id) }}
                     className="grid h-4 w-4 place-items-center rounded text-text-4 opacity-0 hover:bg-surface-4 hover:text-text-1 group-hover:opacity-100"
                   >
@@ -94,7 +100,7 @@ export function QueryEditor(props: QueryEditorProps) {
               </div>
             )
           })}
-          <button onClick={onAddTab} className="grid h-7 w-7 flex-none place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1">
+          <button aria-label="Add query tab" title="Add query tab" onClick={onAddTab} className="grid h-7 w-7 flex-none place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1">
             <Plus size={14} />
           </button>
         </div>
@@ -194,7 +200,9 @@ export function QueryEditor(props: QueryEditorProps) {
             onKeyUp={updateCaret}
             onClick={updateCaret}
             spellCheck={false}
-            className="absolute inset-0 h-full w-full resize-none bg-transparent px-3 py-3 font-mono text-[12.5px] text-transparent caret-accent outline-none"
+            aria-label="Database query editor"
+            placeholder={isMongo ? 'Enter a MongoDB JSON operation...' : 'Enter a SQL query...'}
+            className="absolute inset-0 h-full w-full resize-none bg-transparent px-3 py-3 font-mono text-[12.5px] text-transparent caret-accent outline-none placeholder:text-text-4"
             style={{ tabSize: 2, lineHeight: '21px' }}
             onKeyDown={(e) => {
               if (e.key === 'Tab') {

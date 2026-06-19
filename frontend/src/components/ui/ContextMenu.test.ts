@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolveContextMenuPosition } from './ContextMenu'
+import { isContextMenuBackdrop, resolveContextMenuPosition } from './ContextMenu'
 
 describe('resolveContextMenuPosition', () => {
   it('keeps a submenu attached to the parent anchor when there is room', () => {
@@ -36,5 +36,16 @@ describe('resolveContextMenuPosition', () => {
       viewportWidth: 1200,
       viewportHeight: 800,
     })).toEqual({ left: 960, top: 572 })
+  })
+})
+
+describe('isContextMenuBackdrop', () => {
+  it('dismisses the menu when the pointer event originates on the full-screen backdrop', () => {
+    const backdrop = new EventTarget()
+    expect(isContextMenuBackdrop(backdrop, backdrop)).toBe(true)
+  })
+
+  it('keeps the menu open when the pointer event originates inside a menu level', () => {
+    expect(isContextMenuBackdrop(new EventTarget(), new EventTarget())).toBe(false)
   })
 })

@@ -854,11 +854,25 @@ export function ProxyPanel() {
 
   const handleStart = useCallback(async () => {
     setLoading(true)
-    await api('/proxy/start', { port: proxyPort, breakpoints: [] })
+    const p = settings.proxy
+    await api('/proxy/start', {
+      port: proxyPort,
+      breakpoints: [],
+      enableHttps: p?.enableHttps ?? false,
+      upstreamProxy: p?.upstreamProxy ?? '',
+      noProxyHosts: p?.noProxyHosts ?? '',
+      settings: {
+        maxTrafficEntries: p?.maxTrafficEntries ?? 500,
+        reqBodyLimitKB: p?.reqBodyLimitKB ?? 1024,
+        respBodyLimitKB: p?.respBodyLimitKB ?? 1024,
+        mapLocalEnabled: true,
+        mapRemoteEnabled: true,
+      },
+    })
     setStatus({ running: true, port: proxyPort })
     useAppStore.getState().setProxyRunning(true)
     setLoading(false)
-  }, [api, proxyPort])
+  }, [api, proxyPort, settings.proxy])
 
   useEffect(() => {
     const startFromCommandPalette = (event: Event) => {

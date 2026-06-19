@@ -1,6 +1,11 @@
 import { useRef, useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '@/lib/utils'
+import { useSettingsStore } from '@/stores/settings'
+
+const AUTO_CLOSE_PAIRS: Record<string, string> = {
+  '(': ')', '[': ']', '{': '}', '"': '"', "'": "'", '`': '`',
+}
 
 interface JsonEditorProps {
   value: string
@@ -333,7 +338,21 @@ export function JsonEditor({
 }: JsonEditorProps) {
   const taRef  = useRef<HTMLTextAreaElement>(null)
   const preRef = useRef<HTMLPreElement>(null)
+  const gutterRef = useRef<HTMLPreElement>(null)
   const [tooltip, setTooltip] = useState<VarTooltip | null>(null)
+
+  const editor = useSettingsStore((s) => s.settings.editor)
+  const indentUnit = editor.softTabs ? ' '.repeat(editor.tabSize) : '\t'
+  const lineCount = value.length ? value.split('\n').length : 1
+  const gutterWidth = editor.lineNumbers ? Math.max(38, 14 + String(lineCount).length * 8) : 0
+  const editorStyle: React.CSSProperties = {
+    ...SHARED_STYLE,
+    tabSize: editor.tabSize,
+    whiteSpace: editor.wordWrap ? 'pre-wrap' : 'pre',
+    overflowWrap: editor.wordWrap ? 'anywhere' : 'normal',
+    wordBreak: editor.wordWrap ? 'break-word' : 'normal',
+    paddingLeft: editor.lineNumbers ? gutterWidth + 8 : 12,
+  }
 
   const highlight = useCallback((text: string) => {
     if (!text.trim()) return `<span style="color:var(--color-text-4)">${escapeHtml(placeholder ?? '')}</span>`
@@ -352,6 +371,7 @@ export function JsonEditor({
     if (!ta || !pre) return
     pre.scrollTop  = ta.scrollTop
     pre.scrollLeft = ta.scrollLeft
+    if (gutterRef.current) gutterRef.current.scrollTop = ta.scrollTop
   }, [])
 
   // Non-passive wheel listener for scroll speed control.
@@ -391,16 +411,33 @@ export function JsonEditor({
   }, [activeSearchIndex, searchTerm, syncScroll, value])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const ta = e.currentTarget
+    const { selectionStart: s, selectionEnd: end } = ta
+
     if (e.key === 'Tab') {
       e.preventDefault()
-      const ta  = e.currentTarget
-      const { selectionStart: s, selectionEnd: end } = ta
-      const next = value.substring(0, s) + '  ' + value.substring(end)
+      const next = value.substring(0, s) + indentUnit + value.substring(end)
       onChange(next)
+      const caret = s + indentUnit.length
       requestAnimationFrame(() => {
         if (taRef.current) {
-          taRef.current.selectionStart = s + 2
-          taRef.current.selectionEnd   = s + 2
+          taRef.current.selectionStart = caret
+          taRef.current.selectionEnd   = caret
+        }
+      })
+      return
+    }
+
+    if (editor.autoCloseBrackets && s === end && AUTO_CLOSE_PAIRS[e.key]) {
+      e.preventDefault()
+      const close = AUTO_CLOSE_PAIRS[e.key]
+      const next = value.substring(0, s) + e.key + close + value.substring(end)
+      onChange(next)
+      const caret = s + 1
+      requestAnimationFrame(() => {
+        if (taRef.current) {
+          taRef.current.selectionStart = caret
+          taRef.current.selectionEnd   = caret
         }
       })
     }
@@ -429,12 +466,41 @@ export function JsonEditor({
       )}
       style={{ minHeight }}
     >
+      {/* Line-number gutter — synced with the textarea scroll */}
+      {editor.lineNumbers && (
+        <pre
+          ref={gutterRef}
+          aria-hidden
+          style={{
+            ...SHARED_STYLE,
+            position:      'absolute',
+            top:           0,
+            left:          0,
+            bottom:        0,
+            width:         gutterWidth,
+            paddingLeft:   0,
+            paddingRight:  6,
+            textAlign:     'right',
+            color:         'var(--color-text-4)',
+            background:    'var(--color-surface-1)',
+            borderRight:   '1px solid var(--color-border-2)',
+            overflow:      'hidden',
+            pointerEvents: 'none',
+            whiteSpace:    'pre',
+            userSelect:    'none',
+            zIndex:        2,
+          }}
+        >
+          {Array.from({ length: lineCount }, (_, i) => i + 1).join('\n')}
+        </pre>
+      )}
+
       {/* Highlighted layer — scrolled in sync with the textarea via syncScroll */}
       <pre
         ref={preRef}
         aria-hidden
         style={{
-          ...SHARED_STYLE,
+          ...editorStyle,
           position:      'absolute',
           inset:         0,
           pointerEvents: 'none',
@@ -456,7 +522,7 @@ export function JsonEditor({
         onMouseLeave={() => setTooltip(null)}
         spellCheck={false}
         style={{
-          ...SHARED_STYLE,
+          ...editorStyle,
           position:  'relative',
           display:   'block',
           width:     '100%',

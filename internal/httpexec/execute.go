@@ -3,25 +3,32 @@ package httpexec
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 )
 
 // HTTPExecRequest is the payload sent by the frontend to ExecuteHTTP.
 type HTTPExecRequest struct {
-	Method          string            `json:"method"`
-	URL             string            `json:"url"`
-	Headers         map[string]string `json:"headers"`
-	Body            string            `json:"body"`
-	TimeoutMs       int               `json:"timeoutMs"`
-	FollowRedirects bool              `json:"followRedirects"`
-	SkipTLSVerify   bool              `json:"skipTlsVerify"`
-	HostsMap        []HostMapEntry    `json:"hostsMap,omitempty"`
+	Method               string            `json:"method"`
+	URL                  string            `json:"url"`
+	Headers              map[string]string `json:"headers"`
+	Body                 string            `json:"body"`
+	TimeoutMs            int               `json:"timeoutMs"`
+	FollowRedirects      bool              `json:"followRedirects"`
+	MaxRedirects         int               `json:"maxRedirects,omitempty"`
+	StripAuthOnRedirect  bool              `json:"stripAuthOnRedirect,omitempty"`
+	SkipTLSVerify        bool              `json:"skipTlsVerify"`
+	ClientCertPEM        string            `json:"clientCertPem,omitempty"`
+	ClientCertPassphrase string            `json:"clientCertPassphrase,omitempty"`
+	HostsMap             []HostMapEntry    `json:"hostsMap,omitempty"`
 }
 
 // HTTPExecResponse is the result returned by ExecuteHTTP.
@@ -60,6 +67,16 @@ func mustJSON(v any) string {
 
 func executeHTTPRequest(req HTTPExecRequest) HTTPExecResponse {
 	tlsCfg := &tls.Config{InsecureSkipVerify: req.SkipTLSVerify} //nolint:gosec
+
+	// mTLS: load a client certificate when a PEM path is configured.
+	if strings.TrimSpace(req.ClientCertPEM) != "" {
+		cert, err := loadClientCert(req.ClientCertPEM, req.ClientCertPassphrase)
+		if err != nil {
+			return HTTPExecResponse{Error: &HTTPExecError{Code: "MTLS_ERR", Message: err.Error()}}
+		}
+		tlsCfg.Certificates = []tls.Certificate{cert}
+	}
+
 	transport := &http.Transport{
 		TLSClientConfig: tlsCfg,
 		DialContext:     buildDialerWithHosts(req.HostsMap),
@@ -69,6 +86,22 @@ func executeHTTPRequest(req HTTPExecRequest) HTTPExecResponse {
 	if !req.FollowRedirects {
 		client.CheckRedirect = func(*http.Request, []*http.Request) error {
 			return http.ErrUseLastResponse
+		}
+	} else {
+		maxRedirects := req.MaxRedirects
+		if maxRedirects <= 0 {
+			maxRedirects = 10
+		}
+		client.CheckRedirect = func(r *http.Request, via []*http.Request) error {
+			if len(via) >= maxRedirects {
+				return http.ErrUseLastResponse
+			}
+			// Drop credentials when redirected to a different host.
+			if req.StripAuthOnRedirect && len(via) > 0 && r.URL.Host != via[0].URL.Host {
+				r.Header.Del("Authorization")
+				r.Header.Del("Cookie")
+			}
+			return nil
 		}
 	}
 
@@ -133,4 +166,44 @@ func executeHTTPRequest(req HTTPExecRequest) HTTPExecResponse {
 		Ms:          elapsed,
 		Size:        len(bodyBytes),
 	}
+}
+
+// loadClientCert reads a PEM file containing a certificate and private key for
+// mutual TLS. An encrypted private key is decrypted with the given passphrase.
+func loadClientCert(path, passphrase string) (tls.Certificate, error) {
+	pemData, err := os.ReadFile(path)
+	if err != nil {
+		return tls.Certificate{}, fmt.Errorf("read client certificate: %w", err)
+	}
+
+	var certPEM, keyPEM []byte
+	rest := pemData
+	for {
+		var block *pem.Block
+		block, rest = pem.Decode(rest)
+		if block == nil {
+			break
+		}
+		switch {
+		case strings.Contains(block.Type, "CERTIFICATE"):
+			certPEM = append(certPEM, pem.EncodeToMemory(block)...)
+		case strings.Contains(block.Type, "PRIVATE KEY"):
+			if x509.IsEncryptedPEMBlock(block) { //nolint:staticcheck // legacy encrypted PEM support
+				if passphrase == "" {
+					return tls.Certificate{}, fmt.Errorf("client certificate key is encrypted but no passphrase was provided")
+				}
+				decrypted, derr := x509.DecryptPEMBlock(block, []byte(passphrase)) //nolint:staticcheck
+				if derr != nil {
+					return tls.Certificate{}, fmt.Errorf("decrypt client certificate key: %w", derr)
+				}
+				block = &pem.Block{Type: block.Type, Bytes: decrypted}
+			}
+			keyPEM = append(keyPEM, pem.EncodeToMemory(block)...)
+		}
+	}
+
+	if len(certPEM) == 0 || len(keyPEM) == 0 {
+		return tls.Certificate{}, fmt.Errorf("client certificate PEM must contain both a CERTIFICATE and a PRIVATE KEY block")
+	}
+	return tls.X509KeyPair(certPEM, keyPEM)
 }

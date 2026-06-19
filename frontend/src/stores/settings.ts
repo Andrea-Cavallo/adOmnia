@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { LoadSettings, SaveSettings } from '../wailsjs/go/main/App'
-import { debouncedSave } from '@/lib/storeSave'
+import { debouncedSave, setAutoSaveDelay } from '@/lib/storeSave'
 import { DEFAULT_UI_FONT_ID, type UIFontId } from '@/lib/uiFonts'
 
 export interface AppSettings {
@@ -234,6 +234,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         features: mergeBlock(defaultSettings.features, parsed.features),
         markdown: mergeBlock(defaultSettings.markdown, parsed.markdown),
       }
+      setAutoSaveDelay(merged.general.autoSaveIntervalMs)
       set({ settings: merged, loaded: true })
     } catch {
       set({ settings: defaultSettings, loaded: true })
@@ -254,6 +255,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set((s) => ({
       settings: { ...s.settings, general: { ...s.settings.general, ...patch } },
     }))
+    if (patch.autoSaveIntervalMs !== undefined) setAutoSaveDelay(patch.autoSaveIntervalMs)
     get().save()
   },
 

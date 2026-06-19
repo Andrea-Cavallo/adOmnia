@@ -1,33 +1,26 @@
 import type { ReactNode } from 'react'
-import { Clock, Database, Plus, RefreshCw, Search, Sliders, Star, Table2 } from 'lucide-react'
+import { Clock, Database, Plus, RefreshCw, Search, Star, Table2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { relativeTime, type HistoryItem, type SchemaItem } from './dbShared'
 
 interface RightRailProps {
-  limit: number
-  timeoutMs: number
   isMongo: boolean
-  mongoToggleDisabled: boolean
   favorites: string[]
   history: HistoryItem[]
   schemaItems: SchemaItem[]
   schemaDb: string
   schemaLoading: boolean
+  schemaError: string
   schemaSearch: string
   currentQuery: string
-  onSetLimit: (n: number) => void
-  onSetTimeout: (ms: number) => void
-  onToggleMongo: () => void
   onAddFavorite: () => void
   onPickQuery: (q: string) => void
   onClearHistory: () => void
   onRefreshSchema: () => void
   onSchemaSearch: (s: string) => void
   onPickCollection: (name: string) => void
+  onCreateObject: () => void
 }
-
-const LIMIT_OPTIONS = [100, 200, 500, 1000, 5000]
-const TIMEOUT_OPTIONS = [10000, 30000, 60000, 120000]
 
 function SectionHeader({ icon, title, action }: { icon: ReactNode; title: string; action?: ReactNode }) {
   return (
@@ -47,10 +40,10 @@ function queryLabel(q: string): string {
 
 export function RightRail(props: RightRailProps) {
   const {
-    limit, timeoutMs, isMongo, mongoToggleDisabled, favorites, history,
-    schemaItems, schemaDb, schemaLoading, schemaSearch, currentQuery,
-    onSetLimit, onSetTimeout, onToggleMongo, onAddFavorite, onPickQuery,
-    onClearHistory, onRefreshSchema, onSchemaSearch, onPickCollection,
+    isMongo, favorites, history,
+    schemaItems, schemaDb, schemaLoading, schemaError, schemaSearch, currentQuery,
+    onAddFavorite, onPickQuery,
+    onClearHistory, onRefreshSchema, onSchemaSearch, onPickCollection, onCreateObject,
   } = props
 
   const isFav = favorites.includes(currentQuery)
@@ -58,46 +51,6 @@ export function RightRail(props: RightRailProps) {
 
   return (
     <aside className="flex w-[280px] flex-none flex-col overflow-y-auto border-l border-border-1 bg-surface-1">
-      {/* ── Run Options ───────────────────────────────────────────────── */}
-      <SectionHeader icon={<Sliders size={14} />} title="Run Options" />
-      <div className="space-y-2.5 px-3.5 pb-3.5">
-        <div className="flex items-center justify-between">
-          <span className="text-[11.5px] text-text-3">Auto Limit</span>
-          <select
-            value={limit}
-            onChange={(e) => onSetLimit(Number(e.target.value))}
-            className="h-7 w-24 rounded-md border border-border-2 bg-surface-2 pl-2 pr-1 text-[11.5px] text-text-1 outline-none focus:border-accent/50"
-          >
-            {LIMIT_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
-          </select>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-[11.5px] text-text-3">Timeout</span>
-          <select
-            value={timeoutMs}
-            onChange={(e) => onSetTimeout(Number(e.target.value))}
-            className="h-7 w-24 rounded-md border border-border-2 bg-surface-2 pl-2 pr-1 text-[11.5px] text-text-1 outline-none focus:border-accent/50"
-          >
-            {TIMEOUT_OPTIONS.map((ms) => <option key={ms} value={ms}>{ms / 1000}s</option>)}
-          </select>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-[11.5px] text-text-3">Use MongoDB Runner</span>
-          <button
-            onClick={onToggleMongo}
-            disabled={mongoToggleDisabled}
-            className={cn(
-              'relative h-[18px] w-8 flex-none rounded-full transition-colors disabled:opacity-40',
-              isMongo ? 'bg-accent' : 'bg-surface-4'
-            )}
-          >
-            <span className={cn('absolute top-0.5 h-[14px] w-[14px] rounded-full bg-white transition-all', isMongo ? 'left-[15px]' : 'left-0.5')} />
-          </button>
-        </div>
-      </div>
-
-      <div className="h-px bg-border-1" />
-
       {/* ── Favorites ─────────────────────────────────────────────────── */}
       <SectionHeader
         icon={<Star size={14} />}
@@ -185,7 +138,7 @@ export function RightRail(props: RightRailProps) {
           <input
             value={schemaSearch}
             onChange={(e) => onSchemaSearch(e.target.value)}
-            placeholder="Search collections"
+            placeholder={isMongo ? 'Search collections' : 'Search tables'}
             className="h-7 w-full rounded-md border border-border-2 bg-surface-2 pl-7 pr-2 text-[11px] text-text-1 outline-none placeholder:text-text-4 focus:border-accent/50"
           />
         </div>
@@ -193,7 +146,7 @@ export function RightRail(props: RightRailProps) {
         <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto">
           {filteredSchema.length === 0 ? (
             <div className="rounded-lg border border-dashed border-border-2 px-3 py-4 text-center text-[11px] text-text-3">
-              {schemaLoading ? 'Loading…' : 'Refresh to load schema.'}
+              {schemaLoading ? 'Loading...' : schemaError || 'Refresh to load schema.'}
             </div>
           ) : (
             filteredSchema.map((item) => (
@@ -212,8 +165,8 @@ export function RightRail(props: RightRailProps) {
           )}
         </div>
 
-        <button className="mt-2 flex items-center gap-1.5 text-[11.5px] font-medium text-accent hover:text-accent-light">
-          <Plus size={13} /> New Collection
+        <button onClick={onCreateObject} className="mt-2 flex items-center gap-1.5 text-[11.5px] font-medium text-accent hover:text-accent-light">
+          <Plus size={13} /> {isMongo ? 'New Collection' : 'New Table'}
         </button>
       </div>
     </aside>

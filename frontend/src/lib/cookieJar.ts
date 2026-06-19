@@ -6,6 +6,7 @@
  */
 import { create } from 'zustand'
 import { useSettingsStore } from '@/stores/settings'
+import { useTabsStore } from '@/stores/tabs'
 
 export interface JarEntry {
   name: string
@@ -16,6 +17,7 @@ export interface JarEntry {
   secure: boolean
   httpOnly: boolean
   sameSite: 'Strict' | 'Lax' | 'None' | ''
+  ownerTabId?: string // tab that captured the cookie (for preserveCookiesBetweenTabs)
 }
 
 interface CookieJarState {
@@ -107,6 +109,7 @@ export const useCookieJarStore = create<CookieJarState>((set, get) => ({
 
   capture: (responseUrl, rawSetCookies) => {
     if (!useSettingsStore.getState().settings.requests.sendCookiesAutomatically) return
+    const ownerTabId = useTabsStore.getState().activeTabId ?? undefined
     const incoming = rawSetCookies
       .flatMap((h) => {
         // Some backends join multiple Set-Cookie values with \n
@@ -114,6 +117,7 @@ export const useCookieJarStore = create<CookieJarState>((set, get) => ({
       })
       .map((h) => parseSetCookie(h.trim(), responseUrl))
       .filter((e): e is JarEntry => e !== null)
+      .map((e) => ({ ...e, ownerTabId }))
     if (!incoming.length) return
 
     set((s) => {
@@ -134,13 +138,19 @@ export const useCookieJarStore = create<CookieJarState>((set, get) => ({
   },
 
   getCookiesForUrl: (url) => {
-    if (!useSettingsStore.getState().settings.requests.sendCookiesAutomatically) return []
+    const reqSettings = useSettingsStore.getState().settings.requests
+    if (!reqSettings.sendCookiesAutomatically) return []
     const host = getHostname(url)
     if (!host) return []
     const reqPath = getPathname(url)
     const https = isHttps(url)
     const now = Date.now()
+    // When cookies are not preserved between tabs, only replay cookies captured
+    // by the active tab (legacy cookies without an owner stay shared).
+    const activeTabId = useTabsStore.getState().activeTabId
+    const isolateByTab = reqSettings.preserveCookiesBetweenTabs === false
     return get().entries.filter((e) => {
+      if (isolateByTab && e.ownerTabId !== undefined && e.ownerTabId !== activeTabId) return false
       if (e.expires !== undefined && e.expires < now) return false
       if (e.secure && !https) return false
       if (!domainMatches(e.domain, host)) return false

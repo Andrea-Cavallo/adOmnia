@@ -210,6 +210,7 @@ interface CategoryButtonProps {
 
 function CategoryButton({ cat, activeRail, anyRunning, isOpen, magnifyScale, buttonRef, onToggle, onSelect, onClose }: CategoryButtonProps) {
   const Icon = cat.icon
+  const showRailIconsOnly = useSettingsStore((s) => s.settings.appearance.showRailIconsOnly)
   const allItems = cat.groups.flatMap((g) => g.items)
   const anyActive = allItems.some((item) => item.id === activeRail)
   const handleClick = () => {
@@ -244,9 +245,11 @@ function CategoryButton({ cat, activeRail, anyRunning, isOpen, magnifyScale, but
           <span className="absolute left-0 top-2 bottom-2 w-[3px] bg-accent rounded-r" />
         )}
         <Icon size={16} className="transition-transform duration-200 ease-out" />
-        <span className="text-[7px] font-semibold leading-none tracking-wider opacity-60 transition-opacity duration-200">
-          {cat.code}
-        </span>
+        {!showRailIconsOnly && (
+          <span className="text-[7px] font-semibold leading-none tracking-wider opacity-60 transition-opacity duration-200">
+            {cat.code}
+          </span>
+        )}
         {anyRunning && (
           <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-success rounded-full border-2 border-surface-0 animate-pulse" />
         )}

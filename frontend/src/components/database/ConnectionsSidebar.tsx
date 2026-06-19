@@ -12,11 +12,12 @@ interface ConnectionsSidebarProps {
   running: boolean
   onSelect: (id: string) => void
   onAdd: () => void
-  onDelete: () => void
+  onDelete: (id: string) => void
   onUpdate: (patch: Partial<DbConnection>) => void
   onSetDriver: (driver: DbDriver) => void
   onTest: () => void
   onVault: () => void
+  onCreateLocalSQLite: () => void
 }
 
 // ── labeled field (label on the left, input on the right) ───────────────────
@@ -32,7 +33,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 const inputCls = 'h-8 w-full rounded-md border border-border-2 bg-surface-2 px-2.5 text-[12px] text-text-1 outline-none transition-colors focus:border-accent/60 focus:bg-surface-3'
 
 export function ConnectionsSidebar(props: ConnectionsSidebarProps) {
-  const { connections, active, running, onSelect, onAdd, onDelete, onUpdate, onSetDriver, onTest, onVault } = props
+  const { connections, active, running, onSelect, onAdd, onDelete, onUpdate, onSetDriver, onTest, onVault, onCreateLocalSQLite } = props
   const [search, setSearch] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [menuId, setMenuId] = useState('')
@@ -109,18 +110,21 @@ export function ConnectionsSidebar(props: ConnectionsSidebarProps) {
                   <MoreVertical size={13} />
                 </button>
                 {menuId === conn.id && (
-                  <div
-                    className="absolute right-2 top-full z-30 mt-1 w-36 overflow-hidden rounded-md border border-border-2 bg-surface-3 py-1 shadow-xl"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <button
-                      onClick={() => { onDelete(); setMenuId('') }}
-                      disabled={connections.length <= 1}
-                      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[11.5px] text-error hover:bg-error/10 disabled:opacity-40"
+                  <>
+                    <div className="fixed inset-0 z-20" onClick={(event) => { event.stopPropagation(); setMenuId('') }} />
+                    <div
+                      className="absolute right-2 top-full z-30 mt-1 w-36 overflow-hidden rounded-md border border-border-2 bg-surface-3 py-1 shadow-xl"
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      <Trash2 size={12} /> Delete
-                    </button>
-                  </div>
+                      <button
+                        onClick={() => { onDelete(conn.id); setMenuId('') }}
+                        disabled={connections.length <= 1}
+                        className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[11.5px] text-error hover:bg-error/10 disabled:opacity-40"
+                      >
+                        <Trash2 size={12} /> Delete
+                      </button>
+                    </div>
+                  </>
                 )}
               </div>
             )
@@ -157,10 +161,23 @@ export function ConnectionsSidebar(props: ConnectionsSidebarProps) {
         {/* connection */}
         <div className="mb-2 text-[11px] font-medium text-text-2">Connection</div>
         <div className="space-y-2">
+          <Field label="Name">
+            <input value={active.name} onChange={(e) => onUpdate({ name: e.target.value })} className={inputCls} placeholder="Connection name" />
+          </Field>
           {active.driver === 'sqlite' ? (
-            <Field label="File path">
-              <input value={active.sqlitePath} onChange={(e) => onUpdate({ sqlitePath: e.target.value })} className={cn(inputCls, 'font-mono text-[11px]')} placeholder="C:\data\app.db" />
-            </Field>
+            <>
+              <Field label="File path">
+                <input value={active.sqlitePath} onChange={(e) => onUpdate({ sqlitePath: e.target.value })} className={cn(inputCls, 'font-mono text-[11px]')} placeholder="C:\data\app.db" />
+              </Field>
+              <button
+                type="button"
+                onClick={onCreateLocalSQLite}
+                disabled={running}
+                className="ml-[90px] flex h-8 items-center justify-center gap-1.5 rounded-md border border-accent/35 bg-accent/10 px-3 text-[11.5px] font-medium text-accent transition-colors hover:bg-accent/15 disabled:opacity-40"
+              >
+                <Database size={13} /> Create local database
+              </button>
+            </>
           ) : (
             <>
               <Field label="Host">

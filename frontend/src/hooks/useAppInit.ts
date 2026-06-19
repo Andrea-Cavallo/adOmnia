@@ -25,6 +25,8 @@ export function useAppInit(): AppInitResult {
   const settingsLoaded   = useSettingsStore((s) => s.loaded)
   const appearance       = useSettingsStore((s) => s.settings.appearance)
   const showWelcomeOnEmpty = useSettingsStore((s) => s.settings.general.showWelcomeOnEmptyWorkspace)
+  const defaultStartupRail = useSettingsStore((s) => s.settings.general.defaultStartupRail)
+  const backupWorkspaceOnStartup = useSettingsStore((s) => s.settings.general.backupWorkspaceOnStartup)
   const loadCollections  = useCollectionsStore((s) => s.load)
   const loadEnvironments = useEnvironmentsStore((s) => s.load)
   const loadHosts        = useHostsStore((s) => s.load)
@@ -38,6 +40,46 @@ export function useAppInit(): AppInitResult {
   const environmentsLoadError  = useEnvironmentsStore((s) => s.loadError)
 
   const backendLogsClearedRef = useRef(false)
+  const startupRailAppliedRef = useRef(false)
+  const backupDoneRef = useRef(false)
+
+  // One-shot workspace backup on startup: snapshot the loaded collections and
+  // environments before the session can overwrite them.
+  useEffect(() => {
+    if (backupDoneRef.current) return
+    if (!backupWorkspaceOnStartup) return
+    if (!collectionsLoaded || !environmentsLoaded) return
+    if (collectionsLoadError || environmentsLoadError) return
+    backupDoneRef.current = true
+    try {
+      const snapshot = {
+        format: 'adomnia-workspace-backup',
+        version: '1.0',
+        backedUpAt: new Date().toISOString(),
+        collections: useCollectionsStore.getState().collections,
+        environments: useEnvironmentsStore.getState().environments,
+      }
+      localStorage.setItem('adomnia.workspace.backup', JSON.stringify(snapshot))
+    } catch {
+      // A failed backup must never block startup.
+    }
+  }, [
+    backupWorkspaceOnStartup,
+    collectionsLoaded,
+    environmentsLoaded,
+    collectionsLoadError,
+    environmentsLoadError,
+  ])
+
+  // Apply the configured startup rail once, when settings first load.
+  // The welcome-screen effect below can still override it for an empty workspace.
+  useEffect(() => {
+    if (!settingsLoaded || startupRailAppliedRef.current) return
+    startupRailAppliedRef.current = true
+    if (defaultStartupRail) {
+      setActiveRail(defaultStartupRail as Parameters<typeof setActiveRail>[0])
+    }
+  }, [settingsLoaded, defaultStartupRail, setActiveRail])
 
   useEffect(() => {
     let cancelled = false

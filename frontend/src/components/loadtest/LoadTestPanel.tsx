@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Plus, Trash2, Save, List, FileDown, GitCompare, Database, Clock, X } from 'lucide-react'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
+import { useSettingsStore } from '@/stores/settings'
 
 interface ThroughputBucket {
   second: number
@@ -85,7 +86,7 @@ export function LoadTestPanel() {
   const port = useServerPort()
   const [url, setUrl] = useState('')
   const [method, setMethod] = useState('GET')
-  const [concurrency, setConcurrency] = useState(10)
+  const [concurrency, setConcurrency] = useState(() => useSettingsStore.getState().settings.general.maxConcurrentRequests ?? 10)
   const [totalReqs, setTotalReqs] = useState(100)
   const [durationS, setDurationS] = useState(0)
   const [useDuration, setUseDuration] = useState(false)

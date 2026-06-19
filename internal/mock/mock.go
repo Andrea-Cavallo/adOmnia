@@ -11,12 +11,41 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 )
+
+var mockHitFileMu sync.Mutex
+
+// appendHitToFile persists a single mock hit as a JSON line under the user config
+// dir. Best-effort: any failure is silently ignored so it never breaks the mock.
+func appendHitToFile(entry mockHitEntry) {
+	dir, err := os.UserConfigDir()
+	if err != nil {
+		return
+	}
+	logDir := filepath.Join(dir, "adomnia")
+	if err := os.MkdirAll(logDir, 0o755); err != nil {
+		return
+	}
+	line, err := json.Marshal(entry)
+	if err != nil {
+		return
+	}
+	mockHitFileMu.Lock()
+	defer mockHitFileMu.Unlock()
+	f, err := os.OpenFile(filepath.Join(logDir, "mock-hits.jsonl"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	_, _ = f.Write(append(line, '\n'))
+}
 
 type mockResponse struct {
 	ID             string            `json:"id"`
@@ -48,9 +77,12 @@ type mockEndpoint struct {
 }
 
 type mockServerConfig struct {
-	Port      int            `json:"port"`
-	Password  string         `json:"password"`
-	Endpoints []mockEndpoint `json:"endpoints"`
+	Port                   int            `json:"port"`
+	Password               string         `json:"password"`
+	Endpoints              []mockEndpoint `json:"endpoints"`
+	DefaultResponseDelayMs int            `json:"defaultResponseDelayMs,omitempty"`
+	CorsHeadersAuto        bool           `json:"corsHeadersAuto,omitempty"`
+	LogHitsToFile          bool           `json:"logHitsToFile,omitempty"`
 }
 
 var (
@@ -180,6 +212,19 @@ func mockRequestHandler(w http.ResponseWriter, r *http.Request) {
 	cfg := mockCfg
 	mockCfgMu.RUnlock()
 
+	// Automatic CORS: answer preflight and tag every response with permissive headers.
+	if cfg.CorsHeadersAuto {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "*")
+		w.Header().Set("Access-Control-Max-Age", "86400")
+		if strings.ToUpper(r.Method) == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			recordHit(r.Method, r.URL.Path, true, "", http.StatusNoContent)
+			return
+		}
+	}
+
 	if cfg.Password != "" {
 		auth := r.Header.Get("X-Mock-Auth")
 		if auth != cfg.Password {
@@ -237,8 +282,12 @@ func mockRequestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if resp.DelayMs > 0 {
-		time.Sleep(time.Duration(resp.DelayMs) * time.Millisecond)
+	delayMs := resp.DelayMs
+	if delayMs <= 0 {
+		delayMs = cfg.DefaultResponseDelayMs
+	}
+	if delayMs > 0 {
+		time.Sleep(time.Duration(delayMs) * time.Millisecond)
 	}
 
 	for k, v := range resp.Headers {
@@ -581,6 +630,13 @@ func recordHit(method, path string, matched bool, responseID string, status int)
 	}
 	mockHits = append(mockHits, entry)
 	mockHitsMu.Unlock()
+
+	mockCfgMu.RLock()
+	logToFile := mockCfg.LogHitsToFile
+	mockCfgMu.RUnlock()
+	if logToFile {
+		appendHitToFile(entry)
+	}
 }
 
 // RegisterHandlers registers HTTP and WebSocket mock server endpoints.

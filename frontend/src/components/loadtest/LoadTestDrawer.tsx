@@ -4,6 +4,7 @@ import type { RequestItem } from '@/lib/types'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { substVars } from '@/lib/substVars'
 import { useEnvironmentsStore } from '@/stores/environments'
+import { useSettingsStore } from '@/stores/settings'
 
 interface ThroughputBucket { second: number; reqs: number; avgMs: number }
 
@@ -139,7 +140,7 @@ export function LoadTestDrawer({ request, onClose }: LoadTestDrawerProps) {
   const getResolvedVars = useEnvironmentsStore((s) => s.getResolvedVars)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
-  const [concurrency, setConcurrency] = useState(10)
+  const [concurrency, setConcurrency] = useState(() => useSettingsStore.getState().settings.general.maxConcurrentRequests ?? 10)
   const [totalReqs, setTotalReqs] = useState(100)
   const [durationS, setDurationS] = useState(30)
   const [useDuration, setUseDuration] = useState(false)

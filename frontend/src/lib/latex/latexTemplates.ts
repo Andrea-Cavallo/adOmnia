@@ -40,18 +40,27 @@ export const LATEX_TEMPLATES: LatexTemplate[] = [
     id: 'resume-classic-software-engineer',
     name: 'Software Engineer Resume',
     kind: 'resume',
-    description: 'A compact one-page software engineer resume in a classic LaTeX style.',
-    filename: 'software-engineer-resume.tex',
+    description: 'A solid, ATS-friendly one-page CV with clear sections and editable placeholders.',
+    filename: 'professional-software-engineer-cv.tex',
     source: dedent(String.raw`
       \documentclass[10pt,a4paper]{article}
-      \usepackage[margin=0.68in]{geometry}
+      \usepackage[T1]{fontenc}
+      \usepackage[utf8]{inputenc}
+      \usepackage[margin=1.55cm]{geometry}
       \usepackage[hidelinks]{hyperref}
       \usepackage{enumitem}
+      \usepackage{xcolor}
+      \usepackage{tabularx}
+      \definecolor{accent}{HTML}{0E7490}
+      \definecolor{muted}{HTML}{475569}
+      \pagestyle{empty}
+      \urlstyle{same}
+      \raggedright
       \setlength{\parindent}{0pt}
-      \setlist[itemize]{leftmargin=*, itemsep=1pt, topsep=1pt}
-      \setlist[itemize,2]{label=\(\circ\), leftmargin=1.2em}
+      \setlength{\tabcolsep}{0pt}
+      \setlist[itemize]{leftmargin=1.35em, itemsep=1.5pt, topsep=2pt, parsep=0pt}
 
-      % adOmnia resume macros. Portable, editable, and intentionally close to the rendered page.
+      % Keep these macros intact to preserve adOmnia's structured live preview.
       \newcommand{\adName}[1]{\def\ADName{#1}}
       \newcommand{\adRole}[1]{\def\ADRole{#1}}
       \newcommand{\adLocation}[1]{\def\ADLocation{#1}}
@@ -60,132 +69,58 @@ export const LATEX_TEMPLATES: LatexTemplate[] = [
       \newcommand{\adWebsite}[1]{\def\ADWebsite{#1}}
       \newcommand{\adSummary}[1]{\def\ADSummary{#1}}
       \newcommand{\adSkills}[1]{\def\ADSkills{#1}}
-      \newcommand{\adSection}[1]{\vspace{7pt}{\scshape #1}\vspace{2pt}\hrule\vspace{4pt}}
+      \newcommand{\adSection}[1]{\vspace{7pt}{\large\bfseries\color{accent} #1}\par\vspace{2pt}\hrule\vspace{4pt}}
       \newcommand{\adExperience}[5]{
-        \item \textbf{#2} \hfill #3\\
-        \textit{#1} \hfill \textit{#4}
+        \textbf{#1} \hfill {\small #4}\\
+        \textit{#2} \hfill {\small\textit{#3}}
         \begin{itemize}#5\end{itemize}
       }
       \newcommand{\adEducation}[5]{\adExperience{#1}{#2}{#3}{#4}{#5}}
-      \newcommand{\adProject}[5]{\item \textbf{#1}: #5}
-
-      \adName{Sourabh Bajaj}
-      \adRole{Software Engineer}
-      \adLocation{}
-      \adEmail{mail@website.com}
-      \adPhone{+1-123-456-7890}
-      \adWebsite{http://www.sourabhbajaj.com}
-      \adSummary{}
-      \adSkills{Languages: Scala, Python, Javascript, C++, SQL, Java | Technologies: AWS, Play, React, Kafka, GCE}
-
-      \begin{document}
-      \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}} l r}
-        {\Large \ADName} & Email : \href{mailto:\ADEmail}{\ADEmail}\\
-        \href{\ADWebsite}{\ADWebsite} & Mobile : \ADPhone
-      \end{tabular*}
-
-      \adSection{Education}
-      \begin{itemize}
-      \adEducation{Master of Science in Computer Science; GPA: 4.00}{Georgia Institute of Technology}{Atlanta, GA}{Aug. 2012 -- Dec. 2013}{}
-      \adEducation{Bachelor of Engineering in Electrical and Electronics; GPA: 3.66 (9.15/10.0)}{Birla Institute of Technology and Science}{Pilani, India}{Aug. 2008 -- July. 2012}{}
-      \end{itemize}
-
-      \adSection{Experience}
-      \begin{itemize}
-      \adExperience{Software Engineer}{Google}{Mountain View, CA}{Oct 2016 -- Present}{
-        \item \textbf{TensorFlow}: TensorFlow is an open source software library for numerical computation using data flow graphs; primarily used for training deep learning models.
-        \item \textbf{Apache Beam}: Apache Beam is a unified model for defining both batch and streaming data-parallel processing pipelines, as well as a set of language-specific SDKs for constructing pipelines and runners.
-      }
-
-      \adExperience{Senior Software Engineer}{Coursera}{Mountain View, CA}{Jan 2014 -- Oct 2016}{
-        \item \textbf{Notifications}: Service for sending email, push and in-app notifications. Involved in features such as delivery time optimization, tracking, queuing and A/B testing.
-        \item \textbf{Nostos}: Bulk data processing and injection service from Hadoop to Cassandra and provides a thin REST layer on top for serving offline computed data online.
-        \item \textbf{Workflows}: Dataduct an open source workflow framework to create and manage data pipelines leveraging reusable patterns to expedite developer productivity.
-        \item \textbf{Data Collection}: Designed the internal survey and crowd sourcing platform which allowed for creating various tasks for crowd sourcing or embedding surveys across the Coursera platform.
-        \item \textbf{Dev Environment}: Analytics environment based on docker and AWS, standardized the python and R dependencies. Wrote the core libraries that are shared by all data scientists.
-        \item \textbf{Data Warehousing}: Setup, schema design and management of Amazon Redshift. Built an internal app for access to the data using a web interface.
-        \item \textbf{Recommendations}: Core service for all recommendation systems at Coursera, currently used on the homepage and throughout the content discovery process.
-        \item \textbf{Content Discovery}: Improved content discovery by building a new onboarding experience on coursera.
-        \item \textbf{Course Dashboards}: Instructor dashboards and learner surveying tools which helped instructors run their class better.
-      }
-
-      \adExperience{Data Scientist}{Lucena Research}{Atlanta, GA}{Summer 2012 and 2013}{
-        \item \textbf{Portfolio Management}: Created models for portfolio hedging, portfolio optimization and price forecasting.
-        \item \textbf{QuantDesk}: Python backend for a web application used by hedge fund managers for portfolio management.
-      }
-      \end{itemize}
-
-      \adSection{Projects}
-      \begin{itemize}
-      \adProject{QuantSoftware Toolkit}{}{}{}{Open source python library for financial data analysis and machine learning for finance.}
-      \adProject{Github Visualization}{}{}{}{Data Visualization of Git Log data using D3 to analyze project trends over time.}
-      \adProject{Recommendation System}{}{}{}{Music and Movie recommender systems using collaborative filtering on public datasets.}
-      \end{itemize}
-
-      \adSection{Programming Skills}
-      \begin{itemize}
-        \item \ADSkills
-      \end{itemize}
-      \end{document}
-    `),
-  },
-  {
-    id: 'resume-academic-lorem',
-    name: 'Academic CV - Lorem',
-    kind: 'resume',
-    description: 'A compact research/academic CV preset with placeholder sections.',
-    filename: 'adomnia-academic-cv.tex',
-    source: dedent(String.raw`
-      \documentclass[11pt,a4paper]{article}
-      \usepackage[margin=1.6cm]{geometry}
-      \usepackage[hidelinks]{hyperref}
-      \usepackage{enumitem}
-      \setlength{\parindent}{0pt}
-      \setlist[itemize]{leftmargin=*, itemsep=2pt, topsep=2pt}
-      \newcommand{\adName}[1]{\def\ADName{#1}}
-      \newcommand{\adRole}[1]{\def\ADRole{#1}}
-      \newcommand{\adLocation}[1]{\def\ADLocation{#1}}
-      \newcommand{\adEmail}[1]{\def\ADEmail{#1}}
-      \newcommand{\adPhone}[1]{\def\ADPhone{#1}}
-      \newcommand{\adWebsite}[1]{\def\ADWebsite{#1}}
-      \newcommand{\adSummary}[1]{\def\ADSummary{#1}}
-      \newcommand{\adSkills}[1]{\def\ADSkills{#1}}
-      \newcommand{\adSection}[1]{\vspace{8pt}{\large\bfseries #1}\vspace{2pt}\hrule\vspace{5pt}}
-      \newcommand{\adExperience}[5]{\textbf{#1}, #2 \hfill {\small #4}\\{\small #3}\begin{itemize}#5\end{itemize}}
-      \newcommand{\adEducation}[5]{\adExperience{#1}{#2}{#3}{#4}{#5}}
       \newcommand{\adProject}[5]{\adExperience{#1}{#2}{#3}{#4}{#5}}
 
-      \adName{Dr. Lorem Ipsum}
-      \adRole{Research Engineer}
+      \adName{Lorem Ipsum}
+      \adRole{Senior Software Engineer}
       \adLocation{Rome, Italy}
-      \adEmail{lorem.ipsum@example.edu}
-      \adPhone{+39 000 111 2222}
-      \adWebsite{https://example.edu/lorem}
-      \adSummary{Research-focused profile with placeholder publications, teaching, and applied engineering experience.}
-      \adSkills{Distributed Systems, Program Analysis, APIs, Formal Methods, Technical Writing}
+      \adEmail{lorem.ipsum@example.com}
+      \adPhone{+39 000 000 0000}
+      \adWebsite{https://example.com}
+      \adSummary{Software engineer focused on reliable API platforms, maintainable systems, and measurable product outcomes. Replace this paragraph with a concise profile tailored to the target role.}
+      \adSkills{Languages: TypeScript, Go, SQL | Backend: REST, GraphQL, event-driven systems | Platform: Docker, CI/CD, observability | Practices: testing, security, technical leadership}
 
       \begin{document}
-      {\huge\bfseries \ADName}\\
-      \ADRole \quad | \quad \ADLocation \quad | \quad \ADEmail \quad | \quad \ADWebsite
+      \begin{tabularx}{\textwidth}{@{}X r@{}}
+        {\LARGE\bfseries \ADName} & \href{mailto:\ADEmail}{\ADEmail}\\
+        {\color{accent}\bfseries \ADRole} & \ADPhone\\
+        {\small\color{muted}\ADLocation} & \href{\ADWebsite}{\ADWebsite}
+      \end{tabularx}
 
-      \adSection{Research Summary}
+      \adSection{Profile}
       \ADSummary
 
+      \adSection{Experience}
+      \adExperience{Senior Software Engineer}{Lorem Systems}{Remote}{2022 -- Present}{
+        \item Led [project or platform] for [scope], improving [metric] by [result].
+        \item Designed [service or workflow] that reduced [cost, latency, or failures] from [before] to [after].
+        \item Mentored [team size] engineers and established [engineering practice] across [area].
+      }
+      \adExperience{Software Engineer}{Ipsum Technologies}{Milan, Italy}{2019 -- 2022}{
+        \item Delivered [customer-facing capability] used by [users or teams] with [availability or quality target].
+        \item Automated [manual process], saving [time] per [week or release] while preserving auditability.
+      }
+
+      \adSection{Selected Project}
+      \adProject{API Reliability Platform}{Independent Project}{Open Source}{2024}{
+        \item Built [brief product description] using [relevant technologies].
+        \item Demonstrated [measurable outcome] through [test, benchmark, or adoption signal].
+      }
+
       \adSection{Education}
-      \adEducation{Ph.D. in Computer Science}{Lorem University}{Rome}{2020 -- 2024}{
-        \item Dissertation: Lorem ipsum dolor sit amet for local developer environments.
-        \item Research areas: API tooling, secure execution, and reproducible documentation.
+      \adEducation{M.Sc. in Computer Science}{Lorem University}{Rome, Italy}{2017 -- 2019}{
+        \item Focus: distributed systems, software architecture, and information security.
       }
 
-      \adSection{Selected Work}
-      \adProject{Lorem API Observatory}{Research Prototype}{Open Source}{2023}{
-        \item Built a prototype for contract analysis, trace inspection, and technical report generation.
-      }
-
-      \adSection{Teaching}
-      \adExperience{Teaching Assistant}{Software Engineering}{Lorem University}{2021 -- 2023}{
-        \item Led labs on API design, testing, Git workflows, and documentation.
-      }
+      \adSection{Technical Skills}
+      \ADSkills
       \end{document}
     `),
   },
@@ -253,6 +188,10 @@ export const LATEX_TEMPLATES: LatexTemplate[] = [
   },
 ]
 
+export function isLegacyBundledResume(templateId: string, source: string): boolean {
+  return templateId === 'resume-classic-software-engineer' && /\\adName\{Sourabh Bajaj\}/i.test(source)
+}
+
 function matchMacro(source: string, name: string): string {
   const match = source.match(new RegExp(`\\\\${name}\\{([\\s\\S]*?)\\}`))
   return match?.[1]?.trim() ?? ''
@@ -282,8 +221,10 @@ function extractBullets(raw: string): string[] {
 
 function extractEntries(source: string, macro: 'adExperience' | 'adEducation' | 'adProject'): LatexResumeEntry[] {
   const entries: LatexResumeEntry[] = []
+  const documentStart = source.indexOf('\\begin{document}')
+  const documentSource = documentStart >= 0 ? source.slice(documentStart) : source
   const pattern = new RegExp(`\\\\${macro}\\{([^{}]*)\\}\\{([^{}]*)\\}\\{([^{}]*)\\}\\{([^{}]*)\\}\\{([\\s\\S]*?)\\n\\s*\\}`, 'g')
-  for (const match of source.matchAll(pattern)) {
+  for (const match of documentSource.matchAll(pattern)) {
     entries.push({
       title: match[1].trim(),
       organization: match[2].trim(),

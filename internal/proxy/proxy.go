@@ -13,6 +13,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptrace"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -49,10 +50,12 @@ type throttleConfig struct {
 }
 
 type proxyConfig struct {
-	Port        int                 `json:"port"`
-	Breakpoints []string            `json:"breakpoints"`
-	Settings    *proxySettingsState `json:"settings,omitempty"`
-	EnableHTTPS bool                `json:"enableHttps,omitempty"`
+	Port          int                 `json:"port"`
+	Breakpoints   []string            `json:"breakpoints"`
+	Settings      *proxySettingsState `json:"settings,omitempty"`
+	EnableHTTPS   bool                `json:"enableHttps,omitempty"`
+	UpstreamProxy string              `json:"upstreamProxy,omitempty"`
+	NoProxyHosts  string              `json:"noProxyHosts,omitempty"`
 }
 
 type proxySettingsState struct {
@@ -126,7 +129,37 @@ var (
 	hostCertCacheMu sync.RWMutex
 	httpsEnabled    bool
 	httpsEnableMu   sync.RWMutex
+
+	upstreamProxyURL *url.URL
+	noProxyHosts     []string
+	upstreamProxyMu  sync.RWMutex
 )
+
+// upstreamProxyFor returns the configured upstream proxy for a request, honoring
+// the no-proxy host list. Returns nil when no upstream proxy is configured or
+// the target host is excluded.
+func upstreamProxyFor(req *http.Request) (*url.URL, error) {
+	upstreamProxyMu.RLock()
+	pu := upstreamProxyURL
+	noProxy := noProxyHosts
+	upstreamProxyMu.RUnlock()
+	if pu == nil {
+		return nil, nil
+	}
+	host := req.URL.Hostname()
+	for _, h := range noProxy {
+		if h != "" && (host == h || strings.HasSuffix(host, "."+h)) {
+			return nil, nil
+		}
+	}
+	return pu, nil
+}
+
+// upstreamTransport builds an http.Transport that routes through the configured
+// upstream proxy (if any), preserving TLS skip behavior used elsewhere.
+func upstreamTransport() *http.Transport {
+	return &http.Transport{Proxy: upstreamProxyFor}
+}
 
 var (
 	dataDirectory string
@@ -199,6 +232,25 @@ func proxyStartHandler(w http.ResponseWriter, r *http.Request) {
 	httpsEnableMu.Lock()
 	httpsEnabled = cfg.EnableHTTPS
 	httpsEnableMu.Unlock()
+
+	upstreamProxyMu.Lock()
+	if strings.TrimSpace(cfg.UpstreamProxy) != "" {
+		if pu, perr := url.Parse(strings.TrimSpace(cfg.UpstreamProxy)); perr == nil && pu.Host != "" {
+			upstreamProxyURL = pu
+		} else {
+			upstreamProxyURL = nil
+			devlog.Err("proxyStartHandler", "upstream proxy URL non valido", perr, map[string]any{"value": cfg.UpstreamProxy})
+		}
+	} else {
+		upstreamProxyURL = nil
+	}
+	noProxyHosts = noProxyHosts[:0]
+	for _, h := range strings.FieldsFunc(cfg.NoProxyHosts, func(r rune) bool { return r == '\n' || r == ',' || r == ' ' || r == '\r' }) {
+		if t := strings.TrimSpace(h); t != "" {
+			noProxyHosts = append(noProxyHosts, t)
+		}
+	}
+	upstreamProxyMu.Unlock()
 
 	interceptProxyMu.Lock()
 	defer interceptProxyMu.Unlock()
@@ -578,7 +630,7 @@ func interceptHandler(w http.ResponseWriter, r *http.Request) {
 	outReq = outReq.WithContext(httptrace.WithClientTrace(r.Context(), trace))
 	reqStart = time.Now()
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := &http.Client{Timeout: 30 * time.Second, Transport: upstreamTransport()}
 	resp, err := client.Do(outReq)
 	respEnd := time.Now()
 	if err != nil {
@@ -777,7 +829,7 @@ func handleConnect(w http.ResponseWriter, r *http.Request) {
 		upstreamReq.Header.Set(k, v)
 	}
 
-	upClient := &http.Client{Timeout: 30 * time.Second}
+	upClient := &http.Client{Timeout: 30 * time.Second, Transport: upstreamTransport()}
 	upstreamResp, uerr := upClient.Do(upstreamReq)
 	if uerr != nil {
 		recordEntry(targetURL, req.Method, reqHeaders, string(reqBodyBytes), 0, nil, "", time.Since(startTime), uerr.Error(), matched)

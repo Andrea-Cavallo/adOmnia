@@ -1,11 +1,21 @@
 import { useCallback } from 'react'
+import { useSettingsStore } from '@/stores/settings'
+import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 
 export function Titlebar() {
+  const port = useServerPort()
 
   const onMinimise = useCallback(async () => {
+    // Optionally lock the vault before the window is minimised.
+    if (useSettingsStore.getState().settings.vault.lockVaultOnMinimize) {
+      const url = serverUrl(port, '/vault/lock')
+      if (url) {
+        try { await sidecarFetch(url, { method: 'POST' }) } catch { /* never block minimise */ }
+      }
+    }
     const { WindowMinimise } = await import('../../wailsjs/runtime/runtime')
     WindowMinimise()
-  }, [])
+  }, [port])
 
   const onMaximise = useCallback(async () => {
     const { WindowToggleMaximise } = await import('../../wailsjs/runtime/runtime')

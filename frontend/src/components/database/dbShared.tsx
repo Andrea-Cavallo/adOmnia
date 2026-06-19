@@ -55,6 +55,7 @@ export const STORAGE_BUCKET = 'database'
 export const CONNECTIONS_KEY = 'connections'
 export const HISTORY_KEY = 'history'
 export const FAVORITES_KEY = 'favorites'
+export const WORKSPACE_KEY = 'query-workspace-v1'
 
 // ── driver metadata ────────────────────────────────────────────────────────
 export const DRIVER_META: Record<DbDriver, { label: string; short: string; port: number; accent: string }> = {
@@ -97,6 +98,58 @@ export const blankTab = (name = 'Query 1', query = SQL_DEFAULT_QUERY): QueryTab 
   name,
   query,
 })
+
+export function defaultConnectionName(driver: DbDriver): string {
+  return driver === 'sqlite' ? 'Local SQLite' : `${DRIVER_META[driver].short} Connection`
+}
+
+export function normalizeConnection(value: Partial<DbConnection>): DbConnection {
+  const fallback = blankConnection()
+  const driver = value.driver && DRIVER_META[value.driver] ? value.driver : fallback.driver
+  const currentName = typeof value.name === 'string' ? value.name.trim() : ''
+  const mismatchedLegacyName = currentName === 'Local SQLite' && driver !== 'sqlite'
+  return {
+    ...fallback,
+    ...value,
+    id: typeof value.id === 'string' && value.id ? value.id : fallback.id,
+    driver,
+    name: !currentName || mismatchedLegacyName ? defaultConnectionName(driver) : currentName,
+    port: Number.isFinite(value.port) ? Number(value.port) : DRIVER_META[driver].port,
+  }
+}
+
+export function validateConnection(connection: DbConnection): string | null {
+  if (connection.driver === 'sqlite') {
+    if (!connection.sqlitePath.trim() && !connection.dsn.trim()) return 'Choose or create a local SQLite database first.'
+    return null
+  }
+  if (connection.dsn.trim()) return null
+  if (!connection.host.trim()) return 'Host is required.'
+  if (!Number.isInteger(connection.port) || connection.port <= 0 || connection.port > 65535) return 'Port must be between 1 and 65535.'
+  if ((connection.driver === 'postgres' || connection.driver === 'mysql') && !connection.database.trim()) return 'Database name is required.'
+  return null
+}
+
+export function nextQueryName(tabs: QueryTab[]): string {
+  const max = tabs.reduce((current, tab) => {
+    const match = tab.name.match(/^Query\s+(\d+)$/i)
+    return match ? Math.max(current, Number(match[1])) : current
+  }, 0)
+  return `Query ${max + 1}`
+}
+
+export function isValidDbObjectName(name: string): boolean {
+  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(name.trim())
+}
+
+export function createObjectQuery(driver: DbDriver, rawName: string): string {
+  const name = rawName.trim()
+  if (!isValidDbObjectName(name)) throw new Error('Use letters, numbers and underscores; the name cannot start with a number.')
+  if (driver === 'mongodb') return JSON.stringify({ operation: 'createCollection', collection: name }, null, 2)
+  if (driver === 'mysql') return `CREATE TABLE \`${name}\` (\n  id BIGINT AUTO_INCREMENT PRIMARY KEY\n)`
+  if (driver === 'postgres') return `CREATE TABLE "${name}" (\n  id BIGSERIAL PRIMARY KEY\n)`
+  return `CREATE TABLE "${name}" (\n  id INTEGER PRIMARY KEY AUTOINCREMENT\n)`
+}
 
 // ── query analysis ─────────────────────────────────────────────────────────
 export function substituteVars(input: string, vars: Record<string, string>) {

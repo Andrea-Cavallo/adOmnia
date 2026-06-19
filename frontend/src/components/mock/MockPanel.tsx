@@ -640,11 +640,19 @@ export function MockPanel() {
     setLoading(true)
     setError('')
     const activeEndpoints = endpoints.filter((e) => e.enabled !== false)
-    const data = await api('/mock/start', { port: mockPort, password, endpoints: activeEndpoints })
+    const m = settings.mock
+    const data = await api('/mock/start', {
+      port: mockPort,
+      password,
+      endpoints: activeEndpoints,
+      defaultResponseDelayMs: m?.defaultResponseDelayMs ?? 0,
+      corsHeadersAuto: m?.corsHeadersAuto ?? true,
+      logHitsToFile: m?.logHitsToFile ?? false,
+    })
     if (data?.error) setError(data.error)
     await refreshStatus()
     setLoading(false)
-  }, [api, endpoints, mockPort, password, refreshStatus])
+  }, [api, endpoints, mockPort, password, refreshStatus, settings.mock])
 
   useEffect(() => {
     const startFromCommandPalette = (event: Event) => {

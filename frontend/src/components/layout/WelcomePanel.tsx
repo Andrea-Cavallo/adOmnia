@@ -1,17 +1,14 @@
 import { useMemo, useState, type ElementType } from 'react'
 import {
   Activity,
-  ArrowRight,
   BookOpen,
   Braces,
   Bug,
   CircleDot,
-  Clock,
   Container,
   Database,
   FileCode,
   FileText,
-  FolderOpen,
   GitBranch,
   HardDrive,
   Layers,
@@ -34,9 +31,6 @@ import { useThemesStore } from '@/stores/themes'
 import { useTabsStore } from '@/stores/tabs'
 import { inferThemeMode } from '@/lib/themeCatalog'
 import { useAppIcon } from '@/lib/brandAssets'
-import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
-import { applyWorkspaceState, type WorkspaceState } from '@/lib/workspaceState'
-import { loadRecentWorkspaces, rememberRecentWorkspace, type RecentWorkspace } from '@/lib/workspaceRecents'
 import type { TreeNode } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -184,7 +178,6 @@ export function WelcomePanel() {
   const environments = useEnvironmentsStore((s) => s.environments)
   const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
   const allTabs = useTabsStore((s) => s.tabs)
-  const newTab = useTabsStore((s) => s.newTab)
   const responseHistory = useTabsStore((s) => s.responseHistory)
   const legacyTheme = useSettingsStore((s) => s.settings.appearance.theme)
   const themes = useThemesStore((s) => s.themes)
@@ -193,10 +186,6 @@ export function WelcomePanel() {
   const isLight = activeTheme ? inferThemeMode(activeTheme) === 'light' : legacyTheme === 'light'
   const colors = themeVars(isLight)
   const appIcon = useAppIcon()
-  const port = useServerPort()
-  const [recentWorkspaces, setRecentWorkspaces] = useState<RecentWorkspace[]>(loadRecentWorkspaces)
-  const [workspaceLoading, setWorkspaceLoading] = useState<string | null>(null)
-  const [workspaceError, setWorkspaceError] = useState('')
   const [expandedSection, setExpandedSection] = useState<string | null>(null)
 
   const requestCount = useMemo(
@@ -212,33 +201,6 @@ export function WelcomePanel() {
     sseRunning && 'SSE',
     browserRunning && 'Browser',
   ].filter(Boolean) as string[]
-
-  const openRecentWorkspace = async (workspace: RecentWorkspace) => {
-    const url = serverUrl(port, `/workspace/load?name=${encodeURIComponent(workspace.name)}`)
-    if (!url) {
-      setWorkspaceError('Workspace backend is not ready yet.')
-      return
-    }
-    setWorkspaceLoading(workspace.name)
-    setWorkspaceError('')
-    try {
-      const response = await sidecarFetch(url)
-      const text = await response.text()
-      if (!response.ok) throw new Error(text || response.statusText)
-      await applyWorkspaceState((text ? JSON.parse(text) : {}) as WorkspaceState)
-      setRecentWorkspaces(rememberRecentWorkspace(workspace))
-      setActiveRail('collections')
-    } catch (error) {
-      setWorkspaceError(error instanceof Error ? error.message : String(error))
-    } finally {
-      setWorkspaceLoading(null)
-    }
-  }
-
-  const openBlankRequest = () => {
-    newTab()
-    setActiveRail('collections')
-  }
 
   return (
     <div
@@ -278,25 +240,6 @@ export function WelcomePanel() {
             <p className="mt-4 max-w-[680px] font-mono text-[12px] leading-7" style={{ color: colors.muted }}>
               API clients and protocols come first, with documents, signed PDFs and a full local Git surface one click away. Everything stays on your machine.
             </p>
-            <div className="mt-5 flex flex-wrap gap-2">
-              <button onClick={openBlankRequest} className="rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-500">
-                Blank request
-              </button>
-              <button
-                onClick={() => setActiveRail('workspace')}
-                className="rounded-lg border px-3 py-2 text-xs font-semibold hover:border-violet-500/50"
-                style={{ borderColor: colors.cardBorder, background: colors.card, color: colors.title }}
-              >
-                Workspace import
-              </button>
-              <button
-                onClick={() => setActiveRail('pdfeditor')}
-                className="rounded-lg border px-3 py-2 text-xs font-semibold hover:border-violet-500/50"
-                style={{ borderColor: colors.cardBorder, background: colors.card, color: colors.title }}
-              >
-                Open PDF Studio
-              </button>
-            </div>
           </div>
 
           <div className="flex w-[320px] shrink-0 items-center justify-center self-stretch max-lg:order-first max-lg:w-full max-lg:self-auto">
@@ -309,16 +252,6 @@ export function WelcomePanel() {
         </header>
 
         <main className="space-y-5 px-8 py-7">
-          <RecentWorkspacesCard
-            isLight={isLight}
-            colors={colors}
-            onOpenWorkspace={() => setActiveRail('workspace')}
-            recentWorkspaces={recentWorkspaces}
-            workspaceLoading={workspaceLoading}
-            workspaceError={workspaceError}
-            onOpenRecent={(workspace) => void openRecentWorkspace(workspace)}
-          />
-
           <div className="space-y-3">
             {HUB_SECTIONS.map((section) => {
               const isExpanded = expandedSection === section.index
@@ -675,74 +608,3 @@ function MoreToolsCard({
   )
 }
 
-function RecentWorkspacesCard({
-  colors,
-  isLight,
-  onOpenWorkspace,
-  recentWorkspaces,
-  workspaceLoading,
-  workspaceError,
-  onOpenRecent,
-}: {
-  colors: ReturnType<typeof themeVars>
-  isLight: boolean
-  onOpenWorkspace: () => void
-  recentWorkspaces: RecentWorkspace[]
-  workspaceLoading: string | null
-  workspaceError: string
-  onOpenRecent: (workspace: RecentWorkspace) => void
-}) {
-  return (
-    <section>
-      <div
-        className="overflow-hidden rounded-2xl border"
-        style={{
-          borderColor: colors.cardBorder,
-          background: isLight ? 'rgba(255,255,255,.72)' : colors.card,
-        }}
-      >
-        <div className="flex items-center justify-between border-b px-4 py-3" style={{ borderColor: colors.cardBorder }}>
-          <div className="flex items-center gap-2">
-            <Clock size={14} className="text-violet-400" />
-            <div>
-              <h2 className="text-sm font-semibold" style={{ color: colors.title }}>Recent Workspaces</h2>
-              <p className="font-mono text-[10px]" style={{ color: colors.faint }}>Reopen a local workspace without hunting through menus.</p>
-            </div>
-          </div>
-          <button onClick={onOpenWorkspace} className="flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[11px]" style={{ borderColor: colors.cardBorder, color: colors.muted }}>
-            Manage <ArrowRight size={11} />
-          </button>
-        </div>
-        {recentWorkspaces.length === 0 ? (
-          <div className="flex items-center justify-between gap-3 p-4">
-            <p className="font-mono text-[11px]" style={{ color: colors.faint }}>No recent workspace yet.</p>
-            <button onClick={onOpenWorkspace} className="rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-500">
-              Open
-            </button>
-          </div>
-        ) : (
-          <div className="grid gap-2 p-3">
-            {recentWorkspaces.slice(0, 2).map((workspace) => (
-              <button
-                key={workspace.name}
-                onClick={() => onOpenRecent(workspace)}
-                disabled={workspaceLoading !== null}
-                className="group flex min-w-0 items-center gap-2 rounded-xl border px-3 py-2 text-left disabled:opacity-55"
-                style={{ borderColor: colors.cardBorder, background: isLight ? '#ffffff99' : '#0b0d14' }}
-              >
-                <FolderOpen size={14} className="shrink-0 text-violet-400" />
-                <span className="min-w-0 flex-1">
-                  <b className="block truncate text-xs" style={{ color: colors.title }}>{workspace.name}</b>
-                  <span className="block truncate font-mono text-[10px]" style={{ color: colors.faint }}>
-                    {workspaceLoading === workspace.name ? 'Opening...' : `${workspace.tabs} tab${workspace.tabs === 1 ? '' : 's'} · ${new Date(workspace.openedAt).toLocaleString()}`}
-                  </span>
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
-        {workspaceError && <div className="border-t border-error/20 bg-error/10 px-4 py-2 text-[11px] text-error">{workspaceError}</div>}
-      </div>
-    </section>
-  )
-}

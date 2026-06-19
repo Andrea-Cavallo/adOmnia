@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CheckCircle2 } from 'lucide-react'
+import { CheckCircle2, Database, X } from 'lucide-react'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { confirm } from '@/lib/confirmDialog'
 import { useEnvironmentsStore } from '@/stores/environments'
@@ -12,11 +12,19 @@ import { ResultsView } from './ResultsView'
 import { RightRail } from './RightRail'
 import {
   CONNECTIONS_KEY, DRIVER_META, FAVORITES_KEY, HISTORY_KEY, MONGO_DEFAULT_QUERY,
-  SQL_DEFAULT_QUERY, STORAGE_BUCKET,
+  SQL_DEFAULT_QUERY, STORAGE_BUCKET, WORKSPACE_KEY,
   blankConnection, blankTab, browseQuery, countQuery, csvEscape, download,
-  extractCount, extractNames, introspectionQuery, isDangerous, isDangerousMongo, substituteVars,
+  createObjectQuery, defaultConnectionName, extractCount, extractNames, introspectionQuery,
+  isDangerous, isDangerousMongo, nextQueryName, normalizeConnection, substituteVars, validateConnection,
   type DbConnection, type DbDriver, type DbResult, type HistoryItem, type QueryTab, type SchemaItem,
 } from './dbShared'
+
+interface QueryWorkspaceState {
+  tabs: QueryTab[]
+  activeTabId: string
+  limit: number
+  timeoutMs: number
+}
 
 export function DatabasePanel() {
   const port = useServerPort()
@@ -36,11 +44,17 @@ export function DatabasePanel() {
   const [error, setError] = useState('')
   const [running, setRunning] = useState(false)
   const [logs, setLogs] = useState<string[]>([])
+  const [hydrated, setHydrated] = useState(false)
+  const [focusToken, setFocusToken] = useState(0)
 
   const [schemaItems, setSchemaItems] = useState<SchemaItem[]>([])
   const [schemaDb, setSchemaDb] = useState('')
   const [schemaLoading, setSchemaLoading] = useState(false)
+  const [schemaError, setSchemaError] = useState('')
   const [schemaSearch, setSchemaSearch] = useState('')
+  const [createObjectOpen, setCreateObjectOpen] = useState(false)
+  const [createObjectName, setCreateObjectName] = useState('')
+  const [createObjectError, setCreateObjectError] = useState('')
 
   const active = connections.find((c) => c.id === activeId) ?? connections[0] ?? blankConnection()
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? tabs[0]
@@ -59,18 +73,26 @@ export function DatabasePanel() {
   // ── load persisted state ──────────────────────────────────────────────────
   useEffect(() => {
     const load = async () => {
-      const [rawConnections, rawHistory, rawFavorites] = await Promise.all([
+      const [rawConnections, rawHistory, rawFavorites, rawWorkspace] = await Promise.all([
         safeStorageGet(STORAGE_BUCKET, CONNECTIONS_KEY),
         safeStorageGet(STORAGE_BUCKET, HISTORY_KEY),
         safeStorageGet(STORAGE_BUCKET, FAVORITES_KEY),
+        safeStorageGet(STORAGE_BUCKET, WORKSPACE_KEY),
       ])
-      const loaded = rawConnections ? JSON.parse(rawConnections) as DbConnection[] : [blankConnection()]
-      let nextConnections = loaded.length ? loaded : [blankConnection()]
+      let nextConnections = [blankConnection()]
+      if (rawConnections) {
+        try {
+          const loaded = JSON.parse(rawConnections) as Partial<DbConnection>[]
+          if (Array.isArray(loaded) && loaded.length) nextConnections = loaded.map(normalizeConnection)
+        } catch {
+          setError('Saved database connections could not be read; a clean local connection was created.')
+        }
+      }
       const pendingRaw = localStorage.getItem('adomnia.database.pendingConnection')
       if (pendingRaw) {
         try {
           const pending = JSON.parse(pendingRaw) as Partial<DbConnection>
-          const pendingConn: DbConnection = { ...blankConnection(), ...pending, id: crypto.randomUUID() }
+          const pendingConn = normalizeConnection({ ...pending, id: crypto.randomUUID() })
           nextConnections = [pendingConn, ...nextConnections]
           await safeStoragePut(STORAGE_BUCKET, CONNECTIONS_KEY, JSON.stringify(nextConnections))
           setMessage(`Docker Lab connection "${pendingConn.name}" added`)
@@ -82,24 +104,48 @@ export function DatabasePanel() {
       }
       setConnections(nextConnections)
       setActiveId(nextConnections[0]?.id ?? '')
-      setFavorites(rawFavorites ? JSON.parse(rawFavorites) : [])
+      try { setFavorites(rawFavorites ? JSON.parse(rawFavorites) : []) } catch { setFavorites([]) }
       // migrate legacy history (string[]) → HistoryItem[]
       if (rawHistory) {
-        const parsed = JSON.parse(rawHistory) as unknown[]
-        const items: HistoryItem[] = parsed.map((h) =>
-          typeof h === 'string' ? { query: h, ts: 0 } : (h as HistoryItem)
-        )
-        setHistory(items)
+        try {
+          const parsed = JSON.parse(rawHistory) as unknown[]
+          const items: HistoryItem[] = parsed.map((h) =>
+            typeof h === 'string' ? { query: h, ts: 0 } : (h as HistoryItem)
+          )
+          setHistory(items)
+        } catch { setHistory([]) }
       }
-      // seed first tab to match driver
       const first = nextConnections[0]
-      if (first?.driver === 'mongodb') {
-        setTabs([blankTab('Mongo JSON Runner', MONGO_DEFAULT_QUERY)])
+      let restored = false
+      if (rawWorkspace) {
+        try {
+          const workspace = JSON.parse(rawWorkspace) as Partial<QueryWorkspaceState>
+          if (Array.isArray(workspace.tabs) && workspace.tabs.length) {
+            const restoredTabs = workspace.tabs.filter((tab) => tab && typeof tab.id === 'string' && typeof tab.name === 'string' && typeof tab.query === 'string')
+            if (restoredTabs.length) {
+              setTabs(restoredTabs)
+              setActiveTabId(restoredTabs.some((tab) => tab.id === workspace.activeTabId) ? workspace.activeTabId! : restoredTabs[0].id)
+              if (Number.isFinite(workspace.limit)) setLimit(Math.max(1, Math.min(5000, Number(workspace.limit))))
+              if (Number.isFinite(workspace.timeoutMs)) setTimeoutMs(Math.max(1000, Number(workspace.timeoutMs)))
+              restored = true
+            }
+          }
+        } catch { /* use a clean query workspace */ }
       }
+      if (!restored && first?.driver === 'mongodb') setTabs([blankTab('Mongo JSON Runner', MONGO_DEFAULT_QUERY)])
+      setHydrated(true)
     }
     void load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (!hydrated) return
+    const timer = window.setTimeout(() => {
+      void safeStoragePut(STORAGE_BUCKET, WORKSPACE_KEY, JSON.stringify({ tabs, activeTabId, limit, timeoutMs } satisfies QueryWorkspaceState))
+    }, 200)
+    return () => window.clearTimeout(timer)
+  }, [activeTabId, hydrated, limit, tabs, timeoutMs])
 
   useEffect(() => { if (tabs[0]) setActiveTabId((id) => (tabs.some((t) => t.id === id) ? id : tabs[0].id)) }, [tabs])
 
@@ -118,9 +164,12 @@ export function DatabasePanel() {
   }
 
   const setDriver = (driver: DbDriver) => {
-    updateActive({ driver, port: DRIVER_META[driver].port })
+    const automaticName = active.name === 'Local SQLite' || /^(SQLite|PostgreSQL|MySQL|MongoDB) Connection$/i.test(active.name)
+    updateActive({ driver, port: DRIVER_META[driver].port, ...(automaticName ? { name: defaultConnectionName(driver) } : {}) })
     setResult(null)
     setError('')
+    setSchemaError('')
+    setSchemaItems([])
     if (driver === 'mongodb' && !query.trim().startsWith('{')) setQuery(MONGO_DEFAULT_QUERY)
     else if (driver !== 'mongodb' && query.trim().startsWith('{')) setQuery(SQL_DEFAULT_QUERY)
   }
@@ -130,26 +179,41 @@ export function DatabasePanel() {
     setResult(null)
     setError('')
     setSchemaItems([])
+    setSchemaError('')
   }
 
   const addConnection = () => {
-    const conn = { ...blankConnection(), name: `Connection ${connections.length + 1}` }
+    const conn = { ...blankConnection(), name: `Local SQLite ${connections.length + 1}` }
     void persistConnections([...connections, conn])
     setActiveId(conn.id)
   }
 
-  const deleteConnection = () => {
+  const deleteConnection = (id: string) => {
     if (connections.length <= 1) return
-    const next = connections.filter((c) => c.id !== active.id)
+    const next = connections.filter((c) => c.id !== id)
     void persistConnections(next)
-    setActiveId(next[0]?.id ?? '')
+    if (activeId === id) setActiveId(next[0]?.id ?? '')
   }
 
   // ── tabs ──────────────────────────────────────────────────────────────────
   const addTab = () => {
-    const tab = blankTab(`Query ${tabs.length + 1}`, isMongo ? MONGO_DEFAULT_QUERY : SQL_DEFAULT_QUERY)
+    const tab = blankTab(nextQueryName(tabs), '')
     setTabs((prev) => [...prev, tab])
     setActiveTabId(tab.id)
+    setResult(null)
+    setError('')
+    setLogs([])
+    setMessage(`${tab.name} opened`)
+    setFocusToken((token) => token + 1)
+  }
+
+  const selectTab = (id: string) => {
+    if (id === activeTabId) return
+    setActiveTabId(id)
+    setResult(null)
+    setError('')
+    setLogs([])
+    setFocusToken((token) => token + 1)
   }
 
   const closeTab = (id: string) => {
@@ -158,6 +222,9 @@ export function DatabasePanel() {
     const next = tabs.filter((t) => t.id !== id)
     setTabs(next)
     if (activeTabId === id) setActiveTabId(next[Math.max(0, idx - 1)].id)
+    setResult(null)
+    setError('')
+    setLogs([])
   }
 
   // ── backend ───────────────────────────────────────────────────────────────
@@ -172,6 +239,12 @@ export function DatabasePanel() {
 
   const runQuery = async (explain = false, confirmed = false) => {
     setError('')
+    const connectionError = validateConnection(active)
+    if (connectionError) { setError(connectionError); return }
+    if (!renderedQuery.trim()) { setError('Write a query before running it.'); return }
+    if (isMongo) {
+      try { JSON.parse(renderedQuery) } catch { setError('MongoDB queries must be valid JSON.'); return }
+    }
     if (dangerous && !confirmed) {
       const ok = await confirm({
         title: isMongo ? 'Confirm write operation' : 'Confirm dangerous query',
@@ -206,11 +279,13 @@ export function DatabasePanel() {
 
   const testConnection = async () => {
     setError('')
+    const connectionError = validateConnection(active)
+    if (connectionError) { setError(connectionError); return }
     setRunning(true)
     try {
       const data = await api('/database/test', active) as { driver: string; durationMs: number }
       setMessage(`Connected to ${data.driver} in ${data.durationMs} ms`)
-      void refreshSchema()
+      void refreshSchema(active)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -218,32 +293,82 @@ export function DatabasePanel() {
     }
   }
 
-  const refreshSchema = async () => {
-    const introspection = introspectionQuery(active.driver)
+  const refreshSchema = async (target = active) => {
+    const connectionError = validateConnection(target)
+    if (connectionError) { setSchemaError(connectionError); setSchemaItems([]); return }
+    const introspection = introspectionQuery(target.driver)
     if (!introspection) { setSchemaItems([]); return }
     setSchemaLoading(true)
+    setSchemaError('')
     try {
-      const data = await api('/database/query', { connection: active, query: introspection, limit: 1000, timeoutMs, explain: false, confirm: false }) as DbResult
+      const data = await api('/database/query', { connection: target, query: introspection, limit: 1000, timeoutMs, explain: false, confirm: false }) as DbResult
       const names = extractNames(data)
       const baseItems: SchemaItem[] = names.map((name) => ({ name, count: null }))
       setSchemaItems(baseItems)
-      setSchemaDb(active.database || DRIVER_META[active.driver].short)
+      setSchemaDb(target.database || (target.driver === 'sqlite' ? target.sqlitePath.split(/[\\/]/).pop() || 'SQLite' : DRIVER_META[target.driver].short))
       const capped = names.slice(0, 30)
       const counts = await Promise.allSettled(
-        capped.map((n) => api('/database/query', { connection: active, query: countQuery(active.driver, n), limit: 1, timeoutMs, explain: false, confirm: false }) as Promise<DbResult>)
+        capped.map((n) => api('/database/query', { connection: target, query: countQuery(target.driver, n), limit: 1, timeoutMs, explain: false, confirm: false }) as Promise<DbResult>)
       )
       setSchemaItems(baseItems.map((item, idx) => {
         const r = counts[idx]
         return r && r.status === 'fulfilled' ? { ...item, count: extractCount(r.value) } : item
       }))
-    } catch {
-      // schema is best-effort; ignore failures silently
+    } catch (e) {
+      setSchemaItems([])
+      setSchemaError(e instanceof Error ? e.message : String(e))
     } finally {
       setSchemaLoading(false)
     }
   }
 
-  const toggleMongo = () => setDriver(isMongo ? 'postgres' : 'mongodb')
+  const createLocalSQLite = async () => {
+    setError('')
+    setRunning(true)
+    try {
+      const created = await api('/database/sqlite/create-local', { name: `adomnia-${active.id.slice(0, 8)}` }) as { path: string }
+      const nextActive: DbConnection = {
+        ...active,
+        driver: 'sqlite',
+        name: active.name.trim() && active.name !== 'Local SQLite' ? active.name : 'Local SQLite',
+        port: 0,
+        dsn: '',
+        sqlitePath: created.path,
+      }
+      await persistConnections(connections.map((connection) => connection.id === active.id ? nextActive : connection))
+      setMessage(`Local database ready: ${created.path}`)
+      await refreshSchema(nextActive)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setRunning(false)
+    }
+  }
+
+  const createSchemaObject = async () => {
+    setCreateObjectError('')
+    let statement = ''
+    try {
+      statement = createObjectQuery(active.driver, createObjectName)
+    } catch (e) {
+      setCreateObjectError(e instanceof Error ? e.message : String(e))
+      return
+    }
+    const connectionError = validateConnection(active)
+    if (connectionError) { setCreateObjectError(connectionError); return }
+    setRunning(true)
+    try {
+      await api('/database/query', { connection: active, query: statement, limit: 1, timeoutMs, explain: false, confirm: false })
+      setCreateObjectOpen(false)
+      setCreateObjectName('')
+      setMessage(`${active.driver === 'mongodb' ? 'Collection' : 'Table'} created`)
+      await refreshSchema(active)
+    } catch (e) {
+      setCreateObjectError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setRunning(false)
+    }
+  }
 
   const formatQuery = () => {
     if (isMongo) {
@@ -295,6 +420,14 @@ export function DatabasePanel() {
     download('database-result.csv', lines.join('\n'), 'text/csv')
   }
 
+  const pickQuery = (value: string) => {
+    setQuery(value)
+    setResult(null)
+    setError('')
+    setLogs([])
+    setFocusToken((token) => token + 1)
+  }
+
   // ── render ──────────────────────────────────────────────────────────────
   return (
     <div className="relative flex min-h-0 flex-1 overflow-hidden bg-surface-0">
@@ -309,6 +442,7 @@ export function DatabasePanel() {
         onSetDriver={setDriver}
         onTest={testConnection}
         onVault={sendConnectionSecretToVault}
+        onCreateLocalSQLite={() => void createLocalSQLite()}
       />
 
       <section className="grid min-w-0 flex-1 grid-rows-[minmax(0,1fr)_minmax(0,1fr)]">
@@ -322,7 +456,8 @@ export function DatabasePanel() {
           limit={limit}
           timeoutMs={timeoutMs}
           running={running}
-          onSelectTab={setActiveTabId}
+          focusToken={focusToken}
+          onSelectTab={selectTab}
           onAddTab={addTab}
           onCloseTab={closeTab}
           onChangeQuery={setQuery}
@@ -344,27 +479,54 @@ export function DatabasePanel() {
       </section>
 
       <RightRail
-        limit={limit}
-        timeoutMs={timeoutMs}
         isMongo={isMongo}
-        mongoToggleDisabled={false}
         favorites={favorites}
         history={history}
         schemaItems={schemaItems}
         schemaDb={schemaDb}
         schemaLoading={schemaLoading}
+        schemaError={schemaError}
         schemaSearch={schemaSearch}
         currentQuery={query}
-        onSetLimit={setLimit}
-        onSetTimeout={setTimeoutMs}
-        onToggleMongo={toggleMongo}
         onAddFavorite={toggleFavorite}
-        onPickQuery={setQuery}
+        onPickQuery={pickQuery}
         onClearHistory={clearHistory}
         onRefreshSchema={() => void refreshSchema()}
         onSchemaSearch={setSchemaSearch}
-        onPickCollection={(name) => setQuery(browseQuery(active.driver, name))}
+        onPickCollection={(name) => pickQuery(browseQuery(active.driver, name))}
+        onCreateObject={() => { setCreateObjectName(''); setCreateObjectError(''); setCreateObjectOpen(true) }}
       />
+
+      {createObjectOpen && (
+        <div className="fixed inset-0 z-[260] grid place-items-center bg-black/55 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setCreateObjectOpen(false) }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="database-create-title" className="w-full max-w-sm rounded-md border border-border-2 bg-surface-2 shadow-2xl">
+            <div className="flex h-11 items-center gap-2 border-b border-border-1 px-3.5">
+              <Database size={14} className="text-accent" />
+              <h3 id="database-create-title" className="text-[13px] font-semibold text-text-1">Create {isMongo ? 'collection' : 'table'}</h3>
+              <button onClick={() => setCreateObjectOpen(false)} className="ml-auto grid h-7 w-7 place-items-center rounded text-text-3 hover:bg-surface-3 hover:text-text-1" aria-label="Close create database object dialog"><X size={14} /></button>
+            </div>
+            <div className="space-y-3 p-3.5">
+              <label className="block text-[11px] font-medium text-text-2">
+                Name
+                <input
+                  autoFocus
+                  value={createObjectName}
+                  onChange={(event) => { setCreateObjectName(event.target.value); setCreateObjectError('') }}
+                  onKeyDown={(event) => { if (event.key === 'Enter') void createSchemaObject(); if (event.key === 'Escape') setCreateObjectOpen(false) }}
+                  placeholder={isMongo ? 'audit_events' : 'users'}
+                  className="mt-1.5 h-8 w-full rounded-md border border-border-2 bg-surface-0 px-2.5 font-mono text-[12px] text-text-1 outline-none focus:border-accent"
+                />
+              </label>
+              <p className="text-[10.5px] leading-4 text-text-4">A minimal {isMongo ? 'collection' : 'table with a primary key'} will be created on the active connection.</p>
+              {createObjectError && <div className="rounded border border-error/30 bg-error/10 px-2.5 py-2 text-[11px] text-error">{createObjectError}</div>}
+            </div>
+            <div className="flex justify-end gap-2 border-t border-border-1 px-3.5 py-3">
+              <button onClick={() => setCreateObjectOpen(false)} className="h-8 rounded-md border border-border-2 px-3 text-[11.5px] text-text-2 hover:bg-surface-3">Cancel</button>
+              <button onClick={() => void createSchemaObject()} disabled={running || !createObjectName.trim()} className="h-8 rounded-md bg-accent px-3 text-[11.5px] font-semibold text-white hover:bg-accent-hover disabled:opacity-40">Create</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* success toast */}
       {message && !error && (

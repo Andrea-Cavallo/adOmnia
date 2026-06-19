@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Columns3, Download, Maximize2, RefreshCw, Search } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Columns3, Download, Maximize2, Minimize2, RefreshCw, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CellValue, detectCellType, inferColumnKind, type DbResult } from './dbShared'
 
@@ -23,11 +23,15 @@ export function ResultsView({ result, isMongo, error, logs, onExportJson, onExpo
   const [pageSize, setPageSize] = useState(50)
   const [search, setSearch] = useState('')
   const [exportMenu, setExportMenu] = useState(false)
+  const [columnsMenu, setColumnsMenu] = useState(false)
+  const [hiddenColumns, setHiddenColumns] = useState<string[]>([])
+  const [expanded, setExpanded] = useState(false)
 
-  useEffect(() => { setPage(1); setTab('results') }, [result])
+  useEffect(() => { setPage(1); setTab('results'); setHiddenColumns([]) }, [result])
 
   const rows = result?.rows ?? []
   const columns = result?.columns ?? []
+  const visibleColumns = columns.filter((column) => !hiddenColumns.includes(column))
 
   const filtered = useMemo(() => {
     if (!search.trim()) return rows
@@ -48,7 +52,10 @@ export function ResultsView({ result, isMongo, error, logs, onExportJson, onExpo
   ]
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-surface-0">
+    <div className={cn(
+      'flex min-h-0 flex-1 flex-col bg-surface-0',
+      expanded && 'fixed inset-3 z-[240] rounded-md border border-border-2 shadow-2xl',
+    )}>
       {/* tab strip */}
       <div className="flex h-9 flex-none items-center gap-0.5 border-b border-border-1 bg-surface-1 px-2">
         {tabs.map((t) => (
@@ -92,7 +99,38 @@ export function ResultsView({ result, isMongo, error, logs, onExportJson, onExpo
               />
             </div>
           ) : null}
-          <button className="grid h-7 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1" title="Columns"><Columns3 size={13} /></button>
+          <div className="relative">
+            <button
+              onClick={() => setColumnsMenu((value) => !value)}
+              disabled={!columns.length}
+              className="grid h-7 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-30"
+              title="Choose columns"
+            >
+              <Columns3 size={13} />
+            </button>
+            {columnsMenu && (
+              <>
+                <div className="fixed inset-0 z-20" onClick={() => setColumnsMenu(false)} />
+                <div className="absolute right-0 top-full z-30 mt-1 max-h-64 w-52 overflow-y-auto rounded-md border border-border-2 bg-surface-3 p-1 shadow-xl">
+                  {columns.map((column) => {
+                    const visible = !hiddenColumns.includes(column)
+                    const lastVisible = visible && visibleColumns.length === 1
+                    return (
+                      <button
+                        key={column}
+                        disabled={lastVisible}
+                        onClick={() => setHiddenColumns((current) => visible ? [...current, column] : current.filter((item) => item !== column))}
+                        className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] text-text-2 hover:bg-surface-4 disabled:opacity-50"
+                      >
+                        <span className="grid h-4 w-4 place-items-center rounded border border-border-3">{visible && <Check size={11} className="text-accent" />}</span>
+                        <span className="truncate font-mono">{column}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </>
+            )}
+          </div>
           <div className="relative">
             <button onClick={() => setExportMenu((v) => !v)} disabled={!result} className="grid h-7 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-30" title="Export"><Download size={13} /></button>
             {exportMenu && (
@@ -105,7 +143,9 @@ export function ResultsView({ result, isMongo, error, logs, onExportJson, onExpo
               </>
             )}
           </div>
-          <button className="grid h-7 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1" title="Expand"><Maximize2 size={13} /></button>
+          <button onClick={() => setExpanded((value) => !value)} className="grid h-7 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1" title={expanded ? 'Exit expanded results' : 'Expand results'}>
+            {expanded ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+          </button>
         </div>
       </div>
 
@@ -124,7 +164,7 @@ export function ResultsView({ result, isMongo, error, logs, onExportJson, onExpo
             {logs.length === 0 ? <span className="text-text-4">No log output.</span> : logs.map((l, i) => <div key={i}>{l}</div>)}
           </div>
         ) : result.columns?.length ? (
-          <DataTable columns={columns} rows={pageRows} allRows={rows} startIndex={(page - 1) * pageSize} />
+          <DataTable columns={visibleColumns} rows={pageRows} allRows={rows} startIndex={(page - 1) * pageSize} />
         ) : (
           <div className="flex h-full items-center justify-center text-[12px] text-text-4">
             Statement executed. Rows affected: {result.rowsAffected}

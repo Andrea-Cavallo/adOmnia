@@ -16,6 +16,7 @@ import {
 import { downloadText, readFileSmart } from '@/lib/fileUtils'
 import {
   LATEX_TEMPLATES,
+  isLegacyBundledResume,
   latexToPlainText,
   parseResumePreview,
   type LatexResumeEntry,
@@ -52,9 +53,11 @@ function loadInitialState(): SavedLatexState {
     const templateId = typeof parsed.templateId === 'string' ? parsed.templateId : fallback.id
     const templateExists = LATEX_TEMPLATES.some((template) => template.id === templateId)
     if (!templateExists) return { templateId: fallback.id, source: fallback.source }
+    const savedSource = typeof parsed.source === 'string' ? parsed.source : ''
+    if (isLegacyBundledResume(templateId, savedSource)) return { templateId: fallback.id, source: fallback.source }
     return {
       templateId,
-      source: typeof parsed.source === 'string' && parsed.source.trim() ? parsed.source : fallback.source,
+      source: savedSource.trim() ? savedSource : fallback.source,
     }
   } catch {
     return { templateId: fallback.id, source: fallback.source }
@@ -142,7 +145,9 @@ function ResumePreview({ source }: { source: string }) {
     <div className="min-h-[980px] w-[700px] bg-white px-[54px] py-[42px] text-[#111827] shadow-xl">
       <header className="flex items-start justify-between gap-6 font-serif text-[12px] leading-4">
         <div>
-          <h1 className="text-[19px] leading-5 text-[#111827]">{preview.name}</h1>
+          <h1 className="text-[22px] font-bold leading-6 text-[#111827]">{preview.name}</h1>
+          {preview.role && <p className="mt-1 font-sans text-[13px] font-semibold text-[#0e7490]">{preview.role}</p>}
+          {preview.location && <p className="text-[11px] text-[#475569]">{preview.location}</p>}
           {preview.website && <p className="text-[12px] leading-4">{preview.website}</p>}
         </div>
         <div className="shrink-0 text-right">
@@ -152,11 +157,16 @@ function ResumePreview({ source }: { source: string }) {
       </header>
 
       <main className="mt-5 space-y-3">
-        {preview.summary && <section className="font-serif text-[12px] leading-5 text-[#111827]">{preview.summary}</section>}
+        {preview.summary && (
+          <section className="space-y-1.5">
+            <div className="border-b border-[#0e7490] pb-[2px] font-sans text-[13px] font-bold uppercase text-[#0e7490]">Profile</div>
+            <p className="font-serif text-[12px] leading-5 text-[#111827]">{preview.summary}</p>
+          </section>
+        )}
 
-        <ResumeEntryBlock icon={GraduationCap} title="Education" entries={preview.education} />
         <ResumeEntryBlock icon={BriefcaseBusiness} title="Experience" entries={preview.experience} />
         <ResumeEntryBlock icon={BookOpen} title="Projects" entries={preview.projects} />
+        <ResumeEntryBlock icon={GraduationCap} title="Education" entries={preview.education} />
         {preview.skills.length > 0 && (
           <section className="space-y-1.5">
             <div className="flex items-center gap-1.5 border-b border-[#111827] pb-[2px]">

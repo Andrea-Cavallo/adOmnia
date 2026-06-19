@@ -250,6 +250,22 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
   }, [tab, view, searchOpen])
 
   const autoValidateSchema = useSettingsStore((s) => s.settings.requests.autoValidateSchema ?? true)
+  const formatResponseAuto = useSettingsStore((s) => s.settings.editor.formatResponseAuto ?? true)
+  const responseMaxRenderSizeKB = useSettingsStore((s) => s.settings.editor.responseMaxRenderSizeKB ?? 2048)
+
+  // Auto-format: when a new structured response arrives, default to the pretty view.
+  useEffect(() => {
+    if (!response || !formatResponseAuto) return
+    const looksStructured =
+      response.contentType.includes('json') ||
+      response.contentType.includes('xml') ||
+      /^\s*[[{<]/.test(response.body)
+    if (looksStructured) {
+      setView('pretty')
+      updateViewState(tabId, { responseBodyView: 'pretty' })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [response?.body, formatResponseAuto])
   const contractResult = useMemo(() => {
     if (!response || !autoValidateSchema) return null
     return validateContract(oaSpec, oaPath, oaMethod, response)
@@ -266,15 +282,18 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
   const allTestsPassed = assertionResults.every((r) => r.passed) && scriptRuns.every((run) => run.passed)
 
   const displayBody = response ? (beautifiedBody ?? response.body) : ''
+  // Cap heavy syntax highlighting / pretty-printing for very large payloads.
+  const bodySizeKB = displayBody.length / 1024
+  const tooLargeToRender = bodySizeKB > responseMaxRenderSizeKB
   const isJson = response ? (response.contentType.includes('json') || displayBody.trim().match(/^[\[{]/) != null) : false
   let validationBadge: string | null = null
-  if (response && isJson) {
+  if (response && isJson && !tooLargeToRender) {
     try { JSON.parse(displayBody); validationBadge = 'valid' } catch { validationBadge = 'invalid' }
   }
 
   // Pretty-printed body used for both display and match counting
   let prettyBody = displayBody
-  if (isJson && view === 'pretty') {
+  if (isJson && view === 'pretty' && !tooLargeToRender) {
     try { prettyBody = JSON.stringify(JSON.parse(displayBody), null, 2) } catch { /* keep raw */ }
   }
 
@@ -683,12 +702,28 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
                     <span>Response is not valid JSON - showing raw body.</span>
                   </div>
                 )}
-                <pre className="text-xs font-mono whitespace-pre-wrap break-all">
-                  {isJson && view === 'pretty' && validationBadge === 'valid'
-                    ? <JsonHighlight text={prettyBody} searchTerm={searchQuery} />
-                    : <TextHighlight text={prettyBody} searchTerm={searchQuery} />
-                  }
-                </pre>
+                {tooLargeToRender ? (
+                  <>
+                    <div className="mb-2 flex items-center gap-2 rounded border border-warning/20 bg-warning/10 px-3 py-2 text-[11px] text-warning">
+                      <AlertTriangle size={12} />
+                      <span>
+                        Response is {Math.round(bodySizeKB)} KB — syntax highlighting disabled for performance
+                        (limit {responseMaxRenderSizeKB} KB, change it in Settings → Editor).
+                      </span>
+                    </div>
+                    <pre className="text-xs font-mono whitespace-pre-wrap break-all text-text-2">
+                      {prettyBody.slice(0, responseMaxRenderSizeKB * 1024)}
+                      {displayBody.length > responseMaxRenderSizeKB * 1024 && '\n… truncated'}
+                    </pre>
+                  </>
+                ) : (
+                  <pre className="text-xs font-mono whitespace-pre-wrap break-all">
+                    {isJson && view === 'pretty' && validationBadge === 'valid'
+                      ? <JsonHighlight text={prettyBody} searchTerm={searchQuery} />
+                      : <TextHighlight text={prettyBody} searchTerm={searchQuery} />
+                    }
+                  </pre>
+                )}
               </>
             )
           )}

@@ -53,6 +53,10 @@ export function resolveContextMenuPosition(input: MenuPositionInput): { left: nu
   return { left, top }
 }
 
+export function isContextMenuBackdrop(target: EventTarget | null, currentTarget: EventTarget | null): boolean {
+  return target === currentTarget
+}
+
 /**
  * Reusable, keyboard-navigable context menu with nested submenus that stays
  * inside the viewport. Used by the Git Sync commit/file menus. Styling matches
@@ -62,26 +66,29 @@ export function resolveContextMenuPosition(input: MenuPositionInput): { left: nu
  * Escape close, and disabled items are skipped.
  */
 export function ContextMenu({ x, y, items, onSelect, onClose }: ContextMenuProps) {
-  const rootRef = useRef<HTMLDivElement>(null)
-
-  // Close on outside click / scroll / resize.
+  // Close when focus leaves the app or the viewport changes. Backdrop clicks
+  // are handled by the portal overlay because it covers the full viewport.
   useEffect(() => {
-    const onDown = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) onClose()
-    }
     const onScrollOrResize = () => onClose()
-    document.addEventListener('mousedown', onDown)
     window.addEventListener('resize', onScrollOrResize)
     window.addEventListener('blur', onClose)
     return () => {
-      document.removeEventListener('mousedown', onDown)
       window.removeEventListener('resize', onScrollOrResize)
       window.removeEventListener('blur', onClose)
     }
   }, [onClose])
 
   return createPortal(
-    <div ref={rootRef} className="fixed inset-0 z-[300]" onContextMenu={(e) => e.preventDefault()}>
+    <div
+      className="fixed inset-0 z-[300]"
+      onPointerDown={(event) => {
+        if (isContextMenuBackdrop(event.target, event.currentTarget)) onClose()
+      }}
+      onContextMenu={(event) => {
+        event.preventDefault()
+        if (isContextMenuBackdrop(event.target, event.currentTarget)) onClose()
+      }}
+    >
       <MenuLevel
         items={items}
         x={x}

@@ -23,9 +23,12 @@ export async function sendRequest(
   const headers: Record<string, string> = {}
   const requestSettings = useSettingsStore.getState().settings.requests
 
+  const trimHeaders = requestSettings.trimWhitespaceInHeaders
   for (const h of request.headers) {
     if (h.enabled && h.key) {
-      headers[substVars(h.key, resolvedVars)] = substVars(h.value, resolvedVars)
+      const k = substVars(h.key, resolvedVars)
+      const v = substVars(h.value, resolvedVars)
+      headers[trimHeaders ? k.trim() : k] = trimHeaders ? v.trim() : v
     }
   }
 
@@ -39,7 +42,8 @@ export async function sendRequest(
     usp.append(substVars(p.key, resolvedVars), substVars(p.value, resolvedVars))
   }
   const queryString = enabledParams.length ? usp.toString() : ''
-  const fullUrl = queryString ? appendQueryParams(stripQueryString(url), queryString) : url
+  const rawFullUrl = queryString ? appendQueryParams(stripQueryString(url), queryString) : url
+  const fullUrl = requestSettings.encodeUrlAutomatically ? encodeUrlSafe(rawFullUrl) : rawFullUrl
 
   // Build Cookie header: explicit cookies + jar cookies (explicit take priority)
   {
@@ -96,7 +100,11 @@ export async function sendRequest(
     body: bodyStr,
     timeoutMs: timeoutMs > 0 ? timeoutMs : 30000,
     followRedirects: request.followRedirects ?? requestSettings.followRedirects,
+    maxRedirects: requestSettings.maxRedirects ?? 10,
+    stripAuthOnRedirect: requestSettings.stripAuthOnRedirect ?? true,
     skipTlsVerify: requestSettings.skipCertVerify ?? false,
+    clientCertPem: requestSettings.clientCertPem ?? '',
+    clientCertPassphrase: requestSettings.clientCertPassphrase ?? '',
     hostsMap: activeHostEntries.map((e) => ({ host: e.host, ip: e.ip, enabled: e.enabled })),
   }
 
@@ -141,10 +149,14 @@ export async function prepareRequestForCodegen(
     throw new Error(`Unable to resolve Vault references: ${msg}`)
   }
 
+  const codegenSettings = useSettingsStore.getState().settings.requests
+  const trimHeaders = codegenSettings.trimWhitespaceInHeaders
   const headers: Record<string, string> = {}
   for (const header of request.headers) {
     if (header.enabled && header.key) {
-      headers[substVars(header.key, resolvedVars)] = substVars(header.value, resolvedVars)
+      const k = substVars(header.key, resolvedVars)
+      const v = substVars(header.value, resolvedVars)
+      headers[trimHeaders ? k.trim() : k] = trimHeaders ? v.trim() : v
     }
   }
   const cookies = (request.cookies ?? []).filter((cookie) => cookie.enabled && cookie.key)
@@ -159,7 +171,8 @@ export async function prepareRequestForCodegen(
     query.append(substVars(param.key, resolvedVars), substVars(param.value, resolvedVars))
   }
   const queryString = query.toString()
-  const url = queryString ? appendQueryParams(stripQueryString(baseUrl), queryString) : baseUrl
+  const rawUrl = queryString ? appendQueryParams(stripQueryString(baseUrl), queryString) : baseUrl
+  const url = codegenSettings.encodeUrlAutomatically ? encodeUrlSafe(rawUrl) : rawUrl
   const body = getBody(request, resolvedVars, headers)
   await applyAuth(request, headers, resolvedVars, url, body)
   const serializedBody = body instanceof URLSearchParams
@@ -213,6 +226,12 @@ async function applyAuth(
       break
     }
   }
+}
+
+// Percent-encode characters that are unsafe in a URL (spaces, quotes, etc.)
+// while leaving structure and {{variable}} placeholders intact.
+function encodeUrlSafe(url: string): string {
+  return url.replace(/[ "<>`^|\\]/g, (c) => encodeURIComponent(c))
 }
 
 function pathParamValues(request: RequestItem, vars: Record<string, string>): Record<string, string> {
