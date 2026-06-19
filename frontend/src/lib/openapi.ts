@@ -1,13 +1,13 @@
 import type { Collection, TreeNode, RequestItem, KVRow, RequestBody, RequestAuth } from '@/lib/types'
 import { uid, blankBody, blankAuth } from '@/lib/types'
-import { parse as parseYaml } from 'yaml'
+import { parseYamlLenient } from '@/lib/yamlParse'
 
 function tryParseYaml(text: string): unknown {
   const t = text.trim()
   if (t.startsWith('{') || t.startsWith('[')) {
     try { return JSON.parse(t) } catch { throw new Error('Invalid JSON') }
   }
-  try { return parseYaml(t) } catch { throw new Error('Invalid OpenAPI spec format (must be JSON or YAML)') }
+  try { return parseYamlLenient(t) } catch { throw new Error('Invalid OpenAPI spec format (must be JSON or YAML)') }
 }
 
 interface OpenAPIOperation {

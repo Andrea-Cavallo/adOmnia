@@ -1,8 +1,23 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '@/lib/utils'
 import { uid } from '@/lib/types'
 import { useEnvironmentsStore } from '@/stores/environments'
+import { useSettingsStore } from '@/stores/settings'
+
+interface VarCandidate {
+  name: string
+  isVault: boolean
+}
+
+interface AutocompleteState {
+  start: number
+  query: string
+  items: VarCandidate[]
+  index: number
+  x: number
+  y: number
+}
 
 interface VarHighlightInputProps {
   value: string
@@ -63,6 +78,31 @@ function charIndexAtX(input: HTMLInputElement, clientX: number): number {
     accumulated += cw
   }
   return text.length
+}
+
+/** Pixel X (client coords) of the caret at the given character index. */
+function caretXAtIndex(input: HTMLInputElement, charIdx: number): number {
+  const ctx = getMeasureCtx()
+  const rect = input.getBoundingClientRect()
+  const cs = window.getComputedStyle(input)
+  const paddingLeft = parseFloat(cs.paddingLeft) || 0
+  if (!ctx) return rect.left + paddingLeft
+  ctx.font = `${cs.fontSize} ${cs.fontFamily}`
+  const width = ctx.measureText(input.value.slice(0, charIdx)).width
+  return rect.left + paddingLeft + width - input.scrollLeft
+}
+
+/**
+ * If the caret sits inside an unterminated `{{…` token, return the token's start
+ * index and the partial query typed so far. Otherwise null.
+ */
+function openVarQueryAt(text: string, caret: number): { start: number; query: string } | null {
+  const before = text.slice(0, caret)
+  const open = before.lastIndexOf('{{')
+  if (open === -1) return null
+  const between = before.slice(open + 2)
+  if (between.includes('}}') || between.includes('{{')) return null
+  return { start: open, query: between.trim() }
 }
 
 // ─── Segment parsing ──────────────────────────────────────────────────────────
@@ -178,6 +218,89 @@ export function VarHighlightInput({
   const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
   const environments = useEnvironmentsStore((s) => s.environments)
   const updateVariables = useEnvironmentsStore((s) => s.updateVariables)
+  const showVaultInAutocomplete = useSettingsStore((s) => s.settings.vault.showVaultInAutocomplete)
+  const [autocomplete, setAutocomplete] = useState<AutocompleteState | null>(null)
+
+  // Variable candidates for `{{ }}` autocomplete. Vault-backed variables (value
+  // starts with `vault:`) are hidden unless the setting allows them.
+  const varCandidates = useMemo<VarCandidate[]>(() => {
+    return Object.entries(resolvedVars)
+      .map(([name, val]) => ({ name, isVault: String(val).startsWith('vault:') }))
+      .filter((c) => showVaultInAutocomplete || !c.isVault)
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }, [resolvedVars, showVaultInAutocomplete])
+
+  const refreshAutocomplete = useCallback(() => {
+    const input = ref.current
+    if (!input || varCandidates.length === 0) { setAutocomplete(null); return }
+    const caret = input.selectionStart ?? input.value.length
+    const open = openVarQueryAt(input.value, caret)
+    if (!open) { setAutocomplete(null); return }
+    const q = open.query.toLowerCase()
+    const items = varCandidates
+      .filter((c) => c.name.toLowerCase().includes(q))
+      .sort((a, b) => {
+        const as = a.name.toLowerCase().startsWith(q) ? 0 : 1
+        const bs = b.name.toLowerCase().startsWith(q) ? 0 : 1
+        return as - bs || a.name.localeCompare(b.name)
+      })
+      .slice(0, 8)
+    if (items.length === 0) { setAutocomplete(null); return }
+    const rect = input.getBoundingClientRect()
+    setAutocomplete((prev) => ({
+      start: open.start,
+      query: open.query,
+      items,
+      index: prev && prev.start === open.start ? Math.min(prev.index, items.length - 1) : 0,
+      x: caretXAtIndex(input, open.start),
+      y: rect.bottom,
+    }))
+  }, [ref, varCandidates])
+
+  const acceptAutocomplete = useCallback((candidate: VarCandidate) => {
+    const input = ref.current
+    if (!input || !autocomplete) return
+    const caret = input.selectionStart ?? input.value.length
+    let tail = value.slice(caret)
+    if (tail.startsWith('}}')) tail = tail.slice(2)
+    const token = `{{${candidate.name}}}`
+    const next = value.slice(0, autocomplete.start) + token + tail
+    const newCaret = autocomplete.start + token.length
+    onChange(next)
+    setAutocomplete(null)
+    requestAnimationFrame(() => {
+      if (ref.current) {
+        ref.current.focus()
+        ref.current.setSelectionRange(newCaret, newCaret)
+      }
+    })
+  }, [ref, autocomplete, value, onChange])
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (autocomplete && autocomplete.items.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setAutocomplete((a) => (a ? { ...a, index: (a.index + 1) % a.items.length } : a))
+        return
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setAutocomplete((a) => (a ? { ...a, index: (a.index - 1 + a.items.length) % a.items.length } : a))
+        return
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault()
+        acceptAutocomplete(autocomplete.items[autocomplete.index])
+        return
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setAutocomplete(null)
+        return
+      }
+    }
+    onKeyDown?.(e)
+  }, [autocomplete, acceptAutocomplete, onKeyDown])
 
   const segments  = parseSegments(value, resolvedVars, hasActiveEnv)
   const overlayHtml = buildHtml(segments)
@@ -288,12 +411,13 @@ export function VarHighlightInput({
         value={value}
         onChange={(e) => {
           onChange(e.target.value)
-          requestAnimationFrame(syncScroll)
+          requestAnimationFrame(() => { syncScroll(); refreshAutocomplete() })
         }}
-        onKeyDown={onKeyDown}
+        onKeyDown={handleKeyDown}
         onKeyUp={syncScroll}
-        onClick={syncScroll}
+        onClick={() => { syncScroll(); refreshAutocomplete() }}
         onScroll={syncScroll}
+        onBlur={() => window.setTimeout(() => setAutocomplete(null), 120)}
         onContextMenu={handleContextMenu}
         onMouseMove={handleMouseMove}
         onMouseLeave={() => setTooltip(null)}
@@ -330,6 +454,38 @@ export function VarHighlightInput({
           )}>
             {tooltip.content}
           </div>
+        </div>,
+        document.body,
+      )}
+
+      {/* Variable autocomplete dropdown */}
+      {autocomplete && createPortal(
+        <div
+          className="fixed z-[10000] min-w-[180px] max-w-[320px] overflow-hidden rounded-md border border-border-2 bg-surface-1 py-1 shadow-xl"
+          style={{
+            left: Math.min(autocomplete.x, window.innerWidth - 332),
+            top: Math.min(autocomplete.y + 4, window.innerHeight - 200),
+          }}
+        >
+          {autocomplete.items.map((item, i) => (
+            <button
+              key={item.name}
+              // onMouseDown (not click) so it fires before the input's blur closes the menu.
+              onMouseDown={(e) => { e.preventDefault(); acceptAutocomplete(item) }}
+              onMouseEnter={() => setAutocomplete((a) => (a ? { ...a, index: i } : a))}
+              className={cn(
+                'flex w-full items-center gap-2 px-2.5 py-1 text-left font-mono text-[11px]',
+                i === autocomplete.index ? 'bg-accent/15 text-text-1' : 'text-text-2 hover:bg-surface-2',
+              )}
+            >
+              <span className="min-w-0 flex-1 truncate">{item.name}</span>
+              {item.isVault && (
+                <span className="shrink-0 rounded bg-warning/15 px-1 text-[8px] font-semibold uppercase tracking-wide text-warning">
+                  vault
+                </span>
+              )}
+            </button>
+          ))}
         </div>,
         document.body,
       )}

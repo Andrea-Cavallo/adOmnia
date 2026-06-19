@@ -5,7 +5,7 @@
 // Swagger 2.0) are kept as named references and resolved on demand by the
 // SchemaView component against `schemaRegistry`, with a depth guard for cycles.
 
-import { parse as parseYaml } from 'yaml'
+import { parseYamlLenient as parseYaml } from '@/lib/yamlParse'
 
 export interface ApiDocSchema {
   // A permissive JSON-Schema-ish node. `$ref` is preserved for lazy resolution.

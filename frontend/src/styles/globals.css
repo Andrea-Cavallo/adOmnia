@@ -143,7 +143,9 @@
   }
 
   body {
-    font-family: var(--font-sans);
+    /* Driven by the "UI Font" setting via the --font-ui variable (useAppearance).
+       Falls back to the sans stack if --font-ui is ever unset. */
+    font-family: var(--font-ui, var(--font-sans));
     font-size: var(--ui-font-size);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
