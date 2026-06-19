@@ -66,4 +66,26 @@ describe('flowRunner', () => {
 
     expect(result.entries[result.entries.length - 1]?.error).toBe('No error branch is configured from Broken request.')
   })
+
+  it('retries request nodes and records attempts', async () => {
+    const graph: FlowGraphDefinition = {
+      settings: DEFAULT_FLOW_SETTINGS,
+      nodes: [
+        { id: 'a', type: 'request', label: 'Retry request', x: 0, y: 0, mermaidKey: 'A', config: { request: request('retry'), expectedStatus: '2xx', retryCount: 2 } },
+      ],
+      edges: [],
+    }
+
+    let calls = 0
+    const result = await runApiFlow(graph, {
+      initialVars: {},
+      execute: async (_request, vars) => {
+        calls += 1
+        return { response: response(calls < 3 ? 500 : 200), vars, mutations: {}, scriptRuns: [] }
+      },
+    })
+
+    expect(calls).toBe(3)
+    expect(result.entries[0]).toMatchObject({ status: 'success', attempts: 3 })
+  })
 })

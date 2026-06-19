@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type { RequestAuth } from '@/lib/types'
-import { fetchOAuth2TokenManual } from '@/lib/sendRequest'
+import { fetchOAuth2TokenDetailsManual } from '@/lib/sendRequest'
 import { authorizeOAuth2Pkce } from '@/lib/oauth2Flow'
+import { discoverOidcProvider, fetchJwks, validateIdToken, type NormalizedOidcDiscovery } from '@/lib/oidc'
 import { useServerPort } from '@/lib/useServerPort'
 
 interface AuthEditorProps {
@@ -49,9 +50,34 @@ export function AuthEditor({ auth, onChange }: AuthEditorProps) {
   const [fetching, setFetching] = useState(false)
   const [fetchError, setFetchError] = useState('')
   const [fetchStatus, setFetchStatus] = useState('')
+  const [discovering, setDiscovering] = useState(false)
   const authController = useRef<AbortController | null>(null)
 
   useEffect(() => () => authController.current?.abort(), [])
+
+  const validateOidcSession = async (nextAuth: RequestAuth): Promise<RequestAuth> => {
+    if (!nextAuth.oidcIdToken || !nextAuth.oidcDiscovery || !nextAuth.oauth2ClientId) return nextAuth
+    try {
+      const jwks = await fetchJwks(nextAuth.oidcDiscovery.jwksUri)
+      const claims = await validateIdToken({
+        idToken: nextAuth.oidcIdToken,
+        issuer: nextAuth.oidcDiscovery.issuer,
+        clientId: nextAuth.oauth2ClientId,
+        nonce: nextAuth.oidcNonce,
+        jwks,
+        fetchJwks: () => fetchJwks(nextAuth.oidcDiscovery!.jwksUri),
+      })
+      return {
+        ...nextAuth,
+        oidcUserClaims: claims,
+        oidcSessionExpiresAt: typeof claims.exp === 'number' ? claims.exp * 1000 : nextAuth.oidcSessionExpiresAt,
+        oidcValidationError: '',
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      return { ...nextAuth, token: '', oidcValidationError: message }
+    }
+  }
 
   const handleFetchToken = async () => {
     authController.current?.abort()
@@ -63,10 +89,20 @@ export function AuthEditor({ auth, onChange }: AuthEditorProps) {
     try {
       if (auth.oauth2GrantType === 'authorization_code_pkce') {
         const result = await authorizeOAuth2Pkce(auth, port, setFetchStatus, controller.signal)
-        onChange(result.auth)
+        const validated = await validateOidcSession(result.auth)
+        onChange(validated)
+        if (validated.oidcValidationError) throw new Error(validated.oidcValidationError)
       } else {
-        const token = await fetchOAuth2TokenManual(auth)
-        onChange({ ...auth, token })
+        const token = await fetchOAuth2TokenDetailsManual(auth)
+        const nextAuth = await validateOidcSession({
+          ...auth,
+          token: token.accessToken,
+          oauth2RefreshToken: token.refreshToken ?? auth.oauth2RefreshToken,
+          oauth2ExpiresAt: token.expiresAt,
+          oidcIdToken: token.idToken,
+        })
+        onChange(nextAuth)
+        if (nextAuth.oidcValidationError) throw new Error(nextAuth.oidcValidationError)
       }
       setFetchStatus('Access token received.')
     } catch (e) {
@@ -78,6 +114,31 @@ export function AuthEditor({ auth, onChange }: AuthEditorProps) {
         authController.current = null
         setFetching(false)
       }
+    }
+  }
+
+  const handleDiscover = async () => {
+    if (!auth.oidcIssuerUrl) return
+    setDiscovering(true)
+    setFetchError('')
+    setFetchStatus('Discovering OIDC provider...')
+    try {
+      const discovery: NormalizedOidcDiscovery = await discoverOidcProvider(auth.oidcIssuerUrl)
+      onChange({
+        ...auth,
+        oidcDiscoveryStatus: 'success',
+        oidcDiscoveryError: '',
+        oidcDiscovery: discovery,
+        oauth2AuthUrl: discovery.authorizationEndpoint,
+        oauth2TokenUrl: discovery.tokenEndpoint,
+      })
+      setFetchStatus('OIDC discovery complete.')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      onChange({ ...auth, oidcDiscoveryStatus: 'error', oidcDiscoveryError: message })
+      setFetchError(message)
+    } finally {
+      setDiscovering(false)
     }
   }
 
@@ -138,6 +199,37 @@ export function AuthEditor({ auth, onChange }: AuthEditorProps) {
 
       {auth.type === 'oauth2' && (
         <>
+          <Field label="Issuer URL">
+            <div className="flex flex-1 gap-2">
+              <Input
+                value={auth.oidcIssuerUrl ?? ''}
+                onChange={(e) => onChange({ ...auth, oidcIssuerUrl: e.target.value, oidcDiscoveryStatus: 'idle' })}
+                placeholder="https://issuer.example.com"
+              />
+              <button
+                onClick={handleDiscover}
+                disabled={discovering || !auth.oidcIssuerUrl}
+                className="h-7 rounded border border-border-2 bg-surface-2 px-2 text-[11px] font-semibold text-text-2 hover:bg-surface-3 disabled:opacity-50"
+              >
+                {discovering ? '...' : 'Discover'}
+              </button>
+            </div>
+          </Field>
+          {auth.oidcDiscovery && (
+            <div className="mx-3 rounded border border-border-1 bg-surface-1 px-3 py-2 text-[10px] text-text-3">
+              <div className="mb-1 flex items-center justify-between">
+                <span className="font-semibold text-success">Discovery ready</span>
+                <span>{auth.oidcDiscovery.issuer}</span>
+              </div>
+              <div className="grid gap-1 font-mono">
+                <span>authorize: {auth.oidcDiscovery.authorizationEndpoint}</span>
+                <span>token: {auth.oidcDiscovery.tokenEndpoint}</span>
+                <span>jwks: {auth.oidcDiscovery.jwksUri}</span>
+                {auth.oidcDiscovery.userinfoEndpoint && <span>userinfo: {auth.oidcDiscovery.userinfoEndpoint}</span>}
+                {auth.oidcDiscovery.endSessionEndpoint && <span>logout: {auth.oidcDiscovery.endSessionEndpoint}</span>}
+              </div>
+            </div>
+          )}
           <Field label="Grant">
             <select
               value={auth.oauth2GrantType || 'client_credentials'}
@@ -215,6 +307,11 @@ export function AuthEditor({ auth, onChange }: AuthEditorProps) {
               <div className="mx-3 rounded border border-border-1 bg-surface-1 px-3 py-2 text-[11px] text-text-3">
                 adOmnia generates PKCE and listens on a temporary loopback callback. Register a redirect URI
                 beginning with <span className="font-mono text-text-2">http://127.0.0.1</span> in your provider.
+                {port && (
+                  <div className="mt-1 font-mono text-[10px] text-accent">
+                    http://127.0.0.1:{port}/oauth/callback
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -240,10 +337,28 @@ export function AuthEditor({ auth, onChange }: AuthEditorProps) {
           {fetchStatus && (
             <div className="px-3 pl-[132px] text-[11px] text-success">{fetchStatus}</div>
           )}
+          {auth.oidcValidationError && (
+            <div className="mx-3 rounded border border-error/30 bg-error/10 px-3 py-2 text-[11px] text-error">
+              ID token validation failed: {auth.oidcValidationError}
+            </div>
+          )}
           {auth.token && (
             <Field label="Access Token">
               <Input value={auth.token} readOnly className="opacity-70 cursor-default" />
             </Field>
+          )}
+          {auth.oidcUserClaims && (
+            <div className="mx-3 rounded border border-border-1 bg-surface-1 px-3 py-2 text-[10px] text-text-3">
+              <div className="mb-1 flex items-center justify-between">
+                <span className="font-semibold text-text-2">OIDC user</span>
+                {auth.oidcSessionExpiresAt && <span>expires {new Date(auth.oidcSessionExpiresAt).toLocaleString()}</span>}
+              </div>
+              <div className="grid grid-cols-2 gap-1">
+                {['sub', 'name', 'email', 'preferred_username'].map((claim) => auth.oidcUserClaims?.[claim] ? (
+                  <div key={claim} className="truncate"><span className="text-text-4">{claim}</span>: {String(auth.oidcUserClaims[claim])}</div>
+                ) : null)}
+              </div>
+            </div>
           )}
         </>
       )}

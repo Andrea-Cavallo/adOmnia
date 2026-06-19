@@ -1,14 +1,11 @@
 package main
 
 import (
-	"adomnia/internal/apis"
 	"adomnia/internal/browser"
 	"adomnia/internal/docker"
 	"adomnia/internal/plugins"
-	adpython "adomnia/internal/python"
 	"adomnia/internal/templates"
 	"adomnia/internal/themes"
-	"context"
 	"embed"
 	"encoding/json"
 	"log"
@@ -56,15 +53,11 @@ func main() {
 	globalPluginManager = pluginManager
 	wasmRuntime := NewWasmRuntime()
 	dockerLab := NewDockerLab()
-	pythonBridge := NewPythonBridge()
 	aiEngine := NewAIEngine()
 	globalAIEngine = aiEngine
 	gitSync := NewGitSync(dataDir())
 	mcpClient := NewMCPClient()
 	mcpServerGenerator := NewMCPServerGenerator()
-	apiCollectionStore := NewApiCollectionStore()
-	scheduler := NewSchedulerBinding()
-	app.scheduler = scheduler
 
 	appOptions := &options.App{
 		Title:     "adOmnia paratus.",
@@ -86,13 +79,10 @@ func main() {
 			pluginManager,
 			wasmRuntime,
 			dockerLab,
-			pythonBridge,
 			aiEngine,
 			gitSync,
 			mcpClient,
 			mcpServerGenerator,
-			apiCollectionStore,
-			scheduler,
 		},
 		Windows: &windows.Options{
 			WebviewIsTransparent:              false,
@@ -202,26 +192,3 @@ func NewPluginManager() *PluginManager {
 type WasmRuntime struct{ *plugins.WasmRuntime }
 
 func NewWasmRuntime() *WasmRuntime { return &WasmRuntime{WasmRuntime: plugins.NewWasmRuntime()} }
-
-type PythonBridge struct{ *adpython.PythonBridge }
-
-var globalPythonBridge *PythonBridge
-
-func NewPythonBridge() *PythonBridge {
-	adpython.Configure(dataDir())
-	bridge := &PythonBridge{PythonBridge: adpython.NewPythonBridge()}
-	globalPythonBridge = bridge
-	return bridge
-}
-
-func (pb *PythonBridge) Init(ctx context.Context, _ *App) {
-	pb.PythonBridge.Init(ctx)
-}
-
-type ApiCollectionStore struct{ *apis.CollectionStore }
-
-func NewApiCollectionStore() *ApiCollectionStore {
-	store := apis.NewCollectionStore("")
-	store.SetEmbeddedFS(apiCollectionsFS())
-	return &ApiCollectionStore{CollectionStore: store}
-}

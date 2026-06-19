@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { ChevronDown, ChevronRight, AlertCircle, CheckCircle2, GitBranch, Database, Loader2, RefreshCw } from 'lucide-react'
+import type { MutableRefObject } from 'react'
+import { ChevronDown, ChevronRight, ChevronUp, AlertCircle, CheckCircle2, GitBranch, Database, Loader2, RefreshCw, Search, X } from 'lucide-react'
 import type { RequestBody } from '@/lib/types'
 import { KVEditor } from './KVEditor'
 import { JsonEditor } from '@/components/ui/JsonEditor'
@@ -100,7 +101,109 @@ const RAW_LANGUAGES = [
   { id: 'javascript', label: 'JS' },
 ] as const
 
-function JsonRawEditor({ body, onChange }: { body: RequestBody; onChange: (b: RequestBody) => void }) {
+interface BodySearchState {
+  query: string
+  activeIndex: number
+}
+
+function findTextMatches(text: string, query: string): number[] {
+  if (!query) return []
+  const haystack = text.toLowerCase()
+  const needle = query.toLowerCase()
+  const matches: number[] = []
+  let index = haystack.indexOf(needle)
+  while (index !== -1) {
+    matches.push(index)
+    index = haystack.indexOf(needle, index + Math.max(needle.length, 1))
+  }
+  return matches
+}
+
+function selectTextareaMatch(textarea: HTMLTextAreaElement | null, text: string, query: string, activeIndex: number) {
+  if (!textarea || !query) return
+  const matches = findTextMatches(text, query)
+  const start = matches[activeIndex]
+  if (start === undefined) return
+  const end = start + query.length
+  textarea.setSelectionRange(start, end)
+  const line = text.slice(0, start).split('\n').length - 1
+  const lineHeight = parseFloat(window.getComputedStyle(textarea).lineHeight) || 19
+  textarea.scrollTop = Math.max(0, line * lineHeight - 72)
+}
+
+function BodyFindBar({
+  open,
+  query,
+  matches,
+  activeIndex,
+  inputRef,
+  onOpen,
+  onQueryChange,
+  onPrev,
+  onNext,
+  onClose,
+}: {
+  open: boolean
+  query: string
+  matches: number
+  activeIndex: number
+  inputRef: MutableRefObject<HTMLInputElement | null>
+  onOpen: () => void
+  onQueryChange: (value: string) => void
+  onPrev: () => void
+  onNext: () => void
+  onClose: () => void
+}) {
+  if (!open) {
+    return (
+      <button
+        onClick={onOpen}
+        title="Find in body"
+        className="ml-auto inline-flex h-7 w-7 items-center justify-center rounded text-text-3 transition-colors hover:bg-surface-2 hover:text-text-1"
+      >
+        <Search size={13} />
+      </button>
+    )
+  }
+
+  return (
+    <div className="ml-auto flex h-7 items-center overflow-hidden rounded border border-border-2 bg-surface-2">
+      <Search size={12} className="ml-2 shrink-0 text-text-4" />
+      <input
+        ref={(node) => { inputRef.current = node }}
+        value={query}
+        onChange={(event) => onQueryChange(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault()
+            if (event.shiftKey) onPrev()
+            else onNext()
+          }
+          if (event.key === 'Escape') {
+            event.preventDefault()
+            onClose()
+          }
+        }}
+        placeholder="Find body"
+        className="h-full w-40 bg-transparent px-2 font-mono text-[11px] text-text-1 outline-none placeholder:text-text-4"
+      />
+      <span className="min-w-14 px-1 text-center font-mono text-[10px] text-text-4">
+        {query ? `${matches ? activeIndex + 1 : 0}/${matches}` : '0/0'}
+      </span>
+      <button onClick={onPrev} disabled={!matches} title="Previous match" className="flex h-full w-6 items-center justify-center text-text-4 hover:text-text-1 disabled:opacity-35">
+        <ChevronUp size={12} />
+      </button>
+      <button onClick={onNext} disabled={!matches} title="Next match" className="flex h-full w-6 items-center justify-center text-text-4 hover:text-text-1 disabled:opacity-35">
+        <ChevronDown size={12} />
+      </button>
+      <button onClick={onClose} title="Close find" className="flex h-full w-7 items-center justify-center text-text-4 hover:text-text-1">
+        <X size={12} />
+      </button>
+    </div>
+  )
+}
+
+function JsonRawEditor({ body, onChange, search }: { body: RequestBody; onChange: (b: RequestBody) => void; search: BodySearchState }) {
   const [showGraph, setShowGraph] = useState(false)
   const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
   const getResolvedVars = useEnvironmentsStore((s) => s.getResolvedVars)
@@ -171,6 +274,8 @@ function JsonRawEditor({ body, onChange }: { body: RequestBody; onChange: (b: Re
         minHeight="280px"
         resolvedVars={resolvedVars}
         hasActiveEnv={!!activeEnvId}
+        searchTerm={search.query}
+        activeSearchIndex={search.activeIndex}
       />
       {unresolvedVars.length > 0 && (
         <div className={cn(
@@ -200,7 +305,7 @@ function JsonRawEditor({ body, onChange }: { body: RequestBody; onChange: (b: Re
   )
 }
 
-function GraphQLEditor({ body, onChange, requestUrl }: { body: RequestBody; onChange: (b: RequestBody) => void; requestUrl?: string }) {
+function GraphQLEditor({ body, onChange, requestUrl, search }: { body: RequestBody; onChange: (b: RequestBody) => void; requestUrl?: string; search: BodySearchState }) {
   const [varsOpen, setVarsOpen] = useState(true)
   const [schema, setSchema] = useState<GQLIntrospectionResult | null>(null)
   const [loading, setLoading] = useState(false)
@@ -215,6 +320,11 @@ function GraphQLEditor({ body, onChange, requestUrl }: { body: RequestBody; onCh
   const setCachedVariables = useGraphqlCacheStore((s) => s.setVariables)
   const clearCachedSchema  = useGraphqlCacheStore((s) => s.clearSchema)
   const restoredVarsRef    = useRef(false)
+  const queryRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    selectTextareaMatch(queryRef.current, body.raw ?? '', search.query, search.activeIndex)
+  }, [body.raw, search.activeIndex, search.query])
 
   // Hydrate the persistent introspection cache once.
   useEffect(() => { void loadCache() }, [loadCache])
@@ -299,6 +409,7 @@ function GraphQLEditor({ body, onChange, requestUrl }: { body: RequestBody; onCh
     <div className="flex flex-col gap-2 px-2 pb-2">
       <label className="text-[10px] uppercase tracking-wider text-text-4 px-1">Query</label>
       <textarea
+        ref={queryRef}
         className="min-h-[140px] p-3 bg-surface-2 border border-border-2 rounded font-mono text-xs text-text-1 placeholder:text-text-4 resize-y focus:border-accent outline-none"
         placeholder={"query GetUser($id: ID!) {\n  user(id: $id) {\n    id\n    name\n    email\n  }\n}"}
         value={body.raw ?? ''}
@@ -400,8 +511,13 @@ function GraphQLEditor({ body, onChange, requestUrl }: { body: RequestBody; onCh
   )
 }
 
-function RawEditor({ body, onChange }: { body: RequestBody; onChange: (b: RequestBody) => void }) {
+function RawEditor({ body, onChange, search }: { body: RequestBody; onChange: (b: RequestBody) => void; search: BodySearchState }) {
   const [error, setError] = useState('')
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    selectTextareaMatch(textareaRef.current, body.raw ?? '', search.query, search.activeIndex)
+  }, [body.raw, search.activeIndex, search.query])
 
   const validate = (v: string) => {
     if (body.lang !== 'json') { setError(''); return }
@@ -426,6 +542,7 @@ function RawEditor({ body, onChange }: { body: RequestBody; onChange: (b: Reques
         }
       </div>
       <textarea
+        ref={textareaRef}
         className={cn(
           'min-h-[280px] p-3 bg-surface-2 border rounded font-mono text-xs text-text-1 placeholder:text-text-4 resize-y focus:border-accent outline-none',
           error ? 'border-error/60' : 'border-border-2'
@@ -445,6 +562,9 @@ function RawEditor({ body, onChange }: { body: RequestBody; onChange: (b: Reques
 
 export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEditorProps) {
   const BODY_TYPES = isWebSocket ? WS_BODY_TYPES : ALL_BODY_TYPES
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [search, setSearch] = useState<BodySearchState>({ query: '', activeIndex: 0 })
+  const findInputRef = useRef<HTMLInputElement>(null)
 
   const activeType: BodyTypeId = body.type === 'raw' && body.lang === 'json' ? 'json'
     : body.type === 'raw' ? 'raw'
@@ -458,6 +578,50 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
     }
     else if (id === 'raw') onChange({ ...body, type: 'raw', lang: body.lang === 'json' ? 'xml' : body.lang })
     else onChange({ ...body, type: id as RequestBody['type'] })
+  }
+
+  const searchableBodyText = useMemo(() => {
+    if (body.type === 'raw' || body.type === 'graphql') return body.raw ?? ''
+    if (body.type === 'urlencoded' || body.type === 'formdata') {
+      return (body.form ?? []).map((row) => `${row.key}\n${row.value}`).join('\n')
+    }
+    return ''
+  }, [body.form, body.raw, body.type])
+
+  const bodyMatches = useMemo(
+    () => findTextMatches(searchableBodyText, search.query),
+    [search.query, searchableBodyText],
+  )
+
+  useEffect(() => {
+    if (search.activeIndex < bodyMatches.length || bodyMatches.length === 0) return
+    setSearch((current) => ({ ...current, activeIndex: 0 }))
+  }, [bodyMatches.length, search.activeIndex])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'f') return
+      event.preventDefault()
+      setSearchOpen(true)
+      requestAnimationFrame(() => findInputRef.current?.focus())
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [])
+
+  const openFind = () => {
+    setSearchOpen(true)
+    requestAnimationFrame(() => findInputRef.current?.focus())
+  }
+
+  const nextMatch = () => {
+    if (!bodyMatches.length) return
+    setSearch((current) => ({ ...current, activeIndex: (current.activeIndex + 1) % bodyMatches.length }))
+  }
+
+  const prevMatch = () => {
+    if (!bodyMatches.length) return
+    setSearch((current) => ({ ...current, activeIndex: (current.activeIndex - 1 + bodyMatches.length) % bodyMatches.length }))
   }
 
   return (
@@ -477,6 +641,18 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
             {t.label}
           </button>
         ))}
+        <BodyFindBar
+          open={searchOpen}
+          query={search.query}
+          matches={bodyMatches.length}
+          activeIndex={Math.min(search.activeIndex, Math.max(bodyMatches.length - 1, 0))}
+          inputRef={findInputRef}
+          onOpen={openFind}
+          onQueryChange={(query) => setSearch({ query, activeIndex: 0 })}
+          onPrev={prevMatch}
+          onNext={nextMatch}
+          onClose={() => setSearchOpen(false)}
+        />
       </div>
 
       {body.type === 'none' && (
@@ -484,15 +660,15 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
       )}
 
       {body.type === 'raw' && body.lang === 'json' && (
-        <JsonRawEditor body={body} onChange={onChange} />
+        <JsonRawEditor body={body} onChange={onChange} search={search} />
       )}
 
       {body.type === 'raw' && body.lang !== 'json' && (
-        <RawEditor body={body} onChange={onChange} />
+        <RawEditor body={body} onChange={onChange} search={search} />
       )}
 
       {body.type === 'graphql' && (
-        <GraphQLEditor body={body} onChange={onChange} requestUrl={requestUrl} />
+        <GraphQLEditor body={body} onChange={onChange} requestUrl={requestUrl} search={search} />
       )}
 
       {(body.type === 'urlencoded' || body.type === 'formdata') && (

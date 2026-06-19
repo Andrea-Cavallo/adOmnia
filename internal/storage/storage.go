@@ -34,7 +34,6 @@ var storeBuckets = []string{
 	"history",      // request/response history
 	"mock",         // mock server config + hits
 	"proxy",        // proxy/interceptor config + traffic
-	"scheduler",    // scheduled job definitions + run history
 	"pdfprojects",  // PDF Editor projects (base64 PDF bytes + annotation layer)
 }
 

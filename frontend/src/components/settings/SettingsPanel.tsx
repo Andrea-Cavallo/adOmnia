@@ -11,7 +11,6 @@ import { useThemeContext } from '@/components/themes/ThemeProvider'
 import { inferThemeMode, loadAvailableThemes } from '@/lib/themeCatalog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useTabsStore } from '@/stores/tabs'
-import { getRuntimeInfo, type RuntimeInfo } from '@/lib/python-bridge-api'
 import {
   Settings,
   Monitor,
@@ -25,13 +24,14 @@ import {
   Info,
   Bug,
   Search,
-  Terminal,
   Sparkles,
   Puzzle,
+  FolderOpen,
 } from 'lucide-react'
 import { Toggle, Select, NumberInput, TextInput, PasswordInput, TextAreaInput } from './SettingsFields'
 import { AISettings } from './AISettings'
 import { DangerZone, SectionHeader, SettingsCard } from './SettingsLayout'
+import { WorkspacePanel } from '@/components/workspace/WorkspacePanel'
 
 function appBinding() {
   return window.go?.main?.App
@@ -75,11 +75,11 @@ type SectionId =
   | 'vault'
   | 'editor'
   | 'features'
+  | 'workspace'
   | 'privacy'
   | 'shortcuts'
   | 'about'
   | 'developer'
-  | 'python'
   | 'ai'
 
 // --- Keyboard shortcuts data ---
@@ -103,8 +103,8 @@ const shortcutsList = [
 
 // --- Main panel ---
 
-export function SettingsPanel() {
-  const [section, setSection] = useState<SectionId>('general')
+export function SettingsPanel({ initialSection = 'general' }: { initialSection?: SectionId }) {
+  const [section, setSection] = useState<SectionId>(initialSection)
   const settings = useSettingsStore((s) => s.settings)
   const updateGeneral = useSettingsStore((s) => s.updateGeneral)
   const updateAppearance = useSettingsStore((s) => s.updateAppearance)
@@ -161,23 +161,8 @@ export function SettingsPanel() {
     }).catch(() => setDevLoaded(true))
   }, [])
 
-  // Python runtime state
-  const [pythonInfo, setPythonInfo] = useState<RuntimeInfo | null>(null)
-  const [pythonLoading, setPythonLoading] = useState(false)
   const [startupWindowChrome, setStartupWindowChrome] = useState<AppSettings['appearance']['windowChrome'] | null>(null)
   const [runtimePlatform, setRuntimePlatform] = useState<string | null>(null)
-  const loadPythonInfo = useCallback(() => {
-    setPythonLoading(true)
-    getRuntimeInfo()
-      .then((info) => setPythonInfo(info))
-      .catch(() => setPythonInfo(null))
-      .finally(() => setPythonLoading(false))
-  }, [])
-  useEffect(() => {
-    if (section === 'python' && pythonInfo === null) {
-      loadPythonInfo()
-    }
-  }, [section, pythonInfo, loadPythonInfo])
 
   useEffect(() => {
     safeGetStartupWindowChrome()
@@ -222,11 +207,11 @@ export function SettingsPanel() {
     { id: 'vault', label: s.sections.vault, icon: <Lock size={14} />, terms: searchable(s.vault) },
     { id: 'editor', label: s.sections.editor, icon: <Code2 size={14} />, terms: searchable(s.editor) },
     { id: 'features', label: 'Features', icon: <Puzzle size={14} />, terms: 'features plugins daily scenarios experimental enable disable' },
+    { id: 'workspace', label: 'Workspace', icon: <FolderOpen size={14} />, terms: 'workspace import export backup project local .adomnia' },
     { id: 'privacy', label: s.sections.privacy, icon: <Database size={14} />, terms: searchable(s.privacy) },
     { id: 'shortcuts', label: s.sections.shortcuts, icon: <Keyboard size={14} />, terms: searchable(s.shortcuts) },
     { id: 'about', label: s.sections.about, icon: <Info size={14} />, terms: searchable(s.about) },
     { id: 'developer', label: s.sections.developer, icon: <Bug size={14} />, terms: searchable(s.developer) },
-    { id: 'python', label: 'Python Runtime', icon: <Terminal size={14} />, terms: 'python runtime embedded interpreter reinstall path version plugins' },
     { id: 'ai', label: 'AI Engine', icon: <Sparkles size={14} />, terms: 'ai engine provider openai anthropic gemini ollama model api key' },
   ]
 
@@ -348,7 +333,7 @@ export function SettingsPanel() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 max-w-xl">
+      <div className={cn('flex-1 overflow-y-auto p-4', section === 'workspace' ? 'max-w-none' : 'max-w-xl')}>
         {/* General */}
         {section === 'general' && (
           <>
@@ -363,7 +348,7 @@ export function SettingsPanel() {
                   { value: 'kafka', label: s.general.railOptions.kafka },
                   { value: 'proxy', label: s.general.railOptions.proxy },
                   { value: 'mock', label: s.general.railOptions.mock },
-                  { value: 'nettools', label: s.general.railOptions.nettools },
+                  { value: 'browser', label: 'Browser Debug' },
                   { value: 'observe', label: s.general.railOptions.observe },
                   { value: 'secretscanner', label: 'Secret Scanner' },
                 ]}
@@ -843,6 +828,13 @@ export function SettingsPanel() {
           </>
         )}
 
+        {/* Workspace */}
+        {section === 'workspace' && (
+          <div className="h-full min-h-[560px] overflow-hidden rounded-md border border-border-1 bg-surface-1">
+            <WorkspacePanel />
+          </div>
+        )}
+
         {/* Privacy & Data */}
         {section === 'privacy' && (
           <>
@@ -1118,119 +1110,6 @@ export function SettingsPanel() {
                   className="h-7 px-3 bg-surface-2 border border-border-2 rounded text-xs text-text-2 hover:text-text-1 hover:bg-surface-3"
                 >
                   {s.actions.clear}
-                </button>
-              </div>
-            </SettingsCard>
-          </>
-        )}
-
-        {/* Python Runtime */}
-        {section === 'python' && (
-          <>
-            <SectionHeader title="Python Runtime" subtitle="Manage the embedded Python runtime used by plugins" />
-            <SettingsCard>
-              <div className="py-2 px-1 flex items-center justify-between">
-                <div>
-                  <div className="text-xs text-text-1">Status</div>
-                  <div className="text-[10px] text-text-4">Whether Python runtime is available</div>
-                </div>
-                {pythonLoading ? (
-                  <span className="text-xs text-text-4">Loading...</span>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={cn(
-                        'w-2 h-2 rounded-full',
-                        pythonInfo?.available ? 'bg-green-500' : 'bg-red-500'
-                      )}
-                    />
-                    <span className="text-xs text-text-2">
-                      {pythonInfo?.available ? 'Ready' : 'Not found'}
-                    </span>
-                  </div>
-                )}
-              </div>
-              <div className="py-2 px-1 flex items-center justify-between">
-                <div>
-                  <div className="text-xs text-text-1">Version</div>
-                  <div className="text-[10px] text-text-4">Detected Python interpreter version</div>
-                </div>
-                <span className="text-xs text-text-2 font-mono">
-                  {pythonInfo?.version || 'N/A'}
-                </span>
-              </div>
-              <div className="py-2 px-1 flex items-center justify-between">
-                <div>
-                  <div className="text-xs text-text-1">Path</div>
-                  <div className="text-[10px] text-text-4">Location of the Python executable</div>
-                </div>
-                <span className="text-xs text-text-2 font-mono max-w-[200px] truncate" title={pythonInfo?.path || ''}>
-                  {pythonInfo?.path || 'N/A'}
-                </span>
-              </div>
-              <div className="py-2 px-1 flex items-center justify-between">
-                <div>
-                  <div className="text-xs text-text-1">Source</div>
-                  <div className="text-[10px] text-text-4">Whether using embedded or system Python</div>
-                </div>
-                <span className={cn(
-                  'px-2 py-0.5 text-[10px] font-medium rounded',
-                  pythonInfo?.source === 'embedded'
-                    ? 'bg-accent/10 text-accent'
-                    : 'bg-surface-2 text-text-3'
-                )}>
-                  {pythonInfo?.source === 'embedded' ? 'Embedded' : pythonInfo?.source === 'system' ? 'System' : 'Unknown'}
-                </span>
-              </div>
-            </SettingsCard>
-            <SettingsCard>
-              <div className="py-2 px-1 flex items-center justify-between">
-                <div>
-                  <div className="text-xs text-text-1">Reinstall Runtime</div>
-                  <div className="text-[10px] text-text-4">Re-download and setup the embedded Python runtime</div>
-                </div>
-                <button
-                  onClick={() => {
-                    // Call backend to reinstall the runtime
-                    const bridge = (window as unknown as { go: { main: { PythonBridge: { SpawnWorker: (id: string, cfg: string) => Promise<void> } } } }).go?.main?.PythonBridge
-                    if (bridge) {
-                      // Trigger a reinstall by calling backend (this is a UI placeholder; the actual Go method may vary)
-                      bridge.SpawnWorker('__reinstall__', '{}').catch(() => {})
-                    }
-                    // Refresh info after a delay
-                    setTimeout(loadPythonInfo, 2000)
-                  }}
-                  className="h-7 px-3 bg-surface-2 border border-border-2 rounded text-xs text-text-2 hover:text-text-1 hover:bg-surface-3"
-                >
-                  Reinstall
-                </button>
-              </div>
-              <div className="py-2 px-1 flex items-center justify-between">
-                <div>
-                  <div className="text-xs text-text-1">Open Runtime Folder</div>
-                  <div className="text-[10px] text-text-4">Open the folder containing the Python runtime files</div>
-                </div>
-                <button
-                  onClick={() => {
-                    // Use the same pattern as OpenDevLogsFolder, but for the runtime path
-                    safeOpenDevLogsFolder().catch(() => {})
-                  }}
-                  className="h-7 px-3 bg-surface-2 border border-border-2 rounded text-xs text-text-2 hover:text-text-1 hover:bg-surface-3"
-                >
-                  Open Folder
-                </button>
-              </div>
-              <div className="py-2 px-1 flex items-center justify-between">
-                <div>
-                  <div className="text-xs text-text-1">Refresh Status</div>
-                  <div className="text-[10px] text-text-4">Re-check the Python runtime availability</div>
-                </div>
-                <button
-                  onClick={loadPythonInfo}
-                  disabled={pythonLoading}
-                  className="h-7 px-3 bg-surface-2 border border-border-2 rounded text-xs text-text-2 hover:text-text-1 hover:bg-surface-3 disabled:opacity-50"
-                >
-                  Refresh
                 </button>
               </div>
             </SettingsCard>

@@ -18,8 +18,6 @@ export function GetPluginSettings(arg1:string):Promise<Record<string, string>>;
 
 export function GetPlugins():Promise<Array<plugins.PluginInstance>>;
 
-export function GetPythonRuntimeStatus():Promise<plugins.RuntimeStatus>;
-
 export function GetRegisteredHooks():Promise<Record<string, Array<string>>>;
 
 export function Init():Promise<void>;
@@ -27,8 +25,6 @@ export function Init():Promise<void>;
 export function InstallPlugin(arg1:string):Promise<plugins.PluginInstance>;
 
 export function InstallPluginPackage(arg1:string,arg2:Record<string, string>):Promise<plugins.PluginInstance>;
-
-export function InstallPythonPlugin(arg1:string):Promise<void>;
 
 export function LoadPluginState():Promise<void>;
 

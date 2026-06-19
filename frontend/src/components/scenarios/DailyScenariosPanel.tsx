@@ -41,7 +41,6 @@ type ScenarioTool =
   | 'proxy'
   | 'browser'
   | 'flows'
-  | 'runner'
   | 'grpc'
   | 'soap'
   | 'websocket'
@@ -97,7 +96,6 @@ const TOOL_OPTIONS: ToolOption[] = [
   { id: 'proxy', label: 'Proxy Interceptor', rail: 'proxy', icon: Shield, description: 'Capture or rewrite traffic.' },
   { id: 'browser', label: 'Browser Debug', rail: 'browser', icon: Bug, description: 'Inspect a real browser flow.' },
   { id: 'flows', label: 'Flows', rail: 'flows', icon: GitBranch, description: 'Open a multi-step verification flow.' },
-  { id: 'runner', label: 'Runner', rail: 'runner', icon: Play, description: 'Execute a request suite.' },
   { id: 'grpc', label: 'gRPC Client', rail: 'grpc', icon: Send, description: 'Exercise a gRPC endpoint.' },
   { id: 'soap', label: 'SOAP Studio', rail: 'soap', icon: Layers, description: 'Exercise WSDL or SOAP workflows.' },
   { id: 'websocket', label: 'WebSocket', rail: 'websocket', icon: Zap, description: 'Open a live WebSocket workflow.' },

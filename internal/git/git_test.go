@@ -129,6 +129,43 @@ func TestGetOverview_EmptySlicesSerializeAsArrays(t *testing.T) {
 	}
 }
 
+func TestGetOverview_IncludesCommitsFromAllBranches(t *testing.T) {
+	gitAvailable(t)
+	dir := filepath.Join(t.TempDir(), "repo")
+	if err := Init(Config{RepoPath: dir, Branch: "main", AuthorName: "T", AuthorEmail: "t@e.com"}); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	writeFile(t, filepath.Join(dir, "base.txt"), "base")
+	if _, err := CommitAll(dir, "base commit"); err != nil {
+		t.Fatalf("base commit: %v", err)
+	}
+	if _, err := runGit(dir, "checkout", "-b", "side"); err != nil {
+		t.Fatalf("create side branch: %v", err)
+	}
+	writeFile(t, filepath.Join(dir, "side.txt"), "side")
+	if _, err := CommitAll(dir, "side-only commit"); err != nil {
+		t.Fatalf("side commit: %v", err)
+	}
+	if _, err := runGit(dir, "checkout", "main"); err != nil {
+		t.Fatalf("checkout main: %v", err)
+	}
+
+	ov, err := GetOverview(dir, 50)
+	if err != nil {
+		t.Fatalf("GetOverview: %v", err)
+	}
+	found := false
+	for _, commit := range ov.Commits {
+		if commit.Message == "side-only commit" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("overview graph must include commits from non-current branches")
+	}
+}
+
 func TestCompareRefs_EmptyResultIsNonNil(t *testing.T) {
 	gitAvailable(t)
 	dir := filepath.Join(t.TempDir(), "repo")

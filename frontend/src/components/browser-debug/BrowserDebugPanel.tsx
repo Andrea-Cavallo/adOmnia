@@ -31,6 +31,7 @@ import { DebuggerPanel } from './DebuggerPanel'
 import { DOMInspectorPanel } from './DOMInspectorPanel'
 import { StoragePanel } from './StoragePanel'
 import { ThrottlingPanel } from './ThrottlingPanel'
+import { NetToolsPanel } from '@/components/nettools/NetToolsPanel'
 import {
   Globe,
   Unplug,
@@ -48,7 +49,7 @@ import {
   ChevronDown,
 } from 'lucide-react'
 
-type DebugTab = 'network' | 'console' | 'debugger' | 'dom' | 'storage' | 'throttling'
+type DebugTab = 'network' | 'console' | 'debugger' | 'dom' | 'storage' | 'throttling' | 'nettools'
 
 const DEBUG_TABS: { id: DebugTab; label: string; icon: typeof Network }[] = [
   { id: 'network',    label: 'Network',    icon: Network },
@@ -57,6 +58,7 @@ const DEBUG_TABS: { id: DebugTab; label: string; icon: typeof Network }[] = [
   { id: 'dom',        label: 'DOM',        icon: Code2 },
   { id: 'storage',    label: 'Storage',    icon: Database },
   { id: 'throttling', label: 'Throttling', icon: Gauge },
+  { id: 'nettools',   label: 'Net Tools',  icon: Globe },
 ]
 
 const TYPE_FILTERS: { id: TypeFilter; label: string }[] = [
@@ -429,7 +431,7 @@ function ConnectedToolbar({
 
 // Main panel
 
-export function BrowserDebugPanel() {
+export function BrowserDebugPanel({ initialTab = 'network' }: { initialTab?: DebugTab }) {
   const {
     connected, entries, selectedEntry, filter, typeFilter,
     setConnected, setEntries, setFilter, setTypeFilter, clearEntries,
@@ -438,7 +440,7 @@ export function BrowserDebugPanel() {
 
   const [showPicker, setShowPicker]       = useState(!connected)
   const [connectedTab, setConnectedTab]   = useState<DebugTarget | null>(null)
-  const [activeTab, setActiveTab]         = useState<DebugTab>('network')
+  const [activeTab, setActiveTab]         = useState<DebugTab>(initialTab)
   const [connectionError, setConnectionError] = useState('')
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -557,13 +559,43 @@ export function BrowserDebugPanel() {
   }), [entries, filter, typeFilter])
 
   // Show picker if not connected
+  const debugTabBar = (
+    <div className="flex h-8 shrink-0 items-center gap-0.5 border-b border-border-1 bg-surface-0 px-3">
+      {DEBUG_TABS.map(({ id, label, icon: Icon }) => (
+        <button
+          key={id}
+          onClick={() => setActiveTab(id)}
+          className={cn(
+            'h-6 px-2.5 rounded text-[10px] font-medium flex items-center gap-1.5 transition-colors',
+            activeTab === id ? 'bg-accent/20 text-accent' : 'text-text-3 hover:text-text-2 hover:bg-surface-2'
+          )}
+        >
+          <Icon size={10} />
+          {label}
+        </button>
+      ))}
+    </div>
+  )
+
+  if (activeTab === 'nettools' && !connected) {
+    return (
+      <div className="flex h-full min-h-0 flex-col bg-surface-1">
+        {debugTabBar}
+        <div className="flex-1 min-h-0 overflow-hidden"><NetToolsPanel /></div>
+      </div>
+    )
+  }
+
   if (showPicker || !connected) {
     return (
-      <TabPicker
-        onConnect={handleConnect}
-        onCancel={connected ? () => setShowPicker(false) : () => {}}
-        connectionError={connectionError}
-      />
+      <div className="flex h-full min-h-0 flex-col bg-surface-1">
+        {debugTabBar}
+        <TabPicker
+          onConnect={handleConnect}
+          onCancel={connected ? () => setShowPicker(false) : () => {}}
+          connectionError={connectionError}
+        />
+      </div>
     )
   }
 
@@ -586,21 +618,7 @@ export function BrowserDebugPanel() {
       )}
 
       {/* Debug tab bar */}
-      <div className="flex items-center h-8 px-3 gap-0.5 border-b border-border-1 bg-surface-0 flex-shrink-0">
-        {DEBUG_TABS.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            onClick={() => setActiveTab(id)}
-            className={cn(
-              'h-6 px-2.5 rounded text-[10px] font-medium flex items-center gap-1.5 transition-colors',
-              activeTab === id ? 'bg-accent/20 text-accent' : 'text-text-3 hover:text-text-2 hover:bg-surface-2'
-            )}
-          >
-            <Icon size={10} />
-            {label}
-          </button>
-        ))}
-      </div>
+      {debugTabBar}
 
       {/* Content */}
       {activeTab === 'network' && (
@@ -621,6 +639,7 @@ export function BrowserDebugPanel() {
       {activeTab === 'dom'        && <div className="flex-1 min-h-0"><DOMInspectorPanel /></div>}
       {activeTab === 'storage'    && <div className="flex-1 min-h-0"><StoragePanel /></div>}
       {activeTab === 'throttling' && <div className="flex-1 min-h-0"><ThrottlingPanel /></div>}
+      {activeTab === 'nettools'   && <div className="flex-1 min-h-0 overflow-hidden"><NetToolsPanel /></div>}
     </div>
   )
 }

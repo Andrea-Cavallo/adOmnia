@@ -43,7 +43,6 @@ export type RailItem =
   | 'welcome'
   | 'gitsync'
   | 'mcp'
-  | 'schemas'
   | 'apieditor'
   | 'apidocs'
   | 'visualtests'

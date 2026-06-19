@@ -18,6 +18,7 @@ interface PdfPageViewProps {
   active: boolean
   onSelect: (id: string | null) => void
   onActivate: (page: number) => void
+  onChangeStart: () => void
   onCreate: (a: PdfAnnotation) => void
   onUpdate: (a: PdfAnnotation) => void
   onFormChange: (name: string, value: string | boolean) => void
@@ -117,6 +118,7 @@ export function PdfPageView(props: PdfPageViewProps) {
             selectedId={props.selectedId}
             signatureImage={props.signatureImage}
             onSelect={props.onSelect}
+            onChangeStart={props.onChangeStart}
             onCreate={props.onCreate}
             onUpdate={props.onUpdate}
             onToolHandled={props.onToolHandled}

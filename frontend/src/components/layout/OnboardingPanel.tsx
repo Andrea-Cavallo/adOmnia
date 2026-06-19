@@ -5,9 +5,9 @@ import { useEnvironmentsStore } from '@/stores/environments'
 import { createAdomniaLabWorkspace } from '@/lib/adomniaLabWorkspace'
 import { useServerPort, serverUrl } from '@/lib/useServerPort'
 import {
-  LayoutList, Radio, Shield, Server, Send, Globe, Bug, Braces, FileCode, Wrench, Lock,
-  Database, FolderOpen, FileText, GitBranch, ArrowRight, FileDown, Download, Keyboard,
-  Container, FlaskConical, Play, Zap, BarChart2, Paintbrush, LayoutTemplate, Puzzle,
+  LayoutList, Radio, Shield, Server, Send, Bug, Braces, FileCode, Wrench, Lock,
+  Database, FileText, GitBranch, ArrowRight, FileDown, Download, Keyboard,
+  Container, Zap, BarChart2, Puzzle,
   Code2, Layers, Box, Activity, HardDrive,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -35,9 +35,7 @@ const COLLECTIONS: ToolDef = {
 }
 
 const API_CORE: ToolDef[] = [
-  { id: 'runner',   icon: Play,        color: '#60a5fa', status: 'Stable',  label: 'Runner',             desc: 'Run suites with datasets, retries, assertions and local reports.' },
   { id: 'flows',    icon: GitBranch,   color: '#c084fc', status: 'Stable',  label: 'Flows',              desc: 'Generate executable API flows from Mermaid diagrams with conditions and run reports.' },
-  { id: 'testdata', icon: FlaskConical,color: '#c084fc', status: 'Stable',  label: 'Test Data Studio',   desc: 'Generate reusable JSON/CSV datasets and send them into the Runner workflow.' },
 ]
 
 const PROTOCOLS: ToolDef[] = [
@@ -51,32 +49,31 @@ const PROTOCOLS: ToolDef[] = [
 const INFRA: ToolDef[] = [
   { id: 'mock',      icon: Server,    color: '#4ade80', status: 'Stable', label: 'Mock Server',        desc: 'Stub endpoints with templated responses, path params and hit logs.' },
   { id: 'proxy',     icon: Shield,    color: '#facc15', status: 'Stable', label: 'Proxy Interceptor',  desc: 'Capture, inspect and rewrite traffic. Map remote calls locally.' },
-  { id: 'dockerlab', icon: Container, color: '#0ea5e9', status: 'Stable', label: 'Docker Lab',         desc: 'Generate local compose labs and open matching Database or Broker tooling.' },
 ]
 
 const DEBUG: ToolDef[] = [
   { id: 'browser',   icon: Bug,       color: '#f472b6', status: 'Unique',   label: 'Browser Debug',  desc: 'Attach to running browsers, inspect pages like F12 — network, console, DOM, storage.' },
-  { id: 'har',       icon: BarChart2, color: '#f97316', status: 'Stable',   label: 'HAR Viewer',     desc: 'Import HAR, compare captures, inspect waterfalls, and create requests or mocks.' },
-  { id: 'observe',   icon: Activity,  color: '#38bdf8', status: 'Stable',   label: 'Observability',  desc: 'Read local JSONL logs, inspect trace waterfalls and filter correlated requests.' },
-  { id: 'nettools',  icon: Globe,     color: '#22d3ee', status: 'Stable',   label: 'Net Tools',      desc: 'DNS lookup, port scan and CORS test, all local.' },
+]
+
+const POWER: ToolDef[] = [
   { id: 'jsontools', icon: Braces,    color: '#34d399', status: 'Stable',   label: 'JSON Tools',     desc: 'Query, format, diff and inspect JSON with tree views.' },
   { id: 'xmltools',  icon: FileCode,  color: '#fbbf24', status: 'Stable',   label: 'XML Tools',      desc: 'Format, diff, XPath query and encode XML entities.' },
   { id: 'utils',     icon: Wrench,    color: '#f87171', status: 'Stable',   label: 'Power Tools',    desc: 'Base64, URL codecs, JWT inspector, UUIDs, hashes and more.' },
+  { id: 'dockerlab', icon: Container, color: '#0ea5e9', status: 'Stable', label: 'Docker Lab',       desc: 'Generate local compose labs and open matching Database or Broker tooling.' },
+  { id: 'har',       icon: BarChart2, color: '#f97316', status: 'Stable',   label: 'HAR Viewer',     desc: 'Import HAR, compare captures, inspect waterfalls, and create requests or mocks.' },
+  { id: 'observe',   icon: Activity,  color: '#38bdf8', status: 'Stable',   label: 'Observability',  desc: 'Read local JSONL logs, inspect trace waterfalls and filter correlated requests.' },
   { id: 'secretscanner', icon: Shield, color: '#ef4444', status: 'Stable', label: 'Secret Scanner', desc: 'Scan workspace for exposed secrets: API keys, tokens, passwords, high-entropy strings.' },
 ]
 
 const DATA: ToolDef[] = [
   { id: 'database',  icon: Database,    color: '#6366f1', status: 'Stable',  label: 'Database Studio',    desc: 'SQLite, PostgreSQL, MySQL and MongoDB with history and export.' },
-  { id: 'workspace', icon: FolderOpen,  color: '#38bdf8', status: 'Stable',  label: 'Workspace',          desc: 'Export and import the whole project as a .adomnia archive.' },
   { id: 'vault',     icon: Lock,        color: '#eab308', status: 'Stable',  label: 'Vault',              desc: 'Encrypt local secrets and workspace exports with age/scrypt.' },
   { id: 'storage',   icon: Database,    color: '#94a3b8', status: 'Stable',  label: 'Storage Inspector',  desc: 'Browse, edit, search, export and import raw local storage with warnings.' },
   { id: 'markdown',  icon: FileText,    color: '#a3a3a3', status: 'Stable',  label: 'Document Studio',     desc: 'Write Markdown notes, render Mermaid diagrams, draft LaTeX CVs and edit or sign PDFs locally.' },
 ]
 
 const EXT: ToolDef[] = [
-  { id: 'themes',    icon: Paintbrush,    color: '#ec4899', status: 'Stable',  label: 'Themes & Skins',  desc: 'Install skins, edit design tokens and switch styles.' },
-  { id: 'templates', icon: LayoutTemplate,color: '#818cf8', status: 'Stable',  label: 'Templates',       desc: 'Install local templates into collections, environments, mocks and flows.' },
-  { id: 'plugins',   icon: Puzzle,        color: '#f59e0b', status: 'Stable',  label: 'Plugins',         desc: 'Python SDK and WASM plugins with hooks, storage and bidirectional gRPC bridge.' },
+  { id: 'plugins', icon: Puzzle, color: '#f59e0b', status: 'Stable', label: 'Plugins', desc: 'WASM and JS plugin manifests with hooks, storage and local extension points.' },
 ]
 
 // ─── Status badge styles ───────────────────────────────────────────────────
@@ -240,7 +237,7 @@ export function OnboardingPanel() {
 
         {/* ── A  API Core ────────────────────────────────────────────── */}
         <section>
-          <SectionHeader letter="A" icon={Code2} title="API Core" count={5} />
+          <SectionHeader letter="A" icon={Code2} title="API Core" count={2} />
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-[2fr_1fr_1fr]">
             <FeaturedCard tool={COLLECTIONS} onClick={() => openTool('collections')} />
             {API_CORE.map((t) => <ToolCard key={t.id} tool={t} onClick={() => openTool(t.id)} />)}
@@ -258,8 +255,8 @@ export function OnboardingPanel() {
         {/* ── C + F  Infrastructure  /  Extensibility ────────────────── */}
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
           <section>
-            <SectionHeader letter="C" icon={Box} title="Infrastructure & Simulation" count={3} />
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <SectionHeader letter="C" icon={Box} title="Infrastructure & Simulation" count={2} />
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {INFRA.map((t) => <ToolCard key={t.id} tool={t} onClick={() => openTool(t.id)} />)}
             </div>
           </section>
@@ -271,18 +268,25 @@ export function OnboardingPanel() {
           </section>
         </div>
 
-        {/* ── D  Debugging & Analysis ────────────────────────────────── */}
+        {/* ── D  Debugging ───────────────────────────────────────────── */}
         <section>
-          <SectionHeader letter="D" icon={Activity} title="Debugging & Analysis" count={8} />
+          <SectionHeader letter="D" icon={Activity} title="Debugging" count={1} />
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {DEBUG.map((t) => <ToolCard key={t.id} tool={t} onClick={() => openTool(t.id)} />)}
           </div>
         </section>
 
-        {/* ── E  Local Data & Workspace ──────────────────────────────── */}
+        {/* ── E  Local Data ──────────────────────────────────────────── */}
         <section>
-          <SectionHeader letter="E" icon={HardDrive} title="Local Data & Workspace" count={5} />
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <SectionHeader letter="P" icon={Wrench} title="Power Tools" count={7} />
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {POWER.map((t) => <ToolCard key={t.id} tool={t} onClick={() => openTool(t.id)} />)}
+          </div>
+        </section>
+
+        <section>
+          <SectionHeader letter="E" icon={HardDrive} title="Local Data" count={4} />
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {DATA.map((t) => <ToolCard key={t.id} tool={t} onClick={() => openTool(t.id)} />)}
           </div>
         </section>

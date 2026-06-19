@@ -1,13 +1,13 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAppStore, type RailItem } from '@/stores/app'
 import { useSettingsStore } from '@/stores/settings'
 import { cn } from '@/lib/utils'
 import { useAppIcon } from '@/lib/brandAssets'
 import {
-  Send, LayoutList, Shield, Server, Radio, Globe, Bug, Container, Network,
-  Wrench, FileText, FileCode, Database, Braces, FlaskConical, ChevronRight,
-  Lock, FolderOpen, Paintbrush, LayoutTemplate, Puzzle, Settings, GitBranch,
-  Play, Zap, BarChart2, Activity, HardDrive, History, Layers, Boxes, Code2, ListChecks, CalendarClock,
+  Send, LayoutList, Shield, Server, Radio, Bug, Container, Network,
+  Wrench, FileText, FileCode, Database, Braces, ChevronRight, FolderOpen,
+  Lock, Puzzle, Settings, GitBranch,
+  Zap, BarChart2, Activity, HardDrive, History, Layers,
   BookOpen,
 } from 'lucide-react'
 
@@ -43,17 +43,10 @@ const CATEGORIES: CategoryDef[] = [
         { id: 'collections', icon: LayoutList, label: 'API Workspace' },
         { id: 'scenarios',   icon: Layers,     label: 'Daily Scenarios' },
         { id: 'history',     icon: History,    label: 'Request History' },
-        { id: 'runner',      icon: Play,       label: 'Runner' },
         { id: 'flows',       icon: GitBranch,  label: 'Flows' },
       ]},
       { title: 'Design', items: [
-        { id: 'apieditor', icon: Code2, label: 'API Editor' },
         { id: 'apidocs', icon: BookOpen, label: 'API Docs / Swagger' },
-      ]},
-      { title: 'Testing', items: [
-        { id: 'testdata',    icon: FlaskConical,  label: 'Test Data' },
-        { id: 'visualtests', icon: ListChecks,    label: 'Visual Tests' },
-        { id: 'scheduler',   icon: CalendarClock, label: 'Scheduled Tasks' },
       ]},
     ],
   },
@@ -78,49 +71,41 @@ const CATEGORIES: CategoryDef[] = [
       { title: 'Simulation', items: [
         { id: 'mock',      icon: Server,    label: 'Mock Server' },
         { id: 'proxy',     icon: Shield,    label: 'Proxy Interceptor' },
-        { id: 'dockerlab', icon: Container, label: 'Docker Lab' },
       ]},
     ],
   },
   {
-    key: 'debug', label: 'Debugging & Analysis', icon: Bug, code: 'DEBUG',
+    key: 'debug', label: 'Browser Debug', icon: Bug, code: 'DEBUG',
     groups: [
       { title: 'Debugging', items: [
-        { id: 'browser',  icon: Bug,   label: 'Browser Debug' },
-        { id: 'nettools', icon: Globe, label: 'Net Tools' },
-      ]},
-      { title: 'Analysis', items: [
-        { id: 'har',           icon: BarChart2, label: 'HAR Viewer' },
-        { id: 'observe',       icon: Activity,  label: 'Observability' },
-        { id: 'secretscanner', icon: Shield,    label: 'Secret Scanner' },
+        { id: 'browser',  icon: Bug,   label: 'Browser Debug & Net Tools' },
       ]},
     ],
   },
   {
-    key: 'data', label: 'Local Data & Workspace', icon: Database, code: 'DATA',
+    key: 'data', label: 'Local Data', icon: Database, code: 'DATA',
     groups: [
       { title: 'Data', items: [
         { id: 'database', icon: Database,  label: 'Database Studio' },
         { id: 'storage',  icon: HardDrive, label: 'Storage Explorer' },
         { id: 'vault',    icon: Lock,      label: 'Vault' },
       ]},
-      { title: 'Workspace', items: [
-        { id: 'workspace',  icon: FolderOpen,     label: 'Workspace' },
-        { id: 'schemas',    icon: Boxes,          label: 'Schema Components' },
-        { id: 'templates',  icon: LayoutTemplate, label: 'Templates' },
-        { id: 'themes',     icon: Paintbrush,     label: 'Themes' },
-      ]},
     ],
   },
   {
     key: 'powertools', label: 'Power Tools', icon: Wrench, code: 'PWR',
+    directItem: 'powertools',
     groups: [
       { title: 'Data Tools', items: [
         { id: 'jsontools',   icon: Braces,   label: 'JSON Tools' },
         { id: 'xmltools',    icon: FileCode, label: 'XML Tools' },
+        { id: 'har',         icon: BarChart2, label: 'HAR Viewer' },
+        { id: 'observe',     icon: Activity,  label: 'Observability' },
+        { id: 'secretscanner', icon: Shield,  label: 'Secret Scanner' },
       ]},
       { title: 'Utilities', items: [
         { id: 'powertools',  icon: Wrench,  label: 'All Utilities' },
+        { id: 'dockerlab',   icon: Container, label: 'Docker Lab' },
       ]},
       { title: 'Extensibility', items: [
         { id: 'plugins', icon: Puzzle, label: 'Plugins' },
@@ -148,6 +133,16 @@ const CATEGORIES: CategoryDef[] = [
     ],
   },
 ]
+
+const RAIL_MAGNIFY_RANGE = 82
+const RAIL_MAX_SCALE = 1.34
+
+function getRailMagnifyScale(distance: number): number {
+  if (distance >= RAIL_MAGNIFY_RANGE) return 1
+  const proximity = 1 - distance / RAIL_MAGNIFY_RANGE
+  const eased = 1 - Math.pow(1 - proximity, 3)
+  return 1 + eased * (RAIL_MAX_SCALE - 1)
+}
 
 // ─── Flyout panel (click-based, all items visible inline) ─────────────────────
 
@@ -206,12 +201,14 @@ interface CategoryButtonProps {
   activeRail: RailItem
   anyRunning?: boolean
   isOpen: boolean
+  magnifyScale: number
+  buttonRef?: (node: HTMLDivElement | null) => void
   onToggle: () => void
   onSelect: (id: RailItem) => void
   onClose: () => void
 }
 
-function CategoryButton({ cat, activeRail, anyRunning, isOpen, onToggle, onSelect, onClose }: CategoryButtonProps) {
+function CategoryButton({ cat, activeRail, anyRunning, isOpen, magnifyScale, buttonRef, onToggle, onSelect, onClose }: CategoryButtonProps) {
   const Icon = cat.icon
   const allItems = cat.groups.flatMap((g) => g.items)
   const anyActive = allItems.some((item) => item.id === activeRail)
@@ -225,23 +222,31 @@ function CategoryButton({ cat, activeRail, anyRunning, isOpen, onToggle, onSelec
   }
 
   return (
-    <div className="relative">
+    <div ref={buttonRef} className="relative h-12 w-12 flex items-center justify-center">
       <button
         title={cat.label}
         onClick={handleClick}
         className={cn(
-          'w-11 h-11 rounded-lg flex flex-col items-center justify-center gap-[2px] relative transition-all',
+          'w-11 h-11 rounded-lg flex flex-col items-center justify-center gap-[2px] relative will-change-transform',
+          'transition-[transform,background-color,color,box-shadow] duration-200 ease-out',
           isOpen || anyActive
             ? 'text-accent bg-accent/10'
             : 'text-text-3 hover:text-text-1 hover:bg-surface-2',
           anyRunning && !isOpen && !anyActive && 'text-success',
         )}
+        style={{
+          transform: `translateX(${(magnifyScale - 1) * 10}px) scale(${magnifyScale})`,
+          transformOrigin: 'left center',
+          zIndex: Math.round(magnifyScale * 10),
+        }}
       >
         {(isOpen || anyActive) && (
           <span className="absolute left-0 top-2 bottom-2 w-[3px] bg-accent rounded-r" />
         )}
-        <Icon size={16} />
-        <span className="text-[7px] font-semibold leading-none tracking-wider opacity-60">{cat.code}</span>
+        <Icon size={16} className="transition-transform duration-200 ease-out" />
+        <span className="text-[7px] font-semibold leading-none tracking-wider opacity-60 transition-opacity duration-200">
+          {cat.code}
+        </span>
         {anyRunning && (
           <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-success rounded-full border-2 border-surface-0 animate-pulse" />
         )}
@@ -276,7 +281,9 @@ export function Rail() {
   const features = useSettingsStore((s) => s.settings.features)
 
   const [openKey, setOpenKey] = useState<string | null>(null)
+  const [mouseY, setMouseY] = useState<number | null>(null)
   const railRef = useRef<HTMLElement>(null)
+  const itemRefs = useRef<Array<HTMLDivElement | null>>([])
 
   // Click outside → close flyout
   useEffect(() => {
@@ -291,6 +298,14 @@ export function Rail() {
   }, [openKey])
 
   const toggle = (key: string) => setOpenKey(prev => prev === key ? null : key)
+
+  const handleMouseMove = useCallback((event: React.MouseEvent<HTMLElement>) => {
+    setMouseY(event.clientY)
+  }, [])
+
+  const handleMouseLeave = useCallback(() => {
+    setMouseY(null)
+  }, [])
 
   const runningMap: Record<string, boolean> = {
     api:       false,
@@ -313,7 +328,12 @@ export function Rail() {
   })).filter((cat) => cat.groups.length > 0)
 
   return (
-    <nav ref={railRef} className="w-14 flex-shrink-0 bg-surface-0 border-r border-border-1 flex flex-col items-center py-3 gap-0.5">
+    <nav
+      ref={railRef}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      className="w-16 flex-shrink-0 bg-surface-0 border-r border-border-1 flex flex-col items-center py-3 gap-0.5 overflow-visible"
+    >
       {/* Logo → Home */}
       <button
         onClick={() => { setActiveRail('welcome'); setOpenKey(null) }}
@@ -328,18 +348,28 @@ export function Rail() {
         <img src={appIcon} alt="adOmnia" className="w-7 h-7 object-contain" />
       </button>
 
-      {visibleCategories.map((cat) => (
-        <CategoryButton
-          key={cat.key}
-          cat={cat}
-          activeRail={activeRail}
-          anyRunning={runningMap[cat.key]}
-          isOpen={openKey === cat.key}
-          onToggle={() => toggle(cat.key)}
-          onSelect={setActiveRail}
-          onClose={() => setOpenKey(null)}
-        />
-      ))}
+      {visibleCategories.map((cat, index) => {
+        const node = itemRefs.current[index]
+        const centerY = node ? node.getBoundingClientRect().top + node.getBoundingClientRect().height / 2 : null
+        const magnifyScale = mouseY !== null && centerY !== null
+          ? getRailMagnifyScale(Math.abs(mouseY - centerY))
+          : 1
+
+        return (
+          <CategoryButton
+            key={cat.key}
+            buttonRef={(node) => { itemRefs.current[index] = node }}
+            cat={cat}
+            activeRail={activeRail}
+            anyRunning={runningMap[cat.key]}
+            isOpen={openKey === cat.key}
+            magnifyScale={magnifyScale}
+            onToggle={() => toggle(cat.key)}
+            onSelect={setActiveRail}
+            onClose={() => setOpenKey(null)}
+          />
+        )
+      })}
 
       <div className="flex-1" />
 

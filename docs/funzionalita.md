@@ -14,7 +14,7 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 | C | [Infrastruttura & Simulazione](#c-infrastruttura--simulazione) | Mock Server (+ Smart Mock), Proxy/Interceptor, Docker Lab, Load Testing | ~47 |
 | D | [Debugging & Analisi](#d-debugging--analisi) | Browser Debug (+ Discovery), HAR Viewer, Network Tools, JSON Tools, XML Tools, Power Tools, Dev Logs, Observability, Secret Scanner, PDF Editor | ~110 |
 | E | [Dati Locali](#e-dati-locali) | Database Studio, Storage Inspector, Workspace, Vault, Document Studio | ~58 |
-| F | [Personalizzazione & Estendibilità](#f-personalizzazione--estendibilità) | Temi, Plugin WASM, Template, Python Plugin SDK | ~51 |
+| F | [Personalizzazione & Estendibilità](#f-personalizzazione--estendibilità) | Temi, Plugin WASM/JS, Template | ~51 |
 | G | [Piattaforma](#g-piattaforma) | Impostazioni, Infrastruttura, UI Framework | ~76 |
 | H | [API Design](#h-api-design) | Import/Export OpenAPI, Schema Components, Editor OpenAPI Visuale | ~10 |
 | I | [MCP (Model Context Protocol)](#i-mcp-model-context-protocol) | MCP Client/Debugger, Sessioni & Trasporto, Server Generator | ~12 |
@@ -728,7 +728,7 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 
 | # | Funzionalità | Descrizione |
 |---|-------------|-------------|
-| F2.1 | **Manifest Plugin** | JSON con ID, metadati, permessi, hook, impostazioni, entry point, icona, pannelli `ui_slots` e azioni; accetta anche il formato Python compatto. |
+| F2.1 | **Manifest Plugin** | JSON con ID, metadati, permessi, hook, impostazioni, entry point, icona, pannelli `ui_slots` e azioni; runtime Python non supportato. |
 | F2.2 | **Installa/Disinstalla** | Da cartella completa per plugin eseguibili o da solo manifest per registrazione; i plugin vengono riletti all'avvio e mostrati in `PWR > Plugins`. |
 | F2.3 | **Abilita/Disabilita** | Toggle con registrazione/deregistrazione hook; stato persistito. |
 | F2.4 | **12 Hook Events** | onRequest, onResponse, onSend, onSave, onImport, onExport, onStartup, onShutdown, onThemeChange, onEnvChange, onTabOpen, onTabClose. |
@@ -755,32 +755,14 @@ Tutte le funzionalità sono offline-first: nessun account, nessuna telemetria, n
 
 ---
 
-### F4. Python Plugin SDK
+### F4. Policy runtime plugin
 
-| # | Funzionalità | Descrizione |
+| # | Funzionalit� | Descrizione |
 |---|-------------|-------------|
-| F4.1 | **Bridge gRPC Bidirezionale** | Comunicazione Go↔Python via due canali gRPC: `worker.proto` (Go→Python) e `sdk.proto` (Python→Go). |
-| F4.2 | **Worker Manager** | Gestione ciclo di vita worker Python: spawn, monitor, kill, idle-reap (timeout 60s inattività). Max 4 worker simultanei. |
-| F4.3 | **Spawn Worker** | Avvia processo Python isolato con variabili ambiente: `ADOMNIA_GRPC_PORT`, `ADOMNIA_SDK_PORT`, `ADOMNIA_PLUGIN_ID`, `ADOMNIA_DATA_DIR`. |
-| F4.4 | **Execute Action** | Invoca azione nominata su un worker Python con payload JSON; supporto sia sincrono che streaming (chunked). |
-| F4.5 | **Health Check (Ping)** | Verifica stato worker con uptime e statistiche memoria. |
-| F4.6 | **Graceful Shutdown** | Arresto coordinato con grace period configurabile; kill forzato dopo timeout. |
-| F4.7 | **Init Worker** | Inizializzazione con configurazione plugin e directory dati. |
-| F4.8 | **SDK API — GetCurrentRequest** | Il plugin Python può leggere la richiesta HTTP corrente dal Composer. |
-| F4.9 | **SDK API — EmitEvent** | Il plugin può emettere eventi verso il frontend via Wails `EventsEmit`. |
-| F4.10 | **SDK API — Log** | Logging strutturato (debug/info/warn/error) inoltrato al sistema log Go. |
-| F4.11 | **SDK API — GetEnvVariables** | Lettura variabili ambiente attive dallo store bbolt. |
-| F4.12 | **SDK API — Storage** | Storage persistente per plugin: `get`/`set` nel bucket `plugin_storage` di bbolt. |
-| F4.13 | **BaseWorker Class** | Classe base Python: sotto-classa e usa il decoratore `@action(name, streaming=False)` per registrare handler. |
-| F4.14 | **Decoratore @action** | Registra funzioni Python come azioni invocabili via gRPC senza bisogno di `protoc`. |
-| F4.15 | **JSON-over-gRPC** | Serializzazione JSON nativa senza generazione codice protobuf (no `protoc` richiesto per autori plugin). |
-| F4.16 | **Auto-Discovery Runtime** | Ricerca Python runtime: prima embedded in `<dataDir>/python-runtime/python.exe`, poi `python3`/`python` da PATH. |
-| F4.17 | **Limiti Configurabili** | Timeout (ms), memoria max (MB), numero max worker — modificabili da frontend. |
-| F4.18 | **Stato Worker** | Macchina a stati: `starting` → `ready` → `running` → `stopping` → `dead`. Esposta al frontend. |
-| F4.19 | **Idle Reaper** | Goroutine che ogni 30s termina i worker inattivi da più di 60s per liberare risorse. |
-| F4.20 | **SDK Server** | Server gRPC Go che risponde alle chiamate inverse dei plugin Python (canale ascendente). |
-| F4.21 | **Plugin Manifest Python** | `manifest.json` con entry point `main.py`; struttura directory `<dataDir>/plugins/<id>/`. |
-
+| F4.1 | **Runtime Python rimosso** | Nessun bridge Python, nessun worker, nessuna virtualenv e nessun SDK Python vengono inizializzati o distribuiti. |
+| F4.2 | **Manifest supportati** | I manifest plugin restano locali e possono descrivere estensioni WASM/JS, hook, impostazioni, pannelli e azioni dichiarative. |
+| F4.3 | **Rifiuto manifest Python** | `runtime: "python"` viene respinto dal backend durante installazione e repair package. |
+| F4.4 | **Azioni dichiarative** | Le azioni plugin restano visibili come metadata UI; l'esecuzione custom resta disabilitata finch� non viene collegato un runtime non-Python. |
 ---
 
 ## G. PIATTAFORMA
@@ -997,7 +979,7 @@ Modulo di integrazione AI: connetti, debugga e genera MCP server — esponendo g
 | **C — Infrastruttura & Simulazione** | Mock Server (+ Smart Mock), Proxy, Docker Lab, Load Testing | 47 |
 | **D — Debugging & Analisi** | Browser Debug (+ Discovery), HAR, Network Tools, JSON Tools, XML Tools, Dev Utils, Dev Logs, Observability, Secret Scanner, PDF Editor | 110 |
 | **E — Dati Locali** | Database Studio, Storage Inspector, Workspace, Vault, Document Studio | 58 |
-| **F — Personalizzazione & Estendibilità** | Temi, Plugin WASM, Template, Python Plugin SDK | 51 |
+| **F — Personalizzazione & Estendibilità** | Temi, Plugin WASM/JS, Template | 51 |
 | **G — Piattaforma** | Impostazioni, Infrastruttura, UI Framework | 76 |
 | **H — API Design** | Import/Export OpenAPI, Schema Components, Editor OpenAPI Visuale | 10 |
 | **I — MCP (Model Context Protocol)** | Client/Debugger, Sessioni & Trasporto, Server Generator | 12 |

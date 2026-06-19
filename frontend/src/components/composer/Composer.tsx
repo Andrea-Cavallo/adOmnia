@@ -3,6 +3,7 @@ import { Send, Save, FileCode, Gauge, X, Plus, Check, CornerDownRight, Clock, Co
 import type { RequestItem, HttpMethod, KVRow } from '@/lib/types'
 import { uid, blankBody, blankAuth } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { detectPathParamKeys } from '@/lib/pathParams'
 import { KVEditor } from './KVEditor'
 import { BodyEditor } from './BodyEditor'
 import { AuthEditor } from './AuthEditor'
@@ -269,6 +270,178 @@ function hostFromUrl(url: string): string {
   try { return new URL(url).host } catch { return 'No host yet' }
 }
 
+function queryRowsFromUrl(url: string): KVRow[] {
+  const queryStart = url.indexOf('?')
+  if (queryStart === -1) return []
+  const hashStart = url.indexOf('#', queryStart)
+  const query = url.slice(queryStart + 1, hashStart === -1 ? undefined : hashStart)
+  if (!query) return []
+  const params = new URLSearchParams(query)
+  const rows: KVRow[] = []
+  params.forEach((value, key) => {
+    rows.push({ id: uid(), key, value, enabled: true })
+  })
+  return rows
+}
+
+function rowsWithTrailingBlank(rows: KVRow[]): KVRow[] {
+  return rows.length ? [...rows, { id: uid(), key: '', value: '', enabled: true }] : rows
+}
+
+// Rewrite the URL's query string from the params table, preserving the base path
+// and hash. Values are kept raw so `{{variables}}` survive round-trips.
+function urlWithQuery(url: string, params: KVRow[]): string {
+  const hashStart = url.indexOf('#')
+  const hash = hashStart === -1 ? '' : url.slice(hashStart)
+  const beforeHash = hashStart === -1 ? url : url.slice(0, hashStart)
+  const queryStart = beforeHash.indexOf('?')
+  const base = queryStart === -1 ? beforeHash : beforeHash.slice(0, queryStart)
+  const query = params
+    .filter((row) => row.enabled && row.key.trim())
+    .map((row) => `${row.key}=${row.value}`)
+    .join('&')
+  return query ? `${base}?${query}${hash}` : `${base}${hash}`
+}
+
+function PathParamRow({
+  paramKey,
+  value,
+  enabled,
+  resolvedVars,
+  hasActiveEnv,
+  onChange,
+}: {
+  paramKey: string
+  value: string
+  enabled: boolean
+  resolvedVars: Record<string, string>
+  hasActiveEnv: boolean
+  onChange: (patch: { value?: string; enabled?: boolean }) => void
+}) {
+  return (
+    <div className={cn('grid grid-cols-[28px_minmax(120px,200px)_1fr] items-center gap-1 px-2 py-1', !enabled && 'opacity-40')}>
+      <input
+        type="checkbox"
+        checked={enabled}
+        onChange={(e) => onChange({ enabled: e.target.checked })}
+        className="w-3.5 h-3.5 accent-accent rounded"
+      />
+      <span className="truncate px-2 font-mono text-xs text-accent" title={paramKey}>{paramKey}</span>
+      <div className="h-7 bg-surface-2 border border-border-2 rounded focus-within:border-accent overflow-hidden">
+        <VarHighlightInput
+          value={value}
+          onChange={(next) => onChange({ value: next })}
+          resolvedVars={resolvedVars}
+          hasActiveEnv={hasActiveEnv}
+          placeholder="Path value"
+          className="h-full"
+        />
+      </div>
+    </div>
+  )
+}
+
+function ParamsSection({
+  request,
+  onChange,
+}: {
+  request: RequestItem
+  onChange: (request: RequestItem) => void
+}) {
+  const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
+  const getResolvedVars = useEnvironmentsStore((s) => s.getResolvedVars)
+  const resolvedVars = getResolvedVars()
+  const hasActiveEnv = activeEnvId !== null
+
+  const pathKeys = detectPathParamKeys(request.url)
+  const storedPathParams = request.pathParams ?? []
+
+  // The query table always reflects the URL: if nothing is stored yet (e.g. a
+  // request loaded with a query already in its URL), derive the rows from the
+  // URL so they show up immediately instead of an empty table.
+  const storedParams = request.params ?? []
+  const storedHasQuery = storedParams.some((row) => row.key.trim())
+  const urlQueryRows = queryRowsFromUrl(request.url)
+  const queryRows = storedHasQuery || urlQueryRows.length === 0
+    ? storedParams
+    : rowsWithTrailingBlank(urlQueryRows)
+  const queryCount = queryRows.filter((row) => row.enabled && row.key.trim()).length
+
+  // Editing the query table rewrites the URL so the two stay in sync live.
+  const handleParamsChange = (params: KVRow[]) => {
+    onChange({ ...request, params, url: urlWithQuery(request.url, params) })
+  }
+
+  const setPathParam = (key: string, patch: { value?: string; enabled?: boolean }) => {
+    const existing = storedPathParams.find((p) => p.key === key)
+    const next = existing
+      ? storedPathParams.map((p) => (p.key === key ? { ...p, ...patch } : p))
+      : [...storedPathParams, { id: uid(), key, value: '', enabled: true, ...patch }]
+    onChange({ ...request, pathParams: next })
+  }
+
+  return (
+    <div className="flex flex-col gap-3 pb-3">
+      <section>
+        <div className="flex items-center justify-between gap-2 px-3 py-2">
+          <div>
+            <h3 className="text-xs font-semibold text-text-1">Query Params</h3>
+            <p className="text-[10px] text-text-4">Edit here or in the URL — they stay in sync.</p>
+          </div>
+          <span className="rounded border border-border-2 bg-surface-2 px-2 py-0.5 font-mono text-[10px] text-text-4">
+            {queryCount}
+          </span>
+        </div>
+        <KVEditor
+          rows={queryRows}
+          onChange={handleParamsChange}
+          keyPlaceholder="Query key"
+          valuePlaceholder="Query value"
+        />
+      </section>
+
+      <section className="mx-3 rounded-md border border-border-1 bg-surface-1">
+        <div className="flex items-center justify-between gap-2 border-b border-border-1 px-3 py-2">
+          <div>
+            <h3 className="text-xs font-semibold text-text-1">Path Params</h3>
+            <p className="text-[10px] text-text-4">Detected from :id and {'{id}'} segments in the path.</p>
+          </div>
+          <span className="rounded border border-border-2 bg-surface-2 px-2 py-0.5 font-mono text-[10px] text-text-4">
+            {pathKeys.length}
+          </span>
+        </div>
+        {pathKeys.length ? (
+          <div className="flex flex-col gap-0.5 py-1">
+            <div className="grid grid-cols-[28px_minmax(120px,200px)_1fr] gap-1 px-2 py-1 text-[10px] uppercase tracking-wider text-text-4">
+              <span />
+              <span>Path key</span>
+              <span>Path value</span>
+            </div>
+            {pathKeys.map((key) => {
+              const stored = storedPathParams.find((p) => p.key === key)
+              return (
+                <PathParamRow
+                  key={key}
+                  paramKey={key}
+                  value={stored?.value ?? ''}
+                  enabled={stored?.enabled ?? true}
+                  resolvedVars={resolvedVars}
+                  hasActiveEnv={hasActiveEnv}
+                  onChange={(patch) => setPathParam(key, patch)}
+                />
+              )
+            })}
+          </div>
+        ) : (
+          <p className="px-3 py-3 text-[11px] text-text-4">
+            No path params detected in the current URL.
+          </p>
+        )}
+      </section>
+    </div>
+  )
+}
+
 function RequestOverview({
   request,
   vars,
@@ -449,6 +622,11 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
     if (parsed) onChange(applyParsedCurl(parsed, request))
   }
 
+  const handleUrlChange = (url: string) => {
+    // Keep the query-param table in sync with whatever is typed into the URL.
+    onChange({ ...request, url, params: rowsWithTrailingBlank(queryRowsFromUrl(url)) })
+  }
+
   const openSection = (section: ComposerSection) => {
     setActiveTab(section)
     updateViewState(tabId, { composerSection: section })
@@ -500,7 +678,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
           <div className="flex-1 h-8 bg-surface-2 border border-border-2 rounded focus-within:border-accent transition-colors overflow-hidden">
             <VarHighlightInput
               value={request.url}
-              onChange={(url) => onChange({ ...request, url })}
+              onChange={handleUrlChange}
               onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') onSend() }}
               resolvedVars={resolvedVars}
               hasActiveEnv={hasActiveEnv}
@@ -644,7 +822,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
             />
           )}
           {activeTab === 'params' && (
-            <KVEditor rows={request.params ?? []} onChange={(params) => onChange({ ...request, params })} />
+            <ParamsSection request={request} onChange={onChange} />
           )}
           {activeTab === 'headers' && (
             <KVEditor
@@ -782,7 +960,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
                 placeholder="Document constraints, token lifetime, batch windows, examples, or handoff notes for this request..."
                 className="min-h-24 w-full resize-y rounded border border-border-2 bg-surface-2 px-3 py-2 text-xs leading-relaxed text-text-1 outline-none placeholder:text-text-4 focus:border-accent"
               />
-              <p className="text-[10px] text-text-4">Stored locally with this request and preserved in workspace or Postman collection exports.</p>
+              <p className="text-[10px] text-text-4">Stored locally with this request and included in workspace exports.</p>
             </div>
           )}
         </div>

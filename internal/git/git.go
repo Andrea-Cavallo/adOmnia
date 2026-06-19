@@ -322,7 +322,7 @@ func GetOverview(repoPath string, n int) (Overview, error) {
 	}
 
 	commits := []CommitInfo{}
-	if out, err := runGit(repoPath, "log", fmt.Sprintf("--max-count=%d", n), "--date=short", "--pretty=format:%h%x1f%H%x1f%P%x1f%an%x1f%ad%x1f%s%x1f%D"); err == nil && out != "" {
+	if out, err := runGit(repoPath, "log", "--all", "--topo-order", fmt.Sprintf("--max-count=%d", n), "--date=short", "--pretty=format:%h%x1f%H%x1f%P%x1f%an%x1f%ad%x1f%s%x1f%D"); err == nil && out != "" {
 		for _, line := range strings.Split(out, "\n") {
 			parts := strings.Split(line, "\x1f")
 			if len(parts) < 7 {

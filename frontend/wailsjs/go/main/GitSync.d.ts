@@ -3,33 +3,81 @@
 
 export function AbortIntegration(arg1:string):Promise<void>;
 
+export function AbortOperation(arg1:string):Promise<string>;
+
 export function AddIgnorePattern(arg1:string,arg2:string):Promise<void>;
 
 export function AddRemote(arg1:string,arg2:string,arg3:string):Promise<void>;
 
+export function AmendCommit(arg1:string,arg2:string,arg3:boolean):Promise<string>;
+
+export function ApplyPatch(arg1:string,arg2:string,arg3:boolean,arg4:boolean):Promise<string>;
+
+export function BisectMark(arg1:string,arg2:string):Promise<string>;
+
+export function BisectReset(arg1:string):Promise<string>;
+
+export function BisectRun(arg1:string,arg2:string):Promise<string>;
+
+export function BisectStart(arg1:string,arg2:string,arg3:string):Promise<string>;
+
+export function BlameFile(arg1:string,arg2:string):Promise<string>;
+
 export function CheckoutBranch(arg1:string,arg2:string):Promise<void>;
 
+export function CheckoutCommit(arg1:string,arg2:string,arg3:string):Promise<string>;
+
 export function CheckoutConflictSide(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function CherryPick(arg1:string,arg2:Array<string>,arg3:boolean,arg4:string,arg5:boolean):Promise<string>;
 
 export function Clone(arg1:string,arg2:string):Promise<void>;
 
 export function CommitAll(arg1:string,arg2:string):Promise<string>;
 
+export function CompareCommits(arg1:string,arg2:string,arg3:string):Promise<string>;
+
 export function CompareRefs(arg1:string,arg2:string,arg3:string):Promise<string>;
 
+export function CompareWebURL(arg1:string,arg2:string,arg3:string):Promise<string>;
+
 export function ConfigureUser(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function ContinueOperation(arg1:string):Promise<string>;
 
 export function CreateAndCheckoutBranch(arg1:string,arg2:string):Promise<void>;
 
 export function CreateBranch(arg1:string,arg2:string):Promise<void>;
 
+export function CreateBranchFromCommit(arg1:string,arg2:string,arg3:string,arg4:boolean,arg5:boolean):Promise<string>;
+
+export function CreatePatch(arg1:string,arg2:string,arg3:string):Promise<string>;
+
 export function CreateTag(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function CreateTagFromCommit(arg1:string,arg2:string,arg3:string,arg4:string,arg5:boolean,arg6:boolean):Promise<string>;
 
 export function DeleteTag(arg1:string,arg2:string):Promise<void>;
 
+export function ExtractHeadToNewBranch(arg1:string,arg2:string):Promise<string>;
+
 export function Fetch(arg1:string):Promise<void>;
 
+export function FileAtCommit(arg1:string,arg2:string,arg3:string):Promise<string>;
+
+export function FileHistory(arg1:string,arg2:string,arg3:number):Promise<string>;
+
+export function ForcePush(arg1:string,arg2:string):Promise<string>;
+
+export function GenerateRevertMessage(arg1:string,arg2:string):Promise<string>;
+
+export function GetCommitMeta(arg1:string,arg2:string):Promise<string>;
+
 export function GetFileDiff(arg1:string,arg2:string,arg3:string,arg4:string):Promise<string>;
+
+export function GetRebaseTodo(arg1:string,arg2:string):Promise<string>;
+
+export function GetRepoState(arg1:string):Promise<string>;
 
 export function GetStatus(arg1:string):Promise<string>;
 
@@ -53,22 +101,42 @@ export function Push(arg1:string,arg2:string):Promise<void>;
 
 export function RebaseBranch(arg1:string,arg2:string):Promise<void>;
 
+export function RebaseOnto(arg1:string,arg2:string):Promise<string>;
+
+export function RemoteWebURL(arg1:string):Promise<string>;
+
 export function RemoveFile(arg1:string,arg2:string):Promise<void>;
 
 export function RemoveRemote(arg1:string,arg2:string):Promise<void>;
+
+export function ResetBranch(arg1:string,arg2:string,arg3:string):Promise<string>;
 
 export function ResetHard(arg1:string,arg2:string):Promise<void>;
 
 export function RestoreFile(arg1:string,arg2:string):Promise<void>;
 
+export function RestoreFileFromCommit(arg1:string,arg2:string,arg3:string):Promise<string>;
+
+export function RevertCommit(arg1:string,arg2:string,arg3:string,arg4:number):Promise<string>;
+
+export function SearchHistory(arg1:string,arg2:string):Promise<string>;
+
 export function Show(arg1:string,arg2:string):Promise<string>;
 
+export function SkipOperation(arg1:string):Promise<string>;
+
+export function SquashHeadIntoPrevious(arg1:string):Promise<string>;
+
 export function StageFile(arg1:string,arg2:string):Promise<void>;
+
+export function StartInteractiveRebase(arg1:string,arg2:string,arg3:string):Promise<string>;
 
 export function Stash(arg1:string):Promise<void>;
 
 export function StashDrop(arg1:string,arg2:string):Promise<void>;
 
 export function StashPop(arg1:string):Promise<void>;
+
+export function UndoLastCommit(arg1:string,arg2:boolean):Promise<string>;
 
 export function UnstageFile(arg1:string,arg2:string):Promise<void>;

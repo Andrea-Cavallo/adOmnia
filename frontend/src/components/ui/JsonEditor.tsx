@@ -11,6 +11,8 @@ interface JsonEditorProps {
   minHeight?: string
   resolvedVars?: Record<string, string>
   hasActiveEnv?: boolean
+  searchTerm?: string
+  activeSearchIndex?: number
 }
 
 // ─── Var tooltip types ────────────────────────────────────────────────────────
@@ -196,6 +198,42 @@ const CLS_MAP: Record<string, string> = {
   'json-bracket-3': 'var(--color-json-bracket-3, #F472B6)',
 }
 
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+function highlightSearchMatches(
+  rawText: string,
+  color: string | undefined,
+  searchTerm: string | undefined,
+  activeSearchIndex: number,
+  matchCursor: { current: number },
+): string {
+  if (!searchTerm) {
+    const escaped = escapeHtml(rawText)
+    return color ? `<span style="color:${color}">${escaped}</span>` : escaped
+  }
+
+  const lower = rawText.toLowerCase()
+  const needle = searchTerm.toLowerCase()
+  let last = 0
+  let html = ''
+  let index = lower.indexOf(needle)
+
+  while (index !== -1) {
+    if (index > last) html += escapeHtml(rawText.slice(last, index))
+    const matchText = escapeHtml(rawText.slice(index, index + searchTerm.length))
+    const isActive = matchCursor.current === activeSearchIndex
+    html += `<mark data-json-search-match="true" style="background:${isActive ? 'rgba(251,191,36,0.55)' : 'rgba(234,179,8,0.32)'};color:inherit;border-radius:2px;outline:${isActive ? '1px solid var(--color-warning)' : 'none'}">${matchText}</mark>`
+    matchCursor.current += 1
+    last = index + searchTerm.length
+    index = lower.indexOf(needle, last)
+  }
+
+  if (last < rawText.length) html += escapeHtml(rawText.slice(last))
+  return color ? `<span style="color:${color}">${html}</span>` : html
+}
+
 /**
  * For json-string tokens that contain `{{...}}` patterns, split the token
  * into segments, coloring vars with their resolved/missing/noenv state.
@@ -211,11 +249,9 @@ function injectVarHighlights(
   let result = ''
   let m: RegExpExecArray | null
 
-  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-
   while ((m = re.exec(rawText)) !== null) {
     if (m.index > last) {
-      result += `<span style="color:${baseColor}">${esc(rawText.slice(last, m.index))}</span>`
+      result += `<span style="color:${baseColor}">${escapeHtml(rawText.slice(last, m.index))}</span>`
     }
     const varName = m[1].trim()
 
@@ -229,28 +265,30 @@ function injectVarHighlights(
       color = 'var(--color-error)'; bg = 'rgba(239,68,68,0.12)'
     }
 
-    result += `<span style="color:${color};background:${bg};border-radius:2px">${esc(m[0])}</span>`
+    result += `<span style="color:${color};background:${bg};border-radius:2px">${escapeHtml(m[0])}</span>`
     last = m.index + m[0].length
   }
 
   if (last < rawText.length) {
-    result += `<span style="color:${baseColor}">${esc(rawText.slice(last))}</span>`
+    result += `<span style="color:${baseColor}">${escapeHtml(rawText.slice(last))}</span>`
   }
 
-  return result || `<span style="color:${baseColor}">${esc(rawText)}</span>`
+  return result || `<span style="color:${baseColor}">${escapeHtml(rawText)}</span>`
 }
 
 function buildHtml(
   tokens: Array<{ text: string; cls: string }>,
   resolvedVars?: Record<string, string>,
   hasActiveEnv?: boolean,
+  searchTerm?: string,
+  activeSearchIndex = 0,
 ): string {
+  const matchCursor = { current: 0 }
   return tokens.map(({ text, cls }) => {
-    const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    if (!cls) return escaped
+    if (!cls) return highlightSearchMatches(text, undefined, searchTerm, activeSearchIndex, matchCursor)
     const color = CLS_MAP[cls]
     // Inject var highlighting for string values (not keys) that contain {{...}}
-    if (cls === 'json-string' && resolvedVars && text.includes('{{')) {
+    if (!searchTerm && cls === 'json-string' && resolvedVars && text.includes('{{')) {
       return injectVarHighlights(
         text,
         color ?? 'var(--color-json-string)',
@@ -258,8 +296,7 @@ function buildHtml(
         hasActiveEnv ?? false,
       )
     }
-    if (color) return `<span style="color:${color}">${escaped}</span>`
-    return escaped
+    return highlightSearchMatches(text, color, searchTerm, activeSearchIndex, matchCursor)
   }).join('')
 }
 
@@ -291,20 +328,22 @@ export function JsonEditor({
   minHeight = '280px',
   resolvedVars,
   hasActiveEnv,
+  searchTerm,
+  activeSearchIndex = 0,
 }: JsonEditorProps) {
   const taRef  = useRef<HTMLTextAreaElement>(null)
   const preRef = useRef<HTMLPreElement>(null)
   const [tooltip, setTooltip] = useState<VarTooltip | null>(null)
 
   const highlight = useCallback((text: string) => {
-    if (!text.trim()) return `<span style="color:var(--color-text-4)">${placeholder ?? ''}</span>`
+    if (!text.trim()) return `<span style="color:var(--color-text-4)">${escapeHtml(placeholder ?? '')}</span>`
     try {
       const tokens = tokenizeJson(text)
-      return buildHtml(tokens, resolvedVars, hasActiveEnv)
+      return buildHtml(tokens, resolvedVars, hasActiveEnv, searchTerm, activeSearchIndex)
     } catch {
-      return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      return highlightSearchMatches(text, undefined, searchTerm, activeSearchIndex, { current: 0 })
     }
-  }, [placeholder, resolvedVars, hasActiveEnv])
+  }, [activeSearchIndex, placeholder, resolvedVars, searchTerm, hasActiveEnv])
 
   // Keep the highlight layer in sync with the textarea's scroll position.
   const syncScroll = useCallback(() => {
@@ -328,6 +367,28 @@ export function JsonEditor({
     ta.addEventListener('wheel', onWheel, { passive: false })
     return () => ta.removeEventListener('wheel', onWheel)
   }, [syncScroll])
+
+  useEffect(() => {
+    if (!searchTerm) return
+    const ta = taRef.current
+    if (!ta) return
+    const lower = value.toLowerCase()
+    const needle = searchTerm.toLowerCase()
+    let found = 0
+    let index = lower.indexOf(needle)
+    while (index !== -1) {
+      if (found === activeSearchIndex) {
+        ta.setSelectionRange(index, index + searchTerm.length)
+        const line = value.slice(0, index).split('\n').length - 1
+        const lineHeight = parseFloat(window.getComputedStyle(ta).lineHeight) || 19
+        ta.scrollTop = Math.max(0, line * lineHeight - 72)
+        syncScroll()
+        return
+      }
+      found += 1
+      index = lower.indexOf(needle, index + Math.max(searchTerm.length, 1))
+    }
+  }, [activeSearchIndex, searchTerm, syncScroll, value])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Tab') {

@@ -22,6 +22,7 @@ export interface RunEntry {
   request?: RequestItem
   response?: ResponseData
   assertions?: AssertionResult[]
+  attempts?: number
   error?: string
 }
 
@@ -74,6 +75,27 @@ function stringifyValue(value: unknown) {
   if (typeof value === 'string') return value
   if (typeof value === 'number' || typeof value === 'boolean') return String(value)
   return JSON.stringify(value)
+}
+
+function applyExtractions(
+  node: FlowNodeDefinition,
+  response: ResponseData,
+  vars: Record<string, string>,
+  responses: Record<string, ResponseData>,
+) {
+  const next = { ...vars }
+  const extractionContext: FlowContext = { vars: next, response, responses }
+  for (const mapping of node.config.extractions ?? []) {
+    let value: unknown
+    if (mapping.source === 'status') value = response.status
+    else if (mapping.source === 'header') value = response.headers[mapping.path] ?? response.headers[mapping.path.toLowerCase()]
+    else if (mapping.source === 'expression') value = resolveExpression(mapping.path, extractionContext)
+    else value = getPath(safeJson(response.body), mapping.path)
+    const resolved = stringifyValue(value)
+    if (resolved !== '') next[mapping.name] = resolved
+    else if (mapping.fallback !== undefined) next[mapping.name] = mapping.fallback
+  }
+  return next
 }
 
 function resolveExpression(path: string, ctx: FlowContext): unknown {
@@ -218,22 +240,52 @@ export async function runApiFlow(graph: FlowGraphDefinition, options: RunApiFlow
     }
 
     if (current.type !== 'request') break
-    const request = current.config.request ?? blankRequest()
-    const execution = await execute(request, ctx.vars)
-    const response = execution.response
-    const assertions = evaluateAssertions(request.assertions, response)
-    const failedAssertions = assertions.filter((assertion) => !assertion.passed)
-    const expectedOk = expectedStatusMatches(current.config.expectedStatus ?? '2xx', response.status)
-    const failed = Boolean(response.error) || response.status >= 400 || !expectedOk || failedAssertions.length > 0
+    const request = {
+      ...(current.config.request ?? blankRequest()),
+      timeout: current.config.timeoutMs && current.config.timeoutMs > 0 ? current.config.timeoutMs : current.config.request?.timeout,
+    }
+    const maxAttempts = Math.max(1, Math.min(10, (current.config.retryCount ?? 0) + 1))
+    let execution: ExecuteRequestResult | null = null
+    let response: ResponseData = {
+      status: 0,
+      statusText: '',
+      headers: {},
+      body: '',
+      contentType: '',
+      ms: 0,
+      size: 0,
+      error: { code: 'ERR', message: 'Request was not executed' },
+    }
+    let assertions: AssertionResult[] = []
+    let failedAssertions: AssertionResult[] = []
+    let expectedOk = false
+    let failed = true
+
+    let attempts = 0
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      attempts = attempt
+      execution = await execute(request, ctx.vars)
+      response = execution.response
+      assertions = evaluateAssertions(request.assertions, response)
+      failedAssertions = assertions.filter((assertion) => !assertion.passed)
+      expectedOk = expectedStatusMatches(current.config.expectedStatus ?? '2xx', response.status)
+      failed = Boolean(response.error) || response.status >= 400 || !expectedOk || failedAssertions.length > 0
+      if (!failed || attempt === maxAttempts) break
+    }
+    if (!execution) {
+      execution = { response, vars: ctx.vars, mutations: {}, scriptRuns: [] }
+    }
     const nodeKey = nodeOverrideKey(current) || current.id
-    ctx = { vars: { ...execution.vars, [`${nodeKey}.status`]: String(response.status) }, response, responses: { ...ctx.responses, [nodeKey]: response } }
+    const responses = { ...ctx.responses, [nodeKey]: response }
+    const extractedVars = applyExtractions(current, response, execution.vars, responses)
+    ctx = { vars: { ...extractedVars, [`${nodeKey}.status`]: String(response.status) }, response, responses }
     options.onVars?.(ctx.vars)
     const durationMs = elapsed(started)
     const error = response.error?.message
       || (!expectedOk ? `Expected ${current.config.expectedStatus || '2xx'}, got HTTP ${response.status}` : undefined)
       || (failedAssertions.length > 0 ? `${failedAssertions.length} assertion failed` : undefined)
     setNodeStatus(current.id, { status: failed ? 'failed' : 'success', durationMs, message: failed ? error : `${response.status} ${response.statusText}` })
-    pushEntry({ ...entryBase, status: failed ? 'failed' : 'success', durationMs, httpStatus: response.status, request, response, assertions, error })
+    pushEntry({ ...entryBase, status: failed ? 'failed' : 'success', durationMs, httpStatus: response.status, request, response, assertions, attempts, error })
     current = moveTo(current, failed ? 'error' : 'success')
   }
 

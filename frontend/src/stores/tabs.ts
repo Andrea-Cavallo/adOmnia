@@ -45,6 +45,7 @@ interface TabsState {
   moveCollectionTabs: (collectionId: string, targetWorkspaceId: string) => void
   openTab: (request: RequestItem, collectionId?: string) => void
   closeTab: (id: string) => void
+  closeRequestTabs: (requestId: string) => void
   closeTabsToRight: (id: string) => void
   closeTabsToLeft: (id: string) => void
   reorderTab: (fromId: string, toId: string, position: TabDropPosition) => void
@@ -250,6 +251,21 @@ export const useTabsStore = create<TabsState>((set, get) => ({
       return { tabs: filtered, activeTabId }
     })
     set((s) => ({ viewStateByTabId: retainViewStates(s.viewStateByTabId, s.tabs) }))
+    get().save()
+  },
+
+  closeRequestTabs: (requestId) => {
+    set((s) => {
+      const tabs = s.tabs.filter((tab) => tab.request.id !== requestId)
+      const activeTabId = tabs.some((tab) => tab.id === s.activeTabId)
+        ? s.activeTabId
+        : tabs.find((tab) => belongsToWorkspace(tab))?.id ?? null
+      return {
+        tabs,
+        activeTabId,
+        viewStateByTabId: retainViewStates(s.viewStateByTabId, tabs),
+      }
+    })
     get().save()
   },
 

@@ -25,6 +25,7 @@ interface AnnotationLayerProps {
   selectedId: string | null
   signatureImage: string | null
   onSelect: (id: string | null) => void
+  onChangeStart: () => void
   onCreate: (annotation: PdfAnnotation) => void
   onUpdate: (annotation: PdfAnnotation) => void
   onToolHandled: () => void
@@ -47,6 +48,7 @@ export function AnnotationLayer({
   selectedId,
   signatureImage,
   onSelect,
+  onChangeStart,
   onCreate,
   onUpdate,
   onToolHandled,
@@ -97,26 +99,42 @@ export function AnnotationLayer({
       return
     }
     if (tool === 'ink') {
+      e.currentTarget.setPointerCapture(e.pointerId)
       setDraft({ kind: 'ink', points: [p.x, p.y] })
       return
     }
     // shape / highlight rubber-band
+    e.currentTarget.setPointerCapture(e.pointerId)
     const shape = tool === 'highlight' ? 'highlight' : (tool as ShapeKind)
     setDraft({ kind: 'shape', shape, start: p, rect: { x: p.x, y: p.y, w: 0, h: 0 } })
   }
 
   const handleMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!draft) return
-    const p = toLocal(e.clientX, e.clientY)
-    if (draft.kind === 'ink') {
-      setDraft({ kind: 'ink', points: [...draft.points, p.x, p.y] })
-    } else {
-      setDraft({ ...draft, rect: { x: draft.start.x, y: draft.start.y, w: p.x - draft.start.x, h: p.y - draft.start.y } })
-    }
+    const events = typeof e.nativeEvent.getCoalescedEvents === 'function'
+      ? e.nativeEvent.getCoalescedEvents()
+      : [e.nativeEvent]
+    setDraft((current) => {
+      if (!current) return current
+      if (current.kind === 'ink') {
+        const next = [...current.points]
+        for (const event of events) {
+          const p = toLocal(event.clientX, event.clientY)
+          next.push(p.x, p.y)
+        }
+        return { kind: 'ink', points: next }
+      }
+      const last = events[events.length - 1]
+      const p = toLocal(last.clientX, last.clientY)
+      return { ...current, rect: { x: current.start.x, y: current.start.y, w: p.x - current.start.x, h: p.y - current.start.y } }
+    })
   }
 
-  const handleUp = () => {
+  const handleUp = (e?: React.PointerEvent<HTMLDivElement>) => {
     if (!draft) return
+    if (e?.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    }
     if (draft.kind === 'ink') {
       if (draft.points.length >= 4) onCreate(createInkAnnotation(page, draft.points))
     } else {
@@ -124,7 +142,7 @@ export function AnnotationLayer({
       const big = Math.abs(draft.rect.w) > 3 || Math.abs(draft.rect.h) > 3
       if (big) {
         if (draft.shape === 'highlight') {
-          onCreate({ ...createHighlightAnnotation(page, norm) })
+          onCreate({ ...createHighlightAnnotation(page, norm), color })
         } else if (draft.shape === 'line' || draft.shape === 'arrow') {
           onCreate({ ...createShapeAnnotation(draft.shape, page, draft.rect), color })
         } else {
@@ -145,6 +163,7 @@ export function AnnotationLayer({
     if (tool !== 'select') return
     e.stopPropagation()
     onSelect(annotation.id)
+    onChangeStart()
     const startClient = { x: e.clientX, y: e.clientY }
     const startGeo = annotation.type === 'ink'
       ? null
@@ -202,6 +221,7 @@ export function AnnotationLayer({
           onSelect={() => selectable && onSelect(a.id)}
           onStartEdit={() => a.type === 'text' && selectable && setEditingId(a.id)}
           onEndEdit={() => setEditingId(null)}
+          onChangeStart={onChangeStart}
           onUpdate={onUpdate}
         />
       ))}
@@ -224,6 +244,7 @@ interface AnnotationViewProps {
   onSelect: () => void
   onStartEdit: () => void
   onEndEdit: () => void
+  onChangeStart: () => void
   onUpdate: (a: PdfAnnotation) => void
 }
 
@@ -237,6 +258,7 @@ function AnnotationView({
   onSelect,
   onStartEdit,
   onEndEdit,
+  onChangeStart,
   onUpdate,
 }: AnnotationViewProps) {
   const px = (pt: number) => pointToScreen(pt, zoom)
@@ -269,6 +291,7 @@ function AnnotationView({
           <textarea
             autoFocus
             value={a.text}
+            onFocus={onChangeStart}
             onChange={(e) => onUpdate({ ...a, text: e.target.value })}
             onBlur={onEndEdit}
             onPointerDown={(e) => e.stopPropagation()}
@@ -452,7 +475,7 @@ function DraftView({ shape, rect, zoom, color }: { shape: ShapeKind | 'highlight
   const norm = normalizeRect(rect)
   const px = (pt: number) => pointToScreen(pt, zoom)
   if (shape === 'highlight') {
-    return <div style={{ position: 'absolute', left: px(norm.x), top: px(norm.y), width: px(norm.w), height: px(norm.h), background: '#facc15', opacity: 0.4 }} />
+    return <div style={{ position: 'absolute', left: px(norm.x), top: px(norm.y), width: px(norm.w), height: px(norm.h), background: color, opacity: 0.4 }} />
   }
   return (
     <div style={{ position: 'absolute', left: px(norm.x), top: px(norm.y) }}>

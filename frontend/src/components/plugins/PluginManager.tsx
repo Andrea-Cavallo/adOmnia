@@ -19,7 +19,7 @@ import { PluginPanel } from './PluginPanel'
 type InstallTab = 'file' | 'form' | 'json'
 
 const PERMISSIONS = ['http', 'storage', 'clipboard', 'notifications', 'env', 'hooks']
-const RUNTIMES    = ['python', 'js', 'wasm', 'none']
+const RUNTIMES    = ['wasm', 'js', 'none']
 
 interface PluginFormState {
   id: string
@@ -69,7 +69,7 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
   // Form state
   const [form, setForm] = useState<PluginFormState>({
     id: '', name: '', version: '1.0.0', author: '', description: '',
-    entryPoint: 'main.py', runtime: 'python', license: 'MIT', homepage: '', permissions: [],
+    entryPoint: 'plugin.wasm', runtime: 'wasm', license: 'MIT', homepage: '', permissions: [],
   })
 
   // Raw JSON state
@@ -214,7 +214,7 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
           {/* ── Tab: file ─────────────────────────────────────── */}
           {tab === 'file' && (
             <div className="space-y-3">
-              <p className="text-xs text-text-3">Per plugin Python o WASM installa la cartella completa, incluso il file che il plugin esegue.</p>
+              <p className="text-xs text-text-3">Per plugin WASM o JS installa la cartella completa, incluso il file che il plugin dichiara.</p>
               <button
                 type="button"
                 disabled={busy}
@@ -284,7 +284,7 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
                     {RUNTIMES.map(r => <option key={r} value={r}>{r}</option>)}
                   </select>
                 </div>
-                <Field label="Entry point" value={form.entryPoint} onChange={v => setF('entryPoint', v)} placeholder="main.py" mono />
+                <Field label="Entry point" value={form.entryPoint} onChange={v => setF('entryPoint', v)} placeholder="plugin.wasm" mono />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Licenza" value={form.license} onChange={v => setF('license', v)} placeholder="MIT" />

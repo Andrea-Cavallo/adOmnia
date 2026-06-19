@@ -34,10 +34,6 @@ export function GetPlugins() {
   return window['go']['main']['PluginManager']['GetPlugins']();
 }
 
-export function GetPythonRuntimeStatus() {
-  return window['go']['main']['PluginManager']['GetPythonRuntimeStatus']();
-}
-
 export function GetRegisteredHooks() {
   return window['go']['main']['PluginManager']['GetRegisteredHooks']();
 }
@@ -52,10 +48,6 @@ export function InstallPlugin(arg1) {
 
 export function InstallPluginPackage(arg1, arg2) {
   return window['go']['main']['PluginManager']['InstallPluginPackage'](arg1, arg2);
-}
-
-export function InstallPythonPlugin(arg1) {
-  return window['go']['main']['PluginManager']['InstallPythonPlugin'](arg1);
 }
 
 export function LoadPluginState() {

@@ -27,6 +27,8 @@ export interface FlowNodeConfig {
   request?: RequestItem
   expectedStatus?: string
   stopOnFailure?: boolean
+  retryCount?: number
+  timeoutMs?: number
   extractions?: FlowVariableMapping[]
   condition?: FlowCondition
   endState?: 'success' | 'failed'
@@ -172,6 +174,8 @@ function normalizeNode(value: unknown, index: number): FlowNodeDefinition {
       request: type === 'request' ? normalizeRequest(config.request, index) : undefined,
       expectedStatus: stringValue(config.expectedStatus, '2xx'),
       stopOnFailure: typeof config.stopOnFailure === 'boolean' ? config.stopOnFailure : true,
+      retryCount: numberValue(config.retryCount, 0),
+      timeoutMs: numberValue(config.timeoutMs, 0),
       extractions: Array.isArray(config.extractions) ? config.extractions.map(normalizeMapping) : [],
       condition: type === 'condition' ? normalizeCondition(config.condition) : undefined,
       endState: config.endState === 'failed' ? 'failed' : 'success',

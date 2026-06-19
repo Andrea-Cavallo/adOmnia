@@ -26,6 +26,7 @@ import { graphFromMermaid } from '@/lib/flowMermaid'
 import { loadFlowDefinitions, saveFlowDefinitions, type SavedFlowDefinition } from '@/lib/flowStorage'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 import { uid } from '@/lib/types'
+import { ResizeHandle } from '@/components/ui/ResizeHandle'
 import { cn } from '@/lib/utils'
 
 interface MermaidDoc {
@@ -58,25 +59,6 @@ function clampMermaidWidth(width: number): number {
   return Math.max(320, Math.min(width, Math.round(window.innerWidth * 0.72)))
 }
 
-function MermaidResizeHandle({
-  label,
-  onMouseDown,
-}: {
-  label: string
-  onMouseDown: (event: React.MouseEvent<HTMLDivElement>) => void
-}) {
-  return (
-    <div
-      role="separator"
-      aria-label={label}
-      title={label}
-      onMouseDown={onMouseDown}
-      className="group relative z-10 w-[5px] shrink-0 cursor-ew-resize bg-surface-0 transition-colors hover:bg-accent/20"
-    >
-      <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-border-1 transition-colors group-hover:bg-accent/60" />
-    </div>
-  )
-}
 
 const NODE_STYLE_PRESETS: NodeStylePreset[] = [
   { label: 'White', fill: '#ffffff', stroke: '#334155', color: '#111827' },
@@ -947,7 +929,7 @@ export function MermaidPanel() {
                 className="h-full shrink-0 resize-none border-r border-border-1 bg-surface-0 p-4 font-mono text-[12px] leading-5 text-text-1 outline-none"
                 style={{ width: sourceWidth }}
               />
-              <MermaidResizeHandle label="Resize Mermaid source and preview" onMouseDown={startSplitResize} />
+              <ResizeHandle label="Resize Mermaid source and preview" onMouseDown={startSplitResize} />
               {preview}
             </div>
           )}

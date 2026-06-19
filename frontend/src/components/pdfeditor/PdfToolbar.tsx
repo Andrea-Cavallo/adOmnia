@@ -2,7 +2,7 @@ import {
   MousePointer2, Type, Highlighter, Square, Circle, Minus, ArrowUpRight,
   Pencil, PenTool, Save, Download, FolderOpen, ZoomIn, ZoomOut, Trash2,
   RotateCw, Scissors, Files, Copy, Search, ArrowUpDown, FilePlus2,
-  ShieldCheck, BadgeCheck,
+  ShieldCheck, BadgeCheck, Undo2, Redo2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { PdfToolId } from '@/lib/pdf/annotationModel'
@@ -37,6 +37,8 @@ interface PdfToolbarProps {
   searchQuery: string
   searchCount: number
   selectedId: string | null
+  canUndo: boolean
+  canRedo: boolean
   saving: boolean
   exporting: boolean
   onToolChange: (t: PdfToolId) => void
@@ -53,15 +55,17 @@ interface PdfToolbarProps {
   onSignPdf: () => void
   onVerifySignature: () => void
   onOpenFile: () => void
+  onUndo: () => void
+  onRedo: () => void
   onSave: () => void
   onExport: () => void
   onDeleteSelected: () => void
 }
 
 export function PdfToolbar({
-  hasDoc, tool, color, zoom, pageCount, currentPage, searchQuery, searchCount, selectedId, saving, exporting,
+  hasDoc, tool, color, zoom, pageCount, currentPage, searchQuery, searchCount, selectedId, canUndo, canRedo, saving, exporting,
   onToolChange, onColorChange, onZoom, onCurrentPageChange, onSearchChange, onRotatePage,
-  onDeletePage, onMovePage, onSplitPage, onMergeFile, onCopyPageText, onOpenFile, onSave, onExport, onDeleteSelected,
+  onDeletePage, onMovePage, onSplitPage, onMergeFile, onCopyPageText, onOpenFile, onUndo, onRedo, onSave, onExport, onDeleteSelected,
   onSignPdf, onVerifySignature,
 }: PdfToolbarProps) {
   return (
@@ -185,6 +189,13 @@ export function PdfToolbar({
         className="grid h-7 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-error disabled:opacity-30"
       >
         <Trash2 size={14} />
+      </button>
+
+      <button onClick={onUndo} disabled={!canUndo} className="grid h-7 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-30" title="Undo (Ctrl+Z)">
+        <Undo2 size={14} />
+      </button>
+      <button onClick={onRedo} disabled={!canRedo} className="grid h-7 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-30" title="Redo (Ctrl+Y)">
+        <Redo2 size={14} />
       </button>
 
       <div className="flex-1" />

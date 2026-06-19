@@ -30,7 +30,6 @@ type App struct {
 	ctx          context.Context
 	serverPort   int
 	browserDebug *BrowserDebug
-	scheduler    *SchedulerBinding
 }
 
 func NewApp() *App {
@@ -65,15 +64,8 @@ func (a *App) OnStartup(ctx context.Context) {
 	proxy.AutoLoadCA()
 	devlog.Log("OnStartup", "CA proxy caricato", nil)
 	a.serverPort = sidecar.Start()
-	if globalPythonBridge != nil {
-		globalPythonBridge.Init(ctx, a)
-	}
 	if globalPluginManager != nil {
 		globalPluginManager.FireEvent(PluginEvent{Type: "onStartup", Payload: map[string]interface{}{}})
-	}
-	if a.scheduler != nil {
-		a.scheduler.Start()
-		devlog.Log("OnStartup", "scheduler avviato", nil)
 	}
 	devlog.Info("OnStartup", "avvio completato", map[string]any{"port": a.serverPort})
 	log.Println("[app] startup complete")
@@ -313,15 +305,9 @@ func (a *App) OnDomReady(ctx context.Context) {
 
 func (a *App) OnShutdown(ctx context.Context) {
 	devlog.Info("OnShutdown", "arresto applicazione", nil)
-	if a.scheduler != nil {
-		a.scheduler.Stop()
-	}
 	if globalPluginManager != nil {
 		globalPluginManager.FireEvent(PluginEvent{Type: "onShutdown", Payload: map[string]interface{}{}})
 		globalPluginManager.Shutdown()
-	}
-	if globalPythonBridge != nil {
-		globalPythonBridge.Shutdown()
 	}
 	if a.browserDebug != nil {
 		if err := a.browserDebug.StopBrowser(); err != nil {

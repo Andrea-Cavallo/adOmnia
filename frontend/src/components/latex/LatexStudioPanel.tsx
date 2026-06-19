@@ -23,6 +23,7 @@ import {
 } from '@/lib/latex/latexTemplates'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 import { useAppStore } from '@/stores/app'
+import { ResizeHandle } from '@/components/ui/ResizeHandle'
 import { cn } from '@/lib/utils'
 
 const STORAGE_KEY = 'adomnia.latex.studio.v1'
@@ -36,25 +37,6 @@ function clampWidth(width: number, min: number, maxRatio: number): number {
   return Math.max(min, Math.min(width, Math.round(window.innerWidth * maxRatio)))
 }
 
-function ResizeHandle({
-  label,
-  onMouseDown,
-}: {
-  label: string
-  onMouseDown: (event: React.MouseEvent<HTMLDivElement>) => void
-}) {
-  return (
-    <div
-      role="separator"
-      aria-label={label}
-      title={label}
-      onMouseDown={onMouseDown}
-      className="group relative z-10 w-[5px] shrink-0 cursor-ew-resize bg-surface-0 transition-colors hover:bg-accent/20"
-    >
-      <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-border-1 transition-colors group-hover:bg-accent/60" />
-    </div>
-  )
-}
 
 interface SavedLatexState {
   templateId: string

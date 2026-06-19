@@ -754,18 +754,6 @@ export function MockPanel() {
     }])
   }
 
-  const loadRestPresets = () => {
-    const fromCollections = collections.flatMap((collection) => collectRestEndpoints(collection.children))
-    const presets = fromCollections.length > 0 ? fromCollections : defaultRestEndpoints()
-    const seen = new Set<string>()
-    setEndpoints([...presets, ...endpoints].filter((endpoint) => {
-      const key = `${endpoint.method} ${endpoint.path}`
-      if (seen.has(key)) return false
-      seen.add(key)
-      return true
-    }))
-  }
-
   const removeEndpoint = (id: string) => setEndpoints(endpoints.filter((e) => e.id !== id))
   const updateEndpoint = (id: string, updated: MockEndpoint) => setEndpoints(endpoints.map((e) => e.id === id ? updated : e))
   const clearHits = () => setHits([])
@@ -786,13 +774,6 @@ export function MockPanel() {
 
         <div className="flex-1" />
 
-        <button
-          onClick={loadRestPresets}
-          className="flex items-center gap-1 px-2 py-1 text-[11px] text-text-3 hover:text-text-1 border border-border-2 rounded hover:bg-surface-2"
-          title="Load REST endpoints from current collections"
-        >
-          <Zap size={11} /> REST presets
-        </button>
         <button
           onClick={handleExport}
           disabled={endpoints.length === 0}

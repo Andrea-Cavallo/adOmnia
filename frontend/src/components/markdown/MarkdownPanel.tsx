@@ -23,6 +23,7 @@ import { MarkdownOutline } from '@/components/markdown/MarkdownOutline'
 import { MarkdownPreview } from '@/components/markdown/MarkdownPreview'
 import { MarkdownToolbar } from '@/components/markdown/MarkdownToolbar'
 import { TemplatePickerModal } from '@/components/markdown/TemplatePickerModal'
+import { ResizeHandle } from '@/components/ui/ResizeHandle'
 import {
   EMPTY_FOLDER_NOTE,
   MARKDOWN_UI_STATE_KEY,
@@ -77,26 +78,6 @@ function normalizeMarkdownColumnWidths(value?: Partial<MarkdownColumnWidths>): M
     editor: clampMarkdownColumnWidth('editor', value?.editor ?? DEFAULT_COLUMN_WIDTHS.editor),
     inspector: clampMarkdownColumnWidth('inspector', value?.inspector ?? DEFAULT_COLUMN_WIDTHS.inspector),
   }
-}
-
-function MarkdownResizeHandle({
-  label,
-  onMouseDown,
-}: {
-  label: string
-  onMouseDown: (event: React.MouseEvent<HTMLDivElement>) => void
-}) {
-  return (
-    <div
-      role="separator"
-      aria-label={label}
-      title={label}
-      onMouseDown={onMouseDown}
-      className="group relative z-10 w-[5px] shrink-0 cursor-ew-resize bg-surface-0 transition-colors hover:bg-accent/20"
-    >
-      <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-border-1 transition-colors group-hover:bg-accent/60" />
-    </div>
-  )
 }
 
 export function MarkdownPanel() {
@@ -829,7 +810,7 @@ export function MarkdownPanel() {
           style={{ width: columnWidths.tree }}
         />
 
-        <MarkdownResizeHandle label="Resize Markdown file list" onMouseDown={startColumnResize('tree', 1)} />
+        <ResizeHandle label="Resize Markdown file list" onMouseDown={startColumnResize('tree', 1)} />
 
         {mode !== 'preview' && (
           <div
@@ -850,7 +831,7 @@ export function MarkdownPanel() {
           </div>
         )}
         {mode === 'split' && (
-          <MarkdownResizeHandle label="Resize Markdown editor and preview" onMouseDown={startColumnResize('editor', 1)} />
+          <ResizeHandle label="Resize Markdown editor and preview" onMouseDown={startColumnResize('editor', 1)} />
         )}
         {mode !== 'edit' && (
           <div className="flex min-w-[280px] flex-1 flex-col overflow-hidden">
@@ -890,7 +871,7 @@ export function MarkdownPanel() {
           setShowUnresolved={setShowUnresolved}
         />
 
-        <MarkdownResizeHandle label="Resize Markdown outline and backlinks" onMouseDown={startColumnResize('inspector', -1)} />
+        <ResizeHandle label="Resize Markdown outline and backlinks" onMouseDown={startColumnResize('inspector', -1)} />
 
         <aside className="shrink-0 border-l border-border-1 bg-surface-0 flex flex-col min-h-0" style={{ width: columnWidths.inspector }}>
           <div className="border-b border-border-1 p-2">

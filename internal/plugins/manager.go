@@ -5,17 +5,13 @@ package plugins
 
 import (
 	"adomnia/internal/storage"
-	"bytes"
-	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -66,8 +62,8 @@ type PluginManifest struct {
 	Actions       []PluginAction  `json:"actions,omitempty"`
 }
 
-// UnmarshalJSON accepts both entryPoint and entrypoint, because existing local
-// Python plugin examples predate the camel-case manifest key.
+// UnmarshalJSON accepts both entryPoint and entrypoint for compatibility with
+// older local manifests that predate the camel-case manifest key.
 func (m *PluginManifest) UnmarshalJSON(data []byte) error {
 	type manifestAlias PluginManifest
 	var value manifestAlias
@@ -95,23 +91,14 @@ type PluginAction struct {
 	Streaming   bool   `json:"streaming"`
 }
 
-// RuntimeStatus describes the state of the Python runtime for plugin execution.
-type RuntimeStatus struct {
-	Available bool   `json:"available"`
-	Path      string `json:"path"`
-	Version   string `json:"version"`
-	Embedded  bool   `json:"embedded"`
-	VenvReady bool   `json:"venvReady"`
-}
-
 // PluginHook maps an event to a handler function name in the plugin entry point.
 type PluginHook struct {
 	Event   string `json:"event"`
 	Handler string `json:"handler"`
 }
 
-// UnmarshalJSON accepts both the compact "onSend" form used by Python manifests
-// and the expanded {"event":"onSend","handler":"..."} form.
+// UnmarshalJSON accepts both the compact "onSend" form and the expanded
+// {"event":"onSend","handler":"..."} form.
 func (h *PluginHook) UnmarshalJSON(data []byte) error {
 	var event string
 	if err := json.Unmarshal(data, &event); err == nil {
@@ -282,6 +269,9 @@ func normalizePluginManifest(manifest *PluginManifest) error {
 	}
 	if manifest.Actions == nil {
 		manifest.Actions = []PluginAction{}
+	}
+	if strings.EqualFold(strings.TrimSpace(manifest.Runtime), "python") {
+		return fmt.Errorf("python plugin runtime is no longer supported")
 	}
 	if manifest.EntryPoint == "" {
 		manifest.EntryPoint = "plugin.wasm"
@@ -486,8 +476,8 @@ func (pm *PluginManager) InstallPlugin(manifestJSON string) (*PluginInstance, er
 }
 
 // InstallPluginPackage installs a complete local plugin folder. File contents
-// are provided as base64 so Python scripts, WASM binaries and assets survive
-// the desktop bridge without browser filesystem assumptions.
+// are provided as base64 so WASM binaries, JS files and assets survive the
+// desktop bridge without browser filesystem assumptions.
 func (pm *PluginManager) InstallPluginPackage(manifestJSON string, encodedFiles map[string]string) (*PluginInstance, error) {
 	var manifest PluginManifest
 	if err := json.Unmarshal([]byte(manifestJSON), &manifest); err != nil {
@@ -824,260 +814,6 @@ func (pm *PluginManager) LoadPluginState() error {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
 	return pm.loadPluginStateInternal()
-}
-
-// InstallPythonPlugin performs the full install flow for a Python plugin:
-// parse manifest, create plugin directory, write manifest, create virtualenv,
-// install requirements.txt dependencies, and verify the entrypoint is importable.
-func (pm *PluginManager) InstallPythonPlugin(manifestJSON string) error {
-	var manifest PluginManifest
-	if err := json.Unmarshal([]byte(manifestJSON), &manifest); err != nil {
-		return fmt.Errorf("invalid manifest JSON: %w", err)
-	}
-
-	if err := normalizePluginManifest(&manifest); err != nil {
-		return err
-	}
-
-	// Force runtime to python
-	manifest.Runtime = "python"
-
-	// Default entrypoint for Python plugins
-	if manifest.EntryPoint == "" || manifest.EntryPoint == "plugin.wasm" {
-		manifest.EntryPoint = "main.py"
-	}
-
-	// Step 1: Use existing InstallPlugin to handle directory creation and manifest
-	inst, err := pm.InstallPlugin(manifestJSON)
-	if err != nil {
-		return fmt.Errorf("failed to install plugin files: %w", err)
-	}
-
-	// Update the manifest with the forced runtime/entrypoint
-	pm.mu.Lock()
-	if p, ok := pm.plugins[manifest.ID]; ok {
-		p.Manifest.Runtime = "python"
-		if p.Manifest.EntryPoint == "plugin.wasm" {
-			p.Manifest.EntryPoint = "main.py"
-		}
-	}
-	pm.mu.Unlock()
-
-	// Re-write manifest.json with runtime field
-	manifestData, err := json.MarshalIndent(manifest, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal manifest: %w", err)
-	}
-	if err := os.WriteFile(filepath.Join(inst.InstallDir, "manifest.json"), manifestData, 0644); err != nil {
-		return fmt.Errorf("failed to update manifest.json: %w", err)
-	}
-
-	// Step 2: Create virtualenv
-	pythonPath := pm.discoverPython()
-	if pythonPath == "" {
-		pm.setPluginError(manifest.ID, "python runtime not found")
-		return fmt.Errorf("python runtime not found; cannot create virtualenv")
-	}
-
-	venvDir := filepath.Join(inst.InstallDir, "venv")
-	if err := pm.createVirtualenv(pythonPath, venvDir); err != nil {
-		pm.setPluginError(manifest.ID, fmt.Sprintf("virtualenv creation failed: %v", err))
-		return fmt.Errorf("failed to create virtualenv: %w", err)
-	}
-
-	log.Printf("[plugins] virtualenv created at %s", venvDir)
-
-	// Step 3: Install dependencies from requirements.txt if present
-	requirementsPath := filepath.Join(inst.InstallDir, "requirements.txt")
-	if _, err := os.Stat(requirementsPath); err == nil {
-		if err := pm.installRequirements(venvDir, requirementsPath); err != nil {
-			pm.setPluginError(manifest.ID, fmt.Sprintf("pip install failed: %v", err))
-			return fmt.Errorf("failed to install requirements: %w", err)
-		}
-		log.Printf("[plugins] requirements installed for %s", manifest.ID)
-	}
-
-	// Step 4: Verify entrypoint is importable
-	entrypointPath, err := ResolvePluginEntryPoint(inst.InstallDir, manifest.EntryPoint)
-	if err != nil {
-		pm.setPluginError(manifest.ID, err.Error())
-		return err
-	}
-	if _, err := os.Stat(entrypointPath); os.IsNotExist(err) {
-		pm.setPluginError(manifest.ID, fmt.Sprintf("entrypoint not found: %s", manifest.EntryPoint))
-		return fmt.Errorf("entrypoint file not found: %s", entrypointPath)
-	}
-
-	if err := pm.verifyPythonImport(venvDir, inst.InstallDir, manifest.EntryPoint); err != nil {
-		pm.setPluginError(manifest.ID, fmt.Sprintf("entrypoint verification failed: %v", err))
-		return fmt.Errorf("entrypoint verification failed: %w", err)
-	}
-
-	log.Printf("[plugins] python plugin %s installed and verified successfully", manifest.ID)
-	return nil
-}
-
-// GetPythonRuntimeStatus returns information about the discovered Python runtime.
-func (pm *PluginManager) GetPythonRuntimeStatus() RuntimeStatus {
-	pythonPath := pm.discoverPython()
-	status := RuntimeStatus{
-		Available: pythonPath != "",
-		Path:      pythonPath,
-	}
-
-	if pythonPath == "" {
-		return status
-	}
-
-	// Determine if this is the embedded runtime
-	embeddedDir := filepath.Join(dataDirectory, "python-runtime")
-	if strings.HasPrefix(pythonPath, embeddedDir) {
-		status.Embedded = true
-		if ver, err := os.ReadFile(filepath.Join(embeddedDir, ".version")); err == nil {
-			status.Version = strings.TrimSpace(string(ver))
-		}
-	} else {
-		out, err := exec.Command(pythonPath, "--version").Output()
-		if err == nil {
-			status.Version = strings.TrimSpace(string(out))
-		}
-	}
-
-	// Check if any venv exists for any installed python plugin
-	pm.mu.RLock()
-	for _, inst := range pm.plugins {
-		if inst.Manifest.Runtime == "python" {
-			venvDir := filepath.Join(inst.InstallDir, "venv")
-			if _, err := os.Stat(venvDir); err == nil {
-				status.VenvReady = true
-				break
-			}
-		}
-	}
-	pm.mu.RUnlock()
-
-	return status
-}
-
-// discoverPython finds the Python interpreter: embedded first, then system PATH.
-func (pm *PluginManager) discoverPython() string {
-	// Check embedded runtime (Windows)
-	embedded := filepath.Join(dataDirectory, "python-runtime", "python.exe")
-	if _, err := os.Stat(embedded); err == nil {
-		return embedded
-	}
-
-	// Check embedded runtime (Unix)
-	embedded = filepath.Join(dataDirectory, "python-runtime", "python3")
-	if _, err := os.Stat(embedded); err == nil {
-		return embedded
-	}
-
-	// System PATH. On Windows, python3.exe may only be the Microsoft Store
-	// launcher alias even when a working python.exe is installed.
-	names := []string{"python3", "python"}
-	if runtime.GOOS == "windows" {
-		names = []string{"python", "python3"}
-	}
-	for _, name := range names {
-		if path, err := exec.LookPath(name); err == nil {
-			return path
-		}
-	}
-
-	return ""
-}
-
-// createVirtualenv creates a Python virtualenv at the given directory.
-func (pm *PluginManager) createVirtualenv(pythonPath string, venvDir string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, pythonPath, "-m", "venv", venvDir)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("venv creation failed: %w (stderr: %s)", err, stderr.String())
-	}
-
-	return nil
-}
-
-// installRequirements runs pip install -r requirements.txt inside the virtualenv.
-func (pm *PluginManager) installRequirements(venvDir string, requirementsPath string) error {
-	pipPath := pm.venvPipPath(venvDir)
-	if _, err := os.Stat(pipPath); os.IsNotExist(err) {
-		return fmt.Errorf("pip not found in virtualenv: %s", pipPath)
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, pipPath, "install", "-r", requirementsPath, "--no-input")
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	cmd.Env = append(os.Environ(), fmt.Sprintf("VIRTUAL_ENV=%s", venvDir))
-
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("pip install failed: %w (stderr: %s)", err, stderr.String())
-	}
-
-	return nil
-}
-
-// verifyPythonImport checks that the plugin entrypoint can be imported without errors.
-func (pm *PluginManager) verifyPythonImport(venvDir string, pluginDir string, entrypoint string) error {
-	if _, err := ResolvePluginEntryPoint(pluginDir, entrypoint); err != nil {
-		return err
-	}
-	pythonPath := pm.venvPythonPath(venvDir)
-	if _, err := os.Stat(pythonPath); os.IsNotExist(err) {
-		return fmt.Errorf("python not found in virtualenv: %s", pythonPath)
-	}
-
-	// Strip .py extension for import check
-	moduleName := strings.TrimSuffix(entrypoint, ".py")
-
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, pythonPath, "-c", fmt.Sprintf("import %s", moduleName))
-	cmd.Dir = pluginDir
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("import check failed for %s: %w (stderr: %s)", moduleName, err, stderr.String())
-	}
-
-	return nil
-}
-
-// venvPythonPath returns the platform-appropriate path to python inside a virtualenv.
-func (pm *PluginManager) venvPythonPath(venvDir string) string {
-	if runtime.GOOS == "windows" {
-		return filepath.Join(venvDir, "Scripts", "python.exe")
-	}
-	return filepath.Join(venvDir, "bin", "python3")
-}
-
-// venvPipPath returns the platform-appropriate path to pip inside a virtualenv.
-func (pm *PluginManager) venvPipPath(venvDir string) string {
-	if runtime.GOOS == "windows" {
-		return filepath.Join(venvDir, "Scripts", "pip.exe")
-	}
-	return filepath.Join(venvDir, "bin", "pip")
-}
-
-// setPluginError records an error on a plugin instance.
-func (pm *PluginManager) setPluginError(pluginID string, errMsg string) {
-	pm.mu.Lock()
-	defer pm.mu.Unlock()
-
-	if inst, ok := pm.plugins[pluginID]; ok {
-		inst.Error = errMsg
-	}
 }
 
 // --- internal helpers (must be called with lock held) ---

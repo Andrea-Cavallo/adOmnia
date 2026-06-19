@@ -34,6 +34,12 @@ import { FileDropZone } from '@/components/utils/FileDropZone'
 import { RegexTester } from '@/components/utils/RegexTester'
 import { HmacTool } from '@/components/utils/HmacTool'
 import { DockerGenerator } from '@/components/utils/DockerGenerator'
+import { DockerLabPanel } from '@/components/dockerlab/DockerLabPanel'
+import { HarViewerPanel } from '@/components/har/HarViewerPanel'
+import { JsonToolsPanel } from '@/components/utils/JsonToolsPanel'
+import { ObservabilityPanel } from '@/components/observe'
+import { SecretScannerPanel } from '@/components/secretscanner'
+import { XmlToolsPanel } from '@/components/utils/XmlToolsPanel'
 import { parseDocument } from 'yaml'
 import { useAppStore } from '@/stores/app'
 import {
@@ -76,6 +82,17 @@ interface YamlFileResult {
 
 const CATEGORIES: Category[] = [
   {
+    label: 'Power Studios',
+    tools: [
+      { id: 'jsonstudio',    label: 'JSON Tools' },
+      { id: 'xmlstudio',     label: 'XML Tools' },
+      { id: 'harviewer',     label: 'HAR Viewer' },
+      { id: 'observability', label: 'Observability' },
+      { id: 'secretscanner', label: 'Secret Scanner' },
+      { id: 'dockerlab',     label: 'Docker Lab' },
+    ],
+  },
+  {
     label: 'Encoding & Formats',
     tools: [
       { id: 'base64',   label: 'Base64' },
@@ -117,6 +134,12 @@ const CATEGORIES: Category[] = [
 ]
 
 const TOOL_DETAILS: Record<string, Pick<Tool, 'desc' | 'example'>> = {
+  jsonstudio: { desc: 'Full JSON formatter, validator, repair, query and diagnostics studio.', example: 'Format, diff and inspect API payloads' },
+  xmlstudio: { desc: 'Full XML formatter, XPath, diff and validation studio.', example: 'SOAP envelopes and enterprise XML payloads' },
+  harviewer: { desc: 'Import, compare and inspect HAR waterfalls without leaving Power Tools.', example: 'Browser capture.har' },
+  observability: { desc: 'Inspect local logs, trace waterfalls and correlated request activity.', example: 'Local JSONL dev logs and traces' },
+  secretscanner: { desc: 'Scan collections and environments for exposed credentials.', example: 'Bearer tokens, API keys, private keys' },
+  dockerlab: { desc: 'Generate and run local Docker Compose labs from curated presets.', example: 'Postgres + Kafka + mock services' },
   base64: { desc: 'Encode and decode text payloads, tokens, and copied response fragments.', example: 'Authorization fragments, binary-safe text snippets' },
   url: { desc: 'Escape or decode query params, callback URLs, and path fragments.', example: 'redirect_uri=https%3A%2F%2Fapp.local%2Fcallback' },
   jsonyaml: { desc: 'Convert compact request examples between JSON and YAML notation.', example: '{"service":"payments","enabled":true}' },
@@ -157,6 +180,7 @@ const CATEGORY_MARKERS: Record<string, string> = {
   'Data Generators': '@',
   Validation: '/',
   Infrastructure: '{}',
+  'Power Studios': 'P',
   Playground: '*',
 }
 
@@ -1454,10 +1478,10 @@ function classInspect(hex: string, mode: 'skeleton' | 'details'): string {
 
 // =========== Main Panel ===========
 
-export function UtilsPanel() {
+export function UtilsPanel({ initialTool = 'base64' }: { initialTool?: string }) {
   const port = useServerPort()
   const pendingFileImport = useAppStore((state) => state.pendingFileImport)
-  const [activeTool, setActiveTool] = useState('base64')
+  const [activeTool, setActiveTool] = useState(initialTool)
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [toolSearch, setToolSearch] = useState('')
   const [binarySafe, setBinarySafe] = useState(false)
@@ -1720,6 +1744,24 @@ export function UtilsPanel() {
 
   const renderTool = () => {
     switch (activeTool) {
+      case 'jsonstudio':
+        return <div className="min-h-0 flex-1 overflow-hidden"><JsonToolsPanel /></div>
+
+      case 'xmlstudio':
+        return <div className="min-h-0 flex-1 overflow-hidden"><XmlToolsPanel /></div>
+
+      case 'harviewer':
+        return <div className="min-h-0 flex-1 overflow-hidden"><HarViewerPanel /></div>
+
+      case 'observability':
+        return <div className="min-h-0 flex-1 overflow-hidden"><ObservabilityPanel /></div>
+
+      case 'secretscanner':
+        return <div className="min-h-0 flex-1 overflow-hidden"><SecretScannerPanel /></div>
+
+      case 'dockerlab':
+        return <div className="min-h-0 flex-1 overflow-hidden"><DockerLabPanel /></div>
+
       // ---- Encoding ----
       case 'base64':
         return (

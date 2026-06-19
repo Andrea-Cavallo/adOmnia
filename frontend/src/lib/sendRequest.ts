@@ -1,5 +1,6 @@
 import { uid, type RequestItem, type ResponseData, type RequestAuth } from '@/lib/types'
 import { substVars } from '@/lib/substVars'
+import { applyPathParams } from '@/lib/pathParams'
 import { useSettingsStore } from '@/stores/settings'
 import { useHostsStore } from '@/stores/hosts'
 import { useCookieJarStore } from '@/lib/cookieJar'
@@ -18,7 +19,7 @@ export async function sendRequest(
     return errResp('VAULT_ERR', msg)
   }
 
-  const url = substVars(request.url, resolvedVars)
+  const url = applyPathParams(substVars(request.url, resolvedVars), pathParamValues(request, resolvedVars))
   const headers: Record<string, string> = {}
   const requestSettings = useSettingsStore.getState().settings.requests
 
@@ -38,7 +39,7 @@ export async function sendRequest(
     usp.append(substVars(p.key, resolvedVars), substVars(p.value, resolvedVars))
   }
   const queryString = enabledParams.length ? usp.toString() : ''
-  const fullUrl = queryString ? (url.includes('?') ? `${url}&${queryString}` : `${url}?${queryString}`) : url
+  const fullUrl = queryString ? appendQueryParams(stripQueryString(url), queryString) : url
 
   // Build Cookie header: explicit cookies + jar cookies (explicit take priority)
   {
@@ -152,15 +153,13 @@ export async function prepareRequestForCodegen(
       .map((cookie) => `${substVars(cookie.key, resolvedVars)}=${substVars(cookie.value, resolvedVars)}`)
       .join('; ')
   }
-  const baseUrl = substVars(request.url, resolvedVars)
+  const baseUrl = applyPathParams(substVars(request.url, resolvedVars), pathParamValues(request, resolvedVars))
   const query = new URLSearchParams()
   for (const param of request.params.filter((item) => item.enabled && item.key)) {
     query.append(substVars(param.key, resolvedVars), substVars(param.value, resolvedVars))
   }
   const queryString = query.toString()
-  const url = queryString
-    ? (baseUrl.includes('?') ? `${baseUrl}&${queryString}` : `${baseUrl}?${queryString}`)
-    : baseUrl
+  const url = queryString ? appendQueryParams(stripQueryString(baseUrl), queryString) : baseUrl
   const body = getBody(request, resolvedVars, headers)
   await applyAuth(request, headers, resolvedVars, url, body)
   const serializedBody = body instanceof URLSearchParams
@@ -216,11 +215,43 @@ async function applyAuth(
   }
 }
 
+function pathParamValues(request: RequestItem, vars: Record<string, string>): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const param of request.pathParams ?? []) {
+    if (param.enabled && param.key) out[param.key] = substVars(param.value, vars)
+  }
+  return out
+}
+
+function stripQueryString(url: string): string {
+  const queryStart = url.indexOf('?')
+  if (queryStart === -1) return url
+  const hashStart = url.indexOf('#', queryStart)
+  const base = url.slice(0, queryStart)
+  return hashStart === -1 ? base : `${base}${url.slice(hashStart)}`
+}
+
+function appendQueryParams(url: string, queryString: string): string {
+  if (!queryString) return url
+  const hashStart = url.indexOf('#')
+  const hash = hashStart === -1 ? '' : url.slice(hashStart)
+  const base = hashStart === -1 ? url : url.slice(0, hashStart)
+  return `${base}${base.includes('?') ? '&' : '?'}${queryString}${hash}`
+}
+
 type OAuth2GrantType = 'client_credentials' | 'password' | 'refresh_token' | 'authorization_code_pkce'
 
 interface OAuth2CacheEntry {
   token: string
   expiresAt: number
+}
+
+export interface OAuth2TokenResponse {
+  accessToken: string
+  refreshToken?: string
+  idToken?: string
+  expiresAt: number
+  raw: Record<string, unknown>
 }
 
 const oauth2TokenCache = new Map<string, OAuth2CacheEntry>()
@@ -252,16 +283,16 @@ function oauth2CacheKey(auth: RequestAuth, vars: Record<string, string>): string
 }
 
 // OAuth2 token fetch routes through Go to avoid browser CORS on token endpoints
-async function fetchOAuth2Token(
+async function fetchOAuth2TokenResponse(
   auth: RequestAuth,
   vars: Record<string, string> = {},
   options: { forceRefresh?: boolean } = {}
-): Promise<string> {
+): Promise<OAuth2TokenResponse> {
   if (!auth.oauth2TokenUrl) throw new Error('OAuth2 Token URL is required')
   const cacheKey = oauth2CacheKey(auth, vars)
   const cached = oauth2TokenCache.get(cacheKey)
   if (!options.forceRefresh && cached && cached.expiresAt > Date.now() + OAUTH2_EXPIRY_SKEW_MS) {
-    return cached.token
+    return { accessToken: cached.token, expiresAt: cached.expiresAt, raw: {} }
   }
 
   const grant = oauth2GrantType(auth)
@@ -314,11 +345,18 @@ async function fetchOAuth2Token(
     const expiresIn = typeof data.expires_in === 'number' && Number.isFinite(data.expires_in)
       ? data.expires_in * 1000
       : DEFAULT_OAUTH2_TTL_MS
+    const expiresAt = Date.now() + Math.max(0, expiresIn)
     oauth2TokenCache.set(cacheKey, {
       token: data.access_token,
-      expiresAt: Date.now() + Math.max(0, expiresIn),
+      expiresAt,
     })
-    return data.access_token
+    return {
+      accessToken: data.access_token,
+      refreshToken: typeof data.refresh_token === 'string' ? data.refresh_token : undefined,
+      idToken: typeof data.id_token === 'string' ? data.id_token : undefined,
+      expiresAt,
+      raw: data,
+    }
   }
   const errMsg = typeof data.error_description === 'string' ? data.error_description
     : typeof data.error === 'string' ? data.error
@@ -326,8 +364,20 @@ async function fetchOAuth2Token(
   throw new Error(errMsg)
 }
 
+async function fetchOAuth2Token(
+  auth: RequestAuth,
+  vars: Record<string, string> = {},
+  options: { forceRefresh?: boolean } = {}
+): Promise<string> {
+  return (await fetchOAuth2TokenResponse(auth, vars, options)).accessToken
+}
+
 export async function fetchOAuth2TokenManual(auth: RequestAuth): Promise<string> {
   return fetchOAuth2Token(auth, {}, { forceRefresh: true })
+}
+
+export async function fetchOAuth2TokenDetailsManual(auth: RequestAuth): Promise<OAuth2TokenResponse> {
+  return fetchOAuth2TokenResponse(auth, {}, { forceRefresh: true })
 }
 
 // --- Browser fetch fallback (FormData / file uploads) ---

@@ -31,6 +31,25 @@ export interface RequestAuth {
   oauth2CodeVerifier?: string
   oauth2RefreshToken?: string
   oauth2ExpiresAt?: number | null
+  oidcIssuerUrl?: string
+  oidcDiscoveryStatus?: 'idle' | 'loading' | 'success' | 'error'
+  oidcDiscoveryError?: string
+  oidcDiscovery?: {
+    issuer: string
+    authorizationEndpoint: string
+    tokenEndpoint: string
+    userinfoEndpoint?: string
+    jwksUri: string
+    endSessionEndpoint?: string
+    scopesSupported?: string[]
+    responseTypesSupported?: string[]
+    codeChallengeMethodsSupported?: string[]
+  }
+  oidcIdToken?: string
+  oidcNonce?: string
+  oidcSessionExpiresAt?: number | null
+  oidcUserClaims?: Record<string, unknown>
+  oidcValidationError?: string
   awsAccessKeyId?: string
   awsSecretKey?: string
   awsRegion?: string
@@ -48,6 +67,7 @@ export interface RequestItem {
   method: HttpMethod
   url: string
   params: KVRow[]
+  pathParams?: KVRow[]
   headers: KVRow[]
   bodies: RequestBody[]
   activeBodyIdx: number

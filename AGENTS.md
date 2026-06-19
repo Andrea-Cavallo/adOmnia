@@ -120,7 +120,6 @@ adomnia/
 ├── dockerlab.go               # Docker Lab generator/runner
 ├── themes*.go                 # Themes, skins, validation, hot reload
 ├── plugins*.go                # WASM plugin sandbox and bindings
-├── python_*.go                # Python plugin SDK bridge
 ├── frontend/                  # React frontend
 │   ├── src/components/        # UI panels and components
 │   ├── src/stores/            # Zustand stores
@@ -162,7 +161,7 @@ Il backend Go espone metodi Wails che il frontend chiama tramite bindings genera
 | Brokers/protocols | `kafka.go`, `broker.go`, `grpc.go`, `websocket_*.go`, `sse_client.go` |
 | Data/security | `database_go.go`, `storage*.go`, `vault.go`, `certtools_go.go` |
 | Docker Lab | `dockerlab.go`, `frontend/src/lib/dockerlab-api.ts` |
-| Themes/plugins/templates | `themes*.go`, `plugins*.go`, `templates.go`, `python_*.go` |
+| Themes/plugins/templates | `themes*.go`, `plugins*.go`, `templates.go` |
 
 **Pattern importanti:**
 - Backend mantiene lifecycle e processi locali per proxy/mock/lab/plugin dove necessario

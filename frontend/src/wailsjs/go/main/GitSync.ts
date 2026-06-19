@@ -141,3 +141,141 @@ export function CreateTag(repoPath: string, name: string, ref: string): Promise<
 export function DeleteTag(repoPath: string, name: string): Promise<void> {
   return window['go']['main']['GitSync']['DeleteTag'](repoPath, name)
 }
+
+// ── Professional commit-graph operations (hand-written; wails CLI unavailable) ──
+
+export function GetRepoState(repoPath: string): Promise<string> {
+  return window['go']['main']['GitSync']['GetRepoState'](repoPath)
+}
+
+export function GetCommitMeta(repoPath: string, ref: string): Promise<string> {
+  return window['go']['main']['GitSync']['GetCommitMeta'](repoPath, ref)
+}
+
+export function RemoteWebURL(repoPath: string): Promise<string> {
+  return window['go']['main']['GitSync']['RemoteWebURL'](repoPath)
+}
+
+export function CompareWebURL(repoPath: string, refA: string, refB: string): Promise<string> {
+  return window['go']['main']['GitSync']['CompareWebURL'](repoPath, refA, refB)
+}
+
+export function CheckoutCommit(repoPath: string, ref: string, newBranch: string): Promise<string> {
+  return window['go']['main']['GitSync']['CheckoutCommit'](repoPath, ref, newBranch)
+}
+
+export function CreateBranchFromCommit(repoPath: string, branch: string, ref: string, checkout: boolean, push: boolean): Promise<string> {
+  return window['go']['main']['GitSync']['CreateBranchFromCommit'](repoPath, branch, ref, checkout, push)
+}
+
+export function CreateTagFromCommit(repoPath: string, name: string, ref: string, message: string, annotated: boolean, push: boolean): Promise<string> {
+  return window['go']['main']['GitSync']['CreateTagFromCommit'](repoPath, name, ref, message, annotated, push)
+}
+
+export function CompareCommits(repoPath: string, refA: string, refB: string): Promise<string> {
+  return window['go']['main']['GitSync']['CompareCommits'](repoPath, refA, refB)
+}
+
+export function CreatePatch(repoPath: string, refA: string, refB: string): Promise<string> {
+  return window['go']['main']['GitSync']['CreatePatch'](repoPath, refA, refB)
+}
+
+export function ApplyPatch(repoPath: string, patch: string, threeWay: boolean, index: boolean): Promise<string> {
+  return window['go']['main']['GitSync']['ApplyPatch'](repoPath, patch, threeWay, index)
+}
+
+export function RestoreFileFromCommit(repoPath: string, ref: string, path: string): Promise<string> {
+  return window['go']['main']['GitSync']['RestoreFileFromCommit'](repoPath, ref, path)
+}
+
+export function FileAtCommit(repoPath: string, ref: string, path: string): Promise<string> {
+  return window['go']['main']['GitSync']['FileAtCommit'](repoPath, ref, path)
+}
+
+export function FileHistory(repoPath: string, path: string, n: number): Promise<string> {
+  return window['go']['main']['GitSync']['FileHistory'](repoPath, path, n)
+}
+
+export function BlameFile(repoPath: string, path: string): Promise<string> {
+  return window['go']['main']['GitSync']['BlameFile'](repoPath, path)
+}
+
+export function CherryPick(repoPath: string, shas: string[], noCommit: boolean, newBranch: string, recordOrigin: boolean): Promise<string> {
+  return window['go']['main']['GitSync']['CherryPick'](repoPath, shas, noCommit, newBranch, recordOrigin)
+}
+
+export function GenerateRevertMessage(repoPath: string, sha: string): Promise<string> {
+  return window['go']['main']['GitSync']['GenerateRevertMessage'](repoPath, sha)
+}
+
+export function RevertCommit(repoPath: string, sha: string, message: string, mainline: number): Promise<string> {
+  return window['go']['main']['GitSync']['RevertCommit'](repoPath, sha, message, mainline)
+}
+
+export function ResetBranch(repoPath: string, sha: string, mode: string): Promise<string> {
+  return window['go']['main']['GitSync']['ResetBranch'](repoPath, sha, mode)
+}
+
+export function AmendCommit(repoPath: string, message: string, addAll: boolean): Promise<string> {
+  return window['go']['main']['GitSync']['AmendCommit'](repoPath, message, addAll)
+}
+
+export function UndoLastCommit(repoPath: string, keepStaged: boolean): Promise<string> {
+  return window['go']['main']['GitSync']['UndoLastCommit'](repoPath, keepStaged)
+}
+
+export function SquashHeadIntoPrevious(repoPath: string): Promise<string> {
+  return window['go']['main']['GitSync']['SquashHeadIntoPrevious'](repoPath)
+}
+
+export function ExtractHeadToNewBranch(repoPath: string, newBranch: string): Promise<string> {
+  return window['go']['main']['GitSync']['ExtractHeadToNewBranch'](repoPath, newBranch)
+}
+
+export function ForcePush(repoPath: string, branch: string): Promise<string> {
+  return window['go']['main']['GitSync']['ForcePush'](repoPath, branch)
+}
+
+export function ContinueOperation(repoPath: string): Promise<string> {
+  return window['go']['main']['GitSync']['ContinueOperation'](repoPath)
+}
+
+export function SkipOperation(repoPath: string): Promise<string> {
+  return window['go']['main']['GitSync']['SkipOperation'](repoPath)
+}
+
+export function AbortOperation(repoPath: string): Promise<string> {
+  return window['go']['main']['GitSync']['AbortOperation'](repoPath)
+}
+
+export function GetRebaseTodo(repoPath: string, baseRef: string): Promise<string> {
+  return window['go']['main']['GitSync']['GetRebaseTodo'](repoPath, baseRef)
+}
+
+export function StartInteractiveRebase(repoPath: string, baseRef: string, itemsJSON: string): Promise<string> {
+  return window['go']['main']['GitSync']['StartInteractiveRebase'](repoPath, baseRef, itemsJSON)
+}
+
+export function RebaseOnto(repoPath: string, targetRef: string): Promise<string> {
+  return window['go']['main']['GitSync']['RebaseOnto'](repoPath, targetRef)
+}
+
+export function BisectStart(repoPath: string, bad: string, good: string): Promise<string> {
+  return window['go']['main']['GitSync']['BisectStart'](repoPath, bad, good)
+}
+
+export function BisectMark(repoPath: string, verdict: string): Promise<string> {
+  return window['go']['main']['GitSync']['BisectMark'](repoPath, verdict)
+}
+
+export function BisectRun(repoPath: string, command: string): Promise<string> {
+  return window['go']['main']['GitSync']['BisectRun'](repoPath, command)
+}
+
+export function BisectReset(repoPath: string): Promise<string> {
+  return window['go']['main']['GitSync']['BisectReset'](repoPath)
+}
+
+export function SearchHistory(repoPath: string, filtersJSON: string): Promise<string> {
+  return window['go']['main']['GitSync']['SearchHistory'](repoPath, filtersJSON)
+}

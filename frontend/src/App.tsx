@@ -10,6 +10,7 @@ import { DevLogOverlay } from '@/components/ui/DevLogOverlay'
 import { ConfirmDialogHost } from '@/components/ui/ConfirmDialogHost'
 import { StorageQuotaBanner } from '@/components/layout/StorageQuotaBanner'
 import { ErrorBoundary } from '@/components/layout/ErrorBoundary'
+import { ResizeHandle } from '@/components/ui/ResizeHandle'
 import { DropOverlay } from '@/components/layout/DropOverlay'
 import { DropToast } from '@/components/layout/DropToast'
 import { useAppStore } from '@/stores/app'
@@ -101,12 +102,11 @@ function App() {
                   <Sidebar />
                 </div>
                 {/* Sidebar drag handle */}
-                <div
-                  role="separator"
-                  aria-label="Resize sidebar"
-                  title="Drag to resize sidebar"
+                <ResizeHandle
+                  label="Drag to resize sidebar"
                   onMouseDown={handleSidebarResizeMouseDown}
-                  className="w-[5px] shrink-0 cursor-ew-resize group hover:bg-accent/20 transition-colors bg-surface-0 border-r border-border-1 z-10"
+                  withLine={false}
+                  className="border-r border-border-1"
                 />
               </>
             )}

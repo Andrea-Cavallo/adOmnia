@@ -38,7 +38,7 @@ function cloneNode(node: TreeNode): TreeNode {
   if (node.type === 'folder') {
     return { ...node, id: uid(), children: node.children.map(cloneNode) }
   }
-  return { ...node, id: uid(), headers: node.headers.map((h) => ({ ...h, id: uid() })), params: node.params.map((p) => ({ ...p, id: uid() })), bodies: node.bodies.map((b) => ({ ...b, id: uid(), form: b.form.map((f) => ({ ...f, id: uid() })) })) }
+  return { ...node, id: uid(), headers: node.headers.map((h) => ({ ...h, id: uid() })), params: node.params.map((p) => ({ ...p, id: uid() })), pathParams: (node.pathParams ?? []).map((p) => ({ ...p, id: uid() })), bodies: node.bodies.map((b) => ({ ...b, id: uid(), form: b.form.map((f) => ({ ...f, id: uid() })) })) }
 }
 
 export function cloneCollection(collection: Collection, name = `${collection.name} Copy`): Collection {

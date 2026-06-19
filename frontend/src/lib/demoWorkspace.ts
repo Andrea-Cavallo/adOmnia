@@ -442,7 +442,7 @@ function auditTrail(count: number, actor = '{{operator_id}}') {
 
 const POSTMAN_DEMO_COLLECTION: Collection = {
   id: 'col-adomnia-postman-demo',
-  name: 'adOmnia Postman Demo Collection',
+  name: 'adOmnia Demo Collection',
   color: '#34d399',
   children: [
     {

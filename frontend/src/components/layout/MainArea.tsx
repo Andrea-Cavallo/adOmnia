@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, Suspense } from 'react'
-import { ArrowLeft, Check, Save, Send, X } from 'lucide-react'
+import { ArrowLeft, Check, Save, Send, Trash2, X } from 'lucide-react'
 import { useAppStore, type RailItem } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
 import { useCollectionsStore } from '@/stores/collections'
@@ -19,7 +19,11 @@ import { uid, type EnvVariable, type HttpMethod, type RequestItem } from '@/lib/
 import { useT } from '@/lib/i18n'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 import { VarHighlightInput } from '@/components/ui/VarHighlightInput'
+import { ResizeHandle } from '@/components/ui/ResizeHandle'
 import { cn } from '@/lib/utils'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { RequestValidationDialog } from '@/components/composer/RequestValidationDialog'
+import { validateRequestParams, type RequestParamIssue } from '@/lib/requestParamValidation'
 
 // ─── Lazy-loaded panels (loaded on first navigation) ──────────────────────────
 
@@ -31,16 +35,10 @@ const BrokerStudioPanel    = React.lazy(() => import('@/components/kafka/BrokerS
 const MockPanel            = React.lazy(() => import('@/components/mock/MockPanel').then(m => ({ default: m.MockPanel })))
 const ProxyPanel           = React.lazy(() => import('@/components/proxy/ProxyPanel').then(m => ({ default: m.ProxyPanel })))
 const GrpcPanel            = React.lazy(() => import('@/components/grpc/GrpcPanel').then(m => ({ default: m.GrpcPanel })))
-const NetToolsPanel        = React.lazy(() => import('@/components/nettools/NetToolsPanel').then(m => ({ default: m.NetToolsPanel })))
 const BrowserDebugPanel    = React.lazy(() => import('@/components/browser-debug').then(m => ({ default: m.BrowserDebugPanel })))
 const UtilsPanel           = React.lazy(() => import('@/components/utils/UtilsPanel').then(m => ({ default: m.UtilsPanel })))
 const FlowsPanel           = React.lazy(() => import('@/components/flows/FlowsPanel').then(m => ({ default: m.FlowsPanel })))
-const RunnerPanel          = React.lazy(() => import('@/components/runner/RunnerPanel').then(m => ({ default: m.RunnerPanel })))
 const SoapPanel            = React.lazy(() => import('@/components/soap/SoapPanel').then(m => ({ default: m.SoapPanel })))
-const TestDataStudio       = React.lazy(() => import('@/components/testdata/TestDataStudio').then(m => ({ default: m.TestDataStudio })))
-const HarViewerPanel       = React.lazy(() => import('@/components/har/HarViewerPanel').then(m => ({ default: m.HarViewerPanel })))
-const ObservabilityPanel   = React.lazy(() => import('@/components/observe').then(m => ({ default: m.ObservabilityPanel })))
-const DockerLabPanel       = React.lazy(() => import('@/components/dockerlab/DockerLabPanel').then(m => ({ default: m.DockerLabPanel })))
 const MarkdownPanel        = React.lazy(() => import('@/components/markdown/MarkdownPanel').then(m => ({ default: m.MarkdownPanel })))
 const MermaidPanel         = React.lazy(() => import('@/components/mermaid/MermaidPanel').then(m => ({ default: m.MermaidPanel })))
 const LatexStudioPanel     = React.lazy(() => import('@/components/latex/LatexStudioPanel').then(m => ({ default: m.LatexStudioPanel })))
@@ -48,18 +46,10 @@ const PdfEditorPanel       = React.lazy(() => import('@/components/pdfeditor/Pdf
 const ApiDocsPanel         = React.lazy(() => import('@/components/apidocs/ApiDocsPanel').then(m => ({ default: m.ApiDocsPanel })))
 const StoragePanel         = React.lazy(() => import('@/components/storage/StoragePanel').then(m => ({ default: m.StoragePanel })))
 const DatabasePanel        = React.lazy(() => import('@/components/database/DatabasePanel').then(m => ({ default: m.DatabasePanel })))
-const JsonToolsPanel       = React.lazy(() => import('@/components/utils/JsonToolsPanel').then(m => ({ default: m.JsonToolsPanel })))
-const XmlToolsPanel        = React.lazy(() => import('@/components/utils/XmlToolsPanel').then(m => ({ default: m.XmlToolsPanel })))
 const VaultPanel           = React.lazy(() => import('@/components/vault/VaultPanel').then(m => ({ default: m.VaultPanel })))
-const WorkspacePanel       = React.lazy(() => import('@/components/workspace/WorkspacePanel').then(m => ({ default: m.WorkspacePanel })))
-const SchemasPanel         = React.lazy(() => import('@/components/workspace/SchemasPanel').then(m => ({ default: m.SchemasPanel })))
-const ApiEditorPanel       = React.lazy(() => import('@/components/apis/ApiEditorPanel').then(m => ({ default: m.ApiEditorPanel })))
-const VisualTestPanel      = React.lazy(() => import('@/components/testdata/VisualTestPanel').then(m => ({ default: m.VisualTestPanel })))
-const SchedulerPanel       = React.lazy(() => import('@/components/runner/SchedulerPanel').then(m => ({ default: m.SchedulerPanel })))
 const ThemePanel           = React.lazy(() => import('@/components/themes/ThemePanel').then(m => ({ default: m.ThemePanel })))
 const TemplatesWorkspace   = React.lazy(() => import('@/components/templates/TemplatesWorkspace').then(m => ({ default: m.TemplatesWorkspace })))
 const PluginManager        = React.lazy(() => import('@/components/plugins/PluginManager').then(m => ({ default: m.PluginManager })))
-const SecretScannerPanel   = React.lazy(() => import('@/components/secretscanner').then(m => ({ default: m.SecretScannerPanel })))
 const SettingsPanel        = React.lazy(() => import('@/components/settings/SettingsPanel').then(m => ({ default: m.SettingsPanel })))
 const GitSyncPanel         = React.lazy(() => import('@/components/workspace/GitSyncPanel').then(m => ({ default: m.GitSyncPanel })))
 const McpPanel             = React.lazy(() => import('@/components/mcp/McpPanel').then(m => ({ default: m.McpPanel })))
@@ -78,6 +68,7 @@ function PanelSkeleton() {
 function PanelHeader({ titleKey }: { titleKey?: string }) {
   const goBack = useAppStore((s) => s.goBack)
   const setActiveRail = useAppStore((s) => s.setActiveRail)
+  const activeRail = useAppStore((s) => s.activeRail)
   const hasHistory = useAppStore((s) => s.railHistory.length > 0)
   const t = useT()
   const label = titleKey && titleKey in t.rail
@@ -95,7 +86,12 @@ function PanelHeader({ titleKey }: { titleKey?: string }) {
       </button>
       <span className="flex-1 px-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-text-2">{label}</span>
       <button
-        onClick={() => { if (hasHistory) goBack(); else setActiveRail('collections') }}
+        onClick={() => {
+          if (hasHistory) goBack()
+          // The API Workspace is the default home, so close it to the Welcome
+          // screen; every other panel closes back to the API Workspace.
+          else setActiveRail(activeRail === 'collections' ? 'welcome' : 'collections')
+        }}
         title="Close panel"
         className="h-6 w-6 flex items-center justify-center rounded text-text-3 hover:text-text-1 hover:bg-surface-3 transition-colors"
       >
@@ -165,6 +161,7 @@ function ActiveRequestBar({
   onChange,
   onSend,
   onSave,
+  onDelete,
 }: {
   request: RequestItem
   isDirty: boolean
@@ -174,6 +171,7 @@ function ActiveRequestBar({
   onChange: (request: RequestItem) => void
   onSend: () => void
   onSave: () => void
+  onDelete: () => void
 }) {
   const [savedFlash, setSavedFlash] = useState(false)
   const urlInputRef = useRef<HTMLInputElement>(null)
@@ -243,6 +241,14 @@ function ActiveRequestBar({
         >
           {savedFlash ? <Check size={15} /> : <Save size={15} />}
         </button>
+
+        <button
+          onClick={onDelete}
+          title="Delete request"
+          className="grid h-[var(--ui-control-h)] w-[var(--ui-control-h)] place-items-center rounded-md text-text-3 transition-colors hover:bg-error/10 hover:text-error"
+        >
+          <Trash2 size={14} />
+        </button>
       </div>
     </div>
   )
@@ -255,6 +261,7 @@ function RequestWorkspace() {
   const activeTabId = useTabsStore((s) => s.activeTabId)
   const setActiveTab = useTabsStore((s) => s.setActiveTab)
   const closeTab = useTabsStore((s) => s.closeTab)
+  const closeRequestTabs = useTabsStore((s) => s.closeRequestTabs)
   const closeTabsToRight = useTabsStore((s) => s.closeTabsToRight)
   const closeTabsToLeft = useTabsStore((s) => s.closeTabsToLeft)
   const reorderTab = useTabsStore((s) => s.reorderTab)
@@ -266,6 +273,7 @@ function RequestWorkspace() {
   const markClean = useTabsStore((s) => s.markClean)
   const updateViewState = useTabsStore((s) => s.updateViewState)
   const updateCollectionRequest = useCollectionsStore((s) => s.updateRequest)
+  const deleteCollectionNode = useCollectionsStore((s) => s.deleteNode)
   const collections = useCollectionsStore((s) => s.collections)
   const activeWorkspaceId = useCollectionsStore((s) => s.activeWorkspaceId)
   const tabs = useMemo(
@@ -293,6 +301,12 @@ function RequestWorkspace() {
 
   const [showLoadTest, setShowLoadTest] = useState(false)
   const [pendingClose, setPendingClose] = useState<PendingClose | null>(null)
+  const [paramIssues, setParamIssues] = useState<RequestParamIssue[]>([])
+  const [deleteRequestTarget, setDeleteRequestTarget] = useState<{
+    requestId: string
+    collectionId?: string
+    name: string
+  } | null>(null)
   const composerScrollRef = useRef<HTMLDivElement>(null)
 
   // ── Resizable horizontal split: Composer (left) | drag | Response (right) ──
@@ -360,6 +374,12 @@ function RequestWorkspace() {
 
   const handleSend = async () => {
     if (!activeTab) return
+    const issues = validateRequestParams(activeTab.request)
+    if (issues.length > 0) {
+      setParamIssues(issues)
+      return
+    }
+    setParamIssues([])
     setLoading(activeTab.id, true)
     const vars = getResolvedVars()
     const result = await executeRequest(activeTab.request, vars)
@@ -392,6 +412,23 @@ function RequestWorkspace() {
     if (!activeTab || !activeTab.collectionId) return
     updateCollectionRequest(activeTab.collectionId, activeTab.request)
     markClean(activeTab.id)
+  }
+
+  const confirmDeleteActiveRequest = () => {
+    if (!activeTab) return
+    setDeleteRequestTarget({
+      requestId: activeTab.request.id,
+      collectionId: activeTab.collectionId,
+      name: activeTab.request.name || activeTab.request.url || 'Untitled',
+    })
+  }
+
+  const deleteActiveRequest = () => {
+    if (!deleteRequestTarget) return
+    if (deleteRequestTarget.collectionId) {
+      deleteCollectionNode(deleteRequestTarget.collectionId, deleteRequestTarget.requestId)
+    }
+    closeRequestTabs(deleteRequestTarget.requestId)
   }
 
   useEffect(() => {
@@ -499,6 +536,7 @@ function RequestWorkspace() {
           onChange={(request) => updateRequest(activeTab.id, request)}
           onSend={handleSend}
           onSave={handleSave}
+          onDelete={confirmDeleteActiveRequest}
         />
       )}
       <ApiToolsBar
@@ -541,20 +579,11 @@ function RequestWorkspace() {
           ) : (
             <>
               {/* ── Vertical drag handle ────────────────────────────────────── */}
-              <div
-                role="separator"
-                aria-label="Resize panels"
-                title="Drag to resize panels"
+              <ResizeHandle
+                label="Drag to resize panels"
                 onMouseDown={handleResizeMouseDown}
-                className="w-[6px] shrink-0 flex items-center justify-center cursor-ew-resize group hover:bg-accent/10 transition-colors"
-              >
-                {/* Grip dots — vertical arrangement */}
-                <div className="flex flex-col gap-[3px] items-center opacity-40 group-hover:opacity-80 transition-opacity">
-                  {[0, 1, 2, 3, 4].map((i) => (
-                    <div key={i} className="w-[3px] h-[3px] rounded-full bg-text-3 group-hover:bg-accent transition-colors" />
-                  ))}
-                </div>
-              </div>
+                withLine={false}
+              />
 
               {/* ── Response pane — right side, fills remaining space ── */}
               <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -620,6 +649,20 @@ function RequestWorkspace() {
           </div>
         </div>
       )}
+
+      <RequestValidationDialog issues={paramIssues} onClose={() => setParamIssues([])} />
+
+      <ConfirmDialog
+        open={Boolean(deleteRequestTarget)}
+        title="Delete request?"
+        message={deleteRequestTarget?.collectionId
+          ? `Are you sure you want to delete "${deleteRequestTarget.name}"? The request will be removed from its collection and all open tabs.`
+          : `Are you sure you want to delete "${deleteRequestTarget?.name ?? 'Untitled'}"? This unsaved request will be discarded.`}
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={deleteActiveRequest}
+        onCancel={() => setDeleteRequestTarget(null)}
+      />
     </div>
   )
 }
@@ -653,7 +696,7 @@ type PanelDef = {
 
 function panelFor(activeRail: RailItem): PanelDef {
   switch (activeRail) {
-    case 'collections': return { component: <RequestWorkspace /> }
+    case 'collections': return { component: <RequestWorkspace />, titleKey: 'API Workspace' }
     case 'scenarios':   return { component: <DailyScenariosPanel />, titleKey: 'Daily Scenarios', overflow: true }
     case 'history':     return { component: <RequestHistoryPanel />,  titleKey: 'Request History', overflow: true }
     case 'websocket':   return { component: <WebSocketPanel />,       titleKey: 'WebSocket',     overflow: true }
@@ -663,37 +706,31 @@ function panelFor(activeRail: RailItem): PanelDef {
     case 'mock':        return { component: <MockPanel />,            titleKey: 'mock',      overflow: true }
     case 'proxy':       return { component: <ProxyPanel />,           titleKey: 'proxy',     overflow: true }
     case 'grpc':        return { component: <GrpcPanel />,            titleKey: 'grpc',      overflow: true }
-    case 'nettools':    return { component: <NetToolsPanel />,        titleKey: 'nettools',  overflow: true }
+    case 'nettools':    return { component: <BrowserDebugPanel initialTab="nettools" />, titleKey: 'browser' }
     case 'browser':     return { component: <BrowserDebugPanel />,    titleKey: 'browser' }
     case 'utils':
     case 'powertools':  return { component: <UtilsPanel />,           titleKey: 'Power Tools', overflow: true }
     case 'flows':     return { component: <FlowsPanel />,              titleKey: 'flows',     overflow: true }
-    case 'runner':    return { component: <RunnerPanel />,            titleKey: 'runner',    overflow: true }
     case 'soap':      return { component: <SoapPanel />,             titleKey: 'soap',      overflow: true }
-    case 'testdata':  return { component: <TestDataStudio />,        titleKey: 'testdata',  overflow: true }
-    case 'har':         return { component: <HarViewerPanel />,       titleKey: 'HAR Viewer', overflow: true }
-    case 'observe':     return { component: <ObservabilityPanel />,   titleKey: 'Observability', overflow: true }
-    case 'dockerlab':   return { component: <DockerLabPanel />,       titleKey: 'Docker Lab', overflow: true }
+    case 'har':         return { component: <UtilsPanel initialTool="harviewer" />, titleKey: 'Power Tools', overflow: true }
+    case 'observe':     return { component: <UtilsPanel initialTool="observability" />, titleKey: 'Power Tools', overflow: true }
+    case 'dockerlab':   return { component: <UtilsPanel initialTool="dockerlab" />, titleKey: 'Power Tools', overflow: true }
     case 'markdown':    return { component: <MarkdownPanel />,        titleKey: 'markdown',  overflow: true }
     case 'mermaid':     return { component: <MermaidPanel />,         titleKey: 'mermaid',   overflow: true }
     case 'latex':       return { component: <LatexStudioPanel />,      titleKey: 'latex',     overflow: true }
     case 'pdfeditor':   return { component: <PdfEditorPanel />,        titleKey: 'pdfeditor', overflow: true }
     case 'storage':     return { component: <StoragePanel />,         titleKey: 'storage',   overflow: true }
     case 'database':    return { component: <DatabasePanel />,        titleKey: 'Database Studio', overflow: true }
-    case 'jsontools':   return { component: <JsonToolsPanel />,       titleKey: 'jsontools', overflow: true }
-    case 'xmltools':    return { component: <XmlToolsPanel />,        titleKey: 'xmltools',  overflow: true }
+    case 'jsontools':   return { component: <UtilsPanel initialTool="jsonstudio" />, titleKey: 'Power Tools', overflow: true }
+    case 'xmltools':    return { component: <UtilsPanel initialTool="xmlstudio" />, titleKey: 'Power Tools', overflow: true }
     case 'welcome':     return { component: <WelcomePanel /> }
     case 'vault':       return { component: <VaultPanel />,           titleKey: 'vault',     overflow: true }
-    case 'workspace':   return { component: <WorkspacePanel />,       titleKey: 'workspace', overflow: true }
-    case 'schemas':     return { component: <SchemasPanel />,          titleKey: 'Schema Components', overflow: true }
-    case 'apieditor':   return { component: <ApiEditorPanel />,        titleKey: 'API Editor', overflow: true }
+    case 'workspace':   return { component: <SettingsPanel initialSection="workspace" />, titleKey: 'settings', overflow: true }
     case 'apidocs':     return { component: <ApiDocsPanel />,          titleKey: 'apidocs', overflow: true }
-    case 'visualtests': return { component: <VisualTestPanel />,       titleKey: 'Visual Tests', overflow: true }
-    case 'scheduler':   return { component: <SchedulerPanel />,         titleKey: 'Scheduled Tasks', overflow: true }
     case 'themes':      return { component: <ThemePanel />,           titleKey: 'themes' }
     case 'templates':   return { component: <TemplatesWorkspace />,   titleKey: 'templates' }
     case 'plugins':     return { component: <PluginManager />,        titleKey: 'plugins' }
-    case 'secretscanner': return { component: <SecretScannerPanel />,  titleKey: 'secretscanner', overflow: true }
+    case 'secretscanner': return { component: <UtilsPanel initialTool="secretscanner" />, titleKey: 'Power Tools', overflow: true }
     case 'gitsync':     return { component: <GitSyncPanel />,         titleKey: 'Git Sync', overflow: true }
     case 'mcp':         return { component: <McpPanel />,             titleKey: 'MCP Client', overflow: true }
     case 'settings':    return { component: <SettingsPanel />,        titleKey: 'settings' }

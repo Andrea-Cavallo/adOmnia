@@ -27,6 +27,25 @@ interface Toast {
   ok: boolean
 }
 
+interface PdfEditorSnapshot {
+  bytes: Uint8Array | null
+  name: string
+  pageCount: number
+  annotations: PdfAnnotation[]
+  formValues: Record<string, string | boolean>
+  currentPage: number
+}
+
+const HISTORY_LIMIT = 60
+
+function cloneAnnotations(value: PdfAnnotation[]): PdfAnnotation[] {
+  return value.map((annotation) => ({ ...annotation } as PdfAnnotation))
+}
+
+function cloneFormValues(value: Record<string, string | boolean>): Record<string, string | boolean> {
+  return { ...value }
+}
+
 export function PdfEditorPanel() {
   const consumeFileImport = useAppStore((s) => s.consumeFileImport)
   const pendingFileImport = useAppStore((s) => s.pendingFileImport)
@@ -53,9 +72,80 @@ export function PdfEditorPanel() {
   const [exporting, setExporting] = useState(false)
   const [toast, setToast] = useState<Toast | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [undoStack, setUndoStack] = useState<PdfEditorSnapshot[]>([])
+  const [redoStack, setRedoStack] = useState<PdfEditorSnapshot[]>([])
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const mergeInputRef = useRef<HTMLInputElement>(null)
+  const historyGuardRef = useRef(false)
+  const bytesRef = useRef<Uint8Array | null>(null)
+  const docRef = useRef<PDFDocumentProxy | null>(null)
+
+  useEffect(() => { bytesRef.current = bytes }, [bytes])
+  useEffect(() => { docRef.current = doc }, [doc])
+
+  const makeSnapshot = useCallback((): PdfEditorSnapshot => ({
+    bytes,
+    name,
+    pageCount,
+    annotations: cloneAnnotations(annotations),
+    formValues: cloneFormValues(formValues),
+    currentPage,
+  }), [annotations, bytes, currentPage, formValues, name, pageCount])
+
+  const pushUndoSnapshot = useCallback(() => {
+    if (historyGuardRef.current) return
+    setUndoStack((prev) => [...prev.slice(-(HISTORY_LIMIT - 1)), makeSnapshot()])
+    setRedoStack([])
+  }, [makeSnapshot])
+
+  const restoreSnapshot = useCallback(async (snapshot: PdfEditorSnapshot) => {
+    historyGuardRef.current = true
+    try {
+      setLoadError(null)
+      if (snapshot.bytes && (snapshot.bytes !== bytesRef.current || !docRef.current)) {
+        const loaded = await loadPdfDocument(snapshot.bytes)
+        setBytes(snapshot.bytes)
+        setDoc(loaded.doc)
+        setPageCount(loaded.pageCount)
+      } else if (snapshot.bytes) {
+        setBytes(snapshot.bytes)
+        setPageCount(snapshot.pageCount)
+      } else {
+        setBytes(null)
+        setDoc(null)
+        setPageCount(0)
+      }
+      setName(snapshot.name)
+      setAnnotations(cloneAnnotations(snapshot.annotations))
+      setFormValues(cloneFormValues(snapshot.formValues))
+      setSelectedId(null)
+      setCurrentPage(Math.min(Math.max(1, snapshot.currentPage), Math.max(1, snapshot.pageCount)))
+      setTool('select')
+    } catch (e: unknown) {
+      setLoadError(e instanceof Error ? e.message : 'Could not restore PDF state')
+    } finally {
+      historyGuardRef.current = false
+    }
+  }, [])
+
+  const undo = useCallback(() => {
+    const previous = undoStack[undoStack.length - 1]
+    if (!previous) return
+    const current = makeSnapshot()
+    setUndoStack((prev) => prev.slice(0, -1))
+    setRedoStack((prev) => [...prev.slice(-(HISTORY_LIMIT - 1)), current])
+    void restoreSnapshot(previous)
+  }, [makeSnapshot, restoreSnapshot, undoStack])
+
+  const redo = useCallback(() => {
+    const next = redoStack[redoStack.length - 1]
+    if (!next) return
+    const current = makeSnapshot()
+    setRedoStack((prev) => prev.slice(0, -1))
+    setUndoStack((prev) => [...prev.slice(-(HISTORY_LIMIT - 1)), current])
+    void restoreSnapshot(next)
+  }, [makeSnapshot, redoStack, restoreSnapshot])
 
   const flash = useCallback((text: string, ok: boolean) => {
     setToast({ text, ok })
@@ -73,6 +163,7 @@ export function PdfEditorPanel() {
       id?: string
       annotations?: PdfAnnotation[]
       formValues?: Record<string, string | boolean>
+      resetHistory?: boolean
     }) => {
       setLoadError(null)
       try {
@@ -90,6 +181,10 @@ export function PdfEditorPanel() {
         setSearchMatches([])
         setTool('select')
         setZoom(DEFAULT_ZOOM)
+        if (opts?.resetHistory !== false) {
+          setUndoStack([])
+          setRedoStack([])
+        }
       } catch (e: unknown) {
         setLoadError(e instanceof Error ? e.message : 'Could not open PDF')
       }
@@ -125,13 +220,15 @@ export function PdfEditorPanel() {
       id: projectId ?? annotationId(),
       annotations: nextAnnotations,
       formValues: nextFormValues,
+      resetHistory: false,
     })
   }, [annotations, formValues, name, openBytes, projectId])
 
   // ── Annotation CRUD ─────────────────────────────────────────────────────────
   const createAnnotation = useCallback((a: PdfAnnotation) => {
+    pushUndoSnapshot()
     setAnnotations((prev) => [...prev, a])
-  }, [])
+  }, [pushUndoSnapshot])
 
   const updateAnnotation = useCallback((a: PdfAnnotation) => {
     setAnnotations((prev) => prev.map((x) => (x.id === a.id ? a : x)))
@@ -139,24 +236,39 @@ export function PdfEditorPanel() {
 
   const deleteSelected = useCallback(() => {
     setSelectedId((id) => {
-      if (id) setAnnotations((prev) => prev.filter((x) => x.id !== id))
+      if (id) {
+        pushUndoSnapshot()
+        setAnnotations((prev) => prev.filter((x) => x.id !== id))
+      }
       return null
     })
-  }, [])
+  }, [pushUndoSnapshot])
 
   const handleToolHandled = useCallback(() => {
     setTool((t) => (t === 'text' || t === 'signature' ? 'select' : t))
   }, [])
 
   const handleFormChange = useCallback((fieldName: string, value: string | boolean) => {
+    pushUndoSnapshot()
     setFormValues((prev) => ({ ...prev, [fieldName]: value }))
-  }, [])
+  }, [pushUndoSnapshot])
 
   // Delete / Backspace removes the selected annotation (unless editing text).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault()
+        if (e.shiftKey) redo()
+        else undo()
+        return
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault()
+        redo()
+        return
+      }
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
         e.preventDefault()
         deleteSelected()
@@ -164,7 +276,7 @@ export function PdfEditorPanel() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [selectedId, deleteSelected])
+  }, [selectedId, deleteSelected, redo, undo])
 
   // ── Zoom ────────────────────────────────────────────────────────────────────
   const handleZoom = useCallback((dir: 'in' | 'out' | 'reset') => {
@@ -263,16 +375,18 @@ export function PdfEditorPanel() {
 
   const handleRotatePage = useCallback(async () => {
     if (!bytes) return
+    pushUndoSnapshot()
     try {
       await reopenEditedBytes(await rotatePdfPage(bytes, currentPage, 90))
       flash(`Rotated page ${currentPage}.`, true)
     } catch (e: unknown) {
       flash(e instanceof Error ? e.message : 'Rotate failed', false)
     }
-  }, [bytes, currentPage, flash, reopenEditedBytes])
+  }, [bytes, currentPage, flash, pushUndoSnapshot, reopenEditedBytes])
 
   const handleDeletePage = useCallback(async () => {
     if (!bytes || pageCount <= 1) return
+    pushUndoSnapshot()
     try {
       const nextAnnotations = annotations
         .filter((a) => a.page !== currentPage)
@@ -283,7 +397,7 @@ export function PdfEditorPanel() {
     } catch (e: unknown) {
       flash(e instanceof Error ? e.message : 'Delete page failed', false)
     }
-  }, [annotations, bytes, currentPage, flash, pageCount, reopenEditedBytes])
+  }, [annotations, bytes, currentPage, flash, pageCount, pushUndoSnapshot, reopenEditedBytes])
 
   const handleMovePage = useCallback(async () => {
     if (!bytes || pageCount <= 1) return
@@ -291,6 +405,7 @@ export function PdfEditorPanel() {
     if (!raw) return
     const toPage = Math.min(Math.max(1, Number(raw)), pageCount)
     if (!Number.isFinite(toPage) || toPage === currentPage) return
+    pushUndoSnapshot()
     try {
       const remap = (page: number) => {
         if (page === currentPage) return toPage
@@ -305,7 +420,7 @@ export function PdfEditorPanel() {
     } catch (e: unknown) {
       flash(e instanceof Error ? e.message : 'Move page failed', false)
     }
-  }, [annotations, bytes, currentPage, flash, pageCount, reopenEditedBytes])
+  }, [annotations, bytes, currentPage, flash, pageCount, pushUndoSnapshot, reopenEditedBytes])
 
   const handleSplitPage = useCallback(async () => {
     if (!bytes) return
@@ -324,6 +439,7 @@ export function PdfEditorPanel() {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file || !bytes) return
+    pushUndoSnapshot()
     try {
       const extra = new Uint8Array(await file.arrayBuffer())
       await reopenEditedBytes(await mergePdfBytes(bytes, extra), annotations, formValues, name)
@@ -418,6 +534,8 @@ export function PdfEditorPanel() {
           searchQuery={searchQuery}
           searchCount={searchMatches.length}
           selectedId={selectedId}
+          canUndo={undoStack.length > 0}
+          canRedo={redoStack.length > 0}
           saving={saving}
           exporting={exporting}
           onToolChange={(t) => { setTool(t); if (t === 'signature' && !signatureImage) setShowSignature(true) }}
@@ -434,6 +552,8 @@ export function PdfEditorPanel() {
           onSignPdf={() => setShowDigitalSignature(true)}
           onVerifySignature={handleVerifySignature}
           onOpenFile={handleOpenFile}
+          onUndo={undo}
+          onRedo={redo}
           onSave={handleSave}
           onExport={handleExport}
           onDeleteSelected={deleteSelected}
@@ -477,6 +597,7 @@ export function PdfEditorPanel() {
                   active={currentPage === p}
                   onSelect={setSelectedId}
                   onActivate={setCurrentPage}
+                  onChangeStart={pushUndoSnapshot}
                   onCreate={createAnnotation}
                   onUpdate={updateAnnotation}
                   onFormChange={handleFormChange}

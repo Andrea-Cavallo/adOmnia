@@ -3,13 +3,10 @@ import {
   Activity,
   ArrowRight,
   BookOpen,
-  Box,
   Braces,
   Bug,
-  CalendarClock,
   CircleDot,
   Clock,
-  Code2,
   Container,
   Database,
   FileCode,
@@ -21,7 +18,6 @@ import {
   Lock,
   Network,
   PenLine,
-  Play,
   Radio,
   Send,
   Server,
@@ -126,14 +122,8 @@ const MORE_SECTIONS: HubSection[] = [
       { id: 'har', icon: Activity, title: 'HAR Viewer', desc: 'Waterfalls and capture replay.' },
       { id: 'database', icon: Database, title: 'Database', desc: 'SQLite, Postgres, MySQL and MongoDB.' },
       { id: 'vault', icon: Lock, title: 'Vault', desc: 'Encrypted local secrets.' },
-      { id: 'runner', icon: Play, title: 'Runner', desc: 'Collection runs and reports.' },
       { id: 'flows', icon: GitBranch, title: 'API Flows', desc: 'Executable Mermaid flows.' },
       { id: 'broker', icon: Radio, title: 'Broker Studio', desc: 'Kafka, MQTT, Redis and NATS.' },
-      { id: 'apieditor', icon: Code2, title: 'API Editor', desc: 'OpenAPI editing surface.' },
-      { id: 'schemas', icon: Box, title: 'Schemas', desc: 'Reusable JSON schema components.' },
-      { id: 'templates', icon: Layers, title: 'Templates', desc: 'Reusable local templates and public APIs.' },
-      { id: 'visualtests', icon: Braces, title: 'Visual Tests', desc: 'No-code request checks.' },
-      { id: 'scheduler', icon: CalendarClock, title: 'Scheduler', desc: 'Local scheduled API jobs.' },
       { id: 'storage', icon: HardDrive, title: 'Storage', desc: 'Inspect and repair raw app storage.' },
       { id: 'secretscanner', icon: Shield, title: 'Secret Scanner', desc: 'Find exposed API keys and tokens.' },
       { id: 'jsontools', icon: Braces, title: 'JSON Tools', desc: 'Format, query and diff JSON.' },
@@ -267,7 +257,7 @@ export function WelcomePanel() {
         }}
       >
         <header
-          className="flex min-h-[230px] items-center justify-between gap-8 border-b px-8 py-7 max-lg:flex-col max-lg:items-start"
+          className="flex min-h-[300px] items-center justify-between gap-10 border-b px-8 py-8 max-lg:flex-col max-lg:items-start"
           style={{
             borderColor: colors.cardBorder,
             background: isLight
@@ -280,7 +270,7 @@ export function WelcomePanel() {
               <Layers size={12} />
               Local-first developer toolbox
             </div>
-            <h1 className="max-w-[720px] text-[38px] font-semibold leading-[1.04] tracking-normal" style={{ color: colors.title }}>
+            <h1 className="max-w-[720px] text-[38px] font-semibold leading-[1.04] tracking-normal max-sm:text-[32px] max-sm:leading-[1.08]" style={{ color: colors.title }}>
               <span className={isLight ? 'text-violet-700' : 'text-violet-200'}>Build & debug APIs.</span>
               <br />
               Then document, sign and version it all.
@@ -309,18 +299,12 @@ export function WelcomePanel() {
             </div>
           </div>
 
-          <div className="flex shrink-0 flex-col items-end gap-4 max-lg:w-full max-lg:items-start">
-            <div className="relative grid h-[118px] w-[118px] place-items-center">
-              <div className="absolute inset-0 rounded-full bg-violet-500/25 blur-[34px]" />
-              <div className="absolute h-[112px] w-[112px] rounded-full border border-violet-400/25" />
-              <img src={appIcon} alt="adOmnia" className="relative h-24 w-24 object-contain drop-shadow-[0_0_22px_rgba(167,139,250,.55)]" />
-            </div>
-            <div className="grid grid-cols-4 overflow-hidden rounded-xl border max-sm:grid-cols-2" style={{ borderColor: colors.cardBorder, background: colors.card }}>
-              <Metric value={String(requestCount)} label="requests" color={colors.title} />
-              <Metric value={String(collections.length)} label="collections" color={colors.title} />
-              <Metric value={String(openTabCount)} label="tabs" color={colors.title} />
-              <Metric value={String(liveServices.length)} label="live" color={liveServices.length ? '#6ee7b7' : colors.title} last />
-            </div>
+          <div className="flex w-[320px] shrink-0 items-center justify-center self-stretch max-lg:order-first max-lg:w-full max-lg:self-auto">
+            <img
+              src={appIcon}
+              alt="adOmnia"
+              className="h-[240px] w-[240px] object-contain drop-shadow-[0_18px_34px_rgba(124,58,237,.38)] max-sm:h-[190px] max-sm:w-[190px]"
+            />
           </div>
         </header>
 
@@ -369,15 +353,6 @@ export function WelcomePanel() {
           </footer>
         </main>
       </div>
-    </div>
-  )
-}
-
-function Metric({ value, label, color, last = false }: { value: string; label: string; color: string; last?: boolean }) {
-  return (
-    <div className={cn('flex min-w-[92px] flex-col gap-0.5 px-4 py-2.5', !last && 'border-r border-border-1')}>
-      <b className="text-[15px] font-semibold" style={{ color }}>{value}</b>
-      <span className="font-mono text-[8.5px] uppercase tracking-[0.1em] text-text-4">{label}</span>
     </div>
   )
 }

@@ -40,9 +40,6 @@ jobs:
         working-directory: frontend
         run: npm ci && npm run build
 
-      - name: Install Python SDK dependencies for plugin tests
-        run: pip install "grpcio>=1.60.0"
-
       - name: Go tests
         run: go test ./...
 

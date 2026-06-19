@@ -1,6 +1,6 @@
 import type { RequestAuth } from '@/lib/types'
 import { serverUrl, sidecarFetch } from '@/lib/useServerPort'
-import { fetchOAuth2TokenManual } from '@/lib/sendRequest'
+import { fetchOAuth2TokenDetailsManual } from '@/lib/sendRequest'
 
 interface OAuthStartResponse {
   state: string
@@ -67,6 +67,7 @@ export async function authorizeOAuth2Pkce(
   if (!auth.oauth2ClientId) throw new Error('OAuth2 Client ID is required')
 
   const verifier = randomValue(48)
+  const nonce = auth.oauth2Scope?.split(/\s+/).includes('openid') ? randomValue(24) : ''
   const challenge = await pkceChallenge(verifier)
   const response = await sidecarFetch(serverUrl(port, '/oauth/start'), { method: 'POST' })
   if (!response.ok) throw new Error(await response.text() || 'Could not start OAuth authorization')
@@ -80,6 +81,7 @@ export async function authorizeOAuth2Pkce(
   authorizationURL.searchParams.set('code_challenge', challenge)
   authorizationURL.searchParams.set('code_challenge_method', 'S256')
   if (auth.oauth2Scope) authorizationURL.searchParams.set('scope', auth.oauth2Scope)
+  if (nonce) authorizationURL.searchParams.set('nonce', nonce)
 
   onStatus('Complete sign-in in your browser. Waiting for the secure callback...')
   openLoginBrowser(authorizationURL.toString())
@@ -102,17 +104,22 @@ export async function authorizeOAuth2Pkce(
       oauth2RedirectUri: started.redirectUri,
       oauth2AuthCode: status.code,
       oauth2CodeVerifier: verifier,
+      oidcNonce: nonce || auth.oidcNonce,
     }
-    const token = await fetchOAuth2TokenManual(completedAuth)
+    const token = await fetchOAuth2TokenDetailsManual(completedAuth)
     return {
       auth: {
         ...auth,
         oauth2RedirectUri: started.redirectUri,
         oauth2AuthCode: '',
         oauth2CodeVerifier: '',
-        token,
+        oauth2RefreshToken: token.refreshToken ?? auth.oauth2RefreshToken,
+        oauth2ExpiresAt: token.expiresAt,
+        oidcIdToken: token.idToken,
+        oidcNonce: nonce || auth.oidcNonce,
+        token: token.accessToken,
       },
-      token,
+      token: token.accessToken,
     }
   }
 

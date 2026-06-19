@@ -20,6 +20,7 @@ import {
   Search,
   Server,
   Settings,
+  Sparkles,
   Square,
   Trash2,
   X,
@@ -52,6 +53,7 @@ import {
   type SavedFlowDefinition,
 } from '@/lib/flowStorage'
 import { flattenApiCatalog } from '@/lib/apiCatalog'
+import { generateAiFlowPreview, type AiFlowPreview } from '@/lib/aiFlow'
 import { type RequestItem, uid } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { serverUrl, sidecarFetch, useServerPort } from '@/lib/useServerPort'
@@ -397,19 +399,6 @@ function FlowCanvas({
         </div>
       </div>
 
-      <div className="absolute bottom-4 left-4 z-20 w-48 rounded-xl border border-border-1 bg-surface-1/95 p-2 shadow-lg">
-        <div className="mb-2 flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.12em] text-text-4">
-          Minimap
-          <span>{graph.nodes.length}</span>
-        </div>
-        <div className="relative h-20 rounded-lg border border-border-1 bg-surface-0">
-          {liveNodes.map((node) => {
-            const x = Math.max(5, Math.min(160, node.x / Math.max(1, maxX) * 176))
-            const y = Math.max(5, Math.min(68, node.y / Math.max(1, maxY) * 78))
-            return <span key={node.id} className={cn('absolute rounded-sm border', node.type === 'condition' ? 'h-3 w-3 rotate-45 border-warning/40 bg-warning/20' : 'h-3 w-6 border-accent/40 bg-accent/20')} style={{ left: x, top: y }} />
-          })}
-        </div>
-      </div>
     </div>
   )
 }
@@ -843,6 +832,105 @@ function MermaidModal({ value, onChange, onClose, onImport, catalog, graph }: {
   )
 }
 
+function AiFlowDrawer({
+  instructions,
+  setInstructions,
+  preview,
+  loading,
+  error,
+  onGeneratePreview,
+  onApply,
+  onClose,
+}: {
+  instructions: string
+  setInstructions: (value: string) => void
+  preview: AiFlowPreview | null
+  loading: boolean
+  error: string
+  onGeneratePreview: () => void
+  onApply: () => void
+  onClose: () => void
+}) {
+  return (
+    <aside className="flex w-[390px] flex-shrink-0 flex-col border-l border-border-1 bg-surface-1">
+      <div className="flex h-14 items-center gap-3 border-b border-border-1 px-4">
+        <span className="grid h-9 w-9 place-items-center rounded-lg bg-accent/12 text-accent"><Sparkles size={17} /></span>
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-semibold text-text-1">AI Flow Generator</div>
+          <div className="text-[10px] text-text-4">Preview before adding to the board</div>
+        </div>
+        <button onClick={onClose} className="grid h-8 w-8 place-items-center rounded-lg text-text-3 hover:bg-surface-2 hover:text-text-1"><X size={15} /></button>
+      </div>
+
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
+        <div>
+          <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-text-4">Describe your flow</div>
+          <textarea
+            value={instructions}
+            onChange={(event) => setInstructions(event.target.value)}
+            spellCheck={false}
+            placeholder="POST /auth/login, extract access_token as token, then GET /users/me with Authorization: Bearer {{token}}..."
+            className="h-44 w-full resize-none rounded-lg border border-border-2 bg-surface-0 p-3 text-xs leading-5 text-text-1 outline-none placeholder:text-text-4 focus:border-accent"
+          />
+        </div>
+
+        {error && <div className="rounded-lg border border-error/30 bg-error/10 px-3 py-2 text-[11px] text-error">{error}</div>}
+
+        {preview && (
+          <div className="space-y-3 rounded-xl border border-border-1 bg-surface-0 p-3">
+            <div>
+              <div className="text-xs font-bold text-text-1">{preview.summary.name}</div>
+              {preview.summary.description && <div className="mt-1 text-[11px] leading-4 text-text-3">{preview.summary.description}</div>}
+            </div>
+            <div className="grid grid-cols-3 gap-1.5 text-center">
+              <div className="rounded-lg bg-surface-2 px-2 py-2"><div className="text-sm font-bold text-text-1">{preview.summary.stepCount}</div><div className="text-[9px] uppercase text-text-4">steps</div></div>
+              <div className="rounded-lg bg-surface-2 px-2 py-2"><div className="text-sm font-bold text-text-1">{preview.summary.variables.length}</div><div className="text-[9px] uppercase text-text-4">vars</div></div>
+              <div className="rounded-lg bg-surface-2 px-2 py-2"><div className="text-sm font-bold text-text-1">{preview.summary.conditions.length}</div><div className="text-[9px] uppercase text-text-4">checks</div></div>
+            </div>
+            <PreviewList title="API calls" items={preview.summary.apiCalls} />
+            <PreviewList title="Variables" items={preview.summary.variables} />
+            <PreviewList title="Conditions" items={preview.summary.conditions} />
+            <PreviewList title="Assertions" items={preview.summary.assertions} />
+            <PreviewList title="Missing data" items={preview.summary.missing} tone="warning" />
+            <PreviewList title="Warnings" items={preview.summary.warnings} tone="warning" />
+            <PreviewList title="Potentially destructive" items={preview.summary.destructiveOperations} tone="error" />
+            <PreviewList title="Sanitized before AI" items={preview.summary.sanitizedContext} />
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2 border-t border-border-1 p-3">
+        <button onClick={onClose} className="h-9 rounded-lg border border-border-2 px-3 text-xs font-semibold text-text-2 hover:bg-surface-2 hover:text-text-1">Cancel</button>
+        {preview && <button onClick={onGeneratePreview} disabled={loading} className="h-9 rounded-lg border border-border-2 px-3 text-xs font-semibold text-text-2 hover:bg-surface-2 hover:text-text-1 disabled:opacity-50">Regenerate</button>}
+        <span className="flex-1" />
+        {preview ? (
+          <button onClick={onApply} className="flex h-9 items-center gap-2 rounded-lg bg-accent px-3 text-xs font-bold text-white hover:bg-accent-hover"><Check size={14} /> Generate Flow</button>
+        ) : (
+          <button onClick={onGeneratePreview} disabled={loading || !instructions.trim()} className="flex h-9 items-center gap-2 rounded-lg bg-accent px-3 text-xs font-bold text-white hover:bg-accent-hover disabled:opacity-45">
+            {loading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} Preview
+          </button>
+        )}
+      </div>
+    </aside>
+  )
+}
+
+function PreviewList({ title, items, tone = 'default' }: { title: string; items: string[]; tone?: 'default' | 'warning' | 'error' }) {
+  if (items.length === 0) return null
+  return (
+    <div>
+      <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.12em] text-text-4">{title}</div>
+      <div className="space-y-1">
+        {items.slice(0, 8).map((item, index) => (
+          <div key={`${title}-${index}`} className={cn('rounded-md border px-2 py-1.5 font-mono text-[10px]', tone === 'error' ? 'border-error/25 bg-error/10 text-error' : tone === 'warning' ? 'border-warning/25 bg-warning/10 text-warning' : 'border-border-1 bg-surface-1 text-text-3')}>
+            {item}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function FlowsPanel() {
   const fileRef = useRef<HTMLInputElement>(null)
   const sidecarPort = useServerPort()
@@ -860,6 +948,7 @@ export function FlowsPanel() {
   const [savedFlows, setSavedFlows] = useState<SavedFlowDefinition[]>([])
   const [mermaid, setMermaid] = useState(DEFAULT_MERMAID_FLOW)
   const [draftMermaid, setDraftMermaid] = useState(DEFAULT_MERMAID_FLOW)
+  const [directGraph, setDirectGraph] = useState<FlowGraphDefinition | null>(null)
   const [runtime, setRuntime] = useState<RuntimeByNode>({})
   const [lastRun, setLastRun] = useState<RunEntry[]>([])
   const [, setVars] = useState<Record<string, string>>({})
@@ -872,6 +961,11 @@ export function FlowsPanel() {
   const [conditionOverrides, setConditionOverrides] = useState<Record<string, FlowCondition>>({})
   const [positions, setPositions] = useState<Record<string, { x: number; y: number }>>({})
   const [mermaidOpen, setMermaidOpen] = useState(false)
+  const [aiOpen, setAiOpen] = useState(false)
+  const [aiInstructions, setAiInstructions] = useState('')
+  const [aiPreview, setAiPreview] = useState<AiFlowPreview | null>(null)
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiError, setAiError] = useState('')
 
   const savedSortedFlows = useMemo(() => [...savedFlows].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)), [savedFlows])
 
@@ -886,6 +980,7 @@ export function FlowsPanel() {
         setFlowName(first.name)
         setMermaid(first.mermaidSource || DEFAULT_MERMAID_FLOW)
         setDraftMermaid(first.mermaidSource || DEFAULT_MERMAID_FLOW)
+        setDirectGraph(first.mermaidSource ? null : first.graph)
         setRequestOverrides(requestOverridesFromGraph(first.graph))
         setConditionOverrides(conditionOverridesFromGraph(first.graph))
       }
@@ -894,6 +989,7 @@ export function FlowsPanel() {
   }, [])
 
   const graph = useMemo(() => {
+    if (directGraph) return directGraph
     const next = graphFromMermaid(mermaid, catalog)
     return {
       ...next,
@@ -908,7 +1004,7 @@ export function FlowsPanel() {
         return node
       }),
     }
-  }, [catalog, conditionOverrides, mermaid, requestOverrides])
+  }, [catalog, conditionOverrides, directGraph, mermaid, requestOverrides])
 
   const draftGraph = useMemo(() => graphFromMermaid(draftMermaid, catalog), [catalog, draftMermaid])
   const validationErrors = useMemo(() => validateFlowGraph(graph), [graph])
@@ -995,6 +1091,7 @@ export function FlowsPanel() {
     setFlowName('Untitled API flow')
     setMermaid(DEFAULT_MERMAID_FLOW)
     setDraftMermaid(DEFAULT_MERMAID_FLOW)
+    setDirectGraph(null)
     setRuntime({})
     setLastRun([])
     setVars({})
@@ -1008,6 +1105,7 @@ export function FlowsPanel() {
     setFlowName(flow.name)
     setMermaid(flow.mermaidSource || DEFAULT_MERMAID_FLOW)
     setDraftMermaid(flow.mermaidSource || DEFAULT_MERMAID_FLOW)
+    setDirectGraph(flow.mermaidSource ? null : flow.graph)
     setRequestOverrides(requestOverridesFromGraph(flow.graph))
     setConditionOverrides(conditionOverridesFromGraph(flow.graph))
     setRuntime({})
@@ -1060,6 +1158,7 @@ export function FlowsPanel() {
     const text = await file.text()
     setDraftMermaid(text)
     setMermaid(text)
+    setDirectGraph(null)
     setFlowName(file.name.replace(/\.(mmd|mermaid|txt)$/i, '') || 'Imported API flow')
     setActiveFlowId(null)
     setRuntime({})
@@ -1075,6 +1174,7 @@ export function FlowsPanel() {
 
   const applyMermaidModal = () => {
     setMermaid(draftMermaid)
+    setDirectGraph(null)
     setActiveFlowId(null)
     setRuntime({})
     setLastRun([])
@@ -1085,6 +1185,41 @@ export function FlowsPanel() {
 
   const exportJson = () => downloadBlob(JSON.stringify({ format: 'adomnia-flow', version: 3, definition: { name: flowName, graph, mermaidSource: mermaid }, lastRun }, null, 2), `${flowName.replace(/[^\w.-]+/g, '-').toLowerCase() || 'flow'}.json`, 'application/json')
   const exportRun = () => downloadBlob(exportRunMarkdown(flowName, lastRun), `${flowName.replace(/[^\w.-]+/g, '-').toLowerCase() || 'flow'}-run.md`, 'text/markdown')
+
+  const generateAiPreview = async () => {
+    if (!aiInstructions.trim()) return
+    setAiLoading(true)
+    setAiError('')
+    try {
+      setAiPreview(await generateAiFlowPreview({
+        instructions: aiInstructions,
+        context: { collections, environments },
+      }))
+    } catch (error) {
+      setAiError(error instanceof Error ? error.message : String(error))
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
+  const applyAiPreview = () => {
+    if (!aiPreview) return
+    const generated = aiPreview.definition
+    setActiveFlowId(null)
+    setFlowName(generated.name)
+    setMermaid('')
+    setDraftMermaid('')
+    setDirectGraph(generated.graph)
+    setRequestOverrides(requestOverridesFromGraph(generated.graph))
+    setConditionOverrides(conditionOverridesFromGraph(generated.graph))
+    setRuntime({})
+    setLastRun([])
+    setVars({})
+    setSelectedNodeId(generated.graph.nodes.find((node) => node.type === 'request')?.id ?? generated.graph.nodes[0]?.id ?? null)
+    setPositions(Object.fromEntries(generated.graph.nodes.map((node) => [node.id, { x: node.x, y: node.y }])))
+    void persist([generated, ...savedFlows])
+    setAiOpen(false)
+  }
 
   return (
     <div className="flex min-h-0 flex-1 bg-surface-0">
@@ -1128,6 +1263,12 @@ export function FlowsPanel() {
             <span className={cn('h-2 w-2 rounded-full', activeEnv ? 'bg-success' : 'bg-warning')} />
             {activeEnv?.name ?? 'No environment'}
             <ChevronDown size={14} className="text-text-4" />
+          </button>
+          <button
+            onClick={() => setAiOpen(true)}
+            className="flex h-9 items-center gap-2 rounded-lg border border-accent/35 bg-accent/10 px-3 text-xs font-semibold text-accent hover:bg-accent/15"
+          >
+            <Sparkles size={14} /> Generate with AI
           </button>
           <button title="Settings" className="grid h-9 w-9 place-items-center rounded-lg border border-border-2 bg-surface-0 text-text-3 hover:bg-surface-2 hover:text-text-1"><Settings size={15} /></button>
           <div className="flex overflow-hidden rounded-lg shadow-[0_8px_22px_rgba(139,61,255,0.24)]">
@@ -1179,6 +1320,18 @@ export function FlowsPanel() {
           onImport={applyMermaidModal}
           catalog={catalog}
           graph={draftGraph}
+        />
+      )}
+      {aiOpen && (
+        <AiFlowDrawer
+          instructions={aiInstructions}
+          setInstructions={(value) => { setAiInstructions(value); setAiPreview(null); setAiError('') }}
+          preview={aiPreview}
+          loading={aiLoading}
+          error={aiError}
+          onGeneratePreview={() => void generateAiPreview()}
+          onApply={applyAiPreview}
+          onClose={() => setAiOpen(false)}
         />
       )}
     </div>

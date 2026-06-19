@@ -29,6 +29,11 @@ import { addRepo, loadLastRepo, loadRepos, removeRepo, saveLastRepo, type SavedR
 import { GitCompareTab } from './GitCompareTab'
 import { GitActionsTab } from './GitActionsTab'
 import { DiffModal } from '@/components/response/DiffView'
+import { GitGraphActions, type CommitMenuRequest, type FileMenuRequest } from './git/GitGraphActions'
+import { HistorySearchBar } from './git/HistorySearchBar'
+import { GitCommitGraph } from './git/GitCommitGraph'
+import type { CommitInfo as GitCommitInfo } from '@/lib/git/types'
+import { buildGitGraphLayout } from '@/lib/git/graphLayout'
 
 interface GitStatus {
   branch: string
@@ -109,12 +114,6 @@ function parseJSON<T>(raw: string, fallback: T): T {
   } catch {
     return fallback
   }
-}
-
-function laneFor(commit: CommitInfo): number {
-  if (commit.parents.length > 1) return 2
-  if (commit.decorations.some((d) => d.includes('origin/') || d.includes('remotes/'))) return 1
-  return 0
 }
 
 function changeLabel(change: FileChange): string {
@@ -200,45 +199,6 @@ function shortBranch(name: string): string {
   return name.replace(/^remotes\//, '').replace(/^origin\//, '')
 }
 
-function CommitGraphCell({ commit, index, count }: { commit: CommitInfo; index: number; count: number }) {
-  const lane = laneFor(commit)
-  const x = 22 + lane * 18
-  const lineTop = index === 0 ? 24 : 0
-  const lineBottom = index === count - 1 ? 24 : 52
-  const color = commit.parents.length > 1 ? 'var(--color-warning)' : 'var(--color-accent)'
-  return (
-    <svg width="104" height="52" viewBox="0 0 104 52" className="shrink-0 overflow-visible">
-      {[0, 1, 2, 3].map((l) => (
-        <line
-          key={l}
-          x1={22 + l * 18}
-          y1="0"
-          x2={22 + l * 18}
-          y2="52"
-          stroke="var(--color-border-2)"
-          strokeWidth="1"
-          opacity={l === lane ? 0.72 : 0.22}
-        />
-      ))}
-      <line x1={x} y1={lineTop} x2={x} y2={lineBottom} stroke={color} strokeWidth="2.5" />
-      {lane > 0 && (
-        <path
-          d={`M 22 26 C ${30 + lane * 8} 26 ${x - 10} 26 ${x} 26`}
-          fill="none"
-          stroke={color}
-          strokeWidth="1.8"
-          opacity="0.95"
-        />
-      )}
-      {commit.parents.length > 1 && (
-        <path d={`M ${x} 26 C 78 26 76 9 92 9`} fill="none" stroke="var(--color-warning)" strokeWidth="2" />
-      )}
-      <circle cx={x} cy="26" r="5.6" fill={color} stroke="var(--color-surface-0)" strokeWidth="2.5" />
-      <circle cx={x} cy="26" r="2" fill="var(--color-surface-0)" opacity="0.9" />
-    </svg>
-  )
-}
-
 function downloadSafeName(path: string, suffix: string): string {
   const leaf = path.split(/[\\/]/).pop() || 'file'
   return `${leaf}.${suffix}`
@@ -263,6 +223,11 @@ export function GitSyncPanel() {
   const [workingDiffFile, setWorkingDiffFile] = useState<FileChange | null>(null)
   const [workingDiffSnapshot, setWorkingDiffSnapshot] = useState<WorkingTreeFileSnapshot | null>(null)
   const [workingDiffLoadingPath, setWorkingDiffLoadingPath] = useState('')
+  // Commit-graph operations: multi-selection, context menus, structured search.
+  const [selectedHashes, setSelectedHashes] = useState<string[]>([])
+  const [commitMenu, setCommitMenu] = useState<CommitMenuRequest | null>(null)
+  const [fileMenu, setFileMenu] = useState<FileMenuRequest | null>(null)
+  const [searchResults, setSearchResults] = useState<GitCommitInfo[] | null>(null)
 
   const status = overview?.status ?? emptyStatus
   const selectedCommit = useMemo(
@@ -272,13 +237,20 @@ export function GitSyncPanel() {
   const localBranches = useMemo(() => overview?.branches.filter((branch) => !branch.remote) ?? [], [overview])
   const remoteBranches = useMemo(() => overview?.branches.filter((branch) => branch.remote) ?? [], [overview])
   const filteredCommits = useMemo(() => {
+    // Structured search results (when active) replace the default commit list.
+    const commits = searchResults ?? overview?.commits ?? []
     const needle = query.trim().toLowerCase()
-    const commits = overview?.commits ?? []
     if (!needle) return commits
     return commits.filter((commit) =>
       [commit.hash, commit.author, commit.message, ...commit.decorations].some((value) => value.toLowerCase().includes(needle)),
     )
-  }, [overview, query])
+  }, [overview, query, searchResults])
+  const graphLayout = useMemo(
+    () => buildGitGraphLayout(filteredCommits as GitCommitInfo[]),
+    [filteredCommits],
+  )
+  const graphColumnWidth = Math.max(104, graphLayout.width)
+  const graphGridStyle = { gridTemplateColumns: `${graphColumnWidth}px minmax(0, 1fr) 96px` }
 
   const selectedCommitBaseRef = selectedCommit?.parents[0] || EMPTY_TREE_REF
 
@@ -475,6 +447,42 @@ export function GitSyncPanel() {
   }
 
   const currentBranch = status.branch || 'master'
+  const hasRemote = (overview?.remotes.length ?? 0) > 0
+
+  // Left click selects (and shows details); Ctrl/Cmd toggles, Shift extends a
+  // range — multi-selection drives the bulk commit actions.
+  const handleCommitClick = (commit: CommitInfo, event: React.MouseEvent) => {
+    const full = commit.fullHash || commit.hash
+    if (event.metaKey || event.ctrlKey) {
+      setSelectedHashes((prev) => (prev.includes(full) ? prev.filter((h) => h !== full) : [...prev, full]))
+      setSelectedHash(commit.hash)
+      return
+    }
+    if (event.shiftKey) {
+      const anchor = filteredCommits.findIndex((c) => c.hash === selectedHash)
+      const clicked = filteredCommits.findIndex((c) => (c.fullHash || c.hash) === full)
+      if (anchor >= 0 && clicked >= 0) {
+        const [lo, hi] = [Math.min(anchor, clicked), Math.max(anchor, clicked)]
+        setSelectedHashes(filteredCommits.slice(lo, hi + 1).map((c) => c.fullHash || c.hash))
+        return
+      }
+    }
+    setSelectedHash(commit.hash)
+    setSelectedHashes([full])
+  }
+
+  const handleCommitContextMenu = (commit: CommitInfo, event: React.MouseEvent) => {
+    event.preventDefault()
+    const full = commit.fullHash || commit.hash
+    if (!selectedHashes.includes(full)) {
+      setSelectedHash(commit.hash)
+      setSelectedHashes([full])
+    }
+    setFileMenu(null)
+    setCommitMenu({ commit, x: event.clientX, y: event.clientY })
+  }
+
+  const closeMenus = () => { setCommitMenu(null); setFileMenu(null) }
 
   if (gitAvailable === false) {
     return (
@@ -685,20 +693,28 @@ export function GitSyncPanel() {
         </aside>
 
         <main className="flex min-h-0 flex-col overflow-hidden">
-          <div className="grid h-10 shrink-0 grid-cols-[112px_minmax(0,1fr)_96px] items-center border-b border-border-1 bg-surface-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-text-4">
-            <span>Graph</span><span>Commit</span><span className="text-right">Date</span>
+          <HistorySearchBar repoPath={repoPath} onResults={setSearchResults} setError={setError} />
+          <div className="grid h-10 shrink-0 items-center border-b border-border-1 bg-surface-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-text-4" style={graphGridStyle}>
+            <span>Graph</span><span>Commit</span>
+            <span className="flex items-center justify-end gap-2">
+              {selectedHashes.length > 1 && <span className="rounded bg-accent/15 px-1.5 py-0.5 text-[9px] text-accent">{selectedHashes.length} selected</span>}
+              Date
+            </span>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto">
             {filteredCommits.map((commit, index) => (
               <button
                 key={commit.fullHash || commit.hash}
-                onClick={() => setSelectedHash(commit.hash)}
+                onClick={(event) => handleCommitClick(commit, event)}
+                onContextMenu={(event) => handleCommitContextMenu(commit, event)}
                 className={cn(
-                  'grid min-h-[58px] w-full grid-cols-[112px_minmax(0,1fr)_96px] items-center border-b border-border-1 px-3 text-left transition-colors hover:bg-surface-2',
+                  'grid min-h-[58px] w-full items-center border-b border-border-1 px-3 text-left transition-colors hover:bg-surface-2',
+                  selectedHashes.includes(commit.fullHash || commit.hash) && 'bg-accent/5',
                   selectedCommit?.hash === commit.hash && 'bg-surface-2 shadow-[inset_3px_0_0_var(--color-accent)]',
                 )}
+                style={graphGridStyle}
               >
-                <CommitGraphCell commit={commit} index={index} count={filteredCommits.length} />
+                <GitCommitGraph layout={graphLayout.rows[index]} width={graphColumnWidth} />
                 <div className="min-w-0 py-2.5">
                   <div className="truncate text-[12px] font-semibold leading-5 text-text-1">{commit.message}</div>
                   <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
@@ -754,6 +770,12 @@ export function GitSyncPanel() {
                         <button
                           key={`${file.status}-${file.path}-${file.oldPath ?? ''}`}
                           onClick={() => void openCommitDiff(file)}
+                          onContextMenu={(event) => {
+                            if (!selectedCommit) return
+                            event.preventDefault()
+                            setCommitMenu(null)
+                            setFileMenu({ file, commit: selectedCommit as unknown as GitCommitInfo, x: event.clientX, y: event.clientY })
+                          }}
                           className="flex w-full items-center gap-2 rounded border border-border-1 bg-surface-0 px-2 py-1.5 text-left hover:bg-surface-2"
                         >
                           <span className={cn('w-16 rounded px-1.5 py-0.5 text-center text-[9px]', changedFileClass(file.status))}>{changedFileLabel(file.status)}</span>
@@ -833,6 +855,20 @@ export function GitSyncPanel() {
       </div>
         </>
       )}
+      <GitGraphActions
+        repoPath={repoPath}
+        commits={filteredCommits as unknown as GitCommitInfo[]}
+        selectedHashes={selectedHashes}
+        currentBranch={currentBranch}
+        hasRemote={hasRemote}
+        commitMenu={commitMenu}
+        fileMenu={fileMenu}
+        onCloseMenus={closeMenus}
+        onRefresh={() => void refreshStatus()}
+        setInfo={setInfo}
+        setError={setError}
+      />
+
       {commitDiffFile && (
         <DiffModal
           title={`Commit diff - ${commitDiffFile.path}`}
