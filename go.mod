@@ -6,7 +6,7 @@ require (
 	filippo.io/age v1.3.1
 	github.com/HdrHistogram/hdrhistogram-go v1.2.0
 	github.com/IBM/sarama v1.50.3
-	github.com/digitorus/pdf v0.1.2
+	github.com/digitorus/pdf v0.2.0
 	github.com/digitorus/pdfsign v0.0.0-20260407063256-85ede6424a74
 	github.com/dustin/go-humanize v1.0.1
 	github.com/eclipse/paho.mqtt.golang v1.5.1
