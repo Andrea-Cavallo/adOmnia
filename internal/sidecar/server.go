@@ -62,7 +62,7 @@ func Start() int {
 	sse.RegisterHandlers(mux)
 
 	// Load Test
-	loadtest.Configure(storage.Put, storage.Get, storage.List, storage.Delete, port)
+	loadtest.Configure(storage.Put, storage.Get, storage.List, storage.Delete, port, Token())
 	loadtest.RegisterHandlers(mux)
 
 	// Mock server control

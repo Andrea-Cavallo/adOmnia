@@ -82,6 +82,56 @@ func (g *GitSync) CreatePatch(repoPath, refA, refB string) (string, error) {
 	return git.CreatePatch(g.path(repoPath), refA, refB)
 }
 
+func (g *GitSync) ChangesDiff(repoPath, scope, baseRef string) (string, error) {
+	return git.ChangesDiff(g.path(repoPath), scope, baseRef)
+}
+
+func (g *GitSync) ListSubmodules(repoPath string) (string, error) {
+	items, err := git.ListSubmodules(g.path(repoPath))
+	if err != nil {
+		return "", err
+	}
+	raw, _ := json.Marshal(items)
+	return string(raw), nil
+}
+func (g *GitSync) AddSubmodule(repoPath, remoteURL, path, branch string) error {
+	return git.AddSubmodule(g.path(repoPath), remoteURL, path, branch)
+}
+func (g *GitSync) UpdateSubmodules(repoPath, path string) error {
+	return git.UpdateSubmodules(g.path(repoPath), path)
+}
+func (g *GitSync) RemoveSubmodule(repoPath, path string) error {
+	return git.RemoveSubmodule(g.path(repoPath), path)
+}
+func (g *GitSync) ListWorktrees(repoPath string) (string, error) {
+	items, err := git.ListWorktrees(g.path(repoPath))
+	if err != nil {
+		return "", err
+	}
+	raw, _ := json.Marshal(items)
+	return string(raw), nil
+}
+func (g *GitSync) AddWorktree(repoPath, path, branch string, createBranch bool) error {
+	return git.AddWorktree(g.path(repoPath), path, branch, createBranch)
+}
+func (g *GitSync) RemoveWorktree(repoPath, path string, force bool) error {
+	return git.RemoveWorktree(g.path(repoPath), path, force)
+}
+func (g *GitSync) SparseCheckoutList(repoPath string) (string, error) {
+	items, err := git.SparseCheckoutList(g.path(repoPath))
+	if err != nil {
+		return "", err
+	}
+	raw, _ := json.Marshal(items)
+	return string(raw), nil
+}
+func (g *GitSync) SetSparseCheckout(repoPath string, paths []string, cone bool) error {
+	return git.SetSparseCheckout(g.path(repoPath), paths, cone)
+}
+func (g *GitSync) DisableSparseCheckout(repoPath string) error {
+	return git.DisableSparseCheckout(g.path(repoPath))
+}
+
 func (g *GitSync) ApplyPatch(repoPath, patch string, threeWay, index bool) (string, error) {
 	return marshalResult(git.ApplyPatch(g.path(repoPath), patch, threeWay, index))
 }
@@ -105,6 +155,28 @@ func (g *GitSync) FileHistory(repoPath, path string, n int) (string, error) {
 
 func (g *GitSync) BlameFile(repoPath, path string) (string, error) {
 	return git.Blame(g.path(repoPath), path)
+}
+
+func (g *GitSync) BlameLines(repoPath, path string) (string, error) {
+	lines, err := git.BlameLines(g.path(repoPath), path)
+	if err != nil {
+		return "", err
+	}
+	raw, _ := json.Marshal(lines)
+	return string(raw), nil
+}
+
+func (g *GitSync) GetConflictFileVersions(repoPath, path string) (string, error) {
+	versions, err := git.GetConflictFileVersions(g.path(repoPath), path)
+	if err != nil {
+		return "", err
+	}
+	raw, _ := json.Marshal(versions)
+	return string(raw), nil
+}
+
+func (g *GitSync) SaveConflictResolution(repoPath, path, content string) error {
+	return git.SaveConflictResolution(g.path(repoPath), path, content)
 }
 
 // ── Phase 2: cherry-pick / revert / reset / amend / undo / squash / extract ──
@@ -131,6 +203,19 @@ func (g *GitSync) AmendCommit(repoPath, message string, addAll bool) (string, er
 
 func (g *GitSync) UndoLastCommit(repoPath string, keepStaged bool) (string, error) {
 	return marshalResult(git.UndoLastCommit(g.path(repoPath), keepStaged))
+}
+
+func (g *GitSync) Reflog(repoPath string, limit int) (string, error) {
+	entries, err := git.Reflog(g.path(repoPath), limit)
+	if err != nil {
+		return "", err
+	}
+	raw, _ := json.Marshal(entries)
+	return string(raw), nil
+}
+
+func (g *GitSync) UndoToReflog(repoPath, selector, mode string) (string, error) {
+	return marshalResult(git.UndoToReflog(g.path(repoPath), selector, mode))
 }
 
 func (g *GitSync) SquashHeadIntoPrevious(repoPath string) (string, error) {

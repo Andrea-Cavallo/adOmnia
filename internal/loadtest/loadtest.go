@@ -2,6 +2,7 @@ package loadtest
 
 import (
 	"adomnia/internal/devlog"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -69,11 +70,12 @@ var loadTestRunning bool
 var loadTestMu sync.Mutex
 
 var (
-	putValue    func(string, string, []byte) error
-	getValue    func(string, string) ([]byte, error)
-	listValues  func(string, string) ([]string, error)
-	deleteValue func(string, string) error
-	sidecarPort int
+	putValue     func(string, string, []byte) error
+	getValue     func(string, string) ([]byte, error)
+	listValues   func(string, string) ([]string, error)
+	deleteValue  func(string, string) error
+	sidecarPort  int
+	sidecarToken string
 )
 
 // Configure supplies persistence functions and the local gRPC gateway port.
@@ -83,12 +85,14 @@ func Configure(
 	list func(string, string) ([]string, error),
 	deleteFn func(string, string) error,
 	port int,
+	token string,
 ) {
 	putValue = put
 	getValue = get
 	listValues = list
 	deleteValue = deleteFn
 	sidecarPort = port
+	sidecarToken = token
 }
 
 func loadTestHandler(w http.ResponseWriter, r *http.Request) {
@@ -714,12 +718,26 @@ func loadTestGrpcHandler(w http.ResponseWriter, r *http.Request) {
 			if payload == "" {
 				payload = "{}"
 			}
-			body := fmt.Sprintf(`{"address":"%s","service":"%s","method":"%s","payload":%s,"tls":%v,"timeout":%d}`,
-				req.Address, req.Service, req.Method, payload, req.Tls, req.TimeoutMs)
+			body, marshalErr := json.Marshal(struct {
+				Address string          `json:"address"`
+				Service string          `json:"service"`
+				Method  string          `json:"method"`
+				Payload json.RawMessage `json:"payload"`
+				TLS     bool            `json:"tls"`
+				Timeout int             `json:"timeout"`
+			}{req.Address, req.Service, req.Method, json.RawMessage(payload), req.Tls, req.TimeoutMs})
+			if marshalErr != nil {
+				mu.Lock()
+				failed++
+				statusCodes[0]++
+				mu.Unlock()
+				return
+			}
 			httpReq, _ := http.NewRequest("POST",
 				fmt.Sprintf("http://127.0.0.1:%d/grpc/invoke", sidecarPort),
-				strings.NewReader(body))
+				bytes.NewReader(body))
 			httpReq.Header.Set("Content-Type", "application/json")
+			httpReq.Header.Set("X-Sidecar-Token", sidecarToken)
 			cl := &http.Client{Timeout: time.Duration(req.TimeoutMs) * time.Millisecond}
 			resp, err := cl.Do(httpReq)
 			ok := false

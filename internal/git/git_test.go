@@ -87,6 +87,66 @@ func TestCommitAll_RoundTrip(t *testing.T) {
 	}
 }
 
+func TestCommitPaths_CommitsOnlySelectedFiles(t *testing.T) {
+	gitAvailable(t)
+	dir := filepath.Join(t.TempDir(), "repo")
+	if err := Init(Config{RepoPath: dir, Branch: "main", AuthorName: "T", AuthorEmail: "t@e.com"}); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	writeFile(t, filepath.Join(dir, "a.txt"), "a1")
+	writeFile(t, filepath.Join(dir, "b.txt"), "b1")
+	if _, err := CommitAll(dir, "init"); err != nil {
+		t.Fatalf("CommitAll: %v", err)
+	}
+
+	// Dirty both, then commit only a.txt: b.txt must remain modified.
+	writeFile(t, filepath.Join(dir, "a.txt"), "a2")
+	writeFile(t, filepath.Join(dir, "b.txt"), "b2")
+	if _, err := CommitPaths(dir, "only a", []string{"a.txt"}); err != nil {
+		t.Fatalf("CommitPaths: %v", err)
+	}
+
+	st, err := GetStatus(dir)
+	if err != nil {
+		t.Fatalf("GetStatus: %v", err)
+	}
+	if len(st.Modified) != 1 || st.Modified[0] != "b.txt" {
+		t.Fatalf("expected only b.txt left modified, got %v", st.Modified)
+	}
+}
+
+func TestCommitPaths_RejectsEmptySelection(t *testing.T) {
+	gitAvailable(t)
+	dir := filepath.Join(t.TempDir(), "repo")
+	if err := Init(Config{RepoPath: dir, Branch: "main", AuthorName: "T", AuthorEmail: "t@e.com"}); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	if _, err := CommitPaths(dir, "msg", nil); err == nil {
+		t.Fatalf("expected error for empty selection")
+	}
+	if _, err := CommitPaths(dir, "", []string{"a.txt"}); err == nil {
+		t.Fatalf("expected error for empty message")
+	}
+}
+
+func TestResolveCurrentBranch_UsesCheckedOutBranch(t *testing.T) {
+	gitAvailable(t)
+	dir := filepath.Join(t.TempDir(), "repo")
+	if err := Init(Config{RepoPath: dir, Branch: "trunk", AuthorName: "T", AuthorEmail: "t@e.com"}); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	branch, err := resolveCurrentBranch(dir, "")
+	if err != nil {
+		t.Fatalf("resolveCurrentBranch: %v", err)
+	}
+	if branch != "trunk" {
+		t.Fatalf("expected trunk, got %q", branch)
+	}
+	if explicit, err := resolveCurrentBranch(dir, " release "); err != nil || explicit != "release" {
+		t.Fatalf("explicit branch = %q, %v", explicit, err)
+	}
+}
+
 func TestLog_DefaultsCount(t *testing.T) {
 	gitAvailable(t)
 	dir := filepath.Join(t.TempDir(), "repo")

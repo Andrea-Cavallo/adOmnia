@@ -2,6 +2,7 @@ package git
 
 import (
 	"fmt"
+	"net/url"
 	"regexp"
 	"strings"
 )
@@ -97,6 +98,12 @@ func remoteWebBase(remoteURL string) string {
 		return ""
 	}
 	if m := scpLikeRe.FindStringSubmatch(remoteURL); m != nil {
+		if strings.EqualFold(m[1], "ssh.dev.azure.com") {
+			parts := strings.Split(strings.TrimPrefix(m[2], "v3/"), "/")
+			if len(parts) >= 3 {
+				return "https://dev.azure.com/" + parts[0] + "/" + parts[1] + "/_git/" + strings.Join(parts[2:], "/")
+			}
+		}
 		return "https://" + m[1] + "/" + strings.TrimSuffix(m[2], "/")
 	}
 	for _, prefix := range []string{"https://", "http://"} {
@@ -120,6 +127,10 @@ func originURL(repoPath string) string {
 // commitWebURL builds a browser URL to view a commit on the origin host.
 func commitWebURL(repoPath, fullHash string) string {
 	base := remoteWebBase(originURL(repoPath))
+	return commitURLForBase(base, fullHash)
+}
+
+func commitURLForBase(base, fullHash string) string {
 	if base == "" {
 		return ""
 	}
@@ -135,13 +146,26 @@ func commitWebURL(repoPath, fullHash string) string {
 // CompareWebURL builds a browser URL comparing two refs on the origin host.
 func CompareWebURL(repoPath, refA, refB string) string {
 	base := remoteWebBase(originURL(repoPath))
+	return compareURLForBase(base, refA, refB)
+}
+
+func compareURLForBase(base, refA, refB string) string {
 	if base == "" {
 		return ""
 	}
 	if strings.Contains(base, "gitlab") {
 		return base + "/-/compare/" + refA + "..." + refB
 	}
+	if isAzureDevOpsBase(base) {
+		return base + "/branchCompare?baseVersion=GB" + url.QueryEscape(refA) +
+			"&targetVersion=GB" + url.QueryEscape(refB) + "&_a=commits"
+	}
 	return base + "/compare/" + refA + "..." + refB
+}
+
+func isAzureDevOpsBase(base string) bool {
+	lower := strings.ToLower(base)
+	return strings.Contains(lower, "dev.azure.com/") || strings.Contains(lower, ".visualstudio.com/")
 }
 
 // RemoteWebURL returns the bare web URL of origin ("" if none/unrecognized).

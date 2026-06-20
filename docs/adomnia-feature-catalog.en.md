@@ -9,7 +9,7 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 
 | # | Category | Sections | Features |
 |---|-----------|---------|-------------|
-| A | [API Core](#a-api-core) | HTTP Client, Authentication, Assertions, Runner, Flows, Test Data, Visual Tests, Scheduled Tasks, Contract Validation | ~78 |
+| A | [API Core](#a-api-core) | HTTP Client, Authentication, Assertions, Runner, Flows, Test Data, Visual Tests, Contract Validation | ~73 |
 | B | [Protocols & Streaming](#b-protocols--streaming) | gRPC, SOAP, WebSocket, SSE, Broker Studio | ~65 |
 | C | [Infrastructure & Simulation](#c-infrastructure--simulation) | Mock Server (+ Smart Mock), Proxy/Interceptor, Docker Lab, Load Testing | ~47 |
 | D | [Debugging & Analysis](#d-debugging--analysis) | Browser Debug (+ Discovery), HAR Viewer, Network Tools, JSON Tools, XML Tools, Power Tools, Dev Logs, Observability, Secret Scanner, PDF Editor | ~110 |
@@ -151,26 +151,14 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 
 ---
 
-### A9. Scheduled Tasks (Cron Runner)
+### A9. Response Schema Validation (Contract)
 
 | # | Feature | Description |
 |---|-------------|-------------|
-| A9.1 | **Cron Jobs** | Schedule a saved request to run automatically on a standard 5-field cron expression (`0 * * * *`) or convenience shorthand (`@hourly`, `@every 5m`). Expressions are validated on save. |
-| A9.2 | **In-Process Scheduler** | Runs inside the Wails process (no external daemon); starts on app launch and drains gracefully on shutdown. Executes via the same CORS-free HTTP stack used by normal requests. |
-| A9.3 | **Run History** | Per-job capped ring buffer (50 runs): started timestamp, duration, status code, error, success flag. |
-| A9.4 | **Job Management** | Enable/disable (pause/resume), next-run time, edit, delete; left job list with status dot and 10s auto-refresh. |
-| A9.5 | **Persistence** | Job definitions and history persist to the bbolt `scheduler` bucket. (v1: scheduled runs send the stored request as-is — no env substitution, auth, or scripts.) |
-
----
-
-### A10. Response Schema Validation (Contract)
-
-| # | Feature | Description |
-|---|-------------|-------------|
-| A10.1 | **Auto-Validation** | After each response, validates it against the endpoint's OpenAPI schema (status code, content type, headers, body structure) when a spec is present on the collection. |
-| A10.2 | **Contract Tab** | Dedicated response tab with a PASS/FAIL badge, violations grouped by category (status/contentType/header/body) with detail, and warnings. |
-| A10.3 | **Report Export** | Export the contract validation result as Markdown, HTML, or JSON. |
-| A10.4 | **Toggle** | Settings → Requests → "Auto-validate response schema" (default on) enables/disables validation globally. |
+| A9.1 | **Auto-Validation** | After each response, validates it against the endpoint's OpenAPI schema (status code, content type, headers, body structure) when a spec is present on the collection. |
+| A9.2 | **Contract Tab** | Dedicated response tab with a PASS/FAIL badge, violations grouped by category (status/contentType/header/body) with detail, and warnings. |
+| A9.3 | **Report Export** | Export the contract validation result as Markdown, HTML, or JSON. |
+| A9.4 | **Toggle** | Settings → Requests → "Auto-validate response schema" (default on) enables/disables validation globally. |
 
 ---
 
@@ -295,8 +283,7 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 |---|-------------|-------------|
 | B5.2.1 | **Publish** | Publishes a message to an exchange with routing key, content-type, mandatory flag. |
 | B5.2.2 | **Consume** | Consumes messages from a queue with configurable auto-ack. |
-| B5.2.3 | **Info Exchange** | Retrieves metadata for the exchange and associated queues. |
-| B5.2.4 | **AMQP Connection** | Host, port, vhost, username, password, TLS. |
+| B5.2.3 | **AMQP Connection** | Host, port, vhost, username, password, TLS. |
 
 #### B5.3 MQTT
 
@@ -947,7 +934,7 @@ AI-integration module: connect to, debug, and generate MCP servers — exposing 
 
 | Category | Sections | Features |
 |-----------|---------|-------------|
-| **A — API Core** | HTTP Client, Auth, Assertions, Runner, Flows, Test Data, Visual Tests, Scheduled Tasks, Contract Validation | 78 |
+| **A — API Core** | HTTP Client, Auth, Assertions, Runner, Flows, Test Data, Visual Tests, Contract Validation | 73 |
 | **B — Protocols & Streaming** | gRPC, SOAP, WebSocket, SSE, Broker Studio (5 broker) | 65 |
 | **C — Infrastructure & Simulation** | Mock Server (+ Smart Mock), Proxy, Docker Lab, Load Testing | 47 |
 | **D — Debugging & Analysis** | Browser Debug (+ Discovery), HAR, Network Tools, JSON Tools, XML Tools, Dev Utils, Dev Logs, Observability, Secret Scanner, PDF Editor | 110 |
@@ -956,4 +943,4 @@ AI-integration module: connect to, debug, and generate MCP servers — exposing 
 | **G — Platform** | Settings, Infrastructure, UI Framework | 76 |
 | **H — API Design** | OpenAPI Import/Export, Schema Components, Visual OpenAPI Editor | 10 |
 | **I — MCP (Model Context Protocol)** | Client/Debugger, Sessions & Transport, Server Generator | 12 |
-| **Total** | 39 sections | **~541** |
+| **Total** | 38 sections | **~535** |

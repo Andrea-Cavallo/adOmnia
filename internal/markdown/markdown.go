@@ -1,4 +1,7 @@
-package main
+// Package markdown implements the local Markdown workspace: listing, reading,
+// writing, renaming and importing .md/.markdown notes inside a user-selected
+// folder. All paths are validated so operations stay inside the chosen root.
+package markdown
 
 import (
 	"errors"
@@ -8,11 +11,10 @@ import (
 	"sort"
 	"strings"
 	"time"
-
-	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-type MarkdownFileEntry struct {
+// FileEntry describes a single Markdown note on disk.
+type FileEntry struct {
 	Name       string `json:"name"`
 	Path       string `json:"path"`
 	RelPath    string `json:"relPath"`
@@ -21,18 +23,20 @@ type MarkdownFileEntry struct {
 	ModifiedAt string `json:"modifiedAt"`
 }
 
-type MarkdownWorkspaceInfo struct {
+// WorkspaceInfo summarises a folder imported into a local workspace.
+type WorkspaceInfo struct {
 	Root  string `json:"root"`
 	Name  string `json:"name"`
 	Files int    `json:"files"`
 }
 
-func isMarkdownPath(path string) bool {
+// IsMarkdownPath reports whether path has a Markdown extension.
+func IsMarkdownPath(path string) bool {
 	ext := strings.ToLower(filepath.Ext(path))
 	return ext == ".md" || ext == ".markdown"
 }
 
-func cleanMarkdownRoot(root string) (string, error) {
+func cleanRoot(root string) (string, error) {
 	root = strings.TrimSpace(root)
 	if root == "" {
 		return "", errors.New("markdown folder is empty")
@@ -51,7 +55,7 @@ func cleanMarkdownRoot(root string) (string, error) {
 	return abs, nil
 }
 
-func cleanMarkdownFilePath(path string) (string, error) {
+func cleanFilePath(path string) (string, error) {
 	path = strings.TrimSpace(path)
 	if path == "" {
 		return "", errors.New("markdown file path is empty")
@@ -60,31 +64,31 @@ func cleanMarkdownFilePath(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if !isMarkdownPath(abs) {
+	if !IsMarkdownPath(abs) {
 		return "", errors.New("only .md and .markdown files are supported")
 	}
 	return abs, nil
 }
 
-func cleanMarkdownRelativePath(relPath string) (string, error) {
+func cleanRelativePath(relPath string) (string, error) {
 	relPath = strings.TrimSpace(strings.ReplaceAll(relPath, "\\", "/"))
 	if relPath == "" {
 		return "", errors.New("note name is empty")
 	}
-	if !isMarkdownPath(relPath) {
+	if !IsMarkdownPath(relPath) {
 		relPath += ".md"
 	}
 	clean := filepath.Clean(relPath)
 	if filepath.IsAbs(clean) || clean == "." || strings.HasPrefix(clean, "..") {
 		return "", errors.New("note path must stay inside the selected folder")
 	}
-	if !isMarkdownPath(clean) {
+	if !IsMarkdownPath(clean) {
 		return "", errors.New("only .md and .markdown files are supported")
 	}
 	return clean, nil
 }
 
-func shouldSkipMarkdownDir(name string) bool {
+func shouldSkipDir(name string) bool {
 	switch strings.ToLower(name) {
 	case ".git", "node_modules", "dist", "build", "out", ".next", ".vite":
 		return true
@@ -93,38 +97,24 @@ func shouldSkipMarkdownDir(name string) bool {
 	}
 }
 
-func markdownFileEntry(abs string) (MarkdownFileEntry, error) {
-	info, err := os.Stat(abs)
-	if err != nil {
-		return MarkdownFileEntry{}, err
-	}
-	return MarkdownFileEntry{
-		Name:       filepath.Base(abs),
-		Path:       abs,
-		RelPath:    filepath.Base(abs),
-		Dir:        ".",
-		Size:       info.Size(),
-		ModifiedAt: info.ModTime().Format("2006-01-02 15:04"),
-	}, nil
-}
-
-func (a *App) ListMarkdownFiles(root string) ([]MarkdownFileEntry, error) {
-	rootAbs, err := cleanMarkdownRoot(root)
+// ListFiles returns every Markdown note under root, sorted by relative path.
+func ListFiles(root string) ([]FileEntry, error) {
+	rootAbs, err := cleanRoot(root)
 	if err != nil {
 		return nil, err
 	}
-	files := make([]MarkdownFileEntry, 0, 64)
+	files := make([]FileEntry, 0, 64)
 	err = filepath.WalkDir(rootAbs, func(path string, entry os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
 		if entry.IsDir() {
-			if path != rootAbs && shouldSkipMarkdownDir(entry.Name()) {
+			if path != rootAbs && shouldSkipDir(entry.Name()) {
 				return filepath.SkipDir
 			}
 			return nil
 		}
-		if !isMarkdownPath(path) {
+		if !IsMarkdownPath(path) {
 			return nil
 		}
 		info, err := entry.Info()
@@ -136,7 +126,7 @@ func (a *App) ListMarkdownFiles(root string) ([]MarkdownFileEntry, error) {
 			return err
 		}
 		rel = filepath.ToSlash(rel)
-		files = append(files, MarkdownFileEntry{
+		files = append(files, FileEntry{
 			Name:       entry.Name(),
 			Path:       path,
 			RelPath:    rel,
@@ -155,8 +145,9 @@ func (a *App) ListMarkdownFiles(root string) ([]MarkdownFileEntry, error) {
 	return files, nil
 }
 
-func (a *App) ReadMarkdownFile(path string) (string, error) {
-	abs, err := cleanMarkdownFilePath(path)
+// ReadFile returns the contents of a Markdown note.
+func ReadFile(path string) (string, error) {
+	abs, err := cleanFilePath(path)
 	if err != nil {
 		return "", err
 	}
@@ -167,78 +158,72 @@ func (a *App) ReadMarkdownFile(path string) (string, error) {
 	return string(data), nil
 }
 
-func (a *App) WriteMarkdownFile(path string, content string) error {
-	abs, err := cleanMarkdownFilePath(path)
+// WriteFile overwrites a Markdown note with content.
+func WriteFile(path string, content string) error {
+	abs, err := cleanFilePath(path)
 	if err != nil {
 		return err
 	}
 	return os.WriteFile(abs, []byte(content), 0644)
 }
 
-func (a *App) SaveMarkdownFileAs(defaultName string, content string) (MarkdownFileEntry, error) {
-	defaultName = strings.TrimSpace(defaultName)
-	if defaultName == "" {
-		defaultName = "Untitled.md"
-	}
-	if !isMarkdownPath(defaultName) {
-		defaultName += ".md"
-	}
-	path, err := wailsRuntime.SaveFileDialog(a.ctx, wailsRuntime.SaveDialogOptions{
-		Title:           "Save Markdown note",
-		DefaultFilename: defaultName,
-		Filters: []wailsRuntime.FileFilter{
-			{DisplayName: "Markdown files (*.md, *.markdown)", Pattern: "*.md;*.markdown"},
-		},
-	})
+// SaveToPath writes content to a (dialog-chosen) path and returns its entry.
+func SaveToPath(path string, content string) (FileEntry, error) {
+	abs, err := cleanFilePath(path)
 	if err != nil {
-		return MarkdownFileEntry{}, err
-	}
-	if strings.TrimSpace(path) == "" {
-		return MarkdownFileEntry{}, errors.New("save cancelled")
-	}
-	abs, err := cleanMarkdownFilePath(path)
-	if err != nil {
-		return MarkdownFileEntry{}, err
+		return FileEntry{}, err
 	}
 	if err := os.WriteFile(abs, []byte(content), 0644); err != nil {
-		return MarkdownFileEntry{}, err
+		return FileEntry{}, err
 	}
-	return markdownFileEntry(abs)
+	info, err := os.Stat(abs)
+	if err != nil {
+		return FileEntry{}, err
+	}
+	return FileEntry{
+		Name:       filepath.Base(abs),
+		Path:       abs,
+		RelPath:    filepath.Base(abs),
+		Dir:        ".",
+		Size:       info.Size(),
+		ModifiedAt: info.ModTime().Format("2006-01-02 15:04"),
+	}, nil
 }
 
-func (a *App) CreateMarkdownFile(root string, relPath string, content string) (MarkdownFileEntry, error) {
-	rootAbs, err := cleanMarkdownRoot(root)
+// CreateFile creates a new note at relPath inside root.
+func CreateFile(root string, relPath string, content string) (FileEntry, error) {
+	rootAbs, err := cleanRoot(root)
 	if err != nil {
-		return MarkdownFileEntry{}, err
+		return FileEntry{}, err
 	}
-	cleanRel, err := cleanMarkdownRelativePath(relPath)
+	cleanRel, err := cleanRelativePath(relPath)
 	if err != nil {
-		return MarkdownFileEntry{}, err
+		return FileEntry{}, err
 	}
 	abs := filepath.Join(rootAbs, cleanRel)
 	parent := filepath.Dir(abs)
 	relCheck, err := filepath.Rel(rootAbs, abs)
 	if err != nil {
-		return MarkdownFileEntry{}, err
+		return FileEntry{}, err
 	}
 	if strings.HasPrefix(relCheck, "..") {
-		return MarkdownFileEntry{}, errors.New("note path must stay inside the selected folder")
+		return FileEntry{}, errors.New("note path must stay inside the selected folder")
 	}
 	if _, err := os.Stat(abs); err == nil {
-		return MarkdownFileEntry{}, errors.New("a note with this path already exists")
+		return FileEntry{}, errors.New("a note with this path already exists")
 	}
 	if err := os.MkdirAll(parent, 0755); err != nil {
-		return MarkdownFileEntry{}, err
+		return FileEntry{}, err
 	}
 	if err := os.WriteFile(abs, []byte(content), 0644); err != nil {
-		return MarkdownFileEntry{}, err
+		return FileEntry{}, err
 	}
 	info, err := os.Stat(abs)
 	if err != nil {
-		return MarkdownFileEntry{}, err
+		return FileEntry{}, err
 	}
 	relSlash := filepath.ToSlash(cleanRel)
-	return MarkdownFileEntry{
+	return FileEntry{
 		Name:       filepath.Base(abs),
 		Path:       abs,
 		RelPath:    relSlash,
@@ -248,39 +233,40 @@ func (a *App) CreateMarkdownFile(root string, relPath string, content string) (M
 	}, nil
 }
 
-func (a *App) RenameMarkdownFile(root string, oldRelPath string, newRelPath string) (MarkdownFileEntry, error) {
-	rootAbs, err := cleanMarkdownRoot(root)
+// RenameFile moves a note from oldRelPath to newRelPath inside root.
+func RenameFile(root string, oldRelPath string, newRelPath string) (FileEntry, error) {
+	rootAbs, err := cleanRoot(root)
 	if err != nil {
-		return MarkdownFileEntry{}, err
+		return FileEntry{}, err
 	}
-	oldClean, err := cleanMarkdownRelativePath(oldRelPath)
+	oldClean, err := cleanRelativePath(oldRelPath)
 	if err != nil {
-		return MarkdownFileEntry{}, err
+		return FileEntry{}, err
 	}
-	newClean, err := cleanMarkdownRelativePath(newRelPath)
+	newClean, err := cleanRelativePath(newRelPath)
 	if err != nil {
-		return MarkdownFileEntry{}, err
+		return FileEntry{}, err
 	}
 	oldAbs := filepath.Join(rootAbs, oldClean)
 	newAbs := filepath.Join(rootAbs, newClean)
 	if _, err := os.Stat(oldAbs); err != nil {
-		return MarkdownFileEntry{}, err
+		return FileEntry{}, err
 	}
 	if _, err := os.Stat(newAbs); err == nil {
-		return MarkdownFileEntry{}, errors.New("a note with this path already exists")
+		return FileEntry{}, errors.New("a note with this path already exists")
 	}
 	if err := os.MkdirAll(filepath.Dir(newAbs), 0755); err != nil {
-		return MarkdownFileEntry{}, err
+		return FileEntry{}, err
 	}
 	if err := os.Rename(oldAbs, newAbs); err != nil {
-		return MarkdownFileEntry{}, err
+		return FileEntry{}, err
 	}
 	info, err := os.Stat(newAbs)
 	if err != nil {
-		return MarkdownFileEntry{}, err
+		return FileEntry{}, err
 	}
 	newRelSlash := filepath.ToSlash(newClean)
-	return MarkdownFileEntry{
+	return FileEntry{
 		Name:       filepath.Base(newAbs),
 		Path:       newAbs,
 		RelPath:    newRelSlash,
@@ -290,12 +276,13 @@ func (a *App) RenameMarkdownFile(root string, oldRelPath string, newRelPath stri
 	}, nil
 }
 
-func (a *App) DeleteMarkdownFile(root string, relPath string) error {
-	rootAbs, err := cleanMarkdownRoot(root)
+// DeleteFile removes a note at relPath inside root.
+func DeleteFile(root string, relPath string) error {
+	rootAbs, err := cleanRoot(root)
 	if err != nil {
 		return err
 	}
-	cleanRel, err := cleanMarkdownRelativePath(relPath)
+	cleanRel, err := cleanRelativePath(relPath)
 	if err != nil {
 		return err
 	}
@@ -310,8 +297,9 @@ func (a *App) DeleteMarkdownFile(root string, relPath string) error {
 	return os.Remove(abs)
 }
 
-func (a *App) WriteMarkdownAgentGraph(root string, content string) (string, error) {
-	rootAbs, err := cleanMarkdownRoot(root)
+// WriteAgentGraph persists the computed note graph under root/.adomnia.
+func WriteAgentGraph(root string, content string) (string, error) {
+	rootAbs, err := cleanRoot(root)
 	if err != nil {
 		return "", err
 	}
@@ -326,10 +314,12 @@ func (a *App) WriteMarkdownAgentGraph(root string, content string) (string, erro
 	return graphPath, nil
 }
 
-func (a *App) ImportMarkdownFolderToWorkspace(sourceRoot string) (MarkdownWorkspaceInfo, error) {
-	sourceAbs, err := cleanMarkdownRoot(sourceRoot)
+// ImportFolderToWorkspace copies every Markdown note from sourceRoot into a new
+// timestamped workspace under dataDir/markdown-workspaces.
+func ImportFolderToWorkspace(sourceRoot string, dataDir string) (WorkspaceInfo, error) {
+	sourceAbs, err := cleanRoot(sourceRoot)
 	if err != nil {
-		return MarkdownWorkspaceInfo{}, err
+		return WorkspaceInfo{}, err
 	}
 	baseName := filepath.Base(sourceAbs)
 	if baseName == "." || baseName == string(filepath.Separator) {
@@ -341,19 +331,19 @@ func (a *App) ImportMarkdownFolderToWorkspace(sourceRoot string) (MarkdownWorksp
 		}
 		return '-'
 	}, baseName)
-	targetRoot := filepath.Join(dataDir(), "markdown-workspaces", fmt.Sprintf("%s-%s", strings.TrimSpace(safeName), time.Now().Format("20060102-150405")))
+	targetRoot := filepath.Join(dataDir, "markdown-workspaces", fmt.Sprintf("%s-%s", strings.TrimSpace(safeName), time.Now().Format("20060102-150405")))
 	count := 0
 	err = filepath.WalkDir(sourceAbs, func(path string, entry os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
 		if entry.IsDir() {
-			if path != sourceAbs && shouldSkipMarkdownDir(entry.Name()) {
+			if path != sourceAbs && shouldSkipDir(entry.Name()) {
 				return filepath.SkipDir
 			}
 			return nil
 		}
-		if !isMarkdownPath(path) {
+		if !IsMarkdownPath(path) {
 			return nil
 		}
 		rel, err := filepath.Rel(sourceAbs, path)
@@ -375,7 +365,7 @@ func (a *App) ImportMarkdownFolderToWorkspace(sourceRoot string) (MarkdownWorksp
 		return nil
 	})
 	if err != nil {
-		return MarkdownWorkspaceInfo{}, err
+		return WorkspaceInfo{}, err
 	}
-	return MarkdownWorkspaceInfo{Root: targetRoot, Name: baseName, Files: count}, nil
+	return WorkspaceInfo{Root: targetRoot, Name: baseName, Files: count}, nil
 }

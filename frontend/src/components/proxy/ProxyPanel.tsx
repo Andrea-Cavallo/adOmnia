@@ -9,6 +9,9 @@ import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/app'
 import { useSettingsStore } from '@/stores/settings'
 import { uid } from '@/lib/types'
+import { safeSetItem } from '@/lib/safeLocalStorage'
+
+const PROXY_BREAKPOINTS_KEY = 'adomnia.proxy.breakpoints'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -826,6 +829,11 @@ export function ProxyPanel() {
   const [status, setStatus] = useState<ProxyStatus>({ running: false, port: 0 })
   const [loading, setLoading] = useState(false)
   const [tab, setTab] = useState<ProxyTab>('traffic')
+  const [breakpointInput, setBreakpointInput] = useState(() => localStorage.getItem(PROXY_BREAKPOINTS_KEY) ?? '')
+
+  const breakpointPatterns = breakpointInput.split(/[\n,]/).map((value) => value.trim()).filter(Boolean)
+
+  useEffect(() => { safeSetItem(PROXY_BREAKPOINTS_KEY, breakpointInput) }, [breakpointInput])
 
   const api = useCallback(async (path: string, body?: unknown, method?: string) => {
     const url = serverUrl(port, path)
@@ -857,7 +865,7 @@ export function ProxyPanel() {
     const p = settings.proxy
     await api('/proxy/start', {
       port: proxyPort,
-      breakpoints: [],
+      breakpoints: breakpointPatterns,
       enableHttps: p?.enableHttps ?? false,
       upstreamProxy: p?.upstreamProxy ?? '',
       noProxyHosts: p?.noProxyHosts ?? '',
@@ -872,7 +880,13 @@ export function ProxyPanel() {
     setStatus({ running: true, port: proxyPort })
     useAppStore.getState().setProxyRunning(true)
     setLoading(false)
-  }, [api, proxyPort, settings.proxy])
+  }, [api, proxyPort, settings.proxy, breakpointInput])
+
+  const applyBreakpoints = async () => {
+    setLoading(true)
+    await api('/proxy/breakpoints', { breakpoints: breakpointPatterns })
+    setLoading(false)
+  }
 
   useEffect(() => {
     const startFromCommandPalette = (event: Event) => {
@@ -907,6 +921,11 @@ export function ProxyPanel() {
           <span className="text-[10px] text-text-4">Port</span>
           <input type="number" value={proxyPort} onChange={(e) => setProxyPort(Number(e.target.value))} disabled={status.running}
             className="w-16 h-7 px-2 bg-surface-2 border border-border-2 rounded-lg text-xs text-text-1 outline-none focus:border-accent disabled:opacity-50 text-center" />
+        </label>
+        <label className="flex min-w-[260px] items-center gap-1.5">
+          <span className="text-[10px] text-text-4">Break on</span>
+          <input value={breakpointInput} onChange={(e) => setBreakpointInput(e.target.value)} placeholder="/payments, /admin" className="h-7 min-w-0 flex-1 rounded-lg border border-border-2 bg-surface-2 px-2 font-mono text-[10px] text-text-1 outline-none focus:border-accent" />
+          {status.running && <button onClick={() => void applyBreakpoints()} disabled={loading} className="h-7 rounded border border-border-2 px-2 text-[10px] text-text-2 hover:border-accent/40 disabled:opacity-40">Apply</button>}
         </label>
         {!status.running ? (
           <button onClick={handleStart} disabled={loading || !port}

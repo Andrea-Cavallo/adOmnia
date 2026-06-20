@@ -1514,6 +1514,7 @@ export function UtilsPanel({ initialTool = 'base64' }: { initialTool?: string })
   const [queryInput, setQueryInput] = useState('https://api.local/v1/payments?status=paid&limit=20&tenant=demo')
   const [queryOutput, setQueryOutput] = useState('')
   const [diffMode, setDiffMode] = useState<'json' | 'xml'>('json')
+  const [jsonPatch, setJsonPatch] = useState('')
   const [diffLeft, setDiffLeft] = useState('{\n  "id": "pay_1001",\n  "status": "pending",\n  "amount": 4990,\n  "customer": {\n    "id": "cus_42",\n    "tier": "standard"\n  },\n  "metadata": {\n    "source": "checkout"\n  }\n}')
   const [diffRight, setDiffRight] = useState('{\n  "id": "pay_1001",\n  "status": "succeeded",\n  "amount": 4990,\n  "customer": {\n    "id": "cus_42",\n    "tier": "enterprise"\n  },\n  "metadata": {\n    "source": "checkout",\n    "traceId": "trc_9f31"\n  }\n}')
   const [xmlDiffLeft, setXmlDiffLeft] = useState('<Payment id="pay_1001">\n  <Status>pending</Status>\n  <Amount currency="EUR">4990</Amount>\n  <Customer id="cus_42" tier="standard" />\n</Payment>')
@@ -1564,6 +1565,19 @@ export function UtilsPanel({ initialTool = 'base64' }: { initialTool?: string })
     }
   }
 
+  const inspectPem = async (pemText: string) => {
+    const url = serverUrl(port, '/cert/inspect')
+    if (!url) return pemInspectPure(pemText)
+    try {
+      const res = await sidecarFetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: pemText })
+      const text = await res.text()
+      if (!res.ok) throw new Error(text || res.statusText)
+      return JSON.stringify(JSON.parse(text), null, 2)
+    } catch {
+      return pemInspectPure(pemText)
+    }
+  }
+
   const handlePemFile = async (file: File) => {
     const { text, bytes } = await readFileSmart(file)
     setPemFileName(file.name)
@@ -1576,7 +1590,7 @@ export function UtilsPanel({ initialTool = 'base64' }: { initialTool?: string })
       setPemOutput(jksInspect(bytes, file.name))
     } else {
       setPemOutput('Inspecting…')
-      const out = await pemInspectPure(pemText)
+      const out = await inspectPem(pemText)
       setPemOutput(out)
     }
     if (file.name.toLowerCase().endsWith('.jks')) {
@@ -2100,6 +2114,13 @@ export function UtilsPanel({ initialTool = 'base64' }: { initialTool?: string })
                 {liveDiff.error ? `Invalid ${diffMode.toUpperCase()}` : liveDiff.equal ? 'No differences' : `${liveDiff.rows.length} differences found`}
               </span>
             </div>
+            {diffMode === 'json' && !liveDiff.error && <div className="flex flex-col gap-2">
+              <button onClick={async () => {
+                const data = await fetchApi('/json/diff', { left: JSON.parse(diffLeft), right: JSON.parse(diffRight) })
+                setJsonPatch(data ? JSON.stringify(data, null, 2) : 'Backend diff unavailable')
+              }} className="self-start rounded border border-border-2 bg-surface-2 px-3 py-1.5 text-xs text-text-2 hover:border-accent/40 hover:text-text-1">Generate RFC 6902 patch</button>
+              {jsonPatch && <pre className="max-h-64 overflow-auto rounded border border-border-1 bg-surface-1 p-3 text-xs text-text-2 font-mono whitespace-pre-wrap">{jsonPatch}</pre>}
+            </div>}
             {liveDiff.error && (
               <pre className="rounded border border-error/30 bg-error/10 px-3 py-2 text-xs text-error whitespace-pre-wrap">{liveDiff.error}</pre>
             )}
@@ -2336,7 +2357,7 @@ export function UtilsPanel({ initialTool = 'base64' }: { initialTool?: string })
             <button
               onClick={async () => {
                 setPemOutput('Inspecting…')
-                const out = await pemInspectPure(pemInput)
+                const out = await inspectPem(pemInput)
                 setPemOutput(out)
               }}
               className="self-start px-3 py-1.5 bg-accent text-white rounded text-xs font-medium"

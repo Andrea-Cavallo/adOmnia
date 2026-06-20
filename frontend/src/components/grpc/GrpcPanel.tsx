@@ -10,6 +10,7 @@ import {
   Download,
   FileCode2,
   FolderOpen,
+  Gauge,
   History,
   Layers,
   ListTree,
@@ -303,6 +304,7 @@ function GrpcConnectionBar({
   onTlsChange,
   onReflect,
   onInvoke,
+  onLoadTest,
   onDisconnect,
   onSave,
   onLoadProfile,
@@ -320,6 +322,7 @@ function GrpcConnectionBar({
   onTlsChange: (value: boolean) => void
   onReflect: () => void
   onInvoke: () => void
+  onLoadTest: () => void
   onDisconnect: () => void
   onSave: () => void
   onLoadProfile: (profile: GrpcConnectionProfile) => void
@@ -397,6 +400,10 @@ function GrpcConnectionBar({
         <IconButton onClick={onInvoke} disabled={loading || !connected} primary>
           <Play size={13} />
           Invoke
+        </IconButton>
+        <IconButton onClick={onLoadTest} disabled={loading || !connected} title="Run a gRPC load test">
+          <Gauge size={13} />
+          Load Test
         </IconButton>
       </div>
     </div>
@@ -1316,6 +1323,61 @@ function GrpcRequestWorkspace({
   )
 }
 
+interface GrpcLoadTestResult {
+  totalRequests: number
+  successful: number
+  failed: number
+  totalTimeMs: number
+  avgMs: number
+  minMs: number
+  maxMs: number
+  p50Ms: number
+  p95Ms: number
+  p99Ms: number
+  throughput: number
+  errorRate: number
+}
+
+function GrpcLoadTestDialog({ port, address, service, method, payload, tls, onClose }: { port: number | null; address: string; service: string; method: string; payload: string; tls: boolean; onClose: () => void }) {
+  const [concurrency, setConcurrency] = useState(5)
+  const [totalReqs, setTotalReqs] = useState(100)
+  const [timeoutMs, setTimeoutMs] = useState(5000)
+  const [running, setRunning] = useState(false)
+  const [error, setError] = useState('')
+  const [result, setResult] = useState<GrpcLoadTestResult | null>(null)
+
+  const run = async () => {
+    setRunning(true)
+    setError('')
+    setResult(null)
+    try {
+      JSON.parse(payload || '{}')
+      setResult(await postJson<GrpcLoadTestResult>(port, '/loadtest/grpc', { address, service, method, payload: payload || '{}', tls, concurrency, totalReqs, timeoutMs }))
+    } catch (event) {
+      setError(event instanceof Error ? event.message : String(event))
+    } finally { setRunning(false) }
+  }
+
+  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4" onClick={onClose}>
+    <div className="w-full max-w-2xl rounded-lg border border-border-2 bg-surface-1 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+      <div className="flex items-center gap-2 border-b border-border-1 px-4 py-3"><Gauge size={15} className="text-accent" /><div className="min-w-0 flex-1"><div className="text-sm font-semibold text-text-1">gRPC Load Test</div><div className="truncate font-mono text-[10px] text-text-4">{address} · {service}/{method}</div></div><button onClick={onClose} className="text-text-4 hover:text-text-1"><X size={15} /></button></div>
+      <div className="flex flex-col gap-4 p-4">
+        <div className="grid grid-cols-3 gap-3">{[
+          ['Concurrency', concurrency, setConcurrency, 1, 50],
+          ['Requests', totalReqs, setTotalReqs, 1, 5000],
+          ['Timeout (ms)', timeoutMs, setTimeoutMs, 100, 60000],
+        ].map(([label, value, setter, min, max]) => <label key={String(label)} className="flex flex-col gap-1 text-[10px] uppercase tracking-wider text-text-4">{label as string}<input type="number" value={value as number} min={min as number} max={max as number} onChange={(event) => (setter as (value: number) => void)(Number(event.target.value))} className="h-8 rounded border border-border-2 bg-surface-2 px-2 text-xs text-text-1 outline-none focus:border-accent" /></label>)}</div>
+        {error && <div className="rounded border border-error/30 bg-error/10 px-3 py-2 text-xs text-error">{error}</div>}
+        {result && <div className="grid grid-cols-4 gap-2">{[
+          ['Total', result.totalRequests], ['Success', result.successful], ['Failed', result.failed], ['Req/s', result.throughput.toFixed(1)],
+          ['Avg', `${result.avgMs.toFixed(1)}ms`], ['p50', `${result.p50Ms.toFixed(1)}ms`], ['p95', `${result.p95Ms.toFixed(1)}ms`], ['p99', `${result.p99Ms.toFixed(1)}ms`],
+        ].map(([label, value]) => <div key={String(label)} className="rounded border border-border-1 bg-surface-2 p-2"><div className="text-[9px] uppercase text-text-4">{label}</div><div className="mt-1 font-mono text-xs font-semibold text-text-1">{value}</div></div>)}</div>}
+        <div className="flex justify-end gap-2"><button onClick={onClose} className="rounded border border-border-2 px-3 py-1.5 text-xs text-text-2">Close</button><button onClick={() => void run()} disabled={running || !port} className="flex items-center gap-1.5 rounded bg-accent px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-40"><Play size={11} />{running ? 'Running…' : 'Run load test'}</button></div>
+      </div>
+    </div>
+  </div>
+}
+
 export function GrpcPanel() {
   const port = useServerPort()
   const protoInputRef = useRef<HTMLInputElement>(null)
@@ -1349,6 +1411,7 @@ export function GrpcPanel() {
   const [bottomTab, setBottomTab] = useState<BottomTab>('response')
   const [profiles, setProfiles] = useState<GrpcConnectionProfile[]>(() => loadJson(CONNECTIONS_KEY, []))
   const [historyRows, setHistoryRows] = useState<HistoryRow[]>(() => loadJson(HISTORY_KEY, []))
+  const [showLoadTest, setShowLoadTest] = useState(false)
 
   const currentService = services.find((service) => service.name === selectedService)
   const currentMethod = currentService?.methods.find((method) => method.name === selectedMethod)
@@ -1785,6 +1848,13 @@ export function GrpcPanel() {
         onTlsChange={setUseTls}
         onReflect={handleReflect}
         onInvoke={handleInvoke}
+        onLoadTest={() => {
+          if (currentMethod?.client_streaming) {
+            setError('Load testing currently supports unary and server-streaming methods, not client-streaming RPCs.')
+            return
+          }
+          setShowLoadTest(true)
+        }}
         onDisconnect={() => {
           setConnected(false)
           setServices([])
@@ -1814,6 +1884,7 @@ export function GrpcPanel() {
         onClientCertChange={setClientCertPath}
         onClientKeyChange={setClientKeyPath}
       />
+      {showLoadTest && currentMethod && !currentMethod.client_streaming && <GrpcLoadTestDialog port={port} address={address} service={selectedService} method={selectedMethod} payload={rawJson} tls={useTls} onClose={() => setShowLoadTest(false)} />}
       {error && (
         <div className="mx-4 mt-3 rounded-md border border-error/30 bg-error/10 px-3 py-2 text-xs text-error flex items-center gap-2">
           <AlertTriangle size={14} />

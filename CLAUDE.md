@@ -168,7 +168,7 @@ adomnia/
 | `KafkaPanel.tsx` | Kafka producer/consumer UI |
 | `MockPanel.tsx` | Mock server endpoint config, hit log |
 | `ProxyPanel.tsx` | Interceptor traffic viewer, breakpoints, map local/remote |
-| `LoadTestPanel.tsx` | Load test config, scatter plot, percentile metrics |
+| `LoadTestDrawer.tsx` | Load test config, scatter plot, percentile metrics |
 | `UtilsPanel.tsx` | 20+ developer utilities (UUID, Base64, JWT, etc.) |
 | `SettingsPanel.tsx` | Settings UI with sections (General, Appearance, etc.) |
 

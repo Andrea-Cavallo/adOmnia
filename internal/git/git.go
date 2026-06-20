@@ -102,6 +102,23 @@ func runGit(dir string, args ...string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
+// statusPorcelain runs `git status --porcelain` trimming only the trailing
+// newline. runGit's TrimSpace would strip the leading space of the FIRST line
+// (e.g. " M file" → "M file"), shifting the status columns and corrupting the
+// first changed file's name/status. Porcelain parsing must keep column 0.
+func statusPorcelain(repoPath string) (string, error) {
+	cmd := exec.Command("git", "status", "--porcelain")
+	cmd.Dir = repoPath
+	configureHiddenCommand(cmd)
+	var out, errBuf bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("git status --porcelain: %w\n%s", err, errBuf.String())
+	}
+	return strings.TrimRight(out.String(), "\r\n"), nil
+}
+
 func Init(cfg Config) error {
 	if err := os.MkdirAll(cfg.RepoPath, 0755); err != nil {
 		return fmt.Errorf("mkdir: %w", err)
@@ -202,7 +219,7 @@ func GetStatus(repoPath string) (Status, error) {
 		// A freshly-initialized repo with no commits has no HEAD yet.
 		branch = ""
 	}
-	porcelain, err := runGit(repoPath, "status", "--porcelain")
+	porcelain, err := statusPorcelain(repoPath)
 	if err != nil {
 		return Status{}, err
 	}
@@ -268,7 +285,7 @@ func GetOverview(repoPath string, n int) (Overview, error) {
 		n = 80
 	}
 
-	porcelain, _ := runGit(repoPath, "status", "--porcelain")
+	porcelain, _ := statusPorcelain(repoPath)
 	changes := parsePorcelain(porcelain)
 	conflicts := []FileChange{}
 	for _, change := range changes {
@@ -377,12 +394,54 @@ func CommitAll(repoPath, message string) (CommitResult, error) {
 	return CommitResult{Hash: hash, Message: message}, nil
 }
 
-func Push(repoPath, branch string) error {
-	if branch == "" {
-		branch = "main"
+// CommitPaths commits exactly the given paths and nothing else. It stages each
+// path (covering add/modify/delete/untracked) then does a pathspec commit, which
+// records only those paths and leaves any other change untouched. This is what
+// lets the Changes panel commit just the files the user ticked.
+func CommitPaths(repoPath, message string, paths []string) (CommitResult, error) {
+	if strings.TrimSpace(message) == "" {
+		return CommitResult{}, fmt.Errorf("commit message is empty")
 	}
-	_, err := runGit(repoPath, "push", "origin", branch)
+	clean := []string{}
+	for _, p := range paths {
+		if p = strings.TrimSpace(p); p != "" {
+			clean = append(clean, p)
+		}
+	}
+	if len(clean) == 0 {
+		return CommitResult{}, fmt.Errorf("no files selected to commit")
+	}
+	if _, err := runGit(repoPath, append([]string{"add", "-A", "--"}, clean...)...); err != nil {
+		return CommitResult{}, err
+	}
+	if _, err := runGit(repoPath, append([]string{"commit", "-m", message, "--"}, clean...)...); err != nil {
+		return CommitResult{}, err
+	}
+	hash, _ := runGit(repoPath, "rev-parse", "--short", "HEAD")
+	return CommitResult{Hash: hash, Message: message}, nil
+}
+
+func Push(repoPath, branch string) error {
+	branch, err := resolveCurrentBranch(repoPath, branch)
+	if err != nil {
+		return err
+	}
+	_, err = runGit(repoPath, "push", "origin", branch)
 	return err
+}
+
+// resolveCurrentBranch keeps Push/Pull correct for repositories whose default
+// branch is not named main or master. A detached HEAD has no safe implicit
+// destination, so callers must choose a branch explicitly in that state.
+func resolveCurrentBranch(repoPath, branch string) (string, error) {
+	if branch = strings.TrimSpace(branch); branch != "" {
+		return branch, nil
+	}
+	branch, err := runGit(repoPath, "symbolic-ref", "--quiet", "--short", "HEAD")
+	if err != nil || strings.TrimSpace(branch) == "" {
+		return "", fmt.Errorf("current checkout is detached; choose a branch before push or pull")
+	}
+	return strings.TrimSpace(branch), nil
 }
 
 func AddRemote(repoPath, name, remoteURL string) error {
@@ -414,10 +473,11 @@ func Fetch(repoPath string) error {
 }
 
 func Pull(repoPath, branch string) error {
-	if branch == "" {
-		branch = "main"
+	branch, err := resolveCurrentBranch(repoPath, branch)
+	if err != nil {
+		return err
 	}
-	_, err := runGit(repoPath, "pull", "--rebase", "--autostash", "origin", branch)
+	_, err = runGit(repoPath, "pull", "--rebase", "--autostash", "origin", branch)
 	return err
 }
 

@@ -10,6 +10,7 @@ import { CompareView } from './CompareView'
 import { ConflictResolverDialog } from './ConflictResolverDialog'
 import { InteractiveRebaseDialog } from './InteractiveRebaseDialog'
 import { BisectPanel } from './BisectPanel'
+import { FileInsightsDialog } from './FileInsightsDialog'
 import {
   CheckoutCommitDialog, CherryPickDialog, CreateBranchDialog, CreateTagDialog,
   PromptDialog, ResetDialog, RestoreFilePreviewDialog, RevertDialog, TextResultDialog,
@@ -48,6 +49,7 @@ type Dialog =
   | { kind: 'restore'; ref: string; path: string; content: string; refLabel: string; stage: boolean }
   | { kind: 'prompt'; title: string; label: string; placeholder?: string; initial?: string; onValue: (v: string) => void }
   | { kind: 'text'; title: string; text: string; loading: boolean }
+  | { kind: 'insights'; path: string; mode: 'history' | 'blame' }
   | null
 
 function slug(message: string): string {
@@ -145,6 +147,15 @@ export function GitGraphActions(props: GitGraphActionsProps) {
     } catch (e) { setError(String(e)) }
   }
 
+  const openFileCommitDiff = async (hash: string, path: string) => {
+    const [left, right] = await Promise.all([
+      svc.fileAtCommit(repoPath, `${hash}~1`, path).catch(() => ''),
+      svc.fileAtCommit(repoPath, hash, path).catch(() => ''),
+    ])
+    setDialog(null)
+    setFileDiff({ title: `File history — ${path}`, left, right, leftLabel: `${hash.slice(0, 7)}~1`, rightLabel: hash.slice(0, 7) })
+  }
+
   // ── Commit menu dispatch ───────────────────────────────────────────────────
   const handleCommitAction = async (id: string) => {
     const commit = commitMenu?.commit
@@ -226,9 +237,7 @@ export function GitGraphActions(props: GitGraphActionsProps) {
         break
       }
       case 'more.fileHistory': setDialog({ kind: 'prompt', title: 'View file history', label: 'File path (relative to repo)', placeholder: 'path/to/file', onValue: async (v) => {
-        setDialog({ kind: 'text', title: `History — ${v}`, text: '', loading: true })
-        const list = await svc.fileHistory(repoPath, v, 100).catch(() => [])
-        setDialog({ kind: 'text', title: `History — ${v}`, text: list.map((c) => `${c.hash}  ${c.date}  ${c.message}`).join('\n') || 'No history.', loading: false })
+        setDialog({ kind: 'insights', path: v, mode: 'history' })
       } }); break
 
       // Context-aware HEAD
@@ -251,7 +260,11 @@ export function GitGraphActions(props: GitGraphActionsProps) {
 
       // Danger zone
       case 'danger.forceReset': setDialog({ kind: 'reset', ref: full, mode: 'hard', force: true }); break
-      case 'danger.forcePush': await runOp(svc.forcePush(repoPath, currentBranch), 'Force pushed (with lease).'); break
+      case 'danger.forcePush':
+        if (window.confirm(`Force-push "${currentBranch}" with lease? This rewrites the remote branch history.`)) {
+          await runOp(svc.forcePush(repoPath, currentBranch), 'Force pushed (with lease).')
+        }
+        break
       case 'danger.deleteTag': {
         const tags = meta?.tags ?? []
         if (tags.length === 1) await runOp(GitSync.DeleteTag(repoPath, tags[0]).then(() => ({ success: true } as OpResult)), `Deleted tag ${tags[0]}.`)
@@ -311,15 +324,11 @@ export function GitGraphActions(props: GitGraphActionsProps) {
       case 'file.copyPath': await copy(path, 'Path'); break
       case 'file.copyRelPath': await copy(path, 'Relative path'); break
       case 'file.history': {
-        setDialog({ kind: 'text', title: `History — ${path}`, text: '', loading: true })
-        const list = await svc.fileHistory(repoPath, path, 100).catch(() => [])
-        setDialog({ kind: 'text', title: `History — ${path}`, text: list.map((c) => `${c.hash}  ${c.date}  ${c.message}`).join('\n') || 'No history.', loading: false })
+        setDialog({ kind: 'insights', path, mode: 'history' })
         break
       }
       case 'file.blame': {
-        setDialog({ kind: 'text', title: `Blame — ${path}`, text: '', loading: true })
-        const blame = await svc.blameFile(repoPath, path).catch((e) => `Error: ${e}`)
-        setDialog({ kind: 'text', title: `Blame — ${path}`, text: blame, loading: false })
+        setDialog({ kind: 'insights', path, mode: 'blame' })
         break
       }
     }
@@ -376,6 +385,9 @@ export function GitGraphActions(props: GitGraphActionsProps) {
       )}
       {dialog?.kind === 'text' && (
         <TextResultDialog title={dialog.title} text={dialog.text} loading={dialog.loading} onClose={closeDialog} />
+      )}
+      {dialog?.kind === 'insights' && (
+        <FileInsightsDialog repoPath={repoPath} path={dialog.path} mode={dialog.mode} onClose={closeDialog} onOpenCommit={(hash) => void openFileCommitDiff(hash, dialog.path)} />
       )}
 
       {compare && (

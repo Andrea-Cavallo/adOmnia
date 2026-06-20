@@ -53,6 +53,7 @@ export function StoragePanel() {
   const [msg, setMsg] = useState('')
   const [loading, setLoading] = useState(false)
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [restoreFile, setRestoreFile] = useState<File | null>(null)
 
   const wailsApi = useCallback(async (path: string, body?: unknown) => {
     if (!hasWailsStorage()) {
@@ -270,18 +271,76 @@ export function StoragePanel() {
     input.click()
   }
 
+  const handleSnapshot = async () => {
+    const url = serverUrl(port, '/storage/snapshot')
+    if (!url) return
+    try {
+      const res = await sidecarFetch(url)
+      const blob = await res.blob()
+      if (!res.ok) throw new Error(await blob.text())
+      const href = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = href
+      a.download = `adomnia-${new Date().toISOString().slice(0, 10)}.adomnia-snapshot`
+      a.click()
+      URL.revokeObjectURL(href)
+      setMsg('Full storage snapshot exported')
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)) }
+  }
+
+  const chooseRestore = () => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.adomnia-snapshot,.json'
+    input.onchange = (event) => setRestoreFile((event.target as HTMLInputElement).files?.[0] ?? null)
+    input.click()
+  }
+
+  const confirmRestore = async () => {
+    if (!restoreFile) return
+    const file = restoreFile
+    setRestoreFile(null)
+    const url = serverUrl(port, '/storage/restore')
+    if (!url) return
+    try {
+      const res = await sidecarFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: await file.text() })
+      const text = await res.text()
+      if (!res.ok) throw new Error(text || res.statusText)
+      setSelectedKey('')
+      setEditValue('')
+      setMsg('Snapshot restored. Storage view refreshed.')
+      await Promise.all([loadStatus(), loadEntries()])
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)) }
+  }
+
+  const migrateLegacyStorage = async () => {
+    if (!port) return
+    try {
+      const data = await api('/storage/migrate', {
+        workspace: localStorage.getItem('adomnia.v2') ?? '',
+        settings: localStorage.getItem('adomnia.settings') ?? '',
+        mock: localStorage.getItem('adomnia.mock') ?? '',
+      })
+      setMsg(`Legacy migration completed${data?.imported ? `: ${data.imported} entries` : ''}`)
+      await Promise.all([loadStatus(), loadEntries()])
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)) }
+  }
+
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
       <div className="flex-1 flex flex-col p-4 gap-4 overflow-auto">
         {/* Status bar */}
-        {status && (
-          <div className="flex items-center gap-4 text-[10px] text-text-3 bg-surface-1 border border-border-1 rounded-md px-3 py-2 font-mono">
-            <span>buckets: <span className="text-text-2">{String(status.buckets ?? '?')}</span></span>
-            <span>total keys: <span className="text-text-2">{String(status.totalKeys ?? '?')}</span></span>
-            <span>size: <span className="text-text-2">{String(status.sizeBytes ?? '?')}</span></span>
-            <button onClick={loadStatus} className="ml-auto text-accent hover:text-accent-light"><RefreshCw size={11} /></button>
-          </div>
-        )}
+        <div className="flex items-center gap-4 text-[10px] text-text-3 bg-surface-1 border border-border-1 rounded-md px-3 py-2 font-mono">
+            {status ? <>
+              <span>buckets: <span className="text-text-2">{String(status.buckets ?? '?')}</span></span>
+              <span>total keys: <span className="text-text-2">{String(status.totalKeys ?? '?')}</span></span>
+              <span>size: <span className="text-text-2">{String(status.sizeBytes ?? '?')}</span></span>
+            </> : <span className="text-text-4">Storage backend not connected</span>}
+            <button onClick={() => void handleSnapshot()} disabled={!port} className="ml-auto flex items-center gap-1 text-accent hover:text-accent-light disabled:opacity-40"><Download size={11} /> Full snapshot</button>
+            <button onClick={chooseRestore} disabled={!port} className="flex items-center gap-1 text-text-3 hover:text-text-1 disabled:opacity-40"><Upload size={11} /> Restore</button>
+            <button onClick={() => void migrateLegacyStorage()} disabled={!port} className="text-text-3 hover:text-text-1 disabled:opacity-40">Migrate legacy</button>
+            <button onClick={loadStatus} className="text-accent hover:text-accent-light"><RefreshCw size={11} /></button>
+        </div>
 
         {(error || msg) && (
           <div className={cn('px-3 py-2 rounded-md text-xs', error ? 'bg-error/10 text-error border border-error/30' : 'bg-success/10 text-success border border-success/30')}>
@@ -411,6 +470,16 @@ export function StoragePanel() {
                 Delete
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {restoreFile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setRestoreFile(null)}>
+          <div className="w-full max-w-sm rounded-lg border border-border-2 bg-surface-1 p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <p className="text-sm font-semibold text-text-1">Restore full storage snapshot?</p>
+            <p className="mt-2 text-xs leading-5 text-text-3"><span className="font-mono text-text-2">{restoreFile.name}</span> will replace matching local bbolt entries. Export a current snapshot first if you may need to roll back.</p>
+            <div className="mt-4 flex justify-end gap-2"><button onClick={() => setRestoreFile(null)} className="rounded border border-border-2 px-3 py-1 text-xs text-text-2">Cancel</button><button onClick={() => void confirmRestore()} className="rounded border border-warning/40 bg-warning/20 px-3 py-1 text-xs font-medium text-warning">Restore snapshot</button></div>
           </div>
         </div>
       )}

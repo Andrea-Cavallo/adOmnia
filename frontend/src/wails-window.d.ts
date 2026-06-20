@@ -50,14 +50,43 @@ interface WailsGoMain {
     GetStatus: (repoPath: string) => Promise<string>
     Overview: (repoPath: string, limit: number) => Promise<string>
     CommitAll: (repoPath: string, message: string) => Promise<string>
+    CommitPaths: (repoPath: string, message: string, paths: string[]) => Promise<string>
+    Commit: (repoPath: string, message: string) => Promise<string>
+    StageAll: (repoPath: string) => Promise<void>
+    UnstageAll: (repoPath: string) => Promise<void>
+    FileDiff: (repoPath: string, path: string, staged: boolean) => Promise<string>
+    ApplyHunk: (repoPath: string, patch: string, reverse: boolean) => Promise<void>
     Fetch: (repoPath: string) => Promise<void>
     AddRemote: (repoPath: string, name: string, remoteURL: string) => Promise<void>
     RemoveRemote: (repoPath: string, name: string) => Promise<void>
     Push: (repoPath: string, remote: string) => Promise<void>
     Pull: (repoPath: string, remote: string) => Promise<void>
     Stash: (repoPath: string) => Promise<void>
+    StashPaths: (repoPath: string, paths: string[]) => Promise<void>
     StashPop: (repoPath: string) => Promise<void>
     StashDrop: (repoPath: string, stashRef: string) => Promise<void>
+    StashApply: (repoPath: string, stashRef: string) => Promise<void>
+    StashShow: (repoPath: string, stashRef: string) => Promise<string>
+    GetConflictFileVersions: (repoPath: string, path: string) => Promise<string>
+    SaveConflictResolution: (repoPath: string, path: string, content: string) => Promise<void>
+    Reflog: (repoPath: string, limit: number) => Promise<string>
+    BlameLines: (repoPath: string, path: string) => Promise<string>
+    ChangesDiff: (repoPath: string, scope: string, baseRef: string) => Promise<string>
+    ListSubmodules: (repoPath: string) => Promise<string>
+    AddSubmodule: (repoPath: string, remoteURL: string, path: string, branch: string) => Promise<void>
+    UpdateSubmodules: (repoPath: string, path: string) => Promise<void>
+    RemoveSubmodule: (repoPath: string, path: string) => Promise<void>
+    ListWorktrees: (repoPath: string) => Promise<string>
+    AddWorktree: (repoPath: string, path: string, branch: string, createBranch: boolean) => Promise<void>
+    RemoveWorktree: (repoPath: string, path: string, force: boolean) => Promise<void>
+    SparseCheckoutList: (repoPath: string) => Promise<string>
+    SetSparseCheckout: (repoPath: string, paths: string[], cone: boolean) => Promise<void>
+    DisableSparseCheckout: (repoPath: string) => Promise<void>
+    UndoToReflog: (repoPath: string, selector: string, mode: string) => Promise<string>
+    CheckoutRemoteBranch: (repoPath: string, remoteRef: string) => Promise<void>
+    DeleteLocalBranch: (repoPath: string, branch: string, force: boolean) => Promise<void>
+    DeleteRemoteBranch: (repoPath: string, remote: string, branch: string) => Promise<void>
+    SetUpstream: (repoPath: string, branch: string, upstream: string) => Promise<void>
     Log: (repoPath: string, limit: number) => Promise<string>
     Show: (repoPath: string, ref: string) => Promise<string>
     StageFile: (repoPath: string, path: string) => Promise<void>
@@ -134,15 +163,6 @@ interface WailsGoMain {
   }
   MCPServerGenerator: {
     Generate: (inputJSON: string, outputDir: string) => Promise<string>
-  }
-  SchedulerBinding: {
-    AddJob: (name: string, cronExpr: string, requestID: string) => Promise<import('@/wailsjs/go/main/SchedulerBinding').ScheduledJob>
-    UpdateJob: (id: string, name: string, cronExpr: string, requestID: string) => Promise<import('@/wailsjs/go/main/SchedulerBinding').ScheduledJob>
-    DeleteJob: (id: string) => Promise<void>
-    EnableJob: (id: string) => Promise<void>
-    DisableJob: (id: string) => Promise<void>
-    ListJobs: () => Promise<import('@/wailsjs/go/main/SchedulerBinding').ScheduledJob[]>
-    GetHistory: (jobID: string) => Promise<import('@/wailsjs/go/main/SchedulerBinding').JobRun[]>
   }
 }
 

@@ -2,6 +2,7 @@ package git
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -150,6 +151,48 @@ func UndoLastCommit(repoPath string, keepStaged bool) OpResult {
 		return fail(repoPath, command, stdout, stderr, "", "")
 	}
 	return ok(repoPath, command, stdout, stderr)
+}
+
+type ReflogEntry struct {
+	Selector string `json:"selector"`
+	Hash     string `json:"hash"`
+	Action   string `json:"action"`
+	When     string `json:"when"`
+}
+
+// Reflog returns local recovery points newest-first. HEAD@{0} is included for
+// context but the UI only offers older entries as restore targets.
+func Reflog(repoPath string, limit int) ([]ReflogEntry, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 30
+	}
+	out, err := runGit(repoPath, "reflog", "-n", fmt.Sprintf("%d", limit), "--format=%gD%x1f%H%x1f%gs%x1f%cr")
+	if err != nil {
+		return nil, err
+	}
+	entries := []ReflogEntry{}
+	for _, line := range splitLines(out) {
+		parts := strings.SplitN(line, "\x1f", 4)
+		if len(parts) == 4 {
+			entries = append(entries, ReflogEntry{Selector: parts[0], Hash: parts[1], Action: parts[2], When: parts[3]})
+		}
+	}
+	return entries, nil
+}
+
+var headReflogSelector = regexp.MustCompile(`^HEAD@\{([1-9][0-9]*)\}$`)
+
+// UndoToReflog restores HEAD to a selected local recovery point. It uses the
+// same reset modes as ResetBranch and refuses ambiguous/current selectors.
+func UndoToReflog(repoPath, selector, mode string) OpResult {
+	selector = strings.TrimSpace(selector)
+	if !headReflogSelector.MatchString(selector) {
+		return fail(repoPath, "git reset", "", "", CodeError, "choose an older HEAD reflog entry")
+	}
+	if _, err := runGit(repoPath, "rev-parse", "--verify", selector); err != nil {
+		return fail(repoPath, "git reset", "", "", CodeError, "recovery point is no longer available")
+	}
+	return ResetBranch(repoPath, selector, mode)
 }
 
 // SquashHeadIntoPrevious folds the HEAD commit into its parent, keeping the

@@ -14,10 +14,13 @@ import {
   GitMerge,
   GitPullRequest,
   Loader2,
+  Minus,
   Plus,
+  Pin,
   RefreshCw,
+  Scissors,
   Search,
-  Star,
+  Sparkles,
   Trash2,
   Upload,
   XCircle,
@@ -25,15 +28,18 @@ import {
 import * as GitSync from '@/wailsjs/go/main/GitSync'
 import { cn } from '@/lib/utils'
 import { safeSelectFolder } from '@/lib/fileUtils'
-import { addRepo, loadLastRepo, loadRepos, removeRepo, saveLastRepo, type SavedRepo } from '@/lib/gitRepos'
+import { addRepo, loadLastRepo, loadPinnedBranches, loadRepos, removeRepo, saveLastRepo, toggleBranchPin, toggleRepoPin, type SavedRepo } from '@/lib/gitRepos'
 import { GitCompareTab } from './GitCompareTab'
 import { GitActionsTab } from './GitActionsTab'
 import { DiffModal } from '@/components/response/DiffView'
 import { GitGraphActions, type CommitMenuRequest, type FileMenuRequest } from './git/GitGraphActions'
 import { HistorySearchBar } from './git/HistorySearchBar'
 import { GitCommitGraph } from './git/GitCommitGraph'
+import { HunkStageDialog } from './git/HunkStageDialog'
+import { TextResultDialog } from './git/dialogs'
 import type { CommitInfo as GitCommitInfo } from '@/lib/git/types'
 import { buildGitGraphLayout } from '@/lib/git/graphLayout'
+import { aiActionTitle, runAiCommitAnalysis, type AiActionId } from '@/lib/git/aiCommitAnalysis'
 
 interface GitStatus {
   branch: string
@@ -99,6 +105,8 @@ interface WorkingTreeFileSnapshot {
   newContent: string
   diff: string
 }
+
+type GitDragPayload = { type: 'branch'; name: string } | { type: 'commit'; hash: string }
 
 const emptyStatus: GitStatus = { branch: '', dirty: false, aheadCount: 0, behindCount: 0, modified: [], untracked: [] }
 const EMPTY_TREE_REF = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
@@ -207,7 +215,9 @@ function downloadSafeName(path: string, suffix: string): string {
 export function GitSyncPanel() {
   const [repoPath, setRepoPath] = useState(() => loadLastRepo())
   const [repos, setRepos] = useState<SavedRepo[]>(() => loadRepos())
+  const [pinnedBranches, setPinnedBranches] = useState<string[]>(() => loadPinnedBranches(loadLastRepo()))
   const [commitMsg, setCommitMsg] = useState('')
+  const [hunkTarget, setHunkTarget] = useState<{ path: string; mode: 'stage' | 'unstage' } | null>(null)
   const [overview, setOverview] = useState<GitOverview | null>(null)
   const [selectedHash, setSelectedHash] = useState('')
   const [query, setQuery] = useState('')
@@ -228,6 +238,19 @@ export function GitSyncPanel() {
   const [commitMenu, setCommitMenu] = useState<CommitMenuRequest | null>(null)
   const [fileMenu, setFileMenu] = useState<FileMenuRequest | null>(null)
   const [searchResults, setSearchResults] = useState<GitCommitInfo[] | null>(null)
+  const [aiBusy, setAiBusy] = useState('')
+  const [aiBaseBranch, setAiBaseBranch] = useState('')
+  const [aiResult, setAiResult] = useState<{ title: string; text: string } | null>(null)
+  const [repoSummaries, setRepoSummaries] = useState<Record<string, GitStatus>>({})
+  const [loadingRepoSummaries, setLoadingRepoSummaries] = useState(false)
+  const [dragPayload, setDragPayload] = useState<GitDragPayload | null>(null)
+  const [dropTarget, setDropTarget] = useState<{ payload: GitDragPayload; branch: string } | null>(null)
+  const [dragFile, setDragFile] = useState<{ path: string; mode: 'stage' | 'unstage' } | null>(null)
+  const [commitLimit, setCommitLimit] = useState(240)
+  const [graphScrollTop, setGraphScrollTop] = useState(0)
+  const [graphViewportHeight, setGraphViewportHeight] = useState(600)
+  const graphScrollRef = useRef<HTMLDivElement>(null)
+  const loadingMoreRef = useRef(false)
 
   const status = overview?.status ?? emptyStatus
   const selectedCommit = useMemo(
@@ -236,6 +259,11 @@ export function GitSyncPanel() {
   )
   const localBranches = useMemo(() => overview?.branches.filter((branch) => !branch.remote) ?? [], [overview])
   const remoteBranches = useMemo(() => overview?.branches.filter((branch) => branch.remote) ?? [], [overview])
+  const aiBaseChoices = useMemo(() => localBranches.filter((branch) => !branch.current), [localBranches])
+  const sortedRepos = useMemo(() => [...repos].sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.addedAt - a.addedAt), [repos])
+  const sortedLocalBranches = useMemo(() => [...localBranches].sort((a, b) => Number(pinnedBranches.includes(b.name)) - Number(pinnedBranches.includes(a.name)) || Number(b.current) - Number(a.current) || a.name.localeCompare(b.name)), [localBranches, pinnedBranches])
+  const sortedRemoteBranches = useMemo(() => [...remoteBranches].sort((a, b) => Number(pinnedBranches.includes(b.name)) - Number(pinnedBranches.includes(a.name)) || a.name.localeCompare(b.name)), [remoteBranches, pinnedBranches])
+  const selectedAiBase = aiBaseBranch || aiBaseChoices.find((branch) => ['main', 'master', 'develop'].includes(branch.name))?.name || aiBaseChoices[0]?.name || ''
   const filteredCommits = useMemo(() => {
     // Structured search results (when active) replace the default commit list.
     const commits = searchResults ?? overview?.commits ?? []
@@ -251,6 +279,13 @@ export function GitSyncPanel() {
   )
   const graphColumnWidth = Math.max(104, graphLayout.width)
   const graphGridStyle = { gridTemplateColumns: `${graphColumnWidth}px minmax(0, 1fr) 96px` }
+  const graphWindow = useMemo(() => {
+    const rowHeight = 58
+    const overscan = 8
+    const start = Math.max(0, Math.floor(graphScrollTop / rowHeight) - overscan)
+    const end = Math.min(filteredCommits.length, Math.ceil((graphScrollTop + graphViewportHeight) / rowHeight) + overscan)
+    return { start, end, rowHeight, commits: filteredCommits.slice(start, end) }
+  }, [filteredCommits, graphScrollTop, graphViewportHeight])
 
   const selectedCommitBaseRef = selectedCommit?.parents[0] || EMPTY_TREE_REF
 
@@ -265,6 +300,20 @@ export function GitSyncPanel() {
       setGitAvailable(false)
     }
   }, [])
+
+  useEffect(() => {
+    setPinnedBranches(loadPinnedBranches(repoPath))
+  }, [repoPath])
+
+  useEffect(() => {
+    const element = graphScrollRef.current
+    if (!element) return
+    const update = () => setGraphViewportHeight(element.clientHeight || 600)
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [activeTab])
 
   const autoLoadedRef = useRef(false)
   useEffect(() => {
@@ -298,7 +347,7 @@ export function GitSyncPanel() {
 
   const clearFeedback = () => { setError(''); setInfo('') }
 
-  const refreshStatus = useCallback(async (overridePath?: string) => {
+  const refreshStatus = useCallback(async (overridePath?: string, overrideLimit?: number) => {
     const targetPath = (overridePath ?? repoPath).trim()
     if (!targetPath) return
     if (!hasGitSyncBinding()) {
@@ -309,7 +358,7 @@ export function GitSyncPanel() {
     clearFeedback()
     setLoading(true)
     try {
-      const raw = await GitSync.Overview(targetPath, 120)
+      const raw = await GitSync.Overview(targetPath, overrideLimit ?? commitLimit)
       const parsed = parseJSON<Partial<GitOverview>>(raw, {})
       // Backend nil slices can serialize as null; coerce every collection to an
       // array so render-time `.length`/`.map` never hit null.
@@ -340,7 +389,18 @@ export function GitSyncPanel() {
     } finally {
       setLoading(false)
     }
-  }, [repoPath])
+  }, [repoPath, commitLimit])
+
+  const handleGraphScroll = (event: React.UIEvent<HTMLDivElement>) => {
+    const element = event.currentTarget
+    setGraphScrollTop(element.scrollTop)
+    if (!loading && !loadingMoreRef.current && !searchResults && element.scrollHeight - element.scrollTop - element.clientHeight < 360 && (overview?.commits.length ?? 0) >= commitLimit) {
+      const next = commitLimit + 240
+      loadingMoreRef.current = true
+      setCommitLimit(next)
+      void refreshStatus(undefined, next).finally(() => { loadingMoreRef.current = false })
+    }
+  }
 
   const runAction = async (action: () => Promise<void>, success: string) => {
     if (!repoPath) return
@@ -383,6 +443,17 @@ export function GitSyncPanel() {
     }
   }, [selectRepo])
 
+  const refreshAllRepoSummaries = async () => {
+    if (!hasGitSyncBinding() || repos.length === 0) return
+    setLoadingRepoSummaries(true)
+    const entries = await Promise.all(repos.map(async (repo) => {
+      try { return [repo.path, parseJSON<GitStatus>(await GitSync.GetStatus(repo.path), emptyStatus)] as const }
+      catch { return [repo.path, { ...emptyStatus, branch: 'unavailable' }] as const }
+    }))
+    setRepoSummaries(Object.fromEntries(entries))
+    setLoadingRepoSummaries(false)
+  }
+
   const handleRemoveRepo = useCallback((event: React.MouseEvent, path: string) => {
     event.stopPropagation()
     setRepos((current) => removeRepo(current, path))
@@ -399,11 +470,89 @@ export function GitSyncPanel() {
     'Repository initialized.',
   )
 
+  const changes = overview?.changes ?? []
+  // Git's index model: a file with X (index) set is staged; a file with Y
+  // (worktree) set is unstaged. `MM` appears in both. Conflicts live in their
+  // own section above.
+  const stagedFiles = useMemo(() => changes.filter((c) => !c.conflicted && c.index !== '' && c.index !== '?'), [changes])
+  const unstagedFiles = useMemo(() => changes.filter((c) => !c.conflicted && c.worktree !== ''), [changes])
+
   const handleCommit = () => runAction(async () => {
-    if (!commitMsg.trim()) return
-    await GitSync.CommitAll(repoPath, commitMsg.trim())
+    if (!commitMsg.trim() || stagedFiles.length === 0) return
+    await GitSync.Commit(repoPath, commitMsg.trim())
     setCommitMsg('')
   }, 'Commit created.')
+
+  const cleanAiCommitMessage = (text: string) => {
+    const fenced = text.match(/```(?:text)?\s*([\s\S]*?)```/i)?.[1]
+    return (fenced || text).trim()
+  }
+
+  const runChangesAi = async (action: AiActionId, scope: 'staged' | 'working' | 'branch', baseRef = '', applyMessage = false) => {
+    if (!repoPath) return
+    setAiBusy(`${scope}:${action}`)
+    clearFeedback()
+    try {
+      const diff = await GitSync.ChangesDiff(repoPath, scope, baseRef)
+      const text = await runAiCommitAnalysis(action, {
+        subject: scope === 'branch' ? `${status.branch} compared with ${baseRef}` : `${scope} changes`,
+        body: '', author: 'Working tree', hash: scope === 'branch' ? status.branch : scope, diff,
+      })
+      if (applyMessage) setCommitMsg(cleanAiCommitMessage(text))
+      else setAiResult({ title: scope === 'branch' ? `AI branch analysis — ${baseRef}…${status.branch}` : aiActionTitle(action), text })
+    } catch (e) {
+      setError(String(e))
+    } finally {
+      setAiBusy('')
+    }
+  }
+
+  const stageFile = (path: string) => runAction(() => GitSync.StageFile(repoPath, path), 'File staged.')
+  const unstageFile = (path: string) => runAction(() => GitSync.UnstageFile(repoPath, path), 'File unstaged.')
+  const stageAll = () => runAction(() => GitSync.StageAll(repoPath), 'All changes staged.')
+  const unstageAll = () => runAction(() => GitSync.UnstageAll(repoPath), 'All changes unstaged.')
+
+  const renderChangeRow = (change: FileChange, mode: 'stage' | 'unstage') => {
+    const isStaged = mode === 'unstage'
+    const canHunk = (isStaged ? change.index : change.worktree) === 'M'
+    return (
+      <div
+        key={`${mode}-${change.status}-${change.path}`}
+        draggable
+        onDragStart={() => setDragFile({ path: change.path, mode })}
+        onDragEnd={() => setDragFile(null)}
+        className="flex w-full items-center gap-1.5 rounded border border-border-1 bg-surface-0 px-2 py-1.5 transition-colors hover:border-accent/40 hover:bg-surface-2"
+      >
+        <button
+          onClick={() => (isStaged ? unstageFile(change.path) : stageFile(change.path))}
+          title={isStaged ? 'Unstage file' : 'Stage file'}
+          className="shrink-0 rounded border border-border-2 p-0.5 text-text-3 hover:text-text-1"
+        >
+          {isStaged ? <Minus size={12} /> : <Plus size={12} />}
+        </button>
+        <button
+          onClick={() => void openWorkingTreeDiff(change)}
+          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+          title={`Open diff for ${change.path}`}
+        >
+          <span className={cn('w-16 shrink-0 rounded px-1.5 py-0.5 text-center text-[9px]', change.conflicted ? 'bg-warning/20 text-warning' : change.status === '??' ? 'bg-accent/15 text-accent' : 'bg-surface-3 text-text-3')}>
+            {changeLabel(change)}
+          </span>
+          <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-text-2" title={change.path}>{change.path}</span>
+          {workingDiffLoadingPath === change.path ? <Loader2 size={12} className="shrink-0 animate-spin text-accent" /> : <Eye size={12} className="shrink-0 text-text-4" />}
+        </button>
+        {canHunk && (
+          <button
+            onClick={() => setHunkTarget({ path: change.path, mode })}
+            title={isStaged ? 'Unstage by hunk' : 'Stage by hunk'}
+            className="shrink-0 rounded border border-border-2 p-0.5 text-text-3 hover:text-accent"
+          >
+            <Scissors size={12} />
+          </button>
+        )}
+      </div>
+    )
+  }
 
   const openCommitDiff = async (file: CommitChangedFile) => {
     if (!repoPath || !selectedCommit) return
@@ -444,6 +593,47 @@ export function GitSyncPanel() {
     } finally {
       setWorkingDiffLoadingPath('')
     }
+  }
+
+  const checkoutLocal = (name: string) => runAction(() => GitSync.CheckoutBranch(repoPath, name), `Switched to ${shortBranch(name)}.`)
+  const checkoutRemote = (name: string) => runAction(() => GitSync.CheckoutRemoteBranch(repoPath, name), `Checked out ${shortBranch(name)} (tracking).`)
+  const deleteLocal = (name: string) => {
+    if (!window.confirm(`Delete local branch "${shortBranch(name)}"?`)) return
+    void runAction(async () => {
+      try {
+        await GitSync.DeleteLocalBranch(repoPath, name, false)
+      } catch {
+        if (window.confirm(`"${shortBranch(name)}" may not be fully merged. Force delete?`)) {
+          await GitSync.DeleteLocalBranch(repoPath, name, true)
+        } else {
+          throw new Error('Deletion cancelled.')
+        }
+      }
+    }, `Deleted branch ${shortBranch(name)}.`)
+  }
+  const deleteRemote = (name: string) => {
+    const stripped = name.replace(/^remotes\//, '')
+    const slash = stripped.indexOf('/')
+    const remote = slash >= 0 ? stripped.slice(0, slash) : 'origin'
+    const branch = slash >= 0 ? stripped.slice(slash + 1) : stripped
+    if (!window.confirm(`Delete "${branch}" on remote "${remote}"? This affects everyone using it.`)) return
+    void runAction(() => GitSync.DeleteRemoteBranch(repoPath, remote, branch), `Deleted ${remote}/${branch}.`)
+  }
+
+  const executeDrop = (operation: 'merge' | 'rebase' | 'cherry-pick') => {
+    if (!dropTarget) return
+    const { payload, branch } = dropTarget
+    setDropTarget(null)
+    void runAction(async () => {
+      if (status.branch !== branch) await GitSync.CheckoutBranch(repoPath, branch)
+      if (payload.type === 'branch') {
+        if (operation === 'merge') await GitSync.MergeBranch(repoPath, payload.name)
+        else await GitSync.RebaseBranch(repoPath, payload.name)
+      } else {
+        const result = JSON.parse(await GitSync.CherryPick(repoPath, [payload.hash], false, '', true)) as { success: boolean; error?: string }
+        if (!result.success) throw new Error(result.error || 'Cherry-pick stopped; resolve conflicts from the Changes panel.')
+      }
+    }, payload.type === 'commit' ? `Cherry-picked ${payload.hash.slice(0, 7)} onto ${branch}.` : `${operation === 'merge' ? 'Merged' : 'Rebased'} ${payload.name} ${operation === 'merge' ? 'into' : 'onto'} ${branch}.`)
   }
 
   const currentBranch = status.branch || 'master'
@@ -595,6 +785,8 @@ export function GitSyncPanel() {
           <div className="border-b border-border-1 p-3">
             <div className="mb-2 flex items-center justify-between">
               <div className="text-[10px] font-semibold uppercase tracking-wider text-text-4">Workspaces</div>
+              <div className="flex items-center gap-1">
+              <button onClick={() => void refreshAllRepoSummaries()} disabled={loadingRepoSummaries || repos.length === 0} title="Refresh all repository statuses" className="flex h-5 w-5 items-center justify-center rounded text-text-4 hover:bg-surface-2 hover:text-accent disabled:opacity-40"><RefreshCw size={11} className={loadingRepoSummaries ? 'animate-spin' : ''} /></button>
               <button
                 onClick={browseFolder}
                 title="Add a repository"
@@ -602,6 +794,7 @@ export function GitSyncPanel() {
               >
                 <Plus size={13} />
               </button>
+              </div>
             </div>
             {repos.length === 0 ? (
               <div className="rounded border border-dashed border-border-2 px-2 py-2 text-[11px] text-text-4">
@@ -609,7 +802,7 @@ export function GitSyncPanel() {
               </div>
             ) : (
               <div className="space-y-0.5">
-                {repos.map((repo) => (
+                {sortedRepos.map((repo) => (
                   <div
                     key={repo.path}
                     onClick={() => selectRepo(repo.path)}
@@ -623,7 +816,15 @@ export function GitSyncPanel() {
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-xs font-medium">{repo.name}</div>
                       <div className="truncate text-[10px] text-text-4">{repo.path}</div>
+                      {repoSummaries[repo.path] && <div className="mt-0.5 flex gap-1 text-[9px]"><span className="truncate text-text-3">{repoSummaries[repo.path].branch}</span><span className={repoSummaries[repo.path].dirty ? 'text-warning' : 'text-success'}>{repoSummaries[repo.path].dirty ? 'dirty' : 'clean'}</span>{(repoSummaries[repo.path].aheadCount > 0 || repoSummaries[repo.path].behindCount > 0) && <span className="text-text-4">↑{repoSummaries[repo.path].aheadCount} ↓{repoSummaries[repo.path].behindCount}</span>}</div>}
                     </div>
+                    <button
+                      onClick={(event) => { event.stopPropagation(); setRepos((current) => toggleRepoPin(current, repo.path)) }}
+                      title={repo.pinned ? 'Unpin repository' : 'Pin repository'}
+                      className={cn('shrink-0 rounded p-0.5 transition-opacity hover:text-accent', repo.pinned ? 'text-accent opacity-100' : 'text-text-4 opacity-0 group-hover:opacity-100')}
+                    >
+                      <Pin size={11} fill={repo.pinned ? 'currentColor' : 'none'} />
+                    </button>
                     <button
                       onClick={(event) => handleRemoveRepo(event, repo.path)}
                       title="Remove from list"
@@ -657,19 +858,31 @@ export function GitSyncPanel() {
 
           <nav className="space-y-4 p-3 text-xs">
             <section>
-              <div className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-text-4"><Star size={11} /> Starred</div>
-              <button className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left font-medium text-text-1 hover:bg-surface-2">
-                <Check size={12} className="text-success" /> {status.branch || 'master'}
-              </button>
-            </section>
-            <section>
               <div className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-text-4"><GitFork size={11} /> Branches</div>
               {localBranches.length === 0 && <div className="px-2 py-1 text-text-4">No local branches loaded</div>}
-              {localBranches.map((branch) => (
-                <button key={branch.name} className={cn('flex w-full items-center justify-between gap-2 rounded px-2 py-1.5 text-left hover:bg-surface-2', branch.current ? 'text-accent' : 'text-text-2')}>
-                  <span className="truncate">{shortBranch(branch.name)}</span>
-                  {branch.current && <Check size={11} />}
-                </button>
+              {sortedLocalBranches.map((branch) => (
+                <div key={branch.name} onDragOver={(event) => { if (dragPayload) event.preventDefault() }} onDrop={(event) => { event.preventDefault(); if (dragPayload && !(dragPayload.type === 'branch' && dragPayload.name === branch.name)) setDropTarget({ payload: dragPayload, branch: branch.name }) }} className="group flex items-center gap-1">
+                  <button onClick={() => setPinnedBranches(toggleBranchPin(repoPath, branch.name))} title={pinnedBranches.includes(branch.name) ? 'Unpin branch' : 'Pin branch'} className={cn('shrink-0 rounded p-0.5 hover:text-accent', pinnedBranches.includes(branch.name) ? 'text-accent' : 'text-text-4 opacity-0 group-hover:opacity-100')}>
+                    <Pin size={10} fill={pinnedBranches.includes(branch.name) ? 'currentColor' : 'none'} />
+                  </button>
+                  <button
+                    draggable
+                    onDragStart={() => setDragPayload({ type: 'branch', name: branch.name })}
+                    onDragEnd={() => setDragPayload(null)}
+                    onClick={() => { if (!branch.current) checkoutLocal(branch.name) }}
+                    disabled={loading}
+                    title={branch.current ? 'Current branch' : `Switch to ${shortBranch(branch.name)}`}
+                    className={cn('flex flex-1 items-center justify-between gap-2 rounded px-2 py-1.5 text-left hover:bg-surface-2 disabled:hover:bg-transparent', branch.current ? 'text-accent' : 'text-text-2')}
+                  >
+                    <span className="truncate">{shortBranch(branch.name)}</span>
+                    {branch.current && <Check size={11} />}
+                  </button>
+                  {!branch.current && (
+                    <button onClick={() => deleteLocal(branch.name)} title="Delete branch" className="shrink-0 rounded p-0.5 text-text-4 opacity-0 transition-opacity hover:text-error group-hover:opacity-100">
+                      <Trash2 size={11} />
+                    </button>
+                  )}
+                </div>
               ))}
             </section>
             <section>
@@ -680,8 +893,23 @@ export function GitSyncPanel() {
                   <div className="truncate text-[10px] text-text-4">{item.url}</div>
                 </div>
               ))}
-              {remoteBranches.slice(0, 8).map((branch) => (
-                <div key={branch.name} className="truncate rounded px-2 py-1 text-text-3">{shortBranch(branch.name)}</div>
+              {sortedRemoteBranches.slice(0, 8).map((branch) => (
+                <div key={branch.name} className="group flex items-center gap-1">
+                  <button onClick={() => setPinnedBranches(toggleBranchPin(repoPath, branch.name))} title={pinnedBranches.includes(branch.name) ? 'Unpin branch' : 'Pin branch'} className={cn('shrink-0 rounded p-0.5 hover:text-accent', pinnedBranches.includes(branch.name) ? 'text-accent' : 'text-text-4 opacity-0 group-hover:opacity-100')}>
+                    <Pin size={10} fill={pinnedBranches.includes(branch.name) ? 'currentColor' : 'none'} />
+                  </button>
+                  <button
+                    onClick={() => checkoutRemote(branch.name)}
+                    disabled={loading}
+                    title={`Checkout ${shortBranch(branch.name)} as a tracking branch`}
+                    className="min-w-0 flex-1 truncate rounded px-2 py-1 text-left text-text-3 hover:bg-surface-2 hover:text-text-1"
+                  >
+                    {shortBranch(branch.name)}
+                  </button>
+                  <button onClick={() => deleteRemote(branch.name)} title="Delete branch on remote" className="shrink-0 rounded p-0.5 text-text-4 opacity-0 transition-opacity hover:text-error group-hover:opacity-100">
+                    <Trash2 size={11} />
+                  </button>
+                </div>
               ))}
             </section>
             <section>
@@ -698,17 +926,24 @@ export function GitSyncPanel() {
             <span>Graph</span><span>Commit</span>
             <span className="flex items-center justify-end gap-2">
               {selectedHashes.length > 1 && <span className="rounded bg-accent/15 px-1.5 py-0.5 text-[9px] text-accent">{selectedHashes.length} selected</span>}
+              <span>{filteredCommits.length} loaded</span>
               Date
             </span>
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            {filteredCommits.map((commit, index) => (
+          <div ref={graphScrollRef} onScroll={handleGraphScroll} className="min-h-0 flex-1 overflow-y-auto">
+            <div aria-hidden style={{ height: graphWindow.start * graphWindow.rowHeight }} />
+            {graphWindow.commits.map((commit, windowIndex) => {
+              const index = graphWindow.start + windowIndex
+              return (
               <button
                 key={commit.fullHash || commit.hash}
+                draggable
+                onDragStart={() => setDragPayload({ type: 'commit', hash: commit.fullHash || commit.hash })}
+                onDragEnd={() => setDragPayload(null)}
                 onClick={(event) => handleCommitClick(commit, event)}
                 onContextMenu={(event) => handleCommitContextMenu(commit, event)}
                 className={cn(
-                  'grid min-h-[58px] w-full items-center border-b border-border-1 px-3 text-left transition-colors hover:bg-surface-2',
+                  'grid h-[58px] w-full items-center overflow-hidden border-b border-border-1 px-3 text-left transition-colors hover:bg-surface-2',
                   selectedHashes.includes(commit.fullHash || commit.hash) && 'bg-accent/5',
                   selectedCommit?.hash === commit.hash && 'bg-surface-2 shadow-[inset_3px_0_0_var(--color-accent)]',
                 )}
@@ -729,7 +964,9 @@ export function GitSyncPanel() {
                 </div>
                 <span className="text-right text-[11px] text-text-3">{commit.date}</span>
               </button>
-            ))}
+              )
+            })}
+            <div aria-hidden style={{ height: Math.max(0, filteredCommits.length - graphWindow.end) * graphWindow.rowHeight }} />
             {repoPath && filteredCommits.length === 0 && <div className="p-8 text-center text-xs text-text-4">No commits found.</div>}
             {!repoPath && <div className="p-8 text-center text-xs text-text-4">Load a repository to inspect the graph.</div>}
           </div>
@@ -798,7 +1035,7 @@ export function GitSyncPanel() {
           <div className="border-b border-border-1 p-3">
             <div className="mb-2 flex items-center justify-between">
               <div className="text-[10px] font-semibold uppercase tracking-wider text-text-4">Commit</div>
-              <span className="text-[10px] text-text-4">{overview?.changes.length ?? 0} files</span>
+              <span className="text-[10px] text-text-4">{stagedFiles.length} staged</span>
             </div>
             <div className="flex gap-2">
               <input
@@ -808,7 +1045,26 @@ export function GitSyncPanel() {
                 onChange={(event) => setCommitMsg(event.target.value)}
                 onKeyDown={(event) => event.key === 'Enter' && handleCommit()}
               />
-              <button onClick={handleCommit} disabled={!repoPath || !commitMsg.trim() || loading} className="h-8 rounded bg-accent px-3 text-xs font-medium text-white hover:bg-accent-light disabled:opacity-40">Commit</button>
+              <button onClick={handleCommit} disabled={!repoPath || !commitMsg.trim() || loading || stagedFiles.length === 0} className="h-8 rounded bg-accent px-3 text-xs font-medium text-white hover:bg-accent-light disabled:opacity-40">Commit</button>
+              <button
+                onClick={() => void runChangesAi('ai.betterMessage', 'staged', '', true)}
+                disabled={!repoPath || loading || !!aiBusy || stagedFiles.length === 0}
+                title="Generate commit message from staged changes"
+                className="flex h-8 items-center gap-1.5 rounded border border-accent/50 px-2.5 text-xs text-accent hover:bg-accent/10 disabled:opacity-40"
+              >
+                <Sparkles size={13} className={aiBusy === 'staged:ai.betterMessage' ? 'animate-pulse' : ''} /> Generate
+              </button>
+            </div>
+            {changes.length > 0 && stagedFiles.length === 0 && (
+              <div className="mt-1.5 text-[10px] text-text-4">Stage at least one file (or hunk) to commit.</div>
+            )}
+            <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-border-1 pt-2">
+              <button disabled={!repoPath || changes.length === 0 || !!aiBusy} onClick={() => void runChangesAi('ai.explain', 'working')} className="rounded border border-border-2 px-2 py-1 text-[10px] text-text-2 hover:text-text-1 disabled:opacity-40">Explain working changes</button>
+              <button disabled={!repoPath || changes.length === 0 || !!aiBusy} onClick={() => void runChangesAi('ai.risky', 'working')} className="rounded border border-border-2 px-2 py-1 text-[10px] text-text-2 hover:text-text-1 disabled:opacity-40">Risk scan</button>
+              <select value={selectedAiBase} onChange={(event) => setAiBaseBranch(event.target.value)} disabled={aiBaseChoices.length === 0} className="h-6 min-w-0 flex-1 rounded border border-border-2 bg-surface-0 px-1.5 text-[10px] text-text-2">
+                {aiBaseChoices.map((branch) => <option key={branch.name} value={branch.name}>{branch.name}</option>)}
+              </select>
+              <button disabled={!selectedAiBase || !!aiBusy} onClick={() => void runChangesAi('ai.summarize', 'branch', selectedAiBase)} className="rounded border border-border-2 px-2 py-1 text-[10px] text-text-2 hover:text-text-1 disabled:opacity-40">Analyze branch</button>
             </div>
           </div>
 
@@ -831,24 +1087,39 @@ export function GitSyncPanel() {
             </section>
           )}
 
-          <section className="p-3">
-            <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-text-4">Changes</div>
+          <section
+            className="p-3"
+            onDragOver={(event) => { if (dragFile?.mode === 'stage') event.preventDefault() }}
+            onDrop={(event) => { event.preventDefault(); if (dragFile?.mode === 'stage') stageFile(dragFile.path) }}
+          >
+            <div className="mb-2 flex items-center justify-between">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-text-4">Staged ({stagedFiles.length})</div>
+              {stagedFiles.length > 0 && (
+                <button onClick={unstageAll} className="rounded px-1 text-[10px] text-text-4 hover:text-text-1">Unstage all</button>
+              )}
+            </div>
             <div className="space-y-1">
-              {(overview?.changes ?? []).map((change) => (
-                <button
-                  key={`${change.status}-${change.path}`}
-                  onClick={() => void openWorkingTreeDiff(change)}
-                  className="flex w-full items-center gap-2 rounded border border-border-1 bg-surface-0 px-2 py-1.5 text-left transition-colors hover:border-accent/40 hover:bg-surface-2"
-                  title={`Open diff for ${change.path}`}
-                >
-                  <span className={cn('w-16 shrink-0 rounded px-1.5 py-0.5 text-center text-[9px]', change.conflicted ? 'bg-warning/20 text-warning' : change.status === '??' ? 'bg-accent/15 text-accent' : 'bg-surface-3 text-text-3')}>
-                    {changeLabel(change)}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-text-2" title={change.path}>{change.path}</span>
-                  {workingDiffLoadingPath === change.path ? <Loader2 size={12} className="shrink-0 animate-spin text-accent" /> : <Eye size={12} className="shrink-0 text-text-4" />}
-                </button>
-              ))}
-              {(overview?.changes.length ?? 0) === 0 && <div className="rounded border border-border-1 bg-surface-0 p-4 text-center text-xs text-text-4">Working tree clean.</div>}
+              {stagedFiles.map((change) => renderChangeRow(change, 'unstage'))}
+              {stagedFiles.length === 0 && <div className="rounded border border-dashed border-border-2 p-2.5 text-center text-[10px] text-text-4">Nothing staged.</div>}
+            </div>
+
+            <div
+              className="mb-2 mt-4 flex items-center justify-between"
+              onDragOver={(event) => { if (dragFile?.mode === 'unstage') event.preventDefault() }}
+              onDrop={(event) => { event.preventDefault(); if (dragFile?.mode === 'unstage') unstageFile(dragFile.path) }}
+            >
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-text-4">Unstaged ({unstagedFiles.length})</div>
+              {unstagedFiles.length > 0 && (
+                <button onClick={stageAll} className="rounded px-1 text-[10px] text-text-4 hover:text-text-1">Stage all</button>
+              )}
+            </div>
+            <div
+              className="space-y-1"
+              onDragOver={(event) => { if (dragFile?.mode === 'unstage') event.preventDefault() }}
+              onDrop={(event) => { event.preventDefault(); if (dragFile?.mode === 'unstage') unstageFile(dragFile.path) }}
+            >
+              {unstagedFiles.map((change) => renderChangeRow(change, 'stage'))}
+              {unstagedFiles.length === 0 && <div className="rounded border border-dashed border-border-2 p-2.5 text-center text-[10px] text-text-4">{changes.length === 0 ? 'Working tree clean.' : 'Nothing to stage.'}</div>}
             </div>
           </section>
         </aside>
@@ -883,6 +1154,31 @@ export function GitSyncPanel() {
             setCommitDiffText('')
           }}
         />
+      )}
+      {hunkTarget && (
+        <HunkStageDialog
+          repoPath={repoPath}
+          path={hunkTarget.path}
+          mode={hunkTarget.mode}
+          onDone={() => void refreshStatus()}
+          onClose={() => setHunkTarget(null)}
+        />
+      )}
+      {aiResult && <TextResultDialog title={aiResult.title} text={aiResult.text} loading={false} onClose={() => setAiResult(null)} />}
+      {dropTarget && (
+        <div className="fixed inset-0 z-[170] flex items-center justify-center bg-black/65 p-6" onClick={() => setDropTarget(null)}>
+          <div className="w-[430px] rounded-xl border border-border-2 bg-surface-1 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+            <div className="border-b border-border-1 px-4 py-3 text-sm font-semibold text-text-1">Git drag & drop</div>
+            <div className="space-y-2 p-4 text-xs text-text-2">
+              {dropTarget.payload.type === 'branch' ? <p>Apply branch <code className="text-accent">{dropTarget.payload.name}</code> to <code className="text-accent">{dropTarget.branch}</code>.</p> : <p>Cherry-pick commit <code className="text-accent">{dropTarget.payload.hash.slice(0, 7)}</code> onto <code className="text-accent">{dropTarget.branch}</code>.</p>}
+              {status.branch !== dropTarget.branch && <p className="text-warning">adOmnia will first switch from {status.branch} to {dropTarget.branch}.</p>}
+            </div>
+            <div className="flex justify-end gap-2 border-t border-border-1 px-4 py-3">
+              <button onClick={() => setDropTarget(null)} className="h-7 rounded px-3 text-xs text-text-2 hover:bg-surface-3">Cancel</button>
+              {dropTarget.payload.type === 'branch' ? <><button onClick={() => executeDrop('rebase')} className="h-7 rounded border border-border-2 px-3 text-xs text-text-2 hover:bg-surface-2">Rebase target</button><button onClick={() => executeDrop('merge')} className="h-7 rounded bg-accent px-3 text-xs font-medium text-white">Merge into target</button></> : <button onClick={() => executeDrop('cherry-pick')} className="h-7 rounded bg-accent px-3 text-xs font-medium text-white">Cherry-pick</button>}
+            </div>
+          </div>
+        </div>
       )}
       {workingDiffFile && workingDiffSnapshot && (
         <DiffModal

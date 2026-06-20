@@ -88,6 +88,58 @@ func (g *GitSync) CommitAll(repoPath, message string) (string, error) {
 	return string(raw), nil
 }
 
+func (g *GitSync) Commit(repoPath, message string) (string, error) {
+	if repoPath == "" {
+		repoPath = g.defaultRepoPath()
+	}
+	result, err := git.Commit(repoPath, message)
+	if err != nil {
+		return "", err
+	}
+	raw, _ := json.Marshal(result)
+	return string(raw), nil
+}
+
+func (g *GitSync) StageAll(repoPath string) error {
+	if repoPath == "" {
+		repoPath = g.defaultRepoPath()
+	}
+	return git.StageAll(repoPath)
+}
+
+func (g *GitSync) UnstageAll(repoPath string) error {
+	if repoPath == "" {
+		repoPath = g.defaultRepoPath()
+	}
+	return git.UnstageAll(repoPath)
+}
+
+func (g *GitSync) FileDiff(repoPath, path string, staged bool) (string, error) {
+	if repoPath == "" {
+		repoPath = g.defaultRepoPath()
+	}
+	return git.FileDiff(repoPath, path, staged)
+}
+
+func (g *GitSync) ApplyHunk(repoPath, patch string, reverse bool) error {
+	if repoPath == "" {
+		repoPath = g.defaultRepoPath()
+	}
+	return git.ApplyHunkToIndex(repoPath, patch, reverse)
+}
+
+func (g *GitSync) CommitPaths(repoPath, message string, paths []string) (string, error) {
+	if repoPath == "" {
+		repoPath = g.defaultRepoPath()
+	}
+	result, err := git.CommitPaths(repoPath, message, paths)
+	if err != nil {
+		return "", err
+	}
+	raw, _ := json.Marshal(result)
+	return string(raw), nil
+}
+
 func (g *GitSync) Push(repoPath, branch string) error {
 	if repoPath == "" {
 		repoPath = g.defaultRepoPath()
@@ -130,6 +182,13 @@ func (g *GitSync) Stash(repoPath string) error {
 	return git.Stash(repoPath)
 }
 
+func (g *GitSync) StashPaths(repoPath string, paths []string) error {
+	if repoPath == "" {
+		repoPath = g.defaultRepoPath()
+	}
+	return git.StashPaths(repoPath, paths)
+}
+
 func (g *GitSync) StashPop(repoPath string) error {
 	if repoPath == "" {
 		repoPath = g.defaultRepoPath()
@@ -142,6 +201,48 @@ func (g *GitSync) StashDrop(repoPath, stashRef string) error {
 		repoPath = g.defaultRepoPath()
 	}
 	return git.StashDrop(repoPath, stashRef)
+}
+
+func (g *GitSync) StashApply(repoPath, stashRef string) error {
+	if repoPath == "" {
+		repoPath = g.defaultRepoPath()
+	}
+	return git.StashApply(repoPath, stashRef)
+}
+
+func (g *GitSync) StashShow(repoPath, stashRef string) (string, error) {
+	if repoPath == "" {
+		repoPath = g.defaultRepoPath()
+	}
+	return git.StashShow(repoPath, stashRef)
+}
+
+func (g *GitSync) CheckoutRemoteBranch(repoPath, remoteRef string) error {
+	if repoPath == "" {
+		repoPath = g.defaultRepoPath()
+	}
+	return git.CheckoutRemoteBranch(repoPath, remoteRef)
+}
+
+func (g *GitSync) DeleteLocalBranch(repoPath, branch string, force bool) error {
+	if repoPath == "" {
+		repoPath = g.defaultRepoPath()
+	}
+	return git.DeleteLocalBranch(repoPath, branch, force)
+}
+
+func (g *GitSync) DeleteRemoteBranch(repoPath, remote, branch string) error {
+	if repoPath == "" {
+		repoPath = g.defaultRepoPath()
+	}
+	return git.DeleteRemoteBranch(repoPath, remote, branch)
+}
+
+func (g *GitSync) SetUpstream(repoPath, branch, upstream string) error {
+	if repoPath == "" {
+		repoPath = g.defaultRepoPath()
+	}
+	return git.SetUpstream(repoPath, branch, upstream)
 }
 
 func (g *GitSync) CreateBranch(repoPath, branch string) error {

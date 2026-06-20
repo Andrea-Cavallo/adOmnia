@@ -4,12 +4,14 @@
 
 const STORAGE_KEY = 'adomnia.git.repos'
 const LAST_KEY = 'adomnia.git.lastRepo'
+const PINNED_BRANCHES_KEY = 'adomnia.git.pinnedBranches'
 const MAX_REPOS = 30
 
 export interface SavedRepo {
   path: string
   name: string
   addedAt: number
+  pinned: boolean
 }
 
 function repoName(path: string): string {
@@ -24,7 +26,7 @@ export function loadRepos(): SavedRepo[] {
     if (!Array.isArray(parsed)) return []
     return parsed
       .filter((item): item is SavedRepo => typeof item === 'object' && item !== null && typeof (item as SavedRepo).path === 'string')
-      .map((item) => ({ path: item.path, name: item.name || repoName(item.path), addedAt: item.addedAt || Date.now() }))
+      .map((item) => ({ path: item.path, name: item.name || repoName(item.path), addedAt: item.addedAt || Date.now(), pinned: item.pinned === true }))
   } catch {
     return []
   }
@@ -43,10 +45,47 @@ export function addRepo(repos: SavedRepo[], path: string): SavedRepo[] {
   const trimmed = path.trim()
   if (!trimmed) return repos
   const existing = repos.find((repo) => repo.path === trimmed)
-  const entry: SavedRepo = { path: trimmed, name: existing?.name || repoName(trimmed), addedAt: Date.now() }
-  const next = [entry, ...repos.filter((repo) => repo.path !== trimmed)].slice(0, MAX_REPOS)
+  const entry: SavedRepo = { path: trimmed, name: existing?.name || repoName(trimmed), addedAt: Date.now(), pinned: existing?.pinned ?? false }
+  const next = [entry, ...repos.filter((repo) => repo.path !== trimmed)]
+    .sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.addedAt - a.addedAt)
+    .slice(0, MAX_REPOS)
   persist(next)
   return next
+}
+
+export function toggleRepoPin(repos: SavedRepo[], path: string): SavedRepo[] {
+  const next = repos
+    .map((repo) => repo.path === path ? { ...repo, pinned: !repo.pinned } : repo)
+    .sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.addedAt - a.addedAt)
+  persist(next)
+  return next
+}
+
+function loadPinnedBranchMap(): Record<string, string[]> {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(PINNED_BRANCHES_KEY) || '{}') as unknown
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
+    const clean: Record<string, string[]> = {}
+    for (const [repo, branches] of Object.entries(parsed)) {
+      if (Array.isArray(branches)) clean[repo] = branches.filter((branch): branch is string => typeof branch === 'string')
+    }
+    return clean
+  } catch {
+    return {}
+  }
+}
+
+export function loadPinnedBranches(repoPath: string): string[] {
+  return loadPinnedBranchMap()[repoPath] ?? []
+}
+
+export function toggleBranchPin(repoPath: string, branch: string): string[] {
+  if (!repoPath || !branch) return []
+  const map = loadPinnedBranchMap()
+  const current = map[repoPath] ?? []
+  map[repoPath] = current.includes(branch) ? current.filter((item) => item !== branch) : [...current, branch]
+  try { localStorage.setItem(PINNED_BRANCHES_KEY, JSON.stringify(map)) } catch { /* best effort */ }
+  return map[repoPath]
 }
 
 export function removeRepo(repos: SavedRepo[], path: string): SavedRepo[] {

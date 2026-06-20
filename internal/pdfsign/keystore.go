@@ -1,4 +1,4 @@
-package main
+package pdfsign
 
 import (
 	"bytes"
@@ -37,7 +37,7 @@ type resolvedCredential struct {
 // resolveCredential builds the signing material from a signing request,
 // honouring its credentialSource ("pem" or "keystore"). PEM is the default for
 // backward compatibility.
-func resolveCredential(req PdfDigitalSignatureRequest) (*resolvedCredential, error) {
+func resolveCredential(req Request) (*resolvedCredential, error) {
 	switch strings.ToLower(strings.TrimSpace(req.CredentialSource)) {
 	case "", "pem":
 		return resolvePEMCredential(req.CertificatePEM, req.PrivateKeyPEM)
@@ -64,7 +64,7 @@ func resolvePEMCredential(certPEM, keyPEM string) (*resolvedCredential, error) {
 	}, nil
 }
 
-func resolveKeystoreCredential(req PdfDigitalSignatureRequest) (*resolvedCredential, error) {
+func resolveKeystoreCredential(req Request) (*resolvedCredential, error) {
 	raw, err := decodeKeystoreBytes(req.KeystoreBase64)
 	if err != nil {
 		return nil, err

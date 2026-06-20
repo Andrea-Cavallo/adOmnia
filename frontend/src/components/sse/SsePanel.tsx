@@ -202,6 +202,7 @@ export function SsePanel() {
   const [typeFilter, setTypeFilter] = useState('')
   const [search, setSearch] = useState('')
   const [replayName, setReplayName] = useState('')
+  const [activeSessions, setActiveSessions] = useState(0)
   const esRef = useRef<EventSource | null>(null)
 
   useEffect(() => {
@@ -211,6 +212,28 @@ export function SsePanel() {
   const bufferRef = useRef<SSEEventItem[]>([])
   const logRef = useRef<HTMLDivElement | null>(null)
 
+  const refreshSessions = useCallback(async () => {
+    const url = serverUrl(port, '/sse/list')
+    if (!url) return
+    try {
+      const res = await sidecarFetch(url)
+      const data = await res.json()
+      if (res.ok && Array.isArray(data)) setActiveSessions(data.length)
+    } catch {}
+  }, [port])
+
+  const closeAllSessions = async () => {
+    const url = serverUrl(port, '/sse/close-all')
+    if (!url) return
+    await sidecarFetch(url, { method: 'POST' }).catch(() => {})
+    esRef.current?.close()
+    setSessionId(null)
+    setStatus('disconnected')
+    setActiveSessions(0)
+    useAppStore.getState().setSseRunning(false)
+    addEvent({ type: 'close', payload: 'All SSE sessions closed', timestamp: Date.now(), system: true })
+  }
+
   useEffect(() => safeSetItem(CONFIG_KEY, JSON.stringify(config)), [config])
   useEffect(() => safeSetItem(SAVED_KEY, JSON.stringify(savedStreams)), [savedStreams])
   useEffect(() => { pausedRef.current = paused }, [paused])
@@ -218,6 +241,7 @@ export function SsePanel() {
     if (!paused && logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight
   }, [events, paused])
   useEffect(() => () => { esRef.current?.close() }, [])
+  useEffect(() => { void refreshSessions() }, [refreshSessions, sessionId])
 
   const addEvent = useCallback((ev: Omit<SSEEventItem, 'localId'>) => {
     const item = { ...ev, localId: eventId() }
@@ -379,6 +403,8 @@ export function SsePanel() {
               <Zap size={12} /> Connect
             </button>
           )}
+          <button onClick={() => void refreshSessions()} className="h-7 rounded border border-border-2 bg-surface-0 px-2 text-[10px] text-text-3 hover:text-text-1" title="Refresh active backend sessions">{activeSessions} sessions</button>
+          {activeSessions > 0 && <button onClick={() => void closeAllSessions()} className="h-7 rounded border border-error/30 bg-error/10 px-2 text-[10px] text-error hover:bg-error/20">Close all</button>}
         </div>
 
         <div className="flex items-center gap-3">

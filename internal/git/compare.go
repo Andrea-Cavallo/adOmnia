@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
+	"time"
 )
 
 // CompareResult is the structured output of a commit/branch/tag/worktree compare.
@@ -102,6 +104,38 @@ func CreatePatch(repoPath, refA, refB string) (string, error) {
 	return out.String(), nil
 }
 
+// ChangesDiff returns the textual changes for AI/review workflows without
+// mutating Git state. scope is staged, working, or branch (baseRef...HEAD).
+func ChangesDiff(repoPath, scope, baseRef string) (string, error) {
+	args := []string{"diff", "--binary"}
+	switch strings.TrimSpace(scope) {
+	case "staged":
+		args = append(args, "--cached")
+	case "working":
+		args = append(args, "HEAD")
+	case "branch":
+		baseRef = strings.TrimSpace(baseRef)
+		if baseRef == "" {
+			return "", fmt.Errorf("base branch is required")
+		}
+		if _, err := runGit(repoPath, "rev-parse", "--verify", baseRef); err != nil {
+			return "", fmt.Errorf("invalid base branch: %s", baseRef)
+		}
+		args = append(args, baseRef+"...HEAD")
+	default:
+		return "", fmt.Errorf("invalid diff scope: %s", scope)
+	}
+	cmd := exec.Command("git", append([]string{"-C", repoPath}, args...)...)
+	configureHiddenCommand(cmd)
+	var out, errBuf bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("git changes diff: %s", firstNonEmpty(errBuf.String(), err.Error()))
+	}
+	return out.String(), nil
+}
+
 // ApplyPatch applies a unified diff. threeWay enables 3-way merge on conflict;
 // index also stages the applied changes.
 func ApplyPatch(repoPath, patch string, threeWay, index bool) OpResult {
@@ -186,6 +220,55 @@ func Blame(repoPath, path string) (string, error) {
 		return "", fmt.Errorf("git blame: %s", firstNonEmpty(stderr, err.Error()))
 	}
 	return out, nil
+}
+
+type BlameLine struct {
+	Hash       string `json:"hash"`
+	Author     string `json:"author"`
+	Email      string `json:"email"`
+	Date       string `json:"date"`
+	LineNumber int    `json:"lineNumber"`
+	Content    string `json:"content"`
+}
+
+// BlameLines returns structured line ownership for a visual gutter. The
+// porcelain format avoids locale-dependent parsing of regular git blame text.
+func BlameLines(repoPath, path string) ([]BlameLine, error) {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return nil, fmt.Errorf("file path is empty")
+	}
+	out, stderr, _, err := runFull(repoPath, "blame", "--line-porcelain", "--", path)
+	if err != nil {
+		return nil, fmt.Errorf("git blame: %s", firstNonEmpty(stderr, err.Error()))
+	}
+	lines := []BlameLine{}
+	current := BlameLine{}
+	for _, line := range strings.Split(out, "\n") {
+		if strings.HasPrefix(line, "\t") {
+			current.Content = strings.TrimPrefix(line, "\t")
+			lines = append(lines, current)
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) >= 3 && len(strings.TrimPrefix(fields[0], "^")) >= 7 {
+			if finalLine, parseErr := strconv.Atoi(fields[2]); parseErr == nil {
+				current = BlameLine{Hash: strings.TrimPrefix(fields[0], "^"), LineNumber: finalLine}
+				continue
+			}
+		}
+		switch {
+		case strings.HasPrefix(line, "author "):
+			current.Author = strings.TrimPrefix(line, "author ")
+		case strings.HasPrefix(line, "author-mail "):
+			current.Email = strings.Trim(strings.TrimPrefix(line, "author-mail "), "<>")
+		case strings.HasPrefix(line, "author-time "):
+			if unix, parseErr := strconv.ParseInt(strings.TrimPrefix(line, "author-time "), 10, 64); parseErr == nil {
+				current.Date = time.Unix(unix, 0).Format("2006-01-02")
+			}
+		}
+	}
+	return lines, nil
 }
 
 // parseCommitLog parses the shared commitLogFormat output into CommitInfo.

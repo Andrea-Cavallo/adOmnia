@@ -162,7 +162,7 @@ func inspectState(repoPath string) (RepoState, error) {
 	}
 
 	// Working-tree dirtiness + conflict markers from one porcelain pass.
-	if porcelain, err := runGit(repoPath, "status", "--porcelain"); err == nil {
+	if porcelain, err := statusPorcelain(repoPath); err == nil {
 		conflicts := []string{}
 		dirty := false
 		conflictCodes := map[string]bool{"DD": true, "AU": true, "UD": true, "UA": true, "DU": true, "AA": true, "UU": true}
@@ -227,7 +227,7 @@ func inProgressOperation(repoPath string) string {
 // conflictChanges returns the conflicted files as FileChange entries (reusing
 // the porcelain parser) so the resolver UI gets full status detail.
 func conflictChanges(repoPath string) []FileChange {
-	porcelain, err := runGit(repoPath, "status", "--porcelain")
+	porcelain, err := statusPorcelain(repoPath)
 	if err != nil {
 		return []FileChange{}
 	}

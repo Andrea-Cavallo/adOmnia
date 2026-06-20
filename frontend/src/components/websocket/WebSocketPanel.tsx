@@ -1044,6 +1044,7 @@ export function WebSocketPanel() {
   const [scriptCode, setScriptCode] = useState('')
   const [showScript, setShowScript] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [activeSessions, setActiveSessions] = useState(0)
 
   const esRef = useRef<EventSource | null>(null)
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -1075,6 +1076,28 @@ export function WebSocketPanel() {
     addMessage({ id: id(), type, direction: 'system', content, timestamp: nowMs() })
   }, [addMessage])
 
+  const refreshSessions = useCallback(async () => {
+    const url = serverUrl(port, '/ws/list')
+    if (!url) return
+    try {
+      const response = await sidecarFetch(url)
+      const data = await response.json()
+      if (response.ok && Array.isArray(data)) setActiveSessions(data.length)
+    } catch {}
+  }, [port])
+
+  const closeAllSessions = async () => {
+    const url = serverUrl(port, '/ws/close-all')
+    if (!url) return
+    await sidecarFetch(url, { method: 'POST' }).catch(() => {})
+    esRef.current?.close()
+    sessionIdRef.current = null
+    setSessionId(null)
+    setStatus('disconnected')
+    setActiveSessions(0)
+    addSystem('All WebSocket sessions closed.')
+  }
+
   const selectedMessage = useMemo(() => messages.find((message) => message.id === selectedId) ?? messages[messages.length - 1] ?? null, [messages, selectedId])
 
   const filteredMessages = useMemo(() => {
@@ -1096,6 +1119,7 @@ export function WebSocketPanel() {
   useEffect(() => { safeSetItem(STORAGE_KEY, JSON.stringify(config)) }, [config])
   useEffect(() => { saveConversation(messages) }, [messages])
   useEffect(() => { saveTemplates(templates) }, [templates])
+  useEffect(() => { void refreshSessions() }, [refreshSessions, sessionId])
 
   useEffect(() => {
     useAppStore.getState().setWebsocketRunning(connected)
@@ -1373,6 +1397,8 @@ export function WebSocketPanel() {
             {statusLabel[status]}
             {connected && <span className="font-mono text-[10px] text-text-4">{fmtTime(nowMs()).slice(0, 8)}</span>}
           </div>
+          <MiniButton onClick={() => void refreshSessions()}><Server size={13} /> {activeSessions} sessions</MiniButton>
+          {activeSessions > 0 && <MiniButton onClick={() => void closeAllSessions()}><Trash2 size={13} /> Close all</MiniButton>}
           <MiniButton onClick={() => copyText(resolveUrl(config, getResolvedVars()))}>{copied ? <Check size={13} /> : <Copy size={13} />} Copy URL</MiniButton>
           <button type="button" className="flex h-9 w-9 items-center justify-center rounded-md border border-border-2 bg-surface-0 text-text-3 hover:bg-surface-2 hover:text-text-1">
             <MoreVertical size={15} />

@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
-import { AlertTriangle, Check, Eye, Loader2 } from 'lucide-react'
+import { AlertTriangle, Check, Eye, Loader2, Save, X } from 'lucide-react'
 import * as GitSync from '@/wailsjs/go/main/GitSync'
-import { abortOperation, continueOperation, getRepoState, skipOperation, fileAtCommit } from '@/lib/git/gitService'
+import { abortOperation, continueOperation, getRepoState, skipOperation } from '@/lib/git/gitService'
 import type { OpResult } from '@/lib/git/types'
-import { DiffModal } from '@/components/response/DiffView'
 
 interface ConflictResolverDialogProps {
   repoPath: string
@@ -13,12 +12,15 @@ interface ConflictResolverDialogProps {
   onClose: () => void
 }
 
-// Ref holding "their" side per in-progress operation.
-const THEIRS_REF: Record<string, string> = {
-  merge: 'MERGE_HEAD',
-  'cherry-pick': 'CHERRY_PICK_HEAD',
-  revert: 'REVERT_HEAD',
-  rebase: 'REBASE_HEAD',
+interface ConflictVersions {
+  path: string
+  base: string
+  ours: string
+  theirs: string
+  result: string
+  baseAvailable: boolean
+  oursAvailable: boolean
+  theirsAvailable: boolean
 }
 
 /**
@@ -30,7 +32,7 @@ export function ConflictResolverDialog({ repoPath, operation, initialConflicts, 
   const [conflicts, setConflicts] = useState<string[]>(initialConflicts)
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
-  const [diff, setDiff] = useState<{ path: string; ours: string; theirs: string } | null>(null)
+  const [editor, setEditor] = useState<ConflictVersions | null>(null)
 
   const refresh = useCallback(async () => {
     try {
@@ -66,15 +68,28 @@ export function ConflictResolverDialog({ repoPath, operation, initialConflicts, 
   })
   const markResolved = (path: string) => act(path, () => GitSync.StageFile(repoPath, path))
 
-  const viewDiff = async (path: string) => {
+  const openEditor = async (path: string) => {
     setBusy(path)
+    setError('')
     try {
-      const theirsRef = THEIRS_REF[operation] || 'MERGE_HEAD'
-      const [ours, theirs] = await Promise.all([
-        fileAtCommit(repoPath, 'HEAD', path).catch(() => ''),
-        fileAtCommit(repoPath, theirsRef, path).catch(() => ''),
-      ])
-      setDiff({ path, ours, theirs })
+      setEditor(JSON.parse(await GitSync.GetConflictFileVersions(repoPath, path)) as ConflictVersions)
+    } catch (e) {
+      setError(String(e))
+    } finally {
+      setBusy('')
+    }
+  }
+
+  const saveResolution = async () => {
+    if (!editor) return
+    setBusy(editor.path)
+    setError('')
+    try {
+      await GitSync.SaveConflictResolution(repoPath, editor.path, editor.result)
+      setEditor(null)
+      await refresh()
+    } catch (e) {
+      setError(String(e))
     } finally {
       setBusy('')
     }
@@ -123,8 +138,8 @@ export function ConflictResolverDialog({ repoPath, operation, initialConflicts, 
                     <button disabled={!!busy} onClick={() => useOurs(path)} className="rounded border border-border-2 px-2 py-1 text-[10px] text-text-2 hover:text-text-1 disabled:opacity-40">Ours</button>
                     <button disabled={!!busy} onClick={() => useTheirs(path)} className="rounded border border-border-2 px-2 py-1 text-[10px] text-text-2 hover:text-text-1 disabled:opacity-40">Theirs</button>
                     <button disabled={!!busy} onClick={() => markResolved(path)} className="rounded border border-accent/50 px-2 py-1 text-[10px] text-accent disabled:opacity-40">Mark resolved</button>
-                    <button disabled={busy === path} onClick={() => void viewDiff(path)} className="flex items-center justify-center gap-1 rounded border border-border-2 px-2 py-1 text-[10px] text-text-3 hover:text-text-1 disabled:opacity-40">
-                      {busy === path ? <Loader2 size={11} className="animate-spin" /> : <Eye size={11} />} View
+                    <button disabled={busy === path} onClick={() => void openEditor(path)} className="flex items-center justify-center gap-1 rounded border border-border-2 px-2 py-1 text-[10px] text-text-3 hover:text-text-1 disabled:opacity-40">
+                      {busy === path ? <Loader2 size={11} className="animate-spin" /> : <Eye size={11} />} Three-way
                     </button>
                   </div>
                 </div>
@@ -143,15 +158,44 @@ export function ConflictResolverDialog({ repoPath, operation, initialConflicts, 
         </div>
       </div>
 
-      {diff && (
-        <DiffModal
-          title={`Conflict — ${diff.path}`}
-          leftLabel="Ours (HEAD)"
-          rightLabel="Theirs (incoming)"
-          leftBody={diff.ours}
-          rightBody={diff.theirs}
-          onClose={() => setDiff(null)}
-        />
+      {editor && (
+        <div className="fixed inset-0 z-[180] flex items-center justify-center bg-black/75 p-5" onClick={() => setEditor(null)}>
+          <div className="flex h-[min(86vh,900px)] w-[min(94vw,1500px)] flex-col overflow-hidden rounded-xl border border-border-2 bg-surface-1 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex h-11 shrink-0 items-center gap-2 border-b border-border-1 px-4">
+              <span className="text-sm font-semibold text-text-1">Three-way conflict editor</span>
+              <span className="min-w-0 flex-1 truncate font-mono text-xs text-text-3" title={editor.path}>{editor.path}</span>
+              <button onClick={() => setEditor(null)} className="rounded p-1 text-text-3 hover:bg-surface-3 hover:text-text-1"><X size={15} /></button>
+            </div>
+            <div className="grid min-h-0 flex-1 grid-cols-3 divide-x divide-border-1">
+              {([
+                ['Base', editor.base, editor.baseAvailable, 'base'],
+                ['Ours', editor.ours, editor.oursAvailable, 'ours'],
+                ['Theirs', editor.theirs, editor.theirsAvailable, 'theirs'],
+              ] as const).map(([label, content, available, key]) => (
+                <div key={key} className="flex min-w-0 flex-col">
+                  <div className="flex h-9 items-center justify-between border-b border-border-1 bg-surface-0 px-3">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-text-3">{label}</span>
+                    <button disabled={!available} onClick={() => setEditor((current) => current ? { ...current, result: content } : current)} className="rounded border border-border-2 px-2 py-1 text-[10px] text-text-2 hover:text-text-1 disabled:opacity-30">Use in result</button>
+                  </div>
+                  <pre className="min-h-0 flex-1 overflow-auto whitespace-pre p-3 font-mono text-[11px] leading-5 text-text-2">{available ? content : '(file does not exist on this side)'}</pre>
+                </div>
+              ))}
+            </div>
+            <div className="flex min-h-[220px] flex-[.75] flex-col border-t border-border-2">
+              <div className="flex h-9 shrink-0 items-center justify-between bg-accent/10 px-3">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-accent">Merged result — editable</span>
+                <span className="text-[10px] text-text-4">Saving writes and stages the file</span>
+              </div>
+              <textarea value={editor.result} onChange={(e) => setEditor({ ...editor, result: e.target.value })} spellCheck={false} className="min-h-0 flex-1 resize-none border-0 bg-surface-0 p-3 font-mono text-[11px] leading-5 text-text-1 outline-none" />
+            </div>
+            <div className="flex h-12 shrink-0 items-center justify-end gap-2 border-t border-border-1 px-4">
+              <button onClick={() => setEditor(null)} className="h-7 rounded px-3 text-xs text-text-2 hover:bg-surface-3">Cancel</button>
+              <button disabled={!!busy} onClick={() => void saveResolution()} className="flex h-7 items-center gap-1.5 rounded bg-accent px-3 text-xs font-medium text-white hover:bg-accent-light disabled:opacity-40">
+                {busy === editor.path ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />} Save resolution
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

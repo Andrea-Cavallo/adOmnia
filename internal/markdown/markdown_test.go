@@ -1,4 +1,4 @@
-package main
+package markdown
 
 import (
 	"os"
@@ -19,7 +19,7 @@ func writeTestNote(t *testing.T, root, rel, content string) {
 }
 
 func TestMarkdownWorkspaceFileOperationsAndAgentGraph(t *testing.T) {
-	t.Setenv("APPDATA", t.TempDir())
+	dataDir := t.TempDir()
 	root := filepath.Join(t.TempDir(), "notes")
 	if err := os.MkdirAll(root, 0755); err != nil {
 		t.Fatal(err)
@@ -51,8 +51,7 @@ func TestMarkdownWorkspaceFileOperationsAndAgentGraph(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	app := &App{}
-	files, err := app.ListMarkdownFiles(root)
+	files, err := ListFiles(root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +72,7 @@ func TestMarkdownWorkspaceFileOperationsAndAgentGraph(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	indexContent, err := app.ReadMarkdownFile(indexPath)
+	indexContent, err := ReadFile(indexPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,17 +87,17 @@ func TestMarkdownWorkspaceFileOperationsAndAgentGraph(t *testing.T) {
 		t.Fatalf("read/list workflow mutated index.md")
 	}
 
-	created, err := app.CreateMarkdownFile(root, "new/deep-note", "# Deep Note\n\n[[index]]")
+	created, err := CreateFile(root, "new/deep-note", "# Deep Note\n\n[[index]]")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if created.RelPath != "new/deep-note.md" {
 		t.Fatalf("expected extension to be appended, got %q", created.RelPath)
 	}
-	if err := app.WriteMarkdownFile(created.Path, "# Deep Note\n\nUpdated body\n"); err != nil {
+	if err := WriteFile(created.Path, "# Deep Note\n\nUpdated body\n"); err != nil {
 		t.Fatal(err)
 	}
-	readBack, err := app.ReadMarkdownFile(created.Path)
+	readBack, err := ReadFile(created.Path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +105,7 @@ func TestMarkdownWorkspaceFileOperationsAndAgentGraph(t *testing.T) {
 		t.Fatalf("write/read cycle did not persist content")
 	}
 
-	renamed, err := app.RenameMarkdownFile(root, created.RelPath, "new/renamed-note.markdown")
+	renamed, err := RenameFile(root, created.RelPath, "new/renamed-note.markdown")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +115,7 @@ func TestMarkdownWorkspaceFileOperationsAndAgentGraph(t *testing.T) {
 	if _, err := os.Stat(created.Path); !os.IsNotExist(err) {
 		t.Fatalf("old file still exists after rename")
 	}
-	if err := app.DeleteMarkdownFile(root, renamed.RelPath); err != nil {
+	if err := DeleteFile(root, renamed.RelPath); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(renamed.Path); !os.IsNotExist(err) {
@@ -124,7 +123,7 @@ func TestMarkdownWorkspaceFileOperationsAndAgentGraph(t *testing.T) {
 	}
 
 	graphJSON := `{"schema":"adomnia.markdown.graph","summary":{"notes":22,"edges":42,"unresolved":1},"nodes":[{"id":"index.md","unresolvedOutgoing":["Missing Note"]}]}`
-	graphPath, err := app.WriteMarkdownAgentGraph(root, graphJSON)
+	graphPath, err := WriteAgentGraph(root, graphJSON)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +135,7 @@ func TestMarkdownWorkspaceFileOperationsAndAgentGraph(t *testing.T) {
 		t.Fatalf("agent graph was not written in the expected shape/path")
 	}
 
-	imported, err := app.ImportMarkdownFolderToWorkspace(root)
+	imported, err := ImportFolderToWorkspace(root, dataDir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,7 +145,7 @@ func TestMarkdownWorkspaceFileOperationsAndAgentGraph(t *testing.T) {
 	if !strings.Contains(filepath.ToSlash(imported.Root), "markdown-workspaces/notes-") {
 		t.Fatalf("unexpected imported root: %s", imported.Root)
 	}
-	importedFiles, err := app.ListMarkdownFiles(imported.Root)
+	importedFiles, err := ListFiles(imported.Root)
 	if err != nil {
 		t.Fatal(err)
 	}

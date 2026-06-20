@@ -6,6 +6,34 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-20
+
+### Added
+- **Git client overhaul — professional, single-repo workflow now substantially complete (34/40 GitKraken-class features):**
+  - Granular staging: separate Staged/Unstaged sections, per-file and per-hunk/per-line stage/unstage, and partial commits (`CommitPaths`).
+  - Full branch management: checkout of local and remote (tracking) branches, delete local/remote, and set-upstream.
+  - Complete stash workflow: apply/show/drop per stash entry plus stash of selected files only.
+  - Three-way conflict editor: Base/Ours/Theirs side by side with an editable merged result, saved and staged in-app.
+  - Generic undo via reflog: restore to an earlier recovery point (soft/mixed/hard) beyond the last commit.
+  - Visual blame and file history: per-line gutter and a navigable per-revision diff timeline.
+  - AI assistance on staged changes, working changes, and branch level (commit message generation, explanation, risk scan).
+  - Named Git profiles with per-host auto-switch, plus persistent repo/branch pins.
+  - Advanced repository support: worktrees, submodules, and sparse checkout with UI.
+  - Virtualized/lazy commit graph and extended drag & drop (branch→branch, commit→branch, file→stage).
+  - Azure DevOps deep-links (commit/compare) for HTTPS, SSH `v3`, and Visual Studio hosts.
+- Advanced HTTP load-test workflows in the Composer drawer: named scenarios, persisted results, baseline comparisons, and Markdown/HTML reports.
+- gRPC load testing directly from gRPC Studio.
+- Full bbolt snapshot export/restore and legacy localStorage migration controls in Storage Explorer.
+- Active-session administration for WebSocket and SSE clients, plus configurable Proxy breakpoint patterns.
+- Backend-powered RFC 6902 JSON patches and X.509 certificate inspection in Power Tools.
+
+### Fixed
+- `Push`/`Pull` no longer fall back to a hardcoded `main`/`master` when no branch is passed: the checked-out branch is resolved via `symbolic-ref`, with an explicit error on detached HEAD.
+- `git status --porcelain` parsing no longer corrupts the first entry (column-0 space is preserved).
+
+### Removed
+- Orphaned Scheduler frontend bindings and the misleading RabbitMQ exchange-info endpoint, which only performed a connection check.
+
 ## [0.2.2] - 2026-06-14
 
 ### Added

@@ -30,6 +30,30 @@ export function CommitAll(repoPath: string, message: string): Promise<string> {
   return window['go']['main']['GitSync']['CommitAll'](repoPath, message)
 }
 
+export function CommitPaths(repoPath: string, message: string, paths: string[]): Promise<string> {
+  return window['go']['main']['GitSync']['CommitPaths'](repoPath, message, paths)
+}
+
+export function Commit(repoPath: string, message: string): Promise<string> {
+  return window['go']['main']['GitSync']['Commit'](repoPath, message)
+}
+
+export function StageAll(repoPath: string): Promise<void> {
+  return window['go']['main']['GitSync']['StageAll'](repoPath)
+}
+
+export function UnstageAll(repoPath: string): Promise<void> {
+  return window['go']['main']['GitSync']['UnstageAll'](repoPath)
+}
+
+export function FileDiff(repoPath: string, path: string, staged: boolean): Promise<string> {
+  return window['go']['main']['GitSync']['FileDiff'](repoPath, path, staged)
+}
+
+export function ApplyHunk(repoPath: string, patch: string, reverse: boolean): Promise<void> {
+  return window['go']['main']['GitSync']['ApplyHunk'](repoPath, patch, reverse)
+}
+
 export function Fetch(repoPath: string): Promise<void> {
   return window['go']['main']['GitSync']['Fetch'](repoPath)
 }
@@ -54,12 +78,75 @@ export function Stash(repoPath: string): Promise<void> {
   return window['go']['main']['GitSync']['Stash'](repoPath)
 }
 
+export function StashPaths(repoPath: string, paths: string[]): Promise<void> {
+  return window['go']['main']['GitSync']['StashPaths'](repoPath, paths)
+}
+
 export function StashPop(repoPath: string): Promise<void> {
   return window['go']['main']['GitSync']['StashPop'](repoPath)
 }
 
 export function StashDrop(repoPath: string, stashRef: string): Promise<void> {
   return window['go']['main']['GitSync']['StashDrop'](repoPath, stashRef)
+}
+
+export function StashApply(repoPath: string, stashRef: string): Promise<void> {
+  return window['go']['main']['GitSync']['StashApply'](repoPath, stashRef)
+}
+
+export function StashShow(repoPath: string, stashRef: string): Promise<string> {
+  return window['go']['main']['GitSync']['StashShow'](repoPath, stashRef)
+}
+
+export function GetConflictFileVersions(repoPath: string, path: string): Promise<string> {
+  return window['go']['main']['GitSync']['GetConflictFileVersions'](repoPath, path)
+}
+
+export function SaveConflictResolution(repoPath: string, path: string, content: string): Promise<void> {
+  return window['go']['main']['GitSync']['SaveConflictResolution'](repoPath, path, content)
+}
+
+export function Reflog(repoPath: string, limit: number): Promise<string> {
+  return window['go']['main']['GitSync']['Reflog'](repoPath, limit)
+}
+
+export function BlameLines(repoPath: string, path: string): Promise<string> {
+  return window['go']['main']['GitSync']['BlameLines'](repoPath, path)
+}
+
+export function ChangesDiff(repoPath: string, scope: string, baseRef: string): Promise<string> {
+  return window['go']['main']['GitSync']['ChangesDiff'](repoPath, scope, baseRef)
+}
+
+export function ListSubmodules(repoPath: string): Promise<string> { return window['go']['main']['GitSync']['ListSubmodules'](repoPath) }
+export function AddSubmodule(repoPath: string, remoteURL: string, path: string, branch: string): Promise<void> { return window['go']['main']['GitSync']['AddSubmodule'](repoPath, remoteURL, path, branch) }
+export function UpdateSubmodules(repoPath: string, path: string): Promise<void> { return window['go']['main']['GitSync']['UpdateSubmodules'](repoPath, path) }
+export function RemoveSubmodule(repoPath: string, path: string): Promise<void> { return window['go']['main']['GitSync']['RemoveSubmodule'](repoPath, path) }
+export function ListWorktrees(repoPath: string): Promise<string> { return window['go']['main']['GitSync']['ListWorktrees'](repoPath) }
+export function AddWorktree(repoPath: string, path: string, branch: string, createBranch: boolean): Promise<void> { return window['go']['main']['GitSync']['AddWorktree'](repoPath, path, branch, createBranch) }
+export function RemoveWorktree(repoPath: string, path: string, force: boolean): Promise<void> { return window['go']['main']['GitSync']['RemoveWorktree'](repoPath, path, force) }
+export function SparseCheckoutList(repoPath: string): Promise<string> { return window['go']['main']['GitSync']['SparseCheckoutList'](repoPath) }
+export function SetSparseCheckout(repoPath: string, paths: string[], cone: boolean): Promise<void> { return window['go']['main']['GitSync']['SetSparseCheckout'](repoPath, paths, cone) }
+export function DisableSparseCheckout(repoPath: string): Promise<void> { return window['go']['main']['GitSync']['DisableSparseCheckout'](repoPath) }
+
+export function UndoToReflog(repoPath: string, selector: string, mode: string): Promise<string> {
+  return window['go']['main']['GitSync']['UndoToReflog'](repoPath, selector, mode)
+}
+
+export function CheckoutRemoteBranch(repoPath: string, remoteRef: string): Promise<void> {
+  return window['go']['main']['GitSync']['CheckoutRemoteBranch'](repoPath, remoteRef)
+}
+
+export function DeleteLocalBranch(repoPath: string, branch: string, force: boolean): Promise<void> {
+  return window['go']['main']['GitSync']['DeleteLocalBranch'](repoPath, branch, force)
+}
+
+export function DeleteRemoteBranch(repoPath: string, remote: string, branch: string): Promise<void> {
+  return window['go']['main']['GitSync']['DeleteRemoteBranch'](repoPath, remote, branch)
+}
+
+export function SetUpstream(repoPath: string, branch: string, upstream: string): Promise<void> {
+  return window['go']['main']['GitSync']['SetUpstream'](repoPath, branch, upstream)
 }
 
 export function Log(repoPath: string, limit: number): Promise<string> {

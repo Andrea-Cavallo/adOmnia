@@ -185,7 +185,7 @@ Il backend Go espone metodi Wails che il frontend chiama tramite bindings genera
 | `KafkaPanel.tsx` | Kafka producer/consumer UI |
 | `MockPanel.tsx` | Mock server endpoint config, hit log |
 | `ProxyPanel.tsx` | Interceptor traffic viewer, breakpoints |
-| `LoadTestPanel.tsx` | Load test config, scatter plot |
+| `LoadTestDrawer.tsx` | Load test config, scatter plot |
 | `UtilsPanel.tsx` | 20+ developer utilities |
 | `SettingsPanel.tsx` | Settings UI |
 

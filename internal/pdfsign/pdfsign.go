@@ -1,4 +1,9 @@
-package main
+// Package pdfsign implements eIDAS-grade PDF digital signatures: signing with a
+// PEM or PKCS#12/JKS credential, optional RFC 3161 TSA timestamping and LTV
+// revocation embedding, plus signature verification and certificate inspection.
+// All operations take and return JSON strings so the Wails bindings stay thin
+// and the private key never leaves this Go process.
+package pdfsign
 
 import (
 	"bytes"
@@ -20,7 +25,8 @@ import (
 	"github.com/digitorus/pdfsign/verify"
 )
 
-type PdfDigitalSignatureRequest struct {
+// Request is a PDF signing or certificate inspection request.
+type Request struct {
 	PdfBase64      string `json:"pdfBase64"`
 	CertificatePEM string `json:"certificatePem"`
 	PrivateKeyPEM  string `json:"privateKeyPem"`
@@ -54,13 +60,26 @@ type PdfDigitalSignatureRequest struct {
 	AppearanceBase64 string  `json:"appearanceBase64"`
 }
 
-type PdfDigitalSignatureResult struct {
+type signatureResult struct {
 	PdfBase64 string `json:"pdfBase64"`
 	Size      int    `json:"size"`
 }
 
-func (a *App) SignPdfDocumentBase64(reqJSON string) (string, error) {
-	var req PdfDigitalSignatureRequest
+// certificateInfo is metadata about a signing certificate. It never contains
+// private key material.
+type certificateInfo struct {
+	Subject       string `json:"subject"`
+	Issuer        string `json:"issuer"`
+	SerialNumber  string `json:"serialNumber"`
+	NotBefore     string `json:"notBefore"`
+	NotAfter      string `json:"notAfter"`
+	ChainLength   int    `json:"chainLength"`
+	HasPrivateKey bool   `json:"hasPrivateKey"`
+}
+
+// Sign signs a PDF document and returns the signed document as JSON.
+func Sign(reqJSON string) (string, error) {
+	var req Request
 	if err := json.Unmarshal([]byte(reqJSON), &req); err != nil {
 		return "", fmt.Errorf("invalid signing request: %w", err)
 	}
@@ -145,7 +164,7 @@ func (a *App) SignPdfDocumentBase64(reqJSON string) (string, error) {
 		return "", fmt.Errorf("sign PDF: %w", err)
 	}
 
-	res := PdfDigitalSignatureResult{
+	res := signatureResult{
 		PdfBase64: base64.StdEncoding.EncodeToString(out.Bytes()),
 		Size:      out.Len(),
 	}
@@ -153,7 +172,9 @@ func (a *App) SignPdfDocumentBase64(reqJSON string) (string, error) {
 	return string(data), nil
 }
 
-func (a *App) VerifyPdfSignatureBase64(pdfBase64 string) (string, error) {
+// Verify validates the signatures of a base64-encoded PDF and returns the
+// verification report as JSON.
+func Verify(pdfBase64 string) (string, error) {
 	input, err := base64.StdEncoding.DecodeString(pdfBase64)
 	if err != nil {
 		return "", fmt.Errorf("invalid PDF base64: %w", err)
@@ -167,23 +188,11 @@ func (a *App) VerifyPdfSignatureBase64(pdfBase64 string) (string, error) {
 	return string(data), nil
 }
 
-// PdfSigningCertificateInfo is metadata about a signing certificate. It never
-// contains private key material.
-type PdfSigningCertificateInfo struct {
-	Subject       string `json:"subject"`
-	Issuer        string `json:"issuer"`
-	SerialNumber  string `json:"serialNumber"`
-	NotBefore     string `json:"notBefore"`
-	NotAfter      string `json:"notAfter"`
-	ChainLength   int    `json:"chainLength"`
-	HasPrivateKey bool   `json:"hasPrivateKey"`
-}
-
-// InspectSigningCertificateBase64 resolves the signing credential (PEM or
-// keystore) and returns only the certificate metadata, so the UI can show what
-// will be used to sign without ever exposing the private key to the frontend.
-func (a *App) InspectSigningCertificateBase64(reqJSON string) (string, error) {
-	var req PdfDigitalSignatureRequest
+// InspectCertificate resolves the signing credential (PEM or keystore) and
+// returns only the certificate metadata, so the UI can show what will be used
+// to sign without ever exposing the private key to the frontend.
+func InspectCertificate(reqJSON string) (string, error) {
+	var req Request
 	if err := json.Unmarshal([]byte(reqJSON), &req); err != nil {
 		return "", fmt.Errorf("invalid inspect request: %w", err)
 	}
@@ -191,7 +200,7 @@ func (a *App) InspectSigningCertificateBase64(reqJSON string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	info := PdfSigningCertificateInfo{
+	info := certificateInfo{
 		Subject:       cred.cert.Subject.String(),
 		Issuer:        cred.cert.Issuer.String(),
 		SerialNumber:  cred.cert.SerialNumber.String(),

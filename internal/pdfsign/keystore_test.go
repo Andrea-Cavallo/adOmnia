@@ -1,4 +1,4 @@
-package main
+package pdfsign
 
 import (
 	"bytes"
@@ -49,7 +49,7 @@ func TestResolvePEMCredential(t *testing.T) {
 	}
 	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyDER})
 
-	cred, err := resolveCredential(PdfDigitalSignatureRequest{
+	cred, err := resolveCredential(Request{
 		CredentialSource: "pem",
 		CertificatePEM:   string(certPEM),
 		PrivateKeyPEM:    string(keyPEM),
@@ -77,7 +77,7 @@ func TestResolvePKCS12Credential(t *testing.T) {
 	}
 	b64 := base64.StdEncoding.EncodeToString(pfx)
 
-	cred, err := resolveCredential(PdfDigitalSignatureRequest{
+	cred, err := resolveCredential(Request{
 		CredentialSource: "keystore",
 		KeystoreType:     "p12",
 		KeystoreBase64:   b64,
@@ -93,7 +93,7 @@ func TestResolvePKCS12Credential(t *testing.T) {
 		t.Fatal("p12 serial mismatch")
 	}
 
-	if _, err := resolveCredential(PdfDigitalSignatureRequest{
+	if _, err := resolveCredential(Request{
 		CredentialSource: "keystore", KeystoreType: "p12", KeystoreBase64: b64, KeystorePassword: "wrong",
 	}); err == nil {
 		t.Fatal("expected error for wrong p12 password")
@@ -121,7 +121,7 @@ func TestResolveJKSCredential(t *testing.T) {
 	}
 	b64 := base64.StdEncoding.EncodeToString(buf.Bytes())
 
-	cred, err := resolveCredential(PdfDigitalSignatureRequest{
+	cred, err := resolveCredential(Request{
 		CredentialSource: "keystore",
 		KeystoreType:     "jks",
 		KeystoreBase64:   b64,
@@ -137,7 +137,7 @@ func TestResolveJKSCredential(t *testing.T) {
 		t.Fatalf("unexpected jks chain shape %v", cred.chain)
 	}
 
-	if _, err := resolveCredential(PdfDigitalSignatureRequest{
+	if _, err := resolveCredential(Request{
 		CredentialSource: "keystore", KeystoreType: "jks", KeystoreBase64: b64, KeystorePassword: "wrong",
 	}); err == nil {
 		t.Fatal("expected error for wrong jks password")
@@ -145,10 +145,10 @@ func TestResolveJKSCredential(t *testing.T) {
 }
 
 func TestResolveCredentialUnsupported(t *testing.T) {
-	if _, err := resolveCredential(PdfDigitalSignatureRequest{CredentialSource: "smartcard"}); err == nil {
+	if _, err := resolveCredential(Request{CredentialSource: "smartcard"}); err == nil {
 		t.Fatal("expected error for unsupported credential source")
 	}
-	if _, err := resolveCredential(PdfDigitalSignatureRequest{
+	if _, err := resolveCredential(Request{
 		CredentialSource: "keystore", KeystoreType: "unknown", KeystoreBase64: base64.StdEncoding.EncodeToString([]byte("x")),
 	}); err == nil {
 		t.Fatal("expected error for unsupported keystore type")

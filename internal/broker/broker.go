@@ -296,38 +296,6 @@ done:
 	})
 }
 
-func rabbitExchangesHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "POST only", http.StatusMethodNotAllowed)
-		return
-	}
-	var cfg RabbitConfig
-	if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
-		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
-		return
-	}
-	if cfg.URL == "" {
-		httputil.JSONError(w, "url required", 400)
-		return
-	}
-
-	conn, err := amqp.DialConfig(cfg.URL, amqp.Config{
-		Dial: amqp.DefaultDial(10 * time.Second),
-	})
-	if err != nil {
-		httputil.JSONError(w, "connect failed: "+err.Error(), 502)
-		return
-	}
-	defer conn.Close()
-
-	// RabbitMQ management API is not in amqp091-go; return basic info
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"ok":   true,
-		"note": "Connected to " + cfg.URL + ". Use the RabbitMQ Management UI for full exchange/queue listing.",
-	})
-}
-
 // ─── MQTT ─────────────────────────────────────────────────────────────────────
 
 type MQTTConfig struct {
@@ -799,7 +767,6 @@ natsDone:
 func RegisterHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/broker/rabbitmq/publish", rabbitPublishHandler)
 	mux.HandleFunc("/broker/rabbitmq/consume", rabbitConsumeHandler)
-	mux.HandleFunc("/broker/rabbitmq/exchanges", rabbitExchangesHandler)
 	mux.HandleFunc("/broker/mqtt/publish", mqttPublishHandler)
 	mux.HandleFunc("/broker/mqtt/subscribe", mqttSubscribeHandler)
 	mux.HandleFunc("/broker/redis/publish", redisPublishHandler)
