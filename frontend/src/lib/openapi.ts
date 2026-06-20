@@ -23,6 +23,7 @@ interface OpenAPIRequestBody {
 }
 
 interface OpenAPIParameter {
+  $ref?: string
   name: string
   in: 'query' | 'header' | 'path' | 'cookie' | 'body' | 'formData'
   required?: boolean
@@ -102,7 +103,9 @@ interface OpenAPISpec {
     securitySchemes?: Record<string, SecurityScheme>
     schemas?: Record<string, OpenAPISchemaObject>
     requestBodies?: Record<string, OpenAPIRequestBody>
+    parameters?: Record<string, OpenAPIParameter>
   }
+  parameters?: Record<string, OpenAPIParameter>
   definitions?: Record<string, OpenAPISchemaObject>
   tags?: Array<{ name: string; description?: string }>
 }
@@ -417,6 +420,23 @@ function mergeParameters(pathParams: OpenAPIParameter[] | undefined, opParams: O
   return [...merged.values()]
 }
 
+// resolveParameterRef hydrates a `$ref` parameter against the local components.
+// Internal refs (OpenAPI 3 `#/components/parameters/*`, Swagger 2
+// `#/parameters/*`) are resolved; external refs (URLs/files) are left as-is and
+// skipped downstream since they cannot be fetched offline.
+function resolveParameterRef(param: OpenAPIParameter, spec: OpenAPISpec): OpenAPIParameter {
+  if (!param.$ref) return param
+  const v3 = '#/components/parameters/'
+  const v2 = '#/parameters/'
+  if (param.$ref.startsWith(v3)) {
+    return spec.components?.parameters?.[param.$ref.slice(v3.length)] ?? param
+  }
+  if (param.$ref.startsWith(v2)) {
+    return spec.parameters?.[param.$ref.slice(v2.length)] ?? param
+  }
+  return param
+}
+
 function isExternalPathRefOnly(pathItem: OpenAPIPathItem): boolean {
   return Boolean(pathItem.$ref) && importableOperations(pathItem).length === 0
 }
@@ -489,7 +509,9 @@ export function parseOpenAPI(raw: string): Collection[] {
       const params: KVRow[] = []
 
       if (parameters) {
-        for (const p of parameters) {
+        for (const rawParam of parameters) {
+          const p = resolveParameterRef(rawParam, spec)
+          if (!p.name) continue // unresolved external $ref — nothing usable to import
           const row: KVRow = {
             id: uid(),
             key: p.name,
@@ -498,6 +520,8 @@ export function parseOpenAPI(raw: string): Collection[] {
           }
           if (p.in === 'query') params.push(row)
           else if (p.in === 'header') headers.push(row)
+          // path params stay in the URL ({id}) and are surfaced by the Composer
+          // at runtime via pathParams.ts; cookie params are not request-editable.
         }
       }
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { parseOpenAPI } from './openapi'
+import { openApiToCollection } from './openapiImport'
 
 describe('OpenAPI import', () => {
   it('imports a standard OpenAPI 3 YAML spec with top-level info, servers, tags, and paths', () => {
@@ -250,5 +251,69 @@ components:
       lang: 'json',
     })
     expect(JSON.parse(request.bodies[0].raw)).toEqual({ sku: 'book-1', quantity: 2 })
+  })
+
+  it('resolves local component parameter $refs into query/header rows', () => {
+    const collections = parseOpenAPI(`
+openapi: 3.0.3
+info:
+  title: Ref Params API
+  version: 1.0.0
+paths:
+  /catalogo:
+    get:
+      summary: List
+      parameters:
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: OK
+components:
+  parameters:
+    limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        default: 25
+`)
+    const request = collections[0].children[0]
+    if (request.type !== 'request') throw new Error('Expected a request')
+    expect(request.params).toEqual(expect.arrayContaining([
+      expect.objectContaining({ key: 'limit', value: '25' }),
+    ]))
+  })
+
+  it('keeps tag folders nested and recovers the API title on file import', () => {
+    const raw = `
+openapi: 3.0.0
+info:
+  title: Marketplace API
+  version: 0.0.1
+tags:
+  - name: catalogo
+  - name: stats
+paths:
+  /catalogo:
+    get:
+      tags: [catalogo]
+      summary: List catalogo
+      responses:
+        '200':
+          description: OK
+  /stats:
+    get:
+      tags: [stats]
+      summary: Show stats
+      responses:
+        '200':
+          description: OK
+`
+    const collection = openApiToCollection(raw)
+    expect(collection.name).toBe('Marketplace API')
+    expect(collection.children).toHaveLength(2)
+    expect(collection.children.every((node) => node.type === 'folder')).toBe(true)
+    expect(collection.children.map((node) => node.name)).toEqual(['catalogo', 'stats'])
   })
 })

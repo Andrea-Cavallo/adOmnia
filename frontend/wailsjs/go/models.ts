@@ -584,6 +584,37 @@ export namespace docker {
 
 }
 
+export namespace git {
+	
+	export class PullRequest {
+	    number: number;
+	    title: string;
+	    state: string;
+	    author: string;
+	    head: string;
+	    base: string;
+	    url: string;
+	    draft: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new PullRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.number = source["number"];
+	        this.title = source["title"];
+	        this.state = source["state"];
+	        this.author = source["author"];
+	        this.head = source["head"];
+	        this.base = source["base"];
+	        this.url = source["url"];
+	        this.draft = source["draft"];
+	    }
+	}
+
+}
+
 export namespace main {
 	
 	export class LogFileEntry {

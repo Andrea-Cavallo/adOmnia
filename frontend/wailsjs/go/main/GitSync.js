@@ -18,8 +18,20 @@ export function AddRemote(arg1, arg2, arg3) {
   return window['go']['main']['GitSync']['AddRemote'](arg1, arg2, arg3);
 }
 
+export function AddSubmodule(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['GitSync']['AddSubmodule'](arg1, arg2, arg3, arg4);
+}
+
+export function AddWorktree(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['GitSync']['AddWorktree'](arg1, arg2, arg3, arg4);
+}
+
 export function AmendCommit(arg1, arg2, arg3) {
   return window['go']['main']['GitSync']['AmendCommit'](arg1, arg2, arg3);
+}
+
+export function ApplyHunk(arg1, arg2, arg3) {
+  return window['go']['main']['GitSync']['ApplyHunk'](arg1, arg2, arg3);
 }
 
 export function ApplyPatch(arg1, arg2, arg3, arg4) {
@@ -46,6 +58,14 @@ export function BlameFile(arg1, arg2) {
   return window['go']['main']['GitSync']['BlameFile'](arg1, arg2);
 }
 
+export function BlameLines(arg1, arg2) {
+  return window['go']['main']['GitSync']['BlameLines'](arg1, arg2);
+}
+
+export function ChangesDiff(arg1, arg2, arg3) {
+  return window['go']['main']['GitSync']['ChangesDiff'](arg1, arg2, arg3);
+}
+
 export function CheckoutBranch(arg1, arg2) {
   return window['go']['main']['GitSync']['CheckoutBranch'](arg1, arg2);
 }
@@ -58,6 +78,10 @@ export function CheckoutConflictSide(arg1, arg2, arg3) {
   return window['go']['main']['GitSync']['CheckoutConflictSide'](arg1, arg2, arg3);
 }
 
+export function CheckoutRemoteBranch(arg1, arg2) {
+  return window['go']['main']['GitSync']['CheckoutRemoteBranch'](arg1, arg2);
+}
+
 export function CherryPick(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['GitSync']['CherryPick'](arg1, arg2, arg3, arg4, arg5);
 }
@@ -66,8 +90,16 @@ export function Clone(arg1, arg2) {
   return window['go']['main']['GitSync']['Clone'](arg1, arg2);
 }
 
+export function Commit(arg1, arg2) {
+  return window['go']['main']['GitSync']['Commit'](arg1, arg2);
+}
+
 export function CommitAll(arg1, arg2) {
   return window['go']['main']['GitSync']['CommitAll'](arg1, arg2);
+}
+
+export function CommitPaths(arg1, arg2, arg3) {
+  return window['go']['main']['GitSync']['CommitPaths'](arg1, arg2, arg3);
 }
 
 export function CompareCommits(arg1, arg2, arg3) {
@@ -114,8 +146,20 @@ export function CreateTagFromCommit(arg1, arg2, arg3, arg4, arg5, arg6) {
   return window['go']['main']['GitSync']['CreateTagFromCommit'](arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
+export function DeleteLocalBranch(arg1, arg2, arg3) {
+  return window['go']['main']['GitSync']['DeleteLocalBranch'](arg1, arg2, arg3);
+}
+
+export function DeleteRemoteBranch(arg1, arg2, arg3) {
+  return window['go']['main']['GitSync']['DeleteRemoteBranch'](arg1, arg2, arg3);
+}
+
 export function DeleteTag(arg1, arg2) {
   return window['go']['main']['GitSync']['DeleteTag'](arg1, arg2);
+}
+
+export function DisableSparseCheckout(arg1) {
+  return window['go']['main']['GitSync']['DisableSparseCheckout'](arg1);
 }
 
 export function ExtractHeadToNewBranch(arg1, arg2) {
@@ -128,6 +172,10 @@ export function Fetch(arg1) {
 
 export function FileAtCommit(arg1, arg2, arg3) {
   return window['go']['main']['GitSync']['FileAtCommit'](arg1, arg2, arg3);
+}
+
+export function FileDiff(arg1, arg2, arg3) {
+  return window['go']['main']['GitSync']['FileDiff'](arg1, arg2, arg3);
 }
 
 export function FileHistory(arg1, arg2, arg3) {
@@ -144,6 +192,10 @@ export function GenerateRevertMessage(arg1, arg2) {
 
 export function GetCommitMeta(arg1, arg2) {
   return window['go']['main']['GitSync']['GetCommitMeta'](arg1, arg2);
+}
+
+export function GetConflictFileVersions(arg1, arg2) {
+  return window['go']['main']['GitSync']['GetConflictFileVersions'](arg1, arg2);
 }
 
 export function GetFileDiff(arg1, arg2, arg3, arg4) {
@@ -166,12 +218,32 @@ export function GetWorkingTreeFileSnapshot(arg1, arg2, arg3) {
   return window['go']['main']['GitSync']['GetWorkingTreeFileSnapshot'](arg1, arg2, arg3);
 }
 
+export function GitHubCreatePR(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['main']['GitSync']['GitHubCreatePR'](arg1, arg2, arg3, arg4, arg5, arg6);
+}
+
+export function GitHubListPRs(arg1, arg2) {
+  return window['go']['main']['GitSync']['GitHubListPRs'](arg1, arg2);
+}
+
+export function GitHubValidateToken(arg1) {
+  return window['go']['main']['GitSync']['GitHubValidateToken'](arg1);
+}
+
 export function InitRepo(arg1) {
   return window['go']['main']['GitSync']['InitRepo'](arg1);
 }
 
 export function IsGitInstalled() {
   return window['go']['main']['GitSync']['IsGitInstalled']();
+}
+
+export function ListSubmodules(arg1) {
+  return window['go']['main']['GitSync']['ListSubmodules'](arg1);
+}
+
+export function ListWorktrees(arg1) {
+  return window['go']['main']['GitSync']['ListWorktrees'](arg1);
 }
 
 export function Log(arg1, arg2) {
@@ -206,6 +278,10 @@ export function RebaseOnto(arg1, arg2) {
   return window['go']['main']['GitSync']['RebaseOnto'](arg1, arg2);
 }
 
+export function Reflog(arg1, arg2) {
+  return window['go']['main']['GitSync']['Reflog'](arg1, arg2);
+}
+
 export function RemoteWebURL(arg1) {
   return window['go']['main']['GitSync']['RemoteWebURL'](arg1);
 }
@@ -216,6 +292,14 @@ export function RemoveFile(arg1, arg2) {
 
 export function RemoveRemote(arg1, arg2) {
   return window['go']['main']['GitSync']['RemoveRemote'](arg1, arg2);
+}
+
+export function RemoveSubmodule(arg1, arg2) {
+  return window['go']['main']['GitSync']['RemoveSubmodule'](arg1, arg2);
+}
+
+export function RemoveWorktree(arg1, arg2, arg3) {
+  return window['go']['main']['GitSync']['RemoveWorktree'](arg1, arg2, arg3);
 }
 
 export function ResetBranch(arg1, arg2, arg3) {
@@ -238,8 +322,20 @@ export function RevertCommit(arg1, arg2, arg3, arg4) {
   return window['go']['main']['GitSync']['RevertCommit'](arg1, arg2, arg3, arg4);
 }
 
+export function SaveConflictResolution(arg1, arg2, arg3) {
+  return window['go']['main']['GitSync']['SaveConflictResolution'](arg1, arg2, arg3);
+}
+
 export function SearchHistory(arg1, arg2) {
   return window['go']['main']['GitSync']['SearchHistory'](arg1, arg2);
+}
+
+export function SetSparseCheckout(arg1, arg2, arg3) {
+  return window['go']['main']['GitSync']['SetSparseCheckout'](arg1, arg2, arg3);
+}
+
+export function SetUpstream(arg1, arg2, arg3) {
+  return window['go']['main']['GitSync']['SetUpstream'](arg1, arg2, arg3);
 }
 
 export function Show(arg1, arg2) {
@@ -250,8 +346,16 @@ export function SkipOperation(arg1) {
   return window['go']['main']['GitSync']['SkipOperation'](arg1);
 }
 
+export function SparseCheckoutList(arg1) {
+  return window['go']['main']['GitSync']['SparseCheckoutList'](arg1);
+}
+
 export function SquashHeadIntoPrevious(arg1) {
   return window['go']['main']['GitSync']['SquashHeadIntoPrevious'](arg1);
+}
+
+export function StageAll(arg1) {
+  return window['go']['main']['GitSync']['StageAll'](arg1);
 }
 
 export function StageFile(arg1, arg2) {
@@ -266,18 +370,42 @@ export function Stash(arg1) {
   return window['go']['main']['GitSync']['Stash'](arg1);
 }
 
+export function StashApply(arg1, arg2) {
+  return window['go']['main']['GitSync']['StashApply'](arg1, arg2);
+}
+
 export function StashDrop(arg1, arg2) {
   return window['go']['main']['GitSync']['StashDrop'](arg1, arg2);
+}
+
+export function StashPaths(arg1, arg2) {
+  return window['go']['main']['GitSync']['StashPaths'](arg1, arg2);
 }
 
 export function StashPop(arg1) {
   return window['go']['main']['GitSync']['StashPop'](arg1);
 }
 
+export function StashShow(arg1, arg2) {
+  return window['go']['main']['GitSync']['StashShow'](arg1, arg2);
+}
+
 export function UndoLastCommit(arg1, arg2) {
   return window['go']['main']['GitSync']['UndoLastCommit'](arg1, arg2);
 }
 
+export function UndoToReflog(arg1, arg2, arg3) {
+  return window['go']['main']['GitSync']['UndoToReflog'](arg1, arg2, arg3);
+}
+
+export function UnstageAll(arg1) {
+  return window['go']['main']['GitSync']['UnstageAll'](arg1);
+}
+
 export function UnstageFile(arg1, arg2) {
   return window['go']['main']['GitSync']['UnstageFile'](arg1, arg2);
+}
+
+export function UpdateSubmodules(arg1, arg2) {
+  return window['go']['main']['GitSync']['UpdateSubmodules'](arg1, arg2);
 }
