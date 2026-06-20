@@ -10,30 +10,47 @@ function tryParseYaml(text: string): unknown {
   try { return parseYamlLenient(t) } catch { throw new Error('Invalid OpenAPI spec format (must be JSON or YAML)') }
 }
 
+interface OpenAPIMediaType {
+  schema?: unknown
+  example?: unknown
+  examples?: unknown
+}
+
+interface OpenAPIRequestBody {
+  $ref?: string
+  required?: boolean
+  content?: Record<string, OpenAPIMediaType>
+}
+
+interface OpenAPIParameter {
+  name: string
+  in: 'query' | 'header' | 'path' | 'cookie' | 'body' | 'formData'
+  required?: boolean
+  schema?: OpenAPISchemaObject
+  description?: string
+  example?: unknown
+  default?: unknown
+  type?: string
+  format?: string
+  enum?: unknown[]
+}
+
 interface OpenAPIOperation {
   operationId?: string
   summary?: string
   description?: string
   tags?: string[]
   security?: Array<Record<string, string[]>>
-  parameters?: Array<{
-    name: string
-    in: 'query' | 'header' | 'path' | 'cookie'
-    required?: boolean
-    schema?: { type?: string; default?: unknown }
-    description?: string
-    example?: unknown
-  }>
-  requestBody?: {
-    content?: Record<string, { schema?: unknown; example?: unknown }>
-  }
+  parameters?: OpenAPIParameter[]
+  requestBody?: OpenAPIRequestBody
+  consumes?: string[]
   responses?: Record<string, unknown>
 }
 
-type OpenAPIParameter = NonNullable<OpenAPIOperation['parameters']>[number]
 type OpenAPIPathItem = Partial<Record<HttpMethodKey, OpenAPIOperation>> & {
   $ref?: string
   parameters?: OpenAPIParameter[]
+  consumes?: string[]
 }
 type HttpMethodKey = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head' | 'options'
 
@@ -67,7 +84,8 @@ interface OpenAPISchemaObject {
 }
 
 interface OpenAPISpec {
-  openapi: string
+  openapi?: string
+  swagger?: string
   info: { title: string; version?: string; description?: string }
   servers?: Array<{
     url: string
@@ -76,42 +94,72 @@ interface OpenAPISpec {
   }>
   security?: Array<Record<string, string[]>>
   paths?: Record<string, OpenAPIPathItem>
+  host?: string
+  basePath?: string
+  schemes?: string[]
+  consumes?: string[]
   components?: {
     securitySchemes?: Record<string, SecurityScheme>
     schemas?: Record<string, OpenAPISchemaObject>
+    requestBodies?: Record<string, OpenAPIRequestBody>
   }
+  definitions?: Record<string, OpenAPISchemaObject>
   tags?: Array<{ name: string; description?: string }>
 }
 
-function resolveRef(ref: string, schemas: Record<string, OpenAPISchemaObject> | undefined): OpenAPISchemaObject | undefined {
-  if (!ref.startsWith('#/components/schemas/') || !schemas) return undefined
-  return schemas[ref.slice('#/components/schemas/'.length)]
+interface SchemaRegistry {
+  components?: Record<string, OpenAPISchemaObject>
+  definitions?: Record<string, OpenAPISchemaObject>
 }
 
-function schemaToExample(schema: OpenAPISchemaObject | undefined, schemas: Record<string, OpenAPISchemaObject> | undefined, depth = 0): unknown {
+function resolveSchemaRef(ref: string, registry: SchemaRegistry | undefined): OpenAPISchemaObject | undefined {
+  if (ref.startsWith('#/components/schemas/')) {
+    return registry?.components?.[ref.slice('#/components/schemas/'.length)]
+  }
+  if (ref.startsWith('#/definitions/')) {
+    return registry?.definitions?.[ref.slice('#/definitions/'.length)]
+  }
+  return undefined
+}
+
+function resolveRequestBodyRef(ref: string, requestBodies: Record<string, OpenAPIRequestBody> | undefined): OpenAPIRequestBody | undefined {
+  if (!ref.startsWith('#/components/requestBodies/') || !requestBodies) return undefined
+  return requestBodies[ref.slice('#/components/requestBodies/'.length)]
+}
+
+function schemaToExample(schema: OpenAPISchemaObject | undefined, registry: SchemaRegistry | undefined, depth = 0): unknown {
   if (!schema || depth > 8) return undefined
   if (schema.$ref) {
-    const resolved = resolveRef(schema.$ref, schemas)
-    return resolved ? schemaToExample(resolved, schemas, depth) : undefined
+    const resolved = resolveSchemaRef(schema.$ref, registry)
+    return resolved ? schemaToExample(resolved, registry, depth + 1) : undefined
   }
   if (schema.example !== undefined) return schema.example
   if (schema.default !== undefined) return schema.default
 
-  const merged = mergeCompositeSchema(schema, schemas, depth)
+  const merged = mergeCompositeSchema(schema, registry, depth)
   if (merged) return merged
+
+  if (schema.properties && !schema.type) {
+    const obj: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(schema.properties)) {
+      const val = schemaToExample(v, registry, depth + 1)
+      if (val !== undefined) obj[k] = val
+    }
+    return obj
+  }
 
   switch (schema.type) {
     case 'object': {
       if (!schema.properties) return {}
       const obj: Record<string, unknown> = {}
       for (const [k, v] of Object.entries(schema.properties)) {
-        const val = schemaToExample(v, schemas, depth + 1)
+        const val = schemaToExample(v, registry, depth + 1)
         if (val !== undefined) obj[k] = val
       }
       return obj
     }
     case 'array': {
-      const item = schemaToExample(schema.items, schemas, depth + 1)
+      const item = schemaToExample(schema.items, registry, depth + 1)
       return item !== undefined ? [item] : []
     }
     case 'string':
@@ -131,29 +179,82 @@ function schemaToExample(schema: OpenAPISchemaObject | undefined, schemas: Recor
   }
 }
 
-function mergeCompositeSchema(schema: OpenAPISchemaObject, schemas: Record<string, OpenAPISchemaObject> | undefined, depth: number): unknown {
+function mergeCompositeSchema(schema: OpenAPISchemaObject, registry: SchemaRegistry | undefined, depth: number): unknown {
   const composite = schema.allOf ?? schema.anyOf ?? schema.oneOf
   if (!composite?.length) return undefined
   const merged: Record<string, unknown> = {}
   for (const sub of composite) {
-    const val = schemaToExample(sub, schemas, depth + 1)
+    const val = schemaToExample(sub, registry, depth + 1)
     if (val && typeof val === 'object' && !Array.isArray(val)) Object.assign(merged, val)
   }
   return Object.keys(merged).length > 0 ? merged : undefined
 }
 
-function getExample(body: OpenAPIOperation['requestBody'], schemas?: Record<string, OpenAPISchemaObject>): string | undefined {
-  if (!body?.content) return undefined
-  for (const ct of Object.keys(body.content)) {
-    const c = body.content[ct]
-    if (c?.example) return typeof c.example === 'string' ? c.example : JSON.stringify(c.example, null, 2)
-    // Fall back to generating an example from the schema
-    if (c?.schema) {
-      const s = c.schema as OpenAPISchemaObject
-      const generated = schemaToExample(s, schemas)
-      if (generated !== undefined) return JSON.stringify(generated, null, 2)
-    }
+function exampleFromExamples(examples: unknown): unknown {
+  if (!examples || typeof examples !== 'object' || Array.isArray(examples)) return undefined
+  const first = Object.values(examples as Record<string, unknown>)[0]
+  if (first && typeof first === 'object' && !Array.isArray(first) && 'value' in first) {
+    return (first as { value?: unknown }).value
   }
+  return first
+}
+
+function stringifyBodyExample(value: unknown, lang: RequestBody['lang']): string {
+  if (typeof value === 'string') return value
+  if (lang === 'json') return JSON.stringify(value, null, 2)
+  return String(value ?? '')
+}
+
+function mediaTypePriority(contentType: string): number {
+  const ct = contentType.toLowerCase()
+  if (ct.includes('json')) return 0
+  if (ct.includes('x-www-form-urlencoded')) return 1
+  if (ct.includes('multipart/form-data')) return 2
+  if (ct.includes('xml')) return 3
+  if (ct.includes('text')) return 4
+  return 5
+}
+
+function pickContentEntry(content: Record<string, OpenAPIMediaType>): [string, OpenAPIMediaType] | undefined {
+  return Object.entries(content).sort(([a], [b]) => mediaTypePriority(a) - mediaTypePriority(b))[0]
+}
+
+function langFromContentType(contentType: string): RequestBody['lang'] {
+  const ct = contentType.toLowerCase()
+  if (ct.includes('xml')) return 'xml'
+  if (ct.includes('html')) return 'html'
+  if (ct.includes('javascript')) return 'javascript'
+  if (ct.includes('text')) return 'text'
+  return 'json'
+}
+
+function valueFromSchemaOrParam(schema: OpenAPISchemaObject | undefined, param: OpenAPIParameter | undefined, registry: SchemaRegistry): string {
+  const value = param?.example
+    ?? param?.default
+    ?? schema?.example
+    ?? schema?.default
+    ?? (schema?.enum?.length ? schema.enum[0] : undefined)
+    ?? (param?.enum?.length ? param.enum[0] : undefined)
+    ?? schemaToExample(schema, registry)
+  return value === undefined ? '' : String(value)
+}
+
+function formRowsFromSchema(schema: OpenAPISchemaObject | undefined, registry: SchemaRegistry): KVRow[] {
+  const resolved = schema?.$ref ? resolveSchemaRef(schema.$ref, registry) ?? schema : schema
+  const props = resolved?.properties ?? {}
+  return Object.entries(props).map(([key, prop]) => ({
+    id: uid(),
+    key,
+    value: valueFromSchemaOrParam(prop, undefined, registry),
+    enabled: resolved?.required?.includes(key) ?? false,
+  }))
+}
+
+function getMediaExample(media: OpenAPIMediaType, registry: SchemaRegistry): unknown {
+  if (media.example !== undefined) return media.example
+  const example = exampleFromExamples(media.examples)
+  if (example !== undefined) return example
+  if (media.schema) return schemaToExample(media.schema as OpenAPISchemaObject, registry)
   return undefined
 }
 
@@ -208,12 +309,94 @@ function resolveServerUrl(server: NonNullable<OpenAPISpec['servers']>[number]): 
   return url.replace(/\/$/, '')
 }
 
-function ctFromSchema(body: OpenAPIOperation['requestBody']): 'json' | 'xml' | 'text' {
-  if (!body?.content) return 'json'
-  const cts = Object.keys(body.content)
-  if (cts.some((ct) => ct.includes('xml'))) return 'xml'
-  if (cts.some((ct) => ct.includes('text'))) return 'text'
-  return 'json'
+function swaggerBaseUrl(spec: OpenAPISpec): string {
+  if (!spec.host) return ''
+  const scheme = spec.schemes?.[0] ?? 'https'
+  const basePath = spec.basePath && spec.basePath !== '/' ? spec.basePath : ''
+  return `${scheme}://${spec.host}${basePath}`.replace(/\/$/, '')
+}
+
+function buildBodiesFromOpenAPIRequestBody(
+  body: OpenAPIRequestBody | undefined,
+  requestBodies: Record<string, OpenAPIRequestBody> | undefined,
+  registry: SchemaRegistry,
+): RequestBody[] | undefined {
+  const resolved = body?.$ref ? resolveRequestBodyRef(body.$ref, requestBodies) : body
+  if (!resolved?.content) return undefined
+
+  const picked = pickContentEntry(resolved.content)
+  if (!picked) return undefined
+
+  const [contentType, media] = picked
+  const lower = contentType.toLowerCase()
+  const schema = media.schema as OpenAPISchemaObject | undefined
+
+  if (lower.includes('x-www-form-urlencoded') || lower.includes('multipart/form-data')) {
+    return [{
+      id: uid(),
+      name: 'Body 1',
+      type: lower.includes('multipart/form-data') ? 'formdata' : 'urlencoded',
+      raw: '',
+      lang: 'json',
+      form: formRowsFromSchema(schema, registry),
+    }]
+  }
+
+  const lang = langFromContentType(contentType)
+  const example = getMediaExample(media, registry)
+  return [{
+    id: uid(),
+    name: 'Body 1',
+    type: 'raw',
+    raw: example === undefined ? '' : stringifyBodyExample(example, lang),
+    lang,
+    form: [],
+  }]
+}
+
+function buildBodiesFromSwaggerParameters(
+  parameters: OpenAPIParameter[] | undefined,
+  consumes: string[] | undefined,
+  registry: SchemaRegistry,
+): RequestBody[] | undefined {
+  if (!parameters?.length) return undefined
+
+  const formParams = parameters.filter((param) => param.in === 'formData')
+  if (formParams.length > 0) {
+    const isMultipart = consumes?.some((ct) => ct.toLowerCase().includes('multipart/form-data')) ?? false
+    return [{
+      id: uid(),
+      name: 'Body 1',
+      type: isMultipart ? 'formdata' : 'urlencoded',
+      raw: '',
+      lang: 'json',
+      form: formParams.map((param) => ({
+        id: uid(),
+        key: param.name,
+        value: valueFromSchemaOrParam(param.schema, param, registry),
+        enabled: param.required ?? false,
+      })),
+    }]
+  }
+
+  const bodyParam = parameters.find((param) => param.in === 'body')
+  if (!bodyParam) return undefined
+
+  const contentType = consumes?.[0] ?? 'application/json'
+  const lang = langFromContentType(contentType)
+  const example = bodyParam.example
+    ?? bodyParam.schema?.example
+    ?? bodyParam.schema?.default
+    ?? schemaToExample(bodyParam.schema, registry)
+
+  return [{
+    id: uid(),
+    name: 'Body 1',
+    type: 'raw',
+    raw: example === undefined ? '' : stringifyBodyExample(example, lang),
+    lang,
+    form: [],
+  }]
 }
 
 const HTTP_METHODS: HttpMethodKey[] = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options']
@@ -255,14 +438,18 @@ function buildUnresolvedRefOperation(path: string, ref: string): OpenAPIOperatio
 export function parseOpenAPI(raw: string): Collection[] {
   const spec = tryParseYaml(raw) as OpenAPISpec
 
-  if (!spec.openapi) throw new Error('Not a valid OpenAPI spec: missing "openapi" field')
+  const isSwagger2 = typeof spec.swagger === 'string' && spec.swagger.startsWith('2')
+  if (!spec.openapi && !isSwagger2) throw new Error('Not a valid OpenAPI spec: missing "openapi" or Swagger 2.0 "swagger" field')
   if (!spec.paths) throw new Error('No paths found in OpenAPI spec')
 
   const schemes = spec.components?.securitySchemes
-  const schemas = spec.components?.schemas
+  const schemaRegistry: SchemaRegistry = {
+    components: spec.components?.schemas,
+    definitions: spec.definitions,
+  }
   const globalSecurity = spec.security
   const server = spec.servers?.[0]
-  const baseUrl = server ? resolveServerUrl(server) : ''
+  const baseUrl = isSwagger2 ? swaggerBaseUrl(spec) : (server ? resolveServerUrl(server) : '')
   // Global auth used as fallback when an operation has no security override
   const globalAuth = inferAuth(globalSecurity ?? (schemes ? [Object.fromEntries(Object.keys(schemes).map(k => [k, []]))] : undefined), schemes)
 
@@ -317,18 +504,10 @@ export function parseOpenAPI(raw: string): Collection[] {
       let bodies: RequestBody[] = [blankBody()]
       let activeBodyIdx = 0
 
-      if (op.requestBody) {
-        const ct = ctFromSchema(op.requestBody)
-        const ex = getExample(op.requestBody, schemas)
-        bodies = [{
-          id: uid(),
-          name: 'Body 1',
-          type: ex ? 'raw' : 'none',
-          raw: ex ?? '',
-          lang: ct,
-          form: [],
-        }]
-      }
+      const importedBodies = isSwagger2
+        ? buildBodiesFromSwaggerParameters(parameters, op.consumes ?? pathItem.consumes ?? spec.consumes, schemaRegistry)
+        : buildBodiesFromOpenAPIRequestBody(op.requestBody, spec.components?.requestBodies, schemaRegistry)
+      if (importedBodies) bodies = importedBodies
 
       // Collect any x- vendor extension fields so they survive a round-trip export
       const xExtensions: Record<string, unknown> = {}

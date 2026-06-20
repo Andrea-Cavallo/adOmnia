@@ -54,6 +54,10 @@ export function ReadFolderDiffFile(scanID: string, path: string, maxBytes: numbe
   return (window['go']['main']['App'] as unknown as Record<string, (a: string, b: string, c: number) => Promise<string>>)['ReadFolderDiffFile'](scanID, path, maxBytes)
 }
 
+export function ReadDroppedFiles(paths: string[]): Promise<string> {
+  return (window['go']['main']['App'] as unknown as Record<string, (a: string[]) => Promise<string>>)['ReadDroppedFiles'](paths)
+}
+
 export function SelectFolder(title: string): Promise<string> {
   return window['go']['main']['App']['SelectFolder'](title)
 }

@@ -70,6 +70,10 @@ export function OpenDevLogsFolder() {
   return window['go']['main']['App']['OpenDevLogsFolder']();
 }
 
+export function ReadDroppedFiles(arg1) {
+  return window['go']['main']['App']['ReadDroppedFiles'](arg1);
+}
+
 export function ReadFolderDiffFile(arg1, arg2, arg3) {
   return window['go']['main']['App']['ReadFolderDiffFile'](arg1, arg2, arg3);
 }

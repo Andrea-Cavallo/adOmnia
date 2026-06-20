@@ -36,6 +36,8 @@ export function LoadSettings():Promise<string>;
 
 export function OpenDevLogsFolder():Promise<void>;
 
+export function ReadDroppedFiles(arg1:Array<string>):Promise<string>;
+
 export function ReadFolderDiffFile(arg1:string,arg2:string,arg3:number):Promise<string>;
 
 export function ReadLogFile(arg1:string):Promise<string>;
