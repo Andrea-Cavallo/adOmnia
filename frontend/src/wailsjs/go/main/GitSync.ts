@@ -366,3 +366,26 @@ export function BisectReset(repoPath: string): Promise<string> {
 export function SearchHistory(repoPath: string, filtersJSON: string): Promise<string> {
   return window['go']['main']['GitSync']['SearchHistory'](repoPath, filtersJSON)
 }
+
+export interface GitHubPR {
+  number: number
+  title: string
+  state: string
+  author: string
+  head: string
+  base: string
+  url: string
+  draft: boolean
+}
+
+export function GitHubValidateToken(token: string): Promise<string> {
+  return window['go']['main']['GitSync']['GitHubValidateToken'](token)
+}
+
+export function GitHubListPRs(repoPath: string, token: string): Promise<GitHubPR[]> {
+  return window['go']['main']['GitSync']['GitHubListPRs'](repoPath, token) as Promise<GitHubPR[]>
+}
+
+export function GitHubCreatePR(repoPath: string, token: string, title: string, head: string, base: string, body: string): Promise<GitHubPR> {
+  return window['go']['main']['GitSync']['GitHubCreatePR'](repoPath, token, title, head, base, body) as Promise<GitHubPR>
+}

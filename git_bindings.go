@@ -399,3 +399,23 @@ func (g *GitSync) GetWorkingTreeFileSnapshot(repoPath, filePath, oldPath string)
 	raw, _ := json.Marshal(snapshot)
 	return string(raw), nil
 }
+
+// --- GitHub host integration (PAT) ---
+
+func (g *GitSync) GitHubValidateToken(token string) (string, error) {
+	return git.ValidateGitHubToken(token)
+}
+
+func (g *GitSync) GitHubListPRs(repoPath, token string) ([]git.PullRequest, error) {
+	if repoPath == "" {
+		repoPath = g.defaultRepoPath()
+	}
+	return git.ListGitHubPRs(repoPath, token)
+}
+
+func (g *GitSync) GitHubCreatePR(repoPath, token, title, head, base, body string) (git.PullRequest, error) {
+	if repoPath == "" {
+		repoPath = g.defaultRepoPath()
+	}
+	return git.CreateGitHubPR(repoPath, token, title, head, base, body)
+}

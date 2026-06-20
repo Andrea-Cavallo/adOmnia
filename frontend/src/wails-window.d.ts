@@ -141,6 +141,9 @@ interface WailsGoMain {
     BisectRun: (repoPath: string, command: string) => Promise<string>
     BisectReset: (repoPath: string) => Promise<string>
     SearchHistory: (repoPath: string, filtersJSON: string) => Promise<string>
+    GitHubValidateToken: (token: string) => Promise<string>
+    GitHubListPRs: (repoPath: string, token: string) => Promise<unknown>
+    GitHubCreatePR: (repoPath: string, token: string, title: string, head: string, base: string, body: string) => Promise<unknown>
   }
   MCPClient: {
     Connect: (serverConfigJSON: string) => Promise<string>
