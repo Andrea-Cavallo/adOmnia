@@ -32,6 +32,36 @@ type App struct {
 	browserDebug *BrowserDebug
 }
 
+type DroppedFileData struct {
+	Name        string `json:"name"`
+	Path        string `json:"path"`
+	Text        string `json:"text,omitempty"`
+	BytesBase64 string `json:"bytesBase64,omitempty"`
+}
+
+const maxDroppedFileBytes = 50 * 1024 * 1024
+
+func isSupportedDroppedFile(name string) bool {
+	lower := strings.ToLower(name)
+	switch {
+	case strings.HasSuffix(lower, ".class"),
+		strings.HasSuffix(lower, ".pdf"),
+		strings.HasSuffix(lower, ".har"),
+		strings.HasSuffix(lower, ".wsdl"),
+		strings.HasSuffix(lower, ".mmd"),
+		strings.HasSuffix(lower, ".mermaid"),
+		strings.HasSuffix(lower, ".tex"),
+		strings.HasSuffix(lower, ".json"),
+		strings.HasSuffix(lower, ".yaml"),
+		strings.HasSuffix(lower, ".yml"),
+		strings.HasSuffix(lower, ".adomnia"),
+		strings.HasSuffix(lower, ".bru"):
+		return true
+	default:
+		return false
+	}
+}
+
 func NewApp() *App {
 	return &App{}
 }
@@ -78,6 +108,47 @@ func (a *App) GetServerPort() int {
 
 func (a *App) GetSidecarToken() string {
 	return sidecar.Token()
+}
+
+func (a *App) ReadDroppedFiles(paths []string) (string, error) {
+	result := make([]DroppedFileData, 0, len(paths))
+	for _, rawPath := range paths {
+		path := strings.TrimSpace(rawPath)
+		if path == "" {
+			continue
+		}
+		cleaned := filepath.Clean(path)
+		info, err := os.Stat(cleaned)
+		if err != nil {
+			return "", fmt.Errorf("could not read dropped file %q: %w", filepath.Base(cleaned), err)
+		}
+		if info.IsDir() {
+			return "", fmt.Errorf("%s is a folder; drop a supported file instead", filepath.Base(cleaned))
+		}
+		if info.Size() > maxDroppedFileBytes {
+			return "", fmt.Errorf("%s is too large to import from drag and drop", filepath.Base(cleaned))
+		}
+		if !isSupportedDroppedFile(info.Name()) {
+			return "", fmt.Errorf("%s is not a supported drag-and-drop file type", filepath.Base(cleaned))
+		}
+		data, err := os.ReadFile(cleaned)
+		if err != nil {
+			return "", fmt.Errorf("could not read dropped file %q: %w", filepath.Base(cleaned), err)
+		}
+		entry := DroppedFileData{Name: filepath.Base(cleaned), Path: cleaned}
+		lower := strings.ToLower(entry.Name)
+		if strings.HasSuffix(lower, ".pdf") || strings.HasSuffix(lower, ".class") {
+			entry.BytesBase64 = base64.StdEncoding.EncodeToString(data)
+		} else {
+			entry.Text = string(data)
+		}
+		result = append(result, entry)
+	}
+	out, err := json.Marshal(result)
+	if err != nil {
+		return "", fmt.Errorf("failed to serialize dropped files: %w", err)
+	}
+	return string(out), nil
 }
 
 func (a *App) CompareFolders(left, right string, maxFileMB int64) (string, error) {

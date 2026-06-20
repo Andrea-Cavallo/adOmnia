@@ -92,6 +92,9 @@ func main() {
 			WebviewUserDataPath:               dataDir(),
 			Theme:                             windows.Dark,
 		},
+		DragAndDrop: &options.DragAndDrop{
+			EnableFileDrop: true,
+		},
 		Frameless: isAppChrome(startupWindowChrome),
 	}
 	applyPlatformOptions(appOptions)

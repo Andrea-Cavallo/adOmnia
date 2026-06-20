@@ -21,6 +21,7 @@ interface WailsGoMain {
     ClearDevLogs: () => Promise<void>
     CompareFolders: (left: string, right: string, maxFileMB: number) => Promise<string>
     ReadFolderDiffFile: (scanID: string, path: string, maxBytes: number) => Promise<string>
+    ReadDroppedFiles: (paths: string[]) => Promise<string>
     RecordFrontendLog: (level: string, message: string) => Promise<void>
     ListLogFiles: () => Promise<Array<{ name: string; size: number; modTime: string }>>
     ReadLogFile: (filename: string) => Promise<string>
@@ -183,4 +184,8 @@ interface LabOutput {
 
 interface Window {
   go: { main: WailsGoMain }
+  runtime?: {
+    OnFileDrop?: (callback: (x: number, y: number, paths: string[]) => void, useDropTarget: boolean) => void
+    OnFileDropOff?: () => void
+  }
 }
