@@ -57,6 +57,39 @@ export interface RequestAuth {
   awsSessionToken?: string
 }
 
+/** A documented response header captured from an OpenAPI spec on import. */
+export interface OpenAPIResponseHeader {
+  name: string
+  description?: string
+  example?: string
+}
+
+/** A documented response body example captured from an OpenAPI spec on import. */
+export interface OpenAPIResponseExample {
+  name: string
+  lang: RequestBody['lang']
+  raw: string
+}
+
+/** Documented response for one status code, preserved from an OpenAPI import. */
+export interface OpenAPIResponseDoc {
+  status: string
+  description?: string
+  contentType?: string
+  headers?: OpenAPIResponseHeader[]
+  examples?: OpenAPIResponseExample[]
+}
+
+/**
+ * The full security context of an imported operation. A request only *sends* one
+ * `auth`, but specs often allow alternatives (e.g. OAuth2 OR ApiKey) with several
+ * flows and scopes — this keeps all of them so nothing is lost on round-trip.
+ */
+export interface OpenAPISecurityDoc {
+  schemes: Record<string, unknown>
+  requirements?: Array<Record<string, string[]>>
+}
+
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS' | 'CONNECT' | 'TRACE' | 'WS' | 'SOAP'
 
 export interface RequestItem {
@@ -78,6 +111,8 @@ export interface RequestItem {
   followRedirects?: boolean
   _openapiPath?: string
   _xExtensions?: Record<string, unknown>
+  _openapiResponses?: OpenAPIResponseDoc[]
+  _openapiSecurity?: OpenAPISecurityDoc
   assertions?: RequestAssertion[]
 }
 
