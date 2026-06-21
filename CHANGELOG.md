@@ -12,6 +12,9 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - **AI pull request drafts:** generate a reviewable PR title and Markdown description from the actual base-to-branch diff using the AI provider configured in adOmnia.
 - **Repository terminal:** run shell and Git commands with the active repository as CWD, inspect output and exit status, and refresh the Git graph/status immediately after every command.
 
+### Changed
+- **Request editor hierarchy:** primary request sections now use full active tabs, body examples use selectable tab-cards with rename/duplicate/delete actions, and payload formats use a distinct segmented control with clearer labels and keyboard focus states.
+
 ## [0.4.0] - 2026-06-20
 
 ### Added

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import type { MutableRefObject } from 'react'
-import { ChevronDown, ChevronRight, ChevronUp, AlertCircle, CheckCircle2, GitBranch, Database, Loader2, RefreshCw, Search, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, ChevronUp, AlertCircle, CheckCircle2, GitBranch, Database, Loader2, RefreshCw, Search, X, Braces } from 'lucide-react'
 import type { RequestBody } from '@/lib/types'
 import { KVEditor } from './KVEditor'
 import { JsonEditor } from '@/components/ui/JsonEditor'
@@ -80,16 +80,16 @@ function gqlTypeString(t: GQLTypeRef): string {
 }
 
 const ALL_BODY_TYPES = [
-  { id: 'json', label: 'JSON' },
-  { id: 'raw', label: 'raw' },
-  { id: 'urlencoded', label: 'form-urlencoded' },
-  { id: 'formdata', label: 'form-data' },
-  { id: 'graphql', label: 'GraphQL' },
+  { id: 'json', label: 'JSON', title: 'JSON payload' },
+  { id: 'raw', label: 'Raw', title: 'Raw text payload' },
+  { id: 'urlencoded', label: 'URL Encoded', title: 'application/x-www-form-urlencoded' },
+  { id: 'formdata', label: 'Form Data', title: 'multipart/form-data' },
+  { id: 'graphql', label: 'GraphQL', title: 'GraphQL query and variables' },
 ] as const
 
 const WS_BODY_TYPES = [
-  { id: 'json', label: 'JSON' },
-  { id: 'raw', label: 'raw' },
+  { id: 'json', label: 'JSON', title: 'JSON payload' },
+  { id: 'raw', label: 'Raw', title: 'Raw text payload' },
 ] as const
 
 type BodyTypeId = 'json' | 'raw' | 'urlencoded' | 'formdata' | 'graphql'
@@ -239,18 +239,18 @@ function JsonRawEditor({ body, onChange, search }: { body: RequestBody; onChange
   }
 
   return (
-    <div className="flex flex-col gap-2 px-2 pb-2 flex-1 min-h-0">
-      <div className="flex items-center gap-2">
+    <div className="flex min-h-0 flex-1 flex-col gap-2 px-3 pb-3">
+      <div className="-mx-3 flex min-h-10 items-center gap-2 border-b border-border-2 bg-surface-0/70 px-3">
         <button
           onClick={prettify}
-          className="px-2 py-0.5 text-[10px] text-accent hover:text-accent-light rounded hover:bg-accent/10 transition-colors"
+          className="rounded px-2 py-1 text-[10.5px] font-medium text-accent outline-none transition-colors hover:bg-accent/10 hover:text-accent-light focus-visible:ring-2 focus-visible:ring-accent"
         >
-          Prettify
+          Pretty
         </button>
         <button
           onClick={() => setShowGraph(true)}
           disabled={hasErrors || !hasContent}
-          className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] text-text-3 hover:text-accent rounded hover:bg-accent/10 transition-colors disabled:opacity-40 disabled:hover:text-text-3"
+          className="inline-flex items-center gap-1 rounded px-2 py-1 text-[10.5px] font-medium text-text-2 outline-none transition-colors hover:bg-accent/10 hover:text-accent focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-40 disabled:hover:text-text-3"
           title="Open JSON graph"
         >
           <GitBranch size={11} /> Graph
@@ -259,6 +259,7 @@ function JsonRawEditor({ body, onChange, search }: { body: RequestBody; onChange
           ? <AlertCircle size={12} className="text-error" />
           : hasContent && <CheckCircle2 size={12} className="text-success" />
         }
+        {!hasErrors && hasContent && <span className="text-[10px] font-medium text-success">Valid JSON</span>}
         {hasErrors && (
           <span className="text-[10px] font-mono text-error">
             {diagnostics.length} {diagnostics.length === 1 ? 'issue' : 'issues'}
@@ -625,22 +626,37 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
   }
 
   return (
-    <div className="flex flex-col flex-1 pt-1 min-h-0">
-      <div className="flex items-center gap-0.5 px-2 pb-1 flex-wrap">
-        {BODY_TYPES.map(t => (
-          <button
-            key={t.id}
-            onClick={() => handleTypeChange(t.id)}
-            className={cn(
-              'px-2 py-1 text-xs rounded transition-colors',
-              activeType === t.id
-                ? 'bg-accent/20 text-accent-light border border-accent/40'
-                : 'text-text-3 hover:text-text-1 border border-transparent'
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
+    <div className="flex min-h-0 flex-1 flex-col bg-surface-0">
+      <section className="flex flex-wrap items-end justify-between gap-3 border-b-2 border-border-2 bg-surface-1 px-3 py-3">
+        <div className="min-w-0">
+          <div className="mb-2">
+            <h3 className="text-[11.5px] font-semibold text-text-1">Body format</h3>
+            <p className="mt-0.5 text-[10px] text-text-3">Choose the technical payload representation</p>
+          </div>
+          <div role="radiogroup" aria-label="Body format" className="inline-flex max-w-full flex-wrap gap-1 rounded-lg border border-border-2 bg-surface-0 p-1 shadow-inner">
+            {BODY_TYPES.map((type) => {
+              const active = activeType === type.id
+              return (
+                <button
+                  key={type.id}
+                  onClick={() => handleTypeChange(type.id)}
+                  title={type.title}
+                  role="radio"
+                  aria-checked={active}
+                  className={cn(
+                    'inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-[11px] font-medium outline-none transition-all focus-visible:ring-2 focus-visible:ring-accent',
+                    active
+                      ? 'border-accent/70 bg-accent/15 text-text-1 shadow-[0_0_0_1px_rgba(34,211,238,.08)]'
+                      : 'border-transparent text-text-2 hover:border-border-2 hover:bg-surface-2 hover:text-text-1',
+                  )}
+                >
+                  {type.id === 'json' && <Braces size={12} className={active ? 'text-accent' : 'text-text-3'} />}
+                  {type.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
         <BodyFindBar
           open={searchOpen}
           query={search.query}
@@ -653,7 +669,7 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
           onNext={nextMatch}
           onClose={() => setSearchOpen(false)}
         />
-      </div>
+      </section>
 
       {body.type === 'none' && (
         <p className="px-3 py-4 text-xs text-text-4 italic">This request has no body.</p>
