@@ -18,6 +18,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
+	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -71,6 +72,13 @@ func main() {
 		OnStartup:  app.OnStartup,
 		OnDomReady: app.OnDomReady,
 		OnShutdown: app.OnShutdown,
+		// Only one instance may hold the bbolt lock. Without this, a second
+		// launch opens with no database access and shows an empty workspace,
+		// which looks like total data loss. Focus the running window instead.
+		SingleInstanceLock: &options.SingleInstanceLock{
+			UniqueId:               "com.adomnia.app.single-instance",
+			OnSecondInstanceLaunch: app.onSecondInstanceLaunch,
+		},
 		Bind: []interface{}{
 			app,
 			browserDebug,
@@ -103,6 +111,19 @@ func main() {
 	if err != nil {
 		log.Fatal("[app] ", err)
 	}
+}
+
+// onSecondInstanceLaunch fires in the already-running instance when the user
+// tries to open a second adOmnia. We bring the existing window to the front
+// rather than letting a second process start without database access.
+func (a *App) onSecondInstanceLaunch(_ options.SecondInstanceData) {
+	if a.ctx == nil {
+		return
+	}
+	wailsRuntime.WindowUnminimise(a.ctx)
+	wailsRuntime.Show(a.ctx)
+	wailsRuntime.WindowSetAlwaysOnTop(a.ctx, true)
+	wailsRuntime.WindowSetAlwaysOnTop(a.ctx, false)
 }
 
 func dataDir() string {
