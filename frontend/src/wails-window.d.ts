@@ -144,6 +144,11 @@ interface WailsGoMain {
     GitHubValidateToken: (token: string) => Promise<string>
     GitHubListPRs: (repoPath: string, token: string) => Promise<unknown>
     GitHubCreatePR: (repoPath: string, token: string, title: string, head: string, base: string, body: string) => Promise<unknown>
+    HostValidateToken: (repoPath: string, accountJSON: string, token: string) => Promise<string>
+    HostListPRs: (repoPath: string, accountJSON: string, token: string) => Promise<unknown>
+    HostCreatePR: (repoPath: string, accountJSON: string, token: string, title: string, head: string, base: string, body: string) => Promise<unknown>
+    HostPush: (repoPath: string, accountJSON: string, token: string, branch: string) => Promise<void>
+    RunTerminalCommand: (repoPath: string, command: string) => Promise<string>
   }
   MCPClient: {
     Connect: (serverConfigJSON: string) => Promise<string>

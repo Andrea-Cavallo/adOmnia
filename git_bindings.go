@@ -419,3 +419,59 @@ func (g *GitSync) GitHubCreatePR(repoPath, token, title, head, base, body string
 	}
 	return git.CreateGitHubPR(repoPath, token, title, head, base, body)
 }
+
+func (g *GitSync) HostValidateToken(repoPath, accountJSON, token string) (string, error) {
+	if repoPath == "" {
+		repoPath = g.defaultRepoPath()
+	}
+	var account git.HostAccount
+	if err := json.Unmarshal([]byte(accountJSON), &account); err != nil {
+		return "", fmt.Errorf("invalid host account: %w", err)
+	}
+	return git.ValidateHostToken(repoPath, account, token)
+}
+
+func (g *GitSync) HostListPRs(repoPath, accountJSON, token string) ([]git.PullRequest, error) {
+	if repoPath == "" {
+		repoPath = g.defaultRepoPath()
+	}
+	var account git.HostAccount
+	if err := json.Unmarshal([]byte(accountJSON), &account); err != nil {
+		return nil, fmt.Errorf("invalid host account: %w", err)
+	}
+	return git.ListHostPRs(repoPath, account, token)
+}
+
+func (g *GitSync) HostCreatePR(repoPath, accountJSON, token, title, head, base, body string) (git.PullRequest, error) {
+	if repoPath == "" {
+		repoPath = g.defaultRepoPath()
+	}
+	var account git.HostAccount
+	if err := json.Unmarshal([]byte(accountJSON), &account); err != nil {
+		return git.PullRequest{}, fmt.Errorf("invalid host account: %w", err)
+	}
+	return git.CreateHostPR(repoPath, account, token, title, head, base, body)
+}
+
+func (g *GitSync) HostPush(repoPath, accountJSON, token, branch string) error {
+	if repoPath == "" {
+		repoPath = g.defaultRepoPath()
+	}
+	var account git.HostAccount
+	if err := json.Unmarshal([]byte(accountJSON), &account); err != nil {
+		return fmt.Errorf("invalid host account: %w", err)
+	}
+	return git.PushWithHostAccount(repoPath, branch, account, token)
+}
+
+func (g *GitSync) RunTerminalCommand(repoPath, command string) (string, error) {
+	if repoPath == "" {
+		repoPath = g.defaultRepoPath()
+	}
+	result, err := git.RunTerminalCommand(repoPath, command)
+	if err != nil {
+		return "", err
+	}
+	raw, _ := json.Marshal(result)
+	return string(raw), nil
+}

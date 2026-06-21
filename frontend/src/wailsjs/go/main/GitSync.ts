@@ -389,3 +389,27 @@ export function GitHubListPRs(repoPath: string, token: string): Promise<GitHubPR
 export function GitHubCreatePR(repoPath: string, token: string, title: string, head: string, base: string, body: string): Promise<GitHubPR> {
   return window['go']['main']['GitSync']['GitHubCreatePR'](repoPath, token, title, head, base, body) as Promise<GitHubPR>
 }
+
+export interface HostAccount { provider: 'github' | 'gitlab' | 'bitbucket' | 'azure'; baseURL: string; username: string }
+
+export function HostValidateToken(repoPath: string, account: HostAccount, token: string): Promise<string> {
+  return window['go']['main']['GitSync']['HostValidateToken'](repoPath, JSON.stringify(account), token)
+}
+
+export function HostListPRs(repoPath: string, account: HostAccount, token: string): Promise<GitHubPR[]> {
+  return window['go']['main']['GitSync']['HostListPRs'](repoPath, JSON.stringify(account), token) as Promise<GitHubPR[]>
+}
+
+export function HostCreatePR(repoPath: string, account: HostAccount, token: string, title: string, head: string, base: string, body: string): Promise<GitHubPR> {
+  return window['go']['main']['GitSync']['HostCreatePR'](repoPath, JSON.stringify(account), token, title, head, base, body) as Promise<GitHubPR>
+}
+
+export function HostPush(repoPath: string, account: HostAccount, token: string, branch: string): Promise<void> {
+  return window['go']['main']['GitSync']['HostPush'](repoPath, JSON.stringify(account), token, branch)
+}
+
+export interface TerminalResult { command: string; output: string; exitCode: number }
+
+export async function RunTerminalCommand(repoPath: string, command: string): Promise<TerminalResult> {
+  return JSON.parse(await window['go']['main']['GitSync']['RunTerminalCommand'](repoPath, command)) as TerminalResult
+}
