@@ -27,6 +27,7 @@ import {
 } from 'lucide-react'
 import * as GitSync from '@/wailsjs/go/main/GitSync'
 import { cn } from '@/lib/utils'
+import { ResizeHandle } from '@/components/ui/ResizeHandle'
 import { safeSelectFolder } from '@/lib/fileUtils'
 import { addRepo, loadLastRepo, loadPinnedBranches, loadRepos, removeRepo, saveLastRepo, toggleBranchPin, toggleRepoPin, type SavedRepo } from '@/lib/gitRepos'
 import { GitCompareTab } from './GitCompareTab'
@@ -110,6 +111,41 @@ type GitDragPayload = { type: 'branch'; name: string } | { type: 'commit'; hash:
 
 const emptyStatus: GitStatus = { branch: '', dirty: false, aheadCount: 0, behindCount: 0, modified: [], untracked: [] }
 const EMPTY_TREE_REF = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
+
+// Resizable columns for the Sync tab — same grip + clamp behavior as the API
+// Workspace, Markdown Notes, and LaTeX Studio. Widths persist across sessions.
+type GitColumnKey = 'sidebar' | 'commitPanel'
+type GitColumnWidths = Record<GitColumnKey, number>
+
+const GIT_COLUMNS_KEY = 'adomnia.gitsync.columns'
+
+const DEFAULT_GIT_COLUMN_WIDTHS: GitColumnWidths = {
+  sidebar: 256,
+  commitPanel: 320,
+}
+
+const GIT_COLUMN_LIMITS: Record<GitColumnKey, { min: number; maxRatio: number }> = {
+  sidebar: { min: 192, maxRatio: 0.42 },
+  commitPanel: { min: 256, maxRatio: 0.48 },
+}
+
+function clampGitColumnWidth(key: GitColumnKey, width: number): number {
+  const limit = GIT_COLUMN_LIMITS[key]
+  return Math.max(limit.min, Math.min(width, Math.round(window.innerWidth * limit.maxRatio)))
+}
+
+function loadGitColumnWidths(): GitColumnWidths {
+  try {
+    const raw = window.localStorage.getItem(GIT_COLUMNS_KEY)
+    const parsed = raw ? (JSON.parse(raw) as Partial<GitColumnWidths>) : {}
+    return {
+      sidebar: clampGitColumnWidth('sidebar', parsed.sidebar ?? DEFAULT_GIT_COLUMN_WIDTHS.sidebar),
+      commitPanel: clampGitColumnWidth('commitPanel', parsed.commitPanel ?? DEFAULT_GIT_COLUMN_WIDTHS.commitPanel),
+    }
+  } catch {
+    return { ...DEFAULT_GIT_COLUMN_WIDTHS }
+  }
+}
 
 function hasGitSyncBinding(): boolean {
   const w = window as typeof window & { go?: { main?: { GitSync?: unknown } } }
@@ -251,6 +287,8 @@ export function GitSyncPanel() {
   const [graphViewportHeight, setGraphViewportHeight] = useState(600)
   const graphScrollRef = useRef<HTMLDivElement>(null)
   const loadingMoreRef = useRef(false)
+  const [columnWidths, setColumnWidths] = useState<GitColumnWidths>(() => loadGitColumnWidths())
+  const columnResizeRef = useRef<{ key: GitColumnKey; startX: number; startWidth: number; direction: 1 | -1 } | null>(null)
 
   const status = overview?.status ?? emptyStatus
   const selectedCommit = useMemo(
@@ -344,6 +382,35 @@ export function GitSyncPanel() {
       })
     return () => { cancelled = true }
   }, [repoPath, selectedCommit, selectedCommitBaseRef])
+
+  useEffect(() => {
+    try { window.localStorage.setItem(GIT_COLUMNS_KEY, JSON.stringify(columnWidths)) } catch { /* persistence is best-effort */ }
+  }, [columnWidths])
+
+  const startColumnResize = useCallback((key: GitColumnKey, direction: 1 | -1) => (event: React.MouseEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    columnResizeRef.current = { key, startX: event.clientX, startWidth: columnWidths[key], direction }
+
+    const handleMove = (moveEvent: MouseEvent) => {
+      const drag = columnResizeRef.current
+      if (!drag) return
+      const nextWidth = clampGitColumnWidth(drag.key, drag.startWidth + (moveEvent.clientX - drag.startX) * drag.direction)
+      setColumnWidths((current) => ({ ...current, [drag.key]: nextWidth }))
+    }
+
+    const handleUp = () => {
+      columnResizeRef.current = null
+      document.removeEventListener('mousemove', handleMove)
+      document.removeEventListener('mouseup', handleUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+
+    document.body.style.cursor = 'ew-resize'
+    document.body.style.userSelect = 'none'
+    document.addEventListener('mousemove', handleMove)
+    document.addEventListener('mouseup', handleUp)
+  }, [columnWidths])
 
   const clearFeedback = () => { setError(''); setInfo('') }
 
@@ -780,8 +847,8 @@ export function GitSyncPanel() {
         </div>
       )}
 
-      <div className="grid min-h-0 flex-1 grid-cols-[256px_minmax(0,1fr)_320px]">
-        <aside className="min-h-0 overflow-y-auto border-r border-border-1 bg-surface-1">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <aside style={{ width: columnWidths.sidebar }} className="min-h-0 shrink-0 overflow-y-auto border-r border-border-1 bg-surface-1">
           <div className="border-b border-border-1 p-3">
             <div className="mb-2 flex items-center justify-between">
               <div className="text-[10px] font-semibold uppercase tracking-wider text-text-4">Workspaces</div>
@@ -920,7 +987,9 @@ export function GitSyncPanel() {
           </nav>
         </aside>
 
-        <main className="flex min-h-0 flex-col overflow-hidden">
+        <ResizeHandle label="Resize Git sidebar" onMouseDown={startColumnResize('sidebar', 1)} withLine={false} />
+
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <HistorySearchBar repoPath={repoPath} onResults={setSearchResults} setError={setError} />
           <div className="grid h-10 shrink-0 items-center border-b border-border-1 bg-surface-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-text-4" style={graphGridStyle}>
             <span>Graph</span><span>Commit</span>
@@ -1031,7 +1100,9 @@ export function GitSyncPanel() {
           </section>
         </main>
 
-        <aside className="min-h-0 overflow-y-auto border-l border-border-1 bg-surface-1">
+        <ResizeHandle label="Resize Git commit panel" onMouseDown={startColumnResize('commitPanel', -1)} withLine={false} />
+
+        <aside style={{ width: columnWidths.commitPanel }} className="min-h-0 shrink-0 overflow-y-auto border-l border-border-1 bg-surface-1">
           <div className="border-b border-border-1 p-3">
             <div className="mb-2 flex items-center justify-between">
               <div className="text-[10px] font-semibold uppercase tracking-wider text-text-4">Commit</div>
