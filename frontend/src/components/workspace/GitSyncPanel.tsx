@@ -1020,7 +1020,7 @@ export function GitSyncPanel() {
               >
                 <GitCommitGraph layout={graphLayout.rows[index]} width={graphColumnWidth} />
                 <div className="min-w-0 py-2.5">
-                  <div className="truncate text-[12px] font-semibold leading-5 text-text-1">{commit.message}</div>
+                  <div className="truncate text-[12px] font-semibold leading-5 text-text-1" title={commit.message}>{commit.message}</div>
                   <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
                     <span className="min-w-0 max-w-[180px] truncate text-[10px] text-text-3">{commit.author}</span>
                     <code className="rounded bg-surface-0 px-1.5 py-0.5 text-[10px] text-accent">{commit.hash}</code>
@@ -1044,9 +1044,9 @@ export function GitSyncPanel() {
             {selectedCommit ? (
               <div className="grid h-full grid-cols-[minmax(240px,.75fr)_minmax(340px,1.25fr)]">
                 <div className="min-w-0 overflow-y-auto border-r border-border-1 p-3">
-                  <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-text-1">
-                    {selectedCommit.parents.length > 1 ? <GitMerge size={15} className="text-warning" /> : <GitCommit size={15} className="text-accent" />}
-                    <span className="truncate">{selectedCommit.message}</span>
+                  <div className="mb-3 flex items-start gap-2 text-sm font-semibold text-text-1">
+                    {selectedCommit.parents.length > 1 ? <GitMerge size={15} className="mt-0.5 shrink-0 text-warning" /> : <GitCommit size={15} className="mt-0.5 shrink-0 text-accent" />}
+                    <span className="min-w-0 break-words" title={selectedCommit.message}>{selectedCommit.message}</span>
                   </div>
                   <div className="grid gap-2 text-xs">
                     <div className="rounded border border-border-1 bg-surface-0 p-2.5">

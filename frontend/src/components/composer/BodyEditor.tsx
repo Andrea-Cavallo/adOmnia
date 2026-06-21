@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import type { MutableRefObject } from 'react'
-import { ChevronDown, ChevronRight, ChevronUp, AlertCircle, CheckCircle2, GitBranch, Database, Loader2, RefreshCw, Search, X, Braces } from 'lucide-react'
+import { ChevronDown, ChevronRight, ChevronUp, AlertCircle, CheckCircle2, GitBranch, Database, Loader2, RefreshCw, Search, X, Braces, FileText, Link2, Files, Share2 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import type { RequestBody } from '@/lib/types'
 import { KVEditor } from './KVEditor'
 import { JsonEditor } from '@/components/ui/JsonEditor'
@@ -93,6 +94,29 @@ const WS_BODY_TYPES = [
 ] as const
 
 type BodyTypeId = 'json' | 'raw' | 'urlencoded' | 'formdata' | 'graphql'
+
+const BODY_ICONS: Record<BodyTypeId, LucideIcon> = {
+  json: Braces,
+  raw: FileText,
+  urlencoded: Link2,
+  formdata: Files,
+  graphql: Share2,
+}
+
+// Live Content-Type the request will actually send, shown next to the selector.
+function contentTypeFor(activeType: BodyTypeId, lang?: string): string {
+  switch (activeType) {
+    case 'json': return 'application/json'
+    case 'urlencoded': return 'application/x-www-form-urlencoded'
+    case 'formdata': return 'multipart/form-data'
+    case 'graphql': return 'application/json'
+    case 'raw':
+      return lang === 'xml' ? 'application/xml'
+        : lang === 'html' ? 'text/html'
+        : lang === 'javascript' ? 'application/javascript'
+        : 'text/plain'
+  }
+}
 
 const RAW_LANGUAGES = [
   { id: 'xml', label: 'XML' },
@@ -627,15 +651,12 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-surface-0">
-      <section className="flex flex-wrap items-end justify-between gap-3 border-b-2 border-border-2 bg-surface-1 px-3 py-3">
-        <div className="min-w-0">
-          <div className="mb-2">
-            <h3 className="text-[11.5px] font-semibold text-text-1">Body format</h3>
-            <p className="mt-0.5 text-[10px] text-text-3">Choose the technical payload representation</p>
-          </div>
-          <div role="radiogroup" aria-label="Body format" className="inline-flex max-w-full flex-wrap gap-1 rounded-lg border border-border-2 bg-surface-0 p-1 shadow-inner">
+      <section className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-border-2 bg-surface-1 px-3 py-2.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+          <div role="radiogroup" aria-label="Body format" className="inline-flex max-w-full flex-wrap items-center gap-0.5 rounded-lg bg-surface-0 p-1 ring-1 ring-inset ring-border-2">
             {BODY_TYPES.map((type) => {
               const active = activeType === type.id
+              const Icon = BODY_ICONS[type.id]
               return (
                 <button
                   key={type.id}
@@ -644,18 +665,27 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
                   role="radio"
                   aria-checked={active}
                   className={cn(
-                    'inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-[11px] font-medium outline-none transition-all focus-visible:ring-2 focus-visible:ring-accent',
+                    'group inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[11px] font-medium outline-none transition-all duration-150 focus-visible:ring-2 focus-visible:ring-accent',
                     active
-                      ? 'border-accent/70 bg-accent/15 text-text-1 shadow-[0_0_0_1px_rgba(34,211,238,.08)]'
-                      : 'border-transparent text-text-2 hover:border-border-2 hover:bg-surface-2 hover:text-text-1',
+                      ? 'bg-accent text-white shadow-[0_2px_10px_-2px_var(--color-accent-glow)]'
+                      : 'text-text-3 hover:bg-surface-2 hover:text-text-1',
                   )}
                 >
-                  {type.id === 'json' && <Braces size={12} className={active ? 'text-accent' : 'text-text-3'} />}
+                  <Icon size={12} className={active ? 'text-white/90' : 'text-text-4 group-hover:text-text-2'} />
                   {type.label}
                 </button>
               )
             })}
           </div>
+          {body.type !== 'none' && (
+            <span
+              title="Content-Type this request will send"
+              className="hidden items-center gap-1.5 rounded-md border border-border-2 bg-surface-0 px-2 py-1 font-mono text-[10px] leading-none text-text-3 sm:inline-flex"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+              {contentTypeFor(activeType, body.lang)}
+            </span>
+          )}
         </div>
         <BodyFindBar
           open={searchOpen}
