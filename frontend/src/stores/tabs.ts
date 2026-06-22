@@ -352,6 +352,7 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     const newTab: Tab = {
       id: uid(),
       request: newRequest,
+      collectionId: src.collectionId,
       workspaceId: src.workspaceId ?? activeWorkspaceId(),
       dirty: true,
       response: null,
