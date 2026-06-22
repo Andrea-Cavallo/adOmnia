@@ -45,7 +45,7 @@ interface CollectionTreeProps {
   onAddFolder: (collectionId: string, parentId: string | null, name: string) => void
   onDuplicateRequest: (collectionId: string, request: RequestItem) => void
   onDuplicateNode: (collectionId: string, nodeId: string) => TreeNode | null
-  onAddRequestToFolder: (collectionId: string, parentId: string | null, method?: HttpMethod) => void
+  onAddRequestToFolder: (collectionId: string, parentId: string | null, method?: HttpMethod) => string | null
   onImportCollection: (collection: Collection) => void
   workspaceTargets: Array<{ id: string; name: string }>
   onMoveCollectionToWorkspace: (collectionId: string, workspaceId: string) => void
@@ -899,7 +899,7 @@ export function CollectionTree({
               <MenuButton onClick={() => { setEditingId(context.node.id); setContext(null) }}><Copy size={12} /> Rename</MenuButton>
               <MenuButton onClick={() => { onDuplicateNode(context.collectionId, context.node.id); setContext(null) }}><Copy size={12} /> Duplicate</MenuButton>
               <MenuButton onClick={() => { setFolderPrompt({ collectionId: context.collectionId, parentId: context.node.id }); setContext(null) }}><FolderPlus size={12} /> New Subfolder</MenuButton>
-              <MenuButton onClick={() => { onAddRequestToFolder(context.collectionId, context.node.id); setContext(null) }}><Plus size={12} /> New Request</MenuButton>
+              <MenuButton onClick={() => { onAddRequestToFolder(context.collectionId, context.node.id); setOpenIds((s) => { const n = new Set(s); n.add(context.node.id); return n }); setContext(null) }}><Plus size={12} /> New Request</MenuButton>
               {contextExportMenu(context)}
               <MenuButton danger onClick={() => { setDeleteTarget(context); setContext(null) }}><Trash2 size={12} /> Delete</MenuButton>
             </>
