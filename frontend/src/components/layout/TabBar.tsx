@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { Plus, X, ChevronRight, ChevronLeft, Copy } from 'lucide-react'
+import { Plus, X, ChevronRight, ChevronLeft, Copy, Pencil } from 'lucide-react'
 import type { Tab } from '@/lib/types'
 import type { TabDropPosition } from '@/stores/tabs'
 import { cn } from '@/lib/utils'
@@ -15,6 +15,7 @@ interface TabBarProps {
   onReorder: (fromId: string, toId: string, position: TabDropPosition) => void
   onNewTab: () => void
   onDuplicate: (id: string) => void
+  onRenameTab: (id: string, name: string) => void
 }
 
 const METHOD_COLORS: Record<string, string> = {
@@ -35,7 +36,7 @@ interface ContextMenuState {
 }
 
 const MENU_W = 180
-const MENU_H = 232
+const MENU_H = 260
 
 function clampToViewport(x: number, y: number): { left: number; top: number } {
   const vw = window.innerWidth
@@ -46,10 +47,13 @@ function clampToViewport(x: number, y: number): { left: number; top: number } {
   }
 }
 
-export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, onCloseToLeft, onReorder, onNewTab, onDuplicate }: TabBarProps) {
+export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, onCloseToLeft, onReorder, onNewTab, onDuplicate, onRenameTab }: TabBarProps) {
   const [ctx, setCtx] = useState<ContextMenuState>({ open: false, x: 0, y: 0, tabId: '' })
   const [draggingTabId, setDraggingTabId] = useState<string | null>(null)
   const [dropTarget, setDropTarget] = useState<{ tabId: string; position: TabDropPosition } | null>(null)
+  const [renamingTabId, setRenamingTabId] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState('')
+  const renameInputRef = useRef<HTMLInputElement>(null)
   const draggingTabRef = useRef<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -73,6 +77,22 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
       document.removeEventListener('keydown', keyHandler)
     }
   }, [ctx.open, closeCtx])
+
+  useEffect(() => {
+    if (renamingTabId) renameInputRef.current?.select()
+  }, [renamingTabId])
+
+  const startRename = useCallback((tabId: string) => {
+    const tab = tabs.find((t) => t.id === tabId)
+    if (!tab) return
+    setRenameValue(tab.request.name || '')
+    setRenamingTabId(tabId)
+  }, [tabs])
+
+  const commitRename = useCallback(() => {
+    if (renamingTabId && renameValue.trim()) onRenameTab(renamingTabId, renameValue.trim())
+    setRenamingTabId(null)
+  }, [renamingTabId, renameValue, onRenameTab])
 
   const ctxTabIdx = tabs.findIndex((t) => t.id === ctx.tabId)
   const pos = clampToViewport(ctx.x, ctx.y)
@@ -134,9 +154,24 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
             <span className={cn('text-[9px] font-bold shrink-0', METHOD_COLORS[tab.request.method] ?? 'text-text-3')}>
               {tab.request.method}
             </span>
-            <span className="truncate flex-1">
-              {tab.request.name || tab.request.url || 'Untitled'}
-            </span>
+            {renamingTabId === tab.id ? (
+              <input
+                ref={renameInputRef}
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+                onBlur={commitRename}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); commitRename() }
+                  if (e.key === 'Escape') { e.preventDefault(); setRenamingTabId(null) }
+                }}
+                className="min-w-0 flex-1 truncate bg-transparent outline-none border-b border-accent text-xs text-text-1"
+              />
+            ) : (
+              <span className="truncate flex-1">
+                {tab.request.name || tab.request.url || 'Untitled'}
+              </span>
+            )}
             {tab.dirty && (
               <span
                 className="w-2 h-2 rounded-full bg-warning shrink-0 animate-pulse"
@@ -173,6 +208,13 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
           <div className="px-3 py-1.5 border-b border-border-1 mb-1">
             <span className="text-[9px] font-semibold text-text-4 uppercase tracking-wider">Tab</span>
           </div>
+          <button
+            onClick={() => { startRename(ctx.tabId); closeCtx() }}
+            className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-text-1 hover:bg-surface-2 transition-colors text-left"
+          >
+            <Pencil size={11} className="text-text-3" />
+            Rename
+          </button>
           <button
             onClick={() => { onDuplicate(ctx.tabId); closeCtx() }}
             className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-text-1 hover:bg-surface-2 transition-colors text-left"
