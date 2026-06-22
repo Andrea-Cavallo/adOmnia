@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { Send, Save, FileCode, Gauge, X, Plus, Check, CornerDownRight, Clock, Code, Copy, CheckCheck, FileText, Circle, ListChecks, ShieldCheck, MoreVertical } from 'lucide-react'
+import { Send, Save, FileCode, Gauge, X, Plus, Check, CornerDownRight, Clock, Code, Copy, CheckCheck, FileText, Circle, ListChecks, ShieldCheck, MoreVertical, ChevronDown } from 'lucide-react'
 import type { RequestItem, HttpMethod, KVRow, RequestBody } from '@/lib/types'
 import { uid, blankBody, blankAuth } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -577,6 +577,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
   const [showCurlImport, setShowCurlImport] = useState(false)
   const [renameBodyPrompt, setRenameBodyPrompt] = useState<{ show: boolean; index: number } | null>(null)
   const [bodyMenu, setBodyMenu] = useState<{ x: number; y: number; index: number } | null>(null)
+  const [bodyVariantsExpanded, setBodyVariantsExpanded] = useState(false)
   const [savedFlash, setSavedFlash] = useState(false)
   const urlInputRef = useRef<HTMLInputElement>(null)
   const contentScrollRef = useRef<HTMLDivElement>(null)
@@ -898,73 +899,98 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
           )}
           {activeTab === 'body' && (
             <>
-              <section className="border-b-2 border-border-2 bg-surface-1/70 px-3 py-3">
-                <div className="mb-2.5 flex items-center justify-between gap-3">
-                  <div>
-                    <h3 className="text-[11.5px] font-semibold text-text-1">Request body variants</h3>
-                    <p className="mt-0.5 text-[10px] text-text-3">Examples and payload alternatives for this request</p>
-                  </div>
+              <section className="border-b border-border-2 bg-surface-1/70">
+                {/* Compact header — always visible */}
+                <div className="flex items-center gap-2 px-3 py-1.5">
+                  <button
+                    onClick={() => setBodyVariantsExpanded(v => !v)}
+                    className="flex flex-1 min-w-0 items-center gap-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
+                    title={bodyVariantsExpanded ? 'Collapse body variants' : 'Expand body variants'}
+                  >
+                    <ChevronDown
+                      size={12}
+                      className={cn('shrink-0 text-text-4 transition-transform duration-150', bodyVariantsExpanded ? 'rotate-0' : '-rotate-90')}
+                    />
+                    <span className="text-[11px] font-medium text-text-3">Body variants</span>
+                    {/* Pill showing active body name */}
+                    {activeBody && (
+                      <span className="ml-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 bg-surface-2 border border-border-2 text-[10px] font-medium text-text-2 truncate max-w-[160px]">
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+                        {activeBody.name}
+                        <span className="font-mono text-[8.5px] text-accent ml-0.5">{bodyFormatLabel(activeBody)}</span>
+                      </span>
+                    )}
+                    {bodies.length > 1 && (
+                      <span className="ml-0.5 rounded-full bg-surface-3 px-1.5 py-0.5 text-[9px] font-semibold text-text-3">{bodies.length}</span>
+                    )}
+                  </button>
                   <button
                     onClick={addBody}
-                    className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-border-2 bg-surface-2 px-2.5 text-[11px] font-medium text-text-1 outline-none transition-colors hover:border-accent/60 hover:bg-surface-3 focus-visible:ring-2 focus-visible:ring-accent"
+                    className="inline-flex shrink-0 h-6 items-center gap-1 rounded border border-border-2 bg-surface-2 px-2 text-[10px] font-medium text-text-2 outline-none transition-colors hover:border-accent/60 hover:bg-surface-3 focus-visible:ring-2 focus-visible:ring-accent"
                     title="Add body example"
                   >
-                    <Plus size={12} className="text-accent" /> New body
+                    <Plus size={10} className="text-accent" /> New
                   </button>
                 </div>
-                <div role="tablist" aria-label="Request body variants" className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-                  {bodies.map((body, index) => {
-                    const active = index === bodyIndex
-                    return (
-                      <div
-                        key={body.id}
-                        className={cn(
-                          'group relative h-[68px] w-[168px] shrink-0 overflow-hidden rounded-md border bg-surface-2 transition-all',
-                          active
-                            ? 'border-accent/80 bg-surface-3 shadow-[0_0_0_1px_rgba(34,211,238,.12)]'
-                            : 'border-border-2 hover:border-accent/40 hover:bg-surface-3',
-                        )}
-                      >
-                        {active && <span className="absolute inset-x-0 top-0 z-10 h-[3px] bg-accent" />}
-                        <button
-                          role="tab"
-                          aria-selected={active}
-                          onClick={() => onChange({ ...request, activeBodyIdx: index })}
-                          onContextMenu={(event) => {
-                            event.preventDefault()
-                            setBodyMenu({ x: event.clientX, y: event.clientY, index })
-                          }}
-                          className="flex h-full w-full flex-col items-start justify-center px-3 pr-11 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
-                          title={body.name}
-                        >
-                          <span
-                            className={cn('max-w-full overflow-hidden text-[11px] font-semibold leading-[14px]', active ? 'text-text-1' : 'text-text-2')}
-                            style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}
+
+                {/* Expanded panel — body variant cards */}
+                {bodyVariantsExpanded && (
+                  <div className="px-3 pb-2.5">
+                    <div role="tablist" aria-label="Request body variants" className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                      {bodies.map((body, index) => {
+                        const active = index === bodyIndex
+                        return (
+                          <div
+                            key={body.id}
+                            className={cn(
+                              'group relative h-[60px] w-[152px] shrink-0 overflow-hidden rounded-md border bg-surface-2 transition-all',
+                              active
+                                ? 'border-accent/80 bg-surface-3 shadow-[0_0_0_1px_rgba(34,211,238,.12)]'
+                                : 'border-border-2 hover:border-accent/40 hover:bg-surface-3',
+                            )}
                           >
-                            {body.name}
-                          </span>
-                          <span className={cn('mt-1 font-mono text-[8.5px] font-semibold tracking-wide', active ? 'text-accent' : 'text-text-4')}>{bodyFormatLabel(body)}</span>
-                        </button>
-                        <div className={cn('absolute right-1.5 top-1.5 flex items-center gap-0.5 transition-opacity', active ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100')}>
-                          {bodies.length > 1 && (
-                            <button aria-label={`Delete ${body.name}`} onClick={() => deleteBody(index)} className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-error/10 hover:text-error focus-visible:ring-2 focus-visible:ring-accent" title={`Delete ${body.name}`}><X size={11} /></button>
-                          )}
-                          <button
-                            aria-label={`More options for ${body.name}`}
-                            onClick={(event) => {
-                              const rect = event.currentTarget.getBoundingClientRect()
-                              setBodyMenu({ x: rect.right, y: rect.bottom, index })
-                            }}
-                            className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-1 hover:text-text-1 focus-visible:ring-2 focus-visible:ring-accent"
-                            title={`More options for ${body.name}`}
-                          >
-                            <MoreVertical size={12} />
-                          </button>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
+                            {active && <span className="absolute inset-x-0 top-0 z-10 h-[2px] bg-accent" />}
+                            <button
+                              role="tab"
+                              aria-selected={active}
+                              onClick={() => onChange({ ...request, activeBodyIdx: index })}
+                              onContextMenu={(event) => {
+                                event.preventDefault()
+                                setBodyMenu({ x: event.clientX, y: event.clientY, index })
+                              }}
+                              className="flex h-full w-full flex-col items-start justify-center px-3 pr-10 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+                              title={body.name}
+                            >
+                              <span
+                                className={cn('max-w-full overflow-hidden text-[11px] font-semibold leading-[14px]', active ? 'text-text-1' : 'text-text-2')}
+                                style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}
+                              >
+                                {body.name}
+                              </span>
+                              <span className={cn('mt-1 font-mono text-[8.5px] font-semibold tracking-wide', active ? 'text-accent' : 'text-text-4')}>{bodyFormatLabel(body)}</span>
+                            </button>
+                            <div className={cn('absolute right-1 top-1 flex items-center gap-0.5 transition-opacity', active ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100')}>
+                              {bodies.length > 1 && (
+                                <button aria-label={`Delete ${body.name}`} onClick={() => deleteBody(index)} className="grid h-5 w-5 place-items-center rounded text-text-3 hover:bg-error/10 hover:text-error focus-visible:ring-2 focus-visible:ring-accent" title={`Delete ${body.name}`}><X size={10} /></button>
+                              )}
+                              <button
+                                aria-label={`More options for ${body.name}`}
+                                onClick={(event) => {
+                                  const rect = event.currentTarget.getBoundingClientRect()
+                                  setBodyMenu({ x: rect.right, y: rect.bottom, index })
+                                }}
+                                className="grid h-5 w-5 place-items-center rounded text-text-3 hover:bg-surface-1 hover:text-text-1 focus-visible:ring-2 focus-visible:ring-accent"
+                                title={`More options for ${body.name}`}
+                              >
+                                <MoreVertical size={11} />
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
               </section>
               {activeBody && (
                 <BodyEditor
