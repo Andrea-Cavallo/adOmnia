@@ -408,6 +408,17 @@ function RequestWorkspace() {
     markClean(tab.id)
   }, [tabs, updateCollectionRequest, markClean])
 
+  const handleRenameTab = useCallback((tabId: string, name: string) => {
+    const tab = tabs.find((t) => t.id === tabId)
+    if (!tab) return
+    const renamed = { ...tab.request, name }
+    updateRequest(tabId, renamed)
+    if (tab.collectionId) {
+      updateCollectionRequest(tab.collectionId, renamed)
+      markClean(tabId)
+    }
+  }, [tabs, updateRequest, updateCollectionRequest, markClean])
+
   const handleSave = () => {
     if (!activeTab || !activeTab.collectionId) return
     updateCollectionRequest(activeTab.collectionId, activeTab.request)
@@ -525,6 +536,7 @@ function RequestWorkspace() {
         onReorder={reorderTab}
         onNewTab={newTab}
         onDuplicate={duplicateTab}
+        onRenameTab={handleRenameTab}
       />
       {activeTab && (
         <ActiveRequestBar
