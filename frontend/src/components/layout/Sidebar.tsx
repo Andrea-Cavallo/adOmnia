@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ChevronDown, FolderKanban, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useAppStore } from '@/stores/app'
 import { useSettingsStore } from '@/stores/settings'
-import { useCollectionsStore } from '@/stores/collections'
+import { useCollectionsStore, findParentInfo } from '@/stores/collections'
 import { useTabsStore } from '@/stores/tabs'
 import { CollectionTree } from '@/components/collections/CollectionTree'
 import { blankRequest, uid } from '@/lib/types'
@@ -54,14 +54,18 @@ export function Sidebar() {
   const activeRequestId = tabs.find((t) => t.id === activeTabId && (t.workspaceId ?? activeWorkspaceId) === activeWorkspaceId)?.request.id ?? null
 
   const handleDuplicateRequest = (collectionId: string, request: RequestItem) => {
+    const col = collections.find((c) => c.id === collectionId)
+    const parentInfo = col ? findParentInfo(col.children, request.id) : null
+    const parentId = parentInfo?.parentId ?? null
     const dupe: RequestItem = { ...request, id: uid(), name: `${request.name} (copy)` }
-    addRequest(collectionId, null, dupe)
+    addRequest(collectionId, parentId, dupe)
   }
 
-  const handleAddRequestToFolder = (collectionId: string, parentId: string | null, method: HttpMethod = 'GET') => {
+  const handleAddRequestToFolder = (collectionId: string, parentId: string | null, method: HttpMethod = 'GET'): string | null => {
     const req = blankRequest(method, 'New Request')
     addRequest(collectionId, parentId, req)
     openTab(req, collectionId)
+    return parentId
   }
 
   const handleSwitchWorkspace = (workspaceId: string) => {
