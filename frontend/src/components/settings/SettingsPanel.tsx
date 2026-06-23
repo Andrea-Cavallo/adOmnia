@@ -31,6 +31,7 @@ import {
 import { Toggle, Select, NumberInput, TextInput, PasswordInput, TextAreaInput } from './SettingsFields'
 import { AISettings } from './AISettings'
 import { DangerZone, SectionHeader, SettingsCard } from './SettingsLayout'
+import { UpdateCheckRow } from './UpdateCheckRow'
 import { WorkspacePanel } from '@/components/workspace/WorkspacePanel'
 
 function appBinding() {
@@ -1023,6 +1024,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
                 <span className="text-xs text-text-1">Developer</span>
                 <span className="text-xs text-text-2">Andrea Cavallo</span>
               </div>
+              <UpdateCheckRow />
             </SettingsCard>
             <SettingsCard>
               <div className="py-2 px-1">

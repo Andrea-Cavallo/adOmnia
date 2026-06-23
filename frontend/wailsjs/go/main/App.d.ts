@@ -3,6 +3,10 @@
 import {markdown} from '../models';
 import {main} from '../models';
 
+export function CheckForUpdate():Promise<main.UpdateInfo>;
+
+export function GetAppVersion():Promise<string>;
+
 export function ClearDevLogs():Promise<void>;
 
 export function CompareFolders(arg1:string,arg2:string,arg3:number):Promise<string>;
