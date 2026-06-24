@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import type { MutableRefObject } from 'react'
-import { ChevronDown, ChevronRight, ChevronUp, AlertCircle, CheckCircle2, GitBranch, Database, Loader2, RefreshCw, Search, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, ChevronUp, AlertCircle, CheckCircle2, GitBranch, Database, Loader2, RefreshCw, Search, X, Braces, FileText, Link2, Files, Share2 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import type { RequestBody } from '@/lib/types'
 import { KVEditor } from './KVEditor'
 import { JsonEditor } from '@/components/ui/JsonEditor'
@@ -80,19 +81,42 @@ function gqlTypeString(t: GQLTypeRef): string {
 }
 
 const ALL_BODY_TYPES = [
-  { id: 'json', label: 'JSON' },
-  { id: 'raw', label: 'raw' },
-  { id: 'urlencoded', label: 'form-urlencoded' },
-  { id: 'formdata', label: 'form-data' },
-  { id: 'graphql', label: 'GraphQL' },
+  { id: 'json', label: 'JSON', title: 'JSON payload' },
+  { id: 'raw', label: 'Raw', title: 'Raw text payload' },
+  { id: 'urlencoded', label: 'URL Encoded', title: 'application/x-www-form-urlencoded' },
+  { id: 'formdata', label: 'Form Data', title: 'multipart/form-data' },
+  { id: 'graphql', label: 'GraphQL', title: 'GraphQL query and variables' },
 ] as const
 
 const WS_BODY_TYPES = [
-  { id: 'json', label: 'JSON' },
-  { id: 'raw', label: 'raw' },
+  { id: 'json', label: 'JSON', title: 'JSON payload' },
+  { id: 'raw', label: 'Raw', title: 'Raw text payload' },
 ] as const
 
 type BodyTypeId = 'json' | 'raw' | 'urlencoded' | 'formdata' | 'graphql'
+
+const BODY_ICONS: Record<BodyTypeId, LucideIcon> = {
+  json: Braces,
+  raw: FileText,
+  urlencoded: Link2,
+  formdata: Files,
+  graphql: Share2,
+}
+
+// Live Content-Type the request will actually send, shown next to the selector.
+function contentTypeFor(activeType: BodyTypeId, lang?: string): string {
+  switch (activeType) {
+    case 'json': return 'application/json'
+    case 'urlencoded': return 'application/x-www-form-urlencoded'
+    case 'formdata': return 'multipart/form-data'
+    case 'graphql': return 'application/json'
+    case 'raw':
+      return lang === 'xml' ? 'application/xml'
+        : lang === 'html' ? 'text/html'
+        : lang === 'javascript' ? 'application/javascript'
+        : 'text/plain'
+  }
+}
 
 const RAW_LANGUAGES = [
   { id: 'xml', label: 'XML' },
@@ -239,18 +263,18 @@ function JsonRawEditor({ body, onChange, search }: { body: RequestBody; onChange
   }
 
   return (
-    <div className="flex flex-col gap-2 px-2 pb-2 flex-1 min-h-0">
-      <div className="flex items-center gap-2">
+    <div className="flex min-h-0 flex-1 flex-col gap-2 px-3 pb-3">
+      <div className="-mx-3 flex min-h-10 items-center gap-2 border-b border-border-2 bg-surface-0/70 px-3">
         <button
           onClick={prettify}
-          className="px-2 py-0.5 text-[10px] text-accent hover:text-accent-light rounded hover:bg-accent/10 transition-colors"
+          className="rounded px-2 py-1 text-[10.5px] font-medium text-accent outline-none transition-colors hover:bg-accent/10 hover:text-accent-light focus-visible:ring-2 focus-visible:ring-accent"
         >
-          Prettify
+          Pretty
         </button>
         <button
           onClick={() => setShowGraph(true)}
           disabled={hasErrors || !hasContent}
-          className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] text-text-3 hover:text-accent rounded hover:bg-accent/10 transition-colors disabled:opacity-40 disabled:hover:text-text-3"
+          className="inline-flex items-center gap-1 rounded px-2 py-1 text-[10.5px] font-medium text-text-2 outline-none transition-colors hover:bg-accent/10 hover:text-accent focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-40 disabled:hover:text-text-3"
           title="Open JSON graph"
         >
           <GitBranch size={11} /> Graph
@@ -259,6 +283,7 @@ function JsonRawEditor({ body, onChange, search }: { body: RequestBody; onChange
           ? <AlertCircle size={12} className="text-error" />
           : hasContent && <CheckCircle2 size={12} className="text-success" />
         }
+        {!hasErrors && hasContent && <span className="text-[10px] font-medium text-success">Valid JSON</span>}
         {hasErrors && (
           <span className="text-[10px] font-mono text-error">
             {diagnostics.length} {diagnostics.length === 1 ? 'issue' : 'issues'}
@@ -625,22 +650,43 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
   }
 
   return (
-    <div className="flex flex-col flex-1 pt-1 min-h-0">
-      <div className="flex items-center gap-0.5 px-2 pb-1 flex-wrap">
-        {BODY_TYPES.map(t => (
-          <button
-            key={t.id}
-            onClick={() => handleTypeChange(t.id)}
-            className={cn(
-              'px-2 py-1 text-xs rounded transition-colors',
-              activeType === t.id
-                ? 'bg-accent/20 text-accent-light border border-accent/40'
-                : 'text-text-3 hover:text-text-1 border border-transparent'
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
+    <div className="flex min-h-0 flex-1 flex-col bg-surface-0">
+      <section className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-border-2 bg-surface-1 px-3 py-2.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+          <div role="radiogroup" aria-label="Body format" className="inline-flex max-w-full flex-wrap items-center gap-0.5 rounded-lg bg-surface-0 p-1 ring-1 ring-inset ring-border-2">
+            {BODY_TYPES.map((type) => {
+              const active = activeType === type.id
+              const Icon = BODY_ICONS[type.id]
+              return (
+                <button
+                  key={type.id}
+                  onClick={() => handleTypeChange(type.id)}
+                  title={type.title}
+                  role="radio"
+                  aria-checked={active}
+                  className={cn(
+                    'group inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[11px] font-medium outline-none transition-all duration-150 focus-visible:ring-2 focus-visible:ring-accent',
+                    active
+                      ? 'bg-accent text-white shadow-[0_2px_10px_-2px_var(--color-accent-glow)]'
+                      : 'text-text-3 hover:bg-surface-2 hover:text-text-1',
+                  )}
+                >
+                  <Icon size={12} className={active ? 'text-white/90' : 'text-text-4 group-hover:text-text-2'} />
+                  {type.label}
+                </button>
+              )
+            })}
+          </div>
+          {body.type !== 'none' && (
+            <span
+              title="Content-Type this request will send"
+              className="hidden items-center gap-1.5 rounded-md border border-border-2 bg-surface-0 px-2 py-1 font-mono text-[10px] leading-none text-text-3 sm:inline-flex"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+              {contentTypeFor(activeType, body.lang)}
+            </span>
+          )}
+        </div>
         <BodyFindBar
           open={searchOpen}
           query={search.query}
@@ -653,7 +699,7 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
           onNext={nextMatch}
           onClose={() => setSearchOpen(false)}
         />
-      </div>
+      </section>
 
       {body.type === 'none' && (
         <p className="px-3 py-4 text-xs text-text-4 italic">This request has no body.</p>

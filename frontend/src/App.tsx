@@ -9,6 +9,7 @@ import { ThemeProvider } from '@/components/themes/ThemeProvider'
 import { DevLogOverlay } from '@/components/ui/DevLogOverlay'
 import { ConfirmDialogHost } from '@/components/ui/ConfirmDialogHost'
 import { StorageQuotaBanner } from '@/components/layout/StorageQuotaBanner'
+import { UpdateBanner } from '@/components/layout/UpdateBanner'
 import { ErrorBoundary } from '@/components/layout/ErrorBoundary'
 import { ResizeHandle } from '@/components/ui/ResizeHandle'
 import { DropOverlay } from '@/components/layout/DropOverlay'
@@ -92,6 +93,7 @@ function App() {
           {...handlers}
         >
           {activeWindowChrome !== 'system' && <Titlebar />}
+          <UpdateBanner />
           <StorageQuotaBanner />
           <div className="flex flex-1 min-h-0">
             <Rail />

@@ -149,7 +149,7 @@ function containsNode(nodes: TreeNode[], id: string): boolean {
   return Boolean(findInTree(nodes, id))
 }
 
-function findParentInfo(nodes: TreeNode[], id: string, parentId: string | null = null): { parentId: string | null; index: number } | null {
+export function findParentInfo(nodes: TreeNode[], id: string, parentId: string | null = null): { parentId: string | null; index: number } | null {
   for (let index = 0; index < nodes.length; index++) {
     const node = nodes[index]
     if (node.id === id) return { parentId, index }
@@ -509,7 +509,7 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
     if (!col) return null
     const original = findInTree(col.children, nodeId)
     if (!original) return null
-    const clone = deepCloneWithNewIds(original)
+    const clone = { ...deepCloneWithNewIds(original), name: `${original.name} (copy)` }
     const insertAfter = (nodes: TreeNode[]): TreeNode[] => {
       const result: TreeNode[] = []
       for (const n of nodes) {

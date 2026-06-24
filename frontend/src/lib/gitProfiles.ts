@@ -7,13 +7,23 @@ export interface GitProfile {
   email: string
   hostPattern: string
   autoApply: boolean
+  provider: 'github' | 'gitlab' | 'bitbucket' | 'azure'
+  baseURL: string
+  username: string
+  tokenRef: string
 }
 
 export function loadGitProfiles(): GitProfile[] {
   try {
     const parsed = JSON.parse(localStorage.getItem(KEY) || '[]') as unknown
     if (!Array.isArray(parsed)) return []
-    return parsed.filter((item): item is GitProfile => Boolean(item && typeof item === 'object' && typeof (item as GitProfile).id === 'string'))
+    return parsed.filter((item): item is GitProfile => Boolean(item && typeof item === 'object' && typeof (item as GitProfile).id === 'string')).map((item) => ({
+      ...item,
+      provider: item.provider || 'github',
+      baseURL: item.baseURL || '',
+      username: item.username || '',
+      tokenRef: item.tokenRef || '',
+    }))
   } catch { return [] }
 }
 

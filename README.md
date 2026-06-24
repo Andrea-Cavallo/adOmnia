@@ -46,6 +46,18 @@ check rest apis:
 
 ![adOmnia rest](assets/images/REST.png)
 
+### ⬇️ Download
+
+**[→ Go to Releases](https://github.com/Andrea-Cavallo/adOmnia/releases/latest)** and grab the file for your platform. No installation, no dependencies.
+
+| Platform | File |
+|---|---|
+| Windows | `adOmnia-*-windows-amd64.exe` |
+| macOS | `adOmnia-*-macos-universal.dmg` |
+| Linux (WebKitGTK 4.0) | `adOmnia-*-linux-amd64-webkitgtk-4.0.tar.gz` |
+| Linux (WebKitGTK 4.1) | `adOmnia-*-linux-amd64-webkitgtk-4.1.tar.gz` |
+
+All releases include `SHA256SUMS.txt` and source code archives. Verify your download with the published checksums.
 
 ### What you get — 507+ features across 11 areas
 
@@ -62,17 +74,6 @@ check rest apis:
 | **Document & Productivity Studio** | **PDF Editor** (view, annotate, fill forms, flatten/export) with **real cryptographic signing** — PEM or PKCS#12/JKS keystore import, RFC-3161 **TSA timestamping**, and **LTV** (chain + OCSP/CRL); **LaTeX Studio** (live `.tex` editor + preview + templates); Markdown studio; Mermaid diagrams |
 | **Version Control (built-in Git)** | Full Git client inside the app — clone/init, stage & commit, **visual commit graph** with per-commit context actions (checkout, revert, reset, cherry-pick), branch create/switch/merge, push/pull to any remote, diff viewer, and **interactive conflict resolution**. Version your workspaces, collections, and specs without leaving adOmnia |
 | **Data, Security & Extensibility** | Database Studio (SQLite/PostgreSQL/MySQL/MongoDB), bbolt storage inspector, encrypted vault (age/scrypt), **AI engine** (Anthropic/OpenAI/Gemini/Ollama — AI mock generation), WASM/JS plugin sandbox, 11 built-in themes + custom skin system |
-
-### ⬇️ Download
-
-**[→ Go to Releases](../../releases/latest)** and grab the file for your platform. No installation, no dependencies.
-
-| Platform | File | Steps |
-|---|---|---|
-| Windows | `adOmnia-*-windows-amd64.exe` | Download → double-click → done |
-| macOS | `adOmnia-*-macos-universal.dmg` | Download → open DMG → drag to Applications |
-| Linux | `adOmnia-*-linux-amd64.AppImage` | Download → `chmod +x` → double-click or run |
-
 
 ### Build from source
 

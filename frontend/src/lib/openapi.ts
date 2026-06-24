@@ -1,4 +1,4 @@
-import type { Collection, TreeNode, RequestItem, KVRow, RequestBody, RequestAuth } from '@/lib/types'
+import type { Collection, TreeNode, RequestItem, KVRow, RequestBody, RequestAuth, OpenAPIResponseDoc, OpenAPIResponseHeader, OpenAPIResponseExample, OpenAPISecurityDoc } from '@/lib/types'
 import { uid, blankBody, blankAuth } from '@/lib/types'
 import { parseYamlLenient } from '@/lib/yamlParse'
 
@@ -46,6 +46,10 @@ interface OpenAPIOperation {
   requestBody?: OpenAPIRequestBody
   consumes?: string[]
   responses?: Record<string, unknown>
+  // Non-standard: some specs declare request headers as an operation-level map
+  // ({ "X-Request-ID": { schema, example, required } }) instead of using
+  // `parameters` with `in: header`. We read them leniently so they aren't lost.
+  headers?: Record<string, { schema?: OpenAPISchemaObject; example?: unknown; required?: boolean; description?: string }>
 }
 
 type OpenAPIPathItem = Partial<Record<HttpMethodKey, OpenAPIOperation>> & {
@@ -271,10 +275,21 @@ function schemeToAuth(scheme: SecurityScheme): RequestAuth {
       return { ...blankAuth(), type: 'apikey', username: scheme.name || 'X-API-Key' }
     case 'oauth2': {
       const flows = scheme.flows ?? {}
-      const flow = flows.authorizationCode ?? flows.clientCredentials ?? flows.implicit ?? flows.password ?? {}
+      const flowOrder: Array<[string, string]> = [
+        ['authorizationCode', 'authorization_code'],
+        ['clientCredentials', 'client_credentials'],
+        ['implicit', 'implicit'],
+        ['password', 'password'],
+      ]
+      let flow: NonNullable<SecurityScheme['flows']>[string] = {}
+      let grantType: string | undefined
+      for (const [flowKey, grant] of flowOrder) {
+        if (flows[flowKey]) { flow = flows[flowKey]; grantType = grant; break }
+      }
       return {
         ...blankAuth(),
         type: 'oauth2',
+        ...(grantType ? { oauth2GrantType: grantType } : {}),
         oauth2AuthUrl: flow.authorizationUrl ?? '',
         oauth2TokenUrl: flow.tokenUrl ?? '',
         oauth2Scope: Object.keys(flow.scopes ?? {}).join(' '),
@@ -346,6 +361,21 @@ function buildBodiesFromOpenAPIRequestBody(
   }
 
   const lang = langFromContentType(contentType)
+
+  // Multiple named examples → one body per example, so all variants survive
+  // instead of collapsing to the first. Falls back to a single body below.
+  const named = namedExamples(media.examples)
+  if (named.length > 0) {
+    return named.map(([key, value, summary]) => ({
+      id: uid(),
+      name: summary || key,
+      type: 'raw',
+      raw: value === undefined ? '' : stringifyBodyExample(value, lang),
+      lang,
+      form: [],
+    }))
+  }
+
   const example = getMediaExample(media, registry)
   return [{
     id: uid(),
@@ -355,6 +385,94 @@ function buildBodiesFromOpenAPIRequestBody(
     lang,
     form: [],
   }]
+}
+
+interface OpenAPIResponseObject {
+  description?: string
+  headers?: Record<string, { description?: string; schema?: OpenAPISchemaObject; example?: unknown }>
+  content?: Record<string, OpenAPIMediaType>
+}
+
+// buildResponseDocs preserves each documented response (status, description,
+// response headers, body examples) so import → export does not drop response
+// metadata. adOmnia requests don't *execute* against these, they document them.
+function buildResponseDocs(
+  responses: Record<string, unknown> | undefined,
+  registry: SchemaRegistry,
+): OpenAPIResponseDoc[] | undefined {
+  if (!responses || typeof responses !== 'object') return undefined
+  const docs: OpenAPIResponseDoc[] = []
+  for (const [status, rawResp] of Object.entries(responses)) {
+    if (!rawResp || typeof rawResp !== 'object') continue
+    const resp = rawResp as OpenAPIResponseObject
+    const doc: OpenAPIResponseDoc = { status }
+    if (typeof resp.description === 'string') doc.description = resp.description
+
+    if (resp.headers && typeof resp.headers === 'object') {
+      const headers: OpenAPIResponseHeader[] = []
+      for (const [name, def] of Object.entries(resp.headers)) {
+        const ex = def?.example ?? def?.schema?.example ?? def?.schema?.default
+        headers.push({
+          name,
+          ...(def?.description ? { description: def.description } : {}),
+          ...(ex != null ? { example: String(ex) } : {}),
+        })
+      }
+      if (headers.length) doc.headers = headers
+    }
+
+    if (resp.content && typeof resp.content === 'object') {
+      const picked = pickContentEntry(resp.content)
+      if (picked) {
+        const [contentType, media] = picked
+        const lang = langFromContentType(contentType)
+        doc.contentType = contentType
+        const named = namedExamples(media.examples)
+        const examples: OpenAPIResponseExample[] = []
+        if (named.length > 0) {
+          for (const [key, value, summary] of named) {
+            examples.push({ name: summary || key, lang, raw: value === undefined ? '' : stringifyBodyExample(value, lang) })
+          }
+        } else {
+          const ex = getMediaExample(media, registry)
+          if (ex !== undefined) examples.push({ name: 'Example', lang, raw: stringifyBodyExample(ex, lang) })
+        }
+        if (examples.length) doc.examples = examples
+      }
+    }
+    docs.push(doc)
+  }
+  return docs.length ? docs : undefined
+}
+
+// buildSecurityDoc captures every security scheme an operation accepts (and its
+// scope requirements), so alternatives like "OAuth2 OR ApiKey" with multiple
+// flows survive even though the request itself sends a single auth.
+function buildSecurityDoc(
+  security: Array<Record<string, string[]>> | undefined,
+  schemes: Record<string, SecurityScheme> | undefined,
+): OpenAPISecurityDoc | undefined {
+  if (!schemes || Object.keys(schemes).length === 0) return undefined
+  const referenced = new Set<string>()
+  if (security) for (const req of security) for (const k of Object.keys(req)) referenced.add(k)
+  if (referenced.size === 0) for (const k of Object.keys(schemes)) referenced.add(k)
+  const picked: Record<string, unknown> = {}
+  for (const name of referenced) if (schemes[name]) picked[name] = schemes[name]
+  if (Object.keys(picked).length === 0) return undefined
+  return { schemes: picked, ...(security ? { requirements: security } : {}) }
+}
+
+// namedExamples flattens an OpenAPI `examples` map into [key, value, summary]
+// tuples. Returns [] when there are none (or it is malformed).
+function namedExamples(examples: unknown): Array<[string, unknown, string | undefined]> {
+  if (!examples || typeof examples !== 'object' || Array.isArray(examples)) return []
+  return Object.entries(examples as Record<string, unknown>).map(([key, ex]) => {
+    if (ex && typeof ex === 'object' && !Array.isArray(ex) && 'value' in ex) {
+      const e = ex as { value?: unknown; summary?: unknown }
+      return [key, e.value, typeof e.summary === 'string' ? e.summary : undefined]
+    }
+    return [key, ex, undefined]
+  })
 }
 
 function buildBodiesFromSwaggerParameters(
@@ -525,6 +643,22 @@ export function parseOpenAPI(raw: string): Collection[] {
         }
       }
 
+      // Lenient: pick up request headers declared in the non-standard
+      // operation-level `headers` map (see OpenAPIOperation.headers).
+      if (op.headers && typeof op.headers === 'object') {
+        const existing = new Set(headers.map((h) => h.key.toLowerCase()))
+        for (const [hName, hDef] of Object.entries(op.headers)) {
+          if (!hName || existing.has(hName.toLowerCase())) continue
+          const ex = hDef?.example ?? hDef?.schema?.example ?? hDef?.schema?.default
+          headers.push({
+            id: uid(),
+            key: hName,
+            value: ex != null ? String(ex) : '',
+            enabled: hDef?.required ?? false,
+          })
+        }
+      }
+
       let bodies: RequestBody[] = [blankBody()]
       let activeBodyIdx = 0
 
@@ -538,6 +672,9 @@ export function parseOpenAPI(raw: string): Collection[] {
       for (const [k, v] of Object.entries(op as Record<string, unknown>)) {
         if (k.startsWith('x-')) xExtensions[k] = v
       }
+
+      const responsesDoc = buildResponseDocs(op.responses, schemaRegistry)
+      const securityDoc = buildSecurityDoc(op.security ?? globalSecurity, schemes)
 
       const request: RequestItem = {
         id: uid(),
@@ -553,6 +690,8 @@ export function parseOpenAPI(raw: string): Collection[] {
         activeBodyIdx,
         auth,
         ...(Object.keys(xExtensions).length > 0 ? { _xExtensions: xExtensions } : {}),
+        ...(responsesDoc ? { _openapiResponses: responsesDoc } : {}),
+        ...(securityDoc ? { _openapiSecurity: securityDoc } : {}),
       }
 
       const tag = op.tags?.[0]
@@ -665,6 +804,45 @@ function derivePath(req: RequestItem, baseUrl: string): string {
  *  - x- extensions → merged directly onto the operation object
  *  - Folder names  → operation.tags[]
  */
+// parseExampleRaw turns a stored raw example back into JSON when possible so the
+// exported spec contains structured values, not a stringified blob.
+function parseExampleRaw(raw: string, lang: OpenAPIResponseExample['lang']): unknown {
+  if (lang === 'json' && raw) {
+    try { return JSON.parse(raw) } catch { /* keep string */ }
+  }
+  return raw
+}
+
+// buildResponsesForExport re-emits documented responses captured on import, or a
+// minimal `200 OK` when none were preserved.
+function buildResponsesForExport(req: RequestItem): Record<string, unknown> {
+  if (!req._openapiResponses?.length) return { '200': { description: 'OK' } }
+  const responses: Record<string, unknown> = {}
+  for (const r of req._openapiResponses) {
+    const resp: Record<string, unknown> = { description: r.description ?? '' }
+    if (r.headers?.length) {
+      const headers: Record<string, unknown> = {}
+      for (const h of r.headers) {
+        headers[h.name] = {
+          schema: { type: 'string' },
+          ...(h.description ? { description: h.description } : {}),
+          ...(h.example ? { example: h.example } : {}),
+        }
+      }
+      resp.headers = headers
+    }
+    if (r.examples?.length) {
+      const ct = r.contentType || 'application/json'
+      // Always use the named `examples` map so example names survive round-trip.
+      const examples: Record<string, unknown> = {}
+      for (const ex of r.examples) examples[ex.name] = { value: parseExampleRaw(ex.raw, ex.lang) }
+      resp.content = { [ct]: { examples } }
+    }
+    responses[r.status] = resp
+  }
+  return responses
+}
+
 export function exportToOpenApi(collections: Collection[]): string {
   const allNodes = collections.flatMap((c) => c.children)
   const baseUrl = inferBaseUrl(allNodes)
@@ -715,8 +893,15 @@ export function exportToOpenApi(collections: Collection[]): string {
       }
     }
 
-    // Auth → securitySchemes + operation security
-    if (req.auth && req.auth.type !== 'none') {
+    // Auth → securitySchemes + operation security. Prefer the full imported
+    // security context (preserves alternative schemes/flows/scopes); fall back
+    // to deriving a scheme from the single active auth.
+    if (req._openapiSecurity) {
+      for (const [name, def] of Object.entries(req._openapiSecurity.schemes)) {
+        if (!secSchemes[name]) secSchemes[name] = def
+      }
+      if (req._openapiSecurity.requirements?.length) op.security = req._openapiSecurity.requirements
+    } else if (req.auth && req.auth.type !== 'none') {
       const schemeName = deriveScheme(req.auth, secSchemes)
       if (schemeName) op.security = [{ [schemeName]: [] }]
     }
@@ -724,7 +909,7 @@ export function exportToOpenApi(collections: Collection[]): string {
     // x-vendor extension round-trip
     if (req._xExtensions) Object.assign(op, req._xExtensions)
 
-    op.responses = { '200': { description: 'OK' } }
+    op.responses = buildResponsesForExport(req)
     return op
   }
 

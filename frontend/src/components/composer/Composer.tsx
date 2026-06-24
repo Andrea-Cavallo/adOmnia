@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { Send, Save, FileCode, Gauge, X, Plus, Check, CornerDownRight, Clock, Code, Copy, CheckCheck, FileText, Circle, ListChecks, ShieldCheck } from 'lucide-react'
-import type { RequestItem, HttpMethod, KVRow } from '@/lib/types'
+import { Send, Save, FileCode, Gauge, X, Plus, Check, CornerDownRight, Clock, Code, Copy, CheckCheck, FileText, Circle, ListChecks, ShieldCheck, MoreVertical, ChevronDown } from 'lucide-react'
+import type { RequestItem, HttpMethod, KVRow, RequestBody } from '@/lib/types'
 import { uid, blankBody, blankAuth } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { detectPathParamKeys } from '@/lib/pathParams'
@@ -18,6 +18,7 @@ import { prepareRequestForCodegen } from '@/lib/sendRequest'
 import { useTabsStore, type ComposerSection } from '@/stores/tabs'
 import { useCookieJarStore, type JarEntry } from '@/lib/cookieJar'
 import { useSettingsStore } from '@/stores/settings'
+import { ContextMenu } from '@/components/ui/ContextMenu'
 
 interface ComposerProps {
   tabId: string
@@ -453,7 +454,7 @@ function RequestOverview({
   vars: Record<string, string>
   hasActiveEnv: boolean
   onChange: (request: RequestItem) => void
-  onOpenSection: (section: ComposerSection) => void
+  onOpenSection: (section: ComposerSection, subsection?: 'auth') => void
 }) {
   const variables = requestVariables(request)
   const unresolved = variables.filter((name) => vars[name] === undefined)
@@ -467,8 +468,8 @@ function RequestOverview({
   const setupItems = [
     { label: 'URL is ready', ok: Boolean(request.url.trim()), section: null },
     { label: variables.length ? `${variables.length} variable${variables.length === 1 ? '' : 's'} detected` : 'No variables needed', ok: unresolved.length === 0, section: 'params' as ComposerSection | null },
-    { label: request.auth?.type && request.auth.type !== 'none' ? `${authLabel} configured` : 'Auth intentionally empty', ok: true, section: 'auth' as ComposerSection | null },
-    { label: docsFilled ? 'Documentation present' : 'Add request notes', ok: docsFilled, section: 'notes' as ComposerSection | null },
+    { label: request.auth?.type && request.auth.type !== 'none' ? `${authLabel} configured` : 'Auth intentionally empty', ok: true, section: 'headers' as ComposerSection | null, subsection: 'auth' as const },
+    { label: docsFilled ? 'Documentation present' : 'Add request notes', ok: docsFilled, section: null, subsection: undefined },
   ]
 
   return (
@@ -502,7 +503,7 @@ function RequestOverview({
             {setupItems.map((item) => (
               <button
                 key={item.label}
-                onClick={() => item.section && onOpenSection(item.section)}
+                onClick={() => item.section && onOpenSection(item.section, item.subsection)}
                 className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[12px] text-text-2 transition-colors hover:bg-surface-2"
               >
                 {item.ok ? <Check size={13} className="text-success" /> : <Circle size={13} className="text-warning" />}
@@ -554,6 +555,15 @@ function RequestOverview({
   )
 }
 
+function bodyFormatLabel(body: RequestBody): string {
+  if (body.type === 'raw' && body.lang === 'json') return 'JSON'
+  if (body.type === 'raw') return body.lang.toUpperCase()
+  if (body.type === 'urlencoded') return 'URL ENCODED'
+  if (body.type === 'formdata') return 'FORM DATA'
+  if (body.type === 'graphql') return 'GRAPHQL'
+  return 'NO BODY'
+}
+
 export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest, loading, hideRequestBar = false }: ComposerProps) {
   const getResolvedVars = useEnvironmentsStore((s) => s.getResolvedVars)
   const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
@@ -564,8 +574,12 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
   const [activeTab, setActiveTab] = useState<ComposerSection>(
     () => useTabsStore.getState().getViewState(tabId).composerSection,
   )
+  const [configurationTab, setConfigurationTab] = useState<'headers' | 'auth' | 'cookies'>('headers')
+  const [automationTab, setAutomationTab] = useState<'tests' | 'scripts'>('tests')
   const [showCurlImport, setShowCurlImport] = useState(false)
   const [renameBodyPrompt, setRenameBodyPrompt] = useState<{ show: boolean; index: number } | null>(null)
+  const [bodyMenu, setBodyMenu] = useState<{ x: number; y: number; index: number } | null>(null)
+  const [bodyVariantsExpanded, setBodyVariantsExpanded] = useState(false)
   const [savedFlash, setSavedFlash] = useState(false)
   const urlInputRef = useRef<HTMLInputElement>(null)
   const contentScrollRef = useRef<HTMLDivElement>(null)
@@ -601,21 +615,64 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
   }, [cookieJarEntries, request.url, sendCookiesAutomatically])
 
   const tabs = [
-    { id: 'overview' as ComposerSection, label: 'Overview', count: request.description?.trim() ? 1 : 0 },
-    { id: 'body' as ComposerSection, label: 'Body', count: bodyCount },
-    { id: 'auth' as ComposerSection, label: 'Auth', count: request.auth?.type !== 'none' ? 1 : 0 },
-    { id: 'headers' as ComposerSection, label: 'Headers', count: (request.headers ?? []).filter((h) => h.enabled && h.key).length },
-    { id: 'cookies' as ComposerSection, label: 'Cookies', count: (request.cookies ?? []).filter((c) => c.enabled && c.key).length + jarCount },
-    { id: 'params' as ComposerSection, label: 'Params', count: (request.params ?? []).filter((p) => p.enabled && p.key).length },
-    { id: 'scripts' as ComposerSection, label: 'Scripts', count: (scripts.pre || scripts.post || scripts.tests) ? 1 : 0 },
-    { id: 'tests' as ComposerSection, label: 'Tests', count: (request.assertions ?? []).length },
-    { id: 'notes' as ComposerSection, label: 'Notes', count: request.description?.trim() ? 1 : 0 },
+    { id: 'overview' as ComposerSection, label: 'Overview', count: request.description?.trim() ? 1 : 0, icon: FileText },
+    { id: 'body' as ComposerSection, label: 'Body', count: bodyCount, icon: Code },
+    {
+      id: 'headers' as ComposerSection,
+      label: 'Headers / Auth / Cookies',
+      count: (request.headers ?? []).filter((h) => h.enabled && h.key).length
+        + (request.auth?.type !== 'none' ? 1 : 0)
+        + (request.cookies ?? []).filter((c) => c.enabled && c.key).length
+        + jarCount,
+      icon: ShieldCheck,
+    },
+    { id: 'params' as ComposerSection, label: 'Params', count: (request.params ?? []).filter((p) => p.enabled && p.key).length, icon: CornerDownRight },
+    {
+      id: 'scripts' as ComposerSection,
+      label: 'Tests / Scripts',
+      count: (request.assertions ?? []).length + ((scripts.pre || scripts.post || scripts.tests) ? 1 : 0),
+      icon: CheckCheck,
+    },
   ]
 
   const bodyIndex = bodies.length
     ? Math.min(Math.max(request.activeBodyIdx, 0), bodies.length - 1)
     : 0
   const activeBody = bodies[bodyIndex]
+
+  const cloneBody = (source: RequestBody, name: string): RequestBody => ({
+    ...source,
+    id: uid(),
+    name,
+    raw: source.lang === 'json' && source.raw.trim()
+      ? (() => { try { return JSON.stringify(JSON.parse(source.raw), null, 2) } catch { return source.raw } })()
+      : source.raw,
+    form: (source.form ?? []).map((row) => ({ ...row, id: uid() })),
+  })
+
+  const addBody = () => {
+    const source = activeBody ?? blankBody()
+    onChange({
+      ...request,
+      bodies: [...bodies, cloneBody(source, `Body ${bodies.length + 1}`)],
+      activeBodyIdx: bodies.length,
+    })
+  }
+
+  const duplicateBody = (index: number) => {
+    const source = bodies[index]
+    if (!source) return
+    const next = [...bodies]
+    next.splice(index + 1, 0, cloneBody(source, `${source.name} copy`))
+    onChange({ ...request, bodies: next, activeBodyIdx: index + 1 })
+  }
+
+  const deleteBody = (index: number) => {
+    if (bodies.length <= 1) return
+    const next = bodies.filter((_, bodyIndexToDelete) => bodyIndexToDelete !== index)
+    const nextIndex = bodyIndex > index ? bodyIndex - 1 : Math.min(bodyIndex, next.length - 1)
+    onChange({ ...request, bodies: next, activeBodyIdx: Math.max(0, nextIndex) })
+  }
 
   const handleCurlImport = (curlStr: string) => {
     const parsed = parseCurl(curlStr)
@@ -627,7 +684,8 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
     onChange({ ...request, url, params: rowsWithTrailingBlank(queryRowsFromUrl(url)) })
   }
 
-  const openSection = (section: ComposerSection) => {
+  const openSection = (section: ComposerSection, subsection?: 'auth') => {
+    if (section === 'headers' && subsection === 'auth') setConfigurationTab('auth')
     setActiveTab(section)
     updateViewState(tabId, { composerSection: section })
   }
@@ -772,30 +830,39 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
         )}
 
         {/* Section tabs */}
-        <div className="flex items-center gap-0.5 overflow-x-auto border-t border-border-1 px-2.5 no-scrollbar">
-          {tabs.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => {
-                setActiveTab(t.id)
-                updateViewState(tabId, { composerSection: t.id })
-              }}
-              className={cn(
-                'relative px-2.5 py-1.5 text-[11px] transition-colors shrink-0',
-                activeTab === t.id ? 'text-text-1' : 'text-text-3 hover:text-text-2'
-              )}
-            >
-              {t.label}
-              {t.count > 0 && (
-                <span className="ml-1 px-1 py-0.5 text-[9px] rounded bg-accent/20 text-accent-light">
-                  {t.count}
-                </span>
-              )}
-              {activeTab === t.id && (
-                <span className="absolute bottom-0 left-2 right-2 h-[2px] bg-accent rounded-t" />
-              )}
-            </button>
-          ))}
+        <div role="tablist" aria-label="Request sections" className="flex min-h-12 flex-wrap items-end gap-1 border-y-2 border-border-2 bg-surface-1 px-3 pt-2">
+          {tabs.map((t) => {
+            const TabIcon = t.icon
+            const active = activeTab === t.id
+            return (
+              <button
+                key={t.id}
+                role="tab"
+                aria-selected={active}
+                onClick={() => {
+                  setActiveTab(t.id)
+                  updateViewState(tabId, { composerSection: t.id })
+                }}
+                className={cn(
+                  'relative flex h-9 shrink-0 items-center gap-1.5 rounded-t-md border border-b-0 px-3 text-[11.5px] font-medium outline-none transition-all focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent',
+                  active
+                    ? 'border-border-2 bg-surface-3 text-text-1 shadow-[inset_0_-3px_0_var(--color-accent)]'
+                    : 'border-transparent text-text-2 hover:border-border-2 hover:bg-surface-2 hover:text-text-1',
+                )}
+              >
+                <TabIcon size={12} className={active ? 'text-accent' : 'text-text-3'} />
+                <span>{t.label}</span>
+                {t.count > 0 && (
+                  <span className={cn(
+                    'inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 font-mono text-[9px] font-semibold',
+                    active ? 'bg-accent/25 text-accent-light' : 'bg-surface-3 text-text-2',
+                  )}>
+                    {t.count}
+                  </span>
+                )}
+              </button>
+            )
+          })}
         </div>
 
         {/* Tab content — body gets extra height so large JSON doesn't need excessive scrolling */}
@@ -825,95 +892,150 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
             <ParamsSection request={request} onChange={onChange} />
           )}
           {activeTab === 'headers' && (
-            <KVEditor
-              rows={request.headers ?? []}
-              onChange={(headers) => onChange({ ...request, headers })}
-              keyPlaceholder="Header"
-            />
-          )}
-          {activeTab === 'cookies' && (
-            <>
-              <KVEditor
-                rows={request.cookies ?? []}
-                onChange={(cookies) => onChange({ ...request, cookies })}
-                keyPlaceholder="Cookie name"
-                valuePlaceholder="Cookie value"
-              />
-              <CookieJarSection requestUrl={request.url} />
-            </>
+            <div className="flex min-h-0 flex-1 flex-col">
+              <div role="tablist" aria-label="Headers, authentication and cookies" className="flex gap-1 border-b border-border-1 bg-surface-1 px-2 pt-2">
+                {([
+                  { id: 'headers' as const, label: 'Headers', icon: ListChecks },
+                  { id: 'auth' as const, label: 'Auth', icon: ShieldCheck },
+                  { id: 'cookies' as const, label: 'Cookies', icon: Circle },
+                ]).map((item) => {
+                  const ItemIcon = item.icon
+                  const active = configurationTab === item.id
+                  return (
+                    <button
+                      key={item.id}
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => setConfigurationTab(item.id)}
+                      className={cn(
+                        'flex h-8 items-center gap-1.5 border-b-2 px-3 text-[11px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent',
+                        active ? 'border-accent text-text-1' : 'border-transparent text-text-3 hover:text-text-1',
+                      )}
+                    >
+                      <ItemIcon size={12} className={active ? 'text-accent' : 'text-text-4'} />
+                      {item.label}
+                    </button>
+                  )
+                })}
+              </div>
+              {configurationTab === 'headers' && (
+                <KVEditor
+                  rows={request.headers ?? []}
+                  onChange={(headers) => onChange({ ...request, headers })}
+                  keyPlaceholder="Header"
+                />
+              )}
+              {configurationTab === 'auth' && (
+                <AuthEditor auth={request.auth ?? blankAuth()} onChange={(auth) => onChange({ ...request, auth })} />
+              )}
+              {configurationTab === 'cookies' && (
+                <>
+                  <KVEditor
+                    rows={request.cookies ?? []}
+                    onChange={(cookies) => onChange({ ...request, cookies })}
+                    keyPlaceholder="Cookie name"
+                    valuePlaceholder="Cookie value"
+                  />
+                  <CookieJarSection requestUrl={request.url} />
+                </>
+              )}
+            </div>
           )}
           {activeTab === 'body' && (
             <>
-              {/* Body sub-tabs */}
-              <div className="flex items-center gap-0.5 px-2 pt-1 border-b border-border-1">
-                {bodies.map((b, i) => (
-                  <div
-                    key={b.id}
-                    onClick={() => onChange({ ...request, activeBodyIdx: i })}
-                    className={cn(
-                      'inline-flex items-center gap-1 px-2 py-1 text-[10px] transition-colors border-b-2 -mb-[1px] cursor-pointer',
-                      i === bodyIndex
-                        ? 'border-accent text-text-1'
-                        : 'border-transparent text-text-3 hover:text-text-2'
-                    )}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        onChange({ ...request, activeBodyIdx: i })
-                      }
-                    }}
-                    onContextMenu={(e) => {
-                      e.preventDefault()
-                      setRenameBodyPrompt({ show: true, index: i })
-                    }}
+              <section className="border-b border-border-2 bg-surface-1/70">
+                {/* Compact header — always visible */}
+                <div className="flex items-center gap-2 px-3 py-1.5">
+                  <button
+                    onClick={() => setBodyVariantsExpanded(v => !v)}
+                    className="flex flex-1 min-w-0 items-center gap-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
+                    title={bodyVariantsExpanded ? 'Collapse body variants' : 'Expand body variants'}
                   >
-                    {b.name}
-                    {bodies.length > 1 && i === bodyIndex && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          const newBodies = bodies.filter((_, ii) => ii !== i)
-                          const newIdx = Math.max(0, bodyIndex - 1)
-                          onChange({ ...request, bodies: newBodies.length ? newBodies : [blankBody()], activeBodyIdx: newBodies.length ? newIdx : 0 })
-                        }}
-                        className="ml-1 text-text-4 hover:text-error inline-flex"
-                        title="Delete body"
-                      >
-                        <X size={9} />
-                      </button>
+                    <ChevronDown
+                      size={12}
+                      className={cn('shrink-0 text-text-4 transition-transform duration-150', bodyVariantsExpanded ? 'rotate-0' : '-rotate-90')}
+                    />
+                    <span className="text-[11px] font-medium text-text-3">Body variants</span>
+                    {/* Pill showing active body name */}
+                    {activeBody && (
+                      <span className="ml-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 bg-surface-2 border border-border-2 text-[10px] font-medium text-text-2 truncate max-w-[160px]">
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+                        {activeBody.name}
+                        <span className="font-mono text-[8.5px] text-accent ml-0.5">{bodyFormatLabel(activeBody)}</span>
+                      </span>
                     )}
+                    {bodies.length > 1 && (
+                      <span className="ml-0.5 rounded-full bg-surface-3 px-1.5 py-0.5 text-[9px] font-semibold text-text-3">{bodies.length}</span>
+                    )}
+                  </button>
+                  <button
+                    onClick={addBody}
+                    className="inline-flex shrink-0 h-6 items-center gap-1 rounded border border-border-2 bg-surface-2 px-2 text-[10px] font-medium text-text-2 outline-none transition-colors hover:border-accent/60 hover:bg-surface-3 focus-visible:ring-2 focus-visible:ring-accent"
+                    title="Add body example"
+                  >
+                    <Plus size={10} className="text-accent" /> New
+                  </button>
+                </div>
+
+                {/* Expanded panel — body variant cards */}
+                {bodyVariantsExpanded && (
+                  <div className="px-3 pb-2.5">
+                    <div role="tablist" aria-label="Request body variants" className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                      {bodies.map((body, index) => {
+                        const active = index === bodyIndex
+                        return (
+                          <div
+                            key={body.id}
+                            className={cn(
+                              'group relative h-[60px] w-[152px] shrink-0 overflow-hidden rounded-md border bg-surface-2 transition-all',
+                              active
+                                ? 'border-accent/80 bg-surface-3 shadow-[0_0_0_1px_rgba(34,211,238,.12)]'
+                                : 'border-border-2 hover:border-accent/40 hover:bg-surface-3',
+                            )}
+                          >
+                            {active && <span className="absolute inset-x-0 top-0 z-10 h-[2px] bg-accent" />}
+                            <button
+                              role="tab"
+                              aria-selected={active}
+                              onClick={() => onChange({ ...request, activeBodyIdx: index })}
+                              onContextMenu={(event) => {
+                                event.preventDefault()
+                                setBodyMenu({ x: event.clientX, y: event.clientY, index })
+                              }}
+                              className="flex h-full w-full flex-col items-start justify-center px-3 pr-10 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+                              title={body.name}
+                            >
+                              <span
+                                className={cn('max-w-full overflow-hidden text-[11px] font-semibold leading-[14px]', active ? 'text-text-1' : 'text-text-2')}
+                                style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}
+                              >
+                                {body.name}
+                              </span>
+                              <span className={cn('mt-1 font-mono text-[8.5px] font-semibold tracking-wide', active ? 'text-accent' : 'text-text-4')}>{bodyFormatLabel(body)}</span>
+                            </button>
+                            <div className={cn('absolute right-1 top-1 flex items-center gap-0.5 transition-opacity', active ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100')}>
+                              {bodies.length > 1 && (
+                                <button aria-label={`Delete ${body.name}`} onClick={() => deleteBody(index)} className="grid h-5 w-5 place-items-center rounded text-text-3 hover:bg-error/10 hover:text-error focus-visible:ring-2 focus-visible:ring-accent" title={`Delete ${body.name}`}><X size={10} /></button>
+                              )}
+                              <button
+                                aria-label={`More options for ${body.name}`}
+                                onClick={(event) => {
+                                  const rect = event.currentTarget.getBoundingClientRect()
+                                  setBodyMenu({ x: rect.right, y: rect.bottom, index })
+                                }}
+                                className="grid h-5 w-5 place-items-center rounded text-text-3 hover:bg-surface-1 hover:text-text-1 focus-visible:ring-2 focus-visible:ring-accent"
+                                title={`More options for ${body.name}`}
+                              >
+                                <MoreVertical size={11} />
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
                   </div>
-                ))}
-                <button
-                  onClick={() => {
-                    const source = activeBody ?? blankBody()
-                    const sourceRaw = source.raw ?? ''
-                    const nextRaw = source.lang === 'json' && sourceRaw.trim()
-                      ? (() => { try { return JSON.stringify(JSON.parse(sourceRaw), null, 2) } catch { return sourceRaw } })()
-                      : sourceRaw
-                    onChange({
-                      ...request,
-                      bodies: [
-                        ...bodies,
-                        {
-                          ...source,
-                          id: uid(),
-                          name: `Body ${bodies.length + 1}`,
-                          raw: nextRaw,
-                          form: (source.form ?? []).map((row) => ({ ...row, id: uid() })),
-                        },
-                      ],
-                      activeBodyIdx: bodies.length,
-                    })
-                  }}
-                  className="px-1 py-1 text-text-4 hover:text-accent"
-                  title="Add body"
-                >
-                  <Plus size={11} />
-                </button>
-              </div>
+                )}
+              </section>
               {activeBody && (
                 <BodyEditor
                   key={activeBody.id}
@@ -931,36 +1053,46 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
               )}
             </>
           )}
-          {activeTab === 'auth' && (
-            <AuthEditor auth={request.auth ?? blankAuth()} onChange={(auth) => onChange({ ...request, auth })} />
-          )}
           {activeTab === 'scripts' && (
-            <ScriptsEditor
-              pre={scripts.pre ?? ''}
-              post={scripts.post ?? ''}
-              tests={scripts.tests ?? ''}
-              onChange={(s) => onChange({ ...request, scripts: s })}
-            />
-          )}
-          {activeTab === 'tests' && (
-            <AssertionsEditor
-              assertions={request.assertions ?? []}
-              onChange={(assertions) => onChange({ ...request, assertions })}
-            />
-          )}
-          {activeTab === 'notes' && (
-            <div className="flex flex-col gap-2 p-3">
-              <div className="flex items-center gap-2 text-[11px] font-medium text-text-3">
-                <FileText size={12} className="text-accent" />
-                Request documentation
+            <div className="flex min-h-0 flex-1 flex-col">
+              <div role="tablist" aria-label="Tests and scripts" className="flex gap-1 border-b border-border-1 bg-surface-1 px-2 pt-2">
+                {([
+                  { id: 'tests' as const, label: 'Tests', icon: CheckCheck },
+                  { id: 'scripts' as const, label: 'Scripts', icon: FileCode },
+                ]).map((item) => {
+                  const ItemIcon = item.icon
+                  const active = automationTab === item.id
+                  return (
+                    <button
+                      key={item.id}
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => setAutomationTab(item.id)}
+                      className={cn(
+                        'flex h-8 items-center gap-1.5 border-b-2 px-3 text-[11px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent',
+                        active ? 'border-accent text-text-1' : 'border-transparent text-text-3 hover:text-text-1',
+                      )}
+                    >
+                      <ItemIcon size={12} className={active ? 'text-accent' : 'text-text-4'} />
+                      {item.label}
+                    </button>
+                  )
+                })}
               </div>
-              <textarea
-                value={request.description ?? ''}
-                onChange={(event) => onChange({ ...request, description: event.target.value })}
-                placeholder="Document constraints, token lifetime, batch windows, examples, or handoff notes for this request..."
-                className="min-h-24 w-full resize-y rounded border border-border-2 bg-surface-2 px-3 py-2 text-xs leading-relaxed text-text-1 outline-none placeholder:text-text-4 focus:border-accent"
-              />
-              <p className="text-[10px] text-text-4">Stored locally with this request and included in workspace exports.</p>
+              {automationTab === 'tests' && (
+                <AssertionsEditor
+                  assertions={request.assertions ?? []}
+                  onChange={(assertions) => onChange({ ...request, assertions })}
+                />
+              )}
+              {automationTab === 'scripts' && (
+                <ScriptsEditor
+                  pre={scripts.pre ?? ''}
+                  post={scripts.post ?? ''}
+                  tests={scripts.tests ?? ''}
+                  onChange={(s) => onChange({ ...request, scripts: s })}
+                />
+              )}
             </div>
           )}
         </div>
@@ -970,6 +1102,26 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
         <CurlImportModal
           onClose={() => setShowCurlImport(false)}
           onImport={handleCurlImport}
+        />
+      )}
+
+      {bodyMenu && (
+        <ContextMenu
+          x={bodyMenu.x}
+          y={bodyMenu.y}
+          items={[
+            { id: 'rename', label: 'Rename body variant' },
+            { id: 'duplicate', label: 'Duplicate body variant' },
+            { id: 'delete', label: 'Delete body variant', danger: true, disabled: bodies.length <= 1, separatorBefore: true },
+          ]}
+          onSelect={(action) => {
+            const index = bodyMenu.index
+            setBodyMenu(null)
+            if (action === 'rename') setRenameBodyPrompt({ show: true, index })
+            if (action === 'duplicate') duplicateBody(index)
+            if (action === 'delete') deleteBody(index)
+          }}
+          onClose={() => setBodyMenu(null)}
         />
       )}
 

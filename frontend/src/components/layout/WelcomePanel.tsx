@@ -1,4 +1,4 @@
-import { useMemo, useState, type ElementType } from 'react'
+import { useEffect, useMemo, useRef, useState, type ElementType, type PointerEvent as ReactPointerEvent } from 'react'
 import {
   Activity,
   BookOpen,
@@ -11,11 +11,11 @@ import {
   FileText,
   GitBranch,
   HardDrive,
-  Layers,
   Lock,
   Network,
   PenLine,
   Radio,
+  Search,
   Send,
   Server,
   Shield,
@@ -166,6 +166,134 @@ function themeVars(isLight: boolean) {
   }
 }
 
+function pointerAngle(event: ReactPointerEvent<HTMLElement>, element: HTMLElement): number {
+  const rect = element.getBoundingClientRect()
+  return Math.atan2(event.clientY - (rect.top + rect.height / 2), event.clientX - (rect.left + rect.width / 2))
+}
+
+function shortestAngleDelta(next: number, previous: number): number {
+  let delta = next - previous
+  while (delta > Math.PI) delta -= Math.PI * 2
+  while (delta < -Math.PI) delta += Math.PI * 2
+  return delta
+}
+
+function FidgetLogo({ src }: { src: string }) {
+  const imageRef = useRef<HTMLImageElement>(null)
+  const frameRef = useRef<number | null>(null)
+  const rotationRef = useRef(0)
+  const velocityRef = useRef(0)
+  const lastAngleRef = useRef(0)
+  const lastTimeRef = useRef(0)
+  const lastMoveRef = useRef(0)
+  const draggingRef = useRef(false)
+  const [dragging, setDragging] = useState(false)
+
+  const paint = () => {
+    if (imageRef.current) imageRef.current.style.transform = `rotate(${rotationRef.current}rad) scale(${draggingRef.current ? 1.035 : 1})`
+  }
+
+  const stopAnimation = () => {
+    if (frameRef.current !== null) cancelAnimationFrame(frameRef.current)
+    frameRef.current = null
+  }
+
+  const releaseWithInertia = () => {
+    if (!draggingRef.current) return
+    draggingRef.current = false
+    setDragging(false)
+    if (performance.now() - lastMoveRef.current > 90) velocityRef.current = 0
+    velocityRef.current *= 1.18
+    let previousFrame = performance.now()
+    const animate = (now: number) => {
+      const elapsed = Math.min(32, now - previousFrame)
+      previousFrame = now
+      rotationRef.current += velocityRef.current * elapsed
+      velocityRef.current *= Math.exp(-elapsed * 0.00115)
+      paint()
+      if (Math.abs(velocityRef.current) > 0.00006) frameRef.current = requestAnimationFrame(animate)
+      else frameRef.current = null
+    }
+    if (Math.abs(velocityRef.current) > 0.00006) frameRef.current = requestAnimationFrame(animate)
+    else paint()
+  }
+
+  useEffect(() => () => stopAnimation(), [])
+
+  const handlePointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (event.button !== 0) return
+    stopAnimation()
+    event.currentTarget.setPointerCapture(event.pointerId)
+    draggingRef.current = true
+    setDragging(true)
+    velocityRef.current = 0
+    lastAngleRef.current = pointerAngle(event, event.currentTarget)
+    lastTimeRef.current = event.timeStamp
+    lastMoveRef.current = performance.now()
+    paint()
+    event.preventDefault()
+  }
+
+  const handlePointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (!draggingRef.current || !event.currentTarget.hasPointerCapture(event.pointerId)) return
+    const nextAngle = pointerAngle(event, event.currentTarget)
+    const delta = shortestAngleDelta(nextAngle, lastAngleRef.current)
+    const elapsed = Math.max(4, event.timeStamp - lastTimeRef.current)
+    const instantaneousVelocity = Math.max(-0.09, Math.min(0.09, delta / elapsed))
+    rotationRef.current += delta
+    velocityRef.current = velocityRef.current * 0.28 + instantaneousVelocity * 0.72
+    lastAngleRef.current = nextAngle
+    lastTimeRef.current = event.timeStamp
+    lastMoveRef.current = performance.now()
+    paint()
+    event.preventDefault()
+  }
+
+  const nudge = () => {
+    stopAnimation()
+    velocityRef.current = Math.min(0.055, Math.abs(velocityRef.current) + 0.022)
+    let previousFrame = performance.now()
+    const animate = (now: number) => {
+      const elapsed = Math.min(32, now - previousFrame)
+      previousFrame = now
+      rotationRef.current += velocityRef.current * elapsed
+      velocityRef.current *= Math.exp(-elapsed * 0.00115)
+      paint()
+      if (velocityRef.current > 0.00006) frameRef.current = requestAnimationFrame(animate)
+      else frameRef.current = null
+    }
+    frameRef.current = requestAnimationFrame(animate)
+  }
+
+  return (
+    <button
+      type="button"
+      aria-label="Spin the adOmnia logo"
+      title="Drag the logo to spin it — faster gestures create more momentum"
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={releaseWithInertia}
+      onPointerCancel={releaseWithInertia}
+      onLostPointerCapture={releaseWithInertia}
+      onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); nudge() } }}
+      className={cn(
+        'group relative grid h-[250px] w-[250px] touch-none select-none place-items-center rounded-full outline-none max-sm:h-[200px] max-sm:w-[200px]',
+        'cursor-grab focus-visible:ring-2 focus-visible:ring-violet-400/80 focus-visible:ring-offset-4 focus-visible:ring-offset-transparent',
+        dragging && 'cursor-grabbing',
+      )}
+    >
+      <span className={cn('pointer-events-none absolute inset-7 rounded-full bg-violet-500/10 blur-2xl transition-opacity', dragging ? 'opacity-90' : 'opacity-45 group-hover:opacity-70')} />
+      <img
+        ref={imageRef}
+        src={src}
+        alt=""
+        draggable={false}
+        className="pointer-events-none h-[240px] w-[240px] object-contain drop-shadow-[0_18px_34px_rgba(124,58,237,.38)] will-change-transform max-sm:h-[190px] max-sm:w-[190px]"
+      />
+    </button>
+  )
+}
+
 export function WelcomePanel() {
   const setActiveRail = useAppStore((s) => s.setActiveRail)
   const mockRunning = useAppStore((s) => s.mockRunning)
@@ -228,9 +356,11 @@ export function WelcomePanel() {
           }}
         >
           <div className="min-w-0">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-violet-500/25 bg-violet-500/10 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-violet-400">
-              <Layers size={12} />
-              Local-first developer toolbox
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-violet-500/25 bg-violet-500/10 px-3 py-1 font-mono text-[10px] font-semibold tracking-[0.06em] text-violet-300">
+              <Search size={12} />
+              <span>
+                Press <kbd className="rounded border border-violet-500/40 bg-violet-500/15 px-1 py-px text-[9px] text-violet-200">Ctrl/Cmd&nbsp;+&nbsp;F</kbd> to search any feature
+              </span>
             </div>
             <h1 className="max-w-[720px] text-[38px] font-semibold leading-[1.04] tracking-normal max-sm:text-[32px] max-sm:leading-[1.08]" style={{ color: colors.title }}>
               <span className={isLight ? 'text-violet-700' : 'text-violet-200'}>Build & debug APIs.</span>
@@ -243,11 +373,7 @@ export function WelcomePanel() {
           </div>
 
           <div className="flex w-[320px] shrink-0 items-center justify-center self-stretch max-lg:order-first max-lg:w-full max-lg:self-auto">
-            <img
-              src={appIcon}
-              alt="adOmnia"
-              className="h-[240px] w-[240px] object-contain drop-shadow-[0_18px_34px_rgba(124,58,237,.38)] max-sm:h-[190px] max-sm:w-[190px]"
-            />
+            <FidgetLogo src={appIcon} />
           </div>
         </header>
 

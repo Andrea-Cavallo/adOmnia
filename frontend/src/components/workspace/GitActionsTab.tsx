@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import {
   Archive,
   Boxes,
@@ -19,7 +19,8 @@ import {
 } from 'lucide-react'
 import * as GitSync from '@/wailsjs/go/main/GitSync'
 import { cn } from '@/lib/utils'
-import { loadGitProfiles, matchingGitProfile, removeGitProfile, saveGitProfile, type GitProfile } from '@/lib/gitProfiles'
+import { GitCollaborationSection } from './git/GitCollaborationSection'
+import { GitTerminal } from './git/GitTerminal'
 
 interface FileChange {
   path: string
@@ -79,15 +80,6 @@ function fieldClass() {
   return 'h-8 min-w-0 rounded border border-border-2 bg-surface-2 px-2 text-xs text-text-1 outline-none placeholder:text-text-4 focus:border-accent'
 }
 
-const GITHUB_TOKEN_KEY = 'adomnia.git.githubToken'
-
-function openExternal(url: string) {
-  if (!url) return
-  import('@/wailsjs/runtime/runtime')
-    .then(({ BrowserOpenURL }) => BrowserOpenURL(url))
-    .catch(() => window.open(url, '_blank'))
-}
-
 function Section({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
   return (
     <section className="min-w-0 rounded border border-border-1 bg-surface-1">
@@ -134,19 +126,6 @@ export function GitActionsTab({ repoPath, currentBranch, changes, branches, remo
   const [sparsePaths, setSparsePaths] = useState('')
   const [sparseCone, setSparseCone] = useState(true)
   const [advancedError, setAdvancedError] = useState('')
-  const [profiles, setProfiles] = useState<GitProfile[]>(() => loadGitProfiles())
-  const [profileId, setProfileId] = useState('')
-  const [profileLabel, setProfileLabel] = useState('')
-  const [profileHost, setProfileHost] = useState('')
-  const [profileAuto, setProfileAuto] = useState(true)
-  const [ghToken, setGhToken] = useState(() => localStorage.getItem(GITHUB_TOKEN_KEY) ?? '')
-  const [ghUser, setGhUser] = useState('')
-  const [prList, setPrList] = useState<GitSync.GitHubPR[]>([])
-  const [prTitle, setPrTitle] = useState('')
-  const [prBase, setPrBase] = useState('')
-  const [prBody, setPrBody] = useState('')
-  const [prError, setPrError] = useState('')
-  const [prBusy, setPrBusy] = useState(false)
 
   const localBranches = useMemo(() => branches.filter((branch) => !branch.remote), [branches])
   const branchChoices = useMemo(() => branches.map((branch) => branch.name).filter(Boolean), [branches])
@@ -154,18 +133,6 @@ export function GitActionsTab({ repoPath, currentBranch, changes, branches, remo
   const selectedFile = filePath || changes[0]?.path || ''
 
   const disabled = loading || !repoPath
-
-  useEffect(() => {
-    const match = matchingGitProfile(profiles, remotes.map((remote) => remote.url))
-    if (!repoPath || !match) return
-    void GitSync.ConfigureUser(repoPath, match.name, match.email).catch(() => undefined)
-  }, [profiles, remotes, repoPath])
-
-  const selectedProfile = profiles.find((profile) => profile.id === profileId)
-  const applyProfile = async (profile: GitProfile) => {
-    setProfileId(profile.id); setProfileLabel(profile.label); setUserName(profile.name); setUserEmail(profile.email); setProfileHost(profile.hostPattern); setProfileAuto(profile.autoApply)
-    await runAction(() => GitSync.ConfigureUser(repoPath, profile.name, profile.email), `Profile “${profile.label}” applied.`)
-  }
 
   const runShow = async () => {
     if (!repoPath || !showRef.trim()) return
@@ -222,22 +189,6 @@ export function GitActionsTab({ repoPath, currentBranch, changes, branches, remo
     try { setAdvancedError(''); setSparsePaths((JSON.parse(await GitSync.SparseCheckoutList(repoPath)) as string[]).join(', ')) }
     catch (e) { setAdvancedError(String(e)) }
   }
-
-  const saveGhToken = (value: string) => { setGhToken(value); localStorage.setItem(GITHUB_TOKEN_KEY, value); setGhUser(''); setPrList([]) }
-  const withPr = async (fn: () => Promise<void>) => {
-    setPrError(''); setPrBusy(true)
-    try { await fn() } catch (e) { setPrError(e instanceof Error ? e.message : String(e)) } finally { setPrBusy(false) }
-  }
-  const connectGitHub = () => withPr(async () => {
-    setGhUser(await GitSync.GitHubValidateToken(ghToken))
-    setPrList(await GitSync.GitHubListPRs(repoPath, ghToken))
-  })
-  const refreshPRs = () => withPr(async () => { setPrList(await GitSync.GitHubListPRs(repoPath, ghToken)) })
-  const createPR = () => withPr(async () => {
-    const pr = await GitSync.GitHubCreatePR(repoPath, ghToken, prTitle.trim(), currentBranch, prBase.trim(), prBody.trim())
-    setPrTitle(''); setPrBody('')
-    setPrList((current) => [pr, ...current.filter((item) => item.number !== pr.number)])
-  })
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto bg-surface-0 p-3">
@@ -331,38 +282,9 @@ export function GitActionsTab({ repoPath, currentBranch, changes, branches, remo
           </div>
         </Section>
 
-        <Section icon={<GitPullRequest size={13} />} title="Pull Requests (GitHub)">
-          <div className="grid gap-2 md:grid-cols-[1fr_auto]">
-            <input value={ghToken} onChange={(event) => saveGhToken(event.target.value)} type="password" className={fieldClass()} placeholder="Personal access token (repo scope)" autoComplete="off" />
-            <button className={actionClass('primary')} disabled={prBusy || !repoPath || !ghToken.trim()} onClick={connectGitHub}>{ghUser ? `Connected: ${ghUser}` : 'Connect'}</button>
-          </div>
-          {ghUser && (
-            <>
-              <div className="grid gap-2 border-t border-border-1 pt-2 md:grid-cols-[1fr_160px]">
-                <input value={prTitle} onChange={(event) => setPrTitle(event.target.value)} className={fieldClass()} placeholder="PR title" />
-                <input value={prBase} onChange={(event) => setPrBase(event.target.value)} className={fieldClass()} placeholder="Base (default branch)" />
-                <textarea value={prBody} onChange={(event) => setPrBody(event.target.value)} className={cn(fieldClass(), 'h-16 resize-none py-1.5 md:col-span-2')} placeholder="Description (optional)" />
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <button className={actionClass('primary')} disabled={prBusy || !prTitle.trim() || !currentBranch} onClick={createPR}>Open PR from “{shortBranch(currentBranch) || '—'}”</button>
-                <button className={actionClass()} disabled={prBusy} onClick={refreshPRs}>Refresh</button>
-              </div>
-              <div className="space-y-1.5">
-                {prList.length === 0 ? (
-                  <div className="rounded border border-dashed border-border-2 p-2 text-center text-[10px] text-text-4">No open pull requests</div>
-                ) : prList.map((pr) => (
-                  <button key={pr.number} className="flex w-full items-center gap-2 rounded border border-border-1 bg-surface-0 px-2 py-1.5 text-left hover:border-accent" onClick={() => openExternal(pr.url)}>
-                    <GitPullRequestArrow size={13} className="shrink-0 text-success" />
-                    <span className="shrink-0 text-[10px] font-medium text-text-4">#{pr.number}</span>
-                    <span className="min-w-0 flex-1 truncate text-xs text-text-1" title={pr.title}>{pr.draft ? '[draft] ' : ''}{pr.title}</span>
-                    <span className="shrink-0 truncate text-[10px] text-text-4" title={`${pr.head} → ${pr.base}`}>{shortBranch(pr.head)} → {pr.base}</span>
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-          {prError && <div className="rounded border border-error/40 bg-error/10 px-2 py-1.5 text-[10px] text-error">{prError}</div>}
-        </Section>
+        <GitCollaborationSection repoPath={repoPath} currentBranch={currentBranch} branches={branches} remotes={remotes} loading={loading} />
+
+        <GitTerminal repoPath={repoPath} disabled={disabled} onRepositoryChanged={() => runAction(async () => undefined, 'Repository refreshed after terminal command.')} />
 
         <Section icon={<Archive size={13} />} title="Stash">
           <div className="flex flex-wrap gap-2">
@@ -379,14 +301,6 @@ export function GitActionsTab({ repoPath, currentBranch, changes, branches, remo
 			</button>
             <button className={actionClass()} disabled={disabled || stashes.length === 0} onClick={() => runAction(() => GitSync.StashPop(repoPath), 'Stash popped.')}>Pop latest</button>
           </div>
-          <div className="grid gap-2 border-t border-border-1 pt-2 md:grid-cols-[1fr_1fr_1fr_auto_auto]">
-            <select value={profileId} onChange={(event) => { const profile = profiles.find((item) => item.id === event.target.value); if (profile) void applyProfile(profile) }} className={fieldClass()}><option value="">Named Git profile…</option>{profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.label}</option>)}</select>
-            <input value={profileLabel} onChange={(event) => setProfileLabel(event.target.value)} className={fieldClass()} placeholder="Profile label" />
-            <input value={profileHost} onChange={(event) => setProfileHost(event.target.value)} className={fieldClass()} placeholder="Host match, e.g. github.com" />
-            <label className="flex items-center gap-1 text-[10px] text-text-2"><input type="checkbox" checked={profileAuto} onChange={(event) => setProfileAuto(event.target.checked)} /> Auto</label>
-            <button className={actionClass()} disabled={!profileLabel.trim() || !userName.trim() || !userEmail.trim()} onClick={() => { const next = saveGitProfile(profiles, { id: profileId || undefined, label: profileLabel.trim(), name: userName.trim(), email: userEmail.trim(), hostPattern: profileHost.trim(), autoApply: profileAuto }); setProfiles(next); setProfileId(next[0]?.id || '') }}>Save profile</button>
-          </div>
-          {selectedProfile && <button className={actionClass('danger')} onClick={() => { setProfiles(removeGitProfile(profiles, selectedProfile.id)); setProfileId('') }}>Delete selected profile</button>}
 		  {changes.length > 0 && (
 			<div className="max-h-32 space-y-1 overflow-y-auto rounded border border-border-1 bg-surface-0 p-1.5">
 				{changes.map((change) => (

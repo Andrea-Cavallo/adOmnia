@@ -230,6 +230,22 @@ export function GitHubValidateToken(arg1) {
   return window['go']['main']['GitSync']['GitHubValidateToken'](arg1);
 }
 
+export function HostCreatePR(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+  return window['go']['main']['GitSync']['HostCreatePR'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+}
+
+export function HostListPRs(arg1, arg2, arg3) {
+  return window['go']['main']['GitSync']['HostListPRs'](arg1, arg2, arg3);
+}
+
+export function HostPush(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['GitSync']['HostPush'](arg1, arg2, arg3, arg4);
+}
+
+export function HostValidateToken(arg1, arg2, arg3) {
+  return window['go']['main']['GitSync']['HostValidateToken'](arg1, arg2, arg3);
+}
+
 export function InitRepo(arg1) {
   return window['go']['main']['GitSync']['InitRepo'](arg1);
 }
@@ -320,6 +336,10 @@ export function RestoreFileFromCommit(arg1, arg2, arg3) {
 
 export function RevertCommit(arg1, arg2, arg3, arg4) {
   return window['go']['main']['GitSync']['RevertCommit'](arg1, arg2, arg3, arg4);
+}
+
+export function RunTerminalCommand(arg1, arg2) {
+  return window['go']['main']['GitSync']['RunTerminalCommand'](arg1, arg2);
 }
 
 export function SaveConflictResolution(arg1, arg2, arg3) {

@@ -107,3 +107,21 @@ export interface StorageEntry {
 export function StorageGetAll(bucket: string): Promise<StorageEntry[]> {
   return window['go']['main']['App']['StorageGetAll'](bucket)
 }
+
+export interface UpdateInfo {
+  currentVersion: string
+  latestVersion: string
+  updateAvailable: boolean
+  releaseUrl: string
+  releaseNotes: string
+  publishedAt: string
+  isDev: boolean
+}
+
+export function GetAppVersion(): Promise<string> {
+  return (window['go']['main']['App'] as unknown as Record<string, () => Promise<string>>)['GetAppVersion']()
+}
+
+export function CheckForUpdate(): Promise<UpdateInfo> {
+  return (window['go']['main']['App'] as unknown as Record<string, () => Promise<UpdateInfo>>)['CheckForUpdate']()
+}

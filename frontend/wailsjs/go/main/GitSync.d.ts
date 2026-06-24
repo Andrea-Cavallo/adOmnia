@@ -116,6 +116,14 @@ export function GitHubListPRs(arg1:string,arg2:string):Promise<Array<git.PullReq
 
 export function GitHubValidateToken(arg1:string):Promise<string>;
 
+export function HostCreatePR(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string,arg7:string):Promise<git.PullRequest>;
+
+export function HostListPRs(arg1:string,arg2:string,arg3:string):Promise<Array<git.PullRequest>>;
+
+export function HostPush(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;
+
+export function HostValidateToken(arg1:string,arg2:string,arg3:string):Promise<string>;
+
 export function InitRepo(arg1:string):Promise<void>;
 
 export function IsGitInstalled():Promise<boolean>;
@@ -161,6 +169,8 @@ export function RestoreFile(arg1:string,arg2:string):Promise<void>;
 export function RestoreFileFromCommit(arg1:string,arg2:string,arg3:string):Promise<string>;
 
 export function RevertCommit(arg1:string,arg2:string,arg3:string,arg4:number):Promise<string>;
+
+export function RunTerminalCommand(arg1:string,arg2:string):Promise<string>;
 
 export function SaveConflictResolution(arg1:string,arg2:string,arg3:string):Promise<void>;
 

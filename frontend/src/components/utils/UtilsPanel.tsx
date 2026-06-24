@@ -1483,6 +1483,19 @@ export function UtilsPanel({ initialTool = 'base64' }: { initialTool?: string })
   const pendingFileImport = useAppStore((state) => state.pendingFileImport)
   const [activeTool, setActiveTool] = useState(initialTool)
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
+
+  // Command-palette deep links select a tool via this event (see commandPalette.ts).
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { tool?: string; handled?: boolean }
+      if (detail?.tool && CATEGORIES.some((cat) => cat.tools.some((t) => t.id === detail.tool))) {
+        setActiveTool(detail.tool)
+        detail.handled = true
+      }
+    }
+    document.addEventListener('adomnia:powertools-tool', handler)
+    return () => document.removeEventListener('adomnia:powertools-tool', handler)
+  }, [])
   const [toolSearch, setToolSearch] = useState('')
   const [binarySafe, setBinarySafe] = useState(false)
   const [lastToolRun, setLastToolRun] = useState('')

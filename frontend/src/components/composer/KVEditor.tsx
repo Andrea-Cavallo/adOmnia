@@ -1,4 +1,5 @@
 import { Plus, Trash2 } from 'lucide-react'
+import { useState } from 'react'
 import type { KVRow } from '@/lib/types'
 import { uid } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -20,14 +21,23 @@ const HEADER_PRESETS = [
   ['Content-Type', 'application/xml'],
   ['Content-Type', 'application/x-www-form-urlencoded'],
   ['Content-Type', 'multipart/form-data'],
+  ['Content-Type', 'text/event-stream'],
   ['Authorization', 'Bearer {{access_token}}'],
-  ['Cache-Control', 'no-cache'],
+  ['Authorization', 'Basic {{basic_credentials}}'],
+  ['X-Client-Certificate', '{{client_certificate}}'],
   ['Idempotency-Key', '{{idempotency_key}}'],
   ['X-Request-ID', '{{request_id}}'],
+  ['X-Correlation-ID', '{{correlation_id}}'],
+  ['Cache-Control', 'no-cache, no-store, must-revalidate'],
+  ['Cache-Control', 'no-cache, no-transform'],
+  ['Cache-Control', 'public, max-age=300'],
 ] as const
 
 export function KVEditor({ rows, onChange, keyPlaceholder = 'Key', valuePlaceholder = 'Value' }: KVEditorProps) {
   const isHeaders = keyPlaceholder.toLowerCase().includes('header')
+  const [openId, setOpenId] = useState<string | null>(null)
+  const headerNames = Array.from(new Set(HEADER_PRESETS.map(([key]) => key)))
+  const presetCount = HEADER_PRESETS.reduce<Record<string, number>>((acc, [key]) => { acc[key] = (acc[key] ?? 0) + 1; return acc }, {})
   const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
   const getResolvedVars = useEnvironmentsStore((s) => s.getResolvedVars)
   const resolvedVars = getResolvedVars()
@@ -67,13 +77,38 @@ export function KVEditor({ rows, onChange, keyPlaceholder = 'Key', valuePlacehol
             onChange={(e) => update(r.id, { enabled: e.target.checked })}
             className="w-3.5 h-3.5 accent-accent rounded"
           />
-          <input
-            className="h-7 px-2 bg-surface-2 border border-border-2 rounded text-text-1 text-xs placeholder:text-text-4 focus:border-accent outline-none"
-            placeholder={keyPlaceholder}
-            value={r.key}
-            onChange={(e) => update(r.id, { key: e.target.value })}
-            list={isHeaders ? 'adomnia-header-names' : undefined}
-          />
+          <div className="relative">
+            <input
+              className="w-full h-7 px-2 bg-surface-2 border border-border-2 rounded text-text-1 text-xs placeholder:text-text-4 focus:border-accent outline-none"
+              placeholder={keyPlaceholder}
+              value={r.key}
+              onChange={(e) => update(r.id, { key: e.target.value })}
+              onFocus={isHeaders ? () => setOpenId(r.id) : undefined}
+              onBlur={isHeaders ? () => setTimeout(() => setOpenId((id) => (id === r.id ? null : id)), 120) : undefined}
+            />
+            {isHeaders && openId === r.id && (() => {
+              const matches = headerNames.filter((n) => n.toLowerCase().includes(r.key.toLowerCase()) && n !== r.key)
+              if (matches.length === 0) return null
+              return (
+                <div className="absolute left-0 top-[calc(100%+2px)] z-30 w-full max-h-48 overflow-y-auto rounded-md border border-border-2 bg-surface-1 shadow-lg py-1">
+                  {matches.map((name) => (
+                    <button
+                      key={name}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => {
+                        update(r.id, { key: name })
+                        setOpenId(null)
+                      }}
+                      className="block w-full px-3 py-1.5 text-left text-xs text-text-2 hover:bg-surface-2 hover:text-text-1"
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              )
+            })()}
+          </div>
           <div className="h-7 bg-surface-2 border border-border-2 rounded focus-within:border-accent overflow-hidden">
             <VarHighlightInput
               value={r.value}
@@ -101,9 +136,6 @@ export function KVEditor({ rows, onChange, keyPlaceholder = 'Key', valuePlacehol
       </button>
       {isHeaders && (
         <>
-          <datalist id="adomnia-header-names">
-            {Array.from(new Set(HEADER_PRESETS.map(([key]) => key))).map((key) => <option key={key} value={key} />)}
-          </datalist>
           <div className="flex flex-wrap gap-1 px-2 pb-2">
             {HEADER_PRESETS.map(([key, value]) => (
               <button
@@ -112,7 +144,7 @@ export function KVEditor({ rows, onChange, keyPlaceholder = 'Key', valuePlacehol
                 className="rounded border border-border-2 bg-surface-1 px-2 py-0.5 text-[10px] text-text-3 hover:border-accent/50 hover:text-text-1"
                 title={`${key}: ${value}`}
               >
-                {key === 'Content-Type' || key === 'Accept' ? value : key}
+                {presetCount[key] > 1 ? value : key}
               </button>
             ))}
           </div>
