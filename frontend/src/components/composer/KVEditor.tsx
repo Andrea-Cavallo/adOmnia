@@ -21,16 +21,23 @@ const HEADER_PRESETS = [
   ['Content-Type', 'application/xml'],
   ['Content-Type', 'application/x-www-form-urlencoded'],
   ['Content-Type', 'multipart/form-data'],
+  ['Content-Type', 'text/event-stream'],
   ['Authorization', 'Bearer {{access_token}}'],
-  ['Cache-Control', 'no-cache'],
+  ['Authorization', 'Basic {{basic_credentials}}'],
+  ['X-Client-Certificate', '{{client_certificate}}'],
   ['Idempotency-Key', '{{idempotency_key}}'],
   ['X-Request-ID', '{{request_id}}'],
+  ['X-Correlation-ID', '{{correlation_id}}'],
+  ['Cache-Control', 'no-cache, no-store, must-revalidate'],
+  ['Cache-Control', 'no-cache, no-transform'],
+  ['Cache-Control', 'public, max-age=300'],
 ] as const
 
 export function KVEditor({ rows, onChange, keyPlaceholder = 'Key', valuePlaceholder = 'Value' }: KVEditorProps) {
   const isHeaders = keyPlaceholder.toLowerCase().includes('header')
   const [openId, setOpenId] = useState<string | null>(null)
   const headerNames = Array.from(new Set(HEADER_PRESETS.map(([key]) => key)))
+  const presetCount = HEADER_PRESETS.reduce<Record<string, number>>((acc, [key]) => { acc[key] = (acc[key] ?? 0) + 1; return acc }, {})
   const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
   const getResolvedVars = useEnvironmentsStore((s) => s.getResolvedVars)
   const resolvedVars = getResolvedVars()
@@ -137,7 +144,7 @@ export function KVEditor({ rows, onChange, keyPlaceholder = 'Key', valuePlacehol
                 className="rounded border border-border-2 bg-surface-1 px-2 py-0.5 text-[10px] text-text-3 hover:border-accent/50 hover:text-text-1"
                 title={`${key}: ${value}`}
               >
-                {key === 'Content-Type' || key === 'Accept' ? value : key}
+                {presetCount[key] > 1 ? value : key}
               </button>
             ))}
           </div>

@@ -36,6 +36,7 @@ export function Sidebar() {
   const openTab = useTabsStore((s) => s.openTab)
   const newTab = useTabsStore((s) => s.newTab)
   const closeRequestTabs = useTabsStore((s) => s.closeRequestTabs)
+  const renameRequestTabs = useTabsStore((s) => s.renameRequestTabs)
   const activeTabId = useTabsStore((s) => s.activeTabId)
   const tabs = useTabsStore((s) => s.tabs)
   const activateWorkspace = useTabsStore((s) => s.activateWorkspace)
@@ -81,6 +82,11 @@ export function Sidebar() {
   const handleDeleteNode = (collectionId: string, nodeId: string) => {
     deleteNode(collectionId, nodeId)
     closeRequestTabs(nodeId)
+  }
+
+  const handleRenameNode = (collectionId: string, nodeId: string, name: string) => {
+    renameNode(collectionId, nodeId, name)
+    renameRequestTabs(nodeId, name)
   }
 
   return (
@@ -131,7 +137,7 @@ export function Sidebar() {
         onDeleteNode={handleDeleteNode}
         onAddCollection={() => setShowAddCollection(true)}
         onRenameCollection={renameCollection}
-        onRenameNode={renameNode}
+        onRenameNode={handleRenameNode}
         onAddFolder={(collectionId, parentId, name) => addFolder(collectionId, parentId, name)}
         onDuplicateRequest={handleDuplicateRequest}
         onDuplicateNode={duplicateNode}

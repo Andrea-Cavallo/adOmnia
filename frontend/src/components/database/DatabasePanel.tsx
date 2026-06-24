@@ -207,6 +207,23 @@ export function DatabasePanel() {
     setFocusToken((token) => token + 1)
   }
 
+  // A .sql dropped anywhere in the app opens here as a new query tab (see useFileDrop / globalFileRouter).
+  const consumeFileImport = useAppStore((s) => s.consumeFileImport)
+  const pendingFileImport = useAppStore((s) => s.pendingFileImport)
+  useEffect(() => {
+    const routed = consumeFileImport('sql')
+    if (routed?.kind !== 'sql') return
+    const tab = blankTab(routed.name.replace(/\.sql$/i, '') || nextQueryName(tabs), routed.text)
+    setTabs((prev) => [...prev, tab])
+    setActiveTabId(tab.id)
+    setResult(null)
+    setError('')
+    setLogs([])
+    setMessage(`${routed.name} imported`)
+    setFocusToken((token) => token + 1)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [consumeFileImport, pendingFileImport])
+
   const selectTab = (id: string) => {
     if (id === activeTabId) return
     setActiveTabId(id)

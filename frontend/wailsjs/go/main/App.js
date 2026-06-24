@@ -6,10 +6,6 @@ export function CheckForUpdate() {
   return window['go']['main']['App']['CheckForUpdate']();
 }
 
-export function GetAppVersion() {
-  return window['go']['main']['App']['GetAppVersion']();
-}
-
 export function ClearDevLogs() {
   return window['go']['main']['App']['ClearDevLogs']();
 }
@@ -28,6 +24,10 @@ export function DeleteMarkdownFile(arg1, arg2) {
 
 export function ExecuteHTTP(arg1) {
   return window['go']['main']['App']['ExecuteHTTP'](arg1);
+}
+
+export function GetAppVersion() {
+  return window['go']['main']['App']['GetAppVersion']();
 }
 
 export function GetDevLogs() {

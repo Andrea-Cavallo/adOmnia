@@ -11,11 +11,11 @@ import {
   FileText,
   GitBranch,
   HardDrive,
-  Layers,
   Lock,
   Network,
   PenLine,
   Radio,
+  Search,
   Send,
   Server,
   Shield,
@@ -356,9 +356,11 @@ export function WelcomePanel() {
           }}
         >
           <div className="min-w-0">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-violet-500/25 bg-violet-500/10 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-violet-400">
-              <Layers size={12} />
-              Local-first developer toolbox
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-violet-500/25 bg-violet-500/10 px-3 py-1 font-mono text-[10px] font-semibold tracking-[0.06em] text-violet-300">
+              <Search size={12} />
+              <span>
+                Press <kbd className="rounded border border-violet-500/40 bg-violet-500/15 px-1 py-px text-[9px] text-violet-200">Ctrl/Cmd&nbsp;+&nbsp;F</kbd> to search any feature
+              </span>
             </div>
             <h1 className="max-w-[720px] text-[38px] font-semibold leading-[1.04] tracking-normal max-sm:text-[32px] max-sm:leading-[1.08]" style={{ color: colors.title }}>
               <span className={isLight ? 'text-violet-700' : 'text-violet-200'}>Build & debug APIs.</span>

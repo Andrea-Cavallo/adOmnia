@@ -3,6 +3,8 @@ export type RoutedToolFile =
   | { kind: 'wsdl'; name: string; text: string }
   | { kind: 'mermaid'; name: string; text: string }
   | { kind: 'latex'; name: string; text: string }
+  | { kind: 'proto'; name: string; text: string }
+  | { kind: 'sql'; name: string; text: string }
   | { kind: 'class'; name: string; bytes: Uint8Array }
   | { kind: 'pdf'; name: string; bytes: Uint8Array }
 
@@ -47,9 +49,15 @@ export async function routeGlobalDropFile(file: File): Promise<GlobalDropFile> {
   if (lower.endsWith('.tex')) {
     return { kind: 'latex', name: file.name, text }
   }
+  if (lower.endsWith('.proto')) {
+    return { kind: 'proto', name: file.name, text }
+  }
+  if (lower.endsWith('.sql')) {
+    return { kind: 'sql', name: file.name, text }
+  }
   if (/\.(json|ya?ml|adomnia|bru)$/i.test(lower)) {
     return { kind: 'collection', name: file.name, text }
   }
 
-  throw new Error('Unsupported file. Drop a collection JSON/YAML/.bru, Mermaid .mmd/.mermaid, LaTeX .tex, .har, .wsdl, .pdf, or Java .class file.')
+  throw new Error('Unsupported file. Drop a collection JSON/YAML/.bru, Mermaid .mmd/.mermaid, LaTeX .tex, .proto, .sql, .har, .wsdl, .pdf, or Java .class file.')
 }

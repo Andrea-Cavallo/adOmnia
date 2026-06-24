@@ -38,6 +38,16 @@ export function useKeyboardShortcuts({ setCommandPaletteOpen }: KeyboardShortcut
         setTimeout(() => document.dispatchEvent(new CustomEvent('adomnia:focus-search')), 0)
         return
       }
+      // Ctrl/Cmd+F: search the collection tree when on it, otherwise open the global palette.
+      if (mod && !e.shiftKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault()
+        if (useAppStore.getState().activeRail === 'collections') {
+          setTimeout(() => document.dispatchEvent(new CustomEvent('adomnia:focus-search')), 0)
+        } else {
+          setCommandPaletteOpen((open) => !open)
+        }
+        return
+      }
       if (mod && e.key.toLowerCase() === 'w') {
         const { activeTabId, closeTab } = useTabsStore.getState()
         if (activeTabId) { e.preventDefault(); closeTab(activeTabId) }

@@ -33,6 +33,7 @@ import {
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { cn } from '@/lib/utils'
 import { safeSetItem } from '@/lib/safeLocalStorage'
+import { useAppStore } from '@/stores/app'
 
 const CONNECTIONS_KEY = 'adomnia.grpc.connections'
 const HISTORY_KEY = 'adomnia.grpc.history'
@@ -1380,6 +1381,8 @@ function GrpcLoadTestDialog({ port, address, service, method, payload, tls, onCl
 
 export function GrpcPanel() {
   const port = useServerPort()
+  const consumeFileImport = useAppStore((s) => s.consumeFileImport)
+  const pendingFileImport = useAppStore((s) => s.pendingFileImport)
   const protoInputRef = useRef<HTMLInputElement>(null)
   const protosetInputRef = useRef<HTMLInputElement>(null)
   const [address, setAddress] = useState('localhost:50051')
@@ -1622,6 +1625,14 @@ export function GrpcPanel() {
       if (protoInputRef.current) protoInputRef.current.value = ''
     }
   }
+
+  // A .proto dropped anywhere in the app is queued here (see useFileDrop / globalFileRouter).
+  useEffect(() => {
+    const routed = consumeFileImport('proto')
+    if (routed?.kind !== 'proto') return
+    void handleProtoFile(new File([routed.text], routed.name))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [consumeFileImport, pendingFileImport])
 
   const handleProtosetFile = async (file: File | undefined) => {
     if (!file) return

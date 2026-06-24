@@ -454,7 +454,7 @@ function RequestOverview({
   vars: Record<string, string>
   hasActiveEnv: boolean
   onChange: (request: RequestItem) => void
-  onOpenSection: (section: ComposerSection) => void
+  onOpenSection: (section: ComposerSection, subsection?: 'auth') => void
 }) {
   const variables = requestVariables(request)
   const unresolved = variables.filter((name) => vars[name] === undefined)
@@ -468,8 +468,8 @@ function RequestOverview({
   const setupItems = [
     { label: 'URL is ready', ok: Boolean(request.url.trim()), section: null },
     { label: variables.length ? `${variables.length} variable${variables.length === 1 ? '' : 's'} detected` : 'No variables needed', ok: unresolved.length === 0, section: 'params' as ComposerSection | null },
-    { label: request.auth?.type && request.auth.type !== 'none' ? `${authLabel} configured` : 'Auth intentionally empty', ok: true, section: 'auth' as ComposerSection | null },
-    { label: docsFilled ? 'Documentation present' : 'Add request notes', ok: docsFilled, section: 'notes' as ComposerSection | null },
+    { label: request.auth?.type && request.auth.type !== 'none' ? `${authLabel} configured` : 'Auth intentionally empty', ok: true, section: 'headers' as ComposerSection | null, subsection: 'auth' as const },
+    { label: docsFilled ? 'Documentation present' : 'Add request notes', ok: docsFilled, section: null, subsection: undefined },
   ]
 
   return (
@@ -503,7 +503,7 @@ function RequestOverview({
             {setupItems.map((item) => (
               <button
                 key={item.label}
-                onClick={() => item.section && onOpenSection(item.section)}
+                onClick={() => item.section && onOpenSection(item.section, item.subsection)}
                 className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[12px] text-text-2 transition-colors hover:bg-surface-2"
               >
                 {item.ok ? <Check size={13} className="text-success" /> : <Circle size={13} className="text-warning" />}
@@ -574,6 +574,8 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
   const [activeTab, setActiveTab] = useState<ComposerSection>(
     () => useTabsStore.getState().getViewState(tabId).composerSection,
   )
+  const [configurationTab, setConfigurationTab] = useState<'headers' | 'auth' | 'cookies'>('headers')
+  const [automationTab, setAutomationTab] = useState<'tests' | 'scripts'>('tests')
   const [showCurlImport, setShowCurlImport] = useState(false)
   const [renameBodyPrompt, setRenameBodyPrompt] = useState<{ show: boolean; index: number } | null>(null)
   const [bodyMenu, setBodyMenu] = useState<{ x: number; y: number; index: number } | null>(null)
@@ -615,13 +617,22 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
   const tabs = [
     { id: 'overview' as ComposerSection, label: 'Overview', count: request.description?.trim() ? 1 : 0, icon: FileText },
     { id: 'body' as ComposerSection, label: 'Body', count: bodyCount, icon: Code },
-    { id: 'auth' as ComposerSection, label: 'Auth', count: request.auth?.type !== 'none' ? 1 : 0, icon: ShieldCheck },
-    { id: 'headers' as ComposerSection, label: 'Headers', count: (request.headers ?? []).filter((h) => h.enabled && h.key).length, icon: ListChecks },
-    { id: 'cookies' as ComposerSection, label: 'Cookies', count: (request.cookies ?? []).filter((c) => c.enabled && c.key).length + jarCount, icon: Circle },
+    {
+      id: 'headers' as ComposerSection,
+      label: 'Headers / Auth / Cookies',
+      count: (request.headers ?? []).filter((h) => h.enabled && h.key).length
+        + (request.auth?.type !== 'none' ? 1 : 0)
+        + (request.cookies ?? []).filter((c) => c.enabled && c.key).length
+        + jarCount,
+      icon: ShieldCheck,
+    },
     { id: 'params' as ComposerSection, label: 'Params', count: (request.params ?? []).filter((p) => p.enabled && p.key).length, icon: CornerDownRight },
-    { id: 'scripts' as ComposerSection, label: 'Scripts', count: (scripts.pre || scripts.post || scripts.tests) ? 1 : 0, icon: FileCode },
-    { id: 'tests' as ComposerSection, label: 'Tests', count: (request.assertions ?? []).length, icon: CheckCheck },
-    { id: 'notes' as ComposerSection, label: 'Notes', count: request.description?.trim() ? 1 : 0, icon: FileText },
+    {
+      id: 'scripts' as ComposerSection,
+      label: 'Tests / Scripts',
+      count: (request.assertions ?? []).length + ((scripts.pre || scripts.post || scripts.tests) ? 1 : 0),
+      icon: CheckCheck,
+    },
   ]
 
   const bodyIndex = bodies.length
@@ -673,7 +684,8 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
     onChange({ ...request, url, params: rowsWithTrailingBlank(queryRowsFromUrl(url)) })
   }
 
-  const openSection = (section: ComposerSection) => {
+  const openSection = (section: ComposerSection, subsection?: 'auth') => {
+    if (section === 'headers' && subsection === 'auth') setConfigurationTab('auth')
     setActiveTab(section)
     updateViewState(tabId, { composerSection: section })
   }
@@ -818,7 +830,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
         )}
 
         {/* Section tabs */}
-        <div role="tablist" aria-label="Request sections" className="flex min-h-12 items-end gap-1 overflow-x-auto border-y-2 border-border-2 bg-surface-1 px-3 pt-2 no-scrollbar">
+        <div role="tablist" aria-label="Request sections" className="flex min-h-12 flex-wrap items-end gap-1 border-y-2 border-border-2 bg-surface-1 px-3 pt-2">
           {tabs.map((t) => {
             const TabIcon = t.icon
             const active = activeTab === t.id
@@ -880,22 +892,54 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
             <ParamsSection request={request} onChange={onChange} />
           )}
           {activeTab === 'headers' && (
-            <KVEditor
-              rows={request.headers ?? []}
-              onChange={(headers) => onChange({ ...request, headers })}
-              keyPlaceholder="Header"
-            />
-          )}
-          {activeTab === 'cookies' && (
-            <>
-              <KVEditor
-                rows={request.cookies ?? []}
-                onChange={(cookies) => onChange({ ...request, cookies })}
-                keyPlaceholder="Cookie name"
-                valuePlaceholder="Cookie value"
-              />
-              <CookieJarSection requestUrl={request.url} />
-            </>
+            <div className="flex min-h-0 flex-1 flex-col">
+              <div role="tablist" aria-label="Headers, authentication and cookies" className="flex gap-1 border-b border-border-1 bg-surface-1 px-2 pt-2">
+                {([
+                  { id: 'headers' as const, label: 'Headers', icon: ListChecks },
+                  { id: 'auth' as const, label: 'Auth', icon: ShieldCheck },
+                  { id: 'cookies' as const, label: 'Cookies', icon: Circle },
+                ]).map((item) => {
+                  const ItemIcon = item.icon
+                  const active = configurationTab === item.id
+                  return (
+                    <button
+                      key={item.id}
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => setConfigurationTab(item.id)}
+                      className={cn(
+                        'flex h-8 items-center gap-1.5 border-b-2 px-3 text-[11px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent',
+                        active ? 'border-accent text-text-1' : 'border-transparent text-text-3 hover:text-text-1',
+                      )}
+                    >
+                      <ItemIcon size={12} className={active ? 'text-accent' : 'text-text-4'} />
+                      {item.label}
+                    </button>
+                  )
+                })}
+              </div>
+              {configurationTab === 'headers' && (
+                <KVEditor
+                  rows={request.headers ?? []}
+                  onChange={(headers) => onChange({ ...request, headers })}
+                  keyPlaceholder="Header"
+                />
+              )}
+              {configurationTab === 'auth' && (
+                <AuthEditor auth={request.auth ?? blankAuth()} onChange={(auth) => onChange({ ...request, auth })} />
+              )}
+              {configurationTab === 'cookies' && (
+                <>
+                  <KVEditor
+                    rows={request.cookies ?? []}
+                    onChange={(cookies) => onChange({ ...request, cookies })}
+                    keyPlaceholder="Cookie name"
+                    valuePlaceholder="Cookie value"
+                  />
+                  <CookieJarSection requestUrl={request.url} />
+                </>
+              )}
+            </div>
           )}
           {activeTab === 'body' && (
             <>
@@ -1009,36 +1053,46 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
               )}
             </>
           )}
-          {activeTab === 'auth' && (
-            <AuthEditor auth={request.auth ?? blankAuth()} onChange={(auth) => onChange({ ...request, auth })} />
-          )}
           {activeTab === 'scripts' && (
-            <ScriptsEditor
-              pre={scripts.pre ?? ''}
-              post={scripts.post ?? ''}
-              tests={scripts.tests ?? ''}
-              onChange={(s) => onChange({ ...request, scripts: s })}
-            />
-          )}
-          {activeTab === 'tests' && (
-            <AssertionsEditor
-              assertions={request.assertions ?? []}
-              onChange={(assertions) => onChange({ ...request, assertions })}
-            />
-          )}
-          {activeTab === 'notes' && (
-            <div className="flex flex-col gap-2 p-3">
-              <div className="flex items-center gap-2 text-[11px] font-medium text-text-3">
-                <FileText size={12} className="text-accent" />
-                Request documentation
+            <div className="flex min-h-0 flex-1 flex-col">
+              <div role="tablist" aria-label="Tests and scripts" className="flex gap-1 border-b border-border-1 bg-surface-1 px-2 pt-2">
+                {([
+                  { id: 'tests' as const, label: 'Tests', icon: CheckCheck },
+                  { id: 'scripts' as const, label: 'Scripts', icon: FileCode },
+                ]).map((item) => {
+                  const ItemIcon = item.icon
+                  const active = automationTab === item.id
+                  return (
+                    <button
+                      key={item.id}
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => setAutomationTab(item.id)}
+                      className={cn(
+                        'flex h-8 items-center gap-1.5 border-b-2 px-3 text-[11px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent',
+                        active ? 'border-accent text-text-1' : 'border-transparent text-text-3 hover:text-text-1',
+                      )}
+                    >
+                      <ItemIcon size={12} className={active ? 'text-accent' : 'text-text-4'} />
+                      {item.label}
+                    </button>
+                  )
+                })}
               </div>
-              <textarea
-                value={request.description ?? ''}
-                onChange={(event) => onChange({ ...request, description: event.target.value })}
-                placeholder="Document constraints, token lifetime, batch windows, examples, or handoff notes for this request..."
-                className="min-h-24 w-full resize-y rounded border border-border-2 bg-surface-2 px-3 py-2 text-xs leading-relaxed text-text-1 outline-none placeholder:text-text-4 focus:border-accent"
-              />
-              <p className="text-[10px] text-text-4">Stored locally with this request and included in workspace exports.</p>
+              {automationTab === 'tests' && (
+                <AssertionsEditor
+                  assertions={request.assertions ?? []}
+                  onChange={(assertions) => onChange({ ...request, assertions })}
+                />
+              )}
+              {automationTab === 'scripts' && (
+                <ScriptsEditor
+                  pre={scripts.pre ?? ''}
+                  post={scripts.post ?? ''}
+                  tests={scripts.tests ?? ''}
+                  onChange={(s) => onChange({ ...request, scripts: s })}
+                />
+              )}
             </div>
           )}
         </div>

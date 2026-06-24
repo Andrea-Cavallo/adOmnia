@@ -344,7 +344,7 @@ function TreeNodeRow({
             <Folder size={13} className="shrink-0 text-text-3" />
           </>
         ) : (
-          <span className={cn('w-9 shrink-0 text-[9px] font-bold', METHOD_COLORS[(node as RequestItem).method] ?? 'text-text-3')}>{(node as RequestItem).method}</span>
+          <span className={cn('w-12 shrink-0 pr-1 text-[9px] font-bold', METHOD_COLORS[(node as RequestItem).method] ?? 'text-text-3')}>{(node as RequestItem).method}</span>
         )}
         {editingId === node.id ? (
           <InlineEdit

@@ -2,9 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ElementType, KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { ArrowRight, CornerDownLeft, Play, Search, Server, Settings2, SquarePlus } from 'lucide-react'
 import type { Collection, RequestItem, TreeNode } from '@/lib/types'
-import { COMMAND_PALETTE_PANELS, fuzzyScore } from '@/lib/commandPalette'
+import { COMMAND_PALETTE_PANELS, COMMAND_PALETTE_DEEP_LINKS, fuzzyScore } from '@/lib/commandPalette'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/app'
+import type { RailItem } from '@/stores/app'
 import { useCollectionsStore } from '@/stores/collections'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { useTabsStore } from '@/stores/tabs'
@@ -58,12 +59,12 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   }, [open])
 
   const commands = useMemo<PaletteCommand[]>(() => {
-    const runInPanel = (rail: 'mock' | 'proxy', eventName: string) => {
+    const runInPanel = (rail: RailItem, eventName: string, extra: Record<string, unknown> = {}) => {
       setActiveRail(rail)
       let attempts = 0
       const dispatchWhenMounted = () => {
         if (useAppStore.getState().activeRail !== rail) return
-        const detail = { handled: false }
+        const detail = { ...extra, handled: false }
         document.dispatchEvent(new CustomEvent(eventName, { detail }))
         if (!detail.handled && attempts < 120) {
           attempts += 1
@@ -99,6 +100,11 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       group: 'Panels', keywords: `${panel.keywords} ${panel.group}`, icon: ArrowRight,
       run: () => setActiveRail(panel.id),
     }))
+    const deepLinks = COMMAND_PALETTE_DEEP_LINKS.map<PaletteCommand>((link) => ({
+      id: `deep:${link.rail}:${JSON.stringify(link.detail)}`, title: link.title, subtitle: link.group,
+      group: 'Panels', keywords: `${link.keywords} ${link.group}`, icon: ArrowRight,
+      run: () => runInPanel(link.rail, link.event, link.detail),
+    }))
     const recentRequests = tabs.filter((tab) => (tab.workspaceId ?? activeWorkspaceId) === activeWorkspaceId).reverse().map<PaletteCommand>((tab) => ({
       id: `recent:${tab.id}`, title: tab.request.name || tab.request.url || 'Untitled Request',
       subtitle: `${tab.request.method} ${tab.request.url || 'No URL'}`, group: 'Recent Requests',
@@ -125,7 +131,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       group: 'Environments', keywords: `environment variables switch ${environment.name}`, icon: ArrowRight,
       run: () => setActiveEnv(environment.id),
     }))
-    return [...actions, ...panels, ...recentRequests, ...collectionEntries, ...environmentEntries]
+    return [...actions, ...deepLinks, ...panels, ...recentRequests, ...collectionEntries, ...environmentEntries]
   }, [activeEnvId, activeWorkspaceId, collections, environments, newTab, openTab, setActiveEnv, setActiveRail, tabs])
 
   const results = useMemo(() => commands

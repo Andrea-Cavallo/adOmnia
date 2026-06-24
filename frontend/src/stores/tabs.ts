@@ -16,7 +16,7 @@ type PersistedTabsState = {
   responseHistory: Array<RequestHistoryEntry | ResponseData>
 }
 
-export type ComposerSection = 'overview' | 'params' | 'headers' | 'cookies' | 'body' | 'auth' | 'scripts' | 'tests' | 'notes'
+export type ComposerSection = 'overview' | 'params' | 'headers' | 'body' | 'scripts'
 export type ResponseSection = 'body' | 'headers' | 'contract' | 'assertions'
 export type ResponseBodyView = 'pretty' | 'raw' | 'graph'
 export type TabDropPosition = 'before' | 'after'
@@ -46,6 +46,7 @@ interface TabsState {
   openTab: (request: RequestItem, collectionId?: string) => void
   closeTab: (id: string) => void
   closeRequestTabs: (requestId: string) => void
+  renameRequestTabs: (requestId: string, name: string) => void
   closeTabsToRight: (id: string) => void
   closeTabsToLeft: (id: string) => void
   reorderTab: (fromId: string, toId: string, position: TabDropPosition) => void
@@ -266,6 +267,15 @@ export const useTabsStore = create<TabsState>((set, get) => ({
         viewStateByTabId: retainViewStates(s.viewStateByTabId, tabs),
       }
     })
+    get().save()
+  },
+
+  renameRequestTabs: (requestId, name) => {
+    set((s) => ({
+      tabs: s.tabs.map((tab) => (
+        tab.request.id === requestId ? { ...tab, request: { ...tab.request, name } } : tab
+      )),
+    }))
     get().save()
   },
 

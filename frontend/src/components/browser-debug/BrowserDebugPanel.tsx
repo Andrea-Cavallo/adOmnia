@@ -444,6 +444,19 @@ export function BrowserDebugPanel({ initialTab = 'network' }: { initialTab?: Deb
   const [connectionError, setConnectionError] = useState('')
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  // Command-palette deep links select a tab via this event (see commandPalette.ts).
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { tab?: DebugTab; handled?: boolean }
+      if (detail?.tab && DEBUG_TABS.some((t) => t.id === detail.tab)) {
+        setActiveTab(detail.tab)
+        detail.handled = true
+      }
+    }
+    document.addEventListener('adomnia:browser-tab', handler)
+    return () => document.removeEventListener('adomnia:browser-tab', handler)
+  }, [])
+
   const handleConnect = useCallback(async (target: DebugTarget) => {
     setConnectionError('')
     try {

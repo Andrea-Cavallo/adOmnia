@@ -56,6 +56,20 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
   const renameInputRef = useRef<HTMLInputElement>(null)
   const draggingTabRef = useRef<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [overflow, setOverflow] = useState({ left: false, right: false })
+
+  const updateOverflow = useCallback(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const left = el.scrollLeft > 1
+    const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 1
+    setOverflow((o) => (o.left === left && o.right === right ? o : { left, right }))
+  }, [])
+
+  const scrollTabs = useCallback((dir: -1 | 1) => {
+    scrollRef.current?.scrollBy({ left: dir * 220, behavior: 'smooth' })
+  }, [])
 
   const closeCtx = useCallback(() => setCtx((s) => ({ ...s, open: false })), [])
   const clearDrag = useCallback(() => {
@@ -82,6 +96,18 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
     if (renamingTabId) renameInputRef.current?.select()
   }, [renamingTabId])
 
+  useEffect(() => {
+    updateOverflow()
+    window.addEventListener('resize', updateOverflow)
+    return () => window.removeEventListener('resize', updateOverflow)
+  }, [tabs.length, updateOverflow])
+
+  useEffect(() => {
+    if (!activeTabId) return
+    const node = scrollRef.current?.querySelector(`[data-tab-id="${activeTabId}"]`) as HTMLElement | null
+    node?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  }, [activeTabId])
+
   const startRename = useCallback((tabId: string) => {
     const tab = tabs.find((t) => t.id === tabId)
     if (!tab) return
@@ -98,12 +124,23 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
   const pos = clampToViewport(ctx.x, ctx.y)
 
   return (
-    <div className="flex h-[30px] items-center gap-0.5 overflow-x-auto border-b border-border-1 px-1.5 no-scrollbar">
+    <div className="flex h-[30px] items-center border-b border-border-1 px-1.5">
+      {overflow.left && (
+        <button
+          onClick={() => scrollTabs(-1)}
+          title="Scroll tabs left"
+          className="mr-0.5 flex h-6 w-5 shrink-0 items-center justify-center rounded text-text-3 transition-colors hover:bg-surface-2 hover:text-text-1"
+        >
+          <ChevronLeft size={13} />
+        </button>
+      )}
+      <div ref={scrollRef} onScroll={updateOverflow} className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto no-scrollbar">
       {tabs.map((tab) => {
         const isActive = activeTabId === tab.id
         return (
           <div
             key={tab.id}
+            data-tab-id={tab.id}
             draggable
             onClick={() => onSelect(tab.id)}
             onContextMenu={(e) => {
@@ -191,6 +228,16 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
           </div>
         )
       })}
+      </div>
+      {overflow.right && (
+        <button
+          onClick={() => scrollTabs(1)}
+          title="Scroll tabs right"
+          className="ml-0.5 flex h-6 w-5 shrink-0 items-center justify-center rounded text-text-3 transition-colors hover:bg-surface-2 hover:text-text-1"
+        >
+          <ChevronRight size={13} />
+        </button>
+      )}
       <button
         onClick={() => onNewTab()}
         title="New tab (Ctrl+N)"

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Search, Radio, Shield, Copy, ArrowRight, Database, Trash2, GitBranch } from 'lucide-react'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { cn } from '@/lib/utils'
@@ -19,6 +19,19 @@ const TABS: { key: Tab; icon: React.ElementType; label: string }[] = [
 export function NetToolsPanel() {
   const port = useServerPort()
   const [tab, setTab] = useState<Tab>('dns')
+
+  // Command-palette deep links select a sub-tab via this event (see commandPalette.ts).
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { tab?: Tab; handled?: boolean }
+      if (detail?.tab && TABS.some((t) => t.key === detail.tab)) {
+        setTab(detail.tab)
+        detail.handled = true
+      }
+    }
+    document.addEventListener('adomnia:nettools-tab', handler)
+    return () => document.removeEventListener('adomnia:nettools-tab', handler)
+  }, [])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 

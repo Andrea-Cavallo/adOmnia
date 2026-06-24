@@ -657,11 +657,11 @@ export namespace main {
 	    releaseNotes: string;
 	    publishedAt: string;
 	    isDev: boolean;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new UpdateInfo(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.currentVersion = source["currentVersion"];
