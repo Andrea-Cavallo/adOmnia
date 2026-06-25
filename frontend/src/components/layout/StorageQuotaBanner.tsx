@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { AlertTriangle, HardDrive, X } from 'lucide-react'
+import { AlertTriangle, HardDrive, Trash2, X } from 'lucide-react'
 import { useAppStore } from '@/stores/app'
+import { freeUpSpace, formatBytes } from '@/lib/storageMaintenance'
 
 /**
  * Persistent (non-auto-dismissing) banner shown when localStorage quota is exceeded.
@@ -8,7 +9,15 @@ import { useAppStore } from '@/stores/app'
  */
 export function StorageQuotaBanner() {
   const [visible, setVisible] = useState(false)
+  const [freed, setFreed] = useState<number | null>(null)
   const setActiveRail = useAppStore((s) => s.setActiveRail)
+
+  const handleFreeUp = () => {
+    const bytes = freeUpSpace()
+    setFreed(bytes)
+    // Keep the banner up briefly to confirm, then dismiss.
+    setTimeout(() => setVisible(false), 1800)
+  }
 
   useEffect(() => {
     // Show if a quota event fires at any point during the session.
@@ -51,15 +60,28 @@ export function StorageQuotaBanner() {
       <AlertTriangle size={14} className="shrink-0 text-amber-400" />
       <HardDrive size={13} className="shrink-0 text-amber-400/70" />
       <span className="flex-1">
-        <strong>Storage quota exceeded.</strong> Some local data may not have been saved.{' '}
-        <button
-          onClick={() => setActiveRail('workspace')}
-          className="underline underline-offset-2 hover:text-amber-300 transition-colors"
-        >
-          Export your workspace now
-        </button>{' '}
-        to avoid data loss.
+        <strong>Storage quota exceeded.</strong>{' '}
+        {freed !== null
+          ? <>Freed {formatBytes(freed)} by clearing call history.</>
+          : <>Some local data may not have been saved.{' '}
+              <button
+                onClick={() => setActiveRail('workspace')}
+                className="underline underline-offset-2 hover:text-amber-300 transition-colors"
+              >
+                Export your workspace
+              </button>{' '}
+              to avoid data loss.</>
+        }
       </span>
+      {freed === null && (
+        <button
+          onClick={handleFreeUp}
+          title="Clear call/response history and caches to reclaim space"
+          className="shrink-0 inline-flex items-center gap-1 rounded border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 font-semibold hover:bg-amber-500/25 transition-colors"
+        >
+          <Trash2 size={12} /> Free up space
+        </button>
+      )}
       <button
         onClick={() => setVisible(false)}
         title="Dismiss (data may still be at risk)"

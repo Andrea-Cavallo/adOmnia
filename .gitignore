@@ -93,6 +93,8 @@ temp/
 .tokensave/
 .claude/
 .superpowers/
+docs/superpowers/
+report.md
 
 # Standalone UI prototype (not part of the built frontend)
 apiflownuovo/

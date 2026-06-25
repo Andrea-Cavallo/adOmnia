@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import type { MutableRefObject } from 'react'
-import { ChevronDown, ChevronRight, ChevronUp, AlertCircle, CheckCircle2, GitBranch, Database, Loader2, RefreshCw, Search, X, Braces, FileText, Link2, Files, Share2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, ChevronUp, AlertCircle, CheckCircle2, GitBranch, Database, Loader2, RefreshCw, Search, X, Braces, FileText, Link2, Files, Share2, Maximize2, Minimize2 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { RequestBody } from '@/lib/types'
 import { KVEditor } from './KVEditor'
@@ -8,6 +8,7 @@ import { JsonEditor } from '@/components/ui/JsonEditor'
 import { JsonGraphModal } from '@/components/ui/JsonGraph'
 import { cn } from '@/lib/utils'
 import { diagnoseJson } from '@/lib/jsonDiagnostics'
+import { prettyJson } from '@/lib/prettyJson'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { useGraphqlCacheStore } from '@/stores/graphqlCache'
 
@@ -143,8 +144,12 @@ function findTextMatches(text: string, query: string): number[] {
   return matches
 }
 
-function selectTextareaMatch(textarea: HTMLTextAreaElement | null, text: string, query: string, activeIndex: number) {
+// Reads the textarea's live value (not a prop) so callers can depend only on
+// the search state — editing a matched value must not re-fire this and yank the
+// caret back to the search hit. See [[bug: ctrl-f focus returns to key]].
+function selectTextareaMatch(textarea: HTMLTextAreaElement | null, query: string, activeIndex: number) {
   if (!textarea || !query) return
+  const text = textarea.value
   const matches = findTextMatches(text, query)
   const start = matches[activeIndex]
   if (start === undefined) return
@@ -243,7 +248,7 @@ function JsonRawEditor({ body, onChange, search }: { body: RequestBody; onChange
 
   const prettify = () => {
     try {
-      const p = JSON.stringify(JSON.parse(body.raw ?? ''), null, 2)
+      const p = prettyJson(body.raw ?? '')
       onChange({ ...body, raw: p })
     } catch { /* keep as is */ }
   }
@@ -252,7 +257,7 @@ function JsonRawEditor({ body, onChange, search }: { body: RequestBody; onChange
   useEffect(() => {
     if (!(body.raw ?? '').trim()) return
     try {
-      const p = JSON.stringify(JSON.parse(body.raw ?? ''), null, 2)
+      const p = prettyJson(body.raw ?? '')
       if (p !== body.raw) onChange({ ...body, raw: p })
     } catch { /* not valid JSON, leave as is */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -348,8 +353,9 @@ function GraphQLEditor({ body, onChange, requestUrl, search }: { body: RequestBo
   const queryRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
-    selectTextareaMatch(queryRef.current, body.raw ?? '', search.query, search.activeIndex)
-  }, [body.raw, search.activeIndex, search.query])
+    selectTextareaMatch(queryRef.current, search.query, search.activeIndex)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search.activeIndex, search.query])
 
   // Hydrate the persistent introspection cache once.
   useEffect(() => { void loadCache() }, [loadCache])
@@ -541,8 +547,9 @@ function RawEditor({ body, onChange, search }: { body: RequestBody; onChange: (b
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
-    selectTextareaMatch(textareaRef.current, body.raw ?? '', search.query, search.activeIndex)
-  }, [body.raw, search.activeIndex, search.query])
+    selectTextareaMatch(textareaRef.current, search.query, search.activeIndex)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search.activeIndex, search.query])
 
   const validate = (v: string) => {
     if (body.lang !== 'json') { setError(''); return }
@@ -589,6 +596,7 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
   const BODY_TYPES = isWebSocket ? WS_BODY_TYPES : ALL_BODY_TYPES
   const [searchOpen, setSearchOpen] = useState(false)
   const [search, setSearch] = useState<BodySearchState>({ query: '', activeIndex: 0 })
+  const [maximized, setMaximized] = useState(false)
   const findInputRef = useRef<HTMLInputElement>(null)
 
   const activeType: BodyTypeId = body.type === 'raw' && body.lang === 'json' ? 'json'
@@ -598,7 +606,7 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
   const handleTypeChange = (id: BodyTypeId) => {
     if (id === 'json') {
       let raw = body.raw ?? ''
-      try { raw = raw.trim() ? JSON.stringify(JSON.parse(raw), null, 2) : raw } catch { /* keep user text */ }
+      try { raw = raw.trim() ? prettyJson(raw) : raw } catch { /* keep user text */ }
       onChange({ ...body, type: 'raw', lang: 'json', raw })
     }
     else if (id === 'raw') onChange({ ...body, type: 'raw', lang: body.lang === 'json' ? 'xml' : body.lang })
@@ -625,14 +633,17 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'f') return
-      event.preventDefault()
-      setSearchOpen(true)
-      requestAnimationFrame(() => findInputRef.current?.focus())
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
+        event.preventDefault()
+        setSearchOpen(true)
+        requestAnimationFrame(() => findInputRef.current?.focus())
+        return
+      }
+      if (event.key === 'Escape' && maximized) { event.preventDefault(); setMaximized(false) }
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [])
+  }, [maximized])
 
   const openFind = () => {
     setSearchOpen(true)
@@ -650,7 +661,19 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-surface-0">
+    <>
+      {maximized && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px]"
+          onClick={() => setMaximized(false)}
+        />
+      )}
+      <div className={cn(
+        'flex min-h-0 flex-col bg-surface-0',
+        maximized
+          ? 'fixed inset-3 z-50 overflow-hidden rounded-xl border border-border-2 shadow-2xl'
+          : 'flex-1',
+      )}>
       <section className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-border-2 bg-surface-1 px-3 py-2.5">
         <div className="flex min-w-0 flex-wrap items-center gap-2.5">
           <div role="radiogroup" aria-label="Body format" className="inline-flex max-w-full flex-wrap items-center gap-0.5 rounded-lg bg-surface-0 p-1 ring-1 ring-inset ring-border-2">
@@ -687,18 +710,28 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
             </span>
           )}
         </div>
-        <BodyFindBar
-          open={searchOpen}
-          query={search.query}
-          matches={bodyMatches.length}
-          activeIndex={Math.min(search.activeIndex, Math.max(bodyMatches.length - 1, 0))}
-          inputRef={findInputRef}
-          onOpen={openFind}
-          onQueryChange={(query) => setSearch({ query, activeIndex: 0 })}
-          onPrev={prevMatch}
-          onNext={nextMatch}
-          onClose={() => setSearchOpen(false)}
-        />
+        <div className="flex items-center gap-1.5">
+          <BodyFindBar
+            open={searchOpen}
+            query={search.query}
+            matches={bodyMatches.length}
+            activeIndex={Math.min(search.activeIndex, Math.max(bodyMatches.length - 1, 0))}
+            inputRef={findInputRef}
+            onOpen={openFind}
+            onQueryChange={(query) => setSearch({ query, activeIndex: 0 })}
+            onPrev={prevMatch}
+            onNext={nextMatch}
+            onClose={() => setSearchOpen(false)}
+          />
+          <button
+            onClick={() => setMaximized((m) => !m)}
+            title={maximized ? 'Exit full screen (Esc)' : 'Expand body to full screen'}
+            aria-pressed={maximized}
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-text-3 outline-none transition-colors hover:bg-surface-2 hover:text-text-1 focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            {maximized ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+          </button>
+        </div>
       </section>
 
       {body.type === 'none' && (
@@ -727,6 +760,7 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
           <KVEditor rows={body.form ?? []} onChange={form => onChange({ ...body, form })} />
         </div>
       )}
-    </div>
+      </div>
+    </>
   )
 }

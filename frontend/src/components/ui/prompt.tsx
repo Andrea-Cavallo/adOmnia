@@ -87,11 +87,11 @@ export function Prompt({
             />
           )}
         </DialogBody>
-        <DialogFooter>
-          <Button variant="ghost" size="sm" onClick={onCancel}>
+        <DialogFooter className="gap-2">
+          <Button variant="ghost" size="sm" onClick={onCancel} className="px-4">
             Cancel
           </Button>
-          <Button size="sm" onClick={handleConfirm} disabled={!value.trim()}>
+          <Button size="sm" onClick={handleConfirm} disabled={!value.trim()} className="px-4">
             {confirmLabel}
           </Button>
         </DialogFooter>

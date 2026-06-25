@@ -6,6 +6,16 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.4.7] - 2026-06-25
+
+### Added
+- **PSD2 / Berlin Group header presets:** the request Headers tab now offers the NextGenPSD2 (XS2A) standard headers — `Consent-ID`, `PSU-ID`, `PSU-IP-Address`, `TPP-Redirect-URI`, `Digest`, `Signature`, `TPP-Signature-Certificate`, `Aspsp-Sca-Approach`, and more — as one-click chips, grouped separately from the common headers.
+
+### Changed
+- **Environments & Hosts moved into the sidebar (more vertical room):** the Env and Hosts switchers no longer sit in a strip above the request — they live in the left sidebar under the Workspace selector, right above Collections. Switching, adding, renaming, and editing environments/hosts all happen from there. The request method + URL bar now sits higher, giving the Body/Response area more space.
+- **Workspace name in the panel header:** the API Workspace header shows the active workspace name (live — rename it in the sidebar and the header updates) instead of a static "API Workspace" label.
+- **Clearer header presets and labels:** preset chips that share a value (e.g. `application/json` for both Accept and Content-Type) now show the full `Header: value` so they are no longer ambiguous duplicates, and the Headers tab columns read **Header name / Header value** for consistency with the Cookies tab.
+
 ### Added
 - **GitHub host integration (Pull Requests):** connect with a Personal Access Token, list open pull requests for the origin repository, and open a PR from the current branch — without leaving adOmnia. Available in the Git "Actions" tab.
 - **Multi-host Git collaboration accounts:** save multiple GitHub, GitLab, Bitbucket, and Azure DevOps identities, auto-select them from the repository remote, and protect access tokens with local Vault references. Self-hosted API base URLs are supported.
@@ -14,6 +24,22 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ### Changed
 - **Request editor hierarchy:** primary request sections now use full active tabs, body examples use selectable tab-cards with rename/duplicate/delete actions, and payload formats use a distinct segmented control with clearer labels and keyboard focus states.
+
+## [0.4.6] - 2026-06-25
+
+### Added
+- **Cancel in-flight requests:** while a request is running the **Send** button turns into a red **Cancel** button, so a slow or hung request can be aborted immediately. Cancellation is wired end-to-end — the Go backend registers each request by id and aborts the underlying connection (both the native HTTP path and the browser-fetch upload path). Cancelled requests report a clean `CANCELED` status instead of a misleading error.
+- **Close All tabs:** new **Close All** action in the tab context menu, alongside Close / Close to the Right / Close to the Left. Honors the unsaved-changes confirmation dialog.
+- **Create an environment straight from the URL bar:** right-clicking an `{{variable}}` token in the URL when no environment exists now creates one on the spot and opens the inline value editor, so the variable can be given a value without leaving the request.
+
+### Changed
+- **Collapsible API Tools bar (cleaner, more minimal layout):** the API Tools row (Follow redirects, Load test, Timeout, URL Encode, Query String, Import cURL, HTTP Status) is now hidden by default and toggled with a small control next to **Send**. Collapsing it gives the Body/Response area more vertical room; the open/closed state is remembered between sessions.
+
+### Removed
+- **Settings → Features section:** removed the non-functional "Plugins (experimental)" and "Daily Scenarios (experimental)" toggles and their navigation entry.
+
+### Notes
+- adOmnia has request timeouts: a per-request **Timeout (ms)** field (`0` = no timeout) plus a global default in **Settings → Requests**. Requests exceeding the timeout fail with a `TIMEOUT` status — the same model used by Postman/Bruno.
 
 ## [0.4.0] - 2026-06-20
 

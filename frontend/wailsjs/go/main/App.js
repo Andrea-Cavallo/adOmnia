@@ -26,6 +26,10 @@ export function ExecuteHTTP(arg1) {
   return window['go']['main']['App']['ExecuteHTTP'](arg1);
 }
 
+export function CancelHTTP(arg1) {
+  return window['go']['main']['App']['CancelHTTP'](arg1);
+}
+
 export function GetAppVersion() {
   return window['go']['main']['App']['GetAppVersion']();
 }

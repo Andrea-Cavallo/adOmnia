@@ -46,6 +46,10 @@ export function ExecuteHTTP(reqJSON: string): Promise<string> {
   return (window['go']['main']['App'] as unknown as Record<string, (a: string) => Promise<string>>)['ExecuteHTTP'](reqJSON)
 }
 
+export function CancelHTTP(id: string): Promise<void> {
+  return (window['go']['main']['App'] as unknown as Record<string, (a: string) => Promise<void>>)['CancelHTTP'](id)
+}
+
 export function CompareFolders(left: string, right: string, maxFileMB: number): Promise<string> {
   return (window['go']['main']['App'] as unknown as Record<string, (a: string, b: string, c: number) => Promise<string>>)['CompareFolders'](left, right, maxFileMB)
 }

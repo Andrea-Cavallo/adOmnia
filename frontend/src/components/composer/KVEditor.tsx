@@ -13,25 +13,57 @@ interface KVEditorProps {
   valuePlaceholder?: string
 }
 
-const HEADER_PRESETS = [
-  ['Accept', 'application/json'],
-  ['Accept', 'application/xml'],
-  ['Accept', '*/*'],
-  ['Content-Type', 'application/json'],
-  ['Content-Type', 'application/xml'],
-  ['Content-Type', 'application/x-www-form-urlencoded'],
-  ['Content-Type', 'multipart/form-data'],
-  ['Content-Type', 'text/event-stream'],
-  ['Authorization', 'Bearer {{access_token}}'],
-  ['Authorization', 'Basic {{basic_credentials}}'],
-  ['X-Client-Certificate', '{{client_certificate}}'],
-  ['Idempotency-Key', '{{idempotency_key}}'],
-  ['X-Request-ID', '{{request_id}}'],
-  ['X-Correlation-ID', '{{correlation_id}}'],
-  ['Cache-Control', 'no-cache, no-store, must-revalidate'],
-  ['Cache-Control', 'no-cache, no-transform'],
-  ['Cache-Control', 'public, max-age=300'],
-] as const
+type Preset = readonly [key: string, value: string]
+
+const HEADER_PRESET_GROUPS: { label: string; items: readonly Preset[] }[] = [
+  {
+    label: 'Common',
+    items: [
+      ['Accept', 'application/json'],
+      ['Accept', 'application/xml'],
+      ['Accept', '*/*'],
+      ['Content-Type', 'application/json'],
+      ['Content-Type', 'application/xml'],
+      ['Content-Type', 'application/x-www-form-urlencoded'],
+      ['Content-Type', 'multipart/form-data'],
+      ['Content-Type', 'text/event-stream'],
+      ['Authorization', 'Bearer {{access_token}}'],
+      ['Authorization', 'Basic {{basic_credentials}}'],
+      ['X-Client-Certificate', '{{client_certificate}}'],
+      ['Idempotency-Key', '{{idempotency_key}}'],
+      ['X-Request-ID', '{{request_id}}'],
+      ['X-Correlation-ID', '{{correlation_id}}'],
+      ['Cache-Control', 'no-cache, no-store, must-revalidate'],
+      ['Cache-Control', 'no-cache, no-transform'],
+      ['Cache-Control', 'public, max-age=300'],
+    ],
+  },
+  {
+    // Berlin Group NextGenPSD2 standard headers (XS2A).
+    label: 'PSD2 / Berlin Group',
+    items: [
+      ['Consent-ID', '{{consent_id}}'],
+      ['PSU-ID', '{{psu_id}}'],
+      ['PSU-IP-Address', '{{psu_ip_address}}'],
+      ['PSU-IP-Port', '{{psu_ip_port}}'],
+      ['PSU-User-Agent', '{{psu_user_agent}}'],
+      ['PSU-Http-Method', 'GET'],
+      ['PSU-Device-ID', '{{psu_device_id}}'],
+      ['PSU-Geo-Location', '{{psu_geo_location}}'],
+      ['TPP-Redirect-URI', '{{tpp_redirect_uri}}'],
+      ['TPP-Nok-Redirect-URI', '{{tpp_nok_redirect_uri}}'],
+      ['TPP-Redirect-Preferred', 'true'],
+      ['TPP-Explicit-Authorisation-Preferred', 'true'],
+      ['Aspsp-Sca-Approach', 'REDIRECT'],
+      ['Digest', '{{digest}}'],
+      ['Signature', '{{signature}}'],
+      ['TPP-Signature-Certificate', '{{tpp_signature_certificate}}'],
+      ['Date', '{{http_date}}'],
+    ],
+  },
+]
+
+const HEADER_PRESETS: readonly Preset[] = HEADER_PRESET_GROUPS.flatMap((g) => g.items)
 
 export function KVEditor({ rows, onChange, keyPlaceholder = 'Key', valuePlaceholder = 'Value' }: KVEditorProps) {
   const isHeaders = keyPlaceholder.toLowerCase().includes('header')
@@ -135,20 +167,25 @@ export function KVEditor({ rows, onChange, keyPlaceholder = 'Key', valuePlacehol
         <Plus size={12} /> Add row
       </button>
       {isHeaders && (
-        <>
-          <div className="flex flex-wrap gap-1 px-2 pb-2">
-            {HEADER_PRESETS.map(([key, value]) => (
-              <button
-                key={`${key}:${value}`}
-                onClick={() => add(key, value)}
-                className="rounded border border-border-2 bg-surface-1 px-2 py-0.5 text-[10px] text-text-3 hover:border-accent/50 hover:text-text-1"
-                title={`${key}: ${value}`}
-              >
-                {presetCount[key] > 1 ? value : key}
-              </button>
-            ))}
-          </div>
-        </>
+        <div className="max-h-32 overflow-y-auto px-2 pb-2 pt-1">
+          {HEADER_PRESET_GROUPS.map((group) => (
+            <div key={group.label} className="mb-1.5 last:mb-0">
+              <div className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-text-4">{group.label}</div>
+              <div className="flex flex-wrap gap-1">
+                {group.items.map(([key, value]) => (
+                  <button
+                    key={`${key}:${value}`}
+                    onClick={() => add(key, value)}
+                    className="rounded border border-border-2 bg-surface-1 px-2 py-0.5 text-[10px] text-text-3 hover:border-accent/50 hover:text-text-1"
+                    title={`${key}: ${value}`}
+                  >
+                    {presetCount[key] > 1 ? `${key}: ${value}` : key}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   )

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Search, Download, Upload, Trash2, Copy, Plus, RefreshCw } from 'lucide-react'
+import { Search, Download, Upload, Trash2, Copy, Plus, RefreshCw, Eraser, AlertTriangle } from 'lucide-react'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
+import { freeUpSpace, resetLocalData, localUsageBytes, formatBytes } from '@/lib/storageMaintenance'
 import {
   StorageDelete,
   StorageGet,
@@ -54,6 +55,8 @@ export function StoragePanel() {
   const [loading, setLoading] = useState(false)
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [restoreFile, setRestoreFile] = useState<File | null>(null)
+  const [confirmResetOpen, setConfirmResetOpen] = useState(false)
+  const [localBytes, setLocalBytes] = useState(() => localUsageBytes())
 
   const wailsApi = useCallback(async (path: string, body?: unknown) => {
     if (!hasWailsStorage()) {
@@ -342,6 +345,26 @@ export function StoragePanel() {
             <button onClick={loadStatus} className="text-accent hover:text-accent-light"><RefreshCw size={11} /></button>
         </div>
 
+        {/* Local app cache (localStorage) maintenance */}
+        <div className="flex items-center gap-3 text-[10px] text-text-3 bg-surface-1 border border-border-1 rounded-md px-3 py-2 font-mono">
+          <span>local cache: <span className="text-text-2">{formatBytes(localBytes)}</span></span>
+          <span className="text-text-4">histories · caches · UI state</span>
+          <button
+            onClick={() => { const f = freeUpSpace(); setLocalBytes(localUsageBytes()); setMsg(`Freed ${formatBytes(f)} of local cache`) }}
+            className="ml-auto flex items-center gap-1 text-accent hover:text-accent-light"
+            title="Clear call/response history and caches"
+          >
+            <Eraser size={11} /> Free up space
+          </button>
+          <button
+            onClick={() => setConfirmResetOpen(true)}
+            className="flex items-center gap-1 text-error/80 hover:text-error"
+            title="Wipe all local adOmnia data and reload"
+          >
+            <Trash2 size={11} /> Reset local data
+          </button>
+        </div>
+
         {(error || msg) && (
           <div className={cn('px-3 py-2 rounded-md text-xs', error ? 'bg-error/10 text-error border border-error/30' : 'bg-success/10 text-success border border-success/30')}>
             {error || msg}
@@ -469,6 +492,21 @@ export function StoragePanel() {
               >
                 Delete
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmResetOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setConfirmResetOpen(false)}>
+          <div className="w-full max-w-sm rounded-lg border border-error/40 bg-surface-1 p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <p className="flex items-center gap-2 text-sm font-semibold text-text-1"><AlertTriangle size={15} className="text-error" /> Reset all local data?</p>
+            <p className="mt-2 text-xs leading-5 text-text-3">
+              This wipes every local adOmnia setting, collection, environment, tab, history and cache stored in this browser, then reloads. Backend storage (bbolt) is not touched. <strong className="text-text-2">Export a workspace or snapshot first if you might need it back.</strong>
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => setConfirmResetOpen(false)} className="rounded border border-border-2 px-3 py-1 text-xs text-text-2 hover:bg-surface-2">Cancel</button>
+              <button onClick={() => resetLocalData()} className="rounded border border-error/40 bg-error/20 px-3 py-1 text-xs font-medium text-error hover:bg-error/30">Reset &amp; reload</button>
             </div>
           </div>
         </div>

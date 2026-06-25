@@ -12,6 +12,7 @@ interface TabBarProps {
   onClose: (id: string) => void
   onCloseToRight: (id: string) => void
   onCloseToLeft: (id: string) => void
+  onCloseAll: (id: string) => void
   onReorder: (fromId: string, toId: string, position: TabDropPosition) => void
   onNewTab: () => void
   onDuplicate: (id: string) => void
@@ -36,7 +37,7 @@ interface ContextMenuState {
 }
 
 const MENU_W = 180
-const MENU_H = 260
+const MENU_H = 290
 
 function clampToViewport(x: number, y: number): { left: number; top: number } {
   const vw = window.innerWidth
@@ -47,7 +48,7 @@ function clampToViewport(x: number, y: number): { left: number; top: number } {
   }
 }
 
-export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, onCloseToLeft, onReorder, onNewTab, onDuplicate, onRenameTab }: TabBarProps) {
+export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, onCloseToLeft, onCloseAll, onReorder, onNewTab, onDuplicate, onRenameTab }: TabBarProps) {
   const [ctx, setCtx] = useState<ContextMenuState>({ open: false, x: 0, y: 0, tabId: '' })
   const [draggingTabId, setDraggingTabId] = useState<string | null>(null)
   const [dropTarget, setDropTarget] = useState<{ tabId: string; position: TabDropPosition } | null>(null)
@@ -291,6 +292,14 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
           >
             <ChevronLeft size={11} className="text-text-3" />
             Close to the Left
+          </button>
+          <button
+            onClick={() => { onCloseAll(ctx.tabId); closeCtx() }}
+            disabled={tabs.length === 0}
+            className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-text-2 hover:bg-surface-2 hover:text-text-1 transition-colors text-left disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <X size={11} className="text-text-3" />
+            Close All
           </button>
           <div className="my-1 border-t border-border-1" />
           <button

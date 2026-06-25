@@ -5,12 +5,18 @@ import { useSettingsStore } from '@/stores/settings'
 import { useHostsStore } from '@/stores/hosts'
 import { useCookieJarStore } from '@/lib/cookieJar'
 import { resolveVaultReferences } from '@/lib/vaultRefs'
-import { ExecuteHTTP } from '../wailsjs/go/main/App'
+import { ExecuteHTTP, CancelHTTP } from '../wailsjs/go/main/App'
+
+export interface SendOptions {
+  signal?: AbortSignal
+}
 
 export async function sendRequest(
   request: RequestItem,
-  vars: Record<string, string>
+  vars: Record<string, string>,
+  opts?: SendOptions
 ): Promise<ResponseData> {
+  if (opts?.signal?.aborted) return errResp('CANCELED', 'Request cancelled')
   let resolvedVars: Record<string, string>
   try {
     resolvedVars = await resolveVaultReferences(vars)
@@ -66,7 +72,7 @@ export async function sendRequest(
       const msg = e instanceof Error ? e.message : String(e)
       return errResp('AUTH_ERR', msg)
     }
-    return sendViaBrowserFetch(request.method, fullUrl, headers, rawBody, requestSettings, request.timeout, request.followRedirects)
+    return sendViaBrowserFetch(request.method, fullUrl, headers, rawBody, requestSettings, request.timeout, request.followRedirects, opts?.signal)
   }
 
   // Serialize body to string for Go transport
@@ -93,7 +99,9 @@ export async function sendRequest(
 
   const activeHostEntries = useHostsStore.getState().getActiveEntries()
 
+  const reqId = uid()
   const execReq = {
+    id: reqId,
     method: request.method,
     url: fullUrl,
     headers,
@@ -108,6 +116,8 @@ export async function sendRequest(
     hostsMap: activeHostEntries.map((e) => ({ host: e.host, ip: e.ip, enabled: e.enabled })),
   }
 
+  const onAbort = () => { void CancelHTTP(reqId) }
+  opts?.signal?.addEventListener('abort', onAbort)
   try {
     const respJSON = await ExecuteHTTP(JSON.stringify(execReq))
     const resp = JSON.parse(respJSON) as GoHTTPResponse
@@ -130,8 +140,11 @@ export async function sendRequest(
       size: resp.size ?? 0,
     }
   } catch (e) {
+    if (opts?.signal?.aborted) return errResp('CANCELED', 'Request cancelled')
     const msg = e instanceof Error ? e.message : String(e)
     return errResp('ERR', msg)
+  } finally {
+    opts?.signal?.removeEventListener('abort', onAbort)
   }
 }
 
@@ -408,13 +421,22 @@ async function sendViaBrowserFetch(
   body: FormData | undefined,
   requestSettings: ReturnType<typeof useSettingsStore.getState>['settings']['requests'],
   timeout: number | undefined,
-  followRedirects: boolean | undefined
+  followRedirects: boolean | undefined,
+  externalSignal?: AbortSignal
 ): Promise<ResponseData> {
   const start = performance.now()
   const controller = new AbortController()
   const timeoutMs = timeout && timeout > 0 ? timeout : requestSettings.defaultTimeoutMs
   let timer: ReturnType<typeof setTimeout> | undefined
   if (timeoutMs > 0) timer = setTimeout(() => controller.abort(), timeoutMs)
+
+  // Bridge the external cancel signal to this request's controller.
+  let canceled = false
+  const onExternalAbort = () => { canceled = true; controller.abort() }
+  if (externalSignal) {
+    if (externalSignal.aborted) onExternalAbort()
+    else externalSignal.addEventListener('abort', onExternalAbort)
+  }
 
   const redirectOption: RequestRedirect = (followRedirects ?? requestSettings.followRedirects) ? 'follow' : 'manual'
 
@@ -433,7 +455,9 @@ async function sendViaBrowserFetch(
     }
   } catch (e) {
     if (e instanceof DOMException && e.name === 'AbortError') {
-      return errResp('TIMEOUT', 'Request timed out', Math.round(performance.now() - start))
+      return canceled
+        ? errResp('CANCELED', 'Request cancelled', Math.round(performance.now() - start))
+        : errResp('TIMEOUT', 'Request timed out', Math.round(performance.now() - start))
     }
     const ms = Math.round(performance.now() - start)
     const msg = e instanceof Error ? e.message : String(e)
@@ -443,6 +467,9 @@ async function sendViaBrowserFetch(
       return errResp('CONN_ERR', `Cannot connect to ${fullUrl}`, ms)
     }
     return errResp('ERR', msg, ms)
+  } finally {
+    if (timer) clearTimeout(timer)
+    if (externalSignal) externalSignal.removeEventListener('abort', onExternalAbort)
   }
 }
 

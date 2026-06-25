@@ -1,17 +1,14 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, Suspense } from 'react'
-import { ArrowLeft, Check, Save, Send, Trash2, X } from 'lucide-react'
+import { ArrowLeft, Check, Save, Send, SlidersHorizontal, Trash2, X } from 'lucide-react'
 import { useAppStore, type RailItem } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
 import { useCollectionsStore } from '@/stores/collections'
 import { useEnvironmentsStore } from '@/stores/environments'
-import { useHostsStore } from '@/stores/hosts'
 import { useSettingsStore } from '@/stores/settings'
 import { Composer } from '@/components/composer/Composer'
 import { ApiToolsBar } from '@/components/collections/ApiToolsBar'
 import { ResponsePanel } from '@/components/response/ResponsePanel'
 import { TabBar } from '@/components/layout/TabBar'
-import { EnvBar } from '@/components/environment/EnvBar'
-import { HostBar } from '@/components/hosts/HostBar'
 import { WelcomePanel } from '@/components/layout/WelcomePanel'
 import { LoadTestDrawer } from '@/components/loadtest/LoadTestDrawer'
 import { executeRequest } from '@/lib/executeRequest'
@@ -70,10 +67,15 @@ function PanelHeader({ titleKey }: { titleKey?: string }) {
   const setActiveRail = useAppStore((s) => s.setActiveRail)
   const activeRail = useAppStore((s) => s.activeRail)
   const hasHistory = useAppStore((s) => s.railHistory.length > 0)
+  const workspaces = useCollectionsStore((s) => s.workspaces)
+  const activeWorkspaceId = useCollectionsStore((s) => s.activeWorkspaceId)
   const t = useT()
-  const label = titleKey && titleKey in t.rail
-    ? t.rail[titleKey as keyof typeof t.rail]
-    : titleKey || ''
+  // The API Workspace home shows the live workspace name; other panels use their i18n title.
+  const label = activeRail === 'collections'
+    ? (workspaces.find((w) => w.id === activeWorkspaceId)?.name ?? 'Workspace')
+    : titleKey && titleKey in t.rail
+      ? t.rail[titleKey as keyof typeof t.rail]
+      : titleKey || ''
   return (
     <div className="h-10 flex items-center gap-2 px-3 border-b border-border-1 bg-surface-1 flex-shrink-0">
       <button
@@ -106,6 +108,7 @@ type PendingClose =
   | { kind: 'single'; tabId: string }
   | { kind: 'right'; tabId: string }
   | { kind: 'left'; tabId: string }
+  | { kind: 'all'; tabId: string }
 
 // ─── Resizable divider between Composer (left) and ResponsePanel (right) ─────
 
@@ -160,8 +163,11 @@ function ActiveRequestBar({
   hasActiveEnv,
   onChange,
   onSend,
+  onCancel,
   onSave,
   onDelete,
+  apiToolsOpen,
+  onToggleApiTools,
 }: {
   request: RequestItem
   isDirty: boolean
@@ -170,8 +176,11 @@ function ActiveRequestBar({
   hasActiveEnv: boolean
   onChange: (request: RequestItem) => void
   onSend: () => void
+  onCancel: () => void
   onSave: () => void
   onDelete: () => void
+  apiToolsOpen: boolean
+  onToggleApiTools: () => void
 }) {
   const [savedFlash, setSavedFlash] = useState(false)
   const urlInputRef = useRef<HTMLInputElement>(null)
@@ -218,13 +227,37 @@ function ActiveRequestBar({
           />
         </div>
 
+        {loading ? (
+          <button
+            onClick={onCancel}
+            title="Cancel request"
+            className="flex h-[var(--ui-control-h)] min-w-[88px] items-center justify-center gap-1.5 rounded-md bg-error px-3 text-[11px] font-bold text-white transition-colors hover:bg-error/85"
+          >
+            <X size={14} />
+            Cancel
+          </button>
+        ) : (
+          <button
+            onClick={onSend}
+            disabled={!request.url}
+            className="flex h-[var(--ui-control-h)] min-w-[88px] items-center justify-center gap-1.5 rounded-md bg-accent px-3 text-[11px] font-bold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Send size={14} />
+            Send
+          </button>
+        )}
+
         <button
-          onClick={onSend}
-          disabled={!request.url || loading}
-          className="flex h-[var(--ui-control-h)] min-w-[88px] items-center justify-center gap-1.5 rounded-md bg-accent px-3 text-[11px] font-bold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
+          onClick={onToggleApiTools}
+          title={apiToolsOpen ? 'Hide API tools' : 'Show API tools (redirects, timeout, cURL, encode…)'}
+          className={cn(
+            'grid h-[var(--ui-control-h)] w-[var(--ui-control-h)] place-items-center rounded-md transition-colors',
+            apiToolsOpen
+              ? 'border border-accent/40 bg-accent/15 text-accent'
+              : 'text-text-3 hover:bg-surface-2 hover:text-text-1',
+          )}
         >
-          <Send size={14} />
-          {loading ? 'Sending...' : 'Send'}
+          <SlidersHorizontal size={14} />
         </button>
 
         <button
@@ -264,6 +297,7 @@ function RequestWorkspace() {
   const closeRequestTabs = useTabsStore((s) => s.closeRequestTabs)
   const closeTabsToRight = useTabsStore((s) => s.closeTabsToRight)
   const closeTabsToLeft = useTabsStore((s) => s.closeTabsToLeft)
+  const closeAllTabs = useTabsStore((s) => s.closeAllTabs)
   const reorderTab = useTabsStore((s) => s.reorderTab)
   const newTab = useTabsStore((s) => s.newTab)
   const duplicateTab = useTabsStore((s) => s.duplicateTab)
@@ -284,23 +318,22 @@ function RequestWorkspace() {
 
   const environments = useEnvironmentsStore((s) => s.environments)
   const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
-  const setActiveEnv = useEnvironmentsStore((s) => s.setActiveEnv)
-  const addEnvironment = useEnvironmentsStore((s) => s.addEnvironment)
-  const deleteEnvironment = useEnvironmentsStore((s) => s.deleteEnvironment)
-  const renameEnvironment = useEnvironmentsStore((s) => s.renameEnvironment)
   const updateVariables = useEnvironmentsStore((s) => s.updateVariables)
   const getResolvedVars = useEnvironmentsStore((s) => s.getResolvedVars)
 
-  const hostsProfiles = useHostsStore((s) => s.profiles)
-  const activeHostProfileId = useHostsStore((s) => s.activeProfileId)
-  const setActiveHostProfile = useHostsStore((s) => s.setActiveProfile)
-  const addHostProfile = useHostsStore((s) => s.addProfile)
-  const deleteHostProfile = useHostsStore((s) => s.deleteProfile)
-  const renameHostProfile = useHostsStore((s) => s.renameProfile)
-  const updateHostEntries = useHostsStore((s) => s.updateEntries)
-
   const [showLoadTest, setShowLoadTest] = useState(false)
   const [pendingClose, setPendingClose] = useState<PendingClose | null>(null)
+  const sendAbortRef = useRef<AbortController | null>(null)
+  const [apiToolsOpen, setApiToolsOpen] = useState(() => {
+    try { return localStorage.getItem('adomnia.apiToolsOpen') === '1' } catch { return false }
+  })
+  const toggleApiTools = useCallback(() => {
+    setApiToolsOpen((v) => {
+      const next = !v
+      try { localStorage.setItem('adomnia.apiToolsOpen', next ? '1' : '0') } catch { /* ignore */ }
+      return next
+    })
+  }, [])
   const [paramIssues, setParamIssues] = useState<RequestParamIssue[]>([])
   const [deleteRequestTarget, setDeleteRequestTarget] = useState<{
     requestId: string
@@ -380,15 +413,22 @@ function RequestWorkspace() {
       return
     }
     setParamIssues([])
+    const controller = new AbortController()
+    sendAbortRef.current = controller
     setLoading(activeTab.id, true)
     const vars = getResolvedVars()
-    const result = await executeRequest(activeTab.request, vars)
+    const result = await executeRequest(activeTab.request, vars, { signal: controller.signal })
     if (activeEnvId && Object.keys(result.mutations).length > 0) {
       const env = environments.find((e) => e.id === activeEnvId)
       if (env) updateVariables(activeEnvId, applyEnvironmentMutations(env.variables, result.mutations))
     }
     const response = result.response
     setResponse(activeTab.id, response)
+    sendAbortRef.current = null
+  }
+
+  const handleCancel = () => {
+    sendAbortRef.current?.abort()
   }
 
   useEffect(() => {
@@ -454,6 +494,9 @@ function RequestWorkspace() {
       const t = tabs.find((tab) => tab.id === pending.tabId)
       return t?.dirty ? [t] : []
     }
+    if (pending.kind === 'all') {
+      return tabs.filter((t) => t.dirty)
+    }
     const idx = tabs.findIndex((t) => t.id === pending.tabId)
     if (idx === -1) return []
     const affected = pending.kind === 'right'
@@ -479,9 +522,10 @@ function RequestWorkspace() {
     }
     if (pending.kind === 'single') closeTab(pending.tabId)
     else if (pending.kind === 'right') closeTabsToRight(pending.tabId)
-    else closeTabsToLeft(pending.tabId)
+    else if (pending.kind === 'left') closeTabsToLeft(pending.tabId)
+    else closeAllTabs()
     setPendingClose(null)
-  }, [getDirtyTabsForPending, saveTab, closeTab, closeTabsToRight, closeTabsToLeft])
+  }, [getDirtyTabsForPending, saveTab, closeTab, closeTabsToRight, closeTabsToLeft, closeAllTabs])
 
   const dirtyInDialog = pendingClose ? getDirtyTabsForPending(pendingClose) : []
 
@@ -502,30 +546,6 @@ function RequestWorkspace() {
 
   return (
     <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-      <div className="flex">
-        <div className="flex-1">
-          <EnvBar
-            environments={environments}
-            activeEnvId={activeEnvId}
-            onSetActive={setActiveEnv}
-            onAdd={(name) => addEnvironment(name)}
-            onDelete={deleteEnvironment}
-            onRename={renameEnvironment}
-            onUpdateVars={updateVariables}
-          />
-        </div>
-        <div className="flex-1 border-l border-border-1">
-          <HostBar
-            profiles={hostsProfiles}
-            activeProfileId={activeHostProfileId}
-            onSetActive={setActiveHostProfile}
-            onAdd={(name) => addHostProfile(name)}
-            onDelete={deleteHostProfile}
-            onRename={renameHostProfile}
-            onUpdateEntries={updateHostEntries}
-          />
-        </div>
-      </div>
       <TabBar
         tabs={tabs}
         activeTabId={activeTabId}
@@ -533,6 +553,7 @@ function RequestWorkspace() {
         onClose={(id) => attemptClose({ kind: 'single', tabId: id })}
         onCloseToRight={(id) => attemptClose({ kind: 'right', tabId: id })}
         onCloseToLeft={(id) => attemptClose({ kind: 'left', tabId: id })}
+        onCloseAll={(id) => attemptClose({ kind: 'all', tabId: id })}
         onReorder={reorderTab}
         onNewTab={newTab}
         onDuplicate={duplicateTab}
@@ -547,8 +568,11 @@ function RequestWorkspace() {
           hasActiveEnv={activeEnvId !== null}
           onChange={(request) => updateRequest(activeTab.id, request)}
           onSend={handleSend}
+          onCancel={handleCancel}
           onSave={handleSave}
           onDelete={confirmDeleteActiveRequest}
+          apiToolsOpen={apiToolsOpen}
+          onToggleApiTools={toggleApiTools}
         />
       )}
       <ApiToolsBar
@@ -556,6 +580,7 @@ function RequestWorkspace() {
         onChangeRequest={(request) => activeTab && updateRequest(activeTab.id, request)}
         onApplyRequest={(request) => activeTab && updateRequest(activeTab.id, request)}
         onLoadTest={() => setShowLoadTest((v) => !v)}
+        open={apiToolsOpen}
       />
 
       {activeTab ? (
