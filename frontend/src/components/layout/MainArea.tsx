@@ -4,14 +4,11 @@ import { useAppStore, type RailItem } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
 import { useCollectionsStore } from '@/stores/collections'
 import { useEnvironmentsStore } from '@/stores/environments'
-import { useHostsStore } from '@/stores/hosts'
 import { useSettingsStore } from '@/stores/settings'
 import { Composer } from '@/components/composer/Composer'
 import { ApiToolsBar } from '@/components/collections/ApiToolsBar'
 import { ResponsePanel } from '@/components/response/ResponsePanel'
 import { TabBar } from '@/components/layout/TabBar'
-import { EnvBar } from '@/components/environment/EnvBar'
-import { HostBar } from '@/components/hosts/HostBar'
 import { WelcomePanel } from '@/components/layout/WelcomePanel'
 import { LoadTestDrawer } from '@/components/loadtest/LoadTestDrawer'
 import { executeRequest } from '@/lib/executeRequest'
@@ -70,10 +67,15 @@ function PanelHeader({ titleKey }: { titleKey?: string }) {
   const setActiveRail = useAppStore((s) => s.setActiveRail)
   const activeRail = useAppStore((s) => s.activeRail)
   const hasHistory = useAppStore((s) => s.railHistory.length > 0)
+  const workspaces = useCollectionsStore((s) => s.workspaces)
+  const activeWorkspaceId = useCollectionsStore((s) => s.activeWorkspaceId)
   const t = useT()
-  const label = titleKey && titleKey in t.rail
-    ? t.rail[titleKey as keyof typeof t.rail]
-    : titleKey || ''
+  // The API Workspace home shows the live workspace name; other panels use their i18n title.
+  const label = activeRail === 'collections'
+    ? (workspaces.find((w) => w.id === activeWorkspaceId)?.name ?? 'Workspace')
+    : titleKey && titleKey in t.rail
+      ? t.rail[titleKey as keyof typeof t.rail]
+      : titleKey || ''
   return (
     <div className="h-10 flex items-center gap-2 px-3 border-b border-border-1 bg-surface-1 flex-shrink-0">
       <button
@@ -316,20 +318,8 @@ function RequestWorkspace() {
 
   const environments = useEnvironmentsStore((s) => s.environments)
   const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
-  const setActiveEnv = useEnvironmentsStore((s) => s.setActiveEnv)
-  const addEnvironment = useEnvironmentsStore((s) => s.addEnvironment)
-  const deleteEnvironment = useEnvironmentsStore((s) => s.deleteEnvironment)
-  const renameEnvironment = useEnvironmentsStore((s) => s.renameEnvironment)
   const updateVariables = useEnvironmentsStore((s) => s.updateVariables)
   const getResolvedVars = useEnvironmentsStore((s) => s.getResolvedVars)
-
-  const hostsProfiles = useHostsStore((s) => s.profiles)
-  const activeHostProfileId = useHostsStore((s) => s.activeProfileId)
-  const setActiveHostProfile = useHostsStore((s) => s.setActiveProfile)
-  const addHostProfile = useHostsStore((s) => s.addProfile)
-  const deleteHostProfile = useHostsStore((s) => s.deleteProfile)
-  const renameHostProfile = useHostsStore((s) => s.renameProfile)
-  const updateHostEntries = useHostsStore((s) => s.updateEntries)
 
   const [showLoadTest, setShowLoadTest] = useState(false)
   const [pendingClose, setPendingClose] = useState<PendingClose | null>(null)
@@ -556,30 +546,6 @@ function RequestWorkspace() {
 
   return (
     <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-      <div className="flex">
-        <div className="flex-1">
-          <EnvBar
-            environments={environments}
-            activeEnvId={activeEnvId}
-            onSetActive={setActiveEnv}
-            onAdd={(name) => addEnvironment(name)}
-            onDelete={deleteEnvironment}
-            onRename={renameEnvironment}
-            onUpdateVars={updateVariables}
-          />
-        </div>
-        <div className="flex-1 border-l border-border-1">
-          <HostBar
-            profiles={hostsProfiles}
-            activeProfileId={activeHostProfileId}
-            onSetActive={setActiveHostProfile}
-            onAdd={(name) => addHostProfile(name)}
-            onDelete={deleteHostProfile}
-            onRename={renameHostProfile}
-            onUpdateEntries={updateHostEntries}
-          />
-        </div>
-      </div>
       <TabBar
         tabs={tabs}
         activeTabId={activeTabId}

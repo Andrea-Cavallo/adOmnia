@@ -4,6 +4,10 @@ import { useAppStore } from '@/stores/app'
 import { useSettingsStore } from '@/stores/settings'
 import { useCollectionsStore, findParentInfo } from '@/stores/collections'
 import { useTabsStore } from '@/stores/tabs'
+import { useEnvironmentsStore } from '@/stores/environments'
+import { useHostsStore } from '@/stores/hosts'
+import { EnvBar } from '@/components/environment/EnvBar'
+import { HostBar } from '@/components/hosts/HostBar'
 import { CollectionTree } from '@/components/collections/CollectionTree'
 import { blankRequest, uid } from '@/lib/types'
 import type { HttpMethod, RequestItem } from '@/lib/types'
@@ -42,6 +46,23 @@ export function Sidebar() {
   const activateWorkspace = useTabsStore((s) => s.activateWorkspace)
   const deleteWorkspaceTabs = useTabsStore((s) => s.deleteWorkspaceTabs)
   const moveCollectionTabs = useTabsStore((s) => s.moveCollectionTabs)
+
+  const environments = useEnvironmentsStore((s) => s.environments)
+  const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
+  const setActiveEnv = useEnvironmentsStore((s) => s.setActiveEnv)
+  const addEnvironment = useEnvironmentsStore((s) => s.addEnvironment)
+  const deleteEnvironment = useEnvironmentsStore((s) => s.deleteEnvironment)
+  const renameEnvironment = useEnvironmentsStore((s) => s.renameEnvironment)
+  const updateVariables = useEnvironmentsStore((s) => s.updateVariables)
+
+  const hostsProfiles = useHostsStore((s) => s.profiles)
+  const activeHostProfileId = useHostsStore((s) => s.activeProfileId)
+  const setActiveHostProfile = useHostsStore((s) => s.setActiveProfile)
+  const addHostProfile = useHostsStore((s) => s.addProfile)
+  const deleteHostProfile = useHostsStore((s) => s.deleteProfile)
+  const renameHostProfile = useHostsStore((s) => s.renameProfile)
+  const updateHostEntries = useHostsStore((s) => s.updateEntries)
+
   const [showAddCollection, setShowAddCollection] = useState(false)
   const [showAddWorkspace, setShowAddWorkspace] = useState(false)
   const [showRenameWorkspace, setShowRenameWorkspace] = useState(false)
@@ -127,6 +148,25 @@ export function Sidebar() {
           </button>
         </div>
       </div>
+
+      <EnvBar
+        environments={environments}
+        activeEnvId={activeEnvId}
+        onSetActive={setActiveEnv}
+        onAdd={(name) => addEnvironment(name)}
+        onDelete={deleteEnvironment}
+        onRename={renameEnvironment}
+        onUpdateVars={updateVariables}
+      />
+      <HostBar
+        profiles={hostsProfiles}
+        activeProfileId={activeHostProfileId}
+        onSetActive={setActiveHostProfile}
+        onAdd={(name) => addHostProfile(name)}
+        onDelete={deleteHostProfile}
+        onRename={renameHostProfile}
+        onUpdateEntries={updateHostEntries}
+      />
 
       <CollectionTree
         collections={collections}
