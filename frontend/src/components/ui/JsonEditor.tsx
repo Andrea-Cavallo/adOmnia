@@ -340,13 +340,19 @@ export function JsonEditor({
   const preRef = useRef<HTMLPreElement>(null)
   const gutterRef = useRef<HTMLPreElement>(null)
   const [tooltip, setTooltip] = useState<VarTooltip | null>(null)
+  // Ctrl+wheel zoom — persisted px font size, shared by textarea/overlay/gutter.
+  const [fontPx, setFontPx] = useState(() => {
+    const n = Number(localStorage.getItem('adomnia.editor.bodyFontPx'))
+    return n >= 9 && n <= 28 ? n : 12
+  })
 
   const editor = useSettingsStore((s) => s.settings.editor)
   const indentUnit = editor.softTabs ? ' '.repeat(editor.tabSize) : '\t'
   const lineCount = value.length ? value.split('\n').length : 1
-  const gutterWidth = editor.lineNumbers ? Math.max(38, 14 + String(lineCount).length * 8) : 0
+  const gutterWidth = editor.lineNumbers ? Math.max(38, 14 + String(lineCount).length * Math.ceil(fontPx * 0.62)) : 0
   const editorStyle: React.CSSProperties = {
     ...SHARED_STYLE,
+    fontSize: fontPx,
     tabSize: editor.tabSize,
     whiteSpace: editor.wordWrap ? 'pre-wrap' : 'pre',
     overflowWrap: editor.wordWrap ? 'anywhere' : 'normal',
@@ -380,6 +386,15 @@ export function JsonEditor({
     if (!ta) return
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
+      if (e.ctrlKey || e.metaKey) {
+        // Ctrl/Cmd+wheel: zoom the editor font (up = bigger).
+        setFontPx((px) => {
+          const next = Math.min(28, Math.max(9, px + (e.deltaY < 0 ? 1 : -1)))
+          localStorage.setItem('adomnia.editor.bodyFontPx', String(next))
+          return next
+        })
+        return
+      }
       const multiplier = Math.abs(e.deltaY) > 50 ? 2.5 : 1.0
       ta.scrollTop += e.deltaY * multiplier
       syncScroll()
@@ -388,18 +403,23 @@ export function JsonEditor({
     return () => ta.removeEventListener('wheel', onWheel)
   }, [syncScroll])
 
+  // Jump the textarea selection to the active search match. Reads the live
+  // textarea content (not the `value` prop) so editing a matched value does
+  // NOT re-fire this and yank the cursor back to the search hit.
+  // ponytail: deps intentionally exclude `value` — only search navigation moves the caret.
   useEffect(() => {
     if (!searchTerm) return
     const ta = taRef.current
     if (!ta) return
-    const lower = value.toLowerCase()
+    const text = ta.value
+    const lower = text.toLowerCase()
     const needle = searchTerm.toLowerCase()
     let found = 0
     let index = lower.indexOf(needle)
     while (index !== -1) {
       if (found === activeSearchIndex) {
         ta.setSelectionRange(index, index + searchTerm.length)
-        const line = value.slice(0, index).split('\n').length - 1
+        const line = text.slice(0, index).split('\n').length - 1
         const lineHeight = parseFloat(window.getComputedStyle(ta).lineHeight) || 19
         ta.scrollTop = Math.max(0, line * lineHeight - 72)
         syncScroll()
@@ -408,7 +428,8 @@ export function JsonEditor({
       found += 1
       index = lower.indexOf(needle, index + Math.max(searchTerm.length, 1))
     }
-  }, [activeSearchIndex, searchTerm, syncScroll, value])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSearchIndex, searchTerm, syncScroll])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const ta = e.currentTarget
@@ -473,6 +494,7 @@ export function JsonEditor({
           aria-hidden
           style={{
             ...SHARED_STYLE,
+            fontSize:      fontPx,
             position:      'absolute',
             top:           0,
             left:          0,

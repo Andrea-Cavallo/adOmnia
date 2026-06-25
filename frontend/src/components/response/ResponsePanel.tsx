@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Copy, Loader2, Maximize2, GitBranch, GitCompare, Sparkles, X, ShieldCheck, ShieldAlert, ShieldOff, AlertTriangle, Check, XCircle, FileText, FileCode, FileJson, Search, ChevronUp, ChevronDown } from 'lucide-react'
 import type { ResponseData, ContractValidationResult, AssertionResult, ScriptRunResult } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { prettyJson } from '@/lib/prettyJson'
 import { JsonGraph } from '@/components/ui/JsonGraph'
 import { validateContract, exportContractReportMarkdown, exportContractReportHtml, exportContractReportJson } from '@/lib/contractValidator'
 import { evaluateAssertions } from '@/lib/assertionEngine'
@@ -162,7 +163,7 @@ function FullscreenBodyModal({
   const isJson = contentType.includes('json') || body.trim().match(/^[\[{]/) != null
   let display = body
   if (isJson) {
-    try { display = JSON.stringify(JSON.parse(body), null, 2) } catch { /* keep raw */ }
+    try { display = prettyJson(body) } catch { /* keep raw */ }
   }
 
   return (
@@ -194,6 +195,18 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
     () => new Set(initialViewState.responseGraphExpanded),
   )
   const [showFullscreen, setShowFullscreen] = useState(false)
+  // Ctrl+wheel zoom for the response body — shares the editor font px with the request body.
+  const [respFontPx, setRespFontPx] = useState(() => {
+    const n = Number(localStorage.getItem('adomnia.editor.bodyFontPx'))
+    return n >= 9 && n <= 28 ? n : 12
+  })
+  const [copiedBody, setCopiedBody] = useState(false)
+  const copyBody = () => {
+    if (!response) return
+    navigator.clipboard.writeText(response.body)
+    setCopiedBody(true)
+    setTimeout(() => setCopiedBody(false), 1200)
+  }
   const [showDiff, setShowDiff] = useState(false)
   const [diffRightBody, setDiffRightBody] = useState('')
   const [diffRightLabel, setDiffRightLabel] = useState('')
@@ -213,6 +226,23 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
         useTabsStore.getState().getViewState(tabId).responseScrollTop[tab] ?? 0
     }
   }, [tabId, tab, view])
+
+  // Ctrl/Cmd+wheel zooms the response body font (up = bigger), persisted.
+  useEffect(() => {
+    const el = bodyRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return
+      e.preventDefault()
+      setRespFontPx((px) => {
+        const next = Math.min(28, Math.max(9, px + (e.deltaY < 0 ? 1 : -1)))
+        localStorage.setItem('adomnia.editor.bodyFontPx', String(next))
+        return next
+      })
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
 
   // Debounce search input → query so we don't re-render on every keystroke
   useEffect(() => {
@@ -294,7 +324,7 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
   // Pretty-printed body used for both display and match counting
   let prettyBody = displayBody
   if (isJson && view === 'pretty' && !tooLargeToRender) {
-    try { prettyBody = JSON.stringify(JSON.parse(displayBody), null, 2) } catch { /* keep raw */ }
+    try { prettyBody = prettyJson(displayBody) } catch { /* keep raw */ }
   }
 
   // Count total matches in the displayed text
@@ -554,7 +584,7 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
                 onClick={() => {
                   if (isJson) {
                     try {
-                      setBeautifiedBody(JSON.stringify(JSON.parse(displayBody), null, 2))
+                      setBeautifiedBody(prettyJson(displayBody))
                       setView('pretty')
                       updateViewState(tabId, { responseBodyView: 'pretty' })
                     } catch { /* invalid JSON notice is shown in the body view */ }
@@ -588,11 +618,11 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
                 Raw
               </button>
               <button
-                onClick={() => navigator.clipboard.writeText(response.body)}
-                className="ml-1 p-1 text-text-4 hover:text-text-2 rounded"
-                title="Copy response body"
+                onClick={copyBody}
+                className={cn('ml-1 p-1 rounded', copiedBody ? 'text-success' : 'text-text-4 hover:text-text-2')}
+                title={copiedBody ? 'Copied!' : 'Copy response body'}
               >
-                <Copy size={12} />
+                {copiedBody ? <Check size={12} /> : <Copy size={12} />}
               </button>
               {response.contentType.includes('pdf') && (
                 <button
@@ -711,13 +741,13 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
                         (limit {responseMaxRenderSizeKB} KB, change it in Settings → Editor).
                       </span>
                     </div>
-                    <pre className="text-xs font-mono whitespace-pre-wrap break-all text-text-2">
+                    <pre className="text-xs font-mono whitespace-pre-wrap break-all text-text-2" style={{ fontSize: respFontPx }}>
                       {prettyBody.slice(0, responseMaxRenderSizeKB * 1024)}
                       {displayBody.length > responseMaxRenderSizeKB * 1024 && '\n… truncated'}
                     </pre>
                   </>
                 ) : (
-                  <pre className="text-xs font-mono whitespace-pre-wrap break-all">
+                  <pre className="text-xs font-mono whitespace-pre-wrap break-all" style={{ fontSize: respFontPx }}>
                     {isJson && view === 'pretty' && validationBadge === 'valid'
                       ? <JsonHighlight text={prettyBody} searchTerm={searchQuery} />
                       : <TextHighlight text={prettyBody} searchTerm={searchQuery} />

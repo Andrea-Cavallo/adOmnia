@@ -4,6 +4,7 @@ import type { RequestItem, HttpMethod, KVRow, RequestBody } from '@/lib/types'
 import { uid, blankBody, blankAuth } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { detectPathParamKeys } from '@/lib/pathParams'
+import { prettyJson } from '@/lib/prettyJson'
 import { KVEditor } from './KVEditor'
 import { BodyEditor } from './BodyEditor'
 import { AuthEditor } from './AuthEditor'
@@ -615,7 +616,6 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
   }, [cookieJarEntries, request.url, sendCookiesAutomatically])
 
   const tabs = [
-    { id: 'overview' as ComposerSection, label: 'Overview', count: request.description?.trim() ? 1 : 0, icon: FileText },
     { id: 'body' as ComposerSection, label: 'Body', count: bodyCount, icon: Code },
     {
       id: 'headers' as ComposerSection,
@@ -633,6 +633,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
       count: (request.assertions ?? []).length + ((scripts.pre || scripts.post || scripts.tests) ? 1 : 0),
       icon: CheckCheck,
     },
+    { id: 'overview' as ComposerSection, label: 'Notes', count: request.description?.trim() ? 1 : 0, icon: FileText },
   ]
 
   const bodyIndex = bodies.length
@@ -645,7 +646,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
     id: uid(),
     name,
     raw: source.lang === 'json' && source.raw.trim()
-      ? (() => { try { return JSON.stringify(JSON.parse(source.raw), null, 2) } catch { return source.raw } })()
+      ? (() => { try { return prettyJson(source.raw) } catch { return source.raw } })()
       : source.raw,
     form: (source.form ?? []).map((row) => ({ ...row, id: uid() })),
   })
@@ -830,7 +831,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
         )}
 
         {/* Section tabs */}
-        <div role="tablist" aria-label="Request sections" className="flex min-h-12 flex-wrap items-end gap-1 border-y-2 border-border-2 bg-surface-1 px-3 pt-2">
+        <div role="tablist" aria-label="Request sections" className="flex min-h-12 flex-nowrap items-end gap-1 overflow-x-auto border-y-2 border-border-2 bg-surface-1 px-3 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {tabs.map((t) => {
             const TabIcon = t.icon
             const active = activeTab === t.id
@@ -843,6 +844,11 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
                   setActiveTab(t.id)
                   updateViewState(tabId, { composerSection: t.id })
                 }}
+                onContextMenu={t.id === 'body' ? (event) => {
+                  event.preventDefault()
+                  setBodyMenu({ x: event.clientX, y: event.clientY, index: bodyIndex })
+                } : undefined}
+                title={t.id === 'body' ? 'Right-click to duplicate / rename this body' : undefined}
                 className={cn(
                   'relative flex h-9 shrink-0 items-center gap-1.5 rounded-t-md border border-b-0 px-3 text-[11.5px] font-medium outline-none transition-all focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent',
                   active

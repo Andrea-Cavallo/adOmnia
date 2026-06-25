@@ -7,6 +7,7 @@ import { useTabsStore } from '@/stores/tabs'
 import { useAppStore } from '@/stores/app'
 import { useDevLogsStore } from '@/stores/devLogs'
 import { getBackendDevLogs, clearBackendDevLogs } from '@/lib/devlogs-api'
+import { requestPersistentStorage } from '@/lib/storageMaintenance'
 import { GetStartupWindowChrome } from '@/wailsjs/go/main/App'
 
 type WindowChromeMode = 'app' | 'app-xwayland' | 'system'
@@ -119,6 +120,8 @@ export function useAppInit(): AppInitResult {
     loadCollections()
     loadEnvironments()
     loadHosts()
+    // Request persistent storage once — larger quota, no eviction under pressure.
+    void requestPersistentStorage()
   }, [loadSettings, loadCollections, loadEnvironments, loadHosts])
 
   useEffect(() => {

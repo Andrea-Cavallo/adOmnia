@@ -105,7 +105,7 @@ function normalizeHistoryEntries(history: Array<RequestHistoryEntry | ResponseDa
 
 function defaultViewState(): TabViewState {
   return {
-    composerSection: 'overview',
+    composerSection: 'body',
     composerScrollTop: 0,
     composerContentScrollTop: {},
     responseSection: 'body',
