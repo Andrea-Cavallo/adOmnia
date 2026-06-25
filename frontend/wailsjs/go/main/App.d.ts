@@ -3,6 +3,8 @@
 import {main} from '../models';
 import {markdown} from '../models';
 
+export function CancelHTTP(arg1:string):Promise<void>;
+
 export function CheckForUpdate():Promise<main.UpdateInfo>;
 
 export function ClearDevLogs():Promise<void>;
@@ -14,8 +16,6 @@ export function CreateMarkdownFile(arg1:string,arg2:string,arg3:string):Promise<
 export function DeleteMarkdownFile(arg1:string,arg2:string):Promise<void>;
 
 export function ExecuteHTTP(arg1:string):Promise<string>;
-
-export function CancelHTTP(arg1:string):Promise<void>;
 
 export function GetAppVersion():Promise<string>;
 
