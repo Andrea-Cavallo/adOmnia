@@ -49,6 +49,7 @@ interface TabsState {
   renameRequestTabs: (requestId: string, name: string) => void
   closeTabsToRight: (id: string) => void
   closeTabsToLeft: (id: string) => void
+  closeAllTabs: () => void
   reorderTab: (fromId: string, toId: string, position: TabDropPosition) => void
   setActiveTab: (id: string) => void
   newTab: (method?: HttpMethod) => void
@@ -303,6 +304,20 @@ export const useTabsStore = create<TabsState>((set, get) => ({
       const idx = workspaceTabs.findIndex((t) => t.id === id)
       if (idx === -1) return s
       const removeIds = new Set(workspaceTabs.slice(0, idx).map((tab) => tab.id))
+      const filtered = s.tabs.filter((tab) => !removeIds.has(tab.id))
+      const activeTabStillExists = filtered.some((t) => t.id === s.activeTabId)
+      return {
+        tabs: filtered,
+        activeTabId: activeTabStillExists ? s.activeTabId : filtered.find((tab) => belongsToWorkspace(tab))?.id ?? null,
+        viewStateByTabId: retainViewStates(s.viewStateByTabId, filtered),
+      }
+    })
+    get().save()
+  },
+
+  closeAllTabs: () => {
+    set((s) => {
+      const removeIds = new Set(s.tabs.filter((tab) => belongsToWorkspace(tab)).map((tab) => tab.id))
       const filtered = s.tabs.filter((tab) => !removeIds.has(tab.id))
       const activeTabStillExists = filtered.some((t) => t.id === s.activeTabId)
       return {

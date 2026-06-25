@@ -12,6 +12,7 @@ interface ApiToolsBarProps {
   onChangeRequest?: (request: RequestItem) => void
   onApplyRequest: (request: RequestItem) => void
   onLoadTest?: () => void
+  open?: boolean
 }
 
 const HTTP_STATUS: { code: number; label: string; detail: string }[] = [
@@ -71,7 +72,7 @@ function statusClass(code: number) {
   return 'text-text-4'
 }
 
-export function ApiToolsBar({ activeRequest, onChangeRequest, onApplyRequest, onLoadTest }: ApiToolsBarProps) {
+export function ApiToolsBar({ activeRequest, onChangeRequest, onApplyRequest, onLoadTest, open = true }: ApiToolsBarProps) {
   const [activeTool, setActiveTool] = useState<ToolId | null>(null)
   const [urlInput, setUrlInput] = useState(activeRequest?.url || 'https://api.local/v1/orders?status=open')
   const [urlOutput, setUrlOutput] = useState('')
@@ -127,6 +128,7 @@ export function ApiToolsBar({ activeRequest, onChangeRequest, onApplyRequest, on
 
   return (
     <>
+      {open && (
       <div className="flex h-[var(--ui-toolbar-h)] items-center gap-1 overflow-x-auto border-b border-border-1 bg-surface-0/80 px-2.5 no-scrollbar">
         <span className="mr-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-text-4">API Tools</span>
         {activeRequest && onChangeRequest && (
@@ -186,6 +188,7 @@ export function ApiToolsBar({ activeRequest, onChangeRequest, onApplyRequest, on
           )
         })}
       </div>
+      )}
 
       {activeTool && (
         <div className="fixed inset-0 z-[180] flex items-center justify-center bg-black/45 backdrop-blur-sm">

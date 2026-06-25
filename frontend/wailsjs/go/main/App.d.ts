@@ -15,6 +15,8 @@ export function DeleteMarkdownFile(arg1:string,arg2:string):Promise<void>;
 
 export function ExecuteHTTP(arg1:string):Promise<string>;
 
+export function CancelHTTP(arg1:string):Promise<void>;
+
 export function GetAppVersion():Promise<string>;
 
 export function GetDevLogs():Promise<string>;

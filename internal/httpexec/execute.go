@@ -12,11 +12,29 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
+// inFlight tracks cancel functions for running requests, keyed by the
+// frontend-supplied request id, so a request can be aborted mid-flight.
+var inFlight sync.Map // map[string]context.CancelFunc
+
+// Cancel aborts an in-flight request by id. No-op if the id is unknown.
+func Cancel(id string) {
+	if id == "" {
+		return
+	}
+	if v, ok := inFlight.Load(id); ok {
+		if cancel, ok := v.(context.CancelFunc); ok {
+			cancel()
+		}
+	}
+}
+
 // HTTPExecRequest is the payload sent by the frontend to ExecuteHTTP.
 type HTTPExecRequest struct {
+	ID                   string            `json:"id,omitempty"`
 	Method               string            `json:"method"`
 	URL                  string            `json:"url"`
 	Headers              map[string]string `json:"headers"`
@@ -113,6 +131,12 @@ func executeHTTPRequest(req HTTPExecRequest) HTTPExecResponse {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutMs)*time.Millisecond)
 	defer cancel()
 
+	// Register for external cancellation (Cancel button) while the request runs.
+	if req.ID != "" {
+		inFlight.Store(req.ID, cancel)
+		defer inFlight.Delete(req.ID)
+	}
+
 	var bodyReader io.Reader
 	if req.Body != "" {
 		bodyReader = strings.NewReader(req.Body)
@@ -134,10 +158,17 @@ func executeHTTPRequest(req HTTPExecRequest) HTTPExecResponse {
 
 	if err != nil {
 		code := "CONN_ERR"
-		if ctx.Err() == context.DeadlineExceeded {
+		switch ctx.Err() {
+		case context.DeadlineExceeded:
 			code = "TIMEOUT"
+		case context.Canceled:
+			code = "CANCELED"
 		}
-		return HTTPExecResponse{Ms: elapsed, Error: &HTTPExecError{Code: code, Message: err.Error()}}
+		msg := err.Error()
+		if code == "CANCELED" {
+			msg = "Request cancelled"
+		}
+		return HTTPExecResponse{Ms: elapsed, Error: &HTTPExecError{Code: code, Message: msg}}
 	}
 	defer httpResp.Body.Close()
 

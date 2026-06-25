@@ -44,6 +44,7 @@ interface VarEditPopover {
   varName: string
   value: string
   exists: boolean
+  envId: string
   x: number
   y: number
 }
@@ -218,6 +219,8 @@ export function VarHighlightInput({
   const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
   const environments = useEnvironmentsStore((s) => s.environments)
   const updateVariables = useEnvironmentsStore((s) => s.updateVariables)
+  const addEnvironment = useEnvironmentsStore((s) => s.addEnvironment)
+  const setActiveEnv = useEnvironmentsStore((s) => s.setActiveEnv)
   const showVaultInAutocomplete = useSettingsStore((s) => s.settings.vault.showVaultInAutocomplete)
   const [autocomplete, setAutocomplete] = useState<AutocompleteState | null>(null)
 
@@ -328,41 +331,54 @@ export function VarHighlightInput({
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent<HTMLInputElement>) => {
-      if (!ref.current || !activeEnv) return
+      if (!ref.current) return
       const varName = varNameAtIndex(value, charIndexAtX(ref.current, e.clientX))
       if (!varName) return
 
       e.preventDefault()
       setTooltip(null)
-      const existing = activeEnv.variables.find((variable) => variable.key === varName)
+
+      // No environment to hold the variable yet → create one on the spot so the
+      // user can give the variable a value immediately.
+      let targetEnv = activeEnv
+      if (!targetEnv) {
+        targetEnv = addEnvironment('Development')
+        setActiveEnv(targetEnv.id)
+      }
+
+      const existing = targetEnv.variables.find((variable) => variable.key === varName)
       setEditPopover({
         varName,
         value: existing?.value ?? '',
         exists: Boolean(existing),
+        envId: targetEnv.id,
         x: e.clientX,
         y: e.clientY,
       })
     },
-    [activeEnv, ref, value],
+    [activeEnv, addEnvironment, setActiveEnv, ref, value],
   )
 
   const saveVariableEdit = useCallback(() => {
-    if (!activeEnv || !editPopover) return
-    const nextVariables = activeEnv.variables.some((variable) => variable.key === editPopover.varName)
-      ? activeEnv.variables.map((variable) => (
+    if (!editPopover) return
+    // Resolve the target env from current store state (it may have just been created).
+    const env = useEnvironmentsStore.getState().environments.find((e) => e.id === editPopover.envId)
+    if (!env) { setEditPopover(null); return }
+    const nextVariables = env.variables.some((variable) => variable.key === editPopover.varName)
+      ? env.variables.map((variable) => (
           variable.key === editPopover.varName
             ? { ...variable, value: editPopover.value }
             : variable
         ))
       : [
-          ...activeEnv.variables,
+          ...env.variables,
           { id: uid(), key: editPopover.varName, value: editPopover.value, enabled: true },
         ]
 
-    updateVariables(activeEnv.id, nextVariables)
+    updateVariables(env.id, nextVariables)
     setEditPopover(null)
     requestAnimationFrame(() => ref.current?.focus())
-  }, [activeEnv, editPopover, ref, updateVariables])
+  }, [editPopover, ref, updateVariables])
 
   useEffect(() => {
     if (!editPopover) return
@@ -527,7 +543,7 @@ export function VarHighlightInput({
             </button>
           </div>
           <div className="mt-1.5 truncate text-[10px] text-text-4">
-            {activeEnv?.name ?? 'Active environment'}
+            {environments.find((env) => env.id === editPopover.envId)?.name ?? 'Active environment'}
           </div>
         </div>,
         document.body,

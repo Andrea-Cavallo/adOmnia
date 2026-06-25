@@ -25,7 +25,6 @@ import {
   Bug,
   Search,
   Sparkles,
-  Puzzle,
   FolderOpen,
 } from 'lucide-react'
 import { Toggle, Select, NumberInput, TextInput, PasswordInput, TextAreaInput } from './SettingsFields'
@@ -114,7 +113,6 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
   const updateMock = useSettingsStore((s) => s.updateMock)
   const updateVault = useSettingsStore((s) => s.updateVault)
   const updateEditor = useSettingsStore((s) => s.updateEditor)
-  const updateFeatures = useSettingsStore((s) => s.updateFeatures)
   const { themes, activeThemeId, setThemes, setLoading } = useThemesStore()
   const { applyTheme } = useThemeContext()
   const t = useT()
@@ -207,7 +205,6 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
     { id: 'mock', label: s.sections.mock, icon: <Server size={14} />, terms: searchable(s.mock) },
     { id: 'vault', label: s.sections.vault, icon: <Lock size={14} />, terms: searchable(s.vault) },
     { id: 'editor', label: s.sections.editor, icon: <Code2 size={14} />, terms: searchable(s.editor) },
-    { id: 'features', label: 'Features', icon: <Puzzle size={14} />, terms: 'features plugins daily scenarios experimental enable disable' },
     { id: 'workspace', label: 'Workspace', icon: <FolderOpen size={14} />, terms: 'workspace import export backup project local .adomnia' },
     { id: 'privacy', label: s.sections.privacy, icon: <Database size={14} />, terms: searchable(s.privacy) },
     { id: 'shortcuts', label: s.sections.shortcuts, icon: <Keyboard size={14} />, terms: searchable(s.shortcuts) },
@@ -800,30 +797,6 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
                 desc={s.editor.formatResponseAutoDesc}
                 checked={settings.editor.formatResponseAuto}
                 onChange={(v) => updateEditor({ formatResponseAuto: v })}
-              />
-            </SettingsCard>
-          </>
-        )}
-
-        {/* Features */}
-        {section === 'features' && (
-          <>
-            <SectionHeader
-              title="Features"
-              subtitle="Enable or disable experimental and optional features. Disabled features are hidden from the rail."
-            />
-            <SettingsCard>
-              <Toggle
-                label="Plugins (experimental)"
-                desc="Enable the plugin system. The plugin sandbox is not yet stable."
-                checked={settings.features.pluginsEnabled}
-                onChange={(v) => updateFeatures({ pluginsEnabled: v })}
-              />
-              <Toggle
-                label="Daily Scenarios (experimental)"
-                desc="Enable the Daily Scenarios feature. This feature is not yet production-ready."
-                checked={settings.features.dailyScenariosEnabled}
-                onChange={(v) => updateFeatures({ dailyScenariosEnabled: v })}
               />
             </SettingsCard>
           </>

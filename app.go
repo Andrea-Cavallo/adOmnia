@@ -397,6 +397,11 @@ func (a *App) ExecuteHTTP(reqJSON string) string {
 	return httpexec.Execute(reqJSON)
 }
 
+// CancelHTTP aborts an in-flight ExecuteHTTP request by its frontend id.
+func (a *App) CancelHTTP(id string) {
+	httpexec.Cancel(id)
+}
+
 func (a *App) GetStartupWindowChrome() string {
 	return startupWindowChrome
 }

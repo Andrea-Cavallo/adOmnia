@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, Suspense } from 'react'
-import { ArrowLeft, Check, Save, Send, Trash2, X } from 'lucide-react'
+import { ArrowLeft, Check, Save, Send, SlidersHorizontal, Trash2, X } from 'lucide-react'
 import { useAppStore, type RailItem } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
 import { useCollectionsStore } from '@/stores/collections'
@@ -106,6 +106,7 @@ type PendingClose =
   | { kind: 'single'; tabId: string }
   | { kind: 'right'; tabId: string }
   | { kind: 'left'; tabId: string }
+  | { kind: 'all'; tabId: string }
 
 // ─── Resizable divider between Composer (left) and ResponsePanel (right) ─────
 
@@ -160,8 +161,11 @@ function ActiveRequestBar({
   hasActiveEnv,
   onChange,
   onSend,
+  onCancel,
   onSave,
   onDelete,
+  apiToolsOpen,
+  onToggleApiTools,
 }: {
   request: RequestItem
   isDirty: boolean
@@ -170,8 +174,11 @@ function ActiveRequestBar({
   hasActiveEnv: boolean
   onChange: (request: RequestItem) => void
   onSend: () => void
+  onCancel: () => void
   onSave: () => void
   onDelete: () => void
+  apiToolsOpen: boolean
+  onToggleApiTools: () => void
 }) {
   const [savedFlash, setSavedFlash] = useState(false)
   const urlInputRef = useRef<HTMLInputElement>(null)
@@ -218,13 +225,37 @@ function ActiveRequestBar({
           />
         </div>
 
+        {loading ? (
+          <button
+            onClick={onCancel}
+            title="Cancel request"
+            className="flex h-[var(--ui-control-h)] min-w-[88px] items-center justify-center gap-1.5 rounded-md bg-error px-3 text-[11px] font-bold text-white transition-colors hover:bg-error/85"
+          >
+            <X size={14} />
+            Cancel
+          </button>
+        ) : (
+          <button
+            onClick={onSend}
+            disabled={!request.url}
+            className="flex h-[var(--ui-control-h)] min-w-[88px] items-center justify-center gap-1.5 rounded-md bg-accent px-3 text-[11px] font-bold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Send size={14} />
+            Send
+          </button>
+        )}
+
         <button
-          onClick={onSend}
-          disabled={!request.url || loading}
-          className="flex h-[var(--ui-control-h)] min-w-[88px] items-center justify-center gap-1.5 rounded-md bg-accent px-3 text-[11px] font-bold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
+          onClick={onToggleApiTools}
+          title={apiToolsOpen ? 'Hide API tools' : 'Show API tools (redirects, timeout, cURL, encode…)'}
+          className={cn(
+            'grid h-[var(--ui-control-h)] w-[var(--ui-control-h)] place-items-center rounded-md transition-colors',
+            apiToolsOpen
+              ? 'border border-accent/40 bg-accent/15 text-accent'
+              : 'text-text-3 hover:bg-surface-2 hover:text-text-1',
+          )}
         >
-          <Send size={14} />
-          {loading ? 'Sending...' : 'Send'}
+          <SlidersHorizontal size={14} />
         </button>
 
         <button
@@ -264,6 +295,7 @@ function RequestWorkspace() {
   const closeRequestTabs = useTabsStore((s) => s.closeRequestTabs)
   const closeTabsToRight = useTabsStore((s) => s.closeTabsToRight)
   const closeTabsToLeft = useTabsStore((s) => s.closeTabsToLeft)
+  const closeAllTabs = useTabsStore((s) => s.closeAllTabs)
   const reorderTab = useTabsStore((s) => s.reorderTab)
   const newTab = useTabsStore((s) => s.newTab)
   const duplicateTab = useTabsStore((s) => s.duplicateTab)
@@ -301,6 +333,17 @@ function RequestWorkspace() {
 
   const [showLoadTest, setShowLoadTest] = useState(false)
   const [pendingClose, setPendingClose] = useState<PendingClose | null>(null)
+  const sendAbortRef = useRef<AbortController | null>(null)
+  const [apiToolsOpen, setApiToolsOpen] = useState(() => {
+    try { return localStorage.getItem('adomnia.apiToolsOpen') === '1' } catch { return false }
+  })
+  const toggleApiTools = useCallback(() => {
+    setApiToolsOpen((v) => {
+      const next = !v
+      try { localStorage.setItem('adomnia.apiToolsOpen', next ? '1' : '0') } catch { /* ignore */ }
+      return next
+    })
+  }, [])
   const [paramIssues, setParamIssues] = useState<RequestParamIssue[]>([])
   const [deleteRequestTarget, setDeleteRequestTarget] = useState<{
     requestId: string
@@ -380,15 +423,22 @@ function RequestWorkspace() {
       return
     }
     setParamIssues([])
+    const controller = new AbortController()
+    sendAbortRef.current = controller
     setLoading(activeTab.id, true)
     const vars = getResolvedVars()
-    const result = await executeRequest(activeTab.request, vars)
+    const result = await executeRequest(activeTab.request, vars, { signal: controller.signal })
     if (activeEnvId && Object.keys(result.mutations).length > 0) {
       const env = environments.find((e) => e.id === activeEnvId)
       if (env) updateVariables(activeEnvId, applyEnvironmentMutations(env.variables, result.mutations))
     }
     const response = result.response
     setResponse(activeTab.id, response)
+    sendAbortRef.current = null
+  }
+
+  const handleCancel = () => {
+    sendAbortRef.current?.abort()
   }
 
   useEffect(() => {
@@ -454,6 +504,9 @@ function RequestWorkspace() {
       const t = tabs.find((tab) => tab.id === pending.tabId)
       return t?.dirty ? [t] : []
     }
+    if (pending.kind === 'all') {
+      return tabs.filter((t) => t.dirty)
+    }
     const idx = tabs.findIndex((t) => t.id === pending.tabId)
     if (idx === -1) return []
     const affected = pending.kind === 'right'
@@ -479,9 +532,10 @@ function RequestWorkspace() {
     }
     if (pending.kind === 'single') closeTab(pending.tabId)
     else if (pending.kind === 'right') closeTabsToRight(pending.tabId)
-    else closeTabsToLeft(pending.tabId)
+    else if (pending.kind === 'left') closeTabsToLeft(pending.tabId)
+    else closeAllTabs()
     setPendingClose(null)
-  }, [getDirtyTabsForPending, saveTab, closeTab, closeTabsToRight, closeTabsToLeft])
+  }, [getDirtyTabsForPending, saveTab, closeTab, closeTabsToRight, closeTabsToLeft, closeAllTabs])
 
   const dirtyInDialog = pendingClose ? getDirtyTabsForPending(pendingClose) : []
 
@@ -533,6 +587,7 @@ function RequestWorkspace() {
         onClose={(id) => attemptClose({ kind: 'single', tabId: id })}
         onCloseToRight={(id) => attemptClose({ kind: 'right', tabId: id })}
         onCloseToLeft={(id) => attemptClose({ kind: 'left', tabId: id })}
+        onCloseAll={(id) => attemptClose({ kind: 'all', tabId: id })}
         onReorder={reorderTab}
         onNewTab={newTab}
         onDuplicate={duplicateTab}
@@ -547,8 +602,11 @@ function RequestWorkspace() {
           hasActiveEnv={activeEnvId !== null}
           onChange={(request) => updateRequest(activeTab.id, request)}
           onSend={handleSend}
+          onCancel={handleCancel}
           onSave={handleSave}
           onDelete={confirmDeleteActiveRequest}
+          apiToolsOpen={apiToolsOpen}
+          onToggleApiTools={toggleApiTools}
         />
       )}
       <ApiToolsBar
@@ -556,6 +614,7 @@ function RequestWorkspace() {
         onChangeRequest={(request) => activeTab && updateRequest(activeTab.id, request)}
         onApplyRequest={(request) => activeTab && updateRequest(activeTab.id, request)}
         onLoadTest={() => setShowLoadTest((v) => !v)}
+        open={apiToolsOpen}
       />
 
       {activeTab ? (

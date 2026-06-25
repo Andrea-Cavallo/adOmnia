@@ -12,6 +12,7 @@ export interface ExecuteRequestResult {
 export async function executeRequest(
   request: RequestItem,
   vars: Record<string, string>,
+  opts?: { signal?: AbortSignal },
 ): Promise<ExecuteRequestResult> {
   const nextVars = { ...vars }
   const mutations: Record<string, string | null> = {}
@@ -35,7 +36,7 @@ export async function executeRequest(
     }
   }
 
-  const response = await sendRequest(request, nextVars)
+  const response = await sendRequest(request, nextVars, opts)
 
   const post = await runRequestScript(request.scripts?.post, { request, vars: nextVars, response, phase: 'post' })
   if (post) {
