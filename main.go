@@ -167,6 +167,7 @@ func readStartupWindowChrome() string {
 		return nil
 	})
 	var parsed struct {
+		Version    int `json:"version"`
 		Appearance struct {
 			WindowChrome string `json:"windowChrome"`
 		} `json:"appearance"`
@@ -175,6 +176,12 @@ func readStartupWindowChrome() string {
 		return windowChromeSystem
 	}
 	if parsed.Appearance.WindowChrome == "" {
+		return windowChromeSystem
+	}
+	// v3 migration: the system titlebar is now the default. Pre-v3 settings that
+	// still carry the legacy 'app' default are treated as 'system' on first
+	// launch so the change applies before the frontend rewrites the settings.
+	if parsed.Version < 3 && parsed.Appearance.WindowChrome == windowChromeApp {
 		return windowChromeSystem
 	}
 	return normalizeWindowChrome(parsed.Appearance.WindowChrome)

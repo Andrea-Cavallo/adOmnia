@@ -10,6 +10,9 @@ import { DiffModal, DiffPickerModal } from '@/components/response/DiffView'
 import { useTabsStore, type ResponseBodyView, type ResponseSection } from '@/stores/tabs'
 import { useSettingsStore } from '@/stores/settings'
 import { useAppStore } from '@/stores/app'
+import { useEnvironmentsStore } from '@/stores/environments'
+import { ContextMenu } from '@/components/ui/ContextMenu'
+import { uid } from '@/lib/types'
 
 interface ResponsePanelProps {
   tabId: string
@@ -149,6 +152,131 @@ function formatXmlLike(text: string): string {
   }).join('\n')
 }
 
+/** Strip the surrounding quotes from a JSON string token (so `"abc"` → `abc`). */
+function unquoteJsonValue(raw: string): string {
+  const t = raw.trim()
+  if (t.length >= 2 && t.startsWith('"') && t.endsWith('"')) {
+    try { return JSON.parse(t) as string } catch { return t.slice(1, -1) }
+  }
+  return t
+}
+
+/** Walk back through sibling token spans to find the JSON key a value belongs to. */
+function guessKeyFromSpan(el: HTMLElement | null): string {
+  let node = el?.previousElementSibling as HTMLElement | null
+  let steps = 0
+  while (node && steps < 8) {
+    if (node.className.includes('json-key')) return unquoteJsonValue(node.textContent ?? '')
+    node = node.previousElementSibling as HTMLElement | null
+    steps += 1
+  }
+  return ''
+}
+
+/**
+ * Small modal to persist a response value into an environment variable — handy
+ * for capturing tokens (e.g. a getToken response) straight into `{{access_token}}`.
+ */
+function SaveEnvVarModal({
+  value,
+  suggestedKey,
+  onClose,
+}: {
+  value: string
+  suggestedKey: string
+  onClose: () => void
+}) {
+  const environments = useEnvironmentsStore((s) => s.environments)
+  const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
+  const addEnvironment = useEnvironmentsStore((s) => s.addEnvironment)
+  const updateVariables = useEnvironmentsStore((s) => s.updateVariables)
+  const setActiveEnv = useEnvironmentsStore((s) => s.setActiveEnv)
+
+  const [name, setName] = useState(suggestedKey)
+  const [envId, setEnvId] = useState(activeEnvId ?? environments[0]?.id ?? '__new__')
+  const nameRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const t = setTimeout(() => { nameRef.current?.focus(); nameRef.current?.select() }, 30)
+    return () => clearTimeout(t)
+  }, [])
+
+  const save = () => {
+    const key = name.trim()
+    if (!key) return
+    let targetId = envId
+    if (targetId === '__new__') {
+      targetId = addEnvironment('Default').id
+    }
+    const env = useEnvironmentsStore.getState().environments.find((e) => e.id === targetId)
+    const existing = env?.variables ?? []
+    const idx = existing.findIndex((v) => v.key === key)
+    const next = idx >= 0
+      ? existing.map((v, i) => (i === idx ? { ...v, value, enabled: true } : v))
+      : [...existing.filter((v) => v.key || v.value), { id: uid(), key, value, enabled: true }]
+    updateVariables(targetId, next)
+    if (activeEnvId !== targetId) setActiveEnv(targetId)
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60" onClick={onClose}>
+      <div
+        className="w-[440px] max-w-[92vw] rounded-lg border border-border-1 bg-surface-1 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-2 border-b border-border-1 px-4 py-3">
+          <span className="flex-1 text-sm font-semibold text-text-1">Save as environment variable</span>
+          <button onClick={onClose} title="Close" className="text-text-4 hover:text-text-1"><X size={16} /></button>
+        </div>
+        <div className="flex flex-col gap-3 px-4 py-4">
+          <label className="flex flex-col gap-1">
+            <span className="text-[10px] uppercase tracking-wider text-text-4">Variable name</span>
+            <input
+              ref={nameRef}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') onClose() }}
+              placeholder="access_token"
+              spellCheck={false}
+              className="h-8 rounded border border-border-2 bg-surface-2 px-2 text-xs text-text-1 placeholder:text-text-4 outline-none focus:border-accent"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-[10px] uppercase tracking-wider text-text-4">Environment</span>
+            <select
+              value={envId}
+              onChange={(e) => setEnvId(e.target.value)}
+              className="h-8 rounded border border-border-2 bg-surface-2 px-2 text-xs text-text-1 outline-none focus:border-accent"
+            >
+              {environments.map((env) => (
+                <option key={env.id} value={env.id}>{env.name}</option>
+              ))}
+              <option value="__new__">+ New environment (Default)</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-[10px] uppercase tracking-wider text-text-4">Value</span>
+            <div className="max-h-24 overflow-auto rounded border border-border-2 bg-surface-2 px-2 py-1.5 text-xs font-mono break-all text-text-2">
+              {value}
+            </div>
+          </label>
+        </div>
+        <div className="flex items-center justify-end gap-2 border-t border-border-1 px-4 py-3">
+          <button onClick={onClose} className="rounded px-3 py-1.5 text-xs text-text-3 hover:text-text-1">Cancel</button>
+          <button
+            onClick={save}
+            disabled={!name.trim()}
+            className="rounded bg-accent px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40"
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // DiffModal and DiffPickerModal are imported from DiffView.tsx
 
 function FullscreenBodyModal({
@@ -207,10 +335,28 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
     setCopiedBody(true)
     setTimeout(() => setCopiedBody(false), 1200)
   }
+  // Right-click on a response value → save it into an environment variable.
+  const [valueMenu, setValueMenu] = useState<{ x: number; y: number; value: string; suggestedKey: string } | null>(null)
+  const [saveVar, setSaveVar] = useState<{ value: string; suggestedKey: string } | null>(null)
   const [showDiff, setShowDiff] = useState(false)
   const [diffRightBody, setDiffRightBody] = useState('')
   const [diffRightLabel, setDiffRightLabel] = useState('')
   const [showDiffPicker, setShowDiffPicker] = useState(false)
+
+  // Open the value context menu when right-clicking a token (or a text selection)
+  // in the Body or Headers views.
+  const onBodyContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (tab !== 'body' && tab !== 'headers') return
+    const selection = window.getSelection()?.toString().trim() ?? ''
+    const targetEl = e.target as HTMLElement
+    const tokenText = targetEl.textContent ?? ''
+    const isToken = targetEl.tagName === 'SPAN' && tokenText.length > 0 && tokenText.length <= 2000
+    const value = selection || (isToken ? unquoteJsonValue(tokenText) : '')
+    if (!value) return
+    e.preventDefault()
+    const suggestedKey = selection ? '' : guessKeyFromSpan(targetEl)
+    setValueMenu({ x: e.clientX, y: e.clientY, value, suggestedKey })
+  }
 
   // ── Find-in-response ──────────────────────────────────────────────────────
   const [searchOpen, setSearchOpen] = useState(false)
@@ -702,6 +848,7 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
         {/* Content */}
         <div
           ref={bodyRef}
+          onContextMenu={onBodyContextMenu}
           onScroll={(e) => {
             const viewState = useTabsStore.getState().getViewState(tabId)
             updateViewState(tabId, {
@@ -778,6 +925,31 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
           )}
         </div>
       </div>
+
+      {valueMenu && (
+        <ContextMenu
+          x={valueMenu.x}
+          y={valueMenu.y}
+          items={[
+            { id: 'save', label: 'Save as environment variable…' },
+            { id: 'copy', label: 'Copy value' },
+          ]}
+          onSelect={(id) => {
+            if (id === 'save') setSaveVar({ value: valueMenu.value, suggestedKey: valueMenu.suggestedKey })
+            else if (id === 'copy') navigator.clipboard.writeText(valueMenu.value)
+            setValueMenu(null)
+          }}
+          onClose={() => setValueMenu(null)}
+        />
+      )}
+
+      {saveVar && (
+        <SaveEnvVarModal
+          value={saveVar.value}
+          suggestedKey={saveVar.suggestedKey}
+          onClose={() => setSaveVar(null)}
+        />
+      )}
 
       {showFullscreen && (
         <FullscreenBodyModal

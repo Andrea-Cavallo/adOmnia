@@ -356,10 +356,18 @@ export function WelcomePanel() {
           }}
         >
           <div className="min-w-0">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-violet-500/25 bg-violet-500/10 px-3 py-1 font-mono text-[10px] font-semibold tracking-[0.06em] text-violet-300">
+            <div className={cn(
+              'mb-4 inline-flex items-center gap-2 rounded-full border px-3 py-1 font-mono text-[10px] font-semibold tracking-[0.06em]',
+              isLight
+                ? 'border-violet-500/30 bg-violet-500/10 text-violet-700'
+                : 'border-violet-500/25 bg-violet-500/10 text-violet-200',
+            )}>
               <Search size={12} />
               <span>
-                Press <kbd className="rounded border border-violet-500/40 bg-violet-500/15 px-1 py-px text-[9px] text-violet-200">Ctrl/Cmd&nbsp;+&nbsp;F</kbd> to search any feature
+                Press <kbd className={cn(
+                  'rounded border px-1 py-px text-[9px]',
+                  isLight ? 'border-violet-500/40 bg-violet-500/15 text-violet-800' : 'border-violet-500/40 bg-violet-500/15 text-violet-100',
+                )}>Ctrl/Cmd&nbsp;+&nbsp;F</kbd> to search any feature
               </span>
             </div>
             <h1 className="max-w-[720px] text-[38px] font-semibold leading-[1.04] tracking-normal max-sm:text-[32px] max-sm:leading-[1.08]" style={{ color: colors.title }}>
