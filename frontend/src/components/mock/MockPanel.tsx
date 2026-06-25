@@ -558,15 +558,24 @@ export function MockPanel() {
   const api = useCallback(
     async (path: string, body?: unknown) => {
       const url = serverUrl(port, path)
-      if (!url) return null
+      if (!url) {
+        console.error('[MockPanel] serverUrl returned empty (port=', port, ', path=', path, ')')
+        return null
+      }
       try {
         const res = await sidecarFetch(url, {
           method: body !== undefined ? 'POST' : 'GET',
           headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
           body: body !== undefined ? JSON.stringify(body) : undefined,
         })
+        if (!res.ok) {
+          const text = await res.text().catch(() => '')
+          console.error(`[MockPanel] ${path} returned ${res.status}: ${text}`)
+          return { error: text || `HTTP ${res.status}` }
+        }
         return res.json()
-      } catch {
+      } catch (err) {
+        console.error(`[MockPanel] fetch error for ${path}:`, err)
         return null
       }
     },
@@ -640,6 +649,11 @@ export function MockPanel() {
     setLoading(true)
     setError('')
     const activeEndpoints = endpoints.filter((e) => e.enabled !== false)
+    if (activeEndpoints.length === 0) {
+      setError('No enabled endpoints. Enable at least one endpoint before starting the mock server.')
+      setLoading(false)
+      return
+    }
     const m = settings.mock
     const data = await api('/mock/start', {
       port: mockPort,
@@ -649,7 +663,11 @@ export function MockPanel() {
       corsHeadersAuto: m?.corsHeadersAuto ?? true,
       logHitsToFile: m?.logHitsToFile ?? false,
     })
-    if (data?.error) setError(data.error)
+    if (data === null) {
+      setError('Could not reach the backend server. Check that the app is running and retry.')
+    } else if (data?.error) {
+      setError(data.error)
+    }
     await refreshStatus()
     setLoading(false)
   }, [api, endpoints, mockPort, password, refreshStatus, settings.mock])
