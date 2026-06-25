@@ -928,7 +928,8 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
                 <KVEditor
                   rows={request.headers ?? []}
                   onChange={(headers) => onChange({ ...request, headers })}
-                  keyPlaceholder="Header"
+                  keyPlaceholder="Header name"
+                  valuePlaceholder="Header value"
                 />
               )}
               {configurationTab === 'auth' && (
