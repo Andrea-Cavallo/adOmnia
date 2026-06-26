@@ -33,6 +33,20 @@ type Auth struct {
 	Password string `json:"password"`
 }
 
+type Variable struct {
+	Key     string `json:"key"`
+	Value   string `json:"value"`
+	Enabled bool   `json:"enabled"`
+	Secret  bool   `json:"secret,omitempty"`
+}
+
+type InheritancePolicy struct {
+	Auth      string `json:"auth,omitempty"`
+	Headers   string `json:"headers,omitempty"`
+	Variables string `json:"variables,omitempty"`
+	Scripts   string `json:"scripts,omitempty"`
+}
+
 type Assertion struct {
 	Enabled    bool   `json:"enabled"`
 	Target     string `json:"target"`
@@ -42,20 +56,21 @@ type Assertion struct {
 }
 
 type Request struct {
-	ID            string      `json:"id"`
-	Name          string      `json:"name"`
-	Type          string      `json:"type"`
-	Method        string      `json:"method"`
-	URL           string      `json:"url"`
-	Params        []KVRow     `json:"params"`
-	PathParams    []KVRow     `json:"pathParams"`
-	Headers       []KVRow     `json:"headers"`
-	Bodies        []Body      `json:"bodies"`
-	ActiveBodyIdx int         `json:"activeBodyIdx"`
-	Auth          Auth        `json:"auth"`
-	Timeout       int         `json:"timeout"`
-	Follow        *bool       `json:"followRedirects"`
-	Assertions    []Assertion `json:"assertions"`
+	ID            string            `json:"id"`
+	Name          string            `json:"name"`
+	Type          string            `json:"type"`
+	Method        string            `json:"method"`
+	URL           string            `json:"url"`
+	Params        []KVRow           `json:"params"`
+	PathParams    []KVRow           `json:"pathParams"`
+	Headers       []KVRow           `json:"headers"`
+	Bodies        []Body            `json:"bodies"`
+	ActiveBodyIdx int               `json:"activeBodyIdx"`
+	Auth          Auth              `json:"auth"`
+	Inheritance   InheritancePolicy `json:"inheritance,omitempty"`
+	Timeout       int               `json:"timeout"`
+	Follow        *bool             `json:"followRedirects"`
+	Assertions    []Assertion       `json:"assertions"`
 }
 
 type Options struct {

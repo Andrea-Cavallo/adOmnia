@@ -410,6 +410,8 @@ Done quando:
 Obiettivo: evitare duplicazione di auth, headers, vars e script su collection
 grandi.
 
+Stato 2026-06-26: completata la base backend/file-based con resolver unico in `internal/collectionresolve/` e consumo nel runner headless.
+
 Modello:
 
 - collection puo' avere:
@@ -447,9 +449,9 @@ Regole merge:
 
 Done quando:
 
-- bearer token su collection si applica alle request figlie
-- folder puo' aggiungere header comune
-- request puo' fare override o disabilitare inheritance
+- [x] bearer token su collection si applica alle request figlie
+- [x] folder puo' aggiungere header comune
+- [x] request puo' fare override o disabilitare inheritance
 
 ## Fase 4 - .env e private environments
 

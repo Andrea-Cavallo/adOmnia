@@ -97,6 +97,8 @@ From **Git Sync → Collection Folder** you can:
 - import a folder-backed collection into the current workspace
 - check drift between the in-app collection and the files on disk
 
+Folder-backed collections can also carry shared auth, headers, variables, and scripts at collection/folder level. The headless runner resolves them top-down so common bearer tokens, tenant headers, and CI variables do not need to be duplicated in every request.
+
 ### Headless runner
 
 The same desktop executable can run folder-backed collections without opening the UI:

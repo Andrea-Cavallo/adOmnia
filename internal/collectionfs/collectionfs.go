@@ -12,24 +12,36 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"adomnia/internal/requestcontract"
 )
 
 const FormatVersion = "adomnia.collection.v1"
 
 type Collection struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Color       string `json:"color,omitempty"`
-	Children    []Node `json:"children"`
-	OpenAPISpec string `json:"_openapiSpec,omitempty"`
+	ID          string                     `json:"id"`
+	Name        string                     `json:"name"`
+	Color       string                     `json:"color,omitempty"`
+	Headers     []requestcontract.KVRow    `json:"headers,omitempty"`
+	Variables   []requestcontract.Variable `json:"variables,omitempty"`
+	Auth        requestcontract.Auth       `json:"auth,omitempty"`
+	PreScript   string                     `json:"preScript,omitempty"`
+	PostScript  string                     `json:"postScript,omitempty"`
+	Children    []Node                     `json:"children"`
+	OpenAPISpec string                     `json:"_openapiSpec,omitempty"`
 }
 
 type Node struct {
-	ID       string          `json:"id"`
-	Name     string          `json:"name"`
-	Type     string          `json:"type"`
-	Children []Node          `json:"children,omitempty"`
-	Raw      json.RawMessage `json:"-"`
+	ID         string                     `json:"id"`
+	Name       string                     `json:"name"`
+	Type       string                     `json:"type"`
+	Headers    []requestcontract.KVRow    `json:"headers,omitempty"`
+	Variables  []requestcontract.Variable `json:"variables,omitempty"`
+	Auth       requestcontract.Auth       `json:"auth,omitempty"`
+	PreScript  string                     `json:"preScript,omitempty"`
+	PostScript string                     `json:"postScript,omitempty"`
+	Children   []Node                     `json:"children,omitempty"`
+	Raw        json.RawMessage            `json:"-"`
 }
 
 func (n *Node) UnmarshalJSON(data []byte) error {
@@ -48,16 +60,26 @@ func (n Node) MarshalJSON() ([]byte, error) {
 		return n.Raw, nil
 	}
 	type folder struct {
-		ID       string `json:"id"`
-		Name     string `json:"name"`
-		Type     string `json:"type"`
-		Children []Node `json:"children"`
+		ID         string                     `json:"id"`
+		Name       string                     `json:"name"`
+		Type       string                     `json:"type"`
+		Headers    []requestcontract.KVRow    `json:"headers,omitempty"`
+		Variables  []requestcontract.Variable `json:"variables,omitempty"`
+		Auth       requestcontract.Auth       `json:"auth,omitempty"`
+		PreScript  string                     `json:"preScript,omitempty"`
+		PostScript string                     `json:"postScript,omitempty"`
+		Children   []Node                     `json:"children"`
 	}
 	return json.Marshal(folder{
-		ID:       n.ID,
-		Name:     n.Name,
-		Type:     n.Type,
-		Children: n.Children,
+		ID:         n.ID,
+		Name:       n.Name,
+		Type:       n.Type,
+		Headers:    n.Headers,
+		Variables:  n.Variables,
+		Auth:       n.Auth,
+		PreScript:  n.PreScript,
+		PostScript: n.PostScript,
+		Children:   n.Children,
 	})
 }
 
@@ -111,13 +133,15 @@ func ExportCollection(root string, collection Collection, opts ExportOptions) er
 	}); err != nil {
 		return err
 	}
-	if err := writeJSON(filepath.Join(root, "collection.json"), map[string]any{
+	meta := map[string]any{
 		"schemaVersion": FormatVersion,
 		"id":            collection.ID,
 		"name":          collection.Name,
 		"color":         collection.Color,
 		"openapiSpec":   collection.OpenAPISpec,
-	}); err != nil {
+	}
+	addOptionalScopeFields(meta, collection.Headers, collection.Variables, collection.Auth, collection.PreScript, collection.PostScript)
+	if err := writeJSON(filepath.Join(root, "collection.json"), meta); err != nil {
 		return err
 	}
 	if err := writeText(filepath.Join(root, ".gitignore"), ".env\n*.tmp\n.adomnia-sync.local.json\n"); err != nil {
@@ -136,10 +160,15 @@ func ExportCollection(root string, collection Collection, opts ExportOptions) er
 
 func ImportCollection(root string) (Collection, error) {
 	var meta struct {
-		ID          string `json:"id"`
-		Name        string `json:"name"`
-		Color       string `json:"color"`
-		OpenAPISpec string `json:"openapiSpec"`
+		ID          string                     `json:"id"`
+		Name        string                     `json:"name"`
+		Color       string                     `json:"color"`
+		Headers     []requestcontract.KVRow    `json:"headers"`
+		Variables   []requestcontract.Variable `json:"variables"`
+		Auth        requestcontract.Auth       `json:"auth"`
+		PreScript   string                     `json:"preScript"`
+		PostScript  string                     `json:"postScript"`
+		OpenAPISpec string                     `json:"openapiSpec"`
 	}
 	if err := readJSON(filepath.Join(root, "collection.json"), &meta); err != nil {
 		return Collection{}, err
@@ -152,6 +181,11 @@ func ImportCollection(root string) (Collection, error) {
 		ID:          meta.ID,
 		Name:        meta.Name,
 		Color:       meta.Color,
+		Headers:     meta.Headers,
+		Variables:   meta.Variables,
+		Auth:        meta.Auth,
+		PreScript:   meta.PreScript,
+		PostScript:  meta.PostScript,
 		OpenAPISpec: meta.OpenAPISpec,
 		Children:    children,
 	}, nil
@@ -217,13 +251,15 @@ func writeNodes(dir string, nodes []Node) error {
 			if err := os.MkdirAll(folderDir, 0755); err != nil {
 				return fmt.Errorf("create folder %s: %w", node.Name, err)
 			}
-			if err := writeJSON(filepath.Join(folderDir, "folder.json"), map[string]any{
+			meta := map[string]any{
 				"schemaVersion": FormatVersion,
 				"seq":           seq,
 				"id":            node.ID,
 				"name":          node.Name,
 				"type":          "folder",
-			}); err != nil {
+			}
+			addOptionalScopeFields(meta, node.Headers, node.Variables, node.Auth, node.PreScript, node.PostScript)
+			if err := writeJSON(filepath.Join(folderDir, "folder.json"), meta); err != nil {
 				return err
 			}
 			if err := writeNodes(folderDir, node.Children); err != nil {
@@ -265,10 +301,15 @@ func readNodes(dir string) ([]Node, error) {
 		path := filepath.Join(dir, name)
 		if entry.IsDir() {
 			var meta struct {
-				Seq  int    `json:"seq"`
-				ID   string `json:"id"`
-				Name string `json:"name"`
-				Type string `json:"type"`
+				Seq        int                        `json:"seq"`
+				ID         string                     `json:"id"`
+				Name       string                     `json:"name"`
+				Type       string                     `json:"type"`
+				Headers    []requestcontract.KVRow    `json:"headers"`
+				Variables  []requestcontract.Variable `json:"variables"`
+				Auth       requestcontract.Auth       `json:"auth"`
+				PreScript  string                     `json:"preScript"`
+				PostScript string                     `json:"postScript"`
 			}
 			if err := readJSON(filepath.Join(path, "folder.json"), &meta); err != nil {
 				return nil, err
@@ -280,7 +321,17 @@ func readNodes(dir string) ([]Node, error) {
 			items = append(items, sequencedNode{
 				seq:  meta.Seq,
 				name: name,
-				node: Node{ID: meta.ID, Name: meta.Name, Type: "folder", Children: children},
+				node: Node{
+					ID:         meta.ID,
+					Name:       meta.Name,
+					Type:       "folder",
+					Headers:    meta.Headers,
+					Variables:  meta.Variables,
+					Auth:       meta.Auth,
+					PreScript:  meta.PreScript,
+					PostScript: meta.PostScript,
+					Children:   children,
+				},
 			})
 			continue
 		}
@@ -341,6 +392,42 @@ func requestPayload(node Node, seq int) (map[string]any, error) {
 	payload["schemaVersion"] = FormatVersion
 	payload["seq"] = seq
 	return payload, nil
+}
+
+func exportableVariables(variables []requestcontract.Variable) []requestcontract.Variable {
+	if len(variables) == 0 {
+		return nil
+	}
+	out := make([]requestcontract.Variable, len(variables))
+	for i, variable := range variables {
+		out[i] = variable
+		if variable.Secret {
+			out[i].Value = ""
+		}
+	}
+	return out
+}
+
+func addOptionalScopeFields(target map[string]any, headers []requestcontract.KVRow, variables []requestcontract.Variable, auth requestcontract.Auth, preScript, postScript string) {
+	if len(headers) > 0 {
+		target["headers"] = headers
+	}
+	if exported := exportableVariables(variables); len(exported) > 0 {
+		target["variables"] = exported
+	}
+	if scopeAuthIsSet(auth) {
+		target["auth"] = auth
+	}
+	if preScript != "" {
+		target["preScript"] = preScript
+	}
+	if postScript != "" {
+		target["postScript"] = postScript
+	}
+}
+
+func scopeAuthIsSet(auth requestcontract.Auth) bool {
+	return strings.TrimSpace(auth.Type) != "" && auth.Type != "none"
 }
 
 func readJSON(path string, value any) error {

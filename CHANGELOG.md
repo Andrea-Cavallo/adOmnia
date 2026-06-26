@@ -14,6 +14,7 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - **Shared request execution contract:** GUI and headless execution now share a stable request-resolution layer for variables, path params, query/header/body resolution, simple auth, and assertion evaluation.
 - **OpenAPI governance lint engine:** added the local `internal/oaslint` engine with built-in rules for operation IDs, descriptions, response coverage, JSON response schemas, tags, security requirements, path naming, duplicate operation IDs, local ruleset overrides, and structured JSON/text reporting.
 - **CI-ready OpenAPI lint CLI:** the desktop executable now supports `adomnia lint <openapi.json|openapi.yaml|collection-folder>` with `--ruleset`, `--reporter text|json`, `--out`, and `--fail-on-warn`, returning non-zero exit codes for blocking governance errors.
+- **Collection and folder inheritance foundation:** folder-backed collections can now carry shared auth, headers, variables, and scripts, with a single resolver applying top-down inheritance to headless runner requests. Collection bearer auth, folder headers, request overrides, and disabled inherited headers are covered by backend tests.
 
 ### Changed
 - **Request sending now records a resolved request contract before transport:** the existing GUI send path still calls the same backend transport, but the resolved request shape is now explicit and covered by tests.

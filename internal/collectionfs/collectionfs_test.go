@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"adomnia/internal/requestcontract"
 )
 
 func TestExportCollectionFromFreezeFixtureIsDeterministic(t *testing.T) {
@@ -145,6 +147,53 @@ func TestInspectDriftDetectsManualFolderChange(t *testing.T) {
 	}
 	if report.RequestCount != 5 || report.FolderRequestCount != 5 {
 		t.Fatalf("request counts = %d/%d, want 5/5", report.RequestCount, report.FolderRequestCount)
+	}
+}
+
+func TestExportImportPreservesInheritanceMetadataAndMasksSecrets(t *testing.T) {
+	collection := Collection{
+		ID:   "col-inherit",
+		Name: "Inherited",
+		Auth: requestcontract.Auth{Type: "bearer", Token: "{{token}}"},
+		Variables: []requestcontract.Variable{
+			{Key: "token", Value: "secret-token", Enabled: true, Secret: true},
+			{Key: "tenant", Value: "acme", Enabled: true},
+		},
+		Children: []Node{{
+			ID:   "folder",
+			Name: "Shared",
+			Type: "folder",
+			Headers: []requestcontract.KVRow{{
+				Key: "X-Tenant", Value: "{{tenant}}", Enabled: true,
+			}},
+		}},
+	}
+	root := filepath.Join(t.TempDir(), "collection")
+	if err := ExportCollection(root, collection, ExportOptions{}); err != nil {
+		t.Fatalf("export failed: %v", err)
+	}
+	data, err := os.ReadFile(filepath.Join(root, "collection.json"))
+	if err != nil {
+		t.Fatalf("read collection metadata: %v", err)
+	}
+	var meta struct {
+		Variables []requestcontract.Variable `json:"variables"`
+	}
+	if err := json.Unmarshal(data, &meta); err != nil {
+		t.Fatalf("decode metadata: %v", err)
+	}
+	if len(meta.Variables) != 2 || meta.Variables[0].Value != "" || !meta.Variables[0].Secret {
+		t.Fatalf("secret variable was not masked: %#v", meta.Variables)
+	}
+	imported, err := ImportCollection(root)
+	if err != nil {
+		t.Fatalf("import failed: %v", err)
+	}
+	if imported.Auth.Type != "bearer" || imported.Auth.Token != "{{token}}" {
+		t.Fatalf("auth = %#v", imported.Auth)
+	}
+	if len(imported.Children) != 1 || len(imported.Children[0].Headers) != 1 || imported.Children[0].Headers[0].Key != "X-Tenant" {
+		t.Fatalf("folder headers = %#v", imported.Children)
 	}
 }
 

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"adomnia/internal/collectionfs"
+	"adomnia/internal/collectionresolve"
 	"adomnia/internal/httpexec"
 	"adomnia/internal/requestcontract"
 )
@@ -34,15 +35,6 @@ type RequestResult struct {
 	Duration int64  `json:"durationMs,omitempty"`
 	Outcome  string `json:"outcome"`
 	Message  string `json:"message,omitempty"`
-}
-
-type requestWithPath struct {
-	requestNode
-	FolderPath []string
-}
-
-type requestNode struct {
-	requestcontract.Request
 }
 
 type envVarFlags map[string]string
@@ -147,10 +139,19 @@ func (v envVarFlags) Set(value string) error {
 }
 
 func executeCollection(collection collectionfs.Collection, bail bool, vars map[string]string, folderFilter string) RunSummary {
-	requests := filterRequests(flattenRequests(collection.Children, nil), folderFilter)
-	summary := RunSummary{Collection: collection.Name, Total: len(requests)}
+	resolved, err := collectionresolve.ResolveRequests(collection)
+	summary := RunSummary{Collection: collection.Name}
+	if err != nil {
+		summary.Total = 1
+		summary.Failed = 1
+		summary.Results = append(summary.Results, RequestResult{Outcome: "failed", Message: err.Error()})
+		return summary
+	}
+	requests := filterRequests(resolved, folderFilter)
+	summary.Total = len(requests)
 	for _, req := range requests {
-		result := executeRequest(req.requestNode, vars)
+		effectiveVars := mergeRunVars(req.Vars, vars)
+		result := executeRequest(req.Request, effectiveVars)
 		summary.Results = append(summary.Results, result)
 		switch result.Outcome {
 		case "passed":
@@ -167,31 +168,12 @@ func executeCollection(collection collectionfs.Collection, bail bool, vars map[s
 	return summary
 }
 
-func flattenRequests(nodes []collectionfs.Node, folderPath []string) []requestWithPath {
-	out := []requestWithPath{}
-	for _, node := range nodes {
-		if node.Type == "folder" {
-			nextPath := append(append([]string{}, folderPath...), node.Name, node.ID)
-			out = append(out, flattenRequests(node.Children, nextPath)...)
-			continue
-		}
-		if node.Type != "request" {
-			continue
-		}
-		var req requestNode
-		if err := json.Unmarshal(node.Raw, &req); err == nil {
-			out = append(out, requestWithPath{requestNode: req, FolderPath: folderPath})
-		}
-	}
-	return out
-}
-
-func filterRequests(requests []requestWithPath, folderFilter string) []requestWithPath {
+func filterRequests(requests []collectionresolve.ResolvedRequest, folderFilter string) []collectionresolve.ResolvedRequest {
 	needle := normalizeFolderFilter(folderFilter)
 	if needle == "" {
 		return requests
 	}
-	out := []requestWithPath{}
+	out := []collectionresolve.ResolvedRequest{}
 	for _, req := range requests {
 		candidates := []string{}
 		for _, part := range req.FolderPath {
@@ -214,13 +196,24 @@ func filterRequests(requests []requestWithPath, folderFilter string) []requestWi
 	return out
 }
 
+func mergeRunVars(inherited map[string]string, overrides map[string]string) map[string]string {
+	out := map[string]string{}
+	for key, value := range inherited {
+		out[key] = value
+	}
+	for key, value := range overrides {
+		out[key] = value
+	}
+	return out
+}
+
 func normalizeFolderFilter(value string) string {
 	return strings.ToLower(strings.Trim(strings.ReplaceAll(value, "\\", "/"), "/ "))
 }
 
-func executeRequest(req requestNode, vars map[string]string) RequestResult {
+func executeRequest(req requestcontract.Request, vars map[string]string) RequestResult {
 	result := RequestResult{ID: req.ID, Name: req.Name, Method: strings.ToUpper(req.Method), URL: req.URL}
-	payload, skipReason, err := requestcontract.BuildHTTPPayload(req.Request, requestcontract.Options{Vars: vars, DefaultTime: 30000})
+	payload, skipReason, err := requestcontract.BuildHTTPPayload(req, requestcontract.Options{Vars: vars, DefaultTime: 30000})
 	if skipReason != "" {
 		result.Outcome = "skipped"
 		result.Message = skipReason

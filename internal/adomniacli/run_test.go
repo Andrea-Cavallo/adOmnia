@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"adomnia/internal/collectionfs"
+	"adomnia/internal/requestcontract"
 )
 
 func TestRunExecutesLiteralHTTPCollectionFolder(t *testing.T) {
@@ -90,6 +91,29 @@ func TestRunResolvesEnvVarOverrides(t *testing.T) {
 	}
 }
 
+func TestRunAppliesCollectionAndFolderInheritance(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("Authorization"); got != "Bearer inherited-token" {
+			t.Fatalf("Authorization = %q", got)
+		}
+		if got := r.Header.Get("X-Tenant"); got != "acme" {
+			t.Fatalf("X-Tenant = %q", got)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	root := exportInheritedCollection(t, server.URL)
+	var stdout, stderr bytes.Buffer
+	code := Run([]string{"run", root}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("Run code = %d, stdout = %s, stderr = %s", code, stdout.String(), stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "1 passed") {
+		t.Fatalf("stdout missing pass summary:\n%s", stdout.String())
+	}
+}
+
 func TestRunFiltersByFolder(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/admin/probe" {
@@ -112,6 +136,57 @@ func TestRunFiltersByFolder(t *testing.T) {
 	if summary.Total != 1 || summary.Passed != 1 || summary.Results[0].Name != "Admin Probe" {
 		t.Fatalf("summary = %#v", summary)
 	}
+}
+
+func exportInheritedCollection(t *testing.T, baseURL string) string {
+	t.Helper()
+	raw := map[string]any{
+		"id":            "req-inherited",
+		"name":          "Inherited Probe",
+		"type":          "request",
+		"method":        "GET",
+		"url":           baseURL + "/probe",
+		"params":        []map[string]any{},
+		"headers":       []map[string]any{},
+		"bodies":        []map[string]any{},
+		"activeBodyIdx": 0,
+		"auth":          map[string]any{"type": "none"},
+		"assertions": []map[string]any{{
+			"id": "assert-status", "enabled": true, "target": "statusCode", "operator": "eq", "expected": "200",
+		}},
+	}
+	rawJSON, err := json.Marshal(raw)
+	if err != nil {
+		t.Fatalf("marshal request: %v", err)
+	}
+	collection := collectionfs.Collection{
+		ID:   "col-inherited",
+		Name: "Inherited Collection",
+		Auth: requestcontract.Auth{Type: "bearer", Token: "{{token}}"},
+		Variables: []requestcontract.Variable{
+			{Key: "token", Value: "inherited-token", Enabled: true},
+			{Key: "tenant", Value: "acme", Enabled: true},
+		},
+		Children: []collectionfs.Node{{
+			ID:   "folder-shared",
+			Name: "Shared",
+			Type: "folder",
+			Headers: []requestcontract.KVRow{{
+				Key: "X-Tenant", Value: "{{tenant}}", Enabled: true,
+			}},
+			Children: []collectionfs.Node{{
+				ID:   "req-inherited",
+				Name: "Inherited Probe",
+				Type: "request",
+				Raw:  rawJSON,
+			}},
+		}},
+	}
+	root := filepath.Join(t.TempDir(), "collection")
+	if err := collectionfs.ExportCollection(root, collection, collectionfs.ExportOptions{}); err != nil {
+		t.Fatalf("export collection: %v", err)
+	}
+	return root
 }
 
 func TestRunWritesJUnitReport(t *testing.T) {
