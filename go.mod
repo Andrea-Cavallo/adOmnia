@@ -27,7 +27,7 @@ require (
 	github.com/wI2L/jsondiff v0.7.1
 	github.com/wailsapp/wails/v2 v2.12.0
 	github.com/xdg-go/scram v1.2.0
-	go.etcd.io/bbolt v1.4.3
+	go.etcd.io/bbolt v1.5.0
 	go.mongodb.org/mongo-driver/v2 v2.7.0
 	google.golang.org/grpc v1.81.1
 	google.golang.org/protobuf v1.36.11
