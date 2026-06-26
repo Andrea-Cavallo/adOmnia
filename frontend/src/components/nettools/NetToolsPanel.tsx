@@ -1,9 +1,17 @@
 import { useEffect, useState } from 'react'
-import { Search, Radio, Shield, Copy, ArrowRight, Database, Trash2, GitBranch } from 'lucide-react'
+import { Search, Radio, Shield, Copy, ArrowRight, Database, Trash2, GitBranch, Network, RefreshCw } from 'lucide-react'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { cn } from '@/lib/utils'
 
-type Tab = 'dns' | 'trace' | 'compare' | 'cache' | 'portscan' | 'cors'
+type Tab = 'dns' | 'trace' | 'compare' | 'cache' | 'portscan' | 'ports' | 'cors'
+
+interface ListeningPort {
+  protocol: string
+  address: string
+  port: number
+  pid: number
+  process: string
+}
 
 const DNS_TYPES = ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SOA', 'SRV', 'PTR']
 
@@ -13,6 +21,7 @@ const TABS: { key: Tab; icon: React.ElementType; label: string }[] = [
   { key: 'compare', icon: ArrowRight, label: 'DNS Compare' },
   { key: 'cache', icon: Database, label: 'DNS Cache' },
   { key: 'portscan', icon: Radio, label: 'Port Scan' },
+  { key: 'ports', icon: Network, label: 'Open Ports' },
   { key: 'cors', icon: Shield, label: 'CORS Test' },
 ]
 
@@ -61,6 +70,11 @@ export function NetToolsPanel() {
   const [scanHost, setScanHost] = useState('')
   const [scanPorts, setScanPorts] = useState('common')
   const [scanResult, setScanResult] = useState<object | null>(null)
+
+  // Open Ports (local listening sockets + owning process)
+  const [portsData, setPortsData] = useState<{ os: string; source: string; entries: ListeningPort[] } | null>(null)
+  const [portsLoading, setPortsLoading] = useState(false)
+  const [portsFilter, setPortsFilter] = useState('')
 
   // CORS
   const [corsUrl, setCorsUrl] = useState('')
@@ -117,6 +131,27 @@ export function NetToolsPanel() {
       setCacheLoading(false)
     }
   }
+
+  const getListeningPorts = async () => {
+    const url = serverUrl(port, '/ports/listening')
+    if (!url) { setError('Backend not ready'); return }
+    setPortsLoading(true)
+    setError('')
+    try {
+      const res = await sidecarFetch(url)
+      setPortsData(await res.json())
+    } catch (e) {
+      setError(String(e))
+    } finally {
+      setPortsLoading(false)
+    }
+  }
+
+  // Auto-load listening ports the first time the tab is opened.
+  useEffect(() => {
+    if (tab === 'ports' && !portsData && port) void getListeningPorts()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, port])
 
   const renderJsonResult = (data: object | null, title: string) => {
     if (!data) return null
@@ -330,6 +365,62 @@ export function NetToolsPanel() {
                 </div>
               )
             })()}
+          </div>
+        )}
+
+        {/* Open Ports — local listening sockets and the process that owns each */}
+        {tab === 'ports' && (
+          <div className="flex flex-col gap-3">
+            <div className="flex gap-2 items-center flex-wrap">
+              <button onClick={getListeningPorts} disabled={portsLoading}
+                className="px-3 py-1.5 bg-accent text-white rounded text-xs font-medium disabled:opacity-40 hover:bg-accent-hover flex items-center gap-1.5">
+                <RefreshCw size={11} className={portsLoading ? 'animate-spin' : ''} />
+                {portsLoading ? 'Scanning…' : 'Refresh'}
+              </button>
+              <input value={portsFilter} onChange={(e) => setPortsFilter(e.target.value)} placeholder="filter by port or process…"
+                className="flex-1 h-8 px-2.5 bg-surface-2 border border-border-2 rounded text-xs text-text-1 font-mono outline-none focus:border-accent placeholder:text-text-4 min-w-[180px]" />
+              {portsData && (
+                <span className="text-[10px] text-text-4 font-mono">{portsData.os} · {portsData.source}</span>
+              )}
+            </div>
+            {portsData && (() => {
+              const f = portsFilter.trim().toLowerCase()
+              const rows = portsData.entries.filter((e) =>
+                !f || String(e.port).includes(f) || e.process.toLowerCase().includes(f) || e.address.toLowerCase().includes(f))
+              if (rows.length === 0) {
+                return <div className="text-xs text-text-4 px-1">{portsData.entries.length === 0 ? 'No listening ports found.' : 'No matches.'}</div>
+              }
+              return (
+                <div className="bg-surface-1 border border-border-1 rounded-md overflow-hidden">
+                  <div className="px-3 py-1.5 border-b border-border-1 text-[10px] text-text-4 uppercase tracking-wider flex items-center justify-between">
+                    {rows.length} listening
+                    <button onClick={() => navigator.clipboard.writeText(JSON.stringify(portsData.entries, null, 2))}
+                      className="flex items-center gap-1 text-accent hover:text-accent-light"><Copy size={10} /> Copy</button>
+                  </div>
+                  <table className="w-full text-xs">
+                    <thead><tr className="border-b border-border-1/40 text-[10px] text-text-4">
+                      <th className="px-3 py-1.5 text-left font-medium">Port</th>
+                      <th className="px-3 py-1.5 text-left font-medium">Address</th>
+                      <th className="px-3 py-1.5 text-left font-medium">PID</th>
+                      <th className="px-3 py-1.5 text-left font-medium">Process</th>
+                    </tr></thead>
+                    <tbody className="divide-y divide-border-1/30">
+                      {rows.map((e, i) => (
+                        <tr key={`${e.port}-${e.pid}-${i}`} className="hover:bg-surface-2/30">
+                          <td className="px-3 py-1.5 font-mono text-accent">{e.port}</td>
+                          <td className="px-3 py-1.5 font-mono text-text-3">{e.address}</td>
+                          <td className="px-3 py-1.5 font-mono text-text-3">{e.pid || '—'}</td>
+                          <td className="px-3 py-1.5 font-mono text-text-1">{e.process || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            })()}
+            {!portsData && !portsLoading && (
+              <div className="text-xs text-text-4 px-1">Click Refresh to list local listening ports and their owning processes.</div>
+            )}
           </div>
         )}
 
