@@ -62,6 +62,37 @@ func TestOAuthAuthorizationCallbackReturnsCodeOnce(t *testing.T) {
 	}
 }
 
+func TestSecurityOriginAllowlist(t *testing.T) {
+	InitToken()
+	cases := []struct {
+		origin string
+		want   int // status when a valid token is supplied
+	}{
+		{"", http.StatusOK},                       // direct IPC, no Origin
+		{"wails://wails", http.StatusOK},           // legacy Wails webview
+		{"http://wails.localhost", http.StatusOK},  // WebView2 / current Wails webview
+		{"https://wails.localhost", http.StatusOK}, // https variant
+		{"http://localhost:5173", http.StatusOK},   // Vite dev server
+		{"http://127.0.0.1:34567", http.StatusOK},  // loopback IPv4
+		{"https://evil.example.com", http.StatusForbidden},
+		{"http://attacker.localhost.evil.com", http.StatusForbidden},
+	}
+	for _, tc := range cases {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/mock/status", nil)
+		if tc.origin != "" {
+			req.Header.Set("Origin", tc.origin)
+		}
+		req.Header.Set("X-Sidecar-Token", Token())
+		WithSecurity(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		})).ServeHTTP(rec, req)
+		if rec.Code != tc.want {
+			t.Errorf("origin %q: status = %d, want %d", tc.origin, rec.Code, tc.want)
+		}
+	}
+}
+
 func TestSecurityAllowsOnlyValidOAuthCallbackWithoutSidecarToken(t *testing.T) {
 	resetOAuthSessionsForTest()
 	InitToken()

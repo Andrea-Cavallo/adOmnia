@@ -41,7 +41,7 @@ func TestLiveMockStartStop(t *testing.T) {
 		}
 		req, _ := http.NewRequest(method, base+path, rdr)
 		req.Header.Set("X-Sidecar-Token", tok)
-		req.Header.Set("Origin", "http://localhost:5173")
+		req.Header.Set("Origin", "http://wails.localhost") // real WebView2 origin
 		if body != nil {
 			req.Header.Set("Content-Type", "application/json")
 		}

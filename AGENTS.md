@@ -60,12 +60,11 @@ Before planning or changing non-trivial behavior, use these docs to understand t
 | File | Use it for |
 |------|------------|
 | `docs/SOUL.md` | Product soul, UX philosophy, long-term vision, and what adOmnia should feel like as a finished desktop product. |
-| `docs/funzionalita.md` | Fast inventory of all major features and modules. Read this when you need to understand what already exists before adding or moving functionality. |
-| `docs/adomnia-roadmap-checkbox.md` | Roadmap and completion checklist across major product areas. |
-| `docs/TODO.md` | Active bugs, gaps, and near-term work queue. |
+| `docs/adomnia-feature-catalog.en.md` | Fast inventory of all major features and modules. Read this when you need to understand what already exists before adding or moving functionality. |
+| `docs/ISSUES.md` | Active bugs, gaps, near-term work queue, and completion status across major product areas. |
 | `README.md` | Public-facing product positioning and build overview. |
 
-**Rule:** if you are unsure whether a feature already exists, first search the code, then check `docs/funzionalita.md`. If you are unsure how a feature should feel or fit the product, check `docs/SOUL.md`.
+**Rule:** if you are unsure whether a feature already exists, first search the code, then check `docs/adomnia-feature-catalog.en.md`. If you are unsure how a feature should feel or fit the product, check `docs/SOUL.md`.
 
 ---
 
@@ -93,7 +92,7 @@ Before planning or changing non-trivial behavior, use these docs to understand t
 
 1. **Leggi CLAUDE.md** per architettura dettagliata, pattern, e binding Wails/Go
 2. **Leggi `docs/SOUL.md`** se il cambio tocca UX, posizionamento prodotto, visual design o comportamento percepito
-3. **Consulta `docs/funzionalita.md`** per capire velocemente tutte le funzionalità già presenti e non duplicare moduli esistenti
+3. **Consulta `docs/adomnia-feature-catalog.en.md`** per capire velocemente tutte le funzionalità già presenti e non duplicare moduli esistenti
 4. **Controlla il file specifico più vicino alla feature** — questo progetto preferisce cambi piccoli e localizzati
 5. **Mantieni la filosofia local-first:** qualunque dato deve stare in storage locale, bbolt, localStorage o essere esportabile come file
 6. **Se tocchi storage, settings o workspace `.adomnia`**, preserva backward compatibility e documenta la migrazione
@@ -131,9 +130,8 @@ adomnia/
 ├── docs/                      # Documentation
 │   ├── BUILD.md
 │   ├── SOUL.md
-│   ├── TODO.md
-│   ├── funzionalita.md
-│   └── adomnia-roadmap-checkbox.md
+│   ├── ISSUES.md
+│   └── adomnia-feature-catalog.en.md
 ├── AGENTS.md                  # Questo file
 ├── CLAUDE.md                  # Guida dettagliata per Claude Code
 ├── LICENSE.md                 # MIT license
@@ -299,7 +297,7 @@ go test ./...
 - **Usa CSS custom properties** da `frontend/src/styles/globals.css` (`--color-*`, `--font-*`, radius, spacing, shadow)
 - **Stili modulari** vicini ai componenti
 - **Mantieni estetica dense developer tool** — professionale, moderna, coerente
-- **No framework CSS esterni** (Bootstrap, Tailwind — vedi TAILWIND.md per strategia)
+- **No nuovi framework CSS esterni** (Bootstrap, ecc.) — Tailwind è già integrato in questo frontend: usa il setup esistente e i design token
 - **Controlli stabili e compatti** — no layout shift
 - **Ogni pannello deve sembrare parte della stessa applicazione** — non un collage di prototipi
 - **Coerenza dimensionale:** stessi spacing, stesse dimensioni font, stessi pattern di interazione
@@ -399,10 +397,9 @@ Aggiorna docs quando comportamento cambia:
 
 - `README.md` per feature user-facing
 - `docs/BUILD.md` per cambi build/distribution
-- `docs/CHANGELOG.md` per cambi release-worthy
-- `docs/SECURITY.md` per cambi security posture
-- `docs/TAILWIND.md` quando completi/parchi work CSS/theming
-- `docs/TODO.md` e `docs/adomnia-roadmap-checkbox.md` quando lo stato feature cambia
+- `docs/RELEASE.md` per cambi release-worthy
+- `.github/SECURITY.md` per cambi security posture
+- `docs/ISSUES.md` quando lo stato feature cambia
 - `docs/SOUL.md` quando product vision o UX philosophy evolve
 - `CLAUDE.md` per guidance architettura/pattern dettagliato
 
@@ -452,10 +449,8 @@ Quattro file vivono nella root — tutto il resto è in `docs/`:
 | File | Scopo |
 |------|-------|
 | `docs/SOUL.md` | Product philosophy, UX principles, long-term vision |
-| `docs/funzionalita.md` | Catalogo rapido e completo delle funzionalità del prodotto |
-| `docs/adomnia-roadmap-checkbox.md` | Roadmap/checklist di completamento per area prodotto |
-| `docs/TODO.md` | Bug aperti e feature mancanti — coda di lavoro attiva |
-| `docs/REFACTORING.md` | Piano refactoring backend Go (fasi 3–6 ancora aperte) |
+| `docs/adomnia-feature-catalog.en.md` | Catalogo rapido e completo delle funzionalità del prodotto |
+| `docs/ISSUES.md` | Bug aperti, feature mancanti e stato di completamento — coda di lavoro attiva |
 | `docs/BUILD.md` | Istruzioni di build per tutte le piattaforme |
-| `docs/CHANGELOG.md` | Release history |
+| `docs/RELEASE.md` | Release history |
 | `.github/SECURITY.md` | Security policy (riconosciuto dal tab GitHub Security) |
