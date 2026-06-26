@@ -35,6 +35,11 @@ interface WailsGoMain {
     GetPresets: () => Promise<PresetDef[]>
     GenerateLab: (ids: string[]) => Promise<LabOutput>
   }
+      CollectionFS: {
+        ExportCollectionToFolder: (folderPath: string, collectionJSON: string) => Promise<void>
+        ImportCollectionFromFolder: (folderPath: string) => Promise<string>
+        InspectCollectionFolder: (folderPath: string, collectionJSON: string) => Promise<string>
+      }
   AIEngine: {
     Configure: (configJSON: string) => Promise<void>
     TestConnection: (configJSON: string) => Promise<string>

@@ -1,7 +1,7 @@
 # adOmnia Gap Closure Plan vs Bruno e Insomnia
 
 Data: 2026-06-26
-Stato: piano migliorato, pronto per implementazione incrementale
+Stato: implementazione incrementale avviata
 Origine: revisione di `C:\Users\Andrea\Desktop\2026-06-25-bruno-gap-closure-design.md`
 
 Questo documento consolida il piano per chiudere i gap competitivi con Bruno e
@@ -65,6 +65,12 @@ Questi sono i punti di partenza attuali da rispettare:
 
 Obiettivo: evitare di costruire il file-based sync sopra assunzioni sbagliate.
 
+Artefatti prodotti:
+
+- `docs/collection-contract-freeze.md`
+- `docs/fixtures/collection-contract-freeze.v1.adomnia.json`
+- `frontend/src/lib/collectionContractFreeze.test.ts`
+
 Attivita':
 
 - Mappare il formato persistito attuale per collections, workspaces,
@@ -96,20 +102,45 @@ Done quando:
 Obiettivo: permettere a GUI e CLI di condividere il comportamento importante,
 senza forzare subito tutta la logica frontend dentro Go.
 
+Artefatti iniziali prodotti:
+
+- `frontend/src/lib/requestExecutionContract.ts`
+- `frontend/src/lib/requestExecutionContract.test.ts`
+- `frontend/src/lib/sendRequest.ts` ora costruisce un `ResolvedRequest` prima
+  di chiamare il transport Go.
+- `internal/requestcontract/resolve.go`
+- `internal/requestcontract/resolve_test.go`
+- `internal/adomniacli/run.go` usa il resolver Go condiviso invece di logica
+  duplicata locale.
+
+Stato completato Fase 0:
+
+- GUI continua a passare un `ResolvedRequest` al transport Go.
+- CLI headless usa lo stesso livello concettuale del contratto:
+  - variable substitution `{{var}}`
+  - path params `:id` e `{id}`
+  - query/header/body resolution
+  - body `raw`, `urlencoded`, `graphql`
+  - auth headless `none`, `bearer`, `basic`, `apikey`
+  - assertion engine headless per status, response time, content type, header e
+    body text
+  - `--env-var KEY=VALUE`
+  - `--env name` da `environments/<name>.json`
+- Le parti non headless o non ancora compatibili restano limiti dichiarati, non
+  successi finti.
+
 Stato attuale:
 
 - `App.ExecuteHTTP` delega gia' a `internal/httpexec.Execute`.
 - Il transport HTTP Go e' riusabile.
-- Molta logica applicativa vive ancora in TypeScript:
-  - variable substitution
-  - path params
-  - body serialization
-  - OAuth2
+- La logica indispensabile per il CLI MVP e' ora disponibile in Go.
+- Restano intenzionalmente in TypeScript o "later parity":
+  - OAuth2 browser/PKCE interattivo
   - AWS Signature v4
   - Vault refs
-  - cookie jar
+  - cookie jar completa
   - FormData/browser fallback
-  - settings request defaults
+  - settings UI-dependent defaults avanzati
 
 Attivita':
 
@@ -139,15 +170,37 @@ Attivita':
 
 Done quando:
 
-- la GUI continua a inviare request come prima
-- il CLI puo' eseguire almeno request HTTP risolte con env vars, headers,
+- [x] la GUI continua a inviare request come prima
+- [x] il CLI puo' eseguire almeno request HTTP risolte con env vars, headers,
   params, body, auth semplice e assertions
-- i limiti di parity sono documentati e visibili
+- [x] i limiti di parity sono documentati e visibili
 
 ## Fase 1 - Collezioni file-based
 
 Obiettivo: esportare/importare una collection come cartella versionabile,
 leggibile e diff-friendly, mantenendo bbolt come fonte primaria in-app.
+
+Artefatti iniziali prodotti:
+
+- `internal/collectionfs/collectionfs.go`
+- `internal/collectionfs/collectionfs_test.go`
+- il primo exporter scrive `adomnia.collection.json`, `collection.json`,
+  `.gitignore`, `.adomnia-sync.json`, folder metadata e request file
+  deterministici dalla fixture Fase -1.
+- il primo importer ricostruisce la collection dalla cartella e il test
+  conferma export -> import -> re-export deterministico.
+- `CollectionFS` espone i metodi Wails-safe
+  `ExportCollectionToFolder(folderPath, collectionJSON)` e
+  `ImportCollectionFromFolder(folderPath)` senza leggere o cancellare dati bbolt
+  implicitamente.
+- `frontend/src/lib/collectionfs-api.ts` aggiunge il wrapper typed per il
+  bridge Wails.
+- `frontend/src/components/workspace/GitSyncPanel.tsx` espone una prima sezione
+  `Collection Folder` nella Git Sync:
+  - selezione collection attiva
+  - export deterministico sotto `adomnia-collections/<collection>-<id>`
+  - import di una folder collection nello store collection esistente
+  - drift check reale tra collection corrente e folder importata
 
 Formato cartella v1:
 
@@ -188,12 +241,14 @@ Regole:
 
 UI:
 
-- Integrare nella Git Sync esistente.
-- Azioni:
-  - "Sync collection to folder"
-  - "Open folder as collection"
+- Integrato primo pass nella Git Sync esistente.
+- Azioni gia' cablate:
+  - "Export" della collection selezionata verso cartella versionabile
+  - "Import" da folder collection selezionata via picker
+  - "Drift" per confrontare hash canonico della collection corrente e della
+    projection su disco
+- Azioni successive:
   - "Export changed request"
-  - "Show folder drift"
 - Dopo modifica di una request linkata a cartella, esportare solo quel request
   file quando possibile.
 
@@ -208,6 +263,32 @@ Done quando:
 ## Fase 2A - CLI headless run
 
 Obiettivo: eseguire collezioni in CI/CD senza GUI.
+
+Artefatti iniziali prodotti:
+
+- `internal/adomniacli/run.go`
+- `internal/adomniacli/run_test.go`
+- `main.go` intercetta `adomnia run ...` prima di avviare Wails.
+
+Stato MVP implementato:
+
+- `adomnia run <collection-folder>`
+- reporter `cli`
+- reporter `json`
+- `--out <file>`
+- `--bail`
+- import da cartella Fase 1
+- esecuzione HTTP reale tramite `internal/httpexec`
+- request con URL/headers/body letterali `http`/`https`
+- body `raw`, `urlencoded`, `graphql`
+- auth `none`, `bearer`, `basic`
+- assertion minima `statusCode eq`
+- skip esplicito per variabili `{{...}}`, body/auth non ancora supportati e
+  URL non HTTP(S)
+
+Limite intenzionale MVP: non risolve ancora environment, path params,
+OAuth2/AWS4/Vault/cookie jar o script renderer-dependent. Questi restano nella
+parity matrix sotto e non vengono mascherati come successi.
 
 Comando MVP:
 
@@ -450,4 +531,3 @@ Ogni fase deve chiudere una capacita' usabile, non lasciare superfici finte:
 - se compare un badge, deve riflettere stato vero
 - se compare una export/import action, deve round-trippare dati reali
 - se un limite esiste, va mostrato nel punto giusto invece di nasconderlo
-

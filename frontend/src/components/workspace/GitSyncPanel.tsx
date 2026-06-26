@@ -30,6 +30,8 @@ import { cn } from '@/lib/utils'
 import { ResizeHandle } from '@/components/ui/ResizeHandle'
 import { safeSelectFolder } from '@/lib/fileUtils'
 import { addRepo, loadLastRepo, loadPinnedBranches, loadRepos, removeRepo, saveLastRepo, toggleBranchPin, toggleRepoPin, type SavedRepo } from '@/lib/gitRepos'
+import { exportCollectionToFolder, hasCollectionFSBinding, importCollectionFromFolder, inspectCollectionFolder } from '@/lib/collectionfs-api'
+import { useCollectionsStore } from '@/stores/collections'
 import { GitCompareTab } from './GitCompareTab'
 import { GitActionsTab } from './GitActionsTab'
 import { DiffModal } from '@/components/response/DiffView'
@@ -248,7 +250,24 @@ function downloadSafeName(path: string, suffix: string): string {
   return `${leaf}.${suffix}`
 }
 
+function safeFolderSegment(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 64) || 'collection'
+}
+
+function collectionFolderPath(repoPath: string, collectionId: string, collectionName: string): string {
+  const root = repoPath.replace(/[\\/]+$/, '')
+  const leaf = `${safeFolderSegment(collectionName)}-${safeFolderSegment(collectionId)}`
+  return `${root}/adomnia-collections/${leaf}`
+}
+
 export function GitSyncPanel() {
+  const collections = useCollectionsStore((state) => state.collections)
+  const importCollection = useCollectionsStore((state) => state.importCollection)
   const [repoPath, setRepoPath] = useState(() => loadLastRepo())
   const [repos, setRepos] = useState<SavedRepo[]>(() => loadRepos())
   const [pinnedBranches, setPinnedBranches] = useState<string[]>(() => loadPinnedBranches(loadLastRepo()))
@@ -283,6 +302,7 @@ export function GitSyncPanel() {
   const [dropTarget, setDropTarget] = useState<{ payload: GitDragPayload; branch: string } | null>(null)
   const [dragFile, setDragFile] = useState<{ path: string; mode: 'stage' | 'unstage' } | null>(null)
   const [commitLimit, setCommitLimit] = useState(240)
+  const [selectedCollectionId, setSelectedCollectionId] = useState('')
   const [graphScrollTop, setGraphScrollTop] = useState(0)
   const [graphViewportHeight, setGraphViewportHeight] = useState(600)
   const graphScrollRef = useRef<HTMLDivElement>(null)
@@ -301,6 +321,14 @@ export function GitSyncPanel() {
   const sortedRepos = useMemo(() => [...repos].sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.addedAt - a.addedAt), [repos])
   const sortedLocalBranches = useMemo(() => [...localBranches].sort((a, b) => Number(pinnedBranches.includes(b.name)) - Number(pinnedBranches.includes(a.name)) || Number(b.current) - Number(a.current) || a.name.localeCompare(b.name)), [localBranches, pinnedBranches])
   const sortedRemoteBranches = useMemo(() => [...remoteBranches].sort((a, b) => Number(pinnedBranches.includes(b.name)) - Number(pinnedBranches.includes(a.name)) || a.name.localeCompare(b.name)), [remoteBranches, pinnedBranches])
+  const selectedCollection = useMemo(
+    () => collections.find((collection) => collection.id === selectedCollectionId) ?? collections[0] ?? null,
+    [collections, selectedCollectionId],
+  )
+  const targetCollectionFolder = useMemo(
+    () => repoPath && selectedCollection ? collectionFolderPath(repoPath, selectedCollection.id, selectedCollection.name) : '',
+    [repoPath, selectedCollection],
+  )
   const selectedAiBase = aiBaseBranch || aiBaseChoices.find((branch) => ['main', 'master', 'develop'].includes(branch.name))?.name || aiBaseChoices[0]?.name || ''
   const filteredCommits = useMemo(() => {
     // Structured search results (when active) replace the default commit list.
@@ -342,6 +370,16 @@ export function GitSyncPanel() {
   useEffect(() => {
     setPinnedBranches(loadPinnedBranches(repoPath))
   }, [repoPath])
+
+  useEffect(() => {
+    if (!collections.length) {
+      setSelectedCollectionId('')
+      return
+    }
+    if (!collections.some((collection) => collection.id === selectedCollectionId)) {
+      setSelectedCollectionId(collections[0].id)
+    }
+  }, [collections, selectedCollectionId])
 
   useEffect(() => {
     const element = graphScrollRef.current
@@ -549,6 +587,47 @@ export function GitSyncPanel() {
     await GitSync.Commit(repoPath, commitMsg.trim())
     setCommitMsg('')
   }, 'Commit created.')
+
+  const runCollectionFolderAction = async (action: () => Promise<string | void>, success: string) => {
+    setLoading(true)
+    setError('')
+    setInfo('')
+    try {
+      const result = await action()
+      setInfo(result ?? success)
+      if (repoPath && hasGitSyncBinding()) await refreshStatus(repoPath)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const exportSelectedCollection = () => runCollectionFolderAction(async () => {
+    if (!repoPath) throw new Error('Repository path required')
+    if (!selectedCollection) throw new Error('Select a collection first')
+    await exportCollectionToFolder(targetCollectionFolder, selectedCollection)
+  }, selectedCollection ? `Exported "${selectedCollection.name}" to adomnia-collections.` : 'Collection exported.')
+
+  const importCollectionFolder = () => runCollectionFolderAction(async () => {
+    const folder = await safeSelectFolder('Select an adOmnia collection folder')
+    if (!folder) return
+    const imported = await importCollectionFromFolder(folder)
+    const duplicate = useCollectionsStore.getState().collections.some((collection) => collection.name === imported.name)
+    importCollection(duplicate
+      ? { ...imported, id: `${imported.id}-${Date.now()}`, name: `${imported.name} Import` }
+      : imported)
+  }, 'Collection folder imported.')
+
+  const inspectSelectedCollectionFolder = () => runCollectionFolderAction(async () => {
+    if (!repoPath) throw new Error('Repository path required')
+    if (!selectedCollection) throw new Error('Select a collection first')
+    const report = await inspectCollectionFolder(targetCollectionFolder, selectedCollection)
+    if (!report.inSync) {
+      throw new Error(`Folder drift detected: ${report.requestCount} app requests / ${report.folderRequestCount} folder requests.`)
+    }
+    return `Folder in sync: ${report.requestCount} requests.`
+  }, 'Folder in sync.')
 
   const cleanAiCommitMessage = (text: string) => {
     const fenced = text.match(/```(?:text)?\s*([\s\S]*?)```/i)?.[1]
@@ -913,6 +992,55 @@ export function GitSyncPanel() {
                 {status.dirty ? `${overview?.changes.length ?? 0} changes` : 'clean'}
               </span>
               {(status.aheadCount > 0 || status.behindCount > 0) && <span className="rounded border border-border-2 px-1.5 py-0.5 text-text-3">{status.aheadCount} ahead / {status.behindCount} behind</span>}
+            </div>
+          </div>
+
+          <div className="border-b border-border-1 p-3">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-text-4">Collection Folder</div>
+              {targetCollectionFolder && (
+                <span className="truncate text-[10px] text-text-4" title={targetCollectionFolder}>
+                  {targetCollectionFolder.split(/[\\/]/).slice(-2).join('/')}
+                </span>
+              )}
+            </div>
+            <select
+              value={selectedCollection?.id ?? ''}
+              onChange={(event) => setSelectedCollectionId(event.target.value)}
+              disabled={!collections.length || loading}
+              className="mb-2 h-7 w-full rounded border border-border-1 bg-surface-0 px-2 text-xs text-text-1 outline-none focus:border-accent disabled:opacity-50"
+            >
+              {collections.length === 0 ? (
+                <option value="">No collections</option>
+              ) : collections.map((collection) => (
+                <option key={collection.id} value={collection.id}>{collection.name}</option>
+              ))}
+            </select>
+            <div className="grid grid-cols-3 gap-1.5">
+              <button
+                onClick={exportSelectedCollection}
+                disabled={!repoPath || !selectedCollection || !hasCollectionFSBinding() || loading}
+                className="flex h-7 items-center justify-center gap-1.5 rounded border border-border-1 text-[11px] text-text-2 hover:bg-surface-2 hover:text-text-1 disabled:opacity-40"
+                title={targetCollectionFolder || 'Export selected collection'}
+              >
+                <Upload size={12} /> Export
+              </button>
+              <button
+                onClick={importCollectionFolder}
+                disabled={!hasCollectionFSBinding() || loading}
+                className="flex h-7 items-center justify-center gap-1.5 rounded border border-border-1 text-[11px] text-text-2 hover:bg-surface-2 hover:text-text-1 disabled:opacity-40"
+                title="Import collection folder"
+              >
+                <Download size={12} /> Import
+              </button>
+              <button
+                onClick={inspectSelectedCollectionFolder}
+                disabled={!repoPath || !selectedCollection || !hasCollectionFSBinding() || loading}
+                className="flex h-7 items-center justify-center gap-1.5 rounded border border-border-1 text-[11px] text-text-2 hover:bg-surface-2 hover:text-text-1 disabled:opacity-40"
+                title={targetCollectionFolder || 'Inspect collection folder'}
+              >
+                <Eye size={12} /> Drift
+              </button>
             </div>
           </div>
 

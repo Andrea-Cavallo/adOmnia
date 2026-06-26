@@ -1,0 +1,788 @@
+{
+  "fixtureVersion": 1,
+  "fixtureName": "collection-contract-freeze",
+  "createdFor": "bruno-insomnia-gap-closure-phase-minus-1",
+  "notes": [
+    "This fixture freezes the current adOmnia collection, environment, tabs, and settings contracts before file-based sync.",
+    "IDs are stable on purpose. Do not regenerate them unless the contract changes deliberately.",
+    "The fixture is not a demo workspace. It is a regression source for future collectionfs and CLI tests."
+  ],
+  "storage": {
+    "collections/all": {
+      "version": 2,
+      "activeWorkspaceId": "workspace-gap-closure",
+      "workspaces": [
+        {
+          "id": "workspace-gap-closure",
+          "name": "Gap Closure Contract Workspace",
+          "createdAt": "2026-06-26T05:50:00.000Z",
+          "updatedAt": "2026-06-26T05:50:00.000Z",
+          "collections": [
+            {
+              "id": "col-gap-payments",
+              "name": "Payments API Contract Fixture",
+              "color": "#4f8cff",
+              "_openapiSpec": "openapi: 3.0.3\ninfo:\n  title: Payments API Contract Fixture\n  version: 1.0.0\nservers:\n  - url: https://api.example.test\npaths:\n  /v1/users/{userId}:\n    get:\n      operationId: getUser\n      tags: [Users]\n      security:\n        - bearerAuth: []\n      responses:\n        '200':\n          description: User profile\n          content:\n            application/json:\n              schema:\n                type: object\n                required: [id, email]\n                properties:\n                  id:\n                    type: string\n                  email:\n                    type: string\n  /v1/auth/token:\n    post:\n      operationId: issueToken\n      tags: [Auth]\n      responses:\n        '200':\n          description: Token response\n  /graphql:\n    patch:\n      operationId: patchGraphqlPreferences\n      tags: [GraphQL]\n      responses:\n        '200':\n          description: Preferences updated\ncomponents:\n  securitySchemes:\n    bearerAuth:\n      type: http\n      scheme: bearer\n",
+              "children": [
+                {
+                  "id": "folder-auth",
+                  "name": "Auth",
+                  "type": "folder",
+                  "children": [
+                    {
+                      "id": "req-auth-token",
+                      "name": "Issue OAuth Token",
+                      "description": "POST request with urlencoded body, OAuth metadata, scripts, cookies, and assertions.",
+                      "type": "request",
+                      "method": "POST",
+                      "url": "{{baseUrl}}/v1/auth/token",
+                      "params": [
+                        {
+                          "id": "kv-auth-param-audience",
+                          "key": "audience",
+                          "value": "{{audience}}",
+                          "enabled": true
+                        }
+                      ],
+                      "pathParams": [],
+                      "headers": [
+                        {
+                          "id": "kv-auth-header-accept",
+                          "key": "Accept",
+                          "value": "application/json",
+                          "enabled": true
+                        }
+                      ],
+                      "cookies": [
+                        {
+                          "id": "kv-auth-cookie-device",
+                          "key": "device_id",
+                          "value": "{{deviceId}}",
+                          "enabled": true
+                        }
+                      ],
+                      "bodies": [
+                        {
+                          "id": "body-auth-form",
+                          "name": "Token Form",
+                          "type": "urlencoded",
+                          "raw": "",
+                          "lang": "text",
+                          "form": [
+                            {
+                              "id": "kv-auth-form-grant",
+                              "key": "grant_type",
+                              "value": "client_credentials",
+                              "enabled": true
+                            },
+                            {
+                              "id": "kv-auth-form-client",
+                              "key": "client_id",
+                              "value": "{{clientId}}",
+                              "enabled": true
+                            },
+                            {
+                              "id": "kv-auth-form-secret",
+                              "key": "client_secret",
+                              "value": "{{clientSecret}}",
+                              "enabled": true
+                            }
+                          ]
+                        }
+                      ],
+                      "activeBodyIdx": 0,
+                      "auth": {
+                        "type": "oauth2",
+                        "token": "",
+                        "username": "",
+                        "password": "",
+                        "oauth2GrantType": "client_credentials",
+                        "oauth2TokenUrl": "{{baseUrl}}/oauth/token",
+                        "oauth2ClientId": "{{clientId}}",
+                        "oauth2ClientSecret": "{{clientSecret}}",
+                        "oauth2Scope": "payments:write"
+                      },
+                      "scripts": {
+                        "pre": "pm.environment.set('requestStarted', 'true');",
+                        "post": "pm.environment.set('lastTokenStatus', String(pm.response.code));",
+                        "tests": "pm.test('token status is 200', () => { pm.expect(pm.response.code).to.equal(200); });"
+                      },
+                      "timeout": 15000,
+                      "followRedirects": true,
+                      "_openapiPath": "/v1/auth/token",
+                      "_xExtensions": {
+                        "x-adomnia-fixture": "auth-token"
+                      },
+                      "_openapiResponses": [
+                        {
+                          "status": "200",
+                          "description": "Token response",
+                          "contentType": "application/json",
+                          "examples": [
+                            {
+                              "name": "success",
+                              "lang": "json",
+                              "raw": "{\"access_token\":\"sample\",\"expires_in\":3600}"
+                            }
+                          ]
+                        }
+                      ],
+                      "_openapiSecurity": {
+                        "schemes": {
+                          "oauth2": {
+                            "type": "oauth2",
+                            "flows": {
+                              "clientCredentials": {
+                                "tokenUrl": "/oauth/token"
+                              }
+                            }
+                          }
+                        },
+                        "requirements": [
+                          {
+                            "oauth2": [
+                              "payments:write"
+                            ]
+                          }
+                        ]
+                      },
+                      "assertions": [
+                        {
+                          "id": "assert-auth-status",
+                          "enabled": true,
+                          "target": "statusCode",
+                          "operator": "eq",
+                          "expected": "200"
+                        },
+                        {
+                          "id": "assert-auth-token",
+                          "enabled": true,
+                          "target": "jsonPath",
+                          "operator": "exists",
+                          "path": "access_token"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "folder-users",
+                  "name": "Users",
+                  "type": "folder",
+                  "children": [
+                    {
+                      "id": "folder-users-profile",
+                      "name": "Profile",
+                      "type": "folder",
+                      "children": [
+                        {
+                          "id": "req-users-get",
+                          "name": "Get User Profile",
+                          "description": "GET request with path params, query params, bearer auth, OpenAPI metadata, and response assertions.",
+                          "type": "request",
+                          "method": "GET",
+                          "url": "{{baseUrl}}/v1/users/{userId}",
+                          "params": [
+                            {
+                              "id": "kv-user-param-expand",
+                              "key": "expand",
+                              "value": "roles,accounts",
+                              "enabled": true
+                            }
+                          ],
+                          "pathParams": [
+                            {
+                              "id": "kv-user-path-id",
+                              "key": "userId",
+                              "value": "{{userId}}",
+                              "enabled": true
+                            }
+                          ],
+                          "headers": [
+                            {
+                              "id": "kv-user-header-trace",
+                              "key": "X-Trace-Id",
+                              "value": "{{traceId}}",
+                              "enabled": true
+                            }
+                          ],
+                          "cookies": [
+                            {
+                              "id": "kv-user-cookie-session",
+                              "key": "session",
+                              "value": "{{sessionCookie}}",
+                              "enabled": true
+                            }
+                          ],
+                          "bodies": [
+                            {
+                              "id": "body-user-none",
+                              "name": "Body 1",
+                              "type": "none",
+                              "raw": "",
+                              "lang": "json",
+                              "form": []
+                            }
+                          ],
+                          "activeBodyIdx": 0,
+                          "auth": {
+                            "type": "bearer",
+                            "token": "{{accessToken}}",
+                            "username": "",
+                            "password": ""
+                          },
+                          "scripts": {
+                            "tests": "pm.test('profile has email', () => { pm.expect(pm.response.json().email).to.exist; });"
+                          },
+                          "timeout": 8000,
+                          "followRedirects": true,
+                          "_openapiPath": "/v1/users/{userId}",
+                          "_xExtensions": {
+                            "x-owner": "identity-team"
+                          },
+                          "_openapiResponses": [
+                            {
+                              "status": "200",
+                              "description": "User profile",
+                              "contentType": "application/json",
+                              "headers": [
+                                {
+                                  "name": "X-Request-Id",
+                                  "description": "Backend request id"
+                                }
+                              ],
+                              "examples": [
+                                {
+                                  "name": "profile",
+                                  "lang": "json",
+                                  "raw": "{\"id\":\"usr_123\",\"email\":\"ada@example.test\"}"
+                                }
+                              ]
+                            }
+                          ],
+                          "_openapiSecurity": {
+                            "schemes": {
+                              "bearerAuth": {
+                                "type": "http",
+                                "scheme": "bearer"
+                              }
+                            },
+                            "requirements": [
+                              {
+                                "bearerAuth": []
+                              }
+                            ]
+                          },
+                          "assertions": [
+                            {
+                              "id": "assert-user-status",
+                              "enabled": true,
+                              "target": "statusCode",
+                              "operator": "eq",
+                              "expected": "200"
+                            },
+                            {
+                              "id": "assert-user-email",
+                              "enabled": true,
+                              "target": "jsonPath",
+                              "operator": "regex",
+                              "path": "email",
+                              "expected": ".+@example\\.test"
+                            },
+                            {
+                              "id": "assert-user-content-type",
+                              "enabled": true,
+                              "target": "contentType",
+                              "operator": "contains",
+                              "expected": "application/json"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "folder-admin",
+                  "name": "Admin",
+                  "type": "folder",
+                  "children": [
+                    {
+                      "id": "req-admin-create",
+                      "name": "Create Admin Event",
+                      "description": "POST request with raw JSON body and API key auth.",
+                      "type": "request",
+                      "method": "POST",
+                      "url": "{{baseUrl}}/v1/admin/events",
+                      "params": [],
+                      "pathParams": [],
+                      "headers": [
+                        {
+                          "id": "kv-admin-header-content",
+                          "key": "Content-Type",
+                          "value": "application/json",
+                          "enabled": true
+                        }
+                      ],
+                      "cookies": [],
+                      "bodies": [
+                        {
+                          "id": "body-admin-json",
+                          "name": "JSON Event",
+                          "type": "raw",
+                          "raw": "{\n  \"type\": \"USER_LOCKED\",\n  \"userId\": \"{{userId}}\",\n  \"reason\": \"manual-review\"\n}",
+                          "lang": "json",
+                          "form": []
+                        }
+                      ],
+                      "activeBodyIdx": 0,
+                      "auth": {
+                        "type": "apikey",
+                        "token": "{{adminApiKey}}",
+                        "username": "X-Admin-Key",
+                        "password": ""
+                      },
+                      "scripts": {
+                        "pre": "pm.environment.set('adminEventPrepared', 'true');"
+                      },
+                      "timeout": 10000,
+                      "followRedirects": false,
+                      "assertions": [
+                        {
+                          "id": "assert-admin-status",
+                          "enabled": true,
+                          "target": "statusCode",
+                          "operator": "eq",
+                          "expected": "202"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "req-admin-graphql",
+                      "name": "Patch GraphQL Preferences",
+                      "description": "PATCH request with GraphQL body and AWS4 auth metadata.",
+                      "type": "request",
+                      "method": "PATCH",
+                      "url": "{{baseUrl}}/graphql",
+                      "params": [],
+                      "pathParams": [],
+                      "headers": [
+                        {
+                          "id": "kv-graphql-header-client",
+                          "key": "X-Client",
+                          "value": "adomnia-contract-fixture",
+                          "enabled": true
+                        }
+                      ],
+                      "cookies": [],
+                      "bodies": [
+                        {
+                          "id": "body-graphql",
+                          "name": "GraphQL Mutation",
+                          "type": "graphql",
+                          "raw": "mutation UpdatePreferences($userId: ID!, $theme: String!) { updatePreferences(userId: $userId, theme: $theme) { ok updatedAt } }",
+                          "lang": "json",
+                          "form": [],
+                          "graphqlVariables": "{\n  \"userId\": \"{{userId}}\",\n  \"theme\": \"dark\"\n}"
+                        }
+                      ],
+                      "activeBodyIdx": 0,
+                      "auth": {
+                        "type": "aws4",
+                        "token": "",
+                        "username": "",
+                        "password": "",
+                        "awsAccessKeyId": "{{awsAccessKeyId}}",
+                        "awsSecretKey": "{{awsSecretKey}}",
+                        "awsRegion": "eu-west-1",
+                        "awsService": "execute-api",
+                        "awsSessionToken": "{{awsSessionToken}}"
+                      },
+                      "timeout": 12000,
+                      "followRedirects": true,
+                      "_openapiPath": "/graphql",
+                      "_xExtensions": {
+                        "x-graphql-operation": "UpdatePreferences"
+                      },
+                      "_openapiResponses": [
+                        {
+                          "status": "200",
+                          "description": "Preferences updated",
+                          "contentType": "application/json"
+                        }
+                      ],
+                      "assertions": [
+                        {
+                          "id": "assert-graphql-ok",
+                          "enabled": true,
+                          "target": "jsonPath",
+                          "operator": "eq",
+                          "path": "data.updatePreferences.ok",
+                          "expected": "true"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "req-admin-digest-probe",
+                      "name": "Digest Protected Audit Probe",
+                      "description": "GET request that freezes the existing digest auth type. Current send path exposes the type but does not implement digest signing yet.",
+                      "type": "request",
+                      "method": "GET",
+                      "url": "{{legacyBaseUrl}}/audit/probe",
+                      "params": [],
+                      "pathParams": [],
+                      "headers": [],
+                      "cookies": [],
+                      "bodies": [
+                        {
+                          "id": "body-digest-none",
+                          "name": "Body 1",
+                          "type": "none",
+                          "raw": "",
+                          "lang": "json",
+                          "form": []
+                        }
+                      ],
+                      "activeBodyIdx": 0,
+                      "auth": {
+                        "type": "digest",
+                        "token": "",
+                        "username": "{{legacyUser}}",
+                        "password": "{{legacyPassword}}"
+                      },
+                      "timeout": 8000,
+                      "followRedirects": false,
+                      "assertions": [
+                        {
+                          "id": "assert-digest-status",
+                          "enabled": true,
+                          "target": "statusCode",
+                          "operator": "eq",
+                          "expected": "200"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "environments/all": {
+      "environments": [
+        {
+          "id": "env-dev",
+          "name": "Development",
+          "variables": [
+            {
+              "id": "env-dev-base",
+              "key": "baseUrl",
+              "value": "https://api.example.test",
+              "enabled": true,
+              "type": "text"
+            },
+            {
+              "id": "env-dev-legacy-base",
+              "key": "legacyBaseUrl",
+              "value": "https://legacy.example.test",
+              "enabled": true,
+              "type": "text"
+            },
+            {
+              "id": "env-dev-user-id",
+              "key": "userId",
+              "value": "usr_123",
+              "enabled": true,
+              "type": "text"
+            },
+            {
+              "id": "env-dev-client-id",
+              "key": "clientId",
+              "value": "adomnia-dev",
+              "enabled": true,
+              "type": "text"
+            },
+            {
+              "id": "env-dev-client-secret",
+              "key": "clientSecret",
+              "value": "vault:oauth-client-secret",
+              "enabled": true,
+              "type": "secret"
+            },
+            {
+              "id": "env-dev-access-token",
+              "key": "accessToken",
+              "value": "vault:access-token",
+              "enabled": true,
+              "type": "secret"
+            },
+            {
+              "id": "env-dev-admin-api-key",
+              "key": "adminApiKey",
+              "value": "vault:admin-api-key",
+              "enabled": true,
+              "type": "secret"
+            },
+            {
+              "id": "env-dev-trace",
+              "key": "traceId",
+              "value": "trace-0001",
+              "enabled": true,
+              "type": "text"
+            },
+            {
+              "id": "env-dev-session",
+              "key": "sessionCookie",
+              "value": "vault:session-cookie",
+              "enabled": true,
+              "type": "secret"
+            },
+            {
+              "id": "env-dev-device",
+              "key": "deviceId",
+              "value": "device-local-1",
+              "enabled": true,
+              "type": "text"
+            },
+            {
+              "id": "env-dev-audience",
+              "key": "audience",
+              "value": "payments-api",
+              "enabled": true,
+              "type": "text"
+            },
+            {
+              "id": "env-dev-aws-key",
+              "key": "awsAccessKeyId",
+              "value": "AKIAEXAMPLE",
+              "enabled": false,
+              "type": "text"
+            },
+            {
+              "id": "env-dev-aws-secret",
+              "key": "awsSecretKey",
+              "value": "vault:aws-secret-key",
+              "enabled": false,
+              "type": "secret"
+            },
+            {
+              "id": "env-dev-aws-session",
+              "key": "awsSessionToken",
+              "value": "vault:aws-session-token",
+              "enabled": false,
+              "type": "secret"
+            },
+            {
+              "id": "env-dev-legacy-user",
+              "key": "legacyUser",
+              "value": "legacy-user",
+              "enabled": true,
+              "type": "text"
+            },
+            {
+              "id": "env-dev-legacy-password",
+              "key": "legacyPassword",
+              "value": "vault:legacy-password",
+              "enabled": true,
+              "type": "secret"
+            }
+          ]
+        },
+        {
+          "id": "env-local-private",
+          "name": "Local Private Scratch",
+          "variables": [
+            {
+              "id": "env-private-base",
+              "key": "baseUrl",
+              "value": "http://127.0.0.1:8787",
+              "enabled": true,
+              "type": "text"
+            },
+            {
+              "id": "env-private-token",
+              "key": "accessToken",
+              "value": "local-only-token",
+              "enabled": true,
+              "type": "secret"
+            }
+          ]
+        }
+      ],
+      "activeEnvId": "env-dev"
+    },
+    "tabs/session-v1": {
+      "version": 2,
+      "tabs": [
+        {
+          "id": "tab-users-get",
+          "request": {
+            "id": "req-users-get",
+            "name": "Get User Profile",
+            "description": "GET request with path params, query params, bearer auth, OpenAPI metadata, and response assertions.",
+            "type": "request",
+            "method": "GET",
+            "url": "{{baseUrl}}/v1/users/{userId}",
+            "params": [
+              {
+                "id": "kv-user-param-expand",
+                "key": "expand",
+                "value": "roles,accounts",
+                "enabled": true
+              }
+            ],
+            "pathParams": [
+              {
+                "id": "kv-user-path-id",
+                "key": "userId",
+                "value": "{{userId}}",
+                "enabled": true
+              }
+            ],
+            "headers": [
+              {
+                "id": "kv-user-header-trace",
+                "key": "X-Trace-Id",
+                "value": "{{traceId}}",
+                "enabled": true
+              }
+            ],
+            "cookies": [
+              {
+                "id": "kv-user-cookie-session",
+                "key": "session",
+                "value": "{{sessionCookie}}",
+                "enabled": true
+              }
+            ],
+            "bodies": [
+              {
+                "id": "body-user-none",
+                "name": "Body 1",
+                "type": "none",
+                "raw": "",
+                "lang": "json",
+                "form": []
+              }
+            ],
+            "activeBodyIdx": 0,
+            "auth": {
+              "type": "bearer",
+              "token": "{{accessToken}}",
+              "username": "",
+              "password": ""
+            },
+            "scripts": {
+              "tests": "pm.test('profile has email', () => { pm.expect(pm.response.json().email).to.exist; });"
+            },
+            "timeout": 8000,
+            "followRedirects": true,
+            "_openapiPath": "/v1/users/{userId}",
+            "_xExtensions": {
+              "x-owner": "identity-team"
+            },
+            "_openapiResponses": [
+              {
+                "status": "200",
+                "description": "User profile",
+                "contentType": "application/json",
+                "headers": [
+                  {
+                    "name": "X-Request-Id",
+                    "description": "Backend request id"
+                  }
+                ],
+                "examples": [
+                  {
+                    "name": "profile",
+                    "lang": "json",
+                    "raw": "{\"id\":\"usr_123\",\"email\":\"ada@example.test\"}"
+                  }
+                ]
+              }
+            ],
+            "_openapiSecurity": {
+              "schemes": {
+                "bearerAuth": {
+                  "type": "http",
+                  "scheme": "bearer"
+                }
+              },
+              "requirements": [
+                {
+                  "bearerAuth": []
+                }
+              ]
+            },
+            "assertions": [
+              {
+                "id": "assert-user-status",
+                "enabled": true,
+                "target": "statusCode",
+                "operator": "eq",
+                "expected": "200"
+              }
+            ]
+          },
+          "collectionId": "col-gap-payments",
+          "workspaceId": "workspace-gap-closure",
+          "dirty": false,
+          "response": null,
+          "loading": false
+        }
+      ],
+      "activeTabId": "tab-users-get",
+      "responseHistory": []
+    },
+    "settings": {
+      "version": 3,
+      "general": {
+        "restoreTabsOnStartup": true,
+        "defaultStartupRail": "collections",
+        "autoSaveIntervalMs": 5000,
+        "backupWorkspaceOnStartup": true,
+        "maxConcurrentRequests": 6
+      },
+      "requests": {
+        "defaultTimeoutMs": 30000,
+        "followRedirects": true,
+        "saveResponsesToHistory": true,
+        "maxResponseHistoryPerTab": 20,
+        "skipCertVerify": false,
+        "encodeUrlAutomatically": true,
+        "trimWhitespaceInHeaders": true,
+        "maxRedirects": 10,
+        "stripAuthOnRedirect": true,
+        "autoValidateSchema": true
+      }
+    }
+  },
+  "workspaceState": {
+    "workspace": {
+      "id": "workspace-gap-closure",
+      "name": "Gap Closure Contract Workspace"
+    },
+    "collections": [
+      {
+        "$ref": "storage.collections/all.workspaces[0].collections[0]"
+      }
+    ],
+    "environments": [
+      {
+        "$ref": "storage.environments/all.environments[0]"
+      },
+      {
+        "$ref": "storage.environments/all.environments[1]"
+      }
+    ],
+    "activeEnvId": "env-dev",
+    "openTabs": [
+      {
+        "$ref": "storage.tabs/session-v1.tabs[0]"
+      }
+    ],
+    "activeTabId": "tab-users-get"
+  }
+}

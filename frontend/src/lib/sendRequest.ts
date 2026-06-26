@@ -5,6 +5,7 @@ import { useSettingsStore } from '@/stores/settings'
 import { useHostsStore } from '@/stores/hosts'
 import { useCookieJarStore } from '@/lib/cookieJar'
 import { resolveVaultReferences } from '@/lib/vaultRefs'
+import { toHTTPExecPayload, type ResolvedRequest } from '@/lib/requestExecutionContract'
 import { ExecuteHTTP, CancelHTTP } from '../wailsjs/go/main/App'
 
 export interface SendOptions {
@@ -100,8 +101,9 @@ export async function sendRequest(
   const activeHostEntries = useHostsStore.getState().getActiveEntries()
 
   const reqId = uid()
-  const execReq = {
+  const resolvedRequest: ResolvedRequest = {
     id: reqId,
+    sourceRequestId: request.id,
     method: request.method,
     url: fullUrl,
     headers,
@@ -114,7 +116,18 @@ export async function sendRequest(
     clientCertPem: requestSettings.clientCertPem ?? '',
     clientCertPassphrase: requestSettings.clientCertPassphrase ?? '',
     hostsMap: activeHostEntries.map((e) => ({ host: e.host, ip: e.ip, enabled: e.enabled })),
+    assertionPlan: request.assertions ?? [],
+    scriptPlan: request.scripts ?? {},
+    sourceMetadata: {
+      requestId: request.id,
+      requestName: request.name,
+      openapiPath: request._openapiPath,
+      openapiResponses: request._openapiResponses,
+      openapiSecurity: request._openapiSecurity,
+      xExtensions: request._xExtensions,
+    },
   }
+  const execReq = toHTTPExecPayload(resolvedRequest)
 
   const onAbort = () => { void CancelHTTP(reqId) }
   opts?.signal?.addEventListener('abort', onAbort)
