@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -89,6 +90,53 @@ func TestRunResolvesEnvVarOverrides(t *testing.T) {
 	}
 }
 
+func TestRunFiltersByFolder(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/admin/probe" {
+			t.Fatalf("unexpected path %s", r.URL.Path)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	root := exportFolderFilterCollection(t, server.URL)
+	var stdout, stderr bytes.Buffer
+	code := Run([]string{"run", root, "--folder", "Admin", "--reporter", "json"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("Run code = %d, stdout = %s, stderr = %s", code, stdout.String(), stderr.String())
+	}
+	var summary RunSummary
+	if err := json.Unmarshal(stdout.Bytes(), &summary); err != nil {
+		t.Fatalf("decode summary: %v\n%s", err, stdout.String())
+	}
+	if summary.Total != 1 || summary.Passed != 1 || summary.Results[0].Name != "Admin Probe" {
+		t.Fatalf("summary = %#v", summary)
+	}
+}
+
+func TestRunWritesJUnitReport(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer server.Close()
+
+	root := exportTestCollection(t, server.URL, "200")
+	outPath := filepath.Join(t.TempDir(), "report.xml")
+	var stdout, stderr bytes.Buffer
+	code := Run([]string{"run", root, "--reporter", "junit", "--out", outPath}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("Run code = %d, stdout = %s, stderr = %s", code, stdout.String(), stderr.String())
+	}
+	data, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("read report: %v", err)
+	}
+	text := string(data)
+	if !strings.Contains(text, `tests="1"`) || !strings.Contains(text, `failures="1"`) || !strings.Contains(text, "<failure") {
+		t.Fatalf("unexpected junit report:\n%s", text)
+	}
+}
+
 func exportTestCollection(t *testing.T, baseURL string, expectedStatus string) string {
 	t.Helper()
 	raw := map[string]any{
@@ -123,6 +171,78 @@ func exportTestCollection(t *testing.T, baseURL string, expectedStatus string) s
 			Type: "request",
 			Raw:  rawJSON,
 		}},
+	}
+	root := filepath.Join(t.TempDir(), "collection")
+	if err := collectionfs.ExportCollection(root, collection, collectionfs.ExportOptions{}); err != nil {
+		t.Fatalf("export collection: %v", err)
+	}
+	return root
+}
+
+func exportFolderFilterCollection(t *testing.T, baseURL string) string {
+	t.Helper()
+	adminRaw := map[string]any{
+		"id":            "req-admin",
+		"name":          "Admin Probe",
+		"type":          "request",
+		"method":        "GET",
+		"url":           baseURL + "/admin/probe",
+		"params":        []map[string]any{},
+		"headers":       []map[string]any{},
+		"bodies":        []map[string]any{},
+		"activeBodyIdx": 0,
+		"auth":          map[string]any{"type": "none"},
+		"assertions": []map[string]any{{
+			"id": "assert-status", "enabled": true, "target": "statusCode", "operator": "eq", "expected": "204",
+		}},
+	}
+	publicRaw := map[string]any{
+		"id":            "req-public",
+		"name":          "Public Probe",
+		"type":          "request",
+		"method":        "GET",
+		"url":           baseURL + "/public/probe",
+		"params":        []map[string]any{},
+		"headers":       []map[string]any{},
+		"bodies":        []map[string]any{},
+		"activeBodyIdx": 0,
+		"auth":          map[string]any{"type": "none"},
+	}
+	adminJSON, err := json.Marshal(adminRaw)
+	if err != nil {
+		t.Fatalf("marshal admin request: %v", err)
+	}
+	publicJSON, err := json.Marshal(publicRaw)
+	if err != nil {
+		t.Fatalf("marshal public request: %v", err)
+	}
+	collection := collectionfs.Collection{
+		ID:   "col-cli-folders",
+		Name: "CLI Folder Collection",
+		Children: []collectionfs.Node{
+			{
+				ID:   "folder-admin",
+				Name: "Admin",
+				Type: "folder",
+				Children: []collectionfs.Node{{
+					ID:   "req-admin",
+					Name: "Admin Probe",
+					Type: "request",
+					Raw:  adminJSON,
+				}},
+			},
+			{
+				ID:   "folder-public",
+				Name: "Public",
+				Type: "folder",
+				Children: []collectionfs.Node{{
+					ID:   "req-public",
+					Name: "Public Probe",
+					Type: "request",
+					Raw:  publicJSON,
+				}},
+			},
+		},
 	}
 	root := filepath.Join(t.TempDir(), "collection")
 	if err := collectionfs.ExportCollection(root, collection, collectionfs.ExportOptions{}); err != nil {

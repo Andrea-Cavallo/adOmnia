@@ -275,20 +275,23 @@ Stato MVP implementato:
 - `adomnia run <collection-folder>`
 - reporter `cli`
 - reporter `json`
+- reporter `junit`
 - `--out <file>`
 - `--bail`
+- `--folder <name|id|path>`
+- `--env <name>`
+- `--env-var KEY=VALUE`
 - import da cartella Fase 1
 - esecuzione HTTP reale tramite `internal/httpexec`
-- request con URL/headers/body letterali `http`/`https`
+- request con URL/headers/body risolti via Fase 0
 - body `raw`, `urlencoded`, `graphql`
-- auth `none`, `bearer`, `basic`
-- assertion minima `statusCode eq`
-- skip esplicito per variabili `{{...}}`, body/auth non ancora supportati e
-  URL non HTTP(S)
+- auth `none`, `bearer`, `basic`, `apikey`
+- assertions headless su status, response time, content type, header, body text
+- skip esplicito per body/auth non ancora supportati e URL non HTTP(S)
 
-Limite intenzionale MVP: non risolve ancora environment, path params,
-OAuth2/AWS4/Vault/cookie jar o script renderer-dependent. Questi restano nella
-parity matrix sotto e non vengono mascherati come successi.
+Limite intenzionale MVP: non esegue ancora OAuth2/AWS4/Vault/cookie jar o script
+renderer-dependent. Questi restano nella parity matrix sotto e non vengono
+mascherati come successi.
 
 Comando MVP:
 
@@ -332,9 +335,9 @@ Parity matrix:
 
 Done quando:
 
-- una collection folder gira in CI
-- una assertion fallita produce exit code non zero
-- viene generato JUnit leggibile da pipeline
+- [x] una collection folder gira in CI
+- [x] una assertion fallita produce exit code non zero
+- [x] viene generato JUnit leggibile da pipeline
 
 ## Fase 5A - OpenAPI governance lint engine
 

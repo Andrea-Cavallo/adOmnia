@@ -10,6 +10,7 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - **Versionable collection folders:** collections can now be exported as deterministic, diff-friendly folders with stable metadata, folder/request JSON files, Windows-safe names, and a sync manifest. The importer reconstructs the collection tree from disk and round-trips the exported structure deterministically.
 - **Collection folder workflow in Git Sync:** the Git Sync panel includes a `Collection Folder` section for exporting the selected collection, importing a folder-backed collection, and checking drift between the in-app collection and the folder projection.
 - **Headless collection runner foundation:** the desktop executable now supports `adomnia run <collection-folder>` without opening the Wails UI. The runner imports folder-backed collections, executes supported HTTP requests through the Go transport, supports CLI/JSON reports, `--out`, `--bail`, `--env`, and `--env-var KEY=VALUE`.
+- **CI-ready runner output:** the headless runner now supports `--folder` for focused folder runs and `--reporter junit` for pipeline-readable XML reports.
 - **Shared request execution contract:** GUI and headless execution now share a stable request-resolution layer for variables, path params, query/header/body resolution, simple auth, and assertion evaluation.
 
 ### Changed

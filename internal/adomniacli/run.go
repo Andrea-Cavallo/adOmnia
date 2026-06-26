@@ -2,6 +2,7 @@ package adomniacli
 
 import (
 	"encoding/json"
+	"encoding/xml"
 	"flag"
 	"fmt"
 	"io"
@@ -35,6 +36,11 @@ type RequestResult struct {
 	Message  string `json:"message,omitempty"`
 }
 
+type requestWithPath struct {
+	requestNode
+	FolderPath []string
+}
+
 type requestNode struct {
 	requestcontract.Request
 }
@@ -51,6 +57,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	outPath := fs.String("out", "", "write reporter output to file")
 	bail := fs.Bool("bail", false, "stop on first failed request")
 	envName := fs.String("env", "", "environment name loaded from environments/<name>.json")
+	folderFilter := fs.String("folder", "", "run only requests under a folder name, id, or slash path")
 	envVars := envVarFlags{}
 	fs.Var(envVars, "env-var", "override environment variable KEY=VALUE")
 	flagArgs, folder := splitRunArgs(args[1:])
@@ -58,7 +65,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	if strings.TrimSpace(folder) == "" {
-		fmt.Fprintln(stderr, "usage: adomnia run <collection-folder> [--reporter cli|json] [--out file] [--bail]")
+		fmt.Fprintln(stderr, "usage: adomnia run <collection-folder> [--folder name] [--env name] [--env-var KEY=VALUE] [--reporter cli|json|junit] [--out file] [--bail]")
 		return 2
 	}
 
@@ -75,7 +82,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	for key, value := range envVars {
 		vars[key] = value
 	}
-	summary := executeCollection(collection, *bail, vars)
+	summary := executeCollection(collection, *bail, vars, *folderFilter)
 	rendered, err := renderSummary(summary, *reporter)
 	if err != nil {
 		fmt.Fprintf(stderr, "adomnia run: %v\n", err)
@@ -103,13 +110,13 @@ func splitRunArgs(args []string) ([]string, string) {
 		switch {
 		case arg == "-bail" || arg == "--bail":
 			flagArgs = append(flagArgs, arg)
-		case arg == "-reporter" || arg == "--reporter" || arg == "-out" || arg == "--out" || arg == "-env" || arg == "--env" || arg == "-env-var" || arg == "--env-var":
+		case arg == "-reporter" || arg == "--reporter" || arg == "-out" || arg == "--out" || arg == "-env" || arg == "--env" || arg == "-env-var" || arg == "--env-var" || arg == "-folder" || arg == "--folder":
 			flagArgs = append(flagArgs, arg)
 			if i+1 < len(args) {
 				i++
 				flagArgs = append(flagArgs, args[i])
 			}
-		case strings.HasPrefix(arg, "-reporter=") || strings.HasPrefix(arg, "--reporter=") || strings.HasPrefix(arg, "-out=") || strings.HasPrefix(arg, "--out=") || strings.HasPrefix(arg, "-env=") || strings.HasPrefix(arg, "--env=") || strings.HasPrefix(arg, "-env-var=") || strings.HasPrefix(arg, "--env-var="):
+		case strings.HasPrefix(arg, "-reporter=") || strings.HasPrefix(arg, "--reporter=") || strings.HasPrefix(arg, "-out=") || strings.HasPrefix(arg, "--out=") || strings.HasPrefix(arg, "-env=") || strings.HasPrefix(arg, "--env=") || strings.HasPrefix(arg, "-env-var=") || strings.HasPrefix(arg, "--env-var=") || strings.HasPrefix(arg, "-folder=") || strings.HasPrefix(arg, "--folder="):
 			flagArgs = append(flagArgs, arg)
 		case folder == "":
 			folder = arg
@@ -133,11 +140,11 @@ func (v envVarFlags) Set(value string) error {
 	return nil
 }
 
-func executeCollection(collection collectionfs.Collection, bail bool, vars map[string]string) RunSummary {
-	requests := flattenRequests(collection.Children)
+func executeCollection(collection collectionfs.Collection, bail bool, vars map[string]string, folderFilter string) RunSummary {
+	requests := filterRequests(flattenRequests(collection.Children, nil), folderFilter)
 	summary := RunSummary{Collection: collection.Name, Total: len(requests)}
 	for _, req := range requests {
-		result := executeRequest(req, vars)
+		result := executeRequest(req.requestNode, vars)
 		summary.Results = append(summary.Results, result)
 		switch result.Outcome {
 		case "passed":
@@ -154,11 +161,12 @@ func executeCollection(collection collectionfs.Collection, bail bool, vars map[s
 	return summary
 }
 
-func flattenRequests(nodes []collectionfs.Node) []requestNode {
-	out := []requestNode{}
+func flattenRequests(nodes []collectionfs.Node, folderPath []string) []requestWithPath {
+	out := []requestWithPath{}
 	for _, node := range nodes {
 		if node.Type == "folder" {
-			out = append(out, flattenRequests(node.Children)...)
+			nextPath := append(append([]string{}, folderPath...), node.Name, node.ID)
+			out = append(out, flattenRequests(node.Children, nextPath)...)
 			continue
 		}
 		if node.Type != "request" {
@@ -166,10 +174,42 @@ func flattenRequests(nodes []collectionfs.Node) []requestNode {
 		}
 		var req requestNode
 		if err := json.Unmarshal(node.Raw, &req); err == nil {
-			out = append(out, req)
+			out = append(out, requestWithPath{requestNode: req, FolderPath: folderPath})
 		}
 	}
 	return out
+}
+
+func filterRequests(requests []requestWithPath, folderFilter string) []requestWithPath {
+	needle := normalizeFolderFilter(folderFilter)
+	if needle == "" {
+		return requests
+	}
+	out := []requestWithPath{}
+	for _, req := range requests {
+		candidates := []string{}
+		for _, part := range req.FolderPath {
+			candidates = append(candidates, normalizeFolderFilter(part))
+		}
+		pathParts := make([]string, 0, len(req.FolderPath))
+		for index, part := range req.FolderPath {
+			if index%2 == 0 {
+				pathParts = append(pathParts, part)
+			}
+		}
+		candidates = append(candidates, normalizeFolderFilter(strings.Join(pathParts, "/")))
+		for _, candidate := range candidates {
+			if candidate == needle {
+				out = append(out, req)
+				break
+			}
+		}
+	}
+	return out
+}
+
+func normalizeFolderFilter(value string) string {
+	return strings.ToLower(strings.Trim(strings.ReplaceAll(value, "\\", "/"), "/ "))
 }
 
 func executeRequest(req requestNode, vars map[string]string) RequestResult {
@@ -252,6 +292,8 @@ func renderSummary(summary RunSummary, reporter string) ([]byte, error) {
 			return nil, err
 		}
 		return append(data, '\n'), nil
+	case "junit":
+		return renderJUnit(summary)
 	case "cli", "":
 		var b strings.Builder
 		fmt.Fprintf(&b, "adOmnia run: %s\n", summary.Collection)
@@ -270,6 +312,68 @@ func renderSummary(summary RunSummary, reporter string) ([]byte, error) {
 	default:
 		return nil, fmt.Errorf("unknown reporter %q", reporter)
 	}
+}
+
+type junitTestsuite struct {
+	XMLName  xml.Name        `xml:"testsuite"`
+	Name     string          `xml:"name,attr"`
+	Tests    int             `xml:"tests,attr"`
+	Failures int             `xml:"failures,attr"`
+	Skipped  int             `xml:"skipped,attr"`
+	Time     string          `xml:"time,attr"`
+	Cases    []junitTestcase `xml:"testcase"`
+}
+
+type junitTestcase struct {
+	Name      string        `xml:"name,attr"`
+	Classname string        `xml:"classname,attr"`
+	Time      string        `xml:"time,attr"`
+	Failure   *junitFailure `xml:"failure,omitempty"`
+	Skipped   *junitSkipped `xml:"skipped,omitempty"`
+}
+
+type junitFailure struct {
+	Message string `xml:"message,attr"`
+	Text    string `xml:",chardata"`
+}
+
+type junitSkipped struct {
+	Message string `xml:"message,attr,omitempty"`
+}
+
+func renderJUnit(summary RunSummary) ([]byte, error) {
+	suite := junitTestsuite{
+		Name:     summary.Collection,
+		Tests:    summary.Total,
+		Failures: summary.Failed,
+		Skipped:  summary.Skipped,
+	}
+	var totalMs int64
+	for _, result := range summary.Results {
+		totalMs += result.Duration
+		testcase := junitTestcase{
+			Name:      result.Name,
+			Classname: summary.Collection,
+			Time:      secondsString(result.Duration),
+		}
+		if result.Outcome == "failed" {
+			testcase.Failure = &junitFailure{Message: result.Message, Text: fmt.Sprintf("%s %s returned status %d", result.Method, result.URL, result.Status)}
+		}
+		if result.Outcome == "skipped" {
+			testcase.Skipped = &junitSkipped{Message: result.Message}
+		}
+		suite.Cases = append(suite.Cases, testcase)
+	}
+	suite.Time = secondsString(totalMs)
+	data, err := xml.MarshalIndent(suite, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	return append([]byte(xml.Header), append(data, '\n')...), nil
+}
+
+func secondsString(ms int64) string {
+	return fmt.Sprintf("%.3f", float64(ms)/1000)
 }
 
 func mustJSON(v any) string {
