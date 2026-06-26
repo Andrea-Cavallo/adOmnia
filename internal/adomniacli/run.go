@@ -48,7 +48,13 @@ type requestNode struct {
 type envVarFlags map[string]string
 
 func Run(args []string, stdout, stderr io.Writer) int {
-	if len(args) == 0 || args[0] != "run" {
+	if len(args) == 0 {
+		return 0
+	}
+	if args[0] == "lint" {
+		return Lint(args[1:], stdout, stderr)
+	}
+	if args[0] != "run" {
 		return 0
 	}
 	fs := flag.NewFlagSet("adomnia run", flag.ContinueOnError)

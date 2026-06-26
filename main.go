@@ -44,7 +44,7 @@ const (
 var startupWindowChrome = readStartupWindowChrome()
 
 func main() {
-	if len(os.Args) > 1 && os.Args[1] == "run" {
+	if len(os.Args) > 1 && (os.Args[1] == "run" || os.Args[1] == "lint") {
 		os.Exit(adomniacli.Run(os.Args[1:], os.Stdout, os.Stderr))
 	}
 

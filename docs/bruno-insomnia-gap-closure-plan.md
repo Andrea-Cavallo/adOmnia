@@ -343,6 +343,8 @@ Done quando:
 
 Obiettivo: creare il motore locale di linting OpenAPI prima di esporlo in CLI/UI.
 
+Stato 2026-06-26: completata la base engine in `internal/oaslint/`.
+
 Package:
 
 - `internal/oaslint/`
@@ -375,13 +377,15 @@ Output:
 
 Done quando:
 
-- una spec valida passa
-- una spec con violazioni produce risultati stabili
-- severity `error` e' distinguibile per exit code CLI
+- [x] una spec valida passa
+- [x] una spec con violazioni produce risultati stabili
+- [x] severity `error` e' distinguibile per exit code CLI
 
 ## Fase 2B - CLI lint
 
 Obiettivo: portare in CI il linting OpenAPI in stile `inso lint spec`.
+
+Stato 2026-06-26: completata la CLI `adomnia lint` sopra il motore `internal/oaslint`.
 
 Comando:
 
@@ -398,8 +402,8 @@ Regole:
 
 Done quando:
 
-- una pipeline puo' fallire su governance OpenAPI
-- il risultato e' leggibile sia da umani sia da CI
+- [x] una pipeline puo' fallire su governance OpenAPI
+- [x] il risultato e' leggibile sia da umani sia da CI
 
 ## Fase 3 - Ereditarieta' collection/folder
 

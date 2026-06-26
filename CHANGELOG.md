@@ -12,6 +12,8 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - **Headless collection runner foundation:** the desktop executable now supports `adomnia run <collection-folder>` without opening the Wails UI. The runner imports folder-backed collections, executes supported HTTP requests through the Go transport, supports CLI/JSON reports, `--out`, `--bail`, `--env`, and `--env-var KEY=VALUE`.
 - **CI-ready runner output:** the headless runner now supports `--folder` for focused folder runs and `--reporter junit` for pipeline-readable XML reports.
 - **Shared request execution contract:** GUI and headless execution now share a stable request-resolution layer for variables, path params, query/header/body resolution, simple auth, and assertion evaluation.
+- **OpenAPI governance lint engine:** added the local `internal/oaslint` engine with built-in rules for operation IDs, descriptions, response coverage, JSON response schemas, tags, security requirements, path naming, duplicate operation IDs, local ruleset overrides, and structured JSON/text reporting.
+- **CI-ready OpenAPI lint CLI:** the desktop executable now supports `adomnia lint <openapi.json|openapi.yaml|collection-folder>` with `--ruleset`, `--reporter text|json`, `--out`, and `--fail-on-warn`, returning non-zero exit codes for blocking governance errors.
 
 ### Changed
 - **Request sending now records a resolved request contract before transport:** the existing GUI send path still calls the same backend transport, but the resolved request shape is now explicit and covered by tests.
