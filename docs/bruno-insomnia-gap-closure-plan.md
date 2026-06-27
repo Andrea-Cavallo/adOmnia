@@ -504,11 +504,19 @@ UI:
 - click su violazione porta alla posizione o all'operation interessata
 - stile coerente con Contract tab, non pannello separato decorativo
 
+Stato implementato:
+
+- [x] vista Governance integrata nella surface API Docs
+- [x] binding Wails sottile sopra lo stesso `internal/oaslint` usato dalla CLI
+- [x] badge e filtri per errori, warning e info
+- [x] click su finding porta all'operation nella vista Docs
+- [x] ruleset JSON locale persistito sul device e rilanciabile dalla UI
+
 Done quando:
 
-- una spec con violazioni mostra errori in UI
-- una regola custom locale cambia il risultato
-- lo stesso engine alimenta UI e CLI
+- [x] una spec con violazioni mostra errori in UI
+- [x] una regola custom locale cambia il risultato
+- [x] lo stesso engine alimenta UI e CLI
 
 ## Sequenza consigliata
 

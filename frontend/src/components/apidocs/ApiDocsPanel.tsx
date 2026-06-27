@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { BookOpen, Boxes, Link2, ClipboardPaste, AlertCircle, Loader2, X, Save, Sparkles } from 'lucide-react'
+import { BookOpen, Boxes, Link2, ClipboardPaste, AlertCircle, Loader2, X, Save, Sparkles, ShieldCheck } from 'lucide-react'
 import { useCollectionsStore } from '@/stores/collections'
 import { collectionsToOAS } from '@/lib/oasExport'
 import { executeRequest } from '@/lib/executeRequest'
@@ -8,6 +8,8 @@ import { parseSpecText, buildApiDocModel, type ApiDocModel } from '@/lib/apidocs
 import { generateApiDocsWithAI, improveApiDocsWithAI } from '@/lib/apidocs/aiDocs'
 import { ApiDocsViewer } from './ApiDocsViewer'
 import { useSettingsStore } from '@/stores/settings'
+import { OASGovernancePanel } from './OASGovernancePanel'
+import type { OASLintFinding } from '@/lib/oaslint-api'
 
 type SourceTab = 'collection' | 'url' | 'paste'
 
@@ -26,6 +28,7 @@ export function ApiDocsPanel() {
   const [saveCollectionId, setSaveCollectionId] = useState('')
   const [url, setUrl] = useState('')
   const [pasteText, setPasteText] = useState('')
+  const [loadedView, setLoadedView] = useState<'docs' | 'governance'>('docs')
   const fileRef = useRef<HTMLInputElement>(null)
 
   const load = (raw: string) => {
@@ -40,6 +43,7 @@ export function ApiDocsPanel() {
       }
       setRawSpec(raw)
       setModel(built)
+      setLoadedView('docs')
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Could not parse the document')
     }
@@ -159,11 +163,26 @@ export function ApiDocsPanel() {
   }
 
   if (model) {
+    const openFinding = (finding: OASLintFinding) => {
+      if (!finding.path || !finding.method) return
+      const target = `${finding.method.toUpperCase()} ${finding.path}`
+      setLoadedView('docs')
+      window.setTimeout(() => {
+        const element = Array.from(document.querySelectorAll<HTMLElement>('[data-oas-operation]'))
+          .find((candidate) => candidate.dataset.oasOperation === target)
+        element?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        element?.querySelector<HTMLButtonElement>('button')?.focus()
+      }, 0)
+    }
     return (
       <div className="flex h-full min-h-0 flex-1 flex-col">
         <div className="flex items-center gap-2 border-b border-border-1 bg-surface-1 px-3 py-1.5">
           <BookOpen size={14} className="text-accent" />
           <span className="text-[12px] font-medium text-text-2">API Docs</span>
+          <div className="ml-2 flex h-7 items-center rounded border border-border-2 bg-surface-0 p-0.5">
+            <button onClick={() => setLoadedView('docs')} className={`flex h-6 items-center gap-1 rounded px-2 text-[10px] ${loadedView === 'docs' ? 'bg-surface-2 text-text-1' : 'text-text-4 hover:text-text-2'}`}><BookOpen size={11} /> Docs</button>
+            <button onClick={() => setLoadedView('governance')} className={`flex h-6 items-center gap-1 rounded px-2 text-[10px] ${loadedView === 'governance' ? 'bg-surface-2 text-text-1' : 'text-text-4 hover:text-text-2'}`}><ShieldCheck size={11} /> Governance</button>
+          </div>
           <select
             value={saveCollectionId}
             onChange={(e) => {
@@ -209,7 +228,9 @@ export function ApiDocsPanel() {
             {error || saveStatus}
           </div>
         )}
-        <ApiDocsViewer model={model} />
+        {loadedView === 'docs'
+          ? <ApiDocsViewer model={model} />
+          : <OASGovernancePanel rawSpec={rawSpec} onOpenOperation={openFinding} />}
       </div>
     )
   }

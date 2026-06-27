@@ -64,7 +64,7 @@ All releases include `SHA256SUMS.txt` and source code archives. Verify your down
 | Area | What you get |
 |---|---|
 | **API Workspace** | Multiple local workspaces with independent collections and tabs, HTTP client (all methods), environments, `{{variable}}` substitution, OAuth2 PKCE, AWS Signature v4, Digest, cURL/OpenAPI import, scripts, assertions, code generation, response history, deterministic collection-folder export/import |
-| **API Design (spec-first)** | Native OpenAPI 3.x / Swagger 2.x import (file/URL/paste) and round-trip export (JSON/YAML), **Visual OpenAPI Editor** (form-based endpoints, no YAML), read-only **API Docs / Swagger viewer**, local OpenAPI governance linting for CI |
+| **API Design (spec-first)** | Native OpenAPI 3.x / Swagger 2.x import (file/URL/paste) and round-trip export (JSON/YAML), **Visual OpenAPI Editor** (form-based endpoints, no YAML), **API Docs / Swagger viewer** with integrated governance findings, local OpenAPI linting in the desktop UI and CI |
 | **API Catalog** | Installable public REST API starters, including curated no-auth/free endpoints inspired by `public-apis/public-apis`, imported directly into local adOmnia collections |
 | **Collection Runner & Testing** | Test runner with iterations/delay/retry/CSV datasets, assertion editor (JSONPath, XPath, schema), Mermaid-generated API flows, **no-code Visual Test builder** (block-based, export to Flow), **response schema/contract validation**, test data studio, and a headless `adomnia run` CLI for folder-backed collections with CLI/JSON/JUnit reports |
 | **Protocols** | SOAP/WSDL Studio (1.1 & 1.2, WS-Security), gRPC (server reflection, unary + streaming), WebSocket client + mock server, SSE client, **MCP Client/Debugger** + **MCP Server Generator** (collection/OAS → runnable MCP server; stdio multi-session + HTTP transport) |
@@ -131,6 +131,8 @@ adomnia lint ./my-collection --ruleset adomnia.oaslint.json --fail-on-warn
 ```
 
 The built-in local rules check operation IDs, summaries/descriptions, response coverage, JSON response schemas, tags, security requirements, path naming, and duplicate operation IDs. `error` findings return a non-zero exit code; warnings are non-blocking unless `--fail-on-warn` is set.
+
+The same engine is available in **API Docs > Governance**. It shows error/warning/info badges, searchable findings, operation navigation, and a local JSON ruleset whose overrides are persisted only on the machine.
 
 ### Build from source
 

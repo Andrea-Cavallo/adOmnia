@@ -40,6 +40,9 @@ interface WailsGoMain {
         ImportCollectionFromFolder: (folderPath: string) => Promise<string>
         InspectCollectionFolder: (folderPath: string, collectionJSON: string) => Promise<string>
       }
+      OASLint: {
+        Lint: (specText: string, rulesetJSON: string) => Promise<string>
+      }
   AIEngine: {
     Configure: (configJSON: string) => Promise<void>
     TestConnection: (configJSON: string) => Promise<string>

@@ -65,6 +65,7 @@ func main() {
 	mcpClient := NewMCPClient()
 	mcpServerGenerator := NewMCPServerGenerator()
 	collectionFS := NewCollectionFS()
+	oasLint := NewOASLint()
 
 	appOptions := &options.App{
 		Title:     "adOmnia paratus.",
@@ -98,6 +99,7 @@ func main() {
 			mcpClient,
 			mcpServerGenerator,
 			collectionFS,
+			oasLint,
 		},
 		Windows: &windows.Options{
 			WebviewIsTransparent:              false,
