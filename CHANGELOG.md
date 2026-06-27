@@ -6,6 +6,8 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-06-27
+
 ### Added
 - **Versionable collection folders:** collections can now be exported as deterministic, diff-friendly folders with stable metadata, folder/request JSON files, Windows-safe names, and a sync manifest. The importer reconstructs the collection tree from disk and round-trips the exported structure deterministically.
 - **Collection folder workflow in Git Sync:** the Git Sync panel includes a `Collection Folder` section for exporting the selected collection, importing a folder-backed collection, and checking drift between the in-app collection and the folder projection.
@@ -24,7 +26,7 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - **Request sending now records a resolved request contract before transport:** the existing GUI send path still calls the same backend transport, but the resolved request shape is now explicit and covered by tests.
 
 ### Notes
-- The headless runner intentionally reports unsupported areas instead of pretending parity: OAuth browser flows, AWS signing, Vault-backed secrets, full cookie jar sharing, and advanced multipart upload support remain future parity work.
+- Interactive OAuth authorization-code/PKCE remains a desktop browser flow. Headless automation uses client credentials, password, or refresh-token grants, and injects Vault-backed values through explicit process environment variables without exposing ciphertext or plaintext in reports.
 
 ## [0.4.8] - 2026-06-25
 
