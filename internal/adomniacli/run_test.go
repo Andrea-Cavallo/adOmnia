@@ -91,6 +91,55 @@ func TestRunResolvesEnvVarOverrides(t *testing.T) {
 	}
 }
 
+func TestRunLoadsDotEnvWithExpectedPrecedence(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("X-Source"); got != "cli" {
+			t.Fatalf("X-Source = %q, want cli", got)
+		}
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer server.Close()
+
+	root := exportTestCollection(t, "{{baseUrl}}", "201")
+	requestPath := filepath.Join(root, "folders", "001-cli-probe.request.json")
+	data, err := os.ReadFile(requestPath)
+	if err != nil {
+		t.Fatalf("read request: %v", err)
+	}
+	var request map[string]any
+	if err := json.Unmarshal(data, &request); err != nil {
+		t.Fatalf("decode request: %v", err)
+	}
+	request["headers"] = []map[string]any{{"id": "source", "key": "X-Source", "value": "{{source}}", "enabled": true}}
+	data, _ = json.MarshalIndent(request, "", "  ")
+	if err := os.WriteFile(requestPath, append(data, '\n'), 0644); err != nil {
+		t.Fatalf("write request: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".env"), []byte("baseUrl='"+server.URL+"'\nsource=dotenv\n"), 0644); err != nil {
+		t.Fatalf("write .env: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "environments"), 0755); err != nil {
+		t.Fatalf("create environments: %v", err)
+	}
+	environment := `{"variables":[{"key":"source","value":"environment","enabled":true}]}`
+	if err := os.WriteFile(filepath.Join(root, "environments", "ci.json"), []byte(environment), 0644); err != nil {
+		t.Fatalf("write environment: %v", err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	code := Run([]string{"run", root, "--env", "ci", "--env-var", "source=cli", "--reporter", "json"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("Run code = %d, stdout = %s, stderr = %s", code, stdout.String(), stderr.String())
+	}
+	var summary RunSummary
+	if err := json.Unmarshal(stdout.Bytes(), &summary); err != nil {
+		t.Fatalf("decode summary: %v", err)
+	}
+	if summary.VariableSources["baseUrl"] != ".env" || summary.VariableSources["source"] != "cli" {
+		t.Fatalf("variable sources = %#v", summary.VariableSources)
+	}
+}
+
 func TestRunAppliesCollectionAndFolderInheritance(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if got := r.Header.Get("Authorization"); got != "Bearer inherited-token" {

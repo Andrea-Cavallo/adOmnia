@@ -193,6 +193,7 @@ export interface EnvVariable {
 export interface Environment {
   id: string
   name: string
+  private?: boolean
   variables: EnvVariable[]
 }
 

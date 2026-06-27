@@ -12,6 +12,7 @@ interface EnvBarProps {
   onDelete: (id: string) => void
   onRename: (id: string, name: string) => void
   onUpdateVars: (envId: string, variables: EnvVariable[]) => void
+  onSetPrivate: (envId: string, value: boolean) => void
 }
 
 export function EnvBar({
@@ -22,6 +23,7 @@ export function EnvBar({
   onDelete,
   onRename,
   onUpdateVars,
+  onSetPrivate,
 }: EnvBarProps) {
   const [showModal, setShowModal] = useState(false)
   const [adding, setAdding] = useState(false)
@@ -182,6 +184,7 @@ export function EnvBar({
           onDelete={onDelete}
           onRename={onRename}
           onUpdateVars={onUpdateVars}
+          onSetPrivate={onSetPrivate}
         />
       )}
     </>

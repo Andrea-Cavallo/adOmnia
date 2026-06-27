@@ -1,5 +1,5 @@
-export function ExportCollectionToFolder(folderPath: string, collectionJSON: string): Promise<void> {
-  return window['go']['main']['CollectionFS']['ExportCollectionToFolder'](folderPath, collectionJSON)
+export function ExportCollectionToFolder(folderPath: string, collectionJSON: string, environmentsJSON: string): Promise<void> {
+  return window['go']['main']['CollectionFS']['ExportCollectionToFolder'](folderPath, collectionJSON, environmentsJSON)
 }
 
 export function ImportCollectionFromFolder(folderPath: string): Promise<string> {

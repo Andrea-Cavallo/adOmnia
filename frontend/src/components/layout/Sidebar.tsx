@@ -53,6 +53,7 @@ export function Sidebar() {
   const addEnvironment = useEnvironmentsStore((s) => s.addEnvironment)
   const deleteEnvironment = useEnvironmentsStore((s) => s.deleteEnvironment)
   const renameEnvironment = useEnvironmentsStore((s) => s.renameEnvironment)
+  const setEnvironmentPrivate = useEnvironmentsStore((s) => s.setEnvironmentPrivate)
   const updateVariables = useEnvironmentsStore((s) => s.updateVariables)
 
   const hostsProfiles = useHostsStore((s) => s.profiles)
@@ -157,6 +158,7 @@ export function Sidebar() {
         onDelete={deleteEnvironment}
         onRename={renameEnvironment}
         onUpdateVars={updateVariables}
+        onSetPrivate={setEnvironmentPrivate}
       />
       <HostBar
         profiles={hostsProfiles}

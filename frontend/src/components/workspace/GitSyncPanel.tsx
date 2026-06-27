@@ -32,6 +32,7 @@ import { safeSelectFolder } from '@/lib/fileUtils'
 import { addRepo, loadLastRepo, loadPinnedBranches, loadRepos, removeRepo, saveLastRepo, toggleBranchPin, toggleRepoPin, type SavedRepo } from '@/lib/gitRepos'
 import { exportCollectionToFolder, hasCollectionFSBinding, importCollectionFromFolder, inspectCollectionFolder } from '@/lib/collectionfs-api'
 import { useCollectionsStore } from '@/stores/collections'
+import { useEnvironmentsStore } from '@/stores/environments'
 import { GitCompareTab } from './GitCompareTab'
 import { GitActionsTab } from './GitActionsTab'
 import { DiffModal } from '@/components/response/DiffView'
@@ -266,6 +267,7 @@ function collectionFolderPath(repoPath: string, collectionId: string, collection
 }
 
 export function GitSyncPanel() {
+  const environments = useEnvironmentsStore((state) => state.environments)
   const collections = useCollectionsStore((state) => state.collections)
   const importCollection = useCollectionsStore((state) => state.importCollection)
   const [repoPath, setRepoPath] = useState(() => loadLastRepo())
@@ -606,7 +608,7 @@ export function GitSyncPanel() {
   const exportSelectedCollection = () => runCollectionFolderAction(async () => {
     if (!repoPath) throw new Error('Repository path required')
     if (!selectedCollection) throw new Error('Select a collection first')
-    await exportCollectionToFolder(targetCollectionFolder, selectedCollection)
+    await exportCollectionToFolder(targetCollectionFolder, selectedCollection, environments)
   }, selectedCollection ? `Exported "${selectedCollection.name}" to adomnia-collections.` : 'Collection exported.')
 
   const importCollectionFolder = () => runCollectionFolderAction(async () => {

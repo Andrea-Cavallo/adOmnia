@@ -472,11 +472,22 @@ Private environments:
 - un environment private non entra nel Git workflow
 - resta solo in bbolt locale
 
+Stato implementato:
+
+- [x] runner carica `.env` solo dalla root della collection folder
+- [x] reporter CLI/JSON marca la provenienza delle variabili runtime (`.env`, environment, CLI)
+- [x] precedenza: collection variables < `.env` < environment nominato < `--env-var`
+- [x] export genera `.gitignore` con `.env`
+- [x] editor Environment espone il flag Private persistito in bbolt
+- [x] export collection folder e workspace file escludono gli environment privati
+- [x] secret pubblici vengono esportati come placeholder vuoti
+- [x] il re-export rimuove file environment rimasti da una precedente export pubblica
+
 Done quando:
 
-- `{{KEY}}` si risolve da `.env`
-- `.env` e' ignorato da Git di default
-- environment private non compare mai nell'export folder
+- [x] `{{KEY}}` si risolve da `.env`
+- [x] `.env` e' ignorato da Git di default
+- [x] environment private non compare mai nell'export folder
 
 ## Fase 5B - UI OpenAPI governance
 

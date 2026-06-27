@@ -1,5 +1,5 @@
 import * as CollectionFSBinding from '@/wailsjs/go/main/CollectionFS'
-import type { Collection } from '@/lib/types'
+import type { Collection, Environment } from '@/lib/types'
 
 export interface CollectionFolderDriftReport {
   schemaVersion: string
@@ -20,11 +20,22 @@ export function hasCollectionFSBinding(): boolean {
   return Boolean(w.go?.main?.CollectionFS)
 }
 
-export async function exportCollectionToFolder(folderPath: string, collection: Collection): Promise<void> {
+export async function exportCollectionToFolder(folderPath: string, collection: Collection, environments: Environment[]): Promise<void> {
   if (!hasCollectionFSBinding()) {
     throw new Error('Collection folder bridge not available')
   }
-  await CollectionFSBinding.ExportCollectionToFolder(folderPath, JSON.stringify(collection))
+  const exportableEnvironments = environments.map((environment) => ({
+    id: environment.id,
+    name: environment.name,
+    private: environment.private === true,
+    variables: environment.variables.map((variable) => ({
+      key: variable.key,
+      value: variable.value,
+      enabled: variable.enabled,
+      secret: variable.type === 'secret',
+    })),
+  }))
+  await CollectionFSBinding.ExportCollectionToFolder(folderPath, JSON.stringify(collection), JSON.stringify(exportableEnvironments))
 }
 
 export async function importCollectionFromFolder(folderPath: string): Promise<Collection> {

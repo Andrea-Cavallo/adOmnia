@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -194,6 +195,43 @@ func TestExportImportPreservesInheritanceMetadataAndMasksSecrets(t *testing.T) {
 	}
 	if len(imported.Children) != 1 || len(imported.Children[0].Headers) != 1 || imported.Children[0].Headers[0].Key != "X-Tenant" {
 		t.Fatalf("folder headers = %#v", imported.Children)
+	}
+}
+
+func TestExportOmitsPrivateEnvironmentsAndRemovesStaleFiles(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "collection")
+	collection := Collection{ID: "col-env", Name: "Environment Export", Children: []Node{}}
+	public := Environment{
+		ID: "env-public", Name: "Development",
+		Variables: []requestcontract.Variable{{Key: "BASE_URL", Value: "https://example.test", Enabled: true}, {Key: "TOKEN", Value: "secret", Enabled: true, Secret: true}},
+	}
+	private := Environment{ID: "env-private", Name: "Local Secrets", Private: true, Variables: []requestcontract.Variable{{Key: "PASSWORD", Value: "never-export", Enabled: true, Secret: true}}}
+	if err := ExportCollection(root, collection, ExportOptions{Environments: []Environment{public, private}}); err != nil {
+		t.Fatalf("export failed: %v", err)
+	}
+	publicPath := filepath.Join(root, "environments", "development.json")
+	data, err := os.ReadFile(publicPath)
+	if err != nil {
+		t.Fatalf("read public environment: %v", err)
+	}
+	if strings.Contains(string(data), `"value": "secret"`) || strings.Contains(string(data), "never-export") {
+		t.Fatalf("export contains a secret value: %s", data)
+	}
+	entries, err := os.ReadDir(filepath.Join(root, "environments"))
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("environment files = %d, err = %v; want one public file", len(entries), err)
+	}
+
+	public.Private = true
+	if err := ExportCollection(root, collection, ExportOptions{Environments: []Environment{public, private}}); err != nil {
+		t.Fatalf("private re-export failed: %v", err)
+	}
+	if _, err := os.Stat(publicPath); !os.IsNotExist(err) {
+		t.Fatalf("stale environment file remains after becoming private: %v", err)
+	}
+	gitignore, err := os.ReadFile(filepath.Join(root, ".gitignore"))
+	if err != nil || !strings.Contains(string(gitignore), ".env\n") {
+		t.Fatalf(".gitignore does not ignore .env: %q, err = %v", gitignore, err)
 	}
 }
 

@@ -1,6 +1,7 @@
 package adomniacli
 
 import (
+	"bufio"
 	"encoding/json"
 	"encoding/xml"
 	"flag"
@@ -8,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -18,12 +20,13 @@ import (
 )
 
 type RunSummary struct {
-	Collection string          `json:"collection"`
-	Total      int             `json:"total"`
-	Passed     int             `json:"passed"`
-	Failed     int             `json:"failed"`
-	Skipped    int             `json:"skipped"`
-	Results    []RequestResult `json:"results"`
+	Collection      string            `json:"collection"`
+	VariableSources map[string]string `json:"variableSources,omitempty"`
+	Total           int               `json:"total"`
+	Passed          int               `json:"passed"`
+	Failed          int               `json:"failed"`
+	Skipped         int               `json:"skipped"`
+	Results         []RequestResult   `json:"results"`
 }
 
 type RequestResult struct {
@@ -72,15 +75,29 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "adomnia run: %v\n", err)
 		return 2
 	}
-	vars, err := loadEnvironmentVars(folder, *envName)
+	vars, err := loadDotEnvVars(folder)
 	if err != nil {
 		fmt.Fprintf(stderr, "adomnia run: %v\n", err)
 		return 2
 	}
+	variableSources := make(map[string]string, len(vars))
+	for key := range vars {
+		variableSources[key] = ".env"
+	}
+	environmentVars, err := loadEnvironmentVars(folder, *envName)
+	if err != nil {
+		fmt.Fprintf(stderr, "adomnia run: %v\n", err)
+		return 2
+	}
+	for key, value := range environmentVars {
+		vars[key] = value
+		variableSources[key] = "environment:" + *envName
+	}
 	for key, value := range envVars {
 		vars[key] = value
+		variableSources[key] = "cli"
 	}
-	summary := executeCollection(collection, *bail, vars, *folderFilter)
+	summary := executeCollection(collection, *bail, vars, variableSources, *folderFilter)
 	rendered, err := renderSummary(summary, *reporter)
 	if err != nil {
 		fmt.Fprintf(stderr, "adomnia run: %v\n", err)
@@ -98,6 +115,48 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	return 0
+}
+
+func loadDotEnvVars(root string) (map[string]string, error) {
+	vars := map[string]string{}
+	path := filepath.Join(root, ".env")
+	file, err := os.Open(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return vars, nil
+		}
+		return nil, fmt.Errorf("read .env: %w", err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	lineNumber := 0
+	for scanner.Scan() {
+		lineNumber++
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		line = strings.TrimSpace(strings.TrimPrefix(line, "export "))
+		key, value, ok := strings.Cut(line, "=")
+		key = strings.TrimSpace(key)
+		if !ok || key == "" {
+			return nil, fmt.Errorf("decode .env line %d: expected KEY=VALUE", lineNumber)
+		}
+		value = strings.TrimSpace(value)
+		if len(value) >= 2 && ((value[0] == '\'' && value[len(value)-1] == '\'') || (value[0] == '"' && value[len(value)-1] == '"')) {
+			quote := value[0]
+			value = value[1 : len(value)-1]
+			if quote == '"' {
+				value = strings.NewReplacer(`\n`, "\n", `\r`, "\r", `\t`, "\t", `\\`, `\`).Replace(value)
+			}
+		}
+		vars[key] = value
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("read .env: %w", err)
+	}
+	return vars, nil
 }
 
 func splitRunArgs(args []string) ([]string, string) {
@@ -138,9 +197,9 @@ func (v envVarFlags) Set(value string) error {
 	return nil
 }
 
-func executeCollection(collection collectionfs.Collection, bail bool, vars map[string]string, folderFilter string) RunSummary {
+func executeCollection(collection collectionfs.Collection, bail bool, vars map[string]string, variableSources map[string]string, folderFilter string) RunSummary {
 	resolved, err := collectionresolve.ResolveRequests(collection)
-	summary := RunSummary{Collection: collection.Name}
+	summary := RunSummary{Collection: collection.Name, VariableSources: variableSources}
 	if err != nil {
 		summary.Total = 1
 		summary.Failed = 1
@@ -296,6 +355,16 @@ func renderSummary(summary RunSummary, reporter string) ([]byte, error) {
 	case "cli", "":
 		var b strings.Builder
 		fmt.Fprintf(&b, "adOmnia run: %s\n", summary.Collection)
+		if len(summary.VariableSources) > 0 {
+			keys := make([]string, 0, len(summary.VariableSources))
+			for key := range summary.VariableSources {
+				keys = append(keys, key)
+			}
+			sort.Strings(keys)
+			for _, key := range keys {
+				fmt.Fprintf(&b, "- variable %s (%s)\n", key, summary.VariableSources[key])
+			}
+		}
 		for _, result := range summary.Results {
 			fmt.Fprintf(&b, "- %s %s %s", result.Outcome, result.Method, result.Name)
 			if result.Status != 0 {

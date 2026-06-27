@@ -97,7 +97,7 @@ From **Git Sync → Collection Folder** you can:
 - import a folder-backed collection into the current workspace
 - check drift between the in-app collection and the files on disk
 
-Folder-backed collections can also carry shared auth, headers, variables, and scripts at collection/folder level. The headless runner resolves them top-down so common bearer tokens, tenant headers, and CI variables do not need to be duplicated in every request.
+Folder-backed collections can also carry shared auth, headers, variables, and scripts at collection/folder level. The headless runner resolves auth, headers, and variables top-down so common bearer tokens, tenant headers, and CI variables do not need to be duplicated in every request; scripts are preserved in the folder format while headless script parity remains in progress.
 
 ### Headless runner
 
@@ -110,13 +110,16 @@ adomnia run ./my-collection --env prod --folder "Smoke" --reporter junit --out r
 Supported today:
 
 - full collection or folder-scoped execution with `--folder`
+- collection-local `.env` loading, ignored by Git by default
 - environment file loading from `environments/<name>.json` with `--env`
-- overrides with `--env-var KEY=VALUE`
+- overrides with `--env-var KEY=VALUE`; precedence is collection variables, `.env`, named environment, then CLI override
 - CLI, JSON, and JUnit reports
 - non-zero exit code on request/assertion failure
 - shared request resolution for variables, path params, query/header/body values, simple auth, and headless assertions
 
 Advanced browser-dependent flows such as interactive OAuth, Vault-backed secrets, shared cookie jar, AWS signing, and multipart upload parity are intentionally reported as unsupported until their headless policies are complete.
+
+Environments can be marked **Private** in the environment editor. Private environments remain in local bbolt storage and are excluded from collection-folder and workspace-file exports. Public environment secrets are exported only as empty placeholders.
 
 ### OpenAPI lint in CI
 

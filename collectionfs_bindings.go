@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"strings"
 )
 
 type CollectionFS struct{}
@@ -13,7 +14,7 @@ func NewCollectionFS() *CollectionFS {
 	return &CollectionFS{}
 }
 
-func (c *CollectionFS) ExportCollectionToFolder(folderPath string, collectionJSON string) error {
+func (c *CollectionFS) ExportCollectionToFolder(folderPath string, collectionJSON string, environmentsJSON string) error {
 	cleanFolder := filepath.Clean(folderPath)
 	if cleanFolder == "." || cleanFolder == "" {
 		return fmt.Errorf("folder path required")
@@ -22,7 +23,13 @@ func (c *CollectionFS) ExportCollectionToFolder(folderPath string, collectionJSO
 	if err := json.Unmarshal([]byte(collectionJSON), &collection); err != nil {
 		return fmt.Errorf("invalid collection JSON: %w", err)
 	}
-	return collectionfs.ExportCollection(cleanFolder, collection, collectionfs.ExportOptions{})
+	var environments []collectionfs.Environment
+	if strings.TrimSpace(environmentsJSON) != "" {
+		if err := json.Unmarshal([]byte(environmentsJSON), &environments); err != nil {
+			return fmt.Errorf("invalid environments JSON: %w", err)
+		}
+	}
+	return collectionfs.ExportCollection(cleanFolder, collection, collectionfs.ExportOptions{Environments: environments})
 }
 
 func (c *CollectionFS) ImportCollectionFromFolder(folderPath string) (string, error) {

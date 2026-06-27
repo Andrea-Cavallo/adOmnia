@@ -84,7 +84,15 @@ func (n Node) MarshalJSON() ([]byte, error) {
 }
 
 type ExportOptions struct {
-	Now time.Time
+	Now          time.Time
+	Environments []Environment
+}
+
+type Environment struct {
+	ID        string                     `json:"id"`
+	Name      string                     `json:"name"`
+	Private   bool                       `json:"private,omitempty"`
+	Variables []requestcontract.Variable `json:"variables"`
 }
 
 type ExportManifest struct {
@@ -147,6 +155,9 @@ func ExportCollection(root string, collection Collection, opts ExportOptions) er
 	if err := writeText(filepath.Join(root, ".gitignore"), ".env\n*.tmp\n.adomnia-sync.local.json\n"); err != nil {
 		return err
 	}
+	if err := writeEnvironments(filepath.Join(root, "environments"), opts.Environments); err != nil {
+		return err
+	}
 	if err := writeJSON(filepath.Join(root, ".adomnia-sync.json"), map[string]any{
 		"schemaVersion": FormatVersion,
 		"collectionId":  collection.ID,
@@ -156,6 +167,39 @@ func ExportCollection(root string, collection Collection, opts ExportOptions) er
 		return err
 	}
 	return writeNodes(filepath.Join(root, "folders"), collection.Children)
+}
+
+func writeEnvironments(dir string, environments []Environment) error {
+	// Rebuild the projection so an environment switched to private cannot leave
+	// a stale tracked file behind.
+	if err := os.RemoveAll(dir); err != nil {
+		return fmt.Errorf("reset environment export: %w", err)
+	}
+	public := make([]Environment, 0, len(environments))
+	for _, environment := range environments {
+		if !environment.Private {
+			public = append(public, environment)
+		}
+	}
+	if len(public) == 0 {
+		return nil
+	}
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("create environment export: %w", err)
+	}
+	used := map[string]int{}
+	for _, environment := range public {
+		if strings.TrimSpace(environment.Name) == "" {
+			continue
+		}
+		name := uniqueName(used, slug(environment.Name)+".json")
+		environment.Private = false
+		environment.Variables = exportableVariables(environment.Variables)
+		if err := writeJSON(filepath.Join(dir, name), environment); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func ImportCollection(root string) (Collection, error) {

@@ -36,7 +36,7 @@ interface WailsGoMain {
     GenerateLab: (ids: string[]) => Promise<LabOutput>
   }
       CollectionFS: {
-        ExportCollectionToFolder: (folderPath: string, collectionJSON: string) => Promise<void>
+        ExportCollectionToFolder: (folderPath: string, collectionJSON: string, environmentsJSON: string) => Promise<void>
         ImportCollectionFromFolder: (folderPath: string) => Promise<string>
         InspectCollectionFolder: (folderPath: string, collectionJSON: string) => Promise<string>
       }
