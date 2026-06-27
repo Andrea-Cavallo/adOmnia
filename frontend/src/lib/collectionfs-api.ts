@@ -1,5 +1,5 @@
 import * as CollectionFSBinding from '@/wailsjs/go/main/CollectionFS'
-import type { Collection, Environment } from '@/lib/types'
+import type { Collection, Environment, RequestItem } from '@/lib/types'
 
 export interface CollectionFolderDriftReport {
   schemaVersion: string
@@ -13,6 +13,11 @@ export interface CollectionFolderDriftReport {
   requestCount: number
   folderRequestCount: number
   message: string
+}
+
+export async function exportRequestToFolder(folderPath: string, request: RequestItem): Promise<string> {
+  if (!hasCollectionFSBinding()) throw new Error('Collection folder bridge not available')
+  return CollectionFSBinding.ExportRequestToFolder(folderPath, JSON.stringify(request))
 }
 
 export function hasCollectionFSBinding(): boolean {

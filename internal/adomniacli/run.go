@@ -16,6 +16,7 @@ import (
 	"adomnia/internal/collectionfs"
 	"adomnia/internal/collectionresolve"
 	"adomnia/internal/httpexec"
+	"adomnia/internal/oascontract"
 	"adomnia/internal/requestcontract"
 )
 
@@ -207,10 +208,28 @@ func executeCollection(collection collectionfs.Collection, bail bool, vars map[s
 		return summary
 	}
 	requests := filterRequests(resolved, folderFilter)
+	contractValidator, contractErr := oascontract.New(collection.OpenAPISpec)
+	if contractErr != nil {
+		summary.Total = 1
+		summary.Failed = 1
+		summary.Results = append(summary.Results, RequestResult{Outcome: "failed", Message: contractErr.Error()})
+		return summary
+	}
+	jarID := fmt.Sprintf("cli-%s-%d", collection.ID, time.Now().UnixNano())
+	defer httpexec.ClearCookieJar(jarID)
 	summary.Total = len(requests)
 	for _, req := range requests {
 		effectiveVars := mergeRunVars(req.Vars, vars)
-		result := executeRequest(req.Request, effectiveVars)
+		resolvedVars, vaultErr := resolveVaultVars(effectiveVars)
+		var result RequestResult
+		if vaultErr != nil {
+			result = RequestResult{ID: req.Request.ID, Name: req.Request.Name, Method: strings.ToUpper(req.Request.Method), URL: req.Request.URL, Outcome: "failed", Message: vaultErr.Error()}
+		} else {
+			result = executeRequest(req.Request, resolvedVars, jarID, contractValidator)
+			for key, value := range resolvedVars {
+				vars[key] = value
+			}
+		}
 		summary.Results = append(summary.Results, result)
 		switch result.Outcome {
 		case "passed":
@@ -270,9 +289,21 @@ func normalizeFolderFilter(value string) string {
 	return strings.ToLower(strings.Trim(strings.ReplaceAll(value, "\\", "/"), "/ "))
 }
 
-func executeRequest(req requestcontract.Request, vars map[string]string) RequestResult {
+func executeRequest(req requestcontract.Request, vars map[string]string, jarID string, contractValidator *oascontract.Validator) RequestResult {
 	result := RequestResult{ID: req.ID, Name: req.Name, Method: strings.ToUpper(req.Method), URL: req.URL}
-	payload, skipReason, err := requestcontract.BuildHTTPPayload(req, requestcontract.Options{Vars: vars, DefaultTime: 30000})
+	if _, err := runHeadlessScript(req.Scripts.Pre, vars, nil); err != nil {
+		result.Outcome = "failed"
+		result.Message = err.Error()
+		return result
+	}
+	originalAuth := req.Auth
+	prepared, err := prepareHeadlessAuth(req, vars)
+	if err != nil {
+		result.Outcome = "failed"
+		result.Message = err.Error()
+		return result
+	}
+	payload, skipReason, err := requestcontract.BuildHTTPPayload(prepared, requestcontract.Options{Vars: vars, DefaultTime: 30000})
 	if skipReason != "" {
 		result.Outcome = "skipped"
 		result.Message = skipReason
@@ -283,6 +314,14 @@ func executeRequest(req requestcontract.Request, vars map[string]string) Request
 		result.Message = err.Error()
 		return result
 	}
+	if originalAuth.Type == "aws4" {
+		if err := applyAWS4(&payload, originalAuth, vars, time.Now()); err != nil {
+			result.Outcome = "failed"
+			result.Message = err.Error()
+			return result
+		}
+	}
+	payload.CookieJarID = jarID
 	start := time.Now()
 	raw := httpexec.Execute(mustJSON(payload))
 	result.Duration = time.Since(start).Milliseconds()
@@ -296,6 +335,21 @@ func executeRequest(req requestcontract.Request, vars map[string]string) Request
 	if resp.Error != nil {
 		result.Outcome = "failed"
 		result.Message = resp.Error.Message
+		return result
+	}
+	if _, err := runHeadlessScript(req.Scripts.Post, vars, &resp); err != nil {
+		result.Outcome = "failed"
+		result.Message = err.Error()
+		return result
+	}
+	if _, err := runHeadlessScript(req.Scripts.Tests, vars, &resp); err != nil {
+		result.Outcome = "failed"
+		result.Message = err.Error()
+		return result
+	}
+	if message := contractValidator.Validate(req, resp); message != "" {
+		result.Outcome = "failed"
+		result.Message = message
 		return result
 	}
 	if message := requestcontract.EvaluateAssertions(req.Assertions, resp); message != "" {

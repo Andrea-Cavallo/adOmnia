@@ -39,6 +39,7 @@ interface WailsGoMain {
         ExportCollectionToFolder: (folderPath: string, collectionJSON: string, environmentsJSON: string) => Promise<void>
         ImportCollectionFromFolder: (folderPath: string) => Promise<string>
         InspectCollectionFolder: (folderPath: string, collectionJSON: string) => Promise<string>
+        ExportRequestToFolder: (folderPath: string, requestJSON: string) => Promise<string>
       }
       OASLint: {
         Lint: (specText: string, rulesetJSON: string) => Promise<string>

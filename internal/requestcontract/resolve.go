@@ -5,7 +5,11 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
+	"mime/multipart"
 	"net/url"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -27,10 +31,21 @@ type Body struct {
 }
 
 type Auth struct {
-	Type     string `json:"type"`
-	Token    string `json:"token"`
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Type               string `json:"type"`
+	Token              string `json:"token"`
+	Username           string `json:"username"`
+	Password           string `json:"password"`
+	OAuth2GrantType    string `json:"oauth2GrantType,omitempty"`
+	OAuth2TokenURL     string `json:"oauth2TokenUrl,omitempty"`
+	OAuth2ClientID     string `json:"oauth2ClientId,omitempty"`
+	OAuth2ClientSecret string `json:"oauth2ClientSecret,omitempty"`
+	OAuth2Scope        string `json:"oauth2Scope,omitempty"`
+	OAuth2RefreshToken string `json:"oauth2RefreshToken,omitempty"`
+	AWSAccessKeyID     string `json:"awsAccessKeyId,omitempty"`
+	AWSSecretKey       string `json:"awsSecretKey,omitempty"`
+	AWSRegion          string `json:"awsRegion,omitempty"`
+	AWSService         string `json:"awsService,omitempty"`
+	AWSSessionToken    string `json:"awsSessionToken,omitempty"`
 }
 
 type Variable struct {
@@ -45,6 +60,12 @@ type InheritancePolicy struct {
 	Headers   string `json:"headers,omitempty"`
 	Variables string `json:"variables,omitempty"`
 	Scripts   string `json:"scripts,omitempty"`
+}
+
+type Scripts struct {
+	Pre   string `json:"pre,omitempty"`
+	Post  string `json:"post,omitempty"`
+	Tests string `json:"tests,omitempty"`
 }
 
 type Assertion struct {
@@ -71,6 +92,8 @@ type Request struct {
 	Timeout       int               `json:"timeout"`
 	Follow        *bool             `json:"followRedirects"`
 	Assertions    []Assertion       `json:"assertions"`
+	Scripts       Scripts           `json:"scripts,omitempty"`
+	OpenAPIPath   string            `json:"_openapiPath,omitempty"`
 }
 
 type Options struct {
@@ -192,6 +215,40 @@ func RequestBodyString(req Request, vars map[string]string) (string, string, str
 			values.Set(key, value)
 		}
 		return values.Encode(), "application/x-www-form-urlencoded", ""
+	case "formdata":
+		var buffer bytes.Buffer
+		writer := multipart.NewWriter(&buffer)
+		for _, row := range body.Form {
+			if !row.Enabled || row.Key == "" {
+				continue
+			}
+			key := substVars(row.Key, vars)
+			value := substVars(row.Value, vars)
+			if unresolved(key) || unresolved(value) {
+				return "", "", "unresolved form variables"
+			}
+			if strings.HasPrefix(value, "@file:") {
+				path := strings.TrimSpace(strings.TrimPrefix(value, "@file:"))
+				file, err := os.Open(path)
+				if err != nil {
+					return "", "", fmt.Sprintf("open multipart file %q: %v", path, err)
+				}
+				part, err := writer.CreateFormFile(key, filepath.Base(path))
+				if err == nil {
+					_, err = io.Copy(part, file)
+				}
+				_ = file.Close()
+				if err != nil {
+					return "", "", fmt.Sprintf("write multipart file %q: %v", path, err)
+				}
+			} else if err := writer.WriteField(key, value); err != nil {
+				return "", "", fmt.Sprintf("write multipart field %q: %v", key, err)
+			}
+		}
+		if err := writer.Close(); err != nil {
+			return "", "", fmt.Sprintf("close multipart body: %v", err)
+		}
+		return buffer.String(), writer.FormDataContentType(), ""
 	case "graphql":
 		query := substVars(body.Raw, vars)
 		variables := substVars(body.GraphqlVariables, vars)
@@ -242,6 +299,8 @@ func ApplyAuth(headers map[string]string, auth Auth, vars map[string]string) str
 			return "unresolved API key variables"
 		}
 		headers[name] = token
+	case "oauth2", "aws4":
+		return fmt.Sprintf("auth type %q requires runner preparation", auth.Type)
 	default:
 		return fmt.Sprintf("auth type %q is not supported by headless run", auth.Type)
 	}
@@ -328,6 +387,10 @@ func substVars(text string, vars map[string]string) string {
 		}
 		return "{{" + key + "}}"
 	})
+}
+
+func SubstituteVars(text string, vars map[string]string) string {
+	return substVars(text, vars)
 }
 
 func pathParamValues(rows []KVRow, vars map[string]string) map[string]string {

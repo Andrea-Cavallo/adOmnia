@@ -116,10 +116,17 @@ Supported today:
 - CLI, JSON, and JUnit reports
 - non-zero exit code on request/assertion failure
 - shared request resolution for variables, path params, query/header/body values, simple auth, and headless assertions
+- OAuth2 `client_credentials`, password, and refresh-token grants plus AWS Signature v4
+- run-scoped cookie jar, multipart fields, and `@file:<path>` file parts
+- sandboxed pre/post/test scripts with `pm.environment`, `pm.response`, `pm.test`, and `pm.expect`
+- OpenAPI response-contract checks when the collection carries an `openapiSpec`
+- Vault references supplied safely in CI through `ADOMNIA_VAULT_<VARIABLE_NAME>` environment variables
 
-Advanced browser-dependent flows such as interactive OAuth, Vault-backed secrets, shared cookie jar, AWS signing, and multipart upload parity are intentionally reported as unsupported until their headless policies are complete.
+Interactive OAuth authorization still belongs to the desktop browser flow. Headless runs intentionally reject authorization-code/PKCE interaction and direct users to a refresh token or non-interactive grant. Vault ciphertext is never decrypted or printed by the CLI; CI injects the plaintext value only into process memory through the matching `ADOMNIA_VAULT_*` variable.
 
 Environments can be marked **Private** in the environment editor. Private environments remain in local bbolt storage and are excluded from collection-folder and workspace-file exports. Public environment secrets are exported only as empty placeholders.
+
+In Git Sync, **Export** refreshes the complete deterministic collection folder, while **Request** updates only the currently open request file. Incremental export requires an existing folder projection so file names and ordering remain stable.
 
 ### OpenAPI lint in CI
 

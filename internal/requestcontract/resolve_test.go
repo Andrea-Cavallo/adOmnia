@@ -1,11 +1,48 @@
 package requestcontract
 
 import (
+	"io"
+	"mime"
+	"mime/multipart"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"adomnia/internal/httpexec"
 )
+
+func TestBuildHTTPPayloadCreatesMultipartFieldsAndFiles(t *testing.T) {
+	filePath := filepath.Join(t.TempDir(), "sample.txt")
+	if err := os.WriteFile(filePath, []byte("file-content"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	req := Request{ID: "multipart", Method: "POST", URL: "https://example.test/upload", Bodies: []Body{{Type: "formdata", Form: []KVRow{{Key: "name", Value: "sample", Enabled: true}, {Key: "document", Value: "@file:" + filePath, Enabled: true}}}}}
+	payload, skip, err := BuildHTTPPayload(req, Options{})
+	if err != nil || skip != "" {
+		t.Fatalf("skip = %q, err = %v", skip, err)
+	}
+	_, params, err := mime.ParseMediaType(payload.Headers["Content-Type"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	reader := multipart.NewReader(strings.NewReader(payload.Body), params["boundary"])
+	values := map[string]string{}
+	for {
+		part, err := reader.NextPart()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, _ := io.ReadAll(part)
+		values[part.FormName()] = string(data)
+	}
+	if values["name"] != "sample" || values["document"] != "file-content" {
+		t.Fatalf("multipart values = %#v", values)
+	}
+}
 
 func TestBuildHTTPPayloadResolvesVarsPathParamsBodyAndAuth(t *testing.T) {
 	req := Request{

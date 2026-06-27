@@ -125,6 +125,12 @@ func applyRequestInheritance(req requestcontract.Request, scope scopeState) requ
 	} else if policy.Headers == "none" {
 		req.Headers = nil
 	}
+	if policy.Scripts == "" || policy.Scripts == "inherit" {
+		req.Scripts.Pre = appendScript(scope.preScript, req.Scripts.Pre)
+		req.Scripts.Post = appendScript(scope.postScript, req.Scripts.Post)
+	} else if policy.Scripts == "none" {
+		req.Scripts = requestcontract.Scripts{}
+	}
 	return req
 }
 

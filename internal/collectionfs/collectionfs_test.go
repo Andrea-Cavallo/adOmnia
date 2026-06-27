@@ -1,6 +1,7 @@
 package collectionfs
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -232,6 +233,48 @@ func TestExportOmitsPrivateEnvironmentsAndRemovesStaleFiles(t *testing.T) {
 	gitignore, err := os.ReadFile(filepath.Join(root, ".gitignore"))
 	if err != nil || !strings.Contains(string(gitignore), ".env\n") {
 		t.Fatalf(".gitignore does not ignore .env: %q, err = %v", gitignore, err)
+	}
+}
+
+func TestExportRequestUpdatesOnlyExistingRequestFile(t *testing.T) {
+	collection := loadFixtureCollection(t)
+	root := filepath.Join(t.TempDir(), "collection")
+	if err := ExportCollection(root, collection, ExportOptions{Now: time.Date(2026, 6, 27, 10, 0, 0, 0, time.UTC)}); err != nil {
+		t.Fatal(err)
+	}
+	before, err := Snapshot(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var target requestcontract.Request
+	var find func([]Node)
+	find = func(nodes []Node) {
+		for _, node := range nodes {
+			if node.Type == "request" && node.ID == "req-users-get" {
+				_ = json.Unmarshal(node.Raw, &target)
+				return
+			}
+			find(node.Children)
+		}
+	}
+	find(collection.Children)
+	target.Headers = append(target.Headers, requestcontract.KVRow{Key: "X-Incremental", Value: "true", Enabled: true})
+	relative, err := ExportRequest(root, target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	after, err := Snapshot(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	changed := []string{}
+	for path, data := range after {
+		if !bytes.Equal(data, before[path]) {
+			changed = append(changed, path)
+		}
+	}
+	if len(changed) != 1 || changed[0] != relative {
+		t.Fatalf("changed files = %#v, exported = %s", changed, relative)
 	}
 }
 

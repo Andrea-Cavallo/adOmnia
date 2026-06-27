@@ -9,3 +9,7 @@ export function ImportCollectionFromFolder(folderPath: string): Promise<string> 
 export function InspectCollectionFolder(folderPath: string, collectionJSON: string): Promise<string> {
   return window['go']['main']['CollectionFS']['InspectCollectionFolder'](folderPath, collectionJSON)
 }
+
+export function ExportRequestToFolder(folderPath: string, requestJSON: string): Promise<string> {
+  return window['go']['main']['CollectionFS']['ExportRequestToFolder'](folderPath, requestJSON)
+}

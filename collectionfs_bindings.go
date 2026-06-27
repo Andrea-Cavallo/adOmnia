@@ -2,6 +2,7 @@ package main
 
 import (
 	"adomnia/internal/collectionfs"
+	"adomnia/internal/requestcontract"
 	"encoding/json"
 	"fmt"
 	"path/filepath"
@@ -46,6 +47,18 @@ func (c *CollectionFS) ImportCollectionFromFolder(folderPath string) (string, er
 		return "", fmt.Errorf("marshal imported collection: %w", err)
 	}
 	return string(data), nil
+}
+
+func (c *CollectionFS) ExportRequestToFolder(folderPath string, requestJSON string) (string, error) {
+	cleanFolder := filepath.Clean(folderPath)
+	if cleanFolder == "." || cleanFolder == "" {
+		return "", fmt.Errorf("folder path required")
+	}
+	var request requestcontract.Request
+	if err := json.Unmarshal([]byte(requestJSON), &request); err != nil {
+		return "", fmt.Errorf("invalid request JSON: %w", err)
+	}
+	return collectionfs.ExportRequest(cleanFolder, request)
 }
 
 func (c *CollectionFS) InspectCollectionFolder(folderPath string, collectionJSON string) (string, error) {

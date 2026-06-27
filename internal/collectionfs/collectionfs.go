@@ -169,6 +169,62 @@ func ExportCollection(root string, collection Collection, opts ExportOptions) er
 	return writeNodes(filepath.Join(root, "folders"), collection.Children)
 }
 
+func ExportRequest(root string, request requestcontract.Request) (string, error) {
+	if strings.TrimSpace(request.ID) == "" {
+		return "", fmt.Errorf("request id required")
+	}
+	requestPath, seq, err := findRequestFile(root, request.ID)
+	if err != nil {
+		return "", err
+	}
+	if requestPath == "" {
+		return "", fmt.Errorf("request %q is not present in the folder projection; run full export first", request.ID)
+	}
+	raw, err := json.Marshal(request)
+	if err != nil {
+		return "", fmt.Errorf("marshal request %s: %w", request.ID, err)
+	}
+	payload, err := requestPayload(Node{ID: request.ID, Name: request.Name, Type: "request", Raw: raw}, seq)
+	if err != nil {
+		return "", err
+	}
+	if err := writeJSON(requestPath, payload); err != nil {
+		return "", err
+	}
+	relative, _ := filepath.Rel(root, requestPath)
+	return filepath.ToSlash(relative), nil
+}
+
+func findRequestFile(root, requestID string) (string, int, error) {
+	found := ""
+	foundSeq := 0
+	err := filepath.WalkDir(filepath.Join(root, "folders"), func(path string, entry os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".request.json") {
+			return nil
+		}
+		var meta struct {
+			ID  string `json:"id"`
+			Seq int    `json:"seq"`
+		}
+		if err := readJSON(path, &meta); err != nil {
+			return err
+		}
+		if meta.ID == requestID {
+			found = path
+			foundSeq = meta.Seq
+			return filepath.SkipAll
+		}
+		return nil
+	})
+	if err != nil {
+		return "", 0, fmt.Errorf("scan request projection: %w", err)
+	}
+	return found, foundSeq, nil
+}
+
 func writeEnvironments(dir string, environments []Environment) error {
 	// Rebuild the projection so an environment switched to private cannot leave
 	// a stale tracked file behind.

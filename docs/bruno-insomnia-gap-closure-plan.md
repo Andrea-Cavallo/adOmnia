@@ -553,16 +553,18 @@ Done quando:
 
 ## Backlog post-milestone
 
-Le fasi previste sopra sono complete. La parity matrix della Fase 2A mantiene
-questi miglioramenti avanzati come lavoro successivo, senza considerarli gap
-bloccanti della milestone:
+Completato il 2026-06-27:
 
-- OAuth2 headless non interattivo e firma AWS4
-- policy esplicita per Vault references in CI
-- cookie jar condiviso e multipart avanzato
-- runtime Go per pre/post/test script
-- contract validation OpenAPI durante `adomnia run`
-- export incrementale del singolo request file come ottimizzazione del sync
+- [x] OAuth2 headless non interattivo e firma AWS4
+- [x] policy esplicita per Vault references in CI
+- [x] cookie jar condiviso per run e multipart con file espliciti
+- [x] runtime JavaScript Go sandboxed per pre/post/test script
+- [x] contract validation OpenAPI durante `adomnia run`
+- [x] export incrementale del singolo request file dal pannello Git Sync
+
+Il browser grant OAuth2 authorization-code/PKCE resta intenzionalmente una
+funzione desktop interattiva; in headless si usano client credentials, password
+o refresh token.
 
 ## Nota di implementazione
 

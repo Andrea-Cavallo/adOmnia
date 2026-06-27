@@ -30,9 +30,10 @@ import { cn } from '@/lib/utils'
 import { ResizeHandle } from '@/components/ui/ResizeHandle'
 import { safeSelectFolder } from '@/lib/fileUtils'
 import { addRepo, loadLastRepo, loadPinnedBranches, loadRepos, removeRepo, saveLastRepo, toggleBranchPin, toggleRepoPin, type SavedRepo } from '@/lib/gitRepos'
-import { exportCollectionToFolder, hasCollectionFSBinding, importCollectionFromFolder, inspectCollectionFolder } from '@/lib/collectionfs-api'
+import { exportCollectionToFolder, exportRequestToFolder, hasCollectionFSBinding, importCollectionFromFolder, inspectCollectionFolder } from '@/lib/collectionfs-api'
 import { useCollectionsStore } from '@/stores/collections'
 import { useEnvironmentsStore } from '@/stores/environments'
+import { useTabsStore } from '@/stores/tabs'
 import { GitCompareTab } from './GitCompareTab'
 import { GitActionsTab } from './GitActionsTab'
 import { DiffModal } from '@/components/response/DiffView'
@@ -268,6 +269,8 @@ function collectionFolderPath(repoPath: string, collectionId: string, collection
 
 export function GitSyncPanel() {
   const environments = useEnvironmentsStore((state) => state.environments)
+  const tabs = useTabsStore((state) => state.tabs)
+  const activeTabId = useTabsStore((state) => state.activeTabId)
   const collections = useCollectionsStore((state) => state.collections)
   const importCollection = useCollectionsStore((state) => state.importCollection)
   const [repoPath, setRepoPath] = useState(() => loadLastRepo())
@@ -327,6 +330,10 @@ export function GitSyncPanel() {
     () => collections.find((collection) => collection.id === selectedCollectionId) ?? collections[0] ?? null,
     [collections, selectedCollectionId],
   )
+  const activeCollectionRequest = useMemo(() => {
+    const tab = tabs.find((candidate) => candidate.id === activeTabId)
+    return tab?.collectionId === selectedCollection?.id ? tab.request : null
+  }, [activeTabId, selectedCollection?.id, tabs])
   const targetCollectionFolder = useMemo(
     () => repoPath && selectedCollection ? collectionFolderPath(repoPath, selectedCollection.id, selectedCollection.name) : '',
     [repoPath, selectedCollection],
@@ -610,6 +617,13 @@ export function GitSyncPanel() {
     if (!selectedCollection) throw new Error('Select a collection first')
     await exportCollectionToFolder(targetCollectionFolder, selectedCollection, environments)
   }, selectedCollection ? `Exported "${selectedCollection.name}" to adomnia-collections.` : 'Collection exported.')
+
+  const exportActiveRequest = () => runCollectionFolderAction(async () => {
+    if (!repoPath || !selectedCollection) throw new Error('Select a collection first')
+    if (!activeCollectionRequest) throw new Error('Open a request from the selected collection first')
+    const path = await exportRequestToFolder(targetCollectionFolder, activeCollectionRequest)
+    return `Exported ${path}.`
+  }, 'Request exported.')
 
   const importCollectionFolder = () => runCollectionFolderAction(async () => {
     const folder = await safeSelectFolder('Select an adOmnia collection folder')
@@ -1018,7 +1032,7 @@ export function GitSyncPanel() {
                 <option key={collection.id} value={collection.id}>{collection.name}</option>
               ))}
             </select>
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-4 gap-1.5">
               <button
                 onClick={exportSelectedCollection}
                 disabled={!repoPath || !selectedCollection || !hasCollectionFSBinding() || loading}
@@ -1026,6 +1040,14 @@ export function GitSyncPanel() {
                 title={targetCollectionFolder || 'Export selected collection'}
               >
                 <Upload size={12} /> Export
+              </button>
+              <button
+                onClick={exportActiveRequest}
+                disabled={!repoPath || !selectedCollection || !activeCollectionRequest || !hasCollectionFSBinding() || loading}
+                className="flex h-7 items-center justify-center gap-1 rounded border border-border-1 text-[10px] text-text-2 hover:bg-surface-2 hover:text-text-1 disabled:opacity-40"
+                title={activeCollectionRequest ? `Export only ${activeCollectionRequest.name}` : 'Open a request from this collection'}
+              >
+                <Upload size={11} /> Request
               </button>
               <button
                 onClick={importCollectionFolder}

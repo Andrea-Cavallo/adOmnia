@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/cookiejar"
 	"os"
 	"strings"
 	"sync"
@@ -18,7 +19,26 @@ import (
 
 // inFlight tracks cancel functions for running requests, keyed by the
 // frontend-supplied request id, so a request can be aborted mid-flight.
-var inFlight sync.Map // map[string]context.CancelFunc
+var inFlight sync.Map   // map[string]context.CancelFunc
+var cookieJars sync.Map // map[string]http.CookieJar
+
+func ClearCookieJar(id string) {
+	if id != "" {
+		cookieJars.Delete(id)
+	}
+}
+
+func getCookieJar(id string) http.CookieJar {
+	if id == "" {
+		return nil
+	}
+	if existing, ok := cookieJars.Load(id); ok {
+		return existing.(http.CookieJar)
+	}
+	jar, _ := cookiejar.New(nil)
+	actual, _ := cookieJars.LoadOrStore(id, jar)
+	return actual.(http.CookieJar)
+}
 
 // Cancel aborts an in-flight request by id. No-op if the id is unknown.
 func Cancel(id string) {
@@ -47,6 +67,7 @@ type HTTPExecRequest struct {
 	ClientCertPEM        string            `json:"clientCertPem,omitempty"`
 	ClientCertPassphrase string            `json:"clientCertPassphrase,omitempty"`
 	HostsMap             []HostMapEntry    `json:"hostsMap,omitempty"`
+	CookieJarID          string            `json:"cookieJarId,omitempty"`
 }
 
 // HTTPExecResponse is the result returned by ExecuteHTTP.
@@ -100,7 +121,7 @@ func executeHTTPRequest(req HTTPExecRequest) HTTPExecResponse {
 		DialContext:     buildDialerWithHosts(req.HostsMap),
 	}
 
-	client := &http.Client{Transport: transport}
+	client := &http.Client{Transport: transport, Jar: getCookieJar(req.CookieJarID)}
 	if !req.FollowRedirects {
 		client.CheckRedirect = func(*http.Request, []*http.Request) error {
 			return http.ErrUseLastResponse
