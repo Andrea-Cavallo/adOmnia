@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"io"
@@ -14,12 +15,33 @@ import (
 	"github.com/jhump/protoreflect/desc/protoparse"
 	"google.golang.org/grpc"
 	grpc_testing "google.golang.org/grpc/interop/grpc_testing"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/protobuf/proto"
 )
 
 type grpcStreamingTestService struct {
 	grpc_testing.UnimplementedTestServiceServer
+}
+
+func (grpcStreamingTestService) UnaryCall(ctx context.Context, request *grpc_testing.SimpleRequest) (*grpc_testing.SimpleResponse, error) {
+	_ = grpc.SetHeader(ctx, metadata.Pairs("x-test-header", "header-value"))
+	grpc.SetTrailer(ctx, metadata.Pairs("x-test-trailer", "trailer-value"))
+	return &grpc_testing.SimpleResponse{Payload: request.GetPayload()}, nil
+}
+
+func TestGrpcInvokeCapturesHeadersAndTrailers(t *testing.T) {
+	body, _ := json.Marshal(map[string]any{"address": startGrpcStreamingTestServer(t), "service": "grpc.testing.TestService", "method": "UnaryCall", "payload": map[string]any{}, "timeout_ms": 1000})
+	request := httptest.NewRequest(http.MethodPost, "/grpc/invoke", bytes.NewReader(body))
+	recorder := httptest.NewRecorder()
+	grpcInvokeHandler(recorder, request)
+	var result grpcInvokeResponse
+	if err := json.Unmarshal(recorder.Body.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.ResponseMetadata["x-test-header"] != "header-value" || result.ResponseTrailers["x-test-trailer"] != "trailer-value" {
+		t.Fatalf("metadata=%#v trailers=%#v", result.ResponseMetadata, result.ResponseTrailers)
+	}
 }
 
 func (grpcStreamingTestService) StreamingInputCall(stream grpc.ClientStreamingServer[grpc_testing.StreamingInputCallRequest, grpc_testing.StreamingInputCallResponse]) error {
@@ -135,6 +157,31 @@ func TestGrpcInvokeBidirectionalStreamingMessages(t *testing.T) {
 
 	if len(result.Messages) != 2 {
 		t.Fatalf("bidi response messages = %d, want 2", len(result.Messages))
+	}
+}
+
+func TestGrpcStreamEmitsMessagesBeforeCompletion(t *testing.T) {
+	body, _ := json.Marshal(map[string]any{"address": startGrpcStreamingTestServer(t), "service": "grpc.testing.TestService", "method": "FullDuplexCall", "messages": []map[string]any{{"payload": map[string]any{"body": "YQ=="}}, {"payload": map[string]any{"body": "Yg=="}}}, "timeout_ms": 2000})
+	request := httptest.NewRequest(http.MethodPost, "/grpc/stream", bytes.NewReader(body))
+	recorder := httptest.NewRecorder()
+	grpcStreamHandler(recorder, request)
+	lines := bytes.Split(bytes.TrimSpace(recorder.Body.Bytes()), []byte("\n"))
+	messageCount := 0
+	completed := false
+	for _, line := range lines {
+		var event map[string]any
+		if err := json.Unmarshal(line, &event); err != nil {
+			t.Fatal(err)
+		}
+		if event["type"] == "message" {
+			messageCount++
+		}
+		if event["type"] == "complete" && event["status"] == "OK" {
+			completed = true
+		}
+	}
+	if messageCount != 2 || !completed {
+		t.Fatalf("events=%s", recorder.Body.String())
 	}
 }
 

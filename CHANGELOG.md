@@ -6,6 +6,15 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Fixed
+- **Reliable gRPC Studio execution:** load tests now classify the actual gRPC status instead of treating every HTTP 200 as success, and they carry metadata, TLS, custom CA, mTLS certificates, and request timeout settings into every invocation.
+- **Honest descriptor and connection state:** imported proto/protoset descriptors remain available for offline request authoring without pretending a live server connection; changing endpoint, TLS, certificates, or profile invalidates the previous connection state.
+- **Reproducible gRPC history:** call history now preserves and restores metadata, TLS/mTLS paths, and timeout settings for accurate reruns.
+- **Safe request defaults:** new gRPC sessions no longer send demonstration authorization metadata automatically.
+
+### Added
+- **Live cancellable gRPC streaming:** server and bidirectional stream messages are delivered incrementally through the local sidecar, with an in-place Cancel action, configurable timeout, response headers, and trailers.
+
 ## [0.5.1] - 2026-06-27
 
 ### Added

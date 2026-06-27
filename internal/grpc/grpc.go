@@ -112,6 +112,7 @@ type grpcInvokeRequest struct {
 	Payload        json.RawMessage   `json:"payload"`
 	Messages       []json.RawMessage `json:"messages,omitempty"`
 	Metadata       map[string]string `json:"metadata,omitempty"`
+	TimeoutMs      int               `json:"timeout_ms,omitempty"`
 }
 
 type grpcInvokeResponse struct {
@@ -121,6 +122,7 @@ type grpcInvokeResponse struct {
 	Status           string            `json:"status"`
 	TimeMs           int64             `json:"time_ms"`
 	ResponseMetadata map[string]string `json:"response_metadata,omitempty"`
+	ResponseTrailers map[string]string `json:"response_trailers,omitempty"`
 }
 
 // --- Helpers ---
@@ -581,7 +583,11 @@ func grpcInvokeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	timeout := 30 * time.Second
+	if req.TimeoutMs > 0 {
+		timeout = time.Duration(req.TimeoutMs) * time.Millisecond
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	ctx = outgoingContext(ctx, req.Metadata)
 
@@ -642,13 +648,14 @@ func grpcInvokeHandler(w http.ResponseWriter, r *http.Request) {
 	// Invoke the RPC
 	start := time.Now()
 	var respHeaders metadata.MD
+	var respTrailers metadata.MD
 	if methodDesc.IsClientStreaming() || methodDesc.IsServerStreaming() {
 		streamDesc := &grpc.StreamDesc{
 			StreamName:    req.Method,
 			ServerStreams: methodDesc.IsServerStreaming(),
 			ClientStreams: methodDesc.IsClientStreaming(),
 		}
-		stream, err := conn.NewStream(ctx, streamDesc, fullMethod, grpc.Header(&respHeaders))
+		stream, err := conn.NewStream(ctx, streamDesc, fullMethod, grpc.Header(&respHeaders), grpc.Trailer(&respTrailers))
 		if err != nil {
 			st, _ := status.FromError(err)
 			writeJSON(w, http.StatusOK, grpcInvokeResponse{
@@ -721,10 +728,12 @@ func grpcInvokeHandler(w http.ResponseWriter, r *http.Request) {
 				errorMessage = st.Message()
 			}
 			writeJSON(w, http.StatusOK, grpcInvokeResponse{
-				Messages: result.messages,
-				Error:    errorMessage,
-				Status:   statusCode,
-				TimeMs:   time.Since(start).Milliseconds(),
+				Messages:         result.messages,
+				Error:            errorMessage,
+				Status:           statusCode,
+				TimeMs:           time.Since(start).Milliseconds(),
+				ResponseMetadata: metadataMap(respHeaders),
+				ResponseTrailers: metadataMap(respTrailers),
 			})
 			return
 		}
@@ -740,21 +749,25 @@ func grpcInvokeHandler(w http.ResponseWriter, r *http.Request) {
 			Status:           "OK",
 			TimeMs:           time.Since(start).Milliseconds(),
 			ResponseMetadata: respMeta,
+			ResponseTrailers: metadataMap(respTrailers),
 		})
 		return
 	}
 
 	err = conn.Invoke(ctx, fullMethod, inputMessages[0], outputMsg,
 		grpc.Header(&respHeaders),
+		grpc.Trailer(&respTrailers),
 	)
 	elapsed := time.Since(start).Milliseconds()
 
 	if err != nil {
 		st, _ := status.FromError(err)
 		writeJSON(w, http.StatusOK, grpcInvokeResponse{
-			Error:  st.Message(),
-			Status: st.Code().String(),
-			TimeMs: elapsed,
+			Error:            st.Message(),
+			Status:           st.Code().String(),
+			TimeMs:           elapsed,
+			ResponseMetadata: metadataMap(respHeaders),
+			ResponseTrailers: metadataMap(respTrailers),
 		})
 		return
 	}
@@ -786,7 +799,131 @@ func grpcInvokeHandler(w http.ResponseWriter, r *http.Request) {
 		Status:           "OK",
 		TimeMs:           elapsed,
 		ResponseMetadata: respMeta,
+		ResponseTrailers: metadataMap(respTrailers),
 	})
+}
+
+func grpcStreamHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST required", http.StatusMethodNotAllowed)
+		return
+	}
+	var req grpcInvokeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	if req.Address == "" || req.Service == "" || req.Method == "" {
+		http.Error(w, "address, service and method required", http.StatusBadRequest)
+		return
+	}
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/x-ndjson")
+	w.Header().Set("Cache-Control", "no-store")
+	emit := func(value any) { data, _ := json.Marshal(value); _, _ = w.Write(append(data, '\n')); flusher.Flush() }
+	conn, err := grpcDial(req.Address, req.TLS, 10*time.Second, req.CACertPath, req.ClientCertPath, req.ClientKeyPath)
+	if err != nil {
+		emit(map[string]any{"type": "complete", "status": "UNAVAILABLE", "error": err.Error()})
+		return
+	}
+	defer conn.Close()
+	timeout := 30 * time.Second
+	if req.TimeoutMs > 0 {
+		timeout = time.Duration(req.TimeoutMs) * time.Millisecond
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), timeout)
+	defer cancel()
+	ctx = outgoingContext(ctx, req.Metadata)
+	refClient := grpcReflectionClient(ctx, conn)
+	defer refClient.Reset()
+	service, err := refClient.ResolveService(req.Service)
+	if err != nil {
+		emit(map[string]any{"type": "complete", "status": "NOT_FOUND", "error": "resolve service: " + err.Error()})
+		return
+	}
+	method := service.FindMethodByName(req.Method)
+	if method == nil {
+		emit(map[string]any{"type": "complete", "status": "NOT_FOUND", "error": "method not found"})
+		return
+	}
+	if !method.IsServerStreaming() {
+		emit(map[string]any{"type": "complete", "status": "INVALID_ARGUMENT", "error": "method is not server-streaming"})
+		return
+	}
+	inputs := []json.RawMessage{req.Payload}
+	if method.IsClientStreaming() {
+		inputs = req.Messages
+		if len(inputs) == 0 {
+			inputs = []json.RawMessage{req.Payload}
+		}
+	}
+	streamDesc := &grpc.StreamDesc{StreamName: req.Method, ServerStreams: true, ClientStreams: method.IsClientStreaming()}
+	var headers, trailers metadata.MD
+	started := time.Now()
+	stream, err := conn.NewStream(ctx, streamDesc, fmt.Sprintf("/%s/%s", req.Service, req.Method), grpc.Header(&headers), grpc.Trailer(&trailers))
+	if err != nil {
+		st, _ := status.FromError(err)
+		emit(map[string]any{"type": "complete", "status": st.Code().String(), "error": st.Message()})
+		return
+	}
+	for index, raw := range inputs {
+		message := dynamic.NewMessage(method.GetInputType())
+		if len(raw) > 0 && string(raw) != "null" {
+			if err := message.UnmarshalJSON(raw); err != nil {
+				emit(map[string]any{"type": "complete", "status": "INVALID_ARGUMENT", "error": fmt.Sprintf("unmarshal message %d: %v", index+1, err)})
+				return
+			}
+		}
+		if err := stream.SendMsg(message); err != nil {
+			st, _ := status.FromError(err)
+			emit(map[string]any{"type": "complete", "status": st.Code().String(), "error": st.Message()})
+			return
+		}
+	}
+	if err := stream.CloseSend(); err != nil {
+		st, _ := status.FromError(err)
+		emit(map[string]any{"type": "complete", "status": st.Code().String(), "error": st.Message()})
+		return
+	}
+	if headerValues, err := stream.Header(); err == nil {
+		headers = headerValues
+		emit(map[string]any{"type": "headers", "metadata": metadataMap(headers)})
+	}
+	for {
+		message := dynamic.NewMessage(method.GetOutputType())
+		err := stream.RecvMsg(message)
+		if err == io.EOF {
+			emit(map[string]any{"type": "complete", "status": "OK", "time_ms": time.Since(started).Milliseconds(), "trailers": metadataMap(stream.Trailer())})
+			return
+		}
+		if err != nil {
+			st, _ := status.FromError(err)
+			emit(map[string]any{"type": "complete", "status": st.Code().String(), "error": st.Message(), "time_ms": time.Since(started).Milliseconds(), "trailers": metadataMap(stream.Trailer())})
+			return
+		}
+		data, err := message.MarshalJSON()
+		if err != nil {
+			emit(map[string]any{"type": "complete", "status": "INTERNAL", "error": err.Error()})
+			return
+		}
+		var value any
+		_ = json.Unmarshal(data, &value)
+		emit(map[string]any{"type": "message", "message": value})
+	}
+}
+
+func metadataMap(md metadata.MD) map[string]string {
+	out := make(map[string]string, len(md))
+	for key, values := range md {
+		if len(values) > 0 {
+			out[key] = strings.Join(values, ", ")
+		}
+	}
+	return out
 }
 
 // --- Proto file parsing (no server required) ---
@@ -944,6 +1081,7 @@ func RegisterHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/grpc/reflect", grpcReflectHandler)
 	mux.HandleFunc("/grpc/describe", grpcDescribeHandler)
 	mux.HandleFunc("/grpc/invoke", grpcInvokeHandler)
+	mux.HandleFunc("/grpc/stream", grpcStreamHandler)
 	mux.HandleFunc("/grpc/parse-proto", grpcParseProtoHandler)
 	mux.HandleFunc("/grpc/parse-protoset", grpcParseProtosetHandler)
 }

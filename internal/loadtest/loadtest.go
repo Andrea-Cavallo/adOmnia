@@ -667,14 +667,18 @@ func loadTestGrpcHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		Address     string `json:"address"`
-		Service     string `json:"service"`
-		Method      string `json:"method"`
-		Payload     string `json:"payload"`
-		Concurrency int    `json:"concurrency"`
-		TotalReqs   int    `json:"totalReqs"`
-		TimeoutMs   int    `json:"timeoutMs"`
-		Tls         bool   `json:"tls"`
+		Address        string            `json:"address"`
+		Service        string            `json:"service"`
+		Method         string            `json:"method"`
+		Payload        string            `json:"payload"`
+		Concurrency    int               `json:"concurrency"`
+		TotalReqs      int               `json:"totalReqs"`
+		TimeoutMs      int               `json:"timeoutMs"`
+		Tls            bool              `json:"tls"`
+		CACertPath     string            `json:"caCertPath"`
+		ClientCertPath string            `json:"clientCertPath"`
+		ClientKeyPath  string            `json:"clientKeyPath"`
+		Metadata       map[string]string `json:"metadata"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
@@ -719,13 +723,17 @@ func loadTestGrpcHandler(w http.ResponseWriter, r *http.Request) {
 				payload = "{}"
 			}
 			body, marshalErr := json.Marshal(struct {
-				Address string          `json:"address"`
-				Service string          `json:"service"`
-				Method  string          `json:"method"`
-				Payload json.RawMessage `json:"payload"`
-				TLS     bool            `json:"tls"`
-				Timeout int             `json:"timeout"`
-			}{req.Address, req.Service, req.Method, json.RawMessage(payload), req.Tls, req.TimeoutMs})
+				Address        string            `json:"address"`
+				Service        string            `json:"service"`
+				Method         string            `json:"method"`
+				Payload        json.RawMessage   `json:"payload"`
+				TLS            bool              `json:"tls"`
+				Timeout        int               `json:"timeout_ms"`
+				CACertPath     string            `json:"ca_cert_path,omitempty"`
+				ClientCertPath string            `json:"client_cert_path,omitempty"`
+				ClientKeyPath  string            `json:"client_key_path,omitempty"`
+				Metadata       map[string]string `json:"metadata,omitempty"`
+			}{req.Address, req.Service, req.Method, json.RawMessage(payload), req.Tls, req.TimeoutMs, req.CACertPath, req.ClientCertPath, req.ClientKeyPath, req.Metadata})
 			if marshalErr != nil {
 				mu.Lock()
 				failed++
@@ -741,10 +749,11 @@ func loadTestGrpcHandler(w http.ResponseWriter, r *http.Request) {
 			cl := &http.Client{Timeout: time.Duration(req.TimeoutMs) * time.Millisecond}
 			resp, err := cl.Do(httpReq)
 			ok := false
+			grpcStatus := "TRANSPORT_ERROR"
 			if err == nil {
-				io.Copy(io.Discard, resp.Body)
+				responseBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 				resp.Body.Close()
-				ok = resp.StatusCode == 200
+				ok, grpcStatus = grpcLoadTestOutcome(resp.StatusCode, responseBody)
 			}
 
 			latencyMs := float64(time.Since(reqStart).Microseconds()) / 1000.0
@@ -754,10 +763,10 @@ func loadTestGrpcHandler(w http.ResponseWriter, r *http.Request) {
 			hist.RecordValue(int64(latencyMs))
 			if ok {
 				successful++
-				statusCodes[200]++
+				statusCodes[0]++
 			} else {
 				failed++
-				statusCodes[0]++
+				statusCodes[grpcStatusCode(grpcStatus)]++
 			}
 			timeline = append(timeline, timelinePoint{TimeMs: elapsed, LatencyMs: latencyMs, Ok: ok})
 			mu.Unlock()
@@ -789,6 +798,34 @@ func loadTestGrpcHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(result)
+}
+
+func grpcLoadTestOutcome(httpStatus int, body []byte) (bool, string) {
+	if httpStatus != http.StatusOK {
+		return false, fmt.Sprintf("HTTP_%d", httpStatus)
+	}
+	var result struct {
+		Status string `json:"status"`
+		Error  string `json:"error"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return false, "INVALID_RESPONSE"
+	}
+	if result.Status == "OK" && result.Error == "" {
+		return true, "OK"
+	}
+	if result.Status == "" {
+		return false, "UNKNOWN"
+	}
+	return false, result.Status
+}
+
+func grpcStatusCode(status string) int {
+	codes := map[string]int{"OK": 0, "CANCELLED": 1, "UNKNOWN": 2, "INVALID_ARGUMENT": 3, "DEADLINE_EXCEEDED": 4, "NOT_FOUND": 5, "ALREADY_EXISTS": 6, "PERMISSION_DENIED": 7, "RESOURCE_EXHAUSTED": 8, "FAILED_PRECONDITION": 9, "ABORTED": 10, "OUT_OF_RANGE": 11, "UNIMPLEMENTED": 12, "INTERNAL": 13, "UNAVAILABLE": 14, "DATA_LOSS": 15, "UNAUTHENTICATED": 16}
+	if code, ok := codes[status]; ok {
+		return code
+	}
+	return -1
 }
 
 // RegisterHandlers registers HTTP and gRPC load testing endpoints.
