@@ -1,7 +1,7 @@
 # adOmnia Gap Closure Plan vs Bruno e Insomnia
 
 Data: 2026-06-26
-Stato: implementazione incrementale avviata
+Stato: milestone completata il 2026-06-27
 Origine: revisione di `C:\Users\Andrea\Desktop\2026-06-25-bruno-gap-closure-design.md`
 
 Questo documento consolida il piano per chiudere i gap competitivi con Bruno e
@@ -550,6 +550,19 @@ Done quando:
 - cloud/team sync
 - account/login
 - RBAC enterprise cloud
+
+## Backlog post-milestone
+
+Le fasi previste sopra sono complete. La parity matrix della Fase 2A mantiene
+questi miglioramenti avanzati come lavoro successivo, senza considerarli gap
+bloccanti della milestone:
+
+- OAuth2 headless non interattivo e firma AWS4
+- policy esplicita per Vault references in CI
+- cookie jar condiviso e multipart avanzato
+- runtime Go per pre/post/test script
+- contract validation OpenAPI durante `adomnia run`
+- export incrementale del singolo request file come ottimizzazione del sync
 
 ## Nota di implementazione
 
