@@ -406,7 +406,7 @@ function RequestWorkspace() {
   }, [activeTab?.id])
 
   const handleSend = async () => {
-    if (!activeTab) return
+    if (!activeTab || activeTab.loading) return
     const issues = validateRequestParams(activeTab.request)
     if (issues.length > 0) {
       setParamIssues(issues)

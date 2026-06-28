@@ -8,6 +8,9 @@ interface WailsGoMain {
     SaveBinaryFileBase64: (defaultName: string, dataBase64: string) => Promise<string>
     SignPdfDocumentBase64: (reqJSON: string) => Promise<string>
     VerifyPdfSignatureBase64: (pdfBase64: string) => Promise<string>
+    SelectPSD2Certificate: () => Promise<string>
+    InspectPSD2Certificate: (path: string, password: string) => Promise<string>
+    BuildPSD2Headers: (inputJSON: string) => Promise<string>
     InspectSigningCertificateBase64: (reqJSON: string) => Promise<string>
     StorageGet: (bucket: string, key: string) => Promise<string>
     StoragePut: (bucket: string, key: string, value: string) => Promise<void>

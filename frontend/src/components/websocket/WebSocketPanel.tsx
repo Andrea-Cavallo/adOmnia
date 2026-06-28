@@ -351,7 +351,7 @@ function Toggle({ checked, onChange, label, disabled }: { checked: boolean; onCh
       className="flex items-center gap-2 text-[11px] text-text-2 disabled:opacity-40"
     >
       <span className={cn('relative h-4 w-8 rounded-full border transition-colors', checked ? 'border-accent/40 bg-accent/40' : 'border-border-2 bg-surface-2')}>
-        <span className={cn('absolute top-0.5 h-2.5 w-2.5 rounded-full transition-transform', checked ? 'translate-x-4 bg-cyan-300' : 'translate-x-0.5 bg-text-4')} />
+        <span className={cn('absolute top-0.5 h-2.5 w-2.5 rounded-full transition-transform', checked ? 'translate-x-4 bg-accent-light' : 'translate-x-0.5 bg-text-4')} />
       </span>
       {label && <span>{label}</span>}
     </button>

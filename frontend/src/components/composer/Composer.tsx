@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { Send, Save, FileCode, Gauge, X, Plus, Check, CornerDownRight, Clock, Code, Copy, CheckCheck, FileText, Circle, ListChecks, ShieldCheck, MoreVertical, ChevronDown } from 'lucide-react'
+import { Send, Save, FileCode, Gauge, X, Plus, Check, CornerDownRight, Clock, Code, Copy, CheckCheck, FileText, Circle, ListChecks, ShieldCheck, MoreVertical, ChevronDown, FileKey2 } from 'lucide-react'
 import type { RequestItem, HttpMethod, KVRow, RequestBody } from '@/lib/types'
 import { uid, blankBody, blankAuth } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -9,7 +9,6 @@ import { KVEditor } from './KVEditor'
 import { BodyEditor } from './BodyEditor'
 import { AuthEditor } from './AuthEditor'
 import { ScriptsEditor } from './ScriptsEditor'
-import { AssertionsEditor } from './AssertionsEditor'
 import { parseCurl, applyParsedCurl } from '@/lib/parseCurl'
 import { Prompt } from '@/components/ui/prompt'
 import { generateCode, LANGUAGES, copyToClipboard } from '@/lib/codegen'
@@ -20,6 +19,8 @@ import { useTabsStore, type ComposerSection } from '@/stores/tabs'
 import { useCookieJarStore, type JarEntry } from '@/lib/cookieJar'
 import { useSettingsStore } from '@/stores/settings'
 import { ContextMenu } from '@/components/ui/ContextMenu'
+import { PSD2RequestPanel } from '@/components/psd2/PSD2RequestPanel'
+import { validatePSD2Request } from '@/lib/psd2Validation'
 
 interface ComposerProps {
   tabId: string
@@ -575,8 +576,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
   const [activeTab, setActiveTab] = useState<ComposerSection>(
     () => useTabsStore.getState().getViewState(tabId).composerSection,
   )
-  const [configurationTab, setConfigurationTab] = useState<'headers' | 'auth' | 'cookies'>('headers')
-  const [automationTab, setAutomationTab] = useState<'tests' | 'scripts'>('tests')
+  const [configurationTab, setConfigurationTab] = useState<'headers' | 'auth' | 'cookies' | 'psd2'>('headers')
   const [showCurlImport, setShowCurlImport] = useState(false)
   const [renameBodyPrompt, setRenameBodyPrompt] = useState<{ show: boolean; index: number } | null>(null)
   const [bodyMenu, setBodyMenu] = useState<{ x: number; y: number; index: number } | null>(null)
@@ -640,6 +640,19 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
     ? Math.min(Math.max(request.activeBodyIdx, 0), bodies.length - 1)
     : 0
   const activeBody = bodies[bodyIndex]
+  const psd2Issues = useMemo(() => validatePSD2Request(request), [request])
+  const canSend = Boolean(request.url) && !loading && psd2Issues.length === 0
+
+  const handleSend = () => {
+    if (!request.url || loading) return
+    if (psd2Issues.length > 0) {
+      setConfigurationTab('psd2')
+      setActiveTab('headers')
+      updateViewState(tabId, { composerSection: 'headers' })
+      return
+    }
+    onSend()
+  }
 
   const cloneBody = (source: RequestBody, name: string): RequestBody => ({
     ...source,
@@ -738,7 +751,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
             <VarHighlightInput
               value={request.url}
               onChange={handleUrlChange}
-              onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') onSend() }}
+              onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') handleSend() }}
               resolvedVars={resolvedVars}
               hasActiveEnv={hasActiveEnv}
               placeholder="https://api.your-domain.com/v1/users"
@@ -776,9 +789,10 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
             </button>
           </div>
 
+          {request.psd2?.enabled && psd2Issues.length > 0 && <button onClick={() => { setConfigurationTab('psd2'); setActiveTab('headers'); updateViewState(tabId, { composerSection: 'headers' }) }} className="h-8 rounded border border-error/30 bg-error/10 px-2 text-[10px] font-medium text-error" title={psd2Issues.map((issue) => issue.message).join(' ')}>PSD2 · {psd2Issues.length} issues</button>}
           <button
-            onClick={onSend}
-            disabled={!request.url || loading}
+            onClick={handleSend}
+            disabled={!canSend}
             className={cn(
               'h-8 px-4 flex items-center gap-1.5 rounded text-xs font-medium transition-colors',
               'bg-accent text-white hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed'
@@ -904,6 +918,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
                   { id: 'headers' as const, label: 'Headers', icon: ListChecks },
                   { id: 'auth' as const, label: 'Auth', icon: ShieldCheck },
                   { id: 'cookies' as const, label: 'Cookies', icon: Circle },
+                  { id: 'psd2' as const, label: 'PSD2', icon: FileKey2 },
                 ]).map((item) => {
                   const ItemIcon = item.icon
                   const active = configurationTab === item.id
@@ -926,10 +941,10 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
               </div>
               {configurationTab === 'headers' && (
                 <KVEditor
-                  rows={request.headers ?? []}
-                  onChange={(headers) => onChange({ ...request, headers })}
-                  keyPlaceholder="Header name"
-                  valuePlaceholder="Header value"
+                    rows={request.headers ?? []}
+                    onChange={(headers) => onChange({ ...request, headers })}
+                    keyPlaceholder="Header name"
+                    valuePlaceholder="Header value"
                 />
               )}
               {configurationTab === 'auth' && (
@@ -945,6 +960,15 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
                   />
                   <CookieJarSection requestUrl={request.url} />
                 </>
+              )}
+              {configurationTab === 'psd2' && (
+                <PSD2RequestPanel
+                  config={request.psd2}
+                  headers={request.headers ?? []}
+                  onConfigChange={(psd2) => onChange({ ...request, psd2 })}
+                  onHeadersChange={(headers) => onChange({ ...request, headers })}
+                  issues={psd2Issues}
+                />
               )}
             </div>
           )}
@@ -996,7 +1020,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
                             className={cn(
                               'group relative h-[60px] w-[152px] shrink-0 overflow-hidden rounded-md border bg-surface-2 transition-all',
                               active
-                                ? 'border-accent/80 bg-surface-3 shadow-[0_0_0_1px_rgba(34,211,238,.12)]'
+                                ? 'border-accent/80 bg-surface-3 shadow-[0_0_0_1px_var(--color-accent-glow)]'
                                 : 'border-border-2 hover:border-accent/40 hover:bg-surface-3',
                             )}
                           >
@@ -1062,44 +1086,13 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
           )}
           {activeTab === 'scripts' && (
             <div className="flex min-h-0 flex-1 flex-col">
-              <div role="tablist" aria-label="Tests and scripts" className="flex gap-1 border-b border-border-1 bg-surface-1 px-2 pt-2">
-                {([
-                  { id: 'tests' as const, label: 'Tests', icon: CheckCheck },
-                  { id: 'scripts' as const, label: 'Scripts', icon: FileCode },
-                ]).map((item) => {
-                  const ItemIcon = item.icon
-                  const active = automationTab === item.id
-                  return (
-                    <button
-                      key={item.id}
-                      role="tab"
-                      aria-selected={active}
-                      onClick={() => setAutomationTab(item.id)}
-                      className={cn(
-                        'flex h-8 items-center gap-1.5 border-b-2 px-3 text-[11px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent',
-                        active ? 'border-accent text-text-1' : 'border-transparent text-text-3 hover:text-text-1',
-                      )}
-                    >
-                      <ItemIcon size={12} className={active ? 'text-accent' : 'text-text-4'} />
-                      {item.label}
-                    </button>
-                  )
-                })}
-              </div>
-              {automationTab === 'tests' && (
-                <AssertionsEditor
-                  assertions={request.assertions ?? []}
-                  onChange={(assertions) => onChange({ ...request, assertions })}
-                />
-              )}
-              {automationTab === 'scripts' && (
-                <ScriptsEditor
-                  pre={scripts.pre ?? ''}
-                  post={scripts.post ?? ''}
-                  tests={scripts.tests ?? ''}
-                  onChange={(s) => onChange({ ...request, scripts: s })}
-                />
-              )}
+              <ScriptsEditor
+                pre={scripts.pre ?? ''}
+                post={scripts.post ?? ''}
+                tests={scripts.tests ?? ''}
+                initialTab="tests"
+                onChange={(s) => onChange({ ...request, scripts: s })}
+              />
             </div>
           )}
         </div>

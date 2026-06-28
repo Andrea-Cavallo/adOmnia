@@ -1,4 +1,4 @@
-import type { HttpMethod, RequestAssertion, RequestItem } from '@/lib/types'
+import type { HttpMethod, RequestAssertion, RequestItem, PSD2RequestConfig } from '@/lib/types'
 
 export interface ResolvedHostMapEntry {
   host: string
@@ -39,6 +39,7 @@ export interface ResolvedRequest {
   assertionPlan: RequestAssertion[]
   scriptPlan: ResolvedRequestScriptPlan
   sourceMetadata: ResolvedRequestSourceMetadata
+  psd2?: PSD2RequestConfig & { qwacPassword: string; qsealPassword: string }
 }
 
 export interface HTTPExecPayload {
@@ -55,6 +56,7 @@ export interface HTTPExecPayload {
   clientCertPem: string
   clientCertPassphrase: string
   hostsMap: ResolvedHostMapEntry[]
+  psd2?: ResolvedRequest['psd2']
 }
 
 export function toHTTPExecPayload(request: ResolvedRequest): HTTPExecPayload {
@@ -72,6 +74,6 @@ export function toHTTPExecPayload(request: ResolvedRequest): HTTPExecPayload {
     clientCertPem: request.clientCertPem,
     clientCertPassphrase: request.clientCertPassphrase,
     hostsMap: request.hostsMap,
+    psd2: request.psd2,
   }
 }
-

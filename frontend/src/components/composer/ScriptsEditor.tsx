@@ -6,12 +6,13 @@ interface ScriptsEditorProps {
   post: string
   tests: string
   onChange: (scripts: { pre: string; post: string; tests: string }) => void
+  initialTab?: ScriptTab
 }
 
 type ScriptTab = 'pre' | 'post' | 'tests'
 
-export function ScriptsEditor({ pre, post, tests, onChange }: ScriptsEditorProps) {
-  const [tab, setTab] = useState<ScriptTab>('pre')
+export function ScriptsEditor({ pre, post, tests, onChange, initialTab = 'tests' }: ScriptsEditorProps) {
+  const [tab, setTab] = useState<ScriptTab>(initialTab)
 
   const tabClass = (t: ScriptTab) =>
     cn('px-3 py-1.5 text-xs border-b-2 transition-colors', tab === t ? 'border-accent text-text-1' : 'border-transparent text-text-3 hover:text-text-2')
@@ -25,7 +26,7 @@ export function ScriptsEditor({ pre, post, tests, onChange }: ScriptsEditorProps
   }
 
   return (
-    <div className="flex flex-col gap-2 px-2 pb-2">
+    <div className="flex min-h-0 flex-1 flex-col gap-2 px-2 pb-2">
       <div className="flex gap-1 border-b border-border-1">
         <button className={tabClass('pre')} onClick={() => setTab('pre')}>Pre-request</button>
         <button className={tabClass('post')} onClick={() => setTab('post')}>Post-response</button>
@@ -35,7 +36,8 @@ export function ScriptsEditor({ pre, post, tests, onChange }: ScriptsEditorProps
         Scripts run locally for this workspace and can read or modify request, response, and environment data. Use code you trust.
       </div>
       <textarea
-        className="min-h-[160px] p-3 bg-surface-2 border border-border-2 rounded font-mono text-xs text-text-1 placeholder:text-text-4 resize-y focus:border-accent outline-none"
+        aria-label={`${tab} JavaScript editor`}
+        className="min-h-[240px] flex-1 p-3 bg-surface-2 border border-border-2 rounded font-mono text-xs text-text-1 placeholder:text-text-4 resize-none focus:border-accent outline-none"
         placeholder={
           tab === 'pre'
             ? '// Pre-request script (pm.* API compatible)\npm.environment.set("timestamp", Date.now());'

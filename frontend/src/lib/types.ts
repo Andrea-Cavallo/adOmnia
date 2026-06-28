@@ -114,6 +114,20 @@ export interface RequestItem {
   _openapiResponses?: OpenAPIResponseDoc[]
   _openapiSecurity?: OpenAPISecurityDoc
   assertions?: RequestAssertion[]
+  psd2?: PSD2RequestConfig
+}
+
+export type PSD2Operation = 'ais-consent' | 'pis-payment' | 'fcs-confirmation'
+
+export interface PSD2RequestConfig {
+  enabled: boolean
+  operation: PSD2Operation
+  qwacPath: string
+  qwacPasswordRef: string
+  qsealPath: string
+  qsealPasswordRef: string
+  keyId: string
+  sign: boolean
 }
 
 export type AssertionOperator = 'eq' | 'neq' | 'gt' | 'lt' | 'gte' | 'lte' | 'contains' | 'not_contains' | 'regex' | 'exists' | 'type'

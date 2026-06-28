@@ -60,7 +60,7 @@ export function isContextMenuBackdrop(target: EventTarget | null, currentTarget:
 /**
  * Reusable, keyboard-navigable context menu with nested submenus that stays
  * inside the viewport. Used by the Git Sync commit/file menus. Styling matches
- * the existing adOmnia menu (compact, dark, thin borders, cyan accent).
+ * the existing adOmnia menu (compact, dark, thin borders, purple accent).
  *
  * Keyboard: ↑/↓ move, → open submenu, ← close submenu, Enter activate,
  * Escape close, and disabled items are skipped.

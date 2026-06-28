@@ -124,7 +124,7 @@ const defaultSettings: AppSettings = {
     language: 'en',
     sidebarWidth: 280,
     showRailIconsOnly: false,
-    accentColorPreset: 'default',
+    accentColorPreset: 'purple',
     sidebarCollapsed: false,
   },
   requests: {

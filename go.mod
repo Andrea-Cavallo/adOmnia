@@ -8,6 +8,7 @@ require (
 	github.com/IBM/sarama v1.50.3
 	github.com/digitorus/pdf v0.1.2
 	github.com/digitorus/pdfsign v0.0.0-20260407063256-85ede6424a74
+	github.com/dop251/goja v0.0.0-20260618133527-c9b2ea77db59
 	github.com/dustin/go-humanize v1.0.1
 	github.com/eclipse/paho.mqtt.golang v1.5.1
 	github.com/gabriel-vasile/mimetype v1.4.13
@@ -46,7 +47,6 @@ require (
 	github.com/digitorus/pkcs7 v0.0.0-20250730155240-ffadbf3f398c // indirect
 	github.com/digitorus/timestamp v0.0.0-20250524132541-c45532741eea // indirect
 	github.com/dlclark/regexp2/v2 v2.2.1 // indirect
-	github.com/dop251/goja v0.0.0-20260618133527-c9b2ea77db59 // indirect
 	github.com/eapache/go-resiliency v1.7.0 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect

@@ -4,8 +4,9 @@ import { applyPathParams } from '@/lib/pathParams'
 import { useSettingsStore } from '@/stores/settings'
 import { useHostsStore } from '@/stores/hosts'
 import { useCookieJarStore } from '@/lib/cookieJar'
-import { resolveVaultReferences } from '@/lib/vaultRefs'
+import { resolveSecret, resolveVaultReferences } from '@/lib/vaultRefs'
 import { toHTTPExecPayload, type ResolvedRequest } from '@/lib/requestExecutionContract'
+import { validatePSD2Request } from '@/lib/psd2Validation'
 import { ExecuteHTTP, CancelHTTP } from '../wailsjs/go/main/App'
 
 export interface SendOptions {
@@ -18,6 +19,8 @@ export async function sendRequest(
   opts?: SendOptions
 ): Promise<ResponseData> {
   if (opts?.signal?.aborted) return errResp('CANCELED', 'Request cancelled')
+  const psd2Issues = validatePSD2Request(request)
+  if (psd2Issues.length > 0) return errResp('PSD2_ERR', psd2Issues.map((issue) => issue.message).join(' '))
   let resolvedVars: Record<string, string>
   try {
     resolvedVars = await resolveVaultReferences(vars)
@@ -67,6 +70,7 @@ export async function sendRequest(
 
   // FormData (file uploads) still needs browser fetch; Go binding handles strings only.
   if (rawBody instanceof FormData) {
+    if (request.psd2?.enabled) return errResp('PSD2_ERR', 'PSD2 signing and mTLS require a backend-serializable request body; multipart form-data is not supported in this MVP.')
     try {
       await applyAuth(request, headers, resolvedVars, fullUrl, rawBody)
     } catch (e) {
@@ -100,6 +104,19 @@ export async function sendRequest(
 
   const activeHostEntries = useHostsStore.getState().getActiveEntries()
 
+  let psd2: ResolvedRequest['psd2']
+  if (request.psd2?.enabled) {
+    try {
+      psd2 = {
+        ...request.psd2,
+        qwacPassword: await resolveSecret(request.psd2.qwacPasswordRef),
+        qsealPassword: await resolveSecret(request.psd2.qsealPasswordRef),
+      }
+    } catch (e) {
+      return errResp('PSD2_ERR', e instanceof Error ? e.message : String(e))
+    }
+  }
+
   const reqId = uid()
   const resolvedRequest: ResolvedRequest = {
     id: reqId,
@@ -126,6 +143,7 @@ export async function sendRequest(
       openapiSecurity: request._openapiSecurity,
       xExtensions: request._xExtensions,
     },
+    psd2,
   }
   const execReq = toHTTPExecPayload(resolvedRequest)
 

@@ -11,10 +11,13 @@ import (
 	"io"
 	"net/http"
 	"net/http/cookiejar"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
 	"time"
+
+	"adomnia/internal/psd2"
 )
 
 // inFlight tracks cancel functions for running requests, keyed by the
@@ -54,20 +57,21 @@ func Cancel(id string) {
 
 // HTTPExecRequest is the payload sent by the frontend to ExecuteHTTP.
 type HTTPExecRequest struct {
-	ID                   string            `json:"id,omitempty"`
-	Method               string            `json:"method"`
-	URL                  string            `json:"url"`
-	Headers              map[string]string `json:"headers"`
-	Body                 string            `json:"body"`
-	TimeoutMs            int               `json:"timeoutMs"`
-	FollowRedirects      bool              `json:"followRedirects"`
-	MaxRedirects         int               `json:"maxRedirects,omitempty"`
-	StripAuthOnRedirect  bool              `json:"stripAuthOnRedirect,omitempty"`
-	SkipTLSVerify        bool              `json:"skipTlsVerify"`
-	ClientCertPEM        string            `json:"clientCertPem,omitempty"`
-	ClientCertPassphrase string            `json:"clientCertPassphrase,omitempty"`
-	HostsMap             []HostMapEntry    `json:"hostsMap,omitempty"`
-	CookieJarID          string            `json:"cookieJarId,omitempty"`
+	ID                   string              `json:"id,omitempty"`
+	Method               string              `json:"method"`
+	URL                  string              `json:"url"`
+	Headers              map[string]string   `json:"headers"`
+	Body                 string              `json:"body"`
+	TimeoutMs            int                 `json:"timeoutMs"`
+	FollowRedirects      bool                `json:"followRedirects"`
+	MaxRedirects         int                 `json:"maxRedirects,omitempty"`
+	StripAuthOnRedirect  bool                `json:"stripAuthOnRedirect,omitempty"`
+	SkipTLSVerify        bool                `json:"skipTlsVerify"`
+	ClientCertPEM        string              `json:"clientCertPem,omitempty"`
+	ClientCertPassphrase string              `json:"clientCertPassphrase,omitempty"`
+	HostsMap             []HostMapEntry      `json:"hostsMap,omitempty"`
+	CookieJarID          string              `json:"cookieJarId,omitempty"`
+	PSD2                 *psd2.RequestConfig `json:"psd2,omitempty"`
 }
 
 // HTTPExecResponse is the result returned by ExecuteHTTP.
@@ -106,9 +110,12 @@ func mustJSON(v any) string {
 
 func executeHTTPRequest(req HTTPExecRequest) HTTPExecResponse {
 	tlsCfg := &tls.Config{InsecureSkipVerify: req.SkipTLSVerify} //nolint:gosec
+	if err := preparePSD2(&req, tlsCfg); err != nil {
+		return HTTPExecResponse{Error: &HTTPExecError{Code: "PSD2_ERR", Message: err.Error()}}
+	}
 
 	// mTLS: load a client certificate when a PEM path is configured.
-	if strings.TrimSpace(req.ClientCertPEM) != "" {
+	if strings.TrimSpace(req.ClientCertPEM) != "" && (req.PSD2 == nil || !req.PSD2.Enabled) {
 		cert, err := loadClientCert(req.ClientCertPEM, req.ClientCertPassphrase)
 		if err != nil {
 			return HTTPExecResponse{Error: &HTTPExecError{Code: "MTLS_ERR", Message: err.Error()}}
@@ -218,6 +225,56 @@ func executeHTTPRequest(req HTTPExecRequest) HTTPExecResponse {
 		Ms:          elapsed,
 		Size:        len(bodyBytes),
 	}
+}
+
+func preparePSD2(req *HTTPExecRequest, tlsCfg *tls.Config) error {
+	if req.PSD2 == nil || !req.PSD2.Enabled {
+		return nil
+	}
+	builder := psd2.BerlinHeaderBuilder{}
+	built, err := builder.Build(psd2.HeaderBuildInput{Operation: req.PSD2.Operation, Headers: req.Headers})
+	if err != nil {
+		return err
+	}
+	req.Headers = built.Headers
+	if err := builder.Validate(psd2.HeaderBuildInput{Operation: req.PSD2.Operation, Headers: req.Headers}); err != nil {
+		return err
+	}
+	if strings.TrimSpace(req.PSD2.QWACPath) == "" {
+		return fmt.Errorf("QWAC certificate is required for PSD2 mTLS")
+	}
+	manager := psd2.FileCertificateManager{}
+	qwac, err := manager.Load(req.PSD2.QWACPath, req.PSD2.QWACPassword)
+	if err != nil {
+		return fmt.Errorf("load QWAC: %w", err)
+	}
+	tlsCfg.Certificates = []tls.Certificate{qwac.TLS}
+	if !req.PSD2.Sign {
+		return nil
+	}
+	qseal, err := manager.Load(req.PSD2.QSEALPath, req.PSD2.QSEALPassword)
+	if err != nil {
+		return fmt.Errorf("load QSEAL: %w", err)
+	}
+	parsedURL, err := url.Parse(req.URL)
+	if err != nil {
+		return fmt.Errorf("parse request URL for signing: %w", err)
+	}
+	target := parsedURL.EscapedPath()
+	if target == "" {
+		target = "/"
+	}
+	if parsedURL.RawQuery != "" {
+		target += "?" + parsedURL.RawQuery
+	}
+	result, err := (psd2.RSASigner{}).Sign(psd2.SignInput{Method: req.Method, Target: target, Body: []byte(req.Body), Headers: req.Headers, Credential: qseal, KeyID: req.PSD2.KeyID})
+	if err != nil {
+		return err
+	}
+	req.Headers[psd2.HeaderDigest] = result.Digest
+	req.Headers[psd2.HeaderSignature] = result.Signature
+	req.Headers[psd2.HeaderSignatureCertificate] = result.SignatureCertificate
+	return nil
 }
 
 // loadClientCert reads a PEM file containing a certificate and private key for

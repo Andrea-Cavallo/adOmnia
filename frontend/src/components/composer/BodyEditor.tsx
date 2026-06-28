@@ -104,21 +104,6 @@ const BODY_ICONS: Record<BodyTypeId, LucideIcon> = {
   graphql: Share2,
 }
 
-// Live Content-Type the request will actually send, shown next to the selector.
-function contentTypeFor(activeType: BodyTypeId, lang?: string): string {
-  switch (activeType) {
-    case 'json': return 'application/json'
-    case 'urlencoded': return 'application/x-www-form-urlencoded'
-    case 'formdata': return 'multipart/form-data'
-    case 'graphql': return 'application/json'
-    case 'raw':
-      return lang === 'xml' ? 'application/xml'
-        : lang === 'html' ? 'text/html'
-        : lang === 'javascript' ? 'application/javascript'
-        : 'text/plain'
-  }
-}
-
 const RAW_LANGUAGES = [
   { id: 'xml', label: 'XML' },
   { id: 'text', label: 'Text' },
@@ -674,9 +659,9 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
           ? 'fixed inset-3 z-50 overflow-hidden rounded-xl border border-border-2 shadow-2xl'
           : 'flex-1',
       )}>
-      <section className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-border-2 bg-surface-1 px-3 py-2.5">
-        <div className="flex min-w-0 flex-wrap items-center gap-2.5">
-          <div role="radiogroup" aria-label="Body format" className="inline-flex max-w-full flex-wrap items-center gap-0.5 rounded-lg bg-surface-0 p-1 ring-1 ring-inset ring-border-2">
+      <section className="flex flex-nowrap items-center justify-between gap-2 border-b border-border-2 bg-surface-1 px-3 py-2.5">
+        <div className="min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div role="radiogroup" aria-label="Body format" className="inline-flex flex-nowrap items-center gap-0.5 rounded-lg bg-surface-0 p-1 ring-1 ring-inset ring-border-2">
             {BODY_TYPES.map((type) => {
               const active = activeType === type.id
               const Icon = BODY_ICONS[type.id]
@@ -700,17 +685,8 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
               )
             })}
           </div>
-          {body.type !== 'none' && (
-            <span
-              title="Content-Type this request will send"
-              className="hidden items-center gap-1.5 rounded-md border border-border-2 bg-surface-0 px-2 py-1 font-mono text-[10px] leading-none text-text-3 sm:inline-flex"
-            >
-              <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-              {contentTypeFor(activeType, body.lang)}
-            </span>
-          )}
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex shrink-0 items-center gap-1.5">
           <BodyFindBar
             open={searchOpen}
             query={search.query}

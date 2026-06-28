@@ -478,20 +478,6 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
                 max={600}
                 onChange={(v) => updateAppearance({ sidebarWidth: v })}
               />
-              <Select
-                label={s.appearance.accentColorPreset}
-                desc={s.appearance.accentColorPresetDesc}
-                value={settings.appearance.accentColorPreset}
-                options={[
-                  { value: 'default', label: s.appearance.accentOptions.default },
-                  { value: 'blue', label: s.appearance.accentOptions.blue },
-                  { value: 'purple', label: s.appearance.accentOptions.purple },
-                  { value: 'green', label: s.appearance.accentOptions.green },
-                  { value: 'orange', label: s.appearance.accentOptions.orange },
-                  { value: 'red', label: s.appearance.accentOptions.red },
-                ]}
-                onChange={(v) => updateAppearance({ accentColorPreset: v })}
-              />
               <Toggle
                 label={s.appearance.showRailIconsOnly}
                 desc={s.appearance.showRailIconsOnlyDesc}

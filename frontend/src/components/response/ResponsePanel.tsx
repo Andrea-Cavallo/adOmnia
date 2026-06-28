@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Copy, Loader2, Maximize2, GitBranch, GitCompare, Sparkles, X, ShieldCheck, ShieldAlert, ShieldOff, AlertTriangle, Check, XCircle, FileText, FileCode, FileJson, Search, ChevronUp, ChevronDown } from 'lucide-react'
+import { Copy, Maximize2, GitBranch, GitCompare, Sparkles, X, ShieldCheck, ShieldAlert, ShieldOff, AlertTriangle, Check, XCircle, FileText, FileCode, FileJson, Search, ChevronUp, ChevronDown } from 'lucide-react'
 import type { ResponseData, ContractValidationResult, AssertionResult, ScriptRunResult } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { prettyJson } from '@/lib/prettyJson'
@@ -13,6 +13,7 @@ import { useAppStore } from '@/stores/app'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { ContextMenu } from '@/components/ui/ContextMenu'
 import { uid } from '@/lib/types'
+import responseLogo from '../../../../assets/images/spinner.png'
 
 interface ResponsePanelProps {
   tabId: string
@@ -22,6 +23,35 @@ interface ResponsePanelProps {
   oaPath?: string
   oaMethod?: string
   assertions?: import('@/lib/types').RequestAssertion[]
+}
+
+function ResponseWaitingState({ loading }: { loading: boolean }) {
+  return (
+    <div className="flex min-h-0 flex-1 items-center justify-center">
+      <div className="flex flex-col items-center text-center">
+        <img
+          src={responseLogo}
+          alt="adOmnia"
+          width={120}
+          height={120}
+          className={cn(
+            'mb-4 h-[120px] w-[120px] shrink-0 object-contain drop-shadow-[0_0_14px_var(--color-accent-glow)]',
+            loading && 'motion-safe:animate-[spin_1.2s_linear_infinite] motion-reduce:animate-pulse',
+          )}
+        />
+        <p className="text-sm text-text-3">
+          {loading ? 'Sending request…' : 'Send the request to see a response'}
+        </p>
+        {!loading && (
+          <p className="mt-1 text-xs text-text-4">
+            or press <kbd className="rounded bg-surface-3 px-1 py-0.5 text-[10px]">Ctrl</kbd>
+            <span className="mx-0.5">+</span>
+            <kbd className="rounded bg-surface-3 px-1 py-0.5 text-[10px]">Enter</kbd>
+          </p>
+        )}
+      </div>
+    </div>
+  )
 }
 
 function formatBytes(bytes: number): string {
@@ -499,29 +529,11 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
   }, [matchIndex, matchCount, searchQuery])
 
   if (loading) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 size={24} className="animate-spin text-accent" />
-          <span className="text-xs text-text-3">Sending request…</span>
-        </div>
-      </div>
-    )
+    return <ResponseWaitingState loading />
   }
 
   if (!response) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-3xl text-text-4 mb-2">↘</div>
-          <p className="text-sm text-text-3">Hit Send to run the request</p>
-          <p className="text-xs text-text-4 mt-1">
-            or press <kbd className="px-1 py-0.5 bg-surface-3 rounded text-[10px]">Ctrl</kbd>
-            <kbd className="px-1 py-0.5 bg-surface-3 rounded text-[10px] ml-0.5">Enter</kbd>
-          </p>
-        </div>
-      </div>
-    )
+    return <ResponseWaitingState loading={false} />
   }
 
   if (response.error) {
@@ -749,17 +761,17 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
                 <Sparkles size={12} />
               </button>
 
-              {/* Pretty/Raw toggle */}
+              {/* Beautify/Raw toggle */}
               <span className="text-text-4 text-[9px] mx-1">|</span>
               <button
                 onClick={() => { setView('pretty'); updateViewState(tabId, { responseBodyView: 'pretty' }) }}
-                className={cn('px-2 py-0.5 text-[10px] rounded', view === 'pretty' ? 'bg-surface-3 text-text-1' : 'text-text-4')}
+                className={cn('px-2 py-0.5 text-[10px] rounded', view === 'pretty' ? 'bg-accent text-white' : 'text-text-4')}
               >
-                Pretty
+                Beautify
               </button>
               <button
                 onClick={() => { setView('raw'); updateViewState(tabId, { responseBodyView: 'raw' }) }}
-                className={cn('px-2 py-0.5 text-[10px] rounded', view === 'raw' ? 'bg-surface-3 text-text-1' : 'text-text-4')}
+                className={cn('px-2 py-0.5 text-[10px] rounded', view === 'raw' ? 'bg-accent text-white' : 'text-text-4')}
               >
                 Raw
               </button>

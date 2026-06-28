@@ -22,8 +22,15 @@ function injectThemeVariables(theme: Theme) {
   const root = document.documentElement.style
 
   Object.entries(theme.colors).forEach(([key, value]) => {
+    if (key === 'accent' || key === 'accent-light' || key === 'accent-dark' || key === 'accent-hover' || key === 'accent-glow') return
     root.setProperty(`--color-${key}`, value)
   })
+
+  root.setProperty('--color-accent', '#8B3DFF')
+  root.setProperty('--color-accent-light', '#A855F7')
+  root.setProperty('--color-accent-dark', '#5B21D6')
+  root.setProperty('--color-accent-hover', '#9B4FFF')
+  root.setProperty('--color-accent-glow', 'rgba(139,61,255,0.18)')
 
   if (theme.fonts.sans) root.setProperty('--font-sans', theme.fonts.sans)
   if (theme.fonts.mono) root.setProperty('--font-mono', theme.fonts.mono)

@@ -18,6 +18,18 @@ export function VerifyPdfSignatureBase64(pdfBase64: string): Promise<string> {
   return window['go']['main']['App']['VerifyPdfSignatureBase64'](pdfBase64)
 }
 
+export function SelectPSD2Certificate(): Promise<string> {
+  return window['go']['main']['App']['SelectPSD2Certificate']()
+}
+
+export function InspectPSD2Certificate(path: string, password: string): Promise<string> {
+  return window['go']['main']['App']['InspectPSD2Certificate'](path, password)
+}
+
+export function BuildPSD2Headers(inputJSON: string): Promise<string> {
+  return window['go']['main']['App']['BuildPSD2Headers'](inputJSON)
+}
+
 export function InspectSigningCertificateBase64(reqJSON: string): Promise<string> {
   return window['go']['main']['App']['InspectSigningCertificateBase64'](reqJSON)
 }
