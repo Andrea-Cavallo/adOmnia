@@ -7,4 +7,6 @@ export function Configure(arg1:string):Promise<void>;
 
 export function GenerateMockEndpoints(arg1:string,arg2:string):Promise<string>;
 
+export function ListModels(arg1:string,arg2:string):Promise<string>;
+
 export function TestConnection(arg1:string):Promise<string>;

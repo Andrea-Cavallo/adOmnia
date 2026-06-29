@@ -301,23 +301,6 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
             <X size={11} className="text-text-3" />
             Close All
           </button>
-          <div className="my-1 border-t border-border-1" />
-          <button
-            onClick={() => { onReorder(ctx.tabId, tabs[ctxTabIdx - 1].id, 'before'); closeCtx() }}
-            disabled={ctxTabIdx <= 0}
-            className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-text-2 hover:bg-surface-2 hover:text-text-1 transition-colors text-left disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            <ChevronLeft size={11} className="text-text-3" />
-            Move Left
-          </button>
-          <button
-            onClick={() => { onReorder(ctx.tabId, tabs[ctxTabIdx + 1].id, 'after'); closeCtx() }}
-            disabled={ctxTabIdx < 0 || ctxTabIdx >= tabs.length - 1}
-            className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-text-2 hover:bg-surface-2 hover:text-text-1 transition-colors text-left disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            <ChevronRight size={11} className="text-text-3" />
-            Move Right
-          </button>
         </div>
       , document.body)}
     </div>

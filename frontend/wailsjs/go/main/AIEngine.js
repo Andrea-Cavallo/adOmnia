@@ -14,6 +14,10 @@ export function GenerateMockEndpoints(arg1, arg2) {
   return window['go']['main']['AIEngine']['GenerateMockEndpoints'](arg1, arg2);
 }
 
+export function ListModels(arg1, arg2) {
+  return window['go']['main']['AIEngine']['ListModels'](arg1, arg2);
+}
+
 export function TestConnection(arg1) {
   return window['go']['main']['AIEngine']['TestConnection'](arg1);
 }

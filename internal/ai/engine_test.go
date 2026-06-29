@@ -12,9 +12,11 @@ func TestBuildProvider_KnownProviders(t *testing.T) {
 		wantName string
 	}{
 		{"anthropic", Config{Provider: ProviderAnthropic, Model: "claude-sonnet-4-6", APIKey: "k"}, "anthropic"},
-		{"openai", Config{Provider: ProviderOpenAI, Model: "gpt-4o", APIKey: "k"}, "openai"},
-		{"gemini", Config{Provider: ProviderGemini, Model: "gemini-2.0-flash", APIKey: "k"}, "gemini"},
-		{"ollama", Config{Provider: ProviderOllama, Model: "llama3"}, "ollama"},
+		{"openai", Config{Provider: ProviderOpenAI, Model: "gpt-5.4-mini", APIKey: "k"}, "openai"},
+		{"gemini", Config{Provider: ProviderGemini, Model: "gemini-3.5-flash", APIKey: "k"}, "gemini"},
+		{"ollama", Config{Provider: ProviderOllama, Model: "qwen3-coder"}, "ollama"},
+		{"huggingface", Config{Provider: ProviderHuggingFace, Model: "openai/gpt-oss-120b", APIKey: "k"}, "openai"},
+		{"openai-compatible", Config{Provider: ProviderOpenAICompatible, Model: "local-model"}, "openai"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

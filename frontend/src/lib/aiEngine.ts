@@ -10,11 +10,12 @@ import { useSettingsStore } from '@/stores/settings'
 export async function buildAIConfig(): Promise<string> {
   const ai = useSettingsStore.getState().settings.ai
   const apiKey = await resolveSecret(ai.apiKey)
+  const baseURL = ['ollama', 'huggingface', 'openai-compatible'].includes(ai.provider) ? ai.baseURL : ''
   return JSON.stringify({
     provider: ai.provider,
     model: ai.model,
     apiKey,
-    baseURL: ai.baseURL,
+    baseURL,
   })
 }
 

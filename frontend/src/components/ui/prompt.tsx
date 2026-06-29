@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { DialogOverlay, DialogContent, DialogHeader, DialogFooter, DialogBody } from './dialog'
 import { Button } from './button'
-import { X } from 'lucide-react'
+import { PencilLine, X } from 'lucide-react'
 
 interface PromptProps {
   open: boolean
   title: string
   placeholder?: string
+  description?: string
   defaultValue?: string
   confirmLabel?: string
   multiline?: boolean
@@ -18,6 +19,7 @@ export function Prompt({
   open,
   title,
   placeholder = '',
+  description,
   defaultValue = '',
   confirmLabel = 'OK',
   multiline = false,
@@ -52,14 +54,24 @@ export function Prompt({
 
   return (
     <DialogOverlay open={open} onClose={onCancel}>
-      <DialogContent size={multiline ? 'lg' : 'sm'}>
-        <DialogHeader>
-          <span className="text-sm font-semibold text-text-1">{title}</span>
-          <button onClick={onCancel} className="text-text-4 hover:text-text-1 transition-colors">
+      <DialogContent size={multiline ? 'lg' : 'sm'} className="relative">
+        <div className="h-px shrink-0 bg-gradient-to-r from-transparent via-accent/80 to-transparent" />
+        <DialogHeader className="border-b-0 bg-surface-1 pb-2">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-accent/10 text-accent ring-1 ring-accent/20">
+              <PencilLine size={16} />
+            </span>
+            <div className="min-w-0">
+              <h2 className="truncate text-[14px] font-semibold text-text-1">{title}</h2>
+              {description && <p className="mt-0.5 text-[11px] leading-relaxed text-text-3">{description}</p>}
+            </div>
+          </div>
+          <button onClick={onCancel} title="Close" className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-text-4 transition-colors hover:bg-surface-2 hover:text-text-1">
             <X size={16} />
           </button>
         </DialogHeader>
-        <DialogBody>
+        <DialogBody className="pt-2">
+          {!multiline && <label className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.12em] text-text-4">Name</label>}
           {multiline ? (
             <textarea
               ref={textareaRef}
@@ -83,11 +95,11 @@ export function Prompt({
                 if (e.key === 'Escape') onCancel()
               }}
               placeholder={placeholder}
-              className="w-full h-9 px-3 bg-surface-2 border border-border-2 rounded text-sm font-mono text-text-1 placeholder:text-text-4 focus:border-accent outline-none transition-colors"
+              className="h-10 w-full rounded-lg border border-border-2 bg-surface-2 px-3.5 font-mono text-[13px] text-text-1 outline-none transition-all placeholder:text-text-4 hover:border-border-3 focus:border-accent focus:ring-2 focus:ring-accent/15"
             />
           )}
         </DialogBody>
-        <DialogFooter className="gap-2">
+        <DialogFooter>
           <Button variant="ghost" size="sm" onClick={onCancel} className="px-4">
             Cancel
           </Button>

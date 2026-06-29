@@ -38,7 +38,6 @@ export function Sidebar() {
   const moveNode = useCollectionsStore((s) => s.moveNode)
   const duplicateNode = useCollectionsStore((s) => s.duplicateNode)
   const openTab = useTabsStore((s) => s.openTab)
-  const newTab = useTabsStore((s) => s.newTab)
   const closeRequestTabs = useTabsStore((s) => s.closeRequestTabs)
   const renameRequestTabs = useTabsStore((s) => s.renameRequestTabs)
   const activeTabId = useTabsStore((s) => s.activeTabId)
@@ -89,6 +88,14 @@ export function Sidebar() {
     addRequest(collectionId, parentId, req)
     openTab(req, collectionId)
     return parentId
+  }
+
+  const handleNewRequest = (method: HttpMethod = 'GET'): string => {
+    const activeTab = tabs.find((tab) => tab.id === activeTabId)
+    const activeCollection = collections.find((collection) => collection.id === activeTab?.collectionId)
+    const targetCollection = activeCollection ?? collections[0] ?? addCollection('My Requests')
+    handleAddRequestToFolder(targetCollection.id, null, method)
+    return targetCollection.id
   }
 
   const handleSwitchWorkspace = (workspaceId: string) => {
@@ -174,7 +181,7 @@ export function Sidebar() {
         collections={collections}
         activeRequestId={activeRequestId}
         onOpenRequest={(request: RequestItem, collectionId: string) => openTab(request, collectionId)}
-        onNewRequest={() => newTab()}
+        onNewRequest={handleNewRequest}
         onDeleteCollection={deleteCollection}
         onDeleteNode={handleDeleteNode}
         onAddCollection={() => setShowAddCollection(true)}
@@ -206,7 +213,8 @@ export function Sidebar() {
       <Prompt
         open={showAddWorkspace}
         title="New Workspace"
-        placeholder="Workspace name..."
+        description="Create an isolated local space for collections, environments and open requests."
+        placeholder="e.g. Payments Platform"
         confirmLabel="Create"
         onConfirm={(name) => {
           const workspace = addWorkspace(name)

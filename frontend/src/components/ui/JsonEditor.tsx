@@ -2,6 +2,7 @@ import { useRef, useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '@/lib/utils'
 import { useSettingsStore } from '@/stores/settings'
+import { findTextMatches } from '@/lib/textSearch'
 
 const AUTO_CLOSE_PAIRS: Record<string, string> = {
   '(': ')', '[': ']', '{': '}', '"': '"', "'": "'", '`': '`',
@@ -18,6 +19,8 @@ interface JsonEditorProps {
   hasActiveEnv?: boolean
   searchTerm?: string
   activeSearchIndex?: number
+  searchMatchCase?: boolean
+  searchWholeWord?: boolean
 }
 
 // ─── Var tooltip types ────────────────────────────────────────────────────────
@@ -212,6 +215,8 @@ function highlightSearchMatches(
   color: string | undefined,
   searchTerm: string | undefined,
   activeSearchIndex: number,
+  searchMatchCase: boolean,
+  searchWholeWord: boolean,
   matchCursor: { current: number },
 ): string {
   if (!searchTerm) {
@@ -219,20 +224,17 @@ function highlightSearchMatches(
     return color ? `<span style="color:${color}">${escaped}</span>` : escaped
   }
 
-  const lower = rawText.toLowerCase()
-  const needle = searchTerm.toLowerCase()
   let last = 0
   let html = ''
-  let index = lower.indexOf(needle)
+  const matches = findTextMatches(rawText, searchTerm, { matchCase: searchMatchCase, wholeWord: searchWholeWord })
 
-  while (index !== -1) {
+  for (const index of matches) {
     if (index > last) html += escapeHtml(rawText.slice(last, index))
     const matchText = escapeHtml(rawText.slice(index, index + searchTerm.length))
     const isActive = matchCursor.current === activeSearchIndex
     html += `<mark data-json-search-match="true" style="background:${isActive ? 'rgba(251,191,36,0.55)' : 'rgba(234,179,8,0.32)'};color:inherit;border-radius:2px;outline:${isActive ? '1px solid var(--color-warning)' : 'none'}">${matchText}</mark>`
     matchCursor.current += 1
     last = index + searchTerm.length
-    index = lower.indexOf(needle, last)
   }
 
   if (last < rawText.length) html += escapeHtml(rawText.slice(last))
@@ -287,10 +289,12 @@ function buildHtml(
   hasActiveEnv?: boolean,
   searchTerm?: string,
   activeSearchIndex = 0,
+  searchMatchCase = false,
+  searchWholeWord = false,
 ): string {
   const matchCursor = { current: 0 }
   return tokens.map(({ text, cls }) => {
-    if (!cls) return highlightSearchMatches(text, undefined, searchTerm, activeSearchIndex, matchCursor)
+    if (!cls) return highlightSearchMatches(text, undefined, searchTerm, activeSearchIndex, searchMatchCase, searchWholeWord, matchCursor)
     const color = CLS_MAP[cls]
     // Inject var highlighting for string values (not keys) that contain {{...}}
     if (!searchTerm && cls === 'json-string' && resolvedVars && text.includes('{{')) {
@@ -301,7 +305,7 @@ function buildHtml(
         hasActiveEnv ?? false,
       )
     }
-    return highlightSearchMatches(text, color, searchTerm, activeSearchIndex, matchCursor)
+    return highlightSearchMatches(text, color, searchTerm, activeSearchIndex, searchMatchCase, searchWholeWord, matchCursor)
   }).join('')
 }
 
@@ -335,6 +339,8 @@ export function JsonEditor({
   hasActiveEnv,
   searchTerm,
   activeSearchIndex = 0,
+  searchMatchCase = false,
+  searchWholeWord = false,
 }: JsonEditorProps) {
   const taRef  = useRef<HTMLTextAreaElement>(null)
   const preRef = useRef<HTMLPreElement>(null)
@@ -364,11 +370,11 @@ export function JsonEditor({
     if (!text.trim()) return `<span style="color:var(--color-text-4)">${escapeHtml(placeholder ?? '')}</span>`
     try {
       const tokens = tokenizeJson(text)
-      return buildHtml(tokens, resolvedVars, hasActiveEnv, searchTerm, activeSearchIndex)
+      return buildHtml(tokens, resolvedVars, hasActiveEnv, searchTerm, activeSearchIndex, searchMatchCase, searchWholeWord)
     } catch {
-      return highlightSearchMatches(text, undefined, searchTerm, activeSearchIndex, { current: 0 })
+      return highlightSearchMatches(text, undefined, searchTerm, activeSearchIndex, searchMatchCase, searchWholeWord, { current: 0 })
     }
-  }, [activeSearchIndex, placeholder, resolvedVars, searchTerm, hasActiveEnv])
+  }, [activeSearchIndex, placeholder, resolvedVars, searchMatchCase, searchTerm, searchWholeWord, hasActiveEnv])
 
   // Keep the highlight layer in sync with the textarea's scroll position.
   const syncScroll = useCallback(() => {
@@ -412,11 +418,9 @@ export function JsonEditor({
     const ta = taRef.current
     if (!ta) return
     const text = ta.value
-    const lower = text.toLowerCase()
-    const needle = searchTerm.toLowerCase()
-    let found = 0
-    let index = lower.indexOf(needle)
-    while (index !== -1) {
+    const matches = findTextMatches(text, searchTerm, { matchCase: searchMatchCase, wholeWord: searchWholeWord })
+    for (let found = 0; found < matches.length; found += 1) {
+      const index = matches[found]
       if (found === activeSearchIndex) {
         ta.setSelectionRange(index, index + searchTerm.length)
         const line = text.slice(0, index).split('\n').length - 1
@@ -425,11 +429,9 @@ export function JsonEditor({
         syncScroll()
         return
       }
-      found += 1
-      index = lower.indexOf(needle, index + Math.max(searchTerm.length, 1))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSearchIndex, searchTerm, syncScroll])
+  }, [activeSearchIndex, searchMatchCase, searchTerm, searchWholeWord, syncScroll])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const ta = e.currentTarget

@@ -371,12 +371,12 @@ export function WelcomePanel() {
               </span>
             </div>
             <h1 className="max-w-[720px] text-[38px] font-semibold leading-[1.04] tracking-normal max-sm:text-[32px] max-sm:leading-[1.08]" style={{ color: colors.title }}>
-              <span className={isLight ? 'text-violet-700' : 'text-violet-200'}>Build & debug APIs.</span>
+              <span className={isLight ? 'text-violet-700' : 'text-violet-200'}>Build, debug and ship APIs.</span>
               <br />
-              Then document, sign and version it all.
+              Document, sign and version everything—locally.
             </h1>
             <p className="mt-4 max-w-[680px] font-mono text-[12px] leading-7" style={{ color: colors.muted }}>
-              API clients and protocols come first, with documents, signed PDFs and a full local Git surface one click away. Everything stays on your machine.
+              From modern API clients to enterprise protocols, technical documents, signed PDFs and Git workflows: every tool is one click away, and every byte stays on your machine.
             </p>
           </div>
 

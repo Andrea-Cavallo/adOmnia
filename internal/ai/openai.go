@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 )
 
 type openAIProvider struct {
@@ -17,7 +18,7 @@ type openAIProvider struct {
 
 func newOpenAIProvider(apiKey, model, baseURL string) *openAIProvider {
 	if model == "" {
-		model = "gpt-4o-mini"
+		model = "gpt-5.4-mini"
 	}
 	return &openAIProvider{apiKey: apiKey, model: model, baseURL: baseURL, client: &http.Client{}}
 }
@@ -35,10 +36,11 @@ func (p *openAIProvider) Complete(ctx context.Context, req CompletionRequest) (C
 	}
 	messages = append(messages, map[string]string{"role": "user", "content": req.UserPrompt})
 
-	body := map[string]any{
-		"model":      p.model,
-		"max_tokens": maxTok,
-		"messages":   messages,
+	body := map[string]any{"model": p.model, "messages": messages}
+	if strings.HasPrefix(p.model, "gpt-5") || strings.HasPrefix(p.model, "o1") || strings.HasPrefix(p.model, "o3") || strings.HasPrefix(p.model, "o4") {
+		body["max_completion_tokens"] = maxTok
+	} else {
+		body["max_tokens"] = maxTok
 	}
 	raw, _ := json.Marshal(body)
 	httpReq, _ := http.NewRequestWithContext(ctx, http.MethodPost,

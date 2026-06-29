@@ -52,6 +52,7 @@ interface WailsGoMain {
     TestConnection: (configJSON: string) => Promise<string>
     Complete: (provider: string, prompt: string, maxTokens: number) => Promise<string>
     GenerateMockEndpoints: (inputType: string, userInput: string) => Promise<string>
+    ListModels: (configJSON: string, query: string) => Promise<string>
   }
   GitSync: {
     IsGitInstalled: () => Promise<boolean>

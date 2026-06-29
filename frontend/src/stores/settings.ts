@@ -76,7 +76,7 @@ export interface AppSettings {
     responseMaxRenderSizeKB: number
   }
   ai: {
-    provider: 'anthropic' | 'openai' | 'gemini' | 'ollama'
+    provider: 'anthropic' | 'openai' | 'gemini' | 'ollama' | 'huggingface' | 'openai-compatible'
     model: string
     apiKey: string
     baseURL: string

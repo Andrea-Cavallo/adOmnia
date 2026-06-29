@@ -15,6 +15,7 @@ import {
 import { graphFromMermaid, type ApiCatalogRequest } from '@/lib/flowMermaid'
 import {
   launchBrowserForDebug,
+  inspectablePageTargets,
   discoverEndpoints,
   connectToTarget,
   disconnectDebugger,
@@ -198,7 +199,7 @@ function TabPicker({ onConnect, onCancel, connectionError }: TabPickerProps) {
     setLaunching(true)
     setError('')
     try {
-      const targets = await launchBrowserForDebug(launchUrl, 9223)
+      const targets = inspectablePageTargets(await launchBrowserForDebug(launchUrl, 9223))
       if (targets.length > 0) {
         setLaunchTargets(targets)
         setEndpoints([])
@@ -214,10 +215,9 @@ function TabPicker({ onConnect, onCancel, connectionError }: TabPickerProps) {
   }, [launchUrl, scan])
 
   const allTargets: { endpoint: string; target: DebugTarget }[] = [
-    ...(launchTargets ?? []).map((t) => ({ endpoint: 'Launched browser', target: t })),
+    ...inspectablePageTargets(launchTargets).map((t) => ({ endpoint: 'Launched browser', target: t })),
     ...(endpoints ?? []).flatMap((ep) =>
-      (ep.targets ?? [])
-        .filter((t) => t.type === 'page')
+      inspectablePageTargets(ep.targets)
         .map((t) => ({ endpoint: `${ep.browserName} - port ${ep.port}`, target: t }))
     ),
   ]
@@ -460,6 +460,9 @@ export function BrowserDebugPanel({ initialTab = 'network' }: { initialTab?: Deb
   const handleConnect = useCallback(async (target: DebugTarget) => {
     setConnectionError('')
     try {
+      if (inspectablePageTargets([target]).length === 0) {
+        throw new Error('Select a browser page. Workers and extension targets do not expose an inspectable DOM.')
+      }
       await connectToTarget(target.webSocketDebuggerUrl)
       await enableConsole()
       setConnectedTab(target)
