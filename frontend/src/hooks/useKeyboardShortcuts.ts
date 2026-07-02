@@ -14,6 +14,9 @@ export function useKeyboardShortcuts({ setCommandPaletteOpen }: KeyboardShortcut
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Feature-owned editors (Body, Response, etc.) get first refusal on
+      // shortcuts such as Ctrl/Cmd+F. Their handlers call preventDefault().
+      if (e.defaultPrevented) return
       const mod = e.metaKey || e.ctrlKey
       if (mod && (e.key.toLowerCase() === 'k' || e.key.toLowerCase() === 'p')) {
         e.preventDefault()

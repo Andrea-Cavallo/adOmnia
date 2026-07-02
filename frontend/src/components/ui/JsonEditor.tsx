@@ -345,6 +345,10 @@ export function JsonEditor({
   const taRef  = useRef<HTMLTextAreaElement>(null)
   const preRef = useRef<HTMLPreElement>(null)
   const gutterRef = useRef<HTMLPreElement>(null)
+  const previousSearchTermRef = useRef(searchTerm)
+  const undoStackRef = useRef<string[]>([])
+  const redoStackRef = useRef<string[]>([])
+  const expectedValueRef = useRef(value)
   const [tooltip, setTooltip] = useState<VarTooltip | null>(null)
   // Ctrl+wheel zoom — persisted px font size, shared by textarea/overlay/gutter.
   const [fontPx, setFontPx] = useState(() => {
@@ -364,6 +368,24 @@ export function JsonEditor({
     overflowWrap: editor.wordWrap ? 'anywhere' : 'normal',
     wordBreak: editor.wordWrap ? 'break-word' : 'normal',
     paddingLeft: editor.lineNumbers ? gutterWidth + 8 : 12,
+  }
+
+  // A tab/request switch is an external value replacement, not an edit that
+  // belongs to this document's undo history.
+  useEffect(() => {
+    if (value === expectedValueRef.current) return
+    undoStackRef.current = []
+    redoStackRef.current = []
+    expectedValueRef.current = value
+  }, [value])
+
+  const commitEdit = (next: string) => {
+    if (next === value) return
+    undoStackRef.current.push(value)
+    if (undoStackRef.current.length > 200) undoStackRef.current.shift()
+    redoStackRef.current = []
+    expectedValueRef.current = next
+    onChange(next)
   }
 
   const highlight = useCallback((text: string) => {
@@ -414,9 +436,17 @@ export function JsonEditor({
   // NOT re-fire this and yank the cursor back to the search hit.
   // ponytail: deps intentionally exclude `value` — only search navigation moves the caret.
   useEffect(() => {
-    if (!searchTerm) return
     const ta = taRef.current
     if (!ta) return
+    if (!searchTerm) {
+      if (previousSearchTermRef.current) {
+        const caret = ta.selectionEnd
+        ta.setSelectionRange(caret, caret)
+      }
+      previousSearchTermRef.current = searchTerm
+      return
+    }
+    previousSearchTermRef.current = searchTerm
     const text = ta.value
     const matches = findTextMatches(text, searchTerm, { matchCase: searchMatchCase, wholeWord: searchWholeWord })
     for (let found = 0; found < matches.length; found += 1) {
@@ -437,10 +467,41 @@ export function JsonEditor({
     const ta = e.currentTarget
     const { selectionStart: s, selectionEnd: end } = ta
 
+    const mod = e.ctrlKey || e.metaKey
+    if (mod && e.key.toLowerCase() === 'z') {
+      e.preventDefault()
+      const isRedo = e.shiftKey
+      const source = isRedo ? redoStackRef.current : undoStackRef.current
+      const next = source.pop()
+      if (next === undefined) return
+      const destination = isRedo ? undoStackRef.current : redoStackRef.current
+      destination.push(value)
+      expectedValueRef.current = next
+      onChange(next)
+      requestAnimationFrame(() => {
+        const editor = taRef.current
+        if (!editor) return
+        const caret = Math.min(next.length, s)
+        editor.setSelectionRange(caret, caret)
+      })
+      return
+    }
+
+    if (mod && !e.shiftKey && e.key.toLowerCase() === 'y') {
+      e.preventDefault()
+      const next = redoStackRef.current.pop()
+      if (next === undefined) return
+      undoStackRef.current.push(value)
+      expectedValueRef.current = next
+      onChange(next)
+      requestAnimationFrame(() => taRef.current?.setSelectionRange(Math.min(next.length, s), Math.min(next.length, s)))
+      return
+    }
+
     if (e.key === 'Tab') {
       e.preventDefault()
       const next = value.substring(0, s) + indentUnit + value.substring(end)
-      onChange(next)
+      commitEdit(next)
       const caret = s + indentUnit.length
       requestAnimationFrame(() => {
         if (taRef.current) {
@@ -455,7 +516,7 @@ export function JsonEditor({
       e.preventDefault()
       const close = AUTO_CLOSE_PAIRS[e.key]
       const next = value.substring(0, s) + e.key + close + value.substring(end)
-      onChange(next)
+      commitEdit(next)
       const caret = s + 1
       requestAnimationFrame(() => {
         if (taRef.current) {
@@ -539,7 +600,7 @@ export function JsonEditor({
       <textarea
         ref={taRef}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => commitEdit(e.target.value)}
         onKeyDown={handleKeyDown}
         onScroll={syncScroll}
         onMouseMove={handleMouseMove}

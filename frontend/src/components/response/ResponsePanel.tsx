@@ -439,7 +439,7 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
-        if (tab === 'body' && view !== 'graph') {
+        if (tab === 'body' && view !== 'graph' && bodyRef.current?.contains(e.target as Node)) {
           e.preventDefault()
           setSearchOpen(true)
           setTimeout(() => searchRef.current?.focus(), 30)

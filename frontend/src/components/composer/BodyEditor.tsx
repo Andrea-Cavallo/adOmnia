@@ -600,6 +600,7 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
   const [search, setSearch] = useState<BodySearchState>({ query: '', activeIndex: 0, matchCase: false, wholeWord: false })
   const [maximized, setMaximized] = useState(false)
   const findInputRef = useRef<HTMLInputElement>(null)
+  const editorRootRef = useRef<HTMLDivElement>(null)
 
   const activeType: BodyTypeId = body.type === 'raw' && body.lang === 'json' ? 'json'
     : body.type === 'raw' ? 'raw'
@@ -636,6 +637,7 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
+        if (!editorRootRef.current?.contains(event.target as Node)) return
         event.preventDefault()
         setSearchOpen(true)
         requestAnimationFrame(() => findInputRef.current?.focus())
@@ -650,6 +652,13 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
   const openFind = () => {
     setSearchOpen(true)
     requestAnimationFrame(() => findInputRef.current?.focus())
+  }
+
+  const closeFind = () => {
+    setSearchOpen(false)
+    // Removing the query also removes highlights and tells the active editor
+    // to collapse the search selection back to a normal caret.
+    setSearch((current) => ({ ...current, query: '', activeIndex: 0 }))
   }
 
   const nextMatch = () => {
@@ -675,7 +684,7 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
         maximized
           ? 'fixed inset-3 z-50 overflow-hidden rounded-xl border border-border-2 shadow-2xl'
           : 'flex-1',
-      )}>
+      )} ref={editorRootRef}>
       <section className="flex flex-nowrap items-center justify-between gap-2 border-b border-border-2 bg-surface-1 px-3 py-2.5">
         <div className="min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div role="radiogroup" aria-label="Body format" className="inline-flex flex-nowrap items-center gap-0.5 rounded-lg bg-surface-0 p-1 ring-1 ring-inset ring-border-2">
@@ -714,7 +723,7 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
             onQueryChange={(query) => setSearch((current) => ({ ...current, query, activeIndex: 0 }))}
             onPrev={prevMatch}
             onNext={nextMatch}
-            onClose={() => setSearchOpen(false)}
+            onClose={closeFind}
             matchCase={search.matchCase}
             wholeWord={search.wholeWord}
             onMatchCaseChange={() => setSearch((current) => ({ ...current, matchCase: !current.matchCase, activeIndex: 0 }))}

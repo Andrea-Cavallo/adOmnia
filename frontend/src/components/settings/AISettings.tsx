@@ -16,7 +16,7 @@ const PROVIDERS = [
 ]
 
 const DEFAULT_MODELS: Record<string, string> = {
-  anthropic: 'claude-sonnet-4-6',
+  anthropic: 'claude-sonnet-5',
   openai: 'gpt-5.4-mini',
   gemini: 'gemini-3.5-flash',
   huggingface: 'openai/gpt-oss-120b:preferred',
@@ -36,12 +36,16 @@ interface DiscoveredModel { id: string; name: string; owner?: string; source: st
 
 const CURATED_MODELS: Record<string, ModelOption[]> = {
   anthropic: [
-    { id: 'claude-opus-4-8', label: 'Claude Opus 4.8', detail: 'Maximum capability and agentic coding', badge: 'Frontier' },
-    { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6', detail: 'Best speed and intelligence balance', badge: 'Recommended' },
+    { id: 'claude-fable-5', label: 'Claude Fable 5', detail: 'Most capable widely available Claude for demanding, long-horizon work', badge: 'Frontier' },
+    { id: 'claude-sonnet-5', label: 'Claude Sonnet 5', detail: 'Best speed and intelligence balance for coding and agents', badge: 'Recommended' },
+    { id: 'claude-opus-4-8', label: 'Claude Opus 4.8', detail: 'Complex reasoning and high-autonomy agentic coding' },
+    { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6', detail: 'Previous-generation balanced model' },
     { id: 'claude-haiku-4-5', label: 'Claude Haiku 4.5', detail: 'Fast and cost-efficient' },
   ],
   openai: [
-    { id: 'gpt-5.4', label: 'GPT-5.4', detail: 'Complex reasoning, coding and professional work', badge: 'Frontier' },
+    { id: 'gpt-5.5', label: 'GPT-5.5', detail: 'Latest flagship for complex reasoning, coding and professional work', badge: 'Frontier' },
+    { id: 'gpt-5.5-pro', label: 'GPT-5.5 Pro', detail: 'Highest-compute GPT-5.5 for the hardest tasks', badge: 'Pro' },
+    { id: 'gpt-5.4', label: 'GPT-5.4', detail: 'Affordable frontier reasoning and professional work' },
     { id: 'gpt-5.4-mini', label: 'GPT-5.4 mini', detail: 'Lower latency and cost', badge: 'Recommended' },
     { id: 'gpt-5.4-nano', label: 'GPT-5.4 nano', detail: 'High-volume lightweight tasks' },
   ],
