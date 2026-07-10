@@ -26,7 +26,7 @@ require (
 	github.com/tidwall/gjson v1.19.0
 	github.com/tidwall/sjson v1.2.5
 	github.com/wI2L/jsondiff v0.7.1
-	github.com/wailsapp/wails/v2 v2.12.0
+	github.com/wailsapp/wails/v2 v2.13.0
 	github.com/xdg-go/scram v1.2.0
 	go.etcd.io/bbolt v1.5.0
 	go.mongodb.org/mongo-driver/v2 v2.7.0
