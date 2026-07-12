@@ -76,7 +76,7 @@ export async function renderPdfPage(
   canvas.style.width = `${Math.floor(viewport.width)}px`
   canvas.style.height = `${Math.floor(viewport.height)}px`
   context.scale(ratio, ratio)
-  await page.render({ canvasContext: context, viewport }).promise
+  await page.render({ canvas, canvasContext: context, viewport }).promise
   return { canvas, widthPt: baseViewport.width, heightPt: baseViewport.height }
 }
 

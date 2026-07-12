@@ -110,7 +110,7 @@ function ThroughputChart({
   canvasRef,
 }: {
   timeline: ThroughputBucket[]
-  canvasRef: React.RefObject<HTMLCanvasElement>
+  canvasRef: React.RefObject<HTMLCanvasElement | null>
 }) {
   useEffect(() => {
     const canvas = canvasRef.current

@@ -162,7 +162,7 @@ function InlineTokens({ tokens }: { tokens: WordToken[] }) {
 
 interface DiffUnifiedViewProps {
   displayEntries: Array<DiffEntry | { kind: 'ellipsis'; count: number }>
-  containerRef: React.RefObject<HTMLDivElement>
+  containerRef: React.RefObject<HTMLDivElement | null>
 }
 
 function DiffUnifiedView({ displayEntries, containerRef }: DiffUnifiedViewProps) {

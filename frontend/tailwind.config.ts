@@ -1,15 +1,18 @@
 import type { Config } from 'tailwindcss'
-import fluid, { extract, screens, fontSize } from 'fluid-tailwind'
+
+const fluid = (min: number, max: number) => `clamp(${min}px, ${min}px + ${(max - min).toFixed(2)} * ((100vw - 320px) / 1120), ${max}px)`
 
 const config: Config = {
   darkMode: 'class',
-  content: {
-    files: ['./index.html', './src/**/*.{ts,tsx}'],
-    extract,
-  },
+  content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
-    screens,
-    fontSize,
+    screens: {
+      sm: '640px',
+      md: '768px',
+      lg: '1024px',
+      xl: '1280px',
+      '2xl': '1536px',
+    },
     extend: {
       colors: {
         surface: {
@@ -75,57 +78,57 @@ const config: Config = {
         xl: 'var(--radius-xl)',
       },
       fontSize: {
-        ui: ['~13px/~18px'],
-        mono: ['~12.5px/~17px'],
-        xs: ['~11px/~15px'],
-        sm: ['~12px/~16px'],
-        base: ['~14px/~20px'],
-        lg: ['~16px/~24px'],
-        xl: ['~18px/~28px'],
-        '2xl': ['~22px/~30px'],
-        '3xl': ['~28px/~36px'],
+        ui: [fluid(13, 18)],
+        mono: [fluid(12.5, 17)],
+        xs: [fluid(11, 15)],
+        sm: [fluid(12, 16)],
+        base: [fluid(14, 20)],
+        lg: [fluid(16, 24)],
+        xl: [fluid(18, 28)],
+        '2xl': [fluid(22, 30)],
+        '3xl': [fluid(28, 36)],
       },
       spacing: {
-        'fluid-1': '~4px/~8px',
-        'fluid-2': '~8px/~12px',
-        'fluid-3': '~12px/~16px',
-        'fluid-4': '~16px/~24px',
-        'fluid-5': '~20px/~32px',
-        'fluid-6': '~24px/~40px',
-        'fluid-8': '~32px/~56px',
-        'fluid-10': '~40px/~72px',
+        'fluid-1': fluid(4, 8),
+        'fluid-2': fluid(8, 12),
+        'fluid-3': fluid(12, 16),
+        'fluid-4': fluid(16, 24),
+        'fluid-5': fluid(20, 32),
+        'fluid-6': fluid(24, 40),
+        'fluid-8': fluid(32, 56),
+        'fluid-10': fluid(40, 72),
       },
       width: {
-        'modal-sm': '~320px/~420px',
-        'modal-md': '~420px/~560px',
-        'modal-lg': '~560px/~760px',
-        'modal-xl': '~700px/~960px',
-        'modal-full': '~800px/~1200px',
+        'modal-sm': fluid(320, 420),
+        'modal-md': fluid(420, 560),
+        'modal-lg': fluid(560, 760),
+        'modal-xl': fluid(700, 960),
+        'modal-full': fluid(800, 1200),
       },
       maxWidth: {
-        'modal-sm': '~320px/~420px',
-        'modal-md': '~420px/~560px',
-        'modal-lg': '~560px/~760px',
-        'modal-xl': '~700px/~960px',
-        'modal-full': '~800px/~1200px',
+        'modal-sm': fluid(320, 420),
+        'modal-md': fluid(420, 560),
+        'modal-lg': fluid(560, 760),
+        'modal-xl': fluid(700, 960),
+        'modal-full': fluid(800, 1200),
       },
       height: {
-        'modal-sm': '~240px/~320px',
-        'modal-md': '~320px/~480px',
-        'modal-lg': '~400px/~600px',
+        'modal-sm': fluid(240, 320),
+        'modal-md': fluid(320, 480),
+        'modal-lg': fluid(400, 600),
       },
       maxHeight: {
-        'modal-content': '~400px/~680px',
+        'modal-content': fluid(400, 680),
       },
       gap: {
-        'fluid-1': '~4px/~8px',
-        'fluid-2': '~8px/~12px',
-        'fluid-3': '~12px/~16px',
-        'fluid-4': '~16px/~24px',
+        'fluid-1': fluid(4, 8),
+        'fluid-2': fluid(8, 12),
+        'fluid-3': fluid(12, 16),
+        'fluid-4': fluid(16, 24),
       },
     },
   },
-  plugins: [fluid],
+  plugins: [],
 }
 
 export default config
