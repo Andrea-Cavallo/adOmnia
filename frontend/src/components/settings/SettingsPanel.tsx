@@ -280,12 +280,15 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
     return (total / 1024).toFixed(1)
   })()
   const isLinuxRuntime = runtimePlatform === 'linux'
+  const rawWindowChromeValue = settings.appearance.windowChrome ?? 'system'
   const windowChromeValue = isLinuxRuntime
-    ? (settings.appearance.windowChrome ?? 'app')
-    : (settings.appearance.windowChrome === 'system' ? 'system' : 'app')
+    ? (rawWindowChromeValue === 'app' ? 'app-xwayland' : rawWindowChromeValue)
+    : (rawWindowChromeValue === 'system' ? 'system' : 'app')
+  const startupWindowChromeValue = isLinuxRuntime && startupWindowChrome === 'app'
+    ? 'app-xwayland'
+    : startupWindowChrome
   const windowChromeOptions = isLinuxRuntime
     ? [
-        { value: 'app', label: s.appearance.windowChromeOptions.appWayland },
         { value: 'app-xwayland', label: s.appearance.windowChromeOptions.appXWayland },
         { value: 'system', label: s.appearance.windowChromeOptions.system },
       ]
@@ -417,7 +420,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
                   updateAppearance({ windowChrome: v as AppSettings['appearance']['windowChrome'] })
                 }
               />
-              {startupWindowChrome !== null && startupWindowChrome !== windowChromeValue && (
+              {startupWindowChromeValue !== null && startupWindowChromeValue !== windowChromeValue && (
                 <div className="mx-1 mb-1 rounded border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[10px] text-amber-200">
                   {s.appearance.windowChromeRestart}
                 </div>

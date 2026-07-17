@@ -26,6 +26,36 @@ ok()    { echo -e "${GREEN}OK ${NC} $*"; }
 warn()  { echo -e "${YELLOW}WARN${NC} $*"; }
 err()   { echo -e "${RED}ERR${NC} $*"; }
 
+linux_webkitgtk_install_hint() {
+  echo "    Install the WebKitGTK development package, not only the runtime library."
+  echo ""
+  if command -v dnf &>/dev/null; then
+    echo "    Fedora/RHEL:"
+    echo "      sudo dnf install gtk3-devel webkit2gtk4.1-devel pkgconf-pkg-config"
+    echo "      # fallback for older 4.0 builds, if available:"
+    echo "      sudo dnf install gtk3-devel webkit2gtk4.0-devel pkgconf-pkg-config"
+  elif command -v apt-get &>/dev/null; then
+    echo "    Debian/Ubuntu:"
+    echo "      sudo apt-get install libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config"
+    echo "      # fallback for older 4.0 builds, if available:"
+    echo "      sudo apt-get install libgtk-3-dev libwebkit2gtk-4.0-dev pkg-config"
+  elif command -v pacman &>/dev/null; then
+    echo "    Arch:"
+    echo "      sudo pacman -S gtk3 webkit2gtk-4.1 pkgconf"
+  elif command -v zypper &>/dev/null; then
+    echo "    openSUSE:"
+    echo "      sudo zypper install gtk3-devel webkit2gtk4-devel pkgconf-pkg-config"
+  else
+    echo "    Required pkg-config modules:"
+    echo "      gtk+-3.0"
+    echo "      webkit2gtk-4.1 or webkit2gtk-4.0"
+  fi
+  echo ""
+  echo "    Verify with:"
+  echo "      pkg-config --exists webkit2gtk-4.1 && echo webkitgtk-4.1-ok"
+  echo "      pkg-config --exists webkit2gtk-4.0 && echo webkitgtk-4.0-ok"
+}
+
 VERSION="${VERSION:-dev}"
 UNAME="$(uname -s 2>/dev/null || echo unknown)"
 
@@ -136,15 +166,66 @@ fi
 GIT_COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
 BUILD_DATE="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 LDFLAGS="-s -w -X main.Version=$VERSION -X main.BuildDate=$BUILD_DATE -X main.GitCommit=$GIT_COMMIT"
+WAILS_TAG_ARGS=()
+WEBKITGTK_SELECTED=""
+
+if [[ "$UNAME" == Linux* ]]; then
+  WEBKITGTK="${WEBKITGTK:-auto}"
+  if ! command -v pkg-config &>/dev/null; then
+    err "pkg-config not found. Install pkg-config and the WebKitGTK development package."
+    linux_webkitgtk_install_hint
+    exit 1
+  fi
+
+  case "$WEBKITGTK" in
+    auto|"")
+      if pkg-config --exists webkit2gtk-4.1; then
+        WEBKITGTK_SELECTED="4.1"
+        WAILS_TAG_ARGS=(-tags webkit2_41)
+      elif pkg-config --exists webkit2gtk-4.0; then
+        WEBKITGTK_SELECTED="4.0"
+      else
+        err "No supported WebKitGTK development package found."
+        linux_webkitgtk_install_hint
+        exit 1
+      fi
+      ;;
+    4.1)
+      if ! pkg-config --exists webkit2gtk-4.1; then
+        err "WEBKITGTK=4.1 requested, but webkit2gtk-4.1 was not found by pkg-config."
+        linux_webkitgtk_install_hint
+        exit 1
+      fi
+      WEBKITGTK_SELECTED="4.1"
+      WAILS_TAG_ARGS=(-tags webkit2_41)
+      ;;
+    4.0)
+      if ! pkg-config --exists webkit2gtk-4.0; then
+        err "WEBKITGTK=4.0 requested, but webkit2gtk-4.0 was not found by pkg-config."
+        linux_webkitgtk_install_hint
+        exit 1
+      fi
+      WEBKITGTK_SELECTED="4.0"
+      ;;
+    *)
+      err "Invalid WEBKITGTK value: $WEBKITGTK"
+      echo "    Use WEBKITGTK=auto, WEBKITGTK=4.1, or WEBKITGTK=4.0"
+      exit 1
+      ;;
+  esac
+fi
 
 echo ""
 echo -e "${CYAN}--- Building with Wails...${NC}"
 info "Version:  $VERSION"
 info "Commit:   $GIT_COMMIT"
 info "Output:   $OUTPUT"
+if [[ -n "$WEBKITGTK_SELECTED" ]]; then
+  info "WebKitGTK: $WEBKITGTK_SELECTED"
+fi
 echo ""
 
-"$WAILS_BIN" build -clean -ldflags "$LDFLAGS" -o "$OUTNAME"
+"$WAILS_BIN" build -clean "${WAILS_TAG_ARGS[@]}" -ldflags "$LDFLAGS" -o "$OUTNAME"
 
 if [[ ! -f "$WAILS_OUT" ]]; then
   err "Expected Wails output not found: $WAILS_OUT"

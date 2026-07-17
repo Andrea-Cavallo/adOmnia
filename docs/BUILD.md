@@ -56,6 +56,14 @@ Linux native build for WebKitGTK 4.1:
 wails build -clean -platform linux/amd64 -tags webkit2_41 -ldflags "-s -w"
 ```
 
+The root `./build.sh` script detects the installed Linux WebKitGTK development package automatically. It prefers WebKitGTK 4.1 when `pkg-config` reports `webkit2gtk-4.1`; otherwise it falls back to WebKitGTK 4.0. To force a local Linux build target, set `WEBKITGTK=4.1` or `WEBKITGTK=4.0`.
+
+On Fedora/RHEL, install the development package that provides the matching `pkg-config` module:
+
+```bash
+sudo dnf install gtk3-devel webkit2gtk4.1-devel pkgconf-pkg-config
+```
+
 macOS:
 
 ```bash

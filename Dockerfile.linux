@@ -55,15 +55,20 @@ RUN set -e && \
     mkdir -p /appdir/usr/bin \
              /appdir/usr/share/applications \
              /appdir/usr/share/icons/hicolor/256x256/apps && \
-    cp build/bin/adOmnia /appdir/usr/bin/adOmnia && \
-    chmod +x /appdir/usr/bin/adOmnia && \
+    cp build/bin/adomnia /appdir/usr/bin/adomnia && \
+    chmod +x /appdir/usr/bin/adomnia && \
     if   [ -f assets/icons/linux/adOmnia_256x256.png ]; then \
-        cp assets/icons/linux/adOmnia_256x256.png /appdir/usr/share/icons/hicolor/256x256/apps/adOmnia.png; \
+        cp assets/icons/linux/adOmnia_256x256.png /appdir/usr/share/icons/hicolor/256x256/apps/adomnia.png; \
     elif [ -f build/appicon.png ]; then \
-        convert build/appicon.png -resize 256x256 /appdir/usr/share/icons/hicolor/256x256/apps/adOmnia.png; \
+        convert build/appicon.png -resize 256x256 /appdir/usr/share/icons/hicolor/256x256/apps/adomnia.png; \
     fi && \
-    printf '[Desktop Entry]\nType=Application\nName=adOmnia\nExec=adOmnia\nIcon=adOmnia\nTerminal=false\nCategories=Development;Network;\n' \
-        > /appdir/usr/share/applications/adOmnia.desktop && \
+    if [ -f build/linux/adOmnia.desktop ]; then \
+        sed -e 's|^Exec=.*|Exec=adomnia|' -e 's|^Icon=.*|Icon=adomnia|' \
+            build/linux/adOmnia.desktop > /appdir/usr/share/applications/adomnia.desktop; \
+    else \
+        printf '[Desktop Entry]\nType=Application\nName=adOmnia\nExec=adomnia\nIcon=adomnia\nTerminal=false\nCategories=Development;Network;\n' \
+            > /appdir/usr/share/applications/adomnia.desktop; \
+    fi && \
     linuxdeploy --appdir /appdir --output appimage && \
     mkdir -p /out && \
     mv *.AppImage "/out/adOmnia-${VERSION}-linux-amd64.AppImage"
