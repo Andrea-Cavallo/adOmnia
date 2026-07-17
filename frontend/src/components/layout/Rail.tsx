@@ -3,6 +3,7 @@ import { useAppStore, type RailItem } from '@/stores/app'
 import { useSettingsStore } from '@/stores/settings'
 import { cn } from '@/lib/utils'
 import { useAppIcon } from '@/lib/brandAssets'
+import { RAIL_CATEGORIES, getFeatureLabel, isFeatureVisible } from '@/lib/featureRegistry'
 import {
   Send, LayoutList, Shield, Server, Radio, Bug, Container, Network,
   Wrench, FileText, FileCode, Database, Braces, ChevronRight, FolderOpen,
@@ -13,8 +14,8 @@ import {
 
 interface SubItem {
   id: RailItem
-  icon: React.ElementType
-  label: string
+  icon?: React.ElementType
+  label?: string
 }
 
 interface SubGroup {
@@ -25,7 +26,6 @@ interface SubGroup {
 interface CategoryDef {
   key: string
   label: string
-  icon: React.ElementType
   code: string
   directItem?: RailItem
   groups: SubGroup[]
@@ -35,104 +35,53 @@ function Soap95Icon({ size = 12 }: { size?: number }) {
   return <img src="/icon95.png" alt="" style={{ width: size, height: size }} className="object-contain" />
 }
 
-const CATEGORIES: CategoryDef[] = [
-  {
-    key: 'api', label: 'API Core', icon: Send, code: 'API',
-    groups: [
-      { title: 'Requests', items: [
-        { id: 'collections', icon: LayoutList, label: 'API Workspace' },
-        { id: 'scenarios',   icon: Layers,     label: 'Daily Scenarios' },
-        { id: 'history',     icon: History,    label: 'Request History' },
-        { id: 'flows',       icon: GitBranch,  label: 'Flows' },
-      ]},
-      { title: 'Design', items: [
-        { id: 'apidocs', icon: BookOpen, label: 'API Docs / Swagger' },
-      ]},
-    ],
-  },
-  {
-    key: 'streaming', label: 'Protocols & Streaming', icon: Radio, code: 'PROTO',
-    groups: [
-      { title: 'Streaming', items: [
-        { id: 'websocket', icon: Zap,    label: 'WebSocket' },
-        { id: 'sse',       icon: Radio,  label: 'SSE Client' },
-        { id: 'broker',    icon: Server, label: 'Broker Studio' },
-      ]},
-      { title: 'Protocols', items: [
-        { id: 'grpc',  icon: Send,     label: 'gRPC Client' },
-        { id: 'soap',  icon: Soap95Icon, label: 'SOAP Studio' },
-        { id: 'mcp',   icon: Network,  label: 'MCP Client' },
-      ]},
-    ],
-  },
-  {
-    key: 'infra', label: 'Infrastructure & Simulation', icon: Server, code: 'INFRA',
-    groups: [
-      { title: 'Simulation', items: [
-        { id: 'mock',      icon: Server,    label: 'Mock Server' },
-        { id: 'proxy',     icon: Shield,    label: 'Proxy Interceptor' },
-      ]},
-    ],
-  },
-  {
-    key: 'debug', label: 'Browser Debug', icon: Bug, code: 'DEBUG',
-    groups: [
-      { title: 'Debugging', items: [
-        { id: 'browser',  icon: Bug,   label: 'Browser Debug & Net Tools' },
-      ]},
-    ],
-  },
-  {
-    key: 'data', label: 'Local Data', icon: Database, code: 'DATA',
-    groups: [
-      { title: 'Data', items: [
-        { id: 'database', icon: Database,  label: 'Database Studio' },
-        { id: 'storage',  icon: HardDrive, label: 'Storage Explorer' },
-        { id: 'vault',    icon: Lock,      label: 'Vault' },
-      ]},
-    ],
-  },
-  {
-    key: 'powertools', label: 'Power Tools', icon: Wrench, code: 'PWR',
-    directItem: 'powertools',
-    groups: [
-      { title: 'Data Tools', items: [
-        { id: 'jsontools',   icon: Braces,   label: 'JSON Tools' },
-        { id: 'xmltools',    icon: FileCode, label: 'XML Tools' },
-        { id: 'har',         icon: BarChart2, label: 'HAR Viewer' },
-        { id: 'observe',     icon: Activity,  label: 'Observability' },
-        { id: 'secretscanner', icon: Shield,  label: 'Secret Scanner' },
-      ]},
-      { title: 'Utilities', items: [
-        { id: 'powertools',  icon: Wrench,  label: 'All Utilities' },
-        { id: 'dockerlab',   icon: Container, label: 'Docker Lab' },
-      ]},
-      { title: 'Extensibility', items: [
-        { id: 'plugins', icon: Puzzle, label: 'Plugins' },
-      ]},
-    ],
-  },
-  {
-    key: 'markdown', label: 'Document Studio', icon: FileText, code: 'DOC',
-    groups: [
-      { title: 'Documents & Diagrams', items: [
-        { id: 'markdown',  icon: FileText,  label: 'Markdown Notes' },
-        { id: 'mermaid',   icon: GitBranch, label: 'Mermaid Diagrams' },
-        { id: 'latex',     icon: FileCode,  label: 'LaTeX Studio' },
-        { id: 'pdfeditor', icon: FileText,  label: 'PDF Editor & Sign' },
-      ]},
-    ],
-  },
-  {
-    key: 'gitsync', label: 'Git Sync', icon: GitBranch, code: 'GIT',
-    directItem: 'gitsync',
-    groups: [
-      { title: 'Sync', items: [
-        { id: 'gitsync', icon: GitBranch, label: 'Git Sync' },
-      ]},
-    ],
-  },
-]
+const CATEGORY_ICONS: Record<string, React.ElementType> = {
+  api: Send,
+  protocols: Radio,
+  infra: Server,
+  debug: Bug,
+  data: Database,
+  tools: Wrench,
+  docs: FileText,
+  workspace: GitBranch,
+}
+
+const FEATURE_ICONS: Partial<Record<RailItem, React.ElementType>> = {
+  collections: LayoutList,
+  scenarios: Layers,
+  history: History,
+  flows: GitBranch,
+  apidocs: BookOpen,
+  websocket: Zap,
+  sse: Radio,
+  broker: Server,
+  grpc: Send,
+  soap: Soap95Icon,
+  mcp: Network,
+  mock: Server,
+  proxy: Shield,
+  dockerlab: Container,
+  browser: Bug,
+  har: BarChart2,
+  observe: Activity,
+  database: Database,
+  storage: HardDrive,
+  vault: Lock,
+  jsonviewer: Braces,
+  xmltools: FileCode,
+  powertools: Wrench,
+  secretscanner: Shield,
+  markdown: FileText,
+  mermaid: GitBranch,
+  latex: FileCode,
+  pdfeditor: FileText,
+  gitsync: GitBranch,
+  themes: Settings,
+  templates: FileText,
+  plugins: Puzzle,
+}
+
+const CATEGORIES: CategoryDef[] = RAIL_CATEGORIES
 
 const RAIL_MAGNIFY_RANGE = 82
 const RAIL_MAX_SCALE = 1.34
@@ -171,6 +120,8 @@ function Flyout({ cat, activeRail, onSelect, onClose }: FlyoutProps) {
           </div>
           {group.items.map((item) => {
             const active = activeRail === item.id
+            const ItemIcon = item.icon ?? FEATURE_ICONS[item.id] ?? Wrench
+            const label = item.label ?? getFeatureLabel(item.id)
             return (
               <button
                 key={item.id}
@@ -182,8 +133,8 @@ function Flyout({ cat, activeRail, onSelect, onClose }: FlyoutProps) {
                     : 'text-text-3 hover:text-text-1 hover:bg-surface-2',
                 )}
               >
-                <item.icon size={12} />
-                <span className="flex-1">{item.label}</span>
+                <ItemIcon size={12} />
+                <span className="flex-1">{label}</span>
                 {active && <ChevronRight size={10} className="text-accent" />}
               </button>
             )
@@ -209,7 +160,7 @@ interface CategoryButtonProps {
 }
 
 function CategoryButton({ cat, activeRail, anyRunning, isOpen, magnifyScale, buttonRef, onToggle, onSelect, onClose }: CategoryButtonProps) {
-  const Icon = cat.icon
+  const Icon = CATEGORY_ICONS[cat.key] ?? Wrench
   const showRailIconsOnly = useSettingsStore((s) => s.settings.appearance.showRailIconsOnly)
   const allItems = cat.groups.flatMap((g) => g.items)
   const anyActive = allItems.some((item) => item.id === activeRail)
@@ -325,6 +276,7 @@ export function Rail() {
       items: group.items.filter((item) => {
         if (item.id === 'plugins' && !features.pluginsEnabled) return false
         if (item.id === 'scenarios' && !features.dailyScenariosEnabled) return false
+        if (!isFeatureVisible(item.id, features)) return false
         return true
       }),
     })).filter((group) => group.items.length > 0),

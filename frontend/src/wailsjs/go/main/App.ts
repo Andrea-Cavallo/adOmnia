@@ -47,6 +47,7 @@ export function GetServerPort(): Promise<number> {
 }
 
 export function GetStartupWindowChrome(): Promise<string> {
+  if (!window.go?.main?.App?.GetStartupWindowChrome) return Promise.resolve('system')
   return window['go']['main']['App']['GetStartupWindowChrome']()
 }
 
@@ -135,9 +136,23 @@ export interface UpdateInfo {
 }
 
 export function GetAppVersion(): Promise<string> {
+  const app = (window['go'] as unknown as { main?: { App?: Record<string, unknown> } } | undefined)?.main?.App
+  if (typeof app?.GetAppVersion !== 'function') return Promise.resolve('0.0.0-dev')
   return (window['go']['main']['App'] as unknown as Record<string, () => Promise<string>>)['GetAppVersion']()
 }
 
 export function CheckForUpdate(): Promise<UpdateInfo> {
+  const app = (window['go'] as unknown as { main?: { App?: Record<string, unknown> } } | undefined)?.main?.App
+  if (typeof app?.CheckForUpdate !== 'function') {
+    return Promise.resolve({
+      currentVersion: '0.0.0-dev',
+      latestVersion: '0.0.0-dev',
+      updateAvailable: false,
+      releaseUrl: '',
+      releaseNotes: '',
+      publishedAt: '',
+      isDev: true,
+    })
+  }
   return (window['go']['main']['App'] as unknown as Record<string, () => Promise<UpdateInfo>>)['CheckForUpdate']()
 }

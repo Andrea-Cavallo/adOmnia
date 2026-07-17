@@ -113,6 +113,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
   const updateMock = useSettingsStore((s) => s.updateMock)
   const updateVault = useSettingsStore((s) => s.updateVault)
   const updateEditor = useSettingsStore((s) => s.updateEditor)
+  const updateFeatures = useSettingsStore((s) => s.updateFeatures)
   const { themes, activeThemeId, setThemes, setLoading } = useThemesStore()
   const { applyTheme } = useThemeContext()
   const t = useT()
@@ -205,6 +206,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
     { id: 'mock', label: s.sections.mock, icon: <Server size={14} />, terms: searchable(s.mock) },
     { id: 'vault', label: s.sections.vault, icon: <Lock size={14} />, terms: searchable(s.vault) },
     { id: 'editor', label: s.sections.editor, icon: <Code2 size={14} />, terms: searchable(s.editor) },
+    { id: 'features', label: 'Feature Surface', icon: <Sparkles size={14} />, terms: 'features surface advanced lab experimental rail command palette visibility modules' },
     { id: 'workspace', label: 'Workspace', icon: <FolderOpen size={14} />, terms: 'workspace import export backup project local .adomnia' },
     { id: 'privacy', label: s.sections.privacy, icon: <Database size={14} />, terms: searchable(s.privacy) },
     { id: 'shortcuts', label: s.sections.shortcuts, icon: <Keyboard size={14} />, terms: searchable(s.shortcuts) },
@@ -343,7 +345,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
                 value={settings.general.defaultStartupRail}
                 options={[
                   { value: 'collections', label: s.general.railOptions.collections },
-                  { value: 'kafka', label: s.general.railOptions.kafka },
+                  { value: 'broker', label: 'Broker Studio' },
                   { value: 'proxy', label: s.general.railOptions.proxy },
                   { value: 'mock', label: s.general.railOptions.mock },
                   { value: 'browser', label: 'Browser Debug' },
@@ -783,6 +785,44 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
                 desc={s.editor.formatResponseAutoDesc}
                 checked={settings.editor.formatResponseAuto}
                 onChange={(v) => updateEditor({ formatResponseAuto: v })}
+              />
+            </SettingsCard>
+          </>
+        )}
+
+        {/* Feature Surface */}
+        {section === 'features' && (
+          <>
+            <SectionHeader
+              title="Feature Surface"
+              subtitle="Control how much of adOmnia is visible in the rail and command palette."
+            />
+            <SettingsCard>
+              <Toggle
+                label="Show advanced features"
+                desc="Expose secondary tools such as Docker Lab, HAR Viewer, Observability, PDF, Mermaid and Storage Explorer."
+                checked={settings.features.showAdvancedFeatures}
+                onChange={(v) => updateFeatures({ showAdvancedFeatures: v })}
+              />
+              <Toggle
+                label="Show lab features"
+                desc="Expose experimental or parked surfaces. Keep this off for a tighter production toolbox."
+                checked={settings.features.showLabFeatures}
+                onChange={(v) => updateFeatures({ showLabFeatures: v })}
+              />
+            </SettingsCard>
+            <SettingsCard>
+              <Toggle
+                label="Plugins"
+                desc="Show the plugin manager and plugin-related workspace controls."
+                checked={settings.features.pluginsEnabled}
+                onChange={(v) => updateFeatures({ pluginsEnabled: v })}
+              />
+              <Toggle
+                label="Daily Scenarios"
+                desc="Show the daily scenarios workbench inside API Core."
+                checked={settings.features.dailyScenariosEnabled}
+                onChange={(v) => updateFeatures({ dailyScenariosEnabled: v })}
               />
             </SettingsCard>
           </>

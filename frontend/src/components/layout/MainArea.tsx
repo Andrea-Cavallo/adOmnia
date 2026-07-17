@@ -40,6 +40,7 @@ const MarkdownPanel        = React.lazy(() => import('@/components/markdown/Mark
 const MermaidPanel         = React.lazy(() => import('@/components/mermaid/MermaidPanel').then(m => ({ default: m.MermaidPanel })))
 const LatexStudioPanel     = React.lazy(() => import('@/components/latex/LatexStudioPanel').then(m => ({ default: m.LatexStudioPanel })))
 const PdfEditorPanel       = React.lazy(() => import('@/components/pdfeditor/PdfEditorPanel').then(m => ({ default: m.PdfEditorPanel })))
+const JsonViewerPanel      = React.lazy(() => import('@/components/jsonviewer/JsonViewerPanel').then(m => ({ default: m.JsonViewerPanel })))
 const ApiDocsPanel         = React.lazy(() => import('@/components/apidocs/ApiDocsPanel').then(m => ({ default: m.ApiDocsPanel })))
 const StoragePanel         = React.lazy(() => import('@/components/storage/StoragePanel').then(m => ({ default: m.StoragePanel })))
 const DatabasePanel        = React.lazy(() => import('@/components/database/DatabasePanel').then(m => ({ default: m.DatabasePanel })))
@@ -738,14 +739,11 @@ function panelFor(activeRail: RailItem): PanelDef {
     case 'history':     return { component: <RequestHistoryPanel />,  titleKey: 'Request History', overflow: true }
     case 'websocket':   return { component: <WebSocketPanel />,       titleKey: 'WebSocket',     overflow: true }
     case 'sse':         return { component: <SsePanel />,             titleKey: 'SSE Client',    overflow: true }
-    case 'kafka':       return { component: <BrokerStudioPanel />,    titleKey: 'Broker Studio', overflow: true }
     case 'broker':      return { component: <BrokerStudioPanel />,    titleKey: 'Broker Studio', overflow: true }
     case 'mock':        return { component: <MockPanel />,            titleKey: 'mock',      overflow: true }
     case 'proxy':       return { component: <ProxyPanel />,           titleKey: 'proxy',     overflow: true }
     case 'grpc':        return { component: <GrpcPanel />,            titleKey: 'grpc',      overflow: true }
-    case 'nettools':    return { component: <BrowserDebugPanel initialTab="nettools" />, titleKey: 'browser' }
     case 'browser':     return { component: <BrowserDebugPanel />,    titleKey: 'browser' }
-    case 'utils':
     case 'powertools':  return { component: <UtilsPanel />,           titleKey: 'Power Tools', overflow: true }
     case 'flows':     return { component: <FlowsPanel />,              titleKey: 'flows',     overflow: true }
     case 'soap':      return { component: <SoapPanel />,             titleKey: 'soap',      overflow: true }
@@ -758,7 +756,7 @@ function panelFor(activeRail: RailItem): PanelDef {
     case 'pdfeditor':   return { component: <PdfEditorPanel />,        titleKey: 'pdfeditor', overflow: true }
     case 'storage':     return { component: <StoragePanel />,         titleKey: 'storage',   overflow: true }
     case 'database':    return { component: <DatabasePanel />,        titleKey: 'Database Studio', overflow: true }
-    case 'jsontools':   return { component: <UtilsPanel initialTool="jsonstudio" />, titleKey: 'Power Tools', overflow: true }
+    case 'jsonviewer':  return { component: <JsonViewerPanel />,      titleKey: 'JSON Studio', overflow: true }
     case 'xmltools':    return { component: <UtilsPanel initialTool="xmlstudio" />, titleKey: 'Power Tools', overflow: true }
     case 'welcome':     return { component: <WelcomePanel /> }
     case 'vault':       return { component: <VaultPanel />,           titleKey: 'vault',     overflow: true }

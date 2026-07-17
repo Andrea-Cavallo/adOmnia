@@ -447,9 +447,16 @@ export function BrowserDebugPanel({ initialTab = 'network' }: { initialTab?: Deb
   // Command-palette deep links select a tab via this event (see commandPalette.ts).
   useEffect(() => {
     const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { tab?: DebugTab; handled?: boolean }
+      const detail = (e as CustomEvent).detail as { tab?: DebugTab; nettoolsTab?: string; handled?: boolean }
       if (detail?.tab && DEBUG_TABS.some((t) => t.id === detail.tab)) {
         setActiveTab(detail.tab)
+        if (detail.tab === 'nettools' && detail.nettoolsTab) {
+          window.requestAnimationFrame(() => {
+            document.dispatchEvent(new CustomEvent('adomnia:nettools-tab', {
+              detail: { tab: detail.nettoolsTab, handled: false },
+            }))
+          })
+        }
         detail.handled = true
       }
     }

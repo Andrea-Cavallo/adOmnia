@@ -3,12 +3,14 @@ import type { ElementType, KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { ArrowRight, CornerDownLeft, Play, Search, Server, Settings2, SquarePlus } from 'lucide-react'
 import type { Collection, RequestItem, TreeNode } from '@/lib/types'
 import { COMMAND_PALETTE_PANELS, COMMAND_PALETTE_DEEP_LINKS, fuzzyScore } from '@/lib/commandPalette'
+import { isFeatureVisible } from '@/lib/featureRegistry'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/app'
 import type { RailItem } from '@/stores/app'
 import { useCollectionsStore } from '@/stores/collections'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { useTabsStore } from '@/stores/tabs'
+import { useSettingsStore } from '@/stores/settings'
 
 interface CommandPaletteProps {
   open: boolean
@@ -50,6 +52,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const openTab = useTabsStore((s) => s.openTab)
   const newTab = useTabsStore((s) => s.newTab)
   const setActiveRail = useAppStore((s) => s.setActiveRail)
+  const featureFlags = useSettingsStore((s) => s.settings.features)
 
   useEffect(() => {
     if (!open) return
@@ -95,7 +98,9 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         run: () => setActiveRail('settings'),
       },
     ]
-    const panels = COMMAND_PALETTE_PANELS.map<PaletteCommand>((panel) => ({
+    const panels = COMMAND_PALETTE_PANELS
+      .filter((panel) => isFeatureVisible(panel.id, featureFlags))
+      .map<PaletteCommand>((panel) => ({
       id: `panel:${panel.id}`, title: panel.title, subtitle: panel.group,
       group: 'Panels', keywords: `${panel.keywords} ${panel.group}`, icon: ArrowRight,
       run: () => setActiveRail(panel.id),
@@ -132,7 +137,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       run: () => setActiveEnv(environment.id),
     }))
     return [...actions, ...deepLinks, ...panels, ...recentRequests, ...collectionEntries, ...environmentEntries]
-  }, [activeEnvId, activeWorkspaceId, collections, environments, newTab, openTab, setActiveEnv, setActiveRail, tabs])
+  }, [activeEnvId, activeWorkspaceId, collections, environments, featureFlags, newTab, openTab, setActiveEnv, setActiveRail, tabs])
 
   const results = useMemo(() => commands
     .map((command) => ({ command, score: fuzzyScore(query, `${command.title} ${command.subtitle ?? ''} ${command.keywords}`) }))

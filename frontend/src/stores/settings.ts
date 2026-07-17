@@ -85,6 +85,8 @@ export interface AppSettings {
   features: {
     pluginsEnabled: boolean
     dailyScenariosEnabled: boolean
+    showAdvancedFeatures: boolean
+    showLabFeatures: boolean
   }
   markdown: {
     templatesFolder: string
@@ -184,6 +186,8 @@ const defaultSettings: AppSettings = {
   features: {
     pluginsEnabled: false,
     dailyScenariosEnabled: false,
+    showAdvancedFeatures: true,
+    showLabFeatures: false,
   },
   markdown: {
     templatesFolder: '',

@@ -6,6 +6,30 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.5.5] - 2026-07-17
+
+### Added
+- **Standalone JSON Studio:** the left rail now exposes a dedicated JSON workspace with Raw as the first/default view, formatted tree inspection, graph view, fullscreen mode, file/drop loading, search, copy, clear, minify, and persisted local session state.
+- **Two-pane JSON comparison:** JSON Studio can open a second JSON document on the right, keep both panes fullscreen side by side, sort object keys A-Z, and show path-level differences.
+- **Lossless JSON utilities:** JSON formatting, sorting, minifying, and diffing preserve long numeric tokens without rounding or rewriting their original spelling.
+- **Feature Surface settings:** Settings now includes switches for advanced features, lab features, Plugins, and Daily Scenarios so the product surface can stay cleaner by default.
+
+### Changed
+- **Cleaner product taxonomy:** the rail is now driven by a central feature registry and grouped around API, Protocols, Infrastructure, Browser Debug, Local Data, Tools, Docs, and Workspace.
+- **Command palette alignment:** the command palette now uses the same feature registry and respects advanced/lab visibility settings.
+- **Focused Welcome hub:** the first screen now emphasizes API-first workflows and payload/document work instead of presenting every module with equal weight.
+- **Document Studio cleanup:** advanced document tools can be hidden behind feature flags instead of crowding the primary rail.
+- **Net Tools consolidation:** Net Tools now route through Browser Debug, keeping network inspection in one coherent workspace.
+- **Power Tools split:** Base64, Hash, JWT, Password, and UUID utilities were moved into focused tool components with a shared utility registry.
+
+### Removed
+- **Duplicate legacy JSON Tools panel:** JSON workflows now live in the dedicated JSON Studio instead of the old Utils-embedded panel.
+- **Public legacy rail aliases:** `jsontools`, `utils`, `nettools`, and `kafka` were removed from the active rail type surface; startup normalization still maps old saved values to the new destinations.
+
+### Fixed
+- **Browser-safe Wails fallbacks:** local preview can render the new frontend routes without crashing on missing desktop bindings.
+- **Rail visibility regressions:** advanced/lab filtering is now applied consistently to the rail and command palette.
+
 ### Fixed
 - **Reliable gRPC Studio execution:** load tests now classify the actual gRPC status instead of treating every HTTP 200 as success, and they carry metadata, TLS, custom CA, mTLS certificates, and request timeout settings into every invocation.
 - **Honest descriptor and connection state:** imported proto/protoset descriptors remain available for offline request authoring without pretending a live server connection; changing endpoint, TLS, certificates, or profile invalidates the previous connection state.

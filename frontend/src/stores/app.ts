@@ -6,7 +6,6 @@ export type RailItem =
   | 'collections'
   | 'scenarios'
   | 'history'
-  | 'kafka'
   | 'broker'
   | 'websocket'
   | 'sse'
@@ -14,12 +13,10 @@ export type RailItem =
   | 'proxy'
   | 'mock'
   | 'grpc'
-  | 'nettools'
   | 'browser'
   | 'dockerlab'
-  | 'jsontools'
+  | 'jsonviewer'
   | 'xmltools'
-  | 'utils'
   | 'flows'
   | 'runner'
   | 'soap'
@@ -53,12 +50,14 @@ export type RailItem =
 // Keep in sync with the category order in components/layout/Rail.tsx.
 export const RAIL_QUICK_NAV: RailItem[] = [
   'collections', // 1 · API Core
-  'websocket',   // 2 · Protocols & Streaming
-  'mock',        // 3 · Infrastructure & Simulation
-  'browser',     // 4 · Debugging & Analysis
-  'database',    // 5 · Local Data & Workspace
-  'jsontools',   // 6 · Power Tools
-  'markdown',    // 7 · Markdown
+  'websocket',   // 2 · Protocols
+  'mock',        // 3 · Infrastructure
+  'browser',     // 4 · Browser Debug
+  'database',    // 5 · Local Data
+  'jsonviewer',  // 6 · JSON Studio
+  'powertools',  // 7 · Power Tools
+  'markdown',    // 8 · Document Studio
+  'gitsync',     // 9 · Workspace
 ]
 
 interface AppState {
