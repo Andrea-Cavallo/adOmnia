@@ -65,7 +65,7 @@ export const FEATURE_REGISTRY: FeatureDef[] = [
   { id: 'markdown', title: 'Markdown Notes', group: 'Document Studio', keywords: 'md preview notes docs backlinks outline graph', maturity: 'core' },
   { id: 'mermaid', title: 'Mermaid Diagrams', group: 'Document Studio', keywords: 'diagram graph flowchart sequence mermaid mmd preview fullscreen zoom export', maturity: 'advanced' },
   { id: 'latex', title: 'LaTeX Studio', group: 'Document Studio', keywords: 'tex latex cv resume curriculum pdf document template preset', maturity: 'lab' },
-  { id: 'pdfeditor', title: 'PDF Editor & Sign', group: 'Document Studio', keywords: 'pdf edit annotate sign signature form fill text highlight document viewer', maturity: 'advanced' },
+  { id: 'pdfeditor', title: 'PDF Editor & Sign', group: 'Document Studio', keywords: 'pdf edit annotate sign signature form fill text highlight document viewer', maturity: 'core' },
 
   { id: 'gitsync', title: 'Git Sync', group: 'Workspace', keywords: 'git compare diff workspace sync version control branch commit push stash', maturity: 'core' },
   { id: 'workspace', title: 'Workspace Settings', group: 'Workspace', keywords: 'workspace import export settings local file', maturity: 'advanced' },
@@ -120,7 +120,7 @@ export const RAIL_CATEGORIES: FeatureRailCategory[] = [
   {
     key: 'docs', label: 'Document Studio', code: 'DOC',
     groups: [
-      { title: 'Documents', items: ['markdown'].map((id) => ({ id: id as RailItem })) },
+      { title: 'Documents', items: ['markdown', 'pdfeditor'].map((id) => ({ id: id as RailItem })) },
     ],
   },
   {
