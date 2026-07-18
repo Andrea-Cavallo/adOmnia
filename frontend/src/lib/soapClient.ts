@@ -265,7 +265,7 @@ function parseSchema(
 
 function findChild(el: Element, localName: string): Element | null {
   for (let i = 0; i < el.children.length; i++) {
-    const c = el.children[i]
+    const c: Element = el.children[i]
     const ln = c.localName || c.tagName.split(':').pop() || ''
     if (ln === localName) return c
   }
@@ -275,7 +275,7 @@ function findChild(el: Element, localName: string): Element | null {
 function findChildren(el: Element, localName: string): Element[] {
   const result: Element[] = []
   for (let i = 0; i < el.children.length; i++) {
-    const c = el.children[i]
+    const c: Element = el.children[i]
     const ln = c.localName || c.tagName.split(':').pop() || ''
     if (ln === localName) result.push(c)
   }
@@ -502,7 +502,7 @@ function elementToJson(el: Element | null): unknown {
 
   const result: Record<string, unknown> = {}
   for (let i = 0; i < el.children.length; i++) {
-    const c = el.children[i]
+    const c: Element = el.children.item(i) as Element
     const cName = c.localName || c.tagName.split(':').pop() || c.tagName
     const val = elementToJson(c)
     if (result[cName] !== undefined) {

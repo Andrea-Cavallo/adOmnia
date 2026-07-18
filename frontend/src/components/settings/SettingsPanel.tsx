@@ -113,6 +113,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
   const updateMock = useSettingsStore((s) => s.updateMock)
   const updateVault = useSettingsStore((s) => s.updateVault)
   const updateEditor = useSettingsStore((s) => s.updateEditor)
+  const updateFeatures = useSettingsStore((s) => s.updateFeatures)
   const { themes, activeThemeId, setThemes, setLoading } = useThemesStore()
   const { applyTheme } = useThemeContext()
   const t = useT()
@@ -205,6 +206,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
     { id: 'mock', label: s.sections.mock, icon: <Server size={14} />, terms: searchable(s.mock) },
     { id: 'vault', label: s.sections.vault, icon: <Lock size={14} />, terms: searchable(s.vault) },
     { id: 'editor', label: s.sections.editor, icon: <Code2 size={14} />, terms: searchable(s.editor) },
+    { id: 'features', label: 'Feature Surface', icon: <Sparkles size={14} />, terms: 'features surface advanced lab experimental rail command palette visibility modules' },
     { id: 'workspace', label: 'Workspace', icon: <FolderOpen size={14} />, terms: 'workspace import export backup project local .adomnia' },
     { id: 'privacy', label: s.sections.privacy, icon: <Database size={14} />, terms: searchable(s.privacy) },
     { id: 'shortcuts', label: s.sections.shortcuts, icon: <Keyboard size={14} />, terms: searchable(s.shortcuts) },
@@ -278,12 +280,15 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
     return (total / 1024).toFixed(1)
   })()
   const isLinuxRuntime = runtimePlatform === 'linux'
+  const rawWindowChromeValue = settings.appearance.windowChrome ?? 'system'
   const windowChromeValue = isLinuxRuntime
-    ? (settings.appearance.windowChrome ?? 'app')
-    : (settings.appearance.windowChrome === 'system' ? 'system' : 'app')
+    ? (rawWindowChromeValue === 'app' ? 'app-xwayland' : rawWindowChromeValue)
+    : (rawWindowChromeValue === 'system' ? 'system' : 'app')
+  const startupWindowChromeValue = isLinuxRuntime && startupWindowChrome === 'app'
+    ? 'app-xwayland'
+    : startupWindowChrome
   const windowChromeOptions = isLinuxRuntime
     ? [
-        { value: 'app', label: s.appearance.windowChromeOptions.appWayland },
         { value: 'app-xwayland', label: s.appearance.windowChromeOptions.appXWayland },
         { value: 'system', label: s.appearance.windowChromeOptions.system },
       ]
@@ -343,7 +348,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
                 value={settings.general.defaultStartupRail}
                 options={[
                   { value: 'collections', label: s.general.railOptions.collections },
-                  { value: 'kafka', label: s.general.railOptions.kafka },
+                  { value: 'broker', label: 'Broker Studio' },
                   { value: 'proxy', label: s.general.railOptions.proxy },
                   { value: 'mock', label: s.general.railOptions.mock },
                   { value: 'browser', label: 'Browser Debug' },
@@ -415,7 +420,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
                   updateAppearance({ windowChrome: v as AppSettings['appearance']['windowChrome'] })
                 }
               />
-              {startupWindowChrome !== null && startupWindowChrome !== windowChromeValue && (
+              {startupWindowChromeValue !== null && startupWindowChromeValue !== windowChromeValue && (
                 <div className="mx-1 mb-1 rounded border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[10px] text-amber-200">
                   {s.appearance.windowChromeRestart}
                 </div>
@@ -477,20 +482,6 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
                 min={180}
                 max={600}
                 onChange={(v) => updateAppearance({ sidebarWidth: v })}
-              />
-              <Select
-                label={s.appearance.accentColorPreset}
-                desc={s.appearance.accentColorPresetDesc}
-                value={settings.appearance.accentColorPreset}
-                options={[
-                  { value: 'default', label: s.appearance.accentOptions.default },
-                  { value: 'blue', label: s.appearance.accentOptions.blue },
-                  { value: 'purple', label: s.appearance.accentOptions.purple },
-                  { value: 'green', label: s.appearance.accentOptions.green },
-                  { value: 'orange', label: s.appearance.accentOptions.orange },
-                  { value: 'red', label: s.appearance.accentOptions.red },
-                ]}
-                onChange={(v) => updateAppearance({ accentColorPreset: v })}
               />
               <Toggle
                 label={s.appearance.showRailIconsOnly}
@@ -797,6 +788,44 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
                 desc={s.editor.formatResponseAutoDesc}
                 checked={settings.editor.formatResponseAuto}
                 onChange={(v) => updateEditor({ formatResponseAuto: v })}
+              />
+            </SettingsCard>
+          </>
+        )}
+
+        {/* Feature Surface */}
+        {section === 'features' && (
+          <>
+            <SectionHeader
+              title="Feature Surface"
+              subtitle="Control how much of adOmnia is visible in the rail and command palette."
+            />
+            <SettingsCard>
+              <Toggle
+                label="Show advanced features"
+                desc="Expose Browser Debug, Database Studio, Git Sync, Docker Lab, Mermaid, Storage Explorer and other secondary workspaces."
+                checked={settings.features.showAdvancedFeatures}
+                onChange={(v) => updateFeatures({ showAdvancedFeatures: v })}
+              />
+              <Toggle
+                label="Show lab features"
+                desc="Expose experimental or parked surfaces. Keep this off for a tighter production toolbox."
+                checked={settings.features.showLabFeatures}
+                onChange={(v) => updateFeatures({ showLabFeatures: v })}
+              />
+            </SettingsCard>
+            <SettingsCard>
+              <Toggle
+                label="Plugins"
+                desc="Show the plugin manager and plugin-related workspace controls."
+                checked={settings.features.pluginsEnabled}
+                onChange={(v) => updateFeatures({ pluginsEnabled: v })}
+              />
+              <Toggle
+                label="Daily Scenarios"
+                desc="Show the daily scenarios workbench inside API Core."
+                checked={settings.features.dailyScenariosEnabled}
+                onChange={(v) => updateFeatures({ dailyScenariosEnabled: v })}
               />
             </SettingsCard>
           </>

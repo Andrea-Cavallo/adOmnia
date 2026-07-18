@@ -89,6 +89,7 @@ var (
 	mockSrv       *http.Server
 	mockSrvMu     sync.Mutex
 	mockSrvPort   int
+	mockSrvLn     net.Listener // track listener so we can close it explicitly
 	mockCfg       mockServerConfig
 	mockCfgMu     sync.RWMutex
 	mockHits      []mockHitEntry
@@ -138,15 +139,24 @@ func mockStartHandler(w http.ResponseWriter, r *http.Request) {
 	mockSrvMu.Lock()
 	defer mockSrvMu.Unlock()
 
+	// Gracefully shut down any existing mock server
 	if mockSrv != nil {
+		devlog.Log("mockStartHandler", "arresto mock server esistente", map[string]any{"port": mockSrvPort})
+		// Close the listener first so Shutdown returns quickly
+		if mockSrvLn != nil {
+			mockSrvLn.Close()
+			mockSrvLn = nil
+		}
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		mockSrv.Shutdown(ctx)
 		cancel()
 		mockSrv = nil
+		mockSrvPort = 0
 	}
 
 	ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", cfg.Port))
 	if err != nil {
+		devlog.Err("mockStartHandler", "bind porta mock fallito", err, map[string]any{"port": cfg.Port})
 		httputil.JSONError(w, fmt.Sprintf("cannot listen on port %d: %v", cfg.Port, err), 500)
 		return
 	}
@@ -154,15 +164,22 @@ func mockStartHandler(w http.ResponseWriter, r *http.Request) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", mockRequestHandler)
 
+	mockSrvLn = ln
 	mockSrv = &http.Server{Handler: mux, ReadTimeout: 10 * time.Second, WriteTimeout: 30 * time.Second}
 	mockSrvPort = cfg.Port
 
-	go mockSrv.Serve(ln)
-	devlog.Info("mockStartHandler", "mock server avviato", map[string]any{"port": cfg.Port, "endpoints": len(cfg.Endpoints)})
+	go func() {
+		devlog.Info("mockStartHandler", "mock server in ascolto", map[string]any{"port": cfg.Port, "endpoints": len(cfg.Endpoints)})
+		if err := mockSrv.Serve(ln); err != nil && err != http.ErrServerClosed {
+			devlog.Err("mockStartHandler", "mock server terminato con errore", err, map[string]any{"port": cfg.Port})
+		}
+	}()
 
 	mockHitsMu.Lock()
 	mockHits = nil
 	mockHitsMu.Unlock()
+
+	devlog.Info("mockStartHandler", "mock server avviato con successo", map[string]any{"port": cfg.Port, "endpoints": len(cfg.Endpoints)})
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "port": cfg.Port})
@@ -178,6 +195,11 @@ func mockStopHandler(w http.ResponseWriter, r *http.Request) {
 	defer mockSrvMu.Unlock()
 
 	if mockSrv != nil {
+		devlog.Info("mockStopHandler", "arresto mock server", map[string]any{"port": mockSrvPort})
+		if mockSrvLn != nil {
+			mockSrvLn.Close()
+			mockSrvLn = nil
+		}
 		mockSrv.Close()
 		mockSrv = nil
 		mockSrvPort = 0
@@ -215,7 +237,7 @@ func mockRequestHandler(w http.ResponseWriter, r *http.Request) {
 	// Automatic CORS: answer preflight and tag every response with permissive headers.
 	if cfg.CorsHeadersAuto {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, QUERY, POST, PUT, PATCH, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "*")
 		w.Header().Set("Access-Control-Max-Age", "86400")
 		if strings.ToUpper(r.Method) == http.MethodOptions {

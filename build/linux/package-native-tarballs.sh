@@ -35,8 +35,13 @@ package_tarball() {
         cp assets/icons/linux/adOmnia_256x256.png "$stage/adomnia.png"
     fi
 
-    if [ -f build/linux/adomnia.desktop ]; then
-        cp build/linux/adomnia.desktop "$stage/"
+    if [ -f build/linux/adOmnia.desktop ]; then
+        cp build/linux/adOmnia.desktop "$stage/adomnia.desktop"
+    elif [ -f build/linux/adomnia.desktop ]; then
+        cp build/linux/adomnia.desktop "$stage/adomnia.desktop"
+    else
+        echo "Missing Linux desktop entry: build/linux/adOmnia.desktop" >&2
+        exit 1
     fi
 
     if [ -f build/linux/install.sh ]; then

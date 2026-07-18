@@ -162,7 +162,7 @@ function InlineTokens({ tokens }: { tokens: WordToken[] }) {
 
 interface DiffUnifiedViewProps {
   displayEntries: Array<DiffEntry | { kind: 'ellipsis'; count: number }>
-  containerRef: React.RefObject<HTMLDivElement>
+  containerRef: React.RefObject<HTMLDivElement | null>
 }
 
 function DiffUnifiedView({ displayEntries, containerRef }: DiffUnifiedViewProps) {
@@ -561,6 +561,7 @@ interface DiffPickerModalProps {
 
 const METHOD_COLORS: Record<string, string> = {
   GET: 'text-method-get',
+  QUERY: 'text-info',
   POST: 'text-method-post',
   PUT: 'text-method-put',
   PATCH: 'text-method-patch',

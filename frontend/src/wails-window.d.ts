@@ -8,6 +8,9 @@ interface WailsGoMain {
     SaveBinaryFileBase64: (defaultName: string, dataBase64: string) => Promise<string>
     SignPdfDocumentBase64: (reqJSON: string) => Promise<string>
     VerifyPdfSignatureBase64: (pdfBase64: string) => Promise<string>
+    SelectPSD2Certificate: () => Promise<string>
+    InspectPSD2Certificate: (path: string, password: string) => Promise<string>
+    BuildPSD2Headers: (inputJSON: string) => Promise<string>
     InspectSigningCertificateBase64: (reqJSON: string) => Promise<string>
     StorageGet: (bucket: string, key: string) => Promise<string>
     StoragePut: (bucket: string, key: string, value: string) => Promise<void>
@@ -35,11 +38,21 @@ interface WailsGoMain {
     GetPresets: () => Promise<PresetDef[]>
     GenerateLab: (ids: string[]) => Promise<LabOutput>
   }
+      CollectionFS: {
+        ExportCollectionToFolder: (folderPath: string, collectionJSON: string, environmentsJSON: string) => Promise<void>
+        ImportCollectionFromFolder: (folderPath: string) => Promise<string>
+        InspectCollectionFolder: (folderPath: string, collectionJSON: string) => Promise<string>
+        ExportRequestToFolder: (folderPath: string, requestJSON: string) => Promise<string>
+      }
+      OASLint: {
+        Lint: (specText: string, rulesetJSON: string) => Promise<string>
+      }
   AIEngine: {
     Configure: (configJSON: string) => Promise<void>
     TestConnection: (configJSON: string) => Promise<string>
     Complete: (provider: string, prompt: string, maxTokens: number) => Promise<string>
     GenerateMockEndpoints: (inputType: string, userInput: string) => Promise<string>
+    ListModels: (configJSON: string, query: string) => Promise<string>
   }
   GitSync: {
     IsGitInstalled: () => Promise<boolean>

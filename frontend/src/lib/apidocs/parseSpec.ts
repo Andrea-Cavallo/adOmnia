@@ -64,7 +64,7 @@ export interface ApiDocModel {
   operationCount: number
 }
 
-const HTTP_METHODS = ['get', 'put', 'post', 'delete', 'patch', 'options', 'head', 'trace']
+const HTTP_METHODS = ['get', 'query', 'put', 'post', 'delete', 'patch', 'options', 'head', 'trace']
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)

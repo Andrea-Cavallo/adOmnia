@@ -3,6 +3,10 @@
 import {main} from '../models';
 import {markdown} from '../models';
 
+export function BuildPSD2Headers(arg1:string):Promise<string>;
+
+export function CancelHTTP(arg1:string):Promise<void>;
+
 export function CheckForUpdate():Promise<main.UpdateInfo>;
 
 export function ClearDevLogs():Promise<void>;
@@ -14,8 +18,6 @@ export function CreateMarkdownFile(arg1:string,arg2:string,arg3:string):Promise<
 export function DeleteMarkdownFile(arg1:string,arg2:string):Promise<void>;
 
 export function ExecuteHTTP(arg1:string):Promise<string>;
-
-export function CancelHTTP(arg1:string):Promise<void>;
 
 export function GetAppVersion():Promise<string>;
 
@@ -30,6 +32,8 @@ export function GetStartupWindowChrome():Promise<string>;
 export function GetVaultTimeout():Promise<number>;
 
 export function ImportMarkdownFolderToWorkspace(arg1:string):Promise<markdown.WorkspaceInfo>;
+
+export function InspectPSD2Certificate(arg1:string,arg2:string):Promise<string>;
 
 export function InspectSigningCertificateBase64(arg1:string):Promise<string>;
 
@@ -62,6 +66,8 @@ export function SaveMarkdownFileAs(arg1:string,arg2:string):Promise<markdown.Fil
 export function SaveSettings(arg1:string):Promise<void>;
 
 export function SelectFolder(arg1:string):Promise<string>;
+
+export function SelectPSD2Certificate():Promise<string>;
 
 export function SetDevMode(arg1:boolean):Promise<void>;
 

@@ -109,6 +109,7 @@ interface InvokeResponse {
   status: string
   time_ms?: number
   response_metadata?: Record<string, string>
+  response_trailers?: Record<string, string>
 }
 
 interface HistoryRow {
@@ -126,6 +127,12 @@ interface HistoryRow {
   error?: string
   requestJson: string
   responseJson: string
+  useTls?: boolean
+  caCertPath?: string
+  clientCertPath?: string
+  clientKeyPath?: string
+  metadata?: Record<string, string>
+  timeoutMs?: number
 }
 
 type SourceKind = 'empty' | 'reflection' | 'proto' | 'protoset'
@@ -139,9 +146,7 @@ const newId = () => {
 }
 
 const defaultMetadata = (): MetadataRow[] => [
-  { id: newId(), key: 'authorization', value: 'Bearer demo-token-12345' },
-  { id: newId(), key: 'x-client', value: 'adOmnia-gRPC' },
-  { id: newId(), key: 'x-trace-id', value: newId() },
+  { id: newId(), key: '', value: '' },
 ]
 
 const loadJson = <T,>(key: string, fallback: T): T => {
@@ -242,6 +247,34 @@ async function postJson<T>(port: number | null, path: string, body: unknown): Pr
   return parsed as T
 }
 
+async function postGrpcStream(port: number | null, body: unknown, signal: AbortSignal, onUpdate: (result: InvokeResponse) => void): Promise<InvokeResponse> {
+  const url = serverUrl(port, '/grpc/stream')
+  if (!url) throw new Error('Backend sidecar non pronto.')
+  const response = await sidecarFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal })
+  if (!response.ok || !response.body) throw new Error((await response.text()) || `HTTP ${response.status}`)
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let pending = ''
+  const result: InvokeResponse = { status: 'RUNNING', messages: [], response_metadata: {}, response_trailers: {} }
+  const consume = (line: string) => {
+    if (!line.trim()) return
+    const event = JSON.parse(line) as { type: string; message?: unknown; metadata?: Record<string, string>; trailers?: Record<string, string>; status?: string; error?: string; time_ms?: number }
+    if (event.type === 'message') result.messages = [...(result.messages ?? []), event.message]
+    if (event.type === 'headers') result.response_metadata = event.metadata ?? {}
+    if (event.type === 'complete') { result.status = event.status ?? 'UNKNOWN'; result.error = event.error; result.time_ms = event.time_ms; result.response_trailers = event.trailers ?? {} }
+    onUpdate({ ...result, messages: [...(result.messages ?? [])] })
+  }
+  while (true) {
+    const { done, value } = await reader.read()
+    pending += decoder.decode(value, { stream: !done })
+    const lines = pending.split('\n'); pending = lines.pop() ?? ''
+    lines.forEach(consume)
+    if (done) break
+  }
+  consume(pending)
+  return result
+}
+
 function StatusPill({ connected, loading }: { connected: boolean; loading: boolean }) {
   return (
     <div className={cn(
@@ -312,6 +345,10 @@ function GrpcConnectionBar({
   onToggleTls,
   onUploadProto,
   onUploadProtoset,
+  timeoutMs,
+  onTimeoutChange,
+  streaming,
+  onCancel,
 }: {
   address: string
   useTls: boolean
@@ -330,6 +367,10 @@ function GrpcConnectionBar({
   onToggleTls: () => void
   onUploadProto: () => void
   onUploadProtoset: () => void
+  timeoutMs: number
+  onTimeoutChange: (value: number) => void
+  streaming: boolean
+  onCancel: () => void
 }) {
   return (
     <div className="border-b border-border-1 bg-surface-0/95 px-4 py-3">
@@ -373,6 +414,10 @@ function GrpcConnectionBar({
           />
           TLS
         </label>
+        <label className="flex h-8 items-center gap-1 rounded-md border border-border-2 bg-surface-2 px-2 text-[10px] text-text-4" title="RPC timeout in milliseconds">
+          Timeout
+          <input type="number" min={100} max={300000} value={timeoutMs} onChange={(event) => onTimeoutChange(Number(event.target.value))} className="w-16 bg-transparent text-right font-mono text-[10px] text-text-2 outline-none" />
+        </label>
         <IconButton onClick={onToggleTls} title="TLS and mTLS settings">
           <Shield size={13} />
           TLS Settings
@@ -398,9 +443,9 @@ function GrpcConnectionBar({
           <Save size={13} />
           Save
         </IconButton>
-        <IconButton onClick={onInvoke} disabled={loading || !connected} primary>
-          <Play size={13} />
-          Invoke
+        <IconButton onClick={streaming ? onCancel : onInvoke} disabled={!connected || (loading && !streaming)} primary>
+          {streaming ? <X size={13} /> : <Play size={13} />}
+          {streaming ? 'Cancel' : 'Invoke'}
         </IconButton>
         <IconButton onClick={onLoadTest} disabled={loading || !connected} title="Run a gRPC load test">
           <Gauge size={13} />
@@ -438,7 +483,7 @@ function GrpcTlsSettingsDrawer({
       <div className="flex items-center justify-between mb-3">
         <div>
           <p className="text-xs font-semibold text-text-1">TLS / mTLS</p>
-          <p className="text-[11px] text-text-4">Plaintext and TLS are active. Custom CA and client certificates are staged for the backend TLS profile.</p>
+          <p className="text-[11px] text-text-4">Plaintext, TLS, custom CA and client certificates are applied to reflection, invocation and load tests.</p>
         </div>
         <label className="flex items-center gap-2 text-xs text-text-3">
           <input type="checkbox" checked={useTls} onChange={(event) => onUseTlsChange(event.target.checked)} className="accent-accent" />
@@ -1020,9 +1065,9 @@ function GrpcMethodInspector({
         ) : (
           <div className="space-y-2 text-xs text-text-3">
             <Hint text="Reflection-backed methods can generate fields and invoke RPCs directly." good={sourceKind === 'reflection'} />
-            <Hint text="Uploaded .proto files populate service discovery. Invocation still needs live reflection descriptors in the current backend." good={sourceKind !== 'proto'} />
+            <Hint text="Uploaded descriptor files support offline browsing and request authoring. Reflect the target server before invoking." good={sourceKind === 'reflection'} />
             <Hint text="Client and bidirectional streams are sent as prepared message arrays, matching grpcui's upfront stream model." good />
-            <Hint text="Custom CA and mTLS paths are visible in the UI and ready for backend TLS-profile wiring." />
+            <Hint text="Custom CA and mTLS paths are applied consistently to reflection, invocation, history reruns and load tests." good />
           </div>
         )}
       </div>
@@ -1087,6 +1132,7 @@ function GrpcResponsePanel({
   const responseBody = result ? JSON.stringify(result.messages ?? result.response ?? {}, null, 2) : ''
   const rawResponse = result ? JSON.stringify(result, null, 2) : ''
   const metadata = result?.response_metadata ?? {}
+  const trailers = result?.response_trailers ?? {}
 
   return (
     <section className="h-[260px] border-t border-border-1 bg-surface-1 flex flex-col min-h-0">
@@ -1129,7 +1175,7 @@ function GrpcResponsePanel({
           <KeyValueBlock data={metadata} empty="No response headers captured yet." />
         )}
         {tab === 'trailers' && (
-          <div className="p-4 text-xs text-text-4">Trailer collection is not exposed by the current sidecar response yet. Status and headers are shown above.</div>
+          <KeyValueBlock data={trailers} empty="No response trailers captured." />
         )}
         {tab === 'logs' && (
           <div className="p-4 space-y-1">
@@ -1339,7 +1385,7 @@ interface GrpcLoadTestResult {
   errorRate: number
 }
 
-function GrpcLoadTestDialog({ port, address, service, method, payload, tls, onClose }: { port: number | null; address: string; service: string; method: string; payload: string; tls: boolean; onClose: () => void }) {
+function GrpcLoadTestDialog({ port, address, service, method, payload, tls, caCertPath, clientCertPath, clientKeyPath, metadata, onClose }: { port: number | null; address: string; service: string; method: string; payload: string; tls: boolean; caCertPath: string; clientCertPath: string; clientKeyPath: string; metadata: Record<string, string>; onClose: () => void }) {
   const [concurrency, setConcurrency] = useState(5)
   const [totalReqs, setTotalReqs] = useState(100)
   const [timeoutMs, setTimeoutMs] = useState(5000)
@@ -1353,7 +1399,7 @@ function GrpcLoadTestDialog({ port, address, service, method, payload, tls, onCl
     setResult(null)
     try {
       JSON.parse(payload || '{}')
-      setResult(await postJson<GrpcLoadTestResult>(port, '/loadtest/grpc', { address, service, method, payload: payload || '{}', tls, concurrency, totalReqs, timeoutMs }))
+      setResult(await postJson<GrpcLoadTestResult>(port, '/loadtest/grpc', { address, service, method, payload: payload || '{}', tls, caCertPath, clientCertPath, clientKeyPath, metadata, concurrency, totalReqs, timeoutMs }))
     } catch (event) {
       setError(event instanceof Error ? event.message : String(event))
     } finally { setRunning(false) }
@@ -1385,6 +1431,7 @@ export function GrpcPanel() {
   const pendingFileImport = useAppStore((s) => s.pendingFileImport)
   const protoInputRef = useRef<HTMLInputElement>(null)
   const protosetInputRef = useRef<HTMLInputElement>(null)
+  const streamControllerRef = useRef<AbortController | null>(null)
   const [address, setAddress] = useState('localhost:50051')
   const [useTls, setUseTls] = useState(false)
   const [caCertPath, setCaCertPath] = useState('')
@@ -1415,6 +1462,8 @@ export function GrpcPanel() {
   const [profiles, setProfiles] = useState<GrpcConnectionProfile[]>(() => loadJson(CONNECTIONS_KEY, []))
   const [historyRows, setHistoryRows] = useState<HistoryRow[]>(() => loadJson(HISTORY_KEY, []))
   const [showLoadTest, setShowLoadTest] = useState(false)
+  const [requestTimeoutMs, setRequestTimeoutMs] = useState(30000)
+  const [streaming, setStreaming] = useState(false)
 
   const currentService = services.find((service) => service.name === selectedService)
   const currentMethod = currentService?.methods.find((method) => method.name === selectedMethod)
@@ -1551,7 +1600,7 @@ export function GrpcPanel() {
       setDescriptorSchemas(nextSchemas)
       setSourceKind('proto')
       setSourceName(file.name)
-      setConnected(true)
+      setConnected(false)
       setRequestFields([])
       setResponseFields([])
       log(`loaded ${file.name} with ${nextServices.length} services`)
@@ -1602,7 +1651,7 @@ export function GrpcPanel() {
       setDescriptorSchemas(nextSchemas)
       setSourceKind('proto')
       setSourceName(`${files.length} proto files`)
-      setConnected(true)
+      setConnected(false)
       log(`loaded ${files.length} proto files with ${nextServices.length} services`)
       const firstService = nextServices[0]
       const firstMethod = firstService?.methods[0]
@@ -1650,7 +1699,7 @@ export function GrpcPanel() {
       setDescriptorSchemas(nextSchemas)
       setSourceKind('protoset')
       setSourceName(file.name)
-      setConnected(true)
+      setConnected(false)
       setRequestFields([])
       setResponseFields([])
       log(`loaded protoset ${file.name} with ${nextServices.length} services`)
@@ -1724,7 +1773,7 @@ export function GrpcPanel() {
     try {
       const request = buildRequest()
       const started = Date.now()
-      const result = await postJson<InvokeResponse>(port, '/grpc/invoke', {
+      const invokeBody = {
         address,
         tls: useTls,
         ca_cert_path: caCertPath,
@@ -1735,7 +1784,21 @@ export function GrpcPanel() {
         payload: request.payload,
         messages: request.messages,
         metadata: metadataObject(),
-      })
+        timeout_ms: requestTimeoutMs,
+      }
+      let result: InvokeResponse
+      if (currentMethod.server_streaming) {
+        const controller = new AbortController()
+        streamControllerRef.current = controller
+        setStreaming(true)
+        result = await postGrpcStream(port, invokeBody, controller.signal, (next) => {
+          setLastResult(next)
+          setBottomTab('response')
+          setMainTab('response')
+        })
+      } else {
+        result = await postJson<InvokeResponse>(port, '/grpc/invoke', invokeBody)
+      }
       const duration = result.time_ms ?? Date.now() - started
       setLastResult(result)
       setBottomTab('response')
@@ -1757,16 +1820,24 @@ export function GrpcPanel() {
         error: result.error,
         requestJson,
         responseJson,
+        useTls,
+        caCertPath,
+        clientCertPath,
+        clientKeyPath,
+        metadata: metadataObject(),
+        timeoutMs: requestTimeoutMs,
       }
       setHistoryRows((prev) => [historyRow, ...prev].slice(0, MAX_HISTORY))
       log(`${selectedService}/${selectedMethod} -> ${result.status} in ${duration} ms`)
       if (result.error) setError(result.error)
     } catch (event) {
-      const message = event instanceof Error ? event.message : String(event)
+      const message = event instanceof DOMException && event.name === 'AbortError' ? 'Stream cancelled' : event instanceof Error ? event.message : String(event)
       setError(message)
       setJsonError(message)
       log(`invoke error: ${message}`)
     } finally {
+      streamControllerRef.current = null
+      setStreaming(false)
       setLoading(false)
     }
   }
@@ -1780,18 +1851,25 @@ export function GrpcPanel() {
       const started = Date.now()
       const result = await postJson<InvokeResponse>(port, '/grpc/invoke', {
         address: row.address,
-        tls: useTls,
-        ca_cert_path: caCertPath,
-        client_cert_path: clientCertPath,
-        client_key_path: clientKeyPath,
+        tls: row.useTls ?? false,
+        ca_cert_path: row.caCertPath ?? '',
+        client_cert_path: row.clientCertPath ?? '',
+        client_key_path: row.clientKeyPath ?? '',
         service: row.service,
         method: row.method,
         payload: isStream ? {} : parsed,
         messages: isStream ? parsed : undefined,
-        metadata: metadataObject(),
+        metadata: row.metadata ?? {},
+        timeout_ms: row.timeoutMs ?? 30000,
       })
       const duration = result.time_ms ?? Date.now() - started
       setAddress(row.address)
+      setUseTls(row.useTls ?? false)
+      setCaCertPath(row.caCertPath ?? '')
+      setClientCertPath(row.clientCertPath ?? '')
+      setClientKeyPath(row.clientKeyPath ?? '')
+      setMetadata(Object.entries(row.metadata ?? {}).map(([key, value]) => ({ id: newId(), key, value })))
+      setRequestTimeoutMs(row.timeoutMs ?? 30000)
       setSelectedService(row.service)
       setSelectedMethod(row.method)
       setRawJson(row.requestJson)
@@ -1806,7 +1884,7 @@ export function GrpcPanel() {
         status: result.status,
         durationMs: duration,
         responseBytes: jsonSize(responseJson),
-        metadataCount: Object.keys(metadataObject()).length,
+        metadataCount: Object.keys(row.metadata ?? {}).length,
         error: result.error,
         responseJson,
       }, ...prev].slice(0, MAX_HISTORY))
@@ -1840,6 +1918,13 @@ export function GrpcPanel() {
     setSelectedService(row.service)
     setSelectedMethod(row.method)
     setRawJson(row.requestJson)
+    setUseTls(row.useTls ?? false)
+    setCaCertPath(row.caCertPath ?? '')
+    setClientCertPath(row.clientCertPath ?? '')
+    setClientKeyPath(row.clientKeyPath ?? '')
+    setMetadata(Object.entries(row.metadata ?? {}).map(([key, value]) => ({ id: newId(), key, value })))
+    setRequestTimeoutMs(row.timeoutMs ?? 30000)
+    setConnected(false)
     setMainTab('raw')
     log(`restored request ${row.service}/${row.method}`)
   }
@@ -1855,8 +1940,8 @@ export function GrpcPanel() {
         loading={loading}
         profiles={profiles}
         showTls={showTls}
-        onAddressChange={setAddress}
-        onTlsChange={setUseTls}
+        onAddressChange={(value) => { setAddress(value); setConnected(false) }}
+        onTlsChange={(value) => { setUseTls(value); setConnected(false) }}
         onReflect={handleReflect}
         onInvoke={handleInvoke}
         onLoadTest={() => {
@@ -1879,10 +1964,15 @@ export function GrpcPanel() {
           setCaCertPath(profile.caCertPath ?? '')
           setClientCertPath(profile.clientCertPath ?? '')
           setClientKeyPath(profile.clientKeyPath ?? '')
+          setConnected(false)
         }}
         onToggleTls={() => setShowTls((open) => !open)}
         onUploadProto={() => protoInputRef.current?.click()}
         onUploadProtoset={handleProtoset}
+        timeoutMs={requestTimeoutMs}
+        onTimeoutChange={setRequestTimeoutMs}
+        streaming={streaming}
+        onCancel={() => streamControllerRef.current?.abort()}
       />
       <GrpcTlsSettingsDrawer
         open={showTls}
@@ -1890,12 +1980,12 @@ export function GrpcPanel() {
         caCertPath={caCertPath}
         clientCertPath={clientCertPath}
         clientKeyPath={clientKeyPath}
-        onUseTlsChange={setUseTls}
-        onCaChange={setCaCertPath}
-        onClientCertChange={setClientCertPath}
-        onClientKeyChange={setClientKeyPath}
+        onUseTlsChange={(value) => { setUseTls(value); setConnected(false) }}
+        onCaChange={(value) => { setCaCertPath(value); setConnected(false) }}
+        onClientCertChange={(value) => { setClientCertPath(value); setConnected(false) }}
+        onClientKeyChange={(value) => { setClientKeyPath(value); setConnected(false) }}
       />
-      {showLoadTest && currentMethod && !currentMethod.client_streaming && <GrpcLoadTestDialog port={port} address={address} service={selectedService} method={selectedMethod} payload={rawJson} tls={useTls} onClose={() => setShowLoadTest(false)} />}
+      {showLoadTest && currentMethod && !currentMethod.client_streaming && <GrpcLoadTestDialog port={port} address={address} service={selectedService} method={selectedMethod} payload={rawJson} tls={useTls} caCertPath={caCertPath} clientCertPath={clientCertPath} clientKeyPath={clientKeyPath} metadata={metadataObject()} onClose={() => setShowLoadTest(false)} />}
       {error && (
         <div className="mx-4 mt-3 rounded-md border border-error/30 bg-error/10 px-3 py-2 text-xs text-error flex items-center gap-2">
           <AlertTriangle size={14} />

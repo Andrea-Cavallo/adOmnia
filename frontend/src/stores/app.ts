@@ -6,7 +6,6 @@ export type RailItem =
   | 'collections'
   | 'scenarios'
   | 'history'
-  | 'kafka'
   | 'broker'
   | 'websocket'
   | 'sse'
@@ -14,12 +13,10 @@ export type RailItem =
   | 'proxy'
   | 'mock'
   | 'grpc'
-  | 'nettools'
   | 'browser'
   | 'dockerlab'
-  | 'jsontools'
+  | 'jsonviewer'
   | 'xmltools'
-  | 'utils'
   | 'flows'
   | 'runner'
   | 'soap'
@@ -48,17 +45,19 @@ export type RailItem =
   | 'visualtests'
   | 'scheduler'
 
-// Canonical Cmd/Ctrl+1..9 quick-navigation targets, ordered to match the
-// visible rail category order (each entry is that category's primary tool).
-// Keep in sync with the category order in components/layout/Rail.tsx.
+// Canonical Cmd/Ctrl+1..7 quick-navigation targets, ordered by expected daily
+// use — core tools first, advanced-only tools last. This is deliberately NOT a
+// 1:1 mapping of the rail categories in components/layout/Rail.tsx: categories
+// without a frequently-used entry point (Infrastructure, Document Studio) have
+// no shortcut. Entries gated behind "Show advanced features" are marked below.
 export const RAIL_QUICK_NAV: RailItem[] = [
-  'collections', // 1 · API Core
-  'websocket',   // 2 · Protocols & Streaming
-  'mock',        // 3 · Infrastructure & Simulation
-  'browser',     // 4 · Debugging & Analysis
-  'database',    // 5 · Local Data & Workspace
-  'jsontools',   // 6 · Power Tools
-  'markdown',    // 7 · Markdown
+  'collections', // 1 - API Core
+  'websocket',   // 2 - Protocols
+  'jsonviewer',  // 3 - Power Tools · JSON Studio
+  'powertools',  // 4 - Power Tools · Utilities
+  'browser',     // 5 - Browser Debug   (advanced)
+  'database',    // 6 - Local Data      (advanced)
+  'gitsync',     // 7 - Workspace       (advanced)
 ]
 
 interface AppState {

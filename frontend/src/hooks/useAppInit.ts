@@ -5,12 +5,21 @@ import { useEnvironmentsStore } from '@/stores/environments'
 import { useHostsStore } from '@/stores/hosts'
 import { useTabsStore } from '@/stores/tabs'
 import { useAppStore } from '@/stores/app'
+import type { RailItem } from '@/stores/app'
 import { useDevLogsStore } from '@/stores/devLogs'
 import { getBackendDevLogs, clearBackendDevLogs } from '@/lib/devlogs-api'
 import { requestPersistentStorage } from '@/lib/storageMaintenance'
 import { GetStartupWindowChrome } from '@/wailsjs/go/main/App'
 
 type WindowChromeMode = 'app' | 'app-xwayland' | 'system'
+
+function normalizeStartupRail(value: string): RailItem {
+  if (value === 'kafka') return 'broker'
+  if (value === 'jsontools') return 'jsonviewer'
+  if (value === 'nettools') return 'browser'
+  if (value === 'utils') return 'powertools'
+  return value as RailItem
+}
 
 export interface AppInitResult {
   activeWindowChrome: WindowChromeMode | null
@@ -78,7 +87,7 @@ export function useAppInit(): AppInitResult {
     if (!settingsLoaded || startupRailAppliedRef.current) return
     startupRailAppliedRef.current = true
     if (defaultStartupRail) {
-      setActiveRail(defaultStartupRail as Parameters<typeof setActiveRail>[0])
+      setActiveRail(normalizeStartupRail(defaultStartupRail))
     }
   }, [settingsLoaded, defaultStartupRail, setActiveRail])
 
@@ -109,7 +118,7 @@ export function useAppInit(): AppInitResult {
   useEffect(() => {
     const handler = (event: Event) => {
       const rail = (event as CustomEvent).detail
-      if (typeof rail === 'string') setActiveRail(rail as Parameters<typeof setActiveRail>[0])
+      if (typeof rail === 'string') setActiveRail(normalizeStartupRail(rail))
     }
     document.addEventListener('adomnia:set-rail', handler)
     return () => document.removeEventListener('adomnia:set-rail', handler)

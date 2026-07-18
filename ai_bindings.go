@@ -72,6 +72,22 @@ func (a *AIEngine) TestConnection(cfgJSON string) (string, error) {
 	return resp.Text, nil
 }
 
+func (a *AIEngine) ListModels(cfgJSON, query string) (string, error) {
+	var cfg ai.Config
+	if err := json.Unmarshal([]byte(cfgJSON), &cfg); err != nil {
+		return "", fmt.Errorf("invalid config: %w", err)
+	}
+	models, err := ai.DiscoverModels(context.Background(), cfg, query)
+	if err != nil {
+		return "", err
+	}
+	raw, err := json.Marshal(models)
+	if err != nil {
+		return "", fmt.Errorf("encode models: %w", err)
+	}
+	return string(raw), nil
+}
+
 func (a *AIEngine) GenerateMockEndpoints(inputType, userInput string) (string, error) {
 	a.mu.RLock()
 	e := a.engine

@@ -21,6 +21,14 @@ export interface DebugEndpoint {
   targets: DebugTarget[]
 }
 
+export function inspectablePageTargets(targets: DebugTarget[] | null | undefined): DebugTarget[] {
+  return (targets ?? []).filter((target) => (
+    target.type === 'page'
+    && !!target.webSocketDebuggerUrl
+    && !target.url.startsWith('devtools://')
+  ))
+}
+
 // Shared types
 
 export interface ConsoleEntry {
@@ -199,7 +207,13 @@ function getBrowserDebugBinding() {
 }
 
 function browserDebugError(err: unknown, fallback = 'Browser Debug operation failed'): Error {
-  return new Error(err instanceof Error ? err.message : fallback)
+  if (err instanceof Error && err.message.trim()) return new Error(err.message)
+  if (typeof err === 'string' && err.trim()) return new Error(err)
+  if (err && typeof err === 'object') {
+    const message = 'message' in err ? String((err as { message?: unknown }).message ?? '').trim() : ''
+    if (message) return new Error(message)
+  }
+  return new Error(fallback)
 }
 
 // Existing wrappers

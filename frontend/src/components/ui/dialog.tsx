@@ -47,11 +47,11 @@ export function DialogOverlay({ open, onClose, children, className }: DialogProp
 type DialogSize = 'sm' | 'md' | 'lg' | 'xl' | 'full'
 
 const sizeClasses: Record<DialogSize, string> = {
-  sm: 'w-modal-sm max-w-modal-sm',
-  md: 'w-modal-md max-w-modal-md',
-  lg: 'w-modal-lg max-w-modal-lg',
-  xl: 'w-modal-xl max-w-modal-xl',
-  full: 'w-modal-full max-w-modal-full',
+  sm: 'w-[min(420px,calc(100vw-32px))] max-w-[420px]',
+  md: 'w-[min(560px,calc(100vw-32px))] max-w-[560px]',
+  lg: 'w-[min(760px,calc(100vw-32px))] max-w-[760px]',
+  xl: 'w-[min(960px,calc(100vw-32px))] max-w-[960px]',
+  full: 'w-[min(1200px,calc(100vw-32px))] max-w-[1200px]',
 }
 
 interface DialogContentProps {
@@ -67,8 +67,8 @@ export function DialogContent({ size = 'md', children, className }: DialogConten
       aria-modal="true"
       className={cn(
         sizeClasses[size],
-        'max-h-modal-content overflow-hidden',
-        'rounded-lg border border-border-2 bg-surface-1 shadow-2xl',
+        'max-h-[min(680px,calc(100vh-32px))] overflow-hidden',
+        'rounded-xl border border-border-2 bg-surface-1 shadow-2xl',
         'flex flex-col',
         'animate-in zoom-in-95 duration-150',
         className
@@ -89,7 +89,7 @@ export function DialogHeader({ children, className }: DialogHeaderProps) {
     <div
       className={cn(
         'flex items-center justify-between',
-        'px-fluid-4 py-fluid-2',
+        'px-5 py-4',
         'border-b border-border-1 bg-surface-0',
         'shrink-0',
         className
@@ -110,7 +110,7 @@ export function DialogBody({ children, className }: DialogBodyProps) {
     <div
       className={cn(
         'flex-1 overflow-y-auto',
-        'p-fluid-4',
+        'p-5',
         className
       )}
     >
@@ -128,8 +128,8 @@ export function DialogFooter({ children, className }: DialogFooterProps) {
   return (
     <div
       className={cn(
-        'flex items-center justify-end gap-fluid-2',
-        'px-fluid-4 py-fluid-2',
+        'flex items-center justify-end gap-2',
+        'px-5 py-3.5',
         'border-t border-border-1 bg-surface-0',
         'shrink-0',
         className

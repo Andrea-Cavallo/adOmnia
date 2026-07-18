@@ -1,19 +1,15 @@
 import { useEffect, useMemo, useRef, useState, type ElementType, type PointerEvent as ReactPointerEvent } from 'react'
 import {
-  Activity,
   BookOpen,
   Braces,
   Bug,
   CircleDot,
-  Container,
   Database,
   FileCode,
   FileText,
   GitBranch,
-  HardDrive,
   Lock,
   Network,
-  PenLine,
   Radio,
   Search,
   Send,
@@ -65,24 +61,22 @@ const API_TOOLS: HubTool[] = [
   },
   { id: 'soap', icon: FileCode, title: 'SOAP Studio', desc: 'WSDL parser, envelopes, XML tools and WS-Security.', tags: ['WSDL', 'WS-Security'] },
   { id: 'grpc', icon: Network, title: 'gRPC Client', desc: 'Reflection, metadata, TLS and unary or streaming calls.', tags: ['TLS', 'Streaming'] },
-  { id: 'mcp', icon: Network, title: 'MCP Client', desc: 'Inspect tools, resources and prompts from MCP servers.', tags: ['AI', 'Tools'] },
-  { id: 'websocket', icon: Zap, title: 'Streaming', desc: 'WebSocket and Server-Sent Events with live frames.', tags: ['WS', 'SSE'] },
+  { id: 'websocket', icon: Zap, title: 'Streaming', desc: 'WebSocket, SSE and broker workflows with live frames.', tags: ['WS', 'SSE', 'Brokers'] },
+  { id: 'browser', icon: Bug, title: 'Browser Debug', desc: 'Inspect browser network, console and storage beside API requests.', tags: ['CDP', 'Network'] },
 ]
 
 const DOC_TOOLS: HubTool[] = [
   {
-    id: 'pdfeditor',
-    icon: PenLine,
-    title: 'PDF Editor & Sign',
-    subtitle: 'flagship document workflow',
-    desc: 'Annotate, fill forms, search text, reorder pages, export and apply real cryptographic PDF signatures.',
-    tags: ['PKCS#12', 'JKS', 'RFC 3161', 'LTV'],
+    id: 'jsonviewer',
+    icon: Braces,
+    title: 'JSON Studio',
+    subtitle: 'payload inspection',
+    desc: 'Inspect, sort and diff JSON payloads in raw, tree or graph mode.',
+    tags: ['Raw', 'Diff', 'Tree'],
     featured: true,
   },
-  { id: 'latex', icon: FileCode, title: 'LaTeX Studio', desc: 'Resume and CV presets with live A4 preview and .tex export.', tags: ['CV', 'Live preview'] },
-  { id: 'markdown', icon: FileText, title: 'Markdown Notes', desc: 'Markdown workspace with backlinks, outline and graph view.', tags: ['Notes', 'Graph'] },
-  { id: 'mermaid', icon: GitBranch, title: 'Mermaid Diagrams', desc: 'Flow, sequence and class diagrams from text with colors and export.', tags: ['MMD', 'SVG', 'PNG'] },
   { id: 'apidocs', icon: BookOpen, title: 'API Docs', desc: 'OpenAPI and Swagger documentation viewer.', tags: ['OpenAPI', 'Docs'] },
+  { id: 'markdown', icon: FileText, title: 'Markdown Notes', desc: 'Local notes for API workspaces.', tags: ['Notes', 'Local'] },
 ]
 
 const MORE_SECTIONS: HubSection[] = [
@@ -106,24 +100,16 @@ const MORE_SECTIONS: HubSection[] = [
   },
   {
     index: '04',
-    title: 'Infra · Debug · Data · Power',
-    kicker: 'everything else within reach',
+    title: 'Infra · Data · Tools',
+    kicker: 'secondary tools one step away',
     accent: 'muted',
     tools: [
       { id: 'mock', icon: Server, title: 'Mock Server', desc: 'Stub endpoints and inspect hit logs.' },
       { id: 'proxy', icon: Shield, title: 'Proxy', desc: 'Capture, inspect and rewrite traffic.' },
-      { id: 'browser', icon: Bug, title: 'Browser Debug', desc: 'CDP network and console debugging.' },
-      { id: 'har', icon: Activity, title: 'HAR Viewer', desc: 'Waterfalls and capture replay.' },
       { id: 'database', icon: Database, title: 'Database', desc: 'SQLite, Postgres, MySQL and MongoDB.' },
       { id: 'vault', icon: Lock, title: 'Vault', desc: 'Encrypted local secrets.' },
-      { id: 'flows', icon: GitBranch, title: 'API Flows', desc: 'Executable Mermaid flows.' },
       { id: 'broker', icon: Radio, title: 'Broker Studio', desc: 'Kafka, MQTT, Redis and NATS.' },
-      { id: 'storage', icon: HardDrive, title: 'Storage', desc: 'Inspect and repair raw app storage.' },
-      { id: 'secretscanner', icon: Shield, title: 'Secret Scanner', desc: 'Find exposed API keys and tokens.' },
-      { id: 'jsontools', icon: Braces, title: 'JSON Tools', desc: 'Format, query and diff JSON.' },
-      { id: 'xmltools', icon: FileCode, title: 'XML Tools', desc: 'Format, diff and XPath XML.' },
-      { id: 'dockerlab', icon: Container, title: 'Docker Lab', desc: 'Generate local compose labs.' },
-      { id: 'utils', icon: Wrench, title: 'Power Tools', desc: 'JWT, hashes, codecs and UUIDs.' },
+      { id: 'powertools', icon: Wrench, title: 'Power Tools', desc: 'JWT, hashes, codecs and UUIDs.' },
     ],
   },
 ]
@@ -138,8 +124,8 @@ const HUB_SECTIONS: HubSection[] = [
   },
   {
     index: '02',
-    title: 'Documents',
-    kicker: 'create / sign / publish',
+    title: 'Payloads & Docs',
+    kicker: 'inspect / document / note',
     accent: 'violet',
     tools: DOC_TOOLS,
   },
@@ -356,19 +342,27 @@ export function WelcomePanel() {
           }}
         >
           <div className="min-w-0">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-violet-500/25 bg-violet-500/10 px-3 py-1 font-mono text-[10px] font-semibold tracking-[0.06em] text-violet-300">
+            <div className={cn(
+              'mb-4 inline-flex items-center gap-2 rounded-full border px-3 py-1 font-mono text-[10px] font-semibold tracking-[0.06em]',
+              isLight
+                ? 'border-violet-500/30 bg-violet-500/10 text-violet-700'
+                : 'border-violet-500/25 bg-violet-500/10 text-violet-200',
+            )}>
               <Search size={12} />
               <span>
-                Press <kbd className="rounded border border-violet-500/40 bg-violet-500/15 px-1 py-px text-[9px] text-violet-200">Ctrl/Cmd&nbsp;+&nbsp;F</kbd> to search any feature
+                Press <kbd className={cn(
+                  'rounded border px-1 py-px text-[9px]',
+                  isLight ? 'border-violet-500/40 bg-violet-500/15 text-violet-800' : 'border-violet-500/40 bg-violet-500/15 text-violet-100',
+                )}>Ctrl/Cmd&nbsp;+&nbsp;F</kbd> to search any feature
               </span>
             </div>
             <h1 className="max-w-[720px] text-[38px] font-semibold leading-[1.04] tracking-normal max-sm:text-[32px] max-sm:leading-[1.08]" style={{ color: colors.title }}>
-              <span className={isLight ? 'text-violet-700' : 'text-violet-200'}>Build & debug APIs.</span>
+              <span className={isLight ? 'text-violet-700' : 'text-violet-200'}>Build, debug and ship APIs.</span>
               <br />
-              Then document, sign and version it all.
+              Document, sign and version everything—locally.
             </h1>
             <p className="mt-4 max-w-[680px] font-mono text-[12px] leading-7" style={{ color: colors.muted }}>
-              API clients and protocols come first, with documents, signed PDFs and a full local Git surface one click away. Everything stays on your machine.
+              From modern API clients to enterprise protocols, technical documents, signed PDFs and Git workflows: every tool is one click away, and every byte stays on your machine.
             </p>
           </div>
 

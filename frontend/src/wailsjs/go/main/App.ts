@@ -18,6 +18,18 @@ export function VerifyPdfSignatureBase64(pdfBase64: string): Promise<string> {
   return window['go']['main']['App']['VerifyPdfSignatureBase64'](pdfBase64)
 }
 
+export function SelectPSD2Certificate(): Promise<string> {
+  return window['go']['main']['App']['SelectPSD2Certificate']()
+}
+
+export function InspectPSD2Certificate(path: string, password: string): Promise<string> {
+  return window['go']['main']['App']['InspectPSD2Certificate'](path, password)
+}
+
+export function BuildPSD2Headers(inputJSON: string): Promise<string> {
+  return window['go']['main']['App']['BuildPSD2Headers'](inputJSON)
+}
+
 export function InspectSigningCertificateBase64(reqJSON: string): Promise<string> {
   return window['go']['main']['App']['InspectSigningCertificateBase64'](reqJSON)
 }
@@ -35,6 +47,7 @@ export function GetServerPort(): Promise<number> {
 }
 
 export function GetStartupWindowChrome(): Promise<string> {
+  if (!window.go?.main?.App?.GetStartupWindowChrome) return Promise.resolve('system')
   return window['go']['main']['App']['GetStartupWindowChrome']()
 }
 
@@ -123,9 +136,23 @@ export interface UpdateInfo {
 }
 
 export function GetAppVersion(): Promise<string> {
+  const app = (window['go'] as unknown as { main?: { App?: Record<string, unknown> } } | undefined)?.main?.App
+  if (typeof app?.GetAppVersion !== 'function') return Promise.resolve('0.0.0-dev')
   return (window['go']['main']['App'] as unknown as Record<string, () => Promise<string>>)['GetAppVersion']()
 }
 
 export function CheckForUpdate(): Promise<UpdateInfo> {
+  const app = (window['go'] as unknown as { main?: { App?: Record<string, unknown> } } | undefined)?.main?.App
+  if (typeof app?.CheckForUpdate !== 'function') {
+    return Promise.resolve({
+      currentVersion: '0.0.0-dev',
+      latestVersion: '0.0.0-dev',
+      updateAvailable: false,
+      releaseUrl: '',
+      releaseNotes: '',
+      publishedAt: '',
+      isDev: true,
+    })
+  }
   return (window['go']['main']['App'] as unknown as Record<string, () => Promise<UpdateInfo>>)['CheckForUpdate']()
 }

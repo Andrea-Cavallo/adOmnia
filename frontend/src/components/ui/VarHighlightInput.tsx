@@ -27,7 +27,7 @@ interface VarHighlightInputProps {
   placeholder?: string
   className?: string
   onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void
-  inputRef?: React.RefObject<HTMLInputElement>
+  inputRef?: React.RefObject<HTMLInputElement | null>
 }
 
 type Segment = { text: string; type: 'plain' | 'resolved' | 'missing' | 'noenv' }

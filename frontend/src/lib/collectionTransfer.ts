@@ -47,7 +47,7 @@ export function cloneCollection(collection: Collection, name = `${collection.nam
 
 function normalizeMethod(value: unknown): HttpMethod {
   const method = String(value || 'GET').toUpperCase()
-  const allowed = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'CONNECT', 'TRACE', 'WS', 'SOAP']
+  const allowed = ['GET', 'QUERY', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'CONNECT', 'TRACE', 'WS', 'SOAP']
   return (allowed.includes(method) ? method : 'GET') as HttpMethod
 }
 

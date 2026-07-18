@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { Plus, X, ChevronRight, ChevronLeft, Copy, Pencil } from 'lucide-react'
+import { Plus, X, ChevronRight, ChevronLeft, Copy, Pencil, Server } from 'lucide-react'
 import type { Tab } from '@/lib/types'
 import type { TabDropPosition } from '@/stores/tabs'
 import { cn } from '@/lib/utils'
@@ -17,10 +17,12 @@ interface TabBarProps {
   onNewTab: () => void
   onDuplicate: (id: string) => void
   onRenameTab: (id: string, name: string) => void
+  onMockTab: (id: string) => void | Promise<void>
 }
 
 const METHOD_COLORS: Record<string, string> = {
   GET: 'text-method-get',
+  QUERY: 'text-info',
   POST: 'text-method-post',
   PUT: 'text-method-put',
   PATCH: 'text-method-patch',
@@ -37,7 +39,7 @@ interface ContextMenuState {
 }
 
 const MENU_W = 180
-const MENU_H = 290
+const MENU_H = 324
 
 function clampToViewport(x: number, y: number): { left: number; top: number } {
   const vw = window.innerWidth
@@ -48,7 +50,7 @@ function clampToViewport(x: number, y: number): { left: number; top: number } {
   }
 }
 
-export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, onCloseToLeft, onCloseAll, onReorder, onNewTab, onDuplicate, onRenameTab }: TabBarProps) {
+export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, onCloseToLeft, onCloseAll, onReorder, onNewTab, onDuplicate, onRenameTab, onMockTab }: TabBarProps) {
   const [ctx, setCtx] = useState<ContextMenuState>({ open: false, x: 0, y: 0, tabId: '' })
   const [draggingTabId, setDraggingTabId] = useState<string | null>(null)
   const [dropTarget, setDropTarget] = useState<{ tabId: string; position: TabDropPosition } | null>(null)
@@ -271,6 +273,14 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
             Duplicate
           </button>
           <button
+            onClick={() => { void onMockTab(ctx.tabId); closeCtx() }}
+            className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-text-1 hover:bg-surface-2 transition-colors text-left"
+          >
+            <Server size={11} className="text-text-3" />
+            Mock this tab
+          </button>
+          <div className="my-1 border-t border-border-1" />
+          <button
             onClick={() => { onClose(ctx.tabId); closeCtx() }}
             className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-text-1 hover:bg-surface-2 transition-colors text-left"
           >
@@ -300,23 +310,6 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
           >
             <X size={11} className="text-text-3" />
             Close All
-          </button>
-          <div className="my-1 border-t border-border-1" />
-          <button
-            onClick={() => { onReorder(ctx.tabId, tabs[ctxTabIdx - 1].id, 'before'); closeCtx() }}
-            disabled={ctxTabIdx <= 0}
-            className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-text-2 hover:bg-surface-2 hover:text-text-1 transition-colors text-left disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            <ChevronLeft size={11} className="text-text-3" />
-            Move Left
-          </button>
-          <button
-            onClick={() => { onReorder(ctx.tabId, tabs[ctxTabIdx + 1].id, 'after'); closeCtx() }}
-            disabled={ctxTabIdx < 0 || ctxTabIdx >= tabs.length - 1}
-            className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-text-2 hover:bg-surface-2 hover:text-text-1 transition-colors text-left disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            <ChevronRight size={11} className="text-text-3" />
-            Move Right
           </button>
         </div>
       , document.body)}

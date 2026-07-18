@@ -13,3 +13,7 @@ export function Complete(provider: string, prompt: string, maxTokens: number): P
 export function GenerateMockEndpoints(inputType: string, userInput: string): Promise<string> {
   return window['go']['main']['AIEngine']['GenerateMockEndpoints'](inputType, userInput)
 }
+
+export function ListModels(configJSON: string, query: string): Promise<string> {
+  return window['go']['main']['AIEngine']['ListModels'](configJSON, query)
+}

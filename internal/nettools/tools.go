@@ -768,6 +768,7 @@ func RegisterHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/dns/cache", dnsCacheGetHandler)
 	mux.HandleFunc("/dns/cache/clear", dnsCacheClearHandler)
 	mux.HandleFunc("/portscan", portScanHandler)
+	mux.HandleFunc("/ports/listening", listeningPortsHandler)
 	mux.HandleFunc("/cors", corsTestHandler)
 	mux.HandleFunc("/cert/jks-split", certJksSplitHandler)
 	mux.HandleFunc("/cert/inspect", certInspectHandler)

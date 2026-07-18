@@ -90,7 +90,7 @@ export interface OpenAPISecurityDoc {
   requirements?: Array<Record<string, string[]>>
 }
 
-export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS' | 'CONNECT' | 'TRACE' | 'WS' | 'SOAP'
+export type HttpMethod = 'GET' | 'QUERY' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS' | 'CONNECT' | 'TRACE' | 'WS' | 'SOAP'
 
 export interface RequestItem {
   id: string
@@ -114,6 +114,20 @@ export interface RequestItem {
   _openapiResponses?: OpenAPIResponseDoc[]
   _openapiSecurity?: OpenAPISecurityDoc
   assertions?: RequestAssertion[]
+  psd2?: PSD2RequestConfig
+}
+
+export type PSD2Operation = 'ais-consent' | 'pis-payment' | 'fcs-confirmation'
+
+export interface PSD2RequestConfig {
+  enabled: boolean
+  operation: PSD2Operation
+  qwacPath: string
+  qwacPasswordRef: string
+  qsealPath: string
+  qsealPasswordRef: string
+  keyId: string
+  sign: boolean
 }
 
 export type AssertionOperator = 'eq' | 'neq' | 'gt' | 'lt' | 'gte' | 'lte' | 'contains' | 'not_contains' | 'regex' | 'exists' | 'type'
@@ -193,6 +207,7 @@ export interface EnvVariable {
 export interface Environment {
   id: string
   name: string
+  private?: boolean
   variables: EnvVariable[]
 }
 

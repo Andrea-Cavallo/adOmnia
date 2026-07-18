@@ -43,7 +43,7 @@ function kv(key = '', value = '') {
 
 function method(value: unknown): HttpMethod {
   const upper = String(value || 'GET').toUpperCase()
-  return ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'CONNECT', 'TRACE', 'WS', 'SOAP'].includes(upper) ? upper as HttpMethod : 'GET'
+  return ['GET', 'QUERY', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'CONNECT', 'TRACE', 'WS', 'SOAP'].includes(upper) ? upper as HttpMethod : 'GET'
 }
 
 function request(name: string, reqMethod: HttpMethod, url: string): RequestItem {
@@ -81,7 +81,7 @@ function detectInteropFormat(filename: string, text: string): InteropFormat {
     if ((json as any).collection?.name || Array.isArray((json as any).items)) return 'bruno'
   }
   if (/^query\s|^mutation\s|^subscription\s|fragment\s/m.test(trimmed)) return 'graphql'
-  if (/^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+\S+/m.test(trimmed)) return 'http'
+  if (/^(GET|QUERY|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+\S+/m.test(trimmed)) return 'http'
   return 'unknown'
 }
 
@@ -117,7 +117,7 @@ function parseCurlCollection(text: string): Collection {
 function parseHttpCollection(filename: string, text: string): Collection {
   const requests = text.split(/\n\s*###.*\n/g).map((block, index) => {
     const lines = block.trim().split(/\r?\n/)
-    const first = lines.findIndex((line) => /^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+\S+/i.test(line.trim()))
+    const first = lines.findIndex((line) => /^(GET|QUERY|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+\S+/i.test(line.trim()))
     if (first < 0) return null
     const [m, ...urlParts] = lines[first].trim().split(/\s+/)
     const req = request(`HTTP ${index + 1}`, method(m), urlParts.join(' '))

@@ -4,9 +4,30 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 )
+
+// isAllowedOrigin reports whether a browser Origin may call the local sidecar.
+// The sidecar is loopback-only, so we accept any localhost-family origin
+// regardless of port or scheme. This must include the Wails webview origins,
+// which differ by platform/runtime version: "wails://wails" (older) and
+// "http://wails.localhost" / "https://wails.localhost" (WebView2 / newer).
+func isAllowedOrigin(origin string) bool {
+	if origin == "" || origin == "wails://wails" {
+		return true
+	}
+	u, err := url.Parse(origin)
+	if err != nil {
+		return false
+	}
+	host := u.Hostname()
+	return host == "localhost" ||
+		host == "127.0.0.1" ||
+		host == "::1" ||
+		strings.HasSuffix(host, ".localhost")
+}
 
 var (
 	sidecarToken     string
@@ -28,12 +49,7 @@ func InitToken() {
 func WithSecurity(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
-		// Allow: no origin (direct Wails IPC calls), wails:// scheme, localhost devserver
-		allowed := origin == "" ||
-			origin == "wails://wails" ||
-			strings.HasPrefix(origin, "http://localhost:") ||
-			strings.HasPrefix(origin, "http://127.0.0.1:")
-		if !allowed {
+		if !isAllowedOrigin(origin) {
 			http.Error(w, "forbidden origin", http.StatusForbidden)
 			return
 		}
@@ -41,7 +57,7 @@ func WithSecurity(next http.Handler) http.Handler {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 		}
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, QUERY, POST, PUT, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Sidecar-Token")
 
 		// Respond to CORS preflight without token check

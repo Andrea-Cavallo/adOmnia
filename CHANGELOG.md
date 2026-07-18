@@ -6,6 +6,151 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.5.6] - 2026-07-18
+
+### Added
+- **HTTP QUERY method support:** adOmnia now supports the new HTTP `QUERY` method standardized by RFC 10008. `QUERY` sits between `GET` and `POST`: it allows a complex read-only search to be sent in the request body while preserving safe and idempotent semantics.
+- **QUERY across the API workspace:** `QUERY` is available in the request composer, top request bar, tab labels, collection tree, request import/export, API Docs parsing, HAR/browser debug views, load testing, Net Tools CORS checks, Mock Server endpoints, and generated client snippets.
+- **QUERY-aware code generation:** generated examples now use generic request APIs where a language or library has no native `query()` helper, including Python `requests.request("QUERY", ...)`, C# `new HttpMethod("QUERY")`, Java OkHttp `builder.method("QUERY", body)`, Ruby `Net::HTTPGenericRequest`, and Rust `reqwest::Method::from_bytes`.
+- **Mock Server QUERY examples:** mock presets and tab-to-mock actions can create `QUERY` endpoints with JSON search responses, and mock CORS headers advertise `QUERY`.
+
+### Changed
+- **Lean default product surface:** adOmnia now starts lighter around API Core, Protocols, Document Studio, and Power Tools, while heavier areas such as Browser Debug, Database Studio, and Git Sync are treated as advanced features.
+- **API Core placement:** Mock Server and Proxy Interceptor now live under API Core so API authoring, mocking, and interception stay close together.
+- **JSON Studio placement:** JSON Studio is promoted ahead of Notes/Markdown so JSON payload work is immediately available from the primary workspace.
+- **URL input cleanup:** pasted API URLs are normalized by trimming surrounding spaces and removing line breaks/tabs that would otherwise produce malformed requests.
+
+### Fixed
+- **Release test fixture restored:** the collection contract freeze fixture is present again so backend collection filesystem tests can run during release checks.
+
+### QUERY Usage Notes
+Use `GET` when the request is simple and naturally fits in the URL:
+
+```http
+GET /transactions?status=COMPLETED&from=2026-01-01&limit=100
+```
+
+Use `QUERY` when the search is read-only but too complex for a query string:
+
+```http
+QUERY /transactions
+Content-Type: application/json
+
+{
+  "statuses": ["COMPLETED", "PENDING"],
+  "dateRange": {
+    "from": "2026-01-01",
+    "to": "2026-06-30"
+  },
+  "accountIds": ["ACC-100", "ACC-200", "ACC-300"],
+  "sort": [
+    {
+      "field": "bookingDate",
+      "direction": "DESC"
+    }
+  ]
+}
+```
+
+`QUERY` is useful for advanced transaction searches, account movement filters, dynamic reporting, search engines, complex catalog filters, long identifier lists, nested `AND`/`OR` conditions, aggregations, grouping, SQL-like queries, or proprietary read-only DSLs.
+
+Continue using `GET` for simple reads such as:
+
+```http
+GET /transactions/123
+GET /transactions?status=PENDING&page=0&size=20
+GET /accounts/456/balance
+```
+
+Do not use `QUERY` for commands or mutations:
+
+```http
+POST /payments
+POST /transfers
+POST /accounts/123/block
+```
+
+Rule of thumb: simple filter and reasonable URL -> `GET`; complex read-only search with body -> `QUERY`; creation or data mutation -> `POST`, `PUT`, or `PATCH`.
+
+| Aspect | GET | QUERY |
+| --- | --- | --- |
+| Search data | URL/query string | Request body |
+| Body semantics | Not defined | Expected and meaningful |
+| Modifies data | No | No |
+| Idempotent | Yes | Yes |
+| Automatic retry | Safe | Safe |
+| Bookmark/share URL | Yes | Not directly |
+| Cache | Simple and widespread | Possible, but the cache key must include body and request metadata |
+
+For `QUERY`, the body and its `Content-Type` formally define the search. Servers should reject requests with missing or inconsistent `Content-Type`. `QUERY` responses are formally cacheable, but caches must consider the request body and metadata, so support is more complex than for `GET`.
+
+## [0.5.5] - 2026-07-17
+
+### Added
+- **Standalone JSON Studio:** the left rail now exposes a dedicated JSON workspace with Raw as the first/default view, formatted tree inspection, graph view, fullscreen mode, file/drop loading, search, copy, clear, minify, and persisted local session state.
+- **Two-pane JSON comparison:** JSON Studio can open a second JSON document on the right, keep both panes fullscreen side by side, sort object keys A-Z, and show path-level differences.
+- **Lossless JSON utilities:** JSON formatting, sorting, minifying, and diffing preserve long numeric tokens without rounding or rewriting their original spelling.
+- **Feature Surface settings:** Settings now includes switches for advanced features, lab features, Plugins, and Daily Scenarios so the product surface can stay cleaner by default.
+
+### Changed
+- **Cleaner product taxonomy:** the rail is now driven by a central feature registry and grouped around API, Protocols, Infrastructure, Browser Debug, Local Data, Tools, Docs, and Workspace.
+- **Command palette alignment:** the command palette now uses the same feature registry and respects advanced/lab visibility settings.
+- **Focused Welcome hub:** the first screen now emphasizes API-first workflows and payload/document work instead of presenting every module with equal weight.
+- **Document Studio cleanup:** advanced document tools can be hidden behind feature flags instead of crowding the primary rail.
+- **Net Tools consolidation:** Net Tools now route through Browser Debug, keeping network inspection in one coherent workspace.
+- **Power Tools split:** Base64, Hash, JWT, Password, and UUID utilities were moved into focused tool components with a shared utility registry.
+
+### Removed
+- **Duplicate legacy JSON Tools panel:** JSON workflows now live in the dedicated JSON Studio instead of the old Utils-embedded panel.
+- **Public legacy rail aliases:** `jsontools`, `utils`, `nettools`, and `kafka` were removed from the active rail type surface; startup normalization still maps old saved values to the new destinations.
+
+### Fixed
+- **Browser-safe Wails fallbacks:** local preview can render the new frontend routes without crashing on missing desktop bindings.
+- **Rail visibility regressions:** advanced/lab filtering is now applied consistently to the rail and command palette.
+
+### Fixed
+- **Reliable gRPC Studio execution:** load tests now classify the actual gRPC status instead of treating every HTTP 200 as success, and they carry metadata, TLS, custom CA, mTLS certificates, and request timeout settings into every invocation.
+- **Honest descriptor and connection state:** imported proto/protoset descriptors remain available for offline request authoring without pretending a live server connection; changing endpoint, TLS, certificates, or profile invalidates the previous connection state.
+- **Reproducible gRPC history:** call history now preserves and restores metadata, TLS/mTLS paths, and timeout settings for accurate reruns.
+- **Safe request defaults:** new gRPC sessions no longer send demonstration authorization metadata automatically.
+
+### Added
+- **Live cancellable gRPC streaming:** server and bidirectional stream messages are delivered incrementally through the local sidecar, with an in-place Cancel action, configurable timeout, response headers, and trailers.
+
+## [0.5.1] - 2026-06-27
+
+### Added
+- **Versionable collection folders:** collections can now be exported as deterministic, diff-friendly folders with stable metadata, folder/request JSON files, Windows-safe names, and a sync manifest. The importer reconstructs the collection tree from disk and round-trips the exported structure deterministically.
+- **Collection folder workflow in Git Sync:** the Git Sync panel includes a `Collection Folder` section for exporting the selected collection, importing a folder-backed collection, and checking drift between the in-app collection and the folder projection.
+- **Headless collection runner foundation:** the desktop executable now supports `adomnia run <collection-folder>` without opening the Wails UI. The runner imports folder-backed collections, executes supported HTTP requests through the Go transport, supports CLI/JSON reports, `--out`, `--bail`, `--env`, and `--env-var KEY=VALUE`.
+- **CI-ready runner output:** the headless runner now supports `--folder` for focused folder runs and `--reporter junit` for pipeline-readable XML reports.
+- **Shared request execution contract:** GUI and headless execution now share a stable request-resolution layer for variables, path params, query/header/body resolution, simple auth, and assertion evaluation.
+- **OpenAPI governance lint engine:** added the local `internal/oaslint` engine with built-in rules for operation IDs, descriptions, response coverage, JSON response schemas, tags, security requirements, path naming, duplicate operation IDs, local ruleset overrides, and structured JSON/text reporting.
+- **CI-ready OpenAPI lint CLI:** the desktop executable now supports `adomnia lint <openapi.json|openapi.yaml|collection-folder>` with `--ruleset`, `--reporter text|json`, `--out`, and `--fail-on-warn`, returning non-zero exit codes for blocking governance errors.
+- **Collection and folder inheritance foundation:** folder-backed collections can now carry shared auth, headers, variables, and scripts, with a single resolver applying top-down inheritance to headless runner requests. Collection bearer auth, folder headers, request overrides, and disabled inherited headers are covered by backend tests.
+- **Git-safe environment workflow:** the headless runner loads a collection-local `.env` with deterministic precedence below named environments and CLI overrides. The environment editor can mark an environment private; private environments stay in local bbolt storage and are excluded from collection-folder and workspace-file exports. Public secret variables are exported as empty placeholders, and stale environment files are removed when an environment becomes private.
+- **OpenAPI governance in API Docs:** API Docs now includes an integrated Governance view powered by the same local lint engine as the CLI, with severity badges, searchable/filterable findings, local ruleset overrides, and navigation from a violation to its documented operation.
+- **Advanced headless runtime parity:** `adomnia run` now supports non-interactive OAuth2 grants, AWS Signature v4, explicit Vault values from CI environment variables, a run-scoped cookie jar, multipart fields/file uploads, sandboxed pre/post/test scripts, and OpenAPI response-contract validation.
+- **Single-request collection export:** Git Sync can update only the active request in an existing collection-folder projection, preserving its path and sequence so a request edit produces a one-file Git diff.
+
+### Changed
+- **Request sending now records a resolved request contract before transport:** the existing GUI send path still calls the same backend transport, but the resolved request shape is now explicit and covered by tests.
+
+### Notes
+- Interactive OAuth authorization-code/PKCE remains a desktop browser flow. Headless automation uses client credentials, password, or refresh-token grants, and injects Vault-backed values through explicit process environment variables without exposing ciphertext or plaintext in reports.
+
+## [0.4.8] - 2026-06-25
+
+### Added
+- **Save a response value as an environment variable:** right-click any value in the response Body (or a Headers value) and choose *Save as environment variable…* — pick the name (the JSON key is suggested automatically) and the target environment. Perfect for capturing a token from a getToken-style response straight into `{{access_token}}`. A *Copy value* action is included in the same menu.
+
+### Changed
+- **System titlebar is now the real default:** existing installs that still carried the legacy in-app titlebar are migrated to the native system titlebar on launch (explicit choices are preserved). New installs already defaulted to it.
+
+### Fixed
+- **Welcome hub search hint readability:** the "Press Ctrl/Cmd + F to search any feature" badge was nearly invisible on the light theme — it now uses theme-aware contrast.
+- **PSD2 / Berlin Group header presets visibility:** the quick-add presets area is taller so the Berlin Group section is no longer hidden below the Common headers.
+
 ## [0.4.7] - 2026-06-25
 
 ### Added

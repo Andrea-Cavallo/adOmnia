@@ -15,6 +15,7 @@ import {
 import { graphFromMermaid, type ApiCatalogRequest } from '@/lib/flowMermaid'
 import {
   launchBrowserForDebug,
+  inspectablePageTargets,
   discoverEndpoints,
   connectToTarget,
   disconnectDebugger,
@@ -87,7 +88,7 @@ function mimeMatchesType(mime: string, type: TypeFilter): boolean {
 }
 
 function safeHttpMethod(method: string): HttpMethod {
-  const safe = ['GET','POST','PUT','PATCH','DELETE','HEAD','OPTIONS','CONNECT','TRACE']
+  const safe = ['GET','QUERY','POST','PUT','PATCH','DELETE','HEAD','OPTIONS','CONNECT','TRACE']
   return safe.includes(method.toUpperCase()) ? method.toUpperCase() as HttpMethod : 'GET'
 }
 
@@ -198,7 +199,7 @@ function TabPicker({ onConnect, onCancel, connectionError }: TabPickerProps) {
     setLaunching(true)
     setError('')
     try {
-      const targets = await launchBrowserForDebug(launchUrl, 9223)
+      const targets = inspectablePageTargets(await launchBrowserForDebug(launchUrl, 9223))
       if (targets.length > 0) {
         setLaunchTargets(targets)
         setEndpoints([])
@@ -214,10 +215,9 @@ function TabPicker({ onConnect, onCancel, connectionError }: TabPickerProps) {
   }, [launchUrl, scan])
 
   const allTargets: { endpoint: string; target: DebugTarget }[] = [
-    ...(launchTargets ?? []).map((t) => ({ endpoint: 'Launched browser', target: t })),
+    ...inspectablePageTargets(launchTargets).map((t) => ({ endpoint: 'Launched browser', target: t })),
     ...(endpoints ?? []).flatMap((ep) =>
-      (ep.targets ?? [])
-        .filter((t) => t.type === 'page')
+      inspectablePageTargets(ep.targets)
         .map((t) => ({ endpoint: `${ep.browserName} - port ${ep.port}`, target: t }))
     ),
   ]
@@ -447,9 +447,16 @@ export function BrowserDebugPanel({ initialTab = 'network' }: { initialTab?: Deb
   // Command-palette deep links select a tab via this event (see commandPalette.ts).
   useEffect(() => {
     const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { tab?: DebugTab; handled?: boolean }
+      const detail = (e as CustomEvent).detail as { tab?: DebugTab; nettoolsTab?: string; handled?: boolean }
       if (detail?.tab && DEBUG_TABS.some((t) => t.id === detail.tab)) {
         setActiveTab(detail.tab)
+        if (detail.tab === 'nettools' && detail.nettoolsTab) {
+          window.requestAnimationFrame(() => {
+            document.dispatchEvent(new CustomEvent('adomnia:nettools-tab', {
+              detail: { tab: detail.nettoolsTab, handled: false },
+            }))
+          })
+        }
         detail.handled = true
       }
     }
@@ -460,6 +467,9 @@ export function BrowserDebugPanel({ initialTab = 'network' }: { initialTab?: Deb
   const handleConnect = useCallback(async (target: DebugTarget) => {
     setConnectionError('')
     try {
+      if (inspectablePageTargets([target]).length === 0) {
+        throw new Error('Select a browser page. Workers and extension targets do not expose an inspectable DOM.')
+      }
       await connectToTarget(target.webSocketDebuggerUrl)
       await enableConsole()
       setConnectedTab(target)

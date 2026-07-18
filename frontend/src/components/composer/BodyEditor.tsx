@@ -9,6 +9,7 @@ import { JsonGraphModal } from '@/components/ui/JsonGraph'
 import { cn } from '@/lib/utils'
 import { diagnoseJson } from '@/lib/jsonDiagnostics'
 import { prettyJson } from '@/lib/prettyJson'
+import { findTextMatches } from '@/lib/textSearch'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { useGraphqlCacheStore } from '@/stores/graphqlCache'
 
@@ -104,21 +105,6 @@ const BODY_ICONS: Record<BodyTypeId, LucideIcon> = {
   graphql: Share2,
 }
 
-// Live Content-Type the request will actually send, shown next to the selector.
-function contentTypeFor(activeType: BodyTypeId, lang?: string): string {
-  switch (activeType) {
-    case 'json': return 'application/json'
-    case 'urlencoded': return 'application/x-www-form-urlencoded'
-    case 'formdata': return 'multipart/form-data'
-    case 'graphql': return 'application/json'
-    case 'raw':
-      return lang === 'xml' ? 'application/xml'
-        : lang === 'html' ? 'text/html'
-        : lang === 'javascript' ? 'application/javascript'
-        : 'text/plain'
-  }
-}
-
 const RAW_LANGUAGES = [
   { id: 'xml', label: 'XML' },
   { id: 'text', label: 'Text' },
@@ -129,28 +115,18 @@ const RAW_LANGUAGES = [
 interface BodySearchState {
   query: string
   activeIndex: number
-}
-
-function findTextMatches(text: string, query: string): number[] {
-  if (!query) return []
-  const haystack = text.toLowerCase()
-  const needle = query.toLowerCase()
-  const matches: number[] = []
-  let index = haystack.indexOf(needle)
-  while (index !== -1) {
-    matches.push(index)
-    index = haystack.indexOf(needle, index + Math.max(needle.length, 1))
-  }
-  return matches
+  matchCase: boolean
+  wholeWord: boolean
 }
 
 // Reads the textarea's live value (not a prop) so callers can depend only on
 // the search state — editing a matched value must not re-fire this and yank the
 // caret back to the search hit. See [[bug: ctrl-f focus returns to key]].
-function selectTextareaMatch(textarea: HTMLTextAreaElement | null, query: string, activeIndex: number) {
+function selectTextareaMatch(textarea: HTMLTextAreaElement | null, search: BodySearchState) {
+  const { query, activeIndex, matchCase, wholeWord } = search
   if (!textarea || !query) return
   const text = textarea.value
-  const matches = findTextMatches(text, query)
+  const matches = findTextMatches(text, query, { matchCase, wholeWord })
   const start = matches[activeIndex]
   if (start === undefined) return
   const end = start + query.length
@@ -171,6 +147,10 @@ function BodyFindBar({
   onPrev,
   onNext,
   onClose,
+  matchCase,
+  wholeWord,
+  onMatchCaseChange,
+  onWholeWordChange,
 }: {
   open: boolean
   query: string
@@ -182,6 +162,10 @@ function BodyFindBar({
   onPrev: () => void
   onNext: () => void
   onClose: () => void
+  matchCase: boolean
+  wholeWord: boolean
+  onMatchCaseChange: () => void
+  onWholeWordChange: () => void
 }) {
   if (!open) {
     return (
@@ -219,6 +203,22 @@ function BodyFindBar({
       <span className="min-w-14 px-1 text-center font-mono text-[10px] text-text-4">
         {query ? `${matches ? activeIndex + 1 : 0}/${matches}` : '0/0'}
       </span>
+      <button
+        onClick={onMatchCaseChange}
+        aria-pressed={matchCase}
+        title="Match case"
+        className={cn('flex h-full min-w-7 items-center justify-center px-1 font-mono text-[10px] font-semibold', matchCase ? 'bg-accent/15 text-accent' : 'text-text-4 hover:text-text-1')}
+      >
+        Aa
+      </button>
+      <button
+        onClick={onWholeWordChange}
+        aria-pressed={wholeWord}
+        title="Match whole word"
+        className={cn('flex h-full min-w-7 items-center justify-center px-1 font-mono text-[10px] font-semibold', wholeWord ? 'bg-accent/15 text-accent' : 'text-text-4 hover:text-text-1')}
+      >
+        Ab
+      </button>
       <button onClick={onPrev} disabled={!matches} title="Previous match" className="flex h-full w-6 items-center justify-center text-text-4 hover:text-text-1 disabled:opacity-35">
         <ChevronUp size={12} />
       </button>
@@ -274,7 +274,7 @@ function JsonRawEditor({ body, onChange, search }: { body: RequestBody; onChange
           onClick={prettify}
           className="rounded px-2 py-1 text-[10.5px] font-medium text-accent outline-none transition-colors hover:bg-accent/10 hover:text-accent-light focus-visible:ring-2 focus-visible:ring-accent"
         >
-          Pretty
+          Beautify
         </button>
         <button
           onClick={() => setShowGraph(true)}
@@ -306,6 +306,8 @@ function JsonRawEditor({ body, onChange, search }: { body: RequestBody; onChange
         hasActiveEnv={!!activeEnvId}
         searchTerm={search.query}
         activeSearchIndex={search.activeIndex}
+        searchMatchCase={search.matchCase}
+        searchWholeWord={search.wholeWord}
       />
       {unresolvedVars.length > 0 && (
         <div className={cn(
@@ -353,9 +355,9 @@ function GraphQLEditor({ body, onChange, requestUrl, search }: { body: RequestBo
   const queryRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
-    selectTextareaMatch(queryRef.current, search.query, search.activeIndex)
+    selectTextareaMatch(queryRef.current, search)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search.activeIndex, search.query])
+  }, [search])
 
   // Hydrate the persistent introspection cache once.
   useEffect(() => { void loadCache() }, [loadCache])
@@ -547,9 +549,9 @@ function RawEditor({ body, onChange, search }: { body: RequestBody; onChange: (b
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
-    selectTextareaMatch(textareaRef.current, search.query, search.activeIndex)
+    selectTextareaMatch(textareaRef.current, search)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search.activeIndex, search.query])
+  }, [search])
 
   const validate = (v: string) => {
     if (body.lang !== 'json') { setError(''); return }
@@ -595,9 +597,10 @@ function RawEditor({ body, onChange, search }: { body: RequestBody; onChange: (b
 export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEditorProps) {
   const BODY_TYPES = isWebSocket ? WS_BODY_TYPES : ALL_BODY_TYPES
   const [searchOpen, setSearchOpen] = useState(false)
-  const [search, setSearch] = useState<BodySearchState>({ query: '', activeIndex: 0 })
+  const [search, setSearch] = useState<BodySearchState>({ query: '', activeIndex: 0, matchCase: false, wholeWord: false })
   const [maximized, setMaximized] = useState(false)
   const findInputRef = useRef<HTMLInputElement>(null)
+  const editorRootRef = useRef<HTMLDivElement>(null)
 
   const activeType: BodyTypeId = body.type === 'raw' && body.lang === 'json' ? 'json'
     : body.type === 'raw' ? 'raw'
@@ -622,8 +625,8 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
   }, [body.form, body.raw, body.type])
 
   const bodyMatches = useMemo(
-    () => findTextMatches(searchableBodyText, search.query),
-    [search.query, searchableBodyText],
+    () => findTextMatches(searchableBodyText, search.query, search),
+    [search, searchableBodyText],
   )
 
   useEffect(() => {
@@ -634,6 +637,7 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
+        if (!editorRootRef.current?.contains(event.target as Node)) return
         event.preventDefault()
         setSearchOpen(true)
         requestAnimationFrame(() => findInputRef.current?.focus())
@@ -648,6 +652,13 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
   const openFind = () => {
     setSearchOpen(true)
     requestAnimationFrame(() => findInputRef.current?.focus())
+  }
+
+  const closeFind = () => {
+    setSearchOpen(false)
+    // Removing the query also removes highlights and tells the active editor
+    // to collapse the search selection back to a normal caret.
+    setSearch((current) => ({ ...current, query: '', activeIndex: 0 }))
   }
 
   const nextMatch = () => {
@@ -673,10 +684,10 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
         maximized
           ? 'fixed inset-3 z-50 overflow-hidden rounded-xl border border-border-2 shadow-2xl'
           : 'flex-1',
-      )}>
-      <section className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-border-2 bg-surface-1 px-3 py-2.5">
-        <div className="flex min-w-0 flex-wrap items-center gap-2.5">
-          <div role="radiogroup" aria-label="Body format" className="inline-flex max-w-full flex-wrap items-center gap-0.5 rounded-lg bg-surface-0 p-1 ring-1 ring-inset ring-border-2">
+      )} ref={editorRootRef}>
+      <section className="flex flex-nowrap items-center justify-between gap-2 border-b border-border-2 bg-surface-1 px-3 py-2.5">
+        <div className="min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div role="radiogroup" aria-label="Body format" className="inline-flex flex-nowrap items-center gap-0.5 rounded-lg bg-surface-0 p-1 ring-1 ring-inset ring-border-2">
             {BODY_TYPES.map((type) => {
               const active = activeType === type.id
               const Icon = BODY_ICONS[type.id]
@@ -700,17 +711,8 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
               )
             })}
           </div>
-          {body.type !== 'none' && (
-            <span
-              title="Content-Type this request will send"
-              className="hidden items-center gap-1.5 rounded-md border border-border-2 bg-surface-0 px-2 py-1 font-mono text-[10px] leading-none text-text-3 sm:inline-flex"
-            >
-              <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-              {contentTypeFor(activeType, body.lang)}
-            </span>
-          )}
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex shrink-0 items-center gap-1.5">
           <BodyFindBar
             open={searchOpen}
             query={search.query}
@@ -718,10 +720,14 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
             activeIndex={Math.min(search.activeIndex, Math.max(bodyMatches.length - 1, 0))}
             inputRef={findInputRef}
             onOpen={openFind}
-            onQueryChange={(query) => setSearch({ query, activeIndex: 0 })}
+            onQueryChange={(query) => setSearch((current) => ({ ...current, query, activeIndex: 0 }))}
             onPrev={prevMatch}
             onNext={nextMatch}
-            onClose={() => setSearchOpen(false)}
+            onClose={closeFind}
+            matchCase={search.matchCase}
+            wholeWord={search.wholeWord}
+            onMatchCaseChange={() => setSearch((current) => ({ ...current, matchCase: !current.matchCase, activeIndex: 0 }))}
+            onWholeWordChange={() => setSearch((current) => ({ ...current, wholeWord: !current.wholeWord, activeIndex: 0 }))}
           />
           <button
             onClick={() => setMaximized((m) => !m)}

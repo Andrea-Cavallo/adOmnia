@@ -2,6 +2,7 @@ import { useRef, useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '@/lib/utils'
 import { useSettingsStore } from '@/stores/settings'
+import { findTextMatches } from '@/lib/textSearch'
 
 const AUTO_CLOSE_PAIRS: Record<string, string> = {
   '(': ')', '[': ']', '{': '}', '"': '"', "'": "'", '`': '`',
@@ -18,6 +19,8 @@ interface JsonEditorProps {
   hasActiveEnv?: boolean
   searchTerm?: string
   activeSearchIndex?: number
+  searchMatchCase?: boolean
+  searchWholeWord?: boolean
 }
 
 // ─── Var tooltip types ────────────────────────────────────────────────────────
@@ -212,6 +215,8 @@ function highlightSearchMatches(
   color: string | undefined,
   searchTerm: string | undefined,
   activeSearchIndex: number,
+  searchMatchCase: boolean,
+  searchWholeWord: boolean,
   matchCursor: { current: number },
 ): string {
   if (!searchTerm) {
@@ -219,20 +224,17 @@ function highlightSearchMatches(
     return color ? `<span style="color:${color}">${escaped}</span>` : escaped
   }
 
-  const lower = rawText.toLowerCase()
-  const needle = searchTerm.toLowerCase()
   let last = 0
   let html = ''
-  let index = lower.indexOf(needle)
+  const matches = findTextMatches(rawText, searchTerm, { matchCase: searchMatchCase, wholeWord: searchWholeWord })
 
-  while (index !== -1) {
+  for (const index of matches) {
     if (index > last) html += escapeHtml(rawText.slice(last, index))
     const matchText = escapeHtml(rawText.slice(index, index + searchTerm.length))
     const isActive = matchCursor.current === activeSearchIndex
     html += `<mark data-json-search-match="true" style="background:${isActive ? 'rgba(251,191,36,0.55)' : 'rgba(234,179,8,0.32)'};color:inherit;border-radius:2px;outline:${isActive ? '1px solid var(--color-warning)' : 'none'}">${matchText}</mark>`
     matchCursor.current += 1
     last = index + searchTerm.length
-    index = lower.indexOf(needle, last)
   }
 
   if (last < rawText.length) html += escapeHtml(rawText.slice(last))
@@ -287,10 +289,12 @@ function buildHtml(
   hasActiveEnv?: boolean,
   searchTerm?: string,
   activeSearchIndex = 0,
+  searchMatchCase = false,
+  searchWholeWord = false,
 ): string {
   const matchCursor = { current: 0 }
   return tokens.map(({ text, cls }) => {
-    if (!cls) return highlightSearchMatches(text, undefined, searchTerm, activeSearchIndex, matchCursor)
+    if (!cls) return highlightSearchMatches(text, undefined, searchTerm, activeSearchIndex, searchMatchCase, searchWholeWord, matchCursor)
     const color = CLS_MAP[cls]
     // Inject var highlighting for string values (not keys) that contain {{...}}
     if (!searchTerm && cls === 'json-string' && resolvedVars && text.includes('{{')) {
@@ -301,7 +305,7 @@ function buildHtml(
         hasActiveEnv ?? false,
       )
     }
-    return highlightSearchMatches(text, color, searchTerm, activeSearchIndex, matchCursor)
+    return highlightSearchMatches(text, color, searchTerm, activeSearchIndex, searchMatchCase, searchWholeWord, matchCursor)
   }).join('')
 }
 
@@ -335,10 +339,16 @@ export function JsonEditor({
   hasActiveEnv,
   searchTerm,
   activeSearchIndex = 0,
+  searchMatchCase = false,
+  searchWholeWord = false,
 }: JsonEditorProps) {
   const taRef  = useRef<HTMLTextAreaElement>(null)
   const preRef = useRef<HTMLPreElement>(null)
   const gutterRef = useRef<HTMLPreElement>(null)
+  const previousSearchTermRef = useRef(searchTerm)
+  const undoStackRef = useRef<string[]>([])
+  const redoStackRef = useRef<string[]>([])
+  const expectedValueRef = useRef(value)
   const [tooltip, setTooltip] = useState<VarTooltip | null>(null)
   // Ctrl+wheel zoom — persisted px font size, shared by textarea/overlay/gutter.
   const [fontPx, setFontPx] = useState(() => {
@@ -360,15 +370,33 @@ export function JsonEditor({
     paddingLeft: editor.lineNumbers ? gutterWidth + 8 : 12,
   }
 
+  // A tab/request switch is an external value replacement, not an edit that
+  // belongs to this document's undo history.
+  useEffect(() => {
+    if (value === expectedValueRef.current) return
+    undoStackRef.current = []
+    redoStackRef.current = []
+    expectedValueRef.current = value
+  }, [value])
+
+  const commitEdit = (next: string) => {
+    if (next === value) return
+    undoStackRef.current.push(value)
+    if (undoStackRef.current.length > 200) undoStackRef.current.shift()
+    redoStackRef.current = []
+    expectedValueRef.current = next
+    onChange(next)
+  }
+
   const highlight = useCallback((text: string) => {
     if (!text.trim()) return `<span style="color:var(--color-text-4)">${escapeHtml(placeholder ?? '')}</span>`
     try {
       const tokens = tokenizeJson(text)
-      return buildHtml(tokens, resolvedVars, hasActiveEnv, searchTerm, activeSearchIndex)
+      return buildHtml(tokens, resolvedVars, hasActiveEnv, searchTerm, activeSearchIndex, searchMatchCase, searchWholeWord)
     } catch {
-      return highlightSearchMatches(text, undefined, searchTerm, activeSearchIndex, { current: 0 })
+      return highlightSearchMatches(text, undefined, searchTerm, activeSearchIndex, searchMatchCase, searchWholeWord, { current: 0 })
     }
-  }, [activeSearchIndex, placeholder, resolvedVars, searchTerm, hasActiveEnv])
+  }, [activeSearchIndex, placeholder, resolvedVars, searchMatchCase, searchTerm, searchWholeWord, hasActiveEnv])
 
   // Keep the highlight layer in sync with the textarea's scroll position.
   const syncScroll = useCallback(() => {
@@ -408,15 +436,21 @@ export function JsonEditor({
   // NOT re-fire this and yank the cursor back to the search hit.
   // ponytail: deps intentionally exclude `value` — only search navigation moves the caret.
   useEffect(() => {
-    if (!searchTerm) return
     const ta = taRef.current
     if (!ta) return
+    if (!searchTerm) {
+      if (previousSearchTermRef.current) {
+        const caret = ta.selectionEnd
+        ta.setSelectionRange(caret, caret)
+      }
+      previousSearchTermRef.current = searchTerm
+      return
+    }
+    previousSearchTermRef.current = searchTerm
     const text = ta.value
-    const lower = text.toLowerCase()
-    const needle = searchTerm.toLowerCase()
-    let found = 0
-    let index = lower.indexOf(needle)
-    while (index !== -1) {
+    const matches = findTextMatches(text, searchTerm, { matchCase: searchMatchCase, wholeWord: searchWholeWord })
+    for (let found = 0; found < matches.length; found += 1) {
+      const index = matches[found]
       if (found === activeSearchIndex) {
         ta.setSelectionRange(index, index + searchTerm.length)
         const line = text.slice(0, index).split('\n').length - 1
@@ -425,20 +459,49 @@ export function JsonEditor({
         syncScroll()
         return
       }
-      found += 1
-      index = lower.indexOf(needle, index + Math.max(searchTerm.length, 1))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSearchIndex, searchTerm, syncScroll])
+  }, [activeSearchIndex, searchMatchCase, searchTerm, searchWholeWord, syncScroll])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const ta = e.currentTarget
     const { selectionStart: s, selectionEnd: end } = ta
 
+    const mod = e.ctrlKey || e.metaKey
+    if (mod && e.key.toLowerCase() === 'z') {
+      e.preventDefault()
+      const isRedo = e.shiftKey
+      const source = isRedo ? redoStackRef.current : undoStackRef.current
+      const next = source.pop()
+      if (next === undefined) return
+      const destination = isRedo ? undoStackRef.current : redoStackRef.current
+      destination.push(value)
+      expectedValueRef.current = next
+      onChange(next)
+      requestAnimationFrame(() => {
+        const editor = taRef.current
+        if (!editor) return
+        const caret = Math.min(next.length, s)
+        editor.setSelectionRange(caret, caret)
+      })
+      return
+    }
+
+    if (mod && !e.shiftKey && e.key.toLowerCase() === 'y') {
+      e.preventDefault()
+      const next = redoStackRef.current.pop()
+      if (next === undefined) return
+      undoStackRef.current.push(value)
+      expectedValueRef.current = next
+      onChange(next)
+      requestAnimationFrame(() => taRef.current?.setSelectionRange(Math.min(next.length, s), Math.min(next.length, s)))
+      return
+    }
+
     if (e.key === 'Tab') {
       e.preventDefault()
       const next = value.substring(0, s) + indentUnit + value.substring(end)
-      onChange(next)
+      commitEdit(next)
       const caret = s + indentUnit.length
       requestAnimationFrame(() => {
         if (taRef.current) {
@@ -453,7 +516,7 @@ export function JsonEditor({
       e.preventDefault()
       const close = AUTO_CLOSE_PAIRS[e.key]
       const next = value.substring(0, s) + e.key + close + value.substring(end)
-      onChange(next)
+      commitEdit(next)
       const caret = s + 1
       requestAnimationFrame(() => {
         if (taRef.current) {
@@ -537,7 +600,7 @@ export function JsonEditor({
       <textarea
         ref={taRef}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => commitEdit(e.target.value)}
         onKeyDown={handleKeyDown}
         onScroll={syncScroll}
         onMouseMove={handleMouseMove}

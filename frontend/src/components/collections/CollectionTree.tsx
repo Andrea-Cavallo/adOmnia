@@ -36,7 +36,7 @@ interface CollectionTreeProps {
   collections: Collection[]
   activeRequestId: string | null
   onOpenRequest: (request: RequestItem, collectionId: string) => void
-  onNewRequest: (method?: HttpMethod) => void
+  onNewRequest: (method?: HttpMethod) => string | null
   onDeleteCollection: (id: string) => void
   onDeleteNode: (collectionId: string, nodeId: string) => void
   onAddCollection: () => void
@@ -55,6 +55,7 @@ interface CollectionTreeProps {
 
 const METHOD_COLORS: Record<string, string> = {
   GET: 'text-method-get',
+  QUERY: 'text-info',
   POST: 'text-method-post',
   PUT: 'text-method-put',
   PATCH: 'text-method-patch',
@@ -721,7 +722,14 @@ export function CollectionTree({
         <button onClick={() => exportAll('adomnia')} title="Export all collections" className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-2 hover:text-text-1">
           <Download size={14} />
         </button>
-        <button onClick={() => onNewRequest()} title="New request" className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-2 hover:text-text-1">
+        <button
+          onClick={() => {
+            const collectionId = onNewRequest()
+            if (collectionId) setOpenIds((current) => new Set(current).add(collectionId))
+          }}
+          title="New request"
+          className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-2 hover:text-text-1"
+        >
           <Plus size={14} />
         </button>
         <button onClick={onAddCollection} title="New collection" className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-2 hover:text-text-1">

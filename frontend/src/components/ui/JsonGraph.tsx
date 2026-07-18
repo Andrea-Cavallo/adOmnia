@@ -575,3 +575,35 @@ export function JsonGraph({
     </div>
   )
 }
+
+export function JsonGraphDiagram({
+  json,
+  className,
+}: {
+  json: string
+  className?: string
+}) {
+  const parsed = useMemo(() => {
+    try { return { value: JSON.parse(json), error: '' } }
+    catch (e) { return { value: null, error: e instanceof Error ? e.message : 'Invalid JSON' } }
+  }, [json])
+
+  const { nodes, edges } = useMemo(() => {
+    if (!parsed.value || typeof parsed.value !== 'object') return { nodes: [], edges: [] }
+    return buildGraph(parsed.value)
+  }, [parsed.value])
+
+  if (parsed.error) {
+    return <div className="rounded border border-error/40 bg-error/8 px-3 py-2 text-xs text-error font-mono">{parsed.error}</div>
+  }
+
+  if (!parsed.value || typeof parsed.value !== 'object') {
+    return <div className="flex flex-1 items-center justify-center text-xs text-text-4">Graph requires an object or array JSON value</div>
+  }
+
+  return (
+    <div className={cn('rounded border border-border-1 bg-surface-0 overflow-hidden flex flex-col', className)} style={{ minHeight: 260 }}>
+      <GraphCanvas nodes={nodes} edges={edges} />
+    </div>
+  )
+}

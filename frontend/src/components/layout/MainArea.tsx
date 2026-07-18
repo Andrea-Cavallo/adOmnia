@@ -21,6 +21,10 @@ import { cn } from '@/lib/utils'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { RequestValidationDialog } from '@/components/composer/RequestValidationDialog'
 import { validateRequestParams, type RequestParamIssue } from '@/lib/requestParamValidation'
+import { appendMockEndpoints, createMockEndpointFromRequest } from '@/lib/mockEndpointStore'
+import { DropToast } from '@/components/layout/DropToast'
+import type { DropFeedback } from '@/hooks/useFileDrop'
+import { normalizeUrlInput } from '@/lib/urlInput'
 
 // ─── Lazy-loaded panels (loaded on first navigation) ──────────────────────────
 
@@ -40,6 +44,7 @@ const MarkdownPanel        = React.lazy(() => import('@/components/markdown/Mark
 const MermaidPanel         = React.lazy(() => import('@/components/mermaid/MermaidPanel').then(m => ({ default: m.MermaidPanel })))
 const LatexStudioPanel     = React.lazy(() => import('@/components/latex/LatexStudioPanel').then(m => ({ default: m.LatexStudioPanel })))
 const PdfEditorPanel       = React.lazy(() => import('@/components/pdfeditor/PdfEditorPanel').then(m => ({ default: m.PdfEditorPanel })))
+const JsonViewerPanel      = React.lazy(() => import('@/components/jsonviewer/JsonViewerPanel').then(m => ({ default: m.JsonViewerPanel })))
 const ApiDocsPanel         = React.lazy(() => import('@/components/apidocs/ApiDocsPanel').then(m => ({ default: m.ApiDocsPanel })))
 const StoragePanel         = React.lazy(() => import('@/components/storage/StoragePanel').then(m => ({ default: m.StoragePanel })))
 const DatabasePanel        = React.lazy(() => import('@/components/database/DatabasePanel').then(m => ({ default: m.DatabasePanel })))
@@ -127,10 +132,11 @@ function defaultComposerWidthRatio(): number {
   return 0.66
 }
 
-const METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'CONNECT', 'TRACE']
+const METHODS: HttpMethod[] = ['GET', 'QUERY', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'CONNECT', 'TRACE']
 
 const METHOD_COLORS: Record<HttpMethod, string> = {
   GET: 'text-method-get',
+  QUERY: 'text-info',
   POST: 'text-method-post',
   PUT: 'text-method-put',
   PATCH: 'text-method-patch',
@@ -217,7 +223,7 @@ function ActiveRequestBar({
         <div className="h-[var(--ui-control-h)] min-w-0 flex-1 overflow-hidden rounded-md border border-border-2 bg-surface-2 transition-colors focus-within:border-accent">
           <VarHighlightInput
             value={request.url}
-            onChange={(url) => onChange({ ...request, url })}
+            onChange={(url) => onChange({ ...request, url: normalizeUrlInput(url) })}
             onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') onSend() }}
             resolvedVars={vars}
             hasActiveEnv={hasActiveEnv}
@@ -323,6 +329,7 @@ function RequestWorkspace() {
 
   const [showLoadTest, setShowLoadTest] = useState(false)
   const [pendingClose, setPendingClose] = useState<PendingClose | null>(null)
+  const [mockFeedback, setMockFeedback] = useState<DropFeedback | null>(null)
   const sendAbortRef = useRef<AbortController | null>(null)
   const [apiToolsOpen, setApiToolsOpen] = useState(() => {
     try { return localStorage.getItem('adomnia.apiToolsOpen') === '1' } catch { return false }
@@ -406,7 +413,7 @@ function RequestWorkspace() {
   }, [activeTab?.id])
 
   const handleSend = async () => {
-    if (!activeTab) return
+    if (!activeTab || activeTab.loading) return
     const issues = validateRequestParams(activeTab.request)
     if (issues.length > 0) {
       setParamIssues(issues)
@@ -527,6 +534,27 @@ function RequestWorkspace() {
     setPendingClose(null)
   }, [getDirtyTabsForPending, saveTab, closeTab, closeTabsToRight, closeTabsToLeft, closeAllTabs])
 
+  const flashMockFeedback = useCallback((msg: string, ok: boolean) => {
+    setMockFeedback({ msg, ok })
+    window.setTimeout(() => setMockFeedback(null), 3500)
+  }, [])
+
+  const handleMockTab = useCallback(async (tabId: string) => {
+    const tab = useTabsStore.getState().tabs.find((item) => item.id === tabId)
+    if (!tab) return
+    const endpoint = createMockEndpointFromRequest(tab.request, tab.response)
+    if (!endpoint) {
+      flashMockFeedback(`${tab.request.method} is not a mockable HTTP method`, false)
+      return
+    }
+    try {
+      await appendMockEndpoints([endpoint])
+      useAppStore.getState().setActiveRail('mock')
+    } catch (err) {
+      flashMockFeedback(err instanceof Error ? err.message : 'Could not create the mock endpoint', false)
+    }
+  }, [flashMockFeedback])
+
   const dirtyInDialog = pendingClose ? getDirtyTabsForPending(pendingClose) : []
 
   if (tabs.length === 0) {
@@ -545,7 +573,8 @@ function RequestWorkspace() {
   }
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+    <div className="relative flex-1 flex flex-col min-w-0 overflow-hidden">
+      {mockFeedback && <DropToast feedback={mockFeedback} />}
       <TabBar
         tabs={tabs}
         activeTabId={activeTabId}
@@ -558,6 +587,7 @@ function RequestWorkspace() {
         onNewTab={newTab}
         onDuplicate={duplicateTab}
         onRenameTab={handleRenameTab}
+        onMockTab={handleMockTab}
       />
       {activeTab && (
         <ActiveRequestBar
@@ -738,14 +768,11 @@ function panelFor(activeRail: RailItem): PanelDef {
     case 'history':     return { component: <RequestHistoryPanel />,  titleKey: 'Request History', overflow: true }
     case 'websocket':   return { component: <WebSocketPanel />,       titleKey: 'WebSocket',     overflow: true }
     case 'sse':         return { component: <SsePanel />,             titleKey: 'SSE Client',    overflow: true }
-    case 'kafka':       return { component: <BrokerStudioPanel />,    titleKey: 'Broker Studio', overflow: true }
     case 'broker':      return { component: <BrokerStudioPanel />,    titleKey: 'Broker Studio', overflow: true }
     case 'mock':        return { component: <MockPanel />,            titleKey: 'mock',      overflow: true }
     case 'proxy':       return { component: <ProxyPanel />,           titleKey: 'proxy',     overflow: true }
     case 'grpc':        return { component: <GrpcPanel />,            titleKey: 'grpc',      overflow: true }
-    case 'nettools':    return { component: <BrowserDebugPanel initialTab="nettools" />, titleKey: 'browser' }
     case 'browser':     return { component: <BrowserDebugPanel />,    titleKey: 'browser' }
-    case 'utils':
     case 'powertools':  return { component: <UtilsPanel />,           titleKey: 'Power Tools', overflow: true }
     case 'flows':     return { component: <FlowsPanel />,              titleKey: 'flows',     overflow: true }
     case 'soap':      return { component: <SoapPanel />,             titleKey: 'soap',      overflow: true }
@@ -758,7 +785,7 @@ function panelFor(activeRail: RailItem): PanelDef {
     case 'pdfeditor':   return { component: <PdfEditorPanel />,        titleKey: 'pdfeditor', overflow: true }
     case 'storage':     return { component: <StoragePanel />,         titleKey: 'storage',   overflow: true }
     case 'database':    return { component: <DatabasePanel />,        titleKey: 'Database Studio', overflow: true }
-    case 'jsontools':   return { component: <UtilsPanel initialTool="jsonstudio" />, titleKey: 'Power Tools', overflow: true }
+    case 'jsonviewer':  return { component: <JsonViewerPanel />,      titleKey: 'JSON Studio', overflow: true }
     case 'xmltools':    return { component: <UtilsPanel initialTool="xmlstudio" />, titleKey: 'Power Tools', overflow: true }
     case 'welcome':     return { component: <WelcomePanel /> }
     case 'vault':       return { component: <VaultPanel />,           titleKey: 'vault',     overflow: true }

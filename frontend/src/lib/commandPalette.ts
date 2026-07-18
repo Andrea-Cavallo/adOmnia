@@ -1,4 +1,5 @@
 import type { RailItem } from '@/stores/app'
+import { COMMAND_PALETTE_PANEL_FEATURES } from '@/lib/featureRegistry'
 
 export interface PalettePanel {
   id: RailItem
@@ -7,40 +8,12 @@ export interface PalettePanel {
   keywords: string
 }
 
-export const COMMAND_PALETTE_PANELS: PalettePanel[] = [
-  { id: 'welcome', title: 'Home', group: 'Navigation', keywords: 'welcome onboarding start' },
-  { id: 'collections', title: 'API Workspace', group: 'API Core', keywords: 'collections requests http rest' },
-  { id: 'scenarios', title: 'Daily Scenarios', group: 'API Core', keywords: 'daily workbench quick access custom steps kafka mongodb rest mock consumer verification' },
-  { id: 'history', title: 'Request History', group: 'API Core', keywords: 'responses history saved previous reopen search' },
-  { id: 'flows', title: 'Flows', group: 'API Core', keywords: 'workflow sequence auth extract script wait condition' },
-  { id: 'websocket', title: 'WebSocket', group: 'Protocols', keywords: 'ws realtime socket' },
-  { id: 'sse', title: 'SSE Client', group: 'Protocols', keywords: 'events stream server sent' },
-  { id: 'broker', title: 'Broker Studio', group: 'Protocols', keywords: 'kafka topic producer consumer load test mqtt amqp messaging' },
-  { id: 'grpc', title: 'gRPC Client', group: 'Protocols', keywords: 'protobuf rpc' },
-  { id: 'soap', title: 'SOAP Studio', group: 'Protocols', keywords: 'wsdl xml legacy enterprise' },
-  { id: 'mcp', title: 'MCP Client', group: 'Protocols', keywords: 'model context protocol ai tools resources prompts debugger server generator stdio' },
-  { id: 'mock', title: 'Mock Server', group: 'Infrastructure', keywords: 'stub simulate response replay' },
-  { id: 'proxy', title: 'Proxy Interceptor', group: 'Infrastructure', keywords: 'traffic intercept breakpoint ca certificate' },
-  { id: 'browser', title: 'Browser Debug & Net Tools', group: 'Debugging', keywords: 'cdp chrome network page debug cors dns tls ssl ping port headers security' },
-  { id: 'har', title: 'HAR Viewer', group: 'Power Tools', keywords: 'archive waterfall import network' },
-  { id: 'observe', title: 'Observability', group: 'Power Tools', keywords: 'metrics logs traces' },
-  { id: 'secretscanner', title: 'Secret Scanner', group: 'Power Tools', keywords: 'credential scan security token' },
-  { id: 'database', title: 'Database Studio', group: 'Data', keywords: 'sql query db' },
-  { id: 'storage', title: 'Storage Explorer', group: 'Data', keywords: 'bbolt persistence key value local' },
-  { id: 'vault', title: 'Vault', group: 'Data', keywords: 'secret credentials local' },
-  { id: 'gitsync', title: 'Git Sync', group: 'Data', keywords: 'git compare diff workspace sync version control' },
-  { id: 'plugins', title: 'Plugins', group: 'Data', keywords: 'extensions wasm js' },
-  { id: 'jsontools', title: 'JSON Tools', group: 'Power Tools', keywords: 'format validate repair diagnostics' },
-  { id: 'xmltools', title: 'XML Tools', group: 'Power Tools', keywords: 'format validate xpath' },
-  { id: 'powertools', title: 'All Utilities', group: 'Power Tools', keywords: 'encode decode jwt uuid toolbox' },
-  { id: 'dockerlab', title: 'Docker Lab', group: 'Power Tools', keywords: 'containers compose local lab' },
-  { id: 'pdfeditor', title: 'PDF Editor & Sign', group: 'Document Studio', keywords: 'pdf edit annotate sign signature form fill text highlight document viewer' },
-  { id: 'apidocs', title: 'API Docs / Swagger', group: 'Data', keywords: 'swagger openapi oas docs documentation reference redoc viewer spec api' },
-  { id: 'markdown', title: 'Markdown Notes', group: 'Document Studio', keywords: 'md preview notes docs' },
-  { id: 'mermaid', title: 'Mermaid Diagrams', group: 'Document Studio', keywords: 'diagram graph flowchart sequence mermaid mmd preview fullscreen zoom' },
-  { id: 'latex', title: 'LaTeX Studio', group: 'Document Studio', keywords: 'tex latex cv resume curriculum pdf document template preset awesome cv' },
-  { id: 'settings', title: 'Settings', group: 'Navigation', keywords: 'preferences configuration appearance' },
-]
+export const COMMAND_PALETTE_PANELS: PalettePanel[] = COMMAND_PALETTE_PANEL_FEATURES.map((feature) => ({
+  id: feature.id,
+  title: feature.title,
+  group: feature.group,
+  keywords: feature.keywords,
+}))
 
 // Deep links jump straight into a panel's sub-tab via a CustomEvent the panel
 // listens for. Add an entry here + a listener in the panel to make any
@@ -55,12 +28,12 @@ export interface PaletteDeepLink {
 }
 
 export const COMMAND_PALETTE_DEEP_LINKS: PaletteDeepLink[] = [
-  { rail: 'nettools', event: 'adomnia:nettools-tab', detail: { tab: 'cors' }, title: 'CORS Test', group: 'Debugging', keywords: 'cors preflight options origin access-control strict cross-origin browser' },
-  { rail: 'nettools', event: 'adomnia:nettools-tab', detail: { tab: 'dns' }, title: 'DNS Lookup', group: 'Debugging', keywords: 'dns lookup a aaaa mx txt ns resolve record' },
-  { rail: 'nettools', event: 'adomnia:nettools-tab', detail: { tab: 'trace' }, title: 'DNS Trace', group: 'Debugging', keywords: 'dns trace delegation authoritative' },
-  { rail: 'nettools', event: 'adomnia:nettools-tab', detail: { tab: 'compare' }, title: 'DNS Compare', group: 'Debugging', keywords: 'dns compare resolver diff' },
-  { rail: 'nettools', event: 'adomnia:nettools-tab', detail: { tab: 'cache' }, title: 'DNS Cache', group: 'Debugging', keywords: 'dns cache clear flush' },
-  { rail: 'nettools', event: 'adomnia:nettools-tab', detail: { tab: 'portscan' }, title: 'Port Scan', group: 'Debugging', keywords: 'port scan open ports tcp' },
+  { rail: 'browser', event: 'adomnia:browser-tab', detail: { tab: 'nettools', nettoolsTab: 'cors' }, title: 'CORS Test', group: 'Debugging', keywords: 'cors preflight options origin access-control strict cross-origin browser' },
+  { rail: 'browser', event: 'adomnia:browser-tab', detail: { tab: 'nettools', nettoolsTab: 'dns' }, title: 'DNS Lookup', group: 'Debugging', keywords: 'dns lookup a aaaa mx txt ns resolve record' },
+  { rail: 'browser', event: 'adomnia:browser-tab', detail: { tab: 'nettools', nettoolsTab: 'trace' }, title: 'DNS Trace', group: 'Debugging', keywords: 'dns trace delegation authoritative' },
+  { rail: 'browser', event: 'adomnia:browser-tab', detail: { tab: 'nettools', nettoolsTab: 'compare' }, title: 'DNS Compare', group: 'Debugging', keywords: 'dns compare resolver diff' },
+  { rail: 'browser', event: 'adomnia:browser-tab', detail: { tab: 'nettools', nettoolsTab: 'cache' }, title: 'DNS Cache', group: 'Debugging', keywords: 'dns cache clear flush' },
+  { rail: 'browser', event: 'adomnia:browser-tab', detail: { tab: 'nettools', nettoolsTab: 'portscan' }, title: 'Port Scan', group: 'Debugging', keywords: 'port scan open ports tcp' },
 
   // Browser Debug tabs
   { rail: 'browser', event: 'adomnia:browser-tab', detail: { tab: 'network' }, title: 'Network Inspector', group: 'Debugging', keywords: 'network requests waterfall xhr traffic capture' },

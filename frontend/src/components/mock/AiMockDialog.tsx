@@ -164,6 +164,7 @@ export function AiMockDialog({ onClose, onImport }: Props) {
                   <div key={i} className="flex items-center gap-3 px-3 py-2 bg-surface-2 border border-border-1 rounded text-xs">
                     <span className={`font-mono font-semibold w-14 flex-shrink-0 ${
                       ep.method === 'GET' ? 'text-method-get' :
+                      ep.method === 'QUERY' ? 'text-info' :
                       ep.method === 'POST' ? 'text-method-post' :
                       ep.method === 'PUT' ? 'text-method-put' :
                       ep.method === 'PATCH' ? 'text-method-patch' :

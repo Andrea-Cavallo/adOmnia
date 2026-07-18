@@ -24,7 +24,7 @@ export function OperationCard({ operation, registry }: OperationCardProps) {
   const methodClass = METHOD_CLASS[operation.method] ?? 'text-text-2 border-border-2 bg-surface-2'
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border-1 bg-surface-1">
+    <div data-oas-operation={`${operation.method} ${operation.path}`} className="overflow-hidden rounded-lg border border-border-1 bg-surface-1">
       <button
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center gap-2.5 px-3 py-2 text-left hover:bg-surface-2"

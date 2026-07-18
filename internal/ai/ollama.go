@@ -6,7 +6,7 @@ type ollamaProvider struct {
 
 func newOllamaProvider(model, baseURL string) *ollamaProvider {
 	if model == "" {
-		model = "llama3"
+		model = "qwen3-coder"
 	}
 	return &ollamaProvider{
 		openAIProvider: newOpenAIProvider("ollama", model, baseURL+"/v1"),

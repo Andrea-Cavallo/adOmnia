@@ -1,6 +1,7 @@
 package main
 
 import (
+	"adomnia/internal/adomniacli"
 	"adomnia/internal/browser"
 	"adomnia/internal/docker"
 	"adomnia/internal/plugins"
@@ -43,6 +44,10 @@ const (
 var startupWindowChrome = readStartupWindowChrome()
 
 func main() {
+	if len(os.Args) > 1 && (os.Args[1] == "run" || os.Args[1] == "lint") {
+		os.Exit(adomniacli.Run(os.Args[1:], os.Stdout, os.Stderr))
+	}
+
 	configureWindowChromeBackend(startupWindowChrome)
 
 	app := NewApp()
@@ -59,6 +64,8 @@ func main() {
 	gitSync := NewGitSync(dataDir())
 	mcpClient := NewMCPClient()
 	mcpServerGenerator := NewMCPServerGenerator()
+	collectionFS := NewCollectionFS()
+	oasLint := NewOASLint()
 
 	appOptions := &options.App{
 		Title:     "adOmnia paratus.",
@@ -91,6 +98,8 @@ func main() {
 			gitSync,
 			mcpClient,
 			mcpServerGenerator,
+			collectionFS,
+			oasLint,
 		},
 		Windows: &windows.Options{
 			WebviewIsTransparent:              false,
@@ -167,6 +176,7 @@ func readStartupWindowChrome() string {
 		return nil
 	})
 	var parsed struct {
+		Version    int `json:"version"`
 		Appearance struct {
 			WindowChrome string `json:"windowChrome"`
 		} `json:"appearance"`
@@ -175,6 +185,12 @@ func readStartupWindowChrome() string {
 		return windowChromeSystem
 	}
 	if parsed.Appearance.WindowChrome == "" {
+		return windowChromeSystem
+	}
+	// v3 migration: the system titlebar is now the default. Pre-v3 settings that
+	// still carry the legacy 'app' default are treated as 'system' on first
+	// launch so the change applies before the frontend rewrites the settings.
+	if parsed.Version < 3 && parsed.Appearance.WindowChrome == windowChromeApp {
 		return windowChromeSystem
 	}
 	return normalizeWindowChrome(parsed.Appearance.WindowChrome)

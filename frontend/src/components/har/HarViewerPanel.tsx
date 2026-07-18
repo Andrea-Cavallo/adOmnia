@@ -219,7 +219,7 @@ function headersToObject(headers: HarHeader[] = []) {
 
 function entryToRequest(entry: HarEntry): RequestItem {
   const method = entry.request.method.toUpperCase()
-  const safeMethod = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'CONNECT', 'TRACE'].includes(method)
+  const safeMethod = ['GET', 'QUERY', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'CONNECT', 'TRACE'].includes(method)
     ? method as HttpMethod
     : 'GET'
   const queryParams = queryParamsFromEntry(entry)

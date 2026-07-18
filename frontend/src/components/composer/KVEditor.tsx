@@ -167,7 +167,7 @@ export function KVEditor({ rows, onChange, keyPlaceholder = 'Key', valuePlacehol
         <Plus size={12} /> Add row
       </button>
       {isHeaders && (
-        <div className="max-h-32 overflow-y-auto px-2 pb-2 pt-1">
+        <div className="max-h-56 overflow-y-auto px-2 pb-2 pt-1">
           {HEADER_PRESET_GROUPS.map((group) => (
             <div key={group.label} className="mb-1.5 last:mb-0">
               <div className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-text-4">{group.label}</div>

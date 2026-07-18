@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Copy, Loader2, Maximize2, GitBranch, GitCompare, Sparkles, X, ShieldCheck, ShieldAlert, ShieldOff, AlertTriangle, Check, XCircle, FileText, FileCode, FileJson, Search, ChevronUp, ChevronDown } from 'lucide-react'
+import { Copy, Maximize2, GitBranch, GitCompare, Sparkles, X, ShieldCheck, ShieldAlert, ShieldOff, AlertTriangle, Check, XCircle, FileText, FileCode, FileJson, Search, ChevronUp, ChevronDown } from 'lucide-react'
 import type { ResponseData, ContractValidationResult, AssertionResult, ScriptRunResult } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { prettyJson } from '@/lib/prettyJson'
@@ -10,6 +10,10 @@ import { DiffModal, DiffPickerModal } from '@/components/response/DiffView'
 import { useTabsStore, type ResponseBodyView, type ResponseSection } from '@/stores/tabs'
 import { useSettingsStore } from '@/stores/settings'
 import { useAppStore } from '@/stores/app'
+import { useEnvironmentsStore } from '@/stores/environments'
+import { ContextMenu } from '@/components/ui/ContextMenu'
+import { uid } from '@/lib/types'
+import responseLogo from '../../../../assets/images/spinner.png'
 
 interface ResponsePanelProps {
   tabId: string
@@ -19,6 +23,35 @@ interface ResponsePanelProps {
   oaPath?: string
   oaMethod?: string
   assertions?: import('@/lib/types').RequestAssertion[]
+}
+
+function ResponseWaitingState({ loading }: { loading: boolean }) {
+  return (
+    <div className="flex min-h-0 flex-1 items-center justify-center">
+      <div className="flex flex-col items-center text-center">
+        <img
+          src={responseLogo}
+          alt="adOmnia"
+          width={120}
+          height={120}
+          className={cn(
+            'mb-4 h-[120px] w-[120px] shrink-0 object-contain drop-shadow-[0_0_14px_var(--color-accent-glow)]',
+            loading && 'motion-safe:animate-[spin_1.2s_linear_infinite] motion-reduce:animate-pulse',
+          )}
+        />
+        <p className="text-sm text-text-3">
+          {loading ? 'Sending request…' : 'Send the request to see a response'}
+        </p>
+        {!loading && (
+          <p className="mt-1 text-xs text-text-4">
+            or press <kbd className="rounded bg-surface-3 px-1 py-0.5 text-[10px]">Ctrl</kbd>
+            <span className="mx-0.5">+</span>
+            <kbd className="rounded bg-surface-3 px-1 py-0.5 text-[10px]">Enter</kbd>
+          </p>
+        )}
+      </div>
+    </div>
+  )
 }
 
 function formatBytes(bytes: number): string {
@@ -149,6 +182,131 @@ function formatXmlLike(text: string): string {
   }).join('\n')
 }
 
+/** Strip the surrounding quotes from a JSON string token (so `"abc"` → `abc`). */
+function unquoteJsonValue(raw: string): string {
+  const t = raw.trim()
+  if (t.length >= 2 && t.startsWith('"') && t.endsWith('"')) {
+    try { return JSON.parse(t) as string } catch { return t.slice(1, -1) }
+  }
+  return t
+}
+
+/** Walk back through sibling token spans to find the JSON key a value belongs to. */
+function guessKeyFromSpan(el: HTMLElement | null): string {
+  let node = el?.previousElementSibling as HTMLElement | null
+  let steps = 0
+  while (node && steps < 8) {
+    if (node.className.includes('json-key')) return unquoteJsonValue(node.textContent ?? '')
+    node = node.previousElementSibling as HTMLElement | null
+    steps += 1
+  }
+  return ''
+}
+
+/**
+ * Small modal to persist a response value into an environment variable — handy
+ * for capturing tokens (e.g. a getToken response) straight into `{{access_token}}`.
+ */
+function SaveEnvVarModal({
+  value,
+  suggestedKey,
+  onClose,
+}: {
+  value: string
+  suggestedKey: string
+  onClose: () => void
+}) {
+  const environments = useEnvironmentsStore((s) => s.environments)
+  const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
+  const addEnvironment = useEnvironmentsStore((s) => s.addEnvironment)
+  const updateVariables = useEnvironmentsStore((s) => s.updateVariables)
+  const setActiveEnv = useEnvironmentsStore((s) => s.setActiveEnv)
+
+  const [name, setName] = useState(suggestedKey)
+  const [envId, setEnvId] = useState(activeEnvId ?? environments[0]?.id ?? '__new__')
+  const nameRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const t = setTimeout(() => { nameRef.current?.focus(); nameRef.current?.select() }, 30)
+    return () => clearTimeout(t)
+  }, [])
+
+  const save = () => {
+    const key = name.trim()
+    if (!key) return
+    let targetId = envId
+    if (targetId === '__new__') {
+      targetId = addEnvironment('Default').id
+    }
+    const env = useEnvironmentsStore.getState().environments.find((e) => e.id === targetId)
+    const existing = env?.variables ?? []
+    const idx = existing.findIndex((v) => v.key === key)
+    const next = idx >= 0
+      ? existing.map((v, i) => (i === idx ? { ...v, value, enabled: true } : v))
+      : [...existing.filter((v) => v.key || v.value), { id: uid(), key, value, enabled: true }]
+    updateVariables(targetId, next)
+    if (activeEnvId !== targetId) setActiveEnv(targetId)
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60" onClick={onClose}>
+      <div
+        className="w-[440px] max-w-[92vw] rounded-lg border border-border-1 bg-surface-1 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-2 border-b border-border-1 px-4 py-3">
+          <span className="flex-1 text-sm font-semibold text-text-1">Save as environment variable</span>
+          <button onClick={onClose} title="Close" className="text-text-4 hover:text-text-1"><X size={16} /></button>
+        </div>
+        <div className="flex flex-col gap-3 px-4 py-4">
+          <label className="flex flex-col gap-1">
+            <span className="text-[10px] uppercase tracking-wider text-text-4">Variable name</span>
+            <input
+              ref={nameRef}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') onClose() }}
+              placeholder="access_token"
+              spellCheck={false}
+              className="h-8 rounded border border-border-2 bg-surface-2 px-2 text-xs text-text-1 placeholder:text-text-4 outline-none focus:border-accent"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-[10px] uppercase tracking-wider text-text-4">Environment</span>
+            <select
+              value={envId}
+              onChange={(e) => setEnvId(e.target.value)}
+              className="h-8 rounded border border-border-2 bg-surface-2 px-2 text-xs text-text-1 outline-none focus:border-accent"
+            >
+              {environments.map((env) => (
+                <option key={env.id} value={env.id}>{env.name}</option>
+              ))}
+              <option value="__new__">+ New environment (Default)</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-[10px] uppercase tracking-wider text-text-4">Value</span>
+            <div className="max-h-24 overflow-auto rounded border border-border-2 bg-surface-2 px-2 py-1.5 text-xs font-mono break-all text-text-2">
+              {value}
+            </div>
+          </label>
+        </div>
+        <div className="flex items-center justify-end gap-2 border-t border-border-1 px-4 py-3">
+          <button onClick={onClose} className="rounded px-3 py-1.5 text-xs text-text-3 hover:text-text-1">Cancel</button>
+          <button
+            onClick={save}
+            disabled={!name.trim()}
+            className="rounded bg-accent px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40"
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // DiffModal and DiffPickerModal are imported from DiffView.tsx
 
 function FullscreenBodyModal({
@@ -207,10 +365,28 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
     setCopiedBody(true)
     setTimeout(() => setCopiedBody(false), 1200)
   }
+  // Right-click on a response value → save it into an environment variable.
+  const [valueMenu, setValueMenu] = useState<{ x: number; y: number; value: string; suggestedKey: string } | null>(null)
+  const [saveVar, setSaveVar] = useState<{ value: string; suggestedKey: string } | null>(null)
   const [showDiff, setShowDiff] = useState(false)
   const [diffRightBody, setDiffRightBody] = useState('')
   const [diffRightLabel, setDiffRightLabel] = useState('')
   const [showDiffPicker, setShowDiffPicker] = useState(false)
+
+  // Open the value context menu when right-clicking a token (or a text selection)
+  // in the Body or Headers views.
+  const onBodyContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (tab !== 'body' && tab !== 'headers') return
+    const selection = window.getSelection()?.toString().trim() ?? ''
+    const targetEl = e.target as HTMLElement
+    const tokenText = targetEl.textContent ?? ''
+    const isToken = targetEl.tagName === 'SPAN' && tokenText.length > 0 && tokenText.length <= 2000
+    const value = selection || (isToken ? unquoteJsonValue(tokenText) : '')
+    if (!value) return
+    e.preventDefault()
+    const suggestedKey = selection ? '' : guessKeyFromSpan(targetEl)
+    setValueMenu({ x: e.clientX, y: e.clientY, value, suggestedKey })
+  }
 
   // ── Find-in-response ──────────────────────────────────────────────────────
   const [searchOpen, setSearchOpen] = useState(false)
@@ -263,7 +439,7 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
-        if (tab === 'body' && view !== 'graph') {
+        if (tab === 'body' && view !== 'graph' && bodyRef.current?.contains(e.target as Node)) {
           e.preventDefault()
           setSearchOpen(true)
           setTimeout(() => searchRef.current?.focus(), 30)
@@ -353,29 +529,11 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
   }, [matchIndex, matchCount, searchQuery])
 
   if (loading) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 size={24} className="animate-spin text-accent" />
-          <span className="text-xs text-text-3">Sending request…</span>
-        </div>
-      </div>
-    )
+    return <ResponseWaitingState loading />
   }
 
   if (!response) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-3xl text-text-4 mb-2">↘</div>
-          <p className="text-sm text-text-3">Hit Send to run the request</p>
-          <p className="text-xs text-text-4 mt-1">
-            or press <kbd className="px-1 py-0.5 bg-surface-3 rounded text-[10px]">Ctrl</kbd>
-            <kbd className="px-1 py-0.5 bg-surface-3 rounded text-[10px] ml-0.5">Enter</kbd>
-          </p>
-        </div>
-      </div>
-    )
+    return <ResponseWaitingState loading={false} />
   }
 
   if (response.error) {
@@ -603,17 +761,17 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
                 <Sparkles size={12} />
               </button>
 
-              {/* Pretty/Raw toggle */}
+              {/* Beautify/Raw toggle */}
               <span className="text-text-4 text-[9px] mx-1">|</span>
               <button
                 onClick={() => { setView('pretty'); updateViewState(tabId, { responseBodyView: 'pretty' }) }}
-                className={cn('px-2 py-0.5 text-[10px] rounded', view === 'pretty' ? 'bg-surface-3 text-text-1' : 'text-text-4')}
+                className={cn('px-2 py-0.5 text-[10px] rounded', view === 'pretty' ? 'bg-accent text-white' : 'text-text-4')}
               >
-                Pretty
+                Beautify
               </button>
               <button
                 onClick={() => { setView('raw'); updateViewState(tabId, { responseBodyView: 'raw' }) }}
-                className={cn('px-2 py-0.5 text-[10px] rounded', view === 'raw' ? 'bg-surface-3 text-text-1' : 'text-text-4')}
+                className={cn('px-2 py-0.5 text-[10px] rounded', view === 'raw' ? 'bg-accent text-white' : 'text-text-4')}
               >
                 Raw
               </button>
@@ -702,6 +860,7 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
         {/* Content */}
         <div
           ref={bodyRef}
+          onContextMenu={onBodyContextMenu}
           onScroll={(e) => {
             const viewState = useTabsStore.getState().getViewState(tabId)
             updateViewState(tabId, {
@@ -778,6 +937,31 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
           )}
         </div>
       </div>
+
+      {valueMenu && (
+        <ContextMenu
+          x={valueMenu.x}
+          y={valueMenu.y}
+          items={[
+            { id: 'save', label: 'Save as environment variable…' },
+            { id: 'copy', label: 'Copy value' },
+          ]}
+          onSelect={(id) => {
+            if (id === 'save') setSaveVar({ value: valueMenu.value, suggestedKey: valueMenu.suggestedKey })
+            else if (id === 'copy') navigator.clipboard.writeText(valueMenu.value)
+            setValueMenu(null)
+          }}
+          onClose={() => setValueMenu(null)}
+        />
+      )}
+
+      {saveVar && (
+        <SaveEnvVarModal
+          value={saveVar.value}
+          suggestedKey={saveVar.suggestedKey}
+          onClose={() => setSaveVar(null)}
+        />
+      )}
 
       {showFullscreen && (
         <FullscreenBodyModal

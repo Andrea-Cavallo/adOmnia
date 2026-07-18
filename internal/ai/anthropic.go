@@ -16,7 +16,7 @@ type anthropicProvider struct {
 
 func newAnthropicProvider(apiKey, model string) *anthropicProvider {
 	if model == "" {
-		model = "claude-sonnet-4-6"
+		model = "claude-sonnet-5"
 	}
 	return &anthropicProvider{apiKey: apiKey, model: model, client: &http.Client{}}
 }

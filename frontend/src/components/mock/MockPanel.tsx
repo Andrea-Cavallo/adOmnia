@@ -53,8 +53,8 @@ interface HitEntry {
   status: number
 }
 
-const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'ANY']
-const REST_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'])
+const METHODS = ['GET', 'QUERY', 'POST', 'PUT', 'PATCH', 'DELETE', 'ANY']
+const REST_METHODS = new Set(['GET', 'QUERY', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'])
 const MODES = [
   { value: 'first_active', label: 'First Active' },
   { value: 'random', label: 'Random' },
@@ -63,6 +63,7 @@ const MODES = [
 
 const METHOD_COLORS: Record<string, string> = {
   GET: 'text-method-get',
+  QUERY: 'text-info',
   POST: 'text-method-post',
   PUT: 'text-method-put',
   PATCH: 'text-method-patch',
@@ -84,6 +85,7 @@ function defaultResponse(n: number): MockResponse {
 
 function responseBodyFor(method: string, path: string): string {
   if (method === 'DELETE') return '{\n  "deleted": true,\n  "path": "' + path + '"\n}'
+  if (method === 'QUERY') return '{\n  "ok": true,\n  "path": "' + path + '",\n  "query": "processed",\n  "results": []\n}'
   if (method === 'POST') return '{\n  "id": "mock_1001",\n  "created": true,\n  "path": "' + path + '"\n}'
   if (method === 'PUT' || method === 'PATCH') return '{\n  "updated": true,\n  "path": "' + path + '"\n}'
   return '{\n  "ok": true,\n  "path": "' + path + '",\n  "items": [\n    { "id": "demo_1", "name": "Demo item" }\n  ]\n}'
@@ -141,6 +143,7 @@ function defaultRestEndpoints(): MockEndpoint[] {
     ['GET', '/health', 'Health check'],
     ['GET', '/v1/users', 'List users'],
     ['GET', '/v1/users/:param', 'Get user'],
+    ['QUERY', '/v1/users/search', 'Safe query users'],
     ['POST', '/v1/users', 'Create user'],
     ['PUT', '/v1/users/:param', 'Replace user'],
     ['PATCH', '/v1/users/:param', 'Patch user'],
@@ -540,7 +543,7 @@ export function MockPanel() {
   const [recording, setRecording] = useState(false)
   const [recordMsg, setRecordMsg] = useState('')
   const [hitSearch, setHitSearch] = useState('')
-  const [hitMethodFilter, setHitMethodFilter] = useState<'ALL' | 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'>('ALL')
+  const [hitMethodFilter, setHitMethodFilter] = useState<'ALL' | 'GET' | 'QUERY' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'>('ALL')
   const [hitMatchFilter, setHitMatchFilter] = useState<'all' | 'match' | 'miss'>('all')
   const [showAiDialog, setShowAiDialog] = useState(false)
 
@@ -558,15 +561,24 @@ export function MockPanel() {
   const api = useCallback(
     async (path: string, body?: unknown) => {
       const url = serverUrl(port, path)
-      if (!url) return null
+      if (!url) {
+        console.error('[MockPanel] serverUrl returned empty (port=', port, ', path=', path, ')')
+        return null
+      }
       try {
         const res = await sidecarFetch(url, {
           method: body !== undefined ? 'POST' : 'GET',
           headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
           body: body !== undefined ? JSON.stringify(body) : undefined,
         })
+        if (!res.ok) {
+          const text = await res.text().catch(() => '')
+          console.error(`[MockPanel] ${path} returned ${res.status}: ${text}`)
+          return { error: text || `HTTP ${res.status}` }
+        }
         return res.json()
-      } catch {
+      } catch (err) {
+        console.error(`[MockPanel] fetch error for ${path}:`, err)
         return null
       }
     },
@@ -640,6 +652,11 @@ export function MockPanel() {
     setLoading(true)
     setError('')
     const activeEndpoints = endpoints.filter((e) => e.enabled !== false)
+    if (activeEndpoints.length === 0) {
+      setError('No enabled endpoints. Enable at least one endpoint before starting the mock server.')
+      setLoading(false)
+      return
+    }
     const m = settings.mock
     const data = await api('/mock/start', {
       port: mockPort,
@@ -649,7 +666,11 @@ export function MockPanel() {
       corsHeadersAuto: m?.corsHeadersAuto ?? true,
       logHitsToFile: m?.logHitsToFile ?? false,
     })
-    if (data?.error) setError(data.error)
+    if (data === null) {
+      setError('Could not reach the backend server. Check that the app is running and retry.')
+    } else if (data?.error) {
+      setError(data.error)
+    }
     await refreshStatus()
     setLoading(false)
   }, [api, endpoints, mockPort, password, refreshStatus, settings.mock])
@@ -981,7 +1002,7 @@ export function MockPanel() {
               </div>
               {/* Method filter */}
               <div className="flex items-center gap-0.5">
-                {(['ALL', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const).map((m) => (
+                {(['ALL', 'GET', 'QUERY', 'POST', 'PUT', 'PATCH', 'DELETE'] as const).map((m) => (
                   <button
                     key={m}
                     onClick={() => setHitMethodFilter(m)}

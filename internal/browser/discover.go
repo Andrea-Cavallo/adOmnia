@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -530,9 +531,10 @@ func (b *BrowserDebug) LaunchBrowserForDebug(url string, port int) ([]DebugTarge
 	var targets []DebugTarget
 	for attempt := 0; attempt < 20; attempt++ {
 		time.Sleep(300 * time.Millisecond)
-		_, t, err := probePort(client, port)
-		if err == nil && len(t) > 0 {
-			targets = t
+		_, discovered, err := probePort(client, port)
+		pageTargets := inspectablePageTargets(discovered)
+		if err == nil && len(pageTargets) > 0 {
+			targets = pageTargets
 			break
 		}
 	}
@@ -542,4 +544,14 @@ func (b *BrowserDebug) LaunchBrowserForDebug(url string, port int) ([]DebugTarge
 	}
 
 	return targets, nil
+}
+
+func inspectablePageTargets(targets []DebugTarget) []DebugTarget {
+	pages := make([]DebugTarget, 0, len(targets))
+	for _, target := range targets {
+		if target.Type == "page" && target.WebSocketDebuggerURL != "" && !strings.HasPrefix(target.URL, "devtools://") {
+			pages = append(pages, target)
+		}
+	}
+	return pages
 }

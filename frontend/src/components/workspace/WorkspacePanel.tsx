@@ -27,8 +27,13 @@ export function WorkspacePanel() {
   const [showOasImport, setShowOasImport] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const makeState = () => {
+  const makeState = (includePrivateEnvironments = true) => {
     const collectionState = useCollectionsStore.getState()
+    const environmentState = useEnvironmentsStore.getState()
+    const exportedEnvironments = environmentState.environments.filter((environment) => includePrivateEnvironments || !environment.private)
+    const exportedActiveEnvId = exportedEnvironments.some((environment) => environment.id === environmentState.activeEnvId)
+      ? environmentState.activeEnvId
+      : null
     const workspaceId = collectionState.activeWorkspaceId
     const activeWorkspace = collectionState.workspaces.find((workspace) => workspace.id === workspaceId)
     const workspaceTabs = useTabsStore.getState().tabs.filter((tab) => (tab.workspaceId ?? workspaceId) === workspaceId)
@@ -40,8 +45,8 @@ export function WorkspacePanel() {
       openTabs: workspaceTabs,
       activeTabId: workspaceTabs.some((tab) => tab.id === activeTabId) ? activeTabId : workspaceTabs[0]?.id ?? null,
       collections: collectionState.collections,
-      environments: useEnvironmentsStore.getState().environments,
-      activeEnvId: useEnvironmentsStore.getState().activeEnvId,
+      environments: exportedEnvironments,
+      activeEnvId: exportedActiveEnvId,
       settings: useSettingsStore.getState().settings,
       websocket: (() => { try { const raw = localStorage.getItem('adomnia.websocket'); return raw ? JSON.parse(raw) : null } catch { return null } })(),
       flows: flowDefinitions,
@@ -199,10 +204,10 @@ export function WorkspacePanel() {
   }
 
   const exportWorkspaceFile = () => {
-    const state = makeState()
+    const state = makeState(false)
     // Pre-export secret scan
     const collections = useCollectionsStore.getState().collections
-    const environments = useEnvironmentsStore.getState().environments
+    const environments = useEnvironmentsStore.getState().environments.filter((environment) => !environment.private)
     const scan = scanWorkspace({ collections, environments })
     if (scan.totalFindings > 0) {
       setExportConfirm({ state, secrets: scan.totalFindings })

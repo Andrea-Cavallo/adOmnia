@@ -27,7 +27,7 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 
 | # | Feature | Description |
 |---|-------------|-------------|
-| A1.1 | **Request Composer** | Full HTTP builder: method selector (GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS, CONNECT, TRACE), URL bar with variable highlighting, Send / Save / Load-Test buttons. |
+| A1.1 | **Request Composer** | Full HTTP builder: method selector (GET, QUERY, POST, PUT, PATCH, DELETE, HEAD, OPTIONS, CONNECT, TRACE), URL bar with variable highlighting, Send / Save / Load-Test buttons. |
 | A1.2 | **Query Parameters** | Key-value editor with enable/disable toggles, row add/remove, and variable substitution `{{var}}`. |
 | A1.3 | **HTTP Headers** | Key-value editor with toggles, common header suggestions, and variable substitution. |
 | A1.4 | **Body Editor — Raw** | Multi-type editor: JSON, XML, Text, HTML, JavaScript with syntax highlighting and multiple body variants per request. |

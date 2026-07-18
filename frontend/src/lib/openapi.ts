@@ -57,7 +57,7 @@ type OpenAPIPathItem = Partial<Record<HttpMethodKey, OpenAPIOperation>> & {
   parameters?: OpenAPIParameter[]
   consumes?: string[]
 }
-type HttpMethodKey = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head' | 'options'
+type HttpMethodKey = 'get' | 'query' | 'post' | 'put' | 'patch' | 'delete' | 'head' | 'options'
 
 interface SecurityScheme {
   type: string
@@ -520,7 +520,7 @@ function buildBodiesFromSwaggerParameters(
   }]
 }
 
-const HTTP_METHODS: HttpMethodKey[] = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options']
+const HTTP_METHODS: HttpMethodKey[] = ['get', 'query', 'post', 'put', 'patch', 'delete', 'head', 'options']
 
 function importableOperations(pathItem: OpenAPIPathItem): Array<[HttpMethodKey, OpenAPIOperation]> {
   return HTTP_METHODS
@@ -920,7 +920,7 @@ export function exportToOpenApi(collections: Collection[]): string {
       } else {
         const req = n as RequestItem
         const method = req.method.toLowerCase()
-        if (!['get', 'post', 'put', 'patch', 'delete', 'head', 'options'].includes(method)) continue
+        if (!['get', 'query', 'post', 'put', 'patch', 'delete', 'head', 'options'].includes(method)) continue
 
         const path = derivePath(req, baseUrl)
         if (!paths[path]) paths[path] = {}

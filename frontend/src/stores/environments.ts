@@ -18,6 +18,7 @@ interface EnvironmentsState {
   addEnvironment: (name: string) => Environment
   deleteEnvironment: (id: string) => void
   renameEnvironment: (id: string, name: string) => void
+  setEnvironmentPrivate: (id: string, value: boolean) => void
   updateVariables: (envId: string, variables: EnvVariable[]) => void
   getResolvedVars: () => Record<string, string>
 }
@@ -81,6 +82,13 @@ export const useEnvironmentsStore = create<EnvironmentsState>((set, get) => ({
   renameEnvironment: (id, name) => {
     set((s) => ({
       environments: s.environments.map((e) => (e.id === id ? { ...e, name } : e)),
+    }))
+    get().save()
+  },
+
+  setEnvironmentPrivate: (id, value) => {
+    set((s) => ({
+      environments: s.environments.map((e) => (e.id === id ? { ...e, private: value } : e)),
     }))
     get().save()
   },

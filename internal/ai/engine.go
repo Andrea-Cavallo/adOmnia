@@ -8,10 +8,12 @@ import (
 type Provider string
 
 const (
-	ProviderAnthropic Provider = "anthropic"
-	ProviderOpenAI    Provider = "openai"
-	ProviderGemini    Provider = "gemini"
-	ProviderOllama    Provider = "ollama"
+	ProviderAnthropic        Provider = "anthropic"
+	ProviderOpenAI           Provider = "openai"
+	ProviderGemini           Provider = "gemini"
+	ProviderOllama           Provider = "ollama"
+	ProviderHuggingFace      Provider = "huggingface"
+	ProviderOpenAICompatible Provider = "openai-compatible"
 )
 
 type Config struct {
@@ -69,6 +71,18 @@ func buildProvider(cfg Config) (AIProvider, error) {
 			base = "http://localhost:11434"
 		}
 		return newOllamaProvider(cfg.Model, base), nil
+	case ProviderHuggingFace:
+		base := cfg.BaseURL
+		if base == "" {
+			base = "https://router.huggingface.co/v1"
+		}
+		return newOpenAIProvider(cfg.APIKey, cfg.Model, base), nil
+	case ProviderOpenAICompatible:
+		base := cfg.BaseURL
+		if base == "" {
+			base = "http://localhost:1234/v1"
+		}
+		return newOpenAIProvider(cfg.APIKey, cfg.Model, base), nil
 	default:
 		return nil, fmt.Errorf("unknown provider: %s", cfg.Provider)
 	}

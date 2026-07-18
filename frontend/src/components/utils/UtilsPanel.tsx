@@ -1,8 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useEffect } from 'react'
 import {
-  ArrowDown,
-  ArrowDownUp,
   Box,
   CheckCircle2,
   ChevronDown,
@@ -10,7 +8,6 @@ import {
   Clipboard,
   Copy,
   Download,
-  FileText,
   History,
   Info,
   Link as LinkIcon,
@@ -20,9 +17,7 @@ import {
   Settings,
   Sparkles,
   Star,
-  Trash2,
   Type,
-  Wand2,
   X,
   Zap,
 } from 'lucide-react'
@@ -33,15 +28,16 @@ import { FolderDiffTool } from '@/components/utils/FolderDiffTool'
 import { FileDropZone } from '@/components/utils/FileDropZone'
 import { RegexTester } from '@/components/utils/RegexTester'
 import { HmacTool } from '@/components/utils/HmacTool'
+import { Base64Tool, HashTool, JwtTool, PasswordTool, UuidTool } from '@/components/utils/SimpleTools'
 import { DockerGenerator } from '@/components/utils/DockerGenerator'
 import { DockerLabPanel } from '@/components/dockerlab/DockerLabPanel'
 import { HarViewerPanel } from '@/components/har/HarViewerPanel'
-import { JsonToolsPanel } from '@/components/utils/JsonToolsPanel'
 import { ObservabilityPanel } from '@/components/observe'
 import { SecretScannerPanel } from '@/components/secretscanner'
 import { XmlToolsPanel } from '@/components/utils/XmlToolsPanel'
 import { parseDocument } from 'yaml'
 import { useAppStore } from '@/stores/app'
+import { CATEGORIES, CATEGORY_MARKERS, TOOL_DETAILS } from '@/components/utils/toolRegistry'
 import {
   bytesToHex,
   fakeEmail,
@@ -50,7 +46,6 @@ import {
   fakePhone,
   fakeWords,
   formatTimestamp,
-  generatePassword,
   jsonToYaml,
   parseQuery,
   uuidv4,
@@ -61,127 +56,10 @@ const copy = (s: string) => navigator.clipboard.writeText(s).catch(() => {})
 
 // =========== Category & Tool definitions ===========
 
-interface Tool {
-  id: string
-  label: string
-  desc?: string
-  example?: string
-}
-
-interface Category {
-  label: string
-  marker?: string
-  tools: Tool[]
-}
-
 interface YamlFileResult {
   name: string
   ok: boolean
   message: string
-}
-
-const CATEGORIES: Category[] = [
-  {
-    label: 'Power Studios',
-    tools: [
-      { id: 'jsonstudio',    label: 'JSON Tools' },
-      { id: 'xmlstudio',     label: 'XML Tools' },
-      { id: 'harviewer',     label: 'HAR Viewer' },
-      { id: 'observability', label: 'Observability' },
-      { id: 'secretscanner', label: 'Secret Scanner' },
-      { id: 'dockerlab',     label: 'Docker Lab' },
-    ],
-  },
-  {
-    label: 'Encoding & Formats',
-    tools: [
-      { id: 'base64',   label: 'Base64' },
-    ],
-  },
-  {
-    label: 'Security & Crypto',
-    tools: [
-      { id: 'hash',     label: 'Hash Generator' },
-      { id: 'hmac',     label: 'HMAC' },
-      { id: 'jwt',      label: 'JWT Decoder' },
-      { id: 'password', label: 'Password Generator' },
-      { id: 'pem',      label: 'PEM / JKS' },
-      { id: 'class',    label: 'Java Decompiler' },
-    ],
-  },
-  {
-    label: 'Generators',
-    tools: [
-      { id: 'timestamp', label: 'Timestamp' },
-      { id: 'fake',      label: 'Fake Data' },
-      { id: 'uuid',      label: 'UUID' },
-    ],
-  },
-  {
-    label: 'Reference & Validation',
-    tools: [
-      { id: 'regex',      label: 'Regex Tester' },
-      { id: 'yamlval',    label: 'YAML Validator' },
-      { id: 'folderdiff', label: 'Folder Diff' },
-    ],
-  },
-  {
-    label: 'Playground',
-    tools: [
-      { id: 'easter', label: 'Easter Egg' },
-    ],
-  },
-]
-
-const TOOL_DETAILS: Record<string, Pick<Tool, 'desc' | 'example'>> = {
-  jsonstudio: { desc: 'Full JSON formatter, validator, repair, query and diagnostics studio.', example: 'Format, diff and inspect API payloads' },
-  xmlstudio: { desc: 'Full XML formatter, XPath, diff and validation studio.', example: 'SOAP envelopes and enterprise XML payloads' },
-  harviewer: { desc: 'Import, compare and inspect HAR waterfalls without leaving Power Tools.', example: 'Browser capture.har' },
-  observability: { desc: 'Inspect local logs, trace waterfalls and correlated request activity.', example: 'Local JSONL dev logs and traces' },
-  secretscanner: { desc: 'Scan collections and environments for exposed credentials.', example: 'Bearer tokens, API keys, private keys' },
-  dockerlab: { desc: 'Generate and run local Docker Compose labs from curated presets.', example: 'Postgres + Kafka + mock services' },
-  base64: { desc: 'Encode and decode text payloads, tokens, and copied response fragments.', example: 'Authorization fragments, binary-safe text snippets' },
-  url: { desc: 'Escape or decode query params, callback URLs, and path fragments.', example: 'redirect_uri=https%3A%2F%2Fapp.local%2Fcallback' },
-  jsonyaml: { desc: 'Convert compact request examples between JSON and YAML notation.', example: '{"service":"payments","enabled":true}' },
-  hash: { desc: 'Generate common digests for payload comparison and cache keys.', example: 'SHA-256 over request bodies' },
-  hmac: { desc: 'Sign sample webhook bodies with SHA HMAC algorithms.', example: 'X-Signature test value' },
-  jwt: { desc: 'Inspect JWT header and payload locally without calling a remote service.', example: 'eyJhbGciOiJIUzI1NiIs...' },
-  password: { desc: 'Create throwaway secrets for local services and mock credentials.', example: '24 chars with symbols and digits' },
-  uuid: { desc: 'Generate one or many v4 IDs for fixtures, trace IDs, and test records.', example: 'Batch 10 correlation IDs' },
-  curlimp: { desc: 'Jump from copied terminal cURL commands into the composer workflow.', example: 'curl -X POST https://api.local/orders' },
-  cors: { desc: 'Check preflight and response CORS behavior from a chosen origin.', example: 'Origin https://admin.local with PUT' },
-  dns: { desc: 'Resolve A, AAAA, MX, TXT, CNAME, NS, and SOA records from the backend helper.', example: 'TXT records for example.com' },
-  portscan: { desc: 'Quickly check whether local or lab ports are reachable.', example: 'localhost:80,443,8080' },
-  timestamp: { desc: 'Convert Unix seconds and ISO dates into UTC, local, and ISO views.', example: '1715774400 -> ISO/local/UTC' },
-  fake: { desc: 'Generate small lists of names, emails, phones, IPs, and lorem text.', example: '20 sample customer emails' },
-  query: { desc: 'Parse query strings or full URLs into structured key/value JSON.', example: '?page=2&sort=createdAt' },
-  jsondiff: { desc: 'Compare JSON or XML payloads with visual highlights and a path-level summary.', example: 'response v1 vs response v2' },
-  jsongraph: { desc: 'Visualize nested JSON as an indented tree.', example: '{"user":{"roles":["admin"]}}' },
-  xml: { desc: 'Format and validate XML snippets before sending SOAP or legacy payloads.', example: '<Envelope><Body /></Envelope>' },
-  regex: { desc: 'Test expressions against sample text and inspect matches.', example: 'Bearer\\s+(.+) against headers' },
-  yamlval: { desc: 'Check quick YAML snippets used in examples and docker files.', example: 'services: api: image: mock-api' },
-  httpstatus: { desc: 'Search status codes with practical explanations for API debugging.', example: '409 conflict, 422 validation, 429 throttling' },
-  pem: { desc: 'Inspect PEM blocks and identify certificate/key boundaries.', example: '-----BEGIN CERTIFICATE-----' },
-  class: { desc: 'Decompile local Java class-file bytecode into readable source and inspect JVM metadata.' },
-  grpcclient: { desc: 'Shortcut to the dedicated gRPC panel for unary request testing.', example: 'package.Service/GetUser' },
-  docker: { desc: 'Generate a starter compose file for mock services and local dependencies.', example: 'API + Redis + Postgres lab stack' },
-  folderdiff: { desc: 'Compare two local folders as a WinMerge-style tree and inspect changed files.', example: 'old-release/ vs new-release/' },
-  easter: { desc: 'A tiny internal placeholder for hidden diagnostics and experiments.', example: 'adOmnia paratus' },
-}
-
-const CATEGORY_MARKERS: Record<string, string> = {
-  'Encoding & Formats': '<>',
-  'Security & Crypto': '#',
-  Generators: '@',
-  'Reference & Validation': '/',
-  'Compare & Inspect': '==',
-  'Security & Identity': '#',
-  'Network & HTTP': '~',
-  'Data Generators': '@',
-  Validation: '/',
-  Infrastructure: '{}',
-  'Power Studios': 'P',
-  Playground: '*',
 }
 
 // =========== HTTP Status Reference ===========
@@ -1514,11 +1392,6 @@ export function UtilsPanel({ initialTool = 'base64' }: { initialTool?: string })
   const [hashAlgo, setHashAlgo] = useState('SHA-256')
   const [jwtInput, setJwtInput] = useState('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkZW1vLXVzZXIiLCJzY29wZSI6ImFkbWluOnJlYWQiLCJleHAiOjQxMDI0NDQ4MDB9.signature')
   const [jwtOutput, setJwtOutput] = useState<object | null>(null)
-  const [pwLength, setPwLength] = useState(16)
-  const [pwUpper, setPwUpper] = useState(true)
-  const [pwNum, setPwNum] = useState(true)
-  const [pwSym, setPwSym] = useState(true)
-  const [pwOutput, setPwOutput] = useState('')
   const [tsInput, setTsInput] = useState('1715774400')
   const [tsOutput, setTsOutput] = useState<ReturnType<typeof formatTimestamp> | null>(null)
   const [fakeCount, setFakeCount] = useState(5)
@@ -1668,22 +1541,6 @@ export function UtilsPanel({ initialTool = 'base64' }: { initialTool?: string })
     )
   }
 
-  const sha256 = async (s: string, algo: string) => {
-    try {
-      const buf = await crypto.subtle.digest(algo, new TextEncoder().encode(s))
-      return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('')
-    } catch { return 'Hash not available' }
-  }
-
-  const decodeJWT = (token: string) => {
-    try {
-      const parts = token.split('.')
-      if (parts.length !== 3) return { error: 'Not a valid JWT (expected 3 parts)' }
-      const decode = (s: string) => JSON.parse(atob(s.replace(/-/g, '+').replace(/_/g, '/')))
-      return { header: decode(parts[0]), payload: decode(parts[1]), signature: parts[2] }
-    } catch { return { error: 'Failed to decode JWT' } }
-  }
-
   const generateFake = (type: string, count: number) => {
     const results: string[] = []
     for (let i = 0; i < count; i++) {
@@ -1771,9 +1628,6 @@ export function UtilsPanel({ initialTool = 'base64' }: { initialTool?: string })
 
   const renderTool = () => {
     switch (activeTool) {
-      case 'jsonstudio':
-        return <div className="min-h-0 flex-1 overflow-hidden"><JsonToolsPanel /></div>
-
       case 'xmlstudio':
         return <div className="min-h-0 flex-1 overflow-hidden"><XmlToolsPanel /></div>
 
@@ -1792,90 +1646,13 @@ export function UtilsPanel({ initialTool = 'base64' }: { initialTool?: string })
       // ---- Encoding ----
       case 'base64':
         return (
-          <div className="flex min-h-0 flex-col gap-4">
-            <div className="flex flex-wrap items-center gap-2 border-b border-border-1 pb-3">
-              <button onClick={() => runBase64('encode')} className="inline-flex h-9 items-center gap-2 rounded-md border border-accent/40 bg-accent px-4 text-xs font-semibold text-white shadow-[0_0_24px_rgba(139,92,246,.28)] hover:bg-accent-light">
-                <FileText size={14} /> Encode
-              </button>
-              <button onClick={() => runBase64('decode')} className="inline-flex h-9 items-center gap-2 rounded-md border border-border-2 bg-surface-2 px-4 text-xs font-semibold text-text-2 hover:border-accent/40 hover:text-text-1">
-                <ArrowDown size={14} /> Decode
-              </button>
-              <div className="mx-1 h-6 w-px bg-border-1" />
-              <button onClick={() => { setB64Input(b64Output); setB64Output(b64Input) }} className="inline-flex h-9 items-center gap-2 rounded-md border border-border-2 bg-surface-2 px-3 text-xs text-text-3 hover:text-text-1">
-                <ArrowDownUp size={14} /> Swap
-              </button>
-              <button onClick={() => setB64Input(b64Input.trim())} className="inline-flex h-9 items-center gap-2 rounded-md border border-border-2 bg-surface-2 px-3 text-xs text-text-3 hover:text-text-1">
-                <Wand2 size={14} /> Beautify
-              </button>
-              <button onClick={() => copy(b64Output)} disabled={!b64Output} className="ml-auto inline-flex h-9 items-center gap-2 rounded-md border border-border-2 bg-surface-2 px-3 text-xs text-text-3 hover:text-text-1 disabled:cursor-not-allowed disabled:opacity-45">
-                <Copy size={14} /> Copy Result
-              </button>
-              <button onClick={() => setB64Output('')} className="inline-flex h-9 items-center gap-2 rounded-md border border-border-2 bg-surface-2 px-3 text-xs text-text-3 hover:text-text-1">
-                <Trash2 size={14} /> Clear Output
-              </button>
-            </div>
-
-            <div className="grid min-h-[360px] grid-cols-1 gap-3 xl:grid-cols-2">
-              <div className="flex min-w-0 flex-col overflow-hidden rounded-lg border border-border-1 bg-surface-0/80">
-                <div className="flex h-10 items-center justify-between border-b border-border-1 bg-surface-1/70 px-3">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-text-3">Input</span>
-                  <span className="inline-flex items-center gap-1 text-[10px] text-text-4">UTF-8 <span className="h-1.5 w-1.5 rounded-full bg-success" /></span>
-                </div>
-                <textarea
-                  value={b64Input}
-                  onChange={(e) => setB64Input(e.target.value)}
-                  placeholder="Enter text or Base64..."
-                  spellCheck={false}
-                  className="min-h-[300px] flex-1 resize-none bg-transparent px-4 py-3 font-mono text-xs leading-6 text-text-1 outline-none placeholder:text-text-4"
-                />
-                <div className="flex h-8 items-center justify-between border-t border-border-1 bg-surface-1/60 px-3 font-mono text-[10px] text-text-4">
-                  <span>Line 1, Col 1</span>
-                  <span>{b64InputChars} chars · {new Blob([b64Input]).size} bytes</span>
-                </div>
-              </div>
-
-              <div className="flex min-w-0 flex-col overflow-hidden rounded-lg border border-border-1 bg-surface-0/80">
-                <div className="flex h-10 items-center justify-between border-b border-border-1 bg-surface-1/70 px-3">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-text-3">Output</span>
-                  <span className="inline-flex items-center gap-1 text-[10px] text-text-4">Base64 <span className="h-1.5 w-1.5 rounded-full bg-success" /></span>
-                </div>
-                <pre className="min-h-[300px] flex-1 overflow-auto whitespace-pre-wrap break-all px-4 py-3 font-mono text-xs leading-6 text-accent-light">
-                  {b64Output || 'Run Encode or Decode to generate output.'}
-                </pre>
-                <div className="flex h-8 items-center justify-between border-t border-border-1 bg-surface-1/60 px-3 font-mono text-[10px] text-text-4">
-                  <span>Line 1, Col 1</span>
-                  <span>{b64OutputChars} chars · {new Blob([b64Output]).size} bytes</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2 border-b border-border-1 pb-3">
-              <button onClick={() => navigator.clipboard.readText().then(setB64Input).catch(() => {})} className="inline-flex h-8 items-center gap-2 rounded-md border border-border-2 bg-surface-2 px-3 text-xs text-text-3 hover:text-text-1">
-                <Clipboard size={13} /> Paste
-              </button>
-              <button onClick={() => setB64Input('')} className="inline-flex h-8 items-center gap-2 rounded-md border border-border-2 bg-surface-2 px-3 text-xs text-text-3 hover:text-text-1">
-                <Trash2 size={13} /> Clear
-              </button>
-              <button onClick={() => setB64Input('Authorization: Bearer demo-token\nUser: alice@example.com\nRole: admin\nEnvironment: production')} className="inline-flex h-8 items-center gap-2 rounded-md border border-border-2 bg-surface-2 px-3 text-xs text-text-3 hover:text-text-1">
-                <Download size={13} /> Load Sample
-              </button>
-            </div>
-
-            <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-5">
-              {[
-                ['JWT Header', 'eyJhbGciOiJIUzI1NiIs...'],
-                ['JWT Payload', 'eyJzdWIiOiJkZW1v...'],
-                ['Basic Auth', 'user:password'],
-                ['JSON Sample', '{"service":"api"}'],
-                ['More Samples', 'View all examples'],
-              ].map(([title, detail]) => (
-                <button key={title} onClick={() => setB64Input(detail)} className="min-w-0 rounded-md border border-border-1 bg-surface-1 px-3 py-2 text-left hover:border-accent/40 hover:bg-surface-2">
-                  <span className="block truncate text-xs font-semibold text-text-2">{title}</span>
-                  <span className="mt-1 block truncate font-mono text-[10px] text-text-4">{detail}</span>
-                </button>
-              ))}
-            </div>
-          </div>
+          <Base64Tool
+            input={b64Input}
+            output={b64Output}
+            onInput={setB64Input}
+            onOutput={setB64Output}
+            onRun={runBase64}
+          />
         )
 
       case 'url':
@@ -1905,17 +1682,14 @@ export function UtilsPanel({ initialTool = 'base64' }: { initialTool?: string })
       // ---- Crypto & Auth ----
       case 'hash':
         return (
-          <div className="flex flex-col gap-3">
-            <select value={hashAlgo} onChange={(e) => setHashAlgo(e.target.value)} className="w-32 h-7 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 outline-none">
-              <option>MD5</option>
-              <option>SHA-1</option>
-              <option>SHA-256</option>
-              <option>SHA-512</option>
-            </select>
-            <textarea value={hashInput} onChange={(e) => setHashInput(e.target.value)} placeholder="Enter text to hash..." rows={3} className="px-2 py-1.5 bg-surface-2 border border-border-2 rounded text-xs text-text-1 font-mono focus:border-accent outline-none resize-none" />
-            <button onClick={() => sha256(hashInput, hashAlgo).then(setHashOutput)} className="self-start px-3 py-1.5 bg-accent text-white rounded text-xs font-medium">Hash</button>
-            {hashOutput && <pre className="px-3 py-2 bg-surface-1 border border-border-1 rounded text-xs text-text-1 font-mono break-all">{hashOutput}</pre>}
-          </div>
+          <HashTool
+            input={hashInput}
+            output={hashOutput}
+            algo={hashAlgo}
+            onInput={setHashInput}
+            onOutput={setHashOutput}
+            onAlgo={setHashAlgo}
+          />
         )
 
       case 'hmac':
@@ -1923,51 +1697,25 @@ export function UtilsPanel({ initialTool = 'base64' }: { initialTool?: string })
 
       case 'jwt':
         return (
-          <div className="flex flex-col gap-3">
-            <textarea value={jwtInput} onChange={(e) => setJwtInput(e.target.value)} placeholder="Paste a JWT token..." rows={3} className="px-2 py-1.5 bg-surface-2 border border-border-2 rounded text-xs text-text-1 font-mono focus:border-accent outline-none resize-none" />
-            <button onClick={() => setJwtOutput(decodeJWT(jwtInput.trim()))} className="self-start px-3 py-1.5 bg-accent text-white rounded text-xs font-medium">Decode</button>
-            {jwtOutput && <pre className="px-3 py-2 bg-surface-1 border border-border-1 rounded text-xs text-text-2 font-mono whitespace-pre-wrap overflow-auto max-h-64">{JSON.stringify(jwtOutput, null, 2)}</pre>}
-          </div>
+          <JwtTool
+            input={jwtInput}
+            output={jwtOutput}
+            onInput={setJwtInput}
+            onOutput={setJwtOutput}
+          />
         )
 
       case 'password':
-        return (
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-3 flex-wrap">
-              <label className="flex items-center gap-1.5 text-xs text-text-3">
-                Length <input type="number" value={pwLength} min={4} max={128} onChange={(e) => setPwLength(Number(e.target.value))} className="w-14 h-7 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 outline-none" />
-              </label>
-              <label className="flex items-center gap-1 text-xs text-text-3"><input type="checkbox" checked={pwUpper} onChange={(e) => setPwUpper(e.target.checked)} /> A-Z</label>
-              <label className="flex items-center gap-1 text-xs text-text-3"><input type="checkbox" checked={pwNum} onChange={(e) => setPwNum(e.target.checked)} /> 0-9</label>
-              <label className="flex items-center gap-1 text-xs text-text-3"><input type="checkbox" checked={pwSym} onChange={(e) => setPwSym(e.target.checked)} /> !@#$</label>
-            </div>
-            <button onClick={() => setPwOutput(generatePassword(pwLength, pwUpper, pwNum, pwSym))} className="self-start px-3 py-1.5 bg-accent text-white rounded text-xs font-medium">Generate</button>
-            {pwOutput && (
-              <div className="relative group">
-                <pre className="px-3 py-2 bg-surface-1 border border-border-1 rounded text-xs text-text-1 font-mono break-all">{pwOutput}</pre>
-                <button onClick={() => copy(pwOutput)} className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1 text-text-4 hover:text-text-1"><Copy size={12} /></button>
-              </div>
-            )}
-          </div>
-        )
+        return <PasswordTool />
 
       case 'uuid':
         return (
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-3">
-              <label className="flex items-center gap-1.5 text-xs text-text-3">
-                Count <input type="number" value={uuidCount} min={1} max={50} onChange={(e) => setUuidCount(Math.max(1, Math.min(50, Number(e.target.value))))} className="w-16 h-7 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 outline-none" />
-              </label>
-              <button onClick={() => setUuids(Array.from({ length: uuidCount }, uuidv4))} className="px-3 py-1.5 bg-accent text-white rounded text-xs font-medium">Generate</button>
-              <button onClick={() => copy(uuids.join('\n'))} className="flex items-center gap-1 px-3 py-1.5 bg-surface-2 text-text-2 border border-border-2 rounded text-xs"><Copy size={11} /> Copy All</button>
-            </div>
-            {uuids.map((id) => (
-              <div key={id} className="flex items-center gap-2 group">
-                <span className="flex-1 font-mono text-xs text-text-1 bg-surface-1 border border-border-1 px-3 py-1.5 rounded">{id}</span>
-                <button onClick={() => copy(id)} className="opacity-0 group-hover:opacity-100 p-1 text-text-4 hover:text-text-1"><Copy size={12} /></button>
-              </div>
-            ))}
-          </div>
+          <UuidTool
+            ids={uuids}
+            count={uuidCount}
+            onIds={setUuids}
+            onCount={setUuidCount}
+          />
         )
 
       // ---- Network ----
@@ -1985,7 +1733,7 @@ export function UtilsPanel({ initialTool = 'base64' }: { initialTool?: string })
             <div className="flex gap-2">
               <input value={corsOrigin} onChange={(e) => setCorsOrigin(e.target.value)} placeholder="Origin" className="flex-1 h-7 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 focus:border-accent outline-none" />
               <select value={corsMethod} onChange={(e) => setCorsMethod(e.target.value)} className="h-7 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 outline-none">
-                {['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'].map((m) => <option key={m}>{m}</option>)}
+                {['GET', 'QUERY', 'POST', 'PUT', 'DELETE', 'OPTIONS'].map((m) => <option key={m}>{m}</option>)}
               </select>
             </div>
             <button onClick={() => fetchApi('/cors', { url: corsUrl, origin: corsOrigin, method: corsMethod }).then((d) => setCorsOutput(d ? JSON.stringify(d, null, 2) : 'Error'))} className="self-start px-3 py-1.5 bg-accent text-white rounded text-xs font-medium">Test CORS</button>

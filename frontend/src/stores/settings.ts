@@ -76,7 +76,7 @@ export interface AppSettings {
     responseMaxRenderSizeKB: number
   }
   ai: {
-    provider: 'anthropic' | 'openai' | 'gemini' | 'ollama'
+    provider: 'anthropic' | 'openai' | 'gemini' | 'ollama' | 'huggingface' | 'openai-compatible'
     model: string
     apiKey: string
     baseURL: string
@@ -85,6 +85,8 @@ export interface AppSettings {
   features: {
     pluginsEnabled: boolean
     dailyScenariosEnabled: boolean
+    showAdvancedFeatures: boolean
+    showLabFeatures: boolean
   }
   markdown: {
     templatesFolder: string
@@ -103,7 +105,7 @@ function mergeBlock<T extends Record<string, unknown>>(defaults: T, saved: Parti
 }
 
 const defaultSettings: AppSettings = {
-  version: 2,
+  version: 3,
   general: {
     confirmBeforeClosingDirtyTabs: true,
     restoreTabsOnStartup: true,
@@ -124,7 +126,7 @@ const defaultSettings: AppSettings = {
     language: 'en',
     sidebarWidth: 280,
     showRailIconsOnly: false,
-    accentColorPreset: 'default',
+    accentColorPreset: 'purple',
     sidebarCollapsed: false,
   },
   requests: {
@@ -184,6 +186,8 @@ const defaultSettings: AppSettings = {
   features: {
     pluginsEnabled: false,
     dailyScenariosEnabled: false,
+    showAdvancedFeatures: true,
+    showLabFeatures: false,
   },
   markdown: {
     templatesFolder: '',
@@ -220,9 +224,15 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       if (!appearance.themeId) {
         appearance.themeId = appearance.theme === 'light' ? 'builtin-light' : 'builtin-dark'
       }
+      // v3 migration: the system titlebar is now the default. Flip the legacy
+      // 'app' default to 'system' once; explicit Linux ('app-xwayland') choices
+      // and deliberate 'system' picks are left untouched.
+      const migratedToV3 = (parsed.version ?? 0) < 3 && appearance.windowChrome === 'app'
+      if (migratedToV3) appearance.windowChrome = 'system'
       const merged: AppSettings = {
         ...defaultSettings,
         ...parsed,
+        version: defaultSettings.version,
         general: mergeBlock(defaultSettings.general, parsed.general),
         appearance,
         requests: mergeBlock(defaultSettings.requests, parsed.requests),
@@ -236,6 +246,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       }
       setAutoSaveDelay(merged.general.autoSaveIntervalMs)
       set({ settings: merged, loaded: true })
+      // Persist the v3 migration so the change survives without a manual edit.
+      if (migratedToV3) get().save()
     } catch {
       set({ settings: defaultSettings, loaded: true })
     }

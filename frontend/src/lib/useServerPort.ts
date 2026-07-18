@@ -28,7 +28,10 @@ export function useServerPort(): number | null {
 
 export function serverUrl(port: number | null, path: string): string {
   if (!port) return ''
-  return `http://localhost:${port}${path}`
+  // ponytail: use 127.0.0.1, not localhost. The sidecar binds IPv4-only
+  // (127.0.0.1), but `localhost` can resolve to IPv6 ::1 first, which the
+  // listener actively refuses -> WebView2 fetch fails with "Failed to fetch".
+  return `http://127.0.0.1:${port}${path}`
 }
 
 function resolveSidecarToken(): Promise<string> {

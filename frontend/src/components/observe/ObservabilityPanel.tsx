@@ -6,7 +6,7 @@ import {
   type LogFileInfo,
 } from '@/lib/devlogs-api'
 import type { BackendDevLogEntry } from '@/stores/devLogs'
-import { useServerPort, getSidecarToken } from '@/lib/useServerPort'
+import { useServerPort, getSidecarToken, serverUrl } from '@/lib/useServerPort'
 import {
   FileText,
   RefreshCw,
@@ -169,7 +169,7 @@ export function ObservabilityPanel() {
 
     getSidecarToken().then((token) => {
       if (cancelled) return
-      const url = `http://localhost:${port}/devlogs/stream?token=${encodeURIComponent(token)}`
+      const url = serverUrl(port, `/devlogs/stream?token=${encodeURIComponent(token)}`)
       es = new EventSource(url)
       eventSourceRef.current = es
 
