@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
-import { BookOpen, Boxes, Link2, ClipboardPaste, AlertCircle, Loader2, X, Save, Sparkles, ShieldCheck } from 'lucide-react'
+import { BookOpen, Boxes, Link2, ClipboardPaste, AlertCircle, Loader2, X, Save, Sparkles, ShieldCheck, ArrowRightLeft } from 'lucide-react'
 import { useCollectionsStore } from '@/stores/collections'
-import { collectionsToOAS } from '@/lib/oasExport'
+import { collectionToOAS, collectionsToOAS } from '@/lib/oasExport'
 import { executeRequest } from '@/lib/executeRequest'
 import { blankRequest } from '@/lib/types'
 import { parseSpecText, buildApiDocModel, type ApiDocModel } from '@/lib/apidocs/parseSpec'
@@ -10,12 +10,16 @@ import { ApiDocsViewer } from './ApiDocsViewer'
 import { useSettingsStore } from '@/stores/settings'
 import { OASGovernancePanel } from './OASGovernancePanel'
 import type { OASLintFinding } from '@/lib/oaslint-api'
+import { openApiToCollection } from '@/lib/openapiImport'
+import { useAppStore } from '@/stores/app'
 
 type SourceTab = 'collection' | 'url' | 'paste'
 
 export function ApiDocsPanel() {
   const collections = useCollectionsStore((s) => s.collections)
   const updateCollection = useCollectionsStore((s) => s.updateCollection)
+  const importCollection = useCollectionsStore((s) => s.importCollection)
+  const setActiveRail = useAppStore((s) => s.setActiveRail)
   const aiEnabled = useSettingsStore((s) => s.settings.ai.enabled)
   const [model, setModel] = useState<ApiDocModel | null>(null)
   const [rawSpec, setRawSpec] = useState('')
@@ -49,6 +53,23 @@ export function ApiDocsPanel() {
     }
   }
 
+  const editLoadedSpec = (nextRaw: string) => {
+    setRawSpec(nextRaw)
+    setSaveStatus('')
+    try {
+      const spec = parseSpecText(nextRaw)
+      const built = buildApiDocModel(spec)
+      if (built.operationCount === 0) {
+        setError('Parsed the document but found no operations (paths).')
+        return
+      }
+      setModel(built)
+      setError(null)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Could not parse the document')
+    }
+  }
+
   const generateFromCollections = () => {
     const source = selectedCollection === '__all__'
       ? collections
@@ -58,7 +79,7 @@ export function ApiDocsPanel() {
       return
     }
     try {
-      load(collectionsToOAS(source, 'json'))
+      load(collectionsToOAS(source, 'yaml'))
       if (source.length === 1) setSaveCollectionId(source[0].id)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Could not generate spec from collection')
@@ -130,6 +151,42 @@ export function ApiDocsPanel() {
     setSaveStatus(`Saved API documentation to ${target.name}.`)
   }
 
+  const importLoadedSpecAsCollection = () => {
+    if (!rawSpec.trim()) {
+      setError('No Swagger/OpenAPI document is loaded.')
+      return
+    }
+    try {
+      const collection = openApiToCollection(rawSpec)
+      importCollection(collection)
+      setSaveCollectionId(collection.id)
+      setError(null)
+      setSaveStatus(`Created API Core collection "${collection.name}".`)
+      setActiveRail('collections')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Could not convert Swagger/OpenAPI to a collection')
+    }
+  }
+
+  const loadSelectedCollectionIntoEditor = () => {
+    if (!saveCollectionId) {
+      setError('Choose a collection first.')
+      return
+    }
+    const target = collections.find((collection) => collection.id === saveCollectionId)
+    if (!target) {
+      setError('Selected collection no longer exists.')
+      return
+    }
+    try {
+      load(collectionToOAS(target, 'yaml'))
+      setSaveCollectionId(target.id)
+      setSaveStatus(`Loaded "${target.name}" into the Swagger editor.`)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Could not convert collection to Swagger/OpenAPI')
+    }
+  }
+
   const loadFromUrl = async () => {
     if (!url.trim()) return
     setLoading(true)
@@ -176,7 +233,7 @@ export function ApiDocsPanel() {
     }
     return (
       <div className="flex h-full min-h-0 flex-1 flex-col">
-        <div className="flex items-center gap-2 border-b border-border-1 bg-surface-1 px-3 py-1.5">
+        <div className="flex flex-wrap items-center gap-2 border-b border-border-1 bg-surface-1 px-3 py-1.5">
           <BookOpen size={14} className="text-accent" />
           <span className="text-[12px] font-medium text-text-2">API Docs</span>
           <div className="ml-2 flex h-7 items-center rounded border border-border-2 bg-surface-0 p-0.5">
@@ -197,6 +254,20 @@ export function ApiDocsPanel() {
               <option key={collection.id} value={collection.id}>{collection.name}</option>
             ))}
           </select>
+          <button
+            onClick={loadSelectedCollectionIntoEditor}
+            className="flex items-center gap-1 rounded-md border border-border-2 px-2 py-1 text-[11px] text-text-3 hover:text-text-1"
+            title="Convert the selected API Core collection into the Swagger editor"
+          >
+            <ArrowRightLeft size={12} /> Collection to editor
+          </button>
+          <button
+            onClick={importLoadedSpecAsCollection}
+            className="flex items-center gap-1 rounded-md border border-accent/40 bg-accent/10 px-2 py-1 text-[11px] font-semibold text-accent hover:bg-accent/15"
+            title="Create an API Core collection from this Swagger/OpenAPI document"
+          >
+            <ArrowRightLeft size={12} /> To API Core
+          </button>
           <button
             onClick={() => void improveLoadedDocsWithAI()}
             disabled={aiLoading}
@@ -229,7 +300,7 @@ export function ApiDocsPanel() {
           </div>
         )}
         {loadedView === 'docs'
-          ? <ApiDocsViewer model={model} />
+          ? <ApiDocsViewer model={model} rawSpec={rawSpec} onRawSpecChange={editLoadedSpec} />
           : <OASGovernancePanel rawSpec={rawSpec} onOpenOperation={openFinding} />}
       </div>
     )
@@ -240,11 +311,11 @@ export function ApiDocsPanel() {
       <div className="w-full max-w-xl rounded-xl border border-border-1 bg-surface-1 p-5 shadow-sm">
         <div className="mb-1 flex items-center gap-2">
           <BookOpen size={18} className="text-accent" />
-          <h2 className="text-sm font-semibold text-text-1">API Docs / Swagger viewer</h2>
+          <h2 className="text-sm font-semibold text-text-1">Swagger Editor</h2>
         </div>
         <p className="mb-4 text-[12px] text-text-3">
-          Read-only reference for an OpenAPI 3 or Swagger 2.0 spec — grouped by tag with
-          parameters, request/response schemas, and examples.
+          Swagger Editor for API Core: edit OpenAPI/Swagger, preview it live, and convert
+          it to or from adOmnia collections.
         </p>
 
         <div className="mb-4 flex gap-1 rounded-lg border border-border-2 bg-surface-0 p-1">

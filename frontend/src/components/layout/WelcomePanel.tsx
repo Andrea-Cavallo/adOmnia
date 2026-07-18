@@ -75,7 +75,7 @@ const DOC_TOOLS: HubTool[] = [
     tags: ['Raw', 'Diff', 'Tree'],
     featured: true,
   },
-  { id: 'apidocs', icon: BookOpen, title: 'API Docs', desc: 'OpenAPI and Swagger documentation viewer.', tags: ['OpenAPI', 'Docs'] },
+  { id: 'apidocs', icon: BookOpen, title: 'Swagger Editor', desc: 'Edit OpenAPI specs and convert them to API Core collections.', tags: ['OpenAPI', 'Swagger'] },
   { id: 'markdown', icon: FileText, title: 'Markdown Notes', desc: 'Local notes for API workspaces.', tags: ['Notes', 'Local'] },
 ]
 

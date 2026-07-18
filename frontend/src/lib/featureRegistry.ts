@@ -36,7 +36,7 @@ export const FEATURE_REGISTRY: FeatureDef[] = [
   { id: 'scenarios', title: 'Daily Scenarios', group: 'API Core', keywords: 'daily workbench quick access custom steps kafka mongodb rest mock consumer verification', maturity: 'advanced' },
   { id: 'history', title: 'Request History', group: 'API Core', keywords: 'responses history saved previous reopen search', maturity: 'core' },
   { id: 'flows', title: 'API Flows', group: 'API Core', keywords: 'workflow sequence auth extract script wait condition executable mermaid', maturity: 'advanced', railLabel: 'Flows' },
-  { id: 'apidocs', title: 'API Docs / Swagger', group: 'API Core', keywords: 'swagger openapi oas docs documentation reference redoc viewer spec api', maturity: 'core' },
+  { id: 'apidocs', title: 'Swagger Editor', group: 'API Core', keywords: 'swagger openapi oas docs documentation reference redoc viewer spec editor collection api', maturity: 'core' },
 
   { id: 'websocket', title: 'WebSocket', group: 'Protocols', keywords: 'ws realtime socket frames', maturity: 'core' },
   { id: 'sse', title: 'SSE Client', group: 'Protocols', keywords: 'events stream server sent', maturity: 'advanced' },

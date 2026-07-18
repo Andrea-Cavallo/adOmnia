@@ -6,6 +6,11 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.5.7] - 2026-07-18
+
+### Changed
+- **Swagger Editor in API Core:** API Docs is now a Swagger Editor-style workspace with YAML/JSON editing, live preview, a split editor/preview layout, preview-only mode, adjustable pane width, and quick conversion between OpenAPI/Swagger specs and API Core collections.
+
 ## [0.5.6] - 2026-07-18
 
 ### Added
