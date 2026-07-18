@@ -5,22 +5,29 @@ package main
 import (
 	"log"
 	"os"
+	"strings"
 )
 
 func configureWindowChromeBackend(mode string) {
 	_ = os.Setenv("LC_NUMERIC", "C")
 
-	if mode == windowChromeAppX11 {
+	if shouldForceX11ForAppChrome(mode) {
 		if os.Getenv("GDK_BACKEND") == "" {
 			_ = os.Setenv("GDK_BACKEND", "x11")
 		}
-	} else if mode == windowChromeApp && os.Getenv("XDG_SESSION_TYPE") == "wayland" {
-		if os.Getenv("GDK_BACKEND") == "" {
-			_ = os.Setenv("GDK_BACKEND", "wayland")
-		}
-		if os.Getenv("GTK_CSD") == "" {
-			_ = os.Setenv("GTK_CSD", "1")
-		}
 	}
 	log.Printf("[window] chrome=%s session=%s gdk=%s gtk_csd=%s lc_numeric=%s", mode, os.Getenv("XDG_SESSION_TYPE"), os.Getenv("GDK_BACKEND"), os.Getenv("GTK_CSD"), os.Getenv("LC_NUMERIC"))
+}
+
+func shouldForceX11ForAppChrome(mode string) bool {
+	if mode == windowChromeAppX11 {
+		return true
+	}
+	if mode != windowChromeApp {
+		return false
+	}
+	if strings.EqualFold(os.Getenv("XDG_SESSION_TYPE"), "wayland") {
+		return true
+	}
+	return strings.Contains(strings.ToLower(os.Getenv("WAYLAND_DISPLAY")), "wayland")
 }

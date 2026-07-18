@@ -149,9 +149,16 @@ foreach ($sz in $linuxSizes) {
 $icon256 = Join-Path $ProjectRoot "assets\icons\linux\adOmnia_256x256.png"
 if (Test-Path $icon256) { Copy-Item $icon256 "$tmpDir\adomnia.png" -Force }
 
-$desktopFile = Join-Path $ProjectRoot "build\linux\adomnia.desktop"
+$desktopFile = Join-Path $ProjectRoot "build\linux\adOmnia.desktop"
+if (-not (Test-Path $desktopFile)) {
+    $desktopFile = Join-Path $ProjectRoot "build\linux\adomnia.desktop"
+}
 $installFile = Join-Path $ProjectRoot "build\linux\install.sh"
-if (Test-Path $desktopFile) { Copy-Item $desktopFile "$tmpDir\adomnia.desktop" -Force }
+if (Test-Path $desktopFile) {
+    Copy-Item $desktopFile "$tmpDir\adomnia.desktop" -Force
+} else {
+    Fail "Linux desktop entry not found: build\linux\adOmnia.desktop"
+}
 if (Test-Path $installFile) { Copy-Item $installFile "$tmpDir\install.sh"      -Force }
 
 & tar -czf $Tarball -C $tmpDir .

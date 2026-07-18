@@ -24,6 +24,7 @@ VERSION=${1:-"dev"}
 TARGET=${2:-"current"}
 APP_NAME="adomnia"
 BUILD_DIR="dist/linux"
+LINUX_DESKTOP_FILE="build/linux/adOmnia.desktop"
 # ICON SOURCE — single source of truth for all Linux icons
 ICON_SRC_PNG="assets/images/icon.png"
 ICON_256="assets/icons/linux/adOmnia_256x256.png"
@@ -185,19 +186,16 @@ create_appimage() {
         echo -e "${YELLOW}⚠️  No PNG icon found for AppImage — run scripts/generate-icons.sh first${NC}"
     fi
     
-    # Create .desktop file
-    cat > "$APPDIR/usr/share/applications/$APP_NAME.desktop" << DESKEOF
-[Desktop Entry]
-Version=1.0
-Type=Application
-Name=adOmnia
-Comment=Developer Toolbox — API client, WebSocket, mock server, and more
-Exec=$APP_NAME
-Icon=$APP_NAME
-Terminal=false
-Categories=Development;Network;
-Keywords=API;REST;HTTP;WebSocket;Kafka;gRPC;mock;proxy;
-DESKEOF
+    # Copy desktop metadata. Keep the AppImage entry relocatable.
+    if [ -f "$LINUX_DESKTOP_FILE" ]; then
+        sed \
+            -e "s|^Exec=.*|Exec=$APP_NAME|" \
+            -e "s|^Icon=.*|Icon=$APP_NAME|" \
+            "$LINUX_DESKTOP_FILE" > "$APPDIR/usr/share/applications/$APP_NAME.desktop"
+    else
+        echo -e "${RED}❌ Missing Linux desktop entry: $LINUX_DESKTOP_FILE${NC}"
+        return 1
+    fi
     
     # Create symlink for AppImage
     ln -sf usr/share/applications/$APP_NAME.desktop "$APPDIR/$APP_NAME.desktop" 2>/dev/null || true
@@ -239,6 +237,30 @@ create_portable_archive() {
         cp "$ICON_FOR_ARCHIVE" "$ARCHIVE_DIR/icon.png"
     fi
     
+    if [ -f "$LINUX_DESKTOP_FILE" ]; then
+        cp "$LINUX_DESKTOP_FILE" "$ARCHIVE_DIR/adomnia.desktop"
+    else
+        echo -e "${RED}❌ Missing Linux desktop entry: $LINUX_DESKTOP_FILE${NC}"
+        return 1
+    fi
+
+    # Include installer metadata used by desktop launchers.
+    mkdir -p "$ARCHIVE_DIR/icons"
+    for size in 16 24 32 48 64 128 256 512; do
+        local icon="assets/icons/linux/adOmnia_${size}x${size}.png"
+        if [ -f "$icon" ]; then
+            cp "$icon" "$ARCHIVE_DIR/icons/"
+        fi
+    done
+    if [ -f build/linux/install.sh ]; then
+        cp build/linux/install.sh "$ARCHIVE_DIR/install.sh"
+        chmod +x "$ARCHIVE_DIR/install.sh"
+    fi
+    if [ -f build/linux/uninstall.sh ]; then
+        cp build/linux/uninstall.sh "$ARCHIVE_DIR/uninstall.sh"
+        chmod +x "$ARCHIVE_DIR/uninstall.sh"
+    fi
+
     # Create README
     cat > "$ARCHIVE_DIR/README.txt" << EOF
 adOmnia v$VERSION - Linux ($GOARCH)
@@ -254,22 +276,10 @@ Fedora:        sudo dnf install gtk3 webkit2gtk3
 Arch:          sudo pacman -S gtk3 webkit2gtk
 
 Run: ./adomnia
+Install desktop launcher: sudo ./install.sh
 
 All data is stored locally. No cloud, no account required.
 EOF
-    
-    # Create .desktop file
-    cat > "$ARCHIVE_DIR/adomnia.desktop" << DESKEOF
-[Desktop Entry]
-Version=1.0
-Type=Application
-Name=adOmnia
-Comment=Developer Toolbox
-Exec=$ARCHIVE_DIR/$APP_NAME
-Icon=$ARCHIVE_DIR/icon.png
-Terminal=false
-Categories=Development;Network;
-DESKEOF
     
     cd "$BUILD_DIR"
     tar -czf "$APP_NAME-$VERSION-linux-$GOARCH.tar.gz" "$(basename "$ARCHIVE_DIR")"
