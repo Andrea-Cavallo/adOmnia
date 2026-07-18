@@ -247,7 +247,7 @@ export function exportToSwagger2(collections: Collection[]): string {
       } else {
         const req = n as RequestItem
         const method = req.method.toLowerCase()
-        if (!['get', 'post', 'put', 'patch', 'delete', 'head', 'options'].includes(method)) continue
+        if (!['get', 'query', 'post', 'put', 'patch', 'delete', 'head', 'options'].includes(method)) continue
 
         const path = toPath(req.url || '/', baseUrl)
         if (!paths[path]) paths[path] = {}

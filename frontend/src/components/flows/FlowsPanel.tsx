@@ -114,6 +114,7 @@ function exportRunMarkdown(flowName: string, run: RunEntry[]) {
 
 function methodTone(method?: string) {
   if (method === 'GET') return 'text-[var(--color-method-get)]'
+  if (method === 'QUERY') return 'text-info'
   if (method === 'POST') return 'text-[var(--color-method-post)]'
   if (method === 'PUT') return 'text-[var(--color-method-put)]'
   if (method === 'PATCH') return 'text-[var(--color-method-patch)]'

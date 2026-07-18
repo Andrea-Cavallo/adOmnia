@@ -21,6 +21,10 @@ import { cn } from '@/lib/utils'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { RequestValidationDialog } from '@/components/composer/RequestValidationDialog'
 import { validateRequestParams, type RequestParamIssue } from '@/lib/requestParamValidation'
+import { appendMockEndpoints, createMockEndpointFromRequest } from '@/lib/mockEndpointStore'
+import { DropToast } from '@/components/layout/DropToast'
+import type { DropFeedback } from '@/hooks/useFileDrop'
+import { normalizeUrlInput } from '@/lib/urlInput'
 
 // ─── Lazy-loaded panels (loaded on first navigation) ──────────────────────────
 
@@ -128,10 +132,11 @@ function defaultComposerWidthRatio(): number {
   return 0.66
 }
 
-const METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'CONNECT', 'TRACE']
+const METHODS: HttpMethod[] = ['GET', 'QUERY', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'CONNECT', 'TRACE']
 
 const METHOD_COLORS: Record<HttpMethod, string> = {
   GET: 'text-method-get',
+  QUERY: 'text-info',
   POST: 'text-method-post',
   PUT: 'text-method-put',
   PATCH: 'text-method-patch',
@@ -218,7 +223,7 @@ function ActiveRequestBar({
         <div className="h-[var(--ui-control-h)] min-w-0 flex-1 overflow-hidden rounded-md border border-border-2 bg-surface-2 transition-colors focus-within:border-accent">
           <VarHighlightInput
             value={request.url}
-            onChange={(url) => onChange({ ...request, url })}
+            onChange={(url) => onChange({ ...request, url: normalizeUrlInput(url) })}
             onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') onSend() }}
             resolvedVars={vars}
             hasActiveEnv={hasActiveEnv}
@@ -324,6 +329,7 @@ function RequestWorkspace() {
 
   const [showLoadTest, setShowLoadTest] = useState(false)
   const [pendingClose, setPendingClose] = useState<PendingClose | null>(null)
+  const [mockFeedback, setMockFeedback] = useState<DropFeedback | null>(null)
   const sendAbortRef = useRef<AbortController | null>(null)
   const [apiToolsOpen, setApiToolsOpen] = useState(() => {
     try { return localStorage.getItem('adomnia.apiToolsOpen') === '1' } catch { return false }
@@ -528,6 +534,27 @@ function RequestWorkspace() {
     setPendingClose(null)
   }, [getDirtyTabsForPending, saveTab, closeTab, closeTabsToRight, closeTabsToLeft, closeAllTabs])
 
+  const flashMockFeedback = useCallback((msg: string, ok: boolean) => {
+    setMockFeedback({ msg, ok })
+    window.setTimeout(() => setMockFeedback(null), 3500)
+  }, [])
+
+  const handleMockTab = useCallback(async (tabId: string) => {
+    const tab = useTabsStore.getState().tabs.find((item) => item.id === tabId)
+    if (!tab) return
+    const endpoint = createMockEndpointFromRequest(tab.request, tab.response)
+    if (!endpoint) {
+      flashMockFeedback(`${tab.request.method} is not a mockable HTTP method`, false)
+      return
+    }
+    try {
+      await appendMockEndpoints([endpoint])
+      useAppStore.getState().setActiveRail('mock')
+    } catch (err) {
+      flashMockFeedback(err instanceof Error ? err.message : 'Could not create the mock endpoint', false)
+    }
+  }, [flashMockFeedback])
+
   const dirtyInDialog = pendingClose ? getDirtyTabsForPending(pendingClose) : []
 
   if (tabs.length === 0) {
@@ -546,7 +573,8 @@ function RequestWorkspace() {
   }
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+    <div className="relative flex-1 flex flex-col min-w-0 overflow-hidden">
+      {mockFeedback && <DropToast feedback={mockFeedback} />}
       <TabBar
         tabs={tabs}
         activeTabId={activeTabId}
@@ -559,6 +587,7 @@ function RequestWorkspace() {
         onNewTab={newTab}
         onDuplicate={duplicateTab}
         onRenameTab={handleRenameTab}
+        onMockTab={handleMockTab}
       />
       {activeTab && (
         <ActiveRequestBar

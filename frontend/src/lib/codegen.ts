@@ -158,6 +158,7 @@ function genPythonRequests(req: RequestItem): string {
   const lines: string[] = ['import requests', '']
   const headers = headersObj(req)
   const body = bodyString(req)
+  const namedRequestHelpers = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'])
 
   if (Object.keys(headers).length > 0) {
     lines.push(`headers = {`)
@@ -172,11 +173,14 @@ function genPythonRequests(req: RequestItem): string {
     lines.push('')
   }
 
-  const args: string[] = [`"${escapeQuoted(fullUrl(req))}"`]
+  const args: string[] = namedRequestHelpers.has(req.method)
+    ? [`"${escapeQuoted(fullUrl(req))}"`]
+    : [`"${req.method}"`, `"${escapeQuoted(fullUrl(req))}"`]
   if (Object.keys(headers).length > 0) args.push('headers=headers')
   if (body) args.push(`data=data`)
 
-  lines.push(`response = requests.${req.method.toLowerCase()}(${args.join(', ')})`)
+  const call = namedRequestHelpers.has(req.method) ? `requests.${req.method.toLowerCase()}` : 'requests.request'
+  lines.push(`response = ${call}(${args.join(', ')})`)
   lines.push('print(response.json())')
   return lines.join('\n')
 }
@@ -249,6 +253,17 @@ function genPhp(req: RequestItem): string {
 function genCSharp(req: RequestItem): string {
   const lines: string[] = []
   const body = bodyString(req)
+  const csharpMethods: Record<string, string> = {
+    GET: 'HttpMethod.Get',
+    POST: 'HttpMethod.Post',
+    PUT: 'HttpMethod.Put',
+    PATCH: 'HttpMethod.Patch',
+    DELETE: 'HttpMethod.Delete',
+    HEAD: 'HttpMethod.Head',
+    OPTIONS: 'HttpMethod.Options',
+    TRACE: 'HttpMethod.Trace',
+  }
+  const csharpMethod = csharpMethods[req.method] ?? `new HttpMethod("${req.method}")`
 
   lines.push('using System;')
   lines.push('using System.Net.Http;')
@@ -259,7 +274,7 @@ function genCSharp(req: RequestItem): string {
   lines.push('    static async Task Main()')
   lines.push('    {')
   lines.push('        using var client = new HttpClient();')
-  lines.push(`        var request = new HttpRequestMessage(HttpMethod.${req.method === 'GET' ? 'Get' : req.method.charAt(0) + req.method.slice(1).toLowerCase()}, "${escapeQuoted(fullUrl(req))}");`)
+  lines.push(`        var request = new HttpRequestMessage(${csharpMethod}, "${escapeQuoted(fullUrl(req))}");`)
   for (const [k, v] of Object.entries(headersObj(req))) {
     lines.push(`        request.Headers.TryAddWithoutValidation("${escapeQuoted(k)}", "${escapeQuoted(v)}");`)
   }
@@ -293,12 +308,16 @@ function genJavaOkHttp(req: RequestItem): string {
   }
   lines.push('        Request.Builder builder = new Request.Builder()')
   lines.push(`            .url("${escapeQuoted(fullUrl(req))}");`)
-  if (['GET', 'HEAD'].includes(method)) {
+  if (method === 'GET') {
     lines.push('')
-    if (body) lines.push('        builder.get();')
-    else lines.push('        builder.get();')
-  } else if (body) {
+    lines.push('        builder.get();')
+  } else if (method === 'HEAD') {
+    lines.push('')
+    lines.push('        builder.head();')
+  } else if (body && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
     lines.push(`        builder.${method.toLowerCase()}(body);`)
+  } else if (body) {
+    lines.push(`        builder.method("${method}", body);`)
   } else {
     lines.push(`        builder.method("${method}", null);`)
   }
@@ -318,6 +337,7 @@ function genRubyNetHttp(req: RequestItem): string {
   const lines: string[] = ["require 'uri'", "require 'net/http'", '']
   const body = bodyString(req)
   const url = fullUrl(req)
+  const rubyMethods = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'])
 
   lines.push(`url = URI("${escapeQuoted(url)}")`)
   lines.push('')
@@ -326,7 +346,11 @@ function genRubyNetHttp(req: RequestItem): string {
     lines.push('http.use_ssl = true')
   }
   lines.push('')
-  lines.push(`request = Net::HTTP::${req.method.charAt(0) + req.method.slice(1).toLowerCase()}.new(url)`)
+  if (rubyMethods.has(req.method)) {
+    lines.push(`request = Net::HTTP::${req.method.charAt(0) + req.method.slice(1).toLowerCase()}.new(url)`)
+  } else {
+    lines.push(`request = Net::HTTPGenericRequest.new("${req.method}", ${body ? 'true' : 'false'}, true, url.request_uri)`)
+  }
   for (const [k, v] of Object.entries(headersObj(req))) {
     lines.push(`request["${escapeQuoted(k)}"] = "${escapeQuoted(v)}"`)
   }
@@ -349,8 +373,13 @@ function genRustReqwest(req: RequestItem): string {
   lines.push('fn main() -> Result<(), Box<dyn std::error::Error>> {')
   lines.push('    let client = Client::new();')
   const method = req.method.toLowerCase()
+  const namedRequestBuilders = new Set(['get', 'post', 'put', 'patch', 'delete', 'head'])
   const methodFn = body ? `.body("${escapeQuoted(body)}")` : ''
-  lines.push(`    let response = client.${method}("${escapeQuoted(fullUrl(req))}")`)
+  if (namedRequestBuilders.has(method)) {
+    lines.push(`    let response = client.${method}("${escapeQuoted(fullUrl(req))}")`)
+  } else {
+    lines.push(`    let response = client.request(reqwest::Method::from_bytes(b"${req.method}")?, "${escapeQuoted(fullUrl(req))}")`)
+  }
   for (const [k, v] of Object.entries(headersObj(req))) {
     lines.push(`        .header("${escapeQuoted(k)}", "${escapeQuoted(v)}")`)
   }

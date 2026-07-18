@@ -47,7 +47,7 @@ interface CompareResult {
 }
 
 const METHOD_COLOR: Record<string, string> = {
-  GET: '#22c55e', POST: '#f59e0b', PUT: '#3b82f6',
+  GET: '#22c55e', QUERY: '#38bdf8', POST: '#f59e0b', PUT: '#3b82f6',
   PATCH: '#a855f7', DELETE: '#ef4444', HEAD: '#6b7280', OPTIONS: '#6b7280',
 }
 

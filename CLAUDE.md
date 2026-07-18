@@ -112,21 +112,25 @@ wails dev
 
 The current repo is Wails/Go at the root with the React app under `frontend/`. If you see old `src-tauri/` references, treat them as historical and verify against the real files.
 
+**The Go root is a thin binding layer only.** All feature logic lives in `internal/<domain>/`. Root files are limited to the Wails entrypoint, the `App` struct, per-domain `*_bindings.go` files that delegate to `internal/`, and platform build-tag files. Do not add feature logic to the root — add it to (or create) the matching `internal/` package and expose it through a small binding.
+
 ```
 adomnia/
-├── main.go                    # Wails entrypoint
-├── app.go                     # App lifecycle and bindings
-├── server.go                  # Local HTTP sidecar
-├── mock.go                    # Mock server
-├── proxy*.go                  # Proxy/interceptor stack
-├── browser_debug*.go          # Chrome DevTools Protocol integration
-├── kafka.go / broker.go       # Kafka and multi-broker support
-├── grpc.go                    # gRPC backend
-├── loadtest.go                # Load testing engine
-├── database_go.go             # Database Studio
-├── dockerlab.go               # Docker Lab generator/runner
-├── themes*.go                 # Theme and skin system
-├── plugins*.go                # WASM plugin sandbox
+├── main.go                    # Wails entrypoint, service registration
+├── app.go                     # App struct, lifecycle, storage bindings
+├── *_bindings.go              # Wails binding layer (ai, git, mcp, oaslint,
+│                              #   pdf, psd2, markdown, collectionfs)
+├── update.go                  # In-app update check
+├── platform_options_*.go      # Per-OS Wails options (build tags)
+├── window_chrome_*.go         # Per-OS window chrome (build tags)
+├── hide_windows.go            # Hide spawned CLI consoles on Windows
+├── internal/                  # All backend feature logic (one pkg per domain)
+│   ├── mock/ proxy/ browser/  #   mock server, interceptor, CDP debugging
+│   ├── kafka/ broker/ ws/ sse/ grpc/   # protocols and brokers
+│   ├── database/ storage/ vault/       # local data and secrets
+│   ├── docker/ loadtest/ plugins/      # lab, load testing, WASM sandbox
+│   ├── themes/ templates/ git/         # customization and versioning
+│   └── ...                    #   see `ls internal/` for the full list
 ├── frontend/                  # React frontend
 │   ├── src/components/        # UI panels and components
 │   ├── src/stores/            # Zustand stores
@@ -178,15 +182,16 @@ adomnia/
 
 The Go backend exposes Wails-bound methods consumed through generated bindings in `frontend/wailsjs/go/main/*`. Prefer existing frontend wrappers in `frontend/src/lib/*-api.ts` when they exist.
 
-| Area | Files / bindings |
-|------|------------------|
-| App lifecycle/settings | `app.go`, `settings_bindings.go`, `frontend/wailsjs/go/main/App.*` |
-| HTTP/mock/proxy | `mock.go`, `proxy*.go`, `httputil.go`, `record_replay.go` |
-| Browser debugging | `browser_debug*.go` |
-| Protocols/brokers | `grpc.go`, `kafka.go`, `broker.go`, `websocket_*.go`, `sse_client.go` |
-| Data/security | `database_go.go`, `storage*.go`, `vault.go`, `certtools_go.go` |
-| Docker Lab | `dockerlab.go`, `frontend/src/lib/dockerlab-api.ts` |
-| Customization | `themes*.go`, `plugins*.go`, `templates.go` |
+| Area | Packages / bindings |
+|------|---------------------|
+| App lifecycle/settings | `app.go`, `frontend/wailsjs/go/main/App.*` |
+| HTTP/mock/proxy | `internal/mock`, `internal/proxy`, `internal/httpexec`, `internal/httputil` |
+| Browser debugging | `internal/browser` |
+| Protocols/brokers | `internal/grpc`, `internal/kafka`, `internal/broker`, `internal/ws`, `internal/sse` |
+| Data/security | `internal/database`, `internal/storage`, `internal/vault`, `internal/oauth` |
+| Docker Lab | `internal/docker`, `frontend/src/lib/dockerlab-api.ts` |
+| Customization | `internal/themes`, `internal/plugins`, `internal/templates` |
+| Git Sync | `internal/git`, `git_bindings.go`, `git_bindings_ops.go` |
 
 **IPC:** Frontend calls backend through Wails generated bindings.  
 **CORS:** Desktop backend has system/network access; do not add unsafe browser-side workarounds.  
@@ -316,7 +321,7 @@ if (request.auth.type === 'aws4') {
 
 ### Go/Wails
 
-- Keep Wails-bound methods small and delegate complex logic to local helpers/services
+- Keep Wails-bound methods small and delegate complex logic to the matching `internal/<domain>` package — the root stays a binding layer
 - Validate inputs before system calls, process launches, filesystem access, or network calls
 - Use `context.WithTimeout` for network operations and long-running processes
 - Return clean errors the frontend can show without raw terminal output
@@ -340,8 +345,8 @@ if (request.auth.type === 'aws4') {
 
 ### Add a backend command
 
-1. Add or extend the Go method in the backend file closest to the feature
-2. Register/bind the service in `main.go`/Wails setup if it is a new service
+1. Implement the logic in the matching `internal/<domain>` package (create it if the domain is new)
+2. Expose it via a thin method in the matching root `*_bindings.go`, and register the service in `main.go` if it is new
 3. Regenerate or verify Wails bindings in `frontend/wailsjs/go/main/*` when needed
 4. Add a frontend wrapper in `frontend/src/lib/<feature>-api.ts` when one does not exist
 

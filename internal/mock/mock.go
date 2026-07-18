@@ -237,7 +237,7 @@ func mockRequestHandler(w http.ResponseWriter, r *http.Request) {
 	// Automatic CORS: answer preflight and tag every response with permissive headers.
 	if cfg.CorsHeadersAuto {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, QUERY, POST, PUT, PATCH, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "*")
 		w.Header().Set("Access-Control-Max-Age", "86400")
 		if strings.ToUpper(r.Method) == http.MethodOptions {

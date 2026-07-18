@@ -90,7 +90,7 @@ export interface OpenAPISecurityDoc {
   requirements?: Array<Record<string, string[]>>
 }
 
-export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS' | 'CONNECT' | 'TRACE' | 'WS' | 'SOAP'
+export type HttpMethod = 'GET' | 'QUERY' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS' | 'CONNECT' | 'TRACE' | 'WS' | 'SOAP'
 
 export interface RequestItem {
   id: string

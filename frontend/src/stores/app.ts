@@ -45,19 +45,19 @@ export type RailItem =
   | 'visualtests'
   | 'scheduler'
 
-// Canonical Cmd/Ctrl+1..9 quick-navigation targets, ordered to match the
-// visible rail category order (each entry is that category's primary tool).
-// Keep in sync with the category order in components/layout/Rail.tsx.
+// Canonical Cmd/Ctrl+1..7 quick-navigation targets, ordered by expected daily
+// use — core tools first, advanced-only tools last. This is deliberately NOT a
+// 1:1 mapping of the rail categories in components/layout/Rail.tsx: categories
+// without a frequently-used entry point (Infrastructure, Document Studio) have
+// no shortcut. Entries gated behind "Show advanced features" are marked below.
 export const RAIL_QUICK_NAV: RailItem[] = [
-  'collections', // 1 · API Core
-  'websocket',   // 2 · Protocols
-  'mock',        // 3 · Infrastructure
-  'browser',     // 4 · Browser Debug
-  'database',    // 5 · Local Data
-  'jsonviewer',  // 6 · JSON Studio
-  'powertools',  // 7 · Power Tools
-  'markdown',    // 8 · Document Studio
-  'gitsync',     // 9 · Workspace
+  'collections', // 1 - API Core
+  'websocket',   // 2 - Protocols
+  'jsonviewer',  // 3 - Power Tools · JSON Studio
+  'powertools',  // 4 - Power Tools · Utilities
+  'browser',     // 5 - Browser Debug   (advanced)
+  'database',    // 6 - Local Data      (advanced)
+  'gitsync',     // 7 - Workspace       (advanced)
 ]
 
 interface AppState {

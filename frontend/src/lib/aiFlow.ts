@@ -101,7 +101,7 @@ export interface AiAssertion {
 
 const SECRET_NAME = /(token|secret|password|passwd|pwd|api[-_ ]?key|apikey|authorization|cookie|client[-_ ]?secret|refresh)/i
 const SECRET_VALUE = /(bearer\s+[a-z0-9._~+/=-]{12,}|[a-z0-9_]{20,})/i
-const HTTP_METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']
+const HTTP_METHODS: HttpMethod[] = ['GET', 'QUERY', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']
 function stripFence(value: string) {
   const trimmed = value.trim()
   const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i)

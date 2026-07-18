@@ -262,9 +262,9 @@ export function Rail() {
   }, [])
 
   const runningMap: Record<string, boolean> = {
-    api:       false,
-    streaming: websocketRunning || sseRunning,
-    infra:     mockRunning || proxyRunning,
+    api:       mockRunning || proxyRunning,
+    protocols: websocketRunning || sseRunning,
+    infra:     false,
     debug:     browserRunning,
     data:      false,
   }

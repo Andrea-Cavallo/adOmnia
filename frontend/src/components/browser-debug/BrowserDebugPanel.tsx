@@ -88,7 +88,7 @@ function mimeMatchesType(mime: string, type: TypeFilter): boolean {
 }
 
 function safeHttpMethod(method: string): HttpMethod {
-  const safe = ['GET','POST','PUT','PATCH','DELETE','HEAD','OPTIONS','CONNECT','TRACE']
+  const safe = ['GET','QUERY','POST','PUT','PATCH','DELETE','HEAD','OPTIONS','CONNECT','TRACE']
   return safe.includes(method.toUpperCase()) ? method.toUpperCase() as HttpMethod : 'GET'
 }
 

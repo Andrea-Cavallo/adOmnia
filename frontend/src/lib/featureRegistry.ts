@@ -45,17 +45,17 @@ export const FEATURE_REGISTRY: FeatureDef[] = [
   { id: 'soap', title: 'SOAP Studio', group: 'Protocols', keywords: 'wsdl xml legacy enterprise ws-security', maturity: 'core' },
   { id: 'mcp', title: 'MCP Client', group: 'Protocols', keywords: 'model context protocol ai tools resources prompts debugger server generator stdio', maturity: 'advanced' },
 
-  { id: 'mock', title: 'Mock Server', group: 'Infrastructure', keywords: 'stub simulate response replay local server', maturity: 'core' },
-  { id: 'proxy', title: 'Proxy Interceptor', group: 'Infrastructure', keywords: 'traffic intercept breakpoint ca certificate rewrite capture', maturity: 'core' },
+  { id: 'mock', title: 'Mock Server', group: 'API Core', keywords: 'stub simulate response replay local server', maturity: 'core' },
+  { id: 'proxy', title: 'Proxy Interceptor', group: 'API Core', keywords: 'traffic intercept breakpoint ca certificate rewrite capture', maturity: 'core' },
   { id: 'dockerlab', title: 'Docker Lab', group: 'Infrastructure', keywords: 'containers compose local lab dependencies kafka postgres redis', maturity: 'advanced' },
 
-  { id: 'browser', title: 'Browser Debug', group: 'Debugging', keywords: 'cdp chrome network page debug console dom storage headers security', maturity: 'core', railLabel: 'Browser Debug' },
+  { id: 'browser', title: 'Browser Debug', group: 'Debugging', keywords: 'cdp chrome network page debug console dom storage headers security', maturity: 'advanced', railLabel: 'Browser Debug' },
   { id: 'har', title: 'HAR Viewer', group: 'Debugging', keywords: 'archive waterfall import network capture replay', maturity: 'advanced' },
   { id: 'observe', title: 'Observability', group: 'Debugging', keywords: 'metrics logs traces local jsonl waterfall correlated request activity', maturity: 'advanced' },
 
-  { id: 'database', title: 'Database Studio', group: 'Local Data', keywords: 'sql query db sqlite postgres mysql mongo database', maturity: 'core' },
+  { id: 'database', title: 'Database Studio', group: 'Local Data', keywords: 'sql query db sqlite postgres mysql mongo database', maturity: 'advanced' },
   { id: 'storage', title: 'Storage Explorer', group: 'Local Data', keywords: 'bbolt persistence key value local repair raw app storage', maturity: 'advanced' },
-  { id: 'vault', title: 'Vault', group: 'Local Data', keywords: 'secret credentials local vault certificate password', maturity: 'core' },
+  { id: 'vault', title: 'Vault', group: 'Local Data', keywords: 'secret credentials local vault certificate password', maturity: 'advanced' },
 
   { id: 'jsonviewer', title: 'JSON Studio', group: 'Power Tools', keywords: 'json tree raw graph fullscreen format validate inspect diff sort repair diagnostics', maturity: 'core', railLabel: 'JSON Studio' },
   { id: 'xmltools', title: 'XML Tools', group: 'Power Tools', keywords: 'xml format validate xpath diff soap envelope', maturity: 'advanced' },
@@ -67,7 +67,7 @@ export const FEATURE_REGISTRY: FeatureDef[] = [
   { id: 'latex', title: 'LaTeX Studio', group: 'Document Studio', keywords: 'tex latex cv resume curriculum pdf document template preset', maturity: 'lab' },
   { id: 'pdfeditor', title: 'PDF Editor & Sign', group: 'Document Studio', keywords: 'pdf edit annotate sign signature form fill text highlight document viewer', maturity: 'core' },
 
-  { id: 'gitsync', title: 'Git Sync', group: 'Workspace', keywords: 'git compare diff workspace sync version control branch commit push stash', maturity: 'core' },
+  { id: 'gitsync', title: 'Git Sync', group: 'Workspace', keywords: 'git compare diff workspace sync version control branch commit push stash', maturity: 'advanced' },
   { id: 'workspace', title: 'Workspace Settings', group: 'Workspace', keywords: 'workspace import export settings local file', maturity: 'advanced' },
   { id: 'themes', title: 'Themes', group: 'Workspace', keywords: 'theme skin appearance colors design', maturity: 'advanced' },
   { id: 'templates', title: 'Templates', group: 'Workspace', keywords: 'templates snippets reusable workspace', maturity: 'advanced' },
@@ -85,6 +85,7 @@ export const RAIL_CATEGORIES: FeatureRailCategory[] = [
     groups: [
       { title: 'Requests', items: ['collections', 'history', 'scenarios'].map((id) => ({ id: id as RailItem })) },
       { title: 'Design', items: ['apidocs', 'flows'].map((id) => ({ id: id as RailItem })) },
+      { title: 'Mock & Intercept', items: ['mock', 'proxy'].map((id) => ({ id: id as RailItem })) },
     ],
   },
   {
@@ -97,7 +98,7 @@ export const RAIL_CATEGORIES: FeatureRailCategory[] = [
   {
     key: 'infra', label: 'Infrastructure', code: 'INFRA',
     groups: [
-      { title: 'Local Runtime', items: ['mock', 'proxy', 'dockerlab'].map((id) => ({ id: id as RailItem })) },
+      { title: 'Local Runtime', items: ['dockerlab'].map((id) => ({ id: id as RailItem })) },
     ],
   },
   {
@@ -112,15 +113,15 @@ export const RAIL_CATEGORIES: FeatureRailCategory[] = [
     ],
   },
   {
-    key: 'tools', label: 'Power Tools', code: 'TOOLS',
+    key: 'docs', label: 'Document Studio', code: 'DOC',
     groups: [
-      { title: 'Focused Tools', items: ['jsonviewer', 'powertools', 'xmltools'].map((id) => ({ id: id as RailItem })) },
+      { title: 'Documents', items: ['markdown', 'pdfeditor', 'mermaid', 'latex'].map((id) => ({ id: id as RailItem })) },
     ],
   },
   {
-    key: 'docs', label: 'Document Studio', code: 'DOC',
+    key: 'tools', label: 'Power Tools', code: 'TOOLS',
     groups: [
-      { title: 'Documents', items: ['markdown', 'pdfeditor'].map((id) => ({ id: id as RailItem })) },
+      { title: 'Focused Tools', items: ['jsonviewer', 'powertools', 'xmltools'].map((id) => ({ id: id as RailItem })) },
     ],
   },
   {

@@ -21,6 +21,7 @@ import { useSettingsStore } from '@/stores/settings'
 import { ContextMenu } from '@/components/ui/ContextMenu'
 import { PSD2RequestPanel } from '@/components/psd2/PSD2RequestPanel'
 import { validatePSD2Request } from '@/lib/psd2Validation'
+import { normalizeUrlInput } from '@/lib/urlInput'
 
 interface ComposerProps {
   tabId: string
@@ -33,10 +34,11 @@ interface ComposerProps {
   hideRequestBar?: boolean
 }
 
-const METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'CONNECT', 'TRACE']
+const METHODS: HttpMethod[] = ['GET', 'QUERY', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'CONNECT', 'TRACE']
 
 const METHOD_COLORS: Record<string, string> = {
   GET: 'text-method-get',
+  QUERY: 'text-info',
   POST: 'text-method-post',
   PUT: 'text-method-put',
   PATCH: 'text-method-patch',
@@ -694,8 +696,9 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
   }
 
   const handleUrlChange = (url: string) => {
+    const normalizedUrl = normalizeUrlInput(url)
     // Keep the query-param table in sync with whatever is typed into the URL.
-    onChange({ ...request, url, params: rowsWithTrailingBlank(queryRowsFromUrl(url)) })
+    onChange({ ...request, url: normalizedUrl, params: rowsWithTrailingBlank(queryRowsFromUrl(normalizedUrl)) })
   }
 
   const openSection = (section: ComposerSection, subsection?: 'auth') => {

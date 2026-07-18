@@ -53,8 +53,8 @@ interface HitEntry {
   status: number
 }
 
-const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'ANY']
-const REST_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'])
+const METHODS = ['GET', 'QUERY', 'POST', 'PUT', 'PATCH', 'DELETE', 'ANY']
+const REST_METHODS = new Set(['GET', 'QUERY', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'])
 const MODES = [
   { value: 'first_active', label: 'First Active' },
   { value: 'random', label: 'Random' },
@@ -63,6 +63,7 @@ const MODES = [
 
 const METHOD_COLORS: Record<string, string> = {
   GET: 'text-method-get',
+  QUERY: 'text-info',
   POST: 'text-method-post',
   PUT: 'text-method-put',
   PATCH: 'text-method-patch',
@@ -84,6 +85,7 @@ function defaultResponse(n: number): MockResponse {
 
 function responseBodyFor(method: string, path: string): string {
   if (method === 'DELETE') return '{\n  "deleted": true,\n  "path": "' + path + '"\n}'
+  if (method === 'QUERY') return '{\n  "ok": true,\n  "path": "' + path + '",\n  "query": "processed",\n  "results": []\n}'
   if (method === 'POST') return '{\n  "id": "mock_1001",\n  "created": true,\n  "path": "' + path + '"\n}'
   if (method === 'PUT' || method === 'PATCH') return '{\n  "updated": true,\n  "path": "' + path + '"\n}'
   return '{\n  "ok": true,\n  "path": "' + path + '",\n  "items": [\n    { "id": "demo_1", "name": "Demo item" }\n  ]\n}'
@@ -141,6 +143,7 @@ function defaultRestEndpoints(): MockEndpoint[] {
     ['GET', '/health', 'Health check'],
     ['GET', '/v1/users', 'List users'],
     ['GET', '/v1/users/:param', 'Get user'],
+    ['QUERY', '/v1/users/search', 'Safe query users'],
     ['POST', '/v1/users', 'Create user'],
     ['PUT', '/v1/users/:param', 'Replace user'],
     ['PATCH', '/v1/users/:param', 'Patch user'],
@@ -540,7 +543,7 @@ export function MockPanel() {
   const [recording, setRecording] = useState(false)
   const [recordMsg, setRecordMsg] = useState('')
   const [hitSearch, setHitSearch] = useState('')
-  const [hitMethodFilter, setHitMethodFilter] = useState<'ALL' | 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'>('ALL')
+  const [hitMethodFilter, setHitMethodFilter] = useState<'ALL' | 'GET' | 'QUERY' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'>('ALL')
   const [hitMatchFilter, setHitMatchFilter] = useState<'all' | 'match' | 'miss'>('all')
   const [showAiDialog, setShowAiDialog] = useState(false)
 
@@ -999,7 +1002,7 @@ export function MockPanel() {
               </div>
               {/* Method filter */}
               <div className="flex items-center gap-0.5">
-                {(['ALL', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const).map((m) => (
+                {(['ALL', 'GET', 'QUERY', 'POST', 'PUT', 'PATCH', 'DELETE'] as const).map((m) => (
                   <button
                     key={m}
                     onClick={() => setHitMethodFilter(m)}

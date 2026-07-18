@@ -6,6 +6,84 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.5.6] - 2026-07-18
+
+### Added
+- **HTTP QUERY method support:** adOmnia now supports the new HTTP `QUERY` method standardized by RFC 10008. `QUERY` sits between `GET` and `POST`: it allows a complex read-only search to be sent in the request body while preserving safe and idempotent semantics.
+- **QUERY across the API workspace:** `QUERY` is available in the request composer, top request bar, tab labels, collection tree, request import/export, API Docs parsing, HAR/browser debug views, load testing, Net Tools CORS checks, Mock Server endpoints, and generated client snippets.
+- **QUERY-aware code generation:** generated examples now use generic request APIs where a language or library has no native `query()` helper, including Python `requests.request("QUERY", ...)`, C# `new HttpMethod("QUERY")`, Java OkHttp `builder.method("QUERY", body)`, Ruby `Net::HTTPGenericRequest`, and Rust `reqwest::Method::from_bytes`.
+- **Mock Server QUERY examples:** mock presets and tab-to-mock actions can create `QUERY` endpoints with JSON search responses, and mock CORS headers advertise `QUERY`.
+
+### Changed
+- **Lean default product surface:** adOmnia now starts lighter around API Core, Protocols, Document Studio, and Power Tools, while heavier areas such as Browser Debug, Database Studio, and Git Sync are treated as advanced features.
+- **API Core placement:** Mock Server and Proxy Interceptor now live under API Core so API authoring, mocking, and interception stay close together.
+- **JSON Studio placement:** JSON Studio is promoted ahead of Notes/Markdown so JSON payload work is immediately available from the primary workspace.
+- **URL input cleanup:** pasted API URLs are normalized by trimming surrounding spaces and removing line breaks/tabs that would otherwise produce malformed requests.
+
+### Fixed
+- **Release test fixture restored:** the collection contract freeze fixture is present again so backend collection filesystem tests can run during release checks.
+
+### QUERY Usage Notes
+Use `GET` when the request is simple and naturally fits in the URL:
+
+```http
+GET /transactions?status=COMPLETED&from=2026-01-01&limit=100
+```
+
+Use `QUERY` when the search is read-only but too complex for a query string:
+
+```http
+QUERY /transactions
+Content-Type: application/json
+
+{
+  "statuses": ["COMPLETED", "PENDING"],
+  "dateRange": {
+    "from": "2026-01-01",
+    "to": "2026-06-30"
+  },
+  "accountIds": ["ACC-100", "ACC-200", "ACC-300"],
+  "sort": [
+    {
+      "field": "bookingDate",
+      "direction": "DESC"
+    }
+  ]
+}
+```
+
+`QUERY` is useful for advanced transaction searches, account movement filters, dynamic reporting, search engines, complex catalog filters, long identifier lists, nested `AND`/`OR` conditions, aggregations, grouping, SQL-like queries, or proprietary read-only DSLs.
+
+Continue using `GET` for simple reads such as:
+
+```http
+GET /transactions/123
+GET /transactions?status=PENDING&page=0&size=20
+GET /accounts/456/balance
+```
+
+Do not use `QUERY` for commands or mutations:
+
+```http
+POST /payments
+POST /transfers
+POST /accounts/123/block
+```
+
+Rule of thumb: simple filter and reasonable URL -> `GET`; complex read-only search with body -> `QUERY`; creation or data mutation -> `POST`, `PUT`, or `PATCH`.
+
+| Aspect | GET | QUERY |
+| --- | --- | --- |
+| Search data | URL/query string | Request body |
+| Body semantics | Not defined | Expected and meaningful |
+| Modifies data | No | No |
+| Idempotent | Yes | Yes |
+| Automatic retry | Safe | Safe |
+| Bookmark/share URL | Yes | Not directly |
+| Cache | Simple and widespread | Possible, but the cache key must include body and request metadata |
+
+For `QUERY`, the body and its `Content-Type` formally define the search. Servers should reject requests with missing or inconsistent `Content-Type`. `QUERY` responses are formally cacheable, but caches must consider the request body and metadata, so support is more complex than for `GET`.
+
 ## [0.5.5] - 2026-07-17
 
 ### Added

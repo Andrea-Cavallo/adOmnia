@@ -434,7 +434,7 @@ export function NetToolsPanel() {
                 <input value={corsOrigin} onChange={(e) => setCorsOrigin(e.target.value)}                 placeholder="https://api.your-domain.com"
                   className="flex-1 h-8 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 font-mono outline-none focus:border-accent placeholder:text-text-4" />
                 <select value={corsMethod} onChange={(e) => setCorsMethod(e.target.value)} className="h-8 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 outline-none focus:border-accent">
-                  {['GET', 'POST', 'PUT', 'DELETE', 'PATCH'].map((m) => <option key={m}>{m}</option>)}
+                  {['GET', 'QUERY', 'POST', 'PUT', 'DELETE', 'PATCH'].map((m) => <option key={m}>{m}</option>)}
                 </select>
                 <button onClick={() => post('/cors', { url: corsUrl, origin: corsOrigin, method: corsMethod }, setCorsResult)}
                   disabled={loading || !corsUrl || !corsOrigin} className="px-4 py-1.5 bg-accent text-white rounded text-xs font-medium disabled:opacity-40 hover:bg-accent-hover">

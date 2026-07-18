@@ -803,7 +803,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
             <SettingsCard>
               <Toggle
                 label="Show advanced features"
-                desc="Expose secondary tools such as Docker Lab, HAR Viewer, Observability, PDF, Mermaid and Storage Explorer."
+                desc="Expose Browser Debug, Database Studio, Git Sync, Docker Lab, Mermaid, Storage Explorer and other secondary workspaces."
                 checked={settings.features.showAdvancedFeatures}
                 onChange={(v) => updateFeatures({ showAdvancedFeatures: v })}
               />
