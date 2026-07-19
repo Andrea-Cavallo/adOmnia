@@ -3,8 +3,8 @@ import { BookOpen, Boxes, Link2, ClipboardPaste, AlertCircle, Loader2, X, Save, 
 import { useCollectionsStore } from '@/stores/collections'
 import { collectionToOAS, collectionsToOAS } from '@/lib/oasExport'
 import { executeRequest } from '@/lib/executeRequest'
-import { blankRequest } from '@/lib/types'
-import { parseSpecText, buildApiDocModel, type ApiDocModel } from '@/lib/apidocs/parseSpec'
+import { blankRequest, type Collection, type RequestItem, type TreeNode } from '@/lib/types'
+import { parseSpecText, buildApiDocModel, type ApiDocModel, type ApiDocOperation } from '@/lib/apidocs/parseSpec'
 import { generateApiDocsWithAI, improveApiDocsWithAI } from '@/lib/apidocs/aiDocs'
 import { ApiDocsViewer } from './ApiDocsViewer'
 import { useSettingsStore } from '@/stores/settings'
@@ -12,6 +12,7 @@ import { OASGovernancePanel } from './OASGovernancePanel'
 import type { OASLintFinding } from '@/lib/oaslint-api'
 import { openApiToCollection } from '@/lib/openapiImport'
 import { useAppStore } from '@/stores/app'
+import { useTabsStore } from '@/stores/tabs'
 
 type SourceTab = 'collection' | 'url' | 'paste'
 
@@ -20,6 +21,7 @@ export function ApiDocsPanel() {
   const updateCollection = useCollectionsStore((s) => s.updateCollection)
   const importCollection = useCollectionsStore((s) => s.importCollection)
   const setActiveRail = useAppStore((s) => s.setActiveRail)
+  const openTab = useTabsStore((s) => s.openTab)
   const aiEnabled = useSettingsStore((s) => s.settings.ai.enabled)
   const [model, setModel] = useState<ApiDocModel | null>(null)
   const [rawSpec, setRawSpec] = useState('')
@@ -168,6 +170,62 @@ export function ApiDocsPanel() {
     }
   }
 
+  const findOperationRequest = (collection: Collection, operation: ApiDocOperation): RequestItem | null => {
+    const walk = (nodes: TreeNode[]): RequestItem | null => {
+      for (const node of nodes) {
+        if (node.type === 'folder') {
+          const found = walk(node.children)
+          if (found) return found
+        } else if (
+          node.method.toUpperCase() === operation.method.toUpperCase() &&
+          (node._openapiPath === operation.path || node.url.endsWith(operation.path) || node.url === operation.path)
+        ) {
+          return node
+        }
+      }
+      return null
+    }
+    return walk(collection.children)
+  }
+
+  const tryOperationInApiCore = (operation: ApiDocOperation) => {
+    if (!rawSpec.trim()) {
+      setError('No Swagger/OpenAPI document is loaded.')
+      return
+    }
+    try {
+      let target = saveCollectionId
+        ? useCollectionsStore.getState().collections.find((collection) => collection.id === saveCollectionId) ?? null
+        : null
+      if (!target) {
+        target = openApiToCollection(rawSpec)
+        importCollection(target)
+        setSaveCollectionId(target.id)
+      } else if (!target._openapiSpec) {
+        updateCollection(target.id, { _openapiSpec: rawSpec })
+        target = { ...target, _openapiSpec: rawSpec }
+      }
+
+      let request = findOperationRequest(target, operation)
+      if (!request) {
+        target = openApiToCollection(rawSpec)
+        importCollection(target)
+        setSaveCollectionId(target.id)
+        request = findOperationRequest(target, operation)
+      }
+      if (!request) {
+        setError(`Could not find ${operation.method} ${operation.path} in the API Core collection.`)
+        return
+      }
+      setError(null)
+      setSaveStatus(`Opened ${operation.method} ${operation.path} in API Core.`)
+      openTab(request, target.id)
+      setActiveRail('collections')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Could not open operation in API Core')
+    }
+  }
+
   const loadSelectedCollectionIntoEditor = () => {
     if (!saveCollectionId) {
       setError('Choose a collection first.')
@@ -300,7 +358,7 @@ export function ApiDocsPanel() {
           </div>
         )}
         {loadedView === 'docs'
-          ? <ApiDocsViewer model={model} rawSpec={rawSpec} onRawSpecChange={editLoadedSpec} />
+          ? <ApiDocsViewer model={model} rawSpec={rawSpec} onRawSpecChange={editLoadedSpec} onTryOperation={tryOperationInApiCore} />
           : <OASGovernancePanel rawSpec={rawSpec} onOpenOperation={openFinding} />}
       </div>
     )

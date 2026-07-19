@@ -6,6 +6,13 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.5.9] - 2026-07-19
+
+### Added
+- **Swagger Try it out to API Core:** API Docs operations now open directly in API Core collections for immediate request testing from the Swagger-style preview.
+- **Pinned tab protection:** pinned request tabs are compact and cannot be closed by single close, close-left/right, close-all, or request deletion tab cleanup.
+- **Modern desktop UI polish:** command palette/drop overlays, tab save feedback, resize handles, response diff flashes, network mini-timeline, and compact Raycast-style toasts now share a cohesive interaction layer.
+
 ## [0.5.8] - 2026-07-19
 
 ### Changed

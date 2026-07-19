@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { Plus, X, ChevronRight, ChevronLeft, Copy, Pencil, Server } from 'lucide-react'
+import { Plus, X, ChevronRight, ChevronLeft, Copy, Pencil, Server, Pin, PinOff } from 'lucide-react'
 import type { Tab } from '@/lib/types'
 import type { TabDropPosition } from '@/stores/tabs'
 import { cn } from '@/lib/utils'
@@ -16,6 +16,7 @@ interface TabBarProps {
   onReorder: (fromId: string, toId: string, position: TabDropPosition) => void
   onNewTab: () => void
   onDuplicate: (id: string) => void
+  onTogglePinned: (id: string) => void
   onRenameTab: (id: string, name: string) => void
   onMockTab: (id: string) => void | Promise<void>
 }
@@ -50,7 +51,7 @@ function clampToViewport(x: number, y: number): { left: number; top: number } {
   }
 }
 
-export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, onCloseToLeft, onCloseAll, onReorder, onNewTab, onDuplicate, onRenameTab, onMockTab }: TabBarProps) {
+export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, onCloseToLeft, onCloseAll, onReorder, onNewTab, onDuplicate, onTogglePinned, onRenameTab, onMockTab }: TabBarProps) {
   const [ctx, setCtx] = useState<ContextMenuState>({ open: false, x: 0, y: 0, tabId: '' })
   const [draggingTabId, setDraggingTabId] = useState<string | null>(null)
   const [dropTarget, setDropTarget] = useState<{ tabId: string; position: TabDropPosition } | null>(null)
@@ -60,7 +61,9 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
   const draggingTabRef = useRef<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const previousDirtyRef = useRef<Record<string, boolean>>({})
   const [overflow, setOverflow] = useState({ left: false, right: false })
+  const [savedFlashTabs, setSavedFlashTabs] = useState<Set<string>>(() => new Set())
 
   const updateOverflow = useCallback(() => {
     const el = scrollRef.current
@@ -111,6 +114,24 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
     node?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
   }, [activeTabId])
 
+  useEffect(() => {
+    const previous = previousDirtyRef.current
+    const next: Record<string, boolean> = {}
+    const justSaved = tabs.filter((tab) => previous[tab.id] === true && !tab.dirty).map((tab) => tab.id)
+    for (const tab of tabs) next[tab.id] = tab.dirty
+    previousDirtyRef.current = next
+    if (justSaved.length === 0) return
+    setSavedFlashTabs((current) => new Set([...current, ...justSaved]))
+    const timer = window.setTimeout(() => {
+      setSavedFlashTabs((current) => {
+        const updated = new Set(current)
+        justSaved.forEach((id) => updated.delete(id))
+        return updated
+      })
+    }, 720)
+    return () => window.clearTimeout(timer)
+  }, [tabs])
+
   const startRename = useCallback((tabId: string) => {
     const tab = tabs.find((t) => t.id === tabId)
     if (!tab) return
@@ -140,6 +161,7 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
       <div ref={scrollRef} onScroll={updateOverflow} className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto no-scrollbar">
       {tabs.map((tab) => {
         const isActive = activeTabId === tab.id
+        const isPinned = tab.pinned === true
         return (
           <div
             key={tab.id}
@@ -181,11 +203,13 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
             }}
             onDragEnd={clearDrag}
             className={cn(
-              'relative flex h-[28px] items-center gap-1.5 rounded-t px-2 text-[11px] cursor-pointer group min-w-[74px] max-w-[180px] shrink-0 border-b-2 transition-colors',
+              'relative flex h-[28px] items-center gap-1.5 rounded-t px-2 text-[11px] cursor-pointer group shrink-0 border-b-2 transition-all',
+              isPinned ? 'min-w-[48px] max-w-[64px]' : 'min-w-[74px] max-w-[180px]',
               isActive
                 ? 'bg-surface-2 border-b-accent text-text-1'
                 : 'hover:bg-surface-2/60 border-b-transparent text-text-3 hover:text-text-2',
               draggingTabId === tab.id && 'opacity-45',
+              savedFlashTabs.has(tab.id) && 'tab-clean-flash',
             )}
           >
             {dropTarget?.tabId === tab.id && dropTarget.position === 'before' && (
@@ -194,7 +218,7 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
             <span className={cn('text-[9px] font-bold shrink-0', METHOD_COLORS[tab.request.method] ?? 'text-text-3')}>
               {tab.request.method}
             </span>
-            {renamingTabId === tab.id ? (
+            {renamingTabId === tab.id && !isPinned ? (
               <input
                 ref={renameInputRef}
                 value={renameValue}
@@ -207,24 +231,31 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
                 }}
                 className="min-w-0 flex-1 truncate bg-transparent outline-none border-b border-accent text-xs text-text-1"
               />
-            ) : (
+            ) : !isPinned ? (
               <span className="truncate flex-1">
                 {tab.request.name || tab.request.url || 'Untitled'}
               </span>
+            ) : (
+              <span className="sr-only">{tab.request.name || tab.request.url || 'Pinned tab'}</span>
             )}
             {tab.dirty && (
               <span
-                className="w-2 h-2 rounded-full bg-warning shrink-0 animate-pulse"
+                className={cn(
+                  'rounded-full bg-warning shrink-0 shadow-[0_0_10px_color-mix(in_srgb,var(--color-warning)_42%,transparent)]',
+                  isPinned ? 'absolute right-1.5 top-1.5 h-1.5 w-1.5' : 'h-2 w-2 animate-pulse',
+                )}
                 title="Unsaved changes"
               />
             )}
-            <button
-              onClick={(e) => { e.stopPropagation(); onClose(tab.id) }}
-              className="shrink-0 p-0.5 rounded text-text-4 hover:text-error transition-colors opacity-0 group-hover:opacity-100"
-              title="Close tab"
-            >
-              <X size={10} />
-            </button>
+            {!isPinned && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onClose(tab.id) }}
+                className="shrink-0 rounded p-0.5 text-text-4 opacity-0 transition-colors hover:text-error group-hover:opacity-100"
+                title="Close tab"
+              >
+                <X size={10} />
+              </button>
+            )}
             {dropTarget?.tabId === tab.id && dropTarget.position === 'after' && (
               <span className="absolute -right-[2px] inset-y-1 w-[2px] rounded bg-accent" />
             )}
@@ -259,6 +290,13 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
             <span className="text-[9px] font-semibold text-text-4 uppercase tracking-wider">Tab</span>
           </div>
           <button
+            onClick={() => { onTogglePinned(ctx.tabId); closeCtx() }}
+            className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-text-1 hover:bg-surface-2 transition-colors text-left"
+          >
+            {tabs.find((tab) => tab.id === ctx.tabId)?.pinned ? <PinOff size={11} className="text-text-3" /> : <Pin size={11} className="text-text-3" />}
+            {tabs.find((tab) => tab.id === ctx.tabId)?.pinned ? 'Unpin Tab' : 'Pin Tab'}
+          </button>
+          <button
             onClick={() => { startRename(ctx.tabId); closeCtx() }}
             className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-text-1 hover:bg-surface-2 transition-colors text-left"
           >
@@ -282,7 +320,8 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
           <div className="my-1 border-t border-border-1" />
           <button
             onClick={() => { onClose(ctx.tabId); closeCtx() }}
-            className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-text-1 hover:bg-surface-2 transition-colors text-left"
+            disabled={tabs.find((tab) => tab.id === ctx.tabId)?.pinned === true}
+            className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-text-1 hover:bg-surface-2 transition-colors text-left disabled:cursor-not-allowed disabled:opacity-30"
           >
             <X size={11} className="text-text-3" />
             Close

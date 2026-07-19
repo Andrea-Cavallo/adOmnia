@@ -38,7 +38,7 @@ function loadSidebarWidth(): number {
 
 function App() {
   const { activeWindowChrome, commandPaletteOpen, setCommandPaletteOpen } = useAppInit()
-  const { dragOver, dropFeedback, handlers } = useFileDrop()
+  const { dragOver, dropPreview, dropFeedback, handlers } = useFileDrop()
   const devLogVisible  = useAppStore((s) => s.devToolsVisible)
   const toggleDevTools = useAppStore((s) => s.toggleDevTools)
   const activeRail     = useAppStore((s) => s.activeRail)
@@ -115,7 +115,7 @@ function App() {
             <ErrorBoundary><MainArea /></ErrorBoundary>
           </div>
           <StatusBar />
-          {dragOver && <DropOverlay />}
+          {dragOver && <DropOverlay preview={dropPreview} />}
           {dropFeedback && <DropToast feedback={dropFeedback} />}
         </div>
         <CommandPalette open={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} />

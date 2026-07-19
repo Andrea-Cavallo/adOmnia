@@ -20,9 +20,10 @@ interface OperationCardProps {
   operation: ApiDocOperation
   registry: Record<string, ApiDocSchema>
   defaultOpen?: boolean
+  onTryOperation?: (operation: ApiDocOperation) => void
 }
 
-export function OperationCard({ operation, registry, defaultOpen = false }: OperationCardProps) {
+export function OperationCard({ operation, registry, defaultOpen = false, onTryOperation }: OperationCardProps) {
   const [open, setOpen] = useState(defaultOpen)
   const methodStyle = METHOD_STYLE[operation.method] ?? METHOD_STYLE.GET
 
@@ -60,7 +61,11 @@ export function OperationCard({ operation, registry, defaultOpen = false }: Oper
             </p>
           </div>
 
-          <ParametersSection parameters={operation.parameters} registry={registry} />
+          <ParametersSection
+            parameters={operation.parameters}
+            registry={registry}
+            onTryOperation={onTryOperation ? () => onTryOperation(operation) : undefined}
+          />
 
           {operation.requestBody && (
             <section className="border-t border-[#e6e6e6] bg-white">
@@ -179,13 +184,24 @@ function PayloadTabs({
   )
 }
 
-function ParametersSection({ parameters, registry }: { parameters: ApiDocParam[]; registry: Record<string, ApiDocSchema> }) {
+function ParametersSection({
+  parameters,
+  registry,
+  onTryOperation,
+}: {
+  parameters: ApiDocParam[]
+  registry: Record<string, ApiDocSchema>
+  onTryOperation?: () => void
+}) {
   const order: ApiDocParam['in'][] = ['path', 'query', 'header', 'cookie']
   return (
     <section className="border-t border-[#e6e6e6] bg-white">
       <div className="flex min-h-12 items-center justify-between gap-3 px-4 py-2">
         <SectionTitle>Parameters</SectionTitle>
-        <button className="h-8 rounded border-2 border-[#7d8492] bg-white px-6 text-[13px] font-bold text-[#3b4151] shadow-sm hover:bg-[#f7f7f7]">
+        <button
+          onClick={onTryOperation}
+          className="h-8 rounded border-2 border-[#7d8492] bg-white px-6 text-[13px] font-bold text-[#3b4151] shadow-sm hover:bg-[#f7f7f7]"
+        >
           Try it out
         </button>
       </div>

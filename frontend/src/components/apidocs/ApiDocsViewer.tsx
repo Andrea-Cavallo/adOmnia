@@ -1,18 +1,19 @@
 import { useMemo, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, Code2, Copy, FileText, Maximize2, Minimize2, Search, Server } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { ApiDocModel } from '@/lib/apidocs/parseSpec'
+import type { ApiDocModel, ApiDocOperation } from '@/lib/apidocs/parseSpec'
 import { OperationCard } from './OperationCard'
 
 interface ApiDocsViewerProps {
   model: ApiDocModel
   rawSpec: string
   onRawSpecChange: (rawSpec: string) => void
+  onTryOperation?: (operation: ApiDocOperation) => void
 }
 
 type ViewerMode = 'split' | 'editor' | 'preview'
 
-export function ApiDocsViewer({ model, rawSpec, onRawSpecChange }: ApiDocsViewerProps) {
+export function ApiDocsViewer({ model, rawSpec, onRawSpecChange, onTryOperation }: ApiDocsViewerProps) {
   const [query, setQuery] = useState('')
   const [mode, setMode] = useState<ViewerMode>('split')
   const [editorPercent, setEditorPercent] = useState(49)
@@ -103,6 +104,7 @@ export function ApiDocsViewer({ model, rawSpec, onRawSpecChange }: ApiDocsViewer
             tags={tags}
             query={query}
             setQuery={setQuery}
+            onTryOperation={onTryOperation}
           />
         )}
       </div>
@@ -115,11 +117,13 @@ function ReferencePane({
   tags,
   query,
   setQuery,
+  onTryOperation,
 }: {
   model: ApiDocModel
   tags: ApiDocModel['tags']
   query: string
   setQuery: (value: string) => void
+  onTryOperation?: (operation: ApiDocOperation) => void
 }) {
   return (
     <div className="min-w-0 overflow-y-auto bg-[#fafafa] text-[#3b4151]">
@@ -173,6 +177,7 @@ function ReferencePane({
                   operation={op}
                   registry={model.schemaRegistry}
                   defaultOpen={tagIndex === 0 && operationIndex === 0}
+                  onTryOperation={onTryOperation}
                 />
               ))}
             </div>

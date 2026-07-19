@@ -236,6 +236,7 @@ export interface Tab {
   request: RequestItem
   collectionId?: string
   workspaceId?: string
+  pinned?: boolean
   dirty: boolean
   response: ResponseData | null
   loading: boolean

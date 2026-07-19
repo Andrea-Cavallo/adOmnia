@@ -54,6 +54,7 @@ interface TabsState {
   setActiveTab: (id: string) => void
   newTab: (method?: HttpMethod) => void
   duplicateTab: (id: string) => void
+  togglePinned: (id: string) => void
   updateRequest: (tabId: string, request: RequestItem) => void
   setLoading: (tabId: string, loading: boolean) => void
   setResponse: (tabId: string, response: ResponseData | null) => void
@@ -88,6 +89,10 @@ function activeWorkspaceId(): string {
 
 function belongsToWorkspace(tab: Tab, workspaceId = activeWorkspaceId()): boolean {
   return (tab.workspaceId ?? workspaceId) === workspaceId
+}
+
+function canCloseTab(tab: Tab): boolean {
+  return tab.pinned !== true
 }
 
 function isHistoryEntry(value: RequestHistoryEntry | ResponseData): value is RequestHistoryEntry {
@@ -242,6 +247,8 @@ export const useTabsStore = create<TabsState>((set, get) => ({
 
   closeTab: (id) => {
     set((s) => {
+      const closing = s.tabs.find((t) => t.id === id)
+      if (closing && !canCloseTab(closing)) return s
       const filtered = s.tabs.filter((t) => t.id !== id)
       let activeTabId = s.activeTabId
       if (activeTabId === id) {
@@ -258,7 +265,7 @@ export const useTabsStore = create<TabsState>((set, get) => ({
 
   closeRequestTabs: (requestId) => {
     set((s) => {
-      const tabs = s.tabs.filter((tab) => tab.request.id !== requestId)
+      const tabs = s.tabs.filter((tab) => tab.request.id !== requestId || !canCloseTab(tab))
       const activeTabId = tabs.some((tab) => tab.id === s.activeTabId)
         ? s.activeTabId
         : tabs.find((tab) => belongsToWorkspace(tab))?.id ?? null
@@ -285,7 +292,7 @@ export const useTabsStore = create<TabsState>((set, get) => ({
       const workspaceTabs = s.tabs.filter((tab) => belongsToWorkspace(tab))
       const idx = workspaceTabs.findIndex((t) => t.id === id)
       if (idx === -1) return s
-      const removeIds = new Set(workspaceTabs.slice(idx + 1).map((tab) => tab.id))
+      const removeIds = new Set(workspaceTabs.slice(idx + 1).filter(canCloseTab).map((tab) => tab.id))
       const filtered = s.tabs.filter((tab) => !removeIds.has(tab.id))
       const activeTabStillExists = filtered.some((t) => t.id === s.activeTabId)
       const remainingWorkspaceTabs = filtered.filter((tab) => belongsToWorkspace(tab))
@@ -303,7 +310,7 @@ export const useTabsStore = create<TabsState>((set, get) => ({
       const workspaceTabs = s.tabs.filter((tab) => belongsToWorkspace(tab))
       const idx = workspaceTabs.findIndex((t) => t.id === id)
       if (idx === -1) return s
-      const removeIds = new Set(workspaceTabs.slice(0, idx).map((tab) => tab.id))
+      const removeIds = new Set(workspaceTabs.slice(0, idx).filter(canCloseTab).map((tab) => tab.id))
       const filtered = s.tabs.filter((tab) => !removeIds.has(tab.id))
       const activeTabStillExists = filtered.some((t) => t.id === s.activeTabId)
       return {
@@ -317,7 +324,7 @@ export const useTabsStore = create<TabsState>((set, get) => ({
 
   closeAllTabs: () => {
     set((s) => {
-      const removeIds = new Set(s.tabs.filter((tab) => belongsToWorkspace(tab)).map((tab) => tab.id))
+      const removeIds = new Set(s.tabs.filter((tab) => belongsToWorkspace(tab) && canCloseTab(tab)).map((tab) => tab.id))
       const filtered = s.tabs.filter((tab) => !removeIds.has(tab.id))
       const activeTabStillExists = filtered.some((t) => t.id === s.activeTabId)
       return {
@@ -389,6 +396,13 @@ export const useTabsStore = create<TabsState>((set, get) => ({
       updated.splice(idx + 1, 0, newTab)
       return { tabs: updated, activeTabId: newTab.id }
     })
+    get().save()
+  },
+
+  togglePinned: (id) => {
+    set((s) => ({
+      tabs: s.tabs.map((tab) => (tab.id === id ? { ...tab, pinned: !tab.pinned } : tab)),
+    }))
     get().save()
   },
 

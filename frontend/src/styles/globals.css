@@ -157,11 +157,40 @@
     font: inherit;
   }
 
+  :where(button, [role='button'], a, input, select, textarea) {
+    transition:
+      border-color 120ms ease,
+      background-color 120ms ease,
+      color 120ms ease,
+      box-shadow 120ms ease,
+      opacity 120ms ease,
+      transform 120ms ease;
+  }
+
   input,
   select,
   textarea {
     background-color: var(--color-surface-2);
     color: var(--color-text-1);
+  }
+
+  :where(input, select, textarea):focus {
+    border-color: color-mix(in srgb, var(--color-accent) 72%, var(--color-border-2));
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--color-accent) 34%, transparent),
+      0 0 0 4px var(--color-accent-glow);
+    outline: none;
+  }
+
+  :where(button, [role='button'], a):focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--color-accent) 58%, transparent),
+      0 0 0 4px var(--color-accent-glow);
+  }
+
+  :where(button:not(:disabled), [role='button'], a):active {
+    transform: translateY(1px);
   }
 
   input::placeholder,
@@ -248,9 +277,121 @@
     from { opacity: 0; transform: scale(0.95); }
     to { opacity: 1; transform: scale(1); }
   }
+  @keyframes paletteBackdropIn {
+    from { opacity: 0; backdrop-filter: blur(0); }
+    to { opacity: 1; backdrop-filter: blur(10px); }
+  }
+  @keyframes paletteSurfaceIn {
+    from { opacity: 0; transform: translateY(-8px) scale(0.985); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes dropOverlayIn {
+    from { opacity: 0; transform: scale(0.985); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes shimmer {
+    from { background-position: 180% 0; }
+    to { background-position: -80% 0; }
+  }
+  @keyframes responseArrived {
+    0% {
+      box-shadow: inset 0 1px 0 color-mix(in srgb, var(--color-accent) 65%, transparent);
+      background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
+    }
+    100% {
+      box-shadow: inset 0 1px 0 transparent;
+      background-color: transparent;
+    }
+  }
+  @keyframes statusPulse {
+    0% { box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 34%, transparent); }
+    100% { box-shadow: 0 0 0 8px transparent; }
+  }
+  @keyframes metricFlash {
+    0% {
+      background-color: color-mix(in srgb, var(--color-accent) 20%, transparent);
+      color: var(--color-text-1);
+    }
+    100% {
+      background-color: transparent;
+      color: var(--color-text-2);
+    }
+  }
+  @keyframes lineMutatedFlash {
+    0% {
+      background-color: color-mix(in srgb, var(--color-accent) 16%, transparent);
+      box-shadow: inset 2px 0 0 var(--color-accent);
+    }
+    100% {
+      background-color: transparent;
+      box-shadow: inset 2px 0 0 transparent;
+    }
+  }
+  @keyframes tabCleanFlash {
+    0% {
+      box-shadow: inset 0 -2px 0 var(--color-success), 0 0 14px color-mix(in srgb, var(--color-success) 18%, transparent);
+    }
+    100% {
+      box-shadow: inset 0 -2px 0 transparent, 0 0 0 transparent;
+    }
+  }
+  @keyframes toastEnter {
+    from { opacity: 0; transform: translateY(-6px) scale(0.985); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes timelineGlow {
+    0% { filter: brightness(1.35); }
+    100% { filter: brightness(1); }
+  }
   @keyframes panelSlideIn {
     from { opacity: 0; transform: translateX(8px); }
     to   { opacity: 1; transform: translateX(0); }
+  }
+  .palette-backdrop-enter {
+    animation: paletteBackdropIn 140ms ease-out both;
+  }
+  .palette-surface-enter {
+    animation: paletteSurfaceIn 160ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .drop-overlay-enter {
+    animation: dropOverlayIn 140ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .adomnia-skeleton {
+    background:
+      linear-gradient(
+        110deg,
+        color-mix(in srgb, var(--color-surface-3) 72%, transparent) 8%,
+        color-mix(in srgb, var(--color-border-3) 62%, transparent) 18%,
+        color-mix(in srgb, var(--color-surface-3) 72%, transparent) 33%
+      );
+    background-size: 220% 100%;
+    animation: shimmer 1.35s linear infinite;
+  }
+  .response-arrived {
+    animation: responseArrived 760ms ease-out both;
+  }
+  .status-pulse-once {
+    animation: statusPulse 760ms ease-out both;
+  }
+  .metric-flash {
+    animation: metricFlash 900ms ease-out both;
+  }
+  .response-line-mutated {
+    animation: lineMutatedFlash 980ms ease-out both;
+  }
+  .tab-clean-flash {
+    animation: tabCleanFlash 680ms ease-out both;
+  }
+  .toast-enter {
+    animation: toastEnter 160ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .network-timeline-segment {
+    animation: timelineGlow 680ms ease-out both;
+  }
+  .glass-panel {
+    background-color: color-mix(in srgb, var(--color-surface-1) 88%, transparent);
+    -webkit-backdrop-filter: blur(14px) saturate(1.2);
+    backdrop-filter: blur(14px) saturate(1.2);
   }
   .panel-enter {
     animation: panelSlideIn 120ms cubic-bezier(0.16, 1, 0.3, 1) both;

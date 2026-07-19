@@ -307,6 +307,7 @@ function RequestWorkspace() {
   const reorderTab = useTabsStore((s) => s.reorderTab)
   const newTab = useTabsStore((s) => s.newTab)
   const duplicateTab = useTabsStore((s) => s.duplicateTab)
+  const togglePinned = useTabsStore((s) => s.togglePinned)
   const updateRequest = useTabsStore((s) => s.updateRequest)
   const setLoading = useTabsStore((s) => s.setLoading)
   const setResponse = useTabsStore((s) => s.setResponse)
@@ -499,17 +500,17 @@ function RequestWorkspace() {
   const getDirtyTabsForPending = useCallback((pending: PendingClose): typeof tabs => {
     if (pending.kind === 'single') {
       const t = tabs.find((tab) => tab.id === pending.tabId)
-      return t?.dirty ? [t] : []
+      return t?.dirty && !t.pinned ? [t] : []
     }
     if (pending.kind === 'all') {
-      return tabs.filter((t) => t.dirty)
+      return tabs.filter((t) => t.dirty && !t.pinned)
     }
     const idx = tabs.findIndex((t) => t.id === pending.tabId)
     if (idx === -1) return []
     const affected = pending.kind === 'right'
       ? tabs.filter((_, i) => i > idx)
       : tabs.filter((_, i) => i < idx)
-    return affected.filter((t) => t.dirty)
+    return affected.filter((t) => t.dirty && !t.pinned)
   }, [tabs])
 
   // Attempt close — show dialog if there are dirty tabs
@@ -586,6 +587,7 @@ function RequestWorkspace() {
         onReorder={reorderTab}
         onNewTab={newTab}
         onDuplicate={duplicateTab}
+        onTogglePinned={togglePinned}
         onRenameTab={handleRenameTab}
         onMockTab={handleMockTab}
       />

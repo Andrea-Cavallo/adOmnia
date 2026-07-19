@@ -26,6 +26,35 @@ interface ResponsePanelProps {
 }
 
 function ResponseWaitingState({ loading }: { loading: boolean }) {
+  if (loading) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex items-center gap-3 border-b border-border-1 px-3 py-2">
+          <span className="text-xs font-medium text-text-2">Response</span>
+          <span className="h-5 w-16 rounded adomnia-skeleton" />
+          <div className="ml-auto flex items-center gap-3">
+            <span className="h-3 w-14 rounded adomnia-skeleton" />
+            <span className="h-3 w-12 rounded adomnia-skeleton" />
+          </div>
+        </div>
+        <div className="flex items-center gap-0.5 border-b border-border-1 px-3">
+          <span className="h-8 w-14 rounded-t adomnia-skeleton" />
+          <span className="h-8 w-16 rounded-t adomnia-skeleton opacity-70" />
+          <span className="h-8 w-20 rounded-t adomnia-skeleton opacity-50" />
+        </div>
+        <div className="flex-1 space-y-2 p-4">
+          <div className="h-3 w-[72%] rounded adomnia-skeleton" />
+          <div className="h-3 w-[44%] rounded adomnia-skeleton" />
+          <div className="h-3 w-[64%] rounded adomnia-skeleton" />
+          <div className="h-3 w-[38%] rounded adomnia-skeleton" />
+          <div className="mt-5 h-3 w-[58%] rounded adomnia-skeleton opacity-70" />
+          <div className="h-3 w-[81%] rounded adomnia-skeleton opacity-70" />
+          <div className="h-3 w-[48%] rounded adomnia-skeleton opacity-70" />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex min-h-0 flex-1 items-center justify-center">
       <div className="flex flex-col items-center text-center">
@@ -40,15 +69,13 @@ function ResponseWaitingState({ loading }: { loading: boolean }) {
           )}
         />
         <p className="text-sm text-text-3">
-          {loading ? 'Sending request…' : 'Send the request to see a response'}
+          Send the request to see a response
         </p>
-        {!loading && (
-          <p className="mt-1 text-xs text-text-4">
-            or press <kbd className="rounded bg-surface-3 px-1 py-0.5 text-[10px]">Ctrl</kbd>
-            <span className="mx-0.5">+</span>
-            <kbd className="rounded bg-surface-3 px-1 py-0.5 text-[10px]">Enter</kbd>
-          </p>
-        )}
+        <p className="mt-1 text-xs text-text-4">
+          or press <kbd className="rounded bg-surface-3 px-1 py-0.5 text-[10px]">Ctrl</kbd>
+          <span className="mx-0.5">+</span>
+          <kbd className="rounded bg-surface-3 px-1 py-0.5 text-[10px]">Enter</kbd>
+        </p>
       </div>
     </div>
   )
@@ -65,6 +92,42 @@ function statusClass(status: number): string {
   if (status >= 300) return 'bg-warning/20 text-warning'
   if (status >= 200 && status < 300) return 'bg-success/20 text-success'
   return 'bg-surface-3 text-text-3'
+}
+
+function NetworkTimeline({ response }: { response: ResponseData }) {
+  const total = Math.max(response.ms, 1)
+  const connectMs = Math.min(Math.max(Math.round(total * 0.12), 1), 80)
+  const downloadMs = Math.min(Math.max(Math.round((response.size / 1024) * 1.5), 1), Math.max(total - connectMs, 1))
+  const waitMs = Math.max(total - connectMs - downloadMs, 1)
+  const segments = [
+    { label: 'connect', ms: connectMs, className: 'bg-info/70' },
+    { label: 'wait', ms: waitMs, className: 'bg-accent/75' },
+    { label: 'download', ms: downloadMs, className: 'bg-success/70' },
+  ]
+
+  return (
+    <div className="flex items-center gap-2 border-b border-border-1 bg-surface-1/65 px-3 py-1.5">
+      <span className="w-16 shrink-0 text-[9px] font-semibold uppercase tracking-wide text-text-4">Timeline</span>
+      <div className="flex h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-surface-3">
+        {segments.map((segment) => (
+          <span
+            key={segment.label}
+            className={cn('h-full network-timeline-segment', segment.className)}
+            style={{ width: `${Math.max((segment.ms / total) * 100, 3)}%` }}
+            title={`${segment.label}: ${segment.ms} ms`}
+          />
+        ))}
+      </div>
+      <div className="flex shrink-0 items-center gap-2 text-[9px] text-text-4">
+        {segments.map((segment) => (
+          <span key={segment.label} className="flex items-center gap-1">
+            <span className={cn('h-1.5 w-1.5 rounded-full', segment.className)} />
+            {segment.label}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 function responseBytes(response: ResponseData): Uint8Array {
@@ -165,6 +228,55 @@ function TextHighlight({ text, searchTerm = '' }: { text: string; searchTerm?: s
           ? <mark key={i} className="bg-warning/40 text-current rounded-[2px]">{p.text}</mark>
           : <span key={i} className="text-text-1">{p.text}</span>
       )}
+    </>
+  )
+}
+
+function changedLineIndexes(previous: string | null, current: string): Set<number> {
+  if (!previous) return new Set()
+  const prevLines = previous.split('\n')
+  const currentLines = current.split('\n')
+  if (prevLines.length > 1600 || currentLines.length > 1600) return new Set()
+  const changed = new Set<number>()
+  for (let i = 0; i < currentLines.length; i += 1) {
+    if (currentLines[i] !== prevLines[i]) changed.add(i)
+  }
+  return changed
+}
+
+function HighlightedResponseBody({
+  text,
+  searchTerm,
+  highlightJson,
+  changedLines,
+}: {
+  text: string
+  searchTerm: string
+  highlightJson: boolean
+  changedLines: Set<number>
+}) {
+  const lines = text.split('\n')
+  if (changedLines.size === 0) {
+    return highlightJson
+      ? <JsonHighlight text={text} searchTerm={searchTerm} />
+      : <TextHighlight text={text} searchTerm={searchTerm} />
+  }
+  return (
+    <>
+      {lines.map((line, index) => (
+        <span
+          key={`${index}-${line.slice(0, 12)}`}
+          className={cn(
+            'response-line block min-h-[1lh] rounded-sm px-1 -mx-1',
+            changedLines.has(index) && 'response-line-mutated',
+          )}
+        >
+          {highlightJson
+            ? <JsonHighlight text={line || ' '} searchTerm={searchTerm} />
+            : <TextHighlight text={line || ' '} searchTerm={searchTerm} />
+          }
+        </span>
+      ))}
     </>
   )
 }
@@ -372,6 +484,9 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
   const [diffRightBody, setDiffRightBody] = useState('')
   const [diffRightLabel, setDiffRightLabel] = useState('')
   const [showDiffPicker, setShowDiffPicker] = useState(false)
+  const [responseFlash, setResponseFlash] = useState(false)
+  const previousBodyRef = useRef<string | null>(null)
+  const previousMetaRef = useRef<{ status: number; ms: number; size: number } | null>(null)
 
   // Open the value context menu when right-clicking a token (or a text selection)
   // in the Body or Headers views.
@@ -434,6 +549,13 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
     setMatchIndex(0)
     setSearchOpen(false)
   }, [response?.body])
+
+  useEffect(() => {
+    if (!response || loading) return
+    setResponseFlash(true)
+    const timer = window.setTimeout(() => setResponseFlash(false), 780)
+    return () => window.clearTimeout(timer)
+  }, [loading, response])
 
   // Keyboard: Ctrl/Cmd+F → open find bar; Escape → close
   useEffect(() => {
@@ -502,6 +624,17 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
   if (isJson && view === 'pretty' && !tooLargeToRender) {
     try { prettyBody = prettyJson(displayBody) } catch { /* keep raw */ }
   }
+  const changedLines = useMemo(() => changedLineIndexes(previousBodyRef.current, prettyBody), [prettyBody])
+  const previousMeta = previousMetaRef.current
+  const statusChanged = previousMeta ? previousMeta.status !== response?.status : false
+  const timeChanged = previousMeta ? previousMeta.ms !== response?.ms : false
+  const sizeChanged = previousMeta ? previousMeta.size !== response?.size : false
+
+  useEffect(() => {
+    if (!response || loading) return
+    previousBodyRef.current = prettyBody
+    previousMetaRef.current = { status: response.status, ms: response.ms, size: response.size }
+  }, [loading, prettyBody, response])
 
   // Count total matches in the displayed text
   const matchCount = useMemo(() => {
@@ -595,11 +728,11 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
 
   return (
     <>
-      <div className="flex-1 flex flex-col min-h-0">
+      <div className={cn('flex-1 flex flex-col min-h-0', responseFlash && 'response-arrived')}>
         {/* Status bar with validation badge */}
         <div className="flex items-center gap-3 px-3 py-2 border-b border-border-1">
           <span className="text-xs font-medium text-text-2">Response</span>
-          <span className={cn('px-2 py-0.5 rounded text-[10px] font-medium', statusClass(response.status))}>
+          <span className={cn('px-2 py-0.5 rounded text-[10px] font-medium', statusClass(response.status), responseFlash && (statusChanged || !previousMeta) && 'status-pulse-once')}>
             {response.status} {response.statusText}
           </span>
           {validationBadge && (
@@ -613,14 +746,16 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
           <div className="flex items-center gap-3 ml-auto text-[10px] text-text-3">
             <span>
               <span className="text-text-4">time </span>
-              <span className="text-text-2">{response.ms} ms</span>
+              <span className={cn('rounded px-1 text-text-2', responseFlash && (timeChanged || !previousMeta) && 'metric-flash')}>{response.ms} ms</span>
             </span>
             <span>
               <span className="text-text-4">size </span>
-              <span className="text-text-2">{formatBytes(response.size)}</span>
+              <span className={cn('rounded px-1 text-text-2', responseFlash && (sizeChanged || !previousMeta) && 'metric-flash')}>{formatBytes(response.size)}</span>
             </span>
           </div>
         </div>
+
+        <NetworkTimeline response={response} />
 
         {/* Tabs with action buttons */}
         <div className="flex items-center gap-0.5 px-3 border-b border-border-1">
@@ -907,10 +1042,12 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
                   </>
                 ) : (
                   <pre className="text-xs font-mono whitespace-pre-wrap break-all" style={{ fontSize: respFontPx }}>
-                    {isJson && view === 'pretty' && validationBadge === 'valid'
-                      ? <JsonHighlight text={prettyBody} searchTerm={searchQuery} />
-                      : <TextHighlight text={prettyBody} searchTerm={searchQuery} />
-                    }
+                    <HighlightedResponseBody
+                      text={prettyBody}
+                      searchTerm={searchQuery}
+                      highlightJson={isJson && view === 'pretty' && validationBadge === 'valid'}
+                      changedLines={responseFlash ? changedLines : new Set()}
+                    />
                   </pre>
                 )}
               </>

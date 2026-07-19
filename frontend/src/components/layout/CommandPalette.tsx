@@ -172,27 +172,29 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-start justify-center bg-black/55 pt-[12vh] backdrop-blur-sm" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-[300] flex items-start justify-center bg-black/[0.62] pt-[12vh] palette-backdrop-enter" onMouseDown={onClose}>
       <section
         role="dialog"
         aria-label="Command palette"
         data-testid="command-palette"
-        className="flex max-h-[70vh] w-[min(680px,calc(100vw-32px))] flex-col overflow-hidden rounded-xl border border-border-1 bg-surface-1 shadow-2xl"
+        className="glass-panel palette-surface-enter flex max-h-[70vh] w-[min(720px,calc(100vw-32px))] flex-col overflow-hidden rounded-lg border border-border-2 shadow-2xl shadow-black/50 ring-1 ring-white/5"
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <label className="flex h-14 items-center gap-3 border-b border-border-1 px-4">
-          <Search size={16} className="shrink-0 text-text-3" />
+        <label className="flex h-14 items-center gap-3 border-b border-border-1 bg-surface-2/60 px-4">
+          <span className="grid h-7 w-7 place-items-center rounded-md border border-border-2 bg-surface-1">
+            <Search size={15} className="shrink-0 text-accent" />
+          </span>
           <input
             ref={inputRef}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Search panels, requests, environments and actions..."
-            className="h-full flex-1 bg-transparent text-sm text-text-1 outline-none placeholder:text-text-4"
+            className="h-full flex-1 border-0 bg-transparent text-sm text-text-1 shadow-none outline-none placeholder:text-text-4 focus:shadow-none"
           />
-          <kbd className="rounded border border-border-2 bg-surface-2 px-2 py-1 text-[10px] text-text-3">ESC</kbd>
+          <kbd className="rounded border border-border-2 bg-surface-1 px-2 py-1 text-[10px] text-text-3">ESC</kbd>
         </label>
-        <div className="flex-1 overflow-y-auto p-2">
+        <div className="flex-1 overflow-y-auto bg-surface-1 p-2">
           {results.length === 0 && (
             <div className="px-4 py-9 text-center text-xs text-text-3">No commands match <span className="text-text-2">"{query}"</span>.</div>
           )}
@@ -205,22 +207,29 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                 onMouseEnter={() => setSelectedIndex(index)}
                 onClick={() => execute(command)}
                 className={cn(
-                  'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors',
-                  selectedIndex === index ? 'bg-accent/12 text-text-1' : 'text-text-2 hover:bg-surface-2',
+                  'group flex w-full items-center gap-3 rounded-md border px-3 py-2 text-left',
+                  selectedIndex === index
+                    ? 'border-accent/35 bg-accent/12 text-text-1 shadow-[inset_3px_0_0_var(--color-accent)]'
+                    : 'border-transparent text-text-2 hover:border-border-2 hover:bg-surface-2',
                 )}
               >
-                <Icon size={14} className={selectedIndex === index ? 'text-accent' : 'text-text-4'} />
+                <span className={cn(
+                  'grid h-7 w-7 shrink-0 place-items-center rounded-md border',
+                  selectedIndex === index ? 'border-accent/35 bg-accent/12' : 'border-border-1 bg-surface-2 group-hover:border-border-2',
+                )}>
+                  <Icon size={14} className={selectedIndex === index ? 'text-accent' : 'text-text-4'} />
+                </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-xs font-medium">{command.title}</span>
                   {command.subtitle && <span className="block truncate text-[10px] text-text-4">{command.subtitle}</span>}
                 </span>
-                <span className="rounded bg-surface-2 px-2 py-0.5 text-[9px] uppercase tracking-wide text-text-4">{command.group}</span>
-                {selectedIndex === index && <CornerDownLeft size={12} className="text-text-4" />}
+                <span className="rounded border border-border-1 bg-surface-2 px-2 py-0.5 text-[9px] uppercase tracking-wide text-text-4">{command.group}</span>
+                <CornerDownLeft size={12} className={selectedIndex === index ? 'text-text-3 opacity-100' : 'text-text-4 opacity-0'} />
               </button>
             )
           })}
         </div>
-        <footer className="flex items-center gap-4 border-t border-border-1 px-4 py-2 text-[10px] text-text-4">
+        <footer className="flex items-center gap-4 border-t border-border-1 bg-surface-2/50 px-4 py-2 text-[10px] text-text-4">
           <span><kbd className="text-text-3">Up/Down</kbd> select</span>
           <span><kbd className="text-text-3">Enter</kbd> open</span>
           <span className="ml-auto">Ctrl/Cmd + K or P</span>

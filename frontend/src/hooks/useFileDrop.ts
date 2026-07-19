@@ -17,6 +17,13 @@ export interface DropFeedback {
   ok: boolean
 }
 
+export interface DropPreview {
+  name: string
+  kind: string
+  target: string
+  supported: boolean
+}
+
 export interface FileDropHandlers {
   onDragEnter: React.DragEventHandler<HTMLDivElement>
   onDragLeave: React.DragEventHandler<HTMLDivElement>
@@ -26,6 +33,7 @@ export interface FileDropHandlers {
 
 export interface FileDropResult {
   dragOver: boolean
+  dropPreview: DropPreview | null
   dropFeedback: DropFeedback | null
   handlers: FileDropHandlers
 }
@@ -59,8 +67,32 @@ function fileFromDroppedData(entry: DroppedFileData): File {
   return new File([payload], entry.name || entry.path.split(/[\\/]/).pop() || 'dropped-file')
 }
 
+function describeDropFile(name: string): DropPreview {
+  const lower = name.toLowerCase()
+  if (lower.endsWith('.har')) return { name, kind: 'HAR', target: 'HAR Viewer', supported: true }
+  if (lower.endsWith('.wsdl')) return { name, kind: 'WSDL', target: 'SOAP Studio', supported: true }
+  if (/\.(mmd|mermaid)$/i.test(lower)) return { name, kind: 'Mermaid', target: 'Mermaid Studio', supported: true }
+  if (lower.endsWith('.tex')) return { name, kind: 'LaTeX', target: 'LaTeX Studio', supported: true }
+  if (lower.endsWith('.pdf')) return { name, kind: 'PDF', target: 'PDF Editor', supported: true }
+  if (lower.endsWith('.proto')) return { name, kind: 'Proto', target: 'gRPC Client', supported: true }
+  if (lower.endsWith('.sql')) return { name, kind: 'SQL', target: 'Database Studio', supported: true }
+  if (lower.endsWith('.class')) return { name, kind: 'Java Class', target: 'Class File Inspector', supported: true }
+  if (lower.endsWith('.adomnia')) return { name, kind: 'Workspace', target: 'Collections', supported: true }
+  if (/\.(json|ya?ml|bru)$/i.test(lower)) return { name, kind: 'Collection', target: 'Collections', supported: true }
+  return { name, kind: 'Unknown', target: 'Unsupported file', supported: false }
+}
+
+function previewFromDataTransfer(dataTransfer: DataTransfer): DropPreview | null {
+  const file = filesFromDataTransfer(dataTransfer)[0]
+  if (file) return describeDropFile(file.name)
+  const uri = dataTransfer.getData('text/uri-list') || dataTransfer.getData('text/plain')
+  const name = uri.split(/[\\/]/).pop()?.trim()
+  return name ? describeDropFile(name) : null
+}
+
 export function useFileDrop(): FileDropResult {
   const [dragOver, setDragOver] = useState(false)
+  const [dropPreview, setDropPreview] = useState<DropPreview | null>(null)
   const [dropFeedback, setDropFeedback] = useState<DropFeedback | null>(null)
   const dragCounter = useRef(0)
   const noFileTimer = useRef<number | null>(null)
@@ -144,7 +176,7 @@ export function useFileDrop(): FileDropResult {
     if (!paths.length) return
     clearNoFileTimer()
     suppressBrowserDropUntil.current = Date.now() + 1200
-    setDragOver(false); dragCounter.current = 0
+    setDragOver(false); setDropPreview(null); dragCounter.current = 0
     try {
       const raw = await ReadDroppedFiles(paths)
       const entries = JSON.parse(raw) as DroppedFileData[]
@@ -168,23 +200,27 @@ export function useFileDrop(): FileDropResult {
   const handleDragEnter = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
     dragCounter.current++
-    if (Array.from(e.dataTransfer.types).includes('Files')) setDragOver(true)
+    if (Array.from(e.dataTransfer.types).includes('Files')) {
+      setDropPreview(previewFromDataTransfer(e.dataTransfer))
+      setDragOver(true)
+    }
   }, [])
 
   const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
     dragCounter.current--
-    if (dragCounter.current <= 0) { dragCounter.current = 0; setDragOver(false) }
+    if (dragCounter.current <= 0) { dragCounter.current = 0; setDragOver(false); setDropPreview(null) }
   }, [])
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
+    if (Array.from(e.dataTransfer.types).includes('Files')) setDropPreview(previewFromDataTransfer(e.dataTransfer))
   }, [])
 
   const handleDrop = useCallback(
     async (e: React.DragEvent<HTMLDivElement>) => {
       e.preventDefault()
-      setDragOver(false); dragCounter.current = 0
+      setDragOver(false); setDropPreview(null); dragCounter.current = 0
 
       const files = filesFromDataTransfer(e.dataTransfer)
       if (!files.length) {
@@ -203,5 +239,5 @@ export function useFileDrop(): FileDropResult {
     [clearNoFileTimer, importDroppedFiles, showFeedback],
   )
 
-  return { dragOver, dropFeedback, handlers: { onDragEnter: handleDragEnter, onDragLeave: handleDragLeave, onDragOver: handleDragOver, onDrop: handleDrop } }
+  return { dragOver, dropPreview, dropFeedback, handlers: { onDragEnter: handleDragEnter, onDragLeave: handleDragLeave, onDragOver: handleDragOver, onDrop: handleDrop } }
 }
