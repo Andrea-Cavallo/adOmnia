@@ -20,6 +20,7 @@ export function parseYamlLenient(text: string): unknown {
   } catch (strictErr) {
     try {
       const doc = parseDocument(text, { strict: false })
+      if (doc.errors.some((err) => !isRecoverableYamlError(err.code))) throw strictErr
       mergeDuplicateKeys(doc.contents)
       const js = doc.toJS()
       if (js != null) return js
@@ -28,6 +29,10 @@ export function parseYamlLenient(text: string): unknown {
     }
     throw strictErr
   }
+}
+
+function isRecoverableYamlError(code: string | undefined): boolean {
+  return code === 'DUPLICATE_KEY' || code === 'BAD_SCALAR_START'
 }
 
 // mergeDuplicateKeys walks a parsed YAML tree and collapses pairs that share a

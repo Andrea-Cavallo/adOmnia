@@ -12,7 +12,7 @@
     "email": "a.cavallo@outlook.it"
   },
   "info": {
-    "productVersion": "0.5.7",
+    "productVersion": "0.5.8",
     "copyright": "© 2026 Andrea Cavallo. All rights reserved.",
     "comments": "Local-first API developer toolbox — REST, gRPC, WebSocket, Kafka, mock server, browser debugging and more.",
     "productName": "adOmnia",

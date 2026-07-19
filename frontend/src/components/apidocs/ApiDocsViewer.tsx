@@ -122,59 +122,64 @@ function ReferencePane({
   setQuery: (value: string) => void
 }) {
   return (
-    <div className="min-w-0 overflow-y-auto bg-surface-0">
-      <header className="border-b border-border-1 bg-surface-0 px-8 py-6">
+    <div className="min-w-0 overflow-y-auto bg-[#fafafa] text-[#3b4151]">
+      <header className="border-b border-[#e6e6e6] bg-[#fafafa] px-8 py-6">
         <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1">
-            <h1 className="text-[28px] font-semibold leading-tight text-text-1">{model.title} {model.version && model.version}</h1>
+            <h1 className="text-[28px] font-semibold leading-tight text-[#3b4151]">{model.title} {model.version && model.version}</h1>
             {model.description && (
-              <p className="mt-4 max-w-3xl whitespace-pre-wrap text-[13px] leading-relaxed text-text-2">{model.description}</p>
+              <p className="mt-4 max-w-3xl whitespace-pre-wrap text-[13px] leading-relaxed text-[#3b4151]">{model.description}</p>
             )}
           </div>
-          <span className="shrink-0 rounded border border-border-2 bg-surface-1 px-2 py-1 text-[11px] text-text-3">{model.operationCount} operations</span>
+          <span className="shrink-0 rounded border border-[#d8dde7] bg-white px-2 py-1 text-[11px] text-[#7d8492]">{model.operationCount} operations</span>
         </div>
         {model.servers.length > 0 && (
           <div className="mt-6">
-            <div className="mb-2 flex items-center gap-2 text-[18px] font-medium text-text-1">
-              <Server size={16} className="text-text-4" /> Servers
+            <div className="mb-2 flex items-center gap-2 text-[18px] font-bold text-[#3b4151]">
+              <Server size={16} className="text-[#7d8492]" /> Servers
             </div>
             <div className="flex flex-wrap gap-2">
               {model.servers.map((server) => (
-                <span key={server} className="rounded border border-border-2 bg-surface-1 px-2 py-1 font-mono text-[11px] text-text-2">{server}</span>
+                <span key={server} className="rounded border border-[#d8dde7] bg-white px-2 py-1 font-mono text-[11px] text-[#3b4151]">{server}</span>
               ))}
             </div>
           </div>
         )}
       </header>
 
-      <div className="sticky top-0 z-10 border-b border-border-1 bg-surface-0/95 px-8 py-2 backdrop-blur">
-        <div className="flex h-8 max-w-xl items-center gap-2 rounded-md border border-border-2 bg-surface-1 px-2">
-          <Search size={13} className="text-text-4" />
+      <div className="sticky top-0 z-10 border-b border-[#e6e6e6] bg-[#fafafa]/95 px-8 py-2 backdrop-blur">
+        <div className="flex h-8 max-w-xl items-center gap-2 rounded border border-[#d8dde7] bg-white px-2">
+          <Search size={13} className="text-[#7d8492]" />
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Filter operations by path, method, or summary..."
-            className="h-full flex-1 bg-transparent text-[12px] text-text-1 outline-none placeholder:text-text-4"
+            className="h-full flex-1 bg-transparent text-[12px] text-[#3b4151] outline-none placeholder:text-[#7d8492]"
           />
         </div>
       </div>
 
       <div className="space-y-8 px-8 py-6">
-        {tags.map((tag) => (
+        {tags.map((tag, tagIndex) => (
           <section key={tag.name} id={`apidoc-tag-${tag.name}`} className="scroll-mt-16">
             <div className="mb-3">
-              <h2 className="text-[20px] font-medium text-text-1">{tag.name}</h2>
-              {tag.description && <p className="mt-1 text-[12px] text-text-3">{tag.description}</p>}
+              <h2 className="text-[20px] font-bold text-[#3b4151]">{tag.name}</h2>
+              {tag.description && <p className="mt-1 text-[12px] text-[#7d8492]">{tag.description}</p>}
             </div>
             <div className="space-y-2">
-              {tag.operations.map((op) => (
-                <OperationCard key={`${op.method}_${op.path}`} operation={op} registry={model.schemaRegistry} />
+              {tag.operations.map((op, operationIndex) => (
+                <OperationCard
+                  key={`${op.method}_${op.path}`}
+                  operation={op}
+                  registry={model.schemaRegistry}
+                  defaultOpen={tagIndex === 0 && operationIndex === 0}
+                />
               ))}
             </div>
           </section>
         ))}
         {tags.length === 0 && (
-          <p className="py-10 text-center text-[12px] text-text-4">No operations match "{query}".</p>
+          <p className="py-10 text-center text-[12px] text-[#7d8492]">No operations match "{query}".</p>
         )}
       </div>
     </div>

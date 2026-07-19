@@ -71,6 +71,13 @@ describe('buildApiDocModel (OpenAPI 3)', () => {
     expect(get.responses[0].status).toBe('200')
   })
 
+  it('generates JSON examples from referenced schemas', () => {
+    const get = model.tags[0].operations.find((o) => o.method === 'GET')!
+    const post = model.tags[0].operations.find((o) => o.method === 'POST')!
+    expect(post.requestBody?.example).toEqual({ name: 'string' })
+    expect(get.responses[0].example).toEqual({ name: 'string' })
+  })
+
   it('resolves $ref against the registry', () => {
     const resolved = resolveSchemaRef('#/components/schemas/Pet', model.schemaRegistry)
     expect(resolved?.type).toBe('object')

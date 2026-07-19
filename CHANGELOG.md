@@ -6,6 +6,14 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.5.8] - 2026-07-19
+
+### Changed
+- **Swagger Editor preview fidelity:** API Docs now renders operations closer to Swagger UI, with light preview styling, method-colored endpoint cards, visible parameters/request body/response sections, generated JSON examples from schemas, and a response table layout.
+
+### Fixed
+- **OpenAPI YAML fallback validation:** lenient YAML parsing now rejects structurally broken documents instead of silently treating them as valid specs.
+
 ## [0.5.7] - 2026-07-18
 
 ### Changed

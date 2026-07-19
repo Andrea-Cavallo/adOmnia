@@ -24,6 +24,7 @@ export interface ApiDocParam {
 export interface ApiDocBody {
   required: boolean
   contentTypes: string[]
+  description?: string
   schema?: ApiDocSchema
   example?: unknown
 }
@@ -65,6 +66,7 @@ export interface ApiDocModel {
 }
 
 const HTTP_METHODS = ['get', 'query', 'put', 'post', 'delete', 'patch', 'options', 'head', 'trace']
+const MAX_EXAMPLE_DEPTH = 8
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -130,7 +132,7 @@ export function buildApiDocModel(spec: unknown): ApiDocModel {
       const tags = Array.isArray(op.tags) && op.tags.length > 0
         ? op.tags.map((t) => asString(t)).filter(Boolean)
         : ['default']
-      const operation = buildOperation(method.toUpperCase(), path, op, sharedParams, isSwagger2)
+      const operation = buildOperation(method.toUpperCase(), path, op, sharedParams, isSwagger2, schemaRegistry)
       operationCount += 1
       for (const tag of tags) {
         if (!groups.has(tag)) groups.set(tag, [])
@@ -179,6 +181,7 @@ function buildOperation(
   op: Record<string, unknown>,
   sharedParams: unknown[],
   isSwagger2: boolean,
+  schemaRegistry: Record<string, ApiDocSchema>,
 ): ApiDocOperation {
   const allParams = [...sharedParams, ...(Array.isArray(op.parameters) ? op.parameters : [])]
   const parameters: ApiDocParam[] = []
@@ -188,10 +191,13 @@ function buildOperation(
     const p = asRecord(raw)
     const location = asString(p.in)
     if (isSwagger2 && location === 'body') {
+      const schema = asRecord(p.schema) as ApiDocSchema
       bodyFromParam = {
         required: Boolean(p.required),
         contentTypes: ['application/json'],
-        schema: asRecord(p.schema) as ApiDocSchema,
+        description: asString(p.description) || undefined,
+        schema,
+        example: exampleFromSchema(schema, schemaRegistry),
       }
       continue
     }
@@ -205,8 +211,8 @@ function buildOperation(
     })
   }
 
-  const requestBody = isSwagger2 ? bodyFromParam : buildRequestBody(asRecord(op.requestBody))
-  const responses = buildResponses(asRecord(op.responses), isSwagger2)
+  const requestBody = isSwagger2 ? bodyFromParam : buildRequestBody(asRecord(op.requestBody), schemaRegistry)
+  const responses = buildResponses(asRecord(op.responses), isSwagger2, schemaRegistry)
 
   return {
     id: `${method} ${path}`,
@@ -221,41 +227,50 @@ function buildOperation(
   }
 }
 
-function buildRequestBody(rb: Record<string, unknown>): ApiDocBody | undefined {
+function buildRequestBody(rb: Record<string, unknown>, schemaRegistry: Record<string, ApiDocSchema>): ApiDocBody | undefined {
   const content = asRecord(rb.content)
   const contentTypes = Object.keys(content)
   if (contentTypes.length === 0) return undefined
   const first = asRecord(content[contentTypes[0]])
+  const schema = asRecord(first.schema) as ApiDocSchema
   return {
     required: Boolean(rb.required),
     contentTypes,
-    schema: asRecord(first.schema) as ApiDocSchema,
-    example: first.example ?? exampleFromExamples(first.examples),
+    description: asString(rb.description) || undefined,
+    schema,
+    example: first.example ?? exampleFromExamples(first.examples) ?? exampleFromSchema(schema, schemaRegistry),
   }
 }
 
-function buildResponses(responses: Record<string, unknown>, isSwagger2: boolean): ApiDocResponse[] {
+function buildResponses(
+  responses: Record<string, unknown>,
+  isSwagger2: boolean,
+  schemaRegistry: Record<string, ApiDocSchema>,
+): ApiDocResponse[] {
   const out: ApiDocResponse[] = []
   for (const [status, raw] of Object.entries(responses)) {
     const r = asRecord(raw)
     if (isSwagger2) {
+      const schema = r.schema ? (asRecord(r.schema) as ApiDocSchema) : undefined
       out.push({
         status,
         description: asString(r.description) || undefined,
         contentTypes: [],
-        schema: r.schema ? (asRecord(r.schema) as ApiDocSchema) : undefined,
+        schema,
+        example: exampleFromSchema(schema, schemaRegistry),
       })
       continue
     }
     const content = asRecord(r.content)
     const contentTypes = Object.keys(content)
     const first = contentTypes.length > 0 ? asRecord(content[contentTypes[0]]) : {}
+    const schema = first.schema ? (asRecord(first.schema) as ApiDocSchema) : undefined
     out.push({
       status,
       description: asString(r.description) || undefined,
       contentTypes,
-      schema: first.schema ? (asRecord(first.schema) as ApiDocSchema) : undefined,
-      example: first.example ?? exampleFromExamples(first.examples),
+      schema,
+      example: first.example ?? exampleFromExamples(first.examples) ?? exampleFromSchema(schema, schemaRegistry),
     })
   }
   return out.sort((a, b) => a.status.localeCompare(b.status))
@@ -265,6 +280,62 @@ function exampleFromExamples(examples: unknown): unknown {
   const rec = asRecord(examples)
   const first = Object.values(rec)[0]
   return first !== undefined ? asRecord(first).value : undefined
+}
+
+export function exampleFromSchema(
+  schema: ApiDocSchema | undefined,
+  registry: Record<string, ApiDocSchema> | undefined,
+  depth = 0,
+): unknown {
+  if (!schema || depth > MAX_EXAMPLE_DEPTH) return undefined
+  if (schema.example !== undefined) return schema.example
+  if (schema.default !== undefined) return schema.default
+  if (Array.isArray(schema.enum) && schema.enum.length > 0) return schema.enum[0]
+  if (schema.$ref) {
+    const resolved = registry ? resolveSchemaRef(schema.$ref, registry) : null
+    return resolved ? exampleFromSchema(resolved, registry, depth + 1) : {}
+  }
+
+  const composite = firstSchema(schema.allOf) ?? firstSchema(schema.oneOf) ?? firstSchema(schema.anyOf)
+  if (composite) {
+    const base = exampleFromSchema(composite, registry, depth + 1)
+    if (!Array.isArray(schema.allOf)) return base
+    const merged = typeof base === 'object' && base !== null && !Array.isArray(base) ? { ...base } : {}
+    for (const part of schema.allOf) {
+      const value = exampleFromSchema(asRecord(part) as ApiDocSchema, registry, depth + 1)
+      if (typeof value === 'object' && value !== null && !Array.isArray(value)) Object.assign(merged, value)
+    }
+    return merged
+  }
+
+  const type = Array.isArray(schema.type) ? schema.type[0] : schema.type
+  if (type === 'array' || schema.items) {
+    const item = exampleFromSchema(asRecord(schema.items) as ApiDocSchema, registry, depth + 1)
+    return [item ?? 'string']
+  }
+  if (type === 'object' || schema.properties) {
+    const properties = asRecord(schema.properties)
+    const out: Record<string, unknown> = {}
+    for (const [key, prop] of Object.entries(properties)) {
+      out[key] = exampleFromSchema(asRecord(prop) as ApiDocSchema, registry, depth + 1)
+    }
+    return out
+  }
+  if (type === 'integer') return 0
+  if (type === 'number') return 0
+  if (type === 'boolean') return true
+  if (type === 'string') {
+    if (schema.format === 'date-time') return '2024-01-01T00:00:00Z'
+    if (schema.format === 'date') return '2024-01-01'
+    if (schema.format === 'email') return 'user@example.com'
+    if (schema.format === 'uri') return 'https://example.com'
+    return 'string'
+  }
+  return undefined
+}
+
+function firstSchema(value: unknown): ApiDocSchema | undefined {
+  return Array.isArray(value) && value.length > 0 ? (asRecord(value[0]) as ApiDocSchema) : undefined
 }
 
 /** Resolve a `$ref` against the registry, or return null if unknown. */
