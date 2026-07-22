@@ -168,7 +168,7 @@ adomnia/
 | `TabBar.tsx` | Tab management, pinning, context menus |
 | `WSPanel.tsx` | WebSocket client with live messaging |
 | `KafkaPanel.tsx` | Kafka producer/consumer UI |
-| `MockPanel.tsx` | Mock server endpoint config, hit log |
+| `MockPanel.tsx` | Mock Server Control Room: endpoint source/import, focused request scope, runtime configuration, endpoint inspector, and decision-aware traffic |
 | `ProxyPanel.tsx` | Interceptor traffic viewer, breakpoints, map local/remote |
 | `LoadTestDrawer.tsx` | Load test config, scatter plot, percentile metrics |
 | `UtilsPanel.tsx` | 20+ developer utilities (UUID, Base64, JWT, etc.) |
@@ -178,6 +178,8 @@ adomnia/
 **State management:** React hooks (useState, useEffect, useReducer where needed).  
 **Variable substitution:** `{{varName}}` resolved from active environment before send.
 
+**AI credentials:** `settings.ai.credentialMode` is backward-compatible and defaults to `vault`. When set to `environment`, the renderer must not resolve or send a stored key (including a `vault:` reference). `internal/ai` resolves only the inherited process environment in memory: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` / `GOOGLE_API_KEY`, `HUGGINGFACE_API_KEY` / `HF_TOKEN`, `OPENAI_COMPATIBLE_API_KEY`, or `ADOMNIA_AI_API_KEY`. Never expose the value back to the frontend or persist it in Settings.
+
 ### Backend (Wails 2 + Go)
 
 The Go backend exposes Wails-bound methods consumed through generated bindings in `frontend/wailsjs/go/main/*`. Prefer existing frontend wrappers in `frontend/src/lib/*-api.ts` when they exist.
@@ -186,6 +188,7 @@ The Go backend exposes Wails-bound methods consumed through generated bindings i
 |------|---------------------|
 | App lifecycle/settings | `app.go`, `frontend/wailsjs/go/main/App.*` |
 | HTTP/mock/proxy | `internal/mock`, `internal/proxy`, `internal/httpexec`, `internal/httputil` |
+| AI runtime | `internal/ai`, `ai_bindings.go`, `frontend/src/lib/aiEngine.ts` |
 | Browser debugging | `internal/browser` |
 | Protocols/brokers | `internal/grpc`, `internal/kafka`, `internal/broker`, `internal/ws`, `internal/sse` |
 | Data/security | `internal/database`, `internal/storage`, `internal/vault`, `internal/oauth` |
@@ -389,6 +392,8 @@ High-value test targets (what users actually do):
 - Variable substitution (`{{var}}`) across all fields
 - Auth flows end-to-end (OAuth2, AWS4)
 - Mock path matching (`:param`, `*`, `**`) with real requests
+- Mock-this-tab handoff: only the focused endpoint is sent to an already-running mock runtime
+- AI environment credential resolution: provider-specific variable selection, no key value reaches the renderer
 - Proxy breakpoints and map local/remote with real traffic
 - Workspace import/export with real data
 - Postman v2.1 parser with real files
@@ -404,6 +409,7 @@ What we DON'T chase:
 
 - **Local-first by design** — no telemetry, no external calls
 - **Plaintext storage** — localStorage is not encrypted, document this
+- **AI environment mode** — environment credentials are intentionally machine-local and not persisted, but are available to processes launched with the same user environment; never log or render their values
 - **Script execution** — user scripts run in renderer, warn about risks
 - **Certificate handling** — validate cert paths, never auto-trust
 - **Proxy CA export** — in progress, document trust implications

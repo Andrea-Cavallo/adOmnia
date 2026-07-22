@@ -115,3 +115,52 @@ describe('buildApiDocModel (Swagger 2.0)', () => {
     expect(post.parameters.find((p) => p.name === 'body')).toBeUndefined()
   })
 })
+
+describe('OAS 3.2 metadata and multi content-type', () => {
+  const spec = {
+    openapi: '3.2.0',
+    info: { title: 'Shop', version: '1.0.0' },
+    tags: [{ name: 'pet', summary: 'Pets', description: 'Pet ops', externalDocs: { url: 'https://swagger.io', description: 'More' } }],
+    paths: {
+      '/pet': {
+        put: {
+          tags: ['pet'],
+          summary: 'Update',
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': { schema: { type: 'object' } },
+              'application/xml': { schema: { type: 'object' } },
+              'application/x-www-form-urlencoded': { schema: { type: 'object' } },
+            },
+          },
+          responses: { '200': { description: 'ok' } },
+        },
+        query: { tags: ['pet'], summary: 'Search', responses: { '200': { description: 'ok' } } },
+      },
+    },
+  }
+  const model = buildApiDocModel(spec)
+
+  it('captures the OpenAPI version', () => {
+    expect(model.oasVersion).toBe('3.2.0')
+  })
+
+  it('captures tag externalDocs and summary', () => {
+    const tag = model.tags.find((t) => t.name === 'pet')!
+    expect(tag.externalDocs?.url).toBe('https://swagger.io')
+    expect(tag.summary).toBe('Pets')
+  })
+
+  it('exposes every request-body media type', () => {
+    const put = model.tags[0].operations.find((o) => o.method === 'PUT')!
+    expect(put.requestBody?.contents.map((c) => c.contentType)).toEqual([
+      'application/json', 'application/xml', 'application/x-www-form-urlencoded',
+    ])
+  })
+
+  it('parses the QUERY method', () => {
+    const methods = model.tags[0].operations.map((o) => o.method)
+    expect(methods).toContain('QUERY')
+  })
+})

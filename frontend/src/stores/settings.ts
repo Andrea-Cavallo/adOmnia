@@ -81,6 +81,8 @@ export interface AppSettings {
     apiKey: string
     baseURL: string
     enabled: boolean
+    /** `environment` keeps AI credentials machine-local and bypasses Vault resolution. */
+    credentialMode: 'vault' | 'environment'
   }
   features: {
     pluginsEnabled: boolean
@@ -105,7 +107,7 @@ function mergeBlock<T extends Record<string, unknown>>(defaults: T, saved: Parti
 }
 
 const defaultSettings: AppSettings = {
-  version: 3,
+  version: 4,
   general: {
     confirmBeforeClosingDirtyTabs: true,
     restoreTabsOnStartup: true,
@@ -182,6 +184,7 @@ const defaultSettings: AppSettings = {
     apiKey: '',
     baseURL: 'http://localhost:11434',
     enabled: false,
+    credentialMode: 'vault',
   },
   features: {
     pluginsEnabled: false,

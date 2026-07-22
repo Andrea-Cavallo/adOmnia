@@ -69,11 +69,23 @@ All releases include `SHA256SUMS.txt` and source code archives. Verify your down
 | **Collection Runner & Testing** | Test runner with iterations/delay/retry/CSV datasets, assertion editor (JSONPath, XPath, schema), Mermaid-generated API flows, **no-code Visual Test builder** (block-based, export to Flow), **response schema/contract validation**, test data studio, and a headless `adomnia run` CLI for folder-backed collections with CLI/JSON/JUnit reports |
 | **Protocols** | SOAP/WSDL Studio (1.1 & 1.2, WS-Security), gRPC (reflection, offline proto/protoset authoring, unary calls, live cancellable streaming, TLS/mTLS, metadata, trailers, reproducible history and load tests), WebSocket client + mock server, SSE client, **MCP Client/Debugger** + **MCP Server Generator** (collection/OAS → runnable MCP server; stdio multi-session + HTTP transport) |
 | **Brokers** | Kafka (produce/consume/bulk/load test), RabbitMQ, MQTT, Redis Pub/Sub, NATS — shared message log, persistent connection profiles |
-| **Simulation & Infrastructure** | Mock server with **Smart Mock Engine** (schema-driven Faker generation) and **conditional expectations** (per-field matching), record & replay, round-robin; HTTPS proxy/interceptor (MITM CA, breakpoints, map local/remote, throttling), Docker Lab (14 presets), load testing (HTTP + gRPC, HDR histogram, P99, side-by-side comparison) |
+| **Simulation & Infrastructure** | Mock Server Control Room with **Smart Mock Engine** (schema-driven Faker generation), **conditional expectations** (per-field matching), request-focused **Mock this tab** handoff, endpoint explorer, decision-aware traffic, record & replay and round-robin; HTTPS proxy/interceptor (MITM CA, breakpoints, map local/remote, throttling), Docker Lab (14 presets), load testing (HTTP + gRPC, HDR histogram, P99, side-by-side comparison) |
 | **Debugging & Analysis** | Browser DevTools via CDP (network, console, JS debugger, DOM inspector, storage, screenshots), HAR viewer, DNS lookup/trace/compare, port scanner, CORS tester, JSON/XML/YAML tools, observability panel, secret scanner |
 | **Document & Productivity Studio** | **PDF Editor** (view, annotate, fill forms, flatten/export) with **real cryptographic signing** — PEM or PKCS#12/JKS keystore import, RFC-3161 **TSA timestamping**, and **LTV** (chain + OCSP/CRL); **LaTeX Studio** (live `.tex` editor + preview + templates); Markdown studio; Mermaid diagrams |
 | **Version Control (built-in Git)** | Full Git client inside the app — clone/init, stage & commit, **visual commit graph** with per-commit context actions (checkout, revert, reset, cherry-pick), branch create/switch/merge, push/pull to any remote, diff viewer, and **interactive conflict resolution**. Export collections as folder-backed, diff-friendly trees, import them back, and check drift between the app state and the files on disk |
-| **Data, Security & Extensibility** | Database Studio (SQLite/PostgreSQL/MySQL/MongoDB), bbolt storage inspector, encrypted vault (age/scrypt), **AI engine** (Anthropic/OpenAI/Gemini/Ollama — AI mock generation), WASM/JS plugin sandbox, 11 built-in themes + custom skin system |
+| **Data, Security & Extensibility** | Database Studio (SQLite/PostgreSQL/MySQL/MongoDB), bbolt storage inspector, encrypted vault (age/scrypt), **AI engine** (Anthropic/OpenAI/Gemini/Ollama — AI mock generation) with Vault or machine-local environment credentials, WASM/JS plugin sandbox, 11 built-in themes + custom skin system |
+
+### Mock the request you are working on
+
+From an open request tab, choose **Mock this tab**. adOmnia opens the Mock Server directly on that endpoint in a focused scope: existing mock definitions stay saved, but only the selected request is active until you choose **Show all endpoints**. If the server is already running, the focused configuration is applied live without changing its port.
+
+The Traffic view explains what happened for each call: the matched endpoint and response, or a useful reason such as a missing mock response, authentication failure, CORS preflight, or no matching route.
+
+### AI credentials from the local machine
+
+In **Settings → AI Engine**, enable **Use system environment credentials** to bypass the Vault for AI connections. The desktop backend reads the key only from the environment inherited by adOmnia; it is never returned to the UI or saved in Settings.
+
+Supported variables include `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` / `GOOGLE_API_KEY`, `HUGGINGFACE_API_KEY` / `HF_TOKEN`, `OPENAI_COMPATIBLE_API_KEY`, and the generic fallback `ADOMNIA_AI_API_KEY`. On Windows, restart adOmnia after changing a user or system environment variable.
 
 ### Version collections as folders
 

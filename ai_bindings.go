@@ -77,7 +77,11 @@ func (a *AIEngine) ListModels(cfgJSON, query string) (string, error) {
 	if err := json.Unmarshal([]byte(cfgJSON), &cfg); err != nil {
 		return "", fmt.Errorf("invalid config: %w", err)
 	}
-	models, err := ai.DiscoverModels(context.Background(), cfg, query)
+	resolved, err := ai.ResolveEnvironmentCredentials(cfg)
+	if err != nil {
+		return "", err
+	}
+	models, err := ai.DiscoverModels(context.Background(), resolved, query)
 	if err != nil {
 		return "", err
 	}

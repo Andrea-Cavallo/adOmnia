@@ -104,13 +104,17 @@ func SetPersistConfig(persist func([]byte) error) {
 }
 
 type mockHitEntry struct {
-	ID         string `json:"id"`
-	Timestamp  string `json:"timestamp"`
-	Method     string `json:"method"`
-	Path       string `json:"path"`
-	Matched    bool   `json:"matched"`
-	ResponseID string `json:"responseId"`
-	Status     int    `json:"status"`
+	ID           string `json:"id"`
+	Timestamp    string `json:"timestamp"`
+	Method       string `json:"method"`
+	Path         string `json:"path"`
+	Matched      bool   `json:"matched"`
+	ResponseID   string `json:"responseId"`
+	EndpointID   string `json:"endpointId,omitempty"`
+	EndpointPath string `json:"endpointPath,omitempty"`
+	ResponseName string `json:"responseName,omitempty"`
+	Reason       string `json:"reason,omitempty"`
+	Status       int    `json:"status"`
 }
 
 func mockStartHandler(w http.ResponseWriter, r *http.Request) {
@@ -219,6 +223,40 @@ func mockStatusHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]interface{}{"running": running, "port": port})
 }
 
+// mockConfigHandler atomically replaces the runtime configuration without
+// rebinding the listening socket. It deliberately keeps the active port: a
+// port change remains an explicit stop/start action in the UI.
+func mockConfigHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST only", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var cfg mockServerConfig
+	if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
+		httputil.JSONError(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	mockSrvMu.Lock()
+	running := mockSrv != nil
+	activePort := mockSrvPort
+	mockSrvMu.Unlock()
+	if !running {
+		httputil.JSONError(w, "mock server is not running", http.StatusConflict)
+		return
+	}
+
+	cfg.Port = activePort
+	mockCfgMu.Lock()
+	mockCfg = cfg
+	mockCfgMu.Unlock()
+
+	devlog.Info("mockConfigHandler", "configurazione mock aggiornata live", map[string]any{"port": activePort, "endpoints": len(cfg.Endpoints)})
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"ok": true, "port": activePort, "endpoints": len(cfg.Endpoints)})
+}
+
 func mockHitsHandler(w http.ResponseWriter, r *http.Request) {
 	mockHitsMu.Lock()
 	hits := make([]mockHitEntry, len(mockHits))
@@ -227,6 +265,18 @@ func mockHitsHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(hits)
+}
+
+func mockHitsClearHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST only", http.StatusMethodNotAllowed)
+		return
+	}
+	mockHitsMu.Lock()
+	mockHits = nil
+	mockHitsMu.Unlock()
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"ok":true}`))
 }
 
 func mockRequestHandler(w http.ResponseWriter, r *http.Request) {
@@ -242,7 +292,7 @@ func mockRequestHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Max-Age", "86400")
 		if strings.ToUpper(r.Method) == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
-			recordHit(r.Method, r.URL.Path, true, "", http.StatusNoContent)
+			recordHitDetailed(r.Method, r.URL.Path, true, "", http.StatusNoContent, mockHitDetails{Reason: "CORS preflight"})
 			return
 		}
 	}
@@ -253,7 +303,7 @@ func mockRequestHandler(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte(`{"error":"unauthorized","message":"invalid or missing mock auth"}`))
-			recordHit(r.Method, r.URL.Path, false, "", 401)
+			recordHitDetailed(r.Method, r.URL.Path, false, "", 401, mockHitDetails{Reason: "Invalid or missing X-Mock-Auth header"})
 			return
 		}
 	}
@@ -280,14 +330,14 @@ func mockRequestHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(`{"error":"no matching mock endpoint"}`))
-		recordHit(reqMethod, reqPath, false, "", 404)
+		recordHitDetailed(reqMethod, reqPath, false, "", 404, mockHitDetails{Reason: "No endpoint matched this method and path"})
 		return
 	}
 
 	bodyBytes, err := readAndRestoreBody(r)
 	if err != nil {
 		httputil.JSONError(w, "cannot read request body: "+err.Error(), http.StatusBadRequest)
-		recordHit(reqMethod, reqPath, true, "", 400)
+		recordHitDetailed(reqMethod, reqPath, true, "", 400, mockHitDetails{EndpointID: matched.ID, EndpointPath: matched.Path, Reason: "Request body could not be read"})
 		return
 	}
 
@@ -300,7 +350,11 @@ func mockRequestHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			w.Write([]byte(`{"error":"no active response for endpoint"}`))
 		}
-		recordHit(reqMethod, reqPath, true, "", 404)
+		reason := "No active response is configured"
+		if conditionMode {
+			reason = "No response conditions matched this request"
+		}
+		recordHitDetailed(reqMethod, reqPath, true, "", 404, mockHitDetails{EndpointID: matched.ID, EndpointPath: matched.Path, Reason: reason})
 		return
 	}
 
@@ -332,7 +386,7 @@ func mockRequestHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(status)
 	w.Write([]byte(responseBody))
 
-	recordHit(reqMethod, reqPath, true, resp.ID, status)
+	recordHitDetailed(reqMethod, reqPath, true, resp.ID, status, mockHitDetails{EndpointID: matched.ID, EndpointPath: matched.Path, ResponseName: resp.Name})
 }
 
 func readAndRestoreBody(r *http.Request) ([]byte, error) {
@@ -635,16 +689,27 @@ func normalizePath(p string) string {
 	return p
 }
 
-func recordHit(method, path string, matched bool, responseID string, status int) {
+type mockHitDetails struct {
+	EndpointID   string
+	EndpointPath string
+	ResponseName string
+	Reason       string
+}
+
+func recordHitDetailed(method, path string, matched bool, responseID string, status int, details mockHitDetails) {
 	seq := atomic.AddInt64(&mockHitSeq, 1)
 	entry := mockHitEntry{
-		ID:         fmt.Sprintf("mh_%d", seq),
-		Timestamp:  time.Now().Format("15:04:05.000"),
-		Method:     method,
-		Path:       path,
-		Matched:    matched,
-		ResponseID: responseID,
-		Status:     status,
+		ID:           fmt.Sprintf("mh_%d", seq),
+		Timestamp:    time.Now().Format("15:04:05.000"),
+		Method:       method,
+		Path:         path,
+		Matched:      matched,
+		ResponseID:   responseID,
+		EndpointID:   details.EndpointID,
+		EndpointPath: details.EndpointPath,
+		ResponseName: details.ResponseName,
+		Reason:       details.Reason,
+		Status:       status,
 	}
 	mockHitsMu.Lock()
 	if len(mockHits) >= 500 {
@@ -666,7 +731,9 @@ func RegisterHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/mock/start", mockStartHandler)
 	mux.HandleFunc("/mock/stop", mockStopHandler)
 	mux.HandleFunc("/mock/status", mockStatusHandler)
+	mux.HandleFunc("/mock/config", mockConfigHandler)
 	mux.HandleFunc("/mock/hits", mockHitsHandler)
+	mux.HandleFunc("/mock/hits/clear", mockHitsClearHandler)
 	mux.HandleFunc("/mock/record", recordReplayHandler)
 	mux.HandleFunc("/mock/preview-schema", mockPreviewSchemaHandler)
 	mux.HandleFunc("/ws/mock/start", wsMockStartHandler)

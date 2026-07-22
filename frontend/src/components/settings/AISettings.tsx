@@ -31,6 +31,14 @@ const DEFAULT_BASE_URLS: Record<string, string> = {
   'openai-compatible': 'http://localhost:1234/v1',
 }
 
+const ENVIRONMENT_VARIABLES: Record<string, string[]> = {
+  anthropic: ['ANTHROPIC_API_KEY', 'ADOMNIA_AI_API_KEY'],
+  openai: ['OPENAI_API_KEY', 'ADOMNIA_AI_API_KEY'],
+  gemini: ['GEMINI_API_KEY', 'GOOGLE_API_KEY', 'ADOMNIA_AI_API_KEY'],
+  huggingface: ['HUGGINGFACE_API_KEY', 'HF_TOKEN', 'ADOMNIA_AI_API_KEY'],
+  'openai-compatible': ['OPENAI_COMPATIBLE_API_KEY', 'OPENAI_API_KEY', 'ADOMNIA_AI_API_KEY'],
+}
+
 interface ModelOption { id: string; label: string; detail: string; badge?: string }
 interface DiscoveredModel { id: string; name: string; owner?: string; source: string; context?: number; local: boolean }
 
@@ -87,7 +95,8 @@ export function AISettings() {
   const [discovering, setDiscovering] = useState(false)
   const [discoverError, setDiscoverError] = useState('')
 
-  const keyIsSecured = isVaultRef(ai.apiKey)
+  const usesEnvironmentCredentials = ai.credentialMode === 'environment'
+  const keyIsSecured = !usesEnvironmentCredentials && isVaultRef(ai.apiKey)
 
   const handleProviderChange = (provider: string) => {
     updateAi({
@@ -105,7 +114,7 @@ export function AISettings() {
     setDiscovering(true)
     setDiscoverError('')
     try {
-      const config = ['huggingface', 'ollama'].includes(ai.provider)
+      const config = ai.provider === 'ollama'
         ? JSON.stringify({ provider: ai.provider, model: ai.model, apiKey: '', baseURL: ai.baseURL })
         : await buildAIConfig()
       const raw = await AIEngine.ListModels(config, modelQuery.trim())
@@ -317,7 +326,26 @@ export function AISettings() {
           </div>
         )}
 
-        {needsApiKey && !keyIsSecured && (
+        {needsApiKey && (
+          <div className="rounded-lg border border-border-2 bg-surface-1 px-3 py-1">
+            <Toggle
+              label="Use system environment credentials"
+              desc="Skip the Vault for AI. The desktop backend reads the key from this machine only."
+              checked={usesEnvironmentCredentials}
+              onChange={(enabled) => updateAi({ credentialMode: enabled ? 'environment' : 'vault' })}
+            />
+            {usesEnvironmentCredentials && (
+              <div className="mb-2 flex items-start gap-2 rounded-md border border-success/30 bg-success/8 px-2.5 py-2 text-[10px] text-text-3">
+                <Database size={13} className="mt-0.5 shrink-0 text-success" />
+                <span>
+                  Vault is bypassed. Set <code className="font-mono text-success">{(ENVIRONMENT_VARIABLES[ai.provider] ?? ['ADOMNIA_AI_API_KEY']).join(' or ')}</code> in the system environment, then restart adOmnia. The value is never shown or saved in Settings.
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {needsApiKey && !usesEnvironmentCredentials && !keyIsSecured && (
           <div className="flex flex-col gap-3">
             <PasswordInput
               label="API Key"

@@ -549,7 +549,16 @@ function RequestWorkspace() {
       return
     }
     try {
-      await appendMockEndpoints([endpoint])
+      const focusedEndpoint = {
+        ...endpoint,
+        ...(tab.collectionId ? { sourceCollectionId: tab.collectionId } : {}),
+        sourceRequestId: tab.request.id,
+      }
+      await appendMockEndpoints([focusedEndpoint])
+      sessionStorage.setItem('adomnia.mock.focus', JSON.stringify({
+        endpointId: focusedEndpoint.id,
+        collectionId: tab.collectionId ?? '',
+      }))
       useAppStore.getState().setActiveRail('mock')
     } catch (err) {
       flashMockFeedback(err instanceof Error ? err.message : 'Could not create the mock endpoint', false)

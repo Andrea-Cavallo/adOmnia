@@ -6,6 +6,22 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-07-22
+
+### Added
+- **Swagger Editor workspace redesign:** the section now opens straight into a live editor/preview split (no landing card), powered by the Monaco editor with offline workers — syntax highlighting, folding, find/replace, format, cursor position, and inline error markers on the offending line.
+- **Schema-aware OpenAPI IntelliSense:** completion and hover for YAML (`monaco-yaml`) and JSON (native) against the OpenAPI 3.0 meta-schema, plus `$ref` completion of the document's own component names.
+- **Swagger preview parity (dark):** rendered markdown in descriptions with external links, an OpenAPI version badge (e.g. `OAS 3.2`), per-tag "Find out more" external-docs links, a switchable media-type dropdown for request/response bodies, JSON example syntax highlighting, and endpoint search/filter — all on the adOmnia design system.
+- **Mock this tab in context:** opens the Mock Server on the Endpoints view with the chosen request selected and a focused request scope, applied live without changing the port or restarting.
+- **Mock Server Control Room:** Overview / Endpoints / Traffic / Contract views, an endpoint explorer with inspect/edit, manual endpoint creation, and explicit (no longer automatic) collection import that preserves the source collection.
+- **Mock traffic diagnostics:** each request shows the mock's decision (selected endpoint, chosen response, or error reason), rows link to the endpoint involved, and Clear now empties the backend log.
+- **Live mock runtime updates:** a runtime configuration endpoint atomically swaps mock endpoints while the server runs (port stays fixed).
+- **AI system-environment credentials:** a "Use system environment credentials" mode in Settings > AI Engine that bypasses the Vault entirely and reads the key only from the machine environment (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`/`GOOGLE_API_KEY`, `HUGGINGFACE_API_KEY`/`HF_TOKEN`, `OPENAI_COMPATIBLE_API_KEY`, and the `ADOMNIA_AI_API_KEY` fallback).
+
+### Changed
+- **OpenAPI 3.2 QUERY:** the QUERY method is parsed and rendered as a first-class operation in the Swagger preview.
+- Optional provenance metadata (`sourceCollectionId`, `sourceRequestId`) is stored on saved mock endpoints; existing configurations remain valid.
+
 ## [0.5.9] - 2026-07-19
 
 ### Added

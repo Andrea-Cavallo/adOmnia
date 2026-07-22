@@ -1,26 +1,43 @@
-import { useMemo, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, Code2, Copy, FileText, Maximize2, Minimize2, Search, Server } from 'lucide-react'
+import { Suspense, lazy, useCallback, useMemo, useRef, useState } from 'react'
+import { AlertCircle, CheckCircle2, Code2, Columns2, ExternalLink, FileText, Loader2, Search, Server } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { ResizeHandle } from '@/components/ui/ResizeHandle'
+import { openExternal } from '@/lib/openExternal'
 import type { ApiDocModel, ApiDocOperation } from '@/lib/apidocs/parseSpec'
+import type { SpecLanguage, SpecParseError } from '@/lib/apidocs/editorSupport'
 import { OperationCard } from './OperationCard'
+import { InlineMarkdown, MiniMarkdown } from './MiniMarkdown'
+
+function oasBadge(oasVersion: string): string | null {
+  if (!oasVersion) return null
+  if (oasVersion.startsWith('2')) return 'Swagger 2.0'
+  const parts = oasVersion.split('.')
+  return `OAS ${parts[0]}.${parts[1] ?? '0'}`
+}
+
+const SpecEditor = lazy(() => import('./SpecEditor').then((m) => ({ default: m.SpecEditor })))
 
 interface ApiDocsViewerProps {
-  model: ApiDocModel
+  model: ApiDocModel | null
   rawSpec: string
+  language: SpecLanguage
+  error: SpecParseError | null
   onRawSpecChange: (rawSpec: string) => void
   onTryOperation?: (operation: ApiDocOperation) => void
 }
 
 type ViewerMode = 'split' | 'editor' | 'preview'
 
-export function ApiDocsViewer({ model, rawSpec, onRawSpecChange, onTryOperation }: ApiDocsViewerProps) {
+export function ApiDocsViewer({ model, rawSpec, language, error, onRawSpecChange, onTryOperation }: ApiDocsViewerProps) {
   const [query, setQuery] = useState('')
   const [mode, setMode] = useState<ViewerMode>('split')
-  const [editorPercent, setEditorPercent] = useState(49)
-  const [copied, setCopied] = useState(false)
+  const [editorPercent, setEditorPercent] = useState(50)
+  const [cursor, setCursor] = useState({ line: 1, column: 1 })
+  const containerRef = useRef<HTMLDivElement>(null)
 
   const tags = useMemo(() => {
     const q = query.trim().toLowerCase()
+    if (!model) return []
     if (!q) return model.tags
     return model.tags
       .map((tag) => ({
@@ -33,71 +50,63 @@ export function ApiDocsViewer({ model, rawSpec, onRawSpecChange, onTryOperation 
         ),
       }))
       .filter((tag) => tag.operations.length > 0)
-  }, [model.tags, query])
+  }, [model, query])
 
-  const copySpec = async () => {
-    await navigator.clipboard.writeText(rawSpec)
-    setCopied(true)
-    window.setTimeout(() => setCopied(false), 1400)
-  }
+  const startResize = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    const container = containerRef.current
+    if (!container) return
+    const rect = container.getBoundingClientRect()
+    const onMove = (moveEvent: MouseEvent) => {
+      const pct = ((moveEvent.clientX - rect.left) / rect.width) * 100
+      setEditorPercent(Math.min(75, Math.max(25, pct)))
+    }
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+      document.body.style.userSelect = ''
+    }
+    document.body.style.userSelect = 'none'
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }, [])
 
-  const nudgeSplit = (delta: number) => {
-    setMode('split')
-    setEditorPercent((value) => Math.min(70, Math.max(30, value + delta)))
-  }
+  const markers = error?.line ? [{ line: error.line, column: error.column, message: error.message }] : []
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-surface-0">
-      <div className="flex h-10 shrink-0 items-center gap-4 border-b border-[#0c2a38] bg-[#143a4a] px-3 text-white">
-        <div className="flex items-center gap-2">
-          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#85ea2d] text-[11px] font-black text-[#17313d]">{'{ }'}</div>
-          <span className="text-[14px] font-semibold">Swagger Editor</span>
-        </div>
-        <button className="text-[12px] font-semibold hover:text-[#85ea2d]">File</button>
-        <button className="text-[12px] font-semibold hover:text-[#85ea2d]">Edit</button>
-        <button className="text-[12px] font-semibold hover:text-[#85ea2d]">About</button>
-        <div className="ml-auto flex items-center gap-1">
-          <ToolbarButton active={mode === 'editor'} onClick={() => setMode('editor')} title="Show editor only">
-            <Code2 size={13} /> Editor
-          </ToolbarButton>
-          <ToolbarButton active={mode === 'split'} onClick={() => setMode('split')} title="Show editor and preview">
-            <FileText size={13} /> Editor + Preview
-          </ToolbarButton>
-          <ToolbarButton active={mode === 'preview'} onClick={() => setMode('preview')} title="Maximize preview">
-            {mode === 'preview' ? <Minimize2 size={13} /> : <Maximize2 size={13} />} Preview
-          </ToolbarButton>
-          <button
-            onClick={() => nudgeSplit(-8)}
-            className="flex h-7 w-7 items-center justify-center rounded border border-white/20 text-white/80 hover:bg-white/10 hover:text-white"
-            title="Move divider left"
-          >
-            <ChevronLeft size={14} />
-          </button>
-          <button
-            onClick={() => nudgeSplit(8)}
-            className="flex h-7 w-7 items-center justify-center rounded border border-white/20 text-white/80 hover:bg-white/10 hover:text-white"
-            title="Move divider right"
-          >
-            <ChevronRight size={14} />
-          </button>
-          <button
-            onClick={() => void copySpec()}
-            className="ml-1 flex h-7 items-center gap-1 rounded border border-[#2aa6df] px-2 text-[11px] font-semibold text-white hover:bg-[#2aa6df]/20"
-            title="Copy loaded YAML or JSON document"
-          >
-            <Copy size={12} /> {copied ? 'Copied' : 'Copy'}
-          </button>
-        </div>
-      </div>
-
       <div
+        ref={containerRef}
         className="grid min-h-0 flex-1"
-        style={mode === 'split' ? { gridTemplateColumns: `${editorPercent}% 6px minmax(0, 1fr)` } : undefined}
+        style={mode === 'split' ? { gridTemplateColumns: `${editorPercent}% auto minmax(0, 1fr)` } : undefined}
       >
         {(mode === 'split' || mode === 'editor') && (
-          <SpecEditorPane rawSpec={rawSpec} onRawSpecChange={onRawSpecChange} />
+          <section className="flex min-h-0 min-w-0 flex-col border-r border-border-1 bg-surface-0">
+            <div className="flex h-7 shrink-0 items-center gap-2 border-b border-border-1 bg-surface-1 px-3">
+              <Code2 size={12} className="text-accent" />
+              <span className="rounded border border-border-2 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-text-3">{language}</span>
+              <div className="ml-auto flex items-center gap-1">
+                <LayoutButton active={mode === 'editor'} onClick={() => setMode('editor')} title="Editor only"><Code2 size={12} /></LayoutButton>
+                <LayoutButton active={mode === 'split'} onClick={() => setMode('split')} title="Editor + preview"><Columns2 size={12} /></LayoutButton>
+                <LayoutButton active={false} onClick={() => setMode('preview')} title="Preview only"><FileText size={12} /></LayoutButton>
+              </div>
+            </div>
+            <div className="min-h-0 flex-1">
+              <Suspense fallback={<EditorLoading />}>
+                <SpecEditor
+                  value={rawSpec}
+                  language={language}
+                  markers={markers}
+                  onChange={onRawSpecChange}
+                  onCursor={(line, column) => setCursor({ line, column })}
+                />
+              </Suspense>
+            </div>
+          </section>
         )}
-        {mode === 'split' && <Divider />}
+
+        {mode === 'split' && <ResizeHandle label="Resize editor and preview" onMouseDown={startResize} withLine={false} />}
+
         {(mode === 'split' || mode === 'preview') && (
           <ReferencePane
             model={model}
@@ -105,9 +114,52 @@ export function ApiDocsViewer({ model, rawSpec, onRawSpecChange, onTryOperation 
             query={query}
             setQuery={setQuery}
             onTryOperation={onTryOperation}
+            mode={mode}
+            setMode={setMode}
           />
         )}
       </div>
+
+      <StatusBar language={language} cursor={cursor} model={model} error={error} />
+    </div>
+  )
+}
+
+function StatusBar({
+  language,
+  cursor,
+  model,
+  error,
+}: {
+  language: SpecLanguage
+  cursor: { line: number; column: number }
+  model: ApiDocModel | null
+  error: SpecParseError | null
+}) {
+  return (
+    <div className="flex h-6 shrink-0 items-center gap-3 border-t border-border-1 bg-surface-1 px-3 text-[10px] text-text-4">
+      <span className="font-mono">Ln {cursor.line}, Col {cursor.column}</span>
+      <span className="uppercase">{language}</span>
+      <div className="ml-auto flex min-w-0 items-center gap-1.5">
+        {error ? (
+          <span className="flex min-w-0 items-center gap-1 text-error" title={error.message}>
+            <AlertCircle size={11} className="shrink-0" />
+            <span className="truncate">{error.line ? `Line ${error.line}: ` : ''}{error.message}</span>
+          </span>
+        ) : (
+          <span className="flex items-center gap-1 text-success">
+            <CheckCircle2 size={11} /> Valid · {model?.operationCount ?? 0} operations
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function EditorLoading() {
+  return (
+    <div className="flex h-full items-center justify-center bg-surface-0 text-text-4">
+      <Loader2 size={16} className="animate-spin" />
     </div>
   )
 }
@@ -118,57 +170,96 @@ function ReferencePane({
   query,
   setQuery,
   onTryOperation,
+  mode,
+  setMode,
 }: {
-  model: ApiDocModel
+  model: ApiDocModel | null
   tags: ApiDocModel['tags']
   query: string
   setQuery: (value: string) => void
   onTryOperation?: (operation: ApiDocOperation) => void
+  mode: ViewerMode
+  setMode: (mode: ViewerMode) => void
 }) {
+  if (!model) {
+    return (
+      <div className="flex min-w-0 items-center justify-center bg-surface-0 p-8 text-center text-[12px] text-text-4">
+        Start typing a valid OpenAPI document to see the live documentation here.
+      </div>
+    )
+  }
   return (
-    <div className="min-w-0 overflow-y-auto bg-[#fafafa] text-[#3b4151]">
-      <header className="border-b border-[#e6e6e6] bg-[#fafafa] px-8 py-6">
+    <div className="min-w-0 overflow-y-auto bg-surface-0">
+      <header className="border-b border-border-1 bg-surface-1/60 px-6 py-5">
         <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1">
-            <h1 className="text-[28px] font-semibold leading-tight text-[#3b4151]">{model.title} {model.version && model.version}</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-[20px] font-semibold leading-tight text-text-1">{model.title}</h1>
+              {model.version && <span className="shrink-0 rounded bg-accent/10 px-1.5 py-0.5 font-mono text-[11px] text-accent">v{model.version}</span>}
+              {oasBadge(model.oasVersion) && (
+                <span className="shrink-0 rounded bg-success/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-success">{oasBadge(model.oasVersion)}</span>
+              )}
+            </div>
             {model.description && (
-              <p className="mt-4 max-w-3xl whitespace-pre-wrap text-[13px] leading-relaxed text-[#3b4151]">{model.description}</p>
+              <MiniMarkdown text={model.description} className="mt-2 max-w-3xl text-[12px] leading-relaxed text-text-3" />
             )}
           </div>
-          <span className="shrink-0 rounded border border-[#d8dde7] bg-white px-2 py-1 text-[11px] text-[#7d8492]">{model.operationCount} operations</span>
+          {mode === 'preview' && (
+            <button
+              onClick={() => setMode('split')}
+              className="shrink-0 rounded border border-border-2 px-2 py-1 text-[10px] text-text-3 hover:text-text-1"
+            >
+              Show editor
+            </button>
+          )}
         </div>
         {model.servers.length > 0 && (
-          <div className="mt-6">
-            <div className="mb-2 flex items-center gap-2 text-[18px] font-bold text-[#3b4151]">
-              <Server size={16} className="text-[#7d8492]" /> Servers
+          <div className="mt-4">
+            <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-text-4">
+              <Server size={12} /> Servers
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {model.servers.map((server) => (
-                <span key={server} className="rounded border border-[#d8dde7] bg-white px-2 py-1 font-mono text-[11px] text-[#3b4151]">{server}</span>
+                <span key={server} className="rounded border border-border-2 bg-surface-2 px-2 py-0.5 font-mono text-[11px] text-text-2">{server}</span>
               ))}
             </div>
           </div>
         )}
       </header>
 
-      <div className="sticky top-0 z-10 border-b border-[#e6e6e6] bg-[#fafafa]/95 px-8 py-2 backdrop-blur">
-        <div className="flex h-8 max-w-xl items-center gap-2 rounded border border-[#d8dde7] bg-white px-2">
-          <Search size={13} className="text-[#7d8492]" />
+      <div className="sticky top-0 z-10 border-b border-border-1 bg-surface-0/95 px-6 py-2 backdrop-blur">
+        <div className="flex h-8 max-w-xl items-center gap-2 rounded border border-border-2 bg-surface-1 px-2 focus-within:border-accent">
+          <Search size={13} className="text-text-4" />
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Filter operations by path, method, or summary..."
-            className="h-full flex-1 bg-transparent text-[12px] text-[#3b4151] outline-none placeholder:text-[#7d8492]"
+            className="h-full flex-1 bg-transparent text-[12px] text-text-1 outline-none placeholder:text-text-4"
           />
         </div>
       </div>
 
-      <div className="space-y-8 px-8 py-6">
+      <div className="space-y-6 px-6 py-5">
         {tags.map((tag, tagIndex) => (
           <section key={tag.name} id={`apidoc-tag-${tag.name}`} className="scroll-mt-16">
-            <div className="mb-3">
-              <h2 className="text-[20px] font-bold text-[#3b4151]">{tag.name}</h2>
-              {tag.description && <p className="mt-1 text-[12px] text-[#7d8492]">{tag.description}</p>}
+            <div className="mb-2 flex items-end justify-between gap-3 border-b border-border-1 pb-1.5">
+              <div className="min-w-0">
+                <h2 className="text-[15px] font-bold text-text-1">{tag.name}</h2>
+                {(tag.summary || tag.description) && (
+                  <div className="mt-0.5 text-[11px] text-text-4">
+                    <InlineMarkdown text={tag.summary || tag.description || ''} />
+                  </div>
+                )}
+              </div>
+              {tag.externalDocs && (
+                <button
+                  onClick={() => openExternal(tag.externalDocs!.url)}
+                  title={tag.externalDocs.description || tag.externalDocs.url}
+                  className="flex shrink-0 items-center gap-1 whitespace-nowrap text-[11px] text-accent hover:underline"
+                >
+                  {tag.externalDocs.description || 'Find out more'} <ExternalLink size={11} />
+                </button>
+              )}
             </div>
             <div className="space-y-2">
               {tag.operations.map((op, operationIndex) => (
@@ -184,59 +275,21 @@ function ReferencePane({
           </section>
         ))}
         {tags.length === 0 && (
-          <p className="py-10 text-center text-[12px] text-[#7d8492]">No operations match "{query}".</p>
+          <p className="py-10 text-center text-[12px] text-text-4">No operations match "{query}".</p>
         )}
       </div>
     </div>
   )
 }
 
-function SpecEditorPane({ rawSpec, onRawSpecChange }: { rawSpec: string; onRawSpecChange: (rawSpec: string) => void }) {
-  const lineRef = useRef<HTMLDivElement>(null)
-  const lineCount = rawSpec ? rawSpec.split(/\r?\n/).length : 1
-  return (
-    <section className="flex min-h-0 min-w-0 flex-col bg-[#1f232b]">
-      <div className="flex h-7 shrink-0 items-center justify-end gap-2 border-b border-[#111820] bg-[#f7f7f7] px-3 text-[#1b2733]">
-        <span className="rounded border border-[#d7dde3] px-1.5 py-0.5 text-[10px] font-semibold">YAML / JSON</span>
-        <span className="text-[10px]">{lineCount} lines</span>
-      </div>
-      <div className="grid min-h-0 flex-1 grid-cols-[54px_minmax(0,1fr)] overflow-hidden">
-        <div
-          ref={lineRef}
-          className="select-none overflow-hidden border-r border-[#303640] bg-[#252a33] px-2 py-2 text-right font-mono text-[12px] leading-[21px] text-[#7c8797]"
-        >
-          {Array.from({ length: lineCount }, (_, index) => (
-            <div key={index}>{index + 1}</div>
-          ))}
-        </div>
-        <textarea
-          value={rawSpec}
-          onChange={(event) => onRawSpecChange(event.target.value)}
-          onScroll={(event) => {
-            if (lineRef.current) lineRef.current.scrollTop = event.currentTarget.scrollTop
-          }}
-          spellCheck={false}
-          className="min-h-0 flex-1 resize-none overflow-auto border-0 bg-[#1f232b] p-2 font-mono text-[12px] leading-[21px] text-[#f3f7ff] outline-none selection:bg-[#2aa6df]/40"
-        />
-      </div>
-    </section>
-  )
-}
-
-function Divider() {
-  return (
-    <div className="hidden cursor-col-resize border-x border-[#d1d7de] bg-[#e8edf2] xl:block" title="Use the toolbar arrows to move this divider" />
-  )
-}
-
-function ToolbarButton({ active, onClick, title, children }: { active: boolean; onClick: () => void; title: string; children: React.ReactNode }) {
+function LayoutButton({ active, onClick, title, children }: { active: boolean; onClick: () => void; title: string; children: React.ReactNode }) {
   return (
     <button
       onClick={onClick}
       title={title}
       className={cn(
-        'flex h-7 items-center gap-1 rounded border px-2 text-[11px] font-semibold',
-        active ? 'border-[#2aa6df] bg-[#2aa6df]/20 text-white' : 'border-white/20 text-white/80 hover:bg-white/10 hover:text-white',
+        'flex h-5 w-6 items-center justify-center rounded border text-[10px]',
+        active ? 'border-accent/50 bg-accent/15 text-accent' : 'border-border-2 text-text-4 hover:text-text-2',
       )}
     >
       {children}

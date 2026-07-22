@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import {
   Plus, Trash2, RefreshCw, Play, Square,
   ChevronDown, ChevronRight, Download, Upload,
-  Server, Radio, Zap, Copy, Mic, Search, X, Sparkles
+  Server, Radio, Zap, Copy, Mic, Search, X, Sparkles,
+  Activity, Boxes, FileDown, LayoutDashboard, ListTree, ShieldCheck
 } from 'lucide-react'
 import { AiMockDialog } from './AiMockDialog'
 import { MockConditionEditor } from './MockConditionEditor'
@@ -33,6 +34,8 @@ interface MockEndpoint {
   path: string
   method: string
   description: string
+  sourceCollectionId?: string
+  sourceRequestId?: string
   responses: MockResponse[]
   mode: string
   enabled: boolean
@@ -50,8 +53,14 @@ interface HitEntry {
   path: string
   matched: boolean
   responseId: string
+  endpointId?: string
+  endpointPath?: string
+  responseName?: string
+  reason?: string
   status: number
 }
+
+type MockView = 'overview' | 'endpoints' | 'traffic' | 'contract'
 
 const METHODS = ['GET', 'QUERY', 'POST', 'PUT', 'PATCH', 'DELETE', 'ANY']
 const REST_METHODS = new Set(['GET', 'QUERY', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'])
@@ -178,6 +187,10 @@ function statusBg(status: number): string {
   if (status >= 500) return 'bg-error/15'
   if (status >= 300) return 'bg-warning/15'
   return 'bg-success/15'
+}
+
+function endpointKey(endpoint: Pick<MockEndpoint, 'method' | 'path'>): string {
+  return `${endpoint.method.toUpperCase()} ${endpoint.path}`
 }
 
 const BODY_MODES = [
@@ -523,10 +536,107 @@ function EndpointCard({
   )
 }
 
+function ViewTab({
+  active,
+  icon,
+  label,
+  onClick,
+}: {
+  active: boolean
+  icon: React.ReactNode
+  label: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'flex h-8 items-center gap-1.5 border-b-2 px-2.5 text-[11px] font-medium transition-colors',
+        active
+          ? 'border-accent text-accent'
+          : 'border-transparent text-text-4 hover:border-border-2 hover:text-text-1',
+      )}
+    >
+      {icon}{label}
+    </button>
+  )
+}
+
+function EndpointExplorer({
+  endpoints,
+  selectedId,
+  onSelect,
+}: {
+  endpoints: MockEndpoint[]
+  selectedId: string | null
+  onSelect: (id: string) => void
+}) {
+  const [query, setQuery] = useState('')
+  const visible = useMemo(() => {
+    const needle = query.trim().toLowerCase()
+    if (!needle) return endpoints
+    return endpoints.filter((endpoint) => (
+      endpoint.path.toLowerCase().includes(needle)
+      || endpoint.method.toLowerCase().includes(needle)
+      || endpoint.description.toLowerCase().includes(needle)
+    ))
+  }, [endpoints, query])
+
+  return (
+    <aside className="flex min-h-0 flex-col border-r border-border-1 bg-surface-1">
+      <div className="border-b border-border-1 p-3">
+        <div className="relative">
+          <Search size={12} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-text-4" />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search path or method…"
+            className="h-8 w-full rounded border border-border-2 bg-surface-2 pl-7 pr-2 text-[11px] text-text-1 outline-none placeholder:text-text-4 focus:border-accent"
+          />
+        </div>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto p-2">
+        {visible.map((endpoint) => {
+          const activeResponses = endpoint.responses.filter((response) => response.isActive).length
+          const selected = endpoint.id === selectedId
+          return (
+            <button
+              key={endpoint.id}
+              onClick={() => onSelect(endpoint.id)}
+              className={cn(
+                'mb-1 flex w-full items-center gap-2 rounded px-2.5 py-2 text-left transition-colors',
+                selected ? 'bg-accent/12 ring-1 ring-accent/25' : 'hover:bg-surface-2',
+              )}
+            >
+              <span className={cn('w-10 shrink-0 text-[10px] font-bold', METHOD_COLORS[endpoint.method] ?? 'text-text-3')}>
+                {endpoint.method}
+              </span>
+              <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-text-2">{endpoint.path}</span>
+              <span className={cn('h-1.5 w-1.5 rounded-full', endpoint.enabled === false ? 'bg-text-4' : 'bg-success')} />
+              <span className="text-[10px] text-text-4">{activeResponses}</span>
+            </button>
+          )
+        })}
+        {visible.length === 0 && <p className="px-2 py-8 text-center text-[11px] text-text-4">No endpoints match this search.</p>}
+      </div>
+    </aside>
+  )
+}
+
+function MetricCard({ label, value, detail, tone = 'default' }: { label: string; value: string | number; detail: string; tone?: 'default' | 'success' | 'warning' }) {
+  const valueClass = tone === 'success' ? 'text-success' : tone === 'warning' ? 'text-warning' : 'text-text-1'
+  return (
+    <div className="rounded-md border border-border-1 bg-surface-1 p-3">
+      <p className="text-[10px] font-medium uppercase tracking-wider text-text-4">{label}</p>
+      <p className={cn('mt-1 text-xl font-semibold tabular-nums', valueClass)}>{value}</p>
+      <p className="mt-1 text-[10px] text-text-4">{detail}</p>
+    </div>
+  )
+}
+
 export function MockPanel() {
   const port = useServerPort()
   const collections = useCollectionsStore((s) => s.collections)
-  const collectionsLoaded = useCollectionsStore((s) => s.loaded)
   const settings = useSettingsStore((s) => s.settings)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [mockPort, setMockPort] = useState(settings.mock?.defaultMockPort ?? 9090)
@@ -546,6 +656,50 @@ export function MockPanel() {
   const [hitMethodFilter, setHitMethodFilter] = useState<'ALL' | 'GET' | 'QUERY' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'>('ALL')
   const [hitMatchFilter, setHitMatchFilter] = useState<'all' | 'match' | 'miss'>('all')
   const [showAiDialog, setShowAiDialog] = useState(false)
+  const [view, setView] = useState<MockView>('overview')
+  const [selectedEndpointId, setSelectedEndpointId] = useState<string | null>(null)
+  const [scopeEndpointId, setScopeEndpointId] = useState<string | null>(null)
+  const [sourceCollectionId, setSourceCollectionId] = useState('')
+  const [copiedServerUrl, setCopiedServerUrl] = useState(false)
+  const [liveSync, setLiveSync] = useState<'idle' | 'syncing' | 'saved' | 'error'>('idle')
+
+  const selectedEndpoint = endpoints.find((endpoint) => endpoint.id === selectedEndpointId) ?? null
+  const scopedEndpoints = useMemo(() => (
+    scopeEndpointId ? endpoints.filter((endpoint) => endpoint.id === scopeEndpointId) : endpoints
+  ), [endpoints, scopeEndpointId])
+  const sourceCollection = collections.find((collection) => collection.id === sourceCollectionId) ?? null
+  const activeEndpointCount = endpoints.filter((endpoint) => endpoint.enabled !== false).length
+  const matchedHitCount = hits.filter((hit) => hit.matched).length
+  const coveredResponseIds = new Set(hits.filter((hit) => hit.matched).map((hit) => hit.responseId))
+  const coveredEndpointCount = endpoints.filter((endpoint) => endpoint.responses.some((response) => coveredResponseIds.has(response.id))).length
+  const mockBaseUrl = `http://127.0.0.1:${status.running ? status.port : mockPort}`
+  const runtimeEndpoints = useMemo(() => (
+    endpoints.filter((endpoint) => endpoint.enabled !== false && (!scopeEndpointId || endpoint.id === scopeEndpointId))
+  ), [endpoints, scopeEndpointId])
+
+  useEffect(() => {
+    if (!selectedEndpointId && endpoints[0]) setSelectedEndpointId(endpoints[0].id)
+  }, [endpoints, selectedEndpointId])
+
+  // A "Mock this tab" action writes a one-use handoff before navigating here.
+  // Consume it after storage hydration so the clicked request is the focused mock scope.
+  useEffect(() => {
+    if (!endpointsLoaded) return
+    const raw = sessionStorage.getItem('adomnia.mock.focus')
+    if (!raw) return
+    try {
+      const handoff = JSON.parse(raw) as { endpointId?: string; collectionId?: string }
+      if (!handoff.endpointId || !endpoints.some((endpoint) => endpoint.id === handoff.endpointId)) return
+      if (handoff.collectionId) setSourceCollectionId(handoff.collectionId)
+      setSelectedEndpointId(handoff.endpointId)
+      setScopeEndpointId(handoff.endpointId)
+      setView('endpoints')
+      setError('')
+      sessionStorage.removeItem('adomnia.mock.focus')
+    } catch {
+      sessionStorage.removeItem('adomnia.mock.focus')
+    }
+  }, [endpoints, endpointsLoaded])
 
   const filteredHits = useMemo(() => {
     const reversed = hits.slice().reverse()
@@ -612,20 +766,33 @@ export function MockPanel() {
     void api('/storage/put?bucket=mock&key=endpoints', endpoints)
   }, [endpoints, api, endpointsLoaded])
 
+  // When the mock is running, endpoint edits should affect the next request
+  // without forcing a stop/start cycle. Debouncing keeps response editors fluid.
   useEffect(() => {
-    if (!collectionsLoaded || !endpointsLoaded) return
-    const fromCollections = collections.flatMap((collection) => collectRestEndpoints(collection.children))
-    if (fromCollections.length === 0) return
-
-    const seen = new Set<string>()
-    const merged = [...fromCollections, ...endpoints].filter((endpoint) => {
-      const key = `${endpoint.method} ${endpoint.path}`
-      if (seen.has(key)) return false
-      seen.add(key)
-      return true
-    })
-    setEndpoints(merged)
-  }, [collections, collectionsLoaded, endpointsLoaded])
+    if (!endpointsLoaded || !status.running) {
+      setLiveSync('idle')
+      return
+    }
+    const timer = window.setTimeout(() => {
+      setLiveSync('syncing')
+      const mockSettings = settings.mock
+      void api('/mock/config', {
+        password,
+        endpoints: runtimeEndpoints,
+        defaultResponseDelayMs: mockSettings?.defaultResponseDelayMs ?? 0,
+        corsHeadersAuto: mockSettings?.corsHeadersAuto ?? true,
+        logHitsToFile: mockSettings?.logHitsToFile ?? false,
+      }).then((data) => {
+        if (data?.ok) {
+          setLiveSync('saved')
+          return
+        }
+        setLiveSync('error')
+        setError(data?.error || 'Could not apply mock changes to the running server.')
+      })
+    }, 350)
+    return () => window.clearTimeout(timer)
+  }, [api, endpoints, endpointsLoaded, password, runtimeEndpoints, settings.mock, status.running])
 
   const refreshStatus = useCallback(async () => {
     const data = await api('/mock/status')
@@ -651,7 +818,7 @@ export function MockPanel() {
   const handleStart = useCallback(async () => {
     setLoading(true)
     setError('')
-    const activeEndpoints = endpoints.filter((e) => e.enabled !== false)
+    const activeEndpoints = runtimeEndpoints
     if (activeEndpoints.length === 0) {
       setError('No enabled endpoints. Enable at least one endpoint before starting the mock server.')
       setLoading(false)
@@ -673,7 +840,7 @@ export function MockPanel() {
     }
     await refreshStatus()
     setLoading(false)
-  }, [api, endpoints, mockPort, password, refreshStatus, settings.mock])
+  }, [api, mockPort, password, refreshStatus, runtimeEndpoints, settings.mock])
 
   useEffect(() => {
     const startFromCommandPalette = (event: Event) => {
@@ -769,10 +936,39 @@ export function MockPanel() {
 
   const handleAiImport = (imported: MockEndpoint[]) => {
     setEndpoints(prev => [...prev, ...imported])
+    setSelectedEndpointId(imported[0]?.id ?? null)
+    setView('endpoints')
+  }
+
+  const importCollectionEndpoints = () => {
+    const collection = collections.find((item) => item.id === sourceCollectionId)
+    if (!collection) {
+      setError('Choose an API collection before importing endpoints.')
+      return
+    }
+    const imported = collectRestEndpoints(collection.children).map((endpoint) => ({
+      ...endpoint,
+      sourceCollectionId: collection.id,
+    }))
+    if (imported.length === 0) {
+      setError(`"${collection.name}" does not contain mockable HTTP requests.`)
+      return
+    }
+    const existing = new Set(endpoints.map(endpointKey))
+    const newEndpoints = imported.filter((endpoint) => !existing.has(endpointKey(endpoint)))
+    if (newEndpoints.length === 0) {
+      setError('All endpoints from this collection are already in the mock.')
+      return
+    }
+    setEndpoints((current) => [...current, ...newEndpoints])
+    setSelectedEndpointId(newEndpoints[0].id)
+    setScopeEndpointId(null)
+    setError('')
+    setView('endpoints')
   }
 
   const addEndpoint = () => {
-    setEndpoints([...endpoints, {
+    const endpoint: MockEndpoint = {
       id: uid(),
       path: '/api/example',
       method: 'GET',
@@ -780,12 +976,35 @@ export function MockPanel() {
       responses: [defaultResponse(1)],
       mode: 'first_active',
       enabled: true,
-    }])
+    }
+    setEndpoints([...endpoints, endpoint])
+    setSelectedEndpointId(endpoint.id)
+    setView('endpoints')
   }
 
-  const removeEndpoint = (id: string) => setEndpoints(endpoints.filter((e) => e.id !== id))
-  const updateEndpoint = (id: string, updated: MockEndpoint) => setEndpoints(endpoints.map((e) => e.id === id ? updated : e))
-  const clearHits = () => setHits([])
+  const removeEndpoint = (id: string) => {
+    setEndpoints((current) => current.filter((endpoint) => endpoint.id !== id))
+    if (selectedEndpointId === id) setSelectedEndpointId(null)
+  }
+  const updateEndpoint = (id: string, updated: MockEndpoint) => setEndpoints((current) => current.map((endpoint) => endpoint.id === id ? updated : endpoint))
+  const clearHits = async () => {
+    const data = await api('/mock/hits/clear', {})
+    if (data?.ok) {
+      setHits([])
+      return
+    }
+    setError(data?.error || 'Could not clear the mock traffic log.')
+  }
+
+  const copyServerUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(mockBaseUrl)
+      setCopiedServerUrl(true)
+      window.setTimeout(() => setCopiedServerUrl(false), 1400)
+    } catch {
+      setError('Could not copy the mock server URL.')
+    }
+  }
 
   return (
     <>
@@ -800,6 +1019,23 @@ export function MockPanel() {
           <span className={cn('w-1.5 h-1.5 rounded-full', status.running ? 'bg-success animate-pulse' : 'bg-text-4')} />
           {status.running ? `Listening on :${status.port}` : 'Stopped'}
         </div>
+
+        <button
+          onClick={() => void copyServerUrl()}
+          className="hidden items-center gap-1 rounded border border-border-2 px-2 py-1 font-mono text-[10px] text-text-3 hover:bg-surface-2 hover:text-text-1 md:flex"
+          title="Copy mock base URL"
+        >
+          <Copy size={10} /> {copiedServerUrl ? 'Copied' : mockBaseUrl}
+        </button>
+
+        {status.running && (
+          <span className={cn(
+            'hidden text-[10px] md:inline',
+            liveSync === 'error' ? 'text-error' : liveSync === 'saved' ? 'text-success' : 'text-text-4',
+          )}>
+            {liveSync === 'syncing' ? 'Applying changes…' : liveSync === 'saved' ? 'Live changes applied' : liveSync === 'error' ? 'Live sync failed' : 'Live sync ready'}
+          </span>
+        )}
 
         <div className="flex-1" />
 
@@ -821,6 +1057,13 @@ export function MockPanel() {
         <input ref={fileInputRef} type="file" accept=".json" onChange={handleImport} className="hidden" />
 
       </div>
+
+      <nav className="flex h-9 shrink-0 items-end gap-1 border-b border-border-1 bg-surface-0 px-4">
+        <ViewTab active={view === 'overview'} onClick={() => setView('overview')} icon={<LayoutDashboard size={12} />} label="Overview" />
+        <ViewTab active={view === 'endpoints'} onClick={() => setView('endpoints')} icon={<ListTree size={12} />} label={`Endpoints ${endpoints.length ? `(${endpoints.length})` : ''}`} />
+        <ViewTab active={view === 'traffic'} onClick={() => setView('traffic')} icon={<Activity size={12} />} label={`Traffic ${hits.length ? `(${hits.length})` : ''}`} />
+        <ViewTab active={view === 'contract'} onClick={() => setView('contract')} icon={<ShieldCheck size={12} />} label="Contract" />
+      </nav>
 
       {/* Body */}
       <div className="flex-1 flex flex-col gap-4 p-4 overflow-auto">
@@ -871,8 +1114,56 @@ export function MockPanel() {
           {error && <p className="text-[11px] text-error mt-2">{error}</p>}
         </div>
 
+        {view === 'overview' && (
+          <>
+            <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <MetricCard label="Endpoints" value={endpoints.length} detail={`${activeEndpointCount} enabled`} tone={activeEndpointCount ? 'success' : 'default'} />
+              <MetricCard label="Traffic" value={hits.length} detail={hits.length ? `${matchedHitCount} matched` : 'No requests yet'} tone={hits.length ? 'success' : 'default'} />
+              <MetricCard label="Coverage" value={endpoints.length ? `${Math.round((coveredEndpointCount / endpoints.length) * 100)}%` : '—'} detail="Endpoints reached this session" />
+              <MetricCard label="Contract mode" value="Relaxed" detail="Validation is planned for the next step" tone="warning" />
+            </section>
+
+            <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(280px,0.7fr)]">
+              <div className="rounded-md border border-border-1 bg-surface-1 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold text-text-1">API source</p>
+                    <p className="mt-1 text-[11px] text-text-4">Import endpoints explicitly from a collection. Nothing is added silently.</p>
+                  </div>
+                  <Boxes size={16} className="shrink-0 text-accent" />
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <select
+                    value={sourceCollectionId}
+                    onChange={(event) => {
+                      setSourceCollectionId(event.target.value)
+                      setScopeEndpointId(null)
+                    }}
+                    className="h-8 min-w-[220px] flex-1 rounded border border-border-2 bg-surface-2 px-2 text-[11px] text-text-1 outline-none focus:border-accent"
+                  >
+                    <option value="">Choose an API collection…</option>
+                    {collections.map((collection) => <option key={collection.id} value={collection.id}>{collection.name}</option>)}
+                  </select>
+                  <button onClick={importCollectionEndpoints} disabled={!sourceCollectionId} className="flex h-8 items-center gap-1.5 rounded bg-accent px-3 text-[11px] font-medium text-white hover:bg-accent-hover disabled:opacity-40">
+                    <FileDown size={12} /> Import endpoints
+                  </button>
+                </div>
+                {sourceCollection && <p className="mt-2 text-[10px] text-text-4">Selected: {sourceCollection.name}. OpenAPI-aware Smart Mock import will build on this source.</p>}
+              </div>
+              <div className="rounded-md border border-border-1 bg-surface-1 p-4">
+                <p className="text-xs font-semibold text-text-1">Quick actions</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button onClick={() => setView('endpoints')} className="rounded border border-border-2 px-2.5 py-1.5 text-[11px] text-text-2 hover:bg-surface-2">Browse endpoints</button>
+                  <button onClick={() => setShowAiDialog(true)} className="flex items-center gap-1 rounded border border-border-2 px-2.5 py-1.5 text-[11px] text-text-2 hover:bg-surface-2"><Sparkles size={11} /> Generate</button>
+                  <button onClick={addEndpoint} className="flex items-center gap-1 rounded border border-border-2 px-2.5 py-1.5 text-[11px] text-text-2 hover:bg-surface-2"><Plus size={11} /> Manual endpoint</button>
+                </div>
+              </div>
+            </section>
+          </>
+        )}
+
         {/* Record & Replay */}
-        <details className="bg-surface-1 border border-border-1 rounded-md p-3 flex flex-col gap-2">
+        {view === 'overview' && <details className="bg-surface-1 border border-border-1 rounded-md p-3 flex flex-col gap-2">
           <summary className="text-[11px] text-text-2 font-medium cursor-pointer hover:text-text-1 select-none flex items-center gap-2">
             <Mic size={12} className="text-accent" /> Record & Replay
           </summary>
@@ -893,10 +1184,49 @@ export function MockPanel() {
             </button>
           </div>
           {recordMsg && <p className="text-[10px] text-success mt-1">{recordMsg}</p>}
-        </details>
+        </details>}
 
-        {/* Endpoints */}
-        <div className="flex flex-col gap-2">
+        {view === 'endpoints' && (
+          <section className="flex min-h-[480px] flex-1 flex-col overflow-hidden rounded-md border border-border-1 bg-surface-1">
+            <div className="flex shrink-0 items-center justify-between border-b border-border-1 px-3 py-2">
+              <div>
+                <p className="text-xs font-semibold text-text-1">Endpoint explorer</p>
+                <p className="text-[10px] text-text-4">{scopeEndpointId ? 'Focused request scope' : `${activeEndpointCount}/${endpoints.length} enabled`} · select one endpoint to inspect</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {scopeEndpointId && (
+                  <button onClick={() => setScopeEndpointId(null)} className="rounded border border-border-2 px-2 py-1 text-[10px] text-text-2 hover:bg-surface-2">Show all endpoints</button>
+                )}
+                <button onClick={() => setShowAiDialog(true)} className="flex items-center gap-1 rounded border border-border-2 px-2 py-1 text-[10px] text-text-2 hover:bg-surface-2"><Sparkles size={11} /> Generate</button>
+                <button onClick={addEndpoint} className="flex items-center gap-1 rounded bg-accent px-2 py-1 text-[10px] font-medium text-white hover:bg-accent-hover"><Plus size={11} /> New endpoint</button>
+              </div>
+            </div>
+            {endpoints.length === 0 ? (
+              <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8">
+                <Radio size={24} className="text-text-4" />
+                <p className="text-xs text-text-3">Import a collection or create a manual endpoint to start.</p>
+                <button onClick={() => setView('overview')} className="text-xs text-accent hover:text-accent-light">Open API source</button>
+              </div>
+            ) : (
+              <div className="grid min-h-0 flex-1 grid-cols-[minmax(260px,0.75fr)_minmax(0,1.55fr)]">
+                <EndpointExplorer endpoints={scopedEndpoints} selectedId={selectedEndpoint?.id ?? scopedEndpoints[0]?.id ?? null} onSelect={setSelectedEndpointId} />
+                <div className="min-h-0 overflow-y-auto bg-surface-0 p-3">
+                  {selectedEndpoint ? (
+                    <EndpointCard ep={selectedEndpoint} onChange={(updated) => updateEndpoint(selectedEndpoint.id, updated)} onRemove={() => removeEndpoint(selectedEndpoint.id)} />
+                  ) : (
+                    <div className="flex h-full min-h-[260px] flex-col items-center justify-center gap-2 text-center">
+                      <ListTree size={20} className="text-text-4" />
+                      <p className="text-xs text-text-4">Select an endpoint from the explorer.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* Legacy expanded card layout retained only for state continuity during this transition. */}
+        <div className="hidden">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium text-text-2">Endpoints</span>
@@ -957,7 +1287,7 @@ export function MockPanel() {
         </div>
 
         {/* Hit log */}
-        <div className="flex flex-col gap-2">
+        {view === 'traffic' && <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-text-2">
               Hit Log
@@ -969,7 +1299,7 @@ export function MockPanel() {
             </span>
             <div className="flex items-center gap-2">
               {hits.length > 0 && (
-                <button onClick={clearHits} className="text-[10px] text-text-4 hover:text-text-2">
+                <button onClick={() => void clearHits()} className="text-[10px] text-text-4 hover:text-text-2">
                   Clear
                 </button>
               )}
@@ -1063,13 +1393,26 @@ export function MockPanel() {
                     <th className="py-1.5 px-3 text-left font-medium">Time</th>
                     <th className="py-1.5 px-3 text-left font-medium">Method</th>
                     <th className="py-1.5 px-3 text-left font-medium">Path</th>
+                    <th className="py-1.5 px-3 text-left font-medium">Decision</th>
                     <th className="py-1.5 px-3 text-center font-medium w-12">Match</th>
                     <th className="py-1.5 px-3 text-right font-medium w-16">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-1/30">
                   {filteredHits.map((h) => (
-                    <tr key={h.id} className="hover:bg-surface-2/40 transition-colors">
+                    <tr
+                      key={h.id}
+                      onClick={() => {
+                        if (!h.endpointId) return
+                        setSelectedEndpointId(h.endpointId)
+                        setView('endpoints')
+                      }}
+                      className={cn(
+                        'transition-colors hover:bg-surface-2/40',
+                        h.endpointId && 'cursor-pointer',
+                      )}
+                      title={h.endpointId ? 'Open the matched endpoint' : undefined}
+                    >
                       <td className="py-1.5 px-3 text-[10px] text-text-4 font-mono whitespace-nowrap">
                         {h.timestamp}
                       </td>
@@ -1080,6 +1423,11 @@ export function MockPanel() {
                       </td>
                       <td className="py-1.5 px-3 text-text-2 font-mono text-[10px] truncate max-w-[300px]">
                         {h.path}
+                      </td>
+                      <td className="py-1.5 px-3 text-[10px] text-text-4">
+                        <span title={h.reason || h.responseName || ''} className="block max-w-[190px] truncate">
+                          {h.reason || h.responseName || h.endpointPath || 'Response selected'}
+                        </span>
                       </td>
                       <td className="py-1.5 px-3 text-center">
                         <span className={cn(
@@ -1103,7 +1451,34 @@ export function MockPanel() {
               </table>
             )}
           </div>
-        </div>
+        </div>}
+
+        {view === 'contract' && (
+          <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(280px,0.7fr)]">
+            <div className="rounded-md border border-border-1 bg-surface-1 p-5">
+              <div className="flex items-start gap-3">
+                <div className="rounded bg-warning/15 p-2 text-warning"><ShieldCheck size={17} /></div>
+                <div>
+                  <h2 className="text-sm font-semibold text-text-1">Contract mode is coming next</h2>
+                  <p className="mt-1 max-w-2xl text-[11px] leading-relaxed text-text-3">The Mock Control Room is ready for OpenAPI-aware validation. The next implementation will use required parameters, headers and response schemas from the selected specification to explain contract failures inline.</p>
+                </div>
+              </div>
+              <div className="mt-5 grid gap-2 sm:grid-cols-3">
+                <div className="rounded border border-border-1 bg-surface-2 p-3 text-[11px] text-text-3"><span className="block font-medium text-text-1">Relaxed</span><span className="mt-1 block">Current server behavior. Best for UI development.</span></div>
+                <div className="rounded border border-border-1 bg-surface-2 p-3 text-[11px] text-text-3"><span className="block font-medium text-text-1">Validate request</span><span className="mt-1 block">Required params and JSON body against the spec.</span></div>
+                <div className="rounded border border-border-1 bg-surface-2 p-3 text-[11px] text-text-3"><span className="block font-medium text-text-1">Explain mismatch</span><span className="mt-1 block">Traffic inspector pinpoints the failed contract rule.</span></div>
+              </div>
+            </div>
+            <div className="rounded-md border border-border-1 bg-surface-1 p-4">
+              <p className="text-xs font-semibold text-text-1">Current readiness</p>
+              <dl className="mt-3 space-y-2 text-[11px]">
+                <div className="flex justify-between gap-3"><dt className="text-text-4">Endpoint definitions</dt><dd className="text-success">{endpoints.length} ready</dd></div>
+                <div className="flex justify-between gap-3"><dt className="text-text-4">Collection source</dt><dd className="truncate text-text-2">{sourceCollection?.name ?? 'Not selected'}</dd></div>
+                <div className="flex justify-between gap-3"><dt className="text-text-4">Smart Mock</dt><dd className="text-text-2">Available per response</dd></div>
+              </dl>
+            </div>
+          </section>
+        )}
       </div>
     </div>
     {showAiDialog && (

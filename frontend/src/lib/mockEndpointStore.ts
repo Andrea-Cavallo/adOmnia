@@ -18,6 +18,9 @@ export interface StoredMockEndpoint {
   path: string
   method: string
   description: string
+  /** Source context lets the Mock Control Room focus an endpoint launched from a request tab. */
+  sourceCollectionId?: string
+  sourceRequestId?: string
   responses: StoredMockResponse[]
   mode: string
   enabled: boolean
