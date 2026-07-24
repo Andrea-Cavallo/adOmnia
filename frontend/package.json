@@ -35,7 +35,7 @@
     "monaco-yaml": "^5.5.1",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.1.200",
-    "protobufjs": "^8.7.0",
+    "protobufjs": "^8.7.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "tailwind-merge": "^3.6.0",
