@@ -37,7 +37,7 @@
     "pdfjs-dist": "^6.1.200",
     "protobufjs": "^8.7.0",
     "react": "^19.2.7",
-    "react-dom": "^19.2.7",
+    "react-dom": "^19.2.8",
     "tailwind-merge": "^3.6.0",
     "yaml": "^2.9.0",
     "zustand": "^5.0.14"
