@@ -8,6 +8,7 @@ import {
 import { AiMockDialog } from './AiMockDialog'
 import { MockConditionEditor } from './MockConditionEditor'
 import { MockSchemaEditor, STARTER_SCHEMA } from './MockSchemaEditor'
+import { JsonEditor } from '@/components/ui/JsonEditor'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { useAppStore } from '@/stores/app'
 import { useCollectionsStore } from '@/stores/collections'
@@ -198,6 +199,21 @@ const BODY_MODES = [
   { value: 'schema', label: 'Schema' },
 ] as const
 
+function responseUsesJSON(headers: Record<string, string>): boolean {
+  const contentType = Object.entries(headers).find(([key]) => key.toLowerCase() === 'content-type')?.[1]
+  return !contentType || contentType.toLowerCase().includes('json')
+}
+
+function jsonBodyError(body: string): string | undefined {
+  if (!body.trim()) return undefined
+  try {
+    JSON.parse(body)
+    return undefined
+  } catch (error) {
+    return error instanceof Error ? error.message.replace(/^Unexpected token /, 'Invalid JSON: ') : 'Invalid JSON'
+  }
+}
+
 function HeadersEditor({
   headers,
   onChange,
@@ -264,6 +280,8 @@ function ResponseCard({
 }) {
   const [open, setOpen] = useState(false)
   const upd = (patch: Partial<MockResponse>) => onChange({ ...resp, ...patch })
+  const isJSONBody = responseUsesJSON(resp.headers)
+  const bodyError = isJSONBody ? jsonBodyError(resp.body) : undefined
 
   return (
     <div className={cn(
@@ -395,13 +413,37 @@ function ResponseCard({
                 onChange={(bodySchema) => upd({ bodySchema })}
               />
             ) : (
-              <textarea
-                value={resp.body}
-                onChange={(e) => upd({ body: e.target.value })}
-                rows={Math.min(12, Math.max(3, resp.body.split('\n').length))}
-                className="w-full mt-1 px-2.5 py-2 bg-surface-2 border border-border-2 rounded text-[11px] text-text-1 font-mono outline-none focus:border-accent resize-y leading-relaxed"
-                spellCheck={false}
-              />
+              <div className="mt-1 rounded border border-border-1 bg-surface-1 p-2">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className="text-[10px] text-text-4">
+                    {isJSONBody ? 'Editable JSON response' : 'Editable response body'}
+                  </span>
+                  {isJSONBody && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        try {
+                          upd({ body: JSON.stringify(JSON.parse(resp.body), null, 2) })
+                        } catch {
+                          // The inline editor error already explains why formatting is unavailable.
+                        }
+                      }}
+                      disabled={Boolean(bodyError) || !resp.body.trim()}
+                      className="rounded border border-border-2 px-2 py-1 text-[10px] text-text-3 transition-colors hover:border-accent/40 hover:text-text-1 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Format JSON
+                    </button>
+                  )}
+                </div>
+                <JsonEditor
+                  value={resp.body}
+                  onChange={(body) => upd({ body })}
+                  placeholder={isJSONBody ? '{\n  "ok": true\n}' : 'Response body'}
+                  error={bodyError}
+                  minHeight={`${Math.min(280, Math.max(118, resp.body.split('\n').length * 19 + 28))}px`}
+                />
+                {bodyError && <p className="mt-1.5 text-[10px] text-error">{bodyError}</p>}
+              </div>
             )}
           </details>
         </div>

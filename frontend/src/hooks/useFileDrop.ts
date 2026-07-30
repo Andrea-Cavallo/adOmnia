@@ -8,6 +8,7 @@ import { useAppStore } from '@/stores/app'
 import { ReadDroppedFiles } from '@/wailsjs/go/main/App'
 import { importCollectionsFromText } from '@/lib/collectionTransfer'
 import { routeGlobalDropFile } from '@/lib/globalFileRouter'
+import { parseInteropFile } from '@/lib/interopHub'
 import { saveFlowDefinitions } from '@/lib/flowStorage'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 import type { Tab } from '@/lib/types'
@@ -77,6 +78,7 @@ function describeDropFile(name: string): DropPreview {
   if (lower.endsWith('.proto')) return { name, kind: 'Proto', target: 'gRPC Client', supported: true }
   if (lower.endsWith('.sql')) return { name, kind: 'SQL', target: 'Database Studio', supported: true }
   if (lower.endsWith('.class')) return { name, kind: 'Java Class', target: 'Class File Inspector', supported: true }
+  if (lower === 'env.yaml') return { name, kind: 'Environment YAML', target: 'Environments', supported: true }
   if (lower.endsWith('.adomnia')) return { name, kind: 'Workspace', target: 'Collections', supported: true }
   if (/\.(json|ya?ml|bru)$/i.test(lower)) return { name, kind: 'Collection', target: 'Collections', supported: true }
   return { name, kind: 'Unknown', target: 'Unsupported file', supported: false }
@@ -115,12 +117,37 @@ export function useFileDrop(): FileDropResult {
   }, [])
 
   const importDroppedFiles = useCallback(async (files: File[]) => {
-    let totalImported = 0; let workspaceImported = false
+    let totalImported = 0; let totalEnvironments = 0; let workspaceImported = false
     const errors: string[] = []; let routedTool = false
 
     for (const file of files) {
       try {
         const routed = await routeGlobalDropFile(file)
+        if (routed.kind === 'environment') {
+          const bundle = parseInteropFile(routed.name, routed.text)
+          if (!bundle.environments.length) throw new Error('No environments found in env.yaml.')
+          let added = 0
+          useEnvironmentsStore.setState((state) => {
+            const existingNames = new Set(state.environments.map((environment) => environment.name))
+            const environments = bundle.environments.map((environment) => {
+              const baseName = environment.name || 'Imported environment'
+              let name = baseName
+              let suffix = 2
+              while (existingNames.has(name)) name = `${baseName} ${suffix++}`
+              existingNames.add(name)
+              added++
+              return { ...environment, name }
+            })
+            return {
+              environments: [...state.environments, ...environments],
+              activeEnvId: state.activeEnvId ?? environments[0]?.id ?? null,
+              loaded: true,
+            }
+          })
+          useEnvironmentsStore.getState().save()
+          totalEnvironments += added
+          continue
+        }
         if (routed.kind !== 'collection') {
           if (routedTool || totalImported > 0) { errors.push(`${file.name}: drop tool files one at a time.`); continue }
           useAppStore.getState().queueFileImport(routed)
@@ -164,9 +191,14 @@ export function useFileDrop(): FileDropResult {
       } catch (err: unknown) { errors.push(`${file.name}: ${err instanceof Error ? err.message : 'Import failed'}`) }
     }
     if (!routedTool) {
-      if (totalImported > 0) {
-        setActiveRail('collections')
-        const label = workspaceImported ? 'Workspace imported' : `Imported ${totalImported} collection${totalImported > 1 ? 's' : ''}`
+      if (totalImported > 0 || totalEnvironments > 0) {
+        if (totalImported > 0) setActiveRail('collections')
+        const label = workspaceImported
+          ? 'Workspace imported'
+          : [
+              totalImported > 0 ? `${totalImported} collection${totalImported > 1 ? 's' : ''}` : '',
+              totalEnvironments > 0 ? `${totalEnvironments} environment${totalEnvironments > 1 ? 's' : ''}` : '',
+            ].filter(Boolean).join(', ') + ' imported'
         showFeedback(`${label} successfully.`, true)
       } else { showFeedback(errors[0] ?? 'Import failed.', false) }
     }

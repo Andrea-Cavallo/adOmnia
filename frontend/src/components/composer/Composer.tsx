@@ -3,7 +3,7 @@ import { Send, Save, FileCode, Gauge, X, Plus, Check, CornerDownRight, Clock, Co
 import type { RequestItem, HttpMethod, KVRow, RequestBody } from '@/lib/types'
 import { uid, blankBody, blankAuth } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { detectPathParamKeys } from '@/lib/pathParams'
+import { detectPathParamKeys, renamePathParamKey } from '@/lib/pathParams'
 import { prettyJson } from '@/lib/prettyJson'
 import { KVEditor } from './KVEditor'
 import { BodyEditor } from './BodyEditor'
@@ -315,6 +315,7 @@ function PathParamRow({
   resolvedVars,
   hasActiveEnv,
   onChange,
+  onRename,
 }: {
   paramKey: string
   value: string
@@ -322,6 +323,7 @@ function PathParamRow({
   resolvedVars: Record<string, string>
   hasActiveEnv: boolean
   onChange: (patch: { value?: string; enabled?: boolean }) => void
+  onRename: (nextKey: string) => void
 }) {
   return (
     <div className={cn('grid grid-cols-[28px_minmax(120px,200px)_1fr] items-center gap-1 px-2 py-1', !enabled && 'opacity-40')}>
@@ -331,7 +333,16 @@ function PathParamRow({
         onChange={(e) => onChange({ enabled: e.target.checked })}
         className="w-3.5 h-3.5 accent-accent rounded"
       />
-      <span className="truncate px-2 font-mono text-xs text-accent" title={paramKey}>{paramKey}</span>
+      <input
+        value={paramKey}
+        onChange={(event) => {
+          const nextKey = event.target.value.trim()
+          if (/^[A-Za-z_][\w-]*$/.test(nextKey)) onRename(nextKey)
+        }}
+        className="min-w-0 bg-transparent px-2 font-mono text-xs text-accent outline-none placeholder:text-text-4"
+        aria-label="Path parameter name"
+        title="Rename path parameter"
+      />
       <div className="h-7 bg-surface-2 border border-border-2 rounded focus-within:border-accent overflow-hidden">
         <VarHighlightInput
           value={value}
@@ -385,6 +396,12 @@ function ParamsSection({
     onChange({ ...request, pathParams: next })
   }
 
+  const renamePathParam = (from: string, to: string) => {
+    if (from === to || pathKeys.includes(to)) return
+    const next = storedPathParams.map((param) => param.key === from ? { ...param, key: to } : param)
+    onChange({ ...request, url: renamePathParamKey(request.url, from, to), pathParams: next })
+  }
+
   return (
     <div className="flex flex-col gap-3 pb-3">
       <section>
@@ -409,7 +426,7 @@ function ParamsSection({
         <div className="flex items-center justify-between gap-2 border-b border-border-1 px-3 py-2">
           <div>
             <h3 className="text-xs font-semibold text-text-1">Path Params</h3>
-            <p className="text-[10px] text-text-4">Detected from :id and {'{id}'} segments in the path.</p>
+            <p className="text-[10px] text-text-4">Rename here or in the URL â€” the template stays in sync.</p>
           </div>
           <span className="rounded border border-border-2 bg-surface-2 px-2 py-0.5 font-mono text-[10px] text-text-4">
             {pathKeys.length}
@@ -433,6 +450,7 @@ function ParamsSection({
                   resolvedVars={resolvedVars}
                   hasActiveEnv={hasActiveEnv}
                   onChange={(patch) => setPathParam(key, patch)}
+                  onRename={(nextKey) => renamePathParam(key, nextKey)}
                 />
               )
             })}
@@ -697,8 +715,29 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
 
   const handleUrlChange = (url: string) => {
     const normalizedUrl = normalizeUrlInput(url)
-    // Keep the query-param table in sync with whatever is typed into the URL.
-    onChange({ ...request, url: normalizedUrl, params: rowsWithTrailingBlank(queryRowsFromUrl(normalizedUrl)) })
+    const previousKeys = detectPathParamKeys(request.url)
+    const nextKeys = detectPathParamKeys(normalizedUrl)
+    const previousPathParams = request.pathParams ?? []
+    const nextPathParams = nextKeys.map((key, index) => {
+      const existing = previousPathParams.find((param) => param.key === key)
+      if (existing) return existing
+
+      // If a placeholder was renamed in the URL, retain its entered value and
+      // enabled state rather than making the user type them again.
+      const previousKey = previousKeys[index]
+      const renamed = previousKey && !nextKeys.includes(previousKey)
+        ? previousPathParams.find((param) => param.key === previousKey)
+        : undefined
+      return renamed ? { ...renamed, key } : { id: uid(), key, value: '', enabled: true }
+    })
+
+    // Keep both query and path parameter tables in sync with the URL.
+    onChange({
+      ...request,
+      url: normalizedUrl,
+      params: rowsWithTrailingBlank(queryRowsFromUrl(normalizedUrl)),
+      pathParams: nextPathParams,
+    })
   }
 
   const openSection = (section: ComposerSection, subsection?: 'auth') => {

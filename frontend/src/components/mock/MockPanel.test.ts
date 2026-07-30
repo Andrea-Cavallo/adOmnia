@@ -24,4 +24,11 @@ describe('MockPanel', () => {
     expect(source).toContain('Focused request scope')
     expect(source).toContain('Show all endpoints')
   })
+
+  it('uses the editable syntax-highlighted JSON editor for static mock bodies', () => {
+    expect(source).toContain("import { JsonEditor } from '@/components/ui/JsonEditor'")
+    expect(source).toContain('Editable JSON response')
+    expect(source).toContain('Format JSON')
+    expect(source).not.toContain('rows={Math.min(12, Math.max(3, resp.body.split')
+  })
 })

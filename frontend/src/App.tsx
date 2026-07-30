@@ -19,6 +19,7 @@ import { useAppInit } from '@/hooks/useAppInit'
 import { useAppearance } from '@/hooks/useAppearance'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { useFileDrop } from '@/hooks/useFileDrop'
+import { useSettingsStore } from '@/stores/settings'
 
 const SIDEBAR_WIDTH_KEY = 'adomnia.sidebarWidth'
 const SIDEBAR_WIDTH_MIN = 180
@@ -42,7 +43,8 @@ function App() {
   const devLogVisible  = useAppStore((s) => s.devToolsVisible)
   const toggleDevTools = useAppStore((s) => s.toggleDevTools)
   const activeRail     = useAppStore((s) => s.activeRail)
-  const showSidebar    = activeRail === 'collections'
+  const sidebarCollapsed = useSettingsStore((s) => s.settings.appearance.sidebarCollapsed)
+  const showSidebar    = activeRail === 'collections' && !sidebarCollapsed
   useAppearance()
   useKeyboardShortcuts({ setCommandPaletteOpen })
 

@@ -171,18 +171,22 @@ export function WorkspacePanel() {
       colStore.importCollection(duplicate ? { ...imported, id: `${imported.id}-${Date.now()}`, name: `${imported.name} Import` } : imported)
     }
     if (importBundle.environments.length) {
-      useEnvironmentsStore.setState((state) => ({
-        environments: [
-          ...state.environments,
-          ...importBundle.environments.map((env) => ({
-            ...env,
-            id: state.environments.some((current) => current.name === env.name) ? `${env.id}-${Date.now()}` : env.id,
-            name: state.environments.some((current) => current.name === env.name) ? `${env.name} Import` : env.name,
-          })),
-        ],
-        activeEnvId: state.activeEnvId ?? importBundle.environments[0]?.id ?? null,
-        loaded: true,
-      }))
+      useEnvironmentsStore.setState((state) => {
+        const existingNames = new Set(state.environments.map((environment) => environment.name))
+        const environments = importBundle.environments.map((environment) => {
+          const baseName = environment.name || 'Imported environment'
+          let name = baseName
+          let suffix = 2
+          while (existingNames.has(name)) name = `${baseName} ${suffix++}`
+          existingNames.add(name)
+          return { ...environment, id: name === baseName ? environment.id : `${environment.id}-${Date.now()}`, name }
+        })
+        return {
+          environments: [...state.environments, ...environments],
+          activeEnvId: state.activeEnvId ?? environments[0]?.id ?? null,
+          loaded: true,
+        }
+      })
       envStore.save()
     }
     setMessage(`Imported ${importBundle.collections.length} collection(s), ${importBundle.environments.length} environment(s), ${importBundle.artifacts.length} artifact(s).`)

@@ -37,3 +37,14 @@ export function applyPathParams(url: string, values: Record<string, string>): st
     return value != null && value !== '' ? value : whole
   })
 }
+
+/** Rename a path-param placeholder while preserving its `:name` / `{name}` style. */
+export function renamePathParamKey(url: string, from: string, to: string): string {
+  if (!from || !to || from === to) return url
+  PATH_PARAM_RE.lastIndex = 0
+  return url.replace(PATH_PARAM_RE, (whole, colonKey, braceKey) => {
+    const key = colonKey ?? braceKey
+    if (key !== from) return whole
+    return colonKey ? `:${to}` : `{${to}}`
+  })
+}
