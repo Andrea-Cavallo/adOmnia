@@ -226,6 +226,7 @@ function McpControlRoom() {
     clearHistory,
     setSessions,
     setRestarting,
+    hydrateConfigs,
   } = useMcpStore()
 
   const workspaces = useCollectionsStore((state) => state.workspaces)
@@ -273,6 +274,14 @@ function McpControlRoom() {
     const q = serverSearch.trim().toLowerCase()
     return savedConfigs.filter((cfg) => !q || `${cfg.name} ${cfg.transport} ${cfg.command} ${cfg.baseURL}`.toLowerCase().includes(q))
   }, [savedConfigs, serverSearch])
+
+  useEffect(() => {
+    void hydrateConfigs()
+  }, [hydrateConfigs])
+
+  useEffect(() => {
+    if (savedConfigs.length > 0) setShowForm(false)
+  }, [savedConfigs.length])
 
   useEffect(() => {
     if (!tool && capabilities.tools.length > 0) setSelectedTool(capabilities.tools[0].name)

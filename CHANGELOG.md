@@ -6,6 +6,20 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.6.6] - 2026-07-31
+
+### Added
+- **Mock Server contract checks:** the Control Room now validates every active mock response against the selected collection's OpenAPI specification before consumers hit it. It reports undocumented status codes, Content-Type and required-header mismatches, and JSON-schema failures locally and inline.
+
+### Changed
+- **Single request URL synchronizer:** the composer and the top request bar now use the same URL update path. Editing a URL keeps query rows and path-parameter keys together, including parameter renames.
+- **MCP desktop persistence:** saved MCP server configurations now hydrate from adOmnia's local bbolt storage. Existing browser-only configurations are copied forward automatically and remain available during the migration.
+- **Release metadata alignment:** the application and frontend package now share version `0.6.6`.
+
+### Fixed
+- **Live path-parameter regression coverage:** URL templates, inline defaults, renamed placeholders, query rows, and rendered path values are covered by automated tests.
+- **Path-param helper copy:** the Params panel hint no longer renders a broken text-encoding sequence.
+
 ## [0.6.5] - 2026-07-31
 
 ### Fixed

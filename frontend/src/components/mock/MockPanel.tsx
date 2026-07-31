@@ -15,6 +15,7 @@ import { useCollectionsStore } from '@/stores/collections'
 import { useSettingsStore } from '@/stores/settings'
 import type { MockCondition, RequestItem, TreeNode } from '@/lib/types'
 import { uid } from '@/lib/types'
+import { validateMockEndpoints } from '@/lib/mockContract'
 import { cn } from '@/lib/utils'
 
 interface MockResponse {
@@ -123,6 +124,7 @@ function endpointFromRequest(req: RequestItem): MockEndpoint | null {
     path,
     method: req.method,
     description: req.name || `${req.method} ${path}`,
+    sourceRequestId: req.id,
     responses: [{
       id: uid(),
       name: `${req.method} ${path} success`,
@@ -718,6 +720,18 @@ export function MockPanel() {
   const runtimeEndpoints = useMemo(() => (
     endpoints.filter((endpoint) => endpoint.enabled !== false && (!scopeEndpointId || endpoint.id === scopeEndpointId))
   ), [endpoints, scopeEndpointId])
+  const contractChecks = useMemo(
+    () => validateMockEndpoints(endpoints, sourceCollection),
+    [endpoints, sourceCollection],
+  )
+  const invalidContractChecks = contractChecks.filter((check) => !check.result.valid)
+  const contractStatus = !sourceCollection?._openapiSpec
+    ? 'Not linked'
+    : contractChecks.length === 0
+      ? 'No matches'
+      : invalidContractChecks.length === 0
+        ? 'Ready'
+        : 'Mismatch'
 
   useEffect(() => {
     if (!selectedEndpointId && endpoints[0]) setSelectedEndpointId(endpoints[0].id)
@@ -1162,7 +1176,12 @@ export function MockPanel() {
               <MetricCard label="Endpoints" value={endpoints.length} detail={`${activeEndpointCount} enabled`} tone={activeEndpointCount ? 'success' : 'default'} />
               <MetricCard label="Traffic" value={hits.length} detail={hits.length ? `${matchedHitCount} matched` : 'No requests yet'} tone={hits.length ? 'success' : 'default'} />
               <MetricCard label="Coverage" value={endpoints.length ? `${Math.round((coveredEndpointCount / endpoints.length) * 100)}%` : '—'} detail="Endpoints reached this session" />
-              <MetricCard label="Contract mode" value="Relaxed" detail="Validation is planned for the next step" tone="warning" />
+              <MetricCard
+                label="Contract"
+                value={contractStatus}
+                detail={contractChecks.length ? `${contractChecks.length - invalidContractChecks.length}/${contractChecks.length} active responses valid` : 'Link an OpenAPI collection to validate'}
+                tone={contractStatus === 'Ready' ? 'success' : contractStatus === 'Mismatch' ? 'warning' : 'default'}
+              />
             </section>
 
             <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(280px,0.7fr)]">
@@ -1499,16 +1518,44 @@ export function MockPanel() {
           <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(280px,0.7fr)]">
             <div className="rounded-md border border-border-1 bg-surface-1 p-5">
               <div className="flex items-start gap-3">
-                <div className="rounded bg-warning/15 p-2 text-warning"><ShieldCheck size={17} /></div>
+                <div className={cn('rounded p-2', contractStatus === 'Ready' ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning')}><ShieldCheck size={17} /></div>
                 <div>
-                  <h2 className="text-sm font-semibold text-text-1">Contract mode is coming next</h2>
-                  <p className="mt-1 max-w-2xl text-[11px] leading-relaxed text-text-3">The Mock Control Room is ready for OpenAPI-aware validation. The next implementation will use required parameters, headers and response schemas from the selected specification to explain contract failures inline.</p>
+                  <h2 className="text-sm font-semibold text-text-1">OpenAPI contract validation</h2>
+                  <p className="mt-1 max-w-2xl text-[11px] leading-relaxed text-text-3">Every active mock response is checked locally against the linked collection: response status, Content-Type, required headers and JSON schema. Nothing is sent outside adOmnia.</p>
                 </div>
               </div>
+              <label className="mt-5 block max-w-xl">
+                <span className="mb-1.5 block text-[11px] font-medium text-text-2">OpenAPI collection</span>
+                <select
+                  value={sourceCollectionId}
+                  onChange={(event) => setSourceCollectionId(event.target.value)}
+                  className="h-8 w-full rounded border border-border-2 bg-surface-2 px-2 text-[11px] text-text-1 outline-none focus:border-accent"
+                >
+                  <option value="">Choose a collection with an OpenAPI spec...</option>
+                  {collections.map((collection) => <option key={collection.id} value={collection.id}>{collection.name}{collection._openapiSpec ? '' : ' (no spec)'}</option>)}
+                </select>
+              </label>
+
+              {!sourceCollection?._openapiSpec && <p className="mt-4 rounded border border-warning/30 bg-warning/5 p-3 text-[11px] text-text-3">Import an OpenAPI or Swagger file into the selected collection first. The mock remains usable; validation is simply unavailable until a spec is linked.</p>}
+              {sourceCollection?._openapiSpec && contractChecks.length === 0 && <p className="mt-4 rounded border border-border-1 bg-surface-2 p-3 text-[11px] text-text-3">No active mock response matches an operation in this collection. Import its endpoints from the overview or link the response to an imported request.</p>}
+              {contractChecks.length > 0 && (
+                <div className="mt-5 space-y-2">
+                  {contractChecks.map((check) => (
+                    <div key={check.responseId} className={cn('rounded border p-3 text-[11px]', check.result.valid ? 'border-success/35 bg-success/5' : 'border-error/35 bg-error/5')}>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-medium text-text-1">{check.endpointPath} · {check.responseName}</span>
+                        <span className={cn('font-semibold', check.result.valid ? 'text-success' : 'text-error')}>{check.result.valid ? 'Valid' : `${check.result.errors.length} issue${check.result.errors.length === 1 ? '' : 's'}`}</span>
+                      </div>
+                      {!check.result.valid && <ul className="mt-2 list-disc space-y-1 pl-4 text-text-3">{check.result.errors.map((error, index) => <li key={`${check.responseId}-${index}`}>{error.message}</li>)}</ul>}
+                      {check.result.warnings.length > 0 && <p className="mt-2 text-warning">{check.result.warnings.map((warning) => warning.message).join(' ')}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
               <div className="mt-5 grid gap-2 sm:grid-cols-3">
-                <div className="rounded border border-border-1 bg-surface-2 p-3 text-[11px] text-text-3"><span className="block font-medium text-text-1">Relaxed</span><span className="mt-1 block">Current server behavior. Best for UI development.</span></div>
-                <div className="rounded border border-border-1 bg-surface-2 p-3 text-[11px] text-text-3"><span className="block font-medium text-text-1">Validate request</span><span className="mt-1 block">Required params and JSON body against the spec.</span></div>
-                <div className="rounded border border-border-1 bg-surface-2 p-3 text-[11px] text-text-3"><span className="block font-medium text-text-1">Explain mismatch</span><span className="mt-1 block">Traffic inspector pinpoints the failed contract rule.</span></div>
+                <div className="rounded border border-border-1 bg-surface-2 p-3 text-[11px] text-text-3"><span className="block font-medium text-text-1">Status and media type</span><span className="mt-1 block">Catches undocumented response codes and Content-Type values.</span></div>
+                <div className="rounded border border-border-1 bg-surface-2 p-3 text-[11px] text-text-3"><span className="block font-medium text-text-1">Required headers</span><span className="mt-1 block">Flags missing response headers declared by the operation.</span></div>
+                <div className="rounded border border-border-1 bg-surface-2 p-3 text-[11px] text-text-3"><span className="block font-medium text-text-1">JSON schema</span><span className="mt-1 block">Checks mock JSON bodies before a consumer encounters them.</span></div>
               </div>
             </div>
             <div className="rounded-md border border-border-1 bg-surface-1 p-4">
@@ -1516,7 +1563,9 @@ export function MockPanel() {
               <dl className="mt-3 space-y-2 text-[11px]">
                 <div className="flex justify-between gap-3"><dt className="text-text-4">Endpoint definitions</dt><dd className="text-success">{endpoints.length} ready</dd></div>
                 <div className="flex justify-between gap-3"><dt className="text-text-4">Collection source</dt><dd className="truncate text-text-2">{sourceCollection?.name ?? 'Not selected'}</dd></div>
-                <div className="flex justify-between gap-3"><dt className="text-text-4">Smart Mock</dt><dd className="text-text-2">Available per response</dd></div>
+                <div className="flex justify-between gap-3"><dt className="text-text-4">OpenAPI spec</dt><dd className={sourceCollection?._openapiSpec ? 'text-success' : 'text-text-4'}>{sourceCollection?._openapiSpec ? 'Linked' : 'Not linked'}</dd></div>
+                <div className="flex justify-between gap-3"><dt className="text-text-4">Validated responses</dt><dd className={contractChecks.length ? 'text-text-2' : 'text-text-4'}>{contractChecks.length || 'None'}</dd></div>
+                <div className="flex justify-between gap-3"><dt className="text-text-4">Mismatches</dt><dd className={invalidContractChecks.length ? 'text-error' : 'text-success'}>{invalidContractChecks.length}</dd></div>
               </dl>
             </div>
           </section>

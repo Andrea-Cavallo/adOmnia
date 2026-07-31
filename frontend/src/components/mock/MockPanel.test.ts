@@ -15,7 +15,8 @@ describe('MockPanel', () => {
 
   it('provides the control-room navigation views', () => {
     expect(source).toContain('Endpoint explorer')
-    expect(source).toContain('Contract mode is coming next')
+    expect(source).toContain('OpenAPI contract validation')
+    expect(source).toContain('validateMockEndpoints')
     expect(source).toContain("type MockView = 'overview' | 'endpoints' | 'traffic' | 'contract'")
   })
 

@@ -3,7 +3,7 @@ import { Send, Save, FileCode, Gauge, X, Plus, Check, CornerDownRight, Clock, Co
 import type { RequestItem, HttpMethod, KVRow, RequestBody } from '@/lib/types'
 import { uid, blankBody, blankAuth } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { applyPathParams, detectPathParamKeys, pathParamDefaultValues, renamePathParamKey } from '@/lib/pathParams'
+import { detectPathParamKeys, pathParamDefaultValues, renamePathParamKey } from '@/lib/pathParams'
 import { prettyJson } from '@/lib/prettyJson'
 import { KVEditor } from './KVEditor'
 import { BodyEditor } from './BodyEditor'
@@ -21,7 +21,7 @@ import { useSettingsStore } from '@/stores/settings'
 import { ContextMenu } from '@/components/ui/ContextMenu'
 import { PSD2RequestPanel } from '@/components/psd2/PSD2RequestPanel'
 import { validatePSD2Request } from '@/lib/psd2Validation'
-import { normalizeUrlInput } from '@/lib/urlInput'
+import { queryRowsFromUrl, requestWithUrlInput, resolvedRequestUrl, rowsWithTrailingBlank, urlWithQuery } from '@/lib/requestUrl'
 
 interface ComposerProps {
   tabId: string
@@ -275,46 +275,6 @@ function hostFromUrl(url: string): string {
   try { return new URL(url).host } catch { return 'No host yet' }
 }
 
-function queryRowsFromUrl(url: string): KVRow[] {
-  const queryStart = url.indexOf('?')
-  if (queryStart === -1) return []
-  const hashStart = url.indexOf('#', queryStart)
-  const query = url.slice(queryStart + 1, hashStart === -1 ? undefined : hashStart)
-  if (!query) return []
-  const params = new URLSearchParams(query)
-  const rows: KVRow[] = []
-  params.forEach((value, key) => {
-    rows.push({ id: uid(), key, value, enabled: true })
-  })
-  return rows
-}
-
-function rowsWithTrailingBlank(rows: KVRow[]): KVRow[] {
-  return rows.length ? [...rows, { id: uid(), key: '', value: '', enabled: true }] : rows
-}
-
-// Rewrite the URL's query string from the params table, preserving the base path
-// and hash. Values are kept raw so `{{variables}}` survive round-trips.
-function urlWithQuery(url: string, params: KVRow[]): string {
-  const hashStart = url.indexOf('#')
-  const hash = hashStart === -1 ? '' : url.slice(hashStart)
-  const beforeHash = hashStart === -1 ? url : url.slice(0, hashStart)
-  const queryStart = beforeHash.indexOf('?')
-  const base = queryStart === -1 ? beforeHash : beforeHash.slice(0, queryStart)
-  const query = params
-    .filter((row) => row.enabled && row.key.trim())
-    .map((row) => `${row.key}=${row.value}`)
-    .join('&')
-  return query ? `${base}?${query}${hash}` : `${base}${hash}`
-}
-
-function pathParamValues(params: KVRow[]): Record<string, string> {
-  return params.reduce<Record<string, string>>((values, param) => {
-    if (param.enabled && param.key.trim()) values[param.key] = param.value
-    return values
-  }, {})
-}
-
 function PathParamRow({
   paramKey,
   value,
@@ -434,7 +394,7 @@ function ParamsSection({
         <div className="flex items-center justify-between gap-2 border-b border-border-1 px-3 py-2">
           <div>
             <h3 className="text-xs font-semibold text-text-1">Path Params</h3>
-            <p className="text-[10px] text-text-4">Rename here or in the URL â€” the template stays in sync.</p>
+            <p className="text-[10px] text-text-4">Rename here or in the URL - the template stays in sync.</p>
           </div>
           <span className="rounded border border-border-2 bg-surface-2 px-2 py-0.5 font-mono text-[10px] text-text-4">
             {pathKeys.length}
@@ -618,7 +578,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
   const scripts = request.scripts ?? { pre: '', post: '', tests: '' }
   // Keep the URL bar as a live preview of the path-params table while the
   // persisted URL remains a reusable `{param}` / `:param` template.
-  const liveUrl = applyPathParams(request.url, pathParamValues(request.pathParams ?? []))
+  const liveUrl = resolvedRequestUrl(request)
 
   const bodies = request.bodies ?? []
   const bodyCount = bodies.filter((b) => b.type !== 'none').length
@@ -725,31 +685,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
   }
 
   const handleUrlChange = (url: string) => {
-    const normalizedUrl = normalizeUrlInput(url)
-    const previousKeys = detectPathParamKeys(request.url)
-    const nextKeys = detectPathParamKeys(normalizedUrl)
-    const previousPathParams = request.pathParams ?? []
-
-    const nextPathParams = nextKeys.map((key, index) => {
-      const existing = previousPathParams.find((param) => param.key === key)
-      if (existing) return existing
-
-      // If a placeholder was renamed in the URL, retain its entered value and
-      // enabled state rather than making the user type them again.
-      const previousKey = previousKeys[index]
-      const renamed = previousKey && !nextKeys.includes(previousKey)
-        ? previousPathParams.find((param) => param.key === previousKey)
-        : undefined
-      return renamed ? { ...renamed, key } : { id: uid(), key, value: '', enabled: true }
-    })
-
-    // Keep both query and path parameter tables in sync with the URL.
-    onChange({
-      ...request,
-      url: normalizedUrl,
-      params: rowsWithTrailingBlank(queryRowsFromUrl(normalizedUrl)),
-      pathParams: nextPathParams,
-    })
+    onChange(requestWithUrlInput(request, url))
   }
 
   const openSection = (section: ComposerSection, subsection?: 'auth') => {
