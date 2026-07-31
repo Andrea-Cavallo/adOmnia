@@ -3,7 +3,7 @@ import { Send, Save, FileCode, Gauge, X, Plus, Check, CornerDownRight, Clock, Co
 import type { RequestItem, HttpMethod, KVRow, RequestBody } from '@/lib/types'
 import { uid, blankBody, blankAuth } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { detectPathParamKeys, renamePathParamKey } from '@/lib/pathParams'
+import { applyPathParams, detectPathParamKeys, renamePathParamKey } from '@/lib/pathParams'
 import { prettyJson } from '@/lib/prettyJson'
 import { KVEditor } from './KVEditor'
 import { BodyEditor } from './BodyEditor'
@@ -308,6 +308,13 @@ function urlWithQuery(url: string, params: KVRow[]): string {
   return query ? `${base}?${query}${hash}` : `${base}${hash}`
 }
 
+function pathParamValues(params: KVRow[]): Record<string, string> {
+  return params.reduce<Record<string, string>>((values, param) => {
+    if (param.enabled && param.key.trim()) values[param.key] = param.value
+    return values
+  }, {})
+}
+
 function PathParamRow({
   paramKey,
   value,
@@ -608,6 +615,9 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
   const isDirty = useTabsStore((s) => s.tabs.find((t) => t.id === tabId)?.dirty ?? false)
 
   const scripts = request.scripts ?? { pre: '', post: '', tests: '' }
+  // Keep the URL bar as a live preview of the path-params table while the
+  // persisted URL remains a reusable `{param}` / `:param` template.
+  const liveUrl = applyPathParams(request.url, pathParamValues(request.pathParams ?? []))
 
   const bodies = request.bodies ?? []
   const bodyCount = bodies.filter((b) => b.type !== 'none').length
@@ -718,6 +728,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
     const previousKeys = detectPathParamKeys(request.url)
     const nextKeys = detectPathParamKeys(normalizedUrl)
     const previousPathParams = request.pathParams ?? []
+
     const nextPathParams = nextKeys.map((key, index) => {
       const existing = previousPathParams.find((param) => param.key === key)
       if (existing) return existing
@@ -791,7 +802,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
 
           <div className="flex-1 h-8 bg-surface-2 border border-border-2 rounded focus-within:border-accent transition-colors overflow-hidden">
             <VarHighlightInput
-              value={request.url}
+              value={liveUrl}
               onChange={handleUrlChange}
               onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') handleSend() }}
               resolvedVars={resolvedVars}
