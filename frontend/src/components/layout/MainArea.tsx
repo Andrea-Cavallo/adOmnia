@@ -25,6 +25,7 @@ import { appendMockEndpoints, createMockEndpointFromRequest } from '@/lib/mockEn
 import { DropToast } from '@/components/layout/DropToast'
 import type { DropFeedback } from '@/hooks/useFileDrop'
 import { normalizeUrlInput } from '@/lib/urlInput'
+import { applyPathParams } from '@/lib/pathParams'
 
 // ─── Lazy-loaded panels (loaded on first navigation) ──────────────────────────
 
@@ -149,6 +150,14 @@ const METHOD_COLORS: Record<HttpMethod, string> = {
   SOAP: 'text-method-post',
 }
 
+function resolvedPathUrl(request: RequestItem): string {
+  const values = (request.pathParams ?? []).reduce<Record<string, string>>((result, param) => {
+    if (param.enabled && param.key.trim()) result[param.key] = param.value
+    return result
+  }, {})
+  return applyPathParams(request.url, values)
+}
+
 function clampComposerWidth(w: number): number {
   return Math.max(COMPOSER_WIDTH_MIN, Math.min(w, Math.round(window.innerWidth * composerWidthMaxRatio())))
 }
@@ -190,6 +199,7 @@ function ActiveRequestBar({
 }) {
   const [savedFlash, setSavedFlash] = useState(false)
   const urlInputRef = useRef<HTMLInputElement>(null)
+  const liveUrl = resolvedPathUrl(request)
 
   useEffect(() => {
     const focusUrl = () => urlInputRef.current?.focus()
@@ -222,7 +232,7 @@ function ActiveRequestBar({
 
         <div className="h-[var(--ui-control-h)] min-w-0 flex-1 overflow-hidden rounded-md border border-border-2 bg-surface-2 transition-colors focus-within:border-accent">
           <VarHighlightInput
-            value={request.url}
+            value={liveUrl}
             onChange={(url) => onChange({ ...request, url: normalizeUrlInput(url) })}
             onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') onSend() }}
             resolvedVars={vars}
