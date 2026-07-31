@@ -6,6 +6,11 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.6.5] - 2026-07-31
+
+### Fixed
+- **Live path parameters:** `{id:value}` is resolved as path key `id` with value `value`, and changing a Path Params value updates the visible request URL immediately.
+
 ## [0.6.0] - 2026-07-22
 
 ### Added
