@@ -43,12 +43,35 @@ export function resolvedRequestUrl(request: RequestItem): string {
   return applyPathParams(request.url, pathParamValues(request.pathParams))
 }
 
+function splitUrlParts(url: string): { path: string; suffix: string } {
+  const hashIndex = url.indexOf('#')
+  const beforeHash = hashIndex === -1 ? url : url.slice(0, hashIndex)
+  const hash = hashIndex === -1 ? '' : url.slice(hashIndex)
+  const queryIndex = beforeHash.indexOf('?')
+  return {
+    path: queryIndex === -1 ? beforeHash : beforeHash.slice(0, queryIndex),
+    suffix: queryIndex === -1 ? hash : `${beforeHash.slice(queryIndex)}${hash}`,
+  }
+}
+
+function restoreTemplatePathForResolvedInput(request: RequestItem, input: string): string {
+  const template = splitUrlParts(request.url)
+  const resolved = splitUrlParts(resolvedRequestUrl(request))
+  const edited = splitUrlParts(input)
+
+  // The top request bar intentionally displays resolved values. If a user edits
+  // only the query string or fragment, retain the stored path template instead
+  // of turning `{id}` into its current literal value.
+  return edited.path === resolved.path ? `${template.path}${edited.suffix}` : input
+}
+
 /**
  * Updates the canonical URL template and its query/path rows together, no
  * matter whether the user edited the top request bar or the Composer URL bar.
  */
 export function requestWithUrlInput(request: RequestItem, input: string): RequestItem {
-  const url = normalizeUrlInput(input)
+  const normalizedInput = normalizeUrlInput(input)
+  const url = restoreTemplatePathForResolvedInput(request, normalizedInput)
   const previousKeys = detectPathParamKeys(request.url)
   const nextKeys = detectPathParamKeys(url)
   const previousPathParams = request.pathParams ?? []

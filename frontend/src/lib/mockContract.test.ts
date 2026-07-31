@@ -54,4 +54,13 @@ describe('mock contract validation', () => {
     expect(checks[0].result.valid).toBe(false)
     expect(checks[0].result.errors.map((error) => error.category)).toEqual(expect.arrayContaining(['body']))
   })
+
+  it('does not validate endpoints imported from a different collection against the selected spec', () => {
+    const checks = validateMockEndpoints([{
+      id: 'other-api', path: '/users/:id', method: 'GET', sourceCollectionId: 'other-collection', sourceRequestId: 'get-user',
+      responses: [{ id: 'ok', name: 'User', status: 200, headers: { 'Content-Type': 'application/json' }, body: '{"id":"u_1"}', isActive: true }],
+    }], collection())
+
+    expect(checks).toEqual([])
+  })
 })

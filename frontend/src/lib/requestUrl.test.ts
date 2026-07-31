@@ -22,4 +22,18 @@ describe('request URL synchronization', () => {
       { id: 'query', key: 'include', value: 'users', enabled: true },
     ])).toBe('https://api.test/tenants/{id}?include=users#details')
   })
+
+  it('preserves a path template when the resolved top-bar URL changes only its query', () => {
+    const request = {
+      ...blankRequest('GET', 'Tenant'),
+      url: 'https://api.test/tenants/{tenantId}?page=1',
+      pathParams: [{ id: 'tenant', key: 'tenantId', value: 'tenant-42', enabled: true }],
+    }
+
+    const next = requestWithUrlInput(request, 'https://api.test/tenants/tenant-42?page=2')
+
+    expect(next.url).toBe('https://api.test/tenants/{tenantId}?page=2')
+    expect(next.pathParams).toMatchObject([{ key: 'tenantId', value: 'tenant-42', enabled: true }])
+    expect(resolvedRequestUrl(next)).toBe('https://api.test/tenants/tenant-42?page=2')
+  })
 })

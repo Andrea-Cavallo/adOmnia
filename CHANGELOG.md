@@ -6,6 +6,15 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.6.7] - 2026-07-31
+
+### Fixed
+- **Path template preservation:** changing only query parameters or a fragment in the resolved top request bar no longer replaces a `{pathParam}` template with its current literal value.
+- **OpenAPI component schemas:** Contract validation now resolves local `$ref` component schemas, so Mock Server and response checks validate the common `#/components/schemas/...` shape correctly.
+- **Mock collection isolation:** endpoints imported from another collection are no longer checked against the selected collection's OpenAPI contract.
+- **MCP hydration race:** a slow local-storage read cannot overwrite a configuration edited while the MCP Control Room is opening.
+- **Dependency security:** upgraded transitive `fast-uri` and `dompurify` versions; `npm audit --omit=dev` now reports zero vulnerabilities.
+
 ## [0.6.6] - 2026-07-31
 
 ### Added

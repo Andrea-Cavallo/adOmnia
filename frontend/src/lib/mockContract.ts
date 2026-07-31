@@ -14,6 +14,7 @@ export interface MockContractEndpoint {
   id: string
   path: string
   method: string
+  sourceCollectionId?: string
   sourceRequestId?: string
   responses: MockContractResponse[]
 }
@@ -109,5 +110,7 @@ export function validateMockEndpoint(endpoint: MockContractEndpoint, collection:
 
 export function validateMockEndpoints(endpoints: MockContractEndpoint[], collection: Collection | null): MockContractCheck[] {
   if (!collection?._openapiSpec) return []
-  return endpoints.flatMap((endpoint) => validateMockEndpoint(endpoint, collection))
+  return endpoints
+    .filter((endpoint) => !endpoint.sourceCollectionId || endpoint.sourceCollectionId === collection.id)
+    .flatMap((endpoint) => validateMockEndpoint(endpoint, collection))
 }

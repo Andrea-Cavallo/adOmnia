@@ -131,6 +131,34 @@ function parseSpec(raw: string): Record<string, unknown> | null {
   }
 }
 
+function resolveJsonPointer(root: Record<string, unknown>, ref: string): unknown {
+  if (!ref.startsWith('#/')) return undefined
+  return ref.slice(2).split('/').reduce<unknown>((current, part) => {
+    if (!current || typeof current !== 'object') return undefined
+    return (current as Record<string, unknown>)[part.replace(/~1/g, '/').replace(/~0/g, '~')]
+  }, root)
+}
+
+function resolveLocalRefs(value: unknown, root: Record<string, unknown>, seen = new Set<string>()): unknown {
+  if (Array.isArray(value)) return value.map((item) => resolveLocalRefs(item, root, seen))
+  if (!value || typeof value !== 'object') return value
+
+  const schema = value as Record<string, unknown>
+  const ref = typeof schema.$ref === 'string' ? schema.$ref : undefined
+  if (ref?.startsWith('#/')) {
+    // A recursive schema cannot be inlined indefinitely. An empty schema keeps
+    // the validator operational while the surrounding object remains checked.
+    if (seen.has(ref)) return {}
+    const target = resolveJsonPointer(root, ref)
+    if (target && typeof target === 'object') {
+      const { $ref: _ignored, ...siblings } = schema
+      return resolveLocalRefs({ ...(target as Record<string, unknown>), ...siblings }, root, new Set([...seen, ref]))
+    }
+  }
+
+  return Object.fromEntries(Object.entries(schema).map(([key, child]) => [key, resolveLocalRefs(child, root, seen)]))
+}
+
 function getSchemaForResponse(
   spec: Record<string, unknown>,
   oaPath: string,
@@ -173,9 +201,8 @@ function getSchemaForResponse(
   const mediaType = content[firstCt]
   if (!mediaType?.schema) return null
 
-  return preprocessOpenApiSchema(
-    JSON.parse(JSON.stringify(mediaType.schema)) as Record<string, unknown>
-  )
+  const cloned = JSON.parse(JSON.stringify(mediaType.schema)) as Record<string, unknown>
+  return preprocessOpenApiSchema(resolveLocalRefs(cloned, spec) as Record<string, unknown>)
 }
 
 function preprocessOpenApiSchema(schema: Record<string, unknown>): Record<string, unknown> {

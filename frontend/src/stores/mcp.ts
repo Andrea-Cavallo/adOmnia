@@ -150,9 +150,17 @@ export const useMcpStore = create<McpState>((set, get) => ({
   configsHydrated: false,
 
   hydrateConfigs: async () => {
+    const configsBeforeRead = get().savedConfigs
     const stored = await safeStorageGet(STORAGE_BUCKET, STORAGE_ENTRY)
     const persisted = stored ? parseConfigs(stored) : null
-    const legacy = get().savedConfigs
+    const currentConfigs = get().savedConfigs
+
+    // Do not let a slow storage read replace a configuration added or removed
+    // while the Control Room was opening.
+    if (currentConfigs !== configsBeforeRead) {
+      set({ configsHydrated: true })
+      return
+    }
 
     if (persisted) {
       set({ savedConfigs: persisted, configsHydrated: true })
@@ -161,7 +169,7 @@ export const useMcpStore = create<McpState>((set, get) => ({
 
     // Existing browser-only configurations are retained and copied into the
     // desktop storage on the first launch after this migration.
-    if (legacy.length > 0) await safeStoragePut(STORAGE_BUCKET, STORAGE_ENTRY, JSON.stringify(legacy))
+    if (currentConfigs.length > 0) await safeStoragePut(STORAGE_BUCKET, STORAGE_ENTRY, JSON.stringify(currentConfigs))
     set({ configsHydrated: true })
   },
 
