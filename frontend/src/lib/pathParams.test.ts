@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyPathParams, detectPathParamKeys, renamePathParamKey } from '@/lib/pathParams'
+import { applyPathParams, detectPathParamKeys, pathParamDefaultValues, renamePathParamKey } from '@/lib/pathParams'
 
 describe('path parameter helpers', () => {
   it('renames matching placeholders without changing their syntax or environment variables', () => {
@@ -16,5 +16,14 @@ describe('path parameter helpers', () => {
 
     expect(applyPathParams(template, { tenantId: 'acme', userId: '' }))
       .toBe('https://api.test/tenants/acme/users/:userId?scope={{scope}}')
+  })
+
+  it('treats {id:value} as an id path parameter with an inline value', () => {
+    const template = 'https://api.test/tenants/{id:no}'
+
+    expect(detectPathParamKeys(template)).toEqual(['id'])
+    expect(pathParamDefaultValues(template)).toEqual({ id: 'no' })
+    expect(applyPathParams(template, {})).toBe('https://api.test/tenants/no')
+    expect(applyPathParams(template, { id: '42' })).toBe('https://api.test/tenants/42')
   })
 })

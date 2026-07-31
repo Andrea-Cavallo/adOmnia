@@ -3,7 +3,7 @@ import { Send, Save, FileCode, Gauge, X, Plus, Check, CornerDownRight, Clock, Co
 import type { RequestItem, HttpMethod, KVRow, RequestBody } from '@/lib/types'
 import { uid, blankBody, blankAuth } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { applyPathParams, detectPathParamKeys, renamePathParamKey } from '@/lib/pathParams'
+import { applyPathParams, detectPathParamKeys, pathParamDefaultValues, renamePathParamKey } from '@/lib/pathParams'
 import { prettyJson } from '@/lib/prettyJson'
 import { KVEditor } from './KVEditor'
 import { BodyEditor } from './BodyEditor'
@@ -377,6 +377,7 @@ function ParamsSection({
   const hasActiveEnv = activeEnvId !== null
 
   const pathKeys = detectPathParamKeys(request.url)
+  const pathDefaults = pathParamDefaultValues(request.url)
   const storedPathParams = request.pathParams ?? []
 
   // The query table always reflects the URL: if nothing is stored yet (e.g. a
@@ -452,7 +453,7 @@ function ParamsSection({
                 <PathParamRow
                   key={key}
                   paramKey={key}
-                  value={stored?.value ?? ''}
+                  value={stored?.value ?? pathDefaults[key] ?? ''}
                   enabled={stored?.enabled ?? true}
                   resolvedVars={resolvedVars}
                   hasActiveEnv={hasActiveEnv}
