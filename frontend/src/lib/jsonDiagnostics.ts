@@ -305,13 +305,22 @@ function nativeFallback(text: string, error: unknown): JsonDiagnostic {
   }
 }
 
+function normaliseTemplateValues(text: string): string {
+  // Environment variables are substituted immediately before a request is
+  // sent. Treat a complete {{VARIABLE}} token as a JSON value while editing,
+  // preserving its length so diagnostics for real syntax errors retain their
+  // original line and column.
+  return text.replace(/\{\{[^{}]+\}\}/g, (token) => `0${' '.repeat(token.length - 1)}`)
+}
+
 export function diagnoseJson(text: string): JsonDiagnostic[] {
   if (!text.trim()) return []
+  const diagnosticText = normaliseTemplateValues(text)
   try {
-    JSON.parse(text)
+    JSON.parse(diagnosticText)
     return []
   } catch (error) {
-    const diagnostics = new JsonDiagnosticParser(text).parse()
-    return diagnostics.length > 0 ? diagnostics : [nativeFallback(text, error)]
+    const diagnostics = new JsonDiagnosticParser(diagnosticText).parse()
+    return diagnostics.length > 0 ? diagnostics : [nativeFallback(diagnosticText, error)]
   }
 }

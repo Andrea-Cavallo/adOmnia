@@ -5,6 +5,7 @@ import { uid, type EnvVariable } from '@/lib/types'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { useSettingsStore } from '@/stores/settings'
 import { findTextMatches } from '@/lib/textSearch'
+import { prepareJsonEnvironmentExtraction } from '@/lib/jsonTemplateValues'
 import { ContextMenu } from '@/components/ui/ContextMenu'
 
 const AUTO_CLOSE_PAIRS: Record<string, string> = {
@@ -622,17 +623,15 @@ export function JsonEditor({
 
     let variables: EnvVariable[]
     const emptyRow = environment.variables.find((variable) => !variable.key.trim() && !variable.value)
-    const variable: EnvVariable = { id: emptyRow?.id ?? uid(), key: envVariableMenu.name, value: envVariableMenu.value, enabled: true, type: 'text' }
+    const reference = `{{${envVariableMenu.name}}}`
+    const extraction = prepareJsonEnvironmentExtraction(envVariableMenu.value, reference)
+    const variable: EnvVariable = { id: emptyRow?.id ?? uid(), key: envVariableMenu.name, value: extraction.value, enabled: true, type: 'text' }
     variables = emptyRow
       ? environment.variables.map((item) => item.id === emptyRow.id ? variable : item)
       : [...environment.variables, variable]
     updateVariables(environment.id, variables)
 
-    const selectedWasQuoted = envVariableMenu.value.length >= 2
-      && envVariableMenu.value.startsWith('"')
-      && envVariableMenu.value.endsWith('"')
-    const reference = `{{${envVariableMenu.name}}}`
-    const replacement = selectedWasQuoted ? `"${reference}"` : reference
+    const replacement = extraction.replacement
     const next = value.slice(0, envVariableMenu.selectionStart)
       + replacement
       + value.slice(envVariableMenu.selectionEnd)
