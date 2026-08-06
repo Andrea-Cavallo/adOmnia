@@ -11,8 +11,8 @@ require (
 	github.com/dop251/goja v0.0.0-20260701091749-b07b74453ea9
 	github.com/dustin/go-humanize v1.0.1
 	github.com/eclipse/paho.mqtt.golang v1.5.1
-	github.com/gabriel-vasile/mimetype v1.4.13
-	github.com/gaissmai/bart v0.28.1
+	github.com/gabriel-vasile/mimetype v1.4.15
+	github.com/gaissmai/bart v0.29.0
 	github.com/go-sql-driver/mysql v1.10.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/jackc/pgx/v5 v5.10.0
@@ -20,7 +20,7 @@ require (
 	github.com/miekg/dns v1.1.72
 	github.com/nats-io/nats.go v1.52.0
 	github.com/pavlo-v-chernykh/keystore-go/v4 v4.5.0
-	github.com/rabbitmq/amqp091-go v1.12.0
+	github.com/rabbitmq/amqp091-go v1.13.0
 	github.com/redis/go-redis/v9 v9.21.0
 	github.com/romshark/jscan v1.2.0
 	github.com/tidwall/gjson v1.19.0

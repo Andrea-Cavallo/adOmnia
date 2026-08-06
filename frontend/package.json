@@ -1,7 +1,7 @@
 {
   "name": "adomnia-frontend",
   "private": true,
-  "version": "0.6.7",
+  "version": "0.6.9",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -29,13 +29,11 @@
     "clsx": "^2.1.1",
     "d3-force": "^3.0.0",
     "lucide-react": "^1.25.0",
-    "marked": "^18.0.6",
     "mermaid": "^11.16.0",
-    "monaco-editor": "^0.52.2",
+    "monaco-editor": "^0.56.0",
     "monaco-yaml": "^5.5.1",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.1.200",
-    "protobufjs": "^8.7.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "tailwind-merge": "^3.6.0",

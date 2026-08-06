@@ -321,39 +321,3 @@ export function evaluateAssertions(
       }
     })
 }
-
-export function blankAssertion(): RequestAssertion {
-  return {
-    id: Math.random().toString(36).slice(2, 10),
-    enabled: true,
-    target: 'statusCode',
-    operator: 'eq',
-    expected: '200',
-  }
-}
-
-export function pmCompatSnippet(assertion: RequestAssertion): string {
-  const e = assertion.expected ? `"${assertion.expected}"` : ''
-  const p = assertion.path ? `"${assertion.path}"` : ''
-  const h = assertion.headerName ? `"${assertion.headerName}"` : ''
-
-  switch (assertion.target) {
-    case 'statusCode':
-      if (assertion.operator === 'eq') return `pm.test("Status is ${assertion.expected}", () => {\n  pm.expect(pm.response.code).to.equal(${assertion.expected});\n});`
-      return `pm.test("Status code check", () => {\n  pm.expect(pm.response.code).to.equal(/* expected */);\n});`
-    case 'responseTime':
-      return `pm.test("Response time < ${assertion.expected}ms", () => {\n  pm.expect(pm.response.responseTime).to.be.below(${assertion.expected ?? '2000'});\n});`
-    case 'header':
-      if (assertion.operator === 'exists') return `pm.test("Header ${h} exists", () => {\n  pm.expect(pm.response.headers.has(${h})).to.be.true;\n});`
-      return `pm.test("Header check", () => {\n  pm.expect(pm.response.headers.get(${h})).to.include(${e});\n});`
-    case 'jsonPath':
-      if (assertion.operator === 'exists') return `pm.test("JSON path ${p} exists", () => {\n  pm.expect(pm.response.json().${p}).to.exist;\n});`
-      if (assertion.operator === 'eq') return `pm.test("JSON path equals", () => {\n  pm.expect(pm.response.json().${p}).to.equal(${e});\n});`
-      if (assertion.operator === 'type') return `pm.test("JSON path type is ${assertion.type}", () => {\n  pm.expect(pm.response.json().${p}).to.be.a("${assertion.type}");\n});`
-      return `pm.test("JSON path check", () => {\n  pm.expect(pm.response.json().${p}).to.be.ok;\n});`
-    case 'bodyText':
-      return `pm.test("Body contains text", () => {\n  pm.expect(pm.response.text()).to.include(${e});\n});`
-    default:
-      return `// pm.test("...", () => { ... })`
-  }
-}

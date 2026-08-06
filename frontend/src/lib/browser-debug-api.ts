@@ -218,28 +218,6 @@ function browserDebugError(err: unknown, fallback = 'Browser Debug operation fai
 
 // Existing wrappers
 
-export async function launchBrowser(url: string): Promise<void> {
-  try {
-    const binding = getBrowserDebugBinding()
-    if (!binding) return
-    await binding.LaunchBrowser(url)
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to launch browser'
-    throw new Error(message)
-  }
-}
-
-export async function connectDebugger(): Promise<void> {
-  try {
-    const binding = getBrowserDebugBinding()
-    if (!binding) return
-    await binding.Connect()
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to connect'
-    throw new Error(message)
-  }
-}
-
 export async function disconnectDebugger(): Promise<void> {
   try {
     const binding = getBrowserDebugBinding()
@@ -251,16 +229,6 @@ export async function disconnectDebugger(): Promise<void> {
   }
 }
 
-export async function isConnected(): Promise<boolean> {
-  try {
-    const binding = getBrowserDebugBinding()
-    if (!binding) return false
-    return await binding.IsConnected()
-  } catch {
-    return false
-  }
-}
-
 export async function getTraffic(): Promise<DebugNetworkEntry[]> {
   try {
     const binding = getBrowserDebugBinding()
@@ -268,16 +236,6 @@ export async function getTraffic(): Promise<DebugNetworkEntry[]> {
     return await binding.GetTraffic()
   } catch (err: unknown) {
     throw new Error(err instanceof Error ? err.message : 'Failed to read browser traffic')
-  }
-}
-
-export async function getTrafficFiltered(filter: string): Promise<DebugNetworkEntry[]> {
-  try {
-    const binding = getBrowserDebugBinding()
-    if (!binding) return []
-    return await binding.GetTrafficFiltered(filter)
-  } catch (err: unknown) {
-    throw browserDebugError(err)
   }
 }
 
@@ -306,16 +264,6 @@ export async function clearTraffic(): Promise<void> {
     const binding = getBrowserDebugBinding()
     if (!binding) return
     await binding.ClearTraffic()
-  } catch (err: unknown) {
-    throw browserDebugError(err)
-  }
-}
-
-export async function stopBrowser(): Promise<void> {
-  try {
-    const binding = getBrowserDebugBinding()
-    if (!binding) return
-    await binding.StopBrowser()
   } catch (err: unknown) {
     throw browserDebugError(err)
   }
@@ -461,26 +409,6 @@ export async function getBreakpoints(): Promise<BreakpointInfo[]> {
     const binding = getBrowserDebugBinding()
     if (!binding) return []
     return await binding.GetBreakpoints()
-  } catch (err: unknown) {
-    throw browserDebugError(err)
-  }
-}
-
-export async function getScripts(): Promise<ScriptInfo[]> {
-  try {
-    const binding = getBrowserDebugBinding()
-    if (!binding?.GetScripts) return []
-    return await binding.GetScripts()
-  } catch (err: unknown) {
-    throw browserDebugError(err)
-  }
-}
-
-export async function getScriptSource(scriptId: string): Promise<string> {
-  try {
-    const binding = getBrowserDebugBinding()
-    if (!binding?.GetScriptSource) return ''
-    return await binding.GetScriptSource(scriptId)
   } catch (err: unknown) {
     throw browserDebugError(err)
   }

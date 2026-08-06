@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { lazy, Suspense, useState, useRef, useEffect, useMemo } from 'react'
 import { Send, Save, FileCode, Gauge, X, Plus, Check, CornerDownRight, Clock, Code, Copy, CheckCheck, FileText, Circle, ListChecks, ShieldCheck, MoreVertical, ChevronDown, FileKey2 } from 'lucide-react'
 import type { RequestItem, HttpMethod, KVRow, RequestBody } from '@/lib/types'
 import { uid, blankBody, blankAuth } from '@/lib/types'
@@ -8,7 +8,6 @@ import { prettyJson } from '@/lib/prettyJson'
 import { KVEditor } from './KVEditor'
 import { BodyEditor } from './BodyEditor'
 import { AuthEditor } from './AuthEditor'
-import { ScriptsEditor } from './ScriptsEditor'
 import { parseCurl, applyParsedCurl } from '@/lib/parseCurl'
 import { Prompt } from '@/components/ui/prompt'
 import { generateCode, LANGUAGES, copyToClipboard } from '@/lib/codegen'
@@ -35,6 +34,8 @@ interface ComposerProps {
 }
 
 const METHODS: HttpMethod[] = ['GET', 'QUERY', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'CONNECT', 'TRACE']
+
+const ScriptsEditor = lazy(() => import('./ScriptsEditor').then((module) => ({ default: module.ScriptsEditor })))
 
 const METHOD_COLORS: Record<string, string> = {
   GET: 'text-method-get',
@@ -479,7 +480,7 @@ function RequestOverview({
           value={request.description ?? ''}
           onChange={(event) => onChange({ ...request, description: event.target.value })}
           placeholder="Add a clear description: what this request does, when to use it, required setup, examples or edge cases..."
-          className="mt-2 min-h-16 w-full resize-y rounded-md border border-border-2 bg-surface-1 px-3 py-2 text-[12px] leading-relaxed text-text-2 outline-none placeholder:text-text-4 focus:border-accent"
+          className="mt-2 min-h-40 w-full resize-y rounded-md border border-border-2 bg-surface-1 px-3 py-2 text-[12px] leading-relaxed text-text-2 outline-none placeholder:text-text-4 focus:border-accent"
         />
       </section>
 
@@ -1076,13 +1077,15 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
           )}
           {activeTab === 'scripts' && (
             <div className="flex min-h-0 flex-1 flex-col">
-              <ScriptsEditor
-                pre={scripts.pre ?? ''}
-                post={scripts.post ?? ''}
-                tests={scripts.tests ?? ''}
-                initialTab="tests"
-                onChange={(s) => onChange({ ...request, scripts: s })}
-              />
+              <Suspense fallback={<div className="flex flex-1 items-center justify-center text-xs text-text-3">Loading JavaScript editor…</div>}>
+                <ScriptsEditor
+                  pre={scripts.pre ?? ''}
+                  post={scripts.post ?? ''}
+                  tests={scripts.tests ?? ''}
+                  initialTab="tests"
+                  onChange={(s) => onChange({ ...request, scripts: s })}
+                />
+              </Suspense>
             </div>
           )}
         </div>

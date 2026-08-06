@@ -9,7 +9,6 @@ export type RailItem =
   | 'broker'
   | 'websocket'
   | 'sse'
-  | 'loadtest'
   | 'proxy'
   | 'mock'
   | 'grpc'
@@ -18,9 +17,7 @@ export type RailItem =
   | 'jsonviewer'
   | 'xmltools'
   | 'flows'
-  | 'runner'
   | 'soap'
-  | 'testdata'
   | 'markdown'
   | 'mermaid'
   | 'latex'
@@ -40,10 +37,7 @@ export type RailItem =
   | 'welcome'
   | 'gitsync'
   | 'mcp'
-  | 'apieditor'
   | 'apidocs'
-  | 'visualtests'
-  | 'scheduler'
 
 // Canonical Cmd/Ctrl+1..7 quick-navigation targets, ordered by expected daily
 // use — core tools first, advanced-only tools last. This is deliberately NOT a

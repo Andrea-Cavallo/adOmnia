@@ -52,6 +52,25 @@ export default defineConfig(async () => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
+        // Monaco 0.56's export map no longer exposes its legacy worker
+        // subpaths to Vite. The aliases retain our bundled worker setup and
+        // also cover monaco-yaml's internal import.
+        'monaco-editor/esm/vs/editor/editor.worker': path.resolve(
+          __dirname,
+          './node_modules/monaco-editor/esm/vs/editor/editor.worker.js'
+        ),
+        'monaco-editor/esm/vs/editor/editor.worker.js': path.resolve(
+          __dirname,
+          './node_modules/monaco-editor/esm/vs/editor/editor.worker.js'
+        ),
+        'monaco-editor/esm/vs/language/json/json.worker': path.resolve(
+          __dirname,
+          './node_modules/monaco-editor/esm/vs/language/json/json.worker.js'
+        ),
+        'monaco-editor/esm/vs/language/json/json.worker.js': path.resolve(
+          __dirname,
+          './node_modules/monaco-editor/esm/vs/language/json/json.worker.js'
+        ),
       },
     },
     build: {

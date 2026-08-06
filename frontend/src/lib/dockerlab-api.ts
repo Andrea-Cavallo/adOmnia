@@ -62,16 +62,6 @@ function getBinding(): any {
   return (window as any)?.go?.main?.DockerLab
 }
 
-export async function getPresets(): Promise<PresetDef[]> {
-  try {
-    const b = getBinding()
-    if (!b) return []
-    return await b.GetPresets()
-  } catch {
-    return []
-  }
-}
-
 export async function generateLab(ids: string[]): Promise<LabOutput> {
   const b = getBinding()
   if (!b) return { composeContent: '', envContent: '', readmeContent: '' }

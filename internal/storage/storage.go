@@ -73,9 +73,6 @@ func storePath() string {
 	return filepath.Join(storeDir(), "adomnia.db")
 }
 
-// Path returns the local database file path.
-func Path() string { return storePath() }
-
 // DataDir returns the application data directory used by the storage engine.
 func DataDir() string { return storeDir() }
 

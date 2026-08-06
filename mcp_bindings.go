@@ -120,10 +120,6 @@ func (m *MCPClient) Disconnect() error {
 	return m.DisconnectSession(defaultMCPSessionID)
 }
 
-func (m *MCPClient) getDefault() *mcp.Client {
-	return m.getSessionClient(defaultMCPSessionID)
-}
-
 func (m *MCPClient) getSessionClient(sessionID string) *mcp.Client {
 	m.mu.RLock()
 	defer m.mu.RUnlock()

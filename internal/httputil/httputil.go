@@ -14,9 +14,3 @@ func JSONError(w http.ResponseWriter, msg string, code int) {
 		"error": msg,
 	})
 }
-
-// JSONOK writes a successful JSON response with status 200.
-func JSONOK(w http.ResponseWriter, value any) {
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(value)
-}

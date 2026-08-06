@@ -4,17 +4,24 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
-## [Unreleased]
+## [0.6.9] - 2026-08-06
 
 ### Added
 - **Extract JSON values into environment variables:** select a value in a JSON editor, right-click, and choose the adOmnia context-menu action to store it in the active environment and replace it with `{{VARIABLE_NAME}}`. Variable names are inferred from the enclosing JSON property and stay unique; a local Development environment is created only when needed.
 - **Contextual header-value presets:** focusing a request header value now offers compatible choices for the selected header. Content-Type and Accept include common API media types such as JSON, XML, form data, multipart, Server-Sent Events, NDJSON, JSON:API, GraphQL, SOAP, YAML, CBOR, MessagePack, PDF, and binary payloads.
 - **Expanded header preset catalog:** the Headers panel now groups and filters practical presets for content and encoding, authentication/API keys, cache and conditional requests, browser/CORS/proxy work, tracing, webhooks, GraphQL/SOAP, and PSD2/Berlin Group.
 - **Request/Response layout switcher:** choose side-by-side panels or stack Request above Response. Both layout and independently resized panel dimensions are saved locally.
+- **JavaScript script editor:** Pre-request, Post-response, and Tests now use a local Monaco editor with JavaScript syntax colors, line numbers, bracket matching, completion, and inline syntax errors with line and column details. The dynamic `pm.*` API does not produce false validation errors.
+- **Interactive request-body JSON Graph:** nested nodes are joined by clear, colored arrowed connections. Matching `{ n }` references, destination nodes, and arrows share a depth color, and values can be edited inline directly from the graph.
 
 ### Changed
 - **Coherent request workspace:** the request editor now has a matching `Request` header alongside `Response`, with the layout controls placed directly where they are needed.
-- **Clearer empty response state:** the response pane now says “Ready for the response.” while retaining the Ctrl+Enter send shortcut.
+- **Clearer empty response state:** the response pane now says "Ready for the response." while retaining the Ctrl+Enter send shortcut.
+
+- **Readable request notes:** the Notes description editor now opens at a practical multi-line height and remains vertically resizable.
+- **Monaco 0.56 compatibility:** OpenAPI and script editors now load all local editor workers through the current public Monaco entry points; the script editor is loaded only when its tab is opened.
+- **Dependency maintenance:** upgraded `github.com/gabriel-vasile/mimetype` to 1.4.15, `github.com/gaissmai/bart` to 0.29.0, `github.com/rabbitmq/amqp091-go` to 1.13.0, and `monaco-editor` to 0.56.0.
+- **Codebase cleanup:** removed obsolete assertion UI and unused client, demo, storage, mock, proxy, and binding paths so the shipped code follows the active product surface.
 
 ## [0.6.7] - 2026-07-31
 

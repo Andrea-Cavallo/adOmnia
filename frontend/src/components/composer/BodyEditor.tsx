@@ -332,7 +332,14 @@ function JsonRawEditor({ body, onChange, search }: { body: RequestBody; onChange
           </ol>
         </div>
       )}
-      {showGraph && <JsonGraphModal title="Request Body JSON Graph" json={body.raw} onClose={() => setShowGraph(false)} />}
+      {showGraph && (
+        <JsonGraphModal
+          title="Request Body JSON Graph"
+          json={body.raw}
+          onChange={(raw) => onChange({ ...body, raw })}
+          onClose={() => setShowGraph(false)}
+        />
+      )}
     </div>
   )
 }

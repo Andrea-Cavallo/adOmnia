@@ -11,7 +11,6 @@ import (
 	"regexp"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/gaissmai/bart"
 )
@@ -268,8 +267,4 @@ func proxyRulesLogHandler(w http.ResponseWriter, r *http.Request) {
 		"log":   logs,
 		"count": len(logs),
 	})
-}
-
-func timeNowStr() string {
-	return time.Now().UTC().Format(time.RFC3339)
 }

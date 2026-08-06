@@ -63,10 +63,6 @@ export const getRepoState = (repo: string): Promise<RepoState> =>
 export const getCommitMeta = (repo: string, ref: string): Promise<CommitMeta> =>
   callQuery<CommitMeta>(() => GitSync.GetCommitMeta(repo, ref))
 
-export const remoteWebURL = (repo: string): Promise<string> => GitSync.RemoteWebURL(repo)
-export const compareWebURL = (repo: string, a: string, b: string): Promise<string> =>
-  GitSync.CompareWebURL(repo, a, b)
-
 // ── Checkout / branch / tag ──────────────────────────────────────────────────
 
 export const checkoutCommit = (repo: string, ref: string, newBranch = ''): Promise<OpResult> =>
@@ -95,9 +91,6 @@ export const getFileDiff = (repo: string, refA: string, refB: string, path: stri
 export const createPatch = (repo: string, refA: string, refB: string): Promise<string> =>
   GitSync.CreatePatch(repo, refA, refB)
 
-export const applyPatch = (repo: string, patch: string, threeWay: boolean, index: boolean): Promise<OpResult> =>
-  callOp(() => GitSync.ApplyPatch(repo, patch, threeWay, index))
-
 export const restoreFileFromCommit = (repo: string, ref: string, path: string): Promise<OpResult> =>
   callOp(() => GitSync.RestoreFileFromCommit(repo, ref, path))
 
@@ -106,8 +99,6 @@ export const fileAtCommit = (repo: string, ref: string, path: string): Promise<s
 
 export const fileHistory = (repo: string, path: string, n = 100): Promise<CommitInfo[]> =>
   callQuery<CommitInfo[]>(() => GitSync.FileHistory(repo, path, n))
-
-export const blameFile = (repo: string, path: string): Promise<string> => GitSync.BlameFile(repo, path)
 
 // ── Cherry-pick / revert / reset / amend / undo / squash / extract ───────────
 

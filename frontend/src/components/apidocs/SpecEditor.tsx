@@ -1,21 +1,10 @@
 import { useEffect, useRef } from 'react'
-import Editor, { loader, type BeforeMount, type OnMount } from '@monaco-editor/react'
-import * as monaco from 'monaco-editor'
-import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
-import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
-import yamlWorker from 'monaco-yaml/yaml.worker?worker'
+import Editor, { type BeforeMount, type OnMount } from '@monaco-editor/react'
 import { configureMonacoYaml } from 'monaco-yaml'
 import { openapi } from '@apidevtools/openapi-schemas'
+import { applyAdomniaMonacoTheme, configureMonacoLoader, monaco } from '@/lib/monacoSetup'
 
-// adOmnia is local-first: load Monaco from the bundle, never a CDN.
-;(self as unknown as { MonacoEnvironment: unknown }).MonacoEnvironment = {
-  getWorker(_workerId: string, label: string) {
-    if (label === 'json') return new jsonWorker()
-    if (label === 'yaml') return new yamlWorker()
-    return new editorWorker()
-  },
-}
-loader.config({ monaco })
+configureMonacoLoader()
 
 // OpenAPI 3.0 meta-schema drives schema-aware completion + hover for both YAML
 // and JSON. ponytail: validation is OFF — the 3.0 schema would false-flag valid
@@ -48,7 +37,7 @@ function registerProviders(m: typeof monaco): void {
   providersRegistered = true
 
   // Schema-aware IntelliSense for JSON (native worker) and YAML (monaco-yaml).
-  m.languages.json.jsonDefaults.setDiagnosticsOptions({
+  m.json.jsonDefaults.setDiagnosticsOptions({
     validate: false,
     enableSchemaRequest: false,
     schemas: OPENAPI_SCHEMAS,
@@ -61,25 +50,7 @@ function registerProviders(m: typeof monaco): void {
     schemas: OPENAPI_SCHEMAS,
   })
 
-  m.editor.defineTheme('adomnia-dark', {
-    base: 'vs-dark',
-    inherit: true,
-    rules: [],
-    colors: {
-      'editor.background': '#05070D',
-      'editor.foreground': '#F8FAFC',
-      'editorLineNumber.foreground': '#4B5563',
-      'editorLineNumber.activeForeground': '#94A3B8',
-      'editor.selectionBackground': '#2563EB44',
-      'editor.lineHighlightBackground': '#0E111A',
-      'editorIndentGuide.background1': '#1F2333',
-      'editorGutter.background': '#05070D',
-      'editorWidget.background': '#0B0D14',
-      'editorWidget.border': '#1F2333',
-      'input.background': '#0E111A',
-      'dropdown.background': '#0E111A',
-    },
-  })
+  applyAdomniaMonacoTheme(m)
 
   // $ref target completion: offer schema names declared in THIS document — the
   // OpenAPI meta-schema types $ref as a plain string, so the language service

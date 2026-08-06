@@ -603,11 +603,6 @@ func matchesAllConditions(r *http.Request, resp mockResponse, pathParams map[str
 	return true
 }
 
-func matchPath(pattern, reqPath string) bool {
-	_, ok := matchPathParams(pattern, reqPath)
-	return ok
-}
-
 func matchPathParams(pattern, reqPath string) (map[string]string, bool) {
 	params := map[string]string{}
 	pattern = normalizePath(pattern)

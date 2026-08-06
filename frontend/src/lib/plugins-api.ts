@@ -46,16 +46,6 @@ export async function getPlugins(): Promise<PluginInstance[]> {
   return (await mgr.GetPlugins()) as PluginInstance[]
 }
 
-export async function getPlugin(id: string): Promise<PluginInstance | null> {
-  try {
-    const mgr = getPluginManager()
-    if (!mgr) return null
-    return (await mgr.GetPlugin(id)) as PluginInstance
-  } catch {
-    return null
-  }
-}
-
 export async function installPlugin(manifestJSON: string): Promise<PluginInstance> {
   const mgr = getPluginManager()
   if (!mgr) throw new Error("Plugin Manager disponibile solo nell'applicazione desktop.")
@@ -122,16 +112,6 @@ export async function setPluginSetting(id: string, key: string, value: string): 
   }
 }
 
-export async function getRegisteredHooks(): Promise<Record<string, string[]>> {
-  try {
-    const mgr = getPluginManager()
-    if (!mgr) return {}
-    return await mgr.GetRegisteredHooks()
-  } catch {
-    return {}
-  }
-}
-
 export async function getAvailableEvents(): Promise<string[]> {
   try {
     const mgr = getPluginManager()
@@ -189,16 +169,6 @@ export async function searchTemplates(query: string): Promise<Template[]> {
     return (await store.SearchTemplates(query)) as Template[]
   } catch {
     return []
-  }
-}
-
-export async function getTemplate(id: string): Promise<Template | null> {
-  try {
-    const store = getTemplateStore()
-    if (!store) return null
-    return (await store.GetTemplate(id)) as Template
-  } catch {
-    return null
   }
 }
 
@@ -261,15 +231,5 @@ export async function installTemplate(id: string): Promise<string> {
     return await store.InstallTemplate(id)
   } catch {
     return ''
-  }
-}
-
-export async function getBuiltinTemplates(): Promise<Template[]> {
-  try {
-    const store = getTemplateStore()
-    if (!store) return []
-    return (await store.GetBuiltinTemplates()) as Template[]
-  } catch {
-    return []
   }
 }
