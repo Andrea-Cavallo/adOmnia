@@ -1,8 +1,11 @@
 import { useRef, useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '@/lib/utils'
+import { uid, type EnvVariable } from '@/lib/types'
+import { useEnvironmentsStore } from '@/stores/environments'
 import { useSettingsStore } from '@/stores/settings'
 import { findTextMatches } from '@/lib/textSearch'
+import { ContextMenu } from '@/components/ui/ContextMenu'
 
 const AUTO_CLOSE_PAIRS: Record<string, string> = {
   '(': ')', '[': ']', '{': '}', '"': '"', "'": "'", '`': '`',
@@ -31,6 +34,42 @@ interface VarTooltip {
   type: 'resolved' | 'missing' | 'empty' | 'noenv'
   x: number
   y: number
+}
+
+interface EnvironmentVariableMenu {
+  selectionStart: number
+  selectionEnd: number
+  value: string
+  name: string
+  envId: string | null
+  x: number
+  y: number
+}
+
+function environmentVariableName(value: string): string {
+  const normalized = value
+    .trim()
+    .replace(/^['\"]|['\"]$/g, '')
+    .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+    .replace(/[^a-zA-Z0-9_]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .toUpperCase()
+  return normalized && /^[A-Z_]/.test(normalized) ? normalized : 'VALUE'
+}
+
+function suggestedVariableName(source: string, selectionStart: number, value: string): string {
+  // Prefer the JSON property name, so { "type": "CREDIT_TRANSFER" } becomes
+  // {{TYPE}} rather than a long variable derived from the value itself.
+  const property = source.slice(0, selectionStart).match(/"([^"\\]+)"\s*:\s*"?\s*$/)?.[1]
+  return environmentVariableName(property ?? value)
+}
+
+function uniqueVariableName(name: string, variables: EnvVariable[]): string {
+  const keys = new Set(variables.map((variable) => variable.key))
+  if (!keys.has(name)) return name
+  let suffix = 2
+  while (keys.has(`${name}_${suffix}`)) suffix += 1
+  return `${name}_${suffix}`
 }
 
 const TOOLTIP_BORDER: Record<VarTooltip['type'], string> = {
@@ -350,6 +389,7 @@ export function JsonEditor({
   const redoStackRef = useRef<string[]>([])
   const expectedValueRef = useRef(value)
   const [tooltip, setTooltip] = useState<VarTooltip | null>(null)
+  const [envVariableMenu, setEnvVariableMenu] = useState<EnvironmentVariableMenu | null>(null)
   // Ctrl+wheel zoom — persisted px font size, shared by textarea/overlay/gutter.
   const [fontPx, setFontPx] = useState(() => {
     const n = Number(localStorage.getItem('adomnia.editor.bodyFontPx'))
@@ -357,6 +397,11 @@ export function JsonEditor({
   })
 
   const editor = useSettingsStore((s) => s.settings.editor)
+  const environments = useEnvironmentsStore((s) => s.environments)
+  const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
+  const addEnvironment = useEnvironmentsStore((s) => s.addEnvironment)
+  const setActiveEnv = useEnvironmentsStore((s) => s.setActiveEnv)
+  const updateVariables = useEnvironmentsStore((s) => s.updateVariables)
   const indentUnit = editor.softTabs ? ' '.repeat(editor.tabSize) : '\t'
   const lineCount = value.length ? value.split('\n').length : 1
   const gutterWidth = editor.lineNumbers ? Math.max(38, 14 + String(lineCount).length * Math.ceil(fontPx * 0.62)) : 0
@@ -541,6 +586,65 @@ export function JsonEditor({
     [resolvedVars, hasActiveEnv, value],
   )
 
+  const handleContextMenu = useCallback((event: React.MouseEvent<HTMLTextAreaElement>) => {
+    const textarea = taRef.current
+    if (!textarea) return
+    const { selectionStart, selectionEnd } = textarea
+    const selectedValue = textarea.value.slice(selectionStart, selectionEnd)
+    if (!selectedValue.trim()) return
+
+    event.preventDefault()
+    setTooltip(null)
+
+    const targetEnv = activeEnvId ? environments.find((environment) => environment.id === activeEnvId) : null
+    const name = uniqueVariableName(suggestedVariableName(textarea.value, selectionStart, selectedValue), targetEnv?.variables ?? [])
+
+    setEnvVariableMenu({
+      selectionStart,
+      selectionEnd,
+      value: selectedValue,
+      name,
+      envId: targetEnv?.id ?? null,
+      x: event.clientX,
+      y: event.clientY,
+    })
+  }, [activeEnvId, environments])
+
+  const saveEnvironmentVariable = useCallback(() => {
+    if (!envVariableMenu) return
+    let environment = envVariableMenu.envId
+      ? useEnvironmentsStore.getState().environments.find((item) => item.id === envVariableMenu.envId)
+      : undefined
+    if (!environment) {
+      environment = addEnvironment('Development')
+      setActiveEnv(environment.id)
+    }
+
+    let variables: EnvVariable[]
+    const emptyRow = environment.variables.find((variable) => !variable.key.trim() && !variable.value)
+    const variable: EnvVariable = { id: emptyRow?.id ?? uid(), key: envVariableMenu.name, value: envVariableMenu.value, enabled: true, type: 'text' }
+    variables = emptyRow
+      ? environment.variables.map((item) => item.id === emptyRow.id ? variable : item)
+      : [...environment.variables, variable]
+    updateVariables(environment.id, variables)
+
+    const selectedWasQuoted = envVariableMenu.value.length >= 2
+      && envVariableMenu.value.startsWith('"')
+      && envVariableMenu.value.endsWith('"')
+    const reference = `{{${envVariableMenu.name}}}`
+    const replacement = selectedWasQuoted ? `"${reference}"` : reference
+    const next = value.slice(0, envVariableMenu.selectionStart)
+      + replacement
+      + value.slice(envVariableMenu.selectionEnd)
+    commitEdit(next)
+    const caret = envVariableMenu.selectionStart + replacement.length
+    setEnvVariableMenu(null)
+    requestAnimationFrame(() => {
+      taRef.current?.focus()
+      taRef.current?.setSelectionRange(caret, caret)
+    })
+  }, [addEnvironment, envVariableMenu, setActiveEnv, updateVariables, value])
+
   return (
     <div
       className={cn(
@@ -603,6 +707,7 @@ export function JsonEditor({
         onChange={(e) => commitEdit(e.target.value)}
         onKeyDown={handleKeyDown}
         onScroll={syncScroll}
+        onContextMenu={handleContextMenu}
         onMouseMove={handleMouseMove}
         onMouseLeave={() => setTooltip(null)}
         spellCheck={false}
@@ -643,6 +748,16 @@ export function JsonEditor({
           </div>
         </div>,
         document.body,
+      )}
+
+      {envVariableMenu && (
+        <ContextMenu
+          x={envVariableMenu.x}
+          y={envVariableMenu.y}
+          items={[{ id: 'extract-environment-variable', label: `Extract to environment variable · {{${envVariableMenu.name}}}` }]}
+          onSelect={(id) => { if (id === 'extract-environment-variable') saveEnvironmentVariable() }}
+          onClose={() => setEnvVariableMenu(null)}
+        />
       )}
     </div>
   )

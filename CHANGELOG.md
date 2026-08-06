@@ -6,6 +6,16 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Added
+- **Extract JSON values into environment variables:** select a value in a JSON editor, right-click, and choose the adOmnia context-menu action to store it in the active environment and replace it with `{{VARIABLE_NAME}}`. Variable names are inferred from the enclosing JSON property and stay unique; a local Development environment is created only when needed.
+- **Contextual header-value presets:** focusing a request header value now offers compatible choices for the selected header. Content-Type and Accept include common API media types such as JSON, XML, form data, multipart, Server-Sent Events, NDJSON, JSON:API, GraphQL, SOAP, YAML, CBOR, MessagePack, PDF, and binary payloads.
+- **Expanded header preset catalog:** the Headers panel now groups and filters practical presets for content and encoding, authentication/API keys, cache and conditional requests, browser/CORS/proxy work, tracing, webhooks, GraphQL/SOAP, and PSD2/Berlin Group.
+- **Request/Response layout switcher:** choose side-by-side panels or stack Request above Response. Both layout and independently resized panel dimensions are saved locally.
+
+### Changed
+- **Coherent request workspace:** the request editor now has a matching `Request` header alongside `Response`, with the layout controls placed directly where they are needed.
+- **Clearer empty response state:** the response pane now says “Ready for the response.” while retaining the Ctrl+Enter send shortcut.
+
 ## [0.6.7] - 2026-07-31
 
 ### Fixed

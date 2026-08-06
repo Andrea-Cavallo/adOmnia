@@ -69,7 +69,7 @@ function ResponseWaitingState({ loading }: { loading: boolean }) {
           )}
         />
         <p className="text-sm text-text-3">
-          Send the request to see a response
+          Ready for the response.
         </p>
         <p className="mt-1 text-xs text-text-4">
           or press <kbd className="rounded bg-surface-3 px-1 py-0.5 text-[10px]">Ctrl</kbd>

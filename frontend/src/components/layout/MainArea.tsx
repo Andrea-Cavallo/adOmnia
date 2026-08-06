@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, Suspense } from 'react'
-import { ArrowLeft, Check, Save, Send, SlidersHorizontal, Trash2, X } from 'lucide-react'
+import { ArrowLeft, Check, Columns2, Rows2, Save, Send, SlidersHorizontal, Trash2, X } from 'lucide-react'
 import { useAppStore, type RailItem } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
 import { useCollectionsStore } from '@/stores/collections'
@@ -118,7 +118,11 @@ type PendingClose =
 // ─── Resizable divider between Composer (left) and ResponsePanel (right) ─────
 
 const COMPOSER_WIDTH_KEY = 'adomnia.composerWidth'
+const COMPOSER_HEIGHT_KEY = 'adomnia.composerHeight'
+const REQUEST_RESPONSE_LAYOUT_KEY = 'adomnia.requestResponseLayout'
 const COMPOSER_WIDTH_MIN  = 280
+const COMPOSER_HEIGHT_MIN = 240
+type RequestResponseLayout = 'horizontal' | 'vertical'
 
 function composerWidthMaxRatio(): number {
   if (window.innerWidth < 1180) return 0.60
@@ -153,12 +157,63 @@ function clampComposerWidth(w: number): number {
   return Math.max(COMPOSER_WIDTH_MIN, Math.min(w, Math.round(window.innerWidth * composerWidthMaxRatio())))
 }
 
+function clampComposerHeight(h: number): number {
+  return Math.max(COMPOSER_HEIGHT_MIN, Math.min(h, Math.round(window.innerHeight * 0.68)))
+}
+
 function loadComposerWidth(): number {
   try {
     const stored = localStorage.getItem(COMPOSER_WIDTH_KEY)
     if (stored) return clampComposerWidth(parseInt(stored, 10))
   } catch { /* ignore */ }
   return Math.round(window.innerWidth * defaultComposerWidthRatio())
+}
+
+function loadComposerHeight(): number {
+  try {
+    const stored = localStorage.getItem(COMPOSER_HEIGHT_KEY)
+    if (stored) return clampComposerHeight(parseInt(stored, 10))
+  } catch { /* ignore */ }
+  return clampComposerHeight(Math.round(window.innerHeight * 0.52))
+}
+
+function loadRequestResponseLayout(): RequestResponseLayout {
+  try {
+    return localStorage.getItem(REQUEST_RESPONSE_LAYOUT_KEY) === 'vertical' ? 'vertical' : 'horizontal'
+  } catch {
+    return 'horizontal'
+  }
+}
+
+function RequestPaneHeader({ layout, onLayoutChange }: {
+  layout: RequestResponseLayout
+  onLayoutChange: (layout: RequestResponseLayout) => void
+}) {
+  return (
+    <div className="flex h-9 shrink-0 items-center gap-2 border-b border-border-1 bg-surface-1 px-3">
+      <span className="flex-1 text-xs font-medium text-text-2">Request</span>
+      <div className="flex items-center rounded border border-border-2 bg-surface-2 p-0.5" role="group" aria-label="Request and response layout">
+        <button
+          type="button"
+          onClick={() => onLayoutChange('horizontal')}
+          title="Show Request and Response side by side"
+          aria-label="Show Request and Response side by side"
+          className={cn('grid h-6 w-6 place-items-center rounded transition-colors', layout === 'horizontal' ? 'bg-accent/15 text-accent' : 'text-text-4 hover:bg-surface-3 hover:text-text-2')}
+        >
+          <Columns2 size={13} />
+        </button>
+        <button
+          type="button"
+          onClick={() => onLayoutChange('vertical')}
+          title="Stack Request above Response"
+          aria-label="Stack Request above Response"
+          className={cn('grid h-6 w-6 place-items-center rounded transition-colors', layout === 'vertical' ? 'bg-accent/15 text-accent' : 'text-text-4 hover:bg-surface-3 hover:text-text-2')}
+        >
+          <Rows2 size={13} />
+        </button>
+      </div>
+    </div>
+  )
 }
 
 function ActiveRequestBar({
@@ -352,21 +407,32 @@ function RequestWorkspace() {
   const composerScrollRef = useRef<HTMLDivElement>(null)
 
   // ── Resizable horizontal split: Composer (left) | drag | Response (right) ──
+  const [requestResponseLayout, setRequestResponseLayout] = useState<RequestResponseLayout>(loadRequestResponseLayout)
   const [composerWidth, setComposerWidth] = useState<number>(loadComposerWidth)
-  const dragRef = useRef<{ startX: number; startWidth: number } | null>(null)
+  const [composerHeight, setComposerHeight] = useState<number>(loadComposerHeight)
+  const dragRef = useRef<{ startX: number; startY: number; startSize: number } | null>(null)
   const isDraggingRef = useRef(false)
 
   const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
-    dragRef.current = { startX: e.clientX, startWidth: composerWidth }
+    dragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startSize: requestResponseLayout === 'horizontal' ? composerWidth : composerHeight,
+    }
     isDraggingRef.current = true
 
     const handleMove = (me: MouseEvent) => {
       if (!dragRef.current) return
-      const delta = me.clientX - dragRef.current.startX
-      const newW = clampComposerWidth(dragRef.current.startWidth + delta)
-      setComposerWidth(newW)
-      safeSetItem(COMPOSER_WIDTH_KEY, String(newW))
+      if (requestResponseLayout === 'horizontal') {
+        const newWidth = clampComposerWidth(dragRef.current.startSize + me.clientX - dragRef.current.startX)
+        setComposerWidth(newWidth)
+        safeSetItem(COMPOSER_WIDTH_KEY, String(newWidth))
+      } else {
+        const newHeight = clampComposerHeight(dragRef.current.startSize + me.clientY - dragRef.current.startY)
+        setComposerHeight(newHeight)
+        safeSetItem(COMPOSER_HEIGHT_KEY, String(newHeight))
+      }
     }
 
     const handleUp = () => {
@@ -378,17 +444,23 @@ function RequestWorkspace() {
       document.body.style.userSelect = ''
     }
 
-    document.body.style.cursor = 'ew-resize'
+    document.body.style.cursor = requestResponseLayout === 'horizontal' ? 'ew-resize' : 'ns-resize'
     document.body.style.userSelect = 'none'
     document.addEventListener('mousemove', handleMove)
     document.addEventListener('mouseup', handleUp)
-  }, [composerWidth])
+  }, [composerHeight, composerWidth, requestResponseLayout])
+
+  const changeRequestResponseLayout = useCallback((layout: RequestResponseLayout) => {
+    setRequestResponseLayout(layout)
+    safeSetItem(REQUEST_RESPONSE_LAYOUT_KEY, layout)
+  }, [])
 
   // Clamp width on window resize
   useEffect(() => {
     const onResize = () => {
       if (!isDraggingRef.current) {
         setComposerWidth((w) => clampComposerWidth(w))
+        setComposerHeight((h) => clampComposerHeight(h))
       }
     }
     window.addEventListener('resize', onResize)
@@ -627,14 +699,21 @@ function RequestWorkspace() {
 
       {activeTab ? (
         /* ── Horizontal split: Composer (left, fixed width) | drag | Response (right, flex-1) ── */
-        <div className="flex-1 min-h-0 flex flex-row overflow-hidden">
+        <div className={cn(
+          'flex-1 min-h-0 flex overflow-hidden',
+          requestResponseLayout === 'horizontal' ? 'flex-row' : 'flex-col',
+        )}>
           {/* Composer pane — left side, fixed width, independently scrollable */}
           <div
             ref={composerScrollRef}
             onScroll={(e) => updateViewState(activeTab.id, { composerScrollTop: e.currentTarget.scrollTop })}
-            className="shrink-0 min-h-0 overflow-hidden flex flex-col border-r border-border-1"
-            style={{ width: composerWidth }}
+            className={cn(
+              'shrink-0 min-h-0 overflow-hidden flex flex-col',
+              requestResponseLayout === 'horizontal' ? 'border-r border-border-1' : 'min-w-0 border-b border-border-1',
+            )}
+            style={requestResponseLayout === 'horizontal' ? { width: composerWidth } : { height: composerHeight }}
           >
+            <RequestPaneHeader layout={requestResponseLayout} onLayoutChange={changeRequestResponseLayout} />
             <Composer
               key={activeTab.id}
               tabId={activeTab.id}
@@ -659,13 +738,14 @@ function RequestWorkspace() {
             <>
               {/* ── Vertical drag handle ────────────────────────────────────── */}
               <ResizeHandle
-                label="Drag to resize panels"
+                label={requestResponseLayout === 'horizontal' ? 'Drag to resize panels' : 'Drag to resize Request and Response heights'}
                 onMouseDown={handleResizeMouseDown}
                 withLine={false}
+                orientation={requestResponseLayout === 'horizontal' ? 'vertical' : 'horizontal'}
               />
 
               {/* ── Response pane — right side, fills remaining space ── */}
-              <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div className="flex-1 flex min-h-0 min-w-0 flex-col overflow-hidden">
                 <ResponsePanel
                   key={activeTab.id}
                   tabId={activeTab.id}

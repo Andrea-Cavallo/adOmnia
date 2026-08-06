@@ -27,6 +27,8 @@ interface VarHighlightInputProps {
   placeholder?: string
   className?: string
   onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void
+  onFocus?: (e: React.FocusEvent<HTMLInputElement>) => void
+  onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void
   inputRef?: React.RefObject<HTMLInputElement | null>
 }
 
@@ -208,6 +210,8 @@ export function VarHighlightInput({
   placeholder,
   className,
   onKeyDown,
+  onFocus,
+  onBlur,
   inputRef: externalRef,
 }: VarHighlightInputProps) {
   const internalRef = useRef<HTMLInputElement>(null)
@@ -433,7 +437,11 @@ export function VarHighlightInput({
         onKeyUp={syncScroll}
         onClick={() => { syncScroll(); refreshAutocomplete() }}
         onScroll={syncScroll}
-        onBlur={() => window.setTimeout(() => setAutocomplete(null), 120)}
+        onFocus={onFocus}
+        onBlur={(event) => {
+          window.setTimeout(() => setAutocomplete(null), 120)
+          onBlur?.(event)
+        }}
         onContextMenu={handleContextMenu}
         onMouseMove={handleMouseMove}
         onMouseLeave={() => setTooltip(null)}
