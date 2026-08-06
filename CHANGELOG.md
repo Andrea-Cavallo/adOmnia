@@ -4,6 +4,11 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [0.6.10] - 2026-08-06
+
+### Fixed
+- **Environment variables in JSON requests:** extracting a selected JSON value now preserves its type when the request is sent. Numbers, booleans, and `null` remain unquoted; strings retain valid JSON quotes even when the whole quoted value was selected. The editor also recognises `{{VARIABLE}}` placeholders as valid JSON values while editing, without hiding genuine syntax errors.
+
 ## [0.6.9] - 2026-08-06
 
 ### Added
