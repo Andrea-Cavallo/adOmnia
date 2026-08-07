@@ -260,10 +260,10 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | B5.0.3 | **Message Expansion** | Click to expand a message: payload, headers, metadata, JSON visualization with JsonGraph. |
 | B5.0.4 | **Export Messages** | Exports all log messages as JSON. |
 | B5.0.5 | **Message Presets** | Save/load/delete message presets per protocol through the bbolt backend. |
-| B5.0.6 | **Persistent Connection Profiles** | Autosaves and restores the last connection for Kafka, RabbitMQ, MQTT, Redis and NATS; saves/loads/deletes named profiles in local bbolt storage. |
+| B5.0.6 | **Persistent Connection Profiles** | Autosaves and restores connection metadata for Kafka, RabbitMQ, MQTT, Redis and NATS; plaintext credentials remain session-only while persistent profiles store encrypted `vault:` references. |
 | B5.0.7 | **Message Counter** | Badge with the number of messages in the log; clear button. |
 | B5.0.8 | **Backend Status** | Connection indicator for the local sidecar with port. |
-| B5.0.9 | **Credential Note** | Explains that profiles, including credentials, remain local and directs users to Vault for managed secrets. |
+| B5.0.9 | **Protected Credentials** | Replaces plaintext broker passwords, tokens and credential-bearing URLs with encrypted Vault references, then resolves them only in memory for the broker action. |
 
 #### B5.1 Kafka
 
@@ -599,7 +599,7 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | E1.15 | **Export JSON / CSV** | Scarica risultati correnti. |
 | E1.16 | **Query History** | Sidebar with previous queries; click to reload. |
 | E1.17 | **Query Favorite** | Toggle preferito su ogni query; sidebar dedicata. |
-| E1.18 | **Vault Integration** | Marks connection as managed by the Vault with a visual badge. |
+| E1.18 | **Vault Integration** | Replaces plaintext passwords and credential-bearing DSNs with encrypted Vault references; unprotected credentials are session-only and references are resolved only when the connection is used. |
 | E1.19 | **Row Counter** | Shows returned rows and affected rows. |
 
 ---
@@ -614,9 +614,9 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | E2.4 | **Add Entry** | Inserts a new key-value pair into any bucket. |
 | E2.5 | **Full-Text Search** | Searches all buckets by key name or value content. Max 50 results. |
 | E2.6 | **Statistics** | File size, key count per bucket. |
-| E2.7 | **Export Snapshot** | Esporta intero database come JSON `.adomnia-snapshot`. |
+| E2.7 | **Export Snapshot** | Exports the full database as a redacted JSON `.adomnia-snapshot`; plaintext credentials are never included and encrypted Vault references remain intact. |
 | E2.8 | **Snapshot Restore** | Restores from a snapshot file (max 50MB). |
-| E2.9 | **Export/Import Bucket** | Exports/imports single-bucket contents as JSON. |
+| E2.9 | **Export/Import Bucket** | Exports redacted single-bucket contents as JSON and imports compatible bucket data. |
 | E2.10 | **localStorage Migration** | One-shot migration from `adomnia.v2` / `adomnia.settings` / `adomnia.mock` to bbolt. |
 
 ---
@@ -629,7 +629,7 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | E3.2 | **Save Workspace** | Current snapshot with name, timestamp, tab count. |
 | E3.3 | **Load Workspace** | Restores state from a named workspace and updates the local recently opened workspace history. |
 | E3.4 | **Delete Workspace** | Removes workspace from the registry. |
-| E3.5 | **Import/Export `.adomnia`** | Portable JSON format (v1.0): collections, environments, activeEnvId, mockConfig, proxyConfig, flows. |
+| E3.5 | **Import/Export `.adomnia`** | Portable JSON format (v1.0) with mandatory secret redaction; encrypted `vault:` references remain portable. |
 | E3.6 | **Import OpenAPI 3.0** | Parses JSON/YAML specs; operations converted into folders grouped by tag. |
 | E3.7 | **Reset Demo** | Loads the adOmnia Lab demo workspace with one click. |
 

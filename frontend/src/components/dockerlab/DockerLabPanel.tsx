@@ -5,7 +5,6 @@ import {
 } from 'lucide-react'
 import { useAppStore } from '@/stores/app'
 import { cn } from '@/lib/utils'
-import { safeSetItem } from '@/lib/safeLocalStorage'
 import {
   type ContainerStatus,
   type LabInfo,
@@ -216,7 +215,7 @@ export function DockerLabPanel() {
       : hasMySQL
         ? { name: `${selected.name} MySQL`, driver: 'mysql', host: '127.0.0.1', port: 3306, database: 'adomnia', user: 'adomnia', password: 'adomnia', sslMode: 'disable' }
         : { name: `${selected.name} MongoDB`, driver: 'mongodb', host: '127.0.0.1', port: 27017, database: 'admin', user: 'admin', password: 'admin', sslMode: 'disable' }
-    safeSetItem('adomnia.database.pendingConnection', JSON.stringify(pending))
+    sessionStorage.setItem('adomnia.database.pendingConnection', JSON.stringify(pending))
     useAppStore.getState().setActiveRail('database')
   }
 
@@ -231,7 +230,7 @@ export function DockerLabPanel() {
       : hasRabbit
         ? { protocol: 'rabbitmq', rabbitmq: { url: 'amqp://guest:guest@localhost:5672/' } }
         : { protocol: 'redis', redis: { addr: 'localhost:6379' } }
-    safeSetItem('adomnia.broker.pending', JSON.stringify(pending))
+    sessionStorage.setItem('adomnia.broker.pending', JSON.stringify(pending))
     useAppStore.getState().setActiveRail('broker')
   }
 

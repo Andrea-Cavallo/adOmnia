@@ -75,6 +75,8 @@ All releases include `SHA256SUMS.txt` and source code archives. Verify your down
 | **Version Control (built-in Git)** | Full Git client inside the app — clone/init, stage & commit, **visual commit graph** with per-commit context actions (checkout, revert, reset, cherry-pick), branch create/switch/merge, push/pull to any remote, diff viewer, and **interactive conflict resolution**. Export collections as folder-backed, diff-friendly trees, import them back, and check drift between the app state and the files on disk |
 | **Data, Security & Extensibility** | Database Studio (SQLite/PostgreSQL/MySQL/MongoDB), bbolt storage inspector, encrypted vault (age/scrypt), **AI engine** (Anthropic/OpenAI/Gemini/Ollama — AI mock generation) with Vault or machine-local environment credentials, permission-aware JavaScript plugin runtime, 11 built-in themes + custom skin system |
 
+Persistent Git, broker, and database credentials use encrypted `vault:` references. Plaintext credentials remain in memory for the current session only, are resolved immediately before use, and are automatically redacted from workspace, bucket, settings, and snapshot exports.
+
 ### Mock the request you are working on
 
 From an open request tab, choose **Mock this tab**. adOmnia opens the Mock Server directly on that endpoint in a focused scope: existing mock definitions stay saved, but only the selected request is active until you choose **Show all endpoints**. If the server is already running, the focused configuration is applied live without changing its port.

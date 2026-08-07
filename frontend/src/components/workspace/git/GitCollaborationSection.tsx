@@ -30,7 +30,11 @@ export function GitCollaborationSection({ repoPath, currentBranch, branches, rem
   const [profiles, setProfiles] = useState<GitProfile[]>(() => loadGitProfiles())
   const [selectedID, setSelectedID] = useState('')
   const [draft, setDraft] = useState(blankProfile)
-  const [tokenInput, setTokenInput] = useState(() => localStorage.getItem('adomnia.git.githubToken') ?? '')
+  const [tokenInput, setTokenInput] = useState(() => {
+    const legacyToken = localStorage.getItem('adomnia.git.githubToken') ?? ''
+    localStorage.removeItem('adomnia.git.githubToken')
+    return legacyToken
+  })
   const [vaultPassphrase, setVaultPassphrase] = useState('')
   const [connectedAs, setConnectedAs] = useState('')
   const [prs, setPRs] = useState<GitSync.GitHubPR[]>([])
@@ -74,7 +78,9 @@ export function GitCollaborationSection({ repoPath, currentBranch, branches, rem
     setProfiles(next); setSelectedID(next[0].id); setDraft({ ...next[0] })
     localStorage.removeItem('adomnia.git.githubToken')
     if (repoPath && draft.name && draft.email) await GitSync.ConfigureUser(repoPath, draft.name, draft.email)
-    setNotice(isVaultRef(tokenRef) ? 'Account saved. The token stays encrypted in Vault.' : 'Account saved locally. Use Encrypt token to protect the credential at rest.')
+    setNotice(isVaultRef(tokenRef)
+      ? 'Account saved. The token stays encrypted in Vault.'
+      : 'Account metadata saved. The plaintext token is session-only and will be forgotten when adOmnia closes.')
   })
 
   const encryptToken = () => run('encrypt', async () => {
@@ -124,6 +130,7 @@ export function GitCollaborationSection({ repoPath, currentBranch, branches, rem
           <input value={draft.baseURL} onChange={(e) => setDraft((c) => ({ ...c, baseURL:e.target.value }))} className={`${field} w-full`} placeholder="Custom API base URL (optional / self-hosted)" />
           <div className="grid gap-2 md:grid-cols-3"><input value={draft.name} onChange={(e) => setDraft((c) => ({ ...c, name:e.target.value }))} className={field} placeholder="Git author name" /><input value={draft.email} onChange={(e) => setDraft((c) => ({ ...c, email:e.target.value }))} className={field} placeholder="Git author email" /><input value={draft.username} onChange={(e) => setDraft((c) => ({ ...c, username:e.target.value }))} className={field} placeholder="Host username (Bitbucket app password)" /></div>
           <div className="grid gap-2 md:grid-cols-[1fr_150px_auto]"><input value={tokenInput} onChange={(e) => setTokenInput(e.target.value)} type="password" className={field} placeholder="PAT, access token, or vault: reference" autoComplete="off" /><input value={vaultPassphrase} onChange={(e) => setVaultPassphrase(e.target.value)} type="password" className={field} placeholder="Vault passphrase" /><button className={button} disabled={!tokenInput || isVaultRef(tokenInput) || !vaultPassphrase || !!busy} onClick={encryptToken}><KeyRound size={12} /> Encrypt token</button></div>
+          {tokenInput && !isVaultRef(tokenInput) && <p className="text-[10px] text-warning">Session only: this token is usable now but is never written to localStorage. Encrypt it before saving if it must survive restart.</p>}
           <div className="flex flex-wrap items-center gap-2"><label className="flex items-center gap-1.5 text-[10px] text-text-2"><input type="checkbox" checked={draft.autoApply} onChange={(e) => setDraft((c) => ({ ...c, autoApply:e.target.checked }))} /> Auto-select for matching remote</label><button className={button} disabled={!draft.label.trim() || !draft.hostPattern.trim() || !tokenInput.trim() || !!busy} onClick={saveAccount}>Save account</button>{selectedID && <button className={cn(button, 'text-error')} disabled={!!busy} onClick={() => { const next = removeGitProfile(profiles, selectedID); setProfiles(next); chooseProfile('') }}><Trash2 size={12} /> Remove</button>}</div>
         </div>
 

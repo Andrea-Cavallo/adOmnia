@@ -10,8 +10,7 @@ import { cn } from '@/lib/utils'
 import { JsonGraph } from '@/components/ui/JsonGraph'
 import { KafkaPanel } from './KafkaPanel'
 import { ConnectionProfiles } from './ConnectionProfiles'
-import { useAppStore } from '@/stores/app'
-import { safeSetItem } from '@/lib/safeLocalStorage'
+import { resolveBrokerPayload } from '@/lib/brokerConnections'
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
@@ -32,12 +31,6 @@ interface MessagePreset {
   protocol: Protocol
   content: string
   headers?: Record<string, string>
-}
-
-function sendBrokerSecretToVault(name: string, value: string, note: string) {
-  if (!value) return
-  safeSetItem('adomnia.vault.pendingSecret', JSON.stringify({ name, value, note }))
-  useAppStore.getState().setActiveRail('vault')
 }
 
 // ─── constants ────────────────────────────────────────────────────────────────
@@ -337,14 +330,16 @@ function RabbitMQPanel({ port, onMessages }: { port: number | null; onMessages: 
   const [result, setResult] = useState<{ ok?: boolean; error?: string; [k: string]: unknown } | null>(null)
 
   useEffect(() => {
-    const raw = localStorage.getItem('adomnia.broker.pending')
+    const raw = sessionStorage.getItem('adomnia.broker.pending') ?? localStorage.getItem('adomnia.broker.pending')
     if (!raw) return
     try {
       const pending = JSON.parse(raw) as { protocol?: string; rabbitmq?: { url?: string } }
       if (pending.protocol !== 'rabbitmq' || !pending.rabbitmq) return
       if (pending.rabbitmq.url) setUrl(pending.rabbitmq.url)
+      sessionStorage.removeItem('adomnia.broker.pending')
       localStorage.removeItem('adomnia.broker.pending')
     } catch {
+      sessionStorage.removeItem('adomnia.broker.pending')
       localStorage.removeItem('adomnia.broker.pending')
     }
   }, [])
@@ -355,7 +350,7 @@ function RabbitMQPanel({ port, onMessages }: { port: number | null; onMessages: 
     setLoading(true)
     setResult(null)
     try {
-      const res = await sidecarFetch(url2, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      const res = await sidecarFetch(url2, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(await resolveBrokerPayload(payload)) })
       const data = await res.json()
       setResult(data)
       if (data.messages) onMessages(data.messages)
@@ -504,7 +499,7 @@ function MQTTPanel({ port, onMessages }: { port: number | null; onMessages: (msg
     if (!url) return
     setLoading(true); setResult(null)
     try {
-      const res = await sidecarFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      const res = await sidecarFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(await resolveBrokerPayload(body)) })
       const data = await res.json()
       setResult(data)
       if (data.messages) onMessages(data.messages)
@@ -546,13 +541,6 @@ function MQTTPanel({ port, onMessages }: { port: number | null; onMessages: (msg
             <input type="password" value={password} onChange={e => setPassword(e.target.value)} className={inputClass} />
           </Field>
         </div>
-        <button
-          onClick={() => sendBrokerSecretToVault('MQTT password', password, `MQTT broker ${broker}`)}
-          disabled={!password}
-          className="mt-2 text-[10px] text-text-4 hover:text-accent disabled:opacity-40"
-        >
-          Send password to Vault
-        </button>
       </div>
 
       <div className="flex gap-2">
@@ -644,14 +632,16 @@ function RedisPanel({ port, onMessages }: { port: number | null; onMessages: (ms
   const [result, setResult] = useState<{ ok?: boolean; error?: string; receivers?: number; [k: string]: unknown } | null>(null)
 
   useEffect(() => {
-    const raw = localStorage.getItem('adomnia.broker.pending')
+    const raw = sessionStorage.getItem('adomnia.broker.pending') ?? localStorage.getItem('adomnia.broker.pending')
     if (!raw) return
     try {
       const pending = JSON.parse(raw) as { protocol?: string; redis?: { addr?: string } }
       if (pending.protocol !== 'redis' || !pending.redis) return
       if (pending.redis.addr) setAddr(pending.redis.addr)
+      sessionStorage.removeItem('adomnia.broker.pending')
       localStorage.removeItem('adomnia.broker.pending')
     } catch {
+      sessionStorage.removeItem('adomnia.broker.pending')
       localStorage.removeItem('adomnia.broker.pending')
     }
   }, [])
@@ -663,7 +653,7 @@ function RedisPanel({ port, onMessages }: { port: number | null; onMessages: (ms
     if (!url) return
     setLoading(true); setResult(null)
     try {
-      const res = await sidecarFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      const res = await sidecarFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(await resolveBrokerPayload(body)) })
       const data = await res.json()
       setResult(data)
       if (data.messages) onMessages(data.messages)
@@ -703,13 +693,6 @@ function RedisPanel({ port, onMessages }: { port: number | null; onMessages: (ms
             <input type="number" value={dbNum} min={0} max={15} onChange={e => setDbNum(Number(e.target.value))} className={inputClass} />
           </Field>
         </div>
-        <button
-          onClick={() => sendBrokerSecretToVault('Redis password', password, `Redis ${addr} database ${dbNum}`)}
-          disabled={!password}
-          className="mt-2 text-[10px] text-text-4 hover:text-accent disabled:opacity-40"
-        >
-          Send password to Vault
-        </button>
       </div>
 
       <div className="flex gap-2">
@@ -802,7 +785,7 @@ function NATSPanel({ port, onMessages }: { port: number | null; onMessages: (msg
     if (!url) return
     setLoading(true); setResult(null)
     try {
-      const res = await sidecarFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      const res = await sidecarFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(await resolveBrokerPayload(body)) })
       const data = await res.json()
       setResult(data)
       if (data.messages) onMessages(data.messages)
@@ -847,22 +830,6 @@ function NATSPanel({ port, onMessages }: { port: number | null; onMessages: (msg
               <input value={token} onChange={e => setToken(e.target.value)} className={inputClass} type="password" />
             </Field>
           </div>
-        </div>
-        <div className="mt-2 flex gap-3">
-          <button
-            onClick={() => sendBrokerSecretToVault('NATS password', password, `NATS ${natsUrl}`)}
-            disabled={!password}
-            className="text-[10px] text-text-4 hover:text-accent disabled:opacity-40"
-          >
-            Send password to Vault
-          </button>
-          <button
-            onClick={() => sendBrokerSecretToVault('NATS token', token, `NATS ${natsUrl}`)}
-            disabled={!token}
-            className="text-[10px] text-text-4 hover:text-accent disabled:opacity-40"
-          >
-            Send token to Vault
-          </button>
         </div>
       </div>
 
@@ -942,7 +909,7 @@ export function BrokerStudioPanel() {
   const [messages, setMessages] = useState<BrokerMessage[]>([])
 
   useEffect(() => {
-    const raw = localStorage.getItem('adomnia.broker.pending')
+    const raw = sessionStorage.getItem('adomnia.broker.pending') ?? localStorage.getItem('adomnia.broker.pending')
     if (!raw) return
     try {
       const pending = JSON.parse(raw) as { protocol?: Protocol }
@@ -950,6 +917,7 @@ export function BrokerStudioPanel() {
         setProtocol(pending.protocol)
       }
     } catch {
+      sessionStorage.removeItem('adomnia.broker.pending')
       localStorage.removeItem('adomnia.broker.pending')
     }
   }, [])
@@ -1056,7 +1024,7 @@ export function BrokerStudioPanel() {
             {/* local credential scope */}
             <div className="px-3 py-2 border-t border-border-1 flex items-center gap-2 text-[10px] text-text-4">
               <Lock size={10} />
-              <span>Connection profiles, including credentials, stay in local storage only. Use Vault for managed secret reuse.</span>
+              <span>Connection metadata stays local. Plain credentials are session-only; persistent reuse requires encrypted Vault references.</span>
             </div>
           </div>
         </div>
