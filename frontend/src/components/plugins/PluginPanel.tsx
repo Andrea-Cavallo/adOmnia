@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react'
 import { Play, Loader2, CheckCircle, AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { PluginInstance, PluginAction } from '@/stores/plugins'
+import { executePluginAction } from '@/lib/plugins-api'
 
 interface PluginPanelProps {
   plugin: PluginInstance
@@ -21,7 +22,6 @@ interface ActionState {
  */
 export function PluginPanel({ plugin }: PluginPanelProps) {
   const actions = plugin.manifest.actions ?? []
-  const actionExecutionUnavailable = true
   const [actionStates, setActionStates] = useState<Record<string, ActionState>>({})
 
   const updateActionState = (actionId: string, partial: Partial<ActionState>) => {
@@ -35,7 +35,11 @@ export function PluginPanel({ plugin }: PluginPanelProps) {
     async (action: PluginAction) => {
       updateActionState(action.id, { status: 'running', result: '', error: '' })
       try {
-        throw new Error('Action execution is not available for this plugin runtime yet.')
+        const result = await executePluginAction(plugin.manifest.id, action.id)
+        updateActionState(action.id, {
+          status: 'success',
+          result: result.data === undefined ? 'Completed' : JSON.stringify(result.data, null, 2),
+        })
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Execution failed'
         updateActionState(action.id, { status: 'error', error: message })
@@ -47,14 +51,6 @@ export function PluginPanel({ plugin }: PluginPanelProps) {
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-surface-0">
-      {actionExecutionUnavailable && actions.length > 0 && (
-        <div className="flex items-start gap-2 px-4 py-2 border-b border-warning/30 bg-warning/10 flex-shrink-0">
-          <AlertTriangle className="w-4 h-4 text-warning flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-warning leading-relaxed">
-            Questo plugin non puo ancora eseguire azioni personalizzate. Le integrazioni dichiarate restano visibili.
-          </p>
-        </div>
-      )}
       <header className="flex items-center gap-3 px-6 py-4 border-b border-border-1 flex-shrink-0">
         <div className="w-9 h-9 rounded-md bg-surface-2 flex items-center justify-center flex-shrink-0">
           <span className="text-xs font-bold text-accent">
@@ -73,7 +69,7 @@ export function PluginPanel({ plugin }: PluginPanelProps) {
       </header>
 
       <div className="flex-1 overflow-y-auto p-6">
-        {!actionExecutionUnavailable && actions.length > 0 && (
+        {actions.length > 0 && (
           <div className="mb-4 rounded-md border border-border-1 bg-surface-1 px-3 py-2 text-xs text-text-3">
             Scegli un'azione e premi <span className="font-medium text-text-1">Esegui</span>. Il risultato comparira sotto l'azione.
           </div>
@@ -113,7 +109,7 @@ export function PluginPanel({ plugin }: PluginPanelProps) {
 
                     <button
                       onClick={() => handleExecute(action)}
-                      disabled={state.status === 'running' || actionExecutionUnavailable}
+                      disabled={state.status === 'running'}
                       className={cn(
                         'flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors',
                         state.status === 'running'
@@ -126,7 +122,7 @@ export function PluginPanel({ plugin }: PluginPanelProps) {
                       ) : (
                         <Play size={11} />
                       )}
-                      {actionExecutionUnavailable ? 'Non disponibile' : 'Esegui'}
+                      Esegui
                     </button>
                   </div>
 

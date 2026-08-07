@@ -17,6 +17,7 @@ import (
 	"adomnia/internal/devlog"
 	"adomnia/internal/httpexec"
 	"adomnia/internal/nettools"
+	pluginRuntime "adomnia/internal/plugins"
 	"adomnia/internal/proxy"
 	"adomnia/internal/sidecar"
 	"adomnia/internal/sse"
@@ -69,6 +70,9 @@ func NewApp() *App {
 func (a *App) OnStartup(ctx context.Context) {
 	devlog.Init(dataDir())
 	a.ctx = ctx
+	pluginRuntime.ConfigureNotifier(func(notification pluginRuntime.PluginNotification) {
+		wailsRuntime.EventsEmit(ctx, "plugin:notification", notification)
+	})
 	devlog.Info("OnStartup", "avvio applicazione in corso", nil)
 	if err := storage.Open(dataDir()); err != nil {
 		log.Printf("[app] WARNING: could not open bbolt DB: %v", err)
@@ -377,9 +381,10 @@ func (a *App) OnDomReady(ctx context.Context) {
 func (a *App) OnShutdown(ctx context.Context) {
 	devlog.Info("OnShutdown", "arresto applicazione", nil)
 	if globalPluginManager != nil {
-		globalPluginManager.FireEvent(PluginEvent{Type: "onShutdown", Payload: map[string]interface{}{}})
+		globalPluginManager.EmitEvent(PluginEvent{Type: "onShutdown", Payload: map[string]interface{}{}})
 		globalPluginManager.Shutdown()
 	}
+	pluginRuntime.ConfigureNotifier(nil)
 	if a.browserDebug != nil {
 		if err := a.browserDebug.StopBrowser(); err != nil {
 			log.Printf("[app] browser debug stop error: %v", err)
@@ -394,6 +399,9 @@ func (a *App) OnShutdown(ctx context.Context) {
 
 // ExecuteHTTP preserves the public Wails binding while execution lives in the HTTP module.
 func (a *App) ExecuteHTTP(reqJSON string) string {
+	if globalPluginManager != nil {
+		return httpexec.ExecuteWithHooks(reqJSON, globalPluginManager.ApplyEventJSON)
+	}
 	return httpexec.Execute(reqJSON)
 }
 

@@ -7,7 +7,9 @@ import {
   enablePlugin,
   disablePlugin,
   installPlugin,
+  installPluginDirectory,
   installPluginPackage,
+  selectPluginDirectory,
   uninstallPlugin,
 } from '@/lib/plugins-api'
 import { PluginSettings } from './PluginSettings'
@@ -18,8 +20,8 @@ import { PluginPanel } from './PluginPanel'
 
 type InstallTab = 'file' | 'form' | 'json'
 
-const PERMISSIONS = ['http', 'storage', 'clipboard', 'notifications', 'env', 'hooks']
-const RUNTIMES    = ['wasm', 'js', 'none']
+const PERMISSIONS = ['http', 'storage', 'notifications', 'env']
+const RUNTIMES    = ['js', 'none']
 
 interface PluginFormState {
   id: string
@@ -48,11 +50,11 @@ function formToJson(f: PluginFormState): string {
     homepage: f.homepage,
     license: f.license || 'MIT',
     minAppVersion: '1.0.0',
-    runtime: f.runtime !== 'none' ? f.runtime : undefined,
+    runtime: f.runtime,
     permissions: f.permissions,
     hooks: [],
     settings: [],
-    entryPoint: f.entryPoint,
+    entryPoint: f.runtime === 'none' ? '' : f.entryPoint,
     icon: '',
   }
   return JSON.stringify(manifest, null, 2)
@@ -64,12 +66,11 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
   const [busy, setBusy] = useState(false)
   const [dragging, setDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const folderInputRef = useRef<HTMLInputElement>(null)
 
   // Form state
   const [form, setForm] = useState<PluginFormState>({
     id: '', name: '', version: '1.0.0', author: '', description: '',
-    entryPoint: 'plugin.wasm', runtime: 'wasm', license: 'MIT', homepage: '', permissions: [],
+    entryPoint: 'main.js', runtime: 'js', license: 'MIT', homepage: '', permissions: [],
   })
 
   // Raw JSON state
@@ -118,6 +119,22 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
         encodedFiles[relativePath] = btoa(binary)
       }
       await installPluginPackage(await manifestFile.text(), encodedFiles)
+      await onInstalled()
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Installazione cartella plugin fallita.')
+    } finally {
+      setBusy(false)
+    }
+  }, [onInstalled, onClose])
+
+  const chooseAndInstallFolder = useCallback(async () => {
+    setBusy(true)
+    setError('')
+    try {
+      const sourceDir = await selectPluginDirectory()
+      if (!sourceDir) return
+      await installPluginDirectory(sourceDir)
       await onInstalled()
       onClose()
     } catch (err) {
@@ -214,24 +231,16 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
           {/* ── Tab: file ─────────────────────────────────────── */}
           {tab === 'file' && (
             <div className="space-y-3">
-              <p className="text-xs text-text-3">Per plugin WASM o JS installa la cartella completa, incluso il file che il plugin dichiara.</p>
+              <p className="text-xs text-text-3">Per un plugin JavaScript eseguibile installa la cartella completa, incluso l'entrypoint dichiarato.</p>
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => folderInputRef.current?.click()}
+                onClick={() => void chooseAndInstallFolder()}
                 className="flex w-full items-center justify-center gap-2 rounded-md bg-accent px-3 py-2 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
               >
                 <Upload size={13} />
                 Installa cartella plugin (consigliato)
               </button>
-              <input
-                ref={folderInputRef}
-                type="file"
-                multiple
-                {...({ webkitdirectory: '', directory: '' } as React.InputHTMLAttributes<HTMLInputElement>)}
-                className="hidden"
-                onChange={(e) => { if (e.target.files?.length) void installFolder(e.target.files) }}
-              />
               <p className="pt-2 text-[10px] uppercase tracking-wider text-text-4">Solo manifest</p>
               <p className="text-xs text-text-3">
                 Usa questa opzione solo per registrare un plugin senza file eseguibili.
@@ -284,7 +293,7 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
                     {RUNTIMES.map(r => <option key={r} value={r}>{r}</option>)}
                   </select>
                 </div>
-                <Field label="Entry point" value={form.entryPoint} onChange={v => setF('entryPoint', v)} placeholder="plugin.wasm" mono />
+                <Field label="Entry point" value={form.entryPoint} onChange={v => setF('entryPoint', v)} placeholder="main.js" mono />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Licenza" value={form.license} onChange={v => setF('license', v)} placeholder="MIT" />
@@ -614,6 +623,8 @@ export function PluginManager() {
                     )}
 
                     <button
+                      aria-label={`${plugin.enabled ? 'Disable' : 'Enable'} ${plugin.manifest.name}`}
+                      aria-pressed={plugin.enabled}
                       onClick={(e) => {
                         e.stopPropagation()
                         handleToggle(plugin)
@@ -631,11 +642,18 @@ export function PluginManager() {
                       />
                     </button>
 
-                    {isExpanded ? (
-                      <ChevronDown size={14} className="text-text-3 flex-shrink-0" />
-                    ) : (
-                      <ChevronRight size={14} className="text-text-3 flex-shrink-0" />
-                    )}
+                    <button
+                      type="button"
+                      aria-expanded={isExpanded}
+                      aria-label={`${isExpanded ? 'Hide' : 'Show'} details for ${plugin.manifest.name}`}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        setExpandedId(isExpanded ? null : plugin.manifest.id)
+                      }}
+                      className="rounded p-0.5 text-text-3 transition-colors hover:bg-surface-2 hover:text-text-1"
+                    >
+                      {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                    </button>
                   </div>
 
                   {isExpanded && (

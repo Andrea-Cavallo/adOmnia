@@ -28,6 +28,14 @@ export interface SandboxStatus {
   running: boolean
 }
 
+export interface PluginExecResult {
+  success: boolean
+  data?: unknown
+  error?: string
+  memUsed: number
+  timeMs: number
+}
+
 function getPluginManager() {
   return window.go?.main?.PluginManager
 }
@@ -56,6 +64,18 @@ export async function installPluginPackage(manifestJSON: string, encodedFiles: R
   const mgr = getPluginManager()
   if (!mgr) throw new Error("Plugin Manager disponibile solo nell'applicazione desktop.")
   return (await mgr.InstallPluginPackage(manifestJSON, encodedFiles)) as PluginInstance
+}
+
+export async function installPluginDirectory(sourceDir: string): Promise<PluginInstance> {
+  const mgr = getPluginManager()
+  if (!mgr) throw new Error("Plugin Manager disponibile solo nell'applicazione desktop.")
+  return (await mgr.InstallPluginDirectory(sourceDir)) as PluginInstance
+}
+
+export async function selectPluginDirectory(): Promise<string> {
+  const app = window.go?.main?.App
+  if (!app) throw new Error("Selettore cartelle disponibile solo nell'applicazione desktop.")
+  return app.SelectFolder('Seleziona cartella plugin')
 }
 
 export async function uninstallPlugin(id: string): Promise<boolean> {
@@ -140,6 +160,22 @@ export async function getSandboxStatus(pluginId: string): Promise<SandboxStatus 
   } catch {
     return null
   }
+}
+
+export async function executePlugin(pluginId: string, functionName: string, args: Record<string, unknown>): Promise<PluginExecResult> {
+  const runtime = getWasmRuntime()
+  if (!runtime) throw new Error("Plugin runtime disponibile solo nell'applicazione desktop.")
+  const result = await runtime.Execute({ pluginId, function: functionName, args }) as PluginExecResult
+  if (!result.success) throw new Error(result.error || 'Plugin execution failed.')
+  return result
+}
+
+export async function executePluginAction(pluginId: string, actionId: string, args: Record<string, unknown> = {}): Promise<PluginExecResult> {
+  const manager = getPluginManager()
+  if (!manager) throw new Error("Plugin Manager disponibile solo nell'applicazione desktop.")
+  const result = await manager.ExecuteAction(pluginId, actionId, args) as PluginExecResult
+  if (!result.success) throw new Error(result.error || 'Plugin action failed.')
+  return result
 }
 
 export async function getTemplates(): Promise<Template[]> {

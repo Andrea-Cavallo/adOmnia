@@ -14,7 +14,7 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | C | [Infrastructure & Simulation](#c-infrastructure--simulation) | Mock Server (+ Smart Mock), Proxy/Interceptor, Docker Lab, Load Testing | ~47 |
 | D | [Debugging & Analysis](#d-debugging--analysis) | Browser Debug (+ Discovery), HAR Viewer, Network Tools, JSON Tools, XML Tools, Power Tools, Dev Logs, Observability, Secret Scanner, PDF Editor | ~110 |
 | E | [Local Data](#e-local-data) | Database Studio, Storage Inspector, Workspace, Vault, Document Studio | ~58 |
-| F | [Customization & Extensibility](#f-customization--extensibility) | Themes, Plugin WASM/JS, Template | ~51 |
+| F | [Customization & Extensibility](#f-customization--extensibility) | Themes, JavaScript plugins, Template | ~51 |
 | G | [Platform](#g-platform) | Settings, Infrastructure, UI Framework | ~76 |
 | H | [API Design](#h-api-design) | OpenAPI Import/Export, Schema Components, Visual OpenAPI Editor | ~10 |
 | I | [MCP (Model Context Protocol)](#i-mcp-model-context-protocol) | MCP Client/Debugger, Sessions & Transport, Server Generator | ~12 |
@@ -699,15 +699,15 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 
 | # | Feature | Description |
 |---|-------------|-------------|
-| F2.1 | **Plugin Manifest** | JSON with ID, metadata, permissions, hooks, settings, entry point, icon, `ui_slots` panels and actions; Python runtime is not supported. |
+| F2.1 | **Plugin Manifest** | JSON with ID, metadata, permissions, hooks, settings, JavaScript entry point, icon, `ui_slots` panels and actions; Python and new WASM installs are rejected. |
 | F2.2 | **Install/Uninstall** | Installs complete folders for executable plugins or manifest-only registrations; installed plugins reload at startup and appear in `PWR > Plugins`. |
 | F2.3 | **Enable/Disable** | Toggle with hook registration/deregistration; persisted state. |
 | F2.4 | **12 Hook Events** | onRequest, onResponse, onSend, onSave, onImport, onExport, onStartup, onShutdown, onThemeChange, onEnvChange, onTabOpen, onTabClose. |
-| F2.5 | **Hook Execution** | Each handler returns a HookResult (modified, data, error). |
+| F2.5 | **Hook Execution** | Enabled JavaScript handlers execute sequentially and return a HookResult (modified, data, error); HTTP request/response hooks are connected to the real send path. |
 | F2.6 | **Settings Plugin** | Chiave, etichetta, tipo, default, opzioni, descrizione; UI dedicata. |
-| F2.7 | **WASM Sandbox** | Limite memoria 64MB, timeout 10s, guardia concorrenza, tracciamento memoria. |
-| F2.8 | **8 Host Functions** | `http.fetch`, `storage.get/set/delete`, `log.info/error`, `ui.notify`, `env.get`. |
-| F2.9 | **Plugin DevTools** | Debug and test panel for plugin developers. |
+| F2.7 | **JavaScript Runtime Guardrails** | Fresh goja VM per invocation, 64MB input/output budget, 10s timeout, per-plugin concurrency guard and usage tracking. |
+| F2.8 | **8 Permission-Aware Host Functions** | `http.fetch`, `storage.get/set/delete`, `log.info/error`, `ui.notify`, `env.get`; privileged groups require their manifest permission. |
+| F2.9 | **Plugin DevTools** | Executes exported plugin functions with JSON arguments and displays the real result, error, duration and sandbox usage. |
 
 ---
 
@@ -731,9 +731,9 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | # | Feature | Description |
 |---|-------------|-------------|
 | F4.1 | **Python runtime removed** | No Python bridge, worker process, virtualenv or Python SDK is initialized or shipped. |
-| F4.2 | **Supported manifests** | Plugin manifests remain local and can describe WASM/JS extensions, hooks, settings, panels and declarative actions. |
+| F4.2 | **Supported runtime** | Complete local JavaScript plugin folders execute ESM-style named exports or CommonJS `module.exports`; legacy WASM manifests remain readable but cannot be enabled. |
 | F4.3 | **Python manifest rejection** | `runtime: "python"` is rejected by the backend during install and package repair. |
-| F4.4 | **Declarative actions** | Plugin actions remain visible as UI metadata; custom execution stays disabled until a non-Python runtime is connected. |
+| F4.4 | **Executable actions** | Declared actions execute their matching JavaScript export from the plugin panel and show success data or a readable runtime error. |
 ---
 
 ## G. PLATFORM
@@ -939,7 +939,7 @@ AI-integration module: connect to, debug, and generate MCP servers — exposing 
 | **C — Infrastructure & Simulation** | Mock Server (+ Smart Mock), Proxy, Docker Lab, Load Testing | 47 |
 | **D — Debugging & Analysis** | Browser Debug (+ Discovery), HAR, Network Tools, JSON Tools, XML Tools, Dev Utils, Dev Logs, Observability, Secret Scanner, PDF Editor | 110 |
 | **E — Local Data** | Database Studio, Storage Inspector, Workspace, Vault, Document Studio | 58 |
-| **F — Customization & Extensibility** | Themes, Plugin WASM/JS, Template | 51 |
+| **F — Customization & Extensibility** | Themes, JavaScript plugins, Template | 51 |
 | **G — Platform** | Settings, Infrastructure, UI Framework | 76 |
 | **H — API Design** | OpenAPI Import/Export, Schema Components, Visual OpenAPI Editor | 10 |
 | **I — MCP (Model Context Protocol)** | Client/Debugger, Sessions & Transport, Server Generator | 12 |

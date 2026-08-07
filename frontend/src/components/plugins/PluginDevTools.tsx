@@ -7,6 +7,7 @@ import {
   getAvailableEvents,
   getSandboxStatus,
   getPlugins,
+  executePlugin,
   type SandboxStatus,
 } from '@/lib/plugins-api'
 
@@ -45,7 +46,7 @@ export function PluginDevTools({ embedded = false }: { embedded?: boolean }) {
     loadData()
   }, [loadData])
 
-  const handleExecute = () => {
+  const handleExecute = async () => {
     setExecResult(null)
     setExecError(null)
 
@@ -54,14 +55,26 @@ export function PluginDevTools({ embedded = false }: { embedded?: boolean }) {
       return
     }
 
+    let args: Record<string, unknown>
     try {
-      JSON.parse(argsJson)
+      const parsed = JSON.parse(argsJson)
+      if (parsed === null || Array.isArray(parsed) || typeof parsed !== 'object') {
+        throw new Error('Arguments must be a JSON object.')
+      }
+      args = parsed as Record<string, unknown>
     } catch {
       setExecError('Invalid JSON in args field.')
       return
     }
 
-    setExecResult(`Execution of "${functionName}" on plugin "${selectedPluginId}" would be dispatched to the WASM runtime. (Dev tools preview)`)
+    try {
+      const result = await executePlugin(selectedPluginId, functionName.trim(), args)
+      setExecResult(JSON.stringify(result, null, 2))
+      const status = await getSandboxStatus(selectedPluginId)
+      if (status) setSandboxStatuses((current) => ({ ...current, [selectedPluginId]: status }))
+    } catch (error) {
+      setExecError(error instanceof Error ? error.message : 'Plugin execution failed.')
+    }
   }
 
   const formatBytes = (bytes: number): string => {

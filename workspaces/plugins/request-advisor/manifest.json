@@ -1,0 +1,41 @@
+{
+  "id": "request-advisor",
+  "name": "Request Advisor",
+  "version": "1.0.0",
+  "author": "adOmnia",
+  "description": "Example plugin that annotates outgoing requests and exposes an inspect action.",
+  "license": "MIT",
+  "minAppVersion": "0.6.10",
+  "runtime": "js",
+  "permissions": [
+    "notifications"
+  ],
+  "hooks": [
+    {
+      "event": "onRequest",
+      "handler": "prepareRequest"
+    }
+  ],
+  "settings": [
+    {
+      "key": "headerValue",
+      "label": "Header value",
+      "type": "string",
+      "default": "active",
+      "description": "Value written to X-Adomnia-Plugin."
+    }
+  ],
+  "entryPoint": "main.js",
+  "icon": "",
+  "ui_slots": [
+    "panel"
+  ],
+  "actions": [
+    {
+      "id": "inspect",
+      "name": "Inspect plugin",
+      "description": "Returns the current local configuration.",
+      "streaming": false
+    }
+  ]
+}

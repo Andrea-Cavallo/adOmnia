@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
@@ -183,6 +184,26 @@ type HookResult struct {
 	Error    string                 `json:"error,omitempty"`
 }
 
+func hookResultFromData(data interface{}) HookResult {
+	value, ok := data.(map[string]interface{})
+	if !ok || value == nil {
+		return HookResult{}
+	}
+	modified, _ := value["modified"].(bool)
+	result := HookResult{Modified: modified}
+	if rawData, ok := value["data"].(map[string]interface{}); ok {
+		result.Data = rawData
+	}
+	if rawError, ok := value["error"].(string); ok {
+		result.Error = rawError
+	}
+	if result.Modified && result.Data == nil && result.Error == "" {
+		result.Error = "hook returned modified=true without an object data field"
+		result.Modified = false
+	}
+	return result
+}
+
 // pluginHookEntry maps a registered hook to a plugin and handler function.
 type pluginHookEntry struct {
 	PluginID string
@@ -197,10 +218,16 @@ type PluginManager struct {
 	hooks     map[string][]pluginHookEntry
 	pluginDir string
 	stopCh    chan struct{}
+	runtime   *WasmRuntime
 }
 
 // pluginIDPattern intentionally excludes dots to prevent path traversal via ".." segments.
 var pluginIDPattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$`)
+
+const (
+	maxPluginPackageBytes = 64 << 20
+	maxPluginPackageFiles = 4096
+)
 
 // isUnderDir returns true when target (after Abs resolution) is inside base.
 // Used to guard against path-traversal attacks where a crafted ID escapes pluginDir.
@@ -217,7 +244,32 @@ func isUnderDir(base, target string) bool {
 	if err != nil {
 		return false
 	}
-	return !strings.HasPrefix(rel, "..")
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
+
+func rejectSymlinkPath(base, target string) error {
+	rel, err := filepath.Rel(base, target)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("path escapes plugin directory")
+	}
+	current := base
+	for _, part := range strings.Split(rel, string(filepath.Separator)) {
+		if part == "" || part == "." {
+			continue
+		}
+		current = filepath.Join(current, part)
+		info, err := os.Lstat(current)
+		if os.IsNotExist(err) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("plugin path contains a symbolic link: %s", rel)
+		}
+	}
+	return nil
 }
 
 func ResolvePluginEntryPoint(pluginDir, entryPoint string) (string, error) {
@@ -232,6 +284,9 @@ func ResolvePluginEntryPoint(pluginDir, entryPoint string) (string, error) {
 	target = filepath.Clean(target)
 	if !isUnderDir(pluginDir, target) {
 		return "", fmt.Errorf("plugin entryPoint escapes plugin directory: %s", entryPoint)
+	}
+	if err := rejectSymlinkPath(pluginDir, target); err != nil {
+		return "", fmt.Errorf("invalid plugin entryPoint %s: %w", entryPoint, err)
 	}
 	return target, nil
 }
@@ -270,13 +325,77 @@ func normalizePluginManifest(manifest *PluginManifest) error {
 	if manifest.Actions == nil {
 		manifest.Actions = []PluginAction{}
 	}
-	if strings.EqualFold(strings.TrimSpace(manifest.Runtime), "python") {
+	manifest.Runtime = strings.ToLower(strings.TrimSpace(manifest.Runtime))
+	if manifest.Runtime == "python" {
 		return fmt.Errorf("python plugin runtime is no longer supported")
 	}
+	if manifest.Runtime == "javascript" {
+		manifest.Runtime = "js"
+	}
+	if manifest.Runtime == "" {
+		switch strings.ToLower(filepath.Ext(manifest.EntryPoint)) {
+		case ".js", ".mjs", ".cjs":
+			manifest.Runtime = "js"
+		case ".wasm":
+			manifest.Runtime = "wasm"
+		default:
+			manifest.Runtime = "none"
+		}
+	}
+	if manifest.Runtime != "js" && manifest.Runtime != "wasm" && manifest.Runtime != "none" {
+		return fmt.Errorf("unsupported plugin runtime: %s", manifest.Runtime)
+	}
 	if manifest.EntryPoint == "" {
-		manifest.EntryPoint = "plugin.wasm"
+		if manifest.Runtime == "js" {
+			manifest.EntryPoint = "main.js"
+		} else if manifest.Runtime == "wasm" {
+			manifest.EntryPoint = "plugin.wasm"
+		}
+	}
+	if manifest.Runtime == "none" && (len(manifest.Hooks) > 0 || len(manifest.Actions) > 0) {
+		return fmt.Errorf("runtime none cannot declare hooks or actions")
 	}
 	return nil
+}
+
+func validateExecutableRuntime(manifest PluginManifest) error {
+	if manifest.Runtime == "wasm" {
+		return fmt.Errorf("WASM plugins are not executable in this build; use runtime js")
+	}
+	if manifest.Runtime != "js" && manifest.Runtime != "none" {
+		return fmt.Errorf("unsupported plugin runtime: %s", manifest.Runtime)
+	}
+	return nil
+}
+
+func validatePluginEntrypoint(inst *PluginInstance) error {
+	if err := validateExecutableRuntime(inst.Manifest); err != nil {
+		return err
+	}
+	if inst.Manifest.Runtime == "none" {
+		return nil
+	}
+	entryPoint, err := ResolvePluginEntryPoint(inst.InstallDir, inst.Manifest.EntryPoint)
+	if err != nil {
+		return err
+	}
+	info, err := os.Lstat(entryPoint)
+	if err != nil {
+		return fmt.Errorf("plugin entrypoint is unavailable: %w", err)
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("plugin entrypoint is not a regular file: %s", inst.Manifest.EntryPoint)
+	}
+	return nil
+}
+
+// AttachRuntime connects lifecycle management and execution. It is kept as a
+// package function so it is not exposed as a Wails binding.
+func AttachRuntime(pm *PluginManager, runtime *WasmRuntime) {
+	pm.mu.Lock()
+	pm.runtime = runtime
+	pm.mu.Unlock()
+	runtime.attachManager(pm)
 }
 
 // NewPluginManager creates a new PluginManager instance.
@@ -293,6 +412,11 @@ func NewPluginManager() *PluginManager {
 func (pm *PluginManager) Init() error {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
+	if pm.runtime != nil {
+		if err := pm.runtime.Init(); err != nil {
+			return fmt.Errorf("failed to initialize plugin runtime: %w", err)
+		}
+	}
 
 	pm.pluginDir = filepath.Join(dataDirectory, "plugins")
 	if err := os.MkdirAll(pm.pluginDir, 0755); err != nil {
@@ -350,15 +474,21 @@ func (pm *PluginManager) Init() error {
 			continue
 		}
 		installDir := filepath.Join(pm.pluginDir, entry.Name())
-		if _, err := ResolvePluginEntryPoint(installDir, manifest.EntryPoint); err != nil {
-			log.Printf("[plugins] skipping %s: invalid entrypoint: %v", entry.Name(), err)
-			continue
+		if manifest.Runtime != "none" {
+			if _, err := ResolvePluginEntryPoint(installDir, manifest.EntryPoint); err != nil {
+				log.Printf("[plugins] skipping %s: invalid entrypoint: %v", entry.Name(), err)
+				continue
+			}
 		}
 
 		// Merge with persisted state if it exists
 		if existing, ok := pm.plugins[manifest.ID]; ok {
 			existing.Manifest = manifest
 			existing.InstallDir = installDir
+			existing.Error = ""
+			if existing.InstalledAt == "" {
+				existing.InstalledAt = time.Now().UTC().Format(time.RFC3339)
+			}
 		} else {
 			instance := &PluginInstance{
 				Manifest:    manifest,
@@ -372,6 +502,11 @@ func (pm *PluginManager) Init() error {
 				instance.Settings[s.Key] = s.Default
 			}
 			pm.plugins[manifest.ID] = instance
+		}
+		if inst := pm.plugins[manifest.ID]; inst != nil {
+			if err := validatePluginEntrypoint(inst); err != nil {
+				inst.Error = err.Error()
+			}
 		}
 	}
 
@@ -412,6 +547,62 @@ func (pm *PluginManager) GetPlugin(id string) (*PluginInstance, error) {
 	return inst, nil
 }
 
+func (pm *PluginManager) pluginForExecution(id string) (PluginInstance, error) {
+	pm.mu.RLock()
+	inst, ok := pm.plugins[id]
+	if !ok {
+		pm.mu.RUnlock()
+		return PluginInstance{}, fmt.Errorf("plugin not found: %s", id)
+	}
+	copy := *inst
+	copy.Settings = make(map[string]string, len(inst.Settings))
+	for key, value := range inst.Settings {
+		copy.Settings[key] = value
+	}
+	pm.mu.RUnlock()
+
+	if !copy.Enabled {
+		return PluginInstance{}, fmt.Errorf("plugin is disabled: %s", id)
+	}
+	if copy.Manifest.Runtime == "none" {
+		return PluginInstance{}, fmt.Errorf("plugin has no executable runtime: %s", id)
+	}
+	if err := validatePluginEntrypoint(&copy); err != nil {
+		return PluginInstance{}, err
+	}
+	return copy, nil
+}
+
+// ExecuteAction invokes an action declared by an enabled plugin.
+func (pm *PluginManager) ExecuteAction(pluginID, actionID string, args map[string]interface{}) ExecResult {
+	pm.mu.RLock()
+	inst, ok := pm.plugins[pluginID]
+	runtime := pm.runtime
+	declared := false
+	if ok {
+		for _, action := range inst.Manifest.Actions {
+			if action.ID == actionID {
+				declared = true
+				break
+			}
+		}
+	}
+	pm.mu.RUnlock()
+	if !ok {
+		return failedExecResult(fmt.Errorf("plugin not found: %s", pluginID))
+	}
+	if !declared {
+		return failedExecResult(fmt.Errorf("plugin action is not declared: %s", actionID))
+	}
+	if runtime == nil {
+		return failedExecResult(fmt.Errorf("plugin runtime is not initialized"))
+	}
+	if args == nil {
+		args = map[string]interface{}{}
+	}
+	return runtime.Execute(ExecRequest{PluginID: pluginID, Function: actionID, Args: args})
+}
+
 // InstallPlugin installs a plugin from manifest JSON, creating its directory and saving manifest.json.
 func (pm *PluginManager) InstallPlugin(manifestJSON string) (*PluginInstance, error) {
 	var manifest PluginManifest
@@ -420,6 +611,9 @@ func (pm *PluginManager) InstallPlugin(manifestJSON string) (*PluginInstance, er
 	}
 
 	if err := normalizePluginManifest(&manifest); err != nil {
+		return nil, err
+	}
+	if err := validateExecutableRuntime(manifest); err != nil {
 		return nil, err
 	}
 
@@ -435,8 +629,10 @@ func (pm *PluginManager) InstallPlugin(manifestJSON string) (*PluginInstance, er
 	if !isUnderDir(pm.pluginDir, pluginPath) {
 		return nil, fmt.Errorf("plugin id escapes plugin directory: %s", manifest.ID)
 	}
-	if _, err := ResolvePluginEntryPoint(pluginPath, manifest.EntryPoint); err != nil {
-		return nil, err
+	if manifest.Runtime != "none" {
+		if _, err := ResolvePluginEntryPoint(pluginPath, manifest.EntryPoint); err != nil {
+			return nil, err
+		}
 	}
 	if err := os.MkdirAll(pluginPath, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create plugin directory: %w", err)
@@ -459,6 +655,9 @@ func (pm *PluginManager) InstallPlugin(manifestJSON string) (*PluginInstance, er
 		InstallDir:  pluginPath,
 		InstalledAt: time.Now().UTC().Format(time.RFC3339),
 	}
+	if err := validatePluginEntrypoint(instance); err != nil {
+		instance.Error = err.Error()
+	}
 
 	// Apply default settings
 	for _, s := range manifest.Settings {
@@ -476,8 +675,8 @@ func (pm *PluginManager) InstallPlugin(manifestJSON string) (*PluginInstance, er
 }
 
 // InstallPluginPackage installs a complete local plugin folder. File contents
-// are provided as base64 so WASM binaries, JS files and assets survive the
-// desktop bridge without browser filesystem assumptions.
+// are provided as base64 so JavaScript files and assets survive the desktop
+// bridge without browser filesystem assumptions.
 func (pm *PluginManager) InstallPluginPackage(manifestJSON string, encodedFiles map[string]string) (*PluginInstance, error) {
 	var manifest PluginManifest
 	if err := json.Unmarshal([]byte(manifestJSON), &manifest); err != nil {
@@ -486,8 +685,15 @@ func (pm *PluginManager) InstallPluginPackage(manifestJSON string, encodedFiles 
 	if err := normalizePluginManifest(&manifest); err != nil {
 		return nil, err
 	}
+	if err := validateExecutableRuntime(manifest); err != nil {
+		return nil, err
+	}
 
+	if len(encodedFiles) > maxPluginPackageFiles {
+		return nil, fmt.Errorf("plugin package contains too many files (max %d)", maxPluginPackageFiles)
+	}
 	files := make(map[string][]byte, len(encodedFiles))
+	var packageBytes int64
 	for relativePath, encoded := range encodedFiles {
 		relativePath = filepath.Clean(filepath.FromSlash(relativePath))
 		if filepath.IsAbs(relativePath) || relativePath == "." || relativePath == ".." || strings.HasPrefix(relativePath, ".."+string(filepath.Separator)) {
@@ -496,6 +702,10 @@ func (pm *PluginManager) InstallPluginPackage(manifestJSON string, encodedFiles 
 		data, err := base64.StdEncoding.DecodeString(encoded)
 		if err != nil {
 			return nil, fmt.Errorf("invalid plugin file encoding for %s: %w", relativePath, err)
+		}
+		packageBytes += int64(len(data))
+		if packageBytes > maxPluginPackageBytes {
+			return nil, fmt.Errorf("plugin package exceeds %d MiB", maxPluginPackageBytes>>20)
 		}
 		files[relativePath] = data
 	}
@@ -538,6 +748,10 @@ func (pm *PluginManager) InstallPluginPackage(manifestJSON string, encodedFiles 
 			rollbackNewInstall()
 			return nil, fmt.Errorf("plugin file escapes install directory: %s", relativePath)
 		}
+		if err := rejectSymlinkPath(instance.InstallDir, target); err != nil {
+			rollbackNewInstall()
+			return nil, fmt.Errorf("unsafe plugin package path %s: %w", relativePath, err)
+		}
 		if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
 			rollbackNewInstall()
 			return nil, fmt.Errorf("failed to create plugin file directory: %w", err)
@@ -553,7 +767,11 @@ func (pm *PluginManager) InstallPluginPackage(manifestJSON string, encodedFiles 
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal repaired manifest: %w", err)
 		}
-		if err := os.WriteFile(filepath.Join(instance.InstallDir, "manifest.json"), manifestData, 0644); err != nil {
+		manifestPath := filepath.Join(instance.InstallDir, "manifest.json")
+		if err := rejectSymlinkPath(instance.InstallDir, manifestPath); err != nil {
+			return nil, fmt.Errorf("unsafe repaired manifest path: %w", err)
+		}
+		if err := os.WriteFile(manifestPath, manifestData, 0644); err != nil {
 			return nil, fmt.Errorf("failed to update repaired manifest: %w", err)
 		}
 
@@ -575,7 +793,91 @@ func (pm *PluginManager) InstallPluginPackage(manifestJSON string, encodedFiles 
 		pm.mu.Unlock()
 		log.Printf("[plugins] repaired package files: %s v%s", manifest.Name, manifest.Version)
 	}
+	if created {
+		pm.mu.Lock()
+		instance.Error = ""
+		if err := validatePluginEntrypoint(instance); err != nil {
+			instance.Error = err.Error()
+		}
+		if err := pm.savePluginStateInternal(); err != nil {
+			log.Printf("[plugins] warning: failed to persist state after package install: %v", err)
+		}
+		pm.mu.Unlock()
+		log.Printf("[plugins] installed package files: %s v%s", manifest.Name, manifest.Version)
+	}
 	return instance, nil
+}
+
+// InstallPluginDirectory reads a directory selected through the native Wails
+// picker and installs it as a complete package. Links and special files are
+// rejected so the selected tree cannot escape its root or block the reader.
+func (pm *PluginManager) InstallPluginDirectory(sourceDir string) (*PluginInstance, error) {
+	sourceDir = strings.TrimSpace(sourceDir)
+	if sourceDir == "" {
+		return nil, fmt.Errorf("plugin directory is required")
+	}
+	root, err := filepath.Abs(sourceDir)
+	if err != nil {
+		return nil, fmt.Errorf("invalid plugin directory: %w", err)
+	}
+	rootInfo, err := os.Lstat(root)
+	if err != nil {
+		return nil, fmt.Errorf("could not inspect plugin directory: %w", err)
+	}
+	if rootInfo.Mode()&os.ModeSymlink != 0 || !rootInfo.IsDir() {
+		return nil, fmt.Errorf("plugin source must be a real directory")
+	}
+
+	encodedFiles := make(map[string]string)
+	var totalBytes int64
+	err = filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.Type()&os.ModeSymlink != 0 {
+			return fmt.Errorf("plugin directory contains a symbolic link: %s", entry.Name())
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("plugin directory contains a non-regular file: %s", entry.Name())
+		}
+		if len(encodedFiles) >= maxPluginPackageFiles {
+			return fmt.Errorf("plugin package contains too many files (max %d)", maxPluginPackageFiles)
+		}
+		totalBytes += info.Size()
+		if totalBytes > maxPluginPackageBytes {
+			return fmt.Errorf("plugin package exceeds %d MiB", maxPluginPackageBytes>>20)
+		}
+		relativePath, err := filepath.Rel(root, path)
+		if err != nil || relativePath == "." || relativePath == ".." || strings.HasPrefix(relativePath, ".."+string(filepath.Separator)) {
+			return fmt.Errorf("plugin file escapes selected directory: %s", path)
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("could not read plugin file %s: %w", relativePath, err)
+		}
+		encodedFiles[filepath.ToSlash(relativePath)] = base64.StdEncoding.EncodeToString(data)
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("could not read plugin directory: %w", err)
+	}
+
+	encodedManifest, ok := encodedFiles["manifest.json"]
+	if !ok {
+		return nil, fmt.Errorf("plugin directory must contain manifest.json at its root")
+	}
+	manifestData, err := base64.StdEncoding.DecodeString(encodedManifest)
+	if err != nil {
+		return nil, fmt.Errorf("could not decode plugin manifest: %w", err)
+	}
+	return pm.InstallPluginPackage(string(manifestData), encodedFiles)
 }
 
 // UninstallPlugin removes a plugin directory and unregisters its hooks.
@@ -623,6 +925,10 @@ func (pm *PluginManager) EnablePlugin(id string) error {
 
 	if inst.Enabled {
 		return nil
+	}
+	if err := validatePluginEntrypoint(inst); err != nil {
+		inst.Error = err.Error()
+		return err
 	}
 
 	inst.Enabled = true
@@ -711,25 +1017,74 @@ func (pm *PluginManager) SetPluginSetting(id string, key string, value string) e
 	return nil
 }
 
-// EmitEvent fires an event through the hook system and collects results from all registered handlers.
-func (pm *PluginManager) EmitEvent(event PluginEvent) []HookResult {
+func (pm *PluginManager) emitEvent(event PluginEvent) ([]HookResult, map[string]interface{}) {
 	pm.mu.RLock()
-	entries, ok := pm.hooks[event.Type]
+	entries := append([]pluginHookEntry(nil), pm.hooks[event.Type]...)
+	runtime := pm.runtime
 	pm.mu.RUnlock()
 
-	if !ok || len(entries) == 0 {
-		return nil
+	current := event.Payload
+	if current == nil {
+		current = map[string]interface{}{}
+	}
+	if len(entries) == 0 {
+		return nil, current
 	}
 
 	results := make([]HookResult, 0, len(entries))
 	for _, entry := range entries {
 		log.Printf("[plugins] hook triggered: event=%s plugin=%s handler=%s", event.Type, entry.PluginID, entry.Handler)
-		// For now, without a WASM runtime, hooks just log and return unmodified.
-		// The real implementation in plugins_wasm.go will execute plugin code.
-		results = append(results, HookResult{Modified: false})
+		if runtime == nil {
+			results = append(results, HookResult{Error: "plugin runtime is not initialized"})
+			continue
+		}
+		execResult := runtime.Execute(ExecRequest{
+			PluginID: entry.PluginID,
+			Function: entry.Handler,
+			Args: map[string]interface{}{
+				"event":   event.Type,
+				"payload": current,
+			},
+		})
+		if !execResult.Success {
+			results = append(results, HookResult{Error: execResult.Error})
+			continue
+		}
+		hookResult := hookResultFromData(execResult.Data)
+		if hookResult.Modified && hookResult.Data != nil {
+			current = hookResult.Data
+		}
+		results = append(results, hookResult)
 	}
 
+	return results, current
+}
+
+// EmitEvent fires an event through the hook system and collects results from all registered handlers.
+func (pm *PluginManager) EmitEvent(event PluginEvent) []HookResult {
+	results, _ := pm.emitEvent(event)
 	return results
+}
+
+// ApplyEventJSON runs all hooks sequentially and returns the final payload.
+// A hook error aborts the operation so callers never silently send a request
+// that an enabled plugin failed to prepare.
+func (pm *PluginManager) ApplyEventJSON(eventType, payloadJSON string) (string, error) {
+	var payload map[string]interface{}
+	if err := json.Unmarshal([]byte(payloadJSON), &payload); err != nil {
+		return "", fmt.Errorf("invalid %s payload: %w", eventType, err)
+	}
+	results, finalPayload := pm.emitEvent(PluginEvent{Type: eventType, Payload: payload})
+	for _, result := range results {
+		if result.Error != "" {
+			return "", fmt.Errorf("plugin hook %s failed: %s", eventType, result.Error)
+		}
+	}
+	encoded, err := json.Marshal(finalPayload)
+	if err != nil {
+		return "", fmt.Errorf("failed to encode %s payload: %w", eventType, err)
+	}
+	return string(encoded), nil
 }
 
 // FireEvent queues a plugin event for async delivery.
@@ -770,12 +1125,11 @@ func (pm *PluginManager) eventDispatchLoop() {
 
 // dispatchToHooks delivers an event to all registered handlers for its type.
 func (pm *PluginManager) dispatchToHooks(event PluginEvent) {
-	pm.mu.RLock()
-	entries := pm.hooks[event.Type]
-	pm.mu.RUnlock()
-	for _, entry := range entries {
-		log.Printf("[plugins] hook dispatched: event=%s plugin=%s handler=%s",
-			event.Type, entry.PluginID, entry.Handler)
+	results := pm.EmitEvent(event)
+	for _, result := range results {
+		if result.Error != "" {
+			log.Printf("[plugins] hook dispatch failed: event=%s error=%s", event.Type, result.Error)
+		}
 	}
 }
 
@@ -819,9 +1173,12 @@ func (pm *PluginManager) LoadPluginState() error {
 // --- internal helpers (must be called with lock held) ---
 
 func (pm *PluginManager) registerHooksInternal(inst *PluginInstance) {
-	if _, err := ResolvePluginEntryPoint(inst.InstallDir, inst.Manifest.EntryPoint); err != nil {
+	if err := validatePluginEntrypoint(inst); err != nil {
 		inst.Error = err.Error()
 		log.Printf("[plugins] refusing to register hooks for %s: %v", inst.Manifest.ID, err)
+		return
+	}
+	if inst.Manifest.Runtime == "none" {
 		return
 	}
 	for _, hook := range inst.Manifest.Hooks {

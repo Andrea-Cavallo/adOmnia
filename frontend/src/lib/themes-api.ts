@@ -31,6 +31,7 @@ declare global {
       GetPlugin: (id: string) => Promise<unknown>
       InstallPlugin: (manifestJSON: string) => Promise<unknown>
       InstallPluginPackage: (manifestJSON: string, encodedFiles: Record<string, string>) => Promise<unknown>
+      InstallPluginDirectory: (sourceDir: string) => Promise<unknown>
       UninstallPlugin: (id: string) => Promise<void>
       EnablePlugin: (id: string) => Promise<void>
       DisablePlugin: (id: string) => Promise<void>
@@ -38,10 +39,12 @@ declare global {
       SetPluginSetting: (id: string, key: string, value: string) => Promise<void>
       GetRegisteredHooks: () => Promise<Record<string, string[]>>
       GetAvailableEvents: () => Promise<string[]>
+      ExecuteAction: (pluginId: string, actionId: string, args: Record<string, unknown>) => Promise<unknown>
     }
     WasmRuntime: {
       GetHostFunctions: () => Promise<string[]>
       GetSandboxStatus: (pluginId: string) => Promise<{ pluginId: string; memory: number; maxMemory: number; running: boolean }>
+      Execute: (request: { pluginId: string; function: string; args: Record<string, unknown> }) => Promise<unknown>
     }
     TemplateStore: {
       GetTemplates: () => Promise<unknown[]>

@@ -739,7 +739,7 @@ export namespace plugins {
 	}
 	export class ExecResult {
 	    success: boolean;
-	    data?: Record<string, any>;
+	    data?: any;
 	    error?: string;
 	    memUsed: number;
 	    timeMs: number;

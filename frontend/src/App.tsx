@@ -14,6 +14,7 @@ import { ErrorBoundary } from '@/components/layout/ErrorBoundary'
 import { ResizeHandle } from '@/components/ui/ResizeHandle'
 import { DropOverlay } from '@/components/layout/DropOverlay'
 import { DropToast } from '@/components/layout/DropToast'
+import { PluginNotificationToast } from '@/components/plugins/PluginNotificationToast'
 import { useAppStore } from '@/stores/app'
 import { useAppInit } from '@/hooks/useAppInit'
 import { useAppearance } from '@/hooks/useAppearance'
@@ -119,6 +120,7 @@ function App() {
           <StatusBar />
           {dragOver && <DropOverlay preview={dropPreview} />}
           {dropFeedback && <DropToast feedback={dropFeedback} />}
+          <PluginNotificationToast />
         </div>
         <CommandPalette open={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} />
         <ConfirmDialogHost />
