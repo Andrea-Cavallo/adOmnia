@@ -3,6 +3,7 @@ import { useState } from 'react'
 import type { KVRow } from '@/lib/types'
 import { uid } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { useUiTranslation, type UiMessage } from '@/lib/uiI18n'
 import { VarHighlightInput } from '@/components/ui/VarHighlightInput'
 import { useEnvironmentsStore } from '@/stores/environments'
 
@@ -203,6 +204,7 @@ const HEADER_PRESET_GROUPS: { label: string; items: readonly Preset[] }[] = [
 const HEADER_PRESETS: readonly Preset[] = HEADER_PRESET_GROUPS.flatMap((g) => g.items)
 
 export function KVEditor({ rows, onChange, keyPlaceholder = 'Key', valuePlaceholder = 'Value' }: KVEditorProps) {
+  const tr = useUiTranslation()
   const isHeaders = keyPlaceholder.toLowerCase().includes('header')
   const [openId, setOpenId] = useState<string | null>(null)
   const [openValueId, setOpenValueId] = useState<string | null>(null)
@@ -311,7 +313,7 @@ export function KVEditor({ rows, onChange, keyPlaceholder = 'Key', valuePlacehol
               if (values.length === 0) return null
               return (
                 <div className="absolute left-0 top-[calc(100%+2px)] z-40 w-full max-h-48 overflow-y-auto rounded-md border border-border-2 bg-surface-1 py-1 shadow-lg">
-                  <div className="px-2.5 pb-1 text-[9px] font-semibold uppercase tracking-wider text-text-4">Value presets</div>
+                  <div className="px-2.5 pb-1 text-[9px] font-semibold uppercase tracking-wider text-text-4">{tr('Value presets')}</div>
                   {values.map((value) => (
                     <button
                       key={value}
@@ -333,7 +335,7 @@ export function KVEditor({ rows, onChange, keyPlaceholder = 'Key', valuePlacehol
           </div>
           <button
             onClick={() => remove(r.id)}
-            title="Remove row"
+            title={tr('Remove row')}
             className="w-6 h-6 flex items-center justify-center text-text-4 hover:text-error rounded opacity-0 group-hover:opacity-100 transition-opacity"
           >
             <Trash2 size={12} />
@@ -344,22 +346,22 @@ export function KVEditor({ rows, onChange, keyPlaceholder = 'Key', valuePlacehol
         onClick={() => add()}
         className="flex items-center gap-1 px-2 py-1 mt-1 text-xs text-text-3 hover:text-text-1 transition-colors"
       >
-        <Plus size={12} /> Add row
+        <Plus size={12} /> {tr('Add row')}
       </button>
       {isHeaders && (
         <div className="max-h-64 overflow-y-auto px-2 pb-2 pt-1">
           <div className="mb-2 flex items-center gap-2">
-            <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wider text-text-4">Header presets</span>
+            <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wider text-text-4">{tr('Header presets')}</span>
             <input
               value={presetQuery}
               onChange={(event) => setPresetQuery(event.target.value)}
-              placeholder="Filter presets…"
+              placeholder={tr('Filter presets…')}
               className="h-6 min-w-0 flex-1 rounded border border-border-2 bg-surface-2 px-2 font-mono text-[10px] text-text-1 outline-none placeholder:text-text-4 focus:border-accent"
             />
           </div>
           {visiblePresetGroups.map((group) => (
             <div key={group.label} className="mb-1.5 last:mb-0">
-              <div className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-text-4">{group.label}</div>
+              <div className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-text-4">{tr(group.label as UiMessage)}</div>
               <div className="flex flex-wrap gap-1">
                 {group.items.map(([key, value]) => (
                   <button
@@ -375,7 +377,7 @@ export function KVEditor({ rows, onChange, keyPlaceholder = 'Key', valuePlacehol
             </div>
           ))}
           {visiblePresetGroups.length === 0 && (
-            <div className="py-2 text-center text-[10px] text-text-4">No header presets match this filter.</div>
+            <div className="py-2 text-center text-[10px] text-text-4">{tr('No header presets match this filter.')}</div>
           )}
         </div>
       )}

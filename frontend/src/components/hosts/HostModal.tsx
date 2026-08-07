@@ -3,6 +3,7 @@ import { X, Plus, Trash2, Check } from 'lucide-react'
 import type { HostsProfile, HostEntry } from '@/lib/types'
 import { blankHostEntry } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { useUiTranslation } from '@/lib/uiI18n'
 
 interface HostModalProps {
   profiles: HostsProfile[]
@@ -23,6 +24,7 @@ function ConfirmDialog({
   onConfirm: () => void
   onCancel: () => void
 }) {
+  const tr = useUiTranslation()
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50" onClick={onCancel}>
       <div
@@ -35,13 +37,13 @@ function ConfirmDialog({
             onClick={onCancel}
             className="px-3 py-1 text-xs rounded border border-border-2 text-text-2 hover:text-text-1 hover:bg-surface-2"
           >
-            Cancel
+            {tr('Cancel')}
           </button>
           <button
             onClick={onConfirm}
             className="px-3 py-1 text-xs rounded bg-error/20 border border-error/40 text-error hover:bg-error/30"
           >
-            Delete
+            {tr('Delete')}
           </button>
         </div>
       </div>
@@ -69,6 +71,7 @@ export function HostModal({
   onRename,
   onUpdateEntries,
 }: HostModalProps) {
+  const tr = useUiTranslation()
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(activeProfileId)
   const [editingName, setEditingName] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
@@ -130,9 +133,9 @@ export function HostModal({
         >
           {/* Header */}
           <div className="flex items-center gap-2 px-4 py-3 border-b border-border-1">
-            <span className="text-sm font-semibold text-text-1 flex-1">Hosts Profiles</span>
+            <span className="text-sm font-semibold text-text-1 flex-1">{tr('Hosts Profiles')}</span>
             <span className="text-[10px] text-text-4">
-              Map hostnames to custom IPs — like /etc/hosts, scoped to adOmnia requests
+              {tr('Map hostnames to custom IPs — like /etc/hosts, scoped to adOmnia requests')}
             </span>
             {addingNew ? (
               <div className="flex items-center gap-1 ml-2">
@@ -144,7 +147,7 @@ export function HostModal({
                     if (e.key === 'Enter') confirmAddProfile()
                     if (e.key === 'Escape') cancelAddProfile()
                   }}
-                  placeholder="Profile name…"
+                  placeholder={tr('Profile name…')}
                   className="h-6 px-2 bg-surface-2 border border-accent rounded text-xs text-text-1 outline-none w-40"
                 />
                 <button onClick={confirmAddProfile} className="p-1 text-success hover:text-success/80">
@@ -158,7 +161,7 @@ export function HostModal({
               <button
                 onClick={() => { setAddingNew(true); setNewProfileName('') }}
                 className="ml-2 px-2 py-1 text-xs text-accent hover:text-accent-light rounded hover:bg-accent/10"
-                title="New Profile"
+                title={tr('New Profile')}
               >
                 <Plus size={14} />
               </button>
@@ -229,7 +232,7 @@ export function HostModal({
                 ))}
 
                 {profiles.length === 0 && (
-                  <p className="text-xs text-text-4 text-center py-4">No profiles yet.</p>
+                  <p className="text-xs text-text-4 text-center py-4">{tr('No profiles yet.')}</p>
                 )}
               </div>
             </div>
@@ -241,10 +244,10 @@ export function HostModal({
                   {/* Table header */}
                   <div className="grid grid-cols-[20px_1fr_16px_120px_1fr_20px] gap-2 px-2 text-[10px] uppercase tracking-wider text-text-4">
                     <span />
-                    <span>Host</span>
+                    <span>{tr('Host')}</span>
                     <span />
-                    <span>IP Address</span>
-                    <span>Note</span>
+                    <span>{tr('IP Address')}</span>
+                    <span>{tr('Note')}</span>
                     <span />
                   </div>
 
@@ -278,7 +281,7 @@ export function HostModal({
                             value={entry.ip}
                             onChange={(e) => handleUpdateEntry(entry.id, { ip: e.target.value })}
                             placeholder="192.168.1.50"
-                            title={ipInvalid ? 'Invalid IP address' : undefined}
+                            title={ipInvalid ? tr('Invalid IP address') : undefined}
                             className={cn(
                               'h-6 px-2 bg-surface-2 border rounded text-xs text-text-1 font-mono placeholder:text-text-4 focus:border-accent outline-none',
                               ipInvalid ? 'border-error' : 'border-border-2'
@@ -288,7 +291,7 @@ export function HostModal({
                           <input
                             value={entry.note}
                             onChange={(e) => handleUpdateEntry(entry.id, { note: e.target.value })}
-                            placeholder="optional label"
+                            placeholder={tr('optional label')}
                             className="h-6 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-3 placeholder:text-text-4 focus:border-accent outline-none"
                           />
                           {/* Delete */}
@@ -306,19 +309,19 @@ export function HostModal({
                       onClick={handleAddEntry}
                       className="flex items-center gap-1 px-2 py-1 text-xs text-accent hover:text-accent-light mt-1"
                     >
-                      <Plus size={11} /> Add Entry
+                      <Plus size={11} /> {tr('Add Entry')}
                     </button>
                   </div>
 
                   {/* Footer hint */}
                   <p className="text-[10px] text-text-4 pt-1 border-t border-border-1">
-                    Tip: use <span className="font-mono">host:port</span> for port-specific overrides (e.g. <span className="font-mono">api.example.com:443</span>).
-                    Host header and TLS SNI are preserved — HTTPS works correctly.
+                    {tr('Tip: use')} <span className="font-mono">host:port</span> {tr('for port-specific overrides (e.g.')} <span className="font-mono">api.example.com:443</span>).
+                    {' '}{tr('Host header and TLS SNI are preserved — HTTPS works correctly.')}
                   </p>
                 </div>
               ) : (
                 <div className="flex-1 flex items-center justify-center">
-                  <p className="text-xs text-text-4">Select a profile to edit its entries.</p>
+                  <p className="text-xs text-text-4">{tr('Select a profile to edit its entries.')}</p>
                 </div>
               )}
             </div>
@@ -328,7 +331,7 @@ export function HostModal({
 
       {confirmDelete && (
         <ConfirmDialog
-          message={`Delete profile "${confirmDelete.name}"?`}
+          message={tr('Delete profile "{{name}}"?', { name: confirmDelete.name })}
           onConfirm={() => {
             onDelete(confirmDelete.id)
             if (selectedProfileId === confirmDelete.id) setSelectedProfileId(null)

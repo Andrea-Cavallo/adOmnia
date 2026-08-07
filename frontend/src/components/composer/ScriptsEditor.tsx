@@ -3,6 +3,7 @@ import Editor, { type BeforeMount } from '@monaco-editor/react'
 import { AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { applyAdomniaMonacoTheme, configureMonacoLoader, monaco } from '@/lib/monacoSetup'
+import { useUiTranslation } from '@/lib/uiI18n'
 
 interface ScriptsEditorProps {
   pre: string
@@ -42,6 +43,7 @@ function configureJavaScript(m: typeof monaco): void {
 configureMonacoLoader()
 
 export function ScriptsEditor({ pre, post, tests, onChange, initialTab = 'tests' }: ScriptsEditorProps) {
+  const tr = useUiTranslation()
   const [tab, setTab] = useState<ScriptTab>(initialTab)
   const [diagnostic, setDiagnostic] = useState<ScriptDiagnostic | null>(null)
 
@@ -66,19 +68,19 @@ export function ScriptsEditor({ pre, post, tests, onChange, initialTab = 'tests'
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2 px-2 pb-2">
       <div className="flex gap-1 border-b border-border-1">
-        <button className={tabClass('pre')} onClick={() => handleTabChange('pre')}>Pre-request</button>
-        <button className={tabClass('post')} onClick={() => handleTabChange('post')}>Post-response</button>
-        <button className={tabClass('tests')} onClick={() => handleTabChange('tests')}>Tests</button>
+        <button className={tabClass('pre')} onClick={() => handleTabChange('pre')}>{tr('Pre-request')}</button>
+        <button className={tabClass('post')} onClick={() => handleTabChange('post')}>{tr('Post-response')}</button>
+        <button className={tabClass('tests')} onClick={() => handleTabChange('tests')}>{tr('Tests')}</button>
       </div>
       <div className="rounded border border-warning/25 bg-warning/10 px-3 py-2 text-[11px] leading-relaxed text-text-2">
-        Scripts run locally for this workspace and can read or modify request, response, and environment data. Use code you trust.
+        {tr('Scripts run locally for this workspace and can read or modify request, response, and environment data. Use code you trust.')}
       </div>
       {diagnostic && (
         <div role="alert" className="flex items-start gap-2 rounded border border-error/40 bg-error/10 px-3 py-2 text-[11px] leading-relaxed text-error">
           <AlertTriangle className="mt-0.5 shrink-0" size={14} aria-hidden="true" />
           <span>
-            <span className="font-semibold">JavaScript syntax error</span>
-            {` · Line ${diagnostic.line}, column ${diagnostic.column}: ${diagnostic.message}`}
+            <span className="font-semibold">{tr('JavaScript syntax error')}</span>
+            {` · ${tr('Line')} ${diagnostic.line}, ${tr('column')} ${diagnostic.column}: ${diagnostic.message}`}
           </span>
         </div>
       )}

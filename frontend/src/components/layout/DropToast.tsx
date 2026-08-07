@@ -1,11 +1,13 @@
 import type { DropFeedback } from '@/hooks/useFileDrop'
 import { AlertCircle, CheckCircle2, Copy, ExternalLink } from 'lucide-react'
+import { useUiTranslation } from '@/lib/uiI18n'
 
 interface DropToastProps {
   feedback: DropFeedback
 }
 
 export function DropToast({ feedback }: DropToastProps) {
+  const tr = useUiTranslation()
   const Icon = feedback.ok ? CheckCircle2 : AlertCircle
   const copy = () => void navigator.clipboard?.writeText(feedback.msg)
 
@@ -20,12 +22,12 @@ export function DropToast({ feedback }: DropToastProps) {
         type="button"
         onClick={copy}
         className="grid h-6 w-6 shrink-0 place-items-center rounded text-text-4 hover:bg-surface-2 hover:text-text-1"
-        title="Copy message"
+        title={tr('Copy message')}
       >
         <Copy size={11} />
       </button>
       {feedback.ok && (
-        <span className="grid h-6 w-6 shrink-0 place-items-center rounded text-text-4" title="Opened in adOmnia">
+        <span className="grid h-6 w-6 shrink-0 place-items-center rounded text-text-4" title={tr('Opened in adOmnia')}>
           <ExternalLink size={11} />
         </span>
       )}

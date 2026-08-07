@@ -7,8 +7,10 @@ import { useThemesStore } from '@/stores/themes'
 import { useThemeContext } from '@/components/themes/ThemeProvider'
 import { inferThemeMode } from '@/lib/themeCatalog'
 import { cn } from '@/lib/utils'
+import { useUiTranslation } from '@/lib/uiI18n'
 
 export function StatusBar() {
+  const tr = useUiTranslation()
   const tabs = useTabsStore((s) => s.tabs)
   const activeTabId = useTabsStore((s) => s.activeTabId)
   const responseHistory = useTabsStore((s) => s.responseHistory)
@@ -75,16 +77,16 @@ export function StatusBar() {
           </>
         )}
         {response?.error && <span className="text-error">{response.error.code}</span>}
-        {!response && !saveError && <span>Ready</span>}
-        {saveError && <span className="text-error">Save error: {saveError}</span>}
+        {!response && !saveError && <span>{tr('Ready')}</span>}
+        {saveError && <span className="text-error">{tr('Save error:')} {saveError}</span>}
         {responseHistory.length > 0 && (
           <button
             onClick={() => setActiveRail('history')}
-            title="Open Request History"
+            title={tr('Open Request History')}
             className="flex items-center gap-1 text-text-4 hover:text-text-2 transition-colors"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-success inline-block" />
-            history {responseHistory.length} reqs
+            {tr('history')} {responseHistory.length} {tr('reqs')}
           </button>
         )}
       </div>
@@ -93,7 +95,7 @@ export function StatusBar() {
           <>
             <button
               onClick={() => setActiveRail('collections')}
-              title="Open active workspace"
+              title={tr('Open active workspace')}
               className="flex max-w-44 items-center gap-1 text-text-4 transition-colors hover:text-text-2"
             >
               <FolderKanban size={10} className="shrink-0 text-accent" />
@@ -106,7 +108,7 @@ export function StatusBar() {
         {mockRunning && (
           <button
             onClick={() => setActiveRail('mock')}
-            title="Mock Server running — click to open"
+            title={tr('Mock Server running — click to open')}
             className="flex items-center gap-1 text-[10px] text-success hover:text-success/80 transition-colors"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-success inline-block animate-pulse" />
@@ -117,7 +119,7 @@ export function StatusBar() {
         {proxyRunning && (
           <button
             onClick={() => setActiveRail('proxy')}
-            title="Proxy running — click to open"
+            title={tr('Proxy running — click to open')}
             className="flex items-center gap-1 text-[10px] text-info hover:text-info/80 transition-colors"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-info inline-block animate-pulse" />
@@ -130,7 +132,7 @@ export function StatusBar() {
         {/* Dark / Light toggle */}
         <button
           onClick={toggleTheme}
-          title={`Switch to ${currentMode === 'dark' ? 'light' : 'dark'} theme (Ctrl+Shift+L)`}
+          title={currentMode === 'dark' ? tr('Switch to light theme (Ctrl+Shift+L)') : tr('Switch to dark theme (Ctrl+Shift+L)')}
           className={cn(
             'h-5 w-5 flex items-center justify-center rounded hover:bg-surface-3 transition-colors',
             'text-text-4 hover:text-text-2',

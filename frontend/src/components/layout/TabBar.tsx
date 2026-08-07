@@ -4,6 +4,7 @@ import { Plus, X, ChevronRight, ChevronLeft, Copy, Pencil, Server, Pin, PinOff }
 import type { Tab } from '@/lib/types'
 import type { TabDropPosition } from '@/stores/tabs'
 import { cn } from '@/lib/utils'
+import { useUiTranslation } from '@/lib/uiI18n'
 
 interface TabBarProps {
   tabs: Tab[]
@@ -52,6 +53,7 @@ function clampToViewport(x: number, y: number): { left: number; top: number } {
 }
 
 export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, onCloseToLeft, onCloseAll, onReorder, onNewTab, onDuplicate, onTogglePinned, onRenameTab, onMockTab }: TabBarProps) {
+  const tr = useUiTranslation()
   const [ctx, setCtx] = useState<ContextMenuState>({ open: false, x: 0, y: 0, tabId: '' })
   const [draggingTabId, setDraggingTabId] = useState<string | null>(null)
   const [dropTarget, setDropTarget] = useState<{ tabId: string; position: TabDropPosition } | null>(null)
@@ -152,7 +154,7 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
       {overflow.left && (
         <button
           onClick={() => scrollTabs(-1)}
-          title="Scroll tabs left"
+          title={tr('Scroll tabs left')}
           className="mr-0.5 flex h-6 w-5 shrink-0 items-center justify-center rounded text-text-3 transition-colors hover:bg-surface-2 hover:text-text-1"
         >
           <ChevronLeft size={13} />
@@ -233,10 +235,10 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
               />
             ) : !isPinned ? (
               <span className="truncate flex-1">
-                {tab.request.name || tab.request.url || 'Untitled'}
+                {tab.request.name || tab.request.url || tr('Untitled')}
               </span>
             ) : (
-              <span className="sr-only">{tab.request.name || tab.request.url || 'Pinned tab'}</span>
+              <span className="sr-only">{tab.request.name || tab.request.url || tr('Pinned tab')}</span>
             )}
             {tab.dirty && (
               <span
@@ -244,14 +246,14 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
                   'rounded-full bg-warning shrink-0 shadow-[0_0_10px_color-mix(in_srgb,var(--color-warning)_42%,transparent)]',
                   isPinned ? 'absolute right-1.5 top-1.5 h-1.5 w-1.5' : 'h-2 w-2 animate-pulse',
                 )}
-                title="Unsaved changes"
+                title={tr('Unsaved changes')}
               />
             )}
             {!isPinned && (
               <button
                 onClick={(e) => { e.stopPropagation(); onClose(tab.id) }}
                 className="shrink-0 rounded p-0.5 text-text-4 opacity-0 transition-colors hover:text-error group-hover:opacity-100"
-                title="Close tab"
+                title={tr('Close tab')}
               >
                 <X size={10} />
               </button>
@@ -266,7 +268,7 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
       {overflow.right && (
         <button
           onClick={() => scrollTabs(1)}
-          title="Scroll tabs right"
+          title={tr('Scroll tabs right')}
           className="ml-0.5 flex h-6 w-5 shrink-0 items-center justify-center rounded text-text-3 transition-colors hover:bg-surface-2 hover:text-text-1"
         >
           <ChevronRight size={13} />
@@ -274,7 +276,7 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
       )}
       <button
         onClick={() => onNewTab()}
-        title="New tab (Ctrl+N)"
+        title={tr('New tab (Ctrl+N)')}
         className="ml-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded text-text-4 transition-colors hover:bg-surface-2 hover:text-text-1"
       >
         <Plus size={12} />
@@ -287,35 +289,35 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
           style={{ left: pos.left, top: pos.top }}
         >
           <div className="px-3 py-1.5 border-b border-border-1 mb-1">
-            <span className="text-[9px] font-semibold text-text-4 uppercase tracking-wider">Tab</span>
+            <span className="text-[9px] font-semibold text-text-4 uppercase tracking-wider">{tr('Tab')}</span>
           </div>
           <button
             onClick={() => { onTogglePinned(ctx.tabId); closeCtx() }}
             className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-text-1 hover:bg-surface-2 transition-colors text-left"
           >
             {tabs.find((tab) => tab.id === ctx.tabId)?.pinned ? <PinOff size={11} className="text-text-3" /> : <Pin size={11} className="text-text-3" />}
-            {tabs.find((tab) => tab.id === ctx.tabId)?.pinned ? 'Unpin Tab' : 'Pin Tab'}
+            {tabs.find((tab) => tab.id === ctx.tabId)?.pinned ? tr('Unpin Tab') : tr('Pin Tab')}
           </button>
           <button
             onClick={() => { startRename(ctx.tabId); closeCtx() }}
             className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-text-1 hover:bg-surface-2 transition-colors text-left"
           >
             <Pencil size={11} className="text-text-3" />
-            Rename
+            {tr('Rename')}
           </button>
           <button
             onClick={() => { onDuplicate(ctx.tabId); closeCtx() }}
             className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-text-1 hover:bg-surface-2 transition-colors text-left"
           >
             <Copy size={11} className="text-text-3" />
-            Duplicate
+            {tr('Duplicate')}
           </button>
           <button
             onClick={() => { void onMockTab(ctx.tabId); closeCtx() }}
             className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-text-1 hover:bg-surface-2 transition-colors text-left"
           >
             <Server size={11} className="text-text-3" />
-            Mock this tab
+            {tr('Mock this tab')}
           </button>
           <div className="my-1 border-t border-border-1" />
           <button
@@ -324,7 +326,7 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
             className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-text-1 hover:bg-surface-2 transition-colors text-left disabled:cursor-not-allowed disabled:opacity-30"
           >
             <X size={11} className="text-text-3" />
-            Close
+            {tr('Close')}
           </button>
           <button
             onClick={() => { onCloseToRight(ctx.tabId); closeCtx() }}
@@ -332,7 +334,7 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
             className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-text-2 hover:bg-surface-2 hover:text-text-1 transition-colors text-left disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <ChevronRight size={11} className="text-text-3" />
-            Close to the Right
+            {tr('Close to the Right')}
           </button>
           <button
             onClick={() => { onCloseToLeft(ctx.tabId); closeCtx() }}
@@ -340,7 +342,7 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
             className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-text-2 hover:bg-surface-2 hover:text-text-1 transition-colors text-left disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <ChevronLeft size={11} className="text-text-3" />
-            Close to the Left
+            {tr('Close to the Left')}
           </button>
           <button
             onClick={() => { onCloseAll(ctx.tabId); closeCtx() }}
@@ -348,7 +350,7 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
             className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-text-2 hover:bg-surface-2 hover:text-text-1 transition-colors text-left disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <X size={11} className="text-text-3" />
-            Close All
+            {tr('Close All')}
           </button>
         </div>
       , document.body)}

@@ -14,8 +14,10 @@ import type { HttpMethod, RequestItem } from '@/lib/types'
 import { Prompt } from '@/components/ui/prompt'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { cn } from '@/lib/utils'
+import { useUiTranslation } from '@/lib/uiI18n'
 
 export function Sidebar() {
+  const tr = useUiTranslation()
   const activeRail = useAppStore((s) => s.activeRail)
   const collapsed = useSettingsStore((s) => s.settings.appearance.sidebarCollapsed)
   const collections = useCollectionsStore((s) => s.collections)
@@ -123,8 +125,8 @@ export function Sidebar() {
       <div className="border-b border-border-1 bg-surface-1/55 px-2 py-2">
         <div className="mb-1.5 flex items-center gap-2 px-1">
           <FolderKanban size={12} className="text-accent" />
-          <span className="min-w-0 flex-1 truncate text-[9px] font-semibold uppercase tracking-[0.14em] text-text-4">Workspace</span>
-          <span className="text-[9px] text-text-4">{collections.length} collections</span>
+          <span className="min-w-0 flex-1 truncate text-[9px] font-semibold uppercase tracking-[0.14em] text-text-4">{tr('Workspace')}</span>
+          <span className="text-[9px] text-text-4">{collections.length} {tr('collections')}</span>
         </div>
         <div className="flex items-center gap-1">
           <div className="relative min-w-0 flex-1">
@@ -132,7 +134,7 @@ export function Sidebar() {
               value={activeWorkspaceId}
               onChange={(event) => handleSwitchWorkspace(event.target.value)}
               className="h-8 w-full appearance-none truncate rounded-md border border-border-2 bg-surface-2 pl-2.5 pr-7 text-xs font-medium text-text-1 outline-none transition-colors hover:border-accent/40 focus:border-accent"
-              title="Active workspace"
+              title={tr('Active workspace')}
             >
               {workspaces.map((workspace) => (
                 <option key={workspace.id} value={workspace.id}>{workspace.name}</option>
@@ -140,16 +142,16 @@ export function Sidebar() {
             </select>
             <ChevronDown size={12} className="pointer-events-none absolute right-2 top-2 text-text-4" />
           </div>
-          <button onClick={() => setShowAddWorkspace(true)} title="New workspace" className="grid h-8 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1">
+          <button onClick={() => setShowAddWorkspace(true)} title={tr('New workspace')} className="grid h-8 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1">
             <Plus size={13} />
           </button>
-          <button onClick={() => setShowRenameWorkspace(true)} title="Rename workspace" className="grid h-8 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1">
+          <button onClick={() => setShowRenameWorkspace(true)} title={tr('Rename workspace')} className="grid h-8 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1">
             <Pencil size={12} />
           </button>
           <button
             onClick={() => setShowDeleteWorkspace(true)}
             disabled={workspaces.length <= 1}
-            title={workspaces.length <= 1 ? 'At least one workspace is required' : 'Delete workspace'}
+            title={workspaces.length <= 1 ? tr('At least one workspace is required') : tr('Delete workspace')}
             className={cn('grid h-8 w-7 place-items-center rounded-md text-text-3 hover:bg-error/10 hover:text-error', workspaces.length <= 1 && 'cursor-not-allowed opacity-35')}
           >
             <Trash2 size={12} />
@@ -200,9 +202,9 @@ export function Sidebar() {
 
       <Prompt
         open={showAddCollection}
-        title="New Collection"
-        placeholder="Collection name…"
-        confirmLabel="Create"
+        title={tr('New Collection')}
+        placeholder={tr('Collection name…')}
+        confirmLabel={tr('Create')}
         onConfirm={(name) => {
           addCollection(name)
           setShowAddCollection(false)
@@ -212,10 +214,10 @@ export function Sidebar() {
 
       <Prompt
         open={showAddWorkspace}
-        title="New Workspace"
-        description="Create an isolated local space for collections, environments and open requests."
-        placeholder="e.g. Payments Platform"
-        confirmLabel="Create"
+        title={tr('New Workspace')}
+        description={tr('Create an isolated local space for collections, environments and open requests.')}
+        placeholder={tr('e.g. Payments Platform')}
+        confirmLabel={tr('Create')}
         onConfirm={(name) => {
           const workspace = addWorkspace(name)
           handleSwitchWorkspace(workspace.id)
@@ -226,10 +228,10 @@ export function Sidebar() {
 
       <Prompt
         open={showRenameWorkspace}
-        title="Rename Workspace"
+        title={tr('Rename Workspace')}
         defaultValue={activeWorkspace?.name ?? ''}
-        placeholder="Workspace name..."
-        confirmLabel="Rename"
+        placeholder={tr('Workspace name...')}
+        confirmLabel={tr('Rename')}
         onConfirm={(name) => {
           renameWorkspace(activeWorkspaceId, name)
           setShowRenameWorkspace(false)
@@ -239,9 +241,9 @@ export function Sidebar() {
 
       <ConfirmDialog
         open={showDeleteWorkspace}
-        title="Delete workspace?"
-        message={`Delete "${activeWorkspace?.name ?? 'this workspace'}", its ${collections.length} collection${collections.length === 1 ? '' : 's'} and ${workspaceTabs.length} open tab${workspaceTabs.length === 1 ? '' : 's'}${dirtyWorkspaceTabs ? ` (${dirtyWorkspaceTabs} with unsaved changes)` : ''}? This cannot be undone.`}
-        confirmLabel="Delete"
+        title={tr('Delete workspace?')}
+        message={`"${activeWorkspace?.name ?? tr('this workspace')}": ${tr('Delete this workspace and all its local data? This cannot be undone.')} (${collections.length} ${tr('collections')}, ${workspaceTabs.length} ${tr('open tabs')}${dirtyWorkspaceTabs ? `, ${dirtyWorkspaceTabs} ${tr('with unsaved changes')}` : ''})`}
+        confirmLabel={tr('Delete')}
         variant="danger"
         onConfirm={() => {
           const deletedId = activeWorkspaceId

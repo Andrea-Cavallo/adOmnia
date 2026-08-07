@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import type { Collection, FolderItem, HttpMethod, RequestItem, TreeNode } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { useUiTranslation } from '@/lib/uiI18n'
 import { Prompt } from '@/components/ui/prompt'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { DialogOverlay, DialogContent, DialogHeader, DialogBody } from '@/components/ui/dialog'
@@ -161,12 +162,13 @@ function MoveToFolderDialog({
   onSelect: (folderId: string | null) => void
   onCancel: () => void
 }) {
+  const tr = useUiTranslation()
   return (
     <DialogOverlay open={open} onClose={onCancel}>
       <DialogContent size="sm">
         <DialogHeader>
-          <span className="text-sm font-semibold text-text-1">Move to Folder</span>
-          <button onClick={onCancel} title="Close" className="text-text-4 hover:text-text-1 transition-colors">
+          <span className="text-sm font-semibold text-text-1">{tr('Move to Folder')}</span>
+          <button onClick={onCancel} title={tr('Close')} className="text-text-4 hover:text-text-1 transition-colors">
             <X size={16} />
           </button>
         </DialogHeader>
@@ -176,10 +178,10 @@ function MoveToFolderDialog({
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-text-2 hover:bg-surface-2 transition-colors border-b border-border-1"
           >
             <Folder size={12} className="shrink-0 text-text-4" />
-            <span className="italic">Collection Root</span>
+            <span className="italic">{tr('Collection Root')}</span>
           </button>
           {folders.length === 0 ? (
-            <p className="px-3 py-4 text-xs text-text-4 text-center">No folders in this collection</p>
+            <p className="px-3 py-4 text-xs text-text-4 text-center">{tr('No folders in this collection')}</p>
           ) : (
             folders.map((folder) => (
               <button
@@ -423,6 +425,7 @@ export function CollectionTree({
   onReorderCollections,
   onMoveNode,
 }: CollectionTreeProps) {
+  const tr = useUiTranslation()
   const [query, setQuery] = useState('')
   const [openIds, setOpenIds] = useState<Set<string>>(() => new Set(collections.map((c) => c.id)))
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -714,12 +717,12 @@ export function CollectionTree({
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
       <div className="flex items-center gap-1 border-b border-border-1 px-2 py-2">
-        <span className="flex-1 text-[10px] font-semibold uppercase tracking-wider text-text-4">Collections</span>
+        <span className="flex-1 text-[10px] font-semibold uppercase tracking-wider text-text-4">{tr('Collections')}</span>
         <input ref={fileInputRef} type="file" accept=".json,.yaml,.yml,.bru" className="hidden" onChange={(event) => void handleImport(event.target.files?.[0])} />
-        <button onClick={() => fileInputRef.current?.click()} title="Import Postman, Insomnia, Bruno, adOmnia or OpenAPI" className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-2 hover:text-text-1">
+        <button onClick={() => fileInputRef.current?.click()} title={tr('Import Postman, Insomnia, Bruno, adOmnia or OpenAPI')} className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-2 hover:text-text-1">
           <Upload size={14} />
         </button>
-        <button onClick={() => exportAll('adomnia')} title="Export all collections" className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-2 hover:text-text-1">
+        <button onClick={() => exportAll('adomnia')} title={tr('Export all collections')} className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-2 hover:text-text-1">
           <Download size={14} />
         </button>
         <button
@@ -727,12 +730,12 @@ export function CollectionTree({
             const collectionId = onNewRequest()
             if (collectionId) setOpenIds((current) => new Set(current).add(collectionId))
           }}
-          title="New request"
+          title={tr('New request')}
           className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-2 hover:text-text-1"
         >
           <Plus size={14} />
         </button>
-        <button onClick={onAddCollection} title="New collection" className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-2 hover:text-text-1">
+        <button onClick={onAddCollection} title={tr('New collection')} className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-2 hover:text-text-1">
           <FolderPlus size={14} />
         </button>
       </div>
@@ -740,26 +743,26 @@ export function CollectionTree({
       <div className="px-2 py-1.5">
         <div className="flex h-7 items-center gap-1.5 rounded border border-border-2 bg-surface-2 px-2">
           <Search size={12} className="text-text-4" />
-          <input ref={searchInputRef} className="flex-1 bg-transparent text-xs text-text-1 outline-none placeholder:text-text-4" placeholder="Search requests..." value={query} onChange={(event) => setQuery(event.target.value)} />
+          <input ref={searchInputRef} className="flex-1 bg-transparent text-xs text-text-1 outline-none placeholder:text-text-4" placeholder={tr('Search requests...')} value={query} onChange={(event) => setQuery(event.target.value)} />
         </div>
       </div>
 
       {selectedCollectionIds.size > 0 && (
         <div className="flex items-center gap-2 border-b border-border-1 bg-accent/5 px-2 py-1.5">
           <span className="flex-1 text-[11px] font-medium text-text-2">
-            {selectedCollectionIds.size} collection{selectedCollectionIds.size !== 1 ? 's' : ''} selected
+            {selectedCollectionIds.size} {tr('collections')} {tr('selected')}
           </span>
           <button
             onClick={() => setBulkDeleteOpen(true)}
             className="flex items-center gap-1 rounded bg-error/15 px-2 py-1 text-[11px] font-medium text-error hover:bg-error/25 transition-colors"
           >
-            <Trash2 size={12} /> Delete
+            <Trash2 size={12} /> {tr('Delete')}
           </button>
           <button
             onClick={clearSelection}
             className="rounded px-2 py-1 text-[11px] text-text-3 hover:bg-surface-2 hover:text-text-1 transition-colors"
           >
-            Clear
+            {tr('Clear')}
           </button>
         </div>
       )}
@@ -771,15 +774,15 @@ export function CollectionTree({
               <UploadCloud size={18} />
             </div>
             <div>
-              <p className="text-xs font-medium text-text-3">No collections yet</p>
+              <p className="text-xs font-medium text-text-3">{tr('No collections yet')}</p>
               <p className="mt-1 text-[10px] leading-relaxed text-text-4">
-                Drop Postman, OpenAPI, Insomnia, Bruno, .adomnia or HAR files anywhere in adOmnia.
+                {tr('Drop Postman, OpenAPI, Insomnia, Bruno, .adomnia or HAR files anywhere in adOmnia.')}
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <button onClick={() => fileInputRef.current?.click()} className="text-xs text-accent hover:text-accent-light">Import file</button>
+              <button onClick={() => fileInputRef.current?.click()} className="text-xs text-accent hover:text-accent-light">{tr('Import file')}</button>
               <span className="text-text-4">/</span>
-              <button onClick={onAddCollection} className="text-xs text-accent hover:text-accent-light">Create collection</button>
+              <button onClick={onAddCollection} className="text-xs text-accent hover:text-accent-light">{tr('Create collection')}</button>
             </div>
           </div>
         ) : filtered.map((collection, collectionIndex) => (
@@ -871,20 +874,20 @@ export function CollectionTree({
       </div>
 
       <div className="flex items-center gap-2 border-t border-border-1 px-3 py-1.5 text-[10px] text-text-4">
-        <span>{collections.reduce((count, collection) => count + countRequests(collection.children), 0)} requests</span>
+        <span>{collections.reduce((count, collection) => count + countRequests(collection.children), 0)} {tr('requests')}</span>
       </div>
 
       {context && (
         <div ref={menuRef} className="fixed z-50 max-h-[70vh] w-52 overflow-y-auto rounded-md border border-border-1 bg-surface-1 py-1 shadow-xl" style={{ left: menuPos?.left ?? context.x, top: menuPos?.top ?? context.y, visibility: menuPos ? 'visible' : 'hidden' }}>
           {context.kind === 'collection' && (
             <>
-              <MenuButton onClick={() => { setEditingId(context.collection.id); setContext(null) }}><Copy size={12} /> Rename</MenuButton>
-              <MenuButton onClick={() => { onImportCollection(cloneCollection(context.collection)); setContext(null) }}><Copy size={12} /> Duplicate</MenuButton>
-              <MenuButton onClick={() => { setFolderPrompt({ collectionId: context.collection.id, parentId: null }); setContext(null) }}><FolderPlus size={12} /> New Folder</MenuButton>
-              <MenuButton onClick={() => { onAddRequestToFolder(context.collection.id, null); setContext(null) }}><Plus size={12} /> New Request</MenuButton>
+              <MenuButton onClick={() => { setEditingId(context.collection.id); setContext(null) }}><Copy size={12} /> {tr('Rename')}</MenuButton>
+              <MenuButton onClick={() => { onImportCollection(cloneCollection(context.collection)); setContext(null) }}><Copy size={12} /> {tr('Duplicate')}</MenuButton>
+              <MenuButton onClick={() => { setFolderPrompt({ collectionId: context.collection.id, parentId: null }); setContext(null) }}><FolderPlus size={12} /> {tr('New Folder')}</MenuButton>
+              <MenuButton onClick={() => { onAddRequestToFolder(context.collection.id, null); setContext(null) }}><Plus size={12} /> {tr('New Request')}</MenuButton>
               {workspaceTargets.length > 0 && (
                 <div className="border-t border-border-1 py-1">
-                  <div className="px-3 py-1 text-[9px] font-semibold uppercase tracking-wider text-text-4">Move to workspace</div>
+                  <div className="px-3 py-1 text-[9px] font-semibold uppercase tracking-wider text-text-4">{tr('Move to workspace')}</div>
                   {workspaceTargets.map((workspace) => (
                     <MenuButton
                       key={workspace.id}
@@ -899,29 +902,29 @@ export function CollectionTree({
                 </div>
               )}
               {contextExportMenu(context)}
-              <MenuButton danger onClick={() => { setDeleteTarget(context); setContext(null) }}><Trash2 size={12} /> Delete</MenuButton>
+              <MenuButton danger onClick={() => { setDeleteTarget(context); setContext(null) }}><Trash2 size={12} /> {tr('Delete')}</MenuButton>
             </>
           )}
           {context.kind === 'folder' && (
             <>
-              <MenuButton onClick={() => { setEditingId(context.node.id); setContext(null) }}><Copy size={12} /> Rename</MenuButton>
-              <MenuButton onClick={() => { onDuplicateNode(context.collectionId, context.node.id); setContext(null) }}><Copy size={12} /> Duplicate</MenuButton>
-              <MenuButton onClick={() => { setFolderPrompt({ collectionId: context.collectionId, parentId: context.node.id }); setContext(null) }}><FolderPlus size={12} /> New Subfolder</MenuButton>
-              <MenuButton onClick={() => { onAddRequestToFolder(context.collectionId, context.node.id); setOpenIds((s) => { const n = new Set(s); n.add(context.node.id); return n }); setContext(null) }}><Plus size={12} /> New Request</MenuButton>
+              <MenuButton onClick={() => { setEditingId(context.node.id); setContext(null) }}><Copy size={12} /> {tr('Rename')}</MenuButton>
+              <MenuButton onClick={() => { onDuplicateNode(context.collectionId, context.node.id); setContext(null) }}><Copy size={12} /> {tr('Duplicate')}</MenuButton>
+              <MenuButton onClick={() => { setFolderPrompt({ collectionId: context.collectionId, parentId: context.node.id }); setContext(null) }}><FolderPlus size={12} /> {tr('New Subfolder')}</MenuButton>
+              <MenuButton onClick={() => { onAddRequestToFolder(context.collectionId, context.node.id); setOpenIds((s) => { const n = new Set(s); n.add(context.node.id); return n }); setContext(null) }}><Plus size={12} /> {tr('New Request')}</MenuButton>
               {contextExportMenu(context)}
-              <MenuButton danger onClick={() => { setDeleteTarget(context); setContext(null) }}><Trash2 size={12} /> Delete</MenuButton>
+              <MenuButton danger onClick={() => { setDeleteTarget(context); setContext(null) }}><Trash2 size={12} /> {tr('Delete')}</MenuButton>
             </>
           )}
           {context.kind === 'request' && (
             <>
-              <MenuButton onClick={() => { setEditingId(context.node.id); setContext(null) }}><Copy size={12} /> Rename</MenuButton>
-              <MenuButton onClick={() => { onDuplicateRequest(context.collectionId, context.node); setContext(null) }}><Copy size={12} /> Duplicate</MenuButton>
-              <MenuButton onClick={() => openMoveDialog(context.collectionId, context.node.id)}><FolderPlus size={12} /> Move to Folder</MenuButton>
-              <MenuButton onClick={() => { void copyToClipboard(generateCode(context.node, 'curl')); setContext(null) }}><Code size={12} /> Copy as cURL</MenuButton>
-              <MenuButton onClick={() => { void copyToClipboard(context.node.url); setContext(null) }}><Link size={12} /> Copy URL</MenuButton>
-              <MenuButton onClick={() => { onOpenRequest(context.node, context.collectionId); setContext(null) }}><Plus size={12} /> Open in New Tab</MenuButton>
+              <MenuButton onClick={() => { setEditingId(context.node.id); setContext(null) }}><Copy size={12} /> {tr('Rename')}</MenuButton>
+              <MenuButton onClick={() => { onDuplicateRequest(context.collectionId, context.node); setContext(null) }}><Copy size={12} /> {tr('Duplicate')}</MenuButton>
+              <MenuButton onClick={() => openMoveDialog(context.collectionId, context.node.id)}><FolderPlus size={12} /> {tr('Move to Folder')}</MenuButton>
+              <MenuButton onClick={() => { void copyToClipboard(generateCode(context.node, 'curl')); setContext(null) }}><Code size={12} /> {tr('Copy as cURL')}</MenuButton>
+              <MenuButton onClick={() => { void copyToClipboard(context.node.url); setContext(null) }}><Link size={12} /> {tr('Copy URL')}</MenuButton>
+              <MenuButton onClick={() => { onOpenRequest(context.node, context.collectionId); setContext(null) }}><Plus size={12} /> {tr('Open in New Tab')}</MenuButton>
               {contextExportMenu(context)}
-              <MenuButton danger onClick={() => { setDeleteTarget(context); setContext(null) }}><Trash2 size={12} /> Delete</MenuButton>
+              <MenuButton danger onClick={() => { setDeleteTarget(context); setContext(null) }}><Trash2 size={12} /> {tr('Delete')}</MenuButton>
             </>
           )}
         </div>
@@ -938,9 +941,9 @@ export function CollectionTree({
 
       <Prompt
         open={Boolean(folderPrompt)}
-        title="New Folder"
-        placeholder="Folder name..."
-        confirmLabel="Create"
+        title={tr('New Folder')}
+        placeholder={tr('Folder name...')}
+        confirmLabel={tr('Create')}
         onConfirm={(name) => {
           if (folderPrompt) onAddFolder(folderPrompt.collectionId, folderPrompt.parentId, name)
           setFolderPrompt(null)
@@ -957,17 +960,9 @@ export function CollectionTree({
 
       <ConfirmDialog
         open={Boolean(deleteTarget)}
-        title={deleteTarget?.kind === 'collection' ? 'Delete collection?' : deleteTarget?.kind === 'folder' ? 'Delete folder?' : 'Delete request?'}
-        message={
-          deleteTarget?.kind === 'collection'
-            ? `Are you sure you want to delete "${deleteTarget.collection.name}"? All nested folders and requests will be deleted.`
-            : deleteTarget?.kind === 'folder'
-              ? `Are you sure you want to delete "${deleteTarget.node.name}"? All nested requests and subfolders will be deleted.`
-              : deleteTarget
-                ? `Are you sure you want to delete "${deleteTarget.node.name}"?`
-                : ''
-        }
-        confirmLabel="Delete"
+        title={deleteTarget?.kind === 'collection' ? tr('Delete collection?') : deleteTarget?.kind === 'folder' ? tr('Delete folder?') : tr('Delete request?')}
+        message={deleteTarget ? `"${deleteTarget.kind === 'collection' ? deleteTarget.collection.name : deleteTarget.node.name}": ${tr('Delete the selected item and all nested data? This cannot be undone.')}` : ''}
+        confirmLabel={tr('Delete')}
         variant="danger"
         onConfirm={() => {
           if (!deleteTarget) return
@@ -979,9 +974,9 @@ export function CollectionTree({
 
       <ConfirmDialog
         open={bulkDeleteOpen}
-        title={`Delete ${selectedCollectionIds.size} collection${selectedCollectionIds.size !== 1 ? 's' : ''}?`}
-        message={`Are you sure you want to delete ${selectedCollectionIds.size} selected collection${selectedCollectionIds.size !== 1 ? 's' : ''}? All nested folders and requests will be deleted. This cannot be undone.`}
-        confirmLabel="Delete all"
+        title={tr('Delete selected collections?')}
+        message={`${selectedCollectionIds.size}: ${tr('Delete the selected item and all nested data? This cannot be undone.')}`}
+        confirmLabel={tr('Delete all')}
         variant="danger"
         onConfirm={deleteSelectedCollections}
         onCancel={() => setBulkDeleteOpen(false)}

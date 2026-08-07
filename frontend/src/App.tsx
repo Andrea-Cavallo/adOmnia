@@ -20,6 +20,7 @@ import { useAppearance } from '@/hooks/useAppearance'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { useFileDrop } from '@/hooks/useFileDrop'
 import { useSettingsStore } from '@/stores/settings'
+import { useUiTranslation } from '@/lib/uiI18n'
 
 const SIDEBAR_WIDTH_KEY = 'adomnia.sidebarWidth'
 const SIDEBAR_WIDTH_MIN = 180
@@ -38,6 +39,7 @@ function loadSidebarWidth(): number {
 }
 
 function App() {
+  const tr = useUiTranslation()
   const { activeWindowChrome, commandPaletteOpen, setCommandPaletteOpen } = useAppInit()
   const { dragOver, dropPreview, dropFeedback, handlers } = useFileDrop()
   const devLogVisible  = useAppStore((s) => s.devToolsVisible)
@@ -106,7 +108,7 @@ function App() {
                 </div>
                 {/* Sidebar drag handle */}
                 <ResizeHandle
-                  label="Drag to resize sidebar"
+                  label={tr('Drag to resize sidebar')}
                   onMouseDown={handleSidebarResizeMouseDown}
                   withLine={false}
                   className="border-r border-border-1"

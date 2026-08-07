@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Trash2, AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useUiTranslation } from '@/lib/uiI18n'
 
 interface ConfirmDialogProps {
   open: boolean
@@ -23,7 +24,10 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const tr = useUiTranslation()
   const isDanger = variant === 'danger'
+  const resolvedConfirmLabel = confirmLabel === 'Confirm' ? tr('Confirm') : confirmLabel
+  const resolvedCancelLabel = cancelLabel === 'Cancel' ? tr('Cancel') : cancelLabel
 
   useEffect(() => {
     if (!open) return
@@ -81,7 +85,7 @@ export function ConfirmDialog({
             onClick={onCancel}
             className="h-7 rounded px-3 text-xs font-medium text-text-2 transition-colors hover:bg-surface-3 hover:text-text-1"
           >
-            {cancelLabel}
+            {resolvedCancelLabel}
           </button>
           <button
             onClick={() => { onConfirm(); onCancel() }}
@@ -93,7 +97,7 @@ export function ConfirmDialog({
             )}
           >
             {isDanger && <Trash2 size={11} />}
-            {confirmLabel}
+            {resolvedConfirmLabel}
           </button>
         </div>
       </div>

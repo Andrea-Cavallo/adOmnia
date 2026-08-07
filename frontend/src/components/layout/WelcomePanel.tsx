@@ -29,6 +29,7 @@ import { inferThemeMode } from '@/lib/themeCatalog'
 import { useAppIcon } from '@/lib/brandAssets'
 import type { TreeNode } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { useNavigationTranslation, useUiTranslation, type UiMessage } from '@/lib/uiI18n'
 
 type HubTool = {
   id: RailItem
@@ -165,6 +166,7 @@ function shortestAngleDelta(next: number, previous: number): number {
 }
 
 function FidgetLogo({ src }: { src: string }) {
+  const tr = useUiTranslation()
   const imageRef = useRef<HTMLImageElement>(null)
   const frameRef = useRef<number | null>(null)
   const rotationRef = useRef(0)
@@ -254,8 +256,8 @@ function FidgetLogo({ src }: { src: string }) {
   return (
     <button
       type="button"
-      aria-label="Spin the adOmnia logo"
-      title="Drag the logo to spin it — faster gestures create more momentum"
+      aria-label={tr('Spin the adOmnia logo')}
+      title={tr('Drag the logo to spin it — faster gestures create more momentum')}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={releaseWithInertia}
@@ -281,6 +283,7 @@ function FidgetLogo({ src }: { src: string }) {
 }
 
 export function WelcomePanel() {
+  const tr = useUiTranslation()
   const setActiveRail = useAppStore((s) => s.setActiveRail)
   const mockRunning = useAppStore((s) => s.mockRunning)
   const proxyRunning = useAppStore((s) => s.proxyRunning)
@@ -350,19 +353,19 @@ export function WelcomePanel() {
             )}>
               <Search size={12} />
               <span>
-                Press <kbd className={cn(
+                {tr('Press')} <kbd className={cn(
                   'rounded border px-1 py-px text-[9px]',
                   isLight ? 'border-violet-500/40 bg-violet-500/15 text-violet-800' : 'border-violet-500/40 bg-violet-500/15 text-violet-100',
-                )}>Ctrl/Cmd&nbsp;+&nbsp;F</kbd> to search any feature
+                )}>Ctrl/Cmd&nbsp;+&nbsp;F</kbd> {tr('to search any feature')}
               </span>
             </div>
             <h1 className="max-w-[720px] text-[38px] font-semibold leading-[1.04] tracking-normal max-sm:text-[32px] max-sm:leading-[1.08]" style={{ color: colors.title }}>
-              <span className={isLight ? 'text-violet-700' : 'text-violet-200'}>Build, debug and ship APIs.</span>
+              <span className={isLight ? 'text-violet-700' : 'text-violet-200'}>{tr('Build, debug and ship APIs.')}</span>
               <br />
-              Document, sign and version everything—locally.
+              {tr('Document, sign and version everything—locally.')}
             </h1>
             <p className="mt-4 max-w-[680px] font-mono text-[12px] leading-7" style={{ color: colors.muted }}>
-              From modern API clients to enterprise protocols, technical documents, signed PDFs and Git workflows: every tool is one click away, and every byte stays on your machine.
+              {tr('From modern API clients to enterprise protocols, technical documents, signed PDFs and Git workflows: every tool is one click away, and every byte stays on your machine.')}
             </p>
           </div>
 
@@ -384,7 +387,7 @@ export function WelcomePanel() {
                   expanded={isExpanded}
                   requestCount={requestCount}
                   openTabCount={openTabCount}
-                  activeEnvironment={activeEnvironment?.name ?? 'none'}
+                  activeEnvironment={activeEnvironment?.name ?? tr('none')}
                   liveServices={liveServices}
                   onToggle={() => setExpandedSection(isExpanded ? null : section.index)}
                   onOpen={setActiveRail}
@@ -396,13 +399,13 @@ export function WelcomePanel() {
           <footer className="flex flex-wrap items-center gap-3 border-t pt-4 font-mono text-[10px]" style={{ borderColor: colors.cardBorder, color: colors.faint }}>
             <span className="inline-flex items-center gap-2 text-emerald-400">
               <CircleDot size={10} />
-              ready
+              {tr('ready')}
             </span>
             <span className="h-3 w-px" style={{ background: colors.cardBorder }} />
-            <span>active env: <b style={{ color: colors.title }}>{activeEnvironment?.name ?? 'none'}</b></span>
+            <span>{tr('active env:')} <b style={{ color: colors.title }}>{activeEnvironment?.name ?? tr('none')}</b></span>
             <span className="h-3 w-px" style={{ background: colors.cardBorder }} />
-            <span>{responseHistory.length} saved responses</span>
-            <span className="ml-auto max-md:ml-0">local-first / no account / no telemetry</span>
+            <span>{responseHistory.length} {tr('saved responses')}</span>
+            <span className="ml-auto max-md:ml-0">{tr('local-first / no account / no telemetry')}</span>
           </footer>
         </main>
       </div>
@@ -417,6 +420,8 @@ function SectionTitle({ index, title, kicker, accent, colors }: {
   accent: 'violet' | 'orange' | 'muted'
   colors: ReturnType<typeof themeVars>
 }) {
+  const nav = useNavigationTranslation()
+  const tr = useUiTranslation()
   const accentColor = accent === 'orange' ? '#fb923c' : accent === 'muted' ? colors.faint : '#a855f7'
   return (
     <div className="mb-3 flex items-center gap-3">
@@ -426,8 +431,8 @@ function SectionTitle({ index, title, kicker, accent, colors }: {
       >
         {index}
       </span>
-      <h2 className="m-0 text-base font-semibold tracking-normal" style={{ color: colors.title }}>{title}</h2>
-      <span className="font-mono text-[10.5px]" style={{ color: colors.faint }}>{kicker}</span>
+      <h2 className="m-0 text-base font-semibold tracking-normal" style={{ color: colors.title }}>{nav(title)}</h2>
+      <span className="font-mono text-[10.5px]" style={{ color: colors.faint }}>{tr(kicker as UiMessage)}</span>
       <div className="h-px flex-1" style={{ background: `linear-gradient(90deg, ${colors.cardBorder}, transparent)` }} />
     </div>
   )
@@ -470,6 +475,8 @@ function ToolCard({ tool, colors, isLight, onClick }: {
   isLight: boolean
   onClick: () => void
 }) {
+  const nav = useNavigationTranslation()
+  const tr = useUiTranslation()
   const Icon = tool.icon
   const accent = tool.accent === 'orange' ? '#fb923c' : '#a855f7'
   return (
@@ -497,17 +504,17 @@ function ToolCard({ tool, colors, isLight, onClick }: {
           <Icon size={18} />
         </span>
         <span className="min-w-0">
-          <b className="block truncate text-[15px] font-semibold" style={{ color: colors.title }}>{tool.title}</b>
-          {tool.subtitle && <span className="block truncate font-mono text-[9.5px]" style={{ color: accent }}>{tool.subtitle}</span>}
+          <b className="block truncate text-[15px] font-semibold" style={{ color: colors.title }}>{nav(tool.title)}</b>
+          {tool.subtitle && <span className="block truncate font-mono text-[9.5px]" style={{ color: accent }}>{tr(tool.subtitle as UiMessage)}</span>}
         </span>
       </div>
-      <p className="m-0 flex-1 font-mono text-[10.5px] leading-6" style={{ color: colors.muted }}>{tool.desc}</p>
+      <p className="m-0 flex-1 font-mono text-[10.5px] leading-6" style={{ color: colors.muted }}>{tr(tool.desc as UiMessage)}</p>
       <div className="mt-3 flex flex-wrap gap-1.5">
         {(tool.tags ?? []).slice(0, 4).map((tag) => (
           <span key={tag} className="rounded border px-1.5 py-0.5 font-mono text-[9px]" style={{ color: accent, borderColor: `${accent}44` }}>{tag}</span>
         ))}
       </div>
-      <span className="mt-3 font-mono text-[10px] font-semibold" style={{ color: accent }}>open -&gt;</span>
+      <span className="mt-3 font-mono text-[10px] font-semibold" style={{ color: accent }}>{tr('open ->')}</span>
     </button>
   )
 }
@@ -535,6 +542,8 @@ function CompactHubSection({
   onToggle: () => void
   onOpen: (id: RailItem) => void
 }) {
+  const nav = useNavigationTranslation()
+  const tr = useUiTranslation()
   const accent = section.accent === 'orange' ? '#fb923c' : section.accent === 'muted' ? '#6ee7b7' : '#a855f7'
   const featured = section.tools.find((tool) => tool.featured) ?? section.tools[0]
   const sectionStats = {
@@ -575,8 +584,8 @@ function CompactHubSection({
           <b style={{ color: accent }}>{section.index}</b>
         </div>
         <div className="min-w-0">
-          <h2 className="m-0 truncate text-[20px] font-semibold uppercase tracking-normal" style={{ color: colors.title }}>{section.title}</h2>
-          <p className="mt-1 truncate font-mono text-[10.5px]" style={{ color: colors.faint }}>{section.kicker}</p>
+          <h2 className="m-0 truncate text-[20px] font-semibold uppercase tracking-normal" style={{ color: colors.title }}>{nav(section.title)}</h2>
+          <p className="mt-1 truncate font-mono text-[10.5px]" style={{ color: colors.faint }}>{tr(section.kicker as UiMessage)}</p>
         </div>
         <div className="grid grid-cols-3 gap-4 max-xl:hidden">
           {sectionStats.slice(0, 3).map(([value, label]) => (
@@ -636,9 +645,11 @@ function GitCommandCard({
   activeEnvironment: string
   onOpen: () => void
 }) {
+  const tr = useUiTranslation()
+  const nav = useNavigationTranslation()
   return (
     <section>
-      <SectionTitle index="03" title="Version Control" kicker="local-first Git" accent="orange" colors={colors} />
+      <SectionTitle index="03" title={tr('Version Control')} kicker={tr('local-first Git')} accent="orange" colors={colors} />
       <button
         onClick={onOpen}
         className="group w-full overflow-hidden rounded-2xl border text-left transition-all hover:-translate-y-0.5 focus:outline-none focus-visible:ring-1 focus-visible:ring-orange-400"
@@ -653,15 +664,15 @@ function GitCommandCard({
             <GitBranch size={16} />
           </span>
           <div className="min-w-0 flex-1">
-            <b className="block text-[13px] font-semibold" style={{ color: colors.title }}>Git Command Center</b>
+            <b className="block text-[13px] font-semibold" style={{ color: colors.title }}>{nav('Git Command Center')}</b>
             <span className="font-mono text-[9.5px]" style={{ color: colors.muted }}>commit · branch · diff · merge · stash · push</span>
           </div>
-          <span className="rounded-lg border border-orange-400/30 bg-orange-400/10 px-2.5 py-1 font-mono text-[10px] text-orange-400">open -&gt;</span>
+          <span className="rounded-lg border border-orange-400/30 bg-orange-400/10 px-2.5 py-1 font-mono text-[10px] text-orange-400">{tr('open ->')}</span>
         </div>
         <div className="grid grid-cols-[1.1fr_1fr] max-md:grid-cols-1">
           <div className="border-r p-4 max-md:border-b max-md:border-r-0" style={{ borderColor: colors.cardBorder }}>
             <div className="mb-2 flex items-center justify-between font-mono text-[9.5px] uppercase tracking-[0.1em]" style={{ color: colors.faint }}>
-              <span>Workspace context</span>
+              <span>{tr('Workspace context')}</span>
               <span>{requestCount} req</span>
             </div>
             {[
@@ -676,14 +687,14 @@ function GitCommandCard({
             ))}
           </div>
           <div className="flex flex-col p-4">
-            <span className="mb-2 font-mono text-[9.5px] uppercase tracking-[0.1em]" style={{ color: colors.faint }}>Quick state</span>
+            <span className="mb-2 font-mono text-[9.5px] uppercase tracking-[0.1em]" style={{ color: colors.faint }}>{tr('Quick state')}</span>
             <div className="space-y-2 font-mono text-[10.5px]">
-              <div className="flex justify-between"><span style={{ color: colors.muted }}>branch</span><b className="text-orange-400">main</b></div>
-              <div className="flex justify-between"><span style={{ color: colors.muted }}>active env</span><b style={{ color: colors.title }}>{activeEnvironment}</b></div>
-              <div className="flex justify-between"><span style={{ color: colors.muted }}>mode</span><b className="text-orange-400">local</b></div>
+              <div className="flex justify-between"><span style={{ color: colors.muted }}>{tr('branch')}</span><b className="text-orange-400">main</b></div>
+              <div className="flex justify-between"><span style={{ color: colors.muted }}>{tr('active env')}</span><b style={{ color: colors.title }}>{activeEnvironment}</b></div>
+              <div className="flex justify-between"><span style={{ color: colors.muted }}>{tr('mode')}</span><b className="text-orange-400">local</b></div>
             </div>
             <div className="mt-auto flex gap-2 pt-5">
-              <span className="flex-1 rounded-lg bg-orange-400 px-3 py-2 text-center text-xs font-semibold text-[#1a0f04]">Open Git</span>
+              <span className="flex-1 rounded-lg bg-orange-400 px-3 py-2 text-center text-xs font-semibold text-[#1a0f04]">{tr('Open Git')}</span>
               <span className="rounded-lg border border-orange-400/35 px-3 py-2 font-mono text-[11px] text-orange-400">Diff</span>
             </div>
           </div>
@@ -704,6 +715,8 @@ function MoreToolsCard({
   isLight: boolean
   onOpen: (id: RailItem) => void
 }) {
+  const nav = useNavigationTranslation()
+  const tr = useUiTranslation()
   return (
     <section>
       <SectionTitle index={section.index} title={section.title} kicker={section.kicker} accent={section.accent} colors={colors} />
@@ -716,10 +729,10 @@ function MoreToolsCard({
               onClick={() => onOpen(tool.id)}
               className="flex min-w-0 items-center gap-2 rounded-lg border px-3 py-2 text-left transition-all hover:-translate-y-0.5 hover:border-violet-500/50"
               style={{ borderColor: colors.cardBorder, background: isLight ? '#ffffff99' : '#0b0d14', color: colors.title }}
-              title={tool.desc}
+              title={tr(tool.desc as UiMessage)}
             >
               <Icon size={13} className="shrink-0 text-violet-400" />
-              <span className="min-w-0 truncate font-mono text-[10.5px]" style={{ color: colors.muted }}>{tool.title}</span>
+              <span className="min-w-0 truncate font-mono text-[10.5px]" style={{ color: colors.muted }}>{nav(tool.title)}</span>
             </button>
           )
         })}
@@ -727,4 +740,3 @@ function MoreToolsCard({
     </section>
   )
 }
-
