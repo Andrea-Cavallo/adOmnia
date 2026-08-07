@@ -4,6 +4,8 @@ import type { HostsProfile, HostEntry } from '@/lib/types'
 import { blankHostEntry } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { useUiTranslation } from '@/lib/uiI18n'
+import { useModalFocusTrap } from '@/lib/accessibility'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 interface HostModalProps {
   profiles: HostsProfile[]
@@ -13,42 +15,6 @@ interface HostModalProps {
   onDelete: (id: string) => void
   onRename: (id: string, name: string) => void
   onUpdateEntries: (profileId: string, entries: HostEntry[]) => void
-}
-
-function ConfirmDialog({
-  message,
-  onConfirm,
-  onCancel,
-}: {
-  message: string
-  onConfirm: () => void
-  onCancel: () => void
-}) {
-  const tr = useUiTranslation()
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50" onClick={onCancel}>
-      <div
-        className="bg-surface-1 border border-border-2 rounded-lg shadow-xl p-4 max-w-xs w-full mx-4"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <p className="text-sm text-text-1 mb-4">{message}</p>
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={onCancel}
-            className="px-3 py-1 text-xs rounded border border-border-2 text-text-2 hover:text-text-1 hover:bg-surface-2"
-          >
-            {tr('Cancel')}
-          </button>
-          <button
-            onClick={onConfirm}
-            className="px-3 py-1 text-xs rounded bg-error/20 border border-error/40 text-error hover:bg-error/30"
-          >
-            {tr('Delete')}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
 }
 
 function isValidIP(value: string): boolean {
@@ -79,6 +45,9 @@ export function HostModal({
   const [addingNew, setAddingNew] = useState(false)
   const [newProfileName, setNewProfileName] = useState('')
   const newProfileInputRef = useRef<HTMLInputElement>(null)
+  const modalRef = useRef<HTMLDivElement>(null)
+
+  useModalFocusTrap(true, onClose, modalRef)
 
   const selectedProfile = profiles.find((p) => p.id === selectedProfileId)
 
@@ -128,6 +97,11 @@ export function HostModal({
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
         <div
+          ref={modalRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label={tr('Hosts Profiles')}
+          tabIndex={-1}
           className="w-[780px] h-[500px] bg-surface-1 border border-border-1 rounded-lg shadow-xl flex flex-col animate-in fade-in zoom-in-95"
           onClick={(e) => e.stopPropagation()}
         >
@@ -177,11 +151,10 @@ export function HostModal({
             <div className="w-48 border-r border-border-1 flex flex-col">
               <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
                 {profiles.map((p) => (
-                  <button
+                  <div
                     key={p.id}
-                    onClick={() => setSelectedProfileId(p.id)}
                     className={cn(
-                      'flex items-center gap-2 px-2 py-1.5 rounded text-xs text-left transition-colors group',
+                      'group flex items-center gap-2 rounded px-2 py-1.5 text-xs text-left transition-colors focus-within:ring-2 focus-within:ring-accent',
                       selectedProfileId === p.id
                         ? 'bg-accent/20 text-accent-light'
                         : 'text-text-2 hover:bg-surface-2 hover:text-text-1'
@@ -206,15 +179,24 @@ export function HostModal({
                         }}
                       />
                     ) : (
-                      <span
-                        className="flex-1 truncate"
+                      <button
+                        type="button"
+                        aria-pressed={selectedProfileId === p.id}
+                        className="min-w-0 flex-1 truncate text-left outline-none"
+                        onClick={() => setSelectedProfileId(p.id)}
+                        onKeyDown={(event) => {
+                          if (event.key !== 'F2') return
+                          event.preventDefault()
+                          setEditingName(p.id)
+                          setEditValue(p.name)
+                        }}
                         onDoubleClick={() => {
                           setEditingName(p.id)
                           setEditValue(p.name)
                         }}
                       >
                         {p.name}
-                      </span>
+                      </button>
                     )}
                     <span className="text-[9px] text-text-4 opacity-0 group-hover:opacity-100 shrink-0">
                       {p.entries.filter((e) => e.enabled).length}/{p.entries.length}
@@ -224,11 +206,12 @@ export function HostModal({
                         e.stopPropagation()
                         setConfirmDelete({ id: p.id, name: p.name })
                       }}
-                      className="opacity-0 group-hover:opacity-100 text-text-4 hover:text-error shrink-0"
+                      aria-label={tr('Delete')}
+                      className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 text-text-4 hover:text-error shrink-0"
                     >
                       <Trash2 size={10} />
                     </button>
-                  </button>
+                  </div>
                 ))}
 
                 {profiles.length === 0 && (
@@ -331,7 +314,11 @@ export function HostModal({
 
       {confirmDelete && (
         <ConfirmDialog
+          open
+          title={tr('Delete')}
           message={tr('Delete profile "{{name}}"?', { name: confirmDelete.name })}
+          confirmLabel={tr('Delete')}
+          variant="danger"
           onConfirm={() => {
             onDelete(confirmDelete.id)
             if (selectedProfileId === confirmDelete.id) setSelectedProfileId(null)

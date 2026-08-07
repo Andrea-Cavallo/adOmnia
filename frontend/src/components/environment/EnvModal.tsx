@@ -5,6 +5,8 @@ import { uid, blankEnvVar } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { useUiTranslation, type UiMessage } from '@/lib/uiI18n'
 import { isVaultRef } from '@/lib/vaultRefs'
+import { useModalFocusTrap } from '@/lib/accessibility'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 interface EnvModalProps {
   environments: Environment[]
@@ -15,42 +17,6 @@ interface EnvModalProps {
   onRename: (id: string, name: string) => void
   onSetPrivate: (id: string, value: boolean) => void
   onUpdateVars: (envId: string, variables: EnvVariable[]) => void
-}
-
-function ConfirmDialog({
-  message,
-  onConfirm,
-  onCancel,
-}: {
-  message: string
-  onConfirm: () => void
-  onCancel: () => void
-}) {
-  const tr = useUiTranslation()
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50" onClick={onCancel}>
-      <div
-        className="bg-surface-1 border border-border-2 rounded-lg shadow-xl p-4 max-w-xs w-full mx-4"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <p className="text-sm text-text-1 mb-4">{message}</p>
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={onCancel}
-            className="px-3 py-1 text-xs rounded border border-border-2 text-text-2 hover:text-text-1 hover:bg-surface-2"
-          >
-            {tr('Cancel')}
-          </button>
-          <button
-            onClick={onConfirm}
-            className="px-3 py-1 text-xs rounded bg-error/20 border border-error/40 text-error hover:bg-error/30"
-          >
-            {tr('Delete')}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
 }
 
 export function EnvModal({
@@ -73,6 +39,9 @@ export function EnvModal({
   const [addingNew, setAddingNew] = useState(false)
   const [newEnvName, setNewEnvName] = useState('')
   const newEnvInputRef = useRef<HTMLInputElement>(null)
+  const modalRef = useRef<HTMLDivElement>(null)
+
+  useModalFocusTrap(true, onClose, modalRef)
 
   const selectedEnv = environments.find((e) => e.id === selectedEnvId)
 
@@ -166,6 +135,11 @@ export function EnvModal({
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
         <div
+          ref={modalRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label={tr('Environments')}
+          tabIndex={-1}
           className="w-[720px] h-[480px] bg-surface-1 border border-border-1 rounded-lg shadow-xl flex flex-col animate-in fade-in zoom-in-95"
           onClick={(e) => e.stopPropagation()}
         >
@@ -212,11 +186,10 @@ export function EnvModal({
             <div className="w-48 border-r border-border-1 flex flex-col">
               <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
                 {environments.map((env) => (
-                  <button
+                  <div
                     key={env.id}
-                    onClick={() => setSelectedEnvId(env.id)}
                     className={cn(
-                      'flex items-center gap-2 px-2 py-1.5 rounded text-xs text-left transition-colors group',
+                      'group flex items-center gap-2 rounded px-2 py-1.5 text-xs text-left transition-colors focus-within:ring-2 focus-within:ring-accent',
                       selectedEnvId === env.id
                         ? 'bg-accent/20 text-accent-light'
                         : 'text-text-2 hover:bg-surface-2 hover:text-text-1'
@@ -241,26 +214,36 @@ export function EnvModal({
                         }}
                       />
                     ) : (
-                      <span
-                        className="flex-1 truncate"
+                      <button
+                        type="button"
+                        aria-pressed={selectedEnvId === env.id}
+                        onClick={() => setSelectedEnvId(env.id)}
+                        onKeyDown={(event) => {
+                          if (event.key !== 'F2') return
+                          event.preventDefault()
+                          setEditingName(env.id)
+                          setEditValue(env.name)
+                        }}
                         onDoubleClick={() => {
                           setEditingName(env.id)
                           setEditValue(env.name)
                         }}
+                        className="min-w-0 flex-1 truncate text-left outline-none"
                       >
                         {env.name}
-                      </span>
+                      </button>
                     )}
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
                         setConfirmDelete({ id: env.id, name: env.name })
                       }}
-                      className="opacity-0 group-hover:opacity-100 text-text-4 hover:text-error"
+                      aria-label={tr('Delete')}
+                      className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 text-text-4 hover:text-error"
                     >
                       <Trash2 size={10} />
                     </button>
-                  </button>
+                  </div>
                 ))}
 
                 {environments.length === 0 && (
@@ -397,7 +380,11 @@ export function EnvModal({
 
       {confirmDelete && (
         <ConfirmDialog
+          open
+          title={tr('Delete')}
           message={tr('Delete "{{name}}"?', { name: confirmDelete.name })}
+          confirmLabel={tr('Delete')}
+          variant="danger"
           onConfirm={() => {
             onDelete(confirmDelete.id)
             if (selectedEnvId === confirmDelete.id) setSelectedEnvId(null)

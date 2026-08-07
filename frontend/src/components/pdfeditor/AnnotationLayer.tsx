@@ -284,9 +284,39 @@ function AnnotationView({
     />
   )
 
+  const handleAnnotationKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+    if (!selectable) return
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      onSelect()
+      return
+    }
+    if (event.key === 'F2' && a.type === 'text') {
+      event.preventDefault()
+      onStartEdit()
+      return
+    }
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return
+    event.preventDefault()
+    onChangeStart()
+    const amount = event.altKey ? 0.25 : 1
+    const dx = event.key === 'ArrowLeft' ? -amount : event.key === 'ArrowRight' ? amount : 0
+    const dy = event.key === 'ArrowUp' ? -amount : event.key === 'ArrowDown' ? amount : 0
+    onUpdate(event.shiftKey
+      ? { ...a, w: Math.max(8, a.w + dx), h: Math.max(8, a.h + dy) }
+      : { ...a, x: a.x + dx, y: a.y + dy })
+  }
+
+  const keyboardProps = selectable ? {
+    role: 'button',
+    tabIndex: 0,
+    'aria-label': `${a.type} annotation`,
+    onKeyDown: handleAnnotationKeyDown,
+  } : {}
+
   if (a.type === 'text') {
     return (
-      <div style={boxStyle} onPointerDown={(e) => onBeginDrag(e, a, 'move')} onDoubleClick={onStartEdit}>
+      <div {...keyboardProps} data-a11y-click-exempt="keyboard-props-spread" style={boxStyle} onPointerDown={(e) => onBeginDrag(e, a, 'move')} onDoubleClick={onStartEdit}>
         {editing ? (
           <textarea
             autoFocus
@@ -335,6 +365,7 @@ function AnnotationView({
   if (a.type === 'highlight') {
     return (
       <div
+        {...keyboardProps}
         style={{ ...boxStyle, background: a.color, opacity: a.opacity }}
         onPointerDown={(e) => onBeginDrag(e, a, 'move')}
       >
@@ -345,7 +376,7 @@ function AnnotationView({
 
   if (a.type === 'signature') {
     return (
-      <div style={boxStyle} onPointerDown={(e) => onBeginDrag(e, a, 'move')}>
+      <div {...keyboardProps} style={boxStyle} onPointerDown={(e) => onBeginDrag(e, a, 'move')}>
         <img src={a.imageDataUrl} alt="signature" style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
         {handle}
       </div>
@@ -354,7 +385,7 @@ function AnnotationView({
 
   // shapes: rect / ellipse / line / arrow
   return (
-    <div style={{ ...boxStyle, width: px(Math.abs(a.w)) || 1, height: px(Math.abs(a.h)) || 1, left: px(Math.min(a.x, a.x + a.w)), top: px(Math.min(a.y, a.y + a.h)) }} onPointerDown={(e) => onBeginDrag(e, a, 'move')}>
+    <div {...keyboardProps} style={{ ...boxStyle, width: px(Math.abs(a.w)) || 1, height: px(Math.abs(a.h)) || 1, left: px(Math.min(a.x, a.x + a.w)), top: px(Math.min(a.y, a.y + a.h)) }} onPointerDown={(e) => onBeginDrag(e, a, 'move')}>
       <ShapeSvg type={a.type} w={Math.abs(a.w)} h={Math.abs(a.h)} flipX={a.w < 0} flipY={a.h < 0} zoom={zoom} color={a.color} strokeWidth={a.strokeWidth} />
       {handle}
     </div>
@@ -461,7 +492,15 @@ function InkPath({
   }
   return (
     <svg
+      role={onSelect ? 'button' : undefined}
+      tabIndex={onSelect ? 0 : undefined}
+      aria-label={onSelect ? 'Ink annotation' : undefined}
       onPointerDown={(e) => { if (onSelect) { e.stopPropagation(); onSelect() } }}
+      onKeyDown={(event) => {
+        if (!onSelect || (event.key !== 'Enter' && event.key !== ' ')) return
+        event.preventDefault()
+        onSelect()
+      }}
       style={{ position: 'absolute', left, top, outline: selected ? '1px solid var(--color-accent, #6366f1)' : undefined }}
       width={Math.max(1, w)}
       height={Math.max(1, h)}

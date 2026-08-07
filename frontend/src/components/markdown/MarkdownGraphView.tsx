@@ -222,7 +222,14 @@ export function MarkdownGraphView({
                 <g
                   key={node.id}
                   role={node.file ? 'button' : 'img'}
+                  tabIndex={node.file ? 0 : undefined}
+                  aria-label={node.file ? `Open ${node.label}` : node.label}
                   className={cn(node.file && 'cursor-pointer')}
+                  onKeyDown={(event) => {
+                    if (!node.file || (event.key !== 'Enter' && event.key !== ' ')) return
+                    event.preventDefault()
+                    onOpenFile(node.file)
+                  }}
                   onPointerDown={(event) => {
                     event.stopPropagation()
                     setDraggingNode(node.id)

@@ -317,6 +317,10 @@ function TreeNodeRow({
     <div>
       <div
         data-node-id={node.id}
+        role="treeitem"
+        tabIndex={-1}
+        aria-selected={focusedId === node.id}
+        aria-expanded={isFolder ? isOpen : undefined}
         draggable
         onDragStart={(event) => onDragStartNode(event, { type: 'node', collectionId: collection.id, nodeId: node.id, nodeType: node.type })}
         onDragOver={(event) => onDragOverNode(event, collection.id, node)}
@@ -574,11 +578,34 @@ export function CollectionTree({
         if (current && (current.kind === 'collection' || current.kind === 'folder') && openIds.has(current.id)) toggle(current.id)
         break
       }
-      case 'Enter': {
+      case 'Enter':
+      case ' ': {
         event.preventDefault()
         if (!current) { if (flatItems.length > 0) setFocusedId(flatItems[0].id); break }
         if (current.kind === 'request') onOpenRequest(current.data as RequestItem, current.collectionId)
         else toggle(current.id)
+        break
+      }
+      case 'F2': {
+        event.preventDefault()
+        if (current) setEditingId(current.id)
+        break
+      }
+      case 'ContextMenu':
+      case 'F10': {
+        if (event.key === 'F10' && !event.shiftKey) break
+        event.preventDefault()
+        if (!current) break
+        const rect = document.querySelector(`[data-node-id="${current.id}"]`)?.getBoundingClientRect()
+        const x = rect?.left ?? 0
+        const y = rect?.bottom ?? 0
+        if (current.kind === 'collection') {
+          setContext({ kind: 'collection', collection: current.data as Collection, x, y })
+        } else if (current.kind === 'folder') {
+          setContext({ kind: 'folder', collectionId: current.collectionId, node: current.data as FolderItem, x, y })
+        } else {
+          setContext({ kind: 'request', collectionId: current.collectionId, node: current.data as RequestItem, x, y })
+        }
         break
       }
       case 'Delete': {
@@ -767,7 +794,7 @@ export function CollectionTree({
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto px-1 pb-2 outline-none" tabIndex={0} onKeyDown={handleTreeKeyDown}>
+      <div role="tree" aria-label={tr('Collections')} className="flex-1 overflow-y-auto px-1 pb-2 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent" tabIndex={0} onKeyDown={handleTreeKeyDown}>
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
             <div className="grid h-10 w-10 place-items-center rounded-lg border border-dashed border-border-2 bg-surface-1 text-text-3">
@@ -800,6 +827,10 @@ export function CollectionTree({
           >
             <div
               data-node-id={collection.id}
+              role="treeitem"
+              tabIndex={-1}
+              aria-selected={focusedId === collection.id}
+              aria-expanded={openIds.has(collection.id)}
               onClick={(event) => {
                 if (event.ctrlKey || event.metaKey) {
                   event.preventDefault()

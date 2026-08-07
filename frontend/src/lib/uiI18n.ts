@@ -229,6 +229,7 @@ export const ITALIAN_UI_MESSAGES = {
   'Close to the Right': 'Chiudi a destra',
   'Close to the Left': 'Chiudi a sinistra',
   'Close All': 'Chiudi tutte',
+  'Request tabs': 'Schede delle richieste',
   'Context menu': 'Menu contestuale',
   'Submenu': 'Sottomenu',
   'Import from cURL': 'Importa da cURL',

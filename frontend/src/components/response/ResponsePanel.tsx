@@ -509,6 +509,16 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
     setValueMenu({ x: e.clientX, y: e.clientY, value, suggestedKey })
   }
 
+  const onBodyKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return
+    if (tab !== 'body' && tab !== 'headers') return
+    const selection = window.getSelection()?.toString().trim() ?? ''
+    if (!selection) return
+    event.preventDefault()
+    const rect = event.currentTarget.getBoundingClientRect()
+    setValueMenu({ x: rect.left + 16, y: rect.top + 16, value: selection, suggestedKey: '' })
+  }
+
   // ── Find-in-response ──────────────────────────────────────────────────────
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchInput, setSearchInput] = useState('')   // raw typed value
@@ -1001,7 +1011,11 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
         {/* Content */}
         <div
           ref={bodyRef}
+          role="region"
+          tabIndex={0}
+          aria-label={tr('Response Body')}
           onContextMenu={onBodyContextMenu}
+          onKeyDown={onBodyKeyDown}
           onScroll={(e) => {
             const viewState = useTabsStore.getState().getViewState(tabId)
             updateViewState(tabId, {

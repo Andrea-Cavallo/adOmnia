@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { cn } from '@/lib/utils'
+import { handleKeyboardActivation } from '@/lib/accessibility'
 import { useAppStore } from '@/stores/app'
 import { useSettingsStore } from '@/stores/settings'
 import { uid } from '@/lib/types'
@@ -297,8 +298,9 @@ function TrafficTab({
               <p className="text-xs text-text-4">{status.running ? 'Waiting for traffic…' : 'Start the proxy to capture traffic'}</p>
             </div>
           ) : filtered.map((t) => (
-            <div key={t.id} onClick={() => setSelected(t)}
-              className={cn('flex items-center gap-2 px-3 py-1.5 border-b border-border-1/30 cursor-pointer hover:bg-surface-1 transition-colors', selected?.id === t.id ? 'bg-surface-2' : '')}>
+            <div key={t.id} role="button" tabIndex={0} aria-label={`Inspect ${t.method} ${t.url}`} aria-pressed={selected?.id === t.id} onClick={() => setSelected(t)}
+              onKeyDown={(event) => handleKeyboardActivation(event, () => setSelected(t))}
+              className={cn('flex items-center gap-2 px-3 py-1.5 border-b border-border-1/30 cursor-pointer hover:bg-surface-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent', selected?.id === t.id ? 'bg-surface-2' : '')}>
               <span className={cn('w-14 shrink-0 font-bold text-[10px]', methodColor(t.method))}>{t.method}</span>
               <span className={cn('w-10 shrink-0 font-mono text-[10px]', statusColor(t.status))}>{t.status || 'ERR'}</span>
               <span className="text-text-2 flex-1 truncate font-mono text-[10px]">{t.url}</span>
@@ -761,15 +763,19 @@ function ThrottleTab({ port }: { port: number | null }) {
         <div className="flex items-center gap-3">
           <Zap size={14} className="text-accent" />
           <span className="text-sm font-semibold text-text-1">Network Throttle</span>
-          <label className="ml-auto flex items-center gap-2 cursor-pointer">
+          <div className="ml-auto flex items-center gap-2">
             <span className="text-xs text-text-3">{cfg.enabled ? 'Active' : 'Inactive'}</span>
-            <div
+            <button
+              type="button"
+              role="switch"
+              aria-checked={cfg.enabled}
+              aria-label="Network throttle"
               onClick={() => setCfg({ ...cfg, enabled: !cfg.enabled })}
-              className={cn('w-9 h-5 rounded-full transition-colors cursor-pointer', cfg.enabled ? 'bg-accent' : 'bg-surface-3')}
+              className={cn('w-9 h-5 rounded-full transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent', cfg.enabled ? 'bg-accent' : 'bg-surface-3')}
             >
               <div className={cn('w-4 h-4 rounded-full bg-white shadow m-0.5 transition-transform', cfg.enabled ? 'translate-x-4' : '')} />
-            </div>
-          </label>
+            </button>
+          </div>
         </div>
 
         <div className="flex gap-2 flex-wrap">

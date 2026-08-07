@@ -71,28 +71,29 @@ export function QueryEditor(props: QueryEditorProps) {
     <div className="flex min-h-0 flex-col border-b border-border-1 bg-surface-1">
       {/* ── tab bar + primary actions ─────────────────────────────────── */}
       <div className="flex h-11 flex-none items-center gap-1 border-b border-border-1 px-2">
-        <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
+        <div role="tablist" aria-label="Query tabs" className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
           {tabs.map((tab) => {
             const isActive = tab.id === activeTabId
             return (
               <div
                 key={tab.id}
-                onClick={() => onSelectTab(tab.id)}
                 className={cn(
-                  'group flex h-8 cursor-pointer items-center gap-2 rounded-md border px-3 text-[12px] transition-colors',
+                  'group flex h-8 items-center gap-2 rounded-md border px-3 text-[12px] transition-colors focus-within:ring-2 focus-within:ring-accent',
                   isActive
                     ? 'border-accent/60 bg-accent/10 text-text-1 shadow-[inset_0_-2px_0_var(--color-accent)]'
                     : 'border-transparent text-text-3 hover:bg-surface-2 hover:text-text-2'
                 )}
               >
-                <Terminal size={12} className={isActive ? 'text-accent' : 'text-text-4'} />
-                <span className="max-w-[140px] truncate">{tab.name}</span>
-                {isActive && <span className="h-1.5 w-1.5 rounded-full bg-accent" />}
+                <button type="button" role="tab" aria-selected={isActive} onClick={() => onSelectTab(tab.id)} className="flex min-w-0 items-center gap-2 outline-none">
+                  <Terminal size={12} className={isActive ? 'text-accent' : 'text-text-4'} />
+                  <span className="max-w-[140px] truncate">{tab.name}</span>
+                  {isActive && <span className="h-1.5 w-1.5 rounded-full bg-accent" />}
+                </button>
                 {tabs.length > 1 && (
                   <button
                     aria-label={`Close ${tab.name}`}
                     onClick={(e) => { e.stopPropagation(); onCloseTab(tab.id) }}
-                    className="grid h-4 w-4 place-items-center rounded text-text-4 opacity-0 hover:bg-surface-4 hover:text-text-1 group-hover:opacity-100"
+                    className="grid h-4 w-4 place-items-center rounded text-text-4 opacity-0 hover:bg-surface-4 hover:text-text-1 group-hover:opacity-100 group-focus-within:opacity-100"
                   >
                     <X size={11} />
                   </button>

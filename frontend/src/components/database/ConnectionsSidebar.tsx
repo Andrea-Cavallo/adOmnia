@@ -85,29 +85,29 @@ export function ConnectionsSidebar(props: ConnectionsSidebarProps) {
             return (
               <div
                 key={conn.id}
-                onClick={() => onSelect(conn.id)}
                 className={cn(
-                  'group relative flex cursor-pointer items-center gap-2.5 rounded-lg border px-2.5 py-2 transition-colors',
+                  'group relative flex items-center gap-2.5 rounded-lg border px-2.5 py-2 transition-colors focus-within:ring-2 focus-within:ring-accent',
                   isActive
                     ? 'border-accent/60 bg-accent/10'
                     : 'border-transparent hover:border-border-2 hover:bg-surface-2'
                 )}
               >
-                <div
-                  className="grid h-8 w-8 flex-none place-items-center rounded-md border"
-                  style={{ borderColor: `${meta.accent}44`, background: `${meta.accent}14` }}
-                >
-                  <Database size={15} style={{ color: meta.accent }} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className={cn('truncate text-[12.5px] font-medium', isActive ? 'text-text-1' : 'text-text-2')}>{conn.name}</div>
-                  <div className="truncate text-[10.5px] text-text-4">{sub}</div>
-                </div>
+                <button type="button" aria-pressed={isActive} onClick={() => onSelect(conn.id)} className="flex min-w-0 flex-1 items-center gap-2.5 text-left outline-none">
+                  <span className="grid h-8 w-8 flex-none place-items-center rounded-md border" style={{ borderColor: `${meta.accent}44`, background: `${meta.accent}14` }}>
+                    <Database size={15} style={{ color: meta.accent }} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className={cn('block truncate text-[12.5px] font-medium', isActive ? 'text-text-1' : 'text-text-2')}>{conn.name}</span>
+                    <span className="block truncate text-[10.5px] text-text-4">{sub}</span>
+                  </span>
+                </button>
                 <button
+                  aria-label={`Connection actions for ${conn.name}`}
+                  aria-expanded={menuId === conn.id}
                   onClick={(e) => { e.stopPropagation(); setMenuId(menuId === conn.id ? '' : conn.id) }}
                   className={cn(
                     'grid h-6 w-6 flex-none place-items-center rounded text-text-4 transition-opacity hover:bg-surface-3 hover:text-text-1',
-                    isActive || menuId === conn.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                    isActive || menuId === conn.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'
                   )}
                 >
                   <MoreVertical size={13} />

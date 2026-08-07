@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Copy, GitBranch, List, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { handleKeyboardActivation } from '@/lib/accessibility'
 import { useUiTranslation, type UiMessage } from '@/lib/uiI18n'
 
 // ─── layout constants ────────────────────────────────────────────────────────
@@ -350,7 +351,12 @@ function GraphCanvas({
             <div
               key={node.id}
               data-gnode="1"
+              role="button"
+              tabIndex={0}
+              aria-pressed={node.id === selected}
+              aria-label={`Select ${node.title}`}
               onClick={() => setSelected(node.id === selected ? null : node.id)}
+              onKeyDown={(event) => handleKeyboardActivation(event, () => setSelected(node.id === selected ? null : node.id))}
               style={{
                 position: 'absolute',
                 left: node.x,
@@ -391,9 +397,15 @@ function GraphCanvas({
                 return (
                   <div
                     key={i}
+                    role={onValueChange ? 'button' : undefined}
+                    tabIndex={onValueChange ? 0 : undefined}
+                    aria-label={onValueChange ? `Edit ${row.key}` : undefined}
                     onClick={(event) => {
                       event.stopPropagation()
                       startEditing(node, i)
+                    }}
+                    onKeyDown={(event) => {
+                      if (onValueChange) handleKeyboardActivation(event, () => startEditing(node, i))
                     }}
                     title={onValueChange ? tr('Click to edit this value') : undefined}
                     style={{
@@ -611,14 +623,20 @@ function TreeRowItem({ row, isExpanded, isSelected, onToggle, onSelect }: {
   const valColor = VAL_COLOR[row.valueType] ?? 'var(--color-text-3)'
   return (
     <div
+      role="treeitem"
+      tabIndex={0}
+      aria-selected={isSelected}
+      aria-expanded={row.expandable ? isExpanded : undefined}
       onClick={onSelect}
+      onKeyDown={(event) => handleKeyboardActivation(event, onSelect)}
       style={{ paddingLeft: row.depth * 18 + 6 }}
       className={cn(
-        'flex items-center gap-1.5 py-[3px] pr-3 cursor-pointer border-l-2 text-xs font-mono',
+        'flex items-center gap-1.5 py-[3px] pr-3 cursor-pointer border-l-2 text-xs font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent',
         isSelected ? 'bg-accent/8 border-accent' : 'border-transparent hover:bg-surface-2/60',
       )}
     >
       <button
+        aria-label={row.expandable ? `${isExpanded ? 'Collapse' : 'Expand'} ${row.key}` : undefined}
         onClick={e => { e.stopPropagation(); if (row.expandable) onToggle() }}
         className="w-[14px] h-[14px] flex items-center justify-center text-text-4 hover:text-text-2 flex-shrink-0"
       >

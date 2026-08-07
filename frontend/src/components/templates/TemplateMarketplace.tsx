@@ -295,10 +295,9 @@ export function TemplateMarketplace() {
                 return (
                   <div
                     key={template.id}
-                    className="group relative rounded-lg border border-border-1 bg-surface-1 hover:border-border-2 hover:shadow-sm p-4 transition-all cursor-pointer"
-                    onClick={() => setSelectedTemplate(template)}
+                    className="group relative rounded-lg border border-border-1 bg-surface-1 hover:border-border-2 hover:shadow-sm p-4 transition-all focus-within:ring-2 focus-within:ring-accent"
                   >
-                    <div className="flex items-start gap-3">
+                    <button type="button" onClick={() => setSelectedTemplate(template)} className="flex w-full items-start gap-3 text-left outline-none">
                       <div className="w-8 h-8 rounded-md bg-surface-2 flex items-center justify-center flex-shrink-0">
                         <Package size={14} className="text-accent" />
                       </div>
@@ -320,7 +319,7 @@ export function TemplateMarketplace() {
                           <span className="text-[10px] text-text-4">by {template.author}</span>
                         </div>
                       </div>
-                    </div>
+                    </button>
 
                     <button
                       onClick={(e) => {
@@ -329,7 +328,7 @@ export function TemplateMarketplace() {
                       }}
                       disabled={isInstalled}
                       className={cn(
-                        'absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity',
+                        'absolute top-3 right-3 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity',
                         'flex items-center gap-1 px-2 py-1 text-[10px] font-medium rounded transition-colors',
                         isInstalled
                           ? 'bg-surface-2 text-text-4 cursor-not-allowed'

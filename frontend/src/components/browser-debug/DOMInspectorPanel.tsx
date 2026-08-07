@@ -171,14 +171,14 @@ function DOMNodeRow({
     <>
       <div
         className={cn(
-          'flex items-center py-px cursor-pointer hover:bg-surface-2/50 transition-colors',
+          'flex items-center py-px hover:bg-surface-2/50 transition-colors focus-within:ring-2 focus-within:ring-inset focus-within:ring-accent',
           isSelected && 'bg-accent/10'
         )}
         style={{ paddingLeft: `${depth * 16}px` }}
-        onClick={() => onSelect(node)}
       >
         {hasChildren ? (
           <button
+            aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${node.nodeName}`}
             onClick={(e) => {
               e.stopPropagation()
               onExpand(node)
@@ -195,7 +195,9 @@ function DOMNodeRow({
           <div className="w-4 flex-shrink-0" />
         )}
 
-        {renderNodeContent()}
+        <button type="button" role="treeitem" aria-selected={isSelected} aria-expanded={hasChildren ? isExpanded : undefined} onClick={() => onSelect(node)} className="min-w-0 flex-1 text-left outline-none">
+          {renderNodeContent()}
+        </button>
       </div>
 
       {isExpanded &&
@@ -463,7 +465,7 @@ export function DOMInspectorPanel() {
       )}
       <div className="flex flex-1 min-h-0">
         {/* DOM Tree */}
-        <div className="flex-1 overflow-y-auto py-1 border-r border-border-1">
+        <div role={activeView === 'elements' ? 'tree' : undefined} aria-label={activeView === 'elements' ? 'DOM tree' : undefined} className="flex-1 overflow-y-auto py-1 border-r border-border-1">
           {activeView === 'source' ? (
             <div className="h-full min-h-0 overflow-auto bg-surface-0 font-mono text-[10px] leading-4">
               {sourceLoading && (

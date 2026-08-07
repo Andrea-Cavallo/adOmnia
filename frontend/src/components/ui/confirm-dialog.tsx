@@ -1,7 +1,8 @@
-import { useEffect } from 'react'
+import { useId, useRef } from 'react'
 import { Trash2, AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUiTranslation } from '@/lib/uiI18n'
+import { useModalFocusTrap } from '@/lib/accessibility'
 
 interface ConfirmDialogProps {
   open: boolean
@@ -25,16 +26,13 @@ export function ConfirmDialog({
   onCancel,
 }: ConfirmDialogProps) {
   const tr = useUiTranslation()
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const titleId = useId()
   const isDanger = variant === 'danger'
   const resolvedConfirmLabel = confirmLabel === 'Confirm' ? tr('Confirm') : confirmLabel
   const resolvedCancelLabel = cancelLabel === 'Cancel' ? tr('Cancel') : cancelLabel
 
-  useEffect(() => {
-    if (!open) return
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onCancel() }
-    document.addEventListener('keydown', handler)
-    return () => document.removeEventListener('keydown', handler)
-  }, [open, onCancel])
+  useModalFocusTrap(open, onCancel, dialogRef)
 
   if (!open) return null
 
@@ -44,8 +42,11 @@ export function ConfirmDialog({
       onClick={onCancel}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
         className="w-[320px] overflow-hidden rounded-xl border border-border-2 bg-surface-1 shadow-2xl animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
@@ -69,7 +70,7 @@ export function ConfirmDialog({
           </div>
 
           {/* Title */}
-          <h2 className="mb-1.5 text-[13px] font-semibold leading-snug text-text-1">
+          <h2 id={titleId} className="mb-1.5 text-[13px] font-semibold leading-snug text-text-1">
             {title}
           </h2>
 

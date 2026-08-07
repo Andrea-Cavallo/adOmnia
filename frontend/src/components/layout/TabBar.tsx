@@ -160,7 +160,7 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
           <ChevronLeft size={13} />
         </button>
       )}
-      <div ref={scrollRef} onScroll={updateOverflow} className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto no-scrollbar">
+      <div ref={scrollRef} role="tablist" aria-label={tr('Request tabs')} onScroll={updateOverflow} className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto no-scrollbar">
       {tabs.map((tab) => {
         const isActive = activeTabId === tab.id
         const isPinned = tab.pinned === true
@@ -169,7 +169,6 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
             key={tab.id}
             data-tab-id={tab.id}
             draggable
-            onClick={() => onSelect(tab.id)}
             onContextMenu={(e) => {
               e.preventDefault()
               setCtx({ open: true, x: e.clientX, y: e.clientY, tabId: tab.id })
@@ -205,7 +204,7 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
             }}
             onDragEnd={clearDrag}
             className={cn(
-              'relative flex h-[28px] items-center gap-1.5 rounded-t px-2 text-[11px] cursor-pointer group shrink-0 border-b-2 transition-all',
+              'relative flex h-[28px] items-center gap-1.5 rounded-t px-2 text-[11px] cursor-pointer group shrink-0 border-b-2 transition-all focus-within:ring-2 focus-within:ring-inset focus-within:ring-accent',
               isPinned ? 'min-w-[48px] max-w-[64px]' : 'min-w-[74px] max-w-[180px]',
               isActive
                 ? 'bg-surface-2 border-b-accent text-text-1'
@@ -217,7 +216,23 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
             {dropTarget?.tabId === tab.id && dropTarget.position === 'before' && (
               <span className="absolute -left-[2px] inset-y-1 w-[2px] rounded bg-accent" />
             )}
-            <span className={cn('text-[9px] font-bold shrink-0', METHOD_COLORS[tab.request.method] ?? 'text-text-3')}>
+            {renamingTabId !== tab.id && (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                aria-label={tab.request.name || tab.request.url || tr('Untitled')}
+                onClick={() => onSelect(tab.id)}
+                onKeyDown={(event) => {
+                  if (event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return
+                  event.preventDefault()
+                  const rect = event.currentTarget.getBoundingClientRect()
+                  setCtx({ open: true, x: rect.left + 12, y: rect.bottom, tabId: tab.id })
+                }}
+                className="absolute inset-0 z-0 outline-none"
+              />
+            )}
+            <span className={cn('pointer-events-none relative z-10 text-[9px] font-bold shrink-0', METHOD_COLORS[tab.request.method] ?? 'text-text-3')}>
               {tab.request.method}
             </span>
             {renamingTabId === tab.id && !isPinned ? (
@@ -231,19 +246,19 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
                   if (e.key === 'Enter') { e.preventDefault(); commitRename() }
                   if (e.key === 'Escape') { e.preventDefault(); setRenamingTabId(null) }
                 }}
-                className="min-w-0 flex-1 truncate bg-transparent outline-none border-b border-accent text-xs text-text-1"
+                className="relative z-20 min-w-0 flex-1 truncate bg-transparent outline-none border-b border-accent text-xs text-text-1"
               />
             ) : !isPinned ? (
-              <span className="truncate flex-1">
+              <span className="pointer-events-none relative z-10 truncate flex-1">
                 {tab.request.name || tab.request.url || tr('Untitled')}
               </span>
             ) : (
-              <span className="sr-only">{tab.request.name || tab.request.url || tr('Pinned tab')}</span>
+              <span className="pointer-events-none relative z-10 sr-only">{tab.request.name || tab.request.url || tr('Pinned tab')}</span>
             )}
             {tab.dirty && (
               <span
                 className={cn(
-                  'rounded-full bg-warning shrink-0 shadow-[0_0_10px_color-mix(in_srgb,var(--color-warning)_42%,transparent)]',
+                  'pointer-events-none z-10 rounded-full bg-warning shrink-0 shadow-[0_0_10px_color-mix(in_srgb,var(--color-warning)_42%,transparent)]',
                   isPinned ? 'absolute right-1.5 top-1.5 h-1.5 w-1.5' : 'h-2 w-2 animate-pulse',
                 )}
                 title={tr('Unsaved changes')}
@@ -251,8 +266,9 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
             )}
             {!isPinned && (
               <button
+                aria-label={tr('Close tab')}
                 onClick={(e) => { e.stopPropagation(); onClose(tab.id) }}
-                className="shrink-0 rounded p-0.5 text-text-4 opacity-0 transition-colors hover:text-error group-hover:opacity-100"
+                className="relative z-20 shrink-0 rounded p-0.5 text-text-4 opacity-0 transition-colors hover:text-error group-hover:opacity-100 group-focus-within:opacity-100"
                 title={tr('Close tab')}
               >
                 <X size={10} />

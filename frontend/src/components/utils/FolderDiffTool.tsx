@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { FolderTree, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { handleKeyboardActivation } from '@/lib/accessibility'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { safeSelectFolder, downloadText } from '@/lib/fileUtils'
 import { CompareFolders, ReadFolderDiffFile } from '@/wailsjs/go/main/App'
@@ -481,9 +482,16 @@ export function FolderDiffTool() {
                       return (
                         <tr
                           key={entry.path}
+                          role="button"
+                          tabIndex={0}
+                          aria-pressed={selectedRow}
+                          aria-label={`Inspect ${entry.path}`}
                           onClick={() => node && selectNode(node)}
+                          onKeyDown={(event) => {
+                            if (node) handleKeyboardActivation(event, () => selectNode(node))
+                          }}
                           className={cn(
-                            'cursor-pointer border-b border-border-1/60 text-text-2 hover:bg-surface-2',
+                            'cursor-pointer border-b border-border-1/60 text-text-2 hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent',
                             entry.status === 'left-only' && 'border-l-4 border-l-accent bg-accent/10',
                             entry.status === 'right-only' && 'border-l-4 border-l-info bg-info/10',
                             entry.status === 'modified' && 'border-l-4 border-l-warning bg-warning/10',

@@ -245,9 +245,10 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
               <p className="text-xs text-text-3">
                 Usa questa opzione solo per registrare un plugin senza file eseguibili.
               </p>
-              <div
+              <button
+                type="button"
                 className={cn(
-                  'flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed py-5 cursor-pointer transition-colors',
+                  'flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed py-5 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
                   dragging ? 'border-accent bg-accent/5' : 'border-border-2 hover:border-accent/50 hover:bg-surface-1'
                 )}
                 onClick={() => fileInputRef.current?.click()}
@@ -259,7 +260,7 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
                 <span className="text-xs text-text-3">
                   {dragging ? 'Rilascia qui' : 'Seleziona manifest.json'}
                 </span>
-              </div>
+              </button>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -588,10 +589,16 @@ export function PluginManager() {
                   )}
                 >
                   <div
-                    className="flex items-center gap-3 px-4 py-3 cursor-pointer"
-                    onClick={() => setExpandedId(isExpanded ? null : plugin.manifest.id)}
+                    className="relative flex items-center gap-3 px-4 py-3 focus-within:ring-2 focus-within:ring-inset focus-within:ring-accent"
                   >
-                    <div className="relative flex-shrink-0">
+                    <button
+                      type="button"
+                      aria-expanded={isExpanded}
+                      aria-label={`${isExpanded ? 'Hide' : 'Show'} details for ${plugin.manifest.name}`}
+                      onClick={() => setExpandedId(isExpanded ? null : plugin.manifest.id)}
+                      className="absolute inset-0 z-0 outline-none"
+                    />
+                    <div className="pointer-events-none relative z-10 flex-shrink-0">
                       <div className="w-9 h-9 rounded-md bg-surface-2 flex items-center justify-center">
                         <span className="text-xs font-bold text-accent">
                           {plugin.manifest.name.slice(0, 2).toUpperCase()}
@@ -605,7 +612,7 @@ export function PluginManager() {
                       />
                     </div>
 
-                    <div className="flex-1 min-w-0">
+                    <div className="pointer-events-none relative z-10 flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <h4 className="text-sm font-medium text-text-1 truncate">{plugin.manifest.name}</h4>
                         <span className="text-[10px] text-text-4">v{plugin.manifest.version}</span>
@@ -616,7 +623,7 @@ export function PluginManager() {
                     </div>
 
                     {hasError && (
-                      <div className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-red-400 bg-red-500/10 rounded">
+                      <div className="pointer-events-none relative z-10 flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-red-400 bg-red-500/10 rounded">
                         <AlertTriangle size={10} />
                         Error
                       </div>
@@ -630,7 +637,7 @@ export function PluginManager() {
                         handleToggle(plugin)
                       }}
                       className={cn(
-                        'relative w-8 h-4 rounded-full transition-colors flex-shrink-0',
+                        'relative z-10 w-8 h-4 rounded-full transition-colors flex-shrink-0',
                         plugin.enabled ? 'bg-accent' : 'bg-surface-3'
                       )}
                     >
@@ -650,7 +657,7 @@ export function PluginManager() {
                         event.stopPropagation()
                         setExpandedId(isExpanded ? null : plugin.manifest.id)
                       }}
-                      className="rounded p-0.5 text-text-3 transition-colors hover:bg-surface-2 hover:text-text-1"
+                      className="relative z-10 rounded p-0.5 text-text-3 transition-colors hover:bg-surface-2 hover:text-text-1"
                     >
                       {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                     </button>
