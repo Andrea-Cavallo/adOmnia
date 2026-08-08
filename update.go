@@ -11,11 +11,10 @@ import (
 	"time"
 )
 
-// Update check: notify-only. Queries the GitHub Releases API for the latest
-// release and compares it with the embedded build version. No download, no
-// self-replace — the frontend shows a banner and opens the release page so the
-// user installs manually. Local-first: this is the only release-related network
-// call, it runs on user action or one opt-in startup check.
+// Update check: notify-only. When explicitly requested from Settings > About,
+// it queries the GitHub Releases API for the latest release and compares it with
+// the embedded build version. No startup request, download or self-replace: the
+// user chooses both when to check and whether to open the release page.
 // ponytail: notify + open page. Assisted download / auto-replace is the upgrade
 // path if users ask, but a portable cross-platform self-updater is days of work
 // and risks breaking the install.
@@ -28,13 +27,13 @@ const releasesAPI = "https://api.github.com/repos/Andrea-Cavallo/adOmnia/release
 
 // UpdateInfo is the trimmed shape the UI needs.
 type UpdateInfo struct {
-	CurrentVersion string `json:"currentVersion"`
-	LatestVersion  string `json:"latestVersion"`
-	UpdateAvailable bool  `json:"updateAvailable"`
-	ReleaseURL     string `json:"releaseUrl"`
-	ReleaseNotes   string `json:"releaseNotes"`
-	PublishedAt    string `json:"publishedAt"`
-	IsDev          bool   `json:"isDev"` // running unversioned dev build; check skipped
+	CurrentVersion  string `json:"currentVersion"`
+	LatestVersion   string `json:"latestVersion"`
+	UpdateAvailable bool   `json:"updateAvailable"`
+	ReleaseURL      string `json:"releaseUrl"`
+	ReleaseNotes    string `json:"releaseNotes"`
+	PublishedAt     string `json:"publishedAt"`
+	IsDev           bool   `json:"isDev"` // running unversioned dev build; check skipped
 }
 
 // GetAppVersion returns the embedded build version (or "dev").
@@ -42,8 +41,9 @@ func (a *App) GetAppVersion() string {
 	return Version
 }
 
-// CheckForUpdate queries the latest GitHub release and reports whether a newer
-// version exists. Returns a clean, frontend-safe error on failure.
+// CheckForUpdate queries the latest GitHub release after an explicit user action
+// and reports whether a newer version exists. Returns a frontend-safe error on
+// failure.
 func (a *App) CheckForUpdate() (UpdateInfo, error) {
 	info := UpdateInfo{CurrentVersion: Version}
 

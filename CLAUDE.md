@@ -128,7 +128,7 @@ adomnia/
 │   ├── mock/ proxy/ browser/  #   mock server, interceptor, CDP debugging
 │   ├── kafka/ broker/ ws/ sse/ grpc/   # protocols and brokers
 │   ├── database/ storage/ vault/       # local data and secrets
-│   ├── docker/ loadtest/ plugins/      # lab, load testing, WASM sandbox
+│   ├── docker/ loadtest/ plugins/      # lab, load testing, JS plugin runtime
 │   ├── themes/ templates/ git/         # customization and versioning
 │   └── ...                    #   see `ls internal/` for the full list
 ├── frontend/                  # React frontend

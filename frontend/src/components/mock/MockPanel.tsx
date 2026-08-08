@@ -17,6 +17,7 @@ import type { MockCondition, RequestItem, TreeNode } from '@/lib/types'
 import { uid } from '@/lib/types'
 import { validateMockEndpoints } from '@/lib/mockContract'
 import { cn } from '@/lib/utils'
+import { handleKeyboardActivation } from '@/lib/accessibility'
 
 interface MockResponse {
   id: string
@@ -1463,13 +1464,23 @@ export function MockPanel() {
                   {filteredHits.map((h) => (
                     <tr
                       key={h.id}
+                      role={h.endpointId ? 'button' : undefined}
+                      tabIndex={h.endpointId ? 0 : undefined}
+                      aria-label={h.endpointId ? `Open matched endpoint for ${h.method} ${h.path}` : undefined}
                       onClick={() => {
                         if (!h.endpointId) return
                         setSelectedEndpointId(h.endpointId)
                         setView('endpoints')
                       }}
+                      onKeyDown={(event) => {
+                        if (!h.endpointId) return
+                        handleKeyboardActivation(event, () => {
+                          setSelectedEndpointId(h.endpointId!)
+                          setView('endpoints')
+                        })
+                      }}
                       className={cn(
-                        'transition-colors hover:bg-surface-2/40',
+                        'transition-colors hover:bg-surface-2/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent',
                         h.endpointId && 'cursor-pointer',
                       )}
                       title={h.endpointId ? 'Open the matched endpoint' : undefined}

@@ -3,6 +3,7 @@ import { Plus, Check, X, ChevronDown } from 'lucide-react'
 import type { Environment, EnvVariable } from '@/lib/types'
 import { EnvModal } from './EnvModal'
 import { cn } from '@/lib/utils'
+import { useUiTranslation } from '@/lib/uiI18n'
 
 interface EnvBarProps {
   environments: Environment[]
@@ -25,6 +26,7 @@ export function EnvBar({
   onUpdateVars,
   onSetPrivate,
 }: EnvBarProps) {
+  const tr = useUiTranslation()
   const [showModal, setShowModal] = useState(false)
   const [adding, setAdding] = useState(false)
   const [newName, setNewName] = useState('')
@@ -54,15 +56,15 @@ export function EnvBar({
   const cancelAdd = () => { setAdding(false); setNewName('') }
 
   const activeLabel = activeEnvId
-    ? (environments.find(e => e.id === activeEnvId)?.name ?? 'Unknown')
-    : 'No Environment'
+    ? (environments.find(e => e.id === activeEnvId)?.name ?? tr('Unknown'))
+    : tr('No Environment')
   const activeEnv = activeEnvId ? environments.find(e => e.id === activeEnvId) : null
   const activeVarCount = activeEnv?.variables.filter(v => v.enabled && v.key.trim()).length ?? 0
 
   return (
     <>
       <div className="flex h-[var(--ui-toolbar-h)] items-center gap-1.5 border-b border-border-1 px-2.5">
-        <span className="text-[10px] text-text-4 uppercase tracking-wider shrink-0">Env</span>
+        <span className="text-[10px] text-text-4 uppercase tracking-wider shrink-0">{tr('Env')}</span>
 
         <div ref={dropRef} className="relative flex">
           <button
@@ -73,7 +75,7 @@ export function EnvBar({
               'hover:border-border-3 hover:bg-surface-3',
               dropOpen && 'border-accent'
             )}
-            title="Open environment editor"
+            title={tr('Open environment editor')}
           >
             <span className="max-w-[160px] truncate">{activeLabel}</span>
             {activeEnv && (
@@ -89,7 +91,7 @@ export function EnvBar({
               'hover:border-border-3 hover:bg-surface-3 hover:text-text-1',
               dropOpen && 'border-accent text-accent'
             )}
-            title="Switch environment"
+            title={tr('Switch environment')}
           >
             <ChevronDown
               size={11}
@@ -104,7 +106,7 @@ export function EnvBar({
                   onClick={() => { setShowModal(true); setDropOpen(false) }}
                   className="w-full border-b border-border-1 px-3 py-1.5 text-left text-xs text-accent transition-colors hover:bg-surface-3 hover:text-accent-light"
                 >
-                  Edit current environment
+                  {tr('Edit current environment')}
                 </button>
               )}
               <button
@@ -116,7 +118,7 @@ export function EnvBar({
                     : 'text-text-3 hover:bg-surface-3 hover:text-text-1'
                 )}
               >
-                No Environment
+                {tr('No Environment')}
               </button>
               {environments.map(env => (
                 <button
@@ -146,7 +148,7 @@ export function EnvBar({
                 if (e.key === 'Enter') confirmAdd()
                 if (e.key === 'Escape') cancelAdd()
               }}
-              placeholder="Env name…"
+              placeholder={tr('Env name…')}
               className="h-6 px-2 bg-surface-2 border border-accent rounded text-xs text-text-1 outline-none w-32"
             />
             <button onClick={confirmAdd} className="w-5 h-5 flex items-center justify-center text-success hover:text-success/80">
@@ -160,7 +162,7 @@ export function EnvBar({
           <button
             onClick={handleAdd}
             className="w-5 h-5 flex items-center justify-center text-text-4 hover:text-text-1 rounded"
-            title="New environment"
+            title={tr('New environment')}
           >
             <Plus size={12} />
           </button>
@@ -169,9 +171,9 @@ export function EnvBar({
         <button
           onClick={() => setShowModal(true)}
           className="ml-auto text-[11px] text-accent hover:text-accent-light"
-          title="Manage environments"
+          title={tr('Manage environments')}
         >
-          Environments
+          {tr('Environments')}
         </button>
       </div>
 

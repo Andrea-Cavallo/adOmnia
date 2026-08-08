@@ -1,4 +1,10 @@
+import { clearManagedSecret, hydrateManagedSecret, persistManagedSecret } from '@/lib/managedSecrets'
+
 const KEY = 'adomnia.git.profiles'
+
+function tokenScope(id: string): string {
+  return `git-profile:${id}:token`
+}
 
 export interface GitProfile {
   id: string
@@ -17,18 +23,32 @@ export function loadGitProfiles(): GitProfile[] {
   try {
     const parsed = JSON.parse(localStorage.getItem(KEY) || '[]') as unknown
     if (!Array.isArray(parsed)) return []
-    return parsed.filter((item): item is GitProfile => Boolean(item && typeof item === 'object' && typeof (item as GitProfile).id === 'string')).map((item) => ({
-      ...item,
-      provider: item.provider || 'github',
-      baseURL: item.baseURL || '',
-      username: item.username || '',
-      tokenRef: item.tokenRef || '',
-    }))
+    const loaded = parsed.filter((item): item is GitProfile => Boolean(item && typeof item === 'object' && typeof (item as GitProfile).id === 'string')).map((item) => {
+      const storedToken = typeof item.tokenRef === 'string' ? item.tokenRef : ''
+      if (storedToken && !storedToken.trim().startsWith('vault:')) {
+        persistManagedSecret(tokenScope(item.id), storedToken)
+      }
+      return {
+        ...item,
+        provider: item.provider || 'github',
+        baseURL: item.baseURL || '',
+        username: item.username || '',
+        tokenRef: storedToken && !storedToken.trim().startsWith('vault:')
+          ? storedToken
+          : hydrateManagedSecret(tokenScope(item.id), storedToken),
+      }
+    })
+    persist(loaded)
+    return loaded
   } catch { return [] }
 }
 
 function persist(profiles: GitProfile[]) {
-  try { localStorage.setItem(KEY, JSON.stringify(profiles)) } catch { /* best effort */ }
+  const safeProfiles = profiles.map((profile) => ({
+    ...profile,
+    tokenRef: persistManagedSecret(tokenScope(profile.id), profile.tokenRef),
+  }))
+  try { localStorage.setItem(KEY, JSON.stringify(safeProfiles)) } catch { /* best effort */ }
 }
 
 export function saveGitProfile(profiles: GitProfile[], profile: Omit<GitProfile, 'id'> & { id?: string }): GitProfile[] {
@@ -41,6 +61,7 @@ export function saveGitProfile(profiles: GitProfile[], profile: Omit<GitProfile,
 export function removeGitProfile(profiles: GitProfile[], id: string): GitProfile[] {
   const next = profiles.filter((profile) => profile.id !== id)
   persist(next)
+  clearManagedSecret(tokenScope(id))
   return next
 }
 

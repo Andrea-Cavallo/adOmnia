@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -9,6 +10,21 @@ func TestResolvePluginEntryPointRejectsEscape(t *testing.T) {
 	pluginDir := t.TempDir()
 	if _, err := ResolvePluginEntryPoint(pluginDir, filepath.Join("..", "outside.py")); err == nil {
 		t.Fatal("expected escaped plugin entrypoint to be rejected")
+	}
+}
+
+func TestResolvePluginEntryPointRejectsSymlink(t *testing.T) {
+	pluginDir := t.TempDir()
+	outside := filepath.Join(t.TempDir(), "outside.js")
+	if err := os.WriteFile(outside, []byte("module.exports.run = () => true"), 0600); err != nil {
+		t.Fatalf("write outside file: %v", err)
+	}
+	entryPoint := filepath.Join(pluginDir, "main.js")
+	if err := os.Symlink(outside, entryPoint); err != nil {
+		t.Skipf("symbolic links unavailable: %v", err)
+	}
+	if _, err := ResolvePluginEntryPoint(pluginDir, "main.js"); err == nil {
+		t.Fatal("expected symlinked entrypoint to be rejected")
 	}
 }
 

@@ -58,6 +58,7 @@ func main() {
 	pluginManager := NewPluginManager()
 	globalPluginManager = pluginManager
 	wasmRuntime := NewWasmRuntime()
+	plugins.AttachRuntime(pluginManager.PluginManager, wasmRuntime.WasmRuntime)
 	dockerLab := NewDockerLab()
 	aiEngine := NewAIEngine()
 	globalAIEngine = aiEngine

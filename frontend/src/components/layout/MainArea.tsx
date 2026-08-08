@@ -25,6 +25,7 @@ import { appendMockEndpoints, createMockEndpointFromRequest } from '@/lib/mockEn
 import { DropToast } from '@/components/layout/DropToast'
 import type { DropFeedback } from '@/hooks/useFileDrop'
 import { requestWithUrlInput, resolvedRequestUrl } from '@/lib/requestUrl'
+import { useNavigationTranslation, useUiTranslation } from '@/lib/uiI18n'
 
 // ─── Lazy-loaded panels (loaded on first navigation) ──────────────────────────
 
@@ -57,17 +58,20 @@ const GitSyncPanel         = React.lazy(() => import('@/components/workspace/Git
 const McpPanel             = React.lazy(() => import('@/components/mcp/McpPanel').then(m => ({ default: m.McpPanel })))
 
 function PanelSkeleton() {
+  const tr = useUiTranslation()
   return (
     <div className="flex-1 flex items-center justify-center text-text-3">
       <div className="flex flex-col items-center gap-2">
         <div className="w-5 h-5 border-2 border-text-3 border-t-transparent rounded-full animate-spin" />
-        <span className="text-xs">Loading…</span>
+        <span className="text-xs">{tr('Loading…')}</span>
       </div>
     </div>
   )
 }
 
 function PanelHeader({ titleKey }: { titleKey?: string }) {
+  const tr = useUiTranslation()
+  const nav = useNavigationTranslation()
   const goBack = useAppStore((s) => s.goBack)
   const setActiveRail = useAppStore((s) => s.setActiveRail)
   const activeRail = useAppStore((s) => s.activeRail)
@@ -77,16 +81,16 @@ function PanelHeader({ titleKey }: { titleKey?: string }) {
   const t = useT()
   // The API Workspace home shows the live workspace name; other panels use their i18n title.
   const label = activeRail === 'collections'
-    ? (workspaces.find((w) => w.id === activeWorkspaceId)?.name ?? 'Workspace')
+    ? (workspaces.find((w) => w.id === activeWorkspaceId)?.name ?? tr('Workspace'))
     : titleKey && titleKey in t.rail
       ? t.rail[titleKey as keyof typeof t.rail]
-      : titleKey || ''
+      : nav(titleKey || '')
   return (
     <div className="h-10 flex items-center gap-2 px-3 border-b border-border-1 bg-surface-1 flex-shrink-0">
       <button
         onClick={goBack}
         disabled={!hasHistory}
-        title="Back (Alt + ←)"
+        title={tr('Back (Alt + ←)')}
         className="h-6 w-6 flex items-center justify-center rounded text-text-3 hover:text-text-1 hover:bg-surface-3 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
       >
         <ArrowLeft size={13} />
@@ -99,7 +103,7 @@ function PanelHeader({ titleKey }: { titleKey?: string }) {
           // screen; every other panel closes back to the API Workspace.
           else setActiveRail(activeRail === 'collections' ? 'welcome' : 'collections')
         }}
-        title="Close panel"
+        title={tr('Close panel')}
         className="h-6 w-6 flex items-center justify-center rounded text-text-3 hover:text-text-1 hover:bg-surface-3 transition-colors"
       >
         <X size={12} />
@@ -189,15 +193,16 @@ function RequestPaneHeader({ layout, onLayoutChange }: {
   layout: RequestResponseLayout
   onLayoutChange: (layout: RequestResponseLayout) => void
 }) {
+  const tr = useUiTranslation()
   return (
     <div className="flex h-9 shrink-0 items-center gap-2 border-b border-border-1 bg-surface-1 px-3">
-      <span className="flex-1 text-xs font-medium text-text-2">Request</span>
-      <div className="flex items-center rounded border border-border-2 bg-surface-2 p-0.5" role="group" aria-label="Request and response layout">
+      <span className="flex-1 text-xs font-medium text-text-2">{tr('Request')}</span>
+      <div className="flex items-center rounded border border-border-2 bg-surface-2 p-0.5" role="group" aria-label={tr('Request and response layout')}>
         <button
           type="button"
           onClick={() => onLayoutChange('horizontal')}
-          title="Show Request and Response side by side"
-          aria-label="Show Request and Response side by side"
+          title={tr('Show Request and Response side by side')}
+          aria-label={tr('Show Request and Response side by side')}
           className={cn('grid h-6 w-6 place-items-center rounded transition-colors', layout === 'horizontal' ? 'bg-accent/15 text-accent' : 'text-text-4 hover:bg-surface-3 hover:text-text-2')}
         >
           <Columns2 size={13} />
@@ -205,8 +210,8 @@ function RequestPaneHeader({ layout, onLayoutChange }: {
         <button
           type="button"
           onClick={() => onLayoutChange('vertical')}
-          title="Stack Request above Response"
-          aria-label="Stack Request above Response"
+          title={tr('Stack Request above Response')}
+          aria-label={tr('Stack Request above Response')}
           className={cn('grid h-6 w-6 place-items-center rounded transition-colors', layout === 'vertical' ? 'bg-accent/15 text-accent' : 'text-text-4 hover:bg-surface-3 hover:text-text-2')}
         >
           <Rows2 size={13} />
@@ -243,6 +248,7 @@ function ActiveRequestBar({
   apiToolsOpen: boolean
   onToggleApiTools: () => void
 }) {
+  const tr = useUiTranslation()
   const [savedFlash, setSavedFlash] = useState(false)
   const urlInputRef = useRef<HTMLInputElement>(null)
   const liveUrl = resolvedRequestUrl(request)
@@ -269,7 +275,7 @@ function ActiveRequestBar({
             'h-[var(--ui-control-h)] w-[82px] rounded-md border border-border-2 bg-surface-2 px-2 text-[11px] font-bold outline-none transition-colors focus:border-accent',
             METHOD_COLORS[request.method] ?? 'text-text-1',
           )}
-          title="HTTP method"
+          title={tr('HTTP method')}
         >
           {METHODS.map((method) => (
             <option key={method} value={method}>{method}</option>
@@ -292,11 +298,11 @@ function ActiveRequestBar({
         {loading ? (
           <button
             onClick={onCancel}
-            title="Cancel request"
+            title={tr('Cancel request')}
             className="flex h-[var(--ui-control-h)] min-w-[88px] items-center justify-center gap-1.5 rounded-md bg-error px-3 text-[11px] font-bold text-white transition-colors hover:bg-error/85"
           >
             <X size={14} />
-            Cancel
+            {tr('Cancel')}
           </button>
         ) : (
           <button
@@ -305,13 +311,13 @@ function ActiveRequestBar({
             className="flex h-[var(--ui-control-h)] min-w-[88px] items-center justify-center gap-1.5 rounded-md bg-accent px-3 text-[11px] font-bold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Send size={14} />
-            Send
+            {tr('Send')}
           </button>
         )}
 
         <button
           onClick={onToggleApiTools}
-          title={apiToolsOpen ? 'Hide API tools' : 'Show API tools (redirects, timeout, cURL, encode…)'}
+          title={apiToolsOpen ? tr('Hide API tools') : tr('Show API tools (redirects, timeout, cURL, encode…)')}
           className={cn(
             'grid h-[var(--ui-control-h)] w-[var(--ui-control-h)] place-items-center rounded-md transition-colors',
             apiToolsOpen
@@ -324,7 +330,7 @@ function ActiveRequestBar({
 
         <button
           onClick={handleSave}
-          title={isDirty ? 'Unsaved changes - Save to collection (Ctrl+S)' : 'Save to collection (Ctrl+S)'}
+          title={isDirty ? tr('Unsaved changes - Save to collection (Ctrl+S)') : tr('Save to collection (Ctrl+S)')}
           className={cn(
             'grid h-[var(--ui-control-h)] w-[var(--ui-control-h)] place-items-center rounded-md transition-all',
             savedFlash
@@ -339,7 +345,7 @@ function ActiveRequestBar({
 
         <button
           onClick={onDelete}
-          title="Delete request"
+          title={tr('Delete request')}
           className="grid h-[var(--ui-control-h)] w-[var(--ui-control-h)] place-items-center rounded-md text-text-3 transition-colors hover:bg-error/10 hover:text-error"
         >
           <Trash2 size={14} />
@@ -352,6 +358,7 @@ function ActiveRequestBar({
 // ─── RequestWorkspace ─────────────────────────────────────────────────────────
 
 function RequestWorkspace() {
+  const tr = useUiTranslation()
   const allTabs = useTabsStore((s) => s.tabs)
   const activeTabId = useTabsStore((s) => s.activeTabId)
   const setActiveTab = useTabsStore((s) => s.setActiveTab)
@@ -634,9 +641,9 @@ function RequestWorkspace() {
       }))
       useAppStore.getState().setActiveRail('mock')
     } catch (err) {
-      flashMockFeedback(err instanceof Error ? err.message : 'Could not create the mock endpoint', false)
+      flashMockFeedback(err instanceof Error ? err.message : tr('Could not create the mock endpoint'), false)
     }
-  }, [flashMockFeedback])
+  }, [flashMockFeedback, tr])
 
   const dirtyInDialog = pendingClose ? getDirtyTabsForPending(pendingClose) : []
 
@@ -646,9 +653,9 @@ function RequestWorkspace() {
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className="text-text-4 mb-1">
           <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.17 10.8 19.79 19.79 0 01.1 2.18 2 2 0 012.07.01h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z"/>
         </svg>
-        <p className="text-[13px] font-medium text-text-3">No request open</p>
+        <p className="text-[13px] font-medium text-text-3">{tr('No request open')}</p>
         <p className="text-[11px] text-text-4">
-          Select one from the sidebar or press{' '}
+          {tr('Select one from the sidebar or press')}{' '}
           <kbd className="px-1.5 py-0.5 bg-surface-2 border border-border-2 rounded text-[10px] font-mono text-text-3">Ctrl+N</kbd>
         </p>
       </div>
@@ -738,7 +745,7 @@ function RequestWorkspace() {
             <>
               {/* ── Vertical drag handle ────────────────────────────────────── */}
               <ResizeHandle
-                label={requestResponseLayout === 'horizontal' ? 'Drag to resize panels' : 'Drag to resize Request and Response heights'}
+                label={requestResponseLayout === 'horizontal' ? tr('Drag to resize panels') : tr('Drag to resize Request and Response heights')}
                 onMouseDown={handleResizeMouseDown}
                 withLine={false}
                 orientation={requestResponseLayout === 'horizontal' ? 'vertical' : 'horizontal'}
@@ -766,11 +773,11 @@ function RequestWorkspace() {
       {pendingClose && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="bg-surface-1 border border-border-1 rounded-xl shadow-2xl w-[420px] p-5 space-y-4">
-            <h2 className="text-sm font-semibold text-text-1">Unsaved Changes</h2>
+            <h2 className="text-sm font-semibold text-text-1">{tr('Unsaved Changes')}</h2>
             <p className="text-xs text-text-3">
               {dirtyInDialog.length === 1
-                ? <>Tab <span className="text-text-1 font-medium">"{dirtyInDialog[0].request.name || dirtyInDialog[0].request.url || 'Untitled'}"</span> has unsaved changes.</>
-                : <>{dirtyInDialog.length} tabs have unsaved changes.</>
+                ? <><span className="text-text-1 font-medium">"{dirtyInDialog[0].request.name || dirtyInDialog[0].request.url || tr('Untitled')}"</span>: {tr('Tab has unsaved changes.')}</>
+                : <>{dirtyInDialog.length} {tr('tabs have unsaved changes.')}</>
               }
             </p>
             {dirtyInDialog.length > 1 && (
@@ -778,7 +785,7 @@ function RequestWorkspace() {
                 {dirtyInDialog.map((t) => (
                   <li key={t.id} className="flex items-center gap-2 text-xs text-text-2 px-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
-                    {t.request.name || t.request.url || 'Untitled'}
+                    {t.request.name || t.request.url || tr('Untitled')}
                   </li>
                 ))}
               </ul>
@@ -788,20 +795,20 @@ function RequestWorkspace() {
                 onClick={() => setPendingClose(null)}
                 className="px-3 py-1.5 text-xs text-text-3 hover:text-text-1 transition-colors"
               >
-                Cancel
+                {tr('Cancel')}
               </button>
               <button
                 onClick={() => executePendingClose(pendingClose, false)}
                 className="px-3 py-1.5 text-xs font-medium text-error hover:text-red-300 bg-surface-2 hover:bg-surface-3 rounded-md transition-colors"
               >
-                Discard & Close
+                {tr('Discard & Close')}
               </button>
               {dirtyInDialog.some((t) => t.collectionId) && (
                 <button
                   onClick={() => executePendingClose(pendingClose, true)}
                   className="px-3 py-1.5 text-xs font-medium bg-accent text-white rounded-md hover:opacity-90 transition-colors"
                 >
-                  Save & Close
+                  {tr('Save & Close')}
                 </button>
               )}
             </div>
@@ -813,11 +820,11 @@ function RequestWorkspace() {
 
       <ConfirmDialog
         open={Boolean(deleteRequestTarget)}
-        title="Delete request?"
+        title={tr('Delete request?')}
         message={deleteRequestTarget?.collectionId
-          ? `Are you sure you want to delete "${deleteRequestTarget.name}"? The request will be removed from its collection and all open tabs.`
-          : `Are you sure you want to delete "${deleteRequestTarget?.name ?? 'Untitled'}"? This unsaved request will be discarded.`}
-        confirmLabel="Delete"
+          ? `"${deleteRequestTarget.name}": ${tr('Are you sure you want to delete this saved request? The request will be removed from its collection and all open tabs.')}`
+          : `"${deleteRequestTarget?.name ?? tr('Untitled')}": ${tr('Are you sure you want to delete this unsaved request? It will be discarded.')}`}
+        confirmLabel={tr('Delete')}
         variant="danger"
         onConfirm={deleteActiveRequest}
         onCancel={() => setDeleteRequestTarget(null)}

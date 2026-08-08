@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { Bookmark, Check, ChevronDown, ChevronRight, Loader2, Plus, Trash2 } from 'lucide-react'
+import { Bookmark, Check, ChevronDown, ChevronRight, Loader2, Lock, Plus, ShieldCheck, Trash2 } from 'lucide-react'
 import {
+  brokerConnectionCredentialState,
   deleteBrokerConnectionProfile,
   listBrokerConnectionProfiles,
   loadLastBrokerConnection,
+  protectBrokerConnectionConfig,
   saveBrokerConnectionProfile,
   saveLastBrokerConnection,
   type BrokerConnectionProfile,
@@ -26,8 +28,10 @@ export function ConnectionProfiles<T extends object>({ protocol, config, onLoad 
   const [ready, setReady] = useState(false)
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState('')
+  const [vaultPassphrase, setVaultPassphrase] = useState('')
   const autosaveRef = useRef<number | null>(null)
   const restoringRef = useRef(false)
+  const credentialState = brokerConnectionCredentialState(config)
 
   useEffect(() => {
     let alive = true
@@ -71,9 +75,27 @@ export function ConnectionProfiles<T extends object>({ protocol, config, onLoad 
       const profile = await saveBrokerConnectionProfile(protocol, name, config)
       setProfiles((current) => [profile, ...current])
       setName('')
-      setStatus('Connection profile saved locally')
+      setStatus(credentialState === 'session'
+        ? 'Profile saved. Plain credentials remain session-only.'
+        : 'Connection profile saved locally')
     } catch {
       setStatus('Could not save connection profile')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const protectSecrets = async () => {
+    setSaving(true)
+    setStatus('')
+    try {
+      const protectedConfig = await protectBrokerConnectionConfig(config, vaultPassphrase)
+      onLoad(protectedConfig)
+      await saveLastBrokerConnection(protocol, protectedConfig)
+      setVaultPassphrase('')
+      setStatus('Credentials replaced with encrypted Vault references')
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error))
     } finally {
       setSaving(false)
     }
@@ -103,7 +125,7 @@ export function ConnectionProfiles<T extends object>({ protocol, config, onLoad 
       >
         <Bookmark size={11} className="text-accent" />
         <span className="flex-1 text-left font-medium">Connection profiles</span>
-        <span className="text-[10px] text-text-4">{ready ? 'Autosaved locally' : 'Loading...'}</span>
+        <span className="text-[10px] text-text-4">{ready ? (credentialState === 'session' ? 'Secrets: session only' : 'Autosaved locally') : 'Loading...'}</span>
         {open ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
       </button>
       {open && (
@@ -142,7 +164,32 @@ export function ConnectionProfiles<T extends object>({ protocol, config, onLoad 
             ))
           )}
           {status && <p className="text-[10px] text-text-3">{status}</p>}
-          <p className="text-[10px] text-text-4">Credentials are stored only in the local workspace database. Use Vault for managed secret reuse.</p>
+          {credentialState === 'session' && (
+            <div className="space-y-2 rounded border border-warning/30 bg-warning/10 p-2">
+              <p className="text-[10px] text-warning">Plain credentials stay only in memory and will be forgotten when adOmnia closes.</p>
+              <div className="flex gap-1.5">
+                <input
+                  type="password"
+                  value={vaultPassphrase}
+                  onChange={(event) => setVaultPassphrase(event.target.value)}
+                  placeholder="Vault passphrase"
+                  className={cn(inputClass, 'flex-1')}
+                />
+                <button
+                  type="button"
+                  onClick={() => void protectSecrets()}
+                  disabled={!vaultPassphrase || saving}
+                  className="inline-flex items-center gap-1 rounded bg-accent px-2 text-[10px] font-semibold text-white disabled:opacity-40"
+                >
+                  <Lock size={11} /> Protect secrets
+                </button>
+              </div>
+            </div>
+          )}
+          {credentialState === 'vault' && (
+            <p className="flex items-center gap-1.5 text-[10px] text-success"><ShieldCheck size={11} /> Credentials are encrypted at rest and resolved only for broker actions.</p>
+          )}
+          {credentialState === 'none' && <p className="text-[10px] text-text-4">Connection metadata is autosaved locally. Add credentials only when required.</p>}
         </div>
       )}
     </div>

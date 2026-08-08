@@ -7,10 +7,11 @@ import { useSettingsStore } from '@/stores/settings'
 import { useTabsStore } from '@/stores/tabs'
 import { cn } from '@/lib/utils'
 import { parseInteropFile, redactSecrets, summarizeBundle, type InteropBundle } from '@/lib/interopHub'
-import { scanWorkspace, maskSecretValues } from '@/lib/secretScanner'
+import { maskSecretValues, scanWorkspace } from '@/lib/secretScanner'
 import { loadFlowDefinitions, type SavedFlowDefinition } from '@/lib/flowStorage'
 import { applyWorkspaceState, type WorkspaceState } from '@/lib/workspaceState'
 import { rememberRecentWorkspace, removeRecentWorkspace, type WorkspaceMeta } from '@/lib/workspaceRecents'
+import { redactSensitiveData } from '@/lib/secretRedaction'
 import { OasImportModal } from './OasImportModal'
 
 export function WorkspacePanel() {
@@ -221,7 +222,8 @@ export function WorkspacePanel() {
   }
 
   const downloadExport = (state: string) => {
-    const blob = new Blob([state], { type: 'application/json' })
+    const protectedState = JSON.stringify(redactSensitiveData(JSON.parse(state)), null, 2)
+    const blob = new Blob([protectedState], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -232,15 +234,8 @@ export function WorkspacePanel() {
 
   const exportMasked = () => {
     if (!exportConfirm) return
-    const parsed = JSON.parse(exportConfirm.state)
-    const masked = maskSecretValues(parsed)
+    const masked = maskSecretValues(JSON.parse(exportConfirm.state))
     downloadExport(JSON.stringify(masked, null, 2))
-    setExportConfirm(null)
-  }
-
-  const exportUnmasked = () => {
-    if (!exportConfirm) return
-    downloadExport(exportConfirm.state)
     setExportConfirm(null)
   }
 
@@ -424,11 +419,7 @@ export function WorkspacePanel() {
               <ul className="space-y-1 text-[10px] text-text-3">
                 <li className="flex items-start gap-1.5">
                   <Shield size={10} className="text-emerald-400 mt-0.5 flex-shrink-0" />
-                  <span><strong className="text-text-1">Masked export</strong> &mdash; secrets replaced with ***REDACTED***. Safe to share.</span>
-                </li>
-                <li className="flex items-start gap-1.5">
-                  <ShieldAlert size={10} className="text-yellow-400 mt-0.5 flex-shrink-0" />
-                  <span><strong className="text-text-1">Unmasked export</strong> &mdash; includes all plaintext secrets. Keep this file private.</span>
+                  <span><strong className="text-text-1">Protected export</strong> &mdash; plaintext secrets are always replaced with ***REDACTED***; encrypted <code>vault:</code> references remain usable.</span>
                 </li>
               </ul>
               <div className="flex gap-2 pt-1">
@@ -437,14 +428,7 @@ export function WorkspacePanel() {
                   className="flex-1 rounded bg-emerald-500/15 border border-emerald-500/30 px-3 py-1.5 text-xs font-medium text-emerald-400 hover:bg-emerald-500/25 transition-colors flex items-center justify-center gap-1.5"
                 >
                   <Shield size={11} />
-                  Export Masked
-                </button>
-                <button
-                  onClick={exportUnmasked}
-                  className="flex-1 rounded bg-yellow-500/10 border border-yellow-500/30 px-3 py-1.5 text-xs font-medium text-yellow-400 hover:bg-yellow-500/20 transition-colors flex items-center justify-center gap-1.5"
-                >
-                  <ShieldAlert size={11} />
-                  Export Unmasked
+                  Export Protected Copy
                 </button>
               </div>
               <button

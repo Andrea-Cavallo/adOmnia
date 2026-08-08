@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Copy, GitBranch, List, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { handleKeyboardActivation } from '@/lib/accessibility'
+import { useUiTranslation, type UiMessage } from '@/lib/uiI18n'
 
 // ─── layout constants ────────────────────────────────────────────────────────
 const NODE_W = 240
@@ -136,7 +138,7 @@ function editableValueText(value: unknown, type: string): string {
   return JSON.stringify(value)
 }
 
-function parseEditedValue(type: string, draft: string): { value?: unknown; error?: string } {
+function parseEditedValue(type: string, draft: string): { value?: unknown; error?: UiMessage } {
   if (type === 'string') return { value: draft }
   if (type === 'number') {
     const number = Number(draft)
@@ -172,7 +174,7 @@ interface EditingRow {
   nodeId: string
   rowIndex: number
   draft: string
-  error: string
+  error: UiMessage | ''
 }
 
 function GraphCanvas({
@@ -184,6 +186,7 @@ function GraphCanvas({
   edges: GEdge[]
   onValueChange?: (path: Array<string | number>, value: unknown) => void
 }) {
+  const tr = useUiTranslation()
   const containerRef = useRef<HTMLDivElement>(null)
   const [zoom, setZoom] = useState(1)
   const [pan, setPan] = useState({ x: 40, y: 40 })
@@ -272,7 +275,7 @@ function GraphCanvas({
           onClick={fitView}
           className="px-2 py-1 text-[10px] bg-surface-2 border border-border-2 rounded text-text-3 hover:text-text-1 transition-colors"
         >
-          Fit
+          {tr('Fit')}
         </button>
         <button
           onClick={() => setZoom(z => Math.min(4, z * 1.25))}
@@ -348,7 +351,12 @@ function GraphCanvas({
             <div
               key={node.id}
               data-gnode="1"
+              role="button"
+              tabIndex={0}
+              aria-pressed={node.id === selected}
+              aria-label={`Select ${node.title}`}
               onClick={() => setSelected(node.id === selected ? null : node.id)}
+              onKeyDown={(event) => handleKeyboardActivation(event, () => setSelected(node.id === selected ? null : node.id))}
               style={{
                 position: 'absolute',
                 left: node.x,
@@ -389,11 +397,17 @@ function GraphCanvas({
                 return (
                   <div
                     key={i}
+                    role={onValueChange ? 'button' : undefined}
+                    tabIndex={onValueChange ? 0 : undefined}
+                    aria-label={onValueChange ? `Edit ${row.key}` : undefined}
                     onClick={(event) => {
                       event.stopPropagation()
                       startEditing(node, i)
                     }}
-                    title={onValueChange ? 'Click to edit this value' : undefined}
+                    onKeyDown={(event) => {
+                      if (onValueChange) handleKeyboardActivation(event, () => startEditing(node, i))
+                    }}
+                    title={onValueChange ? tr('Click to edit this value') : undefined}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -422,8 +436,8 @@ function GraphCanvas({
                           if (event.key === 'Escape') setEditing(null)
                         }}
                         onBlur={commitEditing}
-                        aria-label={`Edit ${row.key}`}
-                        title={editing.error || 'Press Enter to save, Escape to cancel'}
+                        aria-label={tr('Edit {{key}}', { key: row.key })}
+                        title={editing.error ? tr(editing.error) : tr('Press Enter to save, Escape to cancel')}
                         style={{ color: editing.error ? 'var(--color-error)' : relationColor, background: 'var(--color-surface-0)', border: `1px solid ${editing.error ? 'var(--color-error)' : relationColor}`, borderRadius: 3, font: 'inherit', outline: 'none', maxWidth: 130, minWidth: 0, padding: '1px 4px', textAlign: 'right' }}
                       />
                     ) : (
@@ -434,7 +448,7 @@ function GraphCanvas({
                     {row.hasChild && row.childId && (
                       <button
                         onClick={(event) => { event.stopPropagation(); setSelected(row.childId!) }}
-                        title="Focus connected node"
+                        title={tr('Focus connected node')}
                         style={{ color: relationColor, fontSize: 12, flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}
                       >
                         →
@@ -537,6 +551,7 @@ interface TreeViewProps {
 }
 
 function TreeView({ parsed, expanded: expandedProp, onExpandedChange }: TreeViewProps) {
+  const tr = useUiTranslation()
   const [internalExpanded, setInternalExpanded] = useState<Set<string>>(() => new Set(['$']))
   const isControlled = expandedProp !== undefined
   const expanded = isControlled ? expandedProp! : internalExpanded
@@ -572,16 +587,16 @@ function TreeView({ parsed, expanded: expandedProp, onExpandedChange }: TreeView
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Search keys / values…"
+          placeholder={tr('Search keys / values…')}
           className="flex-1 bg-surface-2 border border-border-2 rounded px-2 py-0.5 text-xs font-mono text-text-1 placeholder:text-text-4 outline-none focus:border-accent"
         />
-        <button onClick={expandAll} className="px-2 py-0.5 text-[10px] text-text-3 hover:text-text-1 border border-border-2 rounded">expand all</button>
-        <button onClick={() => setExpanded(new Set(['$']))} className="px-2 py-0.5 text-[10px] text-text-3 hover:text-text-1 border border-border-2 rounded">collapse</button>
-        <span className="text-[10px] text-text-4 font-mono">{rows.length} rows</span>
+        <button onClick={expandAll} className="px-2 py-0.5 text-[10px] text-text-3 hover:text-text-1 border border-border-2 rounded">{tr('expand all')}</button>
+        <button onClick={() => setExpanded(new Set(['$']))} className="px-2 py-0.5 text-[10px] text-text-3 hover:text-text-1 border border-border-2 rounded">{tr('collapse')}</button>
+        <span className="text-[10px] text-text-4 font-mono">{tr('{{count}} rows', { count: rows.length })}</span>
       </div>
       <div className="flex-1 overflow-auto py-1">
         {rows.length === 0
-          ? <div className="flex items-center justify-center h-32 text-xs text-text-4">No matching nodes</div>
+          ? <div className="flex items-center justify-center h-32 text-xs text-text-4">{tr('No matching nodes')}</div>
           : rows.map(row => (
             <TreeRowItem
               key={row.path}
@@ -608,14 +623,20 @@ function TreeRowItem({ row, isExpanded, isSelected, onToggle, onSelect }: {
   const valColor = VAL_COLOR[row.valueType] ?? 'var(--color-text-3)'
   return (
     <div
+      role="treeitem"
+      tabIndex={0}
+      aria-selected={isSelected}
+      aria-expanded={row.expandable ? isExpanded : undefined}
       onClick={onSelect}
+      onKeyDown={(event) => handleKeyboardActivation(event, onSelect)}
       style={{ paddingLeft: row.depth * 18 + 6 }}
       className={cn(
-        'flex items-center gap-1.5 py-[3px] pr-3 cursor-pointer border-l-2 text-xs font-mono',
+        'flex items-center gap-1.5 py-[3px] pr-3 cursor-pointer border-l-2 text-xs font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent',
         isSelected ? 'bg-accent/8 border-accent' : 'border-transparent hover:bg-surface-2/60',
       )}
     >
       <button
+        aria-label={row.expandable ? `${isExpanded ? 'Collapse' : 'Expand'} ${row.key}` : undefined}
         onClick={e => { e.stopPropagation(); if (row.expandable) onToggle() }}
         className="w-[14px] h-[14px] flex items-center justify-center text-text-4 hover:text-text-2 flex-shrink-0"
       >
@@ -646,6 +667,7 @@ export function JsonGraphModal({
   onClose: () => void
   onChange?: (json: string) => void
 }) {
+  const tr = useUiTranslation()
   const [mode, setMode] = useState<'graph' | 'tree'>('graph')
 
   const parsed = useMemo(() => {
@@ -674,27 +696,27 @@ export function JsonGraphModal({
         <div className="flex items-center gap-2 px-4 py-2 border-b border-border-1 bg-surface-2 flex-shrink-0">
           <span className="text-xs font-semibold text-text-1 flex-1 truncate">{title}</span>
           {mode === 'graph' && (
-            <span className="text-[10px] text-text-4 font-mono">{nodes.length} nodes · {edges.length} edges</span>
+            <span className="text-[10px] text-text-4 font-mono">{tr('{{nodes}} nodes · {{edges}} edges', { nodes: nodes.length, edges: edges.length })}</span>
           )}
           <div className="flex items-center rounded border border-border-2 overflow-hidden">
             <button
               onClick={() => setMode('graph')}
               className={cn('flex items-center gap-1 px-2.5 py-1 text-[10px] transition-colors', mode === 'graph' ? 'bg-accent/20 text-accent-light' : 'text-text-3 hover:text-text-1')}
             >
-              <GitBranch size={11} /> Graph
+              <GitBranch size={11} /> {tr('Graph')}
             </button>
             <button
               onClick={() => setMode('tree')}
               className={cn('flex items-center gap-1 px-2.5 py-1 text-[10px] transition-colors border-l border-border-2', mode === 'tree' ? 'bg-accent/20 text-accent-light' : 'text-text-3 hover:text-text-1')}
             >
-              <List size={11} /> Tree
+              <List size={11} /> {tr('Tree')}
             </button>
           </div>
           <button
             onClick={() => navigator.clipboard.writeText(json)}
             className="flex items-center gap-1 px-2 py-1 text-[10px] text-text-3 hover:text-text-1 border border-border-2 rounded transition-colors"
           >
-            <Copy size={10} /> Copy
+            <Copy size={10} /> {tr('Copy')}
           </button>
           <button onClick={onClose} className="p-1 rounded text-text-4 hover:text-text-1 hover:bg-surface-3 transition-colors">
             <X size={15} />
@@ -705,7 +727,7 @@ export function JsonGraphModal({
         {parsed.error ? (
           <div className="flex-1 flex items-center justify-center text-xs text-error font-mono px-8">{parsed.error}</div>
         ) : !parsed.value || typeof parsed.value !== 'object' ? (
-          <div className="flex-1 flex items-center justify-center text-xs text-text-4">Graph requires an object or array JSON value</div>
+          <div className="flex-1 flex items-center justify-center text-xs text-text-4">{tr('Graph requires an object or array JSON value')}</div>
         ) : mode === 'graph' ? (
           <GraphCanvas nodes={nodes} edges={edges} onValueChange={onChange ? updateGraphValue : undefined} />
         ) : (
@@ -756,6 +778,7 @@ export function JsonGraphDiagram({
   json: string
   className?: string
 }) {
+  const tr = useUiTranslation()
   const parsed = useMemo(() => {
     try { return { value: JSON.parse(json), error: '' } }
     catch (e) { return { value: null, error: e instanceof Error ? e.message : 'Invalid JSON' } }
@@ -771,7 +794,7 @@ export function JsonGraphDiagram({
   }
 
   if (!parsed.value || typeof parsed.value !== 'object') {
-    return <div className="flex flex-1 items-center justify-center text-xs text-text-4">Graph requires an object or array JSON value</div>
+    return <div className="flex flex-1 items-center justify-center text-xs text-text-4">{tr('Graph requires an object or array JSON value')}</div>
   }
 
   return (

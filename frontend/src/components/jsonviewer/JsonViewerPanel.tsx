@@ -286,6 +286,7 @@ export function JsonViewerPanel() {
 
     return (
       <section
+        data-a11y-click-exempt="pane-activation-follows-focus"
         className={cn(
           'flex min-h-0 flex-1 flex-col overflow-hidden border-border-1',
           pane === 'right' && 'border-l',

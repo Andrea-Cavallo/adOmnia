@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react'
 import { AlertTriangle, HardDrive, Trash2, X } from 'lucide-react'
 import { useAppStore } from '@/stores/app'
 import { freeUpSpace, formatBytes } from '@/lib/storageMaintenance'
+import { useUiTranslation } from '@/lib/uiI18n'
 
 /**
  * Persistent (non-auto-dismissing) banner shown when localStorage quota is exceeded.
  * The user must export their workspace to acknowledge the risk.
  */
 export function StorageQuotaBanner() {
+  const tr = useUiTranslation()
   const [visible, setVisible] = useState(false)
   const [freed, setFreed] = useState<number | null>(null)
   const setActiveRail = useAppStore((s) => s.setActiveRail)
@@ -60,33 +62,33 @@ export function StorageQuotaBanner() {
       <AlertTriangle size={14} className="shrink-0 text-amber-400" />
       <HardDrive size={13} className="shrink-0 text-amber-400/70" />
       <span className="flex-1">
-        <strong>Storage quota exceeded.</strong>{' '}
+        <strong>{tr('Storage quota exceeded.')}</strong>{' '}
         {freed !== null
-          ? <>Freed {formatBytes(freed)} by clearing call history.</>
-          : <>Some local data may not have been saved.{' '}
+          ? <>{tr('Freed')} {formatBytes(freed)} {tr('by clearing call history.')}</>
+          : <>{tr('Some local data may not have been saved.')}{' '}
               <button
                 onClick={() => setActiveRail('workspace')}
                 className="underline underline-offset-2 hover:text-amber-300 transition-colors"
               >
-                Export your workspace
+                {tr('Export your workspace')}
               </button>{' '}
-              to avoid data loss.</>
+              {tr('to avoid data loss.')}</>
         }
       </span>
       {freed === null && (
         <button
           onClick={handleFreeUp}
-          title="Clear call/response history and caches to reclaim space"
+          title={tr('Clear call/response history and caches to reclaim space')}
           className="shrink-0 inline-flex items-center gap-1 rounded border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 font-semibold hover:bg-amber-500/25 transition-colors"
         >
-          <Trash2 size={12} /> Free up space
+          <Trash2 size={12} /> {tr('Free up space')}
         </button>
       )}
       <button
         onClick={() => setVisible(false)}
-        title="Dismiss (data may still be at risk)"
+        title={tr('Dismiss (data may still be at risk)')}
         className="shrink-0 rounded p-0.5 hover:bg-amber-500/20 transition-colors"
-        aria-label="Dismiss storage warning"
+        aria-label={tr('Dismiss storage warning')}
       >
         <X size={13} />
       </button>

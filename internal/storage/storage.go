@@ -26,15 +26,16 @@ var (
 
 // Bucket names
 var storeBuckets = []string{
-	"workspace",    // workspace payloads, app settings
-	"collections",  // collection tree
-	"environments", // environments and active env
-	"tabs",         // open request tabs and response history
-	"database",     // database studio connections/history/favorites
-	"history",      // request/response history
-	"mock",         // mock server config + hits
-	"proxy",        // proxy/interceptor config + traffic
-	"pdfprojects",  // PDF Editor projects (base64 PDF bytes + annotation layer)
+	"workspace",          // workspace payloads, app settings
+	"collections",        // collection tree
+	"environments",       // environments and active env
+	"tabs",               // open request tabs and response history
+	"database",           // database studio connections/history/favorites
+	"broker_connections", // broker profiles with Vault references only
+	"history",            // request/response history
+	"mock",               // mock server config + hits
+	"proxy",              // proxy/interceptor config + traffic
+	"pdfprojects",        // PDF Editor projects (base64 PDF bytes + annotation layer)
 }
 
 const storagePutMaxBodyBytes = 100 * 1024 * 1024
@@ -413,7 +414,7 @@ func storageExportHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		c := b.Cursor()
 		for k, v := c.First(); k != nil; k, v = c.Next() {
-			export[string(k)] = string(v)
+			export[string(k)] = RedactValueForExport(v)
 		}
 		return nil
 	}); err != nil {
@@ -475,7 +476,7 @@ func storageSnapshotHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			c := b.Cursor()
 			for k, v := c.First(); k != nil; k, v = c.Next() {
-				export[bucket+"/"+string(k)] = string(v)
+				export[bucket+"/"+string(k)] = RedactValueForExport(v)
 			}
 		}
 		return nil

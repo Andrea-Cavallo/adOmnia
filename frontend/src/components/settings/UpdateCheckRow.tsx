@@ -1,35 +1,24 @@
 import { useState } from 'react'
 import { RefreshCw, CheckCircle2, Sparkles, AlertCircle } from 'lucide-react'
-import { CheckForUpdate } from '@/wailsjs/go/main/App'
+import { runManualUpdateCheck, type ManualUpdateResult } from '@/lib/manualUpdateCheck'
 import { BrowserOpenURL } from '@/wailsjs/runtime/runtime'
 
 type State =
   | { kind: 'idle' }
   | { kind: 'checking' }
-  | { kind: 'current' }
-  | { kind: 'available'; version: string; url: string }
-  | { kind: 'dev' }
-  | { kind: 'error' }
+  | ManualUpdateResult
 
 /**
- * Manual "Check for updates" row for the About settings section. Lets users who
- * were offline at startup re-check, and confirms when they're up to date.
- * Notify-only — opens the release page, never downloads.
+ * Manual "Check for updates" row for the About settings section. GitHub is
+ * contacted only after the user presses the button. Notify-only: an available
+ * release opens in the browser and is never downloaded automatically.
  */
 export function UpdateCheckRow() {
   const [state, setState] = useState<State>({ kind: 'idle' })
 
   const check = async () => {
     setState({ kind: 'checking' })
-    try {
-      const info = await CheckForUpdate()
-      if (info.isDev) setState({ kind: 'dev' })
-      else if (info.updateAvailable)
-        setState({ kind: 'available', version: info.latestVersion, url: info.releaseUrl })
-      else setState({ kind: 'current' })
-    } catch {
-      setState({ kind: 'error' })
-    }
+    setState(await runManualUpdateCheck())
   }
 
   return (
@@ -38,8 +27,8 @@ export function UpdateCheckRow() {
         {state.kind === 'current' && <CheckCircle2 size={13} className="shrink-0 text-emerald-500" />}
         {state.kind === 'available' && <Sparkles size={13} className="shrink-0 text-accent" />}
         {state.kind === 'error' && <AlertCircle size={13} className="shrink-0 text-amber-500" />}
-        <span className="text-xs text-text-2 truncate">
-          {state.kind === 'idle' && 'Check GitHub for a newer release'}
+        <span role="status" aria-live="polite" className="text-xs text-text-2 truncate">
+          {state.kind === 'idle' && 'Contacts GitHub only when you choose to check'}
           {state.kind === 'checking' && 'Checking…'}
           {state.kind === 'current' && "You're on the latest version"}
           {state.kind === 'dev' && 'Development build — update check skipped'}

@@ -4,6 +4,19 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [Unreleased]
+
+### Added
+- **Executable JavaScript plugins:** installed plugins can now load their declared entry point, run through request lifecycle hooks, surface notifications, and contribute to real request workflows within the local plugin runtime.
+- **Keyboard-accessible core workflows:** interactive cards, rows, tabs, trees, graphs, annotations, and dialogs now support semantic keyboard activation, contextual actions, predictable focus trapping, and focus restoration.
+
+### Changed
+- **Explicit update checks:** update lookups now run only after a user action, removing automatic network requests during application startup.
+- **Complete core-workflow localization:** the primary product workflows now provide consistent English and Italian copy, including dialogs, feedback, errors, and accessibility labels.
+
+### Security
+- **Vault-backed persisted credentials:** database and broker connection profiles now persist Vault references instead of plaintext secrets, preserve existing profiles during migration, and redact sensitive values from stored or displayed data.
+
 ## [0.6.10] - 2026-08-06
 
 ### Fixed

@@ -103,6 +103,25 @@ func Execute(reqJSON string) string {
 	return mustJSON(executeHTTPRequest(req))
 }
 
+// ExecuteWithHooks applies plugin transformations immediately before the
+// request and immediately after the response. Hook failures are surfaced as a
+// normal execution error instead of silently bypassing an enabled plugin.
+func ExecuteWithHooks(reqJSON string, transform func(eventType, payloadJSON string) (string, error)) string {
+	var err error
+	for _, eventType := range []string{"onSend", "onRequest"} {
+		reqJSON, err = transform(eventType, reqJSON)
+		if err != nil {
+			return mustJSON(HTTPExecResponse{Error: &HTTPExecError{Code: "PLUGIN_HOOK_ERR", Message: err.Error()}})
+		}
+	}
+	responseJSON := Execute(reqJSON)
+	responseJSON, err = transform("onResponse", responseJSON)
+	if err != nil {
+		return mustJSON(HTTPExecResponse{Error: &HTTPExecError{Code: "PLUGIN_HOOK_ERR", Message: err.Error()}})
+	}
+	return responseJSON
+}
+
 func mustJSON(v any) string {
 	b, _ := json.Marshal(v)
 	return string(b)

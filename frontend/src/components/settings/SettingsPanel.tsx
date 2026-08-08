@@ -32,6 +32,7 @@ import { AISettings } from './AISettings'
 import { DangerZone, SectionHeader, SettingsCard } from './SettingsLayout'
 import { UpdateCheckRow } from './UpdateCheckRow'
 import { WorkspacePanel } from '@/components/workspace/WorkspacePanel'
+import { redactSensitiveData } from '@/lib/secretRedaction'
 
 function appBinding() {
   return window.go?.main?.App
@@ -230,7 +231,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
   }, [normalizedSearch, section, sectionDefs])
 
   const handleExportSettings = useCallback(() => {
-    const blob = new Blob([JSON.stringify(settings, null, 2)], {
+    const blob = new Blob([JSON.stringify(redactSensitiveData(settings), null, 2)], {
       type: 'application/json',
     })
     const url = URL.createObjectURL(blob)

@@ -27,8 +27,7 @@ import {
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { confirm } from '@/lib/confirmDialog'
 import { cn } from '@/lib/utils'
-import { useAppStore } from '@/stores/app'
-import { safeSetItem } from '@/lib/safeLocalStorage'
+import { resolveBrokerPayload } from '@/lib/brokerConnections'
 import { ConnectionProfiles } from './ConnectionProfiles'
 
 type Tab = 'overview' | 'topics' | 'groups' | 'messages' | 'produce' | 'load'
@@ -171,12 +170,6 @@ const inputClass = 'h-8 px-2 bg-surface-2 border border-border-2 rounded text-xs
 const textAreaClass = 'px-3 py-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 font-mono outline-none focus:border-accent resize-y'
 const labelClass = 'text-[10px] text-text-4 uppercase tracking-wider'
 
-function sendKafkaSecretToVault(name: string, value: string, note: string) {
-  if (!value) return
-  safeSetItem('adomnia.vault.pendingSecret', JSON.stringify({ name, value, note }))
-  useAppStore.getState().setActiveRail('vault')
-}
-
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="flex min-w-0 flex-col gap-1">
@@ -298,14 +291,16 @@ export function KafkaPanel({
   const [error, setError] = useState('')
 
   useEffect(() => {
-    const raw = localStorage.getItem('adomnia.broker.pending')
+    const raw = sessionStorage.getItem('adomnia.broker.pending') ?? localStorage.getItem('adomnia.broker.pending')
     if (!raw) return
     try {
       const pending = JSON.parse(raw) as { protocol?: string; kafka?: Partial<BrokerConfig> }
       if (pending.protocol !== 'kafka' || !pending.kafka) return
       setCfg((current) => ({ ...current, ...pending.kafka }))
+      sessionStorage.removeItem('adomnia.broker.pending')
       localStorage.removeItem('adomnia.broker.pending')
     } catch {
+      sessionStorage.removeItem('adomnia.broker.pending')
       localStorage.removeItem('adomnia.broker.pending')
     }
   }, [])
@@ -347,7 +342,7 @@ export function KafkaPanel({
       const response = await sidecarFetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify(await resolveBrokerPayload(body)),
       })
       const data = await response.json() as T
       setActionResult(data)
@@ -809,9 +804,6 @@ function ConnectionCard({ cfg, setCfg }: { cfg: BrokerConfig; setCfg: Dispatch<S
             <input value={cfg.saslUsername} onChange={(event) => setCfg({ ...cfg, saslUsername: event.target.value })} placeholder="username" className={inputClass} />
             <input type="password" value={cfg.saslPassword} onChange={(event) => setCfg({ ...cfg, saslPassword: event.target.value })} placeholder="password" className={inputClass} />
           </div>
-          <button onClick={() => sendKafkaSecretToVault('Kafka SASL password', cfg.saslPassword, `Kafka brokers ${cfg.brokers}`)} disabled={!cfg.saslPassword} className="mt-2 text-[10px] text-text-4 hover:text-accent disabled:opacity-40">
-            Send SASL password to Vault
-          </button>
         </>
       )}
     </div>

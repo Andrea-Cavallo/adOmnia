@@ -357,7 +357,31 @@ function MermaidPreview({
 
     const svgNode = target.querySelector('svg') as SVGSVGElement | null
     setNaturalSize((current) => readSvgSize(svgNode, current))
+
+    for (const node of target.querySelectorAll<HTMLElement>('.node')) {
+      const nodeId = nodeIdFromSvgElement(node)
+      if (!nodeId) continue
+      node.setAttribute('role', 'button')
+      node.setAttribute('tabindex', '0')
+      node.setAttribute('aria-label', `Mermaid node ${nodeId}`)
+    }
   }, [svg])
+
+  const handleNodeKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
+    const node = findSvgNodeElement(event.target)
+    const nodeId = nodeIdFromSvgElement(node)
+    if (!nodeId) return
+    if (event.key === 'F2') {
+      event.preventDefault()
+      onRenameNode(nodeId)
+      return
+    }
+    if (event.key === 'Enter' || event.key === ' ' || event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
+      event.preventDefault()
+      const rect = node?.getBoundingClientRect()
+      setStyleMenu({ nodeId, x: rect?.left ?? 0, y: rect?.bottom ?? 0 })
+    }
+  }, [onRenameNode])
 
   const handleWheel = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
     if (error || !svg) return
@@ -435,6 +459,7 @@ function MermaidPreview({
   return (
     <div
       ref={viewportRef}
+      data-a11y-click-exempt="delegated-keyboard-enabled-svg-nodes"
       onWheel={handleWheel}
       onPointerDown={startPan}
       onPointerMove={movePan}
@@ -442,6 +467,7 @@ function MermaidPreview({
       onPointerCancel={stopPan}
       onContextMenu={handleContextMenu}
       onDoubleClick={handleDoubleClick}
+      onKeyDown={handleNodeKeyDown}
       className={cn(
         'relative min-h-0 flex-1 overflow-auto bg-white overscroll-contain',
         svg && !error ? (isPanning ? 'cursor-grabbing' : 'cursor-grab') : '',

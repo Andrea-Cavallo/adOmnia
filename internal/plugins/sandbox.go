@@ -1,6 +1,5 @@
-// plugins_wasm.go — Simulated WASM sandbox runtime for plugin execution.
-// For the MVP, plugins execute as host functions mapped by ID (registry pattern).
-// A real WASM runtime (wazero) would replace the simulated execution in the future.
+// Plugin runtime with isolated JavaScript execution and permission-aware host APIs.
+// The exported WasmRuntime name is retained for Wails binding compatibility.
 
 package plugins
 
@@ -22,7 +21,27 @@ import (
 )
 
 // HostFunction is a callable function that plugins can invoke from their sandbox.
-type HostFunction func(args json.RawMessage) (json.RawMessage, error)
+type HostFunction func(ctx context.Context, args json.RawMessage) (json.RawMessage, error)
+
+// PluginNotification is emitted by the permission-gated ui.notify host API.
+type PluginNotification struct {
+	PluginID string `json:"pluginId"`
+	Title    string `json:"title"`
+	Message  string `json:"message"`
+	Type     string `json:"type"`
+}
+
+var (
+	notifierMu sync.RWMutex
+	notifier   func(PluginNotification)
+)
+
+// ConfigureNotifier connects ui.notify to the desktop event layer.
+func ConfigureNotifier(callback func(PluginNotification)) {
+	notifierMu.Lock()
+	notifier = callback
+	notifierMu.Unlock()
+}
 
 // WasmRuntime manages plugin sandboxes and execution.
 type WasmRuntime struct {
@@ -30,6 +49,7 @@ type WasmRuntime struct {
 	sandboxes   map[string]*PluginSandbox
 	memoryLimit int64
 	timeLimit   time.Duration
+	manager     *PluginManager
 }
 
 // PluginSandbox is an isolated execution environment for a single plugin.
@@ -51,11 +71,11 @@ type ExecRequest struct {
 
 // ExecResult is the outcome of a sandbox execution.
 type ExecResult struct {
-	Success bool                   `json:"success"`
-	Data    map[string]interface{} `json:"data,omitempty"`
-	Error   string                 `json:"error,omitempty"`
-	MemUsed int64                  `json:"memUsed"`
-	TimeMs  float64                `json:"timeMs"`
+	Success bool        `json:"success"`
+	Data    interface{} `json:"data,omitempty"`
+	Error   string      `json:"error,omitempty"`
+	MemUsed int64       `json:"memUsed"`
+	TimeMs  float64     `json:"timeMs"`
 }
 
 // defaultHostFunctions are safe functions that plugins can call.
@@ -73,8 +93,16 @@ var defaultHostFunctions = map[string]HostFunction{
 // NewWasmRuntime creates a new WasmRuntime instance.
 func NewWasmRuntime() *WasmRuntime {
 	return &WasmRuntime{
-		sandboxes: make(map[string]*PluginSandbox),
+		sandboxes:   make(map[string]*PluginSandbox),
+		memoryLimit: 64 * 1024 * 1024,
+		timeLimit:   10 * time.Second,
 	}
+}
+
+func (wr *WasmRuntime) attachManager(manager *PluginManager) {
+	wr.mu.Lock()
+	wr.manager = manager
+	wr.mu.Unlock()
 }
 
 // Init initializes the runtime with default limits (64MB memory, 10s timeout).
@@ -82,12 +110,34 @@ func (wr *WasmRuntime) Init() error {
 	wr.mu.Lock()
 	defer wr.mu.Unlock()
 
-	wr.memoryLimit = 64 * 1024 * 1024 // 64MB
-	wr.timeLimit = 10 * time.Second
+	if wr.memoryLimit <= 0 {
+		wr.memoryLimit = 64 * 1024 * 1024
+	}
+	if wr.timeLimit <= 0 {
+		wr.timeLimit = 10 * time.Second
+	}
 
-	log.Printf("[wasm] runtime initialized: memoryLimit=%dMB, timeLimit=%s",
+	log.Printf("[plugins] runtime initialized: memoryLimit=%dMB, timeLimit=%s",
 		wr.memoryLimit/(1024*1024), wr.timeLimit)
 	return nil
+}
+
+func (wr *WasmRuntime) ensureSandbox(pluginID string) *PluginSandbox {
+	if sandbox, exists := wr.sandboxes[pluginID]; exists {
+		return sandbox
+	}
+	hostFuncs := make(map[string]HostFunction, len(defaultHostFunctions))
+	for name, fn := range defaultHostFunctions {
+		hostFuncs[name] = fn
+	}
+	sandbox := &PluginSandbox{
+		PluginID:  pluginID,
+		MaxMemory: wr.memoryLimit,
+		Timeout:   wr.timeLimit,
+		HostFuncs: hostFuncs,
+	}
+	wr.sandboxes[pluginID] = sandbox
+	return sandbox
 }
 
 // CreateSandbox creates an isolated sandbox for a plugin.
@@ -113,7 +163,7 @@ func (wr *WasmRuntime) CreateSandbox(pluginID string) error {
 		Running:   false,
 	}
 
-	log.Printf("[wasm] sandbox created for plugin: %s", pluginID)
+	log.Printf("[plugins] sandbox created for plugin: %s", pluginID)
 	return nil
 }
 
@@ -132,118 +182,65 @@ func (wr *WasmRuntime) DestroySandbox(pluginID string) error {
 	}
 
 	delete(wr.sandboxes, pluginID)
-	log.Printf("[wasm] sandbox destroyed for plugin: %s", pluginID)
+	log.Printf("[plugins] sandbox destroyed for plugin: %s", pluginID)
 	return nil
 }
 
 // Execute runs a function in a plugin's sandbox with timeout and memory tracking.
 func (wr *WasmRuntime) Execute(req ExecRequest) ExecResult {
 	wr.mu.Lock()
-	sandbox, exists := wr.sandboxes[req.PluginID]
-	if !exists {
-		wr.mu.Unlock()
-		return ExecResult{
-			Success: false,
-			Error:   fmt.Sprintf("sandbox not found for plugin: %s", req.PluginID),
-		}
-	}
+	sandbox := wr.ensureSandbox(req.PluginID)
+	manager := wr.manager
 
 	if sandbox.Running {
 		wr.mu.Unlock()
-		return ExecResult{
-			Success: false,
-			Error:   fmt.Sprintf("sandbox already running for plugin: %s", req.PluginID),
-		}
+		return failedExecResult(fmt.Errorf("sandbox already running for plugin: %s", req.PluginID))
 	}
 
 	sandbox.Running = true
+	timeLimit := sandbox.Timeout
+	memoryLimit := sandbox.MaxMemory
 	wr.mu.Unlock()
-
-	start := time.Now()
-
-	// Execute with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), sandbox.Timeout)
-	defer cancel()
-
-	type execOutput struct {
-		result json.RawMessage
-		err    error
-	}
-
-	ch := make(chan execOutput, 1)
-
-	go func() {
-		// Look up function in host functions
-		fn, ok := sandbox.HostFuncs[req.Function]
-		if !ok {
-			ch <- execOutput{err: fmt.Errorf("unknown function: %s", req.Function)}
-			return
-		}
-
-		// Marshal args to JSON for the host function
-		argsJSON, err := json.Marshal(req.Args)
-		if err != nil {
-			ch <- execOutput{err: fmt.Errorf("failed to marshal args: %w", err)}
-			return
-		}
-
-		result, err := fn(argsJSON)
-		ch <- execOutput{result: result, err: err}
+	defer func() {
+		wr.mu.Lock()
+		sandbox.Running = false
+		wr.mu.Unlock()
 	}()
 
-	var execResult ExecResult
-
-	select {
-	case <-ctx.Done():
-		execResult = ExecResult{
-			Success: false,
-			Error:   fmt.Sprintf("execution timed out after %s", sandbox.Timeout),
-			TimeMs:  float64(time.Since(start).Milliseconds()),
-		}
-	case out := <-ch:
-		elapsed := time.Since(start)
-		if out.err != nil {
-			execResult = ExecResult{
-				Success: false,
-				Error:   out.err.Error(),
-				TimeMs:  float64(elapsed.Milliseconds()),
-			}
-		} else {
-			// Estimate memory from JSON sizes
-			memUsed := int64(len(out.result))
-
-			// Check memory limit
-			if sandbox.Memory+memUsed > sandbox.MaxMemory {
-				execResult = ExecResult{
-					Success: false,
-					Error:   fmt.Sprintf("memory limit exceeded: %d + %d > %d", sandbox.Memory, memUsed, sandbox.MaxMemory),
-					MemUsed: sandbox.Memory,
-					TimeMs:  float64(elapsed.Milliseconds()),
-				}
-			} else {
-				sandbox.Memory += memUsed
-
-				var data map[string]interface{}
-				if out.result != nil {
-					json.Unmarshal(out.result, &data)
-				}
-
-				execResult = ExecResult{
-					Success: true,
-					Data:    data,
-					MemUsed: sandbox.Memory,
-					TimeMs:  float64(elapsed.Milliseconds()),
-				}
-			}
-		}
+	start := time.Now()
+	if manager == nil {
+		return timedExecError(start, fmt.Errorf("plugin runtime is not attached to the plugin manager"))
 	}
-
-	// Mark sandbox as not running
+	plugin, err := manager.pluginForExecution(req.PluginID)
+	if err != nil {
+		return timedExecError(start, err)
+	}
+	if plugin.Manifest.Runtime != "js" {
+		return timedExecError(start, fmt.Errorf("runtime %s is not executable", plugin.Manifest.Runtime))
+	}
+	data, memUsed, err := executeJavaScriptPlugin(plugin, req.Function, req.Args, sandbox.HostFuncs, timeLimit, memoryLimit)
+	if err != nil {
+		result := timedExecError(start, err)
+		result.MemUsed = memUsed
+		return result
+	}
 	wr.mu.Lock()
-	sandbox.Running = false
+	sandbox.Memory = memUsed
 	wr.mu.Unlock()
+	return ExecResult{
+		Success: true,
+		Data:    data,
+		MemUsed: memUsed,
+		TimeMs:  float64(time.Since(start).Microseconds()) / 1000,
+	}
+}
 
-	return execResult
+func failedExecResult(err error) ExecResult {
+	return ExecResult{Success: false, Error: err.Error()}
+}
+
+func timedExecError(start time.Time, err error) ExecResult {
+	return ExecResult{Success: false, Error: err.Error(), TimeMs: float64(time.Since(start).Microseconds()) / 1000}
 }
 
 // GetSandboxStatus returns the current status of a plugin's sandbox.
@@ -251,10 +248,7 @@ func (wr *WasmRuntime) GetSandboxStatus(pluginID string) (*PluginSandbox, error)
 	wr.mu.Lock()
 	defer wr.mu.Unlock()
 
-	sandbox, exists := wr.sandboxes[pluginID]
-	if !exists {
-		return nil, fmt.Errorf("sandbox not found for plugin: %s", pluginID)
-	}
+	sandbox := wr.ensureSandbox(pluginID)
 
 	// Return a copy without the host functions
 	return &PluginSandbox{
@@ -281,7 +275,7 @@ func (wr *WasmRuntime) SetMemoryLimit(pluginID string, bytes int64) error {
 	}
 
 	sandbox.MaxMemory = bytes
-	log.Printf("[wasm] memory limit set for %s: %d bytes", pluginID, bytes)
+	log.Printf("[plugins] memory limit set for %s: %d bytes", pluginID, bytes)
 	return nil
 }
 
@@ -300,15 +294,16 @@ func (wr *WasmRuntime) SetTimeLimit(pluginID string, ms int64) error {
 	}
 
 	sandbox.Timeout = time.Duration(ms) * time.Millisecond
-	log.Printf("[wasm] time limit set for %s: %dms", pluginID, ms)
+	log.Printf("[plugins] time limit set for %s: %dms", pluginID, ms)
 	return nil
 }
 
 // GetRuntimeMode returns the current execution mode of the plugin runtime.
 func (wr *WasmRuntime) GetRuntimeMode() map[string]interface{} {
 	return map[string]interface{}{
-		"mode":        "host-function",
-		"description": "Plugins can call pre-registered host functions. WASM bytecode execution (wazero) is on the roadmap.",
+		"mode":        "javascript",
+		"description": "Installed JavaScript entrypoints execute in an isolated goja runtime with permissions, timeout and I/O memory limits.",
+		"jsReady":     true,
 		"wasmReady":   false,
 	}
 }
@@ -336,7 +331,7 @@ var allowedEnvVars = map[string]bool{
 
 // hostHTTPFetch makes an HTTP request with restrictions:
 // max 10s timeout, max 1MB response, blocked private IPs.
-func hostHTTPFetch(args json.RawMessage) (json.RawMessage, error) {
+func hostHTTPFetch(ctx context.Context, args json.RawMessage) (json.RawMessage, error) {
 	var params struct {
 		URL     string            `json:"url"`
 		Method  string            `json:"method"`
@@ -368,7 +363,7 @@ func hostHTTPFetch(args json.RawMessage) (json.RawMessage, error) {
 		bodyReader = strings.NewReader(params.Body)
 	}
 
-	req, err := http.NewRequest(params.Method, params.URL, bodyReader)
+	req, err := http.NewRequestWithContext(ctx, params.Method, params.URL, bodyReader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -439,7 +434,7 @@ func checkPrivateIP(rawURL string) error {
 }
 
 // hostStorageGet reads from plugin's own storage namespace in bbolt.
-func hostStorageGet(args json.RawMessage) (json.RawMessage, error) {
+func hostStorageGet(_ context.Context, args json.RawMessage) (json.RawMessage, error) {
 	var params struct {
 		Key      string `json:"key"`
 		PluginID string `json:"pluginId"`
@@ -487,7 +482,7 @@ func hostStorageGet(args json.RawMessage) (json.RawMessage, error) {
 }
 
 // hostStorageSet writes to plugin's own storage namespace in bbolt.
-func hostStorageSet(args json.RawMessage) (json.RawMessage, error) {
+func hostStorageSet(_ context.Context, args json.RawMessage) (json.RawMessage, error) {
 	var params struct {
 		Key      string `json:"key"`
 		Value    string `json:"value"`
@@ -525,7 +520,7 @@ func hostStorageSet(args json.RawMessage) (json.RawMessage, error) {
 }
 
 // hostStorageDelete removes a key from plugin's own storage namespace.
-func hostStorageDelete(args json.RawMessage) (json.RawMessage, error) {
+func hostStorageDelete(_ context.Context, args json.RawMessage) (json.RawMessage, error) {
 	var params struct {
 		Key      string `json:"key"`
 		PluginID string `json:"pluginId"`
@@ -562,7 +557,7 @@ func hostStorageDelete(args json.RawMessage) (json.RawMessage, error) {
 }
 
 // hostLogInfo logs an info message with plugin prefix.
-func hostLogInfo(args json.RawMessage) (json.RawMessage, error) {
+func hostLogInfo(_ context.Context, args json.RawMessage) (json.RawMessage, error) {
 	var params struct {
 		Message  string `json:"message"`
 		PluginID string `json:"pluginId"`
@@ -578,7 +573,7 @@ func hostLogInfo(args json.RawMessage) (json.RawMessage, error) {
 }
 
 // hostLogError logs an error message with plugin prefix.
-func hostLogError(args json.RawMessage) (json.RawMessage, error) {
+func hostLogError(_ context.Context, args json.RawMessage) (json.RawMessage, error) {
 	var params struct {
 		Message  string `json:"message"`
 		PluginID string `json:"pluginId"`
@@ -593,8 +588,8 @@ func hostLogError(args json.RawMessage) (json.RawMessage, error) {
 	return json.Marshal(result)
 }
 
-// hostUINotify shows a notification to the user (logs for now, will emit Wails event later).
-func hostUINotify(args json.RawMessage) (json.RawMessage, error) {
+// hostUINotify emits a desktop notification event for the frontend toast host.
+func hostUINotify(_ context.Context, args json.RawMessage) (json.RawMessage, error) {
 	var params struct {
 		Title    string `json:"title"`
 		Message  string `json:"message"`
@@ -608,8 +603,27 @@ func hostUINotify(args json.RawMessage) (json.RawMessage, error) {
 	if params.Type == "" {
 		params.Type = "info"
 	}
+	switch params.Type {
+	case "info", "warning", "error", "success":
+	default:
+		return nil, fmt.Errorf("invalid notification type: %s", params.Type)
+	}
+	if strings.TrimSpace(params.Message) == "" {
+		return nil, fmt.Errorf("message is required")
+	}
 
-	// For now, just log. In the future, this will emit a Wails event to the frontend.
+	notifierMu.RLock()
+	callback := notifier
+	notifierMu.RUnlock()
+	if callback == nil {
+		return nil, fmt.Errorf("notification host is not available")
+	}
+	callback(PluginNotification{
+		PluginID: params.PluginID,
+		Title:    params.Title,
+		Message:  params.Message,
+		Type:     params.Type,
+	})
 	log.Printf("[plugin:%s] NOTIFY [%s] %s: %s", params.PluginID, params.Type, params.Title, params.Message)
 
 	result := map[string]interface{}{"ok": true}
@@ -617,7 +631,7 @@ func hostUINotify(args json.RawMessage) (json.RawMessage, error) {
 }
 
 // hostEnvGet reads an OS environment variable from the allowlist only.
-func hostEnvGet(args json.RawMessage) (json.RawMessage, error) {
+func hostEnvGet(_ context.Context, args json.RawMessage) (json.RawMessage, error) {
 	var params struct {
 		Name string `json:"name"`
 	}

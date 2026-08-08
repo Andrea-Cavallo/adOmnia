@@ -1,8 +1,9 @@
-import { useState } from 'react'
-import { AlertTriangle, GripVertical, Loader2 } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { AlertTriangle, ArrowDown, ArrowUp, GripVertical, Loader2 } from 'lucide-react'
 import { startInteractiveRebase } from '@/lib/git/gitService'
 import type { OpResult, RebaseAction, RebasePlan, RebaseTodoItem } from '@/lib/git/types'
 import { cn } from '@/lib/utils'
+import { useModalFocusTrap } from '@/lib/accessibility'
 
 interface InteractiveRebaseDialogProps {
   repoPath: string
@@ -33,6 +34,9 @@ export function InteractiveRebaseDialog({ repoPath, plan, onStarted, onClose }: 
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const dialogRef = useRef<HTMLDivElement>(null)
+
+  useModalFocusTrap(true, onClose, dialogRef)
 
   const setAction = (index: number, action: RebaseAction) =>
     setItems((cur) => cur.map((it, i) => (i === index ? { ...it, action } : it)))
@@ -48,6 +52,16 @@ export function InteractiveRebaseDialog({ repoPath, plan, onStarted, onClose }: 
       return next
     })
     setDragIndex(null)
+  }
+
+  const moveItem = (index: number, target: number) => {
+    if (target < 0 || target >= items.length || index === target) return
+    setItems((current) => {
+      const next = [...current]
+      const [moved] = next.splice(index, 1)
+      next.splice(target, 0, moved)
+      return next
+    })
   }
 
   const rewritten = items.filter((i) => i.action !== 'pick').length
@@ -69,7 +83,7 @@ export function InteractiveRebaseDialog({ repoPath, plan, onStarted, onClose }: 
 
   return (
     <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/65 backdrop-blur-[2px] p-6" onClick={onClose}>
-      <div className="flex max-h-[82vh] w-[620px] flex-col overflow-hidden rounded-xl border border-border-2 bg-surface-1 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Interactive rebase" tabIndex={-1} className="flex max-h-[82vh] w-[620px] flex-col overflow-hidden rounded-xl border border-border-2 bg-surface-1 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="border-b border-border-1 px-4 py-3">
           <div className="text-sm font-semibold text-text-1">Interactive rebase</div>
           <div className="mt-0.5 font-mono text-[10px] text-text-4">{plan.branch} · base {plan.baseRef.slice(0, 9)} · {items.length} commits</div>
@@ -93,6 +107,10 @@ export function InteractiveRebaseDialog({ repoPath, plan, onStarted, onClose }: 
                 )}
               >
                 <GripVertical size={13} className="shrink-0 cursor-grab text-text-4" />
+                <div className="flex shrink-0 flex-col">
+                  <button type="button" aria-label={`Move ${it.hash.slice(0, 7)} up`} disabled={index === 0} onClick={() => moveItem(index, index - 1)} className="rounded text-text-4 hover:text-text-1 disabled:opacity-25"><ArrowUp size={10} /></button>
+                  <button type="button" aria-label={`Move ${it.hash.slice(0, 7)} down`} disabled={index === items.length - 1} onClick={() => moveItem(index, index + 1)} className="rounded text-text-4 hover:text-text-1 disabled:opacity-25"><ArrowDown size={10} /></button>
+                </div>
                 <select
                   value={it.action}
                   onChange={(e) => setAction(index, e.target.value as RebaseAction)}

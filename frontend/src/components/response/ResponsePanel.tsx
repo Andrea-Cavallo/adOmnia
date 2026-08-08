@@ -14,6 +14,7 @@ import { useEnvironmentsStore } from '@/stores/environments'
 import { ContextMenu } from '@/components/ui/ContextMenu'
 import { uid } from '@/lib/types'
 import responseLogo from '../../../../assets/images/spinner.png'
+import { useUiTranslation } from '@/lib/uiI18n'
 
 interface ResponsePanelProps {
   tabId: string
@@ -26,11 +27,12 @@ interface ResponsePanelProps {
 }
 
 function ResponseWaitingState({ loading }: { loading: boolean }) {
+  const tr = useUiTranslation()
   if (loading) {
     return (
       <div className="flex min-h-0 flex-1 flex-col">
         <div className="flex items-center gap-3 border-b border-border-1 px-3 py-2">
-          <span className="text-xs font-medium text-text-2">Response</span>
+          <span className="text-xs font-medium text-text-2">{tr('Response')}</span>
           <span className="h-5 w-16 rounded adomnia-skeleton" />
           <div className="ml-auto flex items-center gap-3">
             <span className="h-3 w-14 rounded adomnia-skeleton" />
@@ -69,10 +71,10 @@ function ResponseWaitingState({ loading }: { loading: boolean }) {
           )}
         />
         <p className="text-sm text-text-3">
-          Ready for the response.
+          {tr('Ready for the response.')}
         </p>
         <p className="mt-1 text-xs text-text-4">
-          or press <kbd className="rounded bg-surface-3 px-1 py-0.5 text-[10px]">Ctrl</kbd>
+          {tr('or press')} <kbd className="rounded bg-surface-3 px-1 py-0.5 text-[10px]">Ctrl</kbd>
           <span className="mx-0.5">+</span>
           <kbd className="rounded bg-surface-3 px-1 py-0.5 text-[10px]">Enter</kbd>
         </p>
@@ -95,6 +97,7 @@ function statusClass(status: number): string {
 }
 
 function NetworkTimeline({ response }: { response: ResponseData }) {
+  const tr = useUiTranslation()
   const total = Math.max(response.ms, 1)
   const connectMs = Math.min(Math.max(Math.round(total * 0.12), 1), 80)
   const downloadMs = Math.min(Math.max(Math.round((response.size / 1024) * 1.5), 1), Math.max(total - connectMs, 1))
@@ -103,11 +106,11 @@ function NetworkTimeline({ response }: { response: ResponseData }) {
     { label: 'connect', ms: connectMs, className: 'bg-info/70' },
     { label: 'wait', ms: waitMs, className: 'bg-accent/75' },
     { label: 'download', ms: downloadMs, className: 'bg-success/70' },
-  ]
+  ] as const
 
   return (
     <div className="flex items-center gap-2 border-b border-border-1 bg-surface-1/65 px-3 py-1.5">
-      <span className="w-16 shrink-0 text-[9px] font-semibold uppercase tracking-wide text-text-4">Timeline</span>
+      <span className="w-16 shrink-0 text-[9px] font-semibold uppercase tracking-wide text-text-4">{tr('Timeline')}</span>
       <div className="flex h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-surface-3">
         {segments.map((segment) => (
           <span
@@ -122,7 +125,7 @@ function NetworkTimeline({ response }: { response: ResponseData }) {
         {segments.map((segment) => (
           <span key={segment.label} className="flex items-center gap-1">
             <span className={cn('h-1.5 w-1.5 rounded-full', segment.className)} />
-            {segment.label}
+            {tr(segment.label)}
           </span>
         ))}
       </div>
@@ -328,6 +331,7 @@ function SaveEnvVarModal({
   suggestedKey: string
   onClose: () => void
 }) {
+  const tr = useUiTranslation()
   const environments = useEnvironmentsStore((s) => s.environments)
   const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
   const addEnvironment = useEnvironmentsStore((s) => s.addEnvironment)
@@ -368,12 +372,12 @@ function SaveEnvVarModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2 border-b border-border-1 px-4 py-3">
-          <span className="flex-1 text-sm font-semibold text-text-1">Save as environment variable</span>
-          <button onClick={onClose} title="Close" className="text-text-4 hover:text-text-1"><X size={16} /></button>
+          <span className="flex-1 text-sm font-semibold text-text-1">{tr('Save as environment variable')}</span>
+          <button onClick={onClose} title={tr('Close')} className="text-text-4 hover:text-text-1"><X size={16} /></button>
         </div>
         <div className="flex flex-col gap-3 px-4 py-4">
           <label className="flex flex-col gap-1">
-            <span className="text-[10px] uppercase tracking-wider text-text-4">Variable name</span>
+            <span className="text-[10px] uppercase tracking-wider text-text-4">{tr('Variable name')}</span>
             <input
               ref={nameRef}
               value={name}
@@ -385,7 +389,7 @@ function SaveEnvVarModal({
             />
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-[10px] uppercase tracking-wider text-text-4">Environment</span>
+            <span className="text-[10px] uppercase tracking-wider text-text-4">{tr('Environment')}</span>
             <select
               value={envId}
               onChange={(e) => setEnvId(e.target.value)}
@@ -394,24 +398,24 @@ function SaveEnvVarModal({
               {environments.map((env) => (
                 <option key={env.id} value={env.id}>{env.name}</option>
               ))}
-              <option value="__new__">+ New environment (Default)</option>
+              <option value="__new__">{tr('+ New environment (Default)')}</option>
             </select>
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-[10px] uppercase tracking-wider text-text-4">Value</span>
+            <span className="text-[10px] uppercase tracking-wider text-text-4">{tr('Value')}</span>
             <div className="max-h-24 overflow-auto rounded border border-border-2 bg-surface-2 px-2 py-1.5 text-xs font-mono break-all text-text-2">
               {value}
             </div>
           </label>
         </div>
         <div className="flex items-center justify-end gap-2 border-t border-border-1 px-4 py-3">
-          <button onClick={onClose} className="rounded px-3 py-1.5 text-xs text-text-3 hover:text-text-1">Cancel</button>
+          <button onClick={onClose} className="rounded px-3 py-1.5 text-xs text-text-3 hover:text-text-1">{tr('Cancel')}</button>
           <button
             onClick={save}
             disabled={!name.trim()}
             className="rounded bg-accent px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40"
           >
-            Save
+            {tr('Save')}
           </button>
         </div>
       </div>
@@ -430,6 +434,7 @@ function FullscreenBodyModal({
   contentType: string
   onClose: () => void
 }) {
+  const tr = useUiTranslation()
   const isJson = contentType.includes('json') || body.trim().match(/^[\[{]/) != null
   let display = body
   if (isJson) {
@@ -440,9 +445,9 @@ function FullscreenBodyModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80" onClick={onClose}>
       <div className="w-full h-full max-w-[95vw] max-h-[95vh] bg-surface-1 border border-border-1 rounded-lg shadow-xl flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2 px-4 py-3 border-b border-border-1">
-          <span className="text-sm font-semibold text-text-1 flex-1">Response Body</span>
-          <button onClick={() => navigator.clipboard.writeText(body)} className="px-2 py-1 text-xs text-accent hover:text-accent-light">Copy</button>
-          <button onClick={onClose} title="Close" className="text-text-4 hover:text-text-1"><X size={16} /></button>
+          <span className="text-sm font-semibold text-text-1 flex-1">{tr('Response Body')}</span>
+          <button onClick={() => navigator.clipboard.writeText(body)} className="px-2 py-1 text-xs text-accent hover:text-accent-light">{tr('Copy')}</button>
+          <button onClick={onClose} title={tr('Close')} className="text-text-4 hover:text-text-1"><X size={16} /></button>
         </div>
         <div className="flex-1 overflow-auto p-4">
           <pre className="text-xs font-mono whitespace-pre-wrap break-all">
@@ -455,6 +460,7 @@ function FullscreenBodyModal({
 }
 
 export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMethod, assertions }: ResponsePanelProps) {
+  const tr = useUiTranslation()
   const initialViewState = useTabsStore.getState().getViewState(tabId)
   const updateViewState = useTabsStore((s) => s.updateViewState)
   const [tab, setTab] = useState<ResponseSection>(initialViewState.responseSection)
@@ -501,6 +507,16 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
     e.preventDefault()
     const suggestedKey = selection ? '' : guessKeyFromSpan(targetEl)
     setValueMenu({ x: e.clientX, y: e.clientY, value, suggestedKey })
+  }
+
+  const onBodyKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return
+    if (tab !== 'body' && tab !== 'headers') return
+    const selection = window.getSelection()?.toString().trim() ?? ''
+    if (!selection) return
+    event.preventDefault()
+    const rect = event.currentTarget.getBoundingClientRect()
+    setValueMenu({ x: rect.left + 16, y: rect.top + 16, value: selection, suggestedKey: '' })
   }
 
   // ── Find-in-response ──────────────────────────────────────────────────────
@@ -672,25 +688,25 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
   if (response.error) {
     const { code, message } = response.error
     const hint: Record<string, string> = {
-      CONN_ERR:    'Make sure the target server is running and the URL is reachable from this machine.',
-      TIMEOUT:     'Increase the timeout in request settings or check server responsiveness.',
-      NO_URL:      'Enter a URL in the address bar and try again.',
-      INVALID_URL: 'Check the URL syntax — it must start with http:// or https://',
-      AUTH_ERR:    'Check your authentication settings (token, credentials, or OAuth2 config).',
-      SCRIPT_ERR:  'Fix the pre-request script and run the request again.',
-      READ_ERR:    'The server started responding but the connection dropped before the body was fully received.',
-      PARSE_ERR:   'Internal request encoding error. Try refreshing the request and sending again.',
+      CONN_ERR:    tr('Make sure the target server is running and the URL is reachable from this machine.'),
+      TIMEOUT:     tr('Increase the timeout in request settings or check server responsiveness.'),
+      NO_URL:      tr('Enter a URL in the address bar and try again.'),
+      INVALID_URL: tr('Check the URL syntax — it must start with http:// or https://'),
+      AUTH_ERR:    tr('Check your authentication settings (token, credentials, or OAuth2 config).'),
+      SCRIPT_ERR:  tr('Fix the pre-request script and run the request again.'),
+      READ_ERR:    tr('The server started responding but the connection dropped before the body was fully received.'),
+      PARSE_ERR:   tr('Internal request encoding error. Try refreshing the request and sending again.'),
     }
     const humanCode: Record<string, string> = {
-      CONN_ERR:    'Connection refused',
-      TIMEOUT:     'Request timeout',
-      NO_URL:      'No URL',
-      INVALID_URL: 'Invalid URL',
-      AUTH_ERR:    'Auth error',
-      SCRIPT_ERR:  'Script error',
-      READ_ERR:    'Read error',
-      PARSE_ERR:   'Parse error',
-      ERR:         'Request error',
+      CONN_ERR:    tr('Connection refused'),
+      TIMEOUT:     tr('Request timeout'),
+      NO_URL:      tr('No URL'),
+      INVALID_URL: tr('Invalid URL'),
+      AUTH_ERR:    tr('Auth error'),
+      SCRIPT_ERR:  tr('Script error'),
+      READ_ERR:    tr('Read error'),
+      PARSE_ERR:   tr('Parse error'),
+      ERR:         tr('Request error'),
     }
     // Detect connection-refused patterns in raw ERR messages for better display
     const effectiveCode = code === 'ERR' && (
@@ -702,7 +718,7 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
     return (
       <div className="flex-1 flex flex-col">
         <div className="flex items-center gap-2 px-3 py-2 border-b border-border-1">
-          <span className="text-xs font-medium text-text-2">Response</span>
+          <span className="text-xs font-medium text-text-2">{tr('Response')}</span>
           <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-error/20 text-error">
             {humanCode[effectiveCode] ?? effectiveCode}
           </span>
@@ -710,7 +726,7 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
         <div className="flex-1 flex items-center justify-center p-4">
           <div className="text-center max-w-sm w-full">
             <div className="text-3xl mb-3 text-error/40">⚠</div>
-            <p className="text-sm font-medium text-text-1 mb-2">{humanCode[effectiveCode] ?? 'Request failed'}</p>
+            <p className="text-sm font-medium text-text-1 mb-2">{humanCode[effectiveCode] ?? tr('Request failed')}</p>
             <p className="text-xs text-text-3 font-mono break-all mb-3 px-3 py-2 bg-surface-2 rounded border border-border-1 text-left">{message}</p>
             {hint[effectiveCode] && (
               <p className="text-xs text-text-4 leading-relaxed border-t border-border-1 pt-3">{hint[effectiveCode]}</p>
@@ -731,7 +747,7 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
       <div className={cn('flex-1 flex flex-col min-h-0', responseFlash && 'response-arrived')}>
         {/* Status bar with validation badge */}
         <div className="flex items-center gap-3 px-3 py-2 border-b border-border-1">
-          <span className="text-xs font-medium text-text-2">Response</span>
+          <span className="text-xs font-medium text-text-2">{tr('Response')}</span>
           <span className={cn('px-2 py-0.5 rounded text-[10px] font-medium', statusClass(response.status), responseFlash && (statusChanged || !previousMeta) && 'status-pulse-once')}>
             {response.status} {response.statusText}
           </span>
@@ -740,16 +756,16 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
               'px-2 py-0.5 rounded text-[10px] font-medium',
               validationBadge === 'valid' ? 'bg-success/20 text-success' : 'bg-error/20 text-error'
             )}>
-              {validationBadge === 'valid' ? '✓ valid JSON' : '✗ invalid JSON'}
+              {validationBadge === 'valid' ? `✓ ${tr('valid JSON')}` : `✗ ${tr('invalid JSON')}`}
             </span>
           )}
           <div className="flex items-center gap-3 ml-auto text-[10px] text-text-3">
             <span>
-              <span className="text-text-4">time </span>
+              <span className="text-text-4">{tr('time')} </span>
               <span className={cn('rounded px-1 text-text-2', responseFlash && (timeChanged || !previousMeta) && 'metric-flash')}>{response.ms} ms</span>
             </span>
             <span>
-              <span className="text-text-4">size </span>
+              <span className="text-text-4">{tr('size')} </span>
               <span className={cn('rounded px-1 text-text-2', responseFlash && (sizeChanged || !previousMeta) && 'metric-flash')}>{formatBytes(response.size)}</span>
             </span>
           </div>
@@ -763,14 +779,14 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
             onClick={() => { setTab('body'); updateViewState(tabId, { responseSection: 'body' }) }}
             className={cn('px-3 py-2 text-xs relative', tab === 'body' ? 'text-text-1' : 'text-text-3 hover:text-text-2')}
           >
-            Body
+            {tr('Body')}
             {tab === 'body' && <span className="absolute bottom-0 left-2 right-2 h-[2px] bg-accent rounded-t" />}
           </button>
           <button
             onClick={() => { setTab('headers'); updateViewState(tabId, { responseSection: 'headers' }) }}
             className={cn('px-3 py-2 text-xs relative', tab === 'headers' ? 'text-text-1' : 'text-text-3 hover:text-text-2')}
           >
-            Headers
+            {tr('Headers')}
             <span className="ml-1 px-1 py-0.5 text-[9px] rounded bg-surface-3 text-text-3">
               {Object.keys(response.headers).length}
             </span>
@@ -782,10 +798,10 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
               onClick={() => { setTab('contract'); updateViewState(tabId, { responseSection: 'contract' }) }}
               className={cn('px-3 py-2 text-xs relative', tab === 'contract' ? 'text-text-1' : 'text-text-3 hover:text-text-2')}
             >
-              Contract
+              {tr('Contract')}
               {contractResult.valid ? (
                 <span className="ml-1 px-1 py-0.5 text-[9px] rounded bg-success/20 text-success">
-                  <Check size={10} className="inline" /> pass
+                  <Check size={10} className="inline" /> {tr('pass')}
                 </span>
               ) : (
                 <span className="ml-1 px-1 py-0.5 text-[9px] rounded bg-error/20 text-error">
@@ -801,9 +817,9 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
               onClick={() => { setTab('contract'); updateViewState(tabId, { responseSection: 'contract' }) }}
               className={cn('px-3 py-2 text-xs relative', tab === 'contract' ? 'text-text-1' : 'text-text-3 hover:text-text-2')}
             >
-              Contract
+              {tr('Contract')}
               <span className="ml-1 px-1 py-0.5 text-[9px] rounded bg-warning/20 text-warning">
-                <ShieldOff size={10} className="inline" /> no spec
+                <ShieldOff size={10} className="inline" /> {tr('no spec')}
               </span>
               {tab === 'contract' && <span className="absolute bottom-0 left-2 right-2 h-[2px] bg-accent rounded-t" />}
             </button>
@@ -814,7 +830,7 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
               onClick={() => { setTab('assertions'); updateViewState(tabId, { responseSection: 'assertions' }) }}
               className={cn('px-3 py-2 text-xs relative', tab === 'assertions' ? 'text-text-1' : 'text-text-3 hover:text-text-2')}
             >
-              Tests
+              {tr('Tests')}
               <span className={cn(
                 'ml-1 px-1 py-0.5 text-[9px] rounded',
                 allTestsPassed
@@ -836,7 +852,7 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
                     setTimeout(() => searchRef.current?.focus(), 30)
                   }}
                   className={cn('p-1 rounded hover:bg-surface-2', searchOpen ? 'text-accent' : 'text-text-4 hover:text-text-2')}
-                  title="Find in response (Ctrl+F)"
+                  title={tr('Find in response (Ctrl+F)')}
                 >
                   <Search size={12} />
                 </button>
@@ -845,7 +861,7 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
               <button
                 onClick={() => setShowFullscreen(true)}
                 className="p-1 text-text-4 hover:text-text-2 rounded hover:bg-surface-2"
-                title="Expand"
+                title={tr('Expand')}
               >
                 <Maximize2 size={12} />
               </button>
@@ -862,14 +878,14 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
                   }
                 }}
                 className={cn('p-1 rounded hover:bg-surface-2', view === 'graph' ? 'text-accent' : 'text-text-4 hover:text-text-2')}
-                title="Graph"
+                title={tr('Graph')}
               >
                 <GitBranch size={12} />
               </button>
               <button
                 onClick={() => setShowDiffPicker(true)}
                 className="p-1 text-text-4 hover:text-text-2 rounded hover:bg-surface-2"
-                title="Compare with another response"
+                title={tr('Compare with another response')}
               >
                 <GitCompare size={12} />
               </button>
@@ -891,7 +907,7 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
                   }
                 }}
                 className="p-1 text-text-4 hover:text-text-2 rounded hover:bg-surface-2"
-                title="Beautify response body"
+                title={tr('Beautify response body')}
               >
                 <Sparkles size={12} />
               </button>
@@ -902,18 +918,18 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
                 onClick={() => { setView('pretty'); updateViewState(tabId, { responseBodyView: 'pretty' }) }}
                 className={cn('px-2 py-0.5 text-[10px] rounded', view === 'pretty' ? 'bg-accent text-white' : 'text-text-4')}
               >
-                Beautify
+                {tr('Beautify')}
               </button>
               <button
                 onClick={() => { setView('raw'); updateViewState(tabId, { responseBodyView: 'raw' }) }}
                 className={cn('px-2 py-0.5 text-[10px] rounded', view === 'raw' ? 'bg-accent text-white' : 'text-text-4')}
               >
-                Raw
+                {tr('Raw')}
               </button>
               <button
                 onClick={copyBody}
                 className={cn('ml-1 p-1 rounded', copiedBody ? 'text-success' : 'text-text-4 hover:text-text-2')}
-                title={copiedBody ? 'Copied!' : 'Copy response body'}
+                title={copiedBody ? tr('Copied!') : tr('Copy response body')}
               >
                 {copiedBody ? <Check size={12} /> : <Copy size={12} />}
               </button>
@@ -925,7 +941,7 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
                     useAppStore.getState().setActiveRail('pdfeditor')
                   }}
                   className="ml-0.5 p-1 text-text-4 hover:text-accent rounded"
-                  title="Open in PDF Editor"
+                  title={tr('Open in PDF Editor')}
                 >
                   <FileText size={12} />
                 </button>
@@ -954,7 +970,7 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
                   setSearchQuery('')
                 }
               }}
-              placeholder="Find in response…"
+              placeholder={tr('Find in response…')}
               className="flex-1 bg-transparent text-[11px] text-text-1 placeholder:text-text-4 outline-none min-w-0"
               spellCheck={false}
             />
@@ -963,14 +979,14 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
                 'text-[10px] shrink-0 tabular-nums',
                 matchCount === 0 ? 'text-error' : 'text-text-3'
               )}>
-                {matchCount === 0 ? 'no matches' : `${((matchIndex % matchCount) + matchCount) % matchCount + 1} / ${matchCount}`}
+                {matchCount === 0 ? tr('no matches') : `${((matchIndex % matchCount) + matchCount) % matchCount + 1} / ${matchCount}`}
               </span>
             )}
             <button
               onClick={() => setMatchIndex((i) => i - 1)}
               disabled={matchCount === 0}
               className="p-0.5 rounded text-text-4 hover:text-text-2 disabled:opacity-30 hover:bg-surface-3"
-              title="Previous match (Shift+Enter)"
+              title={tr('Previous match (Shift+Enter)')}
             >
               <ChevronUp size={12} />
             </button>
@@ -978,14 +994,14 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
               onClick={() => setMatchIndex((i) => i + 1)}
               disabled={matchCount === 0}
               className="p-0.5 rounded text-text-4 hover:text-text-2 disabled:opacity-30 hover:bg-surface-3"
-              title="Next match (Enter)"
+              title={tr('Next match (Enter)')}
             >
               <ChevronDown size={12} />
             </button>
             <button
               onClick={() => { setSearchOpen(false); setSearchInput(''); setSearchQuery('') }}
               className="p-0.5 rounded text-text-4 hover:text-text-2 hover:bg-surface-3"
-              title="Close (Escape)"
+              title={tr('Close (Escape)')}
             >
               <X size={12} />
             </button>
@@ -995,7 +1011,11 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
         {/* Content */}
         <div
           ref={bodyRef}
+          role="region"
+          tabIndex={0}
+          aria-label={tr('Response Body')}
           onContextMenu={onBodyContextMenu}
+          onKeyDown={onBodyKeyDown}
           onScroll={(e) => {
             const viewState = useTabsStore.getState().getViewState(tabId)
             updateViewState(tabId, {
@@ -1023,21 +1043,18 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
                 {validationBadge === 'invalid' && view === 'pretty' && (
                   <div className="mb-2 flex items-center gap-2 rounded border border-warning/20 bg-warning/10 px-3 py-2 text-[11px] text-warning">
                     <AlertTriangle size={12} />
-                    <span>Response is not valid JSON - showing raw body.</span>
+                    <span>{tr('Response is not valid JSON - showing raw body.')}</span>
                   </div>
                 )}
                 {tooLargeToRender ? (
                   <>
                     <div className="mb-2 flex items-center gap-2 rounded border border-warning/20 bg-warning/10 px-3 py-2 text-[11px] text-warning">
                       <AlertTriangle size={12} />
-                      <span>
-                        Response is {Math.round(bodySizeKB)} KB — syntax highlighting disabled for performance
-                        (limit {responseMaxRenderSizeKB} KB, change it in Settings → Editor).
-                      </span>
+                      <span>{tr('Response is {size} KB — syntax highlighting disabled for performance (limit {limit} KB, change it in Settings → Editor).', { size: Math.round(bodySizeKB), limit: responseMaxRenderSizeKB })}</span>
                     </div>
                     <pre className="text-xs font-mono whitespace-pre-wrap break-all text-text-2" style={{ fontSize: respFontPx }}>
                       {prettyBody.slice(0, responseMaxRenderSizeKB * 1024)}
-                      {displayBody.length > responseMaxRenderSizeKB * 1024 && '\n… truncated'}
+                      {displayBody.length > responseMaxRenderSizeKB * 1024 && `\n${tr('… truncated')}`}
                     </pre>
                   </>
                 ) : (
@@ -1080,8 +1097,8 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
           x={valueMenu.x}
           y={valueMenu.y}
           items={[
-            { id: 'save', label: 'Save as environment variable…' },
-            { id: 'copy', label: 'Copy value' },
+            { id: 'save', label: tr('Save as environment variable…') },
+            { id: 'copy', label: tr('Copy value') },
           ]}
           onSelect={(id) => {
             if (id === 'save') setSaveVar({ value: valueMenu.value, suggestedKey: valueMenu.suggestedKey })
@@ -1110,7 +1127,7 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
 
       {showDiff && (
         <DiffModal
-          leftLabel="Current"
+          leftLabel={tr('Current')}
           rightLabel={diffRightLabel}
           leftBody={response.body}
           rightBody={diffRightBody}
@@ -1135,6 +1152,7 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
 }
 
 function ContractResultView({ result }: { result: ContractValidationResult }) {
+  const tr = useUiTranslation()
   const bodyErrors = result.errors.filter((e) => e.category === 'body')
   const statusErrors = result.errors.filter((e) => e.category === 'status')
   const ctErrors = result.errors.filter((e) => e.category === 'contentType')
@@ -1148,18 +1166,18 @@ function ContractResultView({ result }: { result: ContractValidationResult }) {
           <>
             <ShieldCheck size={20} className="text-success" />
             <div>
-              <p className="text-xs font-medium text-success">Contract valid</p>
-              <p className="text-[10px] text-text-4">Response satisfies all OpenAPI constraints</p>
+              <p className="text-xs font-medium text-success">{tr('Contract valid')}</p>
+              <p className="text-[10px] text-text-4">{tr('Response satisfies all OpenAPI constraints')}</p>
             </div>
           </>
         ) : (
           <>
             <ShieldAlert size={20} className="text-error" />
             <div>
-              <p className="text-xs font-medium text-error">Contract violations found</p>
+              <p className="text-xs font-medium text-error">{tr('Contract violations found')}</p>
               <p className="text-[10px] text-text-4">
-                {result.errors.length} error{result.errors.length !== 1 ? 's' : ''}
-                {result.warnings.length > 0 && `, ${result.warnings.length} warning${result.warnings.length !== 1 ? 's' : ''}`}
+                {result.errors.length} {result.errors.length === 1 ? tr('error') : tr('errors')}
+                {result.warnings.length > 0 && `, ${result.warnings.length} ${result.warnings.length === 1 ? tr('warning') : tr('warnings')}`}
               </p>
             </div>
           </>
@@ -1168,31 +1186,31 @@ function ContractResultView({ result }: { result: ContractValidationResult }) {
 
       {/* Export buttons */}
       <div className="flex items-center gap-1.5">
-        <span className="text-[9px] text-text-4 uppercase tracking-wider">Export</span>
+        <span className="text-[9px] text-text-4 uppercase tracking-wider">{tr('Export')}</span>
         <button
           onClick={() => downloadBlob(exportContractReportMarkdown(result), 'contract-report.md', 'text/markdown')}
           className="flex items-center gap-1 px-2 py-1 text-[10px] rounded bg-surface-2 border border-border-1 text-text-3 hover:text-text-1 hover:border-border-2 transition-colors"
-          title="Download Markdown report"
+          title={tr('Download Markdown report')}
         >
           <FileText size={10} /> MD
         </button>
         <button
           onClick={() => downloadBlob(exportContractReportHtml(result), 'contract-report.html', 'text/html')}
           className="flex items-center gap-1 px-2 py-1 text-[10px] rounded bg-surface-2 border border-border-1 text-text-3 hover:text-text-1 hover:border-border-2 transition-colors"
-          title="Download HTML report"
+          title={tr('Download HTML report')}
         >
           <FileCode size={10} /> HTML
         </button>
         <button
           onClick={() => downloadBlob(exportContractReportJson(result), 'contract-report.json', 'application/json')}
           className="flex items-center gap-1 px-2 py-1 text-[10px] rounded bg-surface-2 border border-border-1 text-text-3 hover:text-text-1 hover:border-border-2 transition-colors"
-          title="Download JSON report"
+          title={tr('Download JSON report')}
         >
           <FileJson size={10} /> JSON
         </button>
       </div>
       {statusErrors.length > 0 && (
-        <ErrorCategory label="Status Code" icon={AlertTriangle} errors={statusErrors} />
+        <ErrorCategory label={tr('Status Code')} icon={AlertTriangle} errors={statusErrors} />
       )}
 
       {/* Content-Type Errors */}
@@ -1202,12 +1220,12 @@ function ContractResultView({ result }: { result: ContractValidationResult }) {
 
       {/* Header Errors */}
       {headerErrors.length > 0 && (
-        <ErrorCategory label="Headers" icon={AlertTriangle} errors={headerErrors} />
+        <ErrorCategory label={tr('Headers')} icon={AlertTriangle} errors={headerErrors} />
       )}
 
       {/* Body Errors */}
       {bodyErrors.length > 0 && (
-        <ErrorCategory label="Response Body" icon={AlertTriangle} errors={bodyErrors} />
+        <ErrorCategory label={tr('Response Body')} icon={AlertTriangle} errors={bodyErrors} />
       )}
 
       {/* Warnings */}
@@ -1215,7 +1233,7 @@ function ContractResultView({ result }: { result: ContractValidationResult }) {
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-1.5">
             <AlertTriangle size={13} className="text-warning" />
-            <span className="text-[10px] font-medium text-warning uppercase tracking-wider">Warnings</span>
+            <span className="text-[10px] font-medium text-warning uppercase tracking-wider">{tr('Warnings')}</span>
           </div>
           {result.warnings.map((w, i) => (
             <div key={i} className="flex items-start gap-2 px-3 py-2 rounded bg-warning/5 border border-warning/10">
@@ -1230,7 +1248,7 @@ function ContractResultView({ result }: { result: ContractValidationResult }) {
       {bodyErrors.length === 0 && statusErrors.length === 0 && ctErrors.length === 0 && headerErrors.length === 0 && result.warnings.length === 0 && result.valid && (
         <div className="flex flex-col items-center justify-center py-8 gap-3">
           <ShieldCheck size={32} className="text-success" />
-          <p className="text-xs text-text-3">All contract checks passed</p>
+          <p className="text-xs text-text-3">{tr('All contract checks passed')}</p>
         </div>
       )}
     </div>
@@ -1258,13 +1276,14 @@ function ErrorCategory({ label, icon: Icon, errors }: { label: string; icon: Rea
 }
 
 function NoContractView() {
+  const tr = useUiTranslation()
   return (
     <div className="flex flex-col items-center justify-center py-8 gap-3">
       <ShieldOff size={32} className="text-text-4" />
       <div className="text-center">
-        <p className="text-xs text-text-3">No OpenAPI contract linked</p>
+        <p className="text-xs text-text-3">{tr('No OpenAPI contract linked')}</p>
         <p className="text-[10px] text-text-4 mt-1 max-w-[280px]">
-          This request was not imported from an OpenAPI spec. To enable contract testing, import a collection from an OpenAPI/Swagger file.
+          {tr('This request was not imported from an OpenAPI spec. To enable contract testing, import a collection from an OpenAPI/Swagger file.')}
         </p>
       </div>
     </div>
@@ -1284,6 +1303,7 @@ function downloadBlob(content: string, filename: string, mime: string) {
 }
 
 function AssertionsView({ results, scriptRuns }: { results: AssertionResult[]; scriptRuns: ScriptRunResult[] }) {
+  const tr = useUiTranslation()
   const scriptTests = scriptRuns.flatMap((run) => run.tests.map((test) => ({ ...test, phase: run.phase })))
   const scriptErrors = scriptRuns.filter((run) => run.error)
   const total = results.length + scriptTests.length + scriptErrors.length
@@ -1293,7 +1313,7 @@ function AssertionsView({ results, scriptRuns }: { results: AssertionResult[]; s
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-3 p-2 rounded-md bg-surface-2 border border-border-1">
         <span className={cn('text-xs font-medium', passed === total ? 'text-success' : 'text-error')}>
-          {passed}/{total} passed
+          {passed}/{total} {tr('passed')}
         </span>
         {passed === total ? (
           <Check size={14} className="text-success" />
@@ -1307,7 +1327,7 @@ function AssertionsView({ results, scriptRuns }: { results: AssertionResult[]; s
             <div key={`${run.phase}-${idx}`} className="flex items-center gap-2 px-3 py-1.5 rounded bg-surface-2 border border-border-1 text-[10px]">
               <span className={cn('font-medium uppercase', run.passed ? 'text-success' : 'text-error')}>{run.phase}</span>
               <span className="text-text-4">{run.durationMs} ms</span>
-              {run.logs.length > 0 && <span className="text-text-4 truncate">logs: {run.logs.join(' | ')}</span>}
+              {run.logs.length > 0 && <span className="text-text-4 truncate">{tr('logs')}: {run.logs.join(' | ')}</span>}
               {run.error && <span className="text-error truncate">{run.error}</span>}
             </div>
           ))}
@@ -1327,7 +1347,7 @@ function AssertionsView({ results, scriptRuns }: { results: AssertionResult[]; s
           <div className="flex flex-col gap-0.5 min-w-0">
             <span className="text-text-2">{r.label}</span>
             <span className="text-[10px] text-text-4">
-              actual: {r.actual} {r.passed ? '' : `| expected: ${r.expected}`}
+              {tr('actual')}: {r.actual} {r.passed ? '' : `| ${tr('expected')}: ${r.expected}`}
             </span>
           </div>
         </div>
@@ -1346,7 +1366,7 @@ function AssertionsView({ results, scriptRuns }: { results: AssertionResult[]; s
           <div className="flex flex-col gap-0.5 min-w-0">
             <span className="text-text-2">{r.name}</span>
             <span className="text-[10px] text-text-4">
-              script: {r.phase}{r.error ? ` | ${r.error}` : ''}
+              {tr('script')}: {r.phase}{r.error ? ` | ${r.error}` : ''}
             </span>
           </div>
         </div>

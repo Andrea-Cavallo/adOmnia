@@ -21,6 +21,7 @@ import { ContextMenu } from '@/components/ui/ContextMenu'
 import { PSD2RequestPanel } from '@/components/psd2/PSD2RequestPanel'
 import { validatePSD2Request } from '@/lib/psd2Validation'
 import { queryRowsFromUrl, requestWithUrlInput, resolvedRequestUrl, rowsWithTrailingBlank, urlWithQuery } from '@/lib/requestUrl'
+import { useUiTranslation } from '@/lib/uiI18n'
 
 interface ComposerProps {
   tabId: string
@@ -51,12 +52,13 @@ const METHOD_COLORS: Record<string, string> = {
 }
 
 function CurlImportModal({ onClose, onImport }: { onClose: () => void; onImport: (curl: string) => void }) {
+  const tr = useUiTranslation()
   const [value, setValue] = useState('')
   const [error, setError] = useState('')
 
   const handleImport = () => {
     const parsed = parseCurl(value.trim())
-    if (!parsed) { setError('Could not parse cURL command. Make sure it starts with "curl".'); return }
+    if (!parsed) { setError(tr('Could not parse cURL command. Make sure it starts with "curl".')); return }
     onImport(value.trim())
     onClose()
   }
@@ -65,8 +67,8 @@ function CurlImportModal({ onClose, onImport }: { onClose: () => void; onImport:
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
       <div className="w-[560px] bg-surface-1 border border-border-1 rounded-lg shadow-xl flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2 px-4 py-3 border-b border-border-1">
-          <span className="text-sm font-semibold text-text-1 flex-1">Import from cURL</span>
-          <button onClick={onClose} title="Close" className="text-text-4 hover:text-text-1"><X size={16} /></button>
+          <span className="text-sm font-semibold text-text-1 flex-1">{tr('Import from cURL')}</span>
+          <button onClick={onClose} title={tr('Close')} className="text-text-4 hover:text-text-1"><X size={16} /></button>
         </div>
         <div className="p-4 flex flex-col gap-3">
           <textarea
@@ -79,14 +81,14 @@ function CurlImportModal({ onClose, onImport }: { onClose: () => void; onImport:
           {error && <p className="text-xs text-error">{error}</p>}
           <div className="flex gap-2 justify-end">
             <button onClick={onClose} className="px-3 py-1.5 text-xs text-text-3 hover:text-text-1 border border-border-2 rounded">
-              Cancel
+              {tr('Cancel')}
             </button>
             <button
               onClick={handleImport}
               disabled={!value.trim()}
               className="px-3 py-1.5 text-xs bg-accent text-white rounded disabled:opacity-50"
             >
-              Import
+              {tr('Import')}
             </button>
           </div>
         </div>
@@ -96,6 +98,7 @@ function CurlImportModal({ onClose, onImport }: { onClose: () => void; onImport:
 }
 
 function CopyAsDropdown({ request, vars }: { request: RequestItem; vars: Record<string, string> }) {
+  const tr = useUiTranslation()
   const [open, setOpen] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
   const [preparing, setPreparing] = useState<string | null>(null)
@@ -122,7 +125,7 @@ function CopyAsDropdown({ request, vars }: { request: RequestItem; vars: Record<
         setCopied(langId)
         setTimeout(() => setCopied(null), 1500)
       } else {
-        setError('Clipboard unavailable.')
+        setError(tr('Clipboard unavailable.'))
       }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
@@ -135,7 +138,7 @@ function CopyAsDropdown({ request, vars }: { request: RequestItem; vars: Record<
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        title="Copy as code snippet"
+        title={tr('Copy as code snippet')}
         className="h-8 w-8 flex items-center justify-center text-text-3 hover:text-text-1 rounded hover:bg-surface-2 transition-colors"
       >
         <Code size={14} />
@@ -151,7 +154,7 @@ function CopyAsDropdown({ request, vars }: { request: RequestItem; vars: Record<
             >
               {copied === lang.id ? <CheckCheck size={12} className="text-success" /> : <Copy size={12} />}
               <span>{lang.label}</span>
-              {preparing === lang.id && <span className="ml-auto text-[10px] text-accent">Preparing...</span>}
+              {preparing === lang.id && <span className="ml-auto text-[10px] text-accent">{tr('Preparing...')}</span>}
             </button>
           ))}
           {error && <p className="border-t border-error/20 px-3 py-2 text-[10px] text-error">{error}</p>}
@@ -163,6 +166,7 @@ function CopyAsDropdown({ request, vars }: { request: RequestItem; vars: Record<
 
 /** Displays session-jar cookies for the request's domain, with delete controls. */
 function CookieJarSection({ requestUrl }: { requestUrl: string }) {
+  const tr = useUiTranslation()
   const sendCookiesAutomatically = useSettingsStore((s) => s.settings.requests.sendCookiesAutomatically)
   // Select `entries` (a stable reference) rather than calling getCookiesForUrl() inside the
   // selector.  getCookiesForUrl always returns a new array via .filter(), so using it as a
@@ -205,24 +209,24 @@ function CookieJarSection({ requestUrl }: { requestUrl: string }) {
     <div className="border-t border-border-1 mt-1">
       <div className="flex items-center gap-2 px-3 py-1.5">
         <span className="text-[10px] font-semibold uppercase tracking-wide text-text-4 flex-1">
-          Session Jar · {domain}
+          {tr('Session Jar')} · {domain}
         </span>
         {!sendCookiesAutomatically && (
-          <span className="text-[9px] text-warning">disabled in Settings</span>
+          <span className="text-[9px] text-warning">{tr('disabled in Settings')}</span>
         )}
         {jarEntries.length > 0 && (
           <button
             onClick={() => clearDomain(domain)}
             className="text-[10px] text-error hover:opacity-75 transition-opacity"
-            title="Clear all cookies for this domain"
+            title={tr('Clear all cookies for this domain')}
           >
-            Clear
+            {tr('Clear')}
           </button>
         )}
       </div>
       {jarEntries.length === 0 ? (
         <p className="px-3 pb-2 text-[10px] text-text-4">
-          {sendCookiesAutomatically ? 'No cookies captured yet for this domain' : 'Cookie jar is off'}
+          {sendCookiesAutomatically ? tr('No cookies captured yet for this domain') : tr('Cookie jar is off')}
         </p>
       ) : (
         <div className="px-2 pb-2 flex flex-col gap-0.5">
@@ -238,7 +242,7 @@ function CookieJarSection({ requestUrl }: { requestUrl: string }) {
               <button
                 onClick={() => deleteCookie(e.domain, e.name)}
                 className="shrink-0 text-text-4 opacity-0 group-hover:opacity-100 hover:text-error transition-all"
-                title="Remove from jar"
+                title={tr('Remove from jar')}
               >
                 <X size={10} />
               </button>
@@ -272,8 +276,8 @@ function requestVariables(request: RequestItem): string[] {
   return [...names].sort((a, b) => a.localeCompare(b))
 }
 
-function hostFromUrl(url: string): string {
-  try { return new URL(url).host } catch { return 'No host yet' }
+function hostFromUrl(url: string): string | null {
+  try { return new URL(url).host } catch { return null }
 }
 
 function PathParamRow({
@@ -293,6 +297,7 @@ function PathParamRow({
   onChange: (patch: { value?: string; enabled?: boolean }) => void
   onRename: (nextKey: string) => void
 }) {
+  const tr = useUiTranslation()
   return (
     <div className={cn('grid grid-cols-[28px_minmax(120px,200px)_1fr] items-center gap-1 px-2 py-1', !enabled && 'opacity-40')}>
       <input
@@ -308,8 +313,8 @@ function PathParamRow({
           if (/^[A-Za-z_][\w-]*$/.test(nextKey)) onRename(nextKey)
         }}
         className="min-w-0 bg-transparent px-2 font-mono text-xs text-accent outline-none placeholder:text-text-4"
-        aria-label="Path parameter name"
-        title="Rename path parameter"
+        aria-label={tr('Path parameter name')}
+        title={tr('Rename path parameter')}
       />
       <div className="h-7 bg-surface-2 border border-border-2 rounded focus-within:border-accent overflow-hidden">
         <VarHighlightInput
@@ -317,7 +322,7 @@ function PathParamRow({
           onChange={(next) => onChange({ value: next })}
           resolvedVars={resolvedVars}
           hasActiveEnv={hasActiveEnv}
-          placeholder="Path value"
+          placeholder={tr('Path value')}
           className="h-full"
         />
       </div>
@@ -332,6 +337,7 @@ function ParamsSection({
   request: RequestItem
   onChange: (request: RequestItem) => void
 }) {
+  const tr = useUiTranslation()
   const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
   const getResolvedVars = useEnvironmentsStore((s) => s.getResolvedVars)
   const resolvedVars = getResolvedVars()
@@ -376,8 +382,8 @@ function ParamsSection({
       <section>
         <div className="flex items-center justify-between gap-2 px-3 py-2">
           <div>
-            <h3 className="text-xs font-semibold text-text-1">Query Params</h3>
-            <p className="text-[10px] text-text-4">Edit here or in the URL — they stay in sync.</p>
+            <h3 className="text-xs font-semibold text-text-1">{tr('Query Params')}</h3>
+            <p className="text-[10px] text-text-4">{tr('Edit here or in the URL — they stay in sync.')}</p>
           </div>
           <span className="rounded border border-border-2 bg-surface-2 px-2 py-0.5 font-mono text-[10px] text-text-4">
             {queryCount}
@@ -386,16 +392,16 @@ function ParamsSection({
         <KVEditor
           rows={queryRows}
           onChange={handleParamsChange}
-          keyPlaceholder="Query key"
-          valuePlaceholder="Query value"
+          keyPlaceholder={tr('Query key')}
+          valuePlaceholder={tr('Query value')}
         />
       </section>
 
       <section className="mx-3 rounded-md border border-border-1 bg-surface-1">
         <div className="flex items-center justify-between gap-2 border-b border-border-1 px-3 py-2">
           <div>
-            <h3 className="text-xs font-semibold text-text-1">Path Params</h3>
-            <p className="text-[10px] text-text-4">Rename here or in the URL - the template stays in sync.</p>
+            <h3 className="text-xs font-semibold text-text-1">{tr('Path Params')}</h3>
+            <p className="text-[10px] text-text-4">{tr('Rename here or in the URL - the template stays in sync.')}</p>
           </div>
           <span className="rounded border border-border-2 bg-surface-2 px-2 py-0.5 font-mono text-[10px] text-text-4">
             {pathKeys.length}
@@ -405,8 +411,8 @@ function ParamsSection({
           <div className="flex flex-col gap-0.5 py-1">
             <div className="grid grid-cols-[28px_minmax(120px,200px)_1fr] gap-1 px-2 py-1 text-[10px] uppercase tracking-wider text-text-4">
               <span />
-              <span>Path key</span>
-              <span>Path value</span>
+              <span>{tr('Path key')}</span>
+              <span>{tr('Path value')}</span>
             </div>
             {pathKeys.map((key) => {
               const stored = storedPathParams.find((p) => p.key === key)
@@ -426,7 +432,7 @@ function ParamsSection({
           </div>
         ) : (
           <p className="px-3 py-3 text-[11px] text-text-4">
-            No path params detected in the current URL.
+            {tr('No path params detected in the current URL.')}
           </p>
         )}
       </section>
@@ -447,6 +453,7 @@ function RequestOverview({
   onChange: (request: RequestItem) => void
   onOpenSection: (section: ComposerSection, subsection?: 'auth') => void
 }) {
+  const tr = useUiTranslation()
   const variables = requestVariables(request)
   const unresolved = variables.filter((name) => vars[name] === undefined)
   const headers = enabledRows(request.headers)
@@ -455,12 +462,12 @@ function RequestOverview({
   const activeBody = request.bodies?.[request.activeBodyIdx ?? 0]
   const hasBody = Boolean(activeBody && activeBody.type !== 'none')
   const docsFilled = Boolean(request.description?.trim())
-  const authLabel = request.auth?.type && request.auth.type !== 'none' ? request.auth.type.toUpperCase() : 'No auth'
+  const authLabel = request.auth?.type && request.auth.type !== 'none' ? request.auth.type.toUpperCase() : tr('No auth')
   const setupItems = [
-    { label: 'URL is ready', ok: Boolean(request.url.trim()), section: null },
-    { label: variables.length ? `${variables.length} variable${variables.length === 1 ? '' : 's'} detected` : 'No variables needed', ok: unresolved.length === 0, section: 'params' as ComposerSection | null },
-    { label: request.auth?.type && request.auth.type !== 'none' ? `${authLabel} configured` : 'Auth intentionally empty', ok: true, section: 'headers' as ComposerSection | null, subsection: 'auth' as const },
-    { label: docsFilled ? 'Documentation present' : 'Add request notes', ok: docsFilled, section: null, subsection: undefined },
+    { label: tr('URL is ready'), ok: Boolean(request.url.trim()), section: null },
+    { label: variables.length ? tr(variables.length === 1 ? '{count} variable detected' : '{count} variables detected', { count: variables.length }) : tr('No variables needed'), ok: unresolved.length === 0, section: 'params' as ComposerSection | null },
+    { label: request.auth?.type && request.auth.type !== 'none' ? tr('{auth} configured', { auth: authLabel }) : tr('Auth intentionally empty'), ok: true, section: 'headers' as ComposerSection | null, subsection: 'auth' as const },
+    { label: docsFilled ? tr('Documentation present') : tr('Add request notes'), ok: docsFilled, section: null, subsection: undefined },
   ]
 
   return (
@@ -468,18 +475,18 @@ function RequestOverview({
       <section className="border-b border-border-1 pb-3">
         <div className="mb-2 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.12em] text-text-4">
           <span className={cn('font-bold', METHOD_COLORS[request.method] ?? 'text-text-2')}>{request.method}</span>
-          <span>{hostFromUrl(request.url)}</span>
+          <span>{hostFromUrl(request.url) ?? tr('No host yet')}</span>
         </div>
         <input
           value={request.name}
           onChange={(event) => onChange({ ...request, name: event.target.value })}
-          placeholder="Request title"
+          placeholder={tr('Request title')}
           className="w-full bg-transparent text-[22px] font-semibold leading-tight text-text-1 outline-none placeholder:text-text-4"
         />
         <textarea
           value={request.description ?? ''}
           onChange={(event) => onChange({ ...request, description: event.target.value })}
-          placeholder="Add a clear description: what this request does, when to use it, required setup, examples or edge cases..."
+          placeholder={tr('Add a clear description: what this request does, when to use it, required setup, examples or edge cases...')}
           className="mt-2 min-h-40 w-full resize-y rounded-md border border-border-2 bg-surface-1 px-3 py-2 text-[12px] leading-relaxed text-text-2 outline-none placeholder:text-text-4 focus:border-accent"
         />
       </section>
@@ -488,7 +495,7 @@ function RequestOverview({
         <div className="rounded-md border border-border-1 bg-surface-1">
           <div className="flex items-center gap-2 border-b border-border-1 px-3 py-2">
             <ListChecks size={13} className="text-accent" />
-            <h3 className="text-[12px] font-semibold text-text-1">Setup</h3>
+            <h3 className="text-[12px] font-semibold text-text-1">{tr('Setup')}</h3>
           </div>
           <div className="divide-y divide-border-1">
             {setupItems.map((item) => (
@@ -499,7 +506,7 @@ function RequestOverview({
               >
                 {item.ok ? <Check size={13} className="text-success" /> : <Circle size={13} className="text-warning" />}
                 <span className="flex-1">{item.label}</span>
-                {item.section && <span className="font-mono text-[10px] text-text-4">open</span>}
+                {item.section && <span className="font-mono text-[10px] text-text-4">{tr('open')}</span>}
               </button>
             ))}
           </div>
@@ -508,15 +515,15 @@ function RequestOverview({
         <div className="rounded-md border border-border-1 bg-surface-1">
           <div className="flex items-center gap-2 border-b border-border-1 px-3 py-2">
             <ShieldCheck size={13} className="text-accent" />
-            <h3 className="text-[12px] font-semibold text-text-1">Request context</h3>
+            <h3 className="text-[12px] font-semibold text-text-1">{tr('Request context')}</h3>
           </div>
           <dl className="grid grid-cols-[92px_1fr] gap-x-3 gap-y-2 px-3 py-3 font-mono text-[10px]">
-            <dt className="text-text-4">Auth</dt><dd className="truncate text-text-2">{authLabel}</dd>
-            <dt className="text-text-4">Headers</dt><dd className="text-text-2">{headers.length}</dd>
-            <dt className="text-text-4">Params</dt><dd className="text-text-2">{params.length}</dd>
-            <dt className="text-text-4">Cookies</dt><dd className="text-text-2">{cookies.length}</dd>
-            <dt className="text-text-4">Body</dt><dd className="text-text-2">{hasBody ? activeBody?.type : 'none'}</dd>
-            <dt className="text-text-4">Tests</dt><dd className="text-text-2">{request.assertions?.length ?? 0}</dd>
+            <dt className="text-text-4">{tr('Auth')}</dt><dd className="truncate text-text-2">{authLabel}</dd>
+            <dt className="text-text-4">{tr('Headers')}</dt><dd className="text-text-2">{headers.length}</dd>
+            <dt className="text-text-4">{tr('Params')}</dt><dd className="text-text-2">{params.length}</dd>
+            <dt className="text-text-4">{tr('Cookies')}</dt><dd className="text-text-2">{cookies.length}</dd>
+            <dt className="text-text-4">{tr('Body')}</dt><dd className="text-text-2">{hasBody ? activeBody?.type : tr('none')}</dd>
+            <dt className="text-text-4">{tr('Tests')}</dt><dd className="text-text-2">{request.assertions?.length ?? 0}</dd>
           </dl>
         </div>
       </section>
@@ -524,7 +531,7 @@ function RequestOverview({
       {variables.length > 0 && (
         <section className="rounded-md border border-border-1 bg-surface-1">
           <div className="flex items-center justify-between gap-2 border-b border-border-1 px-3 py-2">
-            <h3 className="text-xs font-semibold text-text-1">Variables</h3>
+            <h3 className="text-xs font-semibold text-text-1">{tr('Variables')}</h3>
             <span className="font-mono text-[10px] text-text-4">{hasActiveEnv ? `${unresolved.length} unresolved` : 'No environment selected'}</span>
           </div>
           <div className="grid grid-cols-1 gap-2 p-3 md:grid-cols-2">
@@ -556,6 +563,7 @@ function bodyFormatLabel(body: RequestBody): string {
 }
 
 export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest, loading, hideRequestBar = false }: ComposerProps) {
+  const tr = useUiTranslation()
   const getResolvedVars = useEnvironmentsStore((s) => s.getResolvedVars)
   const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
   const resolvedVars = getResolvedVars()
@@ -608,24 +616,24 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
   }, [cookieJarEntries, request.url, sendCookiesAutomatically])
 
   const tabs = [
-    { id: 'body' as ComposerSection, label: 'Body', count: bodyCount, icon: Code },
+    { id: 'body' as ComposerSection, label: tr('Body'), count: bodyCount, icon: Code },
     {
       id: 'headers' as ComposerSection,
-      label: 'Headers / Auth / Cookies',
+      label: tr('Headers / Auth / Cookies'),
       count: (request.headers ?? []).filter((h) => h.enabled && h.key).length
         + (request.auth?.type !== 'none' ? 1 : 0)
         + (request.cookies ?? []).filter((c) => c.enabled && c.key).length
         + jarCount,
       icon: ShieldCheck,
     },
-    { id: 'params' as ComposerSection, label: 'Params', count: (request.params ?? []).filter((p) => p.enabled && p.key).length, icon: CornerDownRight },
+    { id: 'params' as ComposerSection, label: tr('Params'), count: (request.params ?? []).filter((p) => p.enabled && p.key).length, icon: CornerDownRight },
     {
       id: 'scripts' as ComposerSection,
-      label: 'Tests / Scripts',
+      label: tr('Tests / Scripts'),
       count: (request.assertions ?? []).length + ((scripts.pre || scripts.post || scripts.tests) ? 1 : 0),
       icon: CheckCheck,
     },
-    { id: 'overview' as ComposerSection, label: 'Notes', count: request.description?.trim() ? 1 : 0, icon: FileText },
+    { id: 'overview' as ComposerSection, label: tr('Notes'), count: request.description?.trim() ? 1 : 0, icon: FileText },
   ]
 
   const bodyIndex = bodies.length
@@ -719,7 +727,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
                 className="flex-1 text-xs text-text-3 bg-transparent outline-none placeholder:text-text-4 hover:text-text-1 focus:text-text-1"
                 value={request.name}
                 onChange={(e) => onChange({ ...request, name: e.target.value })}
-                placeholder="Request name..."
+                placeholder={tr('Request name...')}
               />
             </div>
 
@@ -763,12 +771,12 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
                 onChange={(e) => onChange({ ...request, timeout: Number(e.target.value) || 0 })}
                 className="w-12 bg-transparent text-xs text-text-1 outline-none font-mono placeholder:text-text-4"
                 placeholder="ms"
-                title="Request timeout (ms, 0 = no timeout)"
+                title={tr('Request timeout (ms, 0 = no timeout)')}
               />
             </div>
             <button
               onClick={() => onChange({ ...request, followRedirects: !(request.followRedirects ?? true) })}
-              title={request.followRedirects ?? true ? 'Follow redirects (on)' : 'Follow redirects (off)'}
+              title={request.followRedirects ?? true ? tr('Follow redirects (on)') : tr('Follow redirects (off)')}
               className={cn(
                 'flex items-center gap-1 h-8 px-2 border border-border-2 rounded text-xs transition-colors',
                 (request.followRedirects ?? true)
@@ -790,7 +798,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
             )}
           >
             <Send size={13} />
-            {loading ? 'Sending...' : 'Send'}
+            {loading ? tr('Sending…') : tr('Send')}
           </button>
 
           <button
@@ -799,7 +807,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
               setSavedFlash(true)
               setTimeout(() => setSavedFlash(false), 1000)
             }}
-            title={isDirty ? 'Unsaved changes — Save to collection (Ctrl+S)' : 'Save to collection (Ctrl+S)'}
+            title={isDirty ? tr('Unsaved changes - Save to collection (Ctrl+S)') : tr('Save to collection (Ctrl+S)')}
             className={cn(
               'h-8 w-8 flex items-center justify-center rounded transition-all',
               savedFlash
@@ -814,7 +822,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
 
           <button
             onClick={() => setShowCurlImport(true)}
-            title="Import from cURL"
+            title={tr('Import from cURL')}
             className="h-8 w-8 flex items-center justify-center text-text-3 hover:text-text-1 rounded hover:bg-surface-2 transition-colors"
           >
             <FileCode size={14} />
@@ -825,7 +833,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
               {onLoadTest && (
                 <button
                   onClick={onLoadTest}
-                  title="Load Test"
+                  title={tr('Load Test')}
                   className="h-8 w-8 flex items-center justify-center text-text-3 hover:text-text-1 rounded hover:bg-surface-2 transition-colors"
                 >
                   <Gauge size={14} />
@@ -836,7 +844,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
         )}
 
         {/* Section tabs */}
-        <div role="tablist" aria-label="Request sections" className="flex min-h-12 flex-nowrap items-end gap-1 overflow-x-auto border-y-2 border-border-2 bg-surface-1 px-3 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div role="tablist" aria-label={tr('Request sections')} className="flex min-h-12 flex-nowrap items-end gap-1 overflow-x-auto border-y-2 border-border-2 bg-surface-1 px-3 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {tabs.map((t) => {
             const TabIcon = t.icon
             const active = activeTab === t.id
@@ -853,7 +861,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
                   event.preventDefault()
                   setBodyMenu({ x: event.clientX, y: event.clientY, index: bodyIndex })
                 } : undefined}
-                title={t.id === 'body' ? 'Right-click to duplicate / rename this body' : undefined}
+                title={t.id === 'body' ? tr('Right-click to duplicate / rename this body') : undefined}
                 className={cn(
                   'relative flex h-9 shrink-0 items-center gap-1.5 rounded-t-md border border-b-0 px-3 text-[11.5px] font-medium outline-none transition-all focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent',
                   active
@@ -904,11 +912,11 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
           )}
           {activeTab === 'headers' && (
             <div className="flex min-h-0 flex-1 flex-col">
-              <div role="tablist" aria-label="Headers, authentication and cookies" className="flex gap-1 border-b border-border-1 bg-surface-1 px-2 pt-2">
+              <div role="tablist" aria-label={tr('Headers, authentication and cookies')} className="flex gap-1 border-b border-border-1 bg-surface-1 px-2 pt-2">
                 {([
-                  { id: 'headers' as const, label: 'Headers', icon: ListChecks },
-                  { id: 'auth' as const, label: 'Auth', icon: ShieldCheck },
-                  { id: 'cookies' as const, label: 'Cookies', icon: Circle },
+                  { id: 'headers' as const, label: tr('Headers'), icon: ListChecks },
+                  { id: 'auth' as const, label: tr('Auth'), icon: ShieldCheck },
+                  { id: 'cookies' as const, label: tr('Cookies'), icon: Circle },
                   { id: 'psd2' as const, label: 'PSD2', icon: FileKey2 },
                 ]).map((item) => {
                   const ItemIcon = item.icon
@@ -934,8 +942,8 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
                 <KVEditor
                     rows={request.headers ?? []}
                     onChange={(headers) => onChange({ ...request, headers })}
-                    keyPlaceholder="Header name"
-                    valuePlaceholder="Header value"
+                    keyPlaceholder={tr('Header name')}
+                    valuePlaceholder={tr('Header value')}
                 />
               )}
               {configurationTab === 'auth' && (
@@ -946,8 +954,8 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
                   <KVEditor
                     rows={request.cookies ?? []}
                     onChange={(cookies) => onChange({ ...request, cookies })}
-                    keyPlaceholder="Cookie name"
-                    valuePlaceholder="Cookie value"
+                    keyPlaceholder={tr('Cookie name')}
+                    valuePlaceholder={tr('Cookie value')}
                   />
                   <CookieJarSection requestUrl={request.url} />
                 </>
@@ -971,13 +979,13 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
                   <button
                     onClick={() => setBodyVariantsExpanded(v => !v)}
                     className="flex flex-1 min-w-0 items-center gap-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
-                    title={bodyVariantsExpanded ? 'Collapse body variants' : 'Expand body variants'}
+                    title={bodyVariantsExpanded ? tr('Collapse body variants') : tr('Expand body variants')}
                   >
                     <ChevronDown
                       size={12}
                       className={cn('shrink-0 text-text-4 transition-transform duration-150', bodyVariantsExpanded ? 'rotate-0' : '-rotate-90')}
                     />
-                    <span className="text-[11px] font-medium text-text-3">Body variants</span>
+                    <span className="text-[11px] font-medium text-text-3">{tr('Body variants')}</span>
                     {/* Pill showing active body name */}
                     {activeBody && (
                       <span className="ml-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 bg-surface-2 border border-border-2 text-[10px] font-medium text-text-2 truncate max-w-[160px]">
@@ -993,16 +1001,16 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
                   <button
                     onClick={addBody}
                     className="inline-flex shrink-0 h-6 items-center gap-1 rounded border border-border-2 bg-surface-2 px-2 text-[10px] font-medium text-text-2 outline-none transition-colors hover:border-accent/60 hover:bg-surface-3 focus-visible:ring-2 focus-visible:ring-accent"
-                    title="Add body example"
+                    title={tr('Add body example')}
                   >
-                    <Plus size={10} className="text-accent" /> New
+                    <Plus size={10} className="text-accent" /> {tr('New')}
                   </button>
                 </div>
 
                 {/* Expanded panel — body variant cards */}
                 {bodyVariantsExpanded && (
                   <div className="px-3 pb-2.5">
-                    <div role="tablist" aria-label="Request body variants" className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                    <div role="tablist" aria-label={tr('Request body variants')} className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
                       {bodies.map((body, index) => {
                         const active = index === bodyIndex
                         return (
@@ -1077,7 +1085,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
           )}
           {activeTab === 'scripts' && (
             <div className="flex min-h-0 flex-1 flex-col">
-              <Suspense fallback={<div className="flex flex-1 items-center justify-center text-xs text-text-3">Loading JavaScript editor…</div>}>
+              <Suspense fallback={<div className="flex flex-1 items-center justify-center text-xs text-text-3">{tr('Loading JavaScript editor…')}</div>}>
                 <ScriptsEditor
                   pre={scripts.pre ?? ''}
                   post={scripts.post ?? ''}
@@ -1103,9 +1111,9 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
           x={bodyMenu.x}
           y={bodyMenu.y}
           items={[
-            { id: 'rename', label: 'Rename body variant' },
-            { id: 'duplicate', label: 'Duplicate body variant' },
-            { id: 'delete', label: 'Delete body variant', danger: true, disabled: bodies.length <= 1, separatorBefore: true },
+            { id: 'rename', label: tr('Rename body variant') },
+            { id: 'duplicate', label: tr('Duplicate body variant') },
+            { id: 'delete', label: tr('Delete body variant'), danger: true, disabled: bodies.length <= 1, separatorBefore: true },
           ]}
           onSelect={(action) => {
             const index = bodyMenu.index
@@ -1120,10 +1128,10 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
 
       <Prompt
         open={renameBodyPrompt?.show ?? false}
-        title="Rename Body"
-        placeholder="Body name..."
+        title={tr('Rename Body')}
+        placeholder={tr('Body name...')}
         defaultValue={renameBodyPrompt ? bodies[renameBodyPrompt.index]?.name : ''}
-        confirmLabel="Rename"
+        confirmLabel={tr('Rename')}
         onConfirm={(name) => {
           if (renameBodyPrompt) {
             const i = renameBodyPrompt.index

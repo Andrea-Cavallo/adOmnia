@@ -3,6 +3,7 @@ import { Plus, Check, X, ChevronDown } from 'lucide-react'
 import type { HostsProfile, HostEntry } from '@/lib/types'
 import { HostModal } from './HostModal'
 import { cn } from '@/lib/utils'
+import { useUiTranslation } from '@/lib/uiI18n'
 
 interface HostBarProps {
   profiles: HostsProfile[]
@@ -23,6 +24,7 @@ export function HostBar({
   onRename,
   onUpdateEntries,
 }: HostBarProps) {
+  const tr = useUiTranslation()
   const [showModal, setShowModal] = useState(false)
   const [adding, setAdding] = useState(false)
   const [newName, setNewName] = useState('')
@@ -52,13 +54,13 @@ export function HostBar({
   const cancelAdd = () => { setAdding(false); setNewName('') }
 
   const activeLabel = activeProfileId
-    ? (profiles.find(p => p.id === activeProfileId)?.name ?? 'Unknown')
-    : 'No Hosts'
+    ? (profiles.find(p => p.id === activeProfileId)?.name ?? tr('Unknown'))
+    : tr('No Hosts')
 
   return (
     <>
       <div className="flex h-[var(--ui-toolbar-h)] items-center gap-1.5 border-b border-border-1 px-2.5">
-        <span className="text-[10px] text-text-4 uppercase tracking-wider shrink-0">Hosts</span>
+        <span className="text-[10px] text-text-4 uppercase tracking-wider shrink-0">{tr('Hosts')}</span>
 
         {/* Custom dropdown */}
         <div ref={dropRef} className="relative">
@@ -89,7 +91,7 @@ export function HostBar({
                     : 'text-text-3 hover:bg-surface-3 hover:text-text-1'
                 )}
               >
-                No Hosts
+                {tr('No Hosts')}
               </button>
               {profiles.map(p => (
                 <button
@@ -119,7 +121,7 @@ export function HostBar({
                 if (e.key === 'Enter') confirmAdd()
                 if (e.key === 'Escape') cancelAdd()
               }}
-              placeholder="Profile name…"
+              placeholder={tr('Profile name…')}
               className="h-6 px-2 bg-surface-2 border border-accent rounded text-xs text-text-1 outline-none w-32"
             />
             <button onClick={confirmAdd} className="w-5 h-5 flex items-center justify-center text-success hover:text-success/80">
@@ -133,7 +135,7 @@ export function HostBar({
           <button
             onClick={handleAdd}
             className="w-5 h-5 flex items-center justify-center text-text-4 hover:text-text-1 rounded"
-            title="New hosts profile"
+            title={tr('New hosts profile')}
           >
             <Plus size={12} />
           </button>
@@ -142,9 +144,9 @@ export function HostBar({
         <button
           onClick={() => setShowModal(true)}
           className="ml-auto text-[11px] text-accent hover:text-accent-light"
-          title="Manage hosts profiles"
+          title={tr('Manage hosts profiles')}
         >
-          Hosts
+          {tr('Hosts')}
         </button>
       </div>
 
