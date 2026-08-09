@@ -17,6 +17,13 @@ describe('Sketch search highlighting', () => {
   })
 })
 
+describe('Sketch JSON editor', () => {
+  it('keeps the ruled paper without a red notebook margin beside code', () => {
+    expect(stylesheet).not.toContain("[data-skin='sketch'] [data-editor='json']::before")
+    expect(stylesheet).toContain("[data-skin='sketch'] [data-editor='json'] {")
+  })
+})
+
 describe('Sketch collection selection', () => {
   it('renders the active collection request as a marker stroke', () => {
     expect(collectionTreeSource).toContain('data-collection-request')

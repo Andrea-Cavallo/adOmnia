@@ -322,6 +322,7 @@ export function Rail() {
   return (
     <nav
       ref={railRef}
+      data-app-rail
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       className="w-16 flex-shrink-0 bg-surface-0 border-r border-border-1 flex flex-col items-center py-3 gap-0.5 overflow-visible"

@@ -93,8 +93,8 @@
 }
 
 /* ── The writing area ──────────────────────────────────────────────────────
-   Ruled lines and the red margin rule every notebook has, drawn on the code
-   editor itself. Keyed off [data-editor] rather than utility classes so the
+   Ruled lines are drawn on the code editor itself. Keyed off [data-editor]
+   rather than utility classes so the
    skin does not break when the layout is refactored.
 
    The ruling is pinned to the editor's own line height (--sk-code-leading) so
@@ -109,16 +109,6 @@
     color-mix(in oklab, var(--sk-rule) 55%, transparent) calc(var(--sk-code-leading) - 1px),
     color-mix(in oklab, var(--sk-rule) 55%, transparent) var(--sk-code-leading)
   );
-}
-
-[data-skin='sketch'] [data-editor='json']::before {
-  content: '';
-  position: absolute;
-  inset: 0 auto 0 46px;
-  width: 1.5px;
-  background: color-mix(in oklab, var(--sk-margin) 75%, transparent);
-  pointer-events: none;
-  z-index: 2;
 }
 
 /* The editor paints its own surfaces; let the paper through. */
@@ -337,6 +327,159 @@
   border-radius: var(--sk-edge-a);
   box-shadow: 2px 3px 0 0 color-mix(in oklab, var(--sk-ink) 22%, transparent),
               0 10px 26px -12px rgba(0, 0, 0, 0.4);
+}
+
+/* ── The hub page ──────────────────────────────────────────────────────────
+   The hub is the one screen that reads as a whole sheet rather than a tool, so
+   it gets the physical parts of a notebook: the binding running down the app's
+   left edge, the red margin, tape, and index cards clipped over the ruling.
+   Everything here is decoration only — the layout underneath is token-driven
+   and renders on every other theme without these rules. */
+
+/* The hub is written in the same hand as the rest of the page: no monospaced
+   labels breaking the illusion halfway down the sheet. */
+[data-skin='sketch'] [data-hub-page] {
+  font-family: var(--skin-font-ui, var(--font-sans));
+}
+
+/* The red margin rule the hub renders as an empty span on other themes. */
+[data-skin='sketch'] [data-hub-margin] {
+  background: color-mix(in oklab, var(--sk-margin) 80%, transparent);
+}
+
+/* A strip of masking tape: warm, translucent, torn at both ends. */
+[data-skin='sketch'] [data-hub-tape],
+[data-skin='sketch'] [data-hub-polaroid]::before,
+[data-skin='sketch'] [data-hub-polaroid]::after {
+  background: color-mix(in oklab, #E3D2A6 60%, transparent);
+  box-shadow: 0 1px 2px -1px color-mix(in oklab, var(--sk-ink) 35%, transparent);
+  clip-path: polygon(0 6%, 4% 0, 100% 3%, 97% 100%, 2% 94%);
+}
+
+[data-skin='sketch'] [data-hub-polaroid] {
+  position: relative;
+  background-color: var(--sk-paper);
+  border: 1.5px solid color-mix(in oklab, var(--sk-ink) 38%, transparent);
+  border-radius: var(--sk-edge-b);
+  box-shadow: 3px 4px 0 0 color-mix(in oklab, var(--sk-ink) 16%, transparent);
+}
+
+[data-skin='sketch'] [data-hub-polaroid]::before,
+[data-skin='sketch'] [data-hub-polaroid]::after {
+  content: '';
+  position: absolute;
+  width: 74px;
+  height: 24px;
+}
+
+[data-skin='sketch'] [data-hub-polaroid]::before {
+  top: -13px;
+  left: -20px;
+  transform: rotate(-34deg);
+}
+
+[data-skin='sketch'] [data-hub-polaroid]::after {
+  top: -11px;
+  right: -22px;
+  transform: rotate(28deg);
+}
+
+/* The logo is a photo taped to the page, not a control. */
+[data-skin='sketch'] [data-hub-logo] {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* ── Index cards ───────────────────────────────────────────────────────────
+   Solid paper so the ruling stops at the card edge, a drawn border, punched
+   rings down the left, and a corner turned up at the top right. */
+[data-skin='sketch'] [data-hub-card],
+[data-skin='sketch'] [data-hub-note] {
+  position: relative;
+  background-color: var(--sk-paper);
+  border: 1.5px solid color-mix(in oklab, var(--sk-ink) 45%, transparent);
+  border-radius: var(--sk-edge-a);
+  box-shadow: 2px 3px 0 0 color-mix(in oklab, var(--sk-ink) 18%, transparent);
+}
+
+[data-skin='sketch'] [data-hub-card]:nth-of-type(even) {
+  border-radius: var(--sk-edge-b);
+}
+
+[data-skin='sketch'] [data-hub-card] {
+  padding-left: 3.25rem;
+}
+
+[data-skin='sketch'] [data-hub-card]::before {
+  content: '';
+  position: absolute;
+  inset: 14px auto 14px 12px;
+  width: 22px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='30' viewBox='0 0 22 30'%3E%3Ccircle cx='11' cy='15' r='5' fill='none' stroke='%23161b26' stroke-width='1.8'/%3E%3C/svg%3E");
+  background-repeat: repeat-y;
+  background-position: center top;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* Corner turned up: a wedge of paper over the border, plus its shadow. */
+[data-skin='sketch'] [data-hub-card]::after {
+  content: '';
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 22px;
+  height: 22px;
+  background: linear-gradient(
+    225deg,
+    var(--sk-paper) 0 50%,
+    color-mix(in oklab, var(--sk-ink) 45%, transparent) 50% 54%,
+    transparent 54%
+  );
+  pointer-events: none;
+}
+
+/* Tool links are handwriting, not controls — the generic button rules above
+   would otherwise box every one of them. */
+[data-skin='sketch'] [data-hub-link] {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0;
+}
+
+[data-skin='sketch'] [data-hub-card-icon] {
+  border-width: 1.5px;
+  border-radius: var(--sk-edge-b);
+}
+
+/* Each recent note is a torn-off slip with its own margin rule. */
+[data-skin='sketch'] [data-hub-note] {
+  padding-left: 1.5rem;
+}
+
+[data-skin='sketch'] [data-hub-note]::before {
+  content: '';
+  position: absolute;
+  inset: 4px auto 4px 14px;
+  width: 1.5px;
+  background: color-mix(in oklab, var(--sk-margin) 70%, transparent);
+  pointer-events: none;
+}
+
+/* Section labels are underlined by hand after the fact. */
+[data-skin='sketch'] [data-hub-underline] {
+  padding-bottom: 3px;
+  background-image: linear-gradient(
+    91deg,
+    transparent 0 2%,
+    color-mix(in oklab, var(--color-accent) 60%, transparent) 6% 94%,
+    transparent 98%
+  );
+  background-size: 100% 2px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
 }
 
 /* Rows inside a floating surface must not re-paint the paper away. */

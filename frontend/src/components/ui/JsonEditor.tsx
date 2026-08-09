@@ -647,7 +647,7 @@ export function JsonEditor({
   return (
     <div
       // Stable hook for skins that need to treat the writing area — the Sketch
-      // skin draws its ruled paper and red margin rule here. Skinning off the
+      // skin draws its ruled paper here. Skinning off the
       // utility classes instead would break the moment they are reshuffled.
       data-editor="json"
       data-search-active={searchTerm ? 'true' : undefined}

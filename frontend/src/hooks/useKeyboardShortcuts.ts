@@ -83,6 +83,14 @@ export function useKeyboardShortcuts({ setCommandPaletteOpen }: KeyboardShortcut
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [newTab, setActiveRail, setCommandPaletteOpen, toggleDevTools])
 
+  // The hub's search field is a shortcut hint you can click, so it raises the
+  // same palette the keyboard does instead of owning a second search surface.
+  useEffect(() => {
+    const openPalette = () => setCommandPaletteOpen(true)
+    document.addEventListener('adomnia:open-palette', openPalette)
+    return () => document.removeEventListener('adomnia:open-palette', openPalette)
+  }, [setCommandPaletteOpen])
+
   useEffect(() => {
     const handleMouseDown = (e: MouseEvent) => {
       if (e.button !== 3 && e.button !== 4) return
