@@ -34,6 +34,7 @@ describe('Sketch active controls', () => {
     expect(stylesheet).toContain("[data-skin='sketch'] [aria-checked='true'],")
     expect(stylesheet).toContain("[data-skin='sketch'] [aria-checked='true']::after,")
     expect(stylesheet).toContain("[data-skin='sketch'] [aria-checked='true'] svg,")
+    expect(stylesheet).toContain('color: var(--color-text-1) !important')
   })
 })
 

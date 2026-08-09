@@ -31,6 +31,10 @@ or the new Sketch skin, for a hand-drawn engineering-notebook workspace without 
 
 ![adOmnia Sketch skin preview](assets/images/sketch-previews.png)
 
+The Sketch skin also gives the main adOmnia Hub a focused engineering-notebook layout, so API, documentation, Git, and infrastructure workspaces are immediately discoverable:
+
+![adOmnia Hub with Sketch skin](assets/images/adomnia-hub-sketch.png)
+
 ### Why adOmnia
 
 Most API tools went the wrong way: they moved your requests, secrets, and history into someone else's cloud, put your team behind a login wall, and charged you monthly for it. adOmnia is the opposite bet — **one fast desktop app that does more than the cloud suites, while keeping everything on your machine.**

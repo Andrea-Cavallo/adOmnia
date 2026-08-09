@@ -4,6 +4,16 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [0.8.1] - 2026-08-09
+
+### Changed
+- **Sketch Hub preview in the README:** the public project page now shows the redesigned main Hub in its engineering-notebook skin, so the immediately discoverable API, Docs, Git, and Infrastructure workspaces are visible before download.
+- **Release metadata aligned:** the Wails desktop configuration and both npm manifests now report `0.8.1`, matching the annotated `v0.8.1` release tag and preventing the About panel, development build, and package metadata from drifting apart.
+
+### Fixed
+- **Sketch active body controls:** JSON, Raw, URL Encoded, Form Data, and GraphQL could still show white labels and icons on white paper. The underlying `text-white` utilities had higher cascade precedence than the Sketch highlighter. Active radio controls now force dark ink for both label and icon while retaining the yellow marker swipe.
+- **Sketch Git Sync cohesion:** commit history and staged/unstaged file lists no longer render as a stack of disconnected notebook cards. Dense Git data now flows on continuous rails with light separators, and the selected commit receives one controlled marker swipe.
+
 ## [0.8.0] - 2026-08-09
 
 ### Added

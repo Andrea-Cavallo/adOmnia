@@ -167,7 +167,7 @@
 [data-skin='sketch'] [data-state='active'] {
   position: relative;
   isolation: isolate;
-  color: var(--color-text-1);
+  color: var(--color-text-1) !important;
   /* !important because the generic control rule above carries an element
      selector and would otherwise repaint paper over the marker. */
   background-color: transparent !important;
@@ -178,7 +178,7 @@
 [data-skin='sketch'] [aria-selected='true'] svg,
 [data-skin='sketch'] [aria-checked='true'] svg,
 [data-skin='sketch'] [data-state='active'] svg {
-  color: var(--color-text-1);
+  color: var(--color-text-1) !important;
 }
 
 [data-skin='sketch'] [aria-selected='true']::after,
