@@ -9,16 +9,18 @@ import { ThemeProvider } from '@/components/themes/ThemeProvider'
 import { DevLogOverlay } from '@/components/ui/DevLogOverlay'
 import { ConfirmDialogHost } from '@/components/ui/ConfirmDialogHost'
 import { StorageQuotaBanner } from '@/components/layout/StorageQuotaBanner'
-import { UpdateBanner } from '@/components/layout/UpdateBanner'
 import { ErrorBoundary } from '@/components/layout/ErrorBoundary'
 import { ResizeHandle } from '@/components/ui/ResizeHandle'
 import { DropOverlay } from '@/components/layout/DropOverlay'
 import { DropToast } from '@/components/layout/DropToast'
+import { PluginNotificationToast } from '@/components/plugins/PluginNotificationToast'
 import { useAppStore } from '@/stores/app'
 import { useAppInit } from '@/hooks/useAppInit'
 import { useAppearance } from '@/hooks/useAppearance'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { useFileDrop } from '@/hooks/useFileDrop'
+import { useSettingsStore } from '@/stores/settings'
+import { useUiTranslation } from '@/lib/uiI18n'
 
 const SIDEBAR_WIDTH_KEY = 'adomnia.sidebarWidth'
 const SIDEBAR_WIDTH_MIN = 180
@@ -37,12 +39,14 @@ function loadSidebarWidth(): number {
 }
 
 function App() {
+  const tr = useUiTranslation()
   const { activeWindowChrome, commandPaletteOpen, setCommandPaletteOpen } = useAppInit()
   const { dragOver, dropPreview, dropFeedback, handlers } = useFileDrop()
   const devLogVisible  = useAppStore((s) => s.devToolsVisible)
   const toggleDevTools = useAppStore((s) => s.toggleDevTools)
   const activeRail     = useAppStore((s) => s.activeRail)
-  const showSidebar    = activeRail === 'collections'
+  const sidebarCollapsed = useSettingsStore((s) => s.settings.appearance.sidebarCollapsed)
+  const showSidebar    = activeRail === 'collections' && !sidebarCollapsed
   useAppearance()
   useKeyboardShortcuts({ setCommandPaletteOpen })
 
@@ -90,10 +94,13 @@ function App() {
       <ThemeProvider>
         <div
           className="h-screen w-screen flex flex-col overflow-hidden bg-surface-0 relative"
+          // Wails 3 only forwards native OS file drops that land on an element
+          // marked as a drop target. This root covers the whole window, which
+          // matches the previous v2 whole-window behaviour.
+          data-file-drop-target
           {...handlers}
         >
           {activeWindowChrome !== 'system' && <Titlebar />}
-          <UpdateBanner />
           <StorageQuotaBanner />
           <div className="flex flex-1 min-h-0">
             <Rail />
@@ -105,7 +112,7 @@ function App() {
                 </div>
                 {/* Sidebar drag handle */}
                 <ResizeHandle
-                  label="Drag to resize sidebar"
+                  label={tr('Drag to resize sidebar')}
                   onMouseDown={handleSidebarResizeMouseDown}
                   withLine={false}
                   className="border-r border-border-1"
@@ -117,6 +124,7 @@ function App() {
           <StatusBar />
           {dragOver && <DropOverlay preview={dropPreview} />}
           {dropFeedback && <DropToast feedback={dropFeedback} />}
+          <PluginNotificationToast />
         </div>
         <CommandPalette open={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} />
         <ConfirmDialogHost />

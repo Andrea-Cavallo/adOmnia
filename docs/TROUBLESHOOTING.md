@@ -14,13 +14,13 @@ This is expected for development releases. Notarized releases require Apple Deve
 
 ## Linux App Does Not Launch
 
-Wails Linux builds require system WebKitGTK/GTK runtime libraries.
+Wails 3 Linux builds require the GTK 3 and WebKitGTK 4.1 runtime libraries.
 
 On Debian/Ubuntu-like systems, install:
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y libgtk-3-0 libwebkit2gtk-4.0-37 libayatana-appindicator3-1
+sudo apt-get install -y libgtk-3-0 libwebkit2gtk-4.1-0 libayatana-appindicator3-1
 ```
 
 Package names vary by distribution.
@@ -56,7 +56,7 @@ If dependencies are stale, remove `frontend/node_modules` and run `npm ci` again
 Install the pinned Wails CLI:
 
 ```bash
-go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.5
 ```
 
 Make sure your Go bin directory is on `PATH`.

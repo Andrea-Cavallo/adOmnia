@@ -8,7 +8,7 @@ on:
         required: true
 
 env:
-  WAILS_VERSION: v2.12.0
+  WAILS_VERSION: v3.0.0-beta.5
 
 # ─────────────────────────────────────────────────────────────────────────────
 # WINDOWS · amd64
@@ -44,15 +44,20 @@ jobs:
           node-version: '20'
 
       - name: Install Wails
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@${{ env.WAILS_VERSION }}
 
       - name: Build
-        run: wails build -ldflags "-s -w" -trimpath
+        shell: pwsh
+        run: |
+          $env:VERSION = "${{ steps.ver.outputs.version }}"
+          $env:BUILD_DATE = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+          $env:GIT_COMMIT = "${{ github.sha }}"
+          wails3 task windows:build
 
       - name: Compress with UPX
         uses: crazy-max/ghaction-upx@v4
         with:
-          files: build/bin/adomnia.exe
+          files: bin/adomnia.exe
           args: --best --lzma
 
       - name: Stage artifact
@@ -60,7 +65,7 @@ jobs:
         run: |
           $ver = "${{ steps.ver.outputs.version }}"
           New-Item -ItemType Directory -Force dist | Out-Null
-          Copy-Item build\bin\adomnia.exe "dist\adomnia-$ver-windows-amd64-compressed.exe"
+          Copy-Item bin\adomnia.exe "dist\adomnia-$ver-windows-amd64-compressed.exe"
 
       - uses: actions/upload-artifact@v7
         with:
@@ -69,7 +74,7 @@ jobs:
 
 # ─────────────────────────────────────────────────────────────────────────────
 # LINUX · amd64
-# Builds compressed native tarballs for both WebKitGTK 4.0 and 4.1.
+# Builds compressed native tarballs for the Wails 3 GTK3/WebKitGTK 4.1 target.
 # ─────────────────────────────────────────────────────────────────────────────
   build-linux:
     name: Linux · amd64 tarballs
@@ -103,13 +108,12 @@ jobs:
             build-essential \
             libayatana-appindicator3-dev \
             libgtk-3-dev \
-            libwebkit2gtk-4.0-dev \
             libwebkit2gtk-4.1-dev \
             pkg-config \
             upx-ucl
 
       - name: Install Wails
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@${{ env.WAILS_VERSION }}
 
       - name: Build compressed Linux native tarballs
         run: |
@@ -123,8 +127,8 @@ jobs:
         with:
           name: linux-amd64-compressed
           path: |
-            dist/adomnia-*-linux-amd64-webkitgtk-*-compressed.tar.gz
-            dist/adomnia-*-linux-amd64-webkitgtk-*-compressed.tar.gz.sha256
+            dist/adomnia-*-linux-amd64-gtk3-webkitgtk-*-compressed.tar.gz
+            dist/adomnia-*-linux-amd64-gtk3-webkitgtk-*-compressed.tar.gz.sha256
 
 # ─────────────────────────────────────────────────────────────────────────────
 # MACOS · universal (arm64 + amd64 via lipo)
@@ -161,49 +165,15 @@ jobs:
         run: brew install create-dmg
 
       - name: Install Wails
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@${{ env.WAILS_VERSION }}
 
-      - name: Build arm64 slice
-        run: |
-          wails build -ldflags "-s -w" -trimpath -platform darwin/arm64
-          cp build/bin/adomnia.app/Contents/MacOS/adomnia /tmp/adomnia-arm64
-
-      - name: Build amd64 slice
-        run: |
-          wails build -ldflags "-s -w" -trimpath -platform darwin/amd64
-          cp build/bin/adomnia.app/Contents/MacOS/adomnia /tmp/adomnia-amd64
-
-      - name: Merge into universal binary
-        run: |
-          lipo -create /tmp/adomnia-arm64 /tmp/adomnia-amd64 \
-            -output build/bin/adomnia.app/Contents/MacOS/adomnia
-          chmod +x build/bin/adomnia.app/Contents/MacOS/adomnia
-          lipo -info build/bin/adomnia.app/Contents/MacOS/adomnia
-
-      - name: Create DMG
-        run: |
-          VER="${{ steps.ver.outputs.version }}"
-          mkdir -p dist
-          create-dmg \
-            --volname "adomnia $VER" \
-            --window-pos 200 120 \
-            --window-size 600 400 \
-            --icon-size 100 \
-            --icon "adomnia.app" 150 190 \
-            --hide-extension "adomnia.app" \
-            --app-drop-link 450 190 \
-            "dist/adomnia-$VER-macos-universal-compressed-workflow.dmg" \
-            "build/bin/" \
-          || hdiutil create \
-            -volname "adomnia $VER" \
-            -srcfolder "build/bin/adomnia.app" \
-            -ov -format UDZO \
-            "dist/adomnia-$VER-macos-universal-compressed-workflow.dmg"
+      - name: Build universal app and DMG
+        run: VERSION="${{ steps.ver.outputs.version }}" GIT_COMMIT="${{ github.sha }}" bash scripts/build-macos.sh
 
       - uses: actions/upload-artifact@v7
         with:
           name: macos-universal-compressed-workflow
-          path: dist/adomnia-*-macos-universal-compressed-workflow.dmg
+          path: dist/adomnia-*-macos-universal.dmg
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PUBLISH · GitHub Release

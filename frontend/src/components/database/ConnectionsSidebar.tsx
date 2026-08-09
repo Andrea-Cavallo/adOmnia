@@ -5,6 +5,7 @@ import {
   DRIVER_META, SELECTABLE_DRIVERS,
   type DbConnection, type DbDriver, type SelectableDbDriver,
 } from './dbShared'
+import { databaseCredentialState } from './dbSecrets'
 
 interface ConnectionsSidebarProps {
   connections: DbConnection[]
@@ -16,7 +17,7 @@ interface ConnectionsSidebarProps {
   onUpdate: (patch: Partial<DbConnection>) => void
   onSetDriver: (driver: DbDriver) => void
   onTest: () => void
-  onVault: () => void
+  onVault: (passphrase: string) => Promise<void>
   onCreateLocalSQLite: () => void
 }
 
@@ -36,7 +37,9 @@ export function ConnectionsSidebar(props: ConnectionsSidebarProps) {
   const { connections, active, running, onSelect, onAdd, onDelete, onUpdate, onSetDriver, onTest, onVault, onCreateLocalSQLite } = props
   const [search, setSearch] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [vaultPassphrase, setVaultPassphrase] = useState('')
   const [menuId, setMenuId] = useState('')
+  const credentialState = databaseCredentialState(active)
 
   const filtered = connections.filter((c) =>
     !search.trim() ||
@@ -82,29 +85,29 @@ export function ConnectionsSidebar(props: ConnectionsSidebarProps) {
             return (
               <div
                 key={conn.id}
-                onClick={() => onSelect(conn.id)}
                 className={cn(
-                  'group relative flex cursor-pointer items-center gap-2.5 rounded-lg border px-2.5 py-2 transition-colors',
+                  'group relative flex items-center gap-2.5 rounded-lg border px-2.5 py-2 transition-colors focus-within:ring-2 focus-within:ring-accent',
                   isActive
                     ? 'border-accent/60 bg-accent/10'
                     : 'border-transparent hover:border-border-2 hover:bg-surface-2'
                 )}
               >
-                <div
-                  className="grid h-8 w-8 flex-none place-items-center rounded-md border"
-                  style={{ borderColor: `${meta.accent}44`, background: `${meta.accent}14` }}
-                >
-                  <Database size={15} style={{ color: meta.accent }} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className={cn('truncate text-[12.5px] font-medium', isActive ? 'text-text-1' : 'text-text-2')}>{conn.name}</div>
-                  <div className="truncate text-[10.5px] text-text-4">{sub}</div>
-                </div>
+                <button type="button" aria-pressed={isActive} onClick={() => onSelect(conn.id)} className="flex min-w-0 flex-1 items-center gap-2.5 text-left outline-none">
+                  <span className="grid h-8 w-8 flex-none place-items-center rounded-md border" style={{ borderColor: `${meta.accent}44`, background: `${meta.accent}14` }}>
+                    <Database size={15} style={{ color: meta.accent }} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className={cn('block truncate text-[12.5px] font-medium', isActive ? 'text-text-1' : 'text-text-2')}>{conn.name}</span>
+                    <span className="block truncate text-[10.5px] text-text-4">{sub}</span>
+                  </span>
+                </button>
                 <button
+                  aria-label={`Connection actions for ${conn.name}`}
+                  aria-expanded={menuId === conn.id}
                   onClick={(e) => { e.stopPropagation(); setMenuId(menuId === conn.id ? '' : conn.id) }}
                   className={cn(
                     'grid h-6 w-6 flex-none place-items-center rounded text-text-4 transition-opacity hover:bg-surface-3 hover:text-text-1',
-                    isActive || menuId === conn.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                    isActive || menuId === conn.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'
                   )}
                 >
                   <MoreVertical size={13} />
@@ -236,12 +239,26 @@ export function ConnectionsSidebar(props: ConnectionsSidebarProps) {
             <Wand2 size={13} /> Test Connection
           </button>
           <button
-            onClick={onVault}
-            className="flex h-8 items-center justify-center gap-1.5 rounded-md border border-border-2 bg-surface-2 text-[11.5px] font-medium text-text-2 transition-colors hover:border-accent/50 hover:text-text-1"
+            onClick={() => void onVault(vaultPassphrase).then(() => setVaultPassphrase('')).catch(() => undefined)}
+            disabled={credentialState !== 'session' || !vaultPassphrase}
+            className="flex h-8 items-center justify-center gap-1.5 rounded-md border border-border-2 bg-surface-2 text-[11.5px] font-medium text-text-2 transition-colors hover:border-accent/50 hover:text-text-1 disabled:opacity-40"
           >
-            <Shield size={13} /> Vault
+            <Shield size={13} /> Protect
           </button>
         </div>
+
+        {credentialState === 'session' && (
+          <div className="mt-2 space-y-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-[10.5px] text-warning">
+            <p>Plain credentials are session-only and are not written to storage. Enter the Vault passphrase to reuse them after restart.</p>
+            <input
+              type="password"
+              value={vaultPassphrase}
+              onChange={(event) => setVaultPassphrase(event.target.value)}
+              placeholder="Vault passphrase"
+              className={inputCls}
+            />
+          </div>
+        )}
 
         {/* runner note */}
         {active.driver === 'mongodb' && (
@@ -255,9 +272,9 @@ export function ConnectionsSidebar(props: ConnectionsSidebarProps) {
             </div>
           </div>
         )}
-        {active.savedInVault && (
+        {credentialState === 'vault' && (
           <div className="mt-2 rounded-lg border border-success/25 bg-success/8 px-3 py-2 text-[10.5px] text-success">
-            Credential handoff sent to Vault. Remove plaintext here after encrypting.
+            Credentials are encrypted at rest and resolved only while this connection is used.
           </div>
         )}
         {active.driver === 'db2' && (

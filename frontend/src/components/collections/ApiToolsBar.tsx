@@ -4,6 +4,7 @@ import { Check, Clock, Code2, Copy, CornerDownRight, FileInput, Gauge, Link, Lis
 import { cn } from '@/lib/utils'
 import { applyParsedCurl, parseCurl } from '@/lib/parseCurl'
 import type { RequestItem } from '@/lib/types'
+import { useUiTranslation, type UiMessage } from '@/lib/uiI18n'
 
 type ToolId = 'url' | 'query' | 'curl' | 'status'
 
@@ -15,7 +16,7 @@ interface ApiToolsBarProps {
   open?: boolean
 }
 
-const HTTP_STATUS: { code: number; label: string; detail: string }[] = [
+const HTTP_STATUS: { code: number; label: UiMessage; detail: UiMessage }[] = [
   { code: 100, label: 'Continue', detail: 'Server received headers and the client can continue.' },
   { code: 101, label: 'Switching Protocols', detail: 'Server is switching protocols as requested.' },
   { code: 200, label: 'OK', detail: 'Request completed successfully.' },
@@ -43,7 +44,7 @@ const HTTP_STATUS: { code: number; label: string; detail: string }[] = [
   { code: 504, label: 'Gateway Timeout', detail: 'Gateway did not receive upstream response in time.' },
 ]
 
-const TOOLS: { id: ToolId; label: string; icon: ElementType }[] = [
+const TOOLS: { id: ToolId; label: UiMessage; icon: ElementType }[] = [
   { id: 'url', label: 'URL Encode', icon: Link },
   { id: 'query', label: 'Query String', icon: ListFilter },
   { id: 'curl', label: 'Import cURL', icon: FileInput },
@@ -73,25 +74,27 @@ function statusClass(code: number) {
 }
 
 export function ApiToolsBar({ activeRequest, onChangeRequest, onApplyRequest, onLoadTest, open = true }: ApiToolsBarProps) {
+  const tr = useUiTranslation()
   const [activeTool, setActiveTool] = useState<ToolId | null>(null)
   const [urlInput, setUrlInput] = useState(activeRequest?.url || 'https://api.local/v1/orders?status=open')
   const [urlOutput, setUrlOutput] = useState('')
   const [queryInput, setQueryInput] = useState(activeRequest?.url || 'https://api.local/v1/orders?status=open&limit=20')
   const [queryOutput, setQueryOutput] = useState('')
   const [curlInput, setCurlInput] = useState('curl -X GET https://api.local/v1/orders -H "Accept: application/json"')
-  const [curlMessage, setCurlMessage] = useState('')
+  const [curlMessage, setCurlMessage] = useState<UiMessage | ''>('')
   const [statusFilter, setStatusFilter] = useState('')
   const [copied, setCopied] = useState('')
+  const activeToolDefinition = TOOLS.find((tool) => tool.id === activeTool)
 
   const filteredStatus = useMemo(() => {
     const filter = statusFilter.toLowerCase().trim()
     if (!filter) return HTTP_STATUS
     return HTTP_STATUS.filter((s) =>
       String(s.code).includes(filter) ||
-      s.label.toLowerCase().includes(filter) ||
-      s.detail.toLowerCase().includes(filter)
+      tr(s.label).toLowerCase().includes(filter) ||
+      tr(s.detail).toLowerCase().includes(filter)
     )
-  }, [statusFilter])
+  }, [statusFilter, tr])
 
   const copy = async (value: string, id: string) => {
     try {
@@ -130,12 +133,12 @@ export function ApiToolsBar({ activeRequest, onChangeRequest, onApplyRequest, on
     <>
       {open && (
       <div className="flex h-[var(--ui-toolbar-h)] items-center gap-1 overflow-x-auto border-b border-border-1 bg-surface-0/80 px-2.5 no-scrollbar">
-        <span className="mr-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-text-4">API Tools</span>
+        <span className="mr-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-text-4">{tr('API Tools')}</span>
         {activeRequest && onChangeRequest && (
           <>
             <button
               onClick={() => onChangeRequest({ ...activeRequest, followRedirects: !(activeRequest.followRedirects ?? true) })}
-              title={activeRequest.followRedirects ?? true ? 'Follow redirects: on' : 'Follow redirects: off'}
+              title={activeRequest.followRedirects ?? true ? tr('Follow redirects: on') : tr('Follow redirects: off')}
               className={cn(
                 'inline-flex h-6 shrink-0 items-center gap-1 rounded border px-2 text-[10px] transition-colors',
                 (activeRequest.followRedirects ?? true)
@@ -144,21 +147,21 @@ export function ApiToolsBar({ activeRequest, onChangeRequest, onApplyRequest, on
               )}
             >
               <CornerDownRight size={11} />
-              Follow redirects
+              {tr('Follow redirects')}
             </button>
             {onLoadTest && (
               <button
                 onClick={onLoadTest}
                 className="inline-flex h-6 shrink-0 items-center gap-1 rounded border border-border-1 bg-surface-1 px-2 text-[10px] text-text-3 transition-colors hover:border-accent/40 hover:text-text-1"
-                title="Open load test for the active request"
+                title={tr('Open load test for the active request')}
               >
                 <Gauge size={11} />
-                Load test
+                {tr('Load test')}
               </button>
             )}
             <label className="ml-1 flex h-6 shrink-0 items-center gap-1 rounded border border-border-1 bg-surface-1 px-2 text-[10px] text-text-4">
               <Clock size={11} />
-              <span>Timeout</span>
+              <span>{tr('Timeout')}</span>
               <input
                 type="number"
                 min="0"
@@ -167,7 +170,7 @@ export function ApiToolsBar({ activeRequest, onChangeRequest, onApplyRequest, on
                 value={activeRequest.timeout ?? 0}
                 onChange={(e) => onChangeRequest({ ...activeRequest, timeout: Number(e.target.value) || 0 })}
                 className="w-11 bg-transparent text-right font-mono text-[10px] text-text-1 outline-none"
-                title="Request timeout in milliseconds. 0 = no timeout."
+                title={tr('Request timeout in milliseconds. 0 = no timeout.')}
               />
               <span className="font-mono text-[9px] text-text-4">ms</span>
             </label>
@@ -183,7 +186,7 @@ export function ApiToolsBar({ activeRequest, onChangeRequest, onApplyRequest, on
               className="inline-flex h-6 shrink-0 items-center gap-1 rounded border border-border-1 bg-surface-1 px-2 text-[10px] text-text-3 transition-colors hover:border-accent/40 hover:text-text-1"
             >
               <Icon size={11} />
-              {tool.label}
+              {tr(tool.label)}
             </button>
           )
         })}
@@ -194,9 +197,9 @@ export function ApiToolsBar({ activeRequest, onChangeRequest, onApplyRequest, on
         <div className="fixed inset-0 z-[180] flex items-center justify-center bg-black/45 backdrop-blur-sm">
           <div className="flex max-h-[78vh] w-[620px] max-w-[calc(100vw-32px)] flex-col overflow-hidden rounded-lg border border-border-1 bg-surface-0 shadow-2xl">
             <div className="flex h-10 items-center gap-2 border-b border-border-1 bg-surface-1 px-3">
-              <span className="text-xs font-semibold text-text-1">{TOOLS.find((tool) => tool.id === activeTool)?.label}</span>
+              <span className="text-xs font-semibold text-text-1">{activeToolDefinition ? tr(activeToolDefinition.label) : ''}</span>
               <div className="flex-1" />
-              <button onClick={() => setActiveTool(null)} title="Close" className="grid h-6 w-6 place-items-center rounded text-text-4 hover:bg-surface-2 hover:text-text-1">
+              <button onClick={() => setActiveTool(null)} title={tr('Close')} className="grid h-6 w-6 place-items-center rounded text-text-4 hover:bg-surface-2 hover:text-text-1">
                 <X size={13} />
               </button>
             </div>
@@ -206,8 +209,8 @@ export function ApiToolsBar({ activeRequest, onChangeRequest, onApplyRequest, on
                 <div className="flex flex-col gap-3">
                   <textarea value={urlInput} onChange={(e) => setUrlInput(e.target.value)} rows={4} className="rounded border border-border-2 bg-surface-2 px-3 py-2 font-mono text-xs text-text-1 outline-none focus:border-accent" />
                   <div className="flex gap-2">
-                    <button onClick={() => setUrlOutput(encodeURIComponent(urlInput))} className="rounded bg-accent px-3 py-1.5 text-xs font-medium text-white">Encode</button>
-                    <button onClick={() => { try { setUrlOutput(decodeURIComponent(urlInput)) } catch { setUrlOutput('Decode error') } }} className="rounded border border-border-2 bg-surface-2 px-3 py-1.5 text-xs text-text-2">Decode</button>
+                    <button onClick={() => setUrlOutput(encodeURIComponent(urlInput))} className="rounded bg-accent px-3 py-1.5 text-xs font-medium text-white">{tr('Encode')}</button>
+                    <button onClick={() => { try { setUrlOutput(decodeURIComponent(urlInput)) } catch { setUrlOutput(tr('Decode error')) } }} className="rounded border border-border-2 bg-surface-2 px-3 py-1.5 text-xs text-text-2">{tr('Decode')}</button>
                   </div>
                   {urlOutput && <pre className="rounded border border-border-1 bg-surface-1 p-3 font-mono text-xs text-text-1 whitespace-pre-wrap break-all">{urlOutput}</pre>}
                 </div>
@@ -216,7 +219,7 @@ export function ApiToolsBar({ activeRequest, onChangeRequest, onApplyRequest, on
               {activeTool === 'query' && (
                 <div className="flex flex-col gap-3">
                   <textarea value={queryInput} onChange={(e) => setQueryInput(e.target.value)} rows={4} className="rounded border border-border-2 bg-surface-2 px-3 py-2 font-mono text-xs text-text-1 outline-none focus:border-accent" />
-                  <button onClick={() => setQueryOutput(JSON.stringify(parseQuery(queryInput), null, 2))} className="self-start rounded bg-accent px-3 py-1.5 text-xs font-medium text-white">Parse</button>
+                  <button onClick={() => setQueryOutput(JSON.stringify(parseQuery(queryInput), null, 2))} className="self-start rounded bg-accent px-3 py-1.5 text-xs font-medium text-white">{tr('Parse')}</button>
                   {queryOutput && <pre className="rounded border border-border-1 bg-surface-1 p-3 font-mono text-xs text-text-1 whitespace-pre-wrap">{queryOutput}</pre>}
                 </div>
               )}
@@ -224,10 +227,10 @@ export function ApiToolsBar({ activeRequest, onChangeRequest, onApplyRequest, on
               {activeTool === 'curl' && (
                 <div className="flex flex-col gap-3">
                   <textarea value={curlInput} onChange={(e) => setCurlInput(e.target.value)} rows={7} className="rounded border border-border-2 bg-surface-2 px-3 py-2 font-mono text-xs text-text-1 outline-none focus:border-accent" />
-                  <button onClick={importCurl} className="self-start rounded bg-accent px-3 py-1.5 text-xs font-medium text-white">Import into Request</button>
+                  <button onClick={importCurl} className="self-start rounded bg-accent px-3 py-1.5 text-xs font-medium text-white">{tr('Import into Request')}</button>
                   {curlMessage && (
                     <div className={cn('rounded border px-3 py-2 text-xs', curlMessage.includes('imported') ? 'border-success/30 bg-success/10 text-success' : 'border-warning/30 bg-warning/10 text-warning')}>
-                      {curlMessage}
+                      {tr(curlMessage)}
                     </div>
                   )}
                 </div>
@@ -237,14 +240,14 @@ export function ApiToolsBar({ activeRequest, onChangeRequest, onApplyRequest, on
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center gap-2 rounded border border-border-2 bg-surface-2 px-2">
                     <Search size={13} className="text-text-4" />
-                    <input value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} placeholder="Filter by code or keyword..." className="h-8 flex-1 bg-transparent text-xs text-text-1 outline-none" />
+                    <input value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} placeholder={tr('Filter by code or keyword...')} className="h-8 flex-1 bg-transparent text-xs text-text-1 outline-none" />
                   </div>
                   <div className="overflow-hidden rounded border border-border-1">
                     {filteredStatus.map((s) => (
                       <button key={s.code} onClick={() => copy(String(s.code), String(s.code))} className="grid w-full grid-cols-[70px_160px_1fr_28px] items-center gap-2 border-b border-border-1/50 px-3 py-2 text-left text-xs last:border-b-0 hover:bg-surface-1">
                         <span className={cn('font-mono font-semibold', statusClass(s.code))}>{s.code}</span>
-                        <span className="font-semibold text-text-1">{s.label}</span>
-                        <span className="text-text-3">{s.detail}</span>
+                        <span className="font-semibold text-text-1">{tr(s.label)}</span>
+                        <span className="text-text-3">{tr(s.detail)}</span>
                         {copied === String(s.code) ? <Check size={12} className="text-success" /> : <Copy size={12} className="text-text-4" />}
                       </button>
                     ))}

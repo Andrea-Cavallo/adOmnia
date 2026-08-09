@@ -4,7 +4,114 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
-## [Unreleased]
+## [0.7.0] - 2026-08-09
+
+### Added
+- **Sketch skin:** a hand-drawn engineering-notebook appearance — ruled paper running under the whole layout, drawn borders, a highlighter swipe for active states, and a hand-drawn app mark that spins while a request is in flight. Typography is Architects Daughter for the interface and Monaspace Radon for code; the code face stays monospaced because the editor measures fixed character cells, and a proportional hand would put the caret in the wrong place.
+- **Skin support in the theme system:** themes may declare `meta.skin`, which the renderer exposes as `data-skin` on the document root so a stylesheet can add surface treatment that colour tokens cannot express — paper, ruling, drawn edges. Skins also publish `--skin-font-ui` and `--skin-font-mono`, which take precedence over the UI Font setting; leaving the skin restores that setting.
+- **Quick appearance switcher:** the status bar now offers dark, light, and Sketch as three explicit buttons instead of a two-state toggle, and `Ctrl+Shift+L` cycles all three. Switching between dark and light prefers the opposite theme in the same family, so changing mode no longer discards the chosen palette.
+- **AI-generated request scripts:** Pre-request, Post-response, and Tests each gained a *Generate with AI* action. The prompt carries the request method, URL, active headers, and body, and attaches the collection's OpenAPI specification when the collection was imported from one. Generated code is appended rather than replacing existing work.
+- **Tools as workspace tabs:** JSON Studio and API Docs can be opened in a request tab from the navigation menu's context menu, sitting alongside requests instead of replacing the whole main area. Reopening a tool focuses its existing tab rather than stacking duplicates.
+- **Liquid-glass Send button:** the send action is rendered as layered glass with distinct hover, active, and disabled states, tinted from the active theme's accent. Built from `backdrop-filter` and gradients only — the SVG displacement approach does not render in WKWebView or WebKitGTK, and would have degraded on two of the three platforms.
+- **Executable JavaScript plugins:** installed plugins can now load their declared entry point, run through request lifecycle hooks, surface notifications, and contribute to real request workflows within the local plugin runtime.
+- **Keyboard-accessible core workflows:** interactive cards, rows, tabs, trees, graphs, annotations, and dialogs now support semantic keyboard activation, contextual actions, predictable focus trapping, and focus restoration.
+- **Detached API workflows:** a request tab can leave the hub in its own native window without creating a second copy of the request. Its request, response, editor state, and active environment stay local and synchronised when the tab returns.
+- **Split Request + Response pop-out:** the third layout action opens two native windows for the current request: a focused composer window and an independent response viewer. They share one live session, so sending or editing in Request immediately updates Response; closing either reunites the workflow in the main hub.
+- **Detached Swagger editor:** OpenAPI authoring can now be opened in a dedicated native window, enabling API request/response work and specification editing side by side.
+
+### Changed
+- **Wails 3 desktop runtime:** the desktop shell moved from Wails 2 to Wails 3 (`v3.0.0-beta.5`). Backend bindings are now registered as Wails services and exposed through generated TypeScript in `frontend/bindings/`; the `@wailsio/runtime` package replaces the old `wailsjs/runtime` shim and is version-locked to the Go side.
+- **Task-based build system:** `wails.json` is replaced by `Taskfile.yml` plus per-platform task files under `build/`. Production builds run through `wails3 task build`, and release metadata (`VERSION`, `BUILD_DATE`, `GIT_COMMIT`) is injected via environment variables.
+- **Go 1.26.5 toolchain:** the minimum Go version moved from 1.25.0 to 1.26.5 across `go.mod`, both Docker build images, and all CI jobs (which resolve it from `go.mod`).
+- **Linux target consolidated on GTK 3 / WebKitGTK 4.1:** Wails 3 removed WebKitGTK 4.0 support, so the dual-variant Linux release is replaced by a single `gtk3-webkitgtk-4.1` tarball built with the `gtk3` build tag. Release asset names change accordingly.
+- **macOS packaging rebuilt for Wails 3:** the `.app` bundle is assembled from an explicit `Info.plist` and a generated icon set, replacing the Wails 2 templating that referenced the removed `wails.json`.
+- **Themes own their accent colour:** the runtime previously discarded every theme's accent and repainted it with a fixed purple, which silently gutted accent-defined themes and left the accent fields in the advanced theme editor decorative. adOmnia's purple now lives where it belongs — in the default theme's own definition.
+- **The welcome screen follows the active theme:** its palette was hardcoded — a violet wash, slate greys, fixed card accents — and ignored the design tokens, so every theme rendered the same purple page. All of its colours now resolve through the tokens.
+- **Dependencies refreshed:** all Go modules updated to their latest compatible releases. `github.com/digitorus/pdf` is deliberately held at `v0.1.2` — `v0.2.0` unexports `Reader.Resolve`, which `pdfsign v0.9.0` still calls.
+- **Explicit update checks:** update lookups now run only after a user action, removing automatic network requests during application startup.
+- **Complete core-workflow localization:** the primary product workflows now provide consistent English and Italian copy, including dialogs, feedback, errors, and accessibility labels.
+- **Modern request tabs:** tabs now use Radix UI's accessible tab primitive, retain drag/pin/close actions, respond to arrow-key navigation, and use softer rounded geometry with a clearer active focus state.
+
+### Fixed
+- **Desktop backend reported as unavailable:** fourteen modules detected the backend by probing the Wails 2 `window.go` global, which does not exist in Wails 3. Persistence, flow storage, Markdown, Git Sync, MCP, Docker Lab, browser debugging, the folder picker, and the collection filesystem all reported the backend as missing or quietly fell back to browser storage. Detection now uses the Wails 3 runtime marker, and calls go through the generated bindings.
+- **Wrong version number in builds:** the frontend read its version from `wails.json`, removed during the Wails 3 migration, and silently fell back to `1.0.0`. It now reads `build/config.yml` and fails the build when the version is missing, rather than shipping a build labelled with the wrong number.
+- **File drag and drop:** the Wails 2 drop configuration was lost in the migration while the renderer still listened for the removed `runtime.OnFileDrop` callback, so dropped files were never read. The window now enables file drop and the renderer listens for the Wails 3 event.
+- **UI Font setting had no visible effect:** activating any theme overwrote the monospace font variable, reverting the chosen font across the monospace interface — which is most of the application.
+- **Duplicated themes in the theme editor:** built-in themes appeared twice, once under *Built-in* and again under *Custom*, because the custom list rendered the full deduplicated catalogue instead of subtracting the built-ins.
+- **Default theme accent:** the default dark theme defined a cyan accent that was hidden by the runtime's fixed purple. It now carries adOmnia purple in its own definition, matching the CSS defaults.
+- **Incomplete built-in themes:** all six core themes were missing the required `surface-4` and `border-3` tokens, leaving those surfaces at whatever the previously active theme had set. A test now validates every built-in theme against the schema and checks the Sketch palette against WCAG AA.
+- **Menus unreadable in the Sketch skin:** floating surfaces inherited the transparency that lets ruled paper show through the layout, leaving menus, popovers, and dialogs see-through. They now keep a solid surface with a drawn edge and shadow.
+
+### Security
+- **Vault-backed persisted credentials:** database and broker connection profiles now persist Vault references instead of plaintext secrets, preserve existing profiles during migration, and redact sensitive values from stored or displayed data.
+
+## [0.6.10] - 2026-08-06
+
+### Fixed
+- **Environment variables in JSON requests:** extracting a selected JSON value now preserves its type when the request is sent. Numbers, booleans, and `null` remain unquoted; strings retain valid JSON quotes even when the whole quoted value was selected. The editor also recognises `{{VARIABLE}}` placeholders as valid JSON values while editing, without hiding genuine syntax errors.
+
+## [0.6.9] - 2026-08-06
+
+### Added
+- **Extract JSON values into environment variables:** select a value in a JSON editor, right-click, and choose the adOmnia context-menu action to store it in the active environment and replace it with `{{VARIABLE_NAME}}`. Variable names are inferred from the enclosing JSON property and stay unique; a local Development environment is created only when needed.
+- **Contextual header-value presets:** focusing a request header value now offers compatible choices for the selected header. Content-Type and Accept include common API media types such as JSON, XML, form data, multipart, Server-Sent Events, NDJSON, JSON:API, GraphQL, SOAP, YAML, CBOR, MessagePack, PDF, and binary payloads.
+- **Expanded header preset catalog:** the Headers panel now groups and filters practical presets for content and encoding, authentication/API keys, cache and conditional requests, browser/CORS/proxy work, tracing, webhooks, GraphQL/SOAP, and PSD2/Berlin Group.
+- **Request/Response layout switcher:** choose side-by-side panels or stack Request above Response. Both layout and independently resized panel dimensions are saved locally.
+- **JavaScript script editor:** Pre-request, Post-response, and Tests now use a local Monaco editor with JavaScript syntax colors, line numbers, bracket matching, completion, and inline syntax errors with line and column details. The dynamic `pm.*` API does not produce false validation errors.
+- **Interactive request-body JSON Graph:** nested nodes are joined by clear, colored arrowed connections. Matching `{ n }` references, destination nodes, and arrows share a depth color, and values can be edited inline directly from the graph.
+
+### Changed
+- **Coherent request workspace:** the request editor now has a matching `Request` header alongside `Response`, with the layout controls placed directly where they are needed.
+- **Clearer empty response state:** the response pane now says "Ready for the response." while retaining the Ctrl+Enter send shortcut.
+
+- **Readable request notes:** the Notes description editor now opens at a practical multi-line height and remains vertically resizable.
+- **Monaco 0.56 compatibility:** OpenAPI and script editors now load all local editor workers through the current public Monaco entry points; the script editor is loaded only when its tab is opened.
+- **Dependency maintenance:** upgraded `github.com/gabriel-vasile/mimetype` to 1.4.15, `github.com/gaissmai/bart` to 0.29.0, `github.com/rabbitmq/amqp091-go` to 1.13.0, and `monaco-editor` to 0.56.0.
+- **Codebase cleanup:** removed obsolete assertion UI and unused client, demo, storage, mock, proxy, and binding paths so the shipped code follows the active product surface.
+
+## [0.6.7] - 2026-07-31
+
+### Fixed
+- **Path template preservation:** changing only query parameters or a fragment in the resolved top request bar no longer replaces a `{pathParam}` template with its current literal value.
+- **OpenAPI component schemas:** Contract validation now resolves local `$ref` component schemas, so Mock Server and response checks validate the common `#/components/schemas/...` shape correctly.
+- **Mock collection isolation:** endpoints imported from another collection are no longer checked against the selected collection's OpenAPI contract.
+- **MCP hydration race:** a slow local-storage read cannot overwrite a configuration edited while the MCP Control Room is opening.
+- **Dependency security:** upgraded transitive `fast-uri` and `dompurify` versions; `npm audit --omit=dev` now reports zero vulnerabilities.
+
+## [0.6.6] - 2026-07-31
+
+### Added
+- **Mock Server contract checks:** the Control Room now validates every active mock response against the selected collection's OpenAPI specification before consumers hit it. It reports undocumented status codes, Content-Type and required-header mismatches, and JSON-schema failures locally and inline.
+
+### Changed
+- **Single request URL synchronizer:** the composer and the top request bar now use the same URL update path. Editing a URL keeps query rows and path-parameter keys together, including parameter renames.
+- **MCP desktop persistence:** saved MCP server configurations now hydrate from adOmnia's local bbolt storage. Existing browser-only configurations are copied forward automatically and remain available during the migration.
+- **Release metadata alignment:** the application and frontend package now share version `0.6.6`.
+
+### Fixed
+- **Live path-parameter regression coverage:** URL templates, inline defaults, renamed placeholders, query rows, and rendered path values are covered by automated tests.
+- **Path-param helper copy:** the Params panel hint no longer renders a broken text-encoding sequence.
+
+## [0.6.5] - 2026-07-31
+
+### Fixed
+- **Live path parameters:** `{id:value}` is resolved as path key `id` with value `value`, and changing a Path Params value updates the visible request URL immediately.
+
+## [0.6.0] - 2026-07-22
+
+### Added
+- **Swagger Editor workspace redesign:** the section now opens straight into a live editor/preview split (no landing card), powered by the Monaco editor with offline workers — syntax highlighting, folding, find/replace, format, cursor position, and inline error markers on the offending line.
+- **Schema-aware OpenAPI IntelliSense:** completion and hover for YAML (`monaco-yaml`) and JSON (native) against the OpenAPI 3.0 meta-schema, plus `$ref` completion of the document's own component names.
+- **Swagger preview parity (dark):** rendered markdown in descriptions with external links, an OpenAPI version badge (e.g. `OAS 3.2`), per-tag "Find out more" external-docs links, a switchable media-type dropdown for request/response bodies, JSON example syntax highlighting, and endpoint search/filter — all on the adOmnia design system.
+- **Mock this tab in context:** opens the Mock Server on the Endpoints view with the chosen request selected and a focused request scope, applied live without changing the port or restarting.
+- **Mock Server Control Room:** Overview / Endpoints / Traffic / Contract views, an endpoint explorer with inspect/edit, manual endpoint creation, and explicit (no longer automatic) collection import that preserves the source collection.
+- **Mock traffic diagnostics:** each request shows the mock's decision (selected endpoint, chosen response, or error reason), rows link to the endpoint involved, and Clear now empties the backend log.
+- **Live mock runtime updates:** a runtime configuration endpoint atomically swaps mock endpoints while the server runs (port stays fixed).
+- **AI system-environment credentials:** a "Use system environment credentials" mode in Settings > AI Engine that bypasses the Vault entirely and reads the key only from the machine environment (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`/`GOOGLE_API_KEY`, `HUGGINGFACE_API_KEY`/`HF_TOKEN`, `OPENAI_COMPATIBLE_API_KEY`, and the `ADOMNIA_AI_API_KEY` fallback).
+
+### Changed
+- **OpenAPI 3.2 QUERY:** the QUERY method is parsed and rendered as a first-class operation in the Swagger preview.
+- Optional provenance metadata (`sourceCollectionId`, `sourceRequestId`) is stored on saved mock endpoints; existing configurations remain valid.
 
 ## [0.5.9] - 2026-07-19
 

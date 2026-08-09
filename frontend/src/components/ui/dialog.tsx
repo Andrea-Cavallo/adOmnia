@@ -1,5 +1,6 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useRef, useCallback } from 'react'
 import { cn } from '@/lib/utils'
+import { useModalFocusTrap } from '@/lib/accessibility'
 
 interface DialogProps {
   open: boolean
@@ -11,13 +12,7 @@ interface DialogProps {
 export function DialogOverlay({ open, onClose, children, className }: DialogProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    if (open) document.addEventListener('keydown', handleEsc)
-    return () => document.removeEventListener('keydown', handleEsc)
-  }, [open, onClose])
+  useModalFocusTrap(open, onClose, overlayRef)
 
   const handleBackdropClick = useCallback(
     (e: React.MouseEvent) => {
@@ -31,6 +26,8 @@ export function DialogOverlay({ open, onClose, children, className }: DialogProp
   return (
     <div
       ref={overlayRef}
+      data-a11y-click-exempt="dialog-backdrop"
+      tabIndex={-1}
       onClick={handleBackdropClick}
       className={cn(
         'fixed inset-0 z-50 flex items-center justify-center',

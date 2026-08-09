@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils'
 import { uid } from '@/lib/types'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { useSettingsStore } from '@/stores/settings'
+import { useKnownUiTranslation, useUiTranslation } from '@/lib/uiI18n'
 
 interface VarCandidate {
   name: string
@@ -27,6 +28,8 @@ interface VarHighlightInputProps {
   placeholder?: string
   className?: string
   onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void
+  onFocus?: (e: React.FocusEvent<HTMLInputElement>) => void
+  onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void
   inputRef?: React.RefObject<HTMLInputElement | null>
 }
 
@@ -208,8 +211,12 @@ export function VarHighlightInput({
   placeholder,
   className,
   onKeyDown,
+  onFocus,
+  onBlur,
   inputRef: externalRef,
 }: VarHighlightInputProps) {
+  const tr = useUiTranslation()
+  const translateKnown = useKnownUiTranslation()
   const internalRef = useRef<HTMLInputElement>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
   const ref = externalRef ?? internalRef
@@ -391,7 +398,7 @@ export function VarHighlightInput({
   }, [editPopover])
 
   const SHARED: React.CSSProperties = {
-    fontFamily:    'var(--font-mono)',
+    fontFamily:    'var(--skin-font-mono, var(--font-mono))',
     fontSize:      '12px',
     lineHeight:    '1.5',
     padding:       '0 8px',
@@ -433,7 +440,11 @@ export function VarHighlightInput({
         onKeyUp={syncScroll}
         onClick={() => { syncScroll(); refreshAutocomplete() }}
         onScroll={syncScroll}
-        onBlur={() => window.setTimeout(() => setAutocomplete(null), 120)}
+        onFocus={onFocus}
+        onBlur={(event) => {
+          window.setTimeout(() => setAutocomplete(null), 120)
+          onBlur?.(event)
+        }}
         onContextMenu={handleContextMenu}
         onMouseMove={handleMouseMove}
         onMouseLeave={() => setTooltip(null)}
@@ -468,7 +479,7 @@ export function VarHighlightInput({
             'text-[11px] font-mono leading-snug break-all',
             TOOLTIP_BORDER[tooltip.type],
           )}>
-            {tooltip.content}
+            {translateKnown(tooltip.content)}
           </div>
         </div>,
         document.body,
@@ -520,7 +531,7 @@ export function VarHighlightInput({
               {`{{${editPopover.varName}}}`}
             </span>
             <span className="text-[9px] uppercase tracking-wide text-text-4">
-              {editPopover.exists ? 'Edit env' : 'Create env'}
+              {editPopover.exists ? tr('Edit env') : tr('Create env')}
             </span>
           </div>
           <div className="flex items-center gap-1.5">
@@ -532,18 +543,18 @@ export function VarHighlightInput({
                 if (event.key === 'Enter') saveVariableEdit()
                 if (event.key === 'Escape') setEditPopover(null)
               }}
-              placeholder="Environment value"
+              placeholder={tr('Environment value')}
               className="h-7 min-w-0 flex-1 rounded border border-border-2 bg-surface-2 px-2 font-mono text-xs text-text-1 outline-none placeholder:text-text-4 focus:border-accent"
             />
             <button
               onClick={saveVariableEdit}
               className="h-7 rounded bg-accent px-2 text-xs font-medium text-white transition-colors hover:bg-accent-hover"
             >
-              Save
+              {tr('Save')}
             </button>
           </div>
           <div className="mt-1.5 truncate text-[10px] text-text-4">
-            {environments.find((env) => env.id === editPopover.envId)?.name ?? 'Active environment'}
+            {environments.find((env) => env.id === editPopover.envId)?.name ?? tr('Active environment')}
           </div>
         </div>,
         document.body,

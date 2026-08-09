@@ -14,7 +14,7 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | C | [Infrastructure & Simulation](#c-infrastructure--simulation) | Mock Server (+ Smart Mock), Proxy/Interceptor, Docker Lab, Load Testing | ~47 |
 | D | [Debugging & Analysis](#d-debugging--analysis) | Browser Debug (+ Discovery), HAR Viewer, Network Tools, JSON Tools, XML Tools, Power Tools, Dev Logs, Observability, Secret Scanner, PDF Editor | ~110 |
 | E | [Local Data](#e-local-data) | Database Studio, Storage Inspector, Workspace, Vault, Document Studio | ~58 |
-| F | [Customization & Extensibility](#f-customization--extensibility) | Themes, Plugin WASM/JS, Template | ~51 |
+| F | [Customization & Extensibility](#f-customization--extensibility) | Themes, JavaScript plugins, Template | ~51 |
 | G | [Platform](#g-platform) | Settings, Infrastructure, UI Framework | ~76 |
 | H | [API Design](#h-api-design) | OpenAPI Import/Export, Schema Components, Visual OpenAPI Editor | ~10 |
 | I | [MCP (Model Context Protocol)](#i-mcp-model-context-protocol) | MCP Client/Debugger, Sessions & Transport, Server Generator | ~12 |
@@ -260,10 +260,10 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | B5.0.3 | **Message Expansion** | Click to expand a message: payload, headers, metadata, JSON visualization with JsonGraph. |
 | B5.0.4 | **Export Messages** | Exports all log messages as JSON. |
 | B5.0.5 | **Message Presets** | Save/load/delete message presets per protocol through the bbolt backend. |
-| B5.0.6 | **Persistent Connection Profiles** | Autosaves and restores the last connection for Kafka, RabbitMQ, MQTT, Redis and NATS; saves/loads/deletes named profiles in local bbolt storage. |
+| B5.0.6 | **Persistent Connection Profiles** | Autosaves and restores connection metadata for Kafka, RabbitMQ, MQTT, Redis and NATS; plaintext credentials remain session-only while persistent profiles store encrypted `vault:` references. |
 | B5.0.7 | **Message Counter** | Badge with the number of messages in the log; clear button. |
 | B5.0.8 | **Backend Status** | Connection indicator for the local sidecar with port. |
-| B5.0.9 | **Credential Note** | Explains that profiles, including credentials, remain local and directs users to Vault for managed secrets. |
+| B5.0.9 | **Protected Credentials** | Replaces plaintext broker passwords, tokens and credential-bearing URLs with encrypted Vault references, then resolves them only in memory for the broker action. |
 
 #### B5.1 Kafka
 
@@ -599,7 +599,7 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | E1.15 | **Export JSON / CSV** | Scarica risultati correnti. |
 | E1.16 | **Query History** | Sidebar with previous queries; click to reload. |
 | E1.17 | **Query Favorite** | Toggle preferito su ogni query; sidebar dedicata. |
-| E1.18 | **Vault Integration** | Marks connection as managed by the Vault with a visual badge. |
+| E1.18 | **Vault Integration** | Replaces plaintext passwords and credential-bearing DSNs with encrypted Vault references; unprotected credentials are session-only and references are resolved only when the connection is used. |
 | E1.19 | **Row Counter** | Shows returned rows and affected rows. |
 
 ---
@@ -614,9 +614,9 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | E2.4 | **Add Entry** | Inserts a new key-value pair into any bucket. |
 | E2.5 | **Full-Text Search** | Searches all buckets by key name or value content. Max 50 results. |
 | E2.6 | **Statistics** | File size, key count per bucket. |
-| E2.7 | **Export Snapshot** | Esporta intero database come JSON `.adomnia-snapshot`. |
+| E2.7 | **Export Snapshot** | Exports the full database as a redacted JSON `.adomnia-snapshot`; plaintext credentials are never included and encrypted Vault references remain intact. |
 | E2.8 | **Snapshot Restore** | Restores from a snapshot file (max 50MB). |
-| E2.9 | **Export/Import Bucket** | Exports/imports single-bucket contents as JSON. |
+| E2.9 | **Export/Import Bucket** | Exports redacted single-bucket contents as JSON and imports compatible bucket data. |
 | E2.10 | **localStorage Migration** | One-shot migration from `adomnia.v2` / `adomnia.settings` / `adomnia.mock` to bbolt. |
 
 ---
@@ -629,7 +629,7 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | E3.2 | **Save Workspace** | Current snapshot with name, timestamp, tab count. |
 | E3.3 | **Load Workspace** | Restores state from a named workspace and updates the local recently opened workspace history. |
 | E3.4 | **Delete Workspace** | Removes workspace from the registry. |
-| E3.5 | **Import/Export `.adomnia`** | Portable JSON format (v1.0): collections, environments, activeEnvId, mockConfig, proxyConfig, flows. |
+| E3.5 | **Import/Export `.adomnia`** | Portable JSON format (v1.0) with mandatory secret redaction; encrypted `vault:` references remain portable. |
 | E3.6 | **Import OpenAPI 3.0** | Parses JSON/YAML specs; operations converted into folders grouped by tag. |
 | E3.7 | **Reset Demo** | Loads the adOmnia Lab demo workspace with one click. |
 
@@ -699,15 +699,15 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 
 | # | Feature | Description |
 |---|-------------|-------------|
-| F2.1 | **Plugin Manifest** | JSON with ID, metadata, permissions, hooks, settings, entry point, icon, `ui_slots` panels and actions; Python runtime is not supported. |
+| F2.1 | **Plugin Manifest** | JSON with ID, metadata, permissions, hooks, settings, JavaScript entry point, icon, `ui_slots` panels and actions; Python and new WASM installs are rejected. |
 | F2.2 | **Install/Uninstall** | Installs complete folders for executable plugins or manifest-only registrations; installed plugins reload at startup and appear in `PWR > Plugins`. |
 | F2.3 | **Enable/Disable** | Toggle with hook registration/deregistration; persisted state. |
 | F2.4 | **12 Hook Events** | onRequest, onResponse, onSend, onSave, onImport, onExport, onStartup, onShutdown, onThemeChange, onEnvChange, onTabOpen, onTabClose. |
-| F2.5 | **Hook Execution** | Each handler returns a HookResult (modified, data, error). |
+| F2.5 | **Hook Execution** | Enabled JavaScript handlers execute sequentially and return a HookResult (modified, data, error); HTTP request/response hooks are connected to the real send path. |
 | F2.6 | **Settings Plugin** | Chiave, etichetta, tipo, default, opzioni, descrizione; UI dedicata. |
-| F2.7 | **WASM Sandbox** | Limite memoria 64MB, timeout 10s, guardia concorrenza, tracciamento memoria. |
-| F2.8 | **8 Host Functions** | `http.fetch`, `storage.get/set/delete`, `log.info/error`, `ui.notify`, `env.get`. |
-| F2.9 | **Plugin DevTools** | Debug and test panel for plugin developers. |
+| F2.7 | **JavaScript Runtime Guardrails** | Fresh goja VM per invocation, 64MB input/output budget, 10s timeout, per-plugin concurrency guard and usage tracking. |
+| F2.8 | **8 Permission-Aware Host Functions** | `http.fetch`, `storage.get/set/delete`, `log.info/error`, `ui.notify`, `env.get`; privileged groups require their manifest permission. |
+| F2.9 | **Plugin DevTools** | Executes exported plugin functions with JSON arguments and displays the real result, error, duration and sandbox usage. |
 
 ---
 
@@ -731,9 +731,9 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | # | Feature | Description |
 |---|-------------|-------------|
 | F4.1 | **Python runtime removed** | No Python bridge, worker process, virtualenv or Python SDK is initialized or shipped. |
-| F4.2 | **Supported manifests** | Plugin manifests remain local and can describe WASM/JS extensions, hooks, settings, panels and declarative actions. |
+| F4.2 | **Supported runtime** | Complete local JavaScript plugin folders execute ESM-style named exports or CommonJS `module.exports`; legacy WASM manifests remain readable but cannot be enabled. |
 | F4.3 | **Python manifest rejection** | `runtime: "python"` is rejected by the backend during install and package repair. |
-| F4.4 | **Declarative actions** | Plugin actions remain visible as UI metadata; custom execution stays disabled until a non-Python runtime is connected. |
+| F4.4 | **Executable actions** | Declared actions execute their matching JavaScript export from the plugin panel and show success data or a readable runtime error. |
 ---
 
 ## G. PLATFORM
@@ -939,7 +939,7 @@ AI-integration module: connect to, debug, and generate MCP servers — exposing 
 | **C — Infrastructure & Simulation** | Mock Server (+ Smart Mock), Proxy, Docker Lab, Load Testing | 47 |
 | **D — Debugging & Analysis** | Browser Debug (+ Discovery), HAR, Network Tools, JSON Tools, XML Tools, Dev Utils, Dev Logs, Observability, Secret Scanner, PDF Editor | 110 |
 | **E — Local Data** | Database Studio, Storage Inspector, Workspace, Vault, Document Studio | 58 |
-| **F — Customization & Extensibility** | Themes, Plugin WASM/JS, Template | 51 |
+| **F — Customization & Extensibility** | Themes, JavaScript plugins, Template | 51 |
 | **G — Platform** | Settings, Infrastructure, UI Framework | 76 |
 | **H — API Design** | OpenAPI Import/Export, Schema Components, Visual OpenAPI Editor | 10 |
 | **I — MCP (Model Context Protocol)** | Client/Debugger, Sessions & Transport, Server Generator | 12 |

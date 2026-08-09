@@ -10,7 +10,7 @@ import (
 
 func TestOpenAIProviderUsesCompatibleTokenLimitField(t *testing.T) {
 	for _, tc := range []struct{ model, want, unwanted string }{
-		{model: "gpt-5.4-mini", want: "max_completion_tokens", unwanted: "max_tokens"},
+		{model: "gpt-5.6-terra", want: "max_completion_tokens", unwanted: "max_tokens"},
 		{model: "local/qwen", want: "max_tokens", unwanted: "max_completion_tokens"},
 	} {
 		t.Run(tc.model, func(t *testing.T) {

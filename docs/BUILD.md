@@ -1,95 +1,62 @@
 # Build adOmnia from Source
 
-adOmnia is a Wails 2 desktop application with a Go backend and React/TypeScript frontend.
+adOmnia is a Wails 3 desktop application with a Go backend and a React/TypeScript frontend.
 
 ## Requirements
 
-- Go matching `go.mod`
-- Node.js 20+
-- npm
-- Wails CLI `v2.12.0`
-- Platform-specific WebView and native build dependencies
+- Go `1.26.5` (the version declared in `go.mod`)
+- Node.js 20+ and npm
+- Wails CLI `v3.0.0-beta.5`
+- Native WebView development packages for the target OS
 
-Install Wails:
-
-```bash
-go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
-```
-
-## Frontend
+Install the pinned Wails CLI:
 
 ```bash
-cd frontend
-npm install
-npm run build
+go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.5
 ```
 
-## Backend Checks
+## Development and checks
 
 ```bash
-go test ./...
+wails3 dev -config ./build/config.yml
+cd frontend && npx tsc --noEmit && npm run build
+go build ./... && go test ./...
 ```
 
-## Development Mode
+## Production builds
+
+The Taskfile is the canonical build interface. It generates bindings, builds the
+frontend, and then builds the native executable for the current platform.
 
 ```bash
-wails dev
+wails3 task build
+wails3 task package
 ```
 
-## Production Builds
-
-Windows:
-
-```powershell
-wails build -clean -platform windows/amd64 -ldflags "-s -w -H windowsgui"
-```
-
-Linux native build for WebKitGTK 4.0:
+Set release metadata through environment variables:
 
 ```bash
-wails build -clean -platform linux/amd64 -ldflags "-s -w"
+VERSION=1.2.3 BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)" GIT_COMMIT="$(git rev-parse HEAD)" wails3 task build
 ```
 
-Linux native build for WebKitGTK 4.1:
+Windows produces `bin/adomnia.exe`. macOS packaging produces an `.app` bundle;
+use `scripts/build-macos.sh <version>` on a macOS host for the universal DMG.
+
+## Linux
+
+Wails 3 defaults to GTK4/WebKitGTK 6.0. Release builds deliberately use the
+supported `gtk3` compatibility tag, which links against GTK3/WebKitGTK 4.1 and
+is available on current LTS distributions and CI runners.
 
 ```bash
-wails build -clean -platform linux/amd64 -tags webkit2_41 -ldflags "-s -w"
+sudo apt-get install build-essential libayatana-appindicator3-dev libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config
+bash build/linux/package-native-tarballs.sh 1.2.3
 ```
 
-The root `./build.sh` script detects the installed Linux WebKitGTK development package automatically. It prefers WebKitGTK 4.1 when `pkg-config` reports `webkit2gtk-4.1`; otherwise it falls back to WebKitGTK 4.0. To force a local Linux build target, set `WEBKITGTK=4.1` or `WEBKITGTK=4.0`.
+The package is named `adomnia-<version>-linux-amd64-gtk3-webkitgtk-4.1.tar.gz`.
 
-On Fedora/RHEL, install the development package that provides the matching `pkg-config` module:
+## CI releases
 
-```bash
-sudo dnf install gtk3-devel webkit2gtk4.1-devel pkgconf-pkg-config
-```
-
-macOS:
-
-```bash
-wails build -clean -platform darwin/universal -ldflags "-s -w"
-```
-
-## Linux Native Tarballs
-
-The main CI Linux build in [.github/workflows/build.yml](../.github/workflows/build.yml) builds two native amd64 tarballs:
-
-- `adOmnia-<version>-linux-amd64-webkitgtk-4.0.tar.gz`
-- `adOmnia-<version>-linux-amd64-webkitgtk-4.1.tar.gz`
-
-Both tarballs include the executable, Linux icons, `.desktop` file, `install.sh`, `uninstall.sh`, and SHA256 checksum files. They rely on GTK 3 and the matching WebKitGTK runtime from the user's Linux distribution. The shared packaging script is [build/linux/package-native-tarballs.sh](../build/linux/package-native-tarballs.sh).
-
-The WebKitGTK 4.0 tarball uses the default Wails Linux target. The WebKitGTK 4.1 tarball passes the Wails/Go build tag `webkit2_41`.
-
-## GitHub Actions
-
-[.github/workflows/build.yml](../.github/workflows/build.yml) builds:
-
-- Windows `.exe`
-- Linux native `.tar.gz` packages for WebKitGTK 4.0 and 4.1
-- macOS universal `.dmg`
-- SHA256 checksums
-
-Pushes to `master`, `main`, or `develop` create artifacts. Tags like `v0.1.0` also publish a GitHub Release.
-
-[.github/workflows/release.yml](../.github/workflows/release.yml) builds the standard native release artifacts, including both Linux WebKitGTK tarballs. [.github/workflows/release-compress.yml](../.github/workflows/release-compress.yml) mirrors those Linux variants with UPX-compressed binaries.
+The release workflows build Windows, Linux GTK3/WebKitGTK 4.1 and universal
+macOS artifacts on their native runners. Cross-compiling macOS desktop builds
+from Windows or Linux is not supported because Wails needs Xcode and CGO.

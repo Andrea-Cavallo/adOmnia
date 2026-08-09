@@ -2,6 +2,6 @@
 
 package main
 
-import "github.com/wailsapp/wails/v2/pkg/options"
+import "github.com/wailsapp/wails/v3/pkg/application"
 
-func applyPlatformOptions(appOptions *options.App) {}
+func applyPlatformOptions(appOptions *application.Options) {}

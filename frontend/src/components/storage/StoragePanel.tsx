@@ -1,3 +1,4 @@
+import { isDesktopRuntime } from '@/lib/desktopRuntime'
 import { useState, useEffect, useCallback } from 'react'
 import { Search, Download, Upload, Trash2, Copy, Plus, RefreshCw, Eraser, AlertTriangle } from 'lucide-react'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
@@ -11,6 +12,7 @@ import {
   type StorageEntry as WailsStorageEntry,
 } from '@/wailsjs/go/main/App'
 import { cn } from '@/lib/utils'
+import { redactSensitiveData } from '@/lib/secretRedaction'
 
 interface StorageEntry {
   key: string
@@ -19,10 +21,9 @@ interface StorageEntry {
 
 const STORAGE_BUCKETS = ['workspace', 'collections', 'environments', 'history', 'mock', 'proxy']
 
+// Wails 3 has no `window.go` global; services come from generated bindings.
 function hasWailsStorage() {
-  return Boolean((window as unknown as {
-    go?: { main?: { App?: { StorageGet?: unknown; StorageList?: unknown; StoragePut?: unknown } } }
-  }).go?.main?.App?.StorageGet)
+  return isDesktopRuntime()
 }
 
 function parseStorageValue(value: string) {
@@ -94,7 +95,7 @@ export function StoragePanel() {
     }
     if (route === '/storage/export') {
       const entries = await StorageGetAll(bucketName)
-      return Object.fromEntries(entries.map((entry) => [entry.key, parseStorageValue(entry.value)]))
+      return redactSensitiveData(Object.fromEntries(entries.map((entry) => [entry.key, parseStorageValue(entry.value)])))
     }
     if (route === '/storage/import') {
       const data = body && typeof body === 'object' ? body as Record<string, unknown> : {}
@@ -249,7 +250,7 @@ export function StoragePanel() {
   const handleExport = async () => {
     try {
       const data = await api(`/storage/export?bucket=${encodeURIComponent(bucket)}`)
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const blob = new Blob([JSON.stringify(redactSensitiveData(data), null, 2)], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url; a.download = `adomnia-storage-export.json`; a.click()
@@ -287,7 +288,7 @@ export function StoragePanel() {
       a.download = `adomnia-${new Date().toISOString().slice(0, 10)}.adomnia-snapshot`
       a.click()
       URL.revokeObjectURL(href)
-      setMsg('Full storage snapshot exported')
+      setMsg('Redacted storage snapshot exported')
     } catch (e) { setError(e instanceof Error ? e.message : String(e)) }
   }
 

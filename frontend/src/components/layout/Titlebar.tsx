@@ -1,8 +1,10 @@
 import { useCallback } from 'react'
 import { useSettingsStore } from '@/stores/settings'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
+import { useUiTranslation } from '@/lib/uiI18n'
 
 export function Titlebar() {
+  const tr = useUiTranslation()
   const port = useServerPort()
 
   const onMinimise = useCallback(async () => {
@@ -41,7 +43,7 @@ export function Titlebar() {
         <div className="flex h-8 items-stretch">
           <button
             onClick={onMinimise}
-            aria-label="Minimize window"
+            aria-label={tr('Minimize window')}
             className="grid h-8 w-10 place-items-center text-text-3 transition-colors hover:bg-surface-3 hover:text-text-1"
             style={{ '--wails-draggable': 'no-drag' } as React.CSSProperties}
           >
@@ -49,7 +51,7 @@ export function Titlebar() {
           </button>
           <button
             onClick={onMaximise}
-            aria-label="Maximize or restore window"
+            aria-label={tr('Maximize or restore window')}
             className="grid h-8 w-10 place-items-center text-text-3 transition-colors hover:bg-surface-3 hover:text-text-1"
             style={{ '--wails-draggable': 'no-drag' } as React.CSSProperties}
           >
@@ -57,7 +59,7 @@ export function Titlebar() {
           </button>
           <button
             onClick={onClose}
-            aria-label="Close window"
+            aria-label={tr('Close window')}
             className="grid h-8 w-10 place-items-center text-text-3 transition-colors hover:bg-red-500/80 hover:text-white"
             style={{ '--wails-draggable': 'no-drag' } as React.CSSProperties}
           >

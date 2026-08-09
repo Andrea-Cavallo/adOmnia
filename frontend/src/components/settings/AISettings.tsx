@@ -17,10 +17,10 @@ const PROVIDERS = [
 
 const DEFAULT_MODELS: Record<string, string> = {
   anthropic: 'claude-sonnet-5',
-  openai: 'gpt-5.4-mini',
+  openai: 'gpt-5.6-terra',
   gemini: 'gemini-3.5-flash',
   huggingface: 'openai/gpt-oss-120b:preferred',
-  ollama: 'qwen3-coder',
+  ollama: 'qwen3.5',
   'openai-compatible': '',
 }
 
@@ -31,40 +31,45 @@ const DEFAULT_BASE_URLS: Record<string, string> = {
   'openai-compatible': 'http://localhost:1234/v1',
 }
 
+const ENVIRONMENT_VARIABLES: Record<string, string[]> = {
+  anthropic: ['ANTHROPIC_API_KEY', 'ADOMNIA_AI_API_KEY'],
+  openai: ['OPENAI_API_KEY', 'ADOMNIA_AI_API_KEY'],
+  gemini: ['GEMINI_API_KEY', 'GOOGLE_API_KEY', 'ADOMNIA_AI_API_KEY'],
+  huggingface: ['HUGGINGFACE_API_KEY', 'HF_TOKEN', 'ADOMNIA_AI_API_KEY'],
+  'openai-compatible': ['OPENAI_COMPATIBLE_API_KEY', 'OPENAI_API_KEY', 'ADOMNIA_AI_API_KEY'],
+}
+
 interface ModelOption { id: string; label: string; detail: string; badge?: string }
 interface DiscoveredModel { id: string; name: string; owner?: string; source: string; context?: number; local: boolean }
 
 const CURATED_MODELS: Record<string, ModelOption[]> = {
   anthropic: [
     { id: 'claude-fable-5', label: 'Claude Fable 5', detail: 'Most capable widely available Claude for demanding, long-horizon work', badge: 'Frontier' },
+    { id: 'claude-opus-5', label: 'Claude Opus 5', detail: 'Complex agentic coding and enterprise work' },
     { id: 'claude-sonnet-5', label: 'Claude Sonnet 5', detail: 'Best speed and intelligence balance for coding and agents', badge: 'Recommended' },
-    { id: 'claude-opus-4-8', label: 'Claude Opus 4.8', detail: 'Complex reasoning and high-autonomy agentic coding' },
-    { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6', detail: 'Previous-generation balanced model' },
-    { id: 'claude-haiku-4-5', label: 'Claude Haiku 4.5', detail: 'Fast and cost-efficient' },
+    { id: 'claude-haiku-4-5', label: 'Claude Haiku 4.5', detail: 'Fastest and most cost-efficient Claude' },
   ],
   openai: [
-    { id: 'gpt-5.5', label: 'GPT-5.5', detail: 'Latest flagship for complex reasoning, coding and professional work', badge: 'Frontier' },
-    { id: 'gpt-5.5-pro', label: 'GPT-5.5 Pro', detail: 'Highest-compute GPT-5.5 for the hardest tasks', badge: 'Pro' },
-    { id: 'gpt-5.4', label: 'GPT-5.4', detail: 'Affordable frontier reasoning and professional work' },
-    { id: 'gpt-5.4-mini', label: 'GPT-5.4 mini', detail: 'Lower latency and cost', badge: 'Recommended' },
-    { id: 'gpt-5.4-nano', label: 'GPT-5.4 nano', detail: 'High-volume lightweight tasks' },
+    { id: 'gpt-5.6-sol', label: 'GPT-5.6 Sol', detail: 'Flagship model for complex reasoning and coding', badge: 'Frontier' },
+    { id: 'gpt-5.6-terra', label: 'GPT-5.6 Terra', detail: 'Balances intelligence and cost for professional work', badge: 'Recommended' },
+    { id: 'gpt-5.6-luna', label: 'GPT-5.6 Luna', detail: 'Cost-sensitive, high-volume workloads' },
   ],
   gemini: [
-    { id: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash', detail: 'Stable agentic and coding model', badge: 'Recommended' },
+    { id: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash', detail: 'Latest stable balance of speed and intelligence', badge: 'Frontier' },
+    { id: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash', detail: 'Most intelligent stable model for agentic and coding work', badge: 'Recommended' },
+    { id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash-Lite', detail: 'Fastest, lowest-cost Gemini 3.5 model' },
     { id: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro', detail: 'Advanced reasoning and complex tasks', badge: 'Preview' },
-    { id: 'gemini-3-flash', label: 'Gemini 3 Flash', detail: 'Fast frontier-class performance' },
-    { id: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash-Lite', detail: 'Low-cost, high-frequency workloads' },
   ],
   huggingface: [
     { id: 'openai/gpt-oss-120b:preferred', label: 'GPT-OSS 120B', detail: 'Strong open model with tool calling', badge: 'Recommended' },
     { id: 'Qwen/Qwen3-Coder-480B-A35B-Instruct:preferred', label: 'Qwen3 Coder 480B', detail: 'Large coding model' },
-    { id: 'deepseek-ai/DeepSeek-R1:preferred', label: 'DeepSeek R1', detail: 'Open reasoning model' },
+    { id: 'deepseek-ai/DeepSeek-V3-0324:preferred', label: 'DeepSeek V3', detail: 'Current open model available through Inference Providers' },
   ],
   ollama: [
-    { id: 'qwen3-coder', label: 'Qwen3 Coder', detail: 'Local coding and agentic tasks', badge: 'Recommended' },
+    { id: 'qwen3.5', label: 'Qwen 3.5', detail: 'Current multimodal local family for tools and reasoning', badge: 'Recommended' },
+    { id: 'qwen3.6', label: 'Qwen 3.6', detail: 'Recent agentic coding and thinking improvements' },
     { id: 'gpt-oss:20b', label: 'GPT-OSS 20B', detail: 'Strong general-purpose local model' },
-    { id: 'gemma3', label: 'Gemma 3', detail: 'Efficient general-purpose model' },
-    { id: 'deepseek-r1', label: 'DeepSeek R1', detail: 'Local reasoning family' },
+    { id: 'gemma4', label: 'Gemma 4', detail: 'Frontier-level local reasoning, coding and multimodal family' },
   ],
   'openai-compatible': [],
 }
@@ -87,7 +92,8 @@ export function AISettings() {
   const [discovering, setDiscovering] = useState(false)
   const [discoverError, setDiscoverError] = useState('')
 
-  const keyIsSecured = isVaultRef(ai.apiKey)
+  const usesEnvironmentCredentials = ai.credentialMode === 'environment'
+  const keyIsSecured = !usesEnvironmentCredentials && isVaultRef(ai.apiKey)
 
   const handleProviderChange = (provider: string) => {
     updateAi({
@@ -105,7 +111,7 @@ export function AISettings() {
     setDiscovering(true)
     setDiscoverError('')
     try {
-      const config = ['huggingface', 'ollama'].includes(ai.provider)
+      const config = ai.provider === 'ollama'
         ? JSON.stringify({ provider: ai.provider, model: ai.model, apiKey: '', baseURL: ai.baseURL })
         : await buildAIConfig()
       const raw = await AIEngine.ListModels(config, modelQuery.trim())
@@ -317,7 +323,26 @@ export function AISettings() {
           </div>
         )}
 
-        {needsApiKey && !keyIsSecured && (
+        {needsApiKey && (
+          <div className="rounded-lg border border-border-2 bg-surface-1 px-3 py-1">
+            <Toggle
+              label="Use system environment credentials"
+              desc="Skip the Vault for AI. The desktop backend reads the key from this machine only."
+              checked={usesEnvironmentCredentials}
+              onChange={(enabled) => updateAi({ credentialMode: enabled ? 'environment' : 'vault' })}
+            />
+            {usesEnvironmentCredentials && (
+              <div className="mb-2 flex items-start gap-2 rounded-md border border-success/30 bg-success/8 px-2.5 py-2 text-[10px] text-text-3">
+                <Database size={13} className="mt-0.5 shrink-0 text-success" />
+                <span>
+                  Vault is bypassed. Set <code className="font-mono text-success">{(ENVIRONMENT_VARIABLES[ai.provider] ?? ['ADOMNIA_AI_API_KEY']).join(' or ')}</code> in the system environment, then restart adOmnia. The value is never shown or saved in Settings.
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {needsApiKey && !usesEnvironmentCredentials && !keyIsSecured && (
           <div className="flex flex-col gap-3">
             <PasswordInput
               label="API Key"

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { DialogOverlay, DialogContent, DialogHeader, DialogFooter, DialogBody } from './dialog'
 import { Button } from './button'
 import { PencilLine, X } from 'lucide-react'
+import { useUiTranslation } from '@/lib/uiI18n'
 
 interface PromptProps {
   open: boolean
@@ -26,6 +27,7 @@ export function Prompt({
   onConfirm,
   onCancel,
 }: PromptProps) {
+  const tr = useUiTranslation()
   const [value, setValue] = useState(defaultValue)
   const inputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -66,12 +68,12 @@ export function Prompt({
               {description && <p className="mt-0.5 text-[11px] leading-relaxed text-text-3">{description}</p>}
             </div>
           </div>
-          <button onClick={onCancel} title="Close" className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-text-4 transition-colors hover:bg-surface-2 hover:text-text-1">
+          <button onClick={onCancel} title={tr('Close')} className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-text-4 transition-colors hover:bg-surface-2 hover:text-text-1">
             <X size={16} />
           </button>
         </DialogHeader>
         <DialogBody className="pt-2">
-          {!multiline && <label className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.12em] text-text-4">Name</label>}
+          {!multiline && <label className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.12em] text-text-4">{tr('Name')}</label>}
           {multiline ? (
             <textarea
               ref={textareaRef}
@@ -101,7 +103,7 @@ export function Prompt({
         </DialogBody>
         <DialogFooter>
           <Button variant="ghost" size="sm" onClick={onCancel} className="px-4">
-            Cancel
+            {tr('Cancel')}
           </Button>
           <Button size="sm" onClick={handleConfirm} disabled={!value.trim()} className="px-4">
             {confirmLabel}

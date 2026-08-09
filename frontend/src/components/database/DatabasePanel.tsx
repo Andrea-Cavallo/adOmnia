@@ -4,7 +4,6 @@ import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { confirm } from '@/lib/confirmDialog'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { useAppStore } from '@/stores/app'
-import { safeSetItem } from '@/lib/safeLocalStorage'
 import { safeStorageGet, safeStoragePut } from '@/lib/wailsStorage'
 import { ConnectionsSidebar } from './ConnectionsSidebar'
 import { QueryEditor } from './QueryEditor'
@@ -18,6 +17,13 @@ import {
   isDangerous, isDangerousMongo, nextQueryName, normalizeConnection, substituteVars, validateConnection,
   type DbConnection, type DbDriver, type DbResult, type HistoryItem, type QueryTab, type SchemaItem,
 } from './dbShared'
+import {
+  clearDatabaseConnectionSecrets,
+  hydrateDatabaseConnections,
+  protectDatabaseConnection,
+  resolveDatabaseConnection,
+  serializeDatabaseConnections,
+} from './dbSecrets'
 
 interface QueryWorkspaceState {
   tabs: QueryTab[]
@@ -83,22 +89,27 @@ export function DatabasePanel() {
       if (rawConnections) {
         try {
           const loaded = JSON.parse(rawConnections) as Partial<DbConnection>[]
-          if (Array.isArray(loaded) && loaded.length) nextConnections = loaded.map(normalizeConnection)
+          if (Array.isArray(loaded) && loaded.length) {
+            nextConnections = hydrateDatabaseConnections(loaded.map(normalizeConnection))
+            await safeStoragePut(STORAGE_BUCKET, CONNECTIONS_KEY, serializeDatabaseConnections(nextConnections))
+          }
         } catch {
           setError('Saved database connections could not be read; a clean local connection was created.')
         }
       }
-      const pendingRaw = localStorage.getItem('adomnia.database.pendingConnection')
+      const pendingRaw = sessionStorage.getItem('adomnia.database.pendingConnection')
+        ?? localStorage.getItem('adomnia.database.pendingConnection')
       if (pendingRaw) {
         try {
           const pending = JSON.parse(pendingRaw) as Partial<DbConnection>
           const pendingConn = normalizeConnection({ ...pending, id: crypto.randomUUID() })
           nextConnections = [pendingConn, ...nextConnections]
-          await safeStoragePut(STORAGE_BUCKET, CONNECTIONS_KEY, JSON.stringify(nextConnections))
+          await safeStoragePut(STORAGE_BUCKET, CONNECTIONS_KEY, serializeDatabaseConnections(nextConnections))
           setMessage(`Docker Lab connection "${pendingConn.name}" added`)
         } catch {
           setError('Could not import Docker Lab database connection')
         } finally {
+          sessionStorage.removeItem('adomnia.database.pendingConnection')
           localStorage.removeItem('adomnia.database.pendingConnection')
         }
       }
@@ -152,7 +163,7 @@ export function DatabasePanel() {
   // ── persistence helpers ─────────────────────────────────────────────────
   const persistConnections = async (next: DbConnection[]) => {
     setConnections(next)
-    await safeStoragePut(STORAGE_BUCKET, CONNECTIONS_KEY, JSON.stringify(next))
+    await safeStoragePut(STORAGE_BUCKET, CONNECTIONS_KEY, serializeDatabaseConnections(next))
   }
 
   const updateActive = (patch: Partial<DbConnection>) => {
@@ -192,6 +203,7 @@ export function DatabasePanel() {
     if (connections.length <= 1) return
     const next = connections.filter((c) => c.id !== id)
     void persistConnections(next)
+    clearDatabaseConnectionSecrets(id)
     if (activeId === id) setActiveId(next[0]?.id ?? '')
   }
 
@@ -276,7 +288,7 @@ export function DatabasePanel() {
     }
     setRunning(true)
     try {
-      const data = await api('/database/query', { connection: active, query: renderedQuery, limit, timeoutMs, explain, confirm: confirmed }) as DbResult
+      const data = await api('/database/query', { connection: await resolveDatabaseConnection(active), query: renderedQuery, limit, timeoutMs, explain, confirm: confirmed }) as DbResult
       setResult(data)
       const item: HistoryItem = { query, ts: Date.now(), label: activeTab?.name }
       const nextHistory = [item, ...history.filter((h) => h.query !== query)].slice(0, 50)
@@ -300,7 +312,7 @@ export function DatabasePanel() {
     if (connectionError) { setError(connectionError); return }
     setRunning(true)
     try {
-      const data = await api('/database/test', active) as { driver: string; durationMs: number }
+      const data = await api('/database/test', await resolveDatabaseConnection(active)) as { driver: string; durationMs: number }
       setMessage(`Connected to ${data.driver} in ${data.durationMs} ms`)
       void refreshSchema(active)
     } catch (e) {
@@ -318,14 +330,15 @@ export function DatabasePanel() {
     setSchemaLoading(true)
     setSchemaError('')
     try {
-      const data = await api('/database/query', { connection: target, query: introspection, limit: 1000, timeoutMs, explain: false, confirm: false }) as DbResult
+      const runtimeConnection = await resolveDatabaseConnection(target)
+      const data = await api('/database/query', { connection: runtimeConnection, query: introspection, limit: 1000, timeoutMs, explain: false, confirm: false }) as DbResult
       const names = extractNames(data)
       const baseItems: SchemaItem[] = names.map((name) => ({ name, count: null }))
       setSchemaItems(baseItems)
       setSchemaDb(target.database || (target.driver === 'sqlite' ? target.sqlitePath.split(/[\\/]/).pop() || 'SQLite' : DRIVER_META[target.driver].short))
       const capped = names.slice(0, 30)
       const counts = await Promise.allSettled(
-        capped.map((n) => api('/database/query', { connection: target, query: countQuery(target.driver, n), limit: 1, timeoutMs, explain: false, confirm: false }) as Promise<DbResult>)
+        capped.map((n) => api('/database/query', { connection: runtimeConnection, query: countQuery(target.driver, n), limit: 1, timeoutMs, explain: false, confirm: false }) as Promise<DbResult>)
       )
       setSchemaItems(baseItems.map((item, idx) => {
         const r = counts[idx]
@@ -375,7 +388,7 @@ export function DatabasePanel() {
     if (connectionError) { setCreateObjectError(connectionError); return }
     setRunning(true)
     try {
-      await api('/database/query', { connection: active, query: statement, limit: 1, timeoutMs, explain: false, confirm: false })
+      await api('/database/query', { connection: await resolveDatabaseConnection(active), query: statement, limit: 1, timeoutMs, explain: false, confirm: false })
       setCreateObjectOpen(false)
       setCreateObjectName('')
       setMessage(`${active.driver === 'mongodb' ? 'Collection' : 'Table'} created`)
@@ -414,16 +427,16 @@ export function DatabasePanel() {
     void safeStoragePut(STORAGE_BUCKET, HISTORY_KEY, JSON.stringify([]))
   }
 
-  const sendConnectionSecretToVault = () => {
-    const value = active.dsn || active.password
-    if (!value) { setError('No DSN or password to send to Vault'); return }
-    safeSetItem('adomnia.vault.pendingSecret', JSON.stringify({
-      name: `${active.name} ${active.dsn ? 'DSN' : 'password'}`,
-      value,
-      note: `Database ${DRIVER_META[active.driver].label} credential. Original connection remains in Database Studio until you remove or mask it.`,
-    }))
-    updateActive({ savedInVault: true })
-    useAppStore.getState().setActiveRail('vault')
+  const protectConnectionSecrets = async (passphrase: string) => {
+    setError('')
+    try {
+      const protectedConnection = await protectDatabaseConnection(active, passphrase)
+      await persistConnections(connections.map((connection) => connection.id === active.id ? protectedConnection : connection))
+      setMessage(`${active.name} credentials replaced with encrypted Vault references`)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+      throw e
+    }
   }
 
   const exportJson = () => {
@@ -458,7 +471,7 @@ export function DatabasePanel() {
         onUpdate={updateActive}
         onSetDriver={setDriver}
         onTest={testConnection}
-        onVault={sendConnectionSecretToVault}
+        onVault={protectConnectionSecrets}
         onCreateLocalSQLite={() => void createLocalSQLite()}
       />
 

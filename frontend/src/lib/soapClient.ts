@@ -338,22 +338,6 @@ export function generateEnvelopeWithSchema(
 </soap:Envelope>`
 }
 
-export function addWsSecurityUsernameToken(
-  envelope: string,
-  username: string,
-  password: string,
-  _soapVersion: '1.1' | '1.2',
-): string {
-  const header = `<wsse:Security xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
-    <wsse:UsernameToken>
-      <wsse:Username>${escapeXml(username)}</wsse:Username>
-      <wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText">${escapeXml(password)}</wsse:Password>
-    </wsse:UsernameToken>
-  </wsse:Security>`
-
-  return envelope.replace('<soap:Header>\n  </soap:Header>', `<soap:Header>\n    ${header}\n  </soap:Header>`)
-}
-
 // ─── Request execution ───────────────────────────────────────
 
 export async function sendSoapRequest(
@@ -513,10 +497,6 @@ function elementToJson(el: Element | null): unknown {
     }
   }
   return { __tag: local, ...result }
-}
-
-export function escapeXml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;')
 }
 
 export function validateSoapXml(xml: string): { valid: boolean; error?: string } {

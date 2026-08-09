@@ -3,6 +3,7 @@ import { blankRequest, uid } from '@/lib/types'
 import { applyParsedCurl, parseCurl } from '@/lib/parseCurl'
 import { importCollectionsFromText } from '@/lib/collectionTransfer'
 import { openApiToCollection } from '@/lib/openapiImport'
+import { parseYamlLenient } from '@/lib/yamlParse'
 
 export type InteropFormat =
   | 'adomnia'
@@ -20,6 +21,7 @@ export type InteropFormat =
   | 'curl'
   | 'http'
   | 'env'
+  | 'env-yaml'
   | 'wiremock'
   | 'mockoon'
   | 'unknown'
@@ -63,6 +65,9 @@ function detectInteropFormat(filename: string, text: string): InteropFormat {
   const trimmed = text.trim()
   const json = tryJson(trimmed) as Record<string, unknown> | null
   if (trimmed.startsWith('curl ')) return 'curl'
+  // `env.yaml` is intentionally explicit: ordinary YAML files remain available
+  // for OpenAPI/collection import rather than being mistaken for environments.
+  if (lower === 'env.yaml') return 'env-yaml'
   if (lower.endsWith('.env')) return 'env'
   if (lower.endsWith('.http') || lower.endsWith('.rest')) return 'http'
   if (lower.endsWith('.graphql') || lower.endsWith('.gql')) return 'graphql'
@@ -98,6 +103,7 @@ export function parseInteropFile(filename: string, text: string): InteropBundle 
   if (format === 'curl') return { ...base, collections: [parseCurlCollection(text)] }
   if (format === 'http') return { ...base, collections: [parseHttpCollection(filename, text)] }
   if (format === 'env') return { ...base, environments: [parseEnv(filename, text)] }
+  if (format === 'env-yaml') return { ...base, environments: parseEnvYaml(text) }
   if (format === 'har') return { ...base, collections: [parseHarCollection(filename, text)], artifacts: [{ type: 'raw', name: filename, data: tryJson(text) ?? text }] }
   if (format === 'graphql') return { ...base, collections: [parseGraphqlCollection(filename, text)] }
   if (format === 'grpc') return { ...base, collections: [parseGrpcCollection(filename, text)], artifacts: [{ type: 'raw', name: filename, data: text }] }
@@ -144,6 +150,84 @@ function parseEnv(filename: string, text: string): Environment {
     return { id: uid(), key, value, enabled: true, type: SECRET_KEY.test(key) ? 'secret' as const : 'text' as const }
   })
   return { id: uid(), name: filename.replace(/\.env$/i, '') || 'Imported env', variables }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function yamlValue(value: unknown): string {
+  if (value == null) return ''
+  if (typeof value === 'string') return value
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+  return JSON.stringify(value)
+}
+
+function yamlVariables(value: unknown): ReturnType<typeof kv>[] {
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => {
+      if (!isRecord(item) || typeof item.key !== 'string' || !item.key.trim()) return []
+      const key = item.key.trim()
+      return [{
+        id: uid(),
+        key,
+        value: yamlValue(item.value),
+        enabled: item.enabled !== false,
+        type: item.type === 'secret' || SECRET_KEY.test(key) ? 'secret' as const : 'text' as const,
+      }]
+    })
+  }
+  if (!isRecord(value)) return []
+  return Object.entries(value).map(([key, value]) => ({
+    id: uid(),
+    key,
+    value: yamlValue(value),
+    enabled: true,
+    type: SECRET_KEY.test(key) ? 'secret' as const : 'text' as const,
+  }))
+}
+
+function yamlEnvironment(name: string, value: unknown): Environment {
+  const config = isRecord(value) ? value : {}
+  const variables = yamlVariables(config.variables ?? value)
+  if (!variables.length) throw new Error(`Environment "${name}" has no variables.`)
+  return {
+    id: uid(),
+    name: typeof config.name === 'string' && config.name.trim() ? config.name.trim() : name,
+    variables,
+    private: config.private === true,
+  }
+}
+
+/** Parse the explicit `env.yaml` convention into one or more local environments. */
+function parseEnvYaml(text: string): Environment[] {
+  let parsed: unknown
+  try {
+    parsed = parseYamlLenient(text)
+  } catch (error) {
+    throw new Error(`Invalid env.yaml: ${error instanceof Error ? error.message : 'YAML parsing failed.'}`)
+  }
+  if (!isRecord(parsed)) throw new Error('env.yaml must contain an environment map.')
+
+  if (parsed.environments !== undefined) {
+    const environments = parsed.environments
+    if (Array.isArray(environments)) {
+      const result = environments.map((environment, index) => {
+        const name = isRecord(environment) && typeof environment.name === 'string'
+          ? environment.name
+          : `Environment ${index + 1}`
+        return yamlEnvironment(name, environment)
+      })
+      if (result.length) return result
+    }
+    if (isRecord(environments)) {
+      const result = Object.entries(environments).map(([name, environment]) => yamlEnvironment(name, environment))
+      if (result.length) return result
+    }
+    throw new Error('env.yaml environments must be a map or a list.')
+  }
+
+  return [yamlEnvironment('Imported environment', parsed)]
 }
 
 function parseHarCollection(filename: string, text: string): Collection {

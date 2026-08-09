@@ -75,7 +75,8 @@
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.15);
     --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.2);
     --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.3);
-    --shadow-glow: 0 0 20px rgba(139, 61, 255, 0.15);
+    /* Derived from the accent so themed glows follow the active theme. */
+    --shadow-glow: 0 0 20px color-mix(in oklab, var(--color-accent) 15%, transparent);
 
     /* JSON syntax highlight */
     --color-json-key: #C8E6FF;
@@ -142,9 +143,10 @@
   }
 
   body {
-    /* Driven by the "UI Font" setting via the --font-ui variable (useAppearance).
-       Falls back to the sans stack if --font-ui is ever unset. */
-    font-family: var(--font-ui, var(--font-sans));
+    /* A skin's typography wins; otherwise the user's "UI Font" setting does.
+       Nested fallbacks are required: an undefined var listed as a sibling
+       would invalidate the whole font-family declaration. */
+    font-family: var(--skin-font-ui, var(--font-ui, var(--font-sans)));
     font-size: var(--ui-font-size);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -426,5 +428,117 @@
   }
   .icon-glow-breathe {
     animation: icon-glow-breathe 4s ease-in-out infinite;
+  }
+}
+
+/* ── Liquid glass action button ──────────────────────────────────────────────
+   Used by the request Send button. Built from backdrop-filter + layered
+   gradients only: no SVG feDisplacementMap, because that filter does not
+   render in WKWebView (macOS) or WebKitGTK (Linux), which would leave two of
+   our three platforms with a flat pane. This renders identically everywhere.
+
+   Colour comes from --color-accent, so the button follows the active theme
+   instead of pinning a palette. */
+@layer components {
+  .glass-action {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border: 1px solid color-mix(in oklab, var(--color-accent) 45%, transparent);
+    background:
+      linear-gradient(
+        160deg,
+        color-mix(in oklab, var(--color-accent) 78%, transparent) 0%,
+        color-mix(in oklab, var(--color-accent) 92%, black 8%) 55%,
+        color-mix(in oklab, var(--color-accent-dark, var(--color-accent)) 88%, transparent) 100%
+      );
+    backdrop-filter: blur(10px) saturate(1.5);
+    -webkit-backdrop-filter: blur(10px) saturate(1.5);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.42),
+      inset 0 -1px 1px rgba(0, 0, 0, 0.22),
+      0 1px 2px rgba(0, 0, 0, 0.28),
+      0 6px 18px -6px var(--color-accent-glow, transparent);
+    transition:
+      box-shadow 220ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
+      filter 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* Specular highlight: the "light" the glass catches along its top edge. */
+  .glass-action::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 52%;
+    border-radius: inherit;
+    background: linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.34) 0%,
+      rgba(255, 255, 255, 0.10) 45%,
+      transparent 100%
+    );
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  /* Sheen that sweeps across on hover — the interaction cue. */
+  .glass-action::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(
+      105deg,
+      transparent 35%,
+      rgba(255, 255, 255, 0.30) 50%,
+      transparent 65%
+    );
+    transform: translateX(-120%);
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .glass-action:hover:not(:disabled) {
+    transform: translateY(-1px);
+    filter: brightness(1.06);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.55),
+      inset 0 -1px 1px rgba(0, 0, 0, 0.22),
+      0 2px 4px rgba(0, 0, 0, 0.3),
+      0 12px 28px -8px var(--color-accent-glow, transparent);
+  }
+
+  .glass-action:hover:not(:disabled)::after {
+    transform: translateX(120%);
+    transition: transform 620ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .glass-action:active:not(:disabled) {
+    transform: translateY(0);
+    filter: brightness(0.97);
+    box-shadow:
+      inset 0 2px 5px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2),
+      0 1px 2px rgba(0, 0, 0, 0.25);
+  }
+
+  .glass-action:disabled {
+    filter: saturate(0.35);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  }
+
+  /* The sheen is decoration, not information. */
+  @media (prefers-reduced-motion: reduce) {
+    .glass-action,
+    .glass-action::after {
+      transition: none;
+    }
+    .glass-action:hover:not(:disabled) {
+      transform: none;
+    }
+    .glass-action:hover:not(:disabled)::after {
+      transform: translateX(-120%);
+    }
   }
 }

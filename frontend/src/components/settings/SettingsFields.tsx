@@ -1,6 +1,12 @@
 import { useState } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
 
+const fieldRowClass = 'grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(220px,320px)] items-center gap-x-8 gap-y-2 px-2 py-3 max-lg:grid-cols-[minmax(0,1fr)_minmax(200px,280px)] max-md:grid-cols-1'
+const fieldCopyClass = 'min-w-0'
+const fieldLabelClass = 'text-xs font-medium text-text-1'
+const fieldDescriptionClass = 'mt-0.5 text-[10px] leading-relaxed text-text-4'
+const fieldControlClass = 'h-8 w-full min-w-0 rounded border border-border-2 bg-surface-2 px-3 text-xs text-text-1 outline-none focus:border-accent'
+
 export function Toggle({
   label,
   desc,
@@ -13,16 +19,16 @@ export function Toggle({
   onChange: (v: boolean) => void
 }) {
   return (
-    <label className="flex items-center justify-between py-2 px-1 cursor-pointer group">
-      <div>
-        <div className="text-xs text-text-1">{label}</div>
-        <div className="text-[10px] text-text-4">{desc}</div>
+    <label className={`${fieldRowClass} cursor-pointer group`}>
+      <div className={fieldCopyClass}>
+        <div className={fieldLabelClass}>{label}</div>
+        <div className={fieldDescriptionClass}>{desc}</div>
       </div>
       <input
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="w-4 h-4 accent-accent rounded"
+        className="h-4 w-4 justify-self-end rounded accent-accent max-md:justify-self-start"
       />
     </label>
   )
@@ -41,16 +47,19 @@ export function Select({
   options: { value: string; label: string }[]
   onChange: (v: string) => void
 }) {
+  const selectedLabel = options.find((option) => option.value === value)?.label
+
   return (
-    <label className="flex items-center justify-between py-2 px-1">
-      <div>
-        <div className="text-xs text-text-1">{label}</div>
-        <div className="text-[10px] text-text-4">{desc}</div>
+    <label className={fieldRowClass}>
+      <div className={fieldCopyClass}>
+        <div className={fieldLabelClass}>{label}</div>
+        <div className={fieldDescriptionClass}>{desc}</div>
       </div>
       <select
         value={value}
+        title={selectedLabel}
         onChange={(e) => onChange(e.target.value)}
-        className="h-7 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 focus:border-accent outline-none max-w-[160px]"
+        className={`${fieldControlClass} !pr-9`}
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
@@ -78,10 +87,10 @@ export function NumberInput({
   onChange: (v: number) => void
 }) {
   return (
-    <label className="flex items-center justify-between py-2 px-1">
-      <div>
-        <div className="text-xs text-text-1">{label}</div>
-        <div className="text-[10px] text-text-4">{desc}</div>
+    <label className={fieldRowClass}>
+      <div className={fieldCopyClass}>
+        <div className={fieldLabelClass}>{label}</div>
+        <div className={fieldDescriptionClass}>{desc}</div>
       </div>
       <input
         type="number"
@@ -91,7 +100,7 @@ export function NumberInput({
         onChange={(e) =>
           onChange(Math.min(max, Math.max(min, Number(e.target.value) || min)))
         }
-        className="w-24 h-7 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 focus:border-accent outline-none"
+        className={`${fieldControlClass} w-32 justify-self-end max-md:justify-self-start`}
       />
     </label>
   )
@@ -111,17 +120,17 @@ export function TextInput({
   onChange: (v: string) => void
 }) {
   return (
-    <label className="flex items-center justify-between py-2 px-1">
-      <div className="flex-1 mr-3">
-        <div className="text-xs text-text-1">{label}</div>
-        <div className="text-[10px] text-text-4">{desc}</div>
+    <label className={fieldRowClass}>
+      <div className={fieldCopyClass}>
+        <div className={fieldLabelClass}>{label}</div>
+        <div className={fieldDescriptionClass}>{desc}</div>
       </div>
       <input
         type="text"
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className="w-48 h-7 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 focus:border-accent outline-none"
+        className={fieldControlClass}
       />
     </label>
   )
@@ -142,18 +151,18 @@ export function PasswordInput({
 }) {
   const [show, setShow] = useState(false)
   return (
-    <label className="flex items-center justify-between py-2 px-1">
-      <div className="flex-1 mr-3">
-        <div className="text-xs text-text-1">{label}</div>
-        <div className="text-[10px] text-text-4">{desc}</div>
+    <label className={fieldRowClass}>
+      <div className={fieldCopyClass}>
+        <div className={fieldLabelClass}>{label}</div>
+        <div className={fieldDescriptionClass}>{desc}</div>
       </div>
-      <div className="relative">
+      <div className="relative min-w-0">
         <input
           type={show ? 'text' : 'password'}
           value={value}
           placeholder={placeholder}
           onChange={(e) => onChange(e.target.value)}
-          className="w-48 h-7 pl-2 pr-7 bg-surface-2 border border-border-2 rounded text-xs text-text-1 focus:border-accent outline-none"
+          className={`${fieldControlClass} pr-9`}
         />
         <button
           type="button"
@@ -184,17 +193,17 @@ export function TextAreaInput({
   onChange: (v: string) => void
 }) {
   return (
-    <label className="flex flex-col gap-1 py-2 px-1">
-      <div>
-        <div className="text-xs text-text-1">{label}</div>
-        <div className="text-[10px] text-text-4">{desc}</div>
+    <label className={`${fieldRowClass} items-start`}>
+      <div className={fieldCopyClass}>
+        <div className={fieldLabelClass}>{label}</div>
+        <div className={fieldDescriptionClass}>{desc}</div>
       </div>
       <textarea
         value={value}
         placeholder={placeholder}
         rows={rows}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-2 py-1 bg-surface-2 border border-border-2 rounded text-xs text-text-1 focus:border-accent outline-none resize-y"
+        className="min-h-20 w-full min-w-0 resize-y rounded border border-border-2 bg-surface-2 px-3 py-2 text-xs text-text-1 outline-none focus:border-accent"
       />
     </label>
   )

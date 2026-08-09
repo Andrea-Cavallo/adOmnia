@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { Plus, X, ChevronRight, ChevronLeft, Copy, Pencil, Server, Pin, PinOff } from 'lucide-react'
+import * as Tabs from '@radix-ui/react-tabs'
+import { Plus, X, ChevronRight, ChevronLeft, Copy, Pencil, Server, Pin, PinOff, MonitorUp, Braces, BookOpen } from 'lucide-react'
 import type { Tab } from '@/lib/types'
 import type { TabDropPosition } from '@/stores/tabs'
 import { cn } from '@/lib/utils'
+import { useUiTranslation } from '@/lib/uiI18n'
 
 interface TabBarProps {
   tabs: Tab[]
@@ -19,6 +21,7 @@ interface TabBarProps {
   onTogglePinned: (id: string) => void
   onRenameTab: (id: string, name: string) => void
   onMockTab: (id: string) => void | Promise<void>
+  onDetach: (id: string) => void | Promise<void>
 }
 
 const METHOD_COLORS: Record<string, string> = {
@@ -40,7 +43,7 @@ interface ContextMenuState {
 }
 
 const MENU_W = 180
-const MENU_H = 324
+const MENU_H = 360
 
 function clampToViewport(x: number, y: number): { left: number; top: number } {
   const vw = window.innerWidth
@@ -51,9 +54,11 @@ function clampToViewport(x: number, y: number): { left: number; top: number } {
   }
 }
 
-export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, onCloseToLeft, onCloseAll, onReorder, onNewTab, onDuplicate, onTogglePinned, onRenameTab, onMockTab }: TabBarProps) {
+export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, onCloseToLeft, onCloseAll, onReorder, onNewTab, onDuplicate, onTogglePinned, onRenameTab, onMockTab, onDetach }: TabBarProps) {
+  const tr = useUiTranslation()
   const [ctx, setCtx] = useState<ContextMenuState>({ open: false, x: 0, y: 0, tabId: '' })
   const [draggingTabId, setDraggingTabId] = useState<string | null>(null)
+  const [detachArmed, setDetachArmed] = useState(false)
   const [dropTarget, setDropTarget] = useState<{ tabId: string; position: TabDropPosition } | null>(null)
   const [renamingTabId, setRenamingTabId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
@@ -82,6 +87,27 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
     draggingTabRef.current = null
     setDraggingTabId(null)
     setDropTarget(null)
+    setDetachArmed(false)
+  }, [])
+
+  useEffect(() => {
+    const updateDetachIntent = (event: DragEvent) => {
+      if (!draggingTabRef.current || (event.clientX === 0 && event.clientY === 0)) return
+      const outside = event.clientX <= 0 || event.clientY <= 0 || event.clientX >= window.innerWidth || event.clientY >= window.innerHeight
+      setDetachArmed(outside)
+    }
+    const onDocumentDragLeave = (event: DragEvent) => {
+      if (!draggingTabRef.current) return
+      if (event.clientX <= 0 || event.clientY <= 0 || event.clientX >= window.innerWidth || event.clientY >= window.innerHeight || event.relatedTarget === null) {
+        setDetachArmed(true)
+      }
+    }
+    document.addEventListener('dragover', updateDetachIntent)
+    document.addEventListener('dragleave', onDocumentDragLeave)
+    return () => {
+      document.removeEventListener('dragover', updateDetachIntent)
+      document.removeEventListener('dragleave', onDocumentDragLeave)
+    }
   }, [])
 
   useEffect(() => {
@@ -148,17 +174,19 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
   const pos = clampToViewport(ctx.x, ctx.y)
 
   return (
-    <div className="flex h-[30px] items-center border-b border-border-1 px-1.5">
+    <Tabs.Root value={activeTabId ?? undefined} onValueChange={onSelect} activationMode="automatic">
+    <div className="flex h-10 items-center gap-1 border-b border-border-1 bg-surface-0 px-2">
       {overflow.left && (
         <button
           onClick={() => scrollTabs(-1)}
-          title="Scroll tabs left"
-          className="mr-0.5 flex h-6 w-5 shrink-0 items-center justify-center rounded text-text-3 transition-colors hover:bg-surface-2 hover:text-text-1"
+          title={tr('Scroll tabs left')}
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-transparent text-text-3 transition-colors hover:border-border-2 hover:bg-surface-2 hover:text-text-1"
         >
           <ChevronLeft size={13} />
         </button>
       )}
-      <div ref={scrollRef} onScroll={updateOverflow} className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto no-scrollbar">
+      <Tabs.List asChild aria-label={tr('Request tabs')}>
+      <div ref={scrollRef} onScroll={updateOverflow} className="flex h-8 min-w-0 flex-1 items-center gap-1 overflow-x-auto rounded-[14px] border border-border-1 bg-surface-1 p-1 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--color-text-1)_4%,transparent)] no-scrollbar">
       {tabs.map((tab) => {
         const isActive = activeTabId === tab.id
         const isPinned = tab.pinned === true
@@ -167,7 +195,6 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
             key={tab.id}
             data-tab-id={tab.id}
             draggable
-            onClick={() => onSelect(tab.id)}
             onContextMenu={(e) => {
               e.preventDefault()
               setCtx({ open: true, x: e.clientX, y: e.clientY, tabId: tab.id })
@@ -178,6 +205,7 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
               e.dataTransfer.setData('application/x-adomnia-tab', tab.id)
               draggingTabRef.current = tab.id
               setDraggingTabId(tab.id)
+              setDetachArmed(false)
               closeCtx()
             }}
             onDragOver={(e) => {
@@ -189,6 +217,7 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
               const rect = e.currentTarget.getBoundingClientRect()
               const position: TabDropPosition = e.clientX < rect.left + rect.width / 2 ? 'before' : 'after'
               setDropTarget({ tabId: tab.id, position })
+              setDetachArmed(false)
             }}
             onDrop={(e) => {
               e.preventDefault()
@@ -201,24 +230,57 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
               }
               clearDrag()
             }}
-            onDragEnd={clearDrag}
+            onDragEnd={(event) => {
+              const draggedId = draggingTabRef.current
+              const outsideWindow = detachArmed || event.clientX <= 0 || event.clientY <= 0 || event.clientX >= window.innerWidth || event.clientY >= window.innerHeight
+              clearDrag()
+              if (draggedId && outsideWindow) void onDetach(draggedId)
+            }}
             className={cn(
-              'relative flex h-[28px] items-center gap-1.5 rounded-t px-2 text-[11px] cursor-pointer group shrink-0 border-b-2 transition-all',
+              'relative flex h-6 items-center gap-1.5 rounded-[10px] border px-2.5 text-[11px] cursor-pointer group shrink-0 transition-[background-color,border-color,box-shadow,transform] duration-150 focus-within:ring-2 focus-within:ring-accent',
               isPinned ? 'min-w-[48px] max-w-[64px]' : 'min-w-[74px] max-w-[180px]',
               isActive
-                ? 'bg-surface-2 border-b-accent text-text-1'
-                : 'hover:bg-surface-2/60 border-b-transparent text-text-3 hover:text-text-2',
+                ? 'z-10 -translate-y-px text-text-1'
+                : 'border-transparent text-text-3 hover:border-border-2 hover:bg-surface-2 hover:text-text-2',
               draggingTabId === tab.id && 'opacity-45',
               savedFlashTabs.has(tab.id) && 'tab-clean-flash',
             )}
+            style={isActive ? {
+              backgroundColor: 'color-mix(in srgb, var(--color-accent) 15%, var(--color-surface-2))',
+              borderColor: 'color-mix(in srgb, var(--color-accent) 52%, var(--color-border-2))',
+              boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--color-accent) 52%, transparent), 0 6px 14px -10px var(--color-accent)',
+            } : undefined}
           >
             {dropTarget?.tabId === tab.id && dropTarget.position === 'before' && (
               <span className="absolute -left-[2px] inset-y-1 w-[2px] rounded bg-accent" />
             )}
-            <span className={cn('text-[9px] font-bold shrink-0', METHOD_COLORS[tab.request.method] ?? 'text-text-3')}>
-              {tab.request.method}
-            </span>
-            {renamingTabId === tab.id && !isPinned ? (
+            {renamingTabId !== tab.id && (
+              <Tabs.Trigger value={tab.id} asChild>
+              <button
+                type="button"
+                aria-label={tab.request.name || tab.request.url || tr('Untitled')}
+                onKeyDown={(event) => {
+                  if (event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return
+                  event.preventDefault()
+                  const rect = event.currentTarget.getBoundingClientRect()
+                  setCtx({ open: true, x: rect.left + 12, y: rect.bottom, tabId: tab.id })
+                }}
+                className="absolute inset-0 z-0 outline-none"
+              />
+              </Tabs.Trigger>
+  )}
+            {/* Tool tabs carry a placeholder request, so showing its method
+                would be meaningless — badge the tool instead. */}
+            {tab.tool ? (
+              <span className="pointer-events-none relative z-10 shrink-0 text-accent" aria-hidden="true">
+                {tab.tool === 'jsonviewer' ? <Braces size={11} /> : <BookOpen size={11} />}
+              </span>
+            ) : (
+              <span className={cn('pointer-events-none relative z-10 text-[9px] font-bold shrink-0', METHOD_COLORS[tab.request.method] ?? 'text-text-3')}>
+                {tab.request.method}
+              </span>
+            )}
+            {renamingTabId === tab.id && !isPinned && !tab.tool ? (
               <input
                 ref={renameInputRef}
                 value={renameValue}
@@ -229,29 +291,30 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
                   if (e.key === 'Enter') { e.preventDefault(); commitRename() }
                   if (e.key === 'Escape') { e.preventDefault(); setRenamingTabId(null) }
                 }}
-                className="min-w-0 flex-1 truncate bg-transparent outline-none border-b border-accent text-xs text-text-1"
+                className="relative z-20 min-w-0 flex-1 truncate bg-transparent outline-none border-b border-accent text-xs text-text-1"
               />
             ) : !isPinned ? (
-              <span className="truncate flex-1">
-                {tab.request.name || tab.request.url || 'Untitled'}
+              <span className="pointer-events-none relative z-10 truncate flex-1">
+                {tab.request.name || tab.request.url || tr('Untitled')}
               </span>
             ) : (
-              <span className="sr-only">{tab.request.name || tab.request.url || 'Pinned tab'}</span>
+              <span className="pointer-events-none relative z-10 sr-only">{tab.request.name || tab.request.url || tr('Pinned tab')}</span>
             )}
             {tab.dirty && (
               <span
                 className={cn(
-                  'rounded-full bg-warning shrink-0 shadow-[0_0_10px_color-mix(in_srgb,var(--color-warning)_42%,transparent)]',
+                  'pointer-events-none z-10 rounded-full bg-warning shrink-0 shadow-[0_0_10px_color-mix(in_srgb,var(--color-warning)_42%,transparent)]',
                   isPinned ? 'absolute right-1.5 top-1.5 h-1.5 w-1.5' : 'h-2 w-2 animate-pulse',
                 )}
-                title="Unsaved changes"
+                title={tr('Unsaved changes')}
               />
             )}
             {!isPinned && (
               <button
+                aria-label={tr('Close tab')}
                 onClick={(e) => { e.stopPropagation(); onClose(tab.id) }}
-                className="shrink-0 rounded p-0.5 text-text-4 opacity-0 transition-colors hover:text-error group-hover:opacity-100"
-                title="Close tab"
+                className="relative z-20 shrink-0 rounded p-0.5 text-text-4 opacity-0 transition-colors hover:text-error group-hover:opacity-100 group-focus-within:opacity-100"
+                title={tr('Close tab')}
               >
                 <X size={10} />
               </button>
@@ -263,23 +326,33 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
         )
       })}
       </div>
+      </Tabs.List>
       {overflow.right && (
         <button
           onClick={() => scrollTabs(1)}
-          title="Scroll tabs right"
-          className="ml-0.5 flex h-6 w-5 shrink-0 items-center justify-center rounded text-text-3 transition-colors hover:bg-surface-2 hover:text-text-1"
+          title={tr('Scroll tabs right')}
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-transparent text-text-3 transition-colors hover:border-border-2 hover:bg-surface-2 hover:text-text-1"
         >
           <ChevronRight size={13} />
         </button>
       )}
       <button
         onClick={() => onNewTab()}
-        title="New tab (Ctrl+N)"
-        className="ml-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded text-text-4 transition-colors hover:bg-surface-2 hover:text-text-1"
+        title={tr('New tab (Ctrl+N)')}
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border-1 bg-surface-1 text-text-3 transition-colors hover:border-accent/45 hover:bg-surface-2 hover:text-text-1"
       >
         <Plus size={12} />
       </button>
 
+      {detachArmed && createPortal(
+        <div className="fixed inset-x-0 bottom-6 z-[300] flex justify-center pointer-events-none">
+          <div className="flex items-center gap-2 rounded-full border border-accent/50 bg-surface-1 px-4 py-2 text-xs font-medium text-text-1 shadow-2xl">
+            <MonitorUp size={14} className="text-accent" />
+            {tr('Release to detach into a new window')}
+          </div>
+        </div>,
+        document.body,
+      )}
       {ctx.open && createPortal(
         <div
           ref={menuRef}
@@ -287,35 +360,42 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
           style={{ left: pos.left, top: pos.top }}
         >
           <div className="px-3 py-1.5 border-b border-border-1 mb-1">
-            <span className="text-[9px] font-semibold text-text-4 uppercase tracking-wider">Tab</span>
+            <span className="text-[9px] font-semibold text-text-4 uppercase tracking-wider">{tr('Tab')}</span>
           </div>
           <button
             onClick={() => { onTogglePinned(ctx.tabId); closeCtx() }}
             className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-text-1 hover:bg-surface-2 transition-colors text-left"
           >
             {tabs.find((tab) => tab.id === ctx.tabId)?.pinned ? <PinOff size={11} className="text-text-3" /> : <Pin size={11} className="text-text-3" />}
-            {tabs.find((tab) => tab.id === ctx.tabId)?.pinned ? 'Unpin Tab' : 'Pin Tab'}
+            {tabs.find((tab) => tab.id === ctx.tabId)?.pinned ? tr('Unpin Tab') : tr('Pin Tab')}
           </button>
           <button
             onClick={() => { startRename(ctx.tabId); closeCtx() }}
             className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-text-1 hover:bg-surface-2 transition-colors text-left"
           >
             <Pencil size={11} className="text-text-3" />
-            Rename
+            {tr('Rename')}
           </button>
           <button
             onClick={() => { onDuplicate(ctx.tabId); closeCtx() }}
             className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-text-1 hover:bg-surface-2 transition-colors text-left"
           >
             <Copy size={11} className="text-text-3" />
-            Duplicate
+            {tr('Duplicate')}
+          </button>
+          <button
+            onClick={() => { void onDetach(ctx.tabId); closeCtx() }}
+            className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-text-1 hover:bg-surface-2 transition-colors text-left"
+          >
+            <MonitorUp size={11} className="text-text-3" />
+            {tr('Detach into new window')}
           </button>
           <button
             onClick={() => { void onMockTab(ctx.tabId); closeCtx() }}
             className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-text-1 hover:bg-surface-2 transition-colors text-left"
           >
             <Server size={11} className="text-text-3" />
-            Mock this tab
+            {tr('Mock this tab')}
           </button>
           <div className="my-1 border-t border-border-1" />
           <button
@@ -324,7 +404,7 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
             className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-text-1 hover:bg-surface-2 transition-colors text-left disabled:cursor-not-allowed disabled:opacity-30"
           >
             <X size={11} className="text-text-3" />
-            Close
+            {tr('Close')}
           </button>
           <button
             onClick={() => { onCloseToRight(ctx.tabId); closeCtx() }}
@@ -332,7 +412,7 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
             className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-text-2 hover:bg-surface-2 hover:text-text-1 transition-colors text-left disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <ChevronRight size={11} className="text-text-3" />
-            Close to the Right
+            {tr('Close to the Right')}
           </button>
           <button
             onClick={() => { onCloseToLeft(ctx.tabId); closeCtx() }}
@@ -340,7 +420,7 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
             className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-text-2 hover:bg-surface-2 hover:text-text-1 transition-colors text-left disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <ChevronLeft size={11} className="text-text-3" />
-            Close to the Left
+            {tr('Close to the Left')}
           </button>
           <button
             onClick={() => { onCloseAll(ctx.tabId); closeCtx() }}
@@ -348,10 +428,11 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
             className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-text-2 hover:bg-surface-2 hover:text-text-1 transition-colors text-left disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <X size={11} className="text-text-3" />
-            Close All
+            {tr('Close All')}
           </button>
         </div>
       , document.body)}
     </div>
+    </Tabs.Root>
   )
 }

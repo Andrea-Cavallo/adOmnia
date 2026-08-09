@@ -231,8 +231,28 @@ export interface RequestHistoryEntry {
   response: ResponseData
 }
 
+/**
+ * Rail panels that can also live as a workspace tab, so a tool can be opened
+ * alongside requests instead of replacing the whole main area.
+ */
+export type ToolTabId = 'jsonviewer' | 'apidocs'
+
+export const TOOL_TAB_LABELS: Record<ToolTabId, string> = {
+  jsonviewer: 'JSON Studio',
+  apidocs: 'API Docs',
+}
+
 export interface Tab {
   id: string
+  /**
+   * Set when this tab hosts a tool panel rather than an HTTP request.
+   *
+   * `request` stays required and holds a blank placeholder for tool tabs. That
+   * keeps every existing `tab.request` reader working and needs no bump of the
+   * persisted session schema — an older build just reads a tool tab back as an
+   * empty request instead of failing to load the session.
+   */
+  tool?: ToolTabId
   request: RequestItem
   collectionId?: string
   workspaceId?: string
@@ -267,73 +287,6 @@ export interface MockCondition {
   field: string
   operator: 'eq' | 'neq' | 'contains' | 'not_contains' | 'regex' | 'exists' | 'not_exists'
   value: string
-}
-
-export type BlockType = 'request' | 'assert' | 'setvar' | 'if' | 'loop'
-
-export type BlockRunState = 'idle' | 'running' | 'passed' | 'failed' | 'skipped'
-
-export interface RequestBlock {
-  type: 'request'
-  id: string
-  collectionItemId: string
-  label: string
-  extractVars: { varName: string; jsonPath: string }[]
-}
-
-export interface AssertBlock {
-  type: 'assert'
-  id: string
-  label: string
-  source: 'body' | 'status' | 'header'
-  field: string
-  operator: 'eq' | 'neq' | 'contains' | 'gt' | 'lt' | 'exists'
-  expected: string
-}
-
-export interface SetVarBlock {
-  type: 'setvar'
-  id: string
-  varName: string
-  expression: string
-}
-
-export interface IfBlock {
-  type: 'if'
-  id: string
-  condition: string
-  thenBlocks: TestBlock[]
-  elseBlocks: TestBlock[]
-}
-
-export interface LoopBlock {
-  type: 'loop'
-  id: string
-  count: number
-  blocks: TestBlock[]
-}
-
-export type TestBlock = RequestBlock | AssertBlock | SetVarBlock | IfBlock | LoopBlock
-
-export interface VisualTest {
-  id: string
-  name: string
-  blocks: TestBlock[]
-  envId: string | null
-}
-
-export interface BlockResult {
-  blockId: string
-  state: BlockRunState
-  message: string
-  durationMs: number
-}
-
-export interface VisualTestResult {
-  testId: string
-  blockResults: BlockResult[]
-  passed: boolean
-  durationMs: number
 }
 
 export function uid(): string {

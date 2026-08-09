@@ -1,3 +1,4 @@
+import { isDesktopRuntime } from '@/lib/desktopRuntime'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertTriangle,
@@ -151,9 +152,9 @@ function loadGitColumnWidths(): GitColumnWidths {
   }
 }
 
+// Wails 3 has no `window.go` global; services come from generated bindings.
 function hasGitSyncBinding(): boolean {
-  const w = window as typeof window & { go?: { main?: { GitSync?: unknown } } }
-  return Boolean(w.go?.main?.GitSync)
+  return isDesktopRuntime()
 }
 
 function parseJSON<T>(raw: string, fallback: T): T {
@@ -967,30 +968,31 @@ export function GitSyncPanel() {
                 {sortedRepos.map((repo) => (
                   <div
                     key={repo.path}
-                    onClick={() => selectRepo(repo.path)}
                     title={repo.path}
                     className={cn(
-                      'group flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-left transition-colors',
+                      'group flex items-center gap-2 rounded px-2 py-1.5 text-left transition-colors focus-within:ring-2 focus-within:ring-accent',
                       repo.path === repoPath ? 'bg-accent/10 text-accent' : 'text-text-2 hover:bg-surface-2',
                     )}
                   >
-                    <GitBranch size={12} className={cn('shrink-0', repo.path === repoPath ? 'text-accent' : 'text-text-4')} />
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-xs font-medium">{repo.name}</div>
-                      <div className="truncate text-[10px] text-text-4">{repo.path}</div>
-                      {repoSummaries[repo.path] && <div className="mt-0.5 flex gap-1 text-[9px]"><span className="truncate text-text-3">{repoSummaries[repo.path].branch}</span><span className={repoSummaries[repo.path].dirty ? 'text-warning' : 'text-success'}>{repoSummaries[repo.path].dirty ? 'dirty' : 'clean'}</span>{(repoSummaries[repo.path].aheadCount > 0 || repoSummaries[repo.path].behindCount > 0) && <span className="text-text-4">↑{repoSummaries[repo.path].aheadCount} ↓{repoSummaries[repo.path].behindCount}</span>}</div>}
-                    </div>
+                    <button type="button" aria-pressed={repo.path === repoPath} onClick={() => selectRepo(repo.path)} className="flex min-w-0 flex-1 items-center gap-2 text-left outline-none">
+                      <GitBranch size={12} className={cn('shrink-0', repo.path === repoPath ? 'text-accent' : 'text-text-4')} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-xs font-medium">{repo.name}</span>
+                        <span className="block truncate text-[10px] text-text-4">{repo.path}</span>
+                        {repoSummaries[repo.path] && <span className="mt-0.5 flex gap-1 text-[9px]"><span className="truncate text-text-3">{repoSummaries[repo.path].branch}</span><span className={repoSummaries[repo.path].dirty ? 'text-warning' : 'text-success'}>{repoSummaries[repo.path].dirty ? 'dirty' : 'clean'}</span>{(repoSummaries[repo.path].aheadCount > 0 || repoSummaries[repo.path].behindCount > 0) && <span className="text-text-4">↑{repoSummaries[repo.path].aheadCount} ↓{repoSummaries[repo.path].behindCount}</span>}</span>}
+                      </span>
+                    </button>
                     <button
                       onClick={(event) => { event.stopPropagation(); setRepos((current) => toggleRepoPin(current, repo.path)) }}
                       title={repo.pinned ? 'Unpin repository' : 'Pin repository'}
-                      className={cn('shrink-0 rounded p-0.5 transition-opacity hover:text-accent', repo.pinned ? 'text-accent opacity-100' : 'text-text-4 opacity-0 group-hover:opacity-100')}
+                      className={cn('shrink-0 rounded p-0.5 transition-opacity hover:text-accent', repo.pinned ? 'text-accent opacity-100' : 'text-text-4 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100')}
                     >
                       <Pin size={11} fill={repo.pinned ? 'currentColor' : 'none'} />
                     </button>
                     <button
                       onClick={(event) => handleRemoveRepo(event, repo.path)}
                       title="Remove from list"
-                      className="shrink-0 rounded p-0.5 text-text-4 opacity-0 transition-opacity hover:text-error group-hover:opacity-100"
+                      className="shrink-0 rounded p-0.5 text-text-4 opacity-0 transition-opacity hover:text-error group-hover:opacity-100 group-focus-within:opacity-100"
                     >
                       <Trash2 size={12} />
                     </button>

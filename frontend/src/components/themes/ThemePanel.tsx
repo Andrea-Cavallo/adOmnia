@@ -391,7 +391,13 @@ function InstalledTab({
   themes, builtinThemes, activeThemeId, loading, builtinIds, menuOpenId, setMenuOpenId,
   onActivate, onDelete, onExport, onDuplicate, onCreate, onEdit,
 }: InstalledTabProps) {
-  if (loading && themes.length === 0 && builtinThemes.length === 0) {
+  // `themes` is the full deduped catalog (builtins + project + user + skins),
+  // and it is shared with StatusBar/WelcomePanel to resolve the active theme.
+  // The Custom section must therefore subtract the builtins here, or every
+  // built-in theme renders twice — once per section.
+  const customThemes = themes.filter((theme) => !builtinIds.has(theme.id))
+
+  if (loading && customThemes.length === 0 && builtinThemes.length === 0) {
     return (
       <div className="flex items-center justify-center h-48">
         <div className="text-sm text-text-3">Loading themes...</div>
@@ -410,11 +416,14 @@ function InstalledTab({
               const isActive = theme.id === activeThemeId
               const colorPreview = Object.values(theme.colors).slice(0, 5)
               return (
-                <div
+                <button
+                  type="button"
                   key={theme.id}
+                  aria-pressed={isActive}
+                  aria-label={`Activate theme ${theme.name}`}
                   onClick={() => onActivate(theme)}
                   className={cn(
-                    'relative rounded-lg border p-3 transition-all cursor-pointer',
+                    'relative rounded-lg border p-3 text-left transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
                     isActive
                       ? 'border-accent bg-surface-1 shadow-md shadow-accent/5'
                       : 'border-border-1 bg-surface-1 hover:border-border-2 hover:shadow-sm'
@@ -432,7 +441,7 @@ function InstalledTab({
                   </div>
                   <h3 className="text-xs font-medium text-text-1">{theme.name}</h3>
                   <p className="text-[10px] text-text-4 mt-0.5">{theme.description}</p>
-                </div>
+                </button>
               )
             })}
           </div>
@@ -440,7 +449,7 @@ function InstalledTab({
       )}
 
       {/* User themes */}
-      {themes.length === 0 ? (
+      {customThemes.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-32 gap-3">
           <p className="text-sm text-text-3">No custom themes installed yet.</p>
           <button
@@ -455,7 +464,7 @@ function InstalledTab({
         <div>
           <p className="text-xs font-medium text-text-3 uppercase tracking-wider mb-3">Custom</p>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-      {themes.map((theme) => {
+      {customThemes.map((theme) => {
         const isActive = theme.id === activeThemeId
         const isBuiltin = builtinIds.has(theme.id)
         const colorPreview = Object.values(theme.colors).slice(0, 5)
@@ -464,12 +473,11 @@ function InstalledTab({
           <div
             key={theme.id}
             className={cn(
-              'group relative rounded-lg border p-4 transition-all cursor-pointer',
+              'group relative rounded-lg border p-4 transition-all focus-within:ring-2 focus-within:ring-accent',
               isActive
                 ? 'border-accent bg-surface-1 shadow-md shadow-accent/5'
                 : 'border-border-1 bg-surface-1 hover:border-border-2 hover:shadow-sm'
             )}
-            onClick={() => onActivate(theme)}
           >
             {isActive && (
               <span className="absolute top-3 right-3 flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium bg-accent/15 text-accent rounded-full">
@@ -478,31 +486,35 @@ function InstalledTab({
               </span>
             )}
 
-            <div className="flex items-start gap-3 mb-3">
-              <div className="flex gap-0.5 mt-0.5">
-                {colorPreview.map((color, i) => (
-                  <div
-                    key={i}
-                    className="w-4 h-4 rounded-full border border-white/10"
-                    style={{ backgroundColor: color }}
-                  />
-                ))}
+            <button type="button" aria-pressed={isActive} aria-label={`Activate theme ${theme.name}`} onClick={() => onActivate(theme)} className="w-full text-left outline-none">
+              <div className="flex items-start gap-3 mb-3">
+                <div className="flex gap-0.5 mt-0.5">
+                  {colorPreview.map((color, i) => (
+                    <div
+                      key={i}
+                      className="w-4 h-4 rounded-full border border-white/10"
+                      style={{ backgroundColor: color }}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
 
-            <h3 className="text-sm font-medium text-text-1 mb-0.5">{theme.name}</h3>
-            <p className="text-xs text-text-3 mb-2">by {theme.author || 'Unknown'}</p>
-            {theme.description && (
-              <p className="text-xs text-text-4 line-clamp-2">{theme.description}</p>
-            )}
+              <h3 className="text-sm font-medium text-text-1 mb-0.5">{theme.name}</h3>
+              <p className="text-xs text-text-3 mb-2">by {theme.author || 'Unknown'}</p>
+              {theme.description && (
+                <p className="text-xs text-text-4 line-clamp-2">{theme.description}</p>
+              )}
+            </button>
 
             <div
               className={cn(
-                'absolute top-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity',
+                'absolute top-3 left-3 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity',
                 isActive && 'right-20'
               )}
             >
               <button
+                aria-label={`Actions for ${theme.name}`}
+                aria-expanded={menuOpenId === theme.id}
                 onClick={(e) => {
                   e.stopPropagation()
                   setMenuOpenId(menuOpenId === theme.id ? null : theme.id)

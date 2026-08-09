@@ -17,19 +17,26 @@ import (
 	"adomnia/internal/devlog"
 	"adomnia/internal/httpexec"
 	"adomnia/internal/nettools"
+	pluginRuntime "adomnia/internal/plugins"
 	"adomnia/internal/proxy"
+	"adomnia/internal/requestwindow"
 	"adomnia/internal/sidecar"
 	"adomnia/internal/sse"
 	"adomnia/internal/storage"
+	"adomnia/internal/swaggerwindow"
 	"adomnia/internal/vault"
 	"adomnia/internal/ws"
-	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 type App struct {
-	ctx          context.Context
-	serverPort   int
-	browserDebug *BrowserDebug
+	ctx            context.Context
+	serverPort     int
+	browserDebug   *BrowserDebug
+	desktop        *application.App
+	mainWindow     *application.WebviewWindow
+	requestWindows *requestwindow.Manager
+	swaggerWindow  *swaggerwindow.Manager
 }
 
 type DroppedFileData struct {
@@ -66,9 +73,98 @@ func NewApp() *App {
 	return &App{}
 }
 
+// AttachDesktop gives the binding service access to the Wails v3 application.
+// Domain code remains independent from Wails; only this root binding layer
+// touches native windows, dialogs, and the application event bus.
+func (a *App) AttachDesktop(desktop *application.App) {
+	a.desktop = desktop
+	a.requestWindows = requestwindow.New(desktop)
+	a.swaggerWindow = swaggerwindow.New(desktop)
+}
+
+func (a *App) SetMainWindow(window *application.WebviewWindow) {
+	a.mainWindow = window
+	if a.requestWindows != nil {
+		a.requestWindows.SetMainWindow(window)
+	}
+}
+
+// DetachRequest creates a native Wails v3 window for the existing request tab.
+// snapshotJSON contains the request, response and editor view state; it is kept
+// in the single app process until the request is attached again.
+func (a *App) DetachRequest(tabID, snapshotJSON, title string) error {
+	if a.requestWindows == nil {
+		return fmt.Errorf("desktop runtime is not initialized")
+	}
+	return a.requestWindows.Detach(tabID, snapshotJSON, title)
+}
+
+// DetachRequestAndResponse opens the composer and response in two native
+// windows while keeping a single synchronized request tab session.
+func (a *App) DetachRequestAndResponse(tabID, snapshotJSON, title string) error {
+	if a.requestWindows == nil {
+		return fmt.Errorf("desktop runtime is not initialized")
+	}
+	return a.requestWindows.DetachRequestAndResponse(tabID, snapshotJSON, title)
+}
+
+func (a *App) GetDetachedRequestSnapshot(tabID string) (string, error) {
+	if a.requestWindows == nil {
+		return "", fmt.Errorf("desktop runtime is not initialized")
+	}
+	return a.requestWindows.Snapshot(tabID)
+}
+
+func (a *App) UpdateDetachedRequestSnapshot(tabID, snapshotJSON string) error {
+	if a.requestWindows == nil {
+		return fmt.Errorf("desktop runtime is not initialized")
+	}
+	return a.requestWindows.Update(tabID, snapshotJSON)
+}
+
+func (a *App) AttachRequestToMainWindow(tabID string) error {
+	if a.requestWindows == nil {
+		return fmt.Errorf("desktop runtime is not initialized")
+	}
+	return a.requestWindows.Attach(tabID)
+}
+
+// OpenSwaggerEditorWindow opens the OpenAPI editor in its own native window.
+// The editor remains local-first: its draft is persisted by the frontend in
+// local storage and can be saved into any local collection from that window.
+func (a *App) OpenSwaggerEditorWindow() error {
+	if a.swaggerWindow == nil {
+		return fmt.Errorf("desktop runtime is not initialized")
+	}
+	a.swaggerWindow.Open()
+	return nil
+}
+
+// ServiceStartup is Wails v3's lifecycle hook. The existing OnStartup method
+// remains the application lifecycle owner so no domain initialisation moves
+// into the desktop shell.
+func (a *App) ServiceStartup(ctx context.Context, _ application.ServiceOptions) error {
+	a.OnStartup(ctx)
+	return nil
+}
+
+func (a *App) ServiceShutdown() error {
+	a.OnShutdown(a.ctx)
+	return nil
+}
+
+func (a *App) OnApplicationShutdown() {
+	a.OnShutdown(a.ctx)
+}
+
 func (a *App) OnStartup(ctx context.Context) {
 	devlog.Init(dataDir())
 	a.ctx = ctx
+	pluginRuntime.ConfigureNotifier(func(notification pluginRuntime.PluginNotification) {
+		if a.desktop != nil {
+			a.desktop.Event.Emit("plugin:notification", notification)
+		}
+	})
 	devlog.Info("OnStartup", "avvio applicazione in corso", nil)
 	if err := storage.Open(dataDir()); err != nil {
 		log.Printf("[app] WARNING: could not open bbolt DB: %v", err)
@@ -179,7 +275,14 @@ func (a *App) SelectFolder(title string) (string, error) {
 	if strings.TrimSpace(title) == "" {
 		title = "Select folder"
 	}
-	path, err := wailsRuntime.OpenDirectoryDialog(a.ctx, wailsRuntime.OpenDialogOptions{Title: title})
+	if a.desktop == nil {
+		return "", fmt.Errorf("desktop runtime not initialized")
+	}
+	path, err := a.desktop.Dialog.OpenFile().
+		CanChooseFiles(false).
+		CanChooseDirectories(true).
+		SetTitle(title).
+		PromptForSingleSelection()
 	if err != nil {
 		devlog.Err("SelectFolder", "selezione cartella fallita", err, map[string]any{"title": title})
 		return "", err
@@ -377,9 +480,10 @@ func (a *App) OnDomReady(ctx context.Context) {
 func (a *App) OnShutdown(ctx context.Context) {
 	devlog.Info("OnShutdown", "arresto applicazione", nil)
 	if globalPluginManager != nil {
-		globalPluginManager.FireEvent(PluginEvent{Type: "onShutdown", Payload: map[string]interface{}{}})
+		globalPluginManager.EmitEvent(PluginEvent{Type: "onShutdown", Payload: map[string]interface{}{}})
 		globalPluginManager.Shutdown()
 	}
+	pluginRuntime.ConfigureNotifier(nil)
 	if a.browserDebug != nil {
 		if err := a.browserDebug.StopBrowser(); err != nil {
 			log.Printf("[app] browser debug stop error: %v", err)
@@ -394,6 +498,9 @@ func (a *App) OnShutdown(ctx context.Context) {
 
 // ExecuteHTTP preserves the public Wails binding while execution lives in the HTTP module.
 func (a *App) ExecuteHTTP(reqJSON string) string {
+	if globalPluginManager != nil {
+		return httpexec.ExecuteWithHooks(reqJSON, globalPluginManager.ApplyEventJSON)
+	}
 	return httpexec.Execute(reqJSON)
 }
 
@@ -484,7 +591,7 @@ func (a *App) StorageGetAll(bucket string) ([]StorageEntry, error) {
 }
 
 func (a *App) SaveBinaryFileBase64(defaultName, dataBase64 string) (string, error) {
-	if a.ctx == nil {
+	if a.desktop == nil {
 		return "", fmt.Errorf("app context not initialized")
 	}
 	if strings.TrimSpace(defaultName) == "" {
@@ -494,10 +601,9 @@ func (a *App) SaveBinaryFileBase64(defaultName, dataBase64 string) (string, erro
 	if err != nil {
 		return "", fmt.Errorf("invalid base64 payload: %w", err)
 	}
-	path, err := wailsRuntime.SaveFileDialog(a.ctx, wailsRuntime.SaveDialogOptions{
-		Title:           "Save file",
-		DefaultFilename: filepath.Base(defaultName),
-	})
+	path, err := a.desktop.Dialog.SaveFile().
+		SetFilename(filepath.Base(defaultName)).
+		PromptForSingleSelection()
 	if err != nil {
 		return "", err
 	}

@@ -1,3 +1,9 @@
+import * as BrowserDebugBindings from '../../bindings/adomnia/browserdebug'
+import type {
+  ConsoleEntry as BindingConsoleEntry,
+  DebugNetworkEntry as BindingDebugNetworkEntry,
+  DOMBreakpointInfo as BindingDOMBreakpointInfo,
+} from '../../bindings/adomnia/internal/browser/models'
 import type { DebugNetworkEntry } from '@/stores/browser-debug'
 
 // Discovery types
@@ -201,7 +207,12 @@ declare global {
 // Binding accessor
 
 function getBrowserDebugBinding() {
-  const binding = window?.go?.main?.BrowserDebug
+  // Wails 3 has no `window.go` global; services come from generated bindings.
+  // Cast once. The generated bindings type Go maps and enums more loosely than
+  // the local models in this file, which stay the authority for callers — the
+  // same arrangement the old `window.go.main.BrowserDebug` global provided.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const binding = BrowserDebugBindings as unknown as Record<string, (...a: unknown[]) => Promise<any>>
   if (!binding) throw new Error('Browser Debug backend is not available')
   return binding
 }
@@ -216,29 +227,23 @@ function browserDebugError(err: unknown, fallback = 'Browser Debug operation fai
   return new Error(fallback)
 }
 
+function normalizeStringRecord(value: Record<string, string | undefined>): Record<string, string> {
+  return Object.fromEntries(Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === 'string'))
+}
+
+function normalizeConsoleEntry(entry: { id: string; type: string; text: string; timestamp: number }): ConsoleEntry {
+  const type = ['log', 'error', 'warn', 'info', 'result'].includes(entry.type)
+    ? entry.type as ConsoleEntry['type']
+    : 'log'
+  return { ...entry, type }
+}
+
+function normalizeDOMBreakpoint(entry: { nodeId: number; type: string }): DOMBreakpointInfo | null {
+  if (!['subtree-modified', 'attribute-modified', 'node-removed'].includes(entry.type)) return null
+  return { nodeId: entry.nodeId, type: entry.type as DOMBreakpointType }
+}
+
 // Existing wrappers
-
-export async function launchBrowser(url: string): Promise<void> {
-  try {
-    const binding = getBrowserDebugBinding()
-    if (!binding) return
-    await binding.LaunchBrowser(url)
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to launch browser'
-    throw new Error(message)
-  }
-}
-
-export async function connectDebugger(): Promise<void> {
-  try {
-    const binding = getBrowserDebugBinding()
-    if (!binding) return
-    await binding.Connect()
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to connect'
-    throw new Error(message)
-  }
-}
 
 export async function disconnectDebugger(): Promise<void> {
   try {
@@ -251,33 +256,17 @@ export async function disconnectDebugger(): Promise<void> {
   }
 }
 
-export async function isConnected(): Promise<boolean> {
-  try {
-    const binding = getBrowserDebugBinding()
-    if (!binding) return false
-    return await binding.IsConnected()
-  } catch {
-    return false
-  }
-}
-
 export async function getTraffic(): Promise<DebugNetworkEntry[]> {
   try {
     const binding = getBrowserDebugBinding()
     if (!binding) return []
-    return await binding.GetTraffic()
+    return (await binding.GetTraffic()).map((entry: BindingDebugNetworkEntry) => ({
+      ...entry,
+      requestHeaders: normalizeStringRecord(entry.requestHeaders),
+      responseHeaders: normalizeStringRecord(entry.responseHeaders),
+    }))
   } catch (err: unknown) {
     throw new Error(err instanceof Error ? err.message : 'Failed to read browser traffic')
-  }
-}
-
-export async function getTrafficFiltered(filter: string): Promise<DebugNetworkEntry[]> {
-  try {
-    const binding = getBrowserDebugBinding()
-    if (!binding) return []
-    return await binding.GetTrafficFiltered(filter)
-  } catch (err: unknown) {
-    throw browserDebugError(err)
   }
 }
 
@@ -311,21 +300,11 @@ export async function clearTraffic(): Promise<void> {
   }
 }
 
-export async function stopBrowser(): Promise<void> {
-  try {
-    const binding = getBrowserDebugBinding()
-    if (!binding) return
-    await binding.StopBrowser()
-  } catch (err: unknown) {
-    throw browserDebugError(err)
-  }
-}
-
 // Discovery and target-connect wrappers
 
 export async function discoverEndpoints(): Promise<DebugEndpoint[]> {
   try {
-    const b = window?.go?.main?.BrowserDebug as Record<string, (...a: unknown[]) => Promise<unknown>> | undefined
+    const b = getBrowserDebugBinding()
     if (!b?.DiscoverEndpoints) return []
     return ((await b.DiscoverEndpoints()) as DebugEndpoint[]) ?? []
   } catch (err: unknown) {
@@ -335,7 +314,7 @@ export async function discoverEndpoints(): Promise<DebugEndpoint[]> {
 
 export async function connectToTarget(wsUrl: string): Promise<void> {
   try {
-    const b = window?.go?.main?.BrowserDebug as Record<string, (...a: unknown[]) => Promise<unknown>> | undefined
+    const b = getBrowserDebugBinding()
     if (!b?.ConnectToTarget) return
     await b.ConnectToTarget(wsUrl)
   } catch (err: unknown) {
@@ -345,7 +324,7 @@ export async function connectToTarget(wsUrl: string): Promise<void> {
 
 export async function launchBrowserForDebug(url: string, port: number): Promise<DebugTarget[]> {
   try {
-    const b = window?.go?.main?.BrowserDebug as Record<string, (...a: unknown[]) => Promise<unknown>> | undefined
+    const b = getBrowserDebugBinding()
     if (!b?.LaunchBrowserForDebug) return []
     return (await b.LaunchBrowserForDebug(url, port)) as DebugTarget[]
   } catch (err: unknown) {
@@ -359,7 +338,8 @@ export async function evalJS(expression: string): Promise<ConsoleEntry | null> {
   try {
     const binding = getBrowserDebugBinding()
     if (!binding) return null
-    return await binding.EvalJS(expression)
+    const result = await binding.EvalJS(expression) as BindingConsoleEntry | null
+    return result ? normalizeConsoleEntry(result) : null
   } catch (err: unknown) {
     throw browserDebugError(err)
   }
@@ -379,7 +359,7 @@ export async function getConsoleLogs(): Promise<ConsoleEntry[]> {
   try {
     const binding = getBrowserDebugBinding()
     if (!binding) return []
-    return await binding.GetConsoleLogs()
+    return (await binding.GetConsoleLogs() as BindingConsoleEntry[]).map(normalizeConsoleEntry)
   } catch (err: unknown) {
     throw browserDebugError(err)
   }
@@ -461,26 +441,6 @@ export async function getBreakpoints(): Promise<BreakpointInfo[]> {
     const binding = getBrowserDebugBinding()
     if (!binding) return []
     return await binding.GetBreakpoints()
-  } catch (err: unknown) {
-    throw browserDebugError(err)
-  }
-}
-
-export async function getScripts(): Promise<ScriptInfo[]> {
-  try {
-    const binding = getBrowserDebugBinding()
-    if (!binding?.GetScripts) return []
-    return await binding.GetScripts()
-  } catch (err: unknown) {
-    throw browserDebugError(err)
-  }
-}
-
-export async function getScriptSource(scriptId: string): Promise<string> {
-  try {
-    const binding = getBrowserDebugBinding()
-    if (!binding?.GetScriptSource) return ''
-    return await binding.GetScriptSource(scriptId)
   } catch (err: unknown) {
     throw browserDebugError(err)
   }
@@ -626,7 +586,7 @@ export async function getComputedStyleForNode(
   try {
     const binding = getBrowserDebugBinding()
     if (!binding) return {}
-    return await binding.GetComputedStyle(nodeId)
+    return normalizeStringRecord(await binding.GetComputedStyle(nodeId))
   } catch (err: unknown) {
     throw browserDebugError(err)
   }
@@ -682,7 +642,9 @@ export async function getDOMBreakpoints(): Promise<DOMBreakpointInfo[]> {
   try {
     const binding = getBrowserDebugBinding()
     if (!binding?.GetDOMBreakpoints) return []
-    return await binding.GetDOMBreakpoints()
+    return (await binding.GetDOMBreakpoints() as BindingDOMBreakpointInfo[])
+      .map(normalizeDOMBreakpoint)
+      .filter((entry: DOMBreakpointInfo | null): entry is DOMBreakpointInfo => entry !== null)
   } catch (err: unknown) {
     throw browserDebugError(err)
   }

@@ -15,11 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wailsapp/wails/v2"
-	"github.com/wailsapp/wails/v2/pkg/options"
-	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
-	"github.com/wailsapp/wails/v2/pkg/options/windows"
-	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -43,6 +39,15 @@ const (
 
 var startupWindowChrome = readStartupWindowChrome()
 
+// singleInstanceKey only protects the local hand-off payload between two
+// launches. It is not used for application or user data encryption.
+var singleInstanceKey = [32]byte{
+	0x11, 0x42, 0x3a, 0x7c, 0x24, 0x5e, 0x19, 0x6b,
+	0xa5, 0xd2, 0x4f, 0x88, 0x32, 0x71, 0xc6, 0x0d,
+	0xf1, 0x57, 0x9a, 0x2e, 0x64, 0xb3, 0x08, 0xdc,
+	0x46, 0x95, 0x1f, 0x7a, 0xce, 0x30, 0x5d, 0xe4,
+}
+
 func main() {
 	if len(os.Args) > 1 && (os.Args[1] == "run" || os.Args[1] == "lint") {
 		os.Exit(adomniacli.Run(os.Args[1:], os.Stdout, os.Stderr))
@@ -58,6 +63,7 @@ func main() {
 	pluginManager := NewPluginManager()
 	globalPluginManager = pluginManager
 	wasmRuntime := NewWasmRuntime()
+	plugins.AttachRuntime(pluginManager.PluginManager, wasmRuntime.WasmRuntime)
 	dockerLab := NewDockerLab()
 	aiEngine := NewAIEngine()
 	globalAIEngine = aiEngine
@@ -67,72 +73,68 @@ func main() {
 	collectionFS := NewCollectionFS()
 	oasLint := NewOASLint()
 
-	appOptions := &options.App{
+	var mainWindow *application.WebviewWindow
+	appOptions := application.Options{
+		Name: "adOmnia paratus.",
+		Assets: application.AssetOptions{
+			Handler: application.BundledAssetFileServer(assets),
+		},
+		Services: []application.Service{
+			application.NewService(app),
+			application.NewService(browserDebug),
+			application.NewService(themeManager),
+			application.NewService(templateStore),
+			application.NewService(pluginManager),
+			application.NewService(wasmRuntime),
+			application.NewService(dockerLab),
+			application.NewService(aiEngine),
+			application.NewService(gitSync),
+			application.NewService(mcpClient),
+			application.NewService(mcpServerGenerator),
+			application.NewService(collectionFS),
+			application.NewService(oasLint),
+		},
+		// Only one process may hold the bbolt lock. Additional launches focus
+		// the running main window instead of starting with an empty workspace.
+		SingleInstance: &application.SingleInstanceOptions{
+			UniqueID:      "com.adomnia.app.single-instance",
+			EncryptionKey: singleInstanceKey,
+			OnSecondInstanceLaunch: func(_ application.SecondInstanceData) {
+				if mainWindow == nil {
+					return
+				}
+				mainWindow.Restore()
+				mainWindow.Focus()
+			},
+		},
+		Windows: application.WindowsOptions{
+			WebviewUserDataPath: dataDir(),
+		},
+		Linux: application.LinuxOptions{
+			ProgramName: "adOmnia",
+		},
+	}
+	applyPlatformOptions(&appOptions)
+	desktopApp := application.New(appOptions)
+	app.AttachDesktop(desktopApp)
+
+	mainWindow = desktopApp.Window.NewWithOptions(application.WebviewWindowOptions{
+		Name:      "main",
 		Title:     "adOmnia paratus.",
 		Width:     1400,
 		Height:    900,
 		MinWidth:  900,
 		MinHeight: 600,
-		AssetServer: &assetserver.Options{
-			Assets: assets,
-		},
-		OnStartup:  app.OnStartup,
-		OnDomReady: app.OnDomReady,
-		OnShutdown: app.OnShutdown,
-		// Only one instance may hold the bbolt lock. Without this, a second
-		// launch opens with no database access and shows an empty workspace,
-		// which looks like total data loss. Focus the running window instead.
-		SingleInstanceLock: &options.SingleInstanceLock{
-			UniqueId:               "com.adomnia.app.single-instance",
-			OnSecondInstanceLaunch: app.onSecondInstanceLaunch,
-		},
-		Bind: []interface{}{
-			app,
-			browserDebug,
-			themeManager,
-			templateStore,
-			pluginManager,
-			wasmRuntime,
-			dockerLab,
-			aiEngine,
-			gitSync,
-			mcpClient,
-			mcpServerGenerator,
-			collectionFS,
-			oasLint,
-		},
-		Windows: &windows.Options{
-			WebviewIsTransparent:              false,
-			WindowIsTranslucent:               false,
-			DisableWindowIcon:                 false,
-			DisableFramelessWindowDecorations: false,
-			WebviewUserDataPath:               dataDir(),
-			Theme:                             windows.Dark,
-		},
-		DragAndDrop: &options.DragAndDrop{
-			EnableFileDrop: true,
-		},
+		URL:       "/",
 		Frameless: isAppChrome(startupWindowChrome),
-	}
-	applyPlatformOptions(appOptions)
-
-	err := wails.Run(appOptions)
-	if err != nil {
+		// Carries over the v2 DragAndDrop.EnableFileDrop behaviour. Without it
+		// the drop handlers never fire and App.ReadDroppedFiles is unreachable.
+		EnableFileDrop: true,
+	})
+	app.SetMainWindow(mainWindow)
+	if err := desktopApp.Run(); err != nil {
 		log.Fatal("[app] ", err)
 	}
-}
-
-// onSecondInstanceLaunch fires in the already-running instance when the user
-// tries to open a second adOmnia. We bring the existing window to the front
-// rather than letting a second process start without database access.
-func (a *App) onSecondInstanceLaunch(_ options.SecondInstanceData) {
-	if a.ctx == nil {
-		return
-	}
-	wailsRuntime.WindowUnminimise(a.ctx)
-	wailsRuntime.Show(a.ctx)
-	wailsRuntime.WindowSetAlwaysOnTop(a.ctx, true)
-	wailsRuntime.WindowSetAlwaysOnTop(a.ctx, false)
 }
 
 func dataDir() string {

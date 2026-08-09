@@ -1,7 +1,6 @@
 import { blankRequest, type RequestItem, uid } from '@/lib/types'
 import {
   DEFAULT_FLOW_SETTINGS,
-  type ConditionOperator,
   type FlowCondition,
   type FlowEdgeBranch,
   type FlowGraphDefinition,
@@ -236,8 +235,4 @@ export function expectedStatusMatches(pattern: string, status: number): boolean 
     return status >= min && status <= max
   }
   return value.split(',').map((item) => item.trim()).some((item) => expectedStatusMatches(item, status))
-}
-
-export function conditionOperators(): ConditionOperator[] {
-  return ['exists', 'not_exists', 'eq', 'neq', 'contains', 'gt', 'lt', 'gte', 'lte']
 }

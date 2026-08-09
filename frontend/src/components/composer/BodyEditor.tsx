@@ -7,6 +7,7 @@ import { KVEditor } from './KVEditor'
 import { JsonEditor } from '@/components/ui/JsonEditor'
 import { JsonGraphModal } from '@/components/ui/JsonGraph'
 import { cn } from '@/lib/utils'
+import { useUiTranslation, type UiMessage } from '@/lib/uiI18n'
 import { diagnoseJson } from '@/lib/jsonDiagnostics'
 import { prettyJson } from '@/lib/prettyJson'
 import { findTextMatches } from '@/lib/textSearch'
@@ -167,11 +168,12 @@ function BodyFindBar({
   onMatchCaseChange: () => void
   onWholeWordChange: () => void
 }) {
+  const tr = useUiTranslation()
   if (!open) {
     return (
       <button
         onClick={onOpen}
-        title="Find in body"
+        title={tr('Find in body')}
         className="ml-auto inline-flex h-7 w-7 items-center justify-center rounded text-text-3 transition-colors hover:bg-surface-2 hover:text-text-1"
       >
         <Search size={13} />
@@ -197,7 +199,7 @@ function BodyFindBar({
             onClose()
           }
         }}
-        placeholder="Find body"
+        placeholder={tr('Find body')}
         className="h-full w-40 bg-transparent px-2 font-mono text-[11px] text-text-1 outline-none placeholder:text-text-4"
       />
       <span className="min-w-14 px-1 text-center font-mono text-[10px] text-text-4">
@@ -206,7 +208,7 @@ function BodyFindBar({
       <button
         onClick={onMatchCaseChange}
         aria-pressed={matchCase}
-        title="Match case"
+        title={tr('Match case')}
         className={cn('flex h-full min-w-7 items-center justify-center px-1 font-mono text-[10px] font-semibold', matchCase ? 'bg-accent/15 text-accent' : 'text-text-4 hover:text-text-1')}
       >
         Aa
@@ -214,18 +216,18 @@ function BodyFindBar({
       <button
         onClick={onWholeWordChange}
         aria-pressed={wholeWord}
-        title="Match whole word"
+        title={tr('Match whole word')}
         className={cn('flex h-full min-w-7 items-center justify-center px-1 font-mono text-[10px] font-semibold', wholeWord ? 'bg-accent/15 text-accent' : 'text-text-4 hover:text-text-1')}
       >
         Ab
       </button>
-      <button onClick={onPrev} disabled={!matches} title="Previous match" className="flex h-full w-6 items-center justify-center text-text-4 hover:text-text-1 disabled:opacity-35">
+      <button onClick={onPrev} disabled={!matches} title={tr('Previous match')} className="flex h-full w-6 items-center justify-center text-text-4 hover:text-text-1 disabled:opacity-35">
         <ChevronUp size={12} />
       </button>
-      <button onClick={onNext} disabled={!matches} title="Next match" className="flex h-full w-6 items-center justify-center text-text-4 hover:text-text-1 disabled:opacity-35">
+      <button onClick={onNext} disabled={!matches} title={tr('Next match')} className="flex h-full w-6 items-center justify-center text-text-4 hover:text-text-1 disabled:opacity-35">
         <ChevronDown size={12} />
       </button>
-      <button onClick={onClose} title="Close find" className="flex h-full w-7 items-center justify-center text-text-4 hover:text-text-1">
+      <button onClick={onClose} title={tr('Close find')} className="flex h-full w-7 items-center justify-center text-text-4 hover:text-text-1">
         <X size={12} />
       </button>
     </div>
@@ -233,6 +235,7 @@ function BodyFindBar({
 }
 
 function JsonRawEditor({ body, onChange, search }: { body: RequestBody; onChange: (b: RequestBody) => void; search: BodySearchState }) {
+  const tr = useUiTranslation()
   const [showGraph, setShowGraph] = useState(false)
   const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
   const getResolvedVars = useEnvironmentsStore((s) => s.getResolvedVars)
@@ -274,24 +277,24 @@ function JsonRawEditor({ body, onChange, search }: { body: RequestBody; onChange
           onClick={prettify}
           className="rounded px-2 py-1 text-[10.5px] font-medium text-accent outline-none transition-colors hover:bg-accent/10 hover:text-accent-light focus-visible:ring-2 focus-visible:ring-accent"
         >
-          Beautify
+          {tr('Beautify')}
         </button>
         <button
           onClick={() => setShowGraph(true)}
           disabled={hasErrors || !hasContent}
           className="inline-flex items-center gap-1 rounded px-2 py-1 text-[10.5px] font-medium text-text-2 outline-none transition-colors hover:bg-accent/10 hover:text-accent focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-40 disabled:hover:text-text-3"
-          title="Open JSON graph"
+          title={tr('Open JSON graph')}
         >
-          <GitBranch size={11} /> Graph
+          <GitBranch size={11} /> {tr('Graph')}
         </button>
         {hasErrors
           ? <AlertCircle size={12} className="text-error" />
           : hasContent && <CheckCircle2 size={12} className="text-success" />
         }
-        {!hasErrors && hasContent && <span className="text-[10px] font-medium text-success">Valid JSON</span>}
+        {!hasErrors && hasContent && <span className="text-[10px] font-medium text-success">{tr('Valid JSON')}</span>}
         {hasErrors && (
           <span className="text-[10px] font-mono text-error">
-            {diagnostics.length} {diagnostics.length === 1 ? 'issue' : 'issues'}
+            {diagnostics.length} {diagnostics.length === 1 ? tr('issue') : tr('issues')}
           </span>
         )}
       </div>
@@ -299,7 +302,7 @@ function JsonRawEditor({ body, onChange, search }: { body: RequestBody; onChange
         value={body.raw ?? ''}
         onChange={handleChange}
         placeholder={'{\n  "key": "value"\n}'}
-        error={hasErrors ? 'Invalid JSON' : undefined}
+        error={hasErrors ? tr('Invalid JSON') : undefined}
         className="flex-1"
         minHeight="280px"
         resolvedVars={resolvedVars}
@@ -314,30 +317,38 @@ function JsonRawEditor({ body, onChange, search }: { body: RequestBody; onChange
           'rounded border px-2 py-1 text-[10px] font-mono',
           activeEnvId ? 'border-error/35 bg-error/8 text-error' : 'border-warning/35 bg-warning/8 text-warning',
         )}>
-          {activeEnvId ? 'Unresolved variables: ' : 'No active environment for variables: '}
+          {activeEnvId ? tr('Unresolved variables: ') : tr('No active environment for variables: ')}
           {unresolvedVars.slice(0, 8).map((name) => `{{${name}}}`).join(', ')}
-          {unresolvedVars.length > 8 ? ` +${unresolvedVars.length - 8} more` : ''}
+          {unresolvedVars.length > 8 ? ` +${unresolvedVars.length - 8} ${tr('more')}` : ''}
         </div>
       )}
       {hasErrors && (
         <div className="rounded border border-error/35 bg-error/8 px-2 py-1.5 font-mono text-[10px] text-error">
-          <p className="mb-1 font-semibold">Malformed JSON because:</p>
+          <p className="mb-1 font-semibold">{tr('Malformed JSON because:')}</p>
           <ol className="max-h-32 list-decimal space-y-0.5 overflow-y-auto pl-4 pr-1">
             {diagnostics.map((diagnostic) => (
               <li key={`${diagnostic.index}:${diagnostic.message}`}>
-                <span className="text-text-3">Line {diagnostic.line}, column {diagnostic.column}:</span>{' '}
+                <span className="text-text-3">{tr('Line')} {diagnostic.line}, {tr('column')} {diagnostic.column}:</span>{' '}
                 {diagnostic.message}
               </li>
             ))}
           </ol>
         </div>
       )}
-      {showGraph && <JsonGraphModal title="Request Body JSON Graph" json={body.raw} onClose={() => setShowGraph(false)} />}
+      {showGraph && (
+        <JsonGraphModal
+          title={tr('Request Body JSON Graph')}
+          json={body.raw}
+          onChange={(raw) => onChange({ ...body, raw })}
+          onClose={() => setShowGraph(false)}
+        />
+      )}
     </div>
   )
 }
 
 function GraphQLEditor({ body, onChange, requestUrl, search }: { body: RequestBody; onChange: (b: RequestBody) => void; requestUrl?: string; search: BodySearchState }) {
+  const tr = useUiTranslation()
   const [varsOpen, setVarsOpen] = useState(true)
   const [schema, setSchema] = useState<GQLIntrospectionResult | null>(null)
   const [loading, setLoading] = useState(false)
@@ -389,7 +400,7 @@ function GraphQLEditor({ body, onChange, requestUrl, search }: { body: RequestBo
   }
 
   const introspect = async () => {
-    if (!requestUrl) { setError('No request URL configured'); return }
+    if (!requestUrl) { setError(tr('No request URL configured')); return }
     setLoading(true); setError('')
     try {
       const res = await fetch(requestUrl, {
@@ -404,7 +415,7 @@ function GraphQLEditor({ body, onChange, requestUrl, search }: { body: RequestBo
       }
       const json = await res.json()
       if (json.errors && json.errors.length) {
-        setError(json.errors[0].message ?? 'Introspection failed')
+        setError(json.errors[0].message ?? tr('Introspection failed'))
         return
       }
       setSchema(json.data)
@@ -428,11 +439,11 @@ function GraphQLEditor({ body, onChange, requestUrl, search }: { body: RequestBo
     if (!schema) return []
     const result: { label: string; type: GQLType | undefined }[] = []
     const s = schema.__schema
-    if (s.queryType) result.push({ label: 'Query', type: typeMap.get(s.queryType.name) })
-    if (s.mutationType) result.push({ label: 'Mutation', type: typeMap.get(s.mutationType.name) })
-    if (s.subscriptionType) result.push({ label: 'Subscription', type: typeMap.get(s.subscriptionType.name) })
+    if (s.queryType) result.push({ label: tr('Query'), type: typeMap.get(s.queryType.name) })
+    if (s.mutationType) result.push({ label: tr('Mutation'), type: typeMap.get(s.mutationType.name) })
+    if (s.subscriptionType) result.push({ label: tr('Subscription'), type: typeMap.get(s.subscriptionType.name) })
     return result
-  }, [schema, typeMap])
+  }, [schema, tr, typeMap])
 
   const insertField = (path: string) => {
     onChange({ ...body, raw: (body.raw ?? '') + path })
@@ -440,7 +451,7 @@ function GraphQLEditor({ body, onChange, requestUrl, search }: { body: RequestBo
 
   return (
     <div className="flex flex-col gap-2 px-2 pb-2">
-      <label className="text-[10px] uppercase tracking-wider text-text-4 px-1">Query</label>
+      <label className="text-[10px] uppercase tracking-wider text-text-4 px-1">{tr('Query')}</label>
       <textarea
         ref={queryRef}
         className="min-h-[140px] p-3 bg-surface-2 border border-border-2 rounded font-mono text-xs text-text-1 placeholder:text-text-4 resize-y focus:border-accent outline-none"
@@ -455,7 +466,7 @@ function GraphQLEditor({ body, onChange, requestUrl, search }: { body: RequestBo
           className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-text-4 hover:text-text-2 px-1"
         >
           {varsOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-          Variables (JSON)
+          {tr('Variables (JSON)')}
         </button>
         {!schema && (
           <button
@@ -464,7 +475,7 @@ function GraphQLEditor({ body, onChange, requestUrl, search }: { body: RequestBo
             className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-accent/15 text-accent hover:bg-accent/25 disabled:opacity-40 transition-colors"
           >
             {loading ? <Loader2 size={10} className="animate-spin" /> : <Database size={10} />}
-            Load Schema
+            {tr('Load Schema')}
           </button>
         )}
         {schema && (
@@ -474,7 +485,7 @@ function GraphQLEditor({ body, onChange, requestUrl, search }: { body: RequestBo
               className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-accent/15 text-accent hover:bg-accent/25 transition-colors"
             >
               {showSchema ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
-              Schema Explorer
+              {tr('Schema Explorer')}
             </button>
             <button
               onClick={introspect}
@@ -487,7 +498,7 @@ function GraphQLEditor({ body, onChange, requestUrl, search }: { body: RequestBo
               onClick={() => { setSchema(null); setShowSchema(false); if (requestUrl) clearCachedSchema(requestUrl) }}
               className="text-[10px] text-text-4 hover:text-error transition-colors"
             >
-              Clear
+              {tr('Clear')}
             </button>
           </>
         )}
@@ -507,7 +518,7 @@ function GraphQLEditor({ body, onChange, requestUrl, search }: { body: RequestBo
       {showSchema && schema && (
         <div className="border border-border-2 rounded bg-surface-1 max-h-[400px] overflow-y-auto">
           <div className="px-3 py-1.5 border-b border-border-2 text-[10px] text-text-4 font-medium uppercase tracking-wider">
-            Schema
+            {tr('Schema')}
           </div>
           {rootTypes.map(rt => rt.type && (
             <div key={rt.label}>
@@ -517,7 +528,7 @@ function GraphQLEditor({ body, onChange, requestUrl, search }: { body: RequestBo
               >
                 {expanded.has(rt.label) ? <ChevronDown size={10} className="text-text-4" /> : <ChevronRight size={10} className="text-text-4" />}
                 <span className="text-[11px] font-semibold text-text-2">{rt.label}</span>
-                <span className="text-[9px] text-accent ml-auto">{rt.type.fields?.length ?? 0} fields</span>
+                <span className="text-[9px] text-accent ml-auto">{rt.type.fields?.length ?? 0} {tr('fields')}</span>
               </button>
               {expanded.has(rt.label) && rt.type.fields?.map(f => (
                 <div key={f.name} className="pl-5 pr-2">
@@ -536,7 +547,7 @@ function GraphQLEditor({ body, onChange, requestUrl, search }: { body: RequestBo
             </div>
           ))}
           {rootTypes.filter(rt => !rt.type).length > 0 && (
-            <p className="px-3 py-2 text-[10px] text-text-4 italic">No root types found</p>
+            <p className="px-3 py-2 text-[10px] text-text-4 italic">{tr('No root types found')}</p>
           )}
         </div>
       )}
@@ -595,6 +606,7 @@ function RawEditor({ body, onChange, search }: { body: RequestBody; onChange: (b
 }
 
 export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEditorProps) {
+  const tr = useUiTranslation()
   const BODY_TYPES = isWebSocket ? WS_BODY_TYPES : ALL_BODY_TYPES
   const [searchOpen, setSearchOpen] = useState(false)
   const [search, setSearch] = useState<BodySearchState>({ query: '', activeIndex: 0, matchCase: false, wholeWord: false })
@@ -687,7 +699,7 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
       )} ref={editorRootRef}>
       <section className="flex flex-nowrap items-center justify-between gap-2 border-b border-border-2 bg-surface-1 px-3 py-2.5">
         <div className="min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <div role="radiogroup" aria-label="Body format" className="inline-flex flex-nowrap items-center gap-0.5 rounded-lg bg-surface-0 p-1 ring-1 ring-inset ring-border-2">
+          <div role="radiogroup" aria-label={tr('Body format')} className="inline-flex flex-nowrap items-center gap-0.5 rounded-lg bg-surface-0 p-1 ring-1 ring-inset ring-border-2">
             {BODY_TYPES.map((type) => {
               const active = activeType === type.id
               const Icon = BODY_ICONS[type.id]
@@ -695,7 +707,7 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
                 <button
                   key={type.id}
                   onClick={() => handleTypeChange(type.id)}
-                  title={type.title}
+                  title={tr(type.title as UiMessage)}
                   role="radio"
                   aria-checked={active}
                   className={cn(
@@ -706,7 +718,7 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
                   )}
                 >
                   <Icon size={12} className={active ? 'text-white/90' : 'text-text-4 group-hover:text-text-2'} />
-                  {type.label}
+                  {tr(type.label as UiMessage)}
                 </button>
               )
             })}
@@ -731,7 +743,7 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
           />
           <button
             onClick={() => setMaximized((m) => !m)}
-            title={maximized ? 'Exit full screen (Esc)' : 'Expand body to full screen'}
+            title={maximized ? tr('Exit full screen (Esc)') : tr('Expand body to full screen')}
             aria-pressed={maximized}
             className="inline-flex h-7 w-7 items-center justify-center rounded-md text-text-3 outline-none transition-colors hover:bg-surface-2 hover:text-text-1 focus-visible:ring-2 focus-visible:ring-accent"
           >
@@ -741,7 +753,7 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
       </section>
 
       {body.type === 'none' && (
-        <p className="px-3 py-4 text-xs text-text-4 italic">This request has no body.</p>
+        <p className="px-3 py-4 text-xs text-text-4 italic">{tr('This request has no body.')}</p>
       )}
 
       {body.type === 'raw' && body.lang === 'json' && (
@@ -760,7 +772,7 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
         <div className="pb-2">
           {body.type === 'formdata' && (
             <p className="px-3 pb-1 text-[10px] text-text-4">
-              Multipart form-data — each row is a separate field
+              {tr('Multipart form-data — each row is a separate field')}
             </p>
           )}
           <KVEditor rows={body.form ?? []} onChange={form => onChange({ ...body, form })} />

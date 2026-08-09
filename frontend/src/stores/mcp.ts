@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { safeSetItem } from '@/lib/safeLocalStorage'
+import { safeStorageGet, safeStoragePut } from '@/lib/wailsStorage'
 
 export interface McpSavedConfig {
   id: string
@@ -77,6 +78,8 @@ interface McpState {
   selectedHistoryId: string | null
   sessions: Record<string, McpSessionInfo>
   restartingIds: Set<string>
+  configsHydrated: boolean
+  hydrateConfigs: () => Promise<void>
   addConfig: (cfg: Omit<McpSavedConfig, 'id'>) => McpSavedConfig
   removeConfig: (id: string) => void
   setActiveConfig: (id: string | null) => void
@@ -95,6 +98,8 @@ interface McpState {
 }
 
 const STORAGE_KEY = 'adomnia.mcp'
+const STORAGE_BUCKET = 'mcp'
+const STORAGE_ENTRY = 'configs'
 const HISTORY_LIMIT = 200
 
 function makeId(): string {
@@ -115,6 +120,16 @@ function loadConfigs(): McpSavedConfig[] {
 
 function persistConfigs(configs: McpSavedConfig[]): void {
   safeSetItem(STORAGE_KEY, JSON.stringify(configs))
+  void safeStoragePut(STORAGE_BUCKET, STORAGE_ENTRY, JSON.stringify(configs))
+}
+
+function parseConfigs(raw: string): McpSavedConfig[] | null {
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed as McpSavedConfig[] : null
+  } catch {
+    return null
+  }
 }
 
 export const useMcpStore = create<McpState>((set, get) => ({
@@ -132,6 +147,31 @@ export const useMcpStore = create<McpState>((set, get) => ({
   selectedHistoryId: null,
   sessions: {},
   restartingIds: new Set<string>(),
+  configsHydrated: false,
+
+  hydrateConfigs: async () => {
+    const configsBeforeRead = get().savedConfigs
+    const stored = await safeStorageGet(STORAGE_BUCKET, STORAGE_ENTRY)
+    const persisted = stored ? parseConfigs(stored) : null
+    const currentConfigs = get().savedConfigs
+
+    // Do not let a slow storage read replace a configuration added or removed
+    // while the Control Room was opening.
+    if (currentConfigs !== configsBeforeRead) {
+      set({ configsHydrated: true })
+      return
+    }
+
+    if (persisted) {
+      set({ savedConfigs: persisted, configsHydrated: true })
+      return
+    }
+
+    // Existing browser-only configurations are retained and copied into the
+    // desktop storage on the first launch after this migration.
+    if (currentConfigs.length > 0) await safeStoragePut(STORAGE_BUCKET, STORAGE_ENTRY, JSON.stringify(currentConfigs))
+    set({ configsHydrated: true })
+  },
 
   addConfig: (cfg) => {
     const entry: McpSavedConfig = { ...cfg, id: makeId() }

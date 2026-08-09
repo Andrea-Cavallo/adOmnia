@@ -1,3 +1,5 @@
+import { isDesktopRuntime } from './desktopRuntime'
+import * as AppBindings from '../../bindings/adomnia/app'
 export interface MarkdownFileEntry {
   name: string
   path: string
@@ -13,12 +15,13 @@ export interface MarkdownWorkspaceInfo {
   files: number
 }
 
+// Wails 3 has no `window.go` global; services come from generated bindings.
 function getAppBinding() {
-  return (window as any)?.go?.main?.App
+  return AppBindings
 }
 
 export function hasMarkdownBackend(): boolean {
-  return Boolean(getAppBinding()?.ListMarkdownFiles)
+  return isDesktopRuntime()
 }
 
 export async function selectMarkdownFolder(): Promise<string> {

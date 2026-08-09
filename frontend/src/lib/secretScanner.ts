@@ -2,6 +2,7 @@
 // Local-first, no external calls. Detects secrets by both key name and value pattern.
 
 import type { Collection, Environment, TreeNode, RequestItem, RequestAuth, KVRow } from '@/lib/types'
+import { isVaultRef } from '@/lib/vaultRefs'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -431,6 +432,7 @@ export function maskSecretValues(obj: unknown): unknown {
   const walk = (input: unknown, key = ''): unknown => {
     if (input == null) return input
     if (typeof input === 'string') {
+      if (isVaultRef(input)) return input
       if (!input || input.length < 4) return input
       // Check key name
       if (SENSITIVE_KEYS.test(key)) return '***REDACTED***'

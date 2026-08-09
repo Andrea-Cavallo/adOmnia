@@ -1,8 +1,14 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
+import { DetachedRequestWindow } from './components/requestwindow/DetachedRequestWindow'
+import { DetachedSwaggerEditorWindow } from './components/apidocs/DetachedSwaggerEditorWindow'
 
 // ── UI font bundles (via @fontsource — loaded locally, no network) ──────────
+import '@fontsource/architects-daughter/400.css'
+// Monaspace Radon is a handwriting-style MONOSPACE: Monaco measures character
+// cells, so the code face has to stay monospaced or the caret drifts.
+import '@fontsource/monaspace-radon/400.css'
 import '@fontsource/ibm-plex-mono/400.css'
 import '@fontsource/ibm-plex-mono/500.css'
 import '@fontsource/jetbrains-mono/400.css'
@@ -23,6 +29,8 @@ import '@fontsource/geist/400.css'
 // ────────────────────────────────────────────────────────────────────────────
 
 import './styles/globals.css'
+// Skin treatments layer on top of the tokens; each is scoped to [data-skin].
+import './styles/skin-sketch.css'
 import { useDevLogsStore } from './stores/devLogs'
 import type { LogLevel } from './stores/devLogs'
 import { recordFrontendDevLog } from './lib/devlogs-api'
@@ -102,6 +110,10 @@ console.info('DevLog interceptor active — press Ctrl+Shift+D or click LOG icon
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    {new URLSearchParams(window.location.search).get('window') === 'api-request'
+      ? <DetachedRequestWindow />
+      : new URLSearchParams(window.location.search).get('window') === 'swagger-editor'
+        ? <DetachedSwaggerEditorWindow />
+        : <App />}
   </React.StrictMode>,
 )

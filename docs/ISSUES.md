@@ -32,7 +32,7 @@ the current codebase on 2026-06-13 and found already resolved (see below)._
 ### PDF Editor — shipped (branch `feat/pdf-editor`)
 View + edit PDFs (free text, highlight, shapes, ink, AcroForm fill, visible signature),
 re-editable project persistence (bbolt `pdfprojects`), flattened export. Pending: manual
-`wails dev` smoke of the full open→annotate→export→reopen loop. Spec:
+`wails3 task dev` smoke of the full open→annotate→export→reopen loop. Spec:
 `docs/superpowers/specs/2026-06-13-pdf-editor-design.md`.
 
 ### API Docs / Swagger viewer — shipped (branch `feat/pdf-editor`)
@@ -41,4 +41,4 @@ token-native (no external Swagger-UI/Redoc framework). Sources: generate from a
 collection, fetch from URL via the Go request engine, or paste/open a JSON/YAML file.
 Grouped by tag with params, request/response schemas (recursive `$ref` resolution),
 examples, and an operation filter. v1 is read-only ("Try it" deferred). Files:
-`lib/apidocs/parseSpec.ts`, `components/apidocs/*`. Pending: manual `wails dev` smoke.
+`lib/apidocs/parseSpec.ts`, `components/apidocs/*`. Pending: manual `wails3 task dev` smoke.

@@ -3,8 +3,15 @@ import { serverUrl, sidecarFetch } from '@/lib/useServerPort'
 
 const VAULT_REF_PREFIX = 'vault:'
 
+export type SecretRef = `vault:${string}`
+
 export function isVaultRef(value: string): boolean {
   return value.trim().startsWith(VAULT_REF_PREFIX)
+}
+
+export function asSecretRef(value: string): SecretRef | null {
+  const normalized = value.trim()
+  return isVaultRef(normalized) ? normalized as SecretRef : null
 }
 
 function unwrapVaultRef(value: string): string {

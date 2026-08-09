@@ -78,20 +78,6 @@ export type PdfAnnotation =
   | InkAnnotation
   | SignatureAnnotation
 
-export interface PdfFormValue {
-  name: string
-  value: string | boolean
-}
-
-export interface PdfProject {
-  id: string
-  name: string
-  pageCount: number
-  annotations: PdfAnnotation[]
-  formValues: Record<string, string | boolean>
-  updatedAt: number
-}
-
 export interface Rect {
   x: number
   y: number
@@ -195,13 +181,6 @@ export function createSignatureAnnotation(
   h = 70,
 ): SignatureAnnotation {
   return { id: annotationId(), page, type: 'signature', x, y, w, h, imageDataUrl }
-}
-
-/** Annotation types that expose an x/y/w/h box (everything except ink). */
-export function hasBox(
-  a: PdfAnnotation,
-): a is TextAnnotation | HighlightAnnotation | ShapeAnnotation | SignatureAnnotation {
-  return a.type !== 'ink'
 }
 
 /** Parse a #rrggbb string into a {r,g,b} triple in the 0..1 range for pdf-lib. */

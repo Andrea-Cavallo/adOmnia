@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import type { Tab, RequestItem, RequestHistoryEntry, ResponseData, HttpMethod } from '@/lib/types'
+import type { Tab, RequestItem, RequestHistoryEntry, ResponseData, HttpMethod, ToolTabId } from '@/lib/types'
+import { TOOL_TAB_LABELS } from '@/lib/types'
 import { uid, blankRequest } from '@/lib/types'
 import { debouncedSave } from '@/lib/storeSave'
 import { safeStorageGet, safeStoragePut } from '@/lib/wailsStorage'
@@ -36,6 +37,7 @@ interface TabsState {
   activeTabId: string | null
   responseHistory: RequestHistoryEntry[]
   viewStateByTabId: Record<string, TabViewState>
+  detachedTabIds: Record<string, true>
   loaded: boolean
   loadError: boolean
   load: () => Promise<void>
@@ -53,6 +55,7 @@ interface TabsState {
   reorderTab: (fromId: string, toId: string, position: TabDropPosition) => void
   setActiveTab: (id: string) => void
   newTab: (method?: HttpMethod) => void
+  openToolTab: (tool: ToolTabId) => void
   duplicateTab: (id: string) => void
   togglePinned: (id: string) => void
   updateRequest: (tabId: string, request: RequestItem) => void
@@ -64,6 +67,8 @@ interface TabsState {
   markClean: (tabId: string) => void
   getViewState: (tabId: string) => TabViewState
   updateViewState: (tabId: string, patch: Partial<TabViewState>) => void
+  setDetached: (tabId: string, detached: boolean) => void
+  replaceTabSnapshot: (tab: Tab, viewState?: TabViewState) => void
 }
 
 function historyLimit(): number {
@@ -135,6 +140,7 @@ export const useTabsStore = create<TabsState>((set, get) => ({
   activeTabId: null,
   responseHistory: [],
   viewStateByTabId: {},
+  detachedTabIds: {},
   loaded: false,
   loadError: false,
 
@@ -373,6 +379,31 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     get().save()
   },
 
+  // Focus an existing tab for this tool rather than stacking duplicates: the
+  // panels are single-instance (one JSON Studio, one API Docs), so a second
+  // "open in new tab" should bring you back to the one you already have.
+  openToolTab: (tool) => {
+    const existing = get().tabs.find((t) => t.tool === tool)
+    if (existing) {
+      set({ activeTabId: existing.id })
+      get().save()
+      return
+    }
+    const request = blankRequest('GET')
+    request.name = TOOL_TAB_LABELS[tool]
+    const tab: Tab = {
+      id: uid(),
+      tool,
+      request,
+      workspaceId: activeWorkspaceId(),
+      dirty: false,
+      response: null,
+      loading: false,
+    }
+    set((s) => ({ tabs: [...s.tabs, tab], activeTabId: tab.id }))
+    get().save()
+  },
+
   duplicateTab: (id) => {
     const src = get().tabs.find((t) => t.id === id)
     if (!src) return
@@ -484,5 +515,26 @@ export const useTabsStore = create<TabsState>((set, get) => ({
         [tabId]: { ...(s.viewStateByTabId[tabId] ?? defaultViewState()), ...patch },
       },
     }))
+  },
+
+  setDetached: (tabId, detached) => {
+    set((s) => {
+      const detachedTabIds = { ...s.detachedTabIds }
+      if (detached) detachedTabIds[tabId] = true
+      else delete detachedTabIds[tabId]
+      return { detachedTabIds }
+    })
+  },
+
+  replaceTabSnapshot: (tab, viewState) => {
+    set((s) => ({
+      tabs: s.tabs.some((candidate) => candidate.id === tab.id)
+        ? s.tabs.map((candidate) => candidate.id === tab.id ? tab : candidate)
+        : [...s.tabs, tab],
+      viewStateByTabId: viewState
+        ? { ...s.viewStateByTabId, [tab.id]: viewState }
+        : s.viewStateByTabId,
+    }))
+    get().save()
   },
 }))

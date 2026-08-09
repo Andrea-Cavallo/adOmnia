@@ -12,9 +12,9 @@ func TestBuildProvider_KnownProviders(t *testing.T) {
 		wantName string
 	}{
 		{"anthropic", Config{Provider: ProviderAnthropic, Model: "claude-sonnet-5", APIKey: "k"}, "anthropic"},
-		{"openai", Config{Provider: ProviderOpenAI, Model: "gpt-5.4-mini", APIKey: "k"}, "openai"},
+		{"openai", Config{Provider: ProviderOpenAI, Model: "gpt-5.6-terra", APIKey: "k"}, "openai"},
 		{"gemini", Config{Provider: ProviderGemini, Model: "gemini-3.5-flash", APIKey: "k"}, "gemini"},
-		{"ollama", Config{Provider: ProviderOllama, Model: "qwen3-coder"}, "ollama"},
+		{"ollama", Config{Provider: ProviderOllama, Model: "qwen3.5"}, "ollama"},
 		{"huggingface", Config{Provider: ProviderHuggingFace, Model: "openai/gpt-oss-120b", APIKey: "k"}, "openai"},
 		{"openai-compatible", Config{Provider: ProviderOpenAICompatible, Model: "local-model"}, "openai"},
 	}

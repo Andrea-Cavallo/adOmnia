@@ -6,7 +6,7 @@
 REST · gRPC · SOAP · GraphQL · WebSocket · SSE · Kafka · RabbitMQ · MQTT · Redis · NATS
 Mock servers · HTTPS proxy · Browser DevTools · Load testing · Database Studio · Encrypted vault
 **Full Git client** (commit graph, push/pull, branch & conflict resolution) · OpenAPI design · Visual test builder · AI mock generation
-MCP Client + Server Generator · Versionable collection folders · Headless runner · OpenAPI lint CLI · PDF & LaTeX Studio · WASM + JS plugins · 11 themes
+MCP Client + Server Generator · Versionable collection folders · Headless runner · OpenAPI lint CLI · PDF & LaTeX Studio · Executable JS plugins · 11 themes
 
 > **Stop paying a subscription to send an HTTP request.** No account. No cloud. No telemetry. One executable, **507+ features**, your data stays yours.
 
@@ -27,6 +27,10 @@ or white skin:
 
 ![adOmnia interface white](assets/images/white.png)
 
+or the new Sketch skin, for a hand-drawn engineering-notebook workspace without giving up the desktop workflow:
+
+![adOmnia Sketch skin preview](assets/images/sketch-previews.png)
+
 ### Why adOmnia
 
 Most API tools went the wrong way: they moved your requests, secrets, and history into someone else's cloud, put your team behind a login wall, and charged you monthly for it. adOmnia is the opposite bet — **one fast desktop app that does more than the cloud suites, while keeping everything on your machine.**
@@ -40,7 +44,7 @@ Four things set it apart — and **no other tool combines all four**:
 -  **Local-first, for real** — no account, no telemetry, no cloud sync. Your collections, secrets, and traffic never leave your disk. Workspaces stay local, collections can be exported as deterministic folder trees, and a **built-in Git client** (visual commit graph, branch/merge, push/pull, conflict resolution) versions them without ever leaving the app.
 -  **Browser debugging built in** — inspect and debug real web pages (network, console, JS debugger, DOM, storage) *inside* the same tool you test APIs with. No competitor does this.
 -  **Enterprise & legacy as first-class citizens** — SOAP/WSDL with WS-Security, mTLS, PKCS#12/JKS, gRPC streaming, and **real eIDAS-grade PDF digital signatures** (TSA timestamping + LTV). The boring-but-critical stuff Postman ignores.
--  **Yours to extend** — WASM/JS plugins, importable skins, shareable templates, and 11 built-in themes.
+-  **Yours to extend** — executable local JavaScript plugins, importable skins, shareable templates, and 11 built-in themes.
 
 check rest apis:
 
@@ -54,8 +58,7 @@ check rest apis:
 |---|---|
 | Windows | `adOmnia-*-windows-amd64.exe` |
 | macOS | `adOmnia-*-macos-universal.dmg` |
-| Linux (WebKitGTK 4.0) | `adOmnia-*-linux-amd64-webkitgtk-4.0.tar.gz` |
-| Linux (WebKitGTK 4.1) | `adOmnia-*-linux-amd64-webkitgtk-4.1.tar.gz` |
+| Linux (GTK 3 / WebKitGTK 4.1) | `adOmnia-*-linux-amd64-gtk3-webkitgtk-4.1.tar.gz` |
 
 All releases include `SHA256SUMS.txt` and source code archives. Verify your download with the published checksums.
 
@@ -69,11 +72,25 @@ All releases include `SHA256SUMS.txt` and source code archives. Verify your down
 | **Collection Runner & Testing** | Test runner with iterations/delay/retry/CSV datasets, assertion editor (JSONPath, XPath, schema), Mermaid-generated API flows, **no-code Visual Test builder** (block-based, export to Flow), **response schema/contract validation**, test data studio, and a headless `adomnia run` CLI for folder-backed collections with CLI/JSON/JUnit reports |
 | **Protocols** | SOAP/WSDL Studio (1.1 & 1.2, WS-Security), gRPC (reflection, offline proto/protoset authoring, unary calls, live cancellable streaming, TLS/mTLS, metadata, trailers, reproducible history and load tests), WebSocket client + mock server, SSE client, **MCP Client/Debugger** + **MCP Server Generator** (collection/OAS → runnable MCP server; stdio multi-session + HTTP transport) |
 | **Brokers** | Kafka (produce/consume/bulk/load test), RabbitMQ, MQTT, Redis Pub/Sub, NATS — shared message log, persistent connection profiles |
-| **Simulation & Infrastructure** | Mock server with **Smart Mock Engine** (schema-driven Faker generation) and **conditional expectations** (per-field matching), record & replay, round-robin; HTTPS proxy/interceptor (MITM CA, breakpoints, map local/remote, throttling), Docker Lab (14 presets), load testing (HTTP + gRPC, HDR histogram, P99, side-by-side comparison) |
+| **Simulation & Infrastructure** | Mock Server Control Room with **Smart Mock Engine** (schema-driven Faker generation), **conditional expectations** (per-field matching), request-focused **Mock this tab** handoff, endpoint explorer, decision-aware traffic, record & replay and round-robin; HTTPS proxy/interceptor (MITM CA, breakpoints, map local/remote, throttling), Docker Lab (14 presets), load testing (HTTP + gRPC, HDR histogram, P99, side-by-side comparison) |
 | **Debugging & Analysis** | Browser DevTools via CDP (network, console, JS debugger, DOM inspector, storage, screenshots), HAR viewer, DNS lookup/trace/compare, port scanner, CORS tester, JSON/XML/YAML tools, observability panel, secret scanner |
 | **Document & Productivity Studio** | **PDF Editor** (view, annotate, fill forms, flatten/export) with **real cryptographic signing** — PEM or PKCS#12/JKS keystore import, RFC-3161 **TSA timestamping**, and **LTV** (chain + OCSP/CRL); **LaTeX Studio** (live `.tex` editor + preview + templates); Markdown studio; Mermaid diagrams |
 | **Version Control (built-in Git)** | Full Git client inside the app — clone/init, stage & commit, **visual commit graph** with per-commit context actions (checkout, revert, reset, cherry-pick), branch create/switch/merge, push/pull to any remote, diff viewer, and **interactive conflict resolution**. Export collections as folder-backed, diff-friendly trees, import them back, and check drift between the app state and the files on disk |
-| **Data, Security & Extensibility** | Database Studio (SQLite/PostgreSQL/MySQL/MongoDB), bbolt storage inspector, encrypted vault (age/scrypt), **AI engine** (Anthropic/OpenAI/Gemini/Ollama — AI mock generation), WASM/JS plugin sandbox, 11 built-in themes + custom skin system |
+| **Data, Security & Extensibility** | Database Studio (SQLite/PostgreSQL/MySQL/MongoDB), bbolt storage inspector, encrypted vault (age/scrypt), **AI engine** (Anthropic/OpenAI/Gemini/Ollama — AI mock generation) with Vault or machine-local environment credentials, permission-aware JavaScript plugin runtime, 11 built-in themes + custom skin system |
+
+Persistent Git, broker, and database credentials use encrypted `vault:` references. Plaintext credentials remain in memory for the current session only, are resolved immediately before use, and are automatically redacted from workspace, bucket, settings, and snapshot exports.
+
+### Mock the request you are working on
+
+From an open request tab, choose **Mock this tab**. adOmnia opens the Mock Server directly on that endpoint in a focused scope: existing mock definitions stay saved, but only the selected request is active until you choose **Show all endpoints**. If the server is already running, the focused configuration is applied live without changing its port.
+
+The Traffic view explains what happened for each call: the matched endpoint and response, or a useful reason such as a missing mock response, authentication failure, CORS preflight, or no matching route.
+
+### AI credentials from the local machine
+
+In **Settings → AI Engine**, enable **Use system environment credentials** to bypass the Vault for AI connections. The desktop backend reads the key only from the environment inherited by adOmnia; it is never returned to the UI or saved in Settings.
+
+Supported variables include `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` / `GOOGLE_API_KEY`, `HUGGINGFACE_API_KEY` / `HF_TOKEN`, `OPENAI_COMPATIBLE_API_KEY`, and the generic fallback `ADOMNIA_AI_API_KEY`. On Windows, restart adOmnia after changing a user or system environment variable.
 
 ### Version collections as folders
 
@@ -143,14 +160,16 @@ The same engine is available in **API Docs > Governance**. It shows error/warnin
 
 ### Build from source
 
-Only needed if you want to compile it yourself. Requires Go, Node.js, and Wails.
+Only needed if you want to compile it yourself. Requires **Go 1.26.5+**, **Node.js 20+**
+and the **Wails 3 CLI** (`wails3`). On Linux you also need `libgtk-3-dev` and
+`libwebkit2gtk-4.1-dev`.
 
 ```bash
 git clone https://github.com/Andrea-Cavallo/adOmnia.git && cd adomnia
+go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.5
 cd frontend && npm install && cd ..
-wails dev          # dev mode
-.\build.ps1        # Windows production build
-bash build/build-wails.sh linux  # Linux production build
+wails3 task dev      # dev mode
+wails3 task build    # production build for the current platform
 ```
 
 Full instructions: [docs/BUILD.md](docs/BUILD.md)

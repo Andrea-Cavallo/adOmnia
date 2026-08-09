@@ -32,9 +32,13 @@ import { AISettings } from './AISettings'
 import { DangerZone, SectionHeader, SettingsCard } from './SettingsLayout'
 import { UpdateCheckRow } from './UpdateCheckRow'
 import { WorkspacePanel } from '@/components/workspace/WorkspacePanel'
+import { redactSensitiveData } from '@/lib/secretRedaction'
+import * as AppBindings from '../../../bindings/adomnia/app'
 
+// Wails 3 has no `window.go` global; the App service is reached through the
+// generated bindings.
 function appBinding() {
-  return window.go?.main?.App
+  return AppBindings
 }
 
 async function safeIsDevMode(): Promise<boolean> {
@@ -230,7 +234,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
   }, [normalizedSearch, section, sectionDefs])
 
   const handleExportSettings = useCallback(() => {
-    const blob = new Blob([JSON.stringify(settings, null, 2)], {
+    const blob = new Blob([JSON.stringify(redactSensitiveData(settings), null, 2)], {
       type: 'application/json',
     })
     const url = URL.createObjectURL(blob)
@@ -298,18 +302,18 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
       ]
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full min-w-0 bg-surface-0">
       {/* Sidebar */}
-      <div className="w-52 border-r border-border-1 py-3 px-2 flex flex-col gap-0.5 overflow-y-auto">
+      <aside className="flex w-60 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-border-1 bg-surface-1/35 px-3 py-4 max-lg:w-52">
         {/* Search */}
-        <div className="relative mb-2">
-          <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-4" />
+        <div className="relative mb-3">
+          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-4" />
           <input
             type="text"
             placeholder="Search settings..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full h-7 pl-7 pr-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 placeholder:text-text-4 focus:border-accent outline-none"
+            className="h-8 w-full rounded-md border border-border-2 bg-surface-2 pl-8 pr-2 text-xs text-text-1 outline-none placeholder:text-text-4 focus:border-accent"
           />
         </div>
         {sectionDefs.map((sec) => (
@@ -317,14 +321,14 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
             key={sec.id}
             onClick={() => setSection(sec.id)}
             className={cn(
-              'text-left px-3 py-1.5 rounded text-xs transition-colors flex items-center gap-2',
+              'flex min-h-8 w-full items-center gap-2.5 rounded-md border px-2.5 py-1.5 text-left text-xs transition-colors',
               section === sec.id
-                ? 'bg-surface-2 text-text-1'
-                : 'text-text-3 hover:text-text-1 hover:bg-surface-2'
+                ? 'border-border-2 bg-surface-2 text-text-1 shadow-sm'
+                : 'border-transparent text-text-3 hover:bg-surface-2 hover:text-text-1'
             )}
           >
-            {sec.icon}
-            <span className="flex-1">{sec.label}</span>
+            <span className={cn('shrink-0', section === sec.id ? 'text-accent' : 'text-text-4')}>{sec.icon}</span>
+            <span className="min-w-0 flex-1 truncate">{sec.label}</span>
             {settingsModified && section === sec.id && (
               <span className="w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0" />
             )}
@@ -333,10 +337,16 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
         {sectionDefs.length === 0 && (
           <p className="px-3 py-2 text-[10px] leading-relaxed text-text-4">No setting matches "{search.trim()}".</p>
         )}
-      </div>
+      </aside>
 
       {/* Content */}
-      <div className={cn('flex-1 overflow-y-auto p-4', section === 'workspace' ? 'max-w-none' : 'max-w-xl')}>
+      <div className="min-w-0 flex-1 overflow-y-auto">
+        <div className={cn(
+          'w-full',
+          section === 'workspace'
+            ? 'h-full p-4'
+            : 'mx-auto max-w-[1240px] px-8 pb-16 pt-6 max-lg:px-5 max-md:px-4'
+        )}>
         {/* General */}
         {section === 'general' && (
           <>
@@ -1002,7 +1012,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
               <div>
                 <div className="text-sm font-bold text-text-1">adOmnia</div>
                 <div className="text-[10px] text-text-4">A local-first API development toolbox</div>
-                <div className="mt-1 text-[10px] text-text-3">Developed by Andrea Cavallo</div>
+                <div className="mt-1 text-[10px] text-text-3">Developed by Andrea Cavallo · Alberto Vito (aka Albertizer)</div>
               </div>
             </div>
             <SettingsCard>
@@ -1024,7 +1034,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
               </div>
               <div className="py-2 px-1 flex items-center justify-between">
                 <span className="text-xs text-text-1">Developer</span>
-                <span className="text-xs text-text-2">Andrea Cavallo</span>
+                <span className="text-xs text-text-2">Andrea Cavallo · Alberto Vito (aka Albertizer)</span>
               </div>
               <UpdateCheckRow />
             </SettingsCard>
@@ -1124,6 +1134,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
         {section === 'ai' && (
           <AISettings />
         )}
+        </div>
       </div>
       <ConfirmDialog
         open={confirmDisableTabRestore}

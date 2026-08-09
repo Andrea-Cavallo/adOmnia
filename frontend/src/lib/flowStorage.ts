@@ -408,10 +408,9 @@ export async function saveFlowDefinitions(value: unknown): Promise<SavedFlowDefi
   try {
     await StoragePut(STORAGE_BUCKET, STORAGE_ITEM, JSON.stringify(definitions))
   } catch (error) {
-    const goBinding = (window as unknown as {
-      go?: { main?: { App?: { StoragePut?: unknown } } }
-    }).go?.main?.App?.StoragePut
-    if (goBinding) throw error
+    // Wails 3 bindings are statically imported: a failed call is a real
+    // backend failure, not evidence that the bridge is absent.
+    throw error
   }
   return definitions
 }

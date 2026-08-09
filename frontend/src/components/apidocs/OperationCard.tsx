@@ -1,19 +1,21 @@
 import { useState } from 'react'
-import { ChevronRight, Lock } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { ApiDocOperation, ApiDocParam, ApiDocSchema } from '@/lib/apidocs/parseSpec'
+import type { ApiDocContent, ApiDocOperation, ApiDocParam, ApiDocSchema } from '@/lib/apidocs/parseSpec'
 import { SchemaView } from './SchemaView'
+import { InlineMarkdown, MiniMarkdown } from './MiniMarkdown'
 
-const METHOD_STYLE: Record<string, { border: string; panel: string; badge: string; text: string }> = {
-  GET: { border: '#61affe', panel: 'rgba(97,175,254,.1)', badge: '#61affe', text: '#0f5f9f' },
-  POST: { border: '#49cc90', panel: 'rgba(73,204,144,.1)', badge: '#49cc90', text: '#17683e' },
-  PUT: { border: '#fca130', panel: 'rgba(252,161,48,.1)', badge: '#fca130', text: '#8a5200' },
-  PATCH: { border: '#50e3c2', panel: 'rgba(80,227,194,.1)', badge: '#50e3c2', text: '#0b6b5b' },
-  DELETE: { border: '#f93e3e', panel: 'rgba(249,62,62,.1)', badge: '#f93e3e', text: '#9b1c1c' },
-  HEAD: { border: '#9012fe', panel: 'rgba(144,18,254,.1)', badge: '#9012fe', text: '#5e0ba8' },
-  OPTIONS: { border: '#0d5aa7', panel: 'rgba(13,90,167,.1)', badge: '#0d5aa7', text: '#0d4d8d' },
-  QUERY: { border: '#0d5aa7', panel: 'rgba(13,90,167,.1)', badge: '#0d5aa7', text: '#0d4d8d' },
-  TRACE: { border: '#0d5aa7', panel: 'rgba(13,90,167,.1)', badge: '#0d5aa7', text: '#0d4d8d' },
+// Method accent colors (badge + border). Tuned to read on the dark surface.
+const METHOD_COLOR: Record<string, string> = {
+  GET: '#61affe',
+  POST: '#49cc90',
+  PUT: '#fca130',
+  PATCH: '#50e3c2',
+  DELETE: '#f93e3e',
+  HEAD: '#9012fe',
+  OPTIONS: '#0d9de3',
+  QUERY: '#c084fc',
+  TRACE: '#8b95a5',
 }
 
 interface OperationCardProps {
@@ -25,41 +27,40 @@ interface OperationCardProps {
 
 export function OperationCard({ operation, registry, defaultOpen = false, onTryOperation }: OperationCardProps) {
   const [open, setOpen] = useState(defaultOpen)
-  const methodStyle = METHOD_STYLE[operation.method] ?? METHOD_STYLE.GET
+  const color = METHOD_COLOR[operation.method] ?? METHOD_COLOR.GET
 
   return (
     <div
       data-oas-operation={`${operation.method} ${operation.path}`}
-      className="overflow-hidden rounded border bg-white font-sans shadow-sm"
-      style={{ borderColor: methodStyle.border }}
+      className="overflow-hidden rounded-md border bg-surface-1"
+      style={{ borderColor: `${color}55` }}
     >
       <button
         onClick={() => setOpen((value) => !value)}
-        className="flex min-h-10 w-full items-center gap-2 px-2.5 py-1.5 text-left"
-        style={{ backgroundColor: methodStyle.panel }}
+        className="flex min-h-9 w-full items-center gap-2 px-2.5 py-1.5 text-left transition-colors hover:bg-surface-2"
+        style={{ backgroundColor: `${color}14` }}
       >
         <span
-          className="w-16 shrink-0 rounded px-2 py-1 text-center text-[11px] font-bold leading-none text-white"
-          style={{ backgroundColor: methodStyle.badge }}
+          className="w-16 shrink-0 rounded px-2 py-1 text-center text-[11px] font-bold leading-none text-black"
+          style={{ backgroundColor: color }}
         >
           {operation.method}
         </span>
-        <span className="min-w-0 shrink-0 font-mono text-[13px] font-bold text-[#3b4151]">{operation.path}</span>
-        {operation.summary && <span className="min-w-0 flex-1 truncate text-[12px] text-[#3b4151]">{operation.summary}</span>}
+        <span className="min-w-0 shrink-0 font-mono text-[13px] font-semibold text-text-1">{operation.path}</span>
+        {operation.summary && <span className="min-w-0 flex-1 truncate text-[12px] text-text-3">{operation.summary}</span>}
         {operation.deprecated && (
-          <span className="shrink-0 rounded bg-[#fca130]/15 px-1.5 py-0.5 text-[10px] font-semibold text-[#8a5200]">deprecated</span>
+          <span className="shrink-0 rounded bg-warning/15 px-1.5 py-0.5 text-[10px] font-semibold text-warning">deprecated</span>
         )}
-        <Lock size={15} className="ml-auto shrink-0 text-[#7d8492]" />
-        <ChevronRight size={17} className={cn('shrink-0 text-[#3b4151] transition-transform', open && 'rotate-90')} />
+        <ChevronRight size={16} className={cn('ml-auto shrink-0 text-text-4 transition-transform', open && 'rotate-90')} />
       </button>
 
       {open && (
-        <div className="border-t bg-white text-[#3b4151]" style={{ borderColor: methodStyle.border }}>
-          <div className="px-4 py-7" style={{ backgroundColor: methodStyle.panel }}>
-            <p className="text-[13px] leading-relaxed text-[#3b4151]">
-              {operation.description || operation.summary || 'No description provided.'}
-            </p>
-          </div>
+        <div className="border-t text-text-2" style={{ borderColor: `${color}33` }}>
+          {(operation.description || operation.summary) && (
+            <div className="border-b border-border-1 px-4 py-3">
+              <MiniMarkdown text={operation.description || operation.summary || ''} className="text-[12px] leading-relaxed text-text-3" />
+            </div>
+          )}
 
           <ParametersSection
             parameters={operation.parameters}
@@ -68,68 +69,81 @@ export function OperationCard({ operation, registry, defaultOpen = false, onTryO
           />
 
           {operation.requestBody && (
-            <section className="border-t border-[#e6e6e6] bg-white">
-              <div className="flex min-h-12 items-center justify-between gap-3 px-4 py-2">
+            <section className="border-t border-border-1">
+              <div className="flex min-h-10 items-center gap-3 px-4 py-2">
                 <SectionTitle>
                   Request body
-                  {operation.requestBody.required && <span className="ml-1 align-middle text-[10px] font-bold normal-case text-[#ff0000]">required</span>}
+                  {operation.requestBody.required && <span className="ml-1.5 align-middle text-[10px] font-bold text-error">required</span>}
                 </SectionTitle>
-                <select
-                  value={operation.requestBody.contentTypes[0] ?? 'application/json'}
-                  onChange={() => {}}
-                  className="h-8 min-w-56 rounded border-2 border-[#41444e] bg-white px-3 font-mono text-[12px] font-bold text-[#3b4151] outline-none"
-                >
-                  {operation.requestBody.contentTypes.map((contentType) => (
-                    <option key={contentType} value={contentType}>{contentType}</option>
-                  ))}
-                </select>
               </div>
-              <div className="border-t border-[#e6e6e6] px-4 py-6" style={{ backgroundColor: methodStyle.panel }}>
-                <p className="mb-4 text-[13px] text-[#3b4151]">{operation.requestBody.description || operation.summary || 'Request payload'}</p>
-                <PayloadTabs
-                  example={operation.requestBody.example}
-                  schema={operation.requestBody.schema}
-                  registry={registry}
-                />
+              <div className="border-t border-border-1 px-4 py-3">
+                {operation.requestBody.description && (
+                  <div className="mb-2 text-[12px] text-text-3"><InlineMarkdown text={operation.requestBody.description} /></div>
+                )}
+                <ContentBlock contents={operation.requestBody.contents} registry={registry} />
               </div>
             </section>
           )}
 
-          <section className="border-t border-[#e6e6e6] bg-white px-4 py-4">
+          <section className="border-t border-border-1 px-4 py-3">
             <SectionTitle>Responses</SectionTitle>
-            <div className="mt-4 overflow-hidden rounded-sm border border-[#e6e6e6] bg-white">
-              <div className="grid grid-cols-[84px_minmax(0,1fr)_64px] border-b border-[#e6e6e6] px-3 py-2 text-[12px] font-bold text-[#3b4151]">
+            <div className="mt-3 overflow-hidden rounded border border-border-1">
+              <div className="grid grid-cols-[80px_minmax(0,1fr)] border-b border-border-1 bg-surface-2 px-3 py-1.5 text-[11px] font-semibold text-text-3">
                 <span>Code</span>
                 <span>Description</span>
-                <span className="text-right">Links</span>
               </div>
               {operation.responses.map((response) => (
-                <div key={response.status} className="grid grid-cols-[84px_minmax(0,1fr)_64px] gap-0 border-b border-[#e6e6e6] px-3 py-3 last:border-b-0">
+                <div key={response.status} className="grid grid-cols-[80px_minmax(0,1fr)] border-b border-border-1 px-3 py-2.5 last:border-b-0">
                   <div>
                     <span className={cn('rounded px-1.5 py-0.5 text-[10px] font-bold', statusClass(response.status))}>{response.status}</span>
                   </div>
                   <div className="min-w-0">
-                    {response.description && <p className="mb-2 text-[12px] text-[#3b4151]">{response.description}</p>}
-                    <div className="mb-2 flex flex-wrap gap-1">
-                      {response.contentTypes.map((contentType) => (
-                        <span key={contentType} className="rounded bg-[#ebebeb] px-1.5 py-0.5 font-mono text-[10px] text-[#3b4151]">{contentType}</span>
-                      ))}
-                    </div>
-                    <PayloadTabs
-                      example={response.example}
-                      schema={response.schema}
-                      registry={registry}
-                      compact
-                    />
+                    {response.description && <div className="mb-2 text-[12px] text-text-3"><InlineMarkdown text={response.description} /></div>}
+                    <ContentBlock contents={response.contents} registry={registry} compact />
                   </div>
-                  <div className="text-right text-[12px] text-[#7d8492]">-</div>
                 </div>
               ))}
-              {operation.responses.length === 0 && <p className="px-3 py-4 text-[12px] text-[#7d8492]">No responses documented.</p>}
+              {operation.responses.length === 0 && <p className="px-3 py-3 text-[12px] text-text-4">No responses documented.</p>}
             </div>
           </section>
         </div>
       )}
+    </div>
+  )
+}
+
+function ContentBlock({
+  contents,
+  registry,
+  compact,
+}: {
+  contents: ApiDocContent[]
+  registry: Record<string, ApiDocSchema>
+  compact?: boolean
+}) {
+  const [contentType, setContentType] = useState(contents[0]?.contentType ?? '')
+  if (contents.length === 0) return null
+  const active = contents.find((c) => c.contentType === contentType) ?? contents[0]
+
+  return (
+    <div className="space-y-2">
+      {contents.length > 1 ? (
+        <select
+          value={active.contentType}
+          onChange={(e) => setContentType(e.target.value)}
+          className="h-7 rounded border border-border-2 bg-surface-2 px-2 font-mono text-[11px] text-text-2 outline-none focus:border-accent"
+          title="Media type"
+        >
+          {contents.map((c) => (
+            <option key={c.contentType} value={c.contentType}>{c.contentType}</option>
+          ))}
+        </select>
+      ) : (
+        active.contentType && (
+          <span className="inline-block rounded border border-border-2 bg-surface-2 px-2 py-0.5 font-mono text-[11px] text-text-3">{active.contentType}</span>
+        )
+      )}
+      <PayloadTabs example={active.example} schema={active.schema} registry={registry} compact={compact} />
     </div>
   )
 }
@@ -150,26 +164,26 @@ function PayloadTabs({
   if (!schema && (example === undefined || example === null)) return null
 
   return (
-    <div className="overflow-hidden rounded border border-[#d8dde7] bg-white">
-      <div className="flex h-8 items-center gap-1 border-b border-[#d8dde7] bg-white px-2">
+    <div className="overflow-hidden rounded border border-border-1 bg-surface-0">
+      <div className="flex h-8 items-center gap-1 border-b border-border-1 bg-surface-1 px-2">
         <button
           type="button"
           onClick={() => setTab('example')}
           disabled={example === undefined || example === null}
           className={cn(
-            'h-6 rounded px-2 text-[11px] font-bold',
-            tab === 'example' ? 'bg-[#ebebeb] text-[#3b4151]' : 'text-[#7d8492] hover:bg-[#f3f3f3] hover:text-[#3b4151]',
-            (example === undefined || example === null) && 'cursor-not-allowed opacity-45 hover:bg-transparent hover:text-[#7d8492]',
+            'h-6 rounded px-2 text-[11px] font-semibold',
+            tab === 'example' ? 'bg-surface-2 text-text-1' : 'text-text-4 hover:text-text-2',
+            (example === undefined || example === null) && 'cursor-not-allowed opacity-45 hover:text-text-4',
           )}
         >
-          Example Value
+          Example
         </button>
         <button
           type="button"
           onClick={() => setTab('schema')}
           className={cn(
-            'h-6 rounded px-2 text-[11px] font-bold',
-            tab === 'schema' ? 'bg-[#ebebeb] text-[#3b4151]' : 'text-[#7d8492] hover:bg-[#f3f3f3] hover:text-[#3b4151]',
+            'h-6 rounded px-2 text-[11px] font-semibold',
+            tab === 'schema' ? 'bg-surface-2 text-text-1' : 'text-text-4 hover:text-text-2',
           )}
         >
           Schema
@@ -178,7 +192,7 @@ function PayloadTabs({
       <div className={compact ? 'p-2' : 'p-3'}>
         {tab === 'example'
           ? <ExampleBlock example={example} />
-          : <div className="text-[#3b4151]"><SchemaView schema={schema} registry={registry} /></div>}
+          : <SchemaView schema={schema} registry={registry} />}
       </div>
     </div>
   )
@@ -195,66 +209,99 @@ function ParametersSection({
 }) {
   const order: ApiDocParam['in'][] = ['path', 'query', 'header', 'cookie']
   return (
-    <section className="border-t border-[#e6e6e6] bg-white">
-      <div className="flex min-h-12 items-center justify-between gap-3 px-4 py-2">
+    <section className="border-t border-border-1">
+      <div className="flex min-h-10 items-center justify-between gap-3 px-4 py-2">
         <SectionTitle>Parameters</SectionTitle>
-        <button
-          onClick={onTryOperation}
-          className="h-8 rounded border-2 border-[#7d8492] bg-white px-6 text-[13px] font-bold text-[#3b4151] shadow-sm hover:bg-[#f7f7f7]"
-        >
-          Try it out
-        </button>
+        {onTryOperation && (
+          <button
+            onClick={onTryOperation}
+            className="h-7 rounded border border-accent/40 bg-accent/10 px-4 text-[12px] font-semibold text-accent hover:bg-accent/15"
+          >
+            Try it out
+          </button>
+        )}
       </div>
-      <div className="border-t border-[#e6e6e6] px-4 py-4" style={{ backgroundColor: 'rgba(252,252,252,.75)' }}>
-        {parameters.length === 0 && <p className="text-[13px] text-[#3b4151]">No parameters</p>}
-      {order.map((location) => {
-        const group = parameters.filter((parameter) => parameter.in === location)
-        if (group.length === 0) return null
-        return (
-          <div key={location} className="mb-4 last:mb-0">
-            <h5 className="mb-2 text-[12px] font-bold uppercase text-[#3b4151]">{location} parameters</h5>
-            <div className="overflow-hidden rounded border border-[#e6e6e6] bg-white">
-              {group.map((parameter) => (
-                <div key={`${location}_${parameter.name}`} className="grid grid-cols-[minmax(120px,0.7fr)_minmax(120px,0.8fr)_minmax(0,1.5fr)] gap-2 border-b border-[#e6e6e6] px-2.5 py-2 text-[11px] last:border-b-0">
-                  <div className="min-w-0">
-                    <span className="block truncate font-mono font-bold text-[#3b4151]">{parameter.name}</span>
-                    {parameter.required && <span className="mt-0.5 inline-block text-[10px] font-bold text-[#ff0000]">required</span>}
+      <div className="border-t border-border-1 px-4 py-3">
+        {parameters.length === 0 && <p className="text-[12px] text-text-4">No parameters</p>}
+        {order.map((location) => {
+          const group = parameters.filter((parameter) => parameter.in === location)
+          if (group.length === 0) return null
+          return (
+            <div key={location} className="mb-3 last:mb-0">
+              <h5 className="mb-1.5 text-[11px] font-semibold uppercase text-text-4">{location} parameters</h5>
+              <div className="overflow-hidden rounded border border-border-1">
+                {group.map((parameter) => (
+                  <div key={`${location}_${parameter.name}`} className="grid grid-cols-[minmax(120px,0.7fr)_minmax(120px,0.8fr)_minmax(0,1.5fr)] gap-2 border-b border-border-1 px-2.5 py-2 text-[11px] last:border-b-0">
+                    <div className="min-w-0">
+                      <span className="block truncate font-mono font-semibold text-text-1">{parameter.name}</span>
+                      {parameter.required && <span className="mt-0.5 inline-block text-[10px] font-semibold text-error">required</span>}
+                    </div>
+                    <div className="min-w-0">{parameter.schema && <SchemaView schema={parameter.schema} registry={registry} depth={5} />}</div>
+                    <div className="min-w-0 text-text-3">{parameter.description || '-'}</div>
                   </div>
-                  <div className="min-w-0">{parameter.schema && <SchemaView schema={parameter.schema} registry={registry} depth={5} />}</div>
-                  <div className="min-w-0 text-[#3b4151]">{parameter.description || '-'}</div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        )
-      })}
+          )
+        })}
       </div>
     </section>
   )
 }
 
+// Matches JSON tokens: strings (with optional trailing key colon), literals, numbers.
+const JSON_TOKEN = /"(?:\\.|[^"\\])*"(\s*:)?|\b(?:true|false|null)\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/g
+
+// ponytail: tiny regex JSON highlighter — no dependency, renders spans (never
+// innerHTML) so example payloads from the spec can't inject markup.
+function highlightJson(text: string): React.ReactNode[] {
+  const nodes: React.ReactNode[] = []
+  let last = 0
+  let key = 0
+  JSON_TOKEN.lastIndex = 0
+  for (let m = JSON_TOKEN.exec(text); m; m = JSON_TOKEN.exec(text)) {
+    if (m.index > last) nodes.push(text.slice(last, m.index))
+    const tok = m[0]
+    if (tok.startsWith('"')) {
+      const colon = m[1] ?? ''
+      const quoted = tok.slice(0, tok.length - colon.length)
+      // A string followed by a colon is a key; otherwise a string value.
+      nodes.push(<span key={key++} className={colon ? 'text-accent' : 'text-success'}>{quoted}</span>)
+      if (colon) nodes.push(<span key={key++} className="text-text-4">{colon}</span>)
+    } else if (tok === 'true' || tok === 'false' || tok === 'null') {
+      nodes.push(<span key={key++} className="text-[#60a5fa]">{tok}</span>)
+    } else {
+      nodes.push(<span key={key++} className="text-warning">{tok}</span>)
+    }
+    last = m.index + tok.length
+  }
+  if (last < text.length) nodes.push(text.slice(last))
+  return nodes
+}
+
 function ExampleBlock({ example }: { example: unknown }) {
   if (example === undefined || example === null) return null
-  const text = typeof example === 'string' ? example : JSON.stringify(example, null, 2)
+  const isString = typeof example === 'string'
+  const text = isString ? example : JSON.stringify(example, null, 2)
   return (
-    <pre className="max-h-80 overflow-auto rounded bg-[#24272d] p-3 font-mono text-[11px] leading-[18px] text-[#f3f7ff]">
-      {text}
+    <pre className="max-h-80 overflow-auto rounded bg-surface-2 p-3 font-mono text-[11px] leading-[18px] text-text-3">
+      {isString ? text : highlightJson(text)}
     </pre>
   )
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h4 className="relative m-0 text-[13px] font-bold leading-8 text-[#3b4151] after:absolute after:-bottom-2 after:left-0 after:h-1 after:w-24 after:bg-[#fca130] after:content-['']">
+    <h4 className="m-0 text-[12px] font-bold uppercase tracking-wide text-text-2">
       {children}
     </h4>
   )
 }
 
 function statusClass(status: string): string {
-  if (status.startsWith('2')) return 'bg-[#49cc90]/15 text-[#17683e]'
-  if (status.startsWith('3')) return 'bg-[#61affe]/15 text-[#0f5f9f]'
-  if (status.startsWith('4')) return 'bg-[#fca130]/15 text-[#8a5200]'
-  if (status.startsWith('5')) return 'bg-[#f93e3e]/15 text-[#9b1c1c]'
-  return 'bg-[#ebebeb] text-[#3b4151]'
+  if (status.startsWith('2')) return 'bg-success/15 text-success'
+  if (status.startsWith('3')) return 'bg-accent/15 text-accent'
+  if (status.startsWith('4')) return 'bg-warning/15 text-warning'
+  if (status.startsWith('5')) return 'bg-error/15 text-error'
+  return 'bg-surface-2 text-text-3'
 }

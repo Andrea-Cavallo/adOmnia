@@ -1,6 +1,6 @@
 # Architecture
 
-adOmnia is a local-first desktop developer toolbox built with Wails 2.
+adOmnia is a local-first desktop developer toolbox built with Wails 3.
 
 ## Runtime Shape
 

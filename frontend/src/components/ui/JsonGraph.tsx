@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Copy, GitBranch, List, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { handleKeyboardActivation } from '@/lib/accessibility'
+import { useUiTranslation, type UiMessage } from '@/lib/uiI18n'
 
 // ─── layout constants ────────────────────────────────────────────────────────
 const NODE_W = 240
@@ -11,12 +13,28 @@ const COL_GAP = 100
 const SIBLING_GAP = 16
 
 // ─── types ───────────────────────────────────────────────────────────────────
-interface GRow { key: string; value: string; type: string; hasChild: boolean }
-interface GNode { id: string; title: string; meta: string; rows: GRow[]; height: number; x: number; y: number }
+interface GRow {
+  key: string
+  value: string
+  type: string
+  hasChild: boolean
+  childId?: string
+  path: Array<string | number>
+  rawValue: unknown
+}
+interface GNode { id: string; title: string; meta: string; rows: GRow[]; height: number; x: number; y: number; depth: number }
 interface GEdge { source: string; target: string }
 
 // ─── graph builder ───────────────────────────────────────────────────────────
-function collectNodes(value: unknown, path: string, key: string, nodes: GNode[], edges: GEdge[]) {
+function collectNodes(
+  value: unknown,
+  path: string,
+  key: string,
+  segments: Array<string | number>,
+  depth: number,
+  nodes: GNode[],
+  edges: GEdge[],
+) {
   const isArr = Array.isArray(value)
   const isObj = value !== null && typeof value === 'object' && !isArr
   if (!isObj && !isArr) return
@@ -32,20 +50,35 @@ function collectNodes(value: unknown, path: string, key: string, nodes: GNode[],
     if (child !== null && typeof child === 'object') {
       const childIsArr = Array.isArray(child)
       const childLen = childIsArr ? (child as unknown[]).length : Object.keys(child as object).length
-      rows.push({ key: k, value: childIsArr ? `[ ${childLen} ]` : `{ ${childLen} }`, type: childIsArr ? 'array' : 'object', hasChild: true })
-      collectNodes(child, childPath, k, nodes, edges)
+      rows.push({
+        key: k,
+        value: childIsArr ? `[ ${childLen} ]` : `{ ${childLen} }`,
+        type: childIsArr ? 'array' : 'object',
+        hasChild: true,
+        childId: childPath,
+        path: [...segments, isArr ? Number(k) : k],
+        rawValue: child,
+      })
+      collectNodes(child, childPath, k, [...segments, isArr ? Number(k) : k], depth + 1, nodes, edges)
       edges.push({ source: path, target: childPath })
     } else {
       let preview: string
       if (child === null) preview = 'null'
       else if (typeof child === 'string') preview = `"${child.length > 20 ? child.slice(0, 18) + '…' : child}"`
       else preview = String(child)
-      rows.push({ key: k, value: preview, type: child === null ? 'null' : typeof child, hasChild: false })
+      rows.push({
+        key: k,
+        value: preview,
+        type: child === null ? 'null' : typeof child,
+        hasChild: false,
+        path: [...segments, isArr ? Number(k) : k],
+        rawValue: child,
+      })
     }
   }
 
   const height = HEADER_H + rows.length * ROW_H + NODE_PAD
-  nodes.push({ id: path, title: key === '__root__' ? '$' : key, meta, rows, height, x: 0, y: 0 })
+  nodes.push({ id: path, title: key === '__root__' ? '$' : key, meta, rows, height, x: 0, y: 0, depth })
 }
 
 function layoutGraph(nodes: GNode[], edges: GEdge[]) {
@@ -79,7 +112,7 @@ function layoutGraph(nodes: GNode[], edges: GEdge[]) {
 
 function buildGraph(value: unknown): { nodes: GNode[]; edges: GEdge[] } {
   const nodes: GNode[] = [], edges: GEdge[] = []
-  collectNodes(value, '$', '__root__', nodes, edges)
+  collectNodes(value, '$', '__root__', [], 0, nodes, edges)
   layoutGraph(nodes, edges)
   return { nodes, edges }
 }
@@ -94,14 +127,73 @@ const VAL_COLOR: Record<string, string> = {
   array: 'var(--color-accent-light)',
 }
 
+const DEPTH_COLORS = ['#A855F7', '#22D3EE', '#FACC15', '#F472B6', '#34D399', '#60A5FA']
+
+function depthColor(depth: number): string {
+  return DEPTH_COLORS[depth % DEPTH_COLORS.length]
+}
+
+function editableValueText(value: unknown, type: string): string {
+  if (type === 'string') return String(value)
+  return JSON.stringify(value)
+}
+
+function parseEditedValue(type: string, draft: string): { value?: unknown; error?: UiMessage } {
+  if (type === 'string') return { value: draft }
+  if (type === 'number') {
+    const number = Number(draft)
+    return Number.isFinite(number) ? { value: number } : { error: 'Enter a valid number.' }
+  }
+  if (type === 'boolean') {
+    if (draft === 'true') return { value: true }
+    if (draft === 'false') return { value: false }
+    return { error: 'Enter true or false.' }
+  }
+  if (type === 'null') return draft === 'null' ? { value: null } : { error: 'Enter null.' }
+  try {
+    return { value: JSON.parse(draft) }
+  } catch {
+    return { error: 'Enter valid JSON.' }
+  }
+}
+
+function updateValueAtPath(value: unknown, path: Array<string | number>, next: unknown): unknown {
+  if (path.length === 0) return next
+  const [head, ...tail] = path
+  if (Array.isArray(value) && typeof head === 'number') {
+    return value.map((item, index) => index === head ? updateValueAtPath(item, tail, next) : item)
+  }
+  if (value !== null && typeof value === 'object' && typeof head === 'string') {
+    return { ...(value as Record<string, unknown>), [head]: updateValueAtPath((value as Record<string, unknown>)[head], tail, next) }
+  }
+  return value
+}
+
 // ─── GraphCanvas ─────────────────────────────────────────────────────────────
-function GraphCanvas({ nodes, edges }: { nodes: GNode[]; edges: GEdge[] }) {
+interface EditingRow {
+  nodeId: string
+  rowIndex: number
+  draft: string
+  error: UiMessage | ''
+}
+
+function GraphCanvas({
+  nodes,
+  edges,
+  onValueChange,
+}: {
+  nodes: GNode[]
+  edges: GEdge[]
+  onValueChange?: (path: Array<string | number>, value: unknown) => void
+}) {
+  const tr = useUiTranslation()
   const containerRef = useRef<HTMLDivElement>(null)
   const [zoom, setZoom] = useState(1)
   const [pan, setPan] = useState({ x: 40, y: 40 })
   const dragging = useRef(false)
   const dragOrigin = useRef({ x: 0, y: 0 })
   const [selected, setSelected] = useState<string | null>(null)
+  const [editing, setEditing] = useState<EditingRow | null>(null)
 
   const nodeMap = useMemo(() => {
     const m: Record<string, GNode> = {}
@@ -148,13 +240,32 @@ function GraphCanvas({ nodes, edges }: { nodes: GNode[]; edges: GEdge[] }) {
   const edgePaths = useMemo(() => edges.map(e => {
     const src = nodeMap[e.source], tgt = nodeMap[e.target]
     if (!src || !tgt) return null
-    const x1 = src.x + NODE_W, y1 = src.y + HEADER_H / 2
+    const rowIndex = src.rows.findIndex(row => row.childId === tgt.id)
+    const x1 = src.x + NODE_W
+    const y1 = rowIndex >= 0 ? src.y + HEADER_H + rowIndex * ROW_H + ROW_H / 2 : src.y + HEADER_H / 2
     const x2 = tgt.x, y2 = tgt.y + HEADER_H / 2
     const cx = (x1 + x2) / 2
-    return { key: `${e.source}→${e.target}`, d: `M${x1},${y1} C${cx},${y1} ${cx},${y2} ${x2},${y2}` }
-  }).filter(Boolean) as { key: string; d: string }[], [edges, nodeMap])
+    return { key: `${e.source}->${e.target}`, d: `M${x1},${y1} C${cx},${y1} ${cx},${y2} ${x2},${y2}`, colorIndex: (src.depth + 1) % DEPTH_COLORS.length }
+  }).filter(Boolean) as { key: string; d: string; colorIndex: number }[], [edges, nodeMap])
 
   const selectedNode = selected ? nodeMap[selected] : null
+
+  const startEditing = (node: GNode, rowIndex: number) => {
+    if (!onValueChange) return
+    const row = node.rows[rowIndex]
+    setSelected(node.id)
+    setEditing({ nodeId: node.id, rowIndex, draft: editableValueText(row.rawValue, row.type), error: '' })
+  }
+
+  const commitEditing = () => {
+    if (!editing || !onValueChange) return
+    const row = nodeMap[editing.nodeId]?.rows[editing.rowIndex]
+    if (!row) return setEditing(null)
+    const parsed = parseEditedValue(row.type, editing.draft)
+    if (parsed.error) return setEditing({ ...editing, error: parsed.error })
+    onValueChange(row.path, parsed.value)
+    setEditing(null)
+  }
 
   return (
     <div className="flex-1 relative overflow-hidden flex flex-col">
@@ -164,7 +275,7 @@ function GraphCanvas({ nodes, edges }: { nodes: GNode[]; edges: GEdge[] }) {
           onClick={fitView}
           className="px-2 py-1 text-[10px] bg-surface-2 border border-border-2 rounded text-text-3 hover:text-text-1 transition-colors"
         >
-          Fit
+          {tr('Fit')}
         </button>
         <button
           onClick={() => setZoom(z => Math.min(4, z * 1.25))}
@@ -215,8 +326,23 @@ function GraphCanvas({ nodes, edges }: { nodes: GNode[]; edges: GEdge[] }) {
           <svg
             style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', overflow: 'visible', pointerEvents: 'none' }}
           >
+            <defs>
+              {DEPTH_COLORS.map((color, index) => (
+                <marker key={color} id={`json-graph-arrow-${index}`} markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+                  <path d="M0,0 L10,5 L0,10 z" fill={color} />
+                </marker>
+              ))}
+            </defs>
             {edgePaths.map(ep => (
-              <path key={ep.key} d={ep.d} fill="none" stroke="var(--color-border-2)" strokeWidth="1.5" opacity="0.7" />
+              <path
+                key={ep.key}
+                d={ep.d}
+                fill="none"
+                stroke={DEPTH_COLORS[ep.colorIndex]}
+                strokeWidth="2.5"
+                strokeOpacity="0.9"
+                markerEnd={`url(#json-graph-arrow-${ep.colorIndex})`}
+              />
             ))}
           </svg>
 
@@ -225,7 +351,12 @@ function GraphCanvas({ nodes, edges }: { nodes: GNode[]; edges: GEdge[] }) {
             <div
               key={node.id}
               data-gnode="1"
+              role="button"
+              tabIndex={0}
+              aria-pressed={node.id === selected}
+              aria-label={`Select ${node.title}`}
               onClick={() => setSelected(node.id === selected ? null : node.id)}
+              onKeyDown={(event) => handleKeyboardActivation(event, () => setSelected(node.id === selected ? null : node.id))}
               style={{
                 position: 'absolute',
                 left: node.x,
@@ -252,39 +383,80 @@ function GraphCanvas({ nodes, edges }: { nodes: GNode[]; edges: GEdge[] }) {
                 borderBottom: '1px solid var(--color-border-1)',
                 minHeight: HEADER_H,
               }}>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5, fontWeight: 600, color: 'var(--color-accent-light)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                <span style={{ fontFamily: 'var(--skin-font-mono, var(--font-mono))', fontSize: 11.5, fontWeight: 600, color: depthColor(node.depth), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                   {node.title}
                 </span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-text-4)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                <span style={{ fontFamily: 'var(--skin-font-mono, var(--font-mono))', fontSize: 10, color: depthColor(node.depth), whiteSpace: 'nowrap', flexShrink: 0 }}>
                   {node.meta}
                 </span>
               </div>
               {/* Rows */}
-              {node.rows.map((row, i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    padding: '1px 10px',
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: 11,
-                    minHeight: ROW_H,
-                    borderBottom: i < node.rows.length - 1 ? '1px solid var(--color-border-1)' : 'none',
-                  }}
-                >
-                  <span style={{ color: 'var(--color-text-2)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
-                    {row.key}
-                  </span>
-                  <span style={{ color: VAL_COLOR[row.type] ?? 'var(--color-text-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 110, textAlign: 'right', flexShrink: 0 }}>
-                    {row.value}
-                  </span>
-                  {row.hasChild && (
-                    <span style={{ color: 'var(--color-accent)', fontSize: 10, flexShrink: 0 }}>→</span>
-                  )}
-                </div>
-              ))}
+              {node.rows.map((row, i) => {
+                const isEditing = editing?.nodeId === node.id && editing.rowIndex === i
+                const relationColor = row.hasChild ? depthColor(node.depth + 1) : VAL_COLOR[row.type] ?? 'var(--color-text-3)'
+                return (
+                  <div
+                    key={i}
+                    role={onValueChange ? 'button' : undefined}
+                    tabIndex={onValueChange ? 0 : undefined}
+                    aria-label={onValueChange ? `Edit ${row.key}` : undefined}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      startEditing(node, i)
+                    }}
+                    onKeyDown={(event) => {
+                      if (onValueChange) handleKeyboardActivation(event, () => startEditing(node, i))
+                    }}
+                    title={onValueChange ? tr('Click to edit this value') : undefined}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '1px 10px',
+                      fontFamily: 'var(--skin-font-mono, var(--font-mono))',
+                      fontSize: 11,
+                      minHeight: ROW_H,
+                      borderBottom: i < node.rows.length - 1 ? '1px solid var(--color-border-1)' : 'none',
+                      background: isEditing ? 'color-mix(in srgb, var(--color-accent) 12%, transparent)' : 'transparent',
+                      cursor: onValueChange ? 'text' : 'default',
+                    }}
+                  >
+                    <span style={{ color: 'var(--color-text-2)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
+                      {row.key}
+                    </span>
+                    {isEditing ? (
+                      <input
+                        autoFocus
+                        value={editing.draft}
+                        onMouseDown={(event) => event.stopPropagation()}
+                        onClick={(event) => event.stopPropagation()}
+                        onChange={(event) => setEditing({ ...editing, draft: event.target.value, error: '' })}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') commitEditing()
+                          if (event.key === 'Escape') setEditing(null)
+                        }}
+                        onBlur={commitEditing}
+                        aria-label={tr('Edit {{key}}', { key: row.key })}
+                        title={editing.error ? tr(editing.error) : tr('Press Enter to save, Escape to cancel')}
+                        style={{ color: editing.error ? 'var(--color-error)' : relationColor, background: 'var(--color-surface-0)', border: `1px solid ${editing.error ? 'var(--color-error)' : relationColor}`, borderRadius: 3, font: 'inherit', outline: 'none', maxWidth: 130, minWidth: 0, padding: '1px 4px', textAlign: 'right' }}
+                      />
+                    ) : (
+                      <span style={{ color: relationColor, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 110, textAlign: 'right', flexShrink: 0 }}>
+                        {row.value}
+                      </span>
+                    )}
+                    {row.hasChild && row.childId && (
+                      <button
+                        onClick={(event) => { event.stopPropagation(); setSelected(row.childId!) }}
+                        title={tr('Focus connected node')}
+                        style={{ color: relationColor, fontSize: 12, flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}
+                      >
+                        →
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           ))}
         </div>
@@ -304,7 +476,7 @@ function GraphCanvas({ nodes, edges }: { nodes: GNode[]; edges: GEdge[] }) {
             borderRadius: 6,
             overflow: 'auto',
             boxShadow: '0 4px 20px rgba(0,0,0,0.45)',
-            fontFamily: 'var(--font-mono)',
+            fontFamily: 'var(--skin-font-mono, var(--font-mono))',
             fontSize: 11,
             zIndex: 20,
           }}
@@ -379,6 +551,7 @@ interface TreeViewProps {
 }
 
 function TreeView({ parsed, expanded: expandedProp, onExpandedChange }: TreeViewProps) {
+  const tr = useUiTranslation()
   const [internalExpanded, setInternalExpanded] = useState<Set<string>>(() => new Set(['$']))
   const isControlled = expandedProp !== undefined
   const expanded = isControlled ? expandedProp! : internalExpanded
@@ -414,16 +587,16 @@ function TreeView({ parsed, expanded: expandedProp, onExpandedChange }: TreeView
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Search keys / values…"
+          placeholder={tr('Search keys / values…')}
           className="flex-1 bg-surface-2 border border-border-2 rounded px-2 py-0.5 text-xs font-mono text-text-1 placeholder:text-text-4 outline-none focus:border-accent"
         />
-        <button onClick={expandAll} className="px-2 py-0.5 text-[10px] text-text-3 hover:text-text-1 border border-border-2 rounded">expand all</button>
-        <button onClick={() => setExpanded(new Set(['$']))} className="px-2 py-0.5 text-[10px] text-text-3 hover:text-text-1 border border-border-2 rounded">collapse</button>
-        <span className="text-[10px] text-text-4 font-mono">{rows.length} rows</span>
+        <button onClick={expandAll} className="px-2 py-0.5 text-[10px] text-text-3 hover:text-text-1 border border-border-2 rounded">{tr('expand all')}</button>
+        <button onClick={() => setExpanded(new Set(['$']))} className="px-2 py-0.5 text-[10px] text-text-3 hover:text-text-1 border border-border-2 rounded">{tr('collapse')}</button>
+        <span className="text-[10px] text-text-4 font-mono">{tr('{{count}} rows', { count: rows.length })}</span>
       </div>
       <div className="flex-1 overflow-auto py-1">
         {rows.length === 0
-          ? <div className="flex items-center justify-center h-32 text-xs text-text-4">No matching nodes</div>
+          ? <div className="flex items-center justify-center h-32 text-xs text-text-4">{tr('No matching nodes')}</div>
           : rows.map(row => (
             <TreeRowItem
               key={row.path}
@@ -450,14 +623,20 @@ function TreeRowItem({ row, isExpanded, isSelected, onToggle, onSelect }: {
   const valColor = VAL_COLOR[row.valueType] ?? 'var(--color-text-3)'
   return (
     <div
+      role="treeitem"
+      tabIndex={0}
+      aria-selected={isSelected}
+      aria-expanded={row.expandable ? isExpanded : undefined}
       onClick={onSelect}
+      onKeyDown={(event) => handleKeyboardActivation(event, onSelect)}
       style={{ paddingLeft: row.depth * 18 + 6 }}
       className={cn(
-        'flex items-center gap-1.5 py-[3px] pr-3 cursor-pointer border-l-2 text-xs font-mono',
+        'flex items-center gap-1.5 py-[3px] pr-3 cursor-pointer border-l-2 text-xs font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent',
         isSelected ? 'bg-accent/8 border-accent' : 'border-transparent hover:bg-surface-2/60',
       )}
     >
       <button
+        aria-label={row.expandable ? `${isExpanded ? 'Collapse' : 'Expand'} ${row.key}` : undefined}
         onClick={e => { e.stopPropagation(); if (row.expandable) onToggle() }}
         className="w-[14px] h-[14px] flex items-center justify-center text-text-4 hover:text-text-2 flex-shrink-0"
       >
@@ -477,7 +656,18 @@ function TreeRowItem({ row, isExpanded, isSelected, onToggle, onSelect }: {
 }
 
 // ─── JsonGraphModal ──────────────────────────────────────────────────────────
-export function JsonGraphModal({ title, json, onClose }: { title: string; json: string; onClose: () => void }) {
+export function JsonGraphModal({
+  title,
+  json,
+  onClose,
+  onChange,
+}: {
+  title: string
+  json: string
+  onClose: () => void
+  onChange?: (json: string) => void
+}) {
+  const tr = useUiTranslation()
   const [mode, setMode] = useState<'graph' | 'tree'>('graph')
 
   const parsed = useMemo(() => {
@@ -490,6 +680,11 @@ export function JsonGraphModal({ title, json, onClose }: { title: string; json: 
     return buildGraph(parsed.value)
   }, [parsed.value])
 
+  const updateGraphValue = useCallback((path: Array<string | number>, value: unknown) => {
+    if (!onChange || parsed.value === null) return
+    onChange(JSON.stringify(updateValueAtPath(parsed.value, path, value), null, 2))
+  }, [onChange, parsed.value])
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75" onClick={onClose}>
       <div
@@ -501,27 +696,27 @@ export function JsonGraphModal({ title, json, onClose }: { title: string; json: 
         <div className="flex items-center gap-2 px-4 py-2 border-b border-border-1 bg-surface-2 flex-shrink-0">
           <span className="text-xs font-semibold text-text-1 flex-1 truncate">{title}</span>
           {mode === 'graph' && (
-            <span className="text-[10px] text-text-4 font-mono">{nodes.length} nodes · {edges.length} edges</span>
+            <span className="text-[10px] text-text-4 font-mono">{tr('{{nodes}} nodes · {{edges}} edges', { nodes: nodes.length, edges: edges.length })}</span>
           )}
           <div className="flex items-center rounded border border-border-2 overflow-hidden">
             <button
               onClick={() => setMode('graph')}
               className={cn('flex items-center gap-1 px-2.5 py-1 text-[10px] transition-colors', mode === 'graph' ? 'bg-accent/20 text-accent-light' : 'text-text-3 hover:text-text-1')}
             >
-              <GitBranch size={11} /> Graph
+              <GitBranch size={11} /> {tr('Graph')}
             </button>
             <button
               onClick={() => setMode('tree')}
               className={cn('flex items-center gap-1 px-2.5 py-1 text-[10px] transition-colors border-l border-border-2', mode === 'tree' ? 'bg-accent/20 text-accent-light' : 'text-text-3 hover:text-text-1')}
             >
-              <List size={11} /> Tree
+              <List size={11} /> {tr('Tree')}
             </button>
           </div>
           <button
             onClick={() => navigator.clipboard.writeText(json)}
             className="flex items-center gap-1 px-2 py-1 text-[10px] text-text-3 hover:text-text-1 border border-border-2 rounded transition-colors"
           >
-            <Copy size={10} /> Copy
+            <Copy size={10} /> {tr('Copy')}
           </button>
           <button onClick={onClose} className="p-1 rounded text-text-4 hover:text-text-1 hover:bg-surface-3 transition-colors">
             <X size={15} />
@@ -532,9 +727,9 @@ export function JsonGraphModal({ title, json, onClose }: { title: string; json: 
         {parsed.error ? (
           <div className="flex-1 flex items-center justify-center text-xs text-error font-mono px-8">{parsed.error}</div>
         ) : !parsed.value || typeof parsed.value !== 'object' ? (
-          <div className="flex-1 flex items-center justify-center text-xs text-text-4">Graph requires an object or array JSON value</div>
+          <div className="flex-1 flex items-center justify-center text-xs text-text-4">{tr('Graph requires an object or array JSON value')}</div>
         ) : mode === 'graph' ? (
-          <GraphCanvas nodes={nodes} edges={edges} />
+          <GraphCanvas nodes={nodes} edges={edges} onValueChange={onChange ? updateGraphValue : undefined} />
         ) : (
           <TreeView parsed={parsed.value} />
         )}
@@ -583,6 +778,7 @@ export function JsonGraphDiagram({
   json: string
   className?: string
 }) {
+  const tr = useUiTranslation()
   const parsed = useMemo(() => {
     try { return { value: JSON.parse(json), error: '' } }
     catch (e) { return { value: null, error: e instanceof Error ? e.message : 'Invalid JSON' } }
@@ -598,7 +794,7 @@ export function JsonGraphDiagram({
   }
 
   if (!parsed.value || typeof parsed.value !== 'object') {
-    return <div className="flex flex-1 items-center justify-center text-xs text-text-4">Graph requires an object or array JSON value</div>
+    return <div className="flex flex-1 items-center justify-center text-xs text-text-4">{tr('Graph requires an object or array JSON value')}</div>
   }
 
   return (

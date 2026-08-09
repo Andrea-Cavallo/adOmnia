@@ -435,10 +435,6 @@ async function fetchOAuth2Token(
   return (await fetchOAuth2TokenResponse(auth, vars, options)).accessToken
 }
 
-export async function fetchOAuth2TokenManual(auth: RequestAuth): Promise<string> {
-  return fetchOAuth2Token(auth, {}, { forceRefresh: true })
-}
-
 export async function fetchOAuth2TokenDetailsManual(auth: RequestAuth): Promise<OAuth2TokenResponse> {
   return fetchOAuth2TokenResponse(auth, {}, { forceRefresh: true })
 }

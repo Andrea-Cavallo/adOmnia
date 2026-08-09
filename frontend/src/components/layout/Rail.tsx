@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAppStore, type RailItem } from '@/stores/app'
+import { useTabsStore } from '@/stores/tabs'
+import { TOOL_TAB_LABELS, type ToolTabId } from '@/lib/types'
 import { useSettingsStore } from '@/stores/settings'
 import { cn } from '@/lib/utils'
 import { useAppIcon } from '@/lib/brandAssets'
 import { RAIL_CATEGORIES, getFeatureLabel, isFeatureVisible } from '@/lib/featureRegistry'
+import { useNavigationTranslation, useUiTranslation } from '@/lib/uiI18n'
 import {
   Send, LayoutList, Shield, Server, Radio, Bug, Container, Network,
   Wrench, FileText, FileCode, Database, Braces, ChevronRight, FolderOpen,
@@ -102,11 +105,28 @@ interface FlyoutProps {
   onClose: () => void
 }
 
+/** Rail entries that can also be opened as a workspace tab. */
+const TOOL_TAB_RAILS = new Set<string>(Object.keys(TOOL_TAB_LABELS))
+
 function Flyout({ cat, activeRail, onSelect, onClose }: FlyoutProps) {
+  const nav = useNavigationTranslation()
+  const tr = useUiTranslation()
+  const openToolTab = useTabsStore((s) => s.openToolTab)
+  const setActiveRail = useAppStore((s) => s.setActiveRail)
+  const [menuFor, setMenuFor] = useState<ToolTabId | null>(null)
+
+  const openInNewTab = (tool: ToolTabId) => {
+    openToolTab(tool)
+    // Tool tabs live in the request workspace, so go there to reveal it.
+    setActiveRail('collections')
+    setMenuFor(null)
+    onClose()
+  }
+
   return (
     <div className="absolute left-full top-0 ml-2 w-52 bg-surface-1 border border-border-1 rounded-xl shadow-2xl z-50 py-2 overflow-hidden">
       <div className="px-3 pt-1 pb-2 border-b border-border-1/60">
-        <span className="text-[10px] font-bold text-accent tracking-wide uppercase">{cat.label}</span>
+        <span className="text-[10px] font-bold text-accent tracking-wide uppercase">{nav(cat.label)}</span>
       </div>
 
       {cat.groups.map((group, gi) => (
@@ -115,7 +135,7 @@ function Flyout({ cat, activeRail, onSelect, onClose }: FlyoutProps) {
           <div className="px-3 pt-2 pb-0.5">
             <span className="text-[9px] font-semibold text-text-4 tracking-wider uppercase flex items-center gap-1">
               <FolderOpen size={9} />
-              {group.title}
+              {nav(group.title)}
             </span>
           </div>
           {group.items.map((item) => {
@@ -126,6 +146,11 @@ function Flyout({ cat, activeRail, onSelect, onClose }: FlyoutProps) {
               <button
                 key={item.id}
                 onClick={() => { onSelect(item.id); onClose() }}
+                onContextMenu={(e) => {
+                  if (!TOOL_TAB_RAILS.has(item.id)) return
+                  e.preventDefault()
+                  setMenuFor(item.id as ToolTabId)
+                }}
                 className={cn(
                   'w-full flex items-center gap-2.5 px-3 py-1.5 text-xs transition-colors text-left',
                   active
@@ -134,11 +159,21 @@ function Flyout({ cat, activeRail, onSelect, onClose }: FlyoutProps) {
                 )}
               >
                 <ItemIcon size={12} />
-                <span className="flex-1">{label}</span>
+                <span className="flex-1">{nav(label)}</span>
                 {active && <ChevronRight size={10} className="text-accent" />}
               </button>
             )
           })}
+          {menuFor && group.items.some((i) => i.id === menuFor) && (
+            <div className="px-3 py-1">
+              <button
+                onClick={() => openInNewTab(menuFor)}
+                className="w-full text-left px-2 py-1.5 text-[11px] rounded bg-surface-2 text-text-1 hover:bg-accent/15 transition-colors"
+              >
+                {tr('Open in New Tab')}
+              </button>
+            </div>
+          )}
         </div>
       ))}
     </div>
@@ -160,6 +195,7 @@ interface CategoryButtonProps {
 }
 
 function CategoryButton({ cat, activeRail, anyRunning, isOpen, magnifyScale, buttonRef, onToggle, onSelect, onClose }: CategoryButtonProps) {
+  const nav = useNavigationTranslation()
   const Icon = CATEGORY_ICONS[cat.key] ?? Wrench
   const showRailIconsOnly = useSettingsStore((s) => s.settings.appearance.showRailIconsOnly)
   const allItems = cat.groups.flatMap((g) => g.items)
@@ -176,7 +212,7 @@ function CategoryButton({ cat, activeRail, anyRunning, isOpen, magnifyScale, but
   return (
     <div ref={buttonRef} className="relative h-12 w-12 flex items-center justify-center">
       <button
-        title={cat.label}
+        title={nav(cat.label)}
         onClick={handleClick}
         className={cn(
           'w-11 h-11 rounded-lg flex flex-col items-center justify-center gap-[2px] relative will-change-transform',
@@ -221,6 +257,7 @@ function CategoryButton({ cat, activeRail, anyRunning, isOpen, magnifyScale, but
 // ─── Rail ─────────────────────────────────────────────────────────────────────
 
 export function Rail() {
+  const tr = useUiTranslation()
   const activeRail = useAppStore((s) => s.activeRail)
   const devToolsVisible = useAppStore((s) => s.devToolsVisible)
   const mockRunning = useAppStore((s) => s.mockRunning)
@@ -298,7 +335,7 @@ export function Rail() {
             ? 'bg-accent/10 ring-1 ring-accent/30'
             : 'hover:bg-surface-2',
         )}
-        title="Home"
+        title={tr('Home')}
       >
         <img src={appIcon} alt="adOmnia" className="w-7 h-7 object-contain" />
       </button>
@@ -346,7 +383,7 @@ export function Rail() {
           'absolute left-full ml-3 px-2 py-1 bg-surface-2 border border-border-2 rounded text-[10px] text-text-1 whitespace-nowrap z-50',
           'opacity-0 group-hover/btn:opacity-100 transition-opacity pointer-events-none shadow-lg',
         )}>
-          Settings
+          {tr('Settings')}
         </span>
       </button>
 
@@ -354,7 +391,7 @@ export function Rail() {
       {import.meta.env.DEV && (
         <button
           onClick={toggleDevTools}
-          title="Toggle Dev Logs"
+          title={tr('Toggle Dev Logs')}
           className={cn(
             'w-11 h-11 rounded-lg flex flex-col items-center justify-center gap-[2px] relative transition-all group/btn mb-1',
             devToolsVisible
@@ -366,7 +403,7 @@ export function Rail() {
             'absolute left-full ml-3 px-2 py-1 bg-surface-2 border border-border-2 rounded text-[10px] text-text-1 whitespace-nowrap z-50',
             'opacity-0 group-hover/btn:opacity-100 transition-opacity pointer-events-none shadow-lg',
           )}>
-            Dev Logs
+            {tr('Dev Logs')}
           </span>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="4 17 10 11 4 5" />

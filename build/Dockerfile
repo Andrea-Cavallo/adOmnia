@@ -1,11 +1,13 @@
 # Multi-stage build for adOmnia
-FROM golang:1.22-alpine AS builder
+FROM golang:1.26.5-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache \
     gcc \
     g++ \
     musl-dev \
+    nodejs \
+    npm \
     gtk+3.0-dev \
     webkit2gtk-dev
 
@@ -15,15 +17,20 @@ WORKDIR /build
 COPY go.mod go.sum ./
 RUN go mod download
 
+COPY frontend/package*.json ./frontend/
+RUN cd frontend && npm ci
+
 # Copy source code
 COPY . .
+
+RUN cd frontend && npm run build
 
 # Build binary
 ARG VERSION=dev
 ARG BUILD_DATE
 ARG GIT_COMMIT
 RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
-    go build \
+    go build -buildvcs=false -trimpath -tags 'production gtk3' \
     -ldflags "-s -w -X main.Version=${VERSION} -X main.BuildDate=${BUILD_DATE} -X main.GitCommit=${GIT_COMMIT}" \
     -o adomnia .
 

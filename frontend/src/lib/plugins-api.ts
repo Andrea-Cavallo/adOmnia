@@ -1,4 +1,8 @@
 import type { PluginInstance } from '@/stores/plugins'
+import * as PluginManagerBindings from '../../bindings/adomnia/pluginmanager'
+import * as WasmRuntimeBindings from '../../bindings/adomnia/wasmruntime'
+import * as TemplateStoreBindings from '../../bindings/adomnia/templatestore'
+import * as AppBindings from '../../bindings/adomnia/app'
 
 export interface Template {
   id: string
@@ -28,32 +32,33 @@ export interface SandboxStatus {
   running: boolean
 }
 
-function getPluginManager() {
-  return window.go?.main?.PluginManager
+export interface PluginExecResult {
+  success: boolean
+  data?: unknown
+  error?: string
+  memUsed: number
+  timeMs: number
 }
 
-function getWasmRuntime() {
-  return window.go?.main?.WasmRuntime
+function getPluginManager(): WailsGoMain['PluginManager'] {
+// The generated bindings type Go maps as `string | undefined` and carry
+// extra fields the UI does not model; the runtime shapes match. Narrow
+// once here rather than loosening every consumer.
+  return PluginManagerBindings as unknown as WailsGoMain['PluginManager']
 }
 
-function getTemplateStore() {
-  return window.go?.main?.TemplateStore
+function getWasmRuntime(): WailsGoMain['WasmRuntime'] {
+  return WasmRuntimeBindings as unknown as WailsGoMain['WasmRuntime']
+}
+
+function getTemplateStore(): WailsGoMain['TemplateStore'] {
+  return TemplateStoreBindings as unknown as WailsGoMain['TemplateStore']
 }
 
 export async function getPlugins(): Promise<PluginInstance[]> {
   const mgr = getPluginManager()
   if (!mgr) throw new Error("Plugin Manager disponibile solo nell'applicazione desktop.")
   return (await mgr.GetPlugins()) as PluginInstance[]
-}
-
-export async function getPlugin(id: string): Promise<PluginInstance | null> {
-  try {
-    const mgr = getPluginManager()
-    if (!mgr) return null
-    return (await mgr.GetPlugin(id)) as PluginInstance
-  } catch {
-    return null
-  }
 }
 
 export async function installPlugin(manifestJSON: string): Promise<PluginInstance> {
@@ -66,6 +71,18 @@ export async function installPluginPackage(manifestJSON: string, encodedFiles: R
   const mgr = getPluginManager()
   if (!mgr) throw new Error("Plugin Manager disponibile solo nell'applicazione desktop.")
   return (await mgr.InstallPluginPackage(manifestJSON, encodedFiles)) as PluginInstance
+}
+
+export async function installPluginDirectory(sourceDir: string): Promise<PluginInstance> {
+  const mgr = getPluginManager()
+  if (!mgr) throw new Error("Plugin Manager disponibile solo nell'applicazione desktop.")
+  return (await mgr.InstallPluginDirectory(sourceDir)) as PluginInstance
+}
+
+export async function selectPluginDirectory(): Promise<string> {
+  const app = AppBindings
+  if (!app) throw new Error("Selettore cartelle disponibile solo nell'applicazione desktop.")
+  return app.SelectFolder('Seleziona cartella plugin')
 }
 
 export async function uninstallPlugin(id: string): Promise<boolean> {
@@ -122,16 +139,6 @@ export async function setPluginSetting(id: string, key: string, value: string): 
   }
 }
 
-export async function getRegisteredHooks(): Promise<Record<string, string[]>> {
-  try {
-    const mgr = getPluginManager()
-    if (!mgr) return {}
-    return await mgr.GetRegisteredHooks()
-  } catch {
-    return {}
-  }
-}
-
 export async function getAvailableEvents(): Promise<string[]> {
   try {
     const mgr = getPluginManager()
@@ -162,6 +169,22 @@ export async function getSandboxStatus(pluginId: string): Promise<SandboxStatus 
   }
 }
 
+export async function executePlugin(pluginId: string, functionName: string, args: Record<string, unknown>): Promise<PluginExecResult> {
+  const runtime = getWasmRuntime()
+  if (!runtime) throw new Error("Plugin runtime disponibile solo nell'applicazione desktop.")
+  const result = await runtime.Execute({ pluginId, function: functionName, args }) as PluginExecResult
+  if (!result.success) throw new Error(result.error || 'Plugin execution failed.')
+  return result
+}
+
+export async function executePluginAction(pluginId: string, actionId: string, args: Record<string, unknown> = {}): Promise<PluginExecResult> {
+  const manager = getPluginManager()
+  if (!manager) throw new Error("Plugin Manager disponibile solo nell'applicazione desktop.")
+  const result = await manager.ExecuteAction(pluginId, actionId, args) as PluginExecResult
+  if (!result.success) throw new Error(result.error || 'Plugin action failed.')
+  return result
+}
+
 export async function getTemplates(): Promise<Template[]> {
   try {
     const store = getTemplateStore()
@@ -189,16 +212,6 @@ export async function searchTemplates(query: string): Promise<Template[]> {
     return (await store.SearchTemplates(query)) as Template[]
   } catch {
     return []
-  }
-}
-
-export async function getTemplate(id: string): Promise<Template | null> {
-  try {
-    const store = getTemplateStore()
-    if (!store) return null
-    return (await store.GetTemplate(id)) as Template
-  } catch {
-    return null
   }
 }
 
@@ -261,15 +274,5 @@ export async function installTemplate(id: string): Promise<string> {
     return await store.InstallTemplate(id)
   } catch {
     return ''
-  }
-}
-
-export async function getBuiltinTemplates(): Promise<Template[]> {
-  try {
-    const store = getTemplateStore()
-    if (!store) return []
-    return (await store.GetBuiltinTemplates()) as Template[]
-  } catch {
-    return []
   }
 }

@@ -21,9 +21,16 @@ export interface ApiDocParam {
   schema?: ApiDocSchema
 }
 
+export interface ApiDocContent {
+  contentType: string
+  schema?: ApiDocSchema
+  example?: unknown
+}
+
 export interface ApiDocBody {
   required: boolean
   contentTypes: string[]
+  contents: ApiDocContent[]
   description?: string
   schema?: ApiDocSchema
   example?: unknown
@@ -33,8 +40,14 @@ export interface ApiDocResponse {
   status: string
   description?: string
   contentTypes: string[]
+  contents: ApiDocContent[]
   schema?: ApiDocSchema
   example?: unknown
+}
+
+export interface ApiDocExternalDocs {
+  url: string
+  description?: string
 }
 
 export interface ApiDocOperation {
@@ -52,12 +65,15 @@ export interface ApiDocOperation {
 export interface ApiDocTagGroup {
   name: string
   description?: string
+  summary?: string
+  externalDocs?: ApiDocExternalDocs
   operations: ApiDocOperation[]
 }
 
 export interface ApiDocModel {
   title: string
   version: string
+  oasVersion: string
   description?: string
   servers: string[]
   tags: ApiDocTagGroup[]
@@ -109,12 +125,19 @@ export function buildApiDocModel(spec: unknown): ApiDocModel {
         .map((s) => asString(asRecord(s).url))
         .filter(Boolean)
 
-  const tagDescriptions = new Map<string, string>()
+  const tagMeta = new Map<string, { description?: string; summary?: string; externalDocs?: ApiDocExternalDocs }>()
   if (Array.isArray(root.tags)) {
     for (const t of root.tags) {
       const tr = asRecord(t)
       const name = asString(tr.name)
-      if (name) tagDescriptions.set(name, asString(tr.description))
+      if (!name) continue
+      const ext = asRecord(tr.externalDocs)
+      const extUrl = asString(ext.url)
+      tagMeta.set(name, {
+        description: asString(tr.description) || undefined,
+        summary: asString(tr.summary) || undefined,
+        externalDocs: extUrl ? { url: extUrl, description: asString(ext.description) || undefined } : undefined,
+      })
     }
   }
 
@@ -142,12 +165,16 @@ export function buildApiDocModel(spec: unknown): ApiDocModel {
   }
 
   const tags: ApiDocTagGroup[] = Array.from(groups.entries())
-    .map(([name, operations]) => ({ name, description: tagDescriptions.get(name), operations }))
+    .map(([name, operations]) => {
+      const meta = tagMeta.get(name)
+      return { name, description: meta?.description, summary: meta?.summary, externalDocs: meta?.externalDocs, operations }
+    })
     .sort((a, b) => a.name.localeCompare(b.name))
 
   return {
     title: asString(info.title, 'API Documentation'),
     version: asString(info.version, ''),
+    oasVersion: asString(root.openapi) || (isSwagger2 ? asString(root.swagger, '2.0') : ''),
     description: asString(info.description) || undefined,
     servers,
     tags,
@@ -192,12 +219,14 @@ function buildOperation(
     const location = asString(p.in)
     if (isSwagger2 && location === 'body') {
       const schema = asRecord(p.schema) as ApiDocSchema
+      const example = exampleFromSchema(schema, schemaRegistry)
       bodyFromParam = {
         required: Boolean(p.required),
         contentTypes: ['application/json'],
+        contents: [{ contentType: 'application/json', schema, example }],
         description: asString(p.description) || undefined,
         schema,
-        example: exampleFromSchema(schema, schemaRegistry),
+        example,
       }
       continue
     }
@@ -231,15 +260,32 @@ function buildRequestBody(rb: Record<string, unknown>, schemaRegistry: Record<st
   const content = asRecord(rb.content)
   const contentTypes = Object.keys(content)
   if (contentTypes.length === 0) return undefined
-  const first = asRecord(content[contentTypes[0]])
-  const schema = asRecord(first.schema) as ApiDocSchema
+  const contents = buildContents(content, contentTypes, schemaRegistry)
+  const first = contents[0]
   return {
     required: Boolean(rb.required),
     contentTypes,
+    contents,
     description: asString(rb.description) || undefined,
-    schema,
-    example: first.example ?? exampleFromExamples(first.examples) ?? exampleFromSchema(schema, schemaRegistry),
+    schema: first.schema,
+    example: first.example,
   }
+}
+
+function buildContents(
+  content: Record<string, unknown>,
+  contentTypes: string[],
+  schemaRegistry: Record<string, ApiDocSchema>,
+): ApiDocContent[] {
+  return contentTypes.map((contentType) => {
+    const entry = asRecord(content[contentType])
+    const schema = entry.schema ? (asRecord(entry.schema) as ApiDocSchema) : undefined
+    return {
+      contentType,
+      schema,
+      example: entry.example ?? exampleFromExamples(entry.examples) ?? exampleFromSchema(schema, schemaRegistry),
+    }
+  })
 }
 
 function buildResponses(
@@ -252,25 +298,28 @@ function buildResponses(
     const r = asRecord(raw)
     if (isSwagger2) {
       const schema = r.schema ? (asRecord(r.schema) as ApiDocSchema) : undefined
+      const example = exampleFromSchema(schema, schemaRegistry)
       out.push({
         status,
         description: asString(r.description) || undefined,
         contentTypes: [],
+        contents: schema ? [{ contentType: 'application/json', schema, example }] : [],
         schema,
-        example: exampleFromSchema(schema, schemaRegistry),
+        example,
       })
       continue
     }
     const content = asRecord(r.content)
     const contentTypes = Object.keys(content)
-    const first = contentTypes.length > 0 ? asRecord(content[contentTypes[0]]) : {}
-    const schema = first.schema ? (asRecord(first.schema) as ApiDocSchema) : undefined
+    const contents = buildContents(content, contentTypes, schemaRegistry)
+    const first = contents[0]
     out.push({
       status,
       description: asString(r.description) || undefined,
       contentTypes,
-      schema,
-      example: first.example ?? exampleFromExamples(first.examples) ?? exampleFromSchema(schema, schemaRegistry),
+      contents,
+      schema: first?.schema,
+      example: first?.example,
     })
   }
   return out.sort((a, b) => a.status.localeCompare(b.status))

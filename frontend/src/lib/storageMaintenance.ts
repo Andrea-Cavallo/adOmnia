@@ -21,17 +21,6 @@ export function localUsageBytes(): number {
   return bytes
 }
 
-/** Browser-reported usage/quota (bbolt + localStorage + caches). Best-effort. */
-export async function estimateQuota(): Promise<{ usage: number; quota: number } | null> {
-  if (!navigator.storage?.estimate) return null
-  try {
-    const { usage = 0, quota = 0 } = await navigator.storage.estimate()
-    return { usage, quota }
-  } catch {
-    return null
-  }
-}
-
 /**
  * Ask the browser for persistent storage. Persistent origins get a larger quota
  * and are never evicted under storage pressure — this is the "more space" lever.

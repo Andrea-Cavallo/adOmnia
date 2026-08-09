@@ -18,7 +18,7 @@ type openAIProvider struct {
 
 func newOpenAIProvider(apiKey, model, baseURL string) *openAIProvider {
 	if model == "" {
-		model = "gpt-5.4-mini"
+		model = "gpt-5.6-terra"
 	}
 	return &openAIProvider{apiKey: apiKey, model: model, baseURL: baseURL, client: &http.Client{}}
 }

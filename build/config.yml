@@ -1,0 +1,34 @@
+# Wails 3 development configuration. Production builds use Taskfile.yml.
+version: '3'
+
+info:
+  companyName: Andrea Cavallo
+  productName: adOmnia
+  productIdentifier: com.adomnia.app
+  description: Local-first API developer toolbox
+  copyright: © 2026 Andrea Cavallo. All rights reserved.
+  comments: Local-first API developer toolbox — REST, gRPC, WebSocket, Kafka, mock server, browser debugging and more.
+  version: 0.7.0
+
+dev_mode:
+  root_path: ..
+  log_level: warn
+  debounce: 1000
+  ignore:
+    dir:
+      - .git
+      - node_modules
+      - frontend
+      - bin
+    watched_extension:
+      - '*.go'
+    git_ignore: true
+  executes:
+    - cmd: wails3 task common:install:frontend:deps
+      type: once
+    - cmd: wails3 task common:dev:frontend
+      type: background
+    - cmd: wails3 task build
+      type: blocking
+    - cmd: wails3 task run
+      type: primary

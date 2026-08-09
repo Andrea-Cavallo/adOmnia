@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, Suspense } from 'react'
-import { ArrowLeft, Check, Save, Send, SlidersHorizontal, Trash2, X } from 'lucide-react'
+import { ArrowLeft, Check, Columns2, PanelsTopLeft, Rows2, Save, Send, Trash2, Wrench, X } from 'lucide-react'
 import { useAppStore, type RailItem } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
 import { useCollectionsStore } from '@/stores/collections'
@@ -12,7 +12,8 @@ import { TabBar } from '@/components/layout/TabBar'
 import { WelcomePanel } from '@/components/layout/WelcomePanel'
 import { LoadTestDrawer } from '@/components/loadtest/LoadTestDrawer'
 import { executeRequest } from '@/lib/executeRequest'
-import { uid, type EnvVariable, type HttpMethod, type RequestItem } from '@/lib/types'
+import { uid, type EnvVariable, type HttpMethod, type RequestItem, type Tab, type ToolTabId } from '@/lib/types'
+import type { TabViewState } from '@/stores/tabs'
 import { useT } from '@/lib/i18n'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 import { VarHighlightInput } from '@/components/ui/VarHighlightInput'
@@ -24,7 +25,10 @@ import { validateRequestParams, type RequestParamIssue } from '@/lib/requestPara
 import { appendMockEndpoints, createMockEndpointFromRequest } from '@/lib/mockEndpointStore'
 import { DropToast } from '@/components/layout/DropToast'
 import type { DropFeedback } from '@/hooks/useFileDrop'
-import { normalizeUrlInput } from '@/lib/urlInput'
+import { requestWithUrlInput, resolvedRequestUrl } from '@/lib/requestUrl'
+import { useNavigationTranslation, useUiTranslation } from '@/lib/uiI18n'
+import { DetachRequest, DetachRequestAndResponse } from '@/wailsjs/go/main/App'
+import { EventsOn } from '@/wailsjs/runtime/runtime'
 
 // ─── Lazy-loaded panels (loaded on first navigation) ──────────────────────────
 
@@ -57,17 +61,20 @@ const GitSyncPanel         = React.lazy(() => import('@/components/workspace/Git
 const McpPanel             = React.lazy(() => import('@/components/mcp/McpPanel').then(m => ({ default: m.McpPanel })))
 
 function PanelSkeleton() {
+  const tr = useUiTranslation()
   return (
     <div className="flex-1 flex items-center justify-center text-text-3">
       <div className="flex flex-col items-center gap-2">
         <div className="w-5 h-5 border-2 border-text-3 border-t-transparent rounded-full animate-spin" />
-        <span className="text-xs">Loading…</span>
+        <span className="text-xs">{tr('Loading…')}</span>
       </div>
     </div>
   )
 }
 
 function PanelHeader({ titleKey }: { titleKey?: string }) {
+  const tr = useUiTranslation()
+  const nav = useNavigationTranslation()
   const goBack = useAppStore((s) => s.goBack)
   const setActiveRail = useAppStore((s) => s.setActiveRail)
   const activeRail = useAppStore((s) => s.activeRail)
@@ -77,16 +84,16 @@ function PanelHeader({ titleKey }: { titleKey?: string }) {
   const t = useT()
   // The API Workspace home shows the live workspace name; other panels use their i18n title.
   const label = activeRail === 'collections'
-    ? (workspaces.find((w) => w.id === activeWorkspaceId)?.name ?? 'Workspace')
+    ? (workspaces.find((w) => w.id === activeWorkspaceId)?.name ?? tr('Workspace'))
     : titleKey && titleKey in t.rail
       ? t.rail[titleKey as keyof typeof t.rail]
-      : titleKey || ''
+      : nav(titleKey || '')
   return (
     <div className="h-10 flex items-center gap-2 px-3 border-b border-border-1 bg-surface-1 flex-shrink-0">
       <button
         onClick={goBack}
         disabled={!hasHistory}
-        title="Back (Alt + ←)"
+        title={tr('Back (Alt + ←)')}
         className="h-6 w-6 flex items-center justify-center rounded text-text-3 hover:text-text-1 hover:bg-surface-3 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
       >
         <ArrowLeft size={13} />
@@ -99,7 +106,7 @@ function PanelHeader({ titleKey }: { titleKey?: string }) {
           // screen; every other panel closes back to the API Workspace.
           else setActiveRail(activeRail === 'collections' ? 'welcome' : 'collections')
         }}
-        title="Close panel"
+        title={tr('Close panel')}
         className="h-6 w-6 flex items-center justify-center rounded text-text-3 hover:text-text-1 hover:bg-surface-3 transition-colors"
       >
         <X size={12} />
@@ -118,7 +125,11 @@ type PendingClose =
 // ─── Resizable divider between Composer (left) and ResponsePanel (right) ─────
 
 const COMPOSER_WIDTH_KEY = 'adomnia.composerWidth'
+const COMPOSER_HEIGHT_KEY = 'adomnia.composerHeight'
+const REQUEST_RESPONSE_LAYOUT_KEY = 'adomnia.requestResponseLayout'
 const COMPOSER_WIDTH_MIN  = 280
+const COMPOSER_HEIGHT_MIN = 240
+type RequestResponseLayout = 'horizontal' | 'vertical'
 
 function composerWidthMaxRatio(): number {
   if (window.innerWidth < 1180) return 0.60
@@ -153,12 +164,74 @@ function clampComposerWidth(w: number): number {
   return Math.max(COMPOSER_WIDTH_MIN, Math.min(w, Math.round(window.innerWidth * composerWidthMaxRatio())))
 }
 
+function clampComposerHeight(h: number): number {
+  return Math.max(COMPOSER_HEIGHT_MIN, Math.min(h, Math.round(window.innerHeight * 0.68)))
+}
+
 function loadComposerWidth(): number {
   try {
     const stored = localStorage.getItem(COMPOSER_WIDTH_KEY)
     if (stored) return clampComposerWidth(parseInt(stored, 10))
   } catch { /* ignore */ }
   return Math.round(window.innerWidth * defaultComposerWidthRatio())
+}
+
+function loadComposerHeight(): number {
+  try {
+    const stored = localStorage.getItem(COMPOSER_HEIGHT_KEY)
+    if (stored) return clampComposerHeight(parseInt(stored, 10))
+  } catch { /* ignore */ }
+  return clampComposerHeight(Math.round(window.innerHeight * 0.52))
+}
+
+function loadRequestResponseLayout(): RequestResponseLayout {
+  try {
+    return localStorage.getItem(REQUEST_RESPONSE_LAYOUT_KEY) === 'vertical' ? 'vertical' : 'horizontal'
+  } catch {
+    return 'horizontal'
+  }
+}
+
+function RequestPaneHeader({ layout, onLayoutChange, onDetachRequestAndResponse }: {
+  layout: RequestResponseLayout
+  onLayoutChange: (layout: RequestResponseLayout) => void
+  onDetachRequestAndResponse?: () => void
+}) {
+  const tr = useUiTranslation()
+  return (
+    <div className="flex h-9 shrink-0 items-center gap-2 border-b border-border-1 bg-surface-1 px-3">
+      <span className="flex-1 text-xs font-medium text-text-2">{tr('Request')}</span>
+      <div className="flex items-center rounded border border-border-2 bg-surface-2 p-0.5" role="group" aria-label={tr('Request and response layout')}>
+        {onDetachRequestAndResponse && <button
+          type="button"
+          onClick={() => onLayoutChange('horizontal')}
+          title={tr('Show Request and Response side by side')}
+          aria-label={tr('Show Request and Response side by side')}
+          className={cn('grid h-6 w-6 place-items-center rounded transition-colors', layout === 'horizontal' ? 'bg-accent/15 text-accent' : 'text-text-4 hover:bg-surface-3 hover:text-text-2')}
+        >
+          <Columns2 size={13} />
+        </button>}
+        <button
+          type="button"
+          onClick={() => onLayoutChange('vertical')}
+          title={tr('Stack Request above Response')}
+          aria-label={tr('Stack Request above Response')}
+          className={cn('grid h-6 w-6 place-items-center rounded transition-colors', layout === 'vertical' ? 'bg-accent/15 text-accent' : 'text-text-4 hover:bg-surface-3 hover:text-text-2')}
+        >
+          <Rows2 size={13} />
+        </button>
+        <button
+          type="button"
+          onClick={onDetachRequestAndResponse}
+          title={tr('Open Request and Response in separate windows')}
+          aria-label={tr('Open Request and Response in separate windows')}
+          className="grid h-6 w-6 place-items-center rounded text-text-4 transition-colors hover:bg-surface-3 hover:text-text-2"
+        >
+          <PanelsTopLeft size={13} />
+        </button>
+      </div>
+    </div>
+  )
 }
 
 function ActiveRequestBar({
@@ -188,8 +261,10 @@ function ActiveRequestBar({
   apiToolsOpen: boolean
   onToggleApiTools: () => void
 }) {
+  const tr = useUiTranslation()
   const [savedFlash, setSavedFlash] = useState(false)
   const urlInputRef = useRef<HTMLInputElement>(null)
+  const liveUrl = resolvedRequestUrl(request)
 
   useEffect(() => {
     const focusUrl = () => urlInputRef.current?.focus()
@@ -213,7 +288,7 @@ function ActiveRequestBar({
             'h-[var(--ui-control-h)] w-[82px] rounded-md border border-border-2 bg-surface-2 px-2 text-[11px] font-bold outline-none transition-colors focus:border-accent',
             METHOD_COLORS[request.method] ?? 'text-text-1',
           )}
-          title="HTTP method"
+          title={tr('HTTP method')}
         >
           {METHODS.map((method) => (
             <option key={method} value={method}>{method}</option>
@@ -222,8 +297,8 @@ function ActiveRequestBar({
 
         <div className="h-[var(--ui-control-h)] min-w-0 flex-1 overflow-hidden rounded-md border border-border-2 bg-surface-2 transition-colors focus-within:border-accent">
           <VarHighlightInput
-            value={request.url}
-            onChange={(url) => onChange({ ...request, url: normalizeUrlInput(url) })}
+            value={liveUrl}
+            onChange={(url) => onChange(requestWithUrlInput(request, url))}
             onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') onSend() }}
             resolvedVars={vars}
             hasActiveEnv={hasActiveEnv}
@@ -236,26 +311,27 @@ function ActiveRequestBar({
         {loading ? (
           <button
             onClick={onCancel}
-            title="Cancel request"
+            title={tr('Cancel request')}
             className="flex h-[var(--ui-control-h)] min-w-[88px] items-center justify-center gap-1.5 rounded-md bg-error px-3 text-[11px] font-bold text-white transition-colors hover:bg-error/85"
           >
             <X size={14} />
-            Cancel
+            {tr('Cancel')}
           </button>
         ) : (
           <button
             onClick={onSend}
             disabled={!request.url}
-            className="flex h-[var(--ui-control-h)] min-w-[88px] items-center justify-center gap-1.5 rounded-md bg-accent px-3 text-[11px] font-bold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
+            className="glass-action flex h-[var(--ui-control-h)] min-w-[88px] items-center justify-center gap-1.5 rounded-md px-3 text-[11px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Send size={14} />
-            Send
+            {tr('Send')}
           </button>
         )}
 
         <button
           onClick={onToggleApiTools}
-          title={apiToolsOpen ? 'Hide API tools' : 'Show API tools (redirects, timeout, cURL, encode…)'}
+          title={apiToolsOpen ? tr('Hide API tools') : tr('Show API tools (redirects, timeout, cURL, encode…)')}
+          aria-label={apiToolsOpen ? tr('Hide API tools') : tr('Show API tools (redirects, timeout, cURL, encode…)')}
           className={cn(
             'grid h-[var(--ui-control-h)] w-[var(--ui-control-h)] place-items-center rounded-md transition-colors',
             apiToolsOpen
@@ -263,12 +339,12 @@ function ActiveRequestBar({
               : 'text-text-3 hover:bg-surface-2 hover:text-text-1',
           )}
         >
-          <SlidersHorizontal size={14} />
+          <Wrench size={14} aria-hidden="true" />
         </button>
 
         <button
           onClick={handleSave}
-          title={isDirty ? 'Unsaved changes - Save to collection (Ctrl+S)' : 'Save to collection (Ctrl+S)'}
+          title={isDirty ? tr('Unsaved changes - Save to collection (Ctrl+S)') : tr('Save to collection (Ctrl+S)')}
           className={cn(
             'grid h-[var(--ui-control-h)] w-[var(--ui-control-h)] place-items-center rounded-md transition-all',
             savedFlash
@@ -283,7 +359,7 @@ function ActiveRequestBar({
 
         <button
           onClick={onDelete}
-          title="Delete request"
+          title={tr('Delete request')}
           className="grid h-[var(--ui-control-h)] w-[var(--ui-control-h)] place-items-center rounded-md text-text-3 transition-colors hover:bg-error/10 hover:text-error"
         >
           <Trash2 size={14} />
@@ -295,9 +371,39 @@ function ActiveRequestBar({
 
 // ─── RequestWorkspace ─────────────────────────────────────────────────────────
 
-function RequestWorkspace() {
+type RequestWorkspaceProps = {
+  /** A native detached window owns exactly one existing tab. */
+  standaloneTabId?: string
+  /** A split detached window renders just one half of the request workflow. */
+  standalonePane?: 'request' | 'response'
+}
+
+type RequestWindowSession = {
+  tabId: string
+  snapshot: string
+}
+
+type RequestWindowSnapshot = {
+  tab: Tab
+  viewState?: TabViewState
+  environmentId?: string | null
+}
+
+/** Renders a rail tool inside the tab workspace instead of the request UI. */
+function ToolTabPane({ tool }: { tool: ToolTabId }) {
+  return (
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+      <Suspense fallback={<PanelSkeleton />}>
+        {tool === 'jsonviewer' ? <JsonViewerPanel /> : <ApiDocsPanel />}
+      </Suspense>
+    </div>
+  )
+}
+
+export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWorkspaceProps) {
+  const tr = useUiTranslation()
   const allTabs = useTabsStore((s) => s.tabs)
-  const activeTabId = useTabsStore((s) => s.activeTabId)
+  const selectedTabId = useTabsStore((s) => s.activeTabId)
   const setActiveTab = useTabsStore((s) => s.setActiveTab)
   const closeTab = useTabsStore((s) => s.closeTab)
   const closeRequestTabs = useTabsStore((s) => s.closeRequestTabs)
@@ -313,18 +419,25 @@ function RequestWorkspace() {
   const setResponse = useTabsStore((s) => s.setResponse)
   const markClean = useTabsStore((s) => s.markClean)
   const updateViewState = useTabsStore((s) => s.updateViewState)
+  const detachedTabIds = useTabsStore((s) => s.detachedTabIds)
+  const setDetached = useTabsStore((s) => s.setDetached)
+  const replaceTabSnapshot = useTabsStore((s) => s.replaceTabSnapshot)
   const updateCollectionRequest = useCollectionsStore((s) => s.updateRequest)
   const deleteCollectionNode = useCollectionsStore((s) => s.deleteNode)
   const collections = useCollectionsStore((s) => s.collections)
   const activeWorkspaceId = useCollectionsStore((s) => s.activeWorkspaceId)
   const tabs = useMemo(
-    () => allTabs.filter((tab) => (tab.workspaceId ?? activeWorkspaceId) === activeWorkspaceId),
-    [activeWorkspaceId, allTabs],
+    () => standaloneTabId
+      ? allTabs.filter((tab) => tab.id === standaloneTabId)
+      : allTabs.filter((tab) => (tab.workspaceId ?? activeWorkspaceId) === activeWorkspaceId && !detachedTabIds[tab.id]),
+    [activeWorkspaceId, allTabs, detachedTabIds, standaloneTabId],
   )
+  const activeTabId = standaloneTabId ?? selectedTabId
   const confirmBeforeClosingDirtyTabs = useSettingsStore((s) => s.settings.general.confirmBeforeClosingDirtyTabs)
 
   const environments = useEnvironmentsStore((s) => s.environments)
   const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
+  const setActiveEnv = useEnvironmentsStore((s) => s.setActiveEnv)
   const updateVariables = useEnvironmentsStore((s) => s.updateVariables)
   const getResolvedVars = useEnvironmentsStore((s) => s.getResolvedVars)
 
@@ -342,6 +455,65 @@ function RequestWorkspace() {
       return next
     })
   }, [])
+
+  const detachTab = useCallback(async (tabId: string) => {
+    const tab = useTabsStore.getState().tabs.find((candidate) => candidate.id === tabId)
+    if (!tab || detachedTabIds[tabId]) return
+    const snapshot = JSON.stringify({
+      tab,
+      viewState: useTabsStore.getState().getViewState(tabId),
+      environmentId: useEnvironmentsStore.getState().activeEnvId,
+    })
+    await DetachRequest(tabId, snapshot, tab.request.name || tab.request.url || tr('API Request'))
+    setDetached(tabId, true)
+    if (useTabsStore.getState().activeTabId === tabId) {
+      const nextTab = useTabsStore.getState().tabs.find((candidate) => candidate.id !== tabId && !detachedTabIds[candidate.id])
+      if (nextTab) setActiveTab(nextTab.id)
+    }
+  }, [detachedTabIds, setActiveTab, setDetached, tr])
+
+  const detachRequestAndResponse = useCallback(async () => {
+    const tab = useTabsStore.getState().tabs.find((candidate) => candidate.id === activeTabId)
+    if (!tab || tab.tool || detachedTabIds[tab.id]) return
+    const snapshot = JSON.stringify({
+      tab,
+      viewState: useTabsStore.getState().getViewState(tab.id),
+      environmentId: useEnvironmentsStore.getState().activeEnvId,
+    })
+    await DetachRequestAndResponse(tab.id, snapshot, tab.request.name || tab.request.url || tr('API Request'))
+    setDetached(tab.id, true)
+    const nextTab = useTabsStore.getState().tabs.find((candidate) => candidate.id !== tab.id && !detachedTabIds[candidate.id])
+    if (nextTab) setActiveTab(nextTab.id)
+  }, [activeTabId, detachedTabIds, setActiveTab, setDetached, tr])
+
+  // The main window remains the coordinator while a native request window is
+  // open. It receives fresh snapshots and restores the same tab on attach or
+  // native close, without creating a second request model.
+  useEffect(() => {
+    if (standaloneTabId) return
+    const applySnapshot = (value: unknown, restoreToMain: boolean) => {
+      const session = value as RequestWindowSession
+      if (!session?.tabId || typeof session.snapshot !== 'string') return
+      try {
+        const snapshot = JSON.parse(session.snapshot) as RequestWindowSnapshot
+        if (!snapshot?.tab?.id) return
+        replaceTabSnapshot(snapshot.tab, snapshot.viewState)
+        if (restoreToMain) {
+          if ('environmentId' in snapshot) setActiveEnv(snapshot.environmentId ?? null)
+          setDetached(session.tabId, false)
+          setActiveTab(session.tabId)
+        }
+      } catch {
+        // An invalid detached snapshot must not disturb the main workspace.
+      }
+    }
+    const offUpdated = EventsOn('request-window:updated', (value) => applySnapshot(value, false))
+    const offAttached = EventsOn('request-window:attached', (value) => applySnapshot(value, true))
+    return () => {
+      offUpdated()
+      offAttached()
+    }
+  }, [replaceTabSnapshot, setActiveEnv, setActiveTab, setDetached, standaloneTabId])
   const [paramIssues, setParamIssues] = useState<RequestParamIssue[]>([])
   const [deleteRequestTarget, setDeleteRequestTarget] = useState<{
     requestId: string
@@ -351,21 +523,32 @@ function RequestWorkspace() {
   const composerScrollRef = useRef<HTMLDivElement>(null)
 
   // ── Resizable horizontal split: Composer (left) | drag | Response (right) ──
+  const [requestResponseLayout, setRequestResponseLayout] = useState<RequestResponseLayout>(loadRequestResponseLayout)
   const [composerWidth, setComposerWidth] = useState<number>(loadComposerWidth)
-  const dragRef = useRef<{ startX: number; startWidth: number } | null>(null)
+  const [composerHeight, setComposerHeight] = useState<number>(loadComposerHeight)
+  const dragRef = useRef<{ startX: number; startY: number; startSize: number } | null>(null)
   const isDraggingRef = useRef(false)
 
   const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
-    dragRef.current = { startX: e.clientX, startWidth: composerWidth }
+    dragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startSize: requestResponseLayout === 'horizontal' ? composerWidth : composerHeight,
+    }
     isDraggingRef.current = true
 
     const handleMove = (me: MouseEvent) => {
       if (!dragRef.current) return
-      const delta = me.clientX - dragRef.current.startX
-      const newW = clampComposerWidth(dragRef.current.startWidth + delta)
-      setComposerWidth(newW)
-      safeSetItem(COMPOSER_WIDTH_KEY, String(newW))
+      if (requestResponseLayout === 'horizontal') {
+        const newWidth = clampComposerWidth(dragRef.current.startSize + me.clientX - dragRef.current.startX)
+        setComposerWidth(newWidth)
+        safeSetItem(COMPOSER_WIDTH_KEY, String(newWidth))
+      } else {
+        const newHeight = clampComposerHeight(dragRef.current.startSize + me.clientY - dragRef.current.startY)
+        setComposerHeight(newHeight)
+        safeSetItem(COMPOSER_HEIGHT_KEY, String(newHeight))
+      }
     }
 
     const handleUp = () => {
@@ -377,17 +560,23 @@ function RequestWorkspace() {
       document.body.style.userSelect = ''
     }
 
-    document.body.style.cursor = 'ew-resize'
+    document.body.style.cursor = requestResponseLayout === 'horizontal' ? 'ew-resize' : 'ns-resize'
     document.body.style.userSelect = 'none'
     document.addEventListener('mousemove', handleMove)
     document.addEventListener('mouseup', handleUp)
-  }, [composerWidth])
+  }, [composerHeight, composerWidth, requestResponseLayout])
+
+  const changeRequestResponseLayout = useCallback((layout: RequestResponseLayout) => {
+    setRequestResponseLayout(layout)
+    safeSetItem(REQUEST_RESPONSE_LAYOUT_KEY, layout)
+  }, [])
 
   // Clamp width on window resize
   useEffect(() => {
     const onResize = () => {
       if (!isDraggingRef.current) {
         setComposerWidth((w) => clampComposerWidth(w))
+        setComposerHeight((h) => clampComposerHeight(h))
       }
     }
     window.addEventListener('resize', onResize)
@@ -396,6 +585,7 @@ function RequestWorkspace() {
   // ── End resizable split ─────────────────────────────────────────────────────
 
   const activeTab = tabs.find((t) => t.id === activeTabId)
+  const showRequestPane = standalonePane !== 'response'
   const oaSpec =
     activeTab?.collectionId
       ? collections.find((c) => c.id === activeTab.collectionId)?._openapiSpec
@@ -549,12 +739,21 @@ function RequestWorkspace() {
       return
     }
     try {
-      await appendMockEndpoints([endpoint])
+      const focusedEndpoint = {
+        ...endpoint,
+        ...(tab.collectionId ? { sourceCollectionId: tab.collectionId } : {}),
+        sourceRequestId: tab.request.id,
+      }
+      await appendMockEndpoints([focusedEndpoint])
+      sessionStorage.setItem('adomnia.mock.focus', JSON.stringify({
+        endpointId: focusedEndpoint.id,
+        collectionId: tab.collectionId ?? '',
+      }))
       useAppStore.getState().setActiveRail('mock')
     } catch (err) {
-      flashMockFeedback(err instanceof Error ? err.message : 'Could not create the mock endpoint', false)
+      flashMockFeedback(err instanceof Error ? err.message : tr('Could not create the mock endpoint'), false)
     }
-  }, [flashMockFeedback])
+  }, [flashMockFeedback, tr])
 
   const dirtyInDialog = pendingClose ? getDirtyTabsForPending(pendingClose) : []
 
@@ -564,9 +763,9 @@ function RequestWorkspace() {
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className="text-text-4 mb-1">
           <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.17 10.8 19.79 19.79 0 01.1 2.18 2 2 0 012.07.01h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z"/>
         </svg>
-        <p className="text-[13px] font-medium text-text-3">No request open</p>
+        <p className="text-[13px] font-medium text-text-3">{tr('No request open')}</p>
         <p className="text-[11px] text-text-4">
-          Select one from the sidebar or press{' '}
+          {tr('Select one from the sidebar or press')}{' '}
           <kbd className="px-1.5 py-0.5 bg-surface-2 border border-border-2 rounded text-[10px] font-mono text-text-3">Ctrl+N</kbd>
         </p>
       </div>
@@ -576,7 +775,7 @@ function RequestWorkspace() {
   return (
     <div className="relative flex-1 flex flex-col min-w-0 overflow-hidden">
       {mockFeedback && <DropToast feedback={mockFeedback} />}
-      <TabBar
+      {!standaloneTabId && <TabBar
         tabs={tabs}
         activeTabId={activeTabId}
         onSelect={setActiveTab}
@@ -590,8 +789,9 @@ function RequestWorkspace() {
         onTogglePinned={togglePinned}
         onRenameTab={handleRenameTab}
         onMockTab={handleMockTab}
-      />
-      {activeTab && (
+        onDetach={detachTab}
+      />}
+      {activeTab && !activeTab.tool && showRequestPane && (
         <ActiveRequestBar
           request={activeTab.request}
           isDirty={activeTab.dirty}
@@ -607,24 +807,69 @@ function RequestWorkspace() {
           onToggleApiTools={toggleApiTools}
         />
       )}
-      <ApiToolsBar
-        activeRequest={activeTab?.request ?? null}
-        onChangeRequest={(request) => activeTab && updateRequest(activeTab.id, request)}
-        onApplyRequest={(request) => activeTab && updateRequest(activeTab.id, request)}
-        onLoadTest={() => setShowLoadTest((v) => !v)}
-        open={apiToolsOpen}
-      />
+      {showRequestPane && <ApiToolsBar
+          activeRequest={activeTab && !activeTab.tool ? activeTab.request : null}
+          onChangeRequest={(request) => activeTab && updateRequest(activeTab.id, request)}
+          onApplyRequest={(request) => activeTab && updateRequest(activeTab.id, request)}
+          onLoadTest={() => setShowLoadTest((v) => !v)}
+          open={apiToolsOpen && !activeTab?.tool}
+        />}
 
-      {activeTab ? (
+      {activeTab?.tool ? (
+        <ToolTabPane tool={activeTab.tool} />
+      ) : activeTab ? (
+		standalonePane === 'request' ? (
+		  <div className="flex-1 min-h-0 overflow-hidden">
+			{showLoadTest ? (
+			  <LoadTestDrawer request={activeTab.request} onClose={() => setShowLoadTest(false)} />
+			) : (
+			  <Composer
+				key={activeTab.id}
+				tabId={activeTab.id}
+				request={activeTab.request}
+				onChange={(req) => updateRequest(activeTab.id, req)}
+				onSend={handleSend}
+				onSave={handleSave}
+				onLoadTest={() => setShowLoadTest((v) => !v)}
+				loading={activeTab.loading}
+				hideRequestBar
+			  />
+			)}
+		  </div>
+		) : standalonePane === 'response' ? (
+		  <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
+			<ResponsePanel
+			  key={activeTab.id}
+			  tabId={activeTab.id}
+			  response={activeTab.response}
+			  loading={activeTab.loading}
+			  oaSpec={oaSpec}
+			  oaPath={oaPath}
+			  oaMethod={oaMethod}
+			  assertions={activeTab.request.assertions}
+			/>
+		  </div>
+		) : (
         /* ── Horizontal split: Composer (left, fixed width) | drag | Response (right, flex-1) ── */
-        <div className="flex-1 min-h-0 flex flex-row overflow-hidden">
+        <div className={cn(
+          'flex-1 min-h-0 flex overflow-hidden',
+          requestResponseLayout === 'horizontal' ? 'flex-row' : 'flex-col',
+        )}>
           {/* Composer pane — left side, fixed width, independently scrollable */}
           <div
             ref={composerScrollRef}
             onScroll={(e) => updateViewState(activeTab.id, { composerScrollTop: e.currentTarget.scrollTop })}
-            className="shrink-0 min-h-0 overflow-hidden flex flex-col border-r border-border-1"
-            style={{ width: composerWidth }}
+            className={cn(
+              'shrink-0 min-h-0 overflow-hidden flex flex-col',
+              requestResponseLayout === 'horizontal' ? 'border-r border-border-1' : 'min-w-0 border-b border-border-1',
+            )}
+            style={requestResponseLayout === 'horizontal' ? { width: composerWidth } : { height: composerHeight }}
           >
+            <RequestPaneHeader
+              layout={requestResponseLayout}
+              onLayoutChange={changeRequestResponseLayout}
+              onDetachRequestAndResponse={standaloneTabId ? undefined : () => { void detachRequestAndResponse() }}
+            />
             <Composer
               key={activeTab.id}
               tabId={activeTab.id}
@@ -649,13 +894,14 @@ function RequestWorkspace() {
             <>
               {/* ── Vertical drag handle ────────────────────────────────────── */}
               <ResizeHandle
-                label="Drag to resize panels"
+                label={requestResponseLayout === 'horizontal' ? tr('Drag to resize panels') : tr('Drag to resize Request and Response heights')}
                 onMouseDown={handleResizeMouseDown}
                 withLine={false}
+                orientation={requestResponseLayout === 'horizontal' ? 'vertical' : 'horizontal'}
               />
 
               {/* ── Response pane — right side, fills remaining space ── */}
-              <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div className="flex-1 flex min-h-0 min-w-0 flex-col overflow-hidden">
                 <ResponsePanel
                   key={activeTab.id}
                   tabId={activeTab.id}
@@ -670,17 +916,18 @@ function RequestWorkspace() {
             </>
           )}
         </div>
+        )
       ) : null}
 
       {/* Save-before-close dialog */}
       {pendingClose && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="bg-surface-1 border border-border-1 rounded-xl shadow-2xl w-[420px] p-5 space-y-4">
-            <h2 className="text-sm font-semibold text-text-1">Unsaved Changes</h2>
+            <h2 className="text-sm font-semibold text-text-1">{tr('Unsaved Changes')}</h2>
             <p className="text-xs text-text-3">
               {dirtyInDialog.length === 1
-                ? <>Tab <span className="text-text-1 font-medium">"{dirtyInDialog[0].request.name || dirtyInDialog[0].request.url || 'Untitled'}"</span> has unsaved changes.</>
-                : <>{dirtyInDialog.length} tabs have unsaved changes.</>
+                ? <><span className="text-text-1 font-medium">"{dirtyInDialog[0].request.name || dirtyInDialog[0].request.url || tr('Untitled')}"</span>: {tr('Tab has unsaved changes.')}</>
+                : <>{dirtyInDialog.length} {tr('tabs have unsaved changes.')}</>
               }
             </p>
             {dirtyInDialog.length > 1 && (
@@ -688,7 +935,7 @@ function RequestWorkspace() {
                 {dirtyInDialog.map((t) => (
                   <li key={t.id} className="flex items-center gap-2 text-xs text-text-2 px-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
-                    {t.request.name || t.request.url || 'Untitled'}
+                    {t.request.name || t.request.url || tr('Untitled')}
                   </li>
                 ))}
               </ul>
@@ -698,20 +945,20 @@ function RequestWorkspace() {
                 onClick={() => setPendingClose(null)}
                 className="px-3 py-1.5 text-xs text-text-3 hover:text-text-1 transition-colors"
               >
-                Cancel
+                {tr('Cancel')}
               </button>
               <button
                 onClick={() => executePendingClose(pendingClose, false)}
                 className="px-3 py-1.5 text-xs font-medium text-error hover:text-red-300 bg-surface-2 hover:bg-surface-3 rounded-md transition-colors"
               >
-                Discard & Close
+                {tr('Discard & Close')}
               </button>
               {dirtyInDialog.some((t) => t.collectionId) && (
                 <button
                   onClick={() => executePendingClose(pendingClose, true)}
                   className="px-3 py-1.5 text-xs font-medium bg-accent text-white rounded-md hover:opacity-90 transition-colors"
                 >
-                  Save & Close
+                  {tr('Save & Close')}
                 </button>
               )}
             </div>
@@ -723,11 +970,11 @@ function RequestWorkspace() {
 
       <ConfirmDialog
         open={Boolean(deleteRequestTarget)}
-        title="Delete request?"
+        title={tr('Delete request?')}
         message={deleteRequestTarget?.collectionId
-          ? `Are you sure you want to delete "${deleteRequestTarget.name}"? The request will be removed from its collection and all open tabs.`
-          : `Are you sure you want to delete "${deleteRequestTarget?.name ?? 'Untitled'}"? This unsaved request will be discarded.`}
-        confirmLabel="Delete"
+          ? `"${deleteRequestTarget.name}": ${tr('Are you sure you want to delete this saved request? The request will be removed from its collection and all open tabs.')}`
+          : `"${deleteRequestTarget?.name ?? tr('Untitled')}": ${tr('Are you sure you want to delete this unsaved request? It will be discarded.')}`}
+        confirmLabel={tr('Delete')}
         variant="danger"
         onConfirm={deleteActiveRequest}
         onCancel={() => setDeleteRequestTarget(null)}

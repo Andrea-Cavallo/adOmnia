@@ -18,6 +18,7 @@ export const MarkdownPreview = forwardRef<HTMLDivElement, MarkdownPreviewProps>(
   return (
     <div
       ref={ref}
+      data-a11y-click-exempt="delegated-native-links"
       className={cn('flex-1 p-5 overflow-y-auto bg-surface-0', className)}
       onScroll={onScroll}
       onClick={(event) => {

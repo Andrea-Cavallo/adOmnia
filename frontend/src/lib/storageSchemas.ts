@@ -30,11 +30,3 @@ export type StorageSchemaName = keyof typeof STORAGE_SCHEMAS
 export function storageSchema(name: StorageSchemaName): StorageSchemaDefinition {
   return STORAGE_SCHEMAS[name]
 }
-
-export function versionedEnvelope<T>(
-  schema: StorageSchemaDefinition,
-  dataKey: string,
-  data: T,
-): Record<string, unknown> {
-  return { version: schema.currentVersion, [dataKey]: data }
-}

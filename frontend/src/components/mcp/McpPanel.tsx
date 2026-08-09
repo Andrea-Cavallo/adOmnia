@@ -1,3 +1,4 @@
+import { isDesktopRuntime } from '@/lib/desktopRuntime'
 import { useEffect, useMemo, useState } from 'react'
 import {
   ChevronDown,
@@ -38,6 +39,7 @@ import {
   type McpTool,
 } from '@/stores/mcp'
 import { McpServerGenPanel } from './McpServerGenPanel'
+import { handleKeyboardActivation } from '@/lib/accessibility'
 
 type McpView = 'debugger' | 'generator'
 type ExplorerView = 'grid' | 'list'
@@ -83,10 +85,9 @@ function formatJSON(raw: string): string {
   }
 }
 
+// Wails 3 has no `window.go` global; services come from generated bindings.
 function hasMcpBinding() {
-  return typeof (window as unknown as {
-    go?: { main?: { MCPClient?: unknown } }
-  }).go?.main?.MCPClient === 'object'
+  return isDesktopRuntime()
 }
 
 function readProperties(tool: McpTool | null): Record<string, SchemaProperty> {
@@ -226,6 +227,7 @@ function McpControlRoom() {
     clearHistory,
     setSessions,
     setRestarting,
+    hydrateConfigs,
   } = useMcpStore()
 
   const workspaces = useCollectionsStore((state) => state.workspaces)
@@ -273,6 +275,14 @@ function McpControlRoom() {
     const q = serverSearch.trim().toLowerCase()
     return savedConfigs.filter((cfg) => !q || `${cfg.name} ${cfg.transport} ${cfg.command} ${cfg.baseURL}`.toLowerCase().includes(q))
   }, [savedConfigs, serverSearch])
+
+  useEffect(() => {
+    void hydrateConfigs()
+  }, [hydrateConfigs])
+
+  useEffect(() => {
+    if (savedConfigs.length > 0) setShowForm(false)
+  }, [savedConfigs.length])
 
   useEffect(() => {
     if (!tool && capabilities.tools.length > 0) setSelectedTool(capabilities.tools[0].name)
@@ -885,38 +895,38 @@ function ServerGroup(props: {
           const connected = props.sessions[cfg.id]?.status === 'connected'
           const active = props.activeConfigId === cfg.id
           return (
-            <button
-              type="button"
+            <div
               key={cfg.id}
-              onClick={() => props.onSelect(cfg.id)}
               className={cn(
-                'group w-full rounded-lg border p-3 text-left transition-colors',
+                'group w-full rounded-lg border text-left transition-colors focus-within:ring-2 focus-within:ring-accent',
                 active ? 'border-accent/70 bg-accent/14 shadow-[0_0_22px_var(--color-accent-glow)]' : 'border-border-1 bg-surface-2 hover:border-border-2',
               )}
             >
-              <div className="flex items-center gap-2">
-                <Server size={17} className={connected ? 'text-success' : 'text-text-3'} />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-[12px] font-semibold text-text-1">{cfg.name}</div>
-                  <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-text-3">
-                    <span>{cfg.transport.toUpperCase()}</span>
-                    <span>•</span>
-                    <span className={connected ? 'text-success' : 'text-text-4'}>{connected ? 'Connected' : 'Idle'}</span>
-                  </div>
-                </div>
-                <span className="rounded-md bg-surface-3 px-2 py-1 text-[10px] font-semibold text-text-2">{active ? props.capabilitiesCount : ''}</span>
-              </div>
-              <div className="mt-3 flex items-center gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
-                {connected ? (
-                  <span onClick={(event) => { event.stopPropagation(); props.onDisconnect(cfg.id) }} className="rounded border border-border-1 px-2 py-1 text-[10px] text-text-2 hover:text-text-1">Disconnect</span>
-                ) : (
-                  <span onClick={(event) => { event.stopPropagation(); props.onConnect(cfg) }} className="rounded border border-accent/30 px-2 py-1 text-[10px] text-accent hover:bg-accent/10">Connect</span>
-                )}
-                <span onClick={(event) => { event.stopPropagation(); props.onRemove(cfg.id) }} className="ml-auto rounded p-1 text-text-4 hover:bg-error/10 hover:text-error">
-                  <Trash2 size={12} />
+              <button type="button" aria-pressed={active} onClick={() => props.onSelect(cfg.id)} className="w-full p-3 pb-0 text-left outline-none">
+                <span className="flex items-center gap-2">
+                  <Server size={17} className={connected ? 'text-success' : 'text-text-3'} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[12px] font-semibold text-text-1">{cfg.name}</span>
+                    <span className="mt-0.5 flex items-center gap-1.5 text-[10px] text-text-3">
+                      <span>{cfg.transport.toUpperCase()}</span>
+                      <span>•</span>
+                      <span className={connected ? 'text-success' : 'text-text-4'}>{connected ? 'Connected' : 'Idle'}</span>
+                    </span>
+                  </span>
+                  <span className="rounded-md bg-surface-3 px-2 py-1 text-[10px] font-semibold text-text-2">{active ? props.capabilitiesCount : ''}</span>
                 </span>
+              </button>
+              <div className="mx-3 mb-3 mt-3 flex items-center gap-1.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                {connected ? (
+                  <button type="button" onClick={(event) => { event.stopPropagation(); props.onDisconnect(cfg.id) }} className="rounded border border-border-1 px-2 py-1 text-[10px] text-text-2 hover:text-text-1">Disconnect</button>
+                ) : (
+                  <button type="button" onClick={(event) => { event.stopPropagation(); props.onConnect(cfg) }} className="rounded border border-accent/30 px-2 py-1 text-[10px] text-accent hover:bg-accent/10">Connect</button>
+                )}
+                <button type="button" aria-label={`Remove ${cfg.name}`} title={`Remove ${cfg.name}`} onClick={(event) => { event.stopPropagation(); props.onRemove(cfg.id) }} className="ml-auto rounded p-1 text-text-4 hover:bg-error/10 hover:text-error">
+                  <Trash2 size={12} />
+                </button>
               </div>
-            </button>
+            </div>
           )
         })}
       </div>
@@ -999,8 +1009,12 @@ function CallHistoryTable({ history, selectedHistoryId, onSelect, onClear }: {
             {history.map((entry) => (
               <tr
                 key={entry.id}
+                role="button"
+                tabIndex={0}
+                aria-label={`Inspect ${entry.toolName} call from ${new Date(entry.ts).toLocaleTimeString()}`}
                 onClick={() => onSelect(selectedHistoryId === entry.id ? null : entry.id)}
-                className={cn('cursor-pointer border-t border-border-1 hover:bg-surface-2', selectedHistoryId === entry.id && 'bg-accent/10')}
+                onKeyDown={(event) => handleKeyboardActivation(event, () => onSelect(selectedHistoryId === entry.id ? null : entry.id))}
+                className={cn('cursor-pointer border-t border-border-1 hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent', selectedHistoryId === entry.id && 'bg-accent/10')}
               >
                 <td className="px-4 py-2 text-text-2">{new Date(entry.ts).toLocaleTimeString()}</td>
                 <td className="px-4 py-2 font-mono text-text-2">{entry.toolName}</td>

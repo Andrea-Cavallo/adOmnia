@@ -42,6 +42,7 @@ import {
   MOCK_FLOW_DEMO_NAME,
 } from '@/lib/mockFlowDemo'
 import { runApiFlow, validateFlowGraph, type RunEntry, type RuntimeByNode } from '@/lib/flowRunner'
+import { handleKeyboardActivation } from '@/lib/accessibility'
 import {
   loadFlowDefinitions,
   saveFlowDefinitions,
@@ -335,6 +336,7 @@ function FlowCanvas({
       </div>
 
       <div
+        data-a11y-click-exempt="canvas-deselect"
         className="absolute inset-0 overflow-auto bg-[radial-gradient(var(--color-border-1)_1px,transparent_1px)] bg-[size:22px_22px]"
         onClick={() => onSelect(null)}
       >
@@ -734,15 +736,16 @@ function FlowRunTimeline({ entries, running, selectedNodeId, onSelect, onClear }
 
   return (
     <div className={cn('flex-shrink-0 border-t border-border-1 bg-surface-1', collapsed ? 'h-11' : 'h-[218px]')}>
-      <button onClick={() => setCollapsed((value) => !value)} className="flex h-11 w-full items-center gap-3 border-b border-border-1 px-4 text-left">
-        <ChevronDown size={15} className={cn('text-text-4 transition-transform', collapsed && '-rotate-90')} />
-        <span className="text-sm font-semibold text-text-1">Execution Timeline</span>
-        {running && <span className="inline-flex items-center gap-1 rounded-md bg-accent/10 px-2 py-1 text-[11px] font-semibold text-accent"><Loader2 size={12} className="animate-spin" /> Running</span>}
-        {!running && entries.length > 0 && <span className={cn('inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold', success ? 'bg-success/10 text-success' : 'bg-error/10 text-error')}>{success ? <CheckCircle2 size={12} /> : <XCircle size={12} />}{success ? 'Success' : 'Failed'}</span>}
-        <span className="text-xs text-text-4">{entries.length} entries</span>
-        <span className="flex-1" />
-        <span onClick={(event) => { event.stopPropagation(); onClear() }} className="rounded-md px-2 py-1 text-[11px] font-semibold text-text-4 hover:bg-surface-2 hover:text-text-1">Clear</span>
-      </button>
+      <div className="flex h-11 items-center border-b border-border-1 pr-2">
+        <button aria-expanded={!collapsed} onClick={() => setCollapsed((value) => !value)} className="flex h-full min-w-0 flex-1 items-center gap-3 px-4 text-left">
+          <ChevronDown size={15} className={cn('text-text-4 transition-transform', collapsed && '-rotate-90')} />
+          <span className="text-sm font-semibold text-text-1">Execution Timeline</span>
+          {running && <span className="inline-flex items-center gap-1 rounded-md bg-accent/10 px-2 py-1 text-[11px] font-semibold text-accent"><Loader2 size={12} className="animate-spin" /> Running</span>}
+          {!running && entries.length > 0 && <span className={cn('inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold', success ? 'bg-success/10 text-success' : 'bg-error/10 text-error')}>{success ? <CheckCircle2 size={12} /> : <XCircle size={12} />}{success ? 'Success' : 'Failed'}</span>}
+          <span className="text-xs text-text-4">{entries.length} entries</span>
+        </button>
+        <button type="button" onClick={onClear} disabled={entries.length === 0} className="rounded-md px-2 py-1 text-[11px] font-semibold text-text-4 hover:bg-surface-2 hover:text-text-1 disabled:opacity-40">Clear</button>
+      </div>
 
       {!collapsed && (
         <div className="h-[calc(100%-2.75rem)] overflow-auto">
@@ -762,7 +765,15 @@ function FlowRunTimeline({ entries, running, selectedNodeId, onSelect, onClear }
               </thead>
               <tbody>
                 {entries.map((entry, index) => (
-                  <tr key={entry.id} onClick={() => onSelect(entry.nodeId)} className={cn('cursor-pointer border-b border-border-1 hover:bg-surface-2/70', selectedNodeId === entry.nodeId && 'bg-accent/10')}>
+                  <tr
+                    key={entry.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Inspect ${entry.nodeLabel} execution`}
+                    onClick={() => onSelect(entry.nodeId)}
+                    onKeyDown={(event) => handleKeyboardActivation(event, () => onSelect(entry.nodeId))}
+                    className={cn('cursor-pointer border-b border-border-1 hover:bg-surface-2/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent', selectedNodeId === entry.nodeId && 'bg-accent/10')}
+                  >
                     <td className="px-4 py-2"><span className={cn('grid h-6 w-6 place-items-center rounded-full border text-[11px] font-bold', entry.status === 'success' ? 'border-success/35 bg-success/10 text-success' : entry.status === 'failed' ? 'border-error/35 bg-error/10 text-error' : 'border-border-2 bg-surface-2 text-text-4')}>{index + 1}</span></td>
                     <td className="px-4 py-2 font-semibold text-text-1">{entry.nodeLabel}</td>
                     <td className="px-4 py-2"><span className={cn('rounded-md px-2 py-1 text-[10px] font-bold uppercase', entry.status === 'success' ? 'bg-success/10 text-success' : entry.status === 'failed' ? 'bg-error/10 text-error' : 'bg-warning/10 text-warning')}>{entry.status}</span></td>

@@ -35,7 +35,7 @@ $ErrorActionPreference = "Stop"
 
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 $FrontendDir = Join-Path $ProjectRoot "frontend"
-$WailsOutDir = Join-Path $ProjectRoot "build\bin"
+$WailsOutDir = Join-Path $ProjectRoot "bin"
 $WailsOutExe = Join-Path $WailsOutDir "adomnia.exe"
 $AppIcon = Join-Path $ProjectRoot "build\appicon.png"
 $WindowsIcon = Join-Path $ProjectRoot "build\windows\icon.ico"
@@ -89,14 +89,14 @@ $wailsBin = $null
 
 if (-not $GoOnly) {
     # 1. PATH
-    $wailsCmd = Get-Command wails -ErrorAction SilentlyContinue
+    $wailsCmd = Get-Command wails3 -ErrorAction SilentlyContinue
     if ($wailsCmd) { $wailsBin = $wailsCmd.Source }
 
     # 2. GOPATH/bin
     if (-not $wailsBin) {
         $gopath = (go env GOPATH 2>$null)
         if ($gopath) {
-            $candidate = Join-Path $gopath "bin\wails.exe"
+            $candidate = Join-Path $gopath "bin\wails3.exe"
             if (Test-Path $candidate) { $wailsBin = $candidate }
         }
     }
@@ -104,9 +104,9 @@ if (-not $GoOnly) {
     # 3. Common locations
     if (-not $wailsBin) {
         $extras = @(
-            "$env:USERPROFILE\go\bin\wails.exe",
-            "$env:USERPROFILE\Documents\Workspaces\GO-LANG-WORKSPACE\bin\wails.exe",
-            "C:\Users\Andrea\Documents\Workspaces\GO-LANG-WORKSPACE\bin\wails.exe"
+            "$env:USERPROFILE\go\bin\wails3.exe",
+            "$env:USERPROFILE\Documents\Workspaces\GO-LANG-WORKSPACE\bin\wails3.exe",
+            "C:\Users\Andrea\Documents\Workspaces\GO-LANG-WORKSPACE\bin\wails3.exe"
         )
         foreach ($c in $extras) {
             if (Test-Path $c) { $wailsBin = $c; break }
@@ -114,12 +114,17 @@ if (-not $GoOnly) {
     }
 
     if ($wailsBin) {
-        $wailsVerRaw = & $wailsBin version 2>$null | Select-Object -First 1
-        if (-not $wailsVerRaw) { $wailsVerRaw = "(ok)" }
-        Write-Host "OK  Wails: $wailsVerRaw" -ForegroundColor Green
+        # In Wails 3 beta, `version` writes to the native error stream. With
+        # ErrorActionPreference=Stop that turns a successful probe into a
+        # terminating PowerShell error, so do not execute it during discovery.
+        $wailsBinDir = Split-Path -Parent $wailsBin
+        if (($env:Path -split ';') -notcontains $wailsBinDir) {
+            $env:Path = "$wailsBinDir;$env:Path"
+        }
+        Write-Host "OK  Wails 3: $wailsBin" -ForegroundColor Green
     } else {
         Write-Host "WARN Wails not found -- falling back to go build (no PE metadata)" -ForegroundColor Yellow
-        Write-Host "     Install: go install github.com/wailsapp/wails/v2/cmd/wails@latest" -ForegroundColor Yellow
+        Write-Host "     Install: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.5" -ForegroundColor Yellow
     }
 }
 
@@ -158,18 +163,23 @@ $buildDate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
 
 # ---- Wails build (recommended) -----------------------------------------------
 if ($wailsBin -and (-not $GoOnly)) {
-    Write-Host "--- Building with Wails (icon + manifest + Windows version info)..." -ForegroundColor Cyan
+    Write-Host "--- Building with Wails 3..." -ForegroundColor Cyan
     Write-Host "==> Version:  $Version"
     Write-Host "==> Commit:   $gitCommit"
     Write-Host "==> Output:   $Output"
     Write-Host ""
 
-    $ldflags = "-X main.Version=$Version -X main.BuildDate=$buildDate -X main.GitCommit=$gitCommit"
-
     Set-Location $ProjectRoot
-    # Normal builds preserve the previous executable until replacement succeeds.
-    # Use this script's -Clean switch when an explicit cleanup is required.
-    & $wailsBin build -ldflags $ldflags
+    $previousVersion = $env:VERSION
+    $previousBuildDate = $env:BUILD_DATE
+    $previousGitCommit = $env:GIT_COMMIT
+    $env:VERSION = $Version
+    $env:BUILD_DATE = $buildDate
+    $env:GIT_COMMIT = $gitCommit
+    & $wailsBin task build
+    $env:VERSION = $previousVersion
+    $env:BUILD_DATE = $previousBuildDate
+    $env:GIT_COMMIT = $previousGitCommit
 
     if ($LASTEXITCODE -ne 0) {
         Write-Host "ERR Wails build failed." -ForegroundColor Red
@@ -233,7 +243,7 @@ if ($wailsBin -and (-not $GoOnly)) {
 
     Set-Location $ProjectRoot
     $env:CGO_ENABLED = "1"
-    go build -ldflags $ldflags -o $Output .
+    go build -buildvcs=false -trimpath -tags production -ldflags $ldflags -o $Output .
 
     if ($LASTEXITCODE -ne 0) {
         Write-Host "ERR Go build failed." -ForegroundColor Red
@@ -279,16 +289,11 @@ Write-Host "  $Output  ($sizeMB MB)" -ForegroundColor Cyan
 
 if ($wailsBin -and (-not $GoOnly)) {
     Write-Host ""
-    Write-Host "  Metadata embedded (visible in File Properties):" -ForegroundColor Green
-    Write-Host "    Author:     Andrea Cavallo" -ForegroundColor DarkGray
-    Write-Host "    Copyright:  (C) 2026 Andrea Cavallo. All rights reserved." -ForegroundColor DarkGray
-    Write-Host "    Product:    adOmnia" -ForegroundColor DarkGray
-    Write-Host "    Version:    $Version" -ForegroundColor DarkGray
-    Write-Host "    Manifest:   DPI-aware (per-monitor v2), Common Controls v6" -ForegroundColor DarkGray
-    Write-Host "    Icon:       embedded from build/windows/icon.ico" -ForegroundColor DarkGray
+    Write-Host "  Built through the Wails 3 Taskfile pipeline." -ForegroundColor Green
+    Write-Host "  Version metadata: $Version" -ForegroundColor DarkGray
 } else {
     Write-Host ""
-    Write-Host "  NOTE: No Windows metadata embedded." -ForegroundColor Yellow
-    Write-Host "        Run without -GoOnly to use Wails for a full release build." -ForegroundColor Yellow
+    Write-Host "  NOTE: Built without Wails 3 binding regeneration." -ForegroundColor Yellow
+    Write-Host "        Run without -GoOnly for the standard release pipeline." -ForegroundColor Yellow
 }
 Write-Host ""

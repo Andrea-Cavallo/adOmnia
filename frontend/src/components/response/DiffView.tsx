@@ -12,6 +12,7 @@ import { X, ChevronUp, ChevronDown, EyeOff, Eye, GitCompare, Copy, Download, Max
 import { useTabsStore } from '@/stores/tabs'
 import { useCollectionsStore } from '@/stores/collections'
 import { cn } from '@/lib/utils'
+import { useUiTranslation } from '@/lib/uiI18n'
 
 // ─── Diff algorithm ───────────────────────────────────────────────────────────
 
@@ -252,6 +253,8 @@ export function DiffModal({
   defaultDiffOnly = true,
   onClose,
 }: DiffModalProps) {
+  const tr = useUiTranslation()
+  const displayTitle = title === 'Response Compare' ? tr('Response Compare') : title
   const [diffOnly, setDiffOnly] = useState(defaultDiffOnly)
   const [diffPos, setDiffPos] = useState(0)
   const [viewMode, setViewMode] = useState<'side-by-side' | 'unified'>('side-by-side')
@@ -331,11 +334,11 @@ export function DiffModal({
         {/* Header */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-border-1 flex-shrink-0">
           <GitCompare size={14} className="text-accent" />
-          <span className="text-sm font-semibold text-text-1 flex-1 truncate">{title}</span>
+          <span className="text-sm font-semibold text-text-1 flex-1 truncate">{displayTitle}</span>
 
           {/* Summary badges */}
           {identical ? (
-            <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-success/20 text-success">Identical</span>
+            <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-success/20 text-success">{tr('Identical')}</span>
           ) : (
             <>
               <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-error/15 text-error">−{removedCount}</span>
@@ -353,14 +356,14 @@ export function DiffModal({
               className={cn('px-2 py-0.5 rounded transition-colors',
                 viewMode === 'side-by-side' ? 'bg-surface-3 text-text-1' : 'text-text-4 hover:text-text-2')}
             >
-              Side
+              {tr('Side')}
             </button>
             <button
               onClick={() => setViewMode('unified')}
               className={cn('px-2 py-0.5 rounded transition-colors',
                 viewMode === 'unified' ? 'bg-surface-3 text-text-1' : 'text-text-4 hover:text-text-2')}
             >
-              Unified
+              {tr('Unified')}
             </button>
           </div>
 
@@ -371,10 +374,10 @@ export function DiffModal({
               'flex items-center gap-1.5 px-2 py-1 rounded text-[10px] transition-colors',
               diffOnly ? 'bg-accent/20 text-accent' : 'text-text-4 hover:text-text-1 hover:bg-surface-2',
             )}
-            title={diffOnly ? 'Show full file' : 'Show only differences'}
+            title={diffOnly ? tr('Show full file') : tr('Show only differences')}
           >
             {diffOnly ? <EyeOff size={11} /> : <Eye size={11} />}
-            {diffOnly ? 'Diff only' : 'Full file'}
+            {diffOnly ? tr('Diff only') : tr('Full file')}
           </button>
 
           {(leftDownloadName || rightDownloadName) && (
@@ -383,18 +386,18 @@ export function DiffModal({
                 <button
                   onClick={() => downloadTextFile(leftPretty, leftDownloadName)}
                   className="flex items-center gap-1.5 px-2 py-1 rounded text-[10px] text-text-4 hover:text-text-1 hover:bg-surface-2"
-                  title="Download left side"
+                  title={tr('Download left side')}
                 >
-                  <Download size={11} /> Left
+                  <Download size={11} /> {tr('Left')}
                 </button>
               )}
               {rightDownloadName && (
                 <button
                   onClick={() => downloadTextFile(rightPretty, rightDownloadName)}
                   className="flex items-center gap-1.5 px-2 py-1 rounded text-[10px] text-text-4 hover:text-text-1 hover:bg-surface-2"
-                  title="Download right side"
+                  title={tr('Download right side')}
                 >
-                  <Download size={11} /> Right
+                  <Download size={11} /> {tr('Right')}
                 </button>
               )}
             </>
@@ -403,7 +406,7 @@ export function DiffModal({
           <button
             onClick={() => setFullscreen((value) => !value)}
             className="p-1 rounded text-text-4 hover:text-text-1 hover:bg-surface-2"
-            title={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+            title={fullscreen ? tr('Exit fullscreen') : tr('Fullscreen')}
           >
             {fullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
           </button>
@@ -415,7 +418,7 @@ export function DiffModal({
                 onClick={() => scrollToDiff(diffPos - 1)}
                 disabled={diffPositions.length === 0}
                 className="p-1 rounded text-text-4 hover:text-text-1 hover:bg-surface-2 disabled:opacity-30"
-                title="Prev diff (p)"
+                title={tr('Prev diff (p)')}
               >
                 <ChevronUp size={13} />
               </button>
@@ -423,7 +426,7 @@ export function DiffModal({
                 onClick={() => scrollToDiff(diffPos + 1)}
                 disabled={diffPositions.length === 0}
                 className="p-1 rounded text-text-4 hover:text-text-1 hover:bg-surface-2 disabled:opacity-30"
-                title="Next diff (n)"
+                title={tr('Next diff (n)')}
               >
                 <ChevronDown size={13} />
               </button>
@@ -442,7 +445,7 @@ export function DiffModal({
             <button
               onClick={copyLeft}
               className="p-0.5 rounded text-text-4 hover:text-text-1 hover:bg-surface-2 transition-colors flex-shrink-0 ml-2"
-              title="Copy left side"
+              title={tr('Copy left side')}
             >
               <Copy size={11} />
             </button>
@@ -452,7 +455,7 @@ export function DiffModal({
             <button
               onClick={copyRight}
               className="p-0.5 rounded text-text-4 hover:text-text-1 hover:bg-surface-2 transition-colors flex-shrink-0 ml-2"
-              title="Copy right side"
+              title={tr('Copy right side')}
             >
               <Copy size={11} />
             </button>
@@ -466,7 +469,7 @@ export function DiffModal({
           <div ref={containerRef} className="flex-1 overflow-auto font-mono text-[11px] leading-5">
             {identical ? (
               <div className="flex items-center justify-center h-full text-text-3 text-xs gap-2">
-                <span className="text-success text-lg">✓</span> Responses are identical
+                <span className="text-success text-lg">✓</span> {tr('Responses are identical')}
               </div>
             ) : (
               displayEntries.map((entry, idx) => {
@@ -474,7 +477,7 @@ export function DiffModal({
                   return (
                     <div key={idx} className="grid grid-cols-2 bg-surface-1 border-y border-border-1/40">
                       <div className="px-3 py-0.5 text-[9px] text-text-4 col-span-2">
-                        … {entry.count} unchanged line{entry.count !== 1 ? 's' : ''} …
+                        … {entry.count} {entry.count === 1 ? tr('unchanged line') : tr('unchanged lines')} …
                       </div>
                     </div>
                   )
@@ -540,9 +543,9 @@ export function DiffModal({
         {/* Footer hint */}
         {!identical && (
           <div className="flex items-center gap-3 px-4 py-1.5 border-t border-border-1 bg-surface-1 text-[9px] text-text-4 flex-shrink-0">
-            <span>Press <kbd className="px-1 bg-surface-3 rounded">n</kbd> next diff</span>
-            <span>Press <kbd className="px-1 bg-surface-3 rounded">p</kbd> prev diff</span>
-            <span>Press <kbd className="px-1 bg-surface-3 rounded">Esc</kbd> to close</span>
+            <span>{tr('Press')} <kbd className="px-1 bg-surface-3 rounded">n</kbd> {tr('next diff')}</span>
+            <span>{tr('Press')} <kbd className="px-1 bg-surface-3 rounded">p</kbd> {tr('prev diff')}</span>
+            <span>{tr('Press')} <kbd className="px-1 bg-surface-3 rounded">Esc</kbd> {tr('to close')}</span>
           </div>
         )}
       </div>
@@ -569,6 +572,7 @@ const METHOD_COLORS: Record<string, string> = {
 }
 
 export function DiffPickerModal({ currentTabId, onConfirm, onCancel }: DiffPickerModalProps) {
+  const tr = useUiTranslation()
   const tabs = useTabsStore((s) => s.tabs)
   const activeWorkspaceId = useCollectionsStore((s) => s.activeWorkspaceId)
   const [pasteText, setPasteText] = useState('')
@@ -591,7 +595,7 @@ export function DiffPickerModal({ currentTabId, onConfirm, onCancel }: DiffPicke
 
   const submitPaste = () => {
     if (!pasteText.trim()) return
-    onConfirm(pasteText.trim(), 'Pasted text')
+    onConfirm(pasteText.trim(), tr('Pasted text'))
   }
 
   return (
@@ -603,8 +607,8 @@ export function DiffPickerModal({ currentTabId, onConfirm, onCancel }: DiffPicke
         {/* Header */}
         <div className="flex items-center gap-2 px-4 py-3 border-b border-border-1">
           <GitCompare size={14} className="text-accent" />
-          <span className="text-sm font-semibold text-text-1 flex-1">Compare Response With…</span>
-          <button onClick={onCancel} title="Close" className="p-1 rounded text-text-4 hover:text-text-1"><X size={14} /></button>
+          <span className="text-sm font-semibold text-text-1 flex-1">{tr('Compare Response With…')}</span>
+          <button onClick={onCancel} title={tr('Close')} className="p-1 rounded text-text-4 hover:text-text-1"><X size={14} /></button>
         </div>
 
         {/* Mode toggle */}
@@ -618,7 +622,7 @@ export function DiffPickerModal({ currentTabId, onConfirm, onCancel }: DiffPicke
                 : 'text-text-3 hover:text-text-2',
             )}
           >
-            Open Tabs ({candidateTabs.length})
+            {tr('Open Tabs')} ({candidateTabs.length})
           </button>
           <button
             onClick={() => setMode('paste')}
@@ -629,7 +633,7 @@ export function DiffPickerModal({ currentTabId, onConfirm, onCancel }: DiffPicke
                 : 'text-text-3 hover:text-text-2',
             )}
           >
-            Paste Text
+            {tr('Paste Text')}
           </button>
         </div>
 
@@ -638,13 +642,13 @@ export function DiffPickerModal({ currentTabId, onConfirm, onCancel }: DiffPicke
           {mode === 'tabs' && (
             candidateTabs.length === 0 ? (
               <div className="text-center py-6 text-text-3 text-xs">
-                <p className="mb-1">No other tabs with responses found.</p>
-                <p className="text-text-4">Send requests in other tabs, then come back to compare.</p>
+                <p className="mb-1">{tr('No other tabs with responses found.')}</p>
+                <p className="text-text-4">{tr('Send requests in other tabs, then come back to compare.')}</p>
                 <button
                   onClick={() => setMode('paste')}
                   className="mt-3 text-accent hover:text-accent/80 underline text-xs"
                 >
-                  Paste a response body instead →
+                  {tr('Paste a response body instead →')}
                 </button>
               </div>
             ) : (
@@ -665,7 +669,7 @@ export function DiffPickerModal({ currentTabId, onConfirm, onCancel }: DiffPicke
                         {tab.request.method}
                       </span>
                       <span className="flex-1 text-xs text-text-1 truncate">
-                        {tab.request.name || tab.request.url || 'Untitled'}
+                        {tab.request.name || tab.request.url || tr('Untitled')}
                       </span>
                       <span className={cn(
                         'shrink-0 text-[10px] px-1.5 py-0.5 rounded font-mono',
@@ -675,7 +679,7 @@ export function DiffPickerModal({ currentTabId, onConfirm, onCancel }: DiffPicke
                       </span>
                       <span className="shrink-0 text-[10px] text-text-4">{resp.ms}ms</span>
                       <span className="shrink-0 text-[10px] text-accent opacity-0 group-hover:opacity-100 transition-opacity">
-                        Compare →
+                        {tr('Compare')} →
                       </span>
                     </button>
                   )
@@ -686,7 +690,7 @@ export function DiffPickerModal({ currentTabId, onConfirm, onCancel }: DiffPicke
 
           {mode === 'paste' && (
             <div className="flex flex-col gap-2">
-              <p className="text-[10px] text-text-4">Paste any response body (JSON, text, XML…)</p>
+              <p className="text-[10px] text-text-4">{tr('Paste any response body (JSON, text, XML…)')}</p>
               <textarea
                 ref={textareaRef}
                 value={pasteText}
@@ -701,14 +705,14 @@ export function DiffPickerModal({ currentTabId, onConfirm, onCancel }: DiffPicke
                   onClick={onCancel}
                   className="px-3 py-1.5 rounded text-xs text-text-3 hover:text-text-1 border border-border-2 hover:border-border-1"
                 >
-                  Cancel
+                  {tr('Cancel')}
                 </button>
                 <button
                   onClick={submitPaste}
                   disabled={!pasteText.trim()}
                   className="px-4 py-1.5 rounded text-xs bg-accent text-white font-medium disabled:opacity-40 flex items-center gap-1.5"
                 >
-                  <GitCompare size={11} /> Compare
+                  <GitCompare size={11} /> {tr('Compare')}
                 </button>
               </div>
             </div>

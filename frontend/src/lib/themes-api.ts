@@ -1,4 +1,5 @@
 import type { Theme } from '@/stores/themes'
+import * as ThemeManagerBindings from '../../bindings/adomnia/thememanager'
 
 declare global {
   interface WailsGoMain {
@@ -31,6 +32,7 @@ declare global {
       GetPlugin: (id: string) => Promise<unknown>
       InstallPlugin: (manifestJSON: string) => Promise<unknown>
       InstallPluginPackage: (manifestJSON: string, encodedFiles: Record<string, string>) => Promise<unknown>
+      InstallPluginDirectory: (sourceDir: string) => Promise<unknown>
       UninstallPlugin: (id: string) => Promise<void>
       EnablePlugin: (id: string) => Promise<void>
       DisablePlugin: (id: string) => Promise<void>
@@ -38,10 +40,12 @@ declare global {
       SetPluginSetting: (id: string, key: string, value: string) => Promise<void>
       GetRegisteredHooks: () => Promise<Record<string, string[]>>
       GetAvailableEvents: () => Promise<string[]>
+      ExecuteAction: (pluginId: string, actionId: string, args: Record<string, unknown>) => Promise<unknown>
     }
     WasmRuntime: {
       GetHostFunctions: () => Promise<string[]>
       GetSandboxStatus: (pluginId: string) => Promise<{ pluginId: string; memory: number; maxMemory: number; running: boolean }>
+      Execute: (request: { pluginId: string; function: string; args: Record<string, unknown> }) => Promise<unknown>
     }
     TemplateStore: {
       GetTemplates: () => Promise<unknown[]>
@@ -59,8 +63,14 @@ declare global {
   }
 }
 
-function getThemeManager() {
-  return window.go?.main?.ThemeManager
+// Wails 3 has no `window.go` global; services are reached through the
+// generated bindings. The namespace import keeps every `mgr.X()` call site
+// below unchanged.
+function getThemeManager(): WailsGoMain['ThemeManager'] {
+// The generated bindings type Go maps as `string | undefined` and carry
+// extra fields the UI does not model; the runtime shapes match. Narrow
+// once here rather than loosening every consumer.
+  return ThemeManagerBindings as unknown as WailsGoMain['ThemeManager']
 }
 
 export async function getThemes(): Promise<Theme[]> {
