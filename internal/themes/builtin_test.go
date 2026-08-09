@@ -65,6 +65,25 @@ func TestSketchThemeDeclaresItsSkin(t *testing.T) {
 	}
 }
 
+// JSON is rendered through CSS variables. Every skin must provide its own
+// complete palette; otherwise switching from a dark theme can leave pale text
+// on Sketch's light paper.
+func TestSketchThemeDefinesReadableJSONTokens(t *testing.T) {
+	tm := NewThemeManager()
+	for _, theme := range tm.GetExtendedBuiltinThemes() {
+		if theme.ID != "builtin-sketch" {
+			continue
+		}
+		for _, token := range []string{"json-key", "json-string", "json-number", "json-bool", "json-null"} {
+			if theme.Colors[token] == "" {
+				t.Errorf("Sketch theme is missing %s", token)
+			}
+		}
+		return
+	}
+	t.Fatal("builtin-sketch theme is missing")
+}
+
 // Paper-and-pencil palettes drift toward low contrast easily: graphite on cream
 // looks right in a mockup and fails WCAG in the product.
 func TestSketchThemeContrast(t *testing.T) {

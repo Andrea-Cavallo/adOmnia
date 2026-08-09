@@ -667,6 +667,17 @@ func (tm *ThemeManager) GetExtendedBuiltinThemes() []Theme {
 				"method-patch":  "#7C5CD6",
 				"method-delete": "#D4574E",
 				"method-head":   "#6B7280",
+				// JSON syntax stays dark enough for the cream paper. These must be
+				// owned by the skin rather than inherited from whichever theme was
+				// active immediately before it.
+				"json-key":       "#245B9F",
+				"json-string":    "#27734F",
+				"json-number":    "#9A4E1B",
+				"json-bool":      "#6F4AA6",
+				"json-null":      "#58616C",
+				"json-bracket-1": "#3E596F",
+				"json-bracket-2": "#7A5423",
+				"json-bracket-3": "#8A3D5D",
 			},
 			Fonts: ThemeFonts{
 				// One hand wrote the whole page, code included — but Monaco
