@@ -93,12 +93,11 @@ package_tarball() {
 build_and_package() {
     local variant="$1"
     local readme_note="$2"
-    local build_tags="${3:-}"
 
     # The frontend is identical across variants, so build it once up front and
     # only re-link the Go binary per target.
     VERSION="${VERSION}" BUILD_DATE="${BUILD_DATE}" GIT_COMMIT="${GIT_COMMIT}" \
-        BUILD_TAGS="${build_tags}" \
+        GOFLAGS="-tags=gtk3" \
         wails3 task linux:build
 
     if [ "$COMPRESS_WITH_UPX" = "1" ]; then
@@ -110,5 +109,4 @@ build_and_package() {
 
 build_and_package \
     "gtk3-webkitgtk-4.1" \
-    "Built against GTK 3 and WebKitGTK 4.1 using the Wails 3 build tag gtk3." \
-    "-tags 'production gtk3'"
+    "Built against GTK 3 and WebKitGTK 4.1 using the Wails 3 build tag gtk3."

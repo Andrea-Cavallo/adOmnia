@@ -8,7 +8,10 @@ tasks:
     deps:
       - task: common:build:frontend
     cmds:
-      - go build -buildvcs=false -trimpath {{.BUILD_TAGS | default "-tags production"}} -ldflags="-s -w {{.LD_VERSION}}" -o {{.BIN_DIR}}/{{.APP_NAME}} .
+      # Linux releases target Wails' GTK3/WebKitGTK 4.1 backend. Keep both
+      # production and gtk3 here instead of relying on a Task variable that
+      # cannot be overridden through the packaging script's environment.
+      - go build -buildvcs=false -trimpath -tags 'production gtk3' -ldflags="-s -w {{.LD_VERSION}}" -o {{.BIN_DIR}}/{{.APP_NAME}} .
 
   package:
     summary: Build native Wails 3 Linux tarballs.
