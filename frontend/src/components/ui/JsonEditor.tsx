@@ -272,7 +272,7 @@ function highlightSearchMatches(
     if (index > last) html += escapeHtml(rawText.slice(last, index))
     const matchText = escapeHtml(rawText.slice(index, index + searchTerm.length))
     const isActive = matchCursor.current === activeSearchIndex
-    html += `<mark data-json-search-match="true" style="background:${isActive ? 'rgba(251,191,36,0.55)' : 'rgba(234,179,8,0.32)'};color:inherit;border-radius:2px;outline:${isActive ? '1px solid var(--color-warning)' : 'none'}">${matchText}</mark>`
+    html += `<mark data-json-search-match="true" data-json-search-active="${isActive}" style="background:${isActive ? 'rgba(251,191,36,0.55)' : 'rgba(234,179,8,0.32)'};color:inherit;border-radius:2px;outline:${isActive ? '1px solid var(--color-warning)' : 'none'}">${matchText}</mark>`
     matchCursor.current += 1
     last = index + searchTerm.length
   }
@@ -650,6 +650,7 @@ export function JsonEditor({
       // skin draws its ruled paper and red margin rule here. Skinning off the
       // utility classes instead would break the moment they are reshuffled.
       data-editor="json"
+      data-search-active={searchTerm ? 'true' : undefined}
       className={cn(
         'relative rounded border overflow-hidden',
         error ? 'border-error/60' : 'border-border-2 focus-within:border-accent',

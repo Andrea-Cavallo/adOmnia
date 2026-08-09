@@ -18,6 +18,8 @@
   --sk-ink: var(--color-text-1);
   --sk-line: var(--color-border-2);
   --sk-highlight: #86E5EC;
+  --sk-marker: #DCEB4A;
+  --sk-marker-muted: #EEE799;
   --sk-rule-height: 28px;
 
   /* Two hand-drawn stroke shapes, alternated so repeated elements do not
@@ -123,6 +125,43 @@
 [data-skin='sketch'] [data-editor='json'] textarea,
 [data-skin='sketch'] [data-editor='json'] pre {
   background-color: transparent !important;
+}
+
+/* Ctrl+F reads like a physical highlighter dragged across the notebook, not
+   the browser's rectangular search selection.  The active hit is a denser
+   second pass; other hits remain visible without competing with the code. */
+[data-skin='sketch'] mark[data-json-search-match='true'] {
+  display: inline;
+  margin: 0 -0.08em;
+  padding: 0 0.08em;
+  color: inherit;
+  background: linear-gradient(
+    176deg,
+    transparent 0 16%,
+    color-mix(in oklab, var(--sk-marker-muted) 58%, transparent) 20% 85%,
+    transparent 89%
+  ) !important;
+  border-radius: 42% 12% 34% 16% / 22% 38% 18% 42%;
+  outline: none !important;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+[data-skin='sketch'] mark[data-json-search-active='true'] {
+  background: linear-gradient(
+    174deg,
+    transparent 0 12%,
+    color-mix(in oklab, var(--sk-marker) 76%, transparent) 17% 87%,
+    transparent 92%
+  ) !important;
+}
+
+/* JsonEditor selects the active Ctrl+F match to keep keyboard navigation in
+   sync. In Sketch the marker above is the visible selection, so the native
+   rectangular selection must not be painted over it. */
+[data-skin='sketch'] [data-editor='json'][data-search-active='true'] textarea::selection {
+  background: transparent;
+  color: transparent;
 }
 
 /* ── Highlighter ───────────────────────────────────────────────────────────
