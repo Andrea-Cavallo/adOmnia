@@ -114,7 +114,7 @@ export function SpecEditor({ value, language, markers, onChange, onCursor }: Spe
       onChange={(next) => onChange(next ?? '')}
       options={{
         fontSize: 12,
-        fontFamily: "'Space Mono', ui-monospace, monospace",
+        fontFamily: 'var(--skin-font-mono, var(--font-mono))',
         lineHeight: 20,
         minimap: { enabled: false },
         scrollBeyondLastLine: false,

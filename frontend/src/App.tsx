@@ -94,6 +94,10 @@ function App() {
       <ThemeProvider>
         <div
           className="h-screen w-screen flex flex-col overflow-hidden bg-surface-0 relative"
+          // Wails 3 only forwards native OS file drops that land on an element
+          // marked as a drop target. This root covers the whole window, which
+          // matches the previous v2 whole-window behaviour.
+          data-file-drop-target
           {...handlers}
         >
           {activeWindowChrome !== 'system' && <Titlebar />}

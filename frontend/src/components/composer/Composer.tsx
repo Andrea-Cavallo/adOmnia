@@ -793,8 +793,8 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
             onClick={handleSend}
             disabled={!canSend}
             className={cn(
-              'h-8 px-4 flex items-center gap-1.5 rounded text-xs font-medium transition-colors',
-              'bg-accent text-white hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed'
+              'glass-action h-8 px-4 flex items-center gap-1.5 rounded text-xs font-medium',
+              'text-white disabled:opacity-40 disabled:cursor-not-allowed'
             )}
           >
             <Send size={13} />
@@ -1091,6 +1091,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
                   post={scripts.post ?? ''}
                   tests={scripts.tests ?? ''}
                   initialTab="tests"
+                  request={request}
                   onChange={(s) => onChange({ ...request, scripts: s })}
                 />
               </Suspense>

@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Build and package native Linux tarballs for both Wails WebKitGTK targets.
+# Build and package the portable Wails 3 GTK3/WebKitGTK 4.1 Linux target.
+# The Wails 3 default uses GTK4/WebKitGTK 6.0; GTK3 keeps the release usable
+# on supported LTS distributions and is the target used by the CI runners.
 set -euo pipefail
 
 VERSION="${1:?Usage: $0 <version> [artifact-suffix]}"
@@ -21,7 +23,7 @@ package_tarball() {
     rm -rf "$stage"
     mkdir -p "$stage/icons"
 
-    cp build/bin/adomnia "$stage/adomnia"
+    cp bin/adomnia "$stage/adomnia"
     chmod +x "$stage/adomnia"
 
     for size in 16 24 32 48 64 128 256 512; do
@@ -78,8 +80,9 @@ package_tarball() {
         printf 'Variant: %s\n' "$variant"
         printf '%s\n' "$readme_note"
         printf '\n'
-        printf '%s\n' 'This tarball contains a native Linux amd64 executable. GTK 3 and the'
-        printf '%s\n' 'matching WebKitGTK runtime must be available on the target system.'
+        printf '%s\n' 'This tarball contains a native Linux amd64 executable. The GTK and'
+        printf '%s\n' 'WebKitGTK runtime matching the variant above must be available on the'
+        printf '%s\n' 'target system.'
     } > "$stage/README-linux.txt"
 
     tar -czf "dist/${basename}.tar.gz" -C "$stage" .
@@ -90,27 +93,22 @@ package_tarball() {
 build_and_package() {
     local variant="$1"
     local readme_note="$2"
-    shift 2
+    local build_tags="${3:-}"
 
-    wails build \
-        -clean \
-        -platform linux/amd64 \
-        -trimpath \
-        "$@" \
-        -ldflags "-s -w -X main.Version=${VERSION} -X main.BuildDate=${BUILD_DATE} -X main.GitCommit=${GIT_COMMIT}"
+    # The frontend is identical across variants, so build it once up front and
+    # only re-link the Go binary per target.
+    VERSION="${VERSION}" BUILD_DATE="${BUILD_DATE}" GIT_COMMIT="${GIT_COMMIT}" \
+        BUILD_TAGS="${build_tags}" \
+        wails3 task linux:build
 
     if [ "$COMPRESS_WITH_UPX" = "1" ]; then
-        upx --best --lzma build/bin/adomnia
+        upx --best --lzma bin/adomnia
     fi
 
     package_tarball "$variant" "$readme_note"
 }
 
 build_and_package \
-    "webkitgtk-4.0" \
-    "Built against WebKitGTK 4.0 using the default Wails Linux target."
-
-build_and_package \
-    "webkitgtk-4.1" \
-    "Built against WebKitGTK 4.1 using the Wails build tag webkit2_41." \
-    -tags webkit2_41
+    "gtk3-webkitgtk-4.1" \
+    "Built against GTK 3 and WebKitGTK 4.1 using the Wails 3 build tag gtk3." \
+    "-tags 'production gtk3'"

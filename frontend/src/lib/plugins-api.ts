@@ -1,4 +1,8 @@
 import type { PluginInstance } from '@/stores/plugins'
+import * as PluginManagerBindings from '../../bindings/adomnia/pluginmanager'
+import * as WasmRuntimeBindings from '../../bindings/adomnia/wasmruntime'
+import * as TemplateStoreBindings from '../../bindings/adomnia/templatestore'
+import * as AppBindings from '../../bindings/adomnia/app'
 
 export interface Template {
   id: string
@@ -36,16 +40,19 @@ export interface PluginExecResult {
   timeMs: number
 }
 
-function getPluginManager() {
-  return window.go?.main?.PluginManager
+function getPluginManager(): WailsGoMain['PluginManager'] {
+// The generated bindings type Go maps as `string | undefined` and carry
+// extra fields the UI does not model; the runtime shapes match. Narrow
+// once here rather than loosening every consumer.
+  return PluginManagerBindings as unknown as WailsGoMain['PluginManager']
 }
 
-function getWasmRuntime() {
-  return window.go?.main?.WasmRuntime
+function getWasmRuntime(): WailsGoMain['WasmRuntime'] {
+  return WasmRuntimeBindings as unknown as WailsGoMain['WasmRuntime']
 }
 
-function getTemplateStore() {
-  return window.go?.main?.TemplateStore
+function getTemplateStore(): WailsGoMain['TemplateStore'] {
+  return TemplateStoreBindings as unknown as WailsGoMain['TemplateStore']
 }
 
 export async function getPlugins(): Promise<PluginInstance[]> {
@@ -73,7 +80,7 @@ export async function installPluginDirectory(sourceDir: string): Promise<PluginI
 }
 
 export async function selectPluginDirectory(): Promise<string> {
-  const app = window.go?.main?.App
+  const app = AppBindings
   if (!app) throw new Error("Selettore cartelle disponibile solo nell'applicazione desktop.")
   return app.SelectFolder('Seleziona cartella plugin')
 }

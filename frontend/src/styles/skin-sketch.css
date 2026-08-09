@@ -1,0 +1,279 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   SKETCH skin — adOmnia drawn into an engineering notebook.
+
+   Scoped entirely to [data-skin="sketch"], set by ThemeProvider from the
+   theme's meta.skin. Colour and type come from the theme tokens; this file
+   adds only what tokens cannot express: paper, ruling, and the
+   irregularity of a pen stroke.
+
+   The irregular borders use the asymmetric border-radius trick rather than SVG
+   filters: feTurbulence-based roughening does not render in WKWebView or
+   WebKitGTK, and this skin has to look drawn on all three platforms.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+[data-skin='sketch'] {
+  --sk-paper: var(--color-surface-0);
+  --sk-rule: #C9DCEA;
+  --sk-margin: #E4837F;
+  --sk-ink: var(--color-text-1);
+  --sk-line: var(--color-border-2);
+  --sk-highlight: #86E5EC;
+  --sk-rule-height: 28px;
+
+  /* Two hand-drawn stroke shapes, alternated so repeated elements do not
+     line up into an obviously machine-made rhythm. */
+  --sk-edge-a: 14px 3px 12px 4px / 4px 12px 3px 14px;
+  --sk-edge-b: 4px 13px 3px 12px / 12px 4px 14px 3px;
+}
+
+/* ── Paper ─────────────────────────────────────────────────────────────────
+   The ruling has to live on the topmost opaque surface, not on <body>: the app
+   root paints bg-surface-0 over the whole viewport, so ruling the body just
+   draws lines nobody ever sees. Rule the root, then make the panels stacked on
+   top transparent so the same sheet shows through the entire tool. */
+[data-skin='sketch'] #root {
+  background-color: var(--sk-paper);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(var(--sk-rule-height) - 1px),
+    color-mix(in oklab, var(--sk-rule) 70%, transparent) calc(var(--sk-rule-height) - 1px),
+    color-mix(in oklab, var(--sk-rule) 70%, transparent) var(--sk-rule-height)
+  );
+}
+
+/* Fully transparent, not 72%: stacked translucent panels compound until the
+   ruling disappears again, which is exactly what went wrong the first time. */
+[data-skin='sketch'] .bg-surface-0,
+[data-skin='sketch'] .bg-surface-1,
+[data-skin='sketch'] .bg-surface-2,
+[data-skin='sketch'] .bg-surface-3 {
+  background-color: transparent;
+}
+
+/* ── Drawn strokes ─────────────────────────────────────────────────────────
+   Anything that reads as a container gets an irregular edge and a slightly
+   heavier, warmer line than a normal theme would use. */
+[data-skin='sketch'] button,
+[data-skin='sketch'] input,
+[data-skin='sketch'] select,
+[data-skin='sketch'] textarea,
+[data-skin='sketch'] [data-editor='json'] {
+  border-radius: var(--sk-edge-a);
+}
+
+[data-skin='sketch'] button:nth-of-type(even),
+[data-skin='sketch'] input:nth-of-type(even) {
+  border-radius: var(--sk-edge-b);
+}
+
+[data-skin='sketch'] [class*='border'] {
+  border-color: var(--sk-line);
+}
+
+[data-skin='sketch'] button:not([class*='border-transparent']),
+[data-skin='sketch'] input,
+[data-skin='sketch'] select,
+[data-skin='sketch'] textarea {
+  border-width: 1.5px;
+  border-color: var(--sk-line);
+  background-color: color-mix(in oklab, var(--sk-paper) 55%, transparent);
+}
+
+/* Buttons lift like paper rather than glowing. */
+[data-skin='sketch'] button:hover:not(:disabled) {
+  box-shadow: 1.5px 2px 0 0 color-mix(in oklab, var(--sk-ink) 28%, transparent);
+}
+
+[data-skin='sketch'] button:active:not(:disabled) {
+  box-shadow: none;
+  transform: translate(1px, 1px);
+}
+
+/* ── The writing area ──────────────────────────────────────────────────────
+   Ruled lines and the red margin rule every notebook has, drawn on the code
+   editor itself. Keyed off [data-editor] rather than utility classes so the
+   skin does not break when the layout is refactored.
+
+   The ruling is pinned to the editor's own line height (--sk-code-leading) so
+   text sits ON the lines instead of drifting across them. */
+[data-skin='sketch'] [data-editor='json'] {
+  --sk-code-leading: 21px;
+  background-color: color-mix(in oklab, var(--sk-paper) 88%, transparent);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(var(--sk-code-leading) - 1px),
+    color-mix(in oklab, var(--sk-rule) 55%, transparent) calc(var(--sk-code-leading) - 1px),
+    color-mix(in oklab, var(--sk-rule) 55%, transparent) var(--sk-code-leading)
+  );
+}
+
+[data-skin='sketch'] [data-editor='json']::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 46px;
+  width: 1.5px;
+  background: color-mix(in oklab, var(--sk-margin) 75%, transparent);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* The editor paints its own surfaces; let the paper through. */
+[data-skin='sketch'] [data-editor='json'] textarea,
+[data-skin='sketch'] [data-editor='json'] pre {
+  background-color: transparent !important;
+}
+
+/* ── Highlighter ───────────────────────────────────────────────────────────
+   Active states are a swipe of marker, not a fill. The skew and the uneven
+   ends are what separate a highlighter from a rectangle. */
+[data-skin='sketch'] [aria-selected='true'],
+[data-skin='sketch'] [data-state='active'] {
+  position: relative;
+  color: var(--color-text-1);
+}
+
+[data-skin='sketch'] [aria-selected='true']::after,
+[data-skin='sketch'] [data-state='active']::after {
+  content: '';
+  position: absolute;
+  left: 2%;
+  right: 2%;
+  bottom: 3px;
+  height: 9px;
+  background: color-mix(in oklab, var(--color-accent) 38%, transparent);
+  transform: skewX(-12deg) rotate(-0.6deg);
+  border-radius: 40% 60% 55% 45% / 60% 40% 60% 40%;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* The Send button is the one cyan mark on the page. */
+[data-skin='sketch'] .glass-action {
+  background: color-mix(in oklab, var(--sk-highlight) 78%, transparent);
+  border-color: color-mix(in oklab, var(--sk-ink) 45%, transparent);
+  border-width: 1.5px;
+  color: var(--sk-ink);
+  border-radius: var(--sk-edge-a);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: 1.5px 2px 0 0 color-mix(in oklab, var(--sk-ink) 30%, transparent);
+}
+
+[data-skin='sketch'] .glass-action::before,
+[data-skin='sketch'] .glass-action::after {
+  display: none;
+}
+
+[data-skin='sketch'] .glass-action:hover:not(:disabled) {
+  filter: none;
+  transform: translate(-1px, -1px);
+  box-shadow: 2.5px 3px 0 0 color-mix(in oklab, var(--sk-ink) 34%, transparent);
+}
+
+/* ── Hand-lettered weight ──────────────────────────────────────────────────
+   Handwriting reads lighter than a UI face at the same size, so the whole
+   skin steps up slightly and loosens to stay legible on ruled paper. */
+[data-skin='sketch'] {
+  letter-spacing: 0.012em;
+}
+
+[data-skin='sketch'] .text-\[10px\],
+[data-skin='sketch'] .text-\[11px\],
+[data-skin='sketch'] .text-xs {
+  font-size: 12.5px;
+}
+
+/* Code sits on the paper, not in a terminal well. */
+[data-skin='sketch'] .monaco-editor,
+[data-skin='sketch'] .monaco-editor-background,
+[data-skin='sketch'] .monaco-editor .margin {
+  background-color: transparent !important;
+}
+
+/* ── Restraint ─────────────────────────────────────────────────────────────
+   Glows belong to the neon themes; ink does not glow. */
+[data-skin='sketch'] [class*='shadow-glow'],
+[data-skin='sketch'] .icon-glow-breathe {
+  filter: none;
+  animation: none;
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-skin='sketch'] button:active:not(:disabled),
+  [data-skin='sketch'] .glass-action:hover:not(:disabled) {
+    transform: none;
+  }
+}
+
+/* ── Request tabs ──────────────────────────────────────────────────────────
+   These are divs, not buttons, so they need their own selector — the generic
+   control rules above never reach them. In the reference the strip sits
+   directly on the paper and only the active tab is boxed, as if circled by
+   hand after the fact. */
+[data-skin='sketch'] [data-tab-id] {
+  background: transparent !important;
+  border-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+[data-skin='sketch'] [data-tab-id]:hover {
+  background: color-mix(in oklab, var(--color-accent) 9%, transparent) !important;
+}
+
+[data-skin='sketch'] [data-tab-id][aria-selected='true'],
+[data-skin='sketch'] [data-tab-id][data-state='active'],
+[data-skin='sketch'] [data-tab-id].is-active {
+  border: 1.5px solid color-mix(in oklab, var(--sk-ink) 55%, transparent);
+  border-radius: var(--sk-edge-a);
+  background: color-mix(in oklab, var(--sk-paper) 80%, transparent) !important;
+}
+
+/* ── Composer section tabs ─────────────────────────────────────────────────
+   Body / Headers / Params / Tests are flat labels; the active one carries the
+   highlighter swipe, which is the skin's whole language for "you are here". */
+[data-skin='sketch'] [role='tab'] {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  color: var(--color-text-2);
+}
+
+[data-skin='sketch'] [role='tab'][aria-selected='true'],
+[data-skin='sketch'] [role='tab'][data-state='active'] {
+  color: var(--color-text-1);
+  font-weight: 700;
+}
+
+/* ── Floating surfaces ─────────────────────────────────────────────────────
+   Making bg-surface-* transparent lets the ruled paper run through the whole
+   layout, but it also gutted every menu, popover and dialog: they floated over
+   the content underneath and became unreadable. Anything that leaves the flow
+   gets solid paper back, plus a drawn edge and a real shadow so it reads as a
+   card resting ON the page rather than a hole in it. */
+[data-skin='sketch'] [role='menu'],
+[data-skin='sketch'] [role='listbox'],
+[data-skin='sketch'] [role='dialog'],
+[data-skin='sketch'] [role='tooltip'],
+[data-skin='sketch'] [data-radix-popper-content-wrapper] > *,
+[data-skin='sketch'] .absolute[class*='bg-surface'],
+[data-skin='sketch'] .fixed[class*='bg-surface'],
+[data-skin='sketch'] [class*='shadow-2xl'],
+[data-skin='sketch'] [class*='shadow-xl'] {
+  background-color: var(--sk-paper) !important;
+  border: 1.5px solid color-mix(in oklab, var(--sk-ink) 42%, transparent);
+  border-radius: var(--sk-edge-a);
+  box-shadow: 2px 3px 0 0 color-mix(in oklab, var(--sk-ink) 22%, transparent),
+              0 10px 26px -12px rgba(0, 0, 0, 0.4);
+}
+
+/* Rows inside a floating surface must not re-paint the paper away. */
+[data-skin='sketch'] [role='menu'] [class*='bg-surface'],
+[data-skin='sketch'] [role='dialog'] [class*='bg-surface'],
+[data-skin='sketch'] [class*='shadow-2xl'] [class*='bg-surface'] {
+  background-color: transparent !important;
+}

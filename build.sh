@@ -1,247 +1,27 @@
 #!/usr/bin/env bash
-#
-# build.sh -- adOmnia build script (Bash)
-#
-# Uses Wails for production builds so the executable keeps app icon,
-# manifest and platform metadata. On Windows shells (WSL/Git Bash/MSYS), it
-# delegates to build.ps1 to use the native Windows Wails toolchain.
-#
-# Usage:
-#   ./build.sh              # Build for current platform
-#   ./build.sh clean        # Clean build artifacts
-#
+# Canonical local build entrypoint. Platform-specific work lives in Taskfile.yml.
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
-
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
-NC='\033[0m'
-
-info()  { echo -e "${CYAN}-->${NC} $*"; }
-ok()    { echo -e "${GREEN}OK ${NC} $*"; }
-warn()  { echo -e "${YELLOW}WARN${NC} $*"; }
-err()   { echo -e "${RED}ERR${NC} $*"; }
-
-linux_webkitgtk_install_hint() {
-  echo "    Install the WebKitGTK development package, not only the runtime library."
-  echo ""
-  if command -v dnf &>/dev/null; then
-    echo "    Fedora/RHEL:"
-    echo "      sudo dnf install gtk3-devel webkit2gtk4.1-devel pkgconf-pkg-config"
-    echo "      # fallback for older 4.0 builds, if available:"
-    echo "      sudo dnf install gtk3-devel webkit2gtk4.0-devel pkgconf-pkg-config"
-  elif command -v apt-get &>/dev/null; then
-    echo "    Debian/Ubuntu:"
-    echo "      sudo apt-get install libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config"
-    echo "      # fallback for older 4.0 builds, if available:"
-    echo "      sudo apt-get install libgtk-3-dev libwebkit2gtk-4.0-dev pkg-config"
-  elif command -v pacman &>/dev/null; then
-    echo "    Arch:"
-    echo "      sudo pacman -S gtk3 webkit2gtk-4.1 pkgconf"
-  elif command -v zypper &>/dev/null; then
-    echo "    openSUSE:"
-    echo "      sudo zypper install gtk3-devel webkit2gtk4-devel pkgconf-pkg-config"
-  else
-    echo "    Required pkg-config modules:"
-    echo "      gtk+-3.0"
-    echo "      webkit2gtk-4.1 or webkit2gtk-4.0"
-  fi
-  echo ""
-  echo "    Verify with:"
-  echo "      pkg-config --exists webkit2gtk-4.1 && echo webkitgtk-4.1-ok"
-  echo "      pkg-config --exists webkit2gtk-4.0 && echo webkitgtk-4.0-ok"
-}
-
-VERSION="${VERSION:-dev}"
-UNAME="$(uname -s 2>/dev/null || echo unknown)"
-
-is_windows_shell() {
-  [[ -n "${WSL_DISTRO_NAME:-}" ]] && return 0
-  [[ "$UNAME" == MINGW* || "$UNAME" == MSYS* || "$UNAME" == CYGWIN* ]] && return 0
-  return 1
-}
-
-to_windows_path() {
-  local path="$1"
-  if command -v wslpath &>/dev/null; then
-    wslpath -w "$path"
-  elif command -v cygpath &>/dev/null; then
-    cygpath -w "$path"
-  else
-    printf '%s\n' "$path"
-  fi
-}
-
-abs_output_path() {
-  local output="$1"
-  if [[ "$output" = /* || "$output" =~ ^[A-Za-z]:[\\/] ]]; then
-    printf '%s\n' "$output"
-  else
-    printf '%s/%s\n' "$SCRIPT_DIR" "$output"
-  fi
-}
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$ROOT_DIR"
 
 if [[ "${1:-}" == "clean" ]]; then
-  info "Cleaning build artifacts..."
-  rm -f "$SCRIPT_DIR/adomnia.exe" "$SCRIPT_DIR/adomnia"
-  rm -rf "$SCRIPT_DIR/build/bin" "$SCRIPT_DIR/frontend/dist"
-  ok "Clean complete."
-  exit 0
+    rm -f bin/adomnia bin/adomnia.exe
+    rm -rf frontend/dist
+    echo "Build artifacts removed."
+    exit 0
 fi
 
-echo ""
-echo -e "${CYAN}===========================================${NC}"
-echo -e "${CYAN}  adOmnia Wails Build  v${VERSION}${NC}"
-echo -e "${CYAN}===========================================${NC}"
-echo ""
-
-if is_windows_shell && command -v powershell.exe &>/dev/null; then
-  OUTPUT="${OUTPUT:-adomnia.exe}"
-  OUTPUT_ABS="$(abs_output_path "$OUTPUT")"
-  PS_SCRIPT="$(to_windows_path "$SCRIPT_DIR/build.ps1")"
-  PS_OUTPUT="$(to_windows_path "$OUTPUT_ABS")"
-
-  info "Windows shell detected; delegating to native PowerShell/Wails build."
-  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$PS_SCRIPT" -Output "$PS_OUTPUT" -Version "$VERSION"
-  exit $?
+VERSION="${VERSION:-${1:-dev}}"
+BUILD_DATE="${BUILD_DATE:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
+GIT_COMMIT="${GIT_COMMIT:-$(git rev-parse --short HEAD 2>/dev/null || echo unknown)}"
+WAILS3_BIN="${WAILS3_BIN:-$(command -v wails3 || true)}"
+if [[ -z "$WAILS3_BIN" && -x "$(go env GOPATH)/bin/wails3" ]]; then
+    WAILS3_BIN="$(go env GOPATH)/bin/wails3"
 fi
-
-OUTPUT="${OUTPUT:-adomnia}"
-FRONTEND_DIR="$SCRIPT_DIR/frontend"
-WAILS_OUT_DIR="$SCRIPT_DIR/build/bin"
-OUTNAME="$(basename "$OUTPUT")"
-WAILS_OUT="$WAILS_OUT_DIR/$OUTNAME"
-
-if ! command -v node &>/dev/null; then
-  err "Node.js not found. Install from https://nodejs.org/"
-  exit 1
-fi
-ok "Node.js: $(node --version)"
-
-if ! command -v npm &>/dev/null; then
-  err "npm not found. Install Node.js from https://nodejs.org/"
-  exit 1
-fi
-ok "npm: $(npm --version)"
-
-if ! command -v go &>/dev/null; then
-  err "Go not found. Install from https://go.dev/dl/"
-  exit 1
-fi
-ok "Go: $(go version | awk '{print $3}')"
-
-WAILS_BIN=""
-if command -v wails &>/dev/null; then
-  WAILS_BIN="$(command -v wails)"
-else
-  GOPATH="$(go env GOPATH 2>/dev/null || true)"
-  if [[ -n "$GOPATH" && -x "$GOPATH/bin/wails" ]]; then
-    WAILS_BIN="$GOPATH/bin/wails"
-  fi
-fi
-
-if [[ -z "$WAILS_BIN" ]]; then
-  err "Wails CLI not found. Install it with:"
-  echo "    go install github.com/wailsapp/wails/v2/cmd/wails@latest"
-  exit 1
-fi
-ok "Wails: $("$WAILS_BIN" version 2>/dev/null | head -1 || echo ok)"
-
-echo ""
-
-if [[ -f "$SCRIPT_DIR/scripts/generate-icons.sh" ]]; then
-  info "Preparing app icons..."
-  bash "$SCRIPT_DIR/scripts/generate-icons.sh"
-fi
-
-if [[ ! -f "$SCRIPT_DIR/build/appicon.png" ]]; then
-  err "Wails app icon missing at build/appicon.png"
-  exit 1
-fi
-
-GIT_COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
-BUILD_DATE="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-LDFLAGS="-s -w -X main.Version=$VERSION -X main.BuildDate=$BUILD_DATE -X main.GitCommit=$GIT_COMMIT"
-WAILS_TAG_ARGS=()
-WEBKITGTK_SELECTED=""
-
-if [[ "$UNAME" == Linux* ]]; then
-  WEBKITGTK="${WEBKITGTK:-auto}"
-  if ! command -v pkg-config &>/dev/null; then
-    err "pkg-config not found. Install pkg-config and the WebKitGTK development package."
-    linux_webkitgtk_install_hint
+if [[ -z "$WAILS3_BIN" ]]; then
+    echo "Wails 3 CLI not found. Install: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.5" >&2
     exit 1
-  fi
-
-  case "$WEBKITGTK" in
-    auto|"")
-      if pkg-config --exists webkit2gtk-4.1; then
-        WEBKITGTK_SELECTED="4.1"
-        WAILS_TAG_ARGS=(-tags webkit2_41)
-      elif pkg-config --exists webkit2gtk-4.0; then
-        WEBKITGTK_SELECTED="4.0"
-      else
-        err "No supported WebKitGTK development package found."
-        linux_webkitgtk_install_hint
-        exit 1
-      fi
-      ;;
-    4.1)
-      if ! pkg-config --exists webkit2gtk-4.1; then
-        err "WEBKITGTK=4.1 requested, but webkit2gtk-4.1 was not found by pkg-config."
-        linux_webkitgtk_install_hint
-        exit 1
-      fi
-      WEBKITGTK_SELECTED="4.1"
-      WAILS_TAG_ARGS=(-tags webkit2_41)
-      ;;
-    4.0)
-      if ! pkg-config --exists webkit2gtk-4.0; then
-        err "WEBKITGTK=4.0 requested, but webkit2gtk-4.0 was not found by pkg-config."
-        linux_webkitgtk_install_hint
-        exit 1
-      fi
-      WEBKITGTK_SELECTED="4.0"
-      ;;
-    *)
-      err "Invalid WEBKITGTK value: $WEBKITGTK"
-      echo "    Use WEBKITGTK=auto, WEBKITGTK=4.1, or WEBKITGTK=4.0"
-      exit 1
-      ;;
-  esac
 fi
 
-echo ""
-echo -e "${CYAN}--- Building with Wails...${NC}"
-info "Version:  $VERSION"
-info "Commit:   $GIT_COMMIT"
-info "Output:   $OUTPUT"
-if [[ -n "$WEBKITGTK_SELECTED" ]]; then
-  info "WebKitGTK: $WEBKITGTK_SELECTED"
-fi
-echo ""
-
-"$WAILS_BIN" build -clean "${WAILS_TAG_ARGS[@]}" -ldflags "$LDFLAGS" -o "$OUTNAME"
-
-if [[ ! -f "$WAILS_OUT" ]]; then
-  err "Expected Wails output not found: $WAILS_OUT"
-  exit 1
-fi
-
-mkdir -p "$(dirname "$OUTPUT")"
-cp "$WAILS_OUT" "$OUTPUT"
-chmod +x "$OUTPUT" 2>/dev/null || true
-
-SIZE="$(ls -lh "$OUTPUT" | awk '{print $5}')"
-
-echo ""
-echo -e "${GREEN}===========================================${NC}"
-echo -e "${GREEN}  Build Complete!${NC}"
-echo -e "${GREEN}===========================================${NC}"
-echo ""
-echo -e "  ${CYAN}$OUTPUT${NC}  (${SIZE})"
-echo ""
+VERSION="$VERSION" BUILD_DATE="$BUILD_DATE" GIT_COMMIT="$GIT_COMMIT" "$WAILS3_BIN" task build

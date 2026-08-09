@@ -27,6 +27,10 @@ or white skin:
 
 ![adOmnia interface white](assets/images/white.png)
 
+or the new Sketch skin, for a hand-drawn engineering-notebook workspace without giving up the desktop workflow:
+
+![adOmnia Sketch skin preview](assets/images/sketch-previews.png)
+
 ### Why adOmnia
 
 Most API tools went the wrong way: they moved your requests, secrets, and history into someone else's cloud, put your team behind a login wall, and charged you monthly for it. adOmnia is the opposite bet — **one fast desktop app that does more than the cloud suites, while keeping everything on your machine.**
@@ -54,8 +58,7 @@ check rest apis:
 |---|---|
 | Windows | `adOmnia-*-windows-amd64.exe` |
 | macOS | `adOmnia-*-macos-universal.dmg` |
-| Linux (WebKitGTK 4.0) | `adOmnia-*-linux-amd64-webkitgtk-4.0.tar.gz` |
-| Linux (WebKitGTK 4.1) | `adOmnia-*-linux-amd64-webkitgtk-4.1.tar.gz` |
+| Linux (GTK 3 / WebKitGTK 4.1) | `adOmnia-*-linux-amd64-gtk3-webkitgtk-4.1.tar.gz` |
 
 All releases include `SHA256SUMS.txt` and source code archives. Verify your download with the published checksums.
 
@@ -157,14 +160,16 @@ The same engine is available in **API Docs > Governance**. It shows error/warnin
 
 ### Build from source
 
-Only needed if you want to compile it yourself. Requires Go, Node.js, and Wails.
+Only needed if you want to compile it yourself. Requires **Go 1.26.5+**, **Node.js 20+**
+and the **Wails 3 CLI** (`wails3`). On Linux you also need `libgtk-3-dev` and
+`libwebkit2gtk-4.1-dev`.
 
 ```bash
 git clone https://github.com/Andrea-Cavallo/adOmnia.git && cd adomnia
+go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.5
 cd frontend && npm install && cd ..
-wails dev          # dev mode
-.\build.ps1        # Windows production build
-bash build/build-wails.sh linux  # Linux production build
+wails3 task dev      # dev mode
+wails3 task build    # production build for the current platform
 ```
 
 Full instructions: [docs/BUILD.md](docs/BUILD.md)

@@ -1,4 +1,5 @@
 import type { Theme } from '@/stores/themes'
+import * as ThemeManagerBindings from '../../bindings/adomnia/thememanager'
 
 declare global {
   interface WailsGoMain {
@@ -62,8 +63,14 @@ declare global {
   }
 }
 
-function getThemeManager() {
-  return window.go?.main?.ThemeManager
+// Wails 3 has no `window.go` global; services are reached through the
+// generated bindings. The namespace import keeps every `mgr.X()` call site
+// below unchanged.
+function getThemeManager(): WailsGoMain['ThemeManager'] {
+// The generated bindings type Go maps as `string | undefined` and carry
+// extra fields the UI does not model; the runtime shapes match. Narrow
+// once here rather than loosening every consumer.
+  return ThemeManagerBindings as unknown as WailsGoMain['ThemeManager']
 }
 
 export async function getThemes(): Promise<Theme[]> {

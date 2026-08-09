@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 import { execSync } from 'child_process'
 import { readFileSync } from 'fs'
+import { parse as parseYaml } from 'yaml'
 
 function getCommitHash(): string {
   try {
@@ -13,18 +14,28 @@ function getCommitHash(): string {
 }
 
 function getAppVersion(): string {
-  try {
-    const wailsJson = JSON.parse(
-      readFileSync(path.resolve(__dirname, '../wails.json'), 'utf8')
-    )
-    return (wailsJson?.info?.productVersion as string | undefined) ?? '1.0.0'
-  } catch {
-    return '1.0.0'
+  // Wails 3 replaced wails.json with build/config.yml. Failing loudly here
+  // matters: a silent fallback would ship a build labelled with the wrong
+  // version, which looks fine until a user reports the wrong number.
+  const configPath = path.resolve(import.meta.dirname, '../build/config.yml')
+  const config = parseYaml(readFileSync(configPath, 'utf8')) as
+    | { info?: { version?: string | number } }
+    | undefined
+  const version = config?.info?.version
+
+  if (version === undefined || version === null || String(version).trim() === '') {
+    throw new Error(`Missing info.version in ${configPath}`)
   }
+
+  return String(version).trim()
 }
 
 function manualChunks(id: string): string | undefined {
   if (!id.includes('node_modules')) return undefined
+  // The generated Wails bindings import Call/CancellablePromise from this
+  // package. Keeping all of its modules together prevents Rolldown from
+  // producing a circular runtime chunk where Call is read before it exists.
+  if (/[\\/]node_modules[\\/]@wailsio[\\/]runtime[\\/]/.test(id)) return 'wails-runtime'
   if (/[\\/]node_modules[\\/](react|react-dom)[\\/]/.test(id)) return 'vendor-react'
   if (/[\\/]node_modules[\\/]lucide-react[\\/]/.test(id)) return 'vendor-icons'
   if (/[\\/]node_modules[\\/](ajv|ajv-formats)[\\/]/.test(id)) return 'vendor-schema'
@@ -51,24 +62,24 @@ export default defineConfig(async () => {
     },
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, './src'),
+        '@': path.resolve(import.meta.dirname, './src'),
         // Monaco 0.56's export map no longer exposes its legacy worker
         // subpaths to Vite. The aliases retain our bundled worker setup and
         // also cover monaco-yaml's internal import.
         'monaco-editor/esm/vs/editor/editor.worker': path.resolve(
-          __dirname,
+          import.meta.dirname,
           './node_modules/monaco-editor/esm/vs/editor/editor.worker.js'
         ),
         'monaco-editor/esm/vs/editor/editor.worker.js': path.resolve(
-          __dirname,
+          import.meta.dirname,
           './node_modules/monaco-editor/esm/vs/editor/editor.worker.js'
         ),
         'monaco-editor/esm/vs/language/json/json.worker': path.resolve(
-          __dirname,
+          import.meta.dirname,
           './node_modules/monaco-editor/esm/vs/language/json/json.worker.js'
         ),
         'monaco-editor/esm/vs/language/json/json.worker.js': path.resolve(
-          __dirname,
+          import.meta.dirname,
           './node_modules/monaco-editor/esm/vs/language/json/json.worker.js'
         ),
       },

@@ -4,9 +4,8 @@
 # other shared library dependencies. Users need nothing installed.
 #
 
-FROM golang:1.25-bookworm AS builder
+FROM golang:1.26.5-bookworm AS builder
 
-ARG WAILS_VERSION=v2.12.0
 ARG VERSION=dev
 ARG GIT_COMMIT=unknown
 ARG BUILD_DATE=unknown
@@ -19,15 +18,13 @@ ENV APPIMAGE_EXTRACT_AND_RUN=1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates curl file gcc g++ git imagemagick \
-    libayatana-appindicator3-dev libgtk-3-dev libwebkit2gtk-4.0-dev \
+    libayatana-appindicator3-dev libgtk-3-dev libwebkit2gtk-4.1-dev \
     pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
-
-RUN go install github.com/wailsapp/wails/v2/cmd/wails@${WAILS_VERSION}
 
 # linuxdeploy bundles all .so deps (webkit, gtk, etc.) into the AppImage
 RUN curl -fsSL -o /usr/local/bin/linuxdeploy \
@@ -46,10 +43,11 @@ RUN cd frontend && npm ci
 
 COPY . .
 
-RUN wails build \
-    -clean \
-    -platform linux/amd64 \
-    -ldflags "-s -w -X main.Version=${VERSION} -X main.BuildDate=${BUILD_DATE} -X main.GitCommit=${GIT_COMMIT}"
+RUN npm --prefix frontend run build && \
+    mkdir -p build/bin && \
+    go build -buildvcs=false -trimpath -tags 'production gtk3' \
+      -ldflags "-s -w -X main.Version=${VERSION} -X main.BuildDate=${BUILD_DATE} -X main.GitCommit=${GIT_COMMIT}" \
+      -o build/bin/adomnia .
 
 RUN set -e && \
     mkdir -p /appdir/usr/bin \

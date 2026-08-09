@@ -1,6 +1,7 @@
+import * as AppBindings from '../../bindings/adomnia/app'
 export function safeSelectFolder(title: string): Promise<string> {
-  const fn = (window as unknown as { go?: { main?: { App?: { SelectFolder?: (t: string) => Promise<string> } } } })
-    ?.go?.main?.App?.SelectFolder
+  // Wails 3 has no `window.go` global; the binding is imported directly.
+  const fn = AppBindings.SelectFolder
   if (!fn) return Promise.reject(new Error('Wails bridge not available — run inside the desktop app'))
   return fn(title)
 }

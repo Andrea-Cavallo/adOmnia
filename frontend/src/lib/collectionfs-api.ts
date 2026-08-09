@@ -1,3 +1,4 @@
+import { isDesktopRuntime } from './desktopRuntime'
 import * as CollectionFSBinding from '@/wailsjs/go/main/CollectionFS'
 import type { Collection, Environment, RequestItem } from '@/lib/types'
 
@@ -20,9 +21,9 @@ export async function exportRequestToFolder(folderPath: string, request: Request
   return CollectionFSBinding.ExportRequestToFolder(folderPath, JSON.stringify(request))
 }
 
+// Wails 3 has no `window.go` global; services come from generated bindings.
 export function hasCollectionFSBinding(): boolean {
-  const w = window as typeof window & { go?: { main?: { CollectionFS?: unknown } } }
-  return Boolean(w.go?.main?.CollectionFS)
+  return isDesktopRuntime()
 }
 
 export async function exportCollectionToFolder(folderPath: string, collection: Collection, environments: Environment[]): Promise<void> {

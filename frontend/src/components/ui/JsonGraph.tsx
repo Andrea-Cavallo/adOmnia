@@ -383,10 +383,10 @@ function GraphCanvas({
                 borderBottom: '1px solid var(--color-border-1)',
                 minHeight: HEADER_H,
               }}>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5, fontWeight: 600, color: depthColor(node.depth), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                <span style={{ fontFamily: 'var(--skin-font-mono, var(--font-mono))', fontSize: 11.5, fontWeight: 600, color: depthColor(node.depth), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                   {node.title}
                 </span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: depthColor(node.depth), whiteSpace: 'nowrap', flexShrink: 0 }}>
+                <span style={{ fontFamily: 'var(--skin-font-mono, var(--font-mono))', fontSize: 10, color: depthColor(node.depth), whiteSpace: 'nowrap', flexShrink: 0 }}>
                   {node.meta}
                 </span>
               </div>
@@ -413,7 +413,7 @@ function GraphCanvas({
                       alignItems: 'center',
                       gap: 6,
                       padding: '1px 10px',
-                      fontFamily: 'var(--font-mono)',
+                      fontFamily: 'var(--skin-font-mono, var(--font-mono))',
                       fontSize: 11,
                       minHeight: ROW_H,
                       borderBottom: i < node.rows.length - 1 ? '1px solid var(--color-border-1)' : 'none',
@@ -476,7 +476,7 @@ function GraphCanvas({
             borderRadius: 6,
             overflow: 'auto',
             boxShadow: '0 4px 20px rgba(0,0,0,0.45)',
-            fontFamily: 'var(--font-mono)',
+            fontFamily: 'var(--skin-font-mono, var(--font-mono))',
             fontSize: 11,
             zIndex: 20,
           }}

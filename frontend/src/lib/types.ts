@@ -231,8 +231,28 @@ export interface RequestHistoryEntry {
   response: ResponseData
 }
 
+/**
+ * Rail panels that can also live as a workspace tab, so a tool can be opened
+ * alongside requests instead of replacing the whole main area.
+ */
+export type ToolTabId = 'jsonviewer' | 'apidocs'
+
+export const TOOL_TAB_LABELS: Record<ToolTabId, string> = {
+  jsonviewer: 'JSON Studio',
+  apidocs: 'API Docs',
+}
+
 export interface Tab {
   id: string
+  /**
+   * Set when this tab hosts a tool panel rather than an HTTP request.
+   *
+   * `request` stays required and holds a blank placeholder for tool tabs. That
+   * keeps every existing `tab.request` reader working and needs no bump of the
+   * persisted session schema — an older build just reads a tool tab back as an
+   * empty request instead of failing to load the session.
+   */
+  tool?: ToolTabId
   request: RequestItem
   collectionId?: string
   workspaceId?: string

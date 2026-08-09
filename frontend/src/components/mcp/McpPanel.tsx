@@ -1,3 +1,4 @@
+import { isDesktopRuntime } from '@/lib/desktopRuntime'
 import { useEffect, useMemo, useState } from 'react'
 import {
   ChevronDown,
@@ -84,10 +85,9 @@ function formatJSON(raw: string): string {
   }
 }
 
+// Wails 3 has no `window.go` global; services come from generated bindings.
 function hasMcpBinding() {
-  return typeof (window as unknown as {
-    go?: { main?: { MCPClient?: unknown } }
-  }).go?.main?.MCPClient === 'object'
+  return isDesktopRuntime()
 }
 
 function readProperties(tool: McpTool | null): Record<string, SchemaProperty> {

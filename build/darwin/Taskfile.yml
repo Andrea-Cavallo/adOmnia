@@ -1,0 +1,50 @@
+version: '3'
+
+includes:
+  common: ../Taskfile.yml
+
+tasks:
+  build:
+    summary: Build the macOS binary. Pass GOARCH=arm64 or GOARCH=amd64 to cross-build.
+    deps:
+      - task: common:build:frontend
+    env:
+      GOARCH: '{{.GOARCH | default ARCH}}'
+      CGO_ENABLED: '1'
+    cmds:
+      - go build -buildvcs=false -trimpath -tags production -ldflags="-s -w {{.LD_VERSION}}" -o {{.BIN_DIR}}/{{.APP_NAME}} .
+
+  generate:icons:
+    summary: Build iconfile.icns from build/appicon.png (macOS only, uses sips/iconutil).
+    status:
+      - test -f build/darwin/iconfile.icns
+    cmds:
+      - rm -rf build/darwin/iconfile.iconset
+      - mkdir -p build/darwin/iconfile.iconset
+      - for: [16, 32, 64, 128, 256, 512, 1024]
+        cmd: sips -z {{.ITEM}} {{.ITEM}} build/appicon.png --out build/darwin/iconfile.iconset/icon_{{.ITEM}}x{{.ITEM}}.png >/dev/null
+      - iconutil -c icns build/darwin/iconfile.iconset -o build/darwin/iconfile.icns
+      - rm -rf build/darwin/iconfile.iconset
+
+  create:app:bundle:
+    summary: Assemble {{.APP_NAME}}.app around an already-built binary.
+    deps:
+      - task: generate:icons
+    cmds:
+      - rm -rf '{{.BIN_DIR}}/{{.APP_NAME}}.app'
+      - mkdir -p '{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/MacOS'
+      - mkdir -p '{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/Resources'
+      - cp build/darwin/Info.plist '{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/Info.plist'
+      - cp build/darwin/iconfile.icns '{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/Resources/iconfile.icns'
+      - cp '{{.BIN_DIR}}/{{.APP_NAME}}' '{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/MacOS/{{.APP_NAME}}'
+      - chmod +x '{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/MacOS/{{.APP_NAME}}'
+
+  package:
+    summary: Build the binary and wrap it in a .app bundle.
+    cmds:
+      - task: build
+      - task: create:app:bundle
+
+  run:
+    cmds:
+      - '{{.BIN_DIR}}/{{.APP_NAME}}'

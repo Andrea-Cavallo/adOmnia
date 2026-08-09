@@ -1,0 +1,40 @@
+version: '3'
+
+includes:
+  common: ./build/Taskfile.yml
+  windows: ./build/windows/Taskfile.yml
+  darwin: ./build/darwin/Taskfile.yml
+  linux: ./build/linux/Taskfile.yml
+
+vars:
+  APP_NAME: adomnia
+  BIN_DIR: bin
+  VITE_PORT: '{{.WAILS_VITE_PORT | default 9245}}'
+  # Wails selects its production WebView implementation behind this build tag.
+  BUILD_TAGS: '-tags production'
+  # Release metadata. Override through the ENVIRONMENT, not as task arguments:
+  #   VERSION=1.2.3 BUILD_DATE=... GIT_COMMIT=... wails3 task build
+  # `wails3 task build VERSION=1.2.3` does NOT work — wails3 does not forward
+  # command-line variable assignments through to Task.
+  LD_VERSION: '-X main.Version={{.VERSION | default "dev"}} -X main.BuildDate={{.BUILD_DATE | default "unknown"}} -X main.GitCommit={{.GIT_COMMIT | default "unknown"}}'
+
+tasks:
+  build:
+    summary: Build adOmnia for the current platform.
+    cmds:
+      - task: '{{OS}}:build'
+
+  package:
+    summary: Build a distributable bundle for the current platform.
+    cmds:
+      - task: '{{OS}}:package'
+
+  run:
+    summary: Run the locally built application.
+    cmds:
+      - task: '{{OS}}:run'
+
+  dev:
+    summary: Run the Wails 3 development workflow.
+    cmds:
+      - wails3 dev -config ./build/config.yml -port {{.VITE_PORT}}

@@ -391,7 +391,13 @@ function InstalledTab({
   themes, builtinThemes, activeThemeId, loading, builtinIds, menuOpenId, setMenuOpenId,
   onActivate, onDelete, onExport, onDuplicate, onCreate, onEdit,
 }: InstalledTabProps) {
-  if (loading && themes.length === 0 && builtinThemes.length === 0) {
+  // `themes` is the full deduped catalog (builtins + project + user + skins),
+  // and it is shared with StatusBar/WelcomePanel to resolve the active theme.
+  // The Custom section must therefore subtract the builtins here, or every
+  // built-in theme renders twice — once per section.
+  const customThemes = themes.filter((theme) => !builtinIds.has(theme.id))
+
+  if (loading && customThemes.length === 0 && builtinThemes.length === 0) {
     return (
       <div className="flex items-center justify-center h-48">
         <div className="text-sm text-text-3">Loading themes...</div>
@@ -443,7 +449,7 @@ function InstalledTab({
       )}
 
       {/* User themes */}
-      {themes.length === 0 ? (
+      {customThemes.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-32 gap-3">
           <p className="text-sm text-text-3">No custom themes installed yet.</p>
           <button
@@ -458,7 +464,7 @@ function InstalledTab({
         <div>
           <p className="text-xs font-medium text-text-3 uppercase tracking-wider mb-3">Custom</p>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-      {themes.map((theme) => {
+      {customThemes.map((theme) => {
         const isActive = theme.id === activeThemeId
         const isBuiltin = builtinIds.has(theme.id)
         const colorPreview = Object.values(theme.colors).slice(0, 5)

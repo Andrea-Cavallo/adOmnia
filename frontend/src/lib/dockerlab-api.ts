@@ -1,3 +1,4 @@
+import * as DockerLabBindings from '../../bindings/adomnia/dockerlab'
 export interface PresetDef {
   id: string
   name: string
@@ -58,8 +59,9 @@ export interface LabInfo {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+// Wails 3 has no `window.go` global; services come from generated bindings.
 function getBinding(): any {
-  return (window as any)?.go?.main?.DockerLab
+  return DockerLabBindings
 }
 
 export async function generateLab(ids: string[]): Promise<LabOutput> {

@@ -1,29 +1,39 @@
-export function WindowMinimise() { window.runtime?.WindowMinimise(); }
-export function WindowMaximise() { window.runtime?.WindowMaximise(); }
-export function WindowToggleMaximise() { window.runtime?.WindowToggleMaximise(); }
-export function WindowUnmaximise() { window.runtime?.WindowUnmaximise(); }
-export function WindowFullscreen() { window.runtime?.WindowFullscreen(); }
-export function WindowUnfullscreen() { window.runtime?.WindowUnfullscreen(); }
-export function WindowSetSize(width, height) { window.runtime?.WindowSetSize(width, height); }
-export function WindowGetSize() { return window.runtime?.WindowGetSize(); }
-export function WindowSetPosition(x, y) { window.runtime?.WindowSetPosition(x, y); }
-export function WindowGetPosition() { return window.runtime?.WindowGetPosition(); }
-export function WindowHide() { window.runtime?.WindowHide(); }
-export function WindowShow() { window.runtime?.WindowShow(); }
-export function WindowCenter() { window.runtime?.WindowCenter(); }
-export function WindowSetTitle(title) { window.runtime?.WindowSetTitle(title); }
-export function Quit() { window.runtime?.Quit(); }
-export function Environment() { return window.runtime?.Environment(); }
-export function EventsOn(eventName, callback) { return window.runtime?.EventsOn(eventName, callback); }
-export function EventsOnce(eventName, callback) { return window.runtime?.EventsOnce(eventName, callback); }
-export function EventsOnMultiple(eventName, callback, maxCallbacks) { return window.runtime?.EventsOnMultiple(eventName, callback, maxCallbacks); }
-export function EventsEmit(eventName, ...data) { window.runtime?.EventsEmit(eventName, ...data); }
-export function EventsOff(eventName, ...additionalEventNames) { window.runtime?.EventsOff(eventName, ...additionalEventNames); }
-export function LogDebug(message) { window.runtime?.LogDebug(message); }
-export function LogInfo(message) { window.runtime?.LogInfo(message); }
-export function LogWarning(message) { window.runtime?.LogWarning(message); }
-export function LogError(message) { window.runtime?.LogError(message); }
-export function LogFatal(message) { window.runtime?.LogFatal(message); }
-export function BrowserOpenURL(url) { window.runtime?.BrowserOpenURL(url); }
-export function ClipboardGetText() { return window.runtime?.ClipboardGetText(); }
-export function ClipboardSetText(text) { return window.runtime?.ClipboardSetText(text); }
+// Compatibility layer for the former Wails v2 runtime imports. New code uses
+// @wailsio/runtime directly; existing UI modules retain their stable imports.
+import { Application, Browser, Clipboard, Events, System, Window } from '@wailsio/runtime'
+
+export const WindowMinimise = () => Window.Minimise()
+export const WindowMaximise = () => Window.Maximise()
+export const WindowToggleMaximise = () => Window.ToggleMaximise()
+export const WindowUnmaximise = () => Window.UnMaximise()
+export const WindowFullscreen = () => Window.Fullscreen()
+export const WindowUnfullscreen = () => Window.UnFullscreen()
+export const WindowSetSize = (width, height) => Window.SetSize(width, height)
+export const WindowGetSize = async () => {
+  const { width: w, height: h } = await Window.Size()
+  return { w, h }
+}
+export const WindowSetPosition = (x, y) => Window.SetPosition(x, y)
+export const WindowGetPosition = () => Window.Position()
+export const WindowHide = () => Window.Hide()
+export const WindowShow = () => Window.Show()
+export const WindowCenter = () => Window.Center()
+export const WindowSetTitle = (title) => Window.SetTitle(title)
+export const Quit = () => Application.Quit()
+export const Environment = async () => {
+  const env = await System.Environment()
+  return { buildType: env.Debug ? 'debug' : 'production', platform: env.OS, arch: env.Arch }
+}
+export const EventsOn = (eventName, callback) => Events.On(eventName, (event) => callback(event.data))
+export const EventsOnce = (eventName, callback) => Events.Once(eventName, (event) => callback(event.data))
+export const EventsOnMultiple = (eventName, callback, maxCallbacks) => Events.OnMultiple(eventName, (event) => callback(event.data), maxCallbacks)
+export const EventsEmit = (eventName, ...data) => Events.Emit(eventName, data.length <= 1 ? data[0] : data)
+export const EventsOff = (eventName, ...additionalEventNames) => Events.Off(eventName, ...additionalEventNames)
+export const LogDebug = (message) => console.debug(message)
+export const LogInfo = (message) => console.info(message)
+export const LogWarning = (message) => console.warn(message)
+export const LogError = (message) => console.error(message)
+export const LogFatal = (message) => console.error(message)
+export const BrowserOpenURL = (url) => Browser.OpenURL(url)
+export const ClipboardGetText = () => Clipboard.Text()
+export const ClipboardSetText = (text) => Clipboard.SetText(text).then(() => true)

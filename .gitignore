@@ -47,6 +47,7 @@ frontend/.vite/
 frontend/.turbo/
 frontend/.cache/
 frontend/package.json.md5
+.task/
 
 # Go generated output
 bin/

@@ -630,6 +630,63 @@ func (tm *ThemeManager) checkForChanges(skinsDir string) {
 func (tm *ThemeManager) GetExtendedBuiltinThemes() []Theme {
 	return []Theme{
 		{
+			ID:          "builtin-sketch",
+			Name:        "Sketch",
+			Author:      "adOmnia",
+			Version:     "1.0.0",
+			Description: "Hand-drawn engineering notebook — ruled paper, spiral binding, pencil ink and highlighter",
+			Colors: map[string]string{
+				// Paper stock, warming very slightly as panels stack.
+				"surface-0": "#FAF8F2",
+				"surface-1": "#FDFCF8",
+				"surface-2": "#F3F0E7",
+				"surface-3": "#EBE7DB",
+				"surface-4": "#E2DDCE",
+				// Pencil and pen, never pure black — graphite reads warmer.
+				"text-1": "#2A2F37",
+				"text-2": "#414852",
+				"text-3": "#5D6472",
+				"text-4": "#98A0AC",
+				// Borders are drawn strokes, so they carry more weight than a
+				// normal theme's hairlines.
+				"border-1":      "#C7C1B1",
+				"border-2":      "#B4AD9A",
+				"border-3":      "#9E9684",
+				"accent":        "#7C5CD6",
+				"accent-hover":  "#6B49C9",
+				"accent-light":  "#A78BEE",
+				"accent-dark":   "#5B3DA8",
+				"accent-glow":   "rgba(124, 92, 214, 0.22)",
+				"success":       "#3E9C6B",
+				"warning":       "#D98A3C",
+				"error":         "#D4574E",
+				"info":          "#3D7EA6",
+				"method-get":    "#3E9C6B",
+				"method-post":   "#D98A3C",
+				"method-put":    "#3D7EA6",
+				"method-patch":  "#7C5CD6",
+				"method-delete": "#D4574E",
+				"method-head":   "#6B7280",
+			},
+			Fonts: ThemeFonts{
+				// One hand wrote the whole page, code included — but Monaco
+				// measures fixed character cells, so the code face must stay
+				// monospaced or the caret and selections drift from the glyphs.
+				// Monaspace Radon is a handwriting-style monospace, which keeps
+				// the drawing intact without breaking the editor.
+				Sans:  "'Architects Daughter', 'Comic Sans MS', cursive",
+				Mono:  "'Monaspace Radon', 'Comic Mono', 'Architects Daughter', monospace",
+				Serif: "'Architects Daughter', cursive",
+			},
+			Spacing: map[string]string{},
+			Radii:   map[string]string{},
+			Shadows: map[string]string{},
+			// `skin` drives the paper, binding and drawn borders in
+			// frontend/src/styles/skin-sketch.css — tokens alone cannot express
+			// ruled paper or an irregular pen stroke.
+			Meta: map[string]string{"builtin": "true", "style": "sketch", "skin": "sketch"},
+		},
+		{
 			ID:          "builtin-tokyo-night",
 			Name:        "Tokyo Night",
 			Author:      "adOmnia",

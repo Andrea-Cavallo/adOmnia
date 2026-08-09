@@ -1,3 +1,4 @@
+import { isDesktopRuntime } from '@/lib/desktopRuntime'
 import { useState, useEffect, useCallback } from 'react'
 import { Search, Download, Upload, Trash2, Copy, Plus, RefreshCw, Eraser, AlertTriangle } from 'lucide-react'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
@@ -20,10 +21,9 @@ interface StorageEntry {
 
 const STORAGE_BUCKETS = ['workspace', 'collections', 'environments', 'history', 'mock', 'proxy']
 
+// Wails 3 has no `window.go` global; services come from generated bindings.
 function hasWailsStorage() {
-  return Boolean((window as unknown as {
-    go?: { main?: { App?: { StorageGet?: unknown; StorageList?: unknown; StoragePut?: unknown } } }
-  }).go?.main?.App?.StorageGet)
+  return isDesktopRuntime()
 }
 
 function parseStorageValue(value: string) {

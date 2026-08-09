@@ -106,8 +106,38 @@ function mergeBlock<T extends Record<string, unknown>>(defaults: T, saved: Parti
   return merged
 }
 
+const RETIRED_AI_MODELS: Partial<Record<AppSettings['ai']['provider'], Record<string, string>>> = {
+  openai: {
+    'gpt-5.5': 'gpt-5.6-sol',
+    'gpt-5.5-pro': 'gpt-5.6-sol',
+    'gpt-5.4': 'gpt-5.6-terra',
+    'gpt-5.4-mini': 'gpt-5.6-terra',
+    'gpt-5.4-nano': 'gpt-5.6-luna',
+  },
+  anthropic: {
+    'claude-opus-4-8': 'claude-opus-5',
+    'claude-sonnet-4-6': 'claude-sonnet-5',
+  },
+  gemini: {
+    'gemini-3-flash': 'gemini-3.6-flash',
+    'gemini-3.1-flash-lite': 'gemini-3.5-flash-lite',
+  },
+  huggingface: {
+    'deepseek-ai/DeepSeek-R1:preferred': 'deepseek-ai/DeepSeek-V3-0324:preferred',
+  },
+  ollama: {
+    'qwen3-coder': 'qwen3.5',
+    gemma3: 'gemma4',
+  },
+}
+
+function migrateAIModel(ai: AppSettings['ai']): AppSettings['ai'] {
+  const replacement = RETIRED_AI_MODELS[ai.provider]?.[ai.model]
+  return replacement ? { ...ai, model: replacement } : ai
+}
+
 const defaultSettings: AppSettings = {
-  version: 4,
+  version: 5,
   general: {
     confirmBeforeClosingDirtyTabs: true,
     restoreTabsOnStartup: true,
@@ -232,6 +262,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       // and deliberate 'system' picks are left untouched.
       const migratedToV3 = (parsed.version ?? 0) < 3 && appearance.windowChrome === 'app'
       if (migratedToV3) appearance.windowChrome = 'system'
+      const savedAI = mergeBlock(defaultSettings.ai, parsed.ai)
+      const migratedAI = (parsed.version ?? 0) < 5 ? migrateAIModel(savedAI) : savedAI
+      const migratedAiModels = migratedAI.model !== savedAI.model
       const merged: AppSettings = {
         ...defaultSettings,
         ...parsed,
@@ -243,14 +276,14 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         mock: mergeBlock(defaultSettings.mock, parsed.mock),
         vault: mergeBlock(defaultSettings.vault, parsed.vault),
         editor: mergeBlock(defaultSettings.editor, parsed.editor),
-        ai: mergeBlock(defaultSettings.ai, parsed.ai),
+        ai: migratedAI,
         features: mergeBlock(defaultSettings.features, parsed.features),
         markdown: mergeBlock(defaultSettings.markdown, parsed.markdown),
       }
       setAutoSaveDelay(merged.general.autoSaveIntervalMs)
       set({ settings: merged, loaded: true })
-      // Persist the v3 migration so the change survives without a manual edit.
-      if (migratedToV3) get().save()
+      // Persist one-time migrations so the change survives without a manual edit.
+      if (migratedToV3 || migratedAiModels) get().save()
     } catch {
       set({ settings: defaultSettings, loaded: true })
     }

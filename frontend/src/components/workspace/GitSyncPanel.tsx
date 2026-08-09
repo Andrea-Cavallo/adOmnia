@@ -1,3 +1,4 @@
+import { isDesktopRuntime } from '@/lib/desktopRuntime'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertTriangle,
@@ -151,9 +152,9 @@ function loadGitColumnWidths(): GitColumnWidths {
   }
 }
 
+// Wails 3 has no `window.go` global; services come from generated bindings.
 function hasGitSyncBinding(): boolean {
-  const w = window as typeof window & { go?: { main?: { GitSync?: unknown } } }
-  return Boolean(w.go?.main?.GitSync)
+  return isDesktopRuntime()
 }
 
 function parseJSON<T>(raw: string, fallback: T): T {

@@ -1,0 +1,33 @@
+version: '3'
+
+includes:
+  common: ../Taskfile.yml
+
+vars:
+  WINDOWS_ARCH: '{{.ARCH | default "amd64"}}'
+
+tasks:
+  build:
+    deps:
+      - task: common:build:frontend
+    cmds:
+      - task: generate:syso
+      - go build -buildvcs=false -trimpath -tags production -ldflags="-s -w -H windowsgui {{.LD_VERSION}}" -o {{.BIN_DIR}}/{{.APP_NAME}}.exe .
+      - cmd: powershell -NoProfile -Command "if (Test-Path -LiteralPath 'wails_windows_{{.WINDOWS_ARCH}}.syso') { Remove-Item -LiteralPath 'wails_windows_{{.WINDOWS_ARCH}}.syso' }"
+
+  generate:syso:
+    summary: Embed the Windows icon, manifest and version metadata into the executable.
+    dir: build
+    cmds:
+      - wails3 generate syso -arch {{.WINDOWS_ARCH}} -icon windows/icon.ico -manifest windows/wails.exe.manifest -info windows/info.json -out ../wails_windows_{{.WINDOWS_ARCH}}.syso
+
+  package:
+    summary: Windows ships the bare executable, so packaging is just a build.
+    deps:
+      - task: build
+    cmds:
+      - cmd: echo "Built {{.BIN_DIR}}/{{.APP_NAME}}.exe"
+
+  run:
+    cmds:
+      - '{{.BIN_DIR}}/{{.APP_NAME}}.exe'

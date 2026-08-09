@@ -4,8 +4,6 @@ import (
 	"adomnia/internal/markdown"
 	"errors"
 	"strings"
-
-	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 func (a *App) ListMarkdownFiles(root string) ([]markdown.FileEntry, error) {
@@ -28,13 +26,13 @@ func (a *App) SaveMarkdownFileAs(defaultName string, content string) (markdown.F
 	if !markdown.IsMarkdownPath(defaultName) {
 		defaultName += ".md"
 	}
-	path, err := wailsRuntime.SaveFileDialog(a.ctx, wailsRuntime.SaveDialogOptions{
-		Title:           "Save Markdown note",
-		DefaultFilename: defaultName,
-		Filters: []wailsRuntime.FileFilter{
-			{DisplayName: "Markdown files (*.md, *.markdown)", Pattern: "*.md;*.markdown"},
-		},
-	})
+	if a.desktop == nil {
+		return markdown.FileEntry{}, errors.New("desktop runtime is not ready")
+	}
+	path, err := a.desktop.Dialog.SaveFile().
+		SetFilename(defaultName).
+		AddFilter("Markdown files (*.md, *.markdown)", "*.md;*.markdown").
+		PromptForSingleSelection()
 	if err != nil {
 		return markdown.FileEntry{}, err
 	}

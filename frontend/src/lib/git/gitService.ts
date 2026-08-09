@@ -1,3 +1,4 @@
+import { isDesktopRuntime } from '@/lib/desktopRuntime'
 // Git Sync service layer. The single place the UI talks to git: it wraps the
 // Wails bindings, parses the typed OpResult contract, and normalizes errors so
 // callers never scrape terminal output or handle raw rejections. No React, no
@@ -17,9 +18,9 @@ import type {
   SearchFilters,
 } from './types'
 
+// Wails 3 has no `window.go` global; services come from generated bindings.
 function hasBinding(): boolean {
-  const w = window as typeof window & { go?: { main?: { GitSync?: unknown } } }
-  return Boolean(w.go?.main?.GitSync)
+  return isDesktopRuntime()
 }
 
 /** Build a failed OpResult for a transport/parse error so callers stay simple. */

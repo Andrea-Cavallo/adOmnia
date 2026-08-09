@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAppStore, type RailItem } from '@/stores/app'
+import { useTabsStore } from '@/stores/tabs'
+import { TOOL_TAB_LABELS, type ToolTabId } from '@/lib/types'
 import { useSettingsStore } from '@/stores/settings'
 import { cn } from '@/lib/utils'
 import { useAppIcon } from '@/lib/brandAssets'
@@ -103,8 +105,24 @@ interface FlyoutProps {
   onClose: () => void
 }
 
+/** Rail entries that can also be opened as a workspace tab. */
+const TOOL_TAB_RAILS = new Set<string>(Object.keys(TOOL_TAB_LABELS))
+
 function Flyout({ cat, activeRail, onSelect, onClose }: FlyoutProps) {
   const nav = useNavigationTranslation()
+  const tr = useUiTranslation()
+  const openToolTab = useTabsStore((s) => s.openToolTab)
+  const setActiveRail = useAppStore((s) => s.setActiveRail)
+  const [menuFor, setMenuFor] = useState<ToolTabId | null>(null)
+
+  const openInNewTab = (tool: ToolTabId) => {
+    openToolTab(tool)
+    // Tool tabs live in the request workspace, so go there to reveal it.
+    setActiveRail('collections')
+    setMenuFor(null)
+    onClose()
+  }
+
   return (
     <div className="absolute left-full top-0 ml-2 w-52 bg-surface-1 border border-border-1 rounded-xl shadow-2xl z-50 py-2 overflow-hidden">
       <div className="px-3 pt-1 pb-2 border-b border-border-1/60">
@@ -128,6 +146,11 @@ function Flyout({ cat, activeRail, onSelect, onClose }: FlyoutProps) {
               <button
                 key={item.id}
                 onClick={() => { onSelect(item.id); onClose() }}
+                onContextMenu={(e) => {
+                  if (!TOOL_TAB_RAILS.has(item.id)) return
+                  e.preventDefault()
+                  setMenuFor(item.id as ToolTabId)
+                }}
                 className={cn(
                   'w-full flex items-center gap-2.5 px-3 py-1.5 text-xs transition-colors text-left',
                   active
@@ -141,6 +164,16 @@ function Flyout({ cat, activeRail, onSelect, onClose }: FlyoutProps) {
               </button>
             )
           })}
+          {menuFor && group.items.some((i) => i.id === menuFor) && (
+            <div className="px-3 py-1">
+              <button
+                onClick={() => openInNewTab(menuFor)}
+                className="w-full text-left px-2 py-1.5 text-[11px] rounded bg-surface-2 text-text-1 hover:bg-accent/15 transition-colors"
+              >
+                {tr('Open in New Tab')}
+              </button>
+            </div>
+          )}
         </div>
       ))}
     </div>

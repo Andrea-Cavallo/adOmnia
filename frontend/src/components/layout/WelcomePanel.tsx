@@ -138,17 +138,20 @@ function countRequests(nodes: TreeNode[]): number {
   return nodes.reduce((total, node) => total + (node.type === 'folder' ? countRequests(node.children) : 1), 0)
 }
 
+// Every value here resolves through the design tokens, so the welcome screen
+// follows the active theme. It used to hardcode a violet wash and slate greys,
+// which made every theme look like the purple default — the neon theme in
+// particular arrived with a mint accent sitting on a violet page.
 function themeVars(isLight: boolean) {
+  const glow = 'color-mix(in oklab, var(--color-accent) 18%, transparent)'
   return {
-    page: isLight
-      ? 'radial-gradient(1100px 720px at 82% -10%, rgba(124,58,237,.16), transparent 58%), linear-gradient(180deg, #f8fafc, #eef2f7)'
-      : 'radial-gradient(1100px 720px at 82% -10%, rgba(124,58,237,.18), transparent 58%), #07080d',
-    panel: isLight ? 'rgba(255,255,255,.84)' : '#0b0d14',
-    card: isLight ? 'linear-gradient(180deg,#ffffff,#f4f7fb)' : 'linear-gradient(180deg,#0f121b,#0b0d13)',
-    cardBorder: isLight ? '#d9e1ee' : '#1f2433',
-    muted: isLight ? '#64748b' : '#a3adbd',
-    faint: isLight ? '#94a3b8' : '#6b7280',
-    title: isLight ? '#0f172a' : '#ffffff',
+    page: `radial-gradient(1100px 720px at 82% -10%, ${glow}, transparent 58%), var(--color-surface-0)`,
+    panel: 'var(--color-surface-1)',
+    card: 'linear-gradient(180deg, var(--color-surface-2), var(--color-surface-1))',
+    cardBorder: 'var(--color-border-1)',
+    muted: 'var(--color-text-3)',
+    faint: 'var(--color-text-4)',
+    title: 'var(--color-text-1)',
     shadow: isLight ? '0 38px 90px -58px rgba(15,23,42,.35)' : '0 50px 100px -58px rgba(0,0,0,.95)',
   }
 }
@@ -276,7 +279,7 @@ function FidgetLogo({ src }: { src: string }) {
         src={src}
         alt=""
         draggable={false}
-        className="pointer-events-none h-[240px] w-[240px] object-contain drop-shadow-[0_18px_34px_rgba(124,58,237,.38)] will-change-transform max-sm:h-[190px] max-sm:w-[190px]"
+        className="pointer-events-none h-[240px] w-[240px] object-contain drop-shadow-[0_18px_34px_var(--color-accent-glow)] will-change-transform max-sm:h-[190px] max-sm:w-[190px]"
       />
     </button>
   )
@@ -339,9 +342,8 @@ export function WelcomePanel() {
           className="flex min-h-[300px] items-center justify-between gap-10 border-b px-8 py-8 max-lg:flex-col max-lg:items-start"
           style={{
             borderColor: colors.cardBorder,
-            background: isLight
-              ? 'radial-gradient(760px 420px at 94% 5%, rgba(124,58,237,.14), transparent 58%)'
-              : 'radial-gradient(760px 420px at 94% 5%, rgba(124,58,237,.18), transparent 58%)',
+            background:
+              'radial-gradient(760px 420px at 94% 5%, color-mix(in oklab, var(--color-accent) 16%, transparent), transparent 58%)',
           }}
         >
           <div className="min-w-0">
@@ -422,7 +424,7 @@ function SectionTitle({ index, title, kicker, accent, colors }: {
 }) {
   const nav = useNavigationTranslation()
   const tr = useUiTranslation()
-  const accentColor = accent === 'orange' ? '#fb923c' : accent === 'muted' ? colors.faint : '#a855f7'
+  const accentColor = accent === 'orange' ? 'var(--color-warning)' : accent === 'muted' ? colors.faint : 'var(--color-accent)'
   return (
     <div className="mb-3 flex items-center gap-3">
       <span
@@ -478,7 +480,7 @@ function ToolCard({ tool, colors, isLight, onClick }: {
   const nav = useNavigationTranslation()
   const tr = useUiTranslation()
   const Icon = tool.icon
-  const accent = tool.accent === 'orange' ? '#fb923c' : '#a855f7'
+  const accent = tool.accent === 'orange' ? 'var(--color-warning)' : 'var(--color-accent)'
   return (
     <button
       onClick={onClick}
@@ -544,7 +546,7 @@ function CompactHubSection({
 }) {
   const nav = useNavigationTranslation()
   const tr = useUiTranslation()
-  const accent = section.accent === 'orange' ? '#fb923c' : section.accent === 'muted' ? '#6ee7b7' : '#a855f7'
+  const accent = section.accent === 'orange' ? 'var(--color-warning)' : section.accent === 'muted' ? 'var(--color-success)' : 'var(--color-accent)'
   const featured = section.tools.find((tool) => tool.featured) ?? section.tools[0]
   const sectionStats = {
     '01': [
@@ -613,7 +615,7 @@ function CompactHubSection({
               onOpen={() => onOpen('gitsync')}
             />
           ) : section.index === '04' ? (
-            <MoreToolsCard section={section} colors={colors} isLight={isLight} onOpen={onOpen} />
+            <MoreToolsCard section={section} colors={colors} onOpen={onOpen} />
           ) : (
             <ToolSection
               index={section.index}
@@ -680,7 +682,7 @@ function GitCommandCard({
               ['A', 'docs/release-notes.md', '#6ee7b7'],
               ['?', 'notes/roadmap.md', colors.faint],
             ].map(([status, file, color]) => (
-              <div key={file} className="mb-1 flex items-center gap-2 rounded-lg px-2 py-1.5 font-mono text-[10.5px]" style={{ background: isLight ? '#f8fafc' : '#0b0d14' }}>
+              <div key={file} className="mb-1 flex items-center gap-2 rounded-lg px-2 py-1.5 font-mono text-[10.5px]" style={{ background: 'var(--color-surface-2)' }}>
                 <b className="w-3" style={{ color }}>{status}</b>
                 <span className="min-w-0 flex-1 truncate" style={{ color: colors.muted }}>{file}</span>
               </div>
@@ -707,12 +709,10 @@ function GitCommandCard({
 function MoreToolsCard({
   section,
   colors,
-  isLight,
   onOpen,
 }: {
   section: HubSection
   colors: ReturnType<typeof themeVars>
-  isLight: boolean
   onOpen: (id: RailItem) => void
 }) {
   const nav = useNavigationTranslation()
@@ -728,7 +728,7 @@ function MoreToolsCard({
               key={tool.id}
               onClick={() => onOpen(tool.id)}
               className="flex min-w-0 items-center gap-2 rounded-lg border px-3 py-2 text-left transition-all hover:-translate-y-0.5 hover:border-violet-500/50"
-              style={{ borderColor: colors.cardBorder, background: isLight ? '#ffffff99' : '#0b0d14', color: colors.title }}
+              style={{ borderColor: colors.cardBorder, background: 'var(--color-surface-2)', color: colors.title }}
               title={tr(tool.desc as UiMessage)}
             >
               <Icon size={13} className="shrink-0 text-violet-400" />

@@ -220,13 +220,32 @@ export function useFileDrop(): FileDropResult {
     }
   }, [clearNoFileTimer, importDroppedFiles, showFeedback])
 
+  // Native OS file drops. Wails 3 replaced the v2 `runtime.OnFileDrop` callback
+  // with the `common:WindowFilesDropped` event, and only delivers it when the
+  // drop lands on an element carrying `data-file-drop-target` (set on the app
+  // root in App.tsx). The window must also be created with EnableFileDrop.
   useEffect(() => {
-    if (!window.runtime?.OnFileDrop) return undefined
-    window.runtime.OnFileDrop((_x, _y, paths) => {
-      if (Date.now() < suppressNativeDropUntil.current) return
-      void importDroppedPaths(paths)
-    }, false)
-    return () => window.runtime?.OnFileDropOff?.()
+    let off: (() => void) | undefined
+    let cancelled = false
+
+    void import('@wailsio/runtime').then(({ Events }) => {
+      if (cancelled) return
+      off = Events.On('common:WindowFilesDropped', (event: { data?: unknown }) => {
+        if (Date.now() < suppressNativeDropUntil.current) return
+        const payload = Array.isArray(event?.data) ? event.data[0] : event?.data
+        const filenames = (payload as { filenames?: unknown })?.filenames
+        if (!Array.isArray(filenames) || filenames.length === 0) return
+        void importDroppedPaths(filenames.filter((p): p is string => typeof p === 'string'))
+      })
+    }).catch(() => {
+      // Running outside the desktop shell (plain browser dev): the in-page
+      // HTML5 drag handlers below still work.
+    })
+
+    return () => {
+      cancelled = true
+      off?.()
+    }
   }, [importDroppedPaths])
 
   const handleDragEnter = useCallback((e: React.DragEvent<HTMLDivElement>) => {

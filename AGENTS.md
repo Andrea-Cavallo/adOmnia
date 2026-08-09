@@ -38,7 +38,7 @@ This file used to duplicate that content and drifted out of sync. It is now a po
 cd frontend && npx tsc --noEmit    # TypeScript
 npm run build                      # Frontend build
 go build ./... && go test ./...    # Go backend
-wails dev                          # Manual product check — do this for UI work
+wails3 task dev                    # Manual product check — do this for UI work
 ```
 
 The last one matters most. This is a product, not a library: open the panel and use it as a real user would before calling a change done.

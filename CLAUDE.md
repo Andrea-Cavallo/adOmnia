@@ -38,8 +38,8 @@ The *primary goal* is a **professional, coherent, modern, and truly usable FINAL
 
 Agents must understand the *real, current state* of the project:
 
-- **Current runtime is Wails 2 + Go backend + React 18/TypeScript frontend.**
-- Some older notes may still mention Tauri/Rust or legacy paths; verify against the current files before acting.
+- **Current runtime is Wails 3 + Go backend + React 18/TypeScript frontend.**
+- Some older notes may still mention Wails 2, Tauri/Rust, or legacy paths; verify against the current files before acting.
 - **Backend is significantly more advanced** than the frontend
 - **Frontend is still incomplete and nascent**
 - **Many backend features are not yet connected** to the frontend
@@ -76,13 +76,19 @@ Use these files as the fastest way to understand adOmnia before changing behavio
 3. **Browser Debugging Integrated** — debug web pages inside the API tool (no competitor does this).
 4. **Enterprise & Legacy First-Class** — SOAP, WSDL, WS-Security, mTLS, JKS, eIDAS, Berlin Group.
 
-**Tech stack:** React 18 + TypeScript + Vite frontend, Wails 2 desktop shell, Go backend.  
+**Tech stack:** React 18 + TypeScript + Vite frontend, Wails 3 desktop shell, Go backend.  
 **Distribution:** Single portable executable. No installation, no external dependencies at runtime.  
 **Philosophy:** Local-first, privacy-first, user-extensible.
 
 ---
 
 ## Build and Run
+
+Requires Go 1.26.5+, Node.js 20+, and the Wails 3 CLI:
+
+```bash
+go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.5
+```
 
 ### Development
 
@@ -93,18 +99,27 @@ npm install
 cd ..
 
 # Start dev server with hot reload
-wails dev
+wails3 task dev
 ```
 
 ### Production Build
 
 ```bash
-# Windows
-.\build.ps1
+# Current platform (Windows / macOS / Linux)
+wails3 task build
 
-# macOS / Linux
-./build.sh
+# Distributable bundle (.app on macOS, tarballs on Linux)
+wails3 task package
 ```
+
+Release metadata is injected through the **environment**, never as task arguments —
+`wails3 task build VERSION=1.2.3` is silently ignored:
+
+```bash
+VERSION=1.2.3 BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)" GIT_COMMIT="$(git rev-parse HEAD)" wails3 task build
+```
+
+Full instructions: `docs/BUILD.md`
 
 ---
 
@@ -148,7 +163,7 @@ adomnia/
 ├── CLAUDE.md                  # This file
 ├── README.md                  # User-facing overview
 ├── go.mod                     # Go dependencies
-├── wails.json                 # Wails configuration
+├── Taskfile.yml               # Wails 3 build entrypoint (per-platform under build/)
 └── frontend/package.json      # Frontend dependencies
 ```
 
@@ -180,13 +195,17 @@ adomnia/
 
 **AI credentials:** `settings.ai.credentialMode` is backward-compatible and defaults to `vault`. When set to `environment`, the renderer must not resolve or send a stored key (including a `vault:` reference). `internal/ai` resolves only the inherited process environment in memory: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` / `GOOGLE_API_KEY`, `HUGGINGFACE_API_KEY` / `HF_TOKEN`, `OPENAI_COMPATIBLE_API_KEY`, or `ADOMNIA_AI_API_KEY`. Never expose the value back to the frontend or persist it in Settings.
 
-### Backend (Wails 2 + Go)
+### Backend (Wails 3 + Go)
 
-The Go backend exposes Wails-bound methods consumed through generated bindings in `frontend/wailsjs/go/main/*`. Prefer existing frontend wrappers in `frontend/src/lib/*-api.ts` when they exist.
+Backend types are registered as Wails **services** in `main.go` (`application.NewService(...)`). Wails 3 generates TypeScript bindings into `frontend/bindings/adomnia/*` via `wails3 generate bindings` (wired into the `build:frontend` task, so a normal build regenerates them).
+
+`frontend/src/wailsjs/**` still exists but is now only a **compatibility shim**: the `go/main/*` files re-export from `frontend/bindings/`, and `runtime/runtime.js` maps the old v2 runtime names onto `@wailsio/runtime`. This keeps ~56 existing call sites untouched. New code should import `@wailsio/runtime` and `frontend/bindings/*` directly — do not add new surface to the shim. Prefer existing frontend wrappers in `frontend/src/lib/*-api.ts` when they exist.
+
+The `@wailsio/runtime` npm version is **version-locked** to `github.com/wailsapp/wails/v3` in `go.mod`. Bump them together or the IPC layer breaks.
 
 | Area | Packages / bindings |
 |------|---------------------|
-| App lifecycle/settings | `app.go`, `frontend/wailsjs/go/main/App.*` |
+| App lifecycle/settings | `app.go`, `frontend/bindings/adomnia/app.ts` |
 | HTTP/mock/proxy | `internal/mock`, `internal/proxy`, `internal/httpexec`, `internal/httputil` |
 | AI runtime | `internal/ai`, `ai_bindings.go`, `frontend/src/lib/aiEngine.ts` |
 | Browser debugging | `internal/browser` |
@@ -349,8 +368,8 @@ if (request.auth.type === 'aws4') {
 ### Add a backend command
 
 1. Implement the logic in the matching `internal/<domain>` package (create it if the domain is new)
-2. Expose it via a thin method in the matching root `*_bindings.go`, and register the service in `main.go` if it is new
-3. Regenerate or verify Wails bindings in `frontend/wailsjs/go/main/*` when needed
+2. Expose it via a thin method in the matching root `*_bindings.go`, and register the service in `main.go` with `application.NewService(...)` if it is new
+3. Regenerate bindings with `wails3 generate bindings -clean=true -ts ./...` (a normal `wails3 task build` already does this) and check the result in `frontend/bindings/adomnia/*`
 4. Add a frontend wrapper in `frontend/src/lib/<feature>-api.ts` when one does not exist
 
 ### Add a frontend component
@@ -383,7 +402,7 @@ For changes:
 
 - Run `npm run build` to catch TypeScript errors
 - Run `go test ./...` for Go backend checks
-- Test integration in dev mode with `wails dev`
+- Test integration in dev mode with `wails3 task dev`
 - **Manually test the full user experience** — open the panel, use it as a real user would
 - Verify that the workflow is fluid from start to finish
 - Verify visual cohesion with adjacent panels

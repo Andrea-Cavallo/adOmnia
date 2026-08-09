@@ -6,8 +6,13 @@ const FONT_SIZE_MAP = { small: '12px', medium: '15px', large: '20px' } as const
 const MONO_SIZE_MAP = { small: '11px', medium: '14px', large: '19px' } as const
 const DENSITY_SCALE = { compact: '0.85', comfortable: '1', spacious: '1.2' } as const
 
-const PURPLE_ACCENT = {
-  accent: '#8B3DFF', light: '#A855F7', dark: '#5B21D6', hover: '#9B4FFF', glow: 'rgba(139,61,255,0.18)',
+export function typographyVariables(uiFont?: string, fontSize?: string, monoFontSize?: string): Record<string, string> {
+  return {
+    '--font-ui': getUIFontStack(uiFont),
+    '--font-mono': getUIFontStack(uiFont),
+    '--app-font-size': FONT_SIZE_MAP[fontSize as keyof typeof FONT_SIZE_MAP] ?? '15px',
+    '--app-mono-size': MONO_SIZE_MAP[monoFontSize as keyof typeof MONO_SIZE_MAP] ?? '14px',
+  }
 }
 
 export function useAppearance(): void {
@@ -26,12 +31,9 @@ export function useAppearance(): void {
 
   useEffect(() => {
     const root = document.documentElement.style
-    root.setProperty('--font-ui', getUIFontStack(appearance.uiFont))
-    root.setProperty('--app-font-size', FONT_SIZE_MAP[appearance.fontSize] ?? '15px')
-    root.setProperty(
-      '--app-mono-size',
-      MONO_SIZE_MAP[appearance.monoFontSize ?? appearance.fontSize] ?? '14px',
-    )
+    for (const [property, value] of Object.entries(
+      typographyVariables(appearance.uiFont, appearance.fontSize, appearance.monoFontSize ?? appearance.fontSize),
+    )) root.setProperty(property, value)
   }, [appearance.uiFont, appearance.fontSize, appearance.monoFontSize])
 
   useEffect(() => {
@@ -41,13 +43,7 @@ export function useAppearance(): void {
     document.documentElement.style.fontSize = `calc(${fontSize} * ${scale})`
   }, [appearance.density, appearance.fontSize])
 
-  // adOmnia's product accent is intentionally fixed: black surfaces + purple actions/selections.
-  useEffect(() => {
-    const root = document.documentElement.style
-    root.setProperty('--color-accent', PURPLE_ACCENT.accent)
-    root.setProperty('--color-accent-light', PURPLE_ACCENT.light)
-    root.setProperty('--color-accent-dark', PURPLE_ACCENT.dark)
-    root.setProperty('--color-accent-hover', PURPLE_ACCENT.hover)
-    root.setProperty('--color-accent-glow', PURPLE_ACCENT.glow)
-  }, [])
+  // No accent override here. adOmnia's purple is the :root default in
+  // globals.css, so an unthemed app still looks like adOmnia while an active
+  // theme keeps its own accent instead of being repainted on every mount.
 }

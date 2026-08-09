@@ -56,8 +56,7 @@ probar APIs REST:
 |---|---|
 | Windows | `adOmnia-*-windows-amd64.exe` |
 | macOS | `adOmnia-*-macos-universal.dmg` |
-| Linux (WebKitGTK 4.0) | `adOmnia-*-linux-amd64-webkitgtk-4.0.tar.gz` |
-| Linux (WebKitGTK 4.1) | `adOmnia-*-linux-amd64-webkitgtk-4.1.tar.gz` |
+| Linux (GTK 3 / WebKitGTK 4.1) | `adOmnia-*-linux-amd64-gtk3-webkitgtk-4.1.tar.gz` |
 
 Todos los lanzamientos incluyen `SHA256SUMS.txt` y archivos de código fuente. Verifica tu descarga con las sumas de verificación publicadas.
 
@@ -157,14 +156,16 @@ El mismo motor está disponible en **Documentación API > Gobernanza**. Muestra 
 
 ### Compilar desde el código fuente
 
-Solo necesario si deseas compilarlo tú mismo. Requiere Go, Node.js y Wails.
+Solo necesario si deseas compilarlo tú mismo. Requiere **Go 1.26.5+**, **Node.js 20+**
+y la **CLI de Wails 3** (`wails3`). En Linux también necesitas `libgtk-3-dev` y
+`libwebkit2gtk-4.1-dev`.
 
 ```bash
 git clone https://github.com/Andrea-Cavallo/adOmnia.git && cd adomnia
+go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.5
 cd frontend && npm install && cd ..
-wails dev          # modo dev
-.\build.ps1        # compilación para producción en Windows
-bash build/build-wails.sh linux  # compilación para producción en Linux
+wails3 task dev      # modo dev
+wails3 task build    # compilación para producción en la plataforma actual
 ```
 
 Instrucciones completas: [docs/BUILD.md](docs/BUILD.md)

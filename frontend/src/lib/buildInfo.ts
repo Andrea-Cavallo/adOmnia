@@ -3,7 +3,7 @@
  * Available both in dev (wails dev) and production builds.
  */
 
-/** App version read from wails.json info.productVersion */
+/** App version read from build/config.yml info.version */
 export const APP_VERSION: string = __APP_VERSION__
 
 /** ISO-8601 UTC timestamp of when the build was started */

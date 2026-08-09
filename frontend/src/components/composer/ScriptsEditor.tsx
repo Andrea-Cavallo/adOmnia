@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import Editor, { type BeforeMount } from '@monaco-editor/react'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, Sparkles, Loader2 } from 'lucide-react'
+import { generateScript, findSpecForRequest } from '@/lib/aiScripts'
+import type { RequestItem } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { applyAdomniaMonacoTheme, configureMonacoLoader, monaco } from '@/lib/monacoSetup'
 import { useUiTranslation } from '@/lib/uiI18n'
@@ -11,6 +13,8 @@ interface ScriptsEditorProps {
   tests: string
   onChange: (scripts: { pre: string; post: string; tests: string }) => void
   initialTab?: ScriptTab
+  /** Drives AI generation. Without it the generate button is not offered. */
+  request?: RequestItem
 }
 
 type ScriptTab = 'pre' | 'post' | 'tests'
@@ -42,10 +46,12 @@ function configureJavaScript(m: typeof monaco): void {
 
 configureMonacoLoader()
 
-export function ScriptsEditor({ pre, post, tests, onChange, initialTab = 'tests' }: ScriptsEditorProps) {
+export function ScriptsEditor({ pre, post, tests, onChange, initialTab = 'tests', request }: ScriptsEditorProps) {
   const tr = useUiTranslation()
   const [tab, setTab] = useState<ScriptTab>(initialTab)
   const [diagnostic, setDiagnostic] = useState<ScriptDiagnostic | null>(null)
+  const [generating, setGenerating] = useState(false)
+  const [aiError, setAiError] = useState<string | null>(null)
 
   const tabClass = (t: ScriptTab) =>
     cn('px-3 py-1.5 text-xs border-b-2 transition-colors', tab === t ? 'border-accent text-text-1' : 'border-transparent text-text-3 hover:text-text-2')
@@ -63,6 +69,27 @@ export function ScriptsEditor({ pre, post, tests, onChange, initialTab = 'tests'
     setDiagnostic(null)
   }
 
+  // Generated scripts append rather than replace: overwriting work the user
+  // already typed is not undoable from here.
+  const handleGenerate = async () => {
+    if (!request || generating) return
+    setGenerating(true)
+    setAiError(null)
+    try {
+      const script = await generateScript(tab, request)
+      const current = tab === 'pre' ? pre : tab === 'post' ? post : tests
+      handleChange(current.trim() ? `${current.trimEnd()}
+
+${script}` : script)
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : tr('AI script generation failed.'))
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  const hasSpec = request ? Boolean(findSpecForRequest(request)) : false
+
   const beforeMount: BeforeMount = (m) => configureJavaScript(m)
 
   return (
@@ -71,7 +98,32 @@ export function ScriptsEditor({ pre, post, tests, onChange, initialTab = 'tests'
         <button className={tabClass('pre')} onClick={() => handleTabChange('pre')}>{tr('Pre-request')}</button>
         <button className={tabClass('post')} onClick={() => handleTabChange('post')}>{tr('Post-response')}</button>
         <button className={tabClass('tests')} onClick={() => handleTabChange('tests')}>{tr('Tests')}</button>
+        {request && (
+          <button
+            onClick={handleGenerate}
+            disabled={generating}
+            title={hasSpec
+              ? tr('Generate this script with AI using the API specification')
+              : tr('Generate this script with AI from the request details')}
+            className={cn(
+              'ml-auto mb-1 self-center flex items-center gap-1.5 rounded px-2 py-1 text-[11px] font-medium transition-colors',
+              'border border-accent/35 bg-accent/10 text-accent hover:bg-accent/20',
+              'disabled:opacity-50 disabled:cursor-not-allowed',
+            )}
+          >
+            {generating
+              ? <Loader2 size={12} className="animate-spin" aria-hidden="true" />
+              : <Sparkles size={12} aria-hidden="true" />}
+            {generating ? tr('Generating…') : tr('Generate with AI')}
+          </button>
+        )}
       </div>
+      {aiError && (
+        <div role="alert" className="flex items-start gap-2 rounded border border-error/40 bg-error/10 px-3 py-2 text-[11px] leading-relaxed text-error">
+          <AlertTriangle className="mt-0.5 shrink-0" size={14} aria-hidden="true" />
+          <span>{aiError}</span>
+        </div>
+      )}
       <div className="rounded border border-warning/25 bg-warning/10 px-3 py-2 text-[11px] leading-relaxed text-text-2">
         {tr('Scripts run locally for this workspace and can read or modify request, response, and environment data. Use code you trust.')}
       </div>
@@ -102,7 +154,7 @@ export function ScriptsEditor({ pre, post, tests, onChange, initialTab = 'tests'
           }}
           options={{
             fontSize: 12,
-            fontFamily: "'Space Mono', ui-monospace, monospace",
+            fontFamily: 'var(--skin-font-mono, var(--font-mono))',
             lineHeight: 20,
             minimap: { enabled: false },
             automaticLayout: true,

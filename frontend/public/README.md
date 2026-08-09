@@ -37,7 +37,7 @@ The executable is generated in the project root by `build.sh`.
 
 Install these on Windows:
 
-- Go 1.22+
+- Go 1.26.5 (matching the root `go.mod`)
 - Node.js 18+
 - npm
 - Git Bash or another shell that can run `bash ./build.sh`

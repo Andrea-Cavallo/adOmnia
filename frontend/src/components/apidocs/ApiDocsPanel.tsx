@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   AlertCircle, ArrowRightLeft, Boxes, ChevronDown, ClipboardPaste, Download, Link2,
-  Loader2, MoreVertical, RotateCcw, Save, ShieldCheck, Sparkles, WandSparkles, X,
+  ExternalLink, Loader2, MoreVertical, RotateCcw, Save, ShieldCheck, Sparkles, WandSparkles, X,
 } from 'lucide-react'
 import { useCollectionsStore } from '@/stores/collections'
 import { collectionToOAS, collectionsToOAS } from '@/lib/oasExport'
@@ -21,6 +21,7 @@ import type { OASLintFinding } from '@/lib/oaslint-api'
 import { openApiToCollection } from '@/lib/openapiImport'
 import { useAppStore } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
+import { OpenSwaggerEditorWindow } from '@/wailsjs/go/main/App'
 
 const DRAFT_KEY = 'adomnia.apidocs.draft'
 
@@ -47,7 +48,7 @@ function docName(model: ApiDocModel | null, language: SpecLanguage): string {
   return `${base}.${language === 'json' ? 'json' : 'yaml'}`
 }
 
-export function ApiDocsPanel() {
+export function ApiDocsPanel({ standalone = false }: { standalone?: boolean }) {
   const collections = useCollectionsStore((s) => s.collections)
   const updateCollection = useCollectionsStore((s) => s.updateCollection)
   const importCollection = useCollectionsStore((s) => s.importCollection)
@@ -273,6 +274,14 @@ export function ApiDocsPanel() {
     notify('ok', 'Reset to a starter document.')
   }
 
+  const openInSeparateWindow = async () => {
+    try {
+      await OpenSwaggerEditorWindow()
+    } catch (e: unknown) {
+      notify('err', e instanceof Error ? e.message : 'Could not open Swagger Editor in a separate window')
+    }
+  }
+
   const findOperationRequest = (collection: Collection, operation: ApiDocOperation): RequestItem | null => {
     const walk = (nodes: TreeNode[]): RequestItem | null => {
       for (const node of nodes) {
@@ -407,6 +416,12 @@ export function ApiDocsPanel() {
         <ToolbarButton onClick={toggleLanguage} title={`Convert to ${language === 'yaml' ? 'JSON' : 'YAML'}`}>
           {language === 'yaml' ? 'To JSON' : 'To YAML'}
         </ToolbarButton>
+
+        {!standalone && (
+          <ToolbarButton onClick={() => void openInSeparateWindow()} title="Keep Swagger Editor open beside API requests and responses">
+            <span className="flex items-center gap-1"><ExternalLink size={12} /> Separate window</span>
+          </ToolbarButton>
+        )}
 
         <Menu id="export" menu={menu} setMenu={setMenu} icon={<Download size={13} />} label="Export">
           <div className="w-48 py-1">

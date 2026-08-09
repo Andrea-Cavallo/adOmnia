@@ -13,7 +13,8 @@ import { useAppStore } from '@/stores/app'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { ContextMenu } from '@/components/ui/ContextMenu'
 import { uid } from '@/lib/types'
-import responseLogo from '../../../../assets/images/spinner.png'
+import defaultResponseLogo from '../../../../assets/images/spinner.png'
+import { useResponseLogo, useIsSketchSkin } from '@/lib/brandAssets'
 import { useUiTranslation } from '@/lib/uiI18n'
 
 interface ResponsePanelProps {
@@ -28,6 +29,31 @@ interface ResponsePanelProps {
 
 function ResponseWaitingState({ loading }: { loading: boolean }) {
   const tr = useUiTranslation()
+  const responseLogo = useResponseLogo(defaultResponseLogo)
+  const isSketch = useIsSketchSkin()
+
+  // Skeleton blocks are a screen convention and look wrong drawn on paper, so
+  // the sketch skin spins the hand-drawn mark instead while the request is in
+  // flight. (The spin class further down is unreachable: this branch returns
+  // first, so without this the logo never actually spun for anyone.)
+  if (loading && isSketch) {
+    return (
+      <div className="flex min-h-0 flex-1 items-center justify-center">
+        <div className="flex flex-col items-center text-center">
+          <img
+            src={responseLogo}
+            alt=""
+            aria-hidden="true"
+            width={120}
+            height={120}
+            className="mb-4 h-[120px] w-[120px] shrink-0 object-contain motion-safe:animate-[spin_1.2s_linear_infinite] motion-reduce:animate-pulse"
+          />
+          <p role="status" className="text-sm text-text-3">{tr('Sending…')}</p>
+        </div>
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-0 flex-1 flex-col">

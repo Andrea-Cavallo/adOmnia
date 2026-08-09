@@ -1,4 +1,5 @@
 import type { BackendDevLogEntry } from '@/stores/devLogs'
+import * as AppBindings from '../../bindings/adomnia/app'
 
 export interface LogFileInfo {
   name: string
@@ -7,7 +8,7 @@ export interface LogFileInfo {
 }
 
 function appBinding() {
-  return window.go?.main?.App
+  return AppBindings
 }
 
 export async function getBackendDevLogs(): Promise<BackendDevLogEntry[]> {

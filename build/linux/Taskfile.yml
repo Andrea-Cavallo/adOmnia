@@ -1,0 +1,20 @@
+version: '3'
+
+includes:
+  common: ../Taskfile.yml
+
+tasks:
+  build:
+    deps:
+      - task: common:build:frontend
+    cmds:
+      - go build -buildvcs=false -trimpath {{.BUILD_TAGS | default "-tags production"}} -ldflags="-s -w {{.LD_VERSION}}" -o {{.BIN_DIR}}/{{.APP_NAME}} .
+
+  package:
+    summary: Build native Wails 3 Linux tarballs.
+    cmds:
+      - bash build/linux/package-native-tarballs.sh {{.VERSION | default "dev"}}
+
+  run:
+    cmds:
+      - '{{.BIN_DIR}}/{{.APP_NAME}}'

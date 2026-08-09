@@ -21,20 +21,33 @@ export function useThemeContext() {
 function injectThemeVariables(theme: Theme) {
   const root = document.documentElement.style
 
+  // Themes own their accent. This used to be skipped and overwritten with a
+  // fixed purple, which silently gutted every accent-defined theme (obsidian
+  // -neon is *only* its neon-mint accent) and made the accent fields in the
+  // advanced editor decorative. adOmnia's purple now lives where it belongs:
+  // as the default theme's accent, not as a runtime override.
   Object.entries(theme.colors).forEach(([key, value]) => {
-    if (key === 'accent' || key === 'accent-light' || key === 'accent-dark' || key === 'accent-hover' || key === 'accent-glow') return
     root.setProperty(`--color-${key}`, value)
   })
 
-  root.setProperty('--color-accent', '#8B3DFF')
-  root.setProperty('--color-accent-light', '#A855F7')
-  root.setProperty('--color-accent-dark', '#5B21D6')
-  root.setProperty('--color-accent-hover', '#9B4FFF')
-  root.setProperty('--color-accent-glow', 'rgba(139,61,255,0.18)')
-
   if (theme.fonts.sans) root.setProperty('--font-sans', theme.fonts.sans)
-  if (theme.fonts.mono) root.setProperty('--font-mono', theme.fonts.mono)
   if (theme.fonts.serif) root.setProperty('--font-serif', theme.fonts.serif)
+
+  // Typography ownership:
+  //   normal theme -> the user's "UI Font" setting wins (--font-ui).
+  //   skin         -> the skin wins, because dictating the whole look is what
+  //                   a skin is for; a handwriting skin in IBM Plex Mono is
+  //                   not the skin.
+  // Skins publish --skin-font-*, which globals.css and Tailwind read ahead of
+  // --font-ui. useAppearance keeps writing --font-ui untouched, so leaving the
+  // skin restores the user's choice with no extra bookkeeping.
+  if (theme.meta?.skin) {
+    if (theme.fonts.sans) root.setProperty('--skin-font-ui', theme.fonts.sans)
+    if (theme.fonts.mono) root.setProperty('--skin-font-mono', theme.fonts.mono)
+  } else {
+    root.removeProperty('--skin-font-ui')
+    root.removeProperty('--skin-font-mono')
+  }
 
   Object.entries(theme.spacing).forEach(([key, value]) => {
     root.setProperty(`--spacing-${key}`, value)
@@ -65,6 +78,14 @@ function syncDocumentMode(theme: Theme) {
   const mode = inferThemeMode(theme)
   html.classList.toggle('light', mode === 'light')
   html.classList.toggle('dark', mode === 'dark')
+
+  // A skin is a theme that also needs surface treatment tokens cannot carry —
+  // ruled paper, a spiral binding, a drawn border. Themes declare `meta.skin`
+  // and the matching stylesheet keys off this attribute. Themes without one
+  // clear it, so switching away removes the treatment.
+  const skin = theme.meta?.skin
+  if (skin) html.setAttribute('data-skin', skin)
+  else html.removeAttribute('data-skin')
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {

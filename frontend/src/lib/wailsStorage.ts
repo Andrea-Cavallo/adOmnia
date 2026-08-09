@@ -1,3 +1,4 @@
+import * as AppBindings from '../../bindings/adomnia/app'
 import { StorageGet, StoragePut } from '@/wailsjs/go/main/App'
 import { safeSetItem } from './safeLocalStorage'
 
@@ -10,10 +11,9 @@ function storageKey(bucket: string, key: string) {
   return `adomnia.${bucket}.${key}`
 }
 
+// Wails 3 has no `window.go` global; services come from generated bindings.
 function binding(): WailsStorageBinding | undefined {
-  return (window as unknown as {
-    go?: { main?: { App?: WailsStorageBinding } }
-  }).go?.main?.App
+  return AppBindings as unknown as WailsStorageBinding
 }
 
 export async function safeStorageGet(bucket: string, key: string): Promise<string> {

@@ -84,15 +84,17 @@ Write-Host ""
 Write-Host "==> [2/$stepTotal] Building Docker image ($Image)..." -ForegroundColor Cyan
 
 $dockerfilePath = Join-Path $ProjectRoot "Dockerfile.linux"
+$binaryInContainer = "/src/build/bin/adomnia"
 if (-not (Test-Path $dockerfilePath)) {
     $dockerfilePath = Join-Path $ProjectRoot "build\Dockerfile"
+    $binaryInContainer = "/build/adomnia"
     if (-not (Test-Path $dockerfilePath)) {
         Fail "Dockerfile not found. Expected: Dockerfile.linux or build\Dockerfile"
     }
 }
 
 Push-Location $ProjectRoot
-& docker build -f $dockerfilePath -t $Image .
+& docker build --target builder -f $dockerfilePath -t $Image .
 if ($LASTEXITCODE -ne 0) { Pop-Location; Fail "Docker build failed." }
 Pop-Location
 
@@ -104,7 +106,7 @@ New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 $containerId = (& docker create $Image | Out-String).Trim()
 if ($LASTEXITCODE -ne 0) { Fail "docker create failed." }
 
-& docker cp "${containerId}:/app/build/bin/adomnia" $Binary
+& docker cp "${containerId}:$binaryInContainer" $Binary
 $copyOk = $LASTEXITCODE
 & docker rm $containerId | Out-Null
 

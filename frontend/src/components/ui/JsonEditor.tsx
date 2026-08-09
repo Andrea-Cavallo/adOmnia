@@ -352,7 +352,7 @@ function buildHtml(
 // ─── Shared styles ────────────────────────────────────────────────────────────
 
 const SHARED_STYLE: React.CSSProperties = {
-  fontFamily:    'var(--font-mono)',
+  fontFamily:    'var(--skin-font-mono, var(--font-mono))',
   fontSize:      '12px',
   lineHeight:    '1.6',
   padding:       '12px',
@@ -646,6 +646,10 @@ export function JsonEditor({
 
   return (
     <div
+      // Stable hook for skins that need to treat the writing area — the Sketch
+      // skin draws its ruled paper and red margin rule here. Skinning off the
+      // utility classes instead would break the moment they are reshuffled.
+      data-editor="json"
       className={cn(
         'relative rounded border overflow-hidden',
         error ? 'border-error/60' : 'border-border-2 focus-within:border-accent',
