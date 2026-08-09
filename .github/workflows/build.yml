@@ -44,7 +44,10 @@ jobs:
         run: npm ci && npm run build
 
       - name: Go tests
-        run: go test ./...
+        # Linux artifacts intentionally target Wails' GTK3/WebKitGTK 4.1
+        # compatibility backend. Without this tag Wails defaults to GTK4 and
+        # WebKitGTK 6.0, which are not the libraries installed above.
+        run: go test -tags gtk3 ./...
 
   windows:
     name: Windows exe
