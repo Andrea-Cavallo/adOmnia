@@ -106,7 +106,8 @@ jobs:
             pkg-config
 
       - name: Install Wails
-        run: go install github.com/wailsapp/wails/v3/cmd/wails3@${{ env.WAILS_VERSION }}
+        # The Linux package uses Wails' GTK3/WebKitGTK 4.1 compatibility backend.
+        run: GOFLAGS=-tags=gtk3 go install github.com/wailsapp/wails/v3/cmd/wails3@${{ env.WAILS_VERSION }}
 
       - name: Build Linux native tarballs
         run: |

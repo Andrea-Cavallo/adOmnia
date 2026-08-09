@@ -119,7 +119,8 @@ jobs:
             pkg-config
 
       - name: Install Wails CLI
-        run: go install github.com/wailsapp/wails/v3/cmd/wails3@${{ env.WAILS_VERSION }}
+        # Keep the CLI on the same GTK3/WebKitGTK 4.1 backend as the Linux build.
+        run: GOFLAGS=-tags=gtk3 go install github.com/wailsapp/wails/v3/cmd/wails3@${{ env.WAILS_VERSION }}
 
       - name: Build Linux native tarballs
         run: |
