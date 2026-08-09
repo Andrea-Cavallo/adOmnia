@@ -2,32 +2,49 @@ import * as AIEngine from '@/wailsjs/go/main/AIEngine'
 import { resolveSecret } from '@/lib/vaultRefs'
 import { useSettingsStore } from '@/stores/settings'
 
-/**
- * Build the backend AI config from current settings, resolving a
- * vault:-referenced API key to plaintext only in-memory at call time.
- * Keys are camelCase to match the Go `ai.Config` struct tags.
- */
-export async function buildAIConfig(): Promise<string> {
+const ENVIRONMENT_CREDENTIAL_MISSING = 'AI environment credential is missing'
+
+function configJSON(apiKey: string, credentialMode: 'auto' | 'vault' | 'environment'): string {
   const ai = useSettingsStore.getState().settings.ai
-  // Environment mode intentionally does not touch a stored vault: reference.
-  // The desktop backend reads the inherited OS environment itself, so the key
-  // never crosses the renderer boundary or needs an unlocked Vault.
-  const apiKey = ai.credentialMode === 'environment' ? '' : await resolveSecret(ai.apiKey)
   const baseURL = ['ollama', 'huggingface', 'openai-compatible'].includes(ai.provider) ? ai.baseURL : ''
   return JSON.stringify({
     provider: ai.provider,
     model: ai.model,
     apiKey,
     baseURL,
-    credentialMode: ai.credentialMode,
+    credentialMode,
   })
 }
 
+async function buildVaultConfig(): Promise<string> {
+  const ai = useSettingsStore.getState().settings.ai
+  return configJSON(await resolveSecret(ai.apiKey), 'vault')
+}
+
 /**
- * Configure the backend AI engine from current settings. Throws if the Vault
- * is locked and the key is a vault: reference, so callers can surface a clear
- * "unlock the Vault" message.
+ * Build the first backend AI config from current settings. Automatic and
+ * environment modes never resolve a vault: reference in the renderer.
  */
+export async function buildAIConfig(): Promise<string> {
+  const ai = useSettingsStore.getState().settings.ai
+  if (ai.credentialMode === 'vault') return buildVaultConfig()
+  return configJSON('', ai.credentialMode)
+}
+
+/**
+ * Run an operation with environment credentials first. In automatic mode the
+ * Vault is resolved only if the backend reports that no inherited key exists.
+ */
+export async function withAIConfig<T>(operation: (config: string) => Promise<T>): Promise<T> {
+  const ai = useSettingsStore.getState().settings.ai
+  try {
+    return await operation(await buildAIConfig())
+  } catch (error) {
+    if (ai.credentialMode !== 'auto' || !String(error).includes(ENVIRONMENT_CREDENTIAL_MISSING)) throw error
+    return operation(await buildVaultConfig())
+  }
+}
+
 export async function ensureAIConfigured(): Promise<void> {
-  await AIEngine.Configure(await buildAIConfig())
+  await withAIConfig((config) => AIEngine.Configure(config))
 }

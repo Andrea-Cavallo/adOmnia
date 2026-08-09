@@ -29,9 +29,9 @@ type Config struct {
 type CredentialMode string
 
 const (
-	// CredentialModeVault preserves the existing renderer/Vault flow. An empty
-	// mode is deliberately treated the same way for saved configurations from
-	// before this setting existed.
+	// CredentialModeAuto keeps environment credentials in the Go process and
+	// falls back to a renderer-provided Vault credential only when none exists.
+	CredentialModeAuto        CredentialMode = "auto"
 	CredentialModeVault       CredentialMode = "vault"
 	CredentialModeEnvironment CredentialMode = "environment"
 )
@@ -72,10 +72,15 @@ func New(cfg Config) (*Engine, error) {
 }
 
 // ResolveEnvironmentCredentials reads only the process environment inherited
-// by adOmnia. It never returns an environment value to the renderer and is
-// used only when the user explicitly selects environment credentials.
+// by adOmnia. It never returns an environment value to the renderer. Auto mode
+// reports a missing environment credential so the caller can safely retry with
+// its separately resolved Vault fallback.
 func ResolveEnvironmentCredentials(cfg Config) (Config, error) {
-	if cfg.CredentialMode != CredentialModeEnvironment {
+	mode := cfg.CredentialMode
+	if mode == "" {
+		mode = CredentialModeAuto
+	}
+	if mode == CredentialModeVault {
 		return cfg, nil
 	}
 
@@ -85,6 +90,10 @@ func ResolveEnvironmentCredentials(cfg Config) (Config, error) {
 			cfg.APIKey = value
 			return cfg, nil
 		}
+	}
+
+	if mode == CredentialModeAuto && cfg.Provider != ProviderOllama {
+		return cfg, fmt.Errorf("AI environment credential is missing: set %s and restart adOmnia", strings.Join(keys, " or "))
 	}
 
 	if requiresAPIKey(cfg.Provider) {

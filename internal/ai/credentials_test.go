@@ -19,6 +19,21 @@ func TestResolveEnvironmentCredentialsUsesProviderVariable(t *testing.T) {
 	}
 }
 
+func TestResolveEnvironmentCredentialsAutoPrefersEnvironmentOverStoredCredential(t *testing.T) {
+	t.Setenv("OPENAI_API_KEY", "local-openai-key")
+	cfg, err := ResolveEnvironmentCredentials(Config{
+		Provider:       ProviderOpenAI,
+		APIKey:         "vault:locked-local-copy",
+		CredentialMode: CredentialModeAuto,
+	})
+	if err != nil {
+		t.Fatalf("ResolveEnvironmentCredentials() error = %v", err)
+	}
+	if cfg.APIKey != "local-openai-key" {
+		t.Fatalf("APIKey = %q, want environment credential without requiring Vault", cfg.APIKey)
+	}
+}
+
 func TestResolveEnvironmentCredentialsUsesFallbackVariable(t *testing.T) {
 	t.Setenv("GEMINI_API_KEY", "")
 	t.Setenv("GOOGLE_API_KEY", "")

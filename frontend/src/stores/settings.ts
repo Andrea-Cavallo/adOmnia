@@ -81,8 +81,8 @@ export interface AppSettings {
     apiKey: string
     baseURL: string
     enabled: boolean
-    /** `environment` keeps AI credentials machine-local and bypasses Vault resolution. */
-    credentialMode: 'vault' | 'environment'
+    /** `auto` prefers machine-local environment credentials before the Vault fallback. */
+    credentialMode: 'auto' | 'vault' | 'environment'
   }
   features: {
     pluginsEnabled: boolean
@@ -137,7 +137,7 @@ function migrateAIModel(ai: AppSettings['ai']): AppSettings['ai'] {
 }
 
 const defaultSettings: AppSettings = {
-  version: 5,
+  version: 6,
   general: {
     confirmBeforeClosingDirtyTabs: true,
     restoreTabsOnStartup: true,
@@ -214,7 +214,7 @@ const defaultSettings: AppSettings = {
     apiKey: '',
     baseURL: 'http://localhost:11434',
     enabled: false,
-    credentialMode: 'vault',
+    credentialMode: 'auto',
   },
   features: {
     pluginsEnabled: false,
@@ -264,7 +264,14 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       if (migratedToV3) appearance.windowChrome = 'system'
       const savedAI = mergeBlock(defaultSettings.ai, parsed.ai)
       const migratedAI = (parsed.version ?? 0) < 5 ? migrateAIModel(savedAI) : savedAI
-      const migratedAiModels = migratedAI.model !== savedAI.model
+      // Existing Vault-based profiles gain the environment-first flow without
+      // losing their encrypted key: it remains the fallback when no system key
+      // is set. Users can still select Vault-only mode in AI Settings.
+      const migratedCredentials = (parsed.version ?? 0) < 6 && migratedAI.credentialMode === 'vault'
+        ? { ...migratedAI, credentialMode: 'auto' as const }
+        : migratedAI
+      const migratedAiModels = migratedCredentials.model !== savedAI.model
+      const migratedAiCredentials = migratedCredentials.credentialMode !== savedAI.credentialMode
       const merged: AppSettings = {
         ...defaultSettings,
         ...parsed,
@@ -276,14 +283,14 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         mock: mergeBlock(defaultSettings.mock, parsed.mock),
         vault: mergeBlock(defaultSettings.vault, parsed.vault),
         editor: mergeBlock(defaultSettings.editor, parsed.editor),
-        ai: migratedAI,
+        ai: migratedCredentials,
         features: mergeBlock(defaultSettings.features, parsed.features),
         markdown: mergeBlock(defaultSettings.markdown, parsed.markdown),
       }
       setAutoSaveDelay(merged.general.autoSaveIntervalMs)
       set({ settings: merged, loaded: true })
       // Persist one-time migrations so the change survives without a manual edit.
-      if (migratedToV3 || migratedAiModels) get().save()
+      if (migratedToV3 || migratedAiModels || migratedAiCredentials) get().save()
     } catch {
       set({ settings: defaultSettings, loaded: true })
     }

@@ -4,7 +4,7 @@ import { useSettingsStore } from '@/stores/settings'
 import * as AIEngine from '@/wailsjs/go/main/AIEngine'
 import { TextInput, PasswordInput, Toggle } from './SettingsFields'
 import { isVaultRef, encryptToVaultRef } from '@/lib/vaultRefs'
-import { buildAIConfig } from '@/lib/aiEngine'
+import { withAIConfig } from '@/lib/aiEngine'
 
 const PROVIDERS = [
   { value: 'anthropic', label: 'Anthropic', desc: 'Claude API', local: false },
@@ -92,7 +92,8 @@ export function AISettings() {
   const [discovering, setDiscovering] = useState(false)
   const [discoverError, setDiscoverError] = useState('')
 
-  const usesEnvironmentCredentials = ai.credentialMode === 'environment'
+  const usesEnvironmentCredentials = ai.credentialMode !== 'vault'
+  const usesAutomaticEnvironmentCredentials = ai.credentialMode === 'auto'
   const keyIsSecured = !usesEnvironmentCredentials && isVaultRef(ai.apiKey)
 
   const handleProviderChange = (provider: string) => {
@@ -111,10 +112,7 @@ export function AISettings() {
     setDiscovering(true)
     setDiscoverError('')
     try {
-      const config = ai.provider === 'ollama'
-        ? JSON.stringify({ provider: ai.provider, model: ai.model, apiKey: '', baseURL: ai.baseURL })
-        : await buildAIConfig()
-      const raw = await AIEngine.ListModels(config, modelQuery.trim())
+      const raw = await withAIConfig((config) => AIEngine.ListModels(config, modelQuery.trim()))
       setDiscoveredModels(JSON.parse(raw) as DiscoveredModel[])
     } catch (e) {
       setDiscoveredModels([])
@@ -128,7 +126,7 @@ export function AISettings() {
     setTesting(true)
     setTestResult(null)
     try {
-      const msg = await AIEngine.TestConnection(await buildAIConfig())
+      const msg = await withAIConfig((config) => AIEngine.TestConnection(config))
       setTestResult({ ok: true, msg })
     } catch (e) {
       setTestResult({ ok: false, msg: String(e) })
@@ -139,7 +137,7 @@ export function AISettings() {
 
   const handleSave = async () => {
     try {
-      await AIEngine.Configure(await buildAIConfig())
+      await withAIConfig((config) => AIEngine.Configure(config))
       setTestResult({ ok: true, msg: 'AI engine configured.' })
     } catch (e) {
       setTestResult({ ok: false, msg: String(e) })
@@ -326,16 +324,16 @@ export function AISettings() {
         {needsApiKey && (
           <div className="rounded-lg border border-border-2 bg-surface-1 px-3 py-1">
             <Toggle
-              label="Use system environment credentials"
-              desc="Skip the Vault for AI. The desktop backend reads the key from this machine only."
+              label="Automatically use system environment credentials"
+              desc="Use the machine key first; the Vault is only a fallback when no environment key exists."
               checked={usesEnvironmentCredentials}
-              onChange={(enabled) => updateAi({ credentialMode: enabled ? 'environment' : 'vault' })}
+              onChange={(enabled) => updateAi({ credentialMode: enabled ? 'auto' : 'vault' })}
             />
             {usesEnvironmentCredentials && (
               <div className="mb-2 flex items-start gap-2 rounded-md border border-success/30 bg-success/8 px-2.5 py-2 text-[10px] text-text-3">
                 <Database size={13} className="mt-0.5 shrink-0 text-success" />
                 <span>
-                  Vault is bypassed. Set <code className="font-mono text-success">{(ENVIRONMENT_VARIABLES[ai.provider] ?? ['ADOMNIA_AI_API_KEY']).join(' or ')}</code> in the system environment, then restart adOmnia. The value is never shown or saved in Settings.
+                  {usesAutomaticEnvironmentCredentials ? 'adOmnia checks ' : 'Vault is bypassed. Set '}<code className="font-mono text-success">{(ENVIRONMENT_VARIABLES[ai.provider] ?? ['ADOMNIA_AI_API_KEY']).join(' or ')}</code>{usesAutomaticEnvironmentCredentials ? ' first. If no key is found, it uses the saved Vault key instead. The environment value is never shown or saved in Settings.' : ' in the system environment, then restart adOmnia. The value is never shown or saved in Settings.'}
                 </span>
               </div>
             )}
