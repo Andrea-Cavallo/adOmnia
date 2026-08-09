@@ -19,6 +19,7 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - **No binding rings over the navigation rail:** an earlier pass drew the notebook's spiral down the left edge of the window, which sat on top of the rail icons and made the menu hard to read. The rings now appear only on the hub's cards.
 
 ### Fixed
+- **Unreadable active buttons in the Sketch skin:** selecting JSON, Raw, URL Encoded or any other radio-style toggle left white text on white paper. Those controls mark themselves with `aria-checked`, which the skin's highlighter never matched, so they kept their white label while the skin repainted the accent fill back to paper. Active controls now keep dark ink under a yellow marker swipe, icons included.
 - **Missing red margin colour in the Sketch skin:** the `--sk-margin` token had been dropped while stylesheet rules still referenced it, so the margin rule rendered as nothing. It is defined again.
 
 ## [0.7.0] - 2026-08-09

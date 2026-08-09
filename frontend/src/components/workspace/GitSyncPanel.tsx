@@ -681,6 +681,8 @@ export function GitSyncPanel() {
     return (
       <div
         key={`${mode}-${change.status}-${change.path}`}
+        data-git-change-row
+        data-git-change-mode={mode}
         draggable
         onDragStart={() => setDragFile({ path: change.path, mode })}
         onDragEnd={() => setDragFile(null)}
@@ -850,8 +852,8 @@ export function GitSyncPanel() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-surface-0">
-      <div className="flex h-12 shrink-0 items-center gap-1 border-b border-border-1 bg-surface-1 px-3">
+    <div data-git-sync className="flex h-full min-h-0 flex-col overflow-hidden bg-surface-0">
+      <div data-git-toolbar className="flex h-12 shrink-0 items-center gap-1 border-b border-border-1 bg-surface-1 px-3">
         <div className="mr-3 flex items-center gap-2">
           <GitBranch size={15} className="text-accent" />
           <span className="text-sm font-semibold text-text-1">Git Sync</span>
@@ -944,7 +946,7 @@ export function GitSyncPanel() {
       )}
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <aside style={{ width: columnWidths.sidebar }} className="min-h-0 shrink-0 overflow-y-auto border-r border-border-1 bg-surface-1">
+        <aside data-git-sidebar style={{ width: columnWidths.sidebar }} className="min-h-0 shrink-0 overflow-y-auto border-r border-border-1 bg-surface-1">
           <div className="border-b border-border-1 p-3">
             <div className="mb-2 flex items-center justify-between">
               <div className="text-[10px] font-semibold uppercase tracking-wider text-text-4">Workspaces</div>
@@ -1143,7 +1145,7 @@ export function GitSyncPanel() {
 
         <ResizeHandle label="Resize Git sidebar" onMouseDown={startColumnResize('sidebar', 1)} withLine={false} />
 
-        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <main data-git-history className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <HistorySearchBar repoPath={repoPath} onResults={setSearchResults} setError={setError} />
           <div className="grid h-10 shrink-0 items-center border-b border-border-1 bg-surface-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-text-4" style={graphGridStyle}>
             <span>Graph</span><span>Commit</span>
@@ -1160,6 +1162,8 @@ export function GitSyncPanel() {
               return (
               <button
                 key={commit.fullHash || commit.hash}
+                data-git-commit-row
+                data-selected={selectedCommit?.hash === commit.hash ? 'true' : undefined}
                 draggable
                 onDragStart={() => setDragPayload({ type: 'commit', hash: commit.fullHash || commit.hash })}
                 onDragEnd={() => setDragPayload(null)}
@@ -1194,7 +1198,7 @@ export function GitSyncPanel() {
             {!repoPath && <div className="p-8 text-center text-xs text-text-4">Load a repository to inspect the graph.</div>}
           </div>
 
-          <section className="h-60 shrink-0 overflow-hidden border-t border-border-1 bg-surface-1">
+          <section data-git-commit-details className="h-60 shrink-0 overflow-hidden border-t border-border-1 bg-surface-1">
             {selectedCommit ? (
               <div className="grid h-full grid-cols-[minmax(240px,.75fr)_minmax(340px,1.25fr)]">
                 <div className="min-w-0 overflow-y-auto border-r border-border-1 p-3">
@@ -1256,7 +1260,7 @@ export function GitSyncPanel() {
 
         <ResizeHandle label="Resize Git commit panel" onMouseDown={startColumnResize('commitPanel', -1)} withLine={false} />
 
-        <aside style={{ width: columnWidths.commitPanel }} className="min-h-0 shrink-0 overflow-y-auto border-l border-border-1 bg-surface-1">
+        <aside data-git-changes style={{ width: columnWidths.commitPanel }} className="min-h-0 shrink-0 overflow-y-auto border-l border-border-1 bg-surface-1">
           <div className="border-b border-border-1 p-3">
             <div className="mb-2 flex items-center justify-between">
               <div className="text-[10px] font-semibold uppercase tracking-wider text-text-4">Commit</div>

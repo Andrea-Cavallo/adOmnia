@@ -156,14 +156,33 @@
 
 /* ── Highlighter ───────────────────────────────────────────────────────────
    Active states are a swipe of marker, not a fill. The skew and the uneven
-   ends are what separate a highlighter from a rectangle. */
+   ends are what separate a highlighter from a rectangle.
+
+   `aria-checked` belongs here with the other two: radio-style toggles such as
+   the Body format switch paint themselves `bg-accent text-white`, and the
+   generic control rule above repaints that fill back to paper — leaving white
+   ink on white paper. Ink stays dark under a highlighter, always. */
 [data-skin='sketch'] [aria-selected='true'],
+[data-skin='sketch'] [aria-checked='true'],
 [data-skin='sketch'] [data-state='active'] {
   position: relative;
+  isolation: isolate;
+  color: var(--color-text-1);
+  /* !important because the generic control rule above carries an element
+     selector and would otherwise repaint paper over the marker. */
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Icons inside an active control carry their own `text-white`. */
+[data-skin='sketch'] [aria-selected='true'] svg,
+[data-skin='sketch'] [aria-checked='true'] svg,
+[data-skin='sketch'] [data-state='active'] svg {
   color: var(--color-text-1);
 }
 
 [data-skin='sketch'] [aria-selected='true']::after,
+[data-skin='sketch'] [aria-checked='true']::after,
 [data-skin='sketch'] [data-state='active']::after {
   content: '';
   position: absolute;
@@ -171,7 +190,7 @@
   right: 2%;
   bottom: 3px;
   height: 9px;
-  background: color-mix(in oklab, var(--color-accent) 38%, transparent);
+  background: color-mix(in oklab, var(--sk-marker) 70%, transparent);
   transform: skewX(-12deg) rotate(-0.6deg);
   border-radius: 40% 60% 55% 45% / 60% 40% 60% 40%;
   pointer-events: none;
@@ -487,4 +506,70 @@
 [data-skin='sketch'] [role='dialog'] [class*='bg-surface'],
 [data-skin='sketch'] [class*='shadow-2xl'] [class*='bg-surface'] {
   background-color: transparent !important;
+}
+
+/* Git Sync is a single workbench. The generic notebook treatment gives every
+   button a torn-card edge, which turns the commit graph and file lists into a
+   stack of unrelated tiles. Keep the chrome drawn, but let dense data flow on
+   continuous rails. */
+[data-skin='sketch'] [data-git-sync] [data-git-toolbar] {
+  background-color: color-mix(in oklab, var(--sk-paper) 78%, transparent);
+  border-bottom-color: color-mix(in oklab, var(--sk-ink) 38%, transparent);
+}
+
+[data-skin='sketch'] [data-git-sync] [data-git-sidebar],
+[data-skin='sketch'] [data-git-sync] [data-git-history],
+[data-skin='sketch'] [data-git-sync] [data-git-changes],
+[data-skin='sketch'] [data-git-sync] [data-git-commit-details] {
+  background-color: transparent;
+}
+
+[data-skin='sketch'] [data-git-sync] [data-git-commit-row] {
+  position: relative;
+  border-radius: 0 !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+[data-skin='sketch'] [data-git-sync] [data-git-commit-row]:hover {
+  background-color: color-mix(in oklab, var(--sk-highlight) 19%, transparent) !important;
+}
+
+[data-skin='sketch'] [data-git-sync] [data-git-commit-row][data-selected='true'] {
+  isolation: isolate;
+}
+
+[data-skin='sketch'] [data-git-sync] [data-git-commit-row][data-selected='true']::after {
+  content: '';
+  position: absolute;
+  inset: 8px 7px;
+  background: linear-gradient(
+    176deg,
+    transparent 0 12%,
+    color-mix(in oklab, var(--sk-marker) 52%, transparent) 18% 84%,
+    transparent 90%
+  );
+  border-radius: 38% 14% 34% 20% / 28% 42% 22% 44%;
+  transform: skewX(-5deg) rotate(-0.25deg);
+  pointer-events: none;
+  z-index: 0;
+}
+
+[data-skin='sketch'] [data-git-sync] [data-git-commit-row][data-selected='true'] > * {
+  position: relative;
+  z-index: 1;
+}
+
+[data-skin='sketch'] [data-git-sync] [data-git-change-row] {
+  border: 0 !important;
+  border-bottom: 1px dashed color-mix(in oklab, var(--sk-line) 78%, transparent) !important;
+  border-radius: 0 !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  padding-right: 0;
+  padding-left: 0;
+}
+
+[data-skin='sketch'] [data-git-sync] [data-git-change-row]:hover {
+  background-color: color-mix(in oklab, var(--sk-highlight) 16%, transparent) !important;
 }
