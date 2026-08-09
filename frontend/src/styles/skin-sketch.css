@@ -188,6 +188,35 @@
   z-index: -1;
 }
 
+/* The open request in Collections is a navigation landmark. Give the whole
+   row a broad, imperfect marker swipe instead of the default purple inset. */
+[data-skin='sketch'] [data-collection-request][data-request-active='true'] {
+  isolation: isolate;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+[data-skin='sketch'] [data-collection-request][data-request-active='true']::after {
+  left: 3px;
+  right: 3px;
+  bottom: 4px;
+  height: 72%;
+  background: linear-gradient(
+    175deg,
+    transparent 0 10%,
+    color-mix(in oklab, var(--sk-marker) 61%, transparent) 16% 87%,
+    transparent 93%
+  );
+  transform: skewX(-8deg) rotate(-0.45deg);
+  border-radius: 43% 14% 36% 20% / 25% 39% 19% 44%;
+  z-index: 0;
+}
+
+[data-skin='sketch'] [data-collection-request][data-request-active='true'] > * {
+  position: relative;
+  z-index: 1;
+}
+
 /* The Send button is the one cyan mark on the page. */
 [data-skin='sketch'] .glass-action {
   background: color-mix(in oklab, var(--sk-highlight) 78%, transparent);

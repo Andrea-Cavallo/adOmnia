@@ -317,6 +317,8 @@ function TreeNodeRow({
     <div>
       <div
         data-node-id={node.id}
+        data-collection-request={isFolder ? undefined : 'true'}
+        data-request-active={!isFolder && activeRequestId === node.id ? 'true' : undefined}
         role="treeitem"
         tabIndex={-1}
         aria-selected={focusedId === node.id}
