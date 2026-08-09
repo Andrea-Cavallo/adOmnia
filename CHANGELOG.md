@@ -4,6 +4,23 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [0.8.0] - 2026-08-09
+
+### Added
+- **The hub is a notebook page:** the home screen was a stack of four collapsing rows that hid every tool behind a chevron. It is now a single readable page — a two-line headline, a search field, four index cards laid out two by two, and the last requests you sent. Nothing needs to be expanded to be seen.
+- **Search from the hub:** the shortcut hint on the home screen is a real field. Clicking it opens the same command palette `Ctrl/Cmd + K` opens, so the hub no longer advertises a shortcut you cannot reach with the mouse.
+- **Every tool is one click from the hub:** each card lists its tools by name — REST, SOAP, gRPC, Streaming, Browser on the first card, and so on — and each name opens that tool directly. The card's own action opens the studio it belongs to.
+- **Recent notes:** the bottom of the hub shows the last three responses with method, path, status and duration, written on torn-off slips. Clicking one opens the history panel. Before you send anything the strip says so instead of showing placeholder rows.
+- **Automatic AI credentials:** AI settings gained an *auto* credential mode, now the default. adOmnia uses the machine's environment key when one is set and falls back to the encrypted Vault key when it is not, instead of forcing a choice between the two. Existing Vault-only profiles migrate to this mode and keep their stored key as the fallback; Vault-only mode remains selectable.
+
+### Changed
+- **The hub is written in one hand:** in the Sketch skin the home screen now uses the skin's handwriting face throughout. It previously mixed the handwriting headline with monospaced labels, which broke the drawing halfway down the page.
+- **Sketch paper details on the hub:** the red margin rule, masking tape, index cards on solid paper with punched rings and a turned-up corner, and hand-drawn section underlines. All of it is scoped to the Sketch skin — every other theme renders the same layout in its own tokens.
+- **No binding rings over the navigation rail:** an earlier pass drew the notebook's spiral down the left edge of the window, which sat on top of the rail icons and made the menu hard to read. The rings now appear only on the hub's cards.
+
+### Fixed
+- **Missing red margin colour in the Sketch skin:** the `--sk-margin` token had been dropped while stylesheet rules still referenced it, so the margin rule rendered as nothing. It is defined again.
+
 ## [0.7.0] - 2026-08-09
 
 ### Added
