@@ -29,6 +29,8 @@ import { requestWithUrlInput, resolvedRequestUrl } from '@/lib/requestUrl'
 import { useNavigationTranslation, useUiTranslation } from '@/lib/uiI18n'
 import { DetachRequest, DetachRequestAndResponse } from '@/wailsjs/go/main/App'
 import { EventsOn } from '@/wailsjs/runtime/runtime'
+import { useWorkspaceHydration, useWorkspaceHydrationShell } from '@/hooks/useWorkspaceHydration'
+import { WorkspaceMainSkeleton, WorkspacePanelHeaderSkeleton } from '@/components/layout/WorkspaceHydrationShell'
 
 // ─── Lazy-loaded panels (loaded on first navigation) ──────────────────────────
 
@@ -1054,6 +1056,10 @@ function panelFor(activeRail: RailItem): PanelDef {
 export function MainArea() {
   const activeRail = useAppStore((s) => s.activeRail)
   const goBack = useAppStore((s) => s.goBack)
+  const workspaceHydrated = useWorkspaceHydration()
+  const workspaceShellPhase = useWorkspaceHydrationShell(workspaceHydrated)
+  const workspaceHydrating = activeRail === 'collections' && workspaceShellPhase !== 'ready'
+  const quietWorkspaceShell = workspaceShellPhase === 'quiet'
 
   // Alt+← to go back, Escape to close secondary panels
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -1074,10 +1080,12 @@ export function MainArea() {
 
   return (
     <main className={`flex-1 flex flex-col min-w-0 relative bg-surface-0${overflow ? ' overflow-hidden' : ''}`}>
-      {titleKey && <PanelHeader titleKey={titleKey} />}
+      {workspaceHydrating
+        ? <WorkspacePanelHeaderSkeleton quiet={quietWorkspaceShell} />
+        : titleKey && <PanelHeader titleKey={titleKey} />}
       <div key={activeRail} className="flex-1 flex flex-col min-w-0 overflow-hidden panel-enter">
         <Suspense fallback={<PanelSkeleton />}>
-          {component}
+          {workspaceHydrating ? <WorkspaceMainSkeleton quiet={quietWorkspaceShell} /> : component}
         </Suspense>
       </div>
     </main>

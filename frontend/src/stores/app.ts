@@ -1,43 +1,11 @@
 import { create } from 'zustand'
 import { useSettingsStore } from '@/stores/settings'
 import type { RoutedToolFile } from '@/lib/globalFileRouter'
+import { normalizeRailItem, type RailItem } from '@/lib/navigation'
+import { initialRailFromMemento, saveUiSessionMemento } from '@/lib/uiSessionMemento'
+import { markStartup } from '@/lib/startupPerformance'
 
-export type RailItem =
-  | 'collections'
-  | 'scenarios'
-  | 'history'
-  | 'broker'
-  | 'websocket'
-  | 'sse'
-  | 'proxy'
-  | 'mock'
-  | 'grpc'
-  | 'browser'
-  | 'dockerlab'
-  | 'jsonviewer'
-  | 'xmltools'
-  | 'flows'
-  | 'soap'
-  | 'markdown'
-  | 'mermaid'
-  | 'latex'
-  | 'pdfeditor'
-  | 'powertools'
-  | 'storage'
-  | 'database'
-  | 'vault'
-  | 'workspace'
-  | 'themes'
-  | 'templates'
-  | 'plugins'
-  | 'har'
-  | 'observe'
-  | 'secretscanner'
-  | 'settings'
-  | 'welcome'
-  | 'gitsync'
-  | 'mcp'
-  | 'apidocs'
+export type { RailItem } from '@/lib/navigation'
 
 // Canonical Cmd/Ctrl+1..7 quick-navigation targets, ordered by expected daily
 // use — core tools first, advanced-only tools last. This is deliberately NOT a
@@ -77,7 +45,17 @@ interface AppState {
   setBrowserRunning: (v: boolean) => void
 }
 
-const initialRail: RailItem = 'welcome'
+const initialRail = initialRailFromMemento()
+markStartup('startup:memento-restored')
+
+function rememberActiveRail(rail: RailItem): void {
+  const general = useSettingsStore.getState().settings.general
+  saveUiSessionMemento(
+    rail,
+    general.startupBehavior,
+    normalizeRailItem(general.defaultStartupRail) ?? 'collections',
+  )
+}
 
 export const useAppStore = create<AppState>((set, get) => ({
   activeRail: initialRail,
@@ -89,10 +67,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   sseRunning: false,
   browserRunning: false,
   pendingFileImport: null,
-  setActiveRail: (rail) => set((s) => ({
-    activeRail: rail,
-    railHistory: s.activeRail !== rail ? [...s.railHistory.slice(-19), s.activeRail] : s.railHistory,
-  })),
+  setActiveRail: (rail) => {
+    rememberActiveRail(rail)
+    set((s) => ({
+      activeRail: rail,
+      railHistory: s.activeRail !== rail ? [...s.railHistory.slice(-19), s.activeRail] : s.railHistory,
+    }))
+  },
   queueFileImport: (file) => set({ pendingFileImport: file }),
   consumeFileImport: (kind) => {
     const file = get().pendingFileImport
@@ -103,6 +84,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   goBack: () => set((s) => {
     if (s.railHistory.length === 0) return s
     const prev = s.railHistory[s.railHistory.length - 1]
+    rememberActiveRail(prev)
     return { activeRail: prev, railHistory: s.railHistory.slice(0, -1) }
   }),
   toggleSidebar: () => {

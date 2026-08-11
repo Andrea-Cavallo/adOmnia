@@ -3,6 +3,7 @@ import type { Environment, EnvVariable } from '@/lib/types'
 import { uid, blankEnvVar } from '@/lib/types'
 import { StorageGet, StoragePut } from '@/wailsjs/go/main/App'
 import { debouncedSave } from '@/lib/storeSave'
+import { decodePersistedJSON } from '@/lib/persistedJson'
 
 const BUCKET = 'environments'
 const KEY = 'all'
@@ -12,7 +13,7 @@ interface EnvironmentsState {
   activeEnvId: string | null
   loaded: boolean
   loadError: boolean
-  load: () => Promise<void>
+  load: (rawOverride?: unknown) => Promise<void>
   save: () => void
   setActiveEnv: (id: string | null) => void
   addEnvironment: (name: string) => Environment
@@ -29,11 +30,11 @@ export const useEnvironmentsStore = create<EnvironmentsState>((set, get) => ({
   loaded: false,
   loadError: false,
 
-  load: async () => {
+  load: async (rawOverride) => {
     try {
-      const raw = await StorageGet(BUCKET, KEY)
+      const raw = rawOverride ?? await StorageGet(BUCKET, KEY)
       if (raw) {
-        const parsed = JSON.parse(raw)
+        const parsed = decodePersistedJSON<{ environments?: Environment[]; activeEnvId?: string | null }>(raw)
         set({
           environments: parsed.environments ?? [],
           activeEnvId: parsed.activeEnvId ?? null,

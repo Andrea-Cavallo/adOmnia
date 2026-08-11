@@ -2,6 +2,9 @@ import { create } from 'zustand'
 import { LoadSettings, SaveSettings } from '../wailsjs/go/main/App'
 import { debouncedSave, setAutoSaveDelay } from '@/lib/storeSave'
 import { DEFAULT_UI_FONT_ID, type UIFontId } from '@/lib/uiFonts'
+import { normalizeRailItem } from '@/lib/navigation'
+import { updateUiSessionStartupPreference, type StartupBehavior } from '@/lib/uiSessionMemento'
+import { decodePersistedJSON } from '@/lib/persistedJson'
 
 export interface AppSettings {
   version: number
@@ -9,6 +12,7 @@ export interface AppSettings {
     confirmBeforeClosingDirtyTabs: boolean
     restoreTabsOnStartup: boolean
     showWelcomeOnEmptyWorkspace: boolean
+    startupBehavior: StartupBehavior
     defaultStartupRail: string
     autoSaveIntervalMs: number
     backupWorkspaceOnStartup: boolean
@@ -137,11 +141,12 @@ function migrateAIModel(ai: AppSettings['ai']): AppSettings['ai'] {
 }
 
 const defaultSettings: AppSettings = {
-  version: 6,
+  version: 7,
   general: {
     confirmBeforeClosingDirtyTabs: true,
     restoreTabsOnStartup: true,
     showWelcomeOnEmptyWorkspace: true,
+    startupBehavior: 'resume',
     defaultStartupRail: 'collections',
     autoSaveIntervalMs: 5000,
     backupWorkspaceOnStartup: true,
@@ -230,7 +235,7 @@ const defaultSettings: AppSettings = {
 interface SettingsState {
   settings: AppSettings
   loaded: boolean
-  load: () => Promise<void>
+  load: (rawOverride?: unknown) => Promise<void>
   save: () => void
   update: (patch: Partial<AppSettings>) => void
   updateGeneral: (patch: Partial<AppSettings['general']>) => void
@@ -249,10 +254,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   settings: defaultSettings,
   loaded: false,
 
-  load: async () => {
+  load: async (rawOverride) => {
     try {
-      const raw = await LoadSettings()
-      const parsed = JSON.parse(raw)
+      const raw = rawOverride ?? await LoadSettings()
+      const parsed = decodePersistedJSON<Partial<AppSettings>>(raw)
       const appearance = mergeBlock(defaultSettings.appearance, parsed.appearance)
       if (!appearance.themeId) {
         appearance.themeId = appearance.theme === 'light' ? 'builtin-light' : 'builtin-dark'
@@ -272,11 +277,14 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         : migratedAI
       const migratedAiModels = migratedCredentials.model !== savedAI.model
       const migratedAiCredentials = migratedCredentials.credentialMode !== savedAI.credentialMode
+      const migratedStartupBehavior = (parsed.version ?? 0) < 7
+      const general = mergeBlock(defaultSettings.general, parsed.general)
+      general.startupBehavior = general.startupBehavior === 'fixed' ? 'fixed' : 'resume'
       const merged: AppSettings = {
         ...defaultSettings,
         ...parsed,
         version: defaultSettings.version,
-        general: mergeBlock(defaultSettings.general, parsed.general),
+        general,
         appearance,
         requests: mergeBlock(defaultSettings.requests, parsed.requests),
         proxy: mergeBlock(defaultSettings.proxy, parsed.proxy),
@@ -289,8 +297,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       }
       setAutoSaveDelay(merged.general.autoSaveIntervalMs)
       set({ settings: merged, loaded: true })
+      updateUiSessionStartupPreference(
+        merged.general.startupBehavior,
+        normalizeRailItem(merged.general.defaultStartupRail) ?? 'collections',
+      )
       // Persist one-time migrations so the change survives without a manual edit.
-      if (migratedToV3 || migratedAiModels || migratedAiCredentials) get().save()
+      if (migratedToV3 || migratedAiModels || migratedAiCredentials || migratedStartupBehavior) get().save()
     } catch {
       set({ settings: defaultSettings, loaded: true })
     }
@@ -311,6 +323,13 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       settings: { ...s.settings, general: { ...s.settings.general, ...patch } },
     }))
     if (patch.autoSaveIntervalMs !== undefined) setAutoSaveDelay(patch.autoSaveIntervalMs)
+    if (patch.startupBehavior !== undefined || patch.defaultStartupRail !== undefined) {
+      const general = get().settings.general
+      updateUiSessionStartupPreference(
+        general.startupBehavior,
+        normalizeRailItem(general.defaultStartupRail) ?? 'collections',
+      )
+    }
     get().save()
   },
 

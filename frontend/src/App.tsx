@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Titlebar } from '@/components/layout/Titlebar'
 import { Rail } from '@/components/layout/Rail'
 import { Sidebar } from '@/components/layout/Sidebar'
-import { MainArea } from '@/components/layout/MainArea'
+import { MainAreaRouter } from '@/components/layout/MainAreaRouter'
 import { CommandPalette } from '@/components/layout/CommandPalette'
 import { StatusBar } from '@/components/layout/StatusBar'
 import { ThemeProvider } from '@/components/themes/ThemeProvider'
@@ -21,6 +21,11 @@ import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { useFileDrop } from '@/hooks/useFileDrop'
 import { useSettingsStore } from '@/stores/settings'
 import { useUiTranslation } from '@/lib/uiI18n'
+import { useWorkspaceHydration, useWorkspaceHydrationShell } from '@/hooks/useWorkspaceHydration'
+import { markStartup, reportStartupPerformance } from '@/lib/startupPerformance'
+import { useDevLogsStore } from '@/stores/devLogs'
+import { RecordStartupPerformance } from '@/wailsjs/go/main/App'
+import { saveWorkspaceStartupHint } from '@/lib/startupHints'
 
 const SIDEBAR_WIDTH_KEY = 'adomnia.sidebarWidth'
 const SIDEBAR_WIDTH_MIN = 180
@@ -47,12 +52,46 @@ function App() {
   const activeRail     = useAppStore((s) => s.activeRail)
   const sidebarCollapsed = useSettingsStore((s) => s.settings.appearance.sidebarCollapsed)
   const showSidebar    = activeRail === 'collections' && !sidebarCollapsed
+  const workspaceHydrated = useWorkspaceHydration()
+  const workspaceShellPhase = useWorkspaceHydrationShell(workspaceHydrated)
+  const addDevLog = useDevLogsStore((s) => s.addEntry)
   useAppearance()
   useKeyboardShortcuts({ setCommandPaletteOpen })
 
   const [sidebarWidth, setSidebarWidth] = useState<number>(loadSidebarWidth)
   const dragRef = useRef<{ startX: number; startWidth: number } | null>(null)
   const isDragging = useRef(false)
+
+  useEffect(() => {
+    markStartup('startup:react-mounted')
+  }, [])
+
+  useEffect(() => {
+    if (!workspaceHydrated) return
+    markStartup('startup:workspace-hydrated')
+  }, [workspaceHydrated])
+
+  useEffect(() => {
+    if (workspaceShellPhase !== 'ready') return
+    let secondFrame = 0
+    const firstFrame = window.requestAnimationFrame(() => {
+      secondFrame = window.requestAnimationFrame(() => {
+        const durations = reportStartupPerformance()
+        if (durations.rendererToWorkspaceHydrated !== undefined) {
+          saveWorkspaceStartupHint(durations.rendererToWorkspaceHydrated)
+        }
+        void RecordStartupPerformance(JSON.stringify(durations)).catch(() => undefined)
+        if (import.meta.env.DEV) {
+          addDevLog('info', 'Startup performance', 'frontend', 'startup', { ...durations })
+        }
+        window.dispatchEvent(new Event('adomnia:first-stable-frame'))
+      })
+    })
+    return () => {
+      window.cancelAnimationFrame(firstFrame)
+      if (secondFrame) window.cancelAnimationFrame(secondFrame)
+    }
+  }, [workspaceShellPhase, addDevLog])
 
   const handleSidebarResizeMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -119,7 +158,7 @@ function App() {
                 />
               </>
             )}
-            <ErrorBoundary><MainArea /></ErrorBoundary>
+            <ErrorBoundary><MainAreaRouter /></ErrorBoundary>
           </div>
           <StatusBar />
           {dragOver && <DropOverlay preview={dropPreview} />}

@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useSettingsStore } from '@/stores/settings'
 import { getUIFontStack } from '@/lib/uiFonts'
+import { loadUIFont } from '@/lib/uiFontLoader'
 
 const FONT_SIZE_MAP = { small: '12px', medium: '15px', large: '20px' } as const
 const MONO_SIZE_MAP = { small: '11px', medium: '14px', large: '19px' } as const
@@ -30,10 +31,15 @@ export function useAppearance(): void {
   }, [appearance.theme])
 
   useEffect(() => {
-    const root = document.documentElement.style
-    for (const [property, value] of Object.entries(
-      typographyVariables(appearance.uiFont, appearance.fontSize, appearance.monoFontSize ?? appearance.fontSize),
-    )) root.setProperty(property, value)
+    let cancelled = false
+    void loadUIFont(appearance.uiFont).then(() => {
+      if (cancelled) return
+      const root = document.documentElement.style
+      for (const [property, value] of Object.entries(
+        typographyVariables(appearance.uiFont, appearance.fontSize, appearance.monoFontSize ?? appearance.fontSize),
+      )) root.setProperty(property, value)
+    })
+    return () => { cancelled = true }
   }, [appearance.uiFont, appearance.fontSize, appearance.monoFontSize])
 
   useEffect(() => {

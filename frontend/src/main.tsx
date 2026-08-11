@@ -1,8 +1,17 @@
-import React from 'react'
+import React, { Suspense } from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
-import { DetachedRequestWindow } from './components/requestwindow/DetachedRequestWindow'
-import { DetachedSwaggerEditorWindow } from './components/apidocs/DetachedSwaggerEditorWindow'
+
+const DetachedRequestWindow = React.lazy(() =>
+  import('./components/requestwindow/DetachedRequestWindow').then((module) => ({
+    default: module.DetachedRequestWindow,
+  })),
+)
+const DetachedSwaggerEditorWindow = React.lazy(() =>
+  import('./components/apidocs/DetachedSwaggerEditorWindow').then((module) => ({
+    default: module.DetachedSwaggerEditorWindow,
+  })),
+)
 
 // ── UI font bundles (via @fontsource — loaded locally, no network) ──────────
 import '@fontsource/architects-daughter/400.css'
@@ -11,20 +20,6 @@ import '@fontsource/architects-daughter/400.css'
 import '@fontsource/monaspace-radon/400.css'
 import '@fontsource/ibm-plex-mono/400.css'
 import '@fontsource/ibm-plex-mono/500.css'
-import '@fontsource/jetbrains-mono/400.css'
-import '@fontsource/jetbrains-mono/500.css'
-import '@fontsource/fira-code/400.css'
-import '@fontsource/fira-code/500.css'
-import '@fontsource/source-code-pro/400.css'
-import '@fontsource/source-code-pro/500.css'
-import '@fontsource/roboto-mono/400.css'
-import '@fontsource/roboto-mono/500.css'
-import '@fontsource/space-mono/400.css'
-import '@fontsource/ubuntu-mono/400.css'
-import '@fontsource/recursive/400.css'
-import '@fontsource/inter/400.css'
-import '@fontsource/inter/500.css'
-import '@fontsource/geist/400.css'
 // cascadia-code is a Windows system font — no bundle needed
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -110,10 +105,12 @@ console.info('DevLog interceptor active — press Ctrl+Shift+D or click LOG icon
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    {new URLSearchParams(window.location.search).get('window') === 'api-request'
-      ? <DetachedRequestWindow />
-      : new URLSearchParams(window.location.search).get('window') === 'swagger-editor'
-        ? <DetachedSwaggerEditorWindow />
-        : <App />}
+    <Suspense fallback={<div className="h-screen w-screen bg-surface-0" />}>
+      {new URLSearchParams(window.location.search).get('window') === 'api-request'
+        ? <DetachedRequestWindow />
+        : new URLSearchParams(window.location.search).get('window') === 'swagger-editor'
+          ? <DetachedSwaggerEditorWindow />
+          : <App />}
+    </Suspense>
   </React.StrictMode>,
 )
