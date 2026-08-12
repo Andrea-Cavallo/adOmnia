@@ -4,18 +4,35 @@ import { TOOL_TAB_LABELS } from '@/lib/types'
 import { uid, blankRequest } from '@/lib/types'
 import { debouncedSave } from '@/lib/storeSave'
 import { safeStorageGet, safeStoragePut } from '@/lib/wailsStorage'
+import { decodePersistedJSON } from '@/lib/persistedJson'
 import { useSettingsStore } from '@/stores/settings'
 import { useCollectionsStore } from '@/stores/collections'
 
 const BUCKET = 'tabs'
-const KEY = 'session-v1'
+const LEGACY_KEY = 'session-v1'
+const CRITICAL_KEY = 'session-v3'
+const DEFERRED_KEY = 'session-v3-deferred'
 
-type PersistedTabsState = {
+type LegacyPersistedTabsState = {
   version: 1 | 2
   tabs: Tab[]
   activeTabId: string | null
   responseHistory: Array<RequestHistoryEntry | ResponseData>
 }
+
+type CriticalPersistedTabsState = {
+  version: 3
+  tabs: Tab[]
+  activeTabId: string | null
+}
+
+type DeferredPersistedTabsState = {
+  version: 1
+  responses: Record<string, ResponseData>
+  responseHistory: RequestHistoryEntry[]
+}
+
+type PersistedTabsState = LegacyPersistedTabsState | CriticalPersistedTabsState
 
 export type ComposerSection = 'overview' | 'params' | 'headers' | 'body' | 'scripts'
 export type ResponseSection = 'body' | 'headers' | 'contract' | 'assertions'
@@ -40,7 +57,9 @@ interface TabsState {
   detachedTabIds: Record<string, true>
   loaded: boolean
   loadError: boolean
-  load: () => Promise<void>
+  deferredLoaded: boolean
+  load: (rawOverride?: unknown) => Promise<void>
+  loadDeferred: () => Promise<void>
   save: () => void
   activateWorkspace: (workspaceId: string) => void
   deleteWorkspaceTabs: (workspaceId: string) => void
@@ -135,6 +154,30 @@ function retainViewStates(
   )
 }
 
+export function splitTabsForPersistence(
+  tabs: Tab[],
+  activeTabId: string | null,
+  responseHistory: RequestHistoryEntry[],
+): { critical: CriticalPersistedTabsState; deferred: DeferredPersistedTabsState } {
+  const responses = Object.fromEntries(
+    tabs.flatMap((tab) => tab.response ? [[tab.id, tab.response]] : []),
+  )
+  return {
+    critical: {
+      version: 3,
+      activeTabId,
+      tabs: tabs.map((tab) => tab.id === activeTabId ? tab : { ...tab, response: null }),
+    },
+    deferred: {
+      version: 1,
+      responses,
+      responseHistory,
+    },
+  }
+}
+
+let deferredLoadPromise: Promise<void> | null = null
+
 export const useTabsStore = create<TabsState>((set, get) => ({
   tabs: [],
   activeTabId: null,
@@ -143,16 +186,22 @@ export const useTabsStore = create<TabsState>((set, get) => ({
   detachedTabIds: {},
   loaded: false,
   loadError: false,
+  deferredLoaded: false,
 
-  load: async () => {
+  load: async (rawOverride) => {
     try {
-      const raw = await safeStorageGet(BUCKET, KEY)
+      let raw = rawOverride
+      if (raw === undefined) {
+        raw = await safeStorageGet(BUCKET, CRITICAL_KEY)
+        if (!raw) raw = await safeStorageGet(BUCKET, LEGACY_KEY)
+      }
       const settings = useSettingsStore.getState().settings
       if (!raw) {
-        set({ loaded: true, loadError: false })
+        set({ loaded: true, loadError: false, deferredLoaded: true })
         return
       }
-      const parsed = JSON.parse(raw) as PersistedTabsState
+      const parsed = decodePersistedJSON<PersistedTabsState>(raw)
+      const progressive = parsed.version === 3
       const restoredTabs = settings.general.restoreTabsOnStartup
         ? (parsed.tabs ?? []).map(cleanLoadedTab)
         : []
@@ -162,27 +211,86 @@ export const useTabsStore = create<TabsState>((set, get) => ({
       set({
         tabs: restoredTabs,
         activeTabId,
-        responseHistory: normalizeHistoryEntries(parsed.responseHistory).slice(0, historyLimit()),
+        responseHistory: progressive
+          ? []
+          : normalizeHistoryEntries(parsed.responseHistory).slice(0, historyLimit()),
         loaded: true,
         loadError: false,
+        deferredLoaded: !progressive,
       })
+      if (!progressive) get().save()
     } catch (e) {
       console.error('Failed to restore tabs:', e)
-      set({ loaded: true, loadError: true })
+      set({ loaded: true, loadError: true, deferredLoaded: true })
     }
+  },
+
+  loadDeferred: async () => {
+    if (get().deferredLoaded) return
+    if (deferredLoadPromise) return deferredLoadPromise
+
+    deferredLoadPromise = (async () => {
+      try {
+        const raw = await safeStorageGet(BUCKET, DEFERRED_KEY)
+        if (raw) {
+          const parsed = JSON.parse(raw) as DeferredPersistedTabsState
+          if (parsed.version !== 1) throw new Error(`Unsupported deferred tabs version: ${parsed.version}`)
+          set((state) => {
+            const currentHistoryIds = new Set(state.responseHistory.map((entry) => entry.id))
+            return {
+              tabs: state.tabs.map((tab) => (
+                tab.response === null && parsed.responses?.[tab.id]
+                  ? { ...tab, response: parsed.responses[tab.id] }
+                  : tab
+              )),
+              responseHistory: [
+                ...state.responseHistory,
+                ...normalizeHistoryEntries(parsed.responseHistory)
+                  .filter((entry) => !currentHistoryIds.has(entry.id)),
+              ].slice(0, historyLimit()),
+              deferredLoaded: true,
+            }
+          })
+        } else {
+          set({ deferredLoaded: true })
+        }
+      } catch (error) {
+        console.error('Failed to restore deferred tab data:', error)
+        set({ deferredLoaded: true })
+      } finally {
+        deferredLoadPromise = null
+      }
+    })()
+    return deferredLoadPromise
   },
 
   save: () => {
     const s = get()
     if (!s.loaded || s.loadError) return
+    if (!s.deferredLoaded) {
+      void s.loadDeferred().then(() => get().save())
+      return
+    }
     const { tabs, activeTabId, responseHistory } = s
-    const payload: PersistedTabsState = {
+    const legacyPayload: LegacyPersistedTabsState = {
       version: 2,
       tabs: useSettingsStore.getState().settings.general.restoreTabsOnStartup ? tabs.map(cleanLoadedTab) : [],
       activeTabId,
       responseHistory: responseHistory.slice(0, historyLimit()),
     }
-    debouncedSave('tabs', () => safeStoragePut(BUCKET, KEY, JSON.stringify(payload)))
+    const { critical, deferred } = splitTabsForPersistence(
+      legacyPayload.tabs,
+      activeTabId,
+      responseHistory.slice(0, historyLimit()),
+    )
+    debouncedSave('tabs', async () => {
+      await Promise.all([
+        safeStoragePut(BUCKET, CRITICAL_KEY, JSON.stringify(critical)),
+        safeStoragePut(BUCKET, DEFERRED_KEY, JSON.stringify(deferred)),
+        // Keep the previous payload current for downgrade compatibility.
+        safeStoragePut(BUCKET, LEGACY_KEY, JSON.stringify(legacyPayload)),
+      ])
+    })
   },
 
   activateWorkspace: (workspaceId) => {

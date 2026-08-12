@@ -369,6 +369,16 @@
     background-size: 220% 100%;
     animation: shimmer 1.35s linear infinite;
   }
+  .workspace-shell-quiet .adomnia-skeleton {
+    visibility: hidden;
+    animation: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .adomnia-skeleton {
+      animation: none;
+      background-position: 50% 0;
+    }
+  }
   .response-arrived {
     animation: responseArrived 760ms ease-out both;
   }

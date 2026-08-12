@@ -7,6 +7,9 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as bootstrap$0 from "./internal/bootstrap/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as markdown$0 from "./internal/markdown/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -163,6 +166,29 @@ export function ListMarkdownFiles(root: string): $CancellablePromise<markdown$0.
     });
 }
 
+/**
+ * LoadBootstrapState keeps the Wails binding thin while the internal package
+ * performs one transaction for all state required by the first workspace.
+ */
+export function LoadBootstrapState(): $CancellablePromise<bootstrap$0.State> {
+    return $Call.ByID(705221870).then(($result: any) => {
+        return $$createType6($result);
+    });
+}
+
+export function LoadBootstrapStateV2(): $CancellablePromise<bootstrap$0.StateV2> {
+    return $Call.ByID(1584322926).then(($result: any) => {
+        return $$createType7($result);
+    });
+}
+
+/**
+ * LoadCollectionWorkspace hydrates one non-active workspace on first access.
+ */
+export function LoadCollectionWorkspace(workspaceID: string): $CancellablePromise<string> {
+    return $Call.ByID(245840982, workspaceID);
+}
+
 export function LoadSettings(): $CancellablePromise<string> {
     return $Call.ByID(3551729052);
 }
@@ -222,6 +248,15 @@ export function RecordFrontendLog(level: string, message: string): $CancellableP
     return $Call.ByID(3326668850, level, message);
 }
 
+/**
+ * RecordStartupPerformance appends one timing-only sample after the renderer's
+ * first stable frame. The internal recorder is local-only and independent from
+ * Dev Log cleanup, so medians can be calculated across process launches.
+ */
+export function RecordStartupPerformance(frontendJSON: string): $CancellablePromise<void> {
+    return $Call.ByID(1831790581, frontendJSON);
+}
+
 export function RenameMarkdownFile(root: string, oldRelPath: string, newRelPath: string): $CancellablePromise<markdown$0.FileEntry> {
     return $Call.ByID(3235207952, root, oldRelPath, newRelPath).then(($result: any) => {
         return $$createType1($result);
@@ -230,6 +265,14 @@ export function RenameMarkdownFile(root: string, oldRelPath: string, newRelPath:
 
 export function SaveBinaryFileBase64(defaultName: string, dataBase64: string): $CancellablePromise<string> {
     return $Call.ByID(2819397220, defaultName, dataBase64);
+}
+
+/**
+ * SaveCollectionWorkspaces atomically updates the v3 shards and the complete
+ * v2 compatibility snapshot outside the startup critical path.
+ */
+export function SaveCollectionWorkspaces(indexJSON: string, workspaceJSON: string[]): $CancellablePromise<void> {
+    return $Call.ByID(710926, indexJSON, workspaceJSON);
 }
 
 export function SaveMarkdownFileAs(defaultName: string, content: string): $CancellablePromise<markdown$0.FileEntry> {
@@ -285,13 +328,13 @@ export function StorageGet(bucket: string, key: string): $CancellablePromise<str
 
 export function StorageGetAll(bucket: string): $CancellablePromise<$models.StorageEntry[]> {
     return $Call.ByID(2257741921, bucket).then(($result: any) => {
-        return $$createType7($result);
+        return $$createType9($result);
     });
 }
 
 export function StorageList(bucket: string, prefix: string): $CancellablePromise<string[]> {
     return $Call.ByID(3840110650, bucket, prefix).then(($result: any) => {
-        return $$createType8($result);
+        return $$createType10($result);
     });
 }
 
@@ -322,6 +365,8 @@ const $$createType2 = markdown$0.WorkspaceInfo.createFrom;
 const $$createType3 = $models.LogFileEntry.createFrom;
 const $$createType4 = $Create.Array($$createType3);
 const $$createType5 = $Create.Array($$createType1);
-const $$createType6 = $models.StorageEntry.createFrom;
-const $$createType7 = $Create.Array($$createType6);
-const $$createType8 = $Create.Array($Create.Any);
+const $$createType6 = bootstrap$0.State.createFrom;
+const $$createType7 = bootstrap$0.StateV2.createFrom;
+const $$createType8 = $models.StorageEntry.createFrom;
+const $$createType9 = $Create.Array($$createType8);
+const $$createType10 = $Create.Array($Create.Any);

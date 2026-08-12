@@ -29,6 +29,7 @@ var storeBuckets = []string{
 	"workspace",          // workspace payloads, app settings
 	"collections",        // collection tree
 	"environments",       // environments and active env
+	"hosts",              // local host override profiles
 	"tabs",               // open request tabs and response history
 	"database",           // database studio connections/history/favorites
 	"broker_connections", // broker profiles with Vault references only
@@ -152,6 +153,48 @@ func Get(bucket, key string) ([]byte, error) {
 		return nil, fmt.Errorf("store get %s/%s: %w", bucket, key, err)
 	}
 	return val, nil
+}
+
+// Key identifies one value in the embedded store. It is comparable so callers
+// can retrieve a batch result without relying on ordering.
+type Key struct {
+	Bucket string
+	Item   string
+}
+
+// GetMany reads multiple values in a single read-only bbolt transaction.
+// Missing values are returned as nil entries; validation errors fail the whole
+// batch before the transaction starts.
+func GetMany(keys []Key) (map[Key][]byte, error) {
+	if db == nil {
+		return nil, fmt.Errorf("storage not initialized")
+	}
+	for _, key := range keys {
+		if err := validateStoreBucket(key.Bucket); err != nil {
+			return nil, err
+		}
+	}
+
+	values := make(map[Key][]byte, len(keys))
+	err := db.View(func(tx *bolt.Tx) error {
+		for _, key := range keys {
+			bucket := tx.Bucket([]byte(key.Bucket))
+			if bucket == nil {
+				return fmt.Errorf("bucket %s not found", key.Bucket)
+			}
+			value := bucket.Get([]byte(key.Item))
+			if value != nil {
+				values[key] = append([]byte(nil), value...)
+			} else {
+				values[key] = nil
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("store batch get: %w", err)
+	}
+	return values, nil
 }
 
 func Put(bucket, key string, value []byte) error {

@@ -746,7 +746,7 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | G1.1 | Confirm before closing modified tabs |
 | G1.2 | Ripristina tab all'avvio |
 | G1.3 | Show welcome on empty workspace |
-| G1.4 | Sezione rail predefinita all'avvio |
+| G1.4 | Comportamento all'avvio: riprendi l'ultima schermata aperta oppure apri sempre una sezione rail specifica |
 | G1.5 | Intervallo auto-salvataggio (ms) |
 | G1.6 | Backup workspace all'avvio |
 | G1.7 | Max concurrent requests |
@@ -846,6 +846,7 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | G2.10 | **Keyboard Shortcuts** | Ctrl/Cmd+K opens the Command Palette; Ctrl+N creates a tab, Ctrl+Enter sends, Alt+← navigates back, Ctrl+Shift+D opens dev logs. |
 | G2.11 | **Confirm Dialog** | Reusable component for destructive actions with customizable message. |
 | G2.12 | **Command Palette** | Instant fuzzy search across panels, recent requests, collections, environments, and quick actions such as starting Mock/Proxy. |
+| G2.13 | **Fast Session Resume** | Restores the last panel before the first render, batches critical state in one local transaction, hydrates only the active collection workspace shard, and loads other workspace data on first access while preserving a complete downgrade-compatible snapshot. |
 
 ---
 

@@ -3,6 +3,7 @@ import type { HostEntry, HostsProfile } from '@/lib/types'
 import { uid, blankHostEntry } from '@/lib/types'
 import { StorageGet, StoragePut } from '@/wailsjs/go/main/App'
 import { debouncedSave } from '@/lib/storeSave'
+import { decodePersistedJSON } from '@/lib/persistedJson'
 
 const BUCKET = 'hosts'
 const KEY = 'all'
@@ -12,7 +13,7 @@ interface HostsState {
   activeProfileId: string | null
   loaded: boolean
   loadError: boolean
-  load: () => Promise<void>
+  load: (rawOverride?: unknown) => Promise<void>
   save: () => void
   setActiveProfile: (id: string | null) => void
   addProfile: (name: string) => HostsProfile
@@ -28,11 +29,11 @@ export const useHostsStore = create<HostsState>((set, get) => ({
   loaded: false,
   loadError: false,
 
-  load: async () => {
+  load: async (rawOverride) => {
     try {
-      const raw = await StorageGet(BUCKET, KEY)
+      const raw = rawOverride ?? await StorageGet(BUCKET, KEY)
       if (raw) {
-        const parsed = JSON.parse(raw)
+        const parsed = decodePersistedJSON<{ profiles?: HostsProfile[]; activeProfileId?: string | null }>(raw)
         set({
           profiles: parsed.profiles ?? [],
           activeProfileId: parsed.activeProfileId ?? null,

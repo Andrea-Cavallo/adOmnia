@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	"adomnia/internal/bootstrap"
+	"adomnia/internal/collectionsstore"
 	"adomnia/internal/devlog"
 	"adomnia/internal/httpexec"
 	"adomnia/internal/nettools"
@@ -22,6 +24,7 @@ import (
 	"adomnia/internal/requestwindow"
 	"adomnia/internal/sidecar"
 	"adomnia/internal/sse"
+	"adomnia/internal/startupperf"
 	"adomnia/internal/storage"
 	"adomnia/internal/swaggerwindow"
 	"adomnia/internal/vault"
@@ -37,6 +40,7 @@ type App struct {
 	mainWindow     *application.WebviewWindow
 	requestWindows *requestwindow.Manager
 	swaggerWindow  *swaggerwindow.Manager
+	startupStages  map[string]any
 }
 
 type DroppedFileData struct {
@@ -158,7 +162,12 @@ func (a *App) OnApplicationShutdown() {
 }
 
 func (a *App) OnStartup(ctx context.Context) {
+	startupStarted := time.Now()
+	stageStarted := startupStarted
 	devlog.Init(dataDir())
+	startupStages := map[string]any{
+		"devlogMs": float64(time.Since(stageStarted).Microseconds()) / 1000,
+	}
 	a.ctx = ctx
 	pluginRuntime.ConfigureNotifier(func(notification pluginRuntime.PluginNotification) {
 		if a.desktop != nil {
@@ -166,12 +175,15 @@ func (a *App) OnStartup(ctx context.Context) {
 		}
 	})
 	devlog.Info("OnStartup", "avvio applicazione in corso", nil)
+	stageStarted = time.Now()
 	if err := storage.Open(dataDir()); err != nil {
 		log.Printf("[app] WARNING: could not open bbolt DB: %v", err)
 		devlog.Err("OnStartup", "apertura bbolt DB fallita", err, nil)
 	} else {
 		devlog.Log("OnStartup", "bbolt DB aperto con successo", nil)
 	}
+	startupStages["storageMs"] = float64(time.Since(stageStarted).Microseconds()) / 1000
+	stageStarted = time.Now()
 	if globalPluginManager != nil {
 		if err := globalPluginManager.Init(); err != nil {
 			log.Printf("[app] WARNING: could not initialize plugins: %v", err)
@@ -180,6 +192,8 @@ func (a *App) OnStartup(ctx context.Context) {
 			devlog.Log("OnStartup", "plugin manager inizializzato", nil)
 		}
 	}
+	startupStages["pluginsMs"] = float64(time.Since(stageStarted).Microseconds()) / 1000
+	stageStarted = time.Now()
 	sidecar.InitToken()
 	devlog.Log("OnStartup", "sidecar token generato", nil)
 	proxy.Configure(dataDir(), func(data []byte) error {
@@ -189,11 +203,20 @@ func (a *App) OnStartup(ctx context.Context) {
 	devlog.Log("OnStartup", "regole proxy inizializzate", nil)
 	proxy.AutoLoadCA()
 	devlog.Log("OnStartup", "CA proxy caricato", nil)
+	startupStages["proxyMs"] = float64(time.Since(stageStarted).Microseconds()) / 1000
+	stageStarted = time.Now()
 	a.serverPort = sidecar.Start()
+	startupStages["sidecarMs"] = float64(time.Since(stageStarted).Microseconds()) / 1000
+	stageStarted = time.Now()
 	if globalPluginManager != nil {
 		globalPluginManager.FireEvent(PluginEvent{Type: "onStartup", Payload: map[string]interface{}{}})
 	}
-	devlog.Info("OnStartup", "avvio completato", map[string]any{"port": a.serverPort})
+	startupStages["pluginEventMs"] = float64(time.Since(stageStarted).Microseconds()) / 1000
+	startupStages["totalMs"] = float64(time.Since(startupStarted).Microseconds()) / 1000
+	startupStages["port"] = a.serverPort
+	a.startupStages = startupStages
+	devlog.Info("StartupPerformance", "avvio backend completato", startupStages)
+	log.Printf("[app] startup performance: %+v", startupStages)
 	log.Println("[app] startup complete")
 }
 
@@ -511,6 +534,34 @@ func (a *App) CancelHTTP(id string) {
 
 func (a *App) GetStartupWindowChrome() string {
 	return startupWindowChrome
+}
+
+// LoadBootstrapState keeps the Wails binding thin while the internal package
+// performs one transaction for all state required by the first workspace.
+func (a *App) LoadBootstrapState() (bootstrap.State, error) {
+	return bootstrap.Load()
+}
+
+func (a *App) LoadBootstrapStateV2() (bootstrap.StateV2, error) {
+	return bootstrap.LoadV2()
+}
+
+// LoadCollectionWorkspace hydrates one non-active workspace on first access.
+func (a *App) LoadCollectionWorkspace(workspaceID string) (string, error) {
+	return collectionsstore.LoadWorkspace(workspaceID)
+}
+
+// SaveCollectionWorkspaces atomically updates the v3 shards and the complete
+// v2 compatibility snapshot outside the startup critical path.
+func (a *App) SaveCollectionWorkspaces(indexJSON string, workspaceJSON []string) error {
+	return collectionsstore.Save(indexJSON, workspaceJSON)
+}
+
+// RecordStartupPerformance appends one timing-only sample after the renderer's
+// first stable frame. The internal recorder is local-only and independent from
+// Dev Log cleanup, so medians can be calculated across process launches.
+func (a *App) RecordStartupPerformance(frontendJSON string) error {
+	return startupperf.Record(dataDir(), frontendJSON, a.startupStages)
 }
 
 func (a *App) LoadSettings() (string, error) {

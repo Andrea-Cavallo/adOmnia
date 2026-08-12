@@ -1,9 +1,15 @@
 import { create } from 'zustand'
 import type { Collection, CollectionWorkspace, TreeNode, RequestItem, FolderItem, RequestBody } from '@/lib/types'
 import { uid, blankBody, blankKVRow, blankAuth } from '@/lib/types'
-import { StorageGet, StoragePut } from '@/wailsjs/go/main/App'
+import {
+  LoadCollectionWorkspace,
+  SaveCollectionWorkspaces,
+  StorageGet,
+  StoragePut,
+} from '@/wailsjs/go/main/App'
 import { debouncedSave } from '@/lib/storeSave'
 import { storageSchema } from '@/lib/storageSchemas'
+import { decodePersistedJSON } from '@/lib/persistedJson'
 
 const COLLECTIONS_SCHEMA = storageSchema('collections')
 const BUCKET = COLLECTIONS_SCHEMA.bucket
@@ -15,20 +21,36 @@ interface PersistedCollections {
   workspaces: CollectionWorkspace[]
 }
 
+interface PersistedWorkspaceMeta {
+  id: string
+  name: string
+  createdAt: string
+  updatedAt: string
+}
+
+interface PersistedCollectionsIndex {
+  version: 3
+  activeWorkspaceId: string
+  workspaces: PersistedWorkspaceMeta[]
+}
+
 interface CollectionsState {
   collections: Collection[]
   workspaces: CollectionWorkspace[]
   activeWorkspaceId: string
+  loadedWorkspaceIds: string[]
+  shardsInitialized: boolean
   loaded: boolean
   loadError: boolean
-  load: () => Promise<void>
-  save: () => void
+  load: (rawOverride?: unknown, indexOverride?: unknown, activeWorkspaceOverride?: unknown) => Promise<void>
+  save: (workspaceIds?: string[]) => void
+  ensureWorkspaceLoaded: (id: string) => Promise<CollectionWorkspace | null>
   replaceCollections: (collections: Collection[]) => void
   addWorkspace: (name: string) => CollectionWorkspace
   renameWorkspace: (id: string, name: string) => void
-  deleteWorkspace: (id: string) => string | null
-  setActiveWorkspace: (id: string) => void
-  moveCollectionToWorkspace: (collectionId: string, targetWorkspaceId: string) => void
+  deleteWorkspace: (id: string) => Promise<string | null>
+  setActiveWorkspace: (id: string) => Promise<boolean>
+  moveCollectionToWorkspace: (collectionId: string, targetWorkspaceId: string) => Promise<boolean>
   addCollection: (name: string) => Collection
   deleteCollection: (id: string) => void
   renameCollection: (id: string, name: string) => void
@@ -47,6 +69,8 @@ interface CollectionsState {
 
 export const DEFAULT_WORKSPACE_ID = 'workspace-default'
 const DEFAULT_WORKSPACE_NAME = 'Default Workspace'
+const COLLECTIONS_INDEX_VERSION = 3
+const pendingWorkspaceSaves = new Set<string>()
 
 function makeWorkspace(name: string, collections: Collection[] = [], id = uid()): CollectionWorkspace {
   const now = new Date().toISOString()
@@ -74,6 +98,58 @@ function syncActiveWorkspace(
       ? { ...workspace, collections, updatedAt: now }
       : workspace
   ))
+}
+
+function collectionsIndex(
+  workspaces: CollectionWorkspace[],
+  activeWorkspaceId: string,
+): PersistedCollectionsIndex {
+  return {
+    version: COLLECTIONS_INDEX_VERSION,
+    activeWorkspaceId,
+    workspaces: workspaces.map(({ id, name, createdAt, updatedAt }) => ({
+      id,
+      name,
+      createdAt,
+      updatedAt,
+    })),
+  }
+}
+
+export function parseCollectionsV3(
+  indexRaw: unknown,
+  activeWorkspaceRaw: unknown,
+): { workspaces: CollectionWorkspace[]; activeWorkspaceId: string; collections: Collection[] } {
+  const index = decodePersistedJSON<Partial<PersistedCollectionsIndex>>(indexRaw)
+  if (index.version !== COLLECTIONS_INDEX_VERSION || !Array.isArray(index.workspaces) || index.workspaces.length === 0) {
+    throw new Error('Invalid collections v3 index')
+  }
+  const ids = new Set<string>()
+  for (const meta of index.workspaces) {
+    if (!meta || typeof meta.id !== 'string' || !meta.id || ids.has(meta.id)) {
+      throw new Error('Invalid collections v3 workspace metadata')
+    }
+    ids.add(meta.id)
+  }
+  if (typeof index.activeWorkspaceId !== 'string' || !ids.has(index.activeWorkspaceId)) {
+    throw new Error('Invalid collections v3 active workspace')
+  }
+
+  const active = decodePersistedJSON<Partial<CollectionWorkspace>>(activeWorkspaceRaw)
+  if (active.id !== index.activeWorkspaceId || !Array.isArray(active.collections)) {
+    throw new Error('Invalid collections v3 active payload')
+  }
+  const activeCollections = migrateCollections(active.collections)
+  const workspaces = index.workspaces.map((meta) => ({
+    id: meta.id,
+    name: typeof meta.name === 'string' && meta.name ? meta.name : 'Untitled Workspace',
+    collections: meta.id === index.activeWorkspaceId ? activeCollections : [],
+    createdAt: typeof meta.createdAt === 'string' && meta.createdAt ? meta.createdAt : new Date().toISOString(),
+    updatedAt: typeof meta.updatedAt === 'string' && meta.updatedAt
+      ? meta.updatedAt
+      : (typeof meta.createdAt === 'string' ? meta.createdAt : new Date().toISOString()),
+  }))
+  return { workspaces, activeWorkspaceId: index.activeWorkspaceId, collections: activeCollections }
 }
 
 function migrateBody(b: RequestBody): RequestBody {
@@ -205,14 +281,32 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
   collections: [],
   workspaces: [],
   activeWorkspaceId: DEFAULT_WORKSPACE_ID,
+  loadedWorkspaceIds: [],
+  shardsInitialized: false,
   loaded: false,
   loadError: false,
 
-  load: async () => {
+  load: async (rawOverride, indexOverride, activeWorkspaceOverride) => {
     try {
-      const raw = await StorageGet(BUCKET, KEY)
+      if (indexOverride && activeWorkspaceOverride) {
+        try {
+          const v3 = parseCollectionsV3(indexOverride, activeWorkspaceOverride)
+          set({
+            ...v3,
+            loadedWorkspaceIds: [v3.activeWorkspaceId],
+            shardsInitialized: true,
+            loaded: true,
+            loadError: false,
+          })
+          return
+        } catch {
+          // A corrupt/incomplete v3 payload falls back to the complete v2
+          // snapshot rather than presenting an empty workspace.
+        }
+      }
+      const raw = rawOverride || await StorageGet(BUCKET, KEY)
       if (raw) {
-        const parsed = JSON.parse(raw)
+        const parsed = decodePersistedJSON<any>(raw)
         let collections: Collection[]
         let workspaces: CollectionWorkspace[]
         let activeWorkspaceId: string
@@ -262,13 +356,23 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
             // Non-fatal: data is in memory; will be persisted on the next mutation.
           }
         }
-        set({ collections, workspaces, activeWorkspaceId, loaded: true, loadError: false })
+        set({
+          collections,
+          workspaces,
+          activeWorkspaceId,
+          loadedWorkspaceIds: workspaces.map((workspace) => workspace.id),
+          shardsInitialized: false,
+          loaded: true,
+          loadError: false,
+        })
       } else {
         const workspace = makeWorkspace(DEFAULT_WORKSPACE_NAME, [], DEFAULT_WORKSPACE_ID)
         set({
           collections: [],
           workspaces: [workspace],
           activeWorkspaceId: workspace.id,
+          loadedWorkspaceIds: [workspace.id],
+          shardsInitialized: false,
           loaded: true,
           loadError: false,
         })
@@ -279,23 +383,79 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
         collections: [],
         workspaces: [workspace],
         activeWorkspaceId: workspace.id,
+        loadedWorkspaceIds: [workspace.id],
+        shardsInitialized: false,
         loaded: true,
         loadError: true,
       })
     }
   },
 
-  save: () => {
+  save: (workspaceIds) => {
     const s = get()
     if (!s.loaded || s.loadError) return
     const workspaces = syncActiveWorkspace(s.workspaces, s.activeWorkspaceId, s.collections)
     set({ workspaces })
-    const persisted: PersistedCollections = {
-      version: COLLECTIONS_SCHEMA.currentVersion,
-      activeWorkspaceId: s.activeWorkspaceId,
-      workspaces,
+    const idsToQueue = s.shardsInitialized ? (workspaceIds ?? [s.activeWorkspaceId]) : s.loadedWorkspaceIds
+    for (const id of idsToQueue) {
+      if (s.loadedWorkspaceIds.includes(id) && workspaces.some((workspace) => workspace.id === id)) {
+        pendingWorkspaceSaves.add(id)
+      }
     }
-    debouncedSave('collections', () => StoragePut(BUCKET, KEY, JSON.stringify(persisted)))
+    debouncedSave('collections', async () => {
+      const latest = get()
+      if (!latest.loaded || latest.loadError) return
+      const latestWorkspaces = syncActiveWorkspace(
+        latest.workspaces,
+        latest.activeWorkspaceId,
+        latest.collections,
+      )
+      set({ workspaces: latestWorkspaces })
+      const savingIds = [...pendingWorkspaceSaves]
+      savingIds.forEach((id) => pendingWorkspaceSaves.delete(id))
+      const payloads = savingIds.flatMap((id) => {
+        const workspace = latestWorkspaces.find((item) => item.id === id)
+        return workspace ? [JSON.stringify(workspace)] : []
+      })
+      try {
+        await SaveCollectionWorkspaces(
+          JSON.stringify(collectionsIndex(latestWorkspaces, latest.activeWorkspaceId)),
+          payloads,
+        )
+        set({ shardsInitialized: true })
+      } catch (error) {
+        savingIds.forEach((id) => pendingWorkspaceSaves.add(id))
+        throw error
+      }
+    })
+  },
+
+  ensureWorkspaceLoaded: async (id) => {
+    const current = get()
+    const existing = current.workspaces.find((workspace) => workspace.id === id)
+    if (!existing) return null
+    if (current.loadedWorkspaceIds.includes(id)) return existing
+    try {
+      const raw = await LoadCollectionWorkspace(id)
+      const loaded = migrateWorkspaces([JSON.parse(raw) as CollectionWorkspace])[0]
+      if (!loaded || loaded.id !== id) return null
+      const latest = get()
+      const meta = latest.workspaces.find((workspace) => workspace.id === id)
+      if (!meta) return null
+      const workspace = {
+        ...loaded,
+        name: meta.name,
+        createdAt: meta.createdAt,
+        updatedAt: meta.updatedAt,
+      }
+      set({
+        workspaces: latest.workspaces.map((item) => item.id === id ? workspace : item),
+        loadedWorkspaceIds: [...new Set([...latest.loadedWorkspaceIds, id])],
+      })
+      return workspace
+    } catch {
+      return null
+    }
   },
 
   replaceCollections: (collections) => {
@@ -309,8 +469,11 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
 
   addWorkspace: (name) => {
     const workspace = makeWorkspace(name.trim() || 'Untitled Workspace')
-    set((s) => ({ workspaces: [...s.workspaces, workspace] }))
-    get().save()
+    set((s) => ({
+      workspaces: [...s.workspaces, workspace],
+      loadedWorkspaceIds: [...s.loadedWorkspaceIds, workspace.id],
+    }))
+    get().save([workspace.id])
     return workspace
   },
 
@@ -322,35 +485,56 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
         workspace.id === id ? { ...workspace, name: trimmed, updatedAt: new Date().toISOString() } : workspace
       )),
     }))
-    get().save()
+    get().save(get().loadedWorkspaceIds.includes(id) ? [id] : [])
   },
 
-  deleteWorkspace: (id) => {
+  deleteWorkspace: async (id) => {
+    const initial = get()
+    if (initial.workspaces.length <= 1 || !initial.workspaces.some((workspace) => workspace.id === id)) return null
+    const candidate = initial.workspaces.find((workspace) => workspace.id !== id)
+    if (initial.activeWorkspaceId === id && candidate && !initial.loadedWorkspaceIds.includes(candidate.id)) {
+      if (!await get().ensureWorkspaceLoaded(candidate.id)) return null
+    }
     const state = get()
-    if (state.workspaces.length <= 1 || !state.workspaces.some((workspace) => workspace.id === id)) return null
     const remaining = state.workspaces.filter((workspace) => workspace.id !== id)
     const nextActiveId = state.activeWorkspaceId === id ? remaining[0].id : state.activeWorkspaceId
     const nextCollections = remaining.find((workspace) => workspace.id === nextActiveId)?.collections ?? []
-    set({ workspaces: remaining, activeWorkspaceId: nextActiveId, collections: nextCollections })
-    get().save()
+    set({
+      workspaces: remaining,
+      activeWorkspaceId: nextActiveId,
+      collections: nextCollections,
+      loadedWorkspaceIds: state.loadedWorkspaceIds.filter((workspaceId) => workspaceId !== id),
+    })
+    get().save([])
     return nextActiveId
   },
 
-  setActiveWorkspace: (id) => {
+  setActiveWorkspace: async (id) => {
+    const initial = get()
+    if (id === initial.activeWorkspaceId) return true
+    if (!initial.workspaces.some((workspace) => workspace.id === id)) return false
+    if (!initial.loadedWorkspaceIds.includes(id) && !await get().ensureWorkspaceLoaded(id)) return false
     const state = get()
-    if (id === state.activeWorkspaceId) return
     const target = state.workspaces.find((workspace) => workspace.id === id)
-    if (!target) return
-    const synced = syncActiveWorkspace(state.workspaces, state.activeWorkspaceId, state.collections)
+    if (!target) return false
+    const previousID = state.activeWorkspaceId
+    const synced = syncActiveWorkspace(state.workspaces, previousID, state.collections)
     set({ workspaces: synced, activeWorkspaceId: id, collections: target.collections })
-    get().save()
+    get().save([previousID])
+    return true
   },
 
-  moveCollectionToWorkspace: (collectionId, targetWorkspaceId) => {
+  moveCollectionToWorkspace: async (collectionId, targetWorkspaceId) => {
+    const initial = get()
+    if (targetWorkspaceId === initial.activeWorkspaceId) return false
+    if (!initial.workspaces.some((workspace) => workspace.id === targetWorkspaceId)) return false
+    if (!initial.loadedWorkspaceIds.includes(targetWorkspaceId) && !await get().ensureWorkspaceLoaded(targetWorkspaceId)) {
+      return false
+    }
     const state = get()
-    if (targetWorkspaceId === state.activeWorkspaceId) return
     const collection = state.collections.find((item) => item.id === collectionId)
-    if (!collection || !state.workspaces.some((workspace) => workspace.id === targetWorkspaceId)) return
+    if (!collection) return false
+    const sourceWorkspaceId = state.activeWorkspaceId
     const remaining = state.collections.filter((item) => item.id !== collectionId)
     set((s) => ({
       collections: remaining,
@@ -364,7 +548,8 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
         return workspace
       }),
     }))
-    get().save()
+    get().save([sourceWorkspaceId, targetWorkspaceId])
+    return true
   },
 
   addCollection: (name) => {

@@ -30,6 +30,12 @@ Key areas:
 - `frontend/src/lib/` for API wrappers, request execution, parsers, and helpers.
 - `frontend/src/stores/` for app state.
 
+Startup navigation is split by the local UI-session memento. The lightweight
+`MainAreaRouter` stays in the entry bundle; the request workspace is a separate
+chunk, preloaded before React when the restored rail is `collections` and left
+unrequested for Home or secondary panels. Its Suspense fallback reuses the
+quiet hydration shell to preserve layout stability.
+
 ## Backend
 
 Location: repository root Go files.
@@ -56,6 +62,19 @@ adOmnia uses local storage only:
 - Local filesystem for templates, skins, plugins, and artifacts.
 
 Storage changes should preserve backward compatibility.
+
+Collection workspaces use an additive bbolt schema:
+
+- `collections/index-v3` stores the active workspace id and lightweight workspace metadata.
+- `collections/workspace:<id>` stores one collection tree per workspace; only the active shard is read during bootstrap and other shards load on first access.
+- `collections/all` remains a complete version-2 snapshot. Migration to v3 never removes it, and every v3 write rebuilds it atomically for downgrade, snapshot, and storage-inspector compatibility.
+
+If the v3 index or active shard is invalid, startup falls back to `collections/all`. Migration and writes are local, idempotent, and do not change the portable `.adomnia` format.
+
+The Wails startup bootstrap has two compatible envelopes. Version 2 embeds the
+persisted JSON as structured values and reports per-block byte sizes; version 1
+remains available as a string-based fallback for existing builds and corrupted
+or unsupported v2 responses.
 
 ## Security Model
 

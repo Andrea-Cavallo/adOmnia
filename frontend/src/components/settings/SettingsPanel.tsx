@@ -353,20 +353,32 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
             <SectionHeader title={s.general.title} subtitle={s.general.subtitle} />
             <SettingsCard>
               <Select
-                label={s.general.defaultStartupRail}
-                desc={s.general.defaultStartupRailDesc}
-                value={settings.general.defaultStartupRail}
+                label={s.general.startupBehavior}
+                desc={s.general.startupBehaviorDesc}
+                value={settings.general.startupBehavior}
                 options={[
-                  { value: 'collections', label: s.general.railOptions.collections },
-                  { value: 'broker', label: 'Broker Studio' },
-                  { value: 'proxy', label: s.general.railOptions.proxy },
-                  { value: 'mock', label: s.general.railOptions.mock },
-                  { value: 'browser', label: 'Browser Debug' },
-                  { value: 'observe', label: s.general.railOptions.observe },
-                  { value: 'secretscanner', label: 'Secret Scanner' },
+                  { value: 'resume', label: s.general.startupBehaviorOptions.resume },
+                  { value: 'fixed', label: s.general.startupBehaviorOptions.fixed },
                 ]}
-                onChange={(v) => updateGeneral({ defaultStartupRail: v })}
+                onChange={(v) => updateGeneral({ startupBehavior: v as 'resume' | 'fixed' })}
               />
+              {settings.general.startupBehavior === 'fixed' && (
+                <Select
+                  label={s.general.defaultStartupRail}
+                  desc={s.general.defaultStartupRailDesc}
+                  value={settings.general.defaultStartupRail}
+                  options={[
+                    { value: 'collections', label: s.general.railOptions.collections },
+                    { value: 'broker', label: 'Broker Studio' },
+                    { value: 'proxy', label: s.general.railOptions.proxy },
+                    { value: 'mock', label: s.general.railOptions.mock },
+                    { value: 'browser', label: 'Browser Debug' },
+                    { value: 'observe', label: s.general.railOptions.observe },
+                    { value: 'secretscanner', label: 'Secret Scanner' },
+                  ]}
+                  onChange={(v) => updateGeneral({ defaultStartupRail: v })}
+                />
+              )}
             </SettingsCard>
             <SettingsCard>
               <Toggle
@@ -1012,7 +1024,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
               <div>
                 <div className="text-sm font-bold text-text-1">adOmnia</div>
                 <div className="text-[10px] text-text-4">A local-first API development toolbox</div>
-                <div className="mt-1 text-[10px] text-text-3">Developed by Andrea Cavallo · Alberto Vito (aka Albertizer)</div>
+                <div className="mt-1 text-[10px] text-text-3">Developed by Andrea Cavallo · Alberto Vito (aka Albertize)</div>
               </div>
             </div>
             <SettingsCard>
@@ -1034,7 +1046,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
               </div>
               <div className="py-2 px-1 flex items-center justify-between">
                 <span className="text-xs text-text-1">Developer</span>
-                <span className="text-xs text-text-2">Andrea Cavallo · Alberto Vito (aka Albertizer)</span>
+                <span className="text-xs text-text-2">Andrea Cavallo · Alberto Vito (aka Albertize)</span>
               </div>
               <UpdateCheckRow />
             </SettingsCard>

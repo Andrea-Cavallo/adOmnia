@@ -15,9 +15,13 @@ import { Prompt } from '@/components/ui/prompt'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { cn } from '@/lib/utils'
 import { useUiTranslation } from '@/lib/uiI18n'
+import { useWorkspaceHydration, useWorkspaceHydrationShell } from '@/hooks/useWorkspaceHydration'
+import { WorkspaceSidebarSkeleton } from '@/components/layout/WorkspaceHydrationShell'
 
 export function Sidebar() {
   const tr = useUiTranslation()
+  const workspaceHydrated = useWorkspaceHydration()
+  const workspaceShellPhase = useWorkspaceHydrationShell(workspaceHydrated)
   const activeRail = useAppStore((s) => s.activeRail)
   const collapsed = useSettingsStore((s) => s.settings.appearance.sidebarCollapsed)
   const collections = useCollectionsStore((s) => s.collections)
@@ -71,6 +75,9 @@ export function Sidebar() {
   const [showDeleteWorkspace, setShowDeleteWorkspace] = useState(false)
 
   if (collapsed || activeRail !== 'collections') return null
+  if (workspaceShellPhase !== 'ready') {
+    return <WorkspaceSidebarSkeleton quiet={workspaceShellPhase === 'quiet'} />
+  }
 
   const activeWorkspace = workspaces.find((workspace) => workspace.id === activeWorkspaceId)
   const workspaceTabs = tabs.filter((tab) => (tab.workspaceId ?? activeWorkspaceId) === activeWorkspaceId)
@@ -101,13 +108,15 @@ export function Sidebar() {
   }
 
   const handleSwitchWorkspace = (workspaceId: string) => {
-    setActiveWorkspace(workspaceId)
-    activateWorkspace(workspaceId)
+    void setActiveWorkspace(workspaceId).then((changed) => {
+      if (changed) activateWorkspace(workspaceId)
+    })
   }
 
   const handleMoveCollection = (collectionId: string, workspaceId: string) => {
-    moveCollectionToWorkspace(collectionId, workspaceId)
-    moveCollectionTabs(collectionId, workspaceId)
+    void moveCollectionToWorkspace(collectionId, workspaceId).then((moved) => {
+      if (moved) moveCollectionTabs(collectionId, workspaceId)
+    })
   }
 
   const handleDeleteNode = (collectionId: string, nodeId: string) => {
@@ -247,10 +256,12 @@ export function Sidebar() {
         variant="danger"
         onConfirm={() => {
           const deletedId = activeWorkspaceId
-          const nextWorkspaceId = deleteWorkspace(deletedId)
-          deleteWorkspaceTabs(deletedId)
-          if (nextWorkspaceId) activateWorkspace(nextWorkspaceId)
           setShowDeleteWorkspace(false)
+          void deleteWorkspace(deletedId).then((nextWorkspaceId) => {
+            if (!nextWorkspaceId) return
+            deleteWorkspaceTabs(deletedId)
+            activateWorkspace(nextWorkspaceId)
+          })
         }}
         onCancel={() => setShowDeleteWorkspace(false)}
       />
