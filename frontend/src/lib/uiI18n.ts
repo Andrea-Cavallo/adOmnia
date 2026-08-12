@@ -10,6 +10,7 @@ import type { Lang } from '@/lib/i18n'
  */
 export const ITALIAN_UI_MESSAGES = {
   'Home': 'Home',
+  'Primary navigation': 'Navigazione principale',
   'Settings': 'Impostazioni',
   'Dev Logs': 'Log sviluppatore',
   'Toggle Dev Logs': 'Mostra/nascondi log sviluppatore',

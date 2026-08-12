@@ -449,6 +449,7 @@ export function CollectionTree({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const treeRef = useRef<HTMLDivElement>(null)
 
   // Focus the request search on Cmd/Ctrl+Shift+F (dispatched by the global shortcuts hook).
   useEffect(() => {
@@ -521,19 +522,19 @@ export function CollectionTree({
       .filter((collection) => collection.name.toLowerCase().includes(query.toLowerCase()) || collection.children.length)
   }, [collections, query])
 
-  type FlatItem = { id: string; kind: 'collection' | 'folder' | 'request'; collectionId: string; data: Collection | TreeNode }
+  type FlatItem = { id: string; kind: 'collection' | 'folder' | 'request'; collectionId: string; parentId: string | null; data: Collection | TreeNode }
 
   const flatItems = useMemo(() => {
     const items: FlatItem[] = []
-    const addNodes = (nodes: TreeNode[], collectionId: string) => {
+    const addNodes = (nodes: TreeNode[], collectionId: string, parentId: string | null) => {
       for (const node of nodes) {
-        items.push({ id: node.id, kind: node.type === 'folder' ? 'folder' : 'request', collectionId, data: node })
-        if (node.type === 'folder' && openIds.has(node.id)) addNodes((node as FolderItem).children, collectionId)
+        items.push({ id: node.id, kind: node.type === 'folder' ? 'folder' : 'request', collectionId, parentId, data: node })
+        if (node.type === 'folder' && openIds.has(node.id)) addNodes((node as FolderItem).children, collectionId, node.id)
       }
     }
     for (const col of filtered) {
-      items.push({ id: col.id, kind: 'collection', collectionId: col.id, data: col })
-      if (openIds.has(col.id)) addNodes(col.children, col.id)
+      items.push({ id: col.id, kind: 'collection', collectionId: col.id, parentId: null, data: col })
+      if (openIds.has(col.id)) addNodes(col.children, col.id, col.id)
     }
     return items
   }, [filtered, openIds])
@@ -541,8 +542,9 @@ export function CollectionTree({
   // Auto-scroll focused item into view
   useEffect(() => {
     if (!focusedId) return
-    const el = document.querySelector(`[data-node-id="${focusedId}"]`)
+    const el = treeRef.current?.querySelector<HTMLElement>(`[data-node-id="${focusedId}"]`)
     el?.scrollIntoView({ block: 'nearest' })
+    el?.focus()
   }, [focusedId])
 
   const toggle = (id: string) => {
@@ -573,11 +575,23 @@ export function CollectionTree({
       case 'ArrowRight': {
         event.preventDefault()
         if (current && (current.kind === 'collection' || current.kind === 'folder') && !openIds.has(current.id)) toggle(current.id)
+        else if (current && flatItems[idx + 1]?.parentId === current.id) setFocusedId(flatItems[idx + 1].id)
         break
       }
       case 'ArrowLeft': {
         event.preventDefault()
         if (current && (current.kind === 'collection' || current.kind === 'folder') && openIds.has(current.id)) toggle(current.id)
+        else if (current?.parentId) setFocusedId(current.parentId)
+        break
+      }
+      case 'Home': {
+        event.preventDefault()
+        if (flatItems.length > 0) setFocusedId(flatItems[0].id)
+        break
+      }
+      case 'End': {
+        event.preventDefault()
+        if (flatItems.length > 0) setFocusedId(flatItems[flatItems.length - 1].id)
         break
       }
       case 'Enter':
@@ -796,7 +810,7 @@ export function CollectionTree({
         </div>
       )}
 
-      <div role="tree" aria-label={tr('Collections')} className="flex-1 overflow-y-auto px-1 pb-2 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent" tabIndex={0} onKeyDown={handleTreeKeyDown}>
+      <div ref={treeRef} role="tree" aria-label={tr('Collections')} className="flex-1 overflow-y-auto px-1 pb-2 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent" tabIndex={0} onKeyDown={handleTreeKeyDown}>
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
             <div className="grid h-10 w-10 place-items-center rounded-lg border border-dashed border-border-2 bg-surface-1 text-text-3">

@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { useAppIcon } from '@/lib/brandAssets'
 import { RAIL_CATEGORIES, getFeatureLabel, isFeatureVisible } from '@/lib/featureRegistry'
 import { useNavigationTranslation, useUiTranslation } from '@/lib/uiI18n'
+import { nextRovingFocusIndex } from '@/lib/accessibility'
 import {
   Send, LayoutList, Shield, Server, Radio, Bug, Container, Network,
   Wrench, FileText, FileCode, Database, Braces, ChevronRight, FolderOpen,
@@ -103,12 +104,13 @@ interface FlyoutProps {
   activeRail: RailItem
   onSelect: (id: RailItem) => void
   onClose: () => void
+  onFocusTrigger: () => void
 }
 
 /** Rail entries that can also be opened as a workspace tab. */
 const TOOL_TAB_RAILS = new Set<string>(Object.keys(TOOL_TAB_LABELS))
 
-function Flyout({ cat, activeRail, onSelect, onClose }: FlyoutProps) {
+function Flyout({ cat, activeRail, onSelect, onClose, onFocusTrigger }: FlyoutProps) {
   const nav = useNavigationTranslation()
   const tr = useUiTranslation()
   const openToolTab = useTabsStore((s) => s.openToolTab)
@@ -123,8 +125,30 @@ function Flyout({ cat, activeRail, onSelect, onClose }: FlyoutProps) {
     onClose()
   }
 
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const target = event.target instanceof Element ? event.target.closest<HTMLButtonElement>('[role="menuitem"]') : null
+    if (!target) return
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      target.click()
+      return
+    }
+    if (event.key === 'Escape' || event.key === 'ArrowLeft') {
+      event.preventDefault()
+      onClose()
+      requestAnimationFrame(onFocusTrigger)
+      return
+    }
+    const items = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'))
+    const currentIndex = items.indexOf(target)
+    const nextIndex = nextRovingFocusIndex(currentIndex, items.length, event.key)
+    if (nextIndex === null) return
+    event.preventDefault()
+    items[nextIndex]?.focus()
+  }
+
   return (
-    <div className="absolute left-full top-0 ml-2 w-52 bg-surface-1 border border-border-1 rounded-xl shadow-2xl z-50 py-2 overflow-hidden">
+    <div id={`rail-menu-${cat.key}`} role="menu" aria-label={nav(cat.label)} onKeyDown={handleKeyDown} className="absolute left-full top-0 ml-2 w-52 bg-surface-1 border border-border-1 rounded-xl shadow-2xl z-50 py-2 overflow-hidden">
       <div className="px-3 pt-1 pb-2 border-b border-border-1/60">
         <span className="text-[10px] font-bold text-accent tracking-wide uppercase">{nav(cat.label)}</span>
       </div>
@@ -145,6 +169,7 @@ function Flyout({ cat, activeRail, onSelect, onClose }: FlyoutProps) {
             return (
               <button
                 key={item.id}
+                role="menuitem"
                 onClick={() => { onSelect(item.id); onClose() }}
                 onContextMenu={(e) => {
                   if (!TOOL_TAB_RAILS.has(item.id)) return
@@ -190,16 +215,18 @@ interface CategoryButtonProps {
   magnifyScale: number
   buttonRef?: (node: HTMLDivElement | null) => void
   onToggle: () => void
+  onOpen: () => void
   onSelect: (id: RailItem) => void
   onClose: () => void
 }
 
-function CategoryButton({ cat, activeRail, anyRunning, isOpen, magnifyScale, buttonRef, onToggle, onSelect, onClose }: CategoryButtonProps) {
+function CategoryButton({ cat, activeRail, anyRunning, isOpen, magnifyScale, buttonRef, onToggle, onOpen, onSelect, onClose }: CategoryButtonProps) {
   const nav = useNavigationTranslation()
   const Icon = CATEGORY_ICONS[cat.key] ?? Wrench
   const showRailIconsOnly = useSettingsStore((s) => s.settings.appearance.showRailIconsOnly)
   const allItems = cat.groups.flatMap((g) => g.items)
   const anyActive = allItems.some((item) => item.id === activeRail)
+  const triggerRef = useRef<HTMLButtonElement>(null)
   const handleClick = () => {
     if (cat.directItem) {
       onSelect(cat.directItem)
@@ -212,8 +239,19 @@ function CategoryButton({ cat, activeRail, anyRunning, isOpen, magnifyScale, but
   return (
     <div ref={buttonRef} className="relative h-12 w-12 flex items-center justify-center">
       <button
+        ref={triggerRef}
+        data-rail-control
+        aria-haspopup={cat.directItem ? undefined : 'menu'}
+        aria-expanded={cat.directItem ? undefined : isOpen}
+        aria-controls={cat.directItem ? undefined : `rail-menu-${cat.key}`}
         title={nav(cat.label)}
         onClick={handleClick}
+        onKeyDown={(event) => {
+          if (event.key !== 'ArrowRight' || cat.directItem) return
+          event.preventDefault()
+          onOpen()
+          requestAnimationFrame(() => document.querySelector<HTMLButtonElement>(`#rail-menu-${cat.key} [role="menuitem"]`)?.focus())
+        }}
         className={cn(
           'w-11 h-11 rounded-lg flex flex-col items-center justify-center gap-[2px] relative will-change-transform',
           'transition-[transform,background-color,color,box-shadow] duration-200 ease-out',
@@ -248,6 +286,7 @@ function CategoryButton({ cat, activeRail, anyRunning, isOpen, magnifyScale, but
           activeRail={activeRail}
           onSelect={onSelect}
           onClose={onClose}
+          onFocusTrigger={() => triggerRef.current?.focus()}
         />
       )}
     </div>
@@ -290,6 +329,17 @@ export function Rail() {
 
   const toggle = (key: string) => setOpenKey(prev => prev === key ? null : key)
 
+  const handleRailKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+    if (event.defaultPrevented) return
+    const target = event.target instanceof Element ? event.target.closest<HTMLButtonElement>('[data-rail-control]') : null
+    if (!target) return
+    const controls = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[data-rail-control]'))
+    const nextIndex = nextRovingFocusIndex(controls.indexOf(target), controls.length, event.key)
+    if (nextIndex === null) return
+    event.preventDefault()
+    controls[nextIndex]?.focus()
+  }
+
   const handleMouseMove = useCallback((event: React.MouseEvent<HTMLElement>) => {
     setMouseY(event.clientY)
   }, [])
@@ -323,12 +373,15 @@ export function Rail() {
     <nav
       ref={railRef}
       data-app-rail
+      aria-label={tr('Primary navigation')}
+      onKeyDown={handleRailKeyDown}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       className="w-16 flex-shrink-0 bg-surface-0 border-r border-border-1 flex flex-col items-center py-3 gap-0.5 overflow-visible"
     >
       {/* Logo → Home */}
       <button
+        data-rail-control
         onClick={() => { setActiveRail('welcome'); setOpenKey(null) }}
         className={cn(
           'w-9 h-9 rounded-lg flex items-center justify-center mb-4 transition-all',
@@ -358,6 +411,7 @@ export function Rail() {
             isOpen={openKey === cat.key}
             magnifyScale={magnifyScale}
             onToggle={() => toggle(cat.key)}
+            onOpen={() => setOpenKey(cat.key)}
             onSelect={setActiveRail}
             onClose={() => setOpenKey(null)}
           />
@@ -368,6 +422,7 @@ export function Rail() {
 
       {/* Settings */}
       <button
+        data-rail-control
         onClick={() => { setActiveRail('settings'); setOpenKey(null) }}
         className={cn(
           'w-11 h-11 rounded-lg flex flex-col items-center justify-center gap-[2px] relative transition-all group/btn mb-1',
@@ -391,6 +446,7 @@ export function Rail() {
       {/* Dev Log Toggle — dev-only */}
       {import.meta.env.DEV && (
         <button
+          data-rail-control
           onClick={toggleDevTools}
           title={tr('Toggle Dev Logs')}
           className={cn(

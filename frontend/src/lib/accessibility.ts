@@ -11,6 +11,69 @@ const FOCUSABLE_SELECTOR = [
 
 const modalStack: symbol[] = []
 
+export interface FocusRect {
+  left: number
+  top: number
+  right: number
+  bottom: number
+}
+
+function center(rect: FocusRect): { x: number; y: number } {
+  return { x: (rect.left + rect.right) / 2, y: (rect.top + rect.bottom) / 2 }
+}
+
+/** Finds the nearest visible control in an arrow-key direction. */
+export function findSpatialFocusIndex(targets: readonly FocusRect[], originIndex: number, key: string): number | null {
+  if (targets.length === 0) return null
+  if (originIndex < 0 || originIndex >= targets.length) return 0
+  const origin = center(targets[originIndex])
+  let winner: { index: number; score: number } | null = null
+
+  for (let index = 0; index < targets.length; index += 1) {
+    if (index === originIndex) continue
+    const candidate = center(targets[index])
+    const dx = candidate.x - origin.x
+    const dy = candidate.y - origin.y
+    const primary = key === 'ArrowUp' || key === 'ArrowDown' ? Math.abs(dy) : Math.abs(dx)
+    const secondary = key === 'ArrowUp' || key === 'ArrowDown' ? Math.abs(dx) : Math.abs(dy)
+    const isInDirection = (key === 'ArrowUp' && dy < 0)
+      || (key === 'ArrowDown' && dy > 0)
+      || (key === 'ArrowLeft' && dx < 0)
+      || (key === 'ArrowRight' && dx > 0)
+    if (!isInDirection) continue
+    const score = primary * 4 + secondary
+    if (!winner || score < winner.score) winner = { index, score }
+  }
+  return winner?.index ?? null
+}
+
+export function focusableElements(container: ParentNode): HTMLElement[] {
+  return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
+    .filter((element) => element.getClientRects().length > 0 && element.getAttribute('aria-hidden') !== 'true')
+}
+
+/**
+ * Returns the next item in a roving-focus group. Arrow navigation wraps so a
+ * compact desktop toolbar or menu never becomes a dead end for keyboard users.
+ */
+export function nextRovingFocusIndex(currentIndex: number, itemCount: number, key: string): number | null {
+  if (itemCount <= 0) return null
+  switch (key) {
+    case 'ArrowDown':
+    case 'ArrowRight':
+      return (currentIndex + 1 + itemCount) % itemCount
+    case 'ArrowUp':
+    case 'ArrowLeft':
+      return (currentIndex - 1 + itemCount) % itemCount
+    case 'Home':
+      return 0
+    case 'End':
+      return itemCount - 1
+    default:
+      return null
+  }
+}
+
 export function handleKeyboardActivation(
   event: KeyboardEvent<HTMLElement>,
   action: () => void,
