@@ -84,7 +84,7 @@ Use these files as the fastest way to understand adOmnia before changing behavio
 
 ## Build and Run
 
-Requires Go 1.26.5+, Node.js 20+, and the Wails 3 CLI:
+Requires Go 1.26.5+, Node.js 22.13.0+, and the Wails 3 CLI:
 
 ```bash
 go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.5

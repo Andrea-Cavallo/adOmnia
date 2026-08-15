@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.7.3",
   "type": "module",
+  "engines": {
+    "node": ">=22.13.0"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

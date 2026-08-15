@@ -168,7 +168,7 @@ The same engine is available in **API Docs > Governance**. It shows error/warnin
 
 ### Build from source
 
-Only needed if you want to compile it yourself. Requires **Go 1.26.5+**, **Node.js 20+**
+Only needed if you want to compile it yourself. Requires **Go 1.26.5+**, **Node.js 22.13.0+**
 and the **Wails 3 CLI** (`wails3`). On Linux you also need `libgtk-3-dev` and
 `libwebkit2gtk-4.1-dev`.
 

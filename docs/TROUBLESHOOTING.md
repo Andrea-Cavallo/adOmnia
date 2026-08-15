@@ -41,7 +41,7 @@ docker build -f Dockerfile.linux --target artifact --output type=local,dest=dist
 
 ## npm Install or Build Fails
 
-Use Node.js 20+ and install from the frontend directory:
+Use Node.js 22.13.0+ and install from the frontend directory:
 
 ```bash
 cd frontend

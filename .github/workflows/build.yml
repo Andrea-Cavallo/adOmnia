@@ -11,7 +11,7 @@ on:
 env:
   APP_NAME: adomnia
   WAILS_VERSION: v3.0.0-beta.5
-  NODE_VERSION: '20'
+  NODE_VERSION: '22.13.0'
 
 jobs:
   checks:
