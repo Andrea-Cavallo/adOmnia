@@ -80,7 +80,7 @@ All releases include `SHA256SUMS.txt` and source code archives. Verify your down
 | **Debugging & Analysis** | Browser DevTools via CDP (network, console, JS debugger, DOM inspector, storage, screenshots), HAR viewer, DNS lookup/trace/compare, port scanner, CORS tester, JSON/XML/YAML tools, observability panel, secret scanner |
 | **Document & Productivity Studio** | **PDF Editor** (view, annotate, fill forms, flatten/export) with **real cryptographic signing** — PEM or PKCS#12/JKS keystore import, RFC-3161 **TSA timestamping**, and **LTV** (chain + OCSP/CRL); **LaTeX Studio** (live `.tex` editor + preview + templates); Markdown studio; Mermaid diagrams |
 | **Version Control (built-in Git)** | Full Git client inside the app — clone/init, stage & commit, **visual commit graph** with per-commit context actions (checkout, revert, reset, cherry-pick), branch create/switch/merge, push/pull to any remote, diff viewer, and **interactive conflict resolution**. Export collections as folder-backed, diff-friendly trees, import them back, and check drift between the app state and the files on disk |
-| **Data, Security & Extensibility** | Database Studio (SQLite/PostgreSQL/MySQL/MongoDB), bbolt storage inspector, encrypted vault (age/scrypt), **AI engine** (Anthropic/OpenAI/Gemini/Ollama — AI mock generation) with Vault or machine-local environment credentials, permission-aware JavaScript plugin runtime, 11 built-in themes + custom skin system |
+| **Data, Security & Extensibility** | Database Studio (SQLite/PostgreSQL/MySQL/MongoDB), bbolt storage inspector, encrypted vault (age/scrypt), **AI engine** (Anthropic/OpenAI/Gemini/Hugging Face/Ollama) with guided cloud/local setup, live model discovery, local metadata cache and Vault or machine-local environment credentials, permission-aware JavaScript plugin runtime, 11 built-in themes + custom skin system |
 
 Persistent Git, broker, and database credentials use encrypted `vault:` references. Plaintext credentials remain in memory for the current session only, are resolved immediately before use, and are automatically redacted from workspace, bucket, settings, and snapshot exports.
 
@@ -95,6 +95,10 @@ The Traffic view explains what happened for each call: the matched endpoint and 
 In **Settings → AI Engine**, enable **Use system environment credentials** to bypass the Vault for AI connections. The desktop backend reads the key only from the environment inherited by adOmnia; it is never returned to the UI or saved in Settings.
 
 Supported variables include `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` / `GOOGLE_API_KEY`, `HUGGINGFACE_API_KEY` / `HF_TOKEN`, `OPENAI_COMPATIBLE_API_KEY`, and the generic fallback `ADOMNIA_AI_API_KEY`. On Windows, restart adOmnia after changing a user or system environment variable.
+
+### Smart model setup, still local-first
+
+The AI Engine offers goal-based profiles (recommended, best quality, efficient, or private local AI) while leaving the exact model under your control. adOmnia can ask the selected provider or local runtime which models are available, then saves only model metadata and the check time on your machine. Optional automatic checks run only when you open the AI Engine and only after you enable them; adOmnia does not send model data, prompts, or telemetry to its own servers and never changes your selected model silently.
 
 ### Version collections as folders
 

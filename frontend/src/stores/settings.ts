@@ -6,6 +6,26 @@ import { normalizeRailItem } from '@/lib/navigation'
 import { updateUiSessionStartupPreference, type StartupBehavior } from '@/lib/uiSessionMemento'
 import { decodePersistedJSON } from '@/lib/persistedJson'
 
+export type AIProvider = 'anthropic' | 'openai' | 'gemini' | 'ollama' | 'huggingface' | 'openai-compatible'
+export type AIUsageProfile = 'recommended' | 'quality' | 'efficient' | 'local'
+
+export interface AIModelSummary {
+  id: string
+  name: string
+  owner?: string
+  source: string
+  context?: number
+  outputLimit?: number
+  capabilities?: string[]
+  supportsThinking?: boolean
+  local: boolean
+}
+
+export interface AIModelCatalog {
+  checkedAt: string
+  models: AIModelSummary[]
+}
+
 export interface AppSettings {
   version: number
   general: {
@@ -80,13 +100,19 @@ export interface AppSettings {
     responseMaxRenderSizeKB: number
   }
   ai: {
-    provider: 'anthropic' | 'openai' | 'gemini' | 'ollama' | 'huggingface' | 'openai-compatible'
+    provider: AIProvider
     model: string
     apiKey: string
     baseURL: string
     enabled: boolean
     /** `auto` prefers machine-local environment credentials before the Vault fallback. */
     credentialMode: 'auto' | 'vault' | 'environment'
+    /** Guides sensible model choices without hiding the exact model control. */
+    usageProfile: AIUsageProfile
+    /** Explicit opt-in: a provider is contacted only when this screen is opened. */
+    modelUpdatePolicy: 'manual' | 'when-open'
+    /** Last verified metadata, persisted locally and safe to export/redact. */
+    modelCatalogs: Partial<Record<AIProvider, AIModelCatalog>>
   }
   features: {
     pluginsEnabled: boolean
@@ -141,7 +167,7 @@ function migrateAIModel(ai: AppSettings['ai']): AppSettings['ai'] {
 }
 
 const defaultSettings: AppSettings = {
-  version: 7,
+  version: 8,
   general: {
     confirmBeforeClosingDirtyTabs: true,
     restoreTabsOnStartup: true,
@@ -220,6 +246,9 @@ const defaultSettings: AppSettings = {
     baseURL: 'http://localhost:11434',
     enabled: false,
     credentialMode: 'auto',
+    usageProfile: 'recommended',
+    modelUpdatePolicy: 'manual',
+    modelCatalogs: {},
   },
   features: {
     pluginsEnabled: false,

@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '@/lib/utils'
-import { uid } from '@/lib/types'
-import { useEnvironmentsStore } from '@/stores/environments'
+import { varNameAtIndex } from '@/lib/substVars'
 import { useSettingsStore } from '@/stores/settings'
-import { useKnownUiTranslation, useUiTranslation } from '@/lib/uiI18n'
+import { useKnownUiTranslation } from '@/lib/uiI18n'
+import { VarEditPopover, varEditTarget, type VarEditTarget } from '@/components/ui/VarEditPopover'
 
 interface VarCandidate {
   name: string
@@ -39,15 +39,6 @@ interface VarTooltip {
   varName: string
   content: string
   type: 'resolved' | 'missing' | 'empty' | 'noenv'
-  x: number
-  y: number
-}
-
-interface VarEditPopover {
-  varName: string
-  value: string
-  exists: boolean
-  envId: string
   x: number
   y: number
 }
@@ -181,17 +172,6 @@ function resolveVarTooltip(
   return null
 }
 
-function varNameAtIndex(text: string, charIdx: number): string | null {
-  const re = /\{\{([^}]+)\}\}/g
-  let m: RegExpExecArray | null
-  while ((m = re.exec(text)) !== null) {
-    if (charIdx >= m.index && charIdx <= m.index + m[0].length) {
-      return m[1].trim()
-    }
-  }
-  return null
-}
-
 // ─── Tooltip styling ──────────────────────────────────────────────────────────
 
 const TOOLTIP_BORDER: Record<VarTooltip['type'], string> = {
@@ -215,19 +195,12 @@ export function VarHighlightInput({
   onBlur,
   inputRef: externalRef,
 }: VarHighlightInputProps) {
-  const tr = useUiTranslation()
   const translateKnown = useKnownUiTranslation()
   const internalRef = useRef<HTMLInputElement>(null)
-  const popoverRef = useRef<HTMLDivElement>(null)
   const ref = externalRef ?? internalRef
   const [tooltip, setTooltip] = useState<VarTooltip | null>(null)
   const [scrollLeft, setScrollLeft] = useState(0)
-  const [editPopover, setEditPopover] = useState<VarEditPopover | null>(null)
-  const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
-  const environments = useEnvironmentsStore((s) => s.environments)
-  const updateVariables = useEnvironmentsStore((s) => s.updateVariables)
-  const addEnvironment = useEnvironmentsStore((s) => s.addEnvironment)
-  const setActiveEnv = useEnvironmentsStore((s) => s.setActiveEnv)
+  const [varEdit, setVarEdit] = useState<VarEditTarget | null>(null)
   const showVaultInAutocomplete = useSettingsStore((s) => s.settings.vault.showVaultInAutocomplete)
   const [autocomplete, setAutocomplete] = useState<AutocompleteState | null>(null)
 
@@ -334,68 +307,19 @@ export function VarHighlightInput({
     setScrollLeft(ref.current.scrollLeft)
   }, [ref])
 
-  const activeEnv = activeEnvId ? environments.find((env) => env.id === activeEnvId) : null
-
-  const handleContextMenu = useCallback(
+  // Opens the inline env-value editor for the {{VAR}} under the pointer.
+  const openVarEditor = useCallback(
     (e: React.MouseEvent<HTMLInputElement>) => {
-      if (!ref.current) return
+      if (!ref.current) return false
       const varName = varNameAtIndex(value, charIndexAtX(ref.current, e.clientX))
-      if (!varName) return
-
+      if (!varName) return false
       e.preventDefault()
       setTooltip(null)
-
-      // No environment to hold the variable yet → create one on the spot so the
-      // user can give the variable a value immediately.
-      let targetEnv = activeEnv
-      if (!targetEnv) {
-        targetEnv = addEnvironment('Development')
-        setActiveEnv(targetEnv.id)
-      }
-
-      const existing = targetEnv.variables.find((variable) => variable.key === varName)
-      setEditPopover({
-        varName,
-        value: existing?.value ?? '',
-        exists: Boolean(existing),
-        envId: targetEnv.id,
-        x: e.clientX,
-        y: e.clientY,
-      })
+      setVarEdit(varEditTarget(varName, e.clientX, e.clientY))
+      return true
     },
-    [activeEnv, addEnvironment, setActiveEnv, ref, value],
+    [ref, value],
   )
-
-  const saveVariableEdit = useCallback(() => {
-    if (!editPopover) return
-    // Resolve the target env from current store state (it may have just been created).
-    const env = useEnvironmentsStore.getState().environments.find((e) => e.id === editPopover.envId)
-    if (!env) { setEditPopover(null); return }
-    const nextVariables = env.variables.some((variable) => variable.key === editPopover.varName)
-      ? env.variables.map((variable) => (
-          variable.key === editPopover.varName
-            ? { ...variable, value: editPopover.value }
-            : variable
-        ))
-      : [
-          ...env.variables,
-          { id: uid(), key: editPopover.varName, value: editPopover.value, enabled: true },
-        ]
-
-    updateVariables(env.id, nextVariables)
-    setEditPopover(null)
-    requestAnimationFrame(() => ref.current?.focus())
-  }, [editPopover, ref, updateVariables])
-
-  useEffect(() => {
-    if (!editPopover) return
-    const handlePointerDown = (event: MouseEvent) => {
-      if (popoverRef.current?.contains(event.target as Node)) return
-      setEditPopover(null)
-    }
-    document.addEventListener('mousedown', handlePointerDown)
-    return () => document.removeEventListener('mousedown', handlePointerDown)
-  }, [editPopover])
 
   const SHARED: React.CSSProperties = {
     fontFamily:    'var(--skin-font-mono, var(--font-mono))',
@@ -438,14 +362,18 @@ export function VarHighlightInput({
         }}
         onKeyDown={handleKeyDown}
         onKeyUp={syncScroll}
-        onClick={() => { syncScroll(); refreshAutocomplete() }}
+        onClick={(e) => {
+          if ((e.ctrlKey || e.metaKey) && openVarEditor(e)) return
+          syncScroll()
+          refreshAutocomplete()
+        }}
         onScroll={syncScroll}
         onFocus={onFocus}
         onBlur={(event) => {
           window.setTimeout(() => setAutocomplete(null), 120)
           onBlur?.(event)
         }}
-        onContextMenu={handleContextMenu}
+        onContextMenu={openVarEditor}
         onMouseMove={handleMouseMove}
         onMouseLeave={() => setTooltip(null)}
         placeholder={placeholder}
@@ -481,6 +409,7 @@ export function VarHighlightInput({
           )}>
             {translateKnown(tooltip.content)}
           </div>
+          <div className="mt-1 text-[9px] leading-none text-text-4">{translateKnown('Ctrl+click to edit')}</div>
         </div>,
         document.body,
       )}
@@ -517,47 +446,8 @@ export function VarHighlightInput({
         document.body,
       )}
 
-      {editPopover && createPortal(
-        <div
-          ref={popoverRef}
-          className="fixed z-[10000] w-80 rounded-md border border-border-2 bg-surface-1 p-2 shadow-xl"
-          style={{
-            left: Math.min(editPopover.x, window.innerWidth - 336),
-            top: Math.min(editPopover.y + 8, window.innerHeight - 136),
-          }}
-        >
-          <div className="mb-1.5 flex items-center gap-2">
-            <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-accent">
-              {`{{${editPopover.varName}}}`}
-            </span>
-            <span className="text-[9px] uppercase tracking-wide text-text-4">
-              {editPopover.exists ? tr('Edit env') : tr('Create env')}
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <input
-              autoFocus
-              value={editPopover.value}
-              onChange={(event) => setEditPopover((current) => current ? { ...current, value: event.target.value } : current)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') saveVariableEdit()
-                if (event.key === 'Escape') setEditPopover(null)
-              }}
-              placeholder={tr('Environment value')}
-              className="h-7 min-w-0 flex-1 rounded border border-border-2 bg-surface-2 px-2 font-mono text-xs text-text-1 outline-none placeholder:text-text-4 focus:border-accent"
-            />
-            <button
-              onClick={saveVariableEdit}
-              className="h-7 rounded bg-accent px-2 text-xs font-medium text-white transition-colors hover:bg-accent-hover"
-            >
-              {tr('Save')}
-            </button>
-          </div>
-          <div className="mt-1.5 truncate text-[10px] text-text-4">
-            {environments.find((env) => env.id === editPopover.envId)?.name ?? tr('Active environment')}
-          </div>
-        </div>,
-        document.body,
+      {varEdit && (
+        <VarEditPopover target={varEdit} onClose={() => { setVarEdit(null); ref.current?.focus() }} />
       )}
     </div>
   )

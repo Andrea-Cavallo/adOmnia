@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { Sparkles, CheckCircle, AlertCircle, RefreshCw, Lock, ShieldCheck, Search, Cpu, Cloud, Database, Check } from 'lucide-react'
-import { useSettingsStore } from '@/stores/settings'
+import { useEffect, useState } from 'react'
+import { Sparkles, CheckCircle, AlertCircle, RefreshCw, Lock, ShieldCheck, Search, Cpu, Cloud, Database, Check, Gauge, Brain, Coins, Shield } from 'lucide-react'
+import { useSettingsStore, type AIModelSummary, type AIProvider, type AIUsageProfile } from '@/stores/settings'
 import * as AIEngine from '@/wailsjs/go/main/AIEngine'
 import { TextInput, PasswordInput, Toggle } from './SettingsFields'
 import { isVaultRef, encryptToVaultRef } from '@/lib/vaultRefs'
@@ -40,7 +40,14 @@ const ENVIRONMENT_VARIABLES: Record<string, string[]> = {
 }
 
 interface ModelOption { id: string; label: string; detail: string; badge?: string }
-interface DiscoveredModel { id: string; name: string; owner?: string; source: string; context?: number; local: boolean }
+type DiscoveredModel = AIModelSummary
+
+const USAGE_PROFILES: { id: AIUsageProfile; label: string; desc: string; icon: typeof Gauge }[] = [
+  { id: 'recommended', label: 'Recommended', desc: 'Best balance for adOmnia work', icon: Gauge },
+  { id: 'quality', label: 'Best quality', desc: 'Prefer deeper reasoning and coding', icon: Brain },
+  { id: 'efficient', label: 'Fast & efficient', desc: 'Prefer lower latency and cost', icon: Coins },
+  { id: 'local', label: 'Private local AI', desc: 'Use Ollama; nothing is sent to a cloud provider', icon: Shield },
+]
 
 const CURATED_MODELS: Record<string, ModelOption[]> = {
   anthropic: [
@@ -79,6 +86,30 @@ function formatContext(tokens?: number): string {
   return tokens >= 1_000_000 ? `${(tokens / 1_000_000).toFixed(tokens % 1_000_000 ? 1 : 0)}M ctx` : `${Math.round(tokens / 1000)}k ctx`
 }
 
+function readableDiscoveryError(error: unknown, provider: string): string {
+  const message = String(error)
+  if (message.includes('AI environment credential is missing')) {
+    return `No ${provider} credential was found. Use the system environment setting below or save a key in the Vault.`
+  }
+  if (message.includes('HTTP 401') || message.includes('HTTP 403')) {
+    return `adOmnia reached ${provider}, but the key cannot list models for this account. Check the key and its permissions.`
+  }
+  if (message.includes('model discovery failed')) {
+    return `Could not reach ${provider}. Check the network or the configured local endpoint.`
+  }
+  return message
+}
+
+function suggestedModel(profile: Exclude<AIUsageProfile, 'local'>, models: ModelOption[]): string | undefined {
+  const score = (model: ModelOption) => {
+    const text = `${model.id} ${model.label} ${model.detail}`.toLowerCase()
+    if (profile === 'quality') return /(frontier|opus|sol|pro|fable)/.test(text) ? 2 : 0
+    if (profile === 'efficient') return /(haiku|luna|lite|nano|mini|fast)/.test(text) ? 2 : 0
+    return model.badge === 'Recommended' ? 2 : 0
+  }
+  return [...models].sort((a, b) => score(b) - score(a))[0]?.id
+}
+
 export function AISettings() {
   const ai = useSettingsStore((s) => s.settings.ai)
   const updateAi = useSettingsStore((s) => s.updateAi)
@@ -88,9 +119,9 @@ export function AISettings() {
   const [securing, setSecuring] = useState(false)
   const [secureError, setSecureError] = useState('')
   const [modelQuery, setModelQuery] = useState('')
-  const [discoveredModels, setDiscoveredModels] = useState<DiscoveredModel[]>([])
   const [discovering, setDiscovering] = useState(false)
   const [discoverError, setDiscoverError] = useState('')
+  const [autoCheckedProvider, setAutoCheckedProvider] = useState<AIProvider | null>(null)
 
   const usesEnvironmentCredentials = ai.credentialMode !== 'vault'
   const usesAutomaticEnvironmentCredentials = ai.credentialMode === 'auto'
@@ -98,12 +129,11 @@ export function AISettings() {
 
   const handleProviderChange = (provider: string) => {
     updateAi({
-      provider: provider as typeof ai.provider,
+      provider: provider as AIProvider,
       model: DEFAULT_MODELS[provider] ?? '',
       baseURL: DEFAULT_BASE_URLS[provider] ?? '',
     })
     setModelQuery('')
-    setDiscoveredModels([])
     setDiscoverError('')
     setTestResult(null)
   }
@@ -113,13 +143,42 @@ export function AISettings() {
     setDiscoverError('')
     try {
       const raw = await withAIConfig((config) => AIEngine.ListModels(config, modelQuery.trim()))
-      setDiscoveredModels(JSON.parse(raw) as DiscoveredModel[])
+      const models = JSON.parse(raw) as DiscoveredModel[]
+      const previous = ai.modelCatalogs[ai.provider]?.models ?? []
+      const cachedModels = modelQuery.trim()
+        ? [...previous, ...models].filter((model, index, all) => all.findIndex((candidate) => candidate.id === model.id) === index)
+        : models
+      updateAi({
+        modelCatalogs: {
+          ...ai.modelCatalogs,
+          [ai.provider]: { checkedAt: new Date().toISOString(), models: cachedModels },
+        },
+      })
     } catch (e) {
-      setDiscoveredModels([])
-      setDiscoverError(String(e))
+      setDiscoverError(readableDiscoveryError(e, providerInfo?.label ?? 'the provider'))
     } finally {
       setDiscovering(false)
     }
+  }
+
+  const handleProfileChange = (profile: AIUsageProfile) => {
+    if (profile === 'local') {
+      updateAi({
+        usageProfile: profile,
+        provider: 'ollama',
+        model: ai.provider === 'ollama' ? ai.model : '',
+        baseURL: ai.provider === 'ollama' ? ai.baseURL : DEFAULT_BASE_URLS.ollama,
+      })
+      setModelQuery('')
+      setDiscoverError('')
+      return
+    }
+    const available = ai.modelCatalogs[ai.provider]?.models ?? []
+    const choices: ModelOption[] = [
+      ...available.map((model) => ({ id: model.id, label: model.name || model.id, detail: model.owner ?? '', badge: model.local ? 'Installed' : 'Live' })),
+      ...(CURATED_MODELS[ai.provider] ?? []),
+    ].filter((model, index, all) => all.findIndex((candidate) => candidate.id === model.id) === index)
+    updateAi({ usageProfile: profile, model: suggestedModel(profile, choices) ?? ai.model })
   }
 
   const handleTestConnection = async () => {
@@ -169,12 +228,20 @@ export function AISettings() {
   const needsApiKey = ai.provider !== 'ollama'
   const apiKeyOptional = ai.provider === 'openai-compatible'
   const needsBaseURL = ['ollama', 'huggingface', 'openai-compatible'].includes(ai.provider)
-  const supportsDiscovery = ['ollama', 'huggingface', 'openai-compatible', 'openai'].includes(ai.provider)
+  const supportsDiscovery = true
   const providerInfo = PROVIDERS.find((provider) => provider.value === ai.provider)
+  const catalog = ai.modelCatalogs[ai.provider]
+  const discoveredModels = catalog?.models ?? []
   const curatedModels = (CURATED_MODELS[ai.provider] ?? []).filter((model) => {
     const query = modelQuery.trim().toLowerCase()
     return !query || `${model.label} ${model.id} ${model.detail}`.toLowerCase().includes(query)
   })
+
+  useEffect(() => {
+    if (!ai.enabled || ai.modelUpdatePolicy !== 'when-open' || autoCheckedProvider === ai.provider) return
+    setAutoCheckedProvider(ai.provider)
+    void discoverModels()
+  }, [ai.enabled, ai.modelUpdatePolicy, ai.provider, autoCheckedProvider])
 
   return (
     <div className="flex flex-col gap-6">
@@ -186,10 +253,34 @@ export function AISettings() {
       <div className="flex flex-col gap-4">
         <Toggle
           label="Enable AI features"
-          desc="AI-powered mock generation, completions, and assistant features"
+          desc="AI-powered mock generation, scripts, OpenAPI, flows, and Git assistance."
           checked={ai.enabled}
           onChange={v => updateAi({ enabled: v })}
         />
+
+        <div className="rounded-xl border border-border-2 bg-surface-1 p-3">
+          <div className="mb-3 px-1">
+            <div className="text-xs font-semibold text-text-1">Choose how adOmnia should optimize AI</div>
+            <div className="mt-1 text-[10px] text-text-4">You can still select any exact model below. adOmnia never switches it in the background.</div>
+          </div>
+          <div className="grid grid-cols-2 gap-2 max-lg:grid-cols-1">
+            {USAGE_PROFILES.map((profile) => {
+              const selected = ai.usageProfile === profile.id
+              const Icon = profile.icon
+              return (
+                <button
+                  key={profile.id}
+                  onClick={() => handleProfileChange(profile.id)}
+                  className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors ${selected ? 'border-accent/60 bg-accent/10' : 'border-border-2 bg-surface-2 hover:border-accent/35'}`}
+                >
+                  <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-md ${profile.id === 'local' ? 'bg-success/10 text-success' : 'bg-accent/10 text-accent'}`}><Icon size={14} /></span>
+                  <span className="min-w-0"><span className="block text-[11px] font-semibold text-text-1">{profile.label}</span><span className="block text-[9px] text-text-4">{profile.desc}</span></span>
+                  {selected && <Check size={13} className="ml-auto shrink-0 text-accent" />}
+                </button>
+              )
+            })}
+          </div>
+        </div>
 
         <div>
           <div className="mb-2 px-1">
@@ -226,7 +317,7 @@ export function AISettings() {
                 {providerInfo?.local ? <Cpu size={14} className="text-success" /> : <Cloud size={14} className="text-accent" />}
                 Model Library
               </div>
-              <p className="mt-1 text-[10px] text-text-4">Curated defaults, installed runtimes and custom model IDs.</p>
+              <p className="mt-1 text-[10px] text-text-4">Live models from this provider, saved locally with their last verification time.</p>
             </div>
             <span className={`rounded-full px-2 py-1 text-[9px] font-semibold uppercase tracking-wider ${providerInfo?.local ? 'bg-success/10 text-success' : 'bg-accent/10 text-accent'}`}>
               {providerInfo?.local ? 'Local' : 'Cloud'}
@@ -252,12 +343,26 @@ export function AISettings() {
                   className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border-2 bg-surface-2 px-3 text-[11px] font-medium text-text-2 transition-colors hover:border-accent/40 hover:text-text-1 disabled:opacity-40"
                 >
                   {discovering ? <RefreshCw size={12} className="animate-spin" /> : <Database size={12} />}
-                  {ai.provider === 'huggingface' ? 'Search Hub' : 'Discover'}
+                  {ai.provider === 'huggingface' ? 'Search Hub' : 'Refresh models'}
                 </button>
               )}
             </div>
 
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-2 px-1 text-[9px] text-text-4">
+              <span>{catalog?.checkedAt ? `Last checked ${new Date(catalog.checkedAt).toLocaleString()}` : 'Models have not been checked from this provider yet.'}</span>
+              <button
+                onClick={() => updateAi({ modelUpdatePolicy: ai.modelUpdatePolicy === 'when-open' ? 'manual' : 'when-open' })}
+                className={`rounded px-1.5 py-1 transition-colors ${ai.modelUpdatePolicy === 'when-open' ? 'bg-success/10 text-success hover:bg-success/15' : 'hover:bg-surface-3 hover:text-text-2'}`}
+                title="This is opt-in and contacts only the provider you selected when the AI Engine screen opens."
+              >
+                {ai.modelUpdatePolicy === 'when-open' ? 'Auto-check on open: on' : 'Auto-check on open: off'}
+              </button>
+            </div>
+
             {discoverError && <p className="mt-2 rounded border border-error/30 bg-error/8 px-2 py-1.5 text-[10px] text-error">{discoverError}</p>}
+            {catalog && ai.model.trim() && !discoveredModels.some((model) => model.id === ai.model) && (
+              <p className="mt-2 rounded border border-warning/30 bg-warning/8 px-2 py-1.5 text-[10px] text-text-3">The selected model was not found in the last provider check. It may be a custom ID, unavailable to this account, or retired; test the connection before relying on it.</p>
+            )}
 
             <div className="mt-3 max-h-64 space-y-1 overflow-y-auto pr-1">
               {[...discoveredModels.map((model) => ({

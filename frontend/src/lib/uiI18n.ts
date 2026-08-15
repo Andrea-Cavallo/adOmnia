@@ -503,6 +503,7 @@ export const ITALIAN_UI_MESSAGES = {
   'Response is {size} KB — syntax highlighting disabled for performance (limit {limit} KB, change it in Settings → Editor).': 'La risposta è di {size} KB — evidenziazione sintattica disabilitata per le prestazioni (limite {limit} KB, modificabile in Impostazioni → Editor).',
   '… truncated': '… troncato',
   'Copy value': 'Copia valore',
+  'Ctrl+click to edit': 'Ctrl+clic per modificare',
   'Headers received': 'Header ricevuti',
   'No response headers': 'Nessun header di risposta',
   'No response body': 'Nessun corpo di risposta',

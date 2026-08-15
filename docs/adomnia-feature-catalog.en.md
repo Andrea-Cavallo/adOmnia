@@ -828,6 +828,14 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | G1.55 | Developer (developer mode, dev tools) |
 | G1.56 | Search settings by section, label and description with automatic result-section opening |
 
+#### G1.I AI Engine
+| # | Impostazione |
+|---|-------------|
+| G1.57 | **Guided AI Profiles** | Recommended, best quality, fast/efficient, or private local AI profiles simplify setup without hiding the exact model choice. |
+| G1.58 | **Live Model Discovery** | Lists models directly from OpenAI, Anthropic, Gemini, Hugging Face, Ollama, or an OpenAI-compatible runtime; provider metadata is cached locally. |
+| G1.59 | **Model Update Control** | Optional, explicit auto-check when the AI Engine screen opens. It calls only the selected provider/runtime and never changes the selected model silently. |
+| G1.60 | **Actionable Diagnostics** | Credential, connection, unavailable-model, and local-runtime failures are explained with a corrective action. |
+
 ---
 
 ### G2. Infrastructure & Platform

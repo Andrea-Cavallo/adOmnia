@@ -6,7 +6,9 @@ import { useEnvironmentsStore } from '@/stores/environments'
 import { useSettingsStore } from '@/stores/settings'
 import { findTextMatches } from '@/lib/textSearch'
 import { prepareJsonEnvironmentExtraction } from '@/lib/jsonTemplateValues'
+import { varNameAtIndex } from '@/lib/substVars'
 import { ContextMenu } from '@/components/ui/ContextMenu'
+import { VarEditPopover, varEditTarget, type VarEditTarget } from '@/components/ui/VarEditPopover'
 
 const AUTO_CLOSE_PAIRS: Record<string, string> = {
   '(': ')', '[': ']', '{': '}', '"': '"', "'": "'", '`': '`',
@@ -391,6 +393,7 @@ export function JsonEditor({
   const expectedValueRef = useRef(value)
   const [tooltip, setTooltip] = useState<VarTooltip | null>(null)
   const [envVariableMenu, setEnvVariableMenu] = useState<EnvironmentVariableMenu | null>(null)
+  const [varEdit, setVarEdit] = useState<VarEditTarget | null>(null)
   // Ctrl+wheel zoom — persisted px font size, shared by textarea/overlay/gutter.
   const [fontPx, setFontPx] = useState(() => {
     const n = Number(localStorage.getItem('adomnia.editor.bodyFontPx'))
@@ -587,6 +590,17 @@ export function JsonEditor({
     [resolvedVars, hasActiveEnv, value],
   )
 
+  // Ctrl/Cmd+click on a {{VAR}} edits its environment value right here — no
+  // detour through the Environments panel. Plain clicks stay caret placement.
+  const handleClick = useCallback((event: React.MouseEvent<HTMLTextAreaElement>) => {
+    if (!(event.ctrlKey || event.metaKey) || !taRef.current) return
+    const varName = varNameAtIndex(value, charIndexAtPos(taRef.current, event.clientX, event.clientY))
+    if (!varName) return
+    event.preventDefault()
+    setTooltip(null)
+    setVarEdit(varEditTarget(varName, event.clientX, event.clientY))
+  }, [value])
+
   const handleContextMenu = useCallback((event: React.MouseEvent<HTMLTextAreaElement>) => {
     const textarea = taRef.current
     if (!textarea) return
@@ -711,6 +725,7 @@ export function JsonEditor({
         onChange={(e) => commitEdit(e.target.value)}
         onKeyDown={handleKeyDown}
         onScroll={syncScroll}
+        onClick={handleClick}
         onContextMenu={handleContextMenu}
         onMouseMove={handleMouseMove}
         onMouseLeave={() => setTooltip(null)}
@@ -750,9 +765,12 @@ export function JsonEditor({
           <div className={cn('text-[11px] font-mono leading-snug break-all', TOOLTIP_BORDER[tooltip.type])}>
             {tooltip.content}
           </div>
+          <div className="mt-1 text-[9px] leading-none text-text-4">Ctrl+click to edit</div>
         </div>,
         document.body,
       )}
+
+      {varEdit && <VarEditPopover target={varEdit} onClose={() => { setVarEdit(null); taRef.current?.focus() }} />}
 
       {envVariableMenu && (
         <ContextMenu
