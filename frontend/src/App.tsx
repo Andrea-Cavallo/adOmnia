@@ -26,7 +26,7 @@ import { markStartup, reportStartupPerformance } from '@/lib/startupPerformance'
 import { useDevLogsStore } from '@/stores/devLogs'
 import { RecordStartupPerformance } from '@/wailsjs/go/main/App'
 import { saveWorkspaceStartupHint } from '@/lib/startupHints'
-import { findSpatialFocusIndex, focusableElements } from '@/lib/accessibility'
+import { findSpatialFocusIndex, focusableElements, ownsArrowKey } from '@/lib/accessibility'
 
 const SIDEBAR_WIDTH_KEY = 'adomnia.sidebarWidth'
 const SIDEBAR_WIDTH_MIN = 180
@@ -42,14 +42,6 @@ function loadSidebarWidth(): number {
     if (stored) return clampSidebarWidth(parseInt(stored, 10))
   } catch { /* ignore */ }
   return 256
-}
-
-function ownsTextNavigation(element: HTMLElement | null): boolean {
-  if (!element) return false
-  if (element.isContentEditable || element.closest('[contenteditable="true"]')) return true
-  if (element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement) return true
-  if (!(element instanceof HTMLInputElement)) return false
-  return !['button', 'checkbox', 'color', 'file', 'hidden', 'image', 'radio', 'range', 'reset', 'submit'].includes(element.type)
 }
 
 function App() {
@@ -81,8 +73,7 @@ function App() {
       if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
       if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return
       const activeElement = document.activeElement instanceof HTMLElement ? document.activeElement : null
-      if (ownsTextNavigation(activeElement)) return
-      if (activeElement?.closest('[role="tree"], [role="menu"], [role="tablist"], [role="grid"], [role="listbox"], [role="slider"]')) return
+      if (ownsArrowKey(activeElement, event.key)) return
       const controls = appRootRef.current ? focusableElements(appRootRef.current) : []
       const nextIndex = findSpatialFocusIndex(controls.map((control) => control.getBoundingClientRect()), controls.indexOf(activeElement as HTMLElement), event.key)
       if (nextIndex === null) return

@@ -47,6 +47,50 @@ export function findSpatialFocusIndex(targets: readonly FocusRect[], originIndex
   return winner?.index ?? null
 }
 
+/** Composite widgets that own every arrow key, so spatial navigation must stay out. */
+const ARROW_OWNING_ROLES = '[role="tree"], [role="menu"], [role="grid"], [role="listbox"], [role="slider"]'
+
+/** Input types that hold no caret, so they have no arrow key to defend. */
+const CARETLESS_INPUT_TYPES = new Set(['button', 'checkbox', 'color', 'file', 'hidden', 'image', 'radio', 'reset', 'submit'])
+
+/**
+ * True when the focused control keeps an arrow key for itself instead of
+ * handing it to spatial navigation. Anything that returns false here can be
+ * walked past with the arrows, which is what makes the whole app traversable
+ * top to bottom: only controls that would genuinely lose something keep a key.
+ */
+export function ownsArrowKey(element: Element | null, key: string): boolean {
+  if (!element) return false
+  const horizontal = key === 'ArrowLeft' || key === 'ArrowRight'
+  const tag = element.tagName
+
+  // Multi-line editors move a caret in all four directions.
+  if (tag === 'TEXTAREA') return true
+  if ((element as HTMLElement).isContentEditable || element.closest('[contenteditable="true"]')) return true
+
+  // A closed <select> answers arrows by silently changing its value — a real
+  // edit to the request. It gives up every arrow: open it with Enter or
+  // Alt+ArrowDown, or type the first letters of an option.
+  if (tag === 'SELECT') return false
+
+  if (tag === 'INPUT') {
+    const type = (element as HTMLInputElement).type
+    if (type === 'range') return true
+    // A single-line field has no vertical caret movement to lose.
+    return CARETLESS_INPUT_TYPES.has(type) ? false : horizontal
+  }
+
+  if (element.closest(ARROW_OWNING_ROLES)) return true
+
+  // A tablist owns only the arrows along its own orientation, so a horizontal
+  // tab strip keeps ←/→ and releases ↑/↓ instead of being a dead end.
+  const tablist = element.closest('[role="tablist"]')
+  if (!tablist) return false
+  return tablist.getAttribute('aria-orientation') === 'vertical'
+    ? !horizontal
+    : horizontal
+}
+
 export function focusableElements(container: ParentNode): HTMLElement[] {
   return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
     .filter((element) => element.getClientRects().length > 0 && element.getAttribute('aria-hidden') !== 'true')

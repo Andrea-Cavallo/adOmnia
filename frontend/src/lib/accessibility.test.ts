@@ -1,5 +1,21 @@
 import { describe, expect, it, vi } from 'vitest'
-import { findSpatialFocusIndex, handleKeyboardActivation, handleModalKeyboard, nextRovingFocusIndex } from '@/lib/accessibility'
+import { findSpatialFocusIndex, handleKeyboardActivation, handleModalKeyboard, nextRovingFocusIndex, ownsArrowKey } from '@/lib/accessibility'
+
+/** Minimal stand-in for a focused control living inside one composite widget. */
+function elementInside(role: string, orientation?: string) {
+  const owner = {
+    getAttribute: (name: string) => (name === 'aria-orientation' ? orientation ?? null : null),
+  }
+  return {
+    tagName: 'DIV',
+    closest: (selector: string) => (selector.includes(`[role="${role}"]`) ? owner : null),
+  } as unknown as Element
+}
+
+/** Minimal stand-in for a focused form control outside any composite widget. */
+function formControl(tagName: string, type?: string) {
+  return { tagName, type, closest: () => null } as unknown as Element
+}
 
 function keyboardEvent(key: string, sameTarget = true) {
   const currentTarget = {}
@@ -34,6 +50,29 @@ describe('keyboard accessibility helpers', () => {
     expect(findSpatialFocusIndex(targets, 0, 'ArrowRight')).toBe(2)
     expect(findSpatialFocusIndex(targets, 1, 'ArrowUp')).toBe(0)
     expect(findSpatialFocusIndex(targets, 0, 'ArrowLeft')).toBeNull()
+  })
+
+  it('lets a horizontal tab strip keep the arrows it uses and release the others', () => {
+    const tab = elementInside('tablist')
+    expect(ownsArrowKey(tab, 'ArrowRight')).toBe(true)
+    expect(ownsArrowKey(tab, 'ArrowDown')).toBe(false)
+    expect(ownsArrowKey(elementInside('tablist', 'vertical'), 'ArrowDown')).toBe(true)
+    expect(ownsArrowKey(elementInside('tree'), 'ArrowRight')).toBe(true)
+    expect(ownsArrowKey(null, 'ArrowDown')).toBe(false)
+  })
+
+  it('keeps the caret keys inside a single-line field but releases the vertical ones', () => {
+    const url = formControl('INPUT', 'text')
+    expect(ownsArrowKey(url, 'ArrowLeft')).toBe(true)
+    expect(ownsArrowKey(url, 'ArrowDown')).toBe(false)
+    expect(ownsArrowKey(formControl('INPUT', 'checkbox'), 'ArrowLeft')).toBe(false)
+  })
+
+  it('leaves multi-line editors and sliders untouched, and never lets a select self-edit', () => {
+    expect(ownsArrowKey(formControl('TEXTAREA'), 'ArrowDown')).toBe(true)
+    expect(ownsArrowKey(formControl('INPUT', 'range'), 'ArrowLeft')).toBe(true)
+    expect(ownsArrowKey(formControl('SELECT'), 'ArrowDown')).toBe(false)
+    expect(ownsArrowKey(formControl('SELECT'), 'ArrowLeft')).toBe(false)
   })
 
   it('starts spatial navigation at the first control when focus is on the body', () => {
