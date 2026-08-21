@@ -22,7 +22,7 @@ require (
 	github.com/miekg/dns v1.1.72
 	github.com/nats-io/nats.go v1.53.1
 	github.com/pavlo-v-chernykh/keystore-go/v4 v4.5.0
-	github.com/rabbitmq/amqp091-go v1.13.0
+	github.com/rabbitmq/amqp091-go v1.14.0
 	github.com/redis/go-redis/v9 v9.22.0
 	github.com/romshark/jscan v1.2.0
 	github.com/tidwall/gjson v1.19.0
