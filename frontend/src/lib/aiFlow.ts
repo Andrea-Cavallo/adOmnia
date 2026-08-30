@@ -367,7 +367,8 @@ export function convertAiFlowToSavedDefinition(model: AiFlowModel): SavedFlowDef
     name: model.name,
     mermaidSource: '',
     updatedAt: new Date().toISOString(),
-    version: 3,
+    version: 4,
+    schemaVersion: 4,
     graph,
   }
 }

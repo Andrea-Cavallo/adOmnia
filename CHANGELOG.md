@@ -4,6 +4,23 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [0.8.1] - 2026-08-30
+
+### Added
+- **API Flow recording:** the REST/API Composer now has a local `Record` / `Stop` control. It records every completed Composer send in order — including HTTP failures, timeouts, and user-cancelled requests — and creates an editable, executable Flow with Start, one API Request node per captured call, and Stop.
+- **Recorded-flow context:** request snapshots retain the configured method, URL template, path/query parameters, headers, body configuration, authentication references, scripts, assertions, timeout, source request id, environment, sequence, timestamp, and non-secret execution diagnostics.
+- **Complete Flow authoring:** New Flow opens an empty Start→Stop canvas; API and condition nodes can be added, and the inspector uses the real Composer to edit URL, method, parameters, headers, body, auth, timeout, retry, scripts, and assertions. Response extractions and condition operators are editable inline.
+- **Flow interchange:** exported Flow JSON can now be opened again from the Flow workspace; Mermaid paste/file import remains available.
+- **Recorded-flow ordering:** recorded steps are numbered by sequence, retain their canvas position when saved, and can apply a left-to-right canvas order before replay.
+- **Flow execution stop:** a running flow can now be stopped from the Flow toolbar; the active request is aborted through the shared execution pipeline.
+
+### Changed
+- **API Flows is core navigation:** the Flow workspace is no longer hidden when optional advanced features are disabled.
+- **Flow persistence schema v4:** saved flows now carry `schemaVersion: 4`; legacy v3 and step-based flows are normalized and rewritten compatibly on load. JSON export reports the same schema version.
+
+### Security
+- **Secret-safe recorder:** direct auth credentials, sensitive headers/cookies, sensitive form values, and recognised sensitive JSON body fields are redacted before a recording is persisted. Variable templates and Vault/secret references are preserved for safe replay.
+
 ## [0.7.2] - 2026-08-09
 
 ### Changed

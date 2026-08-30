@@ -1,6 +1,7 @@
 import type { RequestItem, ResponseData, ScriptRunResult } from '@/lib/types'
 import { sendRequest } from '@/lib/sendRequest'
 import { runRequestScript } from '@/lib/scriptRuntime'
+import { useFlowRecorderStore } from '@/stores/flowRecorder'
 
 export interface ExecuteRequestResult {
   response: ResponseData
@@ -12,11 +13,14 @@ export interface ExecuteRequestResult {
 export async function executeRequest(
   request: RequestItem,
   vars: Record<string, string>,
-  opts?: { signal?: AbortSignal },
+  opts?: { signal?: AbortSignal; recordingEnvironment?: { id: string; name: string } | null },
 ): Promise<ExecuteRequestResult> {
   const nextVars = { ...vars }
   const mutations: Record<string, string | null> = {}
   const scriptRuns: ScriptRunResult[] = []
+  // Recording observes this shared request pipeline, so Composer, API Docs and
+  // future callers cannot accidentally implement a divergent capture path.
+  const record = (response: ResponseData) => useFlowRecorderStore.getState().capture(request, opts?.recordingEnvironment ?? null, response)
 
   const applyMutations = (next: Record<string, string | null>) => {
     for (const [key, value] of Object.entries(next)) {
@@ -32,6 +36,7 @@ export async function executeRequest(
     scriptRuns.push(stripMutations(pre))
     if (!pre.passed) {
       const response = withScriptResults(errResp('SCRIPT_ERR', pre.error || 'Pre-request script failed'), scriptRuns, mutations)
+      record(response)
       return { response, vars: nextVars, mutations, scriptRuns }
     }
   }
@@ -50,8 +55,10 @@ export async function executeRequest(
     scriptRuns.push(stripMutations(tests))
   }
 
+  const completedResponse = withScriptResults(response, scriptRuns, mutations)
+  record(completedResponse)
   return {
-    response: withScriptResults(response, scriptRuns, mutations),
+    response: completedResponse,
     vars: nextVars,
     mutations,
     scriptRuns,

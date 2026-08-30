@@ -154,7 +154,8 @@ function createCapturedFlow(requests: RequestItem[], existing?: SavedFlowDefinit
     graph: { ...graphFromMermaid(mermaidSource, capturedCatalog(requests)), settings: DEFAULT_FLOW_SETTINGS },
     mermaidSource,
     updatedAt: new Date().toISOString(),
-    version: 3,
+    version: 4,
+    schemaVersion: 4,
   }
 }
 

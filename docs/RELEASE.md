@@ -2,6 +2,22 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+## v0.8.1 release notes: API Flow recording
+
+- API Flow is a core workspace again and is available from the primary navigation.
+- The REST/API Composer can record completed sends locally. `Record` captures each
+  request in execution order; `Stop` opens a naming dialog and creates an editable,
+  executable flow with Start, request nodes, and Stop.
+- Recorded snapshots preserve request templates, request configuration, scripts,
+  assertions, source request/environment metadata, and execution timing/status.
+  Direct credential values are redacted; variable and Vault references remain
+  replayable.
+- Saved flows now use schema version 4. Existing flow data is migrated on load;
+  exports can be imported again as Flow JSON or Mermaid.
+- The Flow workspace supports an empty New Flow canvas, request/condition editing,
+  response extraction, ordering recorded steps, replay from a selected node, and
+  cancellation of a running replay.
+
 ## Release Outputs
 
 The build workflow produces:

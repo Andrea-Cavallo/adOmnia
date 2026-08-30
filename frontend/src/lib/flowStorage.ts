@@ -1,10 +1,11 @@
 import { blankRequest, type RequestItem, uid } from '@/lib/types'
+import type { RecordedApiCall } from '@/stores/flowRecorder'
 import { StorageGet, StoragePut } from '@/wailsjs/go/main/App'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 import { storageSchema } from '@/lib/storageSchemas'
 
 export type FlowNodeType = 'start' | 'end' | 'request' | 'condition' | 'extract'
-export type FlowRunStatus = 'pending' | 'running' | 'success' | 'failed' | 'skipped'
+export type FlowRunStatus = 'idle' | 'pending' | 'running' | 'success' | 'failed' | 'skipped' | 'missing-binding' | 'broken'
 export type FlowEdgeBranch = 'next' | 'success' | 'error' | 'true' | 'false' | 'else'
 export type ConditionOperator = 'exists' | 'not_exists' | 'eq' | 'neq' | 'contains' | 'gt' | 'lt' | 'gte' | 'lte'
 
@@ -28,11 +29,15 @@ export interface FlowNodeConfig {
   expectedStatus?: string
   stopOnFailure?: boolean
   retryCount?: number
+  delayMs?: number
   timeoutMs?: number
   extractions?: FlowVariableMapping[]
   condition?: FlowCondition
   endState?: 'success' | 'failed'
   note?: string
+  /** Monotonic order for linear recorded flows. Existing graphs do not require it. */
+  seq?: number
+  recorded?: Omit<RecordedApiCall, 'request' | 'seq'>
 }
 
 export interface FlowNodeDefinition {
@@ -74,7 +79,8 @@ export interface SavedFlowDefinition {
   graph: FlowGraphDefinition
   mermaidSource?: string
   updatedAt: string
-  version: 3
+  version: 4
+  schemaVersion: 4
 }
 
 export type FlowStepType = 'request' | 'condition' | 'wait' | 'script'
@@ -175,11 +181,14 @@ function normalizeNode(value: unknown, index: number): FlowNodeDefinition {
       expectedStatus: stringValue(config.expectedStatus, '2xx'),
       stopOnFailure: typeof config.stopOnFailure === 'boolean' ? config.stopOnFailure : true,
       retryCount: numberValue(config.retryCount, 0),
+      delayMs: Math.max(0, numberValue(config.delayMs, 0)),
       timeoutMs: numberValue(config.timeoutMs, 0),
       extractions: Array.isArray(config.extractions) ? config.extractions.map(normalizeMapping) : [],
       condition: type === 'condition' ? normalizeCondition(config.condition) : undefined,
       endState: config.endState === 'failed' ? 'failed' : 'success',
       note: stringValue(config.note),
+      seq: numberValue(config.seq, index),
+      recorded: config.recorded ? record(config.recorded) as FlowNodeConfig['recorded'] : undefined,
     },
   }
 }
@@ -357,6 +366,71 @@ export function createDefaultFlowGraph(): FlowGraphDefinition {
   }
 }
 
+/** A genuinely empty authoring canvas, ready for API and condition nodes. */
+export function createBlankFlowGraph(): FlowGraphDefinition {
+  const startId = uid()
+  const endId = uid()
+  return {
+    nodes: [
+      { id: startId, type: 'start', label: 'Start', x: 90, y: 220, width: 130, height: 74, config: {} },
+      { id: endId, type: 'end', label: 'Stop', x: 390, y: 220, width: 130, height: 74, config: { endState: 'success' } },
+    ],
+    edges: [{ id: uid(), source: startId, target: endId, branch: 'next', label: '' }],
+    viewport: { x: 0, y: 0, zoom: 1 },
+    settings: DEFAULT_FLOW_SETTINGS,
+  }
+}
+
+/** Builds the editable, linear canvas produced by the API Workspace recorder. */
+export function createRecordedFlowDefinition(name: string, calls: RecordedApiCall[]): SavedFlowDefinition {
+  const startId = uid()
+  const endId = uid()
+  const nodes: FlowNodeDefinition[] = [{
+    id: startId, type: 'start', label: 'Start', x: 80, y: 220, width: 130, height: 74, config: {},
+  }]
+  const edges: FlowEdgeDefinition[] = []
+  let previousId = startId
+  calls.slice().sort((a, b) => a.seq - b.seq).forEach((call, index) => {
+    const nodeId = uid()
+    nodes.push({
+      id: nodeId,
+      type: 'request',
+      label: `${call.seq}. ${call.request.name || `${call.request.method} request`}`,
+      x: 300 + index * 270,
+      y: 190,
+      width: 244,
+      height: 126,
+      config: {
+        request: call.request,
+        expectedStatus: '2xx',
+        stopOnFailure: true,
+        retryCount: 0,
+        delayMs: 0,
+        timeoutMs: call.request.timeout ?? 0,
+        extractions: [],
+        seq: call.seq,
+        recorded: {
+          id: call.id,
+          recordedAt: call.recordedAt,
+          sourceRequestId: call.sourceRequestId,
+          environmentId: call.environmentId,
+          environmentName: call.environmentName,
+          execution: call.execution,
+        },
+      },
+    })
+    edges.push({ id: uid(), source: previousId, target: nodeId, branch: 'next', label: '' })
+    previousId = nodeId
+  })
+  nodes.push({ id: endId, type: 'end', label: 'Stop', x: 320 + calls.length * 270, y: 220, width: 130, height: 74, config: { endState: 'success' } })
+  edges.push({ id: uid(), source: previousId, target: endId, branch: 'next', label: '' })
+  const now = new Date().toISOString()
+  return {
+    id: uid(), name, graph: { nodes, edges, viewport: { x: 0, y: 0, zoom: 1 }, settings: DEFAULT_FLOW_SETTINGS },
+    updatedAt: now, version: 4, schemaVersion: 4,
+  }
+}
+
 export function normalizeFlowDefinitions(value: unknown): SavedFlowDefinition[] {
   if (!Array.isArray(value)) return []
   return value.map((item, index) => {
@@ -372,7 +446,8 @@ export function normalizeFlowDefinitions(value: unknown): SavedFlowDefinition[] 
       graph,
       mermaidSource: stringValue(source.mermaidSource),
       updatedAt: stringValue(source.updatedAt, new Date().toISOString()),
-      version: FLOW_STORAGE_SCHEMA.currentVersion as 3,
+      version: FLOW_STORAGE_SCHEMA.currentVersion as 4,
+      schemaVersion: FLOW_STORAGE_SCHEMA.currentVersion as 4,
     }
   })
 }

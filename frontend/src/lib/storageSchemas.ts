@@ -14,7 +14,7 @@ export const STORAGE_SCHEMAS = {
   flows: {
     bucket: 'flows',
     item: 'all',
-    currentVersion: 3,
+    currentVersion: 4,
     legacyKeys: ['adomnia.flows.v1'],
   },
   pdfprojects: {

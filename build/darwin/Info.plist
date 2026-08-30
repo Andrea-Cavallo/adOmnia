@@ -10,9 +10,9 @@
         <key>CFBundleIdentifier</key>
         <string>com.adomnia.app</string>
         <key>CFBundleVersion</key>
-        <string>0.7.0</string>
+        <string>0.8.1</string>
         <key>CFBundleShortVersionString</key>
-        <string>0.7.0</string>
+        <string>0.8.1</string>
         <key>CFBundleGetInfoString</key>
         <string>Local-first API developer toolbox</string>
         <key>CFBundleIconFile</key>

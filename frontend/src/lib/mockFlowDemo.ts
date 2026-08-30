@@ -142,6 +142,7 @@ export function createMockCommerceFlow(collection: Collection): SavedFlowDefinit
     },
     mermaidSource: MOCK_COMMERCE_MERMAID,
     updatedAt: new Date().toISOString(),
-    version: 3,
+    version: 4,
+    schemaVersion: 4,
   }
 }

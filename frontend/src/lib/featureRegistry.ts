@@ -35,7 +35,9 @@ export const FEATURE_REGISTRY: FeatureDef[] = [
   { id: 'collections', title: 'API Workspace', group: 'API Core', keywords: 'collections requests http rest graphql auth tests', maturity: 'core', railLabel: 'API Workspace' },
   { id: 'scenarios', title: 'Daily Scenarios', group: 'API Core', keywords: 'daily workbench quick access custom steps kafka mongodb rest mock consumer verification', maturity: 'advanced' },
   { id: 'history', title: 'Request History', group: 'API Core', keywords: 'responses history saved previous reopen search', maturity: 'core' },
-  { id: 'flows', title: 'API Flows', group: 'API Core', keywords: 'workflow sequence auth extract script wait condition executable mermaid', maturity: 'advanced', railLabel: 'Flows' },
+  // Flows is a first-class companion to the REST Composer (including Record),
+  // so it must not disappear behind the optional advanced-tools visibility gate.
+  { id: 'flows', title: 'API Flows', group: 'API Core', keywords: 'workflow sequence auth extract script wait condition executable mermaid record replay', maturity: 'core', railLabel: 'Flows' },
   { id: 'apidocs', title: 'Swagger Editor', group: 'API Core', keywords: 'swagger openapi oas docs documentation reference redoc viewer spec editor collection api', maturity: 'core' },
 
   { id: 'websocket', title: 'WebSocket', group: 'Protocols', keywords: 'ws realtime socket frames', maturity: 'core' },

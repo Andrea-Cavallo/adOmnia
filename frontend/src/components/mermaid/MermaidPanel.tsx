@@ -742,7 +742,8 @@ export function MermaidPanel() {
       graph: flowPreview.graph,
       mermaidSource: activeDoc.source,
       updatedAt: new Date().toISOString(),
-      version: 3,
+      version: 4,
+      schemaVersion: 4,
     }
     const flows = await loadFlowDefinitions()
     await saveFlowDefinitions([saved, ...flows.filter((flow) => flow.id !== id)])

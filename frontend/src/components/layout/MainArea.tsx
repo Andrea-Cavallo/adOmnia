@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, Suspense } from 'react'
-import { ArrowLeft, Check, Columns2, PanelsTopLeft, Rows2, Save, Send, Trash2, Wrench, X } from 'lucide-react'
+import { ArrowLeft, Check, Circle, Columns2, PanelsTopLeft, Rows2, Save, Send, Square, Trash2, Wrench, X } from 'lucide-react'
 import { useAppStore, type RailItem } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
 import { useCollectionsStore } from '@/stores/collections'
@@ -31,6 +31,8 @@ import { DetachRequest, DetachRequestAndResponse } from '@/wailsjs/go/main/App'
 import { EventsOn } from '@/wailsjs/runtime/runtime'
 import { useWorkspaceHydration, useWorkspaceHydrationShell } from '@/hooks/useWorkspaceHydration'
 import { WorkspaceMainSkeleton, WorkspacePanelHeaderSkeleton } from '@/components/layout/WorkspaceHydrationShell'
+import { useFlowRecorderStore } from '@/stores/flowRecorder'
+import { createRecordedFlowDefinition, saveFlowDefinitions } from '@/lib/flowStorage'
 
 // ─── Lazy-loaded panels (loaded on first navigation) ──────────────────────────
 
@@ -249,6 +251,9 @@ function ActiveRequestBar({
   onDelete,
   apiToolsOpen,
   onToggleApiTools,
+  recording,
+  recordingCount,
+  onToggleRecording,
 }: {
   request: RequestItem
   isDirty: boolean
@@ -262,6 +267,9 @@ function ActiveRequestBar({
   onDelete: () => void
   apiToolsOpen: boolean
   onToggleApiTools: () => void
+  recording: boolean
+  recordingCount: number
+  onToggleRecording: () => void
 }) {
   const tr = useUiTranslation()
   const [savedFlash, setSavedFlash] = useState(false)
@@ -329,6 +337,20 @@ function ActiveRequestBar({
             {tr('Send')}
           </button>
         )}
+
+        <button
+          onClick={onToggleRecording}
+          title={recording ? 'Stop recording API calls' : 'Record API calls into a Flow'}
+          className={cn(
+            'flex h-[var(--ui-control-h)] min-w-[82px] items-center justify-center gap-1.5 rounded-md border px-2.5 text-[11px] font-bold transition-colors',
+            recording ? 'border-error/45 bg-error/12 text-error hover:bg-error/20' : 'border-border-2 bg-surface-2 text-text-2 hover:border-error/45 hover:text-error',
+          )}
+        >
+          {recording ? <Square size={12} fill="currentColor" /> : <Circle size={13} fill="currentColor" className="text-error" />}
+          {recording ? `Stop · ${recordingCount}` : 'Record'}
+        </button>
+
+        {recording && <span className="hidden items-center gap-1 text-[10px] font-semibold text-error lg:flex"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-error" />{tr('Recording')}</span>}
 
         <button
           onClick={onToggleApiTools}
@@ -442,8 +464,17 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
   const setActiveEnv = useEnvironmentsStore((s) => s.setActiveEnv)
   const updateVariables = useEnvironmentsStore((s) => s.updateVariables)
   const getResolvedVars = useEnvironmentsStore((s) => s.getResolvedVars)
+  const setActiveRail = useAppStore((s) => s.setActiveRail)
+  const recording = useFlowRecorderStore((s) => s.recording)
+  const recordedCalls = useFlowRecorderStore((s) => s.calls)
+  const startRecording = useFlowRecorderStore((s) => s.start)
+  const stopRecording = useFlowRecorderStore((s) => s.stop)
+  const cancelRecording = useFlowRecorderStore((s) => s.cancel)
+  const takeRecording = useFlowRecorderStore((s) => s.take)
 
   const [showLoadTest, setShowLoadTest] = useState(false)
+  const [recordName, setRecordName] = useState('')
+  const [recordSaveError, setRecordSaveError] = useState('')
   const [pendingClose, setPendingClose] = useState<PendingClose | null>(null)
   const [mockFeedback, setMockFeedback] = useState<DropFeedback | null>(null)
   const sendAbortRef = useRef<AbortController | null>(null)
@@ -617,7 +648,8 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
     sendAbortRef.current = controller
     setLoading(activeTab.id, true)
     const vars = getResolvedVars()
-    const result = await executeRequest(activeTab.request, vars, { signal: controller.signal })
+    const activeEnvironment = environments.find((env) => env.id === activeEnvId) ?? null
+    const result = await executeRequest(activeTab.request, vars, { signal: controller.signal, recordingEnvironment: activeEnvironment })
     if (activeEnvId && Object.keys(result.mutations).length > 0) {
       const env = environments.find((e) => e.id === activeEnvId)
       if (env) updateVariables(activeEnvId, applyEnvironmentMutations(env.variables, result.mutations))
@@ -625,6 +657,36 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
     const response = result.response
     setResponse(activeTab.id, response)
     sendAbortRef.current = null
+  }
+
+  const requestStopRecording = () => {
+    if (!recording) {
+      startRecording()
+      return
+    }
+    if (recordedCalls.length === 0) {
+      cancelRecording()
+      return
+    }
+    stopRecording()
+    setRecordSaveError('')
+    setRecordName(`Recorded Flow - ${new Date().toLocaleString()}`)
+  }
+
+  const saveRecordedFlow = async () => {
+    const calls = recordedCalls
+    if (calls.length === 0) return
+    const definition = createRecordedFlowDefinition(recordName.trim() || `Recorded Flow - ${new Date().toLocaleString()}`, calls)
+    try {
+      const { loadFlowDefinitions } = await import('@/lib/flowStorage')
+      const existing = await loadFlowDefinitions()
+      await saveFlowDefinitions([definition, ...existing.filter((flow) => flow.id !== definition.id)])
+      takeRecording()
+      setRecordName('')
+      setActiveRail('flows')
+    } catch (error) {
+      setRecordSaveError(error instanceof Error ? error.message : String(error))
+    }
   }
 
   const handleCancel = () => {
@@ -807,6 +869,9 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
           onDelete={confirmDeleteActiveRequest}
           apiToolsOpen={apiToolsOpen}
           onToggleApiTools={toggleApiTools}
+          recording={recording}
+          recordingCount={recordedCalls.length}
+          onToggleRecording={requestStopRecording}
         />
       )}
       {showRequestPane && <ApiToolsBar
@@ -969,6 +1034,21 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
       )}
 
       <RequestValidationDialog issues={paramIssues} onClose={() => setParamIssues([])} />
+
+      {recordName && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-xl border border-border-1 bg-surface-1 p-5 shadow-2xl">
+            <h2 className="text-sm font-semibold text-text-1">{tr('Save recorded flow')}</h2>
+            <p className="mt-1 text-xs text-text-3">{recordedCalls.length} API calls will become consecutive, editable Flow nodes.</p>
+            <input autoFocus value={recordName} onChange={(event) => setRecordName(event.target.value)} className="mt-4 h-10 w-full rounded-lg border border-border-2 bg-surface-0 px-3 text-sm text-text-1 outline-none focus:border-accent" />
+            {recordSaveError && <p className="mt-2 text-xs text-error">{recordSaveError}</p>}
+            <div className="mt-5 flex justify-end gap-2">
+              <button onClick={() => { cancelRecording(); setRecordName('') }} className="rounded-lg px-3 py-2 text-xs font-semibold text-text-3 hover:bg-surface-2 hover:text-text-1">Discard recording</button>
+              <button onClick={() => void saveRecordedFlow()} className="rounded-lg bg-accent px-3 py-2 text-xs font-bold text-white hover:bg-accent-hover">Create Flow</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ConfirmDialog
         open={Boolean(deleteRequestTarget)}

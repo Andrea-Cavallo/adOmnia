@@ -46,6 +46,8 @@ import { handleKeyboardActivation } from '@/lib/accessibility'
 import {
   loadFlowDefinitions,
   saveFlowDefinitions,
+  createBlankFlowGraph,
+  normalizeFlowDefinitions,
   type FlowCondition,
   type FlowEdgeDefinition,
   type FlowGraphDefinition,
@@ -55,13 +57,14 @@ import {
 } from '@/lib/flowStorage'
 import { flattenApiCatalog } from '@/lib/apiCatalog'
 import { generateAiFlowPreview, type AiFlowPreview } from '@/lib/aiFlow'
-import { type RequestItem, uid } from '@/lib/types'
+import { blankRequest, type RequestItem, uid } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { serverUrl, sidecarFetch, useServerPort } from '@/lib/useServerPort'
 import { useAppStore } from '@/stores/app'
 import { useCollectionsStore } from '@/stores/collections'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { useSettingsStore } from '@/stores/settings'
+import { Composer } from '@/components/composer/Composer'
 
 const NODE_SIZE: Record<FlowNodeDefinition['type'], { w: number; h: number }> = {
   start: { w: 136, h: 66 },
@@ -128,6 +131,8 @@ function statusTheme(status?: FlowRunStatus) {
   if (status === 'failed') return 'border-error/45 bg-error/10 text-error'
   if (status === 'running') return 'border-accent/60 bg-accent/12 text-accent shadow-[0_0_0_3px_rgba(139,61,255,0.16)]'
   if (status === 'skipped') return 'border-warning/45 bg-warning/10 text-warning opacity-70'
+  if (status === 'missing-binding') return 'border-warning/45 bg-warning/10 text-warning'
+  if (status === 'broken') return 'border-error/45 bg-error/10 text-error'
   return 'border-border-2 bg-surface-1 text-text-2'
 }
 
@@ -136,6 +141,8 @@ function statusIcon(status?: FlowRunStatus) {
   if (status === 'success') return <CheckCircle2 size={14} />
   if (status === 'failed') return <XCircle size={14} />
   if (status === 'skipped') return <Circle size={14} />
+  if (status === 'missing-binding') return <AlertTriangle size={14} />
+  if (status === 'broken') return <XCircle size={14} />
   return null
 }
 
@@ -158,6 +165,7 @@ function FlowWorkspaceSidebar({
   onLoad,
   onDelete,
   onImport,
+  onImportFile,
   onExportJson,
   onExportRun,
   hasRun,
@@ -173,6 +181,7 @@ function FlowWorkspaceSidebar({
   onLoad: (flow: SavedFlowDefinition) => void
   onDelete: (id: string) => void
   onImport: () => void
+  onImportFile: () => void
   onExportJson: () => void
   onExportRun: () => void
   hasRun: boolean
@@ -200,9 +209,10 @@ function FlowWorkspaceSidebar({
           </button>
         </div>
 
-        <div className="mt-2 grid grid-cols-4 gap-1.5">
+        <div className="mt-2 grid grid-cols-5 gap-1.5">
           <button onClick={onSave} title="Save flow" className="grid h-9 place-items-center rounded-lg border border-border-2 bg-surface-0 text-text-3 hover:text-text-1"><Save size={14} /></button>
-          <button onClick={onImport} title="Import Mermaid" className="grid h-9 place-items-center rounded-lg border border-border-2 bg-surface-0 text-text-3 hover:text-text-1"><FileInput size={14} /></button>
+          <button onClick={onImport} title="Paste or import Mermaid" className="grid h-9 place-items-center rounded-lg border border-border-2 bg-surface-0 text-text-3 hover:text-text-1"><FileInput size={14} /></button>
+          <button onClick={onImportFile} title="Open exported Flow JSON or Mermaid file" className="grid h-9 place-items-center rounded-lg border border-border-2 bg-surface-0 text-text-3 hover:text-text-1"><Download size={14} className="rotate-180" /></button>
           <button onClick={onExportJson} title="Export flow JSON" className="grid h-9 place-items-center rounded-lg border border-border-2 bg-surface-0 text-text-3 hover:text-text-1"><FileJson size={14} /></button>
           <button onClick={onExportRun} disabled={!hasRun} title="Export run report" className="grid h-9 place-items-center rounded-lg border border-border-2 bg-surface-0 text-text-3 hover:text-text-1 disabled:opacity-40"><Download size={14} /></button>
         </div>
@@ -358,7 +368,7 @@ function FlowCanvas({
               if (!path) return null
               const targetStatus = runtime[edge.target]?.status
               const errorEdge = edge.branch === 'false' || edge.branch === 'else' || edge.branch === 'error'
-              const active = targetStatus && targetStatus !== 'pending' && targetStatus !== 'skipped'
+              const active = targetStatus && targetStatus !== 'idle' && targetStatus !== 'pending' && targetStatus !== 'skipped'
               const stroke = active ? (errorEdge ? 'var(--color-error)' : 'var(--color-success)') : 'var(--color-border-2)'
               return (
                 <path
@@ -421,7 +431,7 @@ function FlowBoardNode({
 }) {
   const size = nodeSize(node)
   const request = node.config.request
-  const status = runtime?.status ?? 'pending'
+  const status = runtime?.status ?? (node.type === 'request' && !request?.url.trim() ? 'missing-binding' : 'idle')
   const baseClass = cn('absolute select-none', selected && 'z-10')
 
   if (node.type === 'condition') {
@@ -518,6 +528,7 @@ function FlowInspectorPanel({
   search,
   setSearch,
   onBindRequest,
+  onPatchNodeConfig,
   onPatchCondition,
   onRunStep,
   onClose,
@@ -531,6 +542,7 @@ function FlowInspectorPanel({
   search: string
   setSearch: (value: string) => void
   onBindRequest: (nodeId: string, request: RequestItem) => void
+  onPatchNodeConfig: (nodeId: string, patch: Partial<FlowNodeDefinition['config']>) => void
   onPatchCondition: (nodeId: string, patch: Partial<FlowCondition>) => void
   onRunStep: (nodeId: string) => void
   onClose: () => void
@@ -589,7 +601,7 @@ function FlowInspectorPanel({
           <div className="space-y-3">
             <div className="rounded-xl border border-border-1 bg-surface-0 p-3">
               <div className="flex items-center gap-2">
-                <span className={cn('rounded-lg border px-2 py-1 text-[10px] font-bold uppercase', statusTheme(runtime?.status ?? 'pending'))}>{runtime?.status ?? 'pending'}</span>
+                <span className={cn('rounded-lg border px-2 py-1 text-[10px] font-bold uppercase', statusTheme(runtime?.status ?? 'idle'))}>{runtime?.status ?? 'idle'}</span>
                 <span className="min-w-0 flex-1 truncate text-sm font-semibold text-text-1">{node.label}</span>
               </div>
               {runtime?.message && <div className="mt-2 text-xs text-text-4">{runtime.message}</div>}
@@ -602,12 +614,24 @@ function FlowInspectorPanel({
               <>
                 {node.type === 'request' ? (
                   <>
-                    <div className="rounded-xl border border-border-1 bg-surface-0 p-3">
-                      <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-text-4">Method and URL</div>
-                      <div className="mt-3 flex gap-2">
-                        <span className={cn('grid h-9 w-16 place-items-center rounded-lg border border-border-2 bg-surface-1 font-mono text-xs font-extrabold', methodTone(request?.method))}>{request?.method ?? 'GET'}</span>
-                        <input readOnly value={request?.url || ''} placeholder="Missing URL" className="min-w-0 flex-1 rounded-lg border border-border-2 bg-surface-1 px-3 font-mono text-xs text-text-1 outline-none" />
+                    {request && (
+                      <div className="flex min-h-[620px] flex-col overflow-hidden rounded-xl border border-border-1 bg-surface-0">
+                        <div className="border-b border-border-1 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-text-4">Request editor</div>
+                        <Composer
+                          tabId={`flow-node-${node.id}`}
+                          request={request}
+                          onChange={(next) => onBindRequest(node.id, next)}
+                          onSend={() => onRunStep(node.id)}
+                          onSave={() => onBindRequest(node.id, request)}
+                          loading={runtime?.status === 'running'}
+                        />
                       </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-2 rounded-xl border border-border-1 bg-surface-0 p-3 text-xs text-text-2">
+                      <label className="space-y-1"><span className="block text-[10px] font-bold uppercase tracking-[0.1em] text-text-4">Delay (ms)</span><input type="number" min="0" value={node.config.delayMs ?? 0} onChange={(event) => onPatchNodeConfig(node.id, { delayMs: Math.max(0, Number(event.target.value) || 0) })} className="h-8 w-full rounded border border-border-2 bg-surface-1 px-2 font-mono text-xs text-text-1 outline-none focus:border-accent" /></label>
+                      <label className="space-y-1"><span className="block text-[10px] font-bold uppercase tracking-[0.1em] text-text-4">Retry attempts</span><input type="number" min="0" max="9" value={node.config.retryCount ?? 0} onChange={(event) => onPatchNodeConfig(node.id, { retryCount: Math.min(9, Math.max(0, Number(event.target.value) || 0)) })} className="h-8 w-full rounded border border-border-2 bg-surface-1 px-2 font-mono text-xs text-text-1 outline-none focus:border-accent" /></label>
+                      <label className="col-span-2 flex items-center gap-2 text-xs text-text-2"><input type="checkbox" checked={node.config.stopOnFailure ?? graph.settings.failOnHttpError} onChange={(event) => onPatchNodeConfig(node.id, { stopOnFailure: event.target.checked })} /> Stop on failure</label>
                     </div>
 
                     <div className="rounded-xl border border-border-1 bg-surface-0 p-3">
@@ -673,11 +697,16 @@ function FlowInspectorPanel({
 
             {tab === 'variables' && (
               <div className="rounded-xl border border-border-1 bg-surface-0 p-3">
-                <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-text-4">Extractions</div>
+                <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.12em] text-text-4"><span>Extractions</span>{node.type === 'request' && <button onClick={() => onPatchNodeConfig(node.id, { extractions: [...(node.config.extractions ?? []), { id: uid(), name: `var${(node.config.extractions?.length ?? 0) + 1}`, source: 'body', path: '' }] })} className="rounded border border-accent/35 px-2 py-1 text-[10px] text-accent hover:bg-accent/10">Add</button>}</div>
                 {(node.config.extractions ?? []).length === 0 && <div className="mt-3 text-xs text-text-4">This step extracts no variables.</div>}
-                {(node.config.extractions ?? []).map((mapping) => (
-                  <div key={mapping.id} className="mt-2 rounded-lg border border-border-1 bg-surface-1 p-2 font-mono text-[11px] text-text-2">
-                    <span className="text-accent">{`{{${mapping.name}}}`}</span> = {mapping.source}.{mapping.path}
+                {(node.config.extractions ?? []).map((mapping, index) => (
+                  <div key={mapping.id} className="mt-2 space-y-2 rounded-lg border border-border-1 bg-surface-1 p-2 font-mono text-[11px] text-text-2">
+                    <div className="grid grid-cols-[1fr_80px_28px] gap-1">
+                      <input value={mapping.name} onChange={(event) => onPatchNodeConfig(node.id, { extractions: (node.config.extractions ?? []).map((item, itemIndex) => itemIndex === index ? { ...item, name: event.target.value } : item) })} className="min-w-0 rounded border border-border-2 bg-surface-0 px-2 py-1 text-text-1 outline-none focus:border-accent" placeholder="variable" />
+                      <select value={mapping.source} onChange={(event) => onPatchNodeConfig(node.id, { extractions: (node.config.extractions ?? []).map((item, itemIndex) => itemIndex === index ? { ...item, source: event.target.value as typeof item.source } : item) })} className="rounded border border-border-2 bg-surface-0 px-1 text-[10px] text-text-1"><option value="body">body</option><option value="header">header</option><option value="status">status</option><option value="expression">expr</option></select>
+                      <button onClick={() => onPatchNodeConfig(node.id, { extractions: (node.config.extractions ?? []).filter((_, itemIndex) => itemIndex !== index) })} className="rounded text-text-4 hover:bg-error/10 hover:text-error">×</button>
+                    </div>
+                    <input value={mapping.path} onChange={(event) => onPatchNodeConfig(node.id, { extractions: (node.config.extractions ?? []).map((item, itemIndex) => itemIndex === index ? { ...item, path: event.target.value } : item) })} className="w-full rounded border border-border-2 bg-surface-0 px-2 py-1 text-text-1 outline-none focus:border-accent" placeholder="access_token or response.body.token" />
                   </div>
                 ))}
               </div>
@@ -697,7 +726,7 @@ function FlowInspectorPanel({
                     </select>
                     <input value={condition.path} onChange={(event) => onPatchCondition(node.id, { path: event.target.value })} className="mt-2 h-9 w-full rounded-lg border border-border-2 bg-surface-1 px-2 font-mono text-xs text-text-1" placeholder="user.active" />
                     <div className="mt-2 grid grid-cols-2 gap-2">
-                      <input readOnly value={condition.operator} className="h-9 rounded-lg border border-border-2 bg-surface-1 px-2 font-mono text-xs text-text-3" />
+                      <select value={condition.operator} onChange={(event) => onPatchCondition(node.id, { operator: event.target.value as FlowCondition['operator'] })} className="h-9 rounded-lg border border-border-2 bg-surface-1 px-2 font-mono text-xs text-text-1"><option value="exists">exists</option><option value="not_exists">not exists</option><option value="eq">equals</option><option value="neq">not equals</option><option value="contains">contains</option><option value="gt">greater than</option><option value="lt">less than</option><option value="gte">at least</option><option value="lte">at most</option></select>
                       <input value={condition.value} onChange={(event) => onPatchCondition(node.id, { value: event.target.value })} className="h-9 rounded-lg border border-border-2 bg-surface-1 px-2 font-mono text-xs text-text-1" placeholder="true" />
                     </div>
                   </div>
@@ -965,6 +994,7 @@ export function FlowsPanel() {
   const [lastRun, setLastRun] = useState<RunEntry[]>([])
   const [, setVars] = useState<Record<string, string>>({})
   const [running, setRunning] = useState(false)
+  const runAbortRef = useRef<AbortController | null>(null)
   const [saveError, setSaveError] = useState('')
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [catalogSearch, setCatalogSearch] = useState('')
@@ -1042,13 +1072,20 @@ export function FlowsPanel() {
 
   const saveFlow = () => {
     const id = activeFlowId ?? uid()
+    // Dragging is a user edit: persist the canvas coordinates, rather than only
+    // keeping them in the renderer's transient position map.
+    const graphToSave: FlowGraphDefinition = {
+      ...graph,
+      nodes: graph.nodes.map((node) => ({ ...node, ...(positions[node.id] ?? {}) })),
+    }
     const saved: SavedFlowDefinition = {
       id,
       name: flowName.trim() || 'Untitled API flow',
-      graph,
+      graph: graphToSave,
       mermaidSource: mermaid,
       updatedAt: new Date().toISOString(),
-      version: 3,
+      version: 4,
+      schemaVersion: 4,
     }
     setActiveFlowId(id)
     setFlowName(saved.name)
@@ -1101,9 +1138,9 @@ export function FlowsPanel() {
   const newFlow = () => {
     setActiveFlowId(null)
     setFlowName('Untitled API flow')
-    setMermaid(DEFAULT_MERMAID_FLOW)
-    setDraftMermaid(DEFAULT_MERMAID_FLOW)
-    setDirectGraph(null)
+    setMermaid('')
+    setDraftMermaid('')
+    setDirectGraph(createBlankFlowGraph())
     setRuntime({})
     setLastRun([])
     setVars({})
@@ -1131,18 +1168,71 @@ export function FlowsPanel() {
     if (activeFlowId === id) newFlow()
   }
 
+  const updateFlowNode = (nodeId: string, update: (node: FlowNodeDefinition) => FlowNodeDefinition) => {
+    // A user edit turns a Mermaid-derived graph into the persisted visual graph.
+    // This prevents the next Mermaid parse from silently discarding editor changes.
+    setMermaid('')
+    setDirectGraph({ ...graph, nodes: graph.nodes.map((node) => node.id === nodeId ? update(node) : node) })
+  }
+
   const updateNodeRequest = (nodeId: string, request: RequestItem) => {
-    const node = graph.nodes.find((item) => item.id === nodeId)
-    if (!node) return
-    setRequestOverrides((current) => ({ ...current, [nodeOverrideKey(node)]: request }))
+    updateFlowNode(nodeId, (node) => ({
+      ...node,
+      label: request.name ? `${node.config.seq ? `${node.config.seq}. ` : ''}${request.name}` : node.label,
+      config: { ...node.config, request },
+    }))
+  }
+
+  const patchNodeConfig = (nodeId: string, patch: Partial<FlowNodeDefinition['config']>) => {
+    updateFlowNode(nodeId, (node) => ({ ...node, config: { ...node.config, ...patch } }))
+  }
+
+  const addNode = (type: 'request' | 'condition') => {
+    const base = directGraph ?? graph
+    const start = base.nodes.find((node) => node.type === 'start')
+    const end = base.nodes.find((node) => node.type === 'end')
+    if (!start || !end) return
+    const ordinal = base.nodes.filter((node) => node.type === 'request' || node.type === 'condition').length + 1
+    const node: FlowNodeDefinition = type === 'request'
+      ? { id: uid(), type, label: `${ordinal}. API Request`, x: 300 + (ordinal - 1) * 270, y: 190, width: 244, height: 126, config: { request: blankRequest('GET', 'API Request'), expectedStatus: '2xx', stopOnFailure: true, retryCount: 0, extractions: [], seq: ordinal } }
+      : { id: uid(), type, label: `Condition ${ordinal}`, x: 300 + (ordinal - 1) * 270, y: 170, width: 170, height: 170, config: { condition: { source: 'status', path: 'response.status', operator: 'eq', value: '200' } } }
+    const incoming = base.edges.filter((edge) => edge.target === end.id)
+    const previous = incoming[0]?.source ?? start.id
+    const retained = base.edges.filter((edge) => edge.target !== end.id)
+    const nextEdges = type === 'condition'
+      ? [...retained, { id: uid(), source: previous, target: node.id, branch: 'next' as const, label: '' }, { id: uid(), source: node.id, target: end.id, branch: 'true' as const, label: 'true' }, { id: uid(), source: node.id, target: end.id, branch: 'false' as const, label: 'false' }]
+      : [...retained, { id: uid(), source: previous, target: node.id, branch: 'next' as const, label: '' }, { id: uid(), source: node.id, target: end.id, branch: 'next' as const, label: '' }]
+    setMermaid('')
+    setDirectGraph({ ...base, nodes: [...base.nodes, node], edges: nextEdges })
+    setSelectedNodeId(node.id)
+  }
+
+  const applyVisualOrder = () => {
+    if (!directGraph) return
+    const start = graph.nodes.find((node) => node.type === 'start')
+    const end = graph.nodes.find((node) => node.type === 'end')
+    const requests = graph.nodes
+      .filter((node) => node.type === 'request')
+      .sort((a, b) => (positions[a.id]?.x ?? a.x) - (positions[b.id]?.x ?? b.x))
+      .map((node, index) => ({ ...node, label: node.label.replace(/^\d+\.\s*/, `${index + 1}. `), config: { ...node.config, seq: index + 1 } }))
+    if (!start || !end || requests.length === 0) return
+    const nodesById = new Map<string, FlowNodeDefinition>(requests.map((node) => [node.id, node]))
+    nodesById.set(start.id, start)
+    nodesById.set(end.id, end)
+    const linearNodes = [start, ...requests, end]
+    setDirectGraph({
+      ...directGraph,
+      nodes: graph.nodes.map((node) => nodesById.get(node.id) ?? node),
+      edges: linearNodes.slice(1).map((node, index) => ({ id: uid(), source: linearNodes[index].id, target: node.id, branch: 'next' as const, label: '' })),
+    })
   }
 
   const patchCondition = (nodeId: string, patch: Partial<FlowCondition>) => {
     const node = graph.nodes.find((item) => item.id === nodeId)
     if (!node || node.type !== 'condition') return
-    setConditionOverrides((current) => ({
+    updateFlowNode(nodeId, (current) => ({
       ...current,
-      [nodeOverrideKey(node)]: { ...(node.config.condition ?? { source: 'body', path: '', operator: 'eq', value: '' }), ...patch },
+      config: { ...current.config, condition: { ...(current.config.condition ?? { source: 'body', path: '', operator: 'eq', value: '' }), ...patch } },
     }))
   }
 
@@ -1152,22 +1242,44 @@ export function FlowsPanel() {
     if (errors.length > 0) return
     setRunning(true)
     setLastRun([])
+    const controller = new AbortController()
+    runAbortRef.current = controller
     try {
       await runApiFlow(graph, {
         initialVars: envVars(),
         startNodeId: fromNodeId,
+        signal: controller.signal,
         onRuntime: setRuntime,
         onEntry: setLastRun,
         onVars: setVars,
         onSelectedNode: setSelectedNodeId,
       })
     } finally {
+      runAbortRef.current = null
       setRunning(false)
     }
   }, [envVars, graph, running])
 
   const handleImportFile = async (file: File) => {
     const text = await file.text()
+    if (/\.json$/i.test(file.name)) {
+      try {
+        const parsed = JSON.parse(text) as { definition?: { name?: string; graph?: unknown; mermaidSource?: string }; name?: string; graph?: unknown; mermaidSource?: string }
+        const definition = parsed.definition ?? parsed
+        if (!definition.graph) throw new Error('This JSON file does not contain an adOmnia Flow definition.')
+        const [imported] = normalizeFlowDefinitions([{
+          id: uid(), name: definition.name || file.name.replace(/\.json$/i, ''), graph: definition.graph,
+          mermaidSource: definition.mermaidSource || '', updatedAt: new Date().toISOString(), version: 4, schemaVersion: 4,
+        }])
+        if (!imported) throw new Error('Could not read this Flow definition.')
+        await persist([imported, ...savedFlows.filter((flow) => flow.id !== imported.id)])
+        loadFlow(imported)
+        return
+      } catch (error) {
+        setSaveError(error instanceof Error ? error.message : 'Could not import Flow JSON.')
+        return
+      }
+    }
     setDraftMermaid(text)
     setMermaid(text)
     setDirectGraph(null)
@@ -1195,7 +1307,7 @@ export function FlowsPanel() {
     setMermaidOpen(false)
   }
 
-  const exportJson = () => downloadBlob(JSON.stringify({ format: 'adomnia-flow', version: 3, definition: { name: flowName, graph, mermaidSource: mermaid }, lastRun }, null, 2), `${flowName.replace(/[^\w.-]+/g, '-').toLowerCase() || 'flow'}.json`, 'application/json')
+  const exportJson = () => downloadBlob(JSON.stringify({ format: 'adomnia-flow', version: 4, schemaVersion: 4, definition: { name: flowName, graph, mermaidSource: mermaid }, lastRun }, null, 2), `${flowName.replace(/[^\w.-]+/g, '-').toLowerCase() || 'flow'}.json`, 'application/json')
   const exportRun = () => downloadBlob(exportRunMarkdown(flowName, lastRun), `${flowName.replace(/[^\w.-]+/g, '-').toLowerCase() || 'flow'}-run.md`, 'text/markdown')
 
   const generateAiPreview = async () => {
@@ -1235,7 +1347,7 @@ export function FlowsPanel() {
 
   return (
     <div className="flex min-h-0 flex-1 bg-surface-0">
-      <input ref={fileRef} type="file" accept=".mmd,.mermaid,.txt" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) void handleImportFile(file); event.currentTarget.value = '' }} />
+      <input ref={fileRef} type="file" accept=".mmd,.mermaid,.txt,.json" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) void handleImportFile(file); event.currentTarget.value = '' }} />
       <FlowWorkspaceSidebar
         flowName={flowName}
         setFlowName={setFlowName}
@@ -1248,6 +1360,7 @@ export function FlowsPanel() {
         onLoad={loadFlow}
         onDelete={deleteFlow}
         onImport={openMermaidModal}
+        onImportFile={() => fileRef.current?.click()}
         onExportJson={exportJson}
         onExportRun={exportRun}
         hasRun={lastRun.length > 0}
@@ -1283,10 +1396,13 @@ export function FlowsPanel() {
             <Sparkles size={14} /> Generate with AI
           </button>
           <button title="Settings" className="grid h-9 w-9 place-items-center rounded-lg border border-border-2 bg-surface-0 text-text-3 hover:bg-surface-2 hover:text-text-1"><Settings size={15} /></button>
+          <button onClick={() => addNode('request')} className="hidden h-9 items-center rounded-lg border border-border-2 bg-surface-0 px-3 text-xs font-semibold text-text-2 hover:bg-surface-2 hover:text-text-1 lg:flex">Add API</button>
+          <button onClick={() => addNode('condition')} className="hidden h-9 items-center rounded-lg border border-border-2 bg-surface-0 px-3 text-xs font-semibold text-text-2 hover:bg-surface-2 hover:text-text-1 xl:flex">Add condition</button>
+          {directGraph && requestCount > 0 && <button onClick={applyVisualOrder} title="Apply left-to-right canvas order to recorded steps" className="hidden h-9 items-center rounded-lg border border-border-2 bg-surface-0 px-3 text-xs font-semibold text-text-2 hover:bg-surface-2 hover:text-text-1 xl:flex">Order steps</button>}
           <div className="flex overflow-hidden rounded-lg shadow-[0_8px_22px_rgba(139,61,255,0.24)]">
-            <button onClick={() => void runFlow()} disabled={running || validationErrors.length > 0} className="flex h-9 items-center gap-2 bg-accent px-4 text-xs font-bold text-white hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-45">
+            <button onClick={() => running ? runAbortRef.current?.abort() : void runFlow()} disabled={!running && validationErrors.length > 0} className={cn('flex h-9 items-center gap-2 px-4 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-45', running ? 'bg-error hover:bg-error/85' : 'bg-accent hover:bg-accent-hover')}>
               {running ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
-              {running ? 'Running' : 'Run Flow'}
+              {running ? 'Stop Execution' : 'Run Flow'}
             </button>
             <button className="grid h-9 w-9 place-items-center bg-accent-hover text-white"><ChevronDown size={15} /></button>
           </div>
@@ -1317,6 +1433,7 @@ export function FlowsPanel() {
             search={catalogSearch}
             setSearch={setCatalogSearch}
             onBindRequest={updateNodeRequest}
+            onPatchNodeConfig={patchNodeConfig}
             onPatchCondition={patchCondition}
             onRunStep={(nodeId) => void runFlow(nodeId)}
             onClose={() => setSelectedNodeId(null)}

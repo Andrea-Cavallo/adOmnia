@@ -35,7 +35,8 @@ interface FlowContext {
 export interface RunApiFlowOptions {
   initialVars: Record<string, string>
   startNodeId?: string
-  execute?: (request: RequestItem, vars: Record<string, string>) => Promise<ExecuteRequestResult>
+  execute?: (request: RequestItem, vars: Record<string, string>, options?: { signal?: AbortSignal }) => Promise<ExecuteRequestResult>
+  signal?: AbortSignal
   onRuntime?: (runtime: RuntimeByNode) => void
   onEntry?: (entries: RunEntry[]) => void
   onVars?: (vars: Record<string, string>) => void
@@ -166,10 +167,29 @@ function elapsed(started: number) {
   return performance.now() - started
 }
 
+function waitForDelay(delayMs: number, signal?: AbortSignal) {
+  if (delayMs <= 0) return Promise.resolve(!signal?.aborted)
+  return new Promise<boolean>((resolve) => {
+    if (signal?.aborted) {
+      resolve(false)
+      return
+    }
+    const timer = window.setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort)
+      resolve(true)
+    }, delayMs)
+    const onAbort = () => {
+      window.clearTimeout(timer)
+      resolve(false)
+    }
+    signal?.addEventListener('abort', onAbort, { once: true })
+  })
+}
+
 export async function runApiFlow(graph: FlowGraphDefinition, options: RunApiFlowOptions): Promise<RunApiFlowResult> {
   const execute = options.execute ?? executeRequest
   const entries: RunEntry[] = []
-  const runtime: RuntimeByNode = Object.fromEntries(graph.nodes.map((node) => [node.id, { status: 'pending' as FlowRunStatus }]))
+  const runtime: RuntimeByNode = Object.fromEntries(graph.nodes.map((node) => [node.id, { status: 'idle' as FlowRunStatus }]))
   let ctx: FlowContext = { vars: { ...options.initialVars }, responses: {} }
   let current = (options.startNodeId ? graph.nodes.find((node) => node.id === options.startNodeId) : undefined)
     ?? graph.nodes.find((node) => node.type === 'start')
@@ -208,6 +228,10 @@ export async function runApiFlow(graph: FlowGraphDefinition, options: RunApiFlow
 
   publishRuntime()
   while (current && steps < graph.settings.maxSteps) {
+    if (options.signal?.aborted) {
+      pushEntry({ id: uid(), nodeId: 'engine', nodeLabel: 'Execution stopped', status: 'skipped', durationMs: 0, error: 'Stopped by user.' })
+      break
+    }
     steps += 1
     options.onSelectedNode?.(current.id)
     setNodeStatus(current.id, { status: 'running' })
@@ -223,7 +247,9 @@ export async function runApiFlow(graph: FlowGraphDefinition, options: RunApiFlow
     }
 
     if (current.type === 'end') {
-      const failed = current.config.endState === 'failed' || /error|stop|failed/i.test(current.label)
+      // A normal recorded flow ends in a node labelled “Stop”. The configured
+      // end state, rather than a presentation label, is the execution contract.
+      const failed = current.config.endState === 'failed'
       const durationMs = elapsed(started)
       setNodeStatus(current.id, { status: failed ? 'failed' : 'success', durationMs, message: current.label })
       pushEntry({ ...entryBase, status: failed ? 'failed' : 'success', durationMs, error: failed ? current.label : undefined })
@@ -240,6 +266,12 @@ export async function runApiFlow(graph: FlowGraphDefinition, options: RunApiFlow
     }
 
     if (current.type !== 'request') break
+    if (!await waitForDelay(Math.max(0, current.config.delayMs ?? 0), options.signal)) {
+      const durationMs = elapsed(started)
+      setNodeStatus(current.id, { status: 'skipped', durationMs, message: 'Stopped by user.' })
+      pushEntry({ ...entryBase, status: 'skipped', durationMs, error: 'Stopped by user.' })
+      break
+    }
     const request = {
       ...(current.config.request ?? blankRequest()),
       timeout: current.config.timeoutMs && current.config.timeoutMs > 0 ? current.config.timeoutMs : current.config.request?.timeout,
@@ -264,7 +296,7 @@ export async function runApiFlow(graph: FlowGraphDefinition, options: RunApiFlow
     let attempts = 0
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       attempts = attempt
-      execution = await execute(request, ctx.vars)
+      execution = await execute(request, ctx.vars, { signal: options.signal })
       response = execution.response
       assertions = evaluateAssertions(request.assertions, response)
       failedAssertions = assertions.filter((assertion) => !assertion.passed)
@@ -286,14 +318,15 @@ export async function runApiFlow(graph: FlowGraphDefinition, options: RunApiFlow
       || (failedAssertions.length > 0 ? `${failedAssertions.length} assertion failed` : undefined)
     setNodeStatus(current.id, { status: failed ? 'failed' : 'success', durationMs, message: failed ? error : `${response.status} ${response.statusText}` })
     pushEntry({ ...entryBase, status: failed ? 'failed' : 'success', durationMs, httpStatus: response.status, request, response, assertions, attempts, error })
-    current = moveTo(current, failed ? 'error' : 'success')
+    const stopOnFailure = current.config.stopOnFailure ?? graph.settings.failOnHttpError
+    current = moveTo(current, failed && stopOnFailure ? 'error' : 'success')
   }
 
   if (steps >= graph.settings.maxSteps) {
     pushEntry({ id: uid(), nodeId: 'engine', nodeLabel: 'Execution limit', status: 'failed', durationMs: 0, error: `Stopped after ${graph.settings.maxSteps} steps.` })
   }
   graph.nodes.forEach((node) => {
-    if (runtime[node.id]?.status === 'pending') runtime[node.id] = { status: 'skipped' }
+    if (runtime[node.id]?.status === 'idle') runtime[node.id] = { status: 'skipped' }
   })
   publishRuntime()
   options.onVars?.(ctx.vars)

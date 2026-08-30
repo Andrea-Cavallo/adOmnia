@@ -45,6 +45,8 @@ export const ITALIAN_UI_MESSAGES = {
   'Stack Request above Response': 'Disponi la richiesta sopra la risposta',
   'HTTP method': 'Metodo HTTP',
   'Cancel request': 'Annulla richiesta',
+  'Recording': 'Registrazione',
+  'Save recorded flow': 'Salva flusso registrato',
   'Hide API tools': 'Nascondi strumenti API',
   'Show API tools (redirects, timeout, cURL, encode…)': 'Mostra strumenti API (redirect, timeout, cURL, codifica…)',
   'Unsaved changes - Save to collection (Ctrl+S)': 'Modifiche non salvate - Salva nella raccolta (Ctrl+S)',
