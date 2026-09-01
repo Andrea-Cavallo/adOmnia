@@ -2,6 +2,24 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+## v0.8.2 release notes: dependency refresh and sidebar follow
+
+- Full dependency refresh across Go and the frontend, clearing every open
+  Dependabot advisory. `wails/v3` and `@wailsio/runtime` moved together from
+  `3.0.0-beta.7`/`3.0.0-beta.5` to `3.0.0-beta.16`, keeping the version lock the
+  IPC layer depends on. gRPC, the MongoDB driver, Sarama, and amqp091-go were
+  updated, along with transitive `golang.org/x/{crypto,net,text}` bumps.
+- Frontend: `lucide-react` 1.38.0, `zustand` 5.0.15, `vitest` 4.1.11, and
+  `rollup-plugin-visualizer` 7.1.1.
+- The collection sidebar now follows the active tab: it expands the full
+  collection/folder path of the selected request and scrolls the row into view,
+  so a deeply nested request is no longer hidden. An active search is preserved.
+- The active request row is easier to spot — accent-tinted surface, medium
+  weight, and `aria-current="page"` for assistive technology.
+
+Verified with `go build ./...`, `go vet ./...`, `go test ./...`,
+`npm run build`, and `npm test` (69 files, 273 tests passing).
+
 ## v0.8.1 release notes: API Flow recording
 
 - API Flow is a core workspace again and is available from the primary navigation.

@@ -136,6 +136,30 @@ function findNode(nodes: TreeNode[], id: string): TreeNode | null {
   return null
 }
 
+/**
+ * Returns the collection and folder IDs that must be expanded to reveal a
+ * request. Keeping this separate from the rendered (and potentially filtered)
+ * tree ensures selecting a tab can always reveal its saved request.
+ */
+function expansionPathForRequest(collections: Collection[], requestId: string): string[] {
+  const findFolderPath = (nodes: TreeNode[], ancestors: string[]): string[] | null => {
+    for (const node of nodes) {
+      if (node.type === 'request' && node.id === requestId) return ancestors
+      if (node.type === 'folder') {
+        const result = findFolderPath(node.children, [...ancestors, node.id])
+        if (result) return result
+      }
+    }
+    return null
+  }
+
+  for (const collection of collections) {
+    const folders = findFolderPath(collection.children, [])
+    if (folders) return [collection.id, ...folders]
+  }
+  return []
+}
+
 function containsNode(node: TreeNode, id: string): boolean {
   return node.type === 'folder' && Boolean(findNode(node.children, id))
 }
@@ -322,6 +346,7 @@ function TreeNodeRow({
         role="treeitem"
         tabIndex={-1}
         aria-selected={focusedId === node.id}
+        aria-current={!isFolder && activeRequestId === node.id ? 'page' : undefined}
         aria-expanded={isFolder ? isOpen : undefined}
         draggable
         onDragStart={(event) => onDragStartNode(event, { type: 'node', collectionId: collection.id, nodeId: node.id, nodeType: node.type })}
@@ -337,7 +362,7 @@ function TreeNodeRow({
         }}
         className={cn(
           'group relative flex h-7 items-center gap-1 rounded px-1 text-xs transition-colors',
-          activeRequestId === node.id ? 'bg-surface-2 text-text-1 shadow-[inset_2px_0_0_var(--color-accent)]' : 'text-text-2 hover:bg-surface-2/70',
+          activeRequestId === node.id ? 'bg-accent/10 font-medium text-text-1 shadow-[inset_2px_0_0_var(--color-accent)]' : 'text-text-2 hover:bg-surface-2/70',
           target === 'inside' && !isInvalidDrop && 'ring-1 ring-accent/70 bg-accent/10',
           isInvalidDrop && target && 'ring-1 ring-error/60 bg-error/8',
           focusedId === node.id && 'ring-1 ring-inset ring-accent/50',
@@ -465,6 +490,35 @@ export function CollectionTree({
       return next
     })
   }, [collections])
+
+  // A request may live several folders deep. Whenever its tab becomes active,
+  // expand its complete path so the highlighted source request is immediately
+  // visible in the sidebar.
+  useEffect(() => {
+    if (!activeRequestId) return
+    const path = expansionPathForRequest(collections, activeRequestId)
+    if (path.length === 0) return
+    setOpenIds((current) => {
+      const next = new Set(current)
+      let changed = false
+      for (const id of path) {
+        if (!next.has(id)) {
+          next.add(id)
+          changed = true
+        }
+      }
+      return changed ? next : current
+    })
+  }, [activeRequestId, collections])
+
+  // Once the path is open, keep the active request in the visible viewport.
+  // An active search is intentionally preserved; clearing it is the user's
+  // choice, and the request is revealed again as soon as the search is cleared.
+  useEffect(() => {
+    if (!activeRequestId || query.trim()) return
+    const requestRow = treeRef.current?.querySelector<HTMLElement>(`[data-node-id="${activeRequestId}"]`)
+    requestRow?.scrollIntoView({ block: 'nearest' })
+  }, [activeRequestId, collections, openIds, query])
 
   useEffect(() => {
     if (!context) return

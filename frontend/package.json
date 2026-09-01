@@ -1,7 +1,7 @@
 {
   "name": "adomnia-frontend",
   "private": true,
-  "version": "0.8.1",
+  "version": "0.8.2",
   "type": "module",
   "engines": {
     "node": ">=22.13.0"
@@ -29,13 +29,13 @@
     "@monaco-editor/react": "^4.7.0",
     "@radix-ui/react-tabs": "^1.1.21",
     "@types/d3-force": "^3.0.10",
-    "@wailsio/runtime": "3.0.0-beta.5",
+    "@wailsio/runtime": "3.0.0-beta.16",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "d3-force": "^3.0.0",
-    "lucide-react": "^1.31.0",
+    "lucide-react": "^1.38.0",
     "mermaid": "^11.16.1",
     "monaco-editor": "^0.56.0",
     "monaco-yaml": "^5.5.1",
@@ -45,7 +45,7 @@
     "react-dom": "^19.2.8",
     "tailwind-merge": "^3.6.0",
     "yaml": "^2.9.0",
-    "zustand": "^5.0.14"
+    "zustand": "^5.0.15"
   },
   "overrides": {
     "monaco-editor": {
@@ -59,10 +59,10 @@
     "@vitejs/plugin-react": "^6.0.5",
     "autoprefixer": "^10.5.4",
     "postcss": "^8.5.26",
-    "rollup-plugin-visualizer": "^7.0.1",
+    "rollup-plugin-visualizer": "^7.1.1",
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
     "vite": "^8.2.1",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   }
 }

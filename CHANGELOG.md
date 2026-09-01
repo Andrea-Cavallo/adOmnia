@@ -4,6 +4,15 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [0.8.2] - 2026-09-01
+
+### Changed
+- **Sidebar follows the active tab:** selecting a tab now expands the full collection/folder path of its saved request and scrolls that row into view, so a request nested several folders deep is no longer invisible in the sidebar. An active search filter is intentionally left untouched; the request is revealed again as soon as the search is cleared.
+- **Active request is readable at a glance:** the selected row in the collection tree now uses an accent-tinted surface with medium weight instead of a plain surface swap, and exposes `aria-current="page"` for assistive technology.
+
+### Security
+- **Dependency refresh:** Go and frontend dependencies were updated to their current releases, clearing all open Dependabot advisories. `github.com/wailsapp/wails/v3` moved from `3.0.0-beta.7` to `3.0.0-beta.16` and `@wailsio/runtime` was bumped in lockstep, preserving the version lock the IPC layer requires. Also updated: `google.golang.org/grpc` 1.83.0 -> 1.83.2, `go.mongodb.org/mongo-driver/v2` 2.8.0 -> 2.8.1, `github.com/IBM/sarama` 1.60.1 -> 1.60.2, `github.com/rabbitmq/amqp091-go` 1.13.0 -> 1.14.0, plus transitive bumps to `golang.org/x/crypto` 0.55.0, `golang.org/x/net` 0.58.0, and `golang.org/x/text` 0.41.0. On the frontend: `lucide-react` 1.38.0, `zustand` 5.0.15, `vitest` 4.1.11, and `rollup-plugin-visualizer` 7.1.1.
+
 ## [0.8.1] - 2026-08-30
 
 ### Added
