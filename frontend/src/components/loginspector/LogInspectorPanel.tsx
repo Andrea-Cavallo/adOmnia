@@ -32,6 +32,7 @@ import {
   compileQuery,
   correlateEvents,
   countByLevel,
+  discoverFields,
   exportEvents,
   filterEvents,
   fromText,
@@ -39,14 +40,19 @@ import {
   loadFromFile,
   maskEvents,
   parseLogTextInBackground,
+  rememberSchema,
+  rememberedPaths,
   sortChronologically,
+  EMPTY_DISCOVERY,
   type CorrelationKey,
   type CorrelationResult,
   type ExportFormat,
+  type FieldDiscovery,
   type LogEvent,
   type LogFilterState,
   type LogSourceResult,
   type ParseSummary,
+  type StoredSchema,
 } from '@/lib/loginspector'
 import { DEFAULT_COLUMNS, EventList, LIST_COLUMNS, type Density, type ListColumnId } from './EventList'
 import { EventDetail } from './EventDetail'
@@ -97,6 +103,8 @@ export function LogInspectorPanel() {
   const [source, setSource] = useState<LogSourceResult | null>(null)
   const [events, setEvents] = useState<LogEvent[]>([])
   const [summary, setSummary] = useState<ParseSummary | null>(null)
+  const [discovery, setDiscovery] = useState<FieldDiscovery>(EMPTY_DISCOVERY)
+  const [schema, setSchema] = useState<StoredSchema | null>(null)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
   const [error, setError] = useState('')
   const [filters, setFilters] = useState<LogFilterState>(EMPTY_FILTERS)
@@ -160,6 +168,8 @@ export function LogInspectorPanel() {
     setSource(result)
     setEvents([])
     setSummary(null)
+    setDiscovery(EMPTY_DISCOVERY)
+    setSchema(null)
     setSelectedId(null)
     setRelated(null)
     abortRef.current = false
@@ -179,6 +189,10 @@ export function LogInspectorPanel() {
       )
       setEvents(parsed.events.slice())
       setSummary(parsed.summary)
+      // Learn the shape of this log so its own keys become searchable.
+      const found = discoverFields(parsed.events)
+      setDiscovery(found)
+      setSchema(rememberSchema(found, result.name))
       if (parsed.aborted) setError('Import cancelled — showing the events parsed so far.')
     } catch (cause) {
       // A multi-hundred-MB paste can exhaust the renderer heap; say so instead
@@ -219,6 +233,8 @@ export function LogInspectorPanel() {
     setSource(null)
     setEvents([])
     setSummary(null)
+    setDiscovery(EMPTY_DISCOVERY)
+    setSchema(null)
     setSelectedId(null)
     setRelated(null)
     setFilters(EMPTY_FILTERS)
@@ -236,6 +252,13 @@ export function LogInspectorPanel() {
   const filtered = useMemo(() => filterEvents(ordered, deferredFilters), [ordered, deferredFilters])
   const compiled = useMemo(() => compileQuery(filters.query), [filters.query])
   const levelCounts = useMemo(() => countByLevel(working), [working])
+  // Keys this shape carried in earlier imports but not in this one — still
+  // worth offering, because that is often exactly the field that went missing.
+  const rememberedOnly = useMemo(() => {
+    if (!discovery.signature.length) return []
+    const present = new Set(discovery.fields.map((field) => field.path))
+    return rememberedPaths(discovery.signature).filter((path) => !present.has(path))
+  }, [discovery])
   const histogram = useMemo(() => buildHistogram(filtered, 72), [filtered])
   const selected = useMemo(
     () => (selectedId === null ? null : working.find((event) => event.id === selectedId) ?? null),
@@ -612,6 +635,9 @@ export function LogInspectorPanel() {
                   <FilterSidebar
                     filters={filters}
                     onChange={setFilters}
+                    discovery={discovery}
+                    rememberedOnly={rememberedOnly}
+                    schema={schema}
                     events={working}
                     levelCounts={levelCounts}
                     savedQueries={prefs.savedQueries}

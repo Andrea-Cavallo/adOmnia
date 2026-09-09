@@ -14,7 +14,7 @@ language, correlation, large-input strategy and architecture.
 | **Command palette** | `Ctrl/Cmd + K` → "Log Inspector" |
 | **Logic** | `frontend/src/lib/loginspector/` |
 | **UI** | `frontend/src/components/loginspector/` |
-| **Tests** | 88 dedicated tests in `frontend/src/lib/loginspector/*.test.ts` |
+| **Tests** | 103 dedicated tests in `frontend/src/lib/loginspector/*.test.ts` |
 | **New dependencies** | none |
 
 ---
@@ -121,9 +121,11 @@ log4j2 (`timeMillis`), Monolog (`channel`), GELF (`shortMessage`), Datadog
 An idempotency key is not literally a request id, but it is the value an operator
 filters by to find every retry of one operation, so it lands in `requestId`.
 
-The payload is flattened by **one** level, so `kubernetes: { pod_name }` and
-`service: { name }` resolve through the dotted aliases without exploding deep
-payloads.
+The payload is flattened into dotted paths, containers included, so both
+`attributes` and `attributes.http.status_code` are addressable and aliases like
+`k8s.namespace.name` resolve. Depth is capped at 5 and keys at 250 per event so a
+pathological payload cannot explode into thousands of entries. Arrays are kept
+whole: you filter on scalars, not on element positions.
 
 > Caveat: `priority` is accepted as a level, but a syslog `priority` is a
 > facility-encoded number (e.g. `134`), which the numeric level scale reads as
@@ -251,6 +253,26 @@ without the field being modelled, and `x_idempotency_key:` finds
 `X-Idempotency-Key`. That index is built lazily, per event, and cached in a
 `WeakMap`, so queries that never mention an unmodelled field pay nothing.
 
+**Fields are discovered automatically.** After an import, `discoverFields()`
+scans the batch and reports every key it contains — including nested ones
+(`attributes.http.status_code`) — with coverage, inferred types, and the most
+frequent values. The sidebar lists them: click a field to see its top values,
+click a value to filter by it. A high-cardinality field (an id) is marked `id`
+and offers `field:*` instead of a value list. Nothing has to be configured, so a
+custom application format is searchable the moment it is loaded.
+
+Large batches are strided rather than fully scanned (3,000 events by default):
+the shape of a log is visible from a sample, and discovery runs on the main
+thread right after the import.
+
+**Shapes are remembered.** The canonical top-level keys form a *signature*;
+`rememberSchema()` stores the union of every path ever seen for that shape under
+`adomnia.loginspector.schemas` (last 20 shapes, local only). A later import is
+matched by **resemblance**, not by an exact key set — 60% overlap is enough —
+because logs gain and lose fields between releases. Paths known from earlier
+imports but absent from the current batch are still listed, under *Remembered,
+absent here*: that missing field is often exactly what you are looking for.
+
 **Regular expressions** are written as `/pattern/flags` and are always
 case-insensitive. They work as a bare term (matched against raw + message +
 stack) or as a field value (`pod:/^pay-\d$/`). A regex may contain spaces — the
@@ -286,7 +308,8 @@ query, for anyone who would rather not type the syntax.
 
 Stored locally in `localStorage` (`adomnia.loginspector`) with the other
 preferences: density, word wrap, visible columns, event limit, column widths,
-extra sensitive fields and hidden noisy fields.
+extra sensitive fields and hidden noisy fields. Discovered log shapes live
+beside them under `adomnia.loginspector.schemas`.
 
 These are machine preferences: they are not synced, do not end up in the
 `.adomnia` workspace and never leave the computer. If `localStorage` is
@@ -388,6 +411,7 @@ The layers are kept separate:
 | Field normalization | `lib/loginspector/normalize.ts` |
 | Filters and query | `lib/loginspector/query.ts` |
 | Statistics / indexing | `lib/loginspector/stats.ts` |
+| Field discovery and remembered shapes | `lib/loginspector/discover.ts` |
 | Correlation | `lib/loginspector/correlate.ts` |
 | Masking | `lib/loginspector/mask.ts` |
 | Export | `lib/loginspector/exporters.ts` |
@@ -409,6 +433,7 @@ frontend/src/lib/loginspector/
   normalize.ts       251   field aliases, levels, timestamps, nested JSON
   background.ts       98   worker startup, incremental batches, fallback
   types.ts            93   LogEvent, ParseSummary, ParseResult
+  discover.ts        230   automatic field discovery, remembered shapes
   stats.ts            82   per-level counts, facets, histogram
   mask.ts             76   Clear sensitive fields + hidden fields
   samples.ts          75   5 examples
@@ -470,7 +495,7 @@ Since v0.9.1 Log Inspector is a **rail destination**, not a Power Tools studio:
 
 ## 10. Tests
 
-`frontend/src/lib/loginspector/*.test.ts` — **88 tests**, all green.
+`frontend/src/lib/loginspector/*.test.ts` — **103 tests**, all green.
 
 - single JSON, JSON array, JSON Lines
 - malformed lines: they do not block the import, they are marked, and they do
@@ -490,6 +515,12 @@ Since v0.9.1 Log Inspector is a **rail destination**, not a Power Tools studio:
 - fast-search operators: payload-key lookup, nested key, regex as a bare term and
   as a field value, invalid regex degrading to literal, alternatives, highlight
   behaviour, pasted URLs staying full-text
+- field discovery: nested keys of a custom format, coverage/kinds/top values,
+  high-cardinality fields, sampling of large batches, plain-text logs, stable
+  fingerprints, and every discovered field being searchable
+- remembered shapes: storage under the fingerprint, merging by resemblance so a
+  field from an earlier import survives, no merge across different shapes,
+  forgetting on request, and surviving an unavailable localStorage
 - combined filtering: query + levels + facets + exclusions + time range
 - large files: 100k events, ceiling, truncation, cancellation, progress
 - sensitive-data masking, including not mutating the originals
@@ -497,7 +528,7 @@ Since v0.9.1 Log Inspector is a **rail destination**, not a Power Tools studio:
 ### Verification performed
 
 - `npx tsc --noEmit` clean
-- `npm run test` green — 72 files, 369 tests
+- `npm run test` green — 73 files, 384 tests
 - `npm run build` green
 - `go build ./...`, `go vet ./...` and `go test ./...` green
 
@@ -544,7 +575,7 @@ that would give first if the bar were raised.
 2. **Streaming / continuous tail** — follow a pod while it runs, with the parser
    consuming a stream instead of a string. The parser is already an incremental
    machine (`createLogParser`), so the change is contained.
-3. **Worker protocol tests** — today the 88 tests cover the pure parser and the
+3. **Worker protocol tests** — today the 103 tests cover the pure parser and the
    main-thread fallback, but not the `parse` / `progress` / `cancel` message
    exchange. It is the only uncovered piece.
 

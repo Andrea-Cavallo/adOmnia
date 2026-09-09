@@ -7,6 +7,8 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 ## [0.9.2] - 2026-09-09
 
 ### Added
+- **Automatic field discovery:** loading a JSON log now detects every key it contains, nested ones included, with coverage, inferred types and most frequent values. The sidebar lists them; clicking a field shows its values, clicking a value filters by it. High-cardinality fields are marked `id`. A custom application format is searchable with no configuration.
+- **Remembered log shapes:** the top-level keys form a signature and the union of every path ever seen for that shape is stored locally under `adomnia.loginspector.schemas` (last 20). Later imports are matched by resemblance rather than an exact key set, and paths known from earlier imports but absent now are still offered.
 - **Search any payload key:** a query field that is not one of the modelled fields is now resolved canonically against the event payload, so `merchantId:M-4471` and `http.status:502` work without the field being modelled. The index is built lazily per event and cached.
 - **Regular expressions and alternatives:** `/timed ?out/` as a bare term or `pod:/^pay-\d$/` as a field value, always case-insensitive, spaces allowed, degrading to a literal search when malformed; `level:warn|error` for alternatives.
 - **Unwrap toggle in the JSON tab:** turns every JSON escaped inside a string into a real subtree — expandable, searchable and pretty-printed. On by default.

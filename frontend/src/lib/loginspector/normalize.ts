@@ -185,19 +185,32 @@ export function timestampFromText(text: string): { ts: number | null; raw: strin
 
 // ─── Payload flattening & field extraction ───────────────────────────────────
 
+// Structured logs nest a few levels (`attributes.http.status_code`), never
+// hundreds. The caps keep a pathological payload from turning one event into
+// thousands of keys.
+const MAX_FLATTEN_DEPTH = 5
+const MAX_FLATTEN_KEYS = 250
+
 /**
- * Flatten one nested level so `kubernetes: { pod_name }` resolves through the
- * dotted aliases, without exploding deeply nested payloads.
+ * Flatten nested objects into dotted paths, keeping the containers too, so both
+ * `attributes` and `attributes.http.status_code` are addressable. Arrays are
+ * kept whole: you filter on scalars, not on element positions.
  */
 export function flattenPayload(payload: Record<string, unknown>): Record<string, unknown> {
-  const flat: Record<string, unknown> = { ...payload }
-  for (const [key, value] of Object.entries(payload)) {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) continue
-    for (const [childKey, childValue] of Object.entries(value as Record<string, unknown>)) {
-      const dotted = `${key}.${childKey}`
-      if (!(dotted in flat)) flat[dotted] = childValue
+  const flat: Record<string, unknown> = {}
+
+  const walk = (value: Record<string, unknown>, prefix: string, depth: number) => {
+    for (const [key, child] of Object.entries(value)) {
+      if (Object.keys(flat).length >= MAX_FLATTEN_KEYS) return
+      const path = prefix ? `${prefix}.${key}` : key
+      if (!(path in flat)) flat[path] = child
+      if (child && typeof child === 'object' && !Array.isArray(child) && depth < MAX_FLATTEN_DEPTH) {
+        walk(child as Record<string, unknown>, path, depth + 1)
+      }
     }
   }
+
+  walk(payload, '', 0)
   return flat
 }
 

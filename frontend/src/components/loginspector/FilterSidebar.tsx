@@ -9,6 +9,8 @@ import {
   type LogEvent,
   type LogFilterState,
   type LogLevel,
+  type FieldDiscovery,
+  type StoredSchema,
 } from '@/lib/loginspector'
 import type { LevelCounts } from '@/lib/loginspector'
 import { LEVEL_SHORT, LEVEL_STYLE } from './EventList'
@@ -18,6 +20,8 @@ export interface SavedQuery {
   name: string
   query: string
 }
+
+const FIELDS_SHOWN = 40
 
 const FACET_LABELS: Record<FacetField, string> = {
   service: 'Service',
@@ -45,6 +49,11 @@ function fromLocalInput(value: string): number | null {
 interface FilterSidebarProps {
   filters: LogFilterState
   onChange: (next: LogFilterState) => void
+  /** Keys found in this batch, discovered automatically after the import. */
+  discovery: FieldDiscovery
+  /** Keys remembered from earlier imports of the same shape but absent here. */
+  rememberedOnly: string[]
+  schema: StoredSchema | null
   /** Unfiltered batch — facets always describe the whole import. */
   events: LogEvent[]
   levelCounts: LevelCounts
@@ -57,6 +66,9 @@ interface FilterSidebarProps {
 export function FilterSidebar({
   filters,
   onChange,
+  discovery,
+  rememberedOnly,
+  schema,
   events,
   levelCounts,
   savedQueries,
@@ -68,6 +80,25 @@ export function FilterSidebar({
   const [builderField, setBuilderField] = useState<string>('level')
   const [builderOp, setBuilderOp] = useState<'is' | 'not' | 'exists'>('is')
   const [builderValue, setBuilderValue] = useState('')
+  const [fieldSearch, setFieldSearch] = useState('')
+  const [openField, setOpenField] = useState<string | null>(null)
+
+  const appendClause = (clause: string) => {
+    onChange({ ...filters, query: filters.query ? `${filters.query} ${clause}` : clause })
+  }
+
+  const matchingFields = useMemo(() => {
+    const needle = fieldSearch.trim().toLowerCase()
+    const found = needle
+      ? discovery.fields.filter((field) => field.path.toLowerCase().includes(needle))
+      : discovery.fields
+    return found.slice(0, FIELDS_SHOWN)
+  }, [discovery.fields, fieldSearch])
+
+  const matchingRemembered = useMemo(() => {
+    const needle = fieldSearch.trim().toLowerCase()
+    return needle ? rememberedOnly.filter((path) => path.toLowerCase().includes(needle)) : rememberedOnly
+  }, [rememberedOnly, fieldSearch])
 
   const facets = useMemo(
     () => FACET_FIELDS.map((field) => ({ field, values: computeFacet(events, field, 40) })).filter((entry) => entry.values.length > 0),
@@ -135,6 +166,99 @@ export function FilterSidebar({
             })}
           </div>
         </Section>
+
+        {(discovery.fields.length > 0 || rememberedOnly.length > 0) && (
+          <Section title={`Fields (${discovery.fields.length})`}>
+            <p className="mb-1.5 text-[10px] leading-[1.45] text-text-4">
+              Detected automatically from this log
+              {discovery.sampled < discovery.total ? `, sampled ${discovery.sampled.toLocaleString()} of ${discovery.total.toLocaleString()} events` : ''}
+              {schema ? ` · shape "${schema.name}" seen ${schema.seen}×` : ''}
+            </p>
+
+            {discovery.fields.length > 8 && (
+              <input
+                value={fieldSearch}
+                onChange={(event) => setFieldSearch(event.target.value)}
+                placeholder="Find a field..."
+                aria-label="Find a field"
+                className="mb-1.5 h-6 w-full rounded border border-border-2 bg-surface-0 px-1.5 font-mono text-[10px] text-text-1 outline-none placeholder:text-text-4 focus:border-accent"
+              />
+            )}
+
+            <div className="flex flex-col gap-[2px]">
+              {matchingFields.map((field) => {
+                const open = openField === field.path
+                const hasValues = field.values.length > 0
+                return (
+                  <div key={field.path}>
+                    <div className="group flex items-center gap-1">
+                      <button
+                        onClick={() => (hasValues ? setOpenField(open ? null : field.path) : appendClause(`${field.path}:*`))}
+                        title={hasValues ? `${field.path} — show top values` : `${field.path} — filter events that have it`}
+                        className="flex min-w-0 flex-1 items-center gap-1 rounded px-1.5 py-[2px] text-left hover:bg-surface-2"
+                      >
+                        {hasValues
+                          ? <ChevronRight size={9} className={cn('shrink-0 text-text-4 transition-transform', open && 'rotate-90')} />
+                          : <span className="w-[9px] shrink-0" />}
+                        <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-text-2">{field.path}</span>
+                        <span className="shrink-0 font-mono text-[9px] text-text-4">
+                          {field.distinct === -1 ? 'id' : `${Math.round(field.coverage * 100)}%`}
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => appendClause(`-${field.path}:*`)}
+                        title={`Exclude events that have ${field.path}`}
+                        className="shrink-0 text-text-4 opacity-0 transition-opacity hover:text-error group-hover:opacity-100"
+                      >
+                        <Ban size={10} />
+                      </button>
+                    </div>
+
+                    {open && (
+                      <div className="mb-1 ml-3 flex flex-col gap-[2px] border-l border-border-2 pl-1.5">
+                        {field.values.map(({ value, count }) => (
+                          <button
+                            key={value}
+                            onClick={() => appendClause(`${field.path}:${value.includes(' ') ? `"${value}"` : value}`)}
+                            title={`Filter ${field.path} = ${value}`}
+                            className="flex items-center gap-1 rounded px-1 py-[2px] text-left hover:bg-surface-2"
+                          >
+                            <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-text-2">{value}</span>
+                            <span className="shrink-0 font-mono text-[9px] text-text-4">{count}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+
+              {discovery.fields.length > matchingFields.length && (
+                <p className="px-1.5 py-[2px] text-[9px] text-text-4">
+                  {discovery.fields.length - matchingFields.length} more — narrow with the box above
+                </p>
+              )}
+
+              {matchingRemembered.length > 0 && (
+                <>
+                  <p className="mt-1.5 px-1.5 text-[9px] uppercase tracking-wider text-text-4">
+                    Remembered, absent here
+                  </p>
+                  {matchingRemembered.slice(0, 12).map((path) => (
+                    <button
+                      key={path}
+                      onClick={() => appendClause(`${path}:*`)}
+                      title={`${path} — seen in an earlier import of this log`}
+                      className="truncate rounded px-1.5 py-[2px] text-left font-mono text-[10px] text-text-4 hover:bg-surface-2 hover:text-text-2"
+                    >
+                      {path}
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
+          </Section>
+        )}
 
         <Section title="Quick filters">
           <div className="flex flex-col gap-1">
