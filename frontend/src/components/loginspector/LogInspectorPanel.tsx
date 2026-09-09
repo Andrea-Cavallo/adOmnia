@@ -354,7 +354,18 @@ export function LogInspectorPanel() {
             ref={searchRef}
             value={filters.query}
             onChange={(changeEvent) => setFilters((current) => ({ ...current, query: changeEvent.target.value }))}
-            placeholder="Search — or level:error service:payments pod:* -noisy"
+            placeholder="Search — level:warn|error  merchantId:M-4471  pod:pay-*  /regex/  -noisy"
+            title={[
+              'Text search, or field clauses combined with AND:',
+              '  level:error            known field',
+              '  merchantId:M-4471      any key in the payload',
+              '  http.status:502        nested key',
+              '  level:warn|error       alternatives',
+              '  pod:pay-*              wildcard',
+              '  /timed ?out/           regular expression',
+              '  traceId:*              field is present',
+              '  -service:noisy-cron    exclude',
+            ].join('\n')}
             className="h-7 w-full rounded border border-border-2 bg-surface-0 pl-7 pr-7 font-mono text-[11px] text-text-1 outline-none placeholder:text-text-4 focus:border-accent"
           />
           {filters.query && (
@@ -577,7 +588,6 @@ export function LogInspectorPanel() {
             if (sample) void ingest(fromText(sample.text, sample.label, 'sample'))
           }}
           onFile={(file) => void openFile(file)}
-          onPasteFromClipboard={() => void pasteAndAnalyze()}
           onAnalyzeText={(text) => void ingest(fromText(text, 'Editor', 'editor'))}
         />
       ) : (

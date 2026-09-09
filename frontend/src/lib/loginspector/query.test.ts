@@ -69,10 +69,58 @@ describe('query language', () => {
     expect(filterEvents(events(), withFilters({ query: '"latency above threshold"' }))).toHaveLength(1)
   })
 
-  it('reports an unknown field but still searches as text', () => {
-    const compiled = compileQuery('banana:split')
-    expect(compiled.error).toContain('banana')
-    expect(compiled.clauses[0].field).toBeUndefined()
+  it('resolves a field the model does not carry against the payload', () => {
+    const parsed = parseLogText('{"msg":"charge","merchantId":"M-4471"}\n{"msg":"charge","merchantId":"M-9000"}').events
+    expect(filterEvents(parsed, withFilters({ query: 'merchantId:M-4471' })).map((e) => e.message)).toEqual(['charge'])
+    expect(filterEvents(parsed, withFilters({ query: 'merchantId:M-4471' }))).toHaveLength(1)
+  })
+
+  it('matches payload fields whatever their casing or separators', () => {
+    const parsed = parseLogText('{"msg":"a","X-Idempotency-Key":"idem-77"}').events
+    expect(filterEvents(parsed, withFilters({ query: 'x_idempotency_key:idem-77' }))).toHaveLength(1)
+    expect(filterEvents(parsed, withFilters({ query: 'XIdempotencyKey:idem-77' }))).toHaveLength(1)
+    // It is also promoted to requestId, so the modelled field finds it too.
+    expect(filterEvents(parsed, withFilters({ query: 'requestId:idem-77' }))).toHaveLength(1)
+  })
+
+  it('finds values inside a nested payload object', () => {
+    const parsed = parseLogText('{"msg":"a","http":{"status":502}}\n{"msg":"b","http":{"status":200}}').events
+    expect(filterEvents(parsed, withFilters({ query: 'http.status:502' })).map((e) => e.message)).toEqual(['a'])
+  })
+
+  it('keeps a pasted URL as a full-text term', () => {
+    const parsed = parseLogText('{"msg":"calling https://clearing.internal/v1/submit"}').events
+    expect(filterEvents(parsed, withFilters({ query: 'https://clearing.internal' }))).toHaveLength(1)
+  })
+})
+
+describe('fast-search operators', () => {
+  it('accepts a regular expression as a bare term', () => {
+    expect(filterEvents(events(), withFilters({ query: '/Settlement rejec\\w+/' }))).toHaveLength(1)
+  })
+
+  it('accepts a regular expression as a field value', () => {
+    const result = filterEvents(events(), withFilters({ query: 'pod:/^pay-\\d$/' }))
+    expect(result.map((e) => e.pod)).toEqual(['pay-1', 'pay-2', 'pay-1'])
+  })
+
+  it('falls back to literal text when the regex is invalid', () => {
+    expect(() => compileQuery('/[unclosed/')).not.toThrow()
+    expect(filterEvents(events(), withFilters({ query: '/[unclosed/' }))).toHaveLength(0)
+  })
+
+  it('supports alternatives on a field', () => {
+    const result = filterEvents(events(), withFilters({ query: 'level:warn|error' }))
+    expect(result.map((e) => e.level)).toEqual(['warn', 'error'])
+  })
+
+  it('supports alternatives on a bare term', () => {
+    expect(filterEvents(events(), withFilters({ query: 'merchant|threshold' }))).toHaveLength(2)
+  })
+
+  it('highlights every alternative but not the regex source', () => {
+    expect(compileQuery('warn|error').highlights).toEqual(['warn', 'error'])
+    expect(compileQuery('/^pay/').highlights).toEqual([])
   })
 })
 

@@ -29,6 +29,33 @@ the current codebase on 2026-06-13 and found already resolved (see below)._
 
 ## New This Cycle
 
+### Log Inspector — shipped (v0.9.0, promoted to a rail destination in v0.9.1)
+
+Local-first log investigation studio: paste / drop / open OpenShift and application
+logs (single JSON, JSON array, JSONL/NDJSON, plain and mixed text, CRI-O prefixes,
+ANSI, Java exceptions, Go panics, escaped nested JSON). Format is detected from the
+content, never from the extension; a malformed line is marked `RAW` without stopping
+the import. Virtualized event list, field-query language (`level:error pod:pay-*
+-service:noisy`), facets, time range, correlation-ID/trace-ID chronological
+reconstruction with deltas, sensitive-field masking, and JSON/JSONL/text export.
+Parsing runs in a Web Worker with progressive batches, cancellation and a configurable
+50k–500k retention ceiling. Files: `lib/loginspector/*`, `components/loginspector/*`.
+Reference: `docs/LOG-INSPECTOR.md`.
+
+Verification: 73 dedicated tests, 354 frontend tests across 72 files, TypeScript and
+production frontend build, `go build`/`go vet`/`go test ./...`.
+
+Pending:
+
+| Priority | Item |
+|---|---|
+| P2 | `oc logs` execution — the `OC_LOGS_SOURCE` seam exists with `available: false`; the Go binding that runs `oc logs -f` is missing. |
+| P2 | Live tailing — the parser is already incremental (`createLogParser`), it needs a stream-fed entry point. |
+| P2 | No tests cover the worker `parse`/`progress`/`cancel` protocol; the pure parser and the main-thread fallback are covered. |
+| P3 | `LogInspectorPanel.tsx` is 751 lines (repo convention favours ~400, hard limit 800) — split by extracting the toolbar popovers. |
+| P3 | `raw` keeps a per-event copy of the source line, the dominant memory cost at 100k events; an offset into the original text would remove it. |
+| P3 | `.gz` / `.zip` inputs must be extracted manually before import. |
+
 ### Flows — recording and demo usability (2026-09-08)
 
 Fixed `unknown storage bucket "flows"` on recording/save. Recordings infer exact,

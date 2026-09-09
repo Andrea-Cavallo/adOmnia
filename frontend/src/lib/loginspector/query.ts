@@ -1,5 +1,5 @@
 import type { LogEvent, LogLevel } from './types'
-import { normalizeLevel } from './normalize'
+import { canonicalKey, flattenPayload, normalizeLevel } from './normalize'
 
 /** Event fields usable as `field:value` in a query and as sidebar facets. */
 export const QUERY_FIELDS = [
@@ -28,13 +28,16 @@ const FIELD_SYNONYMS: Record<string, QueryField> = {
 }
 
 export interface QueryClause {
-  /** Undefined for a bare full-text term. */
+  /** Undefined for a bare full-text term or for a payload lookup. */
   field?: QueryField
+  /** Arbitrary payload key (`merchantId:M-4471`), resolved canonically. */
+  path?: string
   value: string
   negated: boolean
   /** Matches any non-empty value (`pod:*`). */
   existence: boolean
-  matcher: RegExp | null
+  /** Regex / alternatives / glob predicate; null means plain substring. */
+  matcher: ((text: string) => boolean) | null
 }
 
 export interface CompiledQuery {
@@ -46,15 +49,31 @@ export interface CompiledQuery {
 
 export const EMPTY_QUERY: CompiledQuery = { clauses: [], highlights: [], error: '' }
 
-/** Split on whitespace but keep `"quoted phrases"` together. */
+// A `/` opens a regex only at the start of a token (optionally after `-` or
+// `field:`) and when it is not the `//` of a URL.
+const REGEX_OPENER = /^-?(?:[\w.@$-]+:)?\/$/
+
+/**
+ * Split on whitespace but keep `"quoted phrases"` and `/regex literals/`
+ * together — a log regex almost always contains a space.
+ */
 function tokenize(input: string): string[] {
   const tokens: string[] = []
   let current = ''
   let quote = ''
-  for (const char of input) {
+  let inRegex = false
+
+  for (let i = 0; i < input.length; i++) {
+    const char = input[i]
+
     if (quote) {
       if (char === quote) quote = ''
       else current += char
+      continue
+    }
+    if (inRegex) {
+      current += char
+      if (char === '/' && input[i - 1] !== '\\') inRegex = false
       continue
     }
     if (char === '"' || char === "'") { quote = char; continue }
@@ -62,8 +81,11 @@ function tokenize(input: string): string[] {
       if (current) { tokens.push(current); current = '' }
       continue
     }
+
     current += char
+    if (char === '/' && input[i + 1] !== '/' && REGEX_OPENER.test(current)) inRegex = true
   }
+
   if (current) tokens.push(current)
   return tokens
 }
@@ -78,7 +100,56 @@ function globToRegExp(pattern: string): RegExp {
   return new RegExp(`^${body}$`, 'i')
 }
 
-/** Turn a query string into clauses. Unknown fields degrade to full-text. */
+const REGEX_LITERAL = /^\/(.+)\/([gimsuy]*)$/
+// Only an identifier-ish name is treated as a payload field, so a pasted URL
+// (`http://host/path`) stays a full-text term instead of becoming a lookup.
+const FIELD_NAME = /^[A-Za-z_@$][\w.@$-]*$/
+
+/**
+ * Build the predicate for one value expression:
+ * `/re/` regex, `a|b` alternatives, `pay-*` glob, or a plain substring.
+ * `anchored` distinguishes whole-value matching (fields) from "contains".
+ */
+function buildMatcher(value: string, anchored: boolean): ((text: string) => boolean) | null {
+  const literal = REGEX_LITERAL.exec(value)
+  if (literal) {
+    try {
+      const flags = literal[2].includes('i') ? literal[2] : `${literal[2]}i`
+      const regex = new RegExp(literal[1], flags.replace('g', ''))
+      return (text) => regex.test(text)
+    } catch {
+      /* invalid regex — fall through and treat it as literal text */
+    }
+  }
+
+  if (value.includes('|')) {
+    const parts = value.split('|').map((part) => part.trim()).filter(Boolean)
+    if (parts.length > 1) {
+      const matchers = parts.map((part) => buildMatcher(part, anchored) ?? containsMatcher(part, anchored))
+      return (text) => matchers.some((match) => match(text))
+    }
+  }
+
+  if (value.includes('*')) {
+    const glob = globToRegExp(value)
+    return (text) => glob.test(text)
+  }
+
+  return null
+}
+
+function containsMatcher(value: string, anchored: boolean): (text: string) => boolean {
+  const needle = value.toLowerCase()
+  return anchored
+    ? (text) => text.toLowerCase() === needle || text.toLowerCase().includes(needle)
+    : (text) => text.toLowerCase().includes(needle)
+}
+
+/**
+ * Turn a query string into clauses. A name that is not a known field is looked
+ * up in the event payload, so `merchantId:M-4471` works without the field being
+ * modelled.
+ */
 export function compileQuery(input: string): CompiledQuery {
   const trimmed = input.trim()
   if (!trimmed) return EMPTY_QUERY
@@ -87,34 +158,43 @@ export function compileQuery(input: string): CompiledQuery {
   const highlights: string[] = []
   let error = ''
 
+  const addHighlight = (value: string) => {
+    if (REGEX_LITERAL.test(value)) return
+    for (const part of value.split('|')) {
+      const clean = part.replace(/\*/g, '').trim()
+      if (clean) highlights.push(clean)
+    }
+  }
+
   for (const token of tokenize(trimmed)) {
     const negated = token.startsWith('-') && token.length > 1
     const body = negated ? token.slice(1) : token
     const colon = body.indexOf(':')
 
     if (colon > 0) {
-      const rawField = body.slice(0, colon).toLowerCase()
+      const rawField = body.slice(0, colon)
       const value = body.slice(colon + 1)
-      const field = FIELD_SYNONYMS[rawField]
-      if (field) {
+      const field = FIELD_SYNONYMS[rawField.toLowerCase()]
+      const isPayloadField = !field && FIELD_NAME.test(rawField) && !value.startsWith('//')
+
+      if (field || isPayloadField) {
         const existence = value === '*'
         clauses.push({
           field,
+          path: field ? undefined : rawField,
           value,
           negated,
           existence,
-          matcher: existence || !value.includes('*') ? null : globToRegExp(value),
+          matcher: existence ? null : buildMatcher(value, true),
         })
-        if (!negated && !existence && value) highlights.push(value.replace(/\*/g, ''))
+        if (!negated && !existence && value) addHighlight(value)
         continue
-      }
-      if (!rawField.includes('/') && !rawField.includes('.')) {
-        error = `Unknown field "${rawField}" — searched as text`
       }
     }
 
-    clauses.push({ value: body, negated, existence: false, matcher: null })
-    if (!negated && body) highlights.push(body)
+    const matcher = buildMatcher(body, false)
+    clauses.push({ value: body, negated, existence: false, matcher })
+    if (!negated && body) addHighlight(body)
   }
 
   return { clauses, highlights, error }
@@ -132,20 +212,47 @@ function haystack(event: LogEvent): string {
   return built
 }
 
-function fieldValue(event: LogEvent, field: QueryField): string {
-  if (field === 'raw') return event.raw
-  return String(event[field] ?? '')
+// Scalar payload values indexed by canonical key, built the first time a query
+// asks for a field the model does not carry. Keyed by the event, so it is
+// released with the batch.
+const payloadCache = new WeakMap<LogEvent, Map<string, string>>()
+
+function payloadIndex(event: LogEvent): Map<string, string> {
+  const cached = payloadCache.get(event)
+  if (cached) return cached
+
+  const index = new Map<string, string>()
+  const absorb = (source: Record<string, unknown>) => {
+    for (const [key, value] of Object.entries(flattenPayload(source))) {
+      if (value === null || value === undefined || typeof value === 'object') continue
+      const canonical = canonicalKey(key)
+      if (!index.has(canonical)) index.set(canonical, String(value))
+    }
+  }
+  if (event.json && typeof event.json === 'object') absorb(event.json as Record<string, unknown>)
+  absorb(event.extra)
+  absorb(event.decoded)
+
+  payloadCache.set(event, index)
+  return index
+}
+
+function fieldValue(event: LogEvent, clause: QueryClause): string {
+  if (clause.path) return payloadIndex(event).get(canonicalKey(clause.path)) ?? ''
+  if (clause.field === 'raw') return event.raw
+  return String(event[clause.field as Exclude<QueryField, 'raw'>] ?? '')
 }
 
 function clauseMatches(event: LogEvent, clause: QueryClause): boolean {
-  if (!clause.field) {
+  if (!clause.field && !clause.path) {
     if (!clause.value) return true
+    if (clause.matcher) return clause.matcher(haystack(event))
     return haystack(event).includes(clause.value.toLowerCase())
   }
 
-  const value = fieldValue(event, clause.field)
+  const value = fieldValue(event, clause)
   if (clause.existence) return value.trim() !== ''
-  if (clause.matcher) return clause.matcher.test(value)
+  if (clause.matcher) return clause.matcher(value)
 
   if (clause.field === 'level') {
     const wanted = normalizeLevel(clause.value)

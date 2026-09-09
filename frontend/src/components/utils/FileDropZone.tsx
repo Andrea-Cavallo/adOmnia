@@ -9,6 +9,7 @@ export function FileDropZone({
   onFile,
   multiple = false,
   onFiles,
+  className,
 }: {
   accept: string
   label: string
@@ -16,6 +17,8 @@ export function FileDropZone({
   onFile: (file: File) => void
   multiple?: boolean
   onFiles?: (files: File[]) => void
+  /** Merged last, so a caller can override sizing and the resting border. */
+  className?: string
 }) {
   const [dragging, setDragging] = useState(false)
   return (
@@ -34,6 +37,7 @@ export function FileDropZone({
       className={cn(
         'flex cursor-pointer flex-col items-center justify-center gap-2 rounded border border-dashed px-4 py-6 text-center transition-colors',
         dragging ? 'border-accent bg-accent/10' : 'border-border-2 bg-surface-1 hover:border-accent/50 hover:bg-surface-2',
+        className,
       )}
     >
       <UploadCloud size={22} className={dragging ? 'text-accent-light' : 'text-text-3'} />

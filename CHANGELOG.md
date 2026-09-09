@@ -4,6 +4,20 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [0.9.2] - 2026-09-09
+
+### Added
+- **Search any payload key:** a query field that is not one of the modelled fields is now resolved canonically against the event payload, so `merchantId:M-4471` and `http.status:502` work without the field being modelled. The index is built lazily per event and cached.
+- **Regular expressions and alternatives:** `/timed ?out/` as a bare term or `pod:/^pay-\d$/` as a field value, always case-insensitive, spaces allowed, degrading to a literal search when malformed; `level:warn|error` for alternatives.
+- **Unwrap toggle in the JSON tab:** turns every JSON escaped inside a string into a real subtree — expandable, searchable and pretty-printed. On by default.
+
+### Changed
+- **Field aliases are matched canonically:** case, `-` and `_` are ignored, so `correlationId`, `correlation_id`, `correlation-id` and `CORRELATION_ID` resolve to the same field. The alias set now covers ECS, OpenTelemetry, Serilog CLEF, Python `logging`, log4j2, Monolog, GELF, Datadog, Spring MDC, OpenShift `project`/`nodeName` and gateway headers including `X-Correlation-Id`, `X-Request-Id`, `X-B3-TraceId` and `X-Idempotency-Key`.
+- **Nested JSON decoding is recursive** and covers more carrier fields (`result`, `error`, `exception`, `detail`, `context`, `params`, `attributes`), capped at six levels.
+- **Log Inspector empty state rebuilt full width:** left-aligned header with a `local only` marker, drop zone and editor side by side at equal height, five samples on one row, shortcuts on a single bottom bar. The duplicate clipboard button and the disabled `oc logs` placeholder were removed; the `ctrl v` hint moved next to Analyze.
+
+Full release notes: [v0.9.2](docs/releases/v0.9.2.md).
+
 ## [0.9.1] - 2026-09-09
 
 ### Changed

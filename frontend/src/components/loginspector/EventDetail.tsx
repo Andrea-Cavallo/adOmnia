@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Check, Copy, Filter, Share2, WrapText, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { correlationCandidates, hideJsonFields, type CorrelationKey, type LogEvent } from '@/lib/loginspector'
+import { correlationCandidates, hideJsonFields, unwrapNestedJson, type CorrelationKey, type LogEvent } from '@/lib/loginspector'
 import { JsonTree } from './JsonTree'
 import { LEVEL_STYLE } from './EventList'
 
@@ -46,10 +46,13 @@ export function EventDetail({ event, onClose, onFilterBy, onShowRelated, hiddenF
   const related = correlationCandidates(event)
   const stackLines = useMemo(() => (event.stack ? event.stack.split('\n') : []), [event.stack])
   const hasDecoded = Object.keys(event.decoded).length > 0
-  const visibleJson = useMemo(
-    () => hideJsonFields(hasDecoded ? { ...(event.json as object), __decoded: event.decoded } : event.json, hiddenFields),
-    [event.json, event.decoded, hasDecoded, hiddenFields],
-  )
+  // Logs bury JSON inside JSON strings; unwrapping is what makes the tree
+  // navigable, so it is the default.
+  const [unwrap, setUnwrap] = useState(true)
+  const visibleJson = useMemo(() => {
+    const base = hasDecoded ? { ...(event.json as object), __decoded: event.decoded } : event.json
+    return hideJsonFields(unwrap ? unwrapNestedJson(base) : base, hiddenFields)
+  }, [event.json, event.decoded, hasDecoded, hiddenFields, unwrap])
   const visibleExtra = useMemo(
     () => hideJsonFields(event.extra, hiddenFields) as Record<string, unknown>,
     [event.extra, hiddenFields],
@@ -147,7 +150,23 @@ export function EventDetail({ event, onClose, onFilterBy, onShowRelated, hiddenF
 
       {tab === 'json' && (
         event.json
-          ? <JsonTree value={visibleJson} />
+          ? (
+            <JsonTree
+              value={visibleJson}
+              actions={
+                <button
+                  onClick={() => setUnwrap((value) => !value)}
+                  title="Unwrap JSON that was escaped inside string fields"
+                  className={cn(
+                    'h-6 rounded border px-2 text-[10px] transition-colors',
+                    unwrap ? 'border-accent/50 bg-accent/20 text-accent-light' : 'border-border-2 text-text-3 hover:text-text-1',
+                  )}
+                >
+                  Unwrap
+                </button>
+              }
+            />
+          )
           : (
             <div className="min-h-0 flex-1 overflow-auto px-3 py-3">
               <p className="mb-2 text-[11px] text-text-4">This event is not structured JSON. The original line is shown below.</p>

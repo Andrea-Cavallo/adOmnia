@@ -4,7 +4,7 @@
 **The entire API toolchain — REST to Kafka, mock to MITM proxy, database to PDF signing — in one portable app that never leaves your machine.**
 
 REST · gRPC · SOAP · GraphQL · WebSocket · SSE · Kafka · RabbitMQ · MQTT · Redis · NATS
-Mock servers · HTTPS proxy · Browser DevTools · Load testing · Database Studio · Encrypted vault
+Mock servers · HTTPS proxy · Browser DevTools · Log Inspector · Load testing · Database Studio · Encrypted vault
 **Full Git client** (commit graph, push/pull, branch & conflict resolution) · OpenAPI design · Visual test builder · AI mock generation
 MCP Client + Server Generator · Versionable collection folders · Headless runner · OpenAPI lint CLI · PDF & LaTeX Studio · Executable JS plugins · 11 themes
 
@@ -77,7 +77,7 @@ All releases include `SHA256SUMS.txt` and source code archives. Verify your down
 | **Protocols** | SOAP/WSDL Studio (1.1 & 1.2, WS-Security), gRPC (reflection, offline proto/protoset authoring, unary calls, live cancellable streaming, TLS/mTLS, metadata, trailers, reproducible history and load tests), WebSocket client + mock server, SSE client, **MCP Client/Debugger** + **MCP Server Generator** (collection/OAS → runnable MCP server; stdio multi-session + HTTP transport) |
 | **Brokers** | Kafka (produce/consume/bulk/load test), RabbitMQ, MQTT, Redis Pub/Sub, NATS — shared message log, persistent connection profiles |
 | **Simulation & Infrastructure** | Mock Server Control Room with **Smart Mock Engine** (schema-driven Faker generation), **conditional expectations** (per-field matching), request-focused **Mock this tab** handoff, endpoint explorer, decision-aware traffic, record & replay and round-robin; HTTPS proxy/interceptor (MITM CA, breakpoints, map local/remote, throttling), Docker Lab (14 presets), load testing (HTTP + gRPC, HDR histogram, P99, side-by-side comparison) |
-| **Debugging & Analysis** | Browser DevTools via CDP (network, console, JS debugger, DOM inspector, storage, screenshots), HAR viewer, DNS lookup/trace/compare, port scanner, CORS tester, JSON/XML/YAML tools, observability panel, secret scanner |
+| **Debugging & Analysis** | Browser DevTools via CDP (network, console, JS debugger, DOM inspector, storage, screenshots), **Log Inspector** (paste or drop OpenShift/pod logs — JSON, JSON arrays, JSONL, mixed text, Java/Go stack traces — into a virtualized event list with field queries, correlation-ID timelines, sensitive-field masking and JSON/JSONL/text export, see [docs/LOG-INSPECTOR.md](docs/LOG-INSPECTOR.md)), HAR viewer, DNS lookup/trace/compare, port scanner, CORS tester, JSON/XML/YAML tools, observability panel, secret scanner |
 | **Document & Productivity Studio** | **PDF Editor** (view, annotate, fill forms, flatten/export) with **real cryptographic signing** — PEM or PKCS#12/JKS keystore import, RFC-3161 **TSA timestamping**, and **LTV** (chain + OCSP/CRL); **LaTeX Studio** (live `.tex` editor + preview + templates); Markdown studio; Mermaid diagrams |
 | **Version Control (built-in Git)** | Full Git client inside the app — clone/init, stage & commit, **visual commit graph** with per-commit context actions (checkout, revert, reset, cherry-pick), branch create/switch/merge, push/pull to any remote, diff viewer, and **interactive conflict resolution**. Export collections as folder-backed, diff-friendly trees, import them back, and check drift between the app state and the files on disk |
 | **Data, Security & Extensibility** | Database Studio (SQLite/PostgreSQL/MySQL/MongoDB), bbolt storage inspector, encrypted vault (age/scrypt), **AI engine** (Anthropic/OpenAI/Gemini/Hugging Face/Ollama) with guided cloud/local setup, live model discovery, local metadata cache and Vault or machine-local environment credentials, permission-aware JavaScript plugin runtime, 11 built-in themes + custom skin system |
@@ -89,6 +89,14 @@ Persistent Git, broker, and database credentials use encrypted `vault:` referenc
 From an open request tab, choose **Mock this tab**. adOmnia opens the Mock Server directly on that endpoint in a focused scope: existing mock definitions stay saved, but only the selected request is active until you choose **Show all endpoints**. If the server is already running, the focused configuration is applied live without changing its port.
 
 The Traffic view explains what happened for each call: the matched endpoint and response, or a useful reason such as a missing mock response, authentication failure, CORS preflight, or no matching route.
+
+### Read pod logs without grep
+
+The **Log Inspector** rail destination turns a wall of OpenShift/Kubernetes log output into a structured, filterable event list — entirely offline, nothing is uploaded.
+
+Paste the text or drop a file (`.log`, `.txt`, `.json`, `.jsonl`, or any plain-text dump): the format is detected from the content, never from the extension (JSON, JSON array, JSONL, mixed, plain text), and Java/Go stack traces are re-attached to the line that raised them. You then get level/service facets, a time histogram, a field query language (`level:ERROR AND traceId:abc*`), correlation-ID timelines across services, sensitive-field masking, and export back to JSON/JSONL/text.
+
+Full reference — parsing pipeline, field aliases, query syntax, correlation and large-input behavior: [docs/LOG-INSPECTOR.md](docs/LOG-INSPECTOR.md)
 
 ### AI credentials from the local machine
 

@@ -184,6 +184,68 @@ describe('timestamps', () => {
   })
 })
 
+describe('field aliases', () => {
+  it('matches an alias whatever its casing and separators', () => {
+    const line = JSON.stringify({
+      Timestamp: '2026-03-11T09:14:02.481Z',
+      SEVERITY: 'ERROR',
+      Msg: 'boom',
+      'SERVICE-NAME': 'payments',
+    })
+    const { events } = parseLogText(line)
+    expect(events[0].level).toBe('error')
+    expect(events[0].message).toBe('boom')
+    expect(events[0].service).toBe('payments')
+    expect(events[0].ts).not.toBeNull()
+  })
+
+  it('promotes header-style correlation identifiers', () => {
+    const line = JSON.stringify({
+      msg: 'charge',
+      'X-Correlation-Id': 'corr-1',
+      'X-Request-Id': 'req-1',
+      'X-B3-TraceId': 'trace-1',
+    })
+    const { events } = parseLogText(line)
+    expect(events[0].correlationId).toBe('corr-1')
+    expect(events[0].requestId).toBe('req-1')
+    expect(events[0].traceId).toBe('trace-1')
+  })
+
+  it('treats an idempotency key as the request identifier', () => {
+    const { events } = parseLogText(JSON.stringify({ msg: 'retry', 'X-Idempotency-Key': 'idem-77' }))
+    expect(events[0].requestId).toBe('idem-77')
+  })
+
+  it('reads ECS and OpenTelemetry dotted fields', () => {
+    const line = JSON.stringify({
+      '@timestamp': '2026-03-11T09:14:02.481Z',
+      log: { level: 'warn', logger: 'com.acme.Clearing' },
+      service: { name: 'payments-api' },
+      trace: { id: 'abc123' },
+    })
+    const { events } = parseLogText(line)
+    expect(events[0].level).toBe('warn')
+    expect(events[0].service).toBe('payments-api')
+    expect(events[0].traceId).toBe('abc123')
+    expect(events[0].logger).toBe('com.acme.Clearing')
+  })
+
+  it('reads OpenShift project and node aliases', () => {
+    const line = JSON.stringify({ msg: 'x', project: 'prod-payments', nodeName: 'worker-3' })
+    const { events } = parseLogText(line)
+    expect(events[0].namespace).toBe('prod-payments')
+    expect(events[0].pod).toBe('worker-3')
+  })
+
+  it('reads Serilog compact fields', () => {
+    const { events } = parseLogText(JSON.stringify({ '@t': '2026-03-11T09:14:02.481Z', '@l': 'Error', '@m': 'failed' }))
+    expect(events[0].level).toBe('error')
+    expect(events[0].message).toBe('failed')
+    expect(events[0].ts).not.toBeNull()
+  })
+})
+
 describe('nested JSON in string fields', () => {
   it('decodes an escaped JSON message and lifts its inner message', () => {
     const line = JSON.stringify({ level: 'info', message: JSON.stringify({ event: 'upstream.request', message: 'calling clearing house' }) })

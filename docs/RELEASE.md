@@ -2,6 +2,12 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+## v0.9.2 release notes: faster log search and nested JSON
+
+See [the full v0.9.2 notes](releases/v0.9.2.md) for payload-key search, regular
+expressions and alternatives, the widened field aliases, recursive nested-JSON
+unwrapping and the rebuilt Log Inspector empty state.
+
 ## v0.9.1 release notes: first-class Log Inspector
 
 See [the full v0.9.1 notes](releases/v0.9.1.md) for the dedicated Power Tools

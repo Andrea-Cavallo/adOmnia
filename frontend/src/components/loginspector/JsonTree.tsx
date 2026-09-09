@@ -106,9 +106,11 @@ interface JsonTreeProps {
   /** Shown above the tree, e.g. the event id. */
   title?: string
   className?: string
+  /** Extra toolbar controls, rendered before the copy button. */
+  actions?: React.ReactNode
 }
 
-export function JsonTree({ value, title, className }: JsonTreeProps) {
+export function JsonTree({ value, title, className, actions }: JsonTreeProps) {
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(['$']))
   const [search, setSearch] = useState('')
   const [wrap, setWrap] = useState(false)
@@ -181,6 +183,7 @@ export function JsonTree({ value, title, className }: JsonTreeProps) {
         <ToolbarButton onClick={() => setExpanded(new Set(['$']))} disabled={raw} label="Collapse" />
         <ToolbarToggle active={wrap} onClick={() => setWrap((v) => !v)} title="Word wrap"><WrapText size={12} /></ToolbarToggle>
         <ToolbarToggle active={raw} onClick={() => setRaw((v) => !v)} title="Raw JSON"><Braces size={12} /></ToolbarToggle>
+        {actions}
         <button
           onClick={() => copy(pretty, 'all')}
           title="Copy the whole JSON"

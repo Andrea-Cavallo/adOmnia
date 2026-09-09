@@ -3,24 +3,71 @@ import type { LogEventFields, LogLevel } from './types'
 // ─── Field aliases ────────────────────────────────────────────────────────────
 // Order matters: the first key present wins.
 
+/**
+ * Aliases are matched **canonically**: case, `-`, `_` and spaces are ignored, so
+ * one entry covers every spelling a logger might emit. `correlationId` therefore
+ * also matches `correlation_id`, `correlation-id`, `CorrelationID` and
+ * `CORRELATION_ID`; only genuinely different words need their own entry.
+ * Dots are preserved, so nested paths (`kubernetes.pod_name`) stay distinct.
+ */
 export const FIELD_ALIASES: Record<keyof Omit<LogEventFields, 'level' | 'levelRaw' | 'ts'>, string[]> = {
-  tsRaw: ['timestamp', 'time', '@timestamp', 'ts', 'eventTime', 'datetime', 'date'],
-  message: ['message', 'msg', 'log', 'text', 'event'],
-  service: ['service', 'application', 'app', 'serviceName', 'service_name', 'app_name', 'component'],
-  namespace: ['namespace', 'ns', 'kubernetes.namespace_name', 'k8s.namespace'],
-  pod: ['pod', 'podName', 'pod_name', 'kubernetes.pod_name', 'instance', 'host', 'hostname'],
-  container: ['container', 'containerName', 'container_name', 'kubernetes.container_name'],
-  traceId: ['traceId', 'trace_id', 'trace-id', 'traceID', 'dd.trace_id', 'otel.trace_id'],
-  correlationId: ['correlationId', 'correlation_id', 'correlation-id', 'corrId', 'cid'],
-  requestId: ['requestId', 'request_id', 'request-id', 'reqId', 'req_id'],
-  thread: ['thread', 'threadName', 'thread_name', 'goroutine', 'worker'],
-  logger: ['logger', 'loggerName', 'logger_name', 'caller', 'source', 'class', 'category'],
+  tsRaw: [
+    'timestamp', 'time', '@timestamp', '@t', 'ts', 'eventTime', 'eventTimestamp',
+    'datetime', 'date', 'asctime', 'timeMillis', 'timestampMs', 'logTime',
+    'startTime', 'receivedAt', '_time',
+  ],
+  message: [
+    'message', 'msg', 'log', 'text', 'event', '@m', '@mt',
+    'shortMessage', 'logMessage', 'body',
+  ],
+  service: [
+    'service', 'service.name', 'application', 'applicationName', 'app', 'appName',
+    'serviceName', 'component', 'microservice', 'svc', 'program',
+    'spring.application.name',
+  ],
+  namespace: [
+    'namespace', 'namespaceName', 'ns', 'kubernetes.namespace_name',
+    'kubernetes.namespace', 'k8s.namespace', 'k8s.namespace.name',
+    'openshift.namespace', 'project',
+  ],
+  pod: [
+    'pod', 'podName', 'podId', 'kubernetes.pod_name', 'kubernetes.pod',
+    'k8s.pod.name', 'instance', 'nodeName', 'host', 'hostname',
+  ],
+  container: [
+    'container', 'containerName', 'containerId', 'kubernetes.container_name',
+    'k8s.container.name', 'docker.container_name',
+  ],
+  traceId: [
+    'traceId', 'trace.id', 'X-B3-TraceId', 'dd.trace_id', 'otel.trace_id',
+    'otelTraceId', 'apm.trace_id', 'mdc.traceId',
+  ],
+  correlationId: [
+    'correlationId', 'X-Correlation-Id', 'correlation', 'corrId', 'cid',
+    'conversationId', 'mdc.correlationId',
+  ],
+  requestId: [
+    'requestId', 'X-Request-Id', 'reqId', 'http.request.id', 'mdc.requestId',
+    // An idempotency key is not literally a request id, but it is the value an
+    // operator filters by to find every retry of the same operation.
+    'X-Idempotency-Key', 'idempotencyKey',
+    'X-Amzn-Trace-Id', 'X-Amz-Request-Id', 'X-Transaction-Id', 'transactionId',
+    'operationId',
+  ],
+  thread: [
+    'thread', 'threadName', 'threadId', 'tid', 'goroutine', 'worker',
+    'process.thread.name', 'coroutine',
+  ],
+  logger: [
+    'logger', 'loggerName', 'log.logger', 'caller', 'source', 'class',
+    'category', 'channel', 'module', 'facility',
+  ],
 }
 
-const LEVEL_KEYS = ['level', 'severity', 'logLevel', 'log_level', 'lvl', 'levelname', 'levelName', 'priority']
-
-/** Every payload key the normalizer can consume — the rest lands in `extra`. */
-export const KNOWN_KEYS = new Set<string>([...LEVEL_KEYS, ...Object.values(FIELD_ALIASES).flat()])
+const LEVEL_KEYS = [
+  'level', 'log.level', 'severity', 'severityText', 'logLevel', 'lvl',
+  'levelname', 'levelValue', '@l', 'priority',
+]
 
 // ─── Level ────────────────────────────────────────────────────────────────────
 
@@ -154,9 +201,35 @@ export function flattenPayload(payload: Record<string, unknown>): Record<string,
   return flat
 }
 
-function pick(flat: Record<string, unknown>, keys: string[]): { value: string; key: string } {
-  for (const key of keys) {
-    const value = flat[key]
+/**
+ * Collapse the spellings a key can take. `X-Correlation-Id`, `x_correlation_id`
+ * and `correlationId` all become `xcorrelationid` / `correlationid`, so one
+ * alias covers every casing and separator style. Dots survive, keeping nested
+ * paths (`kubernetes.pod_name`) apart from flat ones.
+ */
+export function canonicalKey(key: string): string {
+  return key.toLowerCase().replace(/[-_\s]/g, '')
+}
+
+export interface PayloadLookup {
+  get(alias: string): { value: unknown; key: string } | undefined
+}
+
+/** Index a flattened payload by canonical key. First spelling wins. */
+export function buildLookup(flat: Record<string, unknown>): PayloadLookup {
+  const index = new Map<string, { value: unknown; key: string }>()
+  for (const [key, value] of Object.entries(flat)) {
+    const canonical = canonicalKey(key)
+    if (!index.has(canonical)) index.set(canonical, { value, key })
+  }
+  return { get: (alias) => index.get(canonicalKey(alias)) }
+}
+
+function pick(lookup: PayloadLookup, aliases: string[]): { value: string; key: string } {
+  for (const alias of aliases) {
+    const hit = lookup.get(alias)
+    if (!hit) continue
+    const { value, key } = hit
     if (value === undefined || value === null || value === '') continue
     if (typeof value === 'object') continue
     return { value: String(value), key }
@@ -164,28 +237,66 @@ function pick(flat: Record<string, unknown>, keys: string[]): { value: string; k
   return { value: '', key: '' }
 }
 
-const NESTED_JSON_KEYS = ['message', 'msg', 'body', 'payload', 'response', 'request', 'data']
+const NESTED_JSON_KEYS = [
+  'message', 'msg', 'body', 'payload', 'response', 'request', 'data',
+  'result', 'error', 'exception', 'detail', 'context', 'params', 'attributes',
+]
 
 /**
- * Decode JSON that was escaped into a string field. Returns the decoded values
- * keyed by their source field; the original payload is never mutated.
+ * Decode JSON that was escaped into a string field, recursively: a payload
+ * escaped inside a message that itself holds an escaped body comes back fully
+ * unwrapped. Returns the decoded values keyed by their source field; the
+ * original payload is never mutated.
  */
 export function decodeNested(flat: Record<string, unknown>): Record<string, unknown> {
+  const lookup = buildLookup(flat)
   const decoded: Record<string, unknown> = {}
-  for (const key of NESTED_JSON_KEYS) {
-    const value = flat[key]
-    if (typeof value !== 'string') continue
-    const trimmed = value.trim()
-    if (trimmed.length < 2) continue
-    if (trimmed[0] !== '{' && trimmed[0] !== '[') continue
-    try {
-      const parsed: unknown = JSON.parse(trimmed)
-      if (parsed && typeof parsed === 'object') decoded[key] = parsed
-    } catch {
-      /* not JSON after all — leave the string alone */
-    }
+  for (const alias of NESTED_JSON_KEYS) {
+    const hit = lookup.get(alias)
+    if (!hit || typeof hit.value !== 'string') continue
+    const parsed = parseJsonString(hit.value)
+    if (parsed !== undefined) decoded[hit.key] = unwrapNestedJson(parsed)
   }
   return decoded
+}
+
+/** Parse a string only when it really is a JSON object or array. */
+export function parseJsonString(text: string): unknown {
+  const trimmed = text.trim()
+  if (trimmed.length < 2) return undefined
+  if (trimmed[0] !== '{' && trimmed[0] !== '[') return undefined
+  try {
+    const parsed: unknown = JSON.parse(trimmed)
+    return parsed && typeof parsed === 'object' ? parsed : undefined
+  } catch {
+    return undefined // not JSON after all — leave the string alone
+  }
+}
+
+// Escaped-inside-escaped happens in the wild (a gateway logs a body that already
+// contains a serialized payload), but the nesting is shallow; the cap stops a
+// pathological input from recursing forever.
+const MAX_UNWRAP_DEPTH = 6
+
+/**
+ * Walk a value and replace every string that is really serialized JSON with the
+ * parsed structure. Returns new values; the input is never mutated.
+ */
+export function unwrapNestedJson(value: unknown, depth = 0): unknown {
+  if (depth >= MAX_UNWRAP_DEPTH) return value
+  if (typeof value === 'string') {
+    const parsed = parseJsonString(value)
+    return parsed === undefined ? value : unwrapNestedJson(parsed, depth + 1)
+  }
+  if (Array.isArray(value)) return value.map((item) => unwrapNestedJson(item, depth + 1))
+  if (value && typeof value === 'object') {
+    const out: Record<string, unknown> = {}
+    for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+      out[key] = unwrapNestedJson(child, depth + 1)
+    }
+    return out
+  }
+  return value
 }
 
 export interface NormalizedPayload {
@@ -200,16 +311,17 @@ export function normalizePayload(
   options: { decodeNestedJson?: boolean } = {},
 ): NormalizedPayload {
   const flat = flattenPayload(payload)
+  const lookup = buildLookup(flat)
   const consumed = new Set<string>()
 
   const take = (keys: string[]) => {
-    const found = pick(flat, keys)
+    const found = pick(lookup, keys)
     if (found.key) consumed.add(found.key.split('.')[0])
     return found.value
   }
 
-  const levelHit = pick(flat, LEVEL_KEYS)
-  if (levelHit.key) consumed.add(levelHit.key)
+  const levelHit = pick(lookup, LEVEL_KEYS)
+  if (levelHit.key) consumed.add(levelHit.key.split('.')[0])
   const rawLevelValue = levelHit.key ? flat[levelHit.key] : ''
 
   const tsRaw = take(FIELD_ALIASES.tsRaw)
@@ -217,11 +329,10 @@ export function normalizePayload(
 
   const decoded = options.decodeNestedJson === false ? {} : decodeNested(flat)
   // A message that is itself JSON reads much better as its inner message.
-  const decodedMessage = decoded.message ?? decoded.msg
+  const decodedMessage = decoded.message ?? decoded.msg ?? decoded.Message
   if (decodedMessage && typeof decodedMessage === 'object') {
-    const holder = decodedMessage as Record<string, unknown>
-    const inner = holder.message ?? holder.msg
-    if (typeof inner === 'string' && inner) message = inner
+    const inner = pick(buildLookup(decodedMessage as Record<string, unknown>), FIELD_ALIASES.message)
+    if (inner.value) message = inner.value
   }
 
   const fields: LogEventFields = {
