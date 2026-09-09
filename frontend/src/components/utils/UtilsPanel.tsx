@@ -32,6 +32,7 @@ import { Base64Tool, HashTool, JwtTool, PasswordTool, UuidTool } from '@/compone
 import { DockerGenerator } from '@/components/utils/DockerGenerator'
 import { DockerLabPanel } from '@/components/dockerlab/DockerLabPanel'
 import { HarViewerPanel } from '@/components/har/HarViewerPanel'
+import { LogInspectorPanel } from '@/components/loginspector'
 import { ObservabilityPanel } from '@/components/observe'
 import { SecretScannerPanel } from '@/components/secretscanner'
 import { XmlToolsPanel } from '@/components/utils/XmlToolsPanel'
@@ -1630,6 +1631,15 @@ export function UtilsPanel({ initialTool = 'base64' }: { initialTool?: string })
     switch (activeTool) {
       case 'xmlstudio':
         return <div className="min-h-0 flex-1 overflow-hidden"><XmlToolsPanel /></div>
+
+      case 'loginspector':
+        // A studio this dense needs a definite height: the surrounding card is
+        // a plain block, so `flex-1` alone would collapse it to zero.
+        return (
+          <div className="flex h-[calc(100vh-26rem)] min-h-[440px] overflow-hidden rounded-lg border border-border-1">
+            <LogInspectorPanel />
+          </div>
+        )
 
       case 'harviewer':
         return <div className="min-h-0 flex-1 overflow-hidden"><HarViewerPanel /></div>

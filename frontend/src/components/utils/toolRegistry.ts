@@ -16,6 +16,7 @@ export const CATEGORIES: Category[] = [
     label: 'Power Studios',
     tools: [
       { id: 'xmlstudio',     label: 'XML Tools' },
+      { id: 'loginspector',  label: 'Log Inspector' },
       { id: 'harviewer',     label: 'HAR Viewer' },
       { id: 'observability', label: 'Observability' },
       { id: 'secretscanner', label: 'Secret Scanner' },
@@ -65,6 +66,7 @@ export const CATEGORIES: Category[] = [
 
 export const TOOL_DETAILS: Record<string, Pick<Tool, 'desc' | 'example'>> = {
   xmlstudio: { desc: 'Full XML formatter, XPath, diff and validation studio.', example: 'SOAP envelopes and enterprise XML payloads' },
+  loginspector: { desc: 'Turn pod logs — compressed JSON, JSONL, mixed text, stack traces — into navigable events you can filter and correlate.', example: 'oc logs output pasted from a terminal' },
   harviewer: { desc: 'Import, compare and inspect HAR waterfalls without leaving Power Tools.', example: 'Browser capture.har' },
   observability: { desc: 'Inspect local logs, trace waterfalls and correlated request activity.', example: 'Local JSONL dev logs and traces' },
   secretscanner: { desc: 'Scan collections and environments for exposed credentials.', example: 'Bearer tokens, API keys, private keys' },

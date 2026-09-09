@@ -44,6 +44,7 @@ export const COMMAND_PALETTE_DEEP_LINKS: PaletteDeepLink[] = [
   { rail: 'browser', event: 'adomnia:browser-tab', detail: { tab: 'throttling' }, title: 'Network Throttling', group: 'Debugging', keywords: 'throttle slow 3g latency bandwidth offline' },
 
   // Power Tools utilities
+  { rail: 'powertools', event: 'adomnia:powertools-tool', detail: { tool: 'loginspector' }, title: 'Log Inspector', group: 'Power Tools', keywords: 'log logs openshift oc pod jsonl ndjson stack trace correlation trace id inspect viewer' },
   { rail: 'powertools', event: 'adomnia:powertools-tool', detail: { tool: 'base64' }, title: 'Base64', group: 'Power Tools', keywords: 'base64 encode decode' },
   { rail: 'powertools', event: 'adomnia:powertools-tool', detail: { tool: 'hash' }, title: 'Hash Generator', group: 'Power Tools', keywords: 'hash sha md5 digest checksum' },
   { rail: 'powertools', event: 'adomnia:powertools-tool', detail: { tool: 'hmac' }, title: 'HMAC', group: 'Power Tools', keywords: 'hmac sign signature webhook secret' },

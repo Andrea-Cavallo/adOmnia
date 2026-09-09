@@ -2,6 +2,11 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+## v0.9.0 release notes: Log Inspector
+
+See [the full v0.9.0 notes](releases/v0.9.0.md) for supported formats,
+investigation workflow, correlation, large-file behavior and verification.
+
 ## v0.8.3 release notes: reliable recording and fluid flow panels
 
 See [the full v0.8.3 notes](releases/v0.8.3.md) for recording, response mappings,

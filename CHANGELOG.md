@@ -4,6 +4,23 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [0.9.0] - 2026-09-09
+
+### Added
+- **Log Inspector:** a local-first Power Studio for JSON, JSON arrays, JSONL/NDJSON, plain and mixed OpenShift logs, CRI prefixes, ANSI output, nested JSON strings, and multiline Java or Go stack traces.
+- **Fast investigation workflow:** virtual event list, field/full-text queries, visual filters, facets, time histogram, saved queries, resizable desktop panes, focused narrow layout, JSON tree, raw/message/stack/context detail views, configurable columns and hidden fields.
+- **Distributed request correlation:** rebuild a request by correlation, trace or request ID, with chronological list/timeline views, inter-event deltas, services and error counts.
+- **Safe local export:** copy or export filtered results as JSON, JSONL or text, with optional masking for built-in and user-configured sensitive fields.
+
+### Changed
+- **Large log handling:** parsing runs in a Web Worker with progressive batches, cancellation, configurable 50k–500k retention limits, explicit memory errors, deferred filtering and a virtualized list tested with 100,000 events.
+
+### Fixed
+- **Chronological ordering:** ascending sort now orders timestamps even when source records arrive out of order.
+- **Narrow Power Tools layout:** filters open as an overlay and event details use the full available width, then close back to the event list.
+
+Full release notes: [v0.9.0](docs/releases/v0.9.0.md).
+
 ## [0.8.3] - 2026-09-09
 
 ### Changed

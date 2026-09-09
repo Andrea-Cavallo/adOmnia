@@ -512,4 +512,5 @@ Four files live at the root — everything else is under `docs/`:
 | `docs/FAQ.md` | Frequently asked questions |
 | `docs/TROUBLESHOOTING.md` | Common problems and fixes |
 | `docs/ARCHITECTURE.md` | High-level architecture overview |
+| `docs/LOG-INSPECTOR.md` | Log Inspector: parsing pipeline, filters, correlation, large-file strategy |
 | `.github/SECURITY.md` | Security policy (picked up by GitHub's Security tab) |
