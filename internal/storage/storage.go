@@ -36,6 +36,7 @@ var storeBuckets = []string{
 	"history",            // request/response history
 	"mock",               // mock server config + hits
 	"proxy",              // proxy/interceptor config + traffic
+	"flows",              // editable API flow definitions (created on opening existing DBs)
 	"pdfprojects",        // PDF Editor projects (base64 PDF bytes + annotation layer)
 }
 

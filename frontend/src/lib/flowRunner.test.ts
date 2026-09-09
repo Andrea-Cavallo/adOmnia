@@ -12,6 +12,25 @@ function request(name: string): RequestItem {
 }
 
 describe('flowRunner', () => {
+  it('stops a linear recorded flow on a failed HTTP call or rejected execution', async () => {
+    for (const reject of [false, true]) {
+      const graph: FlowGraphDefinition = {
+        settings: DEFAULT_FLOW_SETTINGS,
+        nodes: ['a', 'b'].map(id => ({ id, type: 'request', label: id, x: 0, y: 0, config: { request: request(id), stopOnFailure: true } })),
+        edges: [{ id: 'ab', source: 'a', target: 'b', branch: 'next' }],
+      }
+      const called: string[] = []
+      const result = await runApiFlow(graph, { initialVars: {}, execute: async (req, vars) => {
+        called.push(req.name)
+        if (reject) throw new Error('Transport unavailable')
+        return { response: response(500), vars, mutations: {}, scriptRuns: [] }
+      } })
+      expect(called).toEqual(['a'])
+      expect(result.runtime.a.status).toBe('failed')
+      expect(result.runtime.b.status).toBe('skipped')
+      if (reject) expect(result.entries[0].error).toBe('Transport unavailable')
+    }
+  })
   it('executes request, condition, and true branch in order', async () => {
     const graph: FlowGraphDefinition = {
       settings: DEFAULT_FLOW_SETTINGS,

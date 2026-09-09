@@ -5,6 +5,21 @@ import { useFlowRecorderStore } from './flowRecorder'
 describe('flow recorder', () => {
   beforeEach(() => useFlowRecorderStore.getState().cancel())
 
+  it('leaves ambiguous values and existing references alone and clears response sources between sessions', () => {
+    const store = useFlowRecorderStore.getState()
+    const request = blankRequest('POST', 'Ambiguous')
+    request.bodies[0] = { ...request.bodies[0], type: 'raw', raw: '{"id":"duplicate","name":"{{name}}"}' }
+    const response = { status: 200, statusText: 'OK', headers: {}, body: '{"a":"duplicate","b":"duplicate","name":"Unique name"}', contentType: '', ms: 1, size: 0 }
+    store.start()
+    store.capture(blankRequest(), null, response)
+    store.capture(request, null, response)
+    expect(store.take()[1].request.bodies[0].raw).toBe(request.bodies[0].raw)
+    store.start()
+    request.bodies[0].raw = '{"name":"Unique name"}'
+    store.capture(request, null, response)
+    expect(store.take()[0].request.bodies[0].raw).toBe(request.bodies[0].raw)
+  })
+
   it('captures every completed send in sequence and does not persist direct secrets', () => {
     const request = blankRequest('POST', 'Login')
     request.url = '{{baseUrl}}/login'

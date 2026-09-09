@@ -2,6 +2,7 @@ import { flattenApiCatalog } from '@/lib/apiCatalog'
 import { graphFromMermaid } from '@/lib/flowMermaid'
 import { DEFAULT_FLOW_SETTINGS, type SavedFlowDefinition } from '@/lib/flowStorage'
 import { blankRequest, type Collection, type HttpMethod, type RequestItem, uid } from '@/lib/types'
+import { layoutFlow } from '@/lib/flowLayout'
 
 export const MOCK_FLOW_DEMO_NAME = 'Mock Commerce API flow'
 
@@ -125,7 +126,7 @@ export function createMockCommerceFlow(collection: Collection): SavedFlowDefinit
   return {
     id: uid(),
     name: MOCK_FLOW_DEMO_NAME,
-    graph: {
+    graph: layoutFlow({
       ...graph,
       settings: { ...DEFAULT_FLOW_SETTINGS, stopOnMissingBranch: false },
       nodes: graph.nodes.map((node) => (
@@ -137,9 +138,11 @@ export function createMockCommerceFlow(collection: Collection): SavedFlowDefinit
                 condition: { source: 'status', path: 'response.status', operator: 'eq', value: '201' },
               },
             }
-          : node
+          : node.type === 'request'
+            ? { ...node, config: { ...node.config, expectedStatus: node.config.request?.url.endsWith('/demo/orders') ? '201' : '200' } }
+            : node
       )),
-    },
+    }),
     mermaidSource: MOCK_COMMERCE_MERMAID,
     updatedAt: new Date().toISOString(),
     version: 4,

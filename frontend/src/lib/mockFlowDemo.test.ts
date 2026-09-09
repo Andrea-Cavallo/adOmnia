@@ -35,6 +35,7 @@ describe('mock flow demo', () => {
       },
     })
 
+    expect(result.entries.filter(entry => entry.status === 'failed')).toEqual([])
     expect(seen).toEqual([
       'POST /demo/auth/login',
       'GET /demo/catalog/products',

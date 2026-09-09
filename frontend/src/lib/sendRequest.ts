@@ -1,5 +1,5 @@
 import { uid, type RequestItem, type ResponseData, type RequestAuth } from '@/lib/types'
-import { substVars } from '@/lib/substVars'
+import { substVars, substJsonVars } from '@/lib/substVars'
 import { applyPathParams } from '@/lib/pathParams'
 import { useSettingsStore } from '@/stores/settings'
 import { useHostsStore } from '@/stores/hosts'
@@ -530,14 +530,14 @@ function getBody(
 
   if (activeBody.type === 'raw') {
     applyBodyContentType(activeBody, headers)
-    return substVars(activeBody.raw, vars)
+    return activeBody.lang === 'json' ? substJsonVars(activeBody.raw, vars) : substVars(activeBody.raw, vars)
   }
 
   if (activeBody.type === 'graphql') {
     applyBodyContentType(activeBody, headers)
     let variables: unknown = undefined
     if (activeBody.graphqlVariables?.trim()) {
-      try { variables = JSON.parse(activeBody.graphqlVariables) } catch { /* ignore */ }
+      try { variables = JSON.parse(substJsonVars(activeBody.graphqlVariables, vars)) } catch { /* ignore */ }
     }
     return JSON.stringify({ query: substVars(activeBody.raw, vars), variables })
   }

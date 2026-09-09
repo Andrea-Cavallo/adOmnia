@@ -37,7 +37,7 @@ export interface FlowNodeConfig {
   note?: string
   /** Monotonic order for linear recorded flows. Existing graphs do not require it. */
   seq?: number
-  recorded?: Omit<RecordedApiCall, 'request' | 'seq'>
+  recorded?: Omit<RecordedApiCall, 'request' | 'seq' | 'extractions'>
 }
 
 export interface FlowNodeDefinition {
@@ -396,7 +396,7 @@ export function createRecordedFlowDefinition(name: string, calls: RecordedApiCal
       id: nodeId,
       type: 'request',
       label: `${call.seq}. ${call.request.name || `${call.request.method} request`}`,
-      x: 300 + index * 270,
+      x: 300 + index * 360,
       y: 190,
       width: 244,
       height: 126,
@@ -407,7 +407,7 @@ export function createRecordedFlowDefinition(name: string, calls: RecordedApiCal
         retryCount: 0,
         delayMs: 0,
         timeoutMs: call.request.timeout ?? 0,
-        extractions: [],
+        extractions: call.extractions ?? [],
         seq: call.seq,
         recorded: {
           id: call.id,
@@ -422,7 +422,7 @@ export function createRecordedFlowDefinition(name: string, calls: RecordedApiCal
     edges.push({ id: uid(), source: previousId, target: nodeId, branch: 'next', label: '' })
     previousId = nodeId
   })
-  nodes.push({ id: endId, type: 'end', label: 'Stop', x: 320 + calls.length * 270, y: 220, width: 130, height: 74, config: { endState: 'success' } })
+  nodes.push({ id: endId, type: 'end', label: 'Stop', x: 300 + calls.length * 360, y: 216, width: 188, height: 74, config: { endState: 'success' } })
   edges.push({ id: uid(), source: previousId, target: endId, branch: 'next', label: '' })
   const now = new Date().toISOString()
   return {

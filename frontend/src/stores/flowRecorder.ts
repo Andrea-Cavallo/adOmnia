@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import { uid, type RequestAuth, type RequestItem, type ResponseData } from '@/lib/types'
+import { linkRecordedRequest, recordingSource, type RecordingSource } from '@/lib/flowRecordingLinks'
+import type { FlowVariableMapping } from '@/lib/flowStorage'
 
 export interface RecordedApiCall {
   id: string
@@ -10,6 +12,7 @@ export interface RecordedApiCall {
   environmentName: string | null
   /** The request as configured, deliberately never resolved with secret values. */
   request: RequestItem
+  extractions?: FlowVariableMapping[]
   execution: { method: string; urlTemplate: string; status?: number; durationMs?: number; error?: string }
 }
 
@@ -20,7 +23,7 @@ interface FlowRecorderState {
   start: () => void
   stop: () => void
   cancel: () => void
-  capture: (request: RequestItem, environment: { id: string; name: string } | null, response: ResponseData) => void
+  capture: (request: RequestItem, environment: { id: string; name: string } | null, response: ResponseData, vars?: Record<string, string>) => void
   take: () => RecordedApiCall[]
 }
 
@@ -30,6 +33,7 @@ const secretAuthFields: Array<keyof RequestAuth> = [
 ]
 const secretField = /(authorization|cookie|api[-_]?key|token|secret|password|credential|session)/i
 const reference = /{{\s*[^}]+\s*}}|^(vault|secret):/i
+let responseSources: RecordingSource[] = []
 
 function keepReference(value: string): string {
   return reference.test(value) ? value : ''
@@ -41,6 +45,13 @@ export function sanitizeRecordedRequest(request: RequestItem): RequestItem {
   for (const field of secretAuthFields) auth[field] = keepReference(String(auth[field] ?? '')) as never
   const redactBody = (raw: string) => {
     try {
+      const placeholders = new Map<string, string>()
+      const parseable = raw.replace(/"(?:\\.|[^"\\])*"|\{\{[^}]+\}\}/g, token => {
+        if (token.startsWith('"')) return token
+        const placeholder = `{{__record_${uid()}}}`
+        placeholders.set(JSON.stringify(placeholder), token)
+        return JSON.stringify(placeholder)
+      })
       const walk = (value: unknown): unknown => {
         if (Array.isArray(value)) return value.map(walk)
         if (!value || typeof value !== 'object') return value
@@ -48,7 +59,9 @@ export function sanitizeRecordedRequest(request: RequestItem): RequestItem {
           ? (typeof value === 'string' ? keepReference(value) : '')
           : walk(value)]))
       }
-      return JSON.stringify(walk(JSON.parse(raw)))
+      let result = JSON.stringify(walk(JSON.parse(parseable)))
+      for (const [placeholder, token] of placeholders) result = result.split(placeholder).join(token)
+      return result
     } catch {
       // Raw XML, urlencoded and text bodies are not safely parseable as JSON.
       // Redact the common explicit secret shapes while retaining a variable/Vault
@@ -70,10 +83,10 @@ export function sanitizeRecordedRequest(request: RequestItem): RequestItem {
     // Snapshot nested structures so subsequent composer edits cannot mutate a recording.
     params: request.params.map((value) => ({ ...value })),
     pathParams: request.pathParams?.map((value) => ({ ...value })),
-    bodies: request.bodies.map((body) => ({
+    bodies: (request.bodies ?? []).map((body) => ({
       ...body,
-      raw: redactBody(body.raw),
-      form: body.form.map((value) => secretField.test(value.key) ? { ...value, value: keepReference(value.value) } : { ...value }),
+      raw: redactBody(body.raw ?? ''),
+      form: (body.form ?? []).map((value) => secretField.test(value.key) ? { ...value, value: keepReference(value.value) } : { ...value }),
     })),
     assertions: request.assertions?.map((value) => ({ ...value })),
     scripts: request.scripts ? { ...request.scripts } : undefined,
@@ -84,20 +97,25 @@ export const useFlowRecorderStore = create<FlowRecorderState>((set, get) => ({
   recording: false,
   startedAt: null,
   calls: [],
-  start: () => set({ recording: true, startedAt: new Date().toISOString(), calls: [] }),
-  stop: () => set({ recording: false, startedAt: null }),
-  cancel: () => set({ recording: false, startedAt: null, calls: [] }),
-  capture: (request, environment, response) => {
+  start: () => { responseSources = []; set({ recording: true, startedAt: new Date().toISOString(), calls: [] }) },
+  stop: () => { responseSources = []; set({ recording: false, startedAt: null }) },
+  cancel: () => { responseSources = []; set({ recording: false, startedAt: null, calls: [] }) },
+  capture: (request, environment, response, vars) => {
     if (!get().recording) return
+    const linked = linkRecordedRequest(request, responseSources, vars)
+    responseSources.push(recordingSource(get().calls.length + 1, response))
     set((state) => ({
-      calls: [...state.calls, {
+      calls: [...state.calls.map(call => ({ ...call, extractions: [
+        ...(call.extractions ?? []),
+        ...(linked.extractions.get(call.seq) ?? []).filter(mapping => !call.extractions?.some(existing => existing.name === mapping.name)),
+      ] })), {
         id: uid(),
         seq: state.calls.length + 1,
         recordedAt: new Date().toISOString(),
         sourceRequestId: request.id || undefined,
         environmentId: environment?.id ?? null,
         environmentName: environment?.name ?? null,
-        request: sanitizeRecordedRequest(request),
+        request: sanitizeRecordedRequest(linked.request),
         execution: {
           method: request.method,
           urlTemplate: request.url,
@@ -109,6 +127,7 @@ export const useFlowRecorderStore = create<FlowRecorderState>((set, get) => ({
     }))
   },
   take: () => {
+    responseSources = []
     const calls = get().calls
     set({ recording: false, startedAt: null, calls: [] })
     return calls

@@ -13,14 +13,18 @@ export interface ExecuteRequestResult {
 export async function executeRequest(
   request: RequestItem,
   vars: Record<string, string>,
-  opts?: { signal?: AbortSignal; recordingEnvironment?: { id: string; name: string } | null },
+  opts?: { signal?: AbortSignal; recordingEnvironment?: { id: string; name: string } | null; record?: boolean },
 ): Promise<ExecuteRequestResult> {
   const nextVars = { ...vars }
   const mutations: Record<string, string | null> = {}
   const scriptRuns: ScriptRunResult[] = []
   // Recording observes this shared request pipeline, so Composer, API Docs and
   // future callers cannot accidentally implement a divergent capture path.
-  const record = (response: ResponseData) => useFlowRecorderStore.getState().capture(request, opts?.recordingEnvironment ?? null, response)
+  const recordingSession = useFlowRecorderStore.getState().startedAt
+  const record = (response: ResponseData) => {
+    const recorder = useFlowRecorderStore.getState()
+    if (opts?.record !== false && recordingSession && recorder.startedAt === recordingSession) recorder.capture(request, opts?.recordingEnvironment ?? null, response, vars)
+  }
 
   const applyMutations = (next: Record<string, string | null>) => {
     for (const [key, value] of Object.entries(next)) {

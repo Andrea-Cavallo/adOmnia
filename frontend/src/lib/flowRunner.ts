@@ -35,7 +35,7 @@ interface FlowContext {
 export interface RunApiFlowOptions {
   initialVars: Record<string, string>
   startNodeId?: string
-  execute?: (request: RequestItem, vars: Record<string, string>, options?: { signal?: AbortSignal }) => Promise<ExecuteRequestResult>
+  execute?: (request: RequestItem, vars: Record<string, string>, options?: { signal?: AbortSignal; record?: boolean }) => Promise<ExecuteRequestResult>
   signal?: AbortSignal
   onRuntime?: (runtime: RuntimeByNode) => void
   onEntry?: (entries: RunEntry[]) => void
@@ -62,8 +62,19 @@ function safeJson(body: string): unknown {
 }
 
 function getPath(source: unknown, path: string): unknown {
-  if (!path) return source
-  return path.split('.').filter(Boolean).reduce<unknown>((value, key) => {
+  const normalized = path.trim().replace(/^response\.body\.?/, '').replace(/^\$\.?/, '')
+  if (!normalized) return source
+  const keys: string[] = []
+  const tokens = /(?:^|\.)([^.[\]]+)|\[(\d+|"(?:\\.|[^"\\])*"|'[^']*')\]/g
+  let consumed = 0
+  for (const match of normalized.matchAll(tokens)) {
+    if (match.index !== consumed) return undefined
+    consumed += match[0].length
+    const key = match[1] ?? match[2]
+    keys.push(key.startsWith('"') ? JSON.parse(key) as string : key.startsWith("'") ? key.slice(1, -1) : key)
+  }
+  if (consumed !== normalized.length) return undefined
+  return keys.reduce<unknown>((value, key) => {
     if (value == null) return undefined
     if (Array.isArray(value)) return value[Number(key)]
     if (typeof value === 'object') return (value as Record<string, unknown>)[key]
@@ -296,13 +307,17 @@ export async function runApiFlow(graph: FlowGraphDefinition, options: RunApiFlow
     let attempts = 0
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       attempts = attempt
-      execution = await execute(request, ctx.vars, { signal: options.signal })
+      try {
+        execution = await execute(request, ctx.vars, { signal: options.signal, record: false })
+      } catch (error) {
+        execution = { response: { ...response, error: { code: 'EXECUTION_ERR', message: error instanceof Error ? error.message : String(error) } }, vars: ctx.vars, mutations: {}, scriptRuns: [] }
+      }
       response = execution.response
       assertions = evaluateAssertions(request.assertions, response)
       failedAssertions = assertions.filter((assertion) => !assertion.passed)
       expectedOk = expectedStatusMatches(current.config.expectedStatus ?? '2xx', response.status)
       failed = Boolean(response.error) || response.status >= 400 || !expectedOk || failedAssertions.length > 0
-      if (!failed || attempt === maxAttempts) break
+      if (!failed || attempt === maxAttempts || options.signal?.aborted) break
     }
     if (!execution) {
       execution = { response, vars: ctx.vars, mutations: {}, scriptRuns: [] }
@@ -319,6 +334,11 @@ export async function runApiFlow(graph: FlowGraphDefinition, options: RunApiFlow
     setNodeStatus(current.id, { status: failed ? 'failed' : 'success', durationMs, message: failed ? error : `${response.status} ${response.statusText}` })
     pushEntry({ ...entryBase, status: failed ? 'failed' : 'success', durationMs, httpStatus: response.status, request, response, assertions, attempts, error })
     const stopOnFailure = current.config.stopOnFailure ?? graph.settings.failOnHttpError
+    // A linear "next" edge must not turn Stop on failure into Continue.
+    if (failed && stopOnFailure && !graph.edges.some(edge => edge.source === current?.id && edge.branch === 'error')) {
+      if (!graph.edges.some(edge => edge.source === current?.id)) moveTo(current, 'error')
+      break
+    }
     current = moveTo(current, failed && stopOnFailure ? 'error' : 'success')
   }
 

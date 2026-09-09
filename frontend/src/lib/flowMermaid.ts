@@ -207,7 +207,7 @@ export function graphFromMermaid(source: string, catalog: ApiCatalogRequest[] = 
         ? { request, expectedStatus: '2xx', stopOnFailure: true, extractions: [] }
         : type === 'condition'
           ? { condition: inferCondition(seed.label) }
-          : type === 'end' && seed.label.toLowerCase().includes('error')
+          : type === 'end' && /error|fail/i.test(seed.label)
             ? { endState: 'failed' }
             : {},
     }

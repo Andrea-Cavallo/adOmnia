@@ -57,6 +57,8 @@ export function evaluateAssertion(
         case 'eq': return { passed: actual === expected, actual }
         case 'neq': return { passed: actual !== expected, actual }
         case 'contains': return { passed: actual.includes(expected), actual }
+        case 'gte': return { passed: Number.isFinite(Number(expected)) && expected.trim() !== '' && response.status >= Number(expected), actual: `${actual} >= ${expected}` }
+        case 'lte': return { passed: Number.isFinite(Number(expected)) && expected.trim() !== '' && response.status <= Number(expected), actual: `${actual} <= ${expected}` }
         case 'gt': {
           const a = parseInt(actual)
           const e = parseInt(expected)

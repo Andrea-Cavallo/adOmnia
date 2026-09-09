@@ -22,7 +22,7 @@ func TestStorageKnownBucketsPersistAndUnknownBucketsFail(t *testing.T) {
 		_ = os.RemoveAll(tempDir)
 	}()
 
-	for _, bucket := range []string{"collections", "environments", "database", "broker_connections", "tabs"} {
+	for _, bucket := range []string{"collections", "environments", "database", "broker_connections", "tabs", "flows"} {
 		if err := Put(bucket, "all", []byte(`{"ok":true}`)); err != nil {
 			t.Fatalf("storePut(%q) error = %v", bucket, err)
 		}

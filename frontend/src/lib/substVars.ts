@@ -5,6 +5,17 @@ export function substVars(text: string, vars: Record<string, string>): string {
   })
 }
 
+/** Escape substitutions inside JSON strings; unquoted tokens retain JSON types. */
+export function substJsonVars(text: string, vars: Record<string, string>): string {
+  return text.replace(/"(?:\\.|[^"\\])*"|\{\{[^}]+\}\}/g, token => {
+    if (token.startsWith('"')) {
+      const decoded = JSON.parse(token) as string
+      return JSON.stringify(substVars(decoded, vars))
+    }
+    return substVars(token, vars)
+  })
+}
+
 /** Name of the `{{VAR}}` token sitting under `charIdx`, or null when outside one. */
 export function varNameAtIndex(text: string, charIdx: number): string | null {
   const re = /\{\{([^}]+)\}\}/g

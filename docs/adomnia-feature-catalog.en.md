@@ -109,9 +109,15 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | A5.8 | **Side Inspector** | Shows request mapping, condition configuration, and the local request catalog. |
 | A5.9 | **Run Log** | Shows execution order, request/response status, duration, assertions, and readable errors. |
 | A5.10 | **Flow Validation** | Flags empty Mermaid, missing request URLs, incomplete conditions, and missing branches. |
-| A5.11 | **Save / Load Flow** | Persists version 3 flow definitions locally with Mermaid source and generated graph. |
+| A5.11 | **Save / Load Flow** | Persists version 4 flow definitions in local bbolt storage, retaining edited positions and mappings. Older graphs and localStorage recordings are loaded without discarding their content. |
 | A5.12 | **Export Flow JSON** | Exports the flow definition as JSON with Mermaid, nodes, edges, config, and settings. |
 | A5.13 | **Export Markdown Report** | Exports the last run result as a Markdown report. |
+| A5.14 | **Record API Calls** | Record → send API requests → Stop → Create Flow opens an editable sequence. Exact, unambiguous JSON response values copied to later bodies, parameters or bearer auth become response extractions and variable references. Review mappings before replay; ambiguous values stay literal. Response bodies remain session-only. |
+| A5.15 | **Canvas Controls** | Compact nodes with readable directional arrows, arrangement preserving branches, smooth drag/pan, cursor-anchored Ctrl-scroll zoom, F to fit and Shift-drag grid snapping. Inspector, timeline, Mermaid import and AI panels can close, float, resize and maximize; toolbar buttons reopen inspector/timeline and toggle canvas focus. Saved flows are available from the header switcher. |
+
+Storage compatibility: the `flows` bucket is created automatically when opening existing databases. Existing v3/v4 definitions and the `adomnia.flows.v1` fallback are retained; no destructive migration is required. Recorded mappings use the existing extraction schema. JSON body substitutions escape strings and preserve unquoted numeric/object values.
+
+Existing `{{variable}}` references are also linked when their current environment value uniquely matches a previous recorded response field. This lets replay refresh the variable instead of reusing an old ID. Environment values are used only for matching and are not added to saved flow metadata.
 
 ---
 

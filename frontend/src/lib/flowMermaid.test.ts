@@ -81,4 +81,10 @@ flowchart TD
     expect(expectedStatusMatches('400-499', 404)).toBe(true)
     expect(expectedStatusMatches('2xx', 500)).toBe(false)
   })
+
+  it('marks failed terminals as failed while a plain Stop remains successful', () => {
+    const graph = graphFromMermaid('flowchart LR\n S((Start)) --> X((End failed))\n S --> Z((Stop))')
+    expect(graph.nodes.find(node => node.label === 'End failed')?.config.endState).toBe('failed')
+    expect(graph.nodes.find(node => node.label === 'Stop')?.config.endState).not.toBe('failed')
+  })
 })

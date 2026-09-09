@@ -29,6 +29,29 @@ the current codebase on 2026-06-13 and found already resolved (see below)._
 
 ## New This Cycle
 
+### Flows — recording and demo usability (2026-09-08)
+
+Fixed `unknown storage bucket "flows"` on recording/save. Recordings infer exact,
+unambiguous JSON response-to-request mappings, including bearer tokens and typed JSON
+bodies, and retain mappings through save/load. Runtime transport errors appear in the
+timeline; Stop on failure prevents later linear steps from running. The canvas now has
+contrasting arrows, branch-preserving arrangement, pan/zoom/fit controls and adjustable
+panels. Saved graph positions are retained when the flow is reopened.
+
+September 9 usability update: compact flow switcher and node rows, cursor-anchored
+zoom, frame-scheduled free dragging (Shift snaps), and independent panel visibility.
+Inspector, timeline, Mermaid import and AI panels share float/dock, resize, maximize
+and close controls. Closing the inspector preserves selection; execution highlights
+do not reopen closed panels. The focus toggle temporarily hides panels.
+Desktop verification also covered panel close/reopen, floating drag, corner resize
+and workspace maximization in the production executable.
+
+Verification: 30 targeted frontend tests, TypeScript and production frontend build,
+`go build ./...` and `go test ./...`. Desktop checks completed: four-API mock demo,
+REC login → order with the inferred `user.id` mapping, save/open, and successful replay
+(HTTP 200/201). The development CLI was run from `build/` because `root_path: ..`
+in `build/config.yml` resolves against its working directory.
+
 ### PDF Editor — shipped (branch `feat/pdf-editor`)
 View + edit PDFs (free text, highlight, shapes, ink, AcroForm fill, visible signature),
 re-editable project persistence (bbolt `pdfprojects`), flattened export. Pending: manual
