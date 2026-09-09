@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Check, Copy, Filter, Share2, WrapText, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { correlationCandidates, hideJsonFields, unwrapNestedJson, type CorrelationKey, type LogEvent } from '@/lib/loginspector'
+import { correlationCandidates, hideJsonFields, operationalContext, unwrapNestedJson, type CorrelationKey, type LogEvent } from '@/lib/loginspector'
 import { JsonTree } from './JsonTree'
 import { LEVEL_STYLE } from './EventList'
 
@@ -57,6 +57,7 @@ export function EventDetail({ event, onClose, onFilterBy, onShowRelated, hiddenF
     () => hideJsonFields(event.extra, hiddenFields) as Record<string, unknown>,
     [event.extra, hiddenFields],
   )
+  const operational = useMemo(() => operationalContext(event), [event])
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-surface-0">
@@ -140,6 +141,40 @@ export function EventDetail({ event, onClose, onFilterBy, onShowRelated, hiddenF
             ]}
             onFilterBy={onFilterBy}
           />
+          {(operational.operation || operational.layer || operational.client || operational.httpRoute || operational.httpStatus !== null) && (
+            <>
+              <p className="mb-1.5 mt-3 text-[10px] font-semibold uppercase tracking-wider text-text-4">Operation</p>
+              <FieldGrid
+                rows={[
+                  ['Operation', operational.operation, 'attributes.operation'],
+                  ['Layer', operational.layer, 'attributes.layer'],
+                  ['Downstream', operational.client, 'attributes.client'],
+                  ['Operation status', operational.operationStatus, 'attributes.status'],
+                  ['Latency', operational.latencyMs !== null ? `${operational.latencyMs} ms` : '', ''],
+                  ['Error', operational.error, 'attributes.error'],
+                  ['HTTP', [operational.httpMethod, operational.httpRoute || operational.httpUrl].filter(Boolean).join(' '), ''],
+                  ['HTTP status', operational.httpStatus !== null ? String(operational.httpStatus) : '', 'http.status_code'],
+                  ['Outcome', operational.outcome, 'event.outcome'],
+                  ['Duration', operational.durationMs !== null ? `${operational.durationMs} ms` : '', ''],
+                ]}
+                onFilterBy={onFilterBy}
+              />
+            </>
+          )}
+          {(operational.serviceVersion || operational.environment || operational.sourceFile) && (
+            <>
+              <p className="mb-1.5 mt-3 text-[10px] font-semibold uppercase tracking-wider text-text-4">Runtime and source</p>
+              <FieldGrid
+                rows={[
+                  ['Service version', operational.serviceVersion, 'service.version'],
+                  ['Environment', operational.environment, 'environment'],
+                  ['Source', [operational.sourceFile, operational.sourceLine].filter(Boolean).join(':'), ''],
+                  ['Function', operational.sourceFunction, 'source.function'],
+                ]}
+                onFilterBy={onFilterBy}
+              />
+            </>
+          )}
           {event.parseError && (
             <p className="mt-3 rounded border border-warning/40 bg-warning/10 px-2 py-1.5 font-mono text-[10px] text-warning">
               Not parsable: {event.parseError}
@@ -276,7 +311,7 @@ function FieldGrid({ rows, onFilterBy }: { rows: [string, string, string][]; onF
               <button
                 onClick={() => onFilterBy(field, value)}
                 title={`Filter by ${field}:${value}`}
-                className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100 text-text-4 hover:text-accent-light"
+                className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 text-text-4 hover:text-accent-light focus:text-accent-light"
               >
                 <Filter size={10} />
               </button>

@@ -339,3 +339,23 @@ describe('limits and large inputs', () => {
     expect(seen[seen.length - 1]).toBe(5000)
   })
 })
+
+describe('Go structured enterprise logs', () => {
+  it('promotes nested service and Kubernetes identity fields', () => {
+    const line = JSON.stringify({
+      timestamp: '2026-09-09T10:00:00Z',
+      level: 'INFO',
+      message: 'request',
+      service: { name: 'maul-transaction-ms' },
+      k8s: { pod: { name: 'maul-1' }, namespace: { name: 'backend-euro-digitale' } },
+      correlation_id: 'APPP-123',
+      request_id: 'req-123',
+    })
+    const event = parseLogText(line).events[0]
+    expect(event.service).toBe('maul-transaction-ms')
+    expect(event.pod).toBe('maul-1')
+    expect(event.namespace).toBe('backend-euro-digitale')
+    expect(event.correlationId).toBe('APPP-123')
+    expect(event.requestId).toBe('req-123')
+  })
+})

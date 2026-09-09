@@ -2,6 +2,12 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+## v0.9.3 release notes: request-level Log Inspector analysis
+
+See [the full v0.9.3 notes](releases/v0.9.3.md) for end-to-end request grouping,
+deterministic timeout and HTTP classification, enterprise slog/zap fields,
+sensitive-data findings and reliable overlapping import cancellation.
+
 ## v0.9.2 release notes: faster log search and nested JSON
 
 See [the full v0.9.2 notes](releases/v0.9.2.md) for automatic field discovery

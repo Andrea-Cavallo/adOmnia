@@ -54,14 +54,20 @@ export function correlateEvents(events: LogEvent[], key: CorrelationKey, value: 
     return { event, deltaMs }
   })
 
-  const stamps = matched.map((event) => event.ts).filter((ts): ts is number => ts !== null)
+  let firstStamp: number | null = null
+  let lastStamp: number | null = null
+  for (const event of matched) {
+    if (event.ts === null) continue
+    firstStamp = firstStamp === null ? event.ts : Math.min(firstStamp, event.ts)
+    lastStamp = lastStamp === null ? event.ts : Math.max(lastStamp, event.ts)
+  }
   const services = [...new Set(matched.map((event) => event.service).filter(Boolean))]
 
   return {
     key,
     value,
     events: chain,
-    spanMs: stamps.length > 1 ? Math.max(...stamps) - Math.min(...stamps) : null,
+    spanMs: firstStamp !== null && lastStamp !== null && firstStamp !== lastStamp ? lastStamp - firstStamp : null,
     errorCount: matched.filter((event) => event.level === 'error' || event.level === 'fatal').length,
     services,
   }

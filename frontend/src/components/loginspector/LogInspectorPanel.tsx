@@ -1,5 +1,6 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  Activity,
   ArrowDownWideNarrow,
   ArrowUpWideNarrow,
   ClipboardPaste,
@@ -29,6 +30,7 @@ import {
   EXPORT_EXTENSIONS,
   LOG_SAMPLES,
   buildHistogram,
+  analyzeLog,
   compileQuery,
   correlateEvents,
   countByLevel,
@@ -52,6 +54,9 @@ import {
   type LogFilterState,
   type LogSourceResult,
   type ParseSummary,
+  type AnalyzedRequest,
+  OperationGate,
+  type ImportOperation,
   type StoredSchema,
 } from '@/lib/loginspector'
 import { DEFAULT_COLUMNS, EventList, LIST_COLUMNS, type Density, type ListColumnId } from './EventList'
@@ -60,6 +65,7 @@ import { FilterSidebar, type SavedQuery } from './FilterSidebar'
 import { RelatedEvents } from './RelatedEvents'
 import { Histogram } from './Histogram'
 import { EmptyState } from './EmptyState'
+import { AnalysisOverview } from './AnalysisOverview'
 
 const PREFS_KEY = 'adomnia.loginspector'
 const MAX_EVENT_CHOICES = [50_000, 100_000, DEFAULT_MAX_EVENTS, 500_000]
@@ -114,6 +120,7 @@ export function LogInspectorPanel() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [masked, setMasked] = useState(false)
   const [streamPreview, setStreamPreview] = useState(true)
+  const [showAnalysis, setShowAnalysis] = useState(true)
   const [menu, setMenu] = useState<'columns' | 'export' | 'mask' | null>(null)
   const [newMaskField, setNewMaskField] = useState('')
   const [newHiddenField, setNewHiddenField] = useState('')
@@ -121,12 +128,14 @@ export function LogInspectorPanel() {
   const [panelWidth, setPanelWidth] = useState(0)
 
   const panelRef = useRef<HTMLDivElement>(null)
-  const abortRef = useRef(false)
+  const operationGateRef = useRef(new OperationGate())
   const responsiveInitializedRef = useRef(false)
   const streamRef = useRef(true)
   const searchRef = useRef<HTMLInputElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   streamRef.current = streamPreview
+
+  useEffect(() => () => operationGateRef.current.cancel(), [])
 
   useEffect(() => {
     const node = panelRef.current
@@ -159,9 +168,13 @@ export function LogInspectorPanel() {
 
   // ─── Ingest ────────────────────────────────────────────────────────────────
 
-  const ingest = useCallback(async (result: LogSourceResult) => {
+  const ingest = useCallback(async (result: LogSourceResult, existingOperation?: ImportOperation) => {
+    const gate = operationGateRef.current
+    const operation = existingOperation ?? gate.start()
+    if (!gate.isActive(operation)) return
     if (!result.text.trim()) {
       setError('That input is empty.')
+      gate.finish(operation)
       return
     }
     setError('')
@@ -172,7 +185,6 @@ export function LogInspectorPanel() {
     setSchema(null)
     setSelectedId(null)
     setRelated(null)
-    abortRef.current = false
     setProgress({ done: 0, total: 0 })
 
     try {
@@ -181,12 +193,18 @@ export function LogInspectorPanel() {
         { maxEvents: prefs.maxEvents },
         {
           onProgress: (done, total, partial) => {
+            if (!gate.isActive(operation)) return
             setProgress({ done, total })
-            if (streamRef.current) setEvents(partial.slice())
+            const now = performance.now()
+            if (streamRef.current && (done === total || now - operation.lastPreviewAt >= 100)) {
+              operation.lastPreviewAt = now
+              setEvents(partial.slice())
+            }
           },
-          shouldAbort: () => abortRef.current,
+          shouldAbort: () => gate.shouldAbort(operation),
         },
       )
+      if (!gate.isCurrent(operation)) return
       setEvents(parsed.events.slice())
       setSummary(parsed.summary)
       // Learn the shape of this log so its own keys become searchable.
@@ -195,6 +213,7 @@ export function LogInspectorPanel() {
       setSchema(rememberSchema(found, result.name))
       if (parsed.aborted) setError('Import cancelled — showing the events parsed so far.')
     } catch (cause) {
+      if (!gate.isCurrent(operation)) return
       // A multi-hundred-MB paste can exhaust the renderer heap; say so instead
       // of leaving a blank screen.
       const message = cause instanceof RangeError || (cause instanceof Error && /memory|allocation/i.test(cause.message))
@@ -203,33 +222,49 @@ export function LogInspectorPanel() {
       setError(message)
       setEvents([])
     } finally {
-      setProgress(null)
+      if (gate.isCurrent(operation)) {
+        setProgress(null)
+        gate.finish(operation)
+      }
     }
   }, [prefs.maxEvents])
 
   const pasteAndAnalyze = useCallback(async () => {
+    const gate = operationGateRef.current
+    const operation = gate.start()
     try {
       const text = await navigator.clipboard.readText()
+      if (!gate.isActive(operation)) return
       if (!text.trim()) {
         setError('The clipboard is empty.')
+        gate.finish(operation)
         return
       }
-      await ingest(fromText(text, 'Clipboard', 'paste'))
+      await ingest(fromText(text, 'Clipboard', 'paste'), operation)
     } catch {
-      setError('Clipboard access was denied. Paste into the editor box instead.')
+      if (gate.isActive(operation)) {
+        setError('Clipboard access was denied. Paste into the editor box instead.')
+        gate.finish(operation)
+      }
     }
   }, [ingest])
 
   const openFile = useCallback(async (file: File) => {
+    const gate = operationGateRef.current
+    const operation = gate.start()
     try {
-      await ingest(await loadFromFile(file))
+      const result = await loadFromFile(file)
+      if (gate.isActive(operation)) await ingest(result, operation)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not read that file')
+      if (gate.isActive(operation)) {
+        setError(cause instanceof Error ? cause.message : 'Could not read that file')
+        gate.finish(operation)
+      }
     }
   }, [ingest])
 
   const clearAll = useCallback(() => {
-    abortRef.current = true
+    operationGateRef.current.cancel()
     setSource(null)
     setEvents([])
     setSummary(null)
@@ -239,6 +274,7 @@ export function LogInspectorPanel() {
     setRelated(null)
     setFilters(EMPTY_FILTERS)
     setError('')
+    setProgress(null)
   }, [])
 
   // ─── Derived data ──────────────────────────────────────────────────────────
@@ -260,6 +296,9 @@ export function LogInspectorPanel() {
     return rememberedPaths(discovery.signature).filter((path) => !present.has(path))
   }, [discovery])
   const histogram = useMemo(() => buildHistogram(filtered, 72), [filtered])
+  // Request-level analysis is intentionally delayed until import completes;
+  // progressive list rendering must stay cheap on 100k+ line files.
+  const analysis = useMemo(() => analyzeLog(summary ? events : []), [events, summary])
   const selected = useMemo(
     () => (selectedId === null ? null : working.find((event) => event.id === selectedId) ?? null),
     [working, selectedId],
@@ -403,6 +442,9 @@ export function LogInspectorPanel() {
         </div>
 
         <IconToggle active={showFilters} onClick={() => setShowFilters((value) => !value)} title="Filters (Ctrl+Shift+F)"><Filter size={12} /></IconToggle>
+        <IconToggle active={showAnalysis} onClick={() => setShowAnalysis((value) => !value)} title="Request analysis">
+          <Activity size={12} />
+        </IconToggle>
         <IconToggle
           active={sortDir === 'desc'}
           onClick={() => setSortDir((value) => (value === 'asc' ? 'desc' : 'asc'))}
@@ -588,7 +630,7 @@ export function LogInspectorPanel() {
             />
           </div>
           <button
-            onClick={() => { abortRef.current = true }}
+            onClick={() => { operationGateRef.current.requestAbort() }}
             className="h-6 rounded border border-error/40 px-2 text-[10px] text-error hover:bg-error/10"
           >
             Cancel
@@ -615,6 +657,18 @@ export function LogInspectorPanel() {
         />
       ) : (
         <>
+          {showAnalysis && (
+            <AnalysisOverview
+              analysis={analysis}
+              onClose={() => setShowAnalysis(false)}
+              onFilterRequest={(request: AnalyzedRequest) => {
+                const query = request.correlationId
+                  ? `correlationId:${request.correlationId}`
+                  : `requestId:${request.requestId}`
+                setFilters((current) => ({ ...current, query }))
+              }}
+            />
+          )}
           {histogram.length > 0 && (
             <Histogram
               buckets={histogram}

@@ -4,6 +4,22 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [0.9.3] - 2026-09-09
+
+### Added
+- **Request-level log analysis:** Log Inspector groups JSONL events by `correlation_id`, falling back to `request_id`, and presents each end-to-end request with operation, route, HTTP status, duration, service and downstream clients.
+- **Deterministic diagnostics:** requests are classified as success, client error, server error, timeout or retry. `context deadline exceeded` with a latency around 10 seconds produces a concrete client-timeout action, while validation failures such as a missing DEAN are identified as client errors.
+- **Enterprise structured-log context:** the detail panel promotes slog/zap/logback fields for layer, operation, client, operation status, latency, error, HTTP, outcome, service version, environment and source location.
+- **Sensitive-data findings:** clear-text fiscal codes, IBANs, DEAN identifiers, PANs, phone numbers and secrets are reported by field path and covered by the built-in masking action.
+
+### Fixed
+- **Latest import wins:** overlapping file reads, clipboard reads and parses can no longer overwrite the latest input. Clear discards late results, explicit Cancel keeps the partial result, and unmount cancels background work.
+- **Large-import rendering:** progressive snapshots are throttled and request analysis waits for parsing to finish, avoiding repeated full analysis while a large file streams in.
+- **Complete structured export:** JSON and JSONL exports retain the original parsed payload, source line count and mixed-log prefix.
+- **Large correlation chains:** duration calculation no longer spreads every timestamp into a function call, avoiding stack overflow on very large requests.
+
+Full release notes: [v0.9.3](docs/releases/v0.9.3.md).
+
 ## [0.9.2] - 2026-09-09
 
 ### Added

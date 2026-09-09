@@ -6,7 +6,8 @@ export const REDACTED = '[redacted]'
 export const DEFAULT_SENSITIVE_FIELDS = [
   'authorization', 'token', 'password', 'passwd', 'secret', 'cookie',
   'apikey', 'api_key', 'api-key', 'credential', 'private_key', 'privatekey',
-  'session',
+  'session', 'fiscalcode', 'fiscal_code', 'codice_fiscale', 'iban', 'dean',
+  'pan', 'card_number', 'phone', 'telephone', 'mobile', 'telefono',
 ]
 
 const BEARER_RE = /\b(bearer|basic)\s+[A-Za-z0-9._\-+/=]{8,}/gi

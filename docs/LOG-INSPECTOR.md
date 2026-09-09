@@ -5,7 +5,9 @@ language, correlation, large-input strategy and architecture.
 
 > Looking for what shipped and when? See
 > [`releases/v0.9.0.md`](releases/v0.9.0.md) and
-> [`releases/v0.9.1.md`](releases/v0.9.1.md). This file is the technical
+> [`releases/v0.9.1.md`](releases/v0.9.1.md),
+> [`releases/v0.9.2.md`](releases/v0.9.2.md) and
+> [`releases/v0.9.3.md`](releases/v0.9.3.md). This file is the technical
 > reference and deliberately does not repeat the release notes.
 
 | | |
@@ -14,7 +16,7 @@ language, correlation, large-input strategy and architecture.
 | **Command palette** | `Ctrl/Cmd + K` → "Log Inspector" |
 | **Logic** | `frontend/src/lib/loginspector/` |
 | **UI** | `frontend/src/components/loginspector/` |
-| **Tests** | 103 dedicated tests in `frontend/src/lib/loginspector/*.test.ts` |
+| **Tests** | 112 dedicated tests in `frontend/src/lib/loginspector/*.test.ts` |
 | **New dependencies** | none |
 
 ---

@@ -240,6 +240,14 @@ describe('sensitive data masking', () => {
     expect((masked[0].json as { iban: string }).iban).toBe('[redacted]')
   })
 
+  it('redacts enterprise identifiers and contact data by default', () => {
+    const parsed = parseLogText('{"msg":"x","attributes":{"dean":"DEAN-123"},"http":{"request":{"body":{"iban":"IT60X0542811101000000123456","phone":"+393331234567"}}}}').events
+    const json = maskEvents(parsed)[0].json as { attributes: { dean: string }; http: { request: { body: { iban: string; phone: string } } } }
+    expect(json.attributes.dean).toBe('[redacted]')
+    expect(json.http.request.body.iban).toBe('[redacted]')
+    expect(json.http.request.body.phone).toBe('[redacted]')
+  })
+
   it('hides configured noisy fields recursively without mutating the source', () => {
     const source = { message: 'ok', labels: { noisy: true }, nested: { labels: 'drop', keep: 1 } }
     expect(hideJsonFields(source, ['labels'])).toEqual({ message: 'ok', nested: { keep: 1 } })
@@ -271,6 +279,7 @@ describe('export', () => {
     const text = exportEvents(events().slice(0, 2), 'jsonl')
     expect(text.split('\n')).toHaveLength(2)
     expect(JSON.parse(text.split('\n')[0]).message).toBe('POST /v2/settlements accepted')
+    expect(JSON.parse(text.split('\n')[0]).json.correlationId).toBe('c8f1')
   })
 
   it('exports readable text with the stack trace', () => {

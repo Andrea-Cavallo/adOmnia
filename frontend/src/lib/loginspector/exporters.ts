@@ -12,6 +12,7 @@ export const EXPORT_EXTENSIONS: Record<ExportFormat, string> = {
 function toRecord(event: LogEvent): Record<string, unknown> {
   return {
     line: event.line,
+    lineCount: event.lineCount,
     timestamp: event.ts !== null ? new Date(event.ts).toISOString() : null,
     timestampRaw: event.tsRaw,
     level: event.level,
@@ -26,7 +27,9 @@ function toRecord(event: LogEvent): Record<string, unknown> {
     requestId: event.requestId,
     thread: event.thread,
     logger: event.logger,
+    prefix: event.prefix || undefined,
     stack: event.stack || undefined,
+    json: event.json ?? undefined,
     extra: Object.keys(event.extra).length ? event.extra : undefined,
     decoded: Object.keys(event.decoded).length ? event.decoded : undefined,
     parseError: event.parseError || undefined,
