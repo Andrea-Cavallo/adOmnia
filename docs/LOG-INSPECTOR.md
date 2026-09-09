@@ -13,8 +13,19 @@ Trasforma quel materiale in eventi navigabili, filtrabili e correlabili.
 | **Command palette** | `Ctrl/Cmd + K` → "Log Inspector" |
 | **Logica** | `frontend/src/lib/loginspector/` |
 | **UI** | `frontend/src/components/loginspector/` |
-| **Test** | 73 test in `frontend/src/lib/loginspector/*.test.ts` |
+| **Test** | 73 test dedicati in `frontend/src/lib/loginspector/*.test.ts` (suite frontend: 353) |
 | **Dipendenze nuove** | nessuna |
+
+---
+
+## In 30 secondi
+
+1. Copia l'output di `oc logs <pod>` dal terminale.
+2. Apri **Power Tools → Log Inspector** e premi `Ctrl+V` (o trascina il file sul pannello).
+3. Ogni riga diventa un evento: timestamp, livello, servizio, pod, messaggio.
+4. Scrivi `level:error` nella barra di ricerca per isolare i problemi.
+5. Apri un evento, clicca il chip **Correlation ID** → *Show related events*:
+   hai la richiesta ricostruita in ordine cronologico con i delta temporali.
 
 ---
 
@@ -175,7 +186,20 @@ presenza di stack trace e riga non parsabile. Le colonne sono selezionabili.
 | **Stack Trace** | monospaziato, righe numerate, word wrap opzionale, copia |
 | **Context** | metadati Kubernetes/OpenShift, tracing, riga sorgente, e albero dei campi non riconosciuti |
 
+Le schede **JSON** e **Context** rispettano i campi nascosti (vedi *Campi rumorosi*
+al §6): le chiavi elencate lì spariscono dall'albero a qualsiasi profondità.
+
 `Esc` chiude il dettaglio.
+
+### Comportamento responsive
+
+Il pannello si misura da solo con un `ResizeObserver`:
+
+- sotto i **640 px** i filtri si chiudono automaticamente al primo render;
+- sempre sotto i 640 px, aprire un evento porta il dettaglio a schermo intero
+  invece di comprimere la lista in una colonna illeggibile;
+- sopra quella soglia le tre colonne convivono e sono ridimensionabili a mano
+  (le larghezze vengono ricordate).
 
 ---
 
@@ -217,7 +241,13 @@ query. Per chi non vuole scrivere la sintassi a mano.
 ### Query salvate
 
 Salvate localmente in `localStorage` (`adomnia.loginspector`) insieme alle altre
-preferenze: densità, word wrap, colonne, limite eventi, larghezza delle colonne.
+preferenze: densità, word wrap, colonne visibili, limite eventi, larghezza delle
+colonne, campi sensibili aggiuntivi e campi rumorosi nascosti.
+
+Sono preferenze di macchina: non vengono sincronizzate, non finiscono nel
+workspace `.adomnia` e non escono dal computer. Se `localStorage` non è
+disponibile (finestra privata, quota esaurita) lo strumento funziona comunque
+con i valori predefiniti.
 
 ---
 
@@ -256,6 +286,24 @@ La vista mostra:
   Produce copie: gli eventi originali restano intatti e il mascheramento si
   disattiva senza reimportare.
 
+### Campi sensibili aggiuntivi
+
+L'icona accanto all'interruttore di mascheramento apre un popover dove si
+aggiungono nomi di campo propri del dominio — `customer_email`, `iban`,
+`fiscal_code` — che si sommano al riconoscimento predefinito. Restano salvati tra
+una sessione e l'altra.
+
+### Campi rumorosi
+
+Nel popover delle colonne, la sezione **Hide noisy JSON fields** accetta i nomi
+delle chiavi da togliere di mezzo (`kubernetes`, `hostname`, `stream`…). Vengono
+rimosse dall'albero JSON e dalla scheda Context, a qualsiasi profondità, senza
+toccare i dati: è una scelta di visualizzazione, non un filtro sugli eventi.
+
+> Attenzione alla differenza: **mascherare** sostituisce il valore con
+> `[redacted]` e vale anche per l'export; **nascondere** toglie la chiave solo
+> dalla vista di dettaglio.
+
 ---
 
 ## 7. Prestazioni con file grandi
@@ -269,7 +317,10 @@ Obiettivo: fluidità con almeno 100.000 eventi. Verificato dai test.
 - **Lista virtualizzata**: viene montata solo la finestra visibile, quindi
   100.000 eventi costano quanto 40.
 - **Filtri** su predicati economici, con haystack di ricerca calcolato una volta
-  sola per evento e conservato in una `WeakMap`.
+  sola per evento e conservato in una `WeakMap` (si libera insieme al batch).
+- **Digitazione non bloccante**: la query passa da `useDeferredValue`, quindi il
+  campo di ricerca risponde a ogni tasto mentre il ricalcolo della lista resta
+  indietro di un frame invece di bloccare l'input.
 - **Limite massimo configurabile**: 50k / 100k / 200k / 500k eventi, con
   troncamento segnalato nella barra di riepilogo.
 - **Errori di memoria gestiti esplicitamente**: messaggio dedicato che suggerisce
