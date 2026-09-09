@@ -4,6 +4,21 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [0.8.3] - 2026-09-09
+
+### Changed
+- **Fluid flow workspace:** compact nodes, readable arrows, branch-preserving arrangement, free dragging with optional grid snapping, cursor-anchored zoom and keyboard fit/reset controls.
+- **Adjustable panels:** inspector, timeline, Mermaid import and AI panels can close, float, move, resize, maximize and dock. Toolbar controls reopen inspector/timeline and toggle canvas focus without reopening panels during execution.
+- **Release maintenance:** desktop and npm metadata are aligned to 0.8.3; includes the Go and frontend dependency refresh since v0.8.2.
+
+### Fixed
+- **REC save failure:** the local `flows` storage bucket is created automatically. Naming the recording no longer closes the dialog when the name is cleared, and duplicate saves are prevented.
+- **Response-to-request data:** recordings infer exact, unambiguous JSON response values reused in later request bodies, parameters or bearer auth. Extractions and references survive save/reopen; replay preserves JSON types and escapes strings correctly.
+- **Replay reliability:** transport errors reach the timeline, stop-on-failure halts linear execution, cancellation stops retries, and replay cannot record itself. Fixed nested/array extraction paths, status range assertions, terminal failure detection and Mock Commerce demo startup.
+- **Saved graph preservation:** reopening a flow retains its positions and variable mappings. Existing definitions remain compatible; raw response bodies used for matching are not persisted.
+
+Full release notes: [v0.8.3](docs/releases/v0.8.3.md).
+
 ## [0.8.2] - 2026-09-01
 
 ### Changed

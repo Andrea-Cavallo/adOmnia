@@ -1047,19 +1047,19 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-xl border border-border-1 bg-surface-1 p-5 shadow-2xl">
             <h2 className="text-sm font-semibold text-text-1">{tr('Save recorded flow')}</h2>
-            <p className="mt-1 text-xs text-text-3">{recordedCalls.length} API calls will become consecutive, editable Flow nodes.</p>
+            <p className="mt-1 text-xs text-text-3">{tr('{count} API calls will become consecutive, editable Flow nodes.', { count: recordedCalls.length })}</p>
             <div className="mt-3 max-h-48 space-y-2 overflow-y-auto rounded-lg border border-border-1 bg-surface-0 p-3">
               {recordedCalls.map(call => <div key={call.id} className="text-xs text-text-2">
                 <div className="truncate"><span className="mr-2 font-mono text-accent">{call.seq} → {call.request.method}</span>{call.request.name || call.request.url}</div>
                 {!!call.extractions?.length && <div className="mt-1 break-words font-mono text-[10px] text-success">{call.extractions.map(mapping => `${mapping.path} → {{${mapping.name}}}`).join(', ')}</div>}
               </div>)}
             </div>
-            <p className="mt-2 text-[11px] text-text-3">Matching response values are linked to later requests automatically. Review or edit them in the Flow Variables tab.</p>
+            <p className="mt-2 text-[11px] text-text-3">{tr('Matching response values are linked to later requests automatically. Review or edit them in the Flow Variables tab.')}</p>
             <input autoFocus value={recordName} onChange={(event) => setRecordName(event.target.value)} className="mt-4 h-10 w-full rounded-lg border border-border-2 bg-surface-0 px-3 text-sm text-text-1 outline-none focus:border-accent" />
             {recordSaveError && <p className="mt-2 text-xs text-error">{recordSaveError}</p>}
             <div className="mt-5 flex justify-end gap-2">
-              <button disabled={recordSaving} onClick={() => { cancelRecording(); setRecordName(''); setRecordSaveOpen(false) }} className="rounded-lg px-3 py-2 text-xs font-semibold text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-50">Discard recording</button>
-              <button disabled={recordSaving} onClick={() => void saveRecordedFlow()} className="rounded-lg bg-accent px-3 py-2 text-xs font-bold text-white hover:bg-accent-hover disabled:opacity-50">{recordSaving ? 'Saving…' : 'Create Flow'}</button>
+              <button disabled={recordSaving} onClick={() => { cancelRecording(); setRecordName(''); setRecordSaveOpen(false) }} className="rounded-lg px-3 py-2 text-xs font-semibold text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-50">{tr('Discard recording')}</button>
+              <button disabled={recordSaving} onClick={() => void saveRecordedFlow()} className="rounded-lg bg-accent px-3 py-2 text-xs font-bold text-white hover:bg-accent-hover disabled:opacity-50">{recordSaving ? tr('Saving…') : tr('Create Flow')}</button>
             </div>
           </div>
         </div>

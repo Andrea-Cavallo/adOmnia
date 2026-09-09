@@ -185,6 +185,15 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v6
+
+      - name: Locate release notes
+        id: notes
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          NOTES="docs/releases/${GITHUB_REF_NAME}.md"
+          if [ -f "$NOTES" ]; then echo "path=$NOTES" >> "$GITHUB_OUTPUT"; fi
+
       - uses: actions/download-artifact@v8
         with:
           path: dist
@@ -207,5 +216,6 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           files: dist/*
-          generate_release_notes: true
+          body_path: ${{ steps.notes.outputs.path }}
+          generate_release_notes: ${{ steps.notes.outputs.path == '' }}
           prerelease: ${{ contains(github.ref_name, '-rc') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-alpha') }}

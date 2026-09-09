@@ -47,6 +47,12 @@ export const ITALIAN_UI_MESSAGES = {
   'Cancel request': 'Annulla richiesta',
   'Recording': 'Registrazione',
   'Save recorded flow': 'Salva flusso registrato',
+  'Matching response values are linked to later requests automatically. Review or edit them in the Flow Variables tab.': 'I valori corrispondenti delle risposte vengono collegati automaticamente alle richieste successive. Controllali o modificali nella scheda Variables del flow.',
+  '{count} API calls will become consecutive, editable Flow nodes.': '{count} chiamate API diventeranno nodi consecutivi e modificabili del flow.',
+  'Discard recording': 'Scarta registrazione',
+  'Create Flow': 'Crea flow',
+  'Saving…': 'Salvataggio…',
+
   'Hide API tools': 'Nascondi strumenti API',
   'Show API tools (redirects, timeout, cURL, encode…)': 'Mostra strumenti API (redirect, timeout, cURL, codifica…)',
   'Unsaved changes - Save to collection (Ctrl+S)': 'Modifiche non salvate - Salva nella raccolta (Ctrl+S)',

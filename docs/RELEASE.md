@@ -2,6 +2,11 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+## v0.8.3 release notes: reliable recording and fluid flow panels
+
+See [the full v0.8.3 notes](releases/v0.8.3.md) for recording, response mappings,
+canvas/panel controls, compatibility and verification details.
+
 ## v0.8.2 release notes: dependency refresh and sidebar follow
 
 - Full dependency refresh across Go and the frontend, clearing every open
@@ -57,6 +62,11 @@ The build workflow produces:
 - [ ] [README.md](../README.md) download instructions are still accurate.
 
 ## Create a Release
+
+Update the desktop version in `build/config.yml`, both npm manifests and their
+lockfiles, and `CHANGELOG.md`. Write the public release body in
+`docs/releases/<tag>.md`; the tag build publishes that file as its release notes.
+Older tags without a notes file retain generated GitHub notes.
 
 Update changelog:
 

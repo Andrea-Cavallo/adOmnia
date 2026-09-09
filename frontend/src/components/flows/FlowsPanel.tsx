@@ -590,7 +590,7 @@ function FlowInspectorDrawer({
           </button>
         </header>
 
-        <nav className="flex h-10 flex-shrink-0 overflow-x-auto items-stretch gap-5 border-b border-border-1 px-4">
+        <nav className="flex h-10 flex-shrink-0 items-stretch gap-4 overflow-x-auto border-b border-border-1 px-3">
           {INSPECTOR_TABS.map((item) => (
             <button
               key={item.id}
