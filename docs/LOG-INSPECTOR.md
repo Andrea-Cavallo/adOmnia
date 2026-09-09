@@ -350,6 +350,7 @@ I livelli sono separati, come da specifica:
 | Mascheramento | `lib/loginspector/mask.ts` |
 | Esportazione | `lib/loginspector/exporters.ts` |
 | Esempi | `lib/loginspector/samples.ts` |
+| Esecuzione in background | `lib/loginspector/background.ts` + `parser.worker.ts` |
 | Presentazione | `components/loginspector/*` |
 
 Componenti riusati da adOmnia: `FileDropZone`, `ResizeHandle`, `downloadText` /
