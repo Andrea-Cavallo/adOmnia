@@ -246,7 +246,7 @@ function FlowToolbarMenu({ items }: { items: { label: string; icon: typeof Save;
               key={item.label}
               disabled={item.disabled}
               onClick={() => { setOpen(false); item.onClick() }}
-              className="flex h-8 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-xs text-text-2 hover:bg-surface-2 hover:text-text-1 disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex h-8 w-full items-center gap-2.5 whitespace-nowrap rounded-lg px-2.5 text-left text-xs text-text-2 hover:bg-surface-2 hover:text-text-1 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <item.icon size={13} className="text-text-3" />
               {item.label}
@@ -1460,7 +1460,7 @@ export function FlowsPanel() {
             { label: 'Save flow', icon: Save, onClick: saveFlow },
             { label: 'Generate with AI', icon: Sparkles, onClick: () => { setFocusMode(false); setAiOpen(true) } },
             { label: 'Arrange layout', icon: Grid3X3, onClick: arrangeNodes },
-            { label: 'Order steps left to right', icon: GitBranch, onClick: applyVisualOrder, disabled: !canOrderSteps },
+            { label: 'Order steps', icon: GitBranch, onClick: applyVisualOrder, disabled: !canOrderSteps },
             { label: 'Import Mermaid...', icon: FileInput, onClick: openMermaidModal },
             { label: 'Open flow file...', icon: Download, onClick: () => fileRef.current?.click() },
             { label: 'Export flow JSON', icon: FileJson, onClick: exportJson },
