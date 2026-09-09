@@ -2,6 +2,11 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+## v0.9.1 release notes: first-class Log Inspector
+
+See [the full v0.9.1 notes](releases/v0.9.1.md) for the dedicated Power Tools
+navigation and the complete local log investigation workflow.
+
 ## v0.9.0 release notes: Log Inspector
 
 See [the full v0.9.0 notes](releases/v0.9.0.md) for supported formats,

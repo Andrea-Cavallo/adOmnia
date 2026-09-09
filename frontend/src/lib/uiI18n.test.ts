@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { FEATURE_REGISTRY, RAIL_CATEGORIES } from '@/lib/featureRegistry'
+import { CATEGORIES as TOOL_CATEGORIES } from '@/components/utils/toolRegistry'
 import {
   ITALIAN_NAVIGATION_MESSAGES,
   ITALIAN_UI_MESSAGES,
@@ -107,6 +108,16 @@ describe('stable UI localization', () => {
     for (const label of labels) {
       expect(ITALIAN_NAVIGATION_MESSAGES, `Missing navigation translation: ${label}`).toHaveProperty(label)
     }
+  })
+
+  it('keeps Log Inspector as a first-class Power Tools destination', () => {
+    const powerTools = RAIL_CATEGORIES.find((category) => category.key === 'tools')
+    expect(powerTools?.groups.flatMap((group) => group.items.map((item) => item.id))).toEqual([
+      'jsonviewer',
+      'loginspector',
+      'powertools',
+    ])
+    expect(TOOL_CATEGORIES.flatMap((category) => category.tools.map((tool) => tool.id))).not.toContain('loginspector')
   })
 
   it('blocks new unregistered literal labels in the stable shell and API workflow', () => {

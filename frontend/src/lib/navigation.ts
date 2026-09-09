@@ -11,6 +11,7 @@ export const RAIL_ITEMS = [
   'browser',
   'dockerlab',
   'jsonviewer',
+  'loginspector',
   'xmltools',
   'flows',
   'soap',

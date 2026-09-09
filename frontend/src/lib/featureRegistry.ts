@@ -60,6 +60,7 @@ export const FEATURE_REGISTRY: FeatureDef[] = [
   { id: 'vault', title: 'Vault', group: 'Local Data', keywords: 'secret credentials local vault certificate password', maturity: 'advanced' },
 
   { id: 'jsonviewer', title: 'JSON Studio', group: 'Power Tools', keywords: 'json tree raw graph fullscreen format validate inspect diff sort repair diagnostics', maturity: 'core', railLabel: 'JSON Studio' },
+  { id: 'loginspector', title: 'Log Inspector', group: 'Power Tools', keywords: 'log logs openshift oc pod jsonl ndjson stack trace correlation trace id inspect viewer', maturity: 'core' },
   { id: 'xmltools', title: 'XML Tools', group: 'Power Tools', keywords: 'xml format validate xpath diff soap envelope', maturity: 'advanced' },
   { id: 'powertools', title: 'Power Tools', group: 'Power Tools', keywords: 'encode decode jwt uuid toolbox hash hmac regex yaml pem folder diff', maturity: 'core', railLabel: 'Tool Launcher' },
   { id: 'secretscanner', title: 'Secret Scanner', group: 'Power Tools', keywords: 'credential scan security token api key private key', maturity: 'advanced' },
@@ -123,7 +124,7 @@ export const RAIL_CATEGORIES: FeatureRailCategory[] = [
   {
     key: 'tools', label: 'Power Tools', code: 'TOOLS',
     groups: [
-      { title: 'Focused Tools', items: ['jsonviewer', 'powertools', 'xmltools'].map((id) => ({ id: id as RailItem })) },
+      { title: 'Focused Tools', items: ['jsonviewer', 'loginspector', 'powertools'].map((id) => ({ id: id as RailItem })) },
     ],
   },
   {

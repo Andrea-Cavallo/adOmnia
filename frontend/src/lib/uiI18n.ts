@@ -755,6 +755,7 @@ export const ITALIAN_NAVIGATION_MESSAGES: Record<string, string> = {
   'Storage Explorer': 'Esplora archiviazione',
   'Vault': 'Cassaforte',
   'JSON Studio': 'Studio JSON',
+  'Log Inspector': 'Log Inspector',
   'XML Tools': 'Strumenti XML',
   'Tool Launcher': 'Avvio strumenti',
   'Secret Scanner': 'Scanner segreti',

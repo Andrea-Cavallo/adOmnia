@@ -4,6 +4,15 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [0.9.1] - 2026-09-09
+
+### Changed
+- **Log Inspector is a first-class destination:** Power Tools now presents exactly `JSON Studio → Log Inspector → Tool Launcher`. Opening Log Inspector goes directly to its dedicated full-size workspace.
+- **Cleaner Tool Launcher:** Log Inspector is no longer duplicated among the launcher utilities, and the command palette opens the standalone destination directly.
+- **Release documentation:** the Log Inspector guide is now written as public release notes covering supported sources, parsing, investigation, correlation, privacy and known limitations.
+
+Full release notes: [v0.9.1](docs/releases/v0.9.1.md).
+
 ## [0.9.0] - 2026-09-09
 
 ### Added

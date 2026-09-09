@@ -72,6 +72,7 @@ const FEATURE_ICONS: Partial<Record<RailItem, React.ElementType>> = {
   storage: HardDrive,
   vault: Lock,
   jsonviewer: Braces,
+  loginspector: Activity,
   xmltools: FileCode,
   powertools: Wrench,
   secretscanner: Shield,
