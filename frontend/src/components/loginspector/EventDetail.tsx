@@ -29,11 +29,6 @@ export function EventDetail({ event, onClose, onFilterBy, onShowRelated, hiddenF
   const [wrap, setWrap] = useState(true)
   const [copied, setCopied] = useState('')
 
-  // A stack trace is the reason you opened the event — jump straight to it.
-  useEffect(() => {
-    setTab((current) => (current === 'stack' && !event.stack ? 'overview' : current))
-  }, [event.id, event.stack])
-
   const copy = (text: string, token: string) => {
     navigator.clipboard.writeText(text).then(
       () => {
@@ -62,6 +57,14 @@ export function EventDetail({ event, onClose, onFilterBy, onShowRelated, hiddenF
   const requestBody = useMemo(() => unwrapNestedJson(operational.requestBody), [operational.requestBody])
   const responseBody = useMemo(() => unwrapNestedJson(operational.responseBody), [operational.responseBody])
   const hasPayloads = requestBody !== null || responseBody !== null
+
+  useEffect(() => {
+    setTab((current) => {
+      if (current === 'stack' && !event.stack) return 'overview'
+      if (current === 'payloads' && !hasPayloads) return 'overview'
+      return current
+    })
+  }, [event.id, event.stack, hasPayloads])
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-surface-0">
@@ -299,6 +302,7 @@ export function EventDetail({ event, onClose, onFilterBy, onShowRelated, hiddenF
                 ['Logger', event.logger, 'logger'],
                 ['Source line', String(event.line), ''],
                 ['Source file', event.sourceName || '', 'sourceName'],
+                ['Source ID', event.sourceId || '', ''],
               ]}
               onFilterBy={onFilterBy}
             />

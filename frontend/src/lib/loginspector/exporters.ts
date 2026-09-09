@@ -13,6 +13,8 @@ function toRecord(event: LogEvent): Record<string, unknown> {
   return {
     line: event.line,
     lineCount: event.lineCount,
+    sourceId: event.sourceId,
+    sourceName: event.sourceName,
     timestamp: event.ts !== null ? new Date(event.ts).toISOString() : null,
     timestampRaw: event.tsRaw,
     level: event.level,

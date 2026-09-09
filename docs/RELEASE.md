@@ -2,6 +2,13 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+## v0.9.5 release notes: Log Inspector reliability pass
+
+See [the full v0.9.5 notes](releases/v0.9.5.md). Log Inspector now handles
+trace-only chains, recovered retry outcomes, observed-window durations,
+`attributes.http.*` payloads and source provenance in exports. The panel was
+also split along its seams (import hook, toolbar, status bars, preferences).
+
 ## v0.9.4 release notes: multi-file Log Inspector
 
 See [the full v0.9.4 notes](releases/v0.9.4.md) for cross-file correlation,

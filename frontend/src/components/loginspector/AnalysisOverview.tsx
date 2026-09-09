@@ -32,10 +32,10 @@ function StatusIcon({ status }: { status: RequestStatus }) {
   return status === 'server-error' ? <XCircle size={11} /> : null
 }
 
-function duration(value: number | null): string {
+function duration(value: number | null, kind?: AnalyzedRequest['durationKind']): string {
   if (value === null) return 'n/d'
-  if (value >= 1000) return `${(value / 1000).toFixed(value >= 10_000 ? 1 : 2)}s`
-  return `${Math.round(value)}ms`
+  const text = value >= 1000 ? `${(value / 1000).toFixed(value >= 10_000 ? 1 : 2)}s` : `${Math.round(value)}ms`
+  return kind === 'observed-window' ? `~${text}` : text
 }
 
 export function AnalysisOverview({ analysis, onFilterRequest, onClose }: AnalysisOverviewProps) {
@@ -95,13 +95,17 @@ export function AnalysisOverview({ analysis, onFilterRequest, onClose }: Analysi
                       <StatusIcon status={request.status} /> {STATUS_LABEL[request.status]}
                     </span>
                   </td>
-                  <td className="truncate px-2 py-1" title={request.correlationId || request.requestId}>{request.correlationId || request.requestId}</td>
+                  <td className="truncate px-2 py-1" title={`${request.correlationKey}: ${request.correlationId || request.traceId || request.requestId}`}>
+                    {request.correlationId || request.traceId || request.requestId}
+                  </td>
                   <td className="truncate px-2 py-1" title={request.endpoint || request.operation}>{request.operation || request.endpoint || 'n/d'}</td>
                   <td className="px-2 py-1">{request.method || ''} {request.httpStatus ?? 'n/d'}</td>
-                  <td className="px-2 py-1">{duration(request.durationMs)}</td>
+                  <td className="px-2 py-1" title={request.durationKind === 'observed-window' ? 'Observed log window, not declared request duration' : undefined}>
+                    {duration(request.durationMs, request.durationKind)}
+                  </td>
                   <td className="truncate px-2 py-1" title={request.downstreams.join(', ')}>{request.downstreams.join(', ') || 'n/d'}</td>
                   <td className={cn('truncate px-2 py-1', request.status === 'timeout' || request.status === 'server-error' ? 'text-error' : 'text-text-3')} title={request.error}>
-                    {request.error || `${request.eventCount} events`}
+                    {request.error || `${request.eventCount} events${request.retryCount ? `, ${request.retryCount} retry` : ''}${request.timeoutCount && request.status === 'success' ? ', recovered timeout' : ''}`}
                   </td>
                 </tr>
               ))}

@@ -24,7 +24,7 @@ const FIELD_SYNONYMS: Record<string, QueryField> = {
   requestid: 'requestId', request: 'requestId', request_id: 'requestId', req: 'requestId',
   thread: 'thread',
   logger: 'logger',
-  source: 'sourceName', sourcefile: 'sourceName', file: 'sourceName', filename: 'sourceName',
+  source: 'sourceName', sourcename: 'sourceName', sourcefile: 'sourceName', file: 'sourceName', filename: 'sourceName',
   raw: 'raw', line: 'raw', any: 'raw',
 }
 

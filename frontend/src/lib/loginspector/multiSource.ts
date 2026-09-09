@@ -9,12 +9,26 @@ function sourceLineCount(text: string): number {
   return text ? text.split(/\r?\n/).length : 0
 }
 
-function labelEvents(events: LogEvent[], sourceName: string, offset: number, showSource: boolean): LogEvent[] {
+function labelEvents(events: LogEvent[], sourceName: string, sourceId: string, offset: number, showSource: boolean): LogEvent[] {
   return events.map((event, index) => ({
     ...event,
     id: offset + index,
+    sourceId: showSource ? sourceId : undefined,
     sourceName: showSource ? sourceName : undefined,
   }))
+}
+
+function displayNames(sources: LogSourceResult[]): string[] {
+  const counts = new Map<string, number>()
+  for (const source of sources) counts.set(source.name, (counts.get(source.name) ?? 0) + 1)
+  const seen = new Map<string, number>()
+  return sources.map((source) => {
+    const total = counts.get(source.name) ?? 0
+    if (total <= 1) return source.name
+    const index = (seen.get(source.name) ?? 0) + 1
+    seen.set(source.name, index)
+    return `${source.name} #${index}`
+  })
 }
 
 function emptySummary(): ParseSummary {
@@ -44,10 +58,13 @@ export async function parseLogSourcesInBackground(
   const summaries: ParseSummary[] = []
   const totalLines = sources.reduce((sum, source) => sum + sourceLineCount(source.text), 0)
   const maxEvents = options.maxEvents ?? Number.MAX_SAFE_INTEGER
+  const names = displayNames(sources)
   let completedLines = 0
   let aborted = false
 
-  for (const source of sources) {
+  for (let sourceIndex = 0; sourceIndex < sources.length; sourceIndex++) {
+    const source = sources[sourceIndex]
+    const sourceName = names[sourceIndex]
     if (events.length >= maxEvents || hooks.shouldAbort?.()) {
       aborted = hooks.shouldAbort?.() ?? false
       break
@@ -60,13 +77,13 @@ export async function parseLogSourcesInBackground(
       {
         shouldAbort: hooks.shouldAbort,
         onProgress: (done, _sourceTotal, partial) => {
-          const combined = events.concat(labelEvents(partial, source.name, offset, sources.length > 1))
+          const combined = events.concat(labelEvents(partial, sourceName, `source-${sourceIndex}`, offset, sources.length > 1))
           hooks.onProgress?.(Math.min(totalLines, completedLines + done), totalLines, combined)
         },
       },
     )
-    const labelled = labelEvents(parsed.events, source.name, offset, sources.length > 1)
-    events.push(...labelled)
+    const labelled = labelEvents(parsed.events, sourceName, `source-${sourceIndex}`, offset, sources.length > 1)
+    for (const event of labelled) events.push(event)
     summaries.push(parsed.summary)
     completedLines += parsed.summary.totalLines
     hooks.onProgress?.(Math.min(totalLines, completedLines), totalLines, events)

@@ -1,5 +1,5 @@
 import { buildLookup, flattenPayload } from './normalize'
-import { sortChronologically } from './correlate'
+import { type CorrelationKey, sortChronologically } from './correlate'
 import type { LogEvent } from './types'
 
 export type RequestStatus = 'success' | 'client-error' | 'server-error' | 'timeout' | 'retry' | 'unknown'
@@ -31,9 +31,14 @@ export interface OperationalContext {
 }
 
 export interface AnalyzedRequest {
+  correlationKey: CorrelationKey
   correlationId: string
+  traceId: string
   requestId: string
   status: RequestStatus
+  retryCount: number
+  timeoutCount: number
+  durationKind: 'explicit' | 'observed-window' | 'unknown'
   startedAt: number | null
   completedAt: number | null
   durationMs: number | null
@@ -53,6 +58,7 @@ export interface AnalyzedRequest {
 export interface LogAnomaly {
   kind: 'timeout' | 'slow' | 'server-error' | 'client-error' | 'retry'
   severity: 'error' | 'warn' | 'info'
+  correlationKey: CorrelationKey
   correlationId: string
   title: string
   evidence: string
@@ -143,17 +149,39 @@ export function operationalContext(event: LogEvent): OperationalContext {
     latencyMs: numeric(event, ['attributes.latency_ms', 'latency_ms', 'latency.ms']),
     error: scalar(event, ['attributes.error', 'error.message', 'error']),
     dean: scalar(event, ['attributes.dean', 'dean']),
-    httpRoute: scalar(event, ['http.route', 'attributes.route', 'url.path', 'route']),
-    httpMethod: scalar(event, ['http.method', 'http.request.method', 'attributes.method', 'method']),
-    httpUrl: scalar(event, ['http.url', 'url.full', 'attributes.url']),
+    httpRoute: scalar(event, ['http.route', 'attributes.route', 'attributes.http.route', 'url.path', 'route']),
+    httpMethod: scalar(event, ['http.method', 'http.request.method', 'attributes.method', 'attributes.http.method', 'method']),
+    httpUrl: scalar(event, ['http.url', 'url.full', 'attributes.url', 'attributes.http.url']),
     httpStatus: numeric(event, ['http.status_code', 'http.response.status_code', 'attributes.http.status_code', 'attributes.http_status_code', 'attributes.status_code', 'attributes.status', 'status_code']),
     outcome: scalar(event, ['event.outcome', 'outcome']),
-    durationMs: numeric(event, ['duration_ms', 'attributes.duration_ms', 'http.duration_ms']),
+    durationMs: numeric(event, ['duration_ms', 'attributes.duration_ms', 'attributes.http.duration_ms', 'http.duration_ms']),
     sourceFile: scalar(event, ['source.file', 'code.filepath', 'caller.file']),
     sourceFunction: scalar(event, ['source.function', 'code.function', 'caller.function']),
     sourceLine: scalar(event, ['source.line', 'code.lineno', 'caller.line']),
-    requestBody: payloadValue(event, ['attributes.request_body', 'attributes.request.body', 'http.request.body', 'request_body']),
-    responseBody: payloadValue(event, ['attributes.response_body', 'attributes.response.body', 'http.response.body', 'response_body']),
+    requestBody: payloadValue(event, [
+      'attributes.request_body',
+      'attributes.request.body',
+      'attributes.http.request.body',
+      'attributes.http.request_body',
+      'attributes.request',
+      'http.request.body',
+      'http.request_body',
+      'request_body',
+      'request.body',
+      'request',
+    ]),
+    responseBody: payloadValue(event, [
+      'attributes.response_body',
+      'attributes.response.body',
+      'attributes.http.response.body',
+      'attributes.http.response_body',
+      'attributes.response',
+      'http.response.body',
+      'http.response_body',
+      'response_body',
+      'response.body',
+      'response',
+    ]),
   }
   contextCache.set(event, context)
   return context
@@ -175,23 +203,40 @@ function lastNumber(contexts: OperationalContext[], pick: (value: OperationalCon
   return null
 }
 
-function requestStatus(events: LogEvent[], contexts: OperationalContext[], httpStatus: number | null): RequestStatus {
+function hasRetrySignal(events: LogEvent[], contexts: OperationalContext[]): boolean {
   const searchable = events.map((event, index) => `${event.message} ${contexts[index].error} ${contexts[index].operationStatus}`).join(' ')
-  if (/context deadline exceeded|deadline exceeded|\btimeout\b|timed out/i.test(searchable)) return 'timeout'
+  return /\bretr(?:y|ied|ying|ies)\b|attempt\s+\d+/i.test(searchable)
+}
+
+function hasTimeoutSignal(events: LogEvent[], contexts: OperationalContext[]): boolean {
+  const searchable = events.map((event, index) => `${event.message} ${contexts[index].error} ${contexts[index].operationStatus}`).join(' ')
+  return /context deadline exceeded|deadline exceeded|\btimeout\b|timed out/i.test(searchable)
+}
+
+function requestStatus(events: LogEvent[], contexts: OperationalContext[], httpStatus: number | null): RequestStatus {
+  const finalContext = [...contexts].reverse().find((context) => (
+    context.httpStatus !== null
+    || /success|ok|completed|complete|fail|error|timeout/i.test(`${context.outcome} ${context.operationStatus}`)
+  ))
+  const finalText = `${finalContext?.outcome ?? ''} ${finalContext?.operationStatus ?? ''}`
+  const lastMessage = events[events.length - 1]?.message ?? ''
+  const searchable = events.map((event, index) => `${event.message} ${contexts[index].error} ${contexts[index].operationStatus}`).join(' ')
+
+  if (hasTimeoutSignal(events, contexts) && (httpStatus === null || httpStatus >= 500)) return 'timeout'
   if (httpStatus !== null && httpStatus >= 500) return 'server-error'
   if (httpStatus !== null && httpStatus >= 400) return 'client-error'
+  if (httpStatus !== null && httpStatus < 400) return 'success'
+  if (/success|ok|completed|complete/i.test(finalText) || /\b(?:success|succeeded|completat[aoe])\b/i.test(lastMessage)) return 'success'
   if (/validat|obbligatori|required|bad request|invalid/i.test(searchable) && contexts.some((context) => context.error)) return 'client-error'
-  if (events.some((event) => event.level === 'fatal' || event.level === 'error') || contexts.some((context) => /fail|error/i.test(`${context.outcome} ${context.operationStatus}`))) return 'server-error'
-  if (/\bretr(?:y|ied|ying)\b/i.test(searchable)) return 'retry'
-  if ((httpStatus !== null && httpStatus < 400)
-    || contexts.some((context) => /success|ok|completed|complete/i.test(`${context.outcome} ${context.operationStatus}`))
-    || /\b(?:success|succeeded|completat[aoe])\b/i.test(searchable)) return 'success'
+  if (/timeout/i.test(finalText)) return 'timeout'
+  if (/fail|error/i.test(finalText) || events.some((event) => event.level === 'fatal' || event.level === 'error') || contexts.some((context) => /fail|error/i.test(`${context.outcome} ${context.operationStatus}`))) return 'server-error'
+  if (hasRetrySignal(events, contexts)) return 'retry'
   return 'unknown'
 }
 
-function requestDuration(events: LogEvent[], contexts: OperationalContext[]): number | null {
-  const explicit = contexts.flatMap((context) => [context.durationMs, context.latencyMs]).filter((value): value is number => value !== null)
-  if (explicit.length) return explicit.reduce((max, value) => Math.max(max, value), 0)
+function requestDuration(events: LogEvent[], contexts: OperationalContext[]): { value: number | null; kind: AnalyzedRequest['durationKind'] } {
+  const finalDuration = [...contexts].reverse().find((context) => context.durationMs !== null)?.durationMs ?? null
+  if (finalDuration !== null) return { value: finalDuration, kind: 'explicit' }
   let min: number | null = null
   let max: number | null = null
   for (const event of events) {
@@ -199,7 +244,19 @@ function requestDuration(events: LogEvent[], contexts: OperationalContext[]): nu
     min = min === null ? event.ts : Math.min(min, event.ts)
     max = max === null ? event.ts : Math.max(max, event.ts)
   }
-  return min !== null && max !== null && min !== max ? max - min : null
+  const observed = min !== null && max !== null && min !== max ? max - min : null
+  return { value: observed, kind: observed === null ? 'unknown' : 'observed-window' }
+}
+
+function groupIdentity(event: LogEvent): { key: CorrelationKey; value: string } | null {
+  if (event.correlationId) return { key: 'correlationId', value: event.correlationId }
+  if (event.traceId) return { key: 'traceId', value: event.traceId }
+  if (event.requestId) return { key: 'requestId', value: event.requestId }
+  return null
+}
+
+function anomalyTarget(request: AnalyzedRequest): string {
+  return request.correlationId || request.traceId || request.requestId
 }
 
 const SENSITIVE_KEYS: { pattern: RegExp; kind: string }[] = [
@@ -226,30 +283,39 @@ function sensitiveFindings(event: LogEvent): SensitiveFieldFinding[] {
 
 /** Build request-level diagnostics without sending log data outside the machine. */
 export function analyzeLog(events: LogEvent[]): LogAnalysis {
-  const groups = new Map<string, LogEvent[]>()
-  for (const event of events) {
-    const key = event.correlationId || event.requestId
-    if (!key) continue
-    const group = groups.get(key)
-    if (group) group.push(event)
-    else groups.set(key, [event])
-  }
-
-  const requests: AnalyzedRequest[] = []
-  const anomalies: LogAnomaly[] = []
+  const groups = new Map<string, { identity: { key: CorrelationKey; value: string }; events: LogEvent[] }>()
   const serviceMap = new Map<string, string>()
   const environments = new Set<string>()
   const pods = new Set<string>()
 
-  for (const [groupId, sourceEvents] of groups) {
+  for (const event of events) {
+    const context = operationalContext(event)
+    if (context.environment) environments.add(context.environment)
+    if (context.pod) pods.add(context.pod)
+    if (context.service) serviceMap.set(context.service, context.serviceVersion || serviceMap.get(context.service) || '')
+
+    const identity = groupIdentity(event)
+    if (!identity) continue
+    const mapKey = `${identity.key}:${identity.value}`
+    const group = groups.get(mapKey)
+    if (group) group.events.push(event)
+    else groups.set(mapKey, { identity, events: [event] })
+  }
+
+  const requests: AnalyzedRequest[] = []
+  const anomalies: LogAnomaly[] = []
+
+  for (const { identity, events: sourceEvents } of groups.values()) {
     const requestEvents = sortChronologically(sourceEvents)
     const contexts = requestEvents.map(operationalContext)
     const httpStatus = lastNumber(contexts, (context) => context.httpStatus)
     const status = requestStatus(requestEvents, contexts, httpStatus)
+    const retryCount = requestEvents.filter((event, index) => /\bretr(?:y|ied|ying|ies)\b|attempt\s+\d+/i.test(`${event.message} ${contexts[index].operationStatus}`)).length
+    const timeoutCount = requestEvents.filter((event, index) => /context deadline exceeded|deadline exceeded|\btimeout\b|timed out/i.test(`${event.message} ${contexts[index].error} ${contexts[index].operationStatus}`)).length
     const downstreams = [...new Set(contexts.map((context) => context.client).filter(Boolean))]
     const latencies = contexts.map((context) => context.latencyMs).filter((value): value is number => value !== null)
     const maxDownstreamLatencyMs = latencies.length ? latencies.reduce((max, value) => Math.max(max, value), 0) : null
-    const durationMs = requestDuration(requestEvents, contexts)
+    const duration = requestDuration(requestEvents, contexts)
     const service = lastValue(contexts, (context) => context.service)
     const serviceVersion = lastValue(contexts, (context) => context.serviceVersion)
     const error = lastValue(contexts, (context) => context.error)
@@ -257,12 +323,17 @@ export function analyzeLog(events: LogEvent[]): LogAnalysis {
       || ''
 
     const request: AnalyzedRequest = {
-      correlationId: requestEvents.find((event) => event.correlationId)?.correlationId || groupId,
+      correlationKey: identity.key,
+      correlationId: requestEvents.find((event) => event.correlationId)?.correlationId || (identity.key === 'correlationId' ? identity.value : ''),
+      traceId: requestEvents.find((event) => event.traceId)?.traceId || (identity.key === 'traceId' ? identity.value : ''),
       requestId: requestEvents.find((event) => event.requestId)?.requestId || '',
       status,
+      retryCount,
+      timeoutCount,
+      durationKind: duration.kind,
       startedAt: requestEvents.find((event) => event.ts !== null)?.ts ?? null,
       completedAt: [...requestEvents].reverse().find((event) => event.ts !== null)?.ts ?? null,
-      durationMs,
+      durationMs: duration.value,
       operation: lastValue(contexts, (context) => context.operation),
       endpoint: lastValue(contexts, (context) => context.httpRoute || context.httpUrl),
       method: lastValue(contexts, (context) => context.httpMethod),
@@ -280,29 +351,40 @@ export function analyzeLog(events: LogEvent[]): LogAnalysis {
     const target = downstreams.join(', ') || 'downstream'
     if (status === 'timeout') {
       anomalies.push({
-        kind: 'timeout', severity: 'error', correlationId: request.correlationId,
+        kind: 'timeout', severity: 'error', correlationKey: request.correlationKey, correlationId: anomalyTarget(request),
         title: `Timeout ${target}`,
         evidence: `${error || 'context deadline exceeded'}${maxDownstreamLatencyMs !== null ? `, ${Math.round(maxDownstreamLatencyMs)} ms` : ''}`,
-        action: `Verifica health, latenza e timeout HTTP del client ${target}${maxDownstreamLatencyMs !== null && maxDownstreamLatencyMs >= 10_000 ? ', la deadline scade intorno a 10s' : ''}.`,
+        action: `Verifica health, latenza e timeout HTTP del client ${target}${maxDownstreamLatencyMs !== null && maxDownstreamLatencyMs >= 10_000 ? '; la latenza osservata supera 10s, ma la deadline configurata va verificata' : ''}.`,
       })
     } else if (status === 'server-error' || status === 'client-error') {
       anomalies.push({
-        kind: status, severity: status === 'server-error' ? 'error' : 'warn', correlationId: request.correlationId,
+        kind: status, severity: status === 'server-error' ? 'error' : 'warn', correlationKey: request.correlationKey, correlationId: anomalyTarget(request),
         title: `${httpStatus ?? 'Errore'} ${request.endpoint || request.operation || 'request'}`,
         evidence: error || requestEvents[requestEvents.length - 1]?.message || 'failure',
-        action: status === 'client-error' ? 'Controlla payload e validazione nell’handler.' : `Ispeziona il servizio ${service || 'coinvolto'} e il downstream ${target}.`,
+        action: status === 'client-error' ? "Controlla payload e validazione nell'handler." : `Ispeziona il servizio ${service || 'coinvolto'} e il downstream ${target}.`,
       })
-    } else if (status === 'retry') {
-      anomalies.push({ kind: 'retry', severity: 'info', correlationId: request.correlationId, title: 'Retry rilevato', evidence: error || 'retry event', action: 'Controlla numero di tentativi, backoff e idempotenza.' })
+    }
+    if (retryCount > 0) {
+      anomalies.push({
+        kind: 'retry',
+        severity: status === 'success' ? 'info' : 'warn',
+        correlationKey: request.correlationKey,
+        correlationId: anomalyTarget(request),
+        title: status === 'success' ? 'Successo dopo retry' : 'Retry rilevato',
+        evidence: error || `${retryCount} retry signal`,
+        action: 'Controlla numero di tentativi, backoff e idempotenza.',
+      })
     }
     if (status !== 'timeout' && maxDownstreamLatencyMs !== null && maxDownstreamLatencyMs > 500) {
-      anomalies.push({ kind: 'slow', severity: 'warn', correlationId: request.correlationId, title: `Latenza alta ${target}`, evidence: `${Math.round(maxDownstreamLatencyMs)} ms`, action: `Verifica la latenza del client ${target}.` })
-    }
-
-    for (const context of contexts) {
-      if (context.environment) environments.add(context.environment)
-      if (context.pod) pods.add(context.pod)
-      if (context.service) serviceMap.set(context.service, context.serviceVersion || serviceMap.get(context.service) || '')
+      anomalies.push({
+        kind: 'slow',
+        severity: 'warn',
+        correlationKey: request.correlationKey,
+        correlationId: anomalyTarget(request),
+        title: `Latenza alta ${target}`,
+        evidence: `${Math.round(maxDownstreamLatencyMs)} ms`,
+        action: `Verifica la latenza del client ${target}.`,
+      })
     }
   }
 

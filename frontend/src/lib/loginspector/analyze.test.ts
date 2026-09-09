@@ -30,6 +30,7 @@ describe('enterprise structured-log analysis', () => {
     const analysis = analyzeLog(parseLogText(REALISTIC_JSONL).events)
     expect(analysis.requests).toHaveLength(2)
     expect(analysis.requests[0]).toMatchObject({
+      correlationKey: 'correlationId',
       correlationId: 'APPP-11111111',
       status: 'timeout',
       operation: 'GetDetails',
@@ -39,6 +40,35 @@ describe('enterprise structured-log analysis', () => {
     })
     expect(analysis.requests[1]).toMatchObject({ status: 'success', httpStatus: 201 })
     expect(analysis.anomalies.some((item) => item.kind === 'timeout' && item.action.includes('WalletEDIG'))).toBe(true)
+  })
+
+  it('keeps a recovered retry successful while preserving timeout evidence', () => {
+    const logs = [
+      { timestamp: '2026-09-09T10:00:00.000Z', level: 'INFO', message: 'request started', correlation_id: 'APPP-retry', attributes: { operation: 'Pay', method: 'POST' } },
+      { timestamp: '2026-09-09T10:00:02.000Z', level: 'WARN', message: 'wallet timeout, retrying attempt 2', correlation_id: 'APPP-retry', attributes: { client: 'WalletEDIG', error: 'context deadline exceeded', latency_ms: 2000 } },
+      { timestamp: '2026-09-09T10:00:02.250Z', level: 'INFO', message: 'request completed', correlation_id: 'APPP-retry', event: { outcome: 'success' }, http: { status_code: 200 }, duration_ms: 2250 },
+    ].map((record) => JSON.stringify(record)).join('\n')
+    const request = analyzeLog(parseLogText(logs).events).requests[0]
+    expect(request).toMatchObject({
+      status: 'success',
+      retryCount: 1,
+      timeoutCount: 1,
+      httpStatus: 200,
+      durationMs: 2250,
+      durationKind: 'explicit',
+    })
+  })
+
+  it('analyzes trace-only chains and keeps services from uncorrelated rows', () => {
+    const logs = [
+      { timestamp: '2026-09-09T10:00:00Z', level: 'INFO', message: 'trace start', trace_id: 'trace-only-1', service: 'gateway' },
+      { timestamp: '2026-09-09T10:00:01Z', level: 'INFO', message: 'trace end', trace_id: 'trace-only-1', service: 'wallet', http: { status_code: 204 } },
+      { timestamp: '2026-09-09T10:00:02Z', level: 'INFO', message: 'background', service: 'scheduler', environment: 'svil' },
+    ].map((record) => JSON.stringify(record)).join('\n')
+    const analysis = analyzeLog(parseLogText(logs).events)
+    expect(analysis.requests[0]).toMatchObject({ correlationKey: 'traceId', traceId: 'trace-only-1', status: 'success' })
+    expect(analysis.services.map((service) => service.name)).toEqual(expect.arrayContaining(['gateway', 'wallet', 'scheduler']))
+    expect(analysis.environments).toContain('svil')
   })
 
   it('flags clear enterprise identifiers and payload data', () => {
@@ -73,5 +103,26 @@ describe('enterprise structured-log analysis', () => {
     expect(context.requestBody).toEqual({ dean: 'masked' })
     expect(context.responseBody).toEqual({ balance: 42 })
     expect(event.extra).toMatchObject({ attributes: { request_body: { dean: 'masked' }, response_body: { balance: 42 } } })
+  })
+
+  it('exposes bodies nested under attributes.http request and response', () => {
+    const event = parseLogText(JSON.stringify({
+      message: 'gateway exchange',
+      attributes: {
+        http: {
+          method: 'POST',
+          route: '/aliases',
+          request: { body: '{"dean":"D-1"}', headers: { 'content-type': 'application/json' } },
+          response: { body: { id: 'alias-1' }, status_code: 201 },
+          duration_ms: 35,
+        },
+      },
+    })).events[0]
+    const context = operationalContext(event)
+    expect(context.httpMethod).toBe('POST')
+    expect(context.httpRoute).toBe('/aliases')
+    expect(context.durationMs).toBe(35)
+    expect(context.requestBody).toEqual('{"dean":"D-1"}')
+    expect(context.responseBody).toEqual({ id: 'alias-1' })
   })
 })

@@ -22,4 +22,22 @@ describe('multi-file log import', () => {
     expect(parsed.summary.totalLines).toBe(3)
     expect(correlateEvents(parsed.events, 'correlationId', correlationId).events).toHaveLength(3)
   })
+
+  it('distinguishes homonymous files and respects the event cap without spread overflow', async () => {
+    const first = fromText(
+      JSON.stringify({ timestamp: '2026-09-09T10:00:00Z', level: 'INFO', message: 'one', correlation_id: 'c1' }),
+      'app.log',
+      'file',
+    )
+    const second = fromText(
+      JSON.stringify({ timestamp: '2026-09-09T10:00:01Z', level: 'INFO', message: 'two', correlation_id: 'c1' }),
+      'app.log',
+      'file',
+    )
+
+    const parsed = await parseLogSourcesInBackground([first, second], { maxEvents: 1 })
+    expect(parsed.events).toHaveLength(1)
+    expect(parsed.events[0]).toMatchObject({ sourceId: 'source-0', sourceName: 'app.log #1' })
+    expect(parsed.summary.truncated).toBe(true)
+  })
 })

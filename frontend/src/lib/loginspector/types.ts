@@ -32,7 +32,9 @@ export interface LogEventFields {
 export interface LogEvent extends LogEventFields {
   /** Stable index in the parsed batch (also the default chronological tiebreak). */
   id: number
-  /** File label when the event belongs to a multi-file import. */
+  /** Stable source id inside a multi-file import, used to distinguish homonymous files. */
+  sourceId?: string
+  /** Human-readable file label when the event belongs to a multi-file import. */
   sourceName?: string
   /** 1-based line number of the first source line of this event. */
   line: number

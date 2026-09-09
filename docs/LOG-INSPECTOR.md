@@ -17,7 +17,7 @@ language, correlation, large-input strategy and architecture.
 | **Command palette** | `Ctrl/Cmd + K` → "Log Inspector" |
 | **Logic** | `frontend/src/lib/loginspector/` |
 | **UI** | `frontend/src/components/loginspector/` |
-| **Tests** | 115 dedicated tests in `frontend/src/lib/loginspector/*.test.ts` |
+| **Tests** | 119 dedicated tests in `frontend/src/lib/loginspector/*.test.ts` |
 | **New dependencies** | none |
 
 ---
@@ -450,21 +450,28 @@ frontend/src/lib/loginspector/
   query.test.ts      236   query, correlation, mask, stats, export tests
 
 frontend/src/components/loginspector/
-  LogInspectorPanel.tsx  751   orchestration, toolbar, layout, shortcuts
-  FilterSidebar.tsx      334   levels, time, facets, query builder, saved
-  JsonTree.tsx           310   JSON tree with copy value / JSONPath
-  EventDetail.tsx        270   5 tabs
-  EventList.tsx          223   virtualized list
+  FilterSidebar.tsx      458   levels, time, facets, fields, query builder, saved
+  LogInspectorPanel.tsx  383   composition, derived data, layout, shortcuts
+  EventDetail.tsx        344   5 tabs
+  JsonTree.tsx           313   JSON tree with copy value / JSONPath
+  LogInspectorToolbar.tsx 301  toolbar and its popovers
+  EventList.tsx          241   virtualized list
+  useLogImport.ts        196   sources, background parse, progress, discovery
+  EmptyState.tsx         173   samples, drop zone, editor, shortcuts
   RelatedEvents.tsx      141   list + timeline
-  EmptyState.tsx         125   samples, drop zone, editor, shortcuts
+  AnalysisOverview.tsx   135   request-level analysis
+  toolbarControls.tsx    103   shared toolbar primitives
+  StatusBars.tsx          76   progress, error and summary bars
+  prefs.ts                70   persisted preferences
   Histogram.tsx           45   time histogram
   index.ts                 1   barrel
 ```
 
-> `LogInspectorPanel.tsx` sits at 751 lines, above the ~400 the repo convention
-> favours (800 hard limit). It is the natural split candidate: the toolbar
-> popovers (columns, noisy fields, sensitive fields, export) can be extracted
-> without touching the logic.
+The panel is a composition layer: it owns the derived data (mask → sort →
+filter), the keyboard shortcuts and the layout, and delegates everything else.
+`useLogImport` owns getting a log into memory — sources, the background parse,
+progress and cancellation, the discovered schema, and the error that came out of
+it — so the panel keeps only what it renders.
 
 ### Wiring
 
@@ -531,7 +538,7 @@ Since v0.9.1 Log Inspector is a **rail destination**, not a Power Tools studio:
 ### Verification performed
 
 - `npx tsc --noEmit` clean
-- `npm run test` green — 73 files, 384 tests
+- `npm run test` green — 77 files, 402 tests
 - `npm run build` green
 - `go build ./...`, `go vet ./...` and `go test ./...` green
 
@@ -594,8 +601,6 @@ that would give first if the bar were raised.
 6. **Sorting large batches** — flipping the direction copies and re-sorts the
    whole array. On 500k events it shows. A precomputed sort index would make it
    instant.
-7. **Split `LogInspectorPanel.tsx`** (751 lines) by extracting the toolbar
-   popovers.
 
 ### Low / optional
 

@@ -243,9 +243,11 @@ describe('sensitive data masking', () => {
   it('filters a combined import by source file', () => {
     const parsed = parseLogText('{"msg":"gateway"}\n{"msg":"wallet"}').events.map((event, index) => ({
       ...event,
+      sourceId: `source-${index}`,
       sourceName: index === 0 ? 'gateway.log' : 'wallet.log',
     }))
     expect(filterEvents(parsed, withFilters({ query: 'source:wallet.log' })).map((event) => event.message)).toEqual(['wallet'])
+    expect(filterEvents(parsed, withFilters({ query: 'sourceName:wallet.log' })).map((event) => event.message)).toEqual(['wallet'])
   })
 
   it('redacts enterprise identifiers and contact data by default', () => {
@@ -284,10 +286,11 @@ describe('stats', () => {
 
 describe('export', () => {
   it('exports JSONL one event per line', () => {
-    const text = exportEvents(events().slice(0, 2), 'jsonl')
+    const text = exportEvents(events().slice(0, 2).map((event) => ({ ...event, sourceId: 'source-0', sourceName: 'gateway.log' })), 'jsonl')
     expect(text.split('\n')).toHaveLength(2)
     expect(JSON.parse(text.split('\n')[0]).message).toBe('POST /v2/settlements accepted')
     expect(JSON.parse(text.split('\n')[0]).json.correlationId).toBe('c8f1')
+    expect(JSON.parse(text.split('\n')[0]).sourceName).toBe('gateway.log')
   })
 
   it('exports readable text with the stack trace', () => {
