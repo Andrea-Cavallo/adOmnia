@@ -329,12 +329,12 @@ export function normalizePayload(
 
   const take = (keys: string[]) => {
     const found = pick(lookup, keys)
-    if (found.key) consumed.add(found.key.split('.')[0])
+    if (found.key) consumed.add(found.key)
     return found.value
   }
 
   const levelHit = pick(lookup, LEVEL_KEYS)
-  if (levelHit.key) consumed.add(levelHit.key.split('.')[0])
+  if (levelHit.key) consumed.add(levelHit.key)
   const rawLevelValue = levelHit.key ? flat[levelHit.key] : ''
 
   const tsRaw = take(FIELD_ALIASES.tsRaw)
@@ -365,11 +365,27 @@ export function normalizePayload(
     logger: take(FIELD_ALIASES.logger),
   }
 
-  const extra: Record<string, unknown> = {}
-  for (const [key, value] of Object.entries(payload)) {
-    if (consumed.has(key)) continue
-    extra[key] = value
-  }
+  const extra = omitConsumedFields(payload, consumed)
 
   return { fields, extra, decoded }
+}
+
+const OMITTED = Symbol('omitted-log-field')
+
+/** Remove only promoted leaves, preserving siblings such as attributes.request_body. */
+function omitConsumedFields(payload: Record<string, unknown>, consumed: Set<string>): Record<string, unknown> {
+  const visit = (value: unknown, path: string): unknown | typeof OMITTED => {
+    if (consumed.has(path)) return OMITTED
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return value
+    const output: Record<string, unknown> = {}
+    for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+      const nextPath = path ? `${path}.${key}` : key
+      const kept = visit(child, nextPath)
+      if (kept !== OMITTED) output[key] = kept
+    }
+    return Object.keys(output).length ? output : OMITTED
+  }
+
+  const result = visit(payload, '')
+  return result === OMITTED ? {} : result as Record<string, unknown>
 }

@@ -5,10 +5,11 @@ import { correlationCandidates, hideJsonFields, operationalContext, unwrapNested
 import { JsonTree } from './JsonTree'
 import { LEVEL_STYLE } from './EventList'
 
-type DetailTab = 'overview' | 'json' | 'message' | 'stack' | 'context'
+type DetailTab = 'overview' | 'payloads' | 'json' | 'message' | 'stack' | 'context'
 
 const TABS: { id: DetailTab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
+  { id: 'payloads', label: 'Request / Response' },
   { id: 'json', label: 'JSON' },
   { id: 'message', label: 'Message' },
   { id: 'stack', label: 'Stack Trace' },
@@ -58,6 +59,9 @@ export function EventDetail({ event, onClose, onFilterBy, onShowRelated, hiddenF
     [event.extra, hiddenFields],
   )
   const operational = useMemo(() => operationalContext(event), [event])
+  const requestBody = useMemo(() => unwrapNestedJson(operational.requestBody), [operational.requestBody])
+  const responseBody = useMemo(() => unwrapNestedJson(operational.responseBody), [operational.responseBody])
+  const hasPayloads = requestBody !== null || responseBody !== null
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-surface-0">
@@ -89,7 +93,7 @@ export function EventDetail({ event, onClose, onFilterBy, onShowRelated, hiddenF
 
       <div className="flex shrink-0 border-b border-border-1 bg-surface-0">
         {TABS.map((item) => {
-          const disabled = item.id === 'stack' && !event.stack
+          const disabled = (item.id === 'stack' && !event.stack) || (item.id === 'payloads' && !hasPayloads)
           return (
             <button
               key={item.id}
@@ -210,6 +214,21 @@ export function EventDetail({ event, onClose, onFilterBy, onShowRelated, hiddenF
           )
       )}
 
+      {tab === 'payloads' && hasPayloads && (
+        <div className="grid min-h-0 flex-1 grid-rows-2 overflow-hidden">
+          <div className="flex min-h-0 flex-col overflow-hidden border-b border-border-1">
+            {requestBody !== null
+              ? <JsonTree value={requestBody} title="Request body" className="min-h-0 flex-1" />
+              : <p className="px-3 py-3 text-[11px] text-text-4">No request body in this event.</p>}
+          </div>
+          <div className="flex min-h-0 flex-col overflow-hidden">
+            {responseBody !== null
+              ? <JsonTree value={responseBody} title="Response body" className="min-h-0 flex-1" />
+              : <p className="px-3 py-3 text-[11px] text-text-4">No response body in this event.</p>}
+          </div>
+        </div>
+      )}
+
       {tab === 'message' && (
         <div className="min-h-0 flex-1 overflow-auto px-3 py-3">
           <pre className="whitespace-pre-wrap break-words font-mono text-[12px] leading-[1.6] text-text-1">{event.message}</pre>
@@ -279,6 +298,7 @@ export function EventDetail({ event, onClose, onFilterBy, onShowRelated, hiddenF
                 ['Thread', event.thread, 'thread'],
                 ['Logger', event.logger, 'logger'],
                 ['Source line', String(event.line), ''],
+                ['Source file', event.sourceName || '', 'sourceName'],
               ]}
               onFilterBy={onFilterBy}
             />

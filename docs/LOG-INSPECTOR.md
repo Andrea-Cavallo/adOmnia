@@ -7,7 +7,8 @@ language, correlation, large-input strategy and architecture.
 > [`releases/v0.9.0.md`](releases/v0.9.0.md) and
 > [`releases/v0.9.1.md`](releases/v0.9.1.md),
 > [`releases/v0.9.2.md`](releases/v0.9.2.md) and
-> [`releases/v0.9.3.md`](releases/v0.9.3.md). This file is the technical
+> [`releases/v0.9.3.md`](releases/v0.9.3.md) and
+> [`releases/v0.9.4.md`](releases/v0.9.4.md). This file is the technical
 > reference and deliberately does not repeat the release notes.
 
 | | |
@@ -16,7 +17,7 @@ language, correlation, large-input strategy and architecture.
 | **Command palette** | `Ctrl/Cmd + K` → "Log Inspector" |
 | **Logic** | `frontend/src/lib/loginspector/` |
 | **UI** | `frontend/src/components/loginspector/` |
-| **Tests** | 112 dedicated tests in `frontend/src/lib/loginspector/*.test.ts` |
+| **Tests** | 115 dedicated tests in `frontend/src/lib/loginspector/*.test.ts` |
 | **New dependencies** | none |
 
 ---
@@ -29,8 +30,8 @@ Five sources, all behind one seam (`lib/loginspector/sources.ts`):
 |---|---|
 | Clipboard | **Paste** button or `Ctrl+V` |
 | Text editor | box on the empty screen → **Analyze** (a paste over 2000 chars starts on its own) |
-| Drag & drop | drop the file anywhere on the panel |
-| Local file | **Open** button |
+| Drag & drop | drop one or more files anywhere on the panel |
+| Local file | **Open** button, with multi-selection |
 | Samples | 5 selectable examples on the empty screen |
 
 ### Format comes from the content, never from the extension

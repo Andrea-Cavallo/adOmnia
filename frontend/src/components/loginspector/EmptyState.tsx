@@ -28,11 +28,12 @@ const GUTTER = 'px-3'
 interface EmptyStateProps {
   onSampleId: (id: string) => void
   onFile: (file: File) => void
+  onFiles: (files: File[]) => void
   onAnalyzeText: (text: string) => void
   error: string
 }
 
-export function EmptyState({ onSampleId, onFile, onAnalyzeText, error }: EmptyStateProps) {
+export function EmptyState({ onSampleId, onFile, onFiles, onAnalyzeText, error }: EmptyStateProps) {
   const [draft, setDraft] = useState('')
 
   return (
@@ -48,6 +49,7 @@ export function EmptyState({ onSampleId, onFile, onAnalyzeText, error }: EmptySt
           draft={draft}
           onDraftChange={setDraft}
           onFile={onFile}
+          onFiles={onFiles}
           onAnalyzeText={onAnalyzeText}
         />
 
@@ -81,17 +83,20 @@ interface InputAreaProps {
   draft: string
   onDraftChange: (value: string) => void
   onFile: (file: File) => void
+  onFiles: (files: File[]) => void
   onAnalyzeText: (text: string) => void
 }
 
-function InputArea({ draft, onDraftChange, onFile, onAnalyzeText }: InputAreaProps) {
+function InputArea({ draft, onDraftChange, onFile, onFiles, onAnalyzeText }: InputAreaProps) {
   return (
     <div className="grid gap-3 md:grid-cols-[1.15fr_1fr]">
       <FileDropZone
         accept={ACCEPTED_EXTENSIONS}
-        label="Drop any log file here"
-        detail={`${COMMON_EXTENSIONS} or no extension at all — the format is detected from the content`}
+        label="Drop one or more log files here"
+        detail={`${COMMON_EXTENSIONS} or no extension — each file is parsed separately, then correlated together`}
         onFile={onFile}
+        multiple
+        onFiles={onFiles}
         className="h-full min-h-[200px] border-accent/45 hover:border-accent"
       />
 

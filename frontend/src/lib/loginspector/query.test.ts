@@ -240,6 +240,14 @@ describe('sensitive data masking', () => {
     expect((masked[0].json as { iban: string }).iban).toBe('[redacted]')
   })
 
+  it('filters a combined import by source file', () => {
+    const parsed = parseLogText('{"msg":"gateway"}\n{"msg":"wallet"}').events.map((event, index) => ({
+      ...event,
+      sourceName: index === 0 ? 'gateway.log' : 'wallet.log',
+    }))
+    expect(filterEvents(parsed, withFilters({ query: 'source:wallet.log' })).map((event) => event.message)).toEqual(['wallet'])
+  })
+
   it('redacts enterprise identifiers and contact data by default', () => {
     const parsed = parseLogText('{"msg":"x","attributes":{"dean":"DEAN-123"},"http":{"request":{"body":{"iban":"IT60X0542811101000000123456","phone":"+393331234567"}}}}').events
     const json = maskEvents(parsed)[0].json as { attributes: { dean: string }; http: { request: { body: { iban: string; phone: string } } } }

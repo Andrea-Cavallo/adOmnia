@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, Layers } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { highlightSegments } from '@/lib/loginspector'
@@ -12,11 +12,27 @@ export const LIST_COLUMNS = [
   { id: 'logger', label: 'Logger', width: 150 },
   { id: 'thread', label: 'Thread', width: 120 },
   { id: 'correlation', label: 'Correlation', width: 120 },
+  { id: 'source', label: 'Source file', width: 140 },
 ] as const
 
 export type ListColumnId = (typeof LIST_COLUMNS)[number]['id']
 
-export const DEFAULT_COLUMNS: ListColumnId[] = ['time', 'level', 'service', 'pod', 'correlation']
+export const DEFAULT_COLUMNS: ListColumnId[] = ['time', 'level', 'service', 'pod', 'correlation', 'source']
+
+export function availableListColumns(events: LogEvent[], configured: ListColumnId[]): ListColumnId[] {
+  const available = new Set<ListColumnId>()
+  for (const event of events) {
+    if (event.ts !== null || event.tsRaw) available.add('time')
+    if (event.level !== 'unknown' || event.levelRaw) available.add('level')
+    if (event.service) available.add('service')
+    if (event.pod || event.container) available.add('pod')
+    if (event.logger) available.add('logger')
+    if (event.thread) available.add('thread')
+    if (event.correlationId || event.traceId || event.requestId) available.add('correlation')
+    if (event.sourceName) available.add('source')
+  }
+  return configured.filter((column) => available.has(column))
+}
 
 export const LEVEL_STYLE: Record<LogLevel, string> = {
   fatal: 'bg-error/25 text-error',
@@ -79,6 +95,7 @@ export function EventList({
   const [scrollTop, setScrollTop] = useState(0)
   const [viewportHeight, setViewportHeight] = useState(600)
   const height = rowHeight(density, wrap)
+  const visibleColumns = useMemo(() => availableListColumns(events, columns), [events, columns])
 
   useEffect(() => {
     const node = viewportRef.current
@@ -107,7 +124,7 @@ export function EventList({
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="flex shrink-0 items-center gap-2 border-b border-border-1 bg-surface-1 px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-text-4">
-        {LIST_COLUMNS.filter((column) => columns.includes(column.id)).map((column) => (
+        {LIST_COLUMNS.filter((column) => visibleColumns.includes(column.id)).map((column) => (
           <span key={column.id} style={{ width: column.width }} className="shrink-0 truncate">{column.label}</span>
         ))}
         <span className="min-w-0 flex-1">Message</span>
@@ -125,7 +142,7 @@ export function EventList({
                   event={event}
                   height={height}
                   wrap={wrap}
-                  columns={columns}
+                  columns={visibleColumns}
                   highlights={highlights}
                   selected={event.id === selectedId}
                   onSelect={() => onSelect(event)}
@@ -160,6 +177,7 @@ function columnValue(event: LogEvent, id: ListColumnId): string {
     case 'logger': return event.logger
     case 'thread': return event.thread
     case 'correlation': return event.correlationId || event.traceId || event.requestId
+    case 'source': return event.sourceName || ''
   }
 }
 

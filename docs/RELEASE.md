@@ -2,6 +2,12 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+## v0.9.4 release notes: multi-file Log Inspector
+
+See [the full v0.9.4 notes](releases/v0.9.4.md) for cross-file correlation,
+dedicated request/response payload inspection, source-file search and columns
+that adapt to the fields actually present in the imported logs.
+
 ## v0.9.3 release notes: request-level Log Inspector analysis
 
 See [the full v0.9.3 notes](releases/v0.9.3.md) for end-to-end request grouping,

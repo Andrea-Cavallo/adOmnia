@@ -4,6 +4,21 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [0.9.4] - 2026-09-09
+
+### Added
+- **Multi-file investigations:** Open and drag-and-drop accept several log files in one import. Each file is parsed independently, then all events share one timeline and can be filtered or correlated by `correlation_id`, trace ID or request ID across microservices.
+- **Request and response payload view:** structured request and response bodies inside `attributes` are retained and shown as two navigable JSON trees in the event detail panel.
+- **Source-aware search:** combined imports identify the source file on every event and support queries such as `source:wallet.log`.
+
+### Changed
+- **Only useful columns are shown:** columns with no values in the current dataset, including Pod / Container, disappear from the event table and column chooser instead of displaying placeholder dashes. Source file is enabled automatically for multi-file imports.
+
+### Fixed
+- **Nested attributes are preserved:** promoting a recognized nested field no longer removes its sibling fields from the payload, so request bodies, response bodies and application attributes remain available for inspection and filtering.
+
+Full release notes: [v0.9.4](docs/releases/v0.9.4.md).
+
 ## [0.9.3] - 2026-09-09
 
 ### Added

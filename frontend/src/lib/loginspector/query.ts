@@ -4,7 +4,7 @@ import { canonicalKey, flattenPayload, normalizeLevel } from './normalize'
 /** Event fields usable as `field:value` in a query and as sidebar facets. */
 export const QUERY_FIELDS = [
   'level', 'message', 'service', 'namespace', 'pod', 'container',
-  'traceId', 'correlationId', 'requestId', 'thread', 'logger', 'raw',
+  'traceId', 'correlationId', 'requestId', 'thread', 'logger', 'sourceName', 'raw',
 ] as const
 
 export type QueryField = (typeof QUERY_FIELDS)[number]
@@ -24,6 +24,7 @@ const FIELD_SYNONYMS: Record<string, QueryField> = {
   requestid: 'requestId', request: 'requestId', request_id: 'requestId', req: 'requestId',
   thread: 'thread',
   logger: 'logger',
+  source: 'sourceName', sourcefile: 'sourceName', file: 'sourceName', filename: 'sourceName',
   raw: 'raw', line: 'raw', any: 'raw',
 }
 

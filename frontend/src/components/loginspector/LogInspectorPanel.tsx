@@ -41,7 +41,7 @@ import {
   hasActiveFilters,
   loadFromFile,
   maskEvents,
-  parseLogTextInBackground,
+  parseLogSourcesInBackground,
   rememberSchema,
   rememberedPaths,
   sortChronologically,
@@ -59,7 +59,7 @@ import {
   type ImportOperation,
   type StoredSchema,
 } from '@/lib/loginspector'
-import { DEFAULT_COLUMNS, EventList, LIST_COLUMNS, type Density, type ListColumnId } from './EventList'
+import { availableListColumns, DEFAULT_COLUMNS, EventList, LIST_COLUMNS, type Density, type ListColumnId } from './EventList'
 import { EventDetail } from './EventDetail'
 import { FilterSidebar, type SavedQuery } from './FilterSidebar'
 import { RelatedEvents } from './RelatedEvents'
@@ -71,6 +71,7 @@ const PREFS_KEY = 'adomnia.loginspector'
 const MAX_EVENT_CHOICES = [50_000, 100_000, DEFAULT_MAX_EVENTS, 500_000]
 
 interface Prefs {
+  columnsVersion: number
   density: Density
   wrap: boolean
   columns: ListColumnId[]
@@ -83,6 +84,7 @@ interface Prefs {
 }
 
 const DEFAULT_PREFS: Prefs = {
+  columnsVersion: 2,
   density: 'compact',
   wrap: false,
   columns: DEFAULT_COLUMNS,
@@ -98,7 +100,12 @@ function loadPrefs(): Prefs {
   try {
     const stored = localStorage.getItem(PREFS_KEY)
     if (!stored) return DEFAULT_PREFS
-    return { ...DEFAULT_PREFS, ...(JSON.parse(stored) as Partial<Prefs>) }
+    const parsed = JSON.parse(stored) as Partial<Prefs>
+    const configured = parsed.columns ?? DEFAULT_COLUMNS
+    const columns = (parsed.columnsVersion ?? 1) < 2 && !configured.includes('source')
+      ? [...configured, 'source' as const]
+      : configured
+    return { ...DEFAULT_PREFS, ...parsed, columns, columnsVersion: 2 }
   } catch {
     return DEFAULT_PREFS
   }
@@ -168,17 +175,24 @@ export function LogInspectorPanel() {
 
   // ─── Ingest ────────────────────────────────────────────────────────────────
 
-  const ingest = useCallback(async (result: LogSourceResult, existingOperation?: ImportOperation) => {
+  const ingestSources = useCallback(async (inputSources: LogSourceResult[], existingOperation?: ImportOperation) => {
     const gate = operationGateRef.current
     const operation = existingOperation ?? gate.start()
     if (!gate.isActive(operation)) return
-    if (!result.text.trim()) {
+    const sources = inputSources.filter((item) => item.text.trim())
+    if (!sources.length) {
       setError('That input is empty.')
       gate.finish(operation)
       return
     }
+    const sourceResult: LogSourceResult = sources.length === 1 ? sources[0] : {
+      text: 'multiple log files',
+      name: `${sources.length} files · ${sources.map((item) => item.name).join(', ')}`,
+      kind: 'file',
+      bytes: sources.reduce((sum, item) => sum + item.bytes, 0),
+    }
     setError('')
-    setSource(result)
+    setSource(sourceResult)
     setEvents([])
     setSummary(null)
     setDiscovery(EMPTY_DISCOVERY)
@@ -188,8 +202,8 @@ export function LogInspectorPanel() {
     setProgress({ done: 0, total: 0 })
 
     try {
-      const parsed = await parseLogTextInBackground(
-        result.text,
+      const parsed = await parseLogSourcesInBackground(
+        sources,
         { maxEvents: prefs.maxEvents },
         {
           onProgress: (done, total, partial) => {
@@ -210,7 +224,7 @@ export function LogInspectorPanel() {
       // Learn the shape of this log so its own keys become searchable.
       const found = discoverFields(parsed.events)
       setDiscovery(found)
-      setSchema(rememberSchema(found, result.name))
+      setSchema(rememberSchema(found, sourceResult.name))
       if (parsed.aborted) setError('Import cancelled — showing the events parsed so far.')
     } catch (cause) {
       if (!gate.isCurrent(operation)) return
@@ -228,6 +242,11 @@ export function LogInspectorPanel() {
       }
     }
   }, [prefs.maxEvents])
+
+  const ingest = useCallback(
+    (result: LogSourceResult, existingOperation?: ImportOperation) => ingestSources([result], existingOperation),
+    [ingestSources],
+  )
 
   const pasteAndAnalyze = useCallback(async () => {
     const gate = operationGateRef.current
@@ -249,19 +268,19 @@ export function LogInspectorPanel() {
     }
   }, [ingest])
 
-  const openFile = useCallback(async (file: File) => {
+  const openFiles = useCallback(async (files: File[]) => {
     const gate = operationGateRef.current
     const operation = gate.start()
     try {
-      const result = await loadFromFile(file)
-      if (gate.isActive(operation)) await ingest(result, operation)
+      const results = await Promise.all(files.map(loadFromFile))
+      if (gate.isActive(operation)) await ingestSources(results, operation)
     } catch (cause) {
       if (gate.isActive(operation)) {
         setError(cause instanceof Error ? cause.message : 'Could not read that file')
         gate.finish(operation)
       }
     }
-  }, [ingest])
+  }, [ingestSources])
 
   const clearAll = useCallback(() => {
     operationGateRef.current.cancel()
@@ -299,6 +318,10 @@ export function LogInspectorPanel() {
   // Request-level analysis is intentionally delayed until import completes;
   // progressive list rendering must stay cheap on 100k+ line files.
   const analysis = useMemo(() => analyzeLog(summary ? events : []), [events, summary])
+  const availableColumns = useMemo(
+    () => availableListColumns(events, LIST_COLUMNS.map((column) => column.id)),
+    [events],
+  )
   const selected = useMemo(
     () => (selectedId === null ? null : working.find((event) => event.id === selectedId) ?? null),
     [working, selectedId],
@@ -377,8 +400,8 @@ export function LogInspectorPanel() {
     // this guard the same file would be ingested (and parsed) twice.
     if (dropEvent.defaultPrevented) return
     dropEvent.preventDefault()
-    const file = dropEvent.dataTransfer.files?.[0]
-    if (file) void openFile(file)
+    const files = Array.from(dropEvent.dataTransfer.files ?? [])
+    if (files.length) void openFiles(files)
   }
 
   return (
@@ -394,10 +417,11 @@ export function LogInspectorPanel() {
         ref={fileRef}
         type="file"
         accept={ACCEPTED_EXTENSIONS}
+        multiple
         className="hidden"
         onChange={(changeEvent) => {
-          const file = changeEvent.target.files?.[0]
-          if (file) void openFile(file)
+          const files = Array.from(changeEvent.target.files ?? [])
+          if (files.length) void openFiles(files)
           changeEvent.target.value = ''
         }}
       />
@@ -405,7 +429,7 @@ export function LogInspectorPanel() {
       {/* ── Toolbar ── */}
       <div className="flex shrink-0 flex-wrap items-center gap-1.5 border-b border-border-1 bg-surface-1 px-3 py-2">
         <ToolButton onClick={() => void pasteAndAnalyze()} icon={<ClipboardPaste size={12} />} label="Paste" title="Paste and analyze (Ctrl+V)" />
-        <ToolButton onClick={() => fileRef.current?.click()} icon={<FolderOpen size={12} />} label="Open" title="Open a log file" />
+        <ToolButton onClick={() => fileRef.current?.click()} icon={<FolderOpen size={12} />} label="Open" title="Open one or more log files" />
         <ToolButton onClick={clearAll} icon={<Eraser size={12} />} label="Clear" title="Clear everything (Ctrl+L)" disabled={showEmpty} />
 
         <span className="mx-1 h-5 w-px bg-border-2" />
@@ -520,7 +544,7 @@ export function LogInspectorPanel() {
           </IconToggle>
           {menu === 'columns' && (
             <Popover onClose={() => setMenu(null)} wide>
-              {LIST_COLUMNS.map((column) => (
+              {LIST_COLUMNS.filter((column) => availableColumns.includes(column.id)).map((column) => (
                 <label key={column.id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-[11px] text-text-2 hover:bg-surface-2">
                   <input
                     type="checkbox"
@@ -652,7 +676,8 @@ export function LogInspectorPanel() {
             const sample = LOG_SAMPLES.find((item) => item.id === id)
             if (sample) void ingest(fromText(sample.text, sample.label, 'sample'))
           }}
-          onFile={(file) => void openFile(file)}
+          onFile={(file) => void openFiles([file])}
+          onFiles={(files) => void openFiles(files)}
           onAnalyzeText={(text) => void ingest(fromText(text, 'Editor', 'editor'))}
         />
       ) : (

@@ -59,4 +59,19 @@ describe('enterprise structured-log analysis', () => {
     expect(analysis.requests[1].status).toBe('success')
     expect(analysis.environments).toContain('svil')
   })
+
+  it('exposes request and response bodies nested inside attributes', () => {
+    const event = parseLogText(JSON.stringify({
+      message: 'client call',
+      attributes: {
+        operation: 'GetBalance',
+        request_body: { dean: 'masked' },
+        response_body: { balance: 42 },
+      },
+    })).events[0]
+    const context = operationalContext(event)
+    expect(context.requestBody).toEqual({ dean: 'masked' })
+    expect(context.responseBody).toEqual({ balance: 42 })
+    expect(event.extra).toMatchObject({ attributes: { request_body: { dean: 'masked' }, response_body: { balance: 42 } } })
+  })
 })

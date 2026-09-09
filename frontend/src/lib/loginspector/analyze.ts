@@ -26,6 +26,8 @@ export interface OperationalContext {
   sourceFile: string
   sourceFunction: string
   sourceLine: string
+  requestBody: unknown | null
+  responseBody: unknown | null
 }
 
 export interface AnalyzedRequest {
@@ -110,6 +112,19 @@ function numeric(event: LogEvent, aliases: string[]): number | null {
   return Number.isFinite(parsed) ? parsed : null
 }
 
+function payloadValue(event: LogEvent, aliases: string[]): unknown | null {
+  let lookup = lookupCache.get(event)
+  if (!lookup) {
+    lookup = buildLookup(flattened(event))
+    lookupCache.set(event, lookup)
+  }
+  for (const alias of aliases) {
+    const hit = lookup.get(alias)
+    if (hit && hit.value !== null && hit.value !== undefined && hit.value !== '') return hit.value
+  }
+  return null
+}
+
 /** Enterprise fields used by slog, zap, zerolog and JSON logback encoders. */
 export function operationalContext(event: LogEvent): OperationalContext {
   const cached = contextCache.get(event)
@@ -137,6 +152,8 @@ export function operationalContext(event: LogEvent): OperationalContext {
     sourceFile: scalar(event, ['source.file', 'code.filepath', 'caller.file']),
     sourceFunction: scalar(event, ['source.function', 'code.function', 'caller.function']),
     sourceLine: scalar(event, ['source.line', 'code.lineno', 'caller.line']),
+    requestBody: payloadValue(event, ['attributes.request_body', 'attributes.request.body', 'http.request.body', 'request_body']),
+    responseBody: payloadValue(event, ['attributes.response_body', 'attributes.response.body', 'http.response.body', 'response_body']),
   }
   contextCache.set(event, context)
   return context
