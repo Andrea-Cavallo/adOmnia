@@ -103,7 +103,7 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          sudo rm -f /etc/apt/sources.list.d/google-chrome.list
+          sudo rm -f /etc/apt/sources.list.d/*google*
           sudo apt-get update -q
           sudo apt-get install -y --no-install-recommends \
             build-essential \

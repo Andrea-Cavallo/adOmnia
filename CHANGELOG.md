@@ -4,7 +4,22 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [0.9.7] - 2026-09-09
+
+### Added
+- **Log Inspector reliability pass:** request analysis now accepts trace-only chains, separates final success from intermediate timeout/retry evidence, marks observed-window durations with `~`, reads request/response bodies from `attributes.http.*`, and keeps source provenance through JSON/JSONL export.
+
+### Changed
+- **Multi-file source handling:** homonymous files are labelled distinctly (`app.log #1`, `app.log #2`), `source:` and `sourceName:` filters both work, and large merged batches no longer use a massive spread push.
+- **Log Inspector internals split up:** `LogInspectorPanel.tsx` now delegates import, toolbar, status bars and preferences to focused files.
+- **CI Linux packaging:** GitHub Actions removes preinstalled Google apt sources before installing Wails native dependencies, avoiding external `Hash Sum mismatch` failures.
+
+Full release notes: [v0.9.7](docs/releases/v0.9.7.md).
+
 ## [0.9.6] - 2026-09-09
+
+### Note
+- Superseded by `v0.9.7` after the tag workflow hit the same external Ubuntu apt mirror failure before release publication.
 
 ### Added
 - **Log Inspector reliability pass:** request analysis now accepts trace-only chains, separates final success from intermediate timeout/retry evidence, marks observed-window durations with `~`, reads request/response bodies from `attributes.http.*`, and keeps source provenance through JSON/JSONL export.

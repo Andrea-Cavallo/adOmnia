@@ -25,7 +25,7 @@ persistente, verificabile e collegata agli strumenti API di adOmnia.
 
 ## P0 — Rendere attendibili i risultati prima di aggiungere potenza
 
-Stato: primo incremento implementato e pubblicato in **v0.9.6**. Restano possibili
+Stato: primo incremento implementato e pubblicato in **v0.9.7**. Restano possibili
 raffinamenti futuri, ma il Log Inspector ora gestisce trace-only, successi dopo
 retry, durate esplicite vs finestre osservate, body `attributes.http.*`,
 provenienza in export e import multi-file senza spread massivi.

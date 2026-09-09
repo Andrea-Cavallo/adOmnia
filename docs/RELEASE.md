@@ -2,12 +2,17 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
-## v0.9.6 release notes: Log Inspector reliability pass
+## v0.9.7 release notes: Log Inspector reliability pass
 
-See [the full v0.9.6 notes](releases/v0.9.6.md). This is the public release for
+See [the full v0.9.7 notes](releases/v0.9.7.md). This is the public release for
 the Log Inspector reliability pass: trace-only chains, recovered retry outcomes,
 observed-window durations, `attributes.http.*` payloads, source provenance and
 a Linux CI packaging fix.
+
+## v0.9.6 release notes: Log Inspector reliability pass
+
+Superseded by `v0.9.7` after the tag workflow failed on an external Ubuntu apt
+mirror before release publication. See [the archived notes](releases/v0.9.6.md).
 
 ## v0.9.5 release notes: Log Inspector reliability pass
 
