@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, Clock3, RotateCw, ShieldAlert, X, XCircle } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Clock3, GitCompare, RotateCw, ShieldAlert, Workflow, X, XCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { AnalyzedRequest, LogAnalysis, RequestStatus } from '@/lib/loginspector'
 
@@ -6,6 +6,10 @@ interface AnalysisOverviewProps {
   analysis: LogAnalysis
   onFilterRequest: (request: AnalyzedRequest) => void
   onClose: () => void
+  onSelectEventId: (id: number) => void
+  comparisonKeys: string[]
+  onToggleComparison: (request: AnalyzedRequest) => void
+  onBuildChain: (request: AnalyzedRequest) => void
 }
 
 const STATUS_LABEL: Record<RequestStatus, string> = {
@@ -38,7 +42,11 @@ function duration(value: number | null, kind?: AnalyzedRequest['durationKind']):
   return kind === 'observed-window' ? `~${text}` : text
 }
 
-export function AnalysisOverview({ analysis, onFilterRequest, onClose }: AnalysisOverviewProps) {
+export function requestComparisonKey(request: AnalyzedRequest): string {
+  return `${request.correlationKey}:${request.correlationId || request.traceId || request.requestId}`
+}
+
+export function AnalysisOverview({ analysis, onFilterRequest, onClose, onSelectEventId, comparisonKeys, onToggleComparison, onBuildChain }: AnalysisOverviewProps) {
   const failures = analysis.requests.filter((request) => request.status === 'timeout' || request.status === 'server-error').length
   const warnings = analysis.requests.filter((request) => request.status === 'client-error' || request.status === 'retry').length
 
@@ -49,6 +57,7 @@ export function AnalysisOverview({ analysis, onFilterRequest, onClose }: Analysi
         <Metric label="requests" value={analysis.requests.length} />
         {failures > 0 && <Metric label="critical" value={failures} tone="error" />}
         {warnings > 0 && <Metric label="warnings" value={warnings} tone="warning" />}
+        {analysis.errorGroups.length > 0 && <Metric label="error groups" value={analysis.errorGroups.length} tone="error" />}
         {analysis.sensitiveFields.length > 0 && (
           <span className="flex items-center gap-1 rounded bg-warning/10 px-1.5 py-0.5 text-[9px] text-warning" title="Potential clear-text sensitive fields">
             <ShieldAlert size={10} /> {analysis.sensitiveFields.length} sensitive fields
@@ -82,7 +91,7 @@ export function AnalysisOverview({ analysis, onFilterRequest, onClose }: Analysi
             <tbody>
               {analysis.requests.map((request) => (
                 <tr
-                  key={`${request.correlationId}-${request.requestId}`}
+                  key={requestComparisonKey(request)}
                   tabIndex={0}
                   role="button"
                   onClick={() => onFilterRequest(request)}
@@ -91,8 +100,24 @@ export function AnalysisOverview({ analysis, onFilterRequest, onClose }: Analysi
                   className="cursor-pointer border-t border-border-1 font-mono text-text-2 outline-none hover:bg-surface-2/70 focus-visible:bg-accent/10"
                 >
                   <td className="px-2 py-1">
-                    <span className={cn('inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-sans text-[9px]', statusStyle(request.status))}>
-                      <StatusIcon status={request.status} /> {STATUS_LABEL[request.status]}
+                    <span className="flex items-center gap-1">
+                      <button
+                        onClick={(event) => { event.stopPropagation(); onToggleComparison(request) }}
+                        title="Select this chain for payload comparison"
+                        className={cn('grid h-5 w-5 shrink-0 place-items-center rounded border', comparisonKeys.includes(requestComparisonKey(request)) ? 'border-accent bg-accent/20 text-accent-light' : 'border-border-2 text-text-4 hover:text-text-1')}
+                      >
+                        <GitCompare size={9} />
+                      </button>
+                      <button
+                        onClick={(event) => { event.stopPropagation(); onBuildChain(request) }}
+                        title="Propose a flow and mock fixtures from this chain"
+                        className="grid h-5 w-5 shrink-0 place-items-center rounded border border-border-2 text-text-4 hover:text-text-1"
+                      >
+                        <Workflow size={9} />
+                      </button>
+                      <span className={cn('inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-sans text-[9px]', statusStyle(request.status))}>
+                        <StatusIcon status={request.status} /> {STATUS_LABEL[request.status]}
+                      </span>
                     </span>
                   </td>
                   <td className="truncate px-2 py-1" title={`${request.correlationKey}: ${request.correlationId || request.traceId || request.requestId}`}>
@@ -118,6 +143,23 @@ export function AnalysisOverview({ analysis, onFilterRequest, onClose }: Analysi
               <p key={`${anomaly.correlationId}-${anomaly.kind}-${index}`} className={cn('truncate py-0.5 text-[10px]', anomaly.severity === 'error' ? 'text-error' : 'text-warning')} title={`${anomaly.evidence} ${anomaly.action}`}>
                 {anomaly.title}: <span className="text-text-3">{anomaly.evidence}. {anomaly.action}</span>
               </p>
+            ))}
+          </div>
+        )}
+        {analysis.errorGroups.length > 0 && (
+          <div className="border-t border-border-1 px-3 py-1.5">
+            <p className="mb-0.5 text-[9px] font-semibold uppercase tracking-wider text-text-4">Observed error fingerprints</p>
+            {analysis.errorGroups.slice(0, 4).map((group) => (
+              <button
+                key={group.fingerprint}
+                onClick={() => onSelectEventId(group.eventIds[0])}
+                title={`${group.normalization}. Services: ${group.services.join(', ') || 'unknown'}`}
+                className="flex w-full items-center gap-2 py-0.5 text-left font-mono text-[10px] hover:text-accent-light"
+              >
+                <span className="w-8 shrink-0 text-right text-error">×{group.count}</span>
+                <span className="w-24 shrink-0 truncate text-text-4">{group.services.join(', ') || 'unknown'}</span>
+                <span className="min-w-0 flex-1 truncate text-text-2">{group.example}</span>
+              </button>
             ))}
           </div>
         )}

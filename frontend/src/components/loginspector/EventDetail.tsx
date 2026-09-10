@@ -1,8 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Check, Copy, Filter, Share2, WrapText, X } from 'lucide-react'
+import { Check, Copy, Filter, Send, Share2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { correlationCandidates, hideJsonFields, operationalContext, unwrapNestedJson, type CorrelationKey, type LogEvent } from '@/lib/loginspector'
+import { useAppStore } from '@/stores/app'
+import { useTabsStore } from '@/stores/tabs'
+import { useCollectionsStore } from '@/stores/collections'
+import { contractSourcesFromCollections, trafficForEvent, validateLogPayload, callPayloadForEvent, canReproduce, correlationCandidates, eventContext, hideJsonFields, operationalContext, requestDraftFromEvent, unwrapNestedJson, type CorrelationKey, type LogEvent } from '@/lib/loginspector'
 import { JsonTree } from './JsonTree'
+import { useAppTraffic } from './useAppTraffic'
+import { StackTracePanel } from './StackTracePanel'
+import type { Prefs, UpdatePrefs } from './prefs'
+import type { PayloadContractResult } from '@/lib/loginspector'
 import { LEVEL_STYLE } from './EventList'
 
 type DetailTab = 'overview' | 'payloads' | 'json' | 'message' | 'stack' | 'context'
@@ -18,15 +25,18 @@ const TABS: { id: DetailTab; label: string }[] = [
 
 interface EventDetailProps {
   event: LogEvent
+  sessionEvents: LogEvent[]
   onClose: () => void
   onFilterBy: (field: string, value: string) => void
   onShowRelated: (key: CorrelationKey, value: string) => void
+  onSelectEvent: (event: LogEvent) => void
   hiddenFields: string[]
+  prefs: Prefs
+  updatePrefs: UpdatePrefs
 }
 
-export function EventDetail({ event, onClose, onFilterBy, onShowRelated, hiddenFields }: EventDetailProps) {
+export function EventDetail({ event, sessionEvents, onClose, onFilterBy, onShowRelated, onSelectEvent, hiddenFields, prefs, updatePrefs }: EventDetailProps) {
   const [tab, setTab] = useState<DetailTab>('overview')
-  const [wrap, setWrap] = useState(true)
   const [copied, setCopied] = useState('')
 
   const copy = (text: string, token: string) => {
@@ -54,9 +64,45 @@ export function EventDetail({ event, onClose, onFilterBy, onShowRelated, hiddenF
     [event.extra, hiddenFields],
   )
   const operational = useMemo(() => operationalContext(event), [event])
-  const requestBody = useMemo(() => unwrapNestedJson(operational.requestBody), [operational.requestBody])
-  const responseBody = useMemo(() => unwrapNestedJson(operational.responseBody), [operational.responseBody])
-  const hasPayloads = requestBody !== null || responseBody !== null
+  const pairedCall = useMemo(() => callPayloadForEvent(sessionEvents, event), [event, sessionEvents])
+  const requestBody = useMemo(() => unwrapNestedJson(pairedCall?.requestBody ?? operational.requestBody), [operational.requestBody, pairedCall])
+  const responseBody = useMemo(() => unwrapNestedJson(pairedCall?.responseBody ?? operational.responseBody), [operational.responseBody, pairedCall])
+  const requestHeaders = pairedCall?.requestHeaders ?? operational.requestHeaders
+  const responseHeaders = pairedCall?.responseHeaders ?? operational.responseHeaders
+  const requestPacket = requestHeaders === null ? requestBody : { headers: requestHeaders, body: requestBody }
+  const responsePacket = responseHeaders === null ? responseBody : { status: pairedCall?.status ?? operational.httpStatus, headers: responseHeaders, body: responseBody }
+  const hasPayloads = requestPacket !== null || responsePacket !== null
+  const surrounding = useMemo(() => eventContext(sessionEvents, event), [event, sessionEvents])
+  const reproducible = useMemo(() => canReproduce(event), [event])
+  const appTraffic = useAppTraffic(Boolean(event.correlationId || event.traceId || event.requestId))
+  const relatedTraffic = useMemo(() => trafficForEvent(appTraffic, event), [appTraffic, event])
+  const collections = useCollectionsStore((state) => state.collections)
+  const contractSources = useMemo(() => contractSourcesFromCollections(collections), [collections])
+  const contractRoute = pairedCall?.url || operational.httpRoute || operational.httpUrl
+  const requestContract = useMemo(() => validateLogPayload(contractSources, {
+    method: pairedCall?.method || operational.httpMethod,
+    route: contractRoute,
+    status: pairedCall?.status ?? operational.httpStatus,
+    direction: 'request',
+    payload: requestBody,
+  }), [contractRoute, contractSources, operational.httpMethod, operational.httpStatus, pairedCall, requestBody])
+  const responseContract = useMemo(() => validateLogPayload(contractSources, {
+    method: pairedCall?.method || operational.httpMethod,
+    route: contractRoute,
+    status: pairedCall?.status ?? operational.httpStatus,
+    direction: 'response',
+    payload: responseBody,
+  }), [contractRoute, contractSources, operational.httpMethod, operational.httpStatus, pairedCall, responseBody])
+  const draft = useMemo(
+    () => (reproducible ? requestDraftFromEvent(sessionEvents, event) : null),
+    [event, reproducible, sessionEvents],
+  )
+
+  const openInComposer = () => {
+    if (!draft) return
+    useTabsStore.getState().openTab(draft.request)
+    useAppStore.getState().setActiveRail('collections')
+  }
 
   useEffect(() => {
     setTab((current) => {
@@ -132,6 +178,51 @@ export function EventDetail({ event, onClose, onFilterBy, onShowRelated, hiddenF
               ))}
             </div>
           )}
+          {relatedTraffic.length > 0 && (
+            <div className="mb-3 rounded border border-border-1 bg-surface-1 px-2 py-1.5">
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-text-4">
+                adOmnia traffic with the same id · {relatedTraffic.length}
+              </p>
+              {relatedTraffic.slice(0, 6).map((record) => (
+                <div key={record.id} className="flex items-center gap-2 py-[2px] font-mono text-[10px]">
+                  <span className="w-14 shrink-0 rounded bg-surface-2 px-1 text-center text-[9px] text-text-3">{record.source}</span>
+                  <span className="w-10 shrink-0 text-text-3">{record.method}</span>
+                  <span className="min-w-0 flex-1 truncate text-text-2" title={record.url}>{record.url}</span>
+                  <span className={record.status >= 400 ? 'text-error' : 'text-success'}>{record.status || ''}</span>
+                  <span className="shrink-0 text-[9px] text-text-4" title={record.identifiers.map((identifier) => `${identifier.header}: ${identifier.value}`).join(', ')}>
+                    {record.identifiers[0]?.header}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          {draft && (
+            <div className="mb-3 rounded border border-border-1 bg-surface-1 px-2 py-1.5">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={openInComposer}
+                  title="Create an editable request in the API composer"
+                  className="flex h-6 items-center gap-1.5 rounded border border-accent/40 bg-accent/12 px-2 text-[10px] text-accent-light hover:bg-accent/20"
+                >
+                  <Send size={10} />
+                  Open in Composer
+                </button>
+                <span className="min-w-0 flex-1 truncate font-mono text-[9px] text-text-4">
+                  {draft.request.method} {draft.request.url || '—'}
+                </span>
+              </div>
+              <p className="mt-1 text-[10px] text-text-4">
+                {draft.missing.length
+                  ? <>Missing from the log: <span className="text-warning">{draft.missing.join('; ')}</span>. Nothing is sent until you press Send.</>
+                  : 'Every part of the request was present in the log. Nothing is sent until you press Send.'}
+              </p>
+            </div>
+          )}
+          {event.duplicateSources && event.duplicateSources.length > 0 && (
+            <p className="mb-3 rounded border border-info/35 bg-info/10 px-2 py-1.5 text-[10px] text-info">
+              Acquisition copies folded from {event.duplicateSources.map((source) => `${source.sourceName || source.sourceId}:${source.line}`).join(', ')}.
+            </p>
+          )}
           <FieldGrid
             rows={[
               ['Timestamp', event.ts !== null ? new Date(event.ts).toISOString() : event.tsRaw, ''],
@@ -144,6 +235,8 @@ export function EventDetail({ event, onClose, onFilterBy, onShowRelated, hiddenF
               ['Thread', event.thread, 'thread'],
               ['Correlation ID', event.correlationId, 'correlationId'],
               ['Trace ID', event.traceId, 'traceId'],
+              ['Span ID', event.spanId || '', 'spanId'],
+              ['Parent span', event.parentSpanId || '', 'parentSpanId'],
               ['Request ID', event.requestId, 'requestId'],
             ]}
             onFilterBy={onFilterBy}
@@ -218,16 +311,29 @@ export function EventDetail({ event, onClose, onFilterBy, onShowRelated, hiddenF
       )}
 
       {tab === 'payloads' && hasPayloads && (
-        <div className="grid min-h-0 flex-1 grid-rows-2 overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          {pairedCall && (
+            <div className="flex shrink-0 flex-wrap gap-x-3 border-b border-border-1 bg-surface-1 px-3 py-1 font-mono text-[9px] text-text-4">
+              <span>{pairedCall.method || 'CALL'} {pairedCall.url}</span>
+              {pairedCall.status !== null && <span className={pairedCall.status >= 400 ? 'text-error' : 'text-success'}>{pairedCall.status}</span>}
+              <span>{pairedCall.inferred ? 'event-local · association not inferred across rows' : pairedCall.key}</span>
+              {pairedCall.requestEvent && <span>request {pairedCall.requestEvent.sourceName}:{pairedCall.requestEvent.line}</span>}
+              {pairedCall.responseEvent && <span>response {pairedCall.responseEvent.sourceName}:{pairedCall.responseEvent.line}</span>}
+            </div>
+          )}
+          <div className="grid min-h-0 flex-1 grid-rows-2 overflow-hidden">
           <div className="flex min-h-0 flex-col overflow-hidden border-b border-border-1">
-            {requestBody !== null
-              ? <JsonTree value={requestBody} title="Request body" className="min-h-0 flex-1" />
-              : <p className="px-3 py-3 text-[11px] text-text-4">No request body in this event.</p>}
+            {requestPacket !== null
+              ? <JsonTree value={requestPacket} title="Request" className="min-h-0 flex-1" />
+              : <p className="px-3 py-3 text-[11px] text-text-4">No request payload in this call.</p>}
+            <ContractReport result={requestContract} onFilterBy={onFilterBy} />
           </div>
           <div className="flex min-h-0 flex-col overflow-hidden">
-            {responseBody !== null
-              ? <JsonTree value={responseBody} title="Response body" className="min-h-0 flex-1" />
-              : <p className="px-3 py-3 text-[11px] text-text-4">No response body in this event.</p>}
+            {responsePacket !== null
+              ? <JsonTree value={responsePacket} title="Response" className="min-h-0 flex-1" />
+              : <p className="px-3 py-3 text-[11px] text-text-4">No response payload in this call.</p>}
+            <ContractReport result={responseContract} onFilterBy={onFilterBy} />
+          </div>
           </div>
         </div>
       )}
@@ -247,41 +353,15 @@ export function EventDetail({ event, onClose, onFilterBy, onShowRelated, hiddenF
       )}
 
       {tab === 'stack' && (
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <div className="flex shrink-0 items-center gap-2 border-b border-border-1 bg-surface-1 px-2 py-1">
-            <button
-              onClick={() => setWrap((value) => !value)}
-              title="Word wrap"
-              className={cn(
-                'grid h-6 w-6 place-items-center rounded border',
-                wrap ? 'border-accent/50 bg-accent/20 text-accent-light' : 'border-border-2 text-text-4 hover:text-text-1',
-              )}
-            >
-              <WrapText size={12} />
-            </button>
-            <button
-              onClick={() => copy(event.stack, 'stack')}
-              className="flex h-6 items-center gap-1 rounded border border-border-2 px-2 text-[10px] text-text-3 hover:border-accent/40 hover:text-text-1"
-            >
-              {copied === 'stack' ? <Check size={11} className="text-success" /> : <Copy size={11} />}
-              Copy stack
-            </button>
-            <span className="ml-auto font-mono text-[10px] text-text-4">{stackLines.length} lines</span>
-          </div>
-          <div className="min-h-0 flex-1 overflow-auto bg-surface-0 py-1">
-            {stackLines.map((line, index) => (
-              <div key={index} className="flex gap-2 px-2 font-mono text-[11px] leading-[1.55] hover:bg-surface-1">
-                <span className="w-8 shrink-0 select-none text-right text-text-4">{index + 1}</span>
-                <span className={cn('min-w-0 flex-1 text-text-2', wrap ? 'whitespace-pre-wrap break-words' : 'whitespace-pre')}>{line}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <StackTracePanel stack={event.stack} prefs={prefs} updatePrefs={updatePrefs} />
       )}
 
       {tab === 'context' && (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <div className="shrink-0 overflow-auto px-3 py-2" style={{ maxHeight: '45%' }}>
+            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-4">Around this event · ignores active query</p>
+            <ContextEvents title={`±5 lines · ${event.sourceName || 'source'}`} events={surrounding.source} onSelect={onSelectEvent} />
+            <ContextEvents title="±5 seconds · all services" events={surrounding.temporal} onSelect={onSelectEvent} />
             <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-4">Kubernetes / OpenShift</p>
             <FieldGrid
               rows={[
@@ -296,6 +376,8 @@ export function EventDetail({ event, onClose, onFilterBy, onShowRelated, hiddenF
             <FieldGrid
               rows={[
                 ['Trace ID', event.traceId, 'traceId'],
+                ['Span ID', event.spanId || '', 'spanId'],
+                ['Parent span', event.parentSpanId || '', 'parentSpanId'],
                 ['Correlation ID', event.correlationId, 'correlationId'],
                 ['Request ID', event.requestId, 'requestId'],
                 ['Thread', event.thread, 'thread'],
@@ -317,6 +399,59 @@ export function EventDetail({ event, onClose, onFilterBy, onShowRelated, hiddenF
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function ContractReport({ result, onFilterBy }: { result: PayloadContractResult; onFilterBy: (field: string, value: string) => void }) {
+  if (!result.matched) {
+    return result.reason
+      ? <p className="shrink-0 border-t border-border-1 px-3 py-1 text-[9px] text-text-4">Contract: {result.reason}</p>
+      : null
+  }
+  const label = `${result.collectionName} · ${result.method} ${result.openApiPath}`
+  if (result.violations.length === 0) {
+    return (
+      <p className="shrink-0 border-t border-border-1 px-3 py-1 text-[9px] text-success" title={result.reason || undefined}>
+        {result.reason ? `Contract ${label}: ${result.reason}` : `Matches the ${result.direction} contract of ${label}.`}
+      </p>
+    )
+  }
+  return (
+    <div className="max-h-[38%] shrink-0 overflow-auto border-t border-border-1 bg-surface-1">
+      <p className="px-3 py-1 text-[9px] font-semibold uppercase tracking-wider text-warning">
+        {result.violations.length} contract violation(s) · {label}
+        {result.required.length ? ` · required: ${result.required.join(', ')}` : ''}
+      </p>
+      {result.violations.map((violation, index) => (
+        <div key={`${violation.path}-${index}`} className="flex items-start gap-2 px-3 py-[2px] font-mono text-[10px]">
+          <button
+            onClick={() => onFilterBy('message', violation.path.replace(/^\$\./, ''))}
+            title="Filter events mentioning this field"
+            className="shrink-0 text-accent-light hover:underline"
+          >
+            {violation.path}
+          </button>
+          <span className="min-w-0 flex-1 text-text-2">{violation.message} — <span className="text-text-4">{violation.expected}</span></span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function ContextEvents({ title, events, onSelect }: { title: string; events: LogEvent[]; onSelect: (event: LogEvent) => void }) {
+  return (
+    <div className="mb-2 rounded border border-border-1 bg-surface-1">
+      <p className="border-b border-border-1 px-2 py-1 font-mono text-[9px] text-text-4">{title} · {events.length}</p>
+      {events.length === 0 ? (
+        <p className="px-2 py-1.5 text-[10px] text-text-4">No neighboring event.</p>
+      ) : events.slice(0, 30).map((candidate) => (
+        <button key={candidate.id} onClick={() => onSelect(candidate)} className="flex w-full gap-2 px-2 py-1 text-left hover:bg-surface-2">
+          <span className="w-9 shrink-0 text-right font-mono text-[9px] text-text-4">{candidate.line}</span>
+          <span className="w-20 shrink-0 truncate font-mono text-[9px] text-text-3">{candidate.service || candidate.sourceName}</span>
+          <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-text-2">{candidate.message}</span>
+        </button>
+      ))}
     </div>
   )
 }

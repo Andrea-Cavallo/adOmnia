@@ -11,6 +11,7 @@ import { routeGlobalDropFile } from '@/lib/globalFileRouter'
 import { parseInteropFile } from '@/lib/interopHub'
 import { saveFlowDefinitions } from '@/lib/flowStorage'
 import { safeSetItem } from '@/lib/safeLocalStorage'
+import { shouldHandleGlobalDrop } from '@/lib/dropOwnership'
 import type { Tab } from '@/lib/types'
 
 export interface DropFeedback {
@@ -270,6 +271,14 @@ export function useFileDrop(): FileDropResult {
 
   const handleDrop = useCallback(
     async (e: React.DragEvent<HTMLDivElement>) => {
+      if (!shouldHandleGlobalDrop(e.defaultPrevented)) {
+        // A feature panel owns this drop. Clear the global affordance and suppress
+        // the matching Wails native event so it cannot import the same file again.
+        suppressNativeDropUntil.current = Date.now() + 1200
+        clearNoFileTimer()
+        setDragOver(false); setDropPreview(null); dragCounter.current = 0
+        return
+      }
       e.preventDefault()
       setDragOver(false); setDropPreview(null); dragCounter.current = 0
 

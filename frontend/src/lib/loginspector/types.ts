@@ -23,6 +23,8 @@ export interface LogEventFields {
   pod: string
   container: string
   traceId: string
+  spanId?: string
+  parentSpanId?: string
   correlationId: string
   requestId: string
   thread: string
@@ -36,6 +38,8 @@ export interface LogEvent extends LogEventFields {
   sourceId?: string
   /** Human-readable file label when the event belongs to a multi-file import. */
   sourceName?: string
+  /** Other source occurrences folded into this event by explicit acquisition deduplication. */
+  duplicateSources?: { sourceId: string; sourceName: string; line: number }[]
   /** 1-based line number of the first source line of this event. */
   line: number
   /** Number of source lines consumed by this event (>1 for stack traces). */

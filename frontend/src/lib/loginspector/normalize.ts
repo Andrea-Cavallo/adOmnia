@@ -42,6 +42,8 @@ export const FIELD_ALIASES: Record<keyof Omit<LogEventFields, 'level' | 'levelRa
     'traceId', 'trace.id', 'X-B3-TraceId', 'dd.trace_id', 'otel.trace_id',
     'otelTraceId', 'apm.trace_id', 'mdc.traceId',
   ],
+  spanId: ['spanId', 'span.id', 'span_id', 'otel.span_id', 'mdc.spanId'],
+  parentSpanId: ['parentSpanId', 'parent.span.id', 'parent_span_id', 'parent.id', 'otel.parent_span_id'],
   correlationId: [
     'correlationId', 'X-Correlation-Id', 'correlation', 'corrId', 'cid',
     'conversationId', 'mdc.correlationId',
@@ -359,6 +361,8 @@ export function normalizePayload(
     pod: take(FIELD_ALIASES.pod),
     container: take(FIELD_ALIASES.container),
     traceId: take(FIELD_ALIASES.traceId),
+    spanId: take(FIELD_ALIASES.spanId),
+    parentSpanId: take(FIELD_ALIASES.parentSpanId),
     correlationId: take(FIELD_ALIASES.correlationId),
     requestId: take(FIELD_ALIASES.requestId),
     thread: take(FIELD_ALIASES.thread),

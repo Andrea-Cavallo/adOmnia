@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { Copy, Maximize2, GitBranch, GitCompare, Sparkles, X, ShieldCheck, ShieldAlert, ShieldOff, AlertTriangle, Check, XCircle, FileText, FileCode, FileJson, Search, ChevronUp, ChevronDown } from 'lucide-react'
 import type { ResponseData, ContractValidationResult, AssertionResult, ScriptRunResult } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -25,9 +26,36 @@ interface ResponsePanelProps {
   oaPath?: string
   oaMethod?: string
   assertions?: import('@/lib/types').RequestAssertion[]
+  /** Layout controls owned by the workspace, rendered in the response header. */
+  headerActions?: ReactNode
 }
 
-function ResponseWaitingState({ loading }: { loading: boolean }) {
+/**
+ * The one header row of the response pane. Every response state reuses it so
+ * the label, the state chip and the workspace layout controls never drift.
+ */
+function ResponseHeaderBar({ state, headerActions, children }: {
+  state?: 'idle' | 'sending'
+  headerActions?: ReactNode
+  children?: ReactNode
+}) {
+  const tr = useUiTranslation()
+  return (
+    <div className="flex h-9 shrink-0 items-center gap-2.5 overflow-hidden border-b border-border-1 bg-surface-1 px-3">
+      <span className="min-w-0 truncate text-xs font-medium text-text-2">{tr('Response')}</span>
+      {state && (
+        <span className="inline-flex shrink-0 items-center gap-1.5 text-[10px] font-medium text-text-3">
+          <span className={cn('h-1.5 w-1.5 rounded-full', state === 'sending' ? 'bg-accent motion-safe:animate-pulse' : 'bg-text-4')} />
+          {state === 'sending' ? tr('Sending…') : tr('Idle')}
+        </span>
+      )}
+      {children}
+      {headerActions && <div className="ml-auto flex shrink-0 items-center">{headerActions}</div>}
+    </div>
+  )
+}
+
+function ResponseWaitingState({ loading, headerActions }: { loading: boolean; headerActions?: ReactNode }) {
   const tr = useUiTranslation()
   const responseLogo = useResponseLogo(defaultResponseLogo)
   const isSketch = useIsSketchSkin()
@@ -38,7 +66,9 @@ function ResponseWaitingState({ loading }: { loading: boolean }) {
   // first, so without this the logo never actually spun for anyone.)
   if (loading && isSketch) {
     return (
-      <div className="flex min-h-0 flex-1 items-center justify-center">
+      <div className="flex min-h-0 flex-1 flex-col">
+        <ResponseHeaderBar state="sending" headerActions={headerActions} />
+        <div className="flex min-h-0 flex-1 items-center justify-center">
         <div className="flex flex-col items-center text-center">
           <img
             src={responseLogo}
@@ -50,6 +80,7 @@ function ResponseWaitingState({ loading }: { loading: boolean }) {
           />
           <p role="status" className="text-sm text-text-3">{tr('Sending…')}</p>
         </div>
+        </div>
       </div>
     )
   }
@@ -57,14 +88,7 @@ function ResponseWaitingState({ loading }: { loading: boolean }) {
   if (loading) {
     return (
       <div className="flex min-h-0 flex-1 flex-col">
-        <div className="flex items-center gap-3 border-b border-border-1 px-3 py-2">
-          <span className="text-xs font-medium text-text-2">{tr('Response')}</span>
-          <span className="h-5 w-16 rounded adomnia-skeleton" />
-          <div className="ml-auto flex items-center gap-3">
-            <span className="h-3 w-14 rounded adomnia-skeleton" />
-            <span className="h-3 w-12 rounded adomnia-skeleton" />
-          </div>
-        </div>
+        <ResponseHeaderBar state="sending" headerActions={headerActions} />
         <div className="flex items-center gap-0.5 border-b border-border-1 px-3">
           <span className="h-8 w-14 rounded-t adomnia-skeleton" />
           <span className="h-8 w-16 rounded-t adomnia-skeleton opacity-70" />
@@ -84,8 +108,9 @@ function ResponseWaitingState({ loading }: { loading: boolean }) {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 items-center justify-center">
-      <div className="flex flex-col items-center text-center">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <ResponseHeaderBar state="idle" headerActions={headerActions} />
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">
         <img
           src={responseLogo}
           alt="adOmnia"
@@ -485,7 +510,7 @@ function FullscreenBodyModal({
   )
 }
 
-export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMethod, assertions }: ResponsePanelProps) {
+export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMethod, assertions, headerActions }: ResponsePanelProps) {
   const tr = useUiTranslation()
   const initialViewState = useTabsStore.getState().getViewState(tabId)
   const updateViewState = useTabsStore((s) => s.updateViewState)
@@ -704,11 +729,11 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
   }, [matchIndex, matchCount, searchQuery])
 
   if (loading) {
-    return <ResponseWaitingState loading />
+    return <ResponseWaitingState loading headerActions={headerActions} />
   }
 
   if (!response) {
-    return <ResponseWaitingState loading={false} />
+    return <ResponseWaitingState loading={false} headerActions={headerActions} />
   }
 
   if (response.error) {
@@ -743,12 +768,11 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
     ) ? 'CONN_ERR' : code
     return (
       <div className="flex-1 flex flex-col">
-        <div className="flex items-center gap-2 px-3 py-2 border-b border-border-1">
-          <span className="text-xs font-medium text-text-2">{tr('Response')}</span>
+        <ResponseHeaderBar headerActions={headerActions}>
           <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-error/20 text-error">
             {humanCode[effectiveCode] ?? effectiveCode}
           </span>
-        </div>
+        </ResponseHeaderBar>
         <div className="flex-1 flex items-center justify-center p-4">
           <div className="text-center max-w-sm w-full">
             <div className="text-3xl mb-3 text-error/40">⚠</div>
@@ -772,9 +796,9 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
     <>
       <div className={cn('flex-1 flex flex-col min-h-0', responseFlash && 'response-arrived')}>
         {/* Status bar with validation badge */}
-        <div className="flex items-center gap-3 px-3 py-2 border-b border-border-1">
-          <span className="text-xs font-medium text-text-2">{tr('Response')}</span>
-          <span className={cn('px-2 py-0.5 rounded text-[10px] font-medium', statusClass(response.status), responseFlash && (statusChanged || !previousMeta) && 'status-pulse-once')}>
+        <div className="flex h-9 shrink-0 items-center gap-3 overflow-hidden border-b border-border-1 bg-surface-1 px-3">
+          <span className="min-w-0 truncate text-xs font-medium text-text-2">{tr('Response')}</span>
+          <span className={cn('shrink-0 px-2 py-0.5 rounded text-[10px] font-medium', statusClass(response.status), responseFlash && (statusChanged || !previousMeta) && 'status-pulse-once')}>
             {response.status} {response.statusText}
           </span>
           {validationBadge && (
@@ -785,7 +809,7 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
               {validationBadge === 'valid' ? `✓ ${tr('valid JSON')}` : `✗ ${tr('invalid JSON')}`}
             </span>
           )}
-          <div className="flex items-center gap-3 ml-auto text-[10px] text-text-3">
+          <div className="ml-auto flex shrink-0 items-center gap-3 text-[10px] text-text-3">
             <span>
               <span className="text-text-4">{tr('time')} </span>
               <span className={cn('rounded px-1 text-text-2', responseFlash && (timeChanged || !previousMeta) && 'metric-flash')}>{response.ms} ms</span>
@@ -794,6 +818,7 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
               <span className="text-text-4">{tr('size')} </span>
               <span className={cn('rounded px-1 text-text-2', responseFlash && (sizeChanged || !previousMeta) && 'metric-flash')}>{formatBytes(response.size)}</span>
             </span>
+            {headerActions}
           </div>
         </div>
 

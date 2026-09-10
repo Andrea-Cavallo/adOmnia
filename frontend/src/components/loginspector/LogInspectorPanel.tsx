@@ -10,19 +10,28 @@ import {
   analyzeLog,
   buildHistogram,
   compileQuery,
+  consumeLogInspectorQuery,
   correlateEvents,
   countByLevel,
+  deduplicateAcquisitionEvents,
+  AUTOSAVE_INVESTIGATION_ID,
+  deleteInvestigation,
+  exportInvestigationMetadata,
   exportEvents,
   filterEvents,
   fromText,
   maskEvents,
+  loadInvestigation,
+  onLogInspectorQuery,
   rememberedPaths,
+  saveInvestigation,
   sortChronologically,
   type AnalyzedRequest,
   type CorrelationKey,
   type CorrelationResult,
   type ExportFormat,
   type LogFilterState,
+  type InvestigationMetadata,
 } from '@/lib/loginspector'
 import { availableListColumns, EventList, LIST_COLUMNS } from './EventList'
 import { EventDetail } from './EventDetail'
@@ -30,7 +39,13 @@ import { FilterSidebar } from './FilterSidebar'
 import { RelatedEvents } from './RelatedEvents'
 import { Histogram } from './Histogram'
 import { EmptyState } from './EmptyState'
-import { AnalysisOverview } from './AnalysisOverview'
+import { AnalysisOverview, requestComparisonKey } from './AnalysisOverview'
+import { RequestDiffPanel } from './RequestDiffPanel'
+import { EvidencePreviewPanel } from './EvidencePreviewPanel'
+import { ChainProposalPanel } from './ChainProposalPanel'
+import { LiveSourcePanel } from './LiveSourcePanel'
+import { LargeFilePanel } from './LargeFilePanel'
+import { useLiveSources } from './useLiveSources'
 import { LogInspectorToolbar, type ToolbarMenu } from './LogInspectorToolbar'
 import { ErrorBar, ImportProgressBar, SummaryBar } from './StatusBars'
 import { usePrefs } from './prefs'
@@ -47,8 +62,18 @@ export function LogInspectorPanel() {
   const [showFilters, setShowFilters] = useState(true)
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [masked, setMasked] = useState(false)
+  const [deduplicated, setDeduplicated] = useState(false)
   const [streamPreview, setStreamPreview] = useState(true)
   const [showAnalysis, setShowAnalysis] = useState(true)
+  const [comparisonKeys, setComparisonKeys] = useState<string[]>([])
+  const [chainKey, setChainKey] = useState<string | null>(null)
+  const [showLive, setShowLive] = useState(false)
+  const [showLargeFile, setShowLargeFile] = useState(false)
+  const [bookmarks, setBookmarks] = useState<number[]>([])
+  const [notes, setNotes] = useState('')
+  const [sessionReady, setSessionReady] = useState(false)
+  const [sessionSavedAt, setSessionSavedAt] = useState<number | null>(null)
+  const [showEvidence, setShowEvidence] = useState(false)
   const [menu, setMenu] = useState<ToolbarMenu>(null)
   const [dragging, setDragging] = useState(false)
   const [panelWidth, setPanelWidth] = useState(0)
@@ -57,16 +82,65 @@ export function LogInspectorPanel() {
   const responsiveInitializedRef = useRef(false)
   const searchRef = useRef<HTMLInputElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const appliedPresetRef = useRef('')
+  const restoreStartedRef = useRef(false)
 
   const clearSelection = useCallback(() => {
     setSelectedId(null)
     setRelated(null)
+    setComparisonKeys([])
   }, [])
 
   const {
-    source, events, summary, discovery, schema, progress, error,
-    setError, ingest, openFiles, pasteAndAnalyze, clearImport, requestAbort,
+    source, sources, events, summary, discovery, schema, progress, error,
+    setError, ingest, openFiles, renameSource, toggleSource, removeSource, replaceSource, restoreSources,
+    pasteAndAnalyze, appendLiveLines, clearImport, requestAbort,
   } = useLogImport({ maxEvents: prefs.maxEvents, streamPreview, onReset: clearSelection })
+
+  const live = useLiveSources(useCallback(
+    (sourceId, label, lines) => appendLiveLines(sourceId, label, lines),
+    [appendLiveLines],
+  ))
+
+  const sessionMetadata = useCallback((savedAt = Date.now()): InvestigationMetadata => ({
+    version: 1,
+    id: AUTOSAVE_INVESTIGATION_ID,
+    name: sources.map((item) => item.displayName).join(', ') || 'Log investigation',
+    savedAt,
+    sources: sources.map(({ text: _text, ...metadata }) => metadata),
+    ui: { filters, selectedId, bookmarks, notes, showFilters, sortDir, masked, deduplicated },
+  }), [bookmarks, deduplicated, filters, masked, notes, selectedId, showFilters, sortDir, sources])
+
+  useEffect(() => {
+    if (restoreStartedRef.current) return
+    restoreStartedRef.current = true
+    void loadInvestigation().then(async (restored) => {
+      if (!restored) return
+      const restoredSources = restored.sources.map((metadata) => ({ ...metadata, text: restored.sourceContents[metadata.id] ?? '' }))
+      await restoreSources(restoredSources)
+      setFilters(restored.ui.filters)
+      setSelectedId(restored.ui.selectedId)
+      setBookmarks(restored.ui.bookmarks)
+      setNotes(restored.ui.notes)
+      setShowFilters(restored.ui.showFilters)
+      setSortDir(restored.ui.sortDir)
+      setMasked(restored.ui.masked)
+      setDeduplicated(restored.ui.deduplicated)
+      setSessionSavedAt(restored.savedAt)
+      if (restored.missingSourceIds.length) setError(`${restored.missingSourceIds.length} saved source contents are missing; reload those files.`)
+    }).catch(() => setError('The saved investigation could not be restored.')).finally(() => setSessionReady(true))
+  }, [restoreSources, setError])
+
+  useEffect(() => {
+    if (!sessionReady || !sources.length || progress) return
+    const timer = window.setTimeout(() => {
+      const savedAt = Date.now()
+      void saveInvestigation(sessionMetadata(savedAt), Object.fromEntries(sources.map((item) => [item.id, item.text])))
+        .then(() => setSessionSavedAt(savedAt))
+        .catch(() => setError('The investigation could not be saved locally.'))
+    }, 900)
+    return () => window.clearTimeout(timer)
+  }, [progress, sessionMetadata, sessionReady, setError, sources])
 
   useEffect(() => {
     const node = panelRef.current
@@ -85,16 +159,34 @@ export function LogInspectorPanel() {
     return () => observer.disconnect()
   }, [])
 
+  // Another panel (Browser Debug, proxy traffic) can hand a correlation id to
+  // this panel before it is even mounted, so a parked query is read on mount.
+  useEffect(() => {
+    const apply = (query: string) => {
+      setFilters((current) => ({ ...current, query }))
+      clearSelection()
+    }
+    const parked = consumeLogInspectorQuery()
+    if (parked) apply(parked)
+    return onLogInspectorQuery(apply)
+  }, [clearSelection])
+
   const clearAll = useCallback(() => {
     clearImport()
     setFilters(EMPTY_FILTERS)
+    setBookmarks([])
+    setNotes('')
+    setSessionSavedAt(null)
+    void deleteInvestigation().catch(() => {})
   }, [clearImport])
 
   // ─── Derived data ──────────────────────────────────────────────────────────
 
+  const deduplication = useMemo(() => deduplicateAcquisitionEvents(events), [events])
+  const baseEvents = deduplicated ? deduplication.events : events
   const working = useMemo(
-    () => (masked ? maskEvents(events, prefs.maskFields) : events),
-    [events, masked, prefs.maskFields],
+    () => (masked ? maskEvents(baseEvents, prefs.maskFields) : baseEvents),
+    [baseEvents, masked, prefs.maskFields],
   )
   const ordered = useMemo(() => sortChronologically(working, sortDir), [working, sortDir])
   const deferredFilters = useDeferredValue(filters)
@@ -111,15 +203,39 @@ export function LogInspectorPanel() {
   const histogram = useMemo(() => buildHistogram(filtered, 72), [filtered])
   // Request-level analysis is intentionally delayed until import completes;
   // progressive list rendering must stay cheap on 100k+ line files.
-  const analysis = useMemo(() => analyzeLog(summary ? events : []), [events, summary])
+  const analysis = useMemo(() => analyzeLog(summary ? baseEvents : []), [baseEvents, summary])
   const availableColumns = useMemo(
-    () => availableListColumns(events, LIST_COLUMNS.map((column) => column.id)),
-    [events],
+    () => availableListColumns(baseEvents, LIST_COLUMNS.map((column) => column.id)),
+    [baseEvents],
   )
   const selected = useMemo(
     () => (selectedId === null ? null : working.find((event) => event.id === selectedId) ?? null),
     [working, selectedId],
   )
+  const evidenceEvents = useMemo(() => {
+    if (!selected) return filtered
+    const identity: [CorrelationKey, string] | null = selected.correlationId
+      ? ['correlationId', selected.correlationId]
+      : selected.traceId ? ['traceId', selected.traceId]
+        : selected.requestId ? ['requestId', selected.requestId] : null
+    return identity ? working.filter((event) => event[identity[0]] === identity[1]) : [selected]
+  }, [filtered, selected, working])
+  const chainRequest = useMemo(
+    () => (chainKey === null ? null : analysis.requests.find((request) => requestComparisonKey(request) === chainKey) ?? null),
+    [analysis.requests, chainKey],
+  )
+  const comparisonRequests = useMemo(
+    () => comparisonKeys.map((key) => analysis.requests.find((request) => requestComparisonKey(request) === key)).filter((request): request is AnalyzedRequest => Boolean(request)),
+    [analysis.requests, comparisonKeys],
+  )
+
+  useEffect(() => {
+    const format = summary?.format || ''
+    if (!format || appliedPresetRef.current === format) return
+    appliedPresetRef.current = format
+    const preset = prefs.columnPresets[format]
+    if (preset) updatePrefs({ columns: preset.columns, columnWidths: preset.widths })
+  }, [prefs.columnPresets, summary?.format, updatePrefs])
 
   const exportNow = useCallback((format: ExportFormat) => {
     const stamp = new Date().toISOString().replace(/[:.]/g, '-')
@@ -184,7 +300,7 @@ export function LogInspectorPanel() {
   // ─── Render ────────────────────────────────────────────────────────────────
 
   const busy = progress !== null
-  const showEmpty = !source && !busy && events.length === 0
+  const showEmpty = sources.length === 0 && !busy && events.length === 0
   const narrow = panelWidth > 0 && panelWidth < NARROW_WIDTH
   const focusedDetail = narrow && Boolean(selected || related)
 
@@ -227,7 +343,29 @@ export function LogInspectorPanel() {
         prefs={prefs}
         updatePrefs={updatePrefs}
         availableColumns={availableColumns}
+        discoveredPaths={discovery.fields.map((field) => field.path)}
+        queryError={compiled.error}
+        sourceFormat={summary?.format || ''}
+        notes={notes}
+        onNotesChange={setNotes}
+        bookmarkCount={bookmarks.length}
+        selectedBookmarked={selectedId !== null && bookmarks.includes(selectedId)}
+        hasSelectedEvent={selectedId !== null}
+        onToggleBookmark={() => {
+          if (selectedId === null) return
+          setBookmarks((current) => current.includes(selectedId) ? current.filter((id) => id !== selectedId) : [...current, selectedId])
+        }}
+        sessionSavedAt={sessionSavedAt}
+        onSaveSession={() => {
+          const savedAt = Date.now()
+          void saveInvestigation(sessionMetadata(savedAt), Object.fromEntries(sources.map((item) => [item.id, item.text]))).then(() => setSessionSavedAt(savedAt))
+        }}
+        onExportSession={() => downloadText('log-investigation.adomnia-log.json', exportInvestigationMetadata(sessionMetadata()), 'application/json')}
         filtered={filtered}
+        sources={sources}
+        duplicateCount={deduplication.duplicateCount}
+        deduplicated={deduplicated}
+        onToggleDeduplication={() => setDeduplicated((value) => !value)}
         menu={menu}
         onMenuChange={setMenu}
         showFilters={showFilters}
@@ -242,9 +380,19 @@ export function LogInspectorPanel() {
         onToggleStream={() => setStreamPreview((value) => !value)}
         onPaste={() => void pasteAndAnalyze()}
         onPickFiles={() => fileRef.current?.click()}
+        onToggleLive={() => setShowLive((value) => !value)}
+        liveActive={showLive}
+        liveRunning={live.sources.filter((item) => item.running).length}
+        onToggleLargeFile={() => setShowLargeFile((value) => !value)}
+        largeFileActive={showLargeFile}
+        onRenameSource={renameSource}
+        onToggleSource={toggleSource}
+        onRemoveSource={removeSource}
+        onReplaceSource={(id, file) => void replaceSource(id, file)}
         onClear={clearAll}
         clearDisabled={showEmpty}
         onExport={exportNow}
+        onPreviewEvidence={() => setShowEvidence(true)}
       />
 
       {progress && <ImportProgressBar progress={progress} onCancel={requestAbort} />}
@@ -267,6 +415,14 @@ export function LogInspectorPanel() {
             <AnalysisOverview
               analysis={analysis}
               onClose={() => setShowAnalysis(false)}
+              onSelectEventId={(id) => setSelectedId(id)}
+              comparisonKeys={comparisonKeys}
+              onBuildChain={(request: AnalyzedRequest) => setChainKey(requestComparisonKey(request))}
+              onToggleComparison={(request) => setComparisonKeys((current) => {
+                const key = requestComparisonKey(request)
+                if (current.includes(key)) return current.filter((item) => item !== key)
+                return [...current.slice(-1), key]
+              })}
               onFilterRequest={(request: AnalyzedRequest) => {
                 const value = request.correlationId || request.traceId || request.requestId
                 const query = `${request.correlationKey}:${value}`
@@ -320,6 +476,8 @@ export function LogInspectorPanel() {
                   density={prefs.density}
                   wrap={prefs.wrap}
                   columns={prefs.columns}
+                  columnWidths={prefs.columnWidths}
+                  onColumnWidthChange={(id, width) => updatePrefs({ columnWidths: { ...prefs.columnWidths, [id]: width } })}
                   highlights={compiled.highlights}
                   scrollToId={related ? null : selectedId}
                 />
@@ -346,13 +504,17 @@ export function LogInspectorPanel() {
                   ) : selected ? (
                     <EventDetail
                       event={selected}
+                      sessionEvents={working}
                       onClose={() => setSelectedId(null)}
                       onFilterBy={(field, value) => setFilters((current) => ({
                         ...current,
                         query: current.query ? `${current.query} ${field}:${value}` : `${field}:${value}`,
                       }))}
                       onShowRelated={(key: CorrelationKey, value: string) => setRelated(correlateEvents(working, key, value))}
+                      onSelectEvent={(event) => setSelectedId(event.id)}
                       hiddenFields={prefs.hiddenFields}
+                      prefs={prefs}
+                      updatePrefs={updatePrefs}
                     />
                   ) : null}
                 </aside>
@@ -362,7 +524,7 @@ export function LogInspectorPanel() {
 
           <SummaryBar
             shown={filtered.length}
-            total={events.length}
+            total={baseEvents.length}
             summary={summary}
             source={source}
             maxEvents={prefs.maxEvents}
@@ -372,10 +534,48 @@ export function LogInspectorPanel() {
         </>
       )}
 
+      {showLive && <LiveSourcePanel live={live} onClose={() => setShowLive(false)} />}
+
+      {showLargeFile && (
+        <LargeFilePanel
+          onClose={() => setShowLargeFile(false)}
+          onImportPage={(name, text) => {
+            void openFiles([new File([text], name, { type: 'text/plain' })])
+            setShowLargeFile(false)
+          }}
+        />
+      )}
+
       {dragging && (
         <div className="pointer-events-none absolute inset-0 z-20 grid place-items-center bg-surface-0/80 backdrop-blur-[1px]">
           <p className="rounded-lg border border-dashed border-accent px-6 py-4 text-sm text-accent-light">Drop the log file to analyze it</p>
         </div>
+      )}
+      {chainRequest && (
+        <ChainProposalPanel
+          events={working}
+          request={chainRequest}
+          onClose={() => setChainKey(null)}
+          onSelectEventId={(id) => { setChainKey(null); setSelectedId(id) }}
+        />
+      )}
+      {comparisonRequests.length === 2 && (
+        <RequestDiffPanel
+          events={working}
+          left={comparisonRequests[0]}
+          right={comparisonRequests[1]}
+          onClose={() => setComparisonKeys([])}
+        />
+      )}
+      {showEvidence && (
+        <EvidencePreviewPanel
+          events={evidenceEvents}
+          filters={filters}
+          notes={notes}
+          maskFields={prefs.maskFields}
+          hiddenFields={prefs.hiddenFields}
+          onClose={() => setShowEvidence(false)}
+        />
       )}
     </div>
   )

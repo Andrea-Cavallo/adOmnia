@@ -43,12 +43,28 @@ export interface QueryClause {
 
 export interface CompiledQuery {
   clauses: QueryClause[]
+  expression?: QueryExpression
   /** Plain terms the list should highlight. */
   highlights: string[]
   error: string
 }
 
 export const EMPTY_QUERY: CompiledQuery = { clauses: [], highlights: [], error: '' }
+
+type ComparisonOperator = '=' | '!=' | '>' | '>=' | '<' | '<=' | 'between' | 'is-null' | 'is-missing' | 'exists'
+
+interface ComparisonExpression {
+  kind: 'comparison'
+  path: string
+  operator: ComparisonOperator
+  value?: unknown
+  upper?: unknown
+}
+
+interface ClauseExpression { kind: 'clause'; clause: QueryClause }
+interface BinaryExpression { kind: 'and' | 'or'; left: QueryExpression; right: QueryExpression }
+interface NotExpression { kind: 'not'; child: QueryExpression }
+export type QueryExpression = ComparisonExpression | ClauseExpression | BinaryExpression | NotExpression
 
 // A `/` opens a regex only at the start of a token (optionally after `-` or
 // `field:`) and when it is not the `//` of a URL.
@@ -155,6 +171,11 @@ export function compileQuery(input: string): CompiledQuery {
   const trimmed = input.trim()
   if (!trimmed) return EMPTY_QUERY
 
+  if (/[()<>]=?|!=|(?:^|\s)[\w.@$[\]-]+\s*=|\b(?:AND|OR|NOT|IS|BETWEEN|EXISTS)\b/i.test(trimmed)) {
+    const parsed = compileExpressionQuery(trimmed)
+    if (parsed) return parsed
+  }
+
   const clauses: QueryClause[] = []
   const highlights: string[] = []
   let error = ''
@@ -201,6 +222,117 @@ export function compileQuery(input: string): CompiledQuery {
   return { clauses, highlights, error }
 }
 
+function expressionTokens(input: string): string[] {
+  const tokens: string[] = []
+  const pattern = /\s*(>=|<=|!=|=|>|<|\(|\)|"(?:\\.|[^"])*"|'(?:\\.|[^'])*'|[^\s()<>!=]+)/gy
+  let offset = 0
+  while (offset < input.length) {
+    pattern.lastIndex = offset
+    const match = pattern.exec(input)
+    if (!match || match.index !== offset) throw new Error(`Unexpected token at character ${offset + 1}`)
+    tokens.push(match[1])
+    offset = pattern.lastIndex
+  }
+  return tokens
+}
+
+function literal(token: string): unknown {
+  if ((token.startsWith('"') && token.endsWith('"')) || (token.startsWith("'") && token.endsWith("'"))) return token.slice(1, -1)
+  if (/^-?(?:\d+\.?\d*|\.\d+)$/.test(token)) return Number(token)
+  if (/^(true|false)$/i.test(token)) return token.toLowerCase() === 'true'
+  if (/^null$/i.test(token)) return null
+  return token
+}
+
+function legacyClause(token: string): QueryClause {
+  const negated = token.startsWith('-') && token.length > 1
+  const body = negated ? token.slice(1) : token
+  const colon = body.indexOf(':')
+  if (colon > 0) {
+    const rawField = body.slice(0, colon)
+    const value = body.slice(colon + 1)
+    const field = FIELD_SYNONYMS[rawField.toLowerCase()]
+    if (field || FIELD_NAME.test(rawField)) return {
+      field,
+      path: field ? undefined : rawField,
+      value,
+      negated,
+      existence: value === '*',
+      matcher: value === '*' ? null : buildMatcher(value, true),
+    }
+  }
+  return { value: body, negated, existence: false, matcher: buildMatcher(body, false) }
+}
+
+function compileExpressionQuery(input: string): CompiledQuery | null {
+  try {
+    const tokens = expressionTokens(input)
+    let position = 0
+    const peek = () => tokens[position]
+    const consume = () => tokens[position++]
+    const keyword = (value: string) => peek()?.toUpperCase() === value
+    const parsePrimary = (): QueryExpression => {
+      if (peek() === '(') {
+        consume()
+        const child = parseOr()
+        if (consume() !== ')') throw new Error(`Missing closing parenthesis near token ${position + 1}`)
+        return child
+      }
+      const path = consume()
+      if (!path) throw new Error('Expected a field or search term')
+      const operator = peek()
+      if (operator && ['=', '!=', '>', '>=', '<', '<='].includes(operator)) {
+        consume()
+        const valueToken = consume()
+        if (!valueToken || valueToken === ')') throw new Error(`Expected a value after ${operator}`)
+        return { kind: 'comparison', path, operator: operator as ComparisonOperator, value: literal(valueToken) }
+      }
+      if (keyword('BETWEEN')) {
+        consume()
+        const lower = consume()
+        if (!lower || !keyword('AND')) throw new Error('BETWEEN requires “lower AND upper”')
+        consume()
+        const upper = consume()
+        if (!upper) throw new Error('BETWEEN requires an upper bound')
+        return { kind: 'comparison', path, operator: 'between', value: literal(lower), upper: literal(upper) }
+      }
+      if (keyword('IS')) {
+        consume()
+        const negated = keyword('NOT') ? (consume(), true) : false
+        const kind = consume()?.toUpperCase()
+        if (kind !== 'NULL' && kind !== 'MISSING') throw new Error('IS accepts NULL, NOT NULL, MISSING or NOT MISSING')
+        const comparison: ComparisonExpression = { kind: 'comparison', path, operator: kind === 'NULL' ? 'is-null' : 'is-missing' }
+        return negated ? { kind: 'not', child: comparison } : comparison
+      }
+      if (keyword('EXISTS')) {
+        consume()
+        return { kind: 'comparison', path, operator: 'exists' }
+      }
+      return { kind: 'clause', clause: legacyClause(path) }
+    }
+    const parseUnary = (): QueryExpression => keyword('NOT') ? (consume(), { kind: 'not', child: parseUnary() }) : parsePrimary()
+    const parseAnd = (): QueryExpression => {
+      let node = parseUnary()
+      while (position < tokens.length && peek() !== ')' && !keyword('OR')) {
+        if (keyword('AND')) consume()
+        node = { kind: 'and', left: node, right: parseUnary() }
+      }
+      return node
+    }
+    const parseOr = (): QueryExpression => {
+      let node = parseAnd()
+      while (keyword('OR')) { consume(); node = { kind: 'or', left: node, right: parseAnd() } }
+      return node
+    }
+    const expression = parseOr()
+    if (position !== tokens.length) throw new Error(`Unexpected token “${peek()}”`)
+    const highlights = tokens.filter((token) => !/^(AND|OR|NOT|IS|BETWEEN|EXISTS|NULL|MISSING|[()<>!=]+)$/i.test(token) && !/^-?\d/.test(token))
+    return { clauses: [], expression, highlights, error: '' }
+  } catch (cause) {
+    return { clauses: [], highlights: [], error: cause instanceof Error ? cause.message : 'Invalid query syntax' }
+  }
+}
+
 // A lowercase haystack per event, built once. Keyed by the event object so it
 // is dropped together with the parsed batch.
 const searchCache = new WeakMap<LogEvent, string>()
@@ -217,6 +349,7 @@ function haystack(event: LogEvent): string {
 // asks for a field the model does not carry. Keyed by the event, so it is
 // released with the batch.
 const payloadCache = new WeakMap<LogEvent, Map<string, string>>()
+const typedPayloadCache = new WeakMap<LogEvent, Map<string, unknown>>()
 
 function payloadIndex(event: LogEvent): Map<string, string> {
   const cached = payloadCache.get(event)
@@ -236,6 +369,78 @@ function payloadIndex(event: LogEvent): Map<string, string> {
 
   payloadCache.set(event, index)
   return index
+}
+
+function typedPayloadIndex(event: LogEvent): Map<string, unknown> {
+  const cached = typedPayloadCache.get(event)
+  if (cached) return cached
+  const index = new Map<string, unknown>()
+  const absorb = (source: Record<string, unknown>) => {
+    for (const [key, value] of Object.entries(flattenPayload(source))) {
+      const canonical = canonicalKey(key)
+      if (!index.has(canonical)) index.set(canonical, value)
+    }
+  }
+  if (event.json && typeof event.json === 'object') absorb(event.json as Record<string, unknown>)
+  absorb(event.extra)
+  absorb(event.decoded)
+  typedPayloadCache.set(event, index)
+  return index
+}
+
+function directPath(source: unknown, path: string): unknown {
+  const segments = path.replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean)
+  let current = source
+  for (const segment of segments) {
+    if (Array.isArray(current)) {
+      const index = Number(segment)
+      if (!Number.isInteger(index) || index < 0 || index >= current.length) return undefined
+      current = current[index]
+    } else if (current && typeof current === 'object') {
+      const object = current as Record<string, unknown>
+      const key = Object.keys(object).find((candidate) => canonicalKey(candidate) === canonicalKey(segment))
+      if (!key) return undefined
+      current = object[key]
+    } else return undefined
+  }
+  return current
+}
+
+function comparisonValue(event: LogEvent, path: string): unknown {
+  const field = FIELD_SYNONYMS[path.toLowerCase()]
+  if (field === 'raw') return event.raw
+  if (field) return event[field]
+  const direct = directPath(event.json, path) ?? directPath(event.decoded, path) ?? directPath(event.extra, path)
+  return direct !== undefined ? direct : typedPayloadIndex(event).get(canonicalKey(path))
+}
+
+function compareTyped(actual: unknown, expression: ComparisonExpression): boolean {
+  const expected = expression.value
+  if (expression.operator === 'is-missing') return actual === undefined
+  if (expression.operator === 'is-null') return actual === null
+  if (expression.operator === 'exists') return actual !== undefined
+  if (expression.operator === '=' || expression.operator === '!=') {
+    const equal = typeof actual === typeof expected && Object.is(actual, expected)
+    return expression.operator === '=' ? equal : !equal
+  }
+  if (typeof actual !== 'number' || typeof expected !== 'number') return false
+  if (expression.operator === 'between') return typeof expression.upper === 'number' && actual >= expected && actual <= expression.upper
+  if (expression.operator === '>') return actual > expected
+  if (expression.operator === '>=') return actual >= expected
+  if (expression.operator === '<') return actual < expected
+  return actual <= expected
+}
+
+function expressionMatches(event: LogEvent, expression: QueryExpression): boolean {
+  if (expression.kind === 'and') return expressionMatches(event, expression.left) && expressionMatches(event, expression.right)
+  if (expression.kind === 'or') return expressionMatches(event, expression.left) || expressionMatches(event, expression.right)
+  if (expression.kind === 'not') return !expressionMatches(event, expression.child)
+  if (expression.kind === 'clause') {
+    const hit = clauseMatches(event, expression.clause)
+    return expression.clause.negated ? !hit : hit
+  }
+  if (expression.kind === 'comparison') return compareTyped(comparisonValue(event, expression.path), expression)
+  return false
 }
 
 function fieldValue(event: LogEvent, clause: QueryClause): string {
@@ -264,6 +469,8 @@ function clauseMatches(event: LogEvent, clause: QueryClause): boolean {
 }
 
 export function matchesQuery(event: LogEvent, compiled: CompiledQuery): boolean {
+  if (compiled.error) return false
+  if (compiled.expression) return expressionMatches(event, compiled.expression)
   for (const clause of compiled.clauses) {
     const hit = clauseMatches(event, clause)
     if (clause.negated ? hit : !hit) return false

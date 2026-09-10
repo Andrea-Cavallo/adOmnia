@@ -74,9 +74,15 @@ type DragPayload =
 type DropPosition = 'before' | 'inside' | 'after'
 
 type ContextTarget =
+  // Right-clicking the empty tree area is still a real target: it is where the
+  // "create something here" actions belong.
+  | { kind: 'panel'; x: number; y: number }
   | { kind: 'collection'; collection: Collection; x: number; y: number }
   | { kind: 'folder'; collectionId: string; node: FolderItem; x: number; y: number }
   | { kind: 'request'; collectionId: string; node: RequestItem; x: number; y: number }
+
+/** Everything the tree can act on. The empty-panel menu has no such subject. */
+type ItemContextTarget = Exclude<ContextTarget, { kind: 'panel' }>
 
 function countRequests(nodes: TreeNode[]): number {
   return nodes.reduce((count, node) => count + (node.type === 'request' ? 1 : countRequests(node.children)), 0)
@@ -463,7 +469,7 @@ export function CollectionTree({
   const [folderPrompt, setFolderPrompt] = useState<{ collectionId: string; parentId: string | null } | null>(null)
   const [moveTarget, setMoveTarget] = useState<{ collectionId: string; requestId: string; folders: FolderItem[] } | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<ContextTarget | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<ItemContextTarget | null>(null)
   const [selectedCollectionIds, setSelectedCollectionIds] = useState<Set<string>>(() => new Set())
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
   const [context, setContext] = useState<ContextTarget | null>(null)
@@ -793,7 +799,7 @@ export function CollectionTree({
     setDropTarget(null)
   }
 
-  const contextExportMenu = (target: ContextTarget) => (
+  const contextExportMenu = (target: ItemContextTarget) => (
     <div className="border-t border-border-1 py-1">
       {(['adomnia', 'postman', 'insomnia', 'bruno', 'openapi', 'swagger2'] as ExportFormat[]).map((format) => (
         <MenuButton
@@ -864,7 +870,21 @@ export function CollectionTree({
         </div>
       )}
 
-      <div ref={treeRef} role="tree" aria-label={tr('Collections')} className="flex-1 overflow-y-auto px-1 pb-2 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent" tabIndex={0} onKeyDown={handleTreeKeyDown}>
+      <div
+        ref={treeRef}
+        role="tree"
+        aria-label={tr('Collections')}
+        className="flex-1 overflow-y-auto px-1 pb-2 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+        tabIndex={0}
+        onKeyDown={handleTreeKeyDown}
+        onContextMenu={(event) => {
+          // Rows stop propagation with their own menu, so reaching here means
+          // the click landed on empty space.
+          event.preventDefault()
+          setMenuPos(null)
+          setContext({ kind: 'panel', x: event.clientX, y: event.clientY })
+        }}
+      >
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
             <div className="grid h-10 w-10 place-items-center rounded-lg border border-dashed border-border-2 bg-surface-1 text-text-3">
@@ -918,6 +938,7 @@ export function CollectionTree({
               }}
               onContextMenu={(event) => {
                 event.preventDefault()
+                event.stopPropagation()
                 setContext({ kind: 'collection', collection, x: event.clientX, y: event.clientY })
               }}
               className={cn(
@@ -980,6 +1001,23 @@ export function CollectionTree({
 
       {context && (
         <div ref={menuRef} className="fixed z-50 max-h-[70vh] w-52 overflow-y-auto rounded-md border border-border-1 bg-surface-1 py-1 shadow-xl" style={{ left: menuPos?.left ?? context.x, top: menuPos?.top ?? context.y, visibility: menuPos ? 'visible' : 'hidden' }}>
+          {context.kind === 'panel' && (
+            <>
+              <MenuButton onClick={() => {
+                const collectionId = onNewRequest()
+                if (collectionId) setOpenIds((current) => new Set(current).add(collectionId))
+                setContext(null)
+              }}><Plus size={12} /> {tr('New Request')}</MenuButton>
+              <MenuButton onClick={() => { onAddCollection(); setContext(null) }}><FolderPlus size={12} /> {tr('New Collection')}</MenuButton>
+              <MenuButton onClick={() => { fileInputRef.current?.click(); setContext(null) }}><Upload size={12} /> {tr('Import file')}</MenuButton>
+              <MenuButton onClick={() => { exportAll('adomnia'); setContext(null) }}><Download size={12} /> {tr('Export all collections')}</MenuButton>
+              <div className="border-t border-border-1 py-1">
+                <MenuButton onClick={() => { document.dispatchEvent(new CustomEvent('adomnia:open-environments')); setContext(null) }}><Layers size={12} /> {tr('Manage environments')}</MenuButton>
+                <MenuButton onClick={() => { setOpenIds(new Set(collections.map((collection) => collection.id))); setContext(null) }}><ChevronRight size={12} /> {tr('Expand all')}</MenuButton>
+                <MenuButton onClick={() => { setOpenIds(new Set()); setContext(null) }}><ChevronRight size={12} className="rotate-90" /> {tr('Collapse all')}</MenuButton>
+              </div>
+            </>
+          )}
           {context.kind === 'collection' && (
             <>
               <MenuButton onClick={() => { setEditingId(context.collection.id); setContext(null) }}><Copy size={12} /> {tr('Rename')}</MenuButton>

@@ -51,12 +51,45 @@ mojibake.
 > with no extension at all"*, *"refuses a binary file instead of showing
 > mojibake"*.
 
-### `oc logs` — prepared, not implemented
+### Live acquisition — local file tail and container logs
 
-`sources.ts` exposes `OC_LOGS_SOURCE` with `available: false`. Only the Go
-binding that runs `oc logs -f` is missing; the rest of the pipeline is already
-source-agnostic. The empty state no longer advertises the entry — a disabled row
-that never becomes enabled is noise — so the seam is documented here instead.
+`internal/logstream` (sidecar endpoints `/logstream/*`) tails a local file or
+runs `kubectl logs -f`, `oc logs -f` or `docker logs -f`. Context, namespace,
+pod and container are always chosen explicitly in the UI; `/logstream/tools`
+reports which CLIs are installed so a missing dependency is named before the
+source is started, not after it fails.
+
+Two properties matter more than throughput:
+
+- **Resuming does not duplicate.** A file resumes from the byte offset already
+  reached, so nothing is re-read; a shrinking file is treated as a rotation and
+  re-opened from zero. A container stream has no offset, so on resume the
+  backend suppresses lines it still holds in its buffer for a 15 s window.
+- **Stopping stops the work.** `stop` cancels the process and the tail
+  goroutine, `close` also frees the buffer, and both closing the panel and
+  shutting down the sidecar close every session.
+
+The buffer is a bounded ring (5 000 lines by default): the newest lines win and
+the number of evicted lines is reported, never hidden. Live lines join the
+session as a `live` source, so they are correlated with the files already
+imported.
+
+**ponytail:** the renderer keeps the last 20 000 lines of a live source and
+re-parses the session on every batch. Incremental append is the upgrade path if
+a live session ever needs to stay open on hundreds of thousands of lines.
+
+### Managed investigation sources
+
+Opening more files while an investigation is active appends them to the current
+session instead of replacing it. The source manager can rename, disable, remove,
+reload or replace one source and reports its detected format, byte size, event and
+parse-issue counts, and timestamp range. Source IDs remain stable across reparses;
+the active query is retained when another service log is added.
+
+Exact events repeated across different sources are reported as acquisition-copy
+candidates. Deduplication is explicit and off by default. When enabled, the kept
+event records every folded file/line; repeated rows inside one source remain intact
+so application retries are not mistaken for duplicate imports.
 
 ---
 
@@ -197,6 +230,19 @@ want to read.
 │ summary: shown / total / valid / unparsed / errors           │
 └──────────────────────────────────────────────────────────────┘
 ```
+
+The correlated-event timeline also exposes a service/call waterfall. Real span and
+parent-span identifiers define causal links; rows without them are rendered with a
+dashed, explicitly inferred marker. Request and response bodies and headers logged
+on different rows are paired only by span or request identity, preventing parallel
+downstream responses from being swapped.
+
+The analysis table supports selecting two chains for a local JSON payload diff.
+Differences distinguish missing fields, types and values, expose copyable JSONPath,
+and ignore common volatile timestamp and tracing identifiers. The event detail can
+open ±5 source lines and ±5 seconds across all sources without changing the active
+query. Observed errors are grouped by a documented normalization fingerprint while
+keeping every original event reachable.
 
 **List row** (compact, not a JSON blob): timestamp, level, service, pod or
 container, message, correlation/trace ID, plus two indicators — stack trace
@@ -374,7 +420,59 @@ choice, not an event filter.
 
 ---
 
+
+## 6b. From the log to the work
+
+The investigation ends where development starts, so five bridges connect the
+Log Inspector to the rest of adOmnia. All of them state what the log did *not*
+contain instead of inventing it.
+
+| Bridge | Module | What it does |
+|---|---|---|
+| Log → Composer | `reproduce.ts` | Builds an editable request from method, route, headers and the paired body. A missing host becomes `{{baseUrl}}`, resolved by the active environment (and the Vault references it holds). Missing parts are listed in the panel and in the request description. Sending stays the normal Send. |
+| Chain → Flow / Mock | `chainToFlow.ts` | Turns the paired calls of one chain into flow steps and proposes response → request mappings. A mapping is `confirmed` only when the value is distinctive, produced by exactly one response, and the field names align (or the value appears in the next URL); everything else is a `coincidence` and stays in the node note. Observed responses become Mock Server fixtures. |
+| Browser / Composer / proxy ↔ logs | `appTraffic.ts`, `handoff.ts` | Reads correlation headers (`x-correlation-id`, `x-request-id`, `x-b3-traceid`, `traceparent`, `X-Amzn-Trace-Id`) from Browser Debug, Composer history and proxy traffic. The event detail lists adOmnia traffic sharing an id; Browser Debug's *Find in Log Inspector* hands the query to the panel even before it is mounted. |
+| Stack frame → source | `stackTrace.ts`, `internal/sourcemap` | Parses Java (module prefix included), Go, JS and Python frames, keeps `Caused by` chains apart, counts folded frames and marks framework/runtime frames with the reason. A frame is resolved against user-selected repositories by path suffix — a build-machine path does not exist locally — ambiguity is reported, and opening a path outside those roots is refused. |
+| Payload → contract | `payloadContract.ts` | Validates a logged request/response against the OpenAPI document a collection already carries, matching `/orders/8f21` to `/orders/{orderId}`. Each violation carries its JSONPath and the rule it broke. |
+
+---
+
 ## 7. Large-input strategy
+
+### Files larger than the available RAM
+
+`internal/logindex` (sidecar `/logindex/*`) makes a log usable without loading
+it. The file is scanned once, in a streaming pass, and each record is described
+by a 24-byte on-disk entry: offset, length, timestamp, level, and whether it
+continues the record above. Queries walk that index and read from the log only
+the bytes of the page they return; level and time filters never touch the log at
+all. Every query carries a time budget, reports `budgetExceeded` and hands back
+a cursor, so a full-text scan of a gigabyte can be paged instead of freezing the
+panel. Indexing runs in its own goroutine, can be cancelled, and the partial
+index stays queryable.
+
+Measured on Windows 11 / amd64 / 28 CPU / Go 1.26.5, with a 1.00 GB mixed
+fixture (JSON lines, plain lines, Java stack traces; 10,044,770 records):
+
+| Measure | Result |
+|---|---|
+| Indexing | 8.78 s (116.7 MB/s), index file 229.9 MB (22.4% of the log) |
+| First visible page | 17 ms after opening |
+| Backend heap after indexing | 2.9 MB (0.6 MB before) |
+| Filter `level=error`, 200 records | 5 ms |
+| Full-text scan of the whole file | 17.5 s over 10M records |
+| Jump to the end of the index, 100 records | 1 ms |
+| 200 ms budget on a non-matching scan | returns at 201 ms, resumes at record 113,920 |
+| Cancel indexing | stops 57 ms in, 36,351 records kept |
+
+Reproduce with
+`ADOMNIA_LOGINDEX_BENCH_MB=1024 go test ./internal/logindex/ -run TestBenchmarkLargeFile -v -timeout 30m`.
+
+The renderer side is `LargeFilePanel` (toolbar → *Large file*): level filters,
+substring search, forward/backward paging, and *Import this page into the
+session* to pull one page into the normal in-memory investigation, where
+parsing, correlation and analysis apply as usual.
+
 
 Target: fluid with at least 100,000 events. Covered by the tests.
 
@@ -440,7 +538,7 @@ frontend/src/lib/loginspector/
   stats.ts            82   per-level counts, facets, histogram
   mask.ts             76   Clear sensitive fields + hidden fields
   samples.ts          75   5 examples
-  sources.ts          71   acquisition seam, binary guard, oc logs
+  sources.ts          62   acquisition seam, binary guard, live sources
   detect.ts           70   ANSI, format detection, JSON after a prefix
   correlate.ts        68   correlated chains, deltas, chronological order
   exporters.ts        54   JSON / JSONL / text
@@ -560,7 +658,6 @@ Since v0.9.1 Log Inspector is a **rail destination**, not a Power Tools studio:
 
 ## 12. Known limits
 
-- **`oc logs` not implemented** — the seam is ready, the Go binding is missing.
 - A single huge JSON array is read with one `JSON.parse`: a limit of the format,
   not of the implementation. It still runs in the worker, so it never blocks the
   UI and can be cancelled; running out of memory produces a dedicated message
@@ -580,18 +677,13 @@ that would give first if the bar were raised.
 
 ### High value
 
-1. **Integrated `oc logs`** — the missing Go binding. It removes the
-   terminal → clipboard → paste round trip, which is the real daily friction.
-2. **Streaming / continuous tail** — follow a pod while it runs, with the parser
-   consuming a stream instead of a string. The parser is already an incremental
-   machine (`createLogParser`), so the change is contained.
-3. **Worker protocol tests** — today the 103 tests cover the pure parser and the
+1. **Worker protocol tests** — today the 103 tests cover the pure parser and the
    main-thread fallback, but not the `parse` / `progress` / `cancel` message
    exchange. It is the only uncovered piece.
 
 ### Medium
 
-4. **Block-wise file reading** — `loadFromFile` pulls the whole file into a
+2. **Block-wise file reading** — `loadFromFile` pulls the whole file into a
    string and the worker `split`s it, so for a moment both the text and the line
    array exist in memory. A `stream()` on the `File` would cut that peak.
 5. **`raw` as the dominant memory cost** — every event keeps its own source

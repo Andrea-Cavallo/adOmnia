@@ -2,19 +2,26 @@ import { cn } from '@/lib/utils'
 
 /** Shared toolbar primitives, used by the toolbar and its popovers. */
 
-export function ToolButton({ onClick, icon, label, title, disabled }: {
+export function ToolButton({ onClick, icon, label, title, disabled, active }: {
   onClick: () => void
   icon: React.ReactNode
   label: string
   title: string
   disabled?: boolean
+  /** Set when the button opens a panel that is currently visible. */
+  active?: boolean
 }) {
   return (
     <button
       onClick={onClick}
       title={title}
       disabled={disabled}
-      className="flex h-7 items-center gap-1.5 rounded border border-border-2 px-2 text-[11px] text-text-2 transition-colors hover:border-accent/40 hover:text-text-1 disabled:opacity-35"
+      className={cn(
+        'flex h-7 items-center gap-1.5 rounded border px-2 text-[11px] transition-colors disabled:opacity-35',
+        active
+          ? 'border-accent/50 bg-accent/15 text-accent-light'
+          : 'border-border-2 text-text-2 hover:border-accent/40 hover:text-text-1',
+      )}
     >
       {icon}
       {label}
@@ -42,10 +49,11 @@ export function IconToggle({ active, onClick, title, children }: {
   )
 }
 
-export function Popover({ children, onClose, wide = false }: {
+export function Popover({ children, onClose, wide = false, extraWide = false }: {
   children: React.ReactNode
   onClose: () => void
   wide?: boolean
+  extraWide?: boolean
 }) {
   return (
     <>
@@ -53,6 +61,7 @@ export function Popover({ children, onClose, wide = false }: {
       <div className={cn(
         'absolute right-0 top-8 z-40 min-w-[176px] rounded-md border border-border-2 bg-surface-1 p-1 shadow-[0_12px_40px_rgba(0,0,0,.45)]',
         wide && 'w-72',
+        extraWide && 'left-0 right-auto w-auto',
       )}>
         {children}
       </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import type { MutableRefObject } from 'react'
-import { ChevronDown, ChevronRight, ChevronUp, AlertCircle, CheckCircle2, GitBranch, Database, Loader2, RefreshCw, Search, X, Braces, FileText, Link2, Files, Share2, Maximize2, Minimize2 } from 'lucide-react'
+import type { MutableRefObject, ReactNode } from 'react'
+import { Ban, ChevronDown, ChevronRight, ChevronUp, AlertCircle, CheckCircle2, GitBranch, Database, Loader2, RefreshCw, Search, X, Braces, FileText, Link2, Files, Share2, Maximize2, Minimize2 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { RequestBody } from '@/lib/types'
 import { KVEditor } from './KVEditor'
@@ -20,6 +20,12 @@ interface BodyEditorProps {
   isWebSocket?: boolean
   requestUrl?: string
   requestMethod?: string
+  /**
+   * Body-variant picker rendered as the first cell of the editor toolbar.
+   * The variant list itself stays owned by the Composer; slotting it here is
+   * what keeps the request editor down to a single contextual toolbar.
+   */
+  variantControls?: ReactNode
 }
 
 // ── GraphQL introspection types ──────────────────────────────────────────────
@@ -84,6 +90,7 @@ function gqlTypeString(t: GQLTypeRef): string {
 }
 
 const ALL_BODY_TYPES = [
+  { id: 'none', label: 'No Body', title: 'Send the request without a body' },
   { id: 'json', label: 'JSON', title: 'JSON payload' },
   { id: 'raw', label: 'Raw', title: 'Raw text payload' },
   { id: 'urlencoded', label: 'URL Encoded', title: 'application/x-www-form-urlencoded' },
@@ -92,13 +99,15 @@ const ALL_BODY_TYPES = [
 ] as const
 
 const WS_BODY_TYPES = [
+  { id: 'none', label: 'No Body', title: 'Send the request without a body' },
   { id: 'json', label: 'JSON', title: 'JSON payload' },
   { id: 'raw', label: 'Raw', title: 'Raw text payload' },
 ] as const
 
-type BodyTypeId = 'json' | 'raw' | 'urlencoded' | 'formdata' | 'graphql'
+type BodyTypeId = 'none' | 'json' | 'raw' | 'urlencoded' | 'formdata' | 'graphql'
 
 const BODY_ICONS: Record<BodyTypeId, LucideIcon> = {
+  none: Ban,
   json: Braces,
   raw: FileText,
   urlencoded: Link2,
@@ -236,25 +245,16 @@ function BodyFindBar({
 
 function JsonRawEditor({ body, onChange, search }: { body: RequestBody; onChange: (b: RequestBody) => void; search: BodySearchState }) {
   const tr = useUiTranslation()
-  const [showGraph, setShowGraph] = useState(false)
   const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
   const getResolvedVars = useEnvironmentsStore((s) => s.getResolvedVars)
   const resolvedVars = getResolvedVars()
   const diagnostics = useMemo(() => diagnoseJson(body.raw ?? ''), [body.raw])
-  const hasContent = !!(body.raw ?? '').trim()
   const hasErrors = diagnostics.length > 0
   const unresolvedVars = Array.from(new Set(
     Array.from((body.raw ?? '').matchAll(/\{\{([^}]+)\}\}/g))
       .map((m) => m[1].trim())
       .filter((name) => !activeEnvId || !resolvedVars[name]),
   ))
-
-  const prettify = () => {
-    try {
-      const p = prettyJson(body.raw ?? '')
-      onChange({ ...body, raw: p })
-    } catch { /* keep as is */ }
-  }
 
   // Auto-beautify on mount if content is valid JSON
   useEffect(() => {
@@ -272,32 +272,6 @@ function JsonRawEditor({ body, onChange, search }: { body: RequestBody; onChange
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2 px-3 pb-3">
-      <div className="-mx-3 flex min-h-10 items-center gap-2 border-b border-border-2 bg-surface-0/70 px-3">
-        <button
-          onClick={prettify}
-          className="rounded px-2 py-1 text-[10.5px] font-medium text-accent outline-none transition-colors hover:bg-accent/10 hover:text-accent-light focus-visible:ring-2 focus-visible:ring-accent"
-        >
-          {tr('Beautify')}
-        </button>
-        <button
-          onClick={() => setShowGraph(true)}
-          disabled={hasErrors || !hasContent}
-          className="inline-flex items-center gap-1 rounded px-2 py-1 text-[10.5px] font-medium text-text-2 outline-none transition-colors hover:bg-accent/10 hover:text-accent focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-40 disabled:hover:text-text-3"
-          title={tr('Open JSON graph')}
-        >
-          <GitBranch size={11} /> {tr('Graph')}
-        </button>
-        {hasErrors
-          ? <AlertCircle size={12} className="text-error" />
-          : hasContent && <CheckCircle2 size={12} className="text-success" />
-        }
-        {!hasErrors && hasContent && <span className="text-[10px] font-medium text-success">{tr('Valid JSON')}</span>}
-        {hasErrors && (
-          <span className="text-[10px] font-mono text-error">
-            {diagnostics.length} {diagnostics.length === 1 ? tr('issue') : tr('issues')}
-          </span>
-        )}
-      </div>
       <JsonEditor
         value={body.raw ?? ''}
         onChange={handleChange}
@@ -334,14 +308,6 @@ function JsonRawEditor({ body, onChange, search }: { body: RequestBody; onChange
             ))}
           </ol>
         </div>
-      )}
-      {showGraph && (
-        <JsonGraphModal
-          title={tr('Request Body JSON Graph')}
-          json={body.raw}
-          onChange={(raw) => onChange({ ...body, raw })}
-          onClose={() => setShowGraph(false)}
-        />
       )}
     </div>
   )
@@ -605,9 +571,10 @@ function RawEditor({ body, onChange, search }: { body: RequestBody; onChange: (b
   )
 }
 
-export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEditorProps) {
+export function BodyEditor({ body, onChange, isWebSocket, requestUrl, variantControls }: BodyEditorProps) {
   const tr = useUiTranslation()
   const BODY_TYPES = isWebSocket ? WS_BODY_TYPES : ALL_BODY_TYPES
+  const [showGraph, setShowGraph] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [search, setSearch] = useState<BodySearchState>({ query: '', activeIndex: 0, matchCase: false, wholeWord: false })
   const [maximized, setMaximized] = useState(false)
@@ -617,6 +584,18 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
   const activeType: BodyTypeId = body.type === 'raw' && body.lang === 'json' ? 'json'
     : body.type === 'raw' ? 'raw'
     : body.type as BodyTypeId
+
+  // JSON status and actions belong to the one toolbar, not to a second bar
+  // stacked underneath it.
+  const ActiveBodyIcon = BODY_ICONS[activeType] ?? FileText
+  const isJsonBody = activeType === 'json'
+  const jsonDiagnostics = useMemo(() => (isJsonBody ? diagnoseJson(body.raw ?? '') : []), [isJsonBody, body.raw])
+  const jsonHasContent = isJsonBody && !!(body.raw ?? '').trim()
+  const jsonHasErrors = jsonDiagnostics.length > 0
+
+  const beautifyJson = () => {
+    try { onChange({ ...body, raw: prettyJson(body.raw ?? '') }) } catch { /* keep as is */ }
+  }
 
   const handleTypeChange = (id: BodyTypeId) => {
     if (id === 'json') {
@@ -697,34 +676,54 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
           ? 'fixed inset-3 z-50 overflow-hidden rounded-xl border border-border-2 shadow-2xl'
           : 'flex-1',
       )} ref={editorRootRef}>
-      <section className="flex flex-nowrap items-center justify-between gap-2 border-b border-border-2 bg-surface-1 px-3 py-2.5">
-        <div className="min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <div role="radiogroup" aria-label={tr('Body format')} className="inline-flex flex-nowrap items-center gap-0.5 rounded-lg bg-surface-0 p-1 ring-1 ring-inset ring-border-2">
-            {BODY_TYPES.map((type) => {
-              const active = activeType === type.id
-              const Icon = BODY_ICONS[type.id]
-              return (
-                <button
-                  key={type.id}
-                  onClick={() => handleTypeChange(type.id)}
-                  title={tr(type.title as UiMessage)}
-                  role="radio"
-                  aria-checked={active}
-                  className={cn(
-                    'group inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[11px] font-medium outline-none transition-all duration-150 focus-visible:ring-2 focus-visible:ring-accent',
-                    active
-                      ? 'bg-accent text-white shadow-[0_2px_10px_-2px_var(--color-accent-glow)]'
-                      : 'text-text-3 hover:bg-surface-2 hover:text-text-1',
-                  )}
-                >
-                  <Icon size={12} className={active ? 'text-white/90' : 'text-text-4 group-hover:text-text-2'} />
-                  {tr(type.label as UiMessage)}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-        <div className="flex shrink-0 items-center gap-1.5">
+      <section className="flex min-h-10 flex-nowrap items-center gap-2 border-b border-border-2 bg-surface-1 px-3 py-1.5">
+        {variantControls}
+        <label className="relative flex shrink-0 items-center">
+          <span className="sr-only">{tr('Body format')}</span>
+          <ActiveBodyIcon size={12} className="pointer-events-none absolute left-2 text-accent" aria-hidden="true" />
+          <select
+            value={activeType}
+            onChange={(event) => handleTypeChange(event.target.value as BodyTypeId)}
+            title={tr('Body format')}
+            className="h-7 rounded-md border border-border-2 bg-surface-2 pl-7 pr-2 text-[11px] font-medium text-text-1 outline-none transition-colors hover:border-accent/50 focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            {BODY_TYPES.map((type) => (
+              <option key={type.id} value={type.id}>{tr(type.label as UiMessage)}</option>
+            ))}
+          </select>
+        </label>
+
+        {isJsonBody && (
+          <>
+            <button
+              onClick={beautifyJson}
+              className="shrink-0 rounded px-2 py-1 text-[10.5px] font-medium text-accent outline-none transition-colors hover:bg-accent/10 hover:text-accent-light focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              {tr('Beautify')}
+            </button>
+            <button
+              onClick={() => setShowGraph(true)}
+              disabled={jsonHasErrors || !jsonHasContent}
+              className="inline-flex shrink-0 items-center gap-1 rounded px-2 py-1 text-[10.5px] font-medium text-text-2 outline-none transition-colors hover:bg-accent/10 hover:text-accent focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-40 disabled:hover:text-text-3"
+              title={tr('Open JSON graph')}
+            >
+              <GitBranch size={11} /> {tr('Graph')}
+            </button>
+            {jsonHasErrors ? (
+              <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-mono text-error">
+                <AlertCircle size={12} />
+                {jsonDiagnostics.length} {jsonDiagnostics.length === 1 ? tr('issue') : tr('issues')}
+              </span>
+            ) : jsonHasContent && (
+              <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-medium text-success">
+                <CheckCircle2 size={12} />
+                {tr('Valid JSON')}
+              </span>
+            )}
+          </>
+        )}
+
+        <div className="ml-auto flex shrink-0 items-center gap-1.5">
           <BodyFindBar
             open={searchOpen}
             query={search.query}
@@ -766,6 +765,15 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl }: BodyEdit
 
       {body.type === 'graphql' && (
         <GraphQLEditor body={body} onChange={onChange} requestUrl={requestUrl} search={search} />
+      )}
+
+      {showGraph && (
+        <JsonGraphModal
+          title={tr('Request Body JSON Graph')}
+          json={body.raw}
+          onChange={(raw) => onChange({ ...body, raw })}
+          onClose={() => setShowGraph(false)}
+        />
       )}
 
       {(body.type === 'urlencoded' || body.type === 'formdata') && (

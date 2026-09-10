@@ -2,6 +2,13 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+## v0.9.8 release notes: complete local log investigations
+
+See [the full v0.9.8 notes](releases/v0.9.8.md). This release completes the
+daily Log Inspector workflow: managed and persistent sources, structured search,
+custom layouts, redacted evidence, reproduction handoffs, live tails and a
+disk-backed path for logs larger than RAM.
+
 ## v0.9.7 release notes: Log Inspector reliability pass
 
 See [the full v0.9.7 notes](releases/v0.9.7.md). This is the public release for

@@ -25,12 +25,12 @@ describe('Sketch JSON editor', () => {
 })
 
 describe('Sketch active controls', () => {
-  // The Body format switch paints itself `bg-accent text-white`; the generic
+  // Radio-style toggles paint themselves `bg-accent text-white`; the generic
   // control rule repaints that fill back to paper, so without an aria-checked
   // branch the label was white ink on white paper.
   it('keeps radio-style toggles readable under the marker', () => {
-    const bodyEditorSource = readFileSync(resolve(process.cwd(), 'src/components/composer/BodyEditor.tsx'), 'utf8')
-    expect(bodyEditorSource).toContain('aria-checked={active}')
+    const proxyPanelSource = readFileSync(resolve(process.cwd(), 'src/components/proxy/ProxyPanel.tsx'), 'utf8')
+    expect(proxyPanelSource).toContain('aria-checked={')
     expect(stylesheet).toContain("[data-skin='sketch'] [aria-checked='true'],")
     expect(stylesheet).toContain("[data-skin='sketch'] [aria-checked='true']::after,")
     expect(stylesheet).toContain("[data-skin='sketch'] [aria-checked='true'] svg,")

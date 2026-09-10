@@ -13,6 +13,8 @@ interface ScriptsEditorProps {
   tests: string
   onChange: (scripts: { pre: string; post: string; tests: string }) => void
   initialTab?: ScriptTab
+  /** Subset of script slots this instance owns. A single slot hides the strip. */
+  editableTabs?: ScriptTab[]
   /** Drives AI generation. Without it the generate button is not offered. */
   request?: RequestItem
 }
@@ -46,9 +48,9 @@ function configureJavaScript(m: typeof monaco): void {
 
 configureMonacoLoader()
 
-export function ScriptsEditor({ pre, post, tests, onChange, initialTab = 'tests', request }: ScriptsEditorProps) {
+export function ScriptsEditor({ pre, post, tests, onChange, initialTab = 'tests', editableTabs = ['pre', 'post', 'tests'], request }: ScriptsEditorProps) {
   const tr = useUiTranslation()
-  const [tab, setTab] = useState<ScriptTab>(initialTab)
+  const [tab, setTab] = useState<ScriptTab>(editableTabs.includes(initialTab) ? initialTab : editableTabs[0])
   const [diagnostic, setDiagnostic] = useState<ScriptDiagnostic | null>(null)
   const [generating, setGenerating] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
@@ -95,9 +97,11 @@ ${script}` : script)
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2 px-2 pb-2">
       <div className="flex gap-1 border-b border-border-1">
-        <button className={tabClass('pre')} onClick={() => handleTabChange('pre')}>{tr('Pre-request')}</button>
-        <button className={tabClass('post')} onClick={() => handleTabChange('post')}>{tr('Post-response')}</button>
-        <button className={tabClass('tests')} onClick={() => handleTabChange('tests')}>{tr('Tests')}</button>
+        {editableTabs.length > 1 && editableTabs.map((slot) => (
+          <button key={slot} className={tabClass(slot)} onClick={() => handleTabChange(slot)}>
+            {slot === 'pre' ? tr('Pre-request') : slot === 'post' ? tr('Post-response') : tr('Tests')}
+          </button>
+        ))}
         {request && (
           <button
             onClick={handleGenerate}

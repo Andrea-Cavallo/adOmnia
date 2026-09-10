@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { getRequestBody, getResponseBody } from '@/lib/browser-debug-api'
 import type { DebugNetworkEntry } from '@/stores/browser-debug'
-import { Send, Server, Workflow } from 'lucide-react'
+import { FileSearch, Send, Server, Workflow } from 'lucide-react'
+import { correlationIdsFromHeaders, requestLogInspectorQuery } from '@/lib/loginspector'
+import { useAppStore } from '@/stores/app'
 
 type DetailTab = 'headers' | 'request' | 'response' | 'actions'
 
@@ -168,6 +170,17 @@ export function NetworkDetail({
     }
   }
 
+  // The correlation header this call carried is what links it to the backend
+  // logs; without one there is nothing to search for.
+  const correlationIds = correlationIdsFromHeaders({ ...entry.requestHeaders, ...entry.responseHeaders })
+
+  const openInLogInspector = () => {
+    const identifier = correlationIds[0]
+    if (!identifier) return
+    requestLogInspectorQuery(`${identifier.key}:${identifier.value}`)
+    useAppStore.getState().setActiveRail('loginspector')
+  }
+
   const handleAddToFlow = async () => {
     if (!onAddToFlow) return
     setFlowStatus('saving')
@@ -261,6 +274,23 @@ export function NetworkDetail({
                 <div className="font-medium">Send to Composer</div>
                 <div className="text-xs text-text-3">
                   Open this request in the HTTP composer with method, URL, headers, and body
+                </div>
+              </div>
+            </button>
+
+            <button
+              onClick={openInLogInspector}
+              disabled={correlationIds.length === 0}
+              title={correlationIds.length ? `${correlationIds[0].header}: ${correlationIds[0].value}` : 'This call carries no correlation, request or trace header'}
+              className="flex items-center gap-2 w-full px-3 py-2 rounded bg-surface-0 border border-border-1 text-sm text-text-1 hover:bg-surface-2 transition-colors disabled:opacity-40"
+            >
+              <FileSearch size={14} className="text-accent" />
+              <div className="text-left">
+                <div className="font-medium">Find in Log Inspector</div>
+                <div className="text-xs text-text-3">
+                  {correlationIds.length
+                    ? `Filter the imported logs on ${correlationIds[0].header} = ${correlationIds[0].value}`
+                    : 'No correlation, request or trace header on this call'}
                 </div>
               </div>
             </button>

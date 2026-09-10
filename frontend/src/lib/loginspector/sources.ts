@@ -2,10 +2,10 @@ import { readFileSmart } from '@/lib/fileUtils'
 
 /**
  * Input acquisition sits behind this seam so every ingest path — clipboard,
- * editor, drop, file picker and, later, `oc logs` — reaches the parser the
- * same way.
+ * editor, drop, file picker and live tailing (`oc`/`kubectl`/`docker logs`,
+ * local file follow) — reaches the parser the same way.
  */
-export type LogSourceKind = 'paste' | 'editor' | 'file' | 'sample' | 'oc'
+export type LogSourceKind = 'paste' | 'editor' | 'file' | 'sample' | 'live'
 
 export interface LogSourceResult {
   text: string
@@ -13,6 +13,10 @@ export interface LogSourceResult {
   name: string
   kind: LogSourceKind
   bytes: number
+  /** Stable session identity. Acquisition helpers leave it empty; the source manager assigns it. */
+  sourceId?: string
+  /** User-editable label. The original file name remains in `name`. */
+  displayName?: string
 }
 
 /**
@@ -45,27 +49,4 @@ export async function loadFromFile(file: File): Promise<LogSourceResult> {
     throw new Error(`"${file.name}" looks like a binary file, not a text log.`)
   }
   return { text, name: file.name, kind: 'file', bytes: file.size }
-}
-
-/**
- * `oc logs` streaming is architecturally prepared but not implemented: it needs
- * a Go binding that shells out to the OpenShift CLI. Until that lands the UI
- * shows this source as unavailable rather than pretending to work.
- */
-export interface OcLogsRequest {
-  namespace: string
-  pod: string
-  container?: string
-  follow?: boolean
-  tailLines?: number
-}
-
-export const OC_LOGS_SOURCE = {
-  kind: 'oc' as const,
-  label: 'oc logs',
-  available: false,
-  reason: 'Requires the OpenShift CLI binding — planned, not implemented yet.',
-  load(_request: OcLogsRequest): Promise<LogSourceResult> {
-    return Promise.reject(new Error(OC_LOGS_SOURCE.reason))
-  },
 }

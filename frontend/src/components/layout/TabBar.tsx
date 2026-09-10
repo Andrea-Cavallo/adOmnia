@@ -1,11 +1,12 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import * as Tabs from '@radix-ui/react-tabs'
-import { Plus, X, ChevronRight, ChevronLeft, Copy, Pencil, Server, Pin, PinOff, MonitorUp, Braces, BookOpen } from 'lucide-react'
+import { Plus, X, MoreVertical, ChevronRight, ChevronLeft, Copy, Pencil, Server, Pin, PinOff, MonitorUp, Braces, BookOpen } from 'lucide-react'
 import type { Tab } from '@/lib/types'
 import type { TabDropPosition } from '@/stores/tabs'
 import { cn } from '@/lib/utils'
 import { useUiTranslation } from '@/lib/uiI18n'
+import { ContextMenu } from '@/components/ui/ContextMenu'
 
 interface TabBarProps {
   tabs: Tab[]
@@ -45,6 +46,14 @@ interface ContextMenuState {
 const MENU_W = 180
 const MENU_H = 360
 
+// A tab stays usable down to this width: method badge, an ellipsised title,
+// the dirty dot and the close button still fit. Below it we stop shrinking and
+// move the surplus tabs into the overflow menu instead.
+const TAB_MIN_WIDTH = 92
+const PINNED_TAB_WIDTH = 52
+const TAB_GAP = 4
+const OVERFLOW_BUTTON_WIDTH = 32
+
 function clampToViewport(x: number, y: number): { left: number; top: number } {
   const vw = window.innerWidth
   const vh = window.innerHeight
@@ -67,20 +76,38 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
   const menuRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const previousDirtyRef = useRef<Record<string, boolean>>({})
-  const [overflow, setOverflow] = useState({ left: false, right: false })
+  const [stripWidth, setStripWidth] = useState(0)
+  const [overflowMenu, setOverflowMenu] = useState<{ x: number; y: number } | null>(null)
   const [savedFlashTabs, setSavedFlashTabs] = useState<Set<string>>(() => new Set())
 
-  const updateOverflow = useCallback(() => {
-    const el = scrollRef.current
-    if (!el) return
-    const left = el.scrollLeft > 1
-    const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 1
-    setOverflow((o) => (o.left === left && o.right === right ? o : { left, right }))
-  }, [])
+  // How many tabs the strip can still render at a readable width. Everything
+  // past that goes to the overflow menu instead of scrolling out of sight.
+  const { visibleTabs, overflowTabs } = useMemo(() => {
+    if (stripWidth <= 0 || tabs.length === 0) return { visibleTabs: tabs, overflowTabs: [] as Tab[] }
 
-  const scrollTabs = useCallback((dir: -1 | 1) => {
-    scrollRef.current?.scrollBy({ left: dir * 220, behavior: 'smooth' })
-  }, [])
+    const widthOf = (tab: Tab) => (tab.pinned ? PINNED_TAB_WIDTH : TAB_MIN_WIDTH) + TAB_GAP
+    const total = tabs.reduce((sum, tab) => sum + widthOf(tab), 0)
+    if (total <= stripWidth) return { visibleTabs: tabs, overflowTabs: [] as Tab[] }
+
+    const budget = stripWidth - OVERFLOW_BUTTON_WIDTH - TAB_GAP
+    let used = 0
+    const visible: Tab[] = []
+    for (const tab of tabs) {
+      const next = used + widthOf(tab)
+      if (next > budget && visible.length > 0) break
+      used = next
+      visible.push(tab)
+    }
+    // The active tab must always be reachable without opening a menu, so it
+    // takes the last visible slot when it would otherwise be hidden.
+    const activeTab = tabs.find((tab) => tab.id === activeTabId)
+    if (activeTab && !visible.includes(activeTab)) {
+      visible.pop()
+      visible.push(activeTab)
+    }
+    const visibleIds = new Set(visible.map((tab) => tab.id))
+    return { visibleTabs: visible, overflowTabs: tabs.filter((tab) => !visibleIds.has(tab.id)) }
+  }, [tabs, stripWidth, activeTabId])
 
   const closeCtx = useCallback(() => setCtx((s) => ({ ...s, open: false })), [])
   const clearDrag = useCallback(() => {
@@ -129,16 +156,17 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
   }, [renamingTabId])
 
   useEffect(() => {
-    updateOverflow()
-    window.addEventListener('resize', updateOverflow)
-    return () => window.removeEventListener('resize', updateOverflow)
-  }, [tabs.length, updateOverflow])
-
-  useEffect(() => {
-    if (!activeTabId) return
-    const node = scrollRef.current?.querySelector(`[data-tab-id="${activeTabId}"]`) as HTMLElement | null
-    node?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
-  }, [activeTabId])
+    const el = scrollRef.current
+    if (!el) return
+    const measure = () => setStripWidth((current) => {
+      const next = el.clientWidth
+      return Math.abs(next - current) < 1 ? current : next
+    })
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   useEffect(() => {
     const previous = previousDirtyRef.current
@@ -176,18 +204,9 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
   return (
     <Tabs.Root value={activeTabId ?? undefined} onValueChange={onSelect} activationMode="automatic">
     <div className="flex h-10 items-center gap-1 border-b border-border-1 bg-surface-0 px-2">
-      {overflow.left && (
-        <button
-          onClick={() => scrollTabs(-1)}
-          title={tr('Scroll tabs left')}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-transparent text-text-3 transition-colors hover:border-border-2 hover:bg-surface-2 hover:text-text-1"
-        >
-          <ChevronLeft size={13} />
-        </button>
-      )}
       <Tabs.List asChild aria-label={tr('Request tabs')}>
-      <div ref={scrollRef} onScroll={updateOverflow} className="flex h-8 min-w-0 flex-1 items-center gap-1 overflow-x-auto rounded-[14px] border border-border-1 bg-surface-1 p-1 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--color-text-1)_4%,transparent)] no-scrollbar">
-      {tabs.map((tab) => {
+      <div ref={scrollRef} className="flex h-8 min-w-0 flex-1 items-center gap-1 overflow-hidden rounded-[14px] border border-border-1 bg-surface-1 p-1 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--color-text-1)_4%,transparent)]">
+      {visibleTabs.map((tab) => {
         const isActive = activeTabId === tab.id
         const isPinned = tab.pinned === true
         return (
@@ -237,8 +256,10 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
               if (draggedId && outsideWindow) void onDetach(draggedId)
             }}
             className={cn(
-              'relative flex h-6 items-center gap-1.5 rounded-[10px] border px-2.5 text-[11px] cursor-pointer group shrink-0 transition-[background-color,border-color,box-shadow,transform] duration-150 focus-within:ring-2 focus-within:ring-accent',
-              isPinned ? 'min-w-[48px] max-w-[64px]' : 'min-w-[74px] max-w-[180px]',
+              'relative flex h-6 min-w-0 items-center gap-1.5 rounded-[10px] border px-2 text-[11px] cursor-pointer group transition-[background-color,border-color,box-shadow,transform] duration-150 focus-within:ring-2 focus-within:ring-accent',
+              isPinned
+                ? 'shrink-0 basis-[52px] min-w-[48px] max-w-[64px]'
+                : 'flex-1 basis-[176px] min-w-[88px] max-w-[180px]',
               isActive
                 ? 'z-10 -translate-y-px text-text-1'
                 : 'border-transparent text-text-3 hover:border-border-2 hover:bg-surface-2 hover:text-text-2',
@@ -313,7 +334,10 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
               <button
                 aria-label={tr('Close tab')}
                 onClick={(e) => { e.stopPropagation(); onClose(tab.id) }}
-                className="relative z-20 shrink-0 rounded p-0.5 text-text-4 opacity-0 transition-colors hover:text-error group-hover:opacity-100 group-focus-within:opacity-100"
+                className={cn(
+                  'relative z-20 shrink-0 rounded p-0.5 text-text-4 transition-colors hover:text-error',
+                  isActive ? 'opacity-70' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
+                )}
                 title={tr('Close tab')}
               >
                 <X size={10} />
@@ -327,13 +351,19 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
       })}
       </div>
       </Tabs.List>
-      {overflow.right && (
+      {overflowTabs.length > 0 && (
         <button
-          onClick={() => scrollTabs(1)}
-          title={tr('Scroll tabs right')}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-transparent text-text-3 transition-colors hover:border-border-2 hover:bg-surface-2 hover:text-text-1"
+          onClick={(event) => {
+            const rect = event.currentTarget.getBoundingClientRect()
+            setOverflowMenu({ x: rect.right - 232, y: rect.bottom + 4 })
+          }}
+          title={tr('More tabs')}
+          aria-label={tr('More tabs')}
+          aria-haspopup="menu"
+          className="flex h-7 shrink-0 items-center gap-1 rounded-lg border border-border-1 bg-surface-1 px-1.5 text-text-3 transition-colors hover:border-accent/45 hover:bg-surface-2 hover:text-text-1"
         >
-          <ChevronRight size={13} />
+          <MoreVertical size={13} />
+          <span className="text-[10px] font-semibold tabular-nums">{overflowTabs.length}</span>
         </button>
       )}
       <button
@@ -343,6 +373,19 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
       >
         <Plus size={12} />
       </button>
+
+      {overflowMenu && (
+        <ContextMenu
+          x={overflowMenu.x}
+          y={overflowMenu.y}
+          items={overflowTabs.map((tab) => ({
+            id: tab.id,
+            label: `${tab.tool ? '' : `${tab.request.method}  `}${tab.request.name || tab.request.url || tr('Untitled')}${tab.dirty ? ' •' : ''}`,
+          }))}
+          onSelect={(id) => { setOverflowMenu(null); onSelect(id) }}
+          onClose={() => setOverflowMenu(null)}
+        />
+      )}
 
       {detachArmed && createPortal(
         <div className="fixed inset-x-0 bottom-6 z-[300] flex justify-center pointer-events-none">

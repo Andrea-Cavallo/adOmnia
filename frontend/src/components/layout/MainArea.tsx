@@ -197,44 +197,58 @@ function loadRequestResponseLayout(): RequestResponseLayout {
   }
 }
 
-function RequestPaneHeader({ layout, onLayoutChange, onDetachRequestAndResponse }: {
+function RequestPaneHeader() {
+  const tr = useUiTranslation()
+  return (
+    <div className="flex h-9 shrink-0 items-center border-b border-border-1 bg-surface-1 px-3">
+      <span className="text-xs font-medium text-text-2">{tr('Request')}</span>
+    </div>
+  )
+}
+
+/**
+ * Request/Response arrangement switch. It lives in the response header so the
+ * whole workflow keeps a single row of layout controls at the top right.
+ */
+function LayoutSwitcher({ layout, onLayoutChange, onDetach }: {
   layout: RequestResponseLayout
   onLayoutChange: (layout: RequestResponseLayout) => void
-  onDetachRequestAndResponse?: () => void
+  onDetach?: () => void
 }) {
   const tr = useUiTranslation()
   return (
-    <div className="flex h-9 shrink-0 items-center gap-2 border-b border-border-1 bg-surface-1 px-3">
-      <span className="flex-1 text-xs font-medium text-text-2">{tr('Request')}</span>
-      <div className="flex items-center rounded border border-border-2 bg-surface-2 p-0.5" role="group" aria-label={tr('Request and response layout')}>
-        {onDetachRequestAndResponse && <button
-          type="button"
-          onClick={() => onLayoutChange('horizontal')}
-          title={tr('Show Request and Response side by side')}
-          aria-label={tr('Show Request and Response side by side')}
-          className={cn('grid h-6 w-6 place-items-center rounded transition-colors', layout === 'horizontal' ? 'bg-accent/15 text-accent' : 'text-text-4 hover:bg-surface-3 hover:text-text-2')}
-        >
-          <Columns2 size={13} />
-        </button>}
+    <div className="flex items-center rounded border border-border-2 bg-surface-2 p-0.5" role="group" aria-label={tr('Request and response layout')}>
+      <button
+        type="button"
+        onClick={() => onLayoutChange('vertical')}
+        title={tr('Stack Request above Response')}
+        aria-label={tr('Stack Request above Response')}
+        aria-pressed={layout === 'vertical'}
+        className={cn('grid h-6 w-6 place-items-center rounded transition-colors', layout === 'vertical' ? 'bg-accent/15 text-accent' : 'text-text-4 hover:bg-surface-3 hover:text-text-2')}
+      >
+        <Rows2 size={13} />
+      </button>
+      <button
+        type="button"
+        onClick={() => onLayoutChange('horizontal')}
+        title={tr('Show Request and Response side by side')}
+        aria-label={tr('Show Request and Response side by side')}
+        aria-pressed={layout === 'horizontal'}
+        className={cn('grid h-6 w-6 place-items-center rounded transition-colors', layout === 'horizontal' ? 'bg-accent/15 text-accent' : 'text-text-4 hover:bg-surface-3 hover:text-text-2')}
+      >
+        <Columns2 size={13} />
+      </button>
+      {onDetach && (
         <button
           type="button"
-          onClick={() => onLayoutChange('vertical')}
-          title={tr('Stack Request above Response')}
-          aria-label={tr('Stack Request above Response')}
-          className={cn('grid h-6 w-6 place-items-center rounded transition-colors', layout === 'vertical' ? 'bg-accent/15 text-accent' : 'text-text-4 hover:bg-surface-3 hover:text-text-2')}
-        >
-          <Rows2 size={13} />
-        </button>
-        <button
-          type="button"
-          onClick={onDetachRequestAndResponse}
+          onClick={onDetach}
           title={tr('Open Request and Response in separate windows')}
           aria-label={tr('Open Request and Response in separate windows')}
           className="grid h-6 w-6 place-items-center rounded text-text-4 transition-colors hover:bg-surface-3 hover:text-text-2"
         >
           <PanelsTopLeft size={13} />
         </button>
-      </div>
+      )}
     </div>
   )
 }
@@ -319,40 +333,6 @@ function ActiveRequestBar({
           />
         </div>
 
-        {loading ? (
-          <button
-            onClick={onCancel}
-            title={tr('Cancel request')}
-            className="flex h-[var(--ui-control-h)] min-w-[88px] items-center justify-center gap-1.5 rounded-md bg-error px-3 text-[11px] font-bold text-white transition-colors hover:bg-error/85"
-          >
-            <X size={14} />
-            {tr('Cancel')}
-          </button>
-        ) : (
-          <button
-            onClick={onSend}
-            disabled={!request.url}
-            className="glass-action flex h-[var(--ui-control-h)] min-w-[88px] items-center justify-center gap-1.5 rounded-md px-3 text-[11px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <Send size={14} />
-            {tr('Send')}
-          </button>
-        )}
-
-        <button
-          onClick={onToggleRecording}
-          title={recording ? 'Stop recording API calls' : 'Record API calls into a Flow'}
-          className={cn(
-            'flex h-[var(--ui-control-h)] min-w-[82px] items-center justify-center gap-1.5 rounded-md border px-2.5 text-[11px] font-bold transition-colors',
-            recording ? 'border-error/45 bg-error/12 text-error hover:bg-error/20' : 'border-border-2 bg-surface-2 text-text-2 hover:border-error/45 hover:text-error',
-          )}
-        >
-          {recording ? <Square size={12} fill="currentColor" /> : <Circle size={13} fill="currentColor" className="text-error" />}
-          {recording ? `Stop · ${recordingCount}` : 'Record'}
-        </button>
-
-        {recording && <span className="hidden items-center gap-1 text-[10px] font-semibold text-error lg:flex"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-error" />{tr('Recording')}</span>}
-
         <button
           onClick={onToggleApiTools}
           title={apiToolsOpen ? tr('Hide API tools') : tr('Show API tools (redirects, timeout, cURL, encode…)')}
@@ -389,6 +369,40 @@ function ActiveRequestBar({
         >
           <Trash2 size={14} />
         </button>
+        <button
+          onClick={onToggleRecording}
+          title={recording ? 'Stop recording API calls' : 'Record API calls into a Flow'}
+          className={cn(
+            'flex h-[var(--ui-control-h)] min-w-[82px] items-center justify-center gap-1.5 rounded-md border px-2.5 text-[11px] font-bold transition-colors',
+            recording ? 'border-error/45 bg-error/12 text-error hover:bg-error/20' : 'border-border-2 bg-surface-2 text-text-2 hover:border-error/45 hover:text-error',
+          )}
+        >
+          {recording ? <Square size={12} fill="currentColor" /> : <Circle size={13} fill="currentColor" className="text-error" />}
+          {recording ? `Stop · ${recordingCount}` : 'Record'}
+        </button>
+
+        {recording && <span className="hidden items-center gap-1 text-[10px] font-semibold text-error lg:flex"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-error" />{tr('Recording')}</span>}
+
+        {loading ? (
+          <button
+            onClick={onCancel}
+            title={tr('Cancel request')}
+            className="flex h-[var(--ui-control-h)] min-w-[88px] items-center justify-center gap-1.5 rounded-md bg-error px-3 text-[11px] font-bold text-white transition-colors hover:bg-error/85"
+          >
+            <X size={14} />
+            {tr('Cancel')}
+          </button>
+        ) : (
+          <button
+            onClick={onSend}
+            disabled={!request.url}
+            className="glass-action flex h-[var(--ui-control-h)] min-w-[88px] items-center justify-center gap-1.5 rounded-md px-3 text-[11px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Send size={14} />
+            {tr('Send')}
+          </button>
+        )}
+
       </div>
     </div>
   )
@@ -941,11 +955,7 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
             )}
             style={requestResponseLayout === 'horizontal' ? { width: composerWidth } : { height: composerHeight }}
           >
-            <RequestPaneHeader
-              layout={requestResponseLayout}
-              onLayoutChange={changeRequestResponseLayout}
-              onDetachRequestAndResponse={standaloneTabId ? undefined : () => { void detachRequestAndResponse() }}
-            />
+            <RequestPaneHeader />
             <Composer
               key={activeTab.id}
               tabId={activeTab.id}
@@ -987,6 +997,13 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
                   oaPath={oaPath}
                   oaMethod={oaMethod}
                   assertions={activeTab.request.assertions}
+                  headerActions={
+                    <LayoutSwitcher
+                      layout={requestResponseLayout}
+                      onLayoutChange={changeRequestResponseLayout}
+                      onDetach={standaloneTabId ? undefined : () => { void detachRequestAndResponse() }}
+                    />
+                  }
                 />
               </div>
             </>

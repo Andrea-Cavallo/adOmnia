@@ -49,7 +49,7 @@ Pending:
 
 | Priority | Item |
 |---|---|
-| P2 | `oc logs` execution — the `OC_LOGS_SOURCE` seam exists with `available: false`; the Go binding that runs `oc logs -f` is missing. |
+| — | ~~`oc logs` execution~~ — done: `internal/logstream` tails local files and runs `kubectl`/`oc`/`docker logs -f` through the sidecar, with explicit context/namespace/pod/container, bounded buffer, stop/resume without duplicates, and CLI availability reported up front. |
 | P2 | Live tailing — the parser is already incremental (`createLogParser`), it needs a stream-fed entry point. |
 | P2 | No tests cover the worker `parse`/`progress`/`cancel` protocol; the pure parser and the main-thread fallback are covered. |
 | P3 | `raw` keeps a per-event copy of the source line, the dominant memory cost at 100k events; an offset into the original text would remove it. |

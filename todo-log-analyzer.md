@@ -88,58 +88,65 @@ provenienza in export e import multi-file senza spread massivi.
 
 ## P1 — Completare l'indagine quotidiana
 
-- [ ] **LA-08 — Gestore delle sorgenti.** Aggiungere file a una sessione senza
+Stato: completato nel codice corrente: sessione multi-sorgente gestibile, deduplica
+esplicita, waterfall span-aware, pairing dei payload, diff, contesto e fingerprint
+degli errori, ricerca strutturata, colonne personalizzabili, sessioni persistenti e
+pacchetti di evidenze redatti.
+
+- [x] **LA-08 — Gestore delle sorgenti.** Aggiungere file a una sessione senza
   sostituire tutto; rimuovere, disattivare, rinominare e ricaricare singole sorgenti.
   Mostrare formato, dimensione, eventi, errori e intervallo temporale per file.
   **Accettazione:** si caricano tre microservizi e poi il quarto, mantenendo query e selezione.
 
-- [ ] **LA-09 — Deduplicazione controllata.** Riconoscere import ripetuti e finestre
+- [x] **LA-09 — Deduplicazione controllata.** Riconoscere import ripetuti e finestre
   sovrapposte; proporre deduplica con conteggi e provenienza, senza eliminare
   silenziosamente eventi identici che possono essere tentativi reali.
   **Accettazione:** duplicati di acquisizione e retry applicativi restano distinguibili.
 
-- [ ] **LA-10 — Waterfall per servizio e chiamata.** Corsie per microservizio,
+- [x] **LA-10 — Waterfall per servizio e chiamata.** Corsie per microservizio,
   chiamate espandibili, retry, pause e collegamenti request/response.
   Usare span/parent span quando disponibili; marcare le connessioni inferite.
   **Accettazione:** da una richiesta di quattro servizi si apre il log esatto del
   tratto lento, senza confondere ordine temporale e causalità.
 
-- [ ] **LA-11 — Payload della chiamata, anche su righe diverse.** Abbinare request e
+- [x] **LA-11 — Payload della chiamata, anche su righe diverse.** Abbinare request e
   response per tentativo/span, non semplicemente per correlation ID. Mostrare
   input, output, header, status e provenienza nello stesso dettaglio.
   **Accettazione:** due downstream paralleli non si scambiano le response.
 
-- [ ] **LA-12 — Diff tra richieste e trasformazioni dei dati.** Confrontare una
+- [x] **LA-12 — Diff tra richieste e trasformazioni dei dati.** Confrontare una
   richiesta riuscita con una fallita e i payload tra servizi; evidenziare campi
   mancanti, valori e tipi diversi. Consentire esclusioni di timestamp e ID variabili.
   **Accettazione:** selezionando due catene emerge il campo che differisce con JSONPath copiabile.
 
-- [ ] **LA-13 — Contesto prima e dopo l'evento.** Aprire ±N righe della sorgente e
+- [x] **LA-13 — Contesto prima e dopo l'evento.** Aprire ±N righe della sorgente e
   ±N secondi di tutti i servizi anche se esclusi dalla query corrente.
   **Accettazione:** da un errore filtrato si leggono i precedenti e si torna al filtro iniziale.
 
-- [ ] **LA-14 — Errori raggruppati per causa osservata.** Raggruppare stack e
+- [x] **LA-14 — Errori raggruppati per causa osservata.** Raggruppare stack e
   messaggi con fingerprint, conteggio, prima/ultima occorrenza e servizi coinvolti;
   mantenere accessibili gli originali e rendere trasparenti le regole di normalizzazione.
   **Accettazione:** mille varianti dello stesso errore diventano un gruppo ispezionabile.
 
-- [ ] **LA-15 — Ricerca strutturata più espressiva.** Aggiungere AND/OR con parentesi,
+- [x] **LA-15 — Ricerca strutturata più espressiva.** Aggiungere AND/OR con parentesi,
   confronti numerici, null/assenza, range, uguaglianza esatta e percorso negli array.
   Autocomplete dai campi presenti e messaggi precisi per sintassi non valida.
   **Accettazione:** `duration_ms > 1000 AND (status = 500 OR status = 502)` è eseguibile
   con semantica documentata e senza conversioni silenziose dei tipi.
 
-- [ ] **LA-16 — Colonne personalizzate dai campi reali.** Promuovere qualsiasi campo
+- [x] **LA-16 — Colonne personalizzate dai campi reali.** Promuovere qualsiasi campo
   scoperto a colonna; riordinare, ridimensionare, fissare e salvare un preset per formato.
   Stabilizzare le larghezze durante la ricerca, evitando salti continui del layout.
   **Accettazione:** `attributes.client` e `http.status_code` diventano colonne in un clic.
+  **Completato:** promozione in un clic, ordine stabile, resize, riordino esplicito,
+  persistenza e preset distinti per formato sono presenti.
 
-- [ ] **LA-17 — Sessioni di indagine persistenti.** Salvare sorgenti, query, layout,
+- [x] **LA-17 — Sessioni di indagine persistenti.** Salvare sorgenti, query, layout,
   catena selezionata, bookmark e note in un formato locale versionato ed esportabile.
   Separare metadati e grandi contenuti; gestire file spostati o mancanti.
   **Accettazione:** riaprendo adOmnia si riprende l'indagine senza reimpostare tutto.
 
-- [ ] **LA-18 — Pacchetto di evidenze condivisibile.** Esportare una catena con
+- [x] **LA-18 — Pacchetto di evidenze condivisibile.** Esportare una catena con
   timeline, payload, righe originali, sorgenti, filtri, note e riepilogo Markdown.
   Anteprima della redazione; distinguere campi nascosti nella UI da dati rimossi.
   **Accettazione:** il destinatario ricostruisce il problema offline e i segreti
@@ -147,41 +154,111 @@ provenienza in export e import multi-file senza spread massivi.
 
 ## P2 — Collegare i log al lavoro di sviluppo
 
-- [ ] **LA-19 — Dal log al Composer API.** Creare una richiesta modificabile con
+Stato: incremento completato. Il Log Inspector produce richieste riproducibili nel
+Composer, flow e fixture mock dalla catena osservata, correlazione bidirezionale con
+Browser Debug / cronologia Composer / proxy, apertura dei frame nel repository scelto,
+validazione dei payload contro gli OpenAPI già presenti e acquisizione live da file,
+`kubectl`, `oc` e Docker. Dettagli in `docs/LOG-INSPECTOR.md` (§6b e §1).
+
+- [x] **LA-19 — Dal log al Composer API.** Creare una richiesta modificabile con
   metodo, URL, header e body estratti, indicando i valori mancanti. Riutilizzare
   ambienti e Vault; esecuzione solo tramite il normale comando Send.
   **Accettazione:** un errore nei log diventa una richiesta riproducibile senza copia/incolla manuale.
+  **Fatto:** `lib/loginspector/reproduce.ts` costruisce un `RequestItem` da metodo, URL/route,
+  header (esclusi quelli volatili) e body appaiato; l'host mancante diventa `{{baseUrl}}` risolto
+  dall'ambiente attivo. I valori assenti sono elencati nel pannello e nella descrizione della
+  richiesta. Il dettaglio evento apre la richiesta nel Composer; l'invio resta il normale Send.
 
-- [ ] **LA-20 — Dalla catena al Flow e al mock.** Proporre passi e mapping
+- [x] **LA-20 — Dalla catena al Flow e al mock.** Proporre passi e mapping
   response → request verificabili; generare fixture per il Mock Server dai payload.
   Distinguere associazioni confermate da semplici coincidenze di valori.
   **Accettazione:** una demo riproduce la sequenza osservata con dipendenze esplicite.
+  **Fatto:** `lib/loginspector/chainToFlow.ts` costruisce passi dai payload appaiati della catena
+  e propone i mapping response → request; `confirmed` solo quando il valore è distintivo, non
+  ambiguo e i nomi dei campi coincidono (o il valore è nell'URL), altrimenti `coincidence`.
+  Solo i confermati diventano estrazioni e `{{variabili}}` nel Flow; gli altri restano nella nota
+  del nodo. Le response osservate generano fixture per il Mock Server. UI: `ChainProposalPanel`
+  aperto dall'icona nella riga della request analysis.
 
-- [ ] **LA-21 — Correlare con Browser Debug e cronologia API.** Collegare header
+- [x] **LA-21 — Correlare con Browser Debug e cronologia API.** Collegare header
   di correlazione/trace, richieste del Composer, traffico proxy e log applicativi.
   **Accettazione:** da una chiamata del browser si raggiunge la relativa catena backend.
+  **Fatto:** `lib/loginspector/appTraffic.ts` legge gli header di correlazione (x-correlation-id,
+  x-request-id, x-b3-traceid, `traceparent`, `X-Amzn-Trace-Id`) da Browser Debug, cronologia
+  Composer e traffico proxy del sidecar. Il dettaglio evento elenca il traffico adOmnia con lo
+  stesso ID; da Browser Debug l'azione "Find in Log Inspector" passa la query al pannello via
+  `lib/loginspector/handoff.ts` anche se non è ancora montato.
 
-- [ ] **LA-22 — Stack trace verso il codice.** Mapping repository/sorgente,
+- [x] **LA-22 — Stack trace verso il codice.** Mapping repository/sorgente,
   apertura file:riga nell'editor, distinzione frame applicativi/framework e catene
   `Caused by`; fallback copiabile se il sorgente non è disponibile.
   **Accettazione:** un frame Go o Java apre la posizione corretta del repository scelto.
+  **Fatto:** `lib/loginspector/stackTrace.ts` riconosce frame Java (incluso il prefisso di modulo
+  Java 9+), Go, JS e Python, separa le catene `Caused by`/`Suppressed`, conta i frame elisi e
+  marca i frame framework/runtime con il motivo. `internal/sourcemap` indicizza i repository
+  scelti dall'utente e risolve il frame per suffisso di percorso (i path del build server non
+  esistono in locale), segnalando le ambiguità; l'apertura è rifiutata fuori dai root selezionati.
+  UI: `StackTracePanel` con scelta repository, comando editor `{file}`/`{line}`, filtro
+  "App frames only" e copia del singolo frame come fallback.
 
-- [ ] **LA-23 — Validazione payload con gli schemi esistenti.** Collegare OpenAPI
+- [x] **LA-23 — Validazione payload con gli schemi esistenti.** Collegare OpenAPI
   e JSON Schema già presenti in adOmnia, segnalando violazioni sul JSONPath.
   **Accettazione:** un campo obbligatorio mancante viene mostrato insieme al contratto atteso.
+  **Fatto:** `lib/loginspector/payloadContract.ts` riusa lo spec OpenAPI già presente nelle
+  collection (`_openapiSpec`) e i validatori esistenti (`parseSpec`, `resolveLocalRefs`,
+  `preprocessOpenApiSchema`, Ajv). La rotta concreta del log è associata al template
+  (`/orders/8f21` → `/orders/{orderId}`); ogni violazione riporta JSONPath, regola e campo
+  obbligatorio atteso. Il tab Request/Response del dettaglio mostra il verdetto per entrambi i
+  payload, o il motivo per cui nessun contratto si applica.
 
-- [ ] **LA-24 — Acquisizione live locale e da container.** Tail di file con rotazione,
+- [x] **LA-24 — Acquisizione live locale e da container.** Tail di file con rotazione,
   stop/ripresa, buffer limitato e `oc logs`/`kubectl logs`/Docker tramite backend Go.
   Selezione esplicita di contesto, namespace, pod e container; indicare dipendenze CLI.
   **Accettazione:** eventi live si correlano con file già importati, senza duplicazioni
   dopo la riconnessione; il processo si ferma chiudendo la sorgente.
+  **Fatto:** `internal/logstream` fa tail di file con rilevamento della rotazione (ripresa
+  dall'offset raggiunto: nessuna riga riletta) e lancia `kubectl`/`oc`/`docker logs -f` con
+  contesto, namespace, pod e container scelti esplicitamente. Buffer ad anello limitato con
+  conteggio delle righe scartate; per i container la riconnessione sopprime le righe già in
+  buffer per 15 s. `/logstream/tools` dichiara quali CLI mancano. `stop` uccide il processo,
+  `close` libera il buffer, e la chiusura del sidecar o del pannello ferma tutte le sorgenti.
+  Le righe live entrano nella stessa sessione degli altri file (sorgente di tipo `live`) e sono
+  quindi correlate con essi.
 
 ## P3 — Scala, analisi avanzata ed estensibilità
 
-- [ ] **LA-25 — Dataset superiori alla RAM disponibile.** Lettura incrementale,
+Stato: LA-25 completato (indice su disco, query paginate e budget cancellabili, benchmark
+1 GB eseguito). LA-26 e LA-27 non ancora iniziati.
+
+- [x] **LA-25 — Dataset superiori alla RAM disponibile.** Lettura incrementale,
   indice su disco, query e analisi fuori dal thread UI, paginazione e budget cancellabili.
   **Accettazione:** benchmark su hardware dichiarato con 1 GB di log, misurando
   memoria, tempo al primo evento, filtro, cancellazione e navigazione.
+  **Fatto:** `internal/logindex` (endpoint sidecar `/logindex/*`) scansiona il file una
+  volta in streaming e scrive un indice su disco di 24 byte per record (offset, lunghezza,
+  timestamp, livello, flag di continuazione). Le query camminano l'indice e leggono dal log
+  solo i byte della pagina richiesta; ogni query ha un budget di tempo, dichiara
+  `budgetExceeded` e restituisce il cursore da cui riprendere. Indicizzazione in goroutine
+  separata, cancellabile, con l'indice parziale che resta interrogabile. UI: `LargeFilePanel`
+  (toolbar → "Large file") con filtri per livello, ricerca testuale, paginazione avanti/indietro
+  e "Import this page into the session" per portare una pagina nell'indagine normale.
+
+  **Benchmark eseguito** — Windows 11, amd64, 28 CPU, Go 1.26.5, fixture 1,00 GB misto
+  (JSON, testo, stack trace Java), 10.044.770 record:
+
+  | Misura | Risultato |
+  |---|---|
+  | Indicizzazione | 8,78 s (116,7 MB/s), indice 229,9 MB (22,4% del log) |
+  | Prima pagina visibile | 17 ms dall'apertura |
+  | Heap del backend a fine indicizzazione | 2,9 MB (da 0,6 MB) |
+  | Filtro `level=error` (200 record) | 5 ms |
+  | Scansione full-text sull'intero file | 17,5 s per 10 M record |
+  | Navigazione a fondo indice (100 record) | 1 ms |
+  | Budget 200 ms su scansione senza match | rientra a 201 ms, riprende da record 113.920 |
+  | Cancellazione indicizzazione | ferma dopo 57 ms, 36.351 record conservati |
+
+  Riproducibile con
+  `ADOMNIA_LOGINDEX_BENCH_MB=1024 go test ./internal/logindex/ -run TestBenchmarkLargeFile -v -timeout 30m`.
 
 - [ ] **LA-26 — Profili di parsing configurabili.** Mapping di campi, timestamp,
   timezone, unità delle durate, ID e body; regole multilinea e profili import/export.

@@ -12,25 +12,35 @@ export interface Prefs {
   density: Density
   wrap: boolean
   columns: ListColumnId[]
+  columnWidths: Record<string, number>
+  columnPresets: Record<string, { columns: ListColumnId[]; widths: Record<string, number> }>
   maxEvents: number
   savedQueries: SavedQuery[]
   maskFields: string[]
   hiddenFields: string[]
   filterWidth: number
   detailWidth: number
+  /** Local repositories a stack frame can be resolved against. */
+  repositoryRoots: string[]
+  /** Editor invocation template; `{file}` and `{line}` are replaced. */
+  editorCommand: string
 }
 
 export const DEFAULT_PREFS: Prefs = {
-  columnsVersion: 2,
+  columnsVersion: 3,
   density: 'compact',
   wrap: false,
   columns: DEFAULT_COLUMNS,
+  columnWidths: {},
+  columnPresets: {},
   maxEvents: DEFAULT_MAX_EVENTS,
   savedQueries: [],
   maskFields: [],
   hiddenFields: [],
   filterWidth: 244,
   detailWidth: 440,
+  repositoryRoots: [],
+  editorCommand: 'code -g {file}:{line}',
 }
 
 export function loadPrefs(): Prefs {
@@ -42,7 +52,7 @@ export function loadPrefs(): Prefs {
     const columns = (parsed.columnsVersion ?? 1) < 2 && !configured.includes('source')
       ? [...configured, 'source' as const]
       : configured
-    return { ...DEFAULT_PREFS, ...parsed, columns, columnsVersion: 2 }
+    return { ...DEFAULT_PREFS, ...parsed, columns, columnsVersion: 3 }
   } catch {
     return DEFAULT_PREFS
   }

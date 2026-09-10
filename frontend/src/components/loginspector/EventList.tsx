@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, Layers } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { highlightSegments } from '@/lib/loginspector'
+import { buildLookup, flattenPayload, highlightSegments } from '@/lib/loginspector'
 import type { LogEvent, LogLevel } from '@/lib/loginspector'
 
 export const LIST_COLUMNS = [
@@ -15,7 +15,8 @@ export const LIST_COLUMNS = [
   { id: 'source', label: 'Source file', width: 140 },
 ] as const
 
-export type ListColumnId = (typeof LIST_COLUMNS)[number]['id']
+export type BuiltinListColumnId = (typeof LIST_COLUMNS)[number]['id']
+export type ListColumnId = BuiltinListColumnId | `field:${string}`
 
 export const DEFAULT_COLUMNS: ListColumnId[] = ['time', 'level', 'service', 'pod', 'correlation', 'source']
 
@@ -31,7 +32,13 @@ export function availableListColumns(events: LogEvent[], configured: ListColumnI
     if (event.correlationId || event.traceId || event.requestId) available.add('correlation')
     if (event.sourceName) available.add('source')
   }
-  return configured.filter((column) => available.has(column))
+  return configured.filter((column) => column.startsWith('field:') || available.has(column as BuiltinListColumnId))
+}
+
+function columnDefinition(id: ListColumnId, widths: Record<string, number> = {}): { id: ListColumnId; label: string; width: number } {
+  const builtin = LIST_COLUMNS.find((column) => column.id === id)
+  if (builtin) return { ...builtin, width: widths[id] ?? builtin.width }
+  return { id, label: id.slice('field:'.length), width: widths[id] ?? 150 }
 }
 
 export const LEVEL_STYLE: Record<LogLevel, string> = {
@@ -70,6 +77,8 @@ interface EventListProps {
   density: Density
   wrap: boolean
   columns: ListColumnId[]
+  columnWidths: Record<string, number>
+  onColumnWidthChange: (id: ListColumnId, width: number) => void
   highlights: string[]
   /** Scroll target requested from outside (e.g. from the related-events view). */
   scrollToId?: number | null
@@ -88,6 +97,8 @@ export function EventList({
   density,
   wrap,
   columns,
+  columnWidths,
+  onColumnWidthChange,
   highlights,
   scrollToId = null,
 }: EventListProps) {
@@ -124,8 +135,24 @@ export function EventList({
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="flex shrink-0 items-center gap-2 border-b border-border-1 bg-surface-1 px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-text-4">
-        {LIST_COLUMNS.filter((column) => visibleColumns.includes(column.id)).map((column) => (
-          <span key={column.id} style={{ width: column.width }} className="shrink-0 truncate">{column.label}</span>
+        {visibleColumns.map((id) => columnDefinition(id, columnWidths)).map((column) => (
+          <span key={column.id} style={{ width: column.width }} className="group relative shrink-0 truncate pr-2">
+            {column.label}
+            <span
+              role="separator"
+              aria-label={`Resize ${column.label}`}
+              onMouseDown={(event) => {
+                event.preventDefault()
+                const startX = event.clientX
+                const startWidth = column.width
+                const move = (moveEvent: MouseEvent) => onColumnWidthChange(column.id, Math.max(56, Math.min(420, startWidth + moveEvent.clientX - startX)))
+                const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up) }
+                window.addEventListener('mousemove', move)
+                window.addEventListener('mouseup', up)
+              }}
+              className="absolute inset-y-0 right-0 w-1.5 cursor-col-resize bg-border-2/0 group-hover:bg-accent/40"
+            />
+          </span>
         ))}
         <span className="min-w-0 flex-1">Message</span>
       </div>
@@ -143,6 +170,7 @@ export function EventList({
                   height={height}
                   wrap={wrap}
                   columns={visibleColumns}
+                  columnWidths={columnWidths}
                   highlights={highlights}
                   selected={event.id === selectedId}
                   onSelect={() => onSelect(event)}
@@ -162,6 +190,7 @@ interface EventRowProps {
   height: number
   wrap: boolean
   columns: ListColumnId[]
+  columnWidths: Record<string, number>
   highlights: string[]
   selected: boolean
   onSelect: () => void
@@ -169,6 +198,15 @@ interface EventRowProps {
 }
 
 function columnValue(event: LogEvent, id: ListColumnId): string {
+  if (id.startsWith('field:')) {
+    const path = id.slice('field:'.length)
+    const source = event.json && typeof event.json === 'object' && !Array.isArray(event.json)
+      ? event.json as Record<string, unknown>
+      : event.extra
+    const value = buildLookup(flattenPayload(source)).get(path)?.value
+    if (value === null || value === undefined) return ''
+    return typeof value === 'object' ? JSON.stringify(value) : String(value)
+  }
   switch (id) {
     case 'time': return formatClock(event.ts, event.tsRaw)
     case 'level': return LEVEL_SHORT[event.level]
@@ -179,9 +217,10 @@ function columnValue(event: LogEvent, id: ListColumnId): string {
     case 'correlation': return event.correlationId || event.traceId || event.requestId
     case 'source': return event.sourceName || ''
   }
+  return ''
 }
 
-function EventRow({ event, height, wrap, columns, highlights, selected, onSelect, onContextMenu }: EventRowProps) {
+function EventRow({ event, height, wrap, columns, columnWidths, highlights, selected, onSelect, onContextMenu }: EventRowProps) {
   const segments = highlightSegments(event.message, highlights)
   return (
     <div
@@ -201,7 +240,7 @@ function EventRow({ event, height, wrap, columns, highlights, selected, onSelect
         'focus-visible:bg-surface-1 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-accent',
       )}
     >
-      {LIST_COLUMNS.filter((column) => columns.includes(column.id)).map((column) => {
+      {columns.map((id) => columnDefinition(id, columnWidths)).map((column) => {
         const value = columnValue(event, column.id)
         if (column.id === 'level') {
           return (

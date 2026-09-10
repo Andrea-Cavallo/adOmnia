@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Check, Copy, Filter, GanttChartSquare, List, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { CorrelationResult, LogEvent } from '@/lib/loginspector'
+import { buildCallWaterfall, type CorrelationResult, type LogEvent } from '@/lib/loginspector'
 import { LEVEL_SHORT, LEVEL_STYLE, formatClock } from './EventList'
 
 function formatDelta(ms: number | null): string {
@@ -27,9 +27,16 @@ export function RelatedEvents({ result, onClose, onApplyAsFilter, onSelect }: Re
   const [view, setView] = useState<'list' | 'timeline'>('list')
   const [copied, setCopied] = useState(false)
 
-  const stamps = result.events.map((entry) => entry.event.ts).filter((ts): ts is number => ts !== null)
-  const min = stamps.length ? Math.min(...stamps) : 0
-  const span = stamps.length ? Math.max(Math.max(...stamps) - min, 1) : 1
+  const waterfall = useMemo(() => buildCallWaterfall(result.events.map((entry) => entry.event)), [result])
+  const eventById = useMemo(() => new Map(result.events.map((entry) => [entry.event.id, entry.event])), [result])
+  let waterfallStart = Number.MAX_SAFE_INTEGER
+  let waterfallEnd = 0
+  for (const call of waterfall) {
+    if (call.startMs === null) continue
+    waterfallStart = Math.min(waterfallStart, call.startMs)
+    waterfallEnd = Math.max(waterfallEnd, call.startMs + (call.durationMs ?? 0))
+  }
+  const waterfallSpan = waterfallStart === Number.MAX_SAFE_INTEGER ? 1 : Math.max(1, waterfallEnd - waterfallStart)
 
   const copyValue = () => {
     navigator.clipboard.writeText(result.value).then(
@@ -96,27 +103,43 @@ export function RelatedEvents({ result, onClose, onApplyAsFilter, onSelect }: Re
 
         {view === 'timeline' && (
           <div className="px-3 py-2">
-            {result.events.map(({ event, deltaMs }) => {
-              const offset = event.ts !== null ? ((event.ts - min) / span) * 100 : 0
-              const isError = event.level === 'error' || event.level === 'fatal'
+            <div className="mb-2 flex items-center gap-3 text-[9px] text-text-4">
+              <span>Service / call waterfall</span>
+              <span className="ml-auto">solid = span</span>
+              <span>dashed = inferred</span>
+            </div>
+            {waterfall.map((call) => {
+              const offset = call.startMs !== null && waterfallStart !== Number.MAX_SAFE_INTEGER
+                ? ((call.startMs - waterfallStart) / waterfallSpan) * 100
+                : 0
+              const width = call.durationMs !== null ? Math.max(1.5, (call.durationMs / waterfallSpan) * 100) : 1.5
+              const event = call.eventIds.map((id) => eventById.get(id)).find((candidate) => candidate?.level === 'error' || candidate?.level === 'fatal')
+                ?? eventById.get(call.eventIds[0])
+              const isError = call.status === 'error'
               return (
                 <button
-                  key={event.id}
-                  onClick={() => onSelect(event)}
+                  key={call.id}
+                  onClick={() => { if (event) onSelect(event) }}
                   className="group mb-1 flex w-full items-center gap-2 text-left"
                 >
-                  <span className="w-[110px] shrink-0 truncate font-mono text-[10px] text-text-3" title={event.service}>
-                    {event.service || event.pod || '-'}
+                  <span className="w-[110px] shrink-0 truncate font-mono text-[10px] text-text-3" title={call.service}>
+                    {call.service}
                   </span>
                   <span className="relative h-4 min-w-0 flex-1 rounded bg-surface-1 group-hover:bg-surface-2">
                     <span
-                      className={cn('absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full', isError ? 'bg-error' : 'bg-accent')}
-                      style={{ left: `${Math.min(99, Math.max(1, offset))}%` }}
+                      className={cn(
+                        'absolute top-1/2 h-2.5 -translate-y-1/2 rounded-sm border',
+                        isError ? 'border-error bg-error/70' : 'border-accent bg-accent/60',
+                        call.inferred && 'border-dashed bg-transparent',
+                      )}
+                      style={{ left: `${Math.min(98.5, Math.max(0, offset))}%`, width: `${Math.min(100 - offset, width)}%` }}
                     />
                   </span>
-                  <span className="w-[62px] shrink-0 text-right font-mono text-[10px] text-accent-light">{formatDelta(deltaMs)}</span>
-                  <span className={cn('w-[220px] shrink-0 truncate font-mono text-[10px]', isError ? 'text-error' : 'text-text-2')} title={event.message}>
-                    {event.message}
+                  <span className="w-[62px] shrink-0 text-right font-mono text-[10px] text-accent-light">
+                    {call.durationMs === null ? 'point' : formatSpan(call.durationMs).replace(' total', '')}
+                  </span>
+                  <span className={cn('w-[220px] shrink-0 truncate font-mono text-[10px]', isError ? 'text-error' : 'text-text-2')} title={call.label}>
+                    {call.parentId ? '↳ ' : ''}{call.label}{call.inferred ? ' · inferred' : ''}
                   </span>
                 </button>
               )

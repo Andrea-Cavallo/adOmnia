@@ -34,7 +34,7 @@ type DeferredPersistedTabsState = {
 
 type PersistedTabsState = LegacyPersistedTabsState | CriticalPersistedTabsState
 
-export type ComposerSection = 'overview' | 'params' | 'headers' | 'body' | 'scripts'
+export type ComposerSection = 'overview' | 'params' | 'headers' | 'auth' | 'cookies' | 'body' | 'scripts' | 'tests' | 'psd2'
 export type ResponseSection = 'body' | 'headers' | 'contract' | 'assertions'
 export type ResponseBodyView = 'pretty' | 'raw' | 'graph'
 export type TabDropPosition = 'before' | 'after'

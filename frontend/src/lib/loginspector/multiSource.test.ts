@@ -20,6 +20,10 @@ describe('multi-file log import', () => {
     expect(parsed.events.map((event) => event.id)).toEqual([0, 1, 2])
     expect(parsed.events.map((event) => event.sourceName)).toEqual(['gateway.log', 'gateway.log', 'wallet.log'])
     expect(parsed.summary.totalLines).toBe(3)
+    expect(parsed.sources).toEqual([
+      expect.objectContaining({ name: 'gateway.log', eventCount: 2, format: 'jsonl' }),
+      expect.objectContaining({ name: 'wallet.log', eventCount: 1, format: 'json' }),
+    ])
     expect(correlateEvents(parsed.events, 'correlationId', correlationId).events).toHaveLength(3)
   })
 
@@ -39,5 +43,16 @@ describe('multi-file log import', () => {
     expect(parsed.events).toHaveLength(1)
     expect(parsed.events[0]).toMatchObject({ sourceId: 'source-0', sourceName: 'app.log #1' })
     expect(parsed.summary.truncated).toBe(true)
+  })
+
+  it('keeps source ids and user labels stable across reparses', async () => {
+    const source = {
+      ...fromText(JSON.stringify({ timestamp: '2026-09-09T10:00:00Z', message: 'hello' }), 'app.log', 'file'),
+      sourceId: 'stable-source',
+      displayName: 'payments · blue',
+    }
+    const parsed = await parseLogSourcesInBackground([source])
+    expect(parsed.events[0]).toMatchObject({ sourceId: 'stable-source', sourceName: 'payments · blue' })
+    expect(parsed.sources[0]).toMatchObject({ sourceId: 'stable-source', name: 'payments · blue', eventCount: 1 })
   })
 })

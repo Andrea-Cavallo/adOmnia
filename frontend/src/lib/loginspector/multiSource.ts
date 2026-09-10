@@ -3,7 +3,23 @@ import type { ChunkedHooks } from './parse'
 import type { LogEvent, LogFormat, ParseOptions, ParseResult, ParseSummary } from './types'
 import type { LogSourceResult } from './sources'
 
-export type MultiSourceParseResult = ParseResult & { aborted: boolean; sourceCount: number }
+export interface ParsedSourceSummary {
+  sourceId: string
+  name: string
+  bytes: number
+  eventCount: number
+  errorCount: number
+  warningCount: number
+  format: LogFormat
+  firstTs: number | null
+  lastTs: number | null
+}
+
+export type MultiSourceParseResult = ParseResult & {
+  aborted: boolean
+  sourceCount: number
+  sources: ParsedSourceSummary[]
+}
 
 function sourceLineCount(text: string): number {
   return text ? text.split(/\r?\n/).length : 0
@@ -23,6 +39,7 @@ function displayNames(sources: LogSourceResult[]): string[] {
   for (const source of sources) counts.set(source.name, (counts.get(source.name) ?? 0) + 1)
   const seen = new Map<string, number>()
   return sources.map((source) => {
+    if (source.displayName?.trim()) return source.displayName.trim()
     const total = counts.get(source.name) ?? 0
     if (total <= 1) return source.name
     const index = (seen.get(source.name) ?? 0) + 1
@@ -52,10 +69,11 @@ export async function parseLogSourcesInBackground(
   options: ParseOptions = {},
   hooks: ChunkedHooks = {},
 ): Promise<MultiSourceParseResult> {
-  if (!sources.length) return { events: [], summary: emptySummary(), aborted: false, sourceCount: 0 }
+  if (!sources.length) return { events: [], summary: emptySummary(), aborted: false, sourceCount: 0, sources: [] }
 
   const events: LogEvent[] = []
   const summaries: ParseSummary[] = []
+  const sourceSummaries: ParsedSourceSummary[] = []
   const totalLines = sources.reduce((sum, source) => sum + sourceLineCount(source.text), 0)
   const maxEvents = options.maxEvents ?? Number.MAX_SAFE_INTEGER
   const names = displayNames(sources)
@@ -65,6 +83,7 @@ export async function parseLogSourcesInBackground(
   for (let sourceIndex = 0; sourceIndex < sources.length; sourceIndex++) {
     const source = sources[sourceIndex]
     const sourceName = names[sourceIndex]
+    const sourceId = source.sourceId || `source-${sourceIndex}`
     if (events.length >= maxEvents || hooks.shouldAbort?.()) {
       aborted = hooks.shouldAbort?.() ?? false
       break
@@ -77,14 +96,32 @@ export async function parseLogSourcesInBackground(
       {
         shouldAbort: hooks.shouldAbort,
         onProgress: (done, _sourceTotal, partial) => {
-          const combined = events.concat(labelEvents(partial, sourceName, `source-${sourceIndex}`, offset, sources.length > 1))
+          const combined = events.concat(labelEvents(partial, sourceName, sourceId, offset, true))
           hooks.onProgress?.(Math.min(totalLines, completedLines + done), totalLines, combined)
         },
       },
     )
-    const labelled = labelEvents(parsed.events, sourceName, `source-${sourceIndex}`, offset, sources.length > 1)
+    const labelled = labelEvents(parsed.events, sourceName, sourceId, offset, true)
     for (const event of labelled) events.push(event)
     summaries.push(parsed.summary)
+    let firstTs: number | null = null
+    let lastTs: number | null = null
+    for (const event of labelled) {
+      if (event.ts === null) continue
+      firstTs = firstTs === null ? event.ts : Math.min(firstTs, event.ts)
+      lastTs = lastTs === null ? event.ts : Math.max(lastTs, event.ts)
+    }
+    sourceSummaries.push({
+      sourceId,
+      name: sourceName,
+      bytes: source.bytes,
+      eventCount: labelled.length,
+      errorCount: parsed.summary.errorCount,
+      warningCount: parsed.summary.warningCount,
+      format: parsed.summary.format,
+      firstTs,
+      lastTs,
+    })
     completedLines += parsed.summary.totalLines
     hooks.onProgress?.(Math.min(totalLines, completedLines), totalLines, events)
     if (parsed.aborted) {
@@ -107,5 +144,5 @@ export async function parseLogSourcesInBackground(
     format,
     durationMs: summaries.reduce((sum, item) => sum + item.durationMs, 0),
   }
-  return { events, summary, aborted, sourceCount: sources.length }
+  return { events, summary, aborted, sourceCount: sourceSummaries.length, sources: sourceSummaries }
 }

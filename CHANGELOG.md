@@ -4,6 +4,24 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [0.9.8] - 2026-09-10
+
+### Added
+- **Complete investigation sessions:** Log Inspector now manages multiple sources, controlled deduplication, service waterfalls, paired payloads, request diffs, surrounding source context and grouped error fingerprints.
+- **Structured search and working layouts:** typed `AND`/`OR` expressions with parentheses, numeric comparisons, ranges, null/missing checks and array paths join resizable, reorderable custom columns with per-format presets.
+- **Persistent, shareable investigations:** versioned local sessions retain sources, query, layout, selection, bookmarks and notes; redacted evidence packages include timeline, payloads, original rows, provenance, filters and a Markdown summary.
+- **From evidence to action:** observed calls can become editable Composer requests, Flow/mock proposals, Browser Debug links, source-mapped stack frames and OpenAPI payload validation.
+- **Live and very large logs:** local/container tails feed the same correlation session, while a disk-backed index provides cancellable, paginated access to datasets larger than available RAM.
+
+### Fixed
+- **Log drop ownership:** dropping a supported `.log` inside Log Inspector no longer also reaches the global collection importer, eliminating the false “Unsupported file” notification and duplicate native handling.
+
+### Changed
+- **Integrated investigation navigation:** Composer, request history, proxy traffic, Browser Debug and Log Inspector share correlation handoffs and preserve the relevant tab state.
+- **Documentation and backlog:** the Log Inspector guide, feature catalog and implementation checklist now describe the completed P1/P2 workflow and large-file path.
+
+Full release notes: [v0.9.8](docs/releases/v0.9.8.md).
+
 ## [0.9.7] - 2026-09-09
 
 ### Added

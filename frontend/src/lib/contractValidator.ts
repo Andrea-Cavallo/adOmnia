@@ -119,7 +119,8 @@ function finalizeYaml(obj: unknown): unknown {
   return result
 }
 
-function parseSpec(raw: string): Record<string, unknown> | null {
+/** Parse an OpenAPI document (JSON or the subset of YAML we support). */
+export function parseSpec(raw: string): Record<string, unknown> | null {
   try {
     const trimmed = raw.trim()
     if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
@@ -139,7 +140,8 @@ function resolveJsonPointer(root: Record<string, unknown>, ref: string): unknown
   }, root)
 }
 
-function resolveLocalRefs(value: unknown, root: Record<string, unknown>, seen = new Set<string>()): unknown {
+/** Inline local `$ref`s so a schema can be handed to Ajv as-is. */
+export function resolveLocalRefs(value: unknown, root: Record<string, unknown>, seen = new Set<string>()): unknown {
   if (Array.isArray(value)) return value.map((item) => resolveLocalRefs(item, root, seen))
   if (!value || typeof value !== 'object') return value
 
@@ -205,7 +207,8 @@ function getSchemaForResponse(
   return preprocessOpenApiSchema(resolveLocalRefs(cloned, spec) as Record<string, unknown>)
 }
 
-function preprocessOpenApiSchema(schema: Record<string, unknown>): Record<string, unknown> {
+/** Turn OpenAPI schema dialect (nullable, examples, ...) into JSON Schema. */
+export function preprocessOpenApiSchema(schema: Record<string, unknown>): Record<string, unknown> {
   const result: Record<string, unknown> = { ...schema }
 
   if (result.nullable === true) {

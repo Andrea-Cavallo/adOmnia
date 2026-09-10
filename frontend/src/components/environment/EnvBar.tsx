@@ -38,6 +38,14 @@ export function EnvBar({
     if (adding) inputRef.current?.focus()
   }, [adding])
 
+  // The collections context menu opens the environment editor from far away
+  // in the tree, so it asks for it through the document rather than by prop.
+  useEffect(() => {
+    const open = () => setShowModal(true)
+    document.addEventListener('adomnia:open-environments', open)
+    return () => document.removeEventListener('adomnia:open-environments', open)
+  }, [])
+
   useEffect(() => {
     if (!dropOpen) return
     const handler = (e: MouseEvent) => {

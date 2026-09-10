@@ -8,10 +8,13 @@ import (
 	"adomnia/internal/jsonutil"
 	"adomnia/internal/kafka"
 	"adomnia/internal/loadtest"
+	"adomnia/internal/logindex"
+	"adomnia/internal/logstream"
 	"adomnia/internal/mock"
 	"adomnia/internal/nettools"
 	"adomnia/internal/oauth"
 	"adomnia/internal/proxy"
+	"adomnia/internal/sourcemap"
 	"adomnia/internal/sse"
 	"adomnia/internal/storage"
 	"adomnia/internal/vault"
@@ -26,6 +29,10 @@ import (
 var httpSidecar *http.Server
 
 func Stop() {
+	// Live sources own processes and goroutines: closing the sidecar must not
+	// leave a kubectl or docker follow running.
+	logstream.CloseAll()
+	logindex.CloseAll()
 	if httpSidecar == nil {
 		return
 	}
@@ -88,6 +95,15 @@ func Start() int {
 
 	// Net Tools
 	nettools.RegisterHandlers(mux)
+
+	// Stack frame → repository source mapping
+	sourcemap.RegisterHandlers(mux)
+
+	// Live log acquisition: file tail, kubectl/oc/docker logs
+	logstream.RegisterHandlers(mux)
+
+	// On-disk index for log files larger than the available RAM
+	logindex.RegisterHandlers(mux)
 
 	// gRPC
 	igrpc.RegisterHandlers(mux)

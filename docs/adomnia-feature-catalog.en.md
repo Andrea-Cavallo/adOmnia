@@ -472,7 +472,7 @@ Existing `{{variable}}` references are also linked when their current environmen
 | D4.6 | **MIME Type Detector** | Detects MIME type from raw bytes; returns string, extension, category. |
 | D4.7 | **JSON Graph Visualizer** | Displays nested JSON as an indented/expandable tree. |
 | D4.8 | **Visual JSON Diff** | Visual comparison between two JSON documents with diff patch view (Utils panel). |
-| D4.9 | **Log Inspector** | First-class Power Tools workspace for local JSON, JSONL, mixed OpenShift logs and Java/Go stack traces, with virtualized events, structured filters, correlation timelines, masking and export. |
+| D4.9 | **Log Inspector** | First-class local investigation workspace for JSON, JSONL, mixed OpenShift logs and Java/Go stack traces, with managed multi-source sessions, controlled acquisition deduplication, span-aware service waterfalls, paired request/response payloads, request diffs, surrounding context, error fingerprints, custom field columns, masking and export. |
 
 ---
 

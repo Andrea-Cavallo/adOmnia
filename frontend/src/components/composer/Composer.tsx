@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState, useRef, useEffect, useMemo } from 'react'
-import { Send, Save, FileCode, Gauge, X, Plus, Check, CornerDownRight, Clock, Code, Copy, CheckCheck, FileText, Circle, ListChecks, ShieldCheck, MoreVertical, ChevronDown, FileKey2 } from 'lucide-react'
+import { Send, Save, FileCode, Gauge, X, Plus, Check, CornerDownRight, Clock, Code, Copy, CheckCheck, Circle, ListChecks, ShieldCheck, ChevronDown } from 'lucide-react'
 import type { RequestItem, HttpMethod, KVRow, RequestBody } from '@/lib/types'
 import { uid, blankBody, blankAuth } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -451,7 +451,7 @@ function RequestOverview({
   vars: Record<string, string>
   hasActiveEnv: boolean
   onChange: (request: RequestItem) => void
-  onOpenSection: (section: ComposerSection, subsection?: 'auth') => void
+  onOpenSection: (section: ComposerSection) => void
 }) {
   const tr = useUiTranslation()
   const variables = requestVariables(request)
@@ -466,8 +466,8 @@ function RequestOverview({
   const setupItems = [
     { label: tr('URL is ready'), ok: Boolean(request.url.trim()), section: null },
     { label: variables.length ? tr(variables.length === 1 ? '{count} variable detected' : '{count} variables detected', { count: variables.length }) : tr('No variables needed'), ok: unresolved.length === 0, section: 'params' as ComposerSection | null },
-    { label: request.auth?.type && request.auth.type !== 'none' ? tr('{auth} configured', { auth: authLabel }) : tr('Auth intentionally empty'), ok: true, section: 'headers' as ComposerSection | null, subsection: 'auth' as const },
-    { label: docsFilled ? tr('Documentation present') : tr('Add request notes'), ok: docsFilled, section: null, subsection: undefined },
+    { label: request.auth?.type && request.auth.type !== 'none' ? tr('{auth} configured', { auth: authLabel }) : tr('Auth intentionally empty'), ok: true, section: 'auth' as ComposerSection | null },
+    { label: docsFilled ? tr('Documentation present') : tr('Add request notes'), ok: docsFilled, section: null },
   ]
 
   return (
@@ -501,7 +501,7 @@ function RequestOverview({
             {setupItems.map((item) => (
               <button
                 key={item.label}
-                onClick={() => item.section && onOpenSection(item.section, item.subsection)}
+                onClick={() => item.section && onOpenSection(item.section)}
                 className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[12px] text-text-2 transition-colors hover:bg-surface-2"
               >
                 {item.ok ? <Check size={13} className="text-success" /> : <Circle size={13} className="text-warning" />}
@@ -573,11 +573,9 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
   const [activeTab, setActiveTab] = useState<ComposerSection>(
     () => useTabsStore.getState().getViewState(tabId).composerSection,
   )
-  const [configurationTab, setConfigurationTab] = useState<'headers' | 'auth' | 'cookies' | 'psd2'>('headers')
   const [showCurlImport, setShowCurlImport] = useState(false)
   const [renameBodyPrompt, setRenameBodyPrompt] = useState<{ show: boolean; index: number } | null>(null)
   const [bodyMenu, setBodyMenu] = useState<{ x: number; y: number; index: number } | null>(null)
-  const [bodyVariantsExpanded, setBodyVariantsExpanded] = useState(false)
   const [savedFlash, setSavedFlash] = useState(false)
   const urlInputRef = useRef<HTMLInputElement>(null)
   const contentScrollRef = useRef<HTMLDivElement>(null)
@@ -615,40 +613,34 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
     }
   }, [cookieJarEntries, request.url, sendCookiesAutomatically])
 
+  const psd2Issues = useMemo(() => validatePSD2Request(request), [request])
+
+  // One flat row of sections — every configuration surface is one click away
+  // instead of hiding behind a grouped tab plus an inner tab strip.
   const tabs = [
-    { id: 'body' as ComposerSection, label: tr('Body'), count: bodyCount, icon: Code },
-    {
-      id: 'headers' as ComposerSection,
-      label: tr('Headers / Auth / Cookies'),
-      count: (request.headers ?? []).filter((h) => h.enabled && h.key).length
-        + (request.auth?.type !== 'none' ? 1 : 0)
-        + (request.cookies ?? []).filter((c) => c.enabled && c.key).length
-        + jarCount,
-      icon: ShieldCheck,
-    },
-    { id: 'params' as ComposerSection, label: tr('Params'), count: (request.params ?? []).filter((p) => p.enabled && p.key).length, icon: CornerDownRight },
-    {
-      id: 'scripts' as ComposerSection,
-      label: tr('Tests / Scripts'),
-      count: (request.assertions ?? []).length + ((scripts.pre || scripts.post || scripts.tests) ? 1 : 0),
-      icon: CheckCheck,
-    },
-    { id: 'overview' as ComposerSection, label: tr('Notes'), count: request.description?.trim() ? 1 : 0, icon: FileText },
+    { id: 'body' as ComposerSection, label: tr('Body'), count: bodyCount },
+    { id: 'headers' as ComposerSection, label: tr('Headers'), count: (request.headers ?? []).filter((h) => h.enabled && h.key).length },
+    { id: 'auth' as ComposerSection, label: tr('Auth'), count: request.auth?.type && request.auth.type !== 'none' ? 1 : 0 },
+    { id: 'cookies' as ComposerSection, label: tr('Cookies'), count: (request.cookies ?? []).filter((c) => c.enabled && c.key).length + jarCount },
+    { id: 'params' as ComposerSection, label: tr('Params'), count: (request.params ?? []).filter((p) => p.enabled && p.key).length },
+    { id: 'scripts' as ComposerSection, label: tr('Scripts'), count: (scripts.pre ? 1 : 0) + (scripts.post ? 1 : 0) },
+    { id: 'tests' as ComposerSection, label: tr('Tests'), count: (request.assertions ?? []).length + (scripts.tests ? 1 : 0) },
+    { id: 'overview' as ComposerSection, label: tr('Notes'), count: request.description?.trim() ? 1 : 0 },
+    // PSD2 is an opt-in enterprise surface: it only earns a tab once enabled.
+    ...(request.psd2?.enabled ? [{ id: 'psd2' as ComposerSection, label: 'PSD2', count: psd2Issues.length }] : []),
   ]
 
   const bodyIndex = bodies.length
     ? Math.min(Math.max(request.activeBodyIdx, 0), bodies.length - 1)
     : 0
   const activeBody = bodies[bodyIndex]
-  const psd2Issues = useMemo(() => validatePSD2Request(request), [request])
   const canSend = Boolean(request.url) && !loading && psd2Issues.length === 0
 
   const handleSend = () => {
     if (!request.url || loading) return
     if (psd2Issues.length > 0) {
-      setConfigurationTab('psd2')
-      setActiveTab('headers')
-      updateViewState(tabId, { composerSection: 'headers' })
+      setActiveTab('psd2')
+      updateViewState(tabId, { composerSection: 'psd2' })
       return
     }
     onSend()
@@ -697,8 +689,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
     onChange(requestWithUrlInput(request, url))
   }
 
-  const openSection = (section: ComposerSection, subsection?: 'auth') => {
-    if (section === 'headers' && subsection === 'auth') setConfigurationTab('auth')
+  const openSection = (section: ComposerSection) => {
     setActiveTab(section)
     updateViewState(tabId, { composerSection: section })
   }
@@ -788,7 +779,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
             </button>
           </div>
 
-          {request.psd2?.enabled && psd2Issues.length > 0 && <button onClick={() => { setConfigurationTab('psd2'); setActiveTab('headers'); updateViewState(tabId, { composerSection: 'headers' }) }} className="h-8 rounded border border-error/30 bg-error/10 px-2 text-[10px] font-medium text-error" title={psd2Issues.map((issue) => issue.message).join(' ')}>PSD2 · {psd2Issues.length} issues</button>}
+          {request.psd2?.enabled && psd2Issues.length > 0 && <button onClick={() => openSection('psd2')} className="h-8 rounded border border-error/30 bg-error/10 px-2 text-[10px] font-medium text-error" title={psd2Issues.map((issue) => issue.message).join(' ')}>PSD2 · {psd2Issues.length} issues</button>}
           <button
             onClick={handleSend}
             disabled={!canSend}
@@ -843,10 +834,9 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
           </>
         )}
 
-        {/* Section tabs */}
-        <div role="tablist" aria-label={tr('Request sections')} className="flex min-h-12 flex-nowrap items-end gap-1 overflow-x-auto border-y-2 border-border-2 bg-surface-1 px-3 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {/* Section tabs — one flat, underlined row, as compact as the labels allow */}
+        <div role="tablist" aria-label={tr('Request sections')} className="flex h-9 flex-nowrap items-stretch gap-0.5 overflow-x-auto border-b border-border-1 bg-surface-1 px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {tabs.map((t) => {
-            const TabIcon = t.icon
             const active = activeTab === t.id
             return (
               <button
@@ -863,17 +853,16 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
                 } : undefined}
                 title={t.id === 'body' ? tr('Right-click to duplicate / rename this body') : undefined}
                 className={cn(
-                  'relative flex h-9 shrink-0 items-center gap-1.5 rounded-t-md border border-b-0 px-3 text-[11.5px] font-medium outline-none transition-all focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent',
+                  'relative flex shrink-0 items-center gap-1.5 border-b-2 px-2.5 text-[11.5px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent',
                   active
-                    ? 'border-border-2 bg-surface-3 text-text-1 shadow-[inset_0_-3px_0_var(--color-accent)]'
-                    : 'border-transparent text-text-2 hover:border-border-2 hover:bg-surface-2 hover:text-text-1',
+                    ? 'border-accent text-text-1'
+                    : 'border-transparent text-text-3 hover:text-text-1',
                 )}
               >
-                <TabIcon size={12} className={active ? 'text-accent' : 'text-text-3'} />
                 <span>{t.label}</span>
                 {t.count > 0 && (
                   <span className={cn(
-                    'inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 font-mono text-[9px] font-semibold',
+                    'inline-flex min-w-4 items-center justify-center rounded px-1 py-px font-mono text-[9px] font-semibold',
                     active ? 'bg-accent/25 text-accent-light' : 'bg-surface-3 text-text-2',
                   )}>
                     {t.count}
@@ -911,186 +900,93 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
             <ParamsSection request={request} onChange={onChange} />
           )}
           {activeTab === 'headers' && (
-            <div className="flex min-h-0 flex-1 flex-col">
-              <div role="tablist" aria-label={tr('Headers, authentication and cookies')} className="flex gap-1 border-b border-border-1 bg-surface-1 px-2 pt-2">
-                {([
-                  { id: 'headers' as const, label: tr('Headers'), icon: ListChecks },
-                  { id: 'auth' as const, label: tr('Auth'), icon: ShieldCheck },
-                  { id: 'cookies' as const, label: tr('Cookies'), icon: Circle },
-                  { id: 'psd2' as const, label: 'PSD2', icon: FileKey2 },
-                ]).map((item) => {
-                  const ItemIcon = item.icon
-                  const active = configurationTab === item.id
-                  return (
-                    <button
-                      key={item.id}
-                      role="tab"
-                      aria-selected={active}
-                      onClick={() => setConfigurationTab(item.id)}
-                      className={cn(
-                        'flex h-8 items-center gap-1.5 border-b-2 px-3 text-[11px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent',
-                        active ? 'border-accent text-text-1' : 'border-transparent text-text-3 hover:text-text-1',
-                      )}
-                    >
-                      <ItemIcon size={12} className={active ? 'text-accent' : 'text-text-4'} />
-                      {item.label}
-                    </button>
-                  )
-                })}
-              </div>
-              {configurationTab === 'headers' && (
-                <KVEditor
-                    rows={request.headers ?? []}
-                    onChange={(headers) => onChange({ ...request, headers })}
-                    keyPlaceholder={tr('Header name')}
-                    valuePlaceholder={tr('Header value')}
-                />
-              )}
-              {configurationTab === 'auth' && (
-                <AuthEditor auth={request.auth ?? blankAuth()} onChange={(auth) => onChange({ ...request, auth })} />
-              )}
-              {configurationTab === 'cookies' && (
-                <>
-                  <KVEditor
-                    rows={request.cookies ?? []}
-                    onChange={(cookies) => onChange({ ...request, cookies })}
-                    keyPlaceholder={tr('Cookie name')}
-                    valuePlaceholder={tr('Cookie value')}
-                  />
-                  <CookieJarSection requestUrl={request.url} />
-                </>
-              )}
-              {configurationTab === 'psd2' && (
-                <PSD2RequestPanel
-                  config={request.psd2}
-                  headers={request.headers ?? []}
-                  onConfigChange={(psd2) => onChange({ ...request, psd2 })}
-                  onHeadersChange={(headers) => onChange({ ...request, headers })}
-                  issues={psd2Issues}
-                />
-              )}
-            </div>
+            <KVEditor
+              rows={request.headers ?? []}
+              onChange={(headers) => onChange({ ...request, headers })}
+              keyPlaceholder={tr('Header name')}
+              valuePlaceholder={tr('Header value')}
+            />
           )}
-          {activeTab === 'body' && (
+          {activeTab === 'auth' && (
+            <AuthEditor auth={request.auth ?? blankAuth()} onChange={(auth) => onChange({ ...request, auth })} />
+          )}
+          {activeTab === 'cookies' && (
             <>
-              <section className="border-b border-border-2 bg-surface-1/70">
-                {/* Compact header — always visible */}
-                <div className="flex items-center gap-2 px-3 py-1.5">
+              <KVEditor
+                rows={request.cookies ?? []}
+                onChange={(cookies) => onChange({ ...request, cookies })}
+                keyPlaceholder={tr('Cookie name')}
+                valuePlaceholder={tr('Cookie value')}
+              />
+              <CookieJarSection requestUrl={request.url} />
+            </>
+          )}
+          {activeTab === 'psd2' && (
+            <PSD2RequestPanel
+              config={request.psd2}
+              headers={request.headers ?? []}
+              onConfigChange={(psd2) => onChange({ ...request, psd2 })}
+              onHeadersChange={(headers) => onChange({ ...request, headers })}
+              issues={psd2Issues}
+            />
+          )}
+          {activeTab === 'body' && activeBody && (
+            <BodyEditor
+              key={activeBody.id}
+              body={activeBody}
+              isWebSocket={request.method === 'WS'}
+              requestUrl={request.url}
+              requestMethod={request.method}
+              variantControls={
+                <div className="flex shrink-0 items-center gap-1">
                   <button
-                    onClick={() => setBodyVariantsExpanded(v => !v)}
-                    className="flex flex-1 min-w-0 items-center gap-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
-                    title={bodyVariantsExpanded ? tr('Collapse body variants') : tr('Expand body variants')}
+                    onClick={(event) => {
+                      const rect = event.currentTarget.getBoundingClientRect()
+                      setBodyMenu({ x: rect.left, y: rect.bottom + 4, index: bodyIndex })
+                    }}
+                    onContextMenu={(event) => {
+                      event.preventDefault()
+                      setBodyMenu({ x: event.clientX, y: event.clientY, index: bodyIndex })
+                    }}
+                    title={tr('Active body variant')}
+                    aria-label={tr('Active body variant')}
+                    aria-haspopup="menu"
+                    className="inline-flex h-7 max-w-[190px] items-center gap-1.5 rounded-md border border-border-2 bg-surface-2 px-2 text-[11px] font-medium text-text-1 outline-none transition-colors hover:border-accent/50 focus-visible:ring-2 focus-visible:ring-accent"
                   >
-                    <ChevronDown
-                      size={12}
-                      className={cn('shrink-0 text-text-4 transition-transform duration-150', bodyVariantsExpanded ? 'rotate-0' : '-rotate-90')}
-                    />
-                    <span className="text-[11px] font-medium text-text-3">{tr('Body variants')}</span>
-                    {/* Pill showing active body name */}
-                    {activeBody && (
-                      <span className="ml-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 bg-surface-2 border border-border-2 text-[10px] font-medium text-text-2 truncate max-w-[160px]">
-                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-                        {activeBody.name}
-                        <span className="font-mono text-[8.5px] text-accent ml-0.5">{bodyFormatLabel(activeBody)}</span>
-                      </span>
-                    )}
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+                    <span className="truncate">{activeBody.name}</span>
                     {bodies.length > 1 && (
-                      <span className="ml-0.5 rounded-full bg-surface-3 px-1.5 py-0.5 text-[9px] font-semibold text-text-3">{bodies.length}</span>
+                      <span className="shrink-0 rounded-full bg-surface-3 px-1.5 text-[9px] font-semibold text-text-3">{bodies.length}</span>
                     )}
+                    <ChevronDown size={11} className="shrink-0 text-text-4" />
                   </button>
                   <button
                     onClick={addBody}
-                    className="inline-flex shrink-0 h-6 items-center gap-1 rounded border border-border-2 bg-surface-2 px-2 text-[10px] font-medium text-text-2 outline-none transition-colors hover:border-accent/60 hover:bg-surface-3 focus-visible:ring-2 focus-visible:ring-accent"
-                    title={tr('Add body example')}
+                    title={tr('Add body variant')}
+                    className="inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-border-2 bg-surface-2 px-2 text-[10.5px] font-medium text-text-2 outline-none transition-colors hover:border-accent/60 hover:text-text-1 focus-visible:ring-2 focus-visible:ring-accent"
                   >
-                    <Plus size={10} className="text-accent" /> {tr('New')}
+                    <Plus size={11} className="text-accent" /> {tr('Variant')}
                   </button>
                 </div>
-
-                {/* Expanded panel — body variant cards */}
-                {bodyVariantsExpanded && (
-                  <div className="px-3 pb-2.5">
-                    <div role="tablist" aria-label={tr('Request body variants')} className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-                      {bodies.map((body, index) => {
-                        const active = index === bodyIndex
-                        return (
-                          <div
-                            key={body.id}
-                            className={cn(
-                              'group relative h-[60px] w-[152px] shrink-0 overflow-hidden rounded-md border bg-surface-2 transition-all',
-                              active
-                                ? 'border-accent/80 bg-surface-3 shadow-[0_0_0_1px_var(--color-accent-glow)]'
-                                : 'border-border-2 hover:border-accent/40 hover:bg-surface-3',
-                            )}
-                          >
-                            {active && <span className="absolute inset-x-0 top-0 z-10 h-[2px] bg-accent" />}
-                            <button
-                              role="tab"
-                              aria-selected={active}
-                              onClick={() => onChange({ ...request, activeBodyIdx: index })}
-                              onContextMenu={(event) => {
-                                event.preventDefault()
-                                setBodyMenu({ x: event.clientX, y: event.clientY, index })
-                              }}
-                              className="flex h-full w-full flex-col items-start justify-center px-3 pr-10 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
-                              title={body.name}
-                            >
-                              <span
-                                className={cn('max-w-full overflow-hidden text-[11px] font-semibold leading-[14px]', active ? 'text-text-1' : 'text-text-2')}
-                                style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}
-                              >
-                                {body.name}
-                              </span>
-                              <span className={cn('mt-1 font-mono text-[8.5px] font-semibold tracking-wide', active ? 'text-accent' : 'text-text-4')}>{bodyFormatLabel(body)}</span>
-                            </button>
-                            <div className={cn('absolute right-1 top-1 flex items-center gap-0.5 transition-opacity', active ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100')}>
-                              {bodies.length > 1 && (
-                                <button aria-label={`Delete ${body.name}`} onClick={() => deleteBody(index)} className="grid h-5 w-5 place-items-center rounded text-text-3 hover:bg-error/10 hover:text-error focus-visible:ring-2 focus-visible:ring-accent" title={`Delete ${body.name}`}><X size={10} /></button>
-                              )}
-                              <button
-                                aria-label={`More options for ${body.name}`}
-                                onClick={(event) => {
-                                  const rect = event.currentTarget.getBoundingClientRect()
-                                  setBodyMenu({ x: rect.right, y: rect.bottom, index })
-                                }}
-                                className="grid h-5 w-5 place-items-center rounded text-text-3 hover:bg-surface-1 hover:text-text-1 focus-visible:ring-2 focus-visible:ring-accent"
-                                title={`More options for ${body.name}`}
-                              >
-                                <MoreVertical size={11} />
-                              </button>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
-              </section>
-              {activeBody && (
-                <BodyEditor
-                  key={activeBody.id}
-                  body={activeBody}
-                  isWebSocket={request.method === 'WS'}
-                  requestUrl={request.url}
-                  requestMethod={request.method}
-                  onChange={(updated) => {
-                    const newBodies = bodies.map((b, i) =>
-                      i === bodyIndex ? { ...b, ...updated } : b
-                    )
-                    onChange({ ...request, bodies: newBodies, activeBodyIdx: bodyIndex })
-                  }}
-                />
-              )}
-            </>
+              }
+              onChange={(updated) => {
+                const newBodies = bodies.map((b, i) =>
+                  i === bodyIndex ? { ...b, ...updated } : b
+                )
+                onChange({ ...request, bodies: newBodies, activeBodyIdx: bodyIndex })
+              }}
+            />
           )}
-          {activeTab === 'scripts' && (
+          {(activeTab === 'scripts' || activeTab === 'tests') && (
             <div className="flex min-h-0 flex-1 flex-col">
               <Suspense fallback={<div className="flex flex-1 items-center justify-center text-xs text-text-3">{tr('Loading JavaScript editor…')}</div>}>
                 <ScriptsEditor
+                  key={activeTab}
                   pre={scripts.pre ?? ''}
                   post={scripts.post ?? ''}
                   tests={scripts.tests ?? ''}
-                  initialTab="tests"
+                  initialTab={activeTab === 'tests' ? 'tests' : 'pre'}
+                  editableTabs={activeTab === 'tests' ? ['tests'] : ['pre', 'post']}
                   request={request}
                   onChange={(s) => onChange({ ...request, scripts: s })}
                 />
@@ -1112,6 +1008,13 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
           x={bodyMenu.x}
           y={bodyMenu.y}
           items={[
+            // The picker and the per-variant actions share one menu so the
+            // toolbar keeps a single control for the whole variant workflow.
+            ...bodies.map((body, index) => ({
+              id: `select:${index}`,
+              label: `${index === bodyIndex ? '● ' : '   '}${body.name} · ${bodyFormatLabel(body)}`,
+            })),
+            { id: 'new', label: tr('Add body variant'), separatorBefore: true },
             { id: 'rename', label: tr('Rename body variant') },
             { id: 'duplicate', label: tr('Duplicate body variant') },
             { id: 'delete', label: tr('Delete body variant'), danger: true, disabled: bodies.length <= 1, separatorBefore: true },
@@ -1119,6 +1022,11 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
           onSelect={(action) => {
             const index = bodyMenu.index
             setBodyMenu(null)
+            if (action.startsWith('select:')) {
+              onChange({ ...request, activeBodyIdx: Number(action.slice(7)) })
+              return
+            }
+            if (action === 'new') addBody()
             if (action === 'rename') setRenameBodyPrompt({ show: true, index })
             if (action === 'duplicate') duplicateBody(index)
             if (action === 'delete') deleteBody(index)

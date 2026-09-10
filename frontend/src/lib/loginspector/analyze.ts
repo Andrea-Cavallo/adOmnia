@@ -28,6 +28,8 @@ export interface OperationalContext {
   sourceLine: string
   requestBody: unknown | null
   responseBody: unknown | null
+  requestHeaders: unknown | null
+  responseHeaders: unknown | null
 }
 
 export interface AnalyzedRequest {
@@ -72,10 +74,22 @@ export interface SensitiveFieldFinding {
   kind: string
 }
 
+export interface LogErrorGroup {
+  fingerprint: string
+  example: string
+  count: number
+  firstAt: number | null
+  lastAt: number | null
+  services: string[]
+  eventIds: number[]
+  normalization: string
+}
+
 export interface LogAnalysis {
   requests: AnalyzedRequest[]
   anomalies: LogAnomaly[]
   sensitiveFields: SensitiveFieldFinding[]
+  errorGroups: LogErrorGroup[]
   environments: string[]
   services: { name: string; version: string }[]
   pods: string[]
@@ -182,6 +196,12 @@ export function operationalContext(event: LogEvent): OperationalContext {
       'response.body',
       'response',
     ]),
+    requestHeaders: payloadValue(event, [
+      'attributes.http.request.headers', 'attributes.request.headers', 'http.request.headers', 'request.headers', 'request_headers', 'headers.request',
+    ]),
+    responseHeaders: payloadValue(event, [
+      'attributes.http.response.headers', 'attributes.response.headers', 'http.response.headers', 'response.headers', 'response_headers', 'headers.response',
+    ]),
   }
   contextCache.set(event, context)
   return context
@@ -267,6 +287,50 @@ const SENSITIVE_KEYS: { pattern: RegExp; kind: string }[] = [
   { pattern: /(?:^|\.)(?:phone|telephone|mobile|telefono)$/i, kind: 'phone' },
   { pattern: /(?:^|\.)(?:authorization|.*token|password|secret|cookie)$/i, kind: 'secret' },
 ]
+
+export function errorFingerprint(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[0-9a-f]{8}-[0-9a-f-]{27,}/gi, '<uuid>')
+    .replace(/\b0x[0-9a-f]+\b/gi, '<hex>')
+    .replace(/\b\d+(?:\.\d+)?\b/g, '<n>')
+    .replace(/"[^"]*"|'[^']*'/g, '<quoted>')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function groupObservedErrors(events: LogEvent[]): LogErrorGroup[] {
+  const groups = new Map<string, { example: string; events: LogEvent[] }>()
+  for (const event of events) {
+    const context = operationalContext(event)
+    if (event.level !== 'error' && event.level !== 'fatal' && !context.error) continue
+    const example = (context.error || event.stack.split('\n')[0] || event.message).trim()
+    if (!example) continue
+    const fingerprint = errorFingerprint(example)
+    const group = groups.get(fingerprint)
+    if (group) group.events.push(event)
+    else groups.set(fingerprint, { example, events: [event] })
+  }
+  return [...groups].map(([fingerprint, group]) => {
+    let firstAt: number | null = null
+    let lastAt: number | null = null
+    for (const event of group.events) {
+      if (event.ts === null) continue
+      firstAt = firstAt === null ? event.ts : Math.min(firstAt, event.ts)
+      lastAt = lastAt === null ? event.ts : Math.max(lastAt, event.ts)
+    }
+    return {
+      fingerprint,
+      example: group.example,
+      count: group.events.length,
+      firstAt,
+      lastAt,
+      services: [...new Set(group.events.map((event) => event.service).filter(Boolean))],
+      eventIds: group.events.map((event) => event.id),
+      normalization: 'lowercase; UUID, hex and numbers replaced; quoted values removed; whitespace collapsed',
+    }
+  }).sort((a, b) => b.count - a.count || (a.firstAt ?? 0) - (b.firstAt ?? 0))
+}
 
 function sensitiveFindings(event: LogEvent): SensitiveFieldFinding[] {
   if (!event.json || typeof event.json !== 'object' || Array.isArray(event.json)) return []
@@ -394,6 +458,7 @@ export function analyzeLog(events: LogEvent[]): LogAnalysis {
     requests,
     anomalies,
     sensitiveFields,
+    errorGroups: groupObservedErrors(events),
     environments: [...environments],
     services: [...serviceMap].map(([name, version]) => ({ name, version })),
     pods: [...pods],
