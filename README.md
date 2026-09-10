@@ -1,10 +1,10 @@
 # adOmnia
 ![adOmnia banner](assets/images/banner.png)
 
-**The entire API toolchain — REST to Kafka, mock to MITM proxy, database to PDF signing — in one portable app that never leaves your machine.**
+**The entire API toolchain — design, send, record, debug, inspect, reproduce and ship — in one portable app that never leaves your machine.**
 
 REST · gRPC · SOAP · GraphQL · WebSocket · SSE · Kafka · RabbitMQ · MQTT · Redis · NATS
-Mock servers · HTTPS proxy · Browser DevTools · Log Inspector · Load testing · Database Studio · Encrypted vault
+Mock servers · HTTPS proxy · Browser DevTools · Application Log Inspector · Load testing · Database Studio · Encrypted vault
 **Full Git client** (commit graph, push/pull, branch & conflict resolution) · OpenAPI design · Visual test builder · AI mock generation
 MCP Client + Server Generator · Versionable collection folders · Headless runner · OpenAPI lint CLI · PDF & LaTeX Studio · Executable JS plugins · 11 themes
 
@@ -13,6 +13,7 @@ MCP Client + Server Generator · Versionable collection folders · Headless runn
 > Proudly listed on **[Awesome Wails](https://github.com/wailsapp/awesome-wails)** and **[Awesome HTTP Clients](https://github.com/mrmykey/awesome-http-clients/tree/main)**.
 
 [![Website](https://img.shields.io/badge/Get%20started%20for%20free-8A2BE2)](https://www.adomnia-dev.com)
+[![Release](https://img.shields.io/badge/release-v0.9.8-8A2BE2)](https://github.com/Andrea-Cavallo/adOmnia/releases/tag/v0.9.8)
 [![Awesome Wails](https://img.shields.io/badge/Awesome-Wails-FF3E00?logo=go&logoColor=white)](https://github.com/wailsapp/awesome-wails)
 [![Awesome HTTP Clients](https://img.shields.io/badge/Awesome-HTTP_Clients-4285F4?logo=googlechrome&logoColor=white)](https://github.com/mrmykey/awesome-http-clients/tree/main)
 ![Local First](https://img.shields.io/badge/local--first-yes-22c55e)
@@ -21,13 +22,19 @@ MCP Client + Server Generator · Versionable collection folders · Headless runn
 
 ---
 
-![adOmnia interface](assets/images/adOmniaInterface1.png)
+### One local workspace for the whole API lifecycle
 
-or white skin:
+Compose requests, inspect responses, browse collections and move between API,
+debugging, documentation and infrastructure tools without switching products.
+
+![adOmnia main API workspace](assets/images/adOmniaInterface1.png)
+
+Prefer a light workspace? Use the white skin:
 
 ![adOmnia interface white](assets/images/white.png)
 
-or the new Sketch skin, for a hand-drawn engineering-notebook workspace without giving up the desktop workflow:
+Or use the Sketch skin for a hand-drawn engineering-notebook workspace without
+giving up the desktop workflow:
 
 ![adOmnia Sketch skin preview](assets/images/sketch-previews.png)
 
@@ -50,9 +57,10 @@ Four things set it apart — and **no other tool combines all four**:
 -  **Enterprise & legacy as first-class citizens** — SOAP/WSDL with WS-Security, mTLS, PKCS#12/JKS, gRPC streaming, and **real eIDAS-grade PDF digital signatures** (TSA timestamping + LTV). The boring-but-critical stuff Postman ignores.
 -  **Yours to extend** — executable local JavaScript plugins, importable skins, shareable templates, and 11 built-in themes.
 
-check rest apis:
+REST requests keep the essentials visible: method, URL, request configuration and
+response analysis in one screen.
 
-![adOmnia rest](assets/images/REST.png)
+![REST request and response in adOmnia](assets/images/REST.png)
 
 ### ⬇️ Download
 
@@ -73,16 +81,25 @@ All releases include `SHA256SUMS.txt` and source code archives. Verify your down
 | **API Workspace** | Multiple local workspaces with independent collections and tabs, HTTP client (all methods), environments, `{{variable}}` substitution, OAuth2 PKCE, AWS Signature v4, Digest, cURL/OpenAPI import, scripts, assertions, code generation, response history, deterministic collection-folder export/import |
 | **API Design (spec-first)** | Native OpenAPI 3.x / Swagger 2.x import (file/URL/paste) and round-trip export (JSON/YAML), **Visual OpenAPI Editor** (form-based endpoints, no YAML), **API Docs / Swagger viewer** with integrated governance findings, local OpenAPI linting in the desktop UI and CI |
 | **API Catalog** | Installable public REST API starters, including curated no-auth/free endpoints inspired by `public-apis/public-apis`, imported directly into local adOmnia collections |
-| **Collection Runner & Testing** | Test runner with iterations/delay/retry/CSV datasets, assertion editor (JSONPath, XPath, schema), Mermaid-generated and recorded API flows with response-to-request data links, pan/zoom/auto-layout, **no-code Visual Test builder** (block-based, export to Flow), **response schema/contract validation**, test data studio, and a headless `adomnia run` CLI for folder-backed collections with CLI/JSON/JUnit reports |
+| **Collection Runner & Testing** | Test runner with iterations/delay/retry/CSV datasets, assertion editor (JSONPath, XPath, schema), **recorded API flows** with response-to-request data links, Mermaid generation, pan/zoom/auto-layout, **no-code Visual Test builder** (block-based, export to Flow), **response schema/contract validation**, test data studio, and a headless `adomnia run` CLI for folder-backed collections with CLI/JSON/JUnit reports |
 | **Protocols** | SOAP/WSDL Studio (1.1 & 1.2, WS-Security), gRPC (reflection, offline proto/protoset authoring, unary calls, live cancellable streaming, TLS/mTLS, metadata, trailers, reproducible history and load tests), WebSocket client + mock server, SSE client, **MCP Client/Debugger** + **MCP Server Generator** (collection/OAS → runnable MCP server; stdio multi-session + HTTP transport) |
 | **Brokers** | Kafka (produce/consume/bulk/load test), RabbitMQ, MQTT, Redis Pub/Sub, NATS — shared message log, persistent connection profiles |
 | **Simulation & Infrastructure** | Mock Server Control Room with **Smart Mock Engine** (schema-driven Faker generation), **conditional expectations** (per-field matching), request-focused **Mock this tab** handoff, endpoint explorer, decision-aware traffic, record & replay and round-robin; HTTPS proxy/interceptor (MITM CA, breakpoints, map local/remote, throttling), Docker Lab (14 presets), load testing (HTTP + gRPC, HDR histogram, P99, side-by-side comparison) |
-| **Debugging & Analysis** | Browser DevTools via CDP (network, console, JS debugger, DOM inspector, storage, screenshots), **Log Inspector** (paste or drop OpenShift/pod logs — JSON, JSON arrays, JSONL, mixed text, Java/Go stack traces — into a virtualized event list with field queries, correlation-ID timelines, sensitive-field masking and JSON/JSONL/text export, see [docs/LOG-INSPECTOR.md](docs/LOG-INSPECTOR.md)), HAR viewer, DNS lookup/trace/compare, port scanner, CORS tester, JSON/XML/YAML tools, observability panel, secret scanner |
+| **Debugging & Analysis** | Browser DevTools via CDP (network, console, JS debugger, DOM inspector, storage, screenshots), **Application Log Inspector** with multi-source correlation, structured typed queries, service waterfalls, payload pairing/diff, stack-to-source navigation, live container tails, persistent investigations and redacted evidence export; plus HAR viewer, DNS lookup/trace/compare, port scanner, CORS tester, JSON/XML/YAML tools, observability and secret scanning. See [the Log Inspector reference](docs/LOG-INSPECTOR.md). |
 | **Document & Productivity Studio** | **PDF Editor** (view, annotate, fill forms, flatten/export) with **real cryptographic signing** — PEM or PKCS#12/JKS keystore import, RFC-3161 **TSA timestamping**, and **LTV** (chain + OCSP/CRL); **LaTeX Studio** (live `.tex` editor + preview + templates); Markdown studio; Mermaid diagrams |
 | **Version Control (built-in Git)** | Full Git client inside the app — clone/init, stage & commit, **visual commit graph** with per-commit context actions (checkout, revert, reset, cherry-pick), branch create/switch/merge, push/pull to any remote, diff viewer, and **interactive conflict resolution**. Export collections as folder-backed, diff-friendly trees, import them back, and check drift between the app state and the files on disk |
-| **Data, Security & Extensibility** | Database Studio (SQLite/PostgreSQL/MySQL/MongoDB), bbolt storage inspector, encrypted vault (age/scrypt), **AI engine** (Anthropic/OpenAI/Gemini/Hugging Face/Ollama) with guided cloud/local setup, live model discovery, local metadata cache and Vault or machine-local environment credentials, permission-aware JavaScript plugin runtime, 11 built-in themes + custom skin system |
+| **Data, Security & Extensibility** | **Power Tools Studio** for encoding, crypto, generators, network inspection and validation; Database Studio (SQLite/PostgreSQL/MySQL/MongoDB), bbolt storage inspector, encrypted vault (age/scrypt), **AI engine** (Anthropic/OpenAI/Gemini/Hugging Face/Ollama) with guided cloud/local setup, live model discovery, local metadata cache and Vault or machine-local environment credentials, permission-aware JavaScript plugin runtime, 11 built-in themes + custom skin system |
 
 Persistent Git, broker, and database credentials use encrypted `vault:` references. Plaintext credentials remain in memory for the current session only, are resolved immediately before use, and are automatically redacted from workspace, bucket, settings, and snapshot exports.
+
+### Record a real API sequence as a Flow
+
+Press **Record**, use the Composer normally, then stop the recording. adOmnia turns
+the observed request sequence into an editable Flow instead of making you rebuild
+the scenario by hand. From there you can review the steps, connect response values
+to later requests, add assertions, generate a Mermaid view and replay the workflow.
+
+![Recording API calls and converting them into an adOmnia Flow](assets/images/example-rec.gif)
 
 ### Mock the request you are working on
 
@@ -92,11 +109,43 @@ The Traffic view explains what happened for each call: the matched endpoint and 
 
 ### Read pod logs without grep
 
-The **Log Inspector** rail destination turns a wall of OpenShift/Kubernetes log output into a structured, filterable event list — entirely offline, nothing is uploaded.
+The **Application Log Inspector** turns a wall of OpenShift/Kubernetes or local
+application output into a structured investigation — entirely offline, with
+nothing uploaded.
 
-Paste the text or drop a file (`.log`, `.txt`, `.json`, `.jsonl`, or any plain-text dump): the format is detected from the content, never from the extension (JSON, JSON array, JSONL, mixed, plain text), and Java/Go stack traces are re-attached to the line that raised them. You then get level/service facets, a time histogram, a field query language (`level:ERROR AND traceId:abc*`), correlation-ID timelines across services, sensitive-field masking, and export back to JSON/JSONL/text.
+![Application Log Inspector ready for files, live sources and large logs](assets/images/application-logs.png)
+
+Paste text or drop one or more files (`.log`, `.txt`, `.json`, `.jsonl`, `.ndjson`,
+`.out`, or any plain-text dump). Format detection uses the content, never the
+extension, and Java/Go stack traces are re-attached to the event that raised them.
+
+An investigation can then:
+
+- correlate files and live `kubectl`, `oc` or Docker sources on one timeline;
+- search with typed expressions such as
+  `duration_ms > 1000 AND (status = 500 OR status = 502)`;
+- show per-service waterfalls, paired request/response payloads, diffs, nearby
+  source lines and recurring error groups;
+- promote real fields to resizable, reorderable columns with presets per format;
+- resume a local session with its query, layout, bookmarks and notes;
+- build an editable Composer request, Flow/mock proposal or OpenAPI validation
+  result from the observed evidence; and
+- preview and export a redacted offline evidence package with provenance intact.
+
+For files larger than browser memory, the Go sidecar builds a cancellable,
+disk-backed index and returns paginated results without loading the entire log.
 
 Full reference — parsing pipeline, field aliases, query syntax, correlation and large-input behavior: [docs/LOG-INSPECTOR.md](docs/LOG-INSPECTOR.md)
+
+### Power Tools for the small jobs that interrupt real work
+
+Power Tools Studio keeps common transformations and diagnostics beside the API
+workspace: Base64, JWT, hashes, HMAC, passwords, timestamps, fake data, regex,
+UUIDs, XML, HAR, certificates/keystores, Java class inspection, observability,
+secret scanning, network utilities and validation. Tools are searchable, pinnable
+and work locally with paste, file and sample inputs.
+
+![Power Tools Studio with searchable and pinnable local utilities](assets/images/powertools.png)
 
 ### AI credentials from the local machine
 
