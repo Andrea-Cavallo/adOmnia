@@ -4,6 +4,18 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [0.9.9] - 2026-09-11
+
+### Added
+- **Flow stress test:** the **Stress** button runs a flow with up to 25 concurrent virtual users (ramp-up, iterations or duration, think time, Stop). Each user keeps its own variables; live per-step p50/p90/p95/p99, errors and throughput.
+- **Stress exports and baseline:** per-request CSV log, JSON run file and self-contained HTML report through the native save dialog; load a previous JSON export to see the per-step p95 and throughput change.
+- **Variable context menu:** right-click any `{{var}}` in the body, URL, path params, query or headers to edit its value, copy the value or copy the reference — no selection needed.
+
+### Fixed
+- **Flow variables flagged unresolved:** a `{{var}}` extracted by another flow step no longer shows red in a step's request editor; the producer step or last run value appears in the tooltip.
+
+Full release notes: [v0.9.9](docs/releases/v0.9.9.md).
+
 ## [0.9.8] - 2026-09-10
 
 ### Added

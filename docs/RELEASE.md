@@ -2,6 +2,13 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+## v0.9.9 release notes: flow stress tests and faster variables
+
+See [the full v0.9.9 notes](releases/v0.9.9.md). Flows gain a concurrent stress
+test with CSV/JSON/HTML exports and baseline comparison; `{{var}}` tokens get a
+right-click menu to edit or copy them; flow-extracted variables are no longer
+flagged unresolved.
+
 ## v0.9.8 release notes: complete local log investigations
 
 See [the full v0.9.8 notes](releases/v0.9.8.md). This release completes the

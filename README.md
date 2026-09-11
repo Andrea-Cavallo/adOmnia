@@ -13,7 +13,7 @@ MCP Client + Server Generator · Versionable collection folders · Headless runn
 > Proudly listed on **[Awesome Wails](https://github.com/wailsapp/awesome-wails)** and **[Awesome HTTP Clients](https://github.com/mrmykey/awesome-http-clients/tree/main)**.
 
 [![Website](https://img.shields.io/badge/Get%20started%20for%20free-8A2BE2)](https://www.adomnia-dev.com)
-[![Release](https://img.shields.io/badge/release-v0.9.8-8A2BE2)](https://github.com/Andrea-Cavallo/adOmnia/releases/tag/v0.9.8)
+[![Release](https://img.shields.io/badge/release-v0.9.9-8A2BE2)](https://github.com/Andrea-Cavallo/adOmnia/releases/tag/v0.9.9)
 [![Awesome Wails](https://img.shields.io/badge/Awesome-Wails-FF3E00?logo=go&logoColor=white)](https://github.com/wailsapp/awesome-wails)
 [![Awesome HTTP Clients](https://img.shields.io/badge/Awesome-HTTP_Clients-4285F4?logo=googlechrome&logoColor=white)](https://github.com/mrmykey/awesome-http-clients/tree/main)
 ![Local First](https://img.shields.io/badge/local--first-yes-22c55e)
