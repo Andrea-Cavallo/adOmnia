@@ -1,5 +1,35 @@
 import type { StressRun } from '@/lib/flowStress'
-import type { StressSample, StressStats } from '@/lib/flowStressStats'
+import type { StepStats, StressSample, StressStats } from '@/lib/flowStressStats'
+
+export interface StressBaseline {
+  flowName: string
+  startedAt: string
+  stats: StressStats
+}
+
+/** Reads a previous JSON export; the file is user-supplied, so validate before use. */
+export function parseStressJson(text: string): StressBaseline {
+  let data: unknown
+  try { data = JSON.parse(text) } catch { throw new Error('This file is not valid JSON.') }
+  const run = (data ?? {}) as { format?: unknown; version?: unknown; flowName?: unknown; startedAt?: unknown; stats?: Partial<StressStats> }
+  if (run.format !== 'adomnia-flow-stress') throw new Error('This file is not an adOmnia flow stress export.')
+  if (run.version !== 1) throw new Error(`Unsupported stress export version ${String(run.version)}.`)
+  const steps = run.stats?.steps
+  const validStep = (step: Partial<StepStats> | null) => Boolean(step) && typeof step?.nodeId === 'string' && typeof step?.step === 'string' && Number.isFinite(step?.p95)
+  if (!Array.isArray(steps) || !steps.every(validStep) || !Number.isFinite(run.stats?.rps)) throw new Error('The stress export has no valid statistics.')
+  return { flowName: typeof run.flowName === 'string' ? run.flowName : '', startedAt: typeof run.startedAt === 'string' ? run.startedAt : '', stats: run.stats as StressStats }
+}
+
+/** Percentage change from base to current; undefined when base is 0. */
+export function deltaPct(current: number, base: number): number | undefined {
+  if (!base) return undefined
+  return Math.round(((current - base) / base) * 1000) / 10
+}
+
+/** Same step in the baseline: by node id, falling back to the label for re-created nodes. */
+export function baselineStep(baseline: StressStats, step: StepStats): StepStats | undefined {
+  return baseline.steps.find((item) => item.nodeId === step.nodeId) ?? baseline.steps.find((item) => item.step === step.step)
+}
 
 const CSV_COLUMNS = ['t_ms', 'vu', 'iteration', 'step', 'status', 'http_status', 'latency_ms', 'step_ms', 'bytes', 'error'] as const
 

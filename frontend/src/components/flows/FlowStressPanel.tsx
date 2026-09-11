@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
-import { AlertTriangle, FileCode, FileJson, FileSpreadsheet, Gauge, Loader2, Square } from 'lucide-react'
+import { AlertTriangle, FileCode, FileJson, FileSpreadsheet, Gauge, GitCompare, Loader2, Square, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { FlowGraphDefinition } from '@/lib/flowStorage'
 import {
   DEFAULT_STRESS_CONFIG, MAX_STRESS_VUS, runFlowStress, validateStressConfig,
   type FlowStressConfig, type StressProgress, type StressRun,
 } from '@/lib/flowStress'
-import { sparklinePoints, stressCsv, stressFileName, stressHtml, stressJson, utf8ToBase64 } from '@/lib/flowStressExport'
+import {
+  baselineStep, deltaPct, parseStressJson, sparklinePoints, stressCsv, stressFileName, stressHtml, stressJson, utf8ToBase64,
+  type StressBaseline,
+} from '@/lib/flowStressExport'
 import { saveBase64File } from '@/lib/fileUtils'
 
 interface FlowStressPanelProps {
@@ -52,7 +55,19 @@ function Kpi({ label, value, tone }: { label: string; value: string; tone?: 'err
   )
 }
 
+function DeltaCell({ current, base }: { current: number; base?: number }) {
+  const delta = base === undefined ? undefined : deltaPct(current, base)
+  // ponytail: ±10% is treated as noise; make the band configurable if it misleads.
+  const tone = delta === undefined ? 'text-text-4' : delta > 10 ? 'text-error' : delta < -10 ? 'text-success' : 'text-text-3'
+  return (
+    <td className={cn('px-2.5 py-1.5 text-right', tone)} title={base === undefined ? 'Step not in baseline' : `Baseline p95 ${base} ms`}>
+      {delta === undefined ? '—' : `${delta > 0 ? '+' : ''}${delta}%`}
+    </td>
+  )
+}
+
 const formatSeconds = (ms: number) => `${(ms / 1000).toFixed(1)}s`
+const formatStamp = (iso: string) => iso.slice(0, 19).replace('T', ' ')
 
 export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars, onRunningChange }: FlowStressPanelProps) {
   const [config, setConfig] = useState<FlowStressConfig>(DEFAULT_STRESS_CONFIG)
@@ -61,6 +76,8 @@ export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars
   const [running, setRunning] = useState(false)
   const [notice, setNotice] = useState<{ text: string; ok: boolean } | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const [baseline, setBaseline] = useState<StressBaseline | null>(null)
+  const baselineInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => () => abortRef.current?.abort(), [])
 
@@ -99,6 +116,16 @@ export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars
     }
   }
 
+  const loadBaseline = async (file: File) => {
+    try {
+      const next = parseStressJson(await file.text())
+      setBaseline(next)
+      setNotice({ text: `Comparing with the baseline from ${formatStamp(next.startedAt)}.`, ok: true })
+    } catch (error) {
+      setNotice({ text: error instanceof Error ? error.message : 'Could not read the baseline.', ok: false })
+    }
+  }
+
   const stats = run?.stats ?? progress?.stats
   const elapsedMs = run ? run.stats.elapsedMs : progress?.elapsedMs ?? 0
   const done = run ? run.stats.iterationsOk + run.stats.iterationsFailed : progress?.iterationsDone ?? 0
@@ -107,6 +134,7 @@ export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars
     : Math.min(100, (elapsedMs / Math.max(1, config.durationS * 1000)) * 100)
   const errorPct = stats?.totalRequests ? Math.round((stats.totalErrors / stats.totalRequests) * 1000) / 10 : 0
   const truncated = run?.truncated ?? progress?.truncated ?? false
+  const rpsDelta = baseline && stats ? deltaPct(stats.rps, baseline.stats.rps) : undefined
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
@@ -188,6 +216,7 @@ export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars
                   <tr>
                     <th className="px-2.5 py-1.5 text-left font-semibold">Step</th>
                     {['Count', 'p50', 'p90', 'p95', 'p99', 'Max', 'Errors'].map((head) => <th key={head} className="px-2.5 py-1.5 text-right font-semibold">{head}</th>)}
+                    {baseline && <th className="px-2.5 py-1.5 text-right font-semibold" title="p95 change versus the baseline">Δ p95</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -203,11 +232,21 @@ export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars
                       <td className="px-2.5 py-1.5 text-right">{step.p99}</td>
                       <td className="px-2.5 py-1.5 text-right">{step.max}</td>
                       <td className={cn('px-2.5 py-1.5 text-right', step.errors ? 'text-error' : 'text-text-3')}>{step.errorPct}%</td>
+                      {baseline && <DeltaCell current={step.p95} base={baselineStep(baseline.stats, step)?.p95} />}
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+
+            {baseline && (
+              <p className="text-[11px] text-text-3">
+                Baseline {formatStamp(baseline.startedAt)}
+                {baseline.flowName && baseline.flowName !== flowName && ` · flow “${baseline.flowName}”`}
+                {` · throughput ${baseline.stats.rps} → ${stats.rps} req/s`}
+                {rpsDelta !== undefined && <span className={cn('ml-1', rpsDelta < -10 ? 'text-error' : rpsDelta > 10 ? 'text-success' : '')}>({rpsDelta > 0 ? '+' : ''}{rpsDelta}%)</span>}
+              </p>
+            )}
 
             {truncated && <p className="text-[11px] text-warning">Raw request log is capped; statistics still cover every request.</p>}
 
@@ -217,6 +256,19 @@ export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars
                 <button onClick={() => void exportRun('csv')} className={exportButton}><FileSpreadsheet size={12} /> CSV log</button>
                 <button onClick={() => void exportRun('json')} className={exportButton}><FileJson size={12} /> JSON</button>
                 <button onClick={() => void exportRun('html')} className={exportButton}><FileCode size={12} /> HTML report</button>
+                <span className="mx-1 h-4 w-px bg-border-2" aria-hidden="true" />
+                <button onClick={() => baselineInputRef.current?.click()} className={exportButton}>
+                  <GitCompare size={12} /> {baseline ? 'Change baseline' : 'Compare with baseline'}
+                </button>
+                {baseline && (
+                  <button onClick={() => setBaseline(null)} title="Clear baseline" aria-label="Clear baseline" className="grid h-7 w-7 place-items-center rounded-lg text-text-4 transition-colors hover:bg-surface-2 hover:text-text-1 focus-visible:ring-2 focus-visible:ring-accent">
+                    <X size={12} />
+                  </button>
+                )}
+                <input
+                  ref={baselineInputRef} type="file" accept=".json,application/json" hidden
+                  onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) void loadBaseline(file) }}
+                />
               </div>
             )}
           </>

@@ -64,14 +64,15 @@ run's values (`lib/flowScopeVars.ts`).
 
 New: flow **Stress test** dock (`lib/flowStress.ts`, `lib/flowStressStats.ts`,
 `lib/flowStressExport.ts`, `components/flows/FlowStressPanel.tsx`). Up to 25 virtual
-users, iterations or duration, CSV/JSON/HTML exports. Verified: 14 new unit tests,
+users, iterations or duration, CSV/JSON/HTML exports, baseline comparison from a
+previous JSON export (per-step Δ p95, throughput). Verified: 17 new unit tests,
 full vitest suite and production frontend build.
 
 | Priority | Item |
 |---|---|
 | P2 | Manual desktop pass pending: 10 VU × 30 s against the mock server, open all three exports, light/dark check. |
 | P3 | Scoped variables ignore graph order: a step also sees variables produced by later steps. |
-| P3 | Frontend engine caps at 25 VUs; heavier load needs a Go flow engine. Baseline comparison not built yet. |
+| P3 | Frontend engine caps at 25 VUs; heavier load needs a Go flow engine. |
 
 ### Flows — recording and demo usability (2026-09-08)
 

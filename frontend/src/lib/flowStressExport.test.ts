@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { StressRun } from './flowStress'
 import { createStressAccumulator, type StressSample } from './flowStressStats'
-import { sparklinePoints, stressCsv, stressFileName, stressHtml, stressJson, utf8ToBase64 } from './flowStressExport'
+import { baselineStep, deltaPct, parseStressJson, sparklinePoints, stressCsv, stressFileName, stressHtml, stressJson, utf8ToBase64 } from './flowStressExport'
 
 const samples: StressSample[] = [
   { t: 12, vu: 0, iteration: 0, nodeId: 'a', step: 'Login, "v2"', status: 'success', httpStatus: 200, latencyMs: 20, stepMs: 25, bytes: 100 },
@@ -44,5 +44,29 @@ describe('flow stress export', () => {
     expect(atob(utf8ToBase64('ok'))).toBe('ok')
     expect(utf8ToBase64('è')).toBe('w6g=')
     expect(sparklinePoints([{ s: 0, requests: 2, errors: 0 }, { s: 1, requests: 1, errors: 1 }], 100, 10)).toBe('0,0 100,5')
+  })
+
+  it('reads its own JSON export back as a baseline', () => {
+    const baseline = parseStressJson(stressJson(run(), 'Checkout'))
+    expect(baseline).toMatchObject({ flowName: 'Checkout', startedAt: '2026-09-11T10:20:30.000Z' })
+    expect(baseline.stats.steps[0].nodeId).toBe('a')
+  })
+
+  it('rejects files that are not stress exports', () => {
+    expect(() => parseStressJson('nope')).toThrow('not valid JSON')
+    expect(() => parseStressJson('null')).toThrow('not an adOmnia')
+    expect(() => parseStressJson('{"format":"adomnia-flow-stress","version":2}')).toThrow('version 2')
+    expect(() => parseStressJson('{"format":"adomnia-flow-stress","version":1,"stats":{"rps":1,"steps":[{"nodeId":"a"}]}}')).toThrow('no valid statistics')
+  })
+
+  it('computes deltas and matches steps by id, then label', () => {
+    expect(deltaPct(120, 100)).toBe(20)
+    expect(deltaPct(90, 100)).toBe(-10)
+    expect(deltaPct(5, 0)).toBeUndefined()
+    const stats = run().stats
+    const current = { ...stats.steps[0], nodeId: 'recreated' }
+    expect(baselineStep(stats, stats.steps[0])?.nodeId).toBe('a')
+    expect(baselineStep(stats, current)?.nodeId).toBe('a')
+    expect(baselineStep(stats, { ...current, step: 'Other' })).toBeUndefined()
   })
 })
