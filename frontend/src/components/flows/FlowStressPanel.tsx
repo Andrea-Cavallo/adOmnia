@@ -140,7 +140,7 @@ export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
       <section aria-label="Stress test configuration" className="flex shrink-0 flex-col gap-2.5 border-b border-border-1 p-3 lg:w-[272px] lg:overflow-y-auto lg:border-b-0 lg:border-r">
         <div className="grid grid-cols-2 gap-2">
-          <NumberField label={`Virtual users (max ${MAX_STRESS_VUS})`} value={config.vus} min={1} max={MAX_STRESS_VUS} disabled={running} onChange={(vus) => patch({ vus })} />
+          <NumberField label={`Users (max ${MAX_STRESS_VUS})`} value={config.vus} min={1} max={MAX_STRESS_VUS} disabled={running} onChange={(vus) => patch({ vus })} />
           <NumberField label="Ramp-up (s)" value={config.rampUpS} min={0} max={600} disabled={running} onChange={(rampUpS) => patch({ rampUpS })} />
         </div>
         <div className="grid grid-cols-2 gap-1 rounded-lg border border-border-2 bg-surface-0 p-0.5" role="radiogroup" aria-label="Stop condition">

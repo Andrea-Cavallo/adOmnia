@@ -68,9 +68,14 @@ users, iterations or duration, CSV/JSON/HTML exports, baseline comparison from a
 previous JSON export (per-step Δ p95, throughput). Verified: 17 new unit tests,
 full vitest suite and production frontend build.
 
+Desktop verification (production executable driven over CDP): Mock Commerce demo,
+10 VU × 30 s with 2 s ramp-up — 3385 requests, 112.8 req/s, 0 errors, 843 iterations,
+live KPIs and per-step table; baseline Δ p95 and throughput change; light and dark
+themes; right-click Edit / Copy value / Copy reference on body and URL variables.
+
 | Priority | Item |
 |---|---|
-| P2 | Manual desktop pass pending: 10 VU × 30 s against the mock server, open all three exports, light/dark check. |
+| P3 | Export files were not opened from the native save dialog during the desktop pass; builders are covered by unit tests. |
 | P3 | Scoped variables ignore graph order: a step also sees variables produced by later steps. |
 | P3 | Frontend engine caps at 25 VUs; heavier load needs a Go flow engine. |
 
