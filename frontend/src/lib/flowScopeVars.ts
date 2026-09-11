@@ -8,6 +8,9 @@ import { useEnvironmentsStore } from '@/stores/environments'
  */
 export const ScopedVarsContext = createContext<Record<string, string> | null>(null)
 
+/** Placeholder value of a flow variable whose real value is only known after a run. */
+export const FLOW_PENDING_PREFIX = '‹extracted by '
+
 /** Env vars + scope vars, for highlighting and "unresolved" hints. */
 export function useScopedResolvedVars(): { resolvedVars: Record<string, string>; hasActiveEnv: boolean } {
   const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
@@ -30,7 +33,7 @@ export function flowScopeVars(graph: FlowGraphDefinition, nodeId: string, runVar
     if (node.id === nodeId) continue
     for (const mapping of node.config.extractions ?? []) {
       const name = mapping.name.trim()
-      if (name && !scope[name]) scope[name] = `‹extracted by ${node.label}›`
+      if (name && !scope[name]) scope[name] = `${FLOW_PENDING_PREFIX}${node.label}›`
     }
   }
   return scope

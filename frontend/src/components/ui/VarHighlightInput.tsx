@@ -5,6 +5,7 @@ import { varNameAtIndex } from '@/lib/substVars'
 import { useSettingsStore } from '@/stores/settings'
 import { useKnownUiTranslation } from '@/lib/uiI18n'
 import { VarEditPopover, varEditTarget, type VarEditTarget } from '@/components/ui/VarEditPopover'
+import { useVarContextMenu } from '@/components/ui/varContextMenu'
 
 interface VarCandidate {
   name: string
@@ -201,6 +202,7 @@ export function VarHighlightInput({
   const [tooltip, setTooltip] = useState<VarTooltip | null>(null)
   const [scrollLeft, setScrollLeft] = useState(0)
   const [varEdit, setVarEdit] = useState<VarEditTarget | null>(null)
+  const { openVarMenu, varMenuElement } = useVarContextMenu(resolvedVars, setVarEdit)
   const showVaultInAutocomplete = useSettingsStore((s) => s.settings.vault.showVaultInAutocomplete)
   const [autocomplete, setAutocomplete] = useState<AutocompleteState | null>(null)
 
@@ -321,6 +323,16 @@ export function VarHighlightInput({
     [ref, value],
   )
 
+  // Right-click on a {{VAR}}: edit it, copy its value or copy the reference.
+  const openVarMenuAt = (e: React.MouseEvent<HTMLInputElement>) => {
+    if (!ref.current) return
+    const varName = varNameAtIndex(value, charIndexAtX(ref.current, e.clientX))
+    if (!varName) return
+    e.preventDefault()
+    setTooltip(null)
+    openVarMenu(varName, e.clientX, e.clientY)
+  }
+
   const SHARED: React.CSSProperties = {
     fontFamily:    'var(--skin-font-mono, var(--font-mono))',
     fontSize:      '12px',
@@ -373,7 +385,7 @@ export function VarHighlightInput({
           window.setTimeout(() => setAutocomplete(null), 120)
           onBlur?.(event)
         }}
-        onContextMenu={openVarEditor}
+        onContextMenu={openVarMenuAt}
         onMouseMove={handleMouseMove}
         onMouseLeave={() => setTooltip(null)}
         placeholder={placeholder}
@@ -409,7 +421,7 @@ export function VarHighlightInput({
           )}>
             {translateKnown(tooltip.content)}
           </div>
-          <div className="mt-1 text-[9px] leading-none text-text-4">{translateKnown('Ctrl+click to edit')}</div>
+          <div className="mt-1 text-[9px] leading-none text-text-4">{translateKnown('Right-click: edit or copy')}</div>
         </div>,
         document.body,
       )}
@@ -449,6 +461,7 @@ export function VarHighlightInput({
       {varEdit && (
         <VarEditPopover target={varEdit} onClose={() => { setVarEdit(null); ref.current?.focus() }} />
       )}
+      {varMenuElement}
     </div>
   )
 }

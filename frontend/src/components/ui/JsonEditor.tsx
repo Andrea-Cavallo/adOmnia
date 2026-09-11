@@ -9,6 +9,8 @@ import { prepareJsonEnvironmentExtraction } from '@/lib/jsonTemplateValues'
 import { varNameAtIndex } from '@/lib/substVars'
 import { ContextMenu } from '@/components/ui/ContextMenu'
 import { VarEditPopover, varEditTarget, type VarEditTarget } from '@/components/ui/VarEditPopover'
+import { useVarContextMenu } from '@/components/ui/varContextMenu'
+import { useKnownUiTranslation } from '@/lib/uiI18n'
 
 const AUTO_CLOSE_PAIRS: Record<string, string> = {
   '(': ')', '[': ']', '{': '}', '"': '"', "'": "'", '`': '`',
@@ -394,6 +396,8 @@ export function JsonEditor({
   const [tooltip, setTooltip] = useState<VarTooltip | null>(null)
   const [envVariableMenu, setEnvVariableMenu] = useState<EnvironmentVariableMenu | null>(null)
   const [varEdit, setVarEdit] = useState<VarEditTarget | null>(null)
+  const { openVarMenu, varMenuElement } = useVarContextMenu(resolvedVars, setVarEdit)
+  const translateKnown = useKnownUiTranslation()
   // Ctrl+wheel zoom — persisted px font size, shared by textarea/overlay/gutter.
   const [fontPx, setFontPx] = useState(() => {
     const n = Number(localStorage.getItem('adomnia.editor.bodyFontPx'))
@@ -604,6 +608,14 @@ export function JsonEditor({
   const handleContextMenu = useCallback((event: React.MouseEvent<HTMLTextAreaElement>) => {
     const textarea = taRef.current
     if (!textarea) return
+    // Right-click on a {{VAR}} edits or copies it — no need to select it first.
+    const varName = varNameAtIndex(textarea.value, charIndexAtPos(textarea, event.clientX, event.clientY))
+    if (varName) {
+      event.preventDefault()
+      setTooltip(null)
+      openVarMenu(varName, event.clientX, event.clientY)
+      return
+    }
     const { selectionStart, selectionEnd } = textarea
     const selectedValue = textarea.value.slice(selectionStart, selectionEnd)
     if (!selectedValue.trim()) return
@@ -623,7 +635,7 @@ export function JsonEditor({
       x: event.clientX,
       y: event.clientY,
     })
-  }, [activeEnvId, environments])
+  }, [activeEnvId, environments, openVarMenu])
 
   const saveEnvironmentVariable = useCallback(() => {
     if (!envVariableMenu) return
@@ -765,12 +777,13 @@ export function JsonEditor({
           <div className={cn('text-[11px] font-mono leading-snug break-all', TOOLTIP_BORDER[tooltip.type])}>
             {tooltip.content}
           </div>
-          <div className="mt-1 text-[9px] leading-none text-text-4">Ctrl+click to edit</div>
+          <div className="mt-1 text-[9px] leading-none text-text-4">{translateKnown('Right-click: edit or copy')}</div>
         </div>,
         document.body,
       )}
 
       {varEdit && <VarEditPopover target={varEdit} onClose={() => { setVarEdit(null); taRef.current?.focus() }} />}
+      {varMenuElement}
 
       {envVariableMenu && (
         <ContextMenu
