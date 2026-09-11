@@ -12,7 +12,7 @@ import { parseCurl, applyParsedCurl } from '@/lib/parseCurl'
 import { Prompt } from '@/components/ui/prompt'
 import { generateCode, LANGUAGES, copyToClipboard } from '@/lib/codegen'
 import { VarHighlightInput } from '@/components/ui/VarHighlightInput'
-import { useEnvironmentsStore } from '@/stores/environments'
+import { useScopedResolvedVars } from '@/lib/flowScopeVars'
 import { prepareRequestForCodegen } from '@/lib/sendRequest'
 import { useTabsStore, type ComposerSection } from '@/stores/tabs'
 import { useCookieJarStore, type JarEntry } from '@/lib/cookieJar'
@@ -338,10 +338,7 @@ function ParamsSection({
   onChange: (request: RequestItem) => void
 }) {
   const tr = useUiTranslation()
-  const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
-  const getResolvedVars = useEnvironmentsStore((s) => s.getResolvedVars)
-  const resolvedVars = getResolvedVars()
-  const hasActiveEnv = activeEnvId !== null
+  const { resolvedVars, hasActiveEnv } = useScopedResolvedVars()
 
   const pathKeys = detectPathParamKeys(request.url)
   const pathDefaults = pathParamDefaultValues(request.url)
@@ -564,10 +561,7 @@ function bodyFormatLabel(body: RequestBody): string {
 
 export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest, loading, hideRequestBar = false }: ComposerProps) {
   const tr = useUiTranslation()
-  const getResolvedVars = useEnvironmentsStore((s) => s.getResolvedVars)
-  const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
-  const resolvedVars = getResolvedVars()
-  const hasActiveEnv = activeEnvId !== null
+  const { resolvedVars, hasActiveEnv } = useScopedResolvedVars()
 
   const updateViewState = useTabsStore((s) => s.updateViewState)
   const [activeTab, setActiveTab] = useState<ComposerSection>(

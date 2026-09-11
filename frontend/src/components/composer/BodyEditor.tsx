@@ -11,7 +11,7 @@ import { useUiTranslation, type UiMessage } from '@/lib/uiI18n'
 import { diagnoseJson } from '@/lib/jsonDiagnostics'
 import { prettyJson } from '@/lib/prettyJson'
 import { findTextMatches } from '@/lib/textSearch'
-import { useEnvironmentsStore } from '@/stores/environments'
+import { useScopedResolvedVars } from '@/lib/flowScopeVars'
 import { useGraphqlCacheStore } from '@/stores/graphqlCache'
 
 interface BodyEditorProps {
@@ -245,15 +245,13 @@ function BodyFindBar({
 
 function JsonRawEditor({ body, onChange, search }: { body: RequestBody; onChange: (b: RequestBody) => void; search: BodySearchState }) {
   const tr = useUiTranslation()
-  const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
-  const getResolvedVars = useEnvironmentsStore((s) => s.getResolvedVars)
-  const resolvedVars = getResolvedVars()
+  const { resolvedVars, hasActiveEnv } = useScopedResolvedVars()
   const diagnostics = useMemo(() => diagnoseJson(body.raw ?? ''), [body.raw])
   const hasErrors = diagnostics.length > 0
   const unresolvedVars = Array.from(new Set(
     Array.from((body.raw ?? '').matchAll(/\{\{([^}]+)\}\}/g))
       .map((m) => m[1].trim())
-      .filter((name) => !activeEnvId || !resolvedVars[name]),
+      .filter((name) => !hasActiveEnv || !resolvedVars[name]),
   ))
 
   // Auto-beautify on mount if content is valid JSON
@@ -280,7 +278,7 @@ function JsonRawEditor({ body, onChange, search }: { body: RequestBody; onChange
         className="flex-1"
         minHeight="280px"
         resolvedVars={resolvedVars}
-        hasActiveEnv={!!activeEnvId}
+        hasActiveEnv={hasActiveEnv}
         searchTerm={search.query}
         activeSearchIndex={search.activeIndex}
         searchMatchCase={search.matchCase}
@@ -289,9 +287,9 @@ function JsonRawEditor({ body, onChange, search }: { body: RequestBody; onChange
       {unresolvedVars.length > 0 && (
         <div className={cn(
           'rounded border px-2 py-1 text-[10px] font-mono',
-          activeEnvId ? 'border-error/35 bg-error/8 text-error' : 'border-warning/35 bg-warning/8 text-warning',
+          hasActiveEnv ? 'border-error/35 bg-error/8 text-error' : 'border-warning/35 bg-warning/8 text-warning',
         )}>
-          {activeEnvId ? tr('Unresolved variables: ') : tr('No active environment for variables: ')}
+          {hasActiveEnv ? tr('Unresolved variables: ') : tr('No active environment for variables: ')}
           {unresolvedVars.slice(0, 8).map((name) => `{{${name}}}`).join(', ')}
           {unresolvedVars.length > 8 ? ` +${unresolvedVars.length - 8} ${tr('more')}` : ''}
         </div>

@@ -5,7 +5,7 @@ import { uid } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { useUiTranslation, type UiMessage } from '@/lib/uiI18n'
 import { VarHighlightInput } from '@/components/ui/VarHighlightInput'
-import { useEnvironmentsStore } from '@/stores/environments'
+import { useScopedResolvedVars } from '@/lib/flowScopeVars'
 
 interface KVEditorProps {
   rows: KVRow[]
@@ -220,10 +220,7 @@ export function KVEditor({ rows, onChange, keyPlaceholder = 'Key', valuePlacehol
         : group.items,
     }))
     .filter((group) => group.items.length > 0)
-  const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
-  const getResolvedVars = useEnvironmentsStore((s) => s.getResolvedVars)
-  const resolvedVars = getResolvedVars()
-  const hasActiveEnv = activeEnvId !== null
+  const { resolvedVars, hasActiveEnv } = useScopedResolvedVars()
   const update = (id: string, patch: Partial<KVRow>) => {
     onChange(rows.map((r) => (r.id === id ? { ...r, ...patch } : r)))
   }

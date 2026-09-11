@@ -67,6 +67,7 @@ import { useSettingsStore } from '@/stores/settings'
 import { useFlowCanvasInteraction } from './useFlowCanvasInteraction'
 import { FlowDockPanel } from './FlowDockPanel'
 import { Composer } from '@/components/composer/Composer'
+import { ScopedVarsContext, flowScopeVars } from '@/lib/flowScopeVars'
 import { flowEdgePath, flowNodeSize as nodeSize, layoutFlow } from '@/lib/flowLayout'
 
 
@@ -544,9 +545,11 @@ function FlowInspectorDrawer({
   onPatchNodeConfig,
   onPatchCondition,
   onRunStep,
+  scopeVars,
 }: {
   node: FlowNodeDefinition
   graph: FlowGraphDefinition
+  scopeVars: Record<string, string>
   runtime?: RuntimeByNode[string]
   lastEntry?: RunEntry
   catalog: ApiCatalogRequest[]
@@ -610,14 +613,17 @@ function FlowInspectorDrawer({
             node.type === 'request' && request ? (
               <div className="flex min-h-full flex-col">
                 <div className="flex min-h-[560px] flex-col">
-                  <Composer
-                    tabId={`flow-node-${node.id}`}
-                    request={request}
-                    onChange={(next) => onBindRequest(node.id, next)}
-                    onSend={() => onRunStep(node.id)}
-                    onSave={() => onBindRequest(node.id, request)}
-                    loading={runtime?.status === 'running'}
-                  />
+                  {/* Vars extracted by other steps resolve at run time; show them as defined. */}
+                  <ScopedVarsContext.Provider value={scopeVars}>
+                    <Composer
+                      tabId={`flow-node-${node.id}`}
+                      request={request}
+                      onChange={(next) => onBindRequest(node.id, next)}
+                      onSend={() => onRunStep(node.id)}
+                      onSave={() => onBindRequest(node.id, request)}
+                      loading={runtime?.status === 'running'}
+                    />
+                  </ScopedVarsContext.Provider>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 border-t border-border-1 p-4">
@@ -1028,7 +1034,7 @@ export function FlowsPanel() {
   const [directGraph, setDirectGraph] = useState<FlowGraphDefinition | null>(null)
   const [runtime, setRuntime] = useState<RuntimeByNode>({})
   const [lastRun, setLastRun] = useState<RunEntry[]>([])
-  const [, setVars] = useState<Record<string, string>>({})
+  const [vars, setVars] = useState<Record<string, string>>({})
   const [running, setRunning] = useState(false)
   const runAbortRef = useRef<AbortController | null>(null)
   const [saveError, setSaveError] = useState('')
@@ -1500,6 +1506,7 @@ export function FlowsPanel() {
           <FlowInspectorDrawer
             node={selectedNode}
             graph={graph}
+            scopeVars={flowScopeVars(graph, selectedNode.id, vars)}
             runtime={runtime[selectedNode.id]}
             lastEntry={lastRun.find((entry) => entry.nodeId === selectedNode.id)}
             catalog={catalog}
