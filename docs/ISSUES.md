@@ -55,6 +55,24 @@ Pending:
 | P3 | `raw` keeps a per-event copy of the source line, the dominant memory cost at 100k events; an offset into the original text would remove it. |
 | P3 | `.gz` / `.zip` inputs must be extracted manually before import. |
 
+### Flows — scoped variables and stress test (2026-09-11)
+
+Fixed: a `{{var}}` pasted into a step body was flagged unresolved (red) although the
+runner resolved it, because request editors only looked at the active environment.
+Editors inside a flow step now also see variables extracted by other steps and the last
+run's values (`lib/flowScopeVars.ts`).
+
+New: flow **Stress test** dock (`lib/flowStress.ts`, `lib/flowStressStats.ts`,
+`lib/flowStressExport.ts`, `components/flows/FlowStressPanel.tsx`). Up to 25 virtual
+users, iterations or duration, CSV/JSON/HTML exports. Verified: 14 new unit tests,
+full vitest suite and production frontend build.
+
+| Priority | Item |
+|---|---|
+| P2 | Manual desktop pass pending: 10 VU × 30 s against the mock server, open all three exports, light/dark check. |
+| P3 | Scoped variables ignore graph order: a step also sees variables produced by later steps. |
+| P3 | Frontend engine caps at 25 VUs; heavier load needs a Go flow engine. Baseline comparison not built yet. |
+
 ### Flows — recording and demo usability (2026-09-08)
 
 Fixed `unknown storage bucket "flows"` on recording/save. Recordings infer exact,

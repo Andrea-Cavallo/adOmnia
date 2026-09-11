@@ -16,6 +16,7 @@ import {
   PanelRight,
   List,
   Focus,
+  Gauge,
   Play,
   Plus,
   Save,
@@ -68,6 +69,7 @@ import { useFlowCanvasInteraction } from './useFlowCanvasInteraction'
 import { FlowDockPanel } from './FlowDockPanel'
 import { Composer } from '@/components/composer/Composer'
 import { ScopedVarsContext, flowScopeVars } from '@/lib/flowScopeVars'
+import { FlowStressPanel } from './FlowStressPanel'
 import { flowEdgePath, flowNodeSize as nodeSize, layoutFlow } from '@/lib/flowLayout'
 
 
@@ -1036,6 +1038,8 @@ export function FlowsPanel() {
   const [lastRun, setLastRun] = useState<RunEntry[]>([])
   const [vars, setVars] = useState<Record<string, string>>({})
   const [running, setRunning] = useState(false)
+  const [stressOpen, setStressOpen] = useState(false)
+  const [stressRunning, setStressRunning] = useState(false)
   const runAbortRef = useRef<AbortController | null>(null)
   const [saveError, setSaveError] = useState('')
   const [saveNotice, setSaveNotice] = useState('')
@@ -1297,7 +1301,7 @@ export function FlowsPanel() {
   }
 
   const runFlow = useCallback(async (fromNodeId?: string) => {
-    if (running) return
+    if (running || stressRunning) return
     const errors = validateFlowGraph(graph)
     if (errors.length > 0) return
     setRunning(true)
@@ -1318,7 +1322,7 @@ export function FlowsPanel() {
       runAbortRef.current = null
       setRunning(false)
     }
-  }, [envVars, graph, running])
+  }, [envVars, graph, running, stressRunning])
 
   const handleImportFile = async (file: File) => {
     const text = await file.text()
@@ -1475,8 +1479,16 @@ export function FlowsPanel() {
         />
 
         <button
+          title="Stress test: run this flow with concurrent virtual users"
+          aria-pressed={stressOpen && !focusMode}
+          onClick={() => { setStressOpen(true); setFocusMode(false) }}
+          className={cn('flex h-8 shrink-0 items-center gap-1.5 rounded-lg border bg-surface-0 px-2.5 text-xs transition-colors hover:text-text-1', stressRunning ? 'border-accent/60 text-accent' : 'border-border-1 text-text-2 hover:border-border-3')}
+        >
+          {stressRunning ? <Loader2 size={12} className="animate-spin" /> : <Gauge size={12} />} Stress
+        </button>
+        <button
           onClick={() => running ? runAbortRef.current?.abort() : void runFlow()}
-          disabled={!running && validationErrors.length > 0}
+          disabled={(!running && validationErrors.length > 0) || stressRunning}
           className={cn('flex h-8 shrink-0 items-center gap-2 rounded-lg px-3.5 text-xs font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-45', running ? 'bg-error hover:bg-error/85' : 'bg-accent hover:bg-accent-hover')}
         >
           {running ? <Loader2 size={12} className="animate-spin" /> : <Play size={12} fill="currentColor" />}
@@ -1499,6 +1511,15 @@ export function FlowsPanel() {
           onMove={(id, position) => setPositions((current) => ({ ...current, [id]: position }))}
         />
         <FlowDockPanel title="Execution timeline" side="bottom" open={timelineOpen && !focusMode} onClose={() => setTimelineOpen(false)}><FlowRunTimeline entries={lastRun} running={running} selectedNodeId={selectedNodeId} onSelect={selectNode} onClear={() => setLastRun([])} /></FlowDockPanel>
+        <FlowDockPanel title="Stress test" side="bottom" open={stressOpen && !focusMode} onClose={() => setStressOpen(false)}>
+          <FlowStressPanel
+            graph={graph}
+            flowName={flowName}
+            blockedReason={running ? 'Wait for the current flow run to finish.' : validationErrors[0]}
+            getInitialVars={envVars}
+            onRunningChange={setStressRunning}
+          />
+        </FlowDockPanel>
         </div>
 
         <FlowDockPanel title="Inspector" side="right" open={inspectorOpen && !focusMode} onClose={() => setInspectorOpen(false)}>

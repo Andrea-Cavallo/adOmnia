@@ -6,6 +6,13 @@ export function safeSelectFolder(title: string): Promise<string> {
   return fn(title)
 }
 
+/** Native "Save as" dialog; resolves to the saved path, or '' when the user cancels. */
+export function saveBase64File(defaultName: string, dataBase64: string): Promise<string> {
+  const fn = AppBindings.SaveBinaryFileBase64
+  if (!fn) return Promise.reject(new Error('Wails bridge not available — run inside the desktop app'))
+  return fn(defaultName, dataBase64)
+}
+
 export function downloadText(filename: string, text: string, type = 'text/plain') {
   const blob = new Blob([text], { type })
   const url = URL.createObjectURL(blob)
