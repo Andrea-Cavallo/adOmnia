@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { DEFAULT_MAX_EVENTS } from '@/lib/loginspector'
+import { DEFAULT_MAX_EVENTS, DEFAULT_SLOW_CALL_MS } from '@/lib/loginspector'
 import { DEFAULT_COLUMNS, type Density, type ListColumnId } from './EventList'
 import type { SavedQuery } from './FilterSidebar'
 
@@ -13,7 +13,9 @@ export interface Prefs {
   wrap: boolean
   columns: ListColumnId[]
   columnWidths: Record<string, number>
-  columnPresets: Record<string, { columns: ListColumnId[]; widths: Record<string, number> }>
+  /** Columns that stay visible while the list scrolls horizontally. */
+  pinnedColumns: ListColumnId[]
+  columnPresets: Record<string, { columns: ListColumnId[]; widths: Record<string, number>; pinned?: ListColumnId[] }>
   maxEvents: number
   savedQueries: SavedQuery[]
   maskFields: string[]
@@ -24,6 +26,8 @@ export interface Prefs {
   repositoryRoots: string[]
   /** Editor invocation template; `{file}` and `{line}` are replaced. */
   editorCommand: string
+  /** Downstream latency above which the analysis flags a slow call. */
+  slowCallMs: number
 }
 
 export const DEFAULT_PREFS: Prefs = {
@@ -32,6 +36,7 @@ export const DEFAULT_PREFS: Prefs = {
   wrap: false,
   columns: DEFAULT_COLUMNS,
   columnWidths: {},
+  pinnedColumns: [],
   columnPresets: {},
   maxEvents: DEFAULT_MAX_EVENTS,
   savedQueries: [],
@@ -41,6 +46,7 @@ export const DEFAULT_PREFS: Prefs = {
   detailWidth: 440,
   repositoryRoots: [],
   editorCommand: 'code -g {file}:{line}',
+  slowCallMs: DEFAULT_SLOW_CALL_MS,
 }
 
 export function loadPrefs(): Prefs {

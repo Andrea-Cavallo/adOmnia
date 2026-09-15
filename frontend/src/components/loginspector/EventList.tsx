@@ -35,6 +35,40 @@ export function availableListColumns(events: LogEvent[], configured: ListColumnI
   return configured.filter((column) => column.startsWith('field:') || available.has(column as BuiltinListColumnId))
 }
 
+const COLUMN_GAP = 8
+const MESSAGE_MIN_WIDTH = 320
+
+export interface ColumnLayout {
+  id: ListColumnId
+  label: string
+  width: number
+  /** Sticky offset for a pinned column; undefined when the column scrolls. */
+  stickyLeft?: number
+}
+
+/** Pinned columns first (in their configured order), each with its sticky offset. */
+export function layoutColumns(visible: ListColumnId[], pinned: ListColumnId[], widths: Record<string, number> = {}): { columns: ColumnLayout[]; minRowWidth: number } {
+  const ordered = [...visible.filter((id) => pinned.includes(id)), ...visible.filter((id) => !pinned.includes(id))]
+  let offset = 0
+  let total = 0
+  const columns = ordered.map((id) => {
+    const column: ColumnLayout = columnDefinition(id, widths)
+    if (pinned.includes(id)) {
+      column.stickyLeft = offset
+      offset += column.width + COLUMN_GAP
+    }
+    total += column.width + COLUMN_GAP
+    return column
+  })
+  return { columns, minRowWidth: total + MESSAGE_MIN_WIDTH }
+}
+
+function stickyStyle(column: ColumnLayout): React.CSSProperties {
+  return column.stickyLeft === undefined
+    ? { width: column.width }
+    : { width: column.width, position: 'sticky', left: column.stickyLeft, zIndex: 1 }
+}
+
 function columnDefinition(id: ListColumnId, widths: Record<string, number> = {}): { id: ListColumnId; label: string; width: number } {
   const builtin = LIST_COLUMNS.find((column) => column.id === id)
   if (builtin) return { ...builtin, width: widths[id] ?? builtin.width }
@@ -78,6 +112,7 @@ interface EventListProps {
   wrap: boolean
   columns: ListColumnId[]
   columnWidths: Record<string, number>
+  pinnedColumns?: ListColumnId[]
   onColumnWidthChange: (id: ListColumnId, width: number) => void
   highlights: string[]
   /** Scroll target requested from outside (e.g. from the related-events view). */
@@ -89,6 +124,8 @@ interface EventListProps {
  * same as 40. ponytail: fixed row heights instead of a measuring virtualizer —
  * no dependency, and the density/wrap toggles already pin the height.
  */
+const NO_PINNED: ListColumnId[] = []
+
 export function EventList({
   events,
   selectedId,
@@ -98,15 +135,18 @@ export function EventList({
   wrap,
   columns,
   columnWidths,
+  pinnedColumns = NO_PINNED,
   onColumnWidthChange,
   highlights,
   scrollToId = null,
 }: EventListProps) {
   const viewportRef = useRef<HTMLDivElement>(null)
+  const headerRef = useRef<HTMLDivElement>(null)
   const [scrollTop, setScrollTop] = useState(0)
   const [viewportHeight, setViewportHeight] = useState(600)
   const height = rowHeight(density, wrap)
   const visibleColumns = useMemo(() => availableListColumns(events, columns), [events, columns])
+  const layout = useMemo(() => layoutColumns(visibleColumns, pinnedColumns, columnWidths), [visibleColumns, pinnedColumns, columnWidths])
 
   useEffect(() => {
     const node = viewportRef.current
@@ -125,6 +165,8 @@ export function EventList({
 
   const onScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     setScrollTop(e.currentTarget.scrollTop)
+    // The header lives outside the scroller: keep it aligned horizontally.
+    if (headerRef.current) headerRef.current.scrollLeft = e.currentTarget.scrollLeft
   }, [])
 
   const overscan = 12
@@ -134,9 +176,10 @@ export function EventList({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="flex shrink-0 items-center gap-2 border-b border-border-1 bg-surface-1 px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-text-4">
-        {visibleColumns.map((id) => columnDefinition(id, columnWidths)).map((column) => (
-          <span key={column.id} style={{ width: column.width }} className="group relative shrink-0 truncate pr-2">
+      <div ref={headerRef} className="shrink-0 overflow-hidden border-b border-border-1 bg-surface-1">
+      <div style={{ minWidth: layout.minRowWidth }} className="flex items-center gap-2 px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-text-4">
+        {layout.columns.map((column) => (
+          <span key={column.id} style={stickyStyle(column)} className={cn('group relative shrink-0 truncate pr-2', column.stickyLeft !== undefined && 'bg-surface-1')}>
             {column.label}
             <span
               role="separator"
@@ -156,6 +199,7 @@ export function EventList({
         ))}
         <span className="min-w-0 flex-1">Message</span>
       </div>
+      </div>
 
       <div ref={viewportRef} onScroll={onScroll} className="min-h-0 flex-1 overflow-auto">
         {events.length === 0 ? (
@@ -169,8 +213,7 @@ export function EventList({
                   event={event}
                   height={height}
                   wrap={wrap}
-                  columns={visibleColumns}
-                  columnWidths={columnWidths}
+                  layout={layout}
                   highlights={highlights}
                   selected={event.id === selectedId}
                   onSelect={() => onSelect(event)}
@@ -189,8 +232,7 @@ interface EventRowProps {
   event: LogEvent
   height: number
   wrap: boolean
-  columns: ListColumnId[]
-  columnWidths: Record<string, number>
+  layout: { columns: ColumnLayout[]; minRowWidth: number }
   highlights: string[]
   selected: boolean
   onSelect: () => void
@@ -220,7 +262,7 @@ function columnValue(event: LogEvent, id: ListColumnId): string {
   return ''
 }
 
-function EventRow({ event, height, wrap, columns, columnWidths, highlights, selected, onSelect, onContextMenu }: EventRowProps) {
+function EventRow({ event, height, wrap, layout, highlights, selected, onSelect, onContextMenu }: EventRowProps) {
   const segments = highlightSegments(event.message, highlights)
   return (
     <div
@@ -233,18 +275,20 @@ function EventRow({ event, height, wrap, columns, columnWidths, highlights, sele
         mouseEvent.preventDefault()
         onContextMenu(event, { x: mouseEvent.clientX, y: mouseEvent.clientY })
       }}
-      style={{ height }}
+      style={{ height, minWidth: layout.minRowWidth }}
       className={cn(
-        'flex cursor-pointer items-start gap-2 border-l-2 px-2 py-[3px] text-[11px] outline-none transition-colors',
+        'group flex cursor-pointer items-start gap-2 border-l-2 px-2 py-[3px] text-[11px] outline-none transition-colors',
         selected ? 'border-accent bg-accent/12' : 'border-transparent hover:bg-surface-1',
         'focus-visible:bg-surface-1 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-accent',
       )}
     >
-      {columns.map((id) => columnDefinition(id, columnWidths)).map((column) => {
+      {layout.columns.map((column) => {
         const value = columnValue(event, column.id)
+        // Pinned cells need an opaque ground so scrolled content does not show through.
+        const pinnedGround = column.stickyLeft !== undefined && (selected ? 'bg-surface-2' : 'bg-surface-0 group-hover:bg-surface-1')
         if (column.id === 'level') {
           return (
-            <span key={column.id} style={{ width: column.width }} className="shrink-0">
+            <span key={column.id} style={stickyStyle(column)} className={cn('shrink-0', pinnedGround)}>
               <span className={cn('rounded px-1.5 py-[1px] font-mono text-[9px] font-semibold', LEVEL_STYLE[event.level])}>
                 {event.parseError ? 'RAW' : value}
               </span>
@@ -254,9 +298,9 @@ function EventRow({ event, height, wrap, columns, columnWidths, highlights, sele
         return (
           <span
             key={column.id}
-            style={{ width: column.width }}
+            style={stickyStyle(column)}
             title={value}
-            className={cn('shrink-0 truncate font-mono text-[10px]', column.id === 'time' ? 'text-text-3' : 'text-text-2')}
+            className={cn('shrink-0 truncate font-mono text-[10px]', column.id === 'time' ? 'text-text-3' : 'text-text-2', pinnedGround)}
           >
             {value || '-'}
           </span>

@@ -19,6 +19,8 @@ export type MultiSourceParseResult = ParseResult & {
   aborted: boolean
   sourceCount: number
   sources: ParsedSourceSummary[]
+  /** Display names of sources never read because the event cap or a cancel stopped the import. */
+  skippedSources: string[]
 }
 
 function sourceLineCount(text: string): number {
@@ -69,7 +71,7 @@ export async function parseLogSourcesInBackground(
   options: ParseOptions = {},
   hooks: ChunkedHooks = {},
 ): Promise<MultiSourceParseResult> {
-  if (!sources.length) return { events: [], summary: emptySummary(), aborted: false, sourceCount: 0, sources: [] }
+  if (!sources.length) return { events: [], summary: emptySummary(), aborted: false, sourceCount: 0, sources: [], skippedSources: [] }
 
   const events: LogEvent[] = []
   const summaries: ParseSummary[] = []
@@ -79,6 +81,7 @@ export async function parseLogSourcesInBackground(
   const names = displayNames(sources)
   let completedLines = 0
   let aborted = false
+  let skippedSources: string[] = []
 
   for (let sourceIndex = 0; sourceIndex < sources.length; sourceIndex++) {
     const source = sources[sourceIndex]
@@ -86,6 +89,7 @@ export async function parseLogSourcesInBackground(
     const sourceId = source.sourceId || `source-${sourceIndex}`
     if (events.length >= maxEvents || hooks.shouldAbort?.()) {
       aborted = hooks.shouldAbort?.() ?? false
+      skippedSources = names.slice(sourceIndex)
       break
     }
     const offset = events.length
@@ -126,6 +130,7 @@ export async function parseLogSourcesInBackground(
     hooks.onProgress?.(Math.min(totalLines, completedLines), totalLines, events)
     if (parsed.aborted) {
       aborted = true
+      skippedSources = names.slice(sourceIndex + 1)
       break
     }
   }
@@ -144,5 +149,5 @@ export async function parseLogSourcesInBackground(
     format,
     durationMs: summaries.reduce((sum, item) => sum + item.durationMs, 0),
   }
-  return { events, summary, aborted, sourceCount: sourceSummaries.length, sources: sourceSummaries }
+  return { events, summary, aborted, sourceCount: sourceSummaries.length, sources: sourceSummaries, skippedSources }
 }

@@ -10,6 +10,8 @@ interface AnalysisOverviewProps {
   comparisonKeys: string[]
   onToggleComparison: (request: AnalyzedRequest) => void
   onBuildChain: (request: AnalyzedRequest) => void
+  slowCallMs: number
+  onSlowCallMsChange: (value: number) => void
 }
 
 const STATUS_LABEL: Record<RequestStatus, string> = {
@@ -46,7 +48,7 @@ export function requestComparisonKey(request: AnalyzedRequest): string {
   return `${request.correlationKey}:${request.correlationId || request.traceId || request.requestId}`
 }
 
-export function AnalysisOverview({ analysis, onFilterRequest, onClose, onSelectEventId, comparisonKeys, onToggleComparison, onBuildChain }: AnalysisOverviewProps) {
+export function AnalysisOverview({ analysis, onFilterRequest, onClose, onSelectEventId, comparisonKeys, onToggleComparison, onBuildChain, slowCallMs, onSlowCallMsChange }: AnalysisOverviewProps) {
   const failures = analysis.requests.filter((request) => request.status === 'timeout' || request.status === 'server-error').length
   const warnings = analysis.requests.filter((request) => request.status === 'client-error' || request.status === 'retry').length
 
@@ -139,10 +141,39 @@ export function AnalysisOverview({ analysis, onFilterRequest, onClose, onSelectE
         )}
         {analysis.anomalies.length > 0 && (
           <div className="border-t border-border-1 px-3 py-1.5">
+            <div className="mb-0.5 flex items-center gap-2">
+              <p className="text-[9px] font-semibold uppercase tracking-wider text-text-4">Findings</p>
+              <span className="text-[9px] text-text-4">fact · rule · hypothesis — click to open the evidence</span>
+              <label className="ml-auto flex items-center gap-1 text-[9px] text-text-4" title="Downstream latency above which a call is flagged as slow">
+                Slow call &gt;
+                <input
+                  type="number"
+                  min={1}
+                  step={50}
+                  value={slowCallMs}
+                  onChange={(event) => {
+                    const value = Number(event.target.value)
+                    if (Number.isFinite(value) && value > 0) onSlowCallMsChange(value)
+                  }}
+                  className="h-5 w-16 rounded border border-border-2 bg-surface-1 px-1 text-right font-mono text-[10px] text-text-2 focus:border-accent focus:outline-none"
+                />
+                ms
+              </label>
+            </div>
             {analysis.anomalies.slice(0, 5).map((anomaly, index) => (
-              <p key={`${anomaly.correlationId}-${anomaly.kind}-${index}`} className={cn('truncate py-0.5 text-[10px]', anomaly.severity === 'error' ? 'text-error' : 'text-warning')} title={`${anomaly.evidence} ${anomaly.action}`}>
-                {anomaly.title}: <span className="text-text-3">{anomaly.evidence}. {anomaly.action}</span>
-              </p>
+              <button
+                key={`${anomaly.correlationId}-${anomaly.kind}-${index}`}
+                onClick={() => anomaly.eventIds[0] !== undefined && onSelectEventId(anomaly.eventIds[0])}
+                title={`Fact: ${anomaly.evidence}
+Rule: ${anomaly.rule}
+Hypothesis: ${anomaly.hypothesis}
+Check: ${anomaly.action}
+Evidence: ${anomaly.eventIds.length} event(s)`}
+                className={cn('block w-full truncate py-0.5 text-left text-[10px] hover:underline', anomaly.severity === 'error' ? 'text-error' : anomaly.severity === 'warn' ? 'text-warning' : 'text-text-2')}
+              >
+                {anomaly.title}: <span className="text-text-3">{anomaly.evidence} · <span className="text-text-4">{anomaly.rule}</span> · {anomaly.hypothesis}</span>
+                <span className="ml-1 text-text-4">({anomaly.eventIds.length} ev.)</span>
+              </button>
             ))}
           </div>
         )}

@@ -26,6 +26,8 @@ import {
   SlidersHorizontal,
   WrapText,
   X,
+  Pin,
+  PinOff,
 } from 'lucide-react'
 import { exportEvents, type ExportFormat, type LogEvent, type LogFilterState } from '@/lib/loginspector'
 import { LIST_COLUMNS, type ListColumnId } from './EventList'
@@ -178,6 +180,10 @@ export function LogInspectorToolbar({
     })
   }
 
+  const togglePin = (id: ListColumnId) => updatePrefs({
+    pinnedColumns: prefs.pinnedColumns.includes(id) ? prefs.pinnedColumns.filter((current) => current !== id) : [...prefs.pinnedColumns, id],
+  })
+
   const moveColumn = (id: ListColumnId, delta: number) => {
     const index = prefs.columns.indexOf(id)
     const target = index + delta
@@ -322,16 +328,24 @@ export function LogInspectorToolbar({
           <Popover onClose={() => onMenuChange(null)} wide>
             {prefs.columns.length > 0 && (
               <div className="mb-1 border-b border-border-2 pb-1">
-                <p className="px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-text-4">Pinned order</p>
+                <p className="px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-text-4">Column order</p>
                 {prefs.columns.map((id, index) => (
                   <div key={id} className="flex items-center gap-1 px-2 py-0.5 font-mono text-[9px] text-text-2">
                     <span className="min-w-0 flex-1 truncate">{id.startsWith('field:') ? id.slice(6) : LIST_COLUMNS.find((column) => column.id === id)?.label || id}</span>
+                    <button
+                      onClick={() => togglePin(id)}
+                      title={prefs.pinnedColumns.includes(id) ? 'Unpin column' : 'Pin column while scrolling horizontally'}
+                      aria-pressed={prefs.pinnedColumns.includes(id)}
+                      className={prefs.pinnedColumns.includes(id) ? 'text-accent-light' : 'text-text-4 hover:text-text-1'}
+                    >
+                      {prefs.pinnedColumns.includes(id) ? <PinOff size={10} /> : <Pin size={10} />}
+                    </button>
                     <button disabled={index === 0} onClick={() => moveColumn(id, -1)} title="Move left" className="disabled:opacity-25"><ArrowLeft size={10} /></button>
                     <button disabled={index === prefs.columns.length - 1} onClick={() => moveColumn(id, 1)} title="Move right" className="disabled:opacity-25"><ArrowRight size={10} /></button>
                   </div>
                 ))}
                 <button
-                  onClick={() => updatePrefs({ columnPresets: { ...prefs.columnPresets, [sourceFormat || 'mixed']: { columns: prefs.columns, widths: prefs.columnWidths } } })}
+                  onClick={() => updatePrefs({ columnPresets: { ...prefs.columnPresets, [sourceFormat || 'mixed']: { columns: prefs.columns, widths: prefs.columnWidths, pinned: prefs.pinnedColumns } } })}
                   className="mx-2 mt-1 flex h-6 items-center gap-1 rounded border border-accent/35 px-2 text-[9px] text-accent-light hover:bg-accent/10"
                 >
                   <Save size={9} /> Save preset for {sourceFormat || 'mixed'}

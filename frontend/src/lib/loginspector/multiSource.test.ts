@@ -43,6 +43,7 @@ describe('multi-file log import', () => {
     expect(parsed.events).toHaveLength(1)
     expect(parsed.events[0]).toMatchObject({ sourceId: 'source-0', sourceName: 'app.log #1' })
     expect(parsed.summary.truncated).toBe(true)
+    expect(parsed.skippedSources).toEqual(['app.log #2'])
   })
 
   it('keeps source ids and user labels stable across reparses', async () => {

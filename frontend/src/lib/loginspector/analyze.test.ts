@@ -42,6 +42,22 @@ describe('enterprise structured-log analysis', () => {
     expect(analysis.anomalies.some((item) => item.kind === 'timeout' && item.action.includes('WalletEDIG'))).toBe(true)
   })
 
+  it('separates fact, rule and hypothesis and links each finding to its events', () => {
+    const events = parseLogText(REALISTIC_JSONL).events
+    const timeout = analyzeLog(events).anomalies.find((item) => item.kind === 'timeout')!
+    expect(timeout.evidence).toContain('10004 ms')
+    expect(timeout.rule).toMatch(/timeout signal/i)
+    expect(timeout.hypothesis).toMatch(/deadline is not in the log/)
+    const timeoutEvents = events.filter((event) => timeout.eventIds.includes(event.id))
+    expect(timeoutEvents.length).toBeGreaterThan(0)
+    expect(timeoutEvents.every((event) => event.correlationId === 'APPP-11111111')).toBe(true)
+
+    const slowLog = JSON.stringify({ timestamp: '2026-09-09T10:00:00Z', level: 'INFO', message: 'called ledger', correlation_id: 'C-slow', attributes: { client: 'Ledger', latency_ms: 800 }, http: { status_code: 200 } })
+    const slowEvents = parseLogText(slowLog).events
+    expect(analyzeLog(slowEvents).anomalies.find((item) => item.kind === 'slow')?.rule).toContain('> 500 ms')
+    expect(analyzeLog(slowEvents, { slowCallMs: 1000 }).anomalies.some((item) => item.kind === 'slow')).toBe(false)
+  })
+
   it('keeps a recovered retry successful while preserving timeout evidence', () => {
     const logs = [
       { timestamp: '2026-09-09T10:00:00.000Z', level: 'INFO', message: 'request started', correlation_id: 'APPP-retry', attributes: { operation: 'Pay', method: 'POST' } },

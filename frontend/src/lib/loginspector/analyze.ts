@@ -63,9 +63,24 @@ export interface LogAnomaly {
   correlationKey: CorrelationKey
   correlationId: string
   title: string
+  /** Fact: what the log lines actually say. */
   evidence: string
+  /** The detection rule that turned the fact into a finding, with its threshold. */
+  rule: string
+  /** Likely cause — never proven by the log alone. */
+  hypothesis: string
+  /** Suggested verification. */
   action: string
+  /** Events that support the finding. */
+  eventIds: number[]
 }
+
+export interface AnalyzeOptions {
+  /** Downstream latency above which a call is flagged as slow. */
+  slowCallMs?: number
+}
+
+export const DEFAULT_SLOW_CALL_MS = 500
 
 export interface SensitiveFieldFinding {
   eventId: number
@@ -346,7 +361,8 @@ function sensitiveFindings(event: LogEvent): SensitiveFieldFinding[] {
 }
 
 /** Build request-level diagnostics without sending log data outside the machine. */
-export function analyzeLog(events: LogEvent[]): LogAnalysis {
+export function analyzeLog(events: LogEvent[], options: AnalyzeOptions = {}): LogAnalysis {
+  const slowCallMs = options.slowCallMs && options.slowCallMs > 0 ? options.slowCallMs : DEFAULT_SLOW_CALL_MS
   const groups = new Map<string, { identity: { key: CorrelationKey; value: string }; events: LogEvent[] }>()
   const serviceMap = new Map<string, string>()
   const environments = new Set<string>()
@@ -413,41 +429,58 @@ export function analyzeLog(events: LogEvent[]): LogAnalysis {
     requests.push(request)
 
     const target = downstreams.join(', ') || 'downstream'
+    const base = { correlationKey: request.correlationKey, correlationId: anomalyTarget(request) }
+    const idsWhere = (test: (event: LogEvent, index: number) => boolean, fallback = request.eventIds) => {
+      const ids = requestEvents.filter(test).map((event) => event.id)
+      return ids.length ? ids : fallback
+    }
+    const isTimeout = (event: LogEvent, index: number) => /context deadline exceeded|deadline exceeded|\btimeout\b|timed out/i.test(`${event.message} ${contexts[index].error} ${contexts[index].operationStatus}`)
     if (status === 'timeout') {
+      const latency = maxDownstreamLatencyMs !== null ? `, longest observed downstream latency ${Math.round(maxDownstreamLatencyMs)} ms` : ''
       anomalies.push({
-        kind: 'timeout', severity: 'error', correlationKey: request.correlationKey, correlationId: anomalyTarget(request),
+        ...base, kind: 'timeout', severity: 'error',
         title: `Timeout ${target}`,
-        evidence: `${error || 'context deadline exceeded'}${maxDownstreamLatencyMs !== null ? `, ${Math.round(maxDownstreamLatencyMs)} ms` : ''}`,
-        action: `Verifica health, latenza e timeout HTTP del client ${target}${maxDownstreamLatencyMs !== null && maxDownstreamLatencyMs >= 10_000 ? '; la latenza osservata supera 10s, ma la deadline configurata va verificata' : ''}.`,
+        evidence: `${error || 'deadline exceeded'}${latency}`,
+        rule: 'Timeout signal in the chain and no final status below 500',
+        hypothesis: `${target} did not answer within the client deadline. The configured deadline is not in the log${maxDownstreamLatencyMs !== null ? '; the observed latency is only a lower bound' : ''}.`,
+        action: `Check health and latency of ${target} and the HTTP client timeout configured for it.`,
+        eventIds: idsWhere(isTimeout),
       })
     } else if (status === 'server-error' || status === 'client-error') {
+      const serverSide = status === 'server-error'
       anomalies.push({
-        kind: status, severity: status === 'server-error' ? 'error' : 'warn', correlationKey: request.correlationKey, correlationId: anomalyTarget(request),
-        title: `${httpStatus ?? 'Errore'} ${request.endpoint || request.operation || 'request'}`,
+        ...base, kind: status, severity: serverSide ? 'error' : 'warn',
+        title: `${httpStatus ?? 'Error'} ${request.endpoint || request.operation || 'request'}`,
         evidence: error || requestEvents[requestEvents.length - 1]?.message || 'failure',
-        action: status === 'client-error' ? "Controlla payload e validazione nell'handler." : `Ispeziona il servizio ${service || 'coinvolto'} e il downstream ${target}.`,
+        rule: httpStatus !== null ? `Final HTTP status ${httpStatus} (${serverSide ? '≥ 500' : '400–499'})` : 'Error-level event without a successful final status',
+        hypothesis: serverSide
+          ? `Failure inside ${service || 'the service'}${downstreams.length ? ` or its downstream ${target}` : ''}.`
+          : 'The request was rejected: payload, authentication or validation.',
+        action: serverSide ? `Inspect ${service || 'the service'} around these events${downstreams.length ? ` and the calls to ${target}` : ''}.` : 'Compare the payload with the handler validation and the API contract.',
+        eventIds: idsWhere((event, index) => event.level === 'error' || event.level === 'fatal' || (contexts[index].httpStatus ?? 0) >= 400),
       })
     }
     if (retryCount > 0) {
+      const recovered = status === 'success'
       anomalies.push({
-        kind: 'retry',
-        severity: status === 'success' ? 'info' : 'warn',
-        correlationKey: request.correlationKey,
-        correlationId: anomalyTarget(request),
-        title: status === 'success' ? 'Successo dopo retry' : 'Retry rilevato',
-        evidence: error || `${retryCount} retry signal`,
-        action: 'Controlla numero di tentativi, backoff e idempotenza.',
+        ...base, kind: 'retry', severity: recovered ? 'info' : 'warn',
+        title: recovered ? 'Success after retry' : 'Retry detected',
+        evidence: error || `${retryCount} retry signal${retryCount === 1 ? '' : 's'}`,
+        rule: 'Message or operation status mentions retry / attempt N',
+        hypothesis: recovered ? 'A transient failure was absorbed by the retry policy.' : 'Retries did not recover the request.',
+        action: 'Check attempt count, backoff and idempotency of the retried call.',
+        eventIds: idsWhere((event, index) => /\bretr(?:y|ied|ying|ies)\b|attempt\s+\d+/i.test(`${event.message} ${contexts[index].operationStatus}`)),
       })
     }
-    if (status !== 'timeout' && maxDownstreamLatencyMs !== null && maxDownstreamLatencyMs > 500) {
+    if (status !== 'timeout' && maxDownstreamLatencyMs !== null && maxDownstreamLatencyMs > slowCallMs) {
       anomalies.push({
-        kind: 'slow',
-        severity: 'warn',
-        correlationKey: request.correlationKey,
-        correlationId: anomalyTarget(request),
-        title: `Latenza alta ${target}`,
-        evidence: `${Math.round(maxDownstreamLatencyMs)} ms`,
-        action: `Verifica la latenza del client ${target}.`,
+        ...base, kind: 'slow', severity: 'warn',
+        title: `Slow call ${target}`,
+        evidence: `Downstream latency ${Math.round(maxDownstreamLatencyMs)} ms`,
+        rule: `Downstream latency > ${slowCallMs} ms (configurable threshold)`,
+        hypothesis: `${target} is slow for this request; one sample does not prove a systemic regression.`,
+        action: `Compare with other calls to ${target} and check its latency metrics.`,
+        eventIds: idsWhere((_event, index) => (contexts[index].latencyMs ?? 0) > slowCallMs),
       })
     }
   }

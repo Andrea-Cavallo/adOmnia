@@ -203,7 +203,7 @@ export function LogInspectorPanel() {
   const histogram = useMemo(() => buildHistogram(filtered, 72), [filtered])
   // Request-level analysis is intentionally delayed until import completes;
   // progressive list rendering must stay cheap on 100k+ line files.
-  const analysis = useMemo(() => analyzeLog(summary ? baseEvents : []), [baseEvents, summary])
+  const analysis = useMemo(() => analyzeLog(summary ? baseEvents : [], { slowCallMs: prefs.slowCallMs }), [baseEvents, summary, prefs.slowCallMs])
   const availableColumns = useMemo(
     () => availableListColumns(baseEvents, LIST_COLUMNS.map((column) => column.id)),
     [baseEvents],
@@ -234,7 +234,7 @@ export function LogInspectorPanel() {
     if (!format || appliedPresetRef.current === format) return
     appliedPresetRef.current = format
     const preset = prefs.columnPresets[format]
-    if (preset) updatePrefs({ columns: preset.columns, columnWidths: preset.widths })
+    if (preset) updatePrefs({ columns: preset.columns, columnWidths: preset.widths, pinnedColumns: preset.pinned ?? [] })
   }, [prefs.columnPresets, summary?.format, updatePrefs])
 
   const exportNow = useCallback((format: ExportFormat) => {
@@ -414,6 +414,8 @@ export function LogInspectorPanel() {
           {showAnalysis && (
             <AnalysisOverview
               analysis={analysis}
+              slowCallMs={prefs.slowCallMs}
+              onSlowCallMsChange={(slowCallMs) => updatePrefs({ slowCallMs })}
               onClose={() => setShowAnalysis(false)}
               onSelectEventId={(id) => setSelectedId(id)}
               comparisonKeys={comparisonKeys}
@@ -477,6 +479,7 @@ export function LogInspectorPanel() {
                   wrap={prefs.wrap}
                   columns={prefs.columns}
                   columnWidths={prefs.columnWidths}
+                  pinnedColumns={prefs.pinnedColumns}
                   onColumnWidthChange={(id, width) => updatePrefs({ columnWidths: { ...prefs.columnWidths, [id]: width } })}
                   highlights={compiled.highlights}
                   scrollToId={related ? null : selectedId}

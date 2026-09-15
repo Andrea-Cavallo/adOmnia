@@ -69,6 +69,8 @@ export interface LogImport {
  * needs to stay open on hundreds of thousands of lines.
  */
 const LIVE_SOURCE_MAX_LINES = 20_000
+/** Text kept in the renderer for one session; bigger logs belong in the disk-indexed Large file view. */
+export const SESSION_BYTE_BUDGET = 256 * 1024 * 1024
 
 interface Options {
   maxEvents: number
@@ -192,7 +194,9 @@ export function useLogImport({ maxEvents, streamPreview, onReset }: Options): Lo
       const found = discoverFields(parsed.events)
       setDiscovery(found)
       setSchema(rememberSchema(found, withMetadata.map((item) => item.displayName).join(', ')))
-      if (parsed.aborted) setError('Import cancelled — showing the events parsed so far.')
+      const notRead = parsed.skippedSources.length ? ` Not read: ${parsed.skippedSources.join(', ')}.` : ''
+      if (parsed.aborted) setError(`Import cancelled — showing the events parsed so far.${notRead}`)
+      else if (notRead) setError(`Event limit of ${maxEvents.toLocaleString()} reached.${notRead}`)
     } catch (cause) {
       if (!gate.isCurrent(operation)) return
       // A multi-hundred-MB paste can exhaust the renderer heap; say so instead
@@ -260,15 +264,31 @@ export function useLogImport({ maxEvents, streamPreview, onReset }: Options): Lo
     const operation = gate.start()
     try {
       const results: LogSourceResult[] = []
+      const overBudget: string[] = []
+      let bytes = sourcesRef.current.reduce((sum, source) => sum + source.bytes, 0)
       for (const file of files) {
         if (!gate.isActive(operation)) return
+        if (bytes + file.size > SESSION_BYTE_BUDGET) {
+          overBudget.push(file.name)
+          continue
+        }
+        bytes += file.size
         results.push(await loadFromFile(file))
+      }
+      const budgetNotice = overBudget.length
+        ? `Not read, session memory budget of ${SESSION_BYTE_BUDGET / 1024 / 1024} MB exceeded: ${overBudget.join(', ')}. Open large logs with "Large file" instead.`
+        : ''
+      if (!results.length) {
+        if (budgetNotice) setError(budgetNotice)
+        gate.finish(operation)
+        return
       }
       if (gate.isActive(operation)) {
         const appended = results.map(managedSource)
         const next = [...sourcesRef.current, ...appended]
         commitSources(next)
         await parseSources(next, operation, sourcesRef.current.length === appended.length)
+        if (budgetNotice && gate.isCurrent(operation)) setError((current) => (current ? `${current} ${budgetNotice}` : budgetNotice))
       }
     } catch (cause) {
       if (gate.isActive(operation)) {
