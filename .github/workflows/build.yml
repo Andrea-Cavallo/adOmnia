@@ -68,6 +68,10 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
+      - name: Verify Log Inspector final scenario
+        working-directory: frontend
+        run: npm ci && npm run test -- src/lib/loginspector/finalScenario.test.ts src/lib/loginspector/platformJourneyContract.test.ts
+
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v3/cmd/wails3@${{ env.WAILS_VERSION }}
 
@@ -108,6 +112,10 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+
+      - name: Verify Log Inspector final scenario
+        working-directory: frontend
+        run: npm ci && npm run test -- src/lib/loginspector/finalScenario.test.ts src/lib/loginspector/platformJourneyContract.test.ts
 
       - name: Install Linux native dependencies
         run: |
@@ -161,6 +169,10 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+
+      - name: Verify Log Inspector final scenario
+        working-directory: frontend
+        run: npm ci && npm run test -- src/lib/loginspector/finalScenario.test.ts src/lib/loginspector/platformJourneyContract.test.ts
 
       - name: Install packaging tools
         run: |

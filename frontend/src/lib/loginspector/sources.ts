@@ -1,4 +1,5 @@
 import { readFileSmart } from '@/lib/fileUtils'
+import type { ParsingProfile } from './parsingProfiles'
 
 /**
  * Input acquisition sits behind this seam so every ingest path — clipboard,
@@ -17,6 +18,10 @@ export interface LogSourceResult {
   sourceId?: string
   /** User-editable label. The original file name remains in `name`. */
   displayName?: string
+  /** Optional portable parser profile assigned to this source. */
+  parsingProfile?: ParsingProfile
+  /** Explicit correction for a known source clock skew. */
+  clockOffsetMs?: number
 }
 
 /**

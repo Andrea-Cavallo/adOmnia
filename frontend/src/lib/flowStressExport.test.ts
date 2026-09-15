@@ -30,6 +30,10 @@ describe('flow stress export', () => {
     const parsed = JSON.parse(stressJson(run(), 'Checkout'))
     expect(parsed).toMatchObject({ format: 'adomnia-flow-stress', version: 1, flowName: 'Checkout', status: 'completed' })
     expect(parsed.samples).toHaveLength(2)
+    expect(parsed.assessment).toMatchObject({ verdict: 'fail' })
+    expect(parsed.assessment.checks).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'errors', passed: false }),
+    ]))
   })
 
   it('escapes names in the HTML report', () => {

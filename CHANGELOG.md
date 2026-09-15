@@ -4,6 +4,23 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [0.9.10] - 2026-09-15
+
+### Added
+- **AI Flow Architect:** natural-language instructions can now describe ordered calls, response-field extraction into `{{variables}}`, success paths and recovery branches for network errors, timeouts and HTTP failures. The preview exposes data handoffs and recovery paths before applying the generated flow.
+- **Decision-grade stress tests:** Smoke, Load, Spike and Soak presets join configurable p95, error-rate and throughput release gates, run verdicts, long-tail and bottleneck diagnostics, normalized error fingerprints, aggregate percentiles and data-rate metrics.
+- **Log Inspector P3:** reusable parsing profiles, integrity diagnostics for missing data, clock skew, truncation and uncertain correlation, request diffs, metric extraction and a local evidence-grounded AI investigation assistant.
+
+### Changed
+- **Richer stress evidence:** HTML and JSON reports now carry release checks, diagnosis, overall p95/p99, status totals and grouped errors while remaining compatible with earlier v1 baselines.
+- **Cross-platform acceptance:** the final four-service JSONL/Go/mixed-log investigation journey and its keyboard/resizable-panel contract run in Windows, Linux and macOS CI jobs.
+- **Dependency refresh:** Wails and the frontend/Go dependency set were updated together.
+
+### Fixed
+- **Variable context menu:** right-click now recognizes `{{variables}}` in wrapped editors and non-JSON request bodies.
+
+Full release notes: [v0.9.10](docs/releases/v0.9.10.md).
+
 ## [0.9.9] - 2026-09-11
 
 ### Added

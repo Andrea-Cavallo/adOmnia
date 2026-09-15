@@ -1,6 +1,7 @@
 import type { LogFilterState } from './query'
 import type { LogFormat } from './types'
 import type { LogSourceKind } from './sources'
+import type { ParsingProfile } from './parsingProfiles'
 
 const DB_NAME = 'adomnia-log-inspector'
 const DB_VERSION = 1
@@ -21,6 +22,8 @@ export interface PersistedSourceMetadata {
   format: LogFormat
   firstTs: number | null
   lastTs: number | null
+  parsingProfile?: ParsingProfile
+  clockOffsetMs?: number
 }
 
 export interface InvestigationUiState {

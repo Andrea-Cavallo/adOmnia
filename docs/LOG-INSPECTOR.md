@@ -4,6 +4,7 @@ How the Log Inspector is built: parsing pipeline, field normalization, query
 language, correlation, large-input strategy and architecture.
 
 > Looking for what shipped and when? See
+> [`releases/v0.9.10.md`](releases/v0.9.10.md),
 > [`releases/v0.9.0.md`](releases/v0.9.0.md) and
 > [`releases/v0.9.1.md`](releases/v0.9.1.md),
 > [`releases/v0.9.2.md`](releases/v0.9.2.md) and
@@ -586,6 +587,34 @@ Since v0.9.1 Log Inspector is a **rail destination**, not a Power Tools studio:
   `lib/uiI18n.test.ts` guards that it never reappears in the Tool Launcher
   catalogue.
 
+### P3 advanced analysis
+
+The **Advanced** toolbar action keeps the normal investigation path lightweight
+and opens five evidence-backed tools only when needed:
+
+- **Parsing profiles** are portable version-1 JSON documents. A profile maps
+  arbitrary dotted fields to timestamp, level, service, correlation/span IDs,
+  duration and request/response bodies; declares duration units, timezone for
+  zone-less timestamps, multiline regexes and indexing limits. Profiles and a
+  clock offset are assigned per source. Limit hits become visible warnings.
+- **Integrity** preserves `tsRaw` and `tsOriginal`, applies only user-declared
+  offsets, and reports backwards clocks, corrected time, missing start/end,
+  timestamp-less events, unobserved gaps, truncation and partly inferred
+  correlations. Temporal order is never presented as causal proof.
+- **Metrics** group request chains by route, service or version and expose the
+  denominator, completed/error samples, error rate, p50/p95/p99, timed coverage
+  and explicit-duration coverage. Version comparison retains the explaining
+  chain/event IDs; concurrent downstream durations are never summed.
+- **Diagnostic rules** are local, declarative and versioned. Each finding names
+  the rule/version, action, matched event IDs and source lines. Built-ins cover
+  explicit circuit-breaker, retry-storm, connection-pool and duplicate signals;
+  thresholds must be satisfied before a finding is emitted.
+- **AI assistant** is optional and never runs during import or analysis. A user
+  click submits only a bounded, recursively redacted evidence projection through
+  the existing AI Engine. Ollama stays local; a configured remote provider is
+  named before submission. The prompt requires source/line citations and keeps
+  observed facts separate from hypotheses.
+
 ---
 
 ## 9. Shortcuts
@@ -603,7 +632,8 @@ Since v0.9.1 Log Inspector is a **rail destination**, not a Power Tools studio:
 
 ## 10. Tests
 
-`frontend/src/lib/loginspector/*.test.ts` — **103 tests**, all green.
+The repository suite currently covers **102 files / 475 tests**, all green,
+including the P3 unit tests and the complete four-service acceptance fixture.
 
 - single JSON, JSON array, JSON Lines
 - malformed lines: they do not block the import, they are marked, and they do
@@ -632,6 +662,16 @@ Since v0.9.1 Log Inspector is a **rail destination**, not a Power Tools studio:
 - combined filtering: query + levels + facets + exclusions + time range
 - large files: 100k events, ceiling, truncation, cancellation, progress
 - sensitive-data masking, including not mutating the originals
+- configurable field/time/body/duration mappings, multiline profiles and
+  explicit indexing-limit warnings
+- original versus corrected clocks, skew, incomplete chains, observation gaps,
+  truncation and uncertain correlations
+- metrics denominators/coverage/percentiles and version before/after comparison
+- versioned diagnostic thresholds with evidence lines
+- redacted, citation-preserving AI context that never invokes a provider merely
+  by opening the panel
+- final four-service journey: JSONL Go plus mixed logs, correlation, retry/final
+  status, body diff, application stack frame, Composer draft and evidence bundle
 
 ### Verification performed
 
@@ -664,8 +704,6 @@ Since v0.9.1 Log Inspector is a **rail destination**, not a Power Tools studio:
   instead of a blank screen.
 - `raw` keeps the original line **without** ANSI: the escapes are terminal noise
   and would make "copy the original line" useless.
-- No import is remembered between sessions — a local-first choice: logs live in
-  memory and disappear when the tool is closed.
 - Compressed archives (`.gz`, `.zip`) are not handled and must be extracted.
 
 ---
@@ -698,7 +736,6 @@ that would give first if the bar were raised.
 
 8. **Zoom and drag-selection** on the correlated-events timeline and on the
    histogram (today a click selects a single bucket).
-9. **Diff between two imports** — comparing the logs of two deploys.
 10. **Incremental facets** — today recomputed over the whole batch on every
     masking change; memoized, but not incremental.
 11. **`.gz` support** on input, for archived logs.

@@ -13,6 +13,8 @@ export interface ParsedSourceSummary {
   format: LogFormat
   firstTs: number | null
   lastTs: number | null
+  parsingProfileId?: string
+  clockOffsetMs: number
 }
 
 export type MultiSourceParseResult = ParseResult & {
@@ -92,7 +94,12 @@ export async function parseLogSourcesInBackground(
     const remaining = maxEvents - offset
     const parsed = await parseLogTextInBackground(
       source.text,
-      { ...options, maxEvents: remaining },
+      {
+        ...options,
+        maxEvents: remaining,
+        parsingProfile: source.parsingProfile ?? options.parsingProfile,
+        clockOffsetMs: source.clockOffsetMs ?? options.clockOffsetMs,
+      },
       {
         shouldAbort: hooks.shouldAbort,
         onProgress: (done, _sourceTotal, partial) => {
@@ -121,6 +128,8 @@ export async function parseLogSourcesInBackground(
       format: parsed.summary.format,
       firstTs,
       lastTs,
+      parsingProfileId: source.parsingProfile?.id,
+      clockOffsetMs: source.clockOffsetMs ?? source.parsingProfile?.timestamp?.clockOffsetMs ?? 0,
     })
     completedLines += parsed.summary.totalLines
     hooks.onProgress?.(Math.min(totalLines, completedLines), totalLines, events)

@@ -223,9 +223,17 @@ export function EventDetail({ event, sessionEvents, onClose, onFilterBy, onShowR
               Acquisition copies folded from {event.duplicateSources.map((source) => `${source.sourceName || source.sourceId}:${source.line}`).join(', ')}.
             </p>
           )}
+          {(event.normalizationWarnings?.length ?? 0) > 0 && (
+            <div className="mb-3 rounded border border-warning/35 bg-warning/10 px-2 py-1.5 text-[10px] text-warning">
+              {event.normalizationWarnings!.map((warning) => <p key={warning}>{warning}</p>)}
+            </div>
+          )}
           <FieldGrid
             rows={[
               ['Timestamp', event.ts !== null ? new Date(event.ts).toISOString() : event.tsRaw, ''],
+              ['Original timestamp', (event.clockOffsetMs ?? 0) !== 0 ? (event.tsOriginal !== null && event.tsOriginal !== undefined ? new Date(event.tsOriginal).toISOString() : event.tsRaw) : '', ''],
+              ['Clock correction', (event.clockOffsetMs ?? 0) !== 0 ? `${event.clockOffsetMs! > 0 ? '+' : ''}${event.clockOffsetMs} ms` : '', ''],
+              ['Parsing profile', event.parsingProfileId || '', ''],
               ['Level', event.level, 'level'],
               ['Service', event.service, 'service'],
               ['Namespace', event.namespace, 'namespace'],

@@ -34,6 +34,23 @@ export interface StepStats {
   statuses: Record<string, number>
 }
 
+export interface LatencyStats {
+  min: number
+  avg: number
+  p50: number
+  p90: number
+  p95: number
+  p99: number
+  max: number
+}
+
+export interface StressErrorGroup {
+  fingerprint: string
+  count: number
+  steps: string[]
+  statuses: string[]
+}
+
 export interface StressStats {
   totalRequests: number
   totalErrors: number
@@ -41,6 +58,11 @@ export interface StressStats {
   iterationsFailed: number
   elapsedMs: number
   rps: number
+  bytes: number
+  bytesPerSecond: number
+  overall: LatencyStats
+  statuses: Record<string, number>
+  errorGroups: StressErrorGroup[]
   steps: StepStats[]
   timeline: Array<{ s: number; requests: number; errors: number }>
   slowestStep?: string
@@ -55,6 +77,29 @@ export function percentile(sorted: number[], p: number): number {
 
 const round1 = (value: number) => Math.round(value * 10) / 10
 
+function latencyStats(values: number[]): LatencyStats {
+  const sorted = [...values].sort((a, b) => a - b)
+  const sum = sorted.reduce((total, value) => total + value, 0)
+  return {
+    min: sorted[0] ?? 0,
+    avg: sorted.length ? round1(sum / sorted.length) : 0,
+    p50: percentile(sorted, 50),
+    p90: percentile(sorted, 90),
+    p95: percentile(sorted, 95),
+    p99: percentile(sorted, 99),
+    max: sorted[sorted.length - 1] ?? 0,
+  }
+}
+
+function errorFingerprint(sample: StressSample) {
+  const raw = sample.error?.trim() || (sample.httpStatus ? `HTTP ${sample.httpStatus}` : 'Request failed')
+  return raw
+    .replace(/[0-9a-f]{8}-[0-9a-f-]{27,}/gi, '<id>')
+    .replace(/\b\d{3,}\b/g, '<n>')
+    .replace(/\s+/g, ' ')
+    .slice(0, 160)
+}
+
 /**
  * Running aggregates for a stress run. Keeps only numbers per step, so stats
  * stay complete after raw samples hit their cap.
@@ -64,8 +109,12 @@ const round1 = (value: number) => Math.round(value * 10) / 10
 export function createStressAccumulator() {
   const steps = new Map<string, { step: string; values: number[]; errors: number; statuses: Record<string, number> }>()
   const timeline = new Map<number, { requests: number; errors: number }>()
+  const values: number[] = []
+  const statuses: Record<string, number> = {}
+  const errorGroups = new Map<string, { count: number; steps: Set<string>; statuses: Set<string> }>()
   let requests = 0
   let errors = 0
+  let bytes = 0
   let iterationsOk = 0
   let iterationsFailed = 0
 
@@ -74,11 +123,23 @@ export function createStressAccumulator() {
       const failed = sample.status === 'failed'
       requests += 1
       if (failed) errors += 1
+      const latency = sample.latencyMs ?? sample.stepMs
+      values.push(latency)
+      bytes += sample.bytes ?? 0
       const step = steps.get(sample.nodeId) ?? { step: sample.step, values: [], errors: 0, statuses: {} }
-      step.values.push(sample.latencyMs ?? sample.stepMs)
+      step.values.push(latency)
       if (failed) step.errors += 1
       const code = sample.httpStatus ? String(sample.httpStatus) : 'ERR'
       step.statuses[code] = (step.statuses[code] ?? 0) + 1
+      statuses[code] = (statuses[code] ?? 0) + 1
+      if (failed) {
+        const fingerprint = errorFingerprint(sample)
+        const group = errorGroups.get(fingerprint) ?? { count: 0, steps: new Set<string>(), statuses: new Set<string>() }
+        group.count += 1
+        group.steps.add(sample.step)
+        group.statuses.add(code)
+        if (errorGroups.size < 200 || errorGroups.has(fingerprint)) errorGroups.set(fingerprint, group)
+      }
       steps.set(sample.nodeId, step)
       const second = Math.floor(sample.t / 1000)
       const bucket = timeline.get(second) ?? { requests: 0, errors: 0 }
@@ -90,21 +151,14 @@ export function createStressAccumulator() {
     },
     snapshot(elapsedMs: number): StressStats {
       const stepStats: StepStats[] = [...steps.entries()].map(([nodeId, step]) => {
-        const sorted = [...step.values].sort((a, b) => a - b)
-        const sum = sorted.reduce((total, value) => total + value, 0)
+        const latency = latencyStats(step.values)
         return {
           nodeId,
           step: step.step,
-          count: sorted.length,
+          count: step.values.length,
           errors: step.errors,
-          errorPct: sorted.length ? round1((step.errors / sorted.length) * 100) : 0,
-          min: sorted[0] ?? 0,
-          avg: sorted.length ? round1(sum / sorted.length) : 0,
-          p50: percentile(sorted, 50),
-          p90: percentile(sorted, 90),
-          p95: percentile(sorted, 95),
-          p99: percentile(sorted, 99),
-          max: sorted[sorted.length - 1] ?? 0,
+          errorPct: step.values.length ? round1((step.errors / step.values.length) * 100) : 0,
+          ...latency,
           statuses: { ...step.statuses },
         }
       })
@@ -118,6 +172,14 @@ export function createStressAccumulator() {
         iterationsFailed,
         elapsedMs: Math.round(elapsedMs),
         rps: elapsedMs > 0 ? round1(requests / (elapsedMs / 1000)) : 0,
+        bytes,
+        bytesPerSecond: elapsedMs > 0 ? Math.round(bytes / (elapsedMs / 1000)) : 0,
+        overall: latencyStats(values),
+        statuses: { ...statuses },
+        errorGroups: [...errorGroups.entries()]
+          .map(([fingerprint, group]) => ({ fingerprint, count: group.count, steps: [...group.steps], statuses: [...group.statuses] }))
+          .sort((a, b) => b.count - a.count || a.fingerprint.localeCompare(b.fingerprint))
+          .slice(0, 8),
         steps: stepStats,
         timeline: seconds,
         slowestStep: slowest?.step,

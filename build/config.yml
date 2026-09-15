@@ -8,10 +8,11 @@ info:
   description: Local-first API developer toolbox
   copyright: © 2026 Andrea Cavallo. All rights reserved.
   comments: Local-first API developer toolbox — REST, gRPC, WebSocket, Kafka, mock server, browser debugging and more.
-  version: 0.9.9
+  version: 0.9.10
 
 dev_mode:
-  root_path: ..
+  # Wails resolves this from the process working directory, not this file.
+  root_path: .
   log_level: warn
   debounce: 1000
   ignore:

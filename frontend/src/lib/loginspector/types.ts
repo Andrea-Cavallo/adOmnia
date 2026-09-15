@@ -58,6 +58,18 @@ export interface LogEvent extends LogEventFields {
   raw: string
   /** Non-empty when the line could not be parsed as structured data. */
   parseError: string
+  /** Parsed timestamp before a source clock correction was applied. */
+  tsOriginal?: number | null
+  /** Explicit source correction applied to `ts`; never inferred silently. */
+  clockOffsetMs?: number
+  /** Profile that produced the normalized fields, when not the built-in parser. */
+  parsingProfileId?: string
+  /** Values normalized through a parsing profile. */
+  normalizedDurationMs?: number | null
+  normalizedRequestBody?: unknown | null
+  normalizedResponseBody?: unknown | null
+  /** Indexing limits or profile fallbacks that may hide searchable fields. */
+  normalizationWarnings?: string[]
 }
 
 export interface ParseIssue {
@@ -96,6 +108,10 @@ export interface ParseOptions {
   maxEvents?: number
   /** Try to JSON.parse strings found in message/body/payload/response. Default true. */
   decodeNestedJson?: boolean
+  /** Optional user-defined normalization and multiline rules. */
+  parsingProfile?: import('./parsingProfiles').ParsingProfile
+  /** Explicit per-source clock correction, applied after parsing. */
+  clockOffsetMs?: number
 }
 
 export const DEFAULT_MAX_EVENTS = 200_000

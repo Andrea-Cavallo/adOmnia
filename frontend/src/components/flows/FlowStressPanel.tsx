@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
-import { AlertTriangle, FileCode, FileJson, FileSpreadsheet, Gauge, GitCompare, Loader2, Square, X } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, CircleX, FileCode, FileJson, FileSpreadsheet, Gauge, GitCompare, Info, Loader2, Square, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { FlowGraphDefinition } from '@/lib/flowStorage'
 import {
-  DEFAULT_STRESS_CONFIG, MAX_STRESS_VUS, runFlowStress, validateStressConfig,
+  DEFAULT_STRESS_CONFIG, MAX_STRESS_VUS, STRESS_PRESETS, runFlowStress, validateStressConfig,
   type FlowStressConfig, type StressProgress, type StressRun,
 } from '@/lib/flowStress'
 import {
   baselineStep, deltaPct, parseStressJson, sparklinePoints, stressCsv, stressFileName, stressHtml, stressJson, utf8ToBase64,
   type StressBaseline,
 } from '@/lib/flowStressExport'
+import { analyzeStressRun } from '@/lib/flowStressAnalysis'
 import { saveBase64File } from '@/lib/fileUtils'
 
 interface FlowStressPanelProps {
@@ -68,6 +69,7 @@ function DeltaCell({ current, base }: { current: number; base?: number }) {
 
 const formatSeconds = (ms: number) => `${(ms / 1000).toFixed(1)}s`
 const formatStamp = (iso: string) => iso.slice(0, 19).replace('T', ' ')
+const formatBytes = (bytes: number) => bytes >= 1_000_000 ? `${(bytes / 1_000_000).toFixed(1)} MB/s` : bytes >= 1_000 ? `${(bytes / 1_000).toFixed(1)} kB/s` : `${bytes} B/s`
 
 export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars, onRunningChange }: FlowStressPanelProps) {
   const [config, setConfig] = useState<FlowStressConfig>(DEFAULT_STRESS_CONFIG)
@@ -83,7 +85,7 @@ export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars
 
   const configErrors = validateStressConfig(config)
   const problem = configErrors[0] ?? blockedReason
-  const patch = (next: Partial<FlowStressConfig>) => setConfig((current) => ({ ...current, ...next }))
+  const patch = (next: Partial<FlowStressConfig>) => setConfig((current) => ({ ...current, scenario: next.scenario ?? 'custom', ...next }))
 
   const start = async () => {
     if (running || problem) return
@@ -135,13 +137,33 @@ export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars
   const errorPct = stats?.totalRequests ? Math.round((stats.totalErrors / stats.totalRequests) * 1000) / 10 : 0
   const truncated = run?.truncated ?? progress?.truncated ?? false
   const rpsDelta = baseline && stats ? deltaPct(stats.rps, baseline.stats.rps) : undefined
+  const assessment = stats ? analyzeStressRun(stats, config, baseline?.stats) : null
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
       <section aria-label="Stress test configuration" className="flex shrink-0 flex-col gap-2.5 border-b border-border-1 p-3 lg:w-[272px] lg:overflow-y-auto lg:border-b-0 lg:border-r">
+        <div>
+          <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.12em] text-text-4">Scenario</div>
+          <div className="grid grid-cols-2 gap-1.5">
+            {STRESS_PRESETS.map((preset) => (
+              <button key={preset.id} type="button" disabled={running} title={preset.description} onClick={() => patch({ ...preset.config, scenario: preset.id })} className={cn('rounded-lg border px-2 py-1.5 text-left transition-colors disabled:opacity-50', config.scenario === preset.id ? 'border-accent/60 bg-accent/10 text-accent' : 'border-border-1 bg-surface-0 text-text-3 hover:border-border-3 hover:text-text-1')}>
+                <span className="block text-[11px] font-semibold">{preset.label}</span>
+                <span className="block truncate text-[9px] opacity-75">{preset.description}</span>
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="grid grid-cols-2 gap-2">
           <NumberField label={`Users (max ${MAX_STRESS_VUS})`} value={config.vus} min={1} max={MAX_STRESS_VUS} disabled={running} onChange={(vus) => patch({ vus })} />
           <NumberField label="Ramp-up (s)" value={config.rampUpS} min={0} max={600} disabled={running} onChange={(rampUpS) => patch({ rampUpS })} />
+        </div>
+        <div className="border-t border-border-1 pt-2.5">
+          <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-text-4">Release gates · p95/RPS 0 disables</div>
+          <div className="grid grid-cols-3 gap-1.5">
+            <NumberField label="p95 ≤ ms" value={config.maxP95Ms ?? 0} min={0} max={600000} disabled={running} onChange={(maxP95Ms) => patch({ maxP95Ms })} />
+            <NumberField label="Errors ≤ %" value={config.maxErrorPct ?? 0} min={0} max={100} step={0.1} disabled={running} onChange={(maxErrorPct) => patch({ maxErrorPct })} />
+            <NumberField label="RPS ≥" value={config.minRps ?? 0} min={0} max={1000000} step={0.1} disabled={running} onChange={(minRps) => patch({ minRps })} />
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-1 rounded-lg border border-border-2 bg-surface-0 p-0.5" role="radiogroup" aria-label="Stop condition">
           {(['iterations', 'duration'] as const).map((mode) => (
@@ -197,11 +219,41 @@ export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
               <Kpi label="Requests" value={String(stats.totalRequests)} />
               <Kpi label="Throughput" value={`${stats.rps} req/s`} />
+              <Kpi label="Overall p95 / p99" value={`${stats.overall.p95} / ${stats.overall.p99} ms`} tone={assessment?.checks.find((check) => check.id === 'p95' && !check.passed) ? 'error' : undefined} />
               <Kpi label="Errors" value={`${stats.totalErrors} · ${errorPct}%`} tone={stats.totalErrors ? 'error' : undefined} />
               <Kpi label="Iterations ok / failed" value={`${stats.iterationsOk} / ${stats.iterationsFailed}`} tone={stats.iterationsFailed ? 'error' : stats.iterationsOk ? 'success' : undefined} />
-              <Kpi label="Active users" value={`${progress?.activeVus ?? 0}/${config.vus}`} />
-              <Kpi label="Elapsed" value={formatSeconds(elapsedMs)} />
+              <Kpi label="Data rate" value={formatBytes(stats.bytesPerSecond)} />
             </div>
+
+            {assessment && (
+              <div className={cn('rounded-xl border p-3', assessment.verdict === 'fail' ? 'border-error/35 bg-error/10' : assessment.verdict === 'pass' ? 'border-success/35 bg-success/10' : 'border-warning/35 bg-warning/10')}>
+                <div className="flex items-center gap-2">
+                  {assessment.verdict === 'fail' ? <CircleX size={15} className="text-error" /> : assessment.verdict === 'pass' ? <CheckCircle2 size={15} className="text-success" /> : <AlertTriangle size={15} className="text-warning" />}
+                  <span className="text-xs font-bold uppercase tracking-[0.1em] text-text-1">{assessment.verdict === 'fail' ? 'SLO failed' : assessment.verdict === 'pass' ? 'SLO passed' : 'More evidence needed'}</span>
+                  <span className="ml-auto font-mono text-[10px] text-text-3">{progress?.activeVus ?? 0}/{config.vus} active · {formatSeconds(elapsedMs)}</span>
+                </div>
+                {assessment.checks.length > 0 && <div className="mt-2 flex flex-wrap gap-1.5">{assessment.checks.map((check) => <span key={check.id} className={cn('rounded-md border px-2 py-1 font-mono text-[10px]', check.passed ? 'border-success/25 text-success' : 'border-error/25 text-error')}>{check.label}: {check.actual}{check.unit} / {check.target}{check.unit}</span>)}</div>}
+              </div>
+            )}
+
+            {assessment && (
+              <div className="grid gap-2 xl:grid-cols-2">
+                {assessment.insights.slice(0, 4).map((insight) => (
+                  <div key={insight.title} className="rounded-lg border border-border-1 bg-surface-0 p-2.5">
+                    <div className="flex items-center gap-1.5 text-[11px] font-semibold text-text-1">{insight.severity === 'error' ? <CircleX size={12} className="text-error" /> : insight.severity === 'warn' ? <AlertTriangle size={12} className="text-warning" /> : <Info size={12} className="text-info" />}{insight.title}</div>
+                    <p className="mt-1 text-[10px] leading-4 text-text-3">{insight.detail}</p>
+                    <p className="mt-1 text-[10px] leading-4 text-text-2">Next: {insight.action}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {stats.errorGroups.length > 0 && (
+              <div className="rounded-lg border border-error/25 bg-surface-0 p-2.5">
+                <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-text-4">Top error fingerprints</div>
+                <div className="space-y-1">{stats.errorGroups.slice(0, 5).map((group) => <div key={group.fingerprint} className="flex gap-2 font-mono text-[10px] text-text-3"><span className="shrink-0 text-error">×{group.count}</span><span className="min-w-0 flex-1 truncate" title={group.fingerprint}>{group.fingerprint}</span><span className="shrink-0 text-text-4">{group.steps.join(', ')} · {group.statuses.join('/')}</span></div>)}</div>
+              </div>
+            )}
 
             {stats.timeline.length > 1 && (
               <svg viewBox="0 0 300 40" preserveAspectRatio="none" className="h-10 w-full rounded-lg border border-border-1 bg-surface-0" role="img" aria-label="Requests and errors per second">

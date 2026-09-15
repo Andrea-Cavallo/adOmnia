@@ -17,6 +17,7 @@ import {
   Filter,
   Files,
   FolderOpen,
+  Gauge,
   Pause,
   Play,
   Radio,
@@ -78,6 +79,8 @@ interface LogInspectorToolbarProps {
   onToggleFilters: () => void
   showAnalysis: boolean
   onToggleAnalysis: () => void
+  advancedActive: boolean
+  onToggleAdvanced: () => void
   sortDir: 'asc' | 'desc'
   onToggleSort: () => void
   masked: boolean
@@ -131,6 +134,8 @@ export function LogInspectorToolbar({
   onToggleFilters,
   showAnalysis,
   onToggleAnalysis,
+  advancedActive,
+  onToggleAdvanced,
   sortDir,
   onToggleSort,
   masked,
@@ -295,6 +300,7 @@ export function LogInspectorToolbar({
 
       <IconToggle active={showFilters} onClick={onToggleFilters} title="Filters (Ctrl+Shift+F)"><Filter size={12} /></IconToggle>
       <IconToggle active={showAnalysis} onClick={onToggleAnalysis} title="Request analysis"><Activity size={12} /></IconToggle>
+      <ToolButton onClick={onToggleAdvanced} icon={<Gauge size={12} />} label="Advanced" title="Parsing profiles, integrity, metrics, rules and optional AI" active={advancedActive} />
       <IconToggle
         active={sortDir === 'desc'}
         onClick={onToggleSort}

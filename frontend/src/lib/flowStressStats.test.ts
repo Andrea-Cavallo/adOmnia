@@ -16,6 +16,20 @@ describe('percentile', () => {
   })
 })
 
+describe('stress accumulator diagnostics', () => {
+  it('keeps overall latency, data rate, status and normalized error groups', () => {
+    const acc = createStressAccumulator()
+    acc.add({ t: 100, vu: 0, iteration: 0, nodeId: 'a', step: 'Checkout', status: 'success', httpStatus: 200, latencyMs: 10, stepMs: 12, bytes: 100 })
+    acc.add({ t: 200, vu: 0, iteration: 1, nodeId: 'a', step: 'Checkout', status: 'failed', httpStatus: 500, latencyMs: 90, stepMs: 95, bytes: 300, error: 'order 12345 failed' })
+    acc.add({ t: 300, vu: 1, iteration: 2, nodeId: 'a', step: 'Checkout', status: 'failed', httpStatus: 500, latencyMs: 100, stepMs: 105, bytes: 100, error: 'order 67890 failed' })
+    const stats = acc.snapshot(1000)
+
+    expect(stats.overall).toMatchObject({ min: 10, p50: 90, p95: 100, max: 100 })
+    expect(stats).toMatchObject({ bytes: 500, bytesPerSecond: 500, statuses: { 200: 1, 500: 2 } })
+    expect(stats.errorGroups).toEqual([expect.objectContaining({ fingerprint: 'order <n> failed', count: 2, steps: ['Checkout'], statuses: ['500'] })])
+  })
+})
+
 describe('createStressAccumulator', () => {
   it('is empty before any sample', () => {
     const stats = createStressAccumulator().snapshot(0)

@@ -1,5 +1,6 @@
 import { ensureAIConfigured } from '@/lib/aiEngine'
 import { flattenApiCatalog } from '@/lib/apiCatalog'
+import { layoutFlow } from '@/lib/flowLayout'
 import {
   DEFAULT_FLOW_SETTINGS,
   type ConditionOperator,
@@ -30,6 +31,8 @@ export interface AiFlowPreview {
     stepCount: number
     apiCalls: string[]
     variables: string[]
+    dataHandoffs: string[]
+    recoveryPaths: string[]
     conditions: string[]
     assertions: string[]
     missing: string[]
@@ -102,6 +105,7 @@ export interface AiAssertion {
 const SECRET_NAME = /(token|secret|password|passwd|pwd|api[-_ ]?key|apikey|authorization|cookie|client[-_ ]?secret|refresh)/i
 const SECRET_VALUE = /(bearer\s+[a-z0-9._~+/=-]{12,}|[a-z0-9_]{20,})/i
 const HTTP_METHODS: HttpMethod[] = ['GET', 'QUERY', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']
+const TEMPLATE_REFERENCE = /\{\{\s*([\w.-]+)\s*\}\}/g
 function stripFence(value: string) {
   const trimmed = value.trim()
   const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i)
@@ -147,15 +151,37 @@ export function buildAiFlowPrompt(options: AiFlowGenerateOptions): { system: str
   const sanitized = sanitizeAiFlowText(options.instructions)
   return {
     system: [
-      'You generate executable adOmnia API Flow JSON.',
+      'You are the adOmnia Flow architect. Translate natural-language API orchestration into executable adOmnia API Flow JSON.',
       'Return only valid JSON. Never wrap in Markdown.',
       'Use only supported node types: http-request, condition, end.',
       'Preserve exact user-provided URLs, methods, headers, static values, assertion names, variable names, and JSON bodies.',
       'If required information is missing, put it in missing[] and use obvious placeholders such as {{baseUrl}}.',
       'Prefer catalog endpoints over invented endpoints when labels or paths match.',
+      'Data handoff contract: when a later call needs a value from an earlier response, add extract: {variableName: "$.json.path"} to the producer and use {{variableName}} in the consumer URL, query, headers or body.',
+      'Failure contract: an edge with condition "error" is taken for transport errors, timeouts, HTTP 4xx/5xx, unexpected status and failed assertions. Use it for fallback/recovery calls; do not invent a condition node for a generic request failure.',
+      'Happy-path contract: use condition "success" from a request. A request that has a recovery edge should normally also have an explicit success edge.',
+      'Use condition nodes only for decisions based on a successful response, an extracted variable or a previous node expression such as b.status == 202.',
+      'Never duplicate a call just to represent success and failure. Keep one request node and branch from it.',
+      'Make every node reachable from one entry node, use unique stable ids, avoid cycles, and terminate meaningful branches with end nodes.',
     ].join('\n'),
     user: JSON.stringify({
       instructions: sanitized.text,
+      behaviorExample: {
+        request: 'Call A, take customer.id from A output and put it in B body. If B does not respond or returns 500, call D; otherwise finish successfully.',
+        nodes: [
+          { id: 'a', type: 'http-request', method: 'GET', url: '{{baseUrl}}/a', extract: { customerId: '$.customer.id' }, expectedStatus: '2xx' },
+          { id: 'b', type: 'http-request', method: 'POST', url: '{{baseUrl}}/b', body: { customerId: '{{customerId}}' }, expectedStatus: '2xx' },
+          { id: 'd', type: 'http-request', method: 'POST', url: '{{baseUrl}}/d', body: { customerId: '{{customerId}}' }, expectedStatus: '2xx' },
+          { id: 'ok', type: 'end', state: 'success' },
+          { id: 'recovered', type: 'end', state: 'success' },
+        ],
+        edges: [
+          { from: 'a', to: 'b', condition: 'success' },
+          { from: 'b', to: 'ok', condition: 'success' },
+          { from: 'b', to: 'd', condition: 'error' },
+          { from: 'd', to: 'recovered', condition: 'success' },
+        ],
+      },
       outputSchema: {
         name: 'string',
         description: 'string',
@@ -201,7 +227,7 @@ function conditionFromExpression(expression: string): FlowCondition {
 function branchFromCondition(condition: string | undefined, sourceType: AiFlowNode['type']): FlowEdgeBranch {
   const normalized = (condition ?? '').toLowerCase()
   if (sourceType === 'condition') return normalized === 'false' || normalized === 'else' ? 'false' : 'true'
-  if (normalized === 'error' || normalized === 'failed' || normalized === 'fail') return 'error'
+  if (/(?:^|[-_\s])(error|fail(?:ed|ure)?|timeout|no response|network|http [45]xx|[45]xx|500)(?:$|[-_\s])/.test(` ${normalized} `)) return 'error'
   if (normalized === 'success' || normalized === 'ok') return 'success'
   return 'next'
 }
@@ -224,6 +250,7 @@ export function validateAiFlowModel(model: AiFlowModel): string[] {
       } else if (typeof node.body === 'string' && node.body.trim().startsWith('{')) {
         try { JSON.parse(node.body) } catch { errors.push(`${node.id} has invalid JSON body.`) }
       }
+      for (const name of Object.keys(node.extract ?? {})) if (!/^[A-Za-z_][\w.-]*$/.test(name)) errors.push(`${node.id} has invalid extraction variable ${name}.`)
     } else if (node.type === 'condition') {
       if (!node.expression?.trim()) errors.push(`${node.id} condition expression is missing.`)
     } else if (node.type !== 'end') {
@@ -233,6 +260,15 @@ export function validateAiFlowModel(model: AiFlowModel): string[] {
   for (const edge of model.edges ?? []) {
     if (!ids.has(edge.from)) errors.push(`Edge source does not exist: ${edge.from}.`)
     if (!ids.has(edge.to)) errors.push(`Edge target does not exist: ${edge.to}.`)
+  }
+  const incoming = new Set((model.edges ?? []).map((edge) => edge.to))
+  const entries = (model.nodes ?? []).filter((node) => !incoming.has(node.id))
+  if ((model.nodes?.length ?? 0) > 0 && entries.length !== 1) errors.push(`Flow needs exactly one entry node; found ${entries.length}.`)
+  for (const node of model.nodes ?? []) {
+    const outgoing = (model.edges ?? []).filter((edge) => edge.from === node.id)
+    const branches = outgoing.map((edge) => branchFromCondition(edge.condition, node.type))
+    if (new Set(branches).size !== branches.length) errors.push(`${node.id} has duplicate outgoing branches.`)
+    if (node.type === 'http-request' && branches.includes('error') && !branches.some((branch) => branch === 'success' || branch === 'next')) errors.push(`${node.id} has an error recovery branch but no success branch.`)
   }
   errors.push(...detectCycles(model))
   return [...new Set(errors)]
@@ -355,12 +391,12 @@ export function convertAiFlowToSavedDefinition(model: AiFlowModel): SavedFlowDef
     label: edge.condition ?? '',
   })))
 
-  const graph: FlowGraphDefinition = {
+  const graph: FlowGraphDefinition = layoutFlow({
     nodes: flowNodes,
     edges: flowEdges,
     viewport: { x: 0, y: 0, zoom: 1 },
     settings: DEFAULT_FLOW_SETTINGS,
-  }
+  })
 
   return {
     id: uid(),
@@ -375,12 +411,26 @@ export function convertAiFlowToSavedDefinition(model: AiFlowModel): SavedFlowDef
 
 export function summarizeAiFlow(definition: SavedFlowDefinition, model: AiFlowModel, sanitizedContext: string[]): AiFlowPreview['summary'] {
   const requests = definition.graph.nodes.filter((node) => node.type === 'request')
+  const producerByVariable = new Map<string, { node: string; path: string }>()
+  for (const node of model.nodes) if (node.type === 'http-request') {
+    for (const [name, path] of Object.entries(node.extract ?? {})) producerByVariable.set(name, { node: node.label || node.id, path })
+  }
+  const dataHandoffs: string[] = []
+  for (const node of model.nodes) if (node.type === 'http-request') {
+    const serialized = JSON.stringify({ url: node.url, headers: node.headers, query: node.query, body: node.body, bodyRaw: node.bodyRaw })
+    for (const match of serialized.matchAll(TEMPLATE_REFERENCE)) {
+      const producer = producerByVariable.get(match[1])
+      if (producer) dataHandoffs.push(`${producer.node}.${producer.path} → {{${match[1]}}} → ${node.label || node.id}`)
+    }
+  }
   return {
     name: definition.name,
     description: model.description ?? '',
     stepCount: definition.graph.nodes.length,
     apiCalls: requests.map((node) => `${node.config.request?.method} ${node.config.request?.url}`),
     variables: requests.flatMap((node) => node.config.extractions?.map((item) => `${item.name} = response.${item.source}.${item.path}`) ?? []),
+    dataHandoffs: [...new Set(dataHandoffs)],
+    recoveryPaths: model.edges.filter((edge) => branchFromCondition(edge.condition, model.nodes.find((node) => node.id === edge.from)?.type ?? 'http-request') === 'error').map((edge) => `${edge.from} failure → ${edge.to}`),
     conditions: definition.graph.nodes.filter((node) => node.type === 'condition').map((node) => `${node.config.condition?.path} ${node.config.condition?.operator} ${node.config.condition?.value}`),
     assertions: requests.flatMap((node) => node.config.request?.assertions?.map((assertion) => `${assertion.target} ${assertion.operator} ${assertion.expected ?? ''}`) ?? []),
     missing: model.missing ?? [],

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { convertAiFlowToSavedDefinition, sanitizeAiFlowText, summarizeAiFlow, validateAiFlowModel, type AiFlowModel } from './aiFlow'
+import { buildAiFlowPrompt, convertAiFlowToSavedDefinition, sanitizeAiFlowText, summarizeAiFlow, validateAiFlowModel, type AiFlowModel } from './aiFlow'
 import { runApiFlow, validateFlowGraph } from './flowRunner'
 import type { ResponseData } from './types'
 
@@ -9,6 +9,77 @@ function response(status: number, body: object): ResponseData {
 }
 
 describe('aiFlow', () => {
+  it('teaches the model explicit data handoffs and request error recovery', () => {
+    const prompt = buildAiFlowPrompt({ instructions: 'Call A, then B. Put A customer id in B. If B times out or returns 500 call D.', context: { collections: [], environments: [] } })
+    expect(prompt.system).toContain('add extract: {variableName: "$.json.path"}')
+    expect(prompt.system).toContain('HTTP 4xx/5xx')
+    expect(prompt.user).toContain('{{customerId}}')
+    expect(prompt.user).toContain('"condition": "error"')
+  })
+
+  it('executes A to B with an extracted value and takes D only when B fails', async () => {
+    const model: AiFlowModel = {
+      name: 'A B with fallback D',
+      nodes: [
+        { id: 'a', type: 'http-request', label: 'Call A', method: 'GET', url: '/a', extract: { customerId: '$.customer.id' } },
+        { id: 'b', type: 'http-request', label: 'Call B', method: 'POST', url: '/b', body: { customerId: '{{customerId}}' } },
+        { id: 'd', type: 'http-request', label: 'Call D', method: 'POST', url: '/d', body: { customerId: '{{customerId}}' } },
+        { id: 'ok', type: 'end', state: 'success' },
+        { id: 'recovered', type: 'end', state: 'success' },
+      ],
+      edges: [
+        { from: 'a', to: 'b', condition: 'success' },
+        { from: 'b', to: 'ok', condition: 'success' },
+        { from: 'b', to: 'd', condition: '5xx' },
+        { from: 'd', to: 'recovered', condition: 'success' },
+      ],
+    }
+
+    expect(validateAiFlowModel(model)).toEqual([])
+    const definition = convertAiFlowToSavedDefinition(model)
+    const summary = summarizeAiFlow(definition, model, [])
+    expect(summary.dataHandoffs).toEqual(expect.arrayContaining([
+      'Call A.$.customer.id → {{customerId}} → Call B',
+      'Call A.$.customer.id → {{customerId}} → Call D',
+    ]))
+    expect(summary.recoveryPaths).toContain('b failure → d')
+
+    const executed: string[] = []
+    const run = await runApiFlow(definition.graph, {
+      initialVars: {},
+      execute: async (request, vars) => {
+        executed.push(`${request.name}:${vars.customerId ?? ''}`)
+        if (request.name === 'Call A') return { response: response(200, { customer: { id: 'C-42' } }), vars, mutations: {}, scriptRuns: [] }
+        if (request.name === 'Call B') return { response: response(500, { error: 'down' }), vars, mutations: {}, scriptRuns: [] }
+        return { response: response(204, {}), vars, mutations: {}, scriptRuns: [] }
+      },
+    })
+    expect(executed).toEqual(['Call A:', 'Call B:C-42', 'Call D:C-42'])
+    expect(run.entries[run.entries.length - 1]?.status).toBe('success')
+
+    const noResponse: string[] = []
+    await runApiFlow(definition.graph, {
+      initialVars: {},
+      execute: async (request, vars) => {
+        noResponse.push(request.name)
+        if (request.name === 'Call A') return { response: response(200, { customer: { id: 'C-42' } }), vars, mutations: {}, scriptRuns: [] }
+        if (request.name === 'Call B') return { response: { ...response(0, {}), error: { code: 'TIMEOUT', message: 'No response' } }, vars, mutations: {}, scriptRuns: [] }
+        return { response: response(204, {}), vars, mutations: {}, scriptRuns: [] }
+      },
+    })
+    expect(noResponse).toEqual(['Call A', 'Call B', 'Call D'])
+
+    const success: string[] = []
+    await runApiFlow(definition.graph, {
+      initialVars: {},
+      execute: async (request, vars) => {
+        success.push(request.name)
+        return { response: request.name === 'Call A' ? response(200, { customer: { id: 'C-42' } }) : response(200, {}), vars, mutations: {}, scriptRuns: [] }
+      },
+    })
+    expect(success).toEqual(['Call A', 'Call B'])
+  })
+
   it('converts a linear authenticated flow into an executable graph', async () => {
     const model: AiFlowModel = {
       name: 'Login and profile',

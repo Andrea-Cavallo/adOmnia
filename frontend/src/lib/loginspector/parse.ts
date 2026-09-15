@@ -83,6 +83,8 @@ export function createLogParser(options: ParseOptions & { format?: LogFormat } =
   let truncated = false
   let draft: Draft | null = null
   const started = Date.now()
+  const startPattern = compileProfilePattern(options.parsingProfile?.multiline?.startPattern)
+  const continuationPattern = compileProfilePattern(options.parsingProfile?.multiline?.continuationPattern)
 
   const addIssue = (bucket: ParseIssue[], line: number, message: string, excerpt: string) => {
     if (bucket.length < ISSUE_SAMPLE_LIMIT) {
@@ -97,7 +99,7 @@ export function createLogParser(options: ParseOptions & { format?: LogFormat } =
       draft = null
       return
     }
-    const event = buildEvent(draft, events.length, decodeNestedJson)
+    const event = buildEvent(draft, events.length, decodeNestedJson, options)
     if (event.parseError) {
       invalid++
       errorCount++
@@ -106,6 +108,10 @@ export function createLogParser(options: ParseOptions & { format?: LogFormat } =
       warningCount++
       addIssue(warnings, event.line, 'No recognizable timestamp', event.raw)
     }
+    for (const warning of event.normalizationWarnings ?? []) {
+      warningCount++
+      addIssue(warnings, event.line, warning, event.raw)
+    }
     events.push(event)
     draft = null
   }
@@ -113,6 +119,8 @@ export function createLogParser(options: ParseOptions & { format?: LogFormat } =
   const isContinuation = (body: string): boolean => {
     if (!draft) return false
     if (body.trim() === '') return draft.goStack
+    if (startPattern?.test(body)) return false
+    if (continuationPattern?.test(body)) return true
     // A new structured record always starts a new event.
     if (body.trimStart().startsWith('{')) return false
     if (startsWithTimestamp(body)) return false
@@ -186,12 +194,17 @@ export function createLogParser(options: ParseOptions & { format?: LogFormat } =
   }
 }
 
+function compileProfilePattern(source: string | undefined): RegExp | null {
+  if (!source) return null
+  try { return new RegExp(source) } catch { return null }
+}
+
 // ─── Draft → event ───────────────────────────────────────────────────────────
 
 // `2024-05-15 10:23:45.123  INFO 1 --- [nio-8080-exec-1] c.e.PaymentController : msg`
 const JAVA_THREAD_LOGGER = /\[([^\]]{1,80})\]\s+([\w$.]+)\s*:\s/
 
-function buildEvent(draft: Draft, id: number, decodeNestedJson: boolean): LogEvent {
+function buildEvent(draft: Draft, id: number, decodeNestedJson: boolean, options: ParseOptions): LogEvent {
   const head = draft.bodies[0]
   const stack = draft.bodies.slice(1).join('\n')
   const raw = draft.raws.join('\n')
@@ -228,13 +241,22 @@ function buildEvent(draft: Draft, id: number, decodeNestedJson: boolean): LogEve
   }
 
   if (payload) {
-    const { fields, extra, decoded } = normalizePayload(payload, { decodeNestedJson })
-    const fromPrefix = prefix ? timestampFromText(prefix) : { ts: null, raw: '' }
-    const ts = fields.ts ?? draft.criTs ?? fromPrefix.ts
+    const normalized = normalizePayload(payload, { decodeNestedJson, parsingProfile: options.parsingProfile })
+    const { fields, extra, decoded } = normalized
+    const fromPrefix = prefix ? timestampFromText(prefix, options.parsingProfile?.timestamp?.timezoneOffsetMinutes) : { ts: null, raw: '' }
+    const tsOriginal = fields.ts ?? draft.criTs ?? fromPrefix.ts
+    const clockOffsetMs = options.clockOffsetMs ?? options.parsingProfile?.timestamp?.clockOffsetMs ?? 0
     return {
       ...base,
       ...fields,
-      ts,
+      ts: tsOriginal === null ? null : tsOriginal + clockOffsetMs,
+      tsOriginal,
+      clockOffsetMs,
+      parsingProfileId: options.parsingProfile?.id,
+      normalizedDurationMs: normalized.durationMs,
+      normalizedRequestBody: normalized.requestBody,
+      normalizedResponseBody: normalized.responseBody,
+      normalizationWarnings: normalized.warnings,
       tsRaw: fields.tsRaw || fromPrefix.raw || (draft.criTs !== null ? new Date(draft.criTs).toISOString() : ''),
       message: fields.message || prefix || trimmedHead,
       container: fields.container || draft.criStream,
@@ -248,7 +270,9 @@ function buildEvent(draft: Draft, id: number, decodeNestedJson: boolean): LogEve
   }
 
   // Plain text (or broken JSON, which we keep and flag).
-  const { ts, raw: tsRaw } = timestampFromText(head)
+  const { ts: parsedTs, raw: tsRaw } = timestampFromText(head, options.parsingProfile?.timestamp?.timezoneOffsetMinutes)
+  const tsOriginal = parsedTs ?? draft.criTs
+  const clockOffsetMs = options.clockOffsetMs ?? options.parsingProfile?.timestamp?.clockOffsetMs ?? 0
   const { level, raw: levelRaw } = levelFromText(head)
   const threadLogger = JAVA_THREAD_LOGGER.exec(head)
   let message = head.trim()
@@ -260,7 +284,11 @@ function buildEvent(draft: Draft, id: number, decodeNestedJson: boolean): LogEve
     // the dedicated `parseError` flag is what the UI badges and filters on.
     level: parseError ? 'unknown' : level,
     levelRaw: parseError ? 'unparsed' : levelRaw,
-    ts: ts ?? draft.criTs,
+    ts: tsOriginal === null ? null : tsOriginal + clockOffsetMs,
+    tsOriginal,
+    clockOffsetMs,
+    parsingProfileId: options.parsingProfile?.id,
+    normalizationWarnings: [],
     tsRaw: tsRaw || (draft.criTs !== null ? new Date(draft.criTs).toISOString() : ''),
     message,
     service: '',
@@ -357,7 +385,10 @@ function parseJsonDocument(text: string, format: LogFormat, options: ParseOption
       continue
     }
     const payload = item as Record<string, unknown>
-    const { fields, extra, decoded } = normalizePayload(payload, { decodeNestedJson })
+    const normalized = normalizePayload(payload, { decodeNestedJson, parsingProfile: options.parsingProfile })
+    const { fields, extra, decoded } = normalized
+    const tsOriginal = fields.ts
+    const clockOffsetMs = options.clockOffsetMs ?? options.parsingProfile?.timestamp?.clockOffsetMs ?? 0
     if (fields.ts === null) {
       warningCount++
       if (warnings.length < ISSUE_SAMPLE_LIMIT) {
@@ -369,6 +400,14 @@ function parseJsonDocument(text: string, format: LogFormat, options: ParseOption
       line: 1,
       lineCount: 1,
       ...fields,
+      ts: tsOriginal === null ? null : tsOriginal + clockOffsetMs,
+      tsOriginal,
+      clockOffsetMs,
+      parsingProfileId: options.parsingProfile?.id,
+      normalizedDurationMs: normalized.durationMs,
+      normalizedRequestBody: normalized.requestBody,
+      normalizedResponseBody: normalized.responseBody,
+      normalizationWarnings: normalized.warnings,
       message: fields.message || raw.slice(0, 200),
       stack: stringField(extra, ['stack', 'stack_trace', 'stackTrace', 'exception', 'error.stack']),
       json: payload,
@@ -378,6 +417,10 @@ function parseJsonDocument(text: string, format: LogFormat, options: ParseOption
       raw,
       parseError: '',
     })
+    for (const warning of normalized.warnings) {
+      warningCount++
+      if (warnings.length < ISSUE_SAMPLE_LIMIT) warnings.push({ line: 1, message: warning, excerpt: raw.slice(0, 240) })
+    }
   }
 
   return {
@@ -403,6 +446,7 @@ function scalarEvent(id: number, raw: string): LogEvent {
     message: raw, service: '', namespace: '', pod: '', container: '', traceId: '',
     correlationId: '', requestId: '', thread: '', logger: '', stack: '', json: null,
     prefix: '', extra: {}, decoded: {}, raw, parseError: 'Array element is not an object',
+    tsOriginal: null, clockOffsetMs: 0, normalizationWarnings: [],
   }
 }
 

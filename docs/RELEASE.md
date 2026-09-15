@@ -2,6 +2,13 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+## v0.9.10 release notes: AI-assisted flows and trustworthy diagnostics
+
+See [the full v0.9.10 notes](releases/v0.9.10.md). This release completes the
+Log Inspector P3 investigation workflow, turns natural-language API sequences
+into executable flows with data handoffs and recovery branches, and upgrades
+stress runs with scenario presets, release gates and actionable diagnostics.
+
 ## v0.9.9 release notes: flow stress tests and faster variables
 
 See [the full v0.9.9 notes](releases/v0.9.9.md). Flows gain a concurrent stress

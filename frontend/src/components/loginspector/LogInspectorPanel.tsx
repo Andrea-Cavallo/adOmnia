@@ -45,6 +45,7 @@ import { EvidencePreviewPanel } from './EvidencePreviewPanel'
 import { ChainProposalPanel } from './ChainProposalPanel'
 import { LiveSourcePanel } from './LiveSourcePanel'
 import { LargeFilePanel } from './LargeFilePanel'
+import { AdvancedAnalysisPanel } from './AdvancedAnalysisPanel'
 import { useLiveSources } from './useLiveSources'
 import { LogInspectorToolbar, type ToolbarMenu } from './LogInspectorToolbar'
 import { ErrorBar, ImportProgressBar, SummaryBar } from './StatusBars'
@@ -69,6 +70,7 @@ export function LogInspectorPanel() {
   const [chainKey, setChainKey] = useState<string | null>(null)
   const [showLive, setShowLive] = useState(false)
   const [showLargeFile, setShowLargeFile] = useState(false)
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const [bookmarks, setBookmarks] = useState<number[]>([])
   const [notes, setNotes] = useState('')
   const [sessionReady, setSessionReady] = useState(false)
@@ -93,7 +95,7 @@ export function LogInspectorPanel() {
 
   const {
     source, sources, events, summary, discovery, schema, progress, error,
-    setError, ingest, openFiles, renameSource, toggleSource, removeSource, replaceSource, restoreSources,
+    setError, ingest, openFiles, renameSource, toggleSource, removeSource, replaceSource, configureSource, restoreSources,
     pasteAndAnalyze, appendLiveLines, clearImport, requestAbort,
   } = useLogImport({ maxEvents: prefs.maxEvents, streamPreview, onReset: clearSelection })
 
@@ -116,7 +118,11 @@ export function LogInspectorPanel() {
     restoreStartedRef.current = true
     void loadInvestigation().then(async (restored) => {
       if (!restored) return
-      const restoredSources = restored.sources.map((metadata) => ({ ...metadata, text: restored.sourceContents[metadata.id] ?? '' }))
+      const restoredSources = restored.sources.map((metadata) => ({
+        ...metadata,
+        text: restored.sourceContents[metadata.id] ?? '',
+        clockOffsetMs: metadata.clockOffsetMs ?? metadata.parsingProfile?.timestamp?.clockOffsetMs ?? 0,
+      }))
       await restoreSources(restoredSources)
       setFilters(restored.ui.filters)
       setSelectedId(restored.ui.selectedId)
@@ -228,6 +234,10 @@ export function LogInspectorPanel() {
     () => comparisonKeys.map((key) => analysis.requests.find((request) => requestComparisonKey(request) === key)).filter((request): request is AnalyzedRequest => Boolean(request)),
     [analysis.requests, comparisonKeys],
   )
+  const selectedRequest = useMemo(
+    () => selected ? analysis.requests.find((request) => request.eventIds.includes(selected.id)) ?? null : null,
+    [analysis.requests, selected],
+  )
 
   useEffect(() => {
     const format = summary?.format || ''
@@ -251,7 +261,8 @@ export function LogInspectorPanel() {
       const typing = Boolean(target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable))
 
       if (keyEvent.key === 'Escape') {
-        if (related) setRelated(null)
+        if (showAdvanced) setShowAdvanced(false)
+        else if (related) setRelated(null)
         else if (selectedId !== null) setSelectedId(null)
         else if (menu) setMenu(null)
         return
@@ -276,7 +287,7 @@ export function LogInspectorPanel() {
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [clearAll, events.length, menu, pasteAndAnalyze, related, selectedId])
+  }, [clearAll, events.length, menu, pasteAndAnalyze, related, selectedId, showAdvanced])
 
   // ─── Resizing ──────────────────────────────────────────────────────────────
 
@@ -372,6 +383,8 @@ export function LogInspectorPanel() {
         onToggleFilters={() => setShowFilters((value) => !value)}
         showAnalysis={showAnalysis}
         onToggleAnalysis={() => setShowAnalysis((value) => !value)}
+        advancedActive={showAdvanced}
+        onToggleAdvanced={() => setShowAdvanced((value) => !value)}
         sortDir={sortDir}
         onToggleSort={() => setSortDir((value) => (value === 'asc' ? 'desc' : 'asc'))}
         masked={masked}
@@ -543,6 +556,19 @@ export function LogInspectorPanel() {
             void openFiles([new File([text], name, { type: 'text/plain' })])
             setShowLargeFile(false)
           }}
+        />
+      )}
+
+      {showAdvanced && (
+        <AdvancedAnalysisPanel
+          events={baseEvents}
+          analysis={analysis}
+          sources={sources}
+          selectedRequest={selectedRequest}
+          maskFields={prefs.maskFields}
+          onConfigureSource={configureSource}
+          onSelectEventId={(id) => { setSelectedId(id); setShowAdvanced(false) }}
+          onClose={() => setShowAdvanced(false)}
         />
       )}
 

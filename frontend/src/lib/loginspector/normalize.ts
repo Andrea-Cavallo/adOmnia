@@ -1,4 +1,5 @@
 import type { LogEventFields, LogLevel } from './types'
+import { durationToMilliseconds, type ParsingField, type ParsingProfile } from './parsingProfiles'
 
 // ─── Field aliases ────────────────────────────────────────────────────────────
 // Order matters: the first key present wins.
@@ -134,7 +135,7 @@ export function startsWithTimestamp(text: string): boolean {
 }
 
 /** Convert a timestamp of any recognized shape to epoch ms, or null. */
-export function parseTimestamp(raw: unknown): number | null {
+export function parseTimestamp(raw: unknown, timezoneOffsetMinutes?: number): number | null {
   if (raw === null || raw === undefined || raw === '') return null
   if (typeof raw === 'number' && Number.isFinite(raw)) return epochToMs(raw)
 
@@ -156,6 +157,14 @@ export function parseTimestamp(raw: unknown): number | null {
   let candidate = text.replace(',', '.')
   if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(candidate)) candidate = candidate.replace(' ', 'T')
   candidate = candidate.replace(/(\.\d{3})\d+/, '$1')
+  // Date.parse treats zone-less timestamps as machine-local time. A profile can
+  // make the source timezone explicit, producing the same epoch on every OS.
+  if (timezoneOffsetMinutes !== undefined && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(candidate)
+    && !/(?:Z|[+-]\d{2}:?\d{2})$/i.test(candidate)) {
+    const sign = timezoneOffsetMinutes >= 0 ? '+' : '-'
+    const absolute = Math.abs(timezoneOffsetMinutes)
+    candidate += `${sign}${String(Math.floor(absolute / 60)).padStart(2, '0')}:${String(absolute % 60).padStart(2, '0')}`
+  }
 
   const parsed = Date.parse(candidate)
   return Number.isFinite(parsed) ? parsed : null
@@ -175,11 +184,11 @@ function monthNumber(name: string): string {
 }
 
 /** Pull the first recognizable timestamp out of a plain-text line. */
-export function timestampFromText(text: string): { ts: number | null; raw: string } {
+export function timestampFromText(text: string, timezoneOffsetMinutes?: number): { ts: number | null; raw: string } {
   for (const pattern of TS_PATTERNS) {
     const match = pattern.exec(text)
     if (!match) continue
-    const ts = parseTimestamp(match[0])
+    const ts = parseTimestamp(match[0], timezoneOffsetMinutes)
     if (ts !== null) return { ts, raw: match[0] }
   }
   return { ts: null, raw: '' }
@@ -193,27 +202,52 @@ export function timestampFromText(text: string): { ts: number | null; raw: strin
 const MAX_FLATTEN_DEPTH = 5
 const MAX_FLATTEN_KEYS = 250
 
+export interface FlattenResult {
+  flat: Record<string, unknown>
+  depthLimited: boolean
+  fieldsLimited: boolean
+}
+
 /**
  * Flatten nested objects into dotted paths, keeping the containers too, so both
  * `attributes` and `attributes.http.status_code` are addressable. Arrays are
  * kept whole: you filter on scalars, not on element positions.
  */
-export function flattenPayload(payload: Record<string, unknown>): Record<string, unknown> {
+export function flattenPayloadDetailed(
+  payload: Record<string, unknown>,
+  limits: { maxDepth?: number; maxFields?: number } = {},
+): FlattenResult {
   const flat: Record<string, unknown> = {}
+  const maxDepth = limits.maxDepth ?? MAX_FLATTEN_DEPTH
+  const maxFields = limits.maxFields ?? MAX_FLATTEN_KEYS
+  let fieldCount = 0
+  let depthLimited = false
+  let fieldsLimited = false
 
   const walk = (value: Record<string, unknown>, prefix: string, depth: number) => {
     for (const [key, child] of Object.entries(value)) {
-      if (Object.keys(flat).length >= MAX_FLATTEN_KEYS) return
+      if (fieldCount >= maxFields) {
+        fieldsLimited = true
+        return
+      }
       const path = prefix ? `${prefix}.${key}` : key
-      if (!(path in flat)) flat[path] = child
-      if (child && typeof child === 'object' && !Array.isArray(child) && depth < MAX_FLATTEN_DEPTH) {
-        walk(child as Record<string, unknown>, path, depth + 1)
+      if (!(path in flat)) {
+        flat[path] = child
+        fieldCount++
+      }
+      if (child && typeof child === 'object' && !Array.isArray(child)) {
+        if (depth < maxDepth) walk(child as Record<string, unknown>, path, depth + 1)
+        else if (Object.keys(child as Record<string, unknown>).length) depthLimited = true
       }
     }
   }
 
   walk(payload, '', 0)
-  return flat
+  return { flat, depthLimited, fieldsLimited }
+}
+
+export function flattenPayload(payload: Record<string, unknown>): Record<string, unknown> {
+  return flattenPayloadDetailed(payload).flat
 }
 
 /**
@@ -318,14 +352,32 @@ export interface NormalizedPayload {
   fields: LogEventFields
   extra: Record<string, unknown>
   decoded: Record<string, unknown>
+  durationMs: number | null
+  requestBody: unknown | null
+  responseBody: unknown | null
+  warnings: string[]
+}
+
+function aliases(profile: ParsingProfile | undefined, field: ParsingField, defaults: string[]): string[] {
+  return [...(profile?.fieldMappings[field] ?? []), ...defaults]
+}
+
+function anyValue(lookup: PayloadLookup, paths: string[]): unknown | null {
+  for (const path of paths) {
+    const hit = lookup.get(path)
+    if (hit && hit.value !== undefined && hit.value !== null && hit.value !== '') return hit.value
+  }
+  return null
 }
 
 /** Map an arbitrary JSON payload onto the normalized event fields. */
 export function normalizePayload(
   payload: Record<string, unknown>,
-  options: { decodeNestedJson?: boolean } = {},
+  options: { decodeNestedJson?: boolean; parsingProfile?: ParsingProfile } = {},
 ): NormalizedPayload {
-  const flat = flattenPayload(payload)
+  const profile = options.parsingProfile
+  const flattened = flattenPayloadDetailed(payload, profile?.limits)
+  const flat = flattened.flat
   const lookup = buildLookup(flat)
   const consumed = new Set<string>()
 
@@ -335,43 +387,60 @@ export function normalizePayload(
     return found.value
   }
 
-  const levelHit = pick(lookup, LEVEL_KEYS)
+  const levelHit = pick(lookup, aliases(profile, 'level', LEVEL_KEYS))
   if (levelHit.key) consumed.add(levelHit.key)
   const rawLevelValue = levelHit.key ? flat[levelHit.key] : ''
 
-  const tsRaw = take(FIELD_ALIASES.tsRaw)
-  let message = take(FIELD_ALIASES.message)
+  const tsRaw = take(aliases(profile, 'timestamp', FIELD_ALIASES.tsRaw))
+  let message = take(aliases(profile, 'message', FIELD_ALIASES.message))
 
   const decoded = options.decodeNestedJson === false ? {} : decodeNested(flat)
   // A message that is itself JSON reads much better as its inner message.
   const decodedMessage = decoded.message ?? decoded.msg ?? decoded.Message
   if (decodedMessage && typeof decodedMessage === 'object') {
-    const inner = pick(buildLookup(decodedMessage as Record<string, unknown>), FIELD_ALIASES.message)
+    const inner = pick(buildLookup(decodedMessage as Record<string, unknown>), aliases(profile, 'message', FIELD_ALIASES.message))
     if (inner.value) message = inner.value
   }
 
   const fields: LogEventFields = {
     level: normalizeLevel(rawLevelValue),
     levelRaw: levelHit.value,
-    ts: parseTimestamp(tsRaw),
+    ts: parseTimestamp(tsRaw, profile?.timestamp?.timezoneOffsetMinutes),
     tsRaw,
     message,
-    service: take(FIELD_ALIASES.service),
-    namespace: take(FIELD_ALIASES.namespace),
-    pod: take(FIELD_ALIASES.pod),
-    container: take(FIELD_ALIASES.container),
-    traceId: take(FIELD_ALIASES.traceId),
-    spanId: take(FIELD_ALIASES.spanId),
-    parentSpanId: take(FIELD_ALIASES.parentSpanId),
-    correlationId: take(FIELD_ALIASES.correlationId),
-    requestId: take(FIELD_ALIASES.requestId),
-    thread: take(FIELD_ALIASES.thread),
-    logger: take(FIELD_ALIASES.logger),
+    service: take(aliases(profile, 'service', FIELD_ALIASES.service)),
+    namespace: take(aliases(profile, 'namespace', FIELD_ALIASES.namespace)),
+    pod: take(aliases(profile, 'pod', FIELD_ALIASES.pod)),
+    container: take(aliases(profile, 'container', FIELD_ALIASES.container)),
+    traceId: take(aliases(profile, 'traceId', FIELD_ALIASES.traceId)),
+    spanId: take(aliases(profile, 'spanId', FIELD_ALIASES.spanId)),
+    parentSpanId: take(aliases(profile, 'parentSpanId', FIELD_ALIASES.parentSpanId)),
+    correlationId: take(aliases(profile, 'correlationId', FIELD_ALIASES.correlationId)),
+    requestId: take(aliases(profile, 'requestId', FIELD_ALIASES.requestId)),
+    thread: take(aliases(profile, 'thread', FIELD_ALIASES.thread)),
+    logger: take(aliases(profile, 'logger', FIELD_ALIASES.logger)),
   }
 
   const extra = omitConsumedFields(payload, consumed)
+  const durationRaw = anyValue(lookup, profile?.fieldMappings.duration ?? [])
+  const durationNumber = typeof durationRaw === 'number' ? durationRaw : Number(durationRaw)
+  const durationMs = durationRaw !== null && Number.isFinite(durationNumber)
+    ? durationToMilliseconds(durationNumber, profile?.durationUnit)
+    : null
+  const warnings = [
+    flattened.depthLimited ? `Field indexing stopped at depth ${profile?.limits?.maxDepth ?? MAX_FLATTEN_DEPTH}. Deeper values remain in raw JSON.` : '',
+    flattened.fieldsLimited ? `Field indexing stopped after ${profile?.limits?.maxFields ?? MAX_FLATTEN_KEYS} fields. Remaining values remain in raw JSON.` : '',
+  ].filter(Boolean)
 
-  return { fields, extra, decoded }
+  return {
+    fields,
+    extra,
+    decoded,
+    durationMs,
+    requestBody: anyValue(lookup, profile?.fieldMappings.requestBody ?? []),
+    responseBody: anyValue(lookup, profile?.fieldMappings.responseBody ?? []),
+    warnings,
+  }
 }
 
 const OMITTED = Symbol('omitted-log-field')

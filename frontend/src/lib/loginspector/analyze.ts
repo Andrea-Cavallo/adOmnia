@@ -1,6 +1,7 @@
 import { buildLookup, flattenPayload } from './normalize'
 import { type CorrelationKey, sortChronologically } from './correlate'
 import type { LogEvent } from './types'
+import { assessChainIntegrity, type ChainIntegrityIssue } from './integrity'
 
 export type RequestStatus = 'success' | 'client-error' | 'server-error' | 'timeout' | 'retry' | 'unknown'
 
@@ -55,6 +56,7 @@ export interface AnalyzedRequest {
   eventCount: number
   error: string
   eventIds: number[]
+  integrity: ChainIntegrityIssue[]
 }
 
 export interface LogAnomaly {
@@ -93,6 +95,7 @@ export interface LogAnalysis {
   environments: string[]
   services: { name: string; version: string }[]
   pods: string[]
+  integrityIssues: ChainIntegrityIssue[]
 }
 
 const contextCache = new WeakMap<LogEvent, OperationalContext>()
@@ -168,11 +171,11 @@ export function operationalContext(event: LogEvent): OperationalContext {
     httpUrl: scalar(event, ['http.url', 'url.full', 'attributes.url', 'attributes.http.url']),
     httpStatus: numeric(event, ['http.status_code', 'http.response.status_code', 'attributes.http.status_code', 'attributes.http_status_code', 'attributes.status_code', 'attributes.status', 'status_code']),
     outcome: scalar(event, ['event.outcome', 'outcome']),
-    durationMs: numeric(event, ['duration_ms', 'attributes.duration_ms', 'attributes.http.duration_ms', 'http.duration_ms']),
+    durationMs: event.normalizedDurationMs ?? numeric(event, ['duration_ms', 'attributes.duration_ms', 'attributes.http.duration_ms', 'http.duration_ms']),
     sourceFile: scalar(event, ['source.file', 'code.filepath', 'caller.file']),
     sourceFunction: scalar(event, ['source.function', 'code.function', 'caller.function']),
     sourceLine: scalar(event, ['source.line', 'code.lineno', 'caller.line']),
-    requestBody: payloadValue(event, [
+    requestBody: event.normalizedRequestBody ?? payloadValue(event, [
       'attributes.request_body',
       'attributes.request.body',
       'attributes.http.request.body',
@@ -184,7 +187,7 @@ export function operationalContext(event: LogEvent): OperationalContext {
       'request.body',
       'request',
     ]),
-    responseBody: payloadValue(event, [
+    responseBody: event.normalizedResponseBody ?? payloadValue(event, [
       'attributes.response_body',
       'attributes.response.body',
       'attributes.http.response.body',
@@ -409,6 +412,7 @@ export function analyzeLog(events: LogEvent[]): LogAnalysis {
       eventCount: requestEvents.length,
       error,
       eventIds: requestEvents.map((event) => event.id),
+      integrity: assessChainIntegrity(requestEvents, identity.key),
     }
     requests.push(request)
 
@@ -462,5 +466,6 @@ export function analyzeLog(events: LogEvent[]): LogAnalysis {
     environments: [...environments],
     services: [...serviceMap].map(([name, version]) => ({ name, version })),
     pods: [...pods],
+    integrityIssues: requests.flatMap((request) => request.integrity),
   }
 }

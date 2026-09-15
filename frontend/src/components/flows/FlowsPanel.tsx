@@ -936,6 +936,11 @@ function AiFlowDrawer({
   onApply: () => void
   onClose: () => void
 }) {
+  const examples = [
+    'Call A, extract customer.id as customerId, then send it in the JSON body of B. If B times out or returns 500, call D; otherwise finish successfully.',
+    'Authenticate, extract access_token, call the profile endpoint with Bearer {{token}}, then branch on profile.active.',
+    'Create an order, assert HTTP 201, extract order.id and use it in GET /orders/{{orderId}}. Retry creation twice before the error path.',
+  ]
   return (
     <aside className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface-1">
       <div className="flex h-14 items-center gap-3 border-b border-border-1 px-4">
@@ -954,9 +959,16 @@ function AiFlowDrawer({
             value={instructions}
             onChange={(event) => setInstructions(event.target.value)}
             spellCheck={false}
-            placeholder="POST /auth/login, extract access_token as token, then GET /users/me with Authorization: Bearer {{token}}..."
+            placeholder="Call A, extract customer.id as customerId, then call B with {{customerId}}. If B times out or returns 500, call D..."
             className="h-44 w-full resize-none rounded-lg border border-border-2 bg-surface-0 p-3 text-xs leading-5 text-text-1 outline-none placeholder:text-text-4 focus:border-accent"
           />
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {examples.map((example, index) => (
+              <button key={example} type="button" onClick={() => setInstructions(example)} className="rounded-md border border-border-1 bg-surface-0 px-2 py-1 text-left text-[10px] text-text-3 transition-colors hover:border-accent/40 hover:text-text-1">
+                {index === 0 ? 'Fallback + data handoff' : index === 1 ? 'Auth + condition' : 'Assertion + retry'}
+              </button>
+            ))}
+          </div>
         </div>
 
         {error && <div className="rounded-lg border border-error/30 bg-error/10 px-3 py-2 text-[11px] text-error">{error}</div>}
@@ -974,6 +986,8 @@ function AiFlowDrawer({
             </div>
             <PreviewList title="API calls" items={preview.summary.apiCalls} />
             <PreviewList title="Variables" items={preview.summary.variables} />
+            <PreviewList title="Data handoffs" items={preview.summary.dataHandoffs} />
+            <PreviewList title="Recovery paths" items={preview.summary.recoveryPaths} tone="warning" />
             <PreviewList title="Conditions" items={preview.summary.conditions} />
             <PreviewList title="Assertions" items={preview.summary.assertions} />
             <PreviewList title="Missing data" items={preview.summary.missing} tone="warning" />

@@ -7,7 +7,10 @@ import type { RequestItem } from '@/lib/types'
 export const MAX_STRESS_VUS = 25
 export const STRESS_SAMPLE_CAP = 200_000
 
+export type StressScenario = 'custom' | 'smoke' | 'load' | 'spike' | 'soak'
+
 export interface FlowStressConfig {
+  scenario?: StressScenario
   vus: number
   rampUpS: number
   mode: 'iterations' | 'duration'
@@ -16,9 +19,23 @@ export interface FlowStressConfig {
   durationS: number
   /** Pause between two iterations of the same VU */
   thinkTimeMs: number
+  /** Zero disables p95/throughput gates; zero error rate means strict zero tolerance. */
+  maxP95Ms?: number
+  maxErrorPct?: number
+  minRps?: number
 }
 
-export const DEFAULT_STRESS_CONFIG: FlowStressConfig = { vus: 5, rampUpS: 0, mode: 'iterations', iterations: 50, durationS: 30, thinkTimeMs: 0 }
+export const DEFAULT_STRESS_CONFIG: FlowStressConfig = {
+  scenario: 'custom', vus: 5, rampUpS: 0, mode: 'iterations', iterations: 50, durationS: 30, thinkTimeMs: 0,
+  maxP95Ms: 1000, maxErrorPct: 1, minRps: 0,
+}
+
+export const STRESS_PRESETS: Array<{ id: Exclude<StressScenario, 'custom'>; label: string; description: string; config: Partial<FlowStressConfig> }> = [
+  { id: 'smoke', label: 'Smoke', description: 'Fast correctness signal', config: { vus: 1, rampUpS: 0, mode: 'iterations', iterations: 10, thinkTimeMs: 0 } },
+  { id: 'load', label: 'Load', description: 'Sustained expected traffic', config: { vus: 10, rampUpS: 10, mode: 'duration', durationS: 60, thinkTimeMs: 100 } },
+  { id: 'spike', label: 'Spike', description: 'Abrupt peak traffic', config: { vus: 25, rampUpS: 2, mode: 'duration', durationS: 30, thinkTimeMs: 0 } },
+  { id: 'soak', label: 'Soak', description: 'Long stability run', config: { vus: 5, rampUpS: 30, mode: 'duration', durationS: 600, thinkTimeMs: 250 } },
+]
 
 export interface StressProgress {
   stats: StressStats
@@ -55,6 +72,9 @@ export function validateStressConfig(config: FlowStressConfig): string[] {
   if (config.mode === 'iterations' && (!Number.isInteger(config.iterations) || !between(config.iterations, 1, 100_000))) errors.push('Iterations must be a whole number between 1 and 100000.')
   if (config.mode === 'duration' && !between(config.durationS, 1, 3600)) errors.push('Duration must be between 1 and 3600 seconds.')
   if (!between(config.thinkTimeMs, 0, 60_000)) errors.push('Think time must be between 0 and 60000 ms.')
+  if (config.maxP95Ms !== undefined && !between(config.maxP95Ms, 0, 600_000)) errors.push('The p95 SLO must be between 0 and 600000 ms.')
+  if (config.maxErrorPct !== undefined && !between(config.maxErrorPct, 0, 100)) errors.push('The error-rate SLO must be between 0 and 100%.')
+  if (config.minRps !== undefined && !between(config.minRps, 0, 1_000_000)) errors.push('The throughput SLO must be between 0 and 1000000 req/s.')
   return errors
 }
 

@@ -14,6 +14,7 @@ import {
   type LogFormat,
   type ParsedSourceSummary,
   type ParseSummary,
+  type ParsingProfile,
   type StoredSchema,
 } from '@/lib/loginspector'
 
@@ -36,6 +37,8 @@ export interface LogSessionSource {
   format: LogFormat
   firstTs: number | null
   lastTs: number | null
+  parsingProfile?: ParsingProfile
+  clockOffsetMs: number
 }
 
 export interface LogImport {
@@ -54,6 +57,7 @@ export interface LogImport {
   toggleSource: (id: string) => void
   removeSource: (id: string) => void
   replaceSource: (id: string, file: File) => Promise<void>
+  configureSource: (id: string, config: { parsingProfile?: ParsingProfile; clockOffsetMs?: number }) => void
   restoreSources: (sources: LogSessionSource[]) => Promise<void>
   pasteAndAnalyze: () => Promise<void>
   appendLiveLines: (sourceId: string, displayName: string, lines: string[]) => void
@@ -137,6 +141,8 @@ export function useLogImport({ maxEvents, streamPreview, onReset }: Options): Lo
         kind: item.kind,
         bytes: item.bytes,
         sourceId: item.id,
+        parsingProfile: item.parsingProfile,
+        clockOffsetMs: item.clockOffsetMs,
       }))
 
     setError('')
@@ -224,6 +230,8 @@ export function useLogImport({ maxEvents, streamPreview, onReset }: Options): Lo
     format: 'empty',
     firstTs: null,
     lastTs: null,
+    parsingProfile: result.parsingProfile,
+    clockOffsetMs: result.clockOffsetMs ?? result.parsingProfile?.timestamp?.clockOffsetMs ?? 0,
   }), [])
 
   const ingest = useCallback(
@@ -330,6 +338,14 @@ export function useLogImport({ maxEvents, streamPreview, onReset }: Options): Lo
     }
   }, [commitSources, parseSources])
 
+  const configureSource = useCallback((id: string, config: { parsingProfile?: ParsingProfile; clockOffsetMs?: number }) => {
+    updateAndParse((current) => current.map((item) => item.id === id ? {
+      ...item,
+      parsingProfile: config.parsingProfile,
+      clockOffsetMs: config.clockOffsetMs ?? item.clockOffsetMs,
+    } : item), true)
+  }, [updateAndParse])
+
   const appendLiveLines = useCallback((sourceId: string, displayName: string, lines: string[]) => {
     if (!lines.length) return
     const chunk = lines.join('\n')
@@ -373,7 +389,7 @@ export function useLogImport({ maxEvents, streamPreview, onReset }: Options): Lo
 
   return {
     source, sources, events, summary, discovery, schema, progress, error,
-    setError, ingest, openFiles, renameSource, toggleSource, removeSource, replaceSource, restoreSources,
+    setError, ingest, openFiles, renameSource, toggleSource, removeSource, replaceSource, configureSource, restoreSources,
     pasteAndAnalyze, appendLiveLines, clearImport, requestAbort,
   }
 }

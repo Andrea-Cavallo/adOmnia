@@ -58,6 +58,7 @@ export function AnalysisOverview({ analysis, onFilterRequest, onClose, onSelectE
         {failures > 0 && <Metric label="critical" value={failures} tone="error" />}
         {warnings > 0 && <Metric label="warnings" value={warnings} tone="warning" />}
         {analysis.errorGroups.length > 0 && <Metric label="error groups" value={analysis.errorGroups.length} tone="error" />}
+        {analysis.integrityIssues.length > 0 && <Metric label="integrity signals" value={analysis.integrityIssues.length} tone="warning" />}
         {analysis.sensitiveFields.length > 0 && (
           <span className="flex items-center gap-1 rounded bg-warning/10 px-1.5 py-0.5 text-[9px] text-warning" title="Potential clear-text sensitive fields">
             <ShieldAlert size={10} /> {analysis.sensitiveFields.length} sensitive fields
@@ -143,6 +144,15 @@ export function AnalysisOverview({ analysis, onFilterRequest, onClose, onSelectE
               <p key={`${anomaly.correlationId}-${anomaly.kind}-${index}`} className={cn('truncate py-0.5 text-[10px]', anomaly.severity === 'error' ? 'text-error' : 'text-warning')} title={`${anomaly.evidence} ${anomaly.action}`}>
                 {anomaly.title}: <span className="text-text-3">{anomaly.evidence}. {anomaly.action}</span>
               </p>
+            ))}
+          </div>
+        )}
+        {analysis.integrityIssues.length > 0 && (
+          <div className="border-t border-border-1 px-3 py-1.5">
+            {analysis.integrityIssues.slice(0, 4).map((issue, index) => (
+              <button key={`${issue.kind}-${index}`} onClick={() => issue.eventIds[0] !== undefined && onSelectEventId(issue.eventIds[0])} className="block w-full truncate py-0.5 text-left text-[10px] text-warning" title={issue.detail}>
+                {issue.title}: <span className="text-text-3">{issue.detail}</span>
+              </button>
             ))}
           </div>
         )}
