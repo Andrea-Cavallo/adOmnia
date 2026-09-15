@@ -49,7 +49,7 @@ var singleInstanceKey = [32]byte{
 }
 
 func main() {
-	if len(os.Args) > 1 && (os.Args[1] == "run" || os.Args[1] == "lint") {
+	if len(os.Args) > 1 && (os.Args[1] == "run" || os.Args[1] == "lint" || os.Args[1] == "stress") {
 		os.Exit(adomniacli.Run(os.Args[1:], os.Stdout, os.Stderr))
 	}
 

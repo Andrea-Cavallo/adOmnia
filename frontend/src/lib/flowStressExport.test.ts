@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { StressRun } from './flowStress'
 import { createStressAccumulator, type StressSample } from './flowStressStats'
-import { baselineStep, deltaPct, parseStressJson, sparklinePoints, stressCsv, stressFileName, stressHtml, stressJson, utf8ToBase64 } from './flowStressExport'
+import { baselineStep, deltaPct, parseStressJson, sparklinePoints, stressCsv, stressFileName, stressHtml, stressJson, stressJUnit, stressPlanFileName, stressPlanJson, utf8ToBase64 } from './flowStressExport'
+import { DEFAULT_FLOW_SETTINGS } from './flowStorage'
 
 const samples: StressSample[] = [
   { t: 12, vu: 0, iteration: 0, nodeId: 'a', step: 'Login, "v2"', status: 'success', httpStatus: 200, latencyMs: 20, stepMs: 25, bytes: 100 },
@@ -10,7 +11,7 @@ const samples: StressSample[] = [
 
 const run = (): StressRun => {
   const acc = createStressAccumulator()
-  samples.forEach(acc.add)
+  samples.forEach((sample) => acc.add(sample))
   return {
     config: { vus: 2, rampUpS: 0, mode: 'iterations', iterations: 2, durationS: 30, thinkTimeMs: 0 },
     startedAt: '2026-09-11T10:20:30.000Z', finishedAt: '2026-09-11T10:20:32.000Z', status: 'completed',
@@ -21,9 +22,23 @@ const run = (): StressRun => {
 describe('flow stress export', () => {
   it('writes one quoted CSV row per sample', () => {
     const lines = stressCsv(samples).trimEnd().split('\r\n')
-    expect(lines[0]).toBe('t_ms,vu,iteration,step,status,http_status,latency_ms,step_ms,bytes,error')
-    expect(lines[1]).toBe('12,0,0,"Login, ""v2""",success,200,20,25,100,')
+    expect(lines[0]).toBe('t_ms,vu,iteration,phase,measured,step,status,http_status,latency_ms,step_ms,bytes,error')
+    expect(lines[1]).toBe('12,0,0,,true,"Login, ""v2""",success,200,20,25,100,')
     expect(stressCsv(samples)).toContain('"line1\nline2"')
+  })
+
+  it('writes release gates as JUnit test cases', () => {
+    const xml = stressJUnit(run(), 'Checkout & Pay')
+    expect(xml).toContain('Checkout &amp; Pay stress SLOs')
+    expect(xml).toContain('<failure')
+    expect(xml).toContain('Error rate')
+  })
+
+  it('exports a portable headless stress plan without runtime samples', () => {
+    const plan = JSON.parse(stressPlanJson({ nodes: [], edges: [], settings: DEFAULT_FLOW_SETTINGS }, run().config, 'Checkout'))
+    expect(plan).toMatchObject({ format: 'adomnia-flow-stress-plan', version: 1, flowName: 'Checkout' })
+    expect(plan.samples).toBeUndefined()
+    expect(stressPlanFileName('Checkout / v2')).toBe('checkout-v2.stress.json')
   })
 
   it('tags the JSON export', () => {
@@ -41,6 +56,10 @@ describe('flow stress export', () => {
     expect(html).not.toContain('<script>x')
     expect(html).toContain('&lt;script&gt;')
     expect(html).toContain('Login, &quot;v2&quot;')
+    expect(html).toContain('Traffic over time')
+    expect(html).toContain('Latency by flow step')
+    expect(html).toContain('Error rate · right')
+    expect(html).toContain('p99 range')
   })
 
   it('builds safe file names, base64 and sparkline points', () => {

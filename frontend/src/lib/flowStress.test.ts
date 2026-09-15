@@ -87,9 +87,28 @@ describe('runFlowStress', () => {
   })
 
   it('rejects out-of-range configs', async () => {
-    expect(validateStressConfig(config({ vus: 26 }))).toHaveLength(1)
+    expect(validateStressConfig(config({ vus: 201 }))).toHaveLength(1)
     expect(validateStressConfig(config({ mode: 'duration', durationS: 0 }))).toHaveLength(1)
     expect(validateStressConfig(DEFAULT_STRESS_CONFIG)).toEqual([])
     await expect(runFlowStress(graph, config({ vus: 0 }), { initialVars: {} })).rejects.toThrow('Virtual users')
+  })
+
+  it('runs staged load, excludes warm-up samples and injects dataset variables', async () => {
+    const seen: string[] = []
+    const execute: RunFlowStressOptions['execute'] = async (_req, vars) => {
+      seen.push(`${vars.user}:${vars.__vu}:${vars.__iteration}`)
+      return { response: response(200), vars, mutations: {}, scriptRuns: [] }
+    }
+    const run = await runFlowStress(graph, config({
+      mode: 'stages', vus: 2, thinkTimeMs: 1,
+      stages: [
+        { id: 'warm', label: 'Warm-up', durationS: 0.05, targetVus: 1, rampS: 0, measure: false },
+        { id: 'steady', label: 'Steady', durationS: 0.1, targetVus: 2, rampS: 0, measure: true },
+      ],
+    }), { initialVars: {}, execute, dataset: { name: 'users.csv', columns: ['user'], rows: [{ user: 'a' }, { user: 'b' }] } })
+    expect(run.samples.some((sample) => sample.phase === 'Warm-up' && sample.measured === false)).toBe(true)
+    expect(run.stats.excludedRequests).toBeGreaterThan(0)
+    expect(run.stats.totalRequests).toBeGreaterThan(0)
+    expect(seen.some((value) => value.startsWith('a:'))).toBe(true)
   })
 })

@@ -4,6 +4,20 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [0.9.11] - 2026-09-15
+
+### Added
+- **Staged Flow Stress:** editable warm-up, steady, spike, recovery and cooldown phases support target VUs, ramp duration and explicit measurement inclusion, with up to 200 local virtual users.
+- **Dataset-driven flows:** CSV columns become per-iteration variables with sequential, per-VU or pseudo-random row allocation plus built-in VU, iteration, timestamp and UUID values.
+- **Performance diagnostics:** APDEX and its release gate, active-VU timeline, latency histogram, and a persistent 12-run p95/RPS trend join the existing traffic, error, percentile and baseline views.
+- **Headless flow stress:** portable CI plans run through `adomnia stress` with data handoffs, retries and error branches plus CLI/JSON/JUnit output, dataset/env overrides and non-zero gate failures.
+
+### Changed
+- **Decision-grade reports:** warm-up/cooldown traffic no longer distorts measured RPS or percentiles; CSV marks phase/measurement and offline HTML carries the richer charts.
+- **Local history:** recent flow stress summaries survive restart and can be selected as comparison baselines without reopening an export.
+
+Full release notes: [v0.9.11](docs/releases/v0.9.11.md).
+
 ## [0.9.10] - 2026-09-15
 
 ### Added

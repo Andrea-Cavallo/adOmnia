@@ -27,6 +27,8 @@ describe('stress accumulator diagnostics', () => {
     expect(stats.overall).toMatchObject({ min: 10, p50: 90, p95: 100, max: 100 })
     expect(stats).toMatchObject({ bytes: 500, bytesPerSecond: 500, statuses: { 200: 1, 500: 2 } })
     expect(stats.errorGroups).toEqual([expect.objectContaining({ fingerprint: 'order <n> failed', count: 2, steps: ['Checkout'], statuses: ['500'] })])
+    expect(stats.apdex.score).toBeGreaterThanOrEqual(0)
+    expect(stats.distribution.length).toBeGreaterThan(0)
   })
 })
 
@@ -53,9 +55,9 @@ describe('createStressAccumulator', () => {
     expect(stats.steps.find((step) => step.nodeId === 'b')!.statuses).toEqual({ ERR: 1 })
     expect(stats).toMatchObject({ totalRequests: 4, totalErrors: 2, iterationsOk: 1, iterationsFailed: 1, rps: 1, slowestStep: 'Login' })
     expect(stats.timeline).toEqual([
-      { s: 0, requests: 2, errors: 0 },
-      { s: 1, requests: 0, errors: 0 },
-      { s: 2, requests: 2, errors: 2 },
+      { s: 0, requests: 2, errors: 0, activeVus: 0 },
+      { s: 1, requests: 0, errors: 0, activeVus: 0 },
+      { s: 2, requests: 2, errors: 2, activeVus: 0 },
     ])
   })
 })

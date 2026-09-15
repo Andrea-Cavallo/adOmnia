@@ -63,10 +63,11 @@ Editors inside a flow step now also see variables extracted by other steps and t
 run's values (`lib/flowScopeVars.ts`).
 
 New: flow **Stress test** dock (`lib/flowStress.ts`, `lib/flowStressStats.ts`,
-`lib/flowStressExport.ts`, `components/flows/FlowStressPanel.tsx`). Up to 25 virtual
-users, iterations or duration, CSV/JSON/HTML exports, baseline comparison from a
-previous JSON export (per-step Δ p95, throughput). Verified: 17 new unit tests,
-full vitest suite and production frontend build.
+`lib/flowStressExport.ts`, `components/flows/FlowStressPanel.tsx`). Up to 200 local
+virtual users, iterations/duration or editable stages, CSV/JSON/JUnit/HTML exports,
+APDEX, active-user/distribution/trend charts, persisted history and baseline
+comparison. Portable plans run headlessly through `adomnia stress` with CI exit
+codes and dataset/environment injection.
 
 Desktop verification (production executable driven over CDP): Mock Commerce demo,
 10 VU × 30 s with 2 s ramp-up — 3385 requests, 112.8 req/s, 0 errors, 843 iterations,
@@ -77,7 +78,7 @@ themes; right-click Edit / Copy value / Copy reference on body and URL variables
 |---|---|
 | P3 | Export files were not opened from the native save dialog during the desktop pass; builders are covered by unit tests. |
 | P3 | Scoped variables ignore graph order: a step also sees variables produced by later steps. |
-| P3 | Frontend engine caps at 25 VUs; heavier load needs a Go flow engine. |
+| P3 | Multi-machine distributed load still needs an authenticated worker protocol; the desktop and headless engines intentionally remain local generators. |
 
 ### Flows — recording and demo usability (2026-09-08)
 

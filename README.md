@@ -13,7 +13,7 @@ MCP Client + Server Generator · Versionable collection folders · Headless runn
 > Proudly listed on **[Awesome Wails](https://github.com/wailsapp/awesome-wails)** and **[Awesome HTTP Clients](https://github.com/mrmykey/awesome-http-clients/tree/main)**.
 
 [![Website](https://img.shields.io/badge/Get%20started%20for%20free-8A2BE2)](https://www.adomnia-dev.com)
-[![Release](https://img.shields.io/badge/release-v0.9.10-8A2BE2)](https://github.com/Andrea-Cavallo/adOmnia/releases/tag/v0.9.10)
+[![Release](https://img.shields.io/badge/release-v0.9.11-8A2BE2)](https://github.com/Andrea-Cavallo/adOmnia/releases/tag/v0.9.11)
 [![Awesome Wails](https://img.shields.io/badge/Awesome-Wails-FF3E00?logo=go&logoColor=white)](https://github.com/wailsapp/awesome-wails)
 [![Awesome HTTP Clients](https://img.shields.io/badge/Awesome-HTTP_Clients-4285F4?logo=googlechrome&logoColor=white)](https://github.com/mrmykey/awesome-http-clients/tree/main)
 ![Local First](https://img.shields.io/badge/local--first-yes-22c55e)
@@ -81,7 +81,7 @@ All releases include `SHA256SUMS.txt` and source code archives. Verify your down
 | **API Workspace** | Multiple local workspaces with independent collections and tabs, HTTP client (all methods), environments, `{{variable}}` substitution, OAuth2 PKCE, AWS Signature v4, Digest, cURL/OpenAPI import, scripts, assertions, code generation, response history, deterministic collection-folder export/import |
 | **API Design (spec-first)** | Native OpenAPI 3.x / Swagger 2.x import (file/URL/paste) and round-trip export (JSON/YAML), **Visual OpenAPI Editor** (form-based endpoints, no YAML), **API Docs / Swagger viewer** with integrated governance findings, local OpenAPI linting in the desktop UI and CI |
 | **API Catalog** | Installable public REST API starters, including curated no-auth/free endpoints inspired by `public-apis/public-apis`, imported directly into local adOmnia collections |
-| **Collection Runner & Testing** | Test runner with iterations/delay/retry/CSV datasets, assertion editor (JSONPath, XPath, schema), **AI-generated and recorded API flows** with response-to-request data links and failure branches, Mermaid generation, pan/zoom/auto-layout, SLO-aware flow stress tests, **no-code Visual Test builder** (block-based, export to Flow), **response schema/contract validation**, test data studio, and a headless `adomnia run` CLI for folder-backed collections with CLI/JSON/JUnit reports |
+| **Collection Runner & Testing** | Test runner with iterations/delay/retry/CSV datasets, assertion editor (JSONPath, XPath, schema), **AI-generated and recorded API flows** with response-to-request data links and failure branches, Mermaid generation, pan/zoom/auto-layout, staged SLO/APDEX-aware flow stress tests with clear workload/latency/trend charts, **no-code Visual Test builder** (block-based, export to Flow), **response schema/contract validation**, test data studio, and headless collection/flow runners with CLI/JSON/JUnit reports |
 | **Protocols** | SOAP/WSDL Studio (1.1 & 1.2, WS-Security), gRPC (reflection, offline proto/protoset authoring, unary calls, live cancellable streaming, TLS/mTLS, metadata, trailers, reproducible history and load tests), WebSocket client + mock server, SSE client, **MCP Client/Debugger** + **MCP Server Generator** (collection/OAS → runnable MCP server; stdio multi-session + HTTP transport) |
 | **Brokers** | Kafka (produce/consume/bulk/load test), RabbitMQ, MQTT, Redis Pub/Sub, NATS — shared message log, persistent connection profiles |
 | **Simulation & Infrastructure** | Mock Server Control Room with **Smart Mock Engine** (schema-driven Faker generation), **conditional expectations** (per-field matching), request-focused **Mock this tab** handoff, endpoint explorer, decision-aware traffic, record & replay and round-robin; HTTPS proxy/interceptor (MITM CA, breakpoints, map local/remote, throttling), Docker Lab (14 presets), load testing (HTTP + gRPC, HDR histogram, P99, side-by-side comparison) |
@@ -188,6 +188,17 @@ The same desktop executable can run folder-backed collections without opening th
 ```bash
 adomnia run ./my-collection --env prod --folder "Smoke" --reporter junit --out report.xml --bail
 ```
+
+Flow Stress has the same CI path. Export **CI plan** from the Stress dock, then
+run the exact graph—including response-to-request variables and recovery branches:
+
+```bash
+adomnia stress ./checkout.stress.json --dataset users.csv --env-var BASE_URL=https://staging.example.com --reporter junit --out stress.xml
+```
+
+The stress command returns exit code 1 when a request or p95/error/RPS/APDEX gate
+fails, and exit code 2 for an invalid plan. Dataset rows are supplied separately,
+so a portable plan never embeds test identities or secrets.
 
 Supported today:
 

@@ -50,6 +50,9 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	if args[0] == "lint" {
 		return Lint(args[1:], stdout, stderr)
 	}
+	if args[0] == "stress" {
+		return Stress(args[1:], stdout, stderr)
+	}
 	if args[0] != "run" {
 		return 0
 	}

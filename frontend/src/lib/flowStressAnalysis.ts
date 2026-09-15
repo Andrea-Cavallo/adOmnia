@@ -4,11 +4,11 @@ import type { StressStats } from '@/lib/flowStressStats'
 export type StressVerdict = 'pass' | 'fail' | 'inconclusive'
 
 export interface StressThresholdCheck {
-  id: 'p95' | 'errors' | 'throughput'
+  id: 'p95' | 'errors' | 'throughput' | 'apdex'
   label: string
   actual: number
   target: number
-  unit: 'ms' | '%' | 'req/s'
+  unit: 'ms' | '%' | 'req/s' | ''
   passed: boolean
 }
 
@@ -33,15 +33,20 @@ export function analyzeStressRun(stats: StressStats, config: FlowStressConfig, b
   const maxP95 = config.maxP95Ms ?? 0
   const maxErrors = config.maxErrorPct ?? 0
   const minRps = config.minRps ?? 0
+  const minApdex = config.minApdex ?? 0
   const checks: StressThresholdCheck[] = []
 
   if (maxP95 > 0) checks.push({ id: 'p95', label: 'Overall p95', actual: stats.overall.p95, target: maxP95, unit: 'ms', passed: stats.overall.p95 <= maxP95 })
   if (maxErrors >= 0) checks.push({ id: 'errors', label: 'Error rate', actual: errorPct, target: maxErrors, unit: '%', passed: errorPct <= maxErrors })
   if (minRps > 0) checks.push({ id: 'throughput', label: 'Throughput', actual: stats.rps, target: minRps, unit: 'req/s', passed: stats.rps >= minRps })
+  if (minApdex > 0) checks.push({ id: 'apdex', label: `APDEX (T=${stats.apdex.thresholdMs}ms)`, actual: stats.apdex.score, target: minApdex, unit: '', passed: stats.apdex.score >= minApdex })
 
   const insights: StressInsight[] = []
   if (stats.totalRequests < 20) {
     insights.push({ severity: 'warn', title: 'Small sample', detail: `Only ${stats.totalRequests} requests were observed; tail percentiles are unstable.`, action: 'Run at least 20 requests, and preferably several hundred, before treating p95/p99 as a release signal.' })
+  }
+  if (stats.excludedRequests > 0) {
+    insights.push({ severity: 'info', title: 'Warm-up excluded', detail: `${stats.excludedRequests} requests generated load but were excluded from percentiles and release gates.`, action: 'Keep warm-up excluded when comparing runs so connection setup and cache priming do not distort the regression signal.' })
   }
 
   const tailRatio = stats.overall.p50 > 0 ? stats.overall.p95 / stats.overall.p50 : 0

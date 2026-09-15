@@ -2,6 +2,13 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+## v0.9.11 release notes: performance flows that explain the load
+
+See [the full v0.9.11 notes](releases/v0.9.11.md). Flow Stress gains editable
+stages, CSV data allocation, APDEX, clear workload/distribution/trend charts,
+local run history and a portable `adomnia stress` CI runner with release-gate
+exit codes.
+
 ## v0.9.10 release notes: AI-assisted flows and trustworthy diagnostics
 
 See [the full v0.9.10 notes](releases/v0.9.10.md). This release completes the

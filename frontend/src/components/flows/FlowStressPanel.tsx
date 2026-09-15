@@ -7,11 +7,16 @@ import {
   type FlowStressConfig, type StressProgress, type StressRun,
 } from '@/lib/flowStress'
 import {
-  baselineStep, deltaPct, parseStressJson, sparklinePoints, stressCsv, stressFileName, stressHtml, stressJson, utf8ToBase64,
+  baselineStep, deltaPct, parseStressJson, stressCsv, stressFileName, stressHtml, stressJson, stressJUnit, stressPlanFileName, stressPlanJson, utf8ToBase64,
   type StressBaseline,
 } from '@/lib/flowStressExport'
 import { analyzeStressRun } from '@/lib/flowStressAnalysis'
 import { saveBase64File } from '@/lib/fileUtils'
+import { FlowStressCharts } from '@/components/flows/FlowStressCharts'
+import { FlowStressAdvancedConfig } from '@/components/flows/FlowStressAdvancedConfig'
+import { parseStressDataset, type StressDataset } from '@/lib/flowStressDataset'
+import { loadStressHistory, saveStressHistory, type StressHistoryEntry } from '@/lib/flowStressHistory'
+import { safeSetItem } from '@/lib/safeLocalStorage'
 
 interface FlowStressPanelProps {
   graph: FlowGraphDefinition
@@ -72,7 +77,10 @@ const formatStamp = (iso: string) => iso.slice(0, 19).replace('T', ' ')
 const formatBytes = (bytes: number) => bytes >= 1_000_000 ? `${(bytes / 1_000_000).toFixed(1)} MB/s` : bytes >= 1_000 ? `${(bytes / 1_000).toFixed(1)} kB/s` : `${bytes} B/s`
 
 export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars, onRunningChange }: FlowStressPanelProps) {
-  const [config, setConfig] = useState<FlowStressConfig>(DEFAULT_STRESS_CONFIG)
+  const configKey = `adomnia.flow-stress.config.${encodeURIComponent(flowName.trim().toLowerCase())}`
+  const [config, setConfig] = useState<FlowStressConfig>(() => {
+    try { return { ...DEFAULT_STRESS_CONFIG, ...JSON.parse(localStorage.getItem(configKey) || '{}') } } catch { return DEFAULT_STRESS_CONFIG }
+  })
   const [progress, setProgress] = useState<StressProgress | null>(null)
   const [run, setRun] = useState<StressRun | null>(null)
   const [running, setRunning] = useState(false)
@@ -80,8 +88,17 @@ export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars
   const abortRef = useRef<AbortController | null>(null)
   const [baseline, setBaseline] = useState<StressBaseline | null>(null)
   const baselineInputRef = useRef<HTMLInputElement>(null)
+  const datasetInputRef = useRef<HTMLInputElement>(null)
+  const [dataset, setDataset] = useState<StressDataset | null>(null)
+  const [history, setHistory] = useState<StressHistoryEntry[]>(() => loadStressHistory(flowName))
 
   useEffect(() => () => abortRef.current?.abort(), [])
+  useEffect(() => {
+    try { setConfig({ ...DEFAULT_STRESS_CONFIG, ...JSON.parse(localStorage.getItem(configKey) || '{}') }) } catch { setConfig(DEFAULT_STRESS_CONFIG) }
+    setDataset(null)
+  }, [configKey])
+  useEffect(() => { safeSetItem(configKey, JSON.stringify(config)) }, [config, configKey])
+  useEffect(() => { setHistory(loadStressHistory(flowName)) }, [flowName])
 
   const configErrors = validateStressConfig(config)
   const problem = configErrors[0] ?? blockedReason
@@ -97,7 +114,9 @@ export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars
     setProgress(null)
     setNotice(null)
     try {
-      setRun(await runFlowStress(graph, config, { initialVars: getInitialVars(), signal: controller.signal, onProgress: setProgress }))
+      const nextRun = await runFlowStress(graph, config, { initialVars: getInitialVars(), signal: controller.signal, onProgress: setProgress, dataset: dataset ?? undefined })
+      setRun(nextRun)
+      if (nextRun.stats.totalRequests > 0) setHistory(saveStressHistory(flowName, nextRun))
     } catch (error) {
       setNotice({ text: error instanceof Error ? error.message : String(error), ok: false })
     } finally {
@@ -107,15 +126,30 @@ export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars
     }
   }
 
-  const exportRun = async (ext: 'csv' | 'json' | 'html') => {
+  const exportRun = async (ext: 'csv' | 'json' | 'html' | 'xml') => {
     if (!run) return
-    const text = ext === 'csv' ? stressCsv(run.samples) : ext === 'json' ? stressJson(run, flowName) : stressHtml(run, flowName)
+    const text = ext === 'csv' ? stressCsv(run.samples) : ext === 'json' ? stressJson(run, flowName) : ext === 'xml' ? stressJUnit(run, flowName) : stressHtml(run, flowName)
     try {
       const path = await saveBase64File(stressFileName(flowName, run.startedAt, ext), utf8ToBase64(text))
       setNotice({ text: path ? `Saved ${path}` : 'Export cancelled.', ok: true })
     } catch (error) {
       setNotice({ text: error instanceof Error ? error.message : 'Export failed', ok: false })
     }
+  }
+
+  const loadDataset = async (file: File) => {
+    try {
+      const next = parseStressDataset(await file.text(), file.name)
+      setDataset(next)
+      setNotice({ text: `Loaded ${next.rows.length} dataset rows with ${next.columns.length} variables.`, ok: true })
+    } catch (error) { setNotice({ text: error instanceof Error ? error.message : 'Could not read the dataset.', ok: false }) }
+  }
+
+  const exportPlan = async () => {
+    try {
+      const path = await saveBase64File(stressPlanFileName(flowName), utf8ToBase64(stressPlanJson(graph, config, flowName)))
+      setNotice({ text: path ? `Saved CI plan ${path}. Run: adomnia stress <plan> --reporter junit` : 'Export cancelled.', ok: true })
+    } catch (error) { setNotice({ text: error instanceof Error ? error.message : 'Plan export failed', ok: false }) }
   }
 
   const loadBaseline = async (file: File) => {
@@ -153,10 +187,10 @@ export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars
             ))}
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        {config.mode !== 'stages' && <div className="grid grid-cols-2 gap-2">
           <NumberField label={`Users (max ${MAX_STRESS_VUS})`} value={config.vus} min={1} max={MAX_STRESS_VUS} disabled={running} onChange={(vus) => patch({ vus })} />
           <NumberField label="Ramp-up (s)" value={config.rampUpS} min={0} max={600} disabled={running} onChange={(rampUpS) => patch({ rampUpS })} />
-        </div>
+        </div>}
         <div className="border-t border-border-1 pt-2.5">
           <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-text-4">Release gates · p95/RPS 0 disables</div>
           <div className="grid grid-cols-3 gap-1.5">
@@ -165,8 +199,8 @@ export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars
             <NumberField label="RPS ≥" value={config.minRps ?? 0} min={0} max={1000000} step={0.1} disabled={running} onChange={(minRps) => patch({ minRps })} />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-1 rounded-lg border border-border-2 bg-surface-0 p-0.5" role="radiogroup" aria-label="Stop condition">
-          {(['iterations', 'duration'] as const).map((mode) => (
+        <div className="grid grid-cols-3 gap-1 rounded-lg border border-border-2 bg-surface-0 p-0.5" role="radiogroup" aria-label="Workload model">
+          {(['iterations', 'duration', 'stages'] as const).map((mode) => (
             <button
               key={mode} role="radio" aria-checked={config.mode === mode} disabled={running}
               onClick={() => patch({ mode })}
@@ -179,12 +213,22 @@ export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars
         <div className="grid grid-cols-2 gap-2">
           {config.mode === 'iterations'
             ? <NumberField label="Total iterations" value={config.iterations} min={1} max={100000} disabled={running} onChange={(iterations) => patch({ iterations })} />
-            : <NumberField label="Duration (s)" value={config.durationS} min={1} max={3600} disabled={running} onChange={(durationS) => patch({ durationS })} />}
+            : config.mode === 'duration'
+              ? <NumberField label="Duration (s)" value={config.durationS} min={1} max={3600} disabled={running} onChange={(durationS) => patch({ durationS })} />
+              : <NumberField label="Peak users" value={Math.max(0, ...(config.stages ?? []).map((item) => item.targetVus))} min={0} max={MAX_STRESS_VUS} disabled={true} onChange={() => undefined} />}
           <NumberField label="Think time (ms)" value={config.thinkTimeMs} min={0} max={60000} step={50} disabled={running} onChange={(thinkTimeMs) => patch({ thinkTimeMs })} />
         </div>
+        {config.mode !== 'stages' && <NumberField label="Exclude warm-up (s)" value={config.warmupS ?? 0} min={0} max={3600} disabled={running} onChange={(warmupS) => patch({ warmupS })} />}
+        <div className="grid grid-cols-2 gap-2">
+          <NumberField label="APDEX T (ms)" value={config.apdexTMs ?? 500} min={1} max={600000} disabled={running} onChange={(apdexTMs) => patch({ apdexTMs })} />
+          <NumberField label="APDEX ≥" value={config.minApdex ?? 0} min={0} max={1} step={0.01} disabled={running} onChange={(minApdex) => patch({ minApdex })} />
+        </div>
+        <FlowStressAdvancedConfig config={config} running={running} dataset={dataset} onPatch={patch} onChooseDataset={() => datasetInputRef.current?.click()} onClearDataset={() => setDataset(null)} />
+        <input ref={datasetInputRef} type="file" accept=".csv,text/csv" hidden onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) void loadDataset(file) }} />
         {problem && !running && (
           <p className="flex items-start gap-1.5 text-[11px] text-warning"><AlertTriangle size={12} className="mt-0.5 shrink-0" />{problem}</p>
         )}
+        <button type="button" onClick={() => void exportPlan()} disabled={running || configErrors.length > 0} className={`${exportButton} justify-center disabled:opacity-40`}><FileJson size={12} /> Export CI plan</button>
         <button
           onClick={() => running ? abortRef.current?.abort() : void start()}
           disabled={!running && Boolean(problem)}
@@ -216,13 +260,14 @@ export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-7">
               <Kpi label="Requests" value={String(stats.totalRequests)} />
               <Kpi label="Throughput" value={`${stats.rps} req/s`} />
               <Kpi label="Overall p95 / p99" value={`${stats.overall.p95} / ${stats.overall.p99} ms`} tone={assessment?.checks.find((check) => check.id === 'p95' && !check.passed) ? 'error' : undefined} />
               <Kpi label="Errors" value={`${stats.totalErrors} · ${errorPct}%`} tone={stats.totalErrors ? 'error' : undefined} />
               <Kpi label="Iterations ok / failed" value={`${stats.iterationsOk} / ${stats.iterationsFailed}`} tone={stats.iterationsFailed ? 'error' : stats.iterationsOk ? 'success' : undefined} />
               <Kpi label="Data rate" value={formatBytes(stats.bytesPerSecond)} />
+              <Kpi label="APDEX" value={`${stats.apdex.score} · T=${stats.apdex.thresholdMs}ms`} tone={assessment?.checks.find((check) => check.id === 'apdex' && !check.passed) ? 'error' : undefined} />
             </div>
 
             {assessment && (
@@ -255,12 +300,7 @@ export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars
               </div>
             )}
 
-            {stats.timeline.length > 1 && (
-              <svg viewBox="0 0 300 40" preserveAspectRatio="none" className="h-10 w-full rounded-lg border border-border-1 bg-surface-0" role="img" aria-label="Requests and errors per second">
-                <polyline fill="none" stroke="var(--color-accent)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" points={sparklinePoints(stats.timeline, 300, 38)} />
-                <polyline fill="none" stroke="var(--color-error)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" points={sparklinePoints(stats.timeline, 300, 38, 'errors')} />
-              </svg>
-            )}
+            <FlowStressCharts stats={stats} config={config} baseline={baseline} history={history} />
 
             <div className="overflow-x-auto rounded-lg border border-border-1">
               <table className="w-full font-mono text-[11px]">
@@ -300,7 +340,8 @@ export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars
               </p>
             )}
 
-            {truncated && <p className="text-[11px] text-warning">Raw request log is capped; statistics still cover every request.</p>}
+            {stats.excludedRequests > 0 && <p className="text-[11px] text-info">{stats.excludedRequests} warm-up/cooldown requests generated load but were excluded from release metrics.</p>}
+            {truncated && <p className="text-[11px] text-warning">Raw request log is capped; statistics still cover every measured request.</p>}
 
             {run && (
               <div className="flex flex-wrap items-center gap-2">
@@ -308,6 +349,7 @@ export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars
                 <button onClick={() => void exportRun('csv')} className={exportButton}><FileSpreadsheet size={12} /> CSV log</button>
                 <button onClick={() => void exportRun('json')} className={exportButton}><FileJson size={12} /> JSON</button>
                 <button onClick={() => void exportRun('html')} className={exportButton}><FileCode size={12} /> HTML report</button>
+                <button onClick={() => void exportRun('xml')} className={exportButton}><CheckCircle2 size={12} /> JUnit CI</button>
                 <span className="mx-1 h-4 w-px bg-border-2" aria-hidden="true" />
                 <button onClick={() => baselineInputRef.current?.click()} className={exportButton}>
                   <GitCompare size={12} /> {baseline ? 'Change baseline' : 'Compare with baseline'}
@@ -321,6 +363,12 @@ export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars
                   ref={baselineInputRef} type="file" accept=".json,application/json" hidden
                   onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) void loadBaseline(file) }}
                 />
+                {history.length > 0 && (
+                  <select aria-label="Compare with a saved run" value="" onChange={(event) => { const item = history.find((candidate) => candidate.startedAt === event.target.value); if (item) setBaseline({ flowName: item.flowName, startedAt: item.startedAt, stats: item.stats }) }} className="h-7 rounded-lg border border-border-2 bg-surface-0 px-2 text-[10px] text-text-2">
+                    <option value="">Recent runs ({history.length})</option>
+                    {history.map((item) => <option key={item.startedAt} value={item.startedAt}>{formatStamp(item.startedAt)} · p95 {item.stats.overall.p95}ms · {item.stats.rps} rps</option>)}
+                  </select>
+                )}
               </div>
             )}
           </>
