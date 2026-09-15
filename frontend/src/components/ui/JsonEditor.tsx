@@ -7,6 +7,7 @@ import { useSettingsStore } from '@/stores/settings'
 import { findTextMatches } from '@/lib/textSearch'
 import { prepareJsonEnvironmentExtraction } from '@/lib/jsonTemplateValues'
 import { varNameAtIndex } from '@/lib/substVars'
+import { textIndexAtPoint } from '@/lib/textareaCaret'
 import { ContextMenu } from '@/components/ui/ContextMenu'
 import { VarEditPopover, varEditTarget, type VarEditTarget } from '@/components/ui/VarEditPopover'
 import { useVarContextMenu } from '@/components/ui/varContextMenu'
@@ -99,6 +100,10 @@ function getMeasureCtx(): CanvasRenderingContext2D | null {
  * the given clientX/clientY coordinates, accounting for padding and scroll.
  */
 function charIndexAtPos(ta: HTMLTextAreaElement, clientX: number, clientY: number): number {
+  // Real hit-test first: it follows word wrap. The measurement below assumes one
+  // visual row per line and is only the fallback for engines without caret hit-testing.
+  const hit = textIndexAtPoint(ta, clientX, clientY)
+  if (hit !== null) return hit
   const ctx = getMeasureCtx()
   if (!ctx) return 0
   const rect = ta.getBoundingClientRect()

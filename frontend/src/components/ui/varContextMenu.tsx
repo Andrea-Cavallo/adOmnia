@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ContextMenu } from '@/components/ui/ContextMenu'
-import { varEditTarget, type VarEditTarget } from '@/components/ui/VarEditPopover'
+import { VarEditPopover, varEditTarget, type VarEditTarget } from '@/components/ui/VarEditPopover'
 import { copyToClipboard } from '@/lib/codegen'
 import { FLOW_PENDING_PREFIX } from '@/lib/flowScopeVars'
 import { useKnownUiTranslation } from '@/lib/uiI18n'
+import { varNameAtIndex } from '@/lib/substVars'
+import { textIndexAtPoint } from '@/lib/textareaCaret'
 
 /**
  * Right-click menu for a `{{var}}` token — edit its value, copy the value or
@@ -67,4 +69,31 @@ export function useVarContextMenu(resolvedVars: Record<string, string> | undefin
   )
 
   return { openVarMenu: (name: string, x: number, y: number) => setMenu({ name, x, y }), varMenuElement }
+}
+
+/**
+ * Right-click menu for `{{var}}` tokens in a plain textarea (raw, XML, GraphQL
+ * bodies). Without a token under the pointer the native menu stays available.
+ */
+export function useTextareaVarMenu(resolvedVars: Record<string, string> | undefined) {
+  const [varEdit, setVarEdit] = useState<VarEditTarget | null>(null)
+  const { openVarMenu, varMenuElement } = useVarContextMenu(resolvedVars, setVarEdit)
+
+  const onContextMenu = (event: React.MouseEvent<HTMLTextAreaElement>) => {
+    const field = event.currentTarget
+    const index = textIndexAtPoint(field, event.clientX, event.clientY)
+    const name = index === null ? null : varNameAtIndex(field.value, index)
+    if (!name) return
+    event.preventDefault()
+    openVarMenu(name, event.clientX, event.clientY)
+  }
+
+  const element = (
+    <>
+      {varEdit && <VarEditPopover target={varEdit} onClose={() => setVarEdit(null)} />}
+      {varMenuElement}
+    </>
+  )
+
+  return { onContextMenu, varMenu: element }
 }

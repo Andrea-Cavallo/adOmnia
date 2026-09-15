@@ -12,6 +12,7 @@ import { diagnoseJson } from '@/lib/jsonDiagnostics'
 import { prettyJson } from '@/lib/prettyJson'
 import { findTextMatches } from '@/lib/textSearch'
 import { useScopedResolvedVars } from '@/lib/flowScopeVars'
+import { useTextareaVarMenu } from '@/components/ui/varContextMenu'
 import { useGraphqlCacheStore } from '@/stores/graphqlCache'
 
 interface BodyEditorProps {
@@ -319,6 +320,8 @@ function GraphQLEditor({ body, onChange, requestUrl, search }: { body: RequestBo
   const [error, setError] = useState('')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [showSchema, setShowSchema] = useState(false)
+  const { resolvedVars } = useScopedResolvedVars()
+  const { onContextMenu: openVarMenu, varMenu } = useTextareaVarMenu(resolvedVars)
 
   const loadCache          = useGraphqlCacheStore((s) => s.load)
   const cacheLoaded        = useGraphqlCacheStore((s) => s.loaded)
@@ -415,6 +418,7 @@ function GraphQLEditor({ body, onChange, requestUrl, search }: { body: RequestBo
 
   return (
     <div className="flex flex-col gap-2 px-2 pb-2">
+      {varMenu}
       <label className="text-[10px] uppercase tracking-wider text-text-4 px-1">{tr('Query')}</label>
       <textarea
         ref={queryRef}
@@ -422,6 +426,7 @@ function GraphQLEditor({ body, onChange, requestUrl, search }: { body: RequestBo
         placeholder={"query GetUser($id: ID!) {\n  user(id: $id) {\n    id\n    name\n    email\n  }\n}"}
         value={body.raw ?? ''}
         onChange={e => onChange({ ...body, raw: e.target.value })}
+        onContextMenu={openVarMenu}
         spellCheck={false}
       />
       <div className="flex items-center gap-2">
@@ -473,6 +478,7 @@ function GraphQLEditor({ body, onChange, requestUrl, search }: { body: RequestBo
           placeholder={'{\n  "id": "123"\n}'}
           value={body.graphqlVariables ?? ''}
           onChange={e => { onChange({ ...body, graphqlVariables: e.target.value }); if (requestUrl) setCachedVariables(requestUrl, e.target.value) }}
+          onContextMenu={openVarMenu}
           spellCheck={false}
         />
       )}
@@ -522,6 +528,8 @@ function GraphQLEditor({ body, onChange, requestUrl, search }: { body: RequestBo
 function RawEditor({ body, onChange, search }: { body: RequestBody; onChange: (b: RequestBody) => void; search: BodySearchState }) {
   const [error, setError] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const { resolvedVars } = useScopedResolvedVars()
+  const { onContextMenu: openVarMenu, varMenu } = useTextareaVarMenu(resolvedVars)
 
   useEffect(() => {
     selectTextareaMatch(textareaRef.current, search)
@@ -562,8 +570,10 @@ function RawEditor({ body, onChange, search }: { body: RequestBody; onChange: (b
         }
         value={body.raw ?? ''}
         onChange={e => { onChange({ ...body, raw: e.target.value }); validate(e.target.value) }}
+        onContextMenu={openVarMenu}
         spellCheck={false}
       />
+      {varMenu}
       {error && <p className="text-[10px] text-error font-mono px-1">{error}</p>}
     </div>
   )
