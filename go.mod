@@ -15,9 +15,9 @@ require (
 	github.com/eclipse/paho.mqtt.golang v1.5.1
 	github.com/gabriel-vasile/mimetype v1.4.15
 	github.com/gaissmai/bart v0.29.0
-	github.com/go-sql-driver/mysql v1.10.0
+	github.com/go-sql-driver/mysql v1.10.1
 	github.com/gorilla/websocket v1.5.3
-	github.com/jackc/pgx/v5 v5.10.0
+	github.com/jackc/pgx/v5 v5.11.0
 	github.com/jhump/protoreflect v1.18.1
 	github.com/miekg/dns v1.1.73
 	github.com/nats-io/nats.go v1.53.1
@@ -28,10 +28,10 @@ require (
 	github.com/tidwall/gjson v1.19.0
 	github.com/tidwall/sjson v1.2.5
 	github.com/wI2L/jsondiff v0.7.1
-	github.com/wailsapp/wails/v3 v3.0.0-beta.16
+	github.com/wailsapp/wails/v3 v3.0.0-beta.18
 	github.com/xdg-go/scram v1.2.0
 	go.etcd.io/bbolt v1.5.0
-	go.mongodb.org/mongo-driver/v2 v2.8.2
+	go.mongodb.org/mongo-driver/v2 v2.9.0
 	google.golang.org/grpc v1.83.2
 	google.golang.org/protobuf v1.36.12
 	gopkg.in/yaml.v3 v3.0.1
