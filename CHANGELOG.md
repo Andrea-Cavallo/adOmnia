@@ -4,6 +4,20 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [0.9.12] - 2026-09-16
+
+### Added
+- **MongoDB Explorer:** a Compass-style workspace with a database/collection tree, collection stats and Documents, Aggregations, Schema, Indexes and Validation tabs. Documents supports mongosh-syntax filters, server-side paging, list/JSON/table views, type-preserving edit, clone, delete, insert, JSON/NDJSON/CSV import, filtered export, explain plans and export to mongosh, Node.js, Python, Go and Java. The previous JSON runner remains available.
+- **MongoDB connection options:** URI options (`authSource`, `tls`, `replicaSet`…) and SRV (`mongodb+srv`) connections.
+- **a0: Bug Hunt:** a hidden platformer in the hub (spin the logo three times or hold it for 30 seconds). The first level, Localhost, is complete, runs offline, keeps local records and follows the app language.
+
+### Fixed
+- **MongoDB authentication:** connections no longer fail with `SCRAM-SHA-1 ... not enabled` when the user lives outside the default `authSource`; adOmnia retries with SCRAM-SHA-256 and the selected database, and explains `authSource` on real failures.
+- **Hub logo gesture:** exactly three turns now registers reliably and the logo keeps its momentum before easing upright.
+- **UI localization guard:** new hub labels are translated through the shared UI dictionary.
+
+Full release notes: [v0.9.12](docs/releases/v0.9.12.md).
+
 ## [0.9.11] - 2026-09-15
 
 ### Added

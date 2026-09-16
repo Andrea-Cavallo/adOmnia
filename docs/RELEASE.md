@@ -2,6 +2,13 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+## v0.9.12 release notes: a MongoDB explorer and a hidden game
+
+See [the full v0.9.12 notes](releases/v0.9.12.md). Database Studio gains a
+Compass-style MongoDB explorer with documents, aggregations, schema, indexes and
+validation; MongoDB auth now survives servers that disable SCRAM-SHA-1; and the
+hub hides a small offline platformer, a0: Bug Hunt.
+
 ## v0.9.11 release notes: performance flows that explain the load
 
 See [the full v0.9.11 notes](releases/v0.9.11.md). Flow Stress gains editable
