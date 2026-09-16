@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { Titlebar } from '@/components/layout/Titlebar'
 import { Rail } from '@/components/layout/Rail'
 import { Sidebar } from '@/components/layout/Sidebar'
@@ -29,6 +29,7 @@ import { saveWorkspaceStartupHint } from '@/lib/startupHints'
 import { findSpatialFocusIndex, focusableElements, ownsArrowKey } from '@/lib/accessibility'
 
 const SIDEBAR_WIDTH_KEY = 'adomnia.sidebarWidth'
+const BugHuntOverlay = React.lazy(() => import('@/components/bughunt/BugHuntOverlay').then((module) => ({ default: module.BugHuntOverlay })))
 const SIDEBAR_WIDTH_MIN = 180
 const SIDEBAR_WIDTH_MAX = 0.40
 
@@ -60,12 +61,19 @@ function App() {
   useKeyboardShortcuts({ setCommandPaletteOpen })
 
   const [sidebarWidth, setSidebarWidth] = useState<number>(loadSidebarWidth)
+  const [bugHuntOpen, setBugHuntOpen] = useState(false)
   const appRootRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<{ startX: number; startWidth: number } | null>(null)
   const isDragging = useRef(false)
 
   useEffect(() => {
     markStartup('startup:react-mounted')
+  }, [])
+
+  useEffect(() => {
+    const open = () => setBugHuntOpen(true)
+    document.addEventListener('adomnia:open-bug-hunt', open)
+    return () => document.removeEventListener('adomnia:open-bug-hunt', open)
   }, [])
 
   useEffect(() => {
@@ -183,6 +191,7 @@ function App() {
           {dragOver && <DropOverlay preview={dropPreview} />}
           {dropFeedback && <DropToast feedback={dropFeedback} />}
           <PluginNotificationToast />
+          {bugHuntOpen && <Suspense fallback={<div className="fixed inset-0 z-[10000] flex items-center justify-center bg-[#070817] text-white">{tr('Loading Bug Hunt…')}</div>}><BugHuntOverlay onClose={() => setBugHuntOpen(false)} /></Suspense>}
         </div>
         <CommandPalette open={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} />
         <ConfirmDialogHost />

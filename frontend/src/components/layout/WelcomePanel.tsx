@@ -124,6 +124,34 @@ function FidgetLogo({ src, size }: { src: string; size: number }) {
   const lastMoveRef = useRef(0)
   const draggingRef = useRef(false)
   const [dragging, setDragging] = useState(false)
+  const [holdHint, setHoldHint] = useState(false)
+  const holdHintTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const holdOpenTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pointerStart = useRef({ x: 0, y: 0 })
+  // Latched once the pointer leaves the dead zone: circling back past the
+  // starting point must keep counting toward the three turns.
+  const movedPastThreshold = useRef(false)
+  const startedAtOuterRadius = useRef(false)
+  const turnStart = useRef(0)
+  const turns = useRef(0)
+  const triggered = useRef(false)
+
+  const clearHold = () => {
+    if (holdHintTimer.current) clearTimeout(holdHintTimer.current)
+    if (holdOpenTimer.current) clearTimeout(holdOpenTimer.current)
+    holdHintTimer.current = null
+    holdOpenTimer.current = null
+    setHoldHint(false)
+  }
+
+  const openBugHunt = () => {
+    if (triggered.current) return
+    triggered.current = true
+    clearHold()
+    try { localStorage.setItem('adomnia.bughunt.discovered.v1', '1') } catch { /* discovery is optional */ }
+    window.dispatchEvent(new Event('adomnia:bug-hunt-discovered'))
+    document.dispatchEvent(new Event('adomnia:open-bug-hunt'))
+  }
 
   const paint = () => {
     if (imageRef.current) imageRef.current.style.transform = `rotate(${rotationRef.current}rad) scale(${draggingRef.current ? 1.035 : 1})`
@@ -135,26 +163,47 @@ function FidgetLogo({ src, size }: { src: string; size: number }) {
   }
 
   const releaseWithInertia = () => {
+    clearHold()
     if (!draggingRef.current) return
     draggingRef.current = false
     setDragging(false)
     if (performance.now() - lastMoveRef.current > 90) velocityRef.current = 0
     velocityRef.current *= 1.18
+    spinThenSettle()
+  }
+
+  // Keep the fidget momentum, then ease back upright: inertia never counts
+  // toward the secret gesture and an unfinished gesture leaves no tilt behind.
+  const spinThenSettle = () => {
     let previousFrame = performance.now()
     const animate = (now: number) => {
       const elapsed = Math.min(32, now - previousFrame)
       previousFrame = now
-      rotationRef.current += velocityRef.current * elapsed
-      velocityRef.current *= Math.exp(-elapsed * 0.00115)
+      if (Math.abs(velocityRef.current) > 0.00006) {
+        rotationRef.current += velocityRef.current * elapsed
+        velocityRef.current *= Math.exp(-elapsed * 0.00115)
+      } else {
+        const upright = Math.round(rotationRef.current / (Math.PI * 2)) * Math.PI * 2
+        const offset = rotationRef.current - upright
+        if (Math.abs(offset) < 0.006) { rotationRef.current = 0; paint(); frameRef.current = null; return }
+        rotationRef.current = upright + offset * Math.exp(-elapsed * 0.008)
+      }
       paint()
-      if (Math.abs(velocityRef.current) > 0.00006) frameRef.current = requestAnimationFrame(animate)
-      else frameRef.current = null
+      frameRef.current = requestAnimationFrame(animate)
     }
-    if (Math.abs(velocityRef.current) > 0.00006) frameRef.current = requestAnimationFrame(animate)
-    else paint()
+    frameRef.current = requestAnimationFrame(animate)
   }
 
-  useEffect(() => () => stopAnimation(), [])
+  useEffect(() => {
+    const cancelHold = () => clearHold()
+    window.addEventListener('blur', cancelHold)
+    return () => {
+      window.removeEventListener('blur', cancelHold)
+      if (holdHintTimer.current) clearTimeout(holdHintTimer.current)
+      if (holdOpenTimer.current) clearTimeout(holdOpenTimer.current)
+      stopAnimation()
+    }
+  }, [])
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
     if (event.button !== 0) return
@@ -162,6 +211,15 @@ function FidgetLogo({ src, size }: { src: string; size: number }) {
     event.currentTarget.setPointerCapture(event.pointerId)
     draggingRef.current = true
     setDragging(true)
+    triggered.current = false
+    pointerStart.current = { x: event.clientX, y: event.clientY }
+    movedPastThreshold.current = false
+    const rect = event.currentTarget.getBoundingClientRect()
+    startedAtOuterRadius.current = Math.hypot(event.clientX - rect.left - rect.width / 2, event.clientY - rect.top - rect.height / 2) > size * 0.2
+    turnStart.current = 0
+    turns.current = 0
+    holdHintTimer.current = setTimeout(() => setHoldHint(true), 4000)
+    holdOpenTimer.current = setTimeout(openBugHunt, 30000)
     velocityRef.current = 0
     lastAngleRef.current = pointerAngle(event, event.currentTarget)
     lastTimeRef.current = event.timeStamp
@@ -172,6 +230,12 @@ function FidgetLogo({ src, size }: { src: string; size: number }) {
 
   const handlePointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
     if (!draggingRef.current || !event.currentTarget.hasPointerCapture(event.pointerId)) return
+    if (!movedPastThreshold.current && Math.hypot(event.clientX - pointerStart.current.x, event.clientY - pointerStart.current.y) > 10) {
+      movedPastThreshold.current = true
+      clearHold()
+    }
+    const rect = event.currentTarget.getBoundingClientRect()
+    const outerRadius = Math.hypot(event.clientX - rect.left - rect.width / 2, event.clientY - rect.top - rect.height / 2) > size * 0.2
     const nextAngle = pointerAngle(event, event.currentTarget)
     const delta = shortestAngleDelta(nextAngle, lastAngleRef.current)
     const elapsed = Math.max(4, event.timeStamp - lastTimeRef.current)
@@ -181,6 +245,16 @@ function FidgetLogo({ src, size }: { src: string; size: number }) {
     lastAngleRef.current = nextAngle
     lastTimeRef.current = event.timeStamp
     lastMoveRef.current = performance.now()
+    if (movedPastThreshold.current && startedAtOuterRadius.current && outerRadius && Math.abs(delta) < 0.9 && !triggered.current) {
+      if (!turnStart.current) turnStart.current = performance.now()
+      if (performance.now() - turnStart.current <= 8000) {
+        turns.current += delta
+        if (Math.abs(turns.current) >= Math.PI * 6) openBugHunt()
+      } else {
+        turnStart.current = performance.now()
+        turns.current = 0
+      }
+    }
     paint()
     event.preventDefault()
   }
@@ -188,17 +262,7 @@ function FidgetLogo({ src, size }: { src: string; size: number }) {
   const nudge = () => {
     stopAnimation()
     velocityRef.current = Math.min(0.055, Math.abs(velocityRef.current) + 0.022)
-    let previousFrame = performance.now()
-    const animate = (now: number) => {
-      const elapsed = Math.min(32, now - previousFrame)
-      previousFrame = now
-      rotationRef.current += velocityRef.current * elapsed
-      velocityRef.current *= Math.exp(-elapsed * 0.00115)
-      paint()
-      if (velocityRef.current > 0.00006) frameRef.current = requestAnimationFrame(animate)
-      else frameRef.current = null
-    }
-    frameRef.current = requestAnimationFrame(animate)
+    spinThenSettle()
   }
 
   return (
@@ -218,6 +282,7 @@ function FidgetLogo({ src, size }: { src: string; size: number }) {
         'group relative grid touch-none select-none place-items-center rounded-full border-none bg-transparent outline-none',
         'cursor-grab focus-visible:ring-2 focus-visible:ring-accent/70 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent',
         dragging && 'cursor-grabbing',
+        holdHint && 'drop-shadow-[0_0_22px_#a855f7]',
       )}
     >
       <img
@@ -244,6 +309,15 @@ export function WelcomePanel() {
   const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
   const responseHistory = useTabsStore((s) => s.responseHistory)
   const appIcon = useAppIcon()
+  const [bugHuntDiscovered, setBugHuntDiscovered] = useState(() => {
+    try { return localStorage.getItem('adomnia.bughunt.discovered.v1') === '1' } catch { return false }
+  })
+
+  useEffect(() => {
+    const discovered = () => setBugHuntDiscovered(true)
+    window.addEventListener('adomnia:bug-hunt-discovered', discovered)
+    return () => window.removeEventListener('adomnia:bug-hunt-discovered', discovered)
+  }, [])
 
   const requestCount = useMemo(
     () => collections.reduce((total, collection) => total + countRequests(collection.children), 0),
@@ -325,6 +399,8 @@ export function WelcomePanel() {
                 </svg>
                 {tr('your local toolbox' as UiMessage)}
               </figcaption>
+              {bugHuntDiscovered && <button type="button" className="mt-3 w-full rounded-md border border-accent/40 px-3 py-1.5 text-xs text-accent hover:bg-accent/10" onClick={() => document.dispatchEvent(new Event('adomnia:open-bug-hunt'))}>{tr('Replay Bug Hunt')}</button>}
+              {import.meta.env.DEV && !bugHuntDiscovered && <button type="button" className="mt-3 w-full rounded-md border border-accent/40 px-3 py-1.5 text-xs text-accent hover:bg-accent/10" onClick={() => document.dispatchEvent(new Event('adomnia:open-bug-hunt'))}>{tr('Try Bug Hunt')}</button>}
             </figure>
           </div>
         </header>
