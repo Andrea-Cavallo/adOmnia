@@ -599,13 +599,19 @@ Existing `{{variable}}` references are also linked when their current environmen
 | E1.1 | **Driver SQLite** | SQLite connection with file path. `modernc.org/sqlite` driver — no external libraries. |
 | E1.2 | **Driver PostgreSQL** | Host, porta, database, user, password, SSL mode. Driver `pgx/v5/stdlib`. |
 | E1.3 | **Driver MySQL / MariaDB** | Host, porta, database, user, password. Driver `go-sql-driver/mysql`. |
-| E1.4 | **Driver MongoDB** | Host, porta, database, collection, user, password. Driver `mongo-driver v2`. |
+| E1.4 | **Driver MongoDB** | Host, porta, database, collection, user, password, URI options (`authSource`, `tls`, `replicaSet`…) and SRV (`mongodb+srv`). Driver `mongo-driver v2`. Auto-retries SCRAM-SHA-256 when the server disables SCRAM-SHA-1 and, for field-based connections, `authSource=<database>` when the user lives in the selected database. |
+| E1.4.1 | **MongoDB Explorer (Compass-style)** | Database → collection tree with estimated counts, create/drop collection; collection header with document count, storage, avg document and index sizes. The legacy JSON runner stays available via the Explorer / JSON runner switch. |
+| E1.4.2 | **Documents** | Query bar (Filter, Project, Sort, Skip, Limit) accepting Extended JSON or mongosh syntax (`ObjectId()`, `ISODate()`, unquoted keys); server-side paging with total; List (expandable nested fields, typed BSON values), JSON and Table views; edit in place, clone, copy, delete per document with BSON types preserved (canonical Extended JSON round trip); insert one or many; import JSON / NDJSON / CSV; export all matching documents (JSON, up to 100k); Explain plan (COLLSCAN/IXSCAN, docs vs keys examined, stage tree); export query to mongosh, Node.js, Python, Go, Java. |
+| E1.4.3 | **Aggregations** | Stage-based pipeline builder with operator picker, enable/disable, reorder, per-stage live preview (10 docs, disabled for `$out`/`$merge`), full run with confirmation for write stages, copy pipeline, export to code. |
+| E1.4.4 | **Schema** | Samples up to 10k documents (respecting the current filter) and shows every field path, BSON type distribution, presence percentage and sample values; click a field to filter on it. |
+| E1.4.5 | **Indexes** | Index list with key directions, type (regular/compound/text/geo/hashed/wildcard), size, usage ops, unique/sparse/partial/TTL/hidden badges; create (multi-field, unique, sparse, TTL, partial filter) and drop. |
+| E1.4.6 | **Validation** | View and edit `$jsonSchema` / query validators with validation level and action (`collMod`). |
 | E1.6 | **DSN Override** | Raw DSN textarea for advanced override. |
 | E1.7 | **Connection Test** | Database ping with success/error feedback. |
 | E1.8 | **Connection Management** | Dropdown with saved connections; add, select, delete. |
 | E1.9 | **Query Editor** | Textarea with `{{var}}` variable substitution. |
 | E1.10 | **Esegui Query** | Invia query al database backend; risultati in griglia. |
-| E1.11 | **Explain Plan** | Esegui EXPLAIN (SQL only). |
+| E1.11 | **Explain Plan** | Esegui EXPLAIN (SQL); MongoDB explain lives in the Explorer Documents tab. |
 | E1.12 | **Limit / Timeout** | Limit righe e timeout ms configurabili. |
 | E1.13 | **Destructive Query Detection** | Confirmation warning for DROP, DELETE without WHERE, TRUNCATE. |
 | E1.14 | **Griglia Risultati** | Colonne ordinabili, valori NULL evidenziati. |

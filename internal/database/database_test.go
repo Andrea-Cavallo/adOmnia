@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"path/filepath"
 	"testing"
+
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 func TestSanitizeSQLitePathRejectsRelativeTraversal(t *testing.T) {
@@ -94,5 +96,21 @@ func TestSQLiteQueryHandlerEndToEnd(t *testing.T) {
 	}
 	if !result.Limited {
 		t.Fatal("expected auto limit to be reported")
+	}
+}
+
+func TestMongoRawDocRoundTripKeepsOrderAndTypes(t *testing.T) {
+	in := `{"_id":{"$oid":"65a1b2c3d4e5f60718293a4b"},"z":1,"a":{"$numberLong":"7"},"d":{"$numberDouble":"1.0"},"at":{"$date":"2024-01-02T03:04:05Z"}}`
+	doc, err := mongoRawDoc(json.RawMessage(in), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := bson.MarshalExtJSON(doc, true, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `{"_id":{"$oid":"65a1b2c3d4e5f60718293a4b"},"z":{"$numberInt":"1"},"a":{"$numberLong":"7"},"d":{"$numberDouble":"1.0"},"at":{"$date":{"$numberLong":"1704164645000"}}}`
+	if string(out) != want {
+		t.Fatalf("round trip changed document:\n got %s\nwant %s", out, want)
 	}
 }

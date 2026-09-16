@@ -193,9 +193,18 @@ export function ConnectionsSidebar(props: ConnectionsSidebarProps) {
                 <input value={active.database} onChange={(e) => onUpdate({ database: e.target.value })} className={inputCls} placeholder="adomnia" />
               </Field>
               {active.driver === 'mongodb' && (
-                <Field label="Collection">
-                  <input value={active.collection ?? ''} onChange={(e) => onUpdate({ collection: e.target.value })} className={inputCls} placeholder="users" />
-                </Field>
+                <>
+                  <Field label="Collection">
+                    <input value={active.collection ?? ''} onChange={(e) => onUpdate({ collection: e.target.value })} className={inputCls} placeholder="users" />
+                  </Field>
+                  <Field label="Options">
+                    <input value={active.options ?? ''} onChange={(e) => onUpdate({ options: e.target.value })} className={cn(inputCls, 'font-mono text-[11px]')} placeholder="authSource=admin&tls=true" title="URI options, e.g. authSource, authMechanism, tls, replicaSet, directConnection" />
+                  </Field>
+                  <label className="ml-[90px] flex items-center gap-2 text-[11px] text-text-2">
+                    <input type="checkbox" checked={!!active.srv} onChange={(e) => onUpdate({ srv: e.target.checked })} className="accent-accent" />
+                    SRV record (mongodb+srv, e.g. Atlas)
+                  </label>
+                </>
               )}
               <Field label="User">
                 <input value={active.user} onChange={(e) => onUpdate({ user: e.target.value })} className={inputCls} />

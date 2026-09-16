@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
-import { CheckCircle2, Database, X } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Braces, CheckCircle2, Database, LayoutList, X } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { confirm } from '@/lib/confirmDialog'
 import { useEnvironmentsStore } from '@/stores/environments'
@@ -9,6 +10,7 @@ import { ConnectionsSidebar } from './ConnectionsSidebar'
 import { QueryEditor } from './QueryEditor'
 import { ResultsView } from './ResultsView'
 import { RightRail } from './RightRail'
+import { MongoWorkspace } from './mongo/MongoWorkspace'
 import {
   CONNECTIONS_KEY, DRIVER_META, FAVORITES_KEY, HISTORY_KEY, MONGO_DEFAULT_QUERY,
   SQL_DEFAULT_QUERY, STORAGE_BUCKET, WORKSPACE_KEY,
@@ -52,6 +54,8 @@ export function DatabasePanel() {
   const [logs, setLogs] = useState<string[]>([])
   const [hydrated, setHydrated] = useState(false)
   const [focusToken, setFocusToken] = useState(0)
+  const [mongoView, setMongoView] = useState<'documents' | 'raw'>('documents')
+  const [mongoReload, setMongoReload] = useState(0)
 
   const [schemaItems, setSchemaItems] = useState<SchemaItem[]>([])
   const [schemaDb, setSchemaDb] = useState('')
@@ -314,6 +318,7 @@ export function DatabasePanel() {
     try {
       const data = await api('/database/test', await resolveDatabaseConnection(active)) as { driver: string; durationMs: number }
       setMessage(`Connected to ${data.driver} in ${data.durationMs} ms`)
+      if (isMongo) setMongoReload((n) => n + 1)
       void refreshSchema(active)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -351,6 +356,19 @@ export function DatabasePanel() {
       setSchemaLoading(false)
     }
   }
+
+  const runMongo = useCallback(async (command: Record<string, unknown>, options?: { confirm?: boolean }) => {
+    const url = serverUrl(port, '/database/query')
+    if (!url) throw new Error('Backend not ready')
+    const res = await sidecarFetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ connection: await resolveDatabaseConnection(active), query: JSON.stringify(command), limit: 1000, timeoutMs, explain: false, confirm: options?.confirm ?? false }),
+    })
+    const text = await res.text()
+    if (!res.ok) throw new Error(text.trim() || res.statusText)
+    return JSON.parse(text) as DbResult
+  }, [active, port, timeoutMs])
 
   const createLocalSQLite = async () => {
     setError('')
@@ -459,6 +477,23 @@ export function DatabasePanel() {
   }
 
   // ── render ──────────────────────────────────────────────────────────────
+  const mongoModeSwitch = (
+    <div role="tablist" aria-label="MongoDB mode" className="flex rounded-md border border-border-2 p-0.5">
+      {([['documents', 'Explorer', <LayoutList key="i" size={12} />], ['raw', 'JSON runner', <Braces key="i" size={12} />]] as const).map(([id, label, icon]) => (
+        <button
+          key={id}
+          type="button"
+          role="tab"
+          aria-selected={mongoView === id}
+          onClick={() => setMongoView(id)}
+          className={cn('flex h-6 items-center gap-1.5 rounded px-2 text-[11px] font-medium', mongoView === id ? 'bg-surface-3 text-text-1' : 'text-text-3 hover:text-text-1')}
+        >
+          {icon} {label}
+        </button>
+      ))}
+    </div>
+  )
+
   return (
     <div className="relative flex min-h-0 flex-1 overflow-hidden bg-surface-0">
       <ConnectionsSidebar
@@ -475,7 +510,11 @@ export function DatabasePanel() {
         onCreateLocalSQLite={() => void createLocalSQLite()}
       />
 
-      <section className="grid min-w-0 flex-1 grid-rows-[minmax(0,1fr)_minmax(0,1fr)]">
+      {isMongo && mongoView === 'documents' ? (
+        <MongoWorkspace connection={active} runMongo={runMongo} reloadToken={mongoReload} modeSwitch={mongoModeSwitch} />
+      ) : (<>
+      <section className={cn('grid min-w-0 flex-1', isMongo ? 'grid-rows-[auto_minmax(0,1fr)_minmax(0,1fr)]' : 'grid-rows-[minmax(0,1fr)_minmax(0,1fr)]')}>
+        {isMongo && <div className="flex h-9 items-center justify-end border-b border-border-1 bg-surface-1 px-3">{mongoModeSwitch}</div>}
         <QueryEditor
           tabs={tabs}
           activeTabId={activeTabId}
@@ -526,6 +565,7 @@ export function DatabasePanel() {
         onPickCollection={(name) => pickQuery(browseQuery(active.driver, name))}
         onCreateObject={() => { setCreateObjectName(''); setCreateObjectError(''); setCreateObjectOpen(true) }}
       />
+      </>)}
 
       {createObjectOpen && (
         <div className="fixed inset-0 z-[260] grid place-items-center bg-black/55 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setCreateObjectOpen(false) }}>

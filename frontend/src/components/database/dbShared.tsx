@@ -19,6 +19,9 @@ export interface DbConnection {
   sslMode: string
   sqlitePath: string
   savedInVault?: boolean
+  /** MongoDB: extra URI options (authSource=admin&tls=true) and SRV lookup. */
+  options?: string
+  srv?: boolean
 }
 
 export interface DbResult {
@@ -31,6 +34,8 @@ export interface DbResult {
   destructive: boolean
   statementType: string
   warning?: string
+  /** Ordered canonical Extended JSON documents (Mongo commands sent with canonical: true). */
+  documents?: Record<string, unknown>[]
 }
 
 export interface QueryTab {
@@ -125,7 +130,7 @@ export function validateConnection(connection: DbConnection): string | null {
   }
   if (connection.dsn.trim()) return null
   if (!connection.host.trim()) return 'Host is required.'
-  if (!Number.isInteger(connection.port) || connection.port <= 0 || connection.port > 65535) return 'Port must be between 1 and 65535.'
+  if (!(connection.driver === 'mongodb' && connection.srv) && (!Number.isInteger(connection.port) || connection.port <= 0 || connection.port > 65535)) return 'Port must be between 1 and 65535.'
   if ((connection.driver === 'postgres' || connection.driver === 'mysql') && !connection.database.trim()) return 'Database name is required.'
   return null
 }

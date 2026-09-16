@@ -34,6 +34,10 @@ type dbConnectionRequest struct {
 	Password   string `json:"password"`
 	SSLMode    string `json:"sslMode"`
 	SQLitePath string `json:"sqlitePath"`
+	// MongoDB only: SRV lookup (mongodb+srv://) and extra URI options such as
+	// "authSource=admin&tls=true&replicaSet=rs0".
+	SRV     bool   `json:"srv"`
+	Options string `json:"options"`
 }
 
 type dbQueryRequest struct {
@@ -55,6 +59,9 @@ type dbQueryResponse struct {
 	Destructive   bool                     `json:"destructive"`
 	StatementType string                   `json:"statementType"`
 	Warning       string                   `json:"warning,omitempty"`
+	// Documents holds ordered canonical Extended JSON when a Mongo command sets
+	// canonical: true, so the document view keeps field order and BSON types.
+	Documents []json.RawMessage `json:"documents,omitempty"`
 }
 
 var limitRe = regexp.MustCompile(`(?i)\blimit\s+\d+|\bfetch\s+first\s+\d+\s+rows\s+only`)
@@ -320,6 +327,7 @@ func SanitizeSQLitePath(raw string) (string, error) {
 
 type mongoQueryCommand struct {
 	Operation  string            `json:"operation"`
+	Database   string            `json:"database"`
 	Collection string            `json:"collection"`
 	Filter     json.RawMessage   `json:"filter"`
 	Projection json.RawMessage   `json:"projection"`
@@ -330,7 +338,9 @@ type mongoQueryCommand struct {
 	Update     json.RawMessage   `json:"update"`
 	Command    json.RawMessage   `json:"command"`
 	Limit      int64             `json:"limit"`
+	Skip       int64             `json:"skip"`
 	Upsert     bool              `json:"upsert"`
+	Canonical  bool              `json:"canonical"`
 }
 
 func isMongoDriver(driver string) bool {
@@ -353,21 +363,50 @@ func openMongoDatabase(ctx context.Context, c dbConnectionRequest) (*mongo.Clien
 		if port == 0 {
 			port = 27017
 		}
-		u := &url.URL{Scheme: "mongodb", Host: fmt.Sprintf("%s:%d", host, port)}
+		u := &url.URL{Scheme: "mongodb", Host: fmt.Sprintf("%s:%d", host, port), Path: "/"}
+		if c.SRV {
+			// SRV records resolve hosts and ports; a port in the URI is rejected.
+			u.Scheme = "mongodb+srv"
+			u.Host = host
+		}
 		if c.User != "" {
 			u.User = url.UserPassword(c.User, c.Password)
+		}
+		if opts := strings.TrimPrefix(strings.TrimSpace(c.Options), "?"); opts != "" {
+			if _, err := url.ParseQuery(opts); err != nil {
+				return nil, nil, fmt.Errorf("invalid connection options: %w", err)
+			}
+			u.RawQuery = opts
 		}
 		uri = u.String()
 	}
 	opts := options.Client().
 		ApplyURI(uri).
 		SetServerSelectionTimeout(5 * time.Second)
-	client, err := mongo.Connect(opts)
-	if err != nil {
-		return nil, nil, err
+	client, err := connectMongo(ctx, opts)
+	if isScramSHA1Unavailable(err) && opts.Auth != nil && opts.Auth.AuthMechanism == "" {
+		// The driver falls back to SCRAM-SHA-1 when the server does not list the
+		// user's mechanisms (user missing from authSource, or SHA-1 disabled).
+		// Retry with SCRAM-SHA-256, which every MongoDB >= 4.0 supports.
+		cred := *opts.Auth
+		cred.AuthMechanism = "SCRAM-SHA-256"
+		client, err = connectMongo(ctx, opts.SetAuth(cred))
 	}
-	if err := client.Ping(ctx, readpref.Primary()); err != nil {
-		_ = client.Disconnect(context.Background())
+	if err != nil && strings.Contains(err.Error(), "Authentication failed") && strings.TrimSpace(c.DSN) == "" &&
+		!strings.Contains(strings.ToLower(c.Options), "authsource") &&
+		opts.Auth != nil && c.Database != "" && c.Database != "admin" {
+		// Field-based connections have no URI path, so authSource defaults to
+		// "admin"; users created inside the selected database live there instead.
+		cred := *opts.Auth
+		cred.AuthSource = c.Database
+		if retry, retryErr := connectMongo(ctx, opts.SetAuth(cred)); retryErr == nil {
+			client, err = retry, nil
+		}
+	}
+	if err != nil {
+		if strings.Contains(err.Error(), "Authentication failed") {
+			return nil, nil, fmt.Errorf("%w (check credentials and authSource: the user must exist in the authSource database, default \"admin\"; add ?authSource=<db> to the connection string if it was created elsewhere)", err)
+		}
 		return nil, nil, err
 	}
 	dbName := strings.TrimSpace(c.Database)
@@ -375,6 +414,26 @@ func openMongoDatabase(ctx context.Context, c dbConnectionRequest) (*mongo.Clien
 		dbName = "admin"
 	}
 	return client, client.Database(dbName), nil
+}
+
+func connectMongo(ctx context.Context, opts *options.ClientOptions) (*mongo.Client, error) {
+	client, err := mongo.Connect(opts)
+	if err != nil {
+		return nil, err
+	}
+	if err := client.Ping(ctx, readpref.Primary()); err != nil {
+		_ = client.Disconnect(context.Background())
+		return nil, err
+	}
+	return client, nil
+}
+
+func isScramSHA1Unavailable(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "SCRAM-SHA-1") && strings.Contains(msg, "MechanismUnavailable")
 }
 
 func runMongoQuery(parent context.Context, req dbQueryRequest) (dbQueryResponse, error) {
@@ -402,6 +461,9 @@ func runMongoQuery(parent context.Context, req dbQueryRequest) (dbQueryResponse,
 		return dbQueryResponse{}, err
 	}
 	defer client.Disconnect(context.Background())
+	if name := strings.TrimSpace(cmd.Database); name != "" {
+		db = client.Database(name)
+	}
 	resp := dbQueryResponse{
 		Driver:        "mongodb",
 		Destructive:   destructive,
@@ -439,6 +501,9 @@ func runMongoQuery(parent context.Context, req dbQueryRequest) (dbQueryResponse,
 			return resp, fmt.Errorf("invalid filter: %w", err)
 		}
 		findOpts := options.Find().SetLimit(limit)
+		if cmd.Skip > 0 {
+			findOpts.SetSkip(cmd.Skip)
+		}
 		if len(cmd.Projection) > 0 {
 			projection, err := mongoRawDoc(cmd.Projection, nil)
 			if err != nil {
@@ -457,12 +522,9 @@ func runMongoQuery(parent context.Context, req dbQueryRequest) (dbQueryResponse,
 		if err != nil {
 			return resp, err
 		}
-		rows, err := mongoCursorRows(ctx, cursor)
-		if err != nil {
+		if err := fillMongoResult(ctx, cursor, cmd.Canonical, &resp); err != nil {
 			return resp, err
 		}
-		resp.Rows = rows
-		resp.Columns = columnsFromRows(rows)
 		resp.Limited = true
 	case "aggregate":
 		coll, err := collection()
@@ -477,12 +539,9 @@ func runMongoQuery(parent context.Context, req dbQueryRequest) (dbQueryResponse,
 		if err != nil {
 			return resp, err
 		}
-		rows, err := mongoCursorRows(ctx, cursor)
-		if err != nil {
+		if err := fillMongoResult(ctx, cursor, cmd.Canonical, &resp); err != nil {
 			return resp, err
 		}
-		resp.Rows = rows
-		resp.Columns = columnsFromRows(rows)
 	case "insertone":
 		coll, err := collection()
 		if err != nil {
@@ -545,6 +604,27 @@ func runMongoQuery(parent context.Context, req dbQueryRequest) (dbQueryResponse,
 			resp.Columns = []string{"matched", "modified", "upsertedId"}
 			resp.Rows = []map[string]interface{}{{"matched": result.MatchedCount, "modified": result.ModifiedCount, "upsertedId": mongoValue(result.UpsertedID)}}
 		}
+	case "replaceone":
+		coll, err := collection()
+		if err != nil {
+			return resp, err
+		}
+		filter, err := mongoRawDoc(cmd.Filter, nil)
+		if err != nil || filter == nil {
+			return resp, fmt.Errorf("replaceOne requires a valid filter")
+		}
+		doc, err := mongoRawDoc(cmd.Document, nil)
+		if err != nil || doc == nil {
+			return resp, fmt.Errorf("replaceOne requires a valid document")
+		}
+		result, err := coll.ReplaceOne(ctx, filter, doc)
+		if err != nil {
+			return resp, err
+		}
+		if result.MatchedCount == 0 {
+			return resp, fmt.Errorf("document not found: it may have been deleted or its _id changed")
+		}
+		resp.RowsAffected = result.ModifiedCount
 	case "deleteone", "deletemany":
 		coll, err := collection()
 		if err != nil {
@@ -577,6 +657,17 @@ func runMongoQuery(parent context.Context, req dbQueryRequest) (dbQueryResponse,
 			return resp, fmt.Errorf("invalid filter: %w", err)
 		}
 		count, err := coll.CountDocuments(ctx, filter)
+		if err != nil {
+			return resp, err
+		}
+		resp.Columns = []string{"count"}
+		resp.Rows = []map[string]interface{}{{"count": count}}
+	case "estimatedcount":
+		coll, err := collection()
+		if err != nil {
+			return resp, err
+		}
+		count, err := coll.EstimatedDocumentCount(ctx)
 		if err != nil {
 			return resp, err
 		}
@@ -629,9 +720,17 @@ func runMongoQuery(parent context.Context, req dbQueryRequest) (dbQueryResponse,
 		if err != nil {
 			return resp, fmt.Errorf("invalid command: %w", err)
 		}
-		var out bson.M
+		var out bson.Raw
 		if err := db.RunCommand(ctx, command).Decode(&out); err != nil {
 			return resp, err
+		}
+		if cmd.Canonical {
+			ext, err := bson.MarshalExtJSON(out, true, false)
+			if err != nil {
+				return resp, err
+			}
+			resp.Documents = []json.RawMessage{ext}
+			break
 		}
 		row := mongoDocToMap(out)
 		resp.Columns = columnsFromRows([]map[string]interface{}{row})
@@ -645,7 +744,7 @@ func runMongoQuery(parent context.Context, req dbQueryRequest) (dbQueryResponse,
 
 func mongoDestructiveOperation(op string) (bool, bool) {
 	switch op {
-	case "insertone", "insertmany", "updateone", "updatemany", "deleteone", "deletemany":
+	case "insertone", "insertmany", "updateone", "updatemany", "replaceone", "deleteone", "deletemany":
 		return true, op == "updatemany" || op == "deletemany"
 	case "dropcollection", "dropdatabase":
 		return true, true
@@ -659,7 +758,8 @@ func mongoRawDoc(raw json.RawMessage, fallback interface{}) (interface{}, error)
 		return fallback, nil
 	}
 	var doc interface{}
-	if err := bson.UnmarshalExtJSON(raw, true, &doc); err != nil {
+	// Relaxed mode also accepts canonical input, plus {"$date": "<ISO-8601>"}.
+	if err := bson.UnmarshalExtJSON(raw, false, &doc); err != nil {
 		return nil, err
 	}
 	return doc, nil
@@ -693,6 +793,40 @@ func mongoRawPipeline(rawStages []json.RawMessage) ([]interface{}, error) {
 		pipeline = append(pipeline, stage)
 	}
 	return pipeline, nil
+}
+
+func fillMongoResult(ctx context.Context, cursor *mongo.Cursor, canonical bool, resp *dbQueryResponse) error {
+	if !canonical {
+		rows, err := mongoCursorRows(ctx, cursor)
+		if err != nil {
+			return err
+		}
+		resp.Rows = rows
+		resp.Columns = columnsFromRows(rows)
+		return nil
+	}
+	docs, err := mongoCanonicalDocuments(ctx, cursor)
+	if err != nil {
+		return err
+	}
+	resp.Documents = docs
+	resp.RowsAffected = int64(len(docs))
+	return nil
+}
+
+// mongoCanonicalDocuments keeps each document as raw BSON so field order
+// survives, then renders canonical Extended JSON (types stay explicit).
+func mongoCanonicalDocuments(ctx context.Context, cursor *mongo.Cursor) ([]json.RawMessage, error) {
+	defer cursor.Close(ctx)
+	docs := make([]json.RawMessage, 0)
+	for cursor.Next(ctx) {
+		out, err := bson.MarshalExtJSON(cursor.Current, true, false)
+		if err != nil {
+			return nil, err
+		}
+		docs = append(docs, json.RawMessage(out))
+	}
+	return docs, cursor.Err()
 }
 
 func mongoCursorRows(ctx context.Context, cursor *mongo.Cursor) ([]map[string]interface{}, error) {
