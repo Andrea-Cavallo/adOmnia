@@ -4,6 +4,15 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [0.9.13] - 2026-09-17
+
+### Added
+- **Bug Hunt campaign:** the hidden hub game now has three stages (Localhost, API Gateway, Production) with moving and crumbling platforms, timed firewalls, hopping Retry bugs and the Legacy Monolith boss, plus stage-clear screens and campaign records.
+- **New moves:** double jump, a dash that defeats bugs and crosses firewalls, springs with reward trails and a combo score multiplier.
+- **Developer power-ups:** git revert (press R to rewind three seconds), Breakpoint (freezes bugs, firewalls, platforms and the boss), sudo (temporary root immunity that deletes bugs on contact) and Garbage Collector (a shockwave that frees every bug in range), in every stage and in English and Italian.
+
+Full release notes: [v0.9.13](docs/releases/v0.9.13.md).
+
 ## [0.9.12] - 2026-09-16
 
 ### Added

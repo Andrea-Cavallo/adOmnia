@@ -2,6 +2,12 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+## v0.9.13 release notes: Bug Hunt becomes a campaign with developer powers
+
+See [the full v0.9.13 notes](releases/v0.9.13.md). The hidden hub game grows to
+three stages with a boss, double jump, dash and combos, plus four developer
+power-ups: git revert, Breakpoint, sudo and Garbage Collector.
+
 ## v0.9.12 release notes: a MongoDB explorer and a hidden game
 
 See [the full v0.9.12 notes](releases/v0.9.12.md). Database Studio gains a
