@@ -6,8 +6,9 @@ import { BUG_HUNT_COPY } from './copy'
 import { useSettingsStore } from '@/stores/settings'
 import type { Lang } from '@/lib/i18n'
 import './bughunt.css'
+import { LEVELS } from './level'
 
-const CONTROL_KEYS = new Set(['KeyA', 'KeyD', 'ArrowLeft', 'ArrowRight', 'Space'])
+const CONTROL_KEYS = new Set(['KeyA', 'KeyD', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyX', 'ShiftLeft', 'ShiftRight'])
 
 export function BugHuntOverlay({ onClose }: { onClose: () => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -49,13 +50,13 @@ export function BugHuntOverlay({ onClose }: { onClose: () => void }) {
         event.stopImmediatePropagation(); event.preventDefault()
         if (event.repeat) return
         if (readyRef.current || snapshotRef.current.finished) closeRef.current()
-        else game.setPaused(!snapshotRef.current.paused)
+        else if (!snapshotRef.current.levelComplete) game.setPaused(!snapshotRef.current.paused)
         return
       }
       if (event.ctrlKey || event.metaKey || event.altKey) {
         event.stopImmediatePropagation(); event.preventDefault(); return
       }
-      const playing = !readyRef.current && !snapshotRef.current.paused && !snapshotRef.current.finished
+      const playing = !readyRef.current && !snapshotRef.current.paused && !snapshotRef.current.finished && !snapshotRef.current.levelComplete
       if (playing && CONTROL_KEYS.has(event.code)) {
         event.stopImmediatePropagation(); event.preventDefault()
         if (!event.repeat) game.keyDown(event.code)
@@ -66,7 +67,7 @@ export function BugHuntOverlay({ onClose }: { onClose: () => void }) {
     }
     const onKeyUp = (event: KeyboardEvent) => {
       game.keyUp(event.code)
-      if (!readyRef.current && !snapshotRef.current.paused && !snapshotRef.current.finished && CONTROL_KEYS.has(event.code)) {
+      if (!readyRef.current && !snapshotRef.current.paused && !snapshotRef.current.finished && !snapshotRef.current.levelComplete && CONTROL_KEYS.has(event.code)) {
         event.stopImmediatePropagation(); event.preventDefault()
       }
     }
@@ -89,18 +90,18 @@ export function BugHuntOverlay({ onClose }: { onClose: () => void }) {
   useEffect(() => { gameRef.current?.setCopy(copy) }, [copy])
 
   useEffect(() => {
-    if (ready || snapshot.paused || snapshot.finished) primaryRef.current?.focus()
+    if (ready || snapshot.paused || snapshot.finished || snapshot.levelComplete) primaryRef.current?.focus()
     else overlayRef.current?.focus()
-  }, [ready, snapshot.paused, snapshot.finished])
+  }, [ready, snapshot.paused, snapshot.finished, snapshot.levelComplete])
 
   useEffect(() => {
     if (!snapshot.finished || resultSaved.current) return
     resultSaved.current = true
     const current = preferencesRef.current
     const improved = current.bestSeconds === null || snapshot.seconds < current.bestSeconds
-    const next = { ...current, bestSeconds: improved ? snapshot.seconds : current.bestSeconds, bestBits: Math.max(current.bestBits, snapshot.bits) }
-    preferencesRef.current = next; setPreferences(next); savePreferences(next); setNewRecord(improved)
-  }, [snapshot.finished, snapshot.seconds, snapshot.bits])
+    const next = { ...current, bestSeconds: improved ? snapshot.seconds : current.bestSeconds, bestBits: Math.max(current.bestBits, snapshot.bits), bestScore: Math.max(current.bestScore, snapshot.score) }
+    preferencesRef.current = next; setPreferences(next); savePreferences(next); setNewRecord(improved || snapshot.score > current.bestScore)
+  }, [snapshot.finished, snapshot.seconds, snapshot.bits, snapshot.score])
 
   const updatePreferences = (update: Partial<BugHuntPreferences>) => {
     const next = { ...preferencesRef.current, ...update }
@@ -122,37 +123,43 @@ export function BugHuntOverlay({ onClose }: { onClose: () => void }) {
   return (
     <div ref={overlayRef} tabIndex={-1} className="bug-hunt" role="dialog" aria-modal="true" aria-label={copy.dialogLabel} data-bug-hunt onMouseDown={(event) => event.stopPropagation()}>
       <header className="bh-header">
-        <div className="bh-brand"><span className="bh-brand-mark" aria-hidden>aO</span><div><strong>BUG HUNT</strong><small>{copy.brandSubtitle}</small></div></div>
+        <div className="bh-brand"><span className="bh-brand-mark" aria-hidden>aO</span><div><strong>BUG HUNT</strong><small>{`${snapshot.level + 1} / 3 · ${LEVELS[snapshot.level].name.toUpperCase()}`}</small></div></div>
         <div className="bh-header-actions">
           <button className="bh-icon-button" aria-label={preferences.audio ? copy.audioOn : copy.audioOff} title={preferences.audio ? copy.audioOn : copy.audioOff} aria-pressed={preferences.audio} onClick={() => updatePreferences({ audio: !preferences.audio })}>{preferences.audio ? <Volume2 size={16} /> : <VolumeX size={16} />}</button>
           <button className="bh-icon-button" aria-label={copy.gentle} title={copy.gentleTitle} aria-pressed={preferences.reducedMotion} onClick={() => updatePreferences({ reducedMotion: !preferences.reducedMotion })}><Sparkles size={16} /></button>
-          {!ready && !snapshot.finished && <button className="bh-icon-button" aria-label={snapshot.paused ? copy.resume : copy.pause} title={copy.pauseTitle} onClick={() => snapshot.paused ? resume() : gameRef.current?.setPaused(true)}>{snapshot.paused ? <Play size={15} /> : <Pause size={15} />}</button>}
+          {!ready && !snapshot.finished && !snapshot.levelComplete && <button className="bh-icon-button" aria-label={snapshot.paused ? copy.resume : copy.pause} title={copy.pauseTitle} onClick={() => snapshot.paused ? resume() : gameRef.current?.setPaused(true)}>{snapshot.paused ? <Play size={15} /> : <Pause size={15} />}</button>}
           <button className="bh-icon-button" aria-label={copy.backToApp} title={copy.backToApp} onClick={() => closeRef.current()}><X size={17} /></button>
         </div>
       </header>
       <div className="bh-stage">
+        {!ready && !snapshot.finished && !snapshot.levelComplete && <div className="bh-level-hint">{copy.stageHints[snapshot.level]}</div>}
         <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} aria-label={copy.canvasLabel} />
         {!ready && <div className="bh-hud" aria-label={copy.hudLabel}>
-          <div className="bh-hud-group"><span className="bh-pill" aria-label={copy.healthLabel(snapshot.health)}><span className="bh-heart">{'♥'.repeat(snapshot.health)}<span className="bh-heart-empty">{'♥'.repeat(3 - snapshot.health)}</span></span></span><span className="bh-pill gold"><Diamond size={13} /><strong>{snapshot.bits}</strong><span>/ {snapshot.totalBits}</span></span></div>
-          <div className="bh-hud-group"><span className={`bh-pill ${snapshot.hotfix ? 'mint' : ''}`}><Cpu size={14} />{snapshot.hotfix ? copy.hotfixFound : copy.findHotfix}</span><span className="bh-pill">{formatTime(snapshot.seconds)}</span></div>
+          <div className="bh-hud-group"><span className="bh-pill" aria-label={copy.healthLabel(snapshot.health)}><span className="bh-heart">{'♥'.repeat(snapshot.health)}<span className="bh-heart-empty">{'♥'.repeat(3 - snapshot.health)}</span></span></span><span className="bh-pill gold"><Diamond size={13} /><strong>{snapshot.bits}</strong><span>/ {snapshot.totalBits}</span></span><span className="bh-pill">{copy.statScore} <strong>{snapshot.score}</strong>{snapshot.combo >= 4 && <b className="bh-combo">x{Math.min(5, 1 + Math.floor(snapshot.combo / 4))}</b>}</span></div>
+          <div className="bh-hud-group"><span className={`bh-pill ${snapshot.dashReady ? 'mint' : ''}`}><kbd>X</kbd>{snapshot.dashReady ? copy.dashReady : copy.dashCharging}</span><span className={`bh-pill ${snapshot.hotfix ? 'mint' : ''}`}><Cpu size={14} />{snapshot.hotfix ? copy.hotfixFound : copy.findHotfix}</span><span className="bh-pill">{formatTime(snapshot.seconds)}</span></div>
         </div>}
-        {(ready || snapshot.paused || snapshot.finished) && <div className="bh-modal">
+        {(ready || snapshot.paused || snapshot.finished || snapshot.levelComplete) && <div className="bh-modal">
           <div className="bh-card">
-            <div className="bh-eyebrow"><span className="bh-dot" />{ready ? copy.introEyebrow : snapshot.finished ? copy.winEyebrow : copy.pauseEyebrow}</div>
+            <div className="bh-eyebrow"><span className="bh-dot" />{ready ? copy.introEyebrow : snapshot.finished ? copy.winEyebrow : snapshot.levelComplete ? copy.stageClear : copy.pauseEyebrow}</div>
             {ready ? <>
               <h1>{copy.introTitle}<em>{copy.introTitleAccent}</em></h1>
               <p className="bh-quote">{copy.introQuote}</p>
               <p>{copy.introBody}</p>
-              <div className="bh-mission"><Cpu size={21} /><div><strong>{copy.missionTitle}</strong><span>{copy.missionBody}</span></div></div>
+              <div className="bh-mission"><Cpu size={21} /><div><strong>{copy.missionTitle}</strong><span>{copy.stageHints[0]} Localhost → API Gateway → Production</span></div></div>
               <div className="bh-card-actions"><button ref={primaryRef} className="bh-primary" onClick={begin}>{copy.start} <ArrowRight size={15} /></button></div>
-              <p className="bh-tip">{copy.introTip}{preferences.bestSeconds !== null && copy.record(formatTime(preferences.bestSeconds))}</p>
+              <p className="bh-tip">{copy.introTip}{preferences.bestScore > 0 && ` ${copy.statScore}: ${preferences.bestScore}.`}{preferences.bestSeconds !== null && copy.record(formatTime(preferences.bestSeconds))}</p>
+            </> : snapshot.levelComplete ? <>
+              <h1>{copy.stageClear}<em>{LEVELS[snapshot.level].name}</em></h1>
+              <p>{copy.stageHints[snapshot.level + 1]}</p>
+              <div className="bh-card-actions"><button ref={primaryRef} className="bh-primary" onClick={() => { gameRef.current?.unlockAudio(); gameRef.current?.advance() }}>{copy.nextLevel}: {LEVELS[snapshot.level + 1].name} <ArrowRight size={15} /></button></div>
             </> : snapshot.finished ? <>
               <h1>{copy.winTitle}<em>{copy.winTitleAccent}</em></h1>
               <p>{copy.winBody}</p>
-              <div className="bh-stats"><div className="bh-stat"><strong>{formatTime(snapshot.seconds)}</strong><span>{copy.statTime}</span></div><div className="bh-stat"><strong>{snapshot.bits}/{snapshot.totalBits}</strong><span>{copy.statBits}</span></div><div className="bh-stat"><strong>{snapshot.deaths}</strong><span>{copy.statDeaths}</span></div></div>
+              <div className="bh-stats"><div className="bh-stat"><strong>{snapshot.score}</strong><span>{copy.statScore}</span></div><div className="bh-stat"><strong>{formatTime(snapshot.seconds)}</strong><span>{copy.statTime}</span></div><div className="bh-stat"><strong>{snapshot.bits}/{snapshot.totalBits}</strong><span>{copy.statBits}</span></div><div className="bh-stat"><strong>{snapshot.deaths}</strong><span>{copy.statDeaths}</span></div></div>
+              <span className="bh-medal">{copy.statCombo}: {snapshot.bestCombo}</span>
               {newRecord && <span className="bh-medal"><Trophy size={12} />{copy.medalRecord}</span>}
               {snapshot.secret && <span className="bh-medal"><Sparkles size={12} />{copy.medalSecret}</span>}
-              {snapshot.bugs === 3 && <span className="bh-medal"><Check size={12} />{copy.medalBugs}</span>}
+              {snapshot.bugs === 8 && <span className="bh-medal"><Check size={12} />{copy.medalBugs}</span>}
               <p className="bh-quote">{copy.winQuote}</p>
               <div className="bh-card-actions"><button ref={primaryRef} className="bh-primary" onClick={restart}><RotateCcw size={14} />{copy.playAgain}</button><button className="bh-secondary" onClick={() => closeRef.current()}>{copy.backToWork}</button></div>
             </> : <>
@@ -164,7 +171,7 @@ export function BugHuntOverlay({ onClose }: { onClose: () => void }) {
           </div>
         </div>}
       </div>
-      <footer className="bh-footer"><div className="bh-keys"><span><kbd>A</kbd> <kbd>D</kbd> / <kbd>←</kbd> <kbd>→</kbd> {copy.keysMove}</span><span><kbd>{copy.keySpace}</kbd> {copy.keysJump}</span><span><kbd>Esc</kbd> {copy.keysPause}</span></div><span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Flag size={11} />{snapshot.checkpoint ? copy.checkpointSaved : copy.findCheckpoint}</span></footer>
+      <footer className="bh-footer"><div className="bh-keys"><span><kbd>A</kbd> <kbd>D</kbd> / <kbd>←</kbd> <kbd>→</kbd> {copy.keysMove}</span><span><kbd>{copy.keySpace}</kbd> {copy.keysJump}</span><span><kbd>X</kbd> / <kbd>Shift</kbd> {copy.keysDash}</span><span><kbd>Esc</kbd> {copy.keysPause}</span></div><span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Flag size={11} />{snapshot.checkpoint ? copy.checkpointSaved : copy.findCheckpoint}</span></footer>
     </div>
   )
 }

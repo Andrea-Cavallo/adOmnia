@@ -18,11 +18,12 @@ This file contains only work that is still open. Completed items are archived in
 _No verified-open issues. The previously-listed backlog items were re-checked against
 the current codebase on 2026-06-13 and found already resolved (see below)._
 
-### a0: Bug Hunt — proposta in preparazione
+### a0: Bug Hunt — campagna implementata, rifinitura aperta
 
 - [x] Concept, reference di a0, specifica e piano di ripresa documentati in [BUG-HUNT.md](BUG-HUNT.md).
 - [x] Localhost completo e verificato nel runtime desktop (manca la prova umana "a sensazione" dei controlli).
-- [ ] Tre livelli, attivazione segreta e rifinitura completati.
+- [x] Tre livelli collegati, attivazione segreta, API Gateway e boss Production implementati (2026-09-17).
+- [ ] Partita completa desktop, bilanciamento e rifinitura finale; stato verifiche in BUG-HUNT.md.
 
 Per riprendere dopo un'interruzione o l'esaurimento dei crediti, partire dalla sezione **Stato attuale** e dalla checklist in [BUG-HUNT.md](BUG-HUNT.md); aggiornare le spunte dopo ogni sessione.
 

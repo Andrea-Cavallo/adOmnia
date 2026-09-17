@@ -1,4 +1,4 @@
-export type Sound = 'jump' | 'land' | 'bit' | 'stomp' | 'hurt' | 'checkpoint' | 'hotfix' | 'win' | 'secret'
+export type Sound = 'jump' | 'land' | 'bit' | 'stomp' | 'hurt' | 'checkpoint' | 'hotfix' | 'win' | 'secret' | 'dash' | 'spring' | 'combo'
 
 // Small original arcade sounds, synthesised locally. No samples, requests,
 // autoplay or background music process; the context belongs to this session.
@@ -43,6 +43,9 @@ export class BugHuntAudio {
 
   play(sound: Sound, variation = 0) {
     switch (sound) {
+      case 'dash': this.note(720, 95, 0.16, 0, 'sawtooth', 0.026); break
+      case 'spring': this.note(170, 1100, 0.25, 0, 'triangle'); break
+      case 'combo': this.note(660 + variation * 100, 1400, 0.15); this.note(990, 1600, 0.18, 0.07); break
       case 'jump': this.note(240, 560, 0.13, 0, 'triangle'); break
       case 'land': this.note(110, 65, 0.07, 0, 'sine', 0.035); break
       case 'bit': {

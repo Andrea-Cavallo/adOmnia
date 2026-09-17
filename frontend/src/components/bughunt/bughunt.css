@@ -44,10 +44,15 @@
 .bh-secondary:hover { background: #24283d; color: #f2eafb; }
 .bh-card-actions { display: flex; gap: 9px; flex-wrap: wrap; margin-top: 22px; }
 .bh-tip { margin-top: 16px !important; font-size: 10px !important; color: #8c819e !important; }
-.bh-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin: 22px 0; }
+.bh-stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin: 22px 0; }
 .bh-stat { padding: 12px 8px; border: 1px solid #a392bf25; border-radius: 11px; background: #0b1224; text-align: center; }
 .bh-stat strong { display: block; font: 600 20px ui-monospace,monospace; color: #d8c3f2; }
 .bh-stat span { display: block; margin-top: 6px; font-size: 9px; color: #8f9ab3; text-transform: uppercase; letter-spacing: .08em; }
 .bh-medal { display: inline-flex; gap: 7px; align-items: center; margin: 0 5px 6px 0; padding: 6px 9px; border-radius: 6px; background: #dcc17d12; border: 1px solid #dcc17d33; color: #e0cc95; font-size: 10px; }
 @media (max-width: 600px) { .bh-header { padding: 10px 12px; } .bh-brand small { display: none; } .bh-hud { left: 12px; right: 12px; top: 10px; } .bh-pill { padding: 6px 8px; font-size: 9px; } .bh-footer { padding: 9px 12px; flex-wrap: wrap; } .bh-card { padding: 23px; } .bh-modal { padding: 12px; } }
 @media (max-height: 540px) { .bh-card { padding: 19px 25px; } .bh-card h1 { font-size: 29px; margin: 10px 0; } .bh-mission { margin: 12px 0; } .bh-card-actions { margin-top: 12px; } .bh-tip { display: none; } }
+
+.bh-level-hint { position: absolute; z-index: 2; bottom: 10px; left: 12%; right: 12%; padding: 7px 12px; text-align: center; border-radius: 8px; background: #080e20dd; color: #ded8ee; font-size: 11px; pointer-events: none; }
+
+.bh-combo { color: #a3ffdc; font-size: 16px; }
+.bh-stats { min-width: 0; }

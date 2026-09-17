@@ -1,6 +1,6 @@
 export type Rect = { x: number; y: number; w: number; h: number }
-export type Platform = Rect & { floating?: boolean }
-export type Bug = Rect & { left: number; right: number; direction: number; alive: boolean; phase: number }
+export type Platform = Rect & { floating?: boolean; travel?: number; unstable?: boolean; originX?: number; crumble?: number }
+export type Bug = Rect & { left: number; right: number; direction: number; alive: boolean; phase: number; retry?: boolean }
 export type Bit = { id: number; x: number; y: number; secret?: boolean }
 
 export const WORLD_WIDTH = 3220
@@ -57,3 +57,49 @@ export const BITS: Bit[] = BIT_ROWS.flatMap((row) => Array.from({ length: row.co
 export function intersects(a: Rect, b: Rect): boolean {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
 }
+
+
+export type Firewall = Rect & { phase: number }
+export type Level = {
+  name: string; platforms: Platform[]; spikes: Rect[]; bits: Bit[]; bugs: Bug[]; firewalls: Firewall[]; springs: Rect[]
+}
+const gateway: Platform[] = [
+  { x: 0, y: 460, w: 600, h: 100 }, { x: 715, y: 460, w: 285, h: 100 },
+  { x: 1040, y: 460, w: 360, h: 100 }, { x: 1525, y: 460, w: 375, h: 100 },
+  { x: 2020, y: 460, w: 1200, h: 100 },
+  { x: 380, y: 385, w: 125, h: 22, floating: true, travel: 50 },
+  { x: 866, y: 370, w: 135, h: 22, floating: true, travel: 42 },
+  { x: 1380, y: 376, w: 135, h: 22, floating: true, travel: 48 },
+  { x: 1670, y: 365, w: 130, h: 22, floating: true },
+  { x: 1850, y: 275, w: 155, h: 22, floating: true, travel: 30 },
+  { x: 2030, y: 355, w: 150, h: 22, floating: true, travel: 40 },
+]
+export const LEVELS: Level[] = [
+  { name: 'Localhost', springs: [{ x: 300, y: 448, w: 44, h: 14 }], platforms: PLATFORMS, spikes: SPIKES, bits: BITS, bugs: createBugs(), firewalls: [] },
+  { name: 'API Gateway', springs: [{ x: 710, y: 448, w: 44, h: 14 }, { x: 1695, y: 353, w: 44, h: 14 }], platforms: gateway, spikes: [], bits: BITS.map(b => ({ ...b, id: b.id + 100 })),
+    bugs: createBugs().map((b, i) => ({ ...b, retry: true, ...(i === 0 ? { x: 370, left: 180, right: 520 } : i === 1 ? { x: 1730, left: 1600, right: 1840 } : {}) })),
+    firewalls: [{ x: 1210, y: 365, w: 25, h: 95, phase: 0 }, { x: 2280, y: 365, w: 25, h: 95, phase: 1.7 }] },
+  { name: 'Production', springs: [{ x: 1875, y: 263, w: 44, h: 14 }], platforms: [...PLATFORMS.filter(p => p.floating && p.x < 2140).map(p => ({ ...p, unstable: true })),
+      { x: 0, y: 460, w: 570, h: 100 }, { x: 650, y: 460, w: 620, h: 100 },
+      { x: 1370, y: 460, w: 390, h: 100 }, { x: 1840, y: 460, w: 340, h: 100 },
+      { x: 2260, y: 460, w: 960, h: 100 }], spikes: [{ x: 1050, y: 440, w: 64, h: 20 }],
+    bits: BITS.map(b => ({ ...b, id: b.id + 200 })), bugs: createBugs().slice(0, 2).map((b, i) => ({ ...b, ...(i === 0 ? { x: 820, left: 700, right: 980 } : { x: 1970, left: 1880, right: 2100 }) })), firewalls: [{ x: 1590, y: 365, w: 25, h: 95, phase: 0.5 }] },
+]
+// Reward trails follow the launch trajectory; they teach the shortcut by sight.
+for (const [levelIndex, level] of LEVELS.entries()) {
+  for (const [springIndex, spring] of level.springs.entries()) {
+    for (let i = 0; i < 6; i++) {
+      const t = 0.1 + i * 0.085
+      level.bits = [...level.bits, { id: 1000 + levelIndex * 100 + springIndex * 10 + i,
+        x: spring.x + 15 + 310 * t, y: Math.max(55, spring.y - 24 - 850 * t + 950 * t * t), secret: spring.y < 400 }]
+    }
+  }
+}
+// Every cycle has a visible warning before it can damage the player.
+export function firewallPhase(time: number, offset: number): 'off' | 'warning' | 'active' {
+  const t = (time + offset) % 4.8
+  return t < 2.4 ? 'off' : t < 3.2 ? 'warning' : 'active'
+}
+export type Boss = { health: number; clock: number; hit: boolean; waves: Rect[] }
+export function createBoss(): Boss { return { health: 3, clock: 0, hit: false, waves: [] } }
+export const BOSS_BODY = { x: 2820, y: 378, w: 90, h: 82 }

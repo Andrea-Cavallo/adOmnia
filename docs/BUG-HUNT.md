@@ -1,8 +1,37 @@
 # a0: Bug Hunt — Deploy del venerdì
 
-**Stato:** Localhost completo e verificato nel runtime desktop Wails 3 (WebView2); in attesa della prova "a sensazione" dei controlli prima dei livelli 2 e 3.  
-**Ultimo aggiornamento:** 2026-09-16 (seconda sessione).  
-**Prossimo passo:** far giocare Localhost a una persona e raccogliere il feedback su salto, velocità e bug; poi costruire API Gateway.
+**Stato:** campagna a tre ambienti implementata: Localhost, API Gateway, Production e Legacy Monolith. Verificati motore, build e scene; resta la partita completa a mano nel desktop per il bilanciamento.
+**Ultimo aggiornamento:** 2026-09-17.
+**Prossimo passo:** giocare la campagna completa nel desktop, iniziando da Localhost; annotare tempi, morti e difficolta del boss prima di tarare le mappe.
+
+## Feedback divertimento — tranche in corso
+
+L'utente trova il gioco poco divertente. Intervento su mosse, ritmo e ricompense.
+- [ ] Correggere menu di passaggio: il ramo JSX per `levelComplete` non era presente.
+- [ ] Doppio salto e scatto offensivo con ricarica, attraversamento dei firewall.
+- [ ] Combo e punteggio senza farming; rampe di lancio e percorsi premio.
+- [ ] Verificare nuove mosse, regressioni dei percorsi e interfaccia.
+
+## Checkpoint di ripresa — 2026-09-17
+
+- [x] Collegati tre ambienti con schermata di passaggio; tempo e bit cumulativi, 111 bit univoci, salute ripristinata a ogni nuovo ambiente.
+- [x] API Gateway: piattaforme mobili con trasporto del giocatore, firewall OFF/avviso/attivo e bug Retry saltellanti.
+- [x] Production: piattaforme instabili (0,8 s prima del cedimento, ripristino a 3,5 s), firewall e checkpoint a x=2500 prima dell'arena.
+- [x] Legacy Monolith: avviso 1,3 s, onda a terra, nucleo vulnerabile da 2 a 4,8 s, tre colpi e reset a ogni caduta/morte. Hotfix raccoglibile prima del boss; uscita richiede entrambi.
+- [x] Nucleo abbassato a 82 px: colpo verificato con un vero salto in corsa, senza teletrasporto sul bersaglio.
+- [x] Sfondi distinti (viola, ciano, rosso), segnali per pericoli, suggerimenti IT/EN, indicatori di avanzamento e finale della campagna.
+- [x] Record campagna in `adomnia.bughunt.preferences.campaign.v2`: migrazione solo di audio/effetti dalla v1. Record Localhost conservati nella vecchia chiave, esclusi dal confronto. Nessuna modifica al workspace `.adomnia`.
+- [x] 15 test Vitest passati: percorsi fisici dei tre ambienti, piattaforme, firewall, boss, reset, no farming esistente e migrazione preferenze.
+- [x] `go build ./...` e `go test ./...` completati con successo.
+- [x] TypeScript e build frontend passati; resta il consueto avviso sui chunk grandi dell'app.
+- [x] Scene Gateway/Production ispezionate nel browser con fixture temporanea, poi rimossa. Intro della campagna verificata nell'app browser.
+- [x] `wails3 task dev` avviato: compilazione e startup WebView2 riusciti, Home desktop verificata. Questa verifica non sostituisce una partita completa nel desktop.
+- [ ] Partita completa desktop dei tre ambienti; verifica manuale di passaggi, boss, finale e accessibilita a dimensioni ridotte.
+- [ ] Taratura divertimento/difficolta e durata obiettivo 10-15 minuti; musica opzionale e asset definitivi restano rifiniture.
+
+**File da cui ripartire:** `frontend/src/components/bughunt/level.ts` (mappe), `prototype.ts` (fisica/campagna/boss), `visuals.ts` (disegno), `BugHuntOverlay.tsx` e `copy.ts` (UI), `prototype.test.ts` e `preferences.test.ts` (verifiche).
+**Riavvio partita:** il pulsante esplicito “Ricomincia campagna” azzera tutta la partita; caduta/morte mantengono bit e Hotfix e riprendono dal checkpoint del livello.
+**Nota:** i dati di sviluppo qui sotto datati 2026-09-16 sono lo storico di Localhost; il checkpoint sopra prevale.
 
 ## Come riprendere il lavoro
 
@@ -24,9 +53,9 @@ Questo documento è il punto di ripresa del progetto. All'inizio di ogni session
 - [x] Integrati overlay caricato solo all'apertura, gesto a tre rotazioni, pressione di 30 secondi e accesso di prova nell'ambiente di sviluppo.
 - [x] Verificati entrambi i gesti segreti e la sessione nel runtime desktop Wails 3 (WebView2, build `production`), pilotati via CDP.
 - [ ] Prova umana "a sensazione" di salto, velocità, bug e buche (non automatizzabile).
-- [ ] Implementati i livelli 2 e 3 e il boss.
+- [x] Implementati i livelli 2 e 3 e il boss (2026-09-17; vedi checkpoint sopra).
 
-**Prossimo passo operativo:** avviare adOmnia, aprire la Home, fare tre giri del logo (o tenerlo premuto 30 s) e giocare Localhost fino in fondo. Annotare qui cosa non è piacevole (salto troppo alto/basso, corsa, bug che colpiscono alle spalle, buche). Tarare `GRAVITY`, `RUN_SPEED`, `JUMP_SPEED` in `prototype.ts`, poi iniziare API Gateway (fase 2).
+**Prossimo passo operativo storico (superato dal checkpoint 2026-09-17):** avviare adOmnia, aprire la Home, fare tre giri del logo (o tenerlo premuto 30 s) e giocare Localhost fino in fondo. Annotare qui cosa non è piacevole (salto troppo alto/basso, corsa, bug che colpiscono alle spalle, buche). Tarare `GRAVITY`, `RUN_SPEED`, `JUMP_SPEED` in `prototype.ts`, poi iniziare API Gateway (fase 2).
 
 **Verifiche e problemi aperti (2026-09-16, seconda sessione):**
 
@@ -100,15 +129,16 @@ La persistenza può usare chiavi `localStorage` dedicate e versionate per scoper
 
 - [x] Implementare i due gesti segreti e l'accesso `Rigioca` nella hub; verificati gesti e falsi positivi (browser e desktop).
 - [x] Completare Localhost con tutorial, bit, Hotfix e uscita.
-- [ ] Completare API Gateway con pacchetti, firewall, Retry, checkpoint e uscita.
-- [ ] Completare Production con piattaforme instabili, checkpoint e boss a tre colpi.
-- [x] Implementare introduzione, pausa, riavvio, audio, finale, statistiche e record locali (per Localhost; da estendere ai tre livelli).
-- [ ] Verificare che ogni mappa sia completabile, senza salti impossibili, softlock o farming dei bit.
+- [x] Completare API Gateway con pacchetti, firewall, Retry, checkpoint e uscita.
+- [x] Completare Production con piattaforme instabili, checkpoint e boss a tre colpi.
+- [x] Implementare introduzione, pausa, riavvio, audio, finale, statistiche e record locali (estesi alla campagna il 2026-09-17).
+- [x] Verificare percorsi fisici nel motore dei tre ambienti e regole di boss/progressione/no farming.
+- [ ] Confermare la giocabilita completa a mano nel desktop.
 
 ### Fase 3 — Rifinitura e rilascio
 
 - [ ] Sostituire gli asset temporanei, completare animazioni ed effetti leggibili senza dipendere dal colore.
-- [ ] Integrare audio offline, mute persistente e riduzione/disattivazione dello scuotimento.
+- [x] Integrare audio offline, mute persistente e riduzione/disattivazione dello scuotimento.
 - [ ] Verificare gestione del focus, scorciatoie, cleanup, resize e dati di adOmnia aperti prima del gioco.
 - [ ] Misurare FPS e avvio nel runtime desktop su portatile normale; obiettivo 60 FPS e nessun lavoro continuo a gioco chiuso.
 - [ ] Eseguire `cd frontend && npx tsc --noEmit`, `npm run build`, `go build ./...`, `go test ./...` e prova manuale `wails3 task dev`.

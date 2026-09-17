@@ -972,3 +972,8 @@ AI-integration module: connect to, debug, and generate MCP servers — exposing 
 | **H — API Design** | OpenAPI Import/Export, Schema Components, Visual OpenAPI Editor | 10 |
 | **I — MCP (Model Context Protocol)** | Client/Debugger, Sessions & Transport, Server Generator | 12 |
 | **Total** | 38 sections | **~535** |
+
+
+### Offline easter egg: a0 Bug Hunt
+
+Three-stage canvas platformer inside an overlay: Localhost, API Gateway (moving platforms, timed firewalls, hopping Retry bugs), and Production (crumbling platforms, Legacy Monolith boss). Three health points, checkpoints, three mandatory Hotfix pickups, 111 optional bits, pause/replay, IT/EN copy, synthesized offline sounds, reduced motion and local campaign records. Discover through the Hub logo gestures; replay after discovery. Campaign logic and rendering verified; full desktop playthrough and difficulty tuning remain tracked in [BUG-HUNT.md](BUG-HUNT.md).

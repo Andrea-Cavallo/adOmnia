@@ -1,11 +1,11 @@
 import type { BugHuntCopy } from './copy'
-import { BITS, CHECKPOINT_X, EXIT_X, HOTFIX, PLATFORMS, SPIKES, type Bug } from './level'
+import { LEVELS, BOSS_BODY, firewallPhase, CHECKPOINT_X, EXIT_X, HOTFIX, type Platform, type Boss, type Bug } from './level'
 
-export type PlayerVisual = { x: number; y: number; w: number; h: number; vx: number; vy: number; grounded: boolean; facing: number; invulnerable: number; squash: number }
+export type PlayerVisual = { x: number; y: number; w: number; h: number; vx: number; vy: number; grounded: boolean; facing: number; invulnerable: number; squash: number; dash?: number }
 export type Particle = { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; color: string; size: number; gravity: number }
 export type Popup = { x: number; y: number; text: string; color: string; life: number }
 export type VisualState = {
-  player: PlayerVisual; enemies: Bug[]; camera: number; time: number; collected: Set<number>
+  level: number; platforms: Platform[]; boss: Boss; player: PlayerVisual; enemies: Bug[]; camera: number; time: number; collected: Set<number>
   particles: Particle[]; popups: Popup[]; checkpoint: boolean; hotfix: boolean; secret: boolean
   shake: number; reducedMotion: boolean; finished: boolean; copy: BugHuntCopy
 }
@@ -31,9 +31,9 @@ function glow(ctx: CanvasRenderingContext2D, x: number, y: number, radius: numbe
   ctx.fillStyle = gradient; ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2)
 }
 
-function drawBackdrop(ctx: CanvasRenderingContext2D, camera: number, time: number) {
+function drawBackdrop(ctx: CanvasRenderingContext2D, camera: number, time: number, level: number) {
   const bg = ctx.createLinearGradient(0, 0, 0, 540)
-  bg.addColorStop(0, '#070d1c'); bg.addColorStop(0.55, '#151334'); bg.addColorStop(1, '#25134b')
+  bg.addColorStop(0, '#070d1c'); bg.addColorStop(0.55, ['#151334', '#092e3c', '#35182a'][level]); bg.addColorStop(1, '#25134b')
   ctx.fillStyle = bg; ctx.fillRect(0, 0, 960, 540)
   glow(ctx, 725 - camera * 0.06, 120, 370, '#5739a931')
   glow(ctx, 140, 375, 300, '#13688121')
@@ -49,7 +49,7 @@ function drawBackdrop(ctx: CanvasRenderingContext2D, camera: number, time: numbe
       ctx.fillStyle = '#43cbc266'; ctx.fillRect(x + 53, top + 21 + j * 29, 3, 3)
     }
   }
-  text(ctx, 'localhost', 280, 137, '#7180a320', 72)
+  text(ctx, LEVELS[level].name.toLowerCase(), 280, 137, '#7180a320', 72)
   text(ctx, '// ALL SYSTEMS ALMOST OPERATIONAL', 288, 164, '#63719355', 10)
   ctx.restore()
 
@@ -84,12 +84,15 @@ function drawTerminal(ctx: CanvasRenderingContext2D, x: number, y: number, title
   line(ctx, [x + 115, y + 72, x + 115, 458], '#36334b', 3)
 }
 
-function drawPlatforms(ctx: CanvasRenderingContext2D, camera: number, time: number) {
-  for (const p of PLATFORMS) {
+function drawPlatforms(ctx: CanvasRenderingContext2D, camera: number, time: number, state: VisualState) {
+  for (const p of state.platforms) {
+    if ((p.crumble ?? 0) > 0.8) { line(ctx, [p.x, p.y, p.x + p.w, p.y], "#66566a44", 2); continue }
     if (p.x + p.w < camera - 20 || p.x > camera + 980) continue
     if (p.floating) glow(ctx, p.x + p.w / 2, p.y + 13, 55, '#5d3cb63a')
     box(ctx, p.x, p.y, p.w, p.h, 5, p.floating ? '#323456' : '#20223d')
-    box(ctx, p.x, p.y, p.w, 6, 3, '#8de8e0')
+    box(ctx, p.x, p.y, p.w, 6, 3, p.unstable ? '#ffb879' : '#8de8e0')
+    if (p.unstable) text(ctx, (p.crumble ?? 0) > 0 ? '!!' : ' / / / ', p.x + 15, p.y + 18, '#ffdcad', 11)
+    if (p.travel) text(ctx, '<  >', p.x + p.w / 2 - 15, p.y + 18, '#b5ffff', 10)
     ctx.fillStyle = '#3e9fa6'; ctx.fillRect(p.x + 2, p.y + 6, p.w - 4, 3)
     for (let x = p.x + 14; x < p.x + p.w - 10; x += 48) {
       ctx.fillStyle = '#4b5573'; ctx.fillRect(x, p.y + 13, 3, 3)
@@ -110,7 +113,7 @@ function drawPlatforms(ctx: CanvasRenderingContext2D, camera: number, time: numb
       ctx.fillStyle = shade; ctx.fillRect(p.x, p.y + 40, p.w, 90)
     }
   }
-  for (const p of SPIKES) {
+  for (const p of LEVELS[state.level].spikes) {
     glow(ctx, p.x + p.w / 2, p.y + 17, 44, '#ef526222')
     for (let x = p.x; x < p.x + p.w; x += 16) {
       ctx.fillStyle = '#ed7f8c'; ctx.beginPath(); ctx.moveTo(x, p.y + p.h); ctx.lineTo(x + 8, p.y); ctx.lineTo(x + 16, p.y + p.h); ctx.fill()
@@ -119,12 +122,18 @@ function drawPlatforms(ctx: CanvasRenderingContext2D, camera: number, time: numb
     text(ctx, '! NULL', p.x + 7, p.y - 12, '#f4a2ac', 9)
   }
   // Hazard symbols remain visible independently of the red/purple palette.
-  for (const x of [410, 895, 1440, 2040]) {
+  const ground = state.platforms.filter(p => !p.floating).sort((a, b) => a.x - b.x)
+  for (const platform of ground.slice(0, -1)) {
+    const x = platform.x + platform.w
     text(ctx, '∨', x + 23, 510 + Math.sin(time * 2) * 2, '#9574bf', 17)
   }
 }
 
 function drawRobot(ctx: CanvasRenderingContext2D, p: PlayerVisual, time: number, reducedMotion: boolean) {
+  if ((p.dash ?? 0) > 0) {
+    line(ctx, [p.x + 17 - p.facing * 65, p.y + 20, p.x + 17, p.y + 20], '#83ffe899', 9)
+    line(ctx, [p.x + 17 - p.facing * 45, p.y + 35, p.x + 17, p.y + 35], '#c9a0ff88', 4)
+  }
   const moving = Math.abs(p.vx) > 20
   const bob = reducedMotion ? 0 : Math.sin(time * (moving ? 19 : 3.2)) * (moving ? 1.1 : 1.4)
   ctx.save()
@@ -177,22 +186,62 @@ function drawBug(ctx: CanvasRenderingContext2D, bug: Bug, time: number) {
 }
 
 export function renderLocalhost(ctx: CanvasRenderingContext2D, state: VisualState) {
+  const checkpointX = state.level === 2 ? 2500 : CHECKPOINT_X
+  const gateOpen = state.hotfix && (state.level !== 2 || state.boss.health === 0)
   const t = state.reducedMotion ? 0 : state.time
-  drawBackdrop(ctx, state.camera, t)
+  drawBackdrop(ctx, state.camera, t, state.level)
   ctx.save()
   const shake = state.reducedMotion ? 0 : state.shake
   ctx.translate(-Math.round(state.camera) + Math.sin(t * 83) * shake, Math.cos(t * 71) * shake * 0.45)
-  drawPlatforms(ctx, state.camera, t)
+  drawPlatforms(ctx, state.camera, t, state)
 
+  for (const spring of LEVELS[state.level].springs) {
+    glow(ctx, spring.x + 22, spring.y, 42, '#9affdf33')
+    box(ctx, spring.x, spring.y, spring.w, spring.h, 5, '#4b3472')
+    box(ctx, spring.x, spring.y, spring.w, 5, 3, '#b3ffda')
+    text(ctx, '↑ ↑', spring.x + 9, spring.y - 9, '#b3ffda', 17)
+  }
   const c = state.copy
+  if (state.level === 0) {
   drawTerminal(ctx, 48, 305, c.signFriday, c.signFridayQuote, '#c4a1ff')
   drawTerminal(ctx, 550, 235, c.signBug, c.signBugHint)
-  drawTerminal(ctx, 1035, 272, c.signCommit, state.checkpoint ? c.signCommitSaved : c.signCommitHint)
+  drawTerminal(ctx, checkpointX - 55, 272, c.signCommit, state.checkpoint ? c.signCommitSaved : c.signCommitHint)
   drawTerminal(ctx, 2710, 230, c.signPush, c.signPushHint, '#e8cc85')
   text(ctx, c.signSurprise, 1615, 266, '#b9a0db', 11)
   text(ctx, c.signSecret, 1824, 178, '#eccc80', 12)
 
-  for (const bit of BITS) {
+  } else {
+    drawTerminal(ctx, 48, 305, LEVELS[state.level].name, state.level === 1 ? 'RETRY / ROUTE / REPEAT' : 'FRIDAY / FINAL DEPLOY')
+    drawTerminal(ctx, checkpointX - 55, 272, c.signCommit, state.checkpoint ? c.signCommitSaved : c.signCommitHint)
+  }
+  for (const wall of LEVELS[state.level].firewalls) {
+    const phase = firewallPhase(state.time, wall.phase)
+    const color = phase === 'active' ? '#ff687f' : phase === 'warning' ? '#ffd280' : '#68d8ca'
+    box(ctx, wall.x - 5, wall.y + wall.h - 6, wall.w + 10, 6, 2, color)
+    text(ctx, phase.toUpperCase(), wall.x - 10, wall.y - 16, color, 10)
+    if (phase !== 'off') {
+      ctx.globalAlpha = phase === 'active' ? 0.65 : 0.18
+      box(ctx, wall.x, wall.y, wall.w, wall.h, 4, color); ctx.globalAlpha = 1
+      for (let y = wall.y + 4; y < 453; y += 16) line(ctx, [wall.x, y, wall.x + wall.w, y + 8], color, 2)
+    }
+  }
+  if (state.level === 2 && state.boss.health > 0) {
+    const b = BOSS_BODY, open = state.boss.clock >= 2 && !state.boss.hit
+    const color = open ? '#85ffcc' : '#f395a0'
+    glow(ctx, b.x + 45, b.y + 45, 110, open ? '#59e6ac33' : '#eb416d33')
+    box(ctx, b.x, b.y, b.w, b.h, 9, '#322c47')
+    box(ctx, b.x + 7, b.y, b.w - 14, 13, 4, color)
+    for (let i = 0; i < 3; i++) box(ctx, b.x + 14 + i * 23, b.y + 36, 16, 32, 3, i < state.boss.health ? color : '#514456')
+    ctx.textAlign = 'center'
+    text(ctx, 'LEGACY MONOLITH', b.x + 45, b.y - 46, '#f1c9e1', 13)
+    text(ctx, open ? c.bossOpen : state.boss.clock < 1.3 ? c.bossWarning : c.bossLocked, b.x + 20, b.y - 25, color, 10)
+    ctx.textAlign = 'left'
+    for (const wave of state.boss.waves) {
+      glow(ctx, wave.x + 17, wave.y + 12, 40, '#ff9c6244')
+      box(ctx, wave.x, wave.y, wave.w, wave.h, 8, '#ffa46b')
+    }
+  }
+  for (const bit of LEVELS[state.level].bits) {
     if (state.collected.has(bit.id) || bit.x < state.camera - 20 || bit.x > state.camera + 980) continue
     const y = bit.y + Math.sin(t * 3.8 + bit.id * 0.65) * 3
     glow(ctx, bit.x, y, 24, '#e5c65b26')
@@ -203,11 +252,11 @@ export function renderLocalhost(ctx: CanvasRenderingContext2D, state: VisualStat
   }
 
   const cpColor = state.checkpoint ? '#72edca' : '#827b9e'
-  glow(ctx, CHECKPOINT_X + 13, 410, state.checkpoint ? 70 : 25, state.checkpoint ? '#45dbab30' : '#6551a022')
-  box(ctx, CHECKPOINT_X, 397, 26, 63, 4, '#192b3d')
-  box(ctx, CHECKPOINT_X + 5, 403, 16, 33, 3, cpColor)
-  text(ctx, state.checkpoint ? '✓' : '●', CHECKPOINT_X + 7, 424, '#0c2d2c', 15)
-  line(ctx, [CHECKPOINT_X + 13, 436, CHECKPOINT_X + 13, 458], cpColor, 2)
+  glow(ctx, checkpointX + 13, 410, state.checkpoint ? 70 : 25, state.checkpoint ? '#45dbab30' : '#6551a022')
+  box(ctx, checkpointX, 397, 26, 63, 4, '#192b3d')
+  box(ctx, checkpointX + 5, 403, 16, 33, 3, cpColor)
+  text(ctx, state.checkpoint ? '✓' : '●', checkpointX + 7, 424, '#0c2d2c', 15)
+  line(ctx, [checkpointX + 13, 436, checkpointX + 13, 458], cpColor, 2)
 
   if (!state.hotfix) {
     const x = HOTFIX.x + 15, y = HOTFIX.y + 17 + Math.sin(t * 3) * 4
@@ -219,19 +268,20 @@ export function renderLocalhost(ctx: CanvasRenderingContext2D, state: VisualStat
     text(ctx, 'HOTFIX', x - 22, y - 34, '#a9f0da', 11)
   }
 
-  const gate = state.hotfix ? '#76e8b9' : '#9480b1'
-  glow(ctx, EXIT_X, 397, 96, state.hotfix ? '#57e5a431' : '#7961a220')
+  const gate = gateOpen ? '#76e8b9' : '#9480b1'
+  glow(ctx, EXIT_X, 397, 96, gateOpen ? '#57e5a431' : '#7961a220')
   box(ctx, EXIT_X - 37, 346, 74, 114, 9, '#1b283b')
   box(ctx, EXIT_X - 29, 354, 58, 106, 5, '#071820')
   line(ctx, [EXIT_X - 30, 458, EXIT_X - 30, 353, EXIT_X + 30, 353, EXIT_X + 30, 458], gate, 4)
   for (let i = 0; i < 5; i++) {
-    ctx.fillStyle = state.hotfix ? `rgba(97, 237, 176, ${0.12 + i * 0.06})` : '#56516833'
+    ctx.fillStyle = gateOpen ? `rgba(97, 237, 176, ${0.12 + i * 0.06})` : '#56516833'
     ctx.fillRect(EXIT_X - 25, 363 + ((i * 19 + t * 20) % 88), 50, 3)
   }
-  ctx.textAlign = 'center'; text(ctx, state.hotfix ? c.gatePassed : c.gateLocked, EXIT_X, 329, gate, 11); ctx.textAlign = 'left'
-  text(ctx, state.hotfix ? '→' : '×', EXIT_X - 11, 411, gate, 31)
+  ctx.textAlign = 'center'; text(ctx, gateOpen ? c.gatePassed : c.gateLocked, EXIT_X, 329, gate, 11); ctx.textAlign = 'left'
+  text(ctx, gateOpen ? '→' : '×', EXIT_X - 11, 411, gate, 31)
 
   for (const bug of state.enemies) if (bug.alive) drawBug(ctx, bug, t)
+  for (const bug of state.enemies) if (bug.alive && bug.retry) text(ctx, 'RETRY', bug.x, bug.y - 17, '#f2b2cb', 9)
   drawRobot(ctx, state.player, t, state.reducedMotion)
   for (const particle of state.particles) {
     ctx.globalAlpha = Math.min(1, particle.life / particle.maxLife)
