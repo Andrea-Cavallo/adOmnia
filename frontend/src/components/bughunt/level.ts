@@ -1,3 +1,5 @@
+import type { PowerPickup } from './powers'
+
 export type Rect = { x: number; y: number; w: number; h: number }
 export type Platform = Rect & { floating?: boolean; travel?: number; unstable?: boolean; originX?: number; crumble?: number }
 export type Bug = Rect & { left: number; right: number; direction: number; alive: boolean; phase: number; retry?: boolean }
@@ -61,7 +63,7 @@ export function intersects(a: Rect, b: Rect): boolean {
 
 export type Firewall = Rect & { phase: number }
 export type Level = {
-  name: string; platforms: Platform[]; spikes: Rect[]; bits: Bit[]; bugs: Bug[]; firewalls: Firewall[]; springs: Rect[]
+  name: string; platforms: Platform[]; spikes: Rect[]; bits: Bit[]; bugs: Bug[]; firewalls: Firewall[]; springs: Rect[]; powers: PowerPickup[]
 }
 const gateway: Platform[] = [
   { x: 0, y: 460, w: 600, h: 100 }, { x: 715, y: 460, w: 285, h: 100 },
@@ -75,11 +77,18 @@ const gateway: Platform[] = [
   { x: 2030, y: 355, w: 150, h: 22, floating: true, travel: 40 },
 ]
 export const LEVELS: Level[] = [
-  { name: 'Localhost', springs: [{ x: 300, y: 448, w: 44, h: 14 }], platforms: PLATFORMS, spikes: SPIKES, bits: BITS, bugs: createBugs(), firewalls: [] },
-  { name: 'API Gateway', springs: [{ x: 710, y: 448, w: 44, h: 14 }, { x: 1695, y: 353, w: 44, h: 14 }], platforms: gateway, spikes: [], bits: BITS.map(b => ({ ...b, id: b.id + 100 })),
+  { name: 'Localhost',
+    // git revert first so R is learned early; sudo rewards the secret branch.
+    powers: [{ kind: 'revert', x: 200, y: 420 }, { kind: 'breakpoint', x: 1457, y: 345 }, { kind: 'sudo', x: 2175, y: 280 }, { kind: 'gc', x: 2440, y: 380 }],
+    springs: [{ x: 300, y: 448, w: 44, h: 14 }], platforms: PLATFORMS, spikes: SPIKES, bits: BITS, bugs: createBugs(), firewalls: [] },
+  { name: 'API Gateway',
+    powers: [{ kind: 'revert', x: 120, y: 420 }, { kind: 'breakpoint', x: 1100, y: 420 }, { kind: 'sudo', x: 1580, y: 420 }, { kind: 'gc', x: 2600, y: 420 }],
+    springs: [{ x: 710, y: 448, w: 44, h: 14 }, { x: 1695, y: 353, w: 44, h: 14 }], platforms: gateway, spikes: [], bits: BITS.map(b => ({ ...b, id: b.id + 100 })),
     bugs: createBugs().map((b, i) => ({ ...b, retry: true, ...(i === 0 ? { x: 370, left: 180, right: 520 } : i === 1 ? { x: 1730, left: 1600, right: 1840 } : {}) })),
     firewalls: [{ x: 1210, y: 365, w: 25, h: 95, phase: 0 }, { x: 2280, y: 365, w: 25, h: 95, phase: 1.7 }] },
-  { name: 'Production', springs: [{ x: 1875, y: 263, w: 44, h: 14 }], platforms: [...PLATFORMS.filter(p => p.floating && p.x < 2140).map(p => ({ ...p, unstable: true })),
+  { name: 'Production',
+    powers: [{ kind: 'revert', x: 100, y: 420 }, { kind: 'gc', x: 520, y: 420 }, { kind: 'breakpoint', x: 1420, y: 420 }, { kind: 'sudo', x: 2420, y: 420 }],
+    springs: [{ x: 1875, y: 263, w: 44, h: 14 }], platforms: [...PLATFORMS.filter(p => p.floating && p.x < 2140).map(p => ({ ...p, unstable: true })),
       { x: 0, y: 460, w: 570, h: 100 }, { x: 650, y: 460, w: 620, h: 100 },
       { x: 1370, y: 460, w: 390, h: 100 }, { x: 1840, y: 460, w: 340, h: 100 },
       { x: 2260, y: 460, w: 960, h: 100 }], spikes: [{ x: 1050, y: 440, w: 64, h: 20 }],

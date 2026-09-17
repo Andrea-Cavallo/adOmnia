@@ -1,5 +1,7 @@
 import type { BugHuntCopy } from './copy'
 import { LEVELS, BOSS_BODY, firewallPhase, CHECKPOINT_X, EXIT_X, HOTFIX, type Platform, type Boss, type Bug } from './level'
+import { drawBreakpointMarkers, drawGcWave, drawPowerOverlay, drawPowerPickups, drawRewindGhosts, drawSudoAura } from './powerVisuals'
+import type { PowerState } from './powers'
 
 export type PlayerVisual = { x: number; y: number; w: number; h: number; vx: number; vy: number; grounded: boolean; facing: number; invulnerable: number; squash: number; dash?: number }
 export type Particle = { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; color: string; size: number; gravity: number }
@@ -8,24 +10,26 @@ export type VisualState = {
   level: number; platforms: Platform[]; boss: Boss; player: PlayerVisual; enemies: Bug[]; camera: number; time: number; collected: Set<number>
   particles: Particle[]; popups: Popup[]; checkpoint: boolean; hotfix: boolean; secret: boolean
   shake: number; reducedMotion: boolean; finished: boolean; copy: BugHuntCopy
+  /** Clock that stops on a breakpoint. */
+  worldTime: number; powers: PowerState
 }
 
-function box(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, radius: number, color: string) {
+export function box(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, radius: number, color: string) {
   ctx.fillStyle = color
   ctx.beginPath(); ctx.roundRect(x, y, w, h, radius); ctx.fill()
 }
 
-function line(ctx: CanvasRenderingContext2D, points: number[], color: string, width = 1) {
+export function line(ctx: CanvasRenderingContext2D, points: number[], color: string, width = 1) {
   ctx.strokeStyle = color; ctx.lineWidth = width; ctx.beginPath(); ctx.moveTo(points[0], points[1])
   for (let i = 2; i < points.length; i += 2) ctx.lineTo(points[i], points[i + 1])
   ctx.stroke()
 }
 
-function text(ctx: CanvasRenderingContext2D, value: string, x: number, y: number, color: string, size = 12) {
+export function text(ctx: CanvasRenderingContext2D, value: string, x: number, y: number, color: string, size = 12) {
   ctx.fillStyle = color; ctx.font = `600 ${size}px monospace`; ctx.fillText(value, x, y)
 }
 
-function glow(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, color: string) {
+export function glow(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, color: string) {
   const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius)
   gradient.addColorStop(0, color); gradient.addColorStop(1, 'transparent')
   ctx.fillStyle = gradient; ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2)
@@ -215,7 +219,7 @@ export function renderLocalhost(ctx: CanvasRenderingContext2D, state: VisualStat
     drawTerminal(ctx, checkpointX - 55, 272, c.signCommit, state.checkpoint ? c.signCommitSaved : c.signCommitHint)
   }
   for (const wall of LEVELS[state.level].firewalls) {
-    const phase = firewallPhase(state.time, wall.phase)
+    const phase = firewallPhase(state.worldTime, wall.phase)
     const color = phase === 'active' ? '#ff687f' : phase === 'warning' ? '#ffd280' : '#68d8ca'
     box(ctx, wall.x - 5, wall.y + wall.h - 6, wall.w + 10, 6, 2, color)
     text(ctx, phase.toUpperCase(), wall.x - 10, wall.y - 16, color, 10)
@@ -280,9 +284,15 @@ export function renderLocalhost(ctx: CanvasRenderingContext2D, state: VisualStat
   ctx.textAlign = 'center'; text(ctx, gateOpen ? c.gatePassed : c.gateLocked, EXIT_X, 329, gate, 11); ctx.textAlign = 'left'
   text(ctx, gateOpen ? '→' : '×', EXIT_X - 11, 411, gate, 31)
 
-  for (const bug of state.enemies) if (bug.alive) drawBug(ctx, bug, t)
+  const bugTime = state.reducedMotion ? 0 : state.worldTime
+  drawPowerPickups(ctx, state.level, state.powers, state.camera, t)
+  for (const bug of state.enemies) if (bug.alive) drawBug(ctx, bug, bugTime)
+  if (state.powers.breakpoint > 0) drawBreakpointMarkers(ctx, state.enemies, state.time)
   for (const bug of state.enemies) if (bug.alive && bug.retry) text(ctx, 'RETRY', bug.x, bug.y - 17, '#f2b2cb', 9)
+  drawRewindGhosts(ctx, state.powers)
+  drawSudoAura(ctx, state.player, state.time, state.powers.sudo)
   drawRobot(ctx, state.player, t, state.reducedMotion)
+  drawGcWave(ctx, state.powers.gc)
   for (const particle of state.particles) {
     ctx.globalAlpha = Math.min(1, particle.life / particle.maxLife)
     ctx.fillStyle = particle.color
@@ -298,4 +308,5 @@ export function renderLocalhost(ctx: CanvasRenderingContext2D, state: VisualStat
   const vignette = ctx.createRadialGradient(480, 300, 230, 480, 280, 620)
   vignette.addColorStop(0, 'transparent'); vignette.addColorStop(1, '#03071499')
   ctx.fillStyle = vignette; ctx.fillRect(0, 0, 960, 540)
+  drawPowerOverlay(ctx, state.powers, state.time, state.copy, state.reducedMotion)
 }

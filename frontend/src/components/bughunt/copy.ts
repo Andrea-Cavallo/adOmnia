@@ -4,6 +4,19 @@ import type { Lang } from '@/lib/i18n'
 // missing Italian line fails type-checking instead of showing up blank.
 const en = {
   dashReady: 'DASH READY', dashCharging: 'DASH CHARGING', keysDash: 'dash',
+  // developer power-ups
+  powerRevert: '+1 git revert  ·  press R',
+  powerBreakpoint: 'BREAKPOINT HIT  ·  world paused',
+  powerSudo: 'sudo !!  ·  root access granted',
+  powerGc: 'GARBAGE COLLECTOR  ·  memory freed',
+  revertUsed: 'git revert HEAD~3s',
+  revertEmpty: 'No revert left. Find a ↺ chip.',
+  freed: (address: string) => `free(${address}) ✓`,
+  breakpointBanner: 'Paused on breakpoint',
+  sudoBanner: 'root@a0:~#',
+  rewindBanner: 'git revert',
+  keysRevert: 'git revert',
+  powersIntro: 'Power-ups: ↺ git revert (R) · ⏸ Breakpoint · # sudo · ♻ Garbage Collector.',
   statScore: 'Score', statCombo: 'Best chain',
   nextLevel: 'Next environment', stageClear: 'Hotfix secured!',
   stageHints: ['Space twice: double jump. X: dash through bugs. Follow the glowing launch trails!', 'Dash through firewalls with X. Chain bits and bugs to boost your score!', 'Platforms crumble: keep moving. Jump over the wave, then land on the green core.'],
@@ -91,6 +104,18 @@ export type BugHuntCopy = typeof en
 
 const it: BugHuntCopy = {
   dashReady: 'SCATTO PRONTO', dashCharging: 'SCATTO IN RICARICA', keysDash: 'scatto',
+  powerRevert: '+1 git revert  ·  premi R',
+  powerBreakpoint: 'BREAKPOINT  ·  mondo in pausa',
+  powerSudo: 'sudo !!  ·  accesso root',
+  powerGc: 'GARBAGE COLLECTOR  ·  memoria liberata',
+  revertUsed: 'git revert HEAD~3s',
+  revertEmpty: 'Nessun revert. Cerca un chip ↺.',
+  freed: (address) => `free(${address}) ✓`,
+  breakpointBanner: 'In pausa sul breakpoint',
+  sudoBanner: 'root@a0:~#',
+  rewindBanner: 'git revert',
+  keysRevert: 'git revert',
+  powersIntro: 'Poteri: ↺ git revert (R) · ⏸ Breakpoint · # sudo · ♻ Garbage Collector.',
   statScore: 'Punteggio', statCombo: 'Serie migliore',
   nextLevel: 'Prossimo ambiente', stageClear: 'Hotfix al sicuro!',
   stageHints: ['Spazio due volte: doppio salto. X: travolgi i bug. Segui le scie delle rampe!', 'Attraversa i firewall con X. Colleziona bit e bug in serie per fare punti!', 'Le piattaforme cedono: continua a muoverti. Salta l’onda, poi atterra sul nucleo verde.'],

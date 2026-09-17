@@ -2,6 +2,10 @@ import { BugHuntAudio } from './audio'
 import { BUG_HUNT_COPY, type BugHuntCopy } from './copy'
 import { LEVELS, BOSS_BODY, createBoss, firewallPhase, type Platform, CHECKPOINT_X, EXIT_X, HOTFIX, WORLD_WIDTH, createBugs, intersects, type Bug, type Rect } from './level'
 import { renderLocalhost, type Particle, type PlayerVisual, type Popup } from './visuals'
+import {
+  BREAKPOINT_SECONDS, GC_RADIUS, GC_SPEED, PICKUP_SIZE, REVERT_MAX_CHARGES, REWIND_SPEED, SUDO_SECONDS,
+  clearActivePowers, createPowerState, pickupKey, recordFrame, type PowerKind,
+} from './powers'
 
 export const WIDTH = 960
 export const HEIGHT = 540
@@ -11,16 +15,22 @@ const RUN_SPEED = 310
 const JUMP_SPEED = 680
 type Player = PlayerVisual & { coyote: number; buffer: number; knockback: number; airJump: boolean; dash: number; dashCooldown: number; dashDirection: number }
 export type GameSnapshot = {
+  revertCharges: number; sudo: number; breakpoint: number
   score: number; combo: number; bestCombo: number; dashReady: boolean; health: number; deaths: number; checkpoint: boolean; finished: boolean; paused: boolean
   level: number; levelComplete: boolean; bossHealth: number; bits: number; totalBits: number; hotfix: boolean; secret: boolean; bugs: number; seconds: number
 }
 export const INITIAL_SNAPSHOT: GameSnapshot = {
+  revertCharges: 0, sudo: 0, breakpoint: 0,
   score: 0, combo: 0, bestCombo: 0, dashReady: true, health: 3, deaths: 0, checkpoint: false, finished: false, paused: false,
   level: 0, levelComplete: false, bossHealth: 3, bits: 0, totalBits: LEVELS.reduce((n, l) => n + l.bits.length, 0), hotfix: false, secret: false, bugs: 0, seconds: 0,
 }
 
 export class BugHuntPrototype {
   private score = 0
+  private powers = createPowerState()
+  /** Advances only while no breakpoint is active: drives bugs, firewalls, moving platforms and the boss. */
+  private worldTime = 0
+  private publishedPowers = ''
   private chain = 0
   private bestCombo = 0
   private comboTime = 0
@@ -78,7 +88,8 @@ export class BugHuntPrototype {
   }
 
   getSnapshot(): GameSnapshot {
-    return { score: this.score, combo: this.chain, bestCombo: this.bestCombo, dashReady: this.player.dashCooldown <= 0, health: this.health, deaths: this.deaths, checkpoint: this.checkpoint, finished: this.finished, paused: this.paused,
+    return { revertCharges: this.powers.revertCharges, sudo: Math.ceil(this.powers.sudo), breakpoint: Math.ceil(this.powers.breakpoint),
+      score: this.score, combo: this.chain, bestCombo: this.bestCombo, dashReady: this.player.dashCooldown <= 0, health: this.health, deaths: this.deaths, checkpoint: this.checkpoint, finished: this.finished, paused: this.paused,
       level: this.level, levelComplete: this.levelComplete, bossHealth: this.boss.health, bits: this.collected.size, totalBits: LEVELS.reduce((n, l) => n + l.bits.length, 0), hotfix: this.hotfix, secret: this.secret, bugs: this.defeated.size, seconds: this.elapsed }
   }
 
@@ -99,6 +110,7 @@ export class BugHuntPrototype {
       this.burst(p.x + 17, p.y + 24, ['#82ffec', '#be8cff'], 16, 190)
       this.audio.play('dash'); this.publish()
     }
+    if (code === 'KeyR' && !this.keys.has(code)) this.startRewind()
     if (code === 'Space' && !this.keys.has(code)) this.player.buffer = 0.12
     this.keys.add(code)
   }
@@ -125,6 +137,7 @@ export class BugHuntPrototype {
   advance() {
     if (!this.levelComplete || this.level >= LEVELS.length - 1) return
     this.chain = 0; this.comboTime = 0; this.springCooldown = 0
+    clearActivePowers(this.powers)
     this.level++
     this.levelComplete = false
     this.checkpoint = false; this.hotfix = false; this.health = 3
@@ -139,6 +152,7 @@ export class BugHuntPrototype {
 
   restart() {
     this.score = 0; this.chain = 0; this.bestCombo = 0; this.comboTime = 0; this.springCooldown = 0
+    this.powers = createPowerState(); this.worldTime = 0; this.publishedPowers = ''
     this.level = 0; this.levelComplete = false; this.boss = createBoss()
     this.platforms = this.map.platforms.map(p => ({ ...p, originX: p.x, crumble: 0 }))
     this.health = 3; this.deaths = 0; this.checkpoint = false; this.finished = false; this.hotfix = false; this.secret = false
@@ -186,7 +200,7 @@ export class BugHuntPrototype {
   }
 
   private hurt(fell = false) {
-    if ((!fell && this.player.invulnerable > 0) || this.finished) return
+    if ((!fell && (this.player.invulnerable > 0 || this.powers.sudo > 0)) || this.finished || this.powers.rewind) return
     this.chain = 0; this.comboTime = 0; this.player.dash = 0
     this.health--
     this.audio.play('hurt')
@@ -195,6 +209,7 @@ export class BugHuntPrototype {
     const died = this.health <= 0
     if (died) { this.deaths++; this.health = 3; this.enemies = this.map.bugs.map(b => ({ ...b })) }
     if (fell || died) {
+      clearActivePowers(this.powers)
       this.boss = createBoss()
       for (const platform of this.platforms) platform.crumble = 0
       this.player = this.makePlayer(this.checkpoint ? this.checkpointX : 58)
@@ -227,6 +242,13 @@ export class BugHuntPrototype {
       if (this.collected.size % 5 === 0) this.popup(this.copy.bits(this.collected.size), bit.x, bit.y - 15, '#ffe4a0')
       this.publish()
     }
+    for (const [index, power] of this.map.powers.entries()) {
+      const key = pickupKey(this.level, index)
+      if (this.powers.picked.has(key)) continue
+      if (!intersects(rect, { x: power.x - PICKUP_SIZE / 2, y: power.y - PICKUP_SIZE / 2, w: PICKUP_SIZE, h: PICKUP_SIZE })) continue
+      this.powers.picked.add(key)
+      this.activatePower(power.kind, power.x, power.y)
+    }
     if (!this.hotfix && intersects(rect, HOTFIX)) {
       this.hotfix = true
       this.burst(HOTFIX.x + 15, HOTFIX.y + 17, ['#b9ffe9', '#5fe5c0', '#d6b3ff'], 34, 180)
@@ -254,10 +276,13 @@ export class BugHuntPrototype {
     this.springCooldown = Math.max(0, this.springCooldown - dt)
     this.elapsed += dt
     if (Math.floor(this.elapsed) !== this.publishedSecond) { this.publishedSecond = Math.floor(this.elapsed); this.publish() }
+    if (this.powers.rewind) { this.stepRewind(); return }
+    const frozen = this.tickPowers(dt)
+    if (!frozen) this.worldTime += dt
     const p = this.player
     for (const platform of this.platforms) {
       const oldX = platform.x
-      if (platform.travel) platform.x = platform.originX! + Math.sin(this.visualTime * 1.5) * platform.travel
+      if (platform.travel) platform.x = platform.originX! + Math.sin(this.worldTime * 1.5) * platform.travel
       if (p.grounded && Math.abs(p.y + p.h - platform.y) < 1 && p.x + p.w > oldX && p.x < oldX + platform.w) {
         p.x += platform.x - oldX
         if (platform.unstable && !platform.crumble) platform.crumble = 0.001
@@ -339,16 +364,17 @@ export class BugHuntPrototype {
     for (let index = 0; index < this.enemies.length; index++) {
       const bug = this.enemies[index]
       if (!bug.alive) continue
-      if (bug.retry) bug.y = 426 - Math.max(0, Math.sin(this.visualTime * 3 + bug.phase)) * 74
-      bug.x += bug.direction * 82 * dt
+      if (bug.retry) bug.y = 426 - Math.max(0, Math.sin(this.worldTime * 3 + bug.phase)) * 74
+      if (!frozen) bug.x += bug.direction * 82 * dt
       if (bug.x <= bug.left) { bug.x = bug.left; bug.direction = 1 }
       if (bug.x >= bug.right) { bug.x = bug.right; bug.direction = -1 }
       if (!intersects(p, bug)) continue
-      if (p.dash > 0 || (p.vy > 80 && previousBottom <= bug.y + 8)) {
+      const stomp = p.vy > 80 && previousBottom <= bug.y + 8
+      if (p.dash > 0 || this.powers.sudo > 0 || stomp) {
         const id = this.level * 100 + index
         if (!this.defeated.has(id)) this.reward(100, bug.x, bug.y)
         bug.alive = false; this.defeated.add(id)
-        if (p.dash <= 0) { p.y = bug.y - p.h; p.vy = this.keys.has('Space') ? -540 : -390 }
+        if (p.dash <= 0 && stomp) { p.y = bug.y - p.h; p.vy = this.keys.has('Space') ? -540 : -390 }
         p.airJump = true; p.squash = -0.1
         this.shake = 2.4
         this.burst(bug.x + 19, bug.y + 15, ['#ff8d9e', '#ffc6b8', '#b28fe7'], 24, 165)
@@ -356,16 +382,16 @@ export class BugHuntPrototype {
         this.audio.play('stomp'); this.publish()
       } else { this.hurt(); if (this.player !== p) return }
     }
-    for (const spike of this.map.spikes) if (intersects(p, spike)) { this.hurt(); if (this.player !== p) return }
+    for (const spike of this.map.spikes) if (this.powers.sudo <= 0 && intersects(p, spike)) { this.hurt(); if (this.player !== p) return }
     for (const wall of this.map.firewalls) {
-      if (firewallPhase(this.visualTime, wall.phase) === 'active' && p.dash <= 0 && intersects(p, wall)) {
+      if (firewallPhase(this.worldTime, wall.phase) === 'active' && p.dash <= 0 && this.powers.sudo <= 0 && intersects(p, wall)) {
         this.hurt(); if (this.player !== p) return
       }
     }
     if (this.level === 2 && this.boss.health > 0 && p.x > 2450) {
       const boss = this.boss
       const before = boss.clock
-      boss.clock += dt
+      if (!frozen) boss.clock += dt
       if (before < 1.3 && boss.clock >= 1.3) {
         boss.waves.push({ x: BOSS_BODY.x, y: 436, w: 34, h: 24 })
         this.burst(BOSS_BODY.x, 452, ['#ffb56b', '#ff668c'], 22)
@@ -373,7 +399,7 @@ export class BugHuntPrototype {
       }
       if (boss.clock > 4.8) { boss.clock = 0; boss.hit = false }
       for (const wave of boss.waves) {
-        wave.x -= dt * 250
+        if (!frozen) wave.x -= dt * 250
         if (intersects(p, wave)) { this.hurt(); if (this.player !== p) return }
       }
       boss.waves = boss.waves.filter(w => w.x > 2140)
@@ -407,8 +433,93 @@ export class BugHuntPrototype {
         }
       }
     }
-    const target = Math.max(0, Math.min(WORLD_WIDTH - WIDTH, p.x - 310))
+    recordFrame(this.powers, { x: p.x, y: p.y, vx: p.vx, vy: p.vy, facing: p.facing })
+    this.followCamera(dt)
+  }
+
+  private followCamera(dt: number) {
+    const target = Math.max(0, Math.min(WORLD_WIDTH - WIDTH, this.player.x - 310))
     this.camera += (target - this.camera) * Math.min(1, dt * 8)
+  }
+
+  private activatePower(kind: PowerKind, x: number, y: number) {
+    const powers = this.powers
+    if (kind === 'revert') {
+      powers.revertCharges = Math.min(REVERT_MAX_CHARGES, powers.revertCharges + 1)
+      this.popup(this.copy.powerRevert, x, y - 72, '#9ad8ff')
+    } else if (kind === 'breakpoint') {
+      powers.breakpoint = BREAKPOINT_SECONDS
+      this.popup(this.copy.powerBreakpoint, x, y - 72, '#ff9aa9')
+    } else if (kind === 'sudo') {
+      powers.sudo = SUDO_SECONDS
+      this.popup(this.copy.powerSudo, x, y - 72, '#ffe08a')
+    } else {
+      powers.gc = { x: this.player.x + this.player.w / 2, y: this.player.y + this.player.h / 2, r: 0 }
+      this.shake = 5
+      this.popup(this.copy.powerGc, x, y - 72, '#9dffc4')
+    }
+    this.burst(x, y, ['#ffffff', '#b9f6ff', '#d7b4ff', '#ffe08a'], 30, 210)
+    this.reward(50, x, y)
+    this.audio.play(kind === 'gc' ? 'gc' : kind === 'breakpoint' ? 'freeze' : kind === 'sudo' ? 'sudo' : 'power')
+    this.publish()
+  }
+
+  /** Runs timers and the Garbage Collector wave. Returns true while the world is paused on a breakpoint. */
+  private tickPowers(dt: number): boolean {
+    const powers = this.powers
+    powers.sudo = Math.max(0, powers.sudo - dt)
+    powers.breakpoint = Math.max(0, powers.breakpoint - dt)
+    if (powers.gc) {
+      const wave = powers.gc
+      wave.r += GC_SPEED * dt
+      for (const [index, bug] of this.enemies.entries()) {
+        if (!bug.alive || Math.hypot(bug.x + bug.w / 2 - wave.x, bug.y + bug.h / 2 - wave.y) > wave.r) continue
+        bug.alive = false
+        const id = this.level * 100 + index
+        if (!this.defeated.has(id)) { this.defeated.add(id); this.reward(100, bug.x, bug.y) }
+        this.burst(bug.x + 19, bug.y + 15, ['#9dffc4', '#e8fff4', '#7bd6ff'], 26, 180)
+        this.popup(this.copy.freed(`0x${(0x3f2a + index * 0x1d7 + this.level * 0x91).toString(16)}`), bug.x + 20, bug.y - 25, '#b8ffd9')
+        this.audio.play('stomp')
+        this.publish()
+      }
+      this.boss.waves = this.boss.waves.filter((w) => Math.hypot(w.x + w.w / 2 - wave.x, w.y + w.h / 2 - wave.y) > wave.r)
+      if (wave.r > GC_RADIUS) powers.gc = null
+    }
+    const signature = `${Math.ceil(powers.sudo)}|${Math.ceil(powers.breakpoint)}|${powers.revertCharges}`
+    if (signature !== this.publishedPowers) { this.publishedPowers = signature; this.publish() }
+    return powers.breakpoint > 0
+  }
+
+  private startRewind() {
+    const powers = this.powers
+    if (powers.rewind) return
+    if (powers.revertCharges <= 0) { this.popup(this.copy.revertEmpty, this.player.x + 17, this.player.y - 20, '#c9d3e6'); return }
+    if (powers.history.length < 20) return
+    powers.revertCharges--
+    powers.rewind = [...powers.history].reverse()
+    powers.history = []
+    this.player.dash = 0; this.player.knockback = 0
+    this.popup(this.copy.revertUsed, this.player.x + 17, this.player.y - 30, '#9ad8ff')
+    this.audio.play('rewind')
+    this.publish()
+  }
+
+  /** Replays recorded positions backwards; the world stays still meanwhile. */
+  private stepRewind() {
+    const powers = this.powers
+    const frames = powers.rewind!
+    const frame = frames[Math.min(frames.length - 1, REWIND_SPEED - 1)]
+    frames.splice(0, REWIND_SPEED)
+    const p = this.player
+    p.x = frame.x; p.y = frame.y; p.facing = frame.facing; p.vx = 0; p.vy = 0
+    if (!frames.length) {
+      powers.rewind = null
+      p.vx = frame.vx; p.vy = Math.min(0, frame.vy)
+      p.grounded = false; p.airJump = true; p.coyote = 0.1; p.invulnerable = Math.max(p.invulnerable, 0.8)
+      this.burst(p.x + 17, p.y + 24, ['#9ad8ff', '#ffffff', '#c9a0ff'], 24, 170)
+      this.publish()
+    }
+    this.followCamera(STEP)
   }
 
   private loop = (time: number) => {
@@ -425,6 +536,7 @@ export class BugHuntPrototype {
   private draw() {
     renderLocalhost(this.ctx, { level: this.level, platforms: this.platforms, boss: this.boss, player: this.player, enemies: this.enemies, camera: this.camera, time: this.visualTime,
       collected: this.collected, particles: this.particles, popups: this.popups, checkpoint: this.checkpoint, hotfix: this.hotfix,
-      secret: this.secret, shake: this.shake, reducedMotion: this.reducedMotion, finished: this.finished, copy: this.copy })
+      secret: this.secret, shake: this.shake, reducedMotion: this.reducedMotion, finished: this.finished, copy: this.copy,
+      worldTime: this.worldTime, powers: this.powers })
   }
 }

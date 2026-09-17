@@ -1,16 +1,33 @@
 # a0: Bug Hunt — Deploy del venerdì
 
-**Stato:** campagna a tre ambienti implementata: Localhost, API Gateway, Production e Legacy Monolith. Verificati motore, build e scene; resta la partita completa a mano nel desktop per il bilanciamento.
-**Ultimo aggiornamento:** 2026-09-17.
+**Stato:** campagna a tre ambienti con quattro poteri da sviluppatore (git revert, Breakpoint, sudo, Garbage Collector). Campagna e poteri verificati nel runtime desktop via CDP; resta la partita a mano per il bilanciamento.
+**Ultimo aggiornamento:** 2026-09-17 (poteri speciali).
 **Prossimo passo:** giocare la campagna completa nel desktop, iniziando da Localhost; annotare tempi, morti e difficolta del boss prima di tarare le mappe.
 
-## Feedback divertimento — tranche in corso
+## Poteri da sviluppatore — 2026-09-17
 
-L'utente trova il gioco poco divertente. Intervento su mosse, ritmo e ricompense.
-- [ ] Correggere menu di passaggio: il ramo JSX per `levelComplete` non era presente.
-- [ ] Doppio salto e scatto offensivo con ricarica, attraversamento dei firewall.
-- [ ] Combo e punteggio senza farming; rampe di lancio e percorsi premio.
-- [ ] Verificare nuove mosse, regressioni dei percorsi e interfaccia.
+Richiesta dell'utente: poteri speciali "fighi" a tema informatico. Supera la voce "abilità" fuori perimetro della specifica iniziale.
+
+| Potere | Raccolta | Effetto |
+|---|---|---|
+| ↺ **git revert** | cariche (max 3), tasto **R** | Riavvolge ~3 s di movimento in 0,75 s con scia e overlay VHS; invulnerabilità breve all'arrivo. Caduta o morte azzerano la storia: non si può tornare nella buca. |
+| ⏸ **Breakpoint** | immediato, 5 s | Ferma il "tempo del mondo": bug (pallino rosso), firewall, piattaforme mobili e boss. a0 si muove normalmente. |
+| # **sudo** | immediato, 6 s | Aura root: i bug si cancellano al contatto; spuntoni, firewall e onde del boss non feriscono. Lampeggia nell'ultimo 1,5 s. Non salva dalle buche e non colpisce il nucleo del boss. |
+| ♻ **Garbage Collector** | immediato | Onda circolare (raggio 640) che libera tutti i bug raggiunti (`free(0x…)`) e cancella le onde del boss. |
+
+- [x] Stato puro in `powers.ts`, grafica in `powerVisuals.ts`, agganci in `prototype.ts`/`visuals.ts`; `worldTime` separato da `visualTime` per il Breakpoint.
+- [x] Quattro chip per ambiente in `level.ts`; revert all'inizio di ogni ambiente, sudo come premio del ramo segreto in Localhost, GC sopra gli spuntoni.
+- [x] HUD (cariche R, timer Breakpoint/sudo), legenda tasti, riga nell'intro, testi IT/EN, suoni sintetizzati dedicati.
+- [x] 7 test in `powers.test.ts` (29 totali del gioco); i percorsi completi dei tre ambienti restano verdi.
+- [x] Browser: ogni potere osservato a schermo. Desktop Wails 3 (build production temporanea con debug port, `main.go` non modificato): gesto segreto, tutti e 4 i poteri in tutti e 3 gli ambienti, R da tastiera, passaggi di ambiente e finale, 75 fps, nessun canvas dopo la chiusura, nessun errore. Chiavi `adomnia.bughunt.*` rimosse dal profilo reale.
+- [ ] Taratura a mano: durate (5 s / 6 s), raggio GC e posizioni dei chip.
+
+## Feedback divertimento — tranche precedente
+
+- [x] Menu di passaggio `levelComplete` (coperto da `BugHuntOverlay.test.tsx`).
+- [x] Doppio salto e scatto offensivo con ricarica, attraversamento dei firewall (test in `prototype.test.ts`).
+- [x] Combo e punteggio senza farming; rampe di lancio e percorsi premio (test in `prototype.test.ts`).
+- [x] Nuove mosse e percorsi dei tre ambienti verificati dai test; interfaccia verificata nel desktop insieme ai poteri.
 
 ## Checkpoint di ripresa — 2026-09-17
 
@@ -84,7 +101,7 @@ La reference di a0 definisce testa nera lucida con `a0` bianco e sorriso viola, 
 - **Regole:** tre punti salute, invulnerabilità breve dopo danno, caduta = perdita di un punto e ritorno al checkpoint. A zero salute, ripartenza dal checkpoint con salute piena e tentativi illimitati. Ogni livello ha un checkpoint intermedio; quello del terzo è prima del boss. Un Hotfix obbligatorio per livello e una pipeline finale attivabile solo dopo averlo preso. Bit facoltativi aumentano il punteggio; ogni bit contribuisce al massimo una volta per partita, anche dopo morte o retry dal checkpoint.
 - **Progressione:** tre mappe disegnate a mano, 10–15 minuti al primo tentativo come obiettivo da validare. Il boss si resetta a ogni nuovo tentativo. Risultato finale: tempo, bit, morti, Rigioca e Torna ad adOmnia. Un record locale può tenere miglior tempo e massimo bit separatamente.
 - **Accessibilità minima:** pericoli distinti per forma e animazione oltre che per colore; avvisi prima dell'attivazione; niente flash aggressivi; scuotimento limitato e disattivabile; menu usabile da tastiera; audio disattivabile.
-- **Fuori perimetro:** multiplayer, touch, editor, mappe procedurali, inventario, abilità, combattimento complesso, classifiche online.
+- **Fuori perimetro:** multiplayer, touch, editor, mappe procedurali, inventario, combattimento complesso, classifiche online. (Le abilità sono entrate su richiesta: vedi *Poteri da sviluppatore*.)
 
 ## Livelli, per sezioni giocabili
 

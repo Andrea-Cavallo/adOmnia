@@ -21,6 +21,11 @@
 .bh-pill strong { color: #ece7f8; font-size: 13px; }
 .bh-pill.gold { color: #ebce87; }
 .bh-pill.mint { color: #92e8c9; }
+.bh-pill.sky { color: #9ad8ff; border-color: #8fd3ff44; }
+.bh-pill.rose { color: #ff9aa9; border-color: #ff7d9255; }
+.bh-pill.sun { color: #ffe08a; border-color: #ffd76a55; }
+.bh-pill.dim { opacity: .55; }
+.bh-pill kbd { padding: 0 4px; border: 1px solid #6e658866; border-radius: 4px; font-size: 9px; }
 .bh-heart { font-size: 17px; letter-spacing: 4px; color: #ee8ca6; line-height: 1; }
 .bh-heart-empty { color: #5c405b; }
 .bh-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 24px; border-top: 1px solid #c9b6ff18; background: #0c1120; color: #8995ae; font-size: 10px; }
