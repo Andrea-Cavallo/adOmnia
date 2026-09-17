@@ -1,6 +1,6 @@
 # a0: Bug Hunt — Deploy del venerdì
 
-**Stato:** v0.9.14 pronta: concatenazioni di colpi/scatti, 17 nemici, Bonus Rush, grado arcade e doppia onda finale. Corretta anche l'inquadratura che tagliava il terreno.
+**Stato:** v0.9.14 inviata su master e tag: concatenazioni di colpi/scatti, 17 nemici, Bonus Rush, grado arcade e doppia onda finale. Corretta anche l'inquadratura che tagliava il terreno.
 **Ultimo aggiornamento:** 2026-09-17 (ritmo e incontri).
 **Prossimo passo:** provare la nuova versione a mano, annotando soprattutto concatenazioni aeree, timer bonus e doppia onda. Le verifiche automatiche non misurano il divertimento.
 
@@ -16,7 +16,7 @@
 - [x] Verifica visiva browser: HUD Bonus Rush, pulsante di passaggio realmente azionato, schermata finale con grado S (stati sintetici in fixture temporanea, record non salvati; fixture rimossa).
 - [x] Risolto clipping del canvas con righe/colonne grid `minmax(0,1fr)`; suggerimenti spostati sopra il percorso per non coprire a0.
 - [x] `wails3 task dev`: nuova build avviata in WebView2 e Home desktop ispezionata. La partita completa a mano rimane da fare.
-- [ ] Commit, tag v0.9.14 e push su master richiesti dall'utente.
+- [x] Commit `de2d0ce`, tag annotato `v0.9.14` e push atomico di master + tag su origin completati il 2026-09-17. La pubblicazione dei binari viene eseguita dalla CI del tag.
 - [ ] Prova umana del ritmo e della difficolta: il divertimento non e' dimostrato dai test.
 
 ## Poteri da sviluppatore — 2026-09-17
