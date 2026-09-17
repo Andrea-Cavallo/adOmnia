@@ -293,6 +293,8 @@ describe('Bug Hunt prototype rules', () => {
     expect(game.getSnapshot().health).toBe(3)
     const score = game.getSnapshot().score
     expect(score).toBeGreaterThanOrEqual(100)
+    expect(game.getSnapshot().dashReady).toBe(true) // a hit refills the dash
+    for (const bug of game.enemies.slice(1)) bug.alive = false
     game.keyUp('KeyX'); game.keyDown('KeyX'); tick(15)
     expect(game.player.dash).toBe(0)
     expect(game.getSnapshot().dashReady).toBe(false)
@@ -333,6 +335,64 @@ describe('Bug Hunt prototype rules', () => {
     game.setPaused(false); tick(240)
     expect(game.getSnapshot().combo).toBe(0)
     expect(game.getSnapshot().score).toBe(score)
+    game.destroy()
+  })
+
+  it('awards an optional rush once, without counting already collected bits', () => {
+    const { game, tick } = createGame()
+    game.player.x = 1540; tick(1)
+    expect(game.getSnapshot().rush.state).toBe('active')
+    for (const bit of LEVELS[0].bits.filter(b => b.x >= 1530 && b.x <= 2420).slice(0, 6)) {
+      game.player.x = bit.x - 15; game.player.y = bit.y - 20; game.player.vy = 0; tick(1)
+    }
+    expect(game.getSnapshot()).toMatchObject({ rushWins: 1, rush: { state: 'won', collected: 6 } })
+    expect(game.getSnapshot().score).toBeGreaterThanOrEqual(560)
+    const score = game.getSnapshot().score
+    for (let i = 0; i < 3; i++) { game.player.y = 650; tick(1) }
+    expect(game.getSnapshot().rushWins).toBe(1)
+    expect(game.getSnapshot().score).toBe(score)
+    game.restart()
+    expect(game.getSnapshot()).toMatchObject({ rushWins: 0, rush: { state: 'waiting' } })
+    game.destroy()
+  })
+
+  it('pauses the rush timer and lets a missed challenge leave the route open', () => {
+    const { game, tick } = createGame()
+    game.player.x = 1540; tick(60)
+    const remaining = game.getSnapshot().rush.remaining
+    vi.spyOn(game, 'draw').mockImplementation(() => undefined)
+    game.setPaused(true); tick(600)
+    expect(game.getSnapshot().rush.remaining).toBe(remaining)
+    game.setPaused(false); tick(480)
+    expect(game.getSnapshot().rush.state).toBe('missed')
+    expect(game.getSnapshot().health).toBe(3)
+    game.player.x = HOTFIX.x; game.player.y = 412; tick(1)
+    game.player.x = EXIT_X; tick(1)
+    expect(game.getSnapshot().levelComplete).toBe(true)
+    game.destroy()
+  })
+
+  it('announces a double wave in the final boss phase and never farms boss hit rewards', () => {
+    const { game, tick } = createGame()
+    for (let i = 0; i < 2; i++) {
+      game.player.x = HOTFIX.x; tick(1); game.player.x = EXIT_X; tick(1); game.advance()
+    }
+    const hit = () => {
+      game.boss.clock = 2.2; game.boss.hit = false
+      game.player.x = BOSS_BODY.x + 20; game.player.y = BOSS_BODY.y - game.player.h - 3
+      game.player.vy = 220; game.player.grounded = false; game.player.coyote = 0
+      tick(1)
+    }
+    hit()
+    const firstScore = game.getSnapshot().score
+    expect(firstScore).toBeGreaterThanOrEqual(250)
+    game.player.y = 650; tick(1); hit()
+    expect(game.getSnapshot().score).toBe(firstScore)
+    hit(); expect(game.boss.health).toBe(1)
+    game.player.x = 2500; game.player.y = 412; game.player.vy = 0
+    game.boss.clock = 0; game.boss.waves = []
+    tick(104)
+    expect(game.boss.waves).toHaveLength(2)
     game.destroy()
   })
 

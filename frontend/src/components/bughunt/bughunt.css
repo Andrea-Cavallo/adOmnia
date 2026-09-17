@@ -13,8 +13,8 @@
 .bh-icon-button { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid #bfa5ec28; border-radius: 9px; background: #15192a; color: #b8bfd1; }
 .bh-icon-button:hover { background: #29233e; color: #f5ebff; }
 .bh-icon-button[aria-pressed="true"] { color: #b9eedc; border-color: #72dfb755; }
-.bh-stage { position: relative; flex: 1; min-height: 0; overflow: hidden; display: grid; place-items: center; }
-.bh-stage canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
+.bh-stage { grid-template-rows: minmax(0, 1fr); grid-template-columns: minmax(0, 1fr); position: relative; flex: 1; min-height: 0; overflow: hidden; display: grid; place-items: center; }
+.bh-stage canvas { min-width: 0; min-height: 0; width: 100%; height: 100%; object-fit: contain; display: block; }
 .bh-hud { position: absolute; top: 18px; left: 24px; right: 24px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; pointer-events: none; }
 .bh-hud-group { display: flex; gap: 8px; align-items: center; }
 .bh-pill { display: inline-flex; align-items: center; gap: 8px; padding: 8px 11px; border-radius: 9px; background: #091120d9; border: 1px solid #bda6e929; font: 11px ui-monospace, monospace; color: #b0bed1; }
@@ -57,7 +57,13 @@
 @media (max-width: 600px) { .bh-header { padding: 10px 12px; } .bh-brand small { display: none; } .bh-hud { left: 12px; right: 12px; top: 10px; } .bh-pill { padding: 6px 8px; font-size: 9px; } .bh-footer { padding: 9px 12px; flex-wrap: wrap; } .bh-card { padding: 23px; } .bh-modal { padding: 12px; } }
 @media (max-height: 540px) { .bh-card { padding: 19px 25px; } .bh-card h1 { font-size: 29px; margin: 10px 0; } .bh-mission { margin: 12px 0; } .bh-card-actions { margin-top: 12px; } .bh-tip { display: none; } }
 
-.bh-level-hint { position: absolute; z-index: 2; bottom: 10px; left: 12%; right: 12%; padding: 7px 12px; text-align: center; border-radius: 8px; background: #080e20dd; color: #ded8ee; font-size: 11px; pointer-events: none; }
+.bh-level-hint { position: absolute; z-index: 2; top: 68px; left: 12%; right: 12%; padding: 7px 12px; text-align: center; border-radius: 8px; background: #080e20dd; color: #ded8ee; font-size: 11px; pointer-events: none; }
 
 .bh-combo { color: #a3ffdc; font-size: 16px; }
 .bh-stats { min-width: 0; }
+
+.bh-rush { color: #ffe4a0; border: 1px solid #e8c87866; }
+.bh-rush progress { display: block; width: 100%; height: 3px; margin-top: 5px; accent-color: #e8c878; }
+.bh-rank { float: right; color: #ffe4a0; font-size: 54px; font-weight: 900; line-height: 1; padding-left: 16px; }
+
+@media (max-width: 800px) { .bh-level-hint { top: 105px; left: 5%; right: 5%; } }

@@ -6,6 +6,7 @@ import { BUG_HUNT_COPY } from './copy'
 import { useSettingsStore } from '@/stores/settings'
 import type { Lang } from '@/lib/i18n'
 import './bughunt.css'
+import { rankForScore, RUSH_TARGET } from './rush'
 import { LEVELS } from './level'
 
 const CONTROL_KEYS = new Set(['KeyA', 'KeyD', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyX', 'ShiftLeft', 'ShiftRight', 'KeyR'])
@@ -132,7 +133,9 @@ export function BugHuntOverlay({ onClose }: { onClose: () => void }) {
         </div>
       </header>
       <div className="bh-stage">
-        {!ready && !snapshot.finished && !snapshot.levelComplete && <div className="bh-level-hint">{copy.stageHints[snapshot.level]}</div>}
+        {!ready && !snapshot.finished && !snapshot.levelComplete && <div className={`bh-level-hint ${snapshot.rush.state === 'active' ? 'bh-rush' : ''}`}>
+          {snapshot.rush.state === 'active' ? <><strong>{copy.rushLabel}</strong> {snapshot.rush.collected}/{RUSH_TARGET} · {Math.ceil(snapshot.rush.remaining)}s · +500 <progress max={8} value={snapshot.rush.remaining} /></> : snapshot.rush.state === 'won' ? copy.rushWon : copy.stageHints[snapshot.level]}
+        </div>}
         <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} aria-label={copy.canvasLabel} />
         {!ready && <div className="bh-hud" aria-label={copy.hudLabel}>
           <div className="bh-hud-group"><span className="bh-pill" aria-label={copy.healthLabel(snapshot.health)}><span className="bh-heart">{'♥'.repeat(snapshot.health)}<span className="bh-heart-empty">{'♥'.repeat(3 - snapshot.health)}</span></span></span><span className="bh-pill gold"><Diamond size={13} /><strong>{snapshot.bits}</strong><span>/ {snapshot.totalBits}</span></span><span className="bh-pill">{copy.statScore} <strong>{snapshot.score}</strong>{snapshot.combo >= 4 && <b className="bh-combo">x{Math.min(5, 1 + Math.floor(snapshot.combo / 4))}</b>}</span></div>
@@ -147,19 +150,20 @@ export function BugHuntOverlay({ onClose }: { onClose: () => void }) {
               <p>{copy.introBody}</p>
               <div className="bh-mission"><Cpu size={21} /><div><strong>{copy.missionTitle}</strong><span>{copy.stageHints[0]} Localhost → API Gateway → Production</span><span>{copy.powersIntro}</span></div></div>
               <div className="bh-card-actions"><button ref={primaryRef} className="bh-primary" onClick={begin}>{copy.start} <ArrowRight size={15} /></button></div>
-              <p className="bh-tip">{copy.introTip}{preferences.bestScore > 0 && ` ${copy.statScore}: ${preferences.bestScore}.`}{preferences.bestSeconds !== null && copy.record(formatTime(preferences.bestSeconds))}</p>
+              <p className="bh-tip">{copy.chainHint} {copy.introTip}{preferences.bestScore > 0 && ` ${copy.statScore}: ${preferences.bestScore}.`}{preferences.bestSeconds !== null && copy.record(formatTime(preferences.bestSeconds))}</p>
             </> : snapshot.levelComplete ? <>
               <h1>{copy.stageClear}<em>{LEVELS[snapshot.level].name}</em></h1>
               <p>{copy.stageHints[snapshot.level + 1]}</p>
               <div className="bh-card-actions"><button ref={primaryRef} className="bh-primary" onClick={() => { gameRef.current?.unlockAudio(); gameRef.current?.advance() }}>{copy.nextLevel}: {LEVELS[snapshot.level + 1].name} <ArrowRight size={15} /></button></div>
             </> : snapshot.finished ? <>
-              <h1>{copy.winTitle}<em>{copy.winTitleAccent}</em></h1>
+              <div className="bh-rank" aria-label={`${copy.rank} ${rankForScore(snapshot.score)}`}>{rankForScore(snapshot.score)}</div><h1>{copy.winTitle}<em>{copy.winTitleAccent}</em></h1>
               <p>{copy.winBody}</p>
               <div className="bh-stats"><div className="bh-stat"><strong>{snapshot.score}</strong><span>{copy.statScore}</span></div><div className="bh-stat"><strong>{formatTime(snapshot.seconds)}</strong><span>{copy.statTime}</span></div><div className="bh-stat"><strong>{snapshot.bits}/{snapshot.totalBits}</strong><span>{copy.statBits}</span></div><div className="bh-stat"><strong>{snapshot.deaths}</strong><span>{copy.statDeaths}</span></div></div>
+              <span className="bh-medal">{copy.rushMedal}: {snapshot.rushWins}/3</span>
               <span className="bh-medal">{copy.statCombo}: {snapshot.bestCombo}</span>
               {newRecord && <span className="bh-medal"><Trophy size={12} />{copy.medalRecord}</span>}
               {snapshot.secret && <span className="bh-medal"><Sparkles size={12} />{copy.medalSecret}</span>}
-              {snapshot.bugs === 8 && <span className="bh-medal"><Check size={12} />{copy.medalBugs}</span>}
+              {snapshot.bugs === snapshot.totalBugs && <span className="bh-medal"><Check size={12} />{copy.medalBugs}</span>}
               <p className="bh-quote">{copy.winQuote}</p>
               <div className="bh-card-actions"><button ref={primaryRef} className="bh-primary" onClick={restart}><RotateCcw size={14} />{copy.playAgain}</button><button className="bh-secondary" onClick={() => closeRef.current()}>{copy.backToWork}</button></div>
             </> : <>

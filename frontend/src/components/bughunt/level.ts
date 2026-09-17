@@ -2,7 +2,7 @@ import type { PowerPickup } from './powers'
 
 export type Rect = { x: number; y: number; w: number; h: number }
 export type Platform = Rect & { floating?: boolean; travel?: number; unstable?: boolean; originX?: number; crumble?: number }
-export type Bug = Rect & { left: number; right: number; direction: number; alive: boolean; phase: number; retry?: boolean }
+export type Bug = Rect & { left: number; right: number; direction: number; alive: boolean; phase: number; retry?: boolean; hover?: boolean; homeY?: number }
 export type Bit = { id: number; x: number; y: number; secret?: boolean }
 
 export const WORLD_WIDTH = 3220
@@ -94,6 +94,18 @@ export const LEVELS: Level[] = [
       { x: 2260, y: 460, w: 960, h: 100 }], spikes: [{ x: 1050, y: 440, w: 64, h: 20 }],
     bits: BITS.map(b => ({ ...b, id: b.id + 200 })), bugs: createBugs().slice(0, 2).map((b, i) => ({ ...b, ...(i === 0 ? { x: 820, left: 700, right: 980 } : { x: 1970, left: 1880, right: 2100 }) })), firewalls: [{ x: 1590, y: 365, w: 25, h: 95, phase: 0.5 }] },
 ]
+// Short encounters invite a stomp -> air dash -> stomp chain. Hover bugs are
+// optional stepping stones; the main path below stays open.
+for (const [level, encounters] of [
+  [[735, 426], [2230, 345], [2350, 300]],
+  [[460, 426], [2180, 355], [2320, 315]],
+  [[900, 426], [2050, 330], [2160, 280]],
+].entries()) {
+  for (const [index, [x, y]] of encounters.entries()) {
+    LEVELS[level].bugs.push({ x, y, w: 38, h: 34, left: x, right: x, direction: 1,
+      alive: true, phase: index * 1.4, hover: y < 400, homeY: y })
+  }
+}
 // Reward trails follow the launch trajectory; they teach the shortcut by sight.
 for (const [levelIndex, level] of LEVELS.entries()) {
   for (const [springIndex, spring] of level.springs.entries()) {

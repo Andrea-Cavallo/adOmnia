@@ -2,6 +2,10 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+## v0.9.14 release notes: Bug Hunt encounter chains and bonus rushes
+
+See [the full v0.9.14 notes](releases/v0.9.14.md): dash refills on hits, optional aerial encounters, timed bonus collections, score ranks and a final boss escalation.
+
 ## v0.9.13 release notes: Bug Hunt becomes a campaign with developer powers
 
 See [the full v0.9.13 notes](releases/v0.9.13.md). The hidden hub game grows to

@@ -171,6 +171,11 @@ function drawRobot(ctx: CanvasRenderingContext2D, p: PlayerVisual, time: number,
 }
 
 function drawBug(ctx: CanvasRenderingContext2D, bug: Bug, time: number) {
+  if (bug.hover) {
+    glow(ctx, bug.x + 19, bug.y + 16, 32, '#67c8ff44')
+    line(ctx, [bug.x - 9, bug.y - 5, bug.x + 47, bug.y - 5], '#97dcff', 2)
+    text(ctx, '↑', bug.x + 14, bug.y - 14, '#b2e7ff', 14)
+  }
   const bob = Math.sin(time * 12 + bug.phase)
   ctx.save(); ctx.translate(bug.x + 19, bug.y + 20)
   glow(ctx, 0, 7, 30, '#ed426023')
@@ -238,7 +243,7 @@ export function renderLocalhost(ctx: CanvasRenderingContext2D, state: VisualStat
     for (let i = 0; i < 3; i++) box(ctx, b.x + 14 + i * 23, b.y + 36, 16, 32, 3, i < state.boss.health ? color : '#514456')
     ctx.textAlign = 'center'
     text(ctx, 'LEGACY MONOLITH', b.x + 45, b.y - 46, '#f1c9e1', 13)
-    text(ctx, open ? c.bossOpen : state.boss.clock < 1.3 ? c.bossWarning : c.bossLocked, b.x + 20, b.y - 25, color, 10)
+    text(ctx, open ? c.bossOpen : state.boss.health === 1 && state.boss.clock < 2 ? c.bossDoubleWave : state.boss.clock < 1.3 ? c.bossWarning : c.bossLocked, b.x + 20, b.y - 25, color, 10)
     ctx.textAlign = 'left'
     for (const wave of state.boss.waves) {
       glow(ctx, wave.x + 17, wave.y + 12, 40, '#ff9c6244')

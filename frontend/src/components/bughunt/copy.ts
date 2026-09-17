@@ -3,6 +3,10 @@ import type { Lang } from '@/lib/i18n'
 // Every in-game string lives here. The English shape is the contract, so a
 // missing Italian line fails type-checking instead of showing up blank.
 const en = {
+  bossDoubleWave: 'DOUBLE WAVE / DOUBLE JUMP',
+  rushStart: 'BONUS RUSH! 6 bits / 8 seconds', rushWon: 'RUSH COMPLETE! +500',
+  rushLabel: 'BONUS RUSH', rank: 'Rank', rushMedal: 'Bonus rushes',
+  chainHint: 'Every bug hit recharges your dash. Stomp, dash, repeat!',
   dashReady: 'DASH READY', dashCharging: 'DASH CHARGING', keysDash: 'dash',
   // developer power-ups
   powerRevert: '+1 git revert  ·  press R',
@@ -103,6 +107,10 @@ const en = {
 export type BugHuntCopy = typeof en
 
 const it: BugHuntCopy = {
+  bossDoubleWave: 'DOPPIA ONDA / DOPPIO SALTO',
+  rushStart: 'BONUS RUSH! 6 bit / 8 secondi', rushWon: 'RUSH COMPLETATA! +500',
+  rushLabel: 'BONUS RUSH', rank: 'Grado', rushMedal: 'Sfide bonus',
+  chainHint: 'Ogni bug colpito ricarica lo scatto. Rimbalza, scatta, ripeti!',
   dashReady: 'SCATTO PRONTO', dashCharging: 'SCATTO IN RICARICA', keysDash: 'scatto',
   powerRevert: '+1 git revert  ·  premi R',
   powerBreakpoint: 'BREAKPOINT  ·  mondo in pausa',

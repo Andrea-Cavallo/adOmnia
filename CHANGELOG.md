@@ -4,6 +4,19 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [0.9.14] - 2026-09-17
+
+### Added
+- **Bug Hunt encounter chains:** successful bug hits recharge the dash; optional aerial enemies give players a route for linking stomps, double jumps and dashes.
+- **Bonus Rush:** collect six bits in eight seconds for 500 bonus points in each stage. The challenge is optional and never blocks the campaign.
+- **Arcade results:** final S/A/B/C score rank, bonus challenge tally, and boss hit rewards that cannot be farmed through retries.
+- **Final boss escalation:** the Legacy Monolith warns and fires a double wave in its last phase.
+
+### Fixed
+- **Game framing:** canvas scaling no longer crops the bottom of the level, and hint text no longer covers the player.
+
+Full release notes: [v0.9.14](docs/releases/v0.9.14.md).
+
 ## [0.9.13] - 2026-09-17
 
 ### Added

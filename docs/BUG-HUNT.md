@@ -1,8 +1,23 @@
 # a0: Bug Hunt — Deploy del venerdì
 
-**Stato:** campagna a tre ambienti con quattro poteri da sviluppatore (git revert, Breakpoint, sudo, Garbage Collector). Campagna e poteri verificati nel runtime desktop via CDP; resta la partita a mano per il bilanciamento.
-**Ultimo aggiornamento:** 2026-09-17 (poteri speciali).
-**Prossimo passo:** giocare la campagna completa nel desktop, iniziando da Localhost; annotare tempi, morti e difficolta del boss prima di tarare le mappe.
+**Stato:** v0.9.14 pronta: concatenazioni di colpi/scatti, 17 nemici, Bonus Rush, grado arcade e doppia onda finale. Corretta anche l'inquadratura che tagliava il terreno.
+**Ultimo aggiornamento:** 2026-09-17 (ritmo e incontri).
+**Prossimo passo:** provare la nuova versione a mano, annotando soprattutto concatenazioni aeree, timer bonus e doppia onda. Le verifiche automatiche non misurano il divertimento.
+
+## Ripresa attiva — v0.9.14, ritmo e incontri
+
+- [x] Scatto ricaricato da ogni colpo diretto su un bug: concatenazioni di rimbalzi e scatti.
+- [x] Incontri aggiuntivi con nemici aerei facoltativi; la via principale resta aperta.
+- [x] Bonus Rush per ambiente: 6 bit in 8 secondi, +500 punti; nessuna penalita al fallimento, niente farming via morte o rewind.
+- [x] Grado finale S/A/B/C, conteggio bonus e punti boss assegnati una sola volta per soglia salute.
+- [x] Ultima fase del boss con doppia onda annunciata.
+- [x] 32 test del gioco passati nella verifica iniziale di questa tranche.
+- [x] 534 test frontend (113 file), inclusi 32 del gioco; TypeScript/build e `go build ./...`, `go test ./...` passati.
+- [x] Verifica visiva browser: HUD Bonus Rush, pulsante di passaggio realmente azionato, schermata finale con grado S (stati sintetici in fixture temporanea, record non salvati; fixture rimossa).
+- [x] Risolto clipping del canvas con righe/colonne grid `minmax(0,1fr)`; suggerimenti spostati sopra il percorso per non coprire a0.
+- [x] `wails3 task dev`: nuova build avviata in WebView2 e Home desktop ispezionata. La partita completa a mano rimane da fare.
+- [ ] Commit, tag v0.9.14 e push su master richiesti dall'utente.
+- [ ] Prova umana del ritmo e della difficolta: il divertimento non e' dimostrato dai test.
 
 ## Poteri da sviluppatore — 2026-09-17
 
