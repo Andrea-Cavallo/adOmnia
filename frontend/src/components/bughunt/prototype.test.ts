@@ -14,7 +14,9 @@ type Inspectable = {
   getSnapshot: () => GameSnapshot
   draw: () => void
   update: (dt: number) => void
-  player: { x: number; y: number; w: number; h: number; vx: number; vy: number; grounded: boolean; coyote: number; buffer: number; invulnerable: number; airJump: boolean; dash: number; dashCooldown: number }
+  player: { x: number; y: number; w: number; h: number; vx: number; vy: number; grounded: boolean; coyote: number; buffer: number; invulnerable: number; airJump: boolean; dash: number; dashCooldown: number
+    grapple: { x: number; y: number; length: number } | null }
+  purgeX: number
   enemies: { x: number; y: number; alive: boolean }[]
   checkpoint: boolean
 }
@@ -396,4 +398,101 @@ describe('Bug Hunt prototype rules', () => {
     game.destroy()
   })
 
+})
+
+describe('magnetic grapple', () => {
+  beforeEach(() => {
+    vi.stubGlobal('requestAnimationFrame', vi.fn(() => 1))
+    vi.stubGlobal('cancelAnimationFrame', vi.fn())
+  })
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('latches on, keeps a0 on the cable through the swing and launches on release', () => {
+    const { game, tick } = createGame()
+    const anchor = LEVELS[0].anchors[0]
+    game.player.x = anchor.x - 150
+    game.player.y = anchor.y + 20
+    game.player.grounded = false
+    game.keyDown('KeyE')
+    expect(game.player.grapple).not.toBeNull()
+    for (let frame = 0; frame < 120 && game.player.grapple; frame++) {
+      tick(1)
+      const cable = game.player.grapple
+      if (!cable) break
+      const distance = Math.hypot(game.player.x + game.player.w / 2 - cable.x, game.player.y + game.player.h / 2 - cable.y)
+      expect(distance).toBeLessThanOrEqual(cable.length + 1.5)
+    }
+    expect(game.player.grapple).not.toBeNull()
+    const falling = game.player.vy
+    game.keyUp('KeyE')
+    expect(game.player.grapple).toBeNull()
+    expect(game.player.vy).toBeLessThan(Math.min(0, falling))
+    expect(game.player.dashCooldown).toBe(0)
+    game.destroy()
+  })
+
+  it('never latches without a node in range and leaves the run untouched', () => {
+    const { game, tick } = createGame()
+    game.player.x = 60
+    game.player.y = 412
+    game.keyDown('KeyE')
+    expect(game.player.grapple).toBeNull()
+    tick(5)
+    expect(game.getSnapshot()).toMatchObject({ health: 3, deaths: 0 })
+    game.destroy()
+  })
+})
+
+describe('the floor is being deleted', () => {
+  const reachProduction = () => {
+    const { game, tick } = createGame()
+    for (let stage = 0; stage < 2; stage++) { game.player.x = HOTFIX.x; tick(1); game.player.x = EXIT_X; tick(1); game.advance() }
+    return { game, tick }
+  }
+  beforeEach(() => {
+    vi.stubGlobal('requestAnimationFrame', vi.fn(() => 1))
+    vi.stubGlobal('cancelAnimationFrame', vi.fn())
+  })
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('only runs in production and wakes up behind a0', () => {
+    const { game, tick } = createGame()
+    expect(game.getSnapshot().purge).toBe('off')
+    tick(30)
+    expect(game.getSnapshot().purge).toBe('off')
+    game.destroy()
+
+    const production = reachProduction()
+    expect(production.game.getSnapshot()).toMatchObject({ level: 2, purge: 'waiting' })
+    production.game.player.x = LEVELS[2].purge!.start + 10
+    production.tick(1)
+    expect(production.game.getSnapshot().purge).toBe('active')
+    expect(production.game.purgeX).toBeLessThan(production.game.player.x)
+    production.game.destroy()
+  })
+
+  it('deletes the floor behind and costs a life to whoever stops running', () => {
+    const { game, tick } = reachProduction()
+    game.player.x = LEVELS[2].purge!.start + 10
+    tick(126)
+    expect(game.platforms.some(p => p.deleted)).toBe(true)
+    expect(game.getSnapshot()).toMatchObject({ health: 3, purge: 'active' })
+    tick(60)
+    expect(game.getSnapshot().health).toBe(2)
+    expect(game.getSnapshot().purge).toBe('waiting')
+    expect(game.platforms.every(p => !p.deleted)).toBe(true)
+    game.destroy()
+  })
+
+  it('pays out and stands down once a0 outruns it', () => {
+    const { game, tick } = reachProduction()
+    game.player.x = LEVELS[2].purge!.start + 10
+    tick(1)
+    const before = game.getSnapshot().score
+    game.player.x = LEVELS[2].purge!.end + 5
+    tick(1)
+    expect(game.getSnapshot().purge).toBe('cleared')
+    expect(game.getSnapshot().score).toBe(before + 400)
+    game.destroy()
+  })
 })

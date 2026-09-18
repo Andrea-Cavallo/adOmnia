@@ -14,15 +14,23 @@ const STEP = 1 / 60
 const GRAVITY = 1900
 const RUN_SPEED = 310
 const JUMP_SPEED = 680
+/** Magnetic grapple: latch range, cable limits and the launch kick. */
+const GRAPPLE_RANGE = 300
+const GRAPPLE_MIN = 64
+const GRAPPLE_REEL = 250
+const GRAPPLE_LAUNCH = 250
+export type PurgeState = 'off' | 'waiting' | 'active' | 'cleared'
 type Player = PlayerVisual & { coyote: number; buffer: number; knockback: number; airJump: boolean; dash: number; dashCooldown: number; dashDirection: number }
 export type GameSnapshot = {
   rush: Rush; rushWins: number; totalBugs: number; revertCharges: number; sudo: number; breakpoint: number
   score: number; combo: number; bestCombo: number; dashReady: boolean; health: number; deaths: number; checkpoint: boolean; finished: boolean; paused: boolean
+  grappled: boolean; purge: PurgeState
   level: number; levelComplete: boolean; bossHealth: number; bits: number; totalBits: number; hotfix: boolean; secret: boolean; bugs: number; seconds: number
 }
 export const INITIAL_SNAPSHOT: GameSnapshot = {
   rush: createRush(), rushWins: 0, totalBugs: LEVELS.reduce((sum, l) => sum + l.bugs.length, 0), revertCharges: 0, sudo: 0, breakpoint: 0,
   score: 0, combo: 0, bestCombo: 0, dashReady: true, health: 3, deaths: 0, checkpoint: false, finished: false, paused: false,
+  grappled: false, purge: 'off',
   level: 0, levelComplete: false, bossHealth: 3, bits: 0, totalBits: LEVELS.reduce((n, l) => n + l.bits.length, 0), hotfix: false, secret: false, bugs: 0, seconds: 0,
 }
 
@@ -38,6 +46,8 @@ export class BugHuntPrototype {
   private bestCombo = 0
   private comboTime = 0
   private springCooldown = 0
+  private purgeState: PurgeState = 'off'
+  private purgeX = 0
   private level = 0
   private levelComplete = false
   private platforms: Platform[] = LEVELS[0].platforms.map(p => ({ ...p, originX: p.x, crumble: 0 }))
@@ -83,17 +93,19 @@ export class BugHuntPrototype {
     this.reducedMotion = options.reducedMotion ?? false
     this.copy = options.copy ?? BUG_HUNT_COPY.en
     this.player = this.makePlayer(58)
+    this.resetPurge()
     this.publish()
     this.frame = requestAnimationFrame(this.loop)
   }
 
   private makePlayer(x: number): Player {
-    return { x, y: 412, w: 34, h: 48, vx: 0, vy: 0, grounded: true, coyote: 0.1, buffer: 0, invulnerable: 0, facing: 1, squash: 0, knockback: 0, airJump: true, dash: 0, dashCooldown: 0, dashDirection: 1 }
+    return { x, y: 412, w: 34, h: 48, vx: 0, vy: 0, grounded: true, coyote: 0.1, buffer: 0, invulnerable: 0, facing: 1, squash: 0, knockback: 0, airJump: true, dash: 0, dashCooldown: 0, dashDirection: 1, grapple: null }
   }
 
   getSnapshot(): GameSnapshot {
     return { rush: { ...this.rush }, rushWins: this.rushWins, totalBugs: LEVELS.reduce((sum, l) => sum + l.bugs.length, 0), revertCharges: this.powers.revertCharges, sudo: Math.ceil(this.powers.sudo), breakpoint: Math.ceil(this.powers.breakpoint),
       score: this.score, combo: this.chain, bestCombo: this.bestCombo, dashReady: this.player.dashCooldown <= 0, health: this.health, deaths: this.deaths, checkpoint: this.checkpoint, finished: this.finished, paused: this.paused,
+      grappled: !!this.player.grapple, purge: this.purgeState,
       level: this.level, levelComplete: this.levelComplete, bossHealth: this.boss.health, bits: this.collected.size, totalBits: LEVELS.reduce((n, l) => n + l.bits.length, 0), hotfix: this.hotfix, secret: this.secret, bugs: this.defeated.size, seconds: this.elapsed }
   }
 
@@ -108,6 +120,7 @@ export class BugHuntPrototype {
     if (this.paused || this.finished || this.levelComplete) return
     if (['KeyX', 'ShiftLeft', 'ShiftRight'].includes(code) && !this.keys.has(code) && this.player.dashCooldown <= 0 && this.player.knockback <= 0) {
       const p = this.player
+      this.releaseGrapple(false)
       p.dash = 0.18; p.dashCooldown = 0.85
       p.dashDirection = Number(this.keys.has('KeyD') || this.keys.has('ArrowRight')) - Number(this.keys.has('KeyA') || this.keys.has('ArrowLeft')) || p.facing
       p.facing = p.dashDirection; p.vy = 0
@@ -115,16 +128,21 @@ export class BugHuntPrototype {
       this.audio.play('dash'); this.publish()
     }
     if (code === 'KeyR' && !this.keys.has(code)) this.startRewind()
-    if (code === 'Space' && !this.keys.has(code)) this.player.buffer = 0.12
+    if (code === 'KeyE' && !this.keys.has(code)) this.tryGrapple()
+    if (code === 'Space' && !this.keys.has(code)) {
+      if (this.player.grapple) this.releaseGrapple(true)
+      else this.player.buffer = 0.12
+    }
     this.keys.add(code)
   }
 
   keyUp(code: string) {
     this.keys.delete(code)
+    if (code === 'KeyE') this.releaseGrapple(true)
     if (code === 'Space' && this.player.vy < -180) this.player.vy *= 0.52
   }
 
-  clearKeys() { this.keys.clear(); this.player.buffer = 0; this.player.dash = 0 }
+  clearKeys() { this.keys.clear(); this.player.buffer = 0; this.player.dash = 0; this.player.grapple = null }
 
   setPaused(paused: boolean) {
     if (this.destroyed || this.paused === paused) return
@@ -150,6 +168,7 @@ export class BugHuntPrototype {
     this.platforms = this.map.platforms.map(p => ({ ...p, originX: p.x, crumble: 0 }))
     this.boss = createBoss()
     this.player = this.makePlayer(58); this.camera = 0
+    this.resetPurge()
     this.particles = []; this.popups = []; this.clearKeys()
     this.visualTime = 0; this.lastTime = null; this.accumulator = 0
     this.setPaused(false); this.publish()
@@ -165,6 +184,7 @@ export class BugHuntPrototype {
     this.enemies = this.map.bugs.map(b => ({ ...b }))
     this.collected.clear(); this.defeated.clear(); this.particles = []; this.popups = []
     this.player = this.makePlayer(58)
+    this.resetPurge()
     this.camera = 0; this.elapsed = 0; this.visualTime = 0; this.shake = 0; this.lastDust = 0; this.lastGateHint = -10; this.publishedSecond = 0
     this.audio.stop()
     this.clearKeys()
@@ -207,7 +227,7 @@ export class BugHuntPrototype {
 
   private hurt(fell = false) {
     if ((!fell && (this.player.invulnerable > 0 || this.powers.sudo > 0)) || this.finished || this.powers.rewind) return
-    this.chain = 0; this.comboTime = 0; this.player.dash = 0
+    this.chain = 0; this.comboTime = 0; this.player.dash = 0; this.player.grapple = null
     this.health--
     this.audio.play('hurt')
     this.burst(this.player.x + 17, Math.min(480, this.player.y + 24), ['#ff8f9f', '#c778e8', '#f1c7fc'], 22)
@@ -217,7 +237,8 @@ export class BugHuntPrototype {
     if (fell || died) {
       clearActivePowers(this.powers)
       this.boss = createBoss()
-      for (const platform of this.platforms) platform.crumble = 0
+      for (const platform of this.platforms) { platform.crumble = 0; platform.deleted = false }
+      this.resetPurge()
       this.player = this.makePlayer(this.checkpoint ? this.checkpointX : 58)
       this.camera = Math.max(0, Math.min(WORLD_WIDTH - WIDTH, this.player.x - 310))
       this.popup(died ? this.copy.retry : this.copy.rollback, this.player.x + 65, this.player.y - 20)
@@ -345,7 +366,7 @@ export class BugHuntPrototype {
     const previousLeft = p.x, previousRight = p.x + p.w
     p.x = Math.max(0, Math.min(WORLD_WIDTH - p.w, p.x + p.vx * dt))
     for (const platform of this.platforms) {
-      if ((platform.crumble ?? 0) > 0.8) continue
+      if (platform.deleted || (platform.crumble ?? 0) > 0.8) continue
       if (platform.floating) continue
       if (!intersects(p, platform)) continue
       if (p.vx > 0 && previousRight <= platform.x) p.x = platform.x - p.w
@@ -356,7 +377,7 @@ export class BugHuntPrototype {
     p.y += p.vy * dt
     p.grounded = false
     for (const platform of this.platforms) {
-      if ((platform.crumble ?? 0) > 0.8) continue
+      if (platform.deleted || (platform.crumble ?? 0) > 0.8) continue
       if (!intersects(p, platform)) continue
       if (p.vy >= 0 && previousBottom <= platform.y + 0.01) {
         p.y = platform.y - p.h
@@ -378,7 +399,10 @@ export class BugHuntPrototype {
         this.audio.play('spring')
       }
     }
+    this.stepGrapple(dt)
+    if (p.grapple && !this.reducedMotion) this.burst(p.grapple.x, p.grapple.y, ['#8cf7ec'], 1, 12)
     if (p.dash > 0 && !this.reducedMotion) this.burst(p.x + 17, p.y + 28, ['#7afce0', '#c394ff'], 2, 15)
+    if (this.stepPurge(dt, frozen)) return
     if (p.y > HEIGHT + 70) { this.hurt(true); return }
     if (p.grounded && Math.abs(p.vx) > 90 && this.elapsed - this.lastDust > 0.1) {
       this.lastDust = this.elapsed
@@ -470,6 +494,99 @@ export class BugHuntPrototype {
   private followCamera(dt: number) {
     const target = Math.max(0, Math.min(WORLD_WIDTH - WIDTH, this.player.x - 310))
     this.camera += (target - this.camera) * Math.min(1, dt * 8)
+  }
+
+  /** Latches onto the nearest lit anchor above a0. Misses are never punished. */
+  private tryGrapple() {
+    const p = this.player
+    if (p.grapple || this.powers.rewind) return
+    const cx = p.x + p.w / 2, cy = p.y + p.h / 2
+    let best: { x: number; y: number } | null = null
+    let bestDistance = GRAPPLE_RANGE
+    for (const anchor of this.map.anchors) {
+      const distance = Math.hypot(anchor.x - cx, anchor.y - cy)
+      if (distance < bestDistance && anchor.y < cy - 24) { best = anchor; bestDistance = distance }
+    }
+    if (!best) { this.popup(this.copy.grappleMiss, cx, p.y - 22, '#c9d3e6'); return }
+    p.grapple = { x: best.x, y: best.y, length: Math.max(GRAPPLE_MIN, bestDistance) }
+    p.dash = 0; p.knockback = 0
+    this.burst(best.x, best.y, ['#8cf7ec', '#c394ff'], 14, 130)
+    this.audio.play('power')
+    this.publish()
+  }
+
+  /** Releasing at the bottom of the arc converts the swing into a launch. */
+  private releaseGrapple(boost: boolean) {
+    const p = this.player
+    if (!p.grapple) return
+    p.grapple = null
+    if (boost) {
+      p.vx = Math.max(-700, Math.min(700, p.vx * 1.18))
+      p.vy = Math.min(p.vy, 0) - GRAPPLE_LAUNCH
+      p.grounded = false; p.coyote = 0; p.airJump = true; p.dashCooldown = 0; p.squash = -0.16
+      this.burst(p.x + 17, p.y + p.h, ['#8cf7ec', '#ffffff', '#c394ff'], 18, 165)
+      this.popup(this.copy.grappleLaunch, p.x + 17, p.y - 18, '#9ff0ff')
+      this.audio.play('spring')
+    }
+    this.publish()
+  }
+
+  /** Keeps a0 on the cable: radial velocity is cancelled, tangential kept. */
+  private stepGrapple(dt: number) {
+    const p = this.player
+    const cable = p.grapple
+    if (!cable) return
+    if (this.keys.has('KeyW') || this.keys.has('ArrowUp')) cable.length = Math.max(GRAPPLE_MIN, cable.length - GRAPPLE_REEL * dt)
+    if (this.keys.has('KeyS') || this.keys.has('ArrowDown')) cable.length = Math.min(GRAPPLE_RANGE, cable.length + GRAPPLE_REEL * dt)
+    const cx = p.x + p.w / 2, cy = p.y + p.h / 2
+    const dx = cx - cable.x, dy = cy - cable.y
+    const distance = Math.hypot(dx, dy) || 1
+    if (distance <= cable.length) return
+    const nx = dx / distance, ny = dy / distance
+    p.x -= nx * (distance - cable.length)
+    p.y -= ny * (distance - cable.length)
+    const radial = p.vx * nx + p.vy * ny
+    if (radial > 0) { p.vx -= nx * radial; p.vy -= ny * radial }
+    if (p.y + p.h < 458) p.grounded = false
+  }
+
+  private resetPurge() {
+    this.purgeState = this.map.purge ? 'waiting' : 'off'
+    this.purgeX = this.map.purge ? this.map.purge.start - this.map.purge.lead : 0
+  }
+
+  /** The floor is being deleted. Returns true when a0 was caught and respawned. */
+  private stepPurge(dt: number, frozen: boolean): boolean {
+    const purge = this.map.purge
+    if (!purge || this.purgeState === 'off' || this.purgeState === 'cleared') return false
+    const p = this.player
+    if (this.purgeState === 'waiting') {
+      if (p.x < purge.start || p.x >= purge.end) return false
+      this.purgeState = 'active'
+      this.purgeX = p.x - purge.lead
+      this.shake = 6
+      this.popup(this.copy.purgeWarning, p.x + 40, p.y - 62, '#ff90a8')
+      this.audio.play('gc'); this.publish()
+      return false
+    }
+    if (!frozen) this.purgeX += purge.speed * dt
+    for (const platform of this.platforms) {
+      if (platform.deleted || platform.x + platform.w > this.purgeX) continue
+      platform.deleted = true
+      this.burst(platform.x + platform.w - 8, platform.y + 4, ['#ff7f9c', '#b388ff'], 9, 130)
+    }
+    if (p.x >= purge.end) {
+      this.purgeState = 'cleared'
+      this.score += 400
+      this.popup(this.copy.purgeCleared, p.x + 40, p.y - 52, '#9dffc4')
+      this.burst(p.x + 17, p.y + 24, ['#9dffc4', '#e8fff4', '#ffe399'], 42, 220)
+      this.audio.play('win'); this.publish()
+      return false
+    }
+    if (p.x + p.w > this.purgeX + 8) return false
+    this.popup(this.copy.purgeDeath, p.x + 17, p.y - 20, '#ff9db4')
+    this.hurt(true)
+    return true
   }
 
   private activatePower(kind: PowerKind, x: number, y: number) {
@@ -567,6 +684,6 @@ export class BugHuntPrototype {
     renderLocalhost(this.ctx, { level: this.level, platforms: this.platforms, boss: this.boss, player: this.player, enemies: this.enemies, camera: this.camera, time: this.visualTime,
       collected: this.collected, particles: this.particles, popups: this.popups, checkpoint: this.checkpoint, hotfix: this.hotfix,
       secret: this.secret, shake: this.shake, reducedMotion: this.reducedMotion, finished: this.finished, copy: this.copy,
-      worldTime: this.worldTime, powers: this.powers })
+      worldTime: this.worldTime, powers: this.powers, purgeX: this.purgeX, purgeState: this.purgeState })
   }
 }

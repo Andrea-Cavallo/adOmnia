@@ -1,7 +1,11 @@
 import type { PowerPickup } from './powers'
 
 export type Rect = { x: number; y: number; w: number; h: number }
-export type Platform = Rect & { floating?: boolean; travel?: number; unstable?: boolean; originX?: number; crumble?: number }
+export type Platform = Rect & { floating?: boolean; travel?: number; unstable?: boolean; originX?: number; crumble?: number; deleted?: boolean }
+/** Magnetic grapple anchor: a0 latches on, swings and launches. */
+export type Anchor = { x: number; y: number }
+/** The DELETE wave chase: `lead` px behind the player when it wakes up. */
+export type Purge = { start: number; end: number; speed: number; lead: number }
 export type Bug = Rect & { left: number; right: number; direction: number; alive: boolean; phase: number; retry?: boolean; hover?: boolean; homeY?: number }
 export type Bit = { id: number; x: number; y: number; secret?: boolean }
 
@@ -64,7 +68,16 @@ export function intersects(a: Rect, b: Rect): boolean {
 export type Firewall = Rect & { phase: number }
 export type Level = {
   name: string; platforms: Platform[]; spikes: Rect[]; bits: Bit[]; bugs: Bug[]; firewalls: Firewall[]; springs: Rect[]; powers: PowerPickup[]
+  anchors: Anchor[]; purge?: Purge
 }
+// Anchors sit above every main-route gap: the grapple is always an option,
+// never the only one. Heights keep the swing arc clear of the floor at 460.
+const ANCHORS: Anchor[][] = [
+  [{ x: 455, y: 252 }, { x: 940, y: 238 }, { x: 1482, y: 244 }, { x: 1772, y: 196 }, { x: 2092, y: 214 }, { x: 2600, y: 228 }],
+  [{ x: 660, y: 246 }, { x: 1018, y: 232 }, { x: 1462, y: 236 }, { x: 1958, y: 212 }, { x: 2404, y: 240 }],
+  [{ x: 608, y: 250 }, { x: 900, y: 222 }, { x: 1150, y: 238 }, { x: 1320, y: 206 }, { x: 1560, y: 232 },
+   { x: 1800, y: 200 }, { x: 2020, y: 226 }, { x: 2222, y: 206 }, { x: 2420, y: 236 }],
+]
 const gateway: Platform[] = [
   { x: 0, y: 460, w: 600, h: 100 }, { x: 715, y: 460, w: 285, h: 100 },
   { x: 1040, y: 460, w: 360, h: 100 }, { x: 1525, y: 460, w: 375, h: 100 },
@@ -80,19 +93,25 @@ export const LEVELS: Level[] = [
   { name: 'Localhost',
     // git revert first so R is learned early; sudo rewards the secret branch.
     powers: [{ kind: 'revert', x: 200, y: 420 }, { kind: 'breakpoint', x: 1457, y: 345 }, { kind: 'sudo', x: 2175, y: 280 }, { kind: 'gc', x: 2440, y: 380 }],
-    springs: [{ x: 300, y: 448, w: 44, h: 14 }], platforms: PLATFORMS, spikes: SPIKES, bits: BITS, bugs: createBugs(), firewalls: [] },
+    springs: [{ x: 300, y: 448, w: 44, h: 14 }], platforms: PLATFORMS, spikes: SPIKES, bits: BITS, bugs: createBugs(), firewalls: [], anchors: ANCHORS[0] },
   { name: 'API Gateway',
     powers: [{ kind: 'revert', x: 120, y: 420 }, { kind: 'breakpoint', x: 1100, y: 420 }, { kind: 'sudo', x: 1580, y: 420 }, { kind: 'gc', x: 2600, y: 420 }],
     springs: [{ x: 710, y: 448, w: 44, h: 14 }, { x: 1695, y: 353, w: 44, h: 14 }], platforms: gateway, spikes: [], bits: BITS.map(b => ({ ...b, id: b.id + 100 })),
     bugs: createBugs().map((b, i) => ({ ...b, retry: true, ...(i === 0 ? { x: 370, left: 180, right: 520 } : i === 1 ? { x: 1730, left: 1600, right: 1840 } : {}) })),
-    firewalls: [{ x: 1210, y: 365, w: 25, h: 95, phase: 0 }, { x: 2280, y: 365, w: 25, h: 95, phase: 1.7 }] },
+    firewalls: [{ x: 1210, y: 365, w: 25, h: 95, phase: 0 }, { x: 2280, y: 365, w: 25, h: 95, phase: 1.7 }], anchors: ANCHORS[1] },
   { name: 'Production',
     powers: [{ kind: 'revert', x: 100, y: 420 }, { kind: 'gc', x: 520, y: 420 }, { kind: 'breakpoint', x: 1420, y: 420 }, { kind: 'sudo', x: 2420, y: 420 }],
     springs: [{ x: 1875, y: 263, w: 44, h: 14 }], platforms: [...PLATFORMS.filter(p => p.floating && p.x < 2140).map(p => ({ ...p, unstable: true })),
       { x: 0, y: 460, w: 570, h: 100 }, { x: 650, y: 460, w: 620, h: 100 },
       { x: 1370, y: 460, w: 390, h: 100 }, { x: 1840, y: 460, w: 340, h: 100 },
-      { x: 2260, y: 460, w: 960, h: 100 }], spikes: [{ x: 1050, y: 440, w: 64, h: 20 }],
-    bits: BITS.map(b => ({ ...b, id: b.id + 200 })), bugs: createBugs().slice(0, 2).map((b, i) => ({ ...b, ...(i === 0 ? { x: 820, left: 700, right: 980 } : { x: 1970, left: 1880, right: 2100 }) })), firewalls: [{ x: 1590, y: 365, w: 25, h: 95, phase: 0.5 }] },
+      { x: 2260, y: 460, w: 960, h: 100 },
+      // Escape ramps for the DELETE chase: always a higher line to take.
+      { x: 1180, y: 330, w: 150, h: 20, floating: true }, { x: 1470, y: 300, w: 140, h: 20, floating: true },
+      { x: 1960, y: 320, w: 145, h: 20, floating: true }, { x: 2210, y: 290, w: 140, h: 20, floating: true }],
+    spikes: [{ x: 1050, y: 440, w: 64, h: 20 }],
+    bits: BITS.map(b => ({ ...b, id: b.id + 200 })), bugs: createBugs().slice(0, 2).map((b, i) => ({ ...b, ...(i === 0 ? { x: 820, left: 700, right: 980 } : { x: 1970, left: 1880, right: 2100 }) })), firewalls: [{ x: 1590, y: 365, w: 25, h: 95, phase: 0.5 }], anchors: ANCHORS[2],
+    // ~1.8 km of floor deleted behind you; the run ends at the checkpoint.
+    purge: { start: 640, end: 2460, speed: 176, lead: 430 } },
 ]
 // Short encounters invite a stomp -> air dash -> stomp chain. Hover bugs are
 // optional stepping stones; the main path below stays open.

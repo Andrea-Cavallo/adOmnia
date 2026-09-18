@@ -1,8 +1,21 @@
 # a0: Bug Hunt — Deploy del venerdì
 
-**Stato:** v0.9.14 inviata su master e tag: concatenazioni di colpi/scatti, 17 nemici, Bonus Rush, grado arcade e doppia onda finale. Corretta anche l'inquadratura che tagliava il terreno.
-**Ultimo aggiornamento:** 2026-09-17 (ritmo e incontri).
-**Prossimo passo:** provare la nuova versione a mano, annotando soprattutto concatenazioni aeree, timer bonus e doppia onda. Le verifiche automatiche non misurano il divertimento.
+**Stato:** v0.9.15 inviata su master e tag: ondata DELETE che cancella il pavimento di Production e rampino magnetico con oscillazione reale.
+**Ultimo aggiornamento:** 2026-09-18 (fuga e mobilita').
+**Prossimo passo:** provare a mano la fuga dall'ondata e le catene rampino -> lancio -> scatto -> bug. Le verifiche automatiche non misurano il divertimento.
+
+## Ripresa attiva — v0.9.15, il pavimento si cancella e il rampino
+
+- [x] Ondata `DELETE` in Production: parte a x=640, 430 px dietro a0, a 176 px/s; si spegne al checkpoint (x=2460) con +400 punti.
+- [x] Le piattaforme superate diventano `deleted`: niente collisione, resta il contorno tratteggiato. Chi si ferma perde una vita e l'ondata si azzera.
+- [x] Quattro rampe alte nuove nella zona di fuga; il Breakpoint congela anche l'ondata.
+- [x] Rampino magnetico su tasto **E**: aggancio al nodo piu' vicino entro 300 px sopra a0, pendolo vero (velocita' radiale annullata, tangenziale conservata), **W**/**S** accorciano e allungano il cavo.
+- [x] Rilascio di **E** o **Spazio**: lancio con spinta e scatto ricaricato; lo scatto stacca il cavo. Catena rampino -> lancio -> scatto -> bug senza toccare terra.
+- [x] Ancore sopra ogni buco del percorso principale nei tre ambienti (nove in Production); restano facoltative e l'aggancio a vuoto non penalizza.
+- [x] Testi IT/EN, pillole HUD, legenda tasti e suggerimenti di ambiente aggiornati.
+- [x] 539 test frontend (37 del gioco, 5 nuovi), TypeScript, build di produzione, `go build ./...` e `go test ./...` passati.
+- [ ] Prova umana: taratura della velocita' dell'ondata (176 px/s), della portata del rampino (300 px) e della spinta di lancio.
+- [ ] Verifica in `wails3 task dev` della nuova tranche.
 
 ## Ripresa attiva — v0.9.14, ritmo e incontri
 

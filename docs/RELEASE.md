@@ -2,6 +2,12 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+## v0.9.15 release notes: Bug Hunt gets a chase and a grapple
+
+See [the full v0.9.15 notes](releases/v0.9.15.md): the DELETE wave that eats the
+floor of Production, and the magnetic grapple that chains swings into launches,
+dashes and bug hits.
+
 ## v0.9.14 release notes: Bug Hunt encounter chains and bonus rushes
 
 See [the full v0.9.14 notes](releases/v0.9.14.md): dash refills on hits, optional aerial encounters, timed bonus collections, score ranks and a final boss escalation.

@@ -9,7 +9,7 @@ import './bughunt.css'
 import { rankForScore, RUSH_TARGET } from './rush'
 import { LEVELS } from './level'
 
-const CONTROL_KEYS = new Set(['KeyA', 'KeyD', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyX', 'ShiftLeft', 'ShiftRight', 'KeyR'])
+const CONTROL_KEYS = new Set(['KeyA', 'KeyD', 'KeyW', 'KeyS', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space', 'KeyX', 'ShiftLeft', 'ShiftRight', 'KeyR', 'KeyE'])
 
 export function BugHuntOverlay({ onClose }: { onClose: () => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -139,7 +139,7 @@ export function BugHuntOverlay({ onClose }: { onClose: () => void }) {
         <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} aria-label={copy.canvasLabel} />
         {!ready && <div className="bh-hud" aria-label={copy.hudLabel}>
           <div className="bh-hud-group"><span className="bh-pill" aria-label={copy.healthLabel(snapshot.health)}><span className="bh-heart">{'♥'.repeat(snapshot.health)}<span className="bh-heart-empty">{'♥'.repeat(3 - snapshot.health)}</span></span></span><span className="bh-pill gold"><Diamond size={13} /><strong>{snapshot.bits}</strong><span>/ {snapshot.totalBits}</span></span><span className="bh-pill">{copy.statScore} <strong>{snapshot.score}</strong>{snapshot.combo >= 4 && <b className="bh-combo">x{Math.min(5, 1 + Math.floor(snapshot.combo / 4))}</b>}</span></div>
-          <div className="bh-hud-group"><span className={`bh-pill ${snapshot.revertCharges ? 'sky' : 'dim'}`} title={copy.keysRevert}><kbd>R</kbd>↺ ×{snapshot.revertCharges}</span>{snapshot.breakpoint > 0 && <span className="bh-pill rose">⏸ BREAKPOINT {snapshot.breakpoint}s</span>}{snapshot.sudo > 0 && <span className="bh-pill sun"># SUDO {snapshot.sudo}s</span>}<span className={`bh-pill ${snapshot.dashReady ? 'mint' : ''}`}><kbd>X</kbd>{snapshot.dashReady ? copy.dashReady : copy.dashCharging}</span><span className={`bh-pill ${snapshot.hotfix ? 'mint' : ''}`}><Cpu size={14} />{snapshot.hotfix ? copy.hotfixFound : copy.findHotfix}</span><span className="bh-pill">{formatTime(snapshot.seconds)}</span></div>
+          <div className="bh-hud-group"><span className={`bh-pill ${snapshot.revertCharges ? 'sky' : 'dim'}`} title={copy.keysRevert}><kbd>R</kbd>↺ ×{snapshot.revertCharges}</span>{snapshot.breakpoint > 0 && <span className="bh-pill rose">⏸ BREAKPOINT {snapshot.breakpoint}s</span>}{snapshot.sudo > 0 && <span className="bh-pill sun"># SUDO {snapshot.sudo}s</span>}<span className={`bh-pill ${snapshot.dashReady ? 'mint' : ''}`}><kbd>X</kbd>{snapshot.dashReady ? copy.dashReady : copy.dashCharging}</span><span className={`bh-pill ${snapshot.grappled ? 'sky' : 'dim'}`} title={copy.grappleHint}><kbd>E</kbd>{copy.keysGrapple}</span>{snapshot.purge === 'active' && <span className="bh-pill rose">{copy.purgeLabel}</span>}<span className={`bh-pill ${snapshot.hotfix ? 'mint' : ''}`}><Cpu size={14} />{snapshot.hotfix ? copy.hotfixFound : copy.findHotfix}</span><span className="bh-pill">{formatTime(snapshot.seconds)}</span></div>
         </div>}
         {(ready || snapshot.paused || snapshot.finished || snapshot.levelComplete) && <div className="bh-modal">
           <div className="bh-card">
@@ -175,7 +175,7 @@ export function BugHuntOverlay({ onClose }: { onClose: () => void }) {
           </div>
         </div>}
       </div>
-      <footer className="bh-footer"><div className="bh-keys"><span><kbd>A</kbd> <kbd>D</kbd> / <kbd>←</kbd> <kbd>→</kbd> {copy.keysMove}</span><span><kbd>{copy.keySpace}</kbd> {copy.keysJump}</span><span><kbd>X</kbd> / <kbd>Shift</kbd> {copy.keysDash}</span><span><kbd>R</kbd> {copy.keysRevert}</span><span><kbd>Esc</kbd> {copy.keysPause}</span></div><span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Flag size={11} />{snapshot.checkpoint ? copy.checkpointSaved : copy.findCheckpoint}</span></footer>
+      <footer className="bh-footer"><div className="bh-keys"><span><kbd>A</kbd> <kbd>D</kbd> / <kbd>←</kbd> <kbd>→</kbd> {copy.keysMove}</span><span><kbd>{copy.keySpace}</kbd> {copy.keysJump}</span><span><kbd>X</kbd> / <kbd>Shift</kbd> {copy.keysDash}</span><span><kbd>E</kbd> {copy.keysGrapple}</span><span><kbd>R</kbd> {copy.keysRevert}</span><span><kbd>Esc</kbd> {copy.keysPause}</span></div><span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Flag size={11} />{snapshot.checkpoint ? copy.checkpointSaved : copy.findCheckpoint}</span></footer>
     </div>
   )
 }

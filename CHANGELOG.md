@@ -4,6 +4,14 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [0.9.15] - 2026-09-18
+
+### Added
+- **Bug Hunt DELETE wave:** in Production the floor is deleted behind a0. Platforms the wave passes stop being solid, outrunning it to the checkpoint pays 400 points, and stopping costs a life. Four new high ramps offer a faster line and the Breakpoint power freezes the wave.
+- **Magnetic grapple:** press E to latch onto the glowing nodes above every main-route gap. The cable swings like a real pendulum, W and S reel it in and out, and releasing it launches a0 and refills the dash, so grapple, launch, dash and bug hits chain without touching the ground.
+
+Full release notes: [v0.9.15](docs/releases/v0.9.15.md).
+
 ## [0.9.14] - 2026-09-17
 
 ### Added

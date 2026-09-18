@@ -3,7 +3,8 @@ import { LEVELS, BOSS_BODY, firewallPhase, CHECKPOINT_X, EXIT_X, HOTFIX, type Pl
 import { drawBreakpointMarkers, drawGcWave, drawPowerOverlay, drawPowerPickups, drawRewindGhosts, drawSudoAura } from './powerVisuals'
 import type { PowerState } from './powers'
 
-export type PlayerVisual = { x: number; y: number; w: number; h: number; vx: number; vy: number; grounded: boolean; facing: number; invulnerable: number; squash: number; dash?: number }
+export type PlayerVisual = { x: number; y: number; w: number; h: number; vx: number; vy: number; grounded: boolean; facing: number; invulnerable: number; squash: number; dash?: number
+  grapple?: { x: number; y: number; length: number } | null }
 export type Particle = { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; color: string; size: number; gravity: number }
 export type Popup = { x: number; y: number; text: string; color: string; life: number }
 export type VisualState = {
@@ -12,6 +13,8 @@ export type VisualState = {
   shake: number; reducedMotion: boolean; finished: boolean; copy: BugHuntCopy
   /** Clock that stops on a breakpoint. */
   worldTime: number; powers: PowerState
+  /** Leading edge of the DELETE wave and whether it is chasing right now. */
+  purgeX: number; purgeState: 'off' | 'waiting' | 'active' | 'cleared'
 }
 
 export function box(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, radius: number, color: string) {
@@ -90,6 +93,11 @@ function drawTerminal(ctx: CanvasRenderingContext2D, x: number, y: number, title
 
 function drawPlatforms(ctx: CanvasRenderingContext2D, camera: number, time: number, state: VisualState) {
   for (const p of state.platforms) {
+    if (p.deleted) {
+      if (p.x + p.w < camera - 20 || p.x > camera + 980) continue
+      ctx.setLineDash([7, 9]); line(ctx, [p.x, p.y, p.x + p.w, p.y], '#ff6d8c33', 2); ctx.setLineDash([])
+      continue
+    }
     if ((p.crumble ?? 0) > 0.8) { line(ctx, [p.x, p.y, p.x + p.w, p.y], "#66566a44", 2); continue }
     if (p.x + p.w < camera - 20 || p.x > camera + 980) continue
     if (p.floating) glow(ctx, p.x + p.w / 2, p.y + 13, 55, '#5d3cb63a')
@@ -194,6 +202,66 @@ function drawBug(ctx: CanvasRenderingContext2D, bug: Bug, time: number) {
   ctx.restore()
 }
 
+/** Magnetic anchors: a pulsing node, brighter once a0 is inside latch range. */
+function drawAnchors(ctx: CanvasRenderingContext2D, state: VisualState, t: number) {
+  const cx = state.player.x + state.player.w / 2, cy = state.player.y + state.player.h / 2
+  for (const anchor of LEVELS[state.level].anchors) {
+    if (anchor.x < state.camera - 60 || anchor.x > state.camera + 1020) continue
+    const near = Math.hypot(anchor.x - cx, anchor.y - cy) < 300 && anchor.y < cy - 24
+    const color = near ? '#8cf7ec' : '#6a7fc0'
+    glow(ctx, anchor.x, anchor.y, near ? 54 : 30, near ? '#4ee0d033' : '#5f6fb322')
+    ctx.save(); ctx.translate(anchor.x, anchor.y); ctx.rotate(t * (near ? 1.9 : 0.7))
+    ctx.strokeStyle = color; ctx.lineWidth = 2
+    ctx.beginPath(); ctx.arc(0, 0, 13 + Math.sin(t * 4) * (near ? 2.5 : 1), 0.4, Math.PI * 0.9); ctx.stroke()
+    ctx.beginPath(); ctx.arc(0, 0, 13, Math.PI * 1.4, Math.PI * 1.9); ctx.stroke()
+    ctx.restore()
+    box(ctx, anchor.x - 5, anchor.y - 5, 10, 10, 3, color)
+    ctx.fillStyle = '#eafcff'; ctx.fillRect(anchor.x - 1, anchor.y - 1, 2, 2)
+    if (near) text(ctx, 'E', anchor.x - 4, anchor.y - 22, '#b9fff5', 11)
+  }
+}
+
+/** The live cable: a taut line with a charge travelling up to the anchor. */
+function drawCable(ctx: CanvasRenderingContext2D, state: VisualState, t: number) {
+  const cable = state.player.grapple
+  if (!cable) return
+  const px = state.player.x + state.player.w / 2, py = state.player.y + 14
+  line(ctx, [px, py, cable.x, cable.y], '#8cf7ecaa', 3)
+  line(ctx, [px, py, cable.x, cable.y], '#eafcffcc', 1)
+  const travel = (t * 1.6) % 1
+  glow(ctx, px + (cable.x - px) * travel, py + (cable.y - py) * travel, 13, '#9ff0ff66')
+  glow(ctx, cable.x, cable.y, 46, '#4ee0d044')
+}
+
+/** The DELETE wave: everything to its left is gone, not just dark. */
+function drawPurge(ctx: CanvasRenderingContext2D, state: VisualState, t: number) {
+  if (state.purgeState !== 'active') return
+  const edge = state.purgeX
+  if (edge < state.camera - 120) return
+  const left = Math.max(state.camera - 140, edge - 1100)
+  const void_ = ctx.createLinearGradient(left, 0, edge, 0)
+  void_.addColorStop(0, '#05030b'); void_.addColorStop(0.72, '#140617e6'); void_.addColorStop(1, '#3c0f2bcc')
+  ctx.fillStyle = void_; ctx.fillRect(left, 0, edge - left, 540)
+  for (let i = 0; i < 26; i++) {
+    const y = (i * 41 + (t * 140) % 41) % 540
+    const w = 40 + ((i * 97) % 260)
+    ctx.fillStyle = i % 3 ? '#ff5d8a22' : '#b388ff26'
+    ctx.fillRect(edge - w - ((i * 53 + t * 90) % 420), y, w, 2)
+  }
+  glow(ctx, edge, 270, 190, '#ff3f7a2e')
+  const front = ctx.createLinearGradient(edge - 34, 0, edge + 6, 0)
+  front.addColorStop(0, '#ff5d8a00'); front.addColorStop(1, '#ff85a8')
+  ctx.fillStyle = front; ctx.fillRect(edge - 34, 0, 40, 540)
+  line(ctx, [edge, 0, edge, 540], '#fff0f5', 2)
+  ctx.save(); ctx.translate(edge - 12, 0)
+  for (let y = 40; y < 520; y += 96) {
+    ctx.save(); ctx.translate(0, y); ctx.rotate(-Math.PI / 2)
+    text(ctx, 'DELETE  FROM  *', 0, 0, '#ffd8e3aa', 13)
+    ctx.restore()
+  }
+  ctx.restore()
+}
+
 export function renderLocalhost(ctx: CanvasRenderingContext2D, state: VisualState) {
   const checkpointX = state.level === 2 ? 2500 : CHECKPOINT_X
   const gateOpen = state.hotfix && (state.level !== 2 || state.boss.health === 0)
@@ -203,6 +271,7 @@ export function renderLocalhost(ctx: CanvasRenderingContext2D, state: VisualStat
   const shake = state.reducedMotion ? 0 : state.shake
   ctx.translate(-Math.round(state.camera) + Math.sin(t * 83) * shake, Math.cos(t * 71) * shake * 0.45)
   drawPlatforms(ctx, state.camera, t, state)
+  drawAnchors(ctx, state, t)
 
   for (const spring of LEVELS[state.level].springs) {
     glow(ctx, spring.x + 22, spring.y, 42, '#9affdf33')
@@ -296,7 +365,9 @@ export function renderLocalhost(ctx: CanvasRenderingContext2D, state: VisualStat
   for (const bug of state.enemies) if (bug.alive && bug.retry) text(ctx, 'RETRY', bug.x, bug.y - 17, '#f2b2cb', 9)
   drawRewindGhosts(ctx, state.powers)
   drawSudoAura(ctx, state.player, state.time, state.powers.sudo)
+  drawCable(ctx, state, t)
   drawRobot(ctx, state.player, t, state.reducedMotion)
+  drawPurge(ctx, state, t)
   drawGcWave(ctx, state.powers.gc)
   for (const particle of state.particles) {
     ctx.globalAlpha = Math.min(1, particle.life / particle.maxLife)
