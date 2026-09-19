@@ -4,6 +4,24 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [0.9.16] - 2026-09-19
+
+### Added
+- **WebSocket parallel send:** split the composer with a line containing only `---` and fire every command `N` times concurrently (1–500). `{{$i}}` resolves to the 1-based send index, and the log reports `ok/total` with elapsed milliseconds and the first error.
+- **Bug Hunt — debug gun:** hold F to fire debug packets. They close bugs, knock SOAP envelopes out of the air, and armoured bugs take two.
+- **Bug Hunt — reactive enemies:** chasers wake within 320 px and charge without leaving solid floor; turrets track a0 within 430 px and return fire every 1.85 s behind a visible aim line and charge pips.
+- **Bug Hunt — a boss that rewrites the rules:** the Legacy Monolith announces a command for 1.7 s, then executes it — `sudo reverse gravity` (a0 lands on the arena ceiling and jumps down onto the core), `fork() → 3 clones`, and `systemctl stop platforms`. Every rule is local to the arena and ends with its phase.
+
+### Changed
+- **Bug Hunt — the Legacy Monolith** is a full tower: a CRT face that tracks a0, the legacy stack it will not retire, sticky notes, and two fists that lob SOAP envelopes in an arc. The old ground wave is gone.
+- **The secret is easier to find:** one full spin of the home-screen logo asks whether you want to play. The three-turn gesture and the 30-second hold are gone, and the invite can be dismissed.
+- **Dependencies:** `wails/v3` and `@wailsio/runtime` to 3.0.0-beta.22 (moved together, as the IPC layer requires), React and React DOM to 19.3.0, `tailwind-merge` 3.7.0, `autoprefixer` 10.6.1, `modernc.org/sqlite` 1.59.0, `mongo-driver/v2` 2.9.1, `amqp091-go` 1.15.0.
+
+### Fixed
+- **Bug Hunt boss layout:** a duplicated announcement covering the boss's face, the state line printed across the legacy stack, wall graffiti drawn over the checkpoint terminal, and a0's `aO` reading as `90` while upside down.
+
+Full release notes: [v0.9.16](docs/releases/v0.9.16.md).
+
 ## [0.9.15] - 2026-09-18
 
 ### Added

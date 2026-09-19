@@ -2,6 +2,13 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+## v0.9.16 release notes: parallel WebSocket sends, and a boss that rewrites the rules
+
+See [the full v0.9.16 notes](releases/v0.9.16.md): concurrent WebSocket bursts
+with `---` and `{{$i}}`, a debug gun and reactive enemies in Bug Hunt, a Legacy
+Monolith that throws SOAP envelopes and rewrites one rule per phase, and a
+one-spin secret.
+
 ## v0.9.15 release notes: Bug Hunt gets a chase and a grapple
 
 See [the full v0.9.15 notes](releases/v0.9.15.md): the DELETE wave that eats the

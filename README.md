@@ -13,7 +13,7 @@ MCP Client + Server Generator · Versionable collection folders · Headless runn
 > Proudly listed on **[Awesome Wails](https://github.com/wailsapp/awesome-wails)** and **[Awesome HTTP Clients](https://github.com/mrmykey/awesome-http-clients/tree/main)**.
 
 [![Website](https://img.shields.io/badge/Get%20started%20for%20free-8A2BE2)](https://www.adomnia-dev.com)
-[![Release](https://img.shields.io/badge/release-v0.9.15-8A2BE2)](https://github.com/Andrea-Cavallo/adOmnia/releases/tag/v0.9.15)
+[![Release](https://img.shields.io/badge/release-v0.9.16-8A2BE2)](https://github.com/Andrea-Cavallo/adOmnia/releases/tag/v0.9.16)
 [![Awesome Wails](https://img.shields.io/badge/Awesome-Wails-FF3E00?logo=go&logoColor=white)](https://github.com/wailsapp/awesome-wails)
 [![Awesome HTTP Clients](https://img.shields.io/badge/Awesome-HTTP_Clients-4285F4?logo=googlechrome&logoColor=white)](https://github.com/mrmykey/awesome-http-clients/tree/main)
 ![Local First](https://img.shields.io/badge/local--first-yes-22c55e)
@@ -249,6 +249,19 @@ wails3 task build    # production build for the current platform
 ```
 
 Full instructions: [docs/BUILD.md](docs/BUILD.md)
+
+### Find the secret 🙂
+
+There is something in adOmnia that is not in the feature list. No menu opens it,
+no setting enables it, and it ships in every build.
+
+Give the logo on the home screen a spin. One full turn is enough — it will ask
+you the rest itself.
+
+> Whoever finds it meets a robot named **a0**, a Friday deploy that went wrong,
+> and a Legacy Monolith that throws SOAP envelopes and rewrites the rules of the
+> level while you are still standing in it. Everything stays offline, like the
+> rest of the app.
 
 ### License
 

@@ -1,8 +1,23 @@
 # a0: Bug Hunt — Deploy del venerdì
 
-**Stato:** v0.9.15 inviata su master e tag: ondata DELETE che cancella il pavimento di Production e rampino magnetico con oscillazione reale.
-**Ultimo aggiornamento:** 2026-09-18 (fuga e mobilita').
-**Prossimo passo:** provare a mano la fuga dall'ondata e le catene rampino -> lancio -> scatto -> bug. Le verifiche automatiche non misurano il divertimento.
+**Stato:** v0.9.16 inviata su master e tag: pistola di debug, nemici reattivi e Legacy Monolith che lancia buste SOAP e riscrive una regola per fase.
+**Ultimo aggiornamento:** 2026-09-19 (combattimento e boss).
+**Prossimo passo:** partita umana completa. Tarare a mano cadenza delle torrette, velocita' dei chaser e durata delle fasi del boss.
+
+## Ripresa attiva — v0.9.16, si spara e il boss cambia le regole
+
+- [x] Pistola di debug su **F** (tenuta premuta): 640 px/s, cooldown 0,22 s, rinculo a terra; abbatte anche le buste SOAP in volo (+25 punti).
+- [x] Nemici **chaser** (si svegliano a 320 px, caricano a 196 px/s, non escono dalla banda di pavimento solido) e **turret** (mirano a 430 px, sparano ogni 1,85 s con mira tratteggiata e tre tacche di carica).
+- [x] Corazza visibile: alcuni bug reggono due colpi; lo stomp non letale da' 0,45 s di invulnerabilita' ad a0.
+- [x] Boss che riscrive le regole: annuncio 1,7 s poi `sudo reverse gravity` / `fork() -> 3 cloni` / `systemctl stop platforms`. Regole locali all'arena, si spengono con la fase, congelabili col Breakpoint.
+- [x] Legacy Monolith ridisegnato come torre: faccia CRT che segue a0, stack legacy, post-it, due pugni che lanciano buste SOAP ad arco. Onda a terra rimossa.
+- [x] Soffitto dell'arena e tre lastre `arena` per le fasi gravita'/offline.
+- [x] Segreto piu' facile: un giro completo del logo apre l'invito "vuoi giocare?"; niente tre giri, niente attesa di 30 secondi.
+- [x] Verifica visiva reale in browser (Chrome headless via CDP): hub, intro, Localhost, arena del boss, volata di buste, annuncio e gravita' invertita.
+- [x] Quattro difetti di impaginazione trovati dalla verifica visiva e corretti: annuncio duplicato sulla faccia, riga di stato sopra lo stack legacy, graffito sul terminale del checkpoint, `aO` che si leggeva `90` a testa in giu'.
+- [x] 552 test frontend (113 file, 50 del gioco), `tsc`, build, `go build ./...` e `go test ./...` passati.
+- [ ] Prova umana: cadenza torrette (1,85 s), velocita' chaser (196 px/s), durata annuncio (1,7 s) e difficolta' complessiva delle tre fasi.
+- [ ] Partita completa nel runtime desktop Wails 3.
 
 ## Ripresa attiva — v0.9.15, il pavimento si cancella e il rampino
 
