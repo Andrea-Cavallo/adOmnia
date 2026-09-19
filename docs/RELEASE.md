@@ -2,6 +2,13 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+## v0.9.17 release notes: a beatable final boss, built platforms, and a dependency sweep
+
+See [the full v0.9.17 notes](releases/v0.9.17.md): the arena slab that made
+the Legacy Monolith unbeatable is fixed and guarded by a test, Bug Hunt
+platforms become real chassis instead of rectangles, the start menu explains
+itself, and every direct dependency moves to its current release.
+
 ## v0.9.16 release notes: parallel WebSocket sends, and a boss that rewrites the rules
 
 See [the full v0.9.16 notes](releases/v0.9.16.md): concurrent WebSocket bursts

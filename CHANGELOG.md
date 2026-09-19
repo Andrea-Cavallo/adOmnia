@@ -4,21 +4,21 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
-## [Unreleased]
-
-### Changed
-- **Bug Hunt platforms are built, not drawn as rectangles:** every slab now has a lit rail, end caps, etched circuit traces, a recessed glyph window (`>>>`, `</>`, `<   >`, `/ / /`) and a neon accent per role. Ground slabs carry a chassis with vent bays, status lights, bolts, pylons and cabling; floating slabs get pulsing anti-gravity mounts; the arena ceiling is the same slab hung upside down.
-- **A clearer start menu:** the dense mission paragraph is replaced by a goal box, a controls grid with real key caps, and a LIVES panel that states the rule. The HUD pill now reads `LIVES ♥♥♥ 3` instead of three bare glyphs, and turns red on the last life.
+## [0.9.17] - 2026-09-19
 
 ### Fixed
 - **Bug Hunt — the Legacy Monolith could not be defeated.** An arena slab sat directly above the core, catching the fall that damages it. The slab moved beside the core, and a regression test now fails if anything solid enters the approach band above it.
 
 ### Changed
+- **Bug Hunt platforms are built, not drawn as rectangles:** every slab now has a lit rail, end caps, etched circuit traces, a recessed glyph window (`>>>`, `</>`, `<   >`, `/ / /`) and a neon accent per role. Ground slabs carry a chassis with vent bays, status lights, bolts, pylons and cabling; floating slabs get pulsing anti-gravity mounts; the arena ceiling is the same slab hung upside down.
+- **A clearer start menu:** the dense mission paragraph is replaced by a goal box, a controls grid with real key caps, and a LIVES panel that states the rule. The HUD pill now reads `LIVES ♥♥♥ 3` instead of three bare glyphs, and turns red on the last life.
 - **Dependency sweep:** every direct Go module and every npm package updated to its current release — `wails/v3` and `@wailsio/runtime` to 3.0.0-beta.23 (moved together, as the IPC layer requires), `golang.org/x/crypto` 0.57.0, `golang.org/x/net` 0.59.0, `grpc` 1.84.0, `goja`, `nats.go` 1.54.0, `klauspost/compress` 1.20.0, `modernc.org/libc` 1.77.0 and others; `vite` 8.3.0, `vitest` 5.0.1, `postcss` 8.5.28, `lucide-react` 1.47.0, `yaml` 2.9.1.
 
 ### Held back
 - **mermaid 12.0.0** stays on 11.17.2: it pulls `chevrotain` → `lodash-es` with five high-severity advisories (code injection via `_.template`, prototype pollution in `_.unset`/`_.omit`). 11.17.2 keeps `npm audit` at zero.
 - **`digitorus/pkcs7` and `digitorus/timestamp`** stay pinned: their current releases require Go 1.27 and this project targets Go 1.26.5. Raising the toolchain floor is a separate decision — it affects CI and every contributor.
+
+Full release notes: [v0.9.17](docs/releases/v0.9.17.md).
 
 ## [0.9.16] - 2026-09-19
 

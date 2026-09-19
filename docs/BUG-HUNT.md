@@ -1,6 +1,19 @@
 # a0: Bug Hunt — Deploy del venerdì
 
-**Stato:** v0.9.16 inviata su master e tag: pistola di debug, nemici reattivi e Legacy Monolith che lancia buste SOAP e riscrive una regola per fase.
+**Stato:** v0.9.17 inviata su master e tag: boss di nuovo battibile, piattaforme costruite e menu iniziale chiaro.
+
+## Ripresa attiva — v0.9.17, boss battibile e piattaforme vere
+
+- [x] **Bug bloccante corretto:** la lastra dell'arena a x=2872 stava sopra il nucleo e intercettava la caduta che lo danneggia. Il boss era imbattibile in v0.9.16. Lastra spostata a x=2944.
+- [x] Test di regressione: nessuna piattaforma puo' invadere i 170 px sopra il nucleo. Verificato che fallisce sulla geometria vecchia prima di accettarlo.
+- [x] Piattaforme ridisegnate come telai: rail luminoso, tappi, tracce di circuito, finestrella con glifo per ruolo (`>>>`, `</>`, `<   >`, `/ / /`), accento neon per ruolo.
+- [x] Sottostruttura del terreno: baie di ventilazione con spie, bulloni, piloni e cavi. Supporti antigravita' pulsanti sulle fluttuanti; soffitto dell'arena = stesso slab capovolto.
+- [x] Menu iniziale in tre blocchi: obiettivo, griglia comandi con tasti disegnati, pannello VITE con la regola. Pillola HUD `VITE ♥♥♥ 3`, rossa all'ultima vita.
+- [x] Verifica visiva in browser: ha trovato il terreno "senza peso" dopo la rimozione dei rettangoli, da cui la sottostruttura.
+- [x] 553 test frontend (113 file, 51 del gioco), `tsc`, build, `go build ./...` e `go test ./...` passati.
+- [ ] Prova umana del boss ora che e' battibile: tarare le tre fasi.
+
+**Stato precedente (v0.9.16):** pistola di debug, nemici reattivi e Legacy Monolith che lancia buste SOAP e riscrive una regola per fase.
 **Ultimo aggiornamento:** 2026-09-19 (combattimento e boss).
 **Prossimo passo:** partita umana completa. Tarare a mano cadenza delle torrette, velocita' dei chaser e durata delle fasi del boss.
 
