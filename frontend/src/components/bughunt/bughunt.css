@@ -67,3 +67,55 @@
 .bh-rank { float: right; color: #ffe4a0; font-size: 54px; font-weight: 900; line-height: 1; padding-left: 16px; }
 
 @media (max-width: 800px) { .bh-level-hint { top: 105px; left: 5%; right: 5%; } }
+
+/* Intro briefing: what to press, and what a life costs. */
+.bh-brief {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 14px;
+  margin-top: 14px;
+}
+.bh-brief-block {
+  border: 1px solid var(--bh-border, rgba(150, 130, 220, 0.22));
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: rgba(14, 12, 30, 0.5);
+}
+.bh-brief-block h2 {
+  margin: 0 0 9px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #b9a7d8;
+}
+.bh-brief-block p { margin: 0 0 6px; font-size: 12px; line-height: 1.5; color: #cfc4e6; }
+.bh-keygrid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 12px;
+  margin: 0;
+  align-items: center;
+}
+.bh-keygrid dt { display: flex; gap: 4px; }
+.bh-keygrid kbd {
+  display: inline-block;
+  min-width: 20px;
+  padding: 2px 6px;
+  border: 1px solid #6e658866;
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: rgba(30, 26, 54, 0.75);
+  color: #ddd6f2;
+  font: 10px ui-monospace, monospace;
+  text-align: center;
+}
+.bh-keygrid dd { margin: 0; font-size: 12px; color: #cfc4e6; }
+.bh-lives-row { font-size: 21px; letter-spacing: 3px; }
+.bh-lives { gap: 7px; }
+.bh-lives-label { font-size: 9px; letter-spacing: 0.14em; opacity: 0.7; }
+.bh-lives strong { font-variant-numeric: tabular-nums; }
+
+@media (max-width: 760px) {
+  .bh-brief { grid-template-columns: 1fr; }
+}

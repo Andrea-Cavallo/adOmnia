@@ -96,53 +96,162 @@ function drawTerminal(ctx: CanvasRenderingContext2D, x: number, y: number, title
   line(ctx, [x + 115, y + 72, x + 115, 458], '#36334b', 3)
 }
 
+/** Neon accent per platform role, so the rule is read before it is felt. */
+function slabTint(p: Platform): { edge: string; glow: string; trace: string } {
+  if (p.unstable) return { edge: '#ffb879', glow: '#ff8c3a2e', trace: '#ffd2a0' }
+  if (p.arena) return { edge: '#ffa24d', glow: '#ff7a2e2e', trace: '#ffc98f' }
+  if (p.travel) return { edge: '#b3a2ff', glow: '#7d5cff2e', trace: '#d6ccff' }
+  if (p.floating) return { edge: '#7ce7ff', glow: '#3ba6ff33', trace: '#a9f0ff' }
+  return { edge: '#6ff0ff', glow: '#2f8cff26', trace: '#8fd8ff' }
+}
+
+/** Etched copper: a trace runs, turns, and ends on a via. */
+function drawTraces(ctx: CanvasRenderingContext2D, p: Platform, color: string) {
+  ctx.save()
+  ctx.beginPath(); ctx.roundRect(p.x + 2, p.y + 2, p.w - 4, p.h - 4, 5); ctx.clip()
+  ctx.globalAlpha = 0.34
+  for (let x = p.x + 16; x < p.x + p.w - 12; x += 44) {
+    const drop = 7 + ((x / 44) % 3) * 4
+    line(ctx, [x, p.y + p.h - 5, x, p.y + drop + 4, x + 16, p.y + drop, x + 30, p.y + drop], color, 1.4)
+    ctx.fillStyle = color
+    ctx.beginPath(); ctx.arc(x + 30, p.y + drop, 2.1, 0, Math.PI * 2); ctx.fill()
+  }
+  ctx.restore()
+}
+
+/** One platform: lit edge, end caps, etched face and a recessed glyph window. */
+function drawSlab(ctx: CanvasRenderingContext2D, p: Platform, time: number, glyph: string) {
+  const tint = slabTint(p)
+  const h = Math.min(p.h, 26)
+  glow(ctx, p.x + p.w / 2, p.y + h / 2, Math.max(60, p.w * 0.42), tint.glow)
+
+  // Chassis, then the inset face that carries the traces.
+  box(ctx, p.x - 2, p.y - 2, p.w + 4, h + 5, 7, '#070a16')
+  box(ctx, p.x, p.y, p.w, h, 6, '#171a2e')
+  const face = ctx.createLinearGradient(0, p.y, 0, p.y + h)
+  face.addColorStop(0, '#242a48'); face.addColorStop(0.55, '#141830'); face.addColorStop(1, '#0d1024')
+  ctx.fillStyle = face
+  ctx.beginPath(); ctx.roundRect(p.x + 2, p.y + 2, p.w - 4, h - 4, 5); ctx.fill()
+  drawTraces(ctx, p, tint.trace)
+
+  // The lit rail a0 actually stands on.
+  const rail = ctx.createLinearGradient(p.x, 0, p.x + p.w, 0)
+  rail.addColorStop(0, 'transparent'); rail.addColorStop(0.12, tint.edge)
+  rail.addColorStop(0.88, tint.edge); rail.addColorStop(1, 'transparent')
+  ctx.fillStyle = rail; ctx.fillRect(p.x + 3, p.y, p.w - 6, 3)
+  ctx.globalAlpha = 0.5; ctx.fillRect(p.x + 3, p.y + 3, p.w - 6, 1.5); ctx.globalAlpha = 1
+  ctx.strokeStyle = tint.edge + '66'; ctx.lineWidth = 1
+  ctx.beginPath(); ctx.roundRect(p.x + 0.5, p.y + 0.5, p.w - 1, h - 1, 6); ctx.stroke()
+
+  // End caps.
+  for (const side of [0, 1]) {
+    const x = side ? p.x + p.w - 16 : p.x
+    box(ctx, x, p.y + 1, 16, h - 2, 5, '#0f1326')
+    ctx.fillStyle = tint.edge
+    ctx.fillRect(side ? x + 12 : x + 2, p.y + 6, 2, h - 12)
+    ctx.globalAlpha = 0.55
+    ctx.fillRect(side ? x + 7 : x + 6, p.y + 8, 2, 2)
+    ctx.fillRect(side ? x + 7 : x + 6, p.y + h - 11, 2, 2)
+    ctx.globalAlpha = 1
+  }
+
+  // Recessed glyph window: one per slab, centred, never on the short ones.
+  if (p.w >= 96) {
+    const gw = 62, gx = p.x + p.w / 2 - gw / 2
+    box(ctx, gx, p.y + 7, gw, h - 13, 3, '#050810')
+    ctx.strokeStyle = tint.edge + '44'; ctx.strokeRect(gx + 0.5, p.y + 7.5, gw - 1, h - 14)
+    ctx.textAlign = 'center'
+    ctx.globalAlpha = 0.65 + Math.abs(Math.sin(time * 2.2 + p.x * 0.01)) * 0.35
+    text(ctx, glyph, p.x + p.w / 2, p.y + h - 8, tint.edge, 11)
+    ctx.globalAlpha = 1
+    ctx.textAlign = 'left'
+  }
+}
+
+/** Ground slabs are bolted to the room: chassis, vents, bolts, then pylons. */
+function drawPylons(ctx: CanvasRenderingContext2D, p: Platform, time: number) {
+  const h = Math.min(p.h, 26)
+  const top = p.y + h
+  const deep = Math.max(74, Math.min(p.h, 120) - h)
+
+  // Chassis under the lit rail, so the floor has mass instead of hanging.
+  const body = ctx.createLinearGradient(0, top, 0, top + deep)
+  body.addColorStop(0, '#191d33'); body.addColorStop(0.35, '#121628'); body.addColorStop(1, '#0a0d1c')
+  ctx.fillStyle = body
+  ctx.beginPath(); ctx.roundRect(p.x + 4, top, p.w - 8, deep, 4); ctx.fill()
+  line(ctx, [p.x + 4, top + 1, p.x + p.w - 4, top + 1], '#2b3356', 2)
+
+  for (let x = p.x + 16; x < p.x + p.w - 22; x += 62) {
+    // Vent louvres with one live status light per bay.
+    box(ctx, x, top + 9, 42, 26, 3, '#0c1020')
+    for (let i = 0; i < 4; i++) { ctx.fillStyle = '#1e2542'; ctx.fillRect(x + 4, top + 13 + i * 6, 34, 3) }
+    const lit = Math.sin(time * 1.7 + x * 0.05) > 0.45
+    ctx.fillStyle = lit ? '#63e0d0' : '#26405a'
+    ctx.fillRect(x + 34, top + 40, 4, 4)
+    ctx.fillStyle = '#212a4a'; ctx.fillRect(x + 4, top + 40, 24, 4)
+    // Bolts on the seam.
+    for (const bx of [x + 2, x + 46]) { ctx.fillStyle = '#2d3559'; ctx.beginPath(); ctx.arc(bx, top + 5, 2, 0, Math.PI * 2); ctx.fill() }
+  }
+
+  for (let x = p.x + 40; x < p.x + p.w - 28; x += 150) {
+    box(ctx, x - 11, top + deep - 4, 22, 9, 3, '#171c33')
+    box(ctx, x - 6, top + deep + 5, 12, 96, 2, '#101426')
+    ctx.fillStyle = '#39456f'; ctx.fillRect(x - 6, top + deep + 5, 2, 96)
+    for (let y = top + deep + 18; y < top + deep + 98; y += 24) {
+      ctx.fillStyle = '#1d2444'; ctx.fillRect(x - 13, y, 26, 5)
+    }
+    ctx.strokeStyle = '#252d52'; ctx.lineWidth = 3
+    ctx.beginPath(); ctx.moveTo(x + 6, top + deep + 10)
+    ctx.quadraticCurveTo(x + 44, top + deep + 40, x + 36, top + deep + 100)
+    ctx.stroke()
+  }
+
+  const shade = ctx.createLinearGradient(0, top + deep, 0, 540)
+  shade.addColorStop(0, '#080b18cc'); shade.addColorStop(1, '#070a14')
+  ctx.fillStyle = shade; ctx.fillRect(p.x, top + deep, p.w, 160)
+}
+
+/** Anti-gravity mounts: the brackets a floating slab hangs from. */
+function drawMounts(ctx: CanvasRenderingContext2D, p: Platform, time: number) {
+  const h = Math.min(p.h, 26)
+  const tint = slabTint(p)
+  for (const x of [p.x + 13, p.x + p.w - 13]) {
+    box(ctx, x - 7, p.y + h - 1, 14, 6, 2, '#141a30')
+    const pulse = 0.45 + Math.abs(Math.sin(time * 3 + x * 0.02)) * 0.55
+    ctx.globalAlpha = pulse
+    ctx.fillStyle = tint.edge; ctx.fillRect(x - 4, p.y + h + 4, 8, 2)
+    glow(ctx, x, p.y + h + 9, 15, tint.glow)
+    ctx.globalAlpha = 1
+    line(ctx, [x, p.y + h + 7, x, p.y + h + 13 + Math.sin(time * 4 + x) * 2], tint.edge + '55', 2)
+  }
+}
+
 function drawPlatforms(ctx: CanvasRenderingContext2D, camera: number, time: number, state: VisualState) {
   for (const p of state.platforms) {
+    if (p.x + p.w < camera - 40 || p.x > camera + 1000) continue
     if (p.deleted) {
-      if (p.x + p.w < camera - 20 || p.x > camera + 980) continue
       ctx.setLineDash([7, 9]); line(ctx, [p.x, p.y, p.x + p.w, p.y], '#ff6d8c33', 2); ctx.setLineDash([])
       continue
     }
-    if ((p.crumble ?? 0) > 0.8) { line(ctx, [p.x, p.y, p.x + p.w, p.y], "#66566a44", 2); continue }
-    if (p.x + p.w < camera - 20 || p.x > camera + 980) continue
+    if ((p.crumble ?? 0) > 0.8) { line(ctx, [p.x, p.y, p.x + p.w, p.y], '#66566a44', 2); continue }
     if (p.ceiling) {
-      box(ctx, p.x, p.y, p.w, p.h, 5, '#20223d')
-      box(ctx, p.x, p.y + p.h - 6, p.w, 6, 3, '#8de8e0')
-      ctx.fillStyle = '#3e9fa6'; ctx.fillRect(p.x + 2, p.y + p.h - 9, p.w - 4, 3)
-      for (let x = p.x + 20; x < p.x + p.w - 14; x += 54) {
-        ctx.fillStyle = '#4b5573'; ctx.fillRect(x, p.y + 8, 3, 3)
-        box(ctx, x - 6, p.y - 16, 30, 16, 3, '#141b2e')
-      }
+      // Same slab, hung the other way up: the rail faces the arena.
+      const flipped: Platform = { ...p, y: p.y, h: Math.min(p.h, 26) }
+      ctx.save(); ctx.translate(0, p.y * 2 + Math.min(p.h, 26)); ctx.scale(1, -1)
+      drawSlab(ctx, flipped, time, '///')
+      ctx.restore()
       const hang = ctx.createLinearGradient(0, p.y + p.h, 0, p.y + p.h + 80)
       hang.addColorStop(0, '#090c1b'); hang.addColorStop(1, 'transparent')
       ctx.fillStyle = hang; ctx.fillRect(p.x, p.y + p.h, p.w, 80)
       continue
     }
-    if (p.arena) glow(ctx, p.x + p.w / 2, p.y + 10, 60, '#ffb56b26')
-    if (p.floating) glow(ctx, p.x + p.w / 2, p.y + 13, 55, '#5d3cb63a')
-    box(ctx, p.x, p.y, p.w, p.h, 5, p.floating ? '#323456' : '#20223d')
-    box(ctx, p.x, p.y, p.w, 6, 3, p.unstable ? '#ffb879' : '#8de8e0')
-    if (p.unstable) text(ctx, (p.crumble ?? 0) > 0 ? '!!' : ' / / / ', p.x + 15, p.y + 18, '#ffdcad', 11)
-    if (p.travel) text(ctx, '<  >', p.x + p.w / 2 - 15, p.y + 18, '#b5ffff', 10)
-    ctx.fillStyle = '#3e9fa6'; ctx.fillRect(p.x + 2, p.y + 6, p.w - 4, 3)
-    for (let x = p.x + 14; x < p.x + p.w - 10; x += 48) {
-      ctx.fillStyle = '#4b5573'; ctx.fillRect(x, p.y + 13, 3, 3)
-      if (!p.floating) {
-        box(ctx, x - 7, p.y + 27, 37, 48, 3, '#141b2e')
-        line(ctx, [x, p.y + 65, x, p.y + 38, x + 12, p.y + 38, x + 12, p.y + 48, x + 25, p.y + 48], '#3a4b6666')
-        ctx.fillStyle = '#638c9955'; ctx.fillRect(x + 15, p.y + 59, 12, 3)
-      }
-    }
-    if (p.floating) {
-      for (const x of [p.x + 17, p.x + p.w - 25]) {
-        ctx.fillStyle = '#ae78ed'; ctx.fillRect(x, p.y + p.h - 3, 8, 3)
-        glow(ctx, x + 4, p.y + p.h, 15, '#8a47e343')
-      }
-    } else {
-      const shade = ctx.createLinearGradient(0, p.y + 40, 0, 540)
-      shade.addColorStop(0, 'transparent'); shade.addColorStop(1, '#090c1b')
-      ctx.fillStyle = shade; ctx.fillRect(p.x, p.y + 40, p.w, 90)
-    }
+    if (!p.floating) drawPylons(ctx, p, time)
+    const glyph = p.unstable ? ((p.crumble ?? 0) > 0 ? '! ! !' : '/ / /')
+      : p.travel ? '<   >'
+      : p.floating ? '</>'
+      : '>>>'
+    drawSlab(ctx, p, time, glyph)
+    if (p.floating) drawMounts(ctx, p, time)
   }
   for (const p of LEVELS[state.level].spikes) {
     glow(ctx, p.x + p.w / 2, p.y + 17, 44, '#ef526222')

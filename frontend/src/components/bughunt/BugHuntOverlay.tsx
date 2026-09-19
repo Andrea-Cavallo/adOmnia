@@ -138,7 +138,7 @@ export function BugHuntOverlay({ onClose }: { onClose: () => void }) {
         </div>}
         <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} aria-label={copy.canvasLabel} />
         {!ready && <div className="bh-hud" aria-label={copy.hudLabel}>
-          <div className="bh-hud-group"><span className="bh-pill" aria-label={copy.healthLabel(snapshot.health)}><span className="bh-heart">{'♥'.repeat(snapshot.health)}<span className="bh-heart-empty">{'♥'.repeat(3 - snapshot.health)}</span></span></span><span className="bh-pill gold"><Diamond size={13} /><strong>{snapshot.bits}</strong><span>/ {snapshot.totalBits}</span></span><span className="bh-pill">{copy.statScore} <strong>{snapshot.score}</strong>{snapshot.combo >= 4 && <b className="bh-combo">x{Math.min(5, 1 + Math.floor(snapshot.combo / 4))}</b>}</span></div>
+          <div className="bh-hud-group"><span className={`bh-pill bh-lives ${snapshot.health === 1 ? 'rose' : ''}`} aria-label={copy.healthLabel(snapshot.health)}><span className="bh-lives-label">{copy.livesLabel}</span><span className="bh-heart">{'♥'.repeat(snapshot.health)}<span className="bh-heart-empty">{'♥'.repeat(3 - snapshot.health)}</span></span><strong>{snapshot.health}</strong></span><span className="bh-pill gold"><Diamond size={13} /><strong>{snapshot.bits}</strong><span>/ {snapshot.totalBits}</span></span><span className="bh-pill">{copy.statScore} <strong>{snapshot.score}</strong>{snapshot.combo >= 4 && <b className="bh-combo">x{Math.min(5, 1 + Math.floor(snapshot.combo / 4))}</b>}</span></div>
           <div className="bh-hud-group"><span className={`bh-pill ${snapshot.revertCharges ? 'sky' : 'dim'}`} title={copy.keysRevert}><kbd>R</kbd>↺ ×{snapshot.revertCharges}</span>{snapshot.breakpoint > 0 && <span className="bh-pill rose">⏸ BREAKPOINT {snapshot.breakpoint}s</span>}{snapshot.sudo > 0 && <span className="bh-pill sun"># SUDO {snapshot.sudo}s</span>}<span className={`bh-pill ${snapshot.dashReady ? 'mint' : ''}`}><kbd>X</kbd>{snapshot.dashReady ? copy.dashReady : copy.dashCharging}</span><span className={`bh-pill ${snapshot.shotReady ? 'mint' : 'dim'}`} title={copy.fireHint}><kbd>F</kbd>{copy.shotReady}</span><span className={`bh-pill ${snapshot.grappled ? 'sky' : 'dim'}`} title={copy.grappleHint}><kbd>E</kbd>{copy.keysGrapple}</span>{snapshot.purge === 'active' && <span className="bh-pill rose">{copy.purgeLabel}</span>}{snapshot.bossCommand && <span className={`bh-pill ${snapshot.bossAnnounce ? 'rose' : 'sun'}`} title={copy.bossCmdHint[snapshot.bossCommand]}>{copy.bossCmd[snapshot.bossCommand]}</span>}<span className={`bh-pill ${snapshot.hotfix ? 'mint' : ''}`}><Cpu size={14} />{snapshot.hotfix ? copy.hotfixFound : copy.findHotfix}</span><span className="bh-pill">{formatTime(snapshot.seconds)}</span></div>
         </div>}
         {(ready || snapshot.paused || snapshot.finished || snapshot.levelComplete) && <div className="bh-modal">
@@ -148,9 +148,27 @@ export function BugHuntOverlay({ onClose }: { onClose: () => void }) {
               <h1>{copy.introTitle}<em>{copy.introTitleAccent}</em></h1>
               <p className="bh-quote">{copy.introQuote}</p>
               <p>{copy.introBody}</p>
-              <div className="bh-mission"><Cpu size={21} /><div><strong>{copy.missionTitle}</strong><span>{copy.stageHints[0]} Localhost → API Gateway → Production</span><span>{copy.powersIntro}</span></div></div>
+              <div className="bh-mission"><Cpu size={21} /><div><strong>{copy.goalTitle}</strong><span>{copy.goalBody}</span></div></div>
+              <div className="bh-brief">
+                <div className="bh-brief-block">
+                  <h2>{copy.controlsTitle}</h2>
+                  <dl className="bh-keygrid">
+                    <dt><kbd>A</kbd><kbd>D</kbd></dt><dd>{copy.keysMove}</dd>
+                    <dt><kbd>{copy.keySpace}</kbd></dt><dd>{copy.keysJump}</dd>
+                    <dt><kbd>X</kbd></dt><dd>{copy.keysDash}</dd>
+                    <dt><kbd>F</kbd></dt><dd>{copy.keysFire}</dd>
+                    <dt><kbd>E</kbd></dt><dd>{copy.keysGrapple}</dd>
+                    <dt><kbd>R</kbd></dt><dd>{copy.keysRevert}</dd>
+                  </dl>
+                </div>
+                <div className="bh-brief-block">
+                  <h2>{copy.livesLabel}</h2>
+                  <p className="bh-lives-row"><span className="bh-heart">♥♥♥</span></p>
+                  <p>{copy.livesRule}</p>
+                </div>
+              </div>
               <div className="bh-card-actions"><button ref={primaryRef} className="bh-primary" onClick={begin}>{copy.start} <ArrowRight size={15} /></button></div>
-              <p className="bh-tip">{copy.chainHint} {copy.introTip}{preferences.bestScore > 0 && ` ${copy.statScore}: ${preferences.bestScore}.`}{preferences.bestSeconds !== null && copy.record(formatTime(preferences.bestSeconds))}</p>
+              <p className="bh-tip">{copy.powersIntro}{preferences.bestScore > 0 && ` ${copy.statScore}: ${preferences.bestScore}.`}{preferences.bestSeconds !== null && copy.record(formatTime(preferences.bestSeconds))}</p>
             </> : snapshot.levelComplete ? <>
               <h1>{copy.stageClear}<em>{LEVELS[snapshot.level].name}</em></h1>
               <p>{copy.stageHints[snapshot.level + 1]}</p>

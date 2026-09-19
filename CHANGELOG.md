@@ -6,6 +6,10 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Changed
+- **Bug Hunt platforms are built, not drawn as rectangles:** every slab now has a lit rail, end caps, etched circuit traces, a recessed glyph window (`>>>`, `</>`, `<   >`, `/ / /`) and a neon accent per role. Ground slabs carry a chassis with vent bays, status lights, bolts, pylons and cabling; floating slabs get pulsing anti-gravity mounts; the arena ceiling is the same slab hung upside down.
+- **A clearer start menu:** the dense mission paragraph is replaced by a goal box, a controls grid with real key caps, and a LIVES panel that states the rule. The HUD pill now reads `LIVES ♥♥♥ 3` instead of three bare glyphs, and turns red on the last life.
+
 ### Fixed
 - **Bug Hunt — the Legacy Monolith could not be defeated.** An arena slab sat directly above the core, catching the fall that damages it. The slab moved beside the core, and a regression test now fails if anything solid enters the approach band above it.
 
