@@ -718,6 +718,16 @@ describe('the Monolith rewrites the rules', () => {
     game.destroy()
   })
 
+  it('keeps the drop onto the core clear of any platform', () => {
+    // A slab above the core catches the fall that damages it, and the boss
+    // becomes unbeatable. Nothing solid may sit in the approach band.
+    const top = BOSS_BODY.y
+    const blocking = LEVELS[2].platforms.filter(p =>
+      p.y + p.h > top - 170 && p.y <= top
+      && p.x < BOSS_BODY.x + BOSS_BODY.w && p.x + p.w > BOSS_BODY.x)
+    expect(blocking.map(p => `${p.x},${p.y}`)).toEqual([])
+  })
+
   it('throws SOAP envelopes from a fist, arcing toward a0', () => {
     const { game, tick } = arena(2600)
     for (let frame = 0; frame < 90 && !game.boss.envelopes.length; frame++) tick(1)

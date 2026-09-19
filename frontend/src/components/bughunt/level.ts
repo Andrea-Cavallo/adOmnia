@@ -117,9 +117,10 @@ export const LEVELS: Level[] = [
       { x: 1960, y: 320, w: 145, h: 20, floating: true }, { x: 2210, y: 290, w: 140, h: 20, floating: true },
       // Boss arena: a ceiling for `reverse gravity`, three slabs for `stop platforms`.
       { x: 2430, y: 104, w: 790, h: 26, ceiling: true },
+      // Launch pads for the core. None may sit above it: the hit is a fall.
       { x: 2500, y: 330, w: 118, h: 20, floating: true, arena: true },
       { x: 2680, y: 286, w: 118, h: 20, floating: true, arena: true },
-      { x: 2872, y: 322, w: 118, h: 20, floating: true, arena: true }],
+      { x: 2944, y: 318, w: 112, h: 20, floating: true, arena: true }],
     spikes: [{ x: 1050, y: 440, w: 64, h: 20 }],
     bits: BITS.map(b => ({ ...b, id: b.id + 200 })), bugs: createBugs().slice(0, 2).map((b, i) => ({ ...b, ...(i === 0 ? { x: 820, left: 700, right: 980 } : { x: 1970, left: 1880, right: 2100 }) })), firewalls: [{ x: 1590, y: 365, w: 25, h: 95, phase: 0.5 }], anchors: ANCHORS[2],
     // ~1.8 km of floor deleted behind you; the run ends at the checkpoint.
