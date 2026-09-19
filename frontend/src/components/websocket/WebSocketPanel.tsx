@@ -32,6 +32,7 @@ import {
   X,
   Zap,
   ZapOff,
+  Users,
 } from 'lucide-react'
 import { getSidecarToken, useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { useEnvironmentsStore } from '@/stores/environments'
@@ -70,6 +71,13 @@ interface WSMessage {
   timestamp: number
   binary?: boolean
   topic?: string
+  client?: string // set for frames from extra parallel clients (#2, #3, ...)
+}
+
+interface ExtraClient {
+  label: string
+  sessionId: string
+  stream: EventSource
 }
 
 interface WSEvent {
@@ -265,6 +273,7 @@ function newRule(): MockRule {
 function substVars(text: string, vars: Record<string, string>): string {
   return text
     .replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? `{{${key}}}`)
+    .replace(/\{\{\$i\}\}/g, vars.$i ?? '1')
     .replace(/\{\{\$NOW\}\}/g, String(Date.now()))
     .replace(/\{\{\$UUID\}\}/g, () => crypto.randomUUID?.() ?? id())
 }
@@ -309,6 +318,19 @@ function tryParseJson(text: string): unknown | null {
 function tryPrettyJson(text: string): string {
   const parsed = tryParseJson(text)
   return parsed === null ? text : JSON.stringify(parsed, null, 2)
+}
+
+const MAX_PARALLEL_COPIES = 500
+const MAX_EXTRA_CLIENTS = 50
+const PARALLEL_EXAMPLE = '{"type":"subscribe","room":"load-test","n":{{$i}}}\n---\n{"type":"ping","n":{{$i}}}'
+
+// Commands for a parallel send are separated by a line containing only `---`.
+function splitCommands(text: string): string[] {
+  return text.split(/^\s*---\s*$/m).map((block) => block.trim()).filter(Boolean)
+}
+
+function clampInt(value: number, min: number, max: number) {
+  return Math.min(Math.max(min, Math.floor(value) || min), max)
 }
 
 function compactPayload(text: string) {
@@ -608,7 +630,7 @@ function MessageTemplates({
         <div>
           <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-text-4">Variables</div>
           <div className="flex flex-wrap gap-2">
-            {['{{token}}', '{{roomId}}', '{{userId}}', '{{$NOW}}'].map((variable) => (
+            {['{{token}}', '{{roomId}}', '{{userId}}', '{{$NOW}}', '{{$i}}'].map((variable) => (
               <code key={variable} className="rounded border border-border-2 bg-surface-0 px-2 py-1 text-[11px] text-accent">{variable}</code>
             ))}
           </div>
@@ -740,7 +762,10 @@ function StreamList({
                     {message.type === 'error' ? 'ERR' : dir === 'inbound' ? 'IN' : dir === 'outbound' ? 'OUT' : 'SYS'}
                   </span>
                   <span className="min-w-0">
-                    <span className="block truncate text-[12px] font-semibold text-text-1">{topic}</span>
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      {message.client && <span className="rounded bg-warning/15 px-1 font-mono text-[9px] font-semibold text-warning">{message.client}</span>}
+                      <span className="block truncate text-[12px] font-semibold text-text-1">{topic}</span>
+                    </span>
                     <span className={cn('mt-0.5 block truncate font-mono text-[10px]', message.type === 'error' ? 'text-error' : 'text-text-3')}>
                       {message.binary ? `[binary base64] ${message.content}` : compactPayload(message.content)}
                     </span>
@@ -1001,6 +1026,82 @@ function MockServerPanel({ port, onConnectToMock, onSystem }: {
   )
 }
 
+function NumberField({ label, value, max, onChange }: { label: string; value: number; max: number; onChange: (value: number) => void }) {
+  return (
+    <label className="flex items-center gap-2 text-[11px] text-text-3">
+      {label}
+      <input
+        type="number"
+        min={1}
+        max={max}
+        value={value}
+        onChange={(event) => onChange(clampInt(Number(event.target.value), 1, max))}
+        className="h-7 w-16 rounded border border-border-2 bg-surface-0 px-2 font-mono text-[11px] text-text-1 outline-none focus:border-accent/50"
+      />
+    </label>
+  )
+}
+
+function ParallelPanel({
+  connected,
+  commandCount,
+  copies,
+  onCopies,
+  clientCount,
+  newClients,
+  onNewClients,
+  onOpenClients,
+  onCloseClients,
+  onExample,
+  onSend,
+}: {
+  connected: boolean
+  commandCount: number
+  copies: number
+  onCopies: (value: number) => void
+  clientCount: number
+  newClients: number
+  onNewClients: (value: number) => void
+  onOpenClients: () => void
+  onCloseClients: () => void
+  onExample: () => void
+  onSend: () => void
+}) {
+  const total = commandCount * copies * clientCount
+  return (
+    <div className="mb-2 rounded-md border border-accent/30 bg-accent/5 p-2">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-text-1"><Zap size={13} className="text-accent" /> Parallel send</span>
+        <NumberField label="Copies per command" value={copies} max={MAX_PARALLEL_COPIES} onChange={onCopies} />
+        <div className="flex items-center gap-2 text-[11px] text-text-3">
+          Clients connected
+          <span className="rounded bg-surface-3 px-2 py-1 font-mono text-text-1">{clientCount}</span>
+          <NumberField label="add" value={newClients} max={MAX_EXTRA_CLIENTS} onChange={onNewClients} />
+          <MiniButton onClick={onOpenClients} disabled={!connected}><Users size={12} /> Open {newClients} more</MiniButton>
+          {clientCount > 1 && <MiniButton onClick={onCloseClients}><X size={12} /> Close extra</MiniButton>}
+        </div>
+        <MiniButton onClick={onExample}><Code2 size={12} /> Insert example</MiniButton>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-3">
+        <span className="text-[11px] text-text-2">
+          {commandCount === 0
+            ? 'Write a command below. Separate several commands with a line containing only ---'
+            : <>Will send <b className="text-text-1">{total} messages</b>: {commandCount} command{commandCount === 1 ? '' : 's'} × {copies} cop{copies === 1 ? 'y' : 'ies'} × {clientCount} client{clientCount === 1 ? '' : 's'}. <code className="text-accent">{'{{$i}}'}</code> becomes 1…{total}.</>}
+        </span>
+        <button
+          type="button"
+          onClick={onSend}
+          disabled={!connected || total === 0}
+          title={connected ? 'Ctrl+Enter also sends in parallel while this panel is open' : 'Connect first'}
+          className="ml-auto inline-flex h-7 items-center gap-1.5 rounded-md bg-accent px-3 text-[11px] font-semibold text-white hover:bg-accent-hover disabled:opacity-35"
+        >
+          <Send size={12} /> {connected ? `Send ${total} messages` : 'Connect to send'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function SystemEvents({ events }: { events: WSMessage[] }) {
   const items = events.slice(-8).reverse()
   return (
@@ -1045,6 +1146,11 @@ export function WebSocketPanel() {
   const [showScript, setShowScript] = useState(false)
   const [copied, setCopied] = useState(false)
   const [activeSessions, setActiveSessions] = useState(0)
+  const [parallelCount, setParallelCount] = useState(2)
+  const [showParallel, setShowParallel] = useState(false)
+  const [extraCount, setExtraCount] = useState(2)
+  const [extraClients, setExtraClients] = useState<ExtraClient[]>([])
+  const extraClientsRef = useRef<ExtraClient[]>([])
 
   const esRef = useRef<EventSource | null>(null)
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -1091,6 +1197,8 @@ export function WebSocketPanel() {
     if (!url) return
     await sidecarFetch(url, { method: 'POST' }).catch(() => {})
     esRef.current?.close()
+    extraClientsRef.current.forEach((client) => client.stream.close())
+    setExtraClients([])
     sessionIdRef.current = null
     setSessionId(null)
     setStatus('disconnected')
@@ -1112,6 +1220,9 @@ export function WebSocketPanel() {
     })
   }, [messages, filter, query])
 
+  const parallelCommandCount = useMemo(() => splitCommands(draft).length, [draft])
+  const parallelTotal = parallelCommandCount * clampInt(parallelCount, 1, MAX_PARALLEL_COPIES) * (extraClients.length + 1)
+
   const systemEvents = useMemo(() => messages.filter((message) => message.direction === 'system'), [messages])
 
   useEffect(() => { configRef.current = config }, [config])
@@ -1129,9 +1240,12 @@ export function WebSocketPanel() {
     return () => {
       useAppStore.getState().setWebsocketRunning(false)
       esRef.current?.close()
+      extraClientsRef.current.forEach((client) => client.stream.close())
       if (reconnectTimer.current) clearTimeout(reconnectTimer.current)
     }
   }, [])
+
+  useEffect(() => { extraClientsRef.current = extraClients }, [extraClients])
 
   useEffect(() => {
     if (!paused && queuedEvents.length > 0) {
@@ -1139,6 +1253,33 @@ export function WebSocketPanel() {
       setQueuedEvents([])
     }
   }, [paused, queuedEvents])
+
+  // POSTs /ws/connect with the current config (headers, subprotocols, auth).
+  const openSession = useCallback(async (resolvedUrl: string): Promise<{ sessionId?: string; error?: string }> => {
+    const vars = getResolvedVars()
+    const cfg = configRef.current
+    const resolvedHeaders: Record<string, string> = {}
+    cfg.headers.forEach((row) => {
+      if (row.enabled && row.key.trim()) resolvedHeaders[substVars(row.key, vars)] = substVars(row.value, vars)
+    })
+    const protocols = cfg.subprotocols.split(',').map((item) => item.trim()).filter(Boolean)
+    const response = await sidecarFetch(serverUrl(port, '/ws/connect'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url: resolvedUrl,
+        headers: resolvedHeaders,
+        subprotocols: protocols.length ? protocols : undefined,
+        auth: {
+          type: cfg.authType,
+          token: substVars(cfg.token, vars),
+          username: substVars(cfg.username, vars),
+          password: substVars(cfg.password, vars),
+        },
+      }),
+    })
+    return response.json()
+  }, [getResolvedVars, port])
 
   const handleConnect = useCallback(async (overrideUrl?: string) => {
     if (!port) {
@@ -1149,37 +1290,14 @@ export function WebSocketPanel() {
     manualDisconnectRef.current = false
     setStatus(reconnectAttemptsRef.current > 0 ? 'reconnecting' : 'connecting')
 
-    const vars = getResolvedVars()
-    const resolvedUrl = overrideUrl ?? resolveUrl(configRef.current, vars)
-    const resolvedHeaders: Record<string, string> = {}
-    configRef.current.headers.forEach((row) => {
-      if (row.enabled && row.key.trim()) resolvedHeaders[substVars(row.key, vars)] = substVars(row.value, vars)
-    })
-    const protocols = configRef.current.subprotocols.split(',').map((item) => item.trim()).filter(Boolean)
-    const cfg = configRef.current
-
+    const resolvedUrl = overrideUrl ?? resolveUrl(configRef.current, getResolvedVars())
     addSystem(`${reconnectAttemptsRef.current > 0 ? 'Reconnecting' : 'Connecting'} to ${resolvedUrl}`)
 
     try {
-      const response = await sidecarFetch(serverUrl(port, '/ws/connect'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          url: resolvedUrl,
-          headers: resolvedHeaders,
-          subprotocols: protocols.length ? protocols : undefined,
-          auth: {
-            type: cfg.authType,
-            token: substVars(cfg.token, vars),
-            username: substVars(cfg.username, vars),
-            password: substVars(cfg.password, vars),
-          },
-        }),
-      })
-      const data = await response.json()
-      if (data.error) {
+      const data = await openSession(resolvedUrl)
+      if (data.error || !data.sessionId) {
         setStatus('error')
-        addSystem(data.error, 'error')
+        addSystem(data.error ?? 'No session returned', 'error')
         return
       }
       setSessionId(data.sessionId)
@@ -1237,7 +1355,74 @@ export function WebSocketPanel() {
       setStatus('error')
       addSystem(String(error), 'error')
     }
-  }, [addMessage, addSystem, getResolvedVars, port, scriptCode])
+  }, [addMessage, addSystem, getResolvedVars, openSession, port, scriptCode])
+
+  const closeExtraClients = useCallback(async () => {
+    const clients = extraClientsRef.current
+    if (clients.length === 0) return
+    setExtraClients([])
+    clients.forEach((client) => client.stream.close())
+    await Promise.all(clients.map((client) => sidecarFetch(serverUrl(port, '/ws/disconnect'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: client.sessionId }),
+    }).catch(() => {})))
+    addSystem(`Closed ${clients.length} extra client${clients.length === 1 ? '' : 's'}`, 'close')
+    void refreshSessions()
+  }, [addSystem, port, refreshSessions])
+
+  // Opens `extraCount` additional sessions to the same URL in parallel. Each gets
+  // its own stream; frames are tagged with the client label in the timeline.
+  // ponytail: extra clients do not auto-reconnect and skip the On Message script.
+  const openExtraClients = useCallback(async () => {
+    if (!port) return
+    const count = clampInt(extraCount, 1, MAX_EXTRA_CLIENTS)
+    const offset = extraClientsRef.current.length + 2 // #1 is the main connection
+    const url = resolveUrl(configRef.current, getResolvedVars())
+    const token = await getSidecarToken()
+    const results = await Promise.all(Array.from({ length: count }, async (_, index): Promise<ExtraClient | string> => {
+      const label = `#${offset + index}`
+      try {
+        const data = await openSession(url)
+        if (data.error || !data.sessionId) return `${label}: ${data.error ?? 'no session'}`
+        const sessionId = data.sessionId
+        const stream = new EventSource(serverUrl(port, `/ws/stream?sessionId=${encodeURIComponent(sessionId)}&token=${encodeURIComponent(token)}`))
+        const drop = () => {
+          stream.close()
+          setExtraClients((current) => current.filter((client) => client.sessionId !== sessionId))
+        }
+        stream.onmessage = (event) => {
+          try {
+            const frame = JSON.parse(event.data) as WSEvent
+            addMessage({
+              id: id(),
+              type: (frame.type as WSMessage['type']) || 'message',
+              direction: (frame.direction as WSMessage['direction']) || 'system',
+              content: frame.content,
+              timestamp: frame.timestamp || nowMs(),
+              binary: frame.binary,
+              client: label,
+            })
+            if (frame.type === 'close' || frame.type === 'error') drop()
+          } catch {
+            addSystem(`${label}: malformed stream event received.`, 'error')
+          }
+        }
+        stream.onerror = drop
+        return { label, sessionId, stream }
+      } catch (error) {
+        return `${label}: ${String(error)}`
+      }
+    }))
+    const opened = results.filter((result): result is ExtraClient => typeof result !== 'string')
+    const failed = results.filter((result): result is string => typeof result === 'string')
+    setExtraClients((current) => [...current, ...opened])
+    addSystem(
+      `Opened ${opened.length}/${count} extra clients to ${url}` + (failed.length ? ` — ${failed[0]}` : ''),
+      failed.length ? 'error' : 'message',
+    )
+    void refreshSessions()
+  }, [addMessage, addSystem, extraCount, getResolvedVars, openSession, port, refreshSessions])
 
   const handleDisconnect = useCallback(async () => {
     manualDisconnectRef.current = true
@@ -1254,16 +1439,16 @@ export function WebSocketPanel() {
     setSessionId(null)
     setStatus('disconnected')
     addSystem('Disconnected', 'close')
-  }, [addSystem, port])
+    void closeExtraClients()
+  }, [addSystem, closeExtraClients, port])
 
-  const handleSend = useCallback(async () => {
-    if (!port || !sessionIdRef.current || !draft.trim()) return
-    const vars = getResolvedVars()
-    const resolvedDraft = substVars(draft, vars)
-    const content = payloadMode === 'json' ? tryPrettyJson(resolvedDraft) : resolvedDraft.trim()
-    const body: Record<string, string> = { sessionId: sessionIdRef.current, content }
+  // Returns an error message, or null on success.
+  const sendOne = useCallback(async (raw: string, vars: Record<string, string>, targetSession = sessionIdRef.current): Promise<string | null> => {
+    if (!port || !targetSession) return 'Not connected'
+    const resolved = substVars(raw, vars)
+    const content = payloadMode === 'json' ? tryPrettyJson(resolved) : resolved.trim()
+    const body: Record<string, string> = { sessionId: targetSession, content }
     if (payloadMode === 'binary') body.messageType = 'binary'
-
     try {
       const response = await sidecarFetch(serverUrl(port, '/ws/send'), {
         method: 'POST',
@@ -1271,12 +1456,39 @@ export function WebSocketPanel() {
         body: JSON.stringify(body),
       })
       const data = await response.json()
-      if (data.error) addSystem(data.error, 'error')
-      else setDraft('')
+      return data.error ? String(data.error) : null
     } catch (error) {
-      addSystem(String(error), 'error')
+      return String(error)
     }
-  }, [addSystem, draft, getResolvedVars, payloadMode, port])
+  }, [payloadMode, port])
+
+  const handleSend = useCallback(async () => {
+    if (!draft.trim()) return
+    const error = await sendOne(draft, getResolvedVars())
+    if (error) addSystem(error, 'error')
+    else setDraft('')
+  }, [addSystem, draft, getResolvedVars, sendOne])
+
+  // Parallel send: commands separated by a line containing only `---`, each fired
+  // `parallelCount` times concurrently on every open client (main + extras).
+  // `{{$i}}` resolves to the 1-based send index.
+  const handleSendParallel = useCallback(async () => {
+    if (!draft.trim()) return
+    const commands = splitCommands(draft)
+    const count = clampInt(parallelCount, 1, MAX_PARALLEL_COPIES)
+    const baseVars = getResolvedVars()
+    const sessions = [sessionIdRef.current, ...extraClientsRef.current.map((client) => client.sessionId)]
+    const jobs = sessions.flatMap((session) => commands.flatMap((command) => Array.from({ length: count }, () => ({ session, command }))))
+    const started = performance.now()
+    const results = await Promise.all(jobs.map((job, index) => sendOne(job.command, { ...baseVars, $i: String(index + 1) }, job.session)))
+    const failed = results.filter(Boolean)
+    const elapsed = Math.round(performance.now() - started)
+    addSystem(
+      `Parallel send: ${jobs.length - failed.length}/${jobs.length} ok (${commands.length} command${commands.length === 1 ? '' : 's'} × ${count} × ${sessions.length} client${sessions.length === 1 ? '' : 's'}) in ${elapsed} ms`
+        + (failed.length ? ` — first error: ${failed[0]}` : ''),
+      failed.length ? 'error' : 'message',
+    )
+  }, [addSystem, draft, getResolvedVars, parallelCount, sendOne])
 
   const handlePing = async () => {
     if (!port || !sessionIdRef.current) return
@@ -1474,6 +1686,7 @@ export function WebSocketPanel() {
           ))}
           <MiniButton onClick={() => setShowScript(!showScript)} active={showScript}><Code2 size={12} /> On Message Script</MiniButton>
           {connected && <MiniButton onClick={() => void handlePing()}><Activity size={12} /> Ping</MiniButton>}
+          <MiniButton onClick={() => setShowParallel(!showParallel)} active={showParallel}><Zap size={12} /> Parallel</MiniButton>
           {queuedEvents.length > 0 && <span className="rounded bg-warning/10 px-2 py-1 text-[10px] text-warning">{queuedEvents.length} queued while paused</span>}
           {config.autoReconnect && (
             <div className="ml-auto flex items-center gap-1 text-[10px] text-text-4">
@@ -1491,6 +1704,21 @@ export function WebSocketPanel() {
             </div>
           )}
         </div>
+        {showParallel && (
+          <ParallelPanel
+            connected={connected}
+            commandCount={parallelCommandCount}
+            copies={parallelCount}
+            onCopies={setParallelCount}
+            clientCount={extraClients.length + 1}
+            newClients={extraCount}
+            onNewClients={setExtraCount}
+            onOpenClients={() => void openExtraClients()}
+            onCloseClients={() => void closeExtraClients()}
+            onExample={() => { setDraft(PARALLEL_EXAMPLE); setPayloadMode('json') }}
+            onSend={() => void handleSendParallel()}
+          />
+        )}
         <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_44px]">
           <textarea
             value={draft}
@@ -1498,20 +1726,20 @@ export function WebSocketPanel() {
             onKeyDown={(event) => {
               if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
                 event.preventDefault()
-                void handleSend()
+                void (showParallel ? handleSendParallel() : handleSend())
               }
             }}
             disabled={!connected}
-            placeholder={payloadMode === 'binary' ? 'Base64-encoded binary payload' : payloadMode === 'json' ? '{"type":"message","text":"hello"}' : 'Type a WebSocket message'}
+            placeholder={showParallel ? 'One command, or several separated by a line with only ---\nUse {{$i}} for the send number' : payloadMode === 'binary' ? 'Base64-encoded binary payload' : payloadMode === 'json' ? '{"type":"message","text":"hello"}' : 'Type a WebSocket message'}
             rows={payloadMode === 'json' ? 4 : 3}
             className={cn('min-h-[76px] resize-none rounded-md border bg-surface-0 p-2 font-mono text-[12px] leading-5 text-text-1 outline-none placeholder:text-text-4 disabled:opacity-45', payloadMode === 'binary' ? 'border-info/40 focus:border-info' : 'border-border-2 focus:border-accent/50')}
           />
           <button
             type="button"
-            onClick={() => void handleSend()}
+            onClick={() => void (showParallel ? handleSendParallel() : handleSend())}
             disabled={!connected || !draft.trim()}
             className="flex h-full min-h-[76px] items-center justify-center rounded-md bg-accent text-white transition-colors hover:bg-accent-hover disabled:opacity-35"
-            title="Send Ctrl+Enter"
+            title={showParallel ? `Send ${parallelTotal} messages in parallel (Ctrl+Enter)` : 'Send Ctrl+Enter'}
           >
             <Send size={18} />
           </button>
