@@ -4,6 +4,15 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [Unreleased]
+
+### Changed
+- **Dependency sweep:** every direct Go module and every npm package updated to its current release — `wails/v3` and `@wailsio/runtime` to 3.0.0-beta.23 (moved together, as the IPC layer requires), `golang.org/x/crypto` 0.57.0, `golang.org/x/net` 0.59.0, `grpc` 1.84.0, `goja`, `nats.go` 1.54.0, `klauspost/compress` 1.20.0, `modernc.org/libc` 1.77.0 and others; `vite` 8.3.0, `vitest` 5.0.1, `postcss` 8.5.28, `lucide-react` 1.47.0, `yaml` 2.9.1.
+
+### Held back
+- **mermaid 12.0.0** stays on 11.17.2: it pulls `chevrotain` → `lodash-es` with five high-severity advisories (code injection via `_.template`, prototype pollution in `_.unset`/`_.omit`). 11.17.2 keeps `npm audit` at zero.
+- **`digitorus/pkcs7` and `digitorus/timestamp`** stay pinned: their current releases require Go 1.27 and this project targets Go 1.26.5. Raising the toolchain floor is a separate decision — it affects CI and every contributor.
+
 ## [0.9.16] - 2026-09-19
 
 ### Added
