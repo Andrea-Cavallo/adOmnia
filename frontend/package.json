@@ -1,7 +1,7 @@
 {
   "name": "adomnia-frontend",
   "private": true,
-  "version": "0.9.15",
+  "version": "0.9.16",
   "type": "module",
   "engines": {
     "node": ">=22.13.0"
@@ -29,7 +29,7 @@
     "@monaco-editor/react": "^4.7.0",
     "@radix-ui/react-tabs": "^1.1.21",
     "@types/d3-force": "^3.0.10",
-    "@wailsio/runtime": "3.0.0-beta.18",
+    "@wailsio/runtime": "3.0.0-beta.22",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
     "class-variance-authority": "^0.7.1",
@@ -41,9 +41,9 @@
     "monaco-yaml": "^5.5.1",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.3.289",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
-    "tailwind-merge": "^3.6.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "tailwind-merge": "^3.7.0",
     "yaml": "^2.9.0",
     "zustand": "^5.0.15"
   },
@@ -57,7 +57,7 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
-    "autoprefixer": "^10.5.4",
+    "autoprefixer": "^10.6.1",
     "postcss": "^8.5.26",
     "rollup-plugin-visualizer": "^7.1.1",
     "tailwindcss": "^4.3.3",
