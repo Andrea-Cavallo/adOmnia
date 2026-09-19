@@ -1,8 +1,8 @@
 import { createRush, RUSH_START, RUSH_END, RUSH_TARGET, RUSH_BONUS, type Rush } from './rush'
 import { BugHuntAudio } from './audio'
 import { BUG_HUNT_COPY, type BugHuntCopy } from './copy'
-import { LEVELS, BOSS_BODY, createBoss, firewallPhase, type Platform, CHECKPOINT_X, EXIT_X, HOTFIX, WORLD_WIDTH, intersects, type Bug, type Rect } from './level'
-import { renderLocalhost, type Particle, type PlayerVisual, type Popup } from './visuals'
+import { ARENA_X, BOSS_ANNOUNCE, BOSS_COMMANDS, BOSS_BODY, BOSS_FISTS, ENVELOPE_GRAVITY, ENVELOPE_SPEED, LEVELS, createBoss, firewallPhase, type Boss, type BossCommand, type Platform, CHECKPOINT_X, EXIT_X, HOTFIX, TURRET_CYCLE, WORLD_WIDTH, intersects, type Bug, type Rect } from './level'
+import { renderLocalhost, type Particle, type PlayerVisual, type Popup, type Shot } from './visuals'
 import {
   BREAKPOINT_SECONDS, GC_RADIUS, GC_SPEED, PICKUP_SIZE, REVERT_MAX_CHARGES, REWIND_SPEED, SUDO_SECONDS,
   clearActivePowers, createPowerState, pickupKey, recordFrame, type PowerKind,
@@ -20,17 +20,25 @@ const GRAPPLE_MIN = 64
 const GRAPPLE_REEL = 250
 const GRAPPLE_LAUNCH = 250
 export type PurgeState = 'off' | 'waiting' | 'active' | 'cleared'
+/** a0 fires debug packets; turrets fire back. Both are slow enough to read. */
+const SHOT_COOLDOWN = 0.22
+const SHOT_SPEED = 640
+const BOLT_SPEED = 250
+const CHASE_RANGE = 320
+const CHASE_SPEED = 196
+const TURRET_RANGE = 430
+
 type Player = PlayerVisual & { coyote: number; buffer: number; knockback: number; airJump: boolean; dash: number; dashCooldown: number; dashDirection: number }
 export type GameSnapshot = {
   rush: Rush; rushWins: number; totalBugs: number; revertCharges: number; sudo: number; breakpoint: number
   score: number; combo: number; bestCombo: number; dashReady: boolean; health: number; deaths: number; checkpoint: boolean; finished: boolean; paused: boolean
-  grappled: boolean; purge: PurgeState
+  grappled: boolean; purge: PurgeState; shotReady: boolean; bossCommand: BossCommand | null; bossAnnounce: boolean
   level: number; levelComplete: boolean; bossHealth: number; bits: number; totalBits: number; hotfix: boolean; secret: boolean; bugs: number; seconds: number
 }
 export const INITIAL_SNAPSHOT: GameSnapshot = {
   rush: createRush(), rushWins: 0, totalBugs: LEVELS.reduce((sum, l) => sum + l.bugs.length, 0), revertCharges: 0, sudo: 0, breakpoint: 0,
   score: 0, combo: 0, bestCombo: 0, dashReady: true, health: 3, deaths: 0, checkpoint: false, finished: false, paused: false,
-  grappled: false, purge: 'off',
+  grappled: false, purge: 'off', shotReady: true, bossCommand: null, bossAnnounce: false,
   level: 0, levelComplete: false, bossHealth: 3, bits: 0, totalBits: LEVELS.reduce((n, l) => n + l.bits.length, 0), hotfix: false, secret: false, bugs: 0, seconds: 0,
 }
 
@@ -48,6 +56,10 @@ export class BugHuntPrototype {
   private springCooldown = 0
   private purgeState: PurgeState = 'off'
   private purgeX = 0
+  private shots: Shot[] = []
+  private shotCooldown = 0
+  /** -1 while the Monolith has gravity reversed inside its arena. */
+  private gravitySign = 1
   private level = 0
   private levelComplete = false
   private platforms: Platform[] = LEVELS[0].platforms.map(p => ({ ...p, originX: p.x, crumble: 0 }))
@@ -105,7 +117,8 @@ export class BugHuntPrototype {
   getSnapshot(): GameSnapshot {
     return { rush: { ...this.rush }, rushWins: this.rushWins, totalBugs: LEVELS.reduce((sum, l) => sum + l.bugs.length, 0), revertCharges: this.powers.revertCharges, sudo: Math.ceil(this.powers.sudo), breakpoint: Math.ceil(this.powers.breakpoint),
       score: this.score, combo: this.chain, bestCombo: this.bestCombo, dashReady: this.player.dashCooldown <= 0, health: this.health, deaths: this.deaths, checkpoint: this.checkpoint, finished: this.finished, paused: this.paused,
-      grappled: !!this.player.grapple, purge: this.purgeState,
+      grappled: !!this.player.grapple, purge: this.purgeState, shotReady: this.shotCooldown <= 0,
+      bossCommand: this.boss.applied || this.boss.announce > 0 ? this.boss.command : null, bossAnnounce: this.boss.announce > 0,
       level: this.level, levelComplete: this.levelComplete, bossHealth: this.boss.health, bits: this.collected.size, totalBits: LEVELS.reduce((n, l) => n + l.bits.length, 0), hotfix: this.hotfix, secret: this.secret, bugs: this.defeated.size, seconds: this.elapsed }
   }
 
@@ -129,6 +142,7 @@ export class BugHuntPrototype {
     }
     if (code === 'KeyR' && !this.keys.has(code)) this.startRewind()
     if (code === 'KeyE' && !this.keys.has(code)) this.tryGrapple()
+    if (code === 'KeyF' && !this.keys.has(code)) this.fire()
     if (code === 'Space' && !this.keys.has(code)) {
       if (this.player.grapple) this.releaseGrapple(true)
       else this.player.buffer = 0.12
@@ -139,7 +153,7 @@ export class BugHuntPrototype {
   keyUp(code: string) {
     this.keys.delete(code)
     if (code === 'KeyE') this.releaseGrapple(true)
-    if (code === 'Space' && this.player.vy < -180) this.player.vy *= 0.52
+    if (code === 'Space' && this.player.vy * this.gravitySign < -180) this.player.vy *= 0.52
   }
 
   clearKeys() { this.keys.clear(); this.player.buffer = 0; this.player.dash = 0; this.player.grapple = null }
@@ -168,7 +182,7 @@ export class BugHuntPrototype {
     this.platforms = this.map.platforms.map(p => ({ ...p, originX: p.x, crumble: 0 }))
     this.boss = createBoss()
     this.player = this.makePlayer(58); this.camera = 0
-    this.resetPurge()
+    this.resetPurge(); this.shots = []; this.shotCooldown = 0; this.gravitySign = 1
     this.particles = []; this.popups = []; this.clearKeys()
     this.visualTime = 0; this.lastTime = null; this.accumulator = 0
     this.setPaused(false); this.publish()
@@ -184,7 +198,7 @@ export class BugHuntPrototype {
     this.enemies = this.map.bugs.map(b => ({ ...b }))
     this.collected.clear(); this.defeated.clear(); this.particles = []; this.popups = []
     this.player = this.makePlayer(58)
-    this.resetPurge()
+    this.resetPurge(); this.shots = []; this.shotCooldown = 0; this.gravitySign = 1
     this.camera = 0; this.elapsed = 0; this.visualTime = 0; this.shake = 0; this.lastDust = 0; this.lastGateHint = -10; this.publishedSecond = 0
     this.audio.stop()
     this.clearKeys()
@@ -238,7 +252,7 @@ export class BugHuntPrototype {
       clearActivePowers(this.powers)
       this.boss = createBoss()
       for (const platform of this.platforms) { platform.crumble = 0; platform.deleted = false }
-      this.resetPurge()
+      this.resetPurge(); this.shots = []; this.gravitySign = 1
       this.player = this.makePlayer(this.checkpoint ? this.checkpointX : 58)
       this.camera = Math.max(0, Math.min(WORLD_WIDTH - WIDTH, this.player.x - 310))
       this.popup(died ? this.copy.retry : this.copy.rollback, this.player.x + 65, this.player.y - 20)
@@ -358,7 +372,7 @@ export class BugHuntPrototype {
     if (p.buffer > 0 && (p.coyote > 0 || p.airJump) && p.dash <= 0) {
       const doubleJump = p.coyote <= 0
       if (doubleJump) { p.airJump = false; this.burst(p.x + 17, p.y + p.h, ['#8cf7ec', '#ffffff'], 18, 150) }
-      p.vy = -JUMP_SPEED * (this.keys.has('Space') ? 1 : 0.67)
+      p.vy = -JUMP_SPEED * this.gravitySign * (this.keys.has('Space') ? 1 : 0.67)
       p.grounded = false; p.coyote = 0; p.buffer = 0; p.squash = -0.12
       this.burst(p.x + 17, p.y + p.h, ['#b797e5', '#80ced9'], 9, 80)
       this.audio.play('jump')
@@ -373,13 +387,29 @@ export class BugHuntPrototype {
       else if (p.vx < 0 && previousLeft >= platform.x + platform.w) p.x = platform.x + platform.w
     }
     const previousBottom = p.y + p.h, previousTop = p.y
-    p.vy = p.dash > 0 ? 0 : Math.min(1000, p.vy + GRAVITY * dt)
+    p.vy = p.dash > 0 ? 0 : Math.max(-1000, Math.min(1000, p.vy + GRAVITY * this.gravitySign * dt))
     p.y += p.vy * dt
     p.grounded = false
     for (const platform of this.platforms) {
       if (platform.deleted || (platform.crumble ?? 0) > 0.8) continue
       if (!intersects(p, platform)) continue
-      if (p.vy >= 0 && previousBottom <= platform.y + 0.01) {
+      const onTop = p.vy >= 0 && previousBottom <= platform.y + 0.01
+      const onUnderside = p.vy <= 0 && previousTop >= platform.y + platform.h - 0.01
+      if (this.gravitySign < 0) {
+        // Upside down, only solid slabs hold: a0 lands on the ceiling.
+        if (platform.floating) continue
+        if (onUnderside) {
+          p.y = platform.y + platform.h
+          if (!wasGrounded && p.vy < -160) {
+            p.squash = 0.17
+            this.burst(p.x + 17, platform.y + platform.h + 1, ['#b797e5', '#80ced9'], 7, 65)
+            this.audio.play('land')
+          }
+          p.vy = 0; p.grounded = true; p.airJump = true
+        } else if (onTop) { p.y = platform.y - p.h; p.vy = 0 }
+        continue
+      }
+      if (onTop) {
         p.y = platform.y - p.h
         if (!wasGrounded && p.vy > 160) {
           p.squash = 0.17
@@ -387,7 +417,7 @@ export class BugHuntPrototype {
           this.audio.play('land')
         }
         p.vy = 0; p.grounded = true; p.airJump = true
-      } else if (!platform.floating && p.vy < 0 && previousTop >= platform.y + platform.h - 0.01) {
+      } else if (!platform.floating && onUnderside) {
         p.y = platform.y + platform.h; p.vy = 0
       }
     }
@@ -403,7 +433,7 @@ export class BugHuntPrototype {
     if (p.grapple && !this.reducedMotion) this.burst(p.grapple.x, p.grapple.y, ['#8cf7ec'], 1, 12)
     if (p.dash > 0 && !this.reducedMotion) this.burst(p.x + 17, p.y + 28, ['#7afce0', '#c394ff'], 2, 15)
     if (this.stepPurge(dt, frozen)) return
-    if (p.y > HEIGHT + 70) { this.hurt(true); return }
+    if (p.y > HEIGHT + 70 || (this.gravitySign < 0 && p.y < -120)) { this.hurt(true); return }
     if (p.grounded && Math.abs(p.vx) > 90 && this.elapsed - this.lastDust > 0.1) {
       this.lastDust = this.elapsed
       this.burst(p.x + 17 - p.facing * 12, p.y + p.h - 2, ['#9175bd', '#73bdca'], 2, 32)
@@ -413,23 +443,25 @@ export class BugHuntPrototype {
       if (!bug.alive) continue
       if (bug.hover) bug.y = bug.homeY! + Math.sin(this.worldTime * 2 + bug.phase) * 9
       if (bug.retry) bug.y = 426 - Math.max(0, Math.sin(this.worldTime * 3 + bug.phase)) * 74
-      if (!frozen) bug.x += bug.direction * 82 * dt
-      if (bug.x <= bug.left) { bug.x = bug.left; bug.direction = 1 }
-      if (bug.x >= bug.right) { bug.x = bug.right; bug.direction = -1 }
+      if (!frozen) this.stepBugAI(bug, dt)
+      if (bug.kind !== 'turret') {
+        // A charging bug still stops at its band: it never walks into a pit.
+        if (bug.x <= bug.left) { bug.x = bug.left; if ((bug.alert ?? 0) <= 0.6) bug.direction = 1 }
+        if (bug.x >= bug.right) { bug.x = bug.right; if ((bug.alert ?? 0) <= 0.6) bug.direction = -1 }
+      }
       if (!intersects(p, bug)) continue
       const stomp = p.vy > 80 && previousBottom <= bug.y + 8
       if (p.dash > 0 || this.powers.sudo > 0 || stomp) {
-        const id = this.level * 100 + index
-        if (!this.defeated.has(id)) this.reward(100, bug.x, bug.y)
-        bug.alive = false; this.defeated.add(id)
+        const lethal = p.dash > 0 || this.powers.sudo > 0
+        const died = this.damage(bug, index, lethal ? 99 : 1, false)
         if (p.dash <= 0 && stomp) { p.y = bug.y - p.h; p.vy = this.keys.has('Space') ? -540 : -390 }
         p.airJump = true; p.dashCooldown = 0; p.squash = -0.1
-        this.shake = 2.4
-        this.burst(bug.x + 19, bug.y + 15, ['#ff8d9e', '#ffc6b8', '#b28fe7'], 24, 165)
-        this.popup(this.copy.bugClosed[index % this.copy.bugClosed.length], bug.x + 20, bug.y - 25, '#ffd4d2')
-        this.audio.play('stomp'); this.publish()
+        // An armoured bug that survives must not damage a0 on the way down.
+        if (!died) p.invulnerable = Math.max(p.invulnerable, 0.45)
       } else { this.hurt(); if (this.player !== p) return }
     }
+    if (this.keys.has('KeyF')) this.fire()
+    if (this.stepShots(dt, frozen)) return
     for (const spike of this.map.spikes) if (this.powers.sudo <= 0 && intersects(p, spike)) { this.hurt(); if (this.player !== p) return }
     for (const wall of this.map.firewalls) {
       if (firewallPhase(this.worldTime, wall.phase) === 'active' && p.dash <= 0 && this.powers.sudo <= 0 && intersects(p, wall)) {
@@ -438,24 +470,31 @@ export class BugHuntPrototype {
     }
     if (this.level === 2 && this.boss.health > 0 && p.x > 2450) {
       const boss = this.boss
+      const command = BOSS_COMMANDS[boss.health]
+      if (boss.command !== command) {
+        this.endCommand()
+        boss.command = command; boss.announce = BOSS_ANNOUNCE; boss.applied = false
+        this.shake = 5
+        this.audio.play('sudo'); this.publish()
+      }
+      if (boss.announce > 0 && !frozen) {
+        boss.announce = Math.max(0, boss.announce - dt)
+        if (boss.announce === 0) { this.applyCommand(command); this.publish() }
+      }
+      if (boss.applied && !frozen) this.stepCommand(command)
       const before = boss.clock
       if (!frozen) boss.clock += dt
-      for (const attack of boss.health === 1 ? [1.3, 1.7] : [1.3]) {
-        if (before < attack && boss.clock >= attack) {
-          boss.waves.push({ x: BOSS_BODY.x, y: 436, w: 34, h: 24 })
-          this.burst(BOSS_BODY.x, 452, ['#ffb56b', '#ff668c'], 22)
-          this.audio.play('hurt')
-        }
+      for (const attack of boss.health === 1 ? [1.3, 1.9] : [1.3]) {
+        if (before < attack && boss.clock >= attack) this.throwEnvelope(boss)
       }
       if (boss.clock > 4.8) { boss.clock = 0; boss.hit = false }
-      for (const wave of boss.waves) {
-        if (!frozen) wave.x -= dt * 250
-        if (intersects(p, wave)) { this.hurt(); if (this.player !== p) return }
-      }
-      boss.waves = boss.waves.filter(w => w.x > 2140)
+      boss.recoil = Math.max(0, boss.recoil - dt)
+      if (this.stepEnvelopes(boss, dt, frozen)) return
       if (intersects(p, BOSS_BODY)) {
         if (boss.clock >= 2 && !boss.hit && p.vy > 80 && previousBottom <= BOSS_BODY.y + 10) {
+          // The rule dies with the phase, on the same frame as the hit.
           boss.health--; boss.hit = true
+          this.endCommand()
           if (!this.bossRewards.has(boss.health)) {
             this.bossRewards.add(boss.health)
             this.reward(boss.health === 0 ? 1000 : 250, BOSS_BODY.x + 45, BOSS_BODY.y)
@@ -463,10 +502,12 @@ export class BugHuntPrototype {
           p.y = BOSS_BODY.y - p.h; p.vy = -540; p.invulnerable = 0.6
           this.burst(BOSS_BODY.x + 45, BOSS_BODY.y, ['#a6ffe3', '#e8cbff'], 40)
           this.audio.play(boss.health ? 'stomp' : 'win'); this.publish()
-          if (!boss.health) { boss.waves = []; this.popup(this.copy.bossDefeated, BOSS_BODY.x, 290) }
+          if (!boss.health) { boss.envelopes = []; this.endCommand(); boss.command = null; this.popup(this.copy.bossDefeated, BOSS_BODY.x, 290) }
         } else { this.hurt(); if (this.player !== p) return }
       }
     }
+    // Every rewritten rule is local to the arena: walking out restores gravity.
+    if (this.gravitySign < 0 && p.x < ARENA_X) this.gravitySign = 1
     if (!this.checkpoint && p.x + p.w > this.checkpointX && p.x < this.checkpointX + 40 && p.y < 460) {
       this.checkpoint = true
       this.burst(this.checkpointX + 13, 417, ['#a3ffe2', '#5ccfae', '#d7c0ff'], 28, 160)
@@ -494,6 +535,118 @@ export class BugHuntPrototype {
   private followCamera(dt: number) {
     const target = Math.max(0, Math.min(WORLD_WIDTH - WIDTH, this.player.x - 310))
     this.camera += (target - this.camera) * Math.min(1, dt * 8)
+  }
+
+  /** a0's debug packet: short cooldown, light recoil, nothing to reload. */
+  private fire() {
+    const p = this.player
+    if (this.shotCooldown > 0 || this.powers.rewind || this.finished || this.levelComplete) return
+    this.shotCooldown = SHOT_COOLDOWN
+    this.shots.push({ x: p.x + p.w / 2 + p.facing * 20, y: p.y + 17, vx: p.facing * SHOT_SPEED, life: 1.15, enemy: false })
+    this.burst(p.x + p.w / 2 + p.facing * 24, p.y + 17, ['#9ff0ff', '#ffffff'], 5, 80)
+    if (p.grounded) p.vx -= p.facing * 22
+    this.audio.play('shoot')
+    this.publish()
+  }
+
+  /** Applies damage and closes the ticket when the bug runs out of health. */
+  private damage(bug: Bug, index: number, amount: number, fromShot: boolean): boolean {
+    bug.hp = (bug.hp ?? 1) - amount
+    if (bug.hp > 0) {
+      bug.alert = 1
+      this.burst(bug.x + 19, bug.y + 15, ['#ffd0a8', '#ff8d9e'], 10, 115)
+      this.audio.play('hit')
+      return false
+    }
+    const id = this.level * 100 + index
+    if (!this.defeated.has(id)) this.reward(100, bug.x, bug.y)
+    bug.alive = false; this.defeated.add(id)
+    this.shake = Math.max(this.shake, fromShot ? 1.6 : 2.4)
+    this.burst(bug.x + 19, bug.y + 15, ['#ff8d9e', '#ffc6b8', '#b28fe7'], 24, 165)
+    this.popup(this.copy.bugClosed[index % this.copy.bugClosed.length], bug.x + 20, bug.y - 25, '#ffd4d2')
+    this.audio.play('stomp'); this.publish()
+    return true
+  }
+
+  /** Chasers charge when a0 is close; turrets aim, charge, then fire. */
+  private stepBugAI(bug: Bug, dt: number) {
+    const p = this.player
+    const dx = p.x + p.w / 2 - (bug.x + bug.w / 2)
+    const sameFloor = Math.abs(p.y + p.h - (bug.y + bug.h)) < 150
+    if (bug.kind === 'turret') {
+      const inRange = Math.abs(dx) < TURRET_RANGE && sameFloor
+      bug.alert = inRange ? Math.min(1, (bug.alert ?? 0) + dt * 2.2) : Math.max(0, (bug.alert ?? 0) - dt * 2)
+      if (!inRange) { bug.fuse = 0; return }
+      bug.direction = Math.sign(dx) || bug.direction
+      bug.fuse = (bug.fuse ?? 0) + dt
+      if (bug.fuse < TURRET_CYCLE) return
+      bug.fuse = 0
+      this.shots.push({ x: bug.x + 19 + bug.direction * 24, y: bug.y + 13, vx: bug.direction * BOLT_SPEED, life: 2.6, enemy: true })
+      this.burst(bug.x + 19 + bug.direction * 24, bug.y + 13, ['#ffb56b', '#ff668c'], 8, 95)
+      this.audio.play('bolt')
+      return
+    }
+    if (bug.kind === 'chaser') {
+      const hunting = Math.abs(dx) < CHASE_RANGE && sameFloor
+      const was = bug.alert ?? 0
+      bug.alert = hunting ? Math.min(1, was + dt * 2.5) : Math.max(0, was - dt * 1.2)
+      // One shout the moment it wakes: the charge is never a silent ambush.
+      if (was <= 0.6 && bug.alert > 0.6) { this.popup(this.copy.bugAlert, bug.x + 19, bug.y - 34, '#ff9db4'); this.audio.play('bolt') }
+      if (bug.alert > 0.6) {
+        bug.direction = Math.sign(dx) || bug.direction
+        bug.x += bug.direction * CHASE_SPEED * dt
+        return
+      }
+    }
+    bug.x += bug.direction * 82 * dt
+  }
+
+  /** Moves both sides' fire. Returns true when a0 was hit and respawned. */
+  private stepShots(dt: number, frozen: boolean): boolean {
+    const p = this.player
+    this.shotCooldown = Math.max(0, this.shotCooldown - dt)
+    for (const shot of this.shots) {
+      if (shot.enemy && frozen) continue
+      shot.x += shot.vx * dt
+      shot.life -= dt
+    }
+    for (const shot of this.shots) {
+      if (shot.life <= 0) continue
+      const hitbox = { x: shot.x - 8, y: shot.y - 5, w: 16, h: 10 }
+      if (!shot.enemy) {
+        for (const [index, bug] of this.enemies.entries()) {
+          if (!bug.alive || !intersects(bug, hitbox)) continue
+          shot.life = 0
+          this.damage(bug, index, 1, true)
+          break
+        }
+        if (shot.life <= 0) continue
+        const envelope = this.boss.envelopes.find(candidate => intersects(candidate, hitbox))
+        if (envelope) {
+          shot.life = 0
+          this.boss.envelopes = this.boss.envelopes.filter(candidate => candidate !== envelope)
+          this.reward(25, envelope.x + 18, envelope.y)
+          this.burst(envelope.x + 18, envelope.y + 13, ['#eaf0ff', '#9ab4ff', '#ffffff'], 16, 140)
+          this.audio.play('hit')
+        }
+        continue
+      }
+      // ponytail: linear scan, only a handful of projectiles are ever in flight.
+      const intercept = this.shots.find(other => !other.enemy && other.life > 0 && Math.abs(other.x - shot.x) < 18 && Math.abs(other.y - shot.y) < 15)
+      if (intercept) {
+        shot.life = 0; intercept.life = 0
+        this.burst(shot.x, shot.y, ['#ffd0a8', '#9ff0ff', '#ffffff'], 12, 130)
+        this.audio.play('hit')
+        continue
+      }
+      if (!intersects(p, hitbox)) continue
+      shot.life = 0
+      if (p.dash > 0 || this.powers.sudo > 0) continue
+      this.hurt()
+      if (this.player !== p) return true
+    }
+    this.shots = this.shots.filter(shot => shot.life > 0 && Math.abs(shot.x - (p.x + p.w / 2)) < 1200)
+    return false
   }
 
   /** Latches onto the nearest lit anchor above a0. Misses are never punished. */
@@ -550,6 +703,87 @@ export class BugHuntPrototype {
     if (p.y + p.h < 458) p.grounded = false
   }
 
+  /** One fist winds up and lobs a SOAP envelope at a0. */
+  private throwEnvelope(boss: Boss) {
+    const p = this.player
+    const arm = boss.arm ? 0 : 1
+    const fist = BOSS_FISTS[arm]
+    const toward = Math.sign(p.x + p.w / 2 - fist.x) || -1
+    boss.envelopes.push({ x: fist.x - 18, y: fist.y - 13, w: 36, h: 26, vx: toward * ENVELOPE_SPEED, vy: -70, spin: 0 })
+    boss.arm = arm; boss.recoil = 0.35
+    this.burst(fist.x, fist.y, ['#eaf0ff', '#9ab4ff'], 14, 115)
+    if (arm === 0) this.popup(this.copy.bossTaunt, fist.x, fist.y - 52, '#cfe0ff')
+    this.audio.play('bolt')
+  }
+
+  /** Arcs every envelope. Returns true when a0 was hit and respawned. */
+  private stepEnvelopes(boss: Boss, dt: number, frozen: boolean): boolean {
+    const p = this.player
+    const flying: typeof boss.envelopes = []
+    for (const envelope of boss.envelopes) {
+      if (!frozen) {
+        envelope.x += envelope.vx * dt
+        envelope.vy += ENVELOPE_GRAVITY * dt
+        envelope.y += envelope.vy * dt
+        envelope.spin += dt * (envelope.vx > 0 ? 3.4 : -3.4)
+      }
+      const landed = envelope.y + envelope.h >= 458 && envelope.vy > 0
+      if (landed) {
+        this.burst(envelope.x + 18, 452, ['#eaf0ff', '#b9c8ff', '#8fa4d8'], 16, 130)
+        continue
+      }
+      if (envelope.x < 2140 || envelope.x > 3210) continue
+      if (!intersects(p, envelope)) { flying.push(envelope); continue }
+      if (p.dash > 0 || this.powers.sudo > 0) {
+        this.burst(envelope.x + 18, envelope.y + 13, ['#eaf0ff', '#9ab4ff'], 16, 140)
+        continue
+      }
+      boss.envelopes = flying
+      this.hurt()
+      if (this.player !== p) return true
+    }
+    boss.envelopes = flying
+    return false
+  }
+
+  /** Puts every rewritten rule back before the next phase announces its own. */
+  private endCommand() {
+    this.gravitySign = 1
+    for (const platform of this.platforms) if (platform.arena) platform.deleted = false
+    this.boss.applied = false
+  }
+
+  /** Runs once, when the announcement has been on screen long enough to read. */
+  private applyCommand(command: BossCommand) {
+    const p = this.player
+    this.boss.applied = true
+    this.shake = 6
+    if (command === 'gravity') {
+      this.gravitySign = -1
+      p.grounded = false; p.coyote = 0; p.airJump = true
+      p.vy = Math.min(p.vy, -120)
+      this.burst(p.x + 17, p.y + 24, ['#9ad8ff', '#d7b4ff', '#ffffff'], 30, 200)
+    } else if (command === 'clones') {
+      for (let i = 0; i < 3; i++) {
+        const x = 2520 + i * 130
+        this.enemies.push({ x, y: 426, w: 38, h: 34, left: x - 150, right: x + 150, direction: i % 2 ? 1 : -1,
+          alive: true, phase: i * 0.7, kind: 'chaser', hp: 1, alert: 0, fuse: 0 })
+        this.burst(x + 19, 443, ['#ff8d9e', '#b28fe7'], 18, 160)
+      }
+    }
+    this.audio.play(command === 'gravity' ? 'rewind' : command === 'clones' ? 'gc' : 'freeze')
+  }
+
+  /** Per-frame part of a live command. Clones already run on the bug AI. */
+  private stepCommand(command: BossCommand) {
+    if (command === 'gravity') { this.gravitySign = -1; return }
+    if (command !== 'offline') return
+    const slabs = this.platforms.filter(platform => platform.arena)
+    // One slab drops at a time, then a beat with all of them back online.
+    const turn = Math.floor(this.worldTime / 1.4) % (slabs.length + 1)
+    for (const [index, slab] of slabs.entries()) slab.deleted = index === turn
+  }
+
   private resetPurge() {
     this.purgeState = this.map.purge ? 'waiting' : 'off'
     this.purgeX = this.map.purge ? this.map.purge.start - this.map.purge.lead : 0
@@ -575,6 +809,7 @@ export class BugHuntPrototype {
       platform.deleted = true
       this.burst(platform.x + platform.w - 8, platform.y + 4, ['#ff7f9c', '#b388ff'], 9, 130)
     }
+    for (const bug of this.enemies) if (bug.alive && bug.x + bug.w < this.purgeX) bug.alive = false
     if (p.x >= purge.end) {
       this.purgeState = 'cleared'
       this.score += 400
@@ -629,7 +864,8 @@ export class BugHuntPrototype {
         this.audio.play('stomp')
         this.publish()
       }
-      this.boss.waves = this.boss.waves.filter((w) => Math.hypot(w.x + w.w / 2 - wave.x, w.y + w.h / 2 - wave.y) > wave.r)
+      this.boss.envelopes = this.boss.envelopes.filter((e) => Math.hypot(e.x + e.w / 2 - wave.x, e.y + e.h / 2 - wave.y) > wave.r)
+      this.shots = this.shots.filter((s) => !s.enemy || Math.hypot(s.x - wave.x, s.y - wave.y) > wave.r)
       if (wave.r > GC_RADIUS) powers.gc = null
     }
     const signature = `${Math.ceil(powers.sudo)}|${Math.ceil(powers.breakpoint)}|${powers.revertCharges}`
@@ -684,6 +920,6 @@ export class BugHuntPrototype {
     renderLocalhost(this.ctx, { level: this.level, platforms: this.platforms, boss: this.boss, player: this.player, enemies: this.enemies, camera: this.camera, time: this.visualTime,
       collected: this.collected, particles: this.particles, popups: this.popups, checkpoint: this.checkpoint, hotfix: this.hotfix,
       secret: this.secret, shake: this.shake, reducedMotion: this.reducedMotion, finished: this.finished, copy: this.copy,
-      worldTime: this.worldTime, powers: this.powers, purgeX: this.purgeX, purgeState: this.purgeState })
+      worldTime: this.worldTime, powers: this.powers, purgeX: this.purgeX, purgeState: this.purgeState, shots: this.shots, gravity: this.gravitySign })
   }
 }

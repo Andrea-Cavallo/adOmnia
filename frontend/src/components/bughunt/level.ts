@@ -1,12 +1,17 @@
 import type { PowerPickup } from './powers'
 
 export type Rect = { x: number; y: number; w: number; h: number }
-export type Platform = Rect & { floating?: boolean; travel?: number; unstable?: boolean; originX?: number; crumble?: number; deleted?: boolean }
+export type Platform = Rect & { floating?: boolean; travel?: number; unstable?: boolean; originX?: number; crumble?: number; deleted?: boolean
+  /** Arena slab the Monolith can switch offline, and the arena ceiling. */
+  arena?: boolean; ceiling?: boolean }
 /** Magnetic grapple anchor: a0 latches on, swings and launches. */
 export type Anchor = { x: number; y: number }
 /** The DELETE wave chase: `lead` px behind the player when it wakes up. */
 export type Purge = { start: number; end: number; speed: number; lead: number }
-export type Bug = Rect & { left: number; right: number; direction: number; alive: boolean; phase: number; retry?: boolean; hover?: boolean; homeY?: number }
+/** `chaser` charges when a0 is close, `turret` returns fire from a fixed post. */
+export type BugKind = 'patrol' | 'chaser' | 'turret'
+export type Bug = Rect & { left: number; right: number; direction: number; alive: boolean; phase: number; retry?: boolean; hover?: boolean; homeY?: number
+  kind?: BugKind; hp?: number; alert?: number; fuse?: number }
 export type Bit = { id: number; x: number; y: number; secret?: boolean }
 
 export const WORLD_WIDTH = 3220
@@ -65,6 +70,8 @@ export function intersects(a: Rect, b: Rect): boolean {
 }
 
 
+/** Seconds between turret shots; the renderer draws the charge from it. */
+export const TURRET_CYCLE = 1.85
 export type Firewall = Rect & { phase: number }
 export type Level = {
   name: string; platforms: Platform[]; spikes: Rect[]; bits: Bit[]; bugs: Bug[]; firewalls: Firewall[]; springs: Rect[]; powers: PowerPickup[]
@@ -107,7 +114,12 @@ export const LEVELS: Level[] = [
       { x: 2260, y: 460, w: 960, h: 100 },
       // Escape ramps for the DELETE chase: always a higher line to take.
       { x: 1180, y: 330, w: 150, h: 20, floating: true }, { x: 1470, y: 300, w: 140, h: 20, floating: true },
-      { x: 1960, y: 320, w: 145, h: 20, floating: true }, { x: 2210, y: 290, w: 140, h: 20, floating: true }],
+      { x: 1960, y: 320, w: 145, h: 20, floating: true }, { x: 2210, y: 290, w: 140, h: 20, floating: true },
+      // Boss arena: a ceiling for `reverse gravity`, three slabs for `stop platforms`.
+      { x: 2430, y: 104, w: 790, h: 26, ceiling: true },
+      { x: 2500, y: 330, w: 118, h: 20, floating: true, arena: true },
+      { x: 2680, y: 286, w: 118, h: 20, floating: true, arena: true },
+      { x: 2872, y: 322, w: 118, h: 20, floating: true, arena: true }],
     spikes: [{ x: 1050, y: 440, w: 64, h: 20 }],
     bits: BITS.map(b => ({ ...b, id: b.id + 200 })), bugs: createBugs().slice(0, 2).map((b, i) => ({ ...b, ...(i === 0 ? { x: 820, left: 700, right: 980 } : { x: 1970, left: 1880, right: 2100 }) })), firewalls: [{ x: 1590, y: 365, w: 25, h: 95, phase: 0.5 }], anchors: ANCHORS[2],
     // ~1.8 km of floor deleted behind you; the run ends at the checkpoint.
@@ -140,6 +152,39 @@ export function firewallPhase(time: number, offset: number): 'off' | 'warning' |
   const t = (time + offset) % 4.8
   return t < 2.4 ? 'off' : t < 3.2 ? 'warning' : 'active'
 }
-export type Boss = { health: number; clock: number; hit: boolean; waves: Rect[] }
-export function createBoss(): Boss { return { health: 3, clock: 0, hit: false, waves: [] } }
+/** The Monolith announces a command, then rewrites one rule of the arena. */
+export type BossCommand = 'gravity' | 'clones' | 'offline'
+export const BOSS_COMMANDS: Record<number, BossCommand> = { 3: 'gravity', 2: 'clones', 1: 'offline' }
+/** Seconds the command is readable on screen before it takes effect. */
+export const BOSS_ANNOUNCE = 1.7
+export const ARENA_X = 2430
+/** A SOAP envelope thrown by a fist: it arcs across the arena and stings. */
+export type Envelope = Rect & { vx: number; vy: number; spin: number }
+export type Boss = { health: number; clock: number; hit: boolean; envelopes: Envelope[]
+  command: BossCommand | null; announce: number; applied: boolean
+  /** Which fist threw last, and how much recoil is left to draw. */
+  arm: number; recoil: number }
+export function createBoss(): Boss {
+  return { health: 3, clock: 0, hit: false, envelopes: [], command: null, announce: 0, applied: false, arm: 0, recoil: 0 }
+}
+/** The stompable core: the rack base. The tower above it is drawing only. */
 export const BOSS_BODY = { x: 2820, y: 378, w: 90, h: 82 }
+export const BOSS_TOWER = { x: 2786, y: 150, w: 158, h: 310 }
+export const BOSS_FISTS = [{ x: BOSS_TOWER.x - 66, y: 254 }, { x: BOSS_TOWER.x + BOSS_TOWER.w + 66, y: 238 }]
+export const ENVELOPE_SPEED = 252
+export const ENVELOPE_GRAVITY = 430
+
+// Reactive enemies. Chasers stay inside a band of solid floor so they never
+// walk into a pit; turrets telegraph every shot before it can hurt anyone.
+const HUNTERS: [number, number, BugKind, number][][] = [
+  [[1150, 426, 'chaser', 1], [2560, 426, 'turret', 2]],
+  [[860, 426, 'chaser', 2], [1700, 426, 'turret', 2], [2500, 426, 'chaser', 1]],
+  [[900, 426, 'chaser', 2], [1500, 426, 'turret', 2], [2000, 426, 'chaser', 2]],
+]
+for (const [level, hunters] of HUNTERS.entries()) {
+  for (const [index, [x, y, kind, hp]] of hunters.entries()) {
+    const roam = kind === 'chaser' ? 250 : 0
+    LEVELS[level].bugs.push({ x, y, w: 38, h: 34, left: x - roam, right: x + roam, direction: -1,
+      alive: true, phase: index * 0.9, kind, hp, alert: 0, fuse: 0 })
+  }
+}

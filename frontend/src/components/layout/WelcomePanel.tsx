@@ -124,9 +124,9 @@ function FidgetLogo({ src, size }: { src: string; size: number }) {
   const lastMoveRef = useRef(0)
   const draggingRef = useRef(false)
   const [dragging, setDragging] = useState(false)
-  const [holdHint, setHoldHint] = useState(false)
-  const holdHintTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const holdOpenTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // One full turn is the whole secret now: the logo offers, it never waits.
+  const [charging, setCharging] = useState(false)
+  const [invited, setInvited] = useState(false)
   const pointerStart = useRef({ x: 0, y: 0 })
   // Latched once the pointer leaves the dead zone: circling back past the
   // starting point must keep counting toward the three turns.
@@ -136,18 +136,16 @@ function FidgetLogo({ src, size }: { src: string; size: number }) {
   const turns = useRef(0)
   const triggered = useRef(false)
 
-  const clearHold = () => {
-    if (holdHintTimer.current) clearTimeout(holdHintTimer.current)
-    if (holdOpenTimer.current) clearTimeout(holdOpenTimer.current)
-    holdHintTimer.current = null
-    holdOpenTimer.current = null
-    setHoldHint(false)
+  /** Spinning asks; it never drops the user into the game unannounced. */
+  const inviteToPlay = () => {
+    if (triggered.current) return
+    triggered.current = true
+    setCharging(false)
+    setInvited(true)
   }
 
   const openBugHunt = () => {
-    if (triggered.current) return
-    triggered.current = true
-    clearHold()
+    setInvited(false)
     try { localStorage.setItem('adomnia.bughunt.discovered.v1', '1') } catch { /* discovery is optional */ }
     window.dispatchEvent(new Event('adomnia:bug-hunt-discovered'))
     document.dispatchEvent(new Event('adomnia:open-bug-hunt'))
@@ -163,10 +161,10 @@ function FidgetLogo({ src, size }: { src: string; size: number }) {
   }
 
   const releaseWithInertia = () => {
-    clearHold()
-    if (!draggingRef.current) return
+    if (!draggingRef.current) { setCharging(false); return }
     draggingRef.current = false
     setDragging(false)
+    setCharging(false)
     if (performance.now() - lastMoveRef.current > 90) velocityRef.current = 0
     velocityRef.current *= 1.18
     spinThenSettle()
@@ -195,12 +193,10 @@ function FidgetLogo({ src, size }: { src: string; size: number }) {
   }
 
   useEffect(() => {
-    const cancelHold = () => clearHold()
-    window.addEventListener('blur', cancelHold)
+    const drop = () => setCharging(false)
+    window.addEventListener('blur', drop)
     return () => {
-      window.removeEventListener('blur', cancelHold)
-      if (holdHintTimer.current) clearTimeout(holdHintTimer.current)
-      if (holdOpenTimer.current) clearTimeout(holdOpenTimer.current)
+      window.removeEventListener('blur', drop)
       stopAnimation()
     }
   }, [])
@@ -218,8 +214,6 @@ function FidgetLogo({ src, size }: { src: string; size: number }) {
     startedAtOuterRadius.current = Math.hypot(event.clientX - rect.left - rect.width / 2, event.clientY - rect.top - rect.height / 2) > size * 0.2
     turnStart.current = 0
     turns.current = 0
-    holdHintTimer.current = setTimeout(() => setHoldHint(true), 4000)
-    holdOpenTimer.current = setTimeout(openBugHunt, 30000)
     velocityRef.current = 0
     lastAngleRef.current = pointerAngle(event, event.currentTarget)
     lastTimeRef.current = event.timeStamp
@@ -232,7 +226,6 @@ function FidgetLogo({ src, size }: { src: string; size: number }) {
     if (!draggingRef.current || !event.currentTarget.hasPointerCapture(event.pointerId)) return
     if (!movedPastThreshold.current && Math.hypot(event.clientX - pointerStart.current.x, event.clientY - pointerStart.current.y) > 10) {
       movedPastThreshold.current = true
-      clearHold()
     }
     const rect = event.currentTarget.getBoundingClientRect()
     const outerRadius = Math.hypot(event.clientX - rect.left - rect.width / 2, event.clientY - rect.top - rect.height / 2) > size * 0.2
@@ -249,10 +242,12 @@ function FidgetLogo({ src, size }: { src: string; size: number }) {
       if (!turnStart.current) turnStart.current = performance.now()
       if (performance.now() - turnStart.current <= 8000) {
         turns.current += delta
-        if (Math.abs(turns.current) >= Math.PI * 6) openBugHunt()
+        setCharging(Math.abs(turns.current) > Math.PI * 0.6)
+        if (Math.abs(turns.current) >= Math.PI * 2) inviteToPlay()
       } else {
         turnStart.current = performance.now()
         turns.current = 0
+        setCharging(false)
       }
     }
     paint()
@@ -266,6 +261,7 @@ function FidgetLogo({ src, size }: { src: string; size: number }) {
   }
 
   return (
+    <div className="relative grid place-items-center">
     <button
       type="button"
       aria-label={tr('Spin the adOmnia logo')}
@@ -282,7 +278,8 @@ function FidgetLogo({ src, size }: { src: string; size: number }) {
         'group relative grid touch-none select-none place-items-center rounded-full border-none bg-transparent outline-none',
         'cursor-grab focus-visible:ring-2 focus-visible:ring-accent/70 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent',
         dragging && 'cursor-grabbing',
-        holdHint && 'drop-shadow-[0_0_22px_#a855f7]',
+        charging && 'drop-shadow-[0_0_22px_#a855f7]',
+        invited && 'drop-shadow-[0_0_30px_#a855f7]',
       )}
     >
       <img
@@ -293,6 +290,35 @@ function FidgetLogo({ src, size }: { src: string; size: number }) {
         className="pointer-events-none h-full w-full object-contain will-change-transform"
       />
     </button>
+    {invited && (
+      <div
+        role="dialog"
+        aria-label={tr('A secret')}
+        onKeyDown={(event) => { if (event.key === 'Escape') { event.stopPropagation(); setInvited(false) } }}
+        className="absolute left-1/2 top-full z-30 mt-3 w-[262px] -translate-x-1/2 rounded-lg border border-accent/45 bg-surface-1/95 p-3 shadow-[0_18px_40px_-16px_rgba(0,0,0,0.75)] backdrop-blur"
+      >
+        <p className="text-xs font-medium text-text-1">{tr('You found the secret.')}</p>
+        <p className="mt-0.5 text-[11px] leading-relaxed text-text-3">{tr('The bugs escaped again. Fancy a round?')}</p>
+        <div className="mt-2.5 flex gap-2">
+          <button
+            type="button"
+            autoFocus
+            onClick={openBugHunt}
+            className="flex-1 rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-accent/85"
+          >
+            {tr('Play Bug Hunt')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setInvited(false)}
+            className="rounded-md border border-border-2 px-3 py-1.5 text-xs text-text-3 transition-colors hover:bg-surface-2 hover:text-text-1"
+          >
+            {tr('Not now')}
+          </button>
+        </div>
+      </div>
+    )}
+    </div>
   )
 }
 
