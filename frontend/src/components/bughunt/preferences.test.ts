@@ -16,3 +16,12 @@ it('still runs when local storage is unavailable', () => {
   expect(loadPreferences().bestSeconds).toBeNull()
   expect(() => savePreferences(loadPreferences())).not.toThrow()
 })
+
+it('keeps arcade accessibility settings but starts separate three-life records', () => {
+  const previous = JSON.stringify({ audio: false, reducedMotion: true, bestSeconds: 20, bestBits: 135, bestScore: 9000 })
+  const values = new Map([['adomnia.bughunt.preferences.arcade.v3', previous]])
+  vi.stubGlobal('localStorage', { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value) })
+  expect(loadPreferences()).toEqual({ audio: false, reducedMotion: true, bestSeconds: null, bestBits: 0, bestScore: 0 })
+  savePreferences(loadPreferences())
+  expect(values.get('adomnia.bughunt.preferences.arcade.v3')).toBe(previous)
+})

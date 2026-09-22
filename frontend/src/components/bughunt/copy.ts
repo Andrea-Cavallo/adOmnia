@@ -3,6 +3,8 @@ import type { Lang } from '@/lib/i18n'
 // Every in-game string lives here. The English shape is the contract, so a
 // missing Italian line fails type-checking instead of showing up blank.
 const en = {
+  gameOverTitle: 'Out of lives.', gameOverBody: 'Three lives, one deploy. Start a new campaign and try again.',
+  rewindQuip: 'It worked on my machine.', checkpointQuip: 'Committed. Breathe.', edgeQuip: 'Totally intentional.',
   bossDoubleWave: 'DOUBLE SOAP / DOUBLE JUMP',
   rushStart: 'BONUS RUSH! 6 bits / 8 seconds', rushWon: 'RUSH COMPLETE! +500',
   rushLabel: 'BONUS RUSH', rank: 'Rank', rushMedal: 'Bonus rushes',
@@ -38,7 +40,7 @@ const en = {
   purgeDeath: 'Deleted. No WHERE clause.',
   statScore: 'Score', statCombo: 'Best chain',
   livesLabel: 'LIVES',
-  livesRule: 'Three lives. Lose them and you restart from the last commit — bits and Hotfix stay yours.',
+  livesRule: 'Only three lives for the whole campaign. Each hit or fall costs one. At zero: game over. Checkpoints do not refill lives.',
   controlsTitle: 'Controls',
   goalTitle: 'The goal',
   goalBody: 'Grab the Hotfix, then reach the exit. Three environments: Localhost, API Gateway, Production.',
@@ -73,7 +75,7 @@ const en = {
   backToApp: 'Back to adOmnia',
   canvasLabel: 'Bug Hunt: platforms, bits and bugs. Use A/D or the arrows to move and Space to jump.',
   hudLabel: 'Game status',
-  healthLabel: (health: number) => `${health} of 3 health points`,
+  healthLabel: (health: number) => `${health} of 3 lives`,
   hotfixFound: 'HOTFIX ✓',
   findHotfix: 'FIND THE HOTFIX',
   introEyebrow: 'Friday, 5:59 PM',
@@ -142,6 +144,8 @@ const en = {
 export type BugHuntCopy = typeof en
 
 const it: BugHuntCopy = {
+  gameOverTitle: 'Vite esaurite.', gameOverBody: 'Tre vite, un deploy. Ricomincia la campagna e riprova.',
+  rewindQuip: 'Sul mio PC funzionava.', checkpointQuip: 'Salvato. Respiriamo.', edgeQuip: 'Era tutto calcolato.',
   bossDoubleWave: 'DOPPIO SOAP / DOPPIO SALTO',
   rushStart: 'BONUS RUSH! 6 bit / 8 secondi', rushWon: 'RUSH COMPLETATA! +500',
   rushLabel: 'BONUS RUSH', rank: 'Grado', rushMedal: 'Sfide bonus',
@@ -173,7 +177,7 @@ const it: BugHuntCopy = {
   purgeDeath: 'Cancellato. Senza WHERE.',
   statScore: 'Punteggio', statCombo: 'Serie migliore',
   livesLabel: 'VITE',
-  livesRule: 'Tre vite. Se le perdi riparti dall’ultimo commit — bit e Hotfix restano tuoi.',
+  livesRule: 'Solo tre vite per tutta la campagna. Ogni colpo o caduta ne consuma una. A zero: game over. I checkpoint non ricaricano le vite.',
   controlsTitle: 'Comandi',
   goalTitle: 'Obiettivo',
   goalBody: 'Prendi l’Hotfix, poi raggiungi l’uscita. Tre ambienti: Localhost, API Gateway, Production.',
@@ -207,7 +211,7 @@ const it: BugHuntCopy = {
   backToApp: 'Torna ad adOmnia',
   canvasLabel: 'Bug Hunt: piattaforme, bit e bug. Usa A/D o le frecce per muoverti e Spazio per saltare.',
   hudLabel: 'Stato partita',
-  healthLabel: (health) => `${health} punti salute su 3`,
+  healthLabel: (health) => `${health} vite su 3`,
   hotfixFound: 'HOTFIX ✓',
   findHotfix: 'TROVA L’HOTFIX',
   introEyebrow: 'Venerdì, ore 17:59',

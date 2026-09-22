@@ -4,6 +4,19 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [0.9.18] - 2026-09-22
+
+### Added
+- **Bug Hunt — a0 has a personality:** the eyes track the nearest enemy or projectile, eyebrows and mouth tense with the danger, landings squash proportionally to the impact, an edge makes a0 wobble for balance, and a checkpoint raises both arms. The hitbox is untouched. Reduced motion keeps the poses but drops the oscillation.
+- **Bug Hunt — contextual quips:** IT/EN speech bubbles after a death, at a checkpoint and after a close call, positioned above the popups so nothing overlaps.
+- **Bug Hunt — Localhost is a full level:** 3220 px to 4820 px, 8 enemies to 15, extra platforms and grapple anchors, and 21 additional bits (156 across the campaign). Hotfix at x=4590, exit at x=4700. API Gateway and Production keep their geometry.
+
+### Changed
+- **Bug Hunt — three lives for the whole campaign:** three hearts in the HUD. A hit or a fall costs one; checkpoints and environment changes do not refill them. At zero the run stops with a campaign restart or exit, and a defeat never writes a victory record.
+- **Bug Hunt — records move to `adomnia.bughunt.preferences.three-lives.v4`:** only audio and reduced-motion preferences migrate, from the first existing key among `arcade.v3`, `campaign.v2` and `v1`. The old keys stay in place and the `.adomnia` workspace format is unchanged.
+
+Full release notes: [v0.9.18](docs/releases/v0.9.18.md).
+
 ## [0.9.17] - 2026-09-19
 
 ### Fixed

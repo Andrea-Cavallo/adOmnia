@@ -48,7 +48,7 @@ describe('Bug Hunt developer power-ups', () => {
 
   it('places all four powers in every environment', () => {
     for (const level of LEVELS) {
-      expect(level.powers.map((power) => power.kind).sort()).toEqual(['breakpoint', 'gc', 'revert', 'sudo'])
+      expect([...new Set(level.powers.map((power) => power.kind))].sort()).toEqual(['breakpoint', 'gc', 'revert', 'sudo'])
     }
   })
 

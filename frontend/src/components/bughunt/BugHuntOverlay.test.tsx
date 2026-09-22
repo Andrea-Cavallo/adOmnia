@@ -30,3 +30,12 @@ it('shows the score and replay after the final boss', () => {
   expect(html).toContain('One more run')
   expect(html).not.toContain('Next environment:')
 })
+
+it('offers a new campaign at zero lives without resume or victory', () => {
+  snapshot = { ...INITIAL_SNAPSHOT, health: 0, gameOver: true }
+  const html = renderToStaticMarkup(<BugHuntOverlay onClose={() => undefined} />)
+  expect(html).toContain('Out of lives.')
+  expect(html).toContain('Restart campaign')
+  expect(html).not.toContain('One more run')
+  expect(html).not.toContain('aria-label="Resume"')
+})

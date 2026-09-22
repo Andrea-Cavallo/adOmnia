@@ -1,9 +1,10 @@
 import type { BugHuntCopy } from './copy'
-import { BOSS_ANNOUNCE, BOSS_FISTS, BOSS_TOWER, LEVELS, BOSS_BODY, firewallPhase, CHECKPOINT_X, EXIT_X, HOTFIX, TURRET_CYCLE, type Envelope, type Platform, type Boss, type Bug } from './level'
+import { BOSS_ANNOUNCE, BOSS_FISTS, BOSS_TOWER, LEVELS, BOSS_BODY, firewallPhase, CHECKPOINT_X, levelExit, levelHotfix, TURRET_CYCLE, type Envelope, type Platform, type Boss, type Bug } from './level'
 import { drawBreakpointMarkers, drawGcWave, drawPowerOverlay, drawPowerPickups, drawRewindGhosts, drawSudoAura } from './powerVisuals'
 import type { PowerState } from './powers'
 
 export type PlayerVisual = { x: number; y: number; w: number; h: number; vx: number; vy: number; grounded: boolean; facing: number; invulnerable: number; squash: number; dash?: number
+  celebrate?: number; recover?: number; lookX?: number; lookY?: number; danger?: boolean; speech?: string; speechTime?: number
   grapple?: { x: number; y: number; length: number } | null }
 export type Particle = { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; color: string; size: number; gravity: number }
 export type Popup = { x: number; y: number; text: string; color: string; life: number }
@@ -282,13 +283,16 @@ function drawRobot(ctx: CanvasRenderingContext2D, p: PlayerVisual, time: number,
   if (p.invulnerable > 0) ctx.globalAlpha = 0.65 + Math.sin(time * 18) * 0.2
   glow(ctx, 0, -17, 44, '#973ce329')
   ctx.fillStyle = '#a870f026'; ctx.beginPath(); ctx.ellipse(0, 2, 21, 4, 0, 0, Math.PI * 2); ctx.fill()
-  ctx.translate(0, -3 + bob)
+  const celebration = (p.celebrate ?? 0) > 0
+  const recovery = (p.recover ?? 0) > 0
+  ctx.translate(0, -3 + bob - (!reducedMotion && celebration ? Math.abs(Math.sin((p.celebrate ?? 0) * Math.PI * 3)) * 6 : 0))
+  if (recovery && !reducedMotion) ctx.rotate(Math.sin((p.recover ?? 0) * 18) * 0.13)
   if (!reducedMotion) { ctx.rotate(p.vx / 5000); ctx.scale(1 + p.squash, 1 - p.squash) }
   // Floating origami torso and folded hands echo the supplied a0 reference.
   ctx.fillStyle = '#9862f0'; ctx.beginPath(); ctx.moveTo(-12, -17); ctx.lineTo(12, -17); ctx.lineTo(5, -1); ctx.lineTo(-5, 1); ctx.closePath(); ctx.fill()
   ctx.fillStyle = '#5825a2'; ctx.beginPath(); ctx.moveTo(-12, -17); ctx.lineTo(9, -12); ctx.lineTo(-5, 1); ctx.closePath(); ctx.fill()
   for (const side of [-1, 1]) {
-    const armY = -17 + (moving && !reducedMotion ? Math.sin(time * 19 + side) * 3 : 0)
+    const armY = (celebration ? -37 : recovery ? -27 : -17) + (moving && !reducedMotion ? Math.sin(time * 19 + side) * 3 : 0)
     ctx.fillStyle = '#ac7bff'; ctx.beginPath(); ctx.moveTo(side * 15, armY); ctx.lineTo(side * 22, armY - 7); ctx.lineTo(side * 19, armY + 6); ctx.closePath(); ctx.fill()
     ctx.fillStyle = '#6b35be'; ctx.beginPath(); ctx.moveTo(side * 15, armY); ctx.lineTo(side * 19, armY + 6); ctx.lineTo(side * 13, armY + 2); ctx.closePath(); ctx.fill()
   }
@@ -304,9 +308,15 @@ function drawRobot(ctx: CanvasRenderingContext2D, p: PlayerVisual, time: number,
   ctx.save()
   if (flipped) { ctx.translate(0, -62); ctx.scale(1, -1) }
   if (blink) line(ctx, [-8, -30, 9, -30], '#ece9ff', 2)
-  else text(ctx, 'aO', -12 + p.facing * 0.6, -25, '#faf5ff', 20)
+  else {
+    const lx = p.lookX ?? p.facing, ly = p.lookY ?? 0
+    // Keep the a0 wordmark: the two letter counters become tracking pupils.
+    text(ctx, 'a0', -12, -25, '#faf5ff', 20)
+    for (const eyeX of [-6, 6]) box(ctx, eyeX + lx - 1, -33 + ly, 2.4, celebration ? 1.5 : 3, 1, p.danger ? '#ffc88c' : '#b98aff')
+    if (p.danger) line(ctx, [-10, -39, -3, -37, 3, -37, 10, -39], '#d9c6ff', 1.2)
+  }
   ctx.strokeStyle = '#bb6aff'; ctx.lineWidth = 2
-  ctx.beginPath(); ctx.moveTo(-5, -21); ctx.quadraticCurveTo(0, -17, 6, -21); ctx.stroke()
+  ctx.beginPath(); ctx.moveTo(-5, -21); ctx.quadraticCurveTo(0, p.danger ? -22 : celebration ? -14 : -17, 6, -21); ctx.stroke()
   ctx.restore()
   ctx.restore()
 }
@@ -622,6 +632,7 @@ function drawBossAnnounce(ctx: CanvasRenderingContext2D, state: VisualState, t: 
 }
 
 export function renderLocalhost(ctx: CanvasRenderingContext2D, state: VisualState) {
+  const EXIT_X = levelExit(state.level), HOTFIX = levelHotfix(state.level)
   const checkpointX = state.level === 2 ? 2500 : CHECKPOINT_X
   const gateOpen = state.hotfix && (state.level !== 2 || state.boss.health === 0)
   const t = state.reducedMotion ? 0 : state.time
@@ -643,7 +654,7 @@ export function renderLocalhost(ctx: CanvasRenderingContext2D, state: VisualStat
   drawTerminal(ctx, 48, 305, c.signFriday, c.signFridayQuote, '#c4a1ff')
   drawTerminal(ctx, 550, 235, c.signBug, c.signBugHint)
   drawTerminal(ctx, checkpointX - 55, 272, c.signCommit, state.checkpoint ? c.signCommitSaved : c.signCommitHint)
-  drawTerminal(ctx, 2710, 230, c.signPush, c.signPushHint, '#e8cc85')
+  drawTerminal(ctx, EXIT_X - 390, 230, c.signPush, c.signPushHint, '#e8cc85')
   text(ctx, c.signSurprise, 1615, 266, '#b9a0db', 11)
   text(ctx, c.signSecret, 1824, 178, '#eccc80', 12)
 
@@ -711,6 +722,16 @@ export function renderLocalhost(ctx: CanvasRenderingContext2D, state: VisualStat
   drawSudoAura(ctx, state.player, state.time, state.powers.sudo)
   drawCable(ctx, state, t)
   drawRobot(ctx, state.player, t, state.reducedMotion, state.gravity < 0)
+  if ((state.player.speechTime ?? 0) > 0 && state.player.speech) {
+    const p = state.player
+    ctx.font = '600 11px monospace'
+    const width = ctx.measureText(p.speech!).width + 24
+    const x = Math.max(state.camera + 12, Math.min(state.camera + 948 - width, p.x + p.w / 2 - width / 2))
+    const y = Math.max(125, p.y - 86)
+    box(ctx, x, y, width, 28, 8, '#17172ef2')
+    line(ctx, [p.x + 12, y + 28, p.x + 17, y + 34, p.x + 22, y + 28], '#bc95f0', 1.5)
+    text(ctx, p.speech!, x + 12, y + 18, '#f0e5ff', 11)
+  }
   drawShots(ctx, state.shots, state.time)
   drawPurge(ctx, state, t)
   drawGcWave(ctx, state.powers.gc)

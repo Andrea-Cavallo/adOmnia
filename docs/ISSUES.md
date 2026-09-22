@@ -23,7 +23,8 @@ the current codebase on 2026-06-13 and found already resolved (see below)._
 - [x] Concept, reference di a0, specifica e piano di ripresa documentati in [BUG-HUNT.md](BUG-HUNT.md).
 - [x] Localhost completo e verificato nel runtime desktop (manca la prova umana "a sensazione" dei controlli).
 - [x] Tre livelli collegati, attivazione segreta, API Gateway e boss Production implementati (2026-09-17).
-- [ ] Partita completa desktop, bilanciamento e rifinitura finale; stato verifiche in BUG-HUNT.md.
+- [x] 2026-09-22: personalità di a0, Localhost esteso con 15 nemici e tre vite totali; 58 test gioco e verifica visiva browser.
+- [ ] Partita completa desktop della nuova campagna a tre vite (`wails3` assente in questo ambiente), bilanciamento e rifinitura finale; stato verifiche in BUG-HUNT.md.
 
 Per riprendere dopo un'interruzione o l'esaurimento dei crediti, partire dalla sezione **Stato attuale** e dalla checklist in [BUG-HUNT.md](BUG-HUNT.md); aggiornare le spunte dopo ogni sessione.
 

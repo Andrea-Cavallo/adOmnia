@@ -74,7 +74,7 @@ export function intersects(a: Rect, b: Rect): boolean {
 export const TURRET_CYCLE = 1.85
 export type Firewall = Rect & { phase: number }
 export type Level = {
-  name: string; platforms: Platform[]; spikes: Rect[]; bits: Bit[]; bugs: Bug[]; firewalls: Firewall[]; springs: Rect[]; powers: PowerPickup[]
+  name: string; width?: number; exitX?: number; hotfix?: Rect; platforms: Platform[]; spikes: Rect[]; bits: Bit[]; bugs: Bug[]; firewalls: Firewall[]; springs: Rect[]; powers: PowerPickup[]
   anchors: Anchor[]; purge?: Purge
 }
 // Anchors sit above every main-route gap: the grapple is always an option,
@@ -189,3 +189,37 @@ for (const [level, hunters] of HUNTERS.entries()) {
       alive: true, phase: index * 0.9, kind, hp, alert: 0, fuse: 0 })
   }
 }
+
+// Localhost's second half: an aerial shortcut above three readable encounters.
+// Own arrays keep the shared Gateway/Production geometry unchanged.
+const localhost = LEVELS[0]
+localhost.width = 4820
+localhost.exitX = 4700
+localhost.hotfix = { ...HOTFIX, x: 4590 }
+localhost.platforms = [...localhost.platforms,
+  { x: 3315, y: 460, w: 465, h: 100 },
+  { x: 3880, y: 460, w: 390, h: 100 },
+  { x: 4370, y: 460, w: 450, h: 100 },
+  { x: 3155, y: 375, w: 155, h: 22, floating: true },
+  { x: 3430, y: 365, w: 145, h: 22, floating: true },
+  { x: 3635, y: 280, w: 155, h: 22, floating: true },
+  { x: 3770, y: 370, w: 125, h: 22, floating: true },
+  { x: 4050, y: 355, w: 145, h: 22, floating: true },
+  { x: 4240, y: 375, w: 145, h: 22, floating: true },
+]
+localhost.anchors = [...localhost.anchors, { x: 3265, y: 235 }, { x: 3610, y: 190 }, { x: 3830, y: 235 }, { x: 4320, y: 235 }]
+localhost.powers = [...localhost.powers, { kind: 'revert', x: 3070, y: 420 }, { kind: 'breakpoint', x: 3675, y: 245 }]
+for (const [index, [x, y, kind]] of ([
+  [3020, 426, 'patrol'], [3460, 426, 'chaser'], [3650, 246, 'patrol'],
+  [3970, 426, 'patrol'], [4120, 426, 'turret'], [4280, 320, 'patrol'], [4420, 426, 'chaser'],
+] as const).entries()) {
+  localhost.bugs.push({ x, y, w: 38, h: 34, left: x - (y < 400 ? 0 : 55), right: x + (y < 400 ? 0 : 65),
+    direction: -1, alive: true, phase: index, kind, hp: 1, hover: y < 400, homeY: y })
+}
+for (const [row, [x, y]] of [[3190, 335], [3460, 325], [3660, 238], [3910, 410], [4080, 315], [4280, 335], [4470, 375]].entries()) {
+  for (let i = 0; i < 3; i++) localhost.bits.push({ id: 2000 + row * 3 + i, x: x + i * 30, y, secret: row === 2 })
+}
+
+export function levelWidth(level: number) { return LEVELS[level].width ?? WORLD_WIDTH }
+export function levelExit(level: number) { return LEVELS[level].exitX ?? EXIT_X }
+export function levelHotfix(level: number) { return LEVELS[level].hotfix ?? HOTFIX }

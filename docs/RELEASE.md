@@ -2,6 +2,14 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+## v0.9.18 release notes: a0 has a personality, a bigger Localhost, and three lives
+
+See [the full v0.9.18 notes](releases/v0.9.18.md): reactive expressions, landing
+and ledge poses, checkpoint celebrations and contextual quips; Localhost grown by
+roughly 50% with seven extra enemies; and three hearts that now cover the entire
+campaign, with Game Over at zero. Previous records stay in their original storage
+keys, while audio and accessibility settings migrate to the new campaign profile.
+
 ## v0.9.17 release notes: a beatable final boss, built platforms, and a dependency sweep
 
 See [the full v0.9.17 notes](releases/v0.9.17.md): the arena slab that made

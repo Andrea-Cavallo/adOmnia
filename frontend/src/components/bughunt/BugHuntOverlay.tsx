@@ -50,14 +50,14 @@ export function BugHuntOverlay({ onClose }: { onClose: () => void }) {
       if (event.code === 'Escape') {
         event.stopImmediatePropagation(); event.preventDefault()
         if (event.repeat) return
-        if (readyRef.current || snapshotRef.current.finished) closeRef.current()
+        if (readyRef.current || (snapshotRef.current.finished || snapshotRef.current.gameOver)) closeRef.current()
         else if (!snapshotRef.current.levelComplete) game.setPaused(!snapshotRef.current.paused)
         return
       }
       if (event.ctrlKey || event.metaKey || event.altKey) {
         event.stopImmediatePropagation(); event.preventDefault(); return
       }
-      const playing = !readyRef.current && !snapshotRef.current.paused && !snapshotRef.current.finished && !snapshotRef.current.levelComplete
+      const playing = !readyRef.current && !snapshotRef.current.paused && !(snapshotRef.current.finished || snapshotRef.current.gameOver) && !snapshotRef.current.levelComplete
       if (playing && CONTROL_KEYS.has(event.code)) {
         event.stopImmediatePropagation(); event.preventDefault()
         if (!event.repeat) game.keyDown(event.code)
@@ -68,7 +68,7 @@ export function BugHuntOverlay({ onClose }: { onClose: () => void }) {
     }
     const onKeyUp = (event: KeyboardEvent) => {
       game.keyUp(event.code)
-      if (!readyRef.current && !snapshotRef.current.paused && !snapshotRef.current.finished && !snapshotRef.current.levelComplete && CONTROL_KEYS.has(event.code)) {
+      if (!readyRef.current && !snapshotRef.current.paused && !(snapshotRef.current.finished || snapshotRef.current.gameOver) && !snapshotRef.current.levelComplete && CONTROL_KEYS.has(event.code)) {
         event.stopImmediatePropagation(); event.preventDefault()
       }
     }
@@ -91,18 +91,18 @@ export function BugHuntOverlay({ onClose }: { onClose: () => void }) {
   useEffect(() => { gameRef.current?.setCopy(copy) }, [copy])
 
   useEffect(() => {
-    if (ready || snapshot.paused || snapshot.finished || snapshot.levelComplete) primaryRef.current?.focus()
+    if (ready || snapshot.paused || snapshot.gameOver || snapshot.finished || snapshot.levelComplete) primaryRef.current?.focus()
     else overlayRef.current?.focus()
-  }, [ready, snapshot.paused, snapshot.finished, snapshot.levelComplete])
+  }, [ready, snapshot.paused, snapshot.gameOver, snapshot.finished, snapshot.levelComplete])
 
   useEffect(() => {
-    if (!snapshot.finished || resultSaved.current) return
+    if (!snapshot.finished || snapshot.gameOver || resultSaved.current) return
     resultSaved.current = true
     const current = preferencesRef.current
     const improved = current.bestSeconds === null || snapshot.seconds < current.bestSeconds
     const next = { ...current, bestSeconds: improved ? snapshot.seconds : current.bestSeconds, bestBits: Math.max(current.bestBits, snapshot.bits), bestScore: Math.max(current.bestScore, snapshot.score) }
     preferencesRef.current = next; setPreferences(next); savePreferences(next); setNewRecord(improved || snapshot.score > current.bestScore)
-  }, [snapshot.finished, snapshot.seconds, snapshot.bits, snapshot.score])
+  }, [snapshot.finished, snapshot.gameOver, snapshot.seconds, snapshot.bits, snapshot.score])
 
   const updatePreferences = (update: Partial<BugHuntPreferences>) => {
     const next = { ...preferencesRef.current, ...update }
@@ -128,22 +128,22 @@ export function BugHuntOverlay({ onClose }: { onClose: () => void }) {
         <div className="bh-header-actions">
           <button className="bh-icon-button" aria-label={preferences.audio ? copy.audioOn : copy.audioOff} title={preferences.audio ? copy.audioOn : copy.audioOff} aria-pressed={preferences.audio} onClick={() => updatePreferences({ audio: !preferences.audio })}>{preferences.audio ? <Volume2 size={16} /> : <VolumeX size={16} />}</button>
           <button className="bh-icon-button" aria-label={copy.gentle} title={copy.gentleTitle} aria-pressed={preferences.reducedMotion} onClick={() => updatePreferences({ reducedMotion: !preferences.reducedMotion })}><Sparkles size={16} /></button>
-          {!ready && !snapshot.finished && !snapshot.levelComplete && <button className="bh-icon-button" aria-label={snapshot.paused ? copy.resume : copy.pause} title={copy.pauseTitle} onClick={() => snapshot.paused ? resume() : gameRef.current?.setPaused(true)}>{snapshot.paused ? <Play size={15} /> : <Pause size={15} />}</button>}
+          {!ready && !snapshot.finished && !snapshot.gameOver && !snapshot.levelComplete && <button className="bh-icon-button" aria-label={snapshot.paused ? copy.resume : copy.pause} title={copy.pauseTitle} onClick={() => snapshot.paused ? resume() : gameRef.current?.setPaused(true)}>{snapshot.paused ? <Play size={15} /> : <Pause size={15} />}</button>}
           <button className="bh-icon-button" aria-label={copy.backToApp} title={copy.backToApp} onClick={() => closeRef.current()}><X size={17} /></button>
         </div>
       </header>
       <div className="bh-stage">
-        {!ready && !snapshot.finished && !snapshot.levelComplete && <div className={`bh-level-hint ${snapshot.rush.state === 'active' ? 'bh-rush' : ''}`}>
+        {!ready && !snapshot.finished && !snapshot.gameOver && !snapshot.levelComplete && <div className={`bh-level-hint ${snapshot.rush.state === 'active' ? 'bh-rush' : ''}`}>
           {snapshot.rush.state === 'active' ? <><strong>{copy.rushLabel}</strong> {snapshot.rush.collected}/{RUSH_TARGET} · {Math.ceil(snapshot.rush.remaining)}s · +500 <progress max={8} value={snapshot.rush.remaining} /></> : snapshot.rush.state === 'won' ? copy.rushWon : copy.stageHints[snapshot.level]}
         </div>}
         <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} aria-label={copy.canvasLabel} />
         {!ready && <div className="bh-hud" aria-label={copy.hudLabel}>
-          <div className="bh-hud-group"><span className={`bh-pill bh-lives ${snapshot.health === 1 ? 'rose' : ''}`} aria-label={copy.healthLabel(snapshot.health)}><span className="bh-lives-label">{copy.livesLabel}</span><span className="bh-heart">{'♥'.repeat(snapshot.health)}<span className="bh-heart-empty">{'♥'.repeat(3 - snapshot.health)}</span></span><strong>{snapshot.health}</strong></span><span className="bh-pill gold"><Diamond size={13} /><strong>{snapshot.bits}</strong><span>/ {snapshot.totalBits}</span></span><span className="bh-pill">{copy.statScore} <strong>{snapshot.score}</strong>{snapshot.combo >= 4 && <b className="bh-combo">x{Math.min(5, 1 + Math.floor(snapshot.combo / 4))}</b>}</span></div>
+          <div className="bh-hud-group"><span className={`bh-pill bh-lives ${snapshot.health === 1 ? 'rose' : ''}`} aria-label={copy.healthLabel(snapshot.health)}><span className="bh-lives-label">{copy.livesLabel}</span><span className="bh-heart">{'♥'.repeat(snapshot.health)}<span className="bh-heart-empty">{'♥'.repeat(3 - snapshot.health)}</span></span></span><span className="bh-pill gold"><Diamond size={13} /><strong>{snapshot.bits}</strong><span>/ {snapshot.totalBits}</span></span><span className="bh-pill">{copy.statScore} <strong>{snapshot.score}</strong>{snapshot.combo >= 4 && <b className="bh-combo">x{Math.min(5, 1 + Math.floor(snapshot.combo / 4))}</b>}</span></div>
           <div className="bh-hud-group"><span className={`bh-pill ${snapshot.revertCharges ? 'sky' : 'dim'}`} title={copy.keysRevert}><kbd>R</kbd>↺ ×{snapshot.revertCharges}</span>{snapshot.breakpoint > 0 && <span className="bh-pill rose">⏸ BREAKPOINT {snapshot.breakpoint}s</span>}{snapshot.sudo > 0 && <span className="bh-pill sun"># SUDO {snapshot.sudo}s</span>}<span className={`bh-pill ${snapshot.dashReady ? 'mint' : ''}`}><kbd>X</kbd>{snapshot.dashReady ? copy.dashReady : copy.dashCharging}</span><span className={`bh-pill ${snapshot.shotReady ? 'mint' : 'dim'}`} title={copy.fireHint}><kbd>F</kbd>{copy.shotReady}</span><span className={`bh-pill ${snapshot.grappled ? 'sky' : 'dim'}`} title={copy.grappleHint}><kbd>E</kbd>{copy.keysGrapple}</span>{snapshot.purge === 'active' && <span className="bh-pill rose">{copy.purgeLabel}</span>}{snapshot.bossCommand && <span className={`bh-pill ${snapshot.bossAnnounce ? 'rose' : 'sun'}`} title={copy.bossCmdHint[snapshot.bossCommand]}>{copy.bossCmd[snapshot.bossCommand]}</span>}<span className={`bh-pill ${snapshot.hotfix ? 'mint' : ''}`}><Cpu size={14} />{snapshot.hotfix ? copy.hotfixFound : copy.findHotfix}</span><span className="bh-pill">{formatTime(snapshot.seconds)}</span></div>
         </div>}
-        {(ready || snapshot.paused || snapshot.finished || snapshot.levelComplete) && <div className="bh-modal">
+        {(ready || snapshot.paused || snapshot.gameOver || snapshot.finished || snapshot.levelComplete) && <div className="bh-modal">
           <div className="bh-card">
-            <div className="bh-eyebrow"><span className="bh-dot" />{ready ? copy.introEyebrow : snapshot.finished ? copy.winEyebrow : snapshot.levelComplete ? copy.stageClear : copy.pauseEyebrow}</div>
+            <div className="bh-eyebrow"><span className="bh-dot" />{ready ? copy.introEyebrow : snapshot.gameOver ? 'GAME OVER' : snapshot.finished ? copy.winEyebrow : snapshot.levelComplete ? copy.stageClear : copy.pauseEyebrow}</div>
             {ready ? <>
               <h1>{copy.introTitle}<em>{copy.introTitleAccent}</em></h1>
               <p className="bh-quote">{copy.introQuote}</p>
@@ -169,6 +169,10 @@ export function BugHuntOverlay({ onClose }: { onClose: () => void }) {
               </div>
               <div className="bh-card-actions"><button ref={primaryRef} className="bh-primary" onClick={begin}>{copy.start} <ArrowRight size={15} /></button></div>
               <p className="bh-tip">{copy.powersIntro}{preferences.bestScore > 0 && ` ${copy.statScore}: ${preferences.bestScore}.`}{preferences.bestSeconds !== null && copy.record(formatTime(preferences.bestSeconds))}</p>
+            </> : snapshot.gameOver ? <>
+              <h1>{copy.gameOverTitle}</h1>
+              <p>{copy.gameOverBody}</p>
+              <div className="bh-card-actions"><button ref={primaryRef} className="bh-primary" onClick={restart}><RotateCcw size={14} />{copy.restart}</button><button className="bh-secondary" onClick={() => closeRef.current()}>{copy.backToWork}</button></div>
             </> : snapshot.levelComplete ? <>
               <h1>{copy.stageClear}<em>{LEVELS[snapshot.level].name}</em></h1>
               <p>{copy.stageHints[snapshot.level + 1]}</p>

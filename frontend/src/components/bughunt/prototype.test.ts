@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BugHuntPrototype, type GameSnapshot } from './prototype'
-import { ARENA_X, BOSS_ANNOUNCE, BOSS_BODY, LEVELS, firewallPhase, type Boss, type Platform, BITS, EXIT_X, HOTFIX, PLATFORMS, SPIKES } from './level'
+import { ARENA_X, BOSS_ANNOUNCE, BOSS_BODY, LEVELS, firewallPhase, type Boss, type Platform, BITS, levelExit, levelHotfix, levelWidth, SPIKES } from './level'
 
 type Inspectable = {
   keyDown: (code: string) => void
@@ -15,6 +15,7 @@ type Inspectable = {
   draw: () => void
   update: (dt: number) => void
   player: { x: number; y: number; w: number; h: number; vx: number; vy: number; grounded: boolean; coyote: number; buffer: number; invulnerable: number; airJump: boolean; dash: number; dashCooldown: number
+    celebrate: number; recover: number; lookX: number; danger: boolean; speech: string; squash: number;
     grapple: { x: number; y: number; length: number } | null; facing: number }
   purgeX: number
   gravitySign: number
@@ -37,6 +38,65 @@ describe('Bug Hunt prototype rules', () => {
     vi.stubGlobal('cancelAnimationFrame', vi.fn())
   })
   afterEach(() => vi.unstubAllGlobals())
+
+  it('ends after exactly three losses and only a new campaign restores lives', () => {
+    const { game, tick } = createGame()
+    for (let remaining = 2; remaining >= 0; remaining--) {
+      game.player.y = 650; tick(1)
+      expect(game.getSnapshot().health).toBe(remaining)
+    }
+    const ended = game.getSnapshot()
+    game.keyDown('KeyD'); game.keyDown('KeyF'); tick(120)
+    expect(game.getSnapshot()).toEqual(ended)
+    expect(ended).toMatchObject({ gameOver: true, finished: false, levelComplete: false })
+    game.restart()
+    expect(game.getSnapshot()).toMatchObject({ health: 3, gameOver: false, level: 0, bits: 0 })
+    game.destroy()
+  })
+
+  it('carries remaining lives to the next environment', () => {
+    const { game, tick } = createGame()
+    game.player.y = 650; tick(1)
+    game.player.x = levelHotfix(0).x; tick(1)
+    game.player.x = levelExit(0); tick(1); game.advance()
+    expect(game.getSnapshot()).toMatchObject({ level: 1, health: 2, gameOver: false })
+    game.destroy()
+  })
+
+  it('extends only Localhost with encounters and a reachable final exit', () => {
+    expect(levelWidth(0)).toBe(4820)
+    expect(LEVELS[0].bugs).toHaveLength(15)
+    expect(levelExit(0)).toBe(4700)
+    expect(levelHotfix(0).x).toBe(4590)
+    expect(levelWidth(1)).toBe(3220)
+    expect(levelExit(2)).toBe(3100)
+  })
+
+  it('tracks nearby threats and celebrates a checkpoint without restoring a life', () => {
+    const { game, tick } = createGame()
+    game.player.x = 520; tick(1)
+    expect(game.player.danger).toBe(true)
+    expect(game.player.lookX).toBeGreaterThan(0)
+    game.player.y = 650; tick(1)
+    game.player.x = 1095; tick(1)
+    expect(game.player.celebrate).toBeGreaterThan(0)
+    expect(game.player.speech).toBe('Committed. Breathe.')
+    expect(game.getSnapshot().health).toBe(2)
+    game.destroy()
+  })
+
+  it('squashes on landing and regains balance at the edge without moving the hitbox', () => {
+    const { game, tick } = createGame()
+    game.player.x = 399; game.player.y = 400; game.player.vy = 400; game.player.grounded = false
+    tick(2)
+    expect(game.player.grounded).toBe(true)
+    expect(game.player.squash).toBeGreaterThan(0)
+    expect(game.player.recover).toBeGreaterThan(0)
+    expect(game.player.speech).toBe('Totally intentional.')
+    expect(game.player.w).toBe(34)
+    expect(game.player.h).toBe(48)
+    game.destroy()
+  })
 
   it('moves and jumps with a shorter release jump', () => {
     const { game, tick } = createGame()
@@ -103,7 +163,7 @@ describe('Bug Hunt prototype rules', () => {
     const collected = game.getSnapshot().bits
     expect(collected).toBeGreaterThan(0)
     for (let i = 0; i < 3; i++) { game.player.y = 650; tick(1) }
-    expect(game.getSnapshot()).toMatchObject({ health: 3, deaths: 1, bits: collected })
+    expect(game.getSnapshot()).toMatchObject({ health: 0, gameOver: true, deaths: 1, bits: collected })
     game.player.x = BITS[0].x - 15
     tick(1)
     expect(game.getSnapshot().bits).toBe(collected)
@@ -114,13 +174,13 @@ describe('Bug Hunt prototype rules', () => {
 
   it('requires the Hotfix at the exit and finishes with it', () => {
     const { game, tick } = createGame()
-    game.player.x = EXIT_X
+    game.player.x = levelExit(game.getSnapshot().level)
     tick(1)
     expect(game.getSnapshot().finished).toBe(false)
-    game.player.x = HOTFIX.x
+    game.player.x = levelHotfix(game.getSnapshot().level).x
     tick(1)
     expect(game.getSnapshot().hotfix).toBe(true)
-    game.player.x = EXIT_X
+    game.player.x = levelExit(game.getSnapshot().level)
     tick(1)
     expect(game.getSnapshot()).toMatchObject({ levelComplete: true, finished: false })
     const elapsed = game.getSnapshot().seconds
@@ -156,8 +216,8 @@ describe('Bug Hunt prototype rules', () => {
       if (p.grounded) {
         game.keyUp('Space')
         const look = p.x + p.w + 65
-        const floorAhead = PLATFORMS.some((platform) => look >= platform.x && look <= platform.x + platform.w && Math.abs(platform.y - (p.y + p.h)) < 12)
-        const stepAhead = PLATFORMS.some((platform) => platform.x > p.x + p.w && platform.x < look + 15 && platform.y < p.y + p.h && platform.y >= p.y + p.h - 105)
+        const floorAhead = game.platforms.some((platform) => look >= platform.x && look <= platform.x + platform.w && Math.abs(platform.y - (p.y + p.h)) < 12)
+        const stepAhead = game.platforms.some((platform) => platform.x > p.x + p.w && platform.x < look + 15 && platform.y < p.y + p.h && platform.y >= p.y + p.h - 105)
         const hazard = SPIKES.some((spike) => spike.x > p.x && spike.x < look + 20) || game.enemies.some((bug) => bug.alive && bug.x > p.x && bug.x < look + 35)
         if (!floorAhead || stepAhead || hazard) { game.keyDown('Space'); if (trace.length < 25) trace.push(`jump ${Math.round(p.x)},${Math.round(p.y)}`) }
       }
@@ -168,7 +228,7 @@ describe('Bug Hunt prototype rules', () => {
   })
   it('carries the player with moving platforms and keeps hazard warnings deterministic', () => {
     const { game, tick } = createGame()
-    game.player.x = HOTFIX.x; tick(1); game.player.x = EXIT_X; tick(1); game.advance()
+    game.player.x = levelHotfix(game.getSnapshot().level).x; tick(1); game.player.x = levelExit(game.getSnapshot().level); tick(1); game.advance()
     expect(game.getSnapshot()).toMatchObject({ level: 1, hotfix: false, health: 3, levelComplete: false })
     const platform = game.platforms.find(p => p.travel)!
     game.player.x = platform.x + 35; game.player.y = platform.y - game.player.h
@@ -190,14 +250,14 @@ describe('Bug Hunt prototype rules', () => {
   it('requires three boss hits to exit Production and resets each attempt', () => {
     const { game, tick } = createGame()
     for (let i = 0; i < 2; i++) {
-      game.player.x = HOTFIX.x; game.player.y = 412; tick(1)
-      game.player.x = EXIT_X; tick(1); game.advance()
+      game.player.x = levelHotfix(game.getSnapshot().level).x; game.player.y = 412; tick(1)
+      game.player.x = levelExit(game.getSnapshot().level); tick(1); game.advance()
     }
     expect(game.getSnapshot().level).toBe(2)
     game.player.x = 2505; tick(1)
-    game.player.x = HOTFIX.x; tick(1)
+    game.player.x = levelHotfix(game.getSnapshot().level).x; tick(1)
     expect(game.getSnapshot().hotfix).toBe(true)
-    game.player.x = EXIT_X; tick(1)
+    game.player.x = levelExit(game.getSnapshot().level); tick(1)
     expect(game.getSnapshot().finished).toBe(false)
     const hit = () => {
       game.boss.clock = 2.2; game.boss.hit = false
@@ -212,10 +272,10 @@ describe('Bug Hunt prototype rules', () => {
     expect(game.boss.envelopes).toHaveLength(0)
     for (let i = 0; i < 3; i++) hit()
     expect(game.boss.health).toBe(0)
-    game.player.x = HOTFIX.x; game.player.y = 412; game.player.vy = 0; tick(1)
+    game.player.x = levelHotfix(game.getSnapshot().level).x; game.player.y = 412; game.player.vy = 0; tick(1)
     expect(game.getSnapshot().hotfix).toBe(true)
-    game.player.x = EXIT_X; tick(1)
-    expect(game.getSnapshot()).toMatchObject({ finished: true, levelComplete: false, totalBits: 135 })
+    game.player.x = levelExit(game.getSnapshot().level); tick(1)
+    expect(game.getSnapshot()).toMatchObject({ finished: true, levelComplete: false, totalBits: LEVELS.reduce((sum, level) => sum + level.bits.length, 0) })
     game.restart()
     expect(game.getSnapshot()).toMatchObject({ level: 0, finished: false, bits: 0 })
     game.destroy()
@@ -224,7 +284,7 @@ describe('Bug Hunt prototype rules', () => {
   it('restores crumbling platforms after their cooldown', () => {
     const { game, tick } = createGame()
     for (let i = 0; i < 2; i++) {
-      game.player.x = HOTFIX.x; tick(1); game.player.x = EXIT_X; tick(1); game.advance()
+      game.player.x = levelHotfix(game.getSnapshot().level).x; tick(1); game.player.x = levelExit(game.getSnapshot().level); tick(1); game.advance()
     }
     const platform = game.platforms.find(p => p.unstable)!
     game.player.x = platform.x + 20; game.player.y = platform.y - game.player.h
@@ -239,7 +299,7 @@ describe('Bug Hunt prototype rules', () => {
   it('lets a real running jump reach the vulnerable boss core', () => {
     const { game, tick } = createGame()
     for (let i = 0; i < 2; i++) {
-      game.player.x = HOTFIX.x; tick(1); game.player.x = EXIT_X; tick(1); game.advance()
+      game.player.x = levelHotfix(game.getSnapshot().level).x; tick(1); game.player.x = levelExit(game.getSnapshot().level); tick(1); game.advance()
     }
     game.boss.clock = 2.1
     game.player.x = 2705; game.player.y = 412
@@ -252,7 +312,8 @@ describe('Bug Hunt prototype rules', () => {
 
   it.each([1, 2])('traverses environment %i with timed firewall crossings', (level) => {
     const { game, tick } = createGame()
-    for (let stage = 0; stage < level; stage++) { game.player.x = HOTFIX.x; tick(1); game.player.x = EXIT_X; tick(1); game.advance() }
+    for (let stage = 0; stage < level; stage++) { game.player.x = levelHotfix(game.getSnapshot().level).x; tick(1); game.player.x = levelExit(game.getSnapshot().level); tick(1); game.advance() }
+    game.keyDown('KeyF')
     for (let frame = 0; frame < 7200 && !game.getSnapshot().levelComplete && (level !== 2 || game.player.x < 2700); frame++) {
       const p = game.player
       const wall = LEVELS[level].firewalls.find(w => w.x > p.x + p.w && w.x - p.x - p.w < 80)
@@ -271,7 +332,8 @@ describe('Bug Hunt prototype rules', () => {
       }
       tick(1)
     }
-    expect(game.getSnapshot(), `final ${game.player.x},${game.player.y}`).toMatchObject({ levelComplete: level === 1, hotfix: true, checkpoint: true })
+    expect(game.getSnapshot(), `final ${game.player.x},${game.player.y}`).toMatchObject({ levelComplete: level === 1, checkpoint: true, gameOver: false })
+    if (level === 1) expect(game.getSnapshot().hotfix).toBe(true)
     game.destroy()
   })
 
@@ -318,7 +380,7 @@ describe('Bug Hunt prototype rules', () => {
     expect(game.player.vy).toBe(-850)
     expect(game.player.airJump).toBe(true)
     game.restart()
-    game.player.x = HOTFIX.x; tick(1); game.player.x = EXIT_X; tick(1); game.advance()
+    game.player.x = levelHotfix(game.getSnapshot().level).x; tick(1); game.player.x = levelExit(game.getSnapshot().level); tick(1); game.advance()
     tick(205)
     game.player.x = 1165; game.player.y = 412
     game.keyDown('KeyX'); tick(8)
@@ -370,8 +432,8 @@ describe('Bug Hunt prototype rules', () => {
     game.setPaused(false); tick(480)
     expect(game.getSnapshot().rush.state).toBe('missed')
     expect(game.getSnapshot().health).toBe(3)
-    game.player.x = HOTFIX.x; game.player.y = 412; tick(1)
-    game.player.x = EXIT_X; tick(1)
+    game.player.x = levelHotfix(game.getSnapshot().level).x; game.player.y = 412; tick(1)
+    game.player.x = levelExit(game.getSnapshot().level); tick(1)
     expect(game.getSnapshot().levelComplete).toBe(true)
     game.destroy()
   })
@@ -379,7 +441,7 @@ describe('Bug Hunt prototype rules', () => {
   it('throws a double SOAP in the final boss phase and never farms boss hit rewards', () => {
     const { game, tick } = createGame()
     for (let i = 0; i < 2; i++) {
-      game.player.x = HOTFIX.x; tick(1); game.player.x = EXIT_X; tick(1); game.advance()
+      game.player.x = levelHotfix(game.getSnapshot().level).x; tick(1); game.player.x = levelExit(game.getSnapshot().level); tick(1); game.advance()
     }
     const hit = () => {
       game.boss.clock = 2.2; game.boss.hit = false
@@ -490,7 +552,7 @@ describe('magnetic grapple', () => {
 describe('the floor is being deleted', () => {
   const reachProduction = () => {
     const { game, tick } = createGame()
-    for (let stage = 0; stage < 2; stage++) { game.player.x = HOTFIX.x; tick(1); game.player.x = EXIT_X; tick(1); game.advance() }
+    for (let stage = 0; stage < 2; stage++) { game.player.x = levelHotfix(game.getSnapshot().level).x; tick(1); game.player.x = levelExit(game.getSnapshot().level); tick(1); game.advance() }
     return { game, tick }
   }
   beforeEach(() => {
@@ -643,7 +705,7 @@ describe('the Monolith rewrites the rules', () => {
   /** Drops a0 into the arena with the campaign already at Production. */
   const arena = (x = 2600) => {
     const { game, tick } = createGame()
-    for (let stage = 0; stage < 2; stage++) { game.player.x = HOTFIX.x; tick(1); game.player.x = EXIT_X; tick(1); game.advance() }
+    for (let stage = 0; stage < 2; stage++) { game.player.x = levelHotfix(game.getSnapshot().level).x; tick(1); game.player.x = levelExit(game.getSnapshot().level); tick(1); game.advance() }
     game.player.x = x
     game.player.y = 412
     // The rule under test is the subject; the ground wave is not.

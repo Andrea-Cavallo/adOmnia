@@ -1,6 +1,21 @@
 # a0: Bug Hunt — Deploy del venerdì
 
-**Stato:** v0.9.17 inviata su master e tag: boss di nuovo battibile, piattaforme costruite e menu iniziale chiaro.
+**Stato:** v0.9.18 inviata su master e tag: personalità di a0, Localhost esteso e tre vite totali per l'intera campagna.
+
+## Stato attuale — 2026-09-22: personalità, Localhost esteso e tre vite
+
+**Prossimo passo:** partita completa umana nel desktop per tarare la campagna con tre vite totali. Le regole qui sotto sostituiscono salute e tentativi illimitati dello storico.
+
+- [x] a0 segue con lo sguardo nemici/proiettili vicini; sorriso e sopracciglia reagiscono al pericolo senza cambiare la hitbox.
+- [x] Atterraggio elastico proporzionale all'impatto, recupero dell'equilibrio sul bordo, braccia alzate al checkpoint. Effetti delicati mantengono le pose ma eliminano oscillazioni e deformazioni.
+- [x] Fumetti IT/EN: «Sul mio PC funzionava», «Salvato. Respiriamo», «Era tutto calcolato». Posizionati sopra i popup per evitare sovrapposizioni.
+- [x] Localhost da 3220 a 4820 px, da 8 a 15 nemici, 21 bit aggiuntivi (156 nella campagna), piattaforme e ancore aggiuntive; Hotfix a x=4590 e uscita a x=4700. Gateway/Production conservano geometria e uscita originali.
+- [x] Tre cuori in alto, tre vite per tutta la campagna. Colpo/caduta consuma un cuore; checkpoint e cambio ambiente non ricaricano. A zero la simulazione si ferma e si può ricominciare la campagna o uscire. Una sconfitta non salva record di vittoria.
+- [x] Record separati in `adomnia.bughunt.preferences.three-lives.v4`: migra soltanto audio/effetti dalla prima chiave presente tra arcade.v3, campaign.v2 e v1. Vecchie chiavi conservate; nessuna modifica al workspace `.adomnia`.
+- [x] 560 test frontend verdi (58 Bug Hunt); controlli su tre perdite, restart, vite tra ambienti, percorso Localhost completo, espressioni/pose e migrazione preferenze. TypeScript e build frontend passati; `go build ./...` e `go test ./...` passati.
+- [x] Anteprima browser reale: menu e cuori; scena temporanea per pose, rewind, tratto esteso e game over. Scena rimossa dopo la verifica. Questi controlli non sostituiscono una partita umana completa.
+- [ ] Prova desktop: `wails3 task dev` non avviabile in questo ambiente perché il comando Wails 3 non è installato (neppure in `~/go/bin`).
+
 
 ## Ripresa attiva — v0.9.17, boss battibile e piattaforme vere
 
