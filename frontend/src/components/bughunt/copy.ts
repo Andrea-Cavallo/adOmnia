@@ -3,6 +3,9 @@ import type { Lang } from '@/lib/i18n'
 // Every in-game string lives here. The English shape is the contract, so a
 // missing Italian line fails type-checking instead of showing up blank.
 const en = {
+  nullLocked: 'Defeat NullPointer first! ←', cpuWarning: 'CPU 97% · scenery slowed / controls online',
+  gravitySafe: 'GRAVITY SAFE ZONE ↓', lessonHint: 'Read the warning. The floor remains a safe way out.',
+  bossPhases: ['SOAP STORM', 'LEGACY OVERRIDE', 'MONOLITH PANIC MODE'],
   gameOverTitle: 'Out of lives.', gameOverBody: 'Three lives, one deploy. Start a new campaign and try again.',
   rewindQuip: 'It worked on my machine.', checkpointQuip: 'Committed. Breathe.', edgeQuip: 'Totally intentional.',
   bossDoubleWave: 'DOUBLE SOAP / DOUBLE JUMP',
@@ -34,8 +37,8 @@ const en = {
   grappleMiss: 'No node in range.',
   grappleLaunch: 'LAUNCH!',
   // DELETE wave chase
-  purgeLabel: 'DELETE WAVE',
-  purgeWarning: 'DELETE FROM floor;  ·  RUN, a0, RUN!',
+  purgeLabel: 'OVERHEAT',
+  purgeWarning: 'SERVER OVERHEAT · RUN, a0, RUN!',
   purgeCleared: 'TRANSACTION ROLLED BACK  +400',
   purgeDeath: 'Deleted. No WHERE clause.',
   statScore: 'Score', statCombo: 'Best chain',
@@ -43,14 +46,14 @@ const en = {
   livesRule: 'Only three lives for the whole campaign. Each hit or fall costs one. At zero: game over. Checkpoints do not refill lives.',
   controlsTitle: 'Controls',
   goalTitle: 'The goal',
-  goalBody: 'Grab the Hotfix, then reach the exit. Three environments: Localhost, API Gateway, Production.',
+  goalBody: 'Grab the Hotfix, then reach the exit. Three environments: Buggy Dev Desk, Production Datacenter, Legacy Dimension.',
   nextLevel: 'Next environment', stageClear: 'Hotfix secured!',
-  stageHints: ['Space twice: double jump. X: dash. F: fire. E: grapple the glowing nodes!', 'Dash through firewalls with X, shoot back with F. Turrets telegraph every shot.', 'THE FLOOR IS BEING DELETED. Run right, grapple with E, shoot with F, never look back. The Monolith then rewrites one rule per phase: read it, then move.'],
+  stageHints: ['Keys collapse! Space: double jump. X: dash. F: fire. Defeat NullPointer before the exit.', 'Fans lift you. Ride the racks, dodge flying bugs. CPU pressure slows scenery, never your controls. Escape the overheating server!', 'Learn GRAVITY / OFFLINE / CLONES. The boss combines them. In Panic Mode, shoot CORE, SESSION and SOAP before the final hit.'],
   // the Monolith rewrites one rule per phase, announced before it bites
-  bossRule: '⚠  MONOLITH EXECUTES',
-  bossCmd: { gravity: 'sudo reverse gravity', clones: 'fork() → 3 clones', offline: 'systemctl stop platforms' },
+  bossRule: '⚠ SYSTEM PATCH IN',
+  bossCmd: { gravity: 'GRAVITY_OVERRIDE', clones: 'fork() → 3 clones', offline: 'systemctl stop platforms' },
   bossCmdHint: {
-    gravity: 'Up is down. Stand on the ceiling, jump DOWN onto the core.',
+    gravity: '5 seconds upside down. Green zone: normal gravity. Shoot the glowing endpoints with F.',
     clones: 'Three clones charge. Shoot them with F or let them run past.',
     offline: 'The arena slabs drop one by one. Do not stand still.',
   },
@@ -144,6 +147,9 @@ const en = {
 export type BugHuntCopy = typeof en
 
 const it: BugHuntCopy = {
+  nullLocked: 'Sconfiggi prima NullPointer! ←', cpuWarning: 'CPU 97% · scenario lento / comandi attivi',
+  gravitySafe: 'GRAVITY SAFE ZONE ↓', lessonHint: 'Leggi l’avviso. Puoi sempre uscire dalla zona.',
+  bossPhases: ['SOAP STORM', 'LEGACY OVERRIDE', 'MONOLITH PANIC MODE'],
   gameOverTitle: 'Vite esaurite.', gameOverBody: 'Tre vite, un deploy. Ricomincia la campagna e riprova.',
   rewindQuip: 'Sul mio PC funzionava.', checkpointQuip: 'Salvato. Respiriamo.', edgeQuip: 'Era tutto calcolato.',
   bossDoubleWave: 'DOPPIO SOAP / DOPPIO SALTO',
@@ -171,8 +177,8 @@ const it: BugHuntCopy = {
   grappleHint: 'Tieni E vicino a un nodo luminoso per agganciarti. W / S regolano il cavo, Spazio ti lancia.',
   grappleMiss: 'Nessun nodo a portata.',
   grappleLaunch: 'LANCIO!',
-  purgeLabel: 'ONDATA DELETE',
-  purgeWarning: 'DELETE FROM pavimento;  ·  CORRI, a0, CORRI!',
+  purgeLabel: 'OVERHEAT',
+  purgeWarning: 'SERVER OVERHEAT · CORRI, a0, CORRI!',
   purgeCleared: 'TRANSAZIONE ANNULLATA  +400',
   purgeDeath: 'Cancellato. Senza WHERE.',
   statScore: 'Punteggio', statCombo: 'Serie migliore',
@@ -180,13 +186,13 @@ const it: BugHuntCopy = {
   livesRule: 'Solo tre vite per tutta la campagna. Ogni colpo o caduta ne consuma una. A zero: game over. I checkpoint non ricaricano le vite.',
   controlsTitle: 'Comandi',
   goalTitle: 'Obiettivo',
-  goalBody: 'Prendi l’Hotfix, poi raggiungi l’uscita. Tre ambienti: Localhost, API Gateway, Production.',
+  goalBody: 'Prendi l’Hotfix, poi raggiungi l’uscita. Tre ambienti: Buggy Dev Desk, Production Datacenter, Legacy Dimension.',
   nextLevel: 'Prossimo ambiente', stageClear: 'Hotfix al sicuro!',
-  stageHints: ['Spazio due volte: doppio salto. X: scatto. F: spara. E: aggancia i nodi luminosi!', 'Attraversa i firewall con X, rispondi al fuoco con F. Le torrette annunciano ogni colpo.', 'IL PAVIMENTO SI STA CANCELLANDO. Corri a destra, aggancia con E, spara con F, non voltarti. Poi il Monolite riscrive una regola per fase: leggila e muoviti.'],
-  bossRule: '⚠  IL MONOLITE ESEGUE',
-  bossCmd: { gravity: 'sudo reverse gravity', clones: 'fork() → 3 cloni', offline: 'systemctl stop piattaforme' },
+  stageHints: ['I tasti cedono! Spazio: doppio salto. X: scatto. F: spara. Sconfiggi NullPointer prima di uscire.', 'Sali con ventole e ascensori. Schiva i bug volanti. La CPU rallenta lo scenario, mai i comandi. Fuggi dal server surriscaldato!', 'Impara GRAVITY / OFFLINE / CLONES. Il boss li combina. In Panic Mode spara a CORE, SESSION e SOAP prima del colpo finale.'],
+  bossRule: '⚠ PATCH DI SISTEMA TRA',
+  bossCmd: { gravity: 'GRAVITY_OVERRIDE', clones: 'fork() → 3 cloni', offline: 'systemctl stop piattaforme' },
   bossCmdHint: {
-    gravity: 'Su è giù. Stai sul soffitto e salta GIÙ sul nucleo.',
+    gravity: '5 secondi a testa in giù. Zona verde: gravità normale. F sugli endpoint luminosi.',
     clones: 'Tre cloni ti caricano. Sparagli con F o falli sfilare.',
     offline: 'Le piattaforme dell’arena cadono a turno. Non restare fermo.',
   },

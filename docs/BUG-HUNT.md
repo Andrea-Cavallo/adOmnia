@@ -1,8 +1,18 @@
 # a0: Bug Hunt — Deploy del venerdì
 
-**Stato:** v0.9.18 inviata su master e tag: personalità di a0, Localhost esteso e tre vite totali per l'intera campagna.
+**Stato:** v0.9.19 — campagna developer-world; tre vite totali.
 
-## Stato attuale — 2026-09-22: personalità, Localhost esteso e tre vite
+## Stato attuale — developer world
+
+- Tre ambienti riconoscibili: Buggy Dev Desk (21 nemici), Production Datacenter (17), Legacy Dimension (14, oltre ai cloni evocati).
+- Precisione su tasti instabili, ventole/ascensori/pod e fuga dall'overheat, poi lezioni di gravità/offline/cloni.
+- Monolith: 6 segmenti, 3 fasi, 3 moduli da distruggere. GRAVITY_OVERRIDE annunciato per 3 secondi, attivo per 5, soffitto giocabile e zona sicura a gravità normale vicino al boss.
+- Preferenze locali `developer-world.v5`: solo audio/effetti migrano da v4/v3/v2/v1; vecchie chiavi e record conservati.
+- Verifica desktop Windows avviata con `wails3 task dev`; revisione visiva anche delle scene datacenter e boss. Il precedente blocco della CLI è risolto.
+- Resta utile una partita umana completa per tarare difficoltà e ritmo. Le verifiche automatiche isolano geometria, combattimenti e regole, non misurano il divertimento.
+- Dettagli: [v0.9.19](releases/v0.9.19.md).
+
+## Storico v0.9.18 — 2026-09-22: personalità, Localhost esteso e tre vite
 
 **Prossimo passo:** partita completa umana nel desktop per tarare la campagna con tre vite totali. Le regole qui sotto sostituiscono salute e tentativi illimitati dello storico.
 

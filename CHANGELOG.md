@@ -4,6 +4,23 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [0.9.19] - 2026-09-22
+
+### Added
+- **Bug Hunt developer-world campaign:** distinct Dev Desk, Datacenter and Legacy visuals; themed platforms, a collapsing keyboard, rack lifts, fan columns, cycling pods, CPU pressure and an overheating escape.
+- **New encounters:** flying dive bugs, aimed Timeout drones, growing Memory Leaks, charging Race Conditions, Deadlocks, zombies, clones and an exit-guarding NullPointer. The extended first stage now has 21 enemies.
+- **Three-phase Legacy Monolith:** SOAP/XML/500 volleys, timed rule overrides, falling Java 6 debris and CORE/SESSION/SOAP modules that gate the final hit.
+
+### Fixed
+- **Controllable boss gravity:** a three-second warning, five-second inversion, playable ceiling and normal-gravity safe zone beside the boss replace proximity-pinned inversion. Commands expire even outside the arena.
+
+### Changed
+- **Campaign progression:** precision, moving infrastructure and rule changes introduce the mechanics reused by the boss. Three lives remain shared across all stages.
+- **Records:** developer-world.v5 migrates only audio and reduced-motion settings from previous profiles, preserving old records and workspace compatibility.
+- Synchronize desktop and npm manifest/lockfile versions for release packaging.
+
+Full release notes: [v0.9.19](docs/releases/v0.9.19.md).
+
 ## [0.9.18] - 2026-09-22
 
 ### Added

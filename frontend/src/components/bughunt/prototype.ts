@@ -1,7 +1,8 @@
+import { stepSpecialBug } from './enemies'
 import { createRush, RUSH_START, RUSH_END, RUSH_TARGET, RUSH_BONUS, type Rush } from './rush'
 import { BugHuntAudio } from './audio'
 import { BUG_HUNT_COPY, type BugHuntCopy } from './copy'
-import { ARENA_X, BOSS_ANNOUNCE, BOSS_COMMANDS, BOSS_BODY, BOSS_FISTS, ENVELOPE_GRAVITY, ENVELOPE_SPEED, LEVELS, createBoss, firewallPhase, type Boss, type BossCommand, type Platform, CHECKPOINT_X, levelExit, levelHotfix, levelWidth, TURRET_CYCLE, intersects, type Bug, type Rect } from './level'
+import { ARENA_X, BOSS_HEALTH, BOSS_MODULES, bossPhase, GRAVITY_SAFE_X, COMMAND_SECONDS, platformOffline, BOSS_ANNOUNCE, BOSS_COMMANDS, BOSS_BODY, BOSS_FISTS, ENVELOPE_GRAVITY, ENVELOPE_SPEED, LEVELS, createBoss, firewallPhase, type Boss, type BossCommand, type Platform, CHECKPOINT_X, levelExit, levelHotfix, levelWidth, TURRET_CYCLE, intersects, type Bug, type Rect } from './level'
 import { renderLocalhost, type Particle, type PlayerVisual, type Popup, type Shot } from './visuals'
 import {
   BREAKPOINT_SECONDS, GC_RADIUS, GC_SPEED, PICKUP_SIZE, REVERT_MAX_CHARGES, REWIND_SPEED, SUDO_SECONDS,
@@ -39,7 +40,7 @@ export const INITIAL_SNAPSHOT: GameSnapshot = {
   rush: createRush(), rushWins: 0, totalBugs: LEVELS.reduce((sum, l) => sum + l.bugs.length, 0), revertCharges: 0, sudo: 0, breakpoint: 0,
   score: 0, combo: 0, bestCombo: 0, dashReady: true, health: 3, gameOver: false, deaths: 0, checkpoint: false, finished: false, paused: false,
   grappled: false, purge: 'off', shotReady: true, bossCommand: null, bossAnnounce: false,
-  level: 0, levelComplete: false, bossHealth: 3, bits: 0, totalBits: LEVELS.reduce((n, l) => n + l.bits.length, 0), hotfix: false, secret: false, bugs: 0, seconds: 0,
+  level: 0, levelComplete: false, bossHealth: BOSS_HEALTH, bits: 0, totalBits: LEVELS.reduce((n, l) => n + l.bits.length, 0), hotfix: false, secret: false, bugs: 0, seconds: 0,
 }
 
 export class BugHuntPrototype {
@@ -62,9 +63,12 @@ export class BugHuntPrototype {
   private gravitySign = 1
   private level = 0
   private levelComplete = false
-  private platforms: Platform[] = LEVELS[0].platforms.map(p => ({ ...p, originX: p.x, crumble: 0 }))
+  private platforms: Platform[] = LEVELS[0].platforms.map(p => ({ ...p, originX: p.x, originY: p.y, crumble: 0 }))
   private boss = createBoss()
   private bossRewards = new Set<number>()
+  private lesson = { index: -1, announce: 0, remaining: 0, done: new Set<number>() }
+  private slowRemaining = 0
+  private slowUsed = false
   private get checkpointX() { return this.level === 2 ? 2500 : CHECKPOINT_X }
   private get map() { return LEVELS[this.level] }
   private ctx: CanvasRenderingContext2D
@@ -180,8 +184,9 @@ export class BugHuntPrototype {
     this.levelComplete = false
     this.checkpoint = false; this.hotfix = false
     this.enemies = this.map.bugs.map(b => ({ ...b }))
-    this.platforms = this.map.platforms.map(p => ({ ...p, originX: p.x, crumble: 0 }))
+    this.platforms = this.map.platforms.map(p => ({ ...p, originX: p.x, originY: p.y, crumble: 0 }))
     this.boss = createBoss()
+    this.lesson = { index: -1, announce: 0, remaining: 0, done: new Set<number>() }; this.slowRemaining = 0; this.slowUsed = false
     this.player = this.makePlayer(58); this.camera = 0
     this.resetPurge(); this.shots = []; this.shotCooldown = 0; this.gravitySign = 1
     this.particles = []; this.popups = []; this.clearKeys()
@@ -194,7 +199,8 @@ export class BugHuntPrototype {
     this.score = 0; this.chain = 0; this.bestCombo = 0; this.comboTime = 0; this.springCooldown = 0
     this.powers = createPowerState(); this.worldTime = 0; this.publishedPowers = ''
     this.level = 0; this.levelComplete = false; this.boss = createBoss()
-    this.platforms = this.map.platforms.map(p => ({ ...p, originX: p.x, crumble: 0 }))
+    this.lesson = { index: -1, announce: 0, remaining: 0, done: new Set<number>() }; this.slowRemaining = 0; this.slowUsed = false
+    this.platforms = this.map.platforms.map(p => ({ ...p, originX: p.x, originY: p.y, crumble: 0 }))
     this.health = 3; this.gameOver = false; this.deaths = 0; this.checkpoint = false; this.finished = false; this.hotfix = false; this.secret = false
     this.enemies = this.map.bugs.map(b => ({ ...b }))
     this.collected.clear(); this.defeated.clear(); this.particles = []; this.popups = []
@@ -257,6 +263,7 @@ export class BugHuntPrototype {
     if (fell) {
       clearActivePowers(this.powers)
       this.boss = createBoss()
+      this.lesson = { index: -1, announce: 0, remaining: 0, done: new Set<number>() }; this.slowRemaining = 0; this.slowUsed = false
       for (const platform of this.platforms) { platform.crumble = 0; platform.deleted = false }
       this.resetPurge(); this.shots = []; this.gravitySign = 1
       this.player = this.makePlayer(this.checkpoint ? this.checkpointX : 58)
@@ -342,17 +349,22 @@ export class BugHuntPrototype {
     if (Math.floor(this.elapsed) !== this.publishedSecond) { this.publishedSecond = Math.floor(this.elapsed); this.publish() }
     if (this.powers.rewind) { this.stepRewind(); return }
     const frozen = this.tickPowers(dt)
-    if (!frozen) this.worldTime += dt
+    this.stepEnvironment(dt, frozen)
+    const worldDt = this.slowRemaining > 0 ? dt * 0.45 : dt
+    if (!frozen) this.worldTime += worldDt
+    this.stepBossCommand(worldDt, frozen)
+    this.resolveGravity()
     const p = this.player
     for (const platform of this.platforms) {
-      const oldX = platform.x
+      const oldX = platform.x, oldY = platform.y
+      if (platform.verticalTravel) platform.y = platform.originY! + Math.sin(this.worldTime * 1.4) * platform.verticalTravel
       if (platform.travel) platform.x = platform.originX! + Math.sin(this.worldTime * 1.5) * platform.travel
-      if (p.grounded && Math.abs(p.y + p.h - platform.y) < 1 && p.x + p.w > oldX && p.x < oldX + platform.w) {
-        p.x += platform.x - oldX
+      if (p.grounded && Math.abs(p.y + p.h - oldY) < 1 && p.x + p.w > oldX && p.x < oldX + platform.w) {
+        p.x += platform.x - oldX; p.y += platform.y - oldY
         if (platform.unstable && !platform.crumble) platform.crumble = 0.001
       }
-      if (platform.crumble) {
-        platform.crumble += dt
+      if (platform.crumble && !frozen) {
+        platform.crumble += worldDt
         if (platform.crumble > 3.5) platform.crumble = 0
       }
     }
@@ -398,18 +410,20 @@ export class BugHuntPrototype {
     const previousLeft = p.x, previousRight = p.x + p.w
     p.x = Math.max(0, Math.min(levelWidth(this.level) - p.w, p.x + p.vx * dt))
     for (const platform of this.platforms) {
-      if (platform.deleted || (platform.crumble ?? 0) > 0.8) continue
+      if (platform.deleted || platformOffline(platform, this.worldTime) || (platform.crumble ?? 0) > 0.8) continue
       if (platform.floating) continue
       if (!intersects(p, platform)) continue
       if (p.vx > 0 && previousRight <= platform.x) p.x = platform.x - p.w
       else if (p.vx < 0 && previousLeft >= platform.x + platform.w) p.x = platform.x + platform.w
     }
+    this.resolveGravity()
     const previousBottom = p.y + p.h, previousTop = p.y
+    for (const fan of this.map.fans ?? []) if (intersects(p, fan) && !frozen) p.vy = Math.max(-390, p.vy - worldDt * 2900)
     p.vy = p.dash > 0 ? 0 : Math.max(-1000, Math.min(1000, p.vy + GRAVITY * this.gravitySign * dt))
     p.y += p.vy * dt
     p.grounded = false
     for (const platform of this.platforms) {
-      if (platform.deleted || (platform.crumble ?? 0) > 0.8) continue
+      if (platform.deleted || platformOffline(platform, this.worldTime) || (platform.crumble ?? 0) > 0.8) continue
       if (!intersects(p, platform)) continue
       const onTop = p.vy >= 0 && previousBottom <= platform.y + 0.01
       const onUnderside = p.vy <= 0 && previousTop >= platform.y + platform.h - 0.01
@@ -454,7 +468,7 @@ export class BugHuntPrototype {
     this.stepGrapple(dt)
     if (p.grapple && !this.reducedMotion) this.burst(p.grapple.x, p.grapple.y, ['#8cf7ec'], 1, 12)
     if (p.dash > 0 && !this.reducedMotion) this.burst(p.x + 17, p.y + 28, ['#7afce0', '#c394ff'], 2, 15)
-    if (this.stepPurge(dt, frozen)) return
+    if (this.stepPurge(worldDt, frozen)) return
     if (p.y > HEIGHT + 70 || (this.gravitySign < 0 && p.y < -120)) { this.hurt(true); return }
     if (p.grounded && Math.abs(p.vx) > 90 && this.elapsed - this.lastDust > 0.1) {
       this.lastDust = this.elapsed
@@ -463,10 +477,11 @@ export class BugHuntPrototype {
     for (let index = 0; index < this.enemies.length; index++) {
       const bug = this.enemies[index]
       if (!bug.alive) continue
-      if (bug.hover) bug.y = bug.homeY! + Math.sin(this.worldTime * 2 + bug.phase) * 9
+      if (!frozen) bug.wake = Math.max(0, (bug.wake ?? 0) - dt)
+      if (bug.hover && bug.kind !== 'flyer' && bug.kind !== 'timeout') bug.y = bug.homeY! + Math.sin(this.worldTime * 2 + bug.phase) * 9
       if (bug.retry) bug.y = 426 - Math.max(0, Math.sin(this.worldTime * 3 + bug.phase)) * 74
-      if (!frozen) this.stepBugAI(bug, dt)
-      if (bug.kind !== 'turret') {
+      if (!frozen) this.stepBugAI(bug, worldDt)
+      if (bug.kind !== 'turret' && !bug.hover) {
         // A charging bug still stops at its band: it never walks into a pit.
         if (bug.x <= bug.left) { bug.x = bug.left; if ((bug.alert ?? 0) <= 0.6) bug.direction = 1 }
         if (bug.x >= bug.right) { bug.x = bug.right; if ((bug.alert ?? 0) <= 0.6) bug.direction = -1 }
@@ -474,8 +489,10 @@ export class BugHuntPrototype {
       if (!intersects(p, bug)) continue
       const stomp = p.vy > 80 && previousBottom <= bug.y + 8
       if (p.dash > 0 || this.powers.sudo > 0 || stomp) {
+        if (bug.kind === 'null' && (bug.wake ?? 0) > 0) continue
+        if (bug.kind === 'null') bug.wake = 0.6
         const lethal = p.dash > 0 || this.powers.sudo > 0
-        const died = this.damage(bug, index, lethal ? 99 : 1, false)
+        const died = this.damage(bug, index, lethal && bug.kind !== 'null' ? 99 : 1, false)
         if (p.dash <= 0 && stomp) { p.y = bug.y - p.h; p.vy = this.keys.has('Space') ? -540 : -390 }
         p.airJump = true; p.dashCooldown = 0; p.squash = -0.1
         // An armoured bug that survives must not damage a0 on the way down.
@@ -483,7 +500,7 @@ export class BugHuntPrototype {
       } else { this.hurt(); if (this.gameOver || this.player !== p) return }
     }
     if (this.keys.has('KeyF')) this.fire()
-    if (this.stepShots(dt, frozen)) return
+    if (this.stepShots(worldDt, frozen)) return
     for (const spike of this.map.spikes) if (this.powers.sudo <= 0 && intersects(p, spike)) { this.hurt(); if (this.gameOver || this.player !== p) return }
     for (const wall of this.map.firewalls) {
       if (firewallPhase(this.worldTime, wall.phase) === 'active' && p.dash <= 0 && this.powers.sudo <= 0 && intersects(p, wall)) {
@@ -492,35 +509,17 @@ export class BugHuntPrototype {
     }
     if (this.level === 2 && this.boss.health > 0 && p.x > 2450) {
       const boss = this.boss
-      const command = BOSS_COMMANDS[boss.health]
-      if (boss.command !== command) {
-        this.endCommand()
-        boss.command = command; boss.announce = BOSS_ANNOUNCE; boss.applied = false
-        this.shake = 5
-        this.audio.play('sudo'); this.publish()
-      }
-      if (boss.announce > 0 && !frozen) {
-        boss.announce = Math.max(0, boss.announce - dt)
-        if (boss.announce === 0) { this.applyCommand(command); this.publish() }
-      }
-      if (boss.applied && !frozen) this.stepCommand(command)
       const before = boss.clock
-      if (!frozen) boss.clock += dt
-      for (const attack of boss.health === 1 ? [1.3, 1.9] : [1.3]) {
+      if (!frozen) boss.clock += worldDt
+      for (const attack of bossPhase(boss.health) === 2 ? [0.9, 1.4, 1.9] : [1.3, 1.85]) {
         if (before < attack && boss.clock >= attack) this.throwEnvelope(boss)
       }
       if (boss.clock > 4.8) { boss.clock = 0; boss.hit = false }
       boss.recoil = Math.max(0, boss.recoil - dt)
-      if (this.stepEnvelopes(boss, dt, frozen)) return
+      if (this.stepEnvelopes(boss, worldDt, frozen)) return
       if (intersects(p, BOSS_BODY)) {
-        if (boss.clock >= 2 && !boss.hit && p.vy > 80 && previousBottom <= BOSS_BODY.y + 10) {
-          // The rule dies with the phase, on the same frame as the hit.
-          boss.health--; boss.hit = true
-          this.endCommand()
-          if (!this.bossRewards.has(boss.health)) {
-            this.bossRewards.add(boss.health)
-            this.reward(boss.health === 0 ? 1000 : 250, BOSS_BODY.x + 45, BOSS_BODY.y)
-          }
+        if (this.bossOpen() && p.vy > 80 && previousBottom <= BOSS_BODY.y + 10) {
+          this.hitBoss()
           p.y = BOSS_BODY.y - p.h; p.vy = -540; p.invulnerable = 0.6
           this.burst(BOSS_BODY.x + 45, BOSS_BODY.y, ['#a6ffe3', '#e8cbff'], 40)
           this.audio.play(boss.health ? 'stomp' : 'win'); this.publish()
@@ -529,7 +528,7 @@ export class BugHuntPrototype {
       }
     }
     // Every rewritten rule is local to the arena: walking out restores gravity.
-    if (this.gravitySign < 0 && p.x < ARENA_X) this.gravitySign = 1
+    this.resolveGravity()
     if (!this.checkpoint && p.x + p.w > this.checkpointX && p.x < this.checkpointX + 40 && p.y < 460) {
       this.checkpoint = true
       p.celebrate = 1.2; p.speech = this.copy.checkpointQuip; p.speechTime = 2.6
@@ -539,7 +538,7 @@ export class BugHuntPrototype {
     }
     this.collect(p)
     if (p.x + p.w > levelExit(this.level) - 25) {
-      if (this.hotfix && (this.level !== 2 || this.boss.health === 0)) {
+      if (this.hotfix && !this.enemies.some(b => b.kind === 'null' && b.alive) && (this.level !== 2 || this.boss.health === 0)) {
         this.finished = this.level === LEVELS.length - 1; this.levelComplete = !this.finished; this.clearKeys()
         this.burst(levelExit(this.level), 385, ['#f5d77c', '#88f1d0', '#be8dff', '#ff9dad'], 70, 270)
         this.audio.play('win'); this.publish()
@@ -547,7 +546,7 @@ export class BugHuntPrototype {
         p.x = levelExit(this.level) - 25 - p.w
         if (this.elapsed - this.lastGateHint > 3) {
           this.lastGateHint = this.elapsed
-          this.popup(this.hotfix ? this.copy.bossLocked : this.copy.missingHotfix, levelExit(this.level) - 75, 347, '#e6c0ff')
+          this.popup(this.hotfix ? (this.level === 0 ? this.copy.nullLocked : this.copy.bossLocked) : this.copy.missingHotfix, levelExit(this.level) - 75, 347, '#e6c0ff')
         }
       }
     }
@@ -574,6 +573,8 @@ export class BugHuntPrototype {
 
   /** Applies damage and closes the ticket when the bug runs out of health. */
   private damage(bug: Bug, index: number, amount: number, fromShot: boolean): boolean {
+    if (bug.kind === 'null' && fromShot && (bug.wake ?? 0) > 0) return false
+    if (bug.kind === 'null' && fromShot) bug.wake = 0.35
     bug.hp = (bug.hp ?? 1) - amount
     if (bug.hp > 0) {
       bug.alert = 1
@@ -582,8 +583,8 @@ export class BugHuntPrototype {
       return false
     }
     const id = this.level * 100 + index
-    if (!this.defeated.has(id)) this.reward(100, bug.x, bug.y)
-    bug.alive = false; this.defeated.add(id)
+    if (!bug.summoned && !this.defeated.has(id)) this.reward(100, bug.x, bug.y)
+    bug.alive = false; if (!bug.summoned) this.defeated.add(id)
     this.shake = Math.max(this.shake, fromShot ? 1.6 : 2.4)
     this.burst(bug.x + 19, bug.y + 15, ['#ff8d9e', '#ffc6b8', '#b28fe7'], 24, 165)
     this.popup(this.copy.bugClosed[index % this.copy.bugClosed.length], bug.x + 20, bug.y - 25, '#ffd4d2')
@@ -594,6 +595,7 @@ export class BugHuntPrototype {
   /** Chasers charge when a0 is close; turrets aim, charge, then fire. */
   private stepBugAI(bug: Bug, dt: number) {
     const p = this.player
+    if (stepSpecialBug(bug, p, dt, this.worldTime, this.shots)) return
     const dx = p.x + p.w / 2 - (bug.x + bug.w / 2)
     const sameFloor = Math.abs(p.y + p.h - (bug.y + bug.h)) < 150
     if (bug.kind === 'turret') {
@@ -630,7 +632,7 @@ export class BugHuntPrototype {
     this.shotCooldown = Math.max(0, this.shotCooldown - dt)
     for (const shot of this.shots) {
       if (shot.enemy && frozen) continue
-      shot.x += shot.vx * dt
+      shot.x += shot.vx * dt; shot.y += (shot.vy ?? 0) * dt
       shot.life -= dt
     }
     for (const shot of this.shots) {
@@ -644,6 +646,15 @@ export class BugHuntPrototype {
           break
         }
         if (shot.life <= 0) continue
+        if (this.level === 2 && this.boss.health > 0) {
+          const module = BOSS_MODULES.findIndex(m => intersects(m, hitbox))
+          if (module >= 0 && bossPhase(this.boss.health) === 2 && this.boss.modules[module] > 0) {
+            shot.life = 0; this.boss.modules[module]--
+            this.burst(shot.x, shot.y, ['#9dffc4', '#ffd0a8'], 18, 150)
+            this.audio.play('hit'); this.publish(); continue
+          }
+          if (module >= 0 && this.bossOpen()) { shot.life = 0; this.hitBoss(); continue }
+        }
         const envelope = this.boss.envelopes.find(candidate => intersects(candidate, hitbox))
         if (envelope) {
           shot.life = 0
@@ -732,7 +743,7 @@ export class BugHuntPrototype {
     const arm = boss.arm ? 0 : 1
     const fist = BOSS_FISTS[arm]
     const toward = Math.sign(p.x + p.w / 2 - fist.x) || -1
-    boss.envelopes.push({ x: fist.x - 18, y: fist.y - 13, w: 36, h: 26, vx: toward * ENVELOPE_SPEED, vy: -70, spin: 0 })
+    boss.envelopes.push({ x: fist.x - 18, y: fist.y - 13, w: 36, h: 26, vx: toward * ENVELOPE_SPEED, vy: -70, spin: 0, kind: ['soap', 'xml', 'error'][Math.floor(boss.clock * 10) % 3] as 'soap' | 'xml' | 'error' })
     boss.arm = arm; boss.recoil = 0.35
     this.burst(fist.x, fist.y, ['#eaf0ff', '#9ab4ff'], 14, 115)
     if (arm === 0) this.popup(this.copy.bossTaunt, fist.x, fist.y - 52, '#cfe0ff')
@@ -744,12 +755,13 @@ export class BugHuntPrototype {
     const p = this.player
     const flying: typeof boss.envelopes = []
     for (const envelope of boss.envelopes) {
-      if (!frozen) {
+      if (!frozen && !(envelope.warning && envelope.warning > 0)) {
         envelope.x += envelope.vx * dt
         envelope.vy += ENVELOPE_GRAVITY * dt
         envelope.y += envelope.vy * dt
         envelope.spin += dt * (envelope.vx > 0 ? 3.4 : -3.4)
       }
+      if ((envelope.warning ?? 0) > 0) { if (!frozen) envelope.warning = Math.max(0, envelope.warning! - dt); flying.push(envelope); continue }
       const landed = envelope.y + envelope.h >= 458 && envelope.vy > 0
       if (landed) {
         this.burst(envelope.x + 18, 452, ['#eaf0ff', '#b9c8ff', '#8fa4d8'], 16, 130)
@@ -769,40 +781,118 @@ export class BugHuntPrototype {
     return false
   }
 
-  /** Puts every rewritten rule back before the next phase announces its own. */
-  private endCommand() {
-    this.gravitySign = 1
-    for (const platform of this.platforms) if (platform.arena) platform.deleted = false
-    this.boss.applied = false
+  private bossOpen() {
+    return this.boss.clock >= 2 && !this.boss.hit && (this.boss.health > 1 || this.boss.modules.every(h => h === 0))
   }
 
-  /** Runs once, when the announcement has been on screen long enough to read. */
-  private applyCommand(command: BossCommand) {
+  private hitBoss() {
+    const boss = this.boss
+    if (!this.bossOpen()) return
+    boss.health--; boss.hit = true
+    this.endCommand(); boss.command = null; boss.cooldown = 1
+    if (!this.bossRewards.has(boss.health)) {
+      this.bossRewards.add(boss.health); this.reward(boss.health === 0 ? 1000 : 250, BOSS_BODY.x, BOSS_BODY.y)
+    }
+    this.burst(BOSS_BODY.x + 45, BOSS_BODY.y, ['#a6ffe3', '#e8cbff'], 35)
+    if (!boss.health) { boss.envelopes = []; this.popup(this.copy.bossDefeated, BOSS_BODY.x, 290) }
+    this.audio.play(boss.health ? 'hit' : 'win'); this.publish()
+  }
+
+  /** Real-time control remains responsive during CPU pressure; only scenery slows. */
+  private stepEnvironment(dt: number, frozen: boolean) {
+    if (frozen) return
     const p = this.player
-    this.boss.applied = true
-    this.shake = 6
-    if (command === 'gravity') {
-      this.gravitySign = -1
-      p.grounded = false; p.coyote = 0; p.airJump = true
-      p.vy = Math.min(p.vy, -120)
-      this.burst(p.x + 17, p.y + 24, ['#9ad8ff', '#d7b4ff', '#ffffff'], 30, 200)
-    } else if (command === 'clones') {
-      for (let i = 0; i < 3; i++) {
-        const x = 2520 + i * 130
-        this.enemies.push({ x, y: 426, w: 38, h: 34, left: x - 150, right: x + 150, direction: i % 2 ? 1 : -1,
-          alive: true, phase: i * 0.7, kind: 'chaser', hp: 1, alert: 0, fuse: 0 })
-        this.burst(x + 19, 443, ['#ff8d9e', '#b28fe7'], 18, 160)
+    if (this.map.slowZone && !this.slowUsed && intersects(p, this.map.slowZone)) {
+      this.slowUsed = true; this.slowRemaining = 4
+      this.popup(this.copy.cpuWarning, p.x + 80, 180, '#ffbf80')
+    }
+    this.slowRemaining = Math.max(0, this.slowRemaining - dt)
+    const lesson = this.lesson
+    if (lesson.index < 0) {
+      const index = this.map.lessons?.findIndex((zone, i) => !lesson.done.has(i) && p.x >= zone.x - RUN_SPEED && p.x < zone.end) ?? -1
+      if (index >= 0) { lesson.index = index; lesson.announce = 1; lesson.done.add(index) }
+    }
+    if (lesson.index < 0) return
+    const zone = this.map.lessons![lesson.index]
+    if (p.x >= zone.end) { lesson.index = -1; lesson.announce = 0; lesson.remaining = 0; return }
+    if (lesson.announce > 0) {
+      lesson.announce = Math.max(0, lesson.announce - dt)
+      if (lesson.announce === 0) {
+        lesson.remaining = COMMAND_SECONDS
+        if (zone.command === 'clones') this.spawnClones(zone.x, 2)
+      }
+    } else {
+      lesson.remaining = Math.max(0, lesson.remaining - dt)
+      if (!lesson.remaining) lesson.index = -1
+    }
+  }
+
+  /** Timed commands tick even if a0 leaves the arena; proximity never pins gravity. */
+  private stepBossCommand(dt: number, frozen: boolean) {
+    const b = this.boss
+    if (this.level !== 2 || b.health <= 0 || frozen) return
+    if (!b.started) { if (this.player.x < ARENA_X) return; b.started = true }
+    const phase = bossPhase(b.health)
+    if (phase !== b.phase) { this.endCommand(); b.command = null; b.phase = phase; b.sequence = 0; b.cooldown = 0 }
+    if (phase === 0) return
+    if (b.announce > 0) {
+      b.announce = Math.max(0, b.announce - dt)
+      if (b.announce === 0 && b.command) this.applyCommand(b.command)
+    } else if (b.remaining > 0) {
+      b.remaining = Math.max(0, b.remaining - dt)
+      if (b.remaining === 0) { this.endCommand(); b.command = null; b.cooldown = 2; this.publish() }
+      else if (b.command) this.stepCommand(b.command)
+    } else {
+      b.cooldown = Math.max(0, b.cooldown - dt)
+      if (!b.cooldown) {
+        b.command = BOSS_COMMANDS[b.sequence++ % BOSS_COMMANDS.length]
+        b.announce = BOSS_ANNOUNCE; this.audio.play('sudo'); this.publish()
       }
     }
+    if (phase === 2) {
+      b.debrisClock += dt
+      if (b.debrisClock >= 2.2) {
+        b.debrisClock = 0
+        b.envelopes.push({ x: Math.max(2450, Math.min(3070, this.player.x)), y: 148, w: 48, h: 32, vx: 0, vy: 30, spin: 0, kind: 'debris', warning: 1 })
+      }
+    }
+  }
+
+  private resolveGravity() {
+    const p = this.player, zone = this.map.lessons?.[this.lesson.index]
+    const tutorial = zone?.command === 'gravity' && this.lesson.remaining > 0 && p.x >= zone.x && p.x + p.w <= zone.end
+    const override = this.level === 2 && this.boss.command === 'gravity' && this.boss.remaining > 0 && this.boss.applied && p.x >= ARENA_X && p.x + p.w < GRAVITY_SAFE_X
+    const next = tutorial || override ? -1 : 1
+    if (next !== this.gravitySign) {
+      this.gravitySign = next; p.grounded = false; p.coyote = 0; p.airJump = true; p.grapple = null
+      // No forced launch: changing gravity preserves horizontal control and resets vertical momentum.
+      p.vy = 0
+    }
+  }
+
+  private endCommand() {
+    this.boss.applied = false; this.boss.remaining = 0; this.boss.announce = 0
+    for (const platform of this.platforms) if (platform.arena) platform.deleted = false
+    this.resolveGravity()
+  }
+
+  private spawnClones(x: number, count: number) {
+    // Clear previous summoned clones: no unbounded armies or score farming.
+    this.enemies = this.enemies.filter(b => !b.summoned)
+    for (let i = 0; i < count; i++) this.enemies.push({ x: x + 60 + i * 115, y: 412, w: 34, h: 48, left: x, right: x + 400,
+      direction: -1, alive: true, phase: i, kind: 'clone', hp: 2, summoned: true })
+  }
+
+  private applyCommand(command: BossCommand) {
+    this.boss.applied = true; this.boss.remaining = COMMAND_SECONDS
+    if (command === 'clones') this.spawnClones(2460, 3)
+    this.resolveGravity()
     this.audio.play(command === 'gravity' ? 'rewind' : command === 'clones' ? 'gc' : 'freeze')
   }
 
-  /** Per-frame part of a live command. Clones already run on the bug AI. */
   private stepCommand(command: BossCommand) {
-    if (command === 'gravity') { this.gravitySign = -1; return }
     if (command !== 'offline') return
     const slabs = this.platforms.filter(platform => platform.arena)
-    // One slab drops at a time, then a beat with all of them back online.
     const turn = Math.floor(this.worldTime / 1.4) % (slabs.length + 1)
     for (const [index, slab] of slabs.entries()) slab.deleted = index === turn
   }
@@ -878,10 +968,10 @@ export class BugHuntPrototype {
       const wave = powers.gc
       wave.r += GC_SPEED * dt
       for (const [index, bug] of this.enemies.entries()) {
-        if (!bug.alive || Math.hypot(bug.x + bug.w / 2 - wave.x, bug.y + bug.h / 2 - wave.y) > wave.r) continue
+        if (!bug.alive || bug.kind === 'null' || Math.hypot(bug.x + bug.w / 2 - wave.x, bug.y + bug.h / 2 - wave.y) > wave.r) continue
         bug.alive = false
         const id = this.level * 100 + index
-        if (!this.defeated.has(id)) { this.defeated.add(id); this.reward(100, bug.x, bug.y) }
+        if (!bug.summoned && !this.defeated.has(id)) { this.defeated.add(id); this.reward(100, bug.x, bug.y) }
         this.burst(bug.x + 19, bug.y + 15, ['#9dffc4', '#e8fff4', '#7bd6ff'], 26, 180)
         this.popup(this.copy.freed(`0x${(0x3f2a + index * 0x1d7 + this.level * 0x91).toString(16)}`), bug.x + 20, bug.y - 25, '#b8ffd9')
         this.audio.play('stomp')
@@ -944,6 +1034,6 @@ export class BugHuntPrototype {
     renderLocalhost(this.ctx, { level: this.level, platforms: this.platforms, boss: this.boss, player: this.player, enemies: this.enemies, camera: this.camera, time: this.visualTime,
       collected: this.collected, particles: this.particles, popups: this.popups, checkpoint: this.checkpoint, hotfix: this.hotfix,
       secret: this.secret, shake: this.shake, reducedMotion: this.reducedMotion, finished: this.finished, copy: this.copy,
-      worldTime: this.worldTime, powers: this.powers, purgeX: this.purgeX, purgeState: this.purgeState, shots: this.shots, gravity: this.gravitySign })
+      worldTime: this.worldTime, powers: this.powers, purgeX: this.purgeX, purgeState: this.purgeState, shots: this.shots, gravity: this.gravitySign, lesson: this.lesson, slowRemaining: this.slowRemaining })
   }
 }

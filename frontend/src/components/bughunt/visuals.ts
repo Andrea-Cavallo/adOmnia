@@ -1,5 +1,8 @@
+import { box, line, text, glow } from './drawing'
+export { box, line, text, glow } from './drawing'
+import { drawWorld, drawWorldPlatform, drawSpecialBug, drawEnvironment } from './worldVisuals'
 import type { BugHuntCopy } from './copy'
-import { BOSS_ANNOUNCE, BOSS_FISTS, BOSS_TOWER, LEVELS, BOSS_BODY, firewallPhase, CHECKPOINT_X, levelExit, levelHotfix, TURRET_CYCLE, type Envelope, type Platform, type Boss, type Bug } from './level'
+import { BOSS_HEALTH, BOSS_MODULES, bossPhase, platformOffline, BOSS_ANNOUNCE, BOSS_FISTS, BOSS_TOWER, LEVELS, BOSS_BODY, firewallPhase, CHECKPOINT_X, levelExit, levelHotfix, TURRET_CYCLE, type Envelope, type Platform, type Boss, type Bug } from './level'
 import { drawBreakpointMarkers, drawGcWave, drawPowerOverlay, drawPowerPickups, drawRewindGhosts, drawSudoAura } from './powerVisuals'
 import type { PowerState } from './powers'
 
@@ -8,7 +11,7 @@ export type PlayerVisual = { x: number; y: number; w: number; h: number; vx: num
   grapple?: { x: number; y: number; length: number } | null }
 export type Particle = { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; color: string; size: number; gravity: number }
 export type Popup = { x: number; y: number; text: string; color: string; life: number }
-export type Shot = { x: number; y: number; vx: number; life: number; enemy: boolean }
+export type Shot = { x: number; y: number; vx: number; vy?: number; life: number; enemy: boolean }
 export type VisualState = {
   level: number; platforms: Platform[]; boss: Boss; player: PlayerVisual; enemies: Bug[]; camera: number; time: number; collected: Set<number>
   particles: Particle[]; popups: Popup[]; checkpoint: boolean; hotfix: boolean; secret: boolean
@@ -20,71 +23,8 @@ export type VisualState = {
   /** Debug packets from a0 and bolts from the turrets, in one list. */
   shots: Shot[]
   /** -1 while the Monolith has gravity reversed. */
+  lesson: { index: number; announce: number; remaining: number }; slowRemaining: number
   gravity: number
-}
-
-export function box(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, radius: number, color: string) {
-  ctx.fillStyle = color
-  ctx.beginPath(); ctx.roundRect(x, y, w, h, radius); ctx.fill()
-}
-
-export function line(ctx: CanvasRenderingContext2D, points: number[], color: string, width = 1) {
-  ctx.strokeStyle = color; ctx.lineWidth = width; ctx.beginPath(); ctx.moveTo(points[0], points[1])
-  for (let i = 2; i < points.length; i += 2) ctx.lineTo(points[i], points[i + 1])
-  ctx.stroke()
-}
-
-export function text(ctx: CanvasRenderingContext2D, value: string, x: number, y: number, color: string, size = 12) {
-  ctx.fillStyle = color; ctx.font = `600 ${size}px monospace`; ctx.fillText(value, x, y)
-}
-
-export function glow(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, color: string) {
-  const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius)
-  gradient.addColorStop(0, color); gradient.addColorStop(1, 'transparent')
-  ctx.fillStyle = gradient; ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2)
-}
-
-function drawBackdrop(ctx: CanvasRenderingContext2D, camera: number, time: number, level: number) {
-  const bg = ctx.createLinearGradient(0, 0, 0, 540)
-  bg.addColorStop(0, '#070d1c'); bg.addColorStop(0.55, ['#151334', '#092e3c', '#35182a'][level]); bg.addColorStop(1, '#25134b')
-  ctx.fillStyle = bg; ctx.fillRect(0, 0, 960, 540)
-  glow(ctx, 725 - camera * 0.06, 120, 370, '#5739a931')
-  glow(ctx, 140, 375, 300, '#13688121')
-
-  ctx.save(); ctx.translate(-camera * 0.15, 0)
-  for (let i = 0; i < 18; i++) {
-    const x = i * 105 - 25, top = 170 + Math.sin(i * 2.1) * 65
-    box(ctx, x, top, 76, 360, 5, i % 2 ? '#101529' : '#11172f')
-    line(ctx, [x + 1, top + 330, x + 1, top, x + 74, top], '#35416455')
-    for (let j = 0; j < 9; j++) {
-      ctx.fillStyle = j % 3 === 0 ? '#203f5355' : '#2b2c4d55'
-      ctx.fillRect(x + 9, top + 16 + j * 29, 56, 17)
-      ctx.fillStyle = '#43cbc266'; ctx.fillRect(x + 53, top + 21 + j * 29, 3, 3)
-    }
-  }
-  text(ctx, LEVELS[level].name.toLowerCase(), 280, 137, '#7180a320', 72)
-  text(ctx, '// ALL SYSTEMS ALMOST OPERATIONAL', 288, 164, '#63719355', 10)
-  ctx.restore()
-
-  ctx.save(); ctx.translate(-camera * 0.38, 0)
-  for (let i = 0; i < 12; i++) {
-    const x = i * 187 - 80, y = 205 + (i % 3) * 45
-    line(ctx, [x, 0, x, y - 30, x + 30, y, x + 145, y, x + 165, y + 20, x + 165, 500], '#51416839', 2)
-    const signal = ((time * 45 + i * 57) % 400)
-    ctx.fillStyle = '#52b6b666'; ctx.fillRect(x - 2, signal - 80, 4, 11)
-    box(ctx, x + 65, y - 37, 54, 20, 3, '#162433')
-    text(ctx, i % 2 ? 'HTTP' : 'TCP', x + 75, y - 23, '#57909a', 9)
-  }
-  ctx.restore()
-  for (let i = 0; i < 32; i++) {
-    const x = (i * 127.3 + time * (3 + i % 4) - camera * 0.08) % 1000
-    const y = 55 + (i * 83.7) % 370 + Math.sin(time * 0.5 + i) * 6
-    ctx.fillStyle = i % 3 ? '#927bd04d' : '#7ef4ea70'; ctx.fillRect(x, y, i % 3 === 0 ? 2 : 1, 2)
-  }
-  // A low mist separates the readable foreground from the server silhouettes.
-  const mist = ctx.createLinearGradient(0, 310, 0, 470)
-  mist.addColorStop(0, 'transparent'); mist.addColorStop(1, '#59428b24')
-  ctx.fillStyle = mist; ctx.fillRect(0, 310, 960, 170)
 }
 
 function drawTerminal(ctx: CanvasRenderingContext2D, x: number, y: number, title: string, subtitle: string, accent = '#67d8cf') {
@@ -230,7 +170,7 @@ function drawMounts(ctx: CanvasRenderingContext2D, p: Platform, time: number) {
 function drawPlatforms(ctx: CanvasRenderingContext2D, camera: number, time: number, state: VisualState) {
   for (const p of state.platforms) {
     if (p.x + p.w < camera - 40 || p.x > camera + 1000) continue
-    if (p.deleted) {
+    if (p.deleted || platformOffline(p, state.worldTime)) {
       ctx.setLineDash([7, 9]); line(ctx, [p.x, p.y, p.x + p.w, p.y], '#ff6d8c33', 2); ctx.setLineDash([])
       continue
     }
@@ -239,13 +179,14 @@ function drawPlatforms(ctx: CanvasRenderingContext2D, camera: number, time: numb
       // Same slab, hung the other way up: the rail faces the arena.
       const flipped: Platform = { ...p, y: p.y, h: Math.min(p.h, 26) }
       ctx.save(); ctx.translate(0, p.y * 2 + Math.min(p.h, 26)); ctx.scale(1, -1)
-      drawSlab(ctx, flipped, time, '///')
+      if (!drawWorldPlatform(ctx, flipped, time)) drawSlab(ctx, flipped, time, '///')
       ctx.restore()
       const hang = ctx.createLinearGradient(0, p.y + p.h, 0, p.y + p.h + 80)
       hang.addColorStop(0, '#090c1b'); hang.addColorStop(1, 'transparent')
       ctx.fillStyle = hang; ctx.fillRect(p.x, p.y + p.h, p.w, 80)
       continue
     }
+    if (p.skin && drawWorldPlatform(ctx, p, time)) continue
     if (!p.floating) drawPylons(ctx, p, time)
     const glyph = p.unstable ? ((p.crumble ?? 0) > 0 ? '! ! !' : '/ / /')
       : p.travel ? '<   >'
@@ -352,6 +293,7 @@ function drawArmour(ctx: CanvasRenderingContext2D, bug: Bug) {
 }
 
 function drawBug(ctx: CanvasRenderingContext2D, bug: Bug, time: number) {
+  if (drawSpecialBug(ctx, bug, time)) return
   if (bug.kind === 'turret') { drawTurret(ctx, bug, time); drawArmour(ctx, bug); return }
   const alert = bug.kind === 'chaser' ? (bug.alert ?? 0) : 0
   if (alert > 0.6) {
@@ -460,7 +402,7 @@ function drawPurge(ctx: CanvasRenderingContext2D, state: VisualState, t: number)
   ctx.save(); ctx.translate(edge - 12, 0)
   for (let y = 40; y < 520; y += 96) {
     ctx.save(); ctx.translate(0, y); ctx.rotate(-Math.PI / 2)
-    text(ctx, 'DELETE  FROM  *', 0, 0, '#ffd8e3aa', 13)
+    text(ctx, 'CPU  100%  /  OVERHEAT', 0, 0, '#ffd8e3aa', 13)
     ctx.restore()
   }
   ctx.restore()
@@ -472,6 +414,17 @@ const LEGACY_STACK = ['JAVA 6', 'EJB', 'WSDL', 'JAX-WS', 'STRUTS', 'ORACLE']
 /** A thrown SOAP envelope, speed lines and all. */
 function drawEnvelope(ctx: CanvasRenderingContext2D, envelope: Envelope) {
   const cx = envelope.x + envelope.w / 2, cy = envelope.y + envelope.h / 2
+  if (envelope.kind === 'debris') {
+    if ((envelope.warning ?? 0) > 0) {
+      ctx.setLineDash([4, 7]); line(ctx, [cx, cy, cx, 460], '#ff9a70aa', 2); ctx.setLineDash([])
+      text(ctx, '!', cx - 4, 450, '#ffd0a8', 22)
+    }
+    box(ctx, envelope.x, envelope.y, envelope.w, envelope.h, 1, '#bebebe')
+    box(ctx, envelope.x + 2, envelope.y + 2, envelope.w - 4, 9, 0, '#000080')
+    text(ctx, 'JAVA 6', envelope.x + 3, envelope.y + 9, '#ffffff', 7)
+    text(ctx, 'at()...', envelope.x + 3, envelope.y + 25, '#181818', 8)
+    return
+  }
   const back = Math.sign(envelope.vx) || -1
   glow(ctx, cx, cy, 40, '#b9c8ff2e')
   for (let i = 0; i < 3; i++) {
@@ -484,7 +437,7 @@ function drawEnvelope(ctx: CanvasRenderingContext2D, envelope: Envelope) {
   ctx.strokeRect(-20.5, -14.5, 41, 29)
   // The flap, then the envelope body a0 must not let touch him.
   line(ctx, [-21, -15, 0, 1, 21, -15], '#93a6cd', 1.5)
-  text(ctx, 'SOAP', -17, -1, '#2f5bc4', 11)
+  text(ctx, envelope.kind === 'xml' ? '<XML!' : envelope.kind === 'error' ? '500' : 'SOAP', -17, -1, envelope.kind === 'error' ? '#b22d44' : '#2f5bc4', 11)
   line(ctx, [-17, 5, 14, 5], '#aab8d8')
   line(ctx, [-17, 10, 7, 10], '#aab8d8')
   ctx.restore()
@@ -494,7 +447,7 @@ function drawEnvelope(ctx: CanvasRenderingContext2D, envelope: Envelope) {
 function drawMonolith(ctx: CanvasRenderingContext2D, state: VisualState, t: number) {
   const boss = state.boss, c = state.copy
   const tower = BOSS_TOWER, b = BOSS_BODY
-  const open = boss.clock >= 2 && !boss.hit
+  const open = boss.clock >= 2 && !boss.hit && (boss.health > 1 || boss.modules.every(h => h === 0))
   const color = open ? '#85ffcc' : '#f395a0'
   const cx = tower.x + tower.w / 2
   const hum = Math.sin(t * 2.2) * 2
@@ -601,7 +554,7 @@ function drawMonolith(ctx: CanvasRenderingContext2D, state: VisualState, t: numb
   glow(ctx, b.x + 45, b.y + 42, 116, open ? '#59e6ac44' : '#eb416d2e')
   box(ctx, b.x - 4, b.y, b.w + 8, b.h, 9, '#322c47')
   box(ctx, b.x + 3, b.y, b.w - 6, 13, 4, color)
-  for (let i = 0; i < 3; i++) box(ctx, b.x + 14 + i * 23, b.y + 34, 16, 34, 3, i < boss.health ? color : '#514456')
+  for (let i = 0; i < BOSS_HEALTH; i++) box(ctx, b.x + 8 + i * 13, b.y + 34, 9, 34, 3, i < boss.health ? color : '#514456')
   if (open) for (let i = 0; i < 3; i++) line(ctx, [b.x + 22 + i * 23, b.y - 8 - ((t * 28 + i * 9) % 18), b.x + 22 + i * 23, b.y - 16 - ((t * 28 + i * 9) % 18)], color, 2)
 
   ctx.textAlign = 'center'
@@ -610,6 +563,20 @@ function drawMonolith(ctx: CanvasRenderingContext2D, state: VisualState, t: numb
   text(ctx, state_, cx, 482, color, 11)
   ctx.textAlign = 'left'
 
+  for (const [index, module] of BOSS_MODULES.entries()) {
+    const panic = bossPhase(boss.health) === 2
+    const active = panic ? boss.modules[index] > 0 : open
+    const tint = active ? '#9dffc4' : '#685c77'
+    glow(ctx, module.x + 16, module.y + 15, 35, active ? '#7dffc455' : '#30243c22')
+    box(ctx, module.x, module.y, module.w, module.h, 4, '#131522')
+    line(ctx, [module.x, module.y + 30, module.x, module.y, module.x + 32, module.y, module.x + 32, module.y + 30], tint, 2)
+    text(ctx, panic && !active ? 'OFF' : 'API', module.x + 5, module.y + 20, tint, 10)
+    text(ctx, module.label, module.x - 4, module.y - 10, tint, 9)
+    if (panic) for (let i = 0; i < boss.modules[index]; i++) box(ctx, module.x + i * 11, module.y + 34, 8, 3, 0, tint)
+  }
+  if (bossPhase(boss.health) === 2) {
+    for (let i = 0; i < 7; i++) line(ctx, [tower.x + 10 + i * 22, 190 + i * 24, tower.x + 20 + i * 15, 215 + i * 24, tower.x + 8 + i * 20, 227 + i * 24], '#ffa47d', 2)
+  }
   for (const envelope of boss.envelopes) drawEnvelope(ctx, envelope)
 }
 
@@ -624,7 +591,7 @@ function drawBossAnnounce(ctx: CanvasRenderingContext2D, state: VisualState, t: 
   box(ctx, x, top, w, 82, 8, '#160d1ef2')
   line(ctx, [x, top, x + w, top], '#ffb56b', 2)
   ctx.textAlign = 'center'
-  text(ctx, state.copy.bossRule, 480, top + 21, '#ffd18a', 12)
+  text(ctx, `${state.copy.bossRule} ${Math.ceil(boss.announce)}...`, 480, top + 21, '#ffd18a', 12)
   text(ctx, state.copy.bossCmd[boss.command], 480, top + 46, pulse > 0.5 ? '#fff0d6' : '#ffb56b', 17)
   text(ctx, state.copy.bossCmdHint[boss.command], 480, top + 67, '#c7b9dd', 10)
   ctx.textAlign = 'left'
@@ -636,11 +603,12 @@ export function renderLocalhost(ctx: CanvasRenderingContext2D, state: VisualStat
   const checkpointX = state.level === 2 ? 2500 : CHECKPOINT_X
   const gateOpen = state.hotfix && (state.level !== 2 || state.boss.health === 0)
   const t = state.reducedMotion ? 0 : state.time
-  drawBackdrop(ctx, state.camera, t, state.level)
+  drawWorld(ctx, state.camera, t, state.level)
   ctx.save()
   const shake = state.reducedMotion ? 0 : state.shake
   ctx.translate(-Math.round(state.camera) + Math.sin(t * 83) * shake, Math.cos(t * 71) * shake * 0.45)
   drawPlatforms(ctx, state.camera, t, state)
+  drawEnvironment(ctx, state, t)
   drawAnchors(ctx, state, t)
 
   for (const spring of LEVELS[state.level].springs) {
@@ -659,7 +627,7 @@ export function renderLocalhost(ctx: CanvasRenderingContext2D, state: VisualStat
   text(ctx, c.signSecret, 1824, 178, '#eccc80', 12)
 
   } else {
-    drawTerminal(ctx, 48, 305, LEVELS[state.level].name, state.level === 1 ? 'RETRY / ROUTE / REPEAT' : 'FRIDAY / FINAL DEPLOY')
+    drawTerminal(ctx, 48, 305, LEVELS[state.level].name, state.level === 1 ? 'FANS / LIFTS / OVERHEAT' : 'GRAVITY / OFFLINE / CLONES')
     drawTerminal(ctx, checkpointX - 55, 272, c.signCommit, state.checkpoint ? c.signCommitSaved : c.signCommitHint)
   }
   for (const wall of LEVELS[state.level].firewalls) {
@@ -750,6 +718,21 @@ export function renderLocalhost(ctx: CanvasRenderingContext2D, state: VisualStat
   const vignette = ctx.createRadialGradient(480, 300, 230, 480, 280, 620)
   vignette.addColorStop(0, 'transparent'); vignette.addColorStop(1, '#03071499')
   ctx.fillStyle = vignette; ctx.fillRect(0, 0, 960, 540)
+  if (state.level === 2 && state.boss.started && state.boss.health > 0) {
+    ctx.textAlign = 'center'
+    box(ctx, 300, 38, 360, 32, 5, '#0a0c19ee')
+    text(ctx, state.copy.bossPhases[bossPhase(state.boss.health)], 480, 58, '#ffd29e', 14)
+    ctx.textAlign = 'left'
+  }
+  const lesson = LEVELS[state.level].lessons?.[state.lesson.index]
+  if (lesson) {
+    ctx.textAlign = 'center'
+    box(ctx, 230, 80, 500, 54, 7, '#100e25ed')
+    text(ctx, state.lesson.announce > 0 ? `${state.copy.bossRule} ${Math.ceil(state.lesson.announce)}...` : `${state.copy.bossCmd[lesson.command]} · ${Math.ceil(state.lesson.remaining)}s`, 480, 102, '#ffd0a8', 14)
+    text(ctx, state.copy.lessonHint, 480, 122, '#c8d9ec', 11)
+    ctx.textAlign = 'left'
+  }
+  if (state.slowRemaining > 0) text(ctx, state.copy.cpuWarning, 330, 85, '#ffc18a', 15)
   drawBossAnnounce(ctx, state, t)
   drawPowerOverlay(ctx, state.powers, state.time, state.copy, state.reducedMotion)
 }

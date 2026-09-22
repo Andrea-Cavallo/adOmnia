@@ -20,7 +20,7 @@ it.each([0, 1])('offers the next environment after stage %i, rather than a pause
   snapshot = { ...INITIAL_SNAPSHOT, level, levelComplete: true }
   const html = renderToStaticMarkup(<BugHuntOverlay onClose={() => undefined} />)
   expect(html).toContain('Next environment:')
-  expect(html).toContain(level === 0 ? 'API Gateway' : 'Production')
+  expect(html).toContain(level === 0 ? 'Production Datacenter' : 'Legacy Dimension')
   expect(html).not.toContain('Restart campaign')
 })
 it('shows the score and replay after the final boss', () => {

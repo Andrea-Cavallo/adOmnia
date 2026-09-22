@@ -2,6 +2,12 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+## v0.9.19 release notes: a developer-world campaign and controllable boss gravity
+
+See [the full v0.9.19 notes](releases/v0.9.19.md): three distinct worlds, flying
+enemies and specialized attacks, tutorial rule overrides, and a three-phase
+Monolith with timed gravity, a safe zone and destructible modules.
+
 ## v0.9.18 release notes: a0 has a personality, a bigger Localhost, and three lives
 
 See [the full v0.9.18 notes](releases/v0.9.18.md): reactive expressions, landing
