@@ -2,12 +2,12 @@ import { box, line, text, glow } from './drawing'
 export { box, line, text, glow } from './drawing'
 import { drawWorld, drawWorldPlatform, drawSpecialBug, drawEnvironment } from './worldVisuals'
 import type { BugHuntCopy } from './copy'
-import { BOSS_HEALTH, BOSS_MODULES, bossPhase, platformOffline, BOSS_ANNOUNCE, BOSS_FISTS, BOSS_TOWER, LEVELS, BOSS_BODY, firewallPhase, CHECKPOINT_X, levelExit, levelHotfix, TURRET_CYCLE, type Envelope, type Platform, type Boss, type Bug } from './level'
+import { BOSS_HEALTH, BOSS_MODULES, bossPhase, platformOffline, outagePhase, BOSS_ANNOUNCE, BOSS_FISTS, BOSS_TOWER, LEVELS, BOSS_BODY, firewallPhase, CHECKPOINT_X, levelExit, levelHotfix, TURRET_CYCLE, type Envelope, type Platform, type Boss, type Bug } from './level'
 import { drawBreakpointMarkers, drawGcWave, drawPowerOverlay, drawPowerPickups, drawRewindGhosts, drawSudoAura } from './powerVisuals'
 import type { PowerState } from './powers'
 
 export type PlayerVisual = { x: number; y: number; w: number; h: number; vx: number; vy: number; grounded: boolean; facing: number; invulnerable: number; squash: number; dash?: number
-  celebrate?: number; recover?: number; lookX?: number; lookY?: number; danger?: boolean; speech?: string; speechTime?: number
+  celebrate?: number; recover?: number; lookX?: number; lookY?: number; danger?: boolean; speech?: string; speechTime?: number; crouch?: boolean
   grapple?: { x: number; y: number; length: number } | null }
 export type Particle = { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; color: string; size: number; gravity: number }
 export type Popup = { x: number; y: number; text: string; color: string; life: number }
@@ -170,8 +170,16 @@ function drawMounts(ctx: CanvasRenderingContext2D, p: Platform, time: number) {
 function drawPlatforms(ctx: CanvasRenderingContext2D, camera: number, time: number, state: VisualState) {
   for (const p of state.platforms) {
     if (p.x + p.w < camera - 40 || p.x > camera + 1000) continue
+    if (p.outage && !p.deleted) {
+      // The 503 is readable a beat before the floor goes: never an unannounced hole.
+      const phase = outagePhase(p, state.worldTime)
+      if (phase !== 'up') text(ctx, '503 SERVICE UNAVAILABLE', p.x + 16, p.y - 14,
+        phase === 'down' || Math.floor(time * 8) % 2 === 0 ? '#ff9db4' : '#7c5a6d', 11)
+    }
     if (p.deleted || platformOffline(p, state.worldTime)) {
       ctx.setLineDash([7, 9]); line(ctx, [p.x, p.y, p.x + p.w, p.y], '#ff6d8c33', 2); ctx.setLineDash([])
+      // The Monolith does not remove a platform, it deprecates it. Same result.
+      if (p.arena) text(ctx, 'DEPRECATED', p.x + p.w / 2 - 34, p.y - 9, '#ff9db4aa', 11)
       continue
     }
     if ((p.crumble ?? 0) > 0.8) { line(ctx, [p.x, p.y, p.x + p.w, p.y], '#66566a44', 2); continue }
@@ -221,6 +229,7 @@ function drawRobot(ctx: CanvasRenderingContext2D, p: PlayerVisual, time: number,
   ctx.save()
   ctx.translate(p.x + p.w / 2, flipped ? p.y : p.y + p.h)
   if (flipped) ctx.scale(1, -1)
+  if (p.crouch) ctx.scale(1.1, 0.6)
   if (p.invulnerable > 0) ctx.globalAlpha = 0.65 + Math.sin(time * 18) * 0.2
   glow(ctx, 0, -17, 44, '#973ce329')
   ctx.fillStyle = '#a870f026'; ctx.beginPath(); ctx.ellipse(0, 2, 21, 4, 0, 0, Math.PI * 2); ctx.fill()
@@ -330,21 +339,23 @@ function drawBug(ctx: CanvasRenderingContext2D, bug: Bug, time: number) {
 /** a0's packets read cyan and fast; turret bolts read orange and slow. */
 function drawShots(ctx: CanvasRenderingContext2D, shots: Shot[], t: number) {
   for (const shot of shots) {
-    const direction = Math.sign(shot.vx) || 1
+    // Packets are drawn along their own heading, so an upward shot reads as one.
+    const angle = Math.atan2(shot.vy ?? 0, shot.vx)
+    ctx.save(); ctx.translate(shot.x, shot.y); ctx.rotate(angle)
     if (shot.enemy) {
-      glow(ctx, shot.x, shot.y, 22, '#ff7b5a44')
-      line(ctx, [shot.x - direction * 14, shot.y, shot.x, shot.y], '#ffb56b88', 4)
-      box(ctx, shot.x - 6, shot.y - 6, 13, 12, 5, '#ff8a5c')
-      ctx.fillStyle = '#ffe2c9'; ctx.fillRect(shot.x - 2, shot.y - 2, 4, 4)
+      glow(ctx, 0, 0, 22, '#ff7b5a44')
+      line(ctx, [-14, 0, 0, 0], '#ffb56b88', 4)
+      box(ctx, -6, -6, 13, 12, 5, '#ff8a5c')
+      ctx.fillStyle = '#ffe2c9'; ctx.fillRect(-2, -2, 4, 4)
+      ctx.restore()
       continue
     }
-    glow(ctx, shot.x, shot.y, 20, '#6ff0ff3d')
-    line(ctx, [shot.x - direction * 26, shot.y, shot.x, shot.y], '#8cf7ec88', 3)
-    ctx.save(); ctx.translate(shot.x, shot.y); ctx.scale(direction, 1)
+    glow(ctx, 0, 0, 20, '#6ff0ff3d')
+    line(ctx, [-26, 0, 0, 0], '#8cf7ec88', 3)
     ctx.fillStyle = '#c9fbff'
     ctx.beginPath(); ctx.moveTo(-7, -5); ctx.lineTo(8, 0); ctx.lineTo(-7, 5); ctx.lineTo(-3, 0); ctx.closePath(); ctx.fill()
+    if (Math.floor(t * 30) % 2 === 0) { ctx.fillStyle = '#ffffff'; ctx.fillRect(-1, -1, 2, 2) }
     ctx.restore()
-    if (Math.floor(t * 30) % 2 === 0) { ctx.fillStyle = '#ffffff'; ctx.fillRect(shot.x - 1, shot.y - 1, 2, 2) }
   }
 }
 
@@ -418,6 +429,24 @@ function drawEnvelope(ctx: CanvasRenderingContext2D, envelope: Envelope) {
     if ((envelope.warning ?? 0) > 0) {
       ctx.setLineDash([4, 7]); line(ctx, [cx, cy, cx, 460], '#ff9a70aa', 2); ctx.setLineDash([])
       text(ctx, '!', cx - 4, 450, '#ffd0a8', 22)
+    }
+    if (envelope.variant === 2) {
+      // A stack trace, falling as a strip of frames.
+      box(ctx, envelope.x, envelope.y, envelope.w, envelope.h, 1, '#141021')
+      line(ctx, [envelope.x, envelope.y, envelope.x + envelope.w, envelope.y], '#ff8ba0', 2)
+      text(ctx, 'Caused by:', envelope.x + 3, envelope.y + 12, '#ff9db4', 7)
+      for (let i = 0; i < 3; i++) text(ctx, 'at a0.run()', envelope.x + 4, envelope.y + 23 + i * 9, '#8f9bc4', 6)
+      return
+    }
+    if (envelope.variant === 1) {
+      // A modal nobody ever dismissed.
+      box(ctx, envelope.x, envelope.y, envelope.w, envelope.h, 1, '#bebebe')
+      box(ctx, envelope.x + 2, envelope.y + 2, envelope.w - 4, 9, 0, '#7a1230')
+      text(ctx, 'Error', envelope.x + 4, envelope.y + 9, '#ffffff', 7)
+      text(ctx, '✖ Unexpected', envelope.x + 4, envelope.y + 21, '#181818', 7)
+      box(ctx, envelope.x + envelope.w / 2 - 12, envelope.y + envelope.h - 10, 24, 8, 1, '#d9d7e0')
+      text(ctx, 'OK', envelope.x + envelope.w / 2 - 5, envelope.y + envelope.h - 3, '#181818', 6)
+      return
     }
     box(ctx, envelope.x, envelope.y, envelope.w, envelope.h, 1, '#bebebe')
     box(ctx, envelope.x + 2, envelope.y + 2, envelope.w - 4, 9, 0, '#000080')

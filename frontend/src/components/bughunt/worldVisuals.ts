@@ -12,8 +12,12 @@ function window95(ctx: CanvasRenderingContext2D, x: number, y: number, w: number
 }
 
 export function drawWorld(ctx: CanvasRenderingContext2D, camera: number, t: number, stage: number) {
+  // The Legacy Dimension rots as a0 walks into it: the Monolith is already here.
+  const corruption = stage === 2 ? Math.min(1, camera / 2200) : 0
   const colors = [['#20182b', '#514039'], ['#071923', '#0b3441'], ['#17162f', '#203632']][stage]
-  const gradient = ctx.createLinearGradient(0, 0, 0, 540); gradient.addColorStop(0, colors[0]); gradient.addColorStop(1, colors[1])
+  const gradient = ctx.createLinearGradient(0, 0, 0, 540)
+  gradient.addColorStop(0, corruption ? `rgb(${23 + corruption * 58}, ${22 - corruption * 14}, ${47 + corruption * 26})` : colors[0])
+  gradient.addColorStop(1, corruption ? `rgb(${32 + corruption * 46}, ${54 - corruption * 34}, ${50 - corruption * 6})` : colors[1])
   ctx.fillStyle = gradient; ctx.fillRect(0, 0, 960, 540)
   ctx.save(); ctx.translate(-camera * 0.22, 0)
   if (stage === 0) {
@@ -52,17 +56,30 @@ export function drawWorld(ctx: CanvasRenderingContext2D, camera: number, t: numb
       ctx.restore()
     }
   } else {
-    const corruption = Math.min(1, camera / 2200)
     for (let i = 0; i < 9; i++) {
-      const x = i * 235 - 10, y = 120 + i % 3 * 49
+      // Each window tears sideways as the corruption takes the frame apart.
+      const tear = corruption > 0.3 ? Math.sin(t * 7 + i * 2) * (corruption - 0.3) * 26 : 0
+      const x = i * 235 - 10 + tear, y = 120 + i % 3 * 49
       window95(ctx, x, y, 207, 175, ['Java 6 Runtime', 'Enterprise Console', 'XML Document'][i % 3])
-      box(ctx, x + 9, y + 28, 188, 118, 0, '#122c24')
-      for (let row = 0; row < 7; row++) text(ctx, ['<legacy>', '  <session id="a0">', '  javax.ejb.Error', '  RETRY = FOREVER', '  </session>', '  <soap:Envelope>', '</legacy>'][(row + i) % 7], x + 15, y + 43 + row * 14, '#75b68b', 9)
+      box(ctx, x + 9, y + 28, 188, 118, 0, corruption > 0.55 ? '#2a1030' : '#122c24')
+      for (let row = 0; row < 7; row++) {
+        const glitched = corruption > 0.5 && (row + i + Math.floor(t * 3)) % 5 === 0
+        const slip = corruption > 0.4 ? ((row * 37 + i * 13 + Math.floor(t * 6)) % 11 - 5) * corruption : 0
+        text(ctx, glitched ? '▓▒░ NullPointerException ░▒▓' : ['<legacy>', '  <session id="a0">', '  javax.ejb.Error', '  RETRY = FOREVER', '  </session>', '  <soap:Envelope>', '</legacy>'][(row + i) % 7],
+          x + 15 + slip, y + 43 + row * 14, glitched ? '#e58bb6' : '#75b68b', 9)
+      }
       box(ctx, x + 66, y + 153, 70, 16, 0, '#c8c5cc'); text(ctx, 'OK / CANCEL', x + 72, y + 165, '#413a52', 8)
     }
     for (let i = 0; i < 18; i++) {
       const y = 100 + i * 21
-      ctx.fillStyle = `rgba(152, 91, 176, ${corruption * 0.1})`; ctx.fillRect((i * 173 + Math.floor(t * 2) * 7) % 1600, y, 140, 3)
+      ctx.fillStyle = `rgba(152, 91, 176, ${corruption * 0.28})`
+      ctx.fillRect((i * 173 + Math.floor(t * 2 + corruption * 9) * 7) % 1600, y, 140 + corruption * 110, 3 + corruption * 4)
+    }
+    // Columns of dead memory falling behind the level, once the rot is past half.
+    for (let i = 0; i < 14 && corruption > 0.45; i++) {
+      const x = (i * 131 + 40) % 1600
+      ctx.fillStyle = `rgba(214, 120, 176, ${(corruption - 0.45) * 0.4})`
+      ctx.fillRect(x, (t * (60 + i * 17) + i * 90) % 620 - 80, 2, 74)
     }
   }
   ctx.restore()
@@ -84,6 +101,11 @@ export function drawWorldPlatform(ctx: CanvasRenderingContext2D, p: Platform, t:
   } else if (p.skin === 'phone') {
     box(ctx, p.x, p.y, p.w, h, 7, '#92939f'); box(ctx, p.x + 8, p.y + 3, p.w - 21, h - 6, 4, '#244458'); text(ctx, '17:59', p.x + 20, p.y + 16, '#acdedb', 10)
   } else if (p.skin === 'usb') {
+    // Slack hanging from the fixed anchor, so the swing is legible from the cable itself.
+    const anchorX = (p.originX ?? p.x) + p.w / 2, anchorY = (p.originY ?? p.y) - 88
+    ctx.strokeStyle = '#4c3f59'; ctx.lineWidth = 6
+    ctx.beginPath(); ctx.moveTo(anchorX, anchorY)
+    ctx.quadraticCurveTo((anchorX + p.x + p.w / 2) / 2, anchorY + 62, p.x + p.w / 2, p.y + 4); ctx.stroke()
     line(ctx, [p.x, p.y + 9, p.x + p.w, p.y + 9], '#6d577d', 14); box(ctx, p.x, p.y, 28, h, 3, '#b8b5c2'); box(ctx, p.x + p.w - 28, p.y, 28, h, 3, '#b8b5c2')
   } else if (p.skin === 'ide' || p.skin === 'popup' || p.skin === 'window') {
     window95(ctx, p.x, p.y, p.w, h, p.skin === 'ide' ? 'a0.ts' : p.unstable ? 'DEPRECATED' : 'Runtime')
@@ -96,7 +118,7 @@ export function drawWorldPlatform(ctx: CanvasRenderingContext2D, p: Platform, t:
   } else {
     const tint = p.skin === 'xml' ? '#527c5a' : p.skin === 'pod' ? '#4c4d87' : '#264e65'
     box(ctx, p.x, p.y, p.w, h, 4, tint)
-    text(ctx, p.skin === 'xml' ? '<XML />' : p.skin === 'pod' ? 'K8S / POD' : p.skin === 'packet' ? '1010 →' : 'RACK / LIFT', p.x + 12, p.y + 16, '#d1eee8', 10)
+    text(ctx, p.skin === 'xml' ? '<XML />' : p.skin === 'pod' ? (p.crumble ? 'POD EVICTED' : 'K8S / POD') : p.skin === 'packet' ? '1010 →' : 'RACK / LIFT', p.x + 12, p.y + 16, '#d1eee8', 10)
     for (let x = p.x + 12; x < p.x + p.w - 5; x += 25) box(ctx, x, p.y + h - 8, 13, 3, 1, '#6d99a7')
   }
   line(ctx, [p.x + 2, p.y, p.x + p.w - 2, p.y], accent, 2)

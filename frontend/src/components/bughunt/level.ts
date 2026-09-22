@@ -3,7 +3,7 @@ import type { PowerPickup } from './powers'
 export type Rect = { x: number; y: number; w: number; h: number }
 export type Platform = Rect & { floating?: boolean; travel?: number; unstable?: boolean; originX?: number; crumble?: number; deleted?: boolean
   /** Arena slab the Monolith can switch offline, and the arena ceiling. */
-  arena?: boolean; ceiling?: boolean; verticalTravel?: number; originY?: number; pulse?: number; skin?: 'key' | 'ide' | 'book' | 'phone' | 'usb' | 'popup' | 'rack' | 'packet' | 'pod' | 'window' | 'xml' | 'floppy' | 'toolbar' | 'button' | 'progress' }
+  arena?: boolean; ceiling?: boolean; outage?: boolean; verticalTravel?: number; originY?: number; pulse?: number; skin?: 'key' | 'ide' | 'book' | 'phone' | 'usb' | 'popup' | 'rack' | 'packet' | 'pod' | 'window' | 'xml' | 'floppy' | 'toolbar' | 'button' | 'progress' }
 /** Magnetic grapple anchor: a0 latches on, swings and launches. */
 export type Anchor = { x: number; y: number }
 /** The DELETE wave chase: `lead` px behind the player when it wakes up. */
@@ -163,7 +163,13 @@ export const COMMAND_SECONDS = 5
 export const BOSS_ANNOUNCE = 3
 export const ARENA_X = 2430
 /** A SOAP envelope thrown by a fist: it arcs across the arena and stings. */
-export type Envelope = Rect & { vx: number; vy: number; spin: number; kind?: 'soap' | 'xml' | 'error' | 'debris'; warning?: number }
+export type Envelope = Rect & { vx: number; vy: number; spin: number; kind?: 'soap' | 'xml' | 'error' | 'debris'; warning?: number
+  /** Which piece of the Monolith is falling: a Java 6 window, a modal, a stack trace. */
+  variant?: number }
+/** Panic-mode debris: size and payload per variant, in fall order. */
+export const DEBRIS = [
+  { w: 52, h: 36 }, { w: 70, h: 30 }, { w: 44, h: 46 },
+]
 export type Boss = { health: number; clock: number; hit: boolean; envelopes: Envelope[]
   command: BossCommand | null; announce: number; applied: boolean; remaining: number; cooldown: number; sequence: number; phase: number; started: boolean; modules: number[]; debrisClock: number
   /** Which fist threw last, and how much recoil is left to draw. */
@@ -238,6 +244,12 @@ export function bossPhase(health: number) { return health > 4 ? 0 : health > 2 ?
 export function platformOffline(platform: Platform, time: number) {
   return platform.pulse !== undefined && (time + platform.pulse) % 6 > 4.5
 }
+/** A 503 slab flashes before the service drops: the fall is always announced. */
+export function outagePhase(platform: Platform, time: number): 'up' | 'warning' | 'down' {
+  if (platform.pulse === undefined) return 'up'
+  const t = (time + platform.pulse) % 6
+  return t > 4.5 ? 'down' : t > 3.6 ? 'warning' : 'up'
+}
 
 // One campaign vocabulary: precision -> moving infrastructure -> rule overrides.
 LEVELS[0].name = 'Buggy Dev Desk'
@@ -248,7 +260,8 @@ const legacySkins = ['window', 'xml', 'floppy', 'toolbar', 'button', 'progress']
 for (const [stage, map] of LEVELS.entries()) {
   map.platforms = map.platforms.map((p, index) => ({ ...p,
     skin: stage === 0 ? deskSkins[index % deskSkins.length] : stage === 1 ? (p.floating ? index % 2 ? 'packet' : 'pod' : 'rack') : legacySkins[index % legacySkins.length],
-    ...(stage === 0 && p.floating && index % 6 === 4 ? { travel: 24 } : {}),
+    // USB cables hang and swing: the arc is the platform, not a straight slide.
+    ...(stage === 0 && p.floating && index % 6 === 4 ? { travel: 52, verticalTravel: 14 } : {}),
     ...(stage === 0 && p.floating && index % 6 === 5 ? { pulse: 1.5 } : {}),
     ...(stage === 0 && p.floating && p.x > 800 && p.x < 2400 ? { unstable: true } : {}),
   }))
@@ -266,6 +279,19 @@ LEVELS[1].slowZone = { x: 1120, y: 0, w: 300, h: 540 }
 LEVELS[1].platforms.push({ x: 1060, y: 320, w: 130, h: 22, floating: true, verticalTravel: 75, skin: 'rack' },
   { x: 2200, y: 325, w: 130, h: 22, floating: true, verticalTravel: 65, skin: 'rack' },
   { x: 2440, y: 320, w: 140, h: 22, floating: true, pulse: 0, skin: 'pod' })
+// 503 SERVICE UNAVAILABLE: two floor segments drop out of service on a cycle,
+// each announced before the hole opens and each with a stable pod above it.
+for (const slab of LEVELS[1].platforms) {
+  if (slab.floating || slab.ceiling) continue
+  if (slab.x === 715) { slab.pulse = 3; slab.outage = true }
+  if (slab.x === 1040) { slab.pulse = 0; slab.outage = true }
+}
+LEVELS[1].platforms.push({ x: 1120, y: 352, w: 150, h: 22, floating: true, skin: 'pod' })
+// Kubernetes pods crash under a0 and reschedule a few seconds later. All three sit
+// over solid floor and outside the DELETE chase: losing one costs height, never a life.
+for (const [i, x] of [300, 2520, 2700].entries()) {
+  LEVELS[1].platforms.push({ x, y: 352 - i % 2 * 26, w: 128, h: 22, floating: true, unstable: true, skin: 'pod' })
+}
 LEVELS[1].purge = { start: 1550, end: 2460, speed: 205, lead: 500 }
 LEVELS[2].purge = undefined
 LEVELS[2].lessons = [{ x: 650, end: 1180, command: 'gravity' }, { x: 1330, end: 1720, command: 'offline' }, { x: 1840, end: 2180, command: 'clones' }]

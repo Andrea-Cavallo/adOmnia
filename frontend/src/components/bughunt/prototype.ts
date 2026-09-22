@@ -1,8 +1,9 @@
+import { livesFor, type Difficulty } from './difficulty'
 import { stepSpecialBug } from './enemies'
 import { createRush, RUSH_START, RUSH_END, RUSH_TARGET, RUSH_BONUS, type Rush } from './rush'
 import { BugHuntAudio } from './audio'
 import { BUG_HUNT_COPY, type BugHuntCopy } from './copy'
-import { ARENA_X, BOSS_HEALTH, BOSS_MODULES, bossPhase, GRAVITY_SAFE_X, COMMAND_SECONDS, platformOffline, BOSS_ANNOUNCE, BOSS_COMMANDS, BOSS_BODY, BOSS_FISTS, ENVELOPE_GRAVITY, ENVELOPE_SPEED, LEVELS, createBoss, firewallPhase, type Boss, type BossCommand, type Platform, CHECKPOINT_X, levelExit, levelHotfix, levelWidth, TURRET_CYCLE, intersects, type Bug, type Rect } from './level'
+import { ARENA_X, BOSS_HEALTH, DEBRIS, BOSS_MODULES, bossPhase, GRAVITY_SAFE_X, COMMAND_SECONDS, platformOffline, BOSS_ANNOUNCE, BOSS_COMMANDS, BOSS_BODY, BOSS_FISTS, ENVELOPE_GRAVITY, ENVELOPE_SPEED, LEVELS, createBoss, firewallPhase, type Boss, type BossCommand, type Platform, CHECKPOINT_X, levelExit, levelHotfix, levelWidth, TURRET_CYCLE, intersects, type Bug, type Rect } from './level'
 import { renderLocalhost, type Particle, type PlayerVisual, type Popup, type Shot } from './visuals'
 import {
   BREAKPOINT_SECONDS, GC_RADIUS, GC_SPEED, PICKUP_SIZE, REVERT_MAX_CHARGES, REWIND_SPEED, SUDO_SECONDS,
@@ -22,6 +23,10 @@ const GRAPPLE_REEL = 250
 const GRAPPLE_LAUNCH = 250
 export type PurgeState = 'off' | 'waiting' | 'active' | 'cleared'
 /** a0 fires debug packets; turrets fire back. Both are slow enough to read. */
+const PLAYER_H = 48
+/** Crouch: shorter box, slower walk. Bolts aimed at the torso miss. */
+const CROUCH_H = 26
+const CROUCH_SPEED = 0.45
 const SHOT_COOLDOWN = 0.22
 const SHOT_SPEED = 640
 const BOLT_SPEED = 250
@@ -29,14 +34,16 @@ const CHASE_RANGE = 320
 const CHASE_SPEED = 196
 const TURRET_RANGE = 430
 
-type Player = PlayerVisual & { coyote: number; buffer: number; knockback: number; airJump: boolean; dash: number; dashCooldown: number; dashDirection: number }
+type Player = PlayerVisual & { crouch: boolean; coyote: number; buffer: number; knockback: number; airJump: boolean; dash: number; dashCooldown: number; dashDirection: number }
 export type GameSnapshot = {
+  difficulty: Difficulty
   rush: Rush; rushWins: number; totalBugs: number; revertCharges: number; sudo: number; breakpoint: number
   score: number; combo: number; bestCombo: number; dashReady: boolean; health: number; gameOver: boolean; deaths: number; checkpoint: boolean; finished: boolean; paused: boolean
   grappled: boolean; purge: PurgeState; shotReady: boolean; bossCommand: BossCommand | null; bossAnnounce: boolean
   level: number; levelComplete: boolean; bossHealth: number; bits: number; totalBits: number; hotfix: boolean; secret: boolean; bugs: number; seconds: number
 }
 export const INITIAL_SNAPSHOT: GameSnapshot = {
+  difficulty: 'production',
   rush: createRush(), rushWins: 0, totalBugs: LEVELS.reduce((sum, l) => sum + l.bugs.length, 0), revertCharges: 0, sudo: 0, breakpoint: 0,
   score: 0, combo: 0, bestCombo: 0, dashReady: true, health: 3, gameOver: false, deaths: 0, checkpoint: false, finished: false, paused: false,
   grappled: false, purge: 'off', shotReady: true, bossCommand: null, bossAnnounce: false,
@@ -83,6 +90,7 @@ export class BugHuntPrototype {
   private checkpoint = false
   private hotfix = false
   private secret = false
+  private difficulty: Difficulty = 'production'
   private health = 3
   private gameOver = false
   private deaths = 0
@@ -102,10 +110,12 @@ export class BugHuntPrototype {
   private publishedSecond = 0
   private copy: BugHuntCopy
 
-  constructor(canvas: HTMLCanvasElement, private onChange: (snapshot: GameSnapshot) => void, options: { audio?: boolean; reducedMotion?: boolean; copy?: BugHuntCopy } = {}) {
+  constructor(canvas: HTMLCanvasElement, private onChange: (snapshot: GameSnapshot) => void, options: { difficulty?: Difficulty; audio?: boolean; reducedMotion?: boolean; copy?: BugHuntCopy } = {}) {
     const ctx = canvas.getContext('2d')
     if (!ctx) throw new Error('Canvas 2D unavailable')
     this.ctx = ctx
+    this.difficulty = options.difficulty ?? 'production'
+    this.health = livesFor(this.difficulty)
     this.audio.enabled = options.audio ?? true
     this.reducedMotion = options.reducedMotion ?? false
     this.copy = options.copy ?? BUG_HUNT_COPY.en
@@ -116,11 +126,11 @@ export class BugHuntPrototype {
   }
 
   private makePlayer(x: number): Player {
-    return { x, y: 412, w: 34, h: 48, vx: 0, vy: 0, grounded: true, coyote: 0.1, buffer: 0, invulnerable: 0, facing: 1, squash: 0, celebrate: 0, recover: 0, lookX: 0, lookY: 0, danger: false, speech: '', speechTime: 0, knockback: 0, airJump: true, dash: 0, dashCooldown: 0, dashDirection: 1, grapple: null }
+    return { x, y: 412, w: 34, h: PLAYER_H, crouch: false, vx: 0, vy: 0, grounded: true, coyote: 0.1, buffer: 0, invulnerable: 0, facing: 1, squash: 0, celebrate: 0, recover: 0, lookX: 0, lookY: 0, danger: false, speech: '', speechTime: 0, knockback: 0, airJump: true, dash: 0, dashCooldown: 0, dashDirection: 1, grapple: null }
   }
 
   getSnapshot(): GameSnapshot {
-    return { rush: { ...this.rush }, rushWins: this.rushWins, totalBugs: LEVELS.reduce((sum, l) => sum + l.bugs.length, 0), revertCharges: this.powers.revertCharges, sudo: Math.ceil(this.powers.sudo), breakpoint: Math.ceil(this.powers.breakpoint),
+    return { difficulty: this.difficulty, rush: { ...this.rush }, rushWins: this.rushWins, totalBugs: LEVELS.reduce((sum, l) => sum + l.bugs.length, 0), revertCharges: this.powers.revertCharges, sudo: Math.ceil(this.powers.sudo), breakpoint: Math.ceil(this.powers.breakpoint),
       score: this.score, combo: this.chain, bestCombo: this.bestCombo, dashReady: this.player.dashCooldown <= 0, health: this.health, gameOver: this.gameOver, deaths: this.deaths, checkpoint: this.checkpoint, finished: this.finished, paused: this.paused,
       grappled: !!this.player.grapple, purge: this.purgeState, shotReady: this.shotCooldown <= 0,
       bossCommand: this.boss.applied || this.boss.announce > 0 ? this.boss.command : null, bossAnnounce: this.boss.announce > 0,
@@ -128,6 +138,11 @@ export class BugHuntPrototype {
   }
 
   private publish() { this.onChange(this.getSnapshot()) }
+
+  setDifficulty(difficulty: Difficulty) {
+    if (this.elapsed > 0 || this.level > 0 || this.gameOver) return
+    this.difficulty = difficulty; this.health = livesFor(difficulty); this.publish()
+  }
 
   unlockAudio() { this.audio.unlock() }
   setAudio(enabled: boolean) { this.audio.setEnabled(enabled) }
@@ -161,7 +176,7 @@ export class BugHuntPrototype {
     if (code === 'Space' && this.player.vy * this.gravitySign < -180) this.player.vy *= 0.52
   }
 
-  clearKeys() { this.keys.clear(); this.player.buffer = 0; this.player.dash = 0; this.player.grapple = null }
+  clearKeys() { this.keys.clear(); this.setCrouch(false); this.player.buffer = 0; this.player.dash = 0; this.player.grapple = null }
 
   setPaused(paused: boolean) {
     if (this.destroyed || this.paused === paused) return
@@ -201,7 +216,7 @@ export class BugHuntPrototype {
     this.level = 0; this.levelComplete = false; this.boss = createBoss()
     this.lesson = { index: -1, announce: 0, remaining: 0, done: new Set<number>() }; this.slowRemaining = 0; this.slowUsed = false
     this.platforms = this.map.platforms.map(p => ({ ...p, originX: p.x, originY: p.y, crumble: 0 }))
-    this.health = 3; this.gameOver = false; this.deaths = 0; this.checkpoint = false; this.finished = false; this.hotfix = false; this.secret = false
+    this.health = livesFor(this.difficulty); this.gameOver = false; this.deaths = 0; this.checkpoint = false; this.finished = false; this.hotfix = false; this.secret = false
     this.enemies = this.map.bugs.map(b => ({ ...b }))
     this.collected.clear(); this.defeated.clear(); this.particles = []; this.popups = []
     this.player = this.makePlayer(58)
@@ -249,7 +264,7 @@ export class BugHuntPrototype {
   private hurt(fell = false) {
     if ((!fell && (this.player.invulnerable > 0 || this.powers.sudo > 0)) || this.gameOver || this.finished || this.powers.rewind) return
     this.chain = 0; this.comboTime = 0; this.player.dash = 0; this.player.grapple = null
-    this.health--
+    if (Number.isFinite(this.health)) this.health--
     this.audio.play('hurt')
     this.burst(this.player.x + 17, Math.min(480, this.player.y + 24), ['#ff8f9f', '#c778e8', '#f1c7fc'], 22)
     this.shake = 4
@@ -391,10 +406,11 @@ export class BugHuntPrototype {
     p.coyote = p.grounded ? 0.1 : Math.max(0, p.coyote - dt)
     p.buffer = Math.max(0, p.buffer - dt)
     const horizontal = Number(this.keys.has('KeyD') || this.keys.has('ArrowRight')) - Number(this.keys.has('KeyA') || this.keys.has('ArrowLeft'))
+    this.setCrouch((this.keys.has('KeyS') || this.keys.has('ArrowDown')) && p.grounded && !p.grapple && p.dash <= 0 && p.knockback <= 0)
     if (p.dash > 0) { p.vx = p.dashDirection * 720; p.vy = 0 }
     else if (p.knockback > 0) p.knockback -= dt
     else {
-      const target = horizontal * RUN_SPEED
+      const target = horizontal * RUN_SPEED * (p.crouch ? CROUCH_SPEED : 1)
       const acceleration = (horizontal ? 2800 : 3400) * dt
       p.vx += Math.max(-acceleration, Math.min(acceleration, target - p.vx))
     }
@@ -559,14 +575,34 @@ export class BugHuntPrototype {
     this.camera += (target - this.camera) * Math.min(1, dt * 8)
   }
 
-  /** a0's debug packet: short cooldown, light recoil, nothing to reload. */
+  /** Crouch keeps the feet planted: the box shrinks toward the surface a0 stands on. */
+  private setCrouch(on: boolean) {
+    const p = this.player
+    if (on === p.crouch) return
+    const drop = this.gravitySign > 0 ? PLAYER_H - CROUCH_H : 0
+    if (on) { p.y += drop; p.h = CROUCH_H; p.crouch = true; return }
+    // ponytail: refuse to stand inside a slab, otherwise a0 wedges into the ceiling it crawled under.
+    const standing = { x: p.x, y: p.y - drop, w: p.w, h: PLAYER_H }
+    const blocked = this.platforms.some(slab => !slab.deleted && !slab.floating && !platformOffline(slab, this.worldTime) && (slab.crumble ?? 0) <= 0.8 && intersects(standing, slab))
+    if (blocked) return
+    p.y = standing.y; p.h = PLAYER_H; p.crouch = false
+  }
+
+  private aimingUp() {
+    return !this.player.grapple && (this.keys.has('KeyW') || this.keys.has('ArrowUp'))
+  }
+
+  /** a0's debug packet: short cooldown, light recoil, nothing to reload. Hold up to fire at the ceiling. */
   private fire() {
     const p = this.player
     if (this.shotCooldown > 0 || this.powers.rewind || this.gameOver || this.finished || this.levelComplete) return
+    const up = this.aimingUp()
     this.shotCooldown = SHOT_COOLDOWN
-    this.shots.push({ x: p.x + p.w / 2 + p.facing * 20, y: p.y + 17, vx: p.facing * SHOT_SPEED, life: 1.15, enemy: false })
-    this.burst(p.x + p.w / 2 + p.facing * 24, p.y + 17, ['#9ff0ff', '#ffffff'], 5, 80)
-    if (p.grounded) p.vx -= p.facing * 22
+    const x = p.x + p.w / 2 + (up ? 0 : p.facing * 20)
+    const y = up ? p.y - 6 : p.y + (p.crouch ? 8 : 17)
+    this.shots.push({ x, y, vx: up ? 0 : p.facing * SHOT_SPEED, vy: up ? -SHOT_SPEED : 0, life: 1.15, enemy: false })
+    this.burst(x + (up ? 0 : p.facing * 4), y - (up ? 4 : 0), ['#9ff0ff', '#ffffff'], 5, 80)
+    if (p.grounded && !up) p.vx -= p.facing * 22
     this.audio.play('shoot')
     this.publish()
   }
@@ -679,7 +715,7 @@ export class BugHuntPrototype {
       this.hurt()
       if (this.gameOver || this.player !== p) return true
     }
-    this.shots = this.shots.filter(shot => shot.life > 0 && Math.abs(shot.x - (p.x + p.w / 2)) < 1200)
+    this.shots = this.shots.filter(shot => shot.life > 0 && Math.abs(shot.x - (p.x + p.w / 2)) < 1200 && shot.y > -160 && shot.y < HEIGHT + 160)
     return false
   }
 
@@ -853,7 +889,9 @@ export class BugHuntPrototype {
       b.debrisClock += dt
       if (b.debrisClock >= 2.2) {
         b.debrisClock = 0
-        b.envelopes.push({ x: Math.max(2450, Math.min(3070, this.player.x)), y: 148, w: 48, h: 32, vx: 0, vy: 30, spin: 0, kind: 'debris', warning: 1 })
+        // ponytail: derived from the clock, so it never disturbs the command rotation.
+        const variant = Math.floor(this.worldTime / 2.2) % DEBRIS.length
+        b.envelopes.push({ x: Math.max(2450, Math.min(3070, this.player.x)), y: 148, ...DEBRIS[variant], vx: 0, vy: 30, spin: 0, kind: 'debris', variant, warning: 1 })
       }
     }
   }

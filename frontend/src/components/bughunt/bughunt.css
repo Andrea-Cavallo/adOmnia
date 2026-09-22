@@ -119,3 +119,9 @@
 @media (max-width: 760px) {
   .bh-brief { grid-template-columns: 1fr; }
 }
+
+.bh-difficulty { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 16px; }
+.bh-difficulty button { display: flex; flex-direction: column; gap: 7px; align-items: center; padding: 11px 5px; color: #bdc6db; background: #0c1220; border: 1px solid #55506a; border-radius: 9px; cursor: pointer; font: inherit; font-size: 12px; }
+.bh-difficulty button[aria-pressed="true"] { border-color: #c194ff; background: #382647; color: #fff; }
+.bh-difficulty button span { color: #ee9ebd; }
+.bh-difficulty button:focus-visible { outline: 2px solid #b1efd9; outline-offset: 3px; }

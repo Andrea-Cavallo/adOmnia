@@ -39,3 +39,13 @@ it('offers a new campaign at zero lives without resume or victory', () => {
   expect(html).not.toContain('One more run')
   expect(html).not.toContain('aria-label="Resume"')
 })
+
+it.each([
+  ['development', Infinity, 'Unlimited lives', '♥ ∞'],
+  ['testing', 4, '4 of 4 lives', '♥♥♥♥'],
+] as const)('renders the %s life budget without overflowing heart counts', (difficulty, health, label, hearts) => {
+  snapshot = { ...INITIAL_SNAPSHOT, difficulty, health }
+  const html = renderToStaticMarkup(<BugHuntOverlay onClose={() => undefined} />)
+  expect(html).toContain(label)
+  expect(html).toContain(hearts)
+})

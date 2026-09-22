@@ -1,11 +1,12 @@
+import type { Difficulty } from './difficulty'
 export type BugHuntPreferences = { audio: boolean; reducedMotion: boolean; bestSeconds: number | null; bestBits: number; bestScore: number }
 const KEY = 'adomnia.bughunt.preferences.developer-world.v5'
 
-export function loadPreferences(): BugHuntPreferences {
+export function loadPreferences(difficulty: Difficulty = 'production'): BugHuntPreferences {
   const defaults: BugHuntPreferences = { audio: true, reducedMotion: typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches, bestSeconds: null, bestBits: 0, bestScore: 0 }
   try {
-    const campaign = localStorage.getItem(KEY)
-    const legacy = campaign ? null : JSON.parse(localStorage.getItem('adomnia.bughunt.preferences.three-lives.v4') ?? localStorage.getItem('adomnia.bughunt.preferences.arcade.v3') ?? localStorage.getItem('adomnia.bughunt.preferences.campaign.v2') ?? localStorage.getItem('adomnia.bughunt.preferences.v1') ?? 'null')
+    const campaign = localStorage.getItem(difficulty === 'production' ? KEY : `${KEY}.${difficulty}`)
+    const legacy = campaign ? null : JSON.parse((difficulty !== 'production' ? localStorage.getItem(KEY) : null) ?? localStorage.getItem('adomnia.bughunt.preferences.three-lives.v4') ?? localStorage.getItem('adomnia.bughunt.preferences.arcade.v3') ?? localStorage.getItem('adomnia.bughunt.preferences.campaign.v2') ?? localStorage.getItem('adomnia.bughunt.preferences.v1') ?? 'null')
     const raw = campaign ? JSON.parse(campaign) : legacy ? { audio: legacy.audio, reducedMotion: legacy.reducedMotion } : null
     if (!raw || typeof raw !== 'object') return defaults
     return {
@@ -18,8 +19,8 @@ export function loadPreferences(): BugHuntPreferences {
   } catch { return defaults }
 }
 
-export function savePreferences(preferences: BugHuntPreferences) {
-  try { localStorage.setItem(KEY, JSON.stringify(preferences)) } catch { /* a full/disabled store must not interrupt a run */ }
+export function savePreferences(preferences: BugHuntPreferences, difficulty: Difficulty = 'production') {
+  try { localStorage.setItem(difficulty === 'production' ? KEY : `${KEY}.${difficulty}`,  JSON.stringify(preferences)) } catch { /* a full/disabled store must not interrupt a run */ }
 }
 
 export function formatTime(seconds: number): string {

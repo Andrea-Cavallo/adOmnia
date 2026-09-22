@@ -1,3 +1,4 @@
+import { DIFFICULTIES, livesFor, type Difficulty } from './difficulty'
 import { useEffect, useRef, useState } from 'react'
 import { ArrowRight, Check, Cpu, Diamond, Flag, Pause, Play, RotateCcw, Sparkles, Trophy, Volume2, VolumeX, X } from 'lucide-react'
 import { BugHuntPrototype, HEIGHT, INITIAL_SNAPSHOT, WIDTH, type GameSnapshot } from './prototype'
@@ -21,7 +22,7 @@ export function BugHuntOverlay({ onClose }: { onClose: () => void }) {
   const snapshotRef = useRef(snapshot)
   const [ready, setReady] = useState(true)
   const readyRef = useRef(true)
-  const [preferences, setPreferences] = useState(loadPreferences)
+  const [preferences, setPreferences] = useState(() => loadPreferences())
   const preferencesRef = useRef(preferences)
   const [newRecord, setNewRecord] = useState(false)
   const resultSaved = useRef(false)
@@ -101,14 +102,20 @@ export function BugHuntOverlay({ onClose }: { onClose: () => void }) {
     const current = preferencesRef.current
     const improved = current.bestSeconds === null || snapshot.seconds < current.bestSeconds
     const next = { ...current, bestSeconds: improved ? snapshot.seconds : current.bestSeconds, bestBits: Math.max(current.bestBits, snapshot.bits), bestScore: Math.max(current.bestScore, snapshot.score) }
-    preferencesRef.current = next; setPreferences(next); savePreferences(next); setNewRecord(improved || snapshot.score > current.bestScore)
+    preferencesRef.current = next; setPreferences(next); savePreferences(next, snapshotRef.current.difficulty); setNewRecord(improved || snapshot.score > current.bestScore)
   }, [snapshot.finished, snapshot.gameOver, snapshot.seconds, snapshot.bits, snapshot.score])
 
   const updatePreferences = (update: Partial<BugHuntPreferences>) => {
     const next = { ...preferencesRef.current, ...update }
-    preferencesRef.current = next; setPreferences(next); savePreferences(next)
+    preferencesRef.current = next; setPreferences(next); savePreferences(next, snapshotRef.current.difficulty)
     gameRef.current?.setAudio(next.audio)
     gameRef.current?.setReducedMotion(next.reducedMotion)
+  }
+  const chooseDifficulty = (difficulty: Difficulty) => {
+    gameRef.current?.setDifficulty(difficulty)
+    const records = loadPreferences(difficulty)
+    const next = { ...records, audio: preferencesRef.current.audio, reducedMotion: preferencesRef.current.reducedMotion }
+    preferencesRef.current = next; setPreferences(next)
   }
   const begin = () => {
     readyRef.current = false; setReady(false)
@@ -120,6 +127,9 @@ export function BugHuntOverlay({ onClose }: { onClose: () => void }) {
     overlayRef.current?.focus()
   }
   const resume = () => { gameRef.current?.unlockAudio(); gameRef.current?.setPaused(false) }
+
+  const maxLives = livesFor(snapshot.difficulty)
+  const infinite = !Number.isFinite(maxLives)
 
   return (
     <div ref={overlayRef} tabIndex={-1} className="bug-hunt" role="dialog" aria-modal="true" aria-label={copy.dialogLabel} data-bug-hunt onMouseDown={(event) => event.stopPropagation()}>
@@ -138,7 +148,7 @@ export function BugHuntOverlay({ onClose }: { onClose: () => void }) {
         </div>}
         <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} aria-label={copy.canvasLabel} />
         {!ready && <div className="bh-hud" aria-label={copy.hudLabel}>
-          <div className="bh-hud-group"><span className={`bh-pill bh-lives ${snapshot.health === 1 ? 'rose' : ''}`} aria-label={copy.healthLabel(snapshot.health)}><span className="bh-lives-label">{copy.livesLabel}</span><span className="bh-heart">{'♥'.repeat(snapshot.health)}<span className="bh-heart-empty">{'♥'.repeat(3 - snapshot.health)}</span></span></span><span className="bh-pill gold"><Diamond size={13} /><strong>{snapshot.bits}</strong><span>/ {snapshot.totalBits}</span></span><span className="bh-pill">{copy.statScore} <strong>{snapshot.score}</strong>{snapshot.combo >= 4 && <b className="bh-combo">x{Math.min(5, 1 + Math.floor(snapshot.combo / 4))}</b>}</span></div>
+          <div className="bh-hud-group"><span className={`bh-pill bh-lives ${snapshot.health === 1 ? 'rose' : ''}`} aria-label={infinite ? copy.infiniteLives : copy.healthLabel(snapshot.health, maxLives)}><span className="bh-lives-label">{copy.difficultyNames[snapshot.difficulty]}</span><span className="bh-heart">{infinite ? '♥ ∞' : '♥'.repeat(snapshot.health)}<span className="bh-heart-empty">{infinite ? '' : '♥'.repeat(Math.max(0, maxLives - snapshot.health))}</span></span></span><span className="bh-pill gold"><Diamond size={13} /><strong>{snapshot.bits}</strong><span>/ {snapshot.totalBits}</span></span><span className="bh-pill">{copy.statScore} <strong>{snapshot.score}</strong>{snapshot.combo >= 4 && <b className="bh-combo">x{Math.min(5, 1 + Math.floor(snapshot.combo / 4))}</b>}</span></div>
           <div className="bh-hud-group"><span className={`bh-pill ${snapshot.revertCharges ? 'sky' : 'dim'}`} title={copy.keysRevert}><kbd>R</kbd>↺ ×{snapshot.revertCharges}</span>{snapshot.breakpoint > 0 && <span className="bh-pill rose">⏸ BREAKPOINT {snapshot.breakpoint}s</span>}{snapshot.sudo > 0 && <span className="bh-pill sun"># SUDO {snapshot.sudo}s</span>}<span className={`bh-pill ${snapshot.dashReady ? 'mint' : ''}`}><kbd>X</kbd>{snapshot.dashReady ? copy.dashReady : copy.dashCharging}</span><span className={`bh-pill ${snapshot.shotReady ? 'mint' : 'dim'}`} title={copy.fireHint}><kbd>F</kbd>{copy.shotReady}</span><span className={`bh-pill ${snapshot.grappled ? 'sky' : 'dim'}`} title={copy.grappleHint}><kbd>E</kbd>{copy.keysGrapple}</span>{snapshot.purge === 'active' && <span className="bh-pill rose">{copy.purgeLabel}</span>}{snapshot.bossCommand && <span className={`bh-pill ${snapshot.bossAnnounce ? 'rose' : 'sun'}`} title={copy.bossCmdHint[snapshot.bossCommand]}>{copy.bossCmd[snapshot.bossCommand]}</span>}<span className={`bh-pill ${snapshot.hotfix ? 'mint' : ''}`}><Cpu size={14} />{snapshot.hotfix ? copy.hotfixFound : copy.findHotfix}</span><span className="bh-pill">{formatTime(snapshot.seconds)}</span></div>
         </div>}
         {(ready || snapshot.paused || snapshot.gameOver || snapshot.finished || snapshot.levelComplete) && <div className="bh-modal">
@@ -149,6 +159,9 @@ export function BugHuntOverlay({ onClose }: { onClose: () => void }) {
               <p className="bh-quote">{copy.introQuote}</p>
               <p>{copy.introBody}</p>
               <div className="bh-mission"><Cpu size={21} /><div><strong>{copy.goalTitle}</strong><span>{copy.goalBody}</span></div></div>
+              <div className="bh-difficulty" role="group" aria-label={copy.difficultyLabel}>
+                {DIFFICULTIES.map(difficulty => <button key={difficulty} type="button" aria-pressed={snapshot.difficulty === difficulty} onClick={() => chooseDifficulty(difficulty)}><strong>{copy.difficultyNames[difficulty]}</strong><span>{difficulty === 'development' ? '♥ ∞' : '♥'.repeat(livesFor(difficulty))}</span></button>)}
+              </div>
               <div className="bh-brief">
                 <div className="bh-brief-block">
                   <h2>{copy.controlsTitle}</h2>
@@ -157,14 +170,16 @@ export function BugHuntOverlay({ onClose }: { onClose: () => void }) {
                     <dt><kbd>{copy.keySpace}</kbd></dt><dd>{copy.keysJump}</dd>
                     <dt><kbd>X</kbd></dt><dd>{copy.keysDash}</dd>
                     <dt><kbd>F</kbd></dt><dd>{copy.keysFire}</dd>
+                    <dt><kbd>S</kbd></dt><dd>{copy.keysCrouch}</dd>
+                    <dt><kbd>W</kbd>+<kbd>F</kbd></dt><dd>{copy.keysAimUp}</dd>
                     <dt><kbd>E</kbd></dt><dd>{copy.keysGrapple}</dd>
                     <dt><kbd>R</kbd></dt><dd>{copy.keysRevert}</dd>
                   </dl>
                 </div>
                 <div className="bh-brief-block">
                   <h2>{copy.livesLabel}</h2>
-                  <p className="bh-lives-row"><span className="bh-heart">♥♥♥</span></p>
-                  <p>{copy.livesRule}</p>
+                  <p className="bh-lives-row"><span className="bh-heart">{infinite ? '♥ ∞' : '♥'.repeat(maxLives)}</span></p>
+                  <p>{infinite ? copy.infiniteRule : copy.finiteRule}</p>
                 </div>
               </div>
               <div className="bh-card-actions"><button ref={primaryRef} className="bh-primary" onClick={begin}>{copy.start} <ArrowRight size={15} /></button></div>
@@ -197,7 +212,7 @@ export function BugHuntOverlay({ onClose }: { onClose: () => void }) {
           </div>
         </div>}
       </div>
-      <footer className="bh-footer"><div className="bh-keys"><span><kbd>A</kbd> <kbd>D</kbd> / <kbd>←</kbd> <kbd>→</kbd> {copy.keysMove}</span><span><kbd>{copy.keySpace}</kbd> {copy.keysJump}</span><span><kbd>X</kbd> / <kbd>Shift</kbd> {copy.keysDash}</span><span><kbd>F</kbd> {copy.keysFire}</span><span><kbd>E</kbd> {copy.keysGrapple}</span><span><kbd>R</kbd> {copy.keysRevert}</span><span><kbd>Esc</kbd> {copy.keysPause}</span></div><span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Flag size={11} />{snapshot.checkpoint ? copy.checkpointSaved : copy.findCheckpoint}</span></footer>
+      <footer className="bh-footer"><div className="bh-keys"><span><kbd>A</kbd> <kbd>D</kbd> / <kbd>←</kbd> <kbd>→</kbd> {copy.keysMove}</span><span><kbd>{copy.keySpace}</kbd> {copy.keysJump}</span><span><kbd>X</kbd> / <kbd>Shift</kbd> {copy.keysDash}</span><span><kbd>F</kbd> {copy.keysFire}</span><span><kbd>S</kbd> / <kbd>↓</kbd> {copy.keysCrouch}</span><span><kbd>W</kbd>+<kbd>F</kbd> {copy.keysAimUp}</span><span><kbd>E</kbd> {copy.keysGrapple}</span><span><kbd>R</kbd> {copy.keysRevert}</span><span><kbd>Esc</kbd> {copy.keysPause}</span></div><span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Flag size={11} />{snapshot.checkpoint ? copy.checkpointSaved : copy.findCheckpoint}</span></footer>
     </div>
   )
 }

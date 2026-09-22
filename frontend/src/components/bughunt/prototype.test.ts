@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BugHuntPrototype, type GameSnapshot } from './prototype'
-import { BOSS_HEALTH, BOSS_MODULES, GRAVITY_SAFE_X, COMMAND_SECONDS, ARENA_X, BOSS_ANNOUNCE, BOSS_BODY, LEVELS, firewallPhase, type Boss, type Platform, BITS, levelExit, levelHotfix, levelWidth, SPIKES } from './level'
+import { outagePhase, DEBRIS,
+  BOSS_HEALTH, BOSS_MODULES, GRAVITY_SAFE_X, COMMAND_SECONDS, ARENA_X, BOSS_ANNOUNCE, BOSS_BODY, LEVELS, firewallPhase, type Boss, type Platform, BITS, levelExit, levelHotfix, levelWidth, SPIKES } from './level'
 
 type Inspectable = {
   keyDown: (code: string) => void
@@ -15,11 +16,11 @@ type Inspectable = {
   draw: () => void
   update: (dt: number) => void
   player: { x: number; y: number; w: number; h: number; vx: number; vy: number; grounded: boolean; coyote: number; buffer: number; invulnerable: number; airJump: boolean; dash: number; dashCooldown: number
-    celebrate: number; recover: number; lookX: number; danger: boolean; speech: string; squash: number;
+    celebrate: number; recover: number; lookX: number; danger: boolean; speech: string; squash: number; crouch: boolean; knockback: number;
     grapple: { x: number; y: number; length: number } | null; facing: number }
   purgeX: number
   gravitySign: number
-  shots: { x: number; y: number; vx: number; life: number; enemy: boolean }[]
+  shots: { x: number; y: number; vx: number; vy?: number; life: number; enemy: boolean }[]
   enemies: { x: number; y: number; w: number; h: number; alive: boolean; direction: number; kind?: string; hp?: number; alert?: number; fuse?: number; homeY?: number; left: number; right: number }[]
   checkpoint: boolean
 }
@@ -33,6 +34,83 @@ function createGame() {
 }
 
 describe('Bug Hunt prototype rules', () => {
+
+  it('swings the USB cables on both axes and carries a0 along', () => {
+    const { game, tick } = createGame()
+    const cable = game.platforms.find(p => p.skin === 'usb' && p.floating)!
+    expect(cable.travel).toBeGreaterThan(0)
+    expect(cable.verticalTravel).toBeGreaterThan(0)
+    game.player.x = cable.x + 12; game.player.y = cable.y - game.player.h; game.player.vy = 1
+    tick(2)
+    expect(game.player.grounded).toBe(true)
+    const start = { x: game.player.x, y: game.player.y }
+    tick(8)
+    expect(game.player.grounded).toBe(true)
+    expect(game.player.x).not.toBe(start.x)
+    expect(game.player.y).not.toBe(start.y)
+    game.destroy()
+  })
+
+  it('warns before a 503 floor segment drops out of service', () => {
+    const outages = LEVELS[1].platforms.filter(p => p.outage)
+    expect(outages.length).toBeGreaterThan(0)
+    for (const slab of outages) {
+      expect(slab.floating).toBeFalsy()
+      const phases = Array.from({ length: 120 }, (_, i) => outagePhase(slab, i / 20))
+      expect(phases).toContain('down')
+      // Every drop is preceded by at least one warning frame.
+      for (const [i, phase] of phases.entries()) if (phase === 'down' && i > 0) expect(phases[i - 1]).not.toBe('up')
+      // A stable platform sits above the hole.
+      expect(LEVELS[1].platforms.some(p => p.floating && !p.unstable && !p.pulse && p.x > slab.x - 180 && p.x < slab.x + slab.w)).toBe(true)
+    }
+  })
+
+  it('crashes a Kubernetes pod under a0 and reschedules it', () => {
+    const { game, tick } = createGame()
+    for (const b of game.enemies) b.alive = false; game.player.x = levelHotfix(0).x; tick(1); game.player.x = levelExit(0); tick(1); game.advance()
+    const pod = game.platforms.find(p => p.unstable && p.skin === 'pod')!
+    expect(pod).toBeTruthy()
+    game.player.x = pod.x + 20; game.player.y = pod.y - game.player.h; game.player.vy = 1
+    tick(3)
+    expect(game.player.grounded).toBe(true)
+    expect(pod.crumble).toBeGreaterThan(0)
+    tick(60)
+    expect(pod.crumble!).toBeGreaterThan(0.8)
+    expect(game.player.grounded).toBe(false)
+    tick(240)
+    expect(pod.crumble).toBe(0)
+    game.destroy()
+  })
+
+  it('crouches to a shorter box and stands back up on the same ground', () => {
+    const { game, tick } = createGame()
+    tick(2)
+    const feet = game.player.y + game.player.h
+    game.keyDown('ArrowDown'); tick(2)
+    expect(game.player.h).toBeLessThan(48)
+    expect(game.player.y + game.player.h).toBeCloseTo(feet, 1)
+    game.keyUp('ArrowDown'); tick(2)
+    expect(game.player.h).toBe(48)
+    expect(game.player.y + game.player.h).toBeCloseTo(feet, 1)
+    game.destroy()
+  })
+
+  it('fires straight up while the up key is held', () => {
+    const { game, tick } = createGame()
+    tick(2)
+    game.keyDown('ArrowUp'); game.keyDown('KeyF'); tick(1)
+    const up = game.shots.find(shot => !shot.enemy)
+    expect(up).toMatchObject({ vx: 0 })
+    expect(up!.vy).toBeLessThan(0)
+    const before = up!.y
+    tick(6)
+    expect(up!.y).toBeLessThan(before)
+    game.keyUp('ArrowUp'); game.keyUp('KeyF'); tick(20)
+    game.shots.length = 0
+    game.keyDown('KeyF'); tick(1)
+    expect(game.shots.find(shot => !shot.enemy)).toMatchObject({ vy: 0 })
+    game.destroy()
+  })
   beforeEach(() => {
     vi.stubGlobal('requestAnimationFrame', vi.fn(() => 1))
     vi.stubGlobal('cancelAnimationFrame', vi.fn())
@@ -726,6 +804,17 @@ describe('the Monolith combines the campaign rules', () => {
     return { game, tick, quiet }
   }
   const announce = Math.ceil(BOSS_ANNOUNCE * 60) + 2
+
+  it('drops a different piece of the Monolith on every panic-mode wave', () => {
+    const { game, tick } = arena(2500, 2)
+    const seen = new Set<number>()
+    for (let frame = 0; frame < 60 * 11; frame++) {
+      game.player.invulnerable = 1; tick(1)
+      for (const piece of game.boss.envelopes) if (piece.kind === 'debris') seen.add(piece.variant!)
+    }
+    expect(seen.size).toBe(DEBRIS.length)
+    game.destroy()
+  })
 
   it('keeps normal gravity in the attack zone during an override', () => {
     const { game, quiet } = arena(GRAVITY_SAFE_X + 30)
