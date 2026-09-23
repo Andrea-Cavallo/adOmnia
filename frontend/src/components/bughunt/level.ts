@@ -1,4 +1,5 @@
 import type { PowerPickup } from './powers'
+import { DESK_ARENAS, type DeskCombat, type DeskFoe } from './deskCombat'
 
 export type Rect = { x: number; y: number; w: number; h: number }
 export type Platform = Rect & { floating?: boolean; travel?: number; unstable?: boolean; originX?: number; crumble?: number; deleted?: boolean
@@ -11,6 +12,7 @@ export type Purge = { start: number; end: number; speed: number; lead: number }
 /** `chaser` charges when a0 is close, `turret` returns fire from a fixed post. */
 export type BugKind = 'patrol' | 'chaser' | 'turret' | 'flyer' | 'leak' | 'race' | 'deadlock' | 'timeout' | 'zombie' | 'null' | 'clone'
 export type Bug = Rect & { left: number; right: number; direction: number; alive: boolean; phase: number; retry?: boolean; hover?: boolean; homeY?: number
+  encounter?: DeskFoe; combat?: DeskCombat
   dive?: number; targetX?: number; targetY?: number; homeX?: number; maxHp?: number; wake?: number; summoned?: boolean; kind?: BugKind; hp?: number; alert?: number; fuse?: number }
 export type Bit = { id: number; x: number; y: number; secret?: boolean }
 
@@ -99,15 +101,16 @@ const gateway: Platform[] = [
 export const LEVELS: Level[] = [
   { name: 'Localhost',
     // git revert first so R is learned early; sudo rewards the secret branch.
-    powers: [{ kind: 'revert', x: 200, y: 420 }, { kind: 'breakpoint', x: 1457, y: 345 }, { kind: 'sudo', x: 2175, y: 280 }, { kind: 'gc', x: 2440, y: 380 }],
+    // One tool per beat: revert, the first weapon, breakpoint, sudo on the secret branch. gc waits for the Datacenter.
+    powers: [{ kind: 'revert', x: 200, y: 420 }, { kind: 'shuriken', x: 1060, y: 420 }, { kind: 'breakpoint', x: 1457, y: 345 }, { kind: 'sudo', x: 2175, y: 280 }],
     springs: [{ x: 300, y: 448, w: 44, h: 14 }], platforms: PLATFORMS, spikes: SPIKES, bits: BITS, bugs: createBugs(), firewalls: [], anchors: ANCHORS[0] },
   { name: 'API Gateway',
-    powers: [{ kind: 'revert', x: 120, y: 420 }, { kind: 'breakpoint', x: 1100, y: 420 }, { kind: 'sudo', x: 1580, y: 420 }, { kind: 'gc', x: 2600, y: 420 }],
+    powers: [{ kind: 'revert', x: 120, y: 420 }, { kind: 'shuriken', x: 480, y: 420 }, { kind: 'breakpoint', x: 1100, y: 420 }, { kind: 'sudo', x: 1580, y: 420 }, { kind: 'gc', x: 2600, y: 420 }],
     springs: [{ x: 710, y: 448, w: 44, h: 14 }, { x: 1695, y: 353, w: 44, h: 14 }], platforms: gateway, spikes: [], bits: BITS.map(b => ({ ...b, id: b.id + 100 })),
     bugs: createBugs().map((b, i) => ({ ...b, retry: true, ...(i === 0 ? { x: 370, left: 180, right: 520 } : i === 1 ? { x: 1730, left: 1600, right: 1840 } : {}) })),
     firewalls: [{ x: 1210, y: 365, w: 25, h: 95, phase: 0 }, { x: 2280, y: 365, w: 25, h: 95, phase: 1.7 }], anchors: ANCHORS[1] },
   { name: 'Production',
-    powers: [{ kind: 'revert', x: 100, y: 420 }, { kind: 'gc', x: 520, y: 420 }, { kind: 'breakpoint', x: 1420, y: 420 }, { kind: 'sudo', x: 2420, y: 420 }],
+    powers: [{ kind: 'revert', x: 100, y: 420 }, { kind: 'gc', x: 520, y: 420 }, { kind: 'shuriken', x: 760, y: 420 }, { kind: 'breakpoint', x: 1420, y: 420 }, { kind: 'sudo', x: 2420, y: 420 }],
     springs: [{ x: 1875, y: 263, w: 44, h: 14 }], platforms: [...PLATFORMS.filter(p => p.floating && p.x < 2140).map(p => ({ ...p, unstable: true })),
       { x: 0, y: 460, w: 570, h: 100 }, { x: 650, y: 460, w: 620, h: 100 },
       { x: 1370, y: 460, w: 390, h: 100 }, { x: 1840, y: 460, w: 340, h: 100 },
@@ -187,7 +190,8 @@ export const ENVELOPE_GRAVITY = 430
 // Reactive enemies. Chasers stay inside a band of solid floor so they never
 // walk into a pit; turrets telegraph every shot before it can hurt anyone.
 const HUNTERS: [number, number, BugKind, number][][] = [
-  [[1150, 426, 'chaser', 1], [2560, 426, 'turret', 2]],
+  // Developer Desk keeps ranged fire for the exam after the second commit.
+  [[1150, 426, 'chaser', 1]],
   [[860, 426, 'chaser', 2], [1700, 426, 'turret', 2], [2500, 426, 'chaser', 1]],
   [[900, 426, 'chaser', 2], [1500, 426, 'turret', 2], [2000, 426, 'chaser', 2]],
 ]
@@ -217,7 +221,6 @@ localhost.platforms = [...localhost.platforms,
   { x: 4240, y: 375, w: 145, h: 22, floating: true },
 ]
 localhost.anchors = [...localhost.anchors, { x: 3265, y: 235 }, { x: 3610, y: 190 }, { x: 3830, y: 235 }, { x: 4320, y: 235 }]
-localhost.powers = [...localhost.powers, { kind: 'revert', x: 3070, y: 420 }, { kind: 'breakpoint', x: 3675, y: 245 }]
 for (const [index, [x, y, kind]] of ([
   [3020, 426, 'patrol'], [3460, 426, 'chaser'], [3650, 246, 'patrol'],
   [3970, 426, 'patrol'], [4120, 426, 'turret'], [4280, 320, 'patrol'], [4420, 426, 'chaser'],
@@ -229,6 +232,11 @@ for (const [row, [x, y]] of [[3190, 335], [3460, 325], [3660, 238], [3910, 410],
   for (let i = 0; i < 3; i++) localhost.bits.push({ id: 2000 + row * 3 + i, x: x + i * 30, y, secret: row === 2 })
 }
 
+/** Commits in route order; a fall respawns at the last one reached. */
+export function levelCheckpoints(level: number) { return level === 0 ? [CHECKPOINT_X, 3130, 4960] : level === 2 ? [2500] : [CHECKPOINT_X] }
+/** Legacy Brute's arena: crossing the entry wakes it, the wall holds until it is closed. */
+export const BRUTE_TRIGGER_X = 4870
+export const BRUTE_ARENA_X = 5015
 export function levelWidth(level: number) { return LEVELS[level].width ?? WORLD_WIDTH }
 export function levelExit(level: number) { return LEVELS[level].exitX ?? EXIT_X }
 export function levelHotfix(level: number) { return LEVELS[level].hotfix ?? HOTFIX }
@@ -252,7 +260,7 @@ export function outagePhase(platform: Platform, time: number): 'up' | 'warning' 
 }
 
 // One campaign vocabulary: precision -> moving infrastructure -> rule overrides.
-LEVELS[0].name = 'Buggy Dev Desk'
+LEVELS[0].name = 'Developer Desk'
 LEVELS[1].name = 'Production Datacenter'
 LEVELS[2].name = 'Legacy Dimension'
 const deskSkins = ['key', 'ide', 'book', 'phone', 'usb', 'popup'] as const
@@ -263,14 +271,16 @@ for (const [stage, map] of LEVELS.entries()) {
     // USB cables hang and swing: the arc is the platform, not a straight slide.
     ...(stage === 0 && p.floating && index % 6 === 4 ? { travel: 52, verticalTravel: 14 } : {}),
     ...(stage === 0 && p.floating && index % 6 === 5 ? { pulse: 1.5 } : {}),
-    ...(stage === 0 && p.floating && p.x > 800 && p.x < 2400 ? { unstable: true } : {}),
+    // Crumbling slabs get their own beat, and only where a floor catches the fall.
+    ...(stage === 0 && p.floating && p.x >= 1600 && p.x < 2400 && map.platforms.some(g => !g.floating && !g.ceiling && g.x <= p.x && g.x + g.w >= p.x + p.w) ? { unstable: true } : {}),
   }))
   // Existing airborne stepping stones become actual flying enemies.
   map.bugs = map.bugs.map(b => b.hover ? { ...b, kind: 'flyer', homeX: b.x, left: b.x - 70, right: b.x + 70, dive: 0, fuse: 1.4, hp: 1 } : b)
 }
 // A keyboard bridge falls key by key; the safe floor below teaches before punishing.
 for (let i = 0; i < 7; i++) LEVELS[0].platforms.push({ x: 2660 + i * 65, y: 350, w: 57, h: 24, floating: true, unstable: true, skin: 'key' })
-LEVELS[0].bugs.push({ x: 4390, y: 402, w: 56, h: 58, left: 4380, right: 4520, direction: -1, alive: true, phase: 0, kind: 'null', hp: 5, maxHp: 5, fuse: 0 })
+// Legacy Brute uses the existing miniboss rules with a body-sized collision box.
+LEVELS[0].bugs.push({ x: 4500, y: 348, w: 110, h: 112, left: 4380, right: 4520, direction: -1, alive: true, phase: 0, kind: 'null', hp: 5, maxHp: 5, fuse: 0 })
 LEVELS[0].bugs[1].kind = 'zombie'; LEVELS[0].bugs[1].hp = 2
 LEVELS[0].bugs[6].kind = 'zombie'; LEVELS[0].bugs[6].hp = 2
 // Lift shafts and fan columns alter routes without stealing player input.
@@ -299,7 +309,7 @@ LEVELS[2].platforms.push({ x: 620, y: 104, w: 650, h: 26, ceiling: true, skin: '
 for (const platform of LEVELS[2].platforms) if (platform.floating && platform.x >= 1330 && platform.x < 1720) platform.pulse = 0
 // Hand-authored encounters: each silhouette has its own attack vocabulary.
 const extra: [number, number, BugKind][][] = [
-  [[1010, 245, 'flyer'], [1980, 190, 'flyer'], [2870, 230, 'timeout'], [3400, 200, 'flyer'], [3960, 230, 'timeout']],
+  [[1010, 245, 'flyer'], [1980, 190, 'flyer'], [2870, 230, 'flyer'], [3400, 200, 'flyer'], [3960, 230, 'timeout']],
   [[540, 235, 'flyer'], [880, 426, 'leak'], [1280, 250, 'timeout'], [1590, 426, 'race'], [1810, 426, 'deadlock'], [2180, 210, 'flyer'], [2630, 426, 'leak'], [2800, 230, 'timeout']],
   [[380, 235, 'timeout'], [850, 250, 'flyer'], [1410, 426, 'deadlock'], [1660, 245, 'timeout'], [2070, 230, 'flyer'], [2300, 426, 'race']],
 ]
@@ -309,7 +319,63 @@ for (const [stage, entries] of extra.entries()) for (const [i, [x, y, kind]] of 
   LEVELS[stage].bugs.push({ x, y, w: 38, h: 34, left: x - 70, right: x + 70, homeX: x, homeY: y,
     direction: -1, alive: true, phase: i * 0.7, kind, hp, maxHp: hp, fuse: 1 + i * 0.23, hover: flying, dive: 0 })
 }
+// Insert a safe book-climbing beat before the finale, without stretching existing jumps.
+localhost.width = 5460
+localhost.exitX = 5340
+localhost.hotfix = { ...localhost.hotfix!, x: 5230 }
+for (const p of localhost.platforms) if (p.x >= 4300) p.x += 640
+for (const b of localhost.bugs) if (b.x >= 4300) {
+  b.x += 640; b.left += 640; b.right += 640
+  if (b.homeX !== undefined) b.homeX += 640
+}
+for (const a of localhost.anchors) if (a.x >= 4300) a.x += 640
+for (const bit of localhost.bits) if (bit.x >= 4300) bit.x += 640
+localhost.platforms.push(
+  { x: 410, y: 460, w: 95, h: 100, skin: 'key' },
+  { x: 895, y: 460, w: 95, h: 100, skin: 'book' },
+  { x: 1440, y: 460, w: 85, h: 100, skin: 'key' },
+  { x: 2040, y: 460, w: 100, h: 100, skin: 'book' },
+  { x: 4270, y: 460, w: 740, h: 100, skin: 'key' },
+  { x: 4380, y: 405, w: 150, h: 55, skin: 'book' },
+  { x: 4560, y: 350, w: 170, h: 110, skin: 'book' },
+  { x: 4770, y: 300, w: 150, h: 160, skin: 'book' },
+  { x: 2055, y: 355, w: 115, h: 22, floating: true, unstable: true, skin: 'key' },
+  { x: 2215, y: 300, w: 115, h: 22, floating: true, unstable: true, skin: 'key' },
+)
+// No moving cables or pulsing floors before the Datacenter. Early misses cost height.
+for (const p of localhost.platforms) {
+  p.travel = undefined; p.verticalTravel = undefined; p.pulse = undefined
+  if (p.x < 1600) p.unstable = false
+}
+localhost.spikes = [{ x: 4070, y: 440, w: 40, h: 20 }]
+localhost.anchors = localhost.anchors.filter(a => a.x >= 2400)
+localhost.springs = [{ x: 2060, y: 448, w: 44, h: 14 }]
+localhost.bits = localhost.bits.filter(b => b.id < 1000 || b.id >= 2000)
+for (let i = 0; i < 8; i++) localhost.bits.push({ id: 3000 + i, x: 2075 + i * 22, y: 405 - Math.sin(i / 7 * Math.PI / 2) * 160, secret: i > 4 })
+for (let i = 0; i < 12; i++) localhost.bits.push({ id: 3100 + i, x: 4395 + i * 43, y: 368 - Math.floor(i / 4) * 55 })
+localhost.bugs = localhost.bugs.filter(b => (b.x >= 1600 || (!b.hover && b.x < 800)) && !(b.x >= 2400 && b.x < 3100) && !(b.hover && b.x >= 2050 && b.x < 2400))
+for (const b of localhost.bugs) if (b.x < 800) { b.kind = 'patrol'; b.retry = false }
+localhost.bugs.push(
+  { x: 1240, y: 426, w: 38, h: 34, left: 1190, right: 1300, direction: -1, alive: true, phase: 0, kind: 'zombie', hp: 2 },
+  { x: 1410, y: 290, w: 38, h: 34, left: 1360, right: 1460, homeX: 1410, homeY: 290, direction: -1, alive: true, phase: 0, kind: 'flyer', hover: true, hp: 1, fuse: 1.4, dive: 0 },
+)
+localhost.powers = localhost.powers.map(p => p.kind === 'breakpoint' ? { ...p, x: 2500, y: 420 } : p)
+
 // Every ground enemy stays on its actual floor (including old chasers).
+// Three short showcase encounters. Tutorial bugs outside these rooms keep their rules.
+const examChaser = LEVELS[0].bugs.find(b => b.kind === 'chaser' && b.x === 3460)
+if (examChaser) Object.assign(examChaser, { x: 4010, left: 3900, right: 4150 })
+for (const kind of ['retry', 'soap', 'legacy'] as const) {
+  const a = DESK_ARENAS[kind]
+  const foe = LEVELS[0].bugs.find(b => kind === 'legacy' ? b.kind === 'null' : b.x === (kind === 'retry' ? 1750 : 3400))!
+  LEVELS[0].bugs = LEVELS[0].bugs.filter(b => b === foe || b.x < a.left - 40 || b.x > a.right + 40)
+  Object.assign(foe, { encounter: kind, x: a.spawn, y: kind === 'soap' ? 285 : a.floor - foe.h,
+    hp: a.hp, maxHp: a.hp, left: a.left + 35, right: a.right - foe.w - 35, retry: false })
+  // The arena teaches its enemy, not platform failure at the same time.
+  for (const platform of LEVELS[0].platforms) if (platform.x >= a.left && platform.x + platform.w <= a.right) {
+    platform.unstable = false; platform.pulse = undefined
+  }
+}
 for (const map of LEVELS) for (const bug of map.bugs) {
   if (bug.hover) continue
   const floor = map.platforms.find(p => !p.floating && !p.ceiling && bug.x >= p.x && bug.x + bug.w <= p.x + p.w && Math.abs(p.y - bug.y - bug.h) < 2)

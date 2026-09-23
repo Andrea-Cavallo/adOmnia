@@ -1,5 +1,5 @@
 export type Sound = 'jump' | 'land' | 'bit' | 'stomp' | 'hurt' | 'checkpoint' | 'hotfix' | 'win' | 'secret' | 'dash' | 'spring' | 'combo'
-  | 'power' | 'freeze' | 'sudo' | 'gc' | 'rewind' | 'shoot' | 'bolt' | 'hit'
+  | 'power' | 'freeze' | 'sudo' | 'gc' | 'rewind' | 'shoot' | 'bolt' | 'hit' | 'arenaTell'
 
 // Small original arcade sounds, synthesised locally. No samples, requests,
 // autoplay or background music process; the context belongs to this session.
@@ -44,6 +44,7 @@ export class BugHuntAudio {
 
   play(sound: Sound, variation = 0) {
     switch (sound) {
+      case 'arenaTell': this.note(440, 440, .12, 0, 'triangle', .05); this.note(660, 660, .16, .18, 'triangle', .05); break
       case 'dash': this.note(720, 95, 0.16, 0, 'sawtooth', 0.026); break
       case 'shoot': this.note(1250, 420, 0.07, 0, 'square', 0.02); this.note(520, 260, 0.05, 0.01, 'triangle', 0.016); break
       case 'bolt': this.note(300, 190, 0.12, 0, 'sawtooth', 0.018); break

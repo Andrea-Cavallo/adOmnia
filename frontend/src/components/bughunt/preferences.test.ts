@@ -17,11 +17,21 @@ it('still runs when local storage is unavailable', () => {
   expect(() => savePreferences(loadPreferences())).not.toThrow()
 })
 
-it.each(['arcade.v3', 'three-lives.v4'])('keeps %s accessibility settings but starts separate developer-world records', (version) => {
+it.each(['arcade.v3', 'three-lives.v4', 'developer-world.v5'])('keeps %s accessibility settings but starts separate arena records', (version) => {
   const previous = JSON.stringify({ audio: false, reducedMotion: true, bestSeconds: 20, bestBits: 135, bestScore: 9000 })
   const values = new Map([[`adomnia.bughunt.preferences.${version}`, previous]])
   vi.stubGlobal('localStorage', { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value) })
   expect(loadPreferences()).toEqual({ audio: false, reducedMotion: true, bestSeconds: null, bestBits: 0, bestScore: 0 })
   savePreferences(loadPreferences())
   expect(values.get(`adomnia.bughunt.preferences.${version}`)).toBe(previous)
+})
+
+it('migrates difficulty-specific accessibility settings without old arena scores', () => {
+  const key = 'adomnia.bughunt.preferences.developer-world.v5.testing'
+  const old = JSON.stringify({ audio: false, reducedMotion: true, bestSeconds: 12, bestBits: 99, bestScore: 999 })
+  const values = new Map([[key, old]])
+  vi.stubGlobal('localStorage', { getItem: (k: string) => values.get(k) ?? null, setItem: (k: string, value: string) => values.set(k, value) })
+  expect(loadPreferences('testing')).toEqual({ audio: false, reducedMotion: true, bestSeconds: null, bestBits: 0, bestScore: 0 })
+  savePreferences(loadPreferences('testing'), 'testing')
+  expect(values.get(key)).toBe(old)
 })

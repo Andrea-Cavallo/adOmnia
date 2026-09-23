@@ -4,6 +4,7 @@ import { BOSS_BODY, LEVELS, levelExit, levelHotfix, type Bug, type Platform, typ
 import type { PowerState } from './powers'
 import type { PlayerVisual, Shot } from './visuals'
 import { stepSpecialBug } from './enemies'
+import { DESK_ARENAS, type DeskFoe } from './deskCombat'
 
 type Game = {
   player: PlayerVisual & { airJump: boolean }; enemies: Bug[]; shots: Shot[]; powers: PowerState; platforms: Platform[]; boss: Boss
@@ -25,15 +26,73 @@ describe('developer world campaign encounters', () => {
   beforeEach(() => { vi.stubGlobal('requestAnimationFrame', () => 1); vi.stubGlobal('cancelAnimationFrame', vi.fn()) })
   afterEach(() => vi.unstubAllGlobals())
 
-  it('blocks the first exit until NullPointer has actually been defeated', () => {
+  it('keeps outside enemies and their fire from interrupting an arena entrance', () => {
+    const { game, tick } = create()
+    game.player.x = DESK_ARENAS.retry.left + 50
+    tick()
+    const outside = game.enemies.find(b => !b.encounter)!
+    outside.x = game.player.x; outside.y = game.player.y
+    game.shots.push({ x: game.player.x + 17, y: 436, vx: 0, life: 1, enemy: true })
+    tick(10)
+    expect(game.getSnapshot().health).toBe(3)
+    expect(game.shots.some(s => s.enemy)).toBe(false)
+    expect(outside.x).toBe(game.player.x)
+    game.destroy()
+  })
+
+  it.each(['retry', 'soap', 'legacy'] as DeskFoe[])('%s is beatable without damage using movement and recovery fire in under 25 seconds', (kind) => {
+    const { game, tick } = create()
+    const foe = game.enemies.find(b => b.encounter === kind)!
+    // Isolate the encounter; retain real player physics, platforms, projectiles and damage.
+    game.enemies.forEach(b => { if (b !== foe) b.alive = false })
+    const a = DESK_ARENAS[kind]
+    game.player.x = a.left + 50
+    let cycle = -1, target = game.player.x, frames = 0
+    let jumped = -1
+    for (; frames < 1500 && foe.alive; frames++) {
+      const c = foe.combat
+      game.keyUp('KeyA'); game.keyUp('KeyD'); game.keyUp('KeyF')
+      if (c?.phase === 'tell' && c.cycles !== cycle) {
+        cycle = c.cycles
+        target = game.player.x < (a.left + a.right) / 2 ? a.right - game.player.w - 25 : a.left + 25
+      }
+      if (c?.phase === 'tell' || c?.phase === 'attack') {
+        if (Math.abs(target - game.player.x) > 6) game.keyDown(target > game.player.x ? 'KeyD' : 'KeyA')
+      }
+      if (c?.phase === 'tell' && kind !== 'soap' && c.clock >= c.duration - .35 && jumped !== c.cycles) {
+        game.keyUp('Space'); game.keyDown('Space'); jumped = c.cycles
+      }
+      if (c?.phase === 'recover') {
+        game.player.facing = foe.x > game.player.x ? 1 : -1
+        game.keyDown('KeyF')
+      }
+      tick()
+      expect(game.getSnapshot().health, JSON.stringify({kind, frame: frames, p: game.player.x, py: game.player.y, b: foe.x, by: foe.y, c: foe.combat})).toBe(3)
+    }
+    expect(foe.alive).toBe(false)
+    expect(game.getSnapshot().health).toBe(3)
+    expect(game.getSnapshot().deaths).toBe(0)
+    expect(frames / 60).toBeLessThan(25)
+    expect(game.getSnapshot().dashReady).toBe(true)
+    expect(game.getSnapshot().score).toBeGreaterThanOrEqual(350)
+    if (kind === 'soap') expect(game.getSnapshot().ammo).toBe(6)
+    expect(foe.combat!.locked).toBe(false)
+    game.keyUp('KeyF'); game.keyUp('Space')
+    const score = game.getSnapshot().score
+    tick(60)
+    expect(game.getSnapshot().score).toBe(score)
+    game.destroy()
+  })
+
+  it('blocks the first exit until Legacy Brute has actually been defeated in its recovery windows', () => {
     const { game, tick } = create()
     game.enemies.forEach(b => { if (b.kind !== 'null') b.alive = false })
     game.player.x = levelHotfix(0).x; tick(); game.player.x = levelExit(0); tick()
     expect(game.getSnapshot().levelComplete).toBe(false)
     const boss = game.enemies.find(b => b.kind === 'null')!
-    game.player.x = 4580; game.player.facing = -1; game.player.invulnerable = 10
+    game.player.x = DESK_ARENAS.legacy.left + 40; game.player.facing = 1; game.player.invulnerable = 30
     game.keyDown('KeyF')
-    tick(160)
+    tick(1500)
     expect(boss.alive).toBe(false)
     game.keyUp('KeyF'); game.player.x = levelExit(0); tick()
     expect(game.getSnapshot().levelComplete).toBe(true)
@@ -121,7 +180,7 @@ describe('developer world campaign encounters', () => {
     expect(LEVELS[0].platforms.some(p => p.skin === 'key' && p.unstable)).toBe(true)
     expect(LEVELS[1].fans?.length).toBe(2)
     expect(LEVELS[2].lessons?.map(l => l.command)).toEqual(['gravity', 'offline', 'clones'])
-    for (const level of LEVELS) expect(level.bugs.filter(b => b.kind === 'flyer' || b.kind === 'timeout').length).toBeGreaterThanOrEqual(5)
+    for (const level of LEVELS.slice(1)) expect(level.bugs.filter(b => b.kind === 'flyer' || b.kind === 'timeout').length).toBeGreaterThanOrEqual(5)
     expect(LEVELS[2].platforms.some(p => !p.floating && !p.ceiling && p.x <= BOSS_BODY.x && p.x + p.w >= BOSS_BODY.x + BOSS_BODY.w)).toBe(true)
   })
 })

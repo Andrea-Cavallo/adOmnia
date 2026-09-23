@@ -1,20 +1,26 @@
 import { box, line, text, glow } from './drawing'
+import { drawDeskBackground, drawDeskPlatform, drawDeskHero, drawDeskEnemy, drawDeskNote } from './deskVisuals'
+import { drawDeskArenas } from './deskCombatVisuals'
 export { box, line, text, glow } from './drawing'
 import { drawWorld, drawWorldPlatform, drawSpecialBug, drawEnvironment } from './worldVisuals'
 import type { BugHuntCopy } from './copy'
-import { BOSS_HEALTH, BOSS_MODULES, bossPhase, platformOffline, outagePhase, BOSS_ANNOUNCE, BOSS_FISTS, BOSS_TOWER, LEVELS, BOSS_BODY, firewallPhase, CHECKPOINT_X, levelExit, levelHotfix, TURRET_CYCLE, type Envelope, type Platform, type Boss, type Bug } from './level'
+import { BOSS_HEALTH, BOSS_MODULES, bossPhase, platformOffline, outagePhase, BOSS_ANNOUNCE, BOSS_FISTS, BOSS_TOWER, LEVELS, BOSS_BODY, firewallPhase, levelCheckpoints, levelExit, levelHotfix, TURRET_CYCLE, type Envelope, type Platform, type Boss, type Bug } from './level'
 import { drawBreakpointMarkers, drawGcWave, drawPowerOverlay, drawPowerPickups, drawRewindGhosts, drawSudoAura } from './powerVisuals'
 import type { PowerState } from './powers'
 
 export type PlayerVisual = { x: number; y: number; w: number; h: number; vx: number; vy: number; grounded: boolean; facing: number; invulnerable: number; squash: number; dash?: number
+  stride?: number; idleTime?: number; recoil?: number; lean?: number; aimUp?: boolean
   celebrate?: number; recover?: number; lookX?: number; lookY?: number; danger?: boolean; speech?: string; speechTime?: number; crouch?: boolean
   grapple?: { x: number; y: number; length: number } | null }
-export type Particle = { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; color: string; size: number; gravity: number }
+export type Particle = { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; color: string; size: number; gravity: number; smoke?: boolean }
 export type Popup = { x: number; y: number; text: string; color: string; life: number }
-export type Shot = { x: number; y: number; vx: number; vy?: number; life: number; enemy: boolean }
+export type Shot = { x: number; y: number; vx: number; vy?: number; life: number; enemy: boolean
+  encounter?: import('./deskCombat').DeskFoe
+  /** JSON Shuriken: spins, and `pierce` bugs left to cut through (`hits` already cut). */
+  weapon?: 'shuriken'; pierce?: number; hits?: number[] }
 export type VisualState = {
   level: number; platforms: Platform[]; boss: Boss; player: PlayerVisual; enemies: Bug[]; camera: number; time: number; collected: Set<number>
-  particles: Particle[]; popups: Popup[]; checkpoint: boolean; hotfix: boolean; secret: boolean
+  particles: Particle[]; popups: Popup[]; checkpoint: boolean; checkpointIndex?: number;  hotfix: boolean; secret: boolean
   shake: number; reducedMotion: boolean; finished: boolean; copy: BugHuntCopy
   /** Clock that stops on a breakpoint. */
   worldTime: number; powers: PowerState
@@ -194,6 +200,7 @@ function drawPlatforms(ctx: CanvasRenderingContext2D, camera: number, time: numb
       ctx.fillStyle = hang; ctx.fillRect(p.x, p.y + p.h, p.w, 80)
       continue
     }
+    if (state.level === 0) { drawDeskPlatform(ctx, p, time); continue }
     if (p.skin && drawWorldPlatform(ctx, p, time)) continue
     if (!p.floating) drawPylons(ctx, p, time)
     const glyph = p.unstable ? ((p.crumble ?? 0) > 0 ? '! ! !' : '/ / /')
@@ -337,12 +344,19 @@ function drawBug(ctx: CanvasRenderingContext2D, bug: Bug, time: number) {
 }
 
 /** a0's packets read cyan and fast; turret bolts read orange and slow. */
-function drawShots(ctx: CanvasRenderingContext2D, shots: Shot[], t: number) {
+function drawShots(ctx: CanvasRenderingContext2D, shots: Shot[], t: number, desk = false) {
   for (const shot of shots) {
     // Packets are drawn along their own heading, so an upward shot reads as one.
     const angle = Math.atan2(shot.vy ?? 0, shot.vx)
     ctx.save(); ctx.translate(shot.x, shot.y); ctx.rotate(angle)
     if (shot.enemy) {
+      if (desk) {
+        glow(ctx, 0, 0, 20, '#59baff44')
+        box(ctx, -8, -6, 16, 12, 1, '#e7ecff')
+        line(ctx, [-8, -6, 0, 1, 8, -6], '#7586ac', 1)
+        line(ctx, [-8, 6, -2, 0, 2, 0, 8, 6], '#8b9bc3', 1)
+        ctx.restore(); continue
+      }
       glow(ctx, 0, 0, 22, '#ff7b5a44')
       line(ctx, [-14, 0, 0, 0], '#ffb56b88', 4)
       box(ctx, -6, -6, 13, 12, 5, '#ff8a5c')
@@ -350,6 +364,8 @@ function drawShots(ctx: CanvasRenderingContext2D, shots: Shot[], t: number) {
       ctx.restore()
       continue
     }
+    if (shot.weapon === 'shuriken') { drawShuriken(ctx, t); ctx.restore(); continue }
+    // Code Blaster: a </> packet with a cyan wake.
     glow(ctx, 0, 0, 20, '#6ff0ff3d')
     line(ctx, [-26, 0, 0, 0], '#8cf7ec88', 3)
     ctx.fillStyle = '#c9fbff'
@@ -357,6 +373,20 @@ function drawShots(ctx: CanvasRenderingContext2D, shots: Shot[], t: number) {
     if (Math.floor(t * 30) % 2 === 0) { ctx.fillStyle = '#ffffff'; ctx.fillRect(-1, -1, 2, 2) }
     ctx.restore()
   }
+}
+
+/** JSON Shuriken: four curved blades around a `{}` hub, spinning fast. */
+function drawShuriken(ctx: CanvasRenderingContext2D, t: number) {
+  glow(ctx, 0, 0, 24, '#4f9dff55')
+  ctx.rotate(t * 22)
+  for (let i = 0; i < 4; i++) {
+    ctx.rotate(Math.PI / 2)
+    ctx.fillStyle = i % 2 ? '#dce9ff' : '#9fc8ff'
+    ctx.beginPath(); ctx.moveTo(0, -3); ctx.quadraticCurveTo(7, -9, 13, -2); ctx.lineTo(3, 3); ctx.closePath(); ctx.fill()
+  }
+  box(ctx, -4.5, -4.5, 9, 9, 4, '#0d1b3a')
+  ctx.rotate(-t * 22 % (Math.PI * 2))
+  ctx.textAlign = 'center'; text(ctx, '{}', 0, 3, '#7fe0ff', 7); ctx.textAlign = 'left'
 }
 
 /** Magnetic anchors: a pulsing node, brighter once a0 is inside latch range. */
@@ -629,10 +659,11 @@ function drawBossAnnounce(ctx: CanvasRenderingContext2D, state: VisualState, t: 
 
 export function renderLocalhost(ctx: CanvasRenderingContext2D, state: VisualState) {
   const EXIT_X = levelExit(state.level), HOTFIX = levelHotfix(state.level)
-  const checkpointX = state.level === 2 ? 2500 : CHECKPOINT_X
+  const checkpoints = levelCheckpoints(state.level)
+  const reached = state.checkpointIndex ?? (state.checkpoint ? 0 : -1)
   const gateOpen = state.hotfix && (state.level !== 2 || state.boss.health === 0)
   const t = state.reducedMotion ? 0 : state.time
-  drawWorld(ctx, state.camera, t, state.level)
+  if (state.level !== 0 || !drawDeskBackground(ctx, state.camera)) drawWorld(ctx, state.camera, t, state.level)
   ctx.save()
   const shake = state.reducedMotion ? 0 : state.shake
   ctx.translate(-Math.round(state.camera) + Math.sin(t * 83) * shake, Math.cos(t * 71) * shake * 0.45)
@@ -648,16 +679,17 @@ export function renderLocalhost(ctx: CanvasRenderingContext2D, state: VisualStat
   }
   const c = state.copy
   if (state.level === 0) {
-  drawTerminal(ctx, 48, 305, c.signFriday, c.signFridayQuote, '#c4a1ff')
-  drawTerminal(ctx, 550, 235, c.signBug, c.signBugHint)
-  drawTerminal(ctx, checkpointX - 55, 272, c.signCommit, state.checkpoint ? c.signCommitSaved : c.signCommitHint)
-  drawTerminal(ctx, EXIT_X - 390, 230, c.signPush, c.signPushHint, '#e8cc85')
-  text(ctx, c.signSurprise, 1615, 266, '#b9a0db', 11)
-  text(ctx, c.signSecret, 1824, 178, '#eccc80', 12)
+  drawDeskNote(ctx, 48, 292, c.signFriday, c.signFridayQuote)
+  drawDeskNote(ctx, 550, 235, 'Retry Gremlin', c.signBugHint)
+  for (const [i, x] of checkpoints.entries()) drawDeskNote(ctx, x - 55, i ? 196 : 272, c.signCommit, reached >= i ? c.signCommitSaved : c.signCommitHint)
+  // The secret branch whispers until it is found.
+  if (!state.secret) { ctx.globalAlpha = 0.55 + Math.sin(t * 4) * 0.35; text(ctx, '?', 2220, 220 + Math.sin(t * 2.4) * 4, '#d1a6ff', 22); ctx.globalAlpha = 1 }
+  text(ctx, c.signSurprise, 2040, 210, '#b9a0db', 11)
+  text(ctx, c.signSecret, 2150, 178, '#eccc80', 12)
 
   } else {
     drawTerminal(ctx, 48, 305, LEVELS[state.level].name, state.level === 1 ? 'FANS / LIFTS / OVERHEAT' : 'GRAVITY / OFFLINE / CLONES')
-    drawTerminal(ctx, checkpointX - 55, 272, c.signCommit, state.checkpoint ? c.signCommitSaved : c.signCommitHint)
+    drawTerminal(ctx, checkpoints[0] - 55, 272, c.signCommit, state.checkpoint ? c.signCommitSaved : c.signCommitHint)
   }
   for (const wall of LEVELS[state.level].firewalls) {
     const phase = firewallPhase(state.worldTime, wall.phase)
@@ -681,12 +713,15 @@ export function renderLocalhost(ctx: CanvasRenderingContext2D, state: VisualStat
     ctx.fillStyle = '#fff9db'; ctx.fillRect(-1, -4, 2, 8); ctx.restore()
   }
 
-  const cpColor = state.checkpoint ? '#72edca' : '#827b9e'
-  glow(ctx, checkpointX + 13, 410, state.checkpoint ? 70 : 25, state.checkpoint ? '#45dbab30' : '#6551a022')
-  box(ctx, checkpointX, 397, 26, 63, 4, '#192b3d')
-  box(ctx, checkpointX + 5, 403, 16, 33, 3, cpColor)
-  text(ctx, state.checkpoint ? '✓' : '●', checkpointX + 7, 424, '#0c2d2c', 15)
-  line(ctx, [checkpointX + 13, 436, checkpointX + 13, 458], cpColor, 2)
+  for (const [i, checkpointX] of checkpoints.entries()) {
+    const saved = reached >= i
+    const cpColor = saved ? '#72edca' : '#827b9e'
+    glow(ctx, checkpointX + 13, 410, saved ? 70 : 25, saved ? '#45dbab30' : '#6551a022')
+    box(ctx, checkpointX, 397, 26, 63, 4, '#192b3d')
+    box(ctx, checkpointX + 5, 403, 16, 33, 3, cpColor)
+    text(ctx, saved ? '✓' : '●', checkpointX + 7, 424, '#0c2d2c', 15)
+    line(ctx, [checkpointX + 13, 436, checkpointX + 13, 458], cpColor, 2)
+  }
 
   if (!state.hotfix) {
     const x = HOTFIX.x + 15, y = HOTFIX.y + 17 + Math.sin(t * 3) * 4
@@ -711,14 +746,17 @@ export function renderLocalhost(ctx: CanvasRenderingContext2D, state: VisualStat
   text(ctx, gateOpen ? '→' : '×', EXIT_X - 11, 411, gate, 31)
 
   const bugTime = state.reducedMotion ? 0 : state.worldTime
+  drawDeskArenas(ctx, state)
   drawPowerPickups(ctx, state.level, state.powers, state.camera, t)
-  for (const bug of state.enemies) if (bug.alive) drawBug(ctx, bug, bugTime)
+  for (const bug of state.enemies) if (bug.alive && bug.x + bug.w > state.camera - 100 && bug.x < state.camera + 1060) {
+    if (state.level !== 0 || !drawDeskEnemy(ctx, bug, bugTime)) drawBug(ctx, bug, bugTime)
+  }
   if (state.powers.breakpoint > 0) drawBreakpointMarkers(ctx, state.enemies, state.time)
   for (const bug of state.enemies) if (bug.alive && bug.retry) text(ctx, 'RETRY', bug.x, bug.y - 17, '#f2b2cb', 9)
   drawRewindGhosts(ctx, state.powers)
   drawSudoAura(ctx, state.player, state.time, state.powers.sudo)
   drawCable(ctx, state, t)
-  drawRobot(ctx, state.player, t, state.reducedMotion, state.gravity < 0)
+  if (state.level !== 0 || !drawDeskHero(ctx, state.player, t, state.reducedMotion, state.powers.shuriken)) drawRobot(ctx, state.player, t, state.reducedMotion, state.gravity < 0)
   if ((state.player.speechTime ?? 0) > 0 && state.player.speech) {
     const p = state.player
     ctx.font = '600 11px monospace'
@@ -729,13 +767,18 @@ export function renderLocalhost(ctx: CanvasRenderingContext2D, state: VisualStat
     line(ctx, [p.x + 12, y + 28, p.x + 17, y + 34, p.x + 22, y + 28], '#bc95f0', 1.5)
     text(ctx, p.speech!, x + 12, y + 18, '#f0e5ff', 11)
   }
-  drawShots(ctx, state.shots, state.time)
+  drawShots(ctx, state.shots, state.time, state.level === 0)
   drawPurge(ctx, state, t)
   drawGcWave(ctx, state.powers.gc)
   for (const particle of state.particles) {
     ctx.globalAlpha = Math.min(1, particle.life / particle.maxLife)
     ctx.fillStyle = particle.color
-    ctx.fillRect(particle.x - particle.size / 2, particle.y - particle.size / 2, particle.size, particle.size)
+    if (particle.smoke) {
+      const radius = particle.size * (1 + (1 - particle.life / particle.maxLife) * 1.6)
+      const puff = ctx.createRadialGradient(particle.x, particle.y, 0, particle.x, particle.y, radius)
+      puff.addColorStop(0, '#e8d3b59a'); puff.addColorStop(.55, '#cfbda54d'); puff.addColorStop(1, '#c2bdad00')
+      ctx.fillStyle = puff; ctx.beginPath(); ctx.arc(particle.x, particle.y, radius, 0, Math.PI * 2); ctx.fill()
+    } else ctx.fillRect(particle.x - particle.size / 2, particle.y - particle.size / 2, particle.size, particle.size)
   }
   ctx.globalAlpha = 1
   for (const popup of state.popups) {
