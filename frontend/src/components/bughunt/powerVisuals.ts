@@ -8,6 +8,7 @@ const LOOK: Record<PowerKind, { glyph: string; label: string; color: string; dar
   breakpoint: { glyph: '⏸', label: 'breakpoint', color: '#ff7d92', dark: '#3a1020' },
   sudo: { glyph: '#', label: 'sudo', color: '#ffd76a', dark: '#3a2c08' },
   gc: { glyph: '♻', label: 'gc()', color: '#7dffb2', dark: '#0b3321' },
+  shuriken: { glyph: '{}', label: 'JSON Shuriken', color: '#9fc8ff', dark: '#0d1b3a' },
 }
 
 /** Floating chips with a rotating dashed ring: readable by glyph and label, not only by colour. */

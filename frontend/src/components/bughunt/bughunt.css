@@ -14,9 +14,28 @@
 .bh-icon-button:hover { background: #29233e; color: #f5ebff; }
 .bh-icon-button[aria-pressed="true"] { color: #b9eedc; border-color: #72dfb755; }
 .bh-stage { grid-template-rows: minmax(0, 1fr); grid-template-columns: minmax(0, 1fr); position: relative; flex: 1; min-height: 0; overflow: hidden; display: grid; place-items: center; }
+.bh-stage { container-type: size; }
+.bh-screen { position: relative; width: min(100cqw, 100cqh * 16 / 9); aspect-ratio: 16 / 9; }
 .bh-stage canvas { min-width: 0; min-height: 0; width: 100%; height: 100%; object-fit: contain; display: block; }
-.bh-hud { position: absolute; top: 18px; left: 24px; right: 24px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; pointer-events: none; }
-.bh-hud-group { display: flex; gap: 8px; align-items: center; }
+.bh-hud { position: absolute; top: 16px; left: 18px; right: 18px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; pointer-events: none; }
+.bh-hud-left { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.bh-status { display: flex; flex-wrap: wrap; gap: 6px; }
+/* Corner-bracket frames: a thin rail with brighter L-shaped corners, like an IDE overlay. */
+.bh-frame { --rail: #6fd3ff; position: relative; display: flex; align-items: center; gap: 12px; padding: 6px 16px 6px 8px; background: linear-gradient(90deg, #06101fe6, #0a1a30cc); border: 1px solid #6fd3ff38; clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px)); box-shadow: inset 0 0 24px #1d6fff14; }
+.bh-frame::before, .bh-frame::after { content: ''; position: absolute; width: 14px; height: 14px; border-color: var(--rail); border-style: solid; filter: drop-shadow(0 0 4px #3bbcffaa); }
+.bh-frame::before { top: 0; left: 0; border-width: 2px 0 0 2px; }
+.bh-frame::after { bottom: 0; right: 0; border-width: 0 2px 2px 0; }
+.bh-avatar { width: 40px; height: 40px; border-radius: 50%; background: radial-gradient(circle at 50% 45%, #1b3a66, #071124 70%); box-shadow: 0 0 0 1px #6fd3ff55, 0 0 14px #2f9dff55; object-fit: cover; }
+.bh-name { font: 600 15px ui-monospace, monospace; color: #dff4ff; letter-spacing: .02em; }
+.bh-player .bh-heart { font-size: 24px; letter-spacing: 5px; }
+.bh-player.bh-low .bh-heart { animation: bh-heart-beat 1s ease-in-out infinite; }
+@keyframes bh-heart-beat { 50% { opacity: .55; } }
+.bh-counters { gap: 14px; padding: 9px 18px; font: 500 15px ui-monospace, monospace; color: #dff4ff; font-variant-numeric: tabular-nums; }
+.bh-counters span { display: inline-flex; align-items: center; gap: 9px; }
+.bh-counters svg { color: #8fdcff; filter: drop-shadow(0 0 5px #3bbcff88); }
+.bh-counters i { width: 1px; height: 20px; background: #6fd3ff44; }
+.bh-zone { position: absolute; left: 18px; bottom: 14px; padding: 5px 34px 5px 12px; border-left: 2px solid #6fd3ff; border-bottom: 1px solid #6fd3ff55; font: 11px ui-monospace, monospace; letter-spacing: .12em; color: #a9dcf5; white-space: pre; pointer-events: none; background: linear-gradient(90deg, #06101fcc, transparent); }
+@media (prefers-reduced-motion: reduce) { .bh-player.bh-low .bh-heart { animation: none; } }
 .bh-pill { display: inline-flex; align-items: center; gap: 8px; padding: 8px 11px; border-radius: 9px; background: #091120d9; border: 1px solid #bda6e929; font: 11px ui-monospace, monospace; color: #b0bed1; }
 .bh-pill strong { color: #ece7f8; font-size: 13px; }
 .bh-pill.gold { color: #ebce87; }
@@ -54,10 +73,11 @@
 .bh-stat strong { display: block; font: 600 20px ui-monospace,monospace; color: #d8c3f2; }
 .bh-stat span { display: block; margin-top: 6px; font-size: 9px; color: #8f9ab3; text-transform: uppercase; letter-spacing: .08em; }
 .bh-medal { display: inline-flex; gap: 7px; align-items: center; margin: 0 5px 6px 0; padding: 6px 9px; border-radius: 6px; background: #dcc17d12; border: 1px solid #dcc17d33; color: #e0cc95; font-size: 10px; }
-@media (max-width: 600px) { .bh-header { padding: 10px 12px; } .bh-brand small { display: none; } .bh-hud { left: 12px; right: 12px; top: 10px; } .bh-pill { padding: 6px 8px; font-size: 9px; } .bh-footer { padding: 9px 12px; flex-wrap: wrap; } .bh-card { padding: 23px; } .bh-modal { padding: 12px; } }
+@media (max-width: 600px) { .bh-header { padding: 10px 12px; } .bh-brand small { display: none; } .bh-hud { left: 10px; right: 10px; top: 8px; } .bh-frame { padding: 4px 10px 4px 5px; gap: 8px; } .bh-avatar { width: 28px; height: 28px; } .bh-player .bh-heart { font-size: 17px; } .bh-counters { font-size: 12px; padding: 6px 10px; } .bh-zone { display: none; } .bh-pill { padding: 6px 8px; font-size: 9px; } .bh-footer { padding: 9px 12px; flex-wrap: wrap; } .bh-card { padding: 23px; } .bh-modal { padding: 12px; } }
 @media (max-height: 540px) { .bh-card { padding: 19px 25px; } .bh-card h1 { font-size: 29px; margin: 10px 0; } .bh-mission { margin: 12px 0; } .bh-card-actions { margin-top: 12px; } .bh-tip { display: none; } }
 
-.bh-level-hint { position: absolute; z-index: 2; top: 68px; left: 12%; right: 12%; padding: 7px 12px; text-align: center; border-radius: 8px; background: #080e20dd; color: #ded8ee; font-size: 11px; pointer-events: none; }
+/* Sits between the two HUD frames, never under them. */
+.bh-level-hint { position: absolute; z-index: 2; top: 22px; left: 50%; transform: translateX(-50%); width: max-content; max-width: min(44%, 520px); padding: 7px 12px; text-align: center; border-radius: 4px; background: #080e20dd; border: 1px solid #6fd3ff26; color: #ded8ee; font-size: 11px; pointer-events: none; }
 
 .bh-combo { color: #a3ffdc; font-size: 16px; }
 .bh-stats { min-width: 0; }
@@ -66,7 +86,7 @@
 .bh-rush progress { display: block; width: 100%; height: 3px; margin-top: 5px; accent-color: #e8c878; }
 .bh-rank { float: right; color: #ffe4a0; font-size: 54px; font-weight: 900; line-height: 1; padding-left: 16px; }
 
-@media (max-width: 800px) { .bh-level-hint { top: 105px; left: 5%; right: 5%; } }
+@media (max-width: 800px) { .bh-level-hint { top: 64px; max-width: 90%; } }
 
 /* Intro briefing: what to press, and what a life costs. */
 .bh-brief {
@@ -125,3 +145,16 @@
 .bh-difficulty button[aria-pressed="true"] { border-color: #c194ff; background: #382647; color: #fff; }
 .bh-difficulty button span { color: #ee9ebd; }
 .bh-difficulty button:focus-visible { outline: 2px solid #b1efd9; outline-offset: 3px; }
+
+/* Developer Desk's cyan instruments echo a0's faceplate and the concept HUD. */
+.bh-desk .bh-brand-mark { color: #b9f3ff; border-color: #6ccaff88; background: linear-gradient(145deg,#234879,#0b192c); box-shadow: 0 0 18px #2587ff20; }
+.bh-desk .bh-heart, .bh-desk .bh-difficulty button span { color: #77dfff; text-shadow: 0 0 9px #3bbcff66; }
+.bh-desk .bh-heart-empty { color: #304b64; text-shadow: none; }
+.bh-desk .bh-pill { border-color: #619bd044; border-radius: 3px; background: #081425df; }
+.bh-desk .bh-header, .bh-desk .bh-footer { border-color: #599fcb33; background: #08111e; }
+.bh-desk .bh-difficulty button[aria-pressed="true"] { border-color: #72d4ff; background: #17334b; }
+.bh-desk .bh-card { border-color: #6da8d84d; background: linear-gradient(145deg,#122234f5,#0a1320fa); }
+.bh-desk .bh-primary { background: #8bddff; color: #102238; border-color: #a2e4ff; }
+.bh-desk .bh-card h1 em { color: #90dfff; }
+/* The current lesson replaces the full keyboard reference during play. */
+.bh-playing .bh-footer { display: none; }

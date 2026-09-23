@@ -29,9 +29,10 @@ function createGame() {
 }
 
 /** Drops the player onto the given Localhost power chip. */
-function grab(game: Inspectable, tick: (n: number) => void, kind: string) {
-  const index = LEVELS[0].powers.findIndex((power) => power.kind === kind)
-  const power = LEVELS[0].powers[index]
+function grab(game: Inspectable, tick: (n: number) => void, kind: string, level = 0) {
+  if (level) { game.levelComplete = true; game.advance() }
+  const index = LEVELS[level].powers.findIndex((power) => power.kind === kind)
+  const power = LEVELS[level].powers[index]
   game.player.x = power.x - game.player.w / 2
   game.player.y = power.y - game.player.h / 2
   game.player.vy = 0
@@ -46,9 +47,10 @@ describe('Bug Hunt developer power-ups', () => {
   })
   afterEach(() => vi.unstubAllGlobals())
 
-  it('places all four powers in every environment', () => {
-    for (const level of LEVELS) {
-      expect([...new Set(level.powers.map((power) => power.kind))].sort()).toEqual(['breakpoint', 'gc', 'revert', 'sudo'])
+  it('teaches three powers plus the shuriken on the Desk, and the full kit afterwards', () => {
+    expect([...new Set(LEVELS[0].powers.map((power) => power.kind))].sort()).toEqual(['breakpoint', 'revert', 'shuriken', 'sudo'])
+    for (const level of LEVELS.slice(1)) {
+      expect([...new Set(level.powers.map((power) => power.kind))].sort()).toEqual(['breakpoint', 'gc', 'revert', 'shuriken', 'sudo'])
     }
   })
 
@@ -72,22 +74,23 @@ describe('Bug Hunt developer power-ups', () => {
   it('breakpoint: freezes bugs, firewalls and moving platforms, then resumes', () => {
     const { game, tick } = createGame()
     grab(game, tick, 'breakpoint')
-    const bugX = game.enemies[1].x
+    const walkingBug = game.enemies.find(b => !b.encounter && b.kind === 'patrol' && !b.hover)!
+    const bugX = walkingBug.x
     const world = game.worldTime
     tick(120)
-    expect(game.enemies[1].x).toBe(bugX)
+    expect(walkingBug.x).toBe(bugX)
     expect(game.worldTime).toBe(world)
     expect(firewallPhase(game.worldTime, 0)).toBe(firewallPhase(world, 0))
     tick(60 * 4)
     expect(game.getSnapshot().breakpoint).toBe(0)
     tick(30)
-    expect(game.enemies[1].x).not.toBe(bugX)
+    expect(walkingBug.x).not.toBe(bugX)
     game.destroy()
   })
 
   it('garbage collector: the wave frees bugs in range and spares distant ones', () => {
     const { game, tick } = createGame()
-    grab(game, tick, 'gc')
+    grab(game, tick, 'gc', 1)
     const origin = game.powers.gc!
     const inRange = game.enemies.filter((bug) => Math.hypot(bug.x + bug.w / 2 - origin.x, bug.y + bug.h / 2 - origin.y) < GC_RADIUS)
     const outOfRange = game.enemies.filter((bug) => !inRange.includes(bug))

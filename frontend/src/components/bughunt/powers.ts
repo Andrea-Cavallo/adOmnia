@@ -1,5 +1,10 @@
 // Developer power-ups. Pure state helpers; the game loop in prototype.ts applies them.
-export type PowerKind = 'revert' | 'breakpoint' | 'sudo' | 'gc'
+export type PowerKind = 'revert' | 'breakpoint' | 'sudo' | 'gc' | 'shuriken'
+/** Code Blaster is a0's default; picking up JSON Shuriken swaps in a limited stack. */
+export type Weapon = 'blaster' | 'shuriken'
+export const SHURIKEN_AMMO = 14
+/** Bugs one shuriken passes through before it breaks. */
+export const SHURIKEN_PIERCE = 3
 export type PowerPickup = { kind: PowerKind; x: number; y: number }
 
 export const SUDO_SECONDS = 6
@@ -23,10 +28,12 @@ export type PowerState = {
   history: PlayerFrame[]
   rewind: PlayerFrame[] | null
   gc: { x: number; y: number; r: number } | null
+  /** JSON Shuriken left; 0 means the Code Blaster is back in hand. Kept across levels and falls. */
+  shuriken: number
 }
 
 export function createPowerState(): PowerState {
-  return { sudo: 0, breakpoint: 0, revertCharges: 0, picked: new Set(), history: [], rewind: null, gc: null }
+  return { sudo: 0, breakpoint: 0, revertCharges: 0, picked: new Set(), history: [], rewind: null, gc: null, shuriken: 0 }
 }
 
 /** Timed effects end and history is dropped: rewinding must never lead back into a pit. */

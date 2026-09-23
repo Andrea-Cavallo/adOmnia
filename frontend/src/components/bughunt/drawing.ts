@@ -1,4 +1,4 @@
-export function box(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, radius: number, color: string) {
+export function box(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, radius: number, color: string | CanvasGradient) {
   ctx.fillStyle = color
   ctx.beginPath(); ctx.roundRect(x, y, w, h, radius); ctx.fill()
 }

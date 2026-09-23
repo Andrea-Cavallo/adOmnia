@@ -38,6 +38,8 @@ describe('Bug Hunt prototype rules', () => {
   it('swings the USB cables on both axes and carries a0 along', () => {
     const { game, tick } = createGame()
     const cable = game.platforms.find(p => p.skin === 'usb' && p.floating)!
+    expect(cable.travel).toBeUndefined()
+    cable.travel = 52; cable.verticalTravel = 14
     expect(cable.travel).toBeGreaterThan(0)
     expect(cable.verticalTravel).toBeGreaterThan(0)
     game.player.x = cable.x + 12; game.player.y = cable.y - game.player.h; game.player.vy = 1
@@ -142,10 +144,10 @@ describe('Bug Hunt prototype rules', () => {
   })
 
   it('extends only Localhost with encounters and a reachable final exit', () => {
-    expect(levelWidth(0)).toBe(4820)
-    expect(LEVELS[0].bugs).toHaveLength(21)
-    expect(levelExit(0)).toBe(4700)
-    expect(levelHotfix(0).x).toBe(4590)
+    expect(levelWidth(0)).toBe(5460)
+    expect(LEVELS[0].bugs.filter(b => b.encounter)).toHaveLength(3)
+    expect(levelExit(0)).toBe(5340)
+    expect(levelHotfix(0).x).toBe(5230)
     expect(levelWidth(1)).toBe(3220)
     expect(levelExit(2)).toBe(3100)
   })
@@ -218,7 +220,7 @@ describe('Bug Hunt prototype rules', () => {
     game.player.vy = 400
     game.player.grounded = false
     game.player.coyote = 0
-    tick(3)
+    tick(8) // the stomp's hitstop holds a few frames
     expect(game.enemies[0].alive).toBe(false)
     expect(game.player.vy).toBeLessThan(0)
 
@@ -488,9 +490,9 @@ describe('Bug Hunt prototype rules', () => {
 
   it('awards an optional rush once, without counting already collected bits', () => {
     const { game, tick } = createGame()
-    game.player.x = 1540; tick(1)
+    game.player.x = 4305; tick(1)
     expect(game.getSnapshot().rush.state).toBe('active')
-    for (const bit of LEVELS[0].bits.filter(b => b.x >= 1530 && b.x <= 2420).slice(0, 6)) {
+    for (const bit of LEVELS[0].bits.filter(b => b.x >= 4300 && b.x <= 4950).slice(0, 6)) {
       game.player.x = bit.x - 15; game.player.y = bit.y - 20; game.player.vy = 0; tick(1)
     }
     expect(game.getSnapshot()).toMatchObject({ rushWins: 1, rush: { state: 'won', collected: 6 } })
@@ -506,7 +508,8 @@ describe('Bug Hunt prototype rules', () => {
 
   it('pauses the rush timer and lets a missed challenge leave the route open', () => {
     const { game, tick } = createGame()
-    game.player.x = 1540; tick(60)
+    game.enemies.forEach(b => { b.alive = false })
+    game.player.x = 4305; tick(60)
     const remaining = game.getSnapshot().rush.remaining
     vi.spyOn(game, 'draw').mockImplementation(() => undefined)
     game.setPaused(true); tick(600)
@@ -568,6 +571,7 @@ describe('magnetic grapple', () => {
     for (let frame = 0; frame < 120 && game.player.grapple; frame++) {
       tick(1)
       const cable = game.player.grapple
+      expect(cable, JSON.stringify({ frame, player: game.player, snapshot: game.getSnapshot() })).not.toBeNull()
       if (!cable) break
       const distance = Math.hypot(game.player.x + game.player.w / 2 - cable.x, game.player.y + game.player.h / 2 - cable.y)
       expect(distance).toBeLessThanOrEqual(cable.length + 1.5)
@@ -694,7 +698,7 @@ describe('debug gun and reactive bugs', () => {
   })
   afterEach(() => vi.unstubAllGlobals())
 
-  const patrol = (game: Inspectable) => game.enemies.find(b => b.alive && !b.kind)!
+  const patrol = (game: Inspectable) => game.enemies.find(b => b.alive && b.kind === 'patrol')!
 
   it('fires in the facing direction and closes a ticket on impact', () => {
     const { game, tick } = createGame()
@@ -749,7 +753,7 @@ describe('debug gun and reactive bugs', () => {
     const { game, tick } = createGame()
     for (const bug of game.enemies) bug.alive = bug.kind === 'turret'
     const turret = game.enemies.find(b => b.kind === 'turret')!
-    game.player.x = turret.x - 300
+    game.player.x = turret.x - 200
     game.player.y = 412
     tick(1)
     expect(game.shots.some(s => s.enemy)).toBe(false)
@@ -931,6 +935,64 @@ describe('the Monolith combines the campaign rules', () => {
     expect(game.boss.health).toBe(3)
     expect(game.gravitySign).toBe(1)
     expect(game.boss.applied).toBe(false)
+    game.destroy()
+  })
+})
+
+describe('Developer Desk refactor', () => {
+  beforeEach(() => {
+    vi.stubGlobal('requestAnimationFrame', vi.fn(() => 1))
+    vi.stubGlobal('cancelAnimationFrame', vi.fn())
+  })
+  afterEach(() => vi.unstubAllGlobals())
+
+  /** Three bugs in a row in front of a0 on the first floor; everything else asleep. */
+  function lineUp(game: Inspectable) {
+    for (const bug of game.enemies) bug.alive = false
+    game.player.x = 60; game.player.y = 412; game.player.facing = 1
+    return [140, 200, 260].map((x, i) => Object.assign(game.enemies[i], { x, y: 426, w: 38, h: 34, left: x, right: x, alive: true, kind: 'patrol', hp: 1, encounter: undefined, combat: undefined }))
+  }
+
+  it('JSON Shuriken cuts through three bugs; the Code Blaster stops on the first', () => {
+    const blaster = createGame()
+    const plain = lineUp(blaster.game)
+    blaster.game.keyDown('KeyF'); blaster.game.keyUp('KeyF'); blaster.tick(40)
+    expect(plain.map(b => b.alive)).toEqual([false, true, true])
+    blaster.game.destroy()
+
+    const { game, tick } = createGame()
+    const bugs = lineUp(game)
+    ;(game as unknown as { powers: { shuriken: number } }).powers.shuriken = 14
+    game.keyDown('KeyF'); game.keyUp('KeyF'); tick(40)
+    expect(bugs.every(b => !b.alive)).toBe(true)
+    expect(game.getSnapshot()).toMatchObject({ weapon: 'shuriken', ammo: 13 })
+    game.destroy()
+  })
+
+  it('saves a second commit before the exam and respawns there', () => {
+    const { game, tick } = createGame()
+    game.player.x = 3135; game.player.y = 412; tick(1)
+    expect(game.checkpoint).toBe(true)
+    game.player.y = 650; tick(1)
+    expect(game.player.x).toBe(3130)
+    game.destroy()
+  })
+
+  it('Legacy Brute announces itself, then locks the arena until it is closed', () => {
+    const { game, tick } = createGame()
+    const brute = game.enemies.find(b => b.kind === 'null')!
+    game.player.x = 4890; game.player.y = 300; tick(1)
+    const start = brute.x
+    tick(10)
+    expect(brute.x).toBe(start)
+    game.player.x = 5060; game.player.y = 412; tick(1)
+    // The outlined gates remain traversable throughout the entrance animation.
+    tick(90)
+    game.player.x = 4940; tick(1)
+    expect(game.player.x).toBeGreaterThanOrEqual(5015)
+    brute.alive = false; tick(1)
+    game.player.x = 4940; tick(1)
+    expect(game.player.x).toBeLessThan(5015)
     game.destroy()
   })
 })

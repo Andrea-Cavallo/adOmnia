@@ -1,6 +1,6 @@
 import { DIFFICULTIES, livesFor, type Difficulty } from './difficulty'
 import { useEffect, useRef, useState } from 'react'
-import { ArrowRight, Check, Cpu, Diamond, Flag, Pause, Play, RotateCcw, Sparkles, Trophy, Volume2, VolumeX, X } from 'lucide-react'
+import { ArrowRight, Box, Check, Cpu, Flag, Settings, Pause, Play, RotateCcw, Sparkles, Trophy, Volume2, VolumeX, X } from 'lucide-react'
 import { BugHuntPrototype, HEIGHT, INITIAL_SNAPSHOT, WIDTH, type GameSnapshot } from './prototype'
 import { formatTime, loadPreferences, savePreferences, type BugHuntPreferences } from './preferences'
 import { BUG_HUNT_COPY } from './copy'
@@ -9,6 +9,7 @@ import type { Lang } from '@/lib/i18n'
 import './bughunt.css'
 import { rankForScore, RUSH_TARGET } from './rush'
 import { LEVELS } from './level'
+import avatarUrl from './assets/a0-avatar.png'
 
 const CONTROL_KEYS = new Set(['KeyA', 'KeyD', 'KeyW', 'KeyS', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space', 'KeyX', 'ShiftLeft', 'ShiftRight', 'KeyR', 'KeyE', 'KeyF'])
 
@@ -132,7 +133,7 @@ export function BugHuntOverlay({ onClose }: { onClose: () => void }) {
   const infinite = !Number.isFinite(maxLives)
 
   return (
-    <div ref={overlayRef} tabIndex={-1} className="bug-hunt" role="dialog" aria-modal="true" aria-label={copy.dialogLabel} data-bug-hunt onMouseDown={(event) => event.stopPropagation()}>
+    <div ref={overlayRef} tabIndex={-1} className={`bug-hunt${snapshot.level === 0 ? ' bh-desk' : ''}${!ready && !snapshot.paused && !snapshot.gameOver && !snapshot.levelComplete && !snapshot.finished ? ' bh-playing' : ''}`} role="dialog" aria-modal="true" aria-label={copy.dialogLabel} data-bug-hunt onMouseDown={(event) => event.stopPropagation()}>
       <header className="bh-header">
         <div className="bh-brand"><span className="bh-brand-mark" aria-hidden>aO</span><div><strong>BUG HUNT</strong><small>{`${snapshot.level + 1} / 3 · ${LEVELS[snapshot.level].name.toUpperCase()}`}</small></div></div>
         <div className="bh-header-actions">
@@ -143,14 +144,38 @@ export function BugHuntOverlay({ onClose }: { onClose: () => void }) {
         </div>
       </header>
       <div className="bh-stage">
+        {/* The screen box matches the letterboxed canvas, so HUD corners sit on the game, not on the bars. */}
+        <div className="bh-screen">
         {!ready && !snapshot.finished && !snapshot.gameOver && !snapshot.levelComplete && <div className={`bh-level-hint ${snapshot.rush.state === 'active' ? 'bh-rush' : ''}`}>
-          {snapshot.rush.state === 'active' ? <><strong>{copy.rushLabel}</strong> {snapshot.rush.collected}/{RUSH_TARGET} · {Math.ceil(snapshot.rush.remaining)}s · +500 <progress max={8} value={snapshot.rush.remaining} /></> : snapshot.rush.state === 'won' ? copy.rushWon : copy.stageHints[snapshot.level]}
+          {snapshot.rush.state === 'active' ? <><strong>{copy.rushLabel}</strong> {snapshot.rush.collected}/{RUSH_TARGET} · {Math.ceil(snapshot.rush.remaining)}s · +500 <progress max={8} value={snapshot.rush.remaining} /></> : snapshot.rush.state === 'won' ? copy.rushWon : (snapshot.level === 0 ? copy.deskHints[snapshot.deskBeat] : copy.stageHints[snapshot.level])}
         </div>}
-        <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} aria-label={copy.canvasLabel} />
+        <canvas ref={canvasRef} width={WIDTH * 2} height={HEIGHT * 2} aria-label={copy.canvasLabel} />
         {!ready && <div className="bh-hud" aria-label={copy.hudLabel}>
-          <div className="bh-hud-group"><span className={`bh-pill bh-lives ${snapshot.health === 1 ? 'rose' : ''}`} aria-label={infinite ? copy.infiniteLives : copy.healthLabel(snapshot.health, maxLives)}><span className="bh-lives-label">{copy.difficultyNames[snapshot.difficulty]}</span><span className="bh-heart">{infinite ? '♥ ∞' : '♥'.repeat(snapshot.health)}<span className="bh-heart-empty">{infinite ? '' : '♥'.repeat(Math.max(0, maxLives - snapshot.health))}</span></span></span><span className="bh-pill gold"><Diamond size={13} /><strong>{snapshot.bits}</strong><span>/ {snapshot.totalBits}</span></span><span className="bh-pill">{copy.statScore} <strong>{snapshot.score}</strong>{snapshot.combo >= 4 && <b className="bh-combo">x{Math.min(5, 1 + Math.floor(snapshot.combo / 4))}</b>}</span></div>
-          <div className="bh-hud-group"><span className={`bh-pill ${snapshot.revertCharges ? 'sky' : 'dim'}`} title={copy.keysRevert}><kbd>R</kbd>↺ ×{snapshot.revertCharges}</span>{snapshot.breakpoint > 0 && <span className="bh-pill rose">⏸ BREAKPOINT {snapshot.breakpoint}s</span>}{snapshot.sudo > 0 && <span className="bh-pill sun"># SUDO {snapshot.sudo}s</span>}<span className={`bh-pill ${snapshot.dashReady ? 'mint' : ''}`}><kbd>X</kbd>{snapshot.dashReady ? copy.dashReady : copy.dashCharging}</span><span className={`bh-pill ${snapshot.shotReady ? 'mint' : 'dim'}`} title={copy.fireHint}><kbd>F</kbd>{copy.shotReady}</span><span className={`bh-pill ${snapshot.grappled ? 'sky' : 'dim'}`} title={copy.grappleHint}><kbd>E</kbd>{copy.keysGrapple}</span>{snapshot.purge === 'active' && <span className="bh-pill rose">{copy.purgeLabel}</span>}{snapshot.bossCommand && <span className={`bh-pill ${snapshot.bossAnnounce ? 'rose' : 'sun'}`} title={copy.bossCmdHint[snapshot.bossCommand]}>{copy.bossCmd[snapshot.bossCommand]}</span>}<span className={`bh-pill ${snapshot.hotfix ? 'mint' : ''}`}><Cpu size={14} />{snapshot.hotfix ? copy.hotfixFound : copy.findHotfix}</span><span className="bh-pill">{formatTime(snapshot.seconds)}</span></div>
+          <div className="bh-hud-left">
+            <div className={`bh-frame bh-player ${snapshot.health === 1 ? 'bh-low' : ''}`} aria-label={infinite ? copy.infiniteLives : copy.healthLabel(snapshot.health, maxLives)}>
+              <img className="bh-avatar" src={avatarUrl} alt="" width={40} height={40} />
+              <span className="bh-name">a0</span>
+              <span className="bh-heart">{infinite ? '♥ ∞' : '♥'.repeat(snapshot.health)}<span className="bh-heart-empty">{infinite ? '' : '♥'.repeat(Math.max(0, maxLives - snapshot.health))}</span></span>
+            </div>
+            {/* Only what is live right now: tools in hand, timers, threats. Key hints live in the start menu. */}
+            <div className="bh-status">
+              {snapshot.weapon === 'shuriken' && <span className="bh-pill sky" title={copy.fireHint}><kbd>F</kbd>{`{} ×${snapshot.ammo}`}</span>}
+              {snapshot.revertCharges > 0 && <span className="bh-pill sky" title={copy.keysRevert}><kbd>R</kbd>↺ ×{snapshot.revertCharges}</span>}
+              {snapshot.breakpoint > 0 && <span className="bh-pill rose">⏸ {snapshot.breakpoint}s</span>}
+              {snapshot.sudo > 0 && <span className="bh-pill sun"># SUDO {snapshot.sudo}s</span>}
+              {snapshot.purge === 'active' && <span className="bh-pill rose">{copy.purgeLabel}</span>}
+              {snapshot.bossCommand && <span className={`bh-pill ${snapshot.bossAnnounce ? 'rose' : 'sun'}`} title={copy.bossCmdHint[snapshot.bossCommand]}>{copy.bossCmd[snapshot.bossCommand]}</span>}
+              {snapshot.hotfix && <span className="bh-pill mint"><Cpu size={13} />{copy.hotfixFound}</span>}
+            </div>
+          </div>
+          <div className="bh-frame bh-counters">
+            <span title={copy.statBits}><Box size={19} strokeWidth={1.6} />{snapshot.bits} / {snapshot.totalBits}</span>
+            <i aria-hidden />
+            <span title={copy.statScore}><Settings size={19} strokeWidth={1.6} />{snapshot.score}{snapshot.combo >= 4 && <b className="bh-combo">x{Math.min(5, 1 + Math.floor(snapshot.combo / 4))}</b>}</span>
+          </div>
         </div>}
+        {!ready && <div className="bh-zone" aria-hidden>{`${LEVELS[snapshot.level].name.toUpperCase()}  //  ZONE ${snapshot.level + 1}-${snapshot.commit + 1}`}</div>}
+        </div>
         {(ready || snapshot.paused || snapshot.gameOver || snapshot.finished || snapshot.levelComplete) && <div className="bh-modal">
           <div className="bh-card">
             <div className="bh-eyebrow"><span className="bh-dot" />{ready ? copy.introEyebrow : snapshot.gameOver ? 'GAME OVER' : snapshot.finished ? copy.winEyebrow : snapshot.levelComplete ? copy.stageClear : copy.pauseEyebrow}</div>

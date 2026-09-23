@@ -3,7 +3,11 @@ import type { Lang } from '@/lib/i18n'
 // Every in-game string lives here. The English shape is the contract, so a
 // missing Italian line fails type-checking instead of showing up blank.
 const en = {
-  nullLocked: 'Defeat NullPointer first! ←', cpuWarning: 'CPU 97% · scenery slowed / controls online',
+  deskHints: ['A / D: move · Space: jump · F: fire', 'Land on a bug · press Space again in the air', 'Read the warning · attack during recovery', 'The keys give way · the desk catches you', 'E: grapple · release E to launch', 'Your turn: combine jumps, shots and dodges', 'Follow the bits across the books · a commit awaits', 'Legacy Brute · dodge, recover, counterattack'],
+  nullLocked: 'Clear the three encounters first! ←', cpuWarning: 'CPU 97% · scenery slowed / controls online',
+  arenaReward: 'ENCOUNTER CLEAR · +250 · DASH READY',
+  arenaEntering: 'INCOMING · gates closing', arenaRecover: 'RECOVERY · fire now!', arenaEnraged: 'OVERCLOCK',
+  arenaMoves: ['TARGETED LEAP · move away', 'RETRY CHARGE · jump over', 'XML VOLLEY · dodge the lines', 'XML SEAL · leave the marker', 'HEAVY SLAM · jump or step away', 'LEGACY CHARGE · jump over'],
   gravitySafe: 'GRAVITY SAFE ZONE ↓', lessonHint: 'Read the warning. The floor remains a safe way out.',
   bossPhases: ['SOAP STORM', 'LEGACY OVERRIDE', 'MONOLITH PANIC MODE'],
   gameOverTitle: 'Out of lives.', gameOverBody: 'No lives left for this deploy. Start a new campaign and try again.',
@@ -17,6 +21,10 @@ const en = {
   powerRevert: '+1 git revert  ·  press R',
   powerBreakpoint: 'BREAKPOINT HIT  ·  world paused',
   powerSudo: 'sudo !!  ·  root access granted',
+  powerShuriken: 'JSON Shuriken  ·  cuts through 3 bugs',
+  shurikenEmpty: 'Out of shuriken · Code Blaster online',
+  bruteIntro: '// TODO: refactor me (since 2009)',
+  weaponBlaster: 'Code Blaster', weaponShuriken: 'JSON Shuriken',
   powerGc: 'GARBAGE COLLECTOR  ·  memory freed',
   revertUsed: 'git revert HEAD~3s',
   revertEmpty: 'No revert left. Find a ↺ chip.',
@@ -53,9 +61,9 @@ const en = {
   livesRule: 'Only three lives for the whole campaign. Each hit or fall costs one. At zero: game over. Checkpoints do not refill lives.',
   controlsTitle: 'Controls',
   goalTitle: 'The goal',
-  goalBody: 'Grab the Hotfix, then reach the exit. Three environments: Buggy Dev Desk, Production Datacenter, Legacy Dimension.',
+  goalBody: 'Grab the Hotfix, then reach the exit. Three environments: Developer Desk, Production Datacenter, Legacy Dimension.',
   nextLevel: 'Next environment', stageClear: 'Hotfix secured!',
-  stageHints: ['Keys collapse! Space: double jump. X: dash. F: fire. Defeat NullPointer before the exit.', 'Fans lift you. Ride the racks, dodge flying bugs. CPU pressure slows scenery, never your controls. Escape the overheating server!', 'Learn GRAVITY / OFFLINE / CLONES. The boss combines them. In Panic Mode, shoot CORE, SESSION and SOAP before the final hit.'],
+  stageHints: ['Keys collapse! Space: double jump. X: dash. F: fire. Defeat Legacy Brute before the exit.', 'Fans lift you. Ride the racks, dodge flying bugs. CPU pressure slows scenery, never your controls. Escape the overheating server!', 'Learn GRAVITY / OFFLINE / CLONES. The boss combines them. In Panic Mode, shoot CORE, SESSION and SOAP before the final hit.'],
   // the Monolith rewrites one rule per phase, announced before it bites
   bossRule: '⚠ SYSTEM PATCH IN',
   bossCmd: { gravity: 'GRAVITY_OVERRIDE', clones: 'fork() → 3 clones', offline: 'systemctl stop platforms' },
@@ -154,7 +162,11 @@ const en = {
 export type BugHuntCopy = typeof en
 
 const it: BugHuntCopy = {
-  nullLocked: 'Sconfiggi prima NullPointer! ←', cpuWarning: 'CPU 97% · scenario lento / comandi attivi',
+  deskHints: ['A / D: muoviti · Spazio: salta · F: spara', 'Atterra sul bug · premi ancora Spazio in aria', 'Leggi il preavviso · colpisci durante il recupero', 'I tasti cedono · la scrivania ti riprende', 'E: aggancia · rilascia E per lanciarti', 'Tocca a te: combina salti, colpi e schivate', 'Segui i bit sui libri · ti aspetta un checkpoint', 'Legacy Brute · schiva, recupera, contrattacca'],
+  nullLocked: 'Completa prima i tre incontri! ←', cpuWarning: 'CPU 97% · scenario lento / comandi attivi',
+  arenaReward: 'ARENA LIBERA · +250 · SCATTO PRONTO',
+  arenaEntering: 'IN ARRIVO · chiusura arena', arenaRecover: 'RECUPERO · spara ora!', arenaEnraged: 'OVERCLOCK',
+  arenaMoves: ['SALTO MIRATO · spostati', 'CARICA RETRY · salta oltre', 'RAFFICA XML · schiva le linee', 'SIGILLO XML · esci dal segno', 'SCHIANTO · salta o allontanati', 'CARICA LEGACY · salta oltre'],
   gravitySafe: 'GRAVITY SAFE ZONE ↓', lessonHint: 'Leggi l’avviso. Puoi sempre uscire dalla zona.',
   bossPhases: ['SOAP STORM', 'LEGACY OVERRIDE', 'MONOLITH PANIC MODE'],
   gameOverTitle: 'Vite esaurite.', gameOverBody: 'Hai esaurito le vite di questo deploy. Ricomincia la campagna e riprova.',
@@ -167,6 +179,10 @@ const it: BugHuntCopy = {
   powerRevert: '+1 git revert  ·  premi R',
   powerBreakpoint: 'BREAKPOINT  ·  mondo in pausa',
   powerSudo: 'sudo !!  ·  accesso root',
+  powerShuriken: 'JSON Shuriken  ·  trapassa 3 bug',
+  shurikenEmpty: 'Shuriken finiti · torna il Code Blaster',
+  bruteIntro: '// TODO: refactor me (dal 2009)',
+  weaponBlaster: 'Code Blaster', weaponShuriken: 'JSON Shuriken',
   powerGc: 'GARBAGE COLLECTOR  ·  memoria liberata',
   revertUsed: 'git revert HEAD~3s',
   revertEmpty: 'Nessun revert. Cerca un chip ↺.',
@@ -200,9 +216,9 @@ const it: BugHuntCopy = {
   livesRule: 'Solo tre vite per tutta la campagna. Ogni colpo o caduta ne consuma una. A zero: game over. I checkpoint non ricaricano le vite.',
   controlsTitle: 'Comandi',
   goalTitle: 'Obiettivo',
-  goalBody: 'Prendi l’Hotfix, poi raggiungi l’uscita. Tre ambienti: Buggy Dev Desk, Production Datacenter, Legacy Dimension.',
+  goalBody: 'Prendi l’Hotfix, poi raggiungi l’uscita. Tre ambienti: Developer Desk, Production Datacenter, Legacy Dimension.',
   nextLevel: 'Prossimo ambiente', stageClear: 'Hotfix al sicuro!',
-  stageHints: ['I tasti cedono! Spazio: doppio salto. X: scatto. F: spara. Sconfiggi NullPointer prima di uscire.', 'Sali con ventole e ascensori. Schiva i bug volanti. La CPU rallenta lo scenario, mai i comandi. Fuggi dal server surriscaldato!', 'Impara GRAVITY / OFFLINE / CLONES. Il boss li combina. In Panic Mode spara a CORE, SESSION e SOAP prima del colpo finale.'],
+  stageHints: ['I tasti cedono! Spazio: doppio salto. X: scatto. F: spara. Sconfiggi Legacy Brute prima di uscire.', 'Sali con ventole e ascensori. Schiva i bug volanti. La CPU rallenta lo scenario, mai i comandi. Fuggi dal server surriscaldato!', 'Impara GRAVITY / OFFLINE / CLONES. Il boss li combina. In Panic Mode spara a CORE, SESSION e SOAP prima del colpo finale.'],
   bossRule: '⚠ PATCH DI SISTEMA TRA',
   bossCmd: { gravity: 'GRAVITY_OVERRIDE', clones: 'fork() → 3 cloni', offline: 'systemctl stop piattaforme' },
   bossCmdHint: {

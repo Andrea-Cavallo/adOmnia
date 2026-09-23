@@ -1,13 +1,16 @@
 import { livesFor, type Difficulty } from './difficulty'
+import { loadDeskArt } from './deskAssets'
+import { stepHeroAnimation } from './heroAnimation'
+import { DESK_ARENAS, arenaAttackHits, arenaBodyDangerous, arenaDamageable, confineToArena, stepDeskCombat } from './deskCombat'
 import { stepSpecialBug } from './enemies'
 import { createRush, RUSH_START, RUSH_END, RUSH_TARGET, RUSH_BONUS, type Rush } from './rush'
 import { BugHuntAudio } from './audio'
 import { BUG_HUNT_COPY, type BugHuntCopy } from './copy'
-import { ARENA_X, BOSS_HEALTH, DEBRIS, BOSS_MODULES, bossPhase, GRAVITY_SAFE_X, COMMAND_SECONDS, platformOffline, BOSS_ANNOUNCE, BOSS_COMMANDS, BOSS_BODY, BOSS_FISTS, ENVELOPE_GRAVITY, ENVELOPE_SPEED, LEVELS, createBoss, firewallPhase, type Boss, type BossCommand, type Platform, CHECKPOINT_X, levelExit, levelHotfix, levelWidth, TURRET_CYCLE, intersects, type Bug, type Rect } from './level'
+import { ARENA_X, BOSS_HEALTH, DEBRIS, BOSS_MODULES, bossPhase, GRAVITY_SAFE_X, COMMAND_SECONDS, platformOffline, BOSS_ANNOUNCE, BOSS_COMMANDS, BOSS_BODY, BOSS_FISTS, ENVELOPE_GRAVITY, ENVELOPE_SPEED, LEVELS, createBoss, firewallPhase, type Boss, type BossCommand, type Platform, levelCheckpoints, levelExit, levelHotfix, levelWidth, TURRET_CYCLE, intersects, type Bug, type Rect } from './level'
 import { renderLocalhost, type Particle, type PlayerVisual, type Popup, type Shot } from './visuals'
 import {
   BREAKPOINT_SECONDS, GC_RADIUS, GC_SPEED, PICKUP_SIZE, REVERT_MAX_CHARGES, REWIND_SPEED, SUDO_SECONDS,
-  clearActivePowers, createPowerState, pickupKey, recordFrame, type PowerKind,
+  clearActivePowers, createPowerState, pickupKey, recordFrame, SHURIKEN_AMMO, SHURIKEN_PIERCE, type PowerKind, type Weapon,
 } from './powers'
 
 export const WIDTH = 960
@@ -29,6 +32,11 @@ const CROUCH_H = 26
 const CROUCH_SPEED = 0.45
 const SHOT_COOLDOWN = 0.22
 const SHOT_SPEED = 640
+const SHURIKEN_COOLDOWN = 0.28
+const SHURIKEN_SPEED = 820
+/** Seconds the world holds on a hit: the stomp lands before the bounce. */
+const HITSTOP_KILL = 0.07
+const HITSTOP_HIT = 0.045
 const BOLT_SPEED = 250
 const CHASE_RANGE = 320
 const CHASE_SPEED = 196
@@ -36,17 +44,19 @@ const TURRET_RANGE = 430
 
 type Player = PlayerVisual & { crouch: boolean; coyote: number; buffer: number; knockback: number; airJump: boolean; dash: number; dashCooldown: number; dashDirection: number }
 export type GameSnapshot = {
+  deskBeat: number
   difficulty: Difficulty
   rush: Rush; rushWins: number; totalBugs: number; revertCharges: number; sudo: number; breakpoint: number
-  score: number; combo: number; bestCombo: number; dashReady: boolean; health: number; gameOver: boolean; deaths: number; checkpoint: boolean; finished: boolean; paused: boolean
-  grappled: boolean; purge: PurgeState; shotReady: boolean; bossCommand: BossCommand | null; bossAnnounce: boolean
+  score: number; combo: number; bestCombo: number; dashReady: boolean; health: number; gameOver: boolean; deaths: number; checkpoint: boolean; commit: number; finished: boolean; paused: boolean
+  grappled: boolean; purge: PurgeState; shotReady: boolean; weapon: Weapon; ammo: number; bossCommand: BossCommand | null; bossAnnounce: boolean
   level: number; levelComplete: boolean; bossHealth: number; bits: number; totalBits: number; hotfix: boolean; secret: boolean; bugs: number; seconds: number
 }
 export const INITIAL_SNAPSHOT: GameSnapshot = {
+  deskBeat: 0,
   difficulty: 'production',
   rush: createRush(), rushWins: 0, totalBugs: LEVELS.reduce((sum, l) => sum + l.bugs.length, 0), revertCharges: 0, sudo: 0, breakpoint: 0,
-  score: 0, combo: 0, bestCombo: 0, dashReady: true, health: 3, gameOver: false, deaths: 0, checkpoint: false, finished: false, paused: false,
-  grappled: false, purge: 'off', shotReady: true, bossCommand: null, bossAnnounce: false,
+  score: 0, combo: 0, bestCombo: 0, dashReady: true, health: 3, gameOver: false, deaths: 0, checkpoint: false, commit: 0, finished: false, paused: false,
+  grappled: false, purge: 'off', shotReady: true, weapon: 'blaster', ammo: 0, bossCommand: null, bossAnnounce: false,
   level: 0, levelComplete: false, bossHealth: BOSS_HEALTH, bits: 0, totalBits: LEVELS.reduce((n, l) => n + l.bits.length, 0), hotfix: false, secret: false, bugs: 0, seconds: 0,
 }
 
@@ -76,7 +86,10 @@ export class BugHuntPrototype {
   private lesson = { index: -1, announce: 0, remaining: 0, done: new Set<number>() }
   private slowRemaining = 0
   private slowUsed = false
-  private get checkpointX() { return this.level === 2 ? 2500 : CHECKPOINT_X }
+  /** Index of the last commit reached this level; -1 before the first. */
+  private checkpointIndex = -1
+  private get checkpointX() { return levelCheckpoints(this.level)[Math.max(0, this.checkpointIndex)] }
+  private hitstop = 0
   private get map() { return LEVELS[this.level] }
   private ctx: CanvasRenderingContext2D
   private player: Player
@@ -123,6 +136,7 @@ export class BugHuntPrototype {
     this.resetPurge()
     this.publish()
     this.frame = requestAnimationFrame(this.loop)
+    void loadDeskArt().then(() => { if (!this.destroyed && this.paused) this.draw() })
   }
 
   private makePlayer(x: number): Player {
@@ -130,9 +144,9 @@ export class BugHuntPrototype {
   }
 
   getSnapshot(): GameSnapshot {
-    return { difficulty: this.difficulty, rush: { ...this.rush }, rushWins: this.rushWins, totalBugs: LEVELS.reduce((sum, l) => sum + l.bugs.length, 0), revertCharges: this.powers.revertCharges, sudo: Math.ceil(this.powers.sudo), breakpoint: Math.ceil(this.powers.breakpoint),
-      score: this.score, combo: this.chain, bestCombo: this.bestCombo, dashReady: this.player.dashCooldown <= 0, health: this.health, gameOver: this.gameOver, deaths: this.deaths, checkpoint: this.checkpoint, finished: this.finished, paused: this.paused,
-      grappled: !!this.player.grapple, purge: this.purgeState, shotReady: this.shotCooldown <= 0,
+    return { deskBeat: [800, 1540, 2020, 2400, 3130, 4300, 5020].filter(x => this.player.x >= x).length, difficulty: this.difficulty, rush: { ...this.rush }, rushWins: this.rushWins, totalBugs: LEVELS.reduce((sum, l) => sum + l.bugs.length, 0), revertCharges: this.powers.revertCharges, sudo: Math.ceil(this.powers.sudo), breakpoint: Math.ceil(this.powers.breakpoint),
+      score: this.score, combo: this.chain, bestCombo: this.bestCombo, dashReady: this.player.dashCooldown <= 0, health: this.health, gameOver: this.gameOver, deaths: this.deaths, checkpoint: this.checkpoint, commit: this.checkpointIndex + 1, finished: this.finished, paused: this.paused,
+      grappled: !!this.player.grapple, purge: this.purgeState, shotReady: this.shotCooldown <= 0, weapon: this.powers.shuriken > 0 ? 'shuriken' : 'blaster', ammo: this.powers.shuriken,
       bossCommand: this.boss.applied || this.boss.announce > 0 ? this.boss.command : null, bossAnnounce: this.boss.announce > 0,
       level: this.level, levelComplete: this.levelComplete, bossHealth: this.boss.health, bits: this.collected.size, totalBits: LEVELS.reduce((n, l) => n + l.bits.length, 0), hotfix: this.hotfix, secret: this.secret, bugs: this.defeated.size, seconds: this.elapsed }
   }
@@ -197,7 +211,7 @@ export class BugHuntPrototype {
     this.rush = createRush()
     this.level++
     this.levelComplete = false
-    this.checkpoint = false; this.hotfix = false
+    this.checkpoint = false; this.checkpointIndex = -1; this.hotfix = false;  this.hitstop = 0
     this.enemies = this.map.bugs.map(b => ({ ...b }))
     this.platforms = this.map.platforms.map(p => ({ ...p, originX: p.x, originY: p.y, crumble: 0 }))
     this.boss = createBoss()
@@ -216,7 +230,7 @@ export class BugHuntPrototype {
     this.level = 0; this.levelComplete = false; this.boss = createBoss()
     this.lesson = { index: -1, announce: 0, remaining: 0, done: new Set<number>() }; this.slowRemaining = 0; this.slowUsed = false
     this.platforms = this.map.platforms.map(p => ({ ...p, originX: p.x, originY: p.y, crumble: 0 }))
-    this.health = livesFor(this.difficulty); this.gameOver = false; this.deaths = 0; this.checkpoint = false; this.finished = false; this.hotfix = false; this.secret = false
+    this.health = livesFor(this.difficulty); this.gameOver = false; this.deaths = 0; this.checkpoint = false; this.checkpointIndex = -1;  this.hitstop = 0; this.finished = false; this.hotfix = false; this.secret = false
     this.enemies = this.map.bugs.map(b => ({ ...b }))
     this.collected.clear(); this.defeated.clear(); this.particles = []; this.popups = []
     this.player = this.makePlayer(58)
@@ -282,6 +296,11 @@ export class BugHuntPrototype {
       for (const platform of this.platforms) { platform.crumble = 0; platform.deleted = false }
       this.resetPurge(); this.shots = []; this.gravitySign = 1
       this.player = this.makePlayer(this.checkpoint ? this.checkpointX : 58)
+
+      for (const foe of this.enemies) if (foe.encounter && foe.alive) {
+        const a = DESK_ARENAS[foe.encounter]
+        foe.combat = undefined; foe.hp = a.hp; foe.x = a.spawn; foe.y = foe.encounter === 'soap' ? 285 : a.floor - foe.h
+      }
       this.camera = Math.max(0, Math.min(levelWidth(this.level) - WIDTH, this.player.x - 310))
       this.popup(this.copy.rollback, this.player.x + 65, this.player.y - 20)
     } else {
@@ -301,7 +320,7 @@ export class BugHuntPrototype {
       if (this.collected.has(bit.id) || !intersects(rect, { x: bit.x - 19, y: bit.y - 20, w: 38, h: 40 })) continue
       this.collected.add(bit.id)
       this.reward(10, bit.x, bit.y)
-      if (this.rush.state === 'active' && bit.x >= RUSH_START && bit.x <= RUSH_END) {
+      if (this.rush.state === 'active' && bit.x >= (this.level === 0 ? 4300 : RUSH_START) && bit.x <= (this.level === 0 ? 4950 : RUSH_END)) {
         this.rush.collected++
         if (this.rush.collected >= RUSH_TARGET) {
           this.rush.state = 'won'; this.rushWins++; this.score += RUSH_BONUS
@@ -347,6 +366,7 @@ export class BugHuntPrototype {
     for (const popup of this.popups) { popup.life -= dt; popup.y -= dt * 20 }
     this.popups = this.popups.filter((popup) => popup.life > 0)
     if (this.gameOver || this.finished || this.levelComplete) return
+    if (this.hitstop > 0) { this.hitstop = Math.max(0, this.hitstop - dt); return }
     if (this.comboTime > 0) {
       this.comboTime = Math.max(0, this.comboTime - dt)
       if (this.comboTime === 0) { this.chain = 0; this.publish() }
@@ -355,7 +375,7 @@ export class BugHuntPrototype {
       this.rush.remaining = Math.max(0, this.rush.remaining - dt)
       if (this.rush.remaining === 0) { this.rush.state = 'missed'; this.publish() }
     }
-    if (this.rush.state === 'waiting' && this.player.x >= RUSH_START && this.player.x < RUSH_END) {
+    if (this.rush.state === 'waiting' && this.player.x >= (this.level === 0 ? 4300 : RUSH_START) && this.player.x < (this.level === 0 ? 4950 : RUSH_END)) {
       this.rush.state = 'active'
       this.popup(this.copy.rushStart, this.player.x + 70, this.player.y - 45, '#ffdf88'); this.publish()
     }
@@ -391,6 +411,8 @@ export class BugHuntPrototype {
     p.dash = Math.max(0, p.dash - dt)
     p.invulnerable = Math.max(0, p.invulnerable - dt)
     p.squash *= Math.exp(-dt * 10)
+    stepHeroAnimation(p, dt)
+    p.aimUp = this.keys.has('KeyW') || this.keys.has('ArrowUp')
     p.celebrate = Math.max(0, (p.celebrate ?? 0) - dt)
     p.recover = Math.max(0, (p.recover ?? 0) - dt)
     p.speechTime = Math.max(0, (p.speechTime ?? 0) - dt)
@@ -488,32 +510,41 @@ export class BugHuntPrototype {
     if (p.y > HEIGHT + 70 || (this.gravitySign < 0 && p.y < -120)) { this.hurt(true); return }
     if (p.grounded && Math.abs(p.vx) > 90 && this.elapsed - this.lastDust > 0.1) {
       this.lastDust = this.elapsed
-      this.burst(p.x + 17 - p.facing * 12, p.y + p.h - 2, ['#9175bd', '#73bdca'], 2, 32)
+      if (!this.reducedMotion) for (let i = 0; i < 2; i++) this.particles.push({
+        x: p.x + p.w / 2 - p.facing * (12 + i * 6), y: p.y + p.h - 3,
+        vx: -p.facing * (22 + i * 12), vy: -14 - i * 9, gravity: -8,
+        life: .42 + i * .08, maxLife: .42 + i * .08, size: 4 + i * 2, color: '#dacbb8', smoke: true,
+      })
     }
+    this.stepDeskArenas(worldDt, frozen)
+    const deskEncounter = this.activeDeskEncounter()
     for (let index = 0; index < this.enemies.length; index++) {
       const bug = this.enemies[index]
-      if (!bug.alive) continue
+      if (!bug.alive || (deskEncounter && !bug.encounter)) continue
       if (!frozen) bug.wake = Math.max(0, (bug.wake ?? 0) - dt)
-      if (bug.hover && bug.kind !== 'flyer' && bug.kind !== 'timeout') bug.y = bug.homeY! + Math.sin(this.worldTime * 2 + bug.phase) * 9
-      if (bug.retry) bug.y = 426 - Math.max(0, Math.sin(this.worldTime * 3 + bug.phase)) * 74
-      if (!frozen) this.stepBugAI(bug, worldDt)
-      if (bug.kind !== 'turret' && !bug.hover) {
+      if (!bug.encounter && bug.hover && bug.kind !== 'flyer' && bug.kind !== 'timeout') bug.y = bug.homeY! + Math.sin(this.worldTime * 2 + bug.phase) * 9
+      if (!bug.encounter && bug.retry) bug.y = 426 - Math.max(0, Math.sin(this.worldTime * 3 + bug.phase)) * 74
+      // The Brute's entrance is a beat, not an ambush: it holds still and harmless until it has spoken.
+      if (bug.encounter && (bug.combat?.phase === 'waiting' || bug.combat?.phase === 'entrance')) continue
+      if (!bug.encounter && !frozen) this.stepBugAI(bug, worldDt)
+      if (!bug.encounter && bug.kind !== 'turret' && !bug.hover) {
         // A charging bug still stops at its band: it never walks into a pit.
         if (bug.x <= bug.left) { bug.x = bug.left; if ((bug.alert ?? 0) <= 0.6) bug.direction = 1 }
         if (bug.x >= bug.right) { bug.x = bug.right; if ((bug.alert ?? 0) <= 0.6) bug.direction = -1 }
       }
+      if (!frozen && p.dash <= 0 && arenaAttackHits(bug, p)) { this.hurt(); if (this.gameOver || this.player !== p) return }
       if (!intersects(p, bug)) continue
       const stomp = p.vy > 80 && previousBottom <= bug.y + 8
       if (p.dash > 0 || this.powers.sudo > 0 || stomp) {
-        if (bug.kind === 'null' && (bug.wake ?? 0) > 0) continue
-        if (bug.kind === 'null') bug.wake = 0.6
+        if (!bug.encounter && bug.kind === 'null' && (bug.wake ?? 0) > 0) continue
+        if (!bug.encounter && bug.kind === 'null') bug.wake = 0.6
         const lethal = p.dash > 0 || this.powers.sudo > 0
-        const died = this.damage(bug, index, lethal && bug.kind !== 'null' ? 99 : 1, false)
+        const died = this.damage(bug, index, lethal && bug.kind !== 'null' && !bug.encounter ? 99 : 1, false)
         if (p.dash <= 0 && stomp) { p.y = bug.y - p.h; p.vy = this.keys.has('Space') ? -540 : -390 }
         p.airJump = true; p.dashCooldown = 0; p.squash = -0.1
         // An armoured bug that survives must not damage a0 on the way down.
         if (!died) p.invulnerable = Math.max(p.invulnerable, 0.45)
-      } else { this.hurt(); if (this.gameOver || this.player !== p) return }
+      } else if (!bug.encounter || (!frozen && arenaBodyDangerous(bug))) { this.hurt(); if (this.gameOver || this.player !== p) return }
     }
     if (this.keys.has('KeyF')) this.fire()
     if (this.stepShots(worldDt, frozen)) return
@@ -545,8 +576,9 @@ export class BugHuntPrototype {
     }
     // Every rewritten rule is local to the arena: walking out restores gravity.
     this.resolveGravity()
-    if (!this.checkpoint && p.x + p.w > this.checkpointX && p.x < this.checkpointX + 40 && p.y < 460) {
-      this.checkpoint = true
+    const commit = levelCheckpoints(this.level).findIndex((x, i) => i > this.checkpointIndex && p.x + p.w > x && p.x < x + 40)
+    if (commit >= 0 && p.y < 460) {
+      this.checkpoint = true; this.checkpointIndex = commit
       p.celebrate = 1.2; p.speech = this.copy.checkpointQuip; p.speechTime = 2.6
       this.burst(this.checkpointX + 13, 417, ['#a3ffe2', '#5ccfae', '#d7c0ff'], 28, 160)
       this.popup(this.copy.commitSaved, this.checkpointX + 30, 367, '#acffe0')
@@ -554,7 +586,7 @@ export class BugHuntPrototype {
     }
     this.collect(p)
     if (p.x + p.w > levelExit(this.level) - 25) {
-      if (this.hotfix && !this.enemies.some(b => b.kind === 'null' && b.alive) && (this.level !== 2 || this.boss.health === 0)) {
+      if (this.hotfix && !this.enemies.some(b => (b.kind === 'null' || b.encounter) && b.alive) && (this.level !== 2 || this.boss.health === 0)) {
         this.finished = this.level === LEVELS.length - 1; this.levelComplete = !this.finished; this.clearKeys()
         this.burst(levelExit(this.level), 385, ['#f5d77c', '#88f1d0', '#be8dff', '#ff9dad'], 70, 270)
         this.audio.play('win'); this.publish()
@@ -570,8 +602,37 @@ export class BugHuntPrototype {
     this.followCamera(dt)
   }
 
+  /** Entry, gates, telegraphs and projectiles share the same encounter clock. */
+  private activeDeskEncounter() {
+    return this.enemies.find(b => b.alive && (b.combat?.locked || b.combat?.phase === 'entrance'))
+  }
+
+  private stepDeskArenas(dt: number, frozen: boolean) {
+    if (this.level !== 0) return
+    for (const foe of this.enemies) {
+      if (!foe.encounter) continue
+      const locked = foe.combat?.locked
+      const event = stepDeskCombat(foe, this.player, frozen ? 0 : dt, this.shots)
+      if (!locked && foe.combat?.locked) { this.powers.history = []; this.player.grapple = null }
+      if (event === 'entrance') {
+        this.shots = this.shots.filter(s => !s.enemy)
+        this.popup(DESK_ARENAS[foe.encounter].name, foe.x, foe.y - 30, '#9cddff'); this.audio.play('bolt')
+      } else if (event === 'tell') this.audio.play('arenaTell')
+      else if (event === 'attack') this.audio.play(foe.encounter === 'retry' ? 'spring' : 'bolt')
+      else if (event === 'recover') {
+        this.shots = this.shots.filter(s => s.encounter !== foe.encounter)
+        this.audio.play('freeze')
+      }
+      confineToArena(foe, this.player)
+    }
+    const active = this.activeDeskEncounter()
+    if (active) this.shots = this.shots.filter(s => !s.enemy || s.encounter === active.encounter)
+  }
+
   private followCamera(dt: number) {
-    const target = Math.max(0, Math.min(levelWidth(this.level) - WIDTH, this.player.x - 310))
+    const encounter = this.enemies.find(b => b.alive && b.combat?.locked)?.encounter
+    const desired = encounter ? (DESK_ARENAS[encounter].left + DESK_ARENAS[encounter].right) / 2 - WIDTH / 2 : this.player.x - 310
+    const target = Math.max(0, Math.min(levelWidth(this.level) - WIDTH, desired))
     this.camera += (target - this.camera) * Math.min(1, dt * 8)
   }
 
@@ -597,11 +658,19 @@ export class BugHuntPrototype {
     const p = this.player
     if (this.shotCooldown > 0 || this.powers.rewind || this.gameOver || this.finished || this.levelComplete) return
     const up = this.aimingUp()
-    this.shotCooldown = SHOT_COOLDOWN
+    p.recoil = 1; p.aimUp = up; p.idleTime = 0
+    const shuriken = this.powers.shuriken > 0
+    const speed = shuriken ? SHURIKEN_SPEED : SHOT_SPEED
+    this.shotCooldown = shuriken ? SHURIKEN_COOLDOWN : SHOT_COOLDOWN
     const x = p.x + p.w / 2 + (up ? 0 : p.facing * 20)
     const y = up ? p.y - 6 : p.y + (p.crouch ? 8 : 17)
-    this.shots.push({ x, y, vx: up ? 0 : p.facing * SHOT_SPEED, vy: up ? -SHOT_SPEED : 0, life: 1.15, enemy: false })
-    this.burst(x + (up ? 0 : p.facing * 4), y - (up ? 4 : 0), ['#9ff0ff', '#ffffff'], 5, 80)
+    this.shots.push({ x, y, vx: up ? 0 : p.facing * speed, vy: up ? -speed : 0, life: 1.15, enemy: false,
+      ...(shuriken ? { weapon: 'shuriken' as const, pierce: SHURIKEN_PIERCE, hits: [] } : {}) })
+    if (shuriken) {
+      this.powers.shuriken--
+      if (this.powers.shuriken === 0) this.popup(this.copy.shurikenEmpty, p.x + 17, p.y - 30, '#9ff0ff')
+    }
+    this.burst(x + (up ? 0 : p.facing * 4), y - (up ? 4 : 0), shuriken ? ['#b9d4ff', '#5fa8ff', '#ffffff'] : ['#9ff0ff', '#ffffff'], 5, 80)
     if (p.grounded && !up) p.vx -= p.facing * 22
     this.audio.play('shoot')
     this.publish()
@@ -609,9 +678,13 @@ export class BugHuntPrototype {
 
   /** Applies damage and closes the ticket when the bug runs out of health. */
   private damage(bug: Bug, index: number, amount: number, fromShot: boolean): boolean {
-    if (bug.kind === 'null' && fromShot && (bug.wake ?? 0) > 0) return false
-    if (bug.kind === 'null' && fromShot) bug.wake = 0.35
+    if (!bug.alive) return true
+    if (!arenaDamageable(bug)) return false
+    if (bug.combat) { bug.combat.hitCooldown = .3; amount = bug.combat.elapsed > 24 ? 2 : 1 }
+    if (!bug.encounter && bug.kind === 'null' && fromShot && (bug.wake ?? 0) > 0) return false
+    if (!bug.encounter && bug.kind === 'null' && fromShot) bug.wake = 0.35
     bug.hp = (bug.hp ?? 1) - amount
+    this.hitstop = Math.max(this.hitstop, bug.hp > 0 ? HITSTOP_HIT : HITSTOP_KILL)
     if (bug.hp > 0) {
       bug.alert = 1
       this.burst(bug.x + 19, bug.y + 15, ['#ffd0a8', '#ff8d9e'], 10, 115)
@@ -621,6 +694,14 @@ export class BugHuntPrototype {
     const id = this.level * 100 + index
     if (!bug.summoned && !this.defeated.has(id)) this.reward(100, bug.x, bug.y)
     bug.alive = false; if (!bug.summoned) this.defeated.add(id)
+    if (bug.encounter && bug.combat) {
+      bug.combat.phase = 'cleared'; bug.combat.locked = false
+      this.shots = this.shots.filter(s => s.encounter !== bug.encounter)
+      this.player.dashCooldown = 0; this.player.airJump = true
+      if (bug.encounter === 'soap') this.powers.shuriken = Math.min(SHURIKEN_AMMO, this.powers.shuriken + 6)
+      this.reward(250, bug.x, bug.y)
+      this.popup(this.copy.arenaReward, bug.x, bug.y - 55, '#9affdd'); this.audio.play('win')
+    }
     this.shake = Math.max(this.shake, fromShot ? 1.6 : 2.4)
     this.burst(bug.x + 19, bug.y + 15, ['#ff8d9e', '#ffc6b8', '#b28fe7'], 24, 165)
     this.popup(this.copy.bugClosed[index % this.copy.bugClosed.length], bug.x + 20, bug.y - 25, '#ffd4d2')
@@ -665,6 +746,8 @@ export class BugHuntPrototype {
   /** Moves both sides' fire. Returns true when a0 was hit and respawned. */
   private stepShots(dt: number, frozen: boolean): boolean {
     const p = this.player
+    const active = this.activeDeskEncounter()
+    if (active) this.shots = this.shots.filter(s => !s.enemy || s.encounter === active.encounter)
     this.shotCooldown = Math.max(0, this.shotCooldown - dt)
     for (const shot of this.shots) {
       if (shot.enemy && frozen) continue
@@ -676,9 +759,11 @@ export class BugHuntPrototype {
       const hitbox = { x: shot.x - 8, y: shot.y - 5, w: 16, h: 10 }
       if (!shot.enemy) {
         for (const [index, bug] of this.enemies.entries()) {
-          if (!bug.alive || !intersects(bug, hitbox)) continue
-          shot.life = 0
+          if (!bug.alive || !intersects(bug, hitbox) || shot.hits?.includes(index)) continue
           this.damage(bug, index, 1, true)
+          // A shuriken cuts through the line; a blaster packet stops on the first bug.
+          if (shot.pierce && --shot.pierce > 0) { shot.hits!.push(index); continue }
+          shot.life = 0
           break
         }
         if (shot.life <= 0) continue
@@ -983,6 +1068,9 @@ export class BugHuntPrototype {
     } else if (kind === 'breakpoint') {
       powers.breakpoint = BREAKPOINT_SECONDS
       this.popup(this.copy.powerBreakpoint, x, y - 72, '#ff9aa9')
+    } else if (kind === 'shuriken') {
+      powers.shuriken = Math.max(powers.shuriken, SHURIKEN_AMMO)
+      this.popup(this.copy.powerShuriken, x, y - 72, '#9fc8ff')
     } else if (kind === 'sudo') {
       powers.sudo = SUDO_SECONDS
       this.popup(this.copy.powerSudo, x, y - 72, '#ffe08a')
@@ -1006,7 +1094,7 @@ export class BugHuntPrototype {
       const wave = powers.gc
       wave.r += GC_SPEED * dt
       for (const [index, bug] of this.enemies.entries()) {
-        if (!bug.alive || bug.kind === 'null' || Math.hypot(bug.x + bug.w / 2 - wave.x, bug.y + bug.h / 2 - wave.y) > wave.r) continue
+        if (!bug.alive || bug.kind === 'null' || bug.encounter || Math.hypot(bug.x + bug.w / 2 - wave.x, bug.y + bug.h / 2 - wave.y) > wave.r) continue
         bug.alive = false
         const id = this.level * 100 + index
         if (!bug.summoned && !this.defeated.has(id)) { this.defeated.add(id); this.reward(100, bug.x, bug.y) }
@@ -1069,8 +1157,11 @@ export class BugHuntPrototype {
   }
 
   private draw() {
+    // Keep physics at 960×540, but retain the detail in the prerendered artwork.
+    const scale = this.ctx.canvas.width / WIDTH
+    this.ctx.setTransform(scale, 0, 0, scale, 0, 0)
     renderLocalhost(this.ctx, { level: this.level, platforms: this.platforms, boss: this.boss, player: this.player, enemies: this.enemies, camera: this.camera, time: this.visualTime,
-      collected: this.collected, particles: this.particles, popups: this.popups, checkpoint: this.checkpoint, hotfix: this.hotfix,
+      collected: this.collected, particles: this.particles, popups: this.popups, checkpoint: this.checkpoint, checkpointIndex: this.checkpointIndex,  hotfix: this.hotfix,
       secret: this.secret, shake: this.shake, reducedMotion: this.reducedMotion, finished: this.finished, copy: this.copy,
       worldTime: this.worldTime, powers: this.powers, purgeX: this.purgeX, purgeState: this.purgeState, shots: this.shots, gravity: this.gravitySign, lesson: this.lesson, slowRemaining: this.slowRemaining })
   }
