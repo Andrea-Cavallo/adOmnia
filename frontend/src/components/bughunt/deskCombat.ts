@@ -4,9 +4,9 @@ import type { PlayerVisual, Shot } from './visuals'
 export type DeskFoe = 'retry' | 'soap' | 'legacy'
 export type EncounterPhase = 'waiting' | 'entrance' | 'approach' | 'tell' | 'attack' | 'recover' | 'cleared'
 export const DESK_ARENAS = {
-  retry: { left: 1540, right: 2340, spawn: 1830, floor: 460, hp: 2, name: 'Retry Gremlin' },
-  soap: { left: 3330, right: 4160, spawn: 3610, floor: 460, hp: 3, name: 'SOAP Phantom' },
-  legacy: { left: 5020, right: 5960, spawn: 5670, floor: 460, hp: 8, name: 'Legacy Brute' },
+  retry: { left: 1540, right: 2340, spawn: 1830, floor: 460, hp: 2, name: 'Race Condition Twins' },
+  soap: { left: 3330, right: 4160, spawn: 3610, floor: 460, hp: 3, name: 'Null Pointer Ghost' },
+  legacy: { left: 5020, right: 5960, spawn: 5670, floor: 460, hp: 8, name: 'Merge Conflict Brute' },
 } as const
 export type DeskCombat = {
   phase: EncounterPhase; clock: number; duration: number; cycles: number; move: 0 | 1

@@ -74,16 +74,18 @@ export function BugHuntOverlay({ onClose }: { onClose: () => void }) {
         event.stopImmediatePropagation(); event.preventDefault()
       }
     }
-    const pause = () => game.setPaused(true)
-    const visibility = () => { if (document.hidden) pause() }
+    // Losing focus releases held controls without covering the game with a pause menu.
+    // Windows screenshot tools can take focus before keyup reaches this window.
+    const releaseControls = () => game.clearKeys()
+    const visibility = () => { if (document.hidden) releaseControls() }
     window.addEventListener('keydown', onKeyDown, true)
     window.addEventListener('keyup', onKeyUp, true)
-    window.addEventListener('blur', pause)
+    window.addEventListener('blur', releaseControls)
     document.addEventListener('visibilitychange', visibility)
     return () => {
       window.removeEventListener('keydown', onKeyDown, true)
       window.removeEventListener('keyup', onKeyUp, true)
-      window.removeEventListener('blur', pause)
+      window.removeEventListener('blur', releaseControls)
       document.removeEventListener('visibilitychange', visibility)
       game.destroy(); gameRef.current = null
       if (previouslyFocused?.isConnected) previouslyFocused.focus()
@@ -159,6 +161,9 @@ export function BugHuntOverlay({ onClose }: { onClose: () => void }) {
             </div>
             {/* Only what is live right now: tools in hand, timers, threats. Key hints live in the start menu. */}
             <div className="bh-status">
+              {snapshot.shield && <span className="bh-pill sky" title={copy.powerShield}>◇ Shield</span>}
+              {snapshot.branchJump > 0 && <span className="bh-pill sky" title={copy.powerJump}>↑ {snapshot.branchJump}s</span>}
+              {snapshot.mergeBoost > 0 && <span className="bh-pill sun" title={copy.powerBoost}>» {snapshot.mergeBoost}s</span>}
               {snapshot.weapon === 'shuriken' && <span className="bh-pill sky" title={copy.fireHint}><kbd>F</kbd>{`{} ×${snapshot.ammo}`}</span>}
               {snapshot.revertCharges > 0 && <span className="bh-pill sky" title={copy.keysRevert}><kbd>R</kbd>↺ ×{snapshot.revertCharges}</span>}
               {snapshot.breakpoint > 0 && <span className="bh-pill rose">⏸ {snapshot.breakpoint}s</span>}

@@ -34,7 +34,7 @@ function grab(game: Inspectable, tick: (n: number) => void, kind: string, level 
   const index = LEVELS[level].powers.findIndex((power) => power.kind === kind)
   const power = LEVELS[level].powers[index]
   game.player.x = power.x - game.player.w / 2
-  game.player.y = power.y - game.player.h / 2
+  game.player.y = power.y + 15 - game.player.h
   game.player.vy = 0
   tick(1)
   return index
@@ -47,8 +47,8 @@ describe('Bug Hunt developer power-ups', () => {
   })
   afterEach(() => vi.unstubAllGlobals())
 
-  it('teaches three powers plus the shuriken on the Desk, and the full kit afterwards', () => {
-    expect([...new Set(LEVELS[0].powers.map((power) => power.kind))].sort()).toEqual(['breakpoint', 'revert', 'shuriken', 'sudo'])
+  it('places the desk module family and preserves the later-world tools', () => {
+    expect([...new Set(LEVELS[0].powers.map((power) => power.kind))].sort()).toEqual(['boost', 'breakpoint', 'heal', 'jump', 'revert', 'shield', 'shuriken', 'sudo'])
     for (const level of LEVELS.slice(1)) {
       expect([...new Set(level.powers.map((power) => power.kind))].sort()).toEqual(['breakpoint', 'gc', 'revert', 'shuriken', 'sudo'])
     }
@@ -107,6 +107,7 @@ describe('Bug Hunt developer power-ups', () => {
     const { game, tick } = createGame()
     grab(game, tick, 'revert')
     expect(game.getSnapshot().revertCharges).toBe(1)
+    game.platforms = [{x:0,y:460,w:2000,h:100}]; game.enemies.forEach(b=>{b.alive=false})
     game.player.x = 60; game.player.y = 412; game.player.vy = 0
     tick(10)
     const start = game.player.x

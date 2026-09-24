@@ -44,6 +44,7 @@ const TURRET_RANGE = 430
 
 type Player = PlayerVisual & { crouch: boolean; coyote: number; buffer: number; knockback: number; airJump: boolean; dash: number; dashCooldown: number; dashDirection: number; slideCooldown: number }
 export type GameSnapshot = {
+  shield: boolean; branchJump: number; mergeBoost: number
   deskBeat: number
   difficulty: Difficulty
   rush: Rush; rushWins: number; totalBugs: number; revertCharges: number; sudo: number; breakpoint: number
@@ -55,6 +56,7 @@ export const INITIAL_SNAPSHOT: GameSnapshot = {
   deskBeat: 0,
   difficulty: 'production',
   rush: createRush(), rushWins: 0, totalBugs: LEVELS.reduce((sum, l) => sum + l.bugs.length, 0), revertCharges: 0, sudo: 0, breakpoint: 0,
+  shield: false, branchJump: 0, mergeBoost: 0,
   score: 0, combo: 0, bestCombo: 0, dashReady: true, health: 3, gameOver: false, deaths: 0, checkpoint: false, commit: 0, finished: false, paused: false,
   grappled: false, purge: 'off', shotReady: true, weapon: 'blaster', ammo: 0, bossCommand: null, bossAnnounce: false,
   level: 0, levelComplete: false, bossHealth: BOSS_HEALTH, bits: 0, totalBits: LEVELS.reduce((n, l) => n + l.bits.length, 0), hotfix: false, secret: false, bugs: 0, seconds: 0,
@@ -144,7 +146,7 @@ export class BugHuntPrototype {
   }
 
   getSnapshot(): GameSnapshot {
-    return { deskBeat: [800, 1540, 2020, 2400, 3130, 4300, 5020].filter(x => this.player.x >= x).length, difficulty: this.difficulty, rush: { ...this.rush }, rushWins: this.rushWins, totalBugs: LEVELS.reduce((sum, l) => sum + l.bugs.length, 0), revertCharges: this.powers.revertCharges, sudo: Math.ceil(this.powers.sudo), breakpoint: Math.ceil(this.powers.breakpoint),
+    return { shield: this.powers.shield, branchJump: Math.ceil(this.powers.jump), mergeBoost: Math.ceil(this.powers.boost), deskBeat: [800, 1540, 2020, 2400, 3130, 4300, 5020].filter(x => this.player.x >= x).length, difficulty: this.difficulty, rush: { ...this.rush }, rushWins: this.rushWins, totalBugs: LEVELS.reduce((sum, l) => sum + l.bugs.length, 0), revertCharges: this.powers.revertCharges, sudo: Math.ceil(this.powers.sudo), breakpoint: Math.ceil(this.powers.breakpoint),
       score: this.score, combo: this.chain, bestCombo: this.bestCombo, dashReady: this.player.dashCooldown <= 0, health: this.health, gameOver: this.gameOver, deaths: this.deaths, checkpoint: this.checkpoint, commit: this.checkpointIndex + 1, finished: this.finished, paused: this.paused,
       grappled: !!this.player.grapple, purge: this.purgeState, shotReady: this.shotCooldown <= 0, weapon: this.powers.shuriken > 0 ? 'shuriken' : 'blaster', ammo: this.powers.shuriken,
       bossCommand: this.boss.applied || this.boss.announce > 0 ? this.boss.command : null, bossAnnounce: this.boss.announce > 0,
@@ -284,6 +286,11 @@ export class BugHuntPrototype {
 
   private hurt(fell = false) {
     if ((!fell && (this.player.invulnerable > 0 || this.powers.sudo > 0)) || this.gameOver || this.finished || this.powers.rewind) return
+    if (!fell && this.powers.shield) {
+      this.powers.shield = false; this.player.invulnerable = .8
+      this.burst(this.player.x+17,this.player.y+24,['#78e9ff','#ffffff'],18,170)
+      this.audio.play('freeze'); this.publish(); return
+    }
     this.chain = 0; this.comboTime = 0; this.player.slide = 0; this.player.slideCarry = 0; this.player.dash = 0; this.player.grapple = null
     if (Number.isFinite(this.health)) this.health--
     this.audio.play('hurt')
@@ -347,6 +354,7 @@ export class BugHuntPrototype {
       this.publish()
     }
     for (const [index, power] of this.map.powers.entries()) {
+      if (power.kind === 'heal' && this.health >= livesFor(this.difficulty)) continue
       const key = pickupKey(this.level, index)
       if (this.powers.picked.has(key)) continue
       if (!intersects(rect, { x: power.x - PICKUP_SIZE / 2, y: power.y - PICKUP_SIZE / 2, w: PICKUP_SIZE, h: PICKUP_SIZE })) continue
@@ -444,7 +452,7 @@ export class BugHuntPrototype {
     else if (p.knockback > 0) p.knockback -= dt
     else {
       const carry = !p.grounded && (p.slideCarry ?? 0) > 0
-      const target = horizontal * (carry ? 450 : RUN_SPEED) * (p.crouch ? CROUCH_SPEED : 1)
+      const target = horizontal * (carry ? 450 : RUN_SPEED * (this.powers.boost > 0 ? 1.25 : 1)) * (p.crouch ? CROUCH_SPEED : 1)
       const reversing = horizontal !== 0 && Math.sign(p.vx) !== horizontal
       const acceleration = (p.grounded ? (reversing ? 3000 : horizontal ? 2100 : 2600) : (reversing ? 1800 : horizontal ? 1100 : 650)) * dt
       p.vx += Math.max(-acceleration, Math.min(acceleration, target - p.vx))
@@ -455,7 +463,7 @@ export class BugHuntPrototype {
       const doubleJump = p.coyote <= 0
       if (slideJump) { p.slide = 0; p.slideCarry = .75; this.setCrouch(false); p.vx = p.facing * 450 }
       if (doubleJump) { p.airJump = false; this.burst(p.x + 17, p.y + p.h, ['#8cf7ec', '#ffffff'], 18, 150) }
-      p.vy = -JUMP_SPEED * this.gravitySign * (this.keys.has('Space') ? 1 : 0.67)
+      p.vy = -JUMP_SPEED * (this.powers.jump > 0 ? 1.22 : 1) * this.gravitySign * (this.keys.has('Space') ? 1 : 0.67)
       p.grounded = false; p.coyote = 0; p.buffer = 0; p.squash = -0.12
       this.burst(p.x + 17, p.y + p.h, ['#b797e5', '#80ced9'], 9, 80)
       this.audio.play('jump')
@@ -538,7 +546,7 @@ export class BugHuntPrototype {
       if (!bug.alive || (deskEncounter && !bug.encounter)) continue
       if (!frozen) bug.wake = Math.max(0, (bug.wake ?? 0) - dt)
       if (!bug.encounter && bug.hover && bug.kind !== 'flyer' && bug.kind !== 'timeout') bug.y = bug.homeY! + Math.sin(this.worldTime * 2 + bug.phase) * 9
-      if (!bug.encounter && bug.retry) bug.y = 426 - Math.max(0, Math.sin(this.worldTime * 3 + bug.phase)) * 74
+      if (!frozen && !bug.encounter && bug.retry) bug.y = 426 - Math.max(0, Math.sin(this.worldTime * 3 + bug.phase)) * 74
       // The Brute's entrance is a beat, not an ambush: it holds still and harmless until it has spoken.
       if (bug.encounter && (bug.combat?.phase === 'waiting' || bug.combat?.phase === 'entrance')) continue
       if (!bug.encounter && !frozen) this.stepBugAI(bug, worldDt)
@@ -548,7 +556,7 @@ export class BugHuntPrototype {
         if (bug.x >= bug.right) { bug.x = bug.right; if ((bug.alert ?? 0) <= 0.6) bug.direction = -1 }
       }
       if (!frozen && p.dash <= 0 && arenaAttackHits(bug, p)) { this.hurt(); if (this.gameOver || this.player !== p) return }
-      if (!intersects(p, bug)) continue
+      if (bug.hidden || !intersects(p, bug)) continue
       const stomp = p.vy > 80 && previousBottom <= bug.y + 8
       if (p.dash > 0 || this.powers.sudo > 0 || stomp) {
         if (!bug.encounter && bug.kind === 'null' && (bug.wake ?? 0) > 0) continue
@@ -775,7 +783,7 @@ export class BugHuntPrototype {
       const hitbox = { x: shot.x - 8, y: shot.y - 5, w: 16, h: 10 }
       if (!shot.enemy) {
         for (const [index, bug] of this.enemies.entries()) {
-          if (!bug.alive || !intersects(bug, hitbox) || shot.hits?.includes(index)) continue
+          if (!bug.alive || bug.hidden || !intersects(bug, hitbox) || shot.hits?.includes(index)) continue
           this.damage(bug, index, 1, true)
           // A shuriken cuts through the line; a blaster packet stops on the first bug.
           if (shot.pierce && --shot.pierce > 0) { shot.hits!.push(index); continue }
@@ -1078,7 +1086,11 @@ export class BugHuntPrototype {
 
   private activatePower(kind: PowerKind, x: number, y: number) {
     const powers = this.powers
-    if (kind === 'revert') {
+    if (kind === 'shield') { powers.shield = true; this.popup(this.copy.powerShield,x,y-55,'#8eeaff') }
+    else if (kind === 'jump') { powers.jump = 12; this.popup(this.copy.powerJump,x,y-55,'#beacff') }
+    else if (kind === 'boost') { powers.boost = 8; this.popup(this.copy.powerBoost,x,y-55,'#ffa974') }
+    else if (kind === 'heal') { this.health = Math.min(livesFor(this.difficulty),this.health+1); this.popup(this.copy.powerHeal,x,y-55,'#8affe0') }
+    else if (kind === 'revert') {
       powers.revertCharges = Math.min(REVERT_MAX_CHARGES, powers.revertCharges + 1)
       this.popup(this.copy.powerRevert, x, y - 72, '#9ad8ff')
     } else if (kind === 'breakpoint') {
@@ -1104,6 +1116,7 @@ export class BugHuntPrototype {
   /** Runs timers and the Garbage Collector wave. Returns true while the world is paused on a breakpoint. */
   private tickPowers(dt: number): boolean {
     const powers = this.powers
+    powers.jump = Math.max(0,powers.jump-dt); powers.boost = Math.max(0,powers.boost-dt)
     powers.sudo = Math.max(0, powers.sudo - dt)
     powers.breakpoint = Math.max(0, powers.breakpoint - dt)
     if (powers.gc) {
@@ -1123,7 +1136,7 @@ export class BugHuntPrototype {
       this.shots = this.shots.filter((s) => !s.enemy || Math.hypot(s.x - wave.x, s.y - wave.y) > wave.r)
       if (wave.r > GC_RADIUS) powers.gc = null
     }
-    const signature = `${Math.ceil(powers.sudo)}|${Math.ceil(powers.breakpoint)}|${powers.revertCharges}`
+    const signature = `${Math.ceil(powers.jump)}|${Math.ceil(powers.boost)}|${powers.shield}|${Math.ceil(powers.sudo)}|${Math.ceil(powers.breakpoint)}|${powers.revertCharges}`
     if (signature !== this.publishedPowers) { this.publishedPowers = signature; this.publish() }
     return powers.breakpoint > 0
   }

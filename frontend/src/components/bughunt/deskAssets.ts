@@ -1,9 +1,10 @@
+import enemiesUrl from './assets/desk-enemies-v2.png'
 import deskUrl from './assets/developer-desk.png'
 import castUrl from './assets/desk-cast.png'
 import materialsUrl from './assets/desk-materials.png'
 
 /** Loaded only with the game's lazy chunk. All artwork is bundled and offline. */
-export const deskArt: { background?: HTMLImageElement; cast?: HTMLCanvasElement; materials?: HTMLImageElement } = {}
+export const deskArt: { enemies?: HTMLImageElement; background?: HTMLImageElement; cast?: HTMLCanvasElement; materials?: HTMLImageElement } = {}
 /** Authored rectangles: generated poses are not assumed to be a perfect grid. */
 export const CAST_FRAMES = [
   [38, 82, 312, 430], [431, 85, 312, 441], [788, 85, 350, 441], [1160, 52, 370, 428],
@@ -37,12 +38,13 @@ let pending: Promise<void> | undefined
 export function loadDeskArt(): Promise<void> {
   if (typeof Image === 'undefined') return Promise.resolve()
   return pending ??= Promise.all([
-    ['background', deskUrl], ['cast', castUrl], ['materials', materialsUrl],
+    ['enemies', enemiesUrl], ['background', deskUrl], ['cast', castUrl], ['materials', materialsUrl],
   ].map(([key, url]) => new Promise<void>((resolve) => {
     const image = new Image()
     image.onload = () => {
       try {
-        if (key === 'background') deskArt.background = image
+        if (key === 'enemies') deskArt.enemies = image
+        else if (key === 'background') deskArt.background = image
         else if (key === 'materials') deskArt.materials = image
         else deskArt.cast = prepareCast(image)
       } catch { /* Canvas processing unavailable: keep the vector fallback. */ }

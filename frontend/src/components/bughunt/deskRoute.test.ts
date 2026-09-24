@@ -9,11 +9,11 @@ describe('Developer Desk learning beats', () => {
   afterEach(() => vi.unstubAllGlobals())
   it('keeps the first jumps safe and teaches only one zombie and one flyer before the first arena', () => {
     const map = LEVELS[0]
-    for (let x = 0; x < 1540; x += 10) expect(map.platforms.some(p => !p.floating && p.y === 460 && p.x <= x && p.x + p.w >= x)).toBe(true)
+    for (let x = 0; x < 1540; x += 10) expect(map.platforms.some(p => !p.floating && p.y <= 510 && p.x <= x && p.x + p.w >= x)).toBe(true)
     expect(map.bugs.filter(b => b.x >= 800 && b.x < 1540).map(b => b.kind).sort()).toEqual(['flyer', 'zombie'])
     expect(map.platforms.filter(p => p.x < 1600).every(p => !p.unstable && !p.travel && p.pulse === undefined)).toBe(true)
     expect(map.anchors.every(a => a.x >= 2400)).toBe(true)
-    expect(map.bugs.some(b => b.x >= 2400 && b.x < 3100)).toBe(false)
+    expect(map.bugs.filter(b => b.x >= 2400 && b.x < 3100).map(b=>b.kind)).toEqual(['leak'])
     expect(levelCheckpoints(0)).toEqual([1090, 3130, 4960])
   })
 

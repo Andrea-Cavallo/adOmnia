@@ -5,6 +5,16 @@ import type { PlayerVisual, Shot } from './visuals'
 export function stepSpecialBug(b: Bug, p: PlayerVisual, dt: number, time: number, shots: Shot[]): boolean {
   const dx = p.x + p.w / 2 - b.x - b.w / 2
   const close = Math.abs(dx) < 400
+  if (b.ghost) {
+    b.homeX ??= b.x; b.homeY ??= b.y
+    const cycle=(time+b.phase)%4
+    b.hidden=cycle<1.05 || cycle>3.25
+    b.alert=cycle>.7 && cycle<1.05 ? 1 : 0
+    b.x=b.homeX+Math.sin(time*1.4+b.phase)*48
+    b.y=b.homeY+Math.sin(time*2+b.phase)*18
+    b.direction=Math.sign(dx)||1
+    return true
+  }
   if (b.kind === 'flyer' || b.kind === 'timeout') {
     b.homeX ??= b.x; b.homeY ??= b.y
     b.fuse = Math.max(0, (b.fuse ?? 1.5) - (close ? dt : 0))

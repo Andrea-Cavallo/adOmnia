@@ -4,6 +4,10 @@ import { BREAKPOINT_SECONDS, SUDO_SECONDS, pickupKey, type PowerKind, type Power
 import { box, glow, line, text, type PlayerVisual } from './visuals'
 
 const LOOK: Record<PowerKind, { glyph: string; label: string; color: string; dark: string }> = {
+  shield: { glyph: '◇', label: 'Debugger Shield', color: '#7ceaff', dark: '#103047' },
+  jump: { glyph: '↑', label: 'Branch Jump', color: '#bca1ff', dark: '#251c43' },
+  heal: { glyph: '+', label: 'Hotfix', color: '#80ffd0', dark: '#10352d' },
+  boost: { glyph: '»', label: 'Merge Boost', color: '#ffb279', dark: '#412416' },
   revert: { glyph: '↺', label: 'git revert', color: '#8fd3ff', dark: '#0e2a3d' },
   breakpoint: { glyph: '⏸', label: 'breakpoint', color: '#ff7d92', dark: '#3a1020' },
   sudo: { glyph: '#', label: 'sudo', color: '#ffd76a', dark: '#3a2c08' },
@@ -11,25 +15,22 @@ const LOOK: Record<PowerKind, { glyph: string; label: string; color: string; dar
   shuriken: { glyph: '{}', label: 'JSON Shuriken', color: '#9fc8ff', dark: '#0d1b3a' },
 }
 
-/** Floating chips with a rotating dashed ring: readable by glyph and label, not only by colour. */
-export function drawPowerPickups(ctx: CanvasRenderingContext2D, level: number, powers: PowerState, camera: number, t: number) {
+/** Physical modules: common chassis, distinct symbol and accent, resting on the collision top. */
+export function drawPowerPickups(ctx: CanvasRenderingContext2D, level: number, powers: PowerState, camera: number, _t: number) {
   for (const [index, power] of LEVELS[level].powers.entries()) {
     if (powers.picked.has(pickupKey(level, index)) || power.x < camera - 40 || power.x > camera + 1000) continue
-    const look = LOOK[power.kind]
-    const y = power.y + Math.sin(t * 2.6 + index) * 4
-    glow(ctx, power.x, y, 48, `${look.color}40`)
-    ctx.save(); ctx.translate(power.x, y)
-    ctx.rotate(t * 1.4)
-    ctx.setLineDash([6, 5]); ctx.strokeStyle = `${look.color}aa`; ctx.lineWidth = 2
-    ctx.beginPath(); ctx.arc(0, 0, 22, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([])
+    const look=LOOK[power.kind], x=power.x, y=power.y
+    glow(ctx,x,y,30,look.color+'28')
+    ctx.save()
+    // Contacts, cast shadow and a bevel make the pickup a desk object rather than HUD.
+    box(ctx,x-18,y+13,38,4,2,'#0009')
+    box(ctx,x-16,y-16,32,31,4,'#617386')
+    box(ctx,x-13,y-13,26,25,3,look.dark)
+    line(ctx,[x-14,y-14,x+14,y-14,x+14,y+12],look.color,2)
+    for(const dx of [-10,0,10])box(ctx,x+dx-2,y+11,4,5,1,'#c9b590')
+    box(ctx,x-12,y-12,24,3,1,look.color+'66')
+    ctx.textAlign='center';text(ctx,look.glyph,x,y+6,look.color,20)
     ctx.restore()
-    box(ctx, power.x - 15, y - 15, 30, 30, 8, look.dark)
-    box(ctx, power.x - 13, y - 13, 26, 26, 7, look.color)
-    box(ctx, power.x - 10, y - 10, 20, 20, 5, look.dark)
-    ctx.textAlign = 'center'
-    text(ctx, look.glyph, power.x, y + 6, look.color, 16)
-    text(ctx, look.label, power.x, y - 30, look.color, 10)
-    ctx.textAlign = 'left'
   }
 }
 
@@ -96,6 +97,7 @@ export function drawRewindGhosts(ctx: CanvasRenderingContext2D, powers: PowerSta
 
 /** Screen-space feedback: the whole scene tells you which mode you are in. */
 export function drawPowerOverlay(ctx: CanvasRenderingContext2D, powers: PowerState, t: number, copy: BugHuntCopy, reducedMotion: boolean) {
+  if (powers.shield) { ctx.strokeStyle='#7ceaff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(34,102,8,0,Math.PI*2);ctx.stroke() }
   if (powers.breakpoint > 0) {
     ctx.fillStyle = '#3b7bff1c'; ctx.fillRect(0, 0, 960, 540)
     banner(ctx, `⏸  ${copy.breakpointBanner}`, powers.breakpoint / BREAKPOINT_SECONDS, '#ff7d92', 0)

@@ -2,6 +2,10 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+## v0.9.21 release notes: Developer Desk route and visual refresh
+
+See [the full v0.9.21 notes](releases/v0.9.21.md): vertical opening, physical modules, code packets, new enemy art and focus handling.
+
 ## v0.9.20 release notes: connected platforming and slide-jumps
 
 See [the full v0.9.20 notes](releases/v0.9.20.md): tuned movement, slide-jump momentum, controllable rebounds, connected desk routes and the larger active Brute finale.

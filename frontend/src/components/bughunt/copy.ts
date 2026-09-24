@@ -3,8 +3,8 @@ import type { Lang } from '@/lib/i18n'
 // Every in-game string lives here. The English shape is the contract, so a
 // missing Italian line fails type-checking instead of showing up blank.
 const en = {
-  deskHints: ['A / D: move · hold Space: high jump · F: fire', 'C → Space: long jump · hold Space on a bug to bounce higher', 'Keep your momentum · jump over the Gremlin', 'The keys give way · the desk catches you', 'E: grapple · release E to launch', 'Your turn: combine jumps, shots and dodges', 'Follow the bits across the books · a commit awaits', 'Legacy Brute · dodge, recover, counterattack'],
-  nullLocked: 'Defeat Legacy Brute first! ←', cpuWarning: 'CPU 97% · scenery slowed / controls online',
+  deskHints: ['A / D: move · hold Space: high jump · F: fire', 'C → Space: long jump · hold Space on a bug to bounce higher', 'Keep your momentum · jump over the twins', 'The keys give way · the desk catches you', 'E: grapple · release E to launch', 'Your turn: combine jumps, shots and dodges', 'Follow the bits across the books · a commit awaits', 'Merge Conflict Brute · dodge, recover, counterattack'],
+  nullLocked: 'Defeat Merge Conflict Brute first! ←', cpuWarning: 'CPU 97% · scenery slowed / controls online',
   arenaReward: 'ENCOUNTER CLEAR · +250 · DASH READY',
   arenaEntering: 'INCOMING · gates closing', arenaRecover: 'RECOVERY · fire now!', arenaEnraged: 'OVERCLOCK',
   arenaMoves: ['TARGETED LEAP · move away', 'RETRY CHARGE · jump over', 'XML VOLLEY · dodge the lines', 'XML SEAL · leave the marker', 'HEAVY SLAM · jump or step away', 'LEGACY CHARGE · jump over'],
@@ -18,6 +18,7 @@ const en = {
   chainHint: 'Every bug hit recharges your dash. Stomp, dash, repeat!',
   dashReady: 'DASH READY', dashCharging: 'DASH CHARGING', keysDash: 'dash', keysSlide: 'slide → Space: long jump',
   // developer power-ups
+  powerShield: 'Debugger Shield · one hit protected', powerJump: 'Branch Jump · high jump for 12s', powerBoost: 'Merge Boost · faster for 8s', powerHeal: 'Hotfix · energy restored',
   powerRevert: '+1 git revert  ·  press R',
   powerBreakpoint: 'BREAKPOINT HIT  ·  world paused',
   powerSudo: 'sudo !!  ·  root access granted',
@@ -63,7 +64,7 @@ const en = {
   goalTitle: 'The goal',
   goalBody: 'Grab the Hotfix, then reach the exit. Three environments: Developer Desk, Production Datacenter, Legacy Dimension.',
   nextLevel: 'Next environment', stageClear: 'Hotfix secured!',
-  stageHints: ['Keys collapse! Space: double jump. X: dash. F: fire. Defeat Legacy Brute before the exit.', 'Fans lift you. Ride the racks, dodge flying bugs. CPU pressure slows scenery, never your controls. Escape the overheating server!', 'Learn GRAVITY / OFFLINE / CLONES. The boss combines them. In Panic Mode, shoot CORE, SESSION and SOAP before the final hit.'],
+  stageHints: ['Keys collapse! Space: double jump. X: dash. F: fire. Defeat Merge Conflict Brute before the exit.', 'Fans lift you. Ride the racks, dodge flying bugs. CPU pressure slows scenery, never your controls. Escape the overheating server!', 'Learn GRAVITY / OFFLINE / CLONES. The boss combines them. In Panic Mode, shoot CORE, SESSION and SOAP before the final hit.'],
   // the Monolith rewrites one rule per phase, announced before it bites
   bossRule: '⚠ SYSTEM PATCH IN',
   bossCmd: { gravity: 'GRAVITY_OVERRIDE', clones: 'fork() → 3 clones', offline: 'systemctl stop platforms' },
@@ -162,8 +163,8 @@ const en = {
 export type BugHuntCopy = typeof en
 
 const it: BugHuntCopy = {
-  deskHints: ['A / D: muoviti · tieni Spazio: salto alto · F: spara', 'C → Spazio: salto lungo · tieni Spazio sul bug per rimbalzare alto', 'Mantieni lo slancio · salta oltre il Gremlin', 'I tasti cedono · la scrivania ti riprende', 'E: aggancia · rilascia E per lanciarti', 'Tocca a te: combina salti, colpi e schivate', 'Segui i bit sui libri · ti aspetta un checkpoint', 'Legacy Brute · schiva, recupera, contrattacca'],
-  nullLocked: 'Sconfiggi prima Legacy Brute! ←', cpuWarning: 'CPU 97% · scenario lento / comandi attivi',
+  deskHints: ['A / D: muoviti · tieni Spazio: salto alto · F: spara', 'C → Spazio: salto lungo · tieni Spazio sul bug per rimbalzare alto', 'Mantieni lo slancio · salta oltre i gemelli', 'I tasti cedono · la scrivania ti riprende', 'E: aggancia · rilascia E per lanciarti', 'Tocca a te: combina salti, colpi e schivate', 'Segui i bit sui libri · ti aspetta un checkpoint', 'Merge Conflict Brute · schiva, recupera, contrattacca'],
+  nullLocked: 'Sconfiggi prima Merge Conflict Brute! ←', cpuWarning: 'CPU 97% · scenario lento / comandi attivi',
   arenaReward: 'NEMICO SCONFITTO · +250 · SCATTO PRONTO',
   arenaEntering: 'IN ARRIVO · chiusura arena', arenaRecover: 'RECUPERO · spara ora!', arenaEnraged: 'OVERCLOCK',
   arenaMoves: ['SALTO MIRATO · spostati', 'CARICA RETRY · salta oltre', 'RAFFICA XML · schiva le linee', 'SIGILLO XML · esci dal segno', 'SCHIANTO · salta o allontanati', 'CARICA LEGACY · salta oltre'],
@@ -176,6 +177,7 @@ const it: BugHuntCopy = {
   rushLabel: 'BONUS RUSH', rank: 'Grado', rushMedal: 'Sfide bonus',
   chainHint: 'Ogni bug colpito ricarica lo scatto. Rimbalza, scatta, ripeti!',
   dashReady: 'SCATTO PRONTO', dashCharging: 'SCATTO IN RICARICA', keysDash: 'scatto', keysSlide: 'scivola → Spazio: salto lungo',
+  powerShield: 'Debugger Shield · protegge da un colpo', powerJump: 'Branch Jump · salto alto per 12s', powerBoost: 'Merge Boost · velocità per 8s', powerHeal: 'Hotfix · energia recuperata',
   powerRevert: '+1 git revert  ·  premi R',
   powerBreakpoint: 'BREAKPOINT  ·  mondo in pausa',
   powerSudo: 'sudo !!  ·  accesso root',
@@ -218,7 +220,7 @@ const it: BugHuntCopy = {
   goalTitle: 'Obiettivo',
   goalBody: 'Prendi l’Hotfix, poi raggiungi l’uscita. Tre ambienti: Developer Desk, Production Datacenter, Legacy Dimension.',
   nextLevel: 'Prossimo ambiente', stageClear: 'Hotfix al sicuro!',
-  stageHints: ['I tasti cedono! Spazio: doppio salto. X: scatto. F: spara. Sconfiggi Legacy Brute prima di uscire.', 'Sali con ventole e ascensori. Schiva i bug volanti. La CPU rallenta lo scenario, mai i comandi. Fuggi dal server surriscaldato!', 'Impara GRAVITY / OFFLINE / CLONES. Il boss li combina. In Panic Mode spara a CORE, SESSION e SOAP prima del colpo finale.'],
+  stageHints: ['I tasti cedono! Spazio: doppio salto. X: scatto. F: spara. Sconfiggi Merge Conflict Brute prima di uscire.', 'Sali con ventole e ascensori. Schiva i bug volanti. La CPU rallenta lo scenario, mai i comandi. Fuggi dal server surriscaldato!', 'Impara GRAVITY / OFFLINE / CLONES. Il boss li combina. In Panic Mode spara a CORE, SESSION e SOAP prima del colpo finale.'],
   bossRule: '⚠ PATCH DI SISTEMA TRA',
   bossCmd: { gravity: 'GRAVITY_OVERRIDE', clones: 'fork() → 3 cloni', offline: 'systemctl stop piattaforme' },
   bossCmdHint: {

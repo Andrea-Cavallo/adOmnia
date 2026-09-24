@@ -4,6 +4,14 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [0.9.21] - 2026-09-24
+
+### Changed
+- Bug Hunt: rebuilt Developer Desk opening, code packets, physical power modules and six new enemy silhouettes.
+- Clicking outside the game no longer pauses it automatically.
+
+Full release notes: [v0.9.21](docs/releases/v0.9.21.md).
+
 ## [0.9.20] - 2026-09-24
 
 ### Changed

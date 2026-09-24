@@ -1,53 +1,41 @@
+import { deskArt } from './deskAssets'
 import { box, glow, line } from './drawing'
 import type { Bug } from './level'
 
-/** Small desk pests have their own silhouettes; the three named monsters stay unique. */
+const FRAMES = [[36,60,448,392],[520,120,490,335],[1025,25,495,410],[38,490,365,490],[465,495,555,494],[1040,495,480,480]] as const
+/** Six authored silhouettes; feet and threat centre stay anchored to the simulation. */
 export function drawDeskCritter(ctx: CanvasRenderingContext2D, b: Bug, time: number) {
-  const flying = b.hover || b.kind === 'flyer' || b.kind === 'timeout'
-  const turret = b.kind === 'turret'
-  const armored = b.kind === 'zombie'
-  const chaser = b.kind === 'chaser'
-  const cx = b.x + b.w / 2, feet = b.y + b.h
-  const metal = ctx.createLinearGradient(0, b.y, 0, feet)
-  metal.addColorStop(0, '#c9d4dc'); metal.addColorStop(.3, '#718798'); metal.addColorStop(.7, '#293948'); metal.addColorStop(1, '#101c2a')
-  const accent = turret ? '#ffac78' : armored ? '#d6ac77' : chaser ? '#ffa264' : flying ? '#a8cfff' : '#96e0bf'
+  const cell = b.encounter === 'legacy' || b.kind === 'deadlock' ? 4 : b.encounter === 'retry' || b.kind === 'race' || b.kind === 'chaser' ? 2 : b.kind === 'leak' ? 1 : b.encounter === 'soap' || b.hover ? 3 : b.kind === 'turret' ? 5 : 0
+  const cx=b.x+b.w/2, feet=b.y+b.h, c=b.combat
+  const color=['#d38cff','#72f3d8','#ffb679','#bcefff','#ff919f','#ffa46d'][cell]
   ctx.save()
-  ctx.shadowColor = '#0009'; ctx.shadowBlur = 5
-  if (flying) {
-    // USB dragonfly: horizontal body and rotor wings, never a paper Phantom.
-    for (const side of [-1, 1]) {
-      ctx.fillStyle = '#9fd4ee55'; ctx.beginPath()
-      ctx.ellipse(cx + side * 24, b.y + 7, 17, 3 + Math.abs(Math.sin(time * 24)) * 4, side * .2, 0, Math.PI * 2); ctx.fill()
-      line(ctx, [cx + side * 12, b.y + 9, cx + side * 25, b.y + 4], '#bdd8e7', 2)
-    }
-    box(ctx, cx - 20, b.y + 7, 40, 22, 8, metal)
-    box(ctx, cx + b.direction * 15 - 5, b.y + 11, 10, 13, 3, '#0a1422')
-    glow(ctx, cx + b.direction * 16, b.y + 17, 8, '#60bfff55')
-    box(ctx, cx + b.direction * 16 - 2, b.y + 14, 4, 6, 1, b.kind === 'timeout' ? '#ffad8b' : accent)
-    line(ctx, [cx - 6, b.y + 29, cx - 10, feet, cx + 10, feet, cx + 6, b.y + 29], '#637f96', 2)
-  } else if (turret) {
-    box(ctx, cx - 23, feet - 7, 46, 7, 2, '#111d29')
-    box(ctx, cx - 15, feet - 25, 30, 20, 4, metal)
-    box(ctx, cx - 10, feet - 34, 20, 19, 5, '#4d6376')
-    line(ctx, [cx, feet - 26, cx + b.direction * 28, feet - 26], '#121e2b', 9)
-    line(ctx, [cx, feet - 28, cx + b.direction * 27, feet - 28], '#97b4c8', 2)
-    glow(ctx, cx + b.direction * 28, feet - 26, 8, '#ff9f6444')
-  } else {
-    // Beetles: walking legs, compact armoured shells, no Gremlin face or CRT screen.
-    for (let i = 0; i < 3; i++) {
-      const x = cx - 14 + i * 14, stride = Math.sin(time * (chaser ? 17 : 9) + i * 2) * 4
-      line(ctx, [x, feet - 13, x - 5 + stride, feet - 5, x - 8 + stride, feet - 1], '#8594a0', 3)
-    }
-    ctx.fillStyle = metal; ctx.beginPath(); ctx.ellipse(cx, feet - 19, armored ? 25 : 22, armored ? 18 : 14, 0, 0, Math.PI * 2); ctx.fill()
-    line(ctx, [cx - 16, feet - 22, cx + 15, feet - 22], accent, armored ? 5 : 2)
-    box(ctx, cx + b.direction * 12 - 9, feet - 22, 18, 10, 4, '#0b1927')
-    for (const dx of [-4, 4]) box(ctx, cx + b.direction * 12 + dx - 1, feet - 20, 3, 4, 1, accent)
-    if (chaser) {
-      line(ctx, [cx - 14, feet - 31, cx - 19, feet - 39, cx - 5, feet - 33], '#dc9470', 3)
-    }
+  if(cell===3) ctx.globalAlpha=b.hidden ? .15 : c?.phase==='approach' ? .22 : .8 + Math.sin(time*3)*.12
+  if(c?.phase==='entrance')ctx.globalAlpha=Math.max(.2,c.clock/c.duration)
+  const walk = cell===0 ? Math.sin(time*10+b.phase)*.045 : cell===1 ? Math.sin(time*2)*.08 : cell===2 ? Math.sin(time*12)*.035 : 0
+  const charge = c?.phase==='attack' && c.move===1 ? b.direction*.12 : 0
+  const tell = c?.phase==='tell' ? Math.sin(c.clock/c.duration*Math.PI)*.08 : 0
+  ctx.translate(cx,feet);ctx.rotate(charge);ctx.scale(1+walk+tell,1-walk-tell)
+  if(deskArt.enemies){
+    const [x,y,w,h]=FRAMES[cell]
+    const width=cell===4 ? b.w*1.45 : cell===2 ? Math.max(90,b.w*1.2) : cell===1 ? b.w*1.2 : cell===5 ? 65 : 62
+    const height=cell===4 ? b.h*1.23 : cell===3 ? 64 : cell===1 ? b.h*1.15 : 57
+    const scale=Math.min(width/w,height/h)
+    if(b.direction<0)ctx.scale(-1,1)
+    if(cell===2){
+      const cross=Math.sin(time*3)*22
+      line(ctx,[-cross,-22,cross,-28],'#ffaa69',2)
+      ctx.drawImage(deskArt.enemies,1030,25,265,410,-cross-16,-55,35,55)
+      ctx.drawImage(deskArt.enemies,1275,165,245,270,cross-20,-42,39,42)
+    }else ctx.drawImage(deskArt.enemies,x,y,w,h,-w*scale/2,-h*scale,w*scale,h*scale)
+  }else{
+    // A compact face remains legible if a local asset fails to load.
+    box(ctx,-b.w/2,-b.h,b.w,b.h,cell===1?16:5,'#183347')
+    for(const x of [-8,8])box(ctx,x-3,-b.h*.65,6,8,2,color)
   }
-  ctx.shadowBlur = 0
-  if ((b.alert ?? 0) > .6) { ctx.fillStyle = '#ffcd83'; ctx.font = 'bold 16px monospace'; ctx.fillText('!', cx - 4, b.y - 12) }
-  if ((b.hp ?? 1) > 1) for (let i = 0; i < b.hp!; i++) box(ctx, b.x + i * 9, b.y - 5, 6, 2, 1, accent)
   ctx.restore()
+  if(c?.phase==='attack' && b.encounter==='legacy' && c.move===0 && c.clock>=.8){
+    ctx.strokeStyle='#ffb46f';ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(cx,feet-2,55+(c.clock-.8)*200,8,0,0,Math.PI*2);ctx.stroke()
+  }
+  if((b.alert??0)>.6){glow(ctx,cx,b.y-12,13,color+'66');line(ctx,[cx,b.y-21,cx,b.y-13],color,3);box(ctx,cx-1.5,b.y-9,3,3,1,color)}
+  if(!b.encounter && (b.hp??1)>1)for(let i=0;i<b.hp!;i++)box(ctx,b.x+i*9,b.y-6,6,2,1,color)
 }

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BugHuntPrototype, type GameSnapshot } from './prototype'
 import { outagePhase, DEBRIS,
-  BOSS_HEALTH, BOSS_MODULES, GRAVITY_SAFE_X, COMMAND_SECONDS, ARENA_X, BOSS_ANNOUNCE, BOSS_BODY, LEVELS, firewallPhase, type Boss, type Platform, BITS, levelExit, levelHotfix, levelWidth, SPIKES } from './level'
+  BOSS_HEALTH, BOSS_MODULES, GRAVITY_SAFE_X, COMMAND_SECONDS, ARENA_X, BOSS_ANNOUNCE, BOSS_BODY, LEVELS, firewallPhase, type Boss, type Platform, levelExit, levelHotfix, levelWidth, SPIKES } from './level'
 
 type Inspectable = {
   keyDown: (code: string) => void
@@ -167,7 +167,7 @@ describe('Bug Hunt prototype rules', () => {
 
   it('squashes on landing and regains balance at the edge without moving the hitbox', () => {
     const { game, tick } = createGame()
-    game.player.x = 399; game.player.y = 400; game.player.vy = 400; game.player.grounded = false
+    game.player.x = 327; game.player.y = 400; game.player.vy = 400; game.player.grounded = false
     tick(2)
     expect(game.player.grounded).toBe(true)
     expect(game.player.squash).toBeGreaterThan(0)
@@ -238,13 +238,13 @@ describe('Bug Hunt prototype rules', () => {
 
   it('keeps collected bits across falls and deaths without awarding them twice', () => {
     const { game, tick } = createGame()
-    game.player.x = BITS[0].x - 15
+    game.player.x = LEVELS[0].bits[0].x - 15; game.player.y = LEVELS[0].bits[0].y - 24
     tick(1)
     const collected = game.getSnapshot().bits
     expect(collected).toBeGreaterThan(0)
     for (let i = 0; i < 3; i++) { game.player.y = 650; tick(1) }
     expect(game.getSnapshot()).toMatchObject({ health: 0, gameOver: true, deaths: 1, bits: collected })
-    game.player.x = BITS[0].x - 15
+    game.player.x = LEVELS[0].bits[0].x - 15; game.player.y = LEVELS[0].bits[0].y - 24
     tick(1)
     expect(game.getSnapshot().bits).toBe(collected)
     game.restart()
@@ -437,7 +437,7 @@ describe('Bug Hunt prototype rules', () => {
 
   it('dashes through a bug once, scores it once, and respects recharge', () => {
     const { game, tick } = createGame()
-    game.player.x = game.enemies[0].x - 45
+    game.player.x = game.enemies[0].x - 45; game.player.y = game.enemies[0].y + game.enemies[0].h - game.player.h
     game.keyDown('KeyX'); tick(3)
     expect(game.enemies[0].alive).toBe(false)
     expect(game.getSnapshot().health).toBe(3)
@@ -475,7 +475,8 @@ describe('Bug Hunt prototype rules', () => {
 
   it('rewards pickup chains and freezes their expiry while paused', () => {
     const { game, tick } = createGame()
-    for (const bit of BITS.slice(0, 4)) { game.player.x = bit.x - 15; tick(1) }
+    game.enemies.forEach(b=>{b.alive=false})
+    for (const bit of LEVELS[0].bits.slice(0, 4)) { game.player.x = bit.x - 15; game.player.y=bit.y-24; game.player.vy=0; tick(1) }
     expect(game.getSnapshot().combo).toBeGreaterThanOrEqual(4)
     expect(game.getSnapshot().score).toBeGreaterThan(40)
     const score = game.getSnapshot().score
@@ -705,6 +706,7 @@ describe('debug gun and reactive bugs', () => {
     const { game, tick } = createGame()
     const bug = patrol(game)
     bug.hp = 1
+    game.platforms=[{x:0,y:460,w:2000,h:100}];bug.y=426
     game.player.x = bug.x - 200
     game.player.y = 412
     game.player.facing = 1
@@ -721,6 +723,7 @@ describe('debug gun and reactive bugs', () => {
     const { game, tick } = createGame()
     const bug = patrol(game)
     bug.hp = 2
+    game.platforms=[{x:0,y:460,w:2000,h:100}];bug.y=426
     game.player.x = bug.x - 150
     game.player.y = 412
     game.player.facing = 1
@@ -737,7 +740,8 @@ describe('debug gun and reactive bugs', () => {
 
   it('wakes a chaser that charges a0 and still refuses to leave its band', () => {
     const { game, tick } = createGame()
-    const chaser = game.enemies.find(b => b.kind === 'chaser')!
+    const chaser = {...LEVELS[1].bugs.find(b=>b.kind==='chaser')!,x:1200,y:426,left:900,right:1400}
+    game.enemies=[chaser];game.platforms=[{x:0,y:460,w:2000,h:100}]
     game.player.x = chaser.x - 260
     game.player.y = 412
     const start = chaser.x

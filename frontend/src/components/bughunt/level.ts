@@ -1,3 +1,4 @@
+import { buildDeskRoute } from './deskLayout'
 import type { PowerPickup } from './powers'
 import { DESK_ARENAS, type DeskCombat, type DeskFoe } from './deskCombat'
 
@@ -12,7 +13,7 @@ export type Purge = { start: number; end: number; speed: number; lead: number }
 /** `chaser` charges when a0 is close, `turret` returns fire from a fixed post. */
 export type BugKind = 'patrol' | 'chaser' | 'turret' | 'flyer' | 'leak' | 'race' | 'deadlock' | 'timeout' | 'zombie' | 'null' | 'clone'
 export type Bug = Rect & { left: number; right: number; direction: number; alive: boolean; phase: number; retry?: boolean; hover?: boolean; homeY?: number
-  encounter?: DeskFoe; combat?: DeskCombat
+  ghost?: boolean; hidden?: boolean; encounter?: DeskFoe; combat?: DeskCombat
   dive?: number; targetX?: number; targetY?: number; homeX?: number; maxHp?: number; wake?: number; summoned?: boolean; kind?: BugKind; hp?: number; alert?: number; fuse?: number }
 export type Bit = { id: number; x: number; y: number; secret?: boolean }
 
@@ -395,6 +396,7 @@ for (const kind of ['retry', 'soap', 'legacy'] as const) {
     platform.unstable = false; platform.pulse = undefined
   }
 }
+buildDeskRoute(localhost)
 for (const map of LEVELS) for (const bug of map.bugs) {
   if (bug.hover) continue
   const floor = map.platforms.find(p => !p.floating && !p.ceiling && bug.x >= p.x && bug.x + bug.w <= p.x + p.w && Math.abs(p.y - bug.y - bug.h) < 2)

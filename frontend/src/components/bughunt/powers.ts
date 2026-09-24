@@ -1,5 +1,5 @@
 // Developer power-ups. Pure state helpers; the game loop in prototype.ts applies them.
-export type PowerKind = 'revert' | 'breakpoint' | 'sudo' | 'gc' | 'shuriken'
+export type PowerKind = 'revert' | 'breakpoint' | 'sudo' | 'gc' | 'shuriken' | 'shield' | 'jump' | 'heal' | 'boost'
 /** Code Blaster is a0's default; picking up JSON Shuriken swaps in a limited stack. */
 export type Weapon = 'blaster' | 'shuriken'
 export const SHURIKEN_AMMO = 14
@@ -20,6 +20,9 @@ export const GC_SPEED = 1500
 export type PlayerFrame = { x: number; y: number; vx: number; vy: number; facing: number }
 
 export type PowerState = {
+  shield: boolean
+  jump: number
+  boost: number
   sudo: number
   breakpoint: number
   revertCharges: number
@@ -33,11 +36,12 @@ export type PowerState = {
 }
 
 export function createPowerState(): PowerState {
-  return { sudo: 0, breakpoint: 0, revertCharges: 0, picked: new Set(), history: [], rewind: null, gc: null, shuriken: 0 }
+  return { shield: false, jump: 0, boost: 0, sudo: 0, breakpoint: 0, revertCharges: 0, picked: new Set(), history: [], rewind: null, gc: null, shuriken: 0 }
 }
 
 /** Timed effects end and history is dropped: rewinding must never lead back into a pit. */
 export function clearActivePowers(state: PowerState) {
+  state.shield = false; state.jump = 0; state.boost = 0
   state.sudo = 0
   state.breakpoint = 0
   state.history = []

@@ -20,7 +20,7 @@ export function drawDeskBackground(ctx: CanvasRenderingContext2D, camera: number
 export function drawDeskPlatform(ctx: CanvasRenderingContext2D, p: Platform, t: number) {
   ctx.save()
   if (p.crumble) ctx.translate(Math.sin(t * 38) * 1.5, 0)
-  const book = (p.floating || p.y < 460) && (p.skin === 'book' || p.skin === 'ide')
+  const book = (p.floating || p.y < 460) && p.skin === 'book'
   const h = book ? p.h : p.floating ? p.h : Math.min(p.h, 85)
   const wood = !p.floating && !book
   const body = ctx.createLinearGradient(0, p.y, 0, p.y + h)
@@ -48,8 +48,13 @@ export function drawDeskPlatform(ctx: CanvasRenderingContext2D, p: Platform, t: 
   } else {
     box(ctx, p.x + 5, p.y + 3, p.w - 10, Math.max(8, h - 9), 4, '#74748733')
     line(ctx, [p.x + 6, p.y + h - 4, p.x + p.w - 6, p.y + h - 4, p.x + p.w - 4, p.y + 5], '#080d1c', 2)
-    const label = p.skin === 'usb' ? 'USB' : p.unstable ? 'Ctrl' : p.skin === 'phone' ? 'Shift' : 'Enter'
-    text(ctx, label, p.x + 12, p.y + Math.min(17, h - 4), '#d4d4e5', 11)
+    // Printed circuit traces and sockets identify hardware without labels.
+    if (p.skin === 'ide' || p.skin === 'usb') {
+      for (let x=p.x+12;x<p.x+p.w-12;x+=24) {
+        line(ctx,[x,p.y+4,x,p.y+h-6,x+12,p.y+h-6],'#72d1bd88',1)
+        box(ctx,x-2,p.y+6,6,5,1,'#101c2a')
+      }
+    }
     // Deterministic scuffs: no per-frame random texture flicker.
     for (let i = 0; i < p.w / 8; i++) {
       const x = p.x + ((i * 47 + 13) % Math.max(1, p.w - 8))
@@ -59,11 +64,10 @@ export function drawDeskPlatform(ctx: CanvasRenderingContext2D, p: Platform, t: 
   }
   ctx.restore()
   if (book && h >= 50) {
-    const titles = ['Clean Code', 'Game Development', 'Ideas → Play', 'Build / Explore']
     for (let y = 0, i = 0; y < h; y += 27, i++) {
       box(ctx, p.x + 4, p.y + y + 3, p.w - 8, Math.min(24, h - y - 3), 2, i % 2 ? '#17273beb' : '#253348eb')
       line(ctx, [p.x + 15, p.y + y + 4, p.x + 15, p.y + Math.min(h - 1, y + 25)], '#beaa8180', 2)
-      if (h - y > 18) text(ctx, titles[i % titles.length], p.x + 24, p.y + y + 17, '#c3b6bf', 9)
+      line(ctx,[p.x+25,p.y+y+8,p.x+p.w-12,p.y+y+8],'#cfb99c55',1)
     }
   }
   line(ctx, [p.x + 2, p.y + .5, p.x + p.w - 2, p.y + .5], p.unstable ? '#ffd095' : wood ? '#f3c991' : '#a9d4ff', 1.5)
@@ -71,6 +75,9 @@ export function drawDeskPlatform(ctx: CanvasRenderingContext2D, p: Platform, t: 
     const anchorX = (p.originX ?? p.x) + p.w / 2, anchorY = (p.originY ?? p.y) - 88
     ctx.beginPath(); ctx.moveTo(anchorX, anchorY); ctx.quadraticCurveTo(anchorX + 35, p.y - 20, p.x + p.w / 2, p.y + 4)
     ctx.strokeStyle = '#080d19'; ctx.lineWidth = 7; ctx.stroke(); ctx.strokeStyle = '#627186'; ctx.lineWidth = 1; ctx.stroke()
+  }
+  if (p.floating && p.skin !== 'usb') {
+    for (const x of [p.x+14,p.x+p.w-24]) { box(ctx,x,p.y+h,10,Math.min(80,540-p.y-h),2,'#12202d'); box(ctx,x-4,p.y+h-3,18,12,2,'#293b4b'); glow(ctx,x+5,p.y+h+5,7,'#59cdff44') }
   }
   if (wood) {
     for (let x = p.x + 65; x < p.x + p.w - 50; x += 235) {
@@ -103,39 +110,7 @@ export function drawDeskHero(ctx: CanvasRenderingContext2D, p: PlayerVisual, t: 
 }
 
 export function drawDeskEnemy(ctx: CanvasRenderingContext2D, b: Bug, t: number): boolean {
-  if (!b.encounter) { drawDeskCritter(ctx, b, t); return true }
-  if (!deskArt.cast) return false
-  const phantom = b.encounter === 'soap'
-  const brute = b.encounter === 'legacy'
-  const cell = phantom ? 4 : brute ? 7 : b.y < 416 ? 6 : 5
-  const width = brute ? b.w * 1.5 : phantom ? 74 : 65
-  const height = brute ? b.h * 1.2 : phantom ? 65 : 58
-  ctx.save()
-  if (b.encounter === 'legacy' && b.combat && t !== 0) {
-    const c = b.combat
-    const tilt = c.phase === 'attack' && c.move === 1 ? b.direction * .12 : c.phase === 'tell' ? -c.direction * .07 * Math.sin(c.clock / c.duration * Math.PI) : 0
-    ctx.translate(b.x + b.w / 2, b.y + b.h); ctx.rotate(tilt); ctx.translate(-b.x - b.w / 2, -b.y - b.h)
-    if (c.phase === 'attack' && c.move === 0 && c.clock >= .8) {
-      ctx.strokeStyle = '#ffb46f'; ctx.lineWidth = 4 * (1 - (c.clock - .8) / .4)
-      ctx.beginPath(); ctx.ellipse(b.x + b.w / 2, 458, 55 + (c.clock - .8) * 240, 9, 0, 0, Math.PI * 2); ctx.stroke()
-    }
-  }
-  if (b.combat?.phase === 'entrance') {
-    const progress = Math.min(1, b.combat.clock / b.combat.duration)
-    ctx.globalAlpha = .25 + progress * .75
-    if (t !== 0) ctx.translate(0, -(1 - progress) * (phantom ? 45 : 18))
-  }
-  if (b.combat?.phase === 'tell' && t !== 0) {
-    const squash = Math.sin(b.combat.clock / b.combat.duration * Math.PI) * .06
-    ctx.translate(b.x + b.w / 2, b.y + b.h); ctx.scale(1 + squash, 1 - squash); ctx.translate(-b.x - b.w / 2, -b.y - b.h)
-  }
-  drawCast(ctx, cell, b.x + b.w / 2, b.y + b.h + (phantom ? Math.sin(t * 3 + b.phase) : 0), width, height, b.direction > 0)
-  ctx.restore()
-  if ((b.alert ?? 0) > .6) text(ctx, '!', b.x + b.w / 2 - 3, b.y - 24, '#ffd090', 16)
-  if (!brute && (b.hp ?? 1) > 1) {
-    const count = b.maxHp ?? b.hp ?? 1
-    for (let i = 0; i < count; i++) box(ctx, b.x + i * 10, b.y - 14, 7, 3, 1, i < b.hp! ? '#ffc38a' : '#4b4655')
-  }
+  drawDeskCritter(ctx, b, t)
   return true
 }
 

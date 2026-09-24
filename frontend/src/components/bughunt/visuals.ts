@@ -1,5 +1,5 @@
 import { box, line, text, glow } from './drawing'
-import { drawDeskBackground, drawDeskPlatform, drawDeskHero, drawDeskEnemy, drawDeskNote } from './deskVisuals'
+import { drawDeskBackground, drawDeskPlatform, drawDeskHero, drawDeskEnemy } from './deskVisuals'
 import { drawDeskArenas } from './deskCombatVisuals'
 export { box, line, text, glow } from './drawing'
 import { drawWorld, drawWorldPlatform, drawSpecialBug, drawEnvironment } from './worldVisuals'
@@ -679,13 +679,8 @@ export function renderLocalhost(ctx: CanvasRenderingContext2D, state: VisualStat
   }
   const c = state.copy
   if (state.level === 0) {
-  drawDeskNote(ctx, 48, 292, c.signFriday, c.signFridayQuote)
-  drawDeskNote(ctx, 550, 235, 'DESK BUG', c.signBugHint)
-  for (const [i, x] of checkpoints.entries()) drawDeskNote(ctx, x - 55, i ? 196 : 272, c.signCommit, reached >= i ? c.signCommitSaved : c.signCommitHint)
-  // The secret branch whispers until it is found.
-  if (!state.secret) { ctx.globalAlpha = 0.55 + Math.sin(t * 4) * 0.35; text(ctx, '?', 2220, 220 + Math.sin(t * 2.4) * 4, '#d1a6ff', 22); ctx.globalAlpha = 1 }
-  text(ctx, c.signSurprise, 2040, 210, '#b9a0db', 11)
-  text(ctx, c.signSecret, 2150, 178, '#eccc80', 12)
+    // The playable surfaces carry no instructions. One subtle signal marks the optional branch.
+    if (!state.secret) { ctx.globalAlpha=.7; text(ctx,'?',2220,225,'#bfa4ff',18);ctx.globalAlpha=1 }
 
   } else {
     drawTerminal(ctx, 48, 305, LEVELS[state.level].name, state.level === 1 ? 'FANS / LIFTS / OVERHEAT' : 'GRAVITY / OFFLINE / CLONES')
@@ -706,11 +701,16 @@ export function renderLocalhost(ctx: CanvasRenderingContext2D, state: VisualStat
   for (const bit of LEVELS[state.level].bits) {
     if (state.collected.has(bit.id) || bit.x < state.camera - 20 || bit.x > state.camera + 980) continue
     const y = bit.y + Math.sin(t * 3.8 + bit.id * 0.65) * 3
-    glow(ctx, bit.x, y, 24, '#e5c65b26')
-    ctx.save(); ctx.translate(bit.x, y); ctx.scale(0.55 + Math.abs(Math.cos(t * 2.5 + bit.id)) * 0.45, 1)
-    ctx.fillStyle = bit.secret ? '#d1a6ff' : '#efcc75'
-    ctx.beginPath(); ctx.moveTo(0, -9); ctx.lineTo(7, 0); ctx.lineTo(0, 9); ctx.lineTo(-7, 0); ctx.closePath(); ctx.fill()
-    ctx.fillStyle = '#fff9db'; ctx.fillRect(-1, -4, 2, 8); ctx.restore()
+    const color=bit.secret ? '#c7a1ff' : '#83edff'
+    glow(ctx,bit.x,y,18,color+'26')
+    ctx.save();ctx.translate(bit.x,y)
+    // A tiny packet of code: flat chip, contacts, and a readable code fragment.
+    box(ctx,-11,-9,22,18,3,'#0b243bcc')
+    line(ctx,[-8,-9,8,-9,11,-6,11,7],color,1)
+    ctx.textAlign='center';text(ctx,bit.secret?'{}':'</>',0,4,color,10)
+    for(const dx of [-6,0,6])box(ctx,dx-1,10,2,3,0,color)
+    ctx.restore()
+
   }
 
   for (const [i, checkpointX] of checkpoints.entries()) {
@@ -730,7 +730,7 @@ export function renderLocalhost(ctx: CanvasRenderingContext2D, state: VisualStat
     box(ctx, x - 13, y - 13, 26, 26, 5, '#81f5d6')
     box(ctx, x - 8, y - 8, 16, 16, 2, '#163f42')
     text(ctx, '+', x - 5, y + 5, '#dcfff5', 15)
-    text(ctx, 'HOTFIX', x - 22, y - 34, '#a9f0da', 11)
+    text(ctx, state.level===0 ? 'DEPLOY' : 'HOTFIX', x - 22, y - 34, '#a9f0da', 11)
   }
 
   const gate = gateOpen ? '#76e8b9' : '#9480b1'
@@ -756,6 +756,7 @@ export function renderLocalhost(ctx: CanvasRenderingContext2D, state: VisualStat
   drawRewindGhosts(ctx, state.powers)
   drawSudoAura(ctx, state.player, state.time, state.powers.sudo)
   drawCable(ctx, state, t)
+  if(state.powers.shield){ctx.strokeStyle='#7ceaffaa';ctx.lineWidth=1.5;ctx.beginPath();ctx.ellipse(state.player.x+17,state.player.y+24,27,35,0,0,Math.PI*2);ctx.stroke()}
   if (state.level !== 0 || !drawDeskHero(ctx, state.player, t, state.reducedMotion)) drawRobot(ctx, state.player, t, state.reducedMotion, state.gravity < 0)
   if ((state.player.speechTime ?? 0) > 0 && state.player.speech) {
     const p = state.player

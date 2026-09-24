@@ -13,3 +13,9 @@ Generated with the built-in image generation tool from the three user-supplied r
 `deskAssets.ts` holds the measured sprite rectangles and removes magenta once at load time, preserving white/cyan artwork and soft edges. `deskVisuals.ts` maps poses to movement and clips interior material regions to actual collision platforms. These are limited pose animations, not a skeletal 3D rig. Gentle effects suppress movement-based deformation and decorative oscillation.
 
 All three PNG files are source assets; keep them alongside their renderer. The generated background is decorative: gameplay and every combat telegraph are drawn independently.
+
+## Developer Desk enemy atlas v2
+
+`desk-enemies-v2.png` was generated with the built-in imagegen tool for this project. It preserves a0 and the existing backgrounds, which are separate assets.
+
+Prompt direction: six isolated side-view game enemies in a 3-by-2 atlas, no scenery or text, warm key light and cyan rim light: a faceted purple-eyed glitch crawler, teal Memory Leak slime, connected orange/blue Race Condition twins, segmented blue Null Pointer ghost, red/blue Merge Conflict brute and copper Firewall turret. The follow-up requested background removal; the delivered PNG contains RGBA transparency. Runtime animation and cropping are implemented in deskCritters.ts.

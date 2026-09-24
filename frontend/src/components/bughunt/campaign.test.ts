@@ -123,7 +123,7 @@ describe('developer world campaign encounters', () => {
   })
 
   it('telegraphs a flying bug, then commits its dive instead of tracking every dodge', () => {
-    const { game } = create()
+    const { game } = create(1)
     const b = game.enemies.find(b => b.kind === 'flyer')!
     game.player.x = b.x + 80; game.player.y = 412
     b.fuse = 0.4
@@ -140,7 +140,7 @@ describe('developer world campaign encounters', () => {
   })
 
   it('Timeout shoots diagonally, while Breakpoint freezes all new enemies', () => {
-    const { game, tick } = create()
+    const { game, tick } = create(1)
     const b = game.enemies.find(b => b.kind === 'timeout')!
     game.player.x = b.x + 150; b.fuse = 0
     stepSpecialBug(b, game.player, 0.1, 0, game.shots)
