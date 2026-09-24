@@ -303,6 +303,10 @@ describe('Bug Hunt prototype rules', () => {
         const hazard = SPIKES.some((spike) => spike.x > p.x && spike.x < look + 20) || game.enemies.some((bug) => bug.alive && bug.x > p.x && bug.x < look + 35)
         if (!floorAhead || stepAhead || hazard) { game.keyDown('Space'); if (trace.length < 25) trace.push(`jump ${Math.round(p.x)},${Math.round(p.y)}`) }
       }
+      // Swing across the authored cable gaps, then release beyond the anchor.
+      const anchor = LEVELS[0].anchors.find(a => a.x > p.x && a.x - p.x < 220)
+      if (!p.grounded && !game.player.grapple && anchor && p.y + p.h / 2 > anchor.y + 30) { game.keyUp('KeyE'); game.keyDown('KeyE') }
+      if (game.player.grapple && p.x > game.player.grapple.x - 15) game.keyUp('KeyE')
       tick(1)
     }
     expect(game.getSnapshot(), `${trace.join('; ')}; final ${game.player.x},${game.player.y}`).toMatchObject({ checkpoint: true, hotfix: true, levelComplete: true })
@@ -510,7 +514,7 @@ describe('Bug Hunt prototype rules', () => {
   it('pauses the rush timer and lets a missed challenge leave the route open', () => {
     const { game, tick } = createGame()
     game.enemies.forEach(b => { b.alive = false })
-    game.player.x = 4305; tick(60)
+    game.player.x = 4405; tick(60)
     const remaining = game.getSnapshot().rush.remaining
     vi.spyOn(game, 'draw').mockImplementation(() => undefined)
     game.setPaused(true); tick(600)
@@ -589,7 +593,7 @@ describe('magnetic grapple', () => {
   it('chains grapple -> launch -> dash -> bug without ever touching the ground', () => {
     const { game, tick } = createGame()
     game.enemies.filter(b => b.encounter).forEach(b => { b.alive = false })
-    const anchor = LEVELS[0].anchors[4]
+    const anchor = LEVELS[0].anchors[1]
     const target = game.enemies.find(b => b.hover && !b.encounter)!
     game.player.x = anchor.x - 120
     game.player.y = anchor.y + 40

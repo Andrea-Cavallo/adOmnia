@@ -15,6 +15,7 @@ type Inspectable = {
   enemies: Bug[]
   platforms: Platform[]
   powers: PowerState
+  purgeState: string
   worldTime: number
   health: number
   level: number
@@ -29,14 +30,17 @@ function createGame() {
 }
 
 /** Drops the player onto the given Localhost power chip. */
-function grab(game: Inspectable, tick: (n: number) => void, kind: string, level = 0) {
-  if (level) { game.levelComplete = true; game.advance() }
+function grab(game: Inspectable, tick: (n: number) => void, kind: string, level = 1) {
+  if (game.level !== level) { game.levelComplete = true; game.advance() }
+  game.purgeState = 'off' // Isolate power behavior from the later-world chase.
   const index = LEVELS[level].powers.findIndex((power) => power.kind === kind)
   const power = LEVELS[level].powers[index]
   game.player.x = power.x - game.player.w / 2
   game.player.y = power.y + 15 - game.player.h
   game.player.vy = 0
+  game.player.invulnerable = 1 // Pickup tests do not include an enemy ambush.
   tick(1)
+  game.player.invulnerable = 0
   return index
 }
 
@@ -48,7 +52,7 @@ describe('Bug Hunt developer power-ups', () => {
   afterEach(() => vi.unstubAllGlobals())
 
   it('places the desk module family and preserves the later-world tools', () => {
-    expect([...new Set(LEVELS[0].powers.map((power) => power.kind))].sort()).toEqual(['boost', 'breakpoint', 'heal', 'jump', 'revert', 'shield', 'shuriken', 'sudo'])
+    expect([...new Set(LEVELS[0].powers.map((power) => power.kind))].sort()).toEqual(['boost', 'heal', 'jump', 'shield', 'shuriken'])
     for (const level of LEVELS.slice(1)) {
       expect([...new Set(level.powers.map((power) => power.kind))].sort()).toEqual(['breakpoint', 'gc', 'revert', 'shuriken', 'sudo'])
     }
@@ -62,7 +66,7 @@ describe('Bug Hunt developer power-ups', () => {
     game.player.x = bug.x; game.player.y = bug.y - 10; game.player.vy = 0
     tick(1)
     expect(bug.alive).toBe(false)
-    const spike = LEVELS[0].spikes[0]
+    const spike = LEVELS[1].firewalls[0]
     game.player.x = spike.x; game.player.y = spike.y - 30
     tick(2)
     expect(game.health).toBe(3)
@@ -74,7 +78,7 @@ describe('Bug Hunt developer power-ups', () => {
   it('breakpoint: freezes bugs, firewalls and moving platforms, then resumes', () => {
     const { game, tick } = createGame()
     grab(game, tick, 'breakpoint')
-    const walkingBug = game.enemies.find(b => !b.encounter && b.kind === 'patrol' && !b.hover)!
+    const walkingBug = game.enemies.find(b => !b.encounter && (b.kind === 'patrol' || b.kind === undefined) && !b.hover)!
     const bugX = walkingBug.x
     const world = game.worldTime
     tick(120)

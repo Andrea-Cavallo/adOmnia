@@ -34,7 +34,7 @@ const en = {
   sudoBanner: 'root@a0:~#',
   rewindBanner: 'git revert',
   keysRevert: 'git revert',
-  powersIntro: 'Power-ups: ↺ git revert (R) · ⏸ Breakpoint · # sudo · ♻ Garbage Collector.',
+  powersIntro: 'Pick up shields, ammunition and jump or speed boosts. Land on enemies to bounce and deal damage.',
   // debug gun and reactive bugs
   keysFire: 'fire',
   keysCrouch: 'crouch',
@@ -193,7 +193,7 @@ const it: BugHuntCopy = {
   sudoBanner: 'root@a0:~#',
   rewindBanner: 'git revert',
   keysRevert: 'git revert',
-  powersIntro: 'Poteri: ↺ git revert (R) · ⏸ Breakpoint · # sudo · ♻ Garbage Collector.',
+  powersIntro: 'Raccogli scudi, munizioni e bonus di salto o velocità. Salta sulla testa dei nemici per rimbalzare e fare danno.',
   keysFire: 'spara',
   keysCrouch: 'abbassati',
   keysAimUp: 'mira in alto',

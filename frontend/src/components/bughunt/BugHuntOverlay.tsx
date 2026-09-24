@@ -243,7 +243,7 @@ export function BugHuntOverlay({ onClose }: { onClose: () => void }) {
           </div>
         </div>}
       </div>
-      <footer className="bh-footer"><div className="bh-keys"><span><kbd>A</kbd> <kbd>D</kbd> / <kbd>←</kbd> <kbd>→</kbd> {copy.keysMove}</span><span><kbd>{copy.keySpace}</kbd> {copy.keysJump}</span><span><kbd>C</kbd> {copy.keysSlide}</span><span><kbd>X</kbd> / <kbd>Shift</kbd> {copy.keysDash}</span><span><kbd>F</kbd> {copy.keysFire}</span><span><kbd>S</kbd> / <kbd>↓</kbd> {copy.keysCrouch}</span><span><kbd>W</kbd>+<kbd>F</kbd> {copy.keysAimUp}</span><span><kbd>E</kbd> {copy.keysGrapple}</span><span><kbd>R</kbd> {copy.keysRevert}</span><span><kbd>Esc</kbd> {copy.keysPause}</span></div><span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Flag size={11} />{snapshot.checkpoint ? copy.checkpointSaved : copy.findCheckpoint}</span></footer>
+      <footer className="bh-footer"><div className="bh-keys"><span><kbd>A</kbd> <kbd>D</kbd> / <kbd>←</kbd> <kbd>→</kbd> {copy.keysMove}</span><span><kbd>{copy.keySpace}</kbd> {copy.keysJump}</span><span><kbd>C</kbd> {copy.keysSlide}</span><span><kbd>X</kbd> / <kbd>Shift</kbd> {copy.keysDash}</span><span><kbd>F</kbd> {copy.keysFire}</span><span><kbd>S</kbd> / <kbd>↓</kbd> {copy.keysCrouch}</span><span><kbd>W</kbd>+<kbd>F</kbd> {copy.keysAimUp}</span><span><kbd>E</kbd> {copy.keysGrapple}</span>{snapshot.revertCharges > 0 && <span><kbd>R</kbd> {copy.keysRevert}</span>}<span><kbd>Esc</kbd> {copy.keysPause}</span></div><span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Flag size={11} />{snapshot.checkpoint ? copy.checkpointSaved : copy.findCheckpoint}</span></footer>
     </div>
   )
 }

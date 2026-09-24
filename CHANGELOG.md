@@ -4,6 +4,15 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [0.9.22] - 2026-09-24
+
+### Changed
+- Bug Hunt: removed enemy trajectory and move previews in Developer Desk while keeping actual impacts visible.
+- Head stomps damage the attacking Brute and take priority over impact damage.
+- Added longer grapple crossings and replaced first-stage rewind, sudo and freeze pickups with shields, ammunition and movement boosts.
+
+Full release notes: [v0.9.22](docs/releases/v0.9.22.md).
+
 ## [0.9.21] - 2026-09-24
 
 ### Changed

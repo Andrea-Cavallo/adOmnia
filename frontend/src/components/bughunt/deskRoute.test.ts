@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { LEVELS, levelCheckpoints, type Bug, type Platform } from './level'
 import { BugHuntPrototype } from './prototype'
 import type { Particle, PlayerVisual } from './visuals'
+import { createDeskCombat } from './deskCombat'
 import type { Difficulty } from './difficulty'
 
 describe('Developer Desk learning beats', () => {
@@ -36,6 +37,21 @@ describe('Developer Desk learning beats', () => {
     expect(instance.getSnapshot().deaths).toBe(0)
     expect(instance.getSnapshot().commit).toBe(start === 900 ? 1 : 3)
     expect(instance.getSnapshot().health).toBe(difficulty === 'development' ? Infinity : difficulty === 'testing' ? 4 : 3)
+    instance.destroy()
+  })
+
+  it('a head landing damages an attacking Brute and bounces without losing a life', () => {
+    const instance = new BugHuntPrototype({ getContext: () => ({}) } as unknown as HTMLCanvasElement, () => {})
+    const game = instance as unknown as { player: PlayerVisual; enemies: Bug[]; update(dt: number): void }
+    const brute = game.enemies.find(b => b.encounter === 'legacy')!
+    brute.combat = { ...createDeskCombat(), phase: 'attack', move: 1, duration: 1.1,
+      startX: brute.x, targetX: brute.x, locked: true }
+    game.enemies = [brute]
+    Object.assign(game.player, { x: brute.x + 30, y: brute.y - 49, vy: 300, grounded: false })
+    game.update(1 / 60)
+    expect(brute.hp).toBe(7)
+    expect(game.player.vy).toBeLessThan(0)
+    expect(instance.getSnapshot().health).toBe(3)
     instance.destroy()
   })
 

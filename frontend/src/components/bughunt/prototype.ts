@@ -555,14 +555,14 @@ export class BugHuntPrototype {
         if (bug.x <= bug.left) { bug.x = bug.left; if ((bug.alert ?? 0) <= 0.6) bug.direction = 1 }
         if (bug.x >= bug.right) { bug.x = bug.right; if ((bug.alert ?? 0) <= 0.6) bug.direction = -1 }
       }
-      if (!frozen && p.dash <= 0 && arenaAttackHits(bug, p)) { this.hurt(); if (this.gameOver || this.player !== p) return }
+      const stomp = !bug.hidden && p.vy > 80 && previousBottom <= bug.y + 8 && intersects(p, bug)
+      if (!stomp && !frozen && p.dash <= 0 && arenaAttackHits(bug, p)) { this.hurt(); if (this.gameOver || this.player !== p) return }
       if (bug.hidden || !intersects(p, bug)) continue
-      const stomp = p.vy > 80 && previousBottom <= bug.y + 8
       if (p.dash > 0 || this.powers.sudo > 0 || stomp) {
         if (!bug.encounter && bug.kind === 'null' && (bug.wake ?? 0) > 0) continue
         if (!bug.encounter && bug.kind === 'null') bug.wake = 0.6
         const lethal = p.dash > 0 || this.powers.sudo > 0
-        const died = this.damage(bug, index, lethal && bug.kind !== 'null' && !bug.encounter ? 99 : 1, false)
+        const died = this.damage(bug, index, lethal && bug.kind !== 'null' && !bug.encounter ? 99 : 1, false, stomp)
         if (p.dash <= 0 && stomp) { p.y = bug.y - p.h; p.vy = this.keys.has('Space') ? -720 : -360; p.grounded = false; p.coyote = 0; p.buffer = 0; p.slide = 0 }
         p.airJump = true; p.dashCooldown = 0; p.squash = -0.1
         // An armoured bug that survives must not damage a0 on the way down.
@@ -701,9 +701,9 @@ export class BugHuntPrototype {
   }
 
   /** Applies damage and closes the ticket when the bug runs out of health. */
-  private damage(bug: Bug, index: number, amount: number, fromShot: boolean): boolean {
+  private damage(bug: Bug, index: number, amount: number, fromShot: boolean, stomp = false): boolean {
     if (!bug.alive) return true
-    if (!arenaDamageable(bug)) return false
+    if (!arenaDamageable(bug, stomp)) return false
     if (bug.combat) { bug.combat.hitCooldown = .3; amount = bug.combat.elapsed > 24 ? 2 : 1 }
     if (!bug.encounter && bug.kind === 'null' && fromShot && (bug.wake ?? 0) > 0) return false
     if (!bug.encounter && bug.kind === 'null' && fromShot) bug.wake = 0.35

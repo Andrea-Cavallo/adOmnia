@@ -19,13 +19,13 @@ export function createDeskCombat(): DeskCombat {
 }
 function clamp(n: number, min: number, max: number) { return Math.max(min, Math.min(max, n)) }
 function transition(c: DeskCombat, phase: EncounterPhase, duration: number) { c.phase = phase; c.clock = 0; c.duration = duration }
-export function arenaDamageable(b: Bug) {
+export function arenaDamageable(b: Bug, stomp = false) {
   if (!b.encounter) return true
   const c = b.combat
-  return !!c && c.hitCooldown <= 0 && (b.encounter === 'legacy' ? c.phase === 'recover' : !['waiting', 'entrance', 'cleared'].includes(c.phase))
+  return !!c && c.hitCooldown <= 0 && (b.encounter === 'legacy' && !stomp ? c.phase === 'recover' : !['waiting', 'entrance', 'cleared'].includes(c.phase))
 }
 
-/** Shared by the telegraph and its damage check: the warning cannot lie about reach. */
+/** Actual impact area, shared by damage and the contact effect. */
 export function arenaImpact(b: Bug): Rect | null {
   const c = b.combat
   if (!c || !b.encounter) return null

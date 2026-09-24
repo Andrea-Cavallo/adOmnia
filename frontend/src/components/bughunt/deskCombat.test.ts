@@ -106,3 +106,14 @@ describe('Developer Desk readable arenas', () => {
     })
   }
 })
+
+// A head landing remains a valid counter even while the Brute is attacking.
+describe('head stomp damage windows', () => {
+  it.each(['retry', 'soap', 'legacy'] as DeskFoe[])('accepts a stomp during %s attacks and respects hit cooldown', kind => {
+    const { b, until } = fixture(kind)
+    until('attack')
+    expect(arenaDamageable(b, true)).toBe(true)
+    b.combat!.hitCooldown = .2
+    expect(arenaDamageable(b, true)).toBe(false)
+  })
+})

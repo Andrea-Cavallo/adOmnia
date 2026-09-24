@@ -25,15 +25,29 @@ export function buildDeskRoute(map: Level) {
   }
   map.bugs.push({x:2450,y:424,w:44,h:36,left:2420,right:2525,direction:1,alive:true,phase:0,kind:'leak',hp:2})
   map.powers=[
-    {kind:'revert',x:220,y:445},
+    {kind:'shield',x:220,y:445},
     {kind:'shield',x:850,y:305},
     {kind:'shuriken',x:1140,y:445},
     {kind:'jump',x:1930,y:260},
-    {kind:'sudo',x:2240,y:285},
-    {kind:'breakpoint',x:2540,y:445},
+    {kind:'shuriken',x:2240,y:285},
+    {kind:'boost',x:2540,y:445},
     {kind:'heal',x:3180,y:445},
     {kind:'boost',x:4840,y:285},
   ]
+  // Two long cable crossings: remove intermediate footholds and align the anchors.
+  const gaps = [{ left: 2660, right: 3100 }, { left: 4160, right: 4380 }]
+  for (const gap of gaps) {
+    map.platforms = map.platforms.flatMap(p => {
+      if (p.x >= gap.right || p.x + p.w <= gap.left) return [p]
+      if (p.floating) return []
+      return [
+        ...(p.x < gap.left ? [{ ...p, w: gap.left - p.x }] : []),
+        ...(p.x + p.w > gap.right ? [{ ...p, x: gap.right, w: p.x + p.w - gap.right }] : []),
+      ]
+    })
+    map.bits = map.bits.filter(b => b.x < gap.left || b.x > gap.right)
+  }
+  map.anchors = [{ x: 2780, y: 245 }, { x: 3000, y: 220 }, { x: 4270, y: 240 }]
   // Code packets sit on deliberate jump arcs and branch landings, not in coin rows.
   map.bits=map.bits.filter(bit=>bit.x>=1540)
   const packets = [[380,400],[480,355],[635,290],[760,275],[960,200],[1040,195],[1370,370],[1515,250]]
