@@ -355,9 +355,9 @@ function TreeNodeRow({
         aria-current={!isFolder && activeRequestId === node.id ? 'page' : undefined}
         aria-expanded={isFolder ? isOpen : undefined}
         draggable
-        onDragStart={(event) => onDragStartNode(event, { type: 'node', collectionId: collection.id, nodeId: node.id, nodeType: node.type })}
-        onDragOver={(event) => onDragOverNode(event, collection.id, node)}
-        onDrop={(event) => onDropNode(event, collection.id, node, parentId, index)}
+        onDragStart={(event) => { event.stopPropagation(); onDragStartNode(event, { type: 'node', collectionId: collection.id, nodeId: node.id, nodeType: node.type }) }}
+        onDragOver={(event) => { event.stopPropagation(); onDragOverNode(event, collection.id, node) }}
+        onDrop={(event) => { event.stopPropagation(); onDropNode(event, collection.id, node, parentId, index) }}
         onDragLeave={onClearDrop}
         onDragEnd={onClearDrop}
         onClick={() => { onSetFocused(node.id); isFolder ? onToggle(node.id) : onOpenRequest(node as RequestItem, collection.id) }}

@@ -7,6 +7,7 @@ import { FLOW_PENDING_PREFIX } from '@/lib/flowScopeVars'
 import { useKnownUiTranslation } from '@/lib/uiI18n'
 import { varNameAtIndex } from '@/lib/substVars'
 import { textIndexAtPoint } from '@/lib/textareaCaret'
+import { bodyContextItems, runBodyEdit } from './bodyContextActions'
 
 /**
  * Right-click menu for a `{{var}}` token — edit its value, copy the value or
@@ -74,24 +75,113 @@ export function useVarContextMenu(resolvedVars: Record<string, string> | undefin
 /**
  * Right-click menu for `{{var}}` tokens in a plain textarea (raw, XML, GraphQL
  * bodies). Without a token under the pointer the native menu stays available.
+ *
+ * When `edit` is provided the menu replaces the native browser menu entirely,
+ * so the classic editing actions (copy / cut / paste / delete / select all)
+ * stay available in the Wails desktop shell alongside the variable actions.
  */
-export function useTextareaVarMenu(resolvedVars: Record<string, string> | undefined) {
+export interface TextareaEditHandlers {
+  getValue: () => string | undefined
+  setValue: (next: string, caret: number) => void
+  selectAll: () => void
+}
+
+interface TextareaMenu {
+  x: number
+  y: number
+  body: string
+  start: number
+  end: number
+  tokenName: string | null
+}
+
+export function useTextareaVarMenu(
+  resolvedVars: Record<string, string> | undefined,
+  edit?: TextareaEditHandlers,
+) {
+  const t = useKnownUiTranslation()
   const [varEdit, setVarEdit] = useState<VarEditTarget | null>(null)
   const { openVarMenu, varMenuElement } = useVarContextMenu(resolvedVars, setVarEdit)
+  const [menu, setMenu] = useState<TextareaMenu | null>(null)
+  const [clipboardError, setClipboardError] = useState('')
+
+  useEffect(() => {
+    if (!clipboardError) return
+    const timer = window.setTimeout(() => setClipboardError(''), 2500)
+    return () => window.clearTimeout(timer)
+  }, [clipboardError])
 
   const onContextMenu = (event: React.MouseEvent<HTMLTextAreaElement>) => {
     const field = event.currentTarget
+    const start = field.selectionStart
+    const end = field.selectionEnd
+    if (!edit) {
+      // No editing handlers: keep the native Copy/Cut/Paste menu, even over a
+      // selection, and only replace it when the pointer sits on a variable.
+      if (start !== end) return
+      const index = textIndexAtPoint(field, event.clientX, event.clientY)
+      const name = index === null ? null : varNameAtIndex(field.value, index)
+      if (!name) return
+      event.preventDefault()
+      openVarMenu(name, event.clientX, event.clientY)
+      return
+    }
     const index = textIndexAtPoint(field, event.clientX, event.clientY)
-    const name = index === null ? null : varNameAtIndex(field.value, index)
-    if (!name) return
+    const tokenName = start === end && index !== null ? varNameAtIndex(field.value, index) : null
     event.preventDefault()
-    openVarMenu(name, event.clientX, event.clientY)
+    setClipboardError('')
+    setMenu({ x: event.clientX, y: event.clientY, body: field.value, start, end, tokenName })
   }
+
+  const select = (id: string) => {
+    if (!menu || !edit) return
+    const { x, y, body, start, end, tokenName } = menu
+    if (id === 'edit-variable' && tokenName) {
+      setMenu(null)
+      setVarEdit(varEditTarget(tokenName, x, y))
+      return
+    }
+    if (id === 'copy-variable' || id === 'copy-reference') {
+      setMenu(null)
+      void copyToClipboard(id === 'copy-reference' ? `{{${tokenName}}}` : resolvedVars?.[tokenName ?? ''] ?? '').then((ok) => {
+        if (!ok) setClipboardError(t('Copy failed'))
+      })
+      return
+    }
+    if (id === 'select-all') {
+      setMenu(null)
+      edit.selectAll()
+      return
+    }
+    setMenu(null)
+    void runBodyEdit(id, { body, start, end }, navigator.clipboard, edit.getValue, edit.setValue)
+      .catch(() => setClipboardError(t('Clipboard access failed. Use the keyboard shortcut.')))
+  }
+
+  const items: Parameters<typeof ContextMenu>[0]['items'] = menu
+    ? [
+        ...bodyContextItems(true, menu.end > menu.start).map((item) => ({ ...item, label: t(item.label) })),
+        ...(menu.tokenName
+          ? [
+              { id: 'edit-variable', separatorBefore: true, label: `${t('Edit')} {{${menu.tokenName}}}` },
+              { id: 'copy-variable', label: t('Copy value'), disabled: resolvedVars?.[menu.tokenName] === undefined },
+              { id: 'copy-reference', label: `${t('Copy')} {{${menu.tokenName}}}` },
+            ]
+          : []),
+      ]
+    : []
 
   const element = (
     <>
       {varEdit && <VarEditPopover target={varEdit} onClose={() => setVarEdit(null)} />}
+      {menu && <ContextMenu x={menu.x} y={menu.y} items={items} onSelect={select} onClose={() => setMenu(null)} />}
       {varMenuElement}
+      {clipboardError && createPortal(
+        <div role="status" className="pointer-events-none fixed left-1/2 top-3 z-[10000] -translate-x-1/2 rounded-md border border-error/40 bg-surface-2 px-3 py-1.5 text-[11px] text-error shadow-lg">
+          {clipboardError}
+        </div>,
+        document.body,
+      )}
     </>
   )
 

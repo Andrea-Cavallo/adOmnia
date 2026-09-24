@@ -254,24 +254,19 @@ function FidgetLogo({ src, size }: { src: string; size: number }) {
     event.preventDefault()
   }
 
-  const nudge = () => {
-    stopAnimation()
-    velocityRef.current = Math.min(0.055, Math.abs(velocityRef.current) + 0.022)
-    spinThenSettle()
-  }
-
   return (
     <div className="relative grid place-items-center">
     <button
       type="button"
-      aria-label={tr('Spin the adOmnia logo')}
-      title={tr('Drag the logo to spin it — faster gestures create more momentum')}
+      aria-label={tr('Open Bug Hunt')}
+      title={tr('Click to play Bug Hunt — or drag the logo to spin it')}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={releaseWithInertia}
       onPointerCancel={releaseWithInertia}
       onLostPointerCapture={releaseWithInertia}
-      onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); nudge() } }}
+      onClick={() => { if (!movedPastThreshold.current) openBugHunt() }}
+      onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openBugHunt() } }}
       data-hub-logo
       style={{ width: size, height: size }}
       className={cn(

@@ -321,7 +321,6 @@ function GraphQLEditor({ body, onChange, requestUrl, search }: { body: RequestBo
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [showSchema, setShowSchema] = useState(false)
   const { resolvedVars } = useScopedResolvedVars()
-  const { onContextMenu: openVarMenu, varMenu } = useTextareaVarMenu(resolvedVars)
 
   const loadCache          = useGraphqlCacheStore((s) => s.load)
   const cacheLoaded        = useGraphqlCacheStore((s) => s.loaded)
@@ -331,6 +330,25 @@ function GraphQLEditor({ body, onChange, requestUrl, search }: { body: RequestBo
   const clearCachedSchema  = useGraphqlCacheStore((s) => s.clearSchema)
   const restoredVarsRef    = useRef(false)
   const queryRef = useRef<HTMLTextAreaElement>(null)
+  const varsRef = useRef<HTMLTextAreaElement>(null)
+
+  const queryMenu = useTextareaVarMenu(resolvedVars, {
+    getValue: () => queryRef.current?.value,
+    setValue: (next, caret) => {
+      onChange({ ...body, raw: next })
+      requestAnimationFrame(() => { queryRef.current?.focus(); queryRef.current?.setSelectionRange(caret, caret) })
+    },
+    selectAll: () => { queryRef.current?.focus(); queryRef.current?.select() },
+  })
+  const varsMenu = useTextareaVarMenu(resolvedVars, {
+    getValue: () => varsRef.current?.value,
+    setValue: (next, caret) => {
+      onChange({ ...body, graphqlVariables: next })
+      if (requestUrl) setCachedVariables(requestUrl, next)
+      requestAnimationFrame(() => { varsRef.current?.focus(); varsRef.current?.setSelectionRange(caret, caret) })
+    },
+    selectAll: () => { varsRef.current?.focus(); varsRef.current?.select() },
+  })
 
   useEffect(() => {
     selectTextareaMatch(queryRef.current, search)
@@ -418,7 +436,8 @@ function GraphQLEditor({ body, onChange, requestUrl, search }: { body: RequestBo
 
   return (
     <div className="flex flex-col gap-2 px-2 pb-2">
-      {varMenu}
+      {queryMenu.varMenu}
+      {varsMenu.varMenu}
       <label className="text-[10px] uppercase tracking-wider text-text-4 px-1">{tr('Query')}</label>
       <textarea
         ref={queryRef}
@@ -426,7 +445,7 @@ function GraphQLEditor({ body, onChange, requestUrl, search }: { body: RequestBo
         placeholder={"query GetUser($id: ID!) {\n  user(id: $id) {\n    id\n    name\n    email\n  }\n}"}
         value={body.raw ?? ''}
         onChange={e => onChange({ ...body, raw: e.target.value })}
-        onContextMenu={openVarMenu}
+        onContextMenu={queryMenu.onContextMenu}
         spellCheck={false}
       />
       <div className="flex items-center gap-2">
@@ -474,11 +493,12 @@ function GraphQLEditor({ body, onChange, requestUrl, search }: { body: RequestBo
       </div>
       {varsOpen && (
         <textarea
+          ref={varsRef}
           className="min-h-[80px] p-3 bg-surface-2 border border-border-2 rounded font-mono text-xs text-text-1 placeholder:text-text-4 resize-y focus:border-accent outline-none"
           placeholder={'{\n  "id": "123"\n}'}
           value={body.graphqlVariables ?? ''}
           onChange={e => { onChange({ ...body, graphqlVariables: e.target.value }); if (requestUrl) setCachedVariables(requestUrl, e.target.value) }}
-          onContextMenu={openVarMenu}
+          onContextMenu={varsMenu.onContextMenu}
           spellCheck={false}
         />
       )}
@@ -529,7 +549,14 @@ function RawEditor({ body, onChange, search }: { body: RequestBody; onChange: (b
   const [error, setError] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const { resolvedVars } = useScopedResolvedVars()
-  const { onContextMenu: openVarMenu, varMenu } = useTextareaVarMenu(resolvedVars)
+  const { onContextMenu: openVarMenu, varMenu } = useTextareaVarMenu(resolvedVars, {
+    getValue: () => textareaRef.current?.value,
+    setValue: (next, caret) => {
+      onChange({ ...body, raw: next })
+      requestAnimationFrame(() => { textareaRef.current?.focus(); textareaRef.current?.setSelectionRange(caret, caret) })
+    },
+    selectAll: () => { textareaRef.current?.focus(); textareaRef.current?.select() },
+  })
 
   useEffect(() => {
     selectTextareaMatch(textareaRef.current, search)

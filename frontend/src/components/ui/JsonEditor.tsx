@@ -10,7 +10,7 @@ import { varNameAtIndex } from '@/lib/substVars'
 import { textIndexAtPoint } from '@/lib/textareaCaret'
 import { ContextMenu } from '@/components/ui/ContextMenu'
 import { VarEditPopover, varEditTarget, type VarEditTarget } from '@/components/ui/VarEditPopover'
-import { useVarContextMenu } from '@/components/ui/varContextMenu'
+import { bodyContextItems, runBodyEdit } from './bodyContextActions'
 import { useKnownUiTranslation } from '@/lib/uiI18n'
 
 const AUTO_CLOSE_PAIRS: Record<string, string> = {
@@ -43,6 +43,8 @@ interface VarTooltip {
 }
 
 interface EnvironmentVariableMenu {
+  body: string
+  tokenName: string | null
   selectionStart: number
   selectionEnd: number
   value: string
@@ -401,7 +403,7 @@ export function JsonEditor({
   const [tooltip, setTooltip] = useState<VarTooltip | null>(null)
   const [envVariableMenu, setEnvVariableMenu] = useState<EnvironmentVariableMenu | null>(null)
   const [varEdit, setVarEdit] = useState<VarEditTarget | null>(null)
-  const { openVarMenu, varMenuElement } = useVarContextMenu(resolvedVars, setVarEdit)
+  const [clipboardError, setClipboardError] = useState('')
   const translateKnown = useKnownUiTranslation()
   // Ctrl+wheel zoom — persisted px font size, shared by textarea/overlay/gutter.
   const [fontPx, setFontPx] = useState(() => {
@@ -613,25 +615,19 @@ export function JsonEditor({
   const handleContextMenu = useCallback((event: React.MouseEvent<HTMLTextAreaElement>) => {
     const textarea = taRef.current
     if (!textarea) return
-    // Right-click on a {{VAR}} edits or copies it — no need to select it first.
-    const varName = varNameAtIndex(textarea.value, charIndexAtPos(textarea, event.clientX, event.clientY))
-    if (varName) {
-      event.preventDefault()
-      setTooltip(null)
-      openVarMenu(varName, event.clientX, event.clientY)
-      return
-    }
     const { selectionStart, selectionEnd } = textarea
     const selectedValue = textarea.value.slice(selectionStart, selectionEnd)
-    if (!selectedValue.trim()) return
-
+    const varName = varNameAtIndex(textarea.value, charIndexAtPos(textarea, event.clientX, event.clientY))
     event.preventDefault()
     setTooltip(null)
 
     const targetEnv = activeEnvId ? environments.find((environment) => environment.id === activeEnvId) : null
     const name = uniqueVariableName(suggestedVariableName(textarea.value, selectionStart, selectedValue), targetEnv?.variables ?? [])
 
+    setClipboardError('')
     setEnvVariableMenu({
+      body: textarea.value,
+      tokenName: varName,
       selectionStart,
       selectionEnd,
       value: selectedValue,
@@ -640,7 +636,7 @@ export function JsonEditor({
       x: event.clientX,
       y: event.clientY,
     })
-  }, [activeEnvId, environments, openVarMenu])
+  }, [activeEnvId, environments])
 
   const saveEnvironmentVariable = useCallback(() => {
     if (!envVariableMenu) return
@@ -788,14 +784,39 @@ export function JsonEditor({
       )}
 
       {varEdit && <VarEditPopover target={varEdit} onClose={() => { setVarEdit(null); taRef.current?.focus() }} />}
-      {varMenuElement}
+      {clipboardError && <div role="status" className="absolute bottom-2 right-2 rounded bg-surface-1 px-3 py-2 text-xs text-error">{clipboardError}</div>}
 
       {envVariableMenu && (
         <ContextMenu
           x={envVariableMenu.x}
           y={envVariableMenu.y}
-          items={[{ id: 'extract-environment-variable', label: `Extract to environment variable · {{${envVariableMenu.name}}}` }]}
-          onSelect={(id) => { if (id === 'extract-environment-variable') saveEnvironmentVariable() }}
+          items={[
+            ...bodyContextItems(true, envVariableMenu.selectionEnd > envVariableMenu.selectionStart).map(item => ({ ...item, label: translateKnown(item.label) })),
+            ...(envVariableMenu.value.trim() ? [{ id: 'extract-environment-variable', separatorBefore: true, label: `Extract to environment variable · {{${envVariableMenu.name}}}` }] : []),
+            ...(envVariableMenu.tokenName ? [
+              { id: 'edit-variable', separatorBefore: true, label: `${translateKnown('Edit')} {{${envVariableMenu.tokenName}}}` },
+              { id: 'copy-variable', label: translateKnown('Copy value'), disabled: resolvedVars?.[envVariableMenu.tokenName] === undefined },
+              { id: 'copy-reference', label: `${translateKnown('Copy')} {{${envVariableMenu.tokenName}}}` },
+            ] : []),
+          ]}
+          onSelect={(id) => {
+            const menu = envVariableMenu
+            if (id === 'extract-environment-variable') { saveEnvironmentVariable(); return }
+            setEnvVariableMenu(null)
+            if (id === 'edit-variable' && menu.tokenName) { setVarEdit(varEditTarget(menu.tokenName, menu.x, menu.y)); return }
+            if (id === 'select-all') {
+              requestAnimationFrame(() => { taRef.current?.focus(); taRef.current?.select() })
+              return
+            }
+            const action = id === 'copy-variable' || id === 'copy-reference'
+              ? navigator.clipboard.writeText(id === 'copy-reference' ? `{{${menu.tokenName}}}` : resolvedVars?.[menu.tokenName!] ?? '')
+              : runBodyEdit(id, { body: menu.body, start: menu.selectionStart, end: menu.selectionEnd }, navigator.clipboard,
+                () => taRef.current?.value, (next, caret) => {
+                  commitEdit(next)
+                  requestAnimationFrame(() => { taRef.current?.focus(); taRef.current?.setSelectionRange(caret, caret) })
+                })
+            void action.catch(() => setClipboardError(translateKnown('Clipboard access failed. Use the keyboard shortcut.')))
+          }}
           onClose={() => setEnvVariableMenu(null)}
         />
       )}

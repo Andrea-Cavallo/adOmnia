@@ -13,6 +13,7 @@ import { useSettingsStore } from '@/stores/settings'
 import { useAppStore } from '@/stores/app'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { ContextMenu } from '@/components/ui/ContextMenu'
+import { bodyContextItems } from '@/components/ui/bodyContextActions'
 import { uid } from '@/lib/types'
 import defaultResponseLogo from '../../../../assets/images/spinner.png'
 import { useResponseLogo, useIsSketchSkin } from '@/lib/brandAssets'
@@ -535,7 +536,8 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
     setTimeout(() => setCopiedBody(false), 1200)
   }
   // Right-click on a response value → save it into an environment variable.
-  const [valueMenu, setValueMenu] = useState<{ x: number; y: number; value: string; suggestedKey: string } | null>(null)
+  const [valueMenu, setValueMenu] = useState<{ x: number; y: number; value: string; copyText: string; suggestedKey: string } | null>(null)
+  const [clipboardError, setClipboardError] = useState('')
   const [saveVar, setSaveVar] = useState<{ value: string; suggestedKey: string } | null>(null)
   const [showDiff, setShowDiff] = useState(false)
   const [diffRightBody, setDiffRightBody] = useState('')
@@ -549,25 +551,25 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
   // in the Body or Headers views.
   const onBodyContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
     if (tab !== 'body' && tab !== 'headers') return
-    const selection = window.getSelection()?.toString().trim() ?? ''
+    const selection = window.getSelection()?.toString() ?? ''
     const targetEl = e.target as HTMLElement
     const tokenText = targetEl.textContent ?? ''
     const isToken = targetEl.tagName === 'SPAN' && tokenText.length > 0 && tokenText.length <= 2000
     const value = selection || (isToken ? unquoteJsonValue(tokenText) : '')
-    if (!value) return
     e.preventDefault()
+    setClipboardError('')
     const suggestedKey = selection ? '' : guessKeyFromSpan(targetEl)
-    setValueMenu({ x: e.clientX, y: e.clientY, value, suggestedKey })
+    setValueMenu({ x: e.clientX, y: e.clientY, value, copyText: selection || (isToken ? tokenText : ''), suggestedKey })
   }
 
   const onBodyKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return
     if (tab !== 'body' && tab !== 'headers') return
-    const selection = window.getSelection()?.toString().trim() ?? ''
-    if (!selection) return
+    const selection = window.getSelection()?.toString() ?? ''
     event.preventDefault()
+    setClipboardError('')
     const rect = event.currentTarget.getBoundingClientRect()
-    setValueMenu({ x: rect.left + 16, y: rect.top + 16, value: selection, suggestedKey: '' })
+    setValueMenu({ x: rect.left + 16, y: rect.top + 16, value: selection, copyText: selection, suggestedKey: '' })
   }
 
   // ── Find-in-response ──────────────────────────────────────────────────────
@@ -1143,17 +1145,26 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
         </div>
       </div>
 
+      {clipboardError && <div role="status" className="px-3 py-2 text-xs text-error">{clipboardError}</div>}
       {valueMenu && (
         <ContextMenu
           x={valueMenu.x}
           y={valueMenu.y}
           items={[
-            { id: 'save', label: tr('Save as environment variable…') },
-            { id: 'copy', label: tr('Copy value') },
+            ...bodyContextItems(false, !!valueMenu.copyText).map(item => ({ ...item, label: tr(item.label) })),
+            ...(valueMenu.value.trim() ? [{ id: 'save', separatorBefore: true, label: tr('Save as environment variable…') }] : []),
           ]}
           onSelect={(id) => {
             if (id === 'save') setSaveVar({ value: valueMenu.value, suggestedKey: valueMenu.suggestedKey })
-            else if (id === 'copy') navigator.clipboard.writeText(valueMenu.value)
+            else if (id === 'copy' || id === 'copy-body') {
+              void navigator.clipboard.writeText(id === 'copy-body' ? response.body : valueMenu.copyText)
+                .catch(() => setClipboardError(tr('Clipboard access failed. Use the keyboard shortcut.')))
+            } else if (id === 'select-all' && bodyRef.current) {
+              const range = document.createRange()
+              range.selectNodeContents(bodyRef.current)
+              const selection = window.getSelection()
+              selection?.removeAllRanges(); selection?.addRange(range)
+            }
             setValueMenu(null)
           }}
           onClose={() => setValueMenu(null)}

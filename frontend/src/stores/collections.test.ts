@@ -21,6 +21,11 @@ vi.mock('@/lib/storeSave', () => ({
 }))
 
 import { DEFAULT_WORKSPACE_ID, parseCollectionsV3, useCollectionsStore } from '@/stores/collections'
+import { blankRequest, type RequestItem } from '@/lib/types'
+
+function makeRequest(name: string): RequestItem {
+  return blankRequest('GET', name)
+}
 
 const indexV3 = JSON.stringify({
   version: 3,
@@ -165,6 +170,50 @@ describe('collections workspaces', () => {
 
   it('rejects mismatched v3 active payloads', () => {
     expect(() => parseCollectionsV3(indexV3, workspaceB)).toThrow('active payload')
+  })
+
+  it('reorders a request within the same folder', async () => {
+    const a = { ...makeRequest('A') }
+    const b = { ...makeRequest('B') }
+    const c = { ...makeRequest('C') }
+    const folder = { id: 'folder-1', name: 'Folder', type: 'folder' as const, children: [a, b, c] }
+    useCollectionsStore.setState({
+      collections: [{ id: 'col-a', name: 'A API', children: [folder] }],
+      workspaces: [],
+      activeWorkspaceId: DEFAULT_WORKSPACE_ID,
+      loadedWorkspaceIds: [],
+      shardsInitialized: false,
+      loaded: true,
+      loadError: false,
+    })
+
+    // Drag A after C (targetIndex = 3) inside the same folder.
+    useCollectionsStore.getState().moveNode('col-a', a.id, 'col-a', 'folder-1', 3)
+
+    const children = (useCollectionsStore.getState().collections[0].children[0] as { children: { id: string }[] }).children
+    expect(children.map((n) => n.id)).toEqual([b.id, c.id, a.id])
+  })
+
+  it('reorders a request before a sibling within the same folder', async () => {
+    const a = { ...makeRequest('A') }
+    const b = { ...makeRequest('B') }
+    const c = { ...makeRequest('C') }
+    const folder = { id: 'folder-1', name: 'Folder', type: 'folder' as const, children: [a, b, c] }
+    useCollectionsStore.setState({
+      collections: [{ id: 'col-a', name: 'A API', children: [folder] }],
+      workspaces: [],
+      activeWorkspaceId: DEFAULT_WORKSPACE_ID,
+      loadedWorkspaceIds: [],
+      shardsInitialized: false,
+      loaded: true,
+      loadError: false,
+    })
+
+    // Drag C before A (targetIndex = 0) inside the same folder.
+    useCollectionsStore.getState().moveNode('col-a', c.id, 'col-a', 'folder-1', 0)
+
+    const children = (useCollectionsStore.getState().collections[0].children[0] as { children: { id: string }[] }).children
+    expect(children.map((n) => n.id)).toEqual([c.id, a.id, b.id])
   })
 
   it('initializes every shard on the first save after a legacy fallback', async () => {
