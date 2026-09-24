@@ -505,12 +505,6 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
                 max={600}
                 onChange={(v) => updateAppearance({ sidebarWidth: v })}
               />
-              <Toggle
-                label={s.appearance.showRailIconsOnly}
-                desc={s.appearance.showRailIconsOnlyDesc}
-                checked={settings.appearance.showRailIconsOnly}
-                onChange={(v) => updateAppearance({ showRailIconsOnly: v })}
-              />
             </SettingsCard>
             <SettingsCard>
               <div className="py-2 px-1 flex items-center justify-between">

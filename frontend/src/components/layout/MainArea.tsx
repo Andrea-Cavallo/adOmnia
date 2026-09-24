@@ -370,15 +370,20 @@ function ActiveRequestBar({
           <Trash2 size={14} />
         </button>
         <button
+          type="button"
           onClick={onToggleRecording}
           title={recording ? 'Stop recording API calls' : 'Record API calls into a Flow'}
+          aria-label={recording ? `Stop recording API calls (${recordingCount} captured)` : 'Record API calls into a Flow'}
+          aria-pressed={recording}
           className={cn(
-            'flex h-[var(--ui-control-h)] min-w-[82px] items-center justify-center gap-1.5 rounded-md border px-2.5 text-[11px] font-bold transition-colors',
-            recording ? 'border-error/45 bg-error/12 text-error hover:bg-error/20' : 'border-border-2 bg-surface-2 text-text-2 hover:border-error/45 hover:text-error',
+            'api-record-action flex h-[var(--ui-control-h)] min-w-[92px] items-center justify-center gap-2 px-3 text-[11px] font-extrabold',
+            recording && 'is-recording',
           )}
         >
-          {recording ? <Square size={12} fill="currentColor" /> : <Circle size={13} fill="currentColor" className="text-error" />}
-          {recording ? `Stop · ${recordingCount}` : 'Record'}
+          <span className="api-record-action__indicator" aria-hidden="true">
+            {recording ? <Square size={8} fill="currentColor" /> : <Circle size={9} fill="currentColor" />}
+          </span>
+          <span>{recording ? `Stop · ${recordingCount}` : 'Record'}</span>
         </button>
 
         {recording && <span className="hidden items-center gap-1 text-[10px] font-semibold text-error lg:flex"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-error" />{tr('Recording')}</span>}
@@ -394,11 +399,12 @@ function ActiveRequestBar({
           </button>
         ) : (
           <button
+            type="button"
             onClick={onSend}
             disabled={!request.url}
-            className="glass-action flex h-[var(--ui-control-h)] min-w-[88px] items-center justify-center gap-1.5 rounded-md px-3 text-[11px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
+            className="api-send-action flex h-[var(--ui-control-h)] min-w-[96px] items-center justify-center gap-2 px-3.5 text-[11px] font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <Send size={14} />
+            <Send className="api-send-action__icon" size={15} strokeWidth={2.35} aria-hidden="true" />
             {tr('Send')}
           </button>
         )}
