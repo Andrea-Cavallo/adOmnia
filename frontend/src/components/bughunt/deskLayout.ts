@@ -48,6 +48,12 @@ export function buildDeskRoute(map: Level) {
     map.bits = map.bits.filter(b => b.x < gap.left || b.x > gap.right)
   }
   map.anchors = [{ x: 2780, y: 245 }, { x: 3000, y: 220 }, { x: 4270, y: 240 }]
+  // Module shelves are safe stopping points between the collapsing footholds.
+  for (const power of map.powers) {
+    const shelf = map.platforms.find(p => p.y === power.y + 15 && p.x <= power.x - 16 && p.x + p.w >= power.x + 16)
+    if (shelf) shelf.unstable = false
+  }
+  if (map.hotfix) map.hotfix.y = 460 - map.hotfix.h
   // Code packets sit on deliberate jump arcs and branch landings, not in coin rows.
   map.bits=map.bits.filter(bit=>bit.x>=1540)
   const packets = [[380,400],[480,355],[635,290],[760,275],[960,200],[1040,195],[1370,370],[1515,250]]

@@ -158,6 +158,7 @@ const en = {
   signSecret: '// SECRET BRANCH',
   gatePassed: 'BUILD PASSED',
   gateLocked: 'HOTFIX REQUIRED',
+  gateGuarded: 'DEFEAT THE GUARD',
 }
 
 export type BugHuntCopy = typeof en
@@ -311,6 +312,7 @@ const it: BugHuntCopy = {
   signSecret: '// RAMO SEGRETO',
   gatePassed: 'BUILD PASSED',
   gateLocked: 'HOTFIX RICHIESTO',
+  gateGuarded: 'SCONFIGGI IL GUARDIANO',
 }
 
 export const BUG_HUNT_COPY: Record<Lang, BugHuntCopy> = { en, it }

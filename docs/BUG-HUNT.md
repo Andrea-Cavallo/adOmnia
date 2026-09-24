@@ -263,3 +263,5 @@ La persistenza può usare chiavi `localStorage` dedicate e versionate per scoper
 | Un motore terzo aumenta bundle e avvio | Prima misurare canvas puro; integrare Phaser solo se il guadagno giustifica il costo. |
 
 Stima indicativa, da rivedere dopo il prototipo: **sviluppo 12–20 giorni persona** (prototipo 3–5, livelli e sistemi 6–10, integrazione e verifica 3–5); **asset 5–9 giorni persona** (sprite e tileset 3–5, sfondi/UI/audio 2–4). Il tempo degli asset dipende soprattutto dalla qualità delle animazioni richiesta. Il prototipo è il gate: una sua prova negativa richiede ritoccare controlli e collisioni prima di impegnarsi sulle altre mappe.
+
+Developer Desk v0.9.23: module-bearing shelves stay stable, the final objective is a grounded flagged module, and exit graphics distinguish a missing objective from a living guard. Placement and power regression tests cover shields, healing and fall cleanup. Browser rendering checked; native desktop playthrough remains outstanding.

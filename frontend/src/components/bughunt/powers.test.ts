@@ -20,6 +20,7 @@ type Inspectable = {
   health: number
   level: number
   levelComplete: boolean
+  hurt: (fell?: boolean) => void
 }
 
 function createGame() {
@@ -56,6 +57,45 @@ describe('Bug Hunt developer power-ups', () => {
     for (const level of LEVELS.slice(1)) {
       expect([...new Set(level.powers.map((power) => power.kind))].sort()).toEqual(['breakpoint', 'gc', 'revert', 'shuriken', 'sudo'])
     }
+  })
+
+  it('a collected shield absorbs one hit, but never a fall', () => {
+    const { game, tick } = createGame()
+    grab(game, tick, 'shield', 0)
+    game.hurt()
+    expect(game.getSnapshot()).toMatchObject({ health: 3, shield: false })
+    game.player.invulnerable = 0
+    game.hurt()
+    expect(game.health).toBe(2)
+    game.restart()
+    grab(game, tick, 'shield', 0)
+    game.hurt(true)
+    expect(game.getSnapshot()).toMatchObject({ health: 2, shield: false })
+    game.destroy()
+  })
+
+  it('leaves healing on the shelf at full health and consumes it only when needed', () => {
+    const { game, tick } = createGame()
+    const index = grab(game, tick, 'heal', 0)
+    expect(game.powers.picked.has(`0:${index}`)).toBe(false)
+    game.health = 2
+    grab(game, tick, 'heal', 0)
+    expect(game.health).toBe(3)
+    expect(game.powers.picked.has(`0:${index}`)).toBe(true)
+    game.destroy()
+  })
+
+  it('clears collected jump and speed boosts on a fall and on restart', () => {
+    const { game, tick } = createGame()
+    grab(game, tick, 'jump', 0)
+    grab(game, tick, 'boost', 0)
+    expect(game.getSnapshot().branchJump).toBeGreaterThan(0)
+    expect(game.getSnapshot().mergeBoost).toBeGreaterThan(0)
+    game.hurt(true)
+    expect(game.getSnapshot()).toMatchObject({ branchJump: 0, mergeBoost: 0 })
+    game.restart()
+    expect(game.powers.picked.size).toBe(0)
+    game.destroy()
   })
 
   it('sudo: bugs are deleted on contact and hazards do no damage', () => {

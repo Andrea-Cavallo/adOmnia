@@ -661,7 +661,7 @@ export function renderLocalhost(ctx: CanvasRenderingContext2D, state: VisualStat
   const EXIT_X = levelExit(state.level), HOTFIX = levelHotfix(state.level)
   const checkpoints = levelCheckpoints(state.level)
   const reached = state.checkpointIndex ?? (state.checkpoint ? 0 : -1)
-  const gateOpen = state.hotfix && (state.level !== 2 || state.boss.health === 0)
+  const gateOpen = state.hotfix && !state.enemies.some(b => b.kind === 'null' && b.alive) && (state.level !== 2 || state.boss.health === 0)
   const t = state.reducedMotion ? 0 : state.time
   if (state.level !== 0 || !drawDeskBackground(ctx, state.camera)) drawWorld(ctx, state.camera, t, state.level)
   ctx.save()
@@ -724,13 +724,22 @@ export function renderLocalhost(ctx: CanvasRenderingContext2D, state: VisualStat
   }
 
   if (!state.hotfix) {
-    const x = HOTFIX.x + 15, y = HOTFIX.y + 17 + Math.sin(t * 3) * 4
+    const x = HOTFIX.x + 15, y = HOTFIX.y + 17 + (state.level === 0 ? 0 : Math.sin(t * 3) * 4)
     glow(ctx, x, y, 55, '#57eacf35')
+    if (state.level === 0) {
+      box(ctx, HOTFIX.x - 3, HOTFIX.y + HOTFIX.h - 3, 36, 4, 2, '#0009')
+      box(ctx, HOTFIX.x, HOTFIX.y, 30, HOTFIX.h, 4, '#617386')
+      box(ctx, HOTFIX.x + 3, HOTFIX.y + 3, 24, HOTFIX.h - 6, 3, '#10352d')
+      line(ctx, [HOTFIX.x + 2, HOTFIX.y + 2, HOTFIX.x + 28, HOTFIX.y + 2, HOTFIX.x + 28, HOTFIX.y + HOTFIX.h - 2], '#80ffd0', 2)
+      ctx.textAlign = 'center'; text(ctx, '</>', x, y + 5, '#a9f0da', 13); ctx.textAlign = 'left'
+      line(ctx, [x, HOTFIX.y, x, HOTFIX.y - 27, x + 20, HOTFIX.y - 19, x, HOTFIX.y - 12], '#80ffd0', 2)
+    } else {
     ctx.strokeStyle = '#69e5d088'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y, 24 + Math.sin(t * 2) * 2, 0, Math.PI * 2); ctx.stroke()
     box(ctx, x - 13, y - 13, 26, 26, 5, '#81f5d6')
     box(ctx, x - 8, y - 8, 16, 16, 2, '#163f42')
     text(ctx, '+', x - 5, y + 5, '#dcfff5', 15)
-    text(ctx, state.level===0 ? 'DEPLOY' : 'HOTFIX', x - 22, y - 34, '#a9f0da', 11)
+    text(ctx, 'HOTFIX', x - 22, y - 34, '#a9f0da', 11)
+    }
   }
 
   const gate = gateOpen ? '#76e8b9' : '#9480b1'
@@ -742,7 +751,7 @@ export function renderLocalhost(ctx: CanvasRenderingContext2D, state: VisualStat
     ctx.fillStyle = gateOpen ? `rgba(97, 237, 176, ${0.12 + i * 0.06})` : '#56516833'
     ctx.fillRect(EXIT_X - 25, 363 + ((i * 19 + t * 20) % 88), 50, 3)
   }
-  ctx.textAlign = 'center'; text(ctx, gateOpen ? c.gatePassed : c.gateLocked, EXIT_X, 329, gate, 11); ctx.textAlign = 'left'
+  ctx.textAlign = 'center'; text(ctx, gateOpen ? c.gatePassed : state.hotfix ? c.gateGuarded : c.gateLocked, EXIT_X, 329, gate, 11); ctx.textAlign = 'left'
   text(ctx, gateOpen ? '→' : '×', EXIT_X - 11, 411, gate, 31)
 
   const bugTime = state.reducedMotion ? 0 : state.worldTime

@@ -6,6 +6,17 @@ import { createDeskCombat } from './deskCombat'
 import type { Difficulty } from './difficulty'
 
 describe('Developer Desk learning beats', () => {
+  it('rests every module on a stable shelf with room to land and keeps packets clear', () => {
+    const map = LEVELS[0]
+    for (const power of map.powers) {
+      const shelf = map.platforms.find(p => p.y === power.y + 15 && p.x <= power.x - 16 && p.x + p.w >= power.x + 16)
+      expect(shelf, power.kind).toBeDefined()
+      expect(shelf?.unstable, power.kind).toBeFalsy()
+      expect(map.bits.some(b => Math.abs(b.x - power.x) < 44 && Math.abs(b.y - power.y) < 85)).toBe(false)
+    }
+    expect(map.hotfix!.y + map.hotfix!.h).toBe(460)
+    expect(map.platforms.some(p => p.unstable)).toBe(true)
+  })
   beforeEach(() => { vi.stubGlobal('requestAnimationFrame', () => 1); vi.stubGlobal('cancelAnimationFrame', vi.fn()) })
   afterEach(() => vi.unstubAllGlobals())
   it('keeps the first jumps safe and teaches only one zombie and one flyer before the first arena', () => {
