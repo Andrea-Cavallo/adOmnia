@@ -8,7 +8,7 @@ import { BOSS_HEALTH, BOSS_MODULES, bossPhase, platformOffline, outagePhase, BOS
 import { drawBreakpointMarkers, drawGcWave, drawPowerOverlay, drawPowerPickups, drawRewindGhosts, drawSudoAura } from './powerVisuals'
 import type { PowerState } from './powers'
 
-export type PlayerVisual = { x: number; y: number; w: number; h: number; vx: number; vy: number; grounded: boolean; facing: number; invulnerable: number; squash: number; dash?: number
+export type PlayerVisual = { x: number; y: number; w: number; h: number; vx: number; vy: number; grounded: boolean; facing: number; invulnerable: number; squash: number; slide?: number; slideCarry?: number; dash?: number
   stride?: number; idleTime?: number; recoil?: number; lean?: number; aimUp?: boolean
   celebrate?: number; recover?: number; lookX?: number; lookY?: number; danger?: boolean; speech?: string; speechTime?: number; crouch?: boolean
   grapple?: { x: number; y: number; length: number } | null }
@@ -680,7 +680,7 @@ export function renderLocalhost(ctx: CanvasRenderingContext2D, state: VisualStat
   const c = state.copy
   if (state.level === 0) {
   drawDeskNote(ctx, 48, 292, c.signFriday, c.signFridayQuote)
-  drawDeskNote(ctx, 550, 235, 'Retry Gremlin', c.signBugHint)
+  drawDeskNote(ctx, 550, 235, 'DESK BUG', c.signBugHint)
   for (const [i, x] of checkpoints.entries()) drawDeskNote(ctx, x - 55, i ? 196 : 272, c.signCommit, reached >= i ? c.signCommitSaved : c.signCommitHint)
   // The secret branch whispers until it is found.
   if (!state.secret) { ctx.globalAlpha = 0.55 + Math.sin(t * 4) * 0.35; text(ctx, '?', 2220, 220 + Math.sin(t * 2.4) * 4, '#d1a6ff', 22); ctx.globalAlpha = 1 }
@@ -756,7 +756,7 @@ export function renderLocalhost(ctx: CanvasRenderingContext2D, state: VisualStat
   drawRewindGhosts(ctx, state.powers)
   drawSudoAura(ctx, state.player, state.time, state.powers.sudo)
   drawCable(ctx, state, t)
-  if (state.level !== 0 || !drawDeskHero(ctx, state.player, t, state.reducedMotion, state.powers.shuriken)) drawRobot(ctx, state.player, t, state.reducedMotion, state.gravity < 0)
+  if (state.level !== 0 || !drawDeskHero(ctx, state.player, t, state.reducedMotion)) drawRobot(ctx, state.player, t, state.reducedMotion, state.gravity < 0)
   if ((state.player.speechTime ?? 0) > 0 && state.player.speech) {
     const p = state.player
     ctx.font = '600 11px monospace'

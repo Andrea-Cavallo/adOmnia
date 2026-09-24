@@ -11,7 +11,7 @@ import { rankForScore, RUSH_TARGET } from './rush'
 import { LEVELS } from './level'
 import avatarUrl from './assets/a0-avatar.png'
 
-const CONTROL_KEYS = new Set(['KeyA', 'KeyD', 'KeyW', 'KeyS', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space', 'KeyX', 'ShiftLeft', 'ShiftRight', 'KeyR', 'KeyE', 'KeyF'])
+const CONTROL_KEYS = new Set(['KeyC', 'KeyA', 'KeyD', 'KeyW', 'KeyS', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space', 'KeyX', 'ShiftLeft', 'ShiftRight', 'KeyR', 'KeyE', 'KeyF'])
 
 export function BugHuntOverlay({ onClose }: { onClose: () => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -192,6 +192,7 @@ export function BugHuntOverlay({ onClose }: { onClose: () => void }) {
                   <h2>{copy.controlsTitle}</h2>
                   <dl className="bh-keygrid">
                     <dt><kbd>A</kbd><kbd>D</kbd></dt><dd>{copy.keysMove}</dd>
+                    <dt><kbd>C</kbd></dt><dd>{copy.keysSlide}</dd>
                     <dt><kbd>{copy.keySpace}</kbd></dt><dd>{copy.keysJump}</dd>
                     <dt><kbd>X</kbd></dt><dd>{copy.keysDash}</dd>
                     <dt><kbd>F</kbd></dt><dd>{copy.keysFire}</dd>
@@ -237,7 +238,7 @@ export function BugHuntOverlay({ onClose }: { onClose: () => void }) {
           </div>
         </div>}
       </div>
-      <footer className="bh-footer"><div className="bh-keys"><span><kbd>A</kbd> <kbd>D</kbd> / <kbd>←</kbd> <kbd>→</kbd> {copy.keysMove}</span><span><kbd>{copy.keySpace}</kbd> {copy.keysJump}</span><span><kbd>X</kbd> / <kbd>Shift</kbd> {copy.keysDash}</span><span><kbd>F</kbd> {copy.keysFire}</span><span><kbd>S</kbd> / <kbd>↓</kbd> {copy.keysCrouch}</span><span><kbd>W</kbd>+<kbd>F</kbd> {copy.keysAimUp}</span><span><kbd>E</kbd> {copy.keysGrapple}</span><span><kbd>R</kbd> {copy.keysRevert}</span><span><kbd>Esc</kbd> {copy.keysPause}</span></div><span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Flag size={11} />{snapshot.checkpoint ? copy.checkpointSaved : copy.findCheckpoint}</span></footer>
+      <footer className="bh-footer"><div className="bh-keys"><span><kbd>A</kbd> <kbd>D</kbd> / <kbd>←</kbd> <kbd>→</kbd> {copy.keysMove}</span><span><kbd>{copy.keySpace}</kbd> {copy.keysJump}</span><span><kbd>C</kbd> {copy.keysSlide}</span><span><kbd>X</kbd> / <kbd>Shift</kbd> {copy.keysDash}</span><span><kbd>F</kbd> {copy.keysFire}</span><span><kbd>S</kbd> / <kbd>↓</kbd> {copy.keysCrouch}</span><span><kbd>W</kbd>+<kbd>F</kbd> {copy.keysAimUp}</span><span><kbd>E</kbd> {copy.keysGrapple}</span><span><kbd>R</kbd> {copy.keysRevert}</span><span><kbd>Esc</kbd> {copy.keysPause}</span></div><span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Flag size={11} />{snapshot.checkpoint ? copy.checkpointSaved : copy.findCheckpoint}</span></footer>
     </div>
   )
 }

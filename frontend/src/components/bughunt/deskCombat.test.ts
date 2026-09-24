@@ -14,8 +14,13 @@ function fixture(kind: DeskFoe) {
 }
 
 describe('Developer Desk readable arenas', () => {
+  it('the Brute visibly leaves the floor during its announced slam', () => {
+    const { b, tick, until } = fixture('legacy')
+    until('attack'); tick(18)
+    expect(b.y + b.h).toBeLessThan(400)
+  })
   it('lets a0 retreat during the gradual entry and locks only after it is complete', () => {
-    const { a, b, p, tick, until } = fixture('retry')
+    const { a, b, p, tick, until } = fixture('legacy')
     tick(31)
     expect(b.combat!.gate).toBeGreaterThan(.3)
     expect(b.combat!.gate).toBeLessThan(.5)
@@ -31,6 +36,25 @@ describe('Developer Desk readable arenas', () => {
     expect(b.combat!.gate).toBe(0)
   })
 
+  it.each(['retry', 'soap'] as DeskFoe[])('%s never closes a gate or prevents leaving', kind => {
+    const { a, b, p, tick, until } = fixture(kind)
+    until('attack')
+    expect(b.combat!.locked).toBe(false)
+    expect(b.combat!.gate).toBe(0)
+    p.x = a.right + 60; tick(); confineToArena(b, p)
+    expect(p.x).toBe(a.right + 60)
+  })
+
+  it('the Brute charge crosses the arena even when a0 was nearby at tell', () => {
+    const { b, p, until, tick } = fixture('legacy')
+    until('recover'); until('approach')
+    p.x = b.x + b.w + 25
+    until('tell')
+    expect(Math.abs(b.combat!.targetX - b.combat!.startX)).toBeGreaterThan(350)
+    until('attack'); tick(30)
+    expect(Math.abs(b.x - b.combat!.startX)).toBeGreaterThan(150)
+  })
+
   for (const kind of Object.keys(DESK_ARENAS) as DeskFoe[]) {
     it(`${kind}: alternates two committed attacks with warning, safe space and recovery`, () => {
       const { a, b, p, shots, tick, until } = fixture(kind)
@@ -39,7 +63,7 @@ describe('Developer Desk readable arenas', () => {
         until('tell')
         expect(b.combat!.move).toBe(move)
         expect(b.combat!.duration).toBeGreaterThanOrEqual(.9)
-        expect(arenaDamageable(b)).toBe(false)
+        expect(arenaDamageable(b)).toBe(kind !== 'legacy')
         expect(arenaAttackHits(b, p)).toBe(false)
         expect(arenaBodyDangerous(b)).toBe(false)
         const target = b.combat!.targetX

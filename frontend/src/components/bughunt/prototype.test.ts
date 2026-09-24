@@ -21,7 +21,7 @@ type Inspectable = {
   purgeX: number
   gravitySign: number
   shots: { x: number; y: number; vx: number; vy?: number; life: number; enemy: boolean }[]
-  enemies: { x: number; y: number; w: number; h: number; alive: boolean; direction: number; kind?: string; hp?: number; alert?: number; fuse?: number; homeY?: number; left: number; right: number }[]
+  enemies: { x: number; y: number; w: number; h: number; alive: boolean; direction: number; kind?: string; hover?: boolean; encounter?: 'retry' | 'soap' | 'legacy'; hp?: number; alert?: number; fuse?: number; homeY?: number; left: number; right: number }[]
   checkpoint: boolean
 }
 
@@ -144,10 +144,10 @@ describe('Bug Hunt prototype rules', () => {
   })
 
   it('extends only Localhost with encounters and a reachable final exit', () => {
-    expect(levelWidth(0)).toBe(5460)
+    expect(levelWidth(0)).toBe(6020)
     expect(LEVELS[0].bugs.filter(b => b.encounter)).toHaveLength(3)
-    expect(levelExit(0)).toBe(5340)
-    expect(levelHotfix(0).x).toBe(5230)
+    expect(levelExit(0)).toBe(5900)
+    expect(levelHotfix(0).x).toBe(5810)
     expect(levelWidth(1)).toBe(3220)
     expect(levelExit(2)).toBe(3100)
   })
@@ -587,8 +587,9 @@ describe('magnetic grapple', () => {
 
   it('chains grapple -> launch -> dash -> bug without ever touching the ground', () => {
     const { game, tick } = createGame()
+    game.enemies.filter(b => b.encounter).forEach(b => { b.alive = false })
     const anchor = LEVELS[0].anchors[4]
-    const target = game.enemies.find(b => b.y < 400)!
+    const target = game.enemies.find(b => b.hover && !b.encounter)!
     game.player.x = anchor.x - 120
     game.player.y = anchor.y + 40
     game.player.grounded = false
@@ -619,7 +620,7 @@ describe('magnetic grapple', () => {
     expect(game.player.dash).toBeGreaterThan(0)
     fly(10)
 
-    expect(target.alive).toBe(false)
+    expect(target.alive, JSON.stringify({p:game.player,target})).toBe(false)
     expect(touchedGround).toBe(false)
     game.destroy()
   })

@@ -26,9 +26,20 @@ describe('developer world campaign encounters', () => {
   beforeEach(() => { vi.stubGlobal('requestAnimationFrame', () => 1); vi.stubGlobal('cancelAnimationFrame', vi.fn()) })
   afterEach(() => vi.unstubAllGlobals())
 
-  it('keeps outside enemies and their fire from interrupting an arena entrance', () => {
+  it('starts the Brute encounter when a0 runs straight through the entrance', () => {
     const { game, tick } = create()
-    game.player.x = DESK_ARENAS.retry.left + 50
+    const brute = game.enemies.find(b => b.encounter === 'legacy')!
+    game.enemies.forEach(b => { if (b !== brute) b.alive = false })
+    game.player.x = DESK_ARENAS.legacy.left + 20
+    game.keyDown('KeyD'); tick(120); game.keyUp('KeyD')
+    expect(brute.combat?.locked).toBe(true)
+    expect(brute.combat?.phase).not.toBe('waiting')
+    game.destroy()
+  })
+
+  it('keeps outside enemies and their fire from interrupting the Brute entrance', () => {
+    const { game, tick } = create()
+    game.player.x = DESK_ARENAS.legacy.left + 50
     tick()
     const outside = game.enemies.find(b => !b.encounter)!
     outside.x = game.player.x; outside.y = game.player.y
@@ -54,15 +65,17 @@ describe('developer world campaign encounters', () => {
       game.keyUp('KeyA'); game.keyUp('KeyD'); game.keyUp('KeyF')
       if (c?.phase === 'tell' && c.cycles !== cycle) {
         cycle = c.cycles
-        target = game.player.x < (a.left + a.right) / 2 ? a.right - game.player.w - 25 : a.left + 25
+        const left = Math.min(c.startX, c.targetX) - game.player.w - 70
+        const right = Math.max(c.startX, c.targetX) + foe.w + 70
+        target = kind === 'legacy' ? (left >= a.left + 12 && Math.abs(left - game.player.x) < Math.abs(right - game.player.x) || right > a.right - game.player.w - 12 ? left : right) : Math.min(a.right - game.player.w - 25, kind === 'soap' ? 3710 : a.right)
       }
       if (c?.phase === 'tell' || c?.phase === 'attack') {
         if (Math.abs(target - game.player.x) > 6) game.keyDown(target > game.player.x ? 'KeyD' : 'KeyA')
       }
-      if (c?.phase === 'tell' && kind !== 'soap' && c.clock >= c.duration - .35 && jumped !== c.cycles) {
+      if (c && kind !== 'soap' && (kind !== 'legacy' || c.move === 1) && (c.phase === 'tell' && c.clock >= c.duration - .1 || c.phase === 'attack') && Math.abs(foe.x - game.player.x) < 210 && jumped !== c.cycles) {
         game.keyUp('Space'); game.keyDown('Space'); jumped = c.cycles
       }
-      if (c?.phase === 'recover') {
+      if (c?.phase === 'recover' || kind !== 'legacy' && c && !['waiting', 'entrance'].includes(c.phase)) {
         game.player.facing = foe.x > game.player.x ? 1 : -1
         game.keyDown('KeyF')
       }
@@ -95,6 +108,16 @@ describe('developer world campaign encounters', () => {
     tick(1500)
     expect(boss.alive).toBe(false)
     game.keyUp('KeyF'); game.player.x = levelExit(0); tick()
+    expect(game.getSnapshot().levelComplete).toBe(true)
+    game.destroy()
+  })
+
+  it('allows exiting after the Brute without backtracking to optional monsters', () => {
+    const { game, tick } = create()
+    game.enemies.find(b => b.encounter === 'legacy')!.alive = false
+    game.player.x = levelHotfix(0).x; tick()
+    game.player.x = levelExit(0); tick()
+    expect(game.enemies.filter(b => b.encounter && b.alive)).toHaveLength(2)
     expect(game.getSnapshot().levelComplete).toBe(true)
     game.destroy()
   })

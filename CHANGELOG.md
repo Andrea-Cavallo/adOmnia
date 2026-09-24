@@ -4,6 +4,15 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [0.9.20] - 2026-09-24
+
+### Changed
+- Bug Hunt: tuned ground/air movement, C ground slide with momentum-preserving long jump, stronger held stomp and connected book/platform routes.
+- Developer Desk: optional roaming Gremlin/Phantom, expanded active Brute finale and distinct common enemy silhouettes.
+- Updated IT/EN controls; removed the poorly integrated wrist-weapon overlay.
+
+Full release notes: [v0.9.20](docs/releases/v0.9.20.md).
+
 ## [0.9.19] - 2026-09-22
 
 ### Added

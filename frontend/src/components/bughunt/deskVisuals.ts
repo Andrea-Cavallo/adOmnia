@@ -1,5 +1,6 @@
 import { deskArt, drawCast } from './deskAssets'
 import { heroPose } from './heroAnimation'
+import { drawDeskCritter } from './deskCritters'
 import { box, glow, line, text } from './drawing'
 import type { Bug, Platform } from './level'
 import type { PlayerVisual } from './visuals'
@@ -81,41 +82,44 @@ export function drawDeskPlatform(ctx: CanvasRenderingContext2D, p: Platform, t: 
   ctx.restore()
 }
 
-export function drawDeskHero(ctx: CanvasRenderingContext2D, p: PlayerVisual, t: number, reduced: boolean, ammo = 0): boolean {
+export function drawDeskHero(ctx: CanvasRenderingContext2D, p: PlayerVisual, t: number, reduced: boolean): boolean {
   if (!deskArt.cast) return false
   const pose = heroPose(p, reduced)
   const cx = p.x + p.w / 2, feet = p.y + p.h
   ctx.save()
   // Foot-anchored deformation: the visible landing stays on the collision surface.
   ctx.translate(cx - p.facing * pose.recoil, feet + pose.lift)
-  ctx.rotate(pose.rotation); ctx.scale(pose.xScale, pose.yScale); ctx.translate(-cx, -feet)
+  ctx.rotate(pose.rotation); ctx.scale(pose.xScale * (p.crouch ? 1.08 : 1), pose.yScale * (p.crouch ? .63 : 1)); ctx.translate(-cx, -feet)
   if (p.invulnerable > 0) ctx.globalAlpha = .6 + Math.sin(t * 18) * .2
   if ((p.dash ?? 0) > 0) line(ctx, [p.x + 17 - p.facing * 65, p.y + 22, p.x + 17, p.y + 22], '#6eeaff88', 8)
   glow(ctx, p.x + 17, p.y + 27, 35, '#2f8dff22')
-  drawCast(ctx, pose.cell, cx, feet, 65, p.crouch ? 44 : 70, p.facing < 0)
+  drawCast(ctx, pose.cell, cx, feet, 65, 70, p.facing < 0)
   if (pose.curious) {
     text(ctx, '?', cx + p.facing * 26, p.y - 24, '#a4eaff', 12)
     glow(ctx, cx, p.y - 14, 12, '#59ceff22')
   }
-  // Small code-native weapon attachment follows the wrist, keeping the supplied silhouette.
-  ctx.save(); ctx.translate(cx + p.facing * (20 - pose.recoil), feet - (p.crouch ? 17 : 27)); ctx.scale(p.facing, 1)
-  if (p.aimUp) ctx.rotate(-Math.PI / 2)
-  box(ctx, -6, -5, 20, 10, 3, '#d8e9f4'); box(ctx, 5, -3, 12, 6, 2, '#113961')
-  line(ctx, [2, -4, 12, -4], ammo > 0 ? '#b8a1ff' : '#61e4ff', 2)
-  text(ctx, ammo > 0 ? '{}' : '</>', -4, 3, '#268cff', 7)
-  glow(ctx, 17, 0, 8, ammo > 0 ? '#9b7dff55' : '#43cbff55'); ctx.restore()
   ctx.restore()
   return true
 }
 
 export function drawDeskEnemy(ctx: CanvasRenderingContext2D, b: Bug, t: number): boolean {
+  if (!b.encounter) { drawDeskCritter(ctx, b, t); return true }
   if (!deskArt.cast) return false
-  const phantom = b.encounter ? b.encounter === 'soap' : b.hover || b.kind === 'turret' || b.kind === 'timeout'
-  const brute = b.encounter ? b.encounter === 'legacy' : b.kind === 'null' || b.kind === 'zombie' || b.kind === 'deadlock'
+  const phantom = b.encounter === 'soap'
+  const brute = b.encounter === 'legacy'
   const cell = phantom ? 4 : brute ? 7 : b.y < 416 ? 6 : 5
   const width = brute ? b.w * 1.5 : phantom ? 74 : 65
   const height = brute ? b.h * 1.2 : phantom ? 65 : 58
   ctx.save()
+  if (b.encounter === 'legacy' && b.combat && t !== 0) {
+    const c = b.combat
+    const tilt = c.phase === 'attack' && c.move === 1 ? b.direction * .12 : c.phase === 'tell' ? -c.direction * .07 * Math.sin(c.clock / c.duration * Math.PI) : 0
+    ctx.translate(b.x + b.w / 2, b.y + b.h); ctx.rotate(tilt); ctx.translate(-b.x - b.w / 2, -b.y - b.h)
+    if (c.phase === 'attack' && c.move === 0 && c.clock >= .8) {
+      ctx.strokeStyle = '#ffb46f'; ctx.lineWidth = 4 * (1 - (c.clock - .8) / .4)
+      ctx.beginPath(); ctx.ellipse(b.x + b.w / 2, 458, 55 + (c.clock - .8) * 240, 9, 0, 0, Math.PI * 2); ctx.stroke()
+    }
+  }
   if (b.combat?.phase === 'entrance') {
     const progress = Math.min(1, b.combat.clock / b.combat.duration)
     ctx.globalAlpha = .25 + progress * .75
@@ -128,7 +132,7 @@ export function drawDeskEnemy(ctx: CanvasRenderingContext2D, b: Bug, t: number):
   drawCast(ctx, cell, b.x + b.w / 2, b.y + b.h + (phantom ? Math.sin(t * 3 + b.phase) : 0), width, height, b.direction > 0)
   ctx.restore()
   if ((b.alert ?? 0) > .6) text(ctx, '!', b.x + b.w / 2 - 3, b.y - 24, '#ffd090', 16)
-  if ((b.hp ?? 1) > 1) {
+  if (!brute && (b.hp ?? 1) > 1) {
     const count = b.maxHp ?? b.hp ?? 1
     for (let i = 0; i < count; i++) box(ctx, b.x + i * 10, b.y - 14, 7, 3, 1, i < b.hp! ? '#ffc38a' : '#4b4655')
   }

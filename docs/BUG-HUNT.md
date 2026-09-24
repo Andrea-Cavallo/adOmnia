@@ -1,18 +1,16 @@
 # a0: Bug Hunt — Deploy del venerdì
 
-**Stato:** branch Developer Desk — nuova grafica e tre arene leggibili nel primo livello.
+**Stato:** v0.9.20 — movimento e percorsi platform collegati.
 
-## Developer Desk — 2026-09-23
+## Developer Desk — 2026-09-24
 
-Seconda revisione: percorso 5460 px, apertura sicura, lezioni separate e tratto sui libri prima del Brute. Checkpoint a 1090/3130/4960; finale spostato di 640 px. Bonus Rush spostato sui libri per non sovrapporlo alla prima arena. HUD contestuale, arma in mano e polvere morbida di corsa. 102 test Bug Hunt e build frontend passati; verifiche visive browser su HUD/polvere/libri. Dettagli e verifiche umane ancora aperte in [REFACTOR-LEVEL.md](REFACTOR-LEVEL.md).
+Corsa con accelerazione progressiva, frenata e controllo in aria separati. Spazio premuto: salto alto; rilascio anticipato: salto basso. **C scivola a terra, C → Spazio conserva lo slancio in un salto lungo**. La scivolata abbassa a0 ma non rende invulnerabili; X/Shift rimane lo scatto.
 
-- a0 e i tre archetipi delle reference sono sprite raster; sfondo scrivania con parallasse, lampada calda, monitor blu, materiali per legno/tasti/libri/USB. Asset caricati localmente all'apertura del gioco; fallback canvas se il caricamento fallisce. Canvas 1920×1080, simulazione 960×540.
-- Tre incontri: Retry Gremlin (5 HP), SOAP Phantom (6 HP), Legacy Brute (8 HP). Entrata di 1,4 s, barriere progressive e possibilità di ritirarsi prima della chiusura; camera centrata sull'arena. Uscita del livello dopo tutte e tre le vittorie e Hotfix.
-- Gremlin: salto mirato e carica a molla. Phantom: tre buste divergenti e sigillo XML a terra. Brute: schianto mirato e carica. Preavviso visivo e doppio tono di 0,9–1,05 s, bersaglio fissato prima dell'attacco, recupero vulnerabile di 1,25–1,5 s. Le aree d'impatto condividono la geometria con i segnali visuali.
-- AI si riposiziona verso a0 prima del preavviso. Sotto il 40% HP o dopo tre cicli aumenta leggermente il ritmo; i preavvisi non si accorciano. Dopo 24 s aumenta la vulnerabilità per evitare combattimenti trascinati.
-- Ricompensa: bonus di 250 punti oltre al nemico, dash e salto aereo ricaricati; Phantom concede 6 JSON Shuriken. Ricompensa assegnata una sola volta. Proiettili esterni esclusi dalle arene, Breakpoint congela i timer, Revert non riporta oltre una barriera appena chiusa. Una caduta ripristina soltanto gli incontri ancora vivi.
-- Verifica: 97 test Bug Hunt, TypeScript, build frontend, `go build ./...` e `go test ./... -timeout 60s` passati. Simulazioni con fisica e proiettili reali battono ciascuno dei tre incontri senza danni in meno di 25 s usando movimento, salto e fuoco nelle recovery. Revisione browser delle tre arene e della loro grafica. Questi test non sostituiscono la taratura del ritmo con una partita umana completa.
-- Record separati in `adomnia.bughunt.preferences.desk-arenas.v6`, con suffisso per difficoltà. Da v5 (anche per difficoltà) e versioni precedenti migrano solo audio/effetti delicati; tutte le vecchie chiavi restano intatte. Nessun cambiamento al formato `.adomnia`.
+Tenere Spazio quando si atterra su un nemico produce un rimbalzo alto; senza pressione il rimbalzo è basso. I nemici diventano appoggi del percorso: bug a terra, bug sulla prima pila, libri a quote diverse, corazzato e flyer conducono al ramo alto facoltativo, con pavimento sicuro sotto.
+
+Livello di 6020 px. Gremlin e Phantom attraversabili; solo Brute chiude l'arena 5020–5960. Salto/schianto fisico, carica lunga e recupero leggibile. Checkpoint 1090/3130/4960; Hotfix 5810; uscita 5900. Sagome dei nemici comuni distinte dai tre mostri; rimosso l'accessorio arma sovrapposto ad a0.
+
+622 test frontend passati, inclusi 120 Bug Hunt; build e TypeScript passati. Verifica browser di scivolata, salto lungo e controlli. Da completare una partita umana integrale per tarare divertimento e difficoltà. Record v6 offline, preferenze accessibilità compatibili con le chiavi precedenti; nessuna migrazione del workspace.
 
 ## Storico — developer world v0.9.19
 

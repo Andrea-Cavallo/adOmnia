@@ -17,13 +17,14 @@ describe('Developer Desk learning beats', () => {
     expect(levelCheckpoints(0)).toEqual([1090, 3130, 4960])
   })
 
-  it.each(['development', 'testing', 'production'] as Difficulty[])('the new book staircase is traversable with ordinary jumps on %s', difficulty => {
+  it.each(([900, 4380] as const).flatMap(start => (['development', 'testing', 'production'] as Difficulty[]).map(difficulty => ({ start, difficulty }))))('book staircase $start is traversable with ordinary jumps on $difficulty', ({ start, difficulty }) => {
     const instance = new BugHuntPrototype({ getContext: () => ({}) } as unknown as HTMLCanvasElement, () => {}, { difficulty })
     const game = instance as unknown as { player: PlayerVisual; enemies: Bug[]; platforms: Platform[]; update(dt: number): void }
     game.enemies.forEach(b => { b.alive = false })
-    game.player.x = 4310
+    game.player.x = start === 900 ? 680 : start - 70
+    const finish = start === 900 ? 1510 : 4970
     instance.keyDown('KeyD')
-    for (let i = 0; i < 600 && game.player.x < 4970; i++) {
+    for (let i = 0; i < 600 && game.player.x < finish; i++) {
       const p = game.player
       if (p.grounded) {
         instance.keyUp('Space')
@@ -31,9 +32,9 @@ describe('Developer Desk learning beats', () => {
       }
       game.update(1 / 60)
     }
-    expect(game.player.x).toBeGreaterThanOrEqual(4970)
+    expect(game.player.x).toBeGreaterThanOrEqual(finish)
     expect(instance.getSnapshot().deaths).toBe(0)
-    expect(instance.getSnapshot().commit).toBe(3)
+    expect(instance.getSnapshot().commit).toBe(start === 900 ? 1 : 3)
     expect(instance.getSnapshot().health).toBe(difficulty === 'development' ? Infinity : difficulty === 'testing' ? 4 : 3)
     instance.destroy()
   })

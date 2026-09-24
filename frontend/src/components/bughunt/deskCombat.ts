@@ -4,9 +4,9 @@ import type { PlayerVisual, Shot } from './visuals'
 export type DeskFoe = 'retry' | 'soap' | 'legacy'
 export type EncounterPhase = 'waiting' | 'entrance' | 'approach' | 'tell' | 'attack' | 'recover' | 'cleared'
 export const DESK_ARENAS = {
-  retry: { left: 1540, right: 2020, spawn: 1830, floor: 460, hp: 5, name: 'Retry Gremlin' },
-  soap: { left: 3330, right: 3760, spawn: 3610, floor: 460, hp: 6, name: 'SOAP Phantom' },
-  legacy: { left: 5020, right: 5425, spawn: 5260, floor: 460, hp: 8, name: 'Legacy Brute' },
+  retry: { left: 1540, right: 2340, spawn: 1830, floor: 460, hp: 2, name: 'Retry Gremlin' },
+  soap: { left: 3330, right: 4160, spawn: 3610, floor: 460, hp: 3, name: 'SOAP Phantom' },
+  legacy: { left: 5020, right: 5960, spawn: 5670, floor: 460, hp: 8, name: 'Legacy Brute' },
 } as const
 export type DeskCombat = {
   phase: EncounterPhase; clock: number; duration: number; cycles: number; move: 0 | 1
@@ -19,7 +19,11 @@ export function createDeskCombat(): DeskCombat {
 }
 function clamp(n: number, min: number, max: number) { return Math.max(min, Math.min(max, n)) }
 function transition(c: DeskCombat, phase: EncounterPhase, duration: number) { c.phase = phase; c.clock = 0; c.duration = duration }
-export function arenaDamageable(b: Bug) { return !b.encounter || b.combat?.phase === 'recover' && b.combat.hitCooldown <= 0 }
+export function arenaDamageable(b: Bug) {
+  if (!b.encounter) return true
+  const c = b.combat
+  return !!c && c.hitCooldown <= 0 && (b.encounter === 'legacy' ? c.phase === 'recover' : !['waiting', 'entrance', 'cleared'].includes(c.phase))
+}
 
 /** Shared by the telegraph and its damage check: the warning cannot lie about reach. */
 export function arenaImpact(b: Bug): Rect | null {
@@ -27,7 +31,7 @@ export function arenaImpact(b: Bug): Rect | null {
   if (!c || !b.encounter) return null
   if (b.encounter === 'retry' && c.move === 0) return { x: c.targetX - 36, y: 435, w: b.w + 72, h: 25 }
   if (b.encounter === 'soap' && c.move === 1) return { x: c.targetX - 45, y: 332, w: 90, h: 128 }
-  if (b.encounter === 'legacy' && c.move === 0) return { x: c.targetX - 55, y: 418, w: 110, h: 42 }
+  if (b.encounter === 'legacy' && c.move === 0) return { x: c.targetX - 45, y: 420, w: b.w + 90, h: 40 }
   return null
 }
 export function arenaBodyDangerous(b: Bug) {
@@ -45,15 +49,15 @@ export function stepDeskCombat(b: Bug, p: PlayerVisual, dt: number, shots: Shot[
   const inside = p.x >= a.left + 18 && p.x + p.w <= a.right - 18 && p.y + p.h <= a.floor + 4
   if (c.phase === 'waiting') {
     if (!inside) return
-    transition(c, 'entrance', 1.4); c.startY = b.y
+    transition(c, 'entrance', kind === 'legacy' ? 1.1 : .3); c.startY = b.y
     return 'entrance'
   }
   c.clock += dt
   if (c.phase === 'entrance') {
     // Retreat is allowed while the gate is only an outline; no late teleport.
     if (!inside) { transition(c, 'waiting', 1.4); c.gate = 0; return }
-    c.gate = Math.min(1, c.clock / c.duration)
-    if (c.clock >= c.duration) { c.locked = true; transition(c, 'approach', .5) }
+    c.gate = kind === 'legacy' ? Math.min(1, c.clock / c.duration) : 0
+    if (c.clock >= c.duration) { c.locked = kind === 'legacy'; transition(c, 'approach', kind === 'legacy' ? .65 : .4) }
     return
   }
   c.elapsed += dt
@@ -63,21 +67,22 @@ export function stepDeskCombat(b: Bug, p: PlayerVisual, dt: number, shots: Shot[
     const dx = p.x + p.w / 2 - b.x - b.w / 2
     b.direction = Math.sign(dx) || b.direction
     const desired = kind === 'soap' ? p.x - b.direction * 170 : p.x - b.direction * 125
-    b.x += clamp(desired - b.x, -75 * dt, 75 * dt)
+    const speed = kind === 'legacy' ? 120 : 90
+    b.x += clamp(desired - b.x, -speed * dt, speed * dt)
     b.x = clamp(b.x, a.left + 35, a.right - b.w - 35)
     b.y += ((kind === 'soap' ? 285 : feet) - b.y) * Math.min(1, dt * 5)
     if (c.clock >= c.duration) {
       c.move = c.cycles % 2 as 0 | 1
       c.startX = b.x; c.startY = b.y; c.direction = Math.sign(dx) || -1
-      const reach = kind === 'legacy' ? 125 : kind === 'retry' ? 210 : 400
-      c.targetX = clamp(p.x, Math.max(a.left + 35, b.x - reach), Math.min(a.right - b.w - 35, b.x + reach))
+      const reach = kind === 'legacy' ? (c.move === 0 ? 400 : 500) : kind === 'retry' ? 210 : 400
+      c.targetX = clamp(kind === 'legacy' && c.move === 1 ? b.x + c.direction * reach : p.x, Math.max(a.left + 35, b.x - reach), Math.min(a.right - b.w - 35, b.x + reach))
       c.targetY = p.y + p.h / 2
       transition(c, 'tell', kind === 'legacy' ? 1.05 : .9)
       return 'tell'
     }
   } else if (c.phase === 'tell') {
     if (c.clock >= c.duration) {
-      transition(c, 'attack', kind === 'soap' ? (c.move === 0 ? 1.5 : .4) : c.move === 0 ? .8 : .65)
+      transition(c, 'attack', kind === 'legacy' ? (c.move === 0 ? 1.2 : 1.1) : kind === 'soap' ? (c.move === 0 ? 1.5 : .4) : c.move === 0 ? .8 : .65)
       if (kind === 'soap' && c.move === 0) {
         const angle = Math.atan2(c.targetY - b.y - b.h / 2, c.targetX - b.x - b.w / 2)
         for (const offset of (c.enraged ? [-.28, 0, .28] : [-.18, 0, .18])) shots.push({
@@ -89,16 +94,17 @@ export function stepDeskCombat(b: Bug, p: PlayerVisual, dt: number, shots: Shot[
     }
   } else if (c.phase === 'attack') {
     const u = Math.min(1, c.clock / c.duration)
-    if (kind === 'retry' && c.move === 0) {
-      b.x = c.startX + (c.targetX - c.startX) * u
-      b.y = feet - Math.sin(u * Math.PI) * (c.enraged ? 125 : 100)
+    if ((kind === 'retry' || kind === 'legacy') && c.move === 0) {
+      const leap = kind === 'legacy' ? Math.min(1, c.clock / .8) : u
+      b.x = c.startX + (c.targetX - c.startX) * leap
+      b.y = feet - Math.sin(leap * Math.PI) * (kind === 'legacy' ? 155 : c.enraged ? 125 : 100)
     } else if (kind !== 'soap' && c.move === 1) {
       // Commit to the displayed destination. Never follow a late dodge.
       b.x = c.startX + (c.targetX - c.startX) * u; b.y = feet
     }
     if (c.clock >= c.duration) {
       c.cycles++; b.y = kind === 'soap' ? 452 - b.h : feet
-      transition(c, 'recover', c.elapsed > 24 ? 1.8 : kind === 'legacy' ? 1.5 : 1.25)
+      transition(c, 'recover', kind === 'legacy' ? 1.8 : 1.25)
       return 'recover'
     }
   } else if (c.phase === 'recover' && c.clock >= c.duration) transition(c, 'approach', c.enraged ? .3 : .5)
@@ -111,6 +117,7 @@ export function arenaAttackHits(b: Bug, p: Rect): boolean {
   if (!impact) return false
   // Gremlin's landing only damages on the last part of its announced arc.
   if (b.encounter === 'retry' && c.clock < c.duration - .16) return false
+  if (b.encounter === 'legacy' && c.clock < .8) return false
   return p.x < impact.x + impact.w && p.x + p.w > impact.x && p.y < impact.y + impact.h && p.y + p.h > impact.y
 }
 

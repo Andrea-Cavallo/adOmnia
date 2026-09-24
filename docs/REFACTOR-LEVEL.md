@@ -9,13 +9,13 @@ Riferimento codice: `frontend/src/components/bughunt/level.ts` (`LEVELS[0]`, blo
 
 ## Aggiornamento implementato — 23 settembre 2026
 
-Il percorso ora misura **5460 px (+640, circa 13%)**. L'apertura ha pavimento continuo, niente punte e solo patrol; tra 800 e 1540 ci sono uno zombie e un flyer, con piattaforme stabili. La prima arena resta una battuta separata (1540–2020); subito dopo si provano i tasti instabili con pavimento sotto e la molla del segreto. Cavi mobili e pulse sono rimandati al Datacenter.
+Il percorso misura **6020 px**. Tra 800 e 1540 tre pile di libri creano una linea di salti su quote diverse, con terreno sicuro sotto, uno zombie sulla pila centrale e un flyer facoltativo. Seguono piattaforme instabili, molla e segreto; poi ponte di tasti e rampino. Gremlin e Phantom sono incontri attraversabili, senza cancelli né obbligo di eliminarli: il ritmo resta quello del platform.
 
-Il tratto 2400–3100 è libero da nemici per esercitare rampino e ponte di tasti. Dopo il checkpoint vengono Phantom ed esame con timeout/chaser/turret. Tra 4300 e 4940 c'è una salita su tre pile di libri: salti normali, scia di bit, bonus a tempo facoltativo. Checkpoint aggiuntivo a 4960; Brute a 5020–5425, Hotfix a 5230 e uscita a 5340.
+La salita finale sui libri resta tra 4300 e 4940, con checkpoint a 4960. Solo il Brute chiude l'arena, ampliata a **5020–5960** con due piattaforme laterali; salta fisicamente verso il punto annunciato e alterna una carica lunga, con 1,8 secondi di recupero. Hotfix a 5810 e uscita a 5900. Nessun ritorno obbligatorio ai mostri precedenti.
 
-HUD con suggerimenti IT/EN per tratto, cuori e contatori; elenco completo dei tasti nella pausa/introduzione. Scia di polvere morbida durante la corsa, esaurita entro mezzo secondo e disattivata con effetti delicati. Arma visibile al polso con accento ciano/viola per Blaster/Shuriken.
+Rimosso il disegno dell'arma sovrapposto al polso: resta a0 senza accessori grafici aggiunti, con rinculo, proiettili e HUD delle munizioni. I nemici comuni hanno sagome proprie (coleotteri meccanici, torrette e droni USB), diverse dai tre mostri principali. Barra HP solo per il Brute, senza indicatori duplicati.
 
-Verificati 102 test Bug Hunt e build frontend: salita sui libri in tutte le difficoltà, terreno sicuro, ordine delle lezioni, polvere ed effetti delicati; conservati i test delle tre arene senza danni. Controllo browser di HUD, corsa e scena libri. **Restano aperte la partita umana completa nelle tre difficoltà e la scoperta del segreto senza conoscenza preventiva**: i test non certificano il divertimento.
+Verifica automatica: percorsi sui libri in tutte le difficoltà, incontri risolvibili senza danni in meno di 25 secondi, salto/carica del Brute, uscita senza sconfiggere i mostri facoltativi. Verifica browser delle scene e degli attacchi. **Restano aperte la partita umana completa nelle tre difficoltà e la scoperta del segreto senza conoscenza preventiva**: i test non certificano il divertimento.
 
 ## 1. Problemi di partenza
 
@@ -61,7 +61,7 @@ Oggi aO ha un solo sparo (anche verso l'alto e da accovacciato). Aggiungiamo arm
 - [x] Definire l'elenco delle armi (Code Blaster + JSON Shuriken) (nome a tema dev, comportamento, cadenza, danno, munizioni o durata)
 - [x] Decidere il modello: arma a munizioni raccolta come i power-up; finite le munizioni torna il Code Blaster
 - [x] Pickup delle armi nel livello: la prima arma arriva nel tratto 800–1600, **dopo** che lo sparo base è stato imparato
-- [x] Arma disegnata al polso di a0, con accenti distinti per Blaster e Shuriken
+- [ ] Nuovo sprite arma integrato nelle pose di a0; rimossa la precedente sovrapposizione poco leggibile
 - [x] HUD: icona dell'arma attiva + munizioni/tempo rimasto
 - [ ] Bilanciamento contro il Legacy Brute (l'arma non deve rendere banale il miniboss)
 - [x] Testi IT/EN in `copy.ts` (nome dell'arma + suggerimento al primo pickup)
@@ -71,3 +71,9 @@ Oggi aO ha un solo sparo (anche verso l'alto e da accovacciato). Aggiungiamo arm
 - [x] `npm run build` + test bughunt (`campaign.test.ts`, `prototype.test.ts`) verdi
 - [ ] Partita completa del livello 1 a tutte le difficoltà: nessun tratto con due meccaniche nuove insieme
 - [ ] Il segreto si trova giocando, senza saperlo in anticipo
+
+## Animazioni a0 — 23 settembre
+Passo legato alla velocità, inclinazione smorzata, compressione all'atterraggio, rinculo e orientamento dello sparo, esultanza e curiosità durante soste sicure. Trasformazioni applicate alle pose raster esistenti; non sono nuovi fotogrammi o uno scheletro 3D. Timer nella simulazione, hitbox invariate, effetti delicati rispettati. TypeScript, build e 105 test Bug Hunt passati.
+
+## Movimento e percorso — v0.9.20
+Punti 1–6: accelerazione/frenata e correzione in aria, salto modulabile, C scivolata con salto lungo a 450 px/s, sequenza di libri collegata, bug a terra e sulla prima pila come trampolini, rimbalzo basso/alto controllato da Spazio (360/720 px/s). Percorso alto facoltativo dopo corazzato/flyer; nessun obbligo di sparare. X resta lo scatto. Verifiche fisiche con input reali e controllo browser delle pose; partita umana completa ancora da fare.

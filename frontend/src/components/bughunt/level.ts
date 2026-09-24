@@ -320,10 +320,11 @@ for (const [stage, entries] of extra.entries()) for (const [i, [x, y, kind]] of 
     direction: -1, alive: true, phase: i * 0.7, kind, hp, maxHp: hp, fuse: 1 + i * 0.23, hover: flying, dive: 0 })
 }
 // Insert a safe book-climbing beat before the finale, without stretching existing jumps.
-localhost.width = 5460
-localhost.exitX = 5340
-localhost.hotfix = { ...localhost.hotfix!, x: 5230 }
+localhost.width = 6020
+localhost.exitX = 5900
+localhost.hotfix = { ...localhost.hotfix!, x: 5810 }
 for (const p of localhost.platforms) if (p.x >= 4300) p.x += 640
+for (const p of localhost.platforms) if (!p.floating && p.x === 5010) p.w = 1010
 for (const b of localhost.bugs) if (b.x >= 4300) {
   b.x += 640; b.left += 640; b.right += 640
   if (b.homeX !== undefined) b.homeX += 640
@@ -336,12 +337,21 @@ localhost.platforms.push(
   { x: 1440, y: 460, w: 85, h: 100, skin: 'key' },
   { x: 2040, y: 460, w: 100, h: 100, skin: 'book' },
   { x: 4270, y: 460, w: 740, h: 100, skin: 'key' },
+  { x: 760, y: 405, w: 85, h: 55, skin: 'book' },
+  { x: 1510, y: 245, w: 125, h: 22, floating: true, skin: 'key' },
+  { x: 900, y: 405, w: 145, h: 55, skin: 'book' },
+  { x: 1130, y: 350, w: 140, h: 110, skin: 'book' },
+  { x: 1370, y: 405, w: 110, h: 55, skin: 'book' },
   { x: 4380, y: 405, w: 150, h: 55, skin: 'book' },
   { x: 4560, y: 350, w: 170, h: 110, skin: 'book' },
   { x: 4770, y: 300, w: 150, h: 160, skin: 'book' },
   { x: 2055, y: 355, w: 115, h: 22, floating: true, unstable: true, skin: 'key' },
   { x: 2215, y: 300, w: 115, h: 22, floating: true, unstable: true, skin: 'key' },
+  { x: 5110, y: 365, w: 145, h: 22, floating: true, skin: 'key' },
+  { x: 5740, y: 335, w: 145, h: 22, floating: true, skin: 'book' },
 )
+// Remove the old ledges now occupied by solid book stacks.
+localhost.platforms = localhost.platforms.filter(p => !(p.floating && (p.x === 855 || p.x === 1390)))
 // No moving cables or pulsing floors before the Datacenter. Early misses cost height.
 for (const p of localhost.platforms) {
   p.travel = undefined; p.verticalTravel = undefined; p.pulse = undefined
@@ -353,26 +363,35 @@ localhost.springs = [{ x: 2060, y: 448, w: 44, h: 14 }]
 localhost.bits = localhost.bits.filter(b => b.id < 1000 || b.id >= 2000)
 for (let i = 0; i < 8; i++) localhost.bits.push({ id: 3000 + i, x: 2075 + i * 22, y: 405 - Math.sin(i / 7 * Math.PI / 2) * 160, secret: i > 4 })
 for (let i = 0; i < 12; i++) localhost.bits.push({ id: 3100 + i, x: 4395 + i * 43, y: 368 - Math.floor(i / 4) * 55 })
+// Reward the upper running line; failed jumps return to the safe desk below.
+localhost.bits = localhost.bits.filter(b => b.x < 850 || b.x >= 1500)
+for (const [step, x] of [920, 1145, 1385].entries()) for (let i = 0; i < 3; i++) localhost.bits.push({ id: 3200 + step * 3 + i, x: x + i * 32, y: (step === 1 ? 310 : 365) - Math.sin(i / 2 * Math.PI) * 14 })
+// A rising trail links the armoured stomp to the optional flyer and high ledge.
+for (let i = 0; i < 6; i++) localhost.bits.push({ id: 3240 + i, x: 1275 + i * 60, y: 265 - Math.sin(i / 5 * Math.PI) * 65 })
 localhost.bugs = localhost.bugs.filter(b => (b.x >= 1600 || (!b.hover && b.x < 800)) && !(b.x >= 2400 && b.x < 3100) && !(b.hover && b.x >= 2050 && b.x < 2400))
-for (const b of localhost.bugs) if (b.x < 800) { b.kind = 'patrol'; b.retry = false }
+for (const b of localhost.bugs) if (b.x < 800) {
+  b.kind = 'patrol'; b.retry = false
+  if (b.x === 650) b.right = 720
+  if (b.x === 735) Object.assign(b, { x: 785, y: 371, left: 770, right: 799 })
+}
 localhost.bugs.push(
-  { x: 1240, y: 426, w: 38, h: 34, left: 1190, right: 1300, direction: -1, alive: true, phase: 0, kind: 'zombie', hp: 2 },
+  { x: 1190, y: 316, w: 38, h: 34, left: 1140, right: 1220, direction: -1, alive: true, phase: 0, kind: 'zombie', hp: 2 },
   { x: 1410, y: 290, w: 38, h: 34, left: 1360, right: 1460, homeX: 1410, homeY: 290, direction: -1, alive: true, phase: 0, kind: 'flyer', hover: true, hp: 1, fuse: 1.4, dive: 0 },
 )
 localhost.powers = localhost.powers.map(p => p.kind === 'breakpoint' ? { ...p, x: 2500, y: 420 } : p)
 
 // Every ground enemy stays on its actual floor (including old chasers).
-// Three short showcase encounters. Tutorial bugs outside these rooms keep their rules.
+// Two roaming set pieces keep platform flow; only the finale closes its arena.
 const examChaser = LEVELS[0].bugs.find(b => b.kind === 'chaser' && b.x === 3460)
 if (examChaser) Object.assign(examChaser, { x: 4010, left: 3900, right: 4150 })
 for (const kind of ['retry', 'soap', 'legacy'] as const) {
   const a = DESK_ARENAS[kind]
   const foe = LEVELS[0].bugs.find(b => kind === 'legacy' ? b.kind === 'null' : b.x === (kind === 'retry' ? 1750 : 3400))!
-  LEVELS[0].bugs = LEVELS[0].bugs.filter(b => b === foe || b.x < a.left - 40 || b.x > a.right + 40)
+  LEVELS[0].bugs = LEVELS[0].bugs.filter(b => b === foe || (kind !== 'legacy' && b.x >= 3850) || b.x < a.left - 40 || b.x > a.right + 40)
   Object.assign(foe, { encounter: kind, x: a.spawn, y: kind === 'soap' ? 285 : a.floor - foe.h,
     hp: a.hp, maxHp: a.hp, left: a.left + 35, right: a.right - foe.w - 35, retry: false })
   // The arena teaches its enemy, not platform failure at the same time.
-  for (const platform of LEVELS[0].platforms) if (platform.x >= a.left && platform.x + platform.w <= a.right) {
+  for (const platform of LEVELS[0].platforms) if (kind === 'legacy' && platform.x >= a.left && platform.x + platform.w <= a.right) {
     platform.unstable = false; platform.pulse = undefined
   }
 }

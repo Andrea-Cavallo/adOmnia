@@ -2,6 +2,10 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+## v0.9.20 release notes: connected platforming and slide-jumps
+
+See [the full v0.9.20 notes](releases/v0.9.20.md): tuned movement, slide-jump momentum, controllable rebounds, connected desk routes and the larger active Brute finale.
+
 ## v0.9.19 release notes: a developer-world campaign and controllable boss gravity
 
 See [the full v0.9.19 notes](releases/v0.9.19.md): three distinct worlds, flying

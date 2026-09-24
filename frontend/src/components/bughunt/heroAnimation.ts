@@ -19,10 +19,10 @@ export function heroPose(p: PlayerVisual, reduced: boolean) {
   const bob = p.grounded ? -Math.abs(Math.sin(phase)) * speed * 2.5 : 0
   const stretch = p.grounded ? p.squash : Math.max(-.09, Math.min(.07, p.vy / 700 * .07))
   return {
-    cell: !p.grounded || celebration > .1 ? 3 : speed > .06 ? (Math.sin(phase) >= 0 ? 1 : 2) : 0,
+    cell: (p.slide ?? 0) > 0 ? 1 : !p.grounded || celebration > .1 ? 3 : speed > .06 ? (Math.sin(phase) >= 0 ? 1 : 2) : 0,
     xScale: reduced ? 1 : 1 + stretch * .5,
     yScale: reduced ? 1 : 1 - stretch,
-    rotation: reduced ? 0 : (p.lean ?? 0) + curious * p.facing * .065 + Math.sin((p.recover ?? 0) * 17) * (p.recover ?? 0) * .035,
+    rotation: reduced ? 0 : ((p.slide ?? 0) > 0 ? p.facing * .22 : (p.lean ?? 0)) + curious * p.facing * .065 + Math.sin((p.recover ?? 0) * 17) * (p.recover ?? 0) * .035,
     lift: reduced ? 0 : bob - celebration * 5 - Math.sin(idle * 2.4) * .55,
     recoil: reduced ? 0 : (p.recoil ?? 0) * 4,
     curious: reduced ? false : curious > .6,

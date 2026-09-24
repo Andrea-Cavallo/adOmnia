@@ -275,4 +275,4 @@ Special thanks to:
 
 ### Offline easter egg: a0 Bug Hunt
 
-Spin the Hub logo to discover a three-stage platformer. a0 reacts to danger, celebrates checkpoints and comments on close calls. The extended Localhost has 15 enemies; three hearts cover the entire campaign, with Game Over at zero. Everything runs offline, with local records and optional gentle effects. See [Bug Hunt](docs/BUG-HUNT.md) for development and verification status.
+Spin the Hub logo to discover a three-stage platformer. a0 runs, slides (C), carries momentum into a long jump (C → Space), and rebounds higher from bugs while Space is held. Developer Desk links book stacks and enemy stepping stones to an optional upper route, then an expanded Legacy Brute finale. Everything runs offline, with difficulty-specific local records and optional gentle effects. See [Bug Hunt](docs/BUG-HUNT.md) for controls and verification status.

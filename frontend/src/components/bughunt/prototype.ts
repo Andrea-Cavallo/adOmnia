@@ -17,7 +17,7 @@ export const WIDTH = 960
 export const HEIGHT = 540
 const STEP = 1 / 60
 const GRAVITY = 1900
-const RUN_SPEED = 310
+const RUN_SPEED = 330
 const JUMP_SPEED = 680
 /** Magnetic grapple: latch range, cable limits and the launch kick. */
 const GRAPPLE_RANGE = 300
@@ -42,7 +42,7 @@ const CHASE_RANGE = 320
 const CHASE_SPEED = 196
 const TURRET_RANGE = 430
 
-type Player = PlayerVisual & { crouch: boolean; coyote: number; buffer: number; knockback: number; airJump: boolean; dash: number; dashCooldown: number; dashDirection: number }
+type Player = PlayerVisual & { crouch: boolean; coyote: number; buffer: number; knockback: number; airJump: boolean; dash: number; dashCooldown: number; dashDirection: number; slideCooldown: number }
 export type GameSnapshot = {
   deskBeat: number
   difficulty: Difficulty
@@ -140,7 +140,7 @@ export class BugHuntPrototype {
   }
 
   private makePlayer(x: number): Player {
-    return { x, y: 412, w: 34, h: PLAYER_H, crouch: false, vx: 0, vy: 0, grounded: true, coyote: 0.1, buffer: 0, invulnerable: 0, facing: 1, squash: 0, celebrate: 0, recover: 0, lookX: 0, lookY: 0, danger: false, speech: '', speechTime: 0, knockback: 0, airJump: true, dash: 0, dashCooldown: 0, dashDirection: 1, grapple: null }
+    return { x, y: 412, w: 34, h: PLAYER_H, crouch: false, vx: 0, vy: 0, grounded: true, coyote: 0.1, buffer: 0, invulnerable: 0, facing: 1, squash: 0, celebrate: 0, recover: 0, lookX: 0, lookY: 0, danger: false, speech: '', speechTime: 0, knockback: 0, airJump: true, dash: 0, dashCooldown: 0, dashDirection: 1, slide: 0, slideCarry: 0, slideCooldown: 0, grapple: null }
   }
 
   getSnapshot(): GameSnapshot {
@@ -165,10 +165,17 @@ export class BugHuntPrototype {
 
   keyDown(code: string) {
     if (this.paused || this.gameOver || this.finished || this.levelComplete) return
+    if (code === 'KeyC' && !this.keys.has(code) && this.player.grounded && !this.player.grapple && this.player.dash <= 0 && this.player.knockback <= 0 && this.player.slideCooldown <= 0) {
+      const p = this.player
+      p.facing = Number(this.keys.has('KeyD') || this.keys.has('ArrowRight')) - Number(this.keys.has('KeyA') || this.keys.has('ArrowLeft')) || p.facing
+      p.slide = .42; p.slideCooldown = .65; p.slideCarry = 0
+      p.vx = p.facing * 540
+      this.audio.play('dash')
+    }
     if (['KeyX', 'ShiftLeft', 'ShiftRight'].includes(code) && !this.keys.has(code) && this.player.dashCooldown <= 0 && this.player.knockback <= 0) {
       const p = this.player
       this.releaseGrapple(false)
-      p.dash = 0.18; p.dashCooldown = 0.85
+      p.slide = 0; p.slideCarry = 0; p.dash = 0.18; p.dashCooldown = 0.85
       p.dashDirection = Number(this.keys.has('KeyD') || this.keys.has('ArrowRight')) - Number(this.keys.has('KeyA') || this.keys.has('ArrowLeft')) || p.facing
       p.facing = p.dashDirection; p.vy = 0
       this.burst(p.x + 17, p.y + 24, ['#82ffec', '#be8cff'], 16, 190)
@@ -190,7 +197,7 @@ export class BugHuntPrototype {
     if (code === 'Space' && this.player.vy * this.gravitySign < -180) this.player.vy *= 0.52
   }
 
-  clearKeys() { this.keys.clear(); this.setCrouch(false); this.player.buffer = 0; this.player.dash = 0; this.player.grapple = null }
+  clearKeys() { this.keys.clear(); this.setCrouch(false); this.player.buffer = 0; this.player.slide = 0; this.player.slideCarry = 0; this.player.dash = 0; this.player.grapple = null }
 
   setPaused(paused: boolean) {
     if (this.destroyed || this.paused === paused) return
@@ -277,7 +284,7 @@ export class BugHuntPrototype {
 
   private hurt(fell = false) {
     if ((!fell && (this.player.invulnerable > 0 || this.powers.sudo > 0)) || this.gameOver || this.finished || this.powers.rewind) return
-    this.chain = 0; this.comboTime = 0; this.player.dash = 0; this.player.grapple = null
+    this.chain = 0; this.comboTime = 0; this.player.slide = 0; this.player.slideCarry = 0; this.player.dash = 0; this.player.grapple = null
     if (Number.isFinite(this.health)) this.health--
     this.audio.play('hurt')
     this.burst(this.player.x + 17, Math.min(480, this.player.y + 24), ['#ff8f9f', '#c778e8', '#f1c7fc'], 22)
@@ -404,11 +411,14 @@ export class BugHuntPrototype {
       }
     }
     const wasGrounded = p.grounded
-    if (p.grounded) p.airJump = true
+    if (p.grounded) { p.airJump = true; p.slideCarry = 0 }
     const dashWasReady = p.dashCooldown <= 0
     p.dashCooldown = Math.max(0, p.dashCooldown - dt)
     if (!dashWasReady && p.dashCooldown === 0) this.publish()
     p.dash = Math.max(0, p.dash - dt)
+    p.slide = Math.max(0, (p.slide ?? 0) - dt)
+    p.slideCarry = Math.max(0, (p.slideCarry ?? 0) - dt)
+    p.slideCooldown = Math.max(0, p.slideCooldown - dt)
     p.invulnerable = Math.max(0, p.invulnerable - dt)
     p.squash *= Math.exp(-dt * 10)
     stepHeroAnimation(p, dt)
@@ -428,17 +438,22 @@ export class BugHuntPrototype {
     p.coyote = p.grounded ? 0.1 : Math.max(0, p.coyote - dt)
     p.buffer = Math.max(0, p.buffer - dt)
     const horizontal = Number(this.keys.has('KeyD') || this.keys.has('ArrowRight')) - Number(this.keys.has('KeyA') || this.keys.has('ArrowLeft'))
-    this.setCrouch((this.keys.has('KeyS') || this.keys.has('ArrowDown')) && p.grounded && !p.grapple && p.dash <= 0 && p.knockback <= 0)
+    this.setCrouch(((p.slide ?? 0) > 0 || this.keys.has('KeyS') || this.keys.has('ArrowDown')) && p.grounded && !p.grapple && p.dash <= 0 && p.knockback <= 0)
     if (p.dash > 0) { p.vx = p.dashDirection * 720; p.vy = 0 }
+    else if ((p.slide ?? 0) > 0) { p.vx = p.facing * (420 + 120 * p.slide! / .42) }
     else if (p.knockback > 0) p.knockback -= dt
     else {
-      const target = horizontal * RUN_SPEED * (p.crouch ? CROUCH_SPEED : 1)
-      const acceleration = (horizontal ? 2800 : 3400) * dt
+      const carry = !p.grounded && (p.slideCarry ?? 0) > 0
+      const target = horizontal * (carry ? 450 : RUN_SPEED) * (p.crouch ? CROUCH_SPEED : 1)
+      const reversing = horizontal !== 0 && Math.sign(p.vx) !== horizontal
+      const acceleration = (p.grounded ? (reversing ? 3000 : horizontal ? 2100 : 2600) : (reversing ? 1800 : horizontal ? 1100 : 650)) * dt
       p.vx += Math.max(-acceleration, Math.min(acceleration, target - p.vx))
     }
-    if (horizontal && p.dash <= 0) p.facing = horizontal
+    if (horizontal && p.dash <= 0 && (p.slide ?? 0) <= 0) p.facing = horizontal
     if (p.buffer > 0 && (p.coyote > 0 || p.airJump) && p.dash <= 0) {
+      const slideJump = (p.slide ?? 0) > 0
       const doubleJump = p.coyote <= 0
+      if (slideJump) { p.slide = 0; p.slideCarry = .75; this.setCrouch(false); p.vx = p.facing * 450 }
       if (doubleJump) { p.airJump = false; this.burst(p.x + 17, p.y + p.h, ['#8cf7ec', '#ffffff'], 18, 150) }
       p.vy = -JUMP_SPEED * this.gravitySign * (this.keys.has('Space') ? 1 : 0.67)
       p.grounded = false; p.coyote = 0; p.buffer = 0; p.squash = -0.12
@@ -540,7 +555,7 @@ export class BugHuntPrototype {
         if (!bug.encounter && bug.kind === 'null') bug.wake = 0.6
         const lethal = p.dash > 0 || this.powers.sudo > 0
         const died = this.damage(bug, index, lethal && bug.kind !== 'null' && !bug.encounter ? 99 : 1, false)
-        if (p.dash <= 0 && stomp) { p.y = bug.y - p.h; p.vy = this.keys.has('Space') ? -540 : -390 }
+        if (p.dash <= 0 && stomp) { p.y = bug.y - p.h; p.vy = this.keys.has('Space') ? -720 : -360; p.grounded = false; p.coyote = 0; p.buffer = 0; p.slide = 0 }
         p.airJump = true; p.dashCooldown = 0; p.squash = -0.1
         // An armoured bug that survives must not damage a0 on the way down.
         if (!died) p.invulnerable = Math.max(p.invulnerable, 0.45)
@@ -586,7 +601,7 @@ export class BugHuntPrototype {
     }
     this.collect(p)
     if (p.x + p.w > levelExit(this.level) - 25) {
-      if (this.hotfix && !this.enemies.some(b => (b.kind === 'null' || b.encounter) && b.alive) && (this.level !== 2 || this.boss.health === 0)) {
+      if (this.hotfix && !this.enemies.some(b => b.kind === 'null' && b.alive) && (this.level !== 2 || this.boss.health === 0)) {
         this.finished = this.level === LEVELS.length - 1; this.levelComplete = !this.finished; this.clearKeys()
         this.burst(levelExit(this.level), 385, ['#f5d77c', '#88f1d0', '#be8dff', '#ff9dad'], 70, 270)
         this.audio.play('win'); this.publish()
@@ -604,18 +619,19 @@ export class BugHuntPrototype {
 
   /** Entry, gates, telegraphs and projectiles share the same encounter clock. */
   private activeDeskEncounter() {
-    return this.enemies.find(b => b.alive && (b.combat?.locked || b.combat?.phase === 'entrance'))
+    return this.enemies.find(b => b.alive && b.encounter === 'legacy' && (b.combat?.locked || b.combat?.phase === 'entrance'))
   }
 
   private stepDeskArenas(dt: number, frozen: boolean) {
     if (this.level !== 0) return
     for (const foe of this.enemies) {
       if (!foe.encounter) continue
+      if (foe.encounter !== 'legacy' && Math.abs(foe.x - this.player.x) > 900) continue
       const locked = foe.combat?.locked
       const event = stepDeskCombat(foe, this.player, frozen ? 0 : dt, this.shots)
       if (!locked && foe.combat?.locked) { this.powers.history = []; this.player.grapple = null }
       if (event === 'entrance') {
-        this.shots = this.shots.filter(s => !s.enemy)
+        if (foe.encounter === 'legacy') this.shots = this.shots.filter(s => !s.enemy)
         this.popup(DESK_ARENAS[foe.encounter].name, foe.x, foe.y - 30, '#9cddff'); this.audio.play('bolt')
       } else if (event === 'tell') this.audio.play('arenaTell')
       else if (event === 'attack') this.audio.play(foe.encounter === 'retry' ? 'spring' : 'bolt')
