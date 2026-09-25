@@ -14,7 +14,7 @@ require (
 	github.com/dustin/go-humanize v1.1.0
 	github.com/eclipse/paho.mqtt.golang v1.5.1
 	github.com/gabriel-vasile/mimetype v1.4.15
-	github.com/gaissmai/bart v0.29.1
+	github.com/gaissmai/bart v0.30.0
 	github.com/go-sql-driver/mysql v1.10.1
 	github.com/gorilla/websocket v1.5.3
 	github.com/jackc/pgx/v5 v5.11.0
