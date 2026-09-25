@@ -6,13 +6,15 @@ const ENVIRONMENT_CREDENTIAL_MISSING = 'AI environment credential is missing'
 
 function configJSON(apiKey: string, credentialMode: 'auto' | 'vault' | 'environment'): string {
   const ai = useSettingsStore.getState().settings.ai
-  const baseURL = ['ollama', 'huggingface', 'openai-compatible'].includes(ai.provider) ? ai.baseURL : ''
+  const baseURL = ['amazon-bedrock', 'ollama', 'huggingface', 'openai-compatible'].includes(ai.provider) ? ai.baseURL : ''
   return JSON.stringify({
     provider: ai.provider,
     model: ai.model,
     apiKey,
     baseURL,
     credentialMode,
+    awsRegion: ai.awsRegion,
+    awsProfile: ai.awsProfile,
   })
 }
 
@@ -47,4 +49,11 @@ export async function withAIConfig<T>(operation: (config: string) => Promise<T>)
 
 export async function ensureAIConfigured(): Promise<void> {
   await withAIConfig((config) => AIEngine.Configure(config))
+}
+
+/** Restore a user-enabled local agent gateway after application startup. */
+export async function restoreAIGateway(): Promise<void> {
+  const ai = useSettingsStore.getState().settings.ai
+  if (!ai.enabled || !ai.gatewayEnabled) return
+  await withAIConfig((config) => AIEngine.StartGateway(config, ai.gatewayPort))
 }

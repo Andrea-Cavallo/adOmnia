@@ -8,6 +8,9 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/bedrock"
 )
 
 // ModelInfo is the provider-neutral description kept by the renderer. It is
@@ -28,6 +31,9 @@ type ModelInfo struct {
 // DiscoverModels asks the configured provider (or local runtime) what this
 // user can actually use. It never falls back to a third-party adOmnia service.
 func DiscoverModels(ctx context.Context, cfg Config, query string) ([]ModelInfo, error) {
+	if cfg.Provider == ProviderAmazonBedrock {
+		return discoverBedrockModels(ctx, cfg, query)
+	}
 	client := &http.Client{Timeout: 12 * time.Second}
 	base := strings.TrimRight(cfg.BaseURL, "/")
 	var endpoint string
@@ -193,6 +199,43 @@ func DiscoverModels(ctx context.Context, cfg Config, query string) ([]ModelInfo,
 		models = append(models, ModelInfo{
 			ID: item.ID, Name: name, Owner: item.OwnedBy, Source: string(cfg.Provider),
 			Context: contextSize, Local: cfg.Provider == ProviderOpenAICompatible,
+		})
+	}
+	return filterModels(models, query), nil
+}
+
+func discoverBedrockModels(ctx context.Context, cfg Config, query string) ([]ModelInfo, error) {
+	awsCfg, err := loadBedrockConfig(ctx, cfg.AWSRegion, cfg.AWSProfile)
+	if err != nil {
+		return nil, err
+	}
+	client := bedrock.NewFromConfig(awsCfg)
+	result, err := client.ListFoundationModels(ctx, &bedrock.ListFoundationModelsInput{
+		ByProvider: aws.String("Anthropic"),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("Amazon Bedrock model discovery failed: %w", err)
+	}
+	models := make([]ModelInfo, 0, len(result.ModelSummaries))
+	for _, item := range result.ModelSummaries {
+		id := strings.TrimSpace(aws.ToString(item.ModelId))
+		if id == "" {
+			continue
+		}
+		capabilities := make([]string, 0, len(item.InputModalities)+1)
+		for _, modality := range item.InputModalities {
+			capabilities = append(capabilities, strings.ToLower(string(modality)))
+		}
+		if aws.ToBool(item.ResponseStreamingSupported) {
+			capabilities = append(capabilities, "streaming")
+		}
+		name := strings.TrimSpace(aws.ToString(item.ModelName))
+		if name == "" {
+			name = id
+		}
+		models = append(models, ModelInfo{
+			ID: id, Name: name, Owner: aws.ToString(item.ProviderName),
+			Source: "Amazon Bedrock", Capabilities: capabilities,
 		})
 	}
 	return filterModels(models, query), nil

@@ -78,3 +78,17 @@ func TestResolveEnvironmentCredentialsAllowsUnauthenticatedCompatibleRuntime(t *
 		t.Fatalf("APIKey = %q, want empty for an unauthenticated runtime", cfg.APIKey)
 	}
 }
+
+func TestResolveEnvironmentCredentialsDelegatesBedrockToAWSChain(t *testing.T) {
+	cfg, err := ResolveEnvironmentCredentials(Config{
+		Provider:   ProviderAmazonBedrock,
+		AWSRegion:  "eu-west-1",
+		AWSProfile: "company-sso",
+	})
+	if err != nil {
+		t.Fatalf("ResolveEnvironmentCredentials() error = %v", err)
+	}
+	if cfg.APIKey != "" || cfg.AWSProfile != "company-sso" {
+		t.Fatalf("Bedrock config was unexpectedly modified: %+v", cfg)
+	}
+}

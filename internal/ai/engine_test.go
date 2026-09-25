@@ -11,8 +11,9 @@ func TestBuildProvider_KnownProviders(t *testing.T) {
 		cfg      Config
 		wantName string
 	}{
-		{"anthropic", Config{Provider: ProviderAnthropic, Model: "claude-sonnet-5", APIKey: "k"}, "anthropic"},
-		{"openai", Config{Provider: ProviderOpenAI, Model: "gpt-5.6-terra", APIKey: "k"}, "openai"},
+		{"anthropic", Config{Provider: ProviderAnthropic, Model: "claude-opus-5-5", APIKey: "k"}, "anthropic"},
+		{"amazon-bedrock", Config{Provider: ProviderAmazonBedrock, Model: "anthropic.claude-opus-5-5", AWSRegion: "us-east-1"}, "amazon-bedrock"},
+		{"openai", Config{Provider: ProviderOpenAI, Model: "gpt-6-sol", APIKey: "k"}, "openai"},
 		{"gemini", Config{Provider: ProviderGemini, Model: "gemini-3.5-flash", APIKey: "k"}, "gemini"},
 		{"ollama", Config{Provider: ProviderOllama, Model: "qwen3.5"}, "ollama"},
 		{"huggingface", Config{Provider: ProviderHuggingFace, Model: "openai/gpt-oss-120b", APIKey: "k"}, "openai"},

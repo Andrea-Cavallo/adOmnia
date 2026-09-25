@@ -13,6 +13,7 @@ import { requestPersistentStorage } from '@/lib/storageMaintenance'
 import { GetStartupWindowChrome, LoadBootstrapState, LoadBootstrapStateV2 } from '@/wailsjs/go/main/App'
 import { markStartup, recordStartupBootstrap } from '@/lib/startupPerformance'
 import { scheduleStartupIdle } from '@/lib/startupIdle'
+import { restoreAIGateway } from '@/lib/aiEngine'
 
 async function timedStartupLoad(load: () => void | Promise<void>): Promise<number> {
   const startedAt = performance.now()
@@ -61,6 +62,7 @@ export function useAppInit(): AppInitResult {
   const explicitStartupRailRef = useRef<RailItem | null>(null)
   const backupDoneRef = useRef(false)
   const bootstrapStartedRef = useRef(false)
+  const gatewayRestoredRef = useRef(false)
   const pendingBackupRef = useRef<{
     format: string
     version: string
@@ -231,6 +233,16 @@ export function useAppInit(): AppInitResult {
       ])
     })
   }, [firstStableFrame, loadDeferredTabs])
+
+  useEffect(() => {
+    if (!settingsLoaded || !firstStableFrame || gatewayRestoredRef.current) return
+    gatewayRestoredRef.current = true
+    return scheduleStartupIdle(() => {
+      // A locked Vault or unavailable provider must not delay the desktop
+      // shell. The Settings status remains stopped and lets the user retry.
+      void restoreAIGateway().catch(() => undefined)
+    })
+  }, [firstStableFrame, settingsLoaded])
 
   useEffect(() => {
     if (!firstStableFrame) return

@@ -13,12 +13,29 @@ export function Configure(cfgJSON: string): $CancellablePromise<void> {
     return $Call.ByID(552797008, cfgJSON);
 }
 
+export function GatewayStatus(): $CancellablePromise<string> {
+    return $Call.ByID(2870654676);
+}
+
 export function GenerateMockEndpoints(inputType: string, userInput: string): $CancellablePromise<string> {
     return $Call.ByID(2236815269, inputType, userInput);
 }
 
 export function ListModels(cfgJSON: string, query: string): $CancellablePromise<string> {
     return $Call.ByID(2731483982, cfgJSON, query);
+}
+
+/**
+ * StartGateway exposes the selected OpenAI-compatible provider on a stable,
+ * loopback-only endpoint for local coding agents. The client-facing token is
+ * never forwarded upstream; the configured provider credential replaces it.
+ */
+export function StartGateway(cfgJSON: string, port: number): $CancellablePromise<string> {
+    return $Call.ByID(4025030774, cfgJSON, port);
+}
+
+export function StopGateway(): $CancellablePromise<void> {
+    return $Call.ByID(457366930);
 }
 
 export function TestConnection(cfgJSON: string): $CancellablePromise<string> {

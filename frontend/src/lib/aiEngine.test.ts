@@ -3,10 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const settings = vi.hoisted(() => ({
   ai: {
     provider: 'openai',
-    model: 'gpt-5.6-terra',
+    model: 'gpt-6-sol',
     apiKey: 'vault:encrypted-key',
     baseURL: '',
     credentialMode: 'auto',
+    awsRegion: 'us-east-1',
+    awsProfile: '',
   },
 }))
 const resolveSecretMock = vi.hoisted(() => vi.fn())
@@ -31,10 +33,12 @@ describe('withAIConfig', () => {
   beforeEach(() => {
     settings.ai = {
       provider: 'openai',
-      model: 'gpt-5.6-terra',
+      model: 'gpt-6-sol',
       apiKey: 'vault:encrypted-key',
       baseURL: '',
       credentialMode: 'auto',
+      awsRegion: 'us-east-1',
+      awsProfile: '',
     }
     resolveSecretMock.mockReset()
   })

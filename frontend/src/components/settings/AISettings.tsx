@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Sparkles, CheckCircle, AlertCircle, RefreshCw, Lock, ShieldCheck, Search, Cpu, Cloud, Database, Check, Gauge, Brain, Coins, Shield } from 'lucide-react'
+import { Sparkles, CheckCircle, AlertCircle, RefreshCw, Lock, ShieldCheck, Search, Cpu, Cloud, Database, Check, Gauge, Brain, Coins, Shield, Radio, Copy } from 'lucide-react'
 import { useSettingsStore, type AIModelSummary, type AIProvider, type AIUsageProfile } from '@/stores/settings'
 import * as AIEngine from '@/wailsjs/go/main/AIEngine'
 import { TextInput, PasswordInput, Toggle } from './SettingsFields'
@@ -8,6 +8,7 @@ import { withAIConfig } from '@/lib/aiEngine'
 
 const PROVIDERS = [
   { value: 'anthropic', label: 'Anthropic', desc: 'Claude API', local: false },
+  { value: 'amazon-bedrock', label: 'Amazon Bedrock', desc: 'Claude via AWS IAM / SSO', local: false },
   { value: 'openai', label: 'OpenAI', desc: 'GPT API', local: false },
   { value: 'gemini', label: 'Google Gemini', desc: 'Gemini API', local: false },
   { value: 'huggingface', label: 'Hugging Face', desc: 'Inference Providers', local: false },
@@ -16,8 +17,9 @@ const PROVIDERS = [
 ]
 
 const DEFAULT_MODELS: Record<string, string> = {
-  anthropic: 'claude-sonnet-5',
-  openai: 'gpt-5.6-terra',
+  anthropic: 'claude-opus-5-5',
+  'amazon-bedrock': 'anthropic.claude-opus-5-5',
+  openai: 'gpt-6-sol',
   gemini: 'gemini-3.5-flash',
   huggingface: 'openai/gpt-oss-120b:preferred',
   ollama: 'qwen3.5',
@@ -25,7 +27,7 @@ const DEFAULT_MODELS: Record<string, string> = {
 }
 
 const DEFAULT_BASE_URLS: Record<string, string> = {
-  anthropic: '', openai: '', gemini: '',
+  anthropic: '', 'amazon-bedrock': '', openai: '', gemini: '',
   huggingface: 'https://router.huggingface.co/v1',
   ollama: 'http://localhost:11434',
   'openai-compatible': 'http://localhost:1234/v1',
@@ -42,6 +44,14 @@ const ENVIRONMENT_VARIABLES: Record<string, string[]> = {
 interface ModelOption { id: string; label: string; detail: string; badge?: string }
 type DiscoveredModel = AIModelSummary
 
+interface GatewayStatus {
+  running: boolean
+  endpoint?: string
+  port?: number
+  provider?: string
+  token?: string
+}
+
 const USAGE_PROFILES: { id: AIUsageProfile; label: string; desc: string; icon: typeof Gauge }[] = [
   { id: 'recommended', label: 'Recommended', desc: 'Best balance for adOmnia work', icon: Gauge },
   { id: 'quality', label: 'Best quality', desc: 'Prefer deeper reasoning and coding', icon: Brain },
@@ -51,15 +61,21 @@ const USAGE_PROFILES: { id: AIUsageProfile; label: string; desc: string; icon: t
 
 const CURATED_MODELS: Record<string, ModelOption[]> = {
   anthropic: [
-    { id: 'claude-fable-5', label: 'Claude Fable 5', detail: 'Most capable widely available Claude for demanding, long-horizon work', badge: 'Frontier' },
-    { id: 'claude-opus-5', label: 'Claude Opus 5', detail: 'Complex agentic coding and enterprise work' },
-    { id: 'claude-sonnet-5', label: 'Claude Sonnet 5', detail: 'Best speed and intelligence balance for coding and agents', badge: 'Recommended' },
+    { id: 'claude-fable-5-1', label: 'Claude Fable 5.1', detail: 'Most capable Claude for the hardest, long-horizon work', badge: 'Frontier' },
+    { id: 'claude-opus-5-5', label: 'Claude Opus 5.5', detail: 'Anthropic-recommended model for most workloads', badge: 'Recommended' },
+    { id: 'claude-sonnet-5', label: 'Claude Sonnet 5', detail: 'High intelligence with faster responses' },
     { id: 'claude-haiku-4-5', label: 'Claude Haiku 4.5', detail: 'Fastest and most cost-efficient Claude' },
   ],
+  'amazon-bedrock': [
+    { id: 'anthropic.claude-fable-5-1', label: 'Claude Fable 5.1', detail: 'Bedrock base model ID; an inference profile ID or ARN is also accepted', badge: 'Frontier' },
+    { id: 'anthropic.claude-opus-5-5', label: 'Claude Opus 5.5', detail: 'Anthropic-recommended Claude through Bedrock Converse', badge: 'Recommended' },
+    { id: 'anthropic.claude-sonnet-5', label: 'Claude Sonnet 5', detail: 'Faster Claude for coding and agentic work' },
+    { id: 'anthropic.claude-haiku-4-5', label: 'Claude Haiku 4.5', detail: 'Fast, efficient Claude through Bedrock' },
+  ],
   openai: [
-    { id: 'gpt-5.6-sol', label: 'GPT-5.6 Sol', detail: 'Flagship model for complex reasoning and coding', badge: 'Frontier' },
-    { id: 'gpt-5.6-terra', label: 'GPT-5.6 Terra', detail: 'Balances intelligence and cost for professional work', badge: 'Recommended' },
-    { id: 'gpt-5.6-luna', label: 'GPT-5.6 Luna', detail: 'Cost-sensitive, high-volume workloads' },
+    { id: 'gpt-6-astra', label: 'GPT-6 Astra', detail: 'OpenAI’s most capable model for the hardest end-to-end work', badge: 'Frontier' },
+    { id: 'gpt-6-sol', label: 'GPT-6 Sol', detail: 'Strong reasoning for demanding coding and agentic workflows', badge: 'Recommended' },
+    { id: 'gpt-6-luna', label: 'GPT-6 Luna', detail: 'Efficient, repeatable work at high volume' },
   ],
   gemini: [
     { id: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash', detail: 'Latest stable balance of speed and intelligence', badge: 'Frontier' },
@@ -94,6 +110,9 @@ function readableDiscoveryError(error: unknown, provider: string): string {
   if (message.includes('HTTP 401') || message.includes('HTTP 403')) {
     return `adOmnia reached ${provider}, but the key cannot list models for this account. Check the key and its permissions.`
   }
+  if (provider === 'Amazon Bedrock' && /(credential|SSO|profile|AccessDenied|Unauthorized)/i.test(message)) {
+    return 'AWS could not authorize this request. Check the profile/SSO session, region, model access, and bedrock:ListFoundationModels permission.'
+  }
   if (message.includes('model discovery failed')) {
     return `Could not reach ${provider}. Check the network or the configured local endpoint.`
   }
@@ -103,7 +122,7 @@ function readableDiscoveryError(error: unknown, provider: string): string {
 function suggestedModel(profile: Exclude<AIUsageProfile, 'local'>, models: ModelOption[]): string | undefined {
   const score = (model: ModelOption) => {
     const text = `${model.id} ${model.label} ${model.detail}`.toLowerCase()
-    if (profile === 'quality') return /(frontier|opus|sol|pro|fable)/.test(text) ? 2 : 0
+    if (profile === 'quality') return /(frontier|opus|astra|pro|fable)/.test(text) ? 2 : 0
     if (profile === 'efficient') return /(haiku|luna|lite|nano|mini|fast)/.test(text) ? 2 : 0
     return model.badge === 'Recommended' ? 2 : 0
   }
@@ -122,6 +141,10 @@ export function AISettings() {
   const [discovering, setDiscovering] = useState(false)
   const [discoverError, setDiscoverError] = useState('')
   const [autoCheckedProvider, setAutoCheckedProvider] = useState<AIProvider | null>(null)
+  const [gatewayStatus, setGatewayStatus] = useState<GatewayStatus>({ running: false })
+  const [gatewayBusy, setGatewayBusy] = useState(false)
+  const [gatewayError, setGatewayError] = useState('')
+  const [gatewayCopied, setGatewayCopied] = useState<'endpoint' | 'token' | 'pi' | 'opencode' | null>(null)
 
   const usesEnvironmentCredentials = ai.credentialMode !== 'vault'
   const usesAutomaticEnvironmentCredentials = ai.credentialMode === 'auto'
@@ -196,11 +219,63 @@ export function AISettings() {
 
   const handleSave = async () => {
     try {
-      await withAIConfig((config) => AIEngine.Configure(config))
-      setTestResult({ ok: true, msg: 'AI engine configured.' })
+      await withAIConfig(async (config) => {
+        await AIEngine.Configure(config)
+        if (ai.gatewayEnabled) {
+          const raw = await AIEngine.StartGateway(config, ai.gatewayPort)
+          setGatewayStatus(JSON.parse(raw) as GatewayStatus)
+        } else {
+          await AIEngine.StopGateway()
+          setGatewayStatus({ running: false })
+        }
+      })
+      setTestResult({ ok: true, msg: ai.gatewayEnabled ? 'AI engine and local agent gateway configured.' : 'AI engine configured.' })
     } catch (e) {
       setTestResult({ ok: false, msg: String(e) })
     }
+  }
+
+  const handleGatewayStart = async () => {
+    setGatewayBusy(true)
+    setGatewayError('')
+    try {
+      const raw = await withAIConfig((config) => AIEngine.StartGateway(config, ai.gatewayPort))
+      setGatewayStatus(JSON.parse(raw) as GatewayStatus)
+      updateAi({ gatewayEnabled: true })
+    } catch (error) {
+      setGatewayError(String(error))
+    } finally {
+      setGatewayBusy(false)
+    }
+  }
+
+  const handleGatewayStop = async () => {
+    setGatewayBusy(true)
+    setGatewayError('')
+    try {
+      await AIEngine.StopGateway()
+      setGatewayStatus({ running: false })
+      updateAi({ gatewayEnabled: false })
+    } catch (error) {
+      setGatewayError(String(error))
+    } finally {
+      setGatewayBusy(false)
+    }
+  }
+
+  const copyGatewayValue = async (kind: 'endpoint' | 'token' | 'pi' | 'opencode') => {
+    const endpoint = gatewayStatus.endpoint ?? `http://127.0.0.1:${ai.gatewayPort}/v1`
+    const token = gatewayStatus.token ?? ''
+    const model = ai.model || 'your-model-id'
+    const values = {
+      endpoint,
+      token,
+      pi: JSON.stringify({ providers: { adomnia: { baseUrl: endpoint, api: 'openai-completions', apiKey: token, models: [{ id: model }] } } }, null, 2),
+      opencode: JSON.stringify({ $schema: 'https://opencode.ai/config.json', provider: { adomnia: { npm: '@ai-sdk/openai-compatible', name: 'adOmnia', options: { baseURL: endpoint, apiKey: token }, models: { [model]: { name: model } } } } }, null, 2),
+    }
+    await navigator.clipboard.writeText(values[kind])
+    setGatewayCopied(kind)
+    window.setTimeout(() => setGatewayCopied(null), 1400)
   }
 
   // Encrypt the currently-entered plaintext key with the vault passphrase and
@@ -225,10 +300,12 @@ export function AISettings() {
     setTestResult(null)
   }
 
-  const needsApiKey = ai.provider !== 'ollama'
+  const isBedrock = ai.provider === 'amazon-bedrock'
+  const needsApiKey = ai.provider !== 'ollama' && !isBedrock
   const apiKeyOptional = ai.provider === 'openai-compatible'
-  const needsBaseURL = ['ollama', 'huggingface', 'openai-compatible'].includes(ai.provider)
+  const needsBaseURL = ['amazon-bedrock', 'ollama', 'huggingface', 'openai-compatible'].includes(ai.provider)
   const supportsDiscovery = true
+  const gatewaySupported = ['ollama', 'openai', 'huggingface', 'openai-compatible'].includes(ai.provider)
   const providerInfo = PROVIDERS.find((provider) => provider.value === ai.provider)
   const catalog = ai.modelCatalogs[ai.provider]
   const discoveredModels = catalog?.models ?? []
@@ -242,6 +319,12 @@ export function AISettings() {
     setAutoCheckedProvider(ai.provider)
     void discoverModels()
   }, [ai.enabled, ai.modelUpdatePolicy, ai.provider, autoCheckedProvider])
+
+  useEffect(() => {
+    AIEngine.GatewayStatus()
+      .then((raw) => setGatewayStatus(JSON.parse(raw) as GatewayStatus))
+      .catch(() => setGatewayStatus({ running: false }))
+  }, [])
 
   return (
     <div className="flex flex-col gap-6">
@@ -488,15 +571,133 @@ export function AISettings() {
           </div>
         )}
 
+        {isBedrock && (
+          <div className="flex flex-col gap-3 rounded-xl border border-border-2 bg-surface-1 p-4">
+            <div className="flex items-start gap-3">
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-success/10 text-success">
+                <ShieldCheck size={15} />
+              </span>
+              <div>
+                <div className="text-xs font-semibold text-text-1">AWS credential chain</div>
+                <p className="mt-1 text-[10px] leading-relaxed text-text-3">
+                  adOmnia does not store AWS access keys. It uses the AWS SDK chain: environment credentials, shared profiles, IAM Identity Center/SSO, web identity, or the machine workload role.
+                </p>
+                <p className="mt-1 text-[9px] text-text-4">
+                  Named SSO profiles must already have an active session (for example via <code className="font-mono text-text-3">aws sso login --profile …</code>). Inference requires <code className="font-mono text-text-3">bedrock:InvokeModel</code>.
+                </p>
+              </div>
+            </div>
+            <TextInput
+              label="AWS Region"
+              desc="Region that hosts Bedrock and the selected Claude model."
+              value={ai.awsRegion}
+              onChange={value => updateAi({ awsRegion: value })}
+              placeholder="us-east-1"
+            />
+            <TextInput
+              label="AWS Profile (optional)"
+              desc="Shared config profile, including SSO or assume-role profiles. Leave blank for the default AWS chain."
+              value={ai.awsProfile}
+              onChange={value => updateAi({ awsProfile: value })}
+              placeholder="company-sso"
+            />
+          </div>
+        )}
+
         {needsBaseURL && (
           <TextInput
-            label="Base URL"
-            desc={ai.provider === 'ollama' ? 'Ollama API base URL' : ai.provider === 'huggingface' ? 'Hugging Face OpenAI-compatible router' : 'OpenAI-compatible API base URL'}
+            label={isBedrock ? 'Bedrock runtime endpoint (optional)' : 'Base URL'}
+            desc={isBedrock ? 'Optional private/VPC Bedrock Runtime endpoint. Leave blank for the regional AWS endpoint.' : ai.provider === 'ollama' ? 'Ollama API base URL' : ai.provider === 'huggingface' ? 'Hugging Face OpenAI-compatible router' : 'OpenAI-compatible API base URL'}
             value={ai.baseURL}
             onChange={v => updateAi({ baseURL: v })}
-            placeholder={DEFAULT_BASE_URLS[ai.provider] ?? 'http://localhost:1234/v1'}
+            placeholder={isBedrock ? 'https://vpce-….bedrock-runtime.us-east-1.vpce.amazonaws.com' : (DEFAULT_BASE_URLS[ai.provider] ?? 'http://localhost:1234/v1')}
           />
         )}
+
+        <div className="overflow-hidden rounded-xl border border-border-2 bg-surface-1">
+          <div className="flex items-start justify-between gap-3 border-b border-border-1 bg-surface-0/70 px-4 py-3">
+            <div className="flex items-start gap-3">
+              <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${gatewayStatus.running ? 'bg-success/10 text-success' : 'bg-surface-2 text-text-3'}`}>
+                <Radio size={15} />
+              </span>
+              <div>
+                <div className="text-xs font-semibold text-text-1">Local agent gateway</div>
+                <p className="mt-1 text-[10px] leading-relaxed text-text-4">Expose this provider as an OpenAI Chat Completions endpoint for OpenCode, Pi, and other local agents.</p>
+              </div>
+            </div>
+            <span className={`rounded-full px-2 py-1 text-[9px] font-semibold uppercase tracking-wider ${gatewayStatus.running ? 'bg-success/10 text-success' : 'bg-surface-2 text-text-4'}`}>
+              {gatewayStatus.running ? 'Running' : 'Stopped'}
+            </span>
+          </div>
+
+          <div className="p-3">
+            {gatewaySupported ? (
+              <>
+                <Toggle
+                  label="Enable local agent access"
+                  desc="Listens only on 127.0.0.1. A generated Bearer token prevents unauthorised browser and process access."
+                  checked={ai.gatewayEnabled}
+                  onChange={(enabled) => updateAi({ gatewayEnabled: enabled })}
+                />
+                <div className="grid grid-cols-[minmax(0,1fr)_140px] items-center gap-4 border-t border-border-1 px-2 py-3 max-md:grid-cols-1">
+                  <div>
+                    <div className="text-xs font-medium text-text-1">Gateway port</div>
+                    <div className="mt-0.5 text-[10px] text-text-4">Stable port used by external agent configuration.</div>
+                  </div>
+                  <input
+                    type="number"
+                    min={1024}
+                    max={65535}
+                    value={ai.gatewayPort}
+                    onChange={(event) => updateAi({ gatewayPort: Math.max(1024, Math.min(65535, Number(event.target.value) || 11435)) })}
+                    className="h-8 w-full rounded border border-border-2 bg-surface-2 px-3 font-mono text-xs text-text-1 outline-none focus:border-accent"
+                  />
+                </div>
+
+                {gatewayStatus.running && gatewayStatus.endpoint && (
+                  <div className="mt-2 rounded-lg border border-success/25 bg-success/5 p-3">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="h-2 w-2 shrink-0 rounded-full bg-success shadow-[0_0_8px_var(--color-success)]" />
+                      <code className="min-w-0 flex-1 truncate font-mono text-[11px] text-success">{gatewayStatus.endpoint}</code>
+                      <button onClick={() => void copyGatewayValue('endpoint')} className="inline-flex h-7 items-center gap-1 rounded border border-border-2 bg-surface-2 px-2 text-[10px] text-text-2 hover:text-text-1">
+                        {gatewayCopied === 'endpoint' ? <Check size={10} /> : <Copy size={10} />} {gatewayCopied === 'endpoint' ? 'Copied' : 'Endpoint'}
+                      </button>
+                      <button onClick={() => void copyGatewayValue('token')} className="inline-flex h-7 items-center gap-1 rounded border border-border-2 bg-surface-2 px-2 text-[10px] text-text-2 hover:text-text-1">
+                        {gatewayCopied === 'token' ? <Check size={10} /> : <Copy size={10} />} {gatewayCopied === 'token' ? 'Copied' : 'Token'}
+                      </button>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2 border-t border-success/15 pt-3">
+                      <button onClick={() => void copyGatewayValue('pi')} className="inline-flex h-7 items-center gap-1.5 rounded border border-border-2 bg-surface-2 px-2.5 text-[10px] text-text-2 hover:border-accent/40 hover:text-text-1">
+                        {gatewayCopied === 'pi' ? <Check size={10} /> : <Copy size={10} />} Pi models.json
+                      </button>
+                      <button onClick={() => void copyGatewayValue('opencode')} className="inline-flex h-7 items-center gap-1.5 rounded border border-border-2 bg-surface-2 px-2.5 text-[10px] text-text-2 hover:border-accent/40 hover:text-text-1">
+                        {gatewayCopied === 'opencode' ? <Check size={10} /> : <Copy size={10} />} OpenCode config
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-3 flex items-center gap-2 px-2">
+                  {gatewayStatus.running ? (
+                    <button onClick={() => void handleGatewayStop()} disabled={gatewayBusy} className="inline-flex h-8 items-center gap-1.5 rounded border border-error/30 bg-error/10 px-3 text-[11px] font-medium text-error hover:bg-error/15 disabled:opacity-40">
+                      {gatewayBusy && <RefreshCw size={11} className="animate-spin" />} Stop gateway
+                    </button>
+                  ) : (
+                    <button onClick={() => void handleGatewayStart()} disabled={gatewayBusy || !ai.enabled || !ai.model.trim()} className="inline-flex h-8 items-center gap-1.5 rounded bg-accent px-3 text-[11px] font-medium text-white hover:bg-accent-light disabled:opacity-40">
+                      {gatewayBusy ? <RefreshCw size={11} className="animate-spin" /> : <Radio size={11} />} Start gateway
+                    </button>
+                  )}
+                  <span className="text-[9px] text-text-4">Changes to provider, credentials, model or port apply when restarted or saved.</span>
+                </div>
+              </>
+            ) : (
+              <div className="rounded-md border border-warning/30 bg-warning/8 px-3 py-2 text-[10px] text-text-3">
+                Select Ollama, OpenAI, Hugging Face, or an OpenAI-compatible runtime. Anthropic, Gemini, and Bedrock use different wire protocols and cannot be transparently proxied.
+              </div>
+            )}
+            {gatewayError && <p className="mt-3 rounded border border-error/30 bg-error/8 px-2 py-1.5 text-[10px] text-error">{gatewayError}</p>}
+          </div>
+        </div>
 
         {/* Actions */}
         <div className="flex items-center gap-3 pt-1">

@@ -861,9 +861,11 @@ Existing `{{variable}}` references are also linked when their current environmen
 | # | Impostazione |
 |---|-------------|
 | G1.57 | **Guided AI Profiles** | Recommended, best quality, fast/efficient, or private local AI profiles simplify setup without hiding the exact model choice. |
-| G1.58 | **Live Model Discovery** | Lists models directly from OpenAI, Anthropic, Gemini, Hugging Face, Ollama, or an OpenAI-compatible runtime; provider metadata is cached locally. |
+| G1.58 | **Live Model Discovery** | Lists models directly from OpenAI, Anthropic, Amazon Bedrock, Gemini, Hugging Face, Ollama, or an OpenAI-compatible runtime; provider metadata is cached locally. |
 | G1.59 | **Model Update Control** | Optional, explicit auto-check when the AI Engine screen opens. It calls only the selected provider/runtime and never changes the selected model silently. |
 | G1.60 | **Actionable Diagnostics** | Credential, connection, unavailable-model, and local-runtime failures are explained with a corrective action. |
+| G1.61 | **Enterprise Claude via Amazon Bedrock** | Runs Claude through Bedrock Converse using the AWS SDK credential chain (profiles, IAM Identity Center/SSO, assume-role, web identity, or workload roles) without storing AWS secrets. Region, named profile, private runtime endpoint, and inference-profile ID/ARN are configurable. |
+| G1.62 | **Local Agent Gateway** | Exposes Ollama, OpenAI, Hugging Face, or another OpenAI-compatible runtime on a loopback-only `/v1` endpoint for OpenCode, Pi, and other coding agents. Uses a persistent generated Bearer token, preserves streaming and tool calls through transparent proxying, and provides copy-ready client configuration. |
 
 ---
 

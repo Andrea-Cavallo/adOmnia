@@ -502,6 +502,11 @@ func (a *App) OnDomReady(ctx context.Context) {
 
 func (a *App) OnShutdown(ctx context.Context) {
 	devlog.Info("OnShutdown", "arresto applicazione", nil)
+	if globalAIEngine != nil {
+		if err := globalAIEngine.StopGateway(); err != nil {
+			log.Printf("[app] AI gateway stop error: %v", err)
+		}
+	}
 	if globalPluginManager != nil {
 		globalPluginManager.EmitEvent(PluginEvent{Type: "onShutdown", Payload: map[string]interface{}{}})
 		globalPluginManager.Shutdown()

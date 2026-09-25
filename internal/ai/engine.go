@@ -11,6 +11,7 @@ type Provider string
 
 const (
 	ProviderAnthropic        Provider = "anthropic"
+	ProviderAmazonBedrock    Provider = "amazon-bedrock"
 	ProviderOpenAI           Provider = "openai"
 	ProviderGemini           Provider = "gemini"
 	ProviderOllama           Provider = "ollama"
@@ -24,6 +25,8 @@ type Config struct {
 	APIKey         string         `json:"apiKey"`
 	BaseURL        string         `json:"baseURL"`
 	CredentialMode CredentialMode `json:"credentialMode,omitempty"`
+	AWSRegion      string         `json:"awsRegion,omitempty"`
+	AWSProfile     string         `json:"awsProfile,omitempty"`
 }
 
 type CredentialMode string
@@ -76,6 +79,12 @@ func New(cfg Config) (*Engine, error) {
 // reports a missing environment credential so the caller can safely retry with
 // its separately resolved Vault fallback.
 func ResolveEnvironmentCredentials(cfg Config) (Config, error) {
+	// Bedrock authentication is intentionally delegated to the AWS SDK default
+	// credential chain (environment, shared profiles/SSO, web identity and
+	// workload roles). adOmnia never reads or stores the resolved AWS secrets.
+	if cfg.Provider == ProviderAmazonBedrock {
+		return cfg, nil
+	}
 	mode := cfg.CredentialMode
 	if mode == "" {
 		mode = CredentialModeAuto
@@ -134,6 +143,8 @@ func buildProvider(cfg Config) (AIProvider, error) {
 	switch cfg.Provider {
 	case ProviderAnthropic:
 		return newAnthropicProvider(cfg.APIKey, cfg.Model), nil
+	case ProviderAmazonBedrock:
+		return newBedrockProvider(cfg.Model, cfg.AWSRegion, cfg.AWSProfile, cfg.BaseURL), nil
 	case ProviderOpenAI:
 		base := cfg.BaseURL
 		if base == "" {

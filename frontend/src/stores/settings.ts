@@ -6,7 +6,7 @@ import { normalizeRailItem } from '@/lib/navigation'
 import { updateUiSessionStartupPreference, type StartupBehavior } from '@/lib/uiSessionMemento'
 import { decodePersistedJSON } from '@/lib/persistedJson'
 
-export type AIProvider = 'anthropic' | 'openai' | 'gemini' | 'ollama' | 'huggingface' | 'openai-compatible'
+export type AIProvider = 'anthropic' | 'amazon-bedrock' | 'openai' | 'gemini' | 'ollama' | 'huggingface' | 'openai-compatible'
 export type AIUsageProfile = 'recommended' | 'quality' | 'efficient' | 'local'
 
 export interface AIModelSummary {
@@ -104,6 +104,10 @@ export interface AppSettings {
     model: string
     apiKey: string
     baseURL: string
+    /** Optional Bedrock region override; otherwise the AWS SDK chain resolves it. */
+    awsRegion: string
+    /** Optional shared AWS profile, including IAM Identity Center/SSO profiles. */
+    awsProfile: string
     enabled: boolean
     /** `auto` prefers machine-local environment credentials before the Vault fallback. */
     credentialMode: 'auto' | 'vault' | 'environment'
@@ -113,6 +117,10 @@ export interface AppSettings {
     modelUpdatePolicy: 'manual' | 'when-open'
     /** Last verified metadata, persisted locally and safe to export/redact. */
     modelCatalogs: Partial<Record<AIProvider, AIModelCatalog>>
+    /** Exposes the selected compatible provider to local coding agents only. */
+    gatewayEnabled: boolean
+    /** Stable loopback port used by OpenCode, Pi, and other local clients. */
+    gatewayPort: number
   }
   features: {
     pluginsEnabled: boolean
@@ -138,14 +146,14 @@ function mergeBlock<T extends Record<string, unknown>>(defaults: T, saved: Parti
 
 const RETIRED_AI_MODELS: Partial<Record<AppSettings['ai']['provider'], Record<string, string>>> = {
   openai: {
-    'gpt-5.5': 'gpt-5.6-sol',
-    'gpt-5.5-pro': 'gpt-5.6-sol',
-    'gpt-5.4': 'gpt-5.6-terra',
-    'gpt-5.4-mini': 'gpt-5.6-terra',
-    'gpt-5.4-nano': 'gpt-5.6-luna',
+    'gpt-5.6-sol': 'gpt-6-astra',
+    'gpt-5.6-terra': 'gpt-6-sol',
+    'gpt-5.6-luna': 'gpt-6-luna',
   },
   anthropic: {
-    'claude-opus-4-8': 'claude-opus-5',
+    'claude-fable-5': 'claude-fable-5-1',
+    'claude-opus-5': 'claude-opus-5-5',
+    'claude-opus-4-8': 'claude-opus-5-5',
     'claude-sonnet-4-6': 'claude-sonnet-5',
   },
   gemini: {
@@ -167,7 +175,7 @@ function migrateAIModel(ai: AppSettings['ai']): AppSettings['ai'] {
 }
 
 const defaultSettings: AppSettings = {
-  version: 8,
+  version: 10,
   general: {
     confirmBeforeClosingDirtyTabs: true,
     restoreTabsOnStartup: true,
@@ -244,11 +252,15 @@ const defaultSettings: AppSettings = {
     model: '',
     apiKey: '',
     baseURL: 'http://localhost:11434',
+    awsRegion: 'us-east-1',
+    awsProfile: '',
     enabled: false,
     credentialMode: 'auto',
     usageProfile: 'recommended',
     modelUpdatePolicy: 'manual',
     modelCatalogs: {},
+    gatewayEnabled: false,
+    gatewayPort: 11435,
   },
   features: {
     pluginsEnabled: false,
@@ -297,7 +309,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       const migratedToV3 = (parsed.version ?? 0) < 3 && appearance.windowChrome === 'app'
       if (migratedToV3) appearance.windowChrome = 'system'
       const savedAI = mergeBlock(defaultSettings.ai, parsed.ai)
-      const migratedAI = (parsed.version ?? 0) < 5 ? migrateAIModel(savedAI) : savedAI
+      const migratedAI = (parsed.version ?? 0) < 9 ? migrateAIModel(savedAI) : savedAI
       // Existing Vault-based profiles gain the environment-first flow without
       // losing their encrypted key: it remains the fallback when no system key
       // is set. Users can still select Vault-only mode in AI Settings.
@@ -307,6 +319,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       const migratedAiModels = migratedCredentials.model !== savedAI.model
       const migratedAiCredentials = migratedCredentials.credentialMode !== savedAI.credentialMode
       const migratedStartupBehavior = (parsed.version ?? 0) < 7
+      const migratedSettingsVersion = (parsed.version ?? 0) < defaultSettings.version
       const general = mergeBlock(defaultSettings.general, parsed.general)
       general.startupBehavior = general.startupBehavior === 'fixed' ? 'fixed' : 'resume'
       const merged: AppSettings = {
@@ -331,7 +344,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         normalizeRailItem(merged.general.defaultStartupRail) ?? 'collections',
       )
       // Persist one-time migrations so the change survives without a manual edit.
-      if (migratedToV3 || migratedAiModels || migratedAiCredentials || migratedStartupBehavior) get().save()
+      if (migratedToV3 || migratedAiModels || migratedAiCredentials || migratedStartupBehavior || migratedSettingsVersion) get().save()
     } catch {
       set({ settings: defaultSettings, loaded: true })
     }
