@@ -8,6 +8,8 @@ import { useAppIcon } from '@/lib/brandAssets'
 import { RAIL_CATEGORIES, getFeatureLabel, isFeatureVisible } from '@/lib/featureRegistry'
 import { useNavigationTranslation, useUiTranslation } from '@/lib/uiI18n'
 import { nextRovingFocusIndex } from '@/lib/accessibility'
+import { safeSetItem } from '@/lib/safeLocalStorage'
+import { normalizeRailItem } from '@/lib/navigation'
 import {
   Send, LayoutList, Shield, Server, Radio, Bug, Container, Network,
   Wrench, FileText, FileCode, Database, Braces, ChevronRight, FolderOpen,
@@ -203,21 +205,23 @@ interface CategoryButtonProps {
   activeRail: RailItem
   anyRunning?: boolean
   isOpen: boolean
+  quickItem?: RailItem
   onToggle: () => void
   onOpen: () => void
   onSelect: (id: RailItem) => void
   onClose: () => void
 }
 
-function CategoryButton({ cat, activeRail, anyRunning, isOpen, onToggle, onOpen, onSelect, onClose }: CategoryButtonProps) {
+function CategoryButton({ cat, activeRail, anyRunning, isOpen, quickItem, onToggle, onOpen, onSelect, onClose }: CategoryButtonProps) {
   const nav = useNavigationTranslation()
   const Icon = CATEGORY_ICONS[cat.key] ?? Wrench
   const allItems = cat.groups.flatMap((g) => g.items)
   const anyActive = allItems.some((item) => item.id === activeRail)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const handleClick = () => {
-    if (cat.directItem) {
-      onSelect(cat.directItem)
+    const destination = cat.directItem ?? quickItem ?? allItems[0]?.id
+    if (destination) {
+      onSelect(destination)
       onClose()
       return
     }
@@ -229,10 +233,8 @@ function CategoryButton({ cat, activeRail, anyRunning, isOpen, onToggle, onOpen,
       <button
         ref={triggerRef}
         data-rail-control
-        aria-haspopup={cat.directItem ? undefined : 'menu'}
-        aria-expanded={cat.directItem ? undefined : isOpen}
-        aria-controls={cat.directItem ? undefined : `rail-menu-${cat.key}`}
-        title={nav(cat.label)}
+        title={nav(getFeatureLabel(cat.directItem ?? quickItem ?? allItems[0]?.id))}
+        onContextMenu={event => { if (!cat.directItem) { event.preventDefault(); onOpen() } }}
         onClick={handleClick}
         onKeyDown={(event) => {
           if (event.key !== 'ArrowRight' || cat.directItem) return
@@ -257,6 +259,15 @@ function CategoryButton({ cat, activeRail, anyRunning, isOpen, onToggle, onOpen,
           <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-success rounded-full border-2 border-surface-0 animate-pulse" />
         )}
       </button>
+
+      {!cat.directItem && <button
+        data-rail-control
+        aria-label={nav(cat.label)}
+        title={nav(cat.label)}
+        aria-haspopup="menu" aria-expanded={isOpen} aria-controls={`rail-menu-${cat.key}`}
+        onClick={onToggle}
+        className="absolute right-0 bottom-0.5 grid h-4 w-4 place-items-center rounded text-text-3 hover:bg-surface-3 hover:text-text-1"
+      ><ChevronRight size={10} /></button>}
 
       {isOpen && !cat.directItem && (
         <Flyout
@@ -289,6 +300,22 @@ export function Rail() {
   const features = useSettingsStore((s) => s.settings.features)
 
   const [openKey, setOpenKey] = useState<string | null>(null)
+  const [quickItems, setQuickItems] = useState<Record<string, RailItem>>(() => {
+    try {
+      const value = JSON.parse(localStorage.getItem('adomnia.railQuick.v1') ?? '{}')
+      return Object.fromEntries(Object.entries(value).flatMap(([key, value]) => { const id = normalizeRailItem(value); return id ? [[key, id]] : [] }))
+    } catch { return {} }
+  })
+  useEffect(() => {
+    const category = CATEGORIES.find(cat => cat.groups.some(group => group.items.some(item => item.id === activeRail)))
+    if (!category) return
+    setQuickItems(current => {
+      if (current[category.key] === activeRail) return current
+      const next = { ...current, [category.key]: activeRail }
+      safeSetItem('adomnia.railQuick.v1', JSON.stringify(next))
+      return next
+    })
+  }, [activeRail])
   const railRef = useRef<HTMLElement>(null)
 
   // Click outside → close flyout
@@ -364,6 +391,7 @@ export function Rail() {
           <CategoryButton
             key={cat.key}
             cat={cat}
+            quickItem={cat.groups.some(g => g.items.some(i => i.id === quickItems[cat.key])) ? quickItems[cat.key] : undefined}
             activeRail={activeRail}
             anyRunning={runningMap[cat.key]}
             isOpen={openKey === cat.key}

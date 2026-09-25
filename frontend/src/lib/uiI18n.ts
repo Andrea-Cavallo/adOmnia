@@ -9,6 +9,8 @@ import type { Lang } from '@/lib/i18n'
  * small while still making missing Italian entries a compile-time error.
  */
 export const ITALIAN_UI_MESSAGES = {
+  'Undo': 'Annulla',
+  'Undo unavailable after subsequent changes.': 'Impossibile annullare dopo ulteriori modifiche.',
   'Home': 'Home',
   'Primary navigation': 'Navigazione principale',
   'Settings': 'Impostazioni',

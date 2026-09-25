@@ -257,6 +257,8 @@ export interface Tab {
   collectionId?: string
   workspaceId?: string
   pinned?: boolean
+  /** Temporary preview; editing or explicitly keeping the tab promotes it. */
+  preview?: boolean
   dirty: boolean
   response: ResponseData | null
   loading: boolean

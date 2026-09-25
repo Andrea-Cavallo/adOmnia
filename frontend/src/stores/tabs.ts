@@ -64,7 +64,8 @@ interface TabsState {
   activateWorkspace: (workspaceId: string) => void
   deleteWorkspaceTabs: (workspaceId: string) => void
   moveCollectionTabs: (collectionId: string, targetWorkspaceId: string) => void
-  openTab: (request: RequestItem, collectionId?: string) => void
+  openTab: (request: RequestItem, collectionId?: string, preview?: boolean) => void
+  keepTab: (id: string) => void
   closeTab: (id: string) => void
   closeRequestTabs: (requestId: string) => void
   renameRequestTabs: (requestId: string, name: string) => void
@@ -338,10 +339,16 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     get().save()
   },
 
-  openTab: (request, collectionId) => {
+  keepTab: (id) => {
+    set(s => ({ tabs: s.tabs.map(t => t.id === id ? { ...t, preview: false } : t) }))
+    get().save()
+  },
+
+  openTab: (request, collectionId, preview = false) => {
     const workspaceId = activeWorkspaceId()
     const existing = get().tabs.find((t) => t.request.id === request.id && belongsToWorkspace(t, workspaceId))
     if (existing) {
+      if (!preview) get().keepTab(existing.id)
       set({ activeTabId: existing.id })
       get().save()
       return
@@ -354,8 +361,13 @@ export const useTabsStore = create<TabsState>((set, get) => ({
       dirty: false,
       response: null,
       loading: false,
+      preview,
     }
-    set((s) => ({ tabs: [...s.tabs, tab], activeTabId: tab.id }))
+    set((s) => {
+      const replace = preview ? s.tabs.find(t => t.preview && belongsToWorkspace(t, workspaceId) && !t.dirty && !t.loading && !t.pinned && !s.detachedTabIds[t.id]) : undefined
+      const tabs = replace ? s.tabs.map(t => t.id === replace.id ? tab : t) : [...s.tabs, tab]
+      return { tabs, activeTabId: tab.id, viewStateByTabId: retainViewStates(s.viewStateByTabId, tabs) }
+    })
     get().save()
   },
 
@@ -395,7 +407,7 @@ export const useTabsStore = create<TabsState>((set, get) => ({
   renameRequestTabs: (requestId, name) => {
     set((s) => ({
       tabs: s.tabs.map((tab) => (
-        tab.request.id === requestId ? { ...tab, request: { ...tab.request, name } } : tab
+        tab.request.id === requestId ? { ...tab, preview: false, request: { ...tab.request, name } } : tab
       )),
     }))
     get().save()
@@ -540,21 +552,21 @@ export const useTabsStore = create<TabsState>((set, get) => ({
 
   togglePinned: (id) => {
     set((s) => ({
-      tabs: s.tabs.map((tab) => (tab.id === id ? { ...tab, pinned: !tab.pinned } : tab)),
+      tabs: s.tabs.map((tab) => (tab.id === id ? { ...tab, pinned: !tab.pinned, preview: false } : tab)),
     }))
     get().save()
   },
 
   updateRequest: (tabId, request) => {
     set((s) => ({
-      tabs: s.tabs.map((t) => (t.id === tabId ? { ...t, request, dirty: true } : t)),
+      tabs: s.tabs.map((t) => (t.id === tabId ? { ...t, request, dirty: true, preview: false } : t)),
     }))
     get().save()
   },
 
   setLoading: (tabId, loading) => {
     set((s) => ({
-      tabs: s.tabs.map((t) => (t.id === tabId ? { ...t, loading } : t)),
+      tabs: s.tabs.map((t) => (t.id === tabId ? { ...t, loading, preview: loading ? false : t.preview } : t)),
     }))
     get().save()
   },
@@ -630,7 +642,7 @@ export const useTabsStore = create<TabsState>((set, get) => ({
       const detachedTabIds = { ...s.detachedTabIds }
       if (detached) detachedTabIds[tabId] = true
       else delete detachedTabIds[tabId]
-      return { detachedTabIds }
+      return { detachedTabIds, tabs: detached ? s.tabs.map(tab => tab.id === tabId ? { ...tab, preview: false } : tab) : s.tabs }
     })
   },
 

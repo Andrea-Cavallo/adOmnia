@@ -189,9 +189,10 @@ export function Sidebar() {
       />
 
       <CollectionTree
+        key={activeWorkspaceId}
         collections={collections}
         activeRequestId={activeRequestId}
-        onOpenRequest={(request: RequestItem, collectionId: string) => openTab(request, collectionId)}
+        onOpenRequest={(request: RequestItem, collectionId: string, preview?: boolean) => openTab(request, collectionId, preview)}
         onNewRequest={handleNewRequest}
         onDeleteCollection={deleteCollection}
         onDeleteNode={handleDeleteNode}

@@ -7,6 +7,9 @@ import type { TabDropPosition } from '@/stores/tabs'
 import { cn } from '@/lib/utils'
 import { useUiTranslation } from '@/lib/uiI18n'
 import { ContextMenu } from '@/components/ui/ContextMenu'
+import { REQUEST_DRAG_TYPE } from '@/lib/collectionMoves'
+import { openDroppedRequests } from '@/components/collections/useTreeInteraction'
+import { useTabsStore } from '@/stores/tabs'
 
 interface TabBarProps {
   tabs: Tab[]
@@ -205,7 +208,11 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
     <Tabs.Root value={activeTabId ?? undefined} onValueChange={onSelect} activationMode="automatic">
     <div className="flex h-10 items-center gap-1 border-b border-border-1 bg-surface-0 px-2">
       <Tabs.List asChild aria-label={tr('Request tabs')}>
-      <div ref={scrollRef} className="flex h-8 min-w-0 flex-1 items-center gap-1 overflow-hidden rounded-[14px] border border-border-1 bg-surface-1 p-1 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--color-text-1)_4%,transparent)]">
+      <div ref={scrollRef}
+        onDragOver={event => { if (event.dataTransfer.types.includes(REQUEST_DRAG_TYPE)) { event.preventDefault(); event.dataTransfer.dropEffect = 'move' } }}
+        onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDropTarget(null) }}
+        onDrop={event => { if (event.dataTransfer.types.includes(REQUEST_DRAG_TYPE)) { event.preventDefault(); openDroppedRequests(event.dataTransfer.getData(REQUEST_DRAG_TYPE)); clearDrag() } }}
+        className="flex h-8 min-w-0 flex-1 items-center gap-1 overflow-hidden rounded-[14px] border border-border-1 bg-surface-1 p-1 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--color-text-1)_4%,transparent)]">
       {visibleTabs.map((tab) => {
         const isActive = activeTabId === tab.id
         const isPinned = tab.pinned === true
@@ -214,6 +221,7 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
             key={tab.id}
             data-tab-id={tab.id}
             draggable
+            onDoubleClick={() => useTabsStore.getState().keepTab(tab.id)}
             onContextMenu={(e) => {
               e.preventDefault()
               setCtx({ open: true, x: e.clientX, y: e.clientY, tabId: tab.id })
@@ -229,18 +237,23 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
             }}
             onDragOver={(e) => {
               const sourceId = draggingTabRef.current || draggingTabId
-              if (!sourceId || sourceId === tab.id) return
+              if ((!sourceId && !e.dataTransfer.types.includes(REQUEST_DRAG_TYPE)) || sourceId === tab.id) return
               e.preventDefault()
               e.stopPropagation()
               e.dataTransfer.dropEffect = 'move'
               const rect = e.currentTarget.getBoundingClientRect()
               const position: TabDropPosition = e.clientX < rect.left + rect.width / 2 ? 'before' : 'after'
-              setDropTarget({ tabId: tab.id, position })
+              setDropTarget(current => current?.tabId === tab.id && current.position === position ? current : { tabId: tab.id, position })
               setDetachArmed(false)
             }}
             onDrop={(e) => {
               e.preventDefault()
               e.stopPropagation()
+              if (e.dataTransfer.types.includes(REQUEST_DRAG_TYPE)) {
+                const rect = e.currentTarget.getBoundingClientRect()
+                openDroppedRequests(e.dataTransfer.getData(REQUEST_DRAG_TYPE), tab.id, e.clientX < rect.left + rect.width / 2 ? 'before' : 'after')
+                clearDrag(); return
+              }
               const sourceId = draggingTabRef.current || draggingTabId || e.dataTransfer.getData('application/x-adomnia-tab')
               if (sourceId && sourceId !== tab.id) {
                 const rect = e.currentTarget.getBoundingClientRect()
@@ -315,7 +328,7 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
                 className="relative z-20 min-w-0 flex-1 truncate bg-transparent outline-none border-b border-accent text-xs text-text-1"
               />
             ) : !isPinned ? (
-              <span className="pointer-events-none relative z-10 truncate flex-1">
+              <span className={cn('pointer-events-none relative z-10 truncate flex-1', tab.preview && 'italic')}>
                 {tab.request.name || tab.request.url || tr('Untitled')}
               </span>
             ) : (

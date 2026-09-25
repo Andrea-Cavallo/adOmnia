@@ -1,4 +1,7 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { TreeInteraction, treeSessions, useTreeInteraction } from './useTreeInteraction'
+import { useCollectionsStore } from '@/stores/collections'
+import { locateNode } from '@/lib/collectionMoves'
 import {
   ChevronRight,
   Code,
@@ -36,7 +39,7 @@ import { collectionToOAS } from '@/lib/oasExport'
 interface CollectionTreeProps {
   collections: Collection[]
   activeRequestId: string | null
-  onOpenRequest: (request: RequestItem, collectionId: string) => void
+  onOpenRequest: (request: RequestItem, collectionId: string, preview?: boolean) => void
   onNewRequest: (method?: HttpMethod) => string | null
   onDeleteCollection: (id: string) => void
   onDeleteNode: (collectionId: string, nodeId: string) => void
@@ -131,17 +134,6 @@ function filterTree(nodes: TreeNode[], query: string): TreeNode[] {
     .filter(Boolean) as TreeNode[]
 }
 
-function findNode(nodes: TreeNode[], id: string): TreeNode | null {
-  for (const node of nodes) {
-    if (node.id === id) return node
-    if (node.type === 'folder') {
-      const found = findNode(node.children, id)
-      if (found) return found
-    }
-  }
-  return null
-}
-
 /**
  * Returns the collection and folder IDs that must be expanded to reveal a
  * request. Keeping this separate from the rendered (and potentially filtered)
@@ -164,10 +156,6 @@ function expansionPathForRequest(collections: Collection[], requestId: string): 
     if (folders) return [collection.id, ...folders]
   }
   return []
-}
-
-function containsNode(node: TreeNode, id: string): boolean {
-  return node.type === 'folder' && Boolean(findNode(node.children, id))
 }
 
 function listFolders(nodes: TreeNode[]): FolderItem[] {
@@ -327,7 +315,7 @@ function TreeNodeRow({
   focusedId: string | null
   query: string
   onToggle: (id: string) => void
-  onOpenRequest: (request: RequestItem, collectionId: string) => void
+  onOpenRequest: (request: RequestItem, collectionId: string, preview?: boolean) => void
   onSetEditing: (id: string | null) => void
   onCommitRename: (collectionId: string, nodeId: string, name: string) => void
   onContext: (target: ContextTarget) => void
@@ -339,7 +327,8 @@ function TreeNodeRow({
 }) {
   const isFolder = node.type === 'folder'
   const isOpen = isFolder && openIds.has(node.id)
-  const isInvalidDrop = dragPayload?.type === 'node' && (dragPayload.nodeId === node.id || (dragPayload.nodeType === 'folder' && containsNode(node, dragPayload.nodeId)))
+  const interaction = useContext(TreeInteraction)
+  const isInvalidDrop = interaction.invalid(node, dropTarget?.position === 'inside')
   const target = dropTarget?.id === node.id ? dropTarget.position : null
   const matchHint = query && !isFolder ? getMatchHint(node as RequestItem, query.toLowerCase()) : null
 
@@ -351,16 +340,17 @@ function TreeNodeRow({
         data-request-active={!isFolder && activeRequestId === node.id ? 'true' : undefined}
         role="treeitem"
         tabIndex={-1}
-        aria-selected={focusedId === node.id}
+        aria-selected={interaction.selected.has(node.id)}
         aria-current={!isFolder && activeRequestId === node.id ? 'page' : undefined}
         aria-expanded={isFolder ? isOpen : undefined}
-        draggable
+        draggable={editingId !== node.id}
         onDragStart={(event) => { event.stopPropagation(); onDragStartNode(event, { type: 'node', collectionId: collection.id, nodeId: node.id, nodeType: node.type }) }}
         onDragOver={(event) => { event.stopPropagation(); onDragOverNode(event, collection.id, node) }}
         onDrop={(event) => { event.stopPropagation(); onDropNode(event, collection.id, node, parentId, index) }}
-        onDragLeave={onClearDrop}
+        onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) onClearDrop() }}
         onDragEnd={onClearDrop}
-        onClick={() => { onSetFocused(node.id); isFolder ? onToggle(node.id) : onOpenRequest(node as RequestItem, collection.id) }}
+        onClick={(event) => { onSetFocused(node.id); if (editingId === node.id) return; if (!isFolder && interaction.select(event, node.id)) return; isFolder ? onToggle(node.id) : onOpenRequest(node as RequestItem, collection.id, true) }}
+        onDoubleClick={() => { if (!isFolder && editingId !== node.id) onOpenRequest(node as RequestItem, collection.id, false) }}
         onContextMenu={(event) => {
           event.preventDefault()
           event.stopPropagation()
@@ -372,11 +362,13 @@ function TreeNodeRow({
           target === 'inside' && !isInvalidDrop && 'ring-1 ring-accent/70 bg-accent/10',
           isInvalidDrop && target && 'ring-1 ring-error/60 bg-error/8',
           focusedId === node.id && 'ring-1 ring-inset ring-accent/50',
+          interaction.selected.has(node.id) && 'bg-accent/15',
+          interaction.dragging.has(node.id) && 'opacity-40',
         )}
         style={{ paddingLeft: depth * 12 + 4 }}
       >
-        {target === 'before' && <span className="absolute left-1 right-1 top-0 h-0.5 rounded bg-accent" />}
-        {target === 'after' && <span className="absolute bottom-0 left-1 right-1 h-0.5 rounded bg-accent" />}
+        {target === 'before' && !isInvalidDrop && <span className="absolute left-1 right-1 top-0 h-0.5 rounded bg-accent" />}
+        {target === 'after' && !isInvalidDrop && <span className="absolute bottom-0 left-1 right-1 h-0.5 rounded bg-accent" />}
         <GripVertical size={10} className="shrink-0 cursor-grab text-text-4 opacity-0 group-hover:opacity-60" />
         {isFolder ? (
           <>
@@ -396,7 +388,7 @@ function TreeNodeRow({
             onCancel={() => onSetEditing(null)}
           />
         ) : (
-          <span onDoubleClick={(event) => { event.stopPropagation(); onSetEditing(node.id) }} className="min-w-0 flex-1 truncate">
+          <span className="min-w-0 flex-1 truncate">
             {node.name}
           </span>
         )}
@@ -463,8 +455,10 @@ export function CollectionTree({
   onMoveNode,
 }: CollectionTreeProps) {
   const tr = useUiTranslation()
-  const [query, setQuery] = useState('')
-  const [openIds, setOpenIds] = useState<Set<string>>(() => new Set(collections.map((c) => c.id)))
+  const workspaceId = useCollectionsStore(s => s.activeWorkspaceId)
+  const savedSession = treeSessions.get(workspaceId)
+  const [query, setQuery] = useState(savedSession?.query ?? '')
+  const [openIds, setOpenIds] = useState<Set<string>>(() => new Set(savedSession?.open ?? collections.map((c) => c.id)))
   const [editingId, setEditingId] = useState<string | null>(null)
   const [folderPrompt, setFolderPrompt] = useState<{ collectionId: string; parentId: string | null } | null>(null)
   const [moveTarget, setMoveTarget] = useState<{ collectionId: string; requestId: string; folders: FolderItem[] } | null>(null)
@@ -476,11 +470,22 @@ export function CollectionTree({
   const [menuPos, setMenuPos] = useState<{ left: number; top: number } | null>(null)
   const [dragPayload, setDragPayload] = useState<DragPayload | null>(null)
   const [dropTarget, setDropTarget] = useState<{ id: string; position: DropPosition } | null>(null)
-  const [focusedId, setFocusedId] = useState<string | null>(null)
+  const [focusedId, setFocusedId] = useState<string | null>(savedSession?.focused ?? null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const treeRef = useRef<HTMLDivElement>(null)
+  const interaction = useTreeInteraction(collections, treeRef, id => setOpenIds(current => current.has(id) ? current : new Set([...current, id])))
+  const sessionRef = useRef({ open: [...openIds], query, focused: focusedId, scroll: savedSession?.scroll ?? 0 })
+  sessionRef.current = { ...sessionRef.current, open: [...openIds], query, focused: focusedId }
+  useLayoutEffect(() => {
+    if (treeRef.current) treeRef.current.scrollTop = savedSession?.scroll ?? 0
+    return () => { treeSessions.set(workspaceId, sessionRef.current) }
+  }, [])
+  const knownCollections = useRef(new Set(collections.map(c => c.id)))
+  const initialReveal = useRef(!!savedSession)
+  const initialScroll = useRef(!!savedSession)
+  const initialFocus = useRef(!!savedSession)
 
   // Focus the request search on Cmd/Ctrl+Shift+F (dispatched by the global shortcuts hook).
   useEffect(() => {
@@ -492,7 +497,8 @@ export function CollectionTree({
   useEffect(() => {
     setOpenIds((current) => {
       const next = new Set(current)
-      for (const collection of collections) next.add(collection.id)
+      for (const collection of collections) if (!knownCollections.current.has(collection.id)) next.add(collection.id)
+      knownCollections.current = new Set(collections.map(c => c.id))
       return next
     })
   }, [collections])
@@ -501,6 +507,7 @@ export function CollectionTree({
   // expand its complete path so the highlighted source request is immediately
   // visible in the sidebar.
   useEffect(() => {
+    if (initialReveal.current) { initialReveal.current = false; return }
     if (!activeRequestId) return
     const path = expansionPathForRequest(collections, activeRequestId)
     if (path.length === 0) return
@@ -515,16 +522,20 @@ export function CollectionTree({
       }
       return changed ? next : current
     })
-  }, [activeRequestId, collections])
+  }, [activeRequestId])
 
   // Once the path is open, keep the active request in the visible viewport.
   // An active search is intentionally preserved; clearing it is the user's
   // choice, and the request is revealed again as soon as the search is cleared.
   useEffect(() => {
+    if (initialScroll.current) { initialScroll.current = false; return }
     if (!activeRequestId || query.trim()) return
-    const requestRow = treeRef.current?.querySelector<HTMLElement>(`[data-node-id="${activeRequestId}"]`)
-    requestRow?.scrollIntoView({ block: 'nearest' })
-  }, [activeRequestId, collections, openIds, query])
+    const frame = requestAnimationFrame(() => {
+      const requestRow = treeRef.current?.querySelector<HTMLElement>(`[data-node-id="${activeRequestId}"]`)
+      requestRow?.scrollIntoView({ block: 'nearest' })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [activeRequestId, query])
 
   useEffect(() => {
     if (!context) return
@@ -601,6 +612,7 @@ export function CollectionTree({
 
   // Auto-scroll focused item into view
   useEffect(() => {
+    if (initialFocus.current) { initialFocus.current = false; return }
     if (!focusedId) return
     const el = treeRef.current?.querySelector<HTMLElement>(`[data-node-id="${focusedId}"]`)
     el?.scrollIntoView({ block: 'nearest' })
@@ -619,6 +631,8 @@ export function CollectionTree({
     if (editingId) return
     const idx = focusedId ? flatItems.findIndex((i) => i.id === focusedId) : -1
     const current = flatItems[idx] ?? null
+    if (event.key === 'Escape') { event.preventDefault(); interaction.clear(); interaction.finish(); setDragPayload(null); clearDrop(); return }
+    if (event.key === ' ' && (event.ctrlKey || event.metaKey) && current?.kind === 'request') { event.preventDefault(); interaction.select(event, current.id); return }
     switch (event.key) {
       case 'ArrowDown': {
         event.preventDefault()
@@ -758,30 +772,36 @@ export function CollectionTree({
   }
 
   const startDrag = (event: React.DragEvent, payload: DragPayload) => {
+    if (payload.type === 'node') interaction.start(event, payload.nodeId)
     setDragPayload(payload)
     event.dataTransfer.effectAllowed = 'move'
     event.dataTransfer.setData('application/json', JSON.stringify(payload))
   }
 
-  const clearDrop = () => setDropTarget(null)
+  const clearDrop = () => { setDropTarget(null); interaction.over(null) }
 
   const handleNodeDragOver = (event: React.DragEvent, _collectionId: string, node: TreeNode) => {
     if (!dragPayload || dragPayload.type !== 'node') return
     event.preventDefault()
-    setDropTarget({ id: node.id, position: dragPosition(event, node) })
+    const position = dragPosition(event, node)
+    const invalid = interaction.invalid(node, position === 'inside')
+    event.dataTransfer.dropEffect = invalid ? 'none' : 'move'
+    interaction.over(!invalid && position === 'inside' && node.type === 'folder' ? node.id : null)
+    setDropTarget(current => current?.id === node.id && current.position === position ? current : { id: node.id, position })
   }
 
-  const handleNodeDrop = (event: React.DragEvent, targetCollectionId: string, node: TreeNode, parentId: string | null, index: number) => {
+  const handleNodeDrop = (event: React.DragEvent, targetCollectionId: string, node: TreeNode, _parentId: string | null, _index: number) => {
     event.preventDefault()
     if (!dragPayload || dragPayload.type !== 'node') return
     const position = dropTarget?.id === node.id ? dropTarget.position : dragPosition(event, node)
-    if (dragPayload.nodeId === node.id) return
-    if (dragPayload.nodeType === 'folder' && containsNode(node, dragPayload.nodeId)) return
+    if (interaction.invalid(node, position === 'inside')) { interaction.finish(); setDragPayload(null); clearDrop(); return }
+    const real = locateNode(collections, node.id)
+    if (!real) return
     if (position === 'inside' && node.type === 'folder') {
-      onMoveNode(dragPayload.collectionId, dragPayload.nodeId, targetCollectionId, node.id, node.children.length)
+      interaction.move(targetCollectionId, node.id, real.node.type === 'folder' ? real.node.children.length : 0)
       setOpenIds((current) => new Set([...current, node.id]))
     } else {
-      onMoveNode(dragPayload.collectionId, dragPayload.nodeId, targetCollectionId, parentId, position === 'before' ? index : index + 1)
+      interaction.move(targetCollectionId, real.parentId, position === 'before' ? real.index : real.index + 1)
     }
     setDragPayload(null)
     setDropTarget(null)
@@ -793,7 +813,7 @@ export function CollectionTree({
     if (dragPayload.type === 'collection') {
       if (dragPayload.collectionId !== collection.id) onReorderCollections(dragPayload.collectionId, collection.id)
     } else {
-      onMoveNode(dragPayload.collectionId, dragPayload.nodeId, collection.id, null, index)
+      interaction.move(collection.id, null, collections.find(c => c.id === collection.id)?.children.length ?? index)
     }
     setDragPayload(null)
     setDropTarget(null)
@@ -818,6 +838,7 @@ export function CollectionTree({
   )
 
   return (
+    <TreeInteraction.Provider value={interaction}>
     <div className="relative flex min-h-0 flex-1 flex-col">
       <div className="flex items-center gap-1 border-b border-border-1 px-2 py-2">
         <span className="flex-1 text-[10px] font-semibold uppercase tracking-wider text-text-4">{tr('Collections')}</span>
@@ -873,6 +894,11 @@ export function CollectionTree({
       <div
         ref={treeRef}
         role="tree"
+        aria-multiselectable="true"
+        onScroll={event => { sessionRef.current.scroll = event.currentTarget.scrollTop }}
+        onDragOverCapture={interaction.scroll}
+        onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) { interaction.stopScroll(); clearDrop() } }}
+        onDragEnd={() => { interaction.finish(); setDragPayload(null); clearDrop() }}
         aria-label={tr('Collections')}
         className="flex-1 overflow-y-auto px-1 pb-2 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
         tabIndex={0}
@@ -909,8 +935,10 @@ export function CollectionTree({
             draggable
             onDragStart={(event) => startDrag(event, { type: 'collection', collectionId: collection.id })}
             onDragOver={(event) => {
+              if (!dragPayload) return
               event.preventDefault()
-              setDropTarget({ id: collection.id, position: 'inside' })
+              interaction.over(collection.id)
+              setDropTarget(current => current?.id === collection.id ? current : { id: collection.id, position: 'inside' })
             }}
             onDrop={(event) => handleCollectionDrop(event, collection, collection.children.length)}
             onDragEnd={() => { setDragPayload(null); setDropTarget(null) }}
@@ -997,7 +1025,13 @@ export function CollectionTree({
 
       <div className="flex items-center gap-2 border-t border-border-1 px-3 py-1.5 text-[10px] text-text-4">
         <span>{collections.reduce((count, collection) => count + countRequests(collection.children), 0)} {tr('requests')}</span>
+        {interaction.selected.size > 1 && <button onClick={interaction.clear} className="text-accent">{interaction.selected.size} {tr('selected')} · {tr('Clear')}</button>}
       </div>
+      {interaction.notice && <div role="status" className="flex items-center gap-2 border-t border-accent/30 bg-surface-2 p-2 text-xs text-text-1">
+        <span className="min-w-0 flex-1 truncate">{interaction.notice.message}</span>
+        {interaction.notice.undo && <button className="text-accent" onClick={() => { const ok = interaction.notice?.undo?.(); interaction.setNotice(ok ? null : { message: tr('Undo unavailable after subsequent changes.') }) }}>{tr('Undo')}</button>}
+        <button aria-label={tr('Close')} onClick={() => interaction.setNotice(null)}><X size={12} /></button>
+      </div>}
 
       {context && (
         <div ref={menuRef} className="fixed z-50 max-h-[70vh] w-52 overflow-y-auto rounded-md border border-border-1 bg-surface-1 py-1 shadow-xl" style={{ left: menuPos?.left ?? context.x, top: menuPos?.top ?? context.y, visibility: menuPos ? 'visible' : 'hidden' }}>
@@ -1121,5 +1155,6 @@ export function CollectionTree({
         onCancel={() => setBulkDeleteOpen(false)}
       />
     </div>
+    </TreeInteraction.Provider>
   )
 }

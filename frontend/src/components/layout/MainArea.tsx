@@ -9,6 +9,8 @@ import { Composer } from '@/components/composer/Composer'
 import { ApiToolsBar } from '@/components/collections/ApiToolsBar'
 import { ResponsePanel } from '@/components/response/ResponsePanel'
 import { TabBar } from '@/components/layout/TabBar'
+import { REQUEST_DRAG_TYPE } from '@/lib/collectionMoves'
+import { openDroppedRequests } from '@/components/collections/useTreeInteraction'
 import { WelcomePanel } from '@/components/layout/WelcomePanel'
 import { LoadTestDrawer } from '@/components/loadtest/LoadTestDrawer'
 import { executeRequest } from '@/lib/executeRequest'
@@ -852,7 +854,9 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
 
   if (tabs.length === 0) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-2 bg-surface-0 select-none">
+      <div className="flex-1 flex flex-col items-center justify-center gap-2 bg-surface-0 select-none"
+        onDragOver={event => { if (event.dataTransfer.types.includes(REQUEST_DRAG_TYPE)) { event.preventDefault(); event.dataTransfer.dropEffect = 'move' } }}
+        onDrop={event => { if (event.dataTransfer.types.includes(REQUEST_DRAG_TYPE)) { event.preventDefault(); openDroppedRequests(event.dataTransfer.getData(REQUEST_DRAG_TYPE)) } }}>
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className="text-text-4 mb-1">
           <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.17 10.8 19.79 19.79 0 01.1 2.18 2 2 0 012.07.01h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z"/>
         </svg>
