@@ -895,6 +895,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
           )}
           {activeTab === 'headers' && (
             <KVEditor
+              headerMode
               rows={request.headers ?? []}
               onChange={(headers) => onChange({ ...request, headers })}
               keyPlaceholder={tr('Header name')}

@@ -378,7 +378,7 @@ function ActiveRequestBar({
           aria-label={recording ? `Stop recording API calls (${recordingCount} captured)` : 'Record API calls into a Flow'}
           aria-pressed={recording}
           className={cn(
-            'api-record-action flex h-[var(--ui-control-h)] min-w-[92px] items-center justify-center gap-2 px-3 text-[11px] font-extrabold',
+            'api-record-action flex h-[var(--ui-control-h)] min-w-[92px] items-center justify-center gap-2 px-3 text-[11px] font-semibold',
             recording && 'is-recording',
           )}
         >
@@ -404,7 +404,7 @@ function ActiveRequestBar({
             type="button"
             onClick={onSend}
             disabled={!request.url}
-            className="api-send-action flex h-[var(--ui-control-h)] min-w-[96px] items-center justify-center gap-2 px-3.5 text-[11px] font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-40"
+            className="api-send-action flex h-[var(--ui-control-h)] min-w-[96px] items-center justify-center gap-2 px-3.5 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Send className="api-send-action__icon" size={15} strokeWidth={2.35} aria-hidden="true" />
             {tr('Send')}

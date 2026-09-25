@@ -1,4 +1,5 @@
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, WandSparkles } from 'lucide-react'
+import { generateHeaderValue, headerValueKind, type TimestampFormat } from '@/lib/headerValues'
 import { useState } from 'react'
 import type { KVRow } from '@/lib/types'
 import { uid } from '@/lib/types'
@@ -12,6 +13,7 @@ interface KVEditorProps {
   onChange: (rows: KVRow[]) => void
   keyPlaceholder?: string
   valuePlaceholder?: string
+  headerMode?: boolean
 }
 
 type Preset = readonly [key: string, value: string]
@@ -203,9 +205,10 @@ const HEADER_PRESET_GROUPS: { label: string; items: readonly Preset[] }[] = [
 
 const HEADER_PRESETS: readonly Preset[] = HEADER_PRESET_GROUPS.flatMap((g) => g.items)
 
-export function KVEditor({ rows, onChange, keyPlaceholder = 'Key', valuePlaceholder = 'Value' }: KVEditorProps) {
+export function KVEditor({ rows, onChange, keyPlaceholder = 'Key', valuePlaceholder = 'Value', headerMode }: KVEditorProps) {
   const tr = useUiTranslation()
-  const isHeaders = keyPlaceholder.toLowerCase().includes('header')
+  const isHeaders = headerMode ?? keyPlaceholder.toLowerCase().includes('header')
+  const [timestampFormat, setTimestampFormat] = useState<TimestampFormat>('seconds')
   const [openId, setOpenId] = useState<string | null>(null)
   const [openValueId, setOpenValueId] = useState<string | null>(null)
   const [presetQuery, setPresetQuery] = useState('')
@@ -299,8 +302,15 @@ export function KVEditor({ rows, onChange, keyPlaceholder = 'Key', valuePlacehol
               resolvedVars={resolvedVars}
               hasActiveEnv={hasActiveEnv}
               placeholder={valuePlaceholder}
-              className="h-full"
+              className={cn('h-full', isHeaders && headerValueKind(r.key) && 'pr-7')}
             />
+            {isHeaders && headerValueKind(r.key) && <button
+              type="button"
+              title={tr('Generate header value') + ': ' + (headerValueKind(r.key) === 'uuid7' ? 'UUID v7' : headerValueKind(r.key) === 'http-date' ? 'HTTP Date' : timestampFormat)}
+              aria-label={`${tr('Generate header value')}: ${r.key}`}
+              onClick={() => { update(r.id, { value: generateHeaderValue(headerValueKind(r.key)!, timestampFormat) }); setOpenValueId(null) }}
+              className="absolute right-0 top-0 grid h-6 w-7 place-items-center rounded text-accent hover:bg-accent/10 focus-visible:outline focus-visible:outline-accent"
+            ><WandSparkles size={13} /></button>}
             {isHeaders && openValueId === r.id && (() => {
               const values = Array.from(new Set(
                 HEADER_PRESETS
@@ -347,6 +357,14 @@ export function KVEditor({ rows, onChange, keyPlaceholder = 'Key', valuePlacehol
       </button>
       {isHeaders && (
         <div className="max-h-64 overflow-y-auto px-2 pb-2 pt-1">
+          <label className="mb-2 flex items-center gap-2 text-[10px] text-text-3">
+            {tr('Timestamp format')}
+            <select value={timestampFormat} onChange={event => setTimestampFormat(event.target.value as TimestampFormat)} className="rounded border border-border-2 bg-surface-2 text-text-1">
+              <option value="seconds">{tr('Unix seconds')}</option>
+              <option value="milliseconds">{tr('Unix milliseconds')}</option>
+              <option value="iso">{tr('ISO 8601 (UTC)')}</option>
+            </select>
+          </label>
           <div className="mb-2 flex items-center gap-2">
             <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wider text-text-4">{tr('Header presets')}</span>
             <input

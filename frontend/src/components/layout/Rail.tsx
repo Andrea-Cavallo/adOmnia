@@ -13,7 +13,7 @@ import { normalizeRailItem } from '@/lib/navigation'
 import {
   Send, LayoutList, Shield, Server, Radio, Bug, Container, Network,
   Wrench, FileText, FileCode, Database, Braces, ChevronRight, FolderOpen,
-  Lock, Puzzle, Settings, GitBranch,
+  Lock, Puzzle, Settings, GitBranch, X,
   Zap, BarChart2, Activity, HardDrive, History, Layers,
   BookOpen, PanelsTopLeft, SquareTerminal,
 } from 'lucide-react'
@@ -90,7 +90,7 @@ const FEATURE_ICONS: Partial<Record<RailItem, React.ElementType>> = {
 
 const CATEGORIES: CategoryDef[] = RAIL_CATEGORIES
 
-// ─── Flyout panel (click-based, all items visible inline) ─────────────────────
+// ─── Flyout panel (hover or keyboard opening, explicit dismissal) ────────────
 
 interface FlyoutProps {
   cat: CategoryDef
@@ -142,8 +142,9 @@ function Flyout({ cat, activeRail, onSelect, onClose, onFocusTrigger }: FlyoutPr
 
   return (
     <div id={`rail-menu-${cat.key}`} role="menu" aria-label={nav(cat.label)} onKeyDown={handleKeyDown} className="absolute left-full top-0 ml-2 w-52 bg-surface-1 border border-border-1 rounded-xl shadow-2xl z-50 py-2 overflow-hidden">
-      <div className="px-3 pt-1 pb-2 border-b border-border-1/60">
+      <div className="flex items-center justify-between px-3 pt-1 pb-2 border-b border-border-1/60">
         <span className="text-[10px] font-bold text-accent tracking-wide uppercase">{nav(cat.label)}</span>
+        <button aria-label={tr('Close')} title={tr('Close')} onClick={onClose} className="rounded p-1 text-text-3 hover:text-text-1"><X size={12} /></button>
       </div>
 
       {cat.groups.map((group, gi) => (
@@ -163,7 +164,7 @@ function Flyout({ cat, activeRail, onSelect, onClose, onFocusTrigger }: FlyoutPr
               <button
                 key={item.id}
                 role="menuitem"
-                onClick={() => { onSelect(item.id); onClose() }}
+                onClick={() => onSelect(item.id)}
                 onContextMenu={(e) => {
                   if (!TOOL_TAB_RAILS.has(item.id)) return
                   e.preventDefault()
@@ -218,6 +219,9 @@ function CategoryButton({ cat, activeRail, anyRunning, isOpen, quickItem, onTogg
   const allItems = cat.groups.flatMap((g) => g.items)
   const anyActive = allItems.some((item) => item.id === activeRail)
   const triggerRef = useRef<HTMLButtonElement>(null)
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const cancelHover = () => { if (hoverTimer.current) clearTimeout(hoverTimer.current); hoverTimer.current = null }
+  useEffect(() => cancelHover, [])
   const handleClick = () => {
     const destination = cat.directItem ?? quickItem ?? allItems[0]?.id
     if (destination) {
@@ -229,7 +233,9 @@ function CategoryButton({ cat, activeRail, anyRunning, isOpen, quickItem, onTogg
   }
 
   return (
-    <div className="relative flex h-12 w-12 items-center justify-center">
+    <div className="relative flex h-12 w-12 items-center justify-center"
+      onMouseEnter={() => { if (!cat.directItem && !isOpen) { cancelHover(); hoverTimer.current = setTimeout(onOpen, 220) } }}
+      onMouseLeave={cancelHover}>
       <button
         ref={triggerRef}
         data-rail-control
@@ -244,15 +250,15 @@ function CategoryButton({ cat, activeRail, anyRunning, isOpen, quickItem, onTogg
         }}
         className={cn(
           'relative flex h-11 w-11 flex-col items-center justify-center gap-[2px] rounded-xl',
-          'transition-[background-color,color,box-shadow] duration-200 ease-out',
+          'transition-colors duration-150',
           isOpen || anyActive
-            ? 'border border-accent/25 bg-accent/12 text-text-1 shadow-lg shadow-accent/10'
-            : 'border border-transparent text-text-3 hover:border-border-2/70 hover:bg-surface-2/70 hover:text-text-1',
+            ? 'text-accent'
+            : 'text-text-3 hover:text-text-1',
           anyRunning && !isOpen && !anyActive && 'text-success',
         )}
       >
         {(isOpen || anyActive) && (
-          <span className="absolute -left-[7px] top-2 bottom-2 w-[3px] rounded-r-full bg-accent shadow-[0_0_10px_var(--color-accent)]" />
+          <span className="absolute -left-[7px] top-1 bottom-1 w-[4px] rounded-r bg-accent" />
         )}
         <Icon size={20} strokeWidth={1.75} />
         {anyRunning && (
@@ -327,12 +333,15 @@ export function Rail() {
       }
     }
     document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') setOpenKey(null) }
+    document.addEventListener('keydown', escape)
+    return () => { document.removeEventListener('mousedown', handler); document.removeEventListener('keydown', escape) }
   }, [openKey])
 
   const toggle = (key: string) => setOpenKey(prev => prev === key ? null : key)
 
   const handleRailKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+    if (event.key === 'Escape') { setOpenKey(null); return }
     if (event.defaultPrevented) return
     const target = event.target instanceof Element ? event.target.closest<HTMLButtonElement>('[data-rail-control]') : null
     if (!target) return
@@ -379,8 +388,8 @@ export function Rail() {
         className={cn(
           'mb-2 flex h-10 w-10 items-center justify-center rounded-xl border border-transparent transition-all',
           activeRail === 'welcome'
-            ? 'border-accent/25 bg-accent/10 shadow-lg shadow-accent/10'
-            : 'hover:border-border-2/70 hover:bg-surface-2/70',
+            ? 'text-accent'
+            : 'hover:text-text-1',
         )}
         title={tr('Home')}
       >
@@ -411,8 +420,8 @@ export function Rail() {
           className={cn(
             'group/btn relative flex h-11 w-11 items-center justify-center rounded-xl border transition-all',
             devToolsVisible
-              ? 'border-accent/25 bg-accent/12 text-accent shadow-lg shadow-accent/10'
-              : 'border-transparent text-text-3 hover:border-border-2/70 hover:bg-surface-2/70 hover:text-text-1',
+              ? 'border-transparent text-accent'
+              : 'border-transparent text-text-3 hover:text-text-1',
           )}
         >
           <span className={cn(
@@ -435,12 +444,12 @@ export function Rail() {
         className={cn(
           'group/btn relative mb-0.5 flex h-11 w-11 items-center justify-center rounded-xl border transition-all',
           activeRail === 'settings'
-            ? 'border-accent/25 bg-accent/12 text-text-1 shadow-lg shadow-accent/10'
-            : 'border-transparent text-text-3 hover:border-border-2/70 hover:bg-surface-2/70 hover:text-text-1',
+            ? 'border-transparent text-accent'
+            : 'border-transparent text-text-3 hover:text-text-1',
         )}
       >
         {activeRail === 'settings' && (
-          <span className="absolute -left-[7px] top-2 bottom-2 w-[3px] rounded-r-full bg-accent shadow-[0_0_10px_var(--color-accent)]" />
+          <span className="absolute -left-[7px] top-1 bottom-1 w-[4px] rounded-r bg-accent" />
         )}
         <Settings size={21} strokeWidth={1.75} />
         <span className={cn(

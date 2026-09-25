@@ -14,7 +14,7 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 - Hover folders for 550 ms to expand; drag near tree edges to scroll. Drop requests on the tab strip to open them at that position, or onto an empty workspace to open them.
 - Tree moves show an Undo action. Undo is refused if the affected collections have subsequently changed, so newer edits are never overwritten.
 - Returning to the API panel preserves tree expansion, query, focus and scroll per workspace for the current app session. Existing tab view-state preservation remains in place.
-- Rail icons directly open their category's last-used visible tool; the small arrow, right-click or ArrowRight opens the complete category menu.
+- Rail icons directly open their category's last-used visible tool; the small arrow, right-click or ArrowRight opens the complete category menu. Since v0.9.26, hovering for 220 ms also opens it; it stays open after pointer exit or item selection until closed with X/Escape, an outside click or another category. Icons have a plain background and a larger side marker; Send/Record use flat skin-token colors.
 - Compatibility: tab `preview` is optional (old tabs remain permanent); no workspace schema migration. `adomnia.railQuick.v1` is an optional localStorage preference, ignored safely if malformed; tree navigation state stays in memory. No network services or telemetry added.
 
 | # | Category | Sections | Features |
@@ -39,7 +39,7 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 |---|-------------|-------------|
 | A1.1 | **Request Composer** | Full HTTP builder: method selector (GET, QUERY, POST, PUT, PATCH, DELETE, HEAD, OPTIONS, CONNECT, TRACE), URL bar with variable highlighting, Send / Save / Load-Test buttons. |
 | A1.2 | **Query Parameters** | Key-value editor with enable/disable toggles, row add/remove, and variable substitution `{{var}}`. |
-| A1.3 | **HTTP Headers** | Key-value editor with toggles, common header suggestions, and variable substitution. |
+| A1.3 | **HTTP Headers** | Key-value editor with toggles, common header suggestions, and variable substitution. A per-row generate action recognizes Request-ID, Correlation-ID and Idempotency/Idempotence-Key (including X- prefixes) for local UUID v7 generation; Timestamp, Request-Timestamp and Webhook-Timestamp support Unix seconds/milliseconds or ISO UTC, and Date generates HTTP-date. Values change only on explicit click and remain editable. |
 | A1.4 | **Body Editor — Raw** | Multi-type editor: JSON, XML, Text, HTML, JavaScript with syntax highlighting and multiple body variants per request. |
 | A1.5 | **Body Editor — Form** | URL-Encoded and multipart Form Data with a key-value pair editor. |
 | A1.6 | **Body Editor — GraphQL** | GraphQL query editor with a separate variables editor. |

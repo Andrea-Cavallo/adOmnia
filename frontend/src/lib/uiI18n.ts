@@ -9,6 +9,11 @@ import type { Lang } from '@/lib/i18n'
  * small while still making missing Italian entries a compile-time error.
  */
 export const ITALIAN_UI_MESSAGES = {
+  'Generate header value': 'Genera valore header',
+  'Timestamp format': 'Formato timestamp',
+  'Unix seconds': 'Unix secondi',
+  'Unix milliseconds': 'Unix millisecondi',
+  'ISO 8601 (UTC)': 'ISO 8601 (UTC)',
   'Undo': 'Annulla',
   'Undo unavailable after subsequent changes.': 'Impossibile annullare dopo ulteriori modifiche.',
   'Home': 'Home',

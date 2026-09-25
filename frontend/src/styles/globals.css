@@ -450,115 +450,50 @@
    Colour comes from --color-accent, so the button follows the active theme
    instead of pinning a palette. */
 @layer components {
-  /* API request actions mirror the glossy Record / Send controls used in the
-     product reference while remaining compact enough for the request bar. */
+  /* Flat controls inherit every skin's semantic palette. */
   .api-record-action,
   .api-send-action {
-    position: relative;
-    isolation: isolate;
-    overflow: hidden;
-    border-radius: 999px;
-    transition:
-      border-color 180ms ease,
-      box-shadow 220ms cubic-bezier(0.16, 1, 0.3, 1),
-      filter 180ms ease,
-      transform 180ms ease;
+    border: 1px solid var(--color-border-2);
+    border-radius: var(--radius-md, 6px);
+    box-shadow: none;
+    transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
   }
-
-  .api-record-action::before,
-  .api-send-action::before {
-    content: '';
-    position: absolute;
-    inset: 1px 3px auto;
-    height: 46%;
-    border-radius: inherit;
-    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.28), transparent);
-    opacity: 0.72;
-    pointer-events: none;
-    z-index: -1;
-  }
-
   .api-record-action {
-    border: 1px solid color-mix(in oklab, var(--color-border-2) 72%, white 28%);
-    color: var(--color-text-1);
-    background:
-      radial-gradient(circle at 25% 100%, color-mix(in oklab, var(--color-error) 12%, transparent), transparent 42%),
-      linear-gradient(155deg, color-mix(in oklab, var(--color-surface-3) 80%, white 7%), var(--color-surface-0) 74%);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.16),
-      inset 0 -1px 1px rgba(0, 0, 0, 0.48),
-      0 4px 12px -7px rgba(0, 0, 0, 0.9);
+    color: var(--color-text-2);
+    background: var(--color-surface-1);
   }
-
   .api-record-action__indicator {
     display: grid;
-    width: 16px;
-    height: 16px;
+    width: 12px;
+    height: 12px;
     flex: none;
     place-items: center;
-    border-radius: 999px;
-    color: white;
-    background: linear-gradient(145deg, color-mix(in oklab, var(--color-error) 68%, white 32%), var(--color-error));
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.45),
-      0 0 7px color-mix(in oklab, var(--color-error) 72%, transparent),
-      0 0 13px color-mix(in oklab, var(--color-error) 42%, transparent);
+    border-radius: 50%;
+    color: var(--color-error);
+    background: transparent;
   }
-
-  .api-record-action:hover,
+  .api-record-action:hover {
+    background: var(--color-surface-2);
+    color: var(--color-text-1);
+  }
   .api-record-action.is-recording {
-    border-color: color-mix(in oklab, var(--color-error) 48%, var(--color-border-2));
-    transform: translateY(-1px);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.2),
-      inset 0 -1px 1px rgba(0, 0, 0, 0.5),
-      0 7px 18px -10px color-mix(in oklab, var(--color-error) 65%, transparent);
+    color: var(--color-error);
+    border-color: var(--color-error);
+    background: color-mix(in srgb, var(--color-error) 10%, var(--color-surface-1));
   }
-
-  .api-record-action.is-recording .api-record-action__indicator {
-    animation: api-record-pulse 1.4s ease-in-out infinite;
-  }
-
   .api-send-action {
-    border: 1px solid color-mix(in oklab, var(--color-accent) 52%, white 28%);
-    background:
-      radial-gradient(circle at 78% 18%, rgba(237, 129, 255, 0.5), transparent 36%),
-      linear-gradient(145deg, color-mix(in oklab, var(--color-accent) 74%, white 12%), var(--color-accent) 46%, color-mix(in oklab, var(--color-accent-dark, var(--color-accent)) 88%, black 12%));
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.62),
-      inset 0 -1px 1px rgba(39, 10, 82, 0.56),
-      0 0 9px color-mix(in oklab, var(--color-accent) 45%, transparent),
-      0 7px 18px -8px var(--color-accent-glow, transparent);
+    color: var(--color-accent);
+    border-color: color-mix(in srgb, var(--color-accent) 50%, var(--color-border-2));
+    background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface-1));
   }
-
-  .api-send-action__icon {
-    filter: drop-shadow(0 1px 3px rgba(255, 255, 255, 0.2));
-    transform: rotate(-5deg);
-  }
-
   .api-send-action:hover:not(:disabled) {
-    filter: brightness(1.1) saturate(1.08);
-    transform: translateY(-1px);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.72),
-      inset 0 -1px 1px rgba(39, 10, 82, 0.48),
-      0 0 14px color-mix(in oklab, var(--color-accent) 58%, transparent),
-      0 11px 24px -9px var(--color-accent-glow, transparent);
+    background: color-mix(in srgb, var(--color-accent) 22%, var(--color-surface-1));
+    border-color: var(--color-accent);
   }
-
-  .api-record-action:active,
-  .api-send-action:active:not(:disabled) {
-    transform: translateY(0) scale(0.98);
-  }
-
-  .api-send-action:disabled {
-    filter: saturate(0.35);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
-  }
-
-  @keyframes api-record-pulse {
-    0%, 100% { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 0 7px color-mix(in oklab, var(--color-error) 72%, transparent), 0 0 13px color-mix(in oklab, var(--color-error) 42%, transparent); }
-    50% { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 0 10px color-mix(in oklab, var(--color-error) 88%, transparent), 0 0 18px color-mix(in oklab, var(--color-error) 55%, transparent); }
+  .api-record-action:focus-visible,
+  .api-send-action:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
   }
 
   .glass-action {
@@ -652,8 +587,7 @@
   /* The sheen is decoration, not information. */
   @media (prefers-reduced-motion: reduce) {
     .api-record-action,
-    .api-send-action,
-    .api-record-action.is-recording .api-record-action__indicator {
+    .api-send-action {
       animation: none;
       transition: none;
     }
