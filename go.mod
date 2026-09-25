@@ -5,7 +5,7 @@ go 1.26.5
 require (
 	filippo.io/age v1.3.2
 	github.com/HdrHistogram/hdrhistogram-go v1.3.0
-	github.com/IBM/sarama v1.60.2
+	github.com/IBM/sarama v1.61.0
 	// Pinned: pdf v0.2.0 unexports Reader.Resolve, which pdfsign v0.9.0 still
 	// calls. Unpin only together with pdfsign >= v1.0.0 (currently rc only).
 	github.com/digitorus/pdf v0.1.2
