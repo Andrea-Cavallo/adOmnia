@@ -18,6 +18,9 @@ describe('Brick Workshop skin', () => {
     expect(stylesheet).toContain("[data-skin='brick'] .glass-action")
     expect(stylesheet).toContain("[data-skin='brick'] [data-editor='json']")
     expect(stylesheet).toContain('prefers-reduced-motion: reduce')
+    expect(stylesheet).toContain("[data-skin='brick'] [data-app-rail]")
+    expect(stylesheet).toContain("[data-skin='brick'] [data-tab-id][style]")
+    expect(stylesheet).toContain("[data-skin='brick'] [data-workspace-panel-header='true']")
   })
 
   it('exposes the skin through the quick appearance controls', () => {

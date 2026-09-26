@@ -8,17 +8,21 @@
    ──────────────────────────────────────────────────────────────────────────── */
 
 [data-skin='brick'] {
-  --brick-blue: #0D3978;
-  --brick-blue-light: #1A5AA5;
-  --brick-blue-deep: #041B42;
-  --brick-bay: #061A39;
+  --brick-blue: #06439A;
+  --brick-blue-light: #0A67D5;
+  --brick-blue-deep: #011536;
+  --brick-bay: #021A45;
   --brick-yellow: var(--color-accent);
   --brick-red: var(--color-error);
-  --brick-seam: #03152F;
-  --brick-stud: rgba(255, 255, 255, 0.14);
-  --brick-highlight: rgba(255, 255, 255, 0.32);
-  --brick-shadow: rgba(0, 10, 34, 0.58);
-  --brick-radius: 8px;
+  --brick-seam: #00102A;
+  --brick-stud: rgba(193, 229, 255, 0.32);
+  --brick-highlight: rgba(255, 255, 255, 0.44);
+  --brick-shadow: rgba(0, 8, 29, 0.72);
+  --brick-radius: 6px;
+  --brick-plate: linear-gradient(180deg, rgba(101, 183, 255, 0.45), rgba(8, 79, 181, 0.22) 38%, rgba(0, 26, 81, 0.28));
+  --brick-stud-field:
+    radial-gradient(circle at 15px 11px, rgba(173, 221, 255, 0.55) 0 3px, rgba(1, 31, 88, 0.68) 3.5px 5.5px, transparent 6px),
+    radial-gradient(circle at 15px 11px, rgba(255, 255, 255, 0.22) 0 1.3px, transparent 1.7px);
 }
 
 /* A subtle stud grid belongs behind the workspace rather than in every panel.
@@ -26,9 +30,9 @@
 [data-skin='brick'] #root {
   background-color: var(--color-surface-0);
   background-image:
-    radial-gradient(ellipse at 11px 8px, var(--brick-stud) 0 4px, rgba(2, 24, 58, 0.25) 4.5px 6px, transparent 6.5px),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 18%);
-  background-size: 28px 28px, 100% 100%;
+    radial-gradient(ellipse at 16px 11px, var(--brick-stud) 0 4px, rgba(0, 28, 81, 0.65) 4.5px 7px, transparent 7.5px),
+    linear-gradient(180deg, rgba(91, 170, 255, 0.24), transparent 22%);
+  background-size: 32px 32px, 100% 100%;
 }
 
 /* Structural surfaces read as moulded plastic: a fine dark seam, a top glint
@@ -45,6 +49,59 @@
     0 1px 0 var(--brick-shadow);
 }
 
+/* The shell uses long, interlocking plates instead of one generic texture.
+   These selectors map to stable layout landmarks, keeping every working
+   surface readable while making the chrome unmistakably modular. */
+[data-skin='brick'] [data-app-rail],
+[data-skin='brick'] [data-sidebar-context],
+[data-skin='brick'] [data-collections-toolbar],
+[data-skin='brick'] [data-workspace-panel-header='true'],
+[data-skin='brick'] footer,
+[data-skin='brick'] [data-tab-id] {
+  background-color: var(--brick-blue) !important;
+  background-image: var(--brick-stud-field), var(--brick-plate) !important;
+  background-size: 32px 32px, 100% 100% !important;
+  background-position: 0 0, 0 0 !important;
+  border-color: var(--brick-seam) !important;
+  box-shadow:
+    inset 0 1px 0 var(--brick-highlight),
+    inset 0 -3px 0 rgba(0, 21, 64, 0.6),
+    0 2px 0 var(--brick-shadow) !important;
+}
+
+[data-skin='brick'] [data-app-rail] {
+  width: 4rem !important;
+  margin: 0 !important;
+  border-radius: 0 6px 6px 0 !important;
+  gap: 0.25rem !important;
+}
+
+[data-skin='brick'] [data-app-rail] button {
+  background: linear-gradient(180deg, #126FD4, #06439A 65%, #032968) !important;
+  border: 1px solid rgba(0, 12, 42, 0.92) !important;
+  box-shadow: inset 0 1px 0 rgba(196, 231, 255, 0.5), inset 0 -2px 0 rgba(0, 19, 63, 0.72), 0 2px 0 rgba(0, 8, 28, 0.7) !important;
+}
+
+[data-skin='brick'] [data-app-rail] button:hover:not(:disabled),
+[data-skin='brick'] [data-app-rail] button:focus-visible {
+  background: linear-gradient(180deg, #2A8AF0, #0756BD 65%, #04357C) !important;
+}
+
+[data-skin='brick'] [data-tab-id] {
+  min-height: 28px;
+  border-radius: 5px !important;
+  padding-top: 2px;
+}
+
+/* The active tab gets the familiar bright tile. Its inline workspace styling
+   needs an explicit override so it cannot fade back into the blue strip. */
+[data-skin='brick'] [data-tab-id][style] {
+  color: var(--brick-blue-deep) !important;
+  background: linear-gradient(180deg, #FFF082, #FFD319 58%, #E4A600) !important;
+  border-color: #A96F00 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82), inset 0 -3px 0 rgba(173, 106, 0, 0.58), 0 3px 0 rgba(0, 13, 45, 0.8) !important;
+}
+
 [data-skin='brick'] [class*='border'] {
   border-color: var(--brick-seam);
 }
@@ -58,6 +115,10 @@
     inset 0 1px 0 var(--brick-highlight),
     inset 0 -2px 0 rgba(1, 18, 47, 0.42),
     0 2px 0 var(--brick-shadow);
+}
+
+[data-skin='brick'] button:not(:disabled):not(.glass-action):not(.api-send-action):not([data-rail-control]) {
+  background-image: linear-gradient(180deg, rgba(86, 163, 242, 0.22), rgba(0, 19, 66, 0.12));
 }
 
 [data-skin='brick'] button:hover:not(:disabled) {
@@ -127,6 +188,15 @@
   box-shadow:
     inset 0 0 0 1px rgba(99, 175, 255, 0.14),
     inset 0 5px 12px rgba(0, 0, 0, 0.32);
+}
+
+[data-skin='brick'] [data-editor='json']::after {
+  content: '';
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgba(73, 160, 255, 0.28), inset 18px 0 22px -20px rgba(96, 189, 255, 0.85);
 }
 
 [data-skin='brick'] .monaco-editor .margin {
