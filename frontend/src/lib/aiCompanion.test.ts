@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildCompanionPrompt, parseCompanionReply } from './aiCompanion'
+import { buildCompanionPrompt, isAICompanionAvailable, parseCompanionReply } from './aiCompanion'
 import { blankRequest } from './types'
 
 describe('a0 companion protocol', () => {
@@ -28,5 +28,20 @@ describe('a0 companion protocol', () => {
     expect(prompt.user).toContain('POST https://payments.example.test/v1/payments')
     expect(prompt.user).toContain('Known header names: Authorization')
     expect(prompt.user).not.toContain('secret-value')
+  })
+
+  it('keeps a0 hidden until the selected provider and model have passed a connection test', () => {
+    const ai = {
+      enabled: true,
+      provider: 'ollama' as const,
+      model: 'qwen3.5',
+      connectionVerifiedAt: '2026-09-26T12:00:00.000Z',
+      connectionProvider: 'ollama' as const,
+      connectionModel: 'qwen3.5',
+    }
+
+    expect(isAICompanionAvailable(ai)).toBe(true)
+    expect(isAICompanionAvailable({ ...ai, connectionModel: 'another-model' })).toBe(false)
+    expect(isAICompanionAvailable({ ...ai, connectionVerifiedAt: '' })).toBe(false)
   })
 })

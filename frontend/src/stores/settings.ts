@@ -115,6 +115,10 @@ export interface AppSettings {
     usageProfile: AIUsageProfile
     /** Explicit opt-in: a provider is contacted only when this screen is opened. */
     modelUpdatePolicy: 'manual' | 'when-open'
+    /** Last successful connection test. The companion stays hidden until this matches the current model. */
+    connectionVerifiedAt: string
+    connectionProvider: AIProvider | ''
+    connectionModel: string
     /** Last verified metadata, persisted locally and safe to export/redact. */
     modelCatalogs: Partial<Record<AIProvider, AIModelCatalog>>
     /** Exposes the selected compatible provider to local coding agents only. */
@@ -258,6 +262,9 @@ const defaultSettings: AppSettings = {
     credentialMode: 'auto',
     usageProfile: 'recommended',
     modelUpdatePolicy: 'manual',
+    connectionVerifiedAt: '',
+    connectionProvider: '',
+    connectionModel: '',
     modelCatalogs: {},
     gatewayEnabled: false,
     gatewayPort: 11435,

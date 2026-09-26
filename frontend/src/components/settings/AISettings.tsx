@@ -209,8 +209,14 @@ export function AISettings() {
     setTestResult(null)
     try {
       const msg = await withAIConfig((config) => AIEngine.TestConnection(config))
+      updateAi({
+        connectionVerifiedAt: new Date().toISOString(),
+        connectionProvider: ai.provider,
+        connectionModel: ai.model,
+      })
       setTestResult({ ok: true, msg })
     } catch (e) {
+      updateAi({ connectionVerifiedAt: '', connectionProvider: '', connectionModel: '' })
       setTestResult({ ok: false, msg: String(e) })
     } finally {
       setTesting(false)

@@ -1,4 +1,5 @@
 import type { Collection, RequestItem, TreeNode } from '@/lib/types'
+import type { AppSettings } from '@/stores/settings'
 
 export type CompanionMood = 'happy' | 'thinking' | 'concerned'
 
@@ -13,6 +14,15 @@ export interface CompanionReply {
   mood: CompanionMood
   headerSuggestions: HeaderSuggestion[]
   actions: Array<'open-flow' | 'open-docs'>
+}
+
+/** a0 is available only for a provider/model pair the user has explicitly tested. */
+export function isAICompanionAvailable(ai: Pick<AppSettings['ai'], 'enabled' | 'model' | 'provider' | 'connectionVerifiedAt' | 'connectionProvider' | 'connectionModel'>): boolean {
+  return ai.enabled
+    && Boolean(ai.model.trim())
+    && Boolean(ai.connectionVerifiedAt)
+    && ai.connectionProvider === ai.provider
+    && ai.connectionModel === ai.model
 }
 
 function unwrapJSON(value: string): string {

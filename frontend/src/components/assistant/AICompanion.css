@@ -1,0 +1,12 @@
+.a0-companion-panel { animation: a0-chat-in 180ms ease-out both; }
+.a0-companion-idle { animation: a0-idle 6s ease-in-out infinite; transform-origin: center bottom; }
+.a0-companion-thinking { animation: a0-thinking 1.1s ease-in-out infinite; transform-origin: center bottom; }
+.a0-companion-greeting { animation: a0-greeting 420ms ease-out both; }
+.a0-companion-launcher:hover .a0-companion-sprite { transform: translateY(-2px) rotate(-2deg); }
+
+@keyframes a0-chat-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes a0-idle { 0%, 100% { transform: translateY(0) scaleY(1); } 45% { transform: translateY(-1px) scaleY(1.01); } 48% { transform: translateY(-1px) scaleY(.96); } 52% { transform: translateY(-1px) scaleY(1.01); } }
+@keyframes a0-thinking { 0%, 100% { transform: translateX(-1px) rotate(-1deg); } 50% { transform: translateX(1px) rotate(1deg); } }
+@keyframes a0-greeting { 0% { opacity: 0; transform: translateY(5px) rotate(-4deg); } 65% { transform: translateY(-1px) rotate(2deg); } 100% { opacity: 1; transform: translateY(0) rotate(0); } }
+
+@media (prefers-reduced-motion: reduce) { .a0-companion-panel, .a0-companion-idle, .a0-companion-thinking, .a0-companion-greeting { animation: none; } }

@@ -4,6 +4,19 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [0.9.30] - 2026-09-26
+
+### Changed
+- **a0, made compact:** the assistant is now a 48 px circular launcher rather than a labelled pill. It disappears while its smaller 320 × 380 px chat is open, and the chat can be expanded when a longer conversation needs room.
+- **Focused assistant header:** the header is 44 px high, uses a small avatar and keeps provider/model information in an on-demand menu instead of a persistent technical line.
+- **Quieter first conversation:** a0 opens with “Ciao Andrea, cosa facciamo?” and two compact prompts that disappear after the first message.
+- **Subtle personality:** opening, idle, thinking and hover movements are intentionally brief and respect the operating-system reduced-motion preference.
+
+### Fixed
+- **AI availability:** a0 is no longer shown merely because AI is enabled. It appears only after **Test connection** succeeds for the currently selected provider and model; changing either, or a failed test, hides it again.
+
+Full release notes: [v0.9.30](docs/releases/v0.9.30.md).
+
 ## [0.9.29] - 2026-09-26
 
 ### Added
