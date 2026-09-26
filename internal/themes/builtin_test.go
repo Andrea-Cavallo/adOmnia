@@ -65,6 +65,38 @@ func TestSketchThemeDeclaresItsSkin(t *testing.T) {
 	}
 }
 
+// Brick Workshop's physical treatment is supplied by a scoped stylesheet.
+// Keep the handshake explicit: without meta.skin it degrades to a blue token
+// palette while the raised blocks, studs and editor bays silently disappear.
+func TestBrickWorkshopThemeDeclaresItsSkin(t *testing.T) {
+	tm := NewThemeManager()
+
+	for _, theme := range tm.GetExtendedBuiltinThemes() {
+		if theme.ID != "builtin-brick-workshop" {
+			continue
+		}
+		if got := theme.Meta["skin"]; got != "brick" {
+			t.Errorf("meta.skin = %q, want %q", got, "brick")
+		}
+		if !strings.Contains(theme.Fonts.Mono, "monospace") {
+			t.Errorf("brick mono font %q must fall back to monospace for Monaco", theme.Fonts.Mono)
+		}
+		for _, token := range []string{"json-key", "json-string", "json-number", "json-bool", "json-null"} {
+			if theme.Colors[token] == "" {
+				t.Errorf("Brick Workshop theme is missing %s", token)
+			}
+		}
+		for _, result := range tm.CheckContrast(theme) {
+			if result.Ratio > 0 && !result.AANormal {
+				t.Errorf("%s contrast %.2f is below WCAG AA (4.5)", result.Pair, result.Ratio)
+			}
+		}
+		return
+	}
+
+	t.Fatal("builtin-brick-workshop theme is missing")
+}
+
 // JSON is rendered through CSS variables. Every skin must provide its own
 // complete palette; otherwise switching from a dark theme can leave pale text
 // on Sketch's light paper.

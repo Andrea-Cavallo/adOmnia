@@ -630,6 +630,69 @@ func (tm *ThemeManager) checkForChanges(skinsDir string) {
 func (tm *ThemeManager) GetExtendedBuiltinThemes() []Theme {
 	return []Theme{
 		{
+			ID:          "builtin-brick-workshop",
+			Name:        "Brick Workshop",
+			Author:      "adOmnia",
+			Version:     "1.0.0",
+			Description: "Modular building-brick workbench with durable blue plastic, bright controls and deep code bays",
+			Colors: map[string]string{
+				// The structural blue palette keeps the shell calm enough for a
+				// developer tool; yellow, red and green are reserved for actions
+				// and state so the workspace remains scannable.
+				"surface-0":     "#08285D",
+				"surface-1":     "#0D3978",
+				"surface-2":     "#12498F",
+				"surface-3":     "#1A5AA5",
+				"surface-4":     "#286CB7",
+				"text-1":        "#FFFFFF",
+				"text-2":        "#E3EFFF",
+				"text-3":        "#B8D0EE",
+				"text-4":        "#82A9D6",
+				"border-1":      "#041B42",
+				"border-2":      "#03152F",
+				"border-3":      "#3A78BB",
+				"accent":        "#FFD21E",
+				"accent-hover":  "#FFE06A",
+				"accent-light":  "#FFF1A7",
+				"accent-dark":   "#D79A00",
+				"accent-glow":   "rgba(255, 210, 30, 0.30)",
+				"success":       "#39D37D",
+				"warning":       "#FFC038",
+				"error":         "#FF5A52",
+				"info":          "#66C4FF",
+				"method-get":    "#39D37D",
+				"method-post":   "#FFC038",
+				"method-put":    "#66C4FF",
+				"method-patch":  "#C99CFF",
+				"method-delete": "#FF5A52",
+				"method-head":   "#B8D0EE",
+				// JSON lives in a deliberately darker bay, so these use luminous
+				// colours rather than inheriting a prior theme's code palette.
+				"json-key":       "#69D3FF",
+				"json-string":    "#67E89B",
+				"json-number":    "#FFD166",
+				"json-bool":      "#D8B4FF",
+				"json-null":      "#A9C5E8",
+				"json-bracket-1": "#FFFFFF",
+				"json-bracket-2": "#FFD166",
+				"json-bracket-3": "#70E7C0",
+			},
+			Fonts: ThemeFonts{
+				Sans: "'Arial Rounded MT Bold', 'Trebuchet MS', system-ui, sans-serif",
+				// Monaco still needs a fixed-width fallback for its cursor and
+				// selection measurements.
+				Mono:  "'JetBrains Mono', 'Cascadia Code', Consolas, monospace",
+				Serif: "Georgia, serif",
+			},
+			Spacing: map[string]string{},
+			Radii:   map[string]string{},
+			Shadows: map[string]string{},
+			// `skin` enables the tactile plastic, studs and recessed code bays in
+			// frontend/src/styles/skin-brick.css. It is intentionally an abstract
+			// building-brick treatment, not an affiliation with a toy brand.
+			Meta: map[string]string{"builtin": "true", "style": "brick", "skin": "brick"},
+		},
+		{
 			ID:          "builtin-sketch",
 			Name:        "Sketch",
 			Author:      "adOmnia",

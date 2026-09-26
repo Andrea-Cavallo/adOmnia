@@ -20,7 +20,7 @@ vi.mock('@/lib/storeSave', () => ({
   },
 }))
 
-import { DEFAULT_WORKSPACE_ID, parseCollectionsV3, useCollectionsStore } from '@/stores/collections'
+import { DEFAULT_WORKSPACE_ID, QUICK_REQUESTS_COLLECTION_ID, parseCollectionsV3, useCollectionsStore } from '@/stores/collections'
 import { blankRequest, type RequestItem } from '@/lib/types'
 
 function makeRequest(name: string): RequestItem {
@@ -192,6 +192,35 @@ describe('collections workspaces', () => {
 
     const children = (useCollectionsStore.getState().collections[0].children[0] as { children: { id: string }[] }).children
     expect(children.map((n) => n.id)).toEqual([b.id, c.id, a.id])
+  })
+
+  it('keeps quick requests at workspace root without changing existing collections', () => {
+    const existingCollection = { id: 'payments', name: 'Payments API', children: [] }
+    useCollectionsStore.setState({
+      collections: [existingCollection],
+      workspaces: [{
+        id: DEFAULT_WORKSPACE_ID,
+        name: 'Default Workspace',
+        collections: [existingCollection],
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      }],
+      activeWorkspaceId: DEFAULT_WORKSPACE_ID,
+      loadedWorkspaceIds: [DEFAULT_WORKSPACE_ID],
+      shardsInitialized: true,
+      loaded: true,
+      loadError: false,
+    })
+
+    const first = makeRequest('Quick one')
+    const second = makeRequest('Quick two')
+    expect(useCollectionsStore.getState().addQuickRequest(first)).toBe(QUICK_REQUESTS_COLLECTION_ID)
+    useCollectionsStore.getState().addQuickRequest(second)
+
+    const collections = useCollectionsStore.getState().collections
+    expect(collections.map((collection) => collection.id)).toEqual([QUICK_REQUESTS_COLLECTION_ID, 'payments'])
+    expect(collections[0].children.map((request) => request.id)).toEqual([first.id, second.id])
+    expect(collections[1]).toEqual(existingCollection)
   })
 
   it('reorders a request before a sibling within the same folder', async () => {

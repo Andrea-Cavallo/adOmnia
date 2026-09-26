@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { useUiTranslation } from '@/lib/uiI18n'
 
 interface HostBarProps {
+  compact?: boolean
   profiles: HostsProfile[]
   activeProfileId: string | null
   onSetActive: (id: string | null) => void
@@ -16,6 +17,7 @@ interface HostBarProps {
 }
 
 export function HostBar({
+  compact = false,
   profiles,
   activeProfileId,
   onSetActive,
@@ -59,21 +61,25 @@ export function HostBar({
 
   return (
     <>
-      <div className="flex h-[var(--ui-toolbar-h)] items-center gap-1.5 border-b border-border-1 px-2.5">
-        <span className="text-[10px] text-text-4 uppercase tracking-wider shrink-0">{tr('Hosts')}</span>
+      <div className={cn(compact ? 'flex min-w-0 flex-1 items-center' : 'flex h-[var(--ui-toolbar-h)] items-center gap-1.5 border-b border-border-1 px-2.5')}>
+        {!compact && <span className="shrink-0 text-[10px] uppercase tracking-wider text-text-4">{tr('Hosts')}</span>}
 
         {/* Custom dropdown */}
-        <div ref={dropRef} className="relative">
+        <div ref={dropRef} className={cn('relative', compact && 'min-w-0 flex-1')}>
           <button
             onClick={() => setDropOpen(v => !v)}
+            aria-haspopup="menu"
+            aria-expanded={dropOpen}
             className={cn(
               'flex h-6 items-center gap-1.5 rounded px-2 text-[11px] transition-colors outline-none',
               'bg-surface-2 border border-border-2 text-text-1',
               'hover:border-border-3 hover:bg-surface-3',
+              compact && 'h-7 w-full min-w-0',
               dropOpen && 'border-accent'
             )}
           >
-            <span className="max-w-[160px] truncate">{activeLabel}</span>
+            {compact && <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wide text-text-4">{tr('Hosts')}</span>}
+            <span className={cn('truncate', compact ? 'min-w-0 flex-1 text-left' : 'max-w-[160px]')}>{activeLabel}</span>
             <ChevronDown
               size={11}
               className={cn('shrink-0 text-text-4 transition-transform', dropOpen && 'rotate-180')}
@@ -82,6 +88,14 @@ export function HostBar({
 
           {dropOpen && (
             <div className="absolute top-full left-0 mt-0.5 z-50 min-w-full w-max max-w-52 rounded-md border border-border-2 bg-surface-2 shadow-xl py-0.5 overflow-hidden">
+              {compact && (
+                <button
+                  onClick={() => { setShowModal(true); setDropOpen(false) }}
+                  className="w-full border-b border-border-1 px-3 py-1.5 text-left text-xs text-accent transition-colors hover:bg-surface-3 hover:text-accent-light"
+                >
+                  {tr('Manage hosts profiles')}
+                </button>
+              )}
               <button
                 onClick={() => { onSetActive(null); setDropOpen(false) }}
                 className={cn(
@@ -111,7 +125,7 @@ export function HostBar({
           )}
         </div>
 
-        {adding ? (
+        {!compact && (adding ? (
           <div className="flex items-center gap-1">
             <input
               ref={inputRef}
@@ -139,15 +153,9 @@ export function HostBar({
           >
             <Plus size={12} />
           </button>
-        )}
+        ))}
 
-        <button
-          onClick={() => setShowModal(true)}
-          className="ml-auto text-[11px] text-accent hover:text-accent-light"
-          title={tr('Manage hosts profiles')}
-        >
-          {tr('Hosts')}
-        </button>
+        {!compact && <button onClick={() => setShowModal(true)} className="ml-auto text-[11px] text-accent hover:text-accent-light" title={tr('Manage hosts profiles')}>{tr('Hosts')}</button>}
       </div>
 
       {showModal && (

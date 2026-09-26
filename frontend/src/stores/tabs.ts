@@ -101,8 +101,15 @@ function shouldSaveResponses(): boolean {
 }
 
 function cleanLoadedTab(tab: Tab): Tab {
+  // Early tool tabs were persisted without the request placeholder. Every tab
+  // reader still relies on it, including request-only UI paths reached during
+  // startup, so repair the legacy shape before exposing it to the app.
+  const request = tab.request && typeof tab.request === 'object'
+    ? tab.request
+    : blankRequest('GET', tab.tool ? TOOL_TAB_LABELS[tab.tool] : 'Recovered Request')
   return {
     ...tab,
+    request,
     workspaceId: tab.workspaceId ?? useCollectionsStore.getState().activeWorkspaceId,
     loading: false,
   }

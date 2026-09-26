@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { FolderKanban, Moon, Sun, Pencil } from 'lucide-react'
+import { Box, FolderKanban, Moon, Sun, Pencil } from 'lucide-react'
 import { useCollectionsStore } from '@/stores/collections'
 import { useTabsStore } from '@/stores/tabs'
 import { useAppStore } from '@/stores/app'
@@ -41,13 +41,23 @@ export function StatusBar() {
   const currentMode = activeTheme ? inferThemeMode(activeTheme) : 'dark'
 
   const SKETCH_THEME_ID = 'builtin-sketch'
-  type QuickMode = 'dark' | 'light' | 'sketch'
-  const currentQuickMode: QuickMode = activeThemeId === SKETCH_THEME_ID ? 'sketch' : currentMode
+  const BRICK_THEME_ID = 'builtin-brick-workshop'
+  type QuickMode = 'dark' | 'light' | 'sketch' | 'brick'
+  const currentQuickMode: QuickMode = activeThemeId === SKETCH_THEME_ID
+    ? 'sketch'
+    : activeThemeId === BRICK_THEME_ID
+      ? 'brick'
+      : currentMode
 
   const applyQuickMode = useCallback((mode: QuickMode) => {
     if (mode === 'sketch') {
       const sketch = themes.find((t) => t.id === SKETCH_THEME_ID)
       if (sketch) applyTheme(sketch)
+      return
+    }
+    if (mode === 'brick') {
+      const brick = themes.find((t) => t.id === BRICK_THEME_ID)
+      if (brick) applyTheme(brick)
       return
     }
     // Prefer the opposite theme in the same family (builtin-dark → builtin-light)
@@ -61,9 +71,9 @@ export function StatusBar() {
   }, [activeThemeId, themes, applyTheme])
 
   const toggleTheme = useCallback(() => {
-    // The shortcut cycles all three, so the keyboard reaches everything the
-    // three buttons do.
-    const order: QuickMode[] = ['dark', 'light', 'sketch']
+    // The shortcut cycles every quick appearance, so the keyboard reaches
+    // each explicit button too.
+    const order: QuickMode[] = ['dark', 'light', 'sketch', 'brick']
     applyQuickMode(order[(order.indexOf(currentQuickMode) + 1) % order.length])
   }, [currentQuickMode, applyQuickMode])
 
@@ -144,14 +154,14 @@ export function StatusBar() {
         {(mockRunning || proxyRunning) && (
           <span className="h-3 w-px bg-border-2" />
         )}
-        {/* Quick appearance: dark / light / sketch. Three explicit buttons
-            rather than a cycling toggle — with three states a toggle makes you
-            guess what comes next. */}
+        {/* Quick appearance buttons make the available skins discoverable; the
+            keyboard shortcut cycles the same set. */}
         <div className="flex items-center gap-0.5" role="group" aria-label={tr('Appearance')}>
           {([
             { mode: 'dark' as const, Icon: Moon, label: tr('Dark theme') },
             { mode: 'light' as const, Icon: Sun, label: tr('Light theme') },
             { mode: 'sketch' as const, Icon: Pencil, label: tr('Sketch theme') },
+            { mode: 'brick' as const, Icon: Box, label: tr('Brick theme') },
           ]).map(({ mode, Icon, label }) => (
             <button
               key={mode}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, Suspense } from 'react'
-import { ArrowLeft, Check, Circle, Columns2, PanelsTopLeft, Rows2, Save, Send, Square, Trash2, Wrench, X } from 'lucide-react'
+import { ArrowLeft, Check, Circle, Columns2, PanelsTopLeft, Plus, Rows2, Save, Send, Square, Trash2, Wrench, X } from 'lucide-react'
 import { useAppStore, type RailItem } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
 import { useCollectionsStore } from '@/stores/collections'
@@ -14,7 +14,7 @@ import { openDroppedRequests } from '@/components/collections/useTreeInteraction
 import { WelcomePanel } from '@/components/layout/WelcomePanel'
 import { LoadTestDrawer } from '@/components/loadtest/LoadTestDrawer'
 import { executeRequest } from '@/lib/executeRequest'
-import { uid, type EnvVariable, type HttpMethod, type RequestItem, type Tab, type ToolTabId } from '@/lib/types'
+import { blankRequest, uid, type EnvVariable, type HttpMethod, type RequestItem, type Tab, type ToolTabId } from '@/lib/types'
 import type { TabViewState } from '@/stores/tabs'
 import { useT } from '@/lib/i18n'
 import { safeSetItem } from '@/lib/safeLocalStorage'
@@ -89,14 +89,42 @@ function PanelHeader({ titleKey }: { titleKey?: string }) {
   const workspaces = useCollectionsStore((s) => s.workspaces)
   const activeWorkspaceId = useCollectionsStore((s) => s.activeWorkspaceId)
   const t = useT()
+  const [workspaceMenu, setWorkspaceMenu] = useState<{ x: number; y: number } | null>(null)
+  const workspaceMenuRef = useRef<HTMLDivElement>(null)
   // The API Workspace home shows the live workspace name; other panels use their i18n title.
   const label = activeRail === 'collections'
     ? (workspaces.find((w) => w.id === activeWorkspaceId)?.name ?? tr('Workspace'))
     : titleKey && titleKey in t.rail
       ? t.rail[titleKey as keyof typeof t.rail]
       : nav(titleKey || '')
+
+  useEffect(() => {
+    if (!workspaceMenu) return
+    const close = (event: MouseEvent) => {
+      if (!workspaceMenuRef.current?.contains(event.target as Node)) setWorkspaceMenu(null)
+    }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [workspaceMenu])
+
   return (
-    <div className="h-10 flex items-center gap-2 px-3 border-b border-border-1 bg-surface-1 flex-shrink-0">
+    <div
+      data-workspace-panel-header={activeRail === 'collections' ? 'true' : undefined}
+      role="toolbar"
+      tabIndex={0}
+      onContextMenu={(event) => {
+        if (activeRail !== 'collections') return
+        event.preventDefault()
+        setWorkspaceMenu({ x: event.clientX, y: event.clientY })
+      }}
+      onKeyDown={(event) => {
+        if (activeRail !== 'collections' || (event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10'))) return
+        event.preventDefault()
+        const rect = event.currentTarget.getBoundingClientRect()
+        setWorkspaceMenu({ x: rect.left + 16, y: rect.bottom - 4 })
+      }}
+      className="h-10 flex items-center gap-2 px-3 border-b border-border-1 bg-surface-1 flex-shrink-0"
+    >
       <button
         onClick={goBack}
         disabled={!hasHistory}
@@ -118,6 +146,26 @@ function PanelHeader({ titleKey }: { titleKey?: string }) {
       >
         <X size={12} />
       </button>
+      {workspaceMenu && (
+        <div
+          ref={workspaceMenuRef}
+          role="menu"
+          className="fixed z-50 w-52 overflow-hidden rounded-md border border-border-1 bg-surface-1 py-1 shadow-xl"
+          style={{ left: workspaceMenu.x, top: workspaceMenu.y }}
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              document.dispatchEvent(new CustomEvent('adomnia:new-quick-request'))
+              setWorkspaceMenu(null)
+            }}
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-text-3 transition-colors hover:bg-surface-2 hover:text-text-1"
+          >
+            <Plus size={12} /> {tr('New Request')}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -1199,6 +1247,18 @@ export function MainArea() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleKeyDown])
+
+  // This listener lives in the main workspace rather than the sidebar so the
+  // workspace-header context menu also works while the sidebar is collapsed.
+  useEffect(() => {
+    const createQuickRequest = () => {
+      const request = blankRequest('GET', 'New Request')
+      const collectionId = useCollectionsStore.getState().addQuickRequest(request)
+      useTabsStore.getState().openTab(request, collectionId)
+    }
+    document.addEventListener('adomnia:new-quick-request', createQuickRequest)
+    return () => document.removeEventListener('adomnia:new-quick-request', createQuickRequest)
+  }, [])
 
   const { component, titleKey, overflow } = panelFor(activeRail)
 

@@ -12,16 +12,10 @@ export function WorkspaceSidebarSkeleton({ quiet = false }: { quiet?: boolean })
       role="status"
       aria-label={tr('Loading…')}
     >
-      <div className="border-b border-border-1 bg-surface-1/55 px-3 py-3">
-        <div className="mb-2 flex items-center justify-between">
-          <Skeleton className="h-2 w-20" />
-          <Skeleton className="h-2 w-10 opacity-60" />
-        </div>
-        <Skeleton className="h-8 w-full" />
-      </div>
-      <div className="space-y-2 border-b border-border-1 px-3 py-2.5">
-        <Skeleton className="h-7 w-full opacity-80" />
-        <Skeleton className="h-7 w-full opacity-65" />
+      <div className="flex h-10 items-center gap-1 border-b border-border-1 bg-surface-1/55 px-2 py-1.5">
+        <Skeleton className="h-7 flex-[1.15] opacity-85" />
+        <Skeleton className="h-7 flex-1 opacity-70" />
+        <Skeleton className="h-7 flex-1 opacity-60" />
       </div>
       <div className="flex-1 space-y-3 px-3 py-4">
         <Skeleton className="h-3 w-2/3" />

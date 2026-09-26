@@ -1,6 +1,6 @@
 import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { TreeInteraction, treeSessions, useTreeInteraction } from './useTreeInteraction'
-import { useCollectionsStore } from '@/stores/collections'
+import { QUICK_REQUESTS_COLLECTION_ID, useCollectionsStore } from '@/stores/collections'
 import { locateNode } from '@/lib/collectionMoves'
 import {
   ChevronRight,
@@ -587,11 +587,19 @@ export function CollectionTree({
   }
 
   const filtered = useMemo(() => {
-    if (!query.trim()) return collections
-    return collections
+    const regularCollections = collections.filter((collection) => collection.id !== QUICK_REQUESTS_COLLECTION_ID)
+    if (!query.trim()) return regularCollections
+    return regularCollections
       .map((collection) => ({ ...collection, children: filterTree(collection.children, query) }))
       .filter((collection) => collection.name.toLowerCase().includes(query.toLowerCase()) || collection.children.length)
   }, [collections, query])
+
+  const quickRequests = useMemo(() => {
+    const quickCollection = collections.find((collection) => collection.id === QUICK_REQUESTS_COLLECTION_ID)
+    if (!quickCollection) return []
+    return query.trim() ? filterTree(quickCollection.children, query) : quickCollection.children
+  }, [collections, query])
+  const quickRequestCollection = collections.find((collection) => collection.id === QUICK_REQUESTS_COLLECTION_ID)
 
   type FlatItem = { id: string; kind: 'collection' | 'folder' | 'request'; collectionId: string; parentId: string | null; data: Collection | TreeNode }
 
@@ -603,12 +611,13 @@ export function CollectionTree({
         if (node.type === 'folder' && openIds.has(node.id)) addNodes((node as FolderItem).children, collectionId, node.id)
       }
     }
+    if (quickRequestCollection) addNodes(quickRequests, quickRequestCollection.id, null)
     for (const col of filtered) {
       items.push({ id: col.id, kind: 'collection', collectionId: col.id, parentId: null, data: col })
       if (openIds.has(col.id)) addNodes(col.children, col.id, col.id)
     }
     return items
-  }, [filtered, openIds])
+  }, [filtered, openIds, quickRequestCollection, quickRequests])
 
   // Auto-scroll focused item into view
   useEffect(() => {
@@ -840,13 +849,13 @@ export function CollectionTree({
   return (
     <TreeInteraction.Provider value={interaction}>
     <div className="relative flex min-h-0 flex-1 flex-col">
-      <div className="flex items-center gap-1 border-b border-border-1 px-2 py-2">
-        <span className="flex-1 text-[10px] font-semibold uppercase tracking-wider text-text-4">{tr('Collections')}</span>
+      <div data-collections-toolbar className="flex h-9 flex-shrink-0 items-center gap-1 border-b border-border-1 bg-surface-1/35 px-2">
+        <span className="flex-1 text-[10px] font-semibold uppercase tracking-wider text-text-3">{tr('Collections')}</span>
         <input ref={fileInputRef} type="file" accept=".json,.yaml,.yml,.bru" className="hidden" onChange={(event) => void handleImport(event.target.files?.[0])} />
-        <button onClick={() => fileInputRef.current?.click()} title={tr('Import Postman, Insomnia, Bruno, adOmnia or OpenAPI')} className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-2 hover:text-text-1">
+        <button onClick={() => fileInputRef.current?.click()} title={tr('Import Postman, Insomnia, Bruno, adOmnia or OpenAPI')} className="grid h-6 w-6 place-items-center rounded text-text-3 transition-colors hover:bg-surface-2 hover:text-text-1">
           <Upload size={14} />
         </button>
-        <button onClick={() => exportAll('adomnia')} title={tr('Export all collections')} className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-2 hover:text-text-1">
+        <button onClick={() => exportAll('adomnia')} title={tr('Export all collections')} className="grid h-6 w-6 place-items-center rounded text-text-3 transition-colors hover:bg-surface-2 hover:text-text-1">
           <Download size={14} />
         </button>
         <button
@@ -855,11 +864,11 @@ export function CollectionTree({
             if (collectionId) setOpenIds((current) => new Set(current).add(collectionId))
           }}
           title={tr('New request')}
-          className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-2 hover:text-text-1"
+          className="grid h-6 w-6 place-items-center rounded text-text-3 transition-colors hover:bg-surface-2 hover:text-text-1"
         >
           <Plus size={14} />
         </button>
-        <button onClick={onAddCollection} title={tr('New collection')} className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-2 hover:text-text-1">
+        <button onClick={onAddCollection} title={tr('New collection')} className="grid h-6 w-6 place-items-center rounded text-text-3 transition-colors hover:bg-surface-2 hover:text-text-1">
           <FolderPlus size={14} />
         </button>
       </div>
@@ -911,7 +920,7 @@ export function CollectionTree({
           setContext({ kind: 'panel', x: event.clientX, y: event.clientY })
         }}
       >
-        {filtered.length === 0 ? (
+        {filtered.length === 0 && quickRequests.length === 0 ? (
           <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
             <div className="grid h-10 w-10 place-items-center rounded-lg border border-dashed border-border-2 bg-surface-1 text-text-3">
               <UploadCloud size={18} />
@@ -928,7 +937,36 @@ export function CollectionTree({
               <button onClick={onAddCollection} className="text-xs text-accent hover:text-accent-light">{tr('Create collection')}</button>
             </div>
           </div>
-        ) : filtered.map((collection, collectionIndex) => (
+        ) : <>
+          {quickRequestCollection && quickRequests.map((node, index) => (
+            <TreeNodeRow
+              key={node.id}
+              node={node}
+              collection={quickRequestCollection}
+              parentId={null}
+              index={index}
+              depth={0}
+              activeRequestId={activeRequestId}
+              openIds={openIds}
+              editingId={editingId}
+              dragPayload={dragPayload}
+              dropTarget={dropTarget}
+              focusedId={focusedId}
+              query={query}
+              onToggle={toggle}
+              onOpenRequest={onOpenRequest}
+              onSetEditing={setEditingId}
+              onCommitRename={onRenameNode}
+              onContext={setContext}
+              onDragStartNode={startDrag}
+              onDropNode={handleNodeDrop}
+              onDragOverNode={handleNodeDragOver}
+              onClearDrop={clearDrop}
+              onSetFocused={setFocusedId}
+            />
+          ))}
+          {quickRequests.length > 0 && filtered.length > 0 && <div className="mx-1 my-1 border-t border-border-1" />}
+          {filtered.map((collection, collectionIndex) => (
           <div
             key={collection.id}
             className="mt-1 rounded"
@@ -1020,7 +1058,8 @@ export function CollectionTree({
               </button>
             )}
           </div>
-        ))}
+          ))}
+        </>}
       </div>
 
       <div className="flex items-center gap-2 border-t border-border-1 px-3 py-1.5 text-[10px] text-text-4">

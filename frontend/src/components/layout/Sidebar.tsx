@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, FolderKanban, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useAppStore } from '@/stores/app'
 import { useSettingsStore } from '@/stores/settings'
@@ -39,6 +39,7 @@ export function Sidebar() {
   const renameNode = useCollectionsStore((s) => s.renameNode)
   const addFolder = useCollectionsStore((s) => s.addFolder)
   const addRequest = useCollectionsStore((s) => s.addRequest)
+  const addQuickRequest = useCollectionsStore((s) => s.addQuickRequest)
   const importCollection = useCollectionsStore((s) => s.importCollection)
   const reorderCollections = useCollectionsStore((s) => s.reorderCollections)
   const moveNode = useCollectionsStore((s) => s.moveNode)
@@ -74,6 +75,13 @@ export function Sidebar() {
   const [showRenameWorkspace, setShowRenameWorkspace] = useState(false)
   const [showDeleteWorkspace, setShowDeleteWorkspace] = useState(false)
 
+  const handleNewRequest = (method: HttpMethod = 'GET'): string => {
+    const request = blankRequest(method, 'New Request')
+    const collectionId = addQuickRequest(request)
+    openTab(request, collectionId)
+    return collectionId
+  }
+
   if (collapsed || activeRail !== 'collections') return null
   if (workspaceShellPhase !== 'ready') {
     return <WorkspaceSidebarSkeleton quiet={workspaceShellPhase === 'quiet'} />
@@ -97,14 +105,6 @@ export function Sidebar() {
     addRequest(collectionId, parentId, req)
     openTab(req, collectionId)
     return parentId
-  }
-
-  const handleNewRequest = (method: HttpMethod = 'GET'): string => {
-    const activeTab = tabs.find((tab) => tab.id === activeTabId)
-    const activeCollection = collections.find((collection) => collection.id === activeTab?.collectionId)
-    const targetCollection = activeCollection ?? collections[0] ?? addCollection('My Requests')
-    handleAddRequestToFolder(targetCollection.id, null, method)
-    return targetCollection.id
   }
 
   const handleSwitchWorkspace = (workspaceId: string) => {
@@ -131,62 +131,37 @@ export function Sidebar() {
 
   return (
     <aside className="h-full min-h-0 w-full flex-shrink-0 bg-surface-0 border-r border-border-1 flex flex-col">
-      <div className="border-b border-border-1 bg-surface-1/55 px-2 py-2">
-        <div className="mb-1.5 flex items-center gap-2 px-1">
-          <FolderKanban size={12} className="text-accent" />
-          <span className="min-w-0 flex-1 truncate text-[9px] font-semibold uppercase tracking-[0.14em] text-text-4">{tr('Workspace')}</span>
-          <span className="text-[9px] text-text-4">{collections.length} {tr('collections')}</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="relative min-w-0 flex-1">
-            <select
-              value={activeWorkspaceId}
-              onChange={(event) => handleSwitchWorkspace(event.target.value)}
-              className="h-8 w-full appearance-none truncate rounded-md border border-border-2 bg-surface-2 pl-2.5 pr-7 text-xs font-medium text-text-1 outline-none transition-colors hover:border-accent/40 focus:border-accent"
-              title={tr('Active workspace')}
-            >
-              {workspaces.map((workspace) => (
-                <option key={workspace.id} value={workspace.id}>{workspace.name}</option>
-              ))}
-            </select>
-            <ChevronDown size={12} className="pointer-events-none absolute right-2 top-2 text-text-4" />
-          </div>
-          <button onClick={() => setShowAddWorkspace(true)} title={tr('New workspace')} className="grid h-8 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1">
-            <Plus size={13} />
-          </button>
-          <button onClick={() => setShowRenameWorkspace(true)} title={tr('Rename workspace')} className="grid h-8 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1">
-            <Pencil size={12} />
-          </button>
-          <button
-            onClick={() => setShowDeleteWorkspace(true)}
-            disabled={workspaces.length <= 1}
-            title={workspaces.length <= 1 ? tr('At least one workspace is required') : tr('Delete workspace')}
-            className={cn('grid h-8 w-7 place-items-center rounded-md text-text-3 hover:bg-error/10 hover:text-error', workspaces.length <= 1 && 'cursor-not-allowed opacity-35')}
-          >
-            <Trash2 size={12} />
-          </button>
-        </div>
+      <div data-sidebar-context className="flex h-10 flex-shrink-0 items-center gap-1 border-b border-border-1 bg-surface-1/55 px-2 py-1.5">
+        <WorkspaceContextButton
+          workspaces={workspaces}
+          activeWorkspaceId={activeWorkspaceId}
+          onSwitch={handleSwitchWorkspace}
+          onAdd={() => setShowAddWorkspace(true)}
+          onRename={() => setShowRenameWorkspace(true)}
+          onDelete={() => setShowDeleteWorkspace(true)}
+        />
+        <EnvBar
+          compact
+          environments={environments}
+          activeEnvId={activeEnvId}
+          onSetActive={setActiveEnv}
+          onAdd={(name) => addEnvironment(name)}
+          onDelete={deleteEnvironment}
+          onRename={renameEnvironment}
+          onUpdateVars={updateVariables}
+          onSetPrivate={setEnvironmentPrivate}
+        />
+        <HostBar
+          compact
+          profiles={hostsProfiles}
+          activeProfileId={activeHostProfileId}
+          onSetActive={setActiveHostProfile}
+          onAdd={(name) => addHostProfile(name)}
+          onDelete={deleteHostProfile}
+          onRename={renameHostProfile}
+          onUpdateEntries={updateHostEntries}
+        />
       </div>
-
-      <EnvBar
-        environments={environments}
-        activeEnvId={activeEnvId}
-        onSetActive={setActiveEnv}
-        onAdd={(name) => addEnvironment(name)}
-        onDelete={deleteEnvironment}
-        onRename={renameEnvironment}
-        onUpdateVars={updateVariables}
-        onSetPrivate={setEnvironmentPrivate}
-      />
-      <HostBar
-        profiles={hostsProfiles}
-        activeProfileId={activeHostProfileId}
-        onSetActive={setActiveHostProfile}
-        onAdd={(name) => addHostProfile(name)}
-        onDelete={deleteHostProfile}
-        onRename={renameHostProfile}
-        onUpdateEntries={updateHostEntries}
-      />
 
       <CollectionTree
         key={activeWorkspaceId}
@@ -267,5 +242,99 @@ export function Sidebar() {
         onCancel={() => setShowDeleteWorkspace(false)}
       />
     </aside>
+  )
+}
+
+interface WorkspaceContextButtonProps {
+  workspaces: Array<{ id: string; name: string }>
+  activeWorkspaceId: string
+  onSwitch: (workspaceId: string) => void
+  onAdd: () => void
+  onRename: () => void
+  onDelete: () => void
+}
+
+function WorkspaceContextButton({
+  workspaces,
+  activeWorkspaceId,
+  onSwitch,
+  onAdd,
+  onRename,
+  onDelete,
+}: WorkspaceContextButtonProps) {
+  const tr = useUiTranslation()
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const activeWorkspace = workspaces.find((workspace) => workspace.id === activeWorkspaceId)
+
+  useEffect(() => {
+    if (!open) return
+    const close = (event: MouseEvent) => {
+      if (!ref.current?.contains(event.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [open])
+
+  return (
+    <div ref={ref} className="relative min-w-0 flex-[1.15]">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title={`${tr('Workspace')}: ${activeWorkspace?.name ?? tr('Unknown')}`}
+        className={cn(
+          'flex h-7 w-full min-w-0 items-center gap-1 rounded border border-border-2 bg-surface-2 px-1.5 text-[11px] text-text-1 outline-none transition-colors',
+          'hover:border-border-3 hover:bg-surface-3',
+          open && 'border-accent'
+        )}
+      >
+        <FolderKanban size={11} className="shrink-0 text-accent" />
+        <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wide text-text-4">{tr('Workspace')}</span>
+        <span className="min-w-0 flex-1 truncate text-left font-medium">{activeWorkspace?.name ?? tr('Unknown')}</span>
+        <ChevronDown size={11} className={cn('shrink-0 text-text-4 transition-transform', open && 'rotate-180')} />
+      </button>
+
+      {open && (
+        <div role="menu" className="absolute left-0 top-full z-50 mt-1 min-w-full w-max max-w-64 overflow-hidden rounded-md border border-border-2 bg-surface-2 py-0.5 shadow-xl">
+          <div className="max-h-52 overflow-y-auto">
+            {workspaces.map((workspace) => (
+              <button
+                key={workspace.id}
+                type="button"
+                role="menuitem"
+                onClick={() => { onSwitch(workspace.id); setOpen(false) }}
+                className={cn(
+                  'flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors',
+                  workspace.id === activeWorkspaceId ? 'bg-surface-3 text-text-1' : 'text-text-2 hover:bg-surface-3 hover:text-text-1'
+                )}
+              >
+                <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', workspace.id === activeWorkspaceId ? 'bg-accent' : 'bg-transparent')} />
+                <span className="truncate">{workspace.name}</span>
+              </button>
+            ))}
+          </div>
+          <div className="mt-0.5 flex border-t border-border-1 p-1">
+            <button type="button" role="menuitem" onClick={() => { onAdd(); setOpen(false) }} title={tr('New workspace')} className="grid h-7 flex-1 place-items-center rounded text-text-3 transition-colors hover:bg-surface-3 hover:text-text-1">
+              <Plus size={12} />
+            </button>
+            <button type="button" role="menuitem" onClick={() => { onRename(); setOpen(false) }} title={tr('Rename workspace')} className="grid h-7 flex-1 place-items-center rounded text-text-3 transition-colors hover:bg-surface-3 hover:text-text-1">
+              <Pencil size={11} />
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => { onDelete(); setOpen(false) }}
+              disabled={workspaces.length <= 1}
+              title={workspaces.length <= 1 ? tr('At least one workspace is required') : tr('Delete workspace')}
+              className={cn('grid h-7 flex-1 place-items-center rounded text-text-3 transition-colors hover:bg-error/10 hover:text-error', workspaces.length <= 1 && 'cursor-not-allowed opacity-35')}
+            >
+              <Trash2 size={11} />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }

@@ -5,7 +5,7 @@ go 1.26.5
 require (
 	filippo.io/age v1.3.2
 	github.com/HdrHistogram/hdrhistogram-go v1.3.0
-	github.com/IBM/sarama v1.60.2
+	github.com/IBM/sarama v1.61.0
 	// Pinned: pdf v0.2.0 unexports Reader.Resolve, which pdfsign v0.9.0 still
 	// calls. Unpin only together with pdfsign >= v1.0.0 (currently rc only).
 	github.com/digitorus/pdf v0.1.2
@@ -14,7 +14,7 @@ require (
 	github.com/dustin/go-humanize v1.1.0
 	github.com/eclipse/paho.mqtt.golang v1.5.1
 	github.com/gabriel-vasile/mimetype v1.4.15
-	github.com/gaissmai/bart v0.29.1
+	github.com/gaissmai/bart v0.30.0
 	github.com/go-sql-driver/mysql v1.10.1
 	github.com/gorilla/websocket v1.5.3
 	github.com/jackc/pgx/v5 v5.11.0
@@ -28,7 +28,7 @@ require (
 	github.com/tidwall/gjson v1.19.0
 	github.com/tidwall/sjson v1.2.5
 	github.com/wI2L/jsondiff v0.7.1
-	github.com/wailsapp/wails/v3 v3.0.0-beta.23
+	github.com/wailsapp/wails/v3 v3.0.0-beta.25
 	github.com/xdg-go/scram v1.2.0
 	go.etcd.io/bbolt v1.5.0
 	go.mongodb.org/mongo-driver/v2 v2.9.1

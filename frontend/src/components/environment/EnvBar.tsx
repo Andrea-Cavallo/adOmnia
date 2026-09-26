@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { useUiTranslation } from '@/lib/uiI18n'
 
 interface EnvBarProps {
+  compact?: boolean
   environments: Environment[]
   activeEnvId: string | null
   onSetActive: (id: string | null) => void
@@ -17,6 +18,7 @@ interface EnvBarProps {
 }
 
 export function EnvBar({
+  compact = false,
   environments,
   activeEnvId,
   onSetActive,
@@ -71,50 +73,56 @@ export function EnvBar({
 
   return (
     <>
-      <div className="flex h-[var(--ui-toolbar-h)] items-center gap-1.5 border-b border-border-1 px-2.5">
-        <span className="text-[10px] text-text-4 uppercase tracking-wider shrink-0">{tr('Env')}</span>
+      <div className={cn(compact ? 'flex min-w-0 flex-1 items-center' : 'flex h-[var(--ui-toolbar-h)] items-center gap-1.5 border-b border-border-1 px-2.5')}>
+        {!compact && <span className="shrink-0 text-[10px] uppercase tracking-wider text-text-4">{tr('Env')}</span>}
 
-        <div ref={dropRef} className="relative flex">
+        <div ref={dropRef} className={cn('relative flex', compact && 'min-w-0 flex-1')}>
           <button
-            onClick={() => setShowModal(true)}
+            onClick={() => compact ? setDropOpen((value) => !value) : setShowModal(true)}
+            aria-haspopup="menu"
+            aria-expanded={dropOpen}
             className={cn(
-              'flex h-6 min-w-0 items-center gap-1.5 rounded-l px-2 text-[11px] transition-colors outline-none',
+              'flex h-6 min-w-0 items-center gap-1.5 px-2 text-[11px] transition-colors outline-none',
               'bg-surface-2 border border-border-2 text-text-1',
               'hover:border-border-3 hover:bg-surface-3',
+              compact ? 'h-7 w-full rounded' : 'rounded-l',
               dropOpen && 'border-accent'
             )}
-            title={tr('Open environment editor')}
+            title={compact ? tr('Switch environment') : tr('Open environment editor')}
           >
-            <span className="max-w-[160px] truncate">{activeLabel}</span>
+            {compact && <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wide text-text-4">{tr('Env')}</span>}
+            <span className={cn('truncate', compact ? 'min-w-0 flex-1 text-left' : 'max-w-[160px]')}>{activeLabel}</span>
             {activeEnv && (
               <span className="shrink-0 rounded-sm border border-border-2 bg-surface-1 px-1 text-[9px] text-text-4">
                 {activeVarCount}
               </span>
             )}
+            {compact && <ChevronDown size={11} className={cn('shrink-0 text-text-4 transition-transform', dropOpen && 'rotate-180')} />}
           </button>
-          <button
-            onClick={() => setDropOpen(v => !v)}
-            className={cn(
-              '-ml-px flex h-6 w-6 items-center justify-center rounded-r border border-border-2 bg-surface-2 text-text-4 transition-colors outline-none',
-              'hover:border-border-3 hover:bg-surface-3 hover:text-text-1',
-              dropOpen && 'border-accent text-accent'
-            )}
-            title={tr('Switch environment')}
-          >
-            <ChevronDown
-              size={11}
-              className={cn('shrink-0 text-text-4 transition-transform', dropOpen && 'rotate-180')}
-            />
-          </button>
+          {!compact && (
+            <button
+              onClick={() => setDropOpen(v => !v)}
+              aria-haspopup="menu"
+              aria-expanded={dropOpen}
+              className={cn(
+                '-ml-px flex h-6 w-6 items-center justify-center rounded-r border border-border-2 bg-surface-2 text-text-4 transition-colors outline-none',
+                'hover:border-border-3 hover:bg-surface-3 hover:text-text-1',
+                dropOpen && 'border-accent text-accent'
+              )}
+              title={tr('Switch environment')}
+            >
+              <ChevronDown size={11} className={cn('shrink-0 text-text-4 transition-transform', dropOpen && 'rotate-180')} />
+            </button>
+          )}
 
           {dropOpen && (
             <div className="absolute top-full left-0 mt-0.5 z-50 min-w-full w-max max-w-56 rounded-md border border-border-2 bg-surface-2 shadow-xl py-0.5 overflow-hidden">
-              {activeEnv && (
+              {(compact || activeEnv) && (
                 <button
                   onClick={() => { setShowModal(true); setDropOpen(false) }}
                   className="w-full border-b border-border-1 px-3 py-1.5 text-left text-xs text-accent transition-colors hover:bg-surface-3 hover:text-accent-light"
                 >
-                  {tr('Edit current environment')}
+                  {compact ? tr('Manage environments') : tr('Edit current environment')}
                 </button>
               )}
               <button
@@ -146,7 +154,7 @@ export function EnvBar({
           )}
         </div>
 
-        {adding ? (
+        {!compact && (adding ? (
           <div className="flex items-center gap-1">
             <input
               ref={inputRef}
@@ -174,15 +182,9 @@ export function EnvBar({
           >
             <Plus size={12} />
           </button>
-        )}
+        ))}
 
-        <button
-          onClick={() => setShowModal(true)}
-          className="ml-auto text-[11px] text-accent hover:text-accent-light"
-          title={tr('Manage environments')}
-        >
-          {tr('Environments')}
-        </button>
+        {!compact && <button onClick={() => setShowModal(true)} className="ml-auto text-[11px] text-accent hover:text-accent-light" title={tr('Manage environments')}>{tr('Environments')}</button>}
       </div>
 
       {showModal && (

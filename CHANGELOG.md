@@ -4,6 +4,23 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [0.9.29] - 2026-09-26
+
+### Added
+- **Quick root requests:** right-click the active workspace header and choose **New Request** to create an immediately visible request at the top of the sidebar, outside every user collection. Quick requests stay local, persist with their workspace and can later be moved into a collection.
+- **Brick Workshop skin:** an optional tactile, playful visual skin is available alongside the existing themes without changing the default appearance.
+- **a0 AI companion:** when AI is explicitly enabled, a0 appears as an expandable chat companion in the lower-right corner. It can explain the active workspace, draft Flow instructions, route to API Docs, and propose headers for the active request. Header changes remain a visible, one-click review step; it never changes an API request autonomously.
+
+### Changed
+- **Denser collection navigation:** Workspace, Environment and Hosts are now three compact controls on one sidebar row. Their management actions remain available in their menus, leaving more room for Collections.
+- **Dependency refresh:** Wails and its runtime were updated together to `3.0.0-beta.25`; Sarama and Bart were updated to their compatible current releases.
+
+### Fixed
+- **Workspace startup resilience:** incomplete legacy request tabs are repaired during hydration instead of causing a recoverable UI error.
+- **Windows executable details:** generated Windows resources now receive the actual release version, description and build metadata instead of unresolved template values.
+
+Full release notes: [v0.9.29](docs/releases/v0.9.29.md).
+
 ## [0.9.28] - 2026-09-26
 
 ### Fixed

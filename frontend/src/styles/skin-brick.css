@@ -1,0 +1,195 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   BRICK skin — a modular building-brick workbench.
+
+   This is deliberately an abstract construction-toy treatment: colour, studs
+   and plastic depth are expressed in CSS, with no borrowed logos, characters
+   or external artwork. Everything is scoped to ThemeProvider's data-skin so
+   switching back to another theme removes the treatment completely.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+[data-skin='brick'] {
+  --brick-blue: #0D3978;
+  --brick-blue-light: #1A5AA5;
+  --brick-blue-deep: #041B42;
+  --brick-bay: #061A39;
+  --brick-yellow: var(--color-accent);
+  --brick-red: var(--color-error);
+  --brick-seam: #03152F;
+  --brick-stud: rgba(255, 255, 255, 0.14);
+  --brick-highlight: rgba(255, 255, 255, 0.32);
+  --brick-shadow: rgba(0, 10, 34, 0.58);
+  --brick-radius: 8px;
+}
+
+/* A subtle stud grid belongs behind the workspace rather than in every panel.
+   Keeping the repeat low-contrast preserves the density needed for code. */
+[data-skin='brick'] #root {
+  background-color: var(--color-surface-0);
+  background-image:
+    radial-gradient(ellipse at 11px 8px, var(--brick-stud) 0 4px, rgba(2, 24, 58, 0.25) 4.5px 6px, transparent 6.5px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 18%);
+  background-size: 28px 28px, 100% 100%;
+}
+
+/* Structural surfaces read as moulded plastic: a fine dark seam, a top glint
+   and a lower lip give depth without relying on blur or platform-specific SVG
+   filters. */
+[data-skin='brick'] .bg-surface-0,
+[data-skin='brick'] .bg-surface-1,
+[data-skin='brick'] .bg-surface-2,
+[data-skin='brick'] .bg-surface-3 {
+  border-color: var(--brick-seam) !important;
+  box-shadow:
+    inset 0 1px 0 var(--brick-highlight),
+    inset 0 -2px 0 rgba(1, 18, 47, 0.42),
+    0 1px 0 var(--brick-shadow);
+}
+
+[data-skin='brick'] [class*='border'] {
+  border-color: var(--brick-seam);
+}
+
+/* Inputs need to remain quiet, recessed bays. Buttons receive the raised lip;
+   applying it only to controls avoids fighting the editor's own layout. */
+[data-skin='brick'] button:not(:disabled) {
+  border-radius: var(--brick-radius);
+  border-color: var(--brick-seam);
+  box-shadow:
+    inset 0 1px 0 var(--brick-highlight),
+    inset 0 -2px 0 rgba(1, 18, 47, 0.42),
+    0 2px 0 var(--brick-shadow);
+}
+
+[data-skin='brick'] button:hover:not(:disabled) {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+[data-skin='brick'] button:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow:
+    inset 0 2px 0 rgba(1, 18, 47, 0.38),
+    0 1px 0 var(--brick-shadow);
+}
+
+[data-skin='brick'] input,
+[data-skin='brick'] select,
+[data-skin='brick'] textarea {
+  border-color: var(--brick-seam) !important;
+  border-radius: 6px;
+  box-shadow:
+    inset 0 2px 3px rgba(1, 16, 43, 0.44),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+[data-skin='brick'] input:focus,
+[data-skin='brick'] select:focus,
+[data-skin='brick'] textarea:focus,
+[data-skin='brick'] button:focus-visible {
+  outline: 2px solid var(--brick-yellow);
+  outline-offset: 2px;
+}
+
+/* Active tabs and tree rows become a yellow brick, as in the reference, but
+   use the dark blue ink token so text and icons remain AA-readable. */
+[data-skin='brick'] [aria-selected='true'],
+[data-skin='brick'] [aria-checked='true'],
+[data-skin='brick'] [data-state='active'],
+[data-skin='brick'] [data-collection-request][data-request-active='true'] {
+  color: var(--brick-blue-deep) !important;
+  background-color: var(--brick-yellow) !important;
+  border-color: #B77E00 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    inset 0 -2px 0 rgba(183, 126, 0, 0.62),
+    0 2px 0 rgba(2, 19, 48, 0.56) !important;
+}
+
+[data-skin='brick'] [aria-selected='true'] svg,
+[data-skin='brick'] [aria-checked='true'] svg,
+[data-skin='brick'] [data-state='active'] svg,
+[data-skin='brick'] [data-collection-request][data-request-active='true'] svg {
+  color: var(--brick-blue-deep) !important;
+}
+
+/* Request and response bodies are recessed bays. Keeping the Monaco layers
+   opaque eliminates the inherited translucent/glassy treatment in editors. */
+[data-skin='brick'] [data-editor='json'],
+[data-skin='brick'] .monaco-editor,
+[data-skin='brick'] .monaco-editor-background,
+[data-skin='brick'] .monaco-editor .margin {
+  background-color: var(--brick-bay) !important;
+}
+
+[data-skin='brick'] [data-editor='json'] {
+  border: 2px solid var(--brick-seam);
+  border-radius: var(--brick-radius);
+  box-shadow:
+    inset 0 0 0 1px rgba(99, 175, 255, 0.14),
+    inset 0 5px 12px rgba(0, 0, 0, 0.32);
+}
+
+[data-skin='brick'] .monaco-editor .margin {
+  border-right: 1px solid rgba(126, 169, 214, 0.25);
+}
+
+/* Send is a substantial yellow brick. The general glow layers are suppressed
+   here so it feels tactile instead of neon and remains consistent in WebKit. */
+[data-skin='brick'] .glass-action,
+[data-skin='brick'] .api-send-action {
+  color: var(--brick-blue-deep) !important;
+  background: linear-gradient(180deg, #FFE979, var(--brick-yellow) 54%, #F1B800) !important;
+  border: 2px solid #B77E00 !important;
+  border-radius: var(--brick-radius);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.76),
+    inset 0 -3px 0 rgba(183, 126, 0, 0.6),
+    0 3px 0 rgba(2, 19, 48, 0.72) !important;
+}
+
+[data-skin='brick'] .glass-action::before,
+[data-skin='brick'] .glass-action::after {
+  display: none;
+}
+
+[data-skin='brick'] .glass-action:hover:not(:disabled),
+[data-skin='brick'] .api-send-action:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+}
+
+/* Floating menus must be opaque or the stud field shows through small text. */
+[data-skin='brick'] [role='menu'],
+[data-skin='brick'] [role='dialog'],
+[data-skin='brick'] [data-radix-popper-content-wrapper] > * {
+  border-color: var(--brick-seam) !important;
+  box-shadow:
+    inset 0 1px 0 var(--brick-highlight),
+    0 5px 0 var(--brick-shadow),
+    0 12px 26px rgba(0, 7, 24, 0.35);
+}
+
+/* Status and method badges retain their semantic colours; raised edges make
+   their small hit areas feel like the same modular system. */
+[data-skin='brick'] .font-mono[class*='method-'],
+[data-skin='brick'] [class*='bg-method-'] {
+  border: 1px solid var(--brick-seam);
+  border-radius: 5px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 1px 0 var(--brick-shadow);
+}
+
+[data-skin='brick'] ::selection {
+  color: var(--brick-blue-deep);
+  background: var(--brick-yellow);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-skin='brick'] button,
+  [data-skin='brick'] .glass-action,
+  [data-skin='brick'] .api-send-action {
+    transform: none !important;
+    transition: none !important;
+  }
+}

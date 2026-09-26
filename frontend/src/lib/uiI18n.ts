@@ -362,6 +362,7 @@ export const ITALIAN_UI_MESSAGES = {
   'Dark theme': 'Tema scuro',
   'Light theme': 'Tema chiaro',
   'Sketch theme': 'Tema Sketch',
+  'Brick theme': 'Tema mattoncini',
   'Generate with AI': 'Genera con l’AI',
   'Generating…': 'Generazione…',
   'Generate this script with AI using the API specification': 'Genera questo script con l’AI usando la specifica API',

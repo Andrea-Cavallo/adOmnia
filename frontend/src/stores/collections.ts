@@ -57,6 +57,7 @@ interface CollectionsState {
   updateCollection: (id: string, patch: Partial<Collection>) => void
   addFolder: (collectionId: string, parentId: string | null, name: string) => void
   addRequest: (collectionId: string, parentId: string | null, request: RequestItem) => void
+  addQuickRequest: (request: RequestItem) => string
   deleteNode: (collectionId: string, nodeId: string) => void
   renameNode: (collectionId: string, nodeId: string, name: string) => void
   updateRequest: (collectionId: string, request: RequestItem) => void
@@ -68,6 +69,10 @@ interface CollectionsState {
 }
 
 export const DEFAULT_WORKSPACE_ID = 'workspace-default'
+// A hidden system collection keeps quick requests compatible with the existing
+// versioned collection format while the sidebar presents them at workspace root.
+export const QUICK_REQUESTS_COLLECTION_ID = '__adomnia-quick-requests__'
+const QUICK_REQUESTS_COLLECTION_NAME = 'Quick Requests'
 const DEFAULT_WORKSPACE_NAME = 'Default Workspace'
 const COLLECTIONS_INDEX_VERSION = 3
 const pendingWorkspaceSaves = new Set<string>()
@@ -595,6 +600,27 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
       ),
     }))
     get().save()
+  },
+
+  addQuickRequest: (request) => {
+    set((s) => {
+      const quickCollection = s.collections.find((collection) => collection.id === QUICK_REQUESTS_COLLECTION_ID)
+      if (quickCollection) {
+        return {
+          collections: s.collections.map((collection) => collection.id === QUICK_REQUESTS_COLLECTION_ID
+            ? { ...collection, children: [...collection.children, request] }
+            : collection),
+        }
+      }
+      return {
+        collections: [
+          { id: QUICK_REQUESTS_COLLECTION_ID, name: QUICK_REQUESTS_COLLECTION_NAME, children: [request] },
+          ...s.collections,
+        ],
+      }
+    })
+    get().save()
+    return QUICK_REQUESTS_COLLECTION_ID
   },
 
   deleteNode: (collectionId, nodeId) => {

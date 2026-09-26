@@ -5,6 +5,11 @@ includes:
 
 vars:
   WINDOWS_ARCH: '{{.ARCH | default "amd64"}}'
+  # CI supplies VERSION from the release tag. Local builds use the current
+  # release version, so Windows never receives a non-numeric `dev` resource.
+  WINDOWS_VERSION: '{{.VERSION | default "0.9.29"}}'
+  GENERATED_INFO: '../.wails/windows-info-{{.WINDOWS_ARCH}}.json'
+  GENERATED_MANIFEST: '../.wails/windows-manifest-{{.WINDOWS_ARCH}}.xml'
 
 tasks:
   build:
@@ -13,13 +18,14 @@ tasks:
     cmds:
       - task: generate:syso
       - go build -buildvcs=false -trimpath -tags production -ldflags="-s -w -H windowsgui {{.LD_VERSION}}" -o {{.BIN_DIR}}/{{.APP_NAME}}.exe .
-      - cmd: powershell -NoProfile -Command "if (Test-Path -LiteralPath 'wails_windows_{{.WINDOWS_ARCH}}.syso') { Remove-Item -LiteralPath 'wails_windows_{{.WINDOWS_ARCH}}.syso' }"
+      - cmd: powershell -NoProfile -Command "Remove-Item -Force -ErrorAction SilentlyContinue -LiteralPath 'wails_windows_{{.WINDOWS_ARCH}}.syso', '.wails/windows-info-{{.WINDOWS_ARCH}}.json', '.wails/windows-manifest-{{.WINDOWS_ARCH}}.xml'"
 
   generate:syso:
     summary: Embed the Windows icon, manifest and version metadata into the executable.
     dir: build
     cmds:
-      - wails3 generate syso -arch {{.WINDOWS_ARCH}} -icon windows/icon.ico -manifest windows/wails.exe.manifest -info windows/info.json -out ../wails_windows_{{.WINDOWS_ARCH}}.syso
+      - powershell -NoProfile -ExecutionPolicy Bypass -File ../scripts/render-windows-build-metadata.ps1 -Version "{{.WINDOWS_VERSION}}" -InfoTemplatePath windows/info.template.json -ManifestTemplatePath windows/wails.exe.manifest.template -InfoOutputPath "{{.GENERATED_INFO}}" -ManifestOutputPath "{{.GENERATED_MANIFEST}}"
+      - wails3 generate syso -arch {{.WINDOWS_ARCH}} -icon windows/icon.ico -manifest "{{.GENERATED_MANIFEST}}" -info "{{.GENERATED_INFO}}" -out ../wails_windows_{{.WINDOWS_ARCH}}.syso
 
   package:
     summary: Windows ships the bare executable, so packaging is just a build.

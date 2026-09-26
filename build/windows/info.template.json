@@ -1,0 +1,19 @@
+{
+  "fixed": {
+    "file_version": "@@RESOURCE_VERSION@@",
+    "product_version": "@@RESOURCE_VERSION@@"
+  },
+  "info": {
+    "0000": {
+      "CompanyName": "Andrea Cavallo",
+      "FileDescription": "adOmnia — Local-first API developer toolbox",
+      "FileVersion": "@@PRODUCT_VERSION@@",
+      "InternalName": "adomnia",
+      "LegalCopyright": "© 2026 Andrea Cavallo. All rights reserved.",
+      "OriginalFilename": "adomnia.exe",
+      "ProductName": "adOmnia",
+      "ProductVersion": "@@PRODUCT_VERSION@@",
+      "Comments": "Local-first API developer toolbox — REST, gRPC, WebSocket, Kafka, mock server, browser debugging and more."
+    }
+  }
+}

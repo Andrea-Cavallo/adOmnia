@@ -14,6 +14,7 @@ import { ResizeHandle } from '@/components/ui/ResizeHandle'
 import { DropOverlay } from '@/components/layout/DropOverlay'
 import { DropToast } from '@/components/layout/DropToast'
 import { PluginNotificationToast } from '@/components/plugins/PluginNotificationToast'
+import { AICompanion } from '@/components/assistant/AICompanion'
 import { useAppStore } from '@/stores/app'
 import { useAppInit } from '@/hooks/useAppInit'
 import { useAppearance } from '@/hooks/useAppearance'
@@ -191,6 +192,7 @@ function App() {
           {dragOver && <DropOverlay preview={dropPreview} />}
           {dropFeedback && <DropToast feedback={dropFeedback} />}
           <PluginNotificationToast />
+          <AICompanion />
           {bugHuntOpen && <Suspense fallback={<div className="fixed inset-0 z-[10000] flex items-center justify-center bg-[#070817] text-white">{tr('Loading Bug Hunt…')}</div>}><BugHuntOverlay onClose={() => setBugHuntOpen(false)} /></Suspense>}
         </div>
         <CommandPalette open={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} />

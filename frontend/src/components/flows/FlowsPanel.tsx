@@ -1075,6 +1075,16 @@ export function FlowsPanel() {
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState('')
 
+  useEffect(() => {
+    const instructions = sessionStorage.getItem('adomnia.ai.flow-instructions')
+    if (!instructions) return
+    sessionStorage.removeItem('adomnia.ai.flow-instructions')
+    setAiInstructions(instructions)
+    setAiPreview(null)
+    setAiError('')
+    setAiOpen(true)
+  }, [])
+
   const savedSortedFlows = useMemo(() => [...savedFlows].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)), [savedFlows])
 
   useEffect(() => {
