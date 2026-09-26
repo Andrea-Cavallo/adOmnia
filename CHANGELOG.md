@@ -4,6 +4,13 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [0.9.28] - 2026-09-26
+
+### Fixed
+- **Git Sync commit graph:** scrolling through a loaded history and returning to an earlier commit no longer breaks or truncates graph connections. Loaded rows remain mounted while history continues to load incrementally.
+
+Full release notes: [v0.9.28](docs/releases/v0.9.28.md).
+
 ## [0.9.23] - 2026-09-24
 
 ### Fixed

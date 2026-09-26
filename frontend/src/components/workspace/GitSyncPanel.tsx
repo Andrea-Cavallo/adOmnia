@@ -309,9 +309,6 @@ export function GitSyncPanel() {
   const [dragFile, setDragFile] = useState<{ path: string; mode: 'stage' | 'unstage' } | null>(null)
   const [commitLimit, setCommitLimit] = useState(240)
   const [selectedCollectionId, setSelectedCollectionId] = useState('')
-  const [graphScrollTop, setGraphScrollTop] = useState(0)
-  const [graphViewportHeight, setGraphViewportHeight] = useState(600)
-  const graphScrollRef = useRef<HTMLDivElement>(null)
   const loadingMoreRef = useRef(false)
   const [columnWidths, setColumnWidths] = useState<GitColumnWidths>(() => loadGitColumnWidths())
   const columnResizeRef = useRef<{ key: GitColumnKey; startX: number; startWidth: number; direction: 1 | -1 } | null>(null)
@@ -355,14 +352,6 @@ export function GitSyncPanel() {
   )
   const graphColumnWidth = Math.max(104, graphLayout.width)
   const graphGridStyle = { gridTemplateColumns: `${graphColumnWidth}px minmax(0, 1fr) 96px` }
-  const graphWindow = useMemo(() => {
-    const rowHeight = 58
-    const overscan = 8
-    const start = Math.max(0, Math.floor(graphScrollTop / rowHeight) - overscan)
-    const end = Math.min(filteredCommits.length, Math.ceil((graphScrollTop + graphViewportHeight) / rowHeight) + overscan)
-    return { start, end, rowHeight, commits: filteredCommits.slice(start, end) }
-  }, [filteredCommits, graphScrollTop, graphViewportHeight])
-
   const selectedCommitBaseRef = selectedCommit?.parents[0] || EMPTY_TREE_REF
 
   useEffect(() => {
@@ -390,16 +379,6 @@ export function GitSyncPanel() {
       setSelectedCollectionId(collections[0].id)
     }
   }, [collections, selectedCollectionId])
-
-  useEffect(() => {
-    const element = graphScrollRef.current
-    if (!element) return
-    const update = () => setGraphViewportHeight(element.clientHeight || 600)
-    update()
-    const observer = new ResizeObserver(update)
-    observer.observe(element)
-    return () => observer.disconnect()
-  }, [activeTab])
 
   const autoLoadedRef = useRef(false)
   useEffect(() => {
@@ -508,7 +487,6 @@ export function GitSyncPanel() {
 
   const handleGraphScroll = (event: React.UIEvent<HTMLDivElement>) => {
     const element = event.currentTarget
-    setGraphScrollTop(element.scrollTop)
     if (!loading && !loadingMoreRef.current && !searchResults && element.scrollHeight - element.scrollTop - element.clientHeight < 360 && (overview?.commits.length ?? 0) >= commitLimit) {
       const next = commitLimit + 240
       loadingMoreRef.current = true
@@ -1155,11 +1133,8 @@ export function GitSyncPanel() {
               Date
             </span>
           </div>
-          <div ref={graphScrollRef} onScroll={handleGraphScroll} className="min-h-0 flex-1 overflow-y-auto">
-            <div aria-hidden style={{ height: graphWindow.start * graphWindow.rowHeight }} />
-            {graphWindow.commits.map((commit, windowIndex) => {
-              const index = graphWindow.start + windowIndex
-              return (
+          <div onScroll={handleGraphScroll} className="min-h-0 flex-1 overflow-y-auto">
+            {filteredCommits.map((commit, index) => (
               <button
                 key={commit.fullHash || commit.hash}
                 data-git-commit-row
@@ -1191,9 +1166,7 @@ export function GitSyncPanel() {
                 </div>
                 <span className="text-right text-[11px] text-text-3">{commit.date}</span>
               </button>
-              )
-            })}
-            <div aria-hidden style={{ height: Math.max(0, filteredCommits.length - graphWindow.end) * graphWindow.rowHeight }} />
+            ))}
             {repoPath && filteredCommits.length === 0 && <div className="p-8 text-center text-xs text-text-4">No commits found.</div>}
             {!repoPath && <div className="p-8 text-center text-xs text-text-4">Load a repository to inspect the graph.</div>}
           </div>
