@@ -392,7 +392,7 @@ export function Rail() {
         )}
         title={tr('Home')}
       >
-        <img src={appIcon} alt="adOmnia" className="h-8 w-8 object-contain" />
+        <img src={appIcon} alt="adOmnia" data-brand-mark className="h-8 w-8 object-contain" />
       </button>
 
       {visibleCategories.map((cat) => (

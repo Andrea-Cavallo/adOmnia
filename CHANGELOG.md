@@ -4,6 +4,27 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [0.9.31] - 2026-09-26
+
+### Added
+- **Reactive Hub mascot:** a0 now appears as a complete, uncropped full-body character between the four Hub cards. Each card has its own pose and expression, with smooth cross-fades, restrained motion, keyboard focus support and reduced-motion handling.
+- **Terminal Green:** a near-black, WCAG-checked built-in theme with a focused signal-green palette, matching brand artwork treatment and a quick switch in the status bar.
+- **Product planning artifacts:** added the accepted direction for controlling a running adOmnia desktop through MCP and an interactive connection-error response sketch with three recovery patterns.
+
+### Changed
+- **a0 is the intentional game entrance:** Bug Hunt opens only when the user explicitly asks the chatbot to play in English or Italian. Negative requests and ordinary mentions do not trigger it; spinning the Hub logo is now only a visual fidget.
+- **Hub-to-assistant flow:** clicking the mascot opens the compact chatbot when the selected provider/model pair has been verified. Otherwise the Hub explains what is missing and links directly to Settings → AI Engine.
+- **Focused Settings:** Themes, Templates and Plugins now live inside Settings instead of occupying a separate Workspace rail group; Git Sync remains the focused Workspace destination.
+- **Broker Studio:** the event-broker workspace is organized around saved connections and their event streams, with connection-aware navigation and tests for the connection model.
+- **Brick Workshop:** stronger tactile treatment across the rail, tabs, workspace header, editors and active request states while retaining reduced-motion support.
+
+### Fixed
+- **Mascot composition:** replaced the cropped mascot and malformed arm treatment with dedicated transparent full-body renders for the resting state and all four Hub reactions.
+- **AI/game behavior:** opening a0 from the Hub requires a verified connection, and local intent recognition launches Bug Hunt without sending the play command to an AI provider.
+- **Documentation hygiene:** removed obsolete implementation scratch documents and kept current product behavior in the README, changelog, release notes and planning artifacts.
+
+Full release notes: [v0.9.31](docs/releases/v0.9.31.md).
+
 ## [0.9.30] - 2026-09-26
 
 ### Changed

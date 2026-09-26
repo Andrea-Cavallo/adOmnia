@@ -8,6 +8,8 @@ import { useAppIcon } from '@/lib/brandAssets'
 import type { RequestHistoryEntry, TreeNode } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { useNavigationTranslation, useUiTranslation, type UiMessage } from '@/lib/uiI18n'
+import { HubMascot } from './HubMascot'
+import './WelcomePanel.css'
 
 /**
  * The hub is a page of an engineering notebook: four index cards clipped into
@@ -26,6 +28,8 @@ type HubCard = {
   links: HubLink[]
   action: { label: string; id: RailItem }
 }
+
+type HubCardTarget = HubCard['index'] | null
 
 const HUB_CARDS: HubCard[] = [
   {
@@ -124,32 +128,6 @@ function FidgetLogo({ src, size }: { src: string; size: number }) {
   const lastMoveRef = useRef(0)
   const draggingRef = useRef(false)
   const [dragging, setDragging] = useState(false)
-  // One full turn is the whole secret now: the logo offers, it never waits.
-  const [charging, setCharging] = useState(false)
-  const [invited, setInvited] = useState(false)
-  const pointerStart = useRef({ x: 0, y: 0 })
-  // Latched once the pointer leaves the dead zone: circling back past the
-  // starting point must keep counting toward the three turns.
-  const movedPastThreshold = useRef(false)
-  const startedAtOuterRadius = useRef(false)
-  const turnStart = useRef(0)
-  const turns = useRef(0)
-  const triggered = useRef(false)
-
-  /** Spinning asks; it never drops the user into the game unannounced. */
-  const inviteToPlay = () => {
-    if (triggered.current) return
-    triggered.current = true
-    setCharging(false)
-    setInvited(true)
-  }
-
-  const openBugHunt = () => {
-    setInvited(false)
-    try { localStorage.setItem('adomnia.bughunt.discovered.v1', '1') } catch { /* discovery is optional */ }
-    window.dispatchEvent(new Event('adomnia:bug-hunt-discovered'))
-    document.dispatchEvent(new Event('adomnia:open-bug-hunt'))
-  }
 
   const paint = () => {
     if (imageRef.current) imageRef.current.style.transform = `rotate(${rotationRef.current}rad) scale(${draggingRef.current ? 1.035 : 1})`
@@ -161,17 +139,15 @@ function FidgetLogo({ src, size }: { src: string; size: number }) {
   }
 
   const releaseWithInertia = () => {
-    if (!draggingRef.current) { setCharging(false); return }
+    if (!draggingRef.current) return
     draggingRef.current = false
     setDragging(false)
-    setCharging(false)
     if (performance.now() - lastMoveRef.current > 90) velocityRef.current = 0
     velocityRef.current *= 1.18
     spinThenSettle()
   }
 
-  // Keep the fidget momentum, then ease back upright: inertia never counts
-  // toward the secret gesture and an unfinished gesture leaves no tilt behind.
+  // Keep the purely visual fidget momentum, then ease back upright.
   const spinThenSettle = () => {
     let previousFrame = performance.now()
     const animate = (now: number) => {
@@ -193,7 +169,10 @@ function FidgetLogo({ src, size }: { src: string; size: number }) {
   }
 
   useEffect(() => {
-    const drop = () => setCharging(false)
+    const drop = () => {
+      draggingRef.current = false
+      setDragging(false)
+    }
     window.addEventListener('blur', drop)
     return () => {
       window.removeEventListener('blur', drop)
@@ -201,19 +180,12 @@ function FidgetLogo({ src, size }: { src: string; size: number }) {
     }
   }, [])
 
-  const handlePointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
+  const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return
     stopAnimation()
     event.currentTarget.setPointerCapture(event.pointerId)
     draggingRef.current = true
     setDragging(true)
-    triggered.current = false
-    pointerStart.current = { x: event.clientX, y: event.clientY }
-    movedPastThreshold.current = false
-    const rect = event.currentTarget.getBoundingClientRect()
-    startedAtOuterRadius.current = Math.hypot(event.clientX - rect.left - rect.width / 2, event.clientY - rect.top - rect.height / 2) > size * 0.2
-    turnStart.current = 0
-    turns.current = 0
     velocityRef.current = 0
     lastAngleRef.current = pointerAngle(event, event.currentTarget)
     lastTimeRef.current = event.timeStamp
@@ -222,13 +194,8 @@ function FidgetLogo({ src, size }: { src: string; size: number }) {
     event.preventDefault()
   }
 
-  const handlePointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
+  const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (!draggingRef.current || !event.currentTarget.hasPointerCapture(event.pointerId)) return
-    if (!movedPastThreshold.current && Math.hypot(event.clientX - pointerStart.current.x, event.clientY - pointerStart.current.y) > 10) {
-      movedPastThreshold.current = true
-    }
-    const rect = event.currentTarget.getBoundingClientRect()
-    const outerRadius = Math.hypot(event.clientX - rect.left - rect.width / 2, event.clientY - rect.top - rect.height / 2) > size * 0.2
     const nextAngle = pointerAngle(event, event.currentTarget)
     const delta = shortestAngleDelta(nextAngle, lastAngleRef.current)
     const elapsed = Math.max(4, event.timeStamp - lastTimeRef.current)
@@ -238,43 +205,27 @@ function FidgetLogo({ src, size }: { src: string; size: number }) {
     lastAngleRef.current = nextAngle
     lastTimeRef.current = event.timeStamp
     lastMoveRef.current = performance.now()
-    if (movedPastThreshold.current && startedAtOuterRadius.current && outerRadius && Math.abs(delta) < 0.9 && !triggered.current) {
-      if (!turnStart.current) turnStart.current = performance.now()
-      if (performance.now() - turnStart.current <= 8000) {
-        turns.current += delta
-        setCharging(Math.abs(turns.current) > Math.PI * 0.6)
-        if (Math.abs(turns.current) >= Math.PI * 2) inviteToPlay()
-      } else {
-        turnStart.current = performance.now()
-        turns.current = 0
-        setCharging(false)
-      }
-    }
     paint()
     event.preventDefault()
   }
 
   return (
     <div className="relative grid place-items-center">
-    <button
-      type="button"
-      aria-label={tr('Open Bug Hunt')}
-      title={tr('Click to play Bug Hunt — or drag the logo to spin it')}
+    <div
+      role="img"
+      aria-label={tr('Spin adOmnia logo')}
+      title={tr('Drag the logo to spin it')}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={releaseWithInertia}
       onPointerCancel={releaseWithInertia}
       onLostPointerCapture={releaseWithInertia}
-      onClick={() => { if (!movedPastThreshold.current) openBugHunt() }}
-      onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openBugHunt() } }}
       data-hub-logo
       style={{ width: size, height: size }}
       className={cn(
         'group relative grid touch-none select-none place-items-center rounded-full border-none bg-transparent outline-none',
-        'cursor-grab focus-visible:ring-2 focus-visible:ring-accent/70 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent',
+        'cursor-grab',
         dragging && 'cursor-grabbing',
-        charging && 'drop-shadow-[0_0_22px_#a855f7]',
-        invited && 'drop-shadow-[0_0_30px_#a855f7]',
       )}
     >
       <img
@@ -282,37 +233,10 @@ function FidgetLogo({ src, size }: { src: string; size: number }) {
         src={src}
         alt=""
         draggable={false}
+        data-brand-mark
         className="pointer-events-none h-full w-full object-contain will-change-transform"
       />
-    </button>
-    {invited && (
-      <div
-        role="dialog"
-        aria-label={tr('A secret')}
-        onKeyDown={(event) => { if (event.key === 'Escape') { event.stopPropagation(); setInvited(false) } }}
-        className="absolute left-1/2 top-full z-30 mt-3 w-[262px] -translate-x-1/2 rounded-lg border border-accent/45 bg-surface-1/95 p-3 shadow-[0_18px_40px_-16px_rgba(0,0,0,0.75)] backdrop-blur"
-      >
-        <p className="text-xs font-medium text-text-1">{tr('You found the secret.')}</p>
-        <p className="mt-0.5 text-[11px] leading-relaxed text-text-3">{tr('The bugs escaped again. Fancy a round?')}</p>
-        <div className="mt-2.5 flex gap-2">
-          <button
-            type="button"
-            autoFocus
-            onClick={openBugHunt}
-            className="flex-1 rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-accent/85"
-          >
-            {tr('Play Bug Hunt')}
-          </button>
-          <button
-            type="button"
-            onClick={() => setInvited(false)}
-            className="rounded-md border border-border-2 px-3 py-1.5 text-xs text-text-3 transition-colors hover:bg-surface-2 hover:text-text-1"
-          >
-            {tr('Not now')}
-          </button>
-        </div>
-      </div>
-    )}
+    </div>
     </div>
   )
 }
@@ -330,15 +254,9 @@ export function WelcomePanel() {
   const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
   const responseHistory = useTabsStore((s) => s.responseHistory)
   const appIcon = useAppIcon()
-  const [bugHuntDiscovered, setBugHuntDiscovered] = useState(() => {
-    try { return localStorage.getItem('adomnia.bughunt.discovered.v1') === '1' } catch { return false }
-  })
-
-  useEffect(() => {
-    const discovered = () => setBugHuntDiscovered(true)
-    window.addEventListener('adomnia:bug-hunt-discovered', discovered)
-    return () => window.removeEventListener('adomnia:bug-hunt-discovered', discovered)
-  }, [])
+  const [hoveredCard, setHoveredCard] = useState<HubCardTarget>(null)
+  const [focusedCard, setFocusedCard] = useState<HubCardTarget>(null)
+  const mascotTarget = hoveredCard ?? focusedCard
 
   const requestCount = useMemo(
     () => collections.reduce((total, collection) => total + countRequests(collection.children), 0),
@@ -359,8 +277,8 @@ export function WelcomePanel() {
     <div className="relative min-h-full overflow-auto text-text-1" data-hub-page>
       <span aria-hidden className="pointer-events-none absolute inset-y-0 left-9 w-px" data-hub-margin />
 
-      <div className="mx-auto max-w-[1200px] px-10 py-8 max-lg:px-6">
-        <header className="mb-8">
+      <div className="mx-auto max-w-[1440px] px-10 py-6 max-lg:px-6">
+        <header className="mb-6">
           <span
             data-hub-tape
             className="inline-block -rotate-1 px-4 py-1 text-[12px] font-bold uppercase tracking-[0.22em] text-accent"
@@ -368,7 +286,7 @@ export function WelcomePanel() {
             {tr('adOmnia hub' as UiMessage)}
           </span>
 
-          <div className="mt-6 flex items-start justify-between gap-10 max-lg:flex-col">
+          <div className="mt-3 flex items-start justify-between gap-8 max-lg:flex-col">
             <div className="min-w-0 flex-1">
               <h1 className="max-w-[760px] text-[44px] font-semibold leading-[1.12] max-lg:text-[36px] max-sm:text-[28px]">
                 <span className="relative inline-block text-accent">
@@ -408,33 +326,25 @@ export function WelcomePanel() {
               </button>
             </div>
 
-            <figure
-              data-hub-polaroid
-              className="m-0 shrink-0 rotate-2 rounded-xl border border-border-1 bg-surface-2 px-5 pb-4 pt-5 max-lg:self-center"
-            >
-              <FidgetLogo src={appIcon} size={168} />
-              <figcaption className="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-text-3">
-                <svg aria-hidden viewBox="0 0 24 20" className="h-4 w-4 text-text-4">
-                  <path d="M3 17C7 6 13 3 20 3" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                  <path d="M20 3l-5 1M20 3l-1 5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                </svg>
-                {tr('your local toolbox' as UiMessage)}
-              </figcaption>
-              {bugHuntDiscovered && <button type="button" className="mt-3 w-full rounded-md border border-accent/40 px-3 py-1.5 text-xs text-accent hover:bg-accent/10" onClick={() => document.dispatchEvent(new Event('adomnia:open-bug-hunt'))}>{tr('Replay Bug Hunt')}</button>}
-              {import.meta.env.DEV && !bugHuntDiscovered && <button type="button" className="mt-3 w-full rounded-md border border-accent/40 px-3 py-1.5 text-xs text-accent hover:bg-accent/10" onClick={() => document.dispatchEvent(new Event('adomnia:open-bug-hunt'))}>{tr('Try Bug Hunt')}</button>}
-            </figure>
+            <div className="shrink-0 self-center max-lg:self-center">
+              <FidgetLogo src={appIcon} size={112} />
+            </div>
           </div>
         </header>
 
-        <div className="grid grid-cols-2 gap-6 max-xl:grid-cols-1">
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(230px,272px)_minmax(0,1fr)] grid-rows-2 gap-x-7 gap-y-5 max-xl:grid-cols-2 max-xl:grid-rows-none max-xl:gap-5 max-md:grid-cols-1">
           {HUB_CARDS.map((card) => (
             <HubCardView
               key={card.index}
               card={card}
               stat={cardStats[card.index] ?? ''}
               onOpen={setActiveRail}
+              active={mascotTarget === card.index}
+              onHover={setHoveredCard}
+              onFocus={setFocusedCard}
             />
           ))}
+          <HubMascot target={mascotTarget} />
         </div>
 
         <section className="mt-9">
@@ -494,15 +404,41 @@ export function WelcomePanel() {
   )
 }
 
-function HubCardView({ card, stat, onOpen }: { card: HubCard; stat: string; onOpen: (id: RailItem) => void }) {
+function HubCardView({ card, stat, onOpen, active, onHover, onFocus }: {
+  card: HubCard
+  stat: string
+  onOpen: (id: RailItem) => void
+  active: boolean
+  onHover: (target: HubCardTarget) => void
+  onFocus: (target: HubCardTarget) => void
+}) {
   const nav = useNavigationTranslation()
   const tr = useUiTranslation()
   const Icon = card.icon
+  const position = card.index === '01'
+    ? 'col-start-1 row-start-1 max-xl:col-auto max-xl:row-auto'
+    : card.index === '02'
+      ? 'col-start-3 row-start-1 max-xl:col-auto max-xl:row-auto'
+      : card.index === '03'
+        ? 'col-start-1 row-start-2 max-xl:col-auto max-xl:row-auto'
+        : 'col-start-3 row-start-2 max-xl:col-auto max-xl:row-auto'
 
   return (
     <article
       data-hub-card
-      className="relative rounded-xl border border-border-1 bg-surface-1 px-6 py-5 transition-colors hover:border-accent/40"
+      data-hub-card-kind={card.index}
+      data-hub-card-active={active ? 'true' : undefined}
+      onPointerEnter={() => onHover(card.index)}
+      onPointerLeave={() => onHover(null)}
+      onFocusCapture={() => onFocus(card.index)}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) onFocus(null)
+      }}
+      className={cn(
+        'relative rounded-xl border border-border-1 bg-surface-1 px-6 py-5 transition-[border-color,background-color,box-shadow,transform] hover:border-accent/40',
+        position,
+        active && 'border-accent/45 bg-accent/[0.035] shadow-[0_14px_30px_-26px_var(--color-accent)]',
+      )}
     >
       <span className="text-[13px] font-bold text-accent">{card.index}</span>
 

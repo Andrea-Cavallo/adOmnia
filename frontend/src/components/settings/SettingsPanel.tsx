@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
+import { lazy, Suspense, useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import type { AppSettings } from '@/stores/settings'
 import { useSettingsStore } from '@/stores/settings'
 import { useThemesStore } from '@/stores/themes'
@@ -26,6 +26,9 @@ import {
   Search,
   Sparkles,
   FolderOpen,
+  Palette,
+  LayoutTemplate,
+  Puzzle,
 } from 'lucide-react'
 import { Toggle, Select, NumberInput, TextInput, PasswordInput, TextAreaInput } from './SettingsFields'
 import { AISettings } from './AISettings'
@@ -34,6 +37,14 @@ import { UpdateCheckRow } from './UpdateCheckRow'
 import { WorkspacePanel } from '@/components/workspace/WorkspacePanel'
 import { redactSensitiveData } from '@/lib/secretRedaction'
 import * as AppBindings from '../../../bindings/adomnia/app'
+
+const ThemePanel = lazy(() => import('@/components/themes/ThemePanel').then((module) => ({ default: module.ThemePanel })))
+const TemplatesWorkspace = lazy(() => import('@/components/templates/TemplatesWorkspace').then((module) => ({ default: module.TemplatesWorkspace })))
+const PluginManager = lazy(() => import('@/components/plugins/PluginManager').then((module) => ({ default: module.PluginManager })))
+
+function SettingsExtensionFallback() {
+  return <div className="flex min-h-48 items-center justify-center text-xs text-text-4">Loading settings section…</div>
+}
 
 // Wails 3 has no `window.go` global; the App service is reached through the
 // generated bindings.
@@ -70,7 +81,7 @@ async function safeClearDevLogs(): Promise<void> {
   await appBinding()?.ClearDevLogs?.()
 }
 
-type SectionId =
+export type SettingsSectionId =
   | 'general'
   | 'appearance'
   | 'requests'
@@ -85,6 +96,9 @@ type SectionId =
   | 'about'
   | 'developer'
   | 'ai'
+  | 'themes'
+  | 'templates'
+  | 'plugins'
 
 // --- Keyboard shortcuts data ---
 
@@ -107,8 +121,8 @@ const shortcutsList = [
 
 // --- Main panel ---
 
-export function SettingsPanel({ initialSection = 'general' }: { initialSection?: SectionId }) {
-  const [section, setSection] = useState<SectionId>(initialSection)
+export function SettingsPanel({ initialSection = 'general' }: { initialSection?: SettingsSectionId }) {
+  const [section, setSection] = useState<SettingsSectionId>(initialSection)
   const settings = useSettingsStore((s) => s.settings)
   const updateGeneral = useSettingsStore((s) => s.updateGeneral)
   const updateAppearance = useSettingsStore((s) => s.updateAppearance)
@@ -202,9 +216,12 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
   const searchable = (values: object) => Object.values(values)
     .filter((value): value is string => typeof value === 'string')
     .join(' ')
-  const allSectionDefs: { id: SectionId; label: string; icon: React.ReactNode; terms: string }[] = [
+  const allSectionDefs: { id: SettingsSectionId; label: string; icon: React.ReactNode; terms: string }[] = [
     { id: 'general', label: s.sections.general, icon: <Settings size={14} />, terms: searchable(s.general) },
     { id: 'appearance', label: s.sections.appearance, icon: <Monitor size={14} />, terms: searchable(s.appearance) },
+    { id: 'themes', label: 'Themes', icon: <Palette size={14} />, terms: 'themes skin appearance colour palette brick workshop import export tokens' },
+    { id: 'templates', label: 'Templates', icon: <LayoutTemplate size={14} />, terms: 'templates reusable workspace snippets marketplace import export' },
+    { id: 'plugins', label: 'Plugins', icon: <Puzzle size={14} />, terms: 'plugins extensions javascript runtime install permissions' },
     { id: 'requests', label: s.sections.requests, icon: <Globe size={14} />, terms: searchable(s.requests) },
     { id: 'proxy', label: s.sections.proxy, icon: <Shield size={14} />, terms: searchable(s.proxy) },
     { id: 'mock', label: s.sections.mock, icon: <Server size={14} />, terms: searchable(s.mock) },
@@ -225,6 +242,29 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
     if (!normalizedSearch) return true
     return `${sec.label} ${sec.terms}`.toLowerCase().includes(normalizedSearch)
   })
+
+  useEffect(() => {
+    setSection(initialSection)
+  }, [initialSection])
+
+  useEffect(() => {
+    const openRequestedSection = (event: Event) => {
+      const requested = (event as CustomEvent<SettingsSectionId>).detail
+      if (allSectionDefs.some((item) => item.id === requested)) {
+        sessionStorage.removeItem('adomnia.settings.requested-section')
+        setSearch('')
+        setSection(requested)
+      }
+    }
+    const pendingSection = sessionStorage.getItem('adomnia.settings.requested-section') as SettingsSectionId | null
+    if (pendingSection && allSectionDefs.some((item) => item.id === pendingSection)) {
+      sessionStorage.removeItem('adomnia.settings.requested-section')
+      setSearch('')
+      setSection(pendingSection)
+    }
+    document.addEventListener('adomnia:open-settings-section', openRequestedSection)
+    return () => document.removeEventListener('adomnia:open-settings-section', openRequestedSection)
+  }, [allSectionDefs])
 
   useEffect(() => {
     if (!normalizedSearch || sectionDefs.length === 0) return
@@ -343,7 +383,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
       <div className="min-w-0 flex-1 overflow-y-auto">
         <div className={cn(
           'w-full',
-          section === 'workspace'
+          section === 'workspace' || section === 'themes' || section === 'templates' || section === 'plugins'
             ? 'h-full p-4'
             : 'mx-auto max-w-[1240px] px-8 pb-16 pt-6 max-lg:px-5 max-md:px-4'
         )}>
@@ -514,8 +554,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
                 </div>
                 <button
                   onClick={() => {
-                    // navigate to themes rail — set rail via store or emit event
-                    document.dispatchEvent(new CustomEvent('adomnia:set-rail', { detail: 'themes' }))
+                    setSection('themes')
                   }}
                   className="h-7 px-3 bg-surface-2 border border-border-2 rounded text-xs text-text-2 hover:text-text-1 hover:bg-surface-3"
                 >
@@ -525,6 +564,10 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
             </SettingsCard>
           </>
         )}
+
+        {section === 'themes' && <Suspense fallback={<SettingsExtensionFallback />}><ThemePanel /></Suspense>}
+        {section === 'templates' && <Suspense fallback={<SettingsExtensionFallback />}><TemplatesWorkspace /></Suspense>}
+        {section === 'plugins' && <Suspense fallback={<SettingsExtensionFallback />}><PluginManager /></Suspense>}
 
         {/* Requests */}
         {section === 'requests' && (
@@ -1010,6 +1053,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
               <img
                 src={appIcon}
                 alt="adOmnia"
+                data-brand-mark
                 className="w-12 h-12 rounded-lg"
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = 'none'

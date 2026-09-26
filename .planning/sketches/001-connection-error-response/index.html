@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>adOmnia — Connection Error Response</title>
+  <link rel="stylesheet" href="../themes/default.css">
+  <style>
+    *{box-sizing:border-box} body{margin:0;background:#05070a;color:var(--color-text);font-family:var(--font-sans);min-height:100vh}
+    button{font:inherit}.variant-nav{position:fixed;z-index:20;top:0;left:0;right:0;height:48px;display:flex;align-items:center;justify-content:center;gap:6px;background:rgba(7,9,13,.95);border-bottom:1px solid var(--color-border);backdrop-filter:blur(16px)}
+    .variant-tab{border:1px solid transparent;background:transparent;color:var(--color-text-muted);border-radius:7px;padding:7px 12px;font-size:11px;cursor:pointer;transition:all .15s ease}.variant-tab:hover{background:var(--color-surface-hover);color:var(--color-text)}.variant-tab.active{color:#fff;border-color:rgba(139,92,246,.48);background:rgba(139,92,246,.14)}
+    .stage{padding:76px 28px 40px;display:flex;justify-content:center}.frame{width:min(100%,900px);height:650px;border:1px solid var(--color-border-strong);background:var(--color-bg);box-shadow:var(--shadow-md);border-radius:10px;overflow:hidden;display:flex;flex-direction:column}
+    .response-head{height:40px;display:flex;align-items:center;padding:0 13px;border-bottom:1px solid var(--color-border);background:#0a0d12}.response-title{font:600 13px var(--font-mono)}.status{margin-left:10px;padding:3px 8px;border-radius:var(--radius-full);background:var(--color-danger-soft);color:var(--color-danger);font:600 10px var(--font-mono)}.head-actions{margin-left:auto;display:flex;gap:7px}.tiny{width:27px;height:27px;border:1px solid var(--color-border);border-radius:6px;background:var(--color-surface);color:var(--color-text-muted);cursor:pointer;transition:all .15s ease}.tiny:hover{color:var(--color-text);border-color:var(--color-border-strong)}
+    .body{position:relative;flex:1;display:flex;align-items:center;justify-content:center;padding:28px;background:radial-gradient(circle at 50% 48%,rgba(139,92,246,.035),transparent 38%)}.variant{display:none}.variant.active{display:block}
+    .icon{width:44px;height:44px;display:grid;place-items:center;border:1px solid rgba(240,90,103,.27);border-radius:12px;background:var(--color-danger-soft);color:var(--color-danger)}.icon svg{width:22px;height:22px}.eyebrow{font:600 10px var(--font-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--color-danger)}h1{font:600 var(--text-lg) var(--font-mono);margin:0}p{margin:0}.lead{font-size:12px;line-height:1.6;color:var(--color-text-muted)}
+    .endpoint{display:flex;align-items:center;gap:8px;padding:9px 11px;border:1px solid var(--color-border);border-radius:7px;background:#090c11;font:11px var(--font-mono);color:#c7ced8;min-width:0}.endpoint span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dot{width:7px;height:7px;border-radius:50%;background:var(--color-danger);box-shadow:0 0 9px rgba(240,90,103,.5);flex:none}
+    .actions{display:flex;gap:8px}.btn{height:33px;border-radius:7px;padding:0 13px;border:1px solid var(--color-border-strong);background:var(--color-surface-raised);color:var(--color-text);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s ease}.btn:hover{background:var(--color-surface-hover);transform:translateY(-1px)}.btn.primary{border-color:rgba(139,92,246,.65);background:var(--color-primary);color:white}.btn.primary:hover{background:var(--color-primary-hover)}.btn.ghost{background:transparent;color:var(--color-text-muted)}
+    .details{border:1px solid var(--color-border);border-radius:8px;overflow:hidden;background:#090c11}.details summary{list-style:none;display:flex;align-items:center;padding:10px 12px;cursor:pointer;color:var(--color-text-muted);font-size:10px}.details summary::-webkit-details-marker{display:none}.details summary:after{content:'⌄';margin-left:auto}.details[open] summary:after{content:'⌃'}.raw{border-top:1px solid var(--color-border);padding:12px;color:#9099a8;font:10px/1.65 var(--font-mono);overflow-wrap:anywhere}
+    .compact-card{width:min(100%,470px);padding:22px;border:1px solid var(--color-border);background:rgba(12,16,22,.93);border-radius:13px;box-shadow:0 20px 60px rgba(0,0,0,.24)}.compact-top{display:grid;grid-template-columns:44px 1fr;gap:14px;align-items:center}.compact-card .endpoint{margin:18px 0 12px}.compact-card .lead{margin-top:5px}.compact-card .actions{margin-bottom:12px}
+    .guide{width:min(100%,520px);display:grid;grid-template-columns:1fr 210px;border:1px solid var(--color-border);border-radius:13px;background:var(--color-surface);overflow:hidden}.guide-main{padding:23px}.guide-side{padding:18px;border-left:1px solid var(--color-border);background:#090c11}.guide h1{margin:7px 0}.guide .endpoint{margin:16px 0}.steps{display:flex;flex-direction:column;gap:12px;margin:12px 0 17px}.step{display:grid;grid-template-columns:19px 1fr;gap:8px;align-items:start}.step-state{width:18px;height:18px;display:grid;place-items:center;border-radius:50%;background:rgba(53,211,154,.1);color:var(--color-success);font-size:10px}.step.bad .step-state{background:var(--color-danger-soft);color:var(--color-danger)}.step-title{font:600 10px var(--font-mono)}.step-copy{margin-top:3px;color:var(--color-text-faint);font-size:9px;line-height:1.45}.side-label{color:var(--color-text-faint);font:600 9px var(--font-mono);letter-spacing:.08em;text-transform:uppercase}.metric{margin-top:8px;padding-bottom:11px;border-bottom:1px solid var(--color-border)}.metric:last-child{border:0}.metric-value{margin-top:4px;color:#c8ced8;font:10px/1.45 var(--font-mono);overflow-wrap:anywhere}
+    .hybrid{width:min(100%,560px);border:1px solid var(--color-border);border-radius:13px;background:var(--color-surface);overflow:hidden;box-shadow:0 16px 50px rgba(0,0,0,.23)}.hybrid-main{padding:22px}.hybrid-heading{display:flex;gap:14px;align-items:center}.hybrid h1{margin:4px 0}.hybrid .lead{max-width:410px}.hybrid .actions{margin-top:17px}.facts{display:grid;grid-template-columns:1.7fr .65fr .65fr;border-top:1px solid var(--color-border);border-bottom:1px solid var(--color-border);background:#090c11}.fact{padding:11px 13px;border-right:1px solid var(--color-border);min-width:0}.fact:last-child{border:0}.fact-label{color:var(--color-text-faint);font:600 8px var(--font-mono);letter-spacing:.08em;text-transform:uppercase}.fact-value{display:block;margin-top:5px;color:#bfc6d1;font:10px var(--font-mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.hybrid .details{border:0;border-radius:0}.help-row{display:flex;align-items:center;gap:7px;margin-top:14px;flex-wrap:wrap}.help-label{color:var(--color-text-faint);font-size:9px}.chip{padding:5px 8px;border:1px solid var(--color-border);border-radius:var(--radius-full);background:transparent;color:var(--color-text-muted);font-size:9px;cursor:pointer;transition:all .15s ease}.chip:hover{color:var(--color-text);border-color:var(--color-primary);background:rgba(139,92,246,.07)}
+    .toast{position:absolute;bottom:22px;left:50%;transform:translate(-50%,10px);padding:9px 12px;border:1px solid rgba(53,211,154,.3);border-radius:8px;background:#0d1817;color:var(--color-success);font:10px var(--font-mono);opacity:0;pointer-events:none;transition:all .2s ease}.toast.show{opacity:1;transform:translate(-50%,0)}.spinner{display:inline-block;width:11px;height:11px;border:2px solid rgba(255,255,255,.35);border-top-color:white;border-radius:50%;animation:spin .65s linear infinite;vertical-align:-2px;margin-right:6px}@keyframes spin{to{transform:rotate(360deg)}}
+    #sketch-tools{position:fixed;bottom:12px;right:12px;z-index:30;font:11px system-ui;background:rgba(0,0,0,.78);color:white;padding:8px 10px;border-radius:8px;opacity:.42;transition:opacity .2s}#sketch-tools:hover{opacity:1}#sketch-tools button{margin-left:5px;background:#1c2430;border:1px solid #3a4555;color:#fff;border-radius:5px;padding:4px 7px;cursor:pointer}
+    @media(max-width:620px){.stage{padding:64px 10px 20px}.frame{height:680px}.body{padding:14px}.guide{grid-template-columns:1fr}.guide-side{border-left:0;border-top:1px solid var(--color-border)}.facts{grid-template-columns:1fr}.fact{border-right:0;border-bottom:1px solid var(--color-border)}.variant-tab{padding:6px;font-size:9px}}
+  </style>
+</head>
+<body>
+  <nav class="variant-nav">
+    <button class="variant-tab active" data-variant="a">A · Compact</button>
+    <button class="variant-tab" data-variant="b">B · Guided</button>
+    <button class="variant-tab" data-variant="c">C · Hybrid</button>
+  </nav>
+
+  <main class="stage" id="stage">
+    <section class="frame">
+      <header class="response-head">
+        <span class="response-title">Response</span><span class="status">Connection refused</span>
+        <div class="head-actions"><button class="tiny" title="Layout">▣</button><button class="tiny" title="Expand">⌗</button></div>
+      </header>
+      <div class="body">
+        <section class="variant active" id="variant-a">
+          <div class="compact-card">
+            <div class="compact-top">
+              <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3 2.8 19h18.4L12 3Z"/><path d="M12 9v4.5M12 17h.01"/></svg></div>
+              <div><div class="eyebrow">CONN_ERR</div><h1>Couldn’t reach the server</h1><p class="lead">Nothing is listening on this host and port.</p></div>
+            </div>
+            <div class="endpoint"><i class="dot"></i><span>POST http://localhost:3001/v1/webhooks/endpoints</span></div>
+            <div class="actions"><button class="btn primary retry">Retry request</button><button class="btn">Edit URL</button><button class="btn ghost copy">Copy error</button></div>
+            <details class="details"><summary>Technical details</summary><div class="raw">dial tcp [::1]:3001: connectex: No connection could be made because the target machine actively refused it.</div></details>
+          </div>
+        </section>
+
+        <section class="variant" id="variant-b">
+          <div class="guide">
+            <div class="guide-main">
+              <div class="eyebrow">Connection check</div><h1>Server unavailable</h1><p class="lead">adOmnia reached your machine, but port 3001 refused the connection.</p>
+              <div class="endpoint"><i class="dot"></i><span>localhost:3001</span></div>
+              <div class="actions"><button class="btn primary diagnostics">Run checks</button><button class="btn retry">Retry</button></div>
+            </div>
+            <aside class="guide-side">
+              <div class="side-label">Diagnostics</div>
+              <div class="steps">
+                <div class="step"><span class="step-state">✓</span><div><div class="step-title">Host resolved</div><div class="step-copy">localhost → ::1</div></div></div>
+                <div class="step bad"><span class="step-state">!</span><div><div class="step-title">Port closed</div><div class="step-copy">Nothing listens on 3001</div></div></div>
+                <div class="step"><span class="step-state">·</span><div><div class="step-title">HTTP request</div><div class="step-copy">Not attempted</div></div></div>
+              </div>
+              <div class="metric"><div class="side-label">Likely fix</div><div class="metric-value">Start the API or verify its port.</div></div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="variant" id="variant-c">
+          <div class="hybrid">
+            <div class="hybrid-main">
+              <div class="hybrid-heading">
+                <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3 2.8 19h18.4L12 3Z"/><path d="M12 9v4.5M12 17h.01"/></svg></div>
+                <div><div class="eyebrow">Connection refused</div><h1>The API isn’t listening on port 3001</h1><p class="lead">Start the local service or verify the host and port, then retry the request.</p></div>
+              </div>
+              <div class="actions"><button class="btn primary retry">Retry request</button><button class="btn">Edit endpoint</button><button class="btn ghost copy">Copy details</button></div>
+              <div class="help-row"><span class="help-label">Quick checks</span><button class="chip">Start mock server</button><button class="chip">Check port 3001</button><button class="chip">Open environment</button></div>
+            </div>
+            <div class="facts">
+              <div class="fact"><span class="fact-label">Endpoint</span><span class="fact-value">localhost:3001/v1/webhooks/endpoints</span></div>
+              <div class="fact"><span class="fact-label">Code</span><span class="fact-value">CONN_ERR</span></div>
+              <div class="fact"><span class="fact-label">Elapsed</span><span class="fact-value">2 ms</span></div>
+            </div>
+            <details class="details"><summary>Show technical details</summary><div class="raw">POST http://localhost:3001/v1/webhooks/endpoints<br>dial tcp [::1]:3001: connectex: target machine actively refused the connection.</div></details>
+          </div>
+        </section>
+        <div class="toast" id="toast">Copied to clipboard</div>
+      </div>
+    </section>
+  </main>
+
+  <div id="sketch-tools">Viewport <button data-width="390px">Phone</button><button data-width="760px">Tablet</button><button data-width="900px">Desktop</button></div>
+  <script>
+    const tabs=[...document.querySelectorAll('.variant-tab')];
+    tabs.forEach(tab=>tab.addEventListener('click',()=>{tabs.forEach(t=>t.classList.remove('active'));document.querySelectorAll('.variant').forEach(v=>v.classList.remove('active'));tab.classList.add('active');document.querySelector('#variant-'+tab.dataset.variant).classList.add('active')}));
+    const toast=document.querySelector('#toast'); function showToast(text){toast.textContent=text;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),1400)}
+    document.querySelectorAll('.copy').forEach(b=>b.addEventListener('click',()=>showToast('Error details copied')));
+    document.querySelectorAll('.retry').forEach(b=>b.addEventListener('click',()=>{const old=b.textContent;b.disabled=true;b.innerHTML='<span class="spinner"></span>Retrying';setTimeout(()=>{b.disabled=false;b.textContent=old;showToast('Still unavailable · checked just now')},1100)}));
+    document.querySelectorAll('.diagnostics').forEach(b=>b.addEventListener('click',()=>{b.innerHTML='<span class="spinner"></span>Checking';setTimeout(()=>{b.textContent='Run checks again';showToast('Checks complete · port 3001 is closed')},1200)}));
+    document.querySelectorAll('.chip').forEach(b=>b.addEventListener('click',()=>showToast(b.textContent+' opened')));
+    document.querySelectorAll('#sketch-tools button').forEach(b=>b.addEventListener('click',()=>{document.querySelector('.frame').style.width=b.dataset.width}));
+  </script>
+</body>
+</html>

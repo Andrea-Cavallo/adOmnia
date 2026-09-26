@@ -126,6 +126,12 @@ describe('stable UI localization', () => {
     expect(FEATURE_REGISTRY.find((feature) => feature.id === 'dockerlab')?.group).toBe('Power Tools')
   })
 
+  it('keeps Workspace rail focused on Git Sync and moves customization into Settings', () => {
+    const workspace = RAIL_CATEGORIES.find((category) => category.key === 'workspace')
+    expect(workspace?.groups.flatMap((group) => group.items.map((item) => item.id))).toEqual(['gitsync'])
+    expect(workspace?.groups.some((group) => group.title === 'Customize')).toBe(false)
+  })
+
   it('blocks new unregistered literal labels in the stable shell and API workflow', () => {
     const violations: string[] = []
     for (const relativePath of GUARDED_SURFACES) {

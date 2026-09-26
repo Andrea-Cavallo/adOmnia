@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Box, FolderKanban, Moon, Sun, Pencil } from 'lucide-react'
+import { Box, FolderKanban, Leaf, Moon, Sun, Pencil } from 'lucide-react'
 import { useCollectionsStore } from '@/stores/collections'
 import { useTabsStore } from '@/stores/tabs'
 import { useAppStore } from '@/stores/app'
@@ -42,11 +42,14 @@ export function StatusBar() {
 
   const SKETCH_THEME_ID = 'builtin-sketch'
   const BRICK_THEME_ID = 'builtin-brick-workshop'
-  type QuickMode = 'dark' | 'light' | 'sketch' | 'brick'
+  const TERMINAL_GREEN_THEME_ID = 'builtin-terminal-green'
+  type QuickMode = 'dark' | 'light' | 'sketch' | 'brick' | 'terminal-green'
   const currentQuickMode: QuickMode = activeThemeId === SKETCH_THEME_ID
     ? 'sketch'
     : activeThemeId === BRICK_THEME_ID
       ? 'brick'
+      : activeThemeId === TERMINAL_GREEN_THEME_ID
+        ? 'terminal-green'
       : currentMode
 
   const applyQuickMode = useCallback((mode: QuickMode) => {
@@ -58,6 +61,11 @@ export function StatusBar() {
     if (mode === 'brick') {
       const brick = themes.find((t) => t.id === BRICK_THEME_ID)
       if (brick) applyTheme(brick)
+      return
+    }
+    if (mode === 'terminal-green') {
+      const terminalGreen = themes.find((t) => t.id === TERMINAL_GREEN_THEME_ID)
+      if (terminalGreen) applyTheme(terminalGreen)
       return
     }
     // Prefer the opposite theme in the same family (builtin-dark → builtin-light)
@@ -73,7 +81,7 @@ export function StatusBar() {
   const toggleTheme = useCallback(() => {
     // The shortcut cycles every quick appearance, so the keyboard reaches
     // each explicit button too.
-    const order: QuickMode[] = ['dark', 'light', 'sketch', 'brick']
+    const order: QuickMode[] = ['dark', 'light', 'sketch', 'brick', 'terminal-green']
     applyQuickMode(order[(order.indexOf(currentQuickMode) + 1) % order.length])
   }, [currentQuickMode, applyQuickMode])
 
@@ -162,6 +170,7 @@ export function StatusBar() {
             { mode: 'light' as const, Icon: Sun, label: tr('Light theme') },
             { mode: 'sketch' as const, Icon: Pencil, label: tr('Sketch theme') },
             { mode: 'brick' as const, Icon: Box, label: tr('Brick theme') },
+            { mode: 'terminal-green' as const, Icon: Leaf, label: tr('Terminal Green theme') },
           ]).map(({ mode, Icon, label }) => (
             <button
               key={mode}

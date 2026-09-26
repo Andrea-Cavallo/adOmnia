@@ -20,13 +20,13 @@ the current codebase on 2026-06-13 and found already resolved (see below)._
 
 ### a0: Bug Hunt — campagna implementata, rifinitura aperta
 
-- [x] Concept, reference di a0, specifica e piano di ripresa documentati in [BUG-HUNT.md](BUG-HUNT.md).
+- [x] Concept, reference di a0, specifica e piano di ripresa completati durante lo sviluppo della campagna.
 - [x] Localhost completo e verificato nel runtime desktop (manca la prova umana "a sensazione" dei controlli).
 - [x] Tre livelli collegati, attivazione segreta, API Gateway e boss Production implementati (2026-09-17).
 - [x] 2026-09-22: personalità di a0, Localhost esteso con 15 nemici e tre vite totali; 58 test gioco e verifica visiva browser.
-- [ ] Partita completa desktop della nuova campagna a tre vite (`wails3` assente in questo ambiente), bilanciamento e rifinitura finale; stato verifiche in BUG-HUNT.md.
+- [ ] Partita completa desktop della nuova campagna a tre vite, bilanciamento e rifinitura finale.
 
-Per riprendere dopo un'interruzione o l'esaurimento dei crediti, partire dalla sezione **Stato attuale** e dalla checklist in [BUG-HUNT.md](BUG-HUNT.md); aggiornare le spunte dopo ogni sessione.
+Aggiornare questa coda dopo ogni sessione di playtest desktop.
 
 ## Recently Resolved (verified against code 2026-06-13)
 
@@ -50,8 +50,6 @@ the import. Virtualized event list, field-query language (`level:error pod:pay-*
 reconstruction with deltas, sensitive-field masking, and JSON/JSONL/text export.
 Parsing runs in a Web Worker with progressive batches, cancellation and a configurable
 50k–500k retention ceiling. Files: `lib/loginspector/*`, `components/loginspector/*`.
-Reference: `docs/LOG-INSPECTOR.md`.
-
 Verification: 73 dedicated tests, 354 frontend tests across 72 files, TypeScript and
 production frontend build, `go build`/`go vet`/`go test ./...`.
 

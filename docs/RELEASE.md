@@ -2,6 +2,13 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+## v0.9.31 release notes: a living Hub, deliberate play, and focused workspaces
+
+See [the full v0.9.31 notes](releases/v0.9.31.md): a full-body reactive a0
+mascot in the Hub, verified-AI chat entry, Bug Hunt launched only by an explicit
+request to a0, the new Terminal Green appearance, consolidated customization
+settings, a connection-first Broker Studio, and a deeper Brick Workshop skin.
+
 ## v0.9.21 release notes: Developer Desk route and visual refresh
 
 See [the full v0.9.21 notes](releases/v0.9.21.md): vertical opening, physical modules, code packets, new enemy art and focus handling.

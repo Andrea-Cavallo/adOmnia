@@ -1,0 +1,127 @@
+[data-hub-mascot-stage] {
+  position: relative;
+  width: min(100%, 272px);
+  isolation: isolate;
+  pointer-events: none;
+}
+
+[data-hub-mascot-trigger] {
+  --mascot-scale: 1;
+  width: min(100%, 272px);
+  padding: 0;
+  border: 0;
+  border-radius: 28%;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+  outline: none;
+}
+
+[data-hub-mascot-trigger]:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 68%, transparent);
+}
+
+[data-hub-mascot-trigger]:hover { --mascot-scale: 1.02; }
+
+[data-hub-mascot-trigger]:active { --mascot-scale: .985; }
+
+[data-hub-mascot-rig] {
+  position: relative;
+  aspect-ratio: 1;
+  transform: translate3d(var(--mascot-x), var(--mascot-y), 0) rotate(var(--mascot-tilt)) scale(var(--mascot-scale));
+  transform-origin: 50% 85%;
+  transition: transform 460ms cubic-bezier(.22, .61, .36, 1);
+  will-change: transform;
+}
+
+[data-hub-mascot-sprite] {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0;
+  transform: translateY(2px) scale(.985);
+  transition:
+    opacity 240ms ease,
+    transform 460ms cubic-bezier(.22, .61, .36, 1),
+    filter 320ms ease;
+  filter: drop-shadow(0 18px 22px rgba(0, 0, 0, .32));
+  will-change: opacity, transform;
+}
+
+[data-hub-mascot-sprite][data-visible='true'] {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  filter:
+    drop-shadow(0 18px 22px rgba(0, 0, 0, .32))
+    drop-shadow(0 0 8px color-mix(in srgb, var(--color-accent) 16%, transparent));
+}
+
+[data-hub-mascot-halo] {
+  position: absolute;
+  inset: auto 12% 0;
+  height: 45px;
+  background: radial-gradient(ellipse, var(--color-accent-glow), transparent 70%);
+}
+
+[data-hub-mascot-cue] {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 45%, transparent);
+  border-radius: 12px;
+  color: var(--color-accent-light);
+  background: var(--color-surface-1);
+  opacity: 0;
+  transform: translateY(6px) scale(.94);
+  transition: opacity 200ms ease, transform 300ms cubic-bezier(.22, .61, .36, 1);
+}
+[data-hub-mascot-cue='01'] { left: 8%; top: 8%; }
+[data-hub-mascot-cue='02'] { right: 0; top: 8%; }
+[data-hub-mascot-cue='03'] { left: 8%; bottom: -12%; }
+[data-hub-mascot-cue='04'] { right: 0; bottom: -12%; }
+[data-hub-mascot-cue][data-visible='true'] { opacity: 1; transform: none; }
+
+/* Four separate, one-shot reactions; nothing loops while a user works. */
+[data-hub-card] { isolation: isolate; }
+[data-hub-card]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 260ms ease;
+}
+[data-hub-card-active='true']::after { opacity: 1; }
+[data-hub-card-kind='01']::after {
+  background: radial-gradient(ellipse at 0% 0%, color-mix(in srgb, var(--color-accent) 14%, transparent), transparent 65%);
+}
+[data-hub-card-kind='02']::after {
+  background: linear-gradient(120deg, transparent 25%, color-mix(in srgb, var(--color-accent) 9%, transparent) 55%, transparent 80%);
+}
+[data-hub-card-kind='03']::after {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--color-accent) 12%, transparent), transparent 42%);
+}
+[data-hub-card-kind='04']::after {
+  background: radial-gradient(circle at 85% 80%, color-mix(in srgb, var(--color-accent) 13%, transparent), transparent 55%);
+}
+[data-hub-card-icon] { transition: transform 320ms cubic-bezier(.22,.61,.36,1); }
+[data-hub-card-kind='01'][data-hub-card-active='true'] [data-hub-card-icon] { transform: rotate(12deg); }
+[data-hub-card-kind='02'][data-hub-card-active='true'] [data-hub-card-icon] { transform: perspective(200px) rotateY(-18deg); }
+[data-hub-card-kind='03'][data-hub-card-active='true'] [data-hub-card-icon] { transform: translateX(3px) rotate(-8deg); }
+[data-hub-card-kind='04'][data-hub-card-active='true'] [data-hub-card-icon] { transform: rotate(35deg) scale(1.06); }
+
+@media (prefers-reduced-motion: reduce) {
+  [data-hub-mascot-rig], [data-hub-mascot-sprite],
+  [data-hub-mascot-cue], [data-hub-card-icon], [data-hub-card]::after {
+    transition: none;
+    will-change: auto;
+  }
+  [data-hub-mascot-rig], [data-hub-mascot-sprite], [data-hub-card-icon] { transform: none !important; }
+}

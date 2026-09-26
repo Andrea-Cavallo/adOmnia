@@ -97,6 +97,35 @@ func TestBrickWorkshopThemeDeclaresItsSkin(t *testing.T) {
 	t.Fatal("builtin-brick-workshop theme is missing")
 }
 
+func TestTerminalGreenThemeDeclaresItsSkinAndReadablePalette(t *testing.T) {
+	tm := NewThemeManager()
+
+	for _, theme := range tm.GetExtendedBuiltinThemes() {
+		if theme.ID != "builtin-terminal-green" {
+			continue
+		}
+		if got := theme.Meta["skin"]; got != "terminal-green" {
+			t.Errorf("meta.skin = %q, want terminal-green", got)
+		}
+		if got := theme.Meta["mode"]; got != "dark" {
+			t.Errorf("meta.mode = %q, want dark", got)
+		}
+		for _, token := range []string{"accent", "accent-hover", "accent-glow", "json-key", "json-string", "json-number", "json-bool", "json-null"} {
+			if theme.Colors[token] == "" {
+				t.Errorf("Terminal Green theme is missing %s", token)
+			}
+		}
+		for _, result := range tm.CheckContrast(theme) {
+			if result.Ratio > 0 && !result.AANormal {
+				t.Errorf("%s contrast %.2f is below WCAG AA (4.5)", result.Pair, result.Ratio)
+			}
+		}
+		return
+	}
+
+	t.Fatal("builtin-terminal-green theme is missing")
+}
+
 // JSON is rendered through CSS variables. Every skin must provide its own
 // complete palette; otherwise switching from a dark theme can leave pale text
 // on Sketch's light paper.

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, FileText, Loader2, Maximize2, Minimize2, Send, WandSparkles, X } from 'lucide-react'
 import * as AIEngine from '@/wailsjs/go/main/AIEngine'
 import { ensureAIConfigured } from '@/lib/aiEngine'
-import { buildCompanionPrompt, isAICompanionAvailable, parseCompanionReply, type CompanionMood, type HeaderSuggestion } from '@/lib/aiCompanion'
+import { buildCompanionPrompt, isAICompanionAvailable, isBugHuntPlayIntent, parseCompanionReply, type CompanionMood, type HeaderSuggestion } from '@/lib/aiCompanion'
 import { blankKVRow } from '@/lib/types'
 import { useAppStore } from '@/stores/app'
 import { useCollectionsStore } from '@/stores/collections'
@@ -63,6 +63,16 @@ export function AICompanion() {
     return () => window.clearTimeout(timeout)
   }, [greeting])
 
+  useEffect(() => {
+    const openFromHub = () => {
+      if (!connected) return
+      setGreeting(true)
+      setOpen(true)
+    }
+    document.addEventListener('adomnia:open-ai-companion', openFromHub)
+    return () => document.removeEventListener('adomnia:open-ai-companion', openFromHub)
+  }, [connected])
+
   const quickPrompts = useMemo(() => ['Create an API Flow from this collection.', 'Generate documentation for this collection.'], [])
 
   // A configured provider is not necessarily usable. a0 appears only after the
@@ -80,7 +90,19 @@ export function AICompanion() {
     const text = value.trim()
     if (!text || loading) return
     setInput('')
-    setMessages((current) => [...current, { id: crypto.randomUUID(), role: 'user', text }])
+    const userMessage: ChatMessage = { id: crypto.randomUUID(), role: 'user', text }
+    if (isBugHuntPlayIntent(text)) {
+      const italian = /\b(?:voglio|vorrei|giochiamo|giocare|gioca|gioco|avvia|apri|inizia|lancia|fammi|lasciami)\b/i.test(text)
+      setMessages((current) => [...current, userMessage, {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        mood: 'happy',
+        text: italian ? 'Certo — avvio Bug Hunt.' : 'Sure — launching Bug Hunt.',
+      }])
+      document.dispatchEvent(new Event('adomnia:open-bug-hunt'))
+      return
+    }
+    setMessages((current) => [...current, userMessage])
     setLoading(true)
     try {
       const prompt = buildCompanionPrompt(text, collections, activeTab?.request)

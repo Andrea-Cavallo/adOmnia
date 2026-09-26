@@ -7,7 +7,7 @@ vars:
   WINDOWS_ARCH: '{{.ARCH | default "amd64"}}'
   # CI supplies VERSION from the release tag. Local builds use the current
   # release version, so Windows never receives a non-numeric `dev` resource.
-  WINDOWS_VERSION: '{{.VERSION | default "0.9.30"}}'
+  WINDOWS_VERSION: '{{.VERSION | default "0.9.31"}}'
   GENERATED_INFO: '../.wails/windows-info-{{.WINDOWS_ARCH}}.json'
   GENERATED_MANIFEST: '../.wails/windows-manifest-{{.WINDOWS_ARCH}}.xml'
 

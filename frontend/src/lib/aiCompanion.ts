@@ -25,6 +25,36 @@ export function isAICompanionAvailable(ai: Pick<AppSettings['ai'], 'enabled' | '
     && ai.connectionModel === ai.model
 }
 
+/** Bug Hunt has one deliberate entrance: an explicit play request made to a0.
+ * This stays local and deterministic, so opening the game never requires a
+ * provider round-trip and ordinary mentions of the game do not trigger it. */
+export function isBugHuntPlayIntent(value: string): boolean {
+  const text = value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+
+  if (!text) return false
+  const playWords = '(?:play|playing|giocare|giochiamo|gioca|gioco)'
+  const negative = new RegExp(`\\b(?:non|not|don t|do not|never|no)\\b(?:\\s+\\w+){0,5}\\s+${playWords}\\b`)
+  if (negative.test(text)) return false
+
+  return [
+    /\b(?:i want|i wanna|i would like|i d like|let s|can we|shall we)\s+(?:to\s+)?play\b/,
+    /\b(?:can i|may i|let me)\s+play\b/,
+    /\b(?:play|start|launch|open)\s+(?:the\s+)?(?:game|bug hunt)\b/,
+    /\b(?:voglio|vorrei)\s+giocare\b/,
+    /\b(?:posso|potrei)\s+giocare\b/,
+    /\b(?:giochiamo|giocherei)\b/,
+    /\b(?:fammi|lasciami)\s+giocare\b/,
+    /\b(?:facciamo|iniziamo)\s+(?:una\s+)?(?:partita|gioco)\b/,
+    /\b(?:avvia|apri|inizia|lancia)\s+(?:il\s+)?(?:gioco|bug hunt)\b/,
+    /\bgioca(?:re)?\s+(?:a\s+)?bug hunt\b/,
+  ].some((pattern) => pattern.test(text))
+}
+
 function unwrapJSON(value: string): string {
   const trimmed = value.trim()
   const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i)

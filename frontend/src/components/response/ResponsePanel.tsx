@@ -75,6 +75,7 @@ function ResponseWaitingState({ loading, headerActions }: { loading: boolean; he
             src={responseLogo}
             alt=""
             aria-hidden="true"
+            data-brand-mark
             width={120}
             height={120}
             className="mb-4 h-[120px] w-[120px] shrink-0 object-contain motion-safe:animate-[spin_1.2s_linear_infinite] motion-reduce:animate-pulse"
@@ -115,6 +116,7 @@ function ResponseWaitingState({ loading, headerActions }: { loading: boolean; he
         <img
           src={responseLogo}
           alt="adOmnia"
+          data-brand-mark
           width={120}
           height={120}
           className={cn(

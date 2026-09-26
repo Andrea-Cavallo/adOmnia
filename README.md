@@ -85,7 +85,7 @@ All releases include `SHA256SUMS.txt` and source code archives. Verify your down
 | **Protocols** | SOAP/WSDL Studio (1.1 & 1.2, WS-Security), gRPC (reflection, offline proto/protoset authoring, unary calls, live cancellable streaming, TLS/mTLS, metadata, trailers, reproducible history and load tests), WebSocket client + mock server, SSE client, **MCP Client/Debugger** + **MCP Server Generator** (collection/OAS → runnable MCP server; stdio multi-session + HTTP transport) |
 | **Brokers** | Kafka (produce/consume/bulk/load test), RabbitMQ, MQTT, Redis Pub/Sub, NATS — shared message log, persistent connection profiles |
 | **Simulation & Infrastructure** | Mock Server Control Room with **Smart Mock Engine** (schema-driven Faker generation), **conditional expectations** (per-field matching), request-focused **Mock this tab** handoff, endpoint explorer, decision-aware traffic, record & replay and round-robin; HTTPS proxy/interceptor (MITM CA, breakpoints, map local/remote, throttling), Docker Lab (14 presets), load testing (HTTP + gRPC, HDR histogram, P99, side-by-side comparison) |
-| **Debugging & Analysis** | Browser DevTools via CDP (network, console, JS debugger, DOM inspector, storage, screenshots), **Application Log Inspector** with multi-source correlation, structured typed queries, service waterfalls, payload pairing/diff, stack-to-source navigation, live container tails, persistent investigations and redacted evidence export; plus HAR viewer, DNS lookup/trace/compare, port scanner, CORS tester, JSON/XML/YAML tools, observability and secret scanning. See [the Log Inspector reference](docs/LOG-INSPECTOR.md). |
+| **Debugging & Analysis** | Browser DevTools via CDP (network, console, JS debugger, DOM inspector, storage, screenshots), **Application Log Inspector** with multi-source correlation, structured typed queries, service waterfalls, payload pairing/diff, stack-to-source navigation, live container tails, persistent investigations and redacted evidence export; plus HAR viewer, DNS lookup/trace/compare, port scanner, CORS tester, JSON/XML/YAML tools, observability and secret scanning. |
 | **Document & Productivity Studio** | **PDF Editor** (view, annotate, fill forms, flatten/export) with **real cryptographic signing** — PEM or PKCS#12/JKS keystore import, RFC-3161 **TSA timestamping**, and **LTV** (chain + OCSP/CRL); **LaTeX Studio** (live `.tex` editor + preview + templates); Markdown studio; Mermaid diagrams |
 | **Version Control (built-in Git)** | Full Git client inside the app — clone/init, stage & commit, **visual commit graph** with per-commit context actions (checkout, revert, reset, cherry-pick), branch create/switch/merge, push/pull to any remote, diff viewer, and **interactive conflict resolution**. Export collections as folder-backed, diff-friendly trees, import them back, and check drift between the app state and the files on disk |
 | **Data, Security & Extensibility** | **Power Tools Studio** for encoding, crypto, generators, network inspection and validation; Database Studio (SQLite/PostgreSQL/MySQL/MongoDB, with a Compass-style MongoDB explorer: documents, aggregations, schema, indexes, validation), bbolt storage inspector, encrypted vault (age/scrypt), **AI engine** (Anthropic/Amazon Bedrock/OpenAI/Gemini/Hugging Face/Ollama) with guided cloud/local setup, live model discovery, local metadata cache and Vault, machine-local environment, or AWS identity credentials, permission-aware JavaScript plugin runtime, 11 built-in themes + custom skin system |
@@ -135,7 +135,8 @@ An investigation can then:
 For files larger than browser memory, the Go sidecar builds a cancellable,
 disk-backed index and returns paginated results without loading the entire log.
 
-Full reference — parsing pipeline, field aliases, query syntax, correlation and large-input behavior: [docs/LOG-INSPECTOR.md](docs/LOG-INSPECTOR.md)
+The implementation lives under `frontend/src/lib/loginspector` and
+`frontend/src/components/loginspector`, with regression coverage beside it.
 
 ### Power Tools for the small jobs that interrupt real work
 
@@ -252,13 +253,14 @@ wails3 task build    # production build for the current platform
 
 Full instructions: [docs/BUILD.md](docs/BUILD.md)
 
-### Find the secret 🙂
+### Ask a0 to play 🙂
 
 There is something in adOmnia that is not in the feature list. No menu opens it,
 no setting enables it, and it ships in every build.
 
-Give the logo on the home screen a spin. One full turn is enough — it will ask
-you the rest itself.
+Open the a0 assistant and ask to play — for example, “I want to play” or
+“Voglio giocare”. The Hub logo remains a harmless visual fidget and never opens
+the game.
 
 > Whoever finds it meets a robot named **a0**, a Friday deploy that went wrong,
 > and a Legacy Monolith that throws SOAP envelopes and rewrites the rules of the
@@ -277,4 +279,4 @@ Special thanks to:
 
 ### Offline easter egg: a0 Bug Hunt
 
-Spin the Hub logo to discover a three-stage platformer. a0 runs, slides (C), carries momentum into a long jump (C → Space), and rebounds higher from bugs while Space is held. Developer Desk links book stacks and enemy stepping stones to an optional upper route, then an expanded Legacy Brute finale. Everything runs offline, with difficulty-specific local records and optional gentle effects. See [Bug Hunt](docs/BUG-HUNT.md) for controls and verification status.
+Ask the a0 chatbot to play to open a three-stage platformer. a0 runs, slides (C), carries momentum into a long jump (C → Space), and rebounds higher from bugs while Space is held. Developer Desk links book stacks and enemy stepping stones to an optional upper route, then an expanded Legacy Brute finale. Everything runs offline, with difficulty-specific local records and optional gentle effects.

@@ -1,0 +1,35 @@
+:root {
+  --color-bg: #07090d;
+  --color-surface: #0c1016;
+  --color-surface-raised: #111720;
+  --color-surface-hover: #151c27;
+  --color-border: #222b38;
+  --color-border-strong: #303b4b;
+  --color-text: #eef1f6;
+  --color-text-muted: #8d96a5;
+  --color-text-faint: #5d6674;
+  --color-primary: #8b5cf6;
+  --color-primary-hover: #9f75ff;
+  --color-danger: #f05a67;
+  --color-danger-soft: rgba(240, 90, 103, 0.1);
+  --color-warning: #f2ad52;
+  --color-success: #35d39a;
+  --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Code", monospace;
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-lg: 17px;
+  --text-xl: 20px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 999px;
+  --shadow-md: 0 14px 40px rgba(0, 0, 0, 0.3);
+}

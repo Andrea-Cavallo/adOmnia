@@ -32,9 +32,6 @@ const ApiDocsPanel         = React.lazy(() => import('@/components/apidocs/ApiDo
 const StoragePanel         = React.lazy(() => import('@/components/storage/StoragePanel').then(m => ({ default: m.StoragePanel })))
 const DatabasePanel        = React.lazy(() => import('@/components/database/DatabasePanel').then(m => ({ default: m.DatabasePanel })))
 const VaultPanel           = React.lazy(() => import('@/components/vault/VaultPanel').then(m => ({ default: m.VaultPanel })))
-const ThemePanel           = React.lazy(() => import('@/components/themes/ThemePanel').then(m => ({ default: m.ThemePanel })))
-const TemplatesWorkspace   = React.lazy(() => import('@/components/templates/TemplatesWorkspace').then(m => ({ default: m.TemplatesWorkspace })))
-const PluginManager        = React.lazy(() => import('@/components/plugins/PluginManager').then(m => ({ default: m.PluginManager })))
 const SettingsPanel        = React.lazy(() => import('@/components/settings/SettingsPanel').then(m => ({ default: m.SettingsPanel })))
 const GitSyncPanel         = React.lazy(() => import('@/components/workspace/GitSyncPanel').then(m => ({ default: m.GitSyncPanel })))
 const McpPanel             = React.lazy(() => import('@/components/mcp/McpPanel').then(m => ({ default: m.McpPanel })))
@@ -140,9 +137,9 @@ function panelFor(activeRail: RailItem): PanelDef {
     case 'vault': return { component: <VaultPanel />, titleKey: 'vault', overflow: true }
     case 'workspace': return { component: <SettingsPanel initialSection="workspace" />, titleKey: 'settings', overflow: true }
     case 'apidocs': return { component: <ApiDocsPanel />, titleKey: 'apidocs', overflow: true }
-    case 'themes': return { component: <ThemePanel />, titleKey: 'themes' }
-    case 'templates': return { component: <TemplatesWorkspace />, titleKey: 'templates' }
-    case 'plugins': return { component: <PluginManager />, titleKey: 'plugins' }
+    case 'themes': return { component: <SettingsPanel initialSection="themes" />, titleKey: 'settings', overflow: true }
+    case 'templates': return { component: <SettingsPanel initialSection="templates" />, titleKey: 'settings', overflow: true }
+    case 'plugins': return { component: <SettingsPanel initialSection="plugins" />, titleKey: 'settings', overflow: true }
     case 'secretscanner': return { component: <UtilsPanel initialTool="secretscanner" />, titleKey: 'Power Tools', overflow: true }
     case 'gitsync': return { component: <GitSyncPanel />, titleKey: 'Git Sync', overflow: true }
     case 'mcp': return { component: <McpPanel />, titleKey: 'MCP Client', overflow: true }

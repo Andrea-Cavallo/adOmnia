@@ -27,6 +27,7 @@ import './styles/globals.css'
 // Skin treatments layer on top of the tokens; each is scoped to [data-skin].
 import './styles/skin-sketch.css'
 import './styles/skin-brick.css'
+import './styles/skin-terminal-green.css'
 import { useDevLogsStore } from './stores/devLogs'
 import type { LogLevel } from './stores/devLogs'
 import { recordFrontendDevLog } from './lib/devlogs-api'

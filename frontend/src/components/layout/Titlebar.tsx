@@ -35,7 +35,7 @@ export function Titlebar() {
       style={{ '--wails-draggable': 'drag' } as React.CSSProperties}
     >
       <div className="flex items-center gap-2 pl-2.5">
-        <img src="/logo.png" alt="adOmnia" className="h-[18px] w-[18px] object-contain" />
+        <img src="/logo.png" alt="adOmnia" data-brand-mark className="h-[18px] w-[18px] object-contain" />
         <span className="text-[11px] text-text-3">adOmnia paratus.</span>
       </div>
 

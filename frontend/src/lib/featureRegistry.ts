@@ -127,7 +127,6 @@ export const RAIL_CATEGORIES: FeatureRailCategory[] = [
     key: 'workspace', label: 'Workspace', code: 'WORK',
     groups: [
       { title: 'Versioning', items: ['gitsync'].map((id) => ({ id: id as RailItem })) },
-      { title: 'Customize', items: ['themes', 'templates', 'plugins'].map((id) => ({ id: id as RailItem })) },
     ],
   },
 ]
