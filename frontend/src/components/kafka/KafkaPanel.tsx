@@ -7,7 +7,6 @@ import {
   Database,
   Eye,
   Gauge,
-  KeyRound,
   Layers,
   ListTree,
   Lock,
@@ -230,17 +229,25 @@ function JsonResult({ result }: { result: unknown }) {
 export function KafkaPanel({
   onMessages,
   embedded = false,
+  requestedTab,
+  connectNonce,
+  onConnectionState,
 }: {
   onMessages?: (msgs: BrokerMessage[]) => void
   embedded?: boolean
+  requestedTab?: Tab
+  connectNonce?: number
+  onConnectionState?: (state: 'connected' | 'error', detail: string) => void
 }) {
   const port = useServerPort()
-  const [tab, setTab] = useState<Tab>('overview')
+  const [tab, setTab] = useState<Tab>('messages')
+  const [connectionEditorOpen, setConnectionEditorOpen] = useState(false)
+  const [readMode, setReadMode] = useState<'inspect' | 'consume'>('inspect')
   const [produceMode, setProduceMode] = useState<ProduceMode>('single')
   const [cfg, setCfg] = useState<BrokerConfig>({
     brokers: 'localhost:19092',
     topic: 'adomnia.lab.events',
-    groupId: 'adomnia-lab-group',
+    groupId: '',
     clientId: 'adomnia-ui',
     tls: false,
     saslEnabled: false,
@@ -289,6 +296,10 @@ export function KafkaPanel({
   const [actionResult, setActionResult] = useState<unknown>(null)
   const [loading, setLoading] = useState('')
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (requestedTab) setTab(requestedTab)
+  }, [requestedTab])
 
   useEffect(() => {
     const raw = sessionStorage.getItem('adomnia.broker.pending') ?? localStorage.getItem('adomnia.broker.pending')
@@ -348,10 +359,14 @@ export function KafkaPanel({
       setActionResult(data)
       if (!response.ok || data.ok === false) {
         setError(data.error || 'Request failed')
+        onConnectionState?.('error', data.error || 'Request failed')
+      } else {
+        onConnectionState?.('connected', 'Kafka reachable')
       }
       return data
     } catch (err) {
       setError(String(err))
+      onConnectionState?.('error', String(err))
       return null
     } finally {
       setLoading('')
@@ -362,6 +377,14 @@ export function KafkaPanel({
     const data = await post<ClusterOverview>('/kafka/cluster-overview', { config: configPayload }, 'overview')
     if (data?.ok) setOverview(data)
   }
+
+  useEffect(() => {
+    if (!connectNonce) return
+    void refreshOverview()
+  // connectNonce is deliberately the only external trigger; the latest config
+  // is read when the user presses Connect in Broker Studio.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connectNonce])
 
   const listTopics = async () => {
     const data = await post<KafkaResult>('/kafka/topics', configPayload, 'topics')
@@ -486,7 +509,12 @@ export function KafkaPanel({
   }
 
   const runConsume = async () => {
+    if (!cfg.groupId.trim()) {
+      setError('Enter a consumer group to consume with group coordination.')
+      return
+    }
     const data = await post<KafkaResult>('/kafka/consume', { config: configPayload, maxWait, maxMsgs, fromStart }, 'consume')
+    if (data?.ok) setBrowseResult(data)
     if (data?.messages?.length && onMessages) {
       onMessages(data.messages.map((message) => ({
         id: crypto.randomUUID(),
@@ -528,21 +556,23 @@ export function KafkaPanel({
             </div>
           )}
 
-          <div className={cn('mb-4 grid gap-2', embedded ? 'grid-cols-3' : 'grid-cols-4')}>
-            <Metric icon={Database} label="Brokers" value={brokers.length ? brokers.join(', ') : 'required'} />
-            <Metric icon={ListTree} label="Topic" value={cfg.topic || 'required'} />
-            <Metric icon={KeyRound} label="Group" value={cfg.groupId || 'ephemeral'} />
-            {!embedded && <Metric icon={Lock} label="Security" value={`${cfg.tls ? 'TLS' : 'PLAINTEXT'} / ${cfg.saslEnabled ? cfg.saslMechanism : 'NO SASL'}`} />}
+          <div className="mb-4 rounded border border-border-1 bg-surface-1">
+            <div className="flex flex-wrap items-center gap-2 px-3 py-2">
+              <Radio size={13} className="text-accent" />
+              <span className="text-xs font-semibold text-text-1">{cfg.topic || 'Select a topic'}</span>
+              <span className="max-w-[280px] truncate font-mono text-[10px] text-text-4">{brokers.join(', ') || 'Broker address required'}</span>
+              <span className="ml-auto text-[10px] text-text-4">Inspect mode never joins an application group or commits offsets.</span>
+              <button type="button" onClick={() => setConnectionEditorOpen((open) => !open)} className="rounded border border-border-2 px-2 py-1 text-[10px] text-text-3 hover:text-text-1">Edit connection</button>
+            </div>
+            {connectionEditorOpen && <div className="border-t border-border-1 p-3"><ConnectionCard cfg={cfg} setCfg={setCfg} compact /></div>}
           </div>
 
-          <ConnectionCard cfg={cfg} setCfg={setCfg} />
-
           <div className="my-4 flex flex-wrap gap-2">
-            <button className={tabClass('overview')} onClick={() => setTab('overview')}><Gauge size={14} /> Cluster</button>
-            <button className={tabClass('topics')} onClick={() => setTab('topics')}><ListTree size={14} /> Topics</button>
-            <button className={tabClass('groups')} onClick={() => setTab('groups')}><Users size={14} /> Groups</button>
             <button className={tabClass('messages')} onClick={() => setTab('messages')}><Search size={14} /> Messages</button>
-            <button className={tabClass('produce')} onClick={() => setTab('produce')}><Send size={14} /> Produce</button>
+            <button className={tabClass('produce')} onClick={() => setTab('produce')}><Send size={14} /> Publish</button>
+            <button className={tabClass('topics')} onClick={() => setTab('topics')}><ListTree size={14} /> Topics</button>
+            <button className={tabClass('groups')} onClick={() => setTab('groups')}><Users size={14} /> Consumer groups</button>
+            <button className={tabClass('overview')} onClick={() => setTab('overview')}><Gauge size={14} /> Cluster</button>
             <button className={tabClass('load')} onClick={() => setTab('load')}><Activity size={14} /> Load</button>
           </div>
 
@@ -652,32 +682,51 @@ export function KafkaPanel({
               <div className="rounded border border-border-1 bg-surface-1 p-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-sm font-semibold text-text-1">Message Browser</h3>
-                    <p className="mt-1 text-[11px] text-text-4">Browse by partition, offset or timestamp; filter key, value and headers; tail live messages.</p>
+                    <h3 className="text-sm font-semibold text-text-1">{cfg.topic || 'Topic messages'}</h3>
+                    <p className="mt-1 text-[11px] text-text-4">{readMode === 'inspect' ? 'Inspect uses explicit partition reads: no consumer-group membership and no offset commits.' : 'Consume joins the named group and is intended to reproduce consumer behaviour.'}</p>
                   </div>
-                  <button onClick={browseMessages} disabled={!!loading || !cfg.topic || brokers.length === 0} className="inline-flex items-center gap-2 rounded bg-accent px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">
-                    <Search size={14} /> {busy('browse') ? 'Browsing...' : 'Browse'}
-                  </button>
+                  <div className="inline-flex rounded border border-border-1 bg-surface-0 p-0.5 text-[10px]">
+                    <button type="button" onClick={() => setReadMode('inspect')} className={cn('rounded px-2 py-1', readMode === 'inspect' ? 'bg-accent text-white' : 'text-text-3')}>Inspect</button>
+                    <button type="button" onClick={() => setReadMode('consume')} className={cn('rounded px-2 py-1', readMode === 'consume' ? 'bg-warning/80 text-surface-0' : 'text-text-3')}>Consume with group</button>
+                  </div>
                 </div>
-                <div className="mt-3 grid grid-cols-5 gap-3">
-                  <Field label="Partition"><input value={browsePartition} onChange={(event) => setBrowsePartition(event.target.value)} className={inputClass} placeholder="all" /></Field>
-                  <Field label="Offset"><input value={browseOffset} onChange={(event) => setBrowseOffset(event.target.value)} className={inputClass} placeholder="oldest" /></Field>
-                  <Field label="Timestamp"><input type="datetime-local" value={browseTimestamp} onChange={(event) => setBrowseTimestamp(event.target.value)} className={inputClass} /></Field>
-                  <Field label="Max messages"><input type="number" min={1} max={500} value={maxMsgs} onChange={(event) => setMaxMsgs(Number(event.target.value))} className={inputClass} /></Field>
-                  <Field label="Max wait"><input type="number" min={1} max={30} value={maxWait} onChange={(event) => setMaxWait(Number(event.target.value))} className={inputClass} /></Field>
-                </div>
-                <div className="mt-3 grid grid-cols-4 gap-3">
-                  <Field label="Key contains"><input value={keyFilter} onChange={(event) => setKeyFilter(event.target.value)} className={inputClass} /></Field>
-                  <Field label="Value contains"><input value={valueFilter} onChange={(event) => setValueFilter(event.target.value)} className={inputClass} /></Field>
-                  <Field label="Header key"><input value={headerKeyFilter} onChange={(event) => setHeaderKeyFilter(event.target.value)} className={inputClass} /></Field>
-                  <Field label="Header value"><input value={headerValueFilter} onChange={(event) => setHeaderValueFilter(event.target.value)} className={inputClass} /></Field>
-                </div>
-                <label className="mt-3 inline-flex items-center gap-2 text-xs text-text-2">
-                  <input type="checkbox" checked={tail} onChange={(event) => setTail(event.target.checked)} className="accent-accent" />
-                  Tail from latest offset and wait for new messages
-                </label>
+                {readMode === 'inspect' ? <>
+                  <div className="mt-3 grid grid-cols-5 gap-3">
+                    <Field label="Partitions"><input value={browsePartition} onChange={(event) => setBrowsePartition(event.target.value)} className={inputClass} placeholder="all" /></Field>
+                    <Field label="From offset"><input value={browseOffset} onChange={(event) => setBrowseOffset(event.target.value)} className={inputClass} placeholder="oldest" /></Field>
+                    <Field label="From timestamp"><input type="datetime-local" value={browseTimestamp} onChange={(event) => setBrowseTimestamp(event.target.value)} className={inputClass} /></Field>
+                    <Field label="Limit"><input type="number" min={1} max={500} value={maxMsgs} onChange={(event) => setMaxMsgs(Number(event.target.value))} className={inputClass} /></Field>
+                    <Field label="Scan timeout"><input type="number" min={1} max={30} value={maxWait} onChange={(event) => setMaxWait(Number(event.target.value))} className={inputClass} /></Field>
+                  </div>
+                  <div className="mt-3 grid grid-cols-4 gap-3">
+                    <Field label="Key contains"><input value={keyFilter} onChange={(event) => setKeyFilter(event.target.value)} className={inputClass} /></Field>
+                    <Field label="Payload contains"><input value={valueFilter} onChange={(event) => setValueFilter(event.target.value)} className={inputClass} /></Field>
+                    <Field label="Header key"><input value={headerKeyFilter} onChange={(event) => setHeaderKeyFilter(event.target.value)} className={inputClass} /></Field>
+                    <Field label="Header value"><input value={headerValueFilter} onChange={(event) => setHeaderValueFilter(event.target.value)} className={inputClass} /></Field>
+                  </div>
+                  <div className="mt-3 flex items-center gap-3">
+                    <label className="inline-flex items-center gap-2 text-xs text-text-2"><input type="checkbox" checked={tail} onChange={(event) => setTail(event.target.checked)} className="accent-accent" /> Live from latest offset</label>
+                    <span className="text-[10px] text-text-4">Scope: bounded broker scan · max {maxMsgs} messages · {maxWait}s</span>
+                    <button onClick={browseMessages} disabled={!!loading || !cfg.topic || brokers.length === 0} className="ml-auto inline-flex items-center gap-2 rounded bg-accent px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"><Search size={14} /> {busy('browse') ? 'Reading…' : 'Read messages'}</button>
+                  </div>
+                </> : <div className="mt-3 flex flex-wrap items-end gap-3">
+                  <Field label="Consumer group"><input value={cfg.groupId} onChange={(event) => setCfg((current) => ({ ...current, groupId: event.target.value }))} className={inputClass} placeholder="orders-worker" /></Field>
+                  <Field label="Limit"><input type="number" min={1} max={100} value={maxMsgs} onChange={(event) => setMaxMsgs(Number(event.target.value))} className={inputClass} /></Field>
+                  <Field label="Wait seconds"><input type="number" min={1} max={30} value={maxWait} onChange={(event) => setMaxWait(Number(event.target.value))} className={inputClass} /></Field>
+                  <label className="flex h-8 items-center gap-2 text-xs text-text-2"><input type="checkbox" checked={fromStart} onChange={(event) => setFromStart(event.target.checked)} className="accent-accent" /> Start at earliest when no offset exists</label>
+                  <button onClick={runConsume} disabled={!!loading || !cfg.topic || !cfg.groupId.trim() || brokers.length === 0} className="inline-flex h-8 items-center gap-2 rounded bg-warning px-3 text-xs font-semibold text-surface-0 disabled:opacity-50"><Timer size={14} /> {busy('consume') ? 'Consuming…' : 'Consume with group'}</button>
+                </div>}
               </div>
-              <MessageList messages={browseResult?.messages ?? []} empty="No messages returned for the current browse query." />
+              <MessageList
+                messages={browseResult?.messages ?? []}
+                empty={readMode === 'inspect' ? 'No messages returned for this bounded broker scan.' : 'No messages delivered to this consumer group in the selected window.'}
+                onRepublish={(message) => {
+                  setKey(message.key ?? '')
+                  setValue(message.value ?? '')
+                  setHeaders(Object.entries(message.headers ?? {}).map(([headerKey, headerValue]) => ({ key: headerKey, value: headerValue })))
+                  setTab('produce')
+                }}
+              />
             </section>
           )}
 
@@ -733,10 +782,7 @@ export function KafkaPanel({
                     <button onClick={runLoad} disabled={!!loading || !cfg.topic || brokers.length === 0} className="inline-flex items-center gap-2 rounded bg-accent px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">
                       <Activity size={14} /> {busy('load') ? 'Running...' : 'Run load'}
                     </button>
-                    <button onClick={runConsume} disabled={!!loading || !cfg.topic || brokers.length === 0} className="inline-flex items-center gap-2 rounded border border-border-2 px-4 py-2 text-xs font-semibold text-text-2 hover:text-accent disabled:opacity-50">
-                      <Timer size={14} /> {busy('consume') ? 'Consuming...' : 'Quick consume'}
-                    </button>
-                    <label className="ml-2 flex items-center gap-2 pb-2 text-xs text-text-2"><input type="checkbox" checked={fromStart} onChange={(event) => setFromStart(event.target.checked)} className="accent-accent" /> From start</label>
+                    <p className="max-w-sm text-[11px] text-text-4">Consumer testing is intentionally separate in <span className="font-medium text-text-2">Messages → Consume with group</span>, so a load test cannot accidentally join an application group.</p>
                   </div>
                 </div>
               </div>
@@ -773,18 +819,18 @@ export function KafkaPanel({
   )
 }
 
-function ConnectionCard({ cfg, setCfg }: { cfg: BrokerConfig; setCfg: Dispatch<SetStateAction<BrokerConfig>> }) {
+function ConnectionCard({ cfg, setCfg, compact = false }: { cfg: BrokerConfig; setCfg: Dispatch<SetStateAction<BrokerConfig>>; compact?: boolean }) {
   return (
     <div className="rounded border border-border-1 bg-surface-1 p-3">
       <div className="mb-3 flex items-center gap-2">
         <Radio size={14} className="text-accent" />
-        <h3 className="text-xs font-semibold text-text-1">Connection</h3>
+        <h3 className="text-xs font-semibold text-text-1">Kafka connection</h3>
       </div>
       <ConnectionProfiles protocol="kafka" config={cfg} onLoad={(saved) => setCfg((current) => ({ ...current, ...saved }))} />
-      <div className="grid grid-cols-4 gap-3">
+      <div className={cn('grid gap-3', compact ? 'grid-cols-3' : 'grid-cols-4')}>
         <Field label="Brokers"><input value={cfg.brokers} onChange={(event) => setCfg({ ...cfg, brokers: event.target.value })} className={inputClass} /></Field>
-        <Field label="Topic"><input value={cfg.topic} onChange={(event) => setCfg({ ...cfg, topic: event.target.value })} className={inputClass} /></Field>
-        <Field label="Group ID"><input value={cfg.groupId} onChange={(event) => setCfg({ ...cfg, groupId: event.target.value })} className={inputClass} /></Field>
+        {!compact && <Field label="Topic"><input value={cfg.topic} onChange={(event) => setCfg({ ...cfg, topic: event.target.value })} className={inputClass} /></Field>}
+        <Field label="Consumer group (only consume mode)"><input value={cfg.groupId} onChange={(event) => setCfg({ ...cfg, groupId: event.target.value })} className={inputClass} placeholder="optional" /></Field>
         <Field label="Client ID"><input value={cfg.clientId} onChange={(event) => setCfg({ ...cfg, clientId: event.target.value })} className={inputClass} /></Field>
       </div>
       <div className="mt-3 flex gap-3">
@@ -949,28 +995,57 @@ function ConsumerGroupDetail({
   )
 }
 
-function MessageList({ messages, empty }: { messages: KafkaMessage[]; empty: string }) {
+function MessageList({ messages, empty, onRepublish }: { messages: KafkaMessage[]; empty: string; onRepublish: (message: KafkaMessage) => void }) {
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
+  const selected = selectedIndex === null ? null : messages[selectedIndex]
+
+  useEffect(() => {
+    if (selectedIndex !== null && selectedIndex >= messages.length) setSelectedIndex(null)
+  }, [messages.length, selectedIndex])
+
+  const payloadPreview = (value?: string) => (value ?? '').replace(/\s+/g, ' ').slice(0, 110) || '(empty payload)'
+  const copyPayload = async () => {
+    if (selected?.value) await navigator.clipboard?.writeText(selected.value)
+  }
+
   return (
     <div className="rounded border border-border-1 bg-surface-1 p-3">
-      <div className="mb-2 flex items-center gap-2"><Layers size={14} className="text-accent" /><h3 className="text-xs font-semibold text-text-1">Messages</h3></div>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2"><Layers size={14} className="text-accent" /><h3 className="text-xs font-semibold text-text-1">Messages</h3></div>
+        {selected && <button onClick={() => setSelectedIndex(null)} className="text-[11px] text-text-4 hover:text-text-1">Close detail</button>}
+      </div>
       <div className="max-h-[460px] overflow-auto rounded border border-border-1 bg-surface-0">
         {messages.length === 0 ? (
           <p className="px-3 py-4 text-xs text-text-4">{empty}</p>
-        ) : messages.map((message, index) => (
-          <div key={`${message.partition}-${message.offset}-${index}`} className="grid grid-cols-[70px_90px_180px_1fr] gap-3 border-b border-border-1/50 px-3 py-2 text-xs last:border-b-0">
-            <span className="font-mono text-accent">p{message.partition ?? '-'}</span>
-            <span className="font-mono text-text-4">@{message.offset ?? '-'}</span>
-            <div className="min-w-0">
-              <p className="truncate font-mono text-text-2">{message.key || '(no key)'}</p>
-              <p className="mt-1 text-[10px] text-text-4">{message.timestamp}</p>
-            </div>
-            <div className="min-w-0">
-              <p className="whitespace-pre-wrap break-words font-mono text-text-2">{message.value}</p>
-              {message.headers && Object.keys(message.headers).length > 0 && <p className="mt-2 truncate font-mono text-[10px] text-text-4">headers {JSON.stringify(message.headers)}</p>}
-            </div>
-          </div>
-        ))}
+        ) : (
+          <table className="w-full table-fixed text-left text-xs">
+            <thead className="sticky top-0 bg-surface-2 text-[10px] uppercase tracking-wider text-text-4">
+              <tr><th className="w-40 px-3 py-2 font-medium">Timestamp</th><th className="w-36 px-3 py-2 font-medium">Key</th><th className="px-3 py-2 font-medium">Payload preview</th><th className="w-20 px-3 py-2 font-medium">Part.</th><th className="w-24 px-3 py-2 font-medium">Offset</th></tr>
+            </thead>
+            <tbody>{messages.map((message, index) => (
+              <tr key={`${message.partition}-${message.offset}-${index}`} role="button" tabIndex={0} aria-label={`Open message at partition ${message.partition ?? 'unknown'}, offset ${message.offset ?? 'unknown'}`} onClick={() => setSelectedIndex(index)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setSelectedIndex(index) } }} className={cn('cursor-pointer border-t border-border-1/50 transition-colors hover:bg-surface-2/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent', selectedIndex === index && 'bg-accent/10')}>
+                <td className="truncate px-3 py-2 font-mono text-[10px] text-text-4">{message.timestamp || '-'}</td>
+                <td className="truncate px-3 py-2 font-mono text-text-2">{message.key || '(no key)'}</td>
+                <td className="truncate px-3 py-2 font-mono text-text-2">{payloadPreview(message.value)}</td>
+                <td className="px-3 py-2 font-mono text-accent">p{message.partition ?? '-'}</td>
+                <td className="px-3 py-2 font-mono text-text-3">{message.offset ?? '-'}</td>
+              </tr>
+            ))}</tbody>
+          </table>
+        )}
       </div>
+      {selected && (
+        <section className="mt-3 rounded border border-accent/30 bg-surface-0">
+          <div className="flex items-center justify-between border-b border-border-1 px-3 py-2">
+            <div><p className="text-xs font-semibold text-text-1">Message detail</p><p className="mt-0.5 font-mono text-[10px] text-text-4">partition {selected.partition ?? '-'} / offset {selected.offset ?? '-'} / {selected.timestamp || 'no timestamp'}</p></div>
+            <div className="flex items-center gap-2"><button onClick={() => void copyPayload()} className="rounded border border-border-2 px-2 py-1 text-[11px] text-text-2 hover:border-accent hover:text-accent">Copy payload</button><button onClick={() => onRepublish(selected)} className="rounded bg-accent px-2 py-1 text-[11px] font-semibold text-white hover:bg-accent/90">Open in composer</button></div>
+          </div>
+          <div className="grid gap-3 p-3 lg:grid-cols-[minmax(0,1fr)_220px]">
+            <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words rounded border border-border-1 bg-surface-1 p-3 font-mono text-[11px] leading-relaxed text-text-2">{selected.value || '(empty payload)'}</pre>
+            <div className="space-y-3 text-[11px]"><div><p className="mb-1 uppercase tracking-wider text-text-4">Key</p><p className="break-words rounded border border-border-1 bg-surface-1 p-2 font-mono text-text-2">{selected.key || '(no key)'}</p></div><div><p className="mb-1 uppercase tracking-wider text-text-4">Headers</p><pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded border border-border-1 bg-surface-1 p-2 font-mono text-[10px] text-text-3">{Object.keys(selected.headers ?? {}).length ? JSON.stringify(selected.headers, null, 2) : '(none)'}</pre></div></div>
+          </div>
+        </section>
+      )}
     </div>
   )
 }

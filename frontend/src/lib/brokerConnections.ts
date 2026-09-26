@@ -216,6 +216,12 @@ export async function listBrokerConnectionProfiles<T extends object>(protocol: B
   return state.profiles.filter((profile) => profile.protocol === protocol) as Array<BrokerConnectionProfile<T>>
 }
 
+/** Lists every saved connection for the Broker Studio workspace navigation. */
+export async function listAllBrokerConnectionProfiles(): Promise<BrokerConnectionProfile[]> {
+  const state = await readState()
+  return state.profiles
+}
+
 export async function saveBrokerConnectionProfile<T extends object>(
   protocol: BrokerProtocol,
   name: string,

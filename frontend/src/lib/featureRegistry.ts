@@ -49,7 +49,9 @@ export const FEATURE_REGISTRY: FeatureDef[] = [
 
   { id: 'mock', title: 'Mock Server', group: 'API Core', keywords: 'stub simulate response replay local server', maturity: 'core' },
   { id: 'proxy', title: 'Proxy Interceptor', group: 'API Core', keywords: 'traffic intercept breakpoint ca certificate rewrite capture', maturity: 'core' },
-  { id: 'dockerlab', title: 'Docker Lab', group: 'Infrastructure', keywords: 'containers compose local lab dependencies kafka postgres redis', maturity: 'advanced' },
+  // Docker Lab is a Power Tools Studio workspace. Keeping it there avoids a
+  // second, redundant Infrastructure entry in the primary rail.
+  { id: 'dockerlab', title: 'Docker Lab', group: 'Power Tools', keywords: 'containers compose local lab dependencies kafka postgres redis', maturity: 'advanced' },
 
   { id: 'browser', title: 'Browser Debug', group: 'Debugging', keywords: 'cdp chrome network page debug console dom storage headers security', maturity: 'advanced', railLabel: 'Browser Debug' },
   { id: 'har', title: 'HAR Viewer', group: 'Debugging', keywords: 'archive waterfall import network capture replay', maturity: 'advanced' },
@@ -96,12 +98,6 @@ export const RAIL_CATEGORIES: FeatureRailCategory[] = [
     groups: [
       { title: 'Streaming', items: ['websocket', 'broker', 'sse'].map((id) => ({ id: id as RailItem })) },
       { title: 'Enterprise', items: ['grpc', 'soap', 'mcp'].map((id) => ({ id: id as RailItem })) },
-    ],
-  },
-  {
-    key: 'infra', label: 'Infrastructure', code: 'INFRA',
-    groups: [
-      { title: 'Local Runtime', items: ['dockerlab'].map((id) => ({ id: id as RailItem })) },
     ],
   },
   {

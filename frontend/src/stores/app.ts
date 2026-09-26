@@ -10,8 +10,8 @@ export type { RailItem } from '@/lib/navigation'
 // Canonical Cmd/Ctrl+1..7 quick-navigation targets, ordered by expected daily
 // use — core tools first, advanced-only tools last. This is deliberately NOT a
 // 1:1 mapping of the rail categories in components/layout/Rail.tsx: categories
-// without a frequently-used entry point (Infrastructure, Document Studio) have
-// no shortcut. Entries gated behind "Show advanced features" are marked below.
+// without a frequently-used entry point (Document Studio) have no shortcut.
+// Entries gated behind "Show advanced features" are marked below.
 export const RAIL_QUICK_NAV: RailItem[] = [
   'collections', // 1 - API Core
   'websocket',   // 2 - Protocols

@@ -120,6 +120,12 @@ describe('stable UI localization', () => {
     expect(TOOL_CATEGORIES.flatMap((category) => category.tools.map((tool) => tool.id))).not.toContain('loginspector')
   })
 
+  it('keeps Docker Lab inside the unified Power Tools Studio entry', () => {
+    expect(RAIL_CATEGORIES.some((category) => category.key === 'infra')).toBe(false)
+    expect(RAIL_CATEGORIES.find((category) => category.key === 'tools')?.groups.flatMap((group) => group.items.map((item) => item.id))).not.toContain('dockerlab')
+    expect(FEATURE_REGISTRY.find((feature) => feature.id === 'dockerlab')?.group).toBe('Power Tools')
+  })
+
   it('blocks new unregistered literal labels in the stable shell and API workflow', () => {
     const violations: string[] = []
     for (const relativePath of GUARDED_SURFACES) {

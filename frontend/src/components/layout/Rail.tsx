@@ -15,7 +15,7 @@ import {
   Wrench, FileText, FileCode, Database, Braces, ChevronRight, FolderOpen,
   Lock, Puzzle, Settings, GitBranch, X,
   Zap, BarChart2, Activity, HardDrive, History, Layers,
-  BookOpen, PanelsTopLeft, SquareTerminal,
+  BookOpen, SquareTerminal,
 } from 'lucide-react'
 
 interface SubItem {
@@ -44,7 +44,6 @@ function Soap95Icon({ size = 12 }: { size?: number }) {
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
   api: Send,
   protocols: Radio,
-  infra: PanelsTopLeft,
   debug: Bug,
   data: Database,
   tools: Wrench,

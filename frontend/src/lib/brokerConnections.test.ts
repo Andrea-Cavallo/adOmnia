@@ -20,6 +20,7 @@ import { clearManagedSecretSession } from './managedSecrets'
 import {
   brokerConnectionCredentialState,
   hydrateBrokerConnectionConfig,
+  listAllBrokerConnectionProfiles,
   loadLastBrokerConnection,
   resolveBrokerPayload,
   sanitizeBrokerConnectionConfig,
@@ -82,5 +83,21 @@ describe('broker connection credentials', () => {
     expect(await resolveBrokerPayload(persisted)).toEqual({ addr: 'localhost:6379', password: 'runtime-secret' })
     expect(persisted.password).toBe('vault:ciphertext')
     expect(resolveSecretMock).toHaveBeenCalledWith('vault:ciphertext')
+  })
+
+  it('returns saved connections across protocols for Broker Studio navigation', async () => {
+    storageGetMock.mockResolvedValueOnce(JSON.stringify({
+      version: 2,
+      lastUsed: {},
+      profiles: [
+        { id: 'kafka-local', name: 'Kafka local', protocol: 'kafka', config: { brokers: 'localhost:19092' }, updatedAt: '2026-09-26T10:00:00.000Z' },
+        { id: 'rabbit-test', name: 'Rabbit test', protocol: 'rabbitmq', config: { url: 'amqp://localhost:5672' }, updatedAt: '2026-09-26T10:01:00.000Z' },
+      ],
+    }))
+
+    await expect(listAllBrokerConnectionProfiles()).resolves.toMatchObject([
+      { id: 'kafka-local', protocol: 'kafka' },
+      { id: 'rabbit-test', protocol: 'rabbitmq' },
+    ])
   })
 })
