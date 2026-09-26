@@ -62,8 +62,8 @@ github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ3
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/digitorus/pdf v0.1.2 h1:RjYEJNbiV6Kcn8QzRi6pwHuOaSieUUrg4EZo4b7KuIQ=
-github.com/digitorus/pdf v0.1.2/go.mod h1:05fDDJhPswBRM7GTfqCxNiDyeNcN0f+IobfOAl5pdXw=
+github.com/digitorus/pdf v0.3.0 h1:v3Pj6u/suIiPprrVQTnx2zkKobyhX0lqbcS4jR0SN/o=
+github.com/digitorus/pdf v0.3.0/go.mod h1:hAVtI9P/OwJ4Hk+xoxxpLfBL3KHFpEFfcKMAnv02F80=
 github.com/digitorus/pdfsign v0.9.0 h1:c6MuVoLMtJCBNUV1k8Sms8kOg1gj30CMrgVrcmctyfs=
 github.com/digitorus/pdfsign v0.9.0/go.mod h1:fr3WVvXB7KiCvgxZP87v/lYcIGonw1J5/8Dc3tL+oyU=
 github.com/digitorus/pkcs7 v0.0.0-20230713084857-e76b763bdc49/go.mod h1:SKVExuS+vpu2l9IoOc0RwqE7NYnb0JlcFHFnEJkVDzc=

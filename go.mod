@@ -8,7 +8,7 @@ require (
 	github.com/IBM/sarama v1.61.0
 	// Pinned: pdf v0.2.0 unexports Reader.Resolve, which pdfsign v0.9.0 still
 	// calls. Unpin only together with pdfsign >= v1.0.0 (currently rc only).
-	github.com/digitorus/pdf v0.1.2
+	github.com/digitorus/pdf v0.3.0
 	github.com/digitorus/pdfsign v0.9.0
 	github.com/dop251/goja v0.0.0-20260917113740-793a2a65c13b
 	github.com/dustin/go-humanize v1.1.0
