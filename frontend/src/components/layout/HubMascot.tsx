@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { Code2, FileText, GitBranch, Settings2 } from 'lucide-react'
-import { isAICompanionAvailable } from '@/lib/aiCompanion'
+import { isAICompanionAvailable } from '@/lib/aiAvailability'
 import { useUiTranslation } from '@/lib/uiI18n'
 import { useAppStore } from '@/stores/app'
 import { useSettingsStore } from '@/stores/settings'

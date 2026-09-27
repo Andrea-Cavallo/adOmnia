@@ -18,8 +18,10 @@ go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.5
 ## Development and checks
 
 ```bash
-wails3 dev -config ./build/config.yml
-cd frontend && npx tsc --noEmit && npm run build
+wails3 task dev
+npm --prefix frontend test
+npm --prefix frontend run build
+npm --prefix frontend run check:startup
 go build ./... && go test ./...
 ```
 

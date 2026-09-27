@@ -7,6 +7,7 @@ const entrypoint = readFileSync(resolve(process.cwd(), 'src/main.tsx'), 'utf8')
 const welcomeSource = readFileSync(resolve(process.cwd(), 'src/components/layout/WelcomePanel.tsx'), 'utf8')
 const mascotSource = readFileSync(resolve(process.cwd(), 'src/components/layout/HubMascot.tsx'), 'utf8')
 const companionSource = readFileSync(resolve(process.cwd(), 'src/components/assistant/AICompanion.tsx'), 'utf8')
+const appSource = readFileSync(resolve(process.cwd(), 'src/App.tsx'), 'utf8')
 const statusBarSource = readFileSync(resolve(process.cwd(), 'src/components/layout/StatusBar.tsx'), 'utf8')
 
 describe('Terminal Green skin and hub', () => {
@@ -43,5 +44,14 @@ describe('Terminal Green skin and hub', () => {
     expect(mascotSource).toContain("'adomnia:open-ai-companion'")
     expect(mascotSource).toContain("tr('Connect AI to use a0')")
     expect(companionSource).toContain("document.addEventListener('adomnia:open-ai-companion', openFromHub)")
+  })
+
+  it('does not bundle or launch the extracted game from the app or companion', () => {
+    for (const source of [appSource, companionSource]) {
+      expect(source).not.toContain('BugHuntOverlay')
+      expect(source).not.toContain('components/bughunt')
+      expect(source).not.toContain('adomnia:open-bug-hunt')
+      expect(source).not.toContain('isBugHuntPlayIntent')
+    }
   })
 })

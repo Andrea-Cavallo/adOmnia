@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect } from 'react'
+import { lazy, Suspense, useState, useRef, useEffect } from 'react'
 import { Plus, Check, X, ChevronDown } from 'lucide-react'
 import type { HostsProfile, HostEntry } from '@/lib/types'
-import { HostModal } from './HostModal'
 import { cn } from '@/lib/utils'
 import { useUiTranslation } from '@/lib/uiI18n'
+
+const HostModal = lazy(() => import('./HostModal').then((module) => ({ default: module.HostModal })))
 
 interface HostBarProps {
   compact?: boolean
@@ -159,15 +160,17 @@ export function HostBar({
       </div>
 
       {showModal && (
-        <HostModal
-          profiles={profiles}
-          activeProfileId={activeProfileId}
-          onClose={() => setShowModal(false)}
-          onAdd={onAdd}
-          onDelete={onDelete}
-          onRename={onRename}
-          onUpdateEntries={onUpdateEntries}
-        />
+        <Suspense fallback={null}>
+          <HostModal
+            profiles={profiles}
+            activeProfileId={activeProfileId}
+            onClose={() => setShowModal(false)}
+            onAdd={onAdd}
+            onDelete={onDelete}
+            onRename={onRename}
+            onUpdateEntries={onUpdateEntries}
+          />
+        </Suspense>
       )}
     </>
   )

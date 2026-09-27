@@ -1,282 +1,268 @@
 # adOmnia
+
 ![adOmnia banner](assets/images/banner.png)
 
-**The entire API toolchain — design, send, record, debug, inspect, reproduce and ship — in one portable app that never leaves your machine.**
+**A desktop workspace for designing, testing, debugging and documenting APIs.**
 
-REST · gRPC · SOAP · GraphQL · WebSocket · SSE · Kafka · RabbitMQ · MQTT · Redis · NATS
-Mock servers · HTTPS proxy · Browser DevTools · Application Log Inspector · Load testing · Database Studio · Encrypted vault
-**Full Git client** (commit graph, push/pull, branch & conflict resolution) · OpenAPI design · Visual test builder · AI mock generation
-MCP Client + Server Generator · Versionable collection folders · Headless runner · OpenAPI lint CLI · PDF & LaTeX Studio · Executable JS plugins · 11 themes
+adOmnia brings API requests, browser debugging, mocks, logs, databases and Git into one application for Windows, macOS and Linux. Your workspace is stored locally, with no adOmnia account or telemetry. Optional AI connects to a provider you choose.
 
-> **Stop paying a subscription to send an HTTP request.** No account. No cloud. No telemetry. One executable, **507+ features**, your data stays yours.
+[![Release](https://img.shields.io/github/v/release/Andrea-Cavallo/adOmnia?color=8A2BE2)](https://github.com/Andrea-Cavallo/adOmnia/releases/latest)
+[![Build](https://img.shields.io/github/actions/workflow/status/Andrea-Cavallo/adOmnia/build.yml?branch=master&label=build)](https://github.com/Andrea-Cavallo/adOmnia/actions/workflows/build.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE.md)
+[![Website](https://img.shields.io/badge/website-adomnia--dev.com-8A2BE2)](https://www.adomnia-dev.com)
 
-> Proudly listed on **[Awesome Wails](https://github.com/wailsapp/awesome-wails)** and **[Awesome HTTP Clients](https://github.com/mrmykey/awesome-http-clients/tree/main)**.
+[Download](#download) · [Capabilities](#capabilities) · [Workflows](#workflows) · [AI](#ai-and-a0) · [CLI](#command-line-and-ci) · [Development](#development) · [Documentation](#documentation)
 
-[![Website](https://img.shields.io/badge/Get%20started%20for%20free-8A2BE2)](https://www.adomnia-dev.com)
-[![Release](https://img.shields.io/badge/release-v0.9.18-8A2BE2)](https://github.com/Andrea-Cavallo/adOmnia/releases/tag/v0.9.18)
-[![Awesome Wails](https://img.shields.io/badge/Awesome-Wails-FF3E00?logo=go&logoColor=white)](https://github.com/wailsapp/awesome-wails)
-[![Awesome HTTP Clients](https://img.shields.io/badge/Awesome-HTTP_Clients-4285F4?logo=googlechrome&logoColor=white)](https://github.com/mrmykey/awesome-http-clients/tree/main)
-![Local First](https://img.shields.io/badge/local--first-yes-22c55e)
-![No Telemetry](https://img.shields.io/badge/telemetry-none-0ea5e9)
-![License](https://img.shields.io/badge/license-MIT-blue)
+![adOmnia API workspace with request editing and response inspection](assets/images/adOmniaInterface1.png)
 
----
+## Download
 
-### One local workspace for the whole API lifecycle
+Download the latest desktop build from **[GitHub Releases](https://github.com/Andrea-Cavallo/adOmnia/releases/latest)**. Go and Node.js are only needed when building from source.
 
-Compose requests, inspect responses, browse collections and move between API,
-debugging, documentation and infrastructure tools without switching products.
+| Platform | Release artifact | Getting started |
+| --- | --- | --- |
+| Windows x64 | `adomnia-<version>-windows-amd64.exe` | Run the executable. The system must have WebView2 available. |
+| macOS, Intel and Apple Silicon | `adomnia-<version>-macos-universal.dmg` | Open the disk image and copy the app to Applications. |
+| Linux x64 | `adomnia-<version>-linux-amd64-gtk3-webkitgtk-4.1.tar.gz` | Extract and run with GTK 3 and WebKitGTK 4.1 installed. |
 
-![adOmnia main API workspace](assets/images/adOmniaInterface1.png)
+Releases include `SHA256SUMS.txt` for download verification. Platform instructions are available in the [installation guide](docs/INSTALL.md); packaging and native dependencies are documented in the [build guide](docs/BUILD.md).
 
-Prefer a light workspace? Use the white skin:
+### Your first request
 
-![adOmnia interface white](assets/images/white.png)
+1. Open **API Workspace** and create a **New Request** at workspace root or inside a collection.
+2. Select the method, enter the URL and configure headers, authentication or a body as needed.
+3. Send the request and inspect its status, timing, headers, response body and assertions.
+4. Add an Environment for reusable `{{variables}}`, or import an existing collection, cURL command or OpenAPI document.
 
-Or use the Sketch skin for a hand-drawn engineering-notebook workspace without
-giving up the desktop workflow:
+Requests at workspace root appear outside your named collections and persist with the active workspace.
 
-![adOmnia Sketch skin preview](assets/images/sketch-previews.png)
+## Why adOmnia
 
-The Sketch skin also gives the main adOmnia Hub a focused engineering-notebook layout, so API, documentation, Git, and infrastructure workspaces are immediately discoverable:
+- **Local workspace ownership.** Collections, history and settings live on your machine. Export workspaces as files or collections as folders that can be reviewed and versioned with Git.
+- **API and browser investigation together.** Inspect browser network activity, console output, JavaScript, DOM and storage alongside API requests and responses.
+- **Support for enterprise systems.** Work with SOAP/WSDL, WS-Security, gRPC streaming, mTLS, certificate keystores and API authentication flows.
+- **A customizable desktop workspace.** Choose themes and skins, share templates and extend workflows with local JavaScript plugins.
 
-![adOmnia Hub with Sketch skin](assets/images/adomnia-hub-sketch.png)
+## Capabilities
 
-### Why adOmnia
+| Workspace | Highlights |
+| --- | --- |
+| **API requests and design** | REST, GraphQL, environments, authentication, scripts, assertions, response history, code generation, Postman/cURL/OpenAPI import, visual OpenAPI editing and governance checks. |
+| **Testing and flows** | Collection runner, CSV datasets, visual tests, recorded and AI-assisted flows, response-to-request variables, failure branches, contract checks and flow stress testing with latency, throughput and APDEX gates. |
+| **Protocols and brokers** | SOAP/WSDL, gRPC, WebSocket, SSE, Kafka, RabbitMQ, MQTT, Redis Pub/Sub and NATS, with saved connections and message inspection. |
+| **Mocks and infrastructure** | Schema-driven mock responses, conditional expectations, record/replay, endpoint traffic inspection, HTTPS interception, breakpoints, mapping, throttling, HTTP/gRPC load tests and Docker Lab. |
+| **Debugging and analysis** | Browser DevTools, Application Log Inspector, HAR inspection, network diagnostics, payload tools, stack-to-source navigation and redacted evidence exports. |
+| **Data and documents** | SQLite, PostgreSQL, MySQL and MongoDB exploration; local storage inspection; Markdown, Mermaid, LaTeX and PDF editing, annotation, forms and digital signatures. |
+| **Git and portable collections** | Clone/init, staging, commits, history graph, branches, merges, push/pull, diffs, conflict resolution and deterministic collection-folder export/import. |
+| **AI and MCP** | Configurable cloud/local AI, the a0 assistant, opt-in request creation, model discovery, a local agent gateway, an MCP client/debugger and an MCP server generator. |
+| **Security and customization** | Encrypted Vault references, private Environments, certificate tools, local JavaScript plugins, templates and built-in/custom appearances. |
 
-Most API tools went the wrong way: they moved your requests, secrets, and history into someone else's cloud, put your team behind a login wall, and charged you monthly for it. adOmnia is the opposite bet — **one fast desktop app that does more than the cloud suites, while keeping everything on your machine.**
+See the [feature catalog](docs/adomnia-feature-catalog.en.md) for module details and the [active work queue](docs/ISSUES.md) for current implementation status.
 
-It replaces a whole shelf of tools:
+## Workflows
 
-> **Postman + Insomnia + Charles/Fiddler + browser DevTools + a database client + a SOAP/WSDL tool + a load tester + a secrets manager + a PDF signer** — collapsed into a single portable executable that never phones home.
+### Record requests as a Flow
 
-Four things set it apart — and **no other tool combines all four**:
+Press **Record**, send requests through the Composer, then stop recording. adOmnia turns the sequence into an editable Flow. Connect response values to later requests, add assertions and recovery branches, generate a Mermaid view and replay the scenario.
 
--  **Local-first, for real** — no account, no telemetry, no cloud sync. Your collections, secrets, and traffic never leave your disk. Workspaces stay local, collections can be exported as deterministic folder trees, and a **built-in Git client** (visual commit graph, branch/merge, push/pull, conflict resolution) versions them without ever leaving the app.
--  **Browser debugging built in** — inspect and debug real web pages (network, console, JS debugger, DOM, storage) *inside* the same tool you test APIs with. No competitor does this.
--  **Enterprise & legacy as first-class citizens** — SOAP/WSDL with WS-Security, mTLS, PKCS#12/JKS, gRPC streaming, and **real eIDAS-grade PDF digital signatures** (TSA timestamping + LTV). The boring-but-critical stuff Postman ignores.
--  **Yours to extend** — executable local JavaScript plugins, importable skins, shareable templates, and 11 built-in themes.
-
-REST requests keep the essentials visible: method, URL, request configuration and
-response analysis in one screen.
-
-![REST request and response in adOmnia](assets/images/REST.png)
-
-### ⬇️ Download
-
-**[→ Go to Releases](https://github.com/Andrea-Cavallo/adOmnia/releases/latest)** and grab the file for your platform. No installation, no dependencies.
-
-| Platform | File |
-|---|---|
-| Windows | `adOmnia-*-windows-amd64.exe` |
-| macOS | `adOmnia-*-macos-universal.dmg` |
-| Linux (GTK 3 / WebKitGTK 4.1) | `adOmnia-*-linux-amd64-gtk3-webkitgtk-4.1.tar.gz` |
-
-All releases include `SHA256SUMS.txt` and source code archives. Verify your download with the published checksums.
-
-### What you get — 507+ features across 11 areas
-
-| Area | What you get |
-|---|---|
-| **API Workspace** | Multiple local workspaces with independent collections and tabs, HTTP client (all methods), environments, `{{variable}}` substitution, OAuth2 PKCE, AWS Signature v4, Digest, cURL/OpenAPI import, scripts, assertions, code generation, response history, deterministic collection-folder export/import |
-| **API Design (spec-first)** | Native OpenAPI 3.x / Swagger 2.x import (file/URL/paste) and round-trip export (JSON/YAML), **Visual OpenAPI Editor** (form-based endpoints, no YAML), **API Docs / Swagger viewer** with integrated governance findings, local OpenAPI linting in the desktop UI and CI |
-| **API Catalog** | Installable public REST API starters, including curated no-auth/free endpoints inspired by `public-apis/public-apis`, imported directly into local adOmnia collections |
-| **Collection Runner & Testing** | Test runner with iterations/delay/retry/CSV datasets, assertion editor (JSONPath, XPath, schema), **AI-generated and recorded API flows** with response-to-request data links and failure branches, Mermaid generation, pan/zoom/auto-layout, staged SLO/APDEX-aware flow stress tests with clear workload/latency/trend charts, **no-code Visual Test builder** (block-based, export to Flow), **response schema/contract validation**, test data studio, and headless collection/flow runners with CLI/JSON/JUnit reports |
-| **Protocols** | SOAP/WSDL Studio (1.1 & 1.2, WS-Security), gRPC (reflection, offline proto/protoset authoring, unary calls, live cancellable streaming, TLS/mTLS, metadata, trailers, reproducible history and load tests), WebSocket client + mock server, SSE client, **MCP Client/Debugger** + **MCP Server Generator** (collection/OAS → runnable MCP server; stdio multi-session + HTTP transport) |
-| **Brokers** | Kafka (produce/consume/bulk/load test), RabbitMQ, MQTT, Redis Pub/Sub, NATS — shared message log, persistent connection profiles |
-| **Simulation & Infrastructure** | Mock Server Control Room with **Smart Mock Engine** (schema-driven Faker generation), **conditional expectations** (per-field matching), request-focused **Mock this tab** handoff, endpoint explorer, decision-aware traffic, record & replay and round-robin; HTTPS proxy/interceptor (MITM CA, breakpoints, map local/remote, throttling), Docker Lab (14 presets), load testing (HTTP + gRPC, HDR histogram, P99, side-by-side comparison) |
-| **Debugging & Analysis** | Browser DevTools via CDP (network, console, JS debugger, DOM inspector, storage, screenshots), **Application Log Inspector** with multi-source correlation, structured typed queries, service waterfalls, payload pairing/diff, stack-to-source navigation, live container tails, persistent investigations and redacted evidence export; plus HAR viewer, DNS lookup/trace/compare, port scanner, CORS tester, JSON/XML/YAML tools, observability and secret scanning. |
-| **Document & Productivity Studio** | **PDF Editor** (view, annotate, fill forms, flatten/export) with **real cryptographic signing** — PEM or PKCS#12/JKS keystore import, RFC-3161 **TSA timestamping**, and **LTV** (chain + OCSP/CRL); **LaTeX Studio** (live `.tex` editor + preview + templates); Markdown studio; Mermaid diagrams |
-| **Version Control (built-in Git)** | Full Git client inside the app — clone/init, stage & commit, **visual commit graph** with per-commit context actions (checkout, revert, reset, cherry-pick), branch create/switch/merge, push/pull to any remote, diff viewer, and **interactive conflict resolution**. Export collections as folder-backed, diff-friendly trees, import them back, and check drift between the app state and the files on disk |
-| **Data, Security & Extensibility** | **Power Tools Studio** for encoding, crypto, generators, network inspection and validation; Database Studio (SQLite/PostgreSQL/MySQL/MongoDB, with a Compass-style MongoDB explorer: documents, aggregations, schema, indexes, validation), bbolt storage inspector, encrypted vault (age/scrypt), **AI engine** (Anthropic/Amazon Bedrock/OpenAI/Gemini/Hugging Face/Ollama) with guided cloud/local setup, live model discovery, local metadata cache and Vault, machine-local environment, or AWS identity credentials, permission-aware JavaScript plugin runtime, 11 built-in themes + custom skin system |
-
-Persistent Git, broker, and database credentials use encrypted `vault:` references. Plaintext credentials remain in memory for the current session only, are resolved immediately before use, and are automatically redacted from workspace, bucket, settings, and snapshot exports.
-
-### Record a real API sequence as a Flow
-
-Press **Record**, use the Composer normally, then stop the recording. adOmnia turns
-the observed request sequence into an editable Flow instead of making you rebuild
-the scenario by hand. From there you can review the steps, connect response values
-to later requests, add assertions, generate a Mermaid view and replay the workflow.
-
-![Recording API calls and converting them into an adOmnia Flow](assets/images/example-rec.gif)
+![Recording API requests and converting the sequence into a Flow](assets/images/example-rec.gif)
 
 ### Mock the request you are working on
 
-From an open request tab, choose **Mock this tab**. adOmnia opens the Mock Server directly on that endpoint in a focused scope: existing mock definitions stay saved, but only the selected request is active until you choose **Show all endpoints**. If the server is already running, the focused configuration is applied live without changing its port.
+Choose **Mock this tab** from an open request to configure its endpoint in the Mock Server. Existing mock definitions remain saved; the selected endpoint stays in focus until you choose **Show all endpoints**. A running server receives the focused configuration without changing its port.
 
-The Traffic view explains what happened for each call: the matched endpoint and response, or a useful reason such as a missing mock response, authentication failure, CORS preflight, or no matching route.
+The Traffic view identifies the selected response or explains why a call failed to match, including missing routes, authentication failures and CORS preflight handling.
 
-### Read pod logs without grep
+### Investigate application logs
 
-The **Application Log Inspector** turns a wall of OpenShift/Kubernetes or local
-application output into a structured investigation — entirely offline, with
-nothing uploaded.
+Drop log files, paste application output or attach supported live `kubectl`, `oc` and Docker sources. Application Log Inspector correlates events on a timeline, pairs request/response payloads and groups recurring errors.
 
-![Application Log Inspector ready for files, live sources and large logs](assets/images/application-logs.png)
-
-Paste text or drop one or more files (`.log`, `.txt`, `.json`, `.jsonl`, `.ndjson`,
-`.out`, or any plain-text dump). Format detection uses the content, never the
-extension, and Java/Go stack traces are re-attached to the event that raised them.
-
-An investigation can then:
-
-- correlate files and live `kubectl`, `oc` or Docker sources on one timeline;
-- search with typed expressions such as
-  `duration_ms > 1000 AND (status = 500 OR status = 502)`;
-- show per-service waterfalls, paired request/response payloads, diffs, nearby
-  source lines and recurring error groups;
-- promote real fields to resizable, reorderable columns with presets per format;
-- resume a local session with its query, layout, bookmarks and notes;
-- build an editable Composer request, Flow/mock proposal or OpenAPI validation
-  result from the observed evidence; and
-- preview and export a redacted offline evidence package with provenance intact.
-
-For files larger than browser memory, the Go sidecar builds a cancellable,
-disk-backed index and returns paginated results without loading the entire log.
-
-The implementation lives under `frontend/src/lib/loginspector` and
-`frontend/src/components/loginspector`, with regression coverage beside it.
-
-### Power Tools for the small jobs that interrupt real work
-
-Power Tools Studio keeps common transformations and diagnostics beside the API
-workspace: Base64, JWT, hashes, HMAC, passwords, timestamps, fake data, regex,
-UUIDs, XML, HAR, certificates/keystores, Java class inspection, observability,
-secret scanning, network utilities and validation. Tools are searchable, pinnable
-and work locally with paste, file and sample inputs.
-
-![Power Tools Studio with searchable and pinnable local utilities](assets/images/powertools.png)
-
-### AI credentials from the local machine
-
-In **Settings → AI Engine**, enable **Use system environment credentials** to bypass the Vault for AI connections. The desktop backend reads the key only from the environment inherited by adOmnia; it is never returned to the UI or saved in Settings.
-
-Supported variables include `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` / `GOOGLE_API_KEY`, `HUGGINGFACE_API_KEY` / `HF_TOKEN`, `OPENAI_COMPATIBLE_API_KEY`, and the generic fallback `ADOMNIA_AI_API_KEY`. On Windows, restart adOmnia after changing a user or system environment variable.
-
-For Claude through Amazon Bedrock, adOmnia uses the AWS SDK credential chain instead of storing an AWS secret: environment credentials, shared profiles, IAM Identity Center/SSO, web identity, or workload roles. Configure the AWS region and optional profile in AI Engine; private Bedrock Runtime/VPC endpoints and inference-profile IDs or ARNs are supported.
-
-### Smart model setup, still local-first
-
-The AI Engine offers goal-based profiles (recommended, best quality, efficient, or private local AI) while leaving the exact model under your control. adOmnia can ask the selected provider or local runtime which models are available, then saves only model metadata and the check time on your machine. Optional automatic checks run only when you open the AI Engine and only after you enable them; adOmnia does not send model data, prompts, or telemetry to its own servers and never changes your selected model silently.
-
-### Version collections as folders
-
-adOmnia keeps the desktop workspace fast and local, but collections can also be projected to a plain folder format for review, Git history, and CI:
+Use structured queries such as:
 
 ```text
-adomnia.collection.json
-collection.json
-folders/
-  001-auth/
-    folder.json
-    001-login.request.json
-  002-users/
-    001-list-users.request.json
-.adomnia-sync.json
+duration_ms > 1000 AND (status = 500 OR status = 502)
 ```
 
-From **Git Sync → Collection Folder** you can:
+Save investigations with their queries, layouts, bookmarks and notes. Export redacted evidence or turn an observed call into an editable request, Flow or mock proposal. Large files use a disk-backed index with paginated results.
 
-- export the selected collection to a deterministic folder tree
-- import a folder-backed collection into the current workspace
-- check drift between the in-app collection and the files on disk
+![Application Log Inspector with file import and live source options](assets/images/application-logs.png)
 
-Folder-backed collections can also carry shared auth, headers, variables, and scripts at collection/folder level. The headless runner resolves auth, headers, and variables top-down so common bearer tokens, tenant headers, and CI variables do not need to be duplicated in every request; scripts are preserved in the folder format while headless script parity remains in progress.
+### Keep collections in Git
 
-### Headless runner
+Use **Git Sync → Collection Folder** to export a collection, import a folder-backed collection or check for drift between the app and files on disk. The deterministic layout makes changes easier to review:
 
-The same desktop executable can run folder-backed collections without opening the UI:
+```text
+my-collection/
+├── adomnia.collection.json
+├── collection.json
+├── folders/
+│   ├── 001-auth/
+│   │   ├── folder.json
+│   │   └── 001-login.request.json
+│   └── 002-users/
+│       └── 001-list-users.request.json
+└── .adomnia-sync.json
+```
+
+Collection and folder settings can supply shared authentication, headers, variables and scripts. The built-in Git client handles staging, commits, branch operations, remotes and conflict resolution.
+
+## AI and a0
+
+AI is optional. Configure a provider in **Settings → AI Engine**, select a model and use **Test connection**. The a0 assistant becomes available after the selected provider and model pass the connection check.
+
+Supported providers are **Anthropic, Amazon Bedrock, OpenAI, Google Gemini, DeepSeek, Hugging Face, Ollama and OpenAI-compatible endpoints**. Model discovery and Balanced, Quality, Fast or Local only profiles help with setup while keeping the selected model under your control.
+
+### Credential discovery
+
+Automatic discovery checks process variables, adOmnia Environments and standard `.env` files, with an encrypted Vault fallback. Recognized provider variables include:
+
+| Provider | Credential variables |
+| --- | --- |
+| Anthropic | `ANTHROPIC_API_KEY` |
+| OpenAI | `OPENAI_API_KEY` |
+| Google Gemini | `GEMINI_API_KEY`, `GOOGLE_API_KEY` |
+| DeepSeek | `DEEPSEEK_API_KEY` |
+| Hugging Face | `HUGGINGFACE_API_KEY`, `HF_TOKEN` |
+| OpenAI-compatible | `OPENAI_COMPATIBLE_API_KEY`, `OPENAI_API_KEY` |
+
+`ADOMNIA_AI_API_KEY` is a generic fallback. Amazon Bedrock uses the AWS SDK credential chain, including environment credentials, shared profiles, IAM Identity Center/SSO and workload identities. On Windows, restart adOmnia after changing user or system environment variables.
+
+### Agent actions
+
+Enable **Agent actions** to let a0 create supported request definitions at workspace root from explicit chat instructions. For example, “Create a greeting API request outside my collections” creates and opens a request for review. Request definitions belong to the API client; the target API or mock server supplies the response when you send them.
+
+Agent actions are disabled by default. The current creation action supports a name, method, URL, headers and an optional body. a0 replies in English and uses credential placeholders in its suggestions.
+
+## Data and privacy
+
+adOmnia stores workspace data locally and does not require an adOmnia account, collect telemetry or provide automatic cloud workspace sync. Core editing and inspection tools work offline; network operations connect to the endpoints you choose.
+
+Cloud AI sends prompts and the supplied workspace context to your selected provider. Local AI can use Ollama or a locally hosted compatible endpoint. Model discovery also contacts the configured provider when requested, or when the optional refresh-on-open setting is enabled.
+
+Use the **encrypted Vault** for sensitive values. Ordinary request and environment fields are not encrypted simply because they are stored locally. Environments marked **Private** are excluded from workspace-file and collection-folder exports; exported public environment secrets use empty placeholders.
+
+## Command line and CI
+
+The desktop executable also exposes headless commands. The examples below use `adomnia`; substitute the downloaded executable path when it is not on your `PATH`.
+
+### Run a collection
 
 ```bash
 adomnia run ./my-collection --env prod --folder "Smoke" --reporter junit --out report.xml --bail
 ```
 
-Flow Stress has the same CI path. Export **CI plan** from the Stress dock, then
-run the exact graph—including response-to-request variables and recovery branches:
+The runner supports environment overrides, assertions, sandboxed scripts and CLI/JSON/JUnit reports. Failed requests or assertions produce a non-zero exit code.
+
+### Stress-test a Flow
+
+Export a **CI plan** from the Flow Stress dock, then run it with an optional dataset:
 
 ```bash
 adomnia stress ./checkout.stress.json --dataset users.csv --env-var BASE_URL=https://staging.example.com --reporter junit --out stress.xml
 ```
 
-The stress command returns exit code 1 when a request or p95/error/RPS/APDEX gate
-fails, and exit code 2 for an invalid plan. Dataset rows are supplied separately,
-so a portable plan never embeds test identities or secrets.
+The plan preserves graph execution, response variables and recovery branches. Exit code `1` indicates a failed request or configured performance gate; `2` indicates an invalid plan.
 
-Supported today:
-
-- full collection or folder-scoped execution with `--folder`
-- collection-local `.env` loading, ignored by Git by default
-- environment file loading from `environments/<name>.json` with `--env`
-- overrides with `--env-var KEY=VALUE`; precedence is collection variables, `.env`, named environment, then CLI override
-- CLI, JSON, and JUnit reports
-- non-zero exit code on request/assertion failure
-- shared request resolution for variables, path params, query/header/body values, simple auth, and headless assertions
-- OAuth2 `client_credentials`, password, and refresh-token grants plus AWS Signature v4
-- run-scoped cookie jar, multipart fields, and `@file:<path>` file parts
-- sandboxed pre/post/test scripts with `pm.environment`, `pm.response`, `pm.test`, and `pm.expect`
-- OpenAPI response-contract checks when the collection carries an `openapiSpec`
-- Vault references supplied safely in CI through `ADOMNIA_VAULT_<VARIABLE_NAME>` environment variables
-
-Interactive OAuth authorization still belongs to the desktop browser flow. Headless runs intentionally reject authorization-code/PKCE interaction and direct users to a refresh token or non-interactive grant. Vault ciphertext is never decrypted or printed by the CLI; CI injects the plaintext value only into process memory through the matching `ADOMNIA_VAULT_*` variable.
-
-Environments can be marked **Private** in the environment editor. Private environments remain in local bbolt storage and are excluded from collection-folder and workspace-file exports. Public environment secrets are exported only as empty placeholders.
-
-In Git Sync, **Export** refreshes the complete deterministic collection folder, while **Request** updates only the currently open request file. Incremental export requires an existing folder projection so file names and ordering remain stable.
-
-### OpenAPI lint in CI
-
-Lint an OpenAPI file, or a folder-backed adOmnia collection that contains an `openapiSpec` in `collection.json`:
+### Lint OpenAPI
 
 ```bash
 adomnia lint ./openapi.yaml --reporter json --out lint-report.json
 adomnia lint ./my-collection --ruleset adomnia.oaslint.json --fail-on-warn
 ```
 
-The built-in local rules check operation IDs, summaries/descriptions, response coverage, JSON response schemas, tags, security requirements, path naming, and duplicate operation IDs. `error` findings return a non-zero exit code; warnings are non-blocking unless `--fail-on-warn` is set.
+The same rules are available in **API Docs → Governance**. Errors fail the command; warnings fail it only with `--fail-on-warn`.
 
-The same engine is available in **API Docs > Governance**. It shows error/warning/info badges, searchable findings, operation navigation, and a local JSON ruleset whose overrides are persisted only on the machine.
+<details>
+<summary>Runner environments and credentials</summary>
 
-### Build from source
+- Use `--env` to load `environments/<name>.json`, or `--env-var KEY=VALUE` to override a variable.
+- Variable precedence is collection variables, collection-local `.env`, named Environment, then CLI overrides.
+- Headless runs support non-interactive OAuth grants, AWS Signature v4, a run-scoped cookie jar and multipart file parts.
+- Interactive OAuth authorization-code/PKCE flows belong to the desktop; use a refresh token or non-interactive grant in CI.
+- Supply Vault references through matching `ADOMNIA_VAULT_<VARIABLE_NAME>` process variables. The runner does not decrypt exported Vault ciphertext.
 
-Only needed if you want to compile it yourself. Requires **Go 1.26.5+**, **Node.js 22.13.0+**
-and the **Wails 3 CLI** (`wails3`). On Linux you also need `libgtk-3-dev` and
-`libwebkit2gtk-4.1-dev`.
+</details>
+
+## Interface gallery
+
+<details>
+<summary>Explore the light, Sketch, Git and Power Tools workspaces</summary>
+
+### Light appearance
+
+![adOmnia API workspace in the light appearance](assets/images/white.png)
+
+### Sketch appearance
+
+![adOmnia Sketch appearance across workspaces](assets/images/sketch-previews.png)
+
+### Hub
+
+![The adOmnia Hub in the Sketch appearance](assets/images/adomnia-hub-sketch.png)
+
+### Git Sync
+
+![adOmnia Git workspace](assets/images/GIT.png)
+
+### Power Tools
+
+![Power Tools Studio with searchable and pinnable utilities](assets/images/powertools.png)
+
+</details>
+
+## Development
+
+adOmnia uses **Go, Wails 3, React and TypeScript**. Source builds require Go `1.26.5`, Node.js `22.13.0+`, npm, the pinned Wails CLI and platform WebView development dependencies.
 
 ```bash
-git clone https://github.com/Andrea-Cavallo/adOmnia.git && cd adomnia
+git clone https://github.com/Andrea-Cavallo/adOmnia.git
+cd adOmnia
 go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.5
-cd frontend && npm install && cd ..
-wails3 task dev      # dev mode
-wails3 task build    # production build for the current platform
+npm --prefix frontend ci
+wails3 task dev
 ```
 
-Full instructions: [docs/BUILD.md](docs/BUILD.md)
+Build a native executable or distributable bundle:
 
-### Ask a0 to play 🙂
+```bash
+wails3 task build
+wails3 task package
+```
 
-There is something in adOmnia that is not in the feature list. No menu opens it,
-no setting enables it, and it ships in every build.
+Run the frontend build before Go checks, because the desktop embeds the generated frontend assets:
 
-Open the a0 assistant and ask to play — for example, “I want to play” or
-“Voglio giocare”. The Hub logo remains a harmless visual fidget and never opens
-the game.
+```bash
+npm --prefix frontend test
+npm --prefix frontend run build
+npm --prefix frontend run check:startup
+go build ./...
+go test ./...
+```
 
-> Whoever finds it meets a robot named **a0**, a Friday deploy that went wrong,
-> and a Legacy Monolith that throws SOAP envelopes and rewrites the rules of the
-> level while you are still standing in it. Everything stays offline, like the
-> rest of the app.
+Linux checks and builds use the GTK 3 compatibility tag; see [the build guide](docs/BUILD.md) for native packages, platform commands and release metadata.
 
-### License
+## Documentation
 
-MIT © Andrea Cavallo — [LICENSE.md](LICENSE.md).
+| Guide | Contents |
+| --- | --- |
+| [Installation](docs/INSTALL.md) | Desktop downloads and platform setup. |
+| [Build from source](docs/BUILD.md) | Toolchain, native dependencies and packaging. |
+| [Feature catalog](docs/adomnia-feature-catalog.en.md) | Detailed module inventory. |
+| [FAQ](docs/FAQ.md) | Common product and setup questions. |
+| [Troubleshooting](docs/TROUBLESHOOTING.md) | Diagnostics and recovery steps. |
+| [Architecture](docs/ARCHITECTURE.md) | Application structure and technical context. |
+| [Startup performance](docs/PERFORMANCE.md) | Loading strategy, bundle budget and measurement limits. |
+| [Changelog](CHANGELOG.md) | Version-by-version changes. |
+| [Release guide](docs/RELEASE.md) | Release notes and publishing process. |
 
----
+## Contributing
 
-Special thanks to:
-- https://github.com/albertize
-- https://github.com/plunix
+Report reproducible bugs or propose improvements through [GitHub Issues](https://github.com/Andrea-Cavallo/adOmnia/issues). Include the app version, operating system and steps to reproduce; redact credentials and private payloads from examples.
 
-### Offline easter egg: a0 Bug Hunt
+For code contributions, read [AGENTS.md](AGENTS.md) and [CLAUDE.md](CLAUDE.md), follow existing module conventions and include relevant verification with your pull request. Report vulnerabilities privately through the [security policy](.github/SECURITY.md).
 
-Ask the a0 chatbot to play to open a three-stage platformer. a0 runs, slides (C), carries momentum into a long jump (C → Space), and rebounds higher from bugs while Space is held. Developer Desk links book stacks and enemy stepping stones to an optional upper route, then an expanded Legacy Brute finale. Everything runs offline, with difficulty-specific local records and optional gentle effects.
+## Acknowledgements and license
+
+Thanks to [albertize](https://github.com/albertize) and [plunix](https://github.com/plunix) for their contributions and support.
+
+Released under the [MIT License](LICENSE.md). Copyright © 2026 adOmnia Contributors.

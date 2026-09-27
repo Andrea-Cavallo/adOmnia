@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect } from 'react'
+import { lazy, Suspense, useState, useRef, useEffect } from 'react'
 import { Plus, Check, X, ChevronDown } from 'lucide-react'
 import type { Environment, EnvVariable } from '@/lib/types'
-import { EnvModal } from './EnvModal'
 import { cn } from '@/lib/utils'
 import { useUiTranslation } from '@/lib/uiI18n'
+
+const EnvModal = lazy(() => import('./EnvModal').then((module) => ({ default: module.EnvModal })))
 
 interface EnvBarProps {
   compact?: boolean
@@ -188,16 +189,18 @@ export function EnvBar({
       </div>
 
       {showModal && (
-        <EnvModal
-          environments={environments}
-          activeEnvId={activeEnvId}
-          onClose={() => setShowModal(false)}
-          onAdd={onAdd}
-          onDelete={onDelete}
-          onRename={onRename}
-          onUpdateVars={onUpdateVars}
-          onSetPrivate={onSetPrivate}
-        />
+        <Suspense fallback={null}>
+          <EnvModal
+            environments={environments}
+            activeEnvId={activeEnvId}
+            onClose={() => setShowModal(false)}
+            onAdd={onAdd}
+            onDelete={onDelete}
+            onRename={onRename}
+            onUpdateVars={onUpdateVars}
+            onSetPrivate={onSetPrivate}
+          />
+        </Suspense>
       )}
     </>
   )

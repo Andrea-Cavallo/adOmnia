@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, FileText, Loader2, Maximize2, Minimize2, Send, WandSparkles, X } from 'lucide-react'
 import * as AIEngine from '@/wailsjs/go/main/AIEngine'
 import { ensureAIConfigured } from '@/lib/aiEngine'
-import { buildCompanionPrompt, COMPANION_WELCOME, inferCompanionRequestAction, isAICompanionAvailable, isBugHuntPlayIntent, materializeCompanionRequest, parseCompanionReply, type CompanionMood, type HeaderSuggestion } from '@/lib/aiCompanion'
+import { buildCompanionPrompt, COMPANION_WELCOME, inferCompanionRequestAction, isAICompanionAvailable, materializeCompanionRequest, parseCompanionReply, type CompanionMood, type HeaderSuggestion } from '@/lib/aiCompanion'
 import { blankKVRow } from '@/lib/types'
 import { useAppStore } from '@/stores/app'
 import { useCollectionsStore } from '@/stores/collections'
@@ -32,7 +32,7 @@ function Sprite({ mood, loading, size, resting, greeting = false }: { mood: Comp
   )
 }
 
-export function AICompanion() {
+export function AICompanion({ initiallyOpen = false }: { initiallyOpen?: boolean }) {
   const ai = useSettingsStore((state) => state.settings.ai)
   const collections = useCollectionsStore((state) => state.collections)
   const addQuickRequest = useCollectionsStore((state) => state.addQuickRequest)
@@ -41,9 +41,9 @@ export function AICompanion() {
   const updateRequest = useTabsStore((state) => state.updateRequest)
   const openTab = useTabsStore((state) => state.openTab)
   const setActiveRail = useAppStore((state) => state.setActiveRail)
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(initiallyOpen)
   const [expanded, setExpanded] = useState(false)
-  const [greeting, setGreeting] = useState(false)
+  const [greeting, setGreeting] = useState(initiallyOpen)
   const [modelMenuOpen, setModelMenuOpen] = useState(false)
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -93,16 +93,6 @@ export function AICompanion() {
     if (!text || loading) return
     setInput('')
     const userMessage: ChatMessage = { id: crypto.randomUUID(), role: 'user', text }
-    if (isBugHuntPlayIntent(text)) {
-      setMessages((current) => [...current, userMessage, {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        mood: 'happy',
-        text: 'Sure — launching Bug Hunt.',
-      }])
-      document.dispatchEvent(new Event('adomnia:open-bug-hunt'))
-      return
-    }
     const localRequestAction = ai.workspaceActionsEnabled ? inferCompanionRequestAction(text) : null
     if (localRequestAction) {
       const request = materializeCompanionRequest(localRequestAction)

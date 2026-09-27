@@ -4,6 +4,27 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [Unreleased]
+
+### Changed
+- **Leaner startup:** the fresh Hub loads about 30.5% less initial JavaScript (823,684 → 572,407 uncompressed bytes). Sidebar, command palette, AI assistant, import parsers and closed environment/hosts editors load only when relevant.
+- **AI startup:** an unconfigured assistant no longer loads its provider runtime. A verified assistant mounts after the first stable frame, while early Hub clicks are retained during its asynchronous load. Gateway restoration remains deferred and runs only when enabled.
+- **Workspace resume:** persisted API workspaces preload their sidebar alongside the existing request-workspace preload. Workspace restoration, credentials, settings and storage formats are unchanged.
+- **Startup regression check:** a production-bundle budget now runs in CI and rejects optional AI, YAML, editor, diagram and PDF modules in the static startup graph. Local timing diagnostics contain only numeric timings and byte counts; no telemetry is added.
+- **README:** reorganized the public overview, feature groups, platform installation, AI permissions, CLI workflows, development checks and documentation links.
+
+### Removed
+- **Bundled game:** extracted a0: Bug Hunt into a separate local project, including its source, tests, artwork and development references. adOmnia no longer ships game assets, an overlay or chatbot commands that launch it.
+- **Game-only UI and documentation:** removed unused game translations, preview entry points and the game backlog from the active product documentation. Historical release notes remain intact.
+
+### Unchanged
+- The Hub mascot, a0 AI assistant, workspace actions, API tools, Database Studio and Broker Studio remain available. Workspace data and settings are unchanged; existing local game records are not erased.
+
+### Verified
+- 557 frontend tests pass, together with TypeScript and the production frontend build. The production browser smoke check covers the Hub, command palette, API sidebar, environment and hosts editors, and the AI connection gate.
+- `go build ./...`, `go test ./...` and the canonical Windows Wails production build pass. The separately extracted game retains its source and artwork outside the app.
+- Browser warm-cache first-frame samples remain similar (median 83.8 ms before, 80.9 ms after). These are renderer diagnostics, not a measurement of full native Windows startup; see [the performance guide](docs/PERFORMANCE.md).
+
 ## [0.9.33] - 2026-09-27
 
 ### Added

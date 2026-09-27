@@ -6,10 +6,7 @@ import { useTabsStore } from '@/stores/tabs'
 import { useSettingsStore } from '@/stores/settings'
 import { useAppStore } from '@/stores/app'
 import { ReadDroppedFiles } from '@/wailsjs/go/main/App'
-import { importCollectionsFromText } from '@/lib/collectionTransfer'
 import { routeGlobalDropFile } from '@/lib/globalFileRouter'
-import { parseInteropFile } from '@/lib/interopHub'
-import { saveFlowDefinitions } from '@/lib/flowStorage'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 import { shouldHandleGlobalDrop } from '@/lib/dropOwnership'
 import type { Tab } from '@/lib/types'
@@ -125,6 +122,7 @@ export function useFileDrop(): FileDropResult {
       try {
         const routed = await routeGlobalDropFile(file)
         if (routed.kind === 'environment') {
+          const { parseInteropFile } = await import('@/lib/interopHub')
           const bundle = parseInteropFile(routed.name, routed.text)
           if (!bundle.environments.length) throw new Error('No environments found in env.yaml.')
           let added = 0
@@ -180,11 +178,15 @@ export function useFileDrop(): FileDropResult {
             useEnvironmentsStore.getState().save()
           }
           if (parsed.settings) { useSettingsStore.setState({ settings: parsed.settings as never, loaded: true }); useSettingsStore.getState().save() }
-          if (Array.isArray(parsed.flows)) await saveFlowDefinitions(parsed.flows)
+          if (Array.isArray(parsed.flows)) {
+            const { saveFlowDefinitions } = await import('@/lib/flowStorage')
+            await saveFlowDefinitions(parsed.flows)
+          }
           if (parsed.dockerLab) safeSetItem('adomnia.dockerlab.last', JSON.stringify(parsed.dockerLab))
           if (parsed.websocket) safeSetItem('adomnia.websocket', JSON.stringify(parsed.websocket))
           totalImported += (parsed.collections as unknown[]).length; workspaceImported = true
         } else {
+          const { importCollectionsFromText } = await import('@/lib/collectionTransfer')
           const result = importCollectionsFromText(text)
           result.collections.forEach((c) => importCollection(c))
           totalImported += result.collections.length

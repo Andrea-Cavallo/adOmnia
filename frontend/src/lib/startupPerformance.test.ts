@@ -5,6 +5,7 @@ afterEach(() => {
   performance.clearMarks()
   performance.clearMeasures()
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
 })
 
 describe('startup performance metrics', () => {
@@ -56,5 +57,24 @@ describe('startup performance metrics', () => {
     expect(performance.getEntriesByName('startup:renderer-to-react-mounted', 'measure')).toHaveLength(1)
     expect(performance.getEntriesByName('startup:settings-to-tabs-loaded', 'measure')).toHaveLength(1)
     expect(performance.getEntriesByName('startup:skeleton-visible', 'measure')).toHaveLength(1)
+  })
+
+  it('exposes only numeric startup diagnostics to local product checks', () => {
+    vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    const setAttribute = vi.fn()
+    vi.stubGlobal('document', { documentElement: { setAttribute } })
+
+    const durations = reportStartupPerformance()
+
+    expect(setAttribute).toHaveBeenCalledWith('data-startup-performance', JSON.stringify(durations))
+    const published = JSON.parse(setAttribute.mock.calls[0][1])
+    expect(Object.values(published).every((value) => typeof value === 'number')).toBe(true)
+  })
+
+  it('does not interrupt startup if the diagnostics target is unavailable', () => {
+    vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    vi.stubGlobal('document', { documentElement: { setAttribute: () => { throw new Error('Unavailable DOM') } } })
+
+    expect(() => reportStartupPerformance()).not.toThrow()
   })
 })

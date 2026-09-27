@@ -13,7 +13,6 @@ import { requestPersistentStorage } from '@/lib/storageMaintenance'
 import { GetStartupWindowChrome, LoadBootstrapState, LoadBootstrapStateV2 } from '@/wailsjs/go/main/App'
 import { markStartup, recordStartupBootstrap } from '@/lib/startupPerformance'
 import { scheduleStartupIdle } from '@/lib/startupIdle'
-import { restoreAIGateway } from '@/lib/aiEngine'
 
 async function timedStartupLoad(load: () => void | Promise<void>): Promise<number> {
   const startedAt = performance.now()
@@ -27,6 +26,7 @@ export interface AppInitResult {
   activeWindowChrome: WindowChromeMode | null
   commandPaletteOpen: boolean
   setCommandPaletteOpen: (open: boolean | ((prev: boolean) => boolean)) => void
+  firstStableFrame: boolean
 }
 
 export function useAppInit(): AppInitResult {
@@ -236,11 +236,13 @@ export function useAppInit(): AppInitResult {
 
   useEffect(() => {
     if (!settingsLoaded || !firstStableFrame || gatewayRestoredRef.current) return
+    const ai = useSettingsStore.getState().settings.ai
+    if (!ai.enabled || !ai.gatewayEnabled) return
     gatewayRestoredRef.current = true
     return scheduleStartupIdle(() => {
       // A locked Vault or unavailable provider must not delay the desktop
       // shell. The Settings status remains stopped and lets the user retry.
-      void restoreAIGateway().catch(() => undefined)
+      void import('@/lib/aiEngine').then(({ restoreAIGateway }) => restoreAIGateway()).catch(() => undefined)
     })
   }, [firstStableFrame, settingsLoaded])
 
@@ -300,5 +302,5 @@ export function useAppInit(): AppInitResult {
     setActiveRail,
   ])
 
-  return { activeWindowChrome, commandPaletteOpen, setCommandPaletteOpen }
+  return { activeWindowChrome, commandPaletteOpen, setCommandPaletteOpen, firstStableFrame }
 }

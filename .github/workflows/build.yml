@@ -44,6 +44,10 @@ jobs:
         working-directory: frontend
         run: npm ci && npm run build
 
+      - name: Startup bundle budget
+        working-directory: frontend
+        run: npm run check:startup
+
       - name: Go tests
         # Linux artifacts intentionally target Wails' GTK3/WebKitGTK 4.1
         # compatibility backend. Without this tag Wails defaults to GTK4 and

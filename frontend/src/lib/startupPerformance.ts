@@ -186,6 +186,15 @@ export function reportStartupPerformance(): StartupDurations {
   markStartup('startup:first-stable-frame')
   createStartupMeasures()
   const durations = getStartupDurations()
+  // Local, DOM-readable diagnostics let product smoke checks measure the
+  // first frame without accessing stores, credentials or a browser debugger.
+  try {
+    if (typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-startup-performance', JSON.stringify(durations))
+    }
+  } catch {
+    // Diagnostics must never prevent the first-frame notification.
+  }
   if (import.meta.env.DEV) console.info('[startup performance]', durations)
   return durations
 }

@@ -39,7 +39,10 @@ function manualChunks(id: string): string | undefined {
   if (/[\\/]node_modules[\\/](react|react-dom)[\\/]/.test(id)) return 'vendor-react'
   if (/[\\/]node_modules[\\/]lucide-react[\\/]/.test(id)) return 'vendor-icons'
   if (/[\\/]node_modules[\\/](ajv|ajv-formats)[\\/]/.test(id)) return 'vendor-schema'
-  if (/[\\/]node_modules[\\/](zustand|yaml|clsx|tailwind-merge|class-variance-authority)[\\/]/.test(id)) return 'vendor-misc'
+  // YAML is only needed for user-initiated imports/editors. Grouping it with
+  // Zustand used to pull the complete parser onto every startup path.
+  if (/[\\/]node_modules[\\/]yaml[\\/]/.test(id)) return 'vendor-yaml'
+  if (/[\\/]node_modules[\\/](zustand|clsx|tailwind-merge|class-variance-authority)[\\/]/.test(id)) return 'vendor-misc'
   return undefined
 }
 

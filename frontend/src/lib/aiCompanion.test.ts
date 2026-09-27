@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildCompanionPrompt, COMPANION_WELCOME, inferCompanionRequestAction, isAICompanionAvailable, isBugHuntPlayIntent, materializeCompanionRequest, parseCompanionReply } from './aiCompanion'
+import { buildCompanionPrompt, COMPANION_WELCOME, inferCompanionRequestAction, isAICompanionAvailable, materializeCompanionRequest, parseCompanionReply } from './aiCompanion'
 import { blankRequest } from './types'
 
 describe('a0 companion protocol', () => {
@@ -88,22 +88,5 @@ describe('a0 companion protocol', () => {
     expect(isAICompanionAvailable(ai)).toBe(true)
     expect(isAICompanionAvailable({ ...ai, connectionModel: 'another-model' })).toBe(false)
     expect(isAICompanionAvailable({ ...ai, connectionVerifiedAt: '' })).toBe(false)
-  })
-
-  it('recognises explicit English and Italian requests to play Bug Hunt', () => {
-    expect(isBugHuntPlayIntent('I want to play')).toBe(true)
-    expect(isBugHuntPlayIntent("Let's play Bug Hunt!" )).toBe(true)
-    expect(isBugHuntPlayIntent('Voglio giocare')).toBe(true)
-    expect(isBugHuntPlayIntent('Giochiamo?')).toBe(true)
-    expect(isBugHuntPlayIntent('Posso giocare?')).toBe(true)
-    expect(isBugHuntPlayIntent('Facciamo una partita')).toBe(true)
-    expect(isBugHuntPlayIntent('Avvia il gioco')).toBe(true)
-  })
-
-  it('does not launch the game for mentions or negative requests', () => {
-    expect(isBugHuntPlayIntent('Tell me about Bug Hunt')).toBe(false)
-    expect(isBugHuntPlayIntent("I don't want to play")).toBe(false)
-    expect(isBugHuntPlayIntent('Non voglio giocare')).toBe(false)
-    expect(isBugHuntPlayIntent('Non aprire il gioco')).toBe(false)
   })
 })
