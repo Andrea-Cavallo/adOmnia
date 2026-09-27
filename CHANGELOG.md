@@ -4,6 +4,26 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [0.9.33] - 2026-09-27
+
+### Added
+- **Agent actions:** AI Engine now has an explicit permission that lets a0 create and update supported workspace items when the user asks for a mutation.
+- **Root request creation:** structured `create-request` actions are validated, converted into native adOmnia requests, saved outside user collections and opened automatically for review.
+
+### Changed
+- **Useful instead of advisory:** when Agent actions are enabled, a0 is instructed to perform supported explicit requests instead of explaining which UI button the user should click.
+- **Refreshed product screenshots:** the dark, light and Git interface artwork used by the public project has been updated.
+
+### Fixed
+- **Greeting API command:** English and Italian requests to create a greeting API at workspace root have a deterministic local path, so the action still succeeds if a provider ignores the structured-response schema.
+- **Mutation safety:** action URLs, methods, names, headers and bodies are bounded and validated before they can reach the local workspace. Credentials remain excluded from the action protocol.
+
+### Verified
+- A live DeepSeek request using the environment credential completed successfully, and DeepSeek returned the expected `create-request` action for the Italian greeting prompt.
+- All frontend tests, the production frontend build, `go build ./...` and `go test ./...` pass.
+
+Full release notes: [v0.9.33](docs/releases/v0.9.33.md).
+
 ## [0.9.32] - 2026-09-27
 
 ### Added

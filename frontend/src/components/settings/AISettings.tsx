@@ -369,6 +369,13 @@ export function AISettings() {
         </div>
       </section>
 
+      <section className="grid grid-cols-[minmax(220px,1fr)_minmax(520px,2fr)] items-center border-b border-border-1 px-8 py-4 max-lg:grid-cols-1 max-lg:gap-3 max-lg:px-5">
+        <div><h3 className="text-sm font-semibold text-text-1">Agent actions</h3><p className="mt-1 text-[11px] text-text-4">Choose whether a0 may act on explicit workspace requests.</p></div>
+        <div className="rounded-lg border border-border-2 bg-surface-1 px-4">
+          <Toggle label="Allow a0 to create and update workspace items" desc="When enabled, explicit chat requests can create root API requests and open them for review. Credentials and secret values remain protected." checked={ai.workspaceActionsEnabled} onChange={(workspaceActionsEnabled) => updateAi({ workspaceActionsEnabled })} />
+        </div>
+      </section>
+
       <div className="grid min-h-0 flex-1 grid-cols-[290px_minmax(0,1fr)] max-lg:grid-cols-1">
         <aside className="border-r border-border-1 px-6 py-6 max-lg:border-b max-lg:border-r-0">
           <h3 className="text-base font-semibold text-text-1">Providers</h3><p className="mt-1 text-[11px] text-text-4">Choose a provider to configure.</p>

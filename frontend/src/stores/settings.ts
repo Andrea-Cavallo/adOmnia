@@ -125,6 +125,8 @@ export interface AppSettings {
     gatewayEnabled: boolean
     /** Stable loopback port used by OpenCode, Pi, and other local clients. */
     gatewayPort: number
+    /** Explicit permission for a0 to apply supported mutations to the local workspace. */
+    workspaceActionsEnabled: boolean
   }
   features: {
     pluginsEnabled: boolean
@@ -179,7 +181,7 @@ function migrateAIModel(ai: AppSettings['ai']): AppSettings['ai'] {
 }
 
 const defaultSettings: AppSettings = {
-  version: 10,
+  version: 11,
   general: {
     confirmBeforeClosingDirtyTabs: true,
     restoreTabsOnStartup: true,
@@ -268,6 +270,7 @@ const defaultSettings: AppSettings = {
     modelCatalogs: {},
     gatewayEnabled: false,
     gatewayPort: 11435,
+    workspaceActionsEnabled: false,
   },
   features: {
     pluginsEnabled: false,

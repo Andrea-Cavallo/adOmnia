@@ -1,11 +1,51 @@
 import { describe, expect, it } from 'vitest'
-import { buildCompanionPrompt, COMPANION_WELCOME, isAICompanionAvailable, isBugHuntPlayIntent, parseCompanionReply } from './aiCompanion'
+import { buildCompanionPrompt, COMPANION_WELCOME, inferCompanionRequestAction, isAICompanionAvailable, isBugHuntPlayIntent, materializeCompanionRequest, parseCompanionReply } from './aiCompanion'
 import { blankRequest } from './types'
 
 describe('a0 companion protocol', () => {
   it('uses a generic English welcome and requires English replies', () => {
     expect(COMPANION_WELCOME).toBe('Hi — what would you like to work on?')
     expect(buildCompanionPrompt('ciao', [], undefined).system).toContain('Always reply in English')
+  })
+
+  it('authorizes structured workspace mutations only when agent actions are enabled', () => {
+    const readOnly = buildCompanionPrompt('Create a greeting API.', [], undefined, false).system
+    const agent = buildCompanionPrompt('Create a greeting API.', [], undefined, true).system
+
+    expect(readOnly).toContain('Do not return workspaceActions')
+    expect(agent).toContain('create-request')
+    expect(agent).toContain('explicitly asks')
+  })
+
+  it('materializes a safe root request from a structured assistant action', () => {
+    const reply = parseCompanionReply(JSON.stringify({
+      reply: 'Created a greeting request.',
+      mood: 'happy',
+      headerSuggestions: [],
+      actions: [],
+      workspaceActions: [{
+        type: 'create-request',
+        name: 'Greeting API',
+        method: 'GET',
+        url: 'http://127.0.0.1:3000/hello',
+        headers: [{ key: 'Accept', value: 'application/json' }],
+      }],
+    }))
+
+    expect(reply.workspaceActions).toHaveLength(1)
+    const request = materializeCompanionRequest(reply.workspaceActions[0])
+    expect(request).toMatchObject({ name: 'Greeting API', method: 'GET', url: 'http://127.0.0.1:3000/hello' })
+    expect(request.headers[0]).toMatchObject({ key: 'Accept', value: 'application/json', enabled: true })
+  })
+
+  it('handles the explicit Italian greeting-request command without relying on the provider', () => {
+    expect(inferCompanionRequestAction('Creami una API che ti saluta, nuova fuori dalle collection')).toMatchObject({
+      type: 'create-request',
+      name: 'Greeting API',
+      method: 'GET',
+      url: 'http://127.0.0.1:3000/hello',
+    })
+    expect(inferCompanionRequestAction('Non creare una greeting API fuori dalle collection')).toBeNull()
   })
 
   it('accepts only safe, user-reviewable actions and headers', () => {

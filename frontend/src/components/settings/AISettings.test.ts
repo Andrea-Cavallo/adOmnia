@@ -17,4 +17,10 @@ describe('AI Engine settings layout', () => {
     expect(source).toContain('process variables → active adOmnia Environment')
     expect(source).toContain('standard `.env` files')
   })
+
+  it('offers an explicit agent-actions permission', () => {
+    expect(source).toContain('Agent actions')
+    expect(source).toContain('Allow a0 to create and update workspace items')
+    expect(source).toContain('workspaceActionsEnabled')
+  })
 })

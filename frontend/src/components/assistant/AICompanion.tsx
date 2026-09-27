@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, FileText, Loader2, Maximize2, Minimize2, Send, WandSparkles, X } from 'lucide-react'
 import * as AIEngine from '@/wailsjs/go/main/AIEngine'
 import { ensureAIConfigured } from '@/lib/aiEngine'
-import { buildCompanionPrompt, COMPANION_WELCOME, isAICompanionAvailable, isBugHuntPlayIntent, parseCompanionReply, type CompanionMood, type HeaderSuggestion } from '@/lib/aiCompanion'
+import { buildCompanionPrompt, COMPANION_WELCOME, inferCompanionRequestAction, isAICompanionAvailable, isBugHuntPlayIntent, materializeCompanionRequest, parseCompanionReply, type CompanionMood, type HeaderSuggestion } from '@/lib/aiCompanion'
 import { blankKVRow } from '@/lib/types'
 import { useAppStore } from '@/stores/app'
 import { useCollectionsStore } from '@/stores/collections'
@@ -35,9 +35,11 @@ function Sprite({ mood, loading, size, resting, greeting = false }: { mood: Comp
 export function AICompanion() {
   const ai = useSettingsStore((state) => state.settings.ai)
   const collections = useCollectionsStore((state) => state.collections)
+  const addQuickRequest = useCollectionsStore((state) => state.addQuickRequest)
   const activeTabId = useTabsStore((state) => state.activeTabId)
   const tabs = useTabsStore((state) => state.tabs)
   const updateRequest = useTabsStore((state) => state.updateRequest)
+  const openTab = useTabsStore((state) => state.openTab)
   const setActiveRail = useAppStore((state) => state.setActiveRail)
   const [open, setOpen] = useState(false)
   const [expanded, setExpanded] = useState(false)
@@ -101,14 +103,41 @@ export function AICompanion() {
       document.dispatchEvent(new Event('adomnia:open-bug-hunt'))
       return
     }
+    const localRequestAction = ai.workspaceActionsEnabled ? inferCompanionRequestAction(text) : null
+    if (localRequestAction) {
+      const request = materializeCompanionRequest(localRequestAction)
+      const collectionId = addQuickRequest(request)
+      openTab(request, collectionId)
+      setActiveRail('collections')
+      setMessages((current) => [...current, userMessage, {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        mood: 'happy',
+        text: 'Created the Greeting API at workspace root and opened it for review.',
+      }])
+      return
+    }
     setMessages((current) => [...current, userMessage])
     setLoading(true)
     try {
-      const prompt = buildCompanionPrompt(text, collections, activeTab?.request)
+      const prompt = buildCompanionPrompt(text, collections, activeTab?.request, ai.workspaceActionsEnabled)
       await ensureAIConfigured()
       const raw = await AIEngine.Complete(prompt.system, prompt.user, 1800)
       const reply = parseCompanionReply(raw)
-      setMessages((current) => [...current, { id: crypto.randomUUID(), role: 'assistant', text: reply.reply, mood: reply.mood, headers: reply.headerSuggestions, actions: reply.actions }])
+      let createdRequests = 0
+      if (ai.workspaceActionsEnabled) {
+        for (const action of reply.workspaceActions) {
+          const request = materializeCompanionRequest(action)
+          const collectionId = addQuickRequest(request)
+          openTab(request, collectionId)
+          createdRequests += 1
+        }
+      }
+      if (createdRequests > 0) setActiveRail('collections')
+      const actionResult = createdRequests > 0
+        ? `\n\nCreated ${createdRequests === 1 ? 'the request' : `${createdRequests} requests`} at workspace root and opened ${createdRequests === 1 ? 'it' : 'the last one'} for review.`
+        : ''
+      setMessages((current) => [...current, { id: crypto.randomUUID(), role: 'assistant', text: `${reply.reply}${actionResult}`, mood: reply.mood, headers: reply.headerSuggestions, actions: reply.actions }])
     } catch (error) {
       setMessages((current) => [...current, { id: crypto.randomUUID(), role: 'assistant', mood: 'concerned', text: `I couldn’t reach the configured AI provider. ${error instanceof Error ? error.message : String(error)}` }])
     } finally {

@@ -2,6 +2,12 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+## v0.9.33 release notes: a0 can act on the workspace
+
+See [the full v0.9.33 notes](releases/v0.9.33.md): explicit Agent actions,
+validated root request creation, a deterministic greeting-API command and a
+live DeepSeek verification of the complete structured-action response.
+
 ## v0.9.32 release notes: smarter AI setup and native DeepSeek
 
 See [the full v0.9.32 notes](releases/v0.9.32.md): native DeepSeek support,
