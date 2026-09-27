@@ -69,7 +69,7 @@ func (a *AIEngine) TestConnection(cfgJSON string) (string, error) {
 		return "", err
 	}
 	resp, err := e.Complete(context.Background(), ai.CompletionRequest{
-		UserPrompt: "Rispondi solo con: OK",
+		UserPrompt: "Reply only with: OK",
 		MaxTokens:  10,
 	})
 	if err != nil {
@@ -179,6 +179,11 @@ func gatewayUpstreamBaseURL(cfg ai.Config) (string, error) {
 			base = "https://api.openai.com/v1"
 		}
 		return base, nil
+	case ai.ProviderDeepSeek:
+		if base == "" {
+			base = "https://api.deepseek.com"
+		}
+		return base, nil
 	case ai.ProviderHuggingFace:
 		if base == "" {
 			base = "https://router.huggingface.co/v1"
@@ -190,7 +195,7 @@ func gatewayUpstreamBaseURL(cfg ai.Config) (string, error) {
 		}
 		return base, nil
 	default:
-		return "", fmt.Errorf("AI gateway requires Ollama, OpenAI, Hugging Face, or an OpenAI-compatible provider")
+		return "", fmt.Errorf("AI gateway requires Ollama, OpenAI, DeepSeek, Hugging Face, or an OpenAI-compatible provider")
 	}
 }
 

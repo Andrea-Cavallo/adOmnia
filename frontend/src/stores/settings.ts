@@ -6,7 +6,7 @@ import { normalizeRailItem } from '@/lib/navigation'
 import { updateUiSessionStartupPreference, type StartupBehavior } from '@/lib/uiSessionMemento'
 import { decodePersistedJSON } from '@/lib/persistedJson'
 
-export type AIProvider = 'anthropic' | 'amazon-bedrock' | 'openai' | 'gemini' | 'ollama' | 'huggingface' | 'openai-compatible'
+export type AIProvider = 'anthropic' | 'amazon-bedrock' | 'openai' | 'gemini' | 'deepseek' | 'ollama' | 'huggingface' | 'openai-compatible'
 export type AIUsageProfile = 'recommended' | 'quality' | 'efficient' | 'local'
 
 export interface AIModelSummary {

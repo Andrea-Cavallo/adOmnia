@@ -4,6 +4,22 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [0.9.32] - 2026-09-27
+
+### Added
+- **Native DeepSeek support:** DeepSeek is now a first-class AI provider with its official OpenAI-compatible endpoint, model discovery and curated V4 Pro and V4.1 Flash choices.
+- **Intelligent credential discovery:** adOmnia can resolve the selected provider's exact key from the process environment, saved adOmnia Environments, Vault references and standard workspace `.env` files without exposing or persisting the resolved secret in AI settings.
+
+### Changed
+- **AI Engine workspace:** provider selection, model search, connection testing and advanced configuration now use a responsive master-detail layout with cloud/local grouping, optimization presets and a persistent active-configuration footer.
+- **Generic English a0:** the assistant opens with a neutral English welcome, answers in English and never assumes or invents the user's name.
+
+### Fixed
+- **Credential fallback behavior:** automatic discovery preserves explicit provider settings and existing OpenAI-compatible environment behavior while checking only exact, provider-specific variable names.
+- **AI configuration clarity:** automatic credentials show their source rather than a secret value, and Cancel reliably restores the last saved provider configuration.
+
+Full release notes: [v0.9.32](docs/releases/v0.9.32.md).
+
 ## [0.9.31] - 2026-09-26
 
 ### Added

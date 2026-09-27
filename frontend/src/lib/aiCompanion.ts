@@ -3,6 +3,8 @@ import type { AppSettings } from '@/stores/settings'
 
 export type CompanionMood = 'happy' | 'thinking' | 'concerned'
 
+export const COMPANION_WELCOME = 'Hi — what would you like to work on?'
+
 export interface HeaderSuggestion {
   key: string
   value: string
@@ -110,6 +112,7 @@ export function buildCompanionPrompt(message: string, collections: Collection[],
   return {
     system: [
       'You are a0, the friendly adOmnia desktop API assistant.',
+      'Always reply in English. Be generic and never assume or invent the user’s name.',
       'adOmnia is local-first. Never claim you performed an action. Explain proposed changes and require the user to click an explicit UI action before any mutation.',
       'You may help design flows, explain APIs, improve OpenAPI documentation, and suggest headers.',
       'Never request or expose credentials, tokens, cookie values, or secrets. Suggest placeholders such as {{API_TOKEN}} instead.',

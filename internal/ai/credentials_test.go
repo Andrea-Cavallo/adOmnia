@@ -1,6 +1,8 @@
 package ai
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -90,5 +92,34 @@ func TestResolveEnvironmentCredentialsDelegatesBedrockToAWSChain(t *testing.T) {
 	}
 	if cfg.APIKey != "" || cfg.AWSProfile != "company-sso" {
 		t.Fatalf("Bedrock config was unexpectedly modified: %+v", cfg)
+	}
+}
+
+func TestResolveDotEnvCredentialUsesStandardFilesWithoutScanningArbitraryFiles(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, ".env.local"), []byte("DEEPSEEK_API_KEY=from-dotenv\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "notes.txt"), []byte("DEEPSEEK_API_KEY=must-not-be-read\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	value, source := resolveDotEnvCredential(dir, []string{"DEEPSEEK_API_KEY"})
+	if value != "from-dotenv" {
+		t.Fatalf("value = %q, want dotenv credential", value)
+	}
+	if !strings.HasSuffix(filepath.ToSlash(source), "/.env.local") {
+		t.Fatalf("source = %q, want .env.local", source)
+	}
+}
+
+func TestResolveEnvironmentCredentialsSupportsDeepSeek(t *testing.T) {
+	t.Setenv("DEEPSEEK_API_KEY", "deepseek-key")
+	cfg, err := ResolveEnvironmentCredentials(Config{Provider: ProviderDeepSeek, CredentialMode: CredentialModeAuto})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.APIKey != "deepseek-key" {
+		t.Fatalf("APIKey = %q, want DeepSeek environment key", cfg.APIKey)
 	}
 }

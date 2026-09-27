@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, FileText, Loader2, Maximize2, Minimize2, Send, WandSparkles, X } from 'lucide-react'
 import * as AIEngine from '@/wailsjs/go/main/AIEngine'
 import { ensureAIConfigured } from '@/lib/aiEngine'
-import { buildCompanionPrompt, isAICompanionAvailable, isBugHuntPlayIntent, parseCompanionReply, type CompanionMood, type HeaderSuggestion } from '@/lib/aiCompanion'
+import { buildCompanionPrompt, COMPANION_WELCOME, isAICompanionAvailable, isBugHuntPlayIntent, parseCompanionReply, type CompanionMood, type HeaderSuggestion } from '@/lib/aiCompanion'
 import { blankKVRow } from '@/lib/types'
 import { useAppStore } from '@/stores/app'
 import { useCollectionsStore } from '@/stores/collections'
@@ -21,7 +21,7 @@ type ChatMessage = {
   actions?: Array<'open-flow' | 'open-docs'>
 }
 
-const WELCOME: ChatMessage = { id: 'welcome', role: 'assistant', mood: 'happy', text: 'Ciao Andrea, cosa facciamo?' }
+const WELCOME: ChatMessage = { id: 'welcome', role: 'assistant', mood: 'happy', text: COMPANION_WELCOME }
 
 function Sprite({ mood, loading, size, resting, greeting = false }: { mood: CompanionMood; loading: boolean; size: number; resting: boolean; greeting?: boolean }) {
   const frame = loading || mood === 'thinking' ? 1 : mood === 'concerned' ? 2 : 0
@@ -92,12 +92,11 @@ export function AICompanion() {
     setInput('')
     const userMessage: ChatMessage = { id: crypto.randomUUID(), role: 'user', text }
     if (isBugHuntPlayIntent(text)) {
-      const italian = /\b(?:voglio|vorrei|giochiamo|giocare|gioca|gioco|avvia|apri|inizia|lancia|fammi|lasciami)\b/i.test(text)
       setMessages((current) => [...current, userMessage, {
         id: crypto.randomUUID(),
         role: 'assistant',
         mood: 'happy',
-        text: italian ? 'Certo — avvio Bug Hunt.' : 'Sure — launching Bug Hunt.',
+        text: 'Sure — launching Bug Hunt.',
       }])
       document.dispatchEvent(new Event('adomnia:open-bug-hunt'))
       return

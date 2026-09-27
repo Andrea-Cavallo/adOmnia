@@ -15,6 +15,7 @@ func TestBuildProvider_KnownProviders(t *testing.T) {
 		{"amazon-bedrock", Config{Provider: ProviderAmazonBedrock, Model: "anthropic.claude-opus-5-5", AWSRegion: "us-east-1"}, "amazon-bedrock"},
 		{"openai", Config{Provider: ProviderOpenAI, Model: "gpt-6-sol", APIKey: "k"}, "openai"},
 		{"gemini", Config{Provider: ProviderGemini, Model: "gemini-3.5-flash", APIKey: "k"}, "gemini"},
+		{"deepseek", Config{Provider: ProviderDeepSeek, Model: "deepseek-flash", APIKey: "k"}, "openai"},
 		{"ollama", Config{Provider: ProviderOllama, Model: "qwen3.5"}, "ollama"},
 		{"huggingface", Config{Provider: ProviderHuggingFace, Model: "openai/gpt-oss-120b", APIKey: "k"}, "openai"},
 		{"openai-compatible", Config{Provider: ProviderOpenAICompatible, Model: "local-model"}, "openai"},

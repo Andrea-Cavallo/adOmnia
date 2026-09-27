@@ -1,12 +1,14 @@
 import * as AIEngine from '@/wailsjs/go/main/AIEngine'
 import { resolveSecret } from '@/lib/vaultRefs'
 import { useSettingsStore } from '@/stores/settings'
+import { useEnvironmentsStore } from '@/stores/environments'
+import { findAIWorkspaceCredential } from '@/lib/aiCredentials'
 
 const ENVIRONMENT_CREDENTIAL_MISSING = 'AI environment credential is missing'
 
 function configJSON(apiKey: string, credentialMode: 'auto' | 'vault' | 'environment'): string {
   const ai = useSettingsStore.getState().settings.ai
-  const baseURL = ['amazon-bedrock', 'ollama', 'huggingface', 'openai-compatible'].includes(ai.provider) ? ai.baseURL : ''
+  const baseURL = ['amazon-bedrock', 'deepseek', 'ollama', 'huggingface', 'openai-compatible'].includes(ai.provider) ? ai.baseURL : ''
   return JSON.stringify({
     provider: ai.provider,
     model: ai.model,
@@ -30,7 +32,10 @@ async function buildVaultConfig(): Promise<string> {
 export async function buildAIConfig(): Promise<string> {
   const ai = useSettingsStore.getState().settings.ai
   if (ai.credentialMode === 'vault') return buildVaultConfig()
-  return configJSON('', ai.credentialMode)
+  const environmentState = useEnvironmentsStore.getState()
+  const workspaceCredential = findAIWorkspaceCredential(ai.provider, environmentState.environments, environmentState.activeEnvId)
+  const apiKey = workspaceCredential ? await resolveSecret(workspaceCredential.value) : ''
+  return configJSON(apiKey, ai.credentialMode)
 }
 
 /**

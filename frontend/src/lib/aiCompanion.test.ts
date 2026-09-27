@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { buildCompanionPrompt, isAICompanionAvailable, isBugHuntPlayIntent, parseCompanionReply } from './aiCompanion'
+import { buildCompanionPrompt, COMPANION_WELCOME, isAICompanionAvailable, isBugHuntPlayIntent, parseCompanionReply } from './aiCompanion'
 import { blankRequest } from './types'
 
 describe('a0 companion protocol', () => {
+  it('uses a generic English welcome and requires English replies', () => {
+    expect(COMPANION_WELCOME).toBe('Hi — what would you like to work on?')
+    expect(buildCompanionPrompt('ciao', [], undefined).system).toContain('Always reply in English')
+  })
+
   it('accepts only safe, user-reviewable actions and headers', () => {
     const reply = parseCompanionReply(JSON.stringify({
       reply: 'Add correlation and an auth placeholder.',

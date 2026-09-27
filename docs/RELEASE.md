@@ -2,6 +2,12 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+## v0.9.32 release notes: smarter AI setup and native DeepSeek
+
+See [the full v0.9.32 notes](releases/v0.9.32.md): native DeepSeek support,
+automatic provider credential discovery, a generic English a0 conversation and
+a responsive master-detail AI Engine settings experience.
+
 ## v0.9.31 release notes: a living Hub, deliberate play, and focused workspaces
 
 See [the full v0.9.31 notes](releases/v0.9.31.md): a full-body reactive a0

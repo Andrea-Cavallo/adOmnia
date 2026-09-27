@@ -233,7 +233,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
     { id: 'shortcuts', label: s.sections.shortcuts, icon: <Keyboard size={14} />, terms: searchable(s.shortcuts) },
     { id: 'about', label: s.sections.about, icon: <Info size={14} />, terms: searchable(s.about) },
     { id: 'developer', label: s.sections.developer, icon: <Bug size={14} />, terms: searchable(s.developer) },
-    { id: 'ai', label: 'AI Engine', icon: <Sparkles size={14} />, terms: 'ai engine provider openai anthropic gemini ollama model api key' },
+    { id: 'ai', label: 'AI Engine', icon: <Sparkles size={14} />, terms: 'ai engine provider openai anthropic gemini deepseek ollama model api key' },
   ]
 
   const normalizedSearch = search.trim().toLowerCase()

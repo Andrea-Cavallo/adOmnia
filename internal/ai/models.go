@@ -59,6 +59,11 @@ func DiscoverModels(ctx context.Context, cfg Config, query string) ([]ModelInfo,
 			base = "https://api.openai.com/v1"
 		}
 		endpoint = base + "/models"
+	case ProviderDeepSeek:
+		if base == "" {
+			base = "https://api.deepseek.com"
+		}
+		endpoint = base + "/models"
 	case ProviderAnthropic:
 		if base == "" {
 			base = "https://api.anthropic.com/v1"
@@ -169,10 +174,11 @@ func DiscoverModels(ctx context.Context, cfg Config, query string) ([]ModelInfo,
 
 	var payload struct {
 		Data []struct {
-			ID          string `json:"id"`
-			DisplayName string `json:"display_name"`
-			OwnedBy     string `json:"owned_by"`
-			Providers   []struct {
+			ID            string `json:"id"`
+			DisplayName   string `json:"display_name"`
+			OwnedBy       string `json:"owned_by"`
+			ContextWindow int    `json:"context_window"`
+			Providers     []struct {
 				Status  string `json:"status"`
 				Context int    `json:"context_length"`
 			} `json:"providers"`
@@ -186,7 +192,7 @@ func DiscoverModels(ctx context.Context, cfg Config, query string) ([]ModelInfo,
 		if item.ID == "" {
 			continue
 		}
-		contextSize := 0
+		contextSize := item.ContextWindow
 		for _, provider := range item.Providers {
 			if provider.Status == "live" && provider.Context > contextSize {
 				contextSize = provider.Context

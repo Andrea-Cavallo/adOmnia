@@ -7,6 +7,27 @@ import (
 	"testing"
 )
 
+func TestDiscoverDeepSeekModelsUsesNativeEndpointAndBearerToken(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/models" {
+			t.Fatalf("path = %q, want /models", r.URL.Path)
+		}
+		if got := r.Header.Get("Authorization"); got != "Bearer deepseek-key" {
+			t.Fatalf("Authorization = %q", got)
+		}
+		_, _ = w.Write([]byte(`{"data":[{"id":"deepseek-flash","owned_by":"deepseek","name":"DeepSeek V4.1 Flash","context_window":1048576}]}`))
+	}))
+	defer server.Close()
+
+	models, err := DiscoverModels(context.Background(), Config{Provider: ProviderDeepSeek, APIKey: "deepseek-key", BaseURL: server.URL}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(models) != 1 || models[0].ID != "deepseek-flash" || models[0].Context != 1048576 {
+		t.Fatalf("models = %+v", models)
+	}
+}
+
 func TestDiscoverModelsOllama(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/tags" {
