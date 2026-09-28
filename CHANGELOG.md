@@ -6,6 +6,15 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.9.34] - 2026-09-28
+
+### Added
+- **AI product model:** a0 now consults a compact capability map of every adOmnia tool (HTTP collections, Mock Server, Broker Studio, Database Studio, MCP, browser/HAR debuggers and more), so it reasons about the product that actually exists instead of inventing generic API-tool features.
+- **AI mock generation:** with Agent actions enabled, a0 can generate local Mock Server endpoints from a natural-language description, convert them into the reviewed persisted shape, and open them for review.
+- **AI panel navigation:** a0 can return validated `open-panel` actions to open or switch to a specific tool using an exact panel id from the capability map.
+- **Multilingual assistant:** a0 now replies in the same language as the user instead of forcing English.
+- **Conversation context:** a bounded slice of the recent conversation is included in the prompt so follow-up requests stay coherent.
+
 ### Changed
 - **Leaner startup:** the fresh Hub loads about 30.5% less initial JavaScript (823,684 → 572,407 uncompressed bytes). Sidebar, command palette, AI assistant, import parsers and closed environment/hosts editors load only when relevant.
 - **AI startup:** an unconfigured assistant no longer loads its provider runtime. A verified assistant mounts after the first stable frame, while early Hub clicks are retained during its asynchronous load. Gateway restoration remains deferred and runs only when enabled.
@@ -21,9 +30,11 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - The Hub mascot, a0 AI assistant, workspace actions, API tools, Database Studio and Broker Studio remain available. Workspace data and settings are unchanged; existing local game records are not erased.
 
 ### Verified
-- 557 frontend tests pass, together with TypeScript and the production frontend build. The production browser smoke check covers the Hub, command palette, API sidebar, environment and hosts editors, and the AI connection gate.
+- 563 frontend tests pass, together with TypeScript and the production frontend build. The production browser smoke check covers the Hub, command palette, API sidebar, environment and hosts editors, and the AI connection gate.
 - `go build ./...`, `go test ./...` and the canonical Windows Wails production build pass. The separately extracted game retains its source and artwork outside the app.
 - Browser warm-cache first-frame samples remain similar (median 83.8 ms before, 80.9 ms after). These are renderer diagnostics, not a measurement of full native Windows startup; see [the performance guide](docs/PERFORMANCE.md).
+
+Full release notes: [v0.9.34](docs/releases/v0.9.34.md).
 
 ## [0.9.33] - 2026-09-27
 

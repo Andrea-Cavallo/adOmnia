@@ -2,22 +2,21 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
-## Unreleased: focused developer toolbox
+## Unreleased
 
-a0: Bug Hunt has been extracted into a separate local project. Game source,
-tests, artwork and development references are preserved outside adOmnia;
-the game overlay, preview pages and chatbot launch command are no longer
-part of the app. The Hub mascot and AI assistant remain available, as do
-API, database and broker workflows. No workspace or settings migration is
-required, and existing local game records are left untouched.
+## v0.9.34 release notes: a0 knows the product and builds mocks
 
-Startup also loads fewer unrelated tools: the fresh Hub's static JavaScript
-graph falls from 823,684 to 572,407 uncompressed bytes. Closed editors, the
-command palette, import parsers and the unconfigured AI companion are deferred;
-restored API workspaces retain early sidebar/workspace preloading. A startup
-budget runs in CI to prevent these optional tools returning to the entry graph.
-See [the performance guide](PERFORMANCE.md) for measurements and their limits.
-The README has been reorganized around product capabilities and real workflows.
+See [the full v0.9.34 notes](releases/v0.9.34.md): a0 gains a real product
+capability map, can generate local Mock Server endpoints and open panels from
+chat, and replies in the user's language with bounded conversation context.
+
+The release also lands the leaner startup and the extraction of a0: Bug Hunt
+into a separate local project. The fresh Hub's static JavaScript graph falls
+from 823,684 to 572,407 uncompressed bytes; closed editors, the command
+palette, import parsers and the unconfigured AI companion are deferred, with a
+CI startup budget to keep them out of the entry graph. Game source, tests and
+artwork are preserved outside adOmnia, and no workspace or settings migration
+is required.
 
 ## v0.9.33 release notes: a0 can act on the workspace
 
