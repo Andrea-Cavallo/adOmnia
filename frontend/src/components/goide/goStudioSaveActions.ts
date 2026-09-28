@@ -6,6 +6,7 @@ import { useGoIDELspStore } from '@/stores/goideLsp'
 import { activeGoStudioEditor } from './goStudioEditorRegistry'
 import { toMonacoEdits } from './goStudioLanguageFeatures'
 import { currentGoStudioDocumentVersion, flushGoStudioDocument } from './goStudioLspSync'
+import { editorModelUri, fileUri } from './goStudioModelUri'
 
 /** Un salvataggio non deve mai restare bloccato da gopls: oltre questo limite si salva senza azioni. */
 const SAVE_ACTION_TIMEOUT_MS = 2_500
@@ -39,14 +40,14 @@ export async function runSaveActions(documentId: string): Promise<void> {
   const { formatOnSave, organizeImportsOnSave } = lsp.preferences
   if ((!formatOnSave && !organizeImportsOnSave) || lsp.status[document.document.sessionId]?.state !== 'ready') return
   const editor = activeGoStudioEditor()
-  const uri = monaco.Uri.parse(document.document.uri).toString()
-  if (!editor || editor.getModel()?.uri.toString() !== uri) return
+  const uri = fileUri(document.document.uri)
+  if (!editor || editor.getModel()?.uri.toString() !== editorModelUri(document.document)) return
   const sessionId = document.document.sessionId
 
   if (organizeImportsOnSave) {
     await flushGoStudioDocument(documentId)
     const change = await withTimeout(requestOrganizeImports(sessionId, documentId))
-    const file = change?.files.find((item) => monaco.Uri.parse(item.uri).toString() === uri)
+    const file = change?.files.find((item) => fileUri(item.uri) === uri)
     if (file) applyToEditor(editor, file.edits)
   }
   if (formatOnSave) {

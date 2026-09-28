@@ -3,6 +3,7 @@ import type { GoIDEEditorTextEdit, GoIDEWorkspaceChange } from '@/lib/goide-lsp-
 import { useGoIDEStore } from '@/stores/goide'
 import { useGoIDELspStore } from '@/stores/goideLsp'
 import { activeGoStudioEditor } from './goStudioEditorRegistry'
+import { editorModelUri } from './goStudioModelUri'
 
 function editsFor(edits: GoIDEEditorTextEdit[]): monaco.editor.IIdentifiedSingleEditOperation[] {
   return edits.map((edit) => ({
@@ -38,10 +39,10 @@ export async function applyGoStudioWorkspaceChange(change: GoIDEWorkspaceChange,
     return
   }
   const editor = activeGoStudioEditor()
-  const activeUri = editor?.getModel()?.uri.toString()
+  const activeModelUri = editor?.getModel()?.uri.toString()
   change.files.forEach((file, index) => {
     const document = documents[index]!
-    if (editor && activeUri === monaco.Uri.parse(file.uri).toString()) {
+    if (editor && activeModelUri === editorModelUri(document.document)) {
       editor.pushUndoStop()
       editor.executeEdits('go-studio', editsFor(file.edits))
       editor.pushUndoStop()

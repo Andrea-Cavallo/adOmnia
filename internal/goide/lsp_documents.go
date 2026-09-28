@@ -182,3 +182,32 @@ func editorEdits(edits []lsp.TextEdit) []EditorTextEdit {
 	}
 	return result
 }
+
+// NotifyWatchedFiles comunica a gopls i file Go cambiati su disco che non sono aperti nell'editor.
+func (m *LSPManager) NotifyWatchedFiles(sessionID SessionID, changes []DiskChange) {
+	state, ok := m.get(sessionID)
+	if !ok {
+		return
+	}
+	state.mu.Lock()
+	process := state.process
+	ready := state.status.State == LanguageServerReady
+	events := make([]map[string]any, 0, len(changes))
+	for _, change := range changes {
+		uri := fileURI(change.Path)
+		if _, open := state.byURI[uri]; open || !isGoplsWatchedFile(change.Path) {
+			continue
+		}
+		events = append(events, map[string]any{"uri": uri, "type": int(change.Kind)})
+	}
+	state.mu.Unlock()
+	if process == nil || !ready || len(events) == 0 {
+		return
+	}
+	_ = process.conn.Notify("workspace/didChangeWatchedFiles", map[string]any{"changes": events})
+}
+
+func isGoplsWatchedFile(path string) bool {
+	base := strings.ToLower(filepath.Base(path))
+	return strings.HasSuffix(base, ".go") || base == "go.mod" || base == "go.sum" || base == "go.work" || base == "go.work.sum"
+}

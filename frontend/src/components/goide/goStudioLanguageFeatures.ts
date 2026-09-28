@@ -20,6 +20,7 @@ import { useGoIDELspStore } from '@/stores/goideLsp'
 import { currentGoStudioDocumentVersion, flushGoStudioDocument } from './goStudioLspSync'
 import { applyGoStudioWorkspaceChange } from './goStudioWorkspaceEdits'
 import { lintActionsFor } from './goStudioLintActions'
+import { editorModelUri, fileUri } from './goStudioModelUri'
 
 const LANGUAGE = 'go'
 const MARKER_OWNER = 'gopls'
@@ -53,14 +54,10 @@ export function toMonacoEdits(edits: GoIDEEditorTextEdit[]): monaco.editor.IIden
   return edits.map((edit) => ({ range: toMonacoRange(edit.range), text: edit.text, forceMoveMarkers: true }))
 }
 
-function normalizeUri(uri: string): string {
-  return monaco.Uri.parse(uri).toString()
-}
-
 /** Trova il documento Go Studio associato a un modello Monaco. */
 export function documentForModel(model: monaco.editor.ITextModel): GoIDEEditorDocument | null {
   const target = model.uri.toString()
-  return useGoIDEStore.getState().documents.find((item) => normalizeUri(item.document.uri) === target) ?? null
+  return useGoIDEStore.getState().documents.find((item) => editorModelUri(item.document) === target) ?? null
 }
 
 function languageServerReady(sessionId: string): boolean {
@@ -241,7 +238,7 @@ function registerProviders(): void {
   monaco.languages.registerCodeActionProvider(LANGUAGE, {
     provideCodeActions(model, range) {
       const document = documentForModel(model)
-      const report = document ? lintReportFor(document.document.sessionId, model.uri.toString()) : null
+      const report = document ? lintReportFor(document.document.sessionId, fileUri(document.document.uri)) : null
       if (!document || !report) return { actions: [], dispose: () => undefined }
       const actions = lintActionsFor(report.diagnostics, range.startLineNumber, range.endLineNumber, (line) => line <= model.getLineCount() ? model.getLineContent(line) : '', !document.dirty)
       return {
@@ -296,28 +293,26 @@ function markersFor(report: GoIDEDiagnosticsReport): monaco.editor.IMarkerData[]
   }))
 }
 
-function reportsByUri(sessions: Array<Record<string, GoIDEDiagnosticsReport>>): Map<string, GoIDEDiagnosticsReport> {
-  const byUri = new Map<string, GoIDEDiagnosticsReport>()
-  for (const reports of sessions) {
-    for (const report of Object.values(reports)) byUri.set(normalizeUri(report.uri), report)
-  }
-  return byUri
+function reportFor(reports: Record<string, GoIDEDiagnosticsReport> | undefined, uri: string): GoIDEDiagnosticsReport | null {
+  return Object.values(reports ?? {}).find((report) => fileUri(report.uri) === uri) ?? null
 }
 
 function lintReportFor(sessionId: string, uri: string): GoIDEDiagnosticsReport | null {
-  const reports = useGoIDELspStore.getState().lint[sessionId]?.reports ?? {}
-  return Object.values(reports).find((report) => normalizeUri(report.uri) === uri) ?? null
+  return reportFor(useGoIDELspStore.getState().lint[sessionId]?.reports, uri)
 }
 
 /** gopls e linter usano owner distinti: ognuno aggiorna solo i propri marker. */
 function applyMarkers(): void {
+  // Ogni modello riceve solo la diagnostica della propria sessione: nessun marker attraversa i progetti.
   const state = useGoIDELspStore.getState()
-  const gopls = reportsByUri(Object.values(state.diagnostics))
-  const lint = reportsByUri(Object.values(state.lint).map((item) => item.reports))
   for (const model of monaco.editor.getModels()) {
-    const uri = model.uri.toString()
-    monaco.editor.setModelMarkers(model, MARKER_OWNER, gopls.has(uri) ? markersFor(gopls.get(uri)!) : [])
-    monaco.editor.setModelMarkers(model, LINT_MARKER_OWNER, lint.has(uri) ? markersFor(lint.get(uri)!) : [])
+    const document = documentForModel(model)
+    const sessionId = document?.document.sessionId
+    const uri = document ? fileUri(document.document.uri) : ''
+    const gopls = sessionId ? reportFor(state.diagnostics[sessionId], uri) : null
+    const lint = sessionId ? reportFor(state.lint[sessionId]?.reports, uri) : null
+    monaco.editor.setModelMarkers(model, MARKER_OWNER, gopls ? markersFor(gopls) : [])
+    monaco.editor.setModelMarkers(model, LINT_MARKER_OWNER, lint ? markersFor(lint) : [])
   }
 }
 

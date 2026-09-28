@@ -37,11 +37,14 @@ export function GoStudioTerminalPanel({ session, visible }: GoStudioTerminalPane
 
   useEffect(() => {
     let cancelled = false
+    // Il pannello resta montato passando fra progetti: lo stato del progetto precedente non va riusato.
+    setTerminals([])
+    setActiveId(null)
     void listGoIDETerminals(session.id)
       .then((existing) => {
         if (cancelled) return
         setTerminals(existing)
-        setActiveId((current) => current ?? existing[0]?.id ?? null)
+        setActiveId((current) => (current && existing.some((item) => item.id === current) ? current : existing[0]?.id ?? null))
         setLoaded(true)
       })
       .catch((reason) => !cancelled && setError(errorText(reason)))

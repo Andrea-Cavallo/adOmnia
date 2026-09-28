@@ -7,6 +7,7 @@ import { registerGoStudioEditor } from './goStudioEditorRegistry'
 import { installGoStudioEditorActions } from './goStudioEditorActions'
 import { documentForModel, registerGoStudioLanguageFeatures } from './goStudioLanguageFeatures'
 import { registerGoStudioCodeLens } from './goStudioCodeLens'
+import { editorModelUri } from './goStudioModelUri'
 import { installRecursiveCallMarkers, registerGoStudioSemanticFeatures } from './goStudioSemanticFeatures'
 import { useGoIDELspStore } from '@/stores/goideLsp'
 import { startGoStudioLspSync } from './goStudioLspSync'
@@ -112,7 +113,7 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
 
   return (
     <Editor
-      path={document.document.uri}
+      path={editorModelUri(document.document)}
       language={document.document.language}
       value={document.buffer}
       theme={theme}

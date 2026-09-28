@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, memo } from 'react'
 import { AlertCircle, Copy, ListTree, RefreshCw, Search, SearchCode, Square, SquareTerminal, TerminalSquare } from 'lucide-react'
 import { Clipboard as WailsClipboard } from '@wailsio/runtime'
 import { useGoIDEStore, type GoIDEConsoleChunk } from '@/stores/goide'
@@ -95,7 +95,8 @@ function statusClass(status: string): string {
   return 'text-text-3'
 }
 
-export function GoStudioRunPanel({ session }: GoStudioRunPanelProps) {
+/** Memoizzato: il pannello genitore si ridisegna a ogni tasto, questo solo quando cambia la sessione. */
+export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session }: GoStudioRunPanelProps) {
   const sessionId = session.id
   const view = useGoIDELspStore((state) => state.toolWindow)
   const showToolWindow = useGoIDELspStore((state) => state.showToolWindow)
@@ -185,4 +186,4 @@ export function GoStudioRunPanel({ session }: GoStudioRunPanelProps) {
       <div className="min-h-0 flex-1" style={{ display: view === 'terminal' ? 'block' : 'none' }}><GoStudioTerminalPanel session={session} visible={view === 'terminal'} /></div>
     </section>
   )
-}
+})

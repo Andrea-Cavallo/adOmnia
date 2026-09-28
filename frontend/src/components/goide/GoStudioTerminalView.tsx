@@ -42,15 +42,20 @@ export function GoStudioTerminalView({ terminalId, active, onExit }: GoStudioTer
     terminal.current = instance
     fit.current = fitAddon
 
+    // Un pannello nascosto misura 0×0: adattarsi a quella misura restringerebbe la shell a poche colonne.
+    const measurable = () => !!host.current && host.current.clientWidth > 0 && host.current.clientHeight > 0
     const sendResize = () => {
+      if (!measurable()) return false
       try {
         fitAddon.fit()
       } catch {
-        return
+        return false
       }
       void resizeGoIDETerminal(terminalId, instance.cols, instance.rows).catch(() => undefined)
+      // Tornando visibile con le stesse dimensioni xterm non ridisegna da solo.
+      instance.refresh(0, instance.rows - 1)
+      return true
     }
-    sendResize()
 
     const inputHandler = instance.onData((data) => {
       void writeGoIDETerminal(terminalId, data).catch((reason) => {
@@ -58,18 +63,24 @@ export function GoStudioTerminalView({ terminalId, active, onExit }: GoStudioTer
       })
     })
 
-    // La cronologia arriva dal bus: il primo prompt della shell non va perso anche se precede il mount.
-    const unsubscribe = attachTerminal(terminalId, (data) => instance.write(data), () => {
-      instance.writeln('\r\n\x1b[90m[process exited]\x1b[0m')
-      onExit(terminalId)
-    })
+    // La cronologia arriva dal bus e si riproduce solo quando la vista ha una misura reale,
+    // così il testo non viene impaginato a due colonne mentre il pannello è nascosto.
+    let unsubscribe: (() => void) | null = null
+    const attachWhenMeasurable = () => {
+      if (!sendResize() || unsubscribe) return
+      unsubscribe = attachTerminal(terminalId, (data) => instance.write(data), () => {
+        instance.writeln('\r\n\x1b[90m[process exited]\x1b[0m')
+        onExit(terminalId)
+      })
+    }
+    attachWhenMeasurable()
 
-    const observer = new ResizeObserver(sendResize)
+    const observer = new ResizeObserver(attachWhenMeasurable)
     observer.observe(host.current)
 
     return () => {
       observer.disconnect()
-      unsubscribe()
+      unsubscribe?.()
       inputHandler.dispose()
       // xterm accoda in open() un timer sul viewport: smontare nello stesso tick lo farebbe girare su un'istanza già distrutta.
       setTimeout(() => instance.dispose(), 0)
@@ -86,7 +97,8 @@ export function GoStudioTerminalView({ terminalId, active, onExit }: GoStudioTer
 
   useEffect(() => {
     if (!active || !terminal.current || !fit.current) return
-    // Il pannello nascosto ha dimensioni nulle: al ritorno va rimisurato.
+    // Il pannello nascosto ha dimensioni nulle: si rimisura solo quando è visibile (poi ci pensa il ResizeObserver).
+    if (!host.current || host.current.clientWidth === 0) return
     try {
       fit.current.fit()
       void resizeGoIDETerminal(terminalId, terminal.current.cols, terminal.current.rows).catch(() => undefined)

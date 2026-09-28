@@ -20,6 +20,21 @@ function splitPatterns(value: string): string[] {
   return value.split(',').map((item) => item.trim()).filter(Boolean)
 }
 
+/** Righe disegnate subito: il resto arriva con “Show all”, così una ricerca ampia non blocca l'interfaccia. */
+const MAX_RENDERED_MATCHES = 200
+
+/** Tiene i primi limit risultati mantenendo il raggruppamento per file. */
+export function limitMatches(groups: Array<[string, GoIDESearchMatch[]]>, limit: number): Array<[string, GoIDESearchMatch[]]> {
+  const visible: Array<[string, GoIDESearchMatch[]]> = []
+  let remaining = limit
+  for (const [file, matches] of groups) {
+    if (remaining <= 0) break
+    visible.push([file, matches.slice(0, remaining)])
+    remaining -= matches.length
+  }
+  return visible
+}
+
 function groupMatches(matches: GoIDESearchMatch[]): Array<[string, GoIDESearchMatch[]]> {
   const groups = new Map<string, GoIDESearchMatch[]>()
   for (const match of matches) groups.set(match.relativePath, [...(groups.get(match.relativePath) ?? []), match])
@@ -47,6 +62,10 @@ export function GoStudioFindInFiles({ sessionId }: GoStudioFindInFilesProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const running = useRef<CancellablePromise<GoIDESearchResult> | null>(null)
   const groups = useMemo(() => groupMatches(result?.matches ?? []), [result])
+  const [showAll, setShowAll] = useState(false)
+  useEffect(() => { setShowAll(false) }, [result])
+  const visibleGroups = useMemo(() => (showAll ? groups : limitMatches(groups, MAX_RENDERED_MATCHES)), [groups, showAll])
+  const hiddenMatches = (result?.matches.length ?? 0) - visibleGroups.reduce((total, [, matches]) => total + matches.length, 0)
 
   useEffect(() => {
     if (!findRequest) return
@@ -90,7 +109,7 @@ export function GoStudioFindInFiles({ sessionId }: GoStudioFindInFilesProps) {
         {error && <p className="p-3 text-[10px] text-danger">{error}</p>}
         {!error && result && <div className="px-2 pb-1 text-[10px] text-text-4">{result.matches.length} match{result.matches.length === 1 ? '' : 'es'} in {groups.length} file{groups.length === 1 ? '' : 's'} · {result.filesScanned} files scanned{result.truncated ? ' · results truncated' : ''}</div>}
         {!error && !result && <p className="p-3 text-[10px] text-text-4">Searches every text file in the project. .git, vendor, node_modules and build output are skipped.</p>}
-        {groups.map(([file, matches]) => (
+        {visibleGroups.map(([file, matches]) => (
           <div key={file}>
             <div className="flex h-6 items-center gap-1.5 px-2 font-medium text-text-2"><GoGopherIcon size={12} /><span className="truncate">{file}</span><span className="text-[9px] text-text-4">{matches.length}</span></div>
             {matches.map((match) => (
@@ -101,6 +120,11 @@ export function GoStudioFindInFiles({ sessionId }: GoStudioFindInFilesProps) {
             ))}
           </div>
         ))}
+        {hiddenMatches > 0 && (
+          <button type="button" onClick={() => setShowAll(true)} className="mx-2 my-1 rounded px-2 py-1 text-[10px] text-accent hover:bg-accent/10">
+            Show all {result?.matches.length} matches ({hiddenMatches} more)
+          </button>
+        )}
       </div>
     </div>
   )

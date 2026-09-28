@@ -1,13 +1,14 @@
 import { AlertCircle, AlertTriangle, Loader2, ScanSearch, Sparkles } from 'lucide-react'
 import type { GoIDEExecution, GoIDESession, GoIDEToolchainInfo } from '@/lib/goide-api'
-import type { GoIDEEditorDocument } from '@/stores/goide'
+import { useShallow } from 'zustand/react/shallow'
+import { useGoStudioCursorStore } from './goStudioCursor'
 import { diagnosticCounts, mergedReports, useGoIDELspStore } from '@/stores/goideLsp'
 
 interface GoStudioStatusBarProps {
   session: GoIDESession
   toolchain: GoIDEToolchainInfo | null
-  document: GoIDEEditorDocument | null
-  cursor: { line: number; column: number }
+  /** Linguaggio e sola lettura del file attivo; null senza file aperti. */
+  documentInfo: { language: string; readOnly: boolean } | null
   execution: GoIDEExecution | null
   onLanguageServer: () => void
   onLinter: () => void
@@ -22,7 +23,8 @@ function languageServerLabel(state: string, version?: string): string {
   }
 }
 
-export function GoStudioStatusBar({ session, toolchain, document, cursor, execution, onLanguageServer, onLinter }: GoStudioStatusBarProps) {
+export function GoStudioStatusBar({ session, toolchain, documentInfo, execution, onLanguageServer, onLinter }: GoStudioStatusBarProps) {
+  const cursor = useGoStudioCursorStore(useShallow((state) => ({ line: state.line, column: state.column })))
   const status = useGoIDELspStore((state) => state.status[session.id])
   const progress = useGoIDELspStore((state) => state.progress[session.id] ?? null)
   const reports = useGoIDELspStore((state) => state.diagnostics[session.id])
@@ -48,8 +50,8 @@ export function GoStudioStatusBar({ session, toolchain, document, cursor, execut
         <span className={`flex items-center gap-0.5 ${counts.errors ? 'text-danger' : ''}`}><AlertCircle size={9} />{counts.errors}</span>
         <span className={`flex items-center gap-0.5 ${counts.warnings ? 'text-warning' : ''}`}><AlertTriangle size={9} />{counts.warnings}</span>
       </button>
-      <span>{document?.document.language ?? (session.project.goWorkPath ? 'go.work' : session.project.goModPath ? 'go.mod' : 'Go folder')}{document?.document.readOnly ? ' · read-only' : ''}</span>
-      {document && <span>Ln {cursor.line}, Col {cursor.column}</span>}
+      <span>{documentInfo?.language || (session.project.goWorkPath ? 'go.work' : session.project.goModPath ? 'go.mod' : 'Go folder')}{documentInfo?.readOnly ? ' · read-only' : ''}</span>
+      {documentInfo && <span>Ln {cursor.line}, Col {cursor.column}</span>}
       <span className="ml-auto">{execution ? `${execution.kind}: ${execution.status}` : 'idle'}</span>
     </div>
   )

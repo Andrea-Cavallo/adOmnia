@@ -51,7 +51,7 @@ Una fase è completa soltanto quando:
 - [x] Fase 0 — Analisi, decisioni architetturali e scheletro integrato
 - [ ] Fase 1 — Base funzionante end-to-end *(in corso: implementazione quasi completa, gate da collaudare su Windows)*
 - [ ] Fase 2 — Intelligenza del codice con gopls/LSP *(implementata e verificata end-to-end; gate in attesa della prova manuale su Windows)*
-- [ ] Fase 3 — Più progetti, ripristino e terminale integrato *(implementata e verificata end-to-end sul branch `feat/goide-phase3`; restano conflitti fra sessioni, watcher e misure su progetto grande)*
+- [ ] Fase 3 — Più progetti, ripristino e terminale integrato *(implementata e verificata end-to-end; gate in attesa delle prove manuali su Windows: ConPTY e finestra Wails)*
 - [ ] Fase 4 — Test runner, debugger, coverage e finestre separate
 - [ ] Fase 5 — Parità GoLand: assistenza al codice, VCS nell'editor e integrazione con i moduli adOmnia
 - [ ] Collaudo finale e documentazione di rilascio
@@ -74,11 +74,9 @@ Stato in una riga: le Fasi 0, 1 e 2 sono implementate e verificate end-to-end co
 - [ ] Morph `aO → gO` all'ingresso in Go Studio (400 ms, con `prefers-reduced-motion`), se lo si vuole adottare.
 - [ ] Toolbar: branch Git come nel mock, solo quando sarà una funzione reale. *(il selettore della configurazione Run è presente e reale dalla Fase 3)*
 
-**3. Fase 3: più progetti, ripristino e terminale** (in corso, branch `feat/goide-phase3`)
-- Fatto e verificato: persistenza schema v3 con migrazione, recovery store dei buffer con recupero esplicito, configurazioni Run persistenti (package, file, build, test, binario) con segreti mai salvati, terminale PTY reale (go-pty + xterm.js), quick actions di `go.mod` e comandi rapidi di build/test/vet. Dettaglio in Fase 3.
-- [ ] Stesso file aperto in due sessioni: rilevare e mostrare i conflitti, mai sovrascrivere in silenzio.
-- [ ] Watcher dei file con debounce, backpressure sugli eventi e misure su un progetto grande.
-- [ ] Prova e2e del passaggio fra due progetti aperti (tab, dirty state, console, terminali) e prova PTY su Windows (ConPTY).
+**3. Fase 3: più progetti, ripristino e terminale** (implementata e verificata end-to-end)
+- Fatto: persistenza v3, recovery dei buffer, configurazioni Run, terminale PTY, quick actions `go.mod`, comandi rapidi, watcher dei file, conflitti fra progetti annidati, isolamento completo, misure su un progetto di 3.200 file.
+- [ ] Prove manuali su Windows: terminale ConPTY (input, resize, uscita, chiusura del process tree) e finestra Wails nativa.
 
 **4. Fase 4: test runner, debugger, coverage, finestre** (non iniziata)
 - Già coperto in parte: ▶ nel gutter per eseguire un singolo `Test`/`Benchmark`/`Fuzz`/`Example` con output nella Run console.
@@ -484,10 +482,10 @@ Obiettivo: lavorare su più progetti in sessioni isolate, ripristinabili, con co
 
 ## 3.1 Sessioni indipendenti
 
-- [ ] Aprire più progetti e passare fra sessioni senza perdere tab, dirty state, layout, diagnostica o console. *(vista per sessione salvata e ripristinata; manca la prova e2e con due progetti reali)*
+- [x] Aprire più progetti e passare fra sessioni senza perdere tab, dirty state, layout, diagnostica o console. *(e2e con due progetti: buffer non salvato, console Run e terminale intatti al ritorno)*
 - [x] Separare per sessione documenti, gopls, configurazioni, esecuzioni, console e terminali. *(watcher: vedi 3.5)*
-- [ ] Definire comportamento quando lo stesso file è aperto in due sessioni.
-- [ ] Rilevare e mostrare conflitti fra buffer concorrenti senza sovrascritture silenziose.
+- [x] Definire comportamento quando lo stesso file è aperto in due sessioni: buffer indipendenti (un modello Monaco per sessione), avviso se l'altra copia ha modifiche non salvate, schede con cartella quando i nomi coincidono. Salvare una copia fa ricaricare l'altra se pulita, o mostra Reload/Keep/Compare se modificata.
+- [x] Rilevare e mostrare conflitti fra buffer concorrenti senza sovrascritture silenziose: il backend rifiuta un salvataggio basato su una versione superata; il watcher avvisa subito l'altra sessione.
 - [x] Chiudere una sessione chiedendo cosa fare con file dirty e processi attivi.
 - [x] Evitare che la chiusura di una sessione termini risorse appartenenti alle altre. *(anche la pulizia delle sessioni con cartella rimossa ora ferma processi, gopls e terminali solo di quella sessione)*
 
@@ -533,26 +531,26 @@ Obiettivo: lavorare su più progetti in sessioni isolate, ripristinabili, con co
 
 ## 3.5 Prestazioni e robustezza
 
-- [ ] Watcher controllati e deduplicati; debounce degli eventi e gestione overflow.
+- [x] Watcher controllati e deduplicati: uno per progetto (fsnotify), cartelle ignorate escluse, massimo 4.000 cartelle, raffiche raggruppate in 150 ms (massimo 1 s), overflow oltre 500 file o dal kernel, file temporanei dei salvataggi atomici nascosti. I file Go cambiati fuori dall'editor arrivano anche a gopls (didChangeWatchedFiles).
 - [x] Ricerca cancellabile e limiti sui risultati (Find in Files, Fase 2). *(indicizzazione progressiva non necessaria: la ricerca delega a gopls e a una scansione cancellabile)*
-- [ ] Misurare apertura e navigazione su un progetto grande senza bloccare il main thread.
+- [x] Misurare apertura e navigazione su un progetto grande senza bloccare il main thread (3.200 file, 400 package): apertura 0,5-0,7 s, gopls pronto in 1,2-1,5 s, Quick Open 3 ms nel backend e risultato 220 ms dopo l'ultimo tasto, Find in Files 0,6 s, modifica esterna nell'albero 0,26 s; digitando nessun long task.
 - [x] Applicare backpressure/coalescing agli eventi di output del terminale.
-- [ ] Verificare consumo e rilascio risorse passando ripetutamente fra sessioni.
+- [x] Verificare consumo e rilascio risorse passando ripetutamente fra sessioni: 20 cambi, mediana 126 ms, heap JS stabile (156,6 → 156,0 MB); chiudere un progetto ferma solo il suo watcher, i suoi processi e i suoi terminali.
 
 ## 3.6 Test mirati
 
-- [ ] Test di isolamento completo tra due progetti con output, diagnostica, config e terminali simultanei. *(coperti per parti: gopls, config, terminali; manca il test unico end-to-end)*
+- [x] Test di isolamento completo tra due progetti con output, diagnostica, config e terminali simultanei (`TestTwoProjectsStayIsolatedWhileRunningTogether`, più `TestLanguageServerSessionsStayIsolated` per gopls).
 - [x] Test di ripristino sessione e recovery di buffer dirty.
 - [x] Test di migrazione della persistenza da una versione precedente.
 - [ ] Test PTY: input, resize, exit naturale, kill e cleanup process tree su Windows. *(passano su Linux, incluso cleanup del process tree; Windows da eseguire)*
-- [ ] Test di conflitto per lo stesso file aperto in due sessioni.
+- [x] Test di conflitto per lo stesso file aperto in due sessioni (`TestSameFileInNestedProjectsNeverOverwritesSilently`, test frontend e e2e).
 
 ## Gate di uscita Fase 3
 
-- [ ] Due progetti restano completamente isolati durante edit, LSP, Run e terminale.
-- [ ] Riavviare adOmnia ripristina sessioni e layout senza avviare codice implicitamente.
-- [ ] Un terminale interattivo reale funziona, si ridimensiona e si chiude senza processi orfani.
-- [ ] Le modifiche esterne e i conflitti tra sessioni sono gestiti senza perdita silenziosa.
+- [x] Due progetti restano completamente isolati durante edit, LSP, Run e terminale.
+- [x] Riavviare adOmnia ripristina sessioni e layout senza avviare codice implicitamente.
+- [ ] Un terminale interattivo reale funziona, si ridimensiona e si chiude senza processi orfani. *(verificato su Linux; manca Windows/ConPTY)*
+- [x] Le modifiche esterne e i conflitti tra sessioni sono gestiti senza perdita silenziosa.
 - [ ] Suite e verifiche previste dalla definizione di fase funzionante passano.
 - [ ] **FASE 3 FUNZIONANTE E APPROVATA — è consentito iniziare la Fase 4.**
 
@@ -565,7 +563,9 @@ Obiettivo: lavorare su più progetti in sessioni isolate, ripristinabili, con co
 - Comandi e risultati: `go vet ./internal/goide/...` ok; `go test -race ./internal/goide/...` ok; `npx tsc --noEmit` ok; `npx vitest run` 134 file / 613 test ok; `npm run build` ok.
 - Prova e2e (frontend reale in Chromium + vero `goide.Service`): trust, CodeLens `go.mod`, Replace with local → `replace example.com/lib => ../lib` su disco e ricaricato nell'editor, Drop replace, conferma per Update all, ▶ Test della riga package (`ok example.com/app/util`), Vet, Ctrl+Shift+F9 (`go build ./...`), Run → Test All, Alt+F12 con shell reale (`go version`). Zero errori di pagina.
 - Difetti della revisione del lavoro precedente, corretti: terminale che scartava output e spezzava UTF-8 con falso flag di troncamento; `go` della sessione assente dal PATH del terminale; sessioni rimosse che lasciavano gopls e processi orfani; recovery senza limite totale; configurazioni Test/Binario finte; doppia riga di tab Run/Terminal; primo prompt della shell perso; ripristino che provava a riaprire file SDK; recupero che sovrascriveva in silenzio un file cambiato su disco; flush del recovery che non scriveva; Build che ignorava il tipo di configurazione; stringhe UI in italiano; loop infinito di React all'apertura del progetto (selettori Zustand con `?? []`); errore xterm alla distruzione immediata; font del terminale non risolto (variabile CSS passata al canvas).
-- Limiti rimasti: conflitti fra sessioni sullo stesso file, watcher con debounce, misure su progetto grande, prove manuali su Windows.
+- Chiusura Fase 3 (watcher, conflitti, isolamento, prestazioni): test Go `watcher_test.go`, `cross_session_test.go`, `isolation_test.go`, `quick_open_test.go`; 143 file / 642 test frontend; e2e nel browser 33/33 passi su quattro suite (go.mod e comandi rapidi, editor semantico, Search Everywhere e quick-fix, due progetti) più la misura su 3.200 file.
+- Difetti trovati e corretti in questa chiusura: lo stesso file aperto in due progetti condivideva il modello Monaco (le modifiche di un progetto finivano nel buffer dell'altro); i marker di diagnostica venivano uniti fra progetti per URI; il terminale tornava vuoto passando fra progetti (stato del pannello riusato) e veniva ristretto a poche colonne quando nascosto; l'intero IDE si ridisegnava a ogni tasto, evento Run o avanzamento di gopls (store sottoscritto per intero e cursore nello stato del pannello); Quick Open rileggeva tutto il progetto a ogni tasto e ordinava i risultati per posizione su disco; Find in Files disegnava tutte le righe insieme.
+- Limiti rimasti: prove manuali su Windows (ConPTY, finestra Wails); oltre 4.000 cartelle il watcher osserva il progetto solo in parte.
 
 ---
 

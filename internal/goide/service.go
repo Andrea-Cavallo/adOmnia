@@ -45,6 +45,7 @@ type Service struct {
 	goplsMu       sync.RWMutex
 	goplsBinaries map[SessionID]string
 	lint          lintRegistry
+	watcher       *WatchManager
 }
 
 func NewService(store Store, eventSink func(EventEnvelope)) *Service {
@@ -66,6 +67,7 @@ func NewService(store Store, eventSink func(EventEnvelope)) *Service {
 		lint:          lintRegistry{custom: make(map[SessionID]string)},
 	}
 	service.recovery = NewRecoveryManager(nil)
+	service.watcher = NewWatchManager(service.filesChanged)
 	service.lsp.SetEmitter(service.emit)
 	service.installer = NewToolchainInstaller(func(eventType string, installation ToolchainInstallation) {
 		service.emit(eventType, installation.SessionID, installation.ID, installation)
@@ -119,6 +121,7 @@ func (s *Service) OpenProject(path string) (Session, error) {
 	if err := s.saveState(); err != nil {
 		return Session{}, err
 	}
+	s.watchSession(session)
 	s.emit("session.opened", session.ID, string(session.ID), session)
 	return session, nil
 }
@@ -236,6 +239,7 @@ func (s *Service) CloseSession(id string) error {
 		return nil
 	}
 	s.terminal.CloseSession(sessionID)
+	s.watcher.Stop(sessionID)
 	s.documents.CloseSession(sessionID)
 	s.lsp.CloseSession(sessionID)
 	s.toolchain.CloseSession(sessionID)
@@ -705,6 +709,7 @@ func (s *Service) HasAnyActiveRuns() bool {
 
 // Shutdown arresta le risorse possedute dal dominio in ordine sicuro.
 func (s *Service) Shutdown() {
+	s.watcher.Shutdown()
 	s.installer.Shutdown()
 	s.debug.Shutdown()
 	s.terminal.Shutdown()
@@ -727,6 +732,9 @@ func (s *Service) restore() error {
 			return
 		}
 		s.workspace.ReplaceSessions(state.Sessions)
+		for _, session := range state.Sessions {
+			s.watchSession(session)
+		}
 		s.recentMu.Lock()
 		s.recent = append([]RecentProject(nil), state.Recent...)
 		s.recentMu.Unlock()
@@ -807,6 +815,39 @@ func displayCommand(executable string, arguments []string) string {
 func containsRun(executions []Execution, runID RunID, status string) bool {
 	for _, execution := range executions {
 		if execution.ID == runID && execution.Status == status {
+			return true
+		}
+	}
+	return false
+}
+
+// watchSession avvia in background l'osservazione della cartella del progetto: niente viene eseguito.
+// Se il progetto viene chiuso mentre il watcher parte, il controllo finale lo ferma.
+func (s *Service) watchSession(session Session) {
+	go func() {
+		_ = s.watcher.Watch(session.ID, session.Project.RealPath)
+		if _, err := s.workspace.GetSession(session.ID); err != nil {
+			s.watcher.Stop(session.ID)
+		}
+	}()
+}
+
+// filesChanged inoltra le modifiche su disco al frontend e a gopls, che così vede anche i file non aperti.
+func (s *Service) filesChanged(sessionID SessionID, batch FilesChanged) {
+	if session, err := s.workspace.GetSession(sessionID); err == nil && changesFileList(batch) {
+		s.documents.InvalidateFileIndex(session.Project.RealPath)
+	}
+	s.lsp.NotifyWatchedFiles(sessionID, batch.Changes)
+	s.emit("files.changed", sessionID, string(sessionID), batch)
+}
+
+// changesFileList è vero se il batch crea o elimina file: le sole modifiche non cambiano l'elenco.
+func changesFileList(batch FilesChanged) bool {
+	if batch.Overflow {
+		return true
+	}
+	for _, change := range batch.Changes {
+		if change.Kind != FileChanged {
 			return true
 		}
 	}

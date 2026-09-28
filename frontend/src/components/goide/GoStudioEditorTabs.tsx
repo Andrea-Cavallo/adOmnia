@@ -17,6 +17,19 @@ export function orderTabs(documents: GoIDEEditorDocument[], pinned: Record<strin
   return [...documents.filter((item) => pinned[item.document.id]), ...documents.filter((item) => !pinned[item.document.id])]
 }
 
+/** Per i nomi ripetuti (es. due main.go) restituisce la cartella che li distingue, come GoLand. */
+export function tabQualifiers(documents: GoIDEEditorDocument[]): Record<string, string> {
+  const counts = new Map<string, number>()
+  for (const item of documents) counts.set(item.document.name, (counts.get(item.document.name) ?? 0) + 1)
+  const qualifiers: Record<string, string> = {}
+  for (const item of documents) {
+    if ((counts.get(item.document.name) ?? 0) < 2) continue
+    const parts = (item.document.relativePath || item.document.path).split('/')
+    qualifiers[item.document.id] = parts.length > 1 ? parts[parts.length - 2] : '/'
+  }
+  return qualifiers
+}
+
 /** Documenti interessati da un'azione di chiusura multipla: le tab fissate restano aperte. */
 export function documentsToClose(action: TabAction, ordered: GoIDEEditorDocument[], target: GoIDEEditorDocument, pinned: Record<string, boolean>): GoIDEEditorDocument[] {
   const closable = (item: GoIDEEditorDocument) => !pinned[item.document.id]
@@ -35,6 +48,7 @@ export function GoStudioEditorTabs({ documents, activeId, onRequestClose }: GoSt
   const selectDocument = useGoIDEStore((state) => state.selectDocument)
   const [menu, setMenu] = useState<{ x: number; y: number; document: GoIDEEditorDocument } | null>(null)
   const ordered = useMemo(() => orderTabs(documents, pinned), [documents, pinned])
+  const qualifiers = useMemo(() => tabQualifiers(documents), [documents])
 
   const items = (target: GoIDEEditorDocument): ContextMenuItem[] => {
     const index = ordered.findIndex((item) => item.document.id === target.document.id)
@@ -83,6 +97,7 @@ export function GoStudioEditorTabs({ documents, activeId, onRequestClose }: GoSt
             {isGoSource(item.document.name) && <GoGopherIcon size={12} />}
             {item.document.readOnly && <Lock size={9} className="shrink-0 text-text-4" />}
             <span className="truncate">{item.document.name}</span>
+            {qualifiers[item.document.id] && <span className="shrink-0 text-[9px] text-text-4">{qualifiers[item.document.id]}</span>}
             {item.dirty && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-warning" title="Unsaved changes" />}
             {isPinned
               ? <Pin size={9} className="shrink-0 rotate-45 text-accent" aria-label="Pinned" />

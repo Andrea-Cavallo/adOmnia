@@ -31,6 +31,8 @@ vi.mock('@/lib/goide-api', () => ({
   stopGoIDERun: vi.fn(),
   subscribeGoIDEEvents: vi.fn(() => () => undefined),
   writeGoIDERunInput: vi.fn(),
+  forgetGoIDEBuffer: vi.fn(() => Promise.resolve()),
+  rememberGoIDEBuffer: vi.fn(() => Promise.resolve()),
 }))
 
 import { useGoIDEStore, type GoIDEEditorDocument } from './goide'
@@ -120,5 +122,30 @@ describe('Go Studio editor state', () => {
     expect(documents.find((item) => item.document.id === 'dirty')).toMatchObject({ buffer: 'module edited\n', dirty: true })
     expect(documents.find((item) => item.document.id === 'dirty')?.externalState?.changed).toBe(true)
     expect(mocks.checkDocument).not.toHaveBeenCalledWith('session-one', 'document-one', expect.anything())
+  })
+
+  it('reacts to disk changes: reloads clean buffers, flags dirty ones, closes clean deleted files', async () => {
+    const doc = (id: string, relativePath: string, dirty: boolean): GoIDEEditorDocument => ({
+      ...document,
+      document: { ...document.document, id, uri: `file:///project/${relativePath}`, relativePath, name: relativePath },
+      buffer: dirty ? 'edited\n' : 'old\n', savedContent: 'old\n', dirty,
+    })
+    useGoIDEStore.setState({ documents: [doc('clean', 'a.go', false), doc('dirty', 'b.go', true), doc('gone', 'c.go', false), doc('other', 'd.go', false)], directoryEntries: {} })
+    mocks.checkDocument.mockImplementation(async (_session: string, documentId: string) => ({ documentId, changed: true, content: 'new\n', diskToken: 'token-2', modifiedAt: '' }))
+    mocks.closeDocument.mockResolvedValue(undefined)
+    useGoIDEStore.getState().handleEvent({
+      version: 1, type: 'files.changed', sessionId: 'session-one', resourceId: 'session-one', sequence: 1, timestamp: '',
+      payload: { overflow: false, limited: false, changes: [
+        { path: '/project/a.go', relativePath: 'a.go', kind: 2 },
+        { path: '/project/b.go', relativePath: 'b.go', kind: 2 },
+        { path: '/project/c.go', relativePath: 'c.go', kind: 3 },
+      ] },
+    })
+    await vi.waitFor(() => expect(useGoIDEStore.getState().documents.find((item) => item.document.id === 'clean')?.buffer).toBe('new\n'))
+    const documents = useGoIDEStore.getState().documents
+    expect(documents.find((item) => item.document.id === 'dirty')).toMatchObject({ buffer: 'edited\n', dirty: true })
+    expect(documents.find((item) => item.document.id === 'dirty')?.externalState?.changed).toBe(true)
+    expect(documents.some((item) => item.document.id === 'gone')).toBe(false)
+    expect(mocks.checkDocument).not.toHaveBeenCalledWith('session-one', 'other', expect.anything())
   })
 })

@@ -34,10 +34,11 @@ type documentRecord struct {
 type DocumentManager struct {
 	mu        sync.RWMutex
 	documents map[DocumentID]documentRecord
+	files     fileIndex
 }
 
 func NewDocumentManager() *DocumentManager {
-	return &DocumentManager{documents: make(map[DocumentID]documentRecord)}
+	return &DocumentManager{documents: make(map[DocumentID]documentRecord), files: fileIndex{byRoot: make(map[string][]indexedFile)}}
 }
 
 // ListDirectory legge un solo livello del progetto e mantiene la navigazione confinata alla radice reale.
@@ -247,51 +248,6 @@ func (m *DocumentManager) CloseSession(sessionID SessionID) {
 		}
 	}
 	m.mu.Unlock()
-}
-
-// QuickOpen cerca file per nome e percorso con limiti rigidi e senza seguire directory pesanti.
-func (m *DocumentManager) QuickOpen(project Project, query string, limit int) ([]QuickOpenResult, error) {
-	if limit <= 0 || limit > MaxQuickOpenResults {
-		limit = MaxQuickOpenResults
-	}
-	needle := strings.ToLower(strings.TrimSpace(query))
-	results := make([]QuickOpenResult, 0, limit)
-	visited := 0
-	err := filepath.WalkDir(project.RealPath, func(path string, entry os.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			if entry != nil && entry.IsDir() {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if path == project.RealPath {
-			return nil
-		}
-		if entry.IsDir() {
-			if isIgnoredDirectory(entry.Name()) {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		visited++
-		if visited > MaxQuickOpenFiles || len(results) >= limit {
-			return filepath.SkipAll
-		}
-		rel, relErr := filepath.Rel(project.RealPath, path)
-		if relErr != nil {
-			return nil
-		}
-		normalized := filepath.ToSlash(rel)
-		if needle != "" && !strings.Contains(strings.ToLower(normalized), needle) {
-			return nil
-		}
-		results = append(results, QuickOpenResult{Name: entry.Name(), RelativePath: normalized, Language: languageForPath(path)})
-		return nil
-	})
-	if err != nil {
-		return nil, fmt.Errorf("ricerca file fallita: %w", err)
-	}
-	return results, nil
 }
 
 // ResolveProjectPath convalida un percorso esistente rispetto alla radice reale del progetto.

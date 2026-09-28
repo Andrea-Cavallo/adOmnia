@@ -54,6 +54,7 @@ import {
 import { openExternalDocument } from '@/lib/goide-lsp-api'
 import { confirm } from '@/lib/confirmDialog'
 import { cancelBufferRecovery, scheduleBufferRecovery } from '@/components/goide/goStudioRecovery'
+import { directoriesToRefresh, documentsToCheck, wasDeleted, type GoIDEFilesChanged } from '@/components/goide/goStudioDiskChanges'
 
 const LAYOUT_KEY = 'adomnia.goide.layout.v1'
 const MAX_CLOSED_HISTORY = 20
@@ -182,6 +183,8 @@ export interface GoIDEState {
   startRun: (kind: GoIDEQuickRunKind, partial?: Partial<GoIDERunRequest>) => Promise<void>
   /** Ricarica go.mod/go.sum aperti dopo un comando che li modifica; i buffer sporchi ricevono solo l'avviso. */
   refreshModuleFiles: (sessionId: string) => Promise<void>
+  /** Modifiche su disco segnalate dal watcher: ricarica i buffer puliti, avvisa sui modificati, aggiorna l'albero. */
+  handleFilesChanged: (sessionId: string, batch: GoIDEFilesChanged) => Promise<void>
   stopRun: (runId?: string) => Promise<void>
   restartRun: (runId?: string) => Promise<void>
   sendRunInput: (runId: string, text: string) => Promise<void>
@@ -751,14 +754,25 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
 
   refreshModuleFiles: async (sessionId) => {
     const moduleFiles = get().documents.filter((item) => item.document.sessionId === sessionId && !item.document.external && isModuleFile(item.document.relativePath))
-    for (const current of moduleFiles) {
+    await refreshFromDisk(sessionId, moduleFiles.map((item) => item.document.id))
+  },
+
+  handleFilesChanged: async (sessionId, batch) => {
+    const open = get().documents.filter((item) => item.document.sessionId === sessionId && !item.document.external && !item.document.readOnly)
+    const affected = documentsToCheck(open.map((item) => ({ id: item.document.id, relativePath: item.document.relativePath, dirty: item.dirty })), batch)
+    const deleted = affected.filter((item) => wasDeleted(item.relativePath, batch))
+    for (const item of deleted) {
+      if (item.dirty) set({ error: `${item.relativePath} was deleted on disk. Your unsaved changes are still in the editor.` })
+      else await get().closeDocument(item.id).catch((error: unknown) => set({ error: errorMessage(error) }))
+    }
+    await refreshFromDisk(sessionId, affected.filter((item) => !deleted.includes(item)).map((item) => item.id))
+    const loaded = Object.keys(get().directoryEntries[sessionId] ?? {})
+    for (const directory of directoriesToRefresh(loaded, batch)) {
       try {
-        const externalState = await checkGoIDEDocument(sessionId, current.document.id, current.diskToken)
-        if (!externalState.changed) continue
-        set((state) => ({ documents: state.documents.map((item) => item.document.id === current.document.id ? { ...item, externalState } : item) }))
-        if (!current.dirty) get().resolveExternalChange(current.document.id, 'reload')
-      } catch (error) {
-        set({ error: errorMessage(error) })
+        const entries = await listGoIDEDirectory(sessionId, directory, get().showIgnoredBySession[sessionId] ?? false)
+        set((state) => ({ directoryEntries: { ...state.directoryEntries, [sessionId]: { ...(state.directoryEntries[sessionId] ?? {}), [directory]: entries } } }))
+      } catch {
+        // Una cartella eliminata sparisce con il ricaricamento del genitore.
       }
     }
   },
@@ -937,6 +951,10 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
       set((state) => ({ consoleByRun: { ...state.consoleByRun, [runId]: appendConsole(state.consoleByRun[runId] ?? [], { sequence: event.sequence, stream, text: payload.text ?? '' }) } }))
       return
     }
+    if (event.type === 'files.changed' && event.sessionId) {
+      void get().handleFilesChanged(event.sessionId, event.payload as GoIDEFilesChanged)
+      return
+    }
     if ((event.type === 'run.started' || event.type === 'run.finished') && isExecution(event.payload)) {
       const execution = event.payload
       set((state) => ({
@@ -957,6 +975,27 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
 
   clearError: () => set({ error: null }),
 }))
+
+/**
+ * Ricontrolla i documenti su disco: un buffer pulito si ricarica in silenzio, uno modificato riceve
+ * l'avviso Reload/Keep/Compare. Nessuna modifica dell'utente viene mai scartata.
+ */
+async function refreshFromDisk(sessionId: string, documentIds: string[]): Promise<void> {
+  const store = useGoIDEStore.getState()
+  for (const documentId of documentIds) {
+    const current = useGoIDEStore.getState().documents.find((item) => item.document.id === documentId)
+    if (!current) continue
+    try {
+      const externalState = await checkGoIDEDocument(sessionId, documentId, current.diskToken)
+      if (!externalState.changed) continue
+      useGoIDEStore.setState((state) => ({ documents: state.documents.map((item) => item.document.id === documentId ? { ...item, externalState } : item) }))
+      const latest = useGoIDEStore.getState().documents.find((item) => item.document.id === documentId)
+      if (latest && !latest.dirty) store.resolveExternalChange(documentId, 'reload')
+    } catch (error) {
+      useGoIDEStore.setState({ error: errorMessage(error) })
+    }
+  }
+}
 
 const MODULE_CHANGING_KINDS = new Set(['dependency', 'tidy'])
 const MODULE_FILE_NAMES = new Set(['go.mod', 'go.sum', 'go.work', 'go.work.sum'])

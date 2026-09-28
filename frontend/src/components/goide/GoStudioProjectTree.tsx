@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, memo } from 'react'
 import { ChevronDown, ChevronRight, Eye, EyeOff, File, FileCode2, Folder, FolderOpen, Loader2 } from 'lucide-react'
 import { useGoIDEStore } from '@/stores/goide'
 import { GoGopherIcon, isGoSource } from './GoGopherIcon'
@@ -16,7 +16,8 @@ function FileIcon({ entry }: { entry: GoIDEFileEntry }) {
   return <File size={12} className="text-text-4" />
 }
 
-function DirectoryNode({ sessionId, entry, depth }: { sessionId: string; entry: GoIDEFileEntry; depth: number }) {
+/** Memoizzato: aprire o aggiornare una cartella non ridisegna le sorelle (progetti con centinaia di cartelle). */
+const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth }: { sessionId: string; entry: GoIDEFileEntry; depth: number }) {
   const [open, setOpen] = useState(false)
   const entries = useGoIDEStore((state) => state.directoryEntries[sessionId]?.[entry.relativePath])
   const loading = useGoIDEStore((state) => state.directoryLoading[`${sessionId}:${entry.relativePath}`] ?? false)
@@ -50,9 +51,10 @@ function DirectoryNode({ sessionId, entry, depth }: { sessionId: string; entry: 
       ))}
     </>
   )
-}
+})
 
-export function GoStudioProjectTree({ session }: GoStudioProjectTreeProps) {
+/** Memoizzato: il pannello genitore si ridisegna a ogni tasto, questo solo quando cambia la sessione. */
+export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session }: GoStudioProjectTreeProps) {
   const entries = useGoIDEStore((state) => state.directoryEntries[session.id]?.[''] ?? emptyEntries)
   const loadDirectory = useGoIDEStore((state) => state.loadDirectory)
   const showIgnored = useGoIDEStore((state) => state.showIgnoredBySession[session.id] ?? false)
@@ -87,4 +89,4 @@ export function GoStudioProjectTree({ session }: GoStudioProjectTreeProps) {
       </div>
     </aside>
   )
-}
+})
