@@ -44,6 +44,7 @@ export type GoIDEToolchainInstallation = ToolchainInstallation
 export type GoIDEToolchainRelease = ToolchainRelease
 export type GoIDEInstalledToolchain = InstalledToolchain
 export type GoIDERunConfiguration = RunConfiguration
+export { RunConfigurationKind as GoIDERunConfigurationKind } from '../../bindings/adomnia/internal/goide/models'
 export type GoIDEEnvironmentEntry = EnvironmentEntry
 export type GoIDESessionView = SessionView
 export type GoIDERecoveredBuffer = RecoveredBuffer

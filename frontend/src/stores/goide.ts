@@ -12,7 +12,6 @@ import {
   hasActiveGoIDERuns,
   listGoIDEDirectory,
   listGoIDERuns,
-  listGoIDESessions,
   listRecentGoIDEProjects,
   openGoIDEDocument,
   openGoIDEProject,
@@ -25,6 +24,18 @@ import {
   stopGoIDERun,
   subscribeGoIDEEvents,
   writeGoIDERunInput,
+  getGoIDESessionView,
+  saveGoIDESessionView,
+  listGoIDERecoveredBuffers,
+  pruneMissingGoIDESessions,
+  findGoIDESessionsForPath,
+  listGoIDERunConfigurations,
+  saveGoIDERunConfiguration,
+  duplicateGoIDERunConfiguration,
+  renameGoIDERunConfiguration,
+  reorderGoIDERunConfigurations,
+  deleteGoIDERunConfiguration,
+  startGoIDEConfiguredRun,
   type GoIDECapabilities,
   type GoIDEDocumentDiskState,
   type GoIDEEvent,
@@ -36,9 +47,12 @@ import {
   type GoIDERunRequest,
   type GoIDESession,
   type GoIDEToolchainInfo,
+  type GoIDERecoveredBuffer,
+  type GoIDERunConfiguration,
   type GoIDEToolchainInstallation,
 } from '@/lib/goide-api'
 import { openExternalDocument } from '@/lib/goide-lsp-api'
+import { cancelBufferRecovery, scheduleBufferRecovery } from '@/components/goide/goStudioRecovery'
 
 const LAYOUT_KEY = 'adomnia.goide.layout.v1'
 const MAX_CLOSED_HISTORY = 20
@@ -128,6 +142,11 @@ interface GoIDEState {
   consoleByRun: Record<string, GoIDEConsoleChunk[]>
   quickOpen: { open: boolean; query: string; loading: boolean; results: GoIDEQuickOpenResult[]; request: number }
   revealLocation: { documentId: string; line: number; column: number } | null
+  recoveredBySession: Record<string, GoIDERecoveredBuffer[]>
+  runConfigsBySession: Record<string, GoIDERunConfiguration[]>
+  activeConfigBySession: Record<string, string | null>
+  restoredSessions: Record<string, boolean>
+  pathConflicts: Record<string, string[]>
   initialize: () => Promise<void>
   openProject: (path?: string) => Promise<void>
   createProject: (parentPath: string, name: string, modulePath: string) => Promise<boolean>
@@ -161,6 +180,19 @@ interface GoIDEState {
   restartRun: (runId?: string) => Promise<void>
   sendRunInput: (runId: string, text: string) => Promise<void>
   hasActiveRuns: (sessionId: string) => Promise<boolean>
+  loadRunConfigurations: (sessionId: string) => Promise<void>
+  saveRunConfiguration: (config: GoIDERunConfiguration) => Promise<GoIDERunConfiguration | null>
+  duplicateRunConfiguration: (configId: string) => Promise<void>
+  renameRunConfiguration: (configId: string, name: string) => Promise<void>
+  reorderRunConfigurations: (configIds: string[]) => Promise<void>
+  deleteRunConfiguration: (configId: string) => Promise<void>
+  selectRunConfiguration: (configId: string | null) => void
+  startConfiguredRun: (configId: string, secrets: Record<string, string>) => Promise<void>
+  restoreSessionView: (sessionId: string) => Promise<void>
+  checkPathConflicts: (sessionId: string, relativePath: string) => Promise<void>
+  persistSessionView: (sessionId: string) => Promise<void>
+  recoverBuffer: (sessionId: string, relativePath: string) => Promise<void>
+  discardRecoveredBuffer: (sessionId: string, relativePath: string) => Promise<void>
   handleEvent: (event: GoIDEEvent) => void
   clearRevealLocation: () => void
   updateLayout: (patch: Partial<GoIDELayout>) => void
@@ -239,13 +271,20 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
   consoleByRun: {},
   quickOpen: { open: false, query: '', loading: false, results: [], request: 0 },
   revealLocation: null,
+  recoveredBySession: {},
+  runConfigsBySession: {},
+  activeConfigBySession: {},
+  restoredSessions: {},
+  pathConflicts: {},
 
   initialize: async () => {
     if (get().initialized || get().loading) return
     set({ loading: true, error: null })
     try {
+      // Le cartelle sparite vanno rimosse prima di mostrare le sessioni, senza
+      // perdere le altre e senza toccare i progetti recenti.
       const [capabilities, sessions, recentProjects] = await Promise.all([
-        getGoIDECapabilities(), listGoIDESessions(), listRecentGoIDEProjects(),
+        getGoIDECapabilities(), pruneMissingGoIDESessions(), listRecentGoIDEProjects(),
       ])
       if (!eventUnsubscribe) eventUnsubscribe = subscribeGoIDEEvents((event) => get().handleEvent(event))
       const activeSessionId = sessions.some((session) => session.id === get().activeSessionId)
@@ -307,9 +346,192 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
         executions: [...state.executions.filter((execution) => execution.sessionId !== activeSessionId), ...executions],
         activeRunBySession: { ...state.activeRunBySession, [activeSessionId]: running ?? state.activeRunBySession[activeSessionId] ?? executions[executions.length - 1]?.id ?? null },
       }))
+      await get().restoreSessionView(activeSessionId)
     } catch (error) {
       set({ error: errorMessage(error) })
     }
+  },
+
+  restoreSessionView: async (sessionId) => {
+    if (get().restoredSessions[sessionId]) return
+    set((state) => ({ restoredSessions: { ...state.restoredSessions, [sessionId]: true } }))
+    try {
+      const [view, recovered] = await Promise.all([
+        getGoIDESessionView(sessionId), listGoIDERecoveredBuffers(sessionId),
+      ])
+      await get().loadRunConfigurations(sessionId)
+      if (view.activeConfigId) {
+        set((state) => ({ activeConfigBySession: { ...state.activeConfigBySession, [sessionId]: view.activeConfigId ?? null } }))
+      }
+      set((state) => ({ recoveredBySession: { ...state.recoveredBySession, [sessionId]: recovered } }))
+      for (const path of view.openPaths ?? []) {
+        // Riaprire un tab legge il file: non esegue nulla del progetto.
+        await get().openDocument(path)
+      }
+      if (view.activePath) {
+        const restored = get().documents.find(
+          (item) => item.document.sessionId === sessionId && item.document.relativePath === view.activePath,
+        )
+        if (restored) get().selectDocument(restored.document.id)
+      }
+      if (view.showIgnoredEntries) {
+        set((state) => ({ showIgnoredBySession: { ...state.showIgnoredBySession, [sessionId]: true } }))
+      }
+    } catch (error) {
+      set({ error: errorMessage(error) })
+    }
+  },
+
+  loadRunConfigurations: async (sessionId) => {
+    try {
+      const configs = await listGoIDERunConfigurations(sessionId)
+      set((state) => ({
+        runConfigsBySession: { ...state.runConfigsBySession, [sessionId]: configs },
+        activeConfigBySession: {
+          ...state.activeConfigBySession,
+          [sessionId]: configs.some((config) => config.id === state.activeConfigBySession[sessionId])
+            ? state.activeConfigBySession[sessionId]
+            : configs[0]?.id ?? null,
+        },
+      }))
+    } catch (error) {
+      set({ error: errorMessage(error) })
+    }
+  },
+
+  saveRunConfiguration: async (config) => {
+    const sessionId = get().activeSessionId
+    if (!sessionId) return null
+    try {
+      const saved = await saveGoIDERunConfiguration(sessionId, config)
+      await get().loadRunConfigurations(sessionId)
+      set((state) => ({ activeConfigBySession: { ...state.activeConfigBySession, [sessionId]: saved.id } }))
+      return saved
+    } catch (error) {
+      set({ error: errorMessage(error) })
+      return null
+    }
+  },
+
+  duplicateRunConfiguration: async (configId) => {
+    const sessionId = get().activeSessionId
+    if (!sessionId) return
+    try {
+      const copied = await duplicateGoIDERunConfiguration(sessionId, configId)
+      await get().loadRunConfigurations(sessionId)
+      set((state) => ({ activeConfigBySession: { ...state.activeConfigBySession, [sessionId]: copied.id } }))
+    } catch (error) {
+      set({ error: errorMessage(error) })
+    }
+  },
+
+  renameRunConfiguration: async (configId, name) => {
+    const sessionId = get().activeSessionId
+    if (!sessionId) return
+    try {
+      await renameGoIDERunConfiguration(sessionId, configId, name)
+      await get().loadRunConfigurations(sessionId)
+    } catch (error) {
+      set({ error: errorMessage(error) })
+    }
+  },
+
+  reorderRunConfigurations: async (configIds) => {
+    const sessionId = get().activeSessionId
+    if (!sessionId) return
+    try {
+      const ordered = await reorderGoIDERunConfigurations(sessionId, configIds)
+      set((state) => ({ runConfigsBySession: { ...state.runConfigsBySession, [sessionId]: ordered } }))
+    } catch (error) {
+      set({ error: errorMessage(error) })
+    }
+  },
+
+  deleteRunConfiguration: async (configId) => {
+    const sessionId = get().activeSessionId
+    if (!sessionId) return
+    try {
+      await deleteGoIDERunConfiguration(sessionId, configId)
+      await get().loadRunConfigurations(sessionId)
+    } catch (error) {
+      set({ error: errorMessage(error) })
+    }
+  },
+
+  selectRunConfiguration: (configId) => {
+    const sessionId = get().activeSessionId
+    if (!sessionId) return
+    set((state) => ({ activeConfigBySession: { ...state.activeConfigBySession, [sessionId]: configId } }))
+  },
+
+  startConfiguredRun: async (configId, secrets) => {
+    const sessionId = get().activeSessionId
+    if (!sessionId) return
+    set({ error: null })
+    try {
+      const execution = await startGoIDEConfiguredRun(sessionId, configId, secrets)
+      set((state) => ({
+        executions: replaceExecution(state.executions, execution),
+        activeRunBySession: { ...state.activeRunBySession, [sessionId]: execution.id },
+      }))
+    } catch (error) {
+      set({ error: errorMessage(error) })
+    }
+  },
+
+  checkPathConflicts: async (sessionId, relativePath) => {
+    try {
+      const others = await findGoIDESessionsForPath(sessionId, relativePath)
+      const open = others.filter((other) => get().documents.some(
+        (item) => item.document.sessionId === other.id && item.document.relativePath === relativePath,
+      ))
+      set((state) => {
+        const next = { ...state.pathConflicts }
+        if (open.length === 0) delete next[relativePath]
+        else next[relativePath] = open.map((other) => other.project.name)
+        return { pathConflicts: next }
+      })
+    } catch {
+      // Il rilevamento conflitti è informativo: non deve bloccare l'apertura.
+    }
+  },
+
+  persistSessionView: async (sessionId) => {
+    const state = get()
+    const documents = state.documents.filter((item) => item.document.sessionId === sessionId)
+    const activeId = state.activeDocumentBySession[sessionId] ?? null
+    const active = documents.find((item) => item.document.id === activeId)
+    try {
+      await saveGoIDESessionView(sessionId, {
+        openPaths: documents.map((item) => item.document.relativePath),
+        activePath: active?.document.relativePath ?? '',
+        activeConfigId: state.activeConfigBySession[sessionId] ?? '',
+        structureOpen: state.layout.structureOpen,
+        bottomOpen: state.layout.bottomOpen,
+        terminalPanelOpen: false,
+        showIgnoredEntries: !!state.showIgnoredBySession[sessionId],
+      })
+    } catch {
+      // Il layout è una comodità: non deve mai far fallire un'azione dell'utente.
+    }
+  },
+
+  recoverBuffer: async (sessionId, relativePath) => {
+    const recovered = (get().recoveredBySession[sessionId] ?? []).find((item) => item.relativePath === relativePath)
+    if (!recovered) return
+    const documentId = await get().openDocument(relativePath)
+    if (documentId) get().updateDocument(documentId, recovered.content)
+    await get().discardRecoveredBuffer(sessionId, relativePath)
+  },
+
+  discardRecoveredBuffer: async (sessionId, relativePath) => {
+    cancelBufferRecovery(sessionId, relativePath)
+    set((state) => ({
+      recoveredBySession: {
+        ...state.recoveredBySession,
+        [sessionId]: (state.recoveredBySession[sessionId] ?? []).filter((item) => item.relativePath !== relativePath),
+      },
+    }))
   },
 
   setToolAuthorization: async (allowed) => {
@@ -396,6 +618,8 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
       }
       set((state) => ({ documents: [...state.documents, toEditorDocument(opened)], loading: false }))
       activate(opened.document.id)
+      void get().checkPathConflicts(sessionId, opened.document.relativePath)
+      void get().persistSessionView(sessionId)
       return opened.document.id
     } catch (error) {
       set({ loading: false, error: errorMessage(error) })
@@ -450,11 +674,19 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
     set((state) => ({ activeDocumentBySession: { ...state.activeDocumentBySession, [document.document.sessionId]: documentId } }))
   },
 
-  updateDocument: (documentId, buffer) => set((state) => ({
-    documents: state.documents.map((item) => item.document.id === documentId
-      ? { ...item, buffer, dirty: buffer !== item.savedContent, saveError: null }
-      : item),
-  })),
+  updateDocument: (documentId, buffer) => {
+    const current = get().documents.find((item) => item.document.id === documentId)
+    if (current) {
+      const dirty = buffer !== current.savedContent
+      if (dirty) scheduleBufferRecovery(current.document.sessionId, current.document.relativePath, buffer, current.diskToken)
+      else cancelBufferRecovery(current.document.sessionId, current.document.relativePath)
+    }
+    set((state) => ({
+      documents: state.documents.map((item) => item.document.id === documentId
+        ? { ...item, buffer, dirty: buffer !== item.savedContent, saveError: null }
+        : item),
+    }))
+  },
 
   saveDocument: async (providedId, force = false) => {
     const sessionId = get().activeSessionId
@@ -464,7 +696,9 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
     set((state) => ({ documents: state.documents.map((item) => item.document.id === current.document.id ? { ...item, saving: true, saveError: null } : item) }))
     try {
       const saved = await saveGoIDEDocument(current.document.sessionId, current.document.id, current.buffer, current.diskToken, force)
+      cancelBufferRecovery(current.document.sessionId, current.document.relativePath)
       set((state) => ({ documents: state.documents.map((item) => item.document.id === current.document.id ? toEditorDocument(saved) : item) }))
+      void get().persistSessionView(current.document.sessionId)
       return true
     } catch (error) {
       const message = errorMessage(error)
@@ -516,6 +750,7 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
     if (!current) return
     await closeGoIDEDocument(current.document.sessionId, current.document.id)
     const sessionId = current.document.sessionId
+    cancelBufferRecovery(current.document.sessionId, current.document.relativePath)
     set((state) => {
       const documents = state.documents.filter((item) => item.document.id !== documentId)
       const sessionDocuments = documents.filter((item) => item.document.sessionId === sessionId)
@@ -533,6 +768,7 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
         splitBySession: split?.documentId === documentId ? { ...state.splitBySession, [sessionId]: null } : state.splitBySession,
       }
     })
+    void get().persistSessionView(current.document.sessionId)
   },
 
   togglePinned: (documentId) => set((state) => ({ pinnedDocuments: { ...state.pinnedDocuments, [documentId]: !state.pinnedDocuments[documentId] } })),

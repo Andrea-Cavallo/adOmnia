@@ -87,31 +87,4 @@ export function UnsavedChangesDialog({ open, documents, onSave, onDiscard, onCan
   )
 }
 
-interface RunConfigurationDialogProps {
-  open: boolean
-  draft: GoStudioRunDraft
-  onSave: (draft: GoStudioRunDraft) => void
-  onClose: () => void
-}
-
-export function RunConfigurationDialog({ open, draft, onSave, onClose }: RunConfigurationDialogProps) {
-  const [value, setValue] = useState(draft)
-  const dialogRef = useRef<HTMLDivElement>(null)
-  useModalFocusTrap(open, onClose, dialogRef)
-  useEffect(() => { if (open) setValue(draft) }, [draft, open])
-  if (!open) return null
-  const field = (key: keyof GoStudioRunDraft, label: string, placeholder: string, mono = true) => (
-    <label className="block text-[10px] font-medium text-text-3">{label}<input value={value[key]} onChange={(event) => setValue((current) => ({ ...current, [key]: event.target.value }))} placeholder={placeholder} className={`mt-1 h-8 w-full rounded border border-border-1 bg-surface-0 px-2 text-[11px] text-text-1 outline-none focus:border-accent ${mono ? 'font-mono' : ''}`} /></label>
-  )
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-[2px]" onClick={onClose}>
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Run configuration" tabIndex={-1} className="w-[500px] overflow-hidden rounded-xl border border-border-2 bg-surface-1 shadow-2xl" onClick={(event) => event.stopPropagation()}>
-        <div className="flex h-10 items-center border-b border-border-1 px-4"><h2 className="text-xs font-semibold text-text-1">Run configuration</h2><button type="button" onClick={onClose} className="ml-auto grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-3"><X size={12} /></button></div>
-        <div className="grid grid-cols-2 gap-3 p-4">{field('target', 'Target package or file', '.')}{field('workingDirectory', 'Working directory', 'Project root')}{field('goArguments', 'Go tool flags', '-race -v')}{field('programArguments', 'Program arguments', '--port 8080')}{field('buildTags', 'Build tags', 'integration,sqlite')}<label className="row-span-2 block text-[10px] font-medium text-text-3">Environment overrides<textarea value={value.environment} onChange={(event) => setValue((current) => ({ ...current, environment: event.target.value }))} placeholder={'APP_ENV=development\nPORT=8080'} className="mt-1 h-[92px] w-full resize-none rounded border border-border-1 bg-surface-0 p-2 font-mono text-[11px] text-text-1 outline-none focus:border-accent" /></label></div>
-        <div className="border-t border-border-1 px-4 py-2 text-[9px] leading-4 text-text-4">Tool flags and program arguments stay separate and are passed directly to Go without shell concatenation. Environment values are never included in execution logs.</div>
-        <div className="flex items-center justify-end gap-2 border-t border-border-1 bg-surface-0 px-4 py-3"><button type="button" onClick={onClose} className="h-7 rounded px-3 text-xs text-text-3 hover:bg-surface-2">Cancel</button><button type="button" onClick={() => { onSave(value); onClose() }} className="h-7 rounded bg-accent px-3 text-xs font-semibold text-white">Save configuration</button></div>
-      </div>
-    </div>
-  )
-}
 
