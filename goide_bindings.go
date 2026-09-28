@@ -13,8 +13,12 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
-const goIDEStorageKey = "state"
+const (
+	goIDEStorageKey  = "state"
+	goIDERecoveryKey = "recovery"
+)
 
+// goIDEStore conserva lo stato di sessione, configurazioni Run e layout.
 type goIDEStore struct{}
 
 func (goIDEStore) Load() ([]byte, error) {
@@ -29,6 +33,24 @@ func (goIDEStore) Save(data []byte) error {
 		return fmt.Errorf("archivio locale non inizializzato")
 	}
 	return storage.Put("goide", goIDEStorageKey, data)
+}
+
+// goIDERecoveryStore conserva i buffer non salvati in una chiave separata, per
+// non far crescere lo stato di sessione con contenuti di lavoro.
+type goIDERecoveryStore struct{}
+
+func (goIDERecoveryStore) Load() ([]byte, error) {
+	if storage.DB() == nil {
+		return nil, nil
+	}
+	return storage.Get("goide", goIDERecoveryKey)
+}
+
+func (goIDERecoveryStore) Save(data []byte) error {
+	if storage.DB() == nil {
+		return fmt.Errorf("archivio locale non inizializzato")
+	}
+	return storage.Put("goide", goIDERecoveryKey, data)
 }
 
 type GoIDE struct {
@@ -47,6 +69,7 @@ func NewGoIDE() *GoIDE {
 		}
 	})
 	_ = service.ConfigureToolchainStorage(filepath.Join(dataDir(), "goide", "toolchains"))
+	_ = service.ConfigureRecoveryStore(goIDERecoveryStore{})
 	binding = &GoIDE{service: service}
 	return binding
 }
@@ -433,6 +456,106 @@ func settleCancelled[T any](ctx context.Context, value T, err error) (T, error) 
 		return zero, nil
 	}
 	return value, err
+}
+
+// ListRunConfigurations elenca le configurazioni Run salvate della sessione.
+func (g *GoIDE) ListRunConfigurations(sessionID string) ([]goide.RunConfiguration, error) {
+	return g.service.ListRunConfigurations(sessionID)
+}
+
+// SaveRunConfiguration crea o aggiorna una configurazione Run validata.
+func (g *GoIDE) SaveRunConfiguration(sessionID string, config goide.RunConfiguration) (goide.RunConfiguration, error) {
+	return g.service.SaveRunConfiguration(sessionID, config)
+}
+
+// DuplicateRunConfiguration copia una configurazione esistente.
+func (g *GoIDE) DuplicateRunConfiguration(sessionID, configID string) (goide.RunConfiguration, error) {
+	return g.service.DuplicateRunConfiguration(sessionID, configID)
+}
+
+// RenameRunConfiguration rinomina una configurazione esistente.
+func (g *GoIDE) RenameRunConfiguration(sessionID, configID, name string) (goide.RunConfiguration, error) {
+	return g.service.RenameRunConfiguration(sessionID, configID, name)
+}
+
+// ReorderRunConfigurations applica l'ordine scelto dall'utente.
+func (g *GoIDE) ReorderRunConfigurations(sessionID string, configIDs []string) ([]goide.RunConfiguration, error) {
+	return g.service.ReorderRunConfigurations(sessionID, configIDs)
+}
+
+// DeleteRunConfiguration elimina una configurazione salvata.
+func (g *GoIDE) DeleteRunConfiguration(sessionID, configID string) error {
+	return g.service.DeleteRunConfiguration(sessionID, configID)
+}
+
+// StartConfiguredRun avvia una configurazione salvata con i soli segreti forniti a runtime.
+func (g *GoIDE) StartConfiguredRun(sessionID, configID string, secrets map[string]string) (goide.Execution, error) {
+	return g.service.StartConfiguredRun(sessionID, configID, secrets)
+}
+
+// OpenTerminal apre una shell interattiva reale nella working directory del progetto.
+func (g *GoIDE) OpenTerminal(request goide.TerminalRequest) (goide.TerminalSession, error) {
+	return g.service.OpenTerminal(request)
+}
+
+// WriteTerminal inoltra l'input dell'utente alla shell indicata.
+func (g *GoIDE) WriteTerminal(terminalID, data string) error {
+	return g.service.WriteTerminal(terminalID, data)
+}
+
+// ResizeTerminal adegua il PTY alle dimensioni correnti del pannello.
+func (g *GoIDE) ResizeTerminal(terminalID string, columns, rows int) error {
+	return g.service.ResizeTerminal(terminalID, columns, rows)
+}
+
+// CloseTerminal termina shell e albero di processi del terminale.
+func (g *GoIDE) CloseTerminal(terminalID string) error {
+	return g.service.CloseTerminal(terminalID)
+}
+
+// ListTerminals elenca i terminali della sola sessione indicata.
+func (g *GoIDE) ListTerminals(sessionID string) ([]goide.TerminalSession, error) {
+	return g.service.ListTerminals(sessionID)
+}
+
+// HasActiveTerminals indica se la sessione possiede shell ancora vive.
+func (g *GoIDE) HasActiveTerminals(sessionID string) bool {
+	return g.service.HasActiveTerminals(sessionID)
+}
+
+// GetSessionView restituisce layout e tab ripristinabili della sessione.
+func (g *GoIDE) GetSessionView(sessionID string) (goide.SessionView, error) {
+	return g.service.GetSessionView(sessionID)
+}
+
+// SaveSessionView registra layout e tab della sessione, senza contenuti dei file.
+func (g *GoIDE) SaveSessionView(sessionID string, view goide.SessionView) error {
+	return g.service.SaveSessionView(sessionID, view)
+}
+
+// RememberBuffer conserva un buffer non salvato nello store di recupero locale.
+func (g *GoIDE) RememberBuffer(sessionID, relativePath, content, diskToken string) error {
+	return g.service.RememberBuffer(sessionID, relativePath, content, diskToken)
+}
+
+// ForgetBuffer scarta un buffer dallo store di recupero.
+func (g *GoIDE) ForgetBuffer(sessionID, relativePath string) error {
+	return g.service.ForgetBuffer(sessionID, relativePath)
+}
+
+// ListRecoveredBuffers elenca i buffer non salvati ritrovati dopo un riavvio.
+func (g *GoIDE) ListRecoveredBuffers(sessionID string) ([]goide.RecoveredBuffer, error) {
+	return g.service.ListRecoveredBuffers(sessionID)
+}
+
+// PruneMissingSessions rimuove le sessioni la cui cartella non esiste più.
+func (g *GoIDE) PruneMissingSessions() ([]goide.Session, error) {
+	return g.service.PruneMissingSessions()
+}
+
+// FindSessionsForPath elenca le altre sessioni che contengono lo stesso file.
+func (g *GoIDE) FindSessionsForPath(sessionID, relativePath string) ([]goide.Session, error) {
+	return g.service.FindSessionsForPath(sessionID, relativePath)
 }
 
 // ServiceShutdown rilascia processi e risorse posseduti dal servizio.

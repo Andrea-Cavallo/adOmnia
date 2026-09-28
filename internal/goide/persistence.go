@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-const PersistenceSchemaVersion = 2
+const PersistenceSchemaVersion = 3
 
 type Store interface {
 	Load() ([]byte, error)
@@ -13,9 +13,11 @@ type Store interface {
 }
 
 type persistedState struct {
-	Version  int             `json:"version"`
-	Sessions []Session       `json:"sessions"`
-	Recent   []RecentProject `json:"recent,omitempty"`
+	Version    int                       `json:"version"`
+	Sessions   []Session                 `json:"sessions"`
+	Recent     []RecentProject           `json:"recent,omitempty"`
+	RunConfigs []RunConfiguration        `json:"runConfigs,omitempty"`
+	SessionUI  map[SessionID]SessionView `json:"sessionUi,omitempty"`
 }
 
 type Persistence struct {
@@ -50,16 +52,21 @@ func (p *Persistence) LoadState() (persistedState, error) {
 			})
 		}
 	}
+	if state.SessionUI == nil {
+		state.SessionUI = make(map[SessionID]SessionView)
+	}
 	state.Version = PersistenceSchemaVersion
 	return state, nil
 }
 
-// SaveState salva metadati di sessione e recenti senza contenuti dei file o credenziali.
-func (p *Persistence) SaveState(sessions []Session, recent []RecentProject) error {
+// SaveState salva metadati di sessione, recenti, configurazioni Run e layout,
+// senza contenuti dei file, valori segreti o credenziali.
+func (p *Persistence) SaveState(snapshot persistedState) error {
 	if p == nil || p.store == nil {
 		return nil
 	}
-	data, err := json.Marshal(persistedState{Version: PersistenceSchemaVersion, Sessions: sessions, Recent: recent})
+	snapshot.Version = PersistenceSchemaVersion
+	data, err := json.Marshal(snapshot)
 	if err != nil {
 		return fmt.Errorf("serializzazione stato Go Studio fallita: %w", err)
 	}

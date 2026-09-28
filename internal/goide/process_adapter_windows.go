@@ -4,6 +4,7 @@ package goide
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"strconv"
 	"syscall"
@@ -26,10 +27,27 @@ func terminateProcessTree(command *exec.Cmd) error {
 	if command == nil || command.Process == nil {
 		return nil
 	}
-	kill := exec.Command("taskkill.exe", "/PID", strconv.Itoa(command.Process.Pid), "/T", "/F")
+	return terminateProcessTreeByPID(command.Process.Pid)
+}
+
+// terminateProcessTreeByPID arresta un intero albero di processi a partire dal
+// PID indicato, usato dal terminale PTY che non possiede un *exec.Cmd.
+func terminateProcessTreeByPID(pid int) error {
+	if pid <= 0 {
+		return nil
+	}
+	kill := exec.Command("taskkill.exe", "/PID", strconv.Itoa(pid), "/T", "/F")
 	kill.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: createNoWindow}
 	if output, err := kill.CombinedOutput(); err != nil {
 		return fmt.Errorf("arresto albero processi fallito: %w (%s)", err, string(output))
 	}
 	return nil
+}
+
+// defaultShell restituisce la shell interattiva predefinita della piattaforma.
+func defaultShell() (string, []string) {
+	if shell := os.Getenv("COMSPEC"); shell != "" {
+		return shell, nil
+	}
+	return "cmd.exe", nil
 }

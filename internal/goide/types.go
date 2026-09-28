@@ -93,16 +93,80 @@ type QuickOpenResult struct {
 	Language     string `json:"language"`
 }
 
+// RunConfigurationKind elenca i perimetri di esecuzione supportati da una configurazione salvata.
+type RunConfigurationKind string
+
+const (
+	RunKindPackage RunConfigurationKind = "package"
+	RunKindFiles   RunConfigurationKind = "files"
+	RunKindBuild   RunConfigurationKind = "build"
+	RunKindBinary  RunConfigurationKind = "binary"
+	RunKindTest    RunConfigurationKind = "test"
+)
+
+// EnvironmentEntry rappresenta una variabile d'ambiente di una configurazione Run.
+// Le voci marcate Secret non persistono il valore: viene richiesto all'avvio e
+// resta soltanto in memoria per la durata della sessione.
+type EnvironmentEntry struct {
+	Key    string `json:"key"`
+	Value  string `json:"value,omitempty"`
+	Secret bool   `json:"secret,omitempty"`
+}
+
 type RunConfiguration struct {
-	ID               string            `json:"id"`
-	SessionID        SessionID         `json:"sessionId"`
-	Name             string            `json:"name"`
-	Target           string            `json:"target"`
-	WorkingDirectory string            `json:"workingDirectory"`
-	GoArguments      []string          `json:"goArguments"`
-	ProgramArguments []string          `json:"programArguments"`
-	BuildTags        []string          `json:"buildTags"`
-	Environment      map[string]string `json:"environment"`
+	ID               string               `json:"id"`
+	SessionID        SessionID            `json:"sessionId"`
+	Name             string               `json:"name"`
+	Kind             RunConfigurationKind `json:"kind"`
+	Target           string               `json:"target"`
+	Files            []string             `json:"files,omitempty"`
+	BinaryPath       string               `json:"binaryPath,omitempty"`
+	WorkingDirectory string               `json:"workingDirectory"`
+	GoArguments      []string             `json:"goArguments"`
+	ProgramArguments []string             `json:"programArguments"`
+	BuildTags        []string             `json:"buildTags"`
+	Environment      []EnvironmentEntry   `json:"environment"`
+	Order            int                  `json:"order"`
+	CreatedAt        time.Time            `json:"createdAt"`
+	UpdatedAt        time.Time            `json:"updatedAt"`
+}
+
+// RequiredSecrets elenca le chiavi il cui valore deve essere fornito a runtime.
+func (c RunConfiguration) RequiredSecrets() []string {
+	keys := make([]string, 0, len(c.Environment))
+	for _, entry := range c.Environment {
+		if entry.Secret {
+			keys = append(keys, entry.Key)
+		}
+	}
+	return keys
+}
+
+// SessionView è lo stato di interfaccia ripristinabile di una sessione: quali
+// file erano aperti, quale era attivo e come era disposto il layout. Non
+// contiene mai il contenuto dei file.
+type SessionView struct {
+	OpenPaths          []string `json:"openPaths,omitempty"`
+	ActivePath         string   `json:"activePath,omitempty"`
+	ActiveConfigID     string   `json:"activeConfigId,omitempty"`
+	ProjectWidth       int      `json:"projectWidth,omitempty"`
+	StructureWidth     int      `json:"structureWidth,omitempty"`
+	BottomHeight       int      `json:"bottomHeight,omitempty"`
+	StructureOpen      bool     `json:"structureOpen"`
+	BottomOpen         bool     `json:"bottomOpen"`
+	TerminalPanelOpen  bool     `json:"terminalPanelOpen"`
+	ShowIgnoredEntries bool     `json:"showIgnoredEntries"`
+}
+
+// RecoveredBuffer è un buffer non salvato ritrovato dopo un riavvio: viene
+// proposto all'utente come recupero esplicito, mai riapplicato da solo.
+type RecoveredBuffer struct {
+	SessionID    SessionID `json:"sessionId"`
+	RelativePath string    `json:"relativePath"`
+	Content      string    `json:"content"`
+	SavedAt      time.Time `json:"savedAt"`
+	DiskChanged  bool      `json:"diskChanged"`
+	Missing      bool      `json:"missing"`
 }
 
 type Execution struct {
@@ -121,9 +185,13 @@ type Execution struct {
 }
 
 type RunRequest struct {
-	SessionID        SessionID         `json:"sessionId"`
-	Kind             string            `json:"kind"`
-	Target           string            `json:"target"`
+	SessionID SessionID `json:"sessionId"`
+	Kind      string    `json:"kind"`
+	Target    string    `json:"target"`
+	// ExtraTargets contiene i target aggiuntivi di una configurazione a lista
+	// di file: vengono accodati subito dopo Target, prima degli argomenti del
+	// programma, per rispettare l'ordine richiesto da `go run`.
+	ExtraTargets []string `json:"extraTargets,omitempty"`
 	WorkingDirectory string            `json:"workingDirectory"`
 	GoArguments      []string          `json:"goArguments"`
 	ProgramArguments []string          `json:"programArguments"`

@@ -27,7 +27,11 @@ type Service struct {
 	terminal      *TerminalManager
 	debug         *DebugManager
 	tests         *TestManager
+	runConfigs    *RunConfigManager
+	recovery      *RecoveryManager
 	persistence   *Persistence
+	viewMu        sync.RWMutex
+	views         map[SessionID]SessionView
 	restoreOnce   sync.Once
 	restoreErr    error
 	recentMu      sync.RWMutex
@@ -53,18 +57,27 @@ func NewService(store Store, eventSink func(EventEnvelope)) *Service {
 		terminal:      NewTerminalManager(),
 		debug:         NewDebugManager(),
 		tests:         NewTestManager(),
+		runConfigs:    NewRunConfigManager(),
 		persistence:   NewPersistence(store),
+		views:         make(map[SessionID]SessionView),
 		runRequests:   make(map[RunID]RunRequest),
 		eventSink:     eventSink,
 		goplsBinaries: make(map[SessionID]string),
 		lint:          lintRegistry{custom: make(map[SessionID]string)},
 	}
+	service.recovery = NewRecoveryManager(nil)
 	service.lsp.SetEmitter(service.emit)
 	service.installer = NewToolchainInstaller(func(eventType string, installation ToolchainInstallation) {
 		service.emit(eventType, installation.SessionID, installation.ID, installation)
 	})
 	service.processes.SetEventSink(func(eventType string, execution Execution, payload any) {
 		service.emit(eventType, execution.SessionID, string(execution.ID), payload)
+	})
+	service.terminal.SetEventSink(func(eventType string, terminal TerminalSession, payload any) {
+		if payload == nil {
+			payload = terminal
+		}
+		service.emit(eventType, terminal.SessionID, string(terminal.ID), payload)
 	})
 	return service
 }
@@ -88,6 +101,7 @@ func (s *Service) GetCapabilities() Capabilities {
 		Toolchain:        true,
 		Processes:        true,
 		LSP:              true,
+		Terminal:         true,
 		MultipleSessions: true,
 	}
 }
@@ -221,6 +235,7 @@ func (s *Service) CloseSession(id string) error {
 	if !s.workspace.CloseSession(sessionID) {
 		return nil
 	}
+	s.terminal.CloseSession(sessionID)
 	s.documents.CloseSession(sessionID)
 	s.lsp.CloseSession(sessionID)
 	s.toolchain.CloseSession(sessionID)
@@ -230,6 +245,13 @@ func (s *Service) CloseSession(id string) error {
 	s.lint.mu.Lock()
 	delete(s.lint.custom, sessionID)
 	s.lint.mu.Unlock()
+	s.runConfigs.CloseSession(sessionID)
+	if err := s.recovery.ForgetSession(sessionID); err != nil {
+		return err
+	}
+	s.viewMu.Lock()
+	delete(s.views, sessionID)
+	s.viewMu.Unlock()
 	if err := s.saveState(); err != nil {
 		return err
 	}
@@ -493,6 +515,11 @@ func (s *Service) StartRun(request RunRequest) (Execution, error) {
 	if err := validateRunTarget(session.Project.RealPath, workingDirectory, target); err != nil {
 		return Execution{}, err
 	}
+	for _, extra := range request.ExtraTargets {
+		if err := validateRunTarget(session.Project.RealPath, workingDirectory, extra); err != nil {
+			return Execution{}, err
+		}
+	}
 	if err := validateGoArguments(session.Project.RealPath, workingDirectory, request.GoArguments); err != nil {
 		return Execution{}, err
 	}
@@ -509,6 +536,7 @@ func (s *Service) StartRun(request RunRequest) (Execution, error) {
 			arguments = append(arguments, "-tags", strings.Join(request.BuildTags, ","))
 		}
 		arguments = append(arguments, target)
+		arguments = append(arguments, request.ExtraTargets...)
 		if kind == "run" || kind == "test" {
 			arguments = append(arguments, request.ProgramArguments...)
 		}
@@ -670,6 +698,16 @@ func (s *Service) restore() error {
 		s.recentMu.Lock()
 		s.recent = append([]RecentProject(nil), state.Recent...)
 		s.recentMu.Unlock()
+		s.runConfigs.Replace(state.RunConfigs)
+		s.viewMu.Lock()
+		s.views = make(map[SessionID]SessionView, len(state.SessionUI))
+		for sessionID, view := range state.SessionUI {
+			s.views[sessionID] = view
+		}
+		s.viewMu.Unlock()
+		if err := s.recovery.Load(); err != nil {
+			s.restoreErr = err
+		}
 	})
 	return s.restoreErr
 }
@@ -678,7 +716,18 @@ func (s *Service) saveState() error {
 	s.recentMu.RLock()
 	recent := append([]RecentProject(nil), s.recent...)
 	s.recentMu.RUnlock()
-	return s.persistence.SaveState(s.workspace.ListSessions(), recent)
+	s.viewMu.RLock()
+	views := make(map[SessionID]SessionView, len(s.views))
+	for sessionID, view := range s.views {
+		views[sessionID] = view
+	}
+	s.viewMu.RUnlock()
+	return s.persistence.SaveState(persistedState{
+		Sessions:   s.workspace.ListSessions(),
+		Recent:     recent,
+		RunConfigs: s.runConfigs.Snapshot(),
+		SessionUI:  views,
+	})
 }
 
 func (s *Service) rememberProject(project Project, openedAt time.Time) {
