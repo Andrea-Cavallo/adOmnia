@@ -98,3 +98,29 @@ func TestWorkspaceFindsNestedModules(t *testing.T) {
 		t.Fatalf("moduli annidati non rilevati: %#v", project)
 	}
 }
+
+func TestWorkspaceDistinguishesGoFoldersWithoutModule(t *testing.T) {
+	root := t.TempDir()
+	files := map[string]string{
+		"scripts/gen.go":    "package main\n",
+		"svc/go.mod":        "module example.com/svc\n",
+		"svc/main.go":       "package main\n",
+		"svc/internal/x.go": "package internal\n",
+	}
+	for name, content := range files {
+		path := filepath.Join(root, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	project := inspectProject(root, root)
+	if project.GoModPath != "" || len(project.Modules) != 1 {
+		t.Fatalf("moduli inattesi: %#v", project.Modules)
+	}
+	if len(project.LooseGoDirs) != 1 || project.LooseGoDirs[0] != "scripts" {
+		t.Fatalf("cartelle Go senza modulo inattese: %#v", project.LooseGoDirs)
+	}
+}

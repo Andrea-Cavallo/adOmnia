@@ -527,6 +527,7 @@ export class Project {
     "goModPath"?: string;
     "goWorkPath"?: string;
     "modules": GoModule[];
+    "looseGoDirs"?: string[];
     "authorization": AuthorizationState;
 
     /** Creates a new Project instance. */
@@ -558,9 +559,13 @@ export class Project {
      */
     static createFrom($$source: any = {}): Project {
         const $$createField6_0 = $$createType4;
+        const $$createField7_0 = $$createType5;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("modules" in $$parsedSource) {
             $$parsedSource["modules"] = $$createField6_0($$parsedSource["modules"]);
+        }
+        if ("looseGoDirs" in $$parsedSource) {
+            $$parsedSource["looseGoDirs"] = $$createField7_0($$parsedSource["looseGoDirs"]);
         }
         return new Project($$parsedSource as Partial<Project>);
     }

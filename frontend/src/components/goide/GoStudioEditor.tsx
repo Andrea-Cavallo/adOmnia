@@ -4,6 +4,7 @@ import { AlertTriangle, GitCompare, RotateCcw, Save, X } from 'lucide-react'
 import { applyAdomniaMonacoTheme, configureMonacoLoader, monaco } from '@/lib/monacoSetup'
 import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
 import { useSettingsStore } from '@/stores/settings'
+import { registerGoStudioEditor } from './goStudioEditorRegistry'
 
 configureMonacoLoader()
 
@@ -29,6 +30,8 @@ export function GoStudioEditor({ documents, active, onCursor, onRequestClose }: 
   const beforeMount: BeforeMount = (instance) => applyAdomniaMonacoTheme(instance)
   const onMount: OnMount = (editor) => {
     editorRef.current = editor
+    const unregister = registerGoStudioEditor(editor)
+    editor.onDidDispose(unregister)
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => void saveDocument())
     editor.onDidChangeCursorPosition((event) => onCursor(event.position.lineNumber, event.position.column))
     editor.onDidFocusEditorText(() => void checkActiveDocument())

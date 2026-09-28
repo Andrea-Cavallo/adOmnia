@@ -3,6 +3,7 @@ import { Copy, RefreshCw, Search, Square, TerminalSquare } from 'lucide-react'
 import { Clipboard as WailsClipboard } from '@wailsio/runtime'
 import { useGoIDEStore, type GoIDEConsoleChunk } from '@/stores/goide'
 import type { GoIDEExecution } from '@/lib/goide-api'
+import { resolveConsolePath } from './goStudioConsolePaths'
 
 interface GoStudioRunPanelProps {
   sessionId: string
@@ -66,6 +67,22 @@ function renderAnsi(raw: string) {
   return segments.map((segment, segmentIndex) => <span key={segmentIndex} className={segment.className}>{segment.text}</span>)
 }
 
+function formatDuration(milliseconds: number): string {
+  if (milliseconds < 1000) return `${milliseconds} ms`
+  if (milliseconds < 60_000) return `${(milliseconds / 1000).toFixed(1)} s`
+  return `${Math.floor(milliseconds / 60_000)}m ${Math.round((milliseconds % 60_000) / 1000)}s`
+}
+
+function executionDetails(execution: GoIDEExecution): string {
+  const parts = [execution.status]
+  if (execution.pid) parts.push(`PID ${execution.pid}`)
+  if (execution.status !== 'running') {
+    if (execution.exitCode !== undefined && execution.exitCode !== null) parts.push(`exit ${execution.exitCode}`)
+    parts.push(formatDuration(execution.durationMillis))
+  }
+  return parts.join(' · ')
+}
+
 function statusClass(status: string): string {
   if (status === 'running') return 'text-success'
   if (status === 'failed') return 'text-danger'
@@ -111,7 +128,7 @@ export function GoStudioRunPanel({ sessionId }: GoStudioRunPanelProps) {
           >
             {executions.map((execution) => <option key={execution.id} value={execution.id}>{execution.kind} · {execution.id.slice(-6)} · {execution.status}</option>)}
           </select>
-          <span className={`ml-2 text-[9px] ${statusClass(active.status)}`}>{active.status}{active.pid ? ` · PID ${active.pid}` : ''}</span>
+          <span className={`ml-2 text-[9px] ${statusClass(active.status)}`} title={`${active.command}\n${active.workingDirectory}`}>{executionDetails(active)}</span>
           {active.kind !== 'dependency' && <button type="button" onClick={() => void restartRun(active.id)} title="Restart" className="ml-1 grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-3 hover:text-text-1"><RefreshCw size={11} /></button>}
           <button type="button" onClick={() => void stopRun(active.id)} disabled={active.status !== 'running'} title="Stop process tree" className="grid h-6 w-6 place-items-center rounded text-danger hover:bg-danger/10 disabled:opacity-30"><Square size={10} fill="currentColor" /></button>
         </>}
@@ -126,7 +143,7 @@ export function GoStudioRunPanel({ sessionId }: GoStudioRunPanelProps) {
         {visibleLines.map((line, index) => (
           <div key={`${line.sequence}-${index}`} className={`min-h-4 whitespace-pre-wrap break-all ${line.stream === 'stderr' ? 'text-danger' : line.stream === 'system' ? 'text-text-4' : 'text-text-2'}`}>
             {line.path && line.line ? (
-              <button type="button" onClick={() => void openLocation(line.path!, line.line!, line.column)} className="text-left underline decoration-accent/40 underline-offset-2 hover:text-accent">{renderAnsi(line.raw)}</button>
+              <button type="button" onClick={() => void openLocation(resolveConsolePath(line.path!, active?.workingDirectory ?? ''), line.line!, line.column)} className="text-left underline decoration-accent/40 underline-offset-2 hover:text-accent">{renderAnsi(line.raw)}</button>
             ) : renderAnsi(line.raw)}
           </div>
         ))}
@@ -139,10 +156,4 @@ export function GoStudioRunPanel({ sessionId }: GoStudioRunPanelProps) {
       )}
     </section>
   )
-}
-
-export function executionSummary(execution: GoIDEExecution | null): string {
-  if (!execution) return 'idle'
-  if (execution.status === 'running') return `${execution.kind} running`
-  return `${execution.kind} ${execution.status}${execution.exitCode !== undefined && execution.exitCode !== null ? ` (${execution.exitCode})` : ''}`
 }

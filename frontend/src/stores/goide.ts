@@ -101,6 +101,7 @@ interface GoIDEState {
   layout: GoIDELayout
   directoryEntries: Record<string, Record<string, GoIDEFileEntry[]>>
   directoryLoading: Record<string, boolean>
+  showIgnoredBySession: Record<string, boolean>
   documents: GoIDEEditorDocument[]
   activeDocumentBySession: Record<string, string | null>
   toolchains: Record<string, GoIDEToolchainInfo | null>
@@ -118,7 +119,8 @@ interface GoIDEState {
   setToolAuthorization: (allowed: boolean) => Promise<void>
   closeActiveSession: (discardDocuments?: boolean) => Promise<boolean>
   loadDirectory: (relativePath?: string) => Promise<void>
-  openDocument: (relativePath: string) => Promise<void>
+  toggleShowIgnored: () => Promise<void>
+  openDocument: (relativePath: string) => Promise<string | null>
   openLocation: (relativePath: string, line: number, column?: number) => Promise<void>
   selectDocument: (documentId: string) => void
   updateDocument: (documentId: string, buffer: string) => void
@@ -180,6 +182,10 @@ function appendConsole(chunks: GoIDEConsoleChunk[], next: GoIDEConsoleChunk): Go
   return result
 }
 
+function findSessionDocument(documents: GoIDEEditorDocument[], sessionId: string, path: string): GoIDEEditorDocument | undefined {
+  return documents.find((item) => item.document.sessionId === sessionId && (item.document.relativePath === path || item.document.path === path))
+}
+
 function isExecution(value: unknown): value is GoIDEExecution {
   return !!value && typeof value === 'object' && typeof (value as GoIDEExecution).id === 'string'
 }
@@ -197,6 +203,7 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
   layout: loadLayout(),
   directoryEntries: {},
   directoryLoading: {},
+  showIgnoredBySession: {},
   documents: [],
   activeDocumentBySession: {},
   toolchains: {},
@@ -323,7 +330,7 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
     const key = `${sessionId}:${relativePath}`
     set((state) => ({ directoryLoading: { ...state.directoryLoading, [key]: true } }))
     try {
-      const entries = await listGoIDEDirectory(sessionId, relativePath)
+      const entries = await listGoIDEDirectory(sessionId, relativePath, get().showIgnoredBySession[sessionId] ?? false)
       set((state) => ({
         directoryEntries: { ...state.directoryEntries, [sessionId]: { ...(state.directoryEntries[sessionId] ?? {}), [relativePath]: entries } },
         directoryLoading: { ...state.directoryLoading, [key]: false },
@@ -333,36 +340,46 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
     }
   },
 
-  openDocument: async (relativePath) => {
+  toggleShowIgnored: async () => {
     const sessionId = get().activeSessionId
     if (!sessionId) return
-    const existing = get().documents.find((item) => item.document.sessionId === sessionId && item.document.relativePath === relativePath)
+    set((state) => ({
+      showIgnoredBySession: { ...state.showIgnoredBySession, [sessionId]: !(state.showIgnoredBySession[sessionId] ?? false) },
+      directoryEntries: { ...state.directoryEntries, [sessionId]: {} },
+    }))
+    await get().loadDirectory('')
+  },
+
+  openDocument: async (path) => {
+    const sessionId = get().activeSessionId
+    if (!sessionId) return null
+    const activate = (documentId: string) => set((state) => ({ activeDocumentBySession: { ...state.activeDocumentBySession, [sessionId]: documentId } }))
+    const existing = findSessionDocument(get().documents, sessionId, path)
     if (existing) {
-      set((state) => ({ activeDocumentBySession: { ...state.activeDocumentBySession, [sessionId]: existing.document.id } }))
-      return
+      activate(existing.document.id)
+      return existing.document.id
     }
     set({ loading: true, error: null })
     try {
-      const opened = await openGoIDEDocument(sessionId, relativePath)
-      const editorDocument = toEditorDocument(opened)
-      set((state) => ({
-        documents: [...state.documents, editorDocument],
-        activeDocumentBySession: { ...state.activeDocumentBySession, [sessionId]: opened.document.id },
-        loading: false,
-      }))
+      const opened = await openGoIDEDocument(sessionId, path)
+      // Percorsi diversi (relativo, "./", assoluto) possono indicare lo stesso file: l'id stabile lo deduplica.
+      if (get().documents.some((item) => item.document.id === opened.document.id)) {
+        set({ loading: false })
+        activate(opened.document.id)
+        return opened.document.id
+      }
+      set((state) => ({ documents: [...state.documents, toEditorDocument(opened)], loading: false }))
+      activate(opened.document.id)
+      return opened.document.id
     } catch (error) {
       set({ loading: false, error: errorMessage(error) })
+      return null
     }
   },
 
-  openLocation: async (relativePath, line, column = 1) => {
-    const sessionId = get().activeSessionId
-    if (!sessionId) return
-    await get().openDocument(relativePath)
-    const opened = get().documents.find((item) => item.document.sessionId === sessionId && (
-      item.document.relativePath === relativePath || item.document.path === relativePath
-    ))
-    if (opened) set({ revealLocation: { documentId: opened.document.id, line: Math.max(1, line), column: Math.max(1, column) } })
+  openLocation: async (path, line, column = 1) => {
+    const documentId = await get().openDocument(path)
+    if (documentId) set({ revealLocation: { documentId, line: Math.max(1, line), column: Math.max(1, column) } })
   },
 
   selectDocument: (documentId) => {

@@ -12,6 +12,7 @@ Go Studio non è un prototipo interno né un esercizio tecnico: deve risultare u
 - [ ] **Veloce**: le operazioni interattive (apertura file, completion, hover, cambio sessione, apertura pannello) rispondono con la latenza percepita di un editor moderno; le operazioni lunghe (build, test, indicizzazione, avvio gopls) sono sempre asincrone e non bloccano mai la UI.
 - [ ] **Moderno**: densità, tipografia, stati hover/focus/active e motion coerenti con `docs/SOUL.md` e con i mock approvati; nessun pannello con l'aspetto di una demo, di un wireframe o di un tool abbozzato.
 - [ ] **Stabile alla percezione**: nessuno stato a metà, nessun flicker, nessun salto di layout quando arrivano dati asincroni (diagnostica, output, eventi LSP/Run/debug).
+- [ ] **Completo come IDE Go**: Go Studio è un vero ambiente di sviluppo Go dentro adOmnia, non un editor con un pulsante Run. Legge l'SDK Go configurato (GOROOT, stdlib, moduli in cache), offre una menu bar seria con tutte le azioni reali, e copre l'intero ciclo scrivi → capisci → esegui → testa → debugga.
 - [ ] Verificare questi quattro criteri a ogni gate di fase, su un progetto Go reale (non un progetto giocattolo vuoto), e registrarne l'esito nelle Evidenze della fase.
 
 ---
@@ -67,11 +68,12 @@ Difetti trovati e corretti nell'audit:
 
 Gap aperti della Fase 1 da chiudere prima del gate:
 
-- [ ] Mostrare nel prodotto module path, moduli annidati, `go.work` e cartelle senza modulo (oggi solo un contatore nel footer).
-- [ ] Rendere configurabile la visualizzazione delle directory ignorate (il backend lo supporta, la UI no).
-- [ ] Riaprire un progetto recente anche quando una sessione è già aperta (oggi solo dallo stato vuoto).
-- [ ] Run console: mostrare durata ed exit code; link `file:line` relativi (`./main.go:5`) risolti rispetto alla working directory dell'esecuzione, senza tab duplicate.
-- [ ] `Ctrl/Cmd+W` dentro Go Studio chiude una tab HTTP invisibile: deve chiudere il documento attivo; scorciatoie da documentare nel prodotto.
+- [x] Mostrare nel prodotto module path, moduli annidati, `go.work` e cartelle senza modulo: pannello destro **Project Overview** (sostituisce il placeholder Structure fino a gopls) e campo backend `looseGoDirs`.
+- [x] Rendere configurabile la visualizzazione delle directory ignorate: toggle nell'header Project e in View → Show Ignored Folders, per sessione.
+- [x] Riaprire un progetto recente anche quando una sessione è già aperta: File → Open Recent.
+- [x] Run console: mostrare durata ed exit code; link `file:line` relativi (`./main.go:5`) risolti rispetto alla working directory dell'esecuzione, senza tab duplicate.
+- [x] `Ctrl/Cmd+W` dentro Go Studio chiudeva una tab HTTP invisibile: ora chiude il documento attivo. Scorciatoie documentate in Help → Keyboard Shortcuts, con test anti-duplicati.
+- [x] **Menu bar IDE reale** (File, Edit, View, Go, Run, Help) con registro comandi unico condiviso da menu, scorciatoie e dialog di aiuto; voci non disponibili disabilitate con motivo nel tooltip; Edit esegue le azioni Monaco reali; passaggio fra menu al passaggio del mouse come in GoLand.
 - [ ] Verifiche manuali non eseguibili nel container Linux (GTK4/WebKitGTK assenti): `wails3 task dev` su Windows, test `process_tree_windows_test.go`, temi dark/light, barra di qualità su progetto reale.
 
 ---
@@ -209,18 +211,18 @@ Obiettivo: aprire un progetto Go reale, modificarlo, salvarlo, compilarlo, esegu
 
 - [x] Aprire una cartella locale tramite dialog nativo e registrarne il percorso senza copiarla o modificarla.
 - [x] Validare esistenza, tipo e accessibilità della cartella con errori comprensibili.
-- [ ] Riconoscere `go.mod` e `go.work` alla radice del progetto e mostrarne il modulo dichiarato.
-- [ ] Riconoscere moduli annidati (oltre alla radice) e distinguere esplicitamente le cartelle Go senza modulo.
-- [ ] Mostrare chiaramente root del progetto, moduli trovati e workspace Go rilevato.
+- [x] Riconoscere `go.mod` e `go.work` alla radice del progetto e mostrarne il modulo dichiarato.
+- [x] Riconoscere moduli annidati (oltre alla radice) e distinguere esplicitamente le cartelle Go senza modulo.
+- [x] Mostrare chiaramente root del progetto, moduli trovati e workspace Go rilevato.
 - [x] Creare un nuovo progetto scegliendo nome, cartella e module path; eseguire `go mod init` solo dopo conferma esplicita.
 - [x] Ripristinare tra riavvii le sessioni aperte, rimuovendo automaticamente le cartelle non più disponibili senza perdere le altre sessioni.
-- [ ] Aggiungere un elenco "Recent Projects" che sopravviva alla chiusura della sessione e permetta di riaprire un progetto già chiuso con un clic.
+- [x] Aggiungere un elenco "Recent Projects" che sopravviva alla chiusura della sessione e permetta di riaprire un progetto già chiuso con un clic.
 - [x] Introdurre lo stato di autorizzazione agli strumenti separato dall'apertura del progetto.
 
 ## 1.2 Albero file e documenti
 
 - [x] Caricare l'albero cartelle in modo progressivo/lazy invece di leggere ricorsivamente tutto all'apertura.
-- [ ] Ignorare o ridurre in modo configurabile directory pesanti come `.git`, vendor e output di build.
+- [x] Ignorare o ridurre in modo configurabile directory pesanti come `.git`, vendor e output di build.
 - [x] Aprire file testuali in tab editor con URI stabile e associazione alla sessione.
 - [x] Supportare almeno Go, JSON, YAML, Markdown, `.env`, `go.mod` e `go.work` con linguaggio Monaco appropriato.
 - [x] Fornire syntax highlighting Go, numeri di riga, indentazione, bracket matching e folding.
@@ -253,9 +255,9 @@ Obiettivo: aprire un progetto Go reale, modificarlo, salvarlo, compilarlo, esegu
 - [x] Eseguire `go build` e `go run` tramite argomenti strutturati, senza shell concatenata.
 - [x] Associare ogni esecuzione a `sessionId` e `runId` univoci.
 - [x] Trasmettere stdout/stderr incrementalmente, preservando l'ordine utile e senza congelare la UI.
-- [ ] Mostrare comando, working directory, stato, PID quando disponibile, durata ed exit code.
+- [x] Mostrare comando, working directory, stato, PID quando disponibile, durata ed exit code.
 - [x] Renderizzare ANSI in modo sicuro e limitare il buffer della console.
-- [ ] Aggiungere ricerca, copia e link cliccabili `file:line` che aprono l'editor nel punto corretto.
+- [x] Aggiungere ricerca, copia e link cliccabili `file:line` che aprono l'editor nel punto corretto.
 - [x] Fornire stdin alla Run console per programmi interattivi.
 - [x] Supportare più esecuzioni contemporanee con tab/identità chiaramente separate.
 - [x] Implementare Stop idempotente e Restart.
@@ -266,11 +268,12 @@ Obiettivo: aprire un progetto Go reale, modificarlo, salvarlo, compilarlo, esegu
 ## 1.5 Interfaccia minima professionale
 
 - [x] Toolbar con progetto attivo, configurazione, Build, Run e Stop; Debug non presente finché non reale.
+- [x] Menu bar IDE (File/Edit/View/Go/Run/Help) con sole azioni reali, stati disabilitati motivati e scorciatoie visibili.
 - [x] Project tree ridimensionabile a sinistra ed editor a tab al centro.
 - [x] Tool window inferiore ridimensionabile con Run e Problems reali.
 - [x] Status bar con toolchain, file, posizione cursore e stato di esecuzione.
 - [ ] Stati loading, empty, error, running e stopped immediatamente distinguibili.
-- [ ] Scorciatoie documentate e senza conflitti con quelle globali di adOmnia.
+- [x] Scorciatoie documentate e senza conflitti con quelle globali di adOmnia.
 - [ ] Layout corretto con temi dark/light, densità e ridimensionamento finestra.
 
 ## 1.6 Test mirati
@@ -347,6 +350,7 @@ Obiettivo: comprendere davvero il codice tramite gopls, includendo i buffer non 
 - [ ] Implementare code actions e gestione import.
 - [ ] Implementare formatting configurabile tramite gopls/gofmt.
 - [ ] Implementare ricerca testuale nel progetto, cancellabile e con esclusioni configurabili.
+- [ ] Navigare in sola lettura nei sorgenti dell'SDK Go (GOROOT/stdlib) e dei moduli nella module cache tramite definition/hover, senza permetterne la modifica.
 - [ ] Non usare regex o dati statici per simulare funzioni semantiche.
 
 ## 2.4 Linter Go (golangci-lint/staticcheck)

@@ -37,6 +37,7 @@ type Project struct {
 	GoModPath     string             `json:"goModPath,omitempty"`
 	GoWorkPath    string             `json:"goWorkPath,omitempty"`
 	Modules       []GoModule         `json:"modules"`
+	LooseGoDirs   []string           `json:"looseGoDirs,omitempty"`
 	Authorization AuthorizationState `json:"authorization"`
 }
 

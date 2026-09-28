@@ -15,7 +15,10 @@ import (
 	"time"
 )
 
-const maxModuleScanDirectories = 4_000
+const (
+	maxModuleScanDirectories = 4_000
+	maxLooseGoDirectories    = 50
+)
 
 var projectNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$`)
 
@@ -198,7 +201,7 @@ func inspectProject(root, realRoot string) Project {
 		Modules:       []GoModule{},
 		Authorization: AuthorizationOpened,
 	}
-	project.Modules = discoverModules(root)
+	project.Modules, project.LooseGoDirs = discoverModules(root)
 	for _, module := range project.Modules {
 		if samePath(module.Path, root) {
 			project.GoModPath = filepath.Join(root, "go.mod")
@@ -212,8 +215,10 @@ func inspectProject(root, realRoot string) Project {
 	return project
 }
 
-func discoverModules(root string) []GoModule {
+// discoverModules trova i go.mod del progetto e le cartelle con file .go non coperte da alcun modulo.
+func discoverModules(root string) ([]GoModule, []string) {
 	modules := make([]GoModule, 0, 4)
+	goDirectories := make(map[string]struct{})
 	visited := 0
 	_ = filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
 		if walkErr != nil {
@@ -232,14 +237,46 @@ func discoverModules(root string) []GoModule {
 			}
 			return nil
 		}
-		if !strings.EqualFold(entry.Name(), "go.mod") {
+		name := entry.Name()
+		if strings.EqualFold(name, "go.mod") {
+			modules = append(modules, GoModule{Path: filepath.Dir(path), ModulePath: readModulePath(path)})
 			return nil
 		}
-		modules = append(modules, GoModule{Path: filepath.Dir(path), ModulePath: readModulePath(path)})
+		if strings.EqualFold(filepath.Ext(name), ".go") {
+			goDirectories[filepath.Dir(path)] = struct{}{}
+		}
 		return nil
 	})
 	sort.Slice(modules, func(i, j int) bool { return modules[i].Path < modules[j].Path })
-	return modules
+	return modules, looseGoDirectories(root, modules, goDirectories)
+}
+
+func looseGoDirectories(root string, modules []GoModule, goDirectories map[string]struct{}) []string {
+	loose := make([]string, 0)
+	for directory := range goDirectories {
+		if insideAnyModule(directory, modules) {
+			continue
+		}
+		rel, err := filepath.Rel(root, directory)
+		if err != nil {
+			continue
+		}
+		loose = append(loose, filepath.ToSlash(rel))
+	}
+	sort.Strings(loose)
+	if len(loose) > maxLooseGoDirectories {
+		loose = loose[:maxLooseGoDirectories]
+	}
+	return loose
+}
+
+func insideAnyModule(directory string, modules []GoModule) bool {
+	for _, module := range modules {
+		if ensureWithinRoot(module.Path, directory) == nil {
+			return true
+		}
+	}
+	return false
 }
 
 func readModulePath(path string) string {

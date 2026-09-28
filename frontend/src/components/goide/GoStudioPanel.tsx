@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import { AlertTriangle, PanelBottomClose, PanelBottomOpen, PanelRightClose, PanelRightOpen, X } from 'lucide-react'
 import { GoStudioEmptyState } from './GoStudioEmptyState'
 import { CreateProjectDialog, RunConfigurationDialog, UnsavedChangesDialog, type GoStudioRunDraft } from './GoStudioDialogs'
@@ -7,6 +7,10 @@ import { GoStudioDependencies } from './GoStudioDependencies'
 import { GoStudioQuickOpen } from './GoStudioQuickOpen'
 import { GoStudioToolbar } from './GoStudioToolbar'
 import { GoStudioWorkspace } from './GoStudioWorkspace'
+import { GoStudioMenuBar, type GoStudioCommandState } from './GoStudioMenuBar'
+import { GoStudioShortcutsDialog } from './GoStudioShortcutsDialog'
+import { commandAvailability, commandChecked, commandForKey, type GoStudioCommandContext, type GoStudioCommandId } from './goStudioCommands'
+import { hasGoStudioEditor, isGoStudioEditorCommand, runGoStudioEditorCommand } from './goStudioEditorRegistry'
 import { confirm } from '@/lib/confirmDialog'
 import { activeGoIDEDocument, dirtyGoIDEDocuments, useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
 
@@ -64,6 +68,7 @@ export function GoStudioPanel() {
   const [dependenciesOpen, setDependenciesOpen] = useState(false)
   const [runDraft, setRunDraft] = useState(DEFAULT_RUN_DRAFT)
   const [pendingClose, setPendingClose] = useState<PendingClose | null>(null)
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const activeSession = useMemo(() => store.sessions.find((session) => session.id === store.activeSessionId) ?? null, [store.activeSessionId, store.sessions])
   const activeDocument = activeGoIDEDocument(store)
   const sessionExecutions = store.executions.filter((execution) => execution.sessionId === store.activeSessionId)
@@ -73,23 +78,22 @@ export function GoStudioPanel() {
 
   useEffect(() => { void store.initialize() }, [store.initialize])
 
-  const startConfigured = useCallback((kind: 'build' | 'run') => {
-    void store.startRun(kind, runRequest(runDraft))
-  }, [runDraft, store.startRun])
-
+  // Le scorciatoie restano attive solo mentre il pannello è montato e hanno la precedenza su quelle globali.
+  const runCommandRef = useRef<(id: GoStudioCommandId) => void>(() => undefined)
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      const command = event.ctrlKey || event.metaKey
-      if (command && event.key.toLowerCase() === 'o') { event.preventDefault(); void store.openProject() }
-      else if (command && event.key.toLowerCase() === 'p') { event.preventDefault(); store.setQuickOpen(true) }
-      else if (command && event.key.toLowerCase() === 's') { event.preventDefault(); void store.saveDocument() }
-      else if (command && event.shiftKey && event.key.toLowerCase() === 'b') { event.preventDefault(); startConfigured('build') }
-      else if (command && event.key === 'F5') { event.preventDefault(); startConfigured('run') }
-      else if (event.shiftKey && event.key === 'F5') { event.preventDefault(); void store.stopRun() }
+      const command = commandForKey(event)
+      if (!command) return
+      event.preventDefault()
+      runCommandRef.current(command.id)
     }
     window.addEventListener('keydown', onKeyDown, true)
     return () => window.removeEventListener('keydown', onKeyDown, true)
-  }, [startConfigured, store.openProject, store.saveDocument, store.setQuickOpen, store.stopRun])
+  }, [])
+
+  const startConfigured = useCallback((kind: 'build' | 'run') => {
+    void store.startRun(kind, runRequest(runDraft))
+  }, [runDraft, store.startRun])
 
   useEffect(() => {
     const protectDirtyBuffers = (event: BeforeUnloadEvent) => {
@@ -168,19 +172,71 @@ export function GoStudioPanel() {
     await stopRunsAndCloseSession()
   }
 
+  const authorized = activeSession?.project.authorization === 'tooling-permitted'
+  const commandContext: GoStudioCommandContext = {
+    hasSession: !!activeSession,
+    authorized,
+    toolchainReady: !!toolchain?.available,
+    running: activeExecution?.status === 'running',
+    restartable: !!activeExecution && activeExecution.kind !== 'dependency',
+    hasEditor: !!activeDocument && hasGoStudioEditor(),
+    activeDocumentDirty: !!activeDocument?.dirty,
+    sessionDirty: !!activeSession && dirtyGoIDEDocuments(store, activeSession.id).length > 0,
+    structureOpen: store.layout.structureOpen,
+    bottomOpen: store.layout.bottomOpen,
+    showIgnored: !!activeSession && (store.showIgnoredBySession[activeSession.id] ?? false),
+  }
+  const commandState: GoStudioCommandState = {
+    availability: (id) => commandAvailability(id, commandContext),
+    checked: (id) => commandChecked(id, commandContext),
+  }
+
+  const runCommand = (id: GoStudioCommandId) => {
+    if (commandAvailability(id, commandContext) !== true) return
+    if (isGoStudioEditorCommand(id)) { runGoStudioEditorCommand(id); return }
+    switch (id) {
+      case 'file.openProject': return void store.openProject()
+      case 'file.newProject': return setCreateOpen(true)
+      case 'file.save': return void store.saveDocument()
+      case 'file.saveAll': return void (activeSession && store.saveAllDocuments(activeSession.id))
+      case 'file.closeEditor': return activeDocument ? requestCloseDocument(activeDocument) : undefined
+      case 'file.closeProject': return void requestCloseSession()
+      case 'view.quickOpen': return store.setQuickOpen(true)
+      case 'view.toggleStructure': return store.updateLayout({ structureOpen: !store.layout.structureOpen })
+      case 'view.toggleBottom': return store.updateLayout({ bottomOpen: !store.layout.bottomOpen })
+      case 'view.toggleIgnored': return void store.toggleShowIgnored()
+      case 'go.toolchains': return setToolchainOpen(true)
+      case 'go.detect': return void store.detectToolchain()
+      case 'go.dependencies': return setDependenciesOpen(true)
+      case 'go.tidy': return void tidy()
+      case 'go.trust': return void authorize(!authorized)
+      case 'run.run': return startConfigured('run')
+      case 'run.build': return startConfigured('build')
+      case 'run.stop': return void store.stopRun()
+      case 'run.restart': return void store.restartRun()
+      case 'run.configure': return setConfigureOpen(true)
+      case 'help.shortcuts': return setShortcutsOpen(true)
+    }
+  }
+  runCommandRef.current = runCommand
+
+  const menuBar = <GoStudioMenuBar state={commandState} recentProjects={store.recentProjects} openProjectPaths={store.sessions.map((session) => session.project.realPath)} onCommand={runCommand} onOpenRecent={(path) => void store.openProject(path)} />
+  const sharedDialogs = <><CreateProjectDialog open={createOpen} onClose={() => setCreateOpen(false)} /><GoStudioShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} /></>
+
   if (!activeSession) {
-    return <div className="flex min-h-0 flex-1 flex-col bg-surface-0">{store.error && <ErrorBanner message={store.error} onClose={store.clearError} />}<GoStudioEmptyState loading={store.loading} recentProjects={store.recentProjects} onOpenProject={() => void store.openProject()} onCreateProject={() => setCreateOpen(true)} onOpenRecent={(path) => void store.openProject(path)} onRemoveRecent={(path) => void store.removeRecentProject(path)} /><CreateProjectDialog open={createOpen} onClose={() => setCreateOpen(false)} /></div>
+    return <div className="flex min-h-0 flex-1 flex-col bg-surface-0">{menuBar}{store.error && <ErrorBanner message={store.error} onClose={store.clearError} />}<GoStudioEmptyState loading={store.loading} recentProjects={store.recentProjects} onOpenProject={() => void store.openProject()} onCreateProject={() => setCreateOpen(true)} onOpenRecent={(path) => void store.openProject(path)} onRemoveRecent={(path) => void store.removeRecentProject(path)} />{sharedDialogs}</div>
   }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-surface-0 text-text-1">
+      {menuBar}
       <GoStudioToolbar sessions={store.sessions} activeSession={activeSession} activeExecution={activeExecution} toolchain={toolchain} loading={store.loading} onSelect={(id) => void store.selectSession(id)} onOpenProject={() => void store.openProject()} onCreateProject={() => setCreateOpen(true)} onSetAuthorization={(allowed) => void authorize(allowed)} onDetectToolchain={() => void store.detectToolchain()} onToolchainSettings={() => setToolchainOpen(true)} onDependencies={() => setDependenciesOpen(true)} onConfigure={() => setConfigureOpen(true)} onBuild={() => startConfigured('build')} onRun={() => startConfigured('run')} onTidy={() => void tidy()} onStop={() => void store.stopRun()} onClose={() => void requestCloseSession()} />
       {store.error && <ErrorBanner message={store.error} onClose={store.clearError} />}
-      <div className="flex h-7 shrink-0 items-center justify-end gap-1 border-b border-border-1 bg-surface-0 px-2"><span className="mr-auto truncate font-mono text-[9px] text-text-4">{activeDocument?.document.relativePath ?? activeSession.project.rootPath}</span><button type="button" onClick={() => store.updateLayout({ structureOpen: !store.layout.structureOpen })} title={store.layout.structureOpen ? 'Hide structure' : 'Show structure'} className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-2 hover:text-text-1">{store.layout.structureOpen ? <PanelRightClose size={13} /> : <PanelRightOpen size={13} />}</button><button type="button" onClick={() => store.updateLayout({ bottomOpen: !store.layout.bottomOpen })} title={store.layout.bottomOpen ? 'Hide run panel' : 'Show run panel'} className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-2 hover:text-text-1">{store.layout.bottomOpen ? <PanelBottomClose size={13} /> : <PanelBottomOpen size={13} />}</button></div>
+      <div className="flex h-7 shrink-0 items-center justify-end gap-1 border-b border-border-1 bg-surface-0 px-2"><span className="mr-auto truncate font-mono text-[9px] text-text-4">{activeDocument?.document.relativePath ?? activeSession.project.rootPath}</span><button type="button" onClick={() => store.updateLayout({ structureOpen: !store.layout.structureOpen })} title={store.layout.structureOpen ? 'Hide project overview · Alt+7' : 'Show project overview · Alt+7'} className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-2 hover:text-text-1">{store.layout.structureOpen ? <PanelRightClose size={13} /> : <PanelRightOpen size={13} />}</button><button type="button" onClick={() => store.updateLayout({ bottomOpen: !store.layout.bottomOpen })} title={store.layout.bottomOpen ? 'Hide run panel · Alt+4' : 'Show run panel · Alt+4'} className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-2 hover:text-text-1">{store.layout.bottomOpen ? <PanelBottomClose size={13} /> : <PanelBottomOpen size={13} />}</button></div>
       <GoStudioWorkspace session={activeSession} {...store.layout} onProjectResize={beginResize('projectWidth', store.layout.projectWidth)} onStructureResize={beginResize('structureWidth', store.layout.structureWidth, -1)} onBottomResize={beginResize('bottomHeight', store.layout.bottomHeight, -1)} onCursor={(line, column) => setCursor({ line, column })} onRequestCloseDocument={requestCloseDocument} />
       <div className="flex h-6 shrink-0 items-center gap-4 border-t border-border-1 bg-surface-1 px-3 text-[9px] text-text-4"><span>{toolchain?.available ? (toolchain.version ?? 'Go ready').replace(/^go version\s+/, '') : 'Go not detected'}</span><span>{activeDocument?.document.language ?? (activeSession.project.goWorkPath ? 'go.work' : activeSession.project.goModPath ? 'go.mod' : 'Go folder')}</span>{activeDocument && <span>Ln {cursor.line}, Col {cursor.column}</span>}<span className="ml-auto">{activeExecution ? `${activeExecution.kind}: ${activeExecution.status}` : 'idle'}</span></div>
       <GoStudioQuickOpen />
-      <CreateProjectDialog open={createOpen} onClose={() => setCreateOpen(false)} />
+      {sharedDialogs}
       <RunConfigurationDialog open={configureOpen} draft={runDraft} onSave={setRunDraft} onClose={() => setConfigureOpen(false)} />
       <ToolchainDialog open={toolchainOpen} onClose={() => setToolchainOpen(false)} />
       <GoStudioDependencies open={dependenciesOpen} session={activeSession} onClose={() => setDependenciesOpen(false)} />

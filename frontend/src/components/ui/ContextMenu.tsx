@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 export interface ContextMenuItem {
   id: string
   label: string
+  shortcut?: string
   danger?: boolean
   disabled?: boolean
   disabledReason?: string
@@ -228,6 +229,7 @@ function MenuLevel({ items, x, y, depth, autoFocus, onSelect, onClose }: MenuLev
               )}
             >
               <span className="min-w-0 flex-1 truncate">{it.label}</span>
+              {it.shortcut && <span className="shrink-0 font-mono text-[10px] text-text-4">{it.shortcut}</span>}
               {it.submenu && it.submenu.length > 0 && <ChevronRight size={12} className="shrink-0 opacity-60" />}
             </button>
           </div>
