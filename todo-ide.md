@@ -72,7 +72,7 @@ Stato in una riga: le Fasi 0, 1 e 2 sono implementate e verificate end-to-end co
 **2. Residui piccoli già noti**
 - [ ] Split editor con un proprio gruppo di tab (oggi mostra un file alla volta scelto da un menu).
 - [ ] Morph `aO → gO` all'ingresso in Go Studio (400 ms, con `prefers-reduced-motion`), se lo si vuole adottare.
-- [ ] Toolbar: branch Git e selettore della configurazione Run/Debug come nel mock, solo quando saranno funzioni reali.
+- [ ] Toolbar: branch Git come nel mock, solo quando sarà una funzione reale. *(il selettore della configurazione Run è presente e reale dalla Fase 3)*
 
 **3. Fase 3: più progetti, ripristino e terminale** (in corso, branch `feat/goide-phase3`)
 - Fatto e verificato: persistenza schema v3 con migrazione, recovery store dei buffer con recupero esplicito, configurazioni Run persistenti (package, file, build, test, binario) con segreti mai salvati, terminale PTY reale (go-pty + xterm.js), quick actions di `go.mod` e comandi rapidi di build/test/vet. Dettaglio in Fase 3.
@@ -165,7 +165,7 @@ L'architettura deve essere confermata nella Fase 0 e mantenere isolati sessioni,
 - [x] Usare identificatori espliciti `sessionId`, `documentId`/URI, `runId`, `terminalId`, `lspRequestId` e `debugSessionId` in comandi ed eventi.
 - [x] Usare argomenti strutturati per avviare i processi; non concatenare comandi shell arbitrari.
 - [x] Separare adattatori di processo specifici per Windows dagli adattatori Unix tramite file con build tag (`process_adapter_windows.go` con `taskkill /T /F`, `process_adapter_unix.go` con `SIGKILL` sul process group).
-- [ ] Separare allo stesso modo gli adattatori PTY per Windows (ConPTY) dagli adattatori Unix quando il terminale verrà introdotto in Fase 3.
+- [x] Separare allo stesso modo gli adattatori PTY per Windows (ConPTY) dagli adattatori Unix quando il terminale verrà introdotto in Fase 3. *(go-pty: ConPTY su Windows, pty Unix)*
 - [x] Limitare buffer, watcher, code di eventi e log per mantenere l'app reattiva con output intenso e progetti grandi.
 - [x] Non esporre servizi di rete locali se non necessari; eventuali bridge devono ascoltare solo dove strettamente richiesto e avere lifecycle controllato.
 
@@ -387,11 +387,12 @@ Obiettivo: comprendere davvero il codice tramite gopls, includendo i buffer non 
 
 - [x] Pubblicare diagnostica per file/sessione nel gutter, Problems e status bar.
 - [x] Implementare completion Monaco da gopls.
-- [ ] Aggiungere gli import mancanti automaticamente quando si accetta un suggerimento, senza toccare il file su altre righe.
+- [ ] Aggiungere gli import mancanti automaticamente quando si accetta un suggerimento, senza toccare il file su altre righe. *(collegato: `additionalTextEdits` di gopls passano a Monaco; manca la prova e2e)*
 - [x] Implementare hover.
 - [x] Implementare signature help.
 - [x] Implementare Go to Definition/Type Definition/Implementation dove supportato.
-- [x] Implementare Find References con navigazione risultati e raggruppamento per tipo di uso (lettura, scrittura, dichiarazione, import) quando ricavabile dai dati LSP.
+- [x] Implementare Find References con navigazione risultati, raggruppati per file.
+- [ ] Raggruppare gli utilizzi per tipo (dichiarazione, lettura, scrittura, import) usando definition e documentHighlight di gopls. *(riaperta nell'audit: la vista raggruppa solo per file)*
 - [x] Implementare document symbols e struttura file richiudibile a destra.
 - [x] Implementare workspace symbols e Quick Open simboli.
 - [x] Implementare semantic rename con anteprima delle modifiche.
@@ -434,7 +435,7 @@ Tutte queste voci sono richieste LSP aggiuntive sulla stessa sessione gopls di 2
 - [ ] **Rilevamento chiamate ricorsive**: marcatore nel gutter sulle chiamate ricorsive, ricavato da call hierarchy di gopls.
 - [ ] **Code generation**: implementare i metodi di un'interfaccia tramite code action gopls, con selezione dell'interfaccia e anteprima delle modifiche.
 - [ ] **Search Everywhere**: ricerca unica su file, simboli di progetto, azioni dell'IDE e pannelli adOmnia raggiungibili, con risultati raggruppati per categoria.
-- [ ] **Inspections e quick-fix da tastiera**: un unico gesto (riferimento: `Alt+Enter`) che apre le code action disponibili sulla riga corrente, unendo diagnostica gopls e linter di 2.4.
+- [ ] **Inspections e quick-fix da tastiera**: un unico gesto (riferimento: `Alt+Enter`) che apre le code action disponibili sulla riga corrente, unendo diagnostica gopls e linter di 2.4. *(Alt+Enter apre già le code action di gopls; mancano le azioni legate ai finding del linter)*
 - [ ] Ogni funzione di questa sezione deve degradare in modo esplicito quando gopls non la supporta: nessun controllo visibile che non produca un risultato reale.
 
 ## 2.7 Test mirati
