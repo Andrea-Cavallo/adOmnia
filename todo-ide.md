@@ -49,23 +49,24 @@ Una fase è completa soltanto quando:
 ## Stato generale
 
 - [x] Fase 0 — Analisi, decisioni architetturali e scheletro integrato
-- [ ] Fase 1 — Base funzionante end-to-end *(in corso: implementazione quasi completa, gate da collaudare su Windows)*
+- [ ] Fase 1 — Base funzionante end-to-end *(implementata e verificata end-to-end; gate in attesa della prova manuale su Windows)*
 - [ ] Fase 2 — Intelligenza del codice con gopls/LSP *(implementata e verificata end-to-end; gate in attesa della prova manuale su Windows)*
 - [ ] Fase 3 — Più progetti, ripristino e terminale integrato *(implementata e verificata end-to-end; gate in attesa delle prove manuali su Windows: ConPTY e finestra Wails)*
 - [ ] Fase 4 — Test runner, debugger, coverage e finestre separate
 - [ ] Fase 5 — Parità GoLand: assistenza al codice, VCS nell'editor e integrazione con i moduli adOmnia
 - [ ] Collaudo finale e documentazione di rilascio
 
-### Cosa resta da fare (aggiornato con la release v0.9.36)
+### Cosa resta da fare (aggiornato al 2026-09-28, master `ee32a0b`)
 
-Stato in una riga: le Fasi 0, 1 e 2 sono implementate e verificate end-to-end con il backend reale; nessun gate è chiuso finché non passa il collaudo manuale nella finestra Wails su Windows. Fasi 3 e 4 non sono iniziate.
+Stato in una riga: le Fasi 0, 1, 2 e 3 sono implementate e verificate end-to-end con il backend Go reale (test automatici e 33 passi e2e nel browser); i gate di Fase 1, 2 e 3 restano aperti solo per il collaudo manuale su Windows. Prossimo sviluppo: Fase 4 (test runner, debugger Delve, coverage).
 
-**1. Collaudo manuale su Windows (sblocca i gate di Fase 1 e 2)**
+**1. Collaudo manuale su Windows (sblocca i gate di Fase 1, 2 e 3)**
 - [ ] `wails3 task dev` su un progetto Go reale (non una fixture): apri, autorizza, modifica, salva, Build, Run con stdin, Stop.
 - [ ] Eseguire `go test ./internal/goide -run TestWindowsStopTerminatesChildTree` su Windows: Stop deve chiudere anche il figlio di `go run`.
-- [ ] Controllare in Task Manager che dopo Stop, chiusura sessione e chiusura app non restino `go`, programma, `gopls` o linter.
+- [ ] Controllare in Task Manager che dopo Stop, chiusura sessione e chiusura app non restino `go`, programma, `gopls`, linter o shell del terminale.
+- [ ] Terminale ConPTY: input, resize, uscita naturale, chiusura del process tree (`go test ./internal/goide -run TestTerminal` su Windows).
 - [ ] Temi dark e light, finestra ridimensionata e piccola, stati loading/empty/error/running/stopped ben distinguibili.
-- [ ] Provare a video il signature help (parametri mentre si scrive una chiamata), l'unica funzione di Fase 2 non ancora osservata.
+- [ ] Provare a video il signature help (parametri mentre si scrive una chiamata).
 - [ ] Toolchain assente: installazione Go dall'IDE; gopls e linter assenti: installazione dal menu Go.
 - [ ] Confronto con i due mock approvati e verifica della barra di qualità (fluido, veloce, moderno, stabile) su un progetto di dimensioni reali; registrare l'esito nelle Evidenze e spuntare i gate.
 
@@ -73,10 +74,12 @@ Stato in una riga: le Fasi 0, 1 e 2 sono implementate e verificate end-to-end co
 - [ ] Split editor con un proprio gruppo di tab (oggi mostra un file alla volta scelto da un menu).
 - [ ] Morph `aO → gO` all'ingresso in Go Studio (400 ms, con `prefers-reduced-motion`), se lo si vuole adottare.
 - [ ] Toolbar: branch Git come nel mock, solo quando sarà una funzione reale. *(il selettore della configurazione Run è presente e reale dalla Fase 3)*
+- [ ] Export/import delle impostazioni Go Studio (3.2, opzionale): solo se compatibile con il formato workspace, altrimenti resta fuori.
+- [ ] Watcher oltre 4.000 cartelle: oggi il progetto resta osservato solo in parte; valutare un avviso nella status bar.
 
 **3. Fase 3: più progetti, ripristino e terminale** (implementata e verificata end-to-end)
-- Fatto: persistenza v3, recovery dei buffer, configurazioni Run, terminale PTY, quick actions `go.mod`, comandi rapidi, watcher dei file, conflitti fra progetti annidati, isolamento completo, misure su un progetto di 3.200 file.
-- [ ] Prove manuali su Windows: terminale ConPTY (input, resize, uscita, chiusura del process tree) e finestra Wails nativa.
+- Fatto: persistenza v3, recovery dei buffer, configurazioni Run, terminale PTY, quick actions `go.mod`, comandi rapidi, watcher dei file, conflitti fra progetti annidati, isolamento completo, misure su un progetto di 3.200 file. Dettaglio ed evidenze nella sezione Fase 3.
+- Resta solo la parte Windows del punto 1.
 
 **4. Fase 4: test runner, debugger, coverage, finestre** (non iniziata)
 - Già coperto in parte: ▶ nel gutter per eseguire un singolo `Test`/`Benchmark`/`Fuzz`/`Example` con output nella Run console.
