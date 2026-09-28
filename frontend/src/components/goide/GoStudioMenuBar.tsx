@@ -109,7 +109,10 @@ export function GoStudioMenuBar({ state, recentProjects, openProjectPaths, onCom
 
   return (
     <nav aria-label="Go Studio menu" className="flex h-7 shrink-0 items-center gap-0.5 border-b border-border-1 bg-surface-1 px-1.5">
-      <span className="mr-1.5 select-none px-1 font-mono text-[11px] font-bold text-accent" aria-hidden="true">gO</span>
+      {/* Identità del mock approvato: all'ingresso "aO" diventa "gO" in 400 ms; con reduced motion resta statico. */}
+      <span className="go-studio-mark mr-1.5 select-none px-1 font-mono text-[11px] font-bold text-accent" aria-hidden="true">
+        <span className="go-studio-mark-letter"><span className="go-studio-mark-from">a</span><span className="go-studio-mark-to">g</span></span>O
+      </span>
       {GO_STUDIO_MENUS.map((menu) => (
         <button
           key={menu.id}

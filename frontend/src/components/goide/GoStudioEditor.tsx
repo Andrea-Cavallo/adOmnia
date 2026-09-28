@@ -92,6 +92,10 @@ export function GoStudioEditor({ documents, active, onCursor, onRequestClose, on
             language={active.document.language}
             theme={theme}
             beforeMount={beforeGoStudioMount}
+            originalModelPath={`inmemory://disk-compare/original/${active.document.id}`}
+            modifiedModelPath={`inmemory://disk-compare/current/${active.document.id}`}
+            keepCurrentOriginalModel
+            keepCurrentModifiedModel
             options={{ automaticLayout: true, renderSideBySide: true, readOnly: true, minimap: { enabled: false }, fontSize: 12 }}
           />
         ) : (

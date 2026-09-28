@@ -47,6 +47,7 @@ export {
     GoplsInfo,
     HighlightEntry,
     HighlightsResult,
+    HistoryRevision,
     HoverResult,
     ImplementationMarker,
     InlayHintEntry,
@@ -95,6 +96,7 @@ export {
     ToolchainInfo,
     ToolchainInstallation,
     ToolchainRelease,
+    WatcherStatus,
     WorkspaceChange,
     WorkspaceSymbol
 } from "./models.js";

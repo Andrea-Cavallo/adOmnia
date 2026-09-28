@@ -665,13 +665,13 @@ Prerequisito: gopls è realmente operativo (Fase 2) e il terminale è reale (Fas
 
 ## 5.4 Editor e produttività
 
-- [ ] Multi-caret, selezione a colonna e duplicazione riga allineate alle aspettative di un editor moderno (Monaco copre gran parte: verificare e documentare i gap).
-- [ ] Vista locale delle modifiche del buffer corrente ripristinabile anche dopo il salvataggio (local history per sessione, con limite di ritenzione e nessun contenuto sensibile persistito oltre il limite).
+- [x] Multi-caret, selezione a colonna e duplicazione riga allineate alle aspettative di un editor moderno (Monaco copre gran parte: verificare e documentare i gap). *(keymap GoLand nel menu Edit: Duplicate Line Ctrl+D, Delete Line Ctrl+Y, Move Line Ctrl+Shift+↑/↓, Add Caret at Next Occurrence Alt+J, Select All Occurrences Ctrl+Alt+Shift+J, Column Selection Mode Alt+Shift+Insert; Alt+clic aggiunge un cursore e Shift+Alt+trascina seleziona a colonna. Gap dichiarati: Extend Selection resta Shift+Alt+→ perché Ctrl+W chiude il tab; Redo è Ctrl+Shift+Z)*
+- [x] Vista locale delle modifiche del buffer corrente ripristinabile anche dopo il salvataggio (local history per sessione, con limite di ritenzione e nessun contenuto sensibile persistito oltre il limite). *(File → Local History…: una versione per salvataggio più quella su disco prima del primo salvataggio; diff con il buffer e Restore annullabile con Ctrl+Z. Limiti: 20 versioni per file, 14 giorni, 32 MB totali; `.env`, chiavi e certificati non vengono mai registrati; la cronologia di un progetto chiuso viene eliminata)*
 - [ ] Confronto affiancato fra buffer corrente e versione su disco già presente in 1.2: estenderlo al confronto con una revisione VCS quando 5.5 è disponibile.
-- [ ] TODO/FIXME raccolti in una vista dedicata con navigazione al file/riga.
-- [ ] Split editor con un proprio gruppo di tab (oggi mostra un file alla volta scelto da un menu). *(dalla Fase 1)*
-- [ ] Avviso nella status bar quando il watcher supera 4.000 cartelle e osserva il progetto solo in parte. *(dalla Fase 3)*
-- [ ] Morph `aO → gO` all'ingresso in Go Studio (400 ms, con `prefers-reduced-motion`), solo se lo si vuole adottare. *(dal mock approvato)*
+- [x] TODO/FIXME raccolti in una vista dedicata con navigazione al file/riga. *(finestra TODO con TODO, FIXME, XXX e BUG nei commenti, filtri per tipo e rescan)*
+- [x] Split editor con un proprio gruppo di tab (oggi mostra un file alla volta scelto da un menu). *(dalla Fase 1; tab propri, "+" per aprire un altro file, chiusura del tab senza chiudere il file)*
+- [x] Avviso nella status bar quando il watcher supera 4.000 cartelle e osserva il progetto solo in parte. *(dalla Fase 3; "Partially watched" con spiegazione nel tooltip)*
+- [x] Morph `aO → gO` all'ingresso in Go Studio (400 ms, con `prefers-reduced-motion`), solo se lo si vuole adottare. *(dal mock approvato; sul marchio della menu bar, statico con reduced motion)*
 
 ## 5.5 VCS nell'editor
 

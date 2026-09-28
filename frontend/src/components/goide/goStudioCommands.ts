@@ -2,6 +2,8 @@ export type GoStudioCommandId =
   | 'file.openProject' | 'file.newProject' | 'file.save' | 'file.saveAll' | 'file.closeEditor' | 'file.closeProject'
   | 'file.closeOthers' | 'file.closeAll' | 'file.pinTab' | 'file.reopenClosed'
   | 'edit.undo' | 'edit.redo' | 'edit.find' | 'edit.replace' | 'edit.gotoLine' | 'edit.toggleComment'
+  | 'edit.duplicateLine' | 'edit.deleteLine' | 'edit.nextOccurrence' | 'edit.allOccurrences' | 'edit.moveLineUp' | 'edit.moveLineDown' | 'edit.columnSelection'
+  | 'file.localHistory' | 'view.todo'
   | 'view.splitRight' | 'view.splitDown' | 'view.unsplit' | 'view.terminal'
   | 'view.quickOpen' | 'view.toggleStructure' | 'view.toggleBottom' | 'view.toggleIgnored' | 'view.problems'
   | 'nav.declaration' | 'nav.typeDeclaration' | 'nav.implementation' | 'nav.usages' | 'nav.fileStructure' | 'nav.symbol' | 'nav.findInFiles'
@@ -64,6 +66,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'file.closeAll', menu: 'file', label: 'Close All Tabs' },
   { id: 'file.pinTab', menu: 'file', label: 'Pin Tab' },
   { id: 'file.reopenClosed', menu: 'file', label: 'Reopen Closed Tab', binding: { key: 't', mod: true, shift: true } },
+  { id: 'file.localHistory', menu: 'file', label: 'Local History…', separatorBefore: true },
   { id: 'file.closeProject', menu: 'file', label: 'Close Project' },
   { id: 'edit.undo', menu: 'edit', label: 'Undo', binding: { key: 'z', mod: true }, editorOwned: true },
   { id: 'edit.redo', menu: 'edit', label: 'Redo', binding: { key: 'z', mod: true, shift: true }, editorOwned: true },
@@ -71,12 +74,20 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'edit.replace', menu: 'edit', label: 'Replace', binding: { key: 'h', mod: true }, editorOwned: true },
   { id: 'edit.gotoLine', menu: 'edit', label: 'Go to Line…', binding: { key: 'g', mod: true }, editorOwned: true },
   { id: 'edit.toggleComment', menu: 'edit', label: 'Toggle Line Comment', binding: { key: '/', mod: true }, editorOwned: true, separatorBefore: true },
+  { id: 'edit.duplicateLine', menu: 'edit', label: 'Duplicate Line or Selection', binding: { key: 'd', mod: true }, editorOwned: true },
+  { id: 'edit.deleteLine', menu: 'edit', label: 'Delete Line', binding: { key: 'y', mod: true }, editorOwned: true },
+  { id: 'edit.moveLineUp', menu: 'edit', label: 'Move Line Up', binding: { key: 'ArrowUp', mod: true, shift: true }, editorOwned: true },
+  { id: 'edit.moveLineDown', menu: 'edit', label: 'Move Line Down', binding: { key: 'ArrowDown', mod: true, shift: true }, editorOwned: true },
+  { id: 'edit.nextOccurrence', menu: 'edit', label: 'Add Caret at Next Occurrence', binding: { key: 'j', alt: true }, editorOwned: true, separatorBefore: true },
+  { id: 'edit.allOccurrences', menu: 'edit', label: 'Select All Occurrences', binding: { key: 'j', mod: true, alt: true, shift: true }, editorOwned: true },
+  { id: 'edit.columnSelection', menu: 'edit', label: 'Column Selection Mode', binding: { key: 'Insert', alt: true, shift: true }, editorOwned: true },
   { id: 'view.quickOpen', menu: 'view', label: 'Go to File…', binding: { key: 'p', mod: true } },
   { id: 'view.toggleStructure', menu: 'view', label: 'Project Overview Pane', binding: { key: '7', alt: true }, separatorBefore: true },
   { id: 'view.toggleBottom', menu: 'view', label: 'Run / Problems Pane', binding: { key: '4', alt: true } },
   { id: 'view.problems', menu: 'view', label: 'Problems', binding: { key: '6', alt: true } },
   { id: 'view.terminal', menu: 'view', label: 'Terminal', binding: { key: 'F12', alt: true } },
   { id: 'view.tests', menu: 'view', label: 'Tests', binding: { key: '8', alt: true } },
+  { id: 'view.todo', menu: 'view', label: 'TODO' },
   { id: 'view.debug', menu: 'view', label: 'Debug', binding: { key: '5', alt: true } },
   { id: 'view.splitRight', menu: 'view', label: 'Split Right', binding: { key: '\\', mod: true }, separatorBefore: true },
   { id: 'view.splitDown', menu: 'view', label: 'Split Down' },
@@ -285,6 +296,7 @@ export function commandAvailability(id: GoStudioCommandId, context: GoStudioComm
     case 'file.closeOthers': return context.documentCount > 1 ? true : 'Only one tab is open'
     case 'file.closeAll': return context.documentCount > 0 ? true : 'No tabs are open'
     case 'file.reopenClosed': return context.hasClosedDocuments ? true : 'No recently closed tabs'
+    case 'file.localHistory': return context.hasEditor ? true : 'Open a file first'
     case 'view.unsplit': return context.split ? true : 'The editor is not split'
     case 'go.toolchains':
     case 'go.detect': return context.authorized ? true : NOT_TRUSTED

@@ -100,6 +100,17 @@ export function installGoStudioEditorActions(editor: monaco.editor.IStandaloneCo
   editor.addAction({ id: GO_STUDIO_ACTIONS.typeInfo, label: 'Type Info', keybindings: [KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyP], run: (target) => { void showTypeInfo(target) } })
   editor.addAction({ id: GO_STUDIO_ACTIONS.implementInterface, label: 'Implement Interface…', keybindings: [KeyMod.CtrlCmd | KeyCode.KeyI], contextMenuGroupId: '1_modification', run: (target) => { void requestImplementInterface(target) } })
   semantic(GO_STUDIO_ACTIONS.superMethod, 'Go to Super Method', [KeyMod.CtrlCmd | KeyCode.KeyU], goToSuperMethod)
+  // Keymap di GoLand per le azioni di editing di Monaco: stesse azioni native, tasti che lo sviluppatore già conosce.
+  const native = (id: string, label: string, keybindings: number[], nativeId: string) => {
+    editor.addAction({ id, label, keybindings, run: (target) => { target.trigger('go-studio', nativeId, null) } })
+  }
+  native('goStudio.duplicateLine', 'Duplicate Line or Selection', [KeyMod.CtrlCmd | KeyCode.KeyD], 'editor.action.copyLinesDownAction')
+  native('goStudio.deleteLine', 'Delete Line', [KeyMod.CtrlCmd | KeyCode.KeyY], 'editor.action.deleteLines')
+  native('goStudio.moveLineUp', 'Move Line Up', [KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.UpArrow], 'editor.action.moveLinesUpAction')
+  native('goStudio.moveLineDown', 'Move Line Down', [KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.DownArrow], 'editor.action.moveLinesDownAction')
+  native('goStudio.nextOccurrence', 'Add Caret at Next Occurrence', [KeyMod.Alt | KeyCode.KeyJ], 'editor.action.addSelectionToNextFindMatch')
+  native('goStudio.allOccurrences', 'Select All Occurrences', [KeyMod.CtrlCmd | KeyMod.Alt | KeyMod.Shift | KeyCode.KeyJ], 'editor.action.selectHighlights')
+  native('goStudio.columnSelection', 'Column Selection Mode', [KeyMod.Alt | KeyMod.Shift | KeyCode.Insert], 'editor.action.toggleColumnSelection')
   // Refactoring: solo ciò che gopls offre per la selezione; le scorciatoie sono quelle di GoLand.
   editor.addAction({ id: GO_STUDIO_ACTIONS.refactorThis, label: 'Refactor This…', keybindings: [KeyMod.CtrlCmd | KeyMod.Alt | KeyMod.Shift | KeyCode.KeyT], contextMenuGroupId: '1_modification', run: (target) => { target.trigger('go-studio', 'editor.action.refactor', null) } })
   const refactoring = (id: string, label: string, keybinding: number, kind: GoStudioRefactoring) => {

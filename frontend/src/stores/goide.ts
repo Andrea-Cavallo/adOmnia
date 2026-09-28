@@ -67,7 +67,20 @@ export type GoIDESplitOrientation = 'right' | 'down'
 
 export interface GoIDESplit {
   orientation: GoIDESplitOrientation
+  /** File visibile nello split. */
   documentId: string
+  /** Gruppo di tab proprio dello split, indipendente da quello principale. */
+  tabs: string[]
+}
+
+/** Toglie un documento dal gruppo dello split: se era l'ultimo lo split si chiude. */
+export function removeFromSplit(split: GoIDESplit | null | undefined, documentId: string): GoIDESplit | null {
+  if (!split) return null
+  const tabs = split.tabs.filter((id) => id !== documentId)
+  if (tabs.length === 0) return null
+  if (split.documentId !== documentId) return { ...split, tabs }
+  const index = split.tabs.indexOf(documentId)
+  return { ...split, tabs, documentId: tabs[Math.min(index, tabs.length - 1)] }
 }
 
 interface ClosedDocument {
@@ -177,6 +190,7 @@ export interface GoIDEState {
   reopenClosedDocument: () => Promise<void>
   setSplit: (orientation: GoIDESplitOrientation | null) => void
   setSplitDocument: (documentId: string) => void
+  closeSplitTab: (documentId: string) => void
   setQuickOpen: (open: boolean) => void
   searchQuickOpen: (query: string) => Promise<void>
   detectToolchain: () => Promise<void>
@@ -826,7 +840,7 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
         pinnedDocuments,
         activeDocumentBySession: { ...state.activeDocumentBySession, [sessionId]: replacement },
         closedDocuments: { ...state.closedDocuments, [sessionId]: history },
-        splitBySession: split?.documentId === documentId ? { ...state.splitBySession, [sessionId]: null } : state.splitBySession,
+        splitBySession: { ...state.splitBySession, [sessionId]: removeFromSplit(split, documentId) },
       }
     })
     void get().persistSessionView(current.document.sessionId)
@@ -848,14 +862,27 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
     const sessionId = get().activeSessionId
     if (!sessionId) return
     const documentId = get().activeDocumentBySession[sessionId]
-    set((state) => ({ splitBySession: { ...state.splitBySession, [sessionId]: orientation && documentId ? { orientation, documentId } : null } }))
+    set((state) => {
+      const current = state.splitBySession[sessionId]
+      if (!orientation || !documentId) return { splitBySession: { ...state.splitBySession, [sessionId]: null } }
+      // Cambiare orientamento conserva il gruppo di tab dello split.
+      const split = current ? { ...current, orientation } : { orientation, documentId, tabs: [documentId] }
+      return { splitBySession: { ...state.splitBySession, [sessionId]: split } }
+    })
+  },
+
+  closeSplitTab: (documentId) => {
+    const sessionId = get().activeSessionId
+    if (!sessionId) return
+    set((state) => ({ splitBySession: { ...state.splitBySession, [sessionId]: removeFromSplit(state.splitBySession[sessionId], documentId) } }))
   },
 
   setSplitDocument: (documentId) => {
     const sessionId = get().activeSessionId
     const split = sessionId ? get().splitBySession[sessionId] : null
     if (!sessionId || !split) return
-    set((state) => ({ splitBySession: { ...state.splitBySession, [sessionId]: { ...split, documentId } } }))
+    const tabs = split.tabs.includes(documentId) ? split.tabs : [...split.tabs, documentId]
+    set((state) => ({ splitBySession: { ...state.splitBySession, [sessionId]: { ...split, documentId, tabs } } }))
   },
 
   setQuickOpen: (open) => set((state) => ({ quickOpen: { ...state.quickOpen, open, query: open ? state.quickOpen.query : '', results: open ? state.quickOpen.results : [] } })),

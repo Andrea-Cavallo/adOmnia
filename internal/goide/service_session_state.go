@@ -203,3 +203,55 @@ func (s *Service) CreateFiles(sessionID string, files []NewFile) error {
 	}
 	return s.documents.CreateFiles(session.Project, files)
 }
+
+// ConfigureHistoryStore collega lo store persistente della local history.
+func (s *Service) ConfigureHistoryStore(store Store) error {
+	if store == nil {
+		return fmt.Errorf("store della local history non valido")
+	}
+	s.history = NewLocalHistory(store)
+	return nil
+}
+
+// recordOriginalBeforeSave conserva il contenuto su disco prima del primo salvataggio del file:
+// così anche la versione di partenza resta ripristinabile.
+func (s *Service) recordOriginalBeforeSave(session Session, documentID DocumentID) {
+	document, ok := s.documents.Get(session.ID, documentID)
+	if !ok || s.history.Has(session.ID, document.RelativePath) {
+		return
+	}
+	path, err := s.documents.ResolveProjectPath(session.Project, document.RelativePath)
+	if err != nil {
+		return
+	}
+	if text, _, _, err := readTextFile(path); err == nil {
+		_ = s.history.Record(session.ID, document.RelativePath, text, "Before first save")
+	}
+}
+
+// ListLocalHistory elenca le versioni salvate di un file, dalla più recente.
+func (s *Service) ListLocalHistory(sessionID, relativePath string) ([]HistoryRevision, error) {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return nil, err
+	}
+	return s.history.List(session.ID, relativePath)
+}
+
+// LocalHistoryContent restituisce il testo di una versione della local history.
+func (s *Service) LocalHistoryContent(sessionID, relativePath, revisionID string) (string, error) {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return "", err
+	}
+	return s.history.Content(session.ID, relativePath, revisionID)
+}
+
+// WatcherStatus indica se il progetto è osservato per intero o solo in parte.
+func (s *Service) WatcherStatus(sessionID string) (WatcherStatus, error) {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return WatcherStatus{}, err
+	}
+	return s.watcher.Status(session.ID), nil
+}

@@ -1670,6 +1670,42 @@ export class HighlightsResult {
     }
 }
 
+/**
+ * HistoryRevision è una versione salvata di un file, senza contenuto.
+ */
+export class HistoryRevision {
+    "id": string;
+    "label": string;
+    "savedAt": string;
+    "bytes": number;
+
+    /** Creates a new HistoryRevision instance. */
+    constructor($$source: Partial<HistoryRevision> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("label" in $$source)) {
+            this["label"] = "";
+        }
+        if (!("savedAt" in $$source)) {
+            this["savedAt"] = "0001-01-01T00:00:00.000Z";
+        }
+        if (!("bytes" in $$source)) {
+            this["bytes"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new HistoryRevision instance from a string or object.
+     */
+    static createFrom($$source: any = {}): HistoryRevision {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new HistoryRevision($$parsedSource as Partial<HistoryRevision>);
+    }
+}
+
 export class HoverResult {
     "version": number;
     "markdown": string;
@@ -3589,6 +3625,42 @@ export class ToolchainRelease {
     static createFrom($$source: any = {}): ToolchainRelease {
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         return new ToolchainRelease($$parsedSource as Partial<ToolchainRelease>);
+    }
+}
+
+/**
+ * WatcherStatus descrive quanto del progetto è osservato: oltre il limite le modifiche esterne possono sfuggire.
+ */
+export class WatcherStatus {
+    "watching": boolean;
+    "directories": number;
+    "limited": boolean;
+    "limit": number;
+
+    /** Creates a new WatcherStatus instance. */
+    constructor($$source: Partial<WatcherStatus> = {}) {
+        if (!("watching" in $$source)) {
+            this["watching"] = false;
+        }
+        if (!("directories" in $$source)) {
+            this["directories"] = 0;
+        }
+        if (!("limited" in $$source)) {
+            this["limited"] = false;
+        }
+        if (!("limit" in $$source)) {
+            this["limit"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new WatcherStatus instance from a string or object.
+     */
+    static createFrom($$source: any = {}): WatcherStatus {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new WatcherStatus($$parsedSource as Partial<WatcherStatus>);
     }
 }
 

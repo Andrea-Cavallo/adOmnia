@@ -30,7 +30,7 @@ import { useGoIDEStore } from './goide'
 
 const SETTINGS_KEY = 'adomnia.goide.lsp.v1'
 
-export type GoIDEToolWindow = 'run' | 'problems' | 'references' | 'find' | 'terminal' | 'tests' | 'debug'
+export type GoIDEToolWindow = 'run' | 'problems' | 'references' | 'find' | 'terminal' | 'tests' | 'debug' | 'todo'
 
 export interface GoIDEEditorPreferences {
   formatOnSave: boolean

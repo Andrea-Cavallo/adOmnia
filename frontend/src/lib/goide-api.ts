@@ -1,6 +1,8 @@
 import * as GoIDEBindings from '../../bindings/adomnia/goide'
 import { Events } from '@wailsio/runtime'
 import type {
+  WatcherStatus,
+  HistoryRevision,
   GoToolRequest,
   GoToolPreview,
   Capabilities,
@@ -192,6 +194,24 @@ export async function previewGoIDETool(request: GoToolRequest): Promise<GoToolPr
 /** Esegue un comando Go Tools; l'output arriva nella Run console tramite gli eventi run.*. */
 export async function startGoIDETool(request: GoToolRequest): Promise<Execution> {
   return GoIDEBindings.StartGoTool(request)
+}
+
+export type GoIDEHistoryRevision = HistoryRevision
+
+/** Versioni salvate di un file nella local history, dalla più recente. */
+export async function listGoIDELocalHistory(sessionId: string, relativePath: string): Promise<HistoryRevision[]> {
+  return GoIDEBindings.ListLocalHistory(sessionId, relativePath)
+}
+
+export async function getGoIDELocalHistoryContent(sessionId: string, relativePath: string, revisionId: string): Promise<string> {
+  return GoIDEBindings.LocalHistoryContent(sessionId, relativePath, revisionId)
+}
+
+export type GoIDEWatcherStatus = WatcherStatus
+
+/** Quanto del progetto è osservato per le modifiche esterne. */
+export async function getGoIDEWatcherStatus(sessionId: string): Promise<WatcherStatus> {
+  return GoIDEBindings.WatcherStatus(sessionId)
 }
 
 /** Selettore nativo di cartelle; stringa vuota se l'utente annulla. */

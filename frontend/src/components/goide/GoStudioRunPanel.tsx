@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState, memo } from 'react'
-import { AlertCircle, Copy, ListTree, RefreshCw, Search, SearchCode, Square, SquareTerminal, TerminalSquare, FlaskConical, Bug } from 'lucide-react'
+import { AlertCircle, Copy, ListTree, RefreshCw, Search, SearchCode, Square, SquareTerminal, TerminalSquare, FlaskConical, Bug, ListTodo } from 'lucide-react'
 import { Clipboard as WailsClipboard } from '@wailsio/runtime'
 import { useGoIDEStore, type GoIDEConsoleChunk } from '@/stores/goide'
 import { selectedTestRun, useGoIDETestsStore } from '@/stores/goideTests'
 import { GoStudioTestsPanel } from './GoStudioTestsPanel'
 import { GoStudioDebugPanel } from './GoStudioDebugPanel'
+import { GoStudioTodoPanel } from './GoStudioTodoPanel'
 import { selectDebugState } from './goStudioDebugCommands'
 import { useGoIDEDebugStore } from '@/stores/goideDebug'
 import type { GoIDEExecution, GoIDESession } from '@/lib/goide-api'
@@ -156,6 +157,7 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session }: GoSt
         {tab('find', 'Find', SearchCode)}
         {tab('tests', 'Tests', FlaskConical, failedTests > 0 ? <span className="text-danger">{failedTests}</span> : undefined)}
         {tab('debug', 'Debug', Bug, debugState === 'stopped' ? <span className="h-1.5 w-1.5 rounded-full bg-warning" title="Paused" /> : debugState !== 'none' ? <span className="h-1.5 w-1.5 rounded-full bg-success" title="Debugging" /> : undefined)}
+        {tab('todo', 'TODO', ListTodo)}
         {tab('terminal', 'Terminal', SquareTerminal)}
         {view === 'run' && active && <>
           <select
@@ -201,6 +203,7 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session }: GoSt
       {view === 'find' && <div className="min-h-0 flex-1 bg-surface-0"><GoStudioFindInFiles sessionId={sessionId} /></div>}
       {view === 'tests' && <div className="min-h-0 flex-1"><GoStudioTestsPanel session={session} /></div>}
       {view === 'debug' && <div className="min-h-0 flex-1"><GoStudioDebugPanel session={session} /></div>}
+      {view === 'todo' && <div className="min-h-0 flex-1"><GoStudioTodoPanel sessionId={sessionId} /></div>}
       {/* Il terminale resta montato quando si cambia scheda: una shell interattiva non si distrugge. */}
       <div className="min-h-0 flex-1" style={{ display: view === 'terminal' ? 'block' : 'none' }}><GoStudioTerminalPanel session={session} visible={view === 'terminal'} /></div>
     </section>

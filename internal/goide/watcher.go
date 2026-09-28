@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -59,8 +60,8 @@ type sessionWatch struct {
 	watcher  *fsnotify.Watcher
 	done     chan struct{}
 	stopped  chan struct{}
-	watched  int
-	limited  bool
+	watched  atomic.Int64
+	limited  atomic.Bool
 	pending  map[string]DiskChangeKind
 	overflow bool
 }
@@ -130,12 +131,12 @@ func (w *sessionWatch) addTree(root string) {
 		if path != w.root && isIgnoredDirectory(entry.Name()) {
 			return filepath.SkipDir
 		}
-		if w.watched >= maxWatchedDirectories {
-			w.limited = true
+		if w.watched.Load() >= maxWatchedDirectories {
+			w.limited.Store(true)
 			return filepath.SkipAll
 		}
 		if w.watcher.Add(path) == nil {
-			w.watched++
+			w.watched.Add(1)
 		}
 		return nil
 	})
@@ -214,7 +215,7 @@ func (w *sessionWatch) record(event fsnotify.Event) {
 }
 
 func (w *sessionWatch) drain() FilesChanged {
-	batch := FilesChanged{Changes: make([]DiskChange, 0, len(w.pending)), Overflow: w.overflow, Limited: w.limited}
+	batch := FilesChanged{Changes: make([]DiskChange, 0, len(w.pending)), Overflow: w.overflow, Limited: w.limited.Load()}
 	for path, kind := range w.pending {
 		relative := relativeWithin(w.root, path)
 		if relative == "" {
@@ -228,4 +229,23 @@ func (w *sessionWatch) drain() FilesChanged {
 	w.pending = map[string]DiskChangeKind{}
 	w.overflow = false
 	return batch
+}
+
+// WatcherStatus descrive quanto del progetto è osservato: oltre il limite le modifiche esterne possono sfuggire.
+type WatcherStatus struct {
+	Watching    bool `json:"watching"`
+	Directories int  `json:"directories"`
+	Limited     bool `json:"limited"`
+	Limit       int  `json:"limit"`
+}
+
+// Status restituisce lo stato dell'osservazione della sessione.
+func (m *WatchManager) Status(sessionID SessionID) WatcherStatus {
+	m.mu.Lock()
+	state := m.sessions[sessionID]
+	m.mu.Unlock()
+	if state == nil {
+		return WatcherStatus{Limit: maxWatchedDirectories}
+	}
+	return WatcherStatus{Watching: true, Directories: int(state.watched.Load()), Limited: state.limited.Load(), Limit: maxWatchedDirectories}
 }

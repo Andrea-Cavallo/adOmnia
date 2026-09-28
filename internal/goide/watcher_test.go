@@ -183,3 +183,30 @@ func TestWatcherHidesTemporaryFilesOfAtomicSaves(t *testing.T) {
 		}
 	}
 }
+
+func TestWatcherStatusReportsPartialObservation(t *testing.T) {
+	small := t.TempDir()
+	large := t.TempDir()
+	for index := 0; index <= maxWatchedDirectories; index++ {
+		if err := os.MkdirAll(filepath.Join(large, "d", fmt.Sprintf("%04d", index)), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	manager := NewWatchManager(func(SessionID, FilesChanged) {})
+	t.Cleanup(func() { manager.Stop("small"); manager.Stop("large") })
+	if err := manager.Watch("small", small); err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.Watch("large", large); err != nil {
+		t.Fatal(err)
+	}
+	if status := manager.Status("small"); !status.Watching || status.Limited || status.Directories < 1 {
+		t.Fatalf("progetto piccolo osservato per intero: %+v", status)
+	}
+	if status := manager.Status("large"); !status.Limited || status.Directories != maxWatchedDirectories {
+		t.Fatalf("oltre il limite l'osservazione deve risultare parziale: %+v", status)
+	}
+	if status := manager.Status("missing"); status.Watching {
+		t.Fatalf("sessione inesistente: %+v", status)
+	}
+}

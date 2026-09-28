@@ -16,7 +16,25 @@ import (
 const (
 	goIDEStorageKey  = "state"
 	goIDERecoveryKey = "recovery"
+	goIDEHistoryKey  = "localHistory"
 )
+
+// goIDEHistoryStore conserva la local history in una chiave separata, con i propri limiti.
+type goIDEHistoryStore struct{}
+
+func (goIDEHistoryStore) Load() ([]byte, error) {
+	if storage.DB() == nil {
+		return nil, nil
+	}
+	return storage.Get("goide", goIDEHistoryKey)
+}
+
+func (goIDEHistoryStore) Save(data []byte) error {
+	if storage.DB() == nil {
+		return fmt.Errorf("archivio locale non inizializzato")
+	}
+	return storage.Put("goide", goIDEHistoryKey, data)
+}
 
 // goIDEStore conserva lo stato di sessione, configurazioni Run e layout.
 type goIDEStore struct{}
@@ -70,6 +88,7 @@ func NewGoIDE() *GoIDE {
 	})
 	_ = service.ConfigureToolchainStorage(filepath.Join(dataDir(), "goide", "toolchains"))
 	_ = service.ConfigureRecoveryStore(goIDERecoveryStore{})
+	_ = service.ConfigureHistoryStore(goIDEHistoryStore{})
 	binding = &GoIDE{service: service}
 	return binding
 }
@@ -333,6 +352,21 @@ func (g *GoIDE) StartGoTool(request goide.GoToolRequest) (goide.Execution, error
 // ListProcesses elenca i processi locali per Attach to Process.
 func (g *GoIDE) ListProcesses() ([]goide.ProcessInfo, error) {
 	return g.service.ListProcesses()
+}
+
+// ListLocalHistory elenca le versioni salvate di un file.
+func (g *GoIDE) ListLocalHistory(sessionID, relativePath string) ([]goide.HistoryRevision, error) {
+	return g.service.ListLocalHistory(sessionID, relativePath)
+}
+
+// LocalHistoryContent restituisce il testo di una versione della local history.
+func (g *GoIDE) LocalHistoryContent(sessionID, relativePath, revisionID string) (string, error) {
+	return g.service.LocalHistoryContent(sessionID, relativePath, revisionID)
+}
+
+// WatcherStatus indica se il progetto è osservato per intero o solo in parte.
+func (g *GoIDE) WatcherStatus(sessionID string) (goide.WatcherStatus, error) {
+	return g.service.WatcherStatus(sessionID)
 }
 
 // StartRun avvia una build, run o tidy con argomenti strutturati.

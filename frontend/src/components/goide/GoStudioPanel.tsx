@@ -38,6 +38,7 @@ import { useGoIDEDebugStore } from '@/stores/goideDebug'
 import { bookmarksFor, historyFor, useGoIDENavigationStore } from '@/stores/goideNavigation'
 import { runNavigationCommand } from './goStudioNavigationEditor'
 import { GoStudioBookmarksDialog } from './GoStudioBookmarksDialog'
+import { GoStudioLocalHistoryDialog } from './GoStudioLocalHistoryDialog'
 import { GoStudioAttachDialog, type GoStudioAttachMode } from './GoStudioAttachDialog'
 import { GoStudioGoToolDialog, type GoStudioGoToolDialogState } from './GoStudioGoToolDialog'
 import { goToolDialogFor } from './goStudioGoToolCommands'
@@ -129,6 +130,7 @@ export function GoStudioPanel() {
   const [bookmarksOpen, setBookmarksOpen] = useState(false)
   const [goTool, setGoTool] = useState<GoStudioGoToolDialogState | null>(null)
   const [attachMode, setAttachMode] = useState<GoStudioAttachMode | null>(null)
+  const [localHistoryOpen, setLocalHistoryOpen] = useState(false)
   const navigation = useGoIDENavigationStore(useShallow((state) => {
     const history = historyFor(state, store.activeSessionId ?? '')
     return { canGoBack: history.index > 0, canGoForward: history.index < history.entries.length - 1, bookmarkCount: bookmarksFor(state, store.activeSessionId ?? '').length }
@@ -340,6 +342,7 @@ export function GoStudioPanel() {
     if (isGoStudioEditorCommand(id)) { runGoStudioEditorCommand(id); return }
     if (runLanguageCommand(id, activeSession?.id ?? null)) return
     if (runDebugCommand(id, activeSession?.id ?? null, configuredDebugRequest)) return
+    if (id === 'file.localHistory') return setLocalHistoryOpen(true)
     if (id === 'debug.attach' || id === 'debug.remote') return setAttachMode(id === 'debug.attach' ? 'attach' : 'remote')
     const toolDialog = goToolDialogFor(id, activeSession)
     if (toolDialog) return setGoTool(toolDialog)
@@ -431,6 +434,7 @@ export function GoStudioPanel() {
       <ToolchainDialog open={toolchainOpen} onClose={() => setToolchainOpen(false)} />
       <GoStudioDependencies open={dependenciesOpen} session={activeSession} onClose={() => setDependenciesOpen(false)} />
       <GoStudioSearchEverywhere open={searchEverywhereOpen} sessionId={activeSession.id} availability={(id) => commandAvailability(id, commandContext)} onCommand={runCommand} onClose={() => setSearchEverywhereOpen(false)} />
+      <GoStudioLocalHistoryDialog document={localHistoryOpen ? currentActiveDocument() : null} open={localHistoryOpen} onClose={() => setLocalHistoryOpen(false)} />
       <GoStudioAttachDialog sessionId={activeSession.id} mode={attachMode} onClose={() => setAttachMode(null)} />
       <GoStudioGoToolDialog sessionId={activeSession.id} state={goTool} onClose={() => setGoTool(null)} />
       <GoStudioBookmarksDialog open={bookmarksOpen} sessionId={activeSession.id} onClose={() => setBookmarksOpen(false)} />

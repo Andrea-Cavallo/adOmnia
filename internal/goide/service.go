@@ -29,6 +29,7 @@ type Service struct {
 	tests         *TestManager
 	runConfigs    *RunConfigManager
 	recovery      *RecoveryManager
+	history       *LocalHistory
 	persistence   *Persistence
 	viewMu        sync.RWMutex
 	views         map[SessionID]SessionView
@@ -69,6 +70,7 @@ func NewService(store Store, eventSink func(EventEnvelope)) *Service {
 		lint:          lintRegistry{custom: make(map[SessionID]string)},
 	}
 	service.recovery = NewRecoveryManager(nil)
+	service.history = NewLocalHistory(nil)
 	service.watcher = NewWatchManager(service.filesChanged)
 	service.lsp.SetEmitter(service.emit)
 	service.debug.SetEmitter(service.emit)
@@ -255,6 +257,7 @@ func (s *Service) CloseSession(id string) error {
 	s.lint.mu.Unlock()
 	s.runConfigs.CloseSession(sessionID)
 	s.tests.CloseSession(sessionID)
+	_ = s.history.ForgetSession(sessionID)
 	if err := s.recovery.ForgetSession(sessionID); err != nil {
 		return err
 	}
@@ -298,10 +301,12 @@ func (s *Service) SaveDocument(sessionID, documentID, content, diskToken string,
 	if err != nil {
 		return OpenDocument{}, err
 	}
+	s.recordOriginalBeforeSave(session, DocumentID(documentID))
 	document, err := s.documents.SaveDocument(session, DocumentID(documentID), content, diskToken, force)
 	if err != nil {
 		return OpenDocument{}, err
 	}
+	_ = s.history.Record(session.ID, document.Document.RelativePath, content, "Saved")
 	s.lsp.DocumentSaved(session.ID, DocumentID(documentID))
 	s.emit("document.saved", session.ID, documentID, document.Document)
 	return document, nil

@@ -1,5 +1,6 @@
-import { AlertCircle, AlertTriangle, Loader2, ScanSearch, Sparkles } from 'lucide-react'
-import type { GoIDEExecution, GoIDESession, GoIDEToolchainInfo } from '@/lib/goide-api'
+import { useEffect, useState } from 'react'
+import { AlertCircle, AlertTriangle, EyeOff, Loader2, ScanSearch, Sparkles } from 'lucide-react'
+import { getGoIDEWatcherStatus, type GoIDEExecution, type GoIDESession, type GoIDEToolchainInfo, type GoIDEWatcherStatus } from '@/lib/goide-api'
 import { useShallow } from 'zustand/react/shallow'
 import { useGoStudioCursorStore } from './goStudioCursor'
 import { diagnosticCounts, mergedReports, useGoIDELspStore } from '@/stores/goideLsp'
@@ -12,6 +13,21 @@ interface GoStudioStatusBarProps {
   execution: GoIDEExecution | null
   onLanguageServer: () => void
   onLinter: () => void
+}
+
+/** Il watcher parte in background dopo l'apertura: lo stato si rilegge poco dopo e poi di rado. */
+const WATCHER_STATUS_DELAYS_MS = [1500, 10_000, 60_000]
+
+function useWatcherStatus(sessionId: string): GoIDEWatcherStatus | null {
+  const [status, setStatus] = useState<GoIDEWatcherStatus | null>(null)
+  useEffect(() => {
+    setStatus(null)
+    const timers = WATCHER_STATUS_DELAYS_MS.map((delay) => window.setTimeout(() => {
+      getGoIDEWatcherStatus(sessionId).then(setStatus).catch(() => undefined)
+    }, delay))
+    return () => timers.forEach((timer) => window.clearTimeout(timer))
+  }, [sessionId])
+  return status
 }
 
 function languageServerLabel(state: string, version?: string): string {
@@ -32,6 +48,7 @@ export function GoStudioStatusBar({ session, toolchain, documentInfo, execution,
   const lint = useGoIDELspStore((state) => state.lint[session.id])
   const showToolWindow = useGoIDELspStore((state) => state.showToolWindow)
   const counts = diagnosticCounts(mergedReports(reports, lint?.reports))
+  const watcher = useWatcherStatus(session.id)
   const lspState = status?.state ?? 'stopped'
   const lspTone = lspState === 'ready' ? 'text-success' : lspState === 'crashed' ? 'text-danger' : lspState === 'starting' ? 'text-accent' : 'text-text-4'
 
@@ -52,6 +69,11 @@ export function GoStudioStatusBar({ session, toolchain, documentInfo, execution,
       </button>
       <span>{documentInfo?.language || (session.project.goWorkPath ? 'go.work' : session.project.goModPath ? 'go.mod' : 'Go folder')}{documentInfo?.readOnly ? ' · read-only' : ''}</span>
       {documentInfo && <span>Ln {cursor.line}, Col {cursor.column}</span>}
+      {watcher?.limited && (
+        <span role="status" title={`This project has more than ${watcher.limit} folders: only the first ${watcher.directories} are watched, so changes made outside Go Studio in the others are not detected automatically. Reopen files to see their disk version.`} className="flex items-center gap-1 text-warning">
+          <EyeOff size={9} /> Partially watched
+        </span>
+      )}
       <span className="ml-auto">{execution ? `${execution.kind}: ${execution.status}` : 'idle'}</span>
     </div>
   )
