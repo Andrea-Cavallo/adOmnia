@@ -1,6 +1,8 @@
 import * as GoIDEBindings from '../../bindings/adomnia/goide'
 import { Events } from '@wailsio/runtime'
 import type {
+  GoToolRequest,
+  GoToolPreview,
   Capabilities,
   CreateProjectRequest,
   DocumentDiskState,
@@ -176,6 +178,20 @@ export async function listGoIDEDependencies(sessionId: string, moduleDirectory: 
 
 export async function startGoIDEDependencyAction(request: DependencyActionRequest): Promise<Execution> {
   return GoIDEBindings.StartDependencyAction(request)
+}
+
+export type GoIDEGoTool = 'vet' | 'generate' | 'fix' | 'modWhy' | 'modGraph' | 'doc'
+export type GoIDEGoToolRequest = GoToolRequest
+export type GoIDEGoToolPreview = GoToolPreview
+
+/** Comando esatto che Go Tools eseguirà, senza eseguirlo. */
+export async function previewGoIDETool(request: GoToolRequest): Promise<GoToolPreview> {
+  return GoIDEBindings.PreviewGoTool(request)
+}
+
+/** Esegue un comando Go Tools; l'output arriva nella Run console tramite gli eventi run.*. */
+export async function startGoIDETool(request: GoToolRequest): Promise<Execution> {
+  return GoIDEBindings.StartGoTool(request)
 }
 
 /** Selettore nativo di cartelle; stringa vuota se l'utente annulla. */

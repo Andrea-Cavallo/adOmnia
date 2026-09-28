@@ -38,6 +38,9 @@ import { useGoIDEDebugStore } from '@/stores/goideDebug'
 import { bookmarksFor, historyFor, useGoIDENavigationStore } from '@/stores/goideNavigation'
 import { runNavigationCommand } from './goStudioNavigationEditor'
 import { GoStudioBookmarksDialog } from './GoStudioBookmarksDialog'
+import { GoStudioAttachDialog, type GoStudioAttachMode } from './GoStudioAttachDialog'
+import { GoStudioGoToolDialog, type GoStudioGoToolDialogState } from './GoStudioGoToolDialog'
+import { goToolDialogFor } from './goStudioGoToolCommands'
 import type { GoIDEDebugRequest } from '@/lib/goide-debug-api'
 import { confirm } from '@/lib/confirmDialog'
 import { useShallow } from 'zustand/react/shallow'
@@ -124,6 +127,8 @@ export function GoStudioPanel() {
   const [runTargetMenu, setRunTargetMenu] = useState<{ target: GoStudioRunTarget; x: number; y: number } | null>(null)
   const debugState = useGoIDEDebugStore(selectDebugState(store.activeSessionId))
   const [bookmarksOpen, setBookmarksOpen] = useState(false)
+  const [goTool, setGoTool] = useState<GoStudioGoToolDialogState | null>(null)
+  const [attachMode, setAttachMode] = useState<GoStudioAttachMode | null>(null)
   const navigation = useGoIDENavigationStore(useShallow((state) => {
     const history = historyFor(state, store.activeSessionId ?? '')
     return { canGoBack: history.index > 0, canGoForward: history.index < history.entries.length - 1, bookmarkCount: bookmarksFor(state, store.activeSessionId ?? '').length }
@@ -335,6 +340,9 @@ export function GoStudioPanel() {
     if (isGoStudioEditorCommand(id)) { runGoStudioEditorCommand(id); return }
     if (runLanguageCommand(id, activeSession?.id ?? null)) return
     if (runDebugCommand(id, activeSession?.id ?? null, configuredDebugRequest)) return
+    if (id === 'debug.attach' || id === 'debug.remote') return setAttachMode(id === 'debug.attach' ? 'attach' : 'remote')
+    const toolDialog = goToolDialogFor(id, activeSession)
+    if (toolDialog) return setGoTool(toolDialog)
     if (runNavigationCommand(id, activeSession?.id ?? null, activeGoStudioEditor(), () => setBookmarksOpen(true))) return
     switch (id) {
       case 'file.openProject': return void store.openProject()
@@ -423,6 +431,8 @@ export function GoStudioPanel() {
       <ToolchainDialog open={toolchainOpen} onClose={() => setToolchainOpen(false)} />
       <GoStudioDependencies open={dependenciesOpen} session={activeSession} onClose={() => setDependenciesOpen(false)} />
       <GoStudioSearchEverywhere open={searchEverywhereOpen} sessionId={activeSession.id} availability={(id) => commandAvailability(id, commandContext)} onCommand={runCommand} onClose={() => setSearchEverywhereOpen(false)} />
+      <GoStudioAttachDialog sessionId={activeSession.id} mode={attachMode} onClose={() => setAttachMode(null)} />
+      <GoStudioGoToolDialog sessionId={activeSession.id} state={goTool} onClose={() => setGoTool(null)} />
       <GoStudioBookmarksDialog open={bookmarksOpen} sessionId={activeSession.id} onClose={() => setBookmarksOpen(false)} />
       <GoStudioSymbolSearch open={symbolSearchOpen} sessionId={activeSession.id} onClose={() => setSymbolSearchOpen(false)} />
       <GoStudioRenameDialog />

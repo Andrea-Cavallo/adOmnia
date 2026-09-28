@@ -919,7 +919,7 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
         executions: replaceExecution(state.executions, execution),
         activeRunBySession: { ...state.activeRunBySession, [sessionId]: execution.id },
         layout: { ...state.layout, bottomOpen: true },
-        consoleByRun: { ...state.consoleByRun, [execution.id]: appendConsole(state.consoleByRun[execution.id] ?? [], { sequence: 0, stream: 'system', text: `$ ${execution.command}\n${execution.workingDirectory}\n\n` }) },
+        consoleByRun: withConsoleHeader(state.consoleByRun, execution),
       }))
     } catch (error) {
       set({ error: errorMessage(error) })
@@ -975,9 +975,11 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
     }
     if ((event.type === 'run.started' || event.type === 'run.finished') && isExecution(event.payload)) {
       const execution = event.payload
+      // Ogni esecuzione (anche Go Tools e dipendenze) mostra il comando in testa e l'esito in fondo.
       set((state) => ({
         executions: replaceExecution(state.executions, execution),
         activeRunBySession: { ...state.activeRunBySession, [execution.sessionId]: execution.id },
+        consoleByRun: event.type === 'run.started' ? withConsoleHeader(state.consoleByRun, execution) : withConsoleFooter(state.consoleByRun, execution, event.sequence),
       }))
       if (event.type === 'run.finished' && MODULE_CHANGING_KINDS.has(execution.kind)) void get().refreshModuleFiles(execution.sessionId)
     }
@@ -1016,6 +1018,23 @@ async function refreshFromDisk(sessionId: string, documentIds: string[]): Promis
 }
 
 const MODULE_CHANGING_KINDS = new Set(['dependency', 'tidy'])
+
+type ConsoleByRun = Record<string, GoIDEConsoleChunk[]>
+
+/** Riga "$ comando" all'inizio della console, una sola volta per esecuzione. */
+function withConsoleHeader(consoleByRun: ConsoleByRun, execution: GoIDEExecution): ConsoleByRun {
+  const current = consoleByRun[execution.id] ?? []
+  if (current.some((chunk) => chunk.stream === 'system' && chunk.sequence === 0)) return consoleByRun
+  const header = { sequence: 0, stream: 'system' as const, text: `$ ${execution.command}\n${execution.workingDirectory}\n\n` }
+  return { ...consoleByRun, [execution.id]: [header, ...current] }
+}
+
+/** Esito in fondo alla console, come in GoLand: anche un comando senza output mostra che è finito. */
+function withConsoleFooter(consoleByRun: ConsoleByRun, execution: GoIDEExecution, sequence: number): ConsoleByRun {
+  if (execution.status === 'running') return consoleByRun
+  const outcome = execution.status === 'stopped' ? 'Process stopped' : `Process finished with exit code ${execution.exitCode ?? '?'}`
+  return { ...consoleByRun, [execution.id]: appendConsole(consoleByRun[execution.id] ?? [], { sequence, stream: 'system', text: `\n${outcome}\n` }) }
+}
 const MODULE_FILE_NAMES = new Set(['go.mod', 'go.sum', 'go.work', 'go.work.sum'])
 
 function isModuleFile(relativePath: string): boolean {

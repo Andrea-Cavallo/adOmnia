@@ -656,12 +656,12 @@ Prerequisito: gopls è realmente operativo (Fase 2) e il terminale è reale (Fas
 
 ## 5.3 Strumenti Go integrati
 
-- [ ] Menu **Go Tools** che esegue i comandi della toolchain sul progetto senza passare da terminale: `go vet`, `go generate`, `go fix`, `go mod why`, `go mod graph`, `go doc`.
-- [ ] Ogni comando mostra l'anteprima degli argomenti esatti prima dell'esecuzione e riusa la Run console di 1.4 per output, stop e cleanup.
-- [ ] Nessun comando viene eseguito senza autorizzazione strumenti attiva sulla sessione.
-- [ ] Syntax highlighting per i file assembly Plan9 (`.s`) tramite grammatica Monaco dedicata; nessuna funzione semantica dichiarata su questi file.
-- [ ] Debug con `attach` a un processo già avviato e debug remoto (`dlv --headless`), con le stesse garanzie di cleanup di 4.2. *(dalla Fase 4)*
-- [ ] Supporto editor per `go.sum`, `.golangci.yml` e file di generazione, coerente con il resto dei linguaggi già gestiti in 1.2.
+- [x] Menu **Go Tools** che esegue i comandi della toolchain sul progetto senza passare da terminale: `go vet`, `go generate`, `go fix`, `go mod why`, `go mod graph`, `go doc`. *(menu Go → "Go Tools: …"; target precompilato: package del file, modulo della riga di go.mod o dell'import, simbolo sotto il cursore)*
+- [x] Ogni comando mostra l'anteprima degli argomenti esatti prima dell'esecuzione e riusa la Run console di 1.4 per output, stop e cleanup. *(anteprima calcolata dal backend mentre si scrive; target validati contro l'iniezione di flag; `go fix` e `go generate` avvisano che modificano file e salvano prima gli editor; ogni esecuzione mostra "$ comando" in testa ed "exit code" in fondo, e la finestra Run viene in primo piano)*
+- [x] Nessun comando viene eseguito senza autorizzazione strumenti attiva sulla sessione.
+- [x] Syntax highlighting per i file assembly Plan9 (`.s`) tramite grammatica Monaco dedicata; nessuna funzione semantica dichiarata su questi file.
+- [x] Debug con `attach` a un processo già avviato e debug remoto (`dlv --headless`), con le stesse garanzie di cleanup di 4.2. *(Run → Attach to Process… con elenco filtrabile dei processi; Run → Connect to Remote Delve…; Stop si stacca senza terminare il programma dell'utente. Limite dichiarato: i breakpoint remoti funzionano quando i sorgenti hanno lo stesso percorso sui due lati)*
+- [x] Supporto editor per `go.sum`, `.golangci.yml` e file di generazione, coerente con il resto dei linguaggi già gestiti in 1.2. *(go.sum con colorazione dedicata; .golangci.yml come YAML; i file "Code generated … DO NOT EDIT" mostrano un avviso)*
 
 ## 5.4 Editor e produttività
 

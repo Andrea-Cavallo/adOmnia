@@ -1,7 +1,7 @@
 import * as GoIDEBindings from '../../bindings/adomnia/goide'
 import type {
   BreakpointState, DebugFrame, DebugRequest, DebugScope, DebugSessionInfo, DebugThread, DebugVariable,
-  DelveInfo, EvaluateResult, Execution, FileBreakpoints,
+  DelveInfo, EvaluateResult, Execution, FileBreakpoints, ProcessInfo,
 } from '../../bindings/adomnia/internal/goide/models'
 
 export type GoIDEDebugRequest = DebugRequest
@@ -76,4 +76,11 @@ export function setGoIDEBreakpoints(sessionId: string, relativePath: string, lin
 
 export function listGoIDEBreakpoints(sessionId: string): Promise<FileBreakpoints[]> {
   return GoIDEBindings.ListBreakpoints(sessionId)
+}
+
+export type GoIDEProcessInfo = ProcessInfo
+
+/** Processi locali per Attach to Process (solo lettura). */
+export function listGoIDEProcesses(): Promise<ProcessInfo[]> {
+  return GoIDEBindings.ListProcesses()
 }

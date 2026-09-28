@@ -3,10 +3,12 @@ package goide
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -128,8 +130,14 @@ func (s *Service) StartDebug(request DebugRequest) (DebugSessionInfo, error) {
 	if session.Project.Authorization != AuthorizationPermitted {
 		return DebugSessionInfo{}, fmt.Errorf("autorizza esplicitamente gli strumenti per questo progetto")
 	}
-	if request.Mode != "debug" && request.Mode != "test" {
-		return DebugSessionInfo{}, fmt.Errorf("modalità di debug non supportata")
+	request.SessionID = session.ID
+	// Il server remoto è un dlv già in ascolto: non serve Delve sulla macchina locale.
+	if request.Mode == debugModeRemote {
+		if err := validateRemoteAddress(request.Address); err != nil {
+			return DebugSessionInfo{}, err
+		}
+		s.seedBreakpoints(session)
+		return s.debug.Start(debugLaunch{session: session, request: request})
 	}
 	delve, err := s.DetectDelve(string(session.ID))
 	if err != nil {
@@ -137,6 +145,17 @@ func (s *Service) StartDebug(request DebugRequest) (DebugSessionInfo, error) {
 	}
 	if !delve.Available {
 		return DebugSessionInfo{}, fmt.Errorf("%s", delve.Error)
+	}
+	switch request.Mode {
+	case debugModeAttach:
+		if request.ProcessID <= 0 || request.ProcessID == os.Getpid() {
+			return DebugSessionInfo{}, fmt.Errorf("scegli un processo valido a cui agganciarsi")
+		}
+		s.seedBreakpoints(session)
+		return s.debug.Start(debugLaunch{session: session, request: request, binary: delve.Binary, moduleDir: session.Project.RealPath, environment: os.Environ()})
+	case "debug", "test":
+	default:
+		return DebugSessionInfo{}, fmt.Errorf("modalità di debug non supportata")
 	}
 	moduleDir, err := s.documents.resolveDirectory(session.Project, request.WorkingDirectory)
 	if err != nil {
@@ -283,4 +302,17 @@ func (s *Service) seedBreakpoints(session Session) {
 	}
 	s.viewMu.RUnlock()
 	s.debug.SeedBreakpoints(session.ID, byPath)
+}
+
+// validateRemoteAddress accetta solo host:porta, senza schema né percorso.
+func validateRemoteAddress(address string) error {
+	host, port, err := net.SplitHostPort(strings.TrimSpace(address))
+	if err != nil || host == "" || strings.ContainsAny(host, "/\\ ") {
+		return fmt.Errorf("indica l'indirizzo del server Delve come host:porta, es. 127.0.0.1:2345")
+	}
+	number, err := strconv.Atoi(port)
+	if err != nil || number < 1 || number > 65535 {
+		return fmt.Errorf("porta del server Delve non valida")
+	}
+	return nil
 }

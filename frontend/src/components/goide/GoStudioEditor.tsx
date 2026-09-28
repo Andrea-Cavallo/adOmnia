@@ -10,6 +10,7 @@ import type { GoStudioRunTargetHandler } from './goStudioRunTargets'
 import { useGoStudioDocumentSymbols } from './goStudioSymbols'
 import { copiesInOtherSessions } from './goStudioSharedCopies'
 import { useGoIDETestsStore, visibleCoverage } from '@/stores/goideTests'
+import { isGeneratedGoFile } from './goStudioExtraLanguages'
 import { coverageForDocument } from './goStudioCoverage'
 
 interface GoStudioEditorProps {
@@ -75,6 +76,11 @@ export function GoStudioEditor({ documents, active, onCursor, onRequestClose, on
       {coverageMatch.state === 'stale' && (
         <div role="status" className="flex shrink-0 items-center gap-2 border-b border-border-1 bg-surface-1 px-2 py-1 text-[10px] text-text-3">
           <ShieldCheck size={12} className="text-text-4" aria-hidden="true" /> Coverage is outdated for this file: it changed after the test run. Run the tests with coverage again to see it.
+        </div>
+      )}
+      {isGeneratedGoFile(active.document.relativePath, active.buffer) && (
+        <div role="status" className="flex shrink-0 items-center gap-2 border-b border-warning/25 bg-warning/10 px-2 py-1 text-[10px] text-text-2">
+          <AlertTriangle size={12} className="text-warning" aria-hidden="true" /> Generated file (Code generated … DO NOT EDIT). Change the generator or its input and run go generate instead of editing it.
         </div>
       )}
       {active.saveError && <div className="shrink-0 border-b border-danger/30 bg-danger/10 px-2 py-1 text-[10px] text-danger">{active.saveError}</div>}

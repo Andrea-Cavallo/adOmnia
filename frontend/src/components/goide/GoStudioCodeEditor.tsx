@@ -16,6 +16,7 @@ import { startGoStudioLspSync } from './goStudioLspSync'
 import { findRunTargets, runCommandFor, type GoStudioRunTarget, type GoStudioRunTargetHandler } from './goStudioRunTargets'
 import { recordCaretPosition, useGoStudioBookmarks } from './goStudioNavigationEditor'
 import { openImplementationMarker, useGoStudioImplementationMarkers } from './goStudioImplementationMarkers'
+import { registerGoStudioExtraLanguages } from './goStudioExtraLanguages'
 import { installBreakpointGutter, registerGoStudioDebugHover, useGoStudioDebugDecorations } from './goStudioDebugEditor'
 import './goStudioEditor.css'
 
@@ -25,6 +26,7 @@ registerGoStudioCodeLens()
 registerGoStudioSemanticFeatures()
 startGoStudioLspSync()
 registerGoStudioDebugHover()
+registerGoStudioExtraLanguages()
 
 const RUN_TARGET_DEBOUNCE_MS = 250
 
@@ -173,8 +175,8 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
         inlayHints: { enabled: inlayHints ? 'on' : 'off', fontSize: 10, padding: true },
         occurrencesHighlight: 'singleFile',
         codeLensFontSize: 10,
-        tabSize: document.document.language === 'go' ? 4 : 2,
-        insertSpaces: document.document.language !== 'go',
+        tabSize: document.document.language === 'go' || document.document.language === 'goasm' ? 4 : 2,
+        insertSpaces: document.document.language !== 'go' && document.document.language !== 'goasm',
         padding: { top: 6, bottom: 6 },
       }}
     />

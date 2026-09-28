@@ -13,12 +13,13 @@ export type GoStudioCommandId =
   | 'go.toolchains' | 'go.detect' | 'go.dependencies' | 'go.tidy' | 'go.trust'
   | 'go.updateAll' | 'go.updatePatch' | 'go.modDownload' | 'go.modVerify'
   | 'go.lspStart' | 'go.lspRestart' | 'go.lspStop' | 'go.lspInstall' | 'go.lspLog'
+  | 'go.toolVet' | 'go.toolGenerate' | 'go.toolFix' | 'go.toolModWhy' | 'go.toolModGraph' | 'go.toolDoc'
   | 'go.installGolangci' | 'go.installStaticcheck' | 'go.toolPaths'
   | 'run.run' | 'run.build' | 'run.stop' | 'run.restart' | 'run.configure'
   | 'run.rerunFailedTests' | 'run.testCoverage' | 'view.tests'
   | 'run.buildPackage' | 'run.testPackage' | 'run.vetPackage' | 'run.buildAll' | 'run.testAll' | 'run.vetAll' | 'run.generateAll' | 'run.install'
   | 'debug.debug' | 'debug.toggleBreakpoint' | 'debug.resume' | 'debug.pause' | 'debug.stepOver' | 'debug.stepInto' | 'debug.stepOut'
-  | 'debug.stop' | 'view.debug' | 'go.installDelve'
+  | 'debug.stop' | 'view.debug' | 'go.installDelve' | 'debug.attach' | 'debug.remote'
   | 'help.shortcuts'
 
 export type GoStudioMenuId = 'file' | 'edit' | 'view' | 'navigate' | 'code' | 'go' | 'run' | 'help'
@@ -127,6 +128,12 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'go.updatePatch', menu: 'go', label: 'Update Patch Versions…' },
   { id: 'go.modDownload', menu: 'go', label: 'Download Modules…' },
   { id: 'go.modVerify', menu: 'go', label: 'Verify Modules' },
+  { id: 'go.toolVet', menu: 'go', label: 'Go Tools: go vet…', separatorBefore: true },
+  { id: 'go.toolGenerate', menu: 'go', label: 'Go Tools: go generate…' },
+  { id: 'go.toolFix', menu: 'go', label: 'Go Tools: go fix…' },
+  { id: 'go.toolModWhy', menu: 'go', label: 'Go Tools: go mod why…' },
+  { id: 'go.toolModGraph', menu: 'go', label: 'Go Tools: go mod graph…' },
+  { id: 'go.toolDoc', menu: 'go', label: 'Go Tools: go doc…' },
   { id: 'go.trust', menu: 'go', label: 'Trust Project Tools', separatorBefore: true },
   { id: 'go.lspStart', menu: 'go', label: 'Start Language Server (gopls)', separatorBefore: true },
   { id: 'go.lspRestart', menu: 'go', label: 'Restart Language Server' },
@@ -139,6 +146,8 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'go.toolPaths', menu: 'go', label: 'Tool Paths (gopls, linter, dlv)…' },
   { id: 'run.run', menu: 'run', label: 'Run', binding: { key: 'F5', mod: true } },
   { id: 'debug.debug', menu: 'run', label: 'Debug', binding: { key: 'F9', shift: true } },
+  { id: 'debug.attach', menu: 'run', label: 'Attach to Process…' },
+  { id: 'debug.remote', menu: 'run', label: 'Connect to Remote Delve…' },
   { id: 'run.build', menu: 'run', label: 'Build', binding: { key: 'b', mod: true, shift: true } },
   { id: 'run.buildPackage', menu: 'run', label: 'Build Current Package', binding: { key: 'F9', mod: true }, separatorBefore: true },
   { id: 'run.testPackage', menu: 'run', label: 'Test Current Package', binding: { key: 'F10', mod: true, shift: true } },
@@ -292,13 +301,21 @@ export function commandAvailability(id: GoStudioCommandId, context: GoStudioComm
     case 'run.install':
     case 'run.testCoverage':
     case 'run.rerunFailedTests':
-    case 'go.modVerify': return runAvailability(context)
+    case 'go.modVerify':
+    case 'go.toolVet':
+    case 'go.toolGenerate':
+    case 'go.toolFix':
+    case 'go.toolModWhy':
+    case 'go.toolModGraph':
+    case 'go.toolDoc': return runAvailability(context)
     case 'go.updateAll':
     case 'go.updatePatch':
     case 'go.modDownload': return context.running ? 'Wait for the active process to finish' : runAvailability(context)
     case 'run.stop': return context.running ? true : 'Nothing is running'
     case 'debug.debug':
+    case 'debug.attach':
     case 'go.installDelve': return runAvailability(context)
+    case 'debug.remote': return context.authorized ? true : NOT_TRUSTED
     case 'debug.toggleBreakpoint': return context.hasEditor ? true : 'Open a Go file first'
     case 'debug.resume':
     case 'debug.stepOver':

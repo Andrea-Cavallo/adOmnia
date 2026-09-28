@@ -1,4 +1,4 @@
-import { useMemo, useState, memo } from 'react'
+import { useEffect, useMemo, useRef, useState, memo } from 'react'
 import { AlertCircle, Copy, ListTree, RefreshCw, Search, SearchCode, Square, SquareTerminal, TerminalSquare, FlaskConical, Bug } from 'lucide-react'
 import { Clipboard as WailsClipboard } from '@wailsio/runtime'
 import { useGoIDEStore, type GoIDEConsoleChunk } from '@/stores/goide'
@@ -118,6 +118,14 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session }: GoSt
   const sendRunInput = useGoIDEStore((state) => state.sendRunInput)
   const openLocation = useGoIDEStore((state) => state.openLocation)
   const active = executions.find((execution) => execution.id === activeRunId) ?? executions[executions.length - 1] ?? null
+  // Una nuova esecuzione porta in primo piano la finestra Run, come in GoLand; i test hanno la loro finestra.
+  const seenRunId = useRef(activeRunId)
+  useEffect(() => {
+    if (!activeRunId || activeRunId === seenRunId.current) return
+    seenRunId.current = activeRunId
+    const started = executions.find((execution) => execution.id === activeRunId)
+    if (started?.status === 'running' && started.kind !== 'tests') showToolWindow('run')
+  }, [activeRunId, executions, showToolWindow])
   const chunks = active ? consoleByRun[active.id] ?? [] : []
   const lines = useMemo(() => parseLines(chunks), [chunks])
   const buildProblems = useMemo<GoStudioBuildProblem[]>(() => lines

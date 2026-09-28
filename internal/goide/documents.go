@@ -400,14 +400,18 @@ func fileURI(path string) string {
 func languageForPath(path string) string {
 	base := strings.ToLower(filepath.Base(path))
 	switch base {
-	case "go.mod", "go.work", "go.sum":
+	case "go.mod", "go.work":
 		return "go"
+	case "go.sum", "go.work.sum":
+		return "gosum"
 	case ".env":
 		return "dotenv"
 	}
 	switch strings.ToLower(filepath.Ext(base)) {
 	case ".go":
 		return "go"
+	case ".s":
+		return "goasm"
 	case ".json", ".jsonc":
 		return "json"
 	case ".yaml", ".yml":

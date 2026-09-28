@@ -253,13 +253,16 @@ export const useGoIDEDebugStore = create<GoIDEDebugState>((set, get) => {
       set({ error: null })
       const sessionId = request.sessionId
       try {
-        const delve = await get().detectDelve(sessionId)
-        if (!delve) return
-        if (!delve.available) {
-          if (await confirmDelveInstall()) await get().installDelve(sessionId)
-          return
+        // Un server remoto è già un Delve in ascolto; attach e remote non compilano i file del progetto.
+        if (request.mode !== 'remote') {
+          const delve = await get().detectDelve(sessionId)
+          if (!delve) return
+          if (!delve.available) {
+            if (await confirmDelveInstall()) await get().installDelve(sessionId)
+            return
+          }
         }
-        if (!await useGoIDEStore.getState().saveAllDocuments(sessionId)) return
+        if ((request.mode === 'debug' || request.mode === 'test') && !await useGoIDEStore.getState().saveAllDocuments(sessionId)) return
         const info = await startGoIDEDebug(request)
         set((state) => ({
           debuggers: { ...pruneFinished(state.debuggers, sessionId), [info.id]: { ...(state.debuggers[info.id] ?? emptyView(info)), request } },

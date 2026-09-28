@@ -1,10 +1,13 @@
 package goide
 
 import (
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -327,4 +330,128 @@ func TestTestsAndDebugStayIsolatedAcrossSessions(t *testing.T) {
 	if _, err := ide.ListTestRuns(string(second.ID)); err != nil {
 		t.Fatalf("il secondo progetto deve restare utilizzabile: %v", err)
 	}
+}
+
+// buildHangingProgram compila il progetto di debug senza ottimizzazioni e lo avvia in attesa (DBG_HANG).
+func buildHangingProgram(t *testing.T, root string) *exec.Cmd {
+	t.Helper()
+	binary := filepath.Join(t.TempDir(), executableName("hang"))
+	build := exec.Command("go", "build", "-gcflags=all=-N -l", "-o", binary, ".")
+	build.Dir = root
+	if output, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build fallita: %v\n%s", err, output)
+	}
+	program := exec.Command(binary)
+	program.Env = append(os.Environ(), "DBG_HANG=1")
+	if err := program.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = program.Process.Kill(); _, _ = program.Process.Wait() })
+	return program
+}
+
+func pauseAndCheckMain(t *testing.T, ide *Service, recorder *eventRecorder, started DebugSessionInfo) {
+	t.Helper()
+	waitDebugState(t, recorder, started.ID, DebugRunning, 0)
+	if err := ide.DebugStep(string(started.ID), "pause", 0); err != nil {
+		t.Fatal(err)
+	}
+	waitDebugState(t, recorder, started.ID, DebugStopped, 0)
+	threads, err := ide.DebugThreads(string(started.ID))
+	if err != nil || len(threads) == 0 {
+		t.Fatalf("goroutine non disponibili: %v", err)
+	}
+	found := false
+	for _, thread := range threads {
+		frames, _ := ide.DebugStackTrace(string(started.ID), thread.ID)
+		for _, frame := range frames {
+			found = found || frame.Name == "main.main"
+		}
+	}
+	if !found {
+		t.Fatal("main.main non trovato negli stack del processo agganciato")
+	}
+}
+
+func TestDebuggerAttachesToRunningProcessAndDetaches(t *testing.T) {
+	ide, recorder, session := startDebugProject(t)
+	program := buildHangingProgram(t, session.Project.RealPath)
+	started, err := ide.StartDebug(DebugRequest{SessionID: session.ID, Mode: "attach", ProcessID: program.Process.Pid})
+	if err != nil {
+		t.Fatal(err)
+	}
+	pauseAndCheckMain(t, ide, recorder, started)
+	if err := ide.StopDebug(string(started.ID)); err != nil {
+		t.Fatal(err)
+	}
+	waitDebugState(t, recorder, started.ID, DebugTerminated, 0)
+	// Stop si stacca: il programma dell'utente deve restare in esecuzione.
+	time.Sleep(300 * time.Millisecond)
+	if runtime.GOOS == "windows" {
+		return
+	}
+	if err := program.Process.Signal(syscall.Signal(0)); err != nil {
+		t.Fatalf("il processo agganciato è stato terminato invece che staccato: %v", err)
+	}
+}
+
+func TestDebuggerConnectsToRemoteHeadlessDelve(t *testing.T) {
+	ide, recorder, session := startDebugProject(t)
+	delve := findDelveForTest(t)
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	address := listener.Addr().String()
+	_ = listener.Close()
+	server := exec.Command(delve, "debug", "--headless", "--accept-multiclient", "--api-version=2", "--listen="+address, "--continue")
+	server.Dir = session.Project.RealPath
+	server.Env = append(os.Environ(), "DBG_HANG=1")
+	if err := server.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = server.Process.Kill(); _, _ = server.Process.Wait() })
+	var started DebugSessionInfo
+	deadline := time.Now().Add(90 * time.Second)
+	for {
+		started, err = ide.StartDebug(DebugRequest{SessionID: session.ID, Mode: "remote", Address: address})
+		if err != nil {
+			t.Fatal(err)
+		}
+		info := waitDebugStateAny(t, recorder, started.ID, []string{DebugRunning, DebugStopped, DebugTerminated})
+		if info.State != DebugTerminated {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("server Delve remoto non raggiungibile: %s", info.Error)
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	pauseAndCheckMain(t, ide, recorder, started)
+	if _, err := ide.StartDebug(DebugRequest{SessionID: session.ID, Mode: "remote", Address: "http://x"}); err == nil {
+		t.Fatal("indirizzo non valido accettato")
+	}
+	if err := ide.StopDebug(string(started.ID)); err != nil {
+		t.Fatal(err)
+	}
+	waitDebugState(t, recorder, started.ID, DebugTerminated, 0)
+}
+
+func waitDebugStateAny(t *testing.T, recorder *eventRecorder, id DebugSessionID, states []string) DebugSessionInfo {
+	t.Helper()
+	deadline := time.Now().Add(60 * time.Second)
+	for time.Now().Before(deadline) {
+		for _, event := range recorder.all() {
+			if info, ok := event.Payload.(DebugSessionInfo); ok && info.ID == id {
+				for _, state := range states {
+					if info.State == state {
+						return info
+					}
+				}
+			}
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatalf("nessuno stato tra %v", states)
+	return DebugSessionInfo{}
 }

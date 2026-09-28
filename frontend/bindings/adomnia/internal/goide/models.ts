@@ -511,9 +511,19 @@ export class DebugRequest {
     "sessionId": SessionID;
 
     /**
-     * Mode è "debug" (programma) o "test".
+     * Mode è "debug" (programma), "test", "attach" (processo locale) o "remote" (dlv --headless già avviato).
      */
     "mode": string;
+
+    /**
+     * ProcessID è il processo a cui agganciarsi in modalità attach.
+     */
+    "processId"?: number;
+
+    /**
+     * Address è host:porta del server Delve in modalità remote.
+     */
+    "address"?: string;
 
     /**
      * WorkingDirectory è la cartella del modulo relativa al progetto.
@@ -551,18 +561,18 @@ export class DebugRequest {
      * Creates a new DebugRequest instance from a string or object.
      */
     static createFrom($$source: any = {}): DebugRequest {
-        const $$createField5_0 = $$createType12;
-        const $$createField6_0 = $$createType12;
-        const $$createField7_0 = $$createType13;
+        const $$createField7_0 = $$createType12;
+        const $$createField8_0 = $$createType12;
+        const $$createField9_0 = $$createType13;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("programArguments" in $$parsedSource) {
-            $$parsedSource["programArguments"] = $$createField5_0($$parsedSource["programArguments"]);
+            $$parsedSource["programArguments"] = $$createField7_0($$parsedSource["programArguments"]);
         }
         if ("buildTags" in $$parsedSource) {
-            $$parsedSource["buildTags"] = $$createField6_0($$parsedSource["buildTags"]);
+            $$parsedSource["buildTags"] = $$createField8_0($$parsedSource["buildTags"]);
         }
         if ("environment" in $$parsedSource) {
-            $$parsedSource["environment"] = $$createField7_0($$parsedSource["environment"]);
+            $$parsedSource["environment"] = $$createField9_0($$parsedSource["environment"]);
         }
         return new DebugRequest($$parsedSource as Partial<DebugRequest>);
     }
@@ -1496,6 +1506,82 @@ export class GoReplacement {
     }
 }
 
+/**
+ * GoToolPreview descrive il comando esatto prima dell'esecuzione.
+ */
+export class GoToolPreview {
+    "command": string;
+    "workingDirectory": string;
+
+    /**
+     * ModifiesFiles avvisa che il comando riscrive sorgenti (go fix, go generate).
+     */
+    "modifiesFiles": boolean;
+
+    /** Creates a new GoToolPreview instance. */
+    constructor($$source: Partial<GoToolPreview> = {}) {
+        if (!("command" in $$source)) {
+            this["command"] = "";
+        }
+        if (!("workingDirectory" in $$source)) {
+            this["workingDirectory"] = "";
+        }
+        if (!("modifiesFiles" in $$source)) {
+            this["modifiesFiles"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new GoToolPreview instance from a string or object.
+     */
+    static createFrom($$source: any = {}): GoToolPreview {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new GoToolPreview($$parsedSource as Partial<GoToolPreview>);
+    }
+}
+
+/**
+ * GoToolRequest chiede un comando della toolchain Go dal menu Go Tools, sempre come argomenti strutturati.
+ */
+export class GoToolRequest {
+    "sessionId": SessionID;
+    "tool": string;
+    "workingDirectory": string;
+
+    /**
+     * Target è un package relativo (vet, generate, fix, doc), un percorso di import (mod why) o un simbolo (doc).
+     */
+    "target": string;
+
+    /** Creates a new GoToolRequest instance. */
+    constructor($$source: Partial<GoToolRequest> = {}) {
+        if (!("sessionId" in $$source)) {
+            this["sessionId"] = "";
+        }
+        if (!("tool" in $$source)) {
+            this["tool"] = "";
+        }
+        if (!("workingDirectory" in $$source)) {
+            this["workingDirectory"] = "";
+        }
+        if (!("target" in $$source)) {
+            this["target"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new GoToolRequest instance from a string or object.
+     */
+    static createFrom($$source: any = {}): GoToolRequest {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new GoToolRequest($$parsedSource as Partial<GoToolRequest>);
+    }
+}
+
 export class GoplsInfo {
     "available": boolean;
     "binary"?: string;
@@ -2093,6 +2179,35 @@ export class OpenDocument {
             $$parsedSource["document"] = $$createField0_0($$parsedSource["document"]);
         }
         return new OpenDocument($$parsedSource as Partial<OpenDocument>);
+    }
+}
+
+/**
+ * ProcessInfo descrive un processo locale a cui il debugger può agganciarsi.
+ */
+export class ProcessInfo {
+    "pid": number;
+    "name": string;
+    "command"?: string;
+
+    /** Creates a new ProcessInfo instance. */
+    constructor($$source: Partial<ProcessInfo> = {}) {
+        if (!("pid" in $$source)) {
+            this["pid"] = 0;
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ProcessInfo instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ProcessInfo {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ProcessInfo($$parsedSource as Partial<ProcessInfo>);
     }
 }
 

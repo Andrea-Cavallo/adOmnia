@@ -21,6 +21,11 @@ import (
 )
 
 const (
+	debugModeAttach = "attach"
+	debugModeRemote = "remote"
+)
+
+const (
 	debugAddressTimeout = 20 * time.Second
 	debugRequestTimeout = 15 * time.Second
 	// debugDisconnectTimeout è il tempo concesso a Delve per fermare e chiudere il programma debuggato.
@@ -43,8 +48,12 @@ const (
 // DebugRequest avvia il debug di un package main o di un singolo test, sempre su azione esplicita.
 type DebugRequest struct {
 	SessionID SessionID `json:"sessionId"`
-	// Mode è "debug" (programma) o "test".
+	// Mode è "debug" (programma), "test", "attach" (processo locale) o "remote" (dlv --headless già avviato).
 	Mode string `json:"mode"`
+	// ProcessID è il processo a cui agganciarsi in modalità attach.
+	ProcessID int `json:"processId,omitempty"`
+	// Address è host:porta del server Delve in modalità remote.
+	Address string `json:"address,omitempty"`
 	// WorkingDirectory è la cartella del modulo relativa al progetto.
 	WorkingDirectory string `json:"workingDirectory"`
 	// Target è il package relativo al modulo, es. "." o "./cmd/api".
@@ -128,10 +137,12 @@ type debugger struct {
 	root   string
 	// buildDir ospita il binario compilato da Delve, fuori dal progetto; si elimina all'uscita di dlv.
 	buildDir string
-	command  *exec.Cmd
-	conn     net.Conn
-	client   *dap.Client
-	closed   bool
+	// detach: allo Stop Delve si stacca senza terminare il programma (attach e remote), come in GoLand.
+	detach  bool
+	command *exec.Cmd
+	conn    net.Conn
+	client  *dap.Client
+	closed  bool
 }
 
 // DebugManager possiede i processi dlv e i breakpoint dei progetti; ogni evento porta l'id della sessione di debug.
@@ -184,11 +195,14 @@ type debugLaunch struct {
 
 // Start avvia dlv dap e restituisce subito la sessione in stato starting; il resto procede in background.
 func (m *DebugManager) Start(launch debugLaunch) (DebugSessionInfo, error) {
+	if launch.request.Mode == debugModeRemote {
+		return m.startRemote(launch), nil
+	}
 	buildDir, err := os.MkdirTemp("", "adomnia-debug-")
 	if err != nil {
 		return DebugSessionInfo{}, fmt.Errorf("cartella temporanea per il debug non disponibile: %w", err)
 	}
-	session := &debugger{exited: make(chan struct{}), root: launch.session.Project.RealPath, buildDir: buildDir, info: DebugSessionInfo{
+	session := &debugger{exited: make(chan struct{}), root: launch.session.Project.RealPath, buildDir: buildDir, detach: launch.request.Mode == debugModeAttach, info: DebugSessionInfo{
 		ID: DebugSessionID(newID("debug")), SessionID: launch.session.ID, State: DebugStarting, Title: debugTitle(launch.request), StartedAt: time.Now().UTC(),
 	}}
 	command := exec.Command(launch.binary, "dap", "--listen=127.0.0.1:0")
@@ -214,6 +228,20 @@ func (m *DebugManager) Start(launch debugLaunch) (DebugSessionInfo, error) {
 	return session.info, nil
 }
 
+// startRemote si collega a un server Delve già in ascolto: nessun processo locale da avviare o chiudere.
+func (m *DebugManager) startRemote(launch debugLaunch) DebugSessionInfo {
+	session := &debugger{exited: make(chan struct{}), root: launch.session.Project.RealPath, detach: true, info: DebugSessionInfo{
+		ID: DebugSessionID(newID("debug")), SessionID: launch.session.ID, State: DebugStarting, Title: debugTitle(launch.request), StartedAt: time.Now().UTC(),
+	}}
+	close(session.exited)
+	m.mu.Lock()
+	m.sessions[session.info.ID] = session
+	m.mu.Unlock()
+	m.publishState(session)
+	go m.connect(session, launch, launch.request.Address)
+	return session.info
+}
+
 func (m *DebugManager) run(session *debugger, launch debugLaunch, stdout io.Reader) {
 	address := make(chan string, 1)
 	go m.readProcessOutput(session, stdout, address)
@@ -230,6 +258,11 @@ func (m *DebugManager) run(session *debugger, launch debugLaunch, stdout io.Read
 		m.terminate(session, "Delve non ha aperto l'endpoint DAP in tempo")
 		return
 	}
+	m.connect(session, launch, endpoint)
+}
+
+// connect apre la connessione DAP ed esegue l'handshake; la chiusura della connessione chiude la sessione.
+func (m *DebugManager) connect(session *debugger, launch debugLaunch, endpoint string) {
 	conn, err := net.DialTimeout("tcp", endpoint, 5*time.Second)
 	if err != nil {
 		m.terminate(session, fmt.Sprintf("connessione a Delve fallita: %v", err))
@@ -256,23 +289,10 @@ func (m *DebugManager) handshake(session *debugger, launch debugLaunch, client *
 	}, nil); err != nil {
 		return fmt.Errorf("initialize DAP fallito: %w", err)
 	}
-	arguments := map[string]any{
-		"request": "launch", "mode": launch.request.Mode, "program": launch.program, "cwd": launch.moduleDir, "stopOnEntry": false,
-		"output": filepath.Join(session.buildDir, debugBinaryName()),
-	}
-	args := append([]string(nil), launch.request.ProgramArguments...)
-	if launch.request.Mode == "test" && launch.request.TestName != "" {
-		args = append([]string{"-test.run", launch.request.TestName}, args...)
-	}
-	if len(args) > 0 {
-		arguments["args"] = args
-	}
-	if len(launch.request.BuildTags) > 0 {
-		arguments["buildFlags"] = "-tags=" + strings.Join(launch.request.BuildTags, ",")
-	}
+	command, arguments := launchArguments(session, launch)
 	launchCtx, cancelLaunch := context.WithTimeout(context.Background(), debugLaunchTimeout)
 	defer cancelLaunch()
-	if err := client.Call(launchCtx, "launch", arguments, nil); err != nil {
+	if err := client.Call(launchCtx, command, arguments, nil); err != nil {
 		return explainLaunchError(err)
 	}
 	select {
@@ -353,6 +373,8 @@ func (m *DebugManager) readEvents(session *debugger, client *dap.Client, initial
 			go m.terminate(session, "")
 		}
 	}
+	// Connessione chiusa dall'altra parte (es. server remoto fermato): la sessione finisce.
+	go m.terminate(session, "")
 }
 
 func (m *DebugManager) output(session *debugger, category, text string) {
@@ -395,13 +417,13 @@ func (m *DebugManager) terminate(session *debugger, reason string) {
 	if reason != "" {
 		session.info.Error = reason
 	}
-	client, conn, command, info := session.client, session.conn, session.command, session.info
+	client, conn, command, info, detach := session.client, session.conn, session.command, session.info, session.detach
 	session.mu.Unlock()
 	// Delve termina il programma debuggato solo se gli si lascia completare disconnect: prima la
 	// richiesta, poi l'attesa della sua uscita, e solo alla fine la chiusura forzata dell'albero.
 	if client != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), debugDisconnectTimeout)
-		_ = client.Call(ctx, "disconnect", map[string]any{"terminateDebuggee": true}, nil)
+		_ = client.Call(ctx, "disconnect", map[string]any{"terminateDebuggee": !detach}, nil)
 		cancel()
 	}
 	if conn != nil {
@@ -524,8 +546,39 @@ func (m *DebugManager) SetBreakpoints(sessionID SessionID, root, path string, li
 	return states
 }
 
+// launchArguments costruisce la richiesta DAP: launch per programmi e test, attach per processi locali e server remoti.
+func launchArguments(session *debugger, launch debugLaunch) (string, map[string]any) {
+	switch launch.request.Mode {
+	case debugModeAttach:
+		return "attach", map[string]any{"request": "attach", "mode": "local", "processId": launch.request.ProcessID}
+	case debugModeRemote:
+		return "attach", map[string]any{"request": "attach", "mode": "remote"}
+	}
+	arguments := map[string]any{
+		"request": "launch", "mode": launch.request.Mode, "program": launch.program, "cwd": launch.moduleDir, "stopOnEntry": false,
+		"output": filepath.Join(session.buildDir, debugBinaryName()),
+	}
+	args := append([]string(nil), launch.request.ProgramArguments...)
+	if launch.request.Mode == "test" && launch.request.TestName != "" {
+		args = append([]string{"-test.run", launch.request.TestName}, args...)
+	}
+	if len(args) > 0 {
+		arguments["args"] = args
+	}
+	if len(launch.request.BuildTags) > 0 {
+		arguments["buildFlags"] = "-tags=" + strings.Join(launch.request.BuildTags, ",")
+	}
+	return "launch", arguments
+}
+
 // debugTitle dà un nome leggibile alla sessione: il test senza ancore regex, o il package del programma.
 func debugTitle(request DebugRequest) string {
+	switch request.Mode {
+	case debugModeAttach:
+		return fmt.Sprintf("attach %d", request.ProcessID)
+	case debugModeRemote:
+		return "remote " + request.Address
+	}
 	if request.Mode == "test" {
 		name := request.TestName
 		if name == "^$" {

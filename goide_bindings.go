@@ -320,6 +320,21 @@ func (g *GoIDE) ImplementationMarkers(ctx context.Context, sessionID, documentID
 	return settleCancelled(ctx, markers, err)
 }
 
+// PreviewGoTool mostra il comando Go Tools esatto prima dell'esecuzione.
+func (g *GoIDE) PreviewGoTool(request goide.GoToolRequest) (goide.GoToolPreview, error) {
+	return g.service.PreviewGoTool(request)
+}
+
+// StartGoTool esegue un comando Go Tools nella Run console.
+func (g *GoIDE) StartGoTool(request goide.GoToolRequest) (goide.Execution, error) {
+	return g.service.StartGoTool(request)
+}
+
+// ListProcesses elenca i processi locali per Attach to Process.
+func (g *GoIDE) ListProcesses() ([]goide.ProcessInfo, error) {
+	return g.service.ListProcesses()
+}
+
 // StartRun avvia una build, run o tidy con argomenti strutturati.
 func (g *GoIDE) StartRun(request goide.RunRequest) (goide.Execution, error) {
 	return g.service.StartRun(request)
