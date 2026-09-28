@@ -239,3 +239,82 @@ func TestDebugTitleIsReadable(t *testing.T) {
 		}
 	}
 }
+
+// openDebugSession apre una copia del progetto di debug nello stesso servizio, pronta per dlv.
+func openDebugSession(t *testing.T, ide *Service, delve string) Session {
+	t.Helper()
+	session, err := ide.OpenProject(copyFixture(t, "debugproject"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ide.SetToolAuthorization(string(session.ID), true); err != nil {
+		t.Fatal(err)
+	}
+	if info, err := ide.DetectToolchain(string(session.ID)); err != nil || !info.Available {
+		t.Fatalf("toolchain non disponibile: %v", err)
+	}
+	if err := ide.ConfigureDelve(string(session.ID), delve); err != nil {
+		t.Fatal(err)
+	}
+	return session
+}
+
+func TestTestsAndDebugStayIsolatedAcrossSessions(t *testing.T) {
+	delve := findDelveForTest(t)
+	recorder := &eventRecorder{}
+	ide := NewService(&memoryStore{}, recorder.record)
+	t.Cleanup(ide.Shutdown)
+	first := openDebugSession(t, ide, delve)
+	second := openDebugSession(t, ide, delve)
+
+	if _, err := ide.SetBreakpoints(string(first.ID), "main.go", []int{16}); err != nil {
+		t.Fatal(err)
+	}
+	paused, err := ide.StartDebug(DebugRequest{SessionID: first.ID, Mode: "debug", Target: "."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	free, err := ide.StartDebug(DebugRequest{SessionID: second.ID, Mode: "debug", Target: "."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitDebugState(t, recorder, paused.ID, DebugStopped, 0)
+	// Il breakpoint del primo progetto non deve fermare il secondo, che arriva alla fine.
+	waitDebugState(t, recorder, free.ID, DebugTerminated, 0)
+	if output := debugOutput(recorder, free.ID); !strings.Contains(output, "total 6 3") {
+		t.Fatalf("output del secondo progetto inatteso: %q", output)
+	}
+	if saved, _ := ide.ListBreakpoints(string(second.ID)); len(saved) != 0 {
+		t.Fatalf("breakpoint trapelati nel secondo progetto: %+v", saved)
+	}
+
+	// Test nel secondo progetto mentre il primo è in pausa nel debugger.
+	run, err := ide.StartTests(TestRunRequest{SessionID: second.ID, Packages: []string{"./..."}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	finished := waitTestRun(t, recorder, run.RunID)
+	if finished.Summary.Passed == 0 {
+		t.Fatalf("i test del secondo progetto non sono passati: %+v", finished.Summary)
+	}
+	if runs, _ := ide.ListTestRuns(string(first.ID)); len(runs) != 0 {
+		t.Fatalf("esecuzioni di test trapelate nel primo progetto: %d", len(runs))
+	}
+	if sessions, _ := ide.ListDebugSessions(string(second.ID)); len(sessions) != 0 {
+		t.Fatalf("il debug del primo progetto è visibile nel secondo: %+v", sessions)
+	}
+
+	for _, event := range recorder.all() {
+		if info, ok := event.Payload.(DebugSessionInfo); ok && info.ID == paused.ID && event.SessionID != first.ID {
+			t.Fatalf("evento di debug consegnato alla sessione sbagliata: %+v", event)
+		}
+	}
+	// Chiudere il primo progetto termina il suo debugger, lasciando intatto il secondo.
+	if err := ide.CloseSession(string(first.ID)); err != nil {
+		t.Fatal(err)
+	}
+	waitDebugState(t, recorder, paused.ID, DebugTerminated, 0)
+	if _, err := ide.ListTestRuns(string(second.ID)); err != nil {
+		t.Fatalf("il secondo progetto deve restare utilizzabile: %v", err)
+	}
+}
