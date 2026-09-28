@@ -42,7 +42,7 @@ async function openTest(sessionId: string, run: GoIDETestRun, result: GoIDETestR
   if (match) navigateToLocation(match.location)
 }
 
-function TestRow({ node, depth, selected, run, sessionId }: { node: GoStudioTestNode; depth: number; selected: string | null; run: GoIDETestRun; sessionId: string }) {
+function TestRow({ node, depth, selected, run, sessionId, entry = false }: { node: GoStudioTestNode; depth: number; selected: string | null; run: GoIDETestRun; sessionId: string; entry?: boolean }) {
   const [open, setOpen] = useState(depth === 0 || node.children.some((child) => isFailed(child.result)))
   const selectNode = useGoIDETestsStore((state) => state.selectNode)
   const rerunNode = useGoIDETestsStore((state) => state.rerunNode)
@@ -52,11 +52,23 @@ function TestRow({ node, depth, selected, run, sessionId }: { node: GoStudioTest
     <>
       <div
         role="treeitem"
+        tabIndex={active || (entry && selected === null) ? 0 : -1}
         aria-selected={active}
         aria-expanded={node.children.length ? open : undefined}
         onClick={() => selectNode(sessionId, result.id)}
+        onFocus={() => selectNode(sessionId, result.id)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') { event.preventDefault(); void openTest(sessionId, run, result) }
+          if (event.key === 'ArrowRight' && node.children.length) { event.preventDefault(); setOpen(true) }
+          if (event.key === 'ArrowLeft' && node.children.length) { event.preventDefault(); setOpen(false) }
+          if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            event.preventDefault()
+            const rows = [...(event.currentTarget.closest('[role="tree"]')?.querySelectorAll<HTMLElement>('[role="treeitem"]') ?? [])]
+            rows[rows.indexOf(event.currentTarget) + (event.key === 'ArrowDown' ? 1 : -1)]?.focus()
+          }
+        }}
         onDoubleClick={() => void openTest(sessionId, run, result)}
-        className={`group flex h-6 cursor-default items-center gap-1.5 pr-2 text-[11px] ${active ? 'bg-accent/15 text-text-1' : 'text-text-2 hover:bg-surface-3'}`}
+        className={`group flex h-6 cursor-default items-center gap-1.5 pr-2 text-[11px] outline-none focus-visible:ring-1 focus-visible:ring-accent ${active ? 'bg-accent/15 text-text-1' : 'text-text-2 hover:bg-surface-3'}`}
         style={{ paddingLeft: 6 + depth * 14 }}
       >
         {node.children.length > 0
@@ -194,7 +206,7 @@ export const GoStudioTestsPanel = memo(function GoStudioTestsPanel({ session }: 
       </div>
       <div className="flex min-h-0 flex-1">
         <div role="tree" aria-label="Test results" className="min-h-0 w-[46%] shrink-0 overflow-auto border-r border-border-1 py-1">
-          {tree.map((node) => <TestRow key={node.result.id} node={node} depth={0} selected={selectedId} run={run} sessionId={sessionId} />)}
+          {tree.map((node, index) => <TestRow key={node.result.id} node={node} depth={0} selected={selectedId} run={run} sessionId={sessionId} entry={index === 0} />)}
           {tree.length === 0 && <p className="p-3 text-[11px] text-text-4">{running ? 'Building and starting tests…' : showOnlyFailed ? 'No failed tests.' : 'No tests found.'}</p>}
           {run.overflow && <p className="p-2 text-[10px] text-warning">Too many tests: only the first 5,000 are shown.</p>}
         </div>
