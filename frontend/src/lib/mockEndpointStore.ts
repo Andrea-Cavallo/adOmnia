@@ -26,6 +26,53 @@ export interface StoredMockEndpoint {
   enabled: boolean
 }
 
+export interface GeneratedMockEndpoint {
+  path: string
+  method: string
+  statusCode: number
+  headers?: Record<string, string>
+  body?: string
+  delayMs?: number
+}
+
+/** Convert provider output into the same reviewed, persisted shape used by the Mock UI. */
+export function generatedMockEndpointsToStored(value: unknown): StoredMockEndpoint[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((item) => {
+    if (!item || typeof item !== 'object') return []
+    const candidate = item as Partial<GeneratedMockEndpoint>
+    const method = typeof candidate.method === 'string' ? candidate.method.trim().toUpperCase() : ''
+    const rawPath = typeof candidate.path === 'string' ? candidate.path.trim() : ''
+    if (!REST_METHODS.has(method) || !rawPath) return []
+    const path = rawPath.startsWith('/') ? rawPath.slice(0, 2_048) : `/${rawPath.slice(0, 2_047)}`
+    const status = Number.isInteger(candidate.statusCode) && Number(candidate.statusCode) >= 100 && Number(candidate.statusCode) <= 599
+      ? Number(candidate.statusCode)
+      : method === 'POST' ? 201 : 200
+    const headers = candidate.headers && typeof candidate.headers === 'object'
+      ? Object.fromEntries(Object.entries(candidate.headers).filter(([key, headerValue]) => key && typeof headerValue === 'string').slice(0, 64))
+      : { 'Content-Type': 'application/json' }
+    const body = typeof candidate.body === 'string' ? candidate.body.slice(0, 1_000_000) : '{}'
+    const delayMs = Number.isFinite(candidate.delayMs) ? Math.max(0, Math.min(60_000, Number(candidate.delayMs))) : 0
+    return [{
+      id: uid(),
+      path,
+      method,
+      description: `Generated: ${method} ${path}`,
+      responses: [{
+        id: uid(),
+        name: 'AI Response',
+        status,
+        headers,
+        body,
+        delayMs,
+        isActive: true,
+      }],
+      mode: 'first_active',
+      enabled: true,
+    }]
+  }).slice(0, 50)
+}
+
 function normalizeMockPath(rawUrl: string): string {
   const withoutVars = rawUrl
     .replace(/\{\{\s*base_url\s*\}\}/gi, '')

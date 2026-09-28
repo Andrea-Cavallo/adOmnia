@@ -1,4 +1,6 @@
 import { blankKVRow, blankRequest, type Collection, type HttpMethod, type RequestItem, type TreeNode } from '@/lib/types'
+import { capabilityMapForPrompt, relevantCapabilities } from '@/lib/aiCapabilities'
+import { normalizeRailItem, type RailItem } from '@/lib/navigation'
 export { isAICompanionAvailable } from './aiAvailability'
 
 export type CompanionMood = 'happy' | 'thinking' | 'concerned'
@@ -20,12 +22,30 @@ export interface CreateRequestAction {
   body?: string
 }
 
+export interface GenerateMockAction {
+  type: 'generate-mock'
+  description: string
+}
+
+export interface OpenPanelAction {
+  type: 'open-panel'
+  panel: RailItem
+}
+
+export interface CompanionHistoryMessage {
+  role: 'assistant' | 'user'
+  text: string
+}
+
+export type CompanionWorkspaceAction = CreateRequestAction | GenerateMockAction
+
 export interface CompanionReply {
   reply: string
   mood: CompanionMood
   headerSuggestions: HeaderSuggestion[]
   actions: Array<'open-flow' | 'open-docs'>
-  workspaceActions: CreateRequestAction[]
+  navigationActions: OpenPanelAction[]
+  workspaceActions: CompanionWorkspaceAction[]
 }
 
 function unwrapJSON(value: string): string {
@@ -56,19 +76,36 @@ function safeRequestURL(value: unknown): string {
   return /^(?:https?|wss?):\/\//i.test(url) ? url : ''
 }
 
-function safeWorkspaceActions(value: unknown): CreateRequestAction[] {
+function safeWorkspaceActions(value: unknown): CompanionWorkspaceAction[] {
+  if (!Array.isArray(value)) return []
+  return value.reduce<CompanionWorkspaceAction[]>((actions, item) => {
+    if (!item || typeof item !== 'object' || actions.length >= 3) return actions
+    const candidate = item as Record<string, unknown>
+    if (candidate.type === 'generate-mock') {
+      const description = typeof candidate.description === 'string' ? candidate.description.trim().slice(0, 8_000) : ''
+      if (description) actions.push({ type: 'generate-mock', description })
+      return actions
+    }
+    if (candidate.type !== 'create-request') return actions
+    const method = typeof candidate.method === 'string' ? candidate.method.toUpperCase() as HttpMethod : 'GET'
+    const url = safeRequestURL(candidate.url)
+    if (!HTTP_METHODS.has(method) || !url) return actions
+    const rawName = typeof candidate.name === 'string' ? candidate.name.trim() : ''
+    const name = rawName.replace(/[\r\n\t]+/g, ' ').slice(0, 120) || `${method} request`
+    const body = typeof candidate.body === 'string' ? candidate.body.slice(0, 1_000_000) : undefined
+    actions.push({ type: 'create-request', name, method, url, headers: safeHeaders(candidate.headers), body })
+    return actions
+  }, [])
+}
+
+function safeNavigationActions(value: unknown): OpenPanelAction[] {
   if (!Array.isArray(value)) return []
   return value.flatMap((item) => {
     if (!item || typeof item !== 'object') return []
     const candidate = item as Record<string, unknown>
-    if (candidate.type !== 'create-request') return []
-    const method = typeof candidate.method === 'string' ? candidate.method.toUpperCase() as HttpMethod : 'GET'
-    const url = safeRequestURL(candidate.url)
-    if (!HTTP_METHODS.has(method) || !url) return []
-    const rawName = typeof candidate.name === 'string' ? candidate.name.trim() : ''
-    const name = rawName.replace(/[\r\n\t]+/g, ' ').slice(0, 120) || `${method} request`
-    const body = typeof candidate.body === 'string' ? candidate.body.slice(0, 1_000_000) : undefined
-    return [{ type: 'create-request' as const, name, method, url, headers: safeHeaders(candidate.headers), body }]
+    if (candidate.type !== 'open-panel') return []
+    const panel = normalizeRailItem(candidate.panel)
+    return panel ? [{ type: 'open-panel' as const, panel }] : []
   }).slice(0, 3)
 }
 
@@ -105,6 +142,21 @@ export function inferCompanionRequestAction(value: string): CreateRequestAction 
   }
 }
 
+/** Deterministic fast path for the most common cross-product command. */
+export function inferMockGenerationAction(value: string): GenerateMockAction | null {
+  const normalized = value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  if (/\b(?:non|not|don\s*t|do not|never)\b.{0,40}\b(?:mock|simul|stub)/.test(normalized)) return null
+
+  const italian = value.match(/\b(?:mockami|mocka|mockare|simula|simulami)\b\s+(.+)/i)
+  if (italian?.[1]?.trim()) return { type: 'generate-mock', description: italian[1].trim().replace(/[.!?]+$/, '') }
+
+  const englishFor = value.match(/\b(?:create|make|generate|build)\s+(?:me\s+)?(?:a\s+)?mock\s+(?:api|server|endpoints?)\s+(?:for|of)\s+(.+)/i)
+  if (englishFor?.[1]?.trim()) return { type: 'generate-mock', description: englishFor[1].trim().replace(/[.!?]+$/, '') }
+
+  const english = value.match(/\b(?:create|make|generate|build)\s+(?:me\s+)?(?:a\s+)?mock\s+(.+)/i)
+  return english?.[1]?.trim() ? { type: 'generate-mock', description: english[1].trim().replace(/[.!?]+$/, '') } : null
+}
+
 export function parseCompanionReply(raw: string): CompanionReply {
   try {
     const parsed = JSON.parse(unwrapJSON(raw)) as Record<string, unknown>
@@ -117,10 +169,11 @@ export function parseCompanionReply(raw: string): CompanionReply {
       mood,
       headerSuggestions: safeHeaders(parsed.headerSuggestions),
       actions: [...new Set(actions)],
+      navigationActions: safeNavigationActions(parsed.navigationActions),
       workspaceActions: safeWorkspaceActions(parsed.workspaceActions),
     }
   } catch {
-    return { reply: raw.trim() || 'I could not read that response. Please try again.', mood: 'concerned', headerSuggestions: [], actions: [], workspaceActions: [] }
+    return { reply: raw.trim() || 'I could not read that response. Please try again.', mood: 'concerned', headerSuggestions: [], actions: [], navigationActions: [], workspaceActions: [] }
   }
 }
 
@@ -134,27 +187,37 @@ function requestOutline(nodes: TreeNode[], output: string[], prefix = '') {
   }
 }
 
-export function buildCompanionPrompt(message: string, collections: Collection[], activeRequest?: RequestItem, workspaceActionsEnabled = false): { system: string; user: string } {
+export function buildCompanionPrompt(message: string, collections: Collection[], activeRequest?: RequestItem, workspaceActionsEnabled = false, history: CompanionHistoryMessage[] = []): { system: string; user: string } {
   const outline: string[] = []
   collections.forEach((collection) => requestOutline(collection.children, outline, `${collection.name}/`))
   const activeContext = activeRequest
     ? `\nActive request (shared because the user opened this assistant):\n${activeRequest.method} ${activeRequest.url || '(no URL)'}\nName: ${activeRequest.name}\nKnown header names: ${activeRequest.headers.filter((header) => header.key.trim()).map((header) => header.key).join(', ') || '(none)'}`
     : ''
+  const recentHistory = history
+    .filter((item) => item.text.trim())
+    .slice(-8)
+    .map((item) => `${item.role === 'user' ? 'User' : 'a0'}: ${item.text.trim().slice(0, 2_000)}`)
+    .join('\n')
+  const relevant = relevantCapabilities(message)
+    .map((capability) => `- ${capability.label} [panel=${capability.panel}]: ${capability.summary}`)
+    .join('\n')
   return {
     system: [
       'You are a0, the friendly adOmnia desktop API assistant.',
-      'Always reply in English. Be generic and never assume or invent the user’s name.',
+      'Reply in the same language as the most recent user message. Be generic and never assume or invent the user’s name.',
+      'Use the following capability map as the source of truth about what adOmnia can do. Never claim a capability outside this map:',
+      capabilityMapForPrompt(),
       workspaceActionsEnabled
-        ? 'Agent actions are enabled. When the user explicitly asks to create a request outside collections, return one create-request workspace action. Do not merely explain which button the user should click.'
+        ? 'Agent actions are enabled. For explicit mutation requests, use create-request or generate-mock. Do not merely explain which button the user should click.'
         : 'Agent actions are disabled. Do not return workspaceActions or claim that you changed the workspace; explain that Agent actions can be enabled in Settings → AI Engine.',
-      'You may help design flows, explain APIs, improve OpenAPI documentation, and suggest headers.',
+      'For an explicit request to open or switch to a feature, return an open-panel navigation action using an exact panel id from the capability map.',
       'Never request or expose credentials, tokens, cookie values, or secrets. Suggest placeholders such as {{API_TOKEN}} instead.',
-      'Return only JSON: {"reply":"concise Markdown-free text","mood":"happy|thinking|concerned","headerSuggestions":[{"key":"Header-Name","value":"value or {{PLACEHOLDER}}","reason":"why"}],"actions":["open-flow"|"open-docs"],"workspaceActions":[{"type":"create-request","name":"Request name","method":"GET","url":"http://127.0.0.1:3000/hello","headers":[],"body":"optional body"}]}.',
+      'Return only JSON: {"reply":"concise Markdown-free text","mood":"happy|thinking|concerned","headerSuggestions":[{"key":"Header-Name","value":"value or {{PLACEHOLDER}}","reason":"why"}],"actions":["open-flow"|"open-docs"],"navigationActions":[{"type":"open-panel","panel":"mock"}],"workspaceActions":[{"type":"create-request","name":"Request name","method":"GET","url":"http://127.0.0.1:3000/hello","headers":[],"body":"optional body"},{"type":"generate-mock","description":"API behavior and endpoints to generate"}]}.',
       'Only suggest headers when the user explicitly asks for them. Use actions only when the user explicitly asks for a flow or API documentation.',
       workspaceActionsEnabled
-        ? 'Use workspaceActions only for an explicit mutation request. A create-request action is saved at workspace root, outside user collections, and opened automatically.'
+        ? 'Use workspaceActions only for an explicit mutation request. create-request saves at workspace root; generate-mock creates local endpoints in Mock Server. Keep the generate-mock description complete enough for a specialized generator.'
         : 'Return an empty workspaceActions array.',
     ].join('\n'),
-    user: `User request:\n${message}\n\nWorkspace API outline (method, URL and names only):\n${outline.join('\n') || '(no saved requests)' }${activeContext}`,
+    user: `${recentHistory ? `Recent conversation:\n${recentHistory}\n\n` : ''}User request:\n${message}\n\nRelevant adOmnia capabilities:\n${relevant}\n\nWorkspace API outline (method, URL and names only):\n${outline.join('\n') || '(no saved requests)' }${activeContext}`,
   }
 }

@@ -1,11 +1,34 @@
 import { describe, expect, it } from 'vitest'
-import { buildCompanionPrompt, COMPANION_WELCOME, inferCompanionRequestAction, isAICompanionAvailable, materializeCompanionRequest, parseCompanionReply } from './aiCompanion'
+import { buildCompanionPrompt, COMPANION_WELCOME, inferCompanionRequestAction, inferMockGenerationAction, isAICompanionAvailable, materializeCompanionRequest, parseCompanionReply } from './aiCompanion'
 import { blankRequest } from './types'
 
 describe('a0 companion protocol', () => {
-  it('uses a generic English welcome and requires English replies', () => {
+  it('uses a generic welcome and answers in the language used by the user', () => {
     expect(COMPANION_WELCOME).toBe('Hi — what would you like to work on?')
-    expect(buildCompanionPrompt('ciao', [], undefined).system).toContain('Always reply in English')
+    const system = buildCompanionPrompt('ciao', [], undefined).system
+    expect(system).toContain('same language')
+    expect(system).not.toContain('Always reply in English')
+  })
+
+  it('teaches the assistant the adOmnia capability map and relevant Mock tools', () => {
+    const prompt = buildCompanionPrompt('Mockami una API REST per una todo list', [], undefined, true)
+
+    expect(prompt.system).toContain('Mock Server')
+    expect(prompt.system).toContain('Database Studio')
+    expect(prompt.system).toContain('MCP')
+    expect(prompt.system).toContain('generate-mock')
+    expect(prompt.user).toContain('Relevant adOmnia capabilities')
+  })
+
+  it('includes a bounded recent conversation so follow-up requests keep context', () => {
+    const prompt = buildCompanionPrompt('Ora mockala', [], undefined, true, [
+      { role: 'user', text: 'Voglio una API per gestire una todo list.' },
+      { role: 'assistant', text: 'Posso prepararla.' },
+    ])
+
+    expect(prompt.user).toContain('Recent conversation')
+    expect(prompt.user).toContain('Voglio una API per gestire una todo list.')
+    expect(prompt.user).toContain('Ora mockala')
   })
 
   it('authorizes structured workspace mutations only when agent actions are enabled', () => {
@@ -33,7 +56,10 @@ describe('a0 companion protocol', () => {
     }))
 
     expect(reply.workspaceActions).toHaveLength(1)
-    const request = materializeCompanionRequest(reply.workspaceActions[0])
+    const action = reply.workspaceActions[0]
+    expect(action.type).toBe('create-request')
+    if (action.type !== 'create-request') throw new Error('expected a create-request action')
+    const request = materializeCompanionRequest(action)
     expect(request).toMatchObject({ name: 'Greeting API', method: 'GET', url: 'http://127.0.0.1:3000/hello' })
     expect(request.headers[0]).toMatchObject({ key: 'Accept', value: 'application/json', enabled: true })
   })
@@ -46,6 +72,35 @@ describe('a0 companion protocol', () => {
       url: 'http://127.0.0.1:3000/hello',
     })
     expect(inferCompanionRequestAction('Non creare una greeting API fuori dalle collection')).toBeNull()
+  })
+
+  it('recognizes Italian and English mock-generation commands deterministically', () => {
+    expect(inferMockGenerationAction('Mockami una API REST per una todo list')).toEqual({
+      type: 'generate-mock',
+      description: 'una API REST per una todo list',
+    })
+    expect(inferMockGenerationAction('Create a mock API for invoices')).toEqual({
+      type: 'generate-mock',
+      description: 'invoices',
+    })
+    expect(inferMockGenerationAction('Non mockare questa API')).toBeNull()
+  })
+
+  it('accepts only validated navigation and mock actions', () => {
+    const reply = parseCompanionReply(JSON.stringify({
+      reply: 'Apro il Mock Server e preparo gli endpoint.',
+      mood: 'thinking',
+      navigationActions: [
+        { type: 'open-panel', panel: 'mock' },
+        { type: 'open-panel', panel: 'not-a-real-panel' },
+      ],
+      workspaceActions: [
+        { type: 'generate-mock', description: 'API fatture con CRUD e pagamenti' },
+      ],
+    }))
+
+    expect(reply.navigationActions).toEqual([{ type: 'open-panel', panel: 'mock' }])
+    expect(reply.workspaceActions).toContainEqual({ type: 'generate-mock', description: 'API fatture con CRUD e pagamenti' })
   })
 
   it('accepts only safe, user-reviewable actions and headers', () => {

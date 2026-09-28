@@ -2,8 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, FileText, Loader2, Maximize2, Minimize2, Send, WandSparkles, X } from 'lucide-react'
 import * as AIEngine from '@/wailsjs/go/main/AIEngine'
 import { ensureAIConfigured } from '@/lib/aiEngine'
-import { buildCompanionPrompt, COMPANION_WELCOME, inferCompanionRequestAction, isAICompanionAvailable, materializeCompanionRequest, parseCompanionReply, type CompanionMood, type HeaderSuggestion } from '@/lib/aiCompanion'
+import { buildCompanionPrompt, COMPANION_WELCOME, inferCompanionRequestAction, inferMockGenerationAction, isAICompanionAvailable, materializeCompanionRequest, parseCompanionReply, type CompanionMood, type GenerateMockAction, type HeaderSuggestion } from '@/lib/aiCompanion'
 import { blankKVRow } from '@/lib/types'
+import { appendMockEndpoints, generatedMockEndpointsToStored } from '@/lib/mockEndpointStore'
 import { useAppStore } from '@/stores/app'
 import { useCollectionsStore } from '@/stores/collections'
 import { useSettingsStore } from '@/stores/settings'
@@ -22,6 +23,11 @@ type ChatMessage = {
 }
 
 const WELCOME: ChatMessage = { id: 'welcome', role: 'assistant', mood: 'happy', text: COMPANION_WELCOME }
+
+function prefersItalian(value: string): boolean {
+  const text = value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  return /\b(?:una|un|per|crea|creami|mockami|simula|apri|questa|questo|voglio|vorrei|ora)\b/.test(text)
+}
 
 function Sprite({ mood, loading, size, resting, greeting = false }: { mood: CompanionMood; loading: boolean; size: number; resting: boolean; greeting?: boolean }) {
   const frame = loading || mood === 'thinking' ? 1 : mood === 'concerned' ? 2 : 0
@@ -88,6 +94,16 @@ export function AICompanion({ initiallyOpen = false }: { initiallyOpen?: boolean
     setModelMenuOpen(false)
   }
 
+  const generateMock = async (action: GenerateMockAction): Promise<number> => {
+    await ensureAIConfigured()
+    const raw = await AIEngine.GenerateMockEndpoints('natural', action.description)
+    const endpoints = generatedMockEndpointsToStored(JSON.parse(raw) as unknown)
+    if (!endpoints.length) throw new Error('The AI provider did not return any valid mock endpoints.')
+    await appendMockEndpoints(endpoints)
+    setActiveRail('mock')
+    return endpoints.length
+  }
+
   const send = async (value = input) => {
     const text = value.trim()
     if (!text || loading) return
@@ -103,33 +119,79 @@ export function AICompanion({ initiallyOpen = false }: { initiallyOpen?: boolean
         id: crypto.randomUUID(),
         role: 'assistant',
         mood: 'happy',
-        text: 'Created the Greeting API at workspace root and opened it for review.',
+        text: prefersItalian(text)
+          ? 'Ho creato la Greeting API nella radice del workspace e l’ho aperta per la revisione.'
+          : 'Created the Greeting API at workspace root and opened it for review.',
       }])
+      return
+    }
+    const localMockAction = ai.workspaceActionsEnabled ? inferMockGenerationAction(text) : null
+    if (localMockAction) {
+      setMessages((current) => [...current, userMessage])
+      setLoading(true)
+      try {
+        const count = await generateMock(localMockAction)
+        setMessages((current) => [...current, {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          mood: 'happy',
+          text: prefersItalian(text)
+            ? `Ho generato ${count} endpoint e li ho aperti nel Mock Server per la revisione.`
+            : `Generated ${count} endpoints and opened them in Mock Server for review.`,
+        }])
+      } catch (error) {
+        setMessages((current) => [...current, {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          mood: 'concerned',
+          text: `${prefersItalian(text) ? 'Non sono riuscito a generare il mock.' : 'I could not generate the mock.'} ${error instanceof Error ? error.message : String(error)}`,
+        }])
+      } finally {
+        setLoading(false)
+      }
       return
     }
     setMessages((current) => [...current, userMessage])
     setLoading(true)
     try {
-      const prompt = buildCompanionPrompt(text, collections, activeTab?.request, ai.workspaceActionsEnabled)
+      const prompt = buildCompanionPrompt(
+        text,
+        collections,
+        activeTab?.request,
+        ai.workspaceActionsEnabled,
+        messages.filter((message) => message.id !== WELCOME.id).map(({ role, text: messageText }) => ({ role, text: messageText })),
+      )
       await ensureAIConfigured()
       const raw = await AIEngine.Complete(prompt.system, prompt.user, 1800)
       const reply = parseCompanionReply(raw)
       let createdRequests = 0
+      let createdMockEndpoints = 0
       if (ai.workspaceActionsEnabled) {
         for (const action of reply.workspaceActions) {
-          const request = materializeCompanionRequest(action)
-          const collectionId = addQuickRequest(request)
-          openTab(request, collectionId)
-          createdRequests += 1
+          if (action.type === 'create-request') {
+            const request = materializeCompanionRequest(action)
+            const collectionId = addQuickRequest(request)
+            openTab(request, collectionId)
+            createdRequests += 1
+          } else if (action.type === 'generate-mock') {
+            createdMockEndpoints += await generateMock(action)
+          }
         }
       }
-      if (createdRequests > 0) setActiveRail('collections')
-      const actionResult = createdRequests > 0
-        ? `\n\nCreated ${createdRequests === 1 ? 'the request' : `${createdRequests} requests`} at workspace root and opened ${createdRequests === 1 ? 'it' : 'the last one'} for review.`
-        : ''
+      if (createdRequests > 0 && createdMockEndpoints === 0) setActiveRail('collections')
+      for (const action of reply.navigationActions) setActiveRail(action.panel)
+      const resultParts: string[] = []
+      if (createdRequests > 0) resultParts.push(prefersItalian(text) ? `${createdRequests} richieste create` : `${createdRequests} request${createdRequests === 1 ? '' : 's'} created`)
+      if (createdMockEndpoints > 0) resultParts.push(prefersItalian(text) ? `${createdMockEndpoints} endpoint mock generati` : `${createdMockEndpoints} mock endpoint${createdMockEndpoints === 1 ? '' : 's'} generated`)
+      const actionResult = resultParts.length ? `\n\n${resultParts.join(' · ')}.` : ''
       setMessages((current) => [...current, { id: crypto.randomUUID(), role: 'assistant', text: `${reply.reply}${actionResult}`, mood: reply.mood, headers: reply.headerSuggestions, actions: reply.actions }])
     } catch (error) {
-      setMessages((current) => [...current, { id: crypto.randomUUID(), role: 'assistant', mood: 'concerned', text: `I couldn’t reach the configured AI provider. ${error instanceof Error ? error.message : String(error)}` }])
+      setMessages((current) => [...current, {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        mood: 'concerned',
+        text: `${prefersItalian(text) ? 'Non riesco a raggiungere il provider AI configurato.' : 'I couldn’t reach the configured AI provider.'} ${error instanceof Error ? error.message : String(error)}`,
+      }])
     } finally {
       setLoading(false)
     }
