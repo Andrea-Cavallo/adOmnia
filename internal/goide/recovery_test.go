@@ -242,3 +242,39 @@ func TestSessionViewPersistsTabsWithoutFileContent(t *testing.T) {
 		t.Fatalf("stato UI non persistito: %+v", decoded.SessionUI)
 	}
 }
+
+func TestBreakpointsPersistAcrossRestartAndViewSaves(t *testing.T) {
+	project := t.TempDir()
+	writeFixtureFile(t, project, "go.mod", "module example.com/bp\n\ngo 1.26\n")
+	writeFixtureFile(t, project, "main.go", "package main\n\nfunc main() {\n\tprintln(1)\n}\n")
+
+	store := &memoryStore{}
+	service := NewService(store, nil)
+	session, err := service.OpenProject(project)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.SetBreakpoints(string(session.ID), "main.go", []int{4, 4, 3}); err != nil {
+		t.Fatal(err)
+	}
+	// Il frontend salva il layout senza breakpoint: non deve cancellarli.
+	if err := service.SaveSessionView(string(session.ID), SessionView{ActivePath: "main.go"}); err != nil {
+		t.Fatal(err)
+	}
+
+	restarted := NewService(store, nil)
+	defer restarted.Shutdown()
+	saved, err := restarted.ListBreakpoints(string(session.ID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(saved) != 1 || saved[0].RelativePath != "main.go" || len(saved[0].Breakpoints) != 2 || saved[0].Breakpoints[0].Line != 3 {
+		t.Fatalf("breakpoint non ripristinati: %+v", saved)
+	}
+	if _, err := restarted.SetBreakpoints(string(session.ID), "main.go", nil); err != nil {
+		t.Fatal(err)
+	}
+	if saved, _ := restarted.ListBreakpoints(string(session.ID)); len(saved) != 0 {
+		t.Fatalf("i breakpoint rimossi devono sparire: %+v", saved)
+	}
+}

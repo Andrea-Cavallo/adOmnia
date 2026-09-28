@@ -156,6 +156,8 @@ type SessionView struct {
 	BottomOpen         bool     `json:"bottomOpen"`
 	TerminalPanelOpen  bool     `json:"terminalPanelOpen"`
 	ShowIgnoredEntries bool     `json:"showIgnoredEntries"`
+	// Breakpoints è gestito solo dal backend (SetBreakpoints): SaveSessionView lo conserva.
+	Breakpoints map[string][]int `json:"breakpoints,omitempty"`
 }
 
 // RecoveredBuffer è un buffer non salvato ritrovato dopo un riavvio: viene

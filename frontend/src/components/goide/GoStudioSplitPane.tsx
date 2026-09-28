@@ -3,12 +3,12 @@ import { X } from 'lucide-react'
 import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
 import { GoGopherIcon, isGoSource } from './GoGopherIcon'
 import { GoStudioCodeEditor } from './GoStudioCodeEditor'
-import type { GoStudioRunTarget } from './goStudioRunTargets'
+import type { GoStudioRunTargetHandler } from './goStudioRunTargets'
 
 interface GoStudioSplitPaneProps {
   documents: GoIDEEditorDocument[]
   document: GoIDEEditorDocument
-  onRunTarget: (target: GoStudioRunTarget) => void
+  onRunTarget: GoStudioRunTargetHandler
   onCursor: (line: number, column: number) => void
 }
 

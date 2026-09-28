@@ -13,7 +13,10 @@ export type GoStudioCommandId =
   | 'go.lspStart' | 'go.lspRestart' | 'go.lspStop' | 'go.lspInstall' | 'go.lspLog'
   | 'go.installGolangci' | 'go.installStaticcheck' | 'go.toolPaths'
   | 'run.run' | 'run.build' | 'run.stop' | 'run.restart' | 'run.configure'
+  | 'run.rerunFailedTests' | 'run.testCoverage' | 'view.tests'
   | 'run.buildPackage' | 'run.testPackage' | 'run.vetPackage' | 'run.buildAll' | 'run.testAll' | 'run.vetAll' | 'run.generateAll' | 'run.install'
+  | 'debug.debug' | 'debug.toggleBreakpoint' | 'debug.resume' | 'debug.pause' | 'debug.stepOver' | 'debug.stepInto' | 'debug.stepOut'
+  | 'debug.stop' | 'view.debug' | 'go.installDelve'
   | 'help.shortcuts'
 
 export type GoStudioMenuId = 'file' | 'edit' | 'view' | 'navigate' | 'code' | 'go' | 'run' | 'help'
@@ -32,6 +35,8 @@ export interface GoStudioCommand {
   binding?: GoStudioKeyBinding
   /** Il binding è gestito da Monaco o da un listener dedicato (doppio Shift): mostrato nei menu, non intercettato globalmente. */
   editorOwned?: boolean
+  /** Se il comando non è disponibile il tasto torna a Monaco (es. F8 = problema successivo fuori dal debug). */
+  passThroughWhenUnavailable?: boolean
   separatorBefore?: boolean
 }
 
@@ -68,6 +73,8 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'view.toggleBottom', menu: 'view', label: 'Run / Problems Pane', binding: { key: '4', alt: true } },
   { id: 'view.problems', menu: 'view', label: 'Problems', binding: { key: '6', alt: true } },
   { id: 'view.terminal', menu: 'view', label: 'Terminal', binding: { key: 'F12', alt: true } },
+  { id: 'view.tests', menu: 'view', label: 'Tests', binding: { key: '8', alt: true } },
+  { id: 'view.debug', menu: 'view', label: 'Debug', binding: { key: '5', alt: true } },
   { id: 'view.splitRight', menu: 'view', label: 'Split Right', binding: { key: '\\', mod: true }, separatorBefore: true },
   { id: 'view.splitDown', menu: 'view', label: 'Split Down' },
   { id: 'view.unsplit', menu: 'view', label: 'Unsplit' },
@@ -115,12 +122,16 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'go.lspLog', menu: 'go', label: 'Language Server Log…' },
   { id: 'go.installGolangci', menu: 'go', label: 'Install golangci-lint…', separatorBefore: true },
   { id: 'go.installStaticcheck', menu: 'go', label: 'Install staticcheck…' },
-  { id: 'go.toolPaths', menu: 'go', label: 'Tool Paths (gopls, linter)…' },
+  { id: 'go.installDelve', menu: 'go', label: 'Install Delve (debugger)…' },
+  { id: 'go.toolPaths', menu: 'go', label: 'Tool Paths (gopls, linter, dlv)…' },
   { id: 'run.run', menu: 'run', label: 'Run', binding: { key: 'F5', mod: true } },
+  { id: 'debug.debug', menu: 'run', label: 'Debug', binding: { key: 'F9', shift: true } },
   { id: 'run.build', menu: 'run', label: 'Build', binding: { key: 'b', mod: true, shift: true } },
   { id: 'run.buildPackage', menu: 'run', label: 'Build Current Package', binding: { key: 'F9', mod: true }, separatorBefore: true },
   { id: 'run.testPackage', menu: 'run', label: 'Test Current Package', binding: { key: 'F10', mod: true, shift: true } },
   { id: 'run.vetPackage', menu: 'run', label: 'Vet Current Package' },
+  { id: 'run.testCoverage', menu: 'run', label: 'Test Current Package with Coverage' },
+  { id: 'run.rerunFailedTests', menu: 'run', label: 'Rerun Failed Tests', binding: { key: 'F10', mod: true, shift: true, alt: true } },
   { id: 'run.buildAll', menu: 'run', label: 'Build All (go build ./...)', binding: { key: 'F9', mod: true, shift: true }, separatorBefore: true },
   { id: 'run.testAll', menu: 'run', label: 'Test All (go test ./...)', binding: { key: 'F10', mod: true, alt: true } },
   { id: 'run.vetAll', menu: 'run', label: 'Vet All (go vet ./...)' },
@@ -128,6 +139,13 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'run.install', menu: 'run', label: 'Install (go install)' },
   { id: 'run.stop', menu: 'run', label: 'Stop', binding: { key: 'F5', shift: true }, separatorBefore: true },
   { id: 'run.restart', menu: 'run', label: 'Restart', binding: { key: 'F5', mod: true, shift: true } },
+  { id: 'debug.toggleBreakpoint', menu: 'run', label: 'Toggle Line Breakpoint', binding: { key: 'F8', mod: true }, separatorBefore: true },
+  { id: 'debug.resume', menu: 'run', label: 'Resume Program', binding: { key: 'F9' }, passThroughWhenUnavailable: true },
+  { id: 'debug.pause', menu: 'run', label: 'Pause Program', passThroughWhenUnavailable: true },
+  { id: 'debug.stepOver', menu: 'run', label: 'Step Over', binding: { key: 'F8' }, passThroughWhenUnavailable: true },
+  { id: 'debug.stepInto', menu: 'run', label: 'Step Into', binding: { key: 'F7' }, passThroughWhenUnavailable: true },
+  { id: 'debug.stepOut', menu: 'run', label: 'Step Out', binding: { key: 'F8', shift: true }, passThroughWhenUnavailable: true },
+  { id: 'debug.stop', menu: 'run', label: 'Stop Debugging', binding: { key: 'F2', mod: true }, passThroughWhenUnavailable: true },
   { id: 'run.configure', menu: 'run', label: 'Edit Run Configuration…', separatorBefore: true },
   { id: 'help.shortcuts', menu: 'help', label: 'Keyboard Shortcuts' },
 ]
@@ -195,6 +213,8 @@ export interface GoStudioCommandContext {
   inlayHints: boolean
   semanticTokensSupported: boolean
   inlayHintsSupported: boolean
+  /** Stato del debug attivo della sessione: 'none' se non c'è un debugger vivo. */
+  debugState: 'none' | 'starting' | 'running' | 'stopped'
 }
 
 const NO_PROJECT = 'Open a Go project first'
@@ -248,11 +268,22 @@ export function commandAvailability(id: GoStudioCommandId, context: GoStudioComm
     case 'run.vetAll':
     case 'run.generateAll':
     case 'run.install':
+    case 'run.testCoverage':
+    case 'run.rerunFailedTests':
     case 'go.modVerify': return runAvailability(context)
     case 'go.updateAll':
     case 'go.updatePatch':
     case 'go.modDownload': return context.running ? 'Wait for the active process to finish' : runAvailability(context)
     case 'run.stop': return context.running ? true : 'Nothing is running'
+    case 'debug.debug':
+    case 'go.installDelve': return runAvailability(context)
+    case 'debug.toggleBreakpoint': return context.hasEditor ? true : 'Open a Go file first'
+    case 'debug.resume':
+    case 'debug.stepOver':
+    case 'debug.stepInto':
+    case 'debug.stepOut': return context.debugState === 'stopped' ? true : 'The debugger is not paused'
+    case 'debug.pause': return context.debugState === 'running' ? true : 'The program is not running under the debugger'
+    case 'debug.stop': return context.debugState === 'none' ? 'No debug session is active' : true
     case 'nav.symbol': return context.lspState === 'ready' ? true : LSP_NOT_READY
     case 'go.lspStart':
       if (!context.authorized) return NOT_TRUSTED

@@ -37,6 +37,7 @@ function SymbolRow({ node, depth, documentId }: { node: GoIDESymbolNode; depth: 
 export function GoStudioStructure({ sessionId, document }: GoStudioStructureProps) {
   const lspState = useGoIDELspStore((state) => state.status[sessionId]?.state ?? 'stopped')
   const symbols = useGoStudioSymbolsFor(document?.document.id ?? null)
+  const loaded = useGoIDELspStore((state) => !!document && state.symbols[document.document.id] !== undefined)
   const isGo = !!document?.document.name.endsWith('.go')
 
   if (!document) return <Hint text="Open a Go file to see its structure." />
@@ -45,7 +46,7 @@ export function GoStudioStructure({ sessionId, document }: GoStudioStructureProp
   return (
     <div className="min-h-0 flex-1 overflow-auto py-1">
       {symbols.map((node) => <SymbolRow key={`${node.name}:${node.range.startLine}`} node={node} depth={0} documentId={document.document.id} />)}
-      {symbols.length === 0 && <Hint text="No top-level symbols." />}
+      {symbols.length === 0 && <Hint text={loaded ? 'No top-level symbols.' : 'Reading the file structure…'} />}
     </div>
   )
 }

@@ -52,13 +52,13 @@ Una fase è completa soltanto quando:
 - [ ] Fase 1 — Base funzionante end-to-end *(implementata e verificata end-to-end; gate in attesa della prova manuale su Windows)*
 - [ ] Fase 2 — Intelligenza del codice con gopls/LSP *(implementata e verificata end-to-end; gate in attesa della prova manuale su Windows)*
 - [ ] Fase 3 — Più progetti, ripristino e terminale integrato *(implementata e verificata end-to-end; gate in attesa delle prove manuali su Windows: ConPTY e finestra Wails)*
-- [ ] Fase 4 — Test runner, debugger, coverage e finestre separate
+- [ ] Fase 4 — Test runner, debugger, coverage e finestre separate *(implementata e verificata; multiwindow rinviato; gate aperto solo per il collaudo Windows)*
 - [ ] Fase 5 — Parità GoLand: assistenza al codice, VCS nell'editor e integrazione con i moduli adOmnia
 - [ ] Collaudo finale e documentazione di rilascio
 
-### Cosa resta da fare (aggiornato al 2026-09-28, master `ee32a0b`)
+### Cosa resta da fare (aggiornato al 2026-09-28, dopo il merge della Fase 4)
 
-Stato in una riga: le Fasi 0, 1, 2 e 3 sono implementate e verificate end-to-end con il backend Go reale (test automatici e 33 passi e2e nel browser); i gate di Fase 1, 2 e 3 restano aperti solo per il collaudo manuale su Windows. Prossimo sviluppo: Fase 4 (test runner, debugger Delve, coverage).
+Stato in una riga: le Fasi 0-4 sono implementate e verificate end-to-end con il backend Go reale (test automatici e 49 passi e2e nel browser, di cui 16 per test runner, coverage e debugger); i gate di Fase 1-4 restano aperti solo per il collaudo manuale su Windows. Le finestre separate sono rinviate in modo esplicito. Prossimo sviluppo: Fase 5 (parità GoLand).
 
 **1. Collaudo manuale su Windows (sblocca i gate di Fase 1, 2 e 3)**
 - [ ] `wails3 task dev` su un progetto Go reale (non una fixture): apri, autorizza, modifica, salva, Build, Run con stdin, Stop.
@@ -67,7 +67,8 @@ Stato in una riga: le Fasi 0, 1, 2 e 3 sono implementate e verificate end-to-end
 - [ ] Terminale ConPTY: input, resize, uscita naturale, chiusura del process tree (`go test ./internal/goide -run TestTerminal` su Windows).
 - [ ] Temi dark e light, finestra ridimensionata e piccola, stati loading/empty/error/running/stopped ben distinguibili.
 - [ ] Provare a video il signature help (parametri mentre si scrive una chiamata).
-- [ ] Toolchain assente: installazione Go dall'IDE; gopls e linter assenti: installazione dal menu Go.
+- [ ] Toolchain assente: installazione Go dall'IDE; gopls, linter e Delve assenti: installazione dal menu Go.
+- [ ] Debugger su Windows: breakpoint, step, Stop e chiusura progetto senza `dlv` o `__debug_bin` residui in Task Manager (`go test ./internal/goide -run TestDebugger` su Windows).
 - [ ] Confronto con i due mock approvati e verifica della barra di qualità (fluido, veloce, moderno, stabile) su un progetto di dimensioni reali; registrare l'esito nelle Evidenze e spuntare i gate.
 
 **2. Residui piccoli già noti**
@@ -81,12 +82,11 @@ Stato in una riga: le Fasi 0, 1, 2 e 3 sono implementate e verificate end-to-end
 - Fatto: persistenza v3, recovery dei buffer, configurazioni Run, terminale PTY, quick actions `go.mod`, comandi rapidi, watcher dei file, conflitti fra progetti annidati, isolamento completo, misure su un progetto di 3.200 file. Dettaglio ed evidenze nella sezione Fase 3.
 - Resta solo la parte Windows del punto 1.
 
-**4. Fase 4: test runner, debugger, coverage, finestre** (non iniziata)
-- Già coperto in parte: ▶ nel gutter per eseguire un singolo `Test`/`Benchmark`/`Fuzz`/`Example` con output nella Run console.
-- [ ] Test runner strutturato da `go test -json`: albero package → test → sottotest, durata, failure cliccabili, rerun all/singolo/solo falliti.
-- [ ] Debugger Delve via DAP: pulsante Debug accanto al ▶ nel gutter, breakpoint, step, goroutine, stack, variabili, watch, evaluate, installazione esplicita di `dlv`.
-- [ ] Coverage su richiesta con percentuali e overlay in editor, invalidato quando il sorgente cambia.
-- [ ] Finestre separate: solo dopo prova reale su Windows, altrimenti restano disabilitate e documentate.
+**4. Fase 4: test runner, debugger, coverage, finestre** (implementata e verificata end-to-end)
+- Fatto: test runner strutturato da `go test -json` con rerun all/singolo/falliti, coverage con overlay e invalidazione, debugger Delve via DAP con breakpoint persistenti, step, goroutine, stack, variabili, watch, evaluate e valore al passaggio del mouse. Dettaglio ed evidenze nella sezione Fase 4.
+- Rinviato in modo esplicito: finestre separate/multiwindow (nessun pulsante nel prodotto, motivazione in 4.4).
+- Resta solo la parte Windows del punto 1.
+- [ ] Debug con `attach` a un processo già avviato e debug remoto: non richiesti dal gate, da valutare in Fase 5.
 
 **5. Collaudo finale e documentazione**
 - [ ] Flussi completi da installazione pulita, due progetti in parallelo, rete assente e moduli privati irraggiungibili senza blocchi della UI.
@@ -112,7 +112,7 @@ Gap aperti della Fase 1 da chiudere prima del gate:
 - [x] Run console: mostrare durata ed exit code; link `file:line` relativi (`./main.go:5`) risolti rispetto alla working directory dell'esecuzione, senza tab duplicate.
 - [x] `Ctrl/Cmd+W` dentro Go Studio chiudeva una tab HTTP invisibile: ora chiude il documento attivo. Scorciatoie documentate in Help → Keyboard Shortcuts, con test anti-duplicati.
 - [x] **Menu bar IDE reale** (File, Edit, View, Go, Run, Help) con registro comandi unico condiviso da menu, scorciatoie e dialog di aiuto; voci non disponibili disabilitate con motivo nel tooltip; Edit esegue le azioni Monaco reali; passaggio fra menu al passaggio del mouse come in GoLand.
-- [x] **Principio di comodità per lo sviluppatore** (richiesta utente): se un file contiene `func main`, il ▶ è nel gutter accanto; lo stesso per `Test`/`Benchmark`/`Fuzz`/`Example`. Il pulsante Debug comparirà accanto al ▶ in Fase 4, quando esisterà un debugger reale.
+- [x] **Principio di comodità per lo sviluppatore** (richiesta utente): se un file contiene `func main`, il ▶ è nel gutter accanto; lo stesso per `Test`/`Benchmark`/`Fuzz`/`Example`. Dalla Fase 4 il ▶ apre il menu Run / Debug / Run with Coverage, con debugger reale.
 - [x] Icona gopher per i file `.go` (albero, tab, Quick Open, risultati), SVG locale ispirato al gopher di Renée French (CC BY).
 - [ ] Verifiche manuali non eseguibili nel container Linux (GTK4/WebKitGTK assenti): `wails3 task dev` su Windows, test `process_tree_windows_test.go`, temi dark/light, barra di qualità su progetto reale.
 
@@ -578,76 +578,79 @@ Obiettivo: offrire test e debug reali, quindi valutare l'isolamento in finestre 
 
 ## 4.1 Test runner
 
-- [ ] Eseguire `go test -json` per package, progetto, singolo test e sottotest.
-- [ ] Correlare eventi strutturati per package/test senza affidarsi a parsing fragile del solo testo.
-- [ ] Mostrare albero package → test → sottotest, stato, durata, output e dettagli del fallimento.
-- [ ] Collegare file/riga del failure all'editor.
-- [ ] Supportare cancellazione e arresto dell'intero process tree.
-- [ ] Rieseguire tutti i test, un singolo test o soltanto i falliti.
-- [ ] Tenere risultati e output isolati per sessione/esecuzione.
-- [ ] Mostrare stato flaky/skip/timeout quando ricavabile dai dati reali.
-- [ ] Eseguire benchmark (`go test -bench`) e vet/check dalla stessa interfaccia, con risultati leggibili e non solo output grezzo.
-- [ ] Avviare il debug di un singolo test dalla stessa interfaccia, riusando la sessione Delve di 4.2.
+- [x] Eseguire `go test -json` per package, progetto, singolo test e sottotest. *(`TestRunRequest` strutturato; ▶ nel gutter, riga package, Run menu, albero)*
+- [x] Correlare eventi strutturati per package/test senza affidarsi a parsing fragile del solo testo. *(`testTree`, incluse le build-output/build-fail di Go 1.24+ e i benchmark spezzati su più eventi)*
+- [x] Mostrare albero package → test → sottotest, stato, durata, output e dettagli del fallimento.
+- [x] Collegare file/riga del failure all'editor.
+- [x] Supportare cancellazione e arresto dell'intero process tree. *(Stop nella toolbar Tests; `TestTestRunnerStopKillsTheTestProcess`)*
+- [x] Rieseguire tutti i test, un singolo test o soltanto i falliti. *(Ctrl+Shift+Alt+F10 per i falliti)*
+- [x] Tenere risultati e output isolati per sessione/esecuzione. *(storico di 20 esecuzioni per sessione, output limitato a 64 KB per nodo)*
+- [x] Mostrare stato flaky/skip/timeout quando ricavabile dai dati reali. *(skip e timeout reali; "flaky" non è ricavabile da una singola esecuzione e non viene inventato)*
+- [x] Eseguire benchmark (`go test -bench`) e vet/check dalla stessa interfaccia, con risultati leggibili e non solo output grezzo. *(benchmark nell'albero con ns/op e allocazioni; vet dal Run menu e dalla riga package, con errori in Problems)*
+- [x] Avviare il debug di un singolo test dalla stessa interfaccia, riusando la sessione Delve di 4.2. *(icona Debug sulla riga del test o sottotest)*
 
 ## 4.2 Debugger Delve via DAP
 
-- [ ] Rilevare `dlv`, versione e compatibilità con Go; permettere percorso personalizzato.
-- [ ] Se Delve manca, mostrare istruzioni e installazione esplicita con avanzamento/errori.
-- [ ] Avviare Delve/DAP solo dopo azione Debug esplicita e con endpoint confinato.
-- [ ] Implementare handshake, initialize, launch/attach dove supportato, configurationDone e disconnect.
-- [ ] Gestire breakpoint, verifica e aggiornamento delle righe effettive.
-- [ ] Implementare continue, pause, step over, step into e step out.
-- [ ] Mostrare thread/goroutine, call stack e navigazione della riga corrente.
-- [ ] Mostrare scopes, variabili espandibili e watch.
-- [ ] Implementare valutazione espressioni con errori chiari.
-- [ ] Associare ogni messaggio a sessione debug e scartare eventi tardivi dopo disconnect.
-- [ ] Terminare debugger e debuggee in modo affidabile alla chiusura.
+- [x] Rilevare `dlv`, versione e compatibilità con Go; permettere percorso personalizzato. *(ricerca: personalizzato, strumenti adOmnia, GOPATH/bin, PATH; campo dlv in Go → Tool Paths; errore chiaro se l'SDK del progetto è più vecchio di quanto Delve supporti)*
+- [x] Se Delve manca, mostrare istruzioni e installazione esplicita con avanzamento/errori. *(conferma con il comando esatto, output nella Run console; proposta automatica al primo Debug)*
+- [x] Avviare Delve/DAP solo dopo azione Debug esplicita e con endpoint confinato. *(`dlv dap --listen=127.0.0.1:0`, solo su progetti autorizzati)*
+- [x] Implementare handshake, initialize, launch/attach dove supportato, configurationDone e disconnect. *(launch per programmi e test; attach rinviato, vedi "Cosa resta")*
+- [x] Gestire breakpoint, verifica e aggiornamento delle righe effettive. *(clic sul numero di riga o Ctrl+F8; pallino vuoto finché Delve non verifica; le righe seguono le modifiche; salvati per progetto e ripristinati al riavvio)*
+- [x] Implementare continue, pause, step over, step into e step out. *(F9, F8, F7, Shift+F8, Ctrl+F2; fuori dal debug F7/F8/F9 tornano all'editor)*
+- [x] Mostrare thread/goroutine, call stack e navigazione della riga corrente.
+- [x] Mostrare scopes, variabili espandibili e watch. *(figli caricati solo all'espansione; watch rivalutati a ogni pausa)*
+- [x] Implementare valutazione espressioni con errori chiari. *(console con storico ↑↓ e valore al passaggio del mouse; errore dettagliato di Delve, es. "could not find symbol")*
+- [x] Associare ogni messaggio a sessione debug e scartare eventi tardivi dopo disconnect. *(token di pausa lato frontend, flag `closed` lato backend)*
+- [x] Terminare debugger e debuggee in modo affidabile alla chiusura. *(disconnect con terminateDebuggee, attesa dell'uscita di dlv, poi process tree; binario compilato in una cartella temporanea eliminata all'uscita, mai nel progetto)*
 
 ## 4.3 Coverage
 
-- [ ] Generare coverage solo su azione esplicita usando toolchain Go ufficiale.
-- [ ] Mostrare percentuale per package/file e annotazioni linea nell'editor.
-- [ ] Permettere attivazione/disattivazione overlay senza alterare il file.
-- [ ] Gestire profili coverage obsoleti dopo modifiche ai sorgenti.
+- [x] Generare coverage solo su azione esplicita usando toolchain Go ufficiale.
+- [x] Mostrare percentuale per package/file e annotazioni linea nell'editor.
+- [x] Permettere attivazione/disattivazione overlay senza alterare il file.
+- [x] Gestire profili coverage obsoleti dopo modifiche ai sorgenti. *(impronta del file misurato: l'overlay sparisce e l'editor avvisa)*
 
 ## 4.4 Finestre separate / più istanze
+
+Decisione (2026-09-28): **rinviato**. La prova reale su Windows non è eseguibile nel container Linux (GTK4/WebKitGTK assenti) e il gate vieta di dichiarare una capacità non verificata. Il prodotto non mostra alcun pulsante o voce per aprire Go Studio in una finestra separata. Due progetti restano utilizzabili in parallelo nella stessa finestra, con isolamento completo verificato (Fase 3 e test 4.5).
 
 - [ ] Prototipare una finestra Wails secondaria Go Studio riusando il pattern esistente senza duplicare ownership backend.
 - [ ] Verificare focus, shortcut, eventi, chiusura, dirty state e cleanup tra finestra principale e secondaria.
 - [ ] Verificare comportamento se lo stesso progetto è aperto in più finestre o istanze.
 - [ ] Introdurre locking/coordinamento o avviso di conflitto prima di abilitare la funzione.
 - [ ] Dichiarare nel prodotto il supporto multiwindow solo dopo prova reale su Windows e piattaforme dichiarate.
-- [ ] Se non affidabile, lasciare la funzione disabilitata e documentare il limite senza pulsanti finti.
+- [x] Se non affidabile, lasciare la funzione disabilitata e documentare il limite senza pulsanti finti.
 
 ## 4.5 Test mirati
 
-- [ ] Test parser/event aggregator di `go test -json`, inclusi sottotest, failure e output concorrente.
-- [ ] Test DAP per sequenza lifecycle, breakpoint, evento stopped e disconnect.
-- [ ] Test cleanup debugger/debuggee e process tree.
-- [ ] Test isolamento simultaneo di test e debug su due sessioni.
-- [ ] Prova reale di test fallito, rerun failed, breakpoint, step, variabili, watch ed evaluate.
+- [x] Test parser/event aggregator di `go test -json`, inclusi sottotest, failure e output concorrente. *(`testrunner_events_test.go`, fixture `testjson/mixed.jsonl` e `bench.jsonl`)*
+- [x] Test DAP per sequenza lifecycle, breakpoint, evento stopped e disconnect. *(`dap/client_test.go` con adapter finto; `debug_integration_test.go` con dlv reale)*
+- [x] Test cleanup debugger/debuggee e process tree. *(`TestDebuggerStopLeavesNoOrphans`, anche sulla cartella temporanea del binario)*
+- [x] Test isolamento simultaneo di test e debug su due sessioni. *(`TestTestsAndDebugStayIsolatedAcrossSessions`)*
+- [x] Prova reale di test fallito, rerun failed, breakpoint, step, variabili, watch ed evaluate. *(e2e nel browser, vedi Evidenze)*
 
 ## Gate di uscita Fase 4
 
-- [ ] Un test fallito è mostrato strutturalmente e apre il file/riga corretti.
-- [ ] Rerun failed esegue davvero solo il perimetro previsto.
-- [ ] Una sessione debug reale raggiunge un breakpoint e supporta step, stack, variabili e watch.
-- [ ] Stop/chiusura non lascia Delve o debuggee orfani.
-- [ ] Coverage reale è navigabile e non resta applicata a sorgenti non più corrispondenti.
-- [ ] Multiwindow è verificato e abilitato, oppure esplicitamente rinviato senza dichiarazioni ingannevoli.
-- [ ] Suite e verifiche previste dalla definizione di fase funzionante passano.
+- [x] Un test fallito è mostrato strutturalmente e apre il file/riga corretti.
+- [x] Rerun failed esegue davvero solo il perimetro previsto.
+- [x] Una sessione debug reale raggiunge un breakpoint e supporta step, stack, variabili e watch.
+- [ ] Stop/chiusura non lascia Delve o debuggee orfani. *(verificato su Linux; manca Windows)*
+- [x] Coverage reale è navigabile e non resta applicata a sorgenti non più corrispondenti.
+- [x] Multiwindow è verificato e abilitato, oppure esplicitamente rinviato senza dichiarazioni ingannevoli. *(rinviato, vedi 4.4)*
+- [ ] Suite e verifiche previste dalla definizione di fase funzionante passano. *(automatiche ok; manca il collaudo manuale Windows)*
 - [ ] **FASE 4 FUNZIONANTE E APPROVATA — è consentito il collaudo finale.**
 
 ### Evidenze della fase
 
-- Data:
-- Commit:
-- Versioni Go/Delve:
-- Progetto Go usato:
-- Comandi e risultati:
-- Prova manuale:
-- Esito multiwindow:
-- Limiti rimasti:
+- Data: 2026-09-28
+- Commit: branch `feat/goide-phase4` (`158c79d` test runner e coverage, `1e51b45` backend Delve, `37d6836` UI debugger, più la chiusura di fase), unita su master.
+- Versioni Go/Delve: Go 1.26.5 (anche 1.24.7 per la prova di incompatibilità), Delve 1.27.2, gopls 0.23.
+- Progetti Go usati: `testdata/testproject` (package `calc` con test che fallisce alla riga 17, test lento per il timeout, benchmark), `testdata/debugproject` (`sum`, struct `point`, test `TestSum`).
+- Comandi e risultati: `go vet ./internal/goide/...` ok; `go test -race ./internal/goide/...` ok (inclusi `TestDebugger*` con dlv reale e `TestTestsAndDebugStayIsolatedAcrossSessions`); `npx tsc --noEmit` ok; `npx vitest run` 146 file / 657 test ok; `npm run build` ok.
+- Prova e2e (frontend reale in Chromium + vero `goide.Service`), 16 passi: ▶ su un test lo esegue da solo nell'albero; il sottotest fallito mostra l'output e apre `calc_test.go:17`; test con coverage e Rerun failed limitato ai falliti; overlay di coverage che sparisce dopo una modifica; breakpoint con clic sul numero di riga; ▶ → Debug 'main' si ferma sulla riga 16 con frame, goroutine e variabili; evaluate `len(values) * 10` = 30; watch; valore al passaggio del mouse; espansione della slice; F8 e F9; rimozione del breakpoint in pausa e fine programma con output; F8 fuori dal debug lasciato all'editor; breakpoint che seguono l'inserimento e l'undo di una riga; debug di `TestSum` dal gutter con `got = 5` e Ctrl+F2. Zero errori di pagina.
+- Difetti trovati e corretti durante la verifica: deadlock del client DAP rispondendo alle richieste inverse dentro il ciclo di lettura; `success:false` omesso dalla serializzazione; errore di evaluate generico al posto di quello di Delve; debuggee orfano dopo Stop; letture senza lock dello stato del debugger; loop infinito di React (selettore Zustand che restituiva un oggetto nuovo); valutazione al passaggio del mouse anche sulla parentesi dopo un nome; binario `__debug_bin` creato nella cartella del progetto e visibile nell'albero; titoli di sessione illeggibili (`^TestSum$`, `.`); rumore "Type 'dlv help'" in console; errore criptico con SDK Go più vecchio di Delve.
+- Esito multiwindow: rinviato in modo esplicito (4.4), nessun controllo nel prodotto.
+- Limiti rimasti: prove manuali su Windows (Stop del debugger e process tree, ConPTY); debug `attach` e remoto non implementati; il fallimento preesistente di `internal/git` (`TestRunTerminalCommandUsesRepositoryCWDAndExitCode`) dipende dalla shell del container che stampa "nvm", non da Go Studio.
 
 ---
 

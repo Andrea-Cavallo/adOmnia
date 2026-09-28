@@ -28,6 +28,7 @@ func (s *Service) SaveSessionView(sessionID string, view SessionView) error {
 	}
 	view.OpenPaths = limitPaths(view.OpenPaths, maxRestoredTabs)
 	s.viewMu.Lock()
+	view.Breakpoints = s.views[session.ID].Breakpoints
 	s.views[session.ID] = view
 	s.viewMu.Unlock()
 	return s.saveState()
@@ -122,10 +123,12 @@ func (s *Service) PruneMissingSessions() ([]Session, error) {
 		s.processes.StopSession(session.ID)
 		s.lsp.CloseSession(session.ID)
 		s.terminal.CloseSession(session.ID)
+		s.debug.StopSession(session.ID)
 		s.watcher.Stop(session.ID)
 		s.documents.CloseSession(session.ID)
 		s.toolchain.CloseSession(session.ID)
 		s.runConfigs.CloseSession(session.ID)
+		s.tests.CloseSession(session.ID)
 		_ = s.recovery.ForgetSession(session.ID)
 		s.workspace.CloseSession(session.ID)
 		s.viewMu.Lock()

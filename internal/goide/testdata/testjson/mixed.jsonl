@@ -1,0 +1,28 @@
+{"ImportPath":"example.com/tj/broken [example.com/tj/broken.test]","Action":"build-output","Output":"# example.com/tj/broken [example.com/tj/broken.test]\n"}
+{"ImportPath":"example.com/tj/broken [example.com/tj/broken.test]","Action":"build-output","Output":"broken/broken.go:3:23: cannot use \"no\" (untyped string constant) as int value in return statement\n"}
+{"ImportPath":"example.com/tj/broken [example.com/tj/broken.test]","Action":"build-fail"}
+{"Time":"2026-09-28T19:29:19.407070241Z","Action":"start","Package":"example.com/tj/broken"}
+{"Time":"2026-09-28T19:29:19.407454701Z","Action":"output","Package":"example.com/tj/broken","Output":"FAIL\texample.com/tj/broken [build failed]\n"}
+{"Time":"2026-09-28T19:29:19.407469836Z","Action":"fail","Package":"example.com/tj/broken","Elapsed":0,"FailedBuild":"example.com/tj/broken [example.com/tj/broken.test]"}
+{"Time":"2026-09-28T19:29:19.499127396Z","Action":"start","Package":"example.com/tj/calc"}
+{"Time":"2026-09-28T19:29:19.501090705Z","Action":"run","Package":"example.com/tj/calc","Test":"TestAdd"}
+{"Time":"2026-09-28T19:29:19.501140023Z","Action":"output","Package":"example.com/tj/calc","Test":"TestAdd","Output":"=== RUN   TestAdd\n"}
+{"Time":"2026-09-28T19:29:19.501186713Z","Action":"run","Package":"example.com/tj/calc","Test":"TestAdd/positive"}
+{"Time":"2026-09-28T19:29:19.501200184Z","Action":"output","Package":"example.com/tj/calc","Test":"TestAdd/positive","Output":"=== RUN   TestAdd/positive\n"}
+{"Time":"2026-09-28T19:29:19.501207656Z","Action":"output","Package":"example.com/tj/calc","Test":"TestAdd/positive","Output":"--- PASS: TestAdd/positive (0.00s)\n"}
+{"Time":"2026-09-28T19:29:19.501219938Z","Action":"pass","Package":"example.com/tj/calc","Test":"TestAdd/positive","Elapsed":0}
+{"Time":"2026-09-28T19:29:19.501233389Z","Action":"run","Package":"example.com/tj/calc","Test":"TestAdd/negative"}
+{"Time":"2026-09-28T19:29:19.501236845Z","Action":"output","Package":"example.com/tj/calc","Test":"TestAdd/negative","Output":"=== RUN   TestAdd/negative\n"}
+{"Time":"2026-09-28T19:29:19.501249833Z","Action":"output","Package":"example.com/tj/calc","Test":"TestAdd/negative","Output":"    calc_test.go:13: got -3\n"}
+{"Time":"2026-09-28T19:29:19.501253668Z","Action":"output","Package":"example.com/tj/calc","Test":"TestAdd/negative","Output":"--- FAIL: TestAdd/negative (0.00s)\n"}
+{"Time":"2026-09-28T19:29:19.501257944Z","Action":"fail","Package":"example.com/tj/calc","Test":"TestAdd/negative","Elapsed":0}
+{"Time":"2026-09-28T19:29:19.501261606Z","Action":"output","Package":"example.com/tj/calc","Test":"TestAdd","Output":"--- FAIL: TestAdd (0.00s)\n"}
+{"Time":"2026-09-28T19:29:19.501264354Z","Action":"fail","Package":"example.com/tj/calc","Test":"TestAdd","Elapsed":0}
+{"Time":"2026-09-28T19:29:19.501266934Z","Action":"run","Package":"example.com/tj/calc","Test":"TestSkip"}
+{"Time":"2026-09-28T19:29:19.501269152Z","Action":"output","Package":"example.com/tj/calc","Test":"TestSkip","Output":"=== RUN   TestSkip\n"}
+{"Time":"2026-09-28T19:29:19.501283124Z","Action":"output","Package":"example.com/tj/calc","Test":"TestSkip","Output":"    calc_test.go:18: not now\n"}
+{"Time":"2026-09-28T19:29:19.501287803Z","Action":"output","Package":"example.com/tj/calc","Test":"TestSkip","Output":"--- SKIP: TestSkip (0.00s)\n"}
+{"Time":"2026-09-28T19:29:19.501293457Z","Action":"skip","Package":"example.com/tj/calc","Test":"TestSkip","Elapsed":0}
+{"Time":"2026-09-28T19:29:19.501296509Z","Action":"output","Package":"example.com/tj/calc","Output":"FAIL\n"}
+{"Time":"2026-09-28T19:29:19.501672829Z","Action":"output","Package":"example.com/tj/calc","Output":"FAIL\texample.com/tj/calc\t0.002s\n"}
+{"Time":"2026-09-28T19:29:19.501713432Z","Action":"fail","Package":"example.com/tj/calc","Elapsed":0.003}

@@ -52,6 +52,7 @@ describe('Go Studio command availability', () => {
     lspState: 'ready', goplsAvailable: true, formatOnSave: true, importsOnSave: false, gofumpt: false, staticcheck: false,
     lintOnSave: false, linterAvailable: true, linting: false,
     semanticHighlighting: true, inlayHints: false, semanticTokensSupported: true, inlayHintsSupported: false,
+    debugState: 'none',
   }
 
   it('disables editor features the running gopls does not provide', () => {
@@ -59,6 +60,19 @@ describe('Go Studio command availability', () => {
     expect(commandAvailability('code.inlayHints', ready)).toMatch(/does not provide/)
     expect(commandChecked('code.semanticHighlighting', ready)).toBe(true)
     expect(commandChecked('code.inlayHints', ready)).toBe(false)
+  })
+
+  it('enables stepping only while paused and gives F8 back to the editor otherwise', () => {
+    expect(commandAvailability('debug.stepOver', ready)).toMatch(/not paused/)
+    expect(commandAvailability('debug.stepOver', { ...ready, debugState: 'stopped' })).toBe(true)
+    expect(commandAvailability('debug.pause', { ...ready, debugState: 'running' })).toBe(true)
+    expect(commandAvailability('debug.stop', ready)).toMatch(/No debug/)
+    expect(commandAvailability('debug.debug', { ...ready, authorized: false })).toMatch(/Trust/)
+    const stepOver = commandForKey({ key: 'F8', ctrlKey: false, metaKey: false, shiftKey: false, altKey: false })
+    expect(stepOver?.id).toBe('debug.stepOver')
+    expect(stepOver?.passThroughWhenUnavailable).toBe(true)
+    expect(commandForKey({ key: 'F8', ctrlKey: true, metaKey: false, shiftKey: false, altKey: false })?.id).toBe('debug.toggleBreakpoint')
+    expect(commandForKey({ key: 'F9', ctrlKey: false, metaKey: false, shiftKey: true, altKey: false })?.id).toBe('debug.debug')
   })
 
   it('explains why run commands are blocked without trust or SDK', () => {

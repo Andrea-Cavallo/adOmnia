@@ -1,6 +1,11 @@
 import { selectGoIDEFolder, startGoIDEDependencyAction, type GoIDESession } from '@/lib/goide-api'
 import { confirm } from '@/lib/confirmDialog'
+import { useGoIDETestsStore } from '@/stores/goideTests'
 import { activeGoIDEDocument, useGoIDEStore, type GoIDEEditorDocument, type GoIDEQuickRunKind } from '@/stores/goide'
+import type { GoIDETestRunRequest } from '@/lib/goide-tests-api'
+import type { GoIDEDebugRequest } from '@/lib/goide-debug-api'
+import { benchmarkDebugArguments, runPatternFor } from './goStudioTestTree'
+import type { GoStudioRunTarget } from './goStudioRunTargets'
 import { goModActionNeedsConfirmation, goModCommandLine, type GoModDependencyAction } from './goStudioGoMod'
 
 /** Ampiezza di un comando rapido: il package del file corrente o tutto il modulo (./...). */
@@ -79,12 +84,17 @@ function editableRelativePath(document: GoIDEEditorDocument | null): string | nu
 }
 
 /** Lancia un comando go rapido sul package del file attivo o sull'intero modulo. */
-export async function runGoStudioQuickCommand(kind: GoIDEQuickRunKind, scope: GoStudioQuickScope, document?: GoIDEEditorDocument | null): Promise<void> {
+export async function runGoStudioQuickCommand(kind: GoIDEQuickRunKind, scope: GoStudioQuickScope, document?: GoIDEEditorDocument | null, options: { coverage?: boolean } = {}): Promise<void> {
   const state = useGoIDEStore.getState()
   const session = trustedSession(document?.document.sessionId ?? state.activeSessionId)
   if (!session) return
   const source = document === undefined ? activeGoIDEDocument(state) : document
   const request = quickRunFor(kind, scope, moduleScopeFor(session, editableRelativePath(source)))
+  // I test passano dal runner strutturato (albero, rerun, coverage), non dalla console grezza.
+  if (kind === 'test') {
+    await useGoIDETestsStore.getState().start({ sessionId: session.id, workingDirectory: request.workingDirectory, packages: [request.target], coverage: options.coverage ?? false })
+    return
+  }
   await state.startRun(kind, { target: request.target, workingDirectory: request.workingDirectory })
 }
 
@@ -139,4 +149,27 @@ export async function runModuleDependencyAction(action: Extract<GoModDependencyA
   const goMod = state.documents.find((item) => item.document.sessionId === session.id && item.document.relativePath === (moduleDirectory ? `${moduleDirectory}/go.mod` : 'go.mod'))
   if (goMod?.dirty && !await state.saveDocument(goMod.document.id)) return
   await startDependencyAction({ sessionId: session.id, moduleDirectory, action, modulePath: '' }, '')
+}
+
+/** Modulo e package di un target del gutter: i comandi go partono dal modulo che lo contiene. */
+function targetScope(session: Pick<GoIDESession, 'project'>, target: GoStudioRunTarget): GoStudioModuleScope {
+  return moduleScopeFor(session, `${target.packagePath.replace(/^\.\/?/, '')}/_.go`)
+}
+
+/** Richiesta per il ▶ nel gutter di un test o benchmark: solo quella funzione, nel suo modulo. */
+export function testRequestForTarget(session: Pick<GoIDESession, 'id' | 'project'>, target: GoStudioRunTarget, coverage = false): GoIDETestRunRequest {
+  const scope = targetScope(session, target)
+  const pattern = runPatternFor(target.name)
+  const benchmark = target.kind === 'benchmark'
+  return { sessionId: session.id, workingDirectory: scope.moduleDirectory, packages: [scope.packageTarget], run: benchmark ? '' : pattern, bench: benchmark ? pattern : '', coverage }
+}
+
+/** Richiesta di debug per il ▶ del gutter: func main, un test o un benchmark (eseguito una volta). */
+export function debugRequestForTarget(session: Pick<GoIDESession, 'id' | 'project'>, target: GoStudioRunTarget): GoIDEDebugRequest {
+  const scope = targetScope(session, target)
+  const base = { sessionId: session.id, workingDirectory: scope.moduleDirectory, target: scope.packageTarget }
+  if (target.kind === 'main') return { ...base, mode: 'debug' }
+  const pattern = runPatternFor(target.name)
+  if (target.kind === 'benchmark') return { ...base, mode: 'test', testName: '^$', programArguments: benchmarkDebugArguments(pattern) }
+  return { ...base, mode: 'test', testName: pattern }
 }

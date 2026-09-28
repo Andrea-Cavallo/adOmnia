@@ -10,6 +10,9 @@ export interface GoStudioRunTarget {
   packagePath: string
 }
 
+/** Clic sul ▶ del gutter: il punto serve per aprire il menu Run/Debug accanto al glifo. */
+export type GoStudioRunTargetHandler = (target: GoStudioRunTarget, anchor: { x: number; y: number }) => void
+
 export interface GoStudioRunCommand {
   kind: 'run' | 'test'
   target: string

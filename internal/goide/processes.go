@@ -28,6 +28,12 @@ type CommandSpec struct {
 	WorkingDirectory string
 	Environment      []string
 	DisplayCommand   string
+	// OutputTap riceve l'output grezzo prima della pubblicazione (es. il parser di go test -json).
+	OutputTap func(stream string, data []byte)
+	// QuietStdout non pubblica stdout come run.output: lo consuma soltanto OutputTap.
+	QuietStdout bool
+	// OnExit viene chiamata una volta a processo terminato, prima dell'evento run.finished.
+	OnExit func(Execution)
 }
 
 type processEvent struct {
@@ -44,6 +50,9 @@ type managedProcess struct {
 	exited    atomic.Bool
 	truncated atomic.Bool
 	done      chan struct{}
+	tap       func(string, []byte)
+	quiet     bool
+	onExit    func(Execution)
 }
 
 type ProcessManager struct {
@@ -112,7 +121,7 @@ func (m *ProcessManager) Start(spec CommandSpec) (Execution, error) {
 		return Execution{}, fmt.Errorf("avvio processo fallito: %w", err)
 	}
 	execution.PID = command.Process.Pid
-	managed := &managedProcess{command: command, stdin: stdin, execution: execution, done: make(chan struct{})}
+	managed := &managedProcess{command: command, stdin: stdin, execution: execution, done: make(chan struct{}), tap: spec.OutputTap, quiet: spec.QuietStdout, onExit: spec.OnExit}
 	m.mu.Lock()
 	m.processes[runID] = managed
 	m.history[runID] = execution
@@ -268,6 +277,9 @@ func (m *ProcessManager) wait(process *managedProcess, stdout, stderr io.ReadClo
 	m.pruneHistoryLocked()
 	m.mu.Unlock()
 	process.execution = execution
+	if process.onExit != nil {
+		process.onExit(execution)
+	}
 	close(process.done)
 	m.publish(processEvent{eventType: "run.finished", execution: execution, payload: execution}, true)
 }
@@ -277,7 +289,10 @@ func (m *ProcessManager) readOutput(process *managedProcess, stream string, read
 	buffer := make([]byte, maxOutputChunkBytes)
 	for {
 		read, err := buffered.Read(buffer)
-		if read > 0 {
+		if read > 0 && process.tap != nil {
+			process.tap(stream, buffer[:read])
+		}
+		if read > 0 && !(process.quiet && stream == "stdout") {
 			output := ProcessOutput{RunID: process.execution.ID, Stream: stream, Text: string(buffer[:read])}
 			if !m.publish(processEvent{eventType: "run.output", execution: process.execution, payload: output}, false) && process.truncated.CompareAndSwap(false, true) {
 				output.Text = "\n[adOmnia] Output ridotto: la coda eventi ha raggiunto il limite.\n"
