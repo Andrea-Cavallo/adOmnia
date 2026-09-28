@@ -44,6 +44,7 @@ type Service struct {
 	toolsRoot     string
 	goplsMu       sync.RWMutex
 	goplsBinaries map[SessionID]string
+	delveBinaries map[SessionID]string
 	lint          lintRegistry
 	watcher       *WatchManager
 }
@@ -64,11 +65,13 @@ func NewService(store Store, eventSink func(EventEnvelope)) *Service {
 		runRequests:   make(map[RunID]RunRequest),
 		eventSink:     eventSink,
 		goplsBinaries: make(map[SessionID]string),
+		delveBinaries: make(map[SessionID]string),
 		lint:          lintRegistry{custom: make(map[SessionID]string)},
 	}
 	service.recovery = NewRecoveryManager(nil)
 	service.watcher = NewWatchManager(service.filesChanged)
 	service.lsp.SetEmitter(service.emit)
+	service.debug.SetEmitter(service.emit)
 	service.installer = NewToolchainInstaller(func(eventType string, installation ToolchainInstallation) {
 		service.emit(eventType, installation.SessionID, installation.ID, installation)
 	})
@@ -239,6 +242,7 @@ func (s *Service) CloseSession(id string) error {
 		return nil
 	}
 	s.terminal.CloseSession(sessionID)
+	s.debug.StopSession(sessionID)
 	s.watcher.Stop(sessionID)
 	s.documents.CloseSession(sessionID)
 	s.lsp.CloseSession(sessionID)

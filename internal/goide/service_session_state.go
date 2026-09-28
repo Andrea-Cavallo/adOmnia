@@ -122,6 +122,7 @@ func (s *Service) PruneMissingSessions() ([]Session, error) {
 		s.processes.StopSession(session.ID)
 		s.lsp.CloseSession(session.ID)
 		s.terminal.CloseSession(session.ID)
+		s.debug.StopSession(session.ID)
 		s.watcher.Stop(session.ID)
 		s.documents.CloseSession(session.ID)
 		s.toolchain.CloseSession(session.ID)
