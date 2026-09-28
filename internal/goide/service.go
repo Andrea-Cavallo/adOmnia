@@ -18,41 +18,46 @@ const maxRecentProjects = 20
 var modulePathPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._~/-]*$`)
 
 type Service struct {
-	workspace   *WorkspaceManager
-	documents   *DocumentManager
-	toolchain   *ToolchainManager
-	installer   *ToolchainInstaller
-	processes   *ProcessManager
-	lsp         *LSPManager
-	terminal    *TerminalManager
-	debug       *DebugManager
-	tests       *TestManager
-	persistence *Persistence
-	restoreOnce sync.Once
-	restoreErr  error
-	recentMu    sync.RWMutex
-	recent      []RecentProject
-	runMu       sync.RWMutex
-	runRequests map[RunID]RunRequest
-	eventMu     sync.RWMutex
-	eventSink   func(EventEnvelope)
-	sequence    atomic.Uint64
+	workspace     *WorkspaceManager
+	documents     *DocumentManager
+	toolchain     *ToolchainManager
+	installer     *ToolchainInstaller
+	processes     *ProcessManager
+	lsp           *LSPManager
+	terminal      *TerminalManager
+	debug         *DebugManager
+	tests         *TestManager
+	persistence   *Persistence
+	restoreOnce   sync.Once
+	restoreErr    error
+	recentMu      sync.RWMutex
+	recent        []RecentProject
+	runMu         sync.RWMutex
+	runRequests   map[RunID]RunRequest
+	eventMu       sync.RWMutex
+	eventSink     func(EventEnvelope)
+	sequence      atomic.Uint64
+	toolsRoot     string
+	goplsMu       sync.RWMutex
+	goplsBinaries map[SessionID]string
 }
 
 func NewService(store Store, eventSink func(EventEnvelope)) *Service {
 	service := &Service{
-		workspace:   NewWorkspaceManager(),
-		documents:   NewDocumentManager(),
-		toolchain:   NewToolchainManager(),
-		processes:   NewProcessManager(),
-		lsp:         NewLSPManager(),
-		terminal:    NewTerminalManager(),
-		debug:       NewDebugManager(),
-		tests:       NewTestManager(),
-		persistence: NewPersistence(store),
-		runRequests: make(map[RunID]RunRequest),
-		eventSink:   eventSink,
+		workspace:     NewWorkspaceManager(),
+		documents:     NewDocumentManager(),
+		toolchain:     NewToolchainManager(),
+		processes:     NewProcessManager(),
+		lsp:           NewLSPManager(),
+		terminal:      NewTerminalManager(),
+		debug:         NewDebugManager(),
+		tests:         NewTestManager(),
+		persistence:   NewPersistence(store),
+		runRequests:   make(map[RunID]RunRequest),
+		eventSink:     eventSink,
+		goplsBinaries: make(map[SessionID]string),
 	}
+	service.lsp.SetEmitter(service.emit)
 	service.installer = NewToolchainInstaller(func(eventType string, installation ToolchainInstallation) {
 		service.emit(eventType, installation.SessionID, installation.ID, installation)
 	})
@@ -64,18 +69,23 @@ func NewService(store Store, eventSink func(EventEnvelope)) *Service {
 
 // ConfigureToolchainStorage imposta lo storage locale isolato per le versioni Go gestite.
 func (s *Service) ConfigureToolchainStorage(root string) error {
-	return s.installer.ConfigureRoot(root)
+	if err := s.installer.ConfigureRoot(root); err != nil {
+		return err
+	}
+	s.toolsRoot = filepath.Join(filepath.Dir(filepath.Clean(root)), "tools")
+	return nil
 }
 
 // GetCapabilities dichiara soltanto le capacità realmente disponibili nello stato corrente.
 func (s *Service) GetCapabilities() Capabilities {
 	return Capabilities{
-		SchemaVersion:    2,
+		SchemaVersion:    3,
 		ProjectOpen:      true,
 		ProjectCreate:    true,
 		Documents:        true,
 		Toolchain:        true,
 		Processes:        true,
+		LSP:              true,
 		MultipleSessions: true,
 	}
 }
@@ -188,6 +198,7 @@ func (s *Service) SetToolAuthorization(id string, allowed bool) (Session, error)
 	}
 	if !allowed {
 		s.processes.StopSession(session.ID)
+		s.lsp.Stop(session.ID)
 	}
 	if err := s.saveState(); err != nil {
 		return Session{}, err
@@ -209,7 +220,11 @@ func (s *Service) CloseSession(id string) error {
 		return nil
 	}
 	s.documents.CloseSession(sessionID)
+	s.lsp.CloseSession(sessionID)
 	s.toolchain.CloseSession(sessionID)
+	s.goplsMu.Lock()
+	delete(s.goplsBinaries, sessionID)
+	s.goplsMu.Unlock()
 	if err := s.saveState(); err != nil {
 		return err
 	}
@@ -233,10 +248,12 @@ func (s *Service) OpenDocument(sessionID, relativePath string) (OpenDocument, er
 		return OpenDocument{}, err
 	}
 	document, err := s.documents.OpenDocument(session, relativePath)
-	if err == nil {
-		s.emit("document.opened", session.ID, string(document.Document.ID), document.Document)
+	if err != nil {
+		return OpenDocument{}, err
 	}
-	return document, err
+	s.lsp.TrackDocument(session, document.Document, document.Content, false)
+	s.emit("document.opened", session.ID, string(document.Document.ID), document.Document)
+	return document, nil
 }
 
 // SaveDocument salva un documento con controllo delle modifiche esterne.
@@ -246,10 +263,12 @@ func (s *Service) SaveDocument(sessionID, documentID, content, diskToken string,
 		return OpenDocument{}, err
 	}
 	document, err := s.documents.SaveDocument(session, DocumentID(documentID), content, diskToken, force)
-	if err == nil {
-		s.emit("document.saved", session.ID, documentID, document.Document)
+	if err != nil {
+		return OpenDocument{}, err
 	}
-	return document, err
+	s.lsp.DocumentSaved(session.ID, DocumentID(documentID))
+	s.emit("document.saved", session.ID, documentID, document.Document)
+	return document, nil
 }
 
 // CheckDocument rileva modifiche esterne senza sovrascrivere il buffer dell'editor.
@@ -267,6 +286,7 @@ func (s *Service) CloseDocument(sessionID, documentID string) error {
 		return err
 	}
 	s.documents.CloseDocument(SessionID(sessionID), DocumentID(documentID))
+	s.lsp.UntrackDocument(SessionID(sessionID), DocumentID(documentID))
 	s.emit("document.closed", SessionID(sessionID), documentID, nil)
 	return nil
 }
@@ -444,7 +464,7 @@ func (s *Service) StartDependencyAction(request DependencyActionRequest) (Execut
 	})
 }
 
-// StartRun avvia build, run o go mod tidy con argomenti strutturati.
+// StartRun avvia build, run, test o go mod tidy con argomenti strutturati.
 func (s *Service) StartRun(request RunRequest) (Execution, error) {
 	session, err := s.session(string(request.SessionID))
 	if err != nil {
@@ -454,7 +474,7 @@ func (s *Service) StartRun(request RunRequest) (Execution, error) {
 		return Execution{}, fmt.Errorf("autorizza esplicitamente gli strumenti per questo progetto")
 	}
 	kind := strings.ToLower(strings.TrimSpace(request.Kind))
-	if kind != "build" && kind != "run" && kind != "tidy" {
+	if kind != "build" && kind != "run" && kind != "test" && kind != "tidy" {
 		return Execution{}, fmt.Errorf("tipo di esecuzione non supportato")
 	}
 	workingDirectory, err := s.documents.resolveDirectory(session.Project, request.WorkingDirectory)
@@ -484,7 +504,7 @@ func (s *Service) StartRun(request RunRequest) (Execution, error) {
 			arguments = append(arguments, "-tags", strings.Join(request.BuildTags, ","))
 		}
 		arguments = append(arguments, target)
-		if kind == "run" {
+		if kind == "run" || kind == "test" {
 			arguments = append(arguments, request.ProgramArguments...)
 		}
 	}

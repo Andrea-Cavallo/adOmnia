@@ -80,6 +80,116 @@ export class Capabilities {
     }
 }
 
+export class CodeActionEntry {
+    "id": string;
+    "title": string;
+    "kind"?: string;
+    "preferred"?: boolean;
+    "disabled"?: string;
+
+    /** Creates a new CodeActionEntry instance. */
+    constructor($$source: Partial<CodeActionEntry> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("title" in $$source)) {
+            this["title"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new CodeActionEntry instance from a string or object.
+     */
+    static createFrom($$source: any = {}): CodeActionEntry {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new CodeActionEntry($$parsedSource as Partial<CodeActionEntry>);
+    }
+}
+
+export class CompletionEntry {
+    "label": string;
+    "kind": number;
+    "detail"?: string;
+    "documentation"?: string;
+    "sortText"?: string;
+    "filterText"?: string;
+    "insertText": string;
+    "snippet": boolean;
+    "range"?: EditorRange | null;
+    "additionalEdits"?: EditorTextEdit[];
+    "preselect"?: boolean;
+    "deprecated"?: boolean;
+
+    /** Creates a new CompletionEntry instance. */
+    constructor($$source: Partial<CompletionEntry> = {}) {
+        if (!("label" in $$source)) {
+            this["label"] = "";
+        }
+        if (!("kind" in $$source)) {
+            this["kind"] = 0;
+        }
+        if (!("insertText" in $$source)) {
+            this["insertText"] = "";
+        }
+        if (!("snippet" in $$source)) {
+            this["snippet"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new CompletionEntry instance from a string or object.
+     */
+    static createFrom($$source: any = {}): CompletionEntry {
+        const $$createField8_0 = $$createType1;
+        const $$createField9_0 = $$createType3;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("range" in $$parsedSource) {
+            $$parsedSource["range"] = $$createField8_0($$parsedSource["range"]);
+        }
+        if ("additionalEdits" in $$parsedSource) {
+            $$parsedSource["additionalEdits"] = $$createField9_0($$parsedSource["additionalEdits"]);
+        }
+        return new CompletionEntry($$parsedSource as Partial<CompletionEntry>);
+    }
+}
+
+export class CompletionResult {
+    "version": number;
+    "incomplete": boolean;
+    "items": CompletionEntry[];
+
+    /** Creates a new CompletionResult instance. */
+    constructor($$source: Partial<CompletionResult> = {}) {
+        if (!("version" in $$source)) {
+            this["version"] = 0;
+        }
+        if (!("incomplete" in $$source)) {
+            this["incomplete"] = false;
+        }
+        if (!("items" in $$source)) {
+            this["items"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new CompletionResult instance from a string or object.
+     */
+    static createFrom($$source: any = {}): CompletionResult {
+        const $$createField2_0 = $$createType5;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("items" in $$parsedSource) {
+            $$parsedSource["items"] = $$createField2_0($$parsedSource["items"]);
+        }
+        return new CompletionResult($$parsedSource as Partial<CompletionResult>);
+    }
+}
+
 export class CreateProjectRequest {
     "parentPath": string;
     "name": string;
@@ -186,7 +296,7 @@ export class DependencyState {
      * Creates a new DependencyState instance from a string or object.
      */
     static createFrom($$source: any = {}): DependencyState {
-        const $$createField4_0 = $$createType1;
+        const $$createField4_0 = $$createType7;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("dependencies" in $$parsedSource) {
             $$parsedSource["dependencies"] = $$createField4_0($$parsedSource["dependencies"]);
@@ -205,6 +315,8 @@ export class Document {
     "language": string;
     "version": number;
     "dirty": boolean;
+    "readOnly"?: boolean;
+    "external"?: boolean;
 
     /** Creates a new Document instance. */
     constructor($$source: Partial<Document> = {}) {
@@ -284,6 +396,136 @@ export class DocumentDiskState {
 
 export type DocumentID = string;
 
+export class DocumentSymbolsResult {
+    "version": number;
+    "symbols": SymbolNode[];
+
+    /** Creates a new DocumentSymbolsResult instance. */
+    constructor($$source: Partial<DocumentSymbolsResult> = {}) {
+        if (!("version" in $$source)) {
+            this["version"] = 0;
+        }
+        if (!("symbols" in $$source)) {
+            this["symbols"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new DocumentSymbolsResult instance from a string or object.
+     */
+    static createFrom($$source: any = {}): DocumentSymbolsResult {
+        const $$createField1_0 = $$createType9;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("symbols" in $$parsedSource) {
+            $$parsedSource["symbols"] = $$createField1_0($$parsedSource["symbols"]);
+        }
+        return new DocumentSymbolsResult($$parsedSource as Partial<DocumentSymbolsResult>);
+    }
+}
+
+export class EditorLocation {
+    "uri": string;
+    "path": string;
+    "relativePath"?: string;
+    "external": boolean;
+    "range": EditorRange;
+    "preview"?: string;
+
+    /** Creates a new EditorLocation instance. */
+    constructor($$source: Partial<EditorLocation> = {}) {
+        if (!("uri" in $$source)) {
+            this["uri"] = "";
+        }
+        if (!("path" in $$source)) {
+            this["path"] = "";
+        }
+        if (!("external" in $$source)) {
+            this["external"] = false;
+        }
+        if (!("range" in $$source)) {
+            this["range"] = (new EditorRange());
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new EditorLocation instance from a string or object.
+     */
+    static createFrom($$source: any = {}): EditorLocation {
+        const $$createField4_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("range" in $$parsedSource) {
+            $$parsedSource["range"] = $$createField4_0($$parsedSource["range"]);
+        }
+        return new EditorLocation($$parsedSource as Partial<EditorLocation>);
+    }
+}
+
+export class EditorRange {
+    "startLine": number;
+    "startColumn": number;
+    "endLine": number;
+    "endColumn": number;
+
+    /** Creates a new EditorRange instance. */
+    constructor($$source: Partial<EditorRange> = {}) {
+        if (!("startLine" in $$source)) {
+            this["startLine"] = 0;
+        }
+        if (!("startColumn" in $$source)) {
+            this["startColumn"] = 0;
+        }
+        if (!("endLine" in $$source)) {
+            this["endLine"] = 0;
+        }
+        if (!("endColumn" in $$source)) {
+            this["endColumn"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new EditorRange instance from a string or object.
+     */
+    static createFrom($$source: any = {}): EditorRange {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new EditorRange($$parsedSource as Partial<EditorRange>);
+    }
+}
+
+export class EditorTextEdit {
+    "range": EditorRange;
+    "text": string;
+
+    /** Creates a new EditorTextEdit instance. */
+    constructor($$source: Partial<EditorTextEdit> = {}) {
+        if (!("range" in $$source)) {
+            this["range"] = (new EditorRange());
+        }
+        if (!("text" in $$source)) {
+            this["text"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new EditorTextEdit instance from a string or object.
+     */
+    static createFrom($$source: any = {}): EditorTextEdit {
+        const $$createField0_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("range" in $$parsedSource) {
+            $$parsedSource["range"] = $$createField0_0($$parsedSource["range"]);
+        }
+        return new EditorTextEdit($$parsedSource as Partial<EditorTextEdit>);
+    }
+}
+
 export class Execution {
     "id": RunID;
     "sessionId": SessionID;
@@ -337,6 +579,48 @@ export class Execution {
     }
 }
 
+export class FileChange {
+    "uri": string;
+    "path": string;
+    "relativePath": string;
+    "documentId"?: DocumentID;
+    "edits": EditorTextEdit[];
+    "newContent": string;
+
+    /** Creates a new FileChange instance. */
+    constructor($$source: Partial<FileChange> = {}) {
+        if (!("uri" in $$source)) {
+            this["uri"] = "";
+        }
+        if (!("path" in $$source)) {
+            this["path"] = "";
+        }
+        if (!("relativePath" in $$source)) {
+            this["relativePath"] = "";
+        }
+        if (!("edits" in $$source)) {
+            this["edits"] = [];
+        }
+        if (!("newContent" in $$source)) {
+            this["newContent"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new FileChange instance from a string or object.
+     */
+    static createFrom($$source: any = {}): FileChange {
+        const $$createField4_0 = $$createType3;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("edits" in $$parsedSource) {
+            $$parsedSource["edits"] = $$createField4_0($$parsedSource["edits"]);
+        }
+        return new FileChange($$parsedSource as Partial<FileChange>);
+    }
+}
+
 export class FileEntry {
     "name": string;
     "relativePath": string;
@@ -370,6 +654,35 @@ export class FileEntry {
     static createFrom($$source: any = {}): FileEntry {
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         return new FileEntry($$parsedSource as Partial<FileEntry>);
+    }
+}
+
+export class FormatResult {
+    "version": number;
+    "edits": EditorTextEdit[];
+
+    /** Creates a new FormatResult instance. */
+    constructor($$source: Partial<FormatResult> = {}) {
+        if (!("version" in $$source)) {
+            this["version"] = 0;
+        }
+        if (!("edits" in $$source)) {
+            this["edits"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new FormatResult instance from a string or object.
+     */
+    static createFrom($$source: any = {}): FormatResult {
+        const $$createField1_0 = $$createType3;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("edits" in $$parsedSource) {
+            $$parsedSource["edits"] = $$createField1_0($$parsedSource["edits"]);
+        }
+        return new FormatResult($$parsedSource as Partial<FormatResult>);
     }
 }
 
@@ -421,6 +734,62 @@ export class GoModule {
     static createFrom($$source: any = {}): GoModule {
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         return new GoModule($$parsedSource as Partial<GoModule>);
+    }
+}
+
+export class GoplsInfo {
+    "available": boolean;
+    "binary"?: string;
+    "version"?: string;
+    "source"?: string;
+    "managedDir"?: string;
+    "error"?: string;
+
+    /** Creates a new GoplsInfo instance. */
+    constructor($$source: Partial<GoplsInfo> = {}) {
+        if (!("available" in $$source)) {
+            this["available"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new GoplsInfo instance from a string or object.
+     */
+    static createFrom($$source: any = {}): GoplsInfo {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new GoplsInfo($$parsedSource as Partial<GoplsInfo>);
+    }
+}
+
+export class HoverResult {
+    "version": number;
+    "markdown": string;
+    "range"?: EditorRange | null;
+
+    /** Creates a new HoverResult instance. */
+    constructor($$source: Partial<HoverResult> = {}) {
+        if (!("version" in $$source)) {
+            this["version"] = 0;
+        }
+        if (!("markdown" in $$source)) {
+            this["markdown"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new HoverResult instance from a string or object.
+     */
+    static createFrom($$source: any = {}): HoverResult {
+        const $$createField2_0 = $$createType1;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("range" in $$parsedSource) {
+            $$parsedSource["range"] = $$createField2_0($$parsedSource["range"]);
+        }
+        return new HoverResult($$parsedSource as Partial<HoverResult>);
     }
 }
 
@@ -482,6 +851,85 @@ export class InstalledToolchain {
     }
 }
 
+export class LanguageServerSettings {
+    "gofumpt": boolean;
+    "staticcheck": boolean;
+    "placeholders": boolean;
+    "semanticLinks": boolean;
+
+    /** Creates a new LanguageServerSettings instance. */
+    constructor($$source: Partial<LanguageServerSettings> = {}) {
+        if (!("gofumpt" in $$source)) {
+            this["gofumpt"] = false;
+        }
+        if (!("staticcheck" in $$source)) {
+            this["staticcheck"] = false;
+        }
+        if (!("placeholders" in $$source)) {
+            this["placeholders"] = false;
+        }
+        if (!("semanticLinks" in $$source)) {
+            this["semanticLinks"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new LanguageServerSettings instance from a string or object.
+     */
+    static createFrom($$source: any = {}): LanguageServerSettings {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new LanguageServerSettings($$parsedSource as Partial<LanguageServerSettings>);
+    }
+}
+
+export enum LanguageServerState {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    LanguageServerStopped = "stopped",
+    LanguageServerStarting = "starting",
+    LanguageServerReady = "ready",
+    LanguageServerCrashed = "crashed",
+    LanguageServerUnavailable = "unavailable",
+};
+
+export class LanguageServerStatus {
+    "sessionId": SessionID;
+    "state": LanguageServerState;
+    "binary"?: string;
+    "version"?: string;
+    "pid"?: number;
+    "restarts": number;
+    "error"?: string;
+
+    /** Creates a new LanguageServerStatus instance. */
+    constructor($$source: Partial<LanguageServerStatus> = {}) {
+        if (!("sessionId" in $$source)) {
+            this["sessionId"] = "";
+        }
+        if (!("state" in $$source)) {
+            this["state"] = LanguageServerState.$zero;
+        }
+        if (!("restarts" in $$source)) {
+            this["restarts"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new LanguageServerStatus instance from a string or object.
+     */
+    static createFrom($$source: any = {}): LanguageServerStatus {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new LanguageServerStatus($$parsedSource as Partial<LanguageServerStatus>);
+    }
+}
+
 export class OpenDocument {
     "document": Document;
     "content": string;
@@ -510,7 +958,7 @@ export class OpenDocument {
      * Creates a new OpenDocument instance from a string or object.
      */
     static createFrom($$source: any = {}): OpenDocument {
-        const $$createField0_0 = $$createType2;
+        const $$createField0_0 = $$createType10;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("document" in $$parsedSource) {
             $$parsedSource["document"] = $$createField0_0($$parsedSource["document"]);
@@ -558,8 +1006,8 @@ export class Project {
      * Creates a new Project instance from a string or object.
      */
     static createFrom($$source: any = {}): Project {
-        const $$createField6_0 = $$createType4;
-        const $$createField7_0 = $$createType5;
+        const $$createField6_0 = $$createType12;
+        const $$createField7_0 = $$createType13;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("modules" in $$parsedSource) {
             $$parsedSource["modules"] = $$createField6_0($$parsedSource["modules"]);
@@ -637,6 +1085,39 @@ export class RecentProject {
     }
 }
 
+export class RenameTarget {
+    "version": number;
+    "range": EditorRange;
+    "placeholder": string;
+
+    /** Creates a new RenameTarget instance. */
+    constructor($$source: Partial<RenameTarget> = {}) {
+        if (!("version" in $$source)) {
+            this["version"] = 0;
+        }
+        if (!("range" in $$source)) {
+            this["range"] = (new EditorRange());
+        }
+        if (!("placeholder" in $$source)) {
+            this["placeholder"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new RenameTarget instance from a string or object.
+     */
+    static createFrom($$source: any = {}): RenameTarget {
+        const $$createField1_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("range" in $$parsedSource) {
+            $$parsedSource["range"] = $$createField1_0($$parsedSource["range"]);
+        }
+        return new RenameTarget($$parsedSource as Partial<RenameTarget>);
+    }
+}
+
 export type RunID = string;
 
 export class RunRequest {
@@ -683,10 +1164,10 @@ export class RunRequest {
      * Creates a new RunRequest instance from a string or object.
      */
     static createFrom($$source: any = {}): RunRequest {
-        const $$createField4_0 = $$createType5;
-        const $$createField5_0 = $$createType5;
-        const $$createField6_0 = $$createType5;
-        const $$createField7_0 = $$createType6;
+        const $$createField4_0 = $$createType13;
+        const $$createField5_0 = $$createType13;
+        const $$createField6_0 = $$createType13;
+        const $$createField7_0 = $$createType14;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("goArguments" in $$parsedSource) {
             $$parsedSource["goArguments"] = $$createField4_0($$parsedSource["goArguments"]);
@@ -701,6 +1182,129 @@ export class RunRequest {
             $$parsedSource["environment"] = $$createField7_0($$parsedSource["environment"]);
         }
         return new RunRequest($$parsedSource as Partial<RunRequest>);
+    }
+}
+
+export class SearchMatch {
+    "relativePath": string;
+    "line": number;
+    "column": number;
+    "endColumn": number;
+    "preview": string;
+
+    /** Creates a new SearchMatch instance. */
+    constructor($$source: Partial<SearchMatch> = {}) {
+        if (!("relativePath" in $$source)) {
+            this["relativePath"] = "";
+        }
+        if (!("line" in $$source)) {
+            this["line"] = 0;
+        }
+        if (!("column" in $$source)) {
+            this["column"] = 0;
+        }
+        if (!("endColumn" in $$source)) {
+            this["endColumn"] = 0;
+        }
+        if (!("preview" in $$source)) {
+            this["preview"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SearchMatch instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SearchMatch {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new SearchMatch($$parsedSource as Partial<SearchMatch>);
+    }
+}
+
+export class SearchQuery {
+    "sessionId": SessionID;
+    "pattern": string;
+    "regex": boolean;
+    "caseSensitive": boolean;
+    "wholeWord": boolean;
+    "include": string[];
+    "exclude": string[];
+
+    /** Creates a new SearchQuery instance. */
+    constructor($$source: Partial<SearchQuery> = {}) {
+        if (!("sessionId" in $$source)) {
+            this["sessionId"] = "";
+        }
+        if (!("pattern" in $$source)) {
+            this["pattern"] = "";
+        }
+        if (!("regex" in $$source)) {
+            this["regex"] = false;
+        }
+        if (!("caseSensitive" in $$source)) {
+            this["caseSensitive"] = false;
+        }
+        if (!("wholeWord" in $$source)) {
+            this["wholeWord"] = false;
+        }
+        if (!("include" in $$source)) {
+            this["include"] = [];
+        }
+        if (!("exclude" in $$source)) {
+            this["exclude"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SearchQuery instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SearchQuery {
+        const $$createField5_0 = $$createType13;
+        const $$createField6_0 = $$createType13;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("include" in $$parsedSource) {
+            $$parsedSource["include"] = $$createField5_0($$parsedSource["include"]);
+        }
+        if ("exclude" in $$parsedSource) {
+            $$parsedSource["exclude"] = $$createField6_0($$parsedSource["exclude"]);
+        }
+        return new SearchQuery($$parsedSource as Partial<SearchQuery>);
+    }
+}
+
+export class SearchResult {
+    "matches": SearchMatch[];
+    "filesScanned": number;
+    "truncated": boolean;
+
+    /** Creates a new SearchResult instance. */
+    constructor($$source: Partial<SearchResult> = {}) {
+        if (!("matches" in $$source)) {
+            this["matches"] = [];
+        }
+        if (!("filesScanned" in $$source)) {
+            this["filesScanned"] = 0;
+        }
+        if (!("truncated" in $$source)) {
+            this["truncated"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SearchResult instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SearchResult {
+        const $$createField0_0 = $$createType16;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("matches" in $$parsedSource) {
+            $$parsedSource["matches"] = $$createField0_0($$parsedSource["matches"]);
+        }
+        return new SearchResult($$parsedSource as Partial<SearchResult>);
     }
 }
 
@@ -732,7 +1336,7 @@ export class Session {
      * Creates a new Session instance from a string or object.
      */
     static createFrom($$source: any = {}): Session {
-        const $$createField1_0 = $$createType7;
+        const $$createField1_0 = $$createType17;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("project" in $$parsedSource) {
             $$parsedSource["project"] = $$createField1_0($$parsedSource["project"]);
@@ -742,6 +1346,142 @@ export class Session {
 }
 
 export type SessionID = string;
+
+export class SignatureEntry {
+    "label": string;
+    "documentation"?: string;
+    "parameters": SignatureParameter[];
+
+    /** Creates a new SignatureEntry instance. */
+    constructor($$source: Partial<SignatureEntry> = {}) {
+        if (!("label" in $$source)) {
+            this["label"] = "";
+        }
+        if (!("parameters" in $$source)) {
+            this["parameters"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SignatureEntry instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SignatureEntry {
+        const $$createField2_0 = $$createType19;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("parameters" in $$parsedSource) {
+            $$parsedSource["parameters"] = $$createField2_0($$parsedSource["parameters"]);
+        }
+        return new SignatureEntry($$parsedSource as Partial<SignatureEntry>);
+    }
+}
+
+export class SignatureParameter {
+    "label": string;
+    "documentation"?: string;
+
+    /** Creates a new SignatureParameter instance. */
+    constructor($$source: Partial<SignatureParameter> = {}) {
+        if (!("label" in $$source)) {
+            this["label"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SignatureParameter instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SignatureParameter {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new SignatureParameter($$parsedSource as Partial<SignatureParameter>);
+    }
+}
+
+export class SignatureResult {
+    "version": number;
+    "signatures": SignatureEntry[];
+    "activeSignature": number;
+    "activeParameter": number;
+
+    /** Creates a new SignatureResult instance. */
+    constructor($$source: Partial<SignatureResult> = {}) {
+        if (!("version" in $$source)) {
+            this["version"] = 0;
+        }
+        if (!("signatures" in $$source)) {
+            this["signatures"] = [];
+        }
+        if (!("activeSignature" in $$source)) {
+            this["activeSignature"] = 0;
+        }
+        if (!("activeParameter" in $$source)) {
+            this["activeParameter"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SignatureResult instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SignatureResult {
+        const $$createField1_0 = $$createType21;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("signatures" in $$parsedSource) {
+            $$parsedSource["signatures"] = $$createField1_0($$parsedSource["signatures"]);
+        }
+        return new SignatureResult($$parsedSource as Partial<SignatureResult>);
+    }
+}
+
+export class SymbolNode {
+    "name": string;
+    "detail"?: string;
+    "kind": number;
+    "range": EditorRange;
+    "selectionRange": EditorRange;
+    "children"?: SymbolNode[];
+
+    /** Creates a new SymbolNode instance. */
+    constructor($$source: Partial<SymbolNode> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("kind" in $$source)) {
+            this["kind"] = 0;
+        }
+        if (!("range" in $$source)) {
+            this["range"] = (new EditorRange());
+        }
+        if (!("selectionRange" in $$source)) {
+            this["selectionRange"] = (new EditorRange());
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SymbolNode instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SymbolNode {
+        const $$createField3_0 = $$createType0;
+        const $$createField4_0 = $$createType0;
+        const $$createField5_0 = $$createType9;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("range" in $$parsedSource) {
+            $$parsedSource["range"] = $$createField3_0($$parsedSource["range"]);
+        }
+        if ("selectionRange" in $$parsedSource) {
+            $$parsedSource["selectionRange"] = $$createField4_0($$parsedSource["selectionRange"]);
+        }
+        if ("children" in $$parsedSource) {
+            $$parsedSource["children"] = $$createField5_0($$parsedSource["children"]);
+        }
+        return new SymbolNode($$parsedSource as Partial<SymbolNode>);
+    }
+}
 
 export class ToolchainConfiguration {
     "goBinary": string;
@@ -760,7 +1500,7 @@ export class ToolchainConfiguration {
      * Creates a new ToolchainConfiguration instance from a string or object.
      */
     static createFrom($$source: any = {}): ToolchainConfiguration {
-        const $$createField1_0 = $$createType6;
+        const $$createField1_0 = $$createType14;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("environment" in $$parsedSource) {
             $$parsedSource["environment"] = $$createField1_0($$parsedSource["environment"]);
@@ -777,6 +1517,7 @@ export class ToolchainInfo {
     "gopath"?: string;
     "goproxy"?: string;
     "goprivate"?: string;
+    "gomodcache"?: string;
     "error"?: string;
 
     /** Creates a new ToolchainInfo instance. */
@@ -839,7 +1580,7 @@ export class ToolchainInstallation {
      * Creates a new ToolchainInstallation instance from a string or object.
      */
     static createFrom($$source: any = {}): ToolchainInstallation {
-        const $$createField8_0 = $$createType5;
+        const $$createField8_0 = $$createType13;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("log" in $$parsedSource) {
             $$parsedSource["log"] = $$createField8_0($$parsedSource["log"]);
@@ -893,12 +1634,89 @@ export class ToolchainRelease {
     }
 }
 
+export class WorkspaceChange {
+    "label"?: string;
+    "files": FileChange[];
+
+    /** Creates a new WorkspaceChange instance. */
+    constructor($$source: Partial<WorkspaceChange> = {}) {
+        if (!("files" in $$source)) {
+            this["files"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new WorkspaceChange instance from a string or object.
+     */
+    static createFrom($$source: any = {}): WorkspaceChange {
+        const $$createField1_0 = $$createType23;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("files" in $$parsedSource) {
+            $$parsedSource["files"] = $$createField1_0($$parsedSource["files"]);
+        }
+        return new WorkspaceChange($$parsedSource as Partial<WorkspaceChange>);
+    }
+}
+
+export class WorkspaceSymbol {
+    "name": string;
+    "kind": number;
+    "container"?: string;
+    "location": EditorLocation;
+
+    /** Creates a new WorkspaceSymbol instance. */
+    constructor($$source: Partial<WorkspaceSymbol> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("kind" in $$source)) {
+            this["kind"] = 0;
+        }
+        if (!("location" in $$source)) {
+            this["location"] = (new EditorLocation());
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new WorkspaceSymbol instance from a string or object.
+     */
+    static createFrom($$source: any = {}): WorkspaceSymbol {
+        const $$createField3_0 = $$createType24;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("location" in $$parsedSource) {
+            $$parsedSource["location"] = $$createField3_0($$parsedSource["location"]);
+        }
+        return new WorkspaceSymbol($$parsedSource as Partial<WorkspaceSymbol>);
+    }
+}
+
 // Private type creation functions
-const $$createType0 = GoDependency.createFrom;
-const $$createType1 = $Create.Array($$createType0);
-const $$createType2 = Document.createFrom;
-const $$createType3 = GoModule.createFrom;
-const $$createType4 = $Create.Array($$createType3);
-const $$createType5 = $Create.Array($Create.Any);
-const $$createType6 = $Create.Map($Create.Any, $Create.Any);
-const $$createType7 = Project.createFrom;
+const $$createType0 = EditorRange.createFrom;
+const $$createType1 = $Create.Nullable($$createType0);
+const $$createType2 = EditorTextEdit.createFrom;
+const $$createType3 = $Create.Array($$createType2);
+const $$createType4 = CompletionEntry.createFrom;
+const $$createType5 = $Create.Array($$createType4);
+const $$createType6 = GoDependency.createFrom;
+const $$createType7 = $Create.Array($$createType6);
+const $$createType8 = SymbolNode.createFrom;
+const $$createType9 = $Create.Array($$createType8);
+const $$createType10 = Document.createFrom;
+const $$createType11 = GoModule.createFrom;
+const $$createType12 = $Create.Array($$createType11);
+const $$createType13 = $Create.Array($Create.Any);
+const $$createType14 = $Create.Map($Create.Any, $Create.Any);
+const $$createType15 = SearchMatch.createFrom;
+const $$createType16 = $Create.Array($$createType15);
+const $$createType17 = Project.createFrom;
+const $$createType18 = SignatureParameter.createFrom;
+const $$createType19 = $Create.Array($$createType18);
+const $$createType20 = SignatureEntry.createFrom;
+const $$createType21 = $Create.Array($$createType20);
+const $$createType22 = FileChange.createFrom;
+const $$createType23 = $Create.Array($$createType22);
+const $$createType24 = EditorLocation.createFrom;

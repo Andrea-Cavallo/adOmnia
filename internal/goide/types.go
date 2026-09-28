@@ -58,6 +58,8 @@ type Document struct {
 	Language     string     `json:"language"`
 	Version      int        `json:"version"`
 	Dirty        bool       `json:"dirty"`
+	ReadOnly     bool       `json:"readOnly,omitempty"`
+	External     bool       `json:"external,omitempty"`
 }
 
 type OpenDocument struct {

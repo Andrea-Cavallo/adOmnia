@@ -3,6 +3,7 @@ package main
 import (
 	"adomnia/internal/goide"
 	"adomnia/internal/storage"
+	"context"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -223,6 +224,121 @@ func (g *GoIDE) ListRuns(sessionID string) ([]goide.Execution, error) {
 // HasActiveRuns indica se la sessione possiede processi attivi.
 func (g *GoIDE) HasActiveRuns(sessionID string) bool {
 	return g.service.HasActiveRuns(sessionID)
+}
+
+// DetectGopls individua gopls e ne legge la versione.
+func (g *GoIDE) DetectGopls(sessionID string) (goide.GoplsInfo, error) {
+	return g.service.DetectGopls(sessionID)
+}
+
+// ConfigureGopls imposta un binario gopls personalizzato; vuoto ripristina la ricerca automatica.
+func (g *GoIDE) ConfigureGopls(sessionID, binary string) error {
+	return g.service.ConfigureGopls(sessionID, binary)
+}
+
+// InstallGopls installa gopls nella cartella strumenti di adOmnia dopo conferma esplicita.
+func (g *GoIDE) InstallGopls(sessionID string, confirmed bool) (goide.Execution, error) {
+	return g.service.InstallGopls(sessionID, confirmed)
+}
+
+// StartLanguageServer avvia gopls per un progetto autorizzato.
+func (g *GoIDE) StartLanguageServer(sessionID string, settings goide.LanguageServerSettings) (goide.LanguageServerStatus, error) {
+	return g.service.StartLanguageServer(sessionID, settings)
+}
+
+// RestartLanguageServer riavvia gopls azzerando il contatore dei crash.
+func (g *GoIDE) RestartLanguageServer(sessionID string, settings goide.LanguageServerSettings) (goide.LanguageServerStatus, error) {
+	return g.service.RestartLanguageServer(sessionID, settings)
+}
+
+// StopLanguageServer arresta gopls della sessione.
+func (g *GoIDE) StopLanguageServer(sessionID string) error {
+	return g.service.StopLanguageServer(sessionID)
+}
+
+// GetLanguageServerStatus restituisce lo stato di gopls per la sessione.
+func (g *GoIDE) GetLanguageServerStatus(sessionID string) (goide.LanguageServerStatus, error) {
+	return g.service.LanguageServerStatus(sessionID)
+}
+
+// GetLanguageServerLog restituisce le ultime righe di log gopls.
+func (g *GoIDE) GetLanguageServerLog(sessionID string) ([]string, error) {
+	return g.service.LanguageServerLog(sessionID)
+}
+
+// UpdateDocumentBuffer sincronizza il buffer non salvato con gopls.
+func (g *GoIDE) UpdateDocumentBuffer(sessionID, documentID string, version int, text string) error {
+	return g.service.UpdateDocumentBuffer(sessionID, documentID, version, text)
+}
+
+// OpenExternalDocument apre in sola lettura un sorgente dell'SDK Go o della module cache.
+func (g *GoIDE) OpenExternalDocument(sessionID, path string) (goide.OpenDocument, error) {
+	return g.service.OpenExternalDocument(sessionID, path)
+}
+
+// Completion restituisce i suggerimenti gopls; la richiesta si annulla con la promise frontend.
+func (g *GoIDE) Completion(ctx context.Context, sessionID, documentID string, line, column int) (goide.CompletionResult, error) {
+	return g.service.Completion(ctx, sessionID, documentID, line, column)
+}
+
+// Hover restituisce la documentazione del simbolo sotto il cursore.
+func (g *GoIDE) Hover(ctx context.Context, sessionID, documentID string, line, column int) (goide.HoverResult, error) {
+	return g.service.Hover(ctx, sessionID, documentID, line, column)
+}
+
+// SignatureHelp restituisce la firma della chiamata in corso.
+func (g *GoIDE) SignatureHelp(ctx context.Context, sessionID, documentID string, line, column int) (goide.SignatureResult, error) {
+	return g.service.SignatureHelp(ctx, sessionID, documentID, line, column)
+}
+
+// Locations esegue definition, typeDefinition, implementation o references.
+func (g *GoIDE) Locations(ctx context.Context, sessionID, documentID, kind string, line, column int) ([]goide.EditorLocation, error) {
+	return g.service.Locations(ctx, sessionID, documentID, kind, line, column)
+}
+
+// DocumentSymbols restituisce la struttura del file.
+func (g *GoIDE) DocumentSymbols(ctx context.Context, sessionID, documentID string) (goide.DocumentSymbolsResult, error) {
+	return g.service.DocumentSymbols(ctx, sessionID, documentID)
+}
+
+// WorkspaceSymbols cerca simboli nel workspace.
+func (g *GoIDE) WorkspaceSymbols(ctx context.Context, sessionID, query string) ([]goide.WorkspaceSymbol, error) {
+	return g.service.WorkspaceSymbols(ctx, sessionID, query)
+}
+
+// PrepareRename verifica il simbolo da rinominare.
+func (g *GoIDE) PrepareRename(ctx context.Context, sessionID, documentID string, line, column int) (goide.RenameTarget, error) {
+	return g.service.PrepareRename(ctx, sessionID, documentID, line, column)
+}
+
+// Rename calcola l'anteprima del rename semantico.
+func (g *GoIDE) Rename(ctx context.Context, sessionID, documentID string, line, column int, newName string) (goide.WorkspaceChange, error) {
+	return g.service.Rename(ctx, sessionID, documentID, line, column, newName)
+}
+
+// FormatDocument restituisce gli edit di formattazione del buffer.
+func (g *GoIDE) FormatDocument(ctx context.Context, sessionID, documentID string) (goide.FormatResult, error) {
+	return g.service.FormatDocument(ctx, sessionID, documentID)
+}
+
+// CodeActions elenca le azioni disponibili per la selezione.
+func (g *GoIDE) CodeActions(ctx context.Context, sessionID, documentID string, selection goide.EditorRange, only []string) ([]goide.CodeActionEntry, error) {
+	return g.service.CodeActions(ctx, sessionID, documentID, selection, only)
+}
+
+// ResolveCodeAction calcola l'anteprima delle modifiche dell'azione.
+func (g *GoIDE) ResolveCodeAction(ctx context.Context, sessionID, actionID string) (goide.WorkspaceChange, error) {
+	return g.service.ResolveCodeAction(ctx, sessionID, actionID)
+}
+
+// OrganizeImports calcola la pulizia degli import del file.
+func (g *GoIDE) OrganizeImports(ctx context.Context, sessionID, documentID string) (goide.WorkspaceChange, error) {
+	return g.service.OrganizeImports(ctx, sessionID, documentID)
+}
+
+// SearchProject cerca testo nel progetto; si annulla con la promise frontend.
+func (g *GoIDE) SearchProject(ctx context.Context, query goide.SearchQuery) (goide.SearchResult, error) {
+	return g.service.SearchProject(ctx, query)
 }
 
 // SetDirtyDocumentCount sincronizza il solo conteggio dei buffer dirty per la chiusura sicura.

@@ -128,6 +128,9 @@ func (m *DocumentManager) SaveDocument(session Session, documentID DocumentID, c
 	if !ok || record.document.SessionID != session.ID {
 		return OpenDocument{}, fmt.Errorf("documento Go Studio non trovato")
 	}
+	if record.document.ReadOnly {
+		return OpenDocument{}, fmt.Errorf("i sorgenti dell'SDK e della module cache sono in sola lettura")
+	}
 	path, err := m.ResolveProjectPath(session.Project, record.document.Path)
 	if err != nil {
 		return OpenDocument{}, err
@@ -163,6 +166,9 @@ func (m *DocumentManager) CheckDocument(session Session, documentID DocumentID, 
 	if !ok || record.document.SessionID != session.ID {
 		return DocumentDiskState{}, fmt.Errorf("documento Go Studio non trovato")
 	}
+	if record.document.ReadOnly {
+		return DocumentDiskState{DocumentID: documentID, DiskToken: expectedDiskToken}, nil
+	}
 	path, err := m.ResolveProjectPath(session.Project, record.document.Path)
 	if err != nil {
 		return DocumentDiskState{}, err
@@ -177,6 +183,50 @@ func (m *DocumentManager) CheckDocument(session Session, documentID DocumentID, 
 		state.Content = content
 	}
 	return state, nil
+}
+
+// OpenExternalDocument apre in sola lettura un file dell'SDK Go o della module cache, confinato alle radici consentite.
+func (m *DocumentManager) OpenExternalDocument(session Session, path string, allowedRoots []string) (OpenDocument, error) {
+	abs, err := filepath.Abs(filepath.Clean(path))
+	if err != nil {
+		return OpenDocument{}, fmt.Errorf("percorso non valido: %w", err)
+	}
+	realPath, err := filepath.EvalSymlinks(abs)
+	if err != nil {
+		return OpenDocument{}, fmt.Errorf("impossibile risolvere il file: %w", err)
+	}
+	if !withinAnyRoot(realPath, allowedRoots) {
+		return OpenDocument{}, fmt.Errorf("il file non appartiene al progetto, all'SDK Go o alla module cache")
+	}
+	content, info, token, err := readTextFile(realPath)
+	if err != nil {
+		return OpenDocument{}, err
+	}
+	document := Document{
+		ID: stableDocumentID(session.ID, realPath), SessionID: session.ID, URI: fileURI(realPath), Path: realPath,
+		RelativePath: filepath.ToSlash(realPath), Name: filepath.Base(realPath), Language: languageForPath(realPath),
+		Version: 1, ReadOnly: true, External: true,
+	}
+	m.mu.Lock()
+	m.documents[document.ID] = documentRecord{document: document, diskToken: token}
+	m.mu.Unlock()
+	return OpenDocument{Document: document, Content: content, DiskToken: token, ModifiedAt: info.ModTime().UTC()}, nil
+}
+
+func withinAnyRoot(path string, roots []string) bool {
+	for _, root := range roots {
+		if strings.TrimSpace(root) == "" {
+			continue
+		}
+		resolved, err := filepath.EvalSymlinks(root)
+		if err != nil {
+			continue
+		}
+		if ensureWithinRoot(resolved, path) == nil {
+			return true
+		}
+	}
+	return false
 }
 
 // CloseDocument rilascia il documento indicato senza toccare il file su disco.

@@ -24,23 +24,33 @@ type ToolchainConfiguration struct {
 }
 
 type ToolchainInfo struct {
-	Available bool   `json:"available"`
-	GoBinary  string `json:"goBinary,omitempty"`
-	Version   string `json:"version,omitempty"`
-	GOROOT    string `json:"goroot,omitempty"`
-	GOPATH    string `json:"gopath,omitempty"`
-	GOPROXY   string `json:"goproxy,omitempty"`
-	GOPRIVATE string `json:"goprivate,omitempty"`
-	Error     string `json:"error,omitempty"`
+	Available  bool   `json:"available"`
+	GoBinary   string `json:"goBinary,omitempty"`
+	Version    string `json:"version,omitempty"`
+	GOROOT     string `json:"goroot,omitempty"`
+	GOPATH     string `json:"gopath,omitempty"`
+	GOPROXY    string `json:"goproxy,omitempty"`
+	GOPRIVATE  string `json:"goprivate,omitempty"`
+	GOMODCACHE string `json:"gomodcache,omitempty"`
+	Error      string `json:"error,omitempty"`
 }
 
 type ToolchainManager struct {
-	mu      sync.RWMutex
-	configs map[SessionID]ToolchainConfiguration
+	mu       sync.RWMutex
+	configs  map[SessionID]ToolchainConfiguration
+	detected map[SessionID]ToolchainInfo
 }
 
 func NewToolchainManager() *ToolchainManager {
-	return &ToolchainManager{configs: make(map[SessionID]ToolchainConfiguration)}
+	return &ToolchainManager{configs: make(map[SessionID]ToolchainConfiguration), detected: make(map[SessionID]ToolchainInfo)}
+}
+
+// LastDetected restituisce l'ultimo rilevamento riuscito per la sessione.
+func (m *ToolchainManager) LastDetected(sessionID SessionID) (ToolchainInfo, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	info, ok := m.detected[sessionID]
+	return info, ok && info.Available
 }
 
 // Configure convalida il binario Go e le sole variabili esplicitamente definite per la sessione.
@@ -76,6 +86,14 @@ func (m *ToolchainManager) Configure(sessionID SessionID, config ToolchainConfig
 
 // Detect esegue esclusivamente comandi informativi della toolchain con timeout e output limitato.
 func (m *ToolchainManager) Detect(session Session) ToolchainInfo {
+	info := m.detect(session)
+	m.mu.Lock()
+	m.detected[session.ID] = info
+	m.mu.Unlock()
+	return info
+}
+
+func (m *ToolchainManager) detect(session Session) ToolchainInfo {
 	config := m.Configuration(session.ID)
 	binary, err := resolveGoBinary(config.GoBinary)
 	if err != nil {
@@ -87,22 +105,23 @@ func (m *ToolchainManager) Detect(session Session) ToolchainInfo {
 	if err != nil {
 		return ToolchainInfo{Available: false, GoBinary: binary, Error: err.Error()}
 	}
-	environment, err := runToolchainQuery(ctx, binary, session.Project.RealPath, config.Environment, "env", "GOROOT", "GOPATH", "GOPROXY", "GOPRIVATE")
+	environment, err := runToolchainQuery(ctx, binary, session.Project.RealPath, config.Environment, "env", "GOROOT", "GOPATH", "GOPROXY", "GOPRIVATE", "GOMODCACHE")
 	if err != nil {
 		return ToolchainInfo{Available: false, GoBinary: binary, Version: strings.TrimSpace(version), Error: err.Error()}
 	}
 	lines := strings.Split(strings.ReplaceAll(environment, "\r\n", "\n"), "\n")
-	for len(lines) < 4 {
+	for len(lines) < 5 {
 		lines = append(lines, "")
 	}
 	return ToolchainInfo{
-		Available: true,
-		GoBinary:  binary,
-		Version:   strings.TrimSpace(version),
-		GOROOT:    strings.TrimSpace(lines[0]),
-		GOPATH:    strings.TrimSpace(lines[1]),
-		GOPROXY:   sanitizeToolchainValue(lines[2]),
-		GOPRIVATE: sanitizeToolchainValue(lines[3]),
+		Available:  true,
+		GoBinary:   binary,
+		Version:    strings.TrimSpace(version),
+		GOROOT:     strings.TrimSpace(lines[0]),
+		GOPATH:     strings.TrimSpace(lines[1]),
+		GOPROXY:    sanitizeToolchainValue(lines[2]),
+		GOPRIVATE:  sanitizeToolchainValue(lines[3]),
+		GOMODCACHE: strings.TrimSpace(lines[4]),
 	}
 }
 
@@ -161,6 +180,7 @@ func (m *ToolchainManager) Environment(sessionID SessionID, overrides map[string
 func (m *ToolchainManager) CloseSession(sessionID SessionID) {
 	m.mu.Lock()
 	delete(m.configs, sessionID)
+	delete(m.detected, sessionID)
 	m.mu.Unlock()
 }
 
