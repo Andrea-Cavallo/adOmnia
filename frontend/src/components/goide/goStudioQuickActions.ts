@@ -1,6 +1,10 @@
 import { selectGoIDEFolder, startGoIDEDependencyAction, type GoIDESession } from '@/lib/goide-api'
 import { confirm } from '@/lib/confirmDialog'
+import { useGoIDETestsStore } from '@/stores/goideTests'
 import { activeGoIDEDocument, useGoIDEStore, type GoIDEEditorDocument, type GoIDEQuickRunKind } from '@/stores/goide'
+import type { GoIDETestRunRequest } from '@/lib/goide-tests-api'
+import { runPatternFor } from './goStudioTestTree'
+import type { GoStudioRunTarget } from './goStudioRunTargets'
 import { goModActionNeedsConfirmation, goModCommandLine, type GoModDependencyAction } from './goStudioGoMod'
 
 /** Ampiezza di un comando rapido: il package del file corrente o tutto il modulo (./...). */
@@ -79,12 +83,17 @@ function editableRelativePath(document: GoIDEEditorDocument | null): string | nu
 }
 
 /** Lancia un comando go rapido sul package del file attivo o sull'intero modulo. */
-export async function runGoStudioQuickCommand(kind: GoIDEQuickRunKind, scope: GoStudioQuickScope, document?: GoIDEEditorDocument | null): Promise<void> {
+export async function runGoStudioQuickCommand(kind: GoIDEQuickRunKind, scope: GoStudioQuickScope, document?: GoIDEEditorDocument | null, options: { coverage?: boolean } = {}): Promise<void> {
   const state = useGoIDEStore.getState()
   const session = trustedSession(document?.document.sessionId ?? state.activeSessionId)
   if (!session) return
   const source = document === undefined ? activeGoIDEDocument(state) : document
   const request = quickRunFor(kind, scope, moduleScopeFor(session, editableRelativePath(source)))
+  // I test passano dal runner strutturato (albero, rerun, coverage), non dalla console grezza.
+  if (kind === 'test') {
+    await useGoIDETestsStore.getState().start({ sessionId: session.id, workingDirectory: request.workingDirectory, packages: [request.target], coverage: options.coverage ?? false })
+    return
+  }
   await state.startRun(kind, { target: request.target, workingDirectory: request.workingDirectory })
 }
 
@@ -139,4 +148,12 @@ export async function runModuleDependencyAction(action: Extract<GoModDependencyA
   const goMod = state.documents.find((item) => item.document.sessionId === session.id && item.document.relativePath === (moduleDirectory ? `${moduleDirectory}/go.mod` : 'go.mod'))
   if (goMod?.dirty && !await state.saveDocument(goMod.document.id)) return
   await startDependencyAction({ sessionId: session.id, moduleDirectory, action, modulePath: '' }, '')
+}
+
+/** Richiesta per il ▶ nel gutter di un test o benchmark: solo quella funzione, nel suo modulo. */
+export function testRequestForTarget(session: Pick<GoIDESession, 'id' | 'project'>, target: GoStudioRunTarget, coverage = false): GoIDETestRunRequest {
+  const scope = moduleScopeFor(session, `${target.packagePath.replace(/^\.\/?/, '')}/_.go`)
+  const pattern = runPatternFor(target.name)
+  const benchmark = target.kind === 'benchmark'
+  return { sessionId: session.id, workingDirectory: scope.moduleDirectory, packages: [scope.packageTarget], run: benchmark ? '' : pattern, bench: benchmark ? pattern : '', coverage }
 }

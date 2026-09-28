@@ -250,6 +250,7 @@ func (s *Service) CloseSession(id string) error {
 	delete(s.lint.custom, sessionID)
 	s.lint.mu.Unlock()
 	s.runConfigs.CloseSession(sessionID)
+	s.tests.CloseSession(sessionID)
 	if err := s.recovery.ForgetSession(sessionID); err != nil {
 		return err
 	}

@@ -224,6 +224,22 @@ export function GetSessionView(sessionID: string): $CancellablePromise<goide$0.S
 }
 
 /**
+ * GetTestOutput restituisce l'output di un solo test.
+ */
+export function GetTestOutput(runID: string, nodeID: string): $CancellablePromise<string> {
+    return $Call.ByID(1880778095, runID, nodeID);
+}
+
+/**
+ * GetTestRun restituisce un'esecuzione di test con l'output di ogni nodo.
+ */
+export function GetTestRun(runID: string): $CancellablePromise<goide$0.TestRunSnapshot> {
+    return $Call.ByID(1756958655, runID).then(($result: any) => {
+        return $$createType17($result);
+    });
+}
+
+/**
  * HasActiveRuns indica se la sessione possiede processi attivi.
  */
 export function HasActiveRuns(sessionID: string): $CancellablePromise<boolean> {
@@ -242,7 +258,7 @@ export function HasActiveTerminals(sessionID: string): $CancellablePromise<boole
  */
 export function Hover(sessionID: string, documentID: string, line: number, column: number): $CancellablePromise<goide$0.HoverResult> {
     return $Call.ByID(3429230612, sessionID, documentID, line, column).then(($result: any) => {
-        return $$createType17($result);
+        return $$createType18($result);
     });
 }
 
@@ -251,7 +267,7 @@ export function Hover(sessionID: string, documentID: string, line: number, colum
  */
 export function InlayHints(sessionID: string, documentID: string, visible: goide$0.EditorRange): $CancellablePromise<goide$0.InlayHintsResult> {
     return $Call.ByID(75205433, sessionID, documentID, visible).then(($result: any) => {
-        return $$createType18($result);
+        return $$createType19($result);
     });
 }
 
@@ -260,7 +276,7 @@ export function InlayHints(sessionID: string, documentID: string, visible: goide
  */
 export function InstallGopls(sessionID: string, confirmed: boolean): $CancellablePromise<goide$0.Execution> {
     return $Call.ByID(950784120, sessionID, confirmed).then(($result: any) => {
-        return $$createType19($result);
+        return $$createType20($result);
     });
 }
 
@@ -269,7 +285,7 @@ export function InstallGopls(sessionID: string, confirmed: boolean): $Cancellabl
  */
 export function InstallLinter(sessionID: string, kind: string, confirmed: boolean): $CancellablePromise<goide$0.Execution> {
     return $Call.ByID(576546735, sessionID, kind, confirmed).then(($result: any) => {
-        return $$createType19($result);
+        return $$createType20($result);
     });
 }
 
@@ -278,7 +294,7 @@ export function InstallLinter(sessionID: string, kind: string, confirmed: boolea
  */
 export function InstallToolchain(request: goide$0.InstallToolchainRequest): $CancellablePromise<goide$0.ToolchainInstallation> {
     return $Call.ByID(1084560520, request).then(($result: any) => {
-        return $$createType20($result);
+        return $$createType21($result);
     });
 }
 
@@ -287,7 +303,7 @@ export function InstallToolchain(request: goide$0.InstallToolchainRequest): $Can
  */
 export function ListDependencies(sessionID: string, moduleDirectory: string): $CancellablePromise<goide$0.DependencyState> {
     return $Call.ByID(2974208523, sessionID, moduleDirectory).then(($result: any) => {
-        return $$createType21($result);
+        return $$createType22($result);
     });
 }
 
@@ -296,7 +312,7 @@ export function ListDependencies(sessionID: string, moduleDirectory: string): $C
  */
 export function ListDirectory(sessionID: string, relativePath: string, includeIgnored: boolean): $CancellablePromise<goide$0.FileEntry[]> {
     return $Call.ByID(837250229, sessionID, relativePath, includeIgnored).then(($result: any) => {
-        return $$createType23($result);
+        return $$createType24($result);
     });
 }
 
@@ -305,7 +321,7 @@ export function ListDirectory(sessionID: string, relativePath: string, includeIg
  */
 export function ListInstalledToolchains(sessionID: string): $CancellablePromise<goide$0.InstalledToolchain[]> {
     return $Call.ByID(2475261184, sessionID).then(($result: any) => {
-        return $$createType25($result);
+        return $$createType26($result);
     });
 }
 
@@ -314,7 +330,7 @@ export function ListInstalledToolchains(sessionID: string): $CancellablePromise<
  */
 export function ListRecentProjects(): $CancellablePromise<goide$0.RecentProject[]> {
     return $Call.ByID(20282631).then(($result: any) => {
-        return $$createType27($result);
+        return $$createType28($result);
     });
 }
 
@@ -323,7 +339,7 @@ export function ListRecentProjects(): $CancellablePromise<goide$0.RecentProject[
  */
 export function ListRecoveredBuffers(sessionID: string): $CancellablePromise<goide$0.RecoveredBuffer[]> {
     return $Call.ByID(1873457286, sessionID).then(($result: any) => {
-        return $$createType29($result);
+        return $$createType30($result);
     });
 }
 
@@ -332,7 +348,7 @@ export function ListRecoveredBuffers(sessionID: string): $CancellablePromise<goi
  */
 export function ListRunConfigurations(sessionID: string): $CancellablePromise<goide$0.RunConfiguration[]> {
     return $Call.ByID(2220453324, sessionID).then(($result: any) => {
-        return $$createType30($result);
+        return $$createType31($result);
     });
 }
 
@@ -341,7 +357,7 @@ export function ListRunConfigurations(sessionID: string): $CancellablePromise<go
  */
 export function ListRuns(sessionID: string): $CancellablePromise<goide$0.Execution[]> {
     return $Call.ByID(1260420124, sessionID).then(($result: any) => {
-        return $$createType31($result);
+        return $$createType32($result);
     });
 }
 
@@ -359,7 +375,16 @@ export function ListSessions(): $CancellablePromise<goide$0.Session[]> {
  */
 export function ListTerminals(sessionID: string): $CancellablePromise<goide$0.TerminalSession[]> {
     return $Call.ByID(1696358663, sessionID).then(($result: any) => {
-        return $$createType33($result);
+        return $$createType34($result);
+    });
+}
+
+/**
+ * ListTestRuns restituisce le esecuzioni di test della sessione, dalla più recente.
+ */
+export function ListTestRuns(sessionID: string): $CancellablePromise<goide$0.TestRunSnapshot[]> {
+    return $Call.ByID(2118292916, sessionID).then(($result: any) => {
+        return $$createType35($result);
     });
 }
 
@@ -368,7 +393,7 @@ export function ListTerminals(sessionID: string): $CancellablePromise<goide$0.Te
  */
 export function ListToolchainReleases(sessionID: string): $CancellablePromise<goide$0.ToolchainRelease[]> {
     return $Call.ByID(2275849171, sessionID).then(($result: any) => {
-        return $$createType35($result);
+        return $$createType37($result);
     });
 }
 
@@ -377,7 +402,7 @@ export function ListToolchainReleases(sessionID: string): $CancellablePromise<go
  */
 export function Locations(sessionID: string, documentID: string, kind: string, line: number, column: number): $CancellablePromise<goide$0.EditorLocation[]> {
     return $Call.ByID(326701862, sessionID, documentID, kind, line, column).then(($result: any) => {
-        return $$createType37($result);
+        return $$createType39($result);
     });
 }
 
@@ -386,7 +411,7 @@ export function Locations(sessionID: string, documentID: string, kind: string, l
  */
 export function OpenDocument(sessionID: string, relativePath: string): $CancellablePromise<goide$0.OpenDocument> {
     return $Call.ByID(3794134535, sessionID, relativePath).then(($result: any) => {
-        return $$createType38($result);
+        return $$createType40($result);
     });
 }
 
@@ -395,7 +420,7 @@ export function OpenDocument(sessionID: string, relativePath: string): $Cancella
  */
 export function OpenExternalDocument(sessionID: string, path: string): $CancellablePromise<goide$0.OpenDocument> {
     return $Call.ByID(3817412392, sessionID, path).then(($result: any) => {
-        return $$createType38($result);
+        return $$createType40($result);
     });
 }
 
@@ -413,7 +438,7 @@ export function OpenProject(path: string): $CancellablePromise<goide$0.Session> 
  */
 export function OpenTerminal(request: goide$0.TerminalRequest): $CancellablePromise<goide$0.TerminalSession> {
     return $Call.ByID(4136168338, request).then(($result: any) => {
-        return $$createType32($result);
+        return $$createType33($result);
     });
 }
 
@@ -422,7 +447,7 @@ export function OpenTerminal(request: goide$0.TerminalRequest): $CancellableProm
  */
 export function OrganizeImports(sessionID: string, documentID: string): $CancellablePromise<goide$0.WorkspaceChange> {
     return $Call.ByID(1128610991, sessionID, documentID).then(($result: any) => {
-        return $$createType39($result);
+        return $$createType41($result);
     });
 }
 
@@ -431,7 +456,7 @@ export function OrganizeImports(sessionID: string, documentID: string): $Cancell
  */
 export function PrepareRename(sessionID: string, documentID: string, line: number, column: number): $CancellablePromise<goide$0.RenameTarget> {
     return $Call.ByID(2777806199, sessionID, documentID, line, column).then(($result: any) => {
-        return $$createType40($result);
+        return $$createType42($result);
     });
 }
 
@@ -449,7 +474,7 @@ export function PruneMissingSessions(): $CancellablePromise<goide$0.Session[]> {
  */
 export function QuickDefinition(sessionID: string, documentID: string, line: number, column: number): $CancellablePromise<goide$0.QuickDefinitionResult> {
     return $Call.ByID(3849385104, sessionID, documentID, line, column).then(($result: any) => {
-        return $$createType41($result);
+        return $$createType43($result);
     });
 }
 
@@ -458,7 +483,7 @@ export function QuickDefinition(sessionID: string, documentID: string, line: num
  */
 export function QuickOpen(sessionID: string, query: string, limit: number): $CancellablePromise<goide$0.QuickOpenResult[]> {
     return $Call.ByID(2164854073, sessionID, query, limit).then(($result: any) => {
-        return $$createType43($result);
+        return $$createType45($result);
     });
 }
 
@@ -467,7 +492,7 @@ export function QuickOpen(sessionID: string, query: string, limit: number): $Can
  */
 export function RecursiveCalls(sessionID: string, documentID: string): $CancellablePromise<goide$0.RecursiveCallsResult> {
     return $Call.ByID(2923315195, sessionID, documentID).then(($result: any) => {
-        return $$createType44($result);
+        return $$createType46($result);
     });
 }
 
@@ -497,7 +522,7 @@ export function RemoveRecentProject(path: string): $CancellablePromise<void> {
  */
 export function Rename(sessionID: string, documentID: string, line: number, column: number, newName: string): $CancellablePromise<goide$0.WorkspaceChange> {
     return $Call.ByID(2412201980, sessionID, documentID, line, column, newName).then(($result: any) => {
-        return $$createType39($result);
+        return $$createType41($result);
     });
 }
 
@@ -515,7 +540,7 @@ export function RenameRunConfiguration(sessionID: string, configID: string, name
  */
 export function ReorderRunConfigurations(sessionID: string, configIDs: string[]): $CancellablePromise<goide$0.RunConfiguration[]> {
     return $Call.ByID(2094160389, sessionID, configIDs).then(($result: any) => {
-        return $$createType30($result);
+        return $$createType31($result);
     });
 }
 
@@ -531,7 +556,7 @@ export function ResizeTerminal(terminalID: string, columns: number, rows: number
  */
 export function ResolveCodeAction(sessionID: string, actionID: string): $CancellablePromise<goide$0.WorkspaceChange> {
     return $Call.ByID(478250469, sessionID, actionID).then(($result: any) => {
-        return $$createType39($result);
+        return $$createType41($result);
     });
 }
 
@@ -549,7 +574,7 @@ export function RestartLanguageServer(sessionID: string, settings: goide$0.Langu
  */
 export function RestartRun(runID: string): $CancellablePromise<goide$0.Execution> {
     return $Call.ByID(41995706, runID).then(($result: any) => {
-        return $$createType19($result);
+        return $$createType20($result);
     });
 }
 
@@ -558,7 +583,7 @@ export function RestartRun(runID: string): $CancellablePromise<goide$0.Execution
  */
 export function RunLint(sessionID: string): $CancellablePromise<goide$0.LintResult> {
     return $Call.ByID(1402341846, sessionID).then(($result: any) => {
-        return $$createType45($result);
+        return $$createType47($result);
     });
 }
 
@@ -567,7 +592,7 @@ export function RunLint(sessionID: string): $CancellablePromise<goide$0.LintResu
  */
 export function SaveDocument(sessionID: string, documentID: string, content: string, diskToken: string, force: boolean): $CancellablePromise<goide$0.OpenDocument> {
     return $Call.ByID(3463741930, sessionID, documentID, content, diskToken, force).then(($result: any) => {
-        return $$createType38($result);
+        return $$createType40($result);
     });
 }
 
@@ -592,7 +617,7 @@ export function SaveSessionView(sessionID: string, view: goide$0.SessionView): $
  */
 export function SearchProject(query: goide$0.SearchQuery): $CancellablePromise<goide$0.SearchResult> {
     return $Call.ByID(1135993643, query).then(($result: any) => {
-        return $$createType46($result);
+        return $$createType48($result);
     });
 }
 
@@ -629,7 +654,7 @@ export function SelectProjectParent(): $CancellablePromise<string> {
  */
 export function SemanticTokens(sessionID: string, documentID: string): $CancellablePromise<goide$0.SemanticTokensResult> {
     return $Call.ByID(330697916, sessionID, documentID).then(($result: any) => {
-        return $$createType47($result);
+        return $$createType49($result);
     });
 }
 
@@ -654,7 +679,7 @@ export function SetToolAuthorization(id: string, allowed: boolean): $Cancellable
  */
 export function SignatureHelp(sessionID: string, documentID: string, line: number, column: number): $CancellablePromise<goide$0.SignatureResult> {
     return $Call.ByID(4264674347, sessionID, documentID, line, column).then(($result: any) => {
-        return $$createType48($result);
+        return $$createType50($result);
     });
 }
 
@@ -663,7 +688,7 @@ export function SignatureHelp(sessionID: string, documentID: string, line: numbe
  */
 export function StartConfiguredRun(sessionID: string, configID: string, secrets: { [_ in string]?: string }): $CancellablePromise<goide$0.Execution> {
     return $Call.ByID(3106256291, sessionID, configID, secrets).then(($result: any) => {
-        return $$createType19($result);
+        return $$createType20($result);
     });
 }
 
@@ -672,7 +697,7 @@ export function StartConfiguredRun(sessionID: string, configID: string, secrets:
  */
 export function StartDependencyAction(request: goide$0.DependencyActionRequest): $CancellablePromise<goide$0.Execution> {
     return $Call.ByID(967215541, request).then(($result: any) => {
-        return $$createType19($result);
+        return $$createType20($result);
     });
 }
 
@@ -690,7 +715,16 @@ export function StartLanguageServer(sessionID: string, settings: goide$0.Languag
  */
 export function StartRun(request: goide$0.RunRequest): $CancellablePromise<goide$0.Execution> {
     return $Call.ByID(39043755, request).then(($result: any) => {
-        return $$createType19($result);
+        return $$createType20($result);
+    });
+}
+
+/**
+ * StartTests avvia go test -json; l'albero dei risultati arriva con gli eventi tests.updated.
+ */
+export function StartTests(request: goide$0.TestRunRequest): $CancellablePromise<goide$0.TestRunSnapshot> {
+    return $Call.ByID(224644795, request).then(($result: any) => {
+        return $$createType17($result);
     });
 }
 
@@ -720,7 +754,7 @@ export function UpdateDocumentBuffer(sessionID: string, documentID: string, vers
  */
 export function WorkspaceSymbols(sessionID: string, query: string): $CancellablePromise<goide$0.WorkspaceSymbol[]> {
     return $Call.ByID(3951183568, sessionID, query).then(($result: any) => {
-        return $$createType50($result);
+        return $$createType52($result);
     });
 }
 
@@ -756,37 +790,39 @@ const $$createType13 = goide$0.Capabilities.createFrom;
 const $$createType14 = $Create.Array($Create.Any);
 const $$createType15 = goide$0.LanguageServerStatus.createFrom;
 const $$createType16 = goide$0.SessionView.createFrom;
-const $$createType17 = goide$0.HoverResult.createFrom;
-const $$createType18 = goide$0.InlayHintsResult.createFrom;
-const $$createType19 = goide$0.Execution.createFrom;
-const $$createType20 = goide$0.ToolchainInstallation.createFrom;
-const $$createType21 = goide$0.DependencyState.createFrom;
-const $$createType22 = goide$0.FileEntry.createFrom;
-const $$createType23 = $Create.Array($$createType22);
-const $$createType24 = goide$0.InstalledToolchain.createFrom;
-const $$createType25 = $Create.Array($$createType24);
-const $$createType26 = goide$0.RecentProject.createFrom;
-const $$createType27 = $Create.Array($$createType26);
-const $$createType28 = goide$0.RecoveredBuffer.createFrom;
-const $$createType29 = $Create.Array($$createType28);
-const $$createType30 = $Create.Array($$createType10);
-const $$createType31 = $Create.Array($$createType19);
-const $$createType32 = goide$0.TerminalSession.createFrom;
-const $$createType33 = $Create.Array($$createType32);
-const $$createType34 = goide$0.ToolchainRelease.createFrom;
-const $$createType35 = $Create.Array($$createType34);
-const $$createType36 = goide$0.EditorLocation.createFrom;
+const $$createType17 = goide$0.TestRunSnapshot.createFrom;
+const $$createType18 = goide$0.HoverResult.createFrom;
+const $$createType19 = goide$0.InlayHintsResult.createFrom;
+const $$createType20 = goide$0.Execution.createFrom;
+const $$createType21 = goide$0.ToolchainInstallation.createFrom;
+const $$createType22 = goide$0.DependencyState.createFrom;
+const $$createType23 = goide$0.FileEntry.createFrom;
+const $$createType24 = $Create.Array($$createType23);
+const $$createType25 = goide$0.InstalledToolchain.createFrom;
+const $$createType26 = $Create.Array($$createType25);
+const $$createType27 = goide$0.RecentProject.createFrom;
+const $$createType28 = $Create.Array($$createType27);
+const $$createType29 = goide$0.RecoveredBuffer.createFrom;
+const $$createType30 = $Create.Array($$createType29);
+const $$createType31 = $Create.Array($$createType10);
+const $$createType32 = $Create.Array($$createType20);
+const $$createType33 = goide$0.TerminalSession.createFrom;
+const $$createType34 = $Create.Array($$createType33);
+const $$createType35 = $Create.Array($$createType17);
+const $$createType36 = goide$0.ToolchainRelease.createFrom;
 const $$createType37 = $Create.Array($$createType36);
-const $$createType38 = goide$0.OpenDocument.createFrom;
-const $$createType39 = goide$0.WorkspaceChange.createFrom;
-const $$createType40 = goide$0.RenameTarget.createFrom;
-const $$createType41 = goide$0.QuickDefinitionResult.createFrom;
-const $$createType42 = goide$0.QuickOpenResult.createFrom;
-const $$createType43 = $Create.Array($$createType42);
-const $$createType44 = goide$0.RecursiveCallsResult.createFrom;
-const $$createType45 = goide$0.LintResult.createFrom;
-const $$createType46 = goide$0.SearchResult.createFrom;
-const $$createType47 = goide$0.SemanticTokensResult.createFrom;
-const $$createType48 = goide$0.SignatureResult.createFrom;
-const $$createType49 = goide$0.WorkspaceSymbol.createFrom;
-const $$createType50 = $Create.Array($$createType49);
+const $$createType38 = goide$0.EditorLocation.createFrom;
+const $$createType39 = $Create.Array($$createType38);
+const $$createType40 = goide$0.OpenDocument.createFrom;
+const $$createType41 = goide$0.WorkspaceChange.createFrom;
+const $$createType42 = goide$0.RenameTarget.createFrom;
+const $$createType43 = goide$0.QuickDefinitionResult.createFrom;
+const $$createType44 = goide$0.QuickOpenResult.createFrom;
+const $$createType45 = $Create.Array($$createType44);
+const $$createType46 = goide$0.RecursiveCallsResult.createFrom;
+const $$createType47 = goide$0.LintResult.createFrom;
+const $$createType48 = goide$0.SearchResult.createFrom;
+const $$createType49 = goide$0.SemanticTokensResult.createFrom;
+const $$createType50 = goide$0.SignatureResult.createFrom;
+const $$createType51 = goide$0.WorkspaceSymbol.createFrom;
+const $$createType52 = $Create.Array($$createType51);

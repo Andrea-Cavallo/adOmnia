@@ -126,6 +126,7 @@ func (s *Service) PruneMissingSessions() ([]Session, error) {
 		s.documents.CloseSession(session.ID)
 		s.toolchain.CloseSession(session.ID)
 		s.runConfigs.CloseSession(session.ID)
+		s.tests.CloseSession(session.ID)
 		_ = s.recovery.ForgetSession(session.ID)
 		s.workspace.CloseSession(session.ID)
 		s.viewMu.Lock()

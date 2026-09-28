@@ -1,0 +1,13 @@
+{"Time":"2026-09-28T19:29:19.677871154Z","Action":"start","Package":"example.com/tj/calc"}
+{"Time":"2026-09-28T19:29:19.680544237Z","Action":"output","Package":"example.com/tj/calc","Output":"goos: linux\n"}
+{"Time":"2026-09-28T19:29:19.680581214Z","Action":"output","Package":"example.com/tj/calc","Output":"goarch: amd64\n"}
+{"Time":"2026-09-28T19:29:19.680585987Z","Action":"output","Package":"example.com/tj/calc","Output":"pkg: example.com/tj/calc\n"}
+{"Time":"2026-09-28T19:29:19.680622745Z","Action":"output","Package":"example.com/tj/calc","Output":"cpu: Intel(R) Xeon(R) Processor @ 2.10GHz\n"}
+{"Time":"2026-09-28T19:29:19.680629454Z","Action":"run","Package":"example.com/tj/calc","Test":"BenchmarkAdd"}
+{"Time":"2026-09-28T19:29:19.680633117Z","Action":"output","Package":"example.com/tj/calc","Test":"BenchmarkAdd","Output":"=== RUN   BenchmarkAdd\n"}
+{"Time":"2026-09-28T19:29:19.680635958Z","Action":"output","Package":"example.com/tj/calc","Test":"BenchmarkAdd","Output":"BenchmarkAdd\n"}
+{"Time":"2026-09-28T19:29:19.682099997Z","Action":"output","Package":"example.com/tj/calc","Test":"BenchmarkAdd","Output":"BenchmarkAdd-4   \t"}
+{"Time":"2026-09-28T19:29:19.682141532Z","Action":"output","Package":"example.com/tj/calc","Test":"BenchmarkAdd","Output":"     100\t         4.550 ns/op\n"}
+{"Time":"2026-09-28T19:29:19.682226633Z","Action":"output","Package":"example.com/tj/calc","Output":"PASS\n"}
+{"Time":"2026-09-28T19:29:19.682515835Z","Action":"output","Package":"example.com/tj/calc","Output":"ok  \texample.com/tj/calc\t0.004s\n"}
+{"Time":"2026-09-28T19:29:19.68254565Z","Action":"pass","Package":"example.com/tj/calc","Elapsed":0.005}

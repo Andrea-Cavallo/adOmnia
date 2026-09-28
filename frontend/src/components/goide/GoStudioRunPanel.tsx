@@ -1,7 +1,9 @@
 import { useMemo, useState, memo } from 'react'
-import { AlertCircle, Copy, ListTree, RefreshCw, Search, SearchCode, Square, SquareTerminal, TerminalSquare } from 'lucide-react'
+import { AlertCircle, Copy, ListTree, RefreshCw, Search, SearchCode, Square, SquareTerminal, TerminalSquare, FlaskConical } from 'lucide-react'
 import { Clipboard as WailsClipboard } from '@wailsio/runtime'
 import { useGoIDEStore, type GoIDEConsoleChunk } from '@/stores/goide'
+import { selectedTestRun, useGoIDETestsStore } from '@/stores/goideTests'
+import { GoStudioTestsPanel } from './GoStudioTestsPanel'
 import type { GoIDEExecution, GoIDESession } from '@/lib/goide-api'
 import { GoStudioTerminalPanel } from './GoStudioTerminalPanel'
 import { resolveConsolePath } from './goStudioConsolePaths'
@@ -119,6 +121,7 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session }: GoSt
     .filter((line) => line.path && line.line)
     .map((line) => ({ path: resolveConsolePath(line.path!, active?.workingDirectory ?? ''), line: line.line!, column: line.column ?? 1, text: line.text })), [active?.workingDirectory, lines])
   const counts = diagnosticCounts(mergedReports(reports, lintReports))
+  const failedTests = useGoIDETestsStore((state) => selectedTestRun(state, sessionId)?.summary.failed ?? 0)
   const problemCount = counts.errors + counts.warnings + buildProblems.length
   const visibleLines = lines.filter((line) => !search || line.text.toLowerCase().includes(search.toLowerCase()))
 
@@ -139,6 +142,7 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session }: GoSt
         {tab('problems', 'Problems', AlertCircle, <span className={counts.errors || buildProblems.length ? 'text-danger' : counts.warnings ? 'text-warning' : 'text-text-4'}>{problemCount}</span>)}
         {tab('references', 'Usages', ListTree)}
         {tab('find', 'Find', SearchCode)}
+        {tab('tests', 'Tests', FlaskConical, failedTests > 0 ? <span className="text-danger">{failedTests}</span> : undefined)}
         {tab('terminal', 'Terminal', SquareTerminal)}
         {view === 'run' && active && <>
           <select
@@ -182,6 +186,7 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session }: GoSt
       {view === 'problems' && <div className="min-h-0 flex-1 overflow-auto bg-surface-0"><GoStudioProblems sessionId={sessionId} buildProblems={buildProblems} onOpenBuildProblem={(problem) => void openLocation(problem.path, problem.line, problem.column)} /></div>}
       {view === 'references' && <div className="min-h-0 flex-1 overflow-auto bg-surface-0"><GoStudioReferences sessionId={sessionId} /></div>}
       {view === 'find' && <div className="min-h-0 flex-1 bg-surface-0"><GoStudioFindInFiles sessionId={sessionId} /></div>}
+      {view === 'tests' && <div className="min-h-0 flex-1"><GoStudioTestsPanel session={session} /></div>}
       {/* Il terminale resta montato quando si cambia scheda: una shell interattiva non si distrugge. */}
       <div className="min-h-0 flex-1" style={{ display: view === 'terminal' ? 'block' : 'none' }}><GoStudioTerminalPanel session={session} visible={view === 'terminal'} /></div>
     </section>

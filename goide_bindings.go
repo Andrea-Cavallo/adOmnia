@@ -219,6 +219,26 @@ func (g *GoIDE) StartDependencyAction(request goide.DependencyActionRequest) (go
 	return g.service.StartDependencyAction(request)
 }
 
+// StartTests avvia go test -json; l'albero dei risultati arriva con gli eventi tests.updated.
+func (g *GoIDE) StartTests(request goide.TestRunRequest) (goide.TestRunSnapshot, error) {
+	return g.service.StartTests(request)
+}
+
+// GetTestRun restituisce un'esecuzione di test con l'output di ogni nodo.
+func (g *GoIDE) GetTestRun(runID string) (goide.TestRunSnapshot, error) {
+	return g.service.GetTestRun(runID)
+}
+
+// GetTestOutput restituisce l'output di un solo test.
+func (g *GoIDE) GetTestOutput(runID, nodeID string) (string, error) {
+	return g.service.GetTestOutput(runID, nodeID)
+}
+
+// ListTestRuns restituisce le esecuzioni di test della sessione, dalla più recente.
+func (g *GoIDE) ListTestRuns(sessionID string) ([]goide.TestRunSnapshot, error) {
+	return g.service.ListTestRuns(sessionID)
+}
+
 // StartRun avvia una build, run o tidy con argomenti strutturati.
 func (g *GoIDE) StartRun(request goide.RunRequest) (goide.Execution, error) {
 	return g.service.StartRun(request)

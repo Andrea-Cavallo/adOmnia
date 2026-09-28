@@ -13,6 +13,7 @@ export type GoStudioCommandId =
   | 'go.lspStart' | 'go.lspRestart' | 'go.lspStop' | 'go.lspInstall' | 'go.lspLog'
   | 'go.installGolangci' | 'go.installStaticcheck' | 'go.toolPaths'
   | 'run.run' | 'run.build' | 'run.stop' | 'run.restart' | 'run.configure'
+  | 'run.rerunFailedTests' | 'run.testCoverage' | 'view.tests'
   | 'run.buildPackage' | 'run.testPackage' | 'run.vetPackage' | 'run.buildAll' | 'run.testAll' | 'run.vetAll' | 'run.generateAll' | 'run.install'
   | 'help.shortcuts'
 
@@ -68,6 +69,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'view.toggleBottom', menu: 'view', label: 'Run / Problems Pane', binding: { key: '4', alt: true } },
   { id: 'view.problems', menu: 'view', label: 'Problems', binding: { key: '6', alt: true } },
   { id: 'view.terminal', menu: 'view', label: 'Terminal', binding: { key: 'F12', alt: true } },
+  { id: 'view.tests', menu: 'view', label: 'Tests', binding: { key: '8', alt: true } },
   { id: 'view.splitRight', menu: 'view', label: 'Split Right', binding: { key: '\\', mod: true }, separatorBefore: true },
   { id: 'view.splitDown', menu: 'view', label: 'Split Down' },
   { id: 'view.unsplit', menu: 'view', label: 'Unsplit' },
@@ -121,6 +123,8 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'run.buildPackage', menu: 'run', label: 'Build Current Package', binding: { key: 'F9', mod: true }, separatorBefore: true },
   { id: 'run.testPackage', menu: 'run', label: 'Test Current Package', binding: { key: 'F10', mod: true, shift: true } },
   { id: 'run.vetPackage', menu: 'run', label: 'Vet Current Package' },
+  { id: 'run.testCoverage', menu: 'run', label: 'Test Current Package with Coverage' },
+  { id: 'run.rerunFailedTests', menu: 'run', label: 'Rerun Failed Tests', binding: { key: 'F10', mod: true, shift: true, alt: true } },
   { id: 'run.buildAll', menu: 'run', label: 'Build All (go build ./...)', binding: { key: 'F9', mod: true, shift: true }, separatorBefore: true },
   { id: 'run.testAll', menu: 'run', label: 'Test All (go test ./...)', binding: { key: 'F10', mod: true, alt: true } },
   { id: 'run.vetAll', menu: 'run', label: 'Vet All (go vet ./...)' },
@@ -248,6 +252,8 @@ export function commandAvailability(id: GoStudioCommandId, context: GoStudioComm
     case 'run.vetAll':
     case 'run.generateAll':
     case 'run.install':
+    case 'run.testCoverage':
+    case 'run.rerunFailedTests':
     case 'go.modVerify': return runAvailability(context)
     case 'go.updateAll':
     case 'go.updatePatch':

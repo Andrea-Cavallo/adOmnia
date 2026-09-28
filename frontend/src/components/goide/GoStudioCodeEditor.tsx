@@ -10,6 +10,8 @@ import { registerGoStudioCodeLens } from './goStudioCodeLens'
 import { editorModelUri } from './goStudioModelUri'
 import { installRecursiveCallMarkers, registerGoStudioSemanticFeatures } from './goStudioSemanticFeatures'
 import { useGoIDELspStore } from '@/stores/goideLsp'
+import { useGoIDETestsStore, visibleCoverage } from '@/stores/goideTests'
+import { coverageForDocument, coverageLineStates } from './goStudioCoverage'
 import { startGoStudioLspSync } from './goStudioLspSync'
 import { findRunTargets, runCommandFor, type GoStudioRunTarget } from './goStudioRunTargets'
 import './goStudioEditor.css'
@@ -44,6 +46,7 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
   const theme = useGoStudioEditorTheme()
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const decorationsRef = useRef<monaco.editor.IEditorDecorationsCollection | null>(null)
+  const coverageDecorationsRef = useRef<monaco.editor.IEditorDecorationsCollection | null>(null)
   const runTargetsRef = useRef<GoStudioRunTarget[]>([])
   const callbacks = useRef({ onCursor, onRunTarget })
   callbacks.current = { onCursor, onRunTarget }
@@ -67,6 +70,7 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
     installGoStudioEditorActions(editor)
     installRecursiveCallMarkers(editor)
     decorationsRef.current = editor.createDecorationsCollection()
+    coverageDecorationsRef.current = editor.createDecorationsCollection()
     setMountCount((value) => value + 1)
     editor.onMouseDown((event) => {
       if (event.target.type !== monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN) return
@@ -94,6 +98,18 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
     editorRef.current.focus()
     clearRevealLocation()
   }, [clearRevealLocation, document.document.id, handlesReveal, revealLocation])
+
+  // Overlay di coverage: solo se il file è identico a quello misurato, altrimenti sparisce (e l'editor avvisa).
+  const coverage = useGoIDETestsStore((state) => visibleCoverage(state, document.document.sessionId))
+  useEffect(() => {
+    const match = coverageForDocument(coverage, document.document.relativePath, document.diskToken, document.dirty)
+    if (match.state !== 'current') return void coverageDecorationsRef.current?.clear()
+    const decorations: monaco.editor.IModelDeltaDecoration[] = []
+    for (const [line, state] of coverageLineStates(match.file)) {
+      decorations.push({ range: { startLineNumber: line, startColumn: 1, endLineNumber: line, endColumn: 1 }, options: { linesDecorationsClassName: `go-studio-cov go-studio-cov-${state}`, isWholeLine: true } })
+    }
+    coverageDecorationsRef.current?.set(decorations)
+  }, [coverage, document.diskToken, document.dirty, document.document.relativePath, mountCount])
 
   // ▶ nel gutter accanto a func main e ai test: ricalcolato con debounce mentre si scrive.
   useEffect(() => {

@@ -43,6 +43,7 @@ export function runLanguageCommand(id: GoStudioCommandId, sessionId: string | nu
     case 'nav.findInFiles': lsp.requestFind(selectedText()); return true
     case 'view.problems': lsp.showToolWindow('problems'); return true
     case 'view.terminal': lsp.showToolWindow('terminal'); return true
+    case 'view.tests': lsp.showToolWindow('tests'); return true
     case 'code.formatOnSave': lsp.updatePreferences({ formatOnSave: !lsp.preferences.formatOnSave }); return true
     case 'code.importsOnSave': lsp.updatePreferences({ organizeImportsOnSave: !lsp.preferences.organizeImportsOnSave }); return true
     case 'code.gofumpt': void lsp.updateSettings(sessionId, { gofumpt: !lsp.settings.gofumpt }); return true

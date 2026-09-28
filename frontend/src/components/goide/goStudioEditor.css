@@ -43,3 +43,12 @@
   text-decoration: underline dotted var(--color-warning, #f59e0b);
   text-underline-offset: 3px;
 }
+
+/* Coverage: barra sottile accanto ai numeri di riga, senza toccare il testo. */
+.go-studio-cov {
+  margin-left: 3px;
+  width: 3px !important;
+}
+.go-studio-cov-covered { background: var(--color-success, #22c55e); opacity: 0.75; }
+.go-studio-cov-uncovered { background: var(--color-danger, #ef4444); opacity: 0.75; }
+.go-studio-cov-partial { background: var(--color-warning, #f59e0b); opacity: 0.8; }

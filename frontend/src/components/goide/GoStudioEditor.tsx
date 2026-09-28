@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { DiffEditor } from '@monaco-editor/react'
-import { AlertTriangle, GitCompare, RotateCcw } from 'lucide-react'
+import { AlertTriangle, GitCompare, RotateCcw, ShieldCheck } from 'lucide-react'
 import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
 import { GoStudioBreadcrumb } from './GoStudioBreadcrumb'
 import { GoStudioCodeEditor, beforeGoStudioMount, useGoStudioEditorTheme } from './GoStudioCodeEditor'
@@ -9,6 +9,8 @@ import { GoStudioSplitPane } from './GoStudioSplitPane'
 import type { GoStudioRunTarget } from './goStudioRunTargets'
 import { useGoStudioDocumentSymbols } from './goStudioSymbols'
 import { copiesInOtherSessions } from './goStudioSharedCopies'
+import { useGoIDETestsStore, visibleCoverage } from '@/stores/goideTests'
+import { coverageForDocument } from './goStudioCoverage'
 
 interface GoStudioEditorProps {
   documents: GoIDEEditorDocument[]
@@ -28,6 +30,8 @@ export function GoStudioEditor({ documents, active, onCursor, onRequestClose, on
   const splitDocument = split ? documents.find((item) => item.document.id === split.documentId) ?? null : null
   const allDocuments = useGoIDEStore((state) => state.documents)
   const sessions = useGoIDEStore((state) => state.sessions)
+  const coverage = useGoIDETestsStore((state) => (active ? visibleCoverage(state, active.document.sessionId) : null))
+  const coverageMatch = active ? coverageForDocument(coverage, active.document.relativePath, active.diskToken, active.dirty) : { state: 'none' as const }
   const dirtyElsewhere = active ? copiesInOtherSessions(allDocuments, active).filter((item) => item.dirty) : []
   const elsewhereNames = dirtyElsewhere.map((item) => sessions.find((session) => session.id === item.document.sessionId)?.project.name ?? 'another project')
   useGoStudioDocumentSymbols(active)
@@ -66,6 +70,11 @@ export function GoStudioEditor({ documents, active, onCursor, onRequestClose, on
         <div role="status" className="flex shrink-0 items-center gap-2 border-b border-accent/25 bg-accent/10 px-2 py-1.5 text-[10px] text-text-2">
           <AlertTriangle size={12} className="text-accent" aria-hidden="true" />
           <span>Also open with unsaved changes in <strong>{elsewhereNames.join(', ')}</strong>. Saving one copy asks the other to reload or compare, never overwrites it.</span>
+        </div>
+      )}
+      {coverageMatch.state === 'stale' && (
+        <div role="status" className="flex shrink-0 items-center gap-2 border-b border-border-1 bg-surface-1 px-2 py-1 text-[10px] text-text-3">
+          <ShieldCheck size={12} className="text-text-4" aria-hidden="true" /> Coverage is outdated for this file: it changed after the test run. Run the tests with coverage again to see it.
         </div>
       )}
       {active.saveError && <div className="shrink-0 border-b border-danger/30 bg-danger/10 px-2 py-1 text-[10px] text-danger">{active.saveError}</div>}

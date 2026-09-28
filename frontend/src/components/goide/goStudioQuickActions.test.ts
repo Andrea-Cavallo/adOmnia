@@ -3,8 +3,9 @@ import { describe, expect, it, vi } from 'vitest'
 vi.mock('@/lib/goide-api', () => ({ selectGoIDEFolder: vi.fn(), startGoIDEDependencyAction: vi.fn() }))
 vi.mock('@/lib/confirmDialog', () => ({ confirm: vi.fn() }))
 vi.mock('@/stores/goide', () => ({ useGoIDEStore: { getState: vi.fn(), setState: vi.fn() }, activeGoIDEDocument: vi.fn() }))
+vi.mock('@/stores/goideTests', () => ({ useGoIDETestsStore: { getState: vi.fn() } }))
 
-import { moduleScopeFor, quickRunFor } from './goStudioQuickActions'
+import { moduleScopeFor, quickRunFor, testRequestForTarget } from './goStudioQuickActions'
 
 const session = (modules: string[]) => ({
   project: { realPath: '/work/repo', modules: modules.map((path) => ({ path, modulePath: '' })) },
@@ -35,5 +36,13 @@ describe('quickRunFor', () => {
     const scope = { moduleDirectory: 'svc', packageTarget: './api' }
     expect(quickRunFor('vet', 'package', scope)).toEqual({ kind: 'vet', workingDirectory: 'svc', target: './api', label: 'go vet ./api' })
     expect(quickRunFor('build', 'module', scope)).toEqual({ kind: 'build', workingDirectory: 'svc', target: './...', label: 'go build ./...' })
+  })
+})
+
+describe('testRequestForTarget', () => {
+  it('runs exactly one test or benchmark in its module', () => {
+    const repo = { ...session(['/work/repo', '/work/repo/tools/gen']), id: 's1' }
+    expect(testRequestForTarget(repo, { line: 3, kind: 'test', name: 'TestParse', packagePath: './tools/gen/parser' })).toMatchObject({ workingDirectory: 'tools/gen', packages: ['./parser'], run: '^TestParse$', bench: '' })
+    expect(testRequestForTarget(repo, { line: 9, kind: 'benchmark', name: 'BenchmarkX', packagePath: '.' }, true)).toMatchObject({ workingDirectory: '', packages: ['.'], run: '', bench: '^BenchmarkX$', coverage: true })
   })
 })

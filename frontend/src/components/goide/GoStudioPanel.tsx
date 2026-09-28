@@ -30,6 +30,8 @@ import { GoStudioSearchEverywhere } from './GoStudioSearchEverywhere'
 import { createDoubleShiftDetector } from './goStudioSearchEverywhere'
 import { runGoStudioQuickCommand, runModuleDependencyAction } from './goStudioQuickActions'
 import { flushBufferRecovery } from './goStudioRecovery'
+import { useGoIDETestsStore } from '@/stores/goideTests'
+import { testRequestForTarget } from './goStudioQuickActions'
 import { confirm } from '@/lib/confirmDialog'
 import { useShallow } from 'zustand/react/shallow'
 import { activeGoIDEDocument, dirtyGoIDEDocuments, useGoIDEStore, type GoIDEEditorDocument, type GoIDEState } from '@/stores/goide'
@@ -274,11 +276,12 @@ export function GoStudioPanel() {
   const runTarget = (target: GoStudioRunTarget) => {
     const availability = commandAvailability('run.run', commandContext)
     if (availability !== true) return useGoIDEStore.setState({ error: availability })
+    if (target.kind !== 'main' && activeSession) {
+      void useGoIDETestsStore.getState().start(testRequestForTarget(activeSession, target))
+      return
+    }
     const command = runCommandFor(target)
-    const configured = runRequest(runDraft)
-    void store.startRun(command.kind, command.kind === 'run'
-      ? { ...configured, target: command.target }
-      : { ...configured, target: command.target, programArguments: command.programArguments })
+    void store.startRun(command.kind, { ...runRequest(runDraft), target: command.target })
   }
 
   const openLanguageServerMenu = () => {
@@ -338,6 +341,8 @@ export function GoStudioPanel() {
       case 'run.vetAll': return void runGoStudioQuickCommand('vet', 'module')
       case 'run.generateAll': return void runGoStudioQuickCommand('generate', 'module')
       case 'run.install': return void runGoStudioQuickCommand('install', 'package')
+      case 'run.testCoverage': return void runGoStudioQuickCommand('test', 'package', undefined, { coverage: true })
+      case 'run.rerunFailedTests': return activeSession ? void useGoIDETestsStore.getState().rerunFailed(activeSession.id) : undefined
       case 'go.updateAll': return void runModuleDependencyAction('updateall')
       case 'go.updatePatch': return void runModuleDependencyAction('updatepatch')
       case 'go.modDownload': return void runModuleDependencyAction('download')
