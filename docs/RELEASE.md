@@ -4,6 +4,14 @@ adOmnia releases are driven by Git tags and GitHub Actions.
 
 ## Unreleased
 
+## v0.9.35 release notes: Go Studio foundation
+
+See [the full v0.9.35 notes](releases/v0.9.35.md): adOmnia gains the
+local-first Go Studio architecture, safe project sessions, a compact `gO`
+entry in the existing rail and the first integrated desktop shell. Execution,
+editing, gopls, terminal and debugger controls remain intentionally absent
+until their gated implementation phases are complete.
+
 ## v0.9.34 release notes: a0 knows the product and builds mocks
 
 See [the full v0.9.34 notes](releases/v0.9.34.md): a0 gains a real product

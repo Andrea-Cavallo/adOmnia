@@ -6,6 +6,24 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.9.35] - 2026-09-28
+
+### Added
+- **Go Studio foundation:** a dedicated local-first Go IDE domain now owns workspace sessions, documents, toolchain metadata, structured processes, LSP, terminal, debug, tests and versioned persistence behind thin Wails bindings.
+- **Go Studio navigation:** the new panel is available from the compact `gO` rail entry, router, command palette, translations and a dedicated Zustand store without changing Git Sync ownership.
+- **Safe project opening:** choosing a project records its resolved local root and Go module/workspace metadata without running repository code, scripts, hooks, tests or tools. Tool authorization remains a separate explicit state.
+- **Architecture contract:** the Go Studio ADR records gopls/LSP, ConPTY/PTY, Delve/DAP, process limits, lifecycle, persistence and multiwindow decisions. `todo-ide.md` tracks sequential implementation gates and the approved visual references.
+
+### Security
+- Project paths are normalized, symlinks are resolved and document access is confined to the real project root.
+- Persisted IDE metadata excludes document contents, environment values and credentials; no new network listener is exposed by Go Studio.
+
+### Verified
+- 565 frontend tests across 122 files, TypeScript, the production frontend build, `go test ./...`, `go build ./...`, `go vet ./...` and the Go Studio race test pass.
+- The Go Studio domain cross-builds for Linux and macOS. Wails beta.25 bindings and the Windows desktop runtime were built and launched with an isolated profile; the rail and command-palette flows were exercised in the local preview.
+
+Full release notes: [v0.9.35](docs/releases/v0.9.35.md).
+
 ## [0.9.34] - 2026-09-28
 
 ### Added

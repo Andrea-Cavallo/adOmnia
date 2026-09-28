@@ -155,7 +155,7 @@ L'architettura deve essere confermata nella Fase 0 e mantenere isolati sessioni,
 ### Evidenze della fase
 
 - Data: 2026-09-28
-- Commit: da registrare nel commit di rilascio `v0.9.35`.
+- Commit: `a321c00` (`feat(goide): add Go Studio foundation`); rilascio `v0.9.35`.
 - Comandi e risultati: `npx tsc --noEmit`, `npm run build`, `npm run test` (565 test in 122 file), `go build ./...`, `go test ./...`, `go vet ./...`, `go test -race ./internal/goide`, cross-build Linux/macOS di `internal/goide` e binding Wails beta.25 completati con successo.
 - Prova manuale: navigazione verificata nel preview browser sia dalla rail `gO` sia dalla command palette, con stato vuoto dark/compatto e nessuna azione simulata. Un eseguibile Wails beta.25 isolato, con profilo applicativo separato, ha completato startup, apertura dello storage bbolt, shutdown e cleanup; anche il percorso `wails3 task dev` ha completato generazione binding, build frontend, build Go e avvio. L'automazione disponibile non esponeva controlli per interagire direttamente con la finestra nativa Windows, quindi l'interazione del pannello è stata collaudata nel preview e il lifecycle nativo separatamente.
 - Limiti rimasti: editor/file tree reali, toolchain, processi Run/Test/Debug, LSP, terminale PTY e multiwindow appartengono alle fasi successive e non sono esposti come controlli attivi nello scheletro di Fase 0.
