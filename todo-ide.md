@@ -387,12 +387,12 @@ Obiettivo: comprendere davvero il codice tramite gopls, includendo i buffer non 
 
 - [x] Pubblicare diagnostica per file/sessione nel gutter, Problems e status bar.
 - [x] Implementare completion Monaco da gopls.
-- [ ] Aggiungere gli import mancanti automaticamente quando si accetta un suggerimento, senza toccare il file su altre righe. *(collegato: `additionalTextEdits` di gopls passano a Monaco; manca la prova e2e)*
+- [x] Aggiungere gli import mancanti automaticamente quando si accetta un suggerimento, senza toccare il file su altre righe. *(prova e2e: completando `strings.ToUpper` compare `"strings"` negli import)*
 - [x] Implementare hover.
 - [x] Implementare signature help.
 - [x] Implementare Go to Definition/Type Definition/Implementation dove supportato.
 - [x] Implementare Find References con navigazione risultati, raggruppati per file.
-- [ ] Raggruppare gli utilizzi per tipo (dichiarazione, lettura, scrittura, import) usando definition e documentHighlight di gopls. *(riaperta nell'audit: la vista raggruppa solo per file)*
+- [x] Raggruppare gli utilizzi per tipo (dichiarazione, scrittura, lettura, import), classificati dall'AST Go del file (buffer non salvato incluso), poi per file.
 - [x] Implementare document symbols e struttura file richiudibile a destra.
 - [x] Implementare workspace symbols e Quick Open simboli.
 - [x] Implementare semantic rename con anteprima delle modifiche.
@@ -425,18 +425,18 @@ Obiettivo: comprendere davvero il codice tramite gopls, includendo i buffer non 
 
 Tutte queste voci sono richieste LSP aggiuntive sulla stessa sessione gopls di 2.1/2.2: vanno implementate qui perché condividono plumbing, cancellazione e isolamento per sessione. Nessuna va simulata con regex o euristiche testuali.
 
-- [ ] **Semantic highlighting**: applicare i semantic tokens di gopls sopra la colorazione sintattica di Monaco, con colori distinti per parametri e variabili locali; attivabile/disattivabile da impostazione.
-- [ ] **Parameter hints / inlay hints**: mostrare i nomi dei parametri per literal e `nil` passati come argomento, e gli altri inlay hint esposti da gopls; attivabili/disattivabili senza modificare il file.
-- [ ] **Quick Documentation**: popup documentazione sul simbolo al caret, e stessa documentazione nel popup laterale durante la completion.
-- [ ] **Quick Definition**: popup con il corpo della definizione senza lasciare il file corrente.
-- [ ] **Show usages**: popup degli utilizzi sul simbolo al caret, oltre alla vista Find References completa.
-- [ ] **Type Parameter**: azione che mostra il tipo dell'espressione al caret.
-- [ ] **Exit points highlighting**: con il caret su `func`/`return`/`panic`, evidenziare tutti i punti di uscita della funzione (document highlight + analisi AST del solo range della funzione).
-- [ ] **Rilevamento chiamate ricorsive**: marcatore nel gutter sulle chiamate ricorsive, ricavato da call hierarchy di gopls.
-- [ ] **Code generation**: implementare i metodi di un'interfaccia tramite code action gopls, con selezione dell'interfaccia e anteprima delle modifiche.
-- [ ] **Search Everywhere**: ricerca unica su file, simboli di progetto, azioni dell'IDE e pannelli adOmnia raggiungibili, con risultati raggruppati per categoria.
-- [ ] **Inspections e quick-fix da tastiera**: un unico gesto (riferimento: `Alt+Enter`) che apre le code action disponibili sulla riga corrente, unendo diagnostica gopls e linter di 2.4. *(Alt+Enter apre già le code action di gopls; mancano le azioni legate ai finding del linter)*
-- [ ] Ogni funzione di questa sezione deve degradare in modo esplicito quando gopls non la supporta: nessun controllo visibile che non produca un risultato reale.
+- [x] **Semantic highlighting**: semantic tokens di gopls sopra la sintassi, rimappati per nome su una legenda fissa; parametri, costanti, funzioni, tipi, campi e package con colori propri, solo nei temi di Go Studio. Code → Semantic Highlighting.
+- [x] **Parameter hints / inlay hints**: nomi dei parametri solo per literal e `nil` (come GoLand) e type parameter dedotti. Code → Parameter & Type Hints, senza modificare il file.
+- [x] **Quick Documentation** (Ctrl/Cmd+Q): hover di gopls al cursore; la documentazione compare anche nei dettagli della completion.
+- [x] **Quick Definition** (Ctrl/Cmd+Shift+I): popup con l'intera dichiarazione (commento incluso) ritagliata dall'AST, colorata, senza lasciare il file.
+- [x] **Show usages** (Ctrl/Cmd+Alt+F7): popup accanto al cursore con gli utilizzi per tipo, navigabile da tastiera, con apertura nella vista Usages.
+- [x] **Type Info** (Ctrl/Cmd+Shift+P): tipo dell'espressione al cursore accanto al testo.
+- [x] **Exit points highlighting**: documentHighlight di gopls su `func`/`return`/`panic` evidenzia tutti i punti di uscita; sulle variabili distingue lettura e scrittura.
+- [x] **Rilevamento chiamate ricorsive**: ⟳ nel gutter e sottolineatura sulle chiamate ricorsive dirette, da call hierarchy di gopls, con debounce.
+- [x] **Code generation**: Code → Implement Interface… (Ctrl/Cmd+I) sul tipo al cursore: scelta dell'interfaccia (progetto, dipendenze, SDK), asserzione idiomatica `var _ I = (*T)(nil)`, import aggiunto, metodi generati dal quick fix di gopls, anteprima completa; annullando l'editor torna com'era.
+- [x] **Search Everywhere** (Shift Shift): file, simboli, azioni dell'IDE (con scorciatoia e motivo se non disponibili) e pannelli adOmnia, raggruppati per categoria.
+- [x] **Inspections e quick-fix da tastiera**: Alt+Enter unisce le code action di gopls alle correzioni proposte dal linter (es. staticcheck S1039) e alla soppressione ufficiale della riga (`//nolint:x`, `//lint:ignore`). Le correzioni del linter compaiono solo se il file non è cambiato dopo l'analisi.
+- [x] Degradazione esplicita: le capacità di gopls sono registrate all'avvio; semantic tokens, inlay hints, highlight e call hierarchy si spengono se gopls non li annuncia, e i toggle del menu Code spiegano perché. Le azioni gopls che aprono la sua interfaccia web (Browse documentation, Split package…) non vengono più proposte.
 
 ## 2.7 Test mirati
 
@@ -446,8 +446,8 @@ Tutte queste voci sono richieste LSP aggiuntive sulla stessa sessione gopls di 2
 - [x] Test di isolamento diagnostica tra due sessioni.
 - [x] Test per rilevamento/assenza linter, esecuzione cancellabile e isolamento dei risultati tra sessioni.
 - [x] Prova reale di completion, hover, definition, references, rename, import e formatting su progetto multi-package.
-- [ ] Test per semantic tokens e inlay hints: mapping dei range su documento modificato e nessuna applicazione di token obsoleti dopo un edit.
-- [ ] Prova reale di Quick Documentation, Quick Definition, exit points, chiamate ricorsive e generazione metodi di interfaccia.
+- [x] Test per semantic tokens e inlay hints: rimappatura della legenda (anche con token scartati), filtro literal, risposte di versioni superate scartate senza azzerare i token (niente flicker); integrazione con gopls reale.
+- [x] Prova reale di Quick Documentation, Quick Definition, exit points, chiamate ricorsive e generazione metodi di interfaccia (e2e nel browser contro gopls v0.23.0).
 
 ## Gate di uscita Fase 2
 
@@ -456,8 +456,8 @@ Tutte queste voci sono richieste LSP aggiuntive sulla stessa sessione gopls di 2
 - [x] Eseguire rename e formatting senza corrompere file o dirty state.
 - [x] Riavviare gopls dopo un crash controllato senza riavviare adOmnia.
 - [x] Ottenere diagnostica di lint reale (golangci-lint/staticcheck) su un progetto con problemi noti, distinguibile da quella di gopls.
-- [ ] Semantic highlighting e inlay hints restano coerenti durante la digitazione, senza flicker né token disallineati.
-- [ ] Un unico gesto da tastiera apre le quick-fix disponibili e le applica correttamente su un buffer non salvato.
+- [x] Semantic highlighting e inlay hints restano coerenti durante la digitazione, senza flicker né token disallineati.
+- [x] Un unico gesto da tastiera apre le quick-fix disponibili e le applica correttamente su un buffer non salvato. *(Alt+Enter prima non apriva nulla: corretto)*
 - [x] Nessun dato LSP o di lint di un progetto compare in un'altra sessione.
 - [ ] Suite e verifiche previste dalla definizione di fase funzionante passano. *(Automatiche verdi; manca la prova manuale `wails3 task dev` su Windows.)*
 - [ ] **FASE 2 FUNZIONANTE E APPROVATA — è consentito iniziare la Fase 3.**
@@ -473,6 +473,8 @@ Tutte queste voci sono richieste LSP aggiuntive sulla stessa sessione gopls di 2
 - Prova end-to-end: frontend reale in Chromium collegato al vero `goide.Service` tramite un server di preview locale (non committato) che implementa il trasporto HTTP di `@wailsio/runtime`. Verificati come utente: apertura e trust del progetto, avvio automatico di gopls, ▶ su `func main` con output reale, ▶ su `TestHello` (`--- PASS`), diagnostica su buffer non salvato, completion, hover, Find Usages, rename su 3 file con anteprima, ricerca simboli (progetto e SDK), F12 nello SDK in sola lettura, salvataggio con optimize imports e reformat verificato su disco, Find in Files, lint golangci-lint (errcheck) in Problems, split editor, breadcrumb simbolico, menu tab con pin, Close Others e Reopen Closed.
 - Difetti trovati e corretti durante la verifica: buffer di un file sovrascritto dal contenuto di un altro passando da un documento in sola lettura (perdita dati); race tra chiusura del canale `exited` e stato di gopls dopo Stop; rejection non gestite su chiamate annullate (anche nel vero Wails); focus del dialog Rename; nomi accessibili sporcati dalle icone.
 - Limiti rimasti: prova manuale nella finestra Wails nativa non eseguibile nel container (GTK4/WebKitGTK assenti); signature help coperto dal provider e dai test backend ma non ancora osservato a video; lo split editor mostra un file alla volta senza gruppo di tab proprio.
+- Chiusura 2.3/2.6/2.7 (2026-09-28, branch `feat/goide-phase3`): nuove richieste gopls (semantic tokens, inlay hints, documentHighlight, call hierarchy), Quick Definition dall'AST, classificazione degli utilizzi dall'AST, correzioni del linter. Test Go con gopls reale (`TestEditorFeaturesWithRealGopls`, `TestImplementInterfaceQuickFixAndNoInertActions`, `TestEditorSettingsProduceNoGoplsWarnings`) e unitari; 140 file / 634 test frontend. E2E nel browser: 11 passi editor semantico, 6 passi Search Everywhere / quick-fix / Implement Interface, auto-import, più le suite di Fase 3 senza regressioni.
+- Difetti trovati e corretti in questa chiusura: Alt+Enter e Code → Show Context Actions non aprivano nulla (Monaco 0.56); la lampadina proponeva su ogni riga azioni gopls inerti che aprono la sua interfaccia web; gopls v0.23 segnalava a video impostazioni deprecate (`noSemanticString/Number`); l'anteprima delle modifiche nascondeva il codice inserito su più righe; Search Everywhere mostrava per un istante simboli della ricerca precedente.
 
 ---
 

@@ -61,6 +61,10 @@ export interface GoIDEDiagnostic {
   message: string
   source?: string
   code?: string
+  /** Solo linter: direttiva ufficiale per ignorare la riga (//nolint:x o //lint:ignore). */
+  suppression?: string
+  /** Solo linter: correzioni proposte, valide sul file così come è stato analizzato. */
+  fixes?: Array<{ title: string; edits: EditorTextEdit[] }>
 }
 
 export interface GoIDEDiagnosticsReport {

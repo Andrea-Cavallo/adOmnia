@@ -42,6 +42,17 @@ export interface GoIDEEditorPreferences {
   inlayHints: boolean
 }
 
+/** Tipo su cui generare i metodi di un'interfaccia scelta dall'utente. */
+export interface GoIDEImplementRequest {
+  sessionId: string
+  documentId: string
+  typeName: string
+  /** Ultima riga della dichiarazione del tipo: l'asserzione va subito dopo. */
+  declarationEndLine: number
+  /** Cartella del file relativa al progetto, per capire se l'interfaccia è nello stesso package. */
+  directory: string
+}
+
 /** Popup ancorato al cursore: Quick Definition e Show Usages non fanno lasciare il file corrente. */
 export type GoIDECaretPopup =
   | { kind: 'definition'; anchor: { x: number; y: number }; result: GoIDEQuickDefinition }
@@ -75,7 +86,10 @@ interface GoIDELspState {
   search: Record<string, GoIDESearchResult | null>
   message: string | null
   pendingChange: GoIDEWorkspaceChange | null
+  /** Eseguita se l'anteprima viene chiusa senza applicare (es. per annullare un'inserzione preparatoria). */
+  pendingChangeOnCancel: (() => void) | null
   caretPopup: GoIDECaretPopup | null
+  implementRequest: GoIDEImplementRequest | null
   renameRequest: { sessionId: string; documentId: string; line: number; column: number } | null
   findRequest: { token: number; query: string } | null
   requestFind: (query: string) => void
@@ -151,7 +165,9 @@ export const useGoIDELspStore = create<GoIDELspState>((set, get) => ({
   search: {},
   message: null,
   pendingChange: null,
+  pendingChangeOnCancel: null,
   caretPopup: null,
+  implementRequest: null,
   renameRequest: null,
   findRequest: null,
 

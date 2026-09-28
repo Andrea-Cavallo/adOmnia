@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { FileCode2, Loader2, PenLine, X } from 'lucide-react'
-import { requestPrepareRename, requestRename, type GoIDEFileChange, type GoIDEWorkspaceChange } from '@/lib/goide-lsp-api'
+import { requestPrepareRename, requestRename, type GoIDEWorkspaceChange } from '@/lib/goide-lsp-api'
 import { useModalFocusTrap } from '@/lib/accessibility'
 import { useGoIDELspStore } from '@/stores/goideLsp'
+import { changedLines } from './goStudioChangePreview'
 import { applyGoStudioWorkspaceChange } from './goStudioWorkspaceEdits'
 
 const GO_IDENTIFIER = /^[\p{L}_][\p{L}\p{Nd}_]*$/u
@@ -69,19 +70,6 @@ export function GoStudioRenameDialog() {
   )
 }
 
-/** Righe risultanti dopo la modifica, una per riga toccata, per leggere l'anteprima nel contesto del codice. */
-function editedLines(file: GoIDEFileChange): Array<{ line: number; text: string; replacement: string }> {
-  const lines = file.newContent.split(/\r?\n/)
-  const seen = new Map<number, string>()
-  let shift = 0
-  for (const edit of [...file.edits].sort((left, right) => left.range.startLine - right.range.startLine)) {
-    const line = edit.range.startLine + shift
-    if (!seen.has(line)) seen.set(line, edit.text.split('\n')[0])
-    shift += edit.text.split('\n').length - 1 - (edit.range.endLine - edit.range.startLine)
-  }
-  return [...seen.entries()].map(([line, replacement]) => ({ line, text: lines[line - 1] ?? '', replacement }))
-}
-
 /** Anteprima di una modifica su più file: nulla viene applicato finché l'utente non conferma. */
 export function GoStudioChangePreviewDialog() {
   const change = useGoIDELspStore((state) => state.pendingChange)
@@ -89,7 +77,11 @@ export function GoStudioChangePreviewDialog() {
   const [applying, setApplying] = useState(false)
   const dialogRef = useRef<HTMLDivElement>(null)
   const applyRef = useRef<HTMLButtonElement>(null)
-  const close = () => useGoIDELspStore.setState({ pendingChange: null })
+  const close = () => {
+    const onCancel = useGoIDELspStore.getState().pendingChangeOnCancel
+    useGoIDELspStore.setState({ pendingChange: null, pendingChangeOnCancel: null })
+    onCancel?.()
+  }
   useModalFocusTrap(!!change, close, dialogRef)
   useEffect(() => {
     setSelected(0)
@@ -104,7 +96,7 @@ export function GoStudioChangePreviewDialog() {
 
   const apply = async (value: GoIDEWorkspaceChange) => {
     setApplying(true)
-    close()
+    useGoIDELspStore.setState({ pendingChange: null, pendingChangeOnCancel: null })
     await applyGoStudioWorkspaceChange(value, true)
     setApplying(false)
   }
@@ -112,7 +104,7 @@ export function GoStudioChangePreviewDialog() {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-[2px]" onClick={close}>
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Preview changes" tabIndex={-1} className="flex h-[min(560px,80vh)] w-[min(860px,90vw)] flex-col overflow-hidden rounded-xl border border-border-2 bg-surface-1 shadow-2xl" onClick={(event) => event.stopPropagation()}>
-        <div className="flex h-10 shrink-0 items-center gap-2 border-b border-border-1 px-4"><h2 className="text-xs font-semibold text-text-1">{change.label || 'Refactoring preview'}</h2><span className="text-[10px] text-text-4">{totalEdits} change{totalEdits === 1 ? '' : 's'} in {change.files.length} files</span><button type="button" onClick={close} title="Close" className="ml-auto grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-3"><X size={12} /></button></div>
+        <div className="flex h-10 shrink-0 items-center gap-2 border-b border-border-1 px-4"><h2 className="text-xs font-semibold text-text-1">{change.label || 'Refactoring preview'}</h2><span className="text-[10px] text-text-4">{totalEdits} change{totalEdits === 1 ? '' : 's'} in {change.files.length} file{change.files.length === 1 ? '' : 's'}</span><button type="button" onClick={close} title="Close" className="ml-auto grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-3"><X size={12} /></button></div>
         <div className="flex min-h-0 flex-1">
           <div role="listbox" aria-label="Changed files" className="w-64 shrink-0 overflow-auto border-r border-border-1 py-1">
             {change.files.map((item, index) => (
@@ -122,11 +114,10 @@ export function GoStudioChangePreviewDialog() {
             ))}
           </div>
           <div className="min-w-0 flex-1 overflow-auto bg-surface-0 p-2 font-mono text-[10px] leading-5">
-            {file && editedLines(file).map(({ line, text, replacement }) => (
-              <div key={line} className="flex gap-3 border-b border-border-1/50 px-1">
-                <span className="w-10 shrink-0 text-right text-text-4">{line}</span>
-                <span className="min-w-0 flex-1 whitespace-pre-wrap break-all text-text-2">{text.trim() || <em className="text-danger">(removed)</em>}</span>
-                <span className="shrink-0 text-success">{replacement}</span>
+            {file && changedLines(file).map(({ line, text, hunkStart }) => (
+              <div key={line} className={`flex gap-3 border-l-2 border-success/60 px-1 ${hunkStart ? 'mt-2' : ''}`}>
+                <span className="w-10 shrink-0 select-none text-right text-text-4">{line}</span>
+                <span className="min-w-0 flex-1 whitespace-pre-wrap break-all text-text-1">{text || ' '}</span>
               </div>
             ))}
           </div>

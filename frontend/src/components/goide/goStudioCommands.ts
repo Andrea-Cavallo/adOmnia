@@ -5,7 +5,7 @@ export type GoStudioCommandId =
   | 'view.splitRight' | 'view.splitDown' | 'view.unsplit' | 'view.terminal'
   | 'view.quickOpen' | 'view.toggleStructure' | 'view.toggleBottom' | 'view.toggleIgnored' | 'view.problems'
   | 'nav.declaration' | 'nav.typeDeclaration' | 'nav.implementation' | 'nav.usages' | 'nav.fileStructure' | 'nav.symbol' | 'nav.findInFiles'
-  | 'nav.quickDefinition' | 'nav.showUsages' | 'code.quickDocumentation' | 'code.typeInfo' | 'code.semanticHighlighting' | 'code.inlayHints'
+  | 'nav.quickDefinition' | 'nav.showUsages' | 'nav.searchEverywhere' | 'code.quickDocumentation' | 'code.typeInfo' | 'code.semanticHighlighting' | 'code.inlayHints' | 'code.implementInterface'
   | 'code.completion' | 'code.parameterInfo' | 'code.quickFix' | 'code.rename' | 'code.reformat' | 'code.organizeImports'
   | 'code.formatOnSave' | 'code.importsOnSave' | 'code.gofumpt' | 'code.staticcheck' | 'code.lint' | 'code.lintOnSave'
   | 'go.toolchains' | 'go.detect' | 'go.dependencies' | 'go.tidy' | 'go.trust'
@@ -30,7 +30,7 @@ export interface GoStudioCommand {
   menu: GoStudioMenuId
   label: string
   binding?: GoStudioKeyBinding
-  /** Il binding è gestito nativamente da Monaco: mostrato nei menu, non intercettato globalmente. */
+  /** Il binding è gestito da Monaco o da un listener dedicato (doppio Shift): mostrato nei menu, non intercettato globalmente. */
   editorOwned?: boolean
   separatorBefore?: boolean
 }
@@ -72,6 +72,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'view.splitDown', menu: 'view', label: 'Split Down' },
   { id: 'view.unsplit', menu: 'view', label: 'Unsplit' },
   { id: 'view.toggleIgnored', menu: 'view', label: 'Show Ignored Folders', separatorBefore: true },
+  { id: 'nav.searchEverywhere', menu: 'navigate', label: 'Search Everywhere', binding: { key: 'Shift Shift' }, editorOwned: true },
   { id: 'nav.declaration', menu: 'navigate', label: 'Declaration', binding: { key: 'b', mod: true }, editorOwned: true },
   { id: 'nav.typeDeclaration', menu: 'navigate', label: 'Type Declaration' },
   { id: 'nav.implementation', menu: 'navigate', label: 'Implementation(s)', binding: { key: 'b', mod: true, alt: true }, editorOwned: true },
@@ -86,6 +87,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'code.quickDocumentation', menu: 'code', label: 'Quick Documentation', binding: { key: 'q', mod: true }, editorOwned: true },
   { id: 'code.typeInfo', menu: 'code', label: 'Type Info', binding: { key: 'p', mod: true, shift: true }, editorOwned: true },
   { id: 'code.quickFix', menu: 'code', label: 'Show Context Actions', binding: { key: 'Enter', alt: true }, editorOwned: true, separatorBefore: true },
+  { id: 'code.implementInterface', menu: 'code', label: 'Implement Interface…', binding: { key: 'i', mod: true }, editorOwned: true },
   { id: 'code.rename', menu: 'code', label: 'Rename…', binding: { key: 'F6', shift: true }, editorOwned: true },
   { id: 'code.reformat', menu: 'code', label: 'Reformat Code', binding: { key: 'l', mod: true, alt: true }, editorOwned: true, separatorBefore: true },
   { id: 'code.organizeImports', menu: 'code', label: 'Optimize Imports', binding: { key: 'o', mod: true, alt: true }, editorOwned: true },

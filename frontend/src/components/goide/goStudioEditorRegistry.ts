@@ -16,6 +16,7 @@ const MONACO_ACTIONS = {
   'nav.showUsages': 'goStudio.showUsages',
   'code.quickDocumentation': 'goStudio.quickDocumentation',
   'code.typeInfo': 'goStudio.typeInfo',
+  'code.implementInterface': 'goStudio.implementInterface',
   'code.completion': 'editor.action.triggerSuggest',
   'code.parameterInfo': 'editor.action.triggerParameterHints',
   'code.quickFix': 'goStudio.quickFix',
@@ -47,7 +48,9 @@ export function runGoStudioEditorCommand(command: GoStudioEditorCommand): boolea
   if (!activeEditor) return false
   activeEditor.focus()
   const id = MONACO_ACTIONS[command]
-  const action = activeEditor.getAction(id)
+  // Le azioni Go Studio sono registrate sull'editor; quelle native passano dal registro comandi,
+  // perché in Monaco 0.56 getAction(...).run() su alcune (es. quickFix) non apre nulla.
+  const action = id.startsWith('goStudio.') ? activeEditor.getAction(id) : null
   if (action) void action.run()
   else activeEditor.trigger('go-studio-menu', id, null)
   return true

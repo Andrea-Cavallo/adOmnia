@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestEditorFeaturesWithRealGopls(t *testing.T) {
@@ -100,5 +101,44 @@ func TestEditorSettingsProduceNoGoplsWarnings(t *testing.T) {
 		if message, ok := event.Payload.(LanguageServerMessage); ok && strings.Contains(message.Message, "setting") {
 			t.Fatalf("gopls segnala impostazioni non valide: %s", message.Message)
 		}
+	}
+}
+
+func TestImplementInterfaceQuickFixAndNoInertActions(t *testing.T) {
+	gopls := findGoplsForTest(t)
+	root := copyFixture(t, "implement")
+	recorder := &eventRecorder{}
+	service := NewService(&memoryStore{}, recorder.record)
+	t.Cleanup(service.Shutdown)
+	session := startLanguageServerForTest(t, service, recorder, root, gopls)
+	sessionID := string(session.ID)
+	document, err := service.OpenDocument(sessionID, "main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	recorder.waitFor(t, 30*time.Second, func(event EventEnvelope) bool {
+		report, ok := event.Payload.(DiagnosticsReport)
+		return ok && report.RelativePath == "main.go" && len(report.Diagnostics) > 0
+	})
+	line, column := positionOf(t, document.Content, "(*Buffer)(nil)", 1)
+	actions, err := service.CodeActions(context.Background(), sessionID, string(document.Document.ID), EditorRange{StartLine: line, StartColumn: column, EndLine: line, EndColumn: column}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var declare *CodeActionEntry
+	for index, action := range actions {
+		if opensGoplsWebView(action.Kind) {
+			t.Fatalf("azione inerte proposta: %+v", action)
+		}
+		if strings.HasPrefix(action.Title, "Declare missing methods of io.ReadWriter") {
+			declare = &actions[index]
+		}
+	}
+	if declare == nil {
+		t.Fatalf("quick fix per implementare l'interfaccia assente: %+v", actions)
+	}
+	change, err := service.ResolveCodeAction(context.Background(), sessionID, declare.ID)
+	if err != nil || len(change.Files) != 1 || !strings.Contains(change.Files[0].NewContent, "func (b *Buffer) Read(p []byte) (n int, err error)") || !strings.Contains(change.Files[0].NewContent, "func (b *Buffer) Write(") {
+		t.Fatalf("metodi generati inattesi: %v %+v", err, change)
 	}
 }

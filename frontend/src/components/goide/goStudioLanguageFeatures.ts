@@ -19,6 +19,7 @@ import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
 import { useGoIDELspStore } from '@/stores/goideLsp'
 import { currentGoStudioDocumentVersion, flushGoStudioDocument } from './goStudioLspSync'
 import { applyGoStudioWorkspaceChange } from './goStudioWorkspaceEdits'
+import { lintActionsFor } from './goStudioLintActions'
 
 const LANGUAGE = 'go'
 const MARKER_OWNER = 'gopls'
@@ -236,6 +237,26 @@ function registerProviders(): void {
     },
   }, { providedCodeActionKinds: ['quickfix', 'refactor', 'source'] })
 
+  // Alt+Enter unisce le azioni di gopls a quelle dei linter (correzioni proposte e soppressione della riga).
+  monaco.languages.registerCodeActionProvider(LANGUAGE, {
+    provideCodeActions(model, range) {
+      const document = documentForModel(model)
+      const report = document ? lintReportFor(document.document.sessionId, model.uri.toString()) : null
+      if (!document || !report) return { actions: [], dispose: () => undefined }
+      const actions = lintActionsFor(report.diagnostics, range.startLineNumber, range.endLineNumber, (line) => line <= model.getLineCount() ? model.getLineContent(line) : '', !document.dirty)
+      return {
+        actions: actions.map((action) => ({
+          title: action.title,
+          kind: 'quickfix',
+          isPreferred: action.preferred,
+          diagnostics: [{ ...toMonacoRange(action.diagnostic.range), severity: SEVERITY[action.diagnostic.severity] ?? monaco.MarkerSeverity.Warning, message: action.diagnostic.message }],
+          edit: { edits: action.edits.map((edit) => ({ resource: model.uri, textEdit: { range: toMonacoRange(edit.range), text: edit.text }, versionId: model.getVersionId() })) },
+        })),
+        dispose: () => undefined,
+      }
+    },
+  }, { providedCodeActionKinds: ['quickfix'] })
+
   monaco.editor.registerCommand(APPLY_CODE_ACTION_COMMAND, (_accessor, sessionId: string, actionId: string) => {
     void requestResolveCodeAction(sessionId, actionId)
       .then((change) => applyGoStudioWorkspaceChange(change))
@@ -281,6 +302,11 @@ function reportsByUri(sessions: Array<Record<string, GoIDEDiagnosticsReport>>): 
     for (const report of Object.values(reports)) byUri.set(normalizeUri(report.uri), report)
   }
   return byUri
+}
+
+function lintReportFor(sessionId: string, uri: string): GoIDEDiagnosticsReport | null {
+  const reports = useGoIDELspStore.getState().lint[sessionId]?.reports ?? {}
+  return Object.values(reports).find((report) => normalizeUri(report.uri) === uri) ?? null
 }
 
 /** gopls e linter usano owner distinti: ognuno aggiorna solo i propri marker. */

@@ -64,6 +64,20 @@ type lintIssue struct {
 	source   string
 	code     string
 	message  string
+	// suppression è la direttiva ufficiale del linter per ignorare la riga (//nolint:x o //lint:ignore).
+	suppression string
+	fixes       []lintFix
+}
+
+// lintFix è una correzione proposta dal linter, con edit in byte sul contenuto analizzato.
+type lintFix struct {
+	title string
+	edits []byteEdit
+}
+
+type byteEdit struct {
+	start, end int
+	text       string
 }
 
 type linterCandidate struct {
@@ -314,6 +328,14 @@ func parseGolangci(root string, output []byte) ([]lintIssue, error) {
 				Line     int    `json:"Line"`
 				Column   int    `json:"Column"`
 			} `json:"Pos"`
+			SuggestedFixes []struct {
+				Message   string `json:"Message"`
+				TextEdits []struct {
+					Pos     int    `json:"Pos"`
+					End     int    `json:"End"`
+					NewText []byte `json:"NewText"`
+				} `json:"TextEdits"`
+			} `json:"SuggestedFixes"`
 		} `json:"Issues"`
 	}
 	if err := json.NewDecoder(bytes.NewReader(output[start:])).Decode(&report); err != nil {
@@ -325,9 +347,18 @@ func parseGolangci(root string, output []byte) ([]lintIssue, error) {
 		if !filepath.IsAbs(path) {
 			path = filepath.Join(root, path)
 		}
+		fixes := make([]lintFix, 0, len(issue.SuggestedFixes))
+		for _, suggested := range issue.SuggestedFixes {
+			fix := lintFix{title: suggested.Message}
+			for _, edit := range suggested.TextEdits {
+				fix.edits = append(fix.edits, byteEdit{start: edit.Pos, end: edit.End, text: string(edit.NewText)})
+			}
+			fixes = append(fixes, fix)
+		}
 		issues = append(issues, lintIssue{
 			path: path, line: issue.Pos.Line, column: issue.Pos.Column, severity: lintSeverity(issue.Severity),
 			source: "golangci-lint · " + issue.FromLinter, message: issue.Text,
+			suppression: "//nolint:" + issue.FromLinter, fixes: fixes,
 		})
 	}
 	return issues, nil
@@ -361,6 +392,7 @@ func parseStaticcheck(output []byte) ([]lintIssue, error) {
 		issues = append(issues, lintIssue{
 			path: issue.Location.File, line: issue.Location.Line, column: issue.Location.Column,
 			severity: lintSeverity(issue.Severity), source: "staticcheck", code: issue.Code, message: issue.Message,
+			suppression: "//lint:ignore " + issue.Code + " reason",
 		})
 	}
 	return issues, nil
@@ -392,7 +424,8 @@ func lintReports(session Session, issues []lintIssue) []DiagnosticsReport {
 		if relative == "" {
 			continue
 		}
-		lines := fileLines(path)
+		text, _, _, _ := readTextFile(path)
+		lines := strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n")
 		diagnostics := make([]EditorDiagnostic, 0, len(fileIssues))
 		for _, issue := range fileIssues {
 			line := max(1, issue.line)
@@ -400,6 +433,7 @@ func lintReports(session Session, issues []lintIssue) []DiagnosticsReport {
 			diagnostics = append(diagnostics, EditorDiagnostic{
 				Range:    EditorRange{StartLine: line, StartColumn: column, EndLine: line, EndColumn: column + 1},
 				Severity: issue.severity, Message: issue.message, Source: issue.source, Code: issue.code,
+				Suppression: issue.suppression, Fixes: diagnosticFixes(text, issue.fixes),
 			})
 		}
 		sort.Slice(diagnostics, func(left, right int) bool {
@@ -412,14 +446,6 @@ func lintReports(session Session, issues []lintIssue) []DiagnosticsReport {
 	return reports
 }
 
-func fileLines(path string) []string {
-	text, _, _, err := readTextFile(path)
-	if err != nil {
-		return nil
-	}
-	return strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n")
-}
-
 func utf16Column(lines []string, line, byteColumn int) int {
 	if byteColumn <= 1 || line > len(lines) {
 		return max(1, byteColumn)
@@ -427,4 +453,38 @@ func utf16Column(lines []string, line, byteColumn int) int {
 	text := lines[line-1]
 	offset := min(byteColumn-1, len(text))
 	return len(utf16.Encode([]rune(text[:offset]))) + 1
+}
+
+// diagnosticFixes converte gli offset in byte dei linter in intervalli Monaco; una correzione con edit fuori testo viene scartata.
+func diagnosticFixes(text string, fixes []lintFix) []DiagnosticFix {
+	converted := make([]DiagnosticFix, 0, len(fixes))
+	for _, fix := range fixes {
+		edits, ok := editorEditsForBytes(text, fix.edits)
+		if ok && len(edits) > 0 {
+			converted = append(converted, DiagnosticFix{Title: fix.title, Edits: edits})
+		}
+	}
+	return converted
+}
+
+func editorEditsForBytes(text string, edits []byteEdit) ([]EditorTextEdit, bool) {
+	converted := make([]EditorTextEdit, 0, len(edits))
+	for _, edit := range edits {
+		if edit.start < 0 || edit.end < edit.start || edit.end > len(text) {
+			return nil, false
+		}
+		start, end := editorPositionAt(text, edit.start), editorPositionAt(text, edit.end)
+		converted = append(converted, EditorTextEdit{Range: EditorRange{StartLine: start.line, StartColumn: start.column, EndLine: end.line, EndColumn: end.column}, Text: edit.text})
+	}
+	return converted, true
+}
+
+type editorPosition struct{ line, column int }
+
+// editorPositionAt restituisce riga e colonna Monaco (1-based, UTF-16) dell'offset in byte.
+func editorPositionAt(text string, offset int) editorPosition {
+	prefix := text[:offset]
+	line := strings.Count(prefix, "\n") + 1
+	lineStart := strings.LastIndexByte(prefix, '\n') + 1
+	return editorPosition{line: line, column: len(utf16.Encode([]rune(prefix[lineStart:]))) + 1}
 }

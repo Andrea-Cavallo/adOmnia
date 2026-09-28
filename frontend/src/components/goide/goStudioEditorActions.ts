@@ -4,6 +4,7 @@ import { useGoIDELspStore } from '@/stores/goideLsp'
 import { navigateToLocation, prepareDocument } from './goStudioLanguageFeatures'
 import { applyGoStudioWorkspaceChange } from './goStudioWorkspaceEdits'
 import { showQuickDefinition, showTypeInfo, showUsagesPopup } from './goStudioSemanticFeatures'
+import { requestImplementInterface } from './goStudioImplementInterface'
 
 export const GO_STUDIO_ACTIONS = {
   findUsages: 'goStudio.findUsages',
@@ -18,6 +19,7 @@ export const GO_STUDIO_ACTIONS = {
   quickDefinition: 'goStudio.quickDefinition',
   showUsages: 'goStudio.showUsages',
   typeInfo: 'goStudio.typeInfo',
+  implementInterface: 'goStudio.implementInterface',
 } as const
 
 const { KeyMod, KeyCode } = monaco
@@ -76,16 +78,17 @@ export function installGoStudioEditorActions(editor: monaco.editor.IStandaloneCo
   const semantic = (id: string, label: string, keybindings: number[], run: (target: monaco.editor.ICodeEditor) => void | Promise<void>) => {
     editor.addAction({ id, label, keybindings, contextMenuGroupId: 'navigation', run: (target) => { void run(target) } })
   }
-  semantic(GO_STUDIO_ACTIONS.gotoDeclaration, 'Go to Declaration', [KeyMod.CtrlCmd | KeyCode.KeyB], (target) => target.getAction('editor.action.revealDefinition')?.run())
+  semantic(GO_STUDIO_ACTIONS.gotoDeclaration, 'Go to Declaration', [KeyMod.CtrlCmd | KeyCode.KeyB], (target) => target.trigger('go-studio', 'editor.action.revealDefinition', null))
   semantic(GO_STUDIO_ACTIONS.gotoImplementation, 'Go to Implementation', [KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.KeyB], (target) => showLocations(target, 'implementation', `Implementations of ${wordAt(target)}`))
   semantic(GO_STUDIO_ACTIONS.findUsages, 'Find Usages', [KeyMod.Alt | KeyCode.F7, KeyMod.Shift | KeyCode.F12], (target) => showLocations(target, 'references', `Usages of ${wordAt(target)}`))
   semantic(GO_STUDIO_ACTIONS.rename, 'Rename Symbol…', [KeyCode.F2, KeyMod.Shift | KeyCode.F6], requestRename)
   editor.addAction({ id: GO_STUDIO_ACTIONS.organizeImports, label: 'Optimize Imports', keybindings: [KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.KeyO], contextMenuGroupId: '1_modification', run: (target) => { void organizeImports(target) } })
-  editor.addAction({ id: GO_STUDIO_ACTIONS.reformat, label: 'Reformat Code', keybindings: [KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.KeyL], contextMenuGroupId: '1_modification', run: (target) => { void target.getAction('editor.action.formatDocument')?.run() } })
-  editor.addAction({ id: GO_STUDIO_ACTIONS.quickFix, label: 'Show Context Actions', keybindings: [KeyMod.Alt | KeyCode.Enter], run: (target) => { void target.getAction('editor.action.quickFix')?.run() } })
+  editor.addAction({ id: GO_STUDIO_ACTIONS.reformat, label: 'Reformat Code', keybindings: [KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.KeyL], contextMenuGroupId: '1_modification', run: (target) => { target.trigger('go-studio', 'editor.action.formatDocument', null) } })
+  editor.addAction({ id: GO_STUDIO_ACTIONS.quickFix, label: 'Show Context Actions', keybindings: [KeyMod.Alt | KeyCode.Enter], run: (target) => { target.trigger('go-studio', 'editor.action.quickFix', null) } })
   editor.addAction({ id: GO_STUDIO_ACTIONS.quickDocumentation, label: 'Quick Documentation', keybindings: [KeyMod.CtrlCmd | KeyCode.KeyQ], run: (target) => { target.trigger('go-studio', 'editor.action.showHover', { focus: true }) } })
   semantic(GO_STUDIO_ACTIONS.quickDefinition, 'Quick Definition', [KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyI], showQuickDefinition)
   semantic(GO_STUDIO_ACTIONS.showUsages, 'Show Usages', [KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.F7], showUsagesPopup)
   editor.addAction({ id: GO_STUDIO_ACTIONS.typeInfo, label: 'Type Info', keybindings: [KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyP], run: (target) => { void showTypeInfo(target) } })
-  editor.addAction({ id: GO_STUDIO_ACTIONS.fileStructure, label: 'File Structure', keybindings: [KeyMod.CtrlCmd | KeyCode.F12], run: (target) => { void target.getAction('editor.action.quickOutline')?.run() } })
+  editor.addAction({ id: GO_STUDIO_ACTIONS.implementInterface, label: 'Implement Interface…', keybindings: [KeyMod.CtrlCmd | KeyCode.KeyI], contextMenuGroupId: '1_modification', run: (target) => { void requestImplementInterface(target) } })
+  editor.addAction({ id: GO_STUDIO_ACTIONS.fileStructure, label: 'File Structure', keybindings: [KeyMod.CtrlCmd | KeyCode.F12], run: (target) => { target.trigger('go-studio', 'editor.action.quickOutline', null) } })
 }

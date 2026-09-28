@@ -10,6 +10,7 @@ export {
     CreateProjectRequest,
     DependencyActionRequest,
     DependencyState,
+    DiagnosticFix,
     DiagnosticsReport,
     Document,
     DocumentDiskState,

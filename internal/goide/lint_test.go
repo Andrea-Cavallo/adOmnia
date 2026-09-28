@@ -2,6 +2,7 @@ package goide
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -112,5 +113,40 @@ func TestLinterConfigIsDetectedNeverCreated(t *testing.T) {
 	}
 	if linterConfig(root, LinterGolangci) != path || linterConfig(root, LinterStaticcheck) != "" {
 		t.Fatal("configurazione di progetto non rilevata correttamente")
+	}
+}
+
+func TestGolangciFixesBecomeEditorEditsWithUTF16Columns(t *testing.T) {
+	root := t.TempDir()
+	text := "package main\n\nimport \"fmt\"\n\nfunc main() {\n\ts := \"è\" + fmt.Sprintf(\"hello\")\n\tfmt.Println(s)\n}\n"
+	if err := os.WriteFile(filepath.Join(root, "main.go"), []byte(text), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	start := strings.Index(text, "fmt.Sprintf")
+	end := start + len(`fmt.Sprintf("hello")`)
+	output := fmt.Sprintf(`{"Issues":[{"FromLinter":"staticcheck","Text":"S1039: unnecessary use of fmt.Sprintf","Severity":"","Pos":{"Filename":"main.go","Line":6,"Column":%d},`+
+		`"SuggestedFixes":[{"Message":"Replace with string literal","TextEdits":[{"Pos":%d,"End":%d,"NewText":"ImhlbGxvIg=="}]}]},`+
+		`{"FromLinter":"errcheck","Text":"broken fix","Pos":{"Filename":"main.go","Line":7,"Column":2},"SuggestedFixes":[{"Message":"bad","TextEdits":[{"Pos":0,"End":99999,"NewText":null}]}]}]}`,
+		start-strings.LastIndex(text[:start], "\n"), start, end)
+	issues, err := parseGolangci(root, []byte(output))
+	if err != nil {
+		t.Fatal(err)
+	}
+	session := Session{ID: "s", Project: Project{RealPath: root}}
+	reports := lintReports(session, issues)
+	if len(reports) != 1 || len(reports[0].Diagnostics) != 2 {
+		t.Fatalf("report inattesi: %+v", reports)
+	}
+	fixed := reports[0].Diagnostics[0]
+	if fixed.Suppression != "//nolint:staticcheck" || len(fixed.Fixes) != 1 {
+		t.Fatalf("fix o soppressione mancanti: %+v", fixed)
+	}
+	edit := fixed.Fixes[0].Edits[0]
+	// "\ts := \"è\" + " occupa 12 unità UTF-16 (è = 1), anche se in byte sono 13.
+	if edit.Text != `"hello"` || edit.Range.StartLine != 6 || edit.Range.StartColumn != 13 || edit.Range.EndColumn != 13+len(`fmt.Sprintf("hello")`) {
+		t.Fatalf("edit inatteso: %+v", edit)
+	}
+	if len(reports[0].Diagnostics[1].Fixes) != 0 || reports[0].Diagnostics[1].Suppression != "//nolint:errcheck" {
+		t.Fatalf("una correzione fuori dal testo deve essere scartata: %+v", reports[0].Diagnostics[1])
 	}
 }

@@ -25,6 +25,9 @@ import { runSaveActions } from './goStudioSaveActions'
 import { runCommandFor, type GoStudioRunTarget } from './goStudioRunTargets'
 import { useGoStudioCloseFlow } from './useGoStudioCloseFlow'
 import { GoStudioCaretPopup } from './GoStudioCaretPopup'
+import { GoStudioImplementInterfaceDialog } from './GoStudioImplementInterfaceDialog'
+import { GoStudioSearchEverywhere } from './GoStudioSearchEverywhere'
+import { createDoubleShiftDetector } from './goStudioSearchEverywhere'
 import { runGoStudioQuickCommand, runModuleDependencyAction } from './goStudioQuickActions'
 import { flushBufferRecovery } from './goStudioRecovery'
 import { confirm } from '@/lib/confirmDialog'
@@ -42,6 +45,7 @@ export function GoStudioPanel() {
   const [runDraft] = useState(DEFAULT_RUN_DRAFT)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [symbolSearchOpen, setSymbolSearchOpen] = useState(false)
+  const [searchEverywhereOpen, setSearchEverywhereOpen] = useState(false)
   const [lspLogOpen, setLspLogOpen] = useState(false)
   const [toolPathsOpen, setToolPathsOpen] = useState(false)
   const lsp = useGoIDELspStore()
@@ -131,6 +135,14 @@ export function GoStudioPanel() {
     const dirty = dirtyGoIDEDocuments(useGoIDEStore.getState(), activeSession.id)
     for (const document of dirty) if (!await saveDocumentWithActions(document.document.id)) return
   }
+
+  // Doppio Shift apre Search Everywhere solo quando c'è un progetto aperto.
+  useEffect(() => {
+    if (!activeSessionId) return
+    const detect = createDoubleShiftDetector(() => setSearchEverywhereOpen(true))
+    window.addEventListener('keydown', detect, true)
+    return () => window.removeEventListener('keydown', detect, true)
+  }, [activeSessionId])
 
   useEffect(() => {
     const protectDirtyBuffers = (event: BeforeUnloadEvent) => {
@@ -276,6 +288,7 @@ export function GoStudioPanel() {
       case 'go.modVerify': return void runModuleDependencyAction('verify')
       case 'help.shortcuts': return setShortcutsOpen(true)
       case 'nav.symbol': return setSymbolSearchOpen(true)
+      case 'nav.searchEverywhere': return setSearchEverywhereOpen(true)
       case 'go.lspLog': return setLspLogOpen(true)
       case 'go.toolPaths': return setToolPathsOpen(true)
     }
@@ -301,6 +314,7 @@ export function GoStudioPanel() {
       <GoStudioStatusBar session={activeSession} toolchain={toolchain} document={activeDocument} cursor={cursor} execution={activeExecution} onLanguageServer={openLanguageServerMenu} onLinter={() => runCommand(commandAvailability('code.lint', commandContext) === true ? 'code.lint' : 'go.toolPaths')} />
       <GoStudioQuickOpen />
       <GoStudioCaretPopup />
+      <GoStudioImplementInterfaceDialog />
       {sharedDialogs}
       {store.activeSessionId && <GoStudioRunConfigurations open={configureOpen} sessionId={store.activeSessionId} onClose={() => setConfigureOpen(false)} />}
       <GoStudioSecretsPrompt
@@ -315,6 +329,7 @@ export function GoStudioPanel() {
       />
       <ToolchainDialog open={toolchainOpen} onClose={() => setToolchainOpen(false)} />
       <GoStudioDependencies open={dependenciesOpen} session={activeSession} onClose={() => setDependenciesOpen(false)} />
+      <GoStudioSearchEverywhere open={searchEverywhereOpen} sessionId={activeSession.id} availability={(id) => commandAvailability(id, commandContext)} onCommand={runCommand} onClose={() => setSearchEverywhereOpen(false)} />
       <GoStudioSymbolSearch open={symbolSearchOpen} sessionId={activeSession.id} onClose={() => setSymbolSearchOpen(false)} />
       <GoStudioRenameDialog />
       <GoStudioChangePreviewDialog />

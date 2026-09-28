@@ -79,6 +79,15 @@ type EditorDiagnostic struct {
 	Message  string      `json:"message"`
 	Source   string      `json:"source,omitempty"`
 	Code     string      `json:"code,omitempty"`
+	// Suppression e Fixes arrivano solo dai linter: direttiva per ignorare la riga e correzioni proposte.
+	Suppression string          `json:"suppression,omitempty"`
+	Fixes       []DiagnosticFix `json:"fixes,omitempty"`
+}
+
+// DiagnosticFix è una correzione applicabile al file così come è stato analizzato.
+type DiagnosticFix struct {
+	Title string           `json:"title"`
+	Edits []EditorTextEdit `json:"edits"`
 }
 
 type DiagnosticsReport struct {
