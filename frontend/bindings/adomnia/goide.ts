@@ -522,6 +522,170 @@ export function WriteRunInput(runID: string, text: string): $CancellablePromise<
     return $Call.ByID(3248513382, runID, text);
 }
 
+/**
+ * ListRunConfigurations elenca le configurazioni Run salvate della sessione.
+ */
+export function ListRunConfigurations(sessionID: string): $CancellablePromise<goide$0.RunConfiguration[]> {
+    return $Call.ByID(2220453324, sessionID).then(($result: any) => {
+        return $$createP3Array($result);
+    });
+}
+
+/**
+ * SaveRunConfiguration crea o aggiorna una configurazione Run validata.
+ */
+export function SaveRunConfiguration(sessionID: string, config: goide$0.RunConfiguration): $CancellablePromise<goide$0.RunConfiguration> {
+    return $Call.ByID(2344626746, sessionID, config).then(($result: any) => {
+        return $$createP3One($result);
+    });
+}
+
+/**
+ * DuplicateRunConfiguration copia una configurazione esistente.
+ */
+export function DuplicateRunConfiguration(sessionID: string, configID: string): $CancellablePromise<goide$0.RunConfiguration> {
+    return $Call.ByID(2204031694, sessionID, configID).then(($result: any) => {
+        return $$createP3One($result);
+    });
+}
+
+/**
+ * RenameRunConfiguration rinomina una configurazione esistente.
+ */
+export function RenameRunConfiguration(sessionID: string, configID: string, name: string): $CancellablePromise<goide$0.RunConfiguration> {
+    return $Call.ByID(2219541861, sessionID, configID, name).then(($result: any) => {
+        return $$createP3One($result);
+    });
+}
+
+/**
+ * ReorderRunConfigurations applica l'ordine scelto dall'utente.
+ */
+export function ReorderRunConfigurations(sessionID: string, configIDs: string[]): $CancellablePromise<goide$0.RunConfiguration[]> {
+    return $Call.ByID(2094160389, sessionID, configIDs).then(($result: any) => {
+        return $$createP3Array($result);
+    });
+}
+
+/**
+ * DeleteRunConfiguration elimina una configurazione salvata.
+ */
+export function DeleteRunConfiguration(sessionID: string, configID: string): $CancellablePromise<void> {
+    return $Call.ByID(3107389040, sessionID, configID);
+}
+
+/**
+ * StartConfiguredRun avvia una configurazione salvata con i soli segreti forniti a runtime.
+ */
+export function StartConfiguredRun(sessionID: string, configID: string, secrets: { [_ in string]?: string }): $CancellablePromise<goide$0.Execution> {
+    return $Call.ByID(3106256291, sessionID, configID, secrets).then(($result: any) => {
+        return $$createP3Execution($result);
+    });
+}
+
+/**
+ * OpenTerminal apre una shell interattiva reale nella working directory del progetto.
+ */
+export function OpenTerminal(request: goide$0.TerminalRequest): $CancellablePromise<goide$0.TerminalSession> {
+    return $Call.ByID(4136168338, request).then(($result: any) => {
+        return $$createP3Terminal($result);
+    });
+}
+
+/**
+ * WriteTerminal inoltra l'input dell'utente alla shell indicata.
+ */
+export function WriteTerminal(terminalID: string, data: string): $CancellablePromise<void> {
+    return $Call.ByID(3103928745, terminalID, data);
+}
+
+/**
+ * ResizeTerminal adegua il PTY alle dimensioni correnti del pannello.
+ */
+export function ResizeTerminal(terminalID: string, columns: number, rows: number): $CancellablePromise<void> {
+    return $Call.ByID(3179382934, terminalID, columns, rows);
+}
+
+/**
+ * CloseTerminal termina shell e albero di processi del terminale.
+ */
+export function CloseTerminal(terminalID: string): $CancellablePromise<void> {
+    return $Call.ByID(2540088910, terminalID);
+}
+
+/**
+ * ListTerminals elenca i terminali della sola sessione indicata.
+ */
+export function ListTerminals(sessionID: string): $CancellablePromise<goide$0.TerminalSession[]> {
+    return $Call.ByID(1696358663, sessionID).then(($result: any) => {
+        return $$createP3TerminalArray($result);
+    });
+}
+
+/**
+ * HasActiveTerminals indica se la sessione possiede shell ancora vive.
+ */
+export function HasActiveTerminals(sessionID: string): $CancellablePromise<boolean> {
+    return $Call.ByID(1359697245, sessionID);
+}
+
+/**
+ * GetSessionView restituisce layout e tab ripristinabili della sessione.
+ */
+export function GetSessionView(sessionID: string): $CancellablePromise<goide$0.SessionView> {
+    return $Call.ByID(487629595, sessionID).then(($result: any) => {
+        return $$createP3View($result);
+    });
+}
+
+/**
+ * SaveSessionView registra layout e tab della sessione, senza contenuti dei file.
+ */
+export function SaveSessionView(sessionID: string, view: goide$0.SessionView): $CancellablePromise<void> {
+    return $Call.ByID(4208673812, sessionID, view);
+}
+
+/**
+ * RememberBuffer conserva un buffer non salvato nello store di recupero locale.
+ */
+export function RememberBuffer(sessionID: string, relativePath: string, content: string, diskToken: string): $CancellablePromise<void> {
+    return $Call.ByID(549670995, sessionID, relativePath, content, diskToken);
+}
+
+/**
+ * ForgetBuffer scarta un buffer dallo store di recupero.
+ */
+export function ForgetBuffer(sessionID: string, relativePath: string): $CancellablePromise<void> {
+    return $Call.ByID(342971689, sessionID, relativePath);
+}
+
+/**
+ * ListRecoveredBuffers elenca i buffer non salvati ritrovati dopo un riavvio.
+ */
+export function ListRecoveredBuffers(sessionID: string): $CancellablePromise<goide$0.RecoveredBuffer[]> {
+    return $Call.ByID(1873457286, sessionID).then(($result: any) => {
+        return $$createP3Recovered($result);
+    });
+}
+
+/**
+ * PruneMissingSessions rimuove le sessioni la cui cartella non esiste piu'.
+ */
+export function PruneMissingSessions(): $CancellablePromise<goide$0.Session[]> {
+    return $Call.ByID(1286303007).then(($result: any) => {
+        return $$createP3Sessions($result);
+    });
+}
+
+/**
+ * FindSessionsForPath elenca le altre sessioni che contengono lo stesso file.
+ */
+export function FindSessionsForPath(sessionID: string, relativePath: string): $CancellablePromise<goide$0.Session[]> {
+    return $Call.ByID(2186358452, sessionID, relativePath).then(($result: any) => {
+        return $$createP3Sessions($result);
+    });
+}
+
 // Private type creation functions
 const $$createType0 = goide$0.DocumentDiskState.createFrom;
 const $$createType1 = goide$0.CodeActionEntry.createFrom;
@@ -562,3 +726,11 @@ const $$createType35 = goide$0.SearchResult.createFrom;
 const $$createType36 = goide$0.SignatureResult.createFrom;
 const $$createType37 = goide$0.WorkspaceSymbol.createFrom;
 const $$createType38 = $Create.Array($$createType37);
+const $$createP3One = goide$0.RunConfiguration.createFrom;
+const $$createP3Array = $Create.Array($$createP3One);
+const $$createP3Execution = goide$0.Execution.createFrom;
+const $$createP3Terminal = goide$0.TerminalSession.createFrom;
+const $$createP3TerminalArray = $Create.Array($$createP3Terminal);
+const $$createP3View = goide$0.SessionView.createFrom;
+const $$createP3Recovered = $Create.Array(goide$0.RecoveredBuffer.createFrom);
+const $$createP3Sessions = $Create.Array(goide$0.Session.createFrom);

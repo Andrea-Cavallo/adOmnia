@@ -18,6 +18,13 @@ import type {
   ToolchainInstallation,
   ToolchainRelease,
   InstalledToolchain,
+  RunConfiguration,
+  EnvironmentEntry,
+  SessionView,
+  RecoveredBuffer,
+  TerminalSession,
+  TerminalRequest,
+  TerminalOutput,
 } from '../../bindings/adomnia/internal/goide/models'
 
 export type GoIDECapabilities = Capabilities
@@ -36,6 +43,13 @@ export type GoIDEDependencyState = DependencyState
 export type GoIDEToolchainInstallation = ToolchainInstallation
 export type GoIDEToolchainRelease = ToolchainRelease
 export type GoIDEInstalledToolchain = InstalledToolchain
+export type GoIDERunConfiguration = RunConfiguration
+export type GoIDEEnvironmentEntry = EnvironmentEntry
+export type GoIDESessionView = SessionView
+export type GoIDERecoveredBuffer = RecoveredBuffer
+export type GoIDETerminalSession = TerminalSession
+export type GoIDETerminalRequest = TerminalRequest
+export type GoIDETerminalOutput = TerminalOutput
 export interface GoIDEEvent {
   version: number
   type: string
@@ -193,4 +207,90 @@ export function subscribeGoIDEEvents(callback: (event: GoIDEEvent) => void): () 
 
 export function subscribeGoIDEAppCloseRequests(callback: (request: GoIDEAppCloseRequest) => void): () => void {
   return Events.On('goide:close-requested', (event) => callback(event.data as GoIDEAppCloseRequest))
+}
+
+// --- Configurazioni Run persistenti -----------------------------------------
+
+export async function listGoIDERunConfigurations(sessionId: string): Promise<GoIDERunConfiguration[]> {
+  return GoIDEBindings.ListRunConfigurations(sessionId)
+}
+
+export async function saveGoIDERunConfiguration(sessionId: string, config: GoIDERunConfiguration): Promise<GoIDERunConfiguration> {
+  return GoIDEBindings.SaveRunConfiguration(sessionId, config)
+}
+
+export async function duplicateGoIDERunConfiguration(sessionId: string, configId: string): Promise<GoIDERunConfiguration> {
+  return GoIDEBindings.DuplicateRunConfiguration(sessionId, configId)
+}
+
+export async function renameGoIDERunConfiguration(sessionId: string, configId: string, name: string): Promise<GoIDERunConfiguration> {
+  return GoIDEBindings.RenameRunConfiguration(sessionId, configId, name)
+}
+
+export async function reorderGoIDERunConfigurations(sessionId: string, configIds: string[]): Promise<GoIDERunConfiguration[]> {
+  return GoIDEBindings.ReorderRunConfigurations(sessionId, configIds)
+}
+
+export async function deleteGoIDERunConfiguration(sessionId: string, configId: string): Promise<void> {
+  await GoIDEBindings.DeleteRunConfiguration(sessionId, configId)
+}
+
+export async function startGoIDEConfiguredRun(sessionId: string, configId: string, secrets: Record<string, string>): Promise<GoIDEExecution> {
+  return GoIDEBindings.StartConfiguredRun(sessionId, configId, secrets)
+}
+
+// --- Terminale PTY ----------------------------------------------------------
+
+export async function openGoIDETerminal(request: GoIDETerminalRequest): Promise<GoIDETerminalSession> {
+  return GoIDEBindings.OpenTerminal(request)
+}
+
+export async function writeGoIDETerminal(terminalId: string, data: string): Promise<void> {
+  await GoIDEBindings.WriteTerminal(terminalId, data)
+}
+
+export async function resizeGoIDETerminal(terminalId: string, columns: number, rows: number): Promise<void> {
+  await GoIDEBindings.ResizeTerminal(terminalId, columns, rows)
+}
+
+export async function closeGoIDETerminal(terminalId: string): Promise<void> {
+  await GoIDEBindings.CloseTerminal(terminalId)
+}
+
+export async function listGoIDETerminals(sessionId: string): Promise<GoIDETerminalSession[]> {
+  return GoIDEBindings.ListTerminals(sessionId)
+}
+
+export async function hasActiveGoIDETerminals(sessionId: string): Promise<boolean> {
+  return GoIDEBindings.HasActiveTerminals(sessionId)
+}
+
+// --- Ripristino sessione e buffer -------------------------------------------
+
+export async function getGoIDESessionView(sessionId: string): Promise<GoIDESessionView> {
+  return GoIDEBindings.GetSessionView(sessionId)
+}
+
+export async function saveGoIDESessionView(sessionId: string, view: GoIDESessionView): Promise<void> {
+  await GoIDEBindings.SaveSessionView(sessionId, view)
+}
+
+export async function rememberGoIDEBuffer(sessionId: string, relativePath: string, content: string, diskToken: string): Promise<void> {
+  await GoIDEBindings.RememberBuffer(sessionId, relativePath, content, diskToken)
+}
+
+export async function forgetGoIDEBuffer(sessionId: string, relativePath: string): Promise<void> {
+  await GoIDEBindings.ForgetBuffer(sessionId, relativePath)
+}
+
+export async function listGoIDERecoveredBuffers(sessionId: string): Promise<GoIDERecoveredBuffer[]> {
+  return GoIDEBindings.ListRecoveredBuffers(sessionId)
+}
+
+export async function pruneMissingGoIDESessions(): Promise<GoIDESession[]> {
+  return GoIDEBindings.PruneMissingSessions()
+}
+
+export async function findGoIDESessionsForPath(sessionId: string, relativePath: string): Promise<GoIDESession[]> {
+  return GoIDEBindings.FindSessionsForPath(sessionId, relativePath)
 }
