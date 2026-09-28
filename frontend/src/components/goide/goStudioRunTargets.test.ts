@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { findRunTargets, runCommandFor } from './goStudioRunTargets'
+import { findRunTargets, packageLenses, runCommandFor } from './goStudioRunTargets'
 
 describe('findRunTargets', () => {
   it('puts a play action on func main only in package main', () => {
@@ -29,5 +29,19 @@ describe('runCommandFor', () => {
     })
     expect(runCommandFor({ line: 4, kind: 'benchmark', name: 'BenchmarkHello', packagePath: '.' }).programArguments).toEqual(['-run', '^$', '-bench', '^BenchmarkHello$', '-benchmem', '-v'])
     expect(runCommandFor({ line: 5, kind: 'main', name: 'main', packagePath: './cmd/api' })).toMatchObject({ kind: 'run', target: './cmd/api' })
+  })
+})
+
+describe('packageLenses', () => {
+  it('offers build, test and vet on the package clause, generate only when directives exist', () => {
+    const plain = packageLenses('api/server.go', '// Package api.\npackage api\n')
+    expect(plain.map((lens) => `${lens.line}:${lens.kind}`)).toEqual(['2:build', '2:test', '2:vet'])
+    const generated = packageLenses('api/gen.go', 'package api\n\n//go:generate stringer -type=Kind\n')
+    expect(generated.map((lens) => lens.kind)).toContain('generate')
+  })
+
+  it('ignores go.mod and files without a package clause', () => {
+    expect(packageLenses('go.mod', 'module x\n')).toEqual([])
+    expect(packageLenses('broken.go', '')).toEqual([])
   })
 })

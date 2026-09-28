@@ -99,4 +99,26 @@ describe('Go Studio editor state', () => {
     state.handleEvent({ version: 1, type: 'run.output', sessionId: 'session-one', resourceId: 'run-one', sequence: 2, timestamp: '', payload: { runId: 'run-one', stream: 'stderr', text: 'expected' } })
     expect(useGoIDEStore.getState().consoleByRun['run-one']).toEqual([{ sequence: 2, stream: 'stderr', text: 'expected' }])
   })
+
+  it('reloads a clean go.mod after a dependency command and only flags a dirty one', async () => {
+    const goMod = (id: string, dirty: boolean): GoIDEEditorDocument => ({
+      ...document,
+      document: { ...document.document, id, uri: `file:///project/${id}/go.mod`, relativePath: `${id}/go.mod`, name: 'go.mod' },
+      buffer: dirty ? 'module edited\n' : 'module old\n', savedContent: 'module old\n', dirty,
+    })
+    useGoIDEStore.setState({ documents: [goMod('clean', false), goMod('dirty', true), { ...document }] })
+    mocks.checkDocument.mockImplementation(async (_session: string, documentId: string) => ({
+      documentId, changed: documentId !== 'document-one', content: 'module new\n', diskToken: 'token-two', modifiedAt: '',
+    }))
+    useGoIDEStore.getState().handleEvent({
+      version: 1, type: 'run.finished', sessionId: 'session-one', resourceId: 'dep', sequence: 1, timestamp: '',
+      payload: { id: 'dep', sessionId: 'session-one', kind: 'dependency', status: 'exited', command: 'go get -u ./...', workingDirectory: '/project', startedAt: '', durationMillis: 1 },
+    })
+    await vi.waitFor(() => expect(useGoIDEStore.getState().documents.find((item) => item.document.id === 'clean')?.buffer).toBe('module new\n'))
+    const documents = useGoIDEStore.getState().documents
+    expect(documents.find((item) => item.document.id === 'clean')).toMatchObject({ dirty: false, externalState: null, diskToken: 'token-two' })
+    expect(documents.find((item) => item.document.id === 'dirty')).toMatchObject({ buffer: 'module edited\n', dirty: true })
+    expect(documents.find((item) => item.document.id === 'dirty')?.externalState?.changed).toBe(true)
+    expect(mocks.checkDocument).not.toHaveBeenCalledWith('session-one', 'document-one', expect.anything())
+  })
 })

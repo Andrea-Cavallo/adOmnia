@@ -51,7 +51,7 @@ Una fase è completa soltanto quando:
 - [x] Fase 0 — Analisi, decisioni architetturali e scheletro integrato
 - [ ] Fase 1 — Base funzionante end-to-end *(in corso: implementazione quasi completa, gate da collaudare su Windows)*
 - [ ] Fase 2 — Intelligenza del codice con gopls/LSP *(implementata e verificata end-to-end; gate in attesa della prova manuale su Windows)*
-- [ ] Fase 3 — Più progetti, ripristino e terminale integrato
+- [ ] Fase 3 — Più progetti, ripristino e terminale integrato *(implementata e verificata end-to-end sul branch `feat/goide-phase3`; restano conflitti fra sessioni, watcher e misure su progetto grande)*
 - [ ] Fase 4 — Test runner, debugger, coverage e finestre separate
 - [ ] Fase 5 — Parità GoLand: assistenza al codice, VCS nell'editor e integrazione con i moduli adOmnia
 - [ ] Collaudo finale e documentazione di rilascio
@@ -74,15 +74,11 @@ Stato in una riga: le Fasi 0, 1 e 2 sono implementate e verificate end-to-end co
 - [ ] Morph `aO → gO` all'ingresso in Go Studio (400 ms, con `prefers-reduced-motion`), se lo si vuole adottare.
 - [ ] Toolbar: branch Git e selettore della configurazione Run/Debug come nel mock, solo quando saranno funzioni reali.
 
-**3. Fase 3: più progetti, ripristino e terminale** (non iniziata)
-- Già coperto in parte: sessioni multiple isolate lato backend (gopls, processi, diagnostica per sessione), progetti recenti, ripristino delle sessioni senza avviare codice non autorizzato.
-- [ ] Passare fra progetti senza perdere tab, dirty state, layout, console e diagnostica di ciascuno.
+**3. Fase 3: più progetti, ripristino e terminale** (in corso, branch `feat/goide-phase3`)
+- Fatto e verificato: persistenza schema v3 con migrazione, recovery store dei buffer con recupero esplicito, configurazioni Run persistenti (package, file, build, test, binario) con segreti mai salvati, terminale PTY reale (go-pty + xterm.js), quick actions di `go.mod` e comandi rapidi di build/test/vet. Dettaglio in Fase 3.
 - [ ] Stesso file aperto in due sessioni: rilevare e mostrare i conflitti, mai sovrascrivere in silenzio.
-- [ ] Recovery store locale dei buffer non salvati, con recupero esplicito dopo un crash o una chiusura forzata.
-- [ ] Persistenza versionata di tab, file attivo, layout e configurazioni, con migrazione dello schema.
-- [ ] Configurazioni Run persistenti e multiple (package, file, binario, test), con validazione, duplica/rinomina/ordina/elimina e segreti tramite vault.
-- [ ] Terminale PTY reale con xterm.js locale: ConPTY su Windows, adattatori Unix separati, più terminali per sessione, resize, limiti di scrollback, cleanup del process tree.
 - [ ] Watcher dei file con debounce, backpressure sugli eventi e misure su un progetto grande.
+- [ ] Prova e2e del passaggio fra due progetti aperti (tab, dirty state, console, terminali) e prova PTY su Windows (ConPTY).
 
 **4. Fase 4: test runner, debugger, coverage, finestre** (non iniziata)
 - Già coperto in parte: ▶ nel gutter per eseguire un singolo `Test`/`Benchmark`/`Fuzz`/`Example` con output nella Run console.
@@ -485,56 +481,67 @@ Obiettivo: lavorare su più progetti in sessioni isolate, ripristinabili, con co
 
 ## 3.1 Sessioni indipendenti
 
-- [ ] Aprire più progetti e passare fra sessioni senza perdere tab, dirty state, layout, diagnostica o console.
-- [ ] Separare per sessione documenti, watcher, gopls, configurazioni, esecuzioni, console e terminali.
+- [ ] Aprire più progetti e passare fra sessioni senza perdere tab, dirty state, layout, diagnostica o console. *(vista per sessione salvata e ripristinata; manca la prova e2e con due progetti reali)*
+- [x] Separare per sessione documenti, gopls, configurazioni, esecuzioni, console e terminali. *(watcher: vedi 3.5)*
 - [ ] Definire comportamento quando lo stesso file è aperto in due sessioni.
 - [ ] Rilevare e mostrare conflitti fra buffer concorrenti senza sovrascritture silenziose.
-- [ ] Chiudere una sessione chiedendo cosa fare con file dirty e processi attivi.
-- [ ] Evitare che la chiusura di una sessione termini risorse appartenenti alle altre.
+- [x] Chiudere una sessione chiedendo cosa fare con file dirty e processi attivi.
+- [x] Evitare che la chiusura di una sessione termini risorse appartenenti alle altre. *(anche la pulizia delle sessioni con cartella rimossa ora ferma processi, gopls e terminali solo di quella sessione)*
 
 ## 3.2 Persistenza e ripristino
 
-- [ ] Persistenza versionata di progetti recenti, sessioni, tab, file attivo, layout e configurazioni.
-- [ ] Migrazione backward-compatible dello schema di persistenza.
-- [ ] Ripristinare la sessione senza eseguire automaticamente toolchain, programmi, terminali o gopls non autorizzato.
-- [ ] Ripristinare buffer non salvati in un recovery store locale e proporre recupero esplicito.
-- [ ] Gestire cartelle spostate/rimosse e file non più presenti con stato recuperabile.
-- [ ] Aggiungere export/import delle impostazioni Go Studio solo se compatibile con il formato workspace e documentato.
+- [x] Persistenza versionata di progetti recenti, sessioni, tab, file attivo, layout e configurazioni (schema v3).
+- [x] Migrazione backward-compatible dello schema di persistenza (v2 → v3, testata).
+- [x] Ripristinare la sessione senza eseguire automaticamente toolchain, programmi, terminali o gopls non autorizzato. *(i file SDK in sola lettura non vengono salvati nella vista né riaperti al ripristino)*
+- [x] Ripristinare buffer non salvati in un recovery store locale e proporre recupero esplicito. *(limiti 4 MB per buffer, 200 buffer, 32 MB totali; se il file su disco è cambiato il recupero chiede conferma; flush immediato alla chiusura della finestra)*
+- [x] Gestire cartelle spostate/rimosse e file non più presenti con stato recuperabile.
+- [ ] Aggiungere export/import delle impostazioni Go Studio solo se compatibile con il formato workspace e documentato. *(opzionale)*
 
 ## 3.3 Configurazioni Run persistenti
 
-- [ ] Supportare package `main`, lista esplicita di file Go quando valida, build package/progetto, binario compilato e test.
-- [ ] Persistenza locale di target, cwd, argomenti programma, flag Go, build tag e ambiente.
-- [ ] Validare configurazioni prima dell'avvio e mostrare errori contestuali.
-- [ ] Duplicare, rinominare, ordinare ed eliminare configurazioni.
-- [ ] Evitare di serializzare segreti in chiaro; usare riferimenti al vault o valori richiesti a runtime quando necessario.
+- [x] Supportare package `main`, lista esplicita di file Go, build package/progetto, binario compilato e test. *(Test e Binario erano mostrati ma rifiutati dal backend: ora eseguono davvero)*
+- [x] Persistenza locale di target, cwd, argomenti programma, flag Go, build tag e ambiente.
+- [x] Validare configurazioni prima dell'avvio e mostrare errori contestuali (percorsi confinati al progetto).
+- [x] Duplicare, rinominare, ordinare ed eliminare configurazioni.
+- [x] Evitare di serializzare segreti in chiaro: i valori segreti sono richiesti al lancio e mai persistiti.
+
+## 3.3b Comandi rapidi e go.mod (richiesta utente: "tutto veloce e semplice")
+
+- [x] CodeLens in `go.mod`: sopra `module` **Update all · Update patches · Tidy · Download · Verify**; su ogni `require` **Update · Replace with local… · Remove**; **Drop replace** su dipendenze già sostituite e su ogni `replace`.
+- [x] Replace con cartella locale: selettore nativo, verifica che la cartella contenga un `go.mod`, scrittura relativa (`../lib`) tramite `go mod edit`, nessuna shell.
+- [x] Conferma solo per le azioni che possono usare la rete (update, remove, download, tidy); replace/drop/verify sono immediate. Il `go.mod` sporco viene salvato prima del comando.
+- [x] `go.mod`/`go.sum` aperti si ricaricano da soli dopo il comando se non modificati; se modificati compare l'avviso Reload/Keep.
+- [x] CodeLens sulla riga `package` di ogni file Go: **⚒ Build · ▶ Test · Vet** (+ **Generate** se ci sono direttive `//go:generate`).
+- [x] Menu Run: Build/Test/Vet Current Package, Build/Test/Vet All (`./...`), Generate, Install. Scorciatoie: Ctrl/Cmd+F9 build package, Ctrl/Cmd+Shift+F9 build all, Ctrl/Cmd+Shift+F10 test package, Ctrl/Cmd+Alt+F10 test all.
+- [x] Menu Go: Update All Dependencies, Update Patch Versions, Download Modules, Verify Modules.
+- [x] I comandi partono dal modulo che contiene il file attivo (progetti multi-modulo e `go.work`).
 
 ## 3.4 Terminale PTY reale
 
-- [ ] Aggiungere xterm.js e addon necessari come dipendenze locali, senza CDN.
-- [ ] Implementare backend PTY con ConPTY su Windows e adattatori separati per piattaforme supportate.
-- [ ] Aprire shell locale configurabile nella working directory del progetto.
-- [ ] Supportare input interattivo, output streaming, resize e sequenze ANSI.
-- [ ] Supportare più terminali per sessione con nome, stato e chiusura indipendenti.
-- [ ] Distinguere chiaramente terminale interattivo e Run console.
-- [ ] Limitare scrollback e throughput per evitare blocchi con output intenso.
-- [ ] Terminare shell e process tree alla chiusura del terminale/sessione/app.
-- [ ] Non inserire automaticamente credenziali o comandi nel terminale.
+- [x] Aggiungere xterm.js e addon necessari come dipendenze locali, senza CDN.
+- [x] Implementare backend PTY con ConPTY su Windows e adattatori separati per piattaforme supportate (go-pty). *(prova su Windows ancora manuale)*
+- [x] Aprire shell locale configurabile nella working directory del progetto, con il `go` della sessione nel PATH e `TERM=xterm-256color`.
+- [x] Supportare input interattivo, output streaming, resize e sequenze ANSI.
+- [x] Supportare più terminali per sessione con nome, stato e chiusura indipendenti.
+- [x] Distinguere chiaramente terminale interattivo e Run console (scheda Terminal nel pannello inferiore, Alt+F12 apre subito una shell).
+- [x] Limitare scrollback e throughput per evitare blocchi con output intenso: backpressure invece di scartare output, UTF-8 mai spezzato, cronologia frontend limitata a 512K caratteri.
+- [x] Terminare shell e process tree alla chiusura del terminale/sessione/app.
+- [x] Non inserire automaticamente credenziali o comandi nel terminale.
 
 ## 3.5 Prestazioni e robustezza
 
 - [ ] Watcher controllati e deduplicati; debounce degli eventi e gestione overflow.
-- [ ] Ricerca cancellabile, indicizzazione progressiva e limiti sui risultati.
+- [x] Ricerca cancellabile e limiti sui risultati (Find in Files, Fase 2). *(indicizzazione progressiva non necessaria: la ricerca delega a gopls e a una scansione cancellabile)*
 - [ ] Misurare apertura e navigazione su un progetto grande senza bloccare il main thread.
-- [ ] Applicare backpressure/coalescing agli eventi di output e diagnostica.
+- [x] Applicare backpressure/coalescing agli eventi di output del terminale.
 - [ ] Verificare consumo e rilascio risorse passando ripetutamente fra sessioni.
 
 ## 3.6 Test mirati
 
-- [ ] Test di isolamento completo tra due progetti con output, diagnostica, config e terminali simultanei.
-- [ ] Test di ripristino sessione e recovery di buffer dirty.
-- [ ] Test di migrazione della persistenza da una versione precedente.
-- [ ] Test PTY: input, resize, exit naturale, kill e cleanup process tree su Windows.
+- [ ] Test di isolamento completo tra due progetti con output, diagnostica, config e terminali simultanei. *(coperti per parti: gopls, config, terminali; manca il test unico end-to-end)*
+- [x] Test di ripristino sessione e recovery di buffer dirty.
+- [x] Test di migrazione della persistenza da una versione precedente.
+- [ ] Test PTY: input, resize, exit naturale, kill e cleanup process tree su Windows. *(passano su Linux, incluso cleanup del process tree; Windows da eseguire)*
 - [ ] Test di conflitto per lo stesso file aperto in due sessioni.
 
 ## Gate di uscita Fase 3
@@ -548,13 +555,14 @@ Obiettivo: lavorare su più progetti in sessioni isolate, ripristinabili, con co
 
 ### Evidenze della fase
 
-- Data:
-- Commit:
-- Versioni PTY/xterm:
-- Progetti Go usati:
-- Comandi e risultati:
-- Prova manuale:
-- Limiti rimasti:
+- Data: 2026-09-28
+- Branch: `feat/goide-phase3`
+- Versioni PTY/xterm: `github.com/aymanbagabas/go-pty` (diretta in `go.mod`), `@xterm/xterm` 5.5 con addon fit.
+- Progetti Go usati: progetto con `go.mod` che richiede un modulo non pubblicato, cartella `../lib` con proprio `go.mod`, package `util` con test.
+- Comandi e risultati: `go vet ./internal/goide/...` ok; `go test -race ./internal/goide/...` ok; `npx tsc --noEmit` ok; `npx vitest run` 134 file / 613 test ok; `npm run build` ok.
+- Prova e2e (frontend reale in Chromium + vero `goide.Service`): trust, CodeLens `go.mod`, Replace with local → `replace example.com/lib => ../lib` su disco e ricaricato nell'editor, Drop replace, conferma per Update all, ▶ Test della riga package (`ok example.com/app/util`), Vet, Ctrl+Shift+F9 (`go build ./...`), Run → Test All, Alt+F12 con shell reale (`go version`). Zero errori di pagina.
+- Difetti della revisione del lavoro precedente, corretti: terminale che scartava output e spezzava UTF-8 con falso flag di troncamento; `go` della sessione assente dal PATH del terminale; sessioni rimosse che lasciavano gopls e processi orfani; recovery senza limite totale; configurazioni Test/Binario finte; doppia riga di tab Run/Terminal; primo prompt della shell perso; ripristino che provava a riaprire file SDK; recupero che sovrascriveva in silenzio un file cambiato su disco; flush del recovery che non scriveva; Build che ignorava il tipo di configurazione; stringhe UI in italiano; loop infinito di React all'apertura del progetto (selettori Zustand con `?? []`); errore xterm alla distruzione immediata; font del terminale non risolto (variabile CSS passata al canvas).
+- Limiti rimasti: conflitti fra sessioni sullo stesso file, watcher con debounce, misure su progetto grande, prove manuali su Windows.
 
 ---
 

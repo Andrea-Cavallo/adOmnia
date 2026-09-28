@@ -24,7 +24,6 @@ import type {
   RecoveredBuffer,
   TerminalSession,
   TerminalRequest,
-  TerminalOutput,
 } from '../../bindings/adomnia/internal/goide/models'
 
 export type GoIDECapabilities = Capabilities
@@ -50,7 +49,11 @@ export type GoIDESessionView = SessionView
 export type GoIDERecoveredBuffer = RecoveredBuffer
 export type GoIDETerminalSession = TerminalSession
 export type GoIDETerminalRequest = TerminalRequest
-export type GoIDETerminalOutput = TerminalOutput
+/** Payload dell'evento `terminal.output` (goide.TerminalOutput), non generato da Wails perché solo evento. */
+export interface GoIDETerminalOutput {
+  terminalId: string
+  data: string
+}
 export interface GoIDEEvent {
   version: number
   type: string
@@ -168,6 +171,11 @@ export async function listGoIDEDependencies(sessionId: string, moduleDirectory: 
 
 export async function startGoIDEDependencyAction(request: DependencyActionRequest): Promise<Execution> {
   return GoIDEBindings.StartDependencyAction(request)
+}
+
+/** Selettore nativo di cartelle; stringa vuota se l'utente annulla. */
+export async function selectGoIDEFolder(title: string): Promise<string> {
+  return GoIDEBindings.SelectFolder(title)
 }
 
 export async function startGoIDERun(request: RunRequest): Promise<GoIDEExecution> {

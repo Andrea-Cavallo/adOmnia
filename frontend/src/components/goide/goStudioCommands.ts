@@ -2,15 +2,17 @@ export type GoStudioCommandId =
   | 'file.openProject' | 'file.newProject' | 'file.save' | 'file.saveAll' | 'file.closeEditor' | 'file.closeProject'
   | 'file.closeOthers' | 'file.closeAll' | 'file.pinTab' | 'file.reopenClosed'
   | 'edit.undo' | 'edit.redo' | 'edit.find' | 'edit.replace' | 'edit.gotoLine' | 'edit.toggleComment'
-  | 'view.splitRight' | 'view.splitDown' | 'view.unsplit'
+  | 'view.splitRight' | 'view.splitDown' | 'view.unsplit' | 'view.terminal'
   | 'view.quickOpen' | 'view.toggleStructure' | 'view.toggleBottom' | 'view.toggleIgnored' | 'view.problems'
   | 'nav.declaration' | 'nav.typeDeclaration' | 'nav.implementation' | 'nav.usages' | 'nav.fileStructure' | 'nav.symbol' | 'nav.findInFiles'
   | 'code.completion' | 'code.parameterInfo' | 'code.quickFix' | 'code.rename' | 'code.reformat' | 'code.organizeImports'
   | 'code.formatOnSave' | 'code.importsOnSave' | 'code.gofumpt' | 'code.staticcheck' | 'code.lint' | 'code.lintOnSave'
   | 'go.toolchains' | 'go.detect' | 'go.dependencies' | 'go.tidy' | 'go.trust'
+  | 'go.updateAll' | 'go.updatePatch' | 'go.modDownload' | 'go.modVerify'
   | 'go.lspStart' | 'go.lspRestart' | 'go.lspStop' | 'go.lspInstall' | 'go.lspLog'
   | 'go.installGolangci' | 'go.installStaticcheck' | 'go.toolPaths'
   | 'run.run' | 'run.build' | 'run.stop' | 'run.restart' | 'run.configure'
+  | 'run.buildPackage' | 'run.testPackage' | 'run.vetPackage' | 'run.buildAll' | 'run.testAll' | 'run.vetAll' | 'run.generateAll' | 'run.install'
   | 'help.shortcuts'
 
 export type GoStudioMenuId = 'file' | 'edit' | 'view' | 'navigate' | 'code' | 'go' | 'run' | 'help'
@@ -64,6 +66,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'view.toggleStructure', menu: 'view', label: 'Project Overview Pane', binding: { key: '7', alt: true }, separatorBefore: true },
   { id: 'view.toggleBottom', menu: 'view', label: 'Run / Problems Pane', binding: { key: '4', alt: true } },
   { id: 'view.problems', menu: 'view', label: 'Problems', binding: { key: '6', alt: true } },
+  { id: 'view.terminal', menu: 'view', label: 'Terminal', binding: { key: 'F12', alt: true } },
   { id: 'view.splitRight', menu: 'view', label: 'Split Right', binding: { key: '\\', mod: true }, separatorBefore: true },
   { id: 'view.splitDown', menu: 'view', label: 'Split Down' },
   { id: 'view.unsplit', menu: 'view', label: 'Unsplit' },
@@ -91,6 +94,10 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'go.detect', menu: 'go', label: 'Detect Go SDK' },
   { id: 'go.dependencies', menu: 'go', label: 'Module Dependencies…', separatorBefore: true },
   { id: 'go.tidy', menu: 'go', label: 'go mod tidy…' },
+  { id: 'go.updateAll', menu: 'go', label: 'Update All Dependencies…' },
+  { id: 'go.updatePatch', menu: 'go', label: 'Update Patch Versions…' },
+  { id: 'go.modDownload', menu: 'go', label: 'Download Modules…' },
+  { id: 'go.modVerify', menu: 'go', label: 'Verify Modules' },
   { id: 'go.trust', menu: 'go', label: 'Trust Project Tools', separatorBefore: true },
   { id: 'go.lspStart', menu: 'go', label: 'Start Language Server (gopls)', separatorBefore: true },
   { id: 'go.lspRestart', menu: 'go', label: 'Restart Language Server' },
@@ -102,6 +109,14 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'go.toolPaths', menu: 'go', label: 'Tool Paths (gopls, linter)…' },
   { id: 'run.run', menu: 'run', label: 'Run', binding: { key: 'F5', mod: true } },
   { id: 'run.build', menu: 'run', label: 'Build', binding: { key: 'b', mod: true, shift: true } },
+  { id: 'run.buildPackage', menu: 'run', label: 'Build Current Package', binding: { key: 'F9', mod: true }, separatorBefore: true },
+  { id: 'run.testPackage', menu: 'run', label: 'Test Current Package', binding: { key: 'F10', mod: true, shift: true } },
+  { id: 'run.vetPackage', menu: 'run', label: 'Vet Current Package' },
+  { id: 'run.buildAll', menu: 'run', label: 'Build All (go build ./...)', binding: { key: 'F9', mod: true, shift: true }, separatorBefore: true },
+  { id: 'run.testAll', menu: 'run', label: 'Test All (go test ./...)', binding: { key: 'F10', mod: true, alt: true } },
+  { id: 'run.vetAll', menu: 'run', label: 'Vet All (go vet ./...)' },
+  { id: 'run.generateAll', menu: 'run', label: 'Generate (go generate ./...)' },
+  { id: 'run.install', menu: 'run', label: 'Install (go install)' },
   { id: 'run.stop', menu: 'run', label: 'Stop', binding: { key: 'F5', shift: true }, separatorBefore: true },
   { id: 'run.restart', menu: 'run', label: 'Restart', binding: { key: 'F5', mod: true, shift: true } },
   { id: 'run.configure', menu: 'run', label: 'Edit Run Configuration…', separatorBefore: true },
@@ -210,7 +225,19 @@ export function commandAvailability(id: GoStudioCommandId, context: GoStudioComm
     case 'go.detect': return context.authorized ? true : NOT_TRUSTED
     case 'go.tidy': return context.running ? 'Wait for the active process to finish' : runAvailability(context)
     case 'run.run':
-    case 'run.build': return runAvailability(context)
+    case 'run.build':
+    case 'run.buildPackage':
+    case 'run.testPackage':
+    case 'run.vetPackage':
+    case 'run.buildAll':
+    case 'run.testAll':
+    case 'run.vetAll':
+    case 'run.generateAll':
+    case 'run.install':
+    case 'go.modVerify': return runAvailability(context)
+    case 'go.updateAll':
+    case 'go.updatePatch':
+    case 'go.modDownload': return context.running ? 'Wait for the active process to finish' : runAvailability(context)
     case 'run.stop': return context.running ? true : 'Nothing is running'
     case 'nav.symbol': return context.lspState === 'ready' ? true : LSP_NOT_READY
     case 'go.lspStart':

@@ -7,6 +7,7 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"unicode/utf8"
 )
 
 // terminalRecorder raccoglie gli eventi emessi dal TerminalManager durante i test.
@@ -16,6 +17,8 @@ type terminalRecorder struct {
 	exited  chan TerminalSession
 	opened  int
 	closeOK bool
+	// invalidChunks conta i blocchi che non sono UTF-8 valido: diventerebbero "\uFFFD" nel frontend.
+	invalidChunks int
 }
 
 func newTerminalRecorder() *terminalRecorder {
@@ -30,6 +33,9 @@ func (r *terminalRecorder) sink(eventType string, terminal TerminalSession, payl
 		r.opened++
 	case "terminal.output":
 		if chunk, ok := payload.(TerminalOutput); ok {
+			if !utf8.ValidString(chunk.Data) {
+				r.invalidChunks++
+			}
 			r.output.WriteString(chunk.Data)
 		}
 	case "terminal.exited":
@@ -242,4 +248,52 @@ func truncateForLog(value string) string {
 		return value
 	}
 	return value[:limit] + "…"
+}
+
+func TestCompleteUTF8PrefixNeverSplitsARune(t *testing.T) {
+	arrow := []byte("→") // 3 byte
+	cases := []struct {
+		data []byte
+		want int
+	}{
+		{[]byte("abc"), 3},
+		{append([]byte("ab"), arrow[:1]...), 2},
+		{append([]byte("ab"), arrow[:2]...), 2},
+		{append([]byte("ab"), arrow...), 5},
+		{[]byte{0xff}, 1},
+	}
+	for _, testCase := range cases {
+		if got := completeUTF8Prefix(testCase.data); got != testCase.want {
+			t.Fatalf("completeUTF8Prefix(%q) = %d, want %d", testCase.data, got, testCase.want)
+		}
+	}
+}
+
+func TestTerminalStreamsLargeMultibyteOutputIntact(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("verifica POSIX: su Windows ConPTY re-codifica l'output")
+	}
+	recorder := newTerminalRecorder()
+	manager := NewTerminalManager()
+	manager.SetEventSink(recorder.sink)
+	t.Cleanup(manager.Shutdown)
+	opened, err := manager.Open(TerminalRequest{SessionID: "s", Shell: "/bin/sh", WorkingDirectory: t.TempDir()}, os.Environ())
+	if err != nil {
+		t.Fatal(err)
+	}
+	const repeat = 4000
+	script := "i=0; while [ $i -lt " + "4000" + " ]; do printf 'èàù→'; i=$((i+1)); done; echo; echo DONE-$((1+1))\n"
+	if err := manager.Write(opened.ID, script); err != nil {
+		t.Fatal(err)
+	}
+	text := waitForOutput(t, recorder, "DONE-2", 20*time.Second)
+	recorder.mu.Lock()
+	invalid := recorder.invalidChunks
+	recorder.mu.Unlock()
+	if invalid != 0 {
+		t.Fatalf("%d blocchi con UTF-8 spezzato", invalid)
+	}
+	if count := strings.Count(text, "èàù→"); count < repeat {
+		t.Fatalf("output perso: %d ripetizioni su %d", count, repeat)
+	}
 }

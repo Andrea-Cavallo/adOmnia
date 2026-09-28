@@ -118,6 +118,9 @@ func (s *Service) PruneMissingSessions() ([]Session, error) {
 		if info, err := os.Stat(session.Project.RealPath); err == nil && info.IsDir() {
 			continue
 		}
+		// Una cartella sparita non deve lasciare processi orfani: Run, gopls e shell si fermano.
+		s.processes.StopSession(session.ID)
+		s.lsp.CloseSession(session.ID)
 		s.terminal.CloseSession(session.ID)
 		s.documents.CloseSession(session.ID)
 		s.toolchain.CloseSession(session.ID)

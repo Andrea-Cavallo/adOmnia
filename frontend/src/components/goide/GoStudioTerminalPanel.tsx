@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Plus, TerminalSquare, X } from 'lucide-react'
 import { GoStudioTerminalView, closeTerminal } from './GoStudioTerminalView'
+import { startGoStudioTerminalBus } from './goStudioTerminalBus'
 import {
   listGoIDETerminals,
   openGoIDETerminal,
@@ -8,8 +9,12 @@ import {
   type GoIDETerminalSession,
 } from '@/lib/goide-api'
 
+startGoStudioTerminalBus()
+
 interface GoStudioTerminalPanelProps {
   session: GoIDESession
+  /** Alla prima apertura della scheda si avvia subito una shell, senza passare dal +. */
+  visible: boolean
 }
 
 function errorText(reason: unknown): string {
@@ -21,8 +26,10 @@ function errorText(reason: unknown): string {
  * chiusura indipendenti; la Run console resta un pannello separato perché
  * mostra un'esecuzione controllata, non una shell interattiva.
  */
-export function GoStudioTerminalPanel({ session }: GoStudioTerminalPanelProps) {
+export function GoStudioTerminalPanel({ session, visible }: GoStudioTerminalPanelProps) {
   const [terminals, setTerminals] = useState<GoIDETerminalSession[]>([])
+  const [loaded, setLoaded] = useState(false)
+  const autoOpened = useRef(false)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -35,10 +42,13 @@ export function GoStudioTerminalPanel({ session }: GoStudioTerminalPanelProps) {
         if (cancelled) return
         setTerminals(existing)
         setActiveId((current) => current ?? existing[0]?.id ?? null)
+        setLoaded(true)
       })
       .catch((reason) => !cancelled && setError(errorText(reason)))
     return () => {
       cancelled = true
+      setLoaded(false)
+      autoOpened.current = false
     }
   }, [session.id])
 
@@ -61,6 +71,12 @@ export function GoStudioTerminalPanel({ session }: GoStudioTerminalPanelProps) {
       setBusy(false)
     }
   }, [session.id])
+
+  useEffect(() => {
+    if (!visible || !loaded || !authorized || busy || terminals.length > 0 || autoOpened.current) return
+    autoOpened.current = true
+    void open()
+  }, [authorized, busy, loaded, open, terminals.length, visible])
 
   const close = useCallback(async (terminalId: string) => {
     try {
@@ -96,9 +112,6 @@ export function GoStudioTerminalPanel({ session }: GoStudioTerminalPanelProps) {
   return (
     <section aria-label="Go Studio terminals" className="flex h-full min-h-0 flex-col bg-surface-1">
       <div className="flex h-8 shrink-0 items-center gap-0.5 overflow-x-auto border-b border-border-1 px-1">
-        <span className="mr-1 flex items-center gap-1.5 px-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-3">
-          <TerminalSquare size={11} /> Terminal
-        </span>
         {terminals.map((terminal) => (
           <div
             key={terminal.id}

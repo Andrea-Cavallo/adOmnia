@@ -1,5 +1,8 @@
 import { AlertTriangle, FileClock, X } from 'lucide-react'
-import { useGoIDEStore } from '@/stores/goide'
+import { useGoIDEStore, type GoIDEState } from '@/stores/goide'
+
+/** Riferimento stabile: un array nuovo nel selettore Zustand fa ridisegnare all'infinito. */
+const EMPTY_RECOVERED: GoIDEState['recoveredBySession'][string] = []
 
 interface GoStudioRecoveryBannerProps {
   sessionId: string
@@ -20,7 +23,7 @@ function savedAgo(savedAt: string): string {
  * una scelta esplicita: nessun contenuto viene riapplicato da solo.
  */
 export function GoStudioRecoveryBanner({ sessionId }: GoStudioRecoveryBannerProps) {
-  const recovered = useGoIDEStore((state) => state.recoveredBySession[sessionId] ?? [])
+  const recovered = useGoIDEStore((state) => state.recoveredBySession[sessionId] ?? EMPTY_RECOVERED)
   const recoverBuffer = useGoIDEStore((state) => state.recoverBuffer)
   const discardRecoveredBuffer = useGoIDEStore((state) => state.discardRecoveredBuffer)
   if (recovered.length === 0) return null

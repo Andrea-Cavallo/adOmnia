@@ -432,6 +432,26 @@ func (g *GoIDE) SelectProjectFolder() (string, error) {
 	return strings.TrimSpace(path), nil
 }
 
+// SelectFolder apre il selettore nativo di cartelle con il titolo indicato, senza leggerne il contenuto.
+func (g *GoIDE) SelectFolder(title string) (string, error) {
+	if g.desktop == nil {
+		return "", fmt.Errorf("runtime desktop non inizializzato")
+	}
+	title = strings.TrimSpace(title)
+	if title == "" {
+		title = "Scegli una cartella"
+	}
+	path, err := g.desktop.Dialog.OpenFile().
+		CanChooseFiles(false).
+		CanChooseDirectories(true).
+		SetTitle(title).
+		PromptForSingleSelection()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(path), nil
+}
+
 // SelectProjectParent apre il selettore nativo per la cartella che conterrà un nuovo progetto.
 func (g *GoIDE) SelectProjectParent() (string, error) {
 	if g.desktop == nil {

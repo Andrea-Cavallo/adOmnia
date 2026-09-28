@@ -3,13 +3,8 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 import { goStudioTerminalTheme } from './goStudioTerminalTheme'
-import {
-  closeGoIDETerminal,
-  resizeGoIDETerminal,
-  subscribeGoIDEEvents,
-  writeGoIDETerminal,
-  type GoIDETerminalOutput,
-} from '@/lib/goide-api'
+import { closeGoIDETerminal, resizeGoIDETerminal, writeGoIDETerminal } from '@/lib/goide-api'
+import { attachTerminal, forgetTerminal } from './goStudioTerminalBus'
 import { useSettingsStore } from '@/stores/settings'
 
 interface GoStudioTerminalViewProps {
@@ -34,7 +29,7 @@ export function GoStudioTerminalView({ terminalId, active, onExit }: GoStudioTer
     const instance = new Terminal({
       convertEol: false,
       cursorBlink: true,
-      fontFamily: 'var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace)',
+      fontFamily: terminalFontFamily(),
       fontSize: 12,
       lineHeight: 1.2,
       scrollback: 5000,
@@ -63,19 +58,10 @@ export function GoStudioTerminalView({ terminalId, active, onExit }: GoStudioTer
       })
     })
 
-    const unsubscribe = subscribeGoIDEEvents((event) => {
-      if (event.resourceId !== terminalId) return
-      if (event.type === 'terminal.output') {
-        const payload = event.payload as GoIDETerminalOutput | undefined
-        if (!payload?.data) return
-        if (payload.truncated) instance.write('\r\n\x1b[90m… output troncato per mantenere reattiva l\'interfaccia\x1b[0m\r\n')
-        instance.write(payload.data)
-        return
-      }
-      if (event.type === 'terminal.exited') {
-        instance.writeln('\r\n\x1b[90m[processo terminato]\x1b[0m')
-        onExit(terminalId)
-      }
+    // La cronologia arriva dal bus: il primo prompt della shell non va perso anche se precede il mount.
+    const unsubscribe = attachTerminal(terminalId, (data) => instance.write(data), () => {
+      instance.writeln('\r\n\x1b[90m[process exited]\x1b[0m')
+      onExit(terminalId)
     })
 
     const observer = new ResizeObserver(sendResize)
@@ -85,7 +71,8 @@ export function GoStudioTerminalView({ terminalId, active, onExit }: GoStudioTer
       observer.disconnect()
       unsubscribe()
       inputHandler.dispose()
-      instance.dispose()
+      // xterm accoda in open() un timer sul viewport: smontare nello stesso tick lo farebbe girare su un'istanza già distrutta.
+      setTimeout(() => instance.dispose(), 0)
       terminal.current = null
       fit.current = null
     }
@@ -115,4 +102,14 @@ export function GoStudioTerminalView({ terminalId, active, onExit }: GoStudioTer
 /** closeTerminal è esposto per la chiusura esplicita dalla barra dei tab. */
 export async function closeTerminal(terminalId: string): Promise<void> {
   await closeGoIDETerminal(terminalId)
+  forgetTerminal(terminalId)
+}
+
+const FALLBACK_MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace'
+
+/** xterm misura i glifi su canvas, che non risolve le variabili CSS: serve il valore reale del token. */
+function terminalFontFamily(): string {
+  const root = getComputedStyle(document.documentElement)
+  const token = root.getPropertyValue('--skin-font-mono').trim() || root.getPropertyValue('--font-mono').trim()
+  return token ? `${token}, ${FALLBACK_MONO}` : FALLBACK_MONO
 }

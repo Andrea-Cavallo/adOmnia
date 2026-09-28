@@ -153,9 +153,11 @@ func (s *Service) buildRunRequest(session Session, config RunConfiguration, secr
 		request.Target = config.Files[0]
 		request.ExtraTargets = append([]string(nil), config.Files[1:]...)
 	case RunKindTest:
-		return RunRequest{}, fmt.Errorf("le configurazioni di test saranno eseguibili con il test runner della Fase 4")
+		request.Kind = "test"
+		request.Target = config.Target
 	case RunKindBinary:
-		return RunRequest{}, fmt.Errorf("l'esecuzione di un binario già compilato non è ancora disponibile")
+		request.Kind = "binary"
+		request.Target = config.BinaryPath
 	default:
 		return RunRequest{}, fmt.Errorf("tipo di configurazione %q non supportato", config.Kind)
 	}

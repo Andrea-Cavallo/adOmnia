@@ -52,10 +52,14 @@ import {
   type GoIDEToolchainInstallation,
 } from '@/lib/goide-api'
 import { openExternalDocument } from '@/lib/goide-lsp-api'
+import { confirm } from '@/lib/confirmDialog'
 import { cancelBufferRecovery, scheduleBufferRecovery } from '@/components/goide/goStudioRecovery'
 
 const LAYOUT_KEY = 'adomnia.goide.layout.v1'
 const MAX_CLOSED_HISTORY = 20
+
+/** Comandi go lanciabili direttamente da menu, CodeLens e gutter. */
+export type GoIDEQuickRunKind = 'build' | 'run' | 'test' | 'tidy' | 'vet' | 'generate' | 'install'
 
 export type GoIDESplitOrientation = 'right' | 'down'
 
@@ -118,7 +122,7 @@ function loadLayout(): GoIDELayout {
   }
 }
 
-interface GoIDEState {
+export interface GoIDEState {
   sessions: GoIDESession[]
   recentProjects: GoIDERecentProject[]
   activeSessionId: string | null
@@ -175,7 +179,9 @@ interface GoIDEState {
   searchQuickOpen: (query: string) => Promise<void>
   detectToolchain: () => Promise<void>
   configureToolchain: (goBinary: string, environment: Record<string, string>) => Promise<boolean>
-  startRun: (kind: 'build' | 'run' | 'test' | 'tidy', partial?: Partial<GoIDERunRequest>) => Promise<void>
+  startRun: (kind: GoIDEQuickRunKind, partial?: Partial<GoIDERunRequest>) => Promise<void>
+  /** Ricarica go.mod/go.sum aperti dopo un comando che li modifica; i buffer sporchi ricevono solo l'avviso. */
+  refreshModuleFiles: (sessionId: string) => Promise<void>
   stopRun: (runId?: string) => Promise<void>
   restartRun: (runId?: string) => Promise<void>
   sendRunInput: (runId: string, text: string) => Promise<void>
@@ -365,8 +371,8 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
       }
       set((state) => ({ recoveredBySession: { ...state.recoveredBySession, [sessionId]: recovered } }))
       for (const path of view.openPaths ?? []) {
-        // Riaprire un tab legge il file: non esegue nulla del progetto.
-        await get().openDocument(path)
+        // Riaprire un tab legge il file senza eseguire nulla; un file sparito si salta in silenzio.
+        await get().ensureDocumentLoaded(path).catch(() => null)
       }
       if (view.activePath) {
         const restored = get().documents.find(
@@ -503,8 +509,9 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
     const active = documents.find((item) => item.document.id === activeId)
     try {
       await saveGoIDESessionView(sessionId, {
-        openPaths: documents.map((item) => item.document.relativePath),
-        activePath: active?.document.relativePath ?? '',
+        // I sorgenti SDK in sola lettura non fanno parte del progetto: non si ripristinano.
+        openPaths: documents.filter((item) => !item.document.external).map((item) => item.document.relativePath),
+        activePath: active && !active.document.external ? active.document.relativePath : '',
         activeConfigId: state.activeConfigBySession[sessionId] ?? '',
         structureOpen: state.layout.structureOpen,
         bottomOpen: state.layout.bottomOpen,
@@ -519,6 +526,14 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
   recoverBuffer: async (sessionId, relativePath) => {
     const recovered = (get().recoveredBySession[sessionId] ?? []).find((item) => item.relativePath === relativePath)
     if (!recovered) return
+    if (recovered.diskChanged) {
+      const approved = await confirm({
+        title: 'File changed on disk',
+        message: `${relativePath} changed on disk after this buffer was saved.\n\nRestoring puts the recovered text in the editor as unsaved changes. The file on disk is not touched until you save.`,
+        confirmLabel: 'Restore anyway',
+      })
+      if (!approved) return
+    }
     const documentId = await get().openDocument(relativePath)
     if (documentId) get().updateDocument(documentId, recovered.content)
     await get().discardRecoveredBuffer(sessionId, relativePath)
@@ -734,6 +749,20 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
     }
   },
 
+  refreshModuleFiles: async (sessionId) => {
+    const moduleFiles = get().documents.filter((item) => item.document.sessionId === sessionId && !item.document.external && isModuleFile(item.document.relativePath))
+    for (const current of moduleFiles) {
+      try {
+        const externalState = await checkGoIDEDocument(sessionId, current.document.id, current.diskToken)
+        if (!externalState.changed) continue
+        set((state) => ({ documents: state.documents.map((item) => item.document.id === current.document.id ? { ...item, externalState } : item) }))
+        if (!current.dirty) get().resolveExternalChange(current.document.id, 'reload')
+      } catch (error) {
+        set({ error: errorMessage(error) })
+      }
+    }
+  },
+
   resolveExternalChange: (documentId, action) => set((state) => ({
     documents: state.documents.map((item) => {
       if (item.document.id !== documentId || !item.externalState) return item
@@ -914,6 +943,7 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
         executions: replaceExecution(state.executions, execution),
         activeRunBySession: { ...state.activeRunBySession, [execution.sessionId]: execution.id },
       }))
+      if (event.type === 'run.finished' && MODULE_CHANGING_KINDS.has(execution.kind)) void get().refreshModuleFiles(execution.sessionId)
     }
   },
 
@@ -927,6 +957,13 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
 
   clearError: () => set({ error: null }),
 }))
+
+const MODULE_CHANGING_KINDS = new Set(['dependency', 'tidy'])
+const MODULE_FILE_NAMES = new Set(['go.mod', 'go.sum', 'go.work', 'go.work.sum'])
+
+function isModuleFile(relativePath: string): boolean {
+  return MODULE_FILE_NAMES.has(relativePath.split('/').pop() ?? '')
+}
 
 export function activeGoIDEDocument(state: GoIDEState): GoIDEEditorDocument | null {
   const sessionId = state.activeSessionId

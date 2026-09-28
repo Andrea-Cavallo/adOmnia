@@ -18,6 +18,8 @@ const (
 	MaxRecoveredBufferBytes = 4 * 1024 * 1024
 	// MaxRecoveredBuffers limita il numero totale di buffer conservati.
 	MaxRecoveredBuffers = 200
+	// MaxRecoveredTotalBytes limita lo store intero, riscritto a ogni aggiornamento.
+	MaxRecoveredTotalBytes = 32 * 1024 * 1024
 )
 
 type recoveredEntry struct {
@@ -93,8 +95,12 @@ func (m *RecoveryManager) Remember(sessionID SessionID, relativePath, content, d
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	key := recoveryKey(sessionID, relativePath)
-	if _, exists := m.buffers[key]; !exists && len(m.buffers) >= MaxRecoveredBuffers {
+	previous, exists := m.buffers[key]
+	if !exists && len(m.buffers) >= MaxRecoveredBuffers {
 		return fmt.Errorf("troppi buffer in recupero: salva o chiudi qualche file")
+	}
+	if m.totalBytesLocked()-len(previous.Content)+len(content) > MaxRecoveredTotalBytes {
+		return fmt.Errorf("spazio di recupero esaurito: salva qualche file per proteggere i nuovi buffer")
 	}
 	m.buffers[key] = recoveredEntry{
 		SessionID: sessionID, RelativePath: relativePath,
@@ -144,6 +150,14 @@ func (m *RecoveryManager) List(sessionID SessionID) []recoveredEntry {
 	}
 	sort.Slice(entries, func(i, j int) bool { return entries[i].SavedAt.After(entries[j].SavedAt) })
 	return entries
+}
+
+func (m *RecoveryManager) totalBytesLocked() int {
+	total := 0
+	for _, entry := range m.buffers {
+		total += len(entry.Content)
+	}
+	return total
 }
 
 func (m *RecoveryManager) persistLocked() error {

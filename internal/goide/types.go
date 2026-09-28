@@ -191,7 +191,7 @@ type RunRequest struct {
 	// ExtraTargets contiene i target aggiuntivi di una configurazione a lista
 	// di file: vengono accodati subito dopo Target, prima degli argomenti del
 	// programma, per rispettare l'ordine richiesto da `go run`.
-	ExtraTargets []string `json:"extraTargets,omitempty"`
+	ExtraTargets     []string          `json:"extraTargets,omitempty"`
 	WorkingDirectory string            `json:"workingDirectory"`
 	GoArguments      []string          `json:"goArguments"`
 	ProgramArguments []string          `json:"programArguments"`

@@ -6,12 +6,14 @@ import { useSettingsStore } from '@/stores/settings'
 import { registerGoStudioEditor } from './goStudioEditorRegistry'
 import { installGoStudioEditorActions } from './goStudioEditorActions'
 import { documentForModel, registerGoStudioLanguageFeatures } from './goStudioLanguageFeatures'
+import { registerGoStudioCodeLens } from './goStudioCodeLens'
 import { startGoStudioLspSync } from './goStudioLspSync'
 import { findRunTargets, runCommandFor, type GoStudioRunTarget } from './goStudioRunTargets'
 import './goStudioEditor.css'
 
 configureMonacoLoader()
 registerGoStudioLanguageFeatures()
+registerGoStudioCodeLens()
 startGoStudioLspSync()
 
 const RUN_TARGET_DEBOUNCE_MS = 250
@@ -124,6 +126,8 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
         renderLineHighlight: 'line',
         readOnly: !!document.document.readOnly,
         glyphMargin: true,
+        codeLens: !document.document.readOnly,
+        codeLensFontSize: 10,
         tabSize: document.document.language === 'go' ? 4 : 2,
         insertSpaces: document.document.language !== 'go',
         padding: { top: 6, bottom: 6 },

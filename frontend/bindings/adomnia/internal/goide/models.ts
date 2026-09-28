@@ -229,6 +229,7 @@ export class DependencyActionRequest {
     "action": string;
     "modulePath": string;
     "version": string;
+    "localPath"?: string;
     "confirmed": boolean;
 
     /** Creates a new DependencyActionRequest instance. */
@@ -270,6 +271,7 @@ export class DependencyState {
     "goModPath": string;
     "goSumPresent": boolean;
     "dependencies": GoDependency[];
+    "replacements": GoReplacement[];
 
     /** Creates a new DependencyState instance. */
     constructor($$source: Partial<DependencyState> = {}) {
@@ -288,6 +290,9 @@ export class DependencyState {
         if (!("dependencies" in $$source)) {
             this["dependencies"] = [];
         }
+        if (!("replacements" in $$source)) {
+            this["replacements"] = [];
+        }
 
         Object.assign(this, $$source);
     }
@@ -297,9 +302,13 @@ export class DependencyState {
      */
     static createFrom($$source: any = {}): DependencyState {
         const $$createField4_0 = $$createType7;
+        const $$createField5_0 = $$createType9;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("dependencies" in $$parsedSource) {
             $$parsedSource["dependencies"] = $$createField4_0($$parsedSource["dependencies"]);
+        }
+        if ("replacements" in $$parsedSource) {
+            $$parsedSource["replacements"] = $$createField5_0($$parsedSource["replacements"]);
         }
         return new DependencyState($$parsedSource as Partial<DependencyState>);
     }
@@ -331,7 +340,7 @@ export class DiagnosticsReport {
      * Creates a new DiagnosticsReport instance from a string or object.
      */
     static createFrom($$source: any = {}): DiagnosticsReport {
-        const $$createField4_0 = $$createType9;
+        const $$createField4_0 = $$createType11;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("diagnostics" in $$parsedSource) {
             $$parsedSource["diagnostics"] = $$createField4_0($$parsedSource["diagnostics"]);
@@ -451,7 +460,7 @@ export class DocumentSymbolsResult {
      * Creates a new DocumentSymbolsResult instance from a string or object.
      */
     static createFrom($$source: any = {}): DocumentSymbolsResult {
-        const $$createField1_0 = $$createType11;
+        const $$createField1_0 = $$createType13;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("symbols" in $$parsedSource) {
             $$parsedSource["symbols"] = $$createField1_0($$parsedSource["symbols"]);
@@ -593,6 +602,34 @@ export class EditorTextEdit {
             $$parsedSource["range"] = $$createField0_0($$parsedSource["range"]);
         }
         return new EditorTextEdit($$parsedSource as Partial<EditorTextEdit>);
+    }
+}
+
+/**
+ * EnvironmentEntry rappresenta una variabile d'ambiente di una configurazione Run.
+ * Le voci marcate Secret non persistono il valore: viene richiesto all'avvio e
+ * resta soltanto in memoria per la durata della sessione.
+ */
+export class EnvironmentEntry {
+    "key": string;
+    "value"?: string;
+    "secret"?: boolean;
+
+    /** Creates a new EnvironmentEntry instance. */
+    constructor($$source: Partial<EnvironmentEntry> = {}) {
+        if (!("key" in $$source)) {
+            this["key"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new EnvironmentEntry instance from a string or object.
+     */
+    static createFrom($$source: any = {}): EnvironmentEntry {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new EnvironmentEntry($$parsedSource as Partial<EnvironmentEntry>);
     }
 }
 
@@ -804,6 +841,37 @@ export class GoModule {
     static createFrom($$source: any = {}): GoModule {
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         return new GoModule($$parsedSource as Partial<GoModule>);
+    }
+}
+
+export class GoReplacement {
+    "path": string;
+    "version"?: string;
+    "newPath": string;
+    "newVersion"?: string;
+    "local": boolean;
+
+    /** Creates a new GoReplacement instance. */
+    constructor($$source: Partial<GoReplacement> = {}) {
+        if (!("path" in $$source)) {
+            this["path"] = "";
+        }
+        if (!("newPath" in $$source)) {
+            this["newPath"] = "";
+        }
+        if (!("local" in $$source)) {
+            this["local"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new GoReplacement instance from a string or object.
+     */
+    static createFrom($$source: any = {}): GoReplacement {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new GoReplacement($$parsedSource as Partial<GoReplacement>);
     }
 }
 
@@ -1032,7 +1100,7 @@ export class LintResult {
      * Creates a new LintResult instance from a string or object.
      */
     static createFrom($$source: any = {}): LintResult {
-        const $$createField1_0 = $$createType13;
+        const $$createField1_0 = $$createType15;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("reports" in $$parsedSource) {
             $$parsedSource["reports"] = $$createField1_0($$parsedSource["reports"]);
@@ -1096,7 +1164,7 @@ export class OpenDocument {
      * Creates a new OpenDocument instance from a string or object.
      */
     static createFrom($$source: any = {}): OpenDocument {
-        const $$createField0_0 = $$createType14;
+        const $$createField0_0 = $$createType16;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("document" in $$parsedSource) {
             $$parsedSource["document"] = $$createField0_0($$parsedSource["document"]);
@@ -1144,8 +1212,8 @@ export class Project {
      * Creates a new Project instance from a string or object.
      */
     static createFrom($$source: any = {}): Project {
-        const $$createField6_0 = $$createType16;
-        const $$createField7_0 = $$createType17;
+        const $$createField6_0 = $$createType18;
+        const $$createField7_0 = $$createType19;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("modules" in $$parsedSource) {
             $$parsedSource["modules"] = $$createField6_0($$parsedSource["modules"]);
@@ -1223,6 +1291,51 @@ export class RecentProject {
     }
 }
 
+/**
+ * RecoveredBuffer è un buffer non salvato ritrovato dopo un riavvio: viene
+ * proposto all'utente come recupero esplicito, mai riapplicato da solo.
+ */
+export class RecoveredBuffer {
+    "sessionId": SessionID;
+    "relativePath": string;
+    "content": string;
+    "savedAt": string;
+    "diskChanged": boolean;
+    "missing": boolean;
+
+    /** Creates a new RecoveredBuffer instance. */
+    constructor($$source: Partial<RecoveredBuffer> = {}) {
+        if (!("sessionId" in $$source)) {
+            this["sessionId"] = "";
+        }
+        if (!("relativePath" in $$source)) {
+            this["relativePath"] = "";
+        }
+        if (!("content" in $$source)) {
+            this["content"] = "";
+        }
+        if (!("savedAt" in $$source)) {
+            this["savedAt"] = "0001-01-01T00:00:00.000Z";
+        }
+        if (!("diskChanged" in $$source)) {
+            this["diskChanged"] = false;
+        }
+        if (!("missing" in $$source)) {
+            this["missing"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new RecoveredBuffer instance from a string or object.
+     */
+    static createFrom($$source: any = {}): RecoveredBuffer {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new RecoveredBuffer($$parsedSource as Partial<RecoveredBuffer>);
+    }
+}
+
 export class RenameTarget {
     "version": number;
     "range": EditorRange;
@@ -1256,12 +1369,126 @@ export class RenameTarget {
     }
 }
 
+export class RunConfiguration {
+    "id": string;
+    "sessionId": SessionID;
+    "name": string;
+    "kind": RunConfigurationKind;
+    "target": string;
+    "files"?: string[];
+    "binaryPath"?: string;
+    "workingDirectory": string;
+    "goArguments": string[];
+    "programArguments": string[];
+    "buildTags": string[];
+    "environment": EnvironmentEntry[];
+    "order": number;
+    "createdAt": string;
+    "updatedAt": string;
+
+    /** Creates a new RunConfiguration instance. */
+    constructor($$source: Partial<RunConfiguration> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("sessionId" in $$source)) {
+            this["sessionId"] = "";
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("kind" in $$source)) {
+            this["kind"] = RunConfigurationKind.$zero;
+        }
+        if (!("target" in $$source)) {
+            this["target"] = "";
+        }
+        if (!("workingDirectory" in $$source)) {
+            this["workingDirectory"] = "";
+        }
+        if (!("goArguments" in $$source)) {
+            this["goArguments"] = [];
+        }
+        if (!("programArguments" in $$source)) {
+            this["programArguments"] = [];
+        }
+        if (!("buildTags" in $$source)) {
+            this["buildTags"] = [];
+        }
+        if (!("environment" in $$source)) {
+            this["environment"] = [];
+        }
+        if (!("order" in $$source)) {
+            this["order"] = 0;
+        }
+        if (!("createdAt" in $$source)) {
+            this["createdAt"] = "0001-01-01T00:00:00.000Z";
+        }
+        if (!("updatedAt" in $$source)) {
+            this["updatedAt"] = "0001-01-01T00:00:00.000Z";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new RunConfiguration instance from a string or object.
+     */
+    static createFrom($$source: any = {}): RunConfiguration {
+        const $$createField5_0 = $$createType19;
+        const $$createField8_0 = $$createType19;
+        const $$createField9_0 = $$createType19;
+        const $$createField10_0 = $$createType19;
+        const $$createField11_0 = $$createType21;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("files" in $$parsedSource) {
+            $$parsedSource["files"] = $$createField5_0($$parsedSource["files"]);
+        }
+        if ("goArguments" in $$parsedSource) {
+            $$parsedSource["goArguments"] = $$createField8_0($$parsedSource["goArguments"]);
+        }
+        if ("programArguments" in $$parsedSource) {
+            $$parsedSource["programArguments"] = $$createField9_0($$parsedSource["programArguments"]);
+        }
+        if ("buildTags" in $$parsedSource) {
+            $$parsedSource["buildTags"] = $$createField10_0($$parsedSource["buildTags"]);
+        }
+        if ("environment" in $$parsedSource) {
+            $$parsedSource["environment"] = $$createField11_0($$parsedSource["environment"]);
+        }
+        return new RunConfiguration($$parsedSource as Partial<RunConfiguration>);
+    }
+}
+
+/**
+ * RunConfigurationKind elenca i perimetri di esecuzione supportati da una configurazione salvata.
+ */
+export enum RunConfigurationKind {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    RunKindPackage = "package",
+    RunKindFiles = "files",
+    RunKindBuild = "build",
+    RunKindBinary = "binary",
+    RunKindTest = "test",
+};
+
 export type RunID = string;
 
 export class RunRequest {
     "sessionId": SessionID;
     "kind": string;
     "target": string;
+
+    /**
+     * ExtraTargets contiene i target aggiuntivi di una configurazione a lista
+     * di file: vengono accodati subito dopo Target, prima degli argomenti del
+     * programma, per rispettare l'ordine richiesto da `go run`.
+     */
+    "extraTargets"?: string[];
     "workingDirectory": string;
     "goArguments": string[];
     "programArguments": string[];
@@ -1302,22 +1529,26 @@ export class RunRequest {
      * Creates a new RunRequest instance from a string or object.
      */
     static createFrom($$source: any = {}): RunRequest {
-        const $$createField4_0 = $$createType17;
-        const $$createField5_0 = $$createType17;
-        const $$createField6_0 = $$createType17;
-        const $$createField7_0 = $$createType18;
+        const $$createField3_0 = $$createType19;
+        const $$createField5_0 = $$createType19;
+        const $$createField6_0 = $$createType19;
+        const $$createField7_0 = $$createType19;
+        const $$createField8_0 = $$createType22;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("extraTargets" in $$parsedSource) {
+            $$parsedSource["extraTargets"] = $$createField3_0($$parsedSource["extraTargets"]);
+        }
         if ("goArguments" in $$parsedSource) {
-            $$parsedSource["goArguments"] = $$createField4_0($$parsedSource["goArguments"]);
+            $$parsedSource["goArguments"] = $$createField5_0($$parsedSource["goArguments"]);
         }
         if ("programArguments" in $$parsedSource) {
-            $$parsedSource["programArguments"] = $$createField5_0($$parsedSource["programArguments"]);
+            $$parsedSource["programArguments"] = $$createField6_0($$parsedSource["programArguments"]);
         }
         if ("buildTags" in $$parsedSource) {
-            $$parsedSource["buildTags"] = $$createField6_0($$parsedSource["buildTags"]);
+            $$parsedSource["buildTags"] = $$createField7_0($$parsedSource["buildTags"]);
         }
         if ("environment" in $$parsedSource) {
-            $$parsedSource["environment"] = $$createField7_0($$parsedSource["environment"]);
+            $$parsedSource["environment"] = $$createField8_0($$parsedSource["environment"]);
         }
         return new RunRequest($$parsedSource as Partial<RunRequest>);
     }
@@ -1400,8 +1631,8 @@ export class SearchQuery {
      * Creates a new SearchQuery instance from a string or object.
      */
     static createFrom($$source: any = {}): SearchQuery {
-        const $$createField5_0 = $$createType17;
-        const $$createField6_0 = $$createType17;
+        const $$createField5_0 = $$createType19;
+        const $$createField6_0 = $$createType19;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("include" in $$parsedSource) {
             $$parsedSource["include"] = $$createField5_0($$parsedSource["include"]);
@@ -1437,7 +1668,7 @@ export class SearchResult {
      * Creates a new SearchResult instance from a string or object.
      */
     static createFrom($$source: any = {}): SearchResult {
-        const $$createField0_0 = $$createType20;
+        const $$createField0_0 = $$createType24;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("matches" in $$parsedSource) {
             $$parsedSource["matches"] = $$createField0_0($$parsedSource["matches"]);
@@ -1474,7 +1705,7 @@ export class Session {
      * Creates a new Session instance from a string or object.
      */
     static createFrom($$source: any = {}): Session {
-        const $$createField1_0 = $$createType21;
+        const $$createField1_0 = $$createType25;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("project" in $$parsedSource) {
             $$parsedSource["project"] = $$createField1_0($$parsedSource["project"]);
@@ -1484,6 +1715,54 @@ export class Session {
 }
 
 export type SessionID = string;
+
+/**
+ * SessionView è lo stato di interfaccia ripristinabile di una sessione: quali
+ * file erano aperti, quale era attivo e come era disposto il layout. Non
+ * contiene mai il contenuto dei file.
+ */
+export class SessionView {
+    "openPaths"?: string[];
+    "activePath"?: string;
+    "activeConfigId"?: string;
+    "projectWidth"?: number;
+    "structureWidth"?: number;
+    "bottomHeight"?: number;
+    "structureOpen": boolean;
+    "bottomOpen": boolean;
+    "terminalPanelOpen": boolean;
+    "showIgnoredEntries": boolean;
+
+    /** Creates a new SessionView instance. */
+    constructor($$source: Partial<SessionView> = {}) {
+        if (!("structureOpen" in $$source)) {
+            this["structureOpen"] = false;
+        }
+        if (!("bottomOpen" in $$source)) {
+            this["bottomOpen"] = false;
+        }
+        if (!("terminalPanelOpen" in $$source)) {
+            this["terminalPanelOpen"] = false;
+        }
+        if (!("showIgnoredEntries" in $$source)) {
+            this["showIgnoredEntries"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SessionView instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SessionView {
+        const $$createField0_0 = $$createType19;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("openPaths" in $$parsedSource) {
+            $$parsedSource["openPaths"] = $$createField0_0($$parsedSource["openPaths"]);
+        }
+        return new SessionView($$parsedSource as Partial<SessionView>);
+    }
+}
 
 export class SignatureEntry {
     "label": string;
@@ -1506,7 +1785,7 @@ export class SignatureEntry {
      * Creates a new SignatureEntry instance from a string or object.
      */
     static createFrom($$source: any = {}): SignatureEntry {
-        const $$createField2_0 = $$createType23;
+        const $$createField2_0 = $$createType27;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("parameters" in $$parsedSource) {
             $$parsedSource["parameters"] = $$createField2_0($$parsedSource["parameters"]);
@@ -1565,7 +1844,7 @@ export class SignatureResult {
      * Creates a new SignatureResult instance from a string or object.
      */
     static createFrom($$source: any = {}): SignatureResult {
-        const $$createField1_0 = $$createType25;
+        const $$createField1_0 = $$createType29;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("signatures" in $$parsedSource) {
             $$parsedSource["signatures"] = $$createField1_0($$parsedSource["signatures"]);
@@ -1606,7 +1885,7 @@ export class SymbolNode {
     static createFrom($$source: any = {}): SymbolNode {
         const $$createField3_0 = $$createType0;
         const $$createField4_0 = $$createType0;
-        const $$createField5_0 = $$createType11;
+        const $$createField5_0 = $$createType13;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("range" in $$parsedSource) {
             $$parsedSource["range"] = $$createField3_0($$parsedSource["range"]);
@@ -1618,6 +1897,102 @@ export class SymbolNode {
             $$parsedSource["children"] = $$createField5_0($$parsedSource["children"]);
         }
         return new SymbolNode($$parsedSource as Partial<SymbolNode>);
+    }
+}
+
+export type TerminalID = string;
+
+/**
+ * TerminalRequest descrive l'apertura di un nuovo terminale.
+ */
+export class TerminalRequest {
+    "sessionId": SessionID;
+    "name": string;
+    "shell"?: string;
+    "shellArguments"?: string[];
+    "workingDirectory"?: string;
+    "environment"?: { [_ in string]?: string };
+    "columns"?: number;
+    "rows"?: number;
+
+    /** Creates a new TerminalRequest instance. */
+    constructor($$source: Partial<TerminalRequest> = {}) {
+        if (!("sessionId" in $$source)) {
+            this["sessionId"] = "";
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new TerminalRequest instance from a string or object.
+     */
+    static createFrom($$source: any = {}): TerminalRequest {
+        const $$createField3_0 = $$createType19;
+        const $$createField5_0 = $$createType22;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("shellArguments" in $$parsedSource) {
+            $$parsedSource["shellArguments"] = $$createField3_0($$parsedSource["shellArguments"]);
+        }
+        if ("environment" in $$parsedSource) {
+            $$parsedSource["environment"] = $$createField5_0($$parsedSource["environment"]);
+        }
+        return new TerminalRequest($$parsedSource as Partial<TerminalRequest>);
+    }
+}
+
+/**
+ * TerminalSession descrive un terminale interattivo dal punto di vista dell'interfaccia.
+ */
+export class TerminalSession {
+    "id": TerminalID;
+    "sessionId": SessionID;
+    "name": string;
+    "shell": string;
+    "workingDirectory": string;
+    "status": string;
+    "pid"?: number;
+    "startedAt": string;
+    "exitedAt"?: string | null;
+    "exitCode"?: number | null;
+    "error"?: string;
+
+    /** Creates a new TerminalSession instance. */
+    constructor($$source: Partial<TerminalSession> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("sessionId" in $$source)) {
+            this["sessionId"] = "";
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("shell" in $$source)) {
+            this["shell"] = "";
+        }
+        if (!("workingDirectory" in $$source)) {
+            this["workingDirectory"] = "";
+        }
+        if (!("status" in $$source)) {
+            this["status"] = "";
+        }
+        if (!("startedAt" in $$source)) {
+            this["startedAt"] = "0001-01-01T00:00:00.000Z";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new TerminalSession instance from a string or object.
+     */
+    static createFrom($$source: any = {}): TerminalSession {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new TerminalSession($$parsedSource as Partial<TerminalSession>);
     }
 }
 
@@ -1638,7 +2013,7 @@ export class ToolchainConfiguration {
      * Creates a new ToolchainConfiguration instance from a string or object.
      */
     static createFrom($$source: any = {}): ToolchainConfiguration {
-        const $$createField1_0 = $$createType18;
+        const $$createField1_0 = $$createType22;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("environment" in $$parsedSource) {
             $$parsedSource["environment"] = $$createField1_0($$parsedSource["environment"]);
@@ -1718,7 +2093,7 @@ export class ToolchainInstallation {
      * Creates a new ToolchainInstallation instance from a string or object.
      */
     static createFrom($$source: any = {}): ToolchainInstallation {
-        const $$createField8_0 = $$createType17;
+        const $$createField8_0 = $$createType19;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("log" in $$parsedSource) {
             $$parsedSource["log"] = $$createField8_0($$parsedSource["log"]);
@@ -1789,7 +2164,7 @@ export class WorkspaceChange {
      * Creates a new WorkspaceChange instance from a string or object.
      */
     static createFrom($$source: any = {}): WorkspaceChange {
-        const $$createField1_0 = $$createType27;
+        const $$createField1_0 = $$createType31;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("files" in $$parsedSource) {
             $$parsedSource["files"] = $$createField1_0($$parsedSource["files"]);
@@ -1823,362 +2198,12 @@ export class WorkspaceSymbol {
      * Creates a new WorkspaceSymbol instance from a string or object.
      */
     static createFrom($$source: any = {}): WorkspaceSymbol {
-        const $$createField3_0 = $$createType28;
+        const $$createField3_0 = $$createType32;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("location" in $$parsedSource) {
             $$parsedSource["location"] = $$createField3_0($$parsedSource["location"]);
         }
         return new WorkspaceSymbol($$parsedSource as Partial<WorkspaceSymbol>);
-    }
-}
-
-export enum RunConfigurationKind {
-    /**
-     * The Go zero value for the underlying type of the enum.
-     */
-    $zero = "",
-
-    RunKindPackage = "package",
-    RunKindFiles = "files",
-    RunKindBuild = "build",
-    RunKindBinary = "binary",
-    RunKindTest = "test",
-};
-
-/**
- * EnvironmentEntry rappresenta una variabile d'ambiente di una configurazione Run.
- * Le voci marcate Secret non persistono il valore: viene richiesto all'avvio e
- * resta soltanto in memoria per la durata della sessione.
- */
-export class EnvironmentEntry {
-    "key": string;
-    "value"?: string;
-    "secret"?: boolean;
-
-    /** Creates a new EnvironmentEntry instance. */
-    constructor($$source: Partial<EnvironmentEntry> = {}) {
-        if (!("key" in $$source)) {
-            this["key"] = "";
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new EnvironmentEntry instance from a string or object.
-     */
-    static createFrom($$source: any = {}): EnvironmentEntry {
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        return new EnvironmentEntry($$parsedSource as Partial<EnvironmentEntry>);
-    }
-}
-
-export class RunConfiguration {
-    "id": string;
-    "sessionId": SessionID;
-    "name": string;
-    "kind": RunConfigurationKind;
-    "target": string;
-    "files"?: string[];
-    "binaryPath"?: string;
-    "workingDirectory": string;
-    "goArguments": string[];
-    "programArguments": string[];
-    "buildTags": string[];
-    "environment": EnvironmentEntry[];
-    "order": number;
-    "createdAt": string;
-    "updatedAt": string;
-
-    /** Creates a new RunConfiguration instance. */
-    constructor($$source: Partial<RunConfiguration> = {}) {
-        if (!("id" in $$source)) {
-            this["id"] = "";
-        }
-        if (!("sessionId" in $$source)) {
-            this["sessionId"] = "";
-        }
-        if (!("name" in $$source)) {
-            this["name"] = "";
-        }
-        if (!("kind" in $$source)) {
-            this["kind"] = RunConfigurationKind.$zero;
-        }
-        if (!("target" in $$source)) {
-            this["target"] = "";
-        }
-        if (!("workingDirectory" in $$source)) {
-            this["workingDirectory"] = "";
-        }
-        if (!("goArguments" in $$source)) {
-            this["goArguments"] = [];
-        }
-        if (!("programArguments" in $$source)) {
-            this["programArguments"] = [];
-        }
-        if (!("buildTags" in $$source)) {
-            this["buildTags"] = [];
-        }
-        if (!("environment" in $$source)) {
-            this["environment"] = [];
-        }
-        if (!("order" in $$source)) {
-            this["order"] = 0;
-        }
-        if (!("createdAt" in $$source)) {
-            this["createdAt"] = "";
-        }
-        if (!("updatedAt" in $$source)) {
-            this["updatedAt"] = "";
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new RunConfiguration instance from a string or object.
-     */
-    static createFrom($$source: any = {}): RunConfiguration {
-        const $$createField5_0 = $$createType5;
-        const $$createField8_0 = $$createType5;
-        const $$createField9_0 = $$createType5;
-        const $$createField10_0 = $$createType5;
-        const $$createField11_0 = $$createType101;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("files" in $$parsedSource) {
-            $$parsedSource["files"] = $$createField5_0($$parsedSource["files"]);
-        }
-        if ("goArguments" in $$parsedSource) {
-            $$parsedSource["goArguments"] = $$createField8_0($$parsedSource["goArguments"]);
-        }
-        if ("programArguments" in $$parsedSource) {
-            $$parsedSource["programArguments"] = $$createField9_0($$parsedSource["programArguments"]);
-        }
-        if ("buildTags" in $$parsedSource) {
-            $$parsedSource["buildTags"] = $$createField10_0($$parsedSource["buildTags"]);
-        }
-        if ("environment" in $$parsedSource) {
-            $$parsedSource["environment"] = $$createField11_0($$parsedSource["environment"]);
-        }
-        return new RunConfiguration($$parsedSource as Partial<RunConfiguration>);
-    }
-}
-
-/**
- * SessionView e' lo stato di interfaccia ripristinabile di una sessione: quali
- * file erano aperti, quale era attivo e come era disposto il layout. Non
- * contiene mai il contenuto dei file.
- */
-export class SessionView {
-    "openPaths"?: string[];
-    "activePath"?: string;
-    "activeConfigId"?: string;
-    "projectWidth"?: number;
-    "structureWidth"?: number;
-    "bottomHeight"?: number;
-    "structureOpen": boolean;
-    "bottomOpen": boolean;
-    "terminalPanelOpen": boolean;
-    "showIgnoredEntries": boolean;
-
-    /** Creates a new SessionView instance. */
-    constructor($$source: Partial<SessionView> = {}) {
-        if (!("structureOpen" in $$source)) {
-            this["structureOpen"] = false;
-        }
-        if (!("bottomOpen" in $$source)) {
-            this["bottomOpen"] = false;
-        }
-        if (!("terminalPanelOpen" in $$source)) {
-            this["terminalPanelOpen"] = false;
-        }
-        if (!("showIgnoredEntries" in $$source)) {
-            this["showIgnoredEntries"] = false;
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new SessionView instance from a string or object.
-     */
-    static createFrom($$source: any = {}): SessionView {
-        const $$createField0_0 = $$createType5;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("openPaths" in $$parsedSource) {
-            $$parsedSource["openPaths"] = $$createField0_0($$parsedSource["openPaths"]);
-        }
-        return new SessionView($$parsedSource as Partial<SessionView>);
-    }
-}
-
-/**
- * RecoveredBuffer e' un buffer non salvato ritrovato dopo un riavvio: viene
- * proposto all'utente come recupero esplicito, mai riapplicato da solo.
- */
-export class RecoveredBuffer {
-    "sessionId": SessionID;
-    "relativePath": string;
-    "content": string;
-    "savedAt": string;
-    "diskChanged": boolean;
-    "missing": boolean;
-
-    /** Creates a new RecoveredBuffer instance. */
-    constructor($$source: Partial<RecoveredBuffer> = {}) {
-        if (!("sessionId" in $$source)) {
-            this["sessionId"] = "";
-        }
-        if (!("relativePath" in $$source)) {
-            this["relativePath"] = "";
-        }
-        if (!("content" in $$source)) {
-            this["content"] = "";
-        }
-        if (!("savedAt" in $$source)) {
-            this["savedAt"] = "";
-        }
-        if (!("diskChanged" in $$source)) {
-            this["diskChanged"] = false;
-        }
-        if (!("missing" in $$source)) {
-            this["missing"] = false;
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new RecoveredBuffer instance from a string or object.
-     */
-    static createFrom($$source: any = {}): RecoveredBuffer {
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        return new RecoveredBuffer($$parsedSource as Partial<RecoveredBuffer>);
-    }
-}
-
-export type TerminalID = string;
-
-/**
- * TerminalSession descrive un terminale interattivo dal punto di vista dell'interfaccia.
- */
-export class TerminalSession {
-    "id": TerminalID;
-    "sessionId": SessionID;
-    "name": string;
-    "shell": string;
-    "workingDirectory": string;
-    "status": string;
-    "pid"?: number;
-    "startedAt": string;
-    "exitedAt"?: string | null;
-    "exitCode"?: number | null;
-    "error"?: string;
-
-    /** Creates a new TerminalSession instance. */
-    constructor($$source: Partial<TerminalSession> = {}) {
-        if (!("id" in $$source)) {
-            this["id"] = "";
-        }
-        if (!("sessionId" in $$source)) {
-            this["sessionId"] = "";
-        }
-        if (!("name" in $$source)) {
-            this["name"] = "";
-        }
-        if (!("shell" in $$source)) {
-            this["shell"] = "";
-        }
-        if (!("workingDirectory" in $$source)) {
-            this["workingDirectory"] = "";
-        }
-        if (!("status" in $$source)) {
-            this["status"] = "";
-        }
-        if (!("startedAt" in $$source)) {
-            this["startedAt"] = "";
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new TerminalSession instance from a string or object.
-     */
-    static createFrom($$source: any = {}): TerminalSession {
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        return new TerminalSession($$parsedSource as Partial<TerminalSession>);
-    }
-}
-
-/**
- * TerminalOutput e' un blocco di byte prodotto dal PTY, gia' coalescato.
- */
-export class TerminalOutput {
-    "terminalId": TerminalID;
-    "data": string;
-    "truncated"?: boolean;
-
-    /** Creates a new TerminalOutput instance. */
-    constructor($$source: Partial<TerminalOutput> = {}) {
-        if (!("terminalId" in $$source)) {
-            this["terminalId"] = "";
-        }
-        if (!("data" in $$source)) {
-            this["data"] = "";
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new TerminalOutput instance from a string or object.
-     */
-    static createFrom($$source: any = {}): TerminalOutput {
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        return new TerminalOutput($$parsedSource as Partial<TerminalOutput>);
-    }
-}
-
-/**
- * TerminalRequest descrive l'apertura di un nuovo terminale.
- */
-export class TerminalRequest {
-    "sessionId": SessionID;
-    "name": string;
-    "shell"?: string;
-    "shellArguments"?: string[];
-    "workingDirectory"?: string;
-    "environment"?: { [_ in string]?: string };
-    "columns"?: number;
-    "rows"?: number;
-
-    /** Creates a new TerminalRequest instance. */
-    constructor($$source: Partial<TerminalRequest> = {}) {
-        if (!("sessionId" in $$source)) {
-            this["sessionId"] = "";
-        }
-        if (!("name" in $$source)) {
-            this["name"] = "";
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new TerminalRequest instance from a string or object.
-     */
-    static createFrom($$source: any = {}): TerminalRequest {
-        const $$createField3_0 = $$createType5;
-        const $$createField5_0 = $$createType6;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("shellArguments" in $$parsedSource) {
-            $$parsedSource["shellArguments"] = $$createField3_0($$parsedSource["shellArguments"]);
-        }
-        if ("environment" in $$parsedSource) {
-            $$parsedSource["environment"] = $$createField5_0($$parsedSource["environment"]);
-        }
-        return new TerminalRequest($$parsedSource as Partial<TerminalRequest>);
     }
 }
 
@@ -2191,25 +2216,28 @@ const $$createType4 = CompletionEntry.createFrom;
 const $$createType5 = $Create.Array($$createType4);
 const $$createType6 = GoDependency.createFrom;
 const $$createType7 = $Create.Array($$createType6);
-const $$createType8 = EditorDiagnostic.createFrom;
+const $$createType8 = GoReplacement.createFrom;
 const $$createType9 = $Create.Array($$createType8);
-const $$createType10 = SymbolNode.createFrom;
+const $$createType10 = EditorDiagnostic.createFrom;
 const $$createType11 = $Create.Array($$createType10);
-const $$createType12 = DiagnosticsReport.createFrom;
+const $$createType12 = SymbolNode.createFrom;
 const $$createType13 = $Create.Array($$createType12);
-const $$createType14 = Document.createFrom;
-const $$createType15 = GoModule.createFrom;
-const $$createType16 = $Create.Array($$createType15);
-const $$createType17 = $Create.Array($Create.Any);
-const $$createType18 = $Create.Map($Create.Any, $Create.Any);
-const $$createType19 = SearchMatch.createFrom;
-const $$createType20 = $Create.Array($$createType19);
-const $$createType21 = Project.createFrom;
-const $$createType22 = SignatureParameter.createFrom;
-const $$createType23 = $Create.Array($$createType22);
-const $$createType24 = SignatureEntry.createFrom;
-const $$createType25 = $Create.Array($$createType24);
-const $$createType26 = FileChange.createFrom;
+const $$createType14 = DiagnosticsReport.createFrom;
+const $$createType15 = $Create.Array($$createType14);
+const $$createType16 = Document.createFrom;
+const $$createType17 = GoModule.createFrom;
+const $$createType18 = $Create.Array($$createType17);
+const $$createType19 = $Create.Array($Create.Any);
+const $$createType20 = EnvironmentEntry.createFrom;
+const $$createType21 = $Create.Array($$createType20);
+const $$createType22 = $Create.Map($Create.Any, $Create.Any);
+const $$createType23 = SearchMatch.createFrom;
+const $$createType24 = $Create.Array($$createType23);
+const $$createType25 = Project.createFrom;
+const $$createType26 = SignatureParameter.createFrom;
 const $$createType27 = $Create.Array($$createType26);
-const $$createType28 = EditorLocation.createFrom;
-const $$createType101 = $Create.Array(EnvironmentEntry.createFrom);
+const $$createType28 = SignatureEntry.createFrom;
+const $$createType29 = $Create.Array($$createType28);
+const $$createType30 = FileChange.createFrom;
+const $$createType31 = $Create.Array($$createType30);
+const $$createType32 = EditorLocation.createFrom;

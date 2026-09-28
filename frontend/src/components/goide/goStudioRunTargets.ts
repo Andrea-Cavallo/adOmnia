@@ -1,3 +1,5 @@
+import type { GoIDEQuickRunKind } from '@/stores/goide'
+
 export type GoStudioRunTargetKind = 'main' | 'test' | 'benchmark' | 'fuzz' | 'example'
 
 export interface GoStudioRunTarget {
@@ -63,4 +65,30 @@ export function runCommandFor(target: GoStudioRunTarget): GoStudioRunCommand {
     default:
       return { kind: 'test', target: target.packagePath, programArguments: ['-run', exact, '-v', '-count=1'], label: `Run ${target.name}` }
   }
+}
+
+const PACKAGE_CLAUSE = /^package\s+\w+/
+const GO_GENERATE = /^\/\/go:generate\s/m
+
+export interface GoStudioPackageLens {
+  line: number
+  title: string
+  tooltip: string
+  kind: GoIDEQuickRunKind
+}
+
+/** Pulsanti rapidi sulla riga package: build, test, vet e generate quando servono. */
+export function packageLenses(relativePath: string, text: string): GoStudioPackageLens[] {
+  if (!relativePath.endsWith('.go')) return []
+  const lines = text.split(/\r?\n/)
+  const index = lines.findIndex((line) => PACKAGE_CLAUSE.test(line))
+  if (index < 0) return []
+  const line = index + 1
+  const lenses: GoStudioPackageLens[] = [
+    { line, title: '⚒ Build', tooltip: 'go build on this package', kind: 'build' },
+    { line, title: '▶ Test', tooltip: 'go test on this package', kind: 'test' },
+    { line, title: 'Vet', tooltip: 'go vet on this package', kind: 'vet' },
+  ]
+  if (GO_GENERATE.test(text)) lenses.push({ line, title: 'Generate', tooltip: 'go generate on this package', kind: 'generate' })
+  return lenses
 }

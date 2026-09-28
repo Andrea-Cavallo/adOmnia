@@ -1,6 +1,9 @@
 package goide
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // OpenTerminal apre una shell interattiva nella working directory del progetto.
 // Richiede l'autorizzazione esplicita agli strumenti: aprire un progetto non
@@ -17,13 +20,65 @@ func (s *Service) OpenTerminal(request TerminalRequest) (TerminalSession, error)
 	if err != nil {
 		return TerminalSession{}, err
 	}
-	environment, err := s.toolchain.Environment(session.ID, request.Environment)
+	environment, err := s.terminalEnvironment(session.ID, request.Environment)
 	if err != nil {
 		return TerminalSession{}, err
 	}
 	request.SessionID = session.ID
 	request.WorkingDirectory = workingDirectory
 	return s.terminal.Open(request, environment)
+}
+
+// terminalEnvironment dà alla shell lo stesso Go di Build e gopls (primo nel PATH)
+// e dichiara un terminale a colori, così `go`, i test e i tool interattivi si
+// comportano come in un terminale esterno.
+func (s *Service) terminalEnvironment(sessionID SessionID, overrides map[string]string) ([]string, error) {
+	environment, err := s.languageServerEnvironment(sessionID)
+	if err != nil {
+		return nil, err
+	}
+	if len(overrides) > 0 {
+		merged, err := s.toolchain.Environment(sessionID, overrides)
+		if err != nil {
+			return nil, err
+		}
+		environment = mergeEnvironment(environment, merged)
+	}
+	return withDefaultEnvironment(environment, map[string]string{"TERM": "xterm-256color", "COLORTERM": "truecolor"}), nil
+}
+
+// mergeEnvironment applica le voci di overrides sopra base, per nome variabile.
+func mergeEnvironment(base, overrides []string) []string {
+	index := make(map[string]int, len(base))
+	result := append([]string(nil), base...)
+	for position, entry := range result {
+		name, _, _ := strings.Cut(entry, "=")
+		index[strings.ToUpper(name)] = position
+	}
+	for _, entry := range overrides {
+		name, _, _ := strings.Cut(entry, "=")
+		if position, ok := index[strings.ToUpper(name)]; ok {
+			result[position] = entry
+			continue
+		}
+		result = append(result, entry)
+	}
+	return result
+}
+
+// withDefaultEnvironment aggiunge le variabili indicate solo se l'ambiente non le definisce già.
+func withDefaultEnvironment(environment []string, defaults map[string]string) []string {
+	present := make(map[string]bool, len(environment))
+	for _, entry := range environment {
+		name, _, _ := strings.Cut(entry, "=")
+		present[strings.ToUpper(name)] = true
+	}
+	for name, value := range defaults {
+		if !present[name] {
+			environment = append(environment, name+"="+value)
+		}
+	}
+	return environment
 }
 
 // WriteTerminal inoltra l'input dell'utente alla shell indicata.

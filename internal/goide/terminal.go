@@ -8,14 +8,12 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"unicode/utf8"
 
 	pty "github.com/aymanbagabas/go-pty"
 )
 
 const (
-	// MaxTerminalScrollbackBytes limita quanto output conserva il backend per
-	// ogni terminale: xterm.js tiene il proprio scrollback lato frontend.
-	MaxTerminalScrollbackBytes = 256 * 1024
 	// MaxTerminalsPerSession evita che una sessione apra shell senza limite.
 	MaxTerminalsPerSession = 8
 	// terminalReadChunkBytes è la dimensione del buffer di lettura dal PTY.
@@ -46,7 +44,6 @@ type TerminalSession struct {
 type TerminalOutput struct {
 	TerminalID TerminalID `json:"terminalId"`
 	Data       string     `json:"data"`
-	Truncated  bool       `json:"truncated,omitempty"`
 }
 
 // TerminalRequest descrive l'apertura di un nuovo terminale.
@@ -67,8 +64,6 @@ type managedTerminal struct {
 	session   TerminalSession
 	closing   atomic.Bool
 	exited    atomic.Bool
-	truncated atomic.Bool
-	written   atomic.Int64
 	done      chan struct{}
 	writeMu   sync.Mutex
 	sessionMu sync.RWMutex
@@ -288,27 +283,19 @@ func (m *TerminalManager) Shutdown() {
 }
 
 // pump legge dal PTY e pubblica l'output coalescato a intervalli regolari.
+// Non scarta mai byte: se la UI rallenta, il lettore si ferma e il PTY applica
+// la sua naturale backpressure alla shell, come in un terminale vero.
 func (m *TerminalManager) pump(managed *managedTerminal) {
-	buffer := make([]byte, terminalReadChunkBytes)
-	pending := make([]byte, 0, terminalReadChunkBytes)
 	ticker := time.NewTicker(terminalFlushInterval)
 	defer ticker.Stop()
-
 	chunks := make(chan []byte, 16)
 	go func() {
 		defer close(chunks)
+		buffer := make([]byte, terminalReadChunkBytes)
 		for {
 			count, err := managed.pty.Read(buffer)
 			if count > 0 {
-				chunk := make([]byte, count)
-				copy(chunk, buffer[:count])
-				select {
-				case chunks <- chunk:
-				default:
-					// Backpressure: se la UI non tiene il passo si perde il
-					// blocco più vecchio invece di bloccare la shell.
-					managed.truncated.Store(true)
-				}
+				chunks <- append([]byte(nil), buffer[:count]...)
 			}
 			if err != nil {
 				return
@@ -316,36 +303,50 @@ func (m *TerminalManager) pump(managed *managedTerminal) {
 		}
 	}()
 
-	flush := func() {
-		if len(pending) == 0 {
+	pending := make([]byte, 0, terminalReadChunkBytes)
+	flush := func(final bool) {
+		ready := pending
+		if !final {
+			ready = pending[:completeUTF8Prefix(pending)]
+		}
+		if len(ready) == 0 {
 			return
 		}
-		truncated := managed.truncated.Swap(false)
-		m.emit("terminal.output", managed.snapshot(), TerminalOutput{
-			TerminalID: managed.session.ID, Data: string(pending), Truncated: truncated,
-		})
-		pending = pending[:0]
+		m.emit("terminal.output", managed.snapshot(), TerminalOutput{TerminalID: managed.session.ID, Data: string(ready)})
+		pending = append(pending[:0], pending[len(ready):]...)
 	}
-
 	for {
 		select {
 		case chunk, ok := <-chunks:
 			if !ok {
-				flush()
+				flush(true)
 				return
-			}
-			if managed.written.Add(int64(len(chunk))) > MaxTerminalScrollbackBytes {
-				managed.written.Store(0)
-				managed.truncated.Store(true)
 			}
 			pending = append(pending, chunk...)
 			if len(pending) >= terminalReadChunkBytes {
-				flush()
+				flush(false)
 			}
 		case <-ticker.C:
-			flush()
+			flush(false)
 		}
 	}
+}
+
+// completeUTF8Prefix restituisce la lunghezza del prefisso che non termina a metà
+// di un carattere multibyte: il resto attende il blocco successivo, così "è" o
+// "→" non diventano mai "\uFFFD" nel terminale.
+func completeUTF8Prefix(data []byte) int {
+	for back := 1; back <= utf8.UTFMax && back <= len(data); back++ {
+		start := len(data) - back
+		if !utf8.RuneStart(data[start]) {
+			continue
+		}
+		if utf8.FullRune(data[start:]) {
+			return len(data)
+		}
+		return start
+	}
+	return len(data)
 }
 
 // wait attende l'uscita della shell e pubblica lo stato finale una sola volta.

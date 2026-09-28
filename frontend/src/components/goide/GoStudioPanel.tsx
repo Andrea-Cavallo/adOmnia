@@ -24,6 +24,8 @@ import { runLanguageCommand } from './goStudioLanguageCommands'
 import { runSaveActions } from './goStudioSaveActions'
 import { runCommandFor, type GoStudioRunTarget } from './goStudioRunTargets'
 import { useGoStudioCloseFlow } from './useGoStudioCloseFlow'
+import { runGoStudioQuickCommand, runModuleDependencyAction } from './goStudioQuickActions'
+import { flushBufferRecovery } from './goStudioRecovery'
 import { confirm } from '@/lib/confirmDialog'
 import { activeGoIDEDocument, dirtyGoIDEDocuments, useGoIDEStore } from '@/stores/goide'
 import { useGoIDELspStore } from '@/stores/goideLsp'
@@ -83,7 +85,8 @@ export function GoStudioPanel() {
   // Build e Run partono dalla configurazione salvata attiva; senza configurazioni
   // resta la bozza locale, così il pannello è usabile anche prima di salvarne una.
   const configuredRequest = useCallback(() => {
-    if (!activeConfig) return runRequest(runDraft)
+    // Build compila il package della configurazione; per file, binari e test si usa la radice del progetto.
+    if (!activeConfig || (activeConfig.kind !== 'package' && activeConfig.kind !== 'build')) return runRequest(runDraft)
     const environment: Record<string, string> = {}
     for (const entry of activeConfig.environment ?? []) {
       if (!entry.secret) environment[entry.key] = entry.value ?? ''
@@ -130,6 +133,7 @@ export function GoStudioPanel() {
 
   useEffect(() => {
     const protectDirtyBuffers = (event: BeforeUnloadEvent) => {
+      flushBufferRecovery()
       if (!useGoIDEStore.getState().documents.some((document) => document.dirty)) return
       event.preventDefault()
       event.returnValue = ''
@@ -253,6 +257,18 @@ export function GoStudioPanel() {
       case 'run.stop': return void store.stopRun()
       case 'run.restart': return void store.restartRun()
       case 'run.configure': return setConfigureOpen(true)
+      case 'run.buildPackage': return void runGoStudioQuickCommand('build', 'package')
+      case 'run.testPackage': return void runGoStudioQuickCommand('test', 'package')
+      case 'run.vetPackage': return void runGoStudioQuickCommand('vet', 'package')
+      case 'run.buildAll': return void runGoStudioQuickCommand('build', 'module')
+      case 'run.testAll': return void runGoStudioQuickCommand('test', 'module')
+      case 'run.vetAll': return void runGoStudioQuickCommand('vet', 'module')
+      case 'run.generateAll': return void runGoStudioQuickCommand('generate', 'module')
+      case 'run.install': return void runGoStudioQuickCommand('install', 'package')
+      case 'go.updateAll': return void runModuleDependencyAction('updateall')
+      case 'go.updatePatch': return void runModuleDependencyAction('updatepatch')
+      case 'go.modDownload': return void runModuleDependencyAction('download')
+      case 'go.modVerify': return void runModuleDependencyAction('verify')
       case 'help.shortcuts': return setShortcutsOpen(true)
       case 'nav.symbol': return setSymbolSearchOpen(true)
       case 'go.lspLog': return setLspLogOpen(true)

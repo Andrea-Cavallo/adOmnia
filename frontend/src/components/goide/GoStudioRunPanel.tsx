@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
-import { AlertCircle, Copy, ListTree, RefreshCw, Search, SearchCode, Square, TerminalSquare } from 'lucide-react'
+import { AlertCircle, Copy, ListTree, RefreshCw, Search, SearchCode, Square, SquareTerminal, TerminalSquare } from 'lucide-react'
 import { Clipboard as WailsClipboard } from '@wailsio/runtime'
 import { useGoIDEStore, type GoIDEConsoleChunk } from '@/stores/goide'
-import type { GoIDEExecution } from '@/lib/goide-api'
+import type { GoIDEExecution, GoIDESession } from '@/lib/goide-api'
+import { GoStudioTerminalPanel } from './GoStudioTerminalPanel'
 import { resolveConsolePath } from './goStudioConsolePaths'
 import { GoStudioProblems, type GoStudioBuildProblem } from './GoStudioProblems'
 import { GoStudioReferences } from './GoStudioReferences'
@@ -10,7 +11,7 @@ import { GoStudioFindInFiles } from './GoStudioFindInFiles'
 import { diagnosticCounts, mergedReports, useGoIDELspStore, type GoIDEToolWindow } from '@/stores/goideLsp'
 
 interface GoStudioRunPanelProps {
-  sessionId: string
+  session: GoIDESession
 }
 
 interface ParsedLine {
@@ -94,7 +95,8 @@ function statusClass(status: string): string {
   return 'text-text-3'
 }
 
-export function GoStudioRunPanel({ sessionId }: GoStudioRunPanelProps) {
+export function GoStudioRunPanel({ session }: GoStudioRunPanelProps) {
+  const sessionId = session.id
   const view = useGoIDELspStore((state) => state.toolWindow)
   const showToolWindow = useGoIDELspStore((state) => state.showToolWindow)
   const reports = useGoIDELspStore((state) => state.diagnostics[sessionId])
@@ -136,6 +138,7 @@ export function GoStudioRunPanel({ sessionId }: GoStudioRunPanelProps) {
         {tab('problems', 'Problems', AlertCircle, <span className={counts.errors || buildProblems.length ? 'text-danger' : counts.warnings ? 'text-warning' : 'text-text-4'}>{problemCount}</span>)}
         {tab('references', 'Usages', ListTree)}
         {tab('find', 'Find', SearchCode)}
+        {tab('terminal', 'Terminal', SquareTerminal)}
         {view === 'run' && active && <>
           <select
             aria-label="Active run"
@@ -178,6 +181,8 @@ export function GoStudioRunPanel({ sessionId }: GoStudioRunPanelProps) {
       {view === 'problems' && <div className="min-h-0 flex-1 overflow-auto bg-surface-0"><GoStudioProblems sessionId={sessionId} buildProblems={buildProblems} onOpenBuildProblem={(problem) => void openLocation(problem.path, problem.line, problem.column)} /></div>}
       {view === 'references' && <div className="min-h-0 flex-1 overflow-auto bg-surface-0"><GoStudioReferences sessionId={sessionId} /></div>}
       {view === 'find' && <div className="min-h-0 flex-1 bg-surface-0"><GoStudioFindInFiles sessionId={sessionId} /></div>}
+      {/* Il terminale resta montato quando si cambia scheda: una shell interattiva non si distrugge. */}
+      <div className="min-h-0 flex-1" style={{ display: view === 'terminal' ? 'block' : 'none' }}><GoStudioTerminalPanel session={session} visible={view === 'terminal'} /></div>
     </section>
   )
 }

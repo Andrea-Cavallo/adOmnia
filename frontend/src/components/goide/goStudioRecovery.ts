@@ -2,7 +2,12 @@ import { forgetGoIDEBuffer, rememberGoIDEBuffer } from '@/lib/goide-api'
 
 const REMEMBER_DELAY_MS = 1500
 
-const timers = new Map<string, ReturnType<typeof setTimeout>>()
+interface PendingRecovery {
+  timer: ReturnType<typeof setTimeout>
+  write: () => void
+}
+
+const pending = new Map<string, PendingRecovery>()
 
 function key(sessionId: string, relativePath: string): string {
   return `${sessionId}\u0000${relativePath}`
@@ -15,12 +20,13 @@ function key(sessionId: string, relativePath: string): string {
  */
 export function scheduleBufferRecovery(sessionId: string, relativePath: string, content: string, diskToken: string): void {
   const id = key(sessionId, relativePath)
-  const pending = timers.get(id)
-  if (pending) clearTimeout(pending)
-  timers.set(id, setTimeout(() => {
-    timers.delete(id)
+  const previous = pending.get(id)
+  if (previous) clearTimeout(previous.timer)
+  const write = () => {
+    pending.delete(id)
     void rememberGoIDEBuffer(sessionId, relativePath, content, diskToken).catch(() => undefined)
-  }, REMEMBER_DELAY_MS))
+  }
+  pending.set(id, { timer: setTimeout(write, REMEMBER_DELAY_MS), write })
 }
 
 /**
@@ -29,16 +35,18 @@ export function scheduleBufferRecovery(sessionId: string, relativePath: string, 
  */
 export function cancelBufferRecovery(sessionId: string, relativePath: string): void {
   const id = key(sessionId, relativePath)
-  const pending = timers.get(id)
-  if (pending) {
-    clearTimeout(pending)
-    timers.delete(id)
+  const previous = pending.get(id)
+  if (previous) {
+    clearTimeout(previous.timer)
+    pending.delete(id)
   }
   void forgetGoIDEBuffer(sessionId, relativePath).catch(() => undefined)
 }
 
-/** flushBufferRecovery scrive subito i buffer ancora in attesa di debounce. */
+/** flushBufferRecovery scrive subito i buffer ancora in attesa di debounce (chiusura finestra, cambio pannello). */
 export function flushBufferRecovery(): void {
-  for (const [, pending] of timers) clearTimeout(pending)
-  timers.clear()
+  for (const entry of [...pending.values()]) {
+    clearTimeout(entry.timer)
+    entry.write()
+  }
 }

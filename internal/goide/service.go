@@ -473,7 +473,7 @@ func (s *Service) StartDependencyAction(request DependencyActionRequest) (Execut
 	if err != nil {
 		return Execution{}, err
 	}
-	arguments, err := dependencyArguments(request)
+	arguments, err := dependencyArguments(request, state.ModuleDirectory)
 	if err != nil {
 		return Execution{}, err
 	}
@@ -491,7 +491,64 @@ func (s *Service) StartDependencyAction(request DependencyActionRequest) (Execut
 	})
 }
 
-// StartRun avvia build, run, test o go mod tidy con argomenti strutturati.
+// supportedRunKinds elenca i comandi rapidi eseguibili da StartRun.
+var supportedRunKinds = map[string]bool{
+	"build": true, "run": true, "test": true, "vet": true, "generate": true, "install": true, "tidy": true, "binary": true,
+}
+
+// runCommandSpec traduce il tipo richiesto nell'eseguibile e negli argomenti strutturati, mai in una riga di shell.
+func (s *Service) runCommandSpec(sessionID SessionID, kind, workingDirectory, target string, request RunRequest) (CommandSpec, error) {
+	if kind == "binary" {
+		executable, err := resolveProjectBinary(workingDirectory, target)
+		if err != nil {
+			return CommandSpec{}, err
+		}
+		display := displayCommand(target, nil)
+		if len(request.ProgramArguments) > 0 {
+			display += fmt.Sprintf(" <%d program args>", len(request.ProgramArguments))
+		}
+		return CommandSpec{Executable: executable, Arguments: append([]string(nil), request.ProgramArguments...), DisplayCommand: display}, nil
+	}
+	binary, err := s.toolchain.GoBinary(sessionID)
+	if err != nil {
+		return CommandSpec{}, fmt.Errorf("Go non disponibile: rileva o configura la toolchain prima di eseguire")
+	}
+	if kind == "tidy" {
+		arguments := []string{"mod", "tidy"}
+		return CommandSpec{Executable: binary, Arguments: arguments, DisplayCommand: displayCommand("go", arguments)}, nil
+	}
+	arguments := append([]string{kind}, request.GoArguments...)
+	if len(request.BuildTags) > 0 && kind != "generate" {
+		arguments = append(arguments, "-tags", strings.Join(request.BuildTags, ","))
+	}
+	arguments = append(arguments, target)
+	arguments = append(arguments, request.ExtraTargets...)
+	display := displayCommand("go", arguments)
+	if kind == "run" || kind == "test" {
+		arguments = append(arguments, request.ProgramArguments...)
+		if kind == "run" && len(request.ProgramArguments) > 0 {
+			display += fmt.Sprintf(" <%d program args>", len(request.ProgramArguments))
+		} else if kind == "test" {
+			display = displayCommand("go", arguments)
+		}
+	}
+	return CommandSpec{Executable: binary, Arguments: arguments, DisplayCommand: display}, nil
+}
+
+// resolveProjectBinary risolve un binario già compilato, confinato al progetto e non una cartella.
+func resolveProjectBinary(workingDirectory, target string) (string, error) {
+	path := filepath.Clean(filepath.Join(workingDirectory, filepath.FromSlash(target)))
+	info, err := os.Stat(path)
+	if err != nil {
+		return "", fmt.Errorf("binario non trovato: compila prima il progetto (%s)", target)
+	}
+	if info.IsDir() {
+		return "", fmt.Errorf("%s è una cartella, non un binario", target)
+	}
+	return path, nil
+}
+
+// StartRun avvia build, run, test, vet, generate, install, tidy o un binario compilato con argomenti strutturati.
 func (s *Service) StartRun(request RunRequest) (Execution, error) {
 	session, err := s.session(string(request.SessionID))
 	if err != nil {
@@ -501,7 +558,7 @@ func (s *Service) StartRun(request RunRequest) (Execution, error) {
 		return Execution{}, fmt.Errorf("autorizza esplicitamente gli strumenti per questo progetto")
 	}
 	kind := strings.ToLower(strings.TrimSpace(request.Kind))
-	if kind != "build" && kind != "run" && kind != "test" && kind != "tidy" {
+	if !supportedRunKinds[kind] {
 		return Execution{}, fmt.Errorf("tipo di esecuzione non supportato")
 	}
 	workingDirectory, err := s.documents.resolveDirectory(session.Project, request.WorkingDirectory)
@@ -523,41 +580,16 @@ func (s *Service) StartRun(request RunRequest) (Execution, error) {
 	if err := validateGoArguments(session.Project.RealPath, workingDirectory, request.GoArguments); err != nil {
 		return Execution{}, err
 	}
-	binary, err := s.toolchain.GoBinary(session.ID)
-	if err != nil {
-		return Execution{}, fmt.Errorf("Go non disponibile: rileva o configura la toolchain prima di eseguire")
-	}
-	arguments := []string{kind}
-	if kind == "tidy" {
-		arguments = []string{"mod", "tidy"}
-	} else {
-		arguments = append(arguments, request.GoArguments...)
-		if len(request.BuildTags) > 0 {
-			arguments = append(arguments, "-tags", strings.Join(request.BuildTags, ","))
-		}
-		arguments = append(arguments, target)
-		arguments = append(arguments, request.ExtraTargets...)
-		if kind == "run" || kind == "test" {
-			arguments = append(arguments, request.ProgramArguments...)
-		}
-	}
 	environment, err := s.toolchain.Environment(session.ID, request.Environment)
 	if err != nil {
 		return Execution{}, err
 	}
-	displayArguments := arguments
-	if kind == "run" && len(request.ProgramArguments) > 0 {
-		displayArguments = arguments[:len(arguments)-len(request.ProgramArguments)]
+	spec, err := s.runCommandSpec(session.ID, kind, workingDirectory, target, request)
+	if err != nil {
+		return Execution{}, err
 	}
-	display := displayCommand("go", displayArguments)
-	if kind == "run" && len(request.ProgramArguments) > 0 {
-		display += fmt.Sprintf(" <%d program args>", len(request.ProgramArguments))
-	}
-	execution, err := s.processes.Start(CommandSpec{
-		SessionID: session.ID, Kind: kind, Executable: binary, Arguments: arguments,
-		WorkingDirectory: workingDirectory, Environment: environment,
-		DisplayCommand: display,
-	})
+	spec.SessionID, spec.Kind, spec.WorkingDirectory, spec.Environment = session.ID, kind, workingDirectory, environment
+	execution, err := s.processes.Start(spec)
 	if err != nil {
 		return Execution{}, err
 	}

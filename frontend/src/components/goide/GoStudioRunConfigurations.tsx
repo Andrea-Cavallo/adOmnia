@@ -2,9 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, ChevronUp, Copy, KeyRound, Plus, Trash2, X } from 'lucide-react'
 import { useModalFocusTrap } from '@/lib/accessibility'
 import { confirm } from '@/lib/confirmDialog'
-import { useGoIDEStore } from '@/stores/goide'
+import { useGoIDEStore, type GoIDEState } from '@/stores/goide'
 import { GoIDERunConfigurationKind } from '@/lib/goide-api'
 import type { GoIDEEnvironmentEntry, GoIDERunConfiguration } from '@/lib/goide-api'
+
+/** Riferimento stabile: un array nuovo nel selettore Zustand fa ridisegnare all'infinito. */
+const EMPTY_CONFIGS: GoIDEState['runConfigsBySession'][string] = []
 
 interface GoStudioRunConfigurationsProps {
   open: boolean
@@ -16,7 +19,8 @@ const KINDS: Array<{ value: GoIDERunConfiguration['kind']; label: string; hint: 
   { value: GoIDERunConfigurationKind.RunKindPackage, label: 'Package', hint: 'go run on a package path', available: true },
   { value: GoIDERunConfigurationKind.RunKindBuild, label: 'Build', hint: 'go build on a package path', available: true },
   { value: GoIDERunConfigurationKind.RunKindFiles, label: 'File list', hint: 'go run on explicit Go files', available: true },
-  { value: GoIDERunConfigurationKind.RunKindTest, label: 'Test', hint: 'available with the test runner in Phase 4', available: false },
+  { value: GoIDERunConfigurationKind.RunKindTest, label: 'Test', hint: 'go test on a package path', available: true },
+  { value: GoIDERunConfigurationKind.RunKindBinary, label: 'Compiled binary', hint: 'runs a binary built inside the project', available: true },
 ]
 
 function emptyConfiguration(sessionId: string): GoIDERunConfiguration {
@@ -39,7 +43,7 @@ function splitList(value: string, separator: RegExp): string[] {
 export function GoStudioRunConfigurations({ open, sessionId, onClose }: GoStudioRunConfigurationsProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
   useModalFocusTrap(open, onClose, dialogRef)
-  const configs = useGoIDEStore((state) => state.runConfigsBySession[sessionId] ?? [])
+  const configs = useGoIDEStore((state) => state.runConfigsBySession[sessionId] ?? EMPTY_CONFIGS)
   const loadRunConfigurations = useGoIDEStore((state) => state.loadRunConfigurations)
   const saveRunConfiguration = useGoIDEStore((state) => state.saveRunConfiguration)
   const duplicateRunConfiguration = useGoIDEStore((state) => state.duplicateRunConfiguration)
@@ -200,6 +204,8 @@ export function GoStudioRunConfigurations({ open, sessionId, onClose }: GoStudio
                     className="mt-1 h-16 w-full resize-none rounded border border-border-1 bg-surface-0 p-2 font-mono text-[11px] text-text-1 outline-none focus:border-accent"
                   />
                 </label>
+              ) : draft.kind === GoIDERunConfigurationKind.RunKindBinary ? (
+                textField('Binary path', draft.binaryPath ?? '', (next) => patch({ binaryPath: next }), 'bin/app')
               ) : (
                 textField('Target package', draft.target, (next) => patch({ target: next }), '.')
               )}
