@@ -7,6 +7,7 @@ import * as BrowserDebug from "./browserdebug.js";
 import * as CollectionFS from "./collectionfs.js";
 import * as DockerLab from "./dockerlab.js";
 import * as GitSync from "./gitsync.js";
+import * as GoIDE from "./goide.js";
 import * as MCPClient from "./mcpclient.js";
 import * as MCPServerGenerator from "./mcpservergenerator.js";
 import * as OASLint from "./oaslint.js";
@@ -21,6 +22,7 @@ export {
     CollectionFS,
     DockerLab,
     GitSync,
+    GoIDE,
     MCPClient,
     MCPServerGenerator,
     OASLint,

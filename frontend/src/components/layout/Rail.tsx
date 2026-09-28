@@ -41,6 +41,18 @@ function Soap95Icon({ size = 12 }: { size?: number }) {
   return <img src="/icon95.png" alt="" style={{ width: size, height: size }} className="object-contain" />
 }
 
+function GoStudioIcon({ size = 20 }: { size?: number }) {
+  return (
+    <span
+      aria-hidden="true"
+      style={{ width: size, height: size, fontSize: Math.max(10, Math.round(size * 0.65)) }}
+      className="inline-grid place-items-center font-mono font-semibold tracking-[-0.12em]"
+    >
+      <span><span className="text-accent">{'g'}</span>{'O'}</span>
+    </span>
+  )
+}
+
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
   api: Send,
   protocols: Radio,
@@ -49,6 +61,7 @@ const CATEGORY_ICONS: Record<string, React.ElementType> = {
   tools: Wrench,
   docs: FileText,
   workspace: GitBranch,
+  development: GoStudioIcon,
 }
 
 const FEATURE_ICONS: Partial<Record<RailItem, React.ElementType>> = {
@@ -85,6 +98,7 @@ const FEATURE_ICONS: Partial<Record<RailItem, React.ElementType>> = {
   themes: Settings,
   templates: FileText,
   plugins: Puzzle,
+  goide: SquareTerminal,
 }
 
 const CATEGORIES: CategoryDef[] = RAIL_CATEGORIES

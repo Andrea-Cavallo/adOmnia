@@ -72,6 +72,7 @@ func main() {
 	mcpServerGenerator := NewMCPServerGenerator()
 	collectionFS := NewCollectionFS()
 	oasLint := NewOASLint()
+	goIDE := NewGoIDE()
 
 	var mainWindow *application.WebviewWindow
 	appOptions := application.Options{
@@ -93,6 +94,7 @@ func main() {
 			application.NewService(mcpServerGenerator),
 			application.NewService(collectionFS),
 			application.NewService(oasLint),
+			application.NewService(goIDE),
 		},
 		// Only one process may hold the bbolt lock. Additional launches focus
 		// the running main window instead of starting with an empty workspace.
@@ -117,6 +119,7 @@ func main() {
 	applyPlatformOptions(&appOptions)
 	desktopApp := application.New(appOptions)
 	app.AttachDesktop(desktopApp)
+	goIDE.attachDesktop(desktopApp)
 
 	mainWindow = desktopApp.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:      "main",

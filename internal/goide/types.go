@@ -1,0 +1,93 @@
+package goide
+
+import "time"
+
+type SessionID string
+type DocumentID string
+type RunID string
+type TerminalID string
+type LSPRequestID string
+type DebugSessionID string
+
+type AuthorizationState string
+
+const (
+	AuthorizationOpened    AuthorizationState = "opened"
+	AuthorizationPermitted AuthorizationState = "tooling-permitted"
+)
+
+type GoModule struct {
+	Path       string `json:"path"`
+	ModulePath string `json:"modulePath,omitempty"`
+}
+
+type Project struct {
+	ID            string             `json:"id"`
+	Name          string             `json:"name"`
+	RootPath      string             `json:"rootPath"`
+	RealPath      string             `json:"realPath"`
+	GoModPath     string             `json:"goModPath,omitempty"`
+	GoWorkPath    string             `json:"goWorkPath,omitempty"`
+	Modules       []GoModule         `json:"modules"`
+	Authorization AuthorizationState `json:"authorization"`
+}
+
+type Session struct {
+	ID        SessionID `json:"id"`
+	Project   Project   `json:"project"`
+	OpenedAt  time.Time `json:"openedAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+type Document struct {
+	ID        DocumentID `json:"id"`
+	SessionID SessionID  `json:"sessionId"`
+	URI       string     `json:"uri"`
+	Path      string     `json:"path"`
+	Version   int        `json:"version"`
+	Dirty     bool       `json:"dirty"`
+}
+
+type RunConfiguration struct {
+	ID               string            `json:"id"`
+	SessionID        SessionID         `json:"sessionId"`
+	Name             string            `json:"name"`
+	Target           string            `json:"target"`
+	WorkingDirectory string            `json:"workingDirectory"`
+	GoArguments      []string          `json:"goArguments"`
+	ProgramArguments []string          `json:"programArguments"`
+	BuildTags        []string          `json:"buildTags"`
+	Environment      map[string]string `json:"environment"`
+}
+
+type Execution struct {
+	ID        RunID     `json:"id"`
+	SessionID SessionID `json:"sessionId"`
+	Status    string    `json:"status"`
+	StartedAt time.Time `json:"startedAt"`
+}
+
+type EventEnvelope struct {
+	Version    int       `json:"version"`
+	Type       string    `json:"type"`
+	SessionID  SessionID `json:"sessionId,omitempty"`
+	ResourceID string    `json:"resourceId,omitempty"`
+	Sequence   uint64    `json:"sequence"`
+	Timestamp  time.Time `json:"timestamp"`
+	Payload    any       `json:"payload,omitempty"`
+}
+
+type Capabilities struct {
+	SchemaVersion    int  `json:"schemaVersion"`
+	ProjectOpen      bool `json:"projectOpen"`
+	ProjectCreate    bool `json:"projectCreate"`
+	Documents        bool `json:"documents"`
+	Toolchain        bool `json:"toolchain"`
+	Processes        bool `json:"processes"`
+	LSP              bool `json:"lsp"`
+	Terminal         bool `json:"terminal"`
+	Debug            bool `json:"debug"`
+	Tests            bool `json:"tests"`
+	MultipleSessions bool `json:"multipleSessions"`
+	SeparateWindows  bool `json:"separateWindows"`
+}

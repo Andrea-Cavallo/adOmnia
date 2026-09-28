@@ -35,6 +35,7 @@ export const RAIL_ITEMS = [
   'gitsync',
   'mcp',
   'apidocs',
+  'goide',
 ] as const
 
 export type RailItem = (typeof RAIL_ITEMS)[number]
