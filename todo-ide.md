@@ -639,11 +639,11 @@ Prerequisito: gopls è realmente operativo (Fase 2) e il terminale è reale (Fas
 
 ## 5.1 Refactoring oltre il rename
 
-- [ ] Esporre extract function, extract variable, inline e move **solo** attraverso le code action realmente fornite da gopls per il range selezionato.
-- [ ] Mostrare l'anteprima delle modifiche prima di applicarle, con elenco dei file toccati.
-- [ ] Applicare i `workspace/applyEdit` multi-file in modo transazionale: o tutti i file o nessuno, con rollback su errore.
-- [ ] Mantenere il dirty state corretto dopo un refactoring che tocca file non aperti.
-- [ ] Non simulare con manipolazione testuale i refactoring che gopls non offre: se non esiste la code action, il comando non compare.
+- [x] Esporre extract function, extract variable, inline e move **solo** attraverso le code action realmente fornite da gopls per il range selezionato. *(Code → Refactor This… Ctrl+Alt+Shift+T; Extract Variable Ctrl+Alt+V, Extract Constant Ctrl+Alt+C, Extract Function/Method Ctrl+Alt+M, Inline Ctrl+Alt+N, Move to New File F6. Se gopls non offre l'azione compare "X is not available here: select …")*
+- [x] Mostrare l'anteprima delle modifiche prima di applicarle, con elenco dei file toccati. *(anteprima per le modifiche su più file, con righe rimosse e aggiunte e file nuovi marcati "new"; le modifiche su un solo file si applicano in editor con un unico Ctrl+Z, come in GoLand)*
+- [x] Applicare i `workspace/applyEdit` multi-file in modo transazionale: o tutti i file o nessuno, con rollback su errore. *(prima di scrivere si verifica che ogni buffer sia ancora quello su cui gopls ha calcolato gli edit; i file nuovi si creano tutti o nessuno e non sovrascrivono mai)*
+- [x] Mantenere il dirty state corretto dopo un refactoring che tocca file non aperti. *(i file toccati si aprono e restano modificati non salvati; i file creati sono già su disco)*
+- [x] Non simulare con manipolazione testuale i refactoring che gopls non offre: se non esiste la code action, il comando non compare. *(limite di gopls dichiarato: "Inline variable" sostituisce solo il riferimento selezionato; se era l'ultimo uso gopls segnala la dichiarazione inutilizzata. Rinomina ed eliminazione di file restano rifiutate)*
 
 ## 5.2 Navigazione completa
 
