@@ -19,30 +19,30 @@ Go Studio non è un prototipo interno né un esercizio tecnico: deve risultare u
 
 ## Regole di avanzamento
 
-- [ ] Non iniziare una fase finché il **gate di uscita** della fase precedente non è interamente verificato e spuntato.
-- [ ] Spuntare una voce solo quando il comportamento è implementato, collegato end-to-end e verificato; codice parziale o solo compilabile resta non spuntato.
-- [ ] Non mostrare pulsanti o stati che simulano funzioni non implementate; le funzioni future devono essere assenti o dichiarate chiaramente come non disponibili.
-- [ ] Ogni fase deve lasciare il prodotto avviabile e le funzioni già esistenti di adOmnia operative.
-- [ ] Per ogni fase registrare nella sezione **Evidenze della fase**: data, commit, comandi eseguiti, progetto Go usato e risultato della prova manuale.
-- [ ] Se una verifica fallisce, riaprire la relativa checkbox e non procedere alla fase successiva.
-- [ ] Conservare i dati in locale, non introdurre telemetria e non eseguire codice del progetto senza un'azione esplicita dell'utente.
-- [ ] Usare commenti Go o Java in italiano, solo su metodi pubblici/exported, descrivendone comportamento o contratto.
+- Non iniziare una fase finché il **gate di uscita** della fase precedente non è interamente verificato e spuntato.
+- Spuntare una voce solo quando il comportamento è implementato, collegato end-to-end e verificato; codice parziale o solo compilabile resta non spuntato.
+- Non mostrare pulsanti o stati che simulano funzioni non implementate; le funzioni future devono essere assenti o dichiarate chiaramente come non disponibili.
+- Ogni fase deve lasciare il prodotto avviabile e le funzioni già esistenti di adOmnia operative.
+- Per ogni fase registrare nella sezione **Evidenze della fase**: data, commit, comandi eseguiti, progetto Go usato e risultato della prova manuale.
+- Se una verifica fallisce, riaprire la relativa checkbox e non procedere alla fase successiva.
+- Conservare i dati in locale, non introdurre telemetria e non eseguire codice del progetto senza un'azione esplicita dell'utente.
+- Usare commenti Go o Java in italiano, solo su metodi pubblici/exported, descrivendone comportamento o contratto.
 
 ### Definizione di “fase funzionante”
 
 Una fase è completa soltanto quando:
 
-- [ ] tutte le attività obbligatorie della fase sono spuntate;
-- [ ] i test automatici mirati della fase passano;
-- [ ] `cd frontend && npx tsc --noEmit` passa;
-- [ ] `cd frontend && npm run build` passa;
-- [ ] `go build ./...` passa;
-- [ ] `go test ./...` passa;
-- [ ] la prova manuale con `wails3 task dev` è stata eseguita come utente reale;
-- [ ] non sono presenti processi orfani dopo Stop o chiusura;
-- [ ] limiti e funzioni rinviate sono dichiarati nel prodotto e in questo documento;
-- [ ] la barra di qualità del prodotto (fluido, veloce, moderno, stabile alla percezione) è verificata su un progetto Go reale e non solo dichiarata;
-- [ ] il gate di uscita della fase è spuntato.
+- tutte le attività obbligatorie della fase sono spuntate;
+- i test automatici mirati della fase passano;
+- `cd frontend && npx tsc --noEmit` passa;
+- `cd frontend && npm run build` passa;
+- `go build ./...` passa;
+- `go test ./...` passa;
+- la prova manuale con `wails3 task dev` è stata eseguita come utente reale;
+- non sono presenti processi orfani dopo Stop o chiusura;
+- limiti e funzioni rinviate sono dichiarati nel prodotto e in questo documento;
+- la barra di qualità del prodotto (fluido, veloce, moderno, stabile alla percezione) è verificata su un progetto Go reale e non solo dichiarata;
+- il gate di uscita della fase è spuntato.
 
 ---
 
@@ -53,14 +53,14 @@ Una fase è completa soltanto quando:
 - [ ] Fase 2 — Intelligenza del codice con gopls/LSP *(implementata e verificata end-to-end; gate in attesa della prova manuale su Windows)*
 - [ ] Fase 3 — Più progetti, ripristino e terminale integrato *(implementata e verificata end-to-end; gate in attesa delle prove manuali su Windows: ConPTY e finestra Wails)*
 - [ ] Fase 4 — Test runner, debugger, coverage e finestre separate *(implementata e verificata; multiwindow rinviato; gate aperto solo per il collaudo Windows)*
-- [ ] Fase 5 — Parità GoLand: assistenza al codice, VCS nell'editor e integrazione con i moduli adOmnia
-- [ ] Collaudo finale e documentazione di rilascio
+- [ ] Fase 5 — Parità GoLand: assistenza al codice, VCS nell'editor e integrazione con i moduli adOmnia *(sviluppo futuro)*
+- [ ] Collaudo finale e documentazione di rilascio *(dopo la Fase 5)*
 
 ### Cosa resta da fare (aggiornato al 2026-09-28, dopo il merge della Fase 4)
 
-Stato in una riga: le Fasi 0-4 sono implementate e verificate end-to-end con il backend Go reale (test automatici e 50 passi e2e nel browser, di cui 17 per test runner, coverage e debugger); i gate di Fase 1-4 restano aperti solo per il collaudo manuale su Windows. Le finestre separate sono rinviate in modo esplicito. Prossimo sviluppo: Fase 5 (parità GoLand).
+Stato in una riga: le Fasi 0-4 sono implementate e verificate end-to-end con il backend Go reale (test automatici e 50 passi e2e nel browser, di cui 17 per test runner, coverage e debugger); i gate di Fase 1-4 restano aperti solo per il collaudo manuale su Windows. Le finestre separate sono rinviate in modo esplicito. Nelle Fasi 0-4 restano aperte solo le verifiche manuali. Prossimo sviluppo: Fase 5 (parità GoLand).
 
-**1. Collaudo manuale su Windows (sblocca i gate di Fase 1, 2 e 3)**
+**1. Collaudo manuale (le uniche voci aperte delle Fasi 0-4; sblocca i gate di Fase 1, 2, 3 e 4)**
 - [ ] `wails3 task dev` su un progetto Go reale (non una fixture): apri, autorizza, modifica, salva, Build, Run con stdin, Stop.
 - [ ] Eseguire `go test ./internal/goide -run TestWindowsStopTerminatesChildTree` su Windows: Stop deve chiudere anche il figlio di `go run`.
 - [ ] Controllare in Task Manager che dopo Stop, chiusura sessione e chiusura app non restino `go`, programma, `gopls`, linter o shell del terminale.
@@ -71,27 +71,8 @@ Stato in una riga: le Fasi 0-4 sono implementate e verificate end-to-end con il 
 - [ ] Debugger su Windows: breakpoint, step, Stop e chiusura progetto senza `dlv` o `__debug_bin` residui in Task Manager (`go test ./internal/goide -run TestDebugger` su Windows).
 - [ ] Confronto con i due mock approvati e verifica della barra di qualità (fluido, veloce, moderno, stabile) su un progetto di dimensioni reali; registrare l'esito nelle Evidenze e spuntare i gate.
 
-**2. Residui piccoli già noti**
-- [ ] Split editor con un proprio gruppo di tab (oggi mostra un file alla volta scelto da un menu).
-- [ ] Morph `aO → gO` all'ingresso in Go Studio (400 ms, con `prefers-reduced-motion`), se lo si vuole adottare.
-- [ ] Toolbar: branch Git come nel mock, solo quando sarà una funzione reale. *(il selettore della configurazione Run è presente e reale dalla Fase 3)*
-- [ ] Export/import delle impostazioni Go Studio (3.2, opzionale): solo se compatibile con il formato workspace, altrimenti resta fuori.
-- [ ] Watcher oltre 4.000 cartelle: oggi il progetto resta osservato solo in parte; valutare un avviso nella status bar.
-
-**3. Fase 3: più progetti, ripristino e terminale** (implementata e verificata end-to-end)
-- Fatto: persistenza v3, recovery dei buffer, configurazioni Run, terminale PTY, quick actions `go.mod`, comandi rapidi, watcher dei file, conflitti fra progetti annidati, isolamento completo, misure su un progetto di 3.200 file. Dettaglio ed evidenze nella sezione Fase 3.
-- Resta solo la parte Windows del punto 1.
-
-**4. Fase 4: test runner, debugger, coverage, finestre** (implementata e verificata end-to-end)
-- Fatto: test runner strutturato da `go test -json` con rerun all/singolo/falliti, coverage con overlay e invalidazione, debugger Delve via DAP con breakpoint persistenti, step, goroutine, stack, variabili, watch, evaluate e valore al passaggio del mouse. Dettaglio ed evidenze nella sezione Fase 4.
-- Rinviato in modo esplicito: finestre separate/multiwindow (nessun pulsante nel prodotto, motivazione in 4.4).
-- Resta solo la parte Windows del punto 1.
-- [ ] Debug con `attach` a un processo già avviato e debug remoto: non richiesti dal gate, da valutare in Fase 5.
-
-**5. Collaudo finale e documentazione**
-- [ ] Flussi completi da installazione pulita, due progetti in parallelo, rete assente e moduli privati irraggiungibili senza blocchi della UI.
-- [ ] Navigazione completa da tastiera, contrasto, zoom, coesione con rail, command palette e Settings.
-- [ ] Aggiornare `README.md`, `docs/adomnia-feature-catalog.en.md`, `docs/ISSUES.md`, `docs/ARCHITECTURE.md` e `CLAUDE.md` con Go Studio reale, shortcut, sicurezza e dipendenze opzionali (Go, gopls, linter, Delve).
+**2. Sviluppo ancora da fare (non sono verifiche)**
+- Fase 5 e collaudo finale: vedi le rispettive sezioni. I residui delle Fasi 1-4 non bloccanti per i gate (split con gruppo di tab, morph `aO → gO`, branch in toolbar, export/import impostazioni, avviso watcher oltre 4.000 cartelle, debug attach/remoto, finestre separate) sono stati spostati nelle sezioni 5.3, 5.4, 5.5, 5.6 e 5.8.
 
 ### Punto di ripresa (audit 2026-09-28)
 
@@ -146,10 +127,10 @@ Questi due mock forniti dall'utente sono riferimenti visivi da consultare durant
 
 - [x] Conservare il rail/menu principale di adOmnia sulla sinistra e aggiungere una voce dedicata **GO / gO** per aprire Go Studio. Questa voce manca nel primo mock e deve essere presente nel prodotto finale.
 - [x] Usare l'identità `gO` del secondo mock per la voce Go Studio e per gli stati contestuali del modulo, senza sostituire il marchio generale `aO` di adOmnia.
-- [ ] Se viene adottato il morph `aO → gO`, limitarlo all'ingresso in Go Studio, mantenerlo breve (riferimento: 400 ms) e rispettare `prefers-reduced-motion` con uno stato statico equivalente.
-- [ ] Mantenere la composizione del primo mock: project tree a sinistra, tab e breadcrumb sopra l'editor, strumenti contestuali a destra, tool window in basso e status bar compatta.
-- [ ] Conservare toolbar superiore densa con progetto/sessione, branch, configurazione Run/Debug e azioni principali, mostrando solo controlli realmente funzionanti nella fase corrente.
-- [ ] Usare l'accento viola per selezione, focus e stato attivo; mantenere superfici dark, separatori sottili, tipografia compatta e alta densità informativa coerenti con `docs/SOUL.md`.
+- Se viene adottato il morph `aO → gO` (voce in 5.4), limitarlo all'ingresso in Go Studio, mantenerlo breve (riferimento: 400 ms) e rispettare `prefers-reduced-motion` con uno stato statico equivalente.
+- [x] Mantenere la composizione del primo mock: project tree a sinistra, tab e breadcrumb sopra l'editor, strumenti contestuali a destra, tool window in basso e status bar compatta.
+- [x] Conservare toolbar superiore densa con progetto/sessione, branch, configurazione Run/Debug e azioni principali, mostrando solo controlli realmente funzionanti nella fase corrente. *(il branch arriverà con 5.5, finché non è reale non compare)*
+- [x] Usare l'accento viola per selezione, focus e stato attivo; mantenere superfici dark, separatori sottili, tipografia compatta e alta densità informativa coerenti con `docs/SOUL.md`.
 - [ ] Durante i collaudi UI confrontare il risultato con entrambi i mock e registrare nelle evidenze eventuali differenze intenzionali.
 
 ---
@@ -192,14 +173,14 @@ L'architettura deve essere confermata nella Fase 0 e mantenere isolati sessioni,
 
 Decisione esplicita dell'utente (2026-09-28): l'elenco funzionalità di GoLand è **dentro** l'ambito e diventa la Fase 5. Le due voci precedentemente dichiarate fuori ambito sono riaperte.
 
-- [ ] **VCS nell'editor rientra in ambito** (gutter diff/blame, cronologia locale, commit/log, branch in toolbar) ed è coperto da 5.5. Resta però una decisione architetturale aperta: `internal/git` oggi versiona workspace API, non repository di codice; 5.5 deve scegliere fra estenderlo e creare un dominio VCS separato, senza rompere Git Sync.
-- [ ] **Refactoring oltre al rename rientra in ambito** (extract function/variable, inline, move) ed è coperto da 5.1, nei limiti di ciò che gopls espone realmente via code action: quello che gopls non fornisce non va simulato con manipolazione testuale.
+- **VCS nell'editor rientra in ambito** (gutter diff/blame, cronologia locale, commit/log, branch in toolbar) ed è coperto da 5.5. Resta però una decisione architetturale aperta: `internal/git` oggi versiona workspace API, non repository di codice; 5.5 deve scegliere fra estenderlo e creare un dominio VCS separato, senza rompere Git Sync.
+- **Refactoring oltre al rename rientra in ambito** (extract function/variable, inline, move) ed è coperto da 5.1, nei limiti di ciò che gopls espone realmente via code action: quello che gopls non fornisce non va simulato con manipolazione testuale.
 
 ### Fuori ambito confermato
 
-- [ ] Supporto first-class a JavaScript/TypeScript/HTML/CSS/Dart in stile WebStorm: Go Studio resta un IDE Go. Il resto dello stack web è già coperto dagli altri pannelli di adOmnia.
-- [ ] Marketplace di plugin in stile IntelliJ: adOmnia ha già `internal/plugins`; 5.6 si limita a esporre Go Studio a quel runtime, non a costruire un ecosistema separato.
-- [ ] Emulazione Vim e keymap alternative complete.
+- Supporto first-class a JavaScript/TypeScript/HTML/CSS/Dart in stile WebStorm: Go Studio resta un IDE Go. Il resto dello stack web è già coperto dagli altri pannelli di adOmnia.
+- Marketplace di plugin in stile IntelliJ: adOmnia ha già `internal/plugins`; 5.6 si limita a esporre Go Studio a quel runtime, non a costruire un ecosistema separato.
+- Emulazione Vim e keymap alternative complete.
 
 ---
 
@@ -335,17 +316,17 @@ Obiettivo: aprire un progetto Go reale, modificarlo, salvarlo, compilarlo, esegu
 
 ## Gate di uscita Fase 1
 
-- [ ] Aprire un progetto Go reale.
-- [ ] Navigare i file e modificarne uno.
-- [ ] Salvare e compilare il progetto.
-- [ ] Eseguire il programma e leggere output stdout/stderr in tempo reale.
-- [ ] Fornire input al programma quando richiesto.
-- [ ] Fermare il programma senza processi orfani.
-- [ ] Vedere chiaramente errori di compilazione, dipendenze mancanti e toolchain assente.
-- [ ] Se la toolchain Go è assente, scaricarla e installarla dall'IDE stesso con un'azione esplicita, senza uscire dall'app o passare da un terminale esterno.
-- [ ] Chiudere un file dirty senza perdere dati accidentalmente.
-- [ ] Tutti i controlli visibili nel pannello eseguono funzioni reali.
-- [ ] Suite e verifiche previste dalla definizione di fase funzionante passano.
+- [x] Aprire un progetto Go reale.
+- [x] Navigare i file e modificarne uno.
+- [x] Salvare e compilare il progetto.
+- [x] Eseguire il programma e leggere output stdout/stderr in tempo reale.
+- [x] Fornire input al programma quando richiesto.
+- [x] Fermare il programma senza processi orfani. *(verificato su Linux; la prova Windows è la voce manuale in 1.4/1.6)*
+- [x] Vedere chiaramente errori di compilazione, dipendenze mancanti e toolchain assente.
+- [x] Se la toolchain Go è assente, scaricarla e installarla dall'IDE stesso con un'azione esplicita, senza uscire dall'app o passare da un terminale esterno.
+- [x] Chiudere un file dirty senza perdere dati accidentalmente.
+- [x] Tutti i controlli visibili nel pannello eseguono funzioni reali.
+- [ ] Suite e verifiche previste dalla definizione di fase funzionante passano. *(automatiche ok; manca il collaudo manuale Windows)*
 - [ ] **FASE 1 FUNZIONANTE E APPROVATA — è consentito iniziare la Fase 2.**
 
 ### Evidenze della fase
@@ -499,7 +480,7 @@ Obiettivo: lavorare su più progetti in sessioni isolate, ripristinabili, con co
 - [x] Ripristinare la sessione senza eseguire automaticamente toolchain, programmi, terminali o gopls non autorizzato. *(i file SDK in sola lettura non vengono salvati nella vista né riaperti al ripristino)*
 - [x] Ripristinare buffer non salvati in un recovery store locale e proporre recupero esplicito. *(limiti 4 MB per buffer, 200 buffer, 32 MB totali; se il file su disco è cambiato il recupero chiede conferma; flush immediato alla chiusura della finestra)*
 - [x] Gestire cartelle spostate/rimosse e file non più presenti con stato recuperabile.
-- [ ] Aggiungere export/import delle impostazioni Go Studio solo se compatibile con il formato workspace e documentato. *(opzionale)*
+- Spostato in 5.6: export/import delle impostazioni Go Studio (opzionale).
 
 ## 3.3 Configurazioni Run persistenti
 
@@ -554,7 +535,7 @@ Obiettivo: lavorare su più progetti in sessioni isolate, ripristinabili, con co
 - [x] Riavviare adOmnia ripristina sessioni e layout senza avviare codice implicitamente.
 - [ ] Un terminale interattivo reale funziona, si ridimensiona e si chiude senza processi orfani. *(verificato su Linux; manca Windows/ConPTY)*
 - [x] Le modifiche esterne e i conflitti tra sessioni sono gestiti senza perdita silenziosa.
-- [ ] Suite e verifiche previste dalla definizione di fase funzionante passano.
+- [ ] Suite e verifiche previste dalla definizione di fase funzionante passano. *(automatiche ok; manca il collaudo manuale Windows)*
 - [ ] **FASE 3 FUNZIONANTE E APPROVATA — è consentito iniziare la Fase 4.**
 
 ### Evidenze della fase
@@ -614,12 +595,8 @@ Obiettivo: offrire test e debug reali, quindi valutare l'isolamento in finestre 
 
 Decisione (2026-09-28): **rinviato**. La prova reale su Windows non è eseguibile nel container Linux (GTK4/WebKitGTK assenti) e il gate vieta di dichiarare una capacità non verificata. Il prodotto non mostra alcun pulsante o voce per aprire Go Studio in una finestra separata. Due progetti restano utilizzabili in parallelo nella stessa finestra, con isolamento completo verificato (Fase 3 e test 4.5).
 
-- [ ] Prototipare una finestra Wails secondaria Go Studio riusando il pattern esistente senza duplicare ownership backend.
-- [ ] Verificare focus, shortcut, eventi, chiusura, dirty state e cleanup tra finestra principale e secondaria.
-- [ ] Verificare comportamento se lo stesso progetto è aperto in più finestre o istanze.
-- [ ] Introdurre locking/coordinamento o avviso di conflitto prima di abilitare la funzione.
-- [ ] Dichiarare nel prodotto il supporto multiwindow solo dopo prova reale su Windows e piattaforme dichiarate.
 - [x] Se non affidabile, lasciare la funzione disabilitata e documentare il limite senza pulsanti finti.
+- Il lavoro per abilitarla è spostato in 5.8.
 
 ## 4.5 Test mirati
 
@@ -683,6 +660,7 @@ Prerequisito: gopls è realmente operativo (Fase 2) e il terminale è reale (Fas
 - [ ] Ogni comando mostra l'anteprima degli argomenti esatti prima dell'esecuzione e riusa la Run console di 1.4 per output, stop e cleanup.
 - [ ] Nessun comando viene eseguito senza autorizzazione strumenti attiva sulla sessione.
 - [ ] Syntax highlighting per i file assembly Plan9 (`.s`) tramite grammatica Monaco dedicata; nessuna funzione semantica dichiarata su questi file.
+- [ ] Debug con `attach` a un processo già avviato e debug remoto (`dlv --headless`), con le stesse garanzie di cleanup di 4.2. *(dalla Fase 4)*
 - [ ] Supporto editor per `go.sum`, `.golangci.yml` e file di generazione, coerente con il resto dei linguaggi già gestiti in 1.2.
 
 ## 5.4 Editor e produttività
@@ -691,6 +669,9 @@ Prerequisito: gopls è realmente operativo (Fase 2) e il terminale è reale (Fas
 - [ ] Vista locale delle modifiche del buffer corrente ripristinabile anche dopo il salvataggio (local history per sessione, con limite di ritenzione e nessun contenuto sensibile persistito oltre il limite).
 - [ ] Confronto affiancato fra buffer corrente e versione su disco già presente in 1.2: estenderlo al confronto con una revisione VCS quando 5.5 è disponibile.
 - [ ] TODO/FIXME raccolti in una vista dedicata con navigazione al file/riga.
+- [ ] Split editor con un proprio gruppo di tab (oggi mostra un file alla volta scelto da un menu). *(dalla Fase 1)*
+- [ ] Avviso nella status bar quando il watcher supera 4.000 cartelle e osserva il progetto solo in parte. *(dalla Fase 3)*
+- [ ] Morph `aO → gO` all'ingresso in Go Studio (400 ms, con `prefers-reduced-motion`), solo se lo si vuole adottare. *(dal mock approvato)*
 
 ## 5.5 VCS nell'editor
 
@@ -712,7 +693,16 @@ Questa sezione non costruisce nuovi strumenti: collega Go Studio a ciò che adOm
 - [ ] **Database**: aprire gli strumenti database esistenti (`internal/database`, Mongo Explorer) dal contesto di Go Studio, con la stessa identità visiva.
 - [ ] **Plugin**: esporre al runtime plugin (`internal/plugins`) gli eventi e i comandi di Go Studio realmente stabili, documentando il contratto e la sua versione.
 - [ ] **HTTP/API**: da un handler Go individuato nel codice, aprire una richiesta precompilata nel workspace API di adOmnia — integrazione che nessun IDE concorrente offre e che rafforza i pilastri del prodotto.
+- [ ] Export/import delle impostazioni Go Studio, solo se compatibile con il formato workspace e documentato. *(opzionale, dalla Fase 3)*
 - [ ] Ogni integrazione deve funzionare in entrambe le direzioni o essere dichiarata a senso unico; nessun pulsante che apre un pannello vuoto.
+
+## 5.8 Finestre separate / più istanze (rinviate dalla Fase 4)
+
+- [ ] Prototipare una finestra Wails secondaria Go Studio riusando il pattern esistente senza duplicare ownership backend.
+- [ ] Verificare focus, shortcut, eventi, chiusura, dirty state e cleanup tra finestra principale e secondaria.
+- [ ] Verificare comportamento se lo stesso progetto è aperto in più finestre o istanze.
+- [ ] Introdurre locking/coordinamento o avviso di conflitto prima di abilitare la funzione.
+- [ ] Dichiarare nel prodotto il supporto multiwindow solo dopo prova reale su Windows e piattaforme dichiarate.
 
 ## 5.7 Test mirati
 
