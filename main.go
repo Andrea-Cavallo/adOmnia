@@ -135,6 +135,7 @@ func main() {
 		EnableFileDrop: true,
 	})
 	app.SetMainWindow(mainWindow)
+	goIDE.attachMainWindow(mainWindow)
 	if err := desktopApp.Run(); err != nil {
 		log.Fatal("[app] ", err)
 	}

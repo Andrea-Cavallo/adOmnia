@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-const PersistenceSchemaVersion = 1
+const PersistenceSchemaVersion = 2
 
 type Store interface {
 	Load() ([]byte, error)
@@ -13,8 +13,9 @@ type Store interface {
 }
 
 type persistedState struct {
-	Version  int       `json:"version"`
-	Sessions []Session `json:"sessions"`
+	Version  int             `json:"version"`
+	Sessions []Session       `json:"sessions"`
+	Recent   []RecentProject `json:"recent,omitempty"`
 }
 
 type Persistence struct {
@@ -25,31 +26,40 @@ func NewPersistence(store Store) *Persistence {
 	return &Persistence{store: store}
 }
 
-// LoadSessions carica lo schema persistito e rifiuta versioni future non supportate.
-func (p *Persistence) LoadSessions() ([]Session, error) {
+// LoadState carica lo schema persistito e migra in memoria le versioni precedenti.
+func (p *Persistence) LoadState() (persistedState, error) {
 	if p == nil || p.store == nil {
-		return nil, nil
+		return persistedState{Version: PersistenceSchemaVersion}, nil
 	}
 	data, err := p.store.Load()
 	if err != nil || len(data) == 0 {
-		return nil, err
+		return persistedState{Version: PersistenceSchemaVersion}, err
 	}
 	var state persistedState
 	if err := json.Unmarshal(data, &state); err != nil {
-		return nil, fmt.Errorf("stato Go Studio non valido: %w", err)
+		return persistedState{}, fmt.Errorf("stato Go Studio non valido: %w", err)
 	}
 	if state.Version > PersistenceSchemaVersion {
-		return nil, fmt.Errorf("schema Go Studio %d non supportato", state.Version)
+		return persistedState{}, fmt.Errorf("schema Go Studio %d non supportato", state.Version)
 	}
-	return state.Sessions, nil
+	if state.Version < 2 && len(state.Recent) == 0 {
+		for _, session := range state.Sessions {
+			state.Recent = append(state.Recent, RecentProject{
+				Name: session.Project.Name, RootPath: session.Project.RootPath,
+				RealPath: session.Project.RealPath, Available: true, OpenedAt: session.UpdatedAt,
+			})
+		}
+	}
+	state.Version = PersistenceSchemaVersion
+	return state, nil
 }
 
-// SaveSessions salva metadati di sessione versionati senza contenuti dei file o credenziali.
-func (p *Persistence) SaveSessions(sessions []Session) error {
+// SaveState salva metadati di sessione e recenti senza contenuti dei file o credenziali.
+func (p *Persistence) SaveState(sessions []Session, recent []RecentProject) error {
 	if p == nil || p.store == nil {
 		return nil
 	}
-	data, err := json.Marshal(persistedState{Version: PersistenceSchemaVersion, Sessions: sessions})
+	data, err := json.Marshal(persistedState{Version: PersistenceSchemaVersion, Sessions: sessions, Recent: recent})
 	if err != nil {
 		return fmt.Errorf("serializzazione stato Go Studio fallita: %w", err)
 	}

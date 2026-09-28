@@ -4,11 +4,31 @@
 export {
     AuthorizationState,
     Capabilities,
+    CreateProjectRequest,
+    DependencyActionRequest,
+    DependencyState,
+    Document,
+    DocumentDiskState,
+    Execution,
+    FileEntry,
+    GoDependency,
     GoModule,
+    InstallToolchainRequest,
+    InstalledToolchain,
+    OpenDocument,
     Project,
-    Session
+    QuickOpenResult,
+    RecentProject,
+    RunRequest,
+    Session,
+    ToolchainConfiguration,
+    ToolchainInfo,
+    ToolchainInstallation,
+    ToolchainRelease
 } from "./models.js";
 
 export type {
+    DocumentID,
+    RunID,
     SessionID
 } from "./models.js";

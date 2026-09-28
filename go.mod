@@ -32,6 +32,7 @@ require (
 	github.com/xdg-go/scram v1.2.0
 	go.etcd.io/bbolt v1.5.0
 	go.mongodb.org/mongo-driver/v2 v2.9.1
+	golang.org/x/mod v0.41.0
 	google.golang.org/grpc v1.84.0
 	google.golang.org/protobuf v1.36.12
 	gopkg.in/yaml.v3 v3.0.1

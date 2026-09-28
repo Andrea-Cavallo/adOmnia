@@ -10,6 +10,29 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 import * as goide$0 from "./internal/goide/models.js";
 
 /**
+ * CancelToolchainInstall annulla l'installazione indicata.
+ */
+export function CancelToolchainInstall(installID: string): $CancellablePromise<void> {
+    return $Call.ByID(4098997870, installID);
+}
+
+/**
+ * CheckDocument rileva cambiamenti su disco senza sovrascrivere il buffer.
+ */
+export function CheckDocument(sessionID: string, documentID: string, diskToken: string): $CancellablePromise<goide$0.DocumentDiskState> {
+    return $Call.ByID(1396526895, sessionID, documentID, diskToken).then(($result: any) => {
+        return $$createType0($result);
+    });
+}
+
+/**
+ * CloseDocument rilascia la risorsa documento indicata.
+ */
+export function CloseDocument(sessionID: string, documentID: string): $CancellablePromise<void> {
+    return $Call.ByID(2307973843, sessionID, documentID);
+}
+
+/**
  * CloseSession chiude una sessione senza modificare la cartella del progetto.
  */
 export function CloseSession(id: string): $CancellablePromise<void> {
@@ -17,11 +40,104 @@ export function CloseSession(id: string): $CancellablePromise<void> {
 }
 
 /**
+ * ConfigureToolchain imposta binario e variabili della sessione dopo validazione.
+ */
+export function ConfigureToolchain(sessionID: string, config: goide$0.ToolchainConfiguration): $CancellablePromise<void> {
+    return $Call.ByID(3312133885, sessionID, config);
+}
+
+/**
+ * ConfirmAppClose conferma la chiusura dopo che il frontend ha salvato o scartato i buffer.
+ */
+export function ConfirmAppClose(): $CancellablePromise<void> {
+    return $Call.ByID(437767495);
+}
+
+/**
+ * CreateProject crea un modulo Go soltanto dopo la conferma esplicita inclusa nella richiesta.
+ */
+export function CreateProject(request: goide$0.CreateProjectRequest): $CancellablePromise<goide$0.Session> {
+    return $Call.ByID(2720329719, request).then(($result: any) => {
+        return $$createType1($result);
+    });
+}
+
+/**
+ * DetectToolchain rileva la toolchain Go su richiesta dell'utente.
+ */
+export function DetectToolchain(sessionID: string): $CancellablePromise<goide$0.ToolchainInfo> {
+    return $Call.ByID(4216240268, sessionID).then(($result: any) => {
+        return $$createType2($result);
+    });
+}
+
+/**
  * GetCapabilities restituisce soltanto le capacità Go Studio realmente disponibili.
  */
 export function GetCapabilities(): $CancellablePromise<goide$0.Capabilities> {
     return $Call.ByID(1829330672).then(($result: any) => {
-        return $$createType0($result);
+        return $$createType3($result);
+    });
+}
+
+/**
+ * HasActiveRuns indica se la sessione possiede processi attivi.
+ */
+export function HasActiveRuns(sessionID: string): $CancellablePromise<boolean> {
+    return $Call.ByID(683137982, sessionID);
+}
+
+/**
+ * InstallToolchain avvia download, checksum ed estrazione della versione scelta.
+ */
+export function InstallToolchain(request: goide$0.InstallToolchainRequest): $CancellablePromise<goide$0.ToolchainInstallation> {
+    return $Call.ByID(1084560520, request).then(($result: any) => {
+        return $$createType4($result);
+    });
+}
+
+/**
+ * ListDependencies legge le dipendenze del modulo senza eseguire comandi.
+ */
+export function ListDependencies(sessionID: string, moduleDirectory: string): $CancellablePromise<goide$0.DependencyState> {
+    return $Call.ByID(2974208523, sessionID, moduleDirectory).then(($result: any) => {
+        return $$createType5($result);
+    });
+}
+
+/**
+ * ListDirectory carica un singolo livello dell'albero file.
+ */
+export function ListDirectory(sessionID: string, relativePath: string, includeIgnored: boolean): $CancellablePromise<goide$0.FileEntry[]> {
+    return $Call.ByID(837250229, sessionID, relativePath, includeIgnored).then(($result: any) => {
+        return $$createType7($result);
+    });
+}
+
+/**
+ * ListInstalledToolchains restituisce le versioni Go isolate disponibili localmente.
+ */
+export function ListInstalledToolchains(sessionID: string): $CancellablePromise<goide$0.InstalledToolchain[]> {
+    return $Call.ByID(2475261184, sessionID).then(($result: any) => {
+        return $$createType9($result);
+    });
+}
+
+/**
+ * ListRecentProjects restituisce i progetti locali aperti di recente.
+ */
+export function ListRecentProjects(): $CancellablePromise<goide$0.RecentProject[]> {
+    return $Call.ByID(20282631).then(($result: any) => {
+        return $$createType11($result);
+    });
+}
+
+/**
+ * ListRuns restituisce le esecuzioni note per una sessione.
+ */
+export function ListRuns(sessionID: string): $CancellablePromise<goide$0.Execution[]> {
+    return $Call.ByID(1260420124, sessionID).then(($result: any) => {
+        return $$createType13($result);
     });
 }
 
@@ -30,7 +146,25 @@ export function GetCapabilities(): $CancellablePromise<goide$0.Capabilities> {
  */
 export function ListSessions(): $CancellablePromise<goide$0.Session[]> {
     return $Call.ByID(1758091587).then(($result: any) => {
-        return $$createType2($result);
+        return $$createType14($result);
+    });
+}
+
+/**
+ * ListToolchainReleases restituisce il catalogo ufficiale compatibile su richiesta esplicita.
+ */
+export function ListToolchainReleases(sessionID: string): $CancellablePromise<goide$0.ToolchainRelease[]> {
+    return $Call.ByID(2275849171, sessionID).then(($result: any) => {
+        return $$createType16($result);
+    });
+}
+
+/**
+ * OpenDocument apre un documento testuale confinato al progetto.
+ */
+export function OpenDocument(sessionID: string, relativePath: string): $CancellablePromise<goide$0.OpenDocument> {
+    return $Call.ByID(3794134535, sessionID, relativePath).then(($result: any) => {
+        return $$createType17($result);
     });
 }
 
@@ -44,10 +178,72 @@ export function OpenProject(path: string): $CancellablePromise<goide$0.Session> 
 }
 
 /**
+ * QuickOpen cerca file del progetto con limite dei risultati.
+ */
+export function QuickOpen(sessionID: string, query: string, limit: number): $CancellablePromise<goide$0.QuickOpenResult[]> {
+    return $Call.ByID(2164854073, sessionID, query, limit).then(($result: any) => {
+        return $$createType19($result);
+    });
+}
+
+/**
+ * RemoveInstalledToolchain elimina una versione gestita non in uso.
+ */
+export function RemoveInstalledToolchain(version: string, confirmed: boolean): $CancellablePromise<void> {
+    return $Call.ByID(2289775931, version, confirmed);
+}
+
+/**
+ * RemoveRecentProject rimuove una voce recente senza modificare il filesystem.
+ */
+export function RemoveRecentProject(path: string): $CancellablePromise<void> {
+    return $Call.ByID(74402166, path);
+}
+
+/**
+ * RestartRun riavvia la configurazione associata a un'esecuzione.
+ */
+export function RestartRun(runID: string): $CancellablePromise<goide$0.Execution> {
+    return $Call.ByID(41995706, runID).then(($result: any) => {
+        return $$createType12($result);
+    });
+}
+
+/**
+ * SaveDocument salva atomicamente il buffer con protezione dalle modifiche esterne.
+ */
+export function SaveDocument(sessionID: string, documentID: string, content: string, diskToken: string, force: boolean): $CancellablePromise<goide$0.OpenDocument> {
+    return $Call.ByID(3463741930, sessionID, documentID, content, diskToken, force).then(($result: any) => {
+        return $$createType17($result);
+    });
+}
+
+/**
+ * SelectInstalledToolchain seleziona la versione Go attiva per una sessione.
+ */
+export function SelectInstalledToolchain(sessionID: string, version: string): $CancellablePromise<void> {
+    return $Call.ByID(3427206935, sessionID, version);
+}
+
+/**
  * SelectProjectFolder apre il selettore nativo senza leggere o eseguire il progetto scelto.
  */
 export function SelectProjectFolder(): $CancellablePromise<string> {
     return $Call.ByID(3601889087);
+}
+
+/**
+ * SelectProjectParent apre il selettore nativo per la cartella che conterrà un nuovo progetto.
+ */
+export function SelectProjectParent(): $CancellablePromise<string> {
+    return $Call.ByID(1230841363);
+}
+
+/**
+ * SetDirtyDocumentCount sincronizza il solo conteggio dei buffer dirty per la chiusura sicura.
+ */
+export function SetDirtyDocumentCount(count: number): $CancellablePromise<void> {
+    return $Call.ByID(1440994110, count);
 }
 
 /**
@@ -59,7 +255,56 @@ export function SetToolAuthorization(id: string, allowed: boolean): $Cancellable
     });
 }
 
+/**
+ * StartDependencyAction applica un go get strutturato dopo conferma esplicita.
+ */
+export function StartDependencyAction(request: goide$0.DependencyActionRequest): $CancellablePromise<goide$0.Execution> {
+    return $Call.ByID(967215541, request).then(($result: any) => {
+        return $$createType12($result);
+    });
+}
+
+/**
+ * StartRun avvia una build, run o tidy con argomenti strutturati.
+ */
+export function StartRun(request: goide$0.RunRequest): $CancellablePromise<goide$0.Execution> {
+    return $Call.ByID(39043755, request).then(($result: any) => {
+        return $$createType12($result);
+    });
+}
+
+/**
+ * StopRun arresta in modo idempotente l'esecuzione indicata.
+ */
+export function StopRun(runID: string): $CancellablePromise<void> {
+    return $Call.ByID(51057931, runID);
+}
+
+/**
+ * WriteRunInput invia input alla console dell'esecuzione indicata.
+ */
+export function WriteRunInput(runID: string, text: string): $CancellablePromise<void> {
+    return $Call.ByID(3248513382, runID, text);
+}
+
 // Private type creation functions
-const $$createType0 = goide$0.Capabilities.createFrom;
+const $$createType0 = goide$0.DocumentDiskState.createFrom;
 const $$createType1 = goide$0.Session.createFrom;
-const $$createType2 = $Create.Array($$createType1);
+const $$createType2 = goide$0.ToolchainInfo.createFrom;
+const $$createType3 = goide$0.Capabilities.createFrom;
+const $$createType4 = goide$0.ToolchainInstallation.createFrom;
+const $$createType5 = goide$0.DependencyState.createFrom;
+const $$createType6 = goide$0.FileEntry.createFrom;
+const $$createType7 = $Create.Array($$createType6);
+const $$createType8 = goide$0.InstalledToolchain.createFrom;
+const $$createType9 = $Create.Array($$createType8);
+const $$createType10 = goide$0.RecentProject.createFrom;
+const $$createType11 = $Create.Array($$createType10);
+const $$createType12 = goide$0.Execution.createFrom;
+const $$createType13 = $Create.Array($$createType12);
+const $$createType14 = $Create.Array($$createType1);
+const $$createType15 = goide$0.ToolchainRelease.createFrom;
+const $$createType16 = $Create.Array($$createType15);
+const $$createType17 = goide$0.OpenDocument.createFrom;
+const $$createType18 = goide$0.QuickOpenResult.createFrom;
+const $$createType19 = $Create.Array($$createType18);

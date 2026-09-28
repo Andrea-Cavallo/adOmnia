@@ -21,6 +21,14 @@ type GoModule struct {
 	ModulePath string `json:"modulePath,omitempty"`
 }
 
+type RecentProject struct {
+	Name      string    `json:"name"`
+	RootPath  string    `json:"rootPath"`
+	RealPath  string    `json:"realPath"`
+	Available bool      `json:"available"`
+	OpenedAt  time.Time `json:"openedAt"`
+}
+
 type Project struct {
 	ID            string             `json:"id"`
 	Name          string             `json:"name"`
@@ -40,12 +48,46 @@ type Session struct {
 }
 
 type Document struct {
-	ID        DocumentID `json:"id"`
-	SessionID SessionID  `json:"sessionId"`
-	URI       string     `json:"uri"`
-	Path      string     `json:"path"`
-	Version   int        `json:"version"`
-	Dirty     bool       `json:"dirty"`
+	ID           DocumentID `json:"id"`
+	SessionID    SessionID  `json:"sessionId"`
+	URI          string     `json:"uri"`
+	Path         string     `json:"path"`
+	RelativePath string     `json:"relativePath"`
+	Name         string     `json:"name"`
+	Language     string     `json:"language"`
+	Version      int        `json:"version"`
+	Dirty        bool       `json:"dirty"`
+}
+
+type OpenDocument struct {
+	Document   Document  `json:"document"`
+	Content    string    `json:"content"`
+	DiskToken  string    `json:"diskToken"`
+	ModifiedAt time.Time `json:"modifiedAt"`
+}
+
+type DocumentDiskState struct {
+	DocumentID DocumentID `json:"documentId"`
+	Changed    bool       `json:"changed"`
+	Content    string     `json:"content,omitempty"`
+	DiskToken  string     `json:"diskToken"`
+	ModifiedAt time.Time  `json:"modifiedAt"`
+}
+
+type FileEntry struct {
+	Name         string    `json:"name"`
+	RelativePath string    `json:"relativePath"`
+	Directory    bool      `json:"directory"`
+	Ignored      bool      `json:"ignored,omitempty"`
+	Size         int64     `json:"size,omitempty"`
+	ModifiedAt   time.Time `json:"modifiedAt"`
+	Language     string    `json:"language,omitempty"`
+}
+
+type QuickOpenResult struct {
+	Name         string `json:"name"`
+	RelativePath string `json:"relativePath"`
+	Language     string `json:"language"`
 }
 
 type RunConfiguration struct {
@@ -61,10 +103,43 @@ type RunConfiguration struct {
 }
 
 type Execution struct {
-	ID        RunID     `json:"id"`
-	SessionID SessionID `json:"sessionId"`
-	Status    string    `json:"status"`
-	StartedAt time.Time `json:"startedAt"`
+	ID               RunID      `json:"id"`
+	SessionID        SessionID  `json:"sessionId"`
+	Kind             string     `json:"kind"`
+	Status           string     `json:"status"`
+	Command          string     `json:"command"`
+	WorkingDirectory string     `json:"workingDirectory"`
+	PID              int        `json:"pid,omitempty"`
+	StartedAt        time.Time  `json:"startedAt"`
+	FinishedAt       *time.Time `json:"finishedAt,omitempty"`
+	ExitCode         *int       `json:"exitCode,omitempty"`
+	DurationMillis   int64      `json:"durationMillis"`
+	Error            string     `json:"error,omitempty"`
+}
+
+type RunRequest struct {
+	SessionID        SessionID         `json:"sessionId"`
+	Kind             string            `json:"kind"`
+	Target           string            `json:"target"`
+	WorkingDirectory string            `json:"workingDirectory"`
+	GoArguments      []string          `json:"goArguments"`
+	ProgramArguments []string          `json:"programArguments"`
+	BuildTags        []string          `json:"buildTags"`
+	Environment      map[string]string `json:"environment"`
+}
+
+type ProcessOutput struct {
+	RunID     RunID  `json:"runId"`
+	Stream    string `json:"stream"`
+	Text      string `json:"text"`
+	Truncated bool   `json:"truncated,omitempty"`
+}
+
+type CreateProjectRequest struct {
+	ParentPath string `json:"parentPath"`
+	Name       string `json:"name"`
+	ModulePath string `json:"modulePath"`
+	Confirmed  bool   `json:"confirmed"`
 }
 
 type EventEnvelope struct {

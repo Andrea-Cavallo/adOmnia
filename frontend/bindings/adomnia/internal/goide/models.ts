@@ -80,6 +80,328 @@ export class Capabilities {
     }
 }
 
+export class CreateProjectRequest {
+    "parentPath": string;
+    "name": string;
+    "modulePath": string;
+    "confirmed": boolean;
+
+    /** Creates a new CreateProjectRequest instance. */
+    constructor($$source: Partial<CreateProjectRequest> = {}) {
+        if (!("parentPath" in $$source)) {
+            this["parentPath"] = "";
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("modulePath" in $$source)) {
+            this["modulePath"] = "";
+        }
+        if (!("confirmed" in $$source)) {
+            this["confirmed"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new CreateProjectRequest instance from a string or object.
+     */
+    static createFrom($$source: any = {}): CreateProjectRequest {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new CreateProjectRequest($$parsedSource as Partial<CreateProjectRequest>);
+    }
+}
+
+export class DependencyActionRequest {
+    "sessionId": SessionID;
+    "moduleDirectory": string;
+    "action": string;
+    "modulePath": string;
+    "version": string;
+    "confirmed": boolean;
+
+    /** Creates a new DependencyActionRequest instance. */
+    constructor($$source: Partial<DependencyActionRequest> = {}) {
+        if (!("sessionId" in $$source)) {
+            this["sessionId"] = "";
+        }
+        if (!("moduleDirectory" in $$source)) {
+            this["moduleDirectory"] = "";
+        }
+        if (!("action" in $$source)) {
+            this["action"] = "";
+        }
+        if (!("modulePath" in $$source)) {
+            this["modulePath"] = "";
+        }
+        if (!("version" in $$source)) {
+            this["version"] = "";
+        }
+        if (!("confirmed" in $$source)) {
+            this["confirmed"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new DependencyActionRequest instance from a string or object.
+     */
+    static createFrom($$source: any = {}): DependencyActionRequest {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new DependencyActionRequest($$parsedSource as Partial<DependencyActionRequest>);
+    }
+}
+
+export class DependencyState {
+    "moduleDirectory": string;
+    "modulePath": string;
+    "goModPath": string;
+    "goSumPresent": boolean;
+    "dependencies": GoDependency[];
+
+    /** Creates a new DependencyState instance. */
+    constructor($$source: Partial<DependencyState> = {}) {
+        if (!("moduleDirectory" in $$source)) {
+            this["moduleDirectory"] = "";
+        }
+        if (!("modulePath" in $$source)) {
+            this["modulePath"] = "";
+        }
+        if (!("goModPath" in $$source)) {
+            this["goModPath"] = "";
+        }
+        if (!("goSumPresent" in $$source)) {
+            this["goSumPresent"] = false;
+        }
+        if (!("dependencies" in $$source)) {
+            this["dependencies"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new DependencyState instance from a string or object.
+     */
+    static createFrom($$source: any = {}): DependencyState {
+        const $$createField4_0 = $$createType1;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("dependencies" in $$parsedSource) {
+            $$parsedSource["dependencies"] = $$createField4_0($$parsedSource["dependencies"]);
+        }
+        return new DependencyState($$parsedSource as Partial<DependencyState>);
+    }
+}
+
+export class Document {
+    "id": DocumentID;
+    "sessionId": SessionID;
+    "uri": string;
+    "path": string;
+    "relativePath": string;
+    "name": string;
+    "language": string;
+    "version": number;
+    "dirty": boolean;
+
+    /** Creates a new Document instance. */
+    constructor($$source: Partial<Document> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("sessionId" in $$source)) {
+            this["sessionId"] = "";
+        }
+        if (!("uri" in $$source)) {
+            this["uri"] = "";
+        }
+        if (!("path" in $$source)) {
+            this["path"] = "";
+        }
+        if (!("relativePath" in $$source)) {
+            this["relativePath"] = "";
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("language" in $$source)) {
+            this["language"] = "";
+        }
+        if (!("version" in $$source)) {
+            this["version"] = 0;
+        }
+        if (!("dirty" in $$source)) {
+            this["dirty"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Document instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Document {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new Document($$parsedSource as Partial<Document>);
+    }
+}
+
+export class DocumentDiskState {
+    "documentId": DocumentID;
+    "changed": boolean;
+    "content"?: string;
+    "diskToken": string;
+    "modifiedAt": string;
+
+    /** Creates a new DocumentDiskState instance. */
+    constructor($$source: Partial<DocumentDiskState> = {}) {
+        if (!("documentId" in $$source)) {
+            this["documentId"] = "";
+        }
+        if (!("changed" in $$source)) {
+            this["changed"] = false;
+        }
+        if (!("diskToken" in $$source)) {
+            this["diskToken"] = "";
+        }
+        if (!("modifiedAt" in $$source)) {
+            this["modifiedAt"] = "0001-01-01T00:00:00.000Z";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new DocumentDiskState instance from a string or object.
+     */
+    static createFrom($$source: any = {}): DocumentDiskState {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new DocumentDiskState($$parsedSource as Partial<DocumentDiskState>);
+    }
+}
+
+export type DocumentID = string;
+
+export class Execution {
+    "id": RunID;
+    "sessionId": SessionID;
+    "kind": string;
+    "status": string;
+    "command": string;
+    "workingDirectory": string;
+    "pid"?: number;
+    "startedAt": string;
+    "finishedAt"?: string | null;
+    "exitCode"?: number | null;
+    "durationMillis": number;
+    "error"?: string;
+
+    /** Creates a new Execution instance. */
+    constructor($$source: Partial<Execution> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("sessionId" in $$source)) {
+            this["sessionId"] = "";
+        }
+        if (!("kind" in $$source)) {
+            this["kind"] = "";
+        }
+        if (!("status" in $$source)) {
+            this["status"] = "";
+        }
+        if (!("command" in $$source)) {
+            this["command"] = "";
+        }
+        if (!("workingDirectory" in $$source)) {
+            this["workingDirectory"] = "";
+        }
+        if (!("startedAt" in $$source)) {
+            this["startedAt"] = "0001-01-01T00:00:00.000Z";
+        }
+        if (!("durationMillis" in $$source)) {
+            this["durationMillis"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Execution instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Execution {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new Execution($$parsedSource as Partial<Execution>);
+    }
+}
+
+export class FileEntry {
+    "name": string;
+    "relativePath": string;
+    "directory": boolean;
+    "ignored"?: boolean;
+    "size"?: number;
+    "modifiedAt": string;
+    "language"?: string;
+
+    /** Creates a new FileEntry instance. */
+    constructor($$source: Partial<FileEntry> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("relativePath" in $$source)) {
+            this["relativePath"] = "";
+        }
+        if (!("directory" in $$source)) {
+            this["directory"] = false;
+        }
+        if (!("modifiedAt" in $$source)) {
+            this["modifiedAt"] = "0001-01-01T00:00:00.000Z";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new FileEntry instance from a string or object.
+     */
+    static createFrom($$source: any = {}): FileEntry {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new FileEntry($$parsedSource as Partial<FileEntry>);
+    }
+}
+
+export class GoDependency {
+    "path": string;
+    "version": string;
+    "indirect": boolean;
+
+    /** Creates a new GoDependency instance. */
+    constructor($$source: Partial<GoDependency> = {}) {
+        if (!("path" in $$source)) {
+            this["path"] = "";
+        }
+        if (!("version" in $$source)) {
+            this["version"] = "";
+        }
+        if (!("indirect" in $$source)) {
+            this["indirect"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new GoDependency instance from a string or object.
+     */
+    static createFrom($$source: any = {}): GoDependency {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new GoDependency($$parsedSource as Partial<GoDependency>);
+    }
+}
+
 export class GoModule {
     "path": string;
     "modulePath"?: string;
@@ -99,6 +421,101 @@ export class GoModule {
     static createFrom($$source: any = {}): GoModule {
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         return new GoModule($$parsedSource as Partial<GoModule>);
+    }
+}
+
+export class InstallToolchainRequest {
+    "sessionId": SessionID;
+    "version": string;
+    "confirmed": boolean;
+    "activate": boolean;
+
+    /** Creates a new InstallToolchainRequest instance. */
+    constructor($$source: Partial<InstallToolchainRequest> = {}) {
+        if (!("sessionId" in $$source)) {
+            this["sessionId"] = "";
+        }
+        if (!("version" in $$source)) {
+            this["version"] = "";
+        }
+        if (!("confirmed" in $$source)) {
+            this["confirmed"] = false;
+        }
+        if (!("activate" in $$source)) {
+            this["activate"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new InstallToolchainRequest instance from a string or object.
+     */
+    static createFrom($$source: any = {}): InstallToolchainRequest {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new InstallToolchainRequest($$parsedSource as Partial<InstallToolchainRequest>);
+    }
+}
+
+export class InstalledToolchain {
+    "version": string;
+    "goBinary": string;
+
+    /** Creates a new InstalledToolchain instance. */
+    constructor($$source: Partial<InstalledToolchain> = {}) {
+        if (!("version" in $$source)) {
+            this["version"] = "";
+        }
+        if (!("goBinary" in $$source)) {
+            this["goBinary"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new InstalledToolchain instance from a string or object.
+     */
+    static createFrom($$source: any = {}): InstalledToolchain {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new InstalledToolchain($$parsedSource as Partial<InstalledToolchain>);
+    }
+}
+
+export class OpenDocument {
+    "document": Document;
+    "content": string;
+    "diskToken": string;
+    "modifiedAt": string;
+
+    /** Creates a new OpenDocument instance. */
+    constructor($$source: Partial<OpenDocument> = {}) {
+        if (!("document" in $$source)) {
+            this["document"] = (new Document());
+        }
+        if (!("content" in $$source)) {
+            this["content"] = "";
+        }
+        if (!("diskToken" in $$source)) {
+            this["diskToken"] = "";
+        }
+        if (!("modifiedAt" in $$source)) {
+            this["modifiedAt"] = "0001-01-01T00:00:00.000Z";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new OpenDocument instance from a string or object.
+     */
+    static createFrom($$source: any = {}): OpenDocument {
+        const $$createField0_0 = $$createType2;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("document" in $$parsedSource) {
+            $$parsedSource["document"] = $$createField0_0($$parsedSource["document"]);
+        }
+        return new OpenDocument($$parsedSource as Partial<OpenDocument>);
     }
 }
 
@@ -140,12 +557,145 @@ export class Project {
      * Creates a new Project instance from a string or object.
      */
     static createFrom($$source: any = {}): Project {
-        const $$createField6_0 = $$createType1;
+        const $$createField6_0 = $$createType4;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("modules" in $$parsedSource) {
             $$parsedSource["modules"] = $$createField6_0($$parsedSource["modules"]);
         }
         return new Project($$parsedSource as Partial<Project>);
+    }
+}
+
+export class QuickOpenResult {
+    "name": string;
+    "relativePath": string;
+    "language": string;
+
+    /** Creates a new QuickOpenResult instance. */
+    constructor($$source: Partial<QuickOpenResult> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("relativePath" in $$source)) {
+            this["relativePath"] = "";
+        }
+        if (!("language" in $$source)) {
+            this["language"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new QuickOpenResult instance from a string or object.
+     */
+    static createFrom($$source: any = {}): QuickOpenResult {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new QuickOpenResult($$parsedSource as Partial<QuickOpenResult>);
+    }
+}
+
+export class RecentProject {
+    "name": string;
+    "rootPath": string;
+    "realPath": string;
+    "available": boolean;
+    "openedAt": string;
+
+    /** Creates a new RecentProject instance. */
+    constructor($$source: Partial<RecentProject> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("rootPath" in $$source)) {
+            this["rootPath"] = "";
+        }
+        if (!("realPath" in $$source)) {
+            this["realPath"] = "";
+        }
+        if (!("available" in $$source)) {
+            this["available"] = false;
+        }
+        if (!("openedAt" in $$source)) {
+            this["openedAt"] = "0001-01-01T00:00:00.000Z";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new RecentProject instance from a string or object.
+     */
+    static createFrom($$source: any = {}): RecentProject {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new RecentProject($$parsedSource as Partial<RecentProject>);
+    }
+}
+
+export type RunID = string;
+
+export class RunRequest {
+    "sessionId": SessionID;
+    "kind": string;
+    "target": string;
+    "workingDirectory": string;
+    "goArguments": string[];
+    "programArguments": string[];
+    "buildTags": string[];
+    "environment": { [_ in string]?: string };
+
+    /** Creates a new RunRequest instance. */
+    constructor($$source: Partial<RunRequest> = {}) {
+        if (!("sessionId" in $$source)) {
+            this["sessionId"] = "";
+        }
+        if (!("kind" in $$source)) {
+            this["kind"] = "";
+        }
+        if (!("target" in $$source)) {
+            this["target"] = "";
+        }
+        if (!("workingDirectory" in $$source)) {
+            this["workingDirectory"] = "";
+        }
+        if (!("goArguments" in $$source)) {
+            this["goArguments"] = [];
+        }
+        if (!("programArguments" in $$source)) {
+            this["programArguments"] = [];
+        }
+        if (!("buildTags" in $$source)) {
+            this["buildTags"] = [];
+        }
+        if (!("environment" in $$source)) {
+            this["environment"] = {};
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new RunRequest instance from a string or object.
+     */
+    static createFrom($$source: any = {}): RunRequest {
+        const $$createField4_0 = $$createType5;
+        const $$createField5_0 = $$createType5;
+        const $$createField6_0 = $$createType5;
+        const $$createField7_0 = $$createType6;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("goArguments" in $$parsedSource) {
+            $$parsedSource["goArguments"] = $$createField4_0($$parsedSource["goArguments"]);
+        }
+        if ("programArguments" in $$parsedSource) {
+            $$parsedSource["programArguments"] = $$createField5_0($$parsedSource["programArguments"]);
+        }
+        if ("buildTags" in $$parsedSource) {
+            $$parsedSource["buildTags"] = $$createField6_0($$parsedSource["buildTags"]);
+        }
+        if ("environment" in $$parsedSource) {
+            $$parsedSource["environment"] = $$createField7_0($$parsedSource["environment"]);
+        }
+        return new RunRequest($$parsedSource as Partial<RunRequest>);
     }
 }
 
@@ -177,7 +727,7 @@ export class Session {
      * Creates a new Session instance from a string or object.
      */
     static createFrom($$source: any = {}): Session {
-        const $$createField1_0 = $$createType2;
+        const $$createField1_0 = $$createType7;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("project" in $$parsedSource) {
             $$parsedSource["project"] = $$createField1_0($$parsedSource["project"]);
@@ -188,7 +738,162 @@ export class Session {
 
 export type SessionID = string;
 
+export class ToolchainConfiguration {
+    "goBinary": string;
+    "environment"?: { [_ in string]?: string };
+
+    /** Creates a new ToolchainConfiguration instance. */
+    constructor($$source: Partial<ToolchainConfiguration> = {}) {
+        if (!("goBinary" in $$source)) {
+            this["goBinary"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ToolchainConfiguration instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ToolchainConfiguration {
+        const $$createField1_0 = $$createType6;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("environment" in $$parsedSource) {
+            $$parsedSource["environment"] = $$createField1_0($$parsedSource["environment"]);
+        }
+        return new ToolchainConfiguration($$parsedSource as Partial<ToolchainConfiguration>);
+    }
+}
+
+export class ToolchainInfo {
+    "available": boolean;
+    "goBinary"?: string;
+    "version"?: string;
+    "goroot"?: string;
+    "gopath"?: string;
+    "goproxy"?: string;
+    "goprivate"?: string;
+    "error"?: string;
+
+    /** Creates a new ToolchainInfo instance. */
+    constructor($$source: Partial<ToolchainInfo> = {}) {
+        if (!("available" in $$source)) {
+            this["available"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ToolchainInfo instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ToolchainInfo {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ToolchainInfo($$parsedSource as Partial<ToolchainInfo>);
+    }
+}
+
+export class ToolchainInstallation {
+    "id": string;
+    "sessionId": SessionID;
+    "version": string;
+    "status": string;
+    "downloadedBytes": number;
+    "totalBytes": number;
+    "message"?: string;
+    "goBinary"?: string;
+    "log": string[];
+
+    /** Creates a new ToolchainInstallation instance. */
+    constructor($$source: Partial<ToolchainInstallation> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("sessionId" in $$source)) {
+            this["sessionId"] = "";
+        }
+        if (!("version" in $$source)) {
+            this["version"] = "";
+        }
+        if (!("status" in $$source)) {
+            this["status"] = "";
+        }
+        if (!("downloadedBytes" in $$source)) {
+            this["downloadedBytes"] = 0;
+        }
+        if (!("totalBytes" in $$source)) {
+            this["totalBytes"] = 0;
+        }
+        if (!("log" in $$source)) {
+            this["log"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ToolchainInstallation instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ToolchainInstallation {
+        const $$createField8_0 = $$createType5;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("log" in $$parsedSource) {
+            $$parsedSource["log"] = $$createField8_0($$parsedSource["log"]);
+        }
+        return new ToolchainInstallation($$parsedSource as Partial<ToolchainInstallation>);
+    }
+}
+
+export class ToolchainRelease {
+    "version": string;
+    "filename": string;
+    "sha256": string;
+    "size": number;
+    "stable": boolean;
+    "os": string;
+    "arch": string;
+
+    /** Creates a new ToolchainRelease instance. */
+    constructor($$source: Partial<ToolchainRelease> = {}) {
+        if (!("version" in $$source)) {
+            this["version"] = "";
+        }
+        if (!("filename" in $$source)) {
+            this["filename"] = "";
+        }
+        if (!("sha256" in $$source)) {
+            this["sha256"] = "";
+        }
+        if (!("size" in $$source)) {
+            this["size"] = 0;
+        }
+        if (!("stable" in $$source)) {
+            this["stable"] = false;
+        }
+        if (!("os" in $$source)) {
+            this["os"] = "";
+        }
+        if (!("arch" in $$source)) {
+            this["arch"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ToolchainRelease instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ToolchainRelease {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ToolchainRelease($$parsedSource as Partial<ToolchainRelease>);
+    }
+}
+
 // Private type creation functions
-const $$createType0 = GoModule.createFrom;
+const $$createType0 = GoDependency.createFrom;
 const $$createType1 = $Create.Array($$createType0);
-const $$createType2 = Project.createFrom;
+const $$createType2 = Document.createFrom;
+const $$createType3 = GoModule.createFrom;
+const $$createType4 = $Create.Array($$createType3);
+const $$createType5 = $Create.Array($Create.Any);
+const $$createType6 = $Create.Map($Create.Any, $Create.Any);
+const $$createType7 = Project.createFrom;

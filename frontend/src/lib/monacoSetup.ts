@@ -43,6 +43,25 @@ export function applyAdomniaMonacoTheme(m: typeof monaco): void {
       'dropdown.background': '#0E111A',
     },
   })
+  m.editor.defineTheme('adomnia-light', {
+    base: 'vs',
+    inherit: true,
+    rules: [],
+    colors: {
+      'editor.background': '#F7F8FB',
+      'editor.foreground': '#151821',
+      'editorLineNumber.foreground': '#9AA1AF',
+      'editorLineNumber.activeForeground': '#4B5563',
+      'editor.selectionBackground': '#7C3AED22',
+      'editor.lineHighlightBackground': '#EEF0F5',
+      'editorIndentGuide.background1': '#D8DCE5',
+      'editorGutter.background': '#F7F8FB',
+      'editorWidget.background': '#FFFFFF',
+      'editorWidget.border': '#D8DCE5',
+      'input.background': '#FFFFFF',
+      'dropdown.background': '#FFFFFF',
+    },
+  })
 }
 
 export { monaco }

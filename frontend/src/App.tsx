@@ -27,6 +27,7 @@ import { RecordStartupPerformance } from '@/wailsjs/go/main/App'
 import { saveWorkspaceStartupHint } from '@/lib/startupHints'
 import { findSpatialFocusIndex, focusableElements, ownsArrowKey } from '@/lib/accessibility'
 import { initialRailFromMemento } from '@/lib/uiSessionMemento'
+import { GoStudioCloseGuard } from '@/components/goide/GoStudioCloseGuard'
 
 const SIDEBAR_WIDTH_KEY = 'adomnia.sidebarWidth'
 let sidebarModulePromise: Promise<typeof import('@/components/layout/Sidebar')> | undefined
@@ -197,6 +198,7 @@ function App() {
         </div>
         {commandPaletteOpen && <Suspense fallback={null}><CommandPalette open onClose={() => setCommandPaletteOpen(false)} /></Suspense>}
         <ConfirmDialogHost />
+        <GoStudioCloseGuard />
         {import.meta.env.DEV && devLogVisible && <Suspense fallback={null}><DevLogOverlay visible onClose={toggleDevTools} /></Suspense>}
       </ThemeProvider>
     </ErrorBoundary>

@@ -3,6 +3,7 @@ package goide
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -38,6 +39,7 @@ func TestServicePersistsAuthorizationWithoutExecutingProject(t *testing.T) {
 	store := &memoryStore{}
 	var events []EventEnvelope
 	service := NewService(store, func(event EventEnvelope) { events = append(events, event) })
+	t.Cleanup(service.Shutdown)
 	session, err := service.OpenProject(root)
 	if err != nil {
 		t.Fatal(err)
@@ -61,6 +63,7 @@ func TestServicePersistsAuthorizationWithoutExecutingProject(t *testing.T) {
 	}
 
 	restored := NewService(store, nil)
+	t.Cleanup(restored.Shutdown)
 	sessions, err := restored.ListSessions()
 	if err != nil {
 		t.Fatal(err)
@@ -73,7 +76,38 @@ func TestServicePersistsAuthorizationWithoutExecutingProject(t *testing.T) {
 func TestPersistenceRejectsFutureSchema(t *testing.T) {
 	store := &memoryStore{data: []byte(`{"version":999,"sessions":[]}`)}
 	service := NewService(store, nil)
+	t.Cleanup(service.Shutdown)
 	if _, err := service.ListSessions(); err == nil {
 		t.Fatal("expected future schema to be rejected")
+	}
+}
+
+func TestRunPathsStayInsideProjectAndMetadataOmitsSensitiveValues(t *testing.T) {
+	root := t.TempDir()
+	service := NewService(&memoryStore{}, nil)
+	t.Cleanup(service.Shutdown)
+	session, err := service.OpenProject(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = service.SetToolAuthorization(string(session.ID), true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = service.StartRun(RunRequest{SessionID: session.ID, Kind: "build", Target: "../outside"}); err == nil {
+		t.Fatal("target esterno accettato")
+	}
+	if _, err = service.StartRun(RunRequest{SessionID: session.ID, Kind: "build", Target: ".", GoArguments: []string{"-o", "../outside.exe"}}); err == nil {
+		t.Fatal("output esterno accettato")
+	}
+	execution, err := service.StartRun(RunRequest{
+		SessionID: session.ID, Kind: "run", Target: ".",
+		ProgramArguments: []string{"--token", "secret-value"},
+		Environment:      map[string]string{"PRIVATE_TOKEN": "secret-value"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(execution.Command, "secret-value") || !strings.Contains(execution.Command, "<2 program args>") {
+		t.Fatalf("metadati comando non sicuri: %q", execution.Command)
 	}
 }

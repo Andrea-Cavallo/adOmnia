@@ -4,6 +4,18 @@ Checklist esecutiva per costruire un ambiente di sviluppo Go realmente utilizzab
 
 Documento derivato dalla specifica allegata. Questo file è la fonte di verità operativa per l'implementazione: deve essere aggiornato nello stesso cambiamento che completa o modifica una voce.
 
+## Barra di qualità del prodotto (non negoziabile)
+
+Go Studio non è un prototipo interno né un esercizio tecnico: deve risultare un **IDE Go professionale, realmente utilizzabile ogni giorno per lavoro vero**, con un livello di rifinitura comparabile a JetBrains GoLand/IntelliJ Ultimate (lo stesso riferimento usato in `Riferimenti grafici approvati` e in `Fuori ambito dichiarato`). Questo criterio si applica a **ogni fase**, non solo al collaudo finale, ed estende alla lettera la PRODUCT-FIRST PHILOSOPHY di `CLAUDE.md` (UX, fluidità, reattività, coesione grafica sopra tutto il resto). Una fase che passa tutti i test ma "sembra un prototipo" non è considerata completa.
+
+- [ ] **Fluido**: nessuna interazione visibilmente bloccante; digitazione, scroll, apertura file, cambio tab/sessione e resize restano scattanti anche su progetti Go reali di dimensioni tipiche, non solo su fixture minime.
+- [ ] **Veloce**: le operazioni interattive (apertura file, completion, hover, cambio sessione, apertura pannello) rispondono con la latenza percepita di un editor moderno; le operazioni lunghe (build, test, indicizzazione, avvio gopls) sono sempre asincrone e non bloccano mai la UI.
+- [ ] **Moderno**: densità, tipografia, stati hover/focus/active e motion coerenti con `docs/SOUL.md` e con i mock approvati; nessun pannello con l'aspetto di una demo, di un wireframe o di un tool abbozzato.
+- [ ] **Stabile alla percezione**: nessuno stato a metà, nessun flicker, nessun salto di layout quando arrivano dati asincroni (diagnostica, output, eventi LSP/Run/debug).
+- [ ] Verificare questi quattro criteri a ogni gate di fase, su un progetto Go reale (non un progetto giocattolo vuoto), e registrarne l'esito nelle Evidenze della fase.
+
+---
+
 ## Regole di avanzamento
 
 - [ ] Non iniziare una fase finché il **gate di uscita** della fase precedente non è interamente verificato e spuntato.
@@ -28,6 +40,7 @@ Una fase è completa soltanto quando:
 - [ ] la prova manuale con `wails3 task dev` è stata eseguita come utente reale;
 - [ ] non sono presenti processi orfani dopo Stop o chiusura;
 - [ ] limiti e funzioni rinviate sono dichiarati nel prodotto e in questo documento;
+- [ ] la barra di qualità del prodotto (fluido, veloce, moderno, stabile alla percezione) è verificata su un progetto Go reale e non solo dichiarata;
 - [ ] il gate di uscita della fase è spuntato.
 
 ---
@@ -89,8 +102,9 @@ L'architettura deve essere confermata nella Fase 0 e mantenere isolati sessioni,
 - [x] Separare almeno: `workspace`, `documents`, `toolchain`, `processes`, `lsp`, `terminal`, `debug`, `tests` e `persistence`.
 - [x] Esporre soltanto metodi Wails sottili tramite `goide_bindings.go` e registrare il nuovo servizio in `main.go`.
 - [x] Usare identificatori espliciti `sessionId`, `documentId`/URI, `runId`, `terminalId`, `lspRequestId` e `debugSessionId` in comandi ed eventi.
-- [ ] Usare argomenti strutturati per avviare i processi; non concatenare comandi shell arbitrari.
-- [ ] Separare adattatori di processo e PTY specifici per Windows dagli adattatori Unix tramite file con build tag.
+- [x] Usare argomenti strutturati per avviare i processi; non concatenare comandi shell arbitrari.
+- [x] Separare adattatori di processo specifici per Windows dagli adattatori Unix tramite file con build tag (`process_adapter_windows.go` con `taskkill /T /F`, `process_adapter_unix.go` con `SIGKILL` sul process group).
+- [ ] Separare allo stesso modo gli adattatori PTY per Windows (ConPTY) dagli adattatori Unix quando il terminale verrà introdotto in Fase 3.
 - [x] Limitare buffer, watcher, code di eventi e log per mantenere l'app reattiva con output intenso e progetti grandi.
 - [x] Non esporre servizi di rete locali se non necessari; eventuali bridge devono ascoltare solo dove strettamente richiesto e avere lifecycle controllato.
 
@@ -111,6 +125,11 @@ L'architettura deve essere confermata nella Fase 0 e mantenere isolati sessioni,
 - [ ] Richiedere un gesto esplicito prima di build, run, test, debug, `go mod tidy`, download o installazioni.
 - [x] Non registrare valori di variabili sensibili e non scrivere credenziali nel repository.
 - [x] Validare e confinare ogni percorso filesystem alla radice del progetto quando l'operazione lo richiede; gestire symlink e traversal consapevolmente.
+
+### Fuori ambito dichiarato rispetto al riferimento IntelliJ Ultimate/GoLand
+
+- [ ] Integrazione VCS nell'editor (gutter diff/blame, cronologia locale, commit/log) è esplicitamente fuori ambito per questo piano: il modulo "Git Sync" esistente di adOmnia (`internal/git`) versiona workspace API e non va collegato a Go Studio senza una decisione dedicata separata.
+- [ ] Refactoring oltre al rename semantico (extract function/variable, inline, move) resta fuori ambito; l'unico refactoring previsto è quello coperto da 2.3.
 
 ---
 
@@ -170,10 +189,12 @@ Obiettivo: aprire un progetto Go reale, modificarlo, salvarlo, compilarlo, esegu
 
 - [ ] Aprire una cartella locale tramite dialog nativo e registrarne il percorso senza copiarla o modificarla.
 - [ ] Validare esistenza, tipo e accessibilità della cartella con errori comprensibili.
-- [ ] Riconoscere `go.mod`, `go.work`, moduli annidati e cartelle Go senza modulo.
+- [ ] Riconoscere `go.mod` e `go.work` alla radice del progetto e mostrarne il modulo dichiarato.
+- [ ] Riconoscere moduli annidati (oltre alla radice) e distinguere esplicitamente le cartelle Go senza modulo.
 - [ ] Mostrare chiaramente root del progetto, moduli trovati e workspace Go rilevato.
 - [ ] Creare un nuovo progetto scegliendo nome, cartella e module path; eseguire `go mod init` solo dopo conferma esplicita.
-- [ ] Salvare e mostrare i progetti recenti; rimuovere dalla lista un percorso non più disponibile senza perdere altre sessioni.
+- [ ] Ripristinare tra riavvii le sessioni aperte, rimuovendo automaticamente le cartelle non più disponibili senza perdere le altre sessioni.
+- [ ] Aggiungere un elenco "Recent Projects" che sopravviva alla chiusura della sessione e permetta di riaprire un progetto già chiuso con un clic.
 - [ ] Introdurre lo stato di autorizzazione agli strumenti separato dall'apertura del progetto.
 
 ## 1.2 Albero file e documenti
@@ -198,9 +219,12 @@ Obiettivo: aprire un progetto Go reale, modificarlo, salvarlo, compilarlo, esegu
 - [ ] Mostrare percorso, `go version`, `GOROOT`, `GOPATH`, `GOPROXY` e `GOPRIVATE`, oscurando eventuali dati sensibili.
 - [ ] Permettere un percorso Go personalizzato e variabili per progetto/sessione con validazione.
 - [ ] Mostrare istruzioni operative se Go manca o la configurazione non è valida.
-- [ ] Non scaricare o installare toolchain automaticamente.
+- [ ] Non scaricare o installare toolchain automaticamente all'apertura o in background.
+- [ ] **Offrire un'installazione esplicita del compilatore/toolchain Go** (elenco versioni ufficiali da go.dev, download, verifica checksum, estrazione, avanzamento e log) attivata solo da un'azione utente diretta — stessa coerenza con cui 2.1 e 4.2 già prevedono l'installazione guidata di gopls e Delve. Senza questo passo l'IDE resta bloccato su "istruzioni operative" testuali mentre gopls/Delve avrebbero un installer reale: incoerenza da correggere prima della Fase 1.
+- [ ] Permettere di gestire più versioni Go installate in parallelo e selezionare quella attiva per progetto/sessione.
 - [ ] Gestire assenza rete, proxy/moduli privati e dipendenze mancanti come errori visibili e non bloccanti.
 - [ ] Esporre `go mod tidy` solo come azione esplicita con anteprima del comando e feedback completo.
+- [ ] **Gestione dipendenze in UI**: elencare i requirement di `go.mod`, aggiungere/rimuovere/aggiornare un pacchetto (`go get`) come azioni esplicite con anteprima del comando, e riflettere lo stato di `go.sum` senza modificarlo mai silenziosamente.
 
 ## 1.4 Build, Run, console e Stop
 
@@ -247,6 +271,7 @@ Obiettivo: aprire un progetto Go reale, modificarlo, salvarlo, compilarlo, esegu
 - [ ] Fornire input al programma quando richiesto.
 - [ ] Fermare il programma senza processi orfani.
 - [ ] Vedere chiaramente errori di compilazione, dipendenze mancanti e toolchain assente.
+- [ ] Se la toolchain Go è assente, scaricarla e installarla dall'IDE stesso con un'azione esplicita, senza uscire dall'app o passare da un terminale esterno.
 - [ ] Chiudere un file dirty senza perdere dati accidentalmente.
 - [ ] Tutti i controlli visibili nel pannello eseguono funzioni reali.
 - [ ] Suite e verifiche previste dalla definizione di fase funzionante passano.
@@ -304,7 +329,18 @@ Obiettivo: comprendere davvero il codice tramite gopls, includendo i buffer non 
 - [ ] Implementare ricerca testuale nel progetto, cancellabile e con esclusioni configurabili.
 - [ ] Non usare regex o dati statici per simulare funzioni semantiche.
 
-## 2.4 Editor avanzato
+## 2.4 Linter Go (golangci-lint/staticcheck)
+
+- [ ] Rilevare `golangci-lint` (preferito, aggrega staticcheck e altri linter) e, in alternativa/fallback, `staticcheck`; mostrare percorso e versione nella status bar.
+- [ ] Permettere un binario linter personalizzato per progetto/sessione.
+- [ ] Se il linter manca, mostrare istruzioni e un'installazione esplicita con avanzamento, log ed errore, con la stessa logica di gopls/Delve/toolchain Go — nessun download silenzioso.
+- [ ] Rilevare e rispettare una configurazione di progetto (`.golangci.yml`/`.golangci.yaml`/`staticcheck.conf`) se presente, senza crearne una implicita.
+- [ ] Eseguire il lint su azione esplicita e opzionalmente on-save (impostazione disattivabile), sempre in modo asincrono e cancellabile.
+- [ ] Pubblicare i risultati come diagnostica nel gutter, in Problems e nello status bar, distinguibili da quelle di gopls ma nello stesso flusso di navigazione.
+- [ ] Isolare esecuzioni e risultati per sessione/progetto come per gli altri strumenti esterni.
+- [ ] Non applicare automaticamente fix del linter: eventuali quick-fix restano un'azione esplicita per file/blocco.
+
+## 2.5 Editor avanzato
 
 - [ ] Implementare split editor orizzontale e verticale con modelli condivisi e view state indipendenti.
 - [ ] Implementare tab pin, close others/right e riapertura tab chiuso senza perdere dirty state.
@@ -312,12 +348,13 @@ Obiettivo: comprendere davvero il codice tramite gopls, includendo i buffer non 
 - [ ] Integrare code action, rename, references e Problems con navigazione da tastiera.
 - [ ] Persistenza del layout editor e dei pannelli senza persistere accidentalmente contenuti sensibili.
 
-## 2.5 Test mirati
+## 2.6 Test mirati
 
 - [ ] Test per versioni documento, buffer unsaved e scarto di risposte LSP obsolete.
 - [ ] Test per conversione posizioni UTF-16 con caratteri multibyte.
 - [ ] Test per cancellazione richieste e crash/restart gopls.
 - [ ] Test di isolamento diagnostica tra due sessioni.
+- [ ] Test per rilevamento/assenza linter, esecuzione cancellabile e isolamento dei risultati tra sessioni.
 - [ ] Prova reale di completion, hover, definition, references, rename, import e formatting su progetto multi-package.
 
 ## Gate di uscita Fase 2
@@ -326,7 +363,8 @@ Obiettivo: comprendere davvero il codice tramite gopls, includendo i buffer non 
 - [ ] Navigare a definizioni e riferimenti reali tra package.
 - [ ] Eseguire rename e formatting senza corrompere file o dirty state.
 - [ ] Riavviare gopls dopo un crash controllato senza riavviare adOmnia.
-- [ ] Nessun dato LSP di un progetto compare in un'altra sessione.
+- [ ] Ottenere diagnostica di lint reale (golangci-lint/staticcheck) su un progetto con problemi noti, distinguibile da quella di gopls.
+- [ ] Nessun dato LSP o di lint di un progetto compare in un'altra sessione.
 - [ ] Suite e verifiche previste dalla definizione di fase funzionante passano.
 - [ ] **FASE 2 FUNZIONANTE E APPROVATA — è consentito iniziare la Fase 3.**
 
