@@ -7,6 +7,9 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as git$0 from "./internal/git/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as goide$0 from "./internal/goide/models.js";
 
 /**
@@ -929,11 +932,61 @@ export function UpdateDocumentBuffer(sessionID: string, documentID: string, vers
 }
 
 /**
+ * VCSBlame restituisce autore e commit di ogni riga del file.
+ */
+export function VCSBlame(sessionID: string, relativePath: string): $CancellablePromise<goide$0.VCSBlameLine[]> {
+    return $Call.ByID(3401291297, sessionID, relativePath).then(($result: any) => {
+        return $$createType75($result);
+    });
+}
+
+/**
+ * VCSCheckout passa a un branch locale esistente.
+ */
+export function VCSCheckout(sessionID: string, branch: string): $CancellablePromise<void> {
+    return $Call.ByID(2273218222, sessionID, branch);
+}
+
+/**
+ * VCSCommitFiles registra solo i file indicati.
+ */
+export function VCSCommitFiles(sessionID: string, message: string, relativePaths: string[]): $CancellablePromise<git$0.CommitResult> {
+    return $Call.ByID(2017164414, sessionID, message, relativePaths).then(($result: any) => {
+        return $$createType76($result);
+    });
+}
+
+/**
+ * VCSFileAtRevision restituisce il file a una revisione (HEAD per il gutter diff).
+ */
+export function VCSFileAtRevision(sessionID: string, relativePath: string, revision: string): $CancellablePromise<string> {
+    return $Call.ByID(963280428, sessionID, relativePath, revision);
+}
+
+/**
+ * VCSFileHistory elenca i commit che hanno toccato il file.
+ */
+export function VCSFileHistory(sessionID: string, relativePath: string): $CancellablePromise<goide$0.VCSCommit[]> {
+    return $Call.ByID(4154237980, sessionID, relativePath).then(($result: any) => {
+        return $$createType78($result);
+    });
+}
+
+/**
+ * VCSStatus legge branch e modifiche del repository Git del progetto, senza operazioni di rete.
+ */
+export function VCSStatus(sessionID: string): $CancellablePromise<goide$0.VCSStatus> {
+    return $Call.ByID(2262380148, sessionID).then(($result: any) => {
+        return $$createType79($result);
+    });
+}
+
+/**
  * WatcherStatus indica se il progetto è osservato per intero o solo in parte.
  */
 export function WatcherStatus(sessionID: string): $CancellablePromise<goide$0.WatcherStatus> {
     return $Call.ByID(999645628, sessionID).then(($result: any) => {
-        return $$createType74($result);
+        return $$createType80($result);
     });
 }
 
@@ -942,7 +995,7 @@ export function WatcherStatus(sessionID: string): $CancellablePromise<goide$0.Wa
  */
 export function WorkspaceSymbols(sessionID: string, query: string): $CancellablePromise<goide$0.WorkspaceSymbol[]> {
     return $Call.ByID(3951183568, sessionID, query).then(($result: any) => {
-        return $$createType76($result);
+        return $$createType82($result);
     });
 }
 
@@ -1035,6 +1088,12 @@ const $$createType70 = goide$0.SemanticTokensResult.createFrom;
 const $$createType71 = goide$0.BreakpointState.createFrom;
 const $$createType72 = $Create.Array($$createType71);
 const $$createType73 = goide$0.SignatureResult.createFrom;
-const $$createType74 = goide$0.WatcherStatus.createFrom;
-const $$createType75 = goide$0.WorkspaceSymbol.createFrom;
-const $$createType76 = $Create.Array($$createType75);
+const $$createType74 = goide$0.VCSBlameLine.createFrom;
+const $$createType75 = $Create.Array($$createType74);
+const $$createType76 = git$0.CommitResult.createFrom;
+const $$createType77 = goide$0.VCSCommit.createFrom;
+const $$createType78 = $Create.Array($$createType77);
+const $$createType79 = goide$0.VCSStatus.createFrom;
+const $$createType80 = goide$0.WatcherStatus.createFrom;
+const $$createType81 = goide$0.WorkspaceSymbol.createFrom;
+const $$createType82 = $Create.Array($$createType81);

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"adomnia/internal/git"
 	"adomnia/internal/goide"
 	"adomnia/internal/storage"
 	"context"
@@ -367,6 +368,36 @@ func (g *GoIDE) LocalHistoryContent(sessionID, relativePath, revisionID string) 
 // WatcherStatus indica se il progetto è osservato per intero o solo in parte.
 func (g *GoIDE) WatcherStatus(sessionID string) (goide.WatcherStatus, error) {
 	return g.service.WatcherStatus(sessionID)
+}
+
+// VCSStatus legge branch e modifiche del repository Git del progetto, senza operazioni di rete.
+func (g *GoIDE) VCSStatus(sessionID string) (goide.VCSStatus, error) {
+	return g.service.VCSStatus(sessionID)
+}
+
+// VCSFileAtRevision restituisce il file a una revisione (HEAD per il gutter diff).
+func (g *GoIDE) VCSFileAtRevision(sessionID, relativePath, revision string) (string, error) {
+	return g.service.VCSFileAtRevision(sessionID, relativePath, revision)
+}
+
+// VCSFileHistory elenca i commit che hanno toccato il file.
+func (g *GoIDE) VCSFileHistory(sessionID, relativePath string) ([]goide.VCSCommit, error) {
+	return g.service.VCSFileHistory(sessionID, relativePath)
+}
+
+// VCSBlame restituisce autore e commit di ogni riga del file.
+func (g *GoIDE) VCSBlame(sessionID, relativePath string) ([]goide.VCSBlameLine, error) {
+	return g.service.VCSBlame(sessionID, relativePath)
+}
+
+// VCSCommitFiles registra solo i file indicati.
+func (g *GoIDE) VCSCommitFiles(sessionID, message string, relativePaths []string) (git.CommitResult, error) {
+	return g.service.VCSCommitFiles(sessionID, message, relativePaths)
+}
+
+// VCSCheckout passa a un branch locale esistente.
+func (g *GoIDE) VCSCheckout(sessionID, branch string) error {
+	return g.service.VCSCheckout(sessionID, branch)
 }
 
 // StartRun avvia una build, run o tidy con argomenti strutturati.

@@ -96,6 +96,10 @@ export {
     ToolchainInfo,
     ToolchainInstallation,
     ToolchainRelease,
+    VCSBlameLine,
+    VCSCommit,
+    VCSFileChange,
+    VCSStatus,
     WatcherStatus,
     WorkspaceChange,
     WorkspaceSymbol

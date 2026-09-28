@@ -5,6 +5,31 @@
 // @ts-ignore: Unused imports
 import { Create as $Create } from "@wailsio/runtime";
 
+export class CommitResult {
+    "hash": string;
+    "message": string;
+
+    /** Creates a new CommitResult instance. */
+    constructor($$source: Partial<CommitResult> = {}) {
+        if (!("hash" in $$source)) {
+            this["hash"] = "";
+        }
+        if (!("message" in $$source)) {
+            this["message"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new CommitResult instance from a string or object.
+     */
+    static createFrom($$source: any = {}): CommitResult {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new CommitResult($$parsedSource as Partial<CommitResult>);
+    }
+}
+
 /**
  * PullRequest is the trimmed PR shape the UI needs.
  */

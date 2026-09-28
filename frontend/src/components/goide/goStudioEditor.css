@@ -170,3 +170,22 @@
   .go-studio-mark-from { animation: none; opacity: 0; }
   .go-studio-mark-to { animation: none; opacity: 1; }
 }
+
+/* Gutter VCS rispetto a HEAD, come GoLand: verde aggiunto, blu modificato, triangolo per le righe cancellate. */
+.monaco-editor .go-studio-vcs {
+  cursor: pointer;
+  width: 3px !important;
+  margin-left: 0;
+}
+.monaco-editor .go-studio-vcs-added { background: var(--color-success, #22c55e); }
+.monaco-editor .go-studio-vcs-modified { background: var(--color-info, #3b82f6); }
+.monaco-editor .go-studio-vcs-deleted { background: transparent; }
+.monaco-editor .go-studio-vcs-deleted::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -4px;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 6px solid var(--color-text-4, #94a3b8);
+}

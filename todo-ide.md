@@ -129,7 +129,7 @@ Questi due mock forniti dall'utente sono riferimenti visivi da consultare durant
 - [x] Usare l'identità `gO` del secondo mock per la voce Go Studio e per gli stati contestuali del modulo, senza sostituire il marchio generale `aO` di adOmnia.
 - Se viene adottato il morph `aO → gO` (voce in 5.4), limitarlo all'ingresso in Go Studio, mantenerlo breve (riferimento: 400 ms) e rispettare `prefers-reduced-motion` con uno stato statico equivalente.
 - [x] Mantenere la composizione del primo mock: project tree a sinistra, tab e breadcrumb sopra l'editor, strumenti contestuali a destra, tool window in basso e status bar compatta.
-- [x] Conservare toolbar superiore densa con progetto/sessione, branch, configurazione Run/Debug e azioni principali, mostrando solo controlli realmente funzionanti nella fase corrente. *(il branch arriverà con 5.5, finché non è reale non compare)*
+- [x] Conservare toolbar superiore densa con progetto/sessione, branch, configurazione Run/Debug e azioni principali, mostrando solo controlli realmente funzionanti nella fase corrente. *(branch reale dalla 5.5: compare solo se il progetto è in un repository Git)*
 - [x] Usare l'accento viola per selezione, focus e stato attivo; mantenere superfici dark, separatori sottili, tipografia compatta e alta densità informativa coerenti con `docs/SOUL.md`.
 - [ ] Durante i collaudi UI confrontare il risultato con entrambi i mock e registrare nelle evidenze eventuali differenze intenzionali.
 
@@ -173,7 +173,7 @@ L'architettura deve essere confermata nella Fase 0 e mantenere isolati sessioni,
 
 Decisione esplicita dell'utente (2026-09-28): l'elenco funzionalità di GoLand è **dentro** l'ambito e diventa la Fase 5. Le due voci precedentemente dichiarate fuori ambito sono riaperte.
 
-- **VCS nell'editor rientra in ambito** (gutter diff/blame, cronologia locale, commit/log, branch in toolbar) ed è coperto da 5.5. Resta però una decisione architetturale aperta: `internal/git` oggi versiona workspace API, non repository di codice; 5.5 deve scegliere fra estenderlo e creare un dominio VCS separato, senza rompere Git Sync.
+- **VCS nell'editor rientra in ambito** (gutter diff/blame, cronologia locale, commit/log, branch in toolbar) ed è coperto da 5.5. Decisione presa in 5.5: `internal/goide/vcs.go` riusa le funzioni di `internal/git` senza modificarle; Git Sync resta invariato.
 - **Refactoring oltre al rename rientra in ambito** (extract function/variable, inline, move) ed è coperto da 5.1, nei limiti di ciò che gopls espone realmente via code action: quello che gopls non fornisce non va simulato con manipolazione testuale.
 
 ### Fuori ambito confermato
@@ -667,7 +667,7 @@ Prerequisito: gopls è realmente operativo (Fase 2) e il terminale è reale (Fas
 
 - [x] Multi-caret, selezione a colonna e duplicazione riga allineate alle aspettative di un editor moderno (Monaco copre gran parte: verificare e documentare i gap). *(keymap GoLand nel menu Edit: Duplicate Line Ctrl+D, Delete Line Ctrl+Y, Move Line Ctrl+Shift+↑/↓, Add Caret at Next Occurrence Alt+J, Select All Occurrences Ctrl+Alt+Shift+J, Column Selection Mode Alt+Shift+Insert; Alt+clic aggiunge un cursore e Shift+Alt+trascina seleziona a colonna. Gap dichiarati: Extend Selection resta Shift+Alt+→ perché Ctrl+W chiude il tab; Redo è Ctrl+Shift+Z)*
 - [x] Vista locale delle modifiche del buffer corrente ripristinabile anche dopo il salvataggio (local history per sessione, con limite di ritenzione e nessun contenuto sensibile persistito oltre il limite). *(File → Local History…: una versione per salvataggio più quella su disco prima del primo salvataggio; diff con il buffer e Restore annullabile con Ctrl+Z. Limiti: 20 versioni per file, 14 giorni, 32 MB totali; `.env`, chiavi e certificati non vengono mai registrati; la cronologia di un progetto chiuso viene eliminata)*
-- [ ] Confronto affiancato fra buffer corrente e versione su disco già presente in 1.2: estenderlo al confronto con una revisione VCS quando 5.5 è disponibile.
+- [x] Confronto affiancato fra buffer corrente e versione su disco già presente in 1.2: estenderlo al confronto con una revisione VCS quando 5.5 è disponibile. *(Git → Show History for File: ogni commit si confronta con il buffer, modifiche non salvate comprese)*
 - [x] TODO/FIXME raccolti in una vista dedicata con navigazione al file/riga. *(finestra TODO con TODO, FIXME, XXX e BUG nei commenti, filtri per tipo e rescan)*
 - [x] Split editor con un proprio gruppo di tab (oggi mostra un file alla volta scelto da un menu). *(dalla Fase 1; tab propri, "+" per aprire un altro file, chiusura del tab senza chiudere il file)*
 - [x] Avviso nella status bar quando il watcher supera 4.000 cartelle e osserva il progetto solo in parte. *(dalla Fase 3; "Partially watched" con spiegazione nel tooltip)*
@@ -675,15 +675,15 @@ Prerequisito: gopls è realmente operativo (Fase 2) e il terminale è reale (Fas
 
 ## 5.5 VCS nell'editor
 
-Decisione architetturale da prendere **prima** di scrivere codice: se estendere `internal/git` o creare un dominio VCS separato per i repository di codice. Git Sync (workspace API) non deve regredire in nessuno dei due casi.
+Decisione architetturale presa: nessun nuovo dominio e nessuna modifica a `internal/git`. `internal/goide/vcs.go` riusa le sue funzioni (status, FileAtCommit, FileHistory, BlameLines, CommitPaths, checkout) sulla radice del repository che contiene il progetto, con conversione e confinamento dei percorsi. Git Sync (workspace API) non cambia: `go test ./internal/git/...` invariato.
 
-- [ ] Rilevare se la root del progetto è un repository Git e mostrarne branch corrente e stato nella toolbar (voce già prevista dal mock approvato).
-- [ ] Gutter diff per riga aggiunta/modificata/rimossa rispetto a HEAD, con popup per vedere e revertire il singolo hunk.
-- [ ] Blame per riga a richiesta, con autore, data e commit.
-- [ ] Cronologia del file e del progetto, con diff navigabile fra revisioni.
-- [ ] Stage, commit e branch switch come azioni esplicite, con conferma e senza operazioni distruttive implicite.
-- [ ] Nessuna operazione di rete (fetch/pull/push) senza gesto utente diretto; nessuna credenziale scritta nella persistenza di Go Studio.
-- [ ] Dichiarare esplicitamente cosa resta non supportato (merge conflict resolution, rebase interattivo, altri VCS) invece di mostrare controlli inerti.
+- [x] Rilevare se la root del progetto è un repository Git e mostrarne branch corrente e stato nella toolbar (voce già prevista dal mock approvato). *(anche con progetto in una sottocartella del repository; branch, ahead/behind e numero di modifiche; stato riletto dopo salvataggi e modifiche su disco, anche fatte dal terminale)*
+- [x] Gutter diff per riga aggiunta/modificata/rimossa rispetto a HEAD, con popup per vedere e revertire il singolo hunk. *(calcolato sul buffer, quindi anche prima del salvataggio; Revert è un'unica modifica annullabile con Ctrl+Z; nessun marcatore su file non tracciati)*
+- [x] Blame per riga a richiesta, con autore, data e commit. *(Git → Annotate with Git Blame, sul gutter dei numeri di riga)*
+- [x] Cronologia del file e del progetto, con diff navigabile fra revisioni. *(file: Git → Show History for File, con rename seguiti e diff contro l'editor. Progetto: dichiarato a Git Studio, raggiungibile da Git → Open Git Studio)*
+- [x] Stage, commit e branch switch come azioni esplicite, con conferma e senza operazioni distruttive implicite. *(Commit Ctrl+K registra solo i file spuntati, salvando prima gli editor; i non tracciati partono esclusi. Il cambio branch mostra il comando e accetta solo branch locali esistenti; Git rifiuta se perderebbe modifiche)*
+- [x] Nessuna operazione di rete (fetch/pull/push) senza gesto utente diretto; nessuna credenziale scritta nella persistenza di Go Studio. *(Go Studio non fa nessuna operazione di rete; il dialog di commit lo dichiara: "Local only: nothing is pushed")*
+- [x] Dichiarare esplicitamente cosa resta non supportato (merge conflict resolution, rebase interattivo, altri VCS) invece di mostrare controlli inerti. *(menu del branch: "Push, pull, conflicts, rebase, stash → Git Studio"; i file in conflitto non sono committabili e rimandano a Git Studio; altri VCS: la toolbar non mostra nulla)*
 
 ## 5.6 Integrazione con i moduli adOmnia esistenti
 
@@ -708,9 +708,9 @@ Questa sezione non costruisce nuovi strumenti: collega Go Studio a ciò che adOm
 
 - [ ] Test per l'applicazione transazionale di un refactoring multi-file, incluso il rollback su errore a metà.
 - [ ] Test per il calcolo del diff di gutter su file con CRLF, file binari e file non tracciati.
-- [ ] Test per la costruzione degli argomenti dei comandi Go Tools (nessuna shell concatenata, nessun path fuori dalla root).
+- [x] Test per la costruzione degli argomenti dei comandi Go Tools (nessuna shell concatenata, nessun path fuori dalla root). *(`gotools_test.go`)*
 - [ ] Test di isolamento: stato VCS, Go Tools e local history restano separati fra due sessioni.
-- [ ] Prova reale su un repository Git con modifiche non committate: gutter, blame, cronologia e revert di un hunk.
+- [x] Prova reale su un repository Git con modifiche non committate: gutter, blame, cronologia e revert di un hunk. *(e2e ide16 su repository reale, 8/8, zero errori di pagina)*
 
 ## Gate di uscita Fase 5
 

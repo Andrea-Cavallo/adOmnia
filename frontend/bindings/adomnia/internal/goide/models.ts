@@ -3629,6 +3629,182 @@ export class ToolchainRelease {
 }
 
 /**
+ * VCSBlameLine è l'autore di una riga del file su disco.
+ */
+export class VCSBlameLine {
+    "line": number;
+    "hash": string;
+    "author": string;
+    "date": string;
+
+    /** Creates a new VCSBlameLine instance. */
+    constructor($$source: Partial<VCSBlameLine> = {}) {
+        if (!("line" in $$source)) {
+            this["line"] = 0;
+        }
+        if (!("hash" in $$source)) {
+            this["hash"] = "";
+        }
+        if (!("author" in $$source)) {
+            this["author"] = "";
+        }
+        if (!("date" in $$source)) {
+            this["date"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new VCSBlameLine instance from a string or object.
+     */
+    static createFrom($$source: any = {}): VCSBlameLine {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new VCSBlameLine($$parsedSource as Partial<VCSBlameLine>);
+    }
+}
+
+/**
+ * VCSCommit è un commit della cronologia di un file.
+ */
+export class VCSCommit {
+    "hash": string;
+    "fullHash": string;
+    "author": string;
+    "date": string;
+    "message": string;
+
+    /** Creates a new VCSCommit instance. */
+    constructor($$source: Partial<VCSCommit> = {}) {
+        if (!("hash" in $$source)) {
+            this["hash"] = "";
+        }
+        if (!("fullHash" in $$source)) {
+            this["fullHash"] = "";
+        }
+        if (!("author" in $$source)) {
+            this["author"] = "";
+        }
+        if (!("date" in $$source)) {
+            this["date"] = "";
+        }
+        if (!("message" in $$source)) {
+            this["message"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new VCSCommit instance from a string or object.
+     */
+    static createFrom($$source: any = {}): VCSCommit {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new VCSCommit($$parsedSource as Partial<VCSCommit>);
+    }
+}
+
+/**
+ * VCSFileChange è un file modificato, con percorso relativo al progetto.
+ */
+export class VCSFileChange {
+    "relativePath": string;
+    "status": string;
+    "staged": boolean;
+    "untracked": boolean;
+    "conflicted": boolean;
+
+    /** Creates a new VCSFileChange instance. */
+    constructor($$source: Partial<VCSFileChange> = {}) {
+        if (!("relativePath" in $$source)) {
+            this["relativePath"] = "";
+        }
+        if (!("status" in $$source)) {
+            this["status"] = "";
+        }
+        if (!("staged" in $$source)) {
+            this["staged"] = false;
+        }
+        if (!("untracked" in $$source)) {
+            this["untracked"] = false;
+        }
+        if (!("conflicted" in $$source)) {
+            this["conflicted"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new VCSFileChange instance from a string or object.
+     */
+    static createFrom($$source: any = {}): VCSFileChange {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new VCSFileChange($$parsedSource as Partial<VCSFileChange>);
+    }
+}
+
+/**
+ * VCSStatus descrive il repository Git che contiene il progetto, se esiste.
+ */
+export class VCSStatus {
+    "available": boolean;
+    "reason"?: string;
+    "repoRoot"?: string;
+    "branch"?: string;
+
+    /**
+     * Head è l'hash dell'ultimo commit: quando cambia, i contenuti HEAD in cache vanno riletti.
+     */
+    "head"?: string;
+    "ahead": number;
+    "behind": number;
+    "branches": string[];
+    "changes": VCSFileChange[];
+    "conflicts": number;
+
+    /** Creates a new VCSStatus instance. */
+    constructor($$source: Partial<VCSStatus> = {}) {
+        if (!("available" in $$source)) {
+            this["available"] = false;
+        }
+        if (!("ahead" in $$source)) {
+            this["ahead"] = 0;
+        }
+        if (!("behind" in $$source)) {
+            this["behind"] = 0;
+        }
+        if (!("branches" in $$source)) {
+            this["branches"] = [];
+        }
+        if (!("changes" in $$source)) {
+            this["changes"] = [];
+        }
+        if (!("conflicts" in $$source)) {
+            this["conflicts"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new VCSStatus instance from a string or object.
+     */
+    static createFrom($$source: any = {}): VCSStatus {
+        const $$createField7_0 = $$createType12;
+        const $$createField8_0 = $$createType66;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("branches" in $$parsedSource) {
+            $$parsedSource["branches"] = $$createField7_0($$parsedSource["branches"]);
+        }
+        if ("changes" in $$parsedSource) {
+            $$parsedSource["changes"] = $$createField8_0($$parsedSource["changes"]);
+        }
+        return new VCSStatus($$parsedSource as Partial<VCSStatus>);
+    }
+}
+
+/**
  * WatcherStatus descrive quanto del progetto è osservato: oltre il limite le modifiche esterne possono sfuggire.
  */
 export class WatcherStatus {
@@ -3681,7 +3857,7 @@ export class WorkspaceChange {
      * Creates a new WorkspaceChange instance from a string or object.
      */
     static createFrom($$source: any = {}): WorkspaceChange {
-        const $$createField1_0 = $$createType66;
+        const $$createField1_0 = $$createType68;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("files" in $$parsedSource) {
             $$parsedSource["files"] = $$createField1_0($$parsedSource["files"]);
@@ -3790,5 +3966,7 @@ const $$createType61 = TestResult.createFrom;
 const $$createType62 = $Create.Array($$createType61);
 const $$createType63 = CoverageReport.createFrom;
 const $$createType64 = $Create.Nullable($$createType63);
-const $$createType65 = FileChange.createFrom;
+const $$createType65 = VCSFileChange.createFrom;
 const $$createType66 = $Create.Array($$createType65);
+const $$createType67 = FileChange.createFrom;
+const $$createType68 = $Create.Array($$createType67);

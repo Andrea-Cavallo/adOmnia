@@ -16,6 +16,7 @@ import { startGoStudioLspSync } from './goStudioLspSync'
 import { findRunTargets, runCommandFor, type GoStudioRunTarget, type GoStudioRunTargetHandler } from './goStudioRunTargets'
 import { recordCaretPosition, useGoStudioBookmarks } from './goStudioNavigationEditor'
 import { openImplementationMarker, useGoStudioImplementationMarkers } from './goStudioImplementationMarkers'
+import { openVcsHunk, useGoStudioVcsGutter } from './goStudioVcsEditor'
 import { registerGoStudioExtraLanguages } from './goStudioExtraLanguages'
 import { installBreakpointGutter, registerGoStudioDebugHover, useGoStudioDebugDecorations } from './goStudioDebugEditor'
 import './goStudioEditor.css'
@@ -79,6 +80,10 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
     coverageDecorationsRef.current = editor.createDecorationsCollection()
     setMountCount((value) => value + 1)
     editor.onMouseDown((event) => {
+      if (event.target.type === monaco.editor.MouseTargetType.GUTTER_LINE_DECORATIONS && event.target.position) {
+        openVcsHunk(editor, event.target.position.lineNumber, { x: event.event.browserEvent.clientX, y: event.event.browserEvent.clientY })
+        return
+      }
       if (event.target.type !== monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN) return
       const line = event.target.position?.lineNumber
       const anchor = { x: event.event.browserEvent.clientX, y: event.event.browserEvent.clientY }
@@ -118,6 +123,7 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
   useGoStudioDebugDecorations(editorRef, document, mountCount)
   useGoStudioBookmarks(editorRef, document, mountCount)
   useGoStudioImplementationMarkers(editorRef, document, mountCount)
+  useGoStudioVcsGutter(editorRef, document, mountCount)
 
   // Overlay di coverage: solo se il file è identico a quello misurato, altrimenti sparisce (e l'editor avvisa).
   const coverage = useGoIDETestsStore((state) => visibleCoverage(state, document.document.sessionId))

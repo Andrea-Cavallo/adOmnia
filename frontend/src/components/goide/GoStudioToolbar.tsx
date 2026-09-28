@@ -4,6 +4,8 @@ import type { GoIDEExecution, GoIDERunConfiguration, GoIDESession, GoIDEToolchai
 interface GoStudioToolbarProps {
   sessions: GoIDESession[]
   activeSession: GoIDESession
+  /** Controlli aggiuntivi mostrati accanto al progetto (es. branch Git). */
+  extra?: React.ReactNode
   activeExecution: GoIDEExecution | null
   toolchain: GoIDEToolchainInfo | null
   loading: boolean
@@ -25,7 +27,7 @@ interface GoStudioToolbarProps {
   onClose: () => void
 }
 
-export function GoStudioToolbar({ sessions, activeSession, activeExecution, toolchain, loading, runConfigurations, activeConfigId, onSelectConfiguration, onSelect, onOpenProject, onCreateProject, onSetAuthorization, onDetectToolchain, onToolchainSettings, onDependencies, onConfigure, onBuild, onRun, onTidy, onStop, onClose }: GoStudioToolbarProps) {
+export function GoStudioToolbar({ sessions, activeSession, extra, activeExecution, toolchain, loading, runConfigurations, activeConfigId, onSelectConfiguration, onSelect, onOpenProject, onCreateProject, onSetAuthorization, onDetectToolchain, onToolchainSettings, onDependencies, onConfigure, onBuild, onRun, onTidy, onStop, onClose }: GoStudioToolbarProps) {
   const authorized = activeSession.project.authorization === 'tooling-permitted'
   const running = activeExecution?.status === 'running'
   const toolsReady = authorized && toolchain?.available
@@ -36,6 +38,7 @@ export function GoStudioToolbar({ sessions, activeSession, activeExecution, tool
       </select>
       <button type="button" onClick={onOpenProject} disabled={loading} title="Open project · Ctrl/Cmd+O" className="grid h-7 w-7 place-items-center rounded text-text-3 hover:bg-surface-3 hover:text-text-1 disabled:opacity-40"><FolderOpen size={13} /></button>
       <button type="button" onClick={onCreateProject} disabled={loading} title="Create Go project" className="grid h-7 w-7 place-items-center rounded text-text-3 hover:bg-surface-3 hover:text-text-1 disabled:opacity-40"><Plus size={13} /></button>
+      {extra}
       <div className="mx-1 h-4 w-px bg-border-1" />
       <button type="button" onClick={() => onSetAuthorization(!authorized)} disabled={loading} aria-pressed={authorized} title={authorized ? 'Revoke local tool permission' : 'Permit local Go tools; nothing starts automatically'} className="flex h-7 items-center gap-1.5 rounded border border-border-1 px-2 text-[10px] text-text-2 hover:border-accent/50 hover:text-text-1 disabled:opacity-40">
         {authorized ? <ShieldCheck size={12} className="text-success" /> : <LockKeyhole size={12} />}{authorized ? 'Trusted' : 'Restricted'}
