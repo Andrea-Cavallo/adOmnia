@@ -1,12 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { ChevronDown, ChevronRight, Info } from 'lucide-react'
-import { requestDocumentSymbols, type GoIDESymbolNode } from '@/lib/goide-lsp-api'
+import type { GoIDESymbolNode } from '@/lib/goide-lsp-api'
 import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
 import { useGoIDELspStore } from '@/stores/goideLsp'
 import { GoStudioSymbolIcon } from './GoStudioSymbolIcon'
-import { flushGoStudioDocument } from './goStudioLspSync'
+import { useGoStudioSymbolsFor } from './goStudioSymbols'
 
-const REFRESH_DEBOUNCE_MS = 400
 
 interface GoStudioStructureProps {
   sessionId: string
@@ -34,29 +33,11 @@ function SymbolRow({ node, depth, documentId }: { node: GoIDESymbolNode; depth: 
   )
 }
 
-/** Struttura del file attivo da gopls; si aggiorna con debounce mentre il buffer cambia. */
+/** Struttura del file attivo da gopls; i simboli arrivano dallo store condiviso con il breadcrumb. */
 export function GoStudioStructure({ sessionId, document }: GoStudioStructureProps) {
   const lspState = useGoIDELspStore((state) => state.status[sessionId]?.state ?? 'stopped')
-  const [symbols, setSymbols] = useState<GoIDESymbolNode[]>([])
-  const documentId = document?.document.id ?? null
-  const isGo = document?.document.language === 'go' && document.document.name.endsWith('.go')
-
-  useEffect(() => {
-    setSymbols([])
-  }, [documentId])
-
-  useEffect(() => {
-    if (!documentId || !isGo || lspState !== 'ready') return
-    let cancel: (() => void) | null = null
-    const timer = window.setTimeout(() => {
-      void flushGoStudioDocument(documentId).then(() => {
-        const request = requestDocumentSymbols(sessionId, documentId)
-        cancel = () => request.cancel()
-        request.then((result) => setSymbols(result.symbols)).catch(() => undefined)
-      })
-    }, REFRESH_DEBOUNCE_MS)
-    return () => { window.clearTimeout(timer); cancel?.() }
-  }, [document?.buffer, documentId, isGo, lspState, sessionId])
+  const symbols = useGoStudioSymbolsFor(document?.document.id ?? null)
+  const isGo = !!document?.document.name.endsWith('.go')
 
   if (!document) return <Hint text="Open a Go file to see its structure." />
   if (!isGo) return <Hint text="Structure is available for .go files." />

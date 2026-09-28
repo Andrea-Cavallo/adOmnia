@@ -1,9 +1,13 @@
 import { create } from 'zustand'
 import { safeSetItem } from '@/lib/safeLocalStorage'
+import type { CancellablePromise } from '@wailsio/runtime'
 import { subscribeGoIDEEvents, type GoIDEEvent, type GoIDEExecution } from '@/lib/goide-api'
 import {
   detectGopls,
+  detectLinter,
   installGopls,
+  installLinter,
+  requestLint,
   restartLanguageServer,
   startLanguageServer,
   stopLanguageServer,
@@ -16,6 +20,10 @@ import {
   type GoIDELanguageServerStatus,
   type GoIDESearchResult,
   type GoIDEWorkspaceChange,
+  type GoIDELinterInfo,
+  type GoIDELinterKind,
+  type GoIDELintResult,
+  type GoIDESymbolNode,
 } from '@/lib/goide-lsp-api'
 import { useGoIDEStore } from './goide'
 
@@ -26,6 +34,14 @@ export type GoIDEToolWindow = 'run' | 'problems' | 'references' | 'find'
 export interface GoIDEEditorPreferences {
   formatOnSave: boolean
   organizeImportsOnSave: boolean
+  lintOnSave: boolean
+}
+
+export interface GoIDELintState {
+  running: boolean
+  result: GoIDELintResult | null
+  error: string | null
+  reports: Record<string, GoIDEDiagnosticsReport>
 }
 
 export interface GoIDEReferencesView {
@@ -39,6 +55,9 @@ interface GoIDELspState {
   status: Record<string, GoIDELanguageServerStatus>
   progress: Record<string, GoIDELanguageServerProgress | null>
   gopls: Record<string, GoIDEGoplsInfo | null>
+  linter: Record<string, GoIDELinterInfo | null>
+  lint: Record<string, GoIDELintState>
+  symbols: Record<string, GoIDESymbolNode[]>
   diagnostics: Record<string, Record<string, GoIDEDiagnosticsReport>>
   userStopped: Record<string, boolean>
   toolWindow: GoIDEToolWindow
@@ -55,6 +74,10 @@ interface GoIDELspState {
   stop: (sessionId: string) => Promise<void>
   restart: (sessionId: string) => Promise<void>
   install: (sessionId: string) => Promise<GoIDEExecution | null>
+  detectLinter: (sessionId: string) => Promise<GoIDELinterInfo | null>
+  installLinter: (sessionId: string, kind: GoIDELinterKind) => Promise<GoIDEExecution | null>
+  runLint: (sessionId: string) => Promise<void>
+  cancelLint: (sessionId: string) => void
   updateSettings: (sessionId: string | null, patch: Partial<GoIDELanguageServerSettings>) => Promise<void>
   updatePreferences: (patch: Partial<GoIDEEditorPreferences>) => void
   showToolWindow: (view: GoIDEToolWindow) => void
@@ -70,7 +93,9 @@ interface PersistedSettings {
 }
 
 const DEFAULT_SETTINGS: GoIDELanguageServerSettings = { gofumpt: false, staticcheck: false, placeholders: true, semanticLinks: false }
-const DEFAULT_PREFERENCES: GoIDEEditorPreferences = { formatOnSave: true, organizeImportsOnSave: true }
+const DEFAULT_PREFERENCES: GoIDEEditorPreferences = { formatOnSave: true, organizeImportsOnSave: true, lintOnSave: false }
+const EMPTY_LINT: GoIDELintState = { running: false, result: null, error: null, reports: {} }
+const runningLints = new Map<string, CancellablePromise<GoIDELintResult>>()
 
 function loadPersisted(): PersistedSettings {
   try {
@@ -104,6 +129,9 @@ export const useGoIDELspStore = create<GoIDELspState>((set, get) => ({
   status: {},
   progress: {},
   gopls: {},
+  linter: {},
+  lint: {},
+  symbols: {},
   diagnostics: {},
   userStopped: {},
   toolWindow: 'run',
@@ -133,7 +161,9 @@ export const useGoIDELspStore = create<GoIDELspState>((set, get) => ({
   // Avvio automatico solo per progetti già autorizzati, con gopls presente e mai fermato dall'utente.
   ensureStarted: async (sessionId) => {
     if (!unsubscribe) unsubscribe = subscribeGoIDEEvents((event) => get().handleEvent(event))
-    if (!isTrusted(sessionId) || get().userStopped[sessionId]) return
+    if (!isTrusted(sessionId)) return
+    if (get().linter[sessionId] === undefined) void get().detectLinter(sessionId)
+    if (get().userStopped[sessionId]) return
     try {
       const status = await getLanguageServerStatus(sessionId)
       set((state) => ({ status: { ...state.status, [sessionId]: status } }))
@@ -177,6 +207,54 @@ export const useGoIDELspStore = create<GoIDELspState>((set, get) => ({
       set({ message: errorMessage(error) })
       return null
     }
+  },
+
+  detectLinter: async (sessionId) => {
+    try {
+      const info = await detectLinter(sessionId)
+      set((state) => ({ linter: { ...state.linter, [sessionId]: info } }))
+      return info
+    } catch (error) {
+      set({ message: errorMessage(error) })
+      return null
+    }
+  },
+
+  installLinter: async (sessionId, kind) => {
+    try {
+      return await installLinter(sessionId, kind)
+    } catch (error) {
+      set({ message: errorMessage(error) })
+      return null
+    }
+  },
+
+  // Una sola esecuzione per sessione: una nuova richiesta annulla quella in corso.
+  runLint: async (sessionId) => {
+    get().cancelLint(sessionId)
+    const request = requestLint(sessionId)
+    runningLints.set(sessionId, request)
+    const update = (patch: Partial<GoIDELintState>) => set((state) => ({ lint: { ...state.lint, [sessionId]: { ...(state.lint[sessionId] ?? EMPTY_LINT), ...patch } } }))
+    update({ running: true, error: null })
+    try {
+      const result = await request
+      if (runningLints.get(sessionId) !== request) return
+      const reports = Object.fromEntries(result.reports.map((report) => [report.uri, report as unknown as GoIDEDiagnosticsReport]))
+      update({ running: false, result, reports })
+    } catch (error) {
+      if (runningLints.get(sessionId) !== request) return
+      update({ running: false, error: errorMessage(error) })
+    } finally {
+      if (runningLints.get(sessionId) === request) runningLints.delete(sessionId)
+    }
+  },
+
+  cancelLint: (sessionId) => {
+    const running = runningLints.get(sessionId)
+    if (!running) return
+    runningLints.delete(sessionId)
+    void running.cancel()
+    set((state) => ({ lint: { ...state.lint, [sessionId]: { ...(state.lint[sessionId] ?? EMPTY_LINT), running: false } } }))
   },
 
   updateSettings: async (sessionId, patch) => {
@@ -241,6 +319,7 @@ export const useGoIDELspStore = create<GoIDELspState>((set, get) => ({
     if (event.type === 'run.finished') {
       const execution = event.payload as GoIDEExecution
       if (execution?.kind !== 'install') return
+      void get().detectLinter(sessionId)
       void get().detectGopls(sessionId).then((info) => {
         if (info?.available && execution.status === 'exited') void get().start(sessionId)
       })
@@ -249,6 +328,16 @@ export const useGoIDELspStore = create<GoIDELspState>((set, get) => ({
 
   clearMessage: () => set({ message: null }),
 }))
+
+/** Unisce diagnostica gopls e risultati del linter per file, mantenendo la sorgente di ogni voce. */
+export function mergedReports(gopls: Record<string, GoIDEDiagnosticsReport> | undefined, lint: Record<string, GoIDEDiagnosticsReport> | undefined): Record<string, GoIDEDiagnosticsReport> {
+  const merged: Record<string, GoIDEDiagnosticsReport> = { ...(gopls ?? {}) }
+  for (const [uri, report] of Object.entries(lint ?? {})) {
+    const existing = merged[uri]
+    merged[uri] = existing ? { ...existing, diagnostics: [...existing.diagnostics, ...report.diagnostics] } : report
+  }
+  return merged
+}
 
 /** Conta errori e warning della sessione per status bar e Problems. */
 export function diagnosticCounts(reports: Record<string, GoIDEDiagnosticsReport> | undefined): { errors: number; warnings: number } {

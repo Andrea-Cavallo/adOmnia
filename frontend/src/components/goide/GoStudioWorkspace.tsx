@@ -19,7 +19,7 @@ interface GoStudioWorkspaceProps {
   onStructureResize: (event: React.MouseEvent<HTMLDivElement>) => void
   onBottomResize: (event: React.MouseEvent<HTMLDivElement>) => void
   onCursor: (line: number, column: number) => void
-  onRequestCloseDocument: (document: GoIDEEditorDocument) => void
+  onRequestCloseDocument: (documents: GoIDEEditorDocument[]) => void
   onRunTarget: (target: GoStudioRunTarget) => void
 }
 

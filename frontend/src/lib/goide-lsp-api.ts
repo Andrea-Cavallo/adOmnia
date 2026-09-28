@@ -23,6 +23,8 @@ import type {
   WorkspaceChange,
   WorkspaceSymbol,
   Execution,
+  LintResult,
+  LinterInfo,
 } from '../../bindings/adomnia/internal/goide/models'
 
 export type GoIDELanguageServerStatus = LanguageServerStatus
@@ -37,6 +39,9 @@ export type GoIDEWorkspaceChange = WorkspaceChange
 export type GoIDEFileChange = FileChange
 export type GoIDECodeAction = CodeActionEntry
 export type GoIDESearchQuery = SearchQuery
+export type GoIDELinterInfo = LinterInfo
+export type GoIDELintResult = LintResult
+export type GoIDELinterKind = 'golangci-lint' | 'staticcheck'
 export type GoIDESearchMatch = SearchMatch
 export type GoIDESearchResult = SearchResult
 /** Payload dell'evento `lsp.diagnostics` (goide.DiagnosticsReport). */
@@ -106,6 +111,22 @@ export async function updateDocumentBuffer(sessionId: string, documentId: string
 
 export async function openExternalDocument(sessionId: string, path: string): Promise<OpenDocument> {
   return GoIDEBindings.OpenExternalDocument(sessionId, path)
+}
+
+export async function detectLinter(sessionId: string): Promise<LinterInfo> {
+  return GoIDEBindings.DetectLinter(sessionId)
+}
+
+export async function configureLinter(sessionId: string, binary: string): Promise<void> {
+  await GoIDEBindings.ConfigureLinter(sessionId, binary)
+}
+
+export async function installLinter(sessionId: string, kind: GoIDELinterKind): Promise<Execution> {
+  return GoIDEBindings.InstallLinter(sessionId, kind, true)
+}
+
+export function requestLint(sessionId: string): CancellablePromise<LintResult> {
+  return GoIDEBindings.RunLint(sessionId)
 }
 
 // Richieste semantiche: restituiscono la CancellablePromise del binding, così cancel() annulla il ctx Go e gopls.

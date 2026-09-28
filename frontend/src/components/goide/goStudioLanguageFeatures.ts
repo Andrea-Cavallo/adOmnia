@@ -22,6 +22,7 @@ import { applyGoStudioWorkspaceChange } from './goStudioWorkspaceEdits'
 
 const LANGUAGE = 'go'
 const MARKER_OWNER = 'gopls'
+const LINT_MARKER_OWNER = 'lint'
 export const APPLY_CODE_ACTION_COMMAND = 'goStudio.applyCodeAction'
 
 const COMPLETION_KINDS = [
@@ -274,14 +275,23 @@ function markersFor(report: GoIDEDiagnosticsReport): monaco.editor.IMarkerData[]
   }))
 }
 
-function applyMarkers(): void {
+function reportsByUri(sessions: Array<Record<string, GoIDEDiagnosticsReport>>): Map<string, GoIDEDiagnosticsReport> {
   const byUri = new Map<string, GoIDEDiagnosticsReport>()
-  for (const reports of Object.values(useGoIDELspStore.getState().diagnostics)) {
+  for (const reports of sessions) {
     for (const report of Object.values(reports)) byUri.set(normalizeUri(report.uri), report)
   }
+  return byUri
+}
+
+/** gopls e linter usano owner distinti: ognuno aggiorna solo i propri marker. */
+function applyMarkers(): void {
+  const state = useGoIDELspStore.getState()
+  const gopls = reportsByUri(Object.values(state.diagnostics))
+  const lint = reportsByUri(Object.values(state.lint).map((item) => item.reports))
   for (const model of monaco.editor.getModels()) {
-    const report = byUri.get(model.uri.toString())
-    monaco.editor.setModelMarkers(model, MARKER_OWNER, report ? markersFor(report) : [])
+    const uri = model.uri.toString()
+    monaco.editor.setModelMarkers(model, MARKER_OWNER, gopls.has(uri) ? markersFor(gopls.get(uri)!) : [])
+    monaco.editor.setModelMarkers(model, LINT_MARKER_OWNER, lint.has(uri) ? markersFor(lint.get(uri)!) : [])
   }
 }
 
@@ -293,6 +303,6 @@ export function registerGoStudioLanguageFeatures(): void {
   applyMarkers()
   monaco.editor.onDidCreateModel(() => applyMarkers())
   useGoIDELspStore.subscribe((state, previous) => {
-    if (state.diagnostics !== previous.diagnostics) applyMarkers()
+    if (state.diagnostics !== previous.diagnostics || state.lint !== previous.lint) applyMarkers()
   })
 }

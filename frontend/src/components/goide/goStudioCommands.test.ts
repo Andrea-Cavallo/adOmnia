@@ -47,9 +47,10 @@ describe('Go Studio commands', () => {
 
 describe('Go Studio command availability', () => {
   const ready: GoStudioCommandContext = {
-    hasSession: true, authorized: true, toolchainReady: true, running: false, restartable: true,
+    hasSession: true, documentCount: 2, hasClosedDocuments: false, split: false, authorized: true, toolchainReady: true, running: false, restartable: true,
     hasEditor: true, activeDocumentDirty: true, sessionDirty: true, structureOpen: true, bottomOpen: false, showIgnored: false,
     lspState: 'ready', goplsAvailable: true, formatOnSave: true, importsOnSave: false, gofumpt: false, staticcheck: false,
+    lintOnSave: false, linterAvailable: true, linting: false,
   }
 
   it('explains why run commands are blocked without trust or SDK', () => {
@@ -83,5 +84,11 @@ describe('Go Studio command availability', () => {
     expect(commandAvailability('go.lspStart', { ...ready, lspState: 'stopped', goplsAvailable: false })).toMatch(/Install gopls/)
     expect(commandAvailability('go.lspStart', { ...ready, lspState: 'stopped' })).toBe(true)
     expect(commandChecked('code.formatOnSave', ready)).toBe(true)
+  })
+
+  it('runs the linter only on trusted projects with a linter installed, even without gopls', () => {
+    expect(commandAvailability('code.lint', { ...ready, lspState: 'stopped' })).toBe(true)
+    expect(commandAvailability('code.lint', { ...ready, linterAvailable: false })).toMatch(/golangci-lint/)
+    expect(commandAvailability('code.lint', { ...ready, authorized: false })).toMatch(/Trust/)
   })
 })

@@ -16,11 +16,16 @@ const (
 	goplsVersionTimeout = 8 * time.Second
 )
 
-func goplsExecutableName() string {
+// executableName aggiunge l'estensione richiesta dalla piattaforma a un binario Go installato.
+func executableName(name string) string {
 	if runtime.GOOS == "windows" {
-		return "gopls.exe"
+		return name + ".exe"
 	}
-	return "gopls"
+	return name
+}
+
+func goplsExecutableName() string {
+	return executableName("gopls")
 }
 
 // goplsCandidates elenca i binari in ordine di priorità: personalizzato, gestito da adOmnia, GOPATH/bin, PATH.
@@ -124,8 +129,13 @@ func (s *Service) ConfigureGopls(sessionID, binary string) error {
 
 // InstallGopls esegue `go install` di gopls nella cartella strumenti di adOmnia dopo conferma esplicita.
 func (s *Service) InstallGopls(sessionID string, confirmed bool) (Execution, error) {
+	return s.installTool(sessionID, goplsModule, confirmed)
+}
+
+// installTool esegue `go install module` con GOBIN nella cartella strumenti, visibile nella Run console.
+func (s *Service) installTool(sessionID, module string, confirmed bool) (Execution, error) {
 	if !confirmed {
-		return Execution{}, fmt.Errorf("conferma esplicita richiesta prima di scaricare gopls")
+		return Execution{}, fmt.Errorf("conferma esplicita richiesta prima di scaricare lo strumento")
 	}
 	session, err := s.session(sessionID)
 	if err != nil {
@@ -139,7 +149,7 @@ func (s *Service) InstallGopls(sessionID string, confirmed bool) (Execution, err
 	}
 	binary, err := s.toolchain.GoBinary(session.ID)
 	if err != nil {
-		return Execution{}, fmt.Errorf("serve un Go SDK per installare gopls: rilevalo o installalo prima")
+		return Execution{}, fmt.Errorf("serve un Go SDK per installare lo strumento: rilevalo o installalo prima")
 	}
 	binDirectory := filepath.Join(s.toolsRoot, "bin")
 	if err := os.MkdirAll(binDirectory, 0o755); err != nil {
@@ -149,7 +159,7 @@ func (s *Service) InstallGopls(sessionID string, confirmed bool) (Execution, err
 	if err != nil {
 		return Execution{}, err
 	}
-	arguments := []string{"install", goplsModule}
+	arguments := []string{"install", module}
 	return s.processes.Start(CommandSpec{
 		SessionID: session.ID, Kind: "install", Executable: binary, Arguments: arguments,
 		WorkingDirectory: s.toolsRoot, Environment: environment, DisplayCommand: displayCommand("go", arguments),

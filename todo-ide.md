@@ -50,10 +50,15 @@ Una fase è completa soltanto quando:
 
 - [x] Fase 0 — Analisi, decisioni architetturali e scheletro integrato
 - [ ] Fase 1 — Base funzionante end-to-end *(in corso: implementazione quasi completa, gate da collaudare su Windows)*
-- [ ] Fase 2 — Intelligenza del codice con gopls/LSP
+- [ ] Fase 2 — Intelligenza del codice con gopls/LSP *(implementata e verificata end-to-end; gate in attesa della prova manuale su Windows)*
 - [ ] Fase 3 — Più progetti, ripristino e terminale integrato
 - [ ] Fase 4 — Test runner, debugger, coverage e finestre separate
 - [ ] Collaudo finale e documentazione di rilascio
+
+### Prossimo passo
+
+1. Collaudo manuale su Windows con `wails3 task dev` dei gate di Fase 1 e Fase 2 (i flussi sono già verificati end-to-end nel browser con il backend reale).
+2. Fase 3: sessioni multiple isolate, ripristino con recovery dei buffer dirty, configurazioni Run persistenti e terminale PTY reale (ConPTY su Windows).
 
 ### Punto di ripresa (audit 2026-09-28)
 
@@ -74,6 +79,8 @@ Gap aperti della Fase 1 da chiudere prima del gate:
 - [x] Run console: mostrare durata ed exit code; link `file:line` relativi (`./main.go:5`) risolti rispetto alla working directory dell'esecuzione, senza tab duplicate.
 - [x] `Ctrl/Cmd+W` dentro Go Studio chiudeva una tab HTTP invisibile: ora chiude il documento attivo. Scorciatoie documentate in Help → Keyboard Shortcuts, con test anti-duplicati.
 - [x] **Menu bar IDE reale** (File, Edit, View, Go, Run, Help) con registro comandi unico condiviso da menu, scorciatoie e dialog di aiuto; voci non disponibili disabilitate con motivo nel tooltip; Edit esegue le azioni Monaco reali; passaggio fra menu al passaggio del mouse come in GoLand.
+- [x] **Principio di comodità per lo sviluppatore** (richiesta utente): se un file contiene `func main`, il ▶ è nel gutter accanto; lo stesso per `Test`/`Benchmark`/`Fuzz`/`Example`. Il pulsante Debug comparirà accanto al ▶ in Fase 4, quando esisterà un debugger reale.
+- [x] Icona gopher per i file `.go` (albero, tab, Quick Open, risultati), SVG locale ispirato al gopher di Renée French (CC BY).
 - [ ] Verifiche manuali non eseguibili nel container Linux (GTK4/WebKitGTK assenti): `wails3 task dev` su Windows, test `process_tree_windows_test.go`, temi dark/light, barra di qualità su progetto reale.
 
 ---
@@ -318,89 +325,91 @@ Obiettivo: comprendere davvero il codice tramite gopls, includendo i buffer non 
 
 ## 2.1 Gestione gopls
 
-- [ ] Rilevare `gopls`, versione e compatibilità; mostrare percorso e stato nella status bar.
-- [ ] Permettere un binario gopls personalizzato.
-- [ ] Se gopls manca, mostrare istruzioni e un'installazione esplicita con avanzamento, log ed errore; nessun download silenzioso.
-- [ ] Avviare un processo gopls isolato per sessione/workspace secondo la decisione architetturale.
-- [ ] Inizializzare root URI, workspace folders, capability e configurazione Go corrette.
-- [ ] Gestire restart, crash, backoff limitato e shutdown/exit pulito.
-- [ ] Non confondere log gopls, diagnostica e output Run tra sessioni.
+- [x] Rilevare `gopls`, versione e compatibilità; mostrare percorso e stato nella status bar.
+- [x] Permettere un binario gopls personalizzato.
+- [x] Se gopls manca, mostrare istruzioni e un'installazione esplicita con avanzamento, log ed errore; nessun download silenzioso.
+- [x] Avviare un processo gopls isolato per sessione/workspace secondo la decisione architetturale.
+- [x] Inizializzare root URI, workspace folders, capability e configurazione Go corrette.
+- [x] Gestire restart, crash, backoff limitato e shutdown/exit pulito.
+- [x] Non confondere log gopls, diagnostica e output Run tra sessioni.
 
 ## 2.2 Client LSP corretto
 
-- [ ] Implementare framing JSON-RPC/LSP, correlazione richiesta/risposta ed errori tipizzati.
-- [ ] Implementare `didOpen`, `didChange`, `didSave` e `didClose` con versioni documento monotone.
-- [ ] Inviare contenuto dei buffer non salvati, non rileggere il file su disco per richieste semantiche.
-- [ ] Convertire correttamente coordinate Monaco ↔ LSP, incluse UTF-16 e newline.
-- [ ] Implementare cancellazione delle richieste obsolete durante digitazione/navigazione.
-- [ ] Gestire timeout e risposte tardive senza applicarle al documento o alla sessione sbagliata.
-- [ ] Gestire modifiche workspace/applyEdit in modo transazionale e con conferma quando toccano più file.
+- [x] Implementare framing JSON-RPC/LSP, correlazione richiesta/risposta ed errori tipizzati.
+- [x] Implementare `didOpen`, `didChange`, `didSave` e `didClose` con versioni documento monotone.
+- [x] Inviare contenuto dei buffer non salvati, non rileggere il file su disco per richieste semantiche.
+- [x] Convertire correttamente coordinate Monaco ↔ LSP, incluse UTF-16 e newline.
+- [x] Implementare cancellazione delle richieste obsolete durante digitazione/navigazione.
+- [x] Gestire timeout e risposte tardive senza applicarle al documento o alla sessione sbagliata.
+- [x] Gestire modifiche workspace/applyEdit in modo transazionale e con conferma quando toccano più file.
 
 ## 2.3 Funzioni semantiche
 
-- [ ] Pubblicare diagnostica per file/sessione nel gutter, Problems e status bar.
-- [ ] Implementare completion Monaco da gopls.
-- [ ] Implementare hover.
-- [ ] Implementare signature help.
-- [ ] Implementare Go to Definition/Type Definition/Implementation dove supportato.
-- [ ] Implementare Find References con navigazione risultati.
-- [ ] Implementare document symbols e struttura file richiudibile a destra.
-- [ ] Implementare workspace symbols e Quick Open simboli.
-- [ ] Implementare semantic rename con anteprima delle modifiche.
-- [ ] Implementare code actions e gestione import.
-- [ ] Implementare formatting configurabile tramite gopls/gofmt.
-- [ ] Implementare ricerca testuale nel progetto, cancellabile e con esclusioni configurabili.
-- [ ] Navigare in sola lettura nei sorgenti dell'SDK Go (GOROOT/stdlib) e dei moduli nella module cache tramite definition/hover, senza permetterne la modifica.
-- [ ] Non usare regex o dati statici per simulare funzioni semantiche.
+- [x] Pubblicare diagnostica per file/sessione nel gutter, Problems e status bar.
+- [x] Implementare completion Monaco da gopls.
+- [x] Implementare hover.
+- [x] Implementare signature help.
+- [x] Implementare Go to Definition/Type Definition/Implementation dove supportato.
+- [x] Implementare Find References con navigazione risultati.
+- [x] Implementare document symbols e struttura file richiudibile a destra.
+- [x] Implementare workspace symbols e Quick Open simboli.
+- [x] Implementare semantic rename con anteprima delle modifiche.
+- [x] Implementare code actions e gestione import.
+- [x] Implementare formatting configurabile tramite gopls/gofmt.
+- [x] Implementare ricerca testuale nel progetto, cancellabile e con esclusioni configurabili.
+- [x] Navigare in sola lettura nei sorgenti dell'SDK Go (GOROOT/stdlib) e dei moduli nella module cache tramite definition/hover, senza permetterne la modifica.
+- [x] Non usare regex o dati statici per simulare funzioni semantiche (le regex restano solo per il ▶ del gutter su `func main`/`TestXxx`, che non è una funzione semantica).
 
 ## 2.4 Linter Go (golangci-lint/staticcheck)
 
-- [ ] Rilevare `golangci-lint` (preferito, aggrega staticcheck e altri linter) e, in alternativa/fallback, `staticcheck`; mostrare percorso e versione nella status bar.
-- [ ] Permettere un binario linter personalizzato per progetto/sessione.
-- [ ] Se il linter manca, mostrare istruzioni e un'installazione esplicita con avanzamento, log ed errore, con la stessa logica di gopls/Delve/toolchain Go — nessun download silenzioso.
-- [ ] Rilevare e rispettare una configurazione di progetto (`.golangci.yml`/`.golangci.yaml`/`staticcheck.conf`) se presente, senza crearne una implicita.
-- [ ] Eseguire il lint su azione esplicita e opzionalmente on-save (impostazione disattivabile), sempre in modo asincrono e cancellabile.
-- [ ] Pubblicare i risultati come diagnostica nel gutter, in Problems e nello status bar, distinguibili da quelle di gopls ma nello stesso flusso di navigazione.
-- [ ] Isolare esecuzioni e risultati per sessione/progetto come per gli altri strumenti esterni.
-- [ ] Non applicare automaticamente fix del linter: eventuali quick-fix restano un'azione esplicita per file/blocco.
+- [x] Rilevare `golangci-lint` (preferito, aggrega staticcheck e altri linter) e, in alternativa/fallback, `staticcheck`; mostrare percorso e versione nella status bar.
+- [x] Permettere un binario linter personalizzato per progetto/sessione.
+- [x] Se il linter manca, mostrare istruzioni e un'installazione esplicita con avanzamento, log ed errore, con la stessa logica di gopls/Delve/toolchain Go — nessun download silenzioso.
+- [x] Rilevare e rispettare una configurazione di progetto (`.golangci.yml`/`.golangci.yaml`/`staticcheck.conf`) se presente, senza crearne una implicita.
+- [x] Eseguire il lint su azione esplicita e opzionalmente on-save (impostazione disattivabile), sempre in modo asincrono e cancellabile.
+- [x] Pubblicare i risultati come diagnostica nel gutter, in Problems e nello status bar, distinguibili da quelle di gopls ma nello stesso flusso di navigazione.
+- [x] Isolare esecuzioni e risultati per sessione/progetto come per gli altri strumenti esterni (una esecuzione per sessione, risultati e marker indicizzati per sessione).
+- [x] Non applicare automaticamente fix del linter: eventuali quick-fix restano un'azione esplicita per file/blocco.
 
 ## 2.5 Editor avanzato
 
-- [ ] Implementare split editor orizzontale e verticale con modelli condivisi e view state indipendenti.
-- [ ] Implementare tab pin, close others/right e riapertura tab chiuso senza perdere dirty state.
-- [ ] Implementare breadcrumb simbolico oltre al percorso.
-- [ ] Integrare code action, rename, references e Problems con navigazione da tastiera.
-- [ ] Persistenza del layout editor e dei pannelli senza persistere accidentalmente contenuti sensibili.
+- [x] Implementare split editor orizzontale e verticale con modelli condivisi e view state indipendenti.
+- [x] Implementare tab pin, close others/right e riapertura tab chiuso senza perdere dirty state.
+- [x] Implementare breadcrumb simbolico oltre al percorso.
+- [x] Integrare code action, rename, references e Problems con navigazione da tastiera.
+- [x] Persistenza del layout editor e dei pannelli senza persistere accidentalmente contenuti sensibili.
 
 ## 2.6 Test mirati
 
-- [ ] Test per versioni documento, buffer unsaved e scarto di risposte LSP obsolete.
-- [ ] Test per conversione posizioni UTF-16 con caratteri multibyte.
-- [ ] Test per cancellazione richieste e crash/restart gopls.
-- [ ] Test di isolamento diagnostica tra due sessioni.
-- [ ] Test per rilevamento/assenza linter, esecuzione cancellabile e isolamento dei risultati tra sessioni.
-- [ ] Prova reale di completion, hover, definition, references, rename, import e formatting su progetto multi-package.
+- [x] Test per versioni documento, buffer unsaved e scarto di risposte LSP obsolete.
+- [x] Test per conversione posizioni UTF-16 con caratteri multibyte.
+- [x] Test per cancellazione richieste e crash/restart gopls.
+- [x] Test di isolamento diagnostica tra due sessioni.
+- [x] Test per rilevamento/assenza linter, esecuzione cancellabile e isolamento dei risultati tra sessioni.
+- [x] Prova reale di completion, hover, definition, references, rename, import e formatting su progetto multi-package.
 
 ## Gate di uscita Fase 2
 
-- [ ] Modificare un buffer non salvato e ottenere diagnostica/completion coerenti con quel contenuto.
-- [ ] Navigare a definizioni e riferimenti reali tra package.
-- [ ] Eseguire rename e formatting senza corrompere file o dirty state.
-- [ ] Riavviare gopls dopo un crash controllato senza riavviare adOmnia.
-- [ ] Ottenere diagnostica di lint reale (golangci-lint/staticcheck) su un progetto con problemi noti, distinguibile da quella di gopls.
-- [ ] Nessun dato LSP o di lint di un progetto compare in un'altra sessione.
-- [ ] Suite e verifiche previste dalla definizione di fase funzionante passano.
+- [x] Modificare un buffer non salvato e ottenere diagnostica/completion coerenti con quel contenuto.
+- [x] Navigare a definizioni e riferimenti reali tra package.
+- [x] Eseguire rename e formatting senza corrompere file o dirty state.
+- [x] Riavviare gopls dopo un crash controllato senza riavviare adOmnia.
+- [x] Ottenere diagnostica di lint reale (golangci-lint/staticcheck) su un progetto con problemi noti, distinguibile da quella di gopls.
+- [x] Nessun dato LSP o di lint di un progetto compare in un'altra sessione.
+- [ ] Suite e verifiche previste dalla definizione di fase funzionante passano. *(Automatiche verdi; manca la prova manuale `wails3 task dev` su Windows.)*
 - [ ] **FASE 2 FUNZIONANTE E APPROVATA — è consentito iniziare la Fase 3.**
 
 ### Evidenze della fase
 
-- Data:
-- Commit:
-- Versioni Go/gopls:
-- Progetto Go usato:
-- Comandi e risultati:
-- Prova manuale:
-- Limiti rimasti:
+- Data: 2026-09-28
+- Commit: `f568303` (backend gopls), `63bbaea` (editor collegato a gopls), commit finale di chiusura Fase 2 (lint, editor avanzato) su `master`.
+- Eccezione di processo: la Fase 2 è iniziata prima del gate manuale della Fase 1 su richiesta esplicita dell'utente; entrambi i gate restano da collaudare su Windows.
+- Versioni: Go 1.24.7/1.26.5, gopls v0.23.0, golangci-lint v2.14.0, staticcheck 2026.2.1.
+- Progetto Go usato: fixture multi-package `internal/goide/testdata/multipkg` (interfaccia, struct, metodo, test) e `testdata/lintissues` con problemi noti.
+- Comandi e risultati: `npx tsc --noEmit`, `npm run build`, `npx vitest run` (130 file, 595 test), `go vet ./internal/goide/...`, `go test -race ./internal/goide/...` con gopls, staticcheck e golangci-lint reali (12 esecuzioni ripetute senza flakiness), cross-build Windows del binario e `go vet` darwin.
+- Prova end-to-end: frontend reale in Chromium collegato al vero `goide.Service` tramite un server di preview locale (non committato) che implementa il trasporto HTTP di `@wailsio/runtime`. Verificati come utente: apertura e trust del progetto, avvio automatico di gopls, ▶ su `func main` con output reale, ▶ su `TestHello` (`--- PASS`), diagnostica su buffer non salvato, completion, hover, Find Usages, rename su 3 file con anteprima, ricerca simboli (progetto e SDK), F12 nello SDK in sola lettura, salvataggio con optimize imports e reformat verificato su disco, Find in Files, lint golangci-lint (errcheck) in Problems, split editor, breadcrumb simbolico, menu tab con pin, Close Others e Reopen Closed.
+- Difetti trovati e corretti durante la verifica: buffer di un file sovrascritto dal contenuto di un altro passando da un documento in sola lettura (perdita dati); race tra chiusura del canale `exited` e stato di gopls dopo Stop; rejection non gestite su chiamate annullate (anche nel vero Wails); focus del dialog Rename; nomi accessibili sporcati dalle icone.
+- Limiti rimasti: prova manuale nella finestra Wails nativa non eseguibile nel container (GTK4/WebKitGTK assenti); signature help coperto dal provider e dai test backend ma non ancora osservato a video; lo split editor mostra un file alla volta senza gruppo di tab proprio.
 
 ---
 

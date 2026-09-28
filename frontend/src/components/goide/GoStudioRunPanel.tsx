@@ -7,7 +7,7 @@ import { resolveConsolePath } from './goStudioConsolePaths'
 import { GoStudioProblems, type GoStudioBuildProblem } from './GoStudioProblems'
 import { GoStudioReferences } from './GoStudioReferences'
 import { GoStudioFindInFiles } from './GoStudioFindInFiles'
-import { diagnosticCounts, useGoIDELspStore, type GoIDEToolWindow } from '@/stores/goideLsp'
+import { diagnosticCounts, mergedReports, useGoIDELspStore, type GoIDEToolWindow } from '@/stores/goideLsp'
 
 interface GoStudioRunPanelProps {
   sessionId: string
@@ -98,6 +98,7 @@ export function GoStudioRunPanel({ sessionId }: GoStudioRunPanelProps) {
   const view = useGoIDELspStore((state) => state.toolWindow)
   const showToolWindow = useGoIDELspStore((state) => state.showToolWindow)
   const reports = useGoIDELspStore((state) => state.diagnostics[sessionId])
+  const lintReports = useGoIDELspStore((state) => state.lint[sessionId]?.reports)
   const [search, setSearch] = useState('')
   const [input, setInput] = useState('')
   const allExecutions = useGoIDEStore((state) => state.executions)
@@ -114,7 +115,7 @@ export function GoStudioRunPanel({ sessionId }: GoStudioRunPanelProps) {
   const buildProblems = useMemo<GoStudioBuildProblem[]>(() => lines
     .filter((line) => line.path && line.line)
     .map((line) => ({ path: resolveConsolePath(line.path!, active?.workingDirectory ?? ''), line: line.line!, column: line.column ?? 1, text: line.text })), [active?.workingDirectory, lines])
-  const counts = diagnosticCounts(reports)
+  const counts = diagnosticCounts(mergedReports(reports, lintReports))
   const problemCount = counts.errors + counts.warnings + buildProblems.length
   const visibleLines = lines.filter((line) => !search || line.text.toLowerCase().includes(search.toLowerCase()))
 

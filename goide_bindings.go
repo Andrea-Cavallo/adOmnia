@@ -348,6 +348,27 @@ func (g *GoIDE) OrganizeImports(ctx context.Context, sessionID, documentID strin
 	return settleCancelled(ctx, value, err)
 }
 
+// DetectLinter individua golangci-lint o staticcheck e la configurazione di progetto.
+func (g *GoIDE) DetectLinter(sessionID string) (goide.LinterInfo, error) {
+	return g.service.DetectLinter(sessionID)
+}
+
+// ConfigureLinter imposta un binario linter personalizzato; vuoto ripristina la ricerca automatica.
+func (g *GoIDE) ConfigureLinter(sessionID, binary string) error {
+	return g.service.ConfigureLinter(sessionID, binary)
+}
+
+// InstallLinter installa golangci-lint o staticcheck nella cartella strumenti dopo conferma esplicita.
+func (g *GoIDE) InstallLinter(sessionID, kind string, confirmed bool) (goide.Execution, error) {
+	return g.service.InstallLinter(sessionID, kind, confirmed)
+}
+
+// RunLint esegue il linter sul progetto; si annulla con la promise frontend.
+func (g *GoIDE) RunLint(ctx context.Context, sessionID string) (goide.LintResult, error) {
+	value, err := g.service.RunLint(ctx, sessionID)
+	return settleCancelled(ctx, value, err)
+}
+
 // SearchProject cerca testo nel progetto; si annulla con la promise frontend.
 func (g *GoIDE) SearchProject(ctx context.Context, query goide.SearchQuery) (goide.SearchResult, error) {
 	value, err := g.service.SearchProject(ctx, query)

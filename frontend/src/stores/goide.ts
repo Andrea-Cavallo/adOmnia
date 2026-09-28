@@ -41,6 +41,19 @@ import {
 import { openExternalDocument } from '@/lib/goide-lsp-api'
 
 const LAYOUT_KEY = 'adomnia.goide.layout.v1'
+const MAX_CLOSED_HISTORY = 20
+
+export type GoIDESplitOrientation = 'right' | 'down'
+
+export interface GoIDESplit {
+  orientation: GoIDESplitOrientation
+  documentId: string
+}
+
+interface ClosedDocument {
+  path: string
+  external: boolean
+}
 const MAX_CONSOLE_BYTES = 4 * 1024 * 1024
 
 export interface GoIDELayout {
@@ -105,6 +118,9 @@ interface GoIDEState {
   showIgnoredBySession: Record<string, boolean>
   documents: GoIDEEditorDocument[]
   activeDocumentBySession: Record<string, string | null>
+  pinnedDocuments: Record<string, boolean>
+  closedDocuments: Record<string, ClosedDocument[]>
+  splitBySession: Record<string, GoIDESplit | null>
   toolchains: Record<string, GoIDEToolchainInfo | null>
   toolchainInstallations: Record<string, GoIDEToolchainInstallation>
   executions: GoIDEExecution[]
@@ -132,6 +148,10 @@ interface GoIDEState {
   checkActiveDocument: () => Promise<void>
   resolveExternalChange: (documentId: string, action: 'reload' | 'keep') => void
   closeDocument: (documentId: string) => Promise<void>
+  togglePinned: (documentId: string) => void
+  reopenClosedDocument: () => Promise<void>
+  setSplit: (orientation: GoIDESplitOrientation | null) => void
+  setSplitDocument: (documentId: string) => void
   setQuickOpen: (open: boolean) => void
   searchQuickOpen: (query: string) => Promise<void>
   detectToolchain: () => Promise<void>
@@ -209,6 +229,9 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
   showIgnoredBySession: {},
   documents: [],
   activeDocumentBySession: {},
+  pinnedDocuments: {},
+  closedDocuments: {},
+  splitBySession: {},
   toolchains: {},
   toolchainInstallations: {},
   executions: [],
@@ -492,12 +515,50 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
     const current = get().documents.find((item) => item.document.id === documentId)
     if (!current) return
     await closeGoIDEDocument(current.document.sessionId, current.document.id)
+    const sessionId = current.document.sessionId
     set((state) => {
       const documents = state.documents.filter((item) => item.document.id !== documentId)
-      const sessionDocuments = documents.filter((item) => item.document.sessionId === current.document.sessionId)
-      const replacement = sessionDocuments[sessionDocuments.length - 1]?.document.id ?? null
-      return { documents, activeDocumentBySession: { ...state.activeDocumentBySession, [current.document.sessionId]: replacement } }
+      const sessionDocuments = documents.filter((item) => item.document.sessionId === sessionId)
+      const wasActive = state.activeDocumentBySession[sessionId] === documentId
+      const replacement = wasActive ? sessionDocuments[sessionDocuments.length - 1]?.document.id ?? null : state.activeDocumentBySession[sessionId] ?? null
+      const closed: ClosedDocument = { path: current.document.external ? current.document.path : current.document.relativePath, external: !!current.document.external }
+      const history = [closed, ...(state.closedDocuments[sessionId] ?? []).filter((item) => item.path !== closed.path)].slice(0, MAX_CLOSED_HISTORY)
+      const { [documentId]: _pinned, ...pinnedDocuments } = state.pinnedDocuments
+      const split = state.splitBySession[sessionId]
+      return {
+        documents,
+        pinnedDocuments,
+        activeDocumentBySession: { ...state.activeDocumentBySession, [sessionId]: replacement },
+        closedDocuments: { ...state.closedDocuments, [sessionId]: history },
+        splitBySession: split?.documentId === documentId ? { ...state.splitBySession, [sessionId]: null } : state.splitBySession,
+      }
     })
+  },
+
+  togglePinned: (documentId) => set((state) => ({ pinnedDocuments: { ...state.pinnedDocuments, [documentId]: !state.pinnedDocuments[documentId] } })),
+
+  reopenClosedDocument: async () => {
+    const sessionId = get().activeSessionId
+    if (!sessionId) return
+    const [last, ...rest] = get().closedDocuments[sessionId] ?? []
+    if (!last) return
+    set((state) => ({ closedDocuments: { ...state.closedDocuments, [sessionId]: rest } }))
+    if (last.external) await get().openExternalLocation(last.path, 1, 1)
+    else await get().openDocument(last.path)
+  },
+
+  setSplit: (orientation) => {
+    const sessionId = get().activeSessionId
+    if (!sessionId) return
+    const documentId = get().activeDocumentBySession[sessionId]
+    set((state) => ({ splitBySession: { ...state.splitBySession, [sessionId]: orientation && documentId ? { orientation, documentId } : null } }))
+  },
+
+  setSplitDocument: (documentId) => {
+    const sessionId = get().activeSessionId
+    const split = sessionId ? get().splitBySession[sessionId] : null
+    if (!sessionId || !split) return
+    set((state) => ({ splitBySession: { ...state.splitBySession, [sessionId]: { ...split, documentId } } }))
   },
 
   setQuickOpen: (open) => set((state) => ({ quickOpen: { ...state.quickOpen, open, query: open ? state.quickOpen.query : '', results: open ? state.quickOpen.results : [] } })),

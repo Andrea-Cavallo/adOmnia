@@ -40,6 +40,7 @@ type Service struct {
 	toolsRoot     string
 	goplsMu       sync.RWMutex
 	goplsBinaries map[SessionID]string
+	lint          lintRegistry
 }
 
 func NewService(store Store, eventSink func(EventEnvelope)) *Service {
@@ -56,6 +57,7 @@ func NewService(store Store, eventSink func(EventEnvelope)) *Service {
 		runRequests:   make(map[RunID]RunRequest),
 		eventSink:     eventSink,
 		goplsBinaries: make(map[SessionID]string),
+		lint:          lintRegistry{custom: make(map[SessionID]string)},
 	}
 	service.lsp.SetEmitter(service.emit)
 	service.installer = NewToolchainInstaller(func(eventType string, installation ToolchainInstallation) {
@@ -225,6 +227,9 @@ func (s *Service) CloseSession(id string) error {
 	s.goplsMu.Lock()
 	delete(s.goplsBinaries, sessionID)
 	s.goplsMu.Unlock()
+	s.lint.mu.Lock()
+	delete(s.lint.custom, sessionID)
+	s.lint.mu.Unlock()
 	if err := s.saveState(); err != nil {
 		return err
 	}

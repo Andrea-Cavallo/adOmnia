@@ -1,12 +1,15 @@
 export type GoStudioCommandId =
   | 'file.openProject' | 'file.newProject' | 'file.save' | 'file.saveAll' | 'file.closeEditor' | 'file.closeProject'
+  | 'file.closeOthers' | 'file.closeAll' | 'file.pinTab' | 'file.reopenClosed'
   | 'edit.undo' | 'edit.redo' | 'edit.find' | 'edit.replace' | 'edit.gotoLine' | 'edit.toggleComment'
+  | 'view.splitRight' | 'view.splitDown' | 'view.unsplit'
   | 'view.quickOpen' | 'view.toggleStructure' | 'view.toggleBottom' | 'view.toggleIgnored' | 'view.problems'
   | 'nav.declaration' | 'nav.typeDeclaration' | 'nav.implementation' | 'nav.usages' | 'nav.fileStructure' | 'nav.symbol' | 'nav.findInFiles'
   | 'code.completion' | 'code.parameterInfo' | 'code.quickFix' | 'code.rename' | 'code.reformat' | 'code.organizeImports'
-  | 'code.formatOnSave' | 'code.importsOnSave' | 'code.gofumpt' | 'code.staticcheck'
+  | 'code.formatOnSave' | 'code.importsOnSave' | 'code.gofumpt' | 'code.staticcheck' | 'code.lint' | 'code.lintOnSave'
   | 'go.toolchains' | 'go.detect' | 'go.dependencies' | 'go.tidy' | 'go.trust'
   | 'go.lspStart' | 'go.lspRestart' | 'go.lspStop' | 'go.lspInstall' | 'go.lspLog'
+  | 'go.installGolangci' | 'go.installStaticcheck' | 'go.toolPaths'
   | 'run.run' | 'run.build' | 'run.stop' | 'run.restart' | 'run.configure'
   | 'help.shortcuts'
 
@@ -46,6 +49,10 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'file.save', menu: 'file', label: 'Save', binding: { key: 's', mod: true }, separatorBefore: true },
   { id: 'file.saveAll', menu: 'file', label: 'Save All', binding: { key: 's', mod: true, shift: true } },
   { id: 'file.closeEditor', menu: 'file', label: 'Close Editor', binding: { key: 'w', mod: true }, separatorBefore: true },
+  { id: 'file.closeOthers', menu: 'file', label: 'Close Other Tabs' },
+  { id: 'file.closeAll', menu: 'file', label: 'Close All Tabs' },
+  { id: 'file.pinTab', menu: 'file', label: 'Pin Tab' },
+  { id: 'file.reopenClosed', menu: 'file', label: 'Reopen Closed Tab', binding: { key: 't', mod: true, shift: true } },
   { id: 'file.closeProject', menu: 'file', label: 'Close Project' },
   { id: 'edit.undo', menu: 'edit', label: 'Undo', binding: { key: 'z', mod: true }, editorOwned: true },
   { id: 'edit.redo', menu: 'edit', label: 'Redo', binding: { key: 'z', mod: true, shift: true }, editorOwned: true },
@@ -57,6 +64,9 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'view.toggleStructure', menu: 'view', label: 'Project Overview Pane', binding: { key: '7', alt: true }, separatorBefore: true },
   { id: 'view.toggleBottom', menu: 'view', label: 'Run / Problems Pane', binding: { key: '4', alt: true } },
   { id: 'view.problems', menu: 'view', label: 'Problems', binding: { key: '6', alt: true } },
+  { id: 'view.splitRight', menu: 'view', label: 'Split Right', binding: { key: '\\', mod: true }, separatorBefore: true },
+  { id: 'view.splitDown', menu: 'view', label: 'Split Down' },
+  { id: 'view.unsplit', menu: 'view', label: 'Unsplit' },
   { id: 'view.toggleIgnored', menu: 'view', label: 'Show Ignored Folders', separatorBefore: true },
   { id: 'nav.declaration', menu: 'navigate', label: 'Declaration', binding: { key: 'b', mod: true }, editorOwned: true },
   { id: 'nav.typeDeclaration', menu: 'navigate', label: 'Type Declaration' },
@@ -71,8 +81,10 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'code.rename', menu: 'code', label: 'Rename…', binding: { key: 'F6', shift: true }, editorOwned: true },
   { id: 'code.reformat', menu: 'code', label: 'Reformat Code', binding: { key: 'l', mod: true, alt: true }, editorOwned: true, separatorBefore: true },
   { id: 'code.organizeImports', menu: 'code', label: 'Optimize Imports', binding: { key: 'o', mod: true, alt: true }, editorOwned: true },
+  { id: 'code.lint', menu: 'code', label: 'Run Linter', binding: { key: 'l', mod: true, alt: true, shift: true }, separatorBefore: true },
   { id: 'code.formatOnSave', menu: 'code', label: 'Reformat on Save', separatorBefore: true },
   { id: 'code.importsOnSave', menu: 'code', label: 'Optimize Imports on Save' },
+  { id: 'code.lintOnSave', menu: 'code', label: 'Run Linter on Save' },
   { id: 'code.gofumpt', menu: 'code', label: 'Use gofumpt Style' },
   { id: 'code.staticcheck', menu: 'code', label: 'Staticcheck Analyses' },
   { id: 'go.toolchains', menu: 'go', label: 'Go SDKs & Toolchains…' },
@@ -85,6 +97,9 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'go.lspStop', menu: 'go', label: 'Stop Language Server' },
   { id: 'go.lspInstall', menu: 'go', label: 'Install gopls…' },
   { id: 'go.lspLog', menu: 'go', label: 'Language Server Log…' },
+  { id: 'go.installGolangci', menu: 'go', label: 'Install golangci-lint…', separatorBefore: true },
+  { id: 'go.installStaticcheck', menu: 'go', label: 'Install staticcheck…' },
+  { id: 'go.toolPaths', menu: 'go', label: 'Tool Paths (gopls, linter)…' },
   { id: 'run.run', menu: 'run', label: 'Run', binding: { key: 'F5', mod: true } },
   { id: 'run.build', menu: 'run', label: 'Build', binding: { key: 'b', mod: true, shift: true } },
   { id: 'run.stop', menu: 'run', label: 'Stop', binding: { key: 'F5', shift: true }, separatorBefore: true },
@@ -130,12 +145,18 @@ export function commandForKey(event: KeyLike): GoStudioCommand | null {
 
 export interface GoStudioCommandContext {
   hasSession: boolean
+  documentCount: number
+  hasClosedDocuments: boolean
+  split: boolean
   lspState: 'stopped' | 'starting' | 'ready' | 'crashed' | 'unavailable'
   goplsAvailable: boolean
   formatOnSave: boolean
   importsOnSave: boolean
   gofumpt: boolean
   staticcheck: boolean
+  lintOnSave: boolean
+  linterAvailable: boolean
+  linting: boolean
   authorized: boolean
   toolchainReady: boolean
   running: boolean
@@ -169,11 +190,22 @@ export function commandAvailability(id: GoStudioCommandId, context: GoStudioComm
   if (!context.hasSession) return NO_PROJECT
   if (id.startsWith('edit.')) return context.hasEditor ? true : 'Open a file first'
   if (id.startsWith('nav.') && id !== 'nav.symbol' && id !== 'nav.findInFiles') return semanticAvailability(context)
-  if (id.startsWith('code.') && ['code.formatOnSave', 'code.importsOnSave', 'code.gofumpt', 'code.staticcheck'].indexOf(id) < 0) return semanticAvailability(context)
+  if (id === 'code.lint') {
+    if (!context.authorized) return NOT_TRUSTED
+    return context.linterAvailable ? true : 'Install golangci-lint or staticcheck (Go menu)'
+  }
+  if (id.startsWith('code.') && ['code.formatOnSave', 'code.importsOnSave', 'code.gofumpt', 'code.staticcheck', 'code.lintOnSave'].indexOf(id) < 0) return semanticAvailability(context)
   switch (id) {
     case 'file.save': return context.activeDocumentDirty ? true : 'No unsaved changes in this file'
     case 'file.saveAll': return context.sessionDirty ? true : 'No unsaved changes'
-    case 'file.closeEditor': return context.hasEditor ? true : 'No file is open'
+    case 'file.closeEditor':
+    case 'file.pinTab':
+    case 'view.splitRight':
+    case 'view.splitDown': return context.hasEditor ? true : 'No file is open'
+    case 'file.closeOthers': return context.documentCount > 1 ? true : 'Only one tab is open'
+    case 'file.closeAll': return context.documentCount > 0 ? true : 'No tabs are open'
+    case 'file.reopenClosed': return context.hasClosedDocuments ? true : 'No recently closed tabs'
+    case 'view.unsplit': return context.split ? true : 'The editor is not split'
     case 'go.toolchains':
     case 'go.detect': return context.authorized ? true : NOT_TRUSTED
     case 'go.tidy': return context.running ? 'Wait for the active process to finish' : runAvailability(context)
@@ -187,7 +219,9 @@ export function commandAvailability(id: GoStudioCommandId, context: GoStudioComm
       return context.lspState === 'ready' || context.lspState === 'starting' ? 'gopls is already running' : true
     case 'go.lspRestart': return context.authorized && context.goplsAvailable ? true : NOT_TRUSTED
     case 'go.lspStop': return context.lspState === 'ready' || context.lspState === 'starting' ? true : 'gopls is not running'
-    case 'go.lspInstall': return runAvailability(context)
+    case 'go.lspInstall':
+    case 'go.installGolangci':
+    case 'go.installStaticcheck': return runAvailability(context)
     case 'run.restart': return context.restartable ? runAvailability(context) : 'Run or build first'
     default: return true
   }
@@ -204,6 +238,7 @@ export function commandChecked(id: GoStudioCommandId, context: GoStudioCommandCo
     case 'code.importsOnSave': return context.importsOnSave
     case 'code.gofumpt': return context.gofumpt
     case 'code.staticcheck': return context.staticcheck
+    case 'code.lintOnSave': return context.lintOnSave
     default: return false
   }
 }

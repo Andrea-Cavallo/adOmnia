@@ -16,14 +16,15 @@ import { GoStudioStatusBar } from './GoStudioStatusBar'
 import { GoStudioSymbolSearch } from './GoStudioSymbolSearch'
 import { GoStudioChangePreviewDialog, GoStudioRenameDialog } from './GoStudioRefactorDialogs'
 import { GoStudioLanguageServerLog } from './GoStudioLanguageServerLog'
+import { GoStudioToolPathsDialog } from './GoStudioToolPathsDialog'
 import { runLanguageCommand } from './goStudioLanguageCommands'
 import { runSaveActions } from './goStudioSaveActions'
 import { runCommandFor, type GoStudioRunTarget } from './goStudioRunTargets'
+import { useGoStudioCloseFlow } from './useGoStudioCloseFlow'
 import { confirm } from '@/lib/confirmDialog'
-import { activeGoIDEDocument, dirtyGoIDEDocuments, useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
+import { activeGoIDEDocument, dirtyGoIDEDocuments, useGoIDEStore } from '@/stores/goide'
 import { useGoIDELspStore } from '@/stores/goideLsp'
 
-type PendingClose = { kind: 'document'; documents: GoIDEEditorDocument[] } | { kind: 'session'; documents: GoIDEEditorDocument[] }
 
 export function GoStudioPanel() {
   const store = useGoIDEStore()
@@ -33,13 +34,14 @@ export function GoStudioPanel() {
   const [toolchainOpen, setToolchainOpen] = useState(false)
   const [dependenciesOpen, setDependenciesOpen] = useState(false)
   const [runDraft, setRunDraft] = useState(DEFAULT_RUN_DRAFT)
-  const [pendingClose, setPendingClose] = useState<PendingClose | null>(null)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [symbolSearchOpen, setSymbolSearchOpen] = useState(false)
   const [lspLogOpen, setLspLogOpen] = useState(false)
+  const [toolPathsOpen, setToolPathsOpen] = useState(false)
   const lsp = useGoIDELspStore()
   const activeSession = useMemo(() => store.sessions.find((session) => session.id === store.activeSessionId) ?? null, [store.activeSessionId, store.sessions])
   const activeDocument = activeGoIDEDocument(store)
+  const closeFlow = useGoStudioCloseFlow(activeSession)
   const sessionExecutions = store.executions.filter((execution) => execution.sessionId === store.activeSessionId)
   const activeRunId = store.activeSessionId ? store.activeRunBySession[store.activeSessionId] : null
   const activeExecution = sessionExecutions.find((execution) => execution.id === activeRunId) ?? sessionExecutions[sessionExecutions.length - 1] ?? null
@@ -80,7 +82,10 @@ export function GoStudioPanel() {
     const id = documentId ?? (sessionId ? store.activeDocumentBySession[sessionId] : null)
     if (!id) return false
     await runSaveActions(id)
-    return useGoIDEStore.getState().saveDocument(id)
+    const saved = await useGoIDEStore.getState().saveDocument(id)
+    const lspState = useGoIDELspStore.getState()
+    if (saved && sessionId && lspState.preferences.lintOnSave && lspState.linter[sessionId]?.available) scheduleLintOnSave(sessionId)
+    return saved
   }
 
   const saveAllWithActions = async () => {
@@ -122,62 +127,28 @@ export function GoStudioPanel() {
     await useGoIDELspStore.getState().ensureStarted(store.activeSessionId)
   }
 
-  const requestCloseDocument = (document: GoIDEEditorDocument) => {
-    if (document.dirty) setPendingClose({ kind: 'document', documents: [document] })
-    else void store.closeDocument(document.document.id)
-  }
-
-  const stopRunsAndCloseSession = async () => {
-    if (!activeSession) return false
-    const running = store.executions.filter((execution) => execution.sessionId === activeSession.id && execution.status === 'running')
-    if (running.length) {
-      const approved = await confirm({ title: 'Stop active runs?', message: `Closing ${activeSession.project.name} will stop ${running.length} active process tree${running.length === 1 ? '' : 's'}.`, confirmLabel: 'Stop and close', variant: 'danger' })
-      if (!approved) return false
-      await Promise.all(running.map((execution) => store.stopRun(execution.id)))
-      for (let attempt = 0; attempt < 30; attempt += 1) {
-        if (!await store.hasActiveRuns(activeSession.id)) break
-        await new Promise((resolve) => window.setTimeout(resolve, 100))
-      }
-    }
-    return store.closeActiveSession(true)
-  }
-
-  const requestCloseSession = async () => {
-    if (!activeSession) return
-    const dirty = dirtyGoIDEDocuments(store, activeSession.id)
-    if (dirty.length) return setPendingClose({ kind: 'session', documents: dirty })
-    await stopRunsAndCloseSession()
-  }
-
   const tidy = async () => {
     const approved = await confirm({ title: 'Run go mod tidy?', message: `Command: go mod tidy\nWorking directory: ${runDraft.workingDirectory || activeSession?.project.rootPath || ''}\n\nThis may access the network through your configured Go proxy.`, confirmLabel: 'Run tidy' })
     if (approved) await store.startRun('tidy', runRequest(runDraft))
   }
 
-  const settlePending = async (save: boolean) => {
-    if (!pendingClose || !activeSession) return
-    if (save) {
-      for (const document of pendingClose.documents) if (!await store.saveDocument(document.document.id)) return
-    }
-    if (pendingClose.kind === 'document') {
-      await store.closeDocument(pendingClose.documents[0].document.id)
-      setPendingClose(null)
-      return
-    }
-    setPendingClose(null)
-    await stopRunsAndCloseSession()
-  }
-
   const authorized = activeSessionTrusted
+  const sessionDocuments = store.documents.filter((item) => item.document.sessionId === activeSession?.id)
   const lspStatus = activeSession ? lsp.status[activeSession.id] : undefined
   const commandContext: GoStudioCommandContext = {
     hasSession: !!activeSession,
+    documentCount: sessionDocuments.length,
+    hasClosedDocuments: !!activeSession && (store.closedDocuments[activeSession.id]?.length ?? 0) > 0,
+    split: !!activeSession && !!store.splitBySession[activeSession.id],
     lspState: (lspStatus?.state || 'stopped') as GoStudioCommandContext['lspState'],
     goplsAvailable: !!activeSession && !!lsp.gopls[activeSession.id]?.available,
     formatOnSave: lsp.preferences.formatOnSave,
     importsOnSave: lsp.preferences.organizeImportsOnSave,
     gofumpt: lsp.settings.gofumpt,
     staticcheck: lsp.settings.staticcheck,
+    lintOnSave: lsp.preferences.lintOnSave,
+    linterAvailable: !!activeSession && !!lsp.linter[activeSession.id]?.available,
+    linting: !!activeSession && !!lsp.lint[activeSession.id]?.running,
     authorized,
     toolchainReady: !!toolchain?.available,
     running: activeExecution?.status === 'running',
@@ -225,8 +196,15 @@ export function GoStudioPanel() {
       case 'file.newProject': return setCreateOpen(true)
       case 'file.save': return void saveDocumentWithActions()
       case 'file.saveAll': return void saveAllWithActions()
-      case 'file.closeEditor': return activeDocument ? requestCloseDocument(activeDocument) : undefined
-      case 'file.closeProject': return void requestCloseSession()
+      case 'file.closeEditor': return activeDocument ? closeFlow.requestCloseDocuments([activeDocument]) : undefined
+      case 'file.closeOthers': return closeFlow.requestCloseDocuments(sessionDocuments.filter((item) => item.document.id !== activeDocument?.document.id && !store.pinnedDocuments[item.document.id]))
+      case 'file.closeAll': return closeFlow.requestCloseDocuments(sessionDocuments.filter((item) => !store.pinnedDocuments[item.document.id]))
+      case 'file.pinTab': return activeDocument ? store.togglePinned(activeDocument.document.id) : undefined
+      case 'file.reopenClosed': return void store.reopenClosedDocument()
+      case 'file.closeProject': return void closeFlow.requestCloseSession()
+      case 'view.splitRight': return store.setSplit('right')
+      case 'view.splitDown': return store.setSplit('down')
+      case 'view.unsplit': return store.setSplit(null)
       case 'view.quickOpen': return store.setQuickOpen(true)
       case 'view.toggleStructure': return store.updateLayout({ structureOpen: !store.layout.structureOpen })
       case 'view.toggleBottom': return store.updateLayout({ bottomOpen: !store.layout.bottomOpen })
@@ -244,6 +222,7 @@ export function GoStudioPanel() {
       case 'help.shortcuts': return setShortcutsOpen(true)
       case 'nav.symbol': return setSymbolSearchOpen(true)
       case 'go.lspLog': return setLspLogOpen(true)
+      case 'go.toolPaths': return setToolPathsOpen(true)
     }
   }
   runCommandRef.current = runCommand
@@ -258,12 +237,12 @@ export function GoStudioPanel() {
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-surface-0 text-text-1">
       {menuBar}
-      <GoStudioToolbar sessions={store.sessions} activeSession={activeSession} activeExecution={activeExecution} toolchain={toolchain} loading={store.loading} onSelect={(id) => void store.selectSession(id)} onOpenProject={() => void store.openProject()} onCreateProject={() => setCreateOpen(true)} onSetAuthorization={(allowed) => void authorize(allowed)} onDetectToolchain={() => void store.detectToolchain()} onToolchainSettings={() => setToolchainOpen(true)} onDependencies={() => setDependenciesOpen(true)} onConfigure={() => setConfigureOpen(true)} onBuild={() => startConfigured('build')} onRun={() => startConfigured('run')} onTidy={() => void tidy()} onStop={() => void store.stopRun()} onClose={() => void requestCloseSession()} />
+      <GoStudioToolbar sessions={store.sessions} activeSession={activeSession} activeExecution={activeExecution} toolchain={toolchain} loading={store.loading} onSelect={(id) => void store.selectSession(id)} onOpenProject={() => void store.openProject()} onCreateProject={() => setCreateOpen(true)} onSetAuthorization={(allowed) => void authorize(allowed)} onDetectToolchain={() => void store.detectToolchain()} onToolchainSettings={() => setToolchainOpen(true)} onDependencies={() => setDependenciesOpen(true)} onConfigure={() => setConfigureOpen(true)} onBuild={() => startConfigured('build')} onRun={() => startConfigured('run')} onTidy={() => void tidy()} onStop={() => void store.stopRun()} onClose={() => void closeFlow.requestCloseSession()} />
       {store.error && <ErrorBanner message={store.error} onClose={store.clearError} />}
       {lsp.message && <NoticeBanner message={lsp.message} onClose={lsp.clearMessage} />}
       <div className="flex h-7 shrink-0 items-center justify-end gap-1 border-b border-border-1 bg-surface-0 px-2"><span className="mr-auto truncate font-mono text-[9px] text-text-4">{activeDocument?.document.relativePath ?? activeSession.project.rootPath}</span><button type="button" onClick={() => store.updateLayout({ structureOpen: !store.layout.structureOpen })} title={store.layout.structureOpen ? 'Hide project overview · Alt+7' : 'Show project overview · Alt+7'} className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-2 hover:text-text-1">{store.layout.structureOpen ? <PanelRightClose size={13} /> : <PanelRightOpen size={13} />}</button><button type="button" onClick={() => store.updateLayout({ bottomOpen: !store.layout.bottomOpen })} title={store.layout.bottomOpen ? 'Hide run panel · Alt+4' : 'Show run panel · Alt+4'} className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-2 hover:text-text-1">{store.layout.bottomOpen ? <PanelBottomClose size={13} /> : <PanelBottomOpen size={13} />}</button></div>
-      <GoStudioWorkspace session={activeSession} {...store.layout} onProjectResize={beginResize('projectWidth', store.layout.projectWidth)} onStructureResize={beginResize('structureWidth', store.layout.structureWidth, -1)} onBottomResize={beginResize('bottomHeight', store.layout.bottomHeight, -1)} onCursor={(line, column) => setCursor({ line, column })} onRequestCloseDocument={requestCloseDocument} onRunTarget={runTarget} />
-      <GoStudioStatusBar session={activeSession} toolchain={toolchain} document={activeDocument} cursor={cursor} execution={activeExecution} onLanguageServer={openLanguageServerMenu} />
+      <GoStudioWorkspace session={activeSession} {...store.layout} onProjectResize={beginResize('projectWidth', store.layout.projectWidth)} onStructureResize={beginResize('structureWidth', store.layout.structureWidth, -1)} onBottomResize={beginResize('bottomHeight', store.layout.bottomHeight, -1)} onCursor={(line, column) => setCursor({ line, column })} onRequestCloseDocument={closeFlow.requestCloseDocuments} onRunTarget={runTarget} />
+      <GoStudioStatusBar session={activeSession} toolchain={toolchain} document={activeDocument} cursor={cursor} execution={activeExecution} onLanguageServer={openLanguageServerMenu} onLinter={() => runCommand(commandAvailability('code.lint', commandContext) === true ? 'code.lint' : 'go.toolPaths')} />
       <GoStudioQuickOpen />
       {sharedDialogs}
       <RunConfigurationDialog open={configureOpen} draft={runDraft} onSave={setRunDraft} onClose={() => setConfigureOpen(false)} />
@@ -272,10 +251,20 @@ export function GoStudioPanel() {
       <GoStudioSymbolSearch open={symbolSearchOpen} sessionId={activeSession.id} onClose={() => setSymbolSearchOpen(false)} />
       <GoStudioRenameDialog />
       <GoStudioChangePreviewDialog />
+      <GoStudioToolPathsDialog open={toolPathsOpen} sessionId={activeSession.id} onClose={() => setToolPathsOpen(false)} />
       <GoStudioLanguageServerLog open={lspLogOpen} sessionId={activeSession.id} onClose={() => setLspLogOpen(false)} />
-      <UnsavedChangesDialog open={!!pendingClose} documents={pendingClose?.documents ?? []} onSave={() => settlePending(true)} onDiscard={() => settlePending(false)} onCancel={() => setPendingClose(null)} />
+      <UnsavedChangesDialog open={!!closeFlow.pending} documents={closeFlow.pending?.documents ?? []} onSave={() => closeFlow.settle(true)} onDiscard={() => closeFlow.settle(false)} onCancel={closeFlow.cancel} />
     </div>
   )
+}
+
+const LINT_ON_SAVE_DEBOUNCE_MS = 800
+let lintOnSaveTimer: ReturnType<typeof setTimeout> | null = null
+
+/** Salvataggi ravvicinati producono un solo lint; quello in corso viene annullato dal successivo. */
+function scheduleLintOnSave(sessionId: string): void {
+  if (lintOnSaveTimer) clearTimeout(lintOnSaveTimer)
+  lintOnSaveTimer = setTimeout(() => void useGoIDELspStore.getState().runLint(sessionId), LINT_ON_SAVE_DEBOUNCE_MS)
 }
 
 function NoticeBanner({ message, onClose }: { message: string; onClose: () => void }) {

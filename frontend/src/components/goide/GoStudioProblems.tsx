@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { AlertCircle, AlertTriangle, Info } from 'lucide-react'
 import type { GoIDEDiagnostic, GoIDEDiagnosticsReport } from '@/lib/goide-lsp-api'
 import { GoGopherIcon } from './GoGopherIcon'
-import { useGoIDELspStore } from '@/stores/goideLsp'
+import { mergedReports, useGoIDELspStore } from '@/stores/goideLsp'
 import { navigateToLocation } from './goStudioLanguageFeatures'
 
 export interface GoStudioBuildProblem {
@@ -33,14 +33,15 @@ function sortReports(reports: GoIDEDiagnosticsReport[]): GoIDEDiagnosticsReport[
 
 export function GoStudioProblems({ sessionId, buildProblems, onOpenBuildProblem }: GoStudioProblemsProps) {
   const reports = useGoIDELspStore((state) => state.diagnostics[sessionId] ?? EMPTY_REPORTS)
-  const sorted = useMemo(() => sortReports(Object.values(reports)), [reports])
+  const lintReports = useGoIDELspStore((state) => state.lint[sessionId]?.reports ?? EMPTY_REPORTS)
+  const sorted = useMemo(() => sortReports(Object.values(mergedReports(reports, lintReports))), [lintReports, reports])
 
   const open = (report: GoIDEDiagnosticsReport, diagnostic: GoIDEDiagnostic) => navigateToLocation({
     uri: report.uri, path: report.path, relativePath: report.relativePath, external: !report.relativePath, range: diagnostic.range,
   })
 
   if (sorted.length === 0 && buildProblems.length === 0) {
-    return <p className="p-3 text-[10px] text-text-4">No problems. gopls diagnostics and build errors appear here as you type and build.</p>
+    return <p className="p-3 text-[10px] text-text-4">No problems. gopls diagnostics, linter findings and build errors appear here.</p>
   }
   return (
     <div role="tree" aria-label="Problems" className="py-1 text-[11px]">

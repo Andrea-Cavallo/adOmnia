@@ -14,7 +14,7 @@ const PUPIL = '#16181D'
  */
 export function GoGopherIcon({ size = 13, className }: GoGopherIconProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" className={`shrink-0 ${className ?? ''}`} role="img" aria-label="Go file">
+    <svg width={size} height={size} viewBox="0 0 32 32" className={`shrink-0 ${className ?? ''}`} aria-hidden="true" focusable="false">
       <circle cx="7" cy="7" r="3.2" fill={BODY} stroke={OUTLINE} strokeWidth="1.3" />
       <circle cx="25" cy="7" r="3.2" fill={BODY} stroke={OUTLINE} strokeWidth="1.3" />
       <path d="M3.6 20.5c-1.6.4-1.9 2.4-.3 2.8M28.4 20.5c1.6.4 1.9 2.4.3 2.8" fill="none" stroke={OUTLINE} strokeWidth="1.3" strokeLinecap="round" />

@@ -23,6 +23,7 @@ interface ContextMenuProps {
 }
 
 const MENU_WIDTH = 232
+const MENU_MAX_WIDTH = 360
 const VIEWPORT_GUTTER = 8
 const SUBMENU_OVERLAP = 1
 
@@ -203,7 +204,7 @@ function MenuLevel({ items, x, y, depth, autoFocus, onSelect, onClose }: MenuLev
         data-menu-depth={depth}
         tabIndex={-1}
         onKeyDown={onKeyDown}
-        style={{ left: pos?.left ?? x, top: pos?.top ?? y, width: MENU_WIDTH, visibility: pos ? 'visible' : 'hidden' }}
+        style={{ left: pos?.left ?? x, top: pos?.top ?? y, minWidth: MENU_WIDTH, maxWidth: MENU_MAX_WIDTH, visibility: pos ? 'visible' : 'hidden' }}
         className="fixed max-h-[78vh] overflow-y-auto rounded-md border border-border-1 bg-surface-1 py-1 shadow-2xl outline-none"
       >
         {items.map((it, index) => (

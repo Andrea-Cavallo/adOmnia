@@ -1,0 +1,133 @@
+import { useEffect, useRef, useState } from 'react'
+import Editor, { type BeforeMount, type OnMount } from '@monaco-editor/react'
+import { applyAdomniaMonacoTheme, configureMonacoLoader, monaco } from '@/lib/monacoSetup'
+import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
+import { useSettingsStore } from '@/stores/settings'
+import { registerGoStudioEditor } from './goStudioEditorRegistry'
+import { installGoStudioEditorActions } from './goStudioEditorActions'
+import { documentForModel, registerGoStudioLanguageFeatures } from './goStudioLanguageFeatures'
+import { startGoStudioLspSync } from './goStudioLspSync'
+import { findRunTargets, runCommandFor, type GoStudioRunTarget } from './goStudioRunTargets'
+import './goStudioEditor.css'
+
+configureMonacoLoader()
+registerGoStudioLanguageFeatures()
+startGoStudioLspSync()
+
+const RUN_TARGET_DEBOUNCE_MS = 250
+
+export const beforeGoStudioMount: BeforeMount = (instance) => applyAdomniaMonacoTheme(instance)
+
+export function useGoStudioEditorTheme(): string {
+  return useSettingsStore((state) => state.settings.appearance.theme === 'light' ? 'adomnia-light' : 'adomnia-dark')
+}
+
+interface GoStudioCodeEditorProps {
+  document: GoIDEEditorDocument
+  /** Solo l'editor principale gestisce le richieste di navigazione (reveal). */
+  handlesReveal: boolean
+  onCursor: (line: number, column: number) => void
+  onRunTarget: (target: GoStudioRunTarget) => void
+}
+
+/**
+ * Editor Monaco di Go Studio. Pannello principale e split condividono il modello del file
+ * (stesso URI) ma mantengono cursore, scroll e selezione indipendenti.
+ */
+export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTarget }: GoStudioCodeEditorProps) {
+  const theme = useGoStudioEditorTheme()
+  const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
+  const decorationsRef = useRef<monaco.editor.IEditorDecorationsCollection | null>(null)
+  const runTargetsRef = useRef<GoStudioRunTarget[]>([])
+  const callbacks = useRef({ onCursor, onRunTarget })
+  callbacks.current = { onCursor, onRunTarget }
+  const [mountCount, setMountCount] = useState(0)
+  const updateDocument = useGoIDEStore((state) => state.updateDocument)
+  const checkActiveDocument = useGoIDEStore((state) => state.checkActiveDocument)
+  const revealLocation = useGoIDEStore((state) => state.revealLocation)
+  const clearRevealLocation = useGoIDEStore((state) => state.clearRevealLocation)
+
+  const onMount: OnMount = (editor) => {
+    editorRef.current = editor
+    const unregister = registerGoStudioEditor(editor)
+    editor.onDidDispose(unregister)
+    editor.onDidFocusEditorWidget(() => {
+      registerGoStudioEditor(editor)
+      const position = editor.getPosition()
+      if (position) callbacks.current.onCursor(position.lineNumber, position.column)
+    })
+    installGoStudioEditorActions(editor)
+    decorationsRef.current = editor.createDecorationsCollection()
+    setMountCount((value) => value + 1)
+    editor.onMouseDown((event) => {
+      if (event.target.type !== monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN) return
+      const target = runTargetsRef.current.find((item) => item.line === event.target.position?.lineNumber)
+      if (target) callbacks.current.onRunTarget(target)
+    })
+    editor.onDidChangeCursorPosition((event) => callbacks.current.onCursor(event.position.lineNumber, event.position.column))
+    editor.onDidFocusEditorText(() => void checkActiveDocument())
+    // Il documento si ricava dal modello che è cambiato, mai dal componente: durante il cambio file
+    // @monaco-editor/react può notificare con la closure del file precedente e sporcarne il buffer.
+    editor.onDidChangeModelContent(() => {
+      const model = editor.getModel()
+      const changed = model ? documentForModel(model) : null
+      if (!model || !changed || changed.document.readOnly) return
+      const value = model.getValue()
+      if (value !== changed.buffer) updateDocument(changed.document.id, value)
+    })
+  }
+
+  useEffect(() => {
+    if (!handlesReveal || revealLocation?.documentId !== document.document.id || !editorRef.current) return
+    const position = { lineNumber: revealLocation.line, column: revealLocation.column }
+    editorRef.current.setPosition(position)
+    editorRef.current.revealPositionInCenter(position)
+    editorRef.current.focus()
+    clearRevealLocation()
+  }, [clearRevealLocation, document.document.id, handlesReveal, revealLocation])
+
+  // ▶ nel gutter accanto a func main e ai test: ricalcolato con debounce mentre si scrive.
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const targets = document.document.readOnly ? [] : findRunTargets(document.document.relativePath, document.buffer)
+      runTargetsRef.current = targets
+      decorationsRef.current?.set(targets.map((target) => ({
+        range: { startLineNumber: target.line, startColumn: 1, endLineNumber: target.line, endColumn: 1 },
+        options: {
+          glyphMarginClassName: `go-studio-run-glyph${target.kind === 'main' ? '' : ' go-studio-test-glyph'}`,
+          glyphMarginHoverMessage: { value: `▶ ${runCommandFor(target).label}` },
+        },
+      })))
+    }, RUN_TARGET_DEBOUNCE_MS)
+    return () => window.clearTimeout(timer)
+  }, [document.buffer, document.document.id, document.document.readOnly, document.document.relativePath, mountCount])
+
+  return (
+    <Editor
+      path={document.document.uri}
+      language={document.document.language}
+      value={document.buffer}
+      theme={theme}
+      beforeMount={beforeGoStudioMount}
+      onMount={onMount}
+      options={{
+        automaticLayout: true,
+        fontSize: 12,
+        fontFamily: 'var(--skin-font-mono, var(--font-mono))',
+        lineHeight: 20,
+        minimap: { enabled: false },
+        lineNumbers: 'on',
+        folding: true,
+        bracketPairColorization: { enabled: true },
+        matchBrackets: 'always',
+        scrollBeyondLastLine: false,
+        renderLineHighlight: 'line',
+        readOnly: !!document.document.readOnly,
+        glyphMargin: true,
+        tabSize: document.document.language === 'go' ? 4 : 2,
+        insertSpaces: document.document.language !== 'go',
+        padding: { top: 6, bottom: 6 },
+      }}
+    />
+  )
+}
