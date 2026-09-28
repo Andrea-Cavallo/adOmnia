@@ -156,8 +156,25 @@ type SessionView struct {
 	BottomOpen         bool     `json:"bottomOpen"`
 	TerminalPanelOpen  bool     `json:"terminalPanelOpen"`
 	ShowIgnoredEntries bool     `json:"showIgnoredEntries"`
+	// Bookmarks e Navigation sono gestiti dal frontend e salvati insieme al layout.
+	Bookmarks       []Bookmark        `json:"bookmarks,omitempty"`
+	Navigation      []NavigationEntry `json:"navigation,omitempty"`
+	NavigationIndex int               `json:"navigationIndex,omitempty"`
 	// Breakpoints è gestito solo dal backend (SetBreakpoints): SaveSessionView lo conserva.
 	Breakpoints map[string][]int `json:"breakpoints,omitempty"`
+}
+
+// Bookmark è un segnalibro di riga del progetto.
+type Bookmark struct {
+	RelativePath string `json:"relativePath"`
+	Line         int    `json:"line"`
+}
+
+// NavigationEntry è una posizione della cronologia di navigazione (Back/Forward).
+type NavigationEntry struct {
+	RelativePath string `json:"relativePath"`
+	Line         int    `json:"line"`
+	Column       int    `json:"column"`
 }
 
 // RecoveredBuffer è un buffer non salvato ritrovato dopo un riavvio: viene

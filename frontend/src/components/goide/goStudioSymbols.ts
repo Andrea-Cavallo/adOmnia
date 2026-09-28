@@ -53,3 +53,13 @@ export function symbolPathAt(symbols: GoIDESymbolNode[], line: number, column: n
     level = match.children ?? []
   }
 }
+
+/** Chiave stabile di un simbolo: nome e riga di inizio bastano a distinguerlo nel file. */
+export function symbolKey(node: GoIDESymbolNode): string {
+  return `${node.name}:${node.range.startLine}`
+}
+
+/** Fratelli del simbolo nel file (stesso livello), per saltare da un metodo all'altro dal breadcrumb. */
+export function symbolSiblings(symbols: GoIDESymbolNode[], chain: GoIDESymbolNode[], index: number): GoIDESymbolNode[] {
+  return index === 0 ? symbols : chain[index - 1]?.children ?? []
+}

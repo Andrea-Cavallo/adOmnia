@@ -3,6 +3,7 @@
 
 export {
     AuthorizationState,
+    Bookmark,
     BreakpointState,
     Capabilities,
     CodeActionEntry,
@@ -45,6 +46,7 @@ export {
     HighlightEntry,
     HighlightsResult,
     HoverResult,
+    ImplementationMarker,
     InlayHintEntry,
     InlayHintsResult,
     InstallToolchainRequest,
@@ -55,6 +57,7 @@ export {
     LanguageServerStatus,
     LintResult,
     LinterInfo,
+    NavigationEntry,
     NewFile,
     OpenDocument,
     Project,

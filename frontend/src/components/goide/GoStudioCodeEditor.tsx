@@ -14,6 +14,8 @@ import { useGoIDETestsStore, visibleCoverage } from '@/stores/goideTests'
 import { coverageForDocument, coverageLineStates } from './goStudioCoverage'
 import { startGoStudioLspSync } from './goStudioLspSync'
 import { findRunTargets, runCommandFor, type GoStudioRunTarget, type GoStudioRunTargetHandler } from './goStudioRunTargets'
+import { recordCaretPosition, useGoStudioBookmarks } from './goStudioNavigationEditor'
+import { openImplementationMarker, useGoStudioImplementationMarkers } from './goStudioImplementationMarkers'
 import { installBreakpointGutter, registerGoStudioDebugHover, useGoStudioDebugDecorations } from './goStudioDebugEditor'
 import './goStudioEditor.css'
 
@@ -76,11 +78,20 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
     setMountCount((value) => value + 1)
     editor.onMouseDown((event) => {
       if (event.target.type !== monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN) return
-      const target = runTargetsRef.current.find((item) => item.line === event.target.position?.lineNumber)
-      if (target) callbacks.current.onRunTarget(target, { x: event.event.browserEvent.clientX, y: event.event.browserEvent.clientY })
+      const line = event.target.position?.lineNumber
+      const anchor = { x: event.event.browserEvent.clientX, y: event.event.browserEvent.clientY }
+      const model = editor.getModel()
+      const sessionId = model ? documentForModel(model)?.document.sessionId : undefined
+      if (line && sessionId && openImplementationMarker(editor, line, anchor, sessionId)) return
+      const target = runTargetsRef.current.find((item) => item.line === line)
+      if (target) callbacks.current.onRunTarget(target, anchor)
     })
     installBreakpointGutter(editor)
-    editor.onDidChangeCursorPosition((event) => callbacks.current.onCursor(event.position.lineNumber, event.position.column))
+    editor.onDidChangeCursorPosition((event) => {
+      callbacks.current.onCursor(event.position.lineNumber, event.position.column)
+      // Anche i salti programmatici (Go to Declaration, cambio tab) entrano in cronologia: Back li ripercorre.
+      recordCaretPosition(editor.getModel(), event.position)
+    })
     editor.onDidFocusEditorText(() => void checkActiveDocument())
     // Il documento si ricava dal modello che è cambiato, mai dal componente: durante il cambio file
     // @monaco-editor/react può notificare con la closure del file precedente e sporcarne il buffer.
@@ -103,6 +114,8 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
   }, [clearRevealLocation, document.document.id, handlesReveal, revealLocation])
 
   useGoStudioDebugDecorations(editorRef, document, mountCount)
+  useGoStudioBookmarks(editorRef, document, mountCount)
+  useGoStudioImplementationMarkers(editorRef, document, mountCount)
 
   // Overlay di coverage: solo se il file è identico a quello misurato, altrimenti sparisce (e l'editor avvisa).
   const coverage = useGoIDETestsStore((state) => visibleCoverage(state, document.document.sessionId))
@@ -154,6 +167,7 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
         renderLineHighlight: 'line',
         readOnly: !!document.document.readOnly,
         glyphMargin: true,
+        lineDecorationsWidth: 16,
         codeLens: !document.document.readOnly,
         'semanticHighlighting.enabled': semanticHighlighting,
         inlayHints: { enabled: inlayHints ? 'on' : 'off', fontSize: 10, padding: true },

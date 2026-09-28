@@ -52,7 +52,7 @@ describe('Go Studio command availability', () => {
     lspState: 'ready', goplsAvailable: true, formatOnSave: true, importsOnSave: false, gofumpt: false, staticcheck: false,
     lintOnSave: false, linterAvailable: true, linting: false,
     semanticHighlighting: true, inlayHints: false, semanticTokensSupported: true, inlayHintsSupported: false,
-    debugState: 'none',
+    debugState: 'none', canGoBack: false, canGoForward: false, bookmarkCount: 0,
   }
 
   it('disables editor features the running gopls does not provide', () => {

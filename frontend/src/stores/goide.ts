@@ -43,6 +43,7 @@ import {
   type GoIDEFileEntry,
   type GoIDEOpenDocument,
   type GoIDEQuickOpenResult,
+  type GoIDESessionView,
   type GoIDERecentProject,
   type GoIDERunRequest,
   type GoIDESession,
@@ -256,6 +257,21 @@ function isExecution(value: unknown): value is GoIDEExecution {
 
 let eventUnsubscribe: (() => void) | null = null
 
+/**
+ * Estensioni della vista salvata: altri store (es. navigazione e bookmark) aggiungono i propri campi
+ * senza che questo store li importi, così non nascono dipendenze circolari.
+ */
+export interface GoIDESessionViewExtension {
+  save: (sessionId: string) => Partial<GoIDESessionView>
+  restore: (sessionId: string, view: GoIDESessionView) => void
+}
+
+const sessionViewExtensions: GoIDESessionViewExtension[] = []
+
+export function registerSessionViewExtension(extension: GoIDESessionViewExtension): void {
+  sessionViewExtensions.push(extension)
+}
+
 export const useGoIDEStore = create<GoIDEState>((set, get) => ({
   sessions: [],
   recentProjects: [],
@@ -383,6 +399,7 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
         )
         if (restored) get().selectDocument(restored.document.id)
       }
+      for (const extension of sessionViewExtensions) extension.restore(sessionId, view)
       if (view.showIgnoredEntries) {
         set((state) => ({ showIgnoredBySession: { ...state.showIgnoredBySession, [sessionId]: true } }))
       }
@@ -520,6 +537,7 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
         bottomOpen: state.layout.bottomOpen,
         terminalPanelOpen: false,
         showIgnoredEntries: !!state.showIgnoredBySession[sessionId],
+        ...Object.assign({}, ...sessionViewExtensions.map((extension) => extension.save(sessionId))),
       })
     } catch {
       // Il layout è una comodità: non deve mai far fallire un'azione dell'utente.

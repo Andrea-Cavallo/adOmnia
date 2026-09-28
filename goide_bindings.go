@@ -314,6 +314,12 @@ func (g *GoIDE) CreateFiles(sessionID string, files []goide.NewFile) error {
 	return g.service.CreateFiles(sessionID, files)
 }
 
+// ImplementationMarkers restituisce i marcatori del gutter per implementazioni e interfacce implementate.
+func (g *GoIDE) ImplementationMarkers(ctx context.Context, sessionID, documentID string) ([]goide.ImplementationMarker, error) {
+	markers, err := g.service.ImplementationMarkers(ctx, sessionID, documentID)
+	return settleCancelled(ctx, markers, err)
+}
+
 // StartRun avvia una build, run o tidy con argomenti strutturati.
 func (g *GoIDE) StartRun(request goide.RunRequest) (goide.Execution, error) {
 	return g.service.StartRun(request)

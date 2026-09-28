@@ -5,6 +5,7 @@ export type GoStudioCommandId =
   | 'view.splitRight' | 'view.splitDown' | 'view.unsplit' | 'view.terminal'
   | 'view.quickOpen' | 'view.toggleStructure' | 'view.toggleBottom' | 'view.toggleIgnored' | 'view.problems'
   | 'nav.declaration' | 'nav.typeDeclaration' | 'nav.implementation' | 'nav.usages' | 'nav.fileStructure' | 'nav.symbol' | 'nav.findInFiles'
+  | 'nav.superMethod' | 'nav.back' | 'nav.forward' | 'nav.toggleBookmark' | 'nav.bookmarks'
   | 'nav.quickDefinition' | 'nav.showUsages' | 'nav.searchEverywhere' | 'code.quickDocumentation' | 'code.typeInfo' | 'code.semanticHighlighting' | 'code.inlayHints' | 'code.implementInterface'
   | 'code.refactorThis' | 'code.extractVariable' | 'code.extractConstant' | 'code.extractFunction' | 'code.inline' | 'code.moveToNewFile'
   | 'code.completion' | 'code.parameterInfo' | 'code.quickFix' | 'code.rename' | 'code.reformat' | 'code.organizeImports'
@@ -84,10 +85,15 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'nav.declaration', menu: 'navigate', label: 'Declaration', binding: { key: 'b', mod: true }, editorOwned: true },
   { id: 'nav.typeDeclaration', menu: 'navigate', label: 'Type Declaration' },
   { id: 'nav.implementation', menu: 'navigate', label: 'Implementation(s)', binding: { key: 'b', mod: true, alt: true }, editorOwned: true },
+  { id: 'nav.superMethod', menu: 'navigate', label: 'Super Method', binding: { key: 'u', mod: true }, editorOwned: true },
   { id: 'nav.usages', menu: 'navigate', label: 'Find Usages', binding: { key: 'F7', alt: true }, editorOwned: true },
   { id: 'nav.showUsages', menu: 'navigate', label: 'Show Usages', binding: { key: 'F7', mod: true, alt: true }, editorOwned: true },
   { id: 'nav.quickDefinition', menu: 'navigate', label: 'Quick Definition', binding: { key: 'i', mod: true, shift: true }, editorOwned: true },
   { id: 'nav.fileStructure', menu: 'navigate', label: 'File Structure', binding: { key: 'F12', mod: true }, editorOwned: true, separatorBefore: true },
+  { id: 'nav.back', menu: 'navigate', label: 'Back', binding: { key: 'ArrowLeft', mod: true, alt: true }, separatorBefore: true },
+  { id: 'nav.forward', menu: 'navigate', label: 'Forward', binding: { key: 'ArrowRight', mod: true, alt: true } },
+  { id: 'nav.toggleBookmark', menu: 'navigate', label: 'Toggle Bookmark', binding: { key: 'F11' } },
+  { id: 'nav.bookmarks', menu: 'navigate', label: 'Bookmarks…', binding: { key: 'F11', shift: true } },
   { id: 'nav.symbol', menu: 'navigate', label: 'Symbol in Workspace…', binding: { key: 't', mod: true } },
   { id: 'nav.findInFiles', menu: 'navigate', label: 'Find in Files…', binding: { key: 'f', mod: true, shift: true }, separatorBefore: true },
   { id: 'code.completion', menu: 'code', label: 'Code Completion', binding: { key: 'Space', mod: true }, editorOwned: true },
@@ -222,6 +228,9 @@ export interface GoStudioCommandContext {
   inlayHintsSupported: boolean
   /** Stato del debug attivo della sessione: 'none' se non c'è un debugger vivo. */
   debugState: 'none' | 'starting' | 'running' | 'stopped'
+  canGoBack: boolean
+  canGoForward: boolean
+  bookmarkCount: number
 }
 
 const NO_PROJECT = 'Open a Go project first'
@@ -244,6 +253,12 @@ export function commandAvailability(id: GoStudioCommandId, context: GoStudioComm
   if (id === 'file.openProject' || id === 'file.newProject' || id === 'help.shortcuts') return true
   if (!context.hasSession) return NO_PROJECT
   if (id.startsWith('edit.')) return context.hasEditor ? true : 'Open a file first'
+  switch (id) {
+    case 'nav.back': return context.canGoBack ? true : 'No earlier location'
+    case 'nav.forward': return context.canGoForward ? true : 'No later location'
+    case 'nav.toggleBookmark': return context.hasEditor ? true : 'Open a file first'
+    case 'nav.bookmarks': return context.bookmarkCount > 0 ? true : 'No bookmarks yet (F11 adds one)'
+  }
   if (id.startsWith('nav.') && id !== 'nav.symbol' && id !== 'nav.findInFiles') return semanticAvailability(context)
   if (id === 'code.lint') {
     if (!context.authorized) return NOT_TRUSTED

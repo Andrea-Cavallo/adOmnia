@@ -113,3 +113,30 @@
   border-left: 10px solid var(--color-warning, #f59e0b);
   z-index: 1;
 }
+
+/* Segnalibro (F11): nastrino viola accanto ai numeri di riga, convive con la barra di coverage. */
+.monaco-editor .go-studio-bookmark::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 4px;
+  width: 7px;
+  height: 12px;
+  background: var(--color-accent, #8b5cf6);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%);
+}
+
+/* Implementazioni (I↓) e interfacce implementate (I↑), come in GoLand: cliccabili per navigare. */
+.go-studio-impl-glyph {
+  cursor: pointer;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+.go-studio-impl-down::before { content: 'I↓'; color: var(--color-success, #22c55e); }
+.go-studio-impl-up::before { content: 'I↑'; color: var(--color-accent, #8b5cf6); }
+.go-studio-impl-glyph:hover::before { filter: brightness(1.3); }

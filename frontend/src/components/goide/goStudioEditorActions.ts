@@ -6,6 +6,7 @@ import { applyGoStudioWorkspaceChange } from './goStudioWorkspaceEdits'
 import { showQuickDefinition, showTypeInfo, showUsagesPopup } from './goStudioSemanticFeatures'
 import { requestImplementInterface } from './goStudioImplementInterface'
 import { runGoStudioRefactoring, type GoStudioRefactoring } from './goStudioRefactorings'
+import { goToSuperMethod } from './goStudioImplementationMarkers'
 
 export const GO_STUDIO_ACTIONS = {
   findUsages: 'goStudio.findUsages',
@@ -21,6 +22,7 @@ export const GO_STUDIO_ACTIONS = {
   showUsages: 'goStudio.showUsages',
   typeInfo: 'goStudio.typeInfo',
   implementInterface: 'goStudio.implementInterface',
+  superMethod: 'goStudio.superMethod',
   refactorThis: 'goStudio.refactorThis',
   extractVariable: 'goStudio.extractVariable',
   extractConstant: 'goStudio.extractConstant',
@@ -97,6 +99,7 @@ export function installGoStudioEditorActions(editor: monaco.editor.IStandaloneCo
   semantic(GO_STUDIO_ACTIONS.showUsages, 'Show Usages', [KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.F7], showUsagesPopup)
   editor.addAction({ id: GO_STUDIO_ACTIONS.typeInfo, label: 'Type Info', keybindings: [KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyP], run: (target) => { void showTypeInfo(target) } })
   editor.addAction({ id: GO_STUDIO_ACTIONS.implementInterface, label: 'Implement Interface…', keybindings: [KeyMod.CtrlCmd | KeyCode.KeyI], contextMenuGroupId: '1_modification', run: (target) => { void requestImplementInterface(target) } })
+  semantic(GO_STUDIO_ACTIONS.superMethod, 'Go to Super Method', [KeyMod.CtrlCmd | KeyCode.KeyU], goToSuperMethod)
   // Refactoring: solo ciò che gopls offre per la selezione; le scorciatoie sono quelle di GoLand.
   editor.addAction({ id: GO_STUDIO_ACTIONS.refactorThis, label: 'Refactor This…', keybindings: [KeyMod.CtrlCmd | KeyMod.Alt | KeyMod.Shift | KeyCode.KeyT], contextMenuGroupId: '1_modification', run: (target) => { target.trigger('go-studio', 'editor.action.refactor', null) } })
   const refactoring = (id: string, label: string, keybinding: number, kind: GoStudioRefactoring) => {

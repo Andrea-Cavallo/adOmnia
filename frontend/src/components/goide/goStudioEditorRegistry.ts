@@ -10,6 +10,7 @@ const MONACO_ACTIONS = {
   'nav.declaration': 'editor.action.revealDefinition',
   'nav.typeDeclaration': 'editor.action.goToTypeDefinition',
   'nav.implementation': 'goStudio.gotoImplementation',
+  'nav.superMethod': 'goStudio.superMethod',
   'nav.usages': 'goStudio.findUsages',
   'nav.fileStructure': 'goStudio.fileStructure',
   'nav.quickDefinition': 'goStudio.quickDefinition',

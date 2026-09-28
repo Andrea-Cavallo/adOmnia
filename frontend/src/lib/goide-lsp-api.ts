@@ -2,6 +2,7 @@ import * as GoIDEBindings from '../../bindings/adomnia/goide'
 import type { CancellablePromise } from '@wailsio/runtime'
 import type {
   CodeActionEntry,
+  ImplementationMarker,
   CompletionResult,
   DocumentSymbolsResult,
   EditorLocation,
@@ -178,6 +179,12 @@ export function requestRename(sessionId: string, documentId: string, line: numbe
 
 export function requestFormatting(sessionId: string, documentId: string): CancellablePromise<FormatResult> {
   return GoIDEBindings.FormatDocument(sessionId, documentId)
+}
+
+export type GoIDEImplementationMarker = ImplementationMarker
+
+export function requestImplementationMarkers(sessionId: string, documentId: string): CancellablePromise<ImplementationMarker[]> {
+  return GoIDEBindings.ImplementationMarkers(sessionId, documentId)
 }
 
 export function requestCodeActions(sessionId: string, documentId: string, selection: EditorRange, only: string[] = []): CancellablePromise<CodeActionEntry[]> {

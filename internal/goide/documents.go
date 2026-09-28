@@ -231,6 +231,17 @@ func withinAnyRoot(path string, roots []string) bool {
 }
 
 // CloseDocument rilascia il documento indicato senza toccare il file su disco.
+// Get restituisce un documento aperto della sessione.
+func (m *DocumentManager) Get(sessionID SessionID, documentID DocumentID) (Document, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	record, ok := m.documents[documentID]
+	if !ok || record.document.SessionID != sessionID {
+		return Document{}, false
+	}
+	return record.document, true
+}
+
 func (m *DocumentManager) CloseDocument(sessionID SessionID, documentID DocumentID) {
 	m.mu.Lock()
 	if record, ok := m.documents[documentID]; ok && record.document.SessionID == sessionID {

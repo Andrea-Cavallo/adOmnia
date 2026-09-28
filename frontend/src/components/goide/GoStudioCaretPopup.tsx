@@ -44,7 +44,7 @@ function DefinitionBody({ result }: { result: GoIDEQuickDefinition }) {
   )
 }
 
-function UsagesBody({ locations, onPick }: { locations: GoIDEEditorLocation[]; onPick: (location: GoIDEEditorLocation) => void }) {
+function UsagesBody({ locations, onPick, groupLabel }: { locations: GoIDEEditorLocation[]; onPick: (location: GoIDEEditorLocation) => void; groupLabel?: string }) {
   const groups = useMemo(() => groupUsagesByKind(locations), [locations])
   const ordered = useMemo(() => groups.flatMap((group) => group.files.flatMap(([, items]) => items)), [groups])
   const [selected, setSelected] = useState(0)
@@ -60,7 +60,7 @@ function UsagesBody({ locations, onPick }: { locations: GoIDEEditorLocation[]; o
     <div ref={listRef} role="listbox" tabIndex={0} aria-label="Usages" onKeyDown={onKeyDown} className="min-h-0 overflow-auto py-1 text-[11px] outline-none">
       {groups.map((group) => (
         <div key={group.kind}>
-          <div className="px-3 pb-0.5 pt-1.5 text-[9px] font-semibold uppercase tracking-wide text-text-4">{group.label} · {group.count}</div>
+          <div className="px-3 pb-0.5 pt-1.5 text-[9px] font-semibold uppercase tracking-wide text-text-4">{group.kind === 'other' && groupLabel ? groupLabel : group.label} · {group.count}</div>
           {group.files.flatMap(([file, items]) => items.map((location) => {
             index += 1
             const position = index
@@ -113,7 +113,7 @@ export function GoStudioCaretPopup() {
         <button type="button" title={popup.kind === 'definition' ? 'Jump to source' : 'Open in Usages tool window'} onClick={() => openFull(popup)} className="grid h-5 w-5 place-items-center rounded text-text-3 hover:bg-surface-3 hover:text-text-1"><ExternalLink size={11} aria-hidden="true" /></button>
         <button type="button" title="Close · Esc" onClick={closePopup} className="grid h-5 w-5 place-items-center rounded text-text-3 hover:bg-surface-3 hover:text-text-1"><X size={11} aria-hidden="true" /></button>
       </div>
-      {popup.kind === 'definition' ? <DefinitionBody result={popup.result} /> : <UsagesBody locations={popup.locations} onPick={pick} />}
+      {popup.kind === 'definition' ? <DefinitionBody result={popup.result} /> : <UsagesBody locations={popup.locations} onPick={pick} groupLabel={popup.groupLabel} />}
       {popup.kind === 'definition' && popup.result.truncated && <div className="border-t border-border-1 px-3 py-1 text-[9px] text-text-4">Declaration truncated · jump to source for the full text</div>}
     </div>
   )

@@ -647,12 +647,12 @@ Prerequisito: gopls è realmente operativo (Fase 2) e il terminale è reale (Fas
 
 ## 5.2 Navigazione completa
 
-- [ ] Go to super method e go to implementation dai gutter marker, non solo da menu.
-- [ ] Marcatori nel gutter per implementazioni, override e interfacce implementate.
-- [ ] Cronologia di navigazione avanti/indietro con scorciatoie e persistenza per sessione.
-- [ ] Bookmark di riga per sessione, persistenti e navigabili da elenco.
-- [ ] Vista struttura del file sincronizzata con il caret (l'elemento corrente resta evidenziato durante lo scroll).
-- [ ] Breadcrumb simbolico cliccabile che permette di saltare agli elementi fratelli.
+- [x] Go to super method e go to implementation dai gutter marker, non solo da menu. *(clic su I↓/I↑: una destinazione si apre subito, più destinazioni aprono il popup; Navigate → Super Method Ctrl+U)*
+- [x] Marcatori nel gutter per implementazioni, override e interfacce implementate. *(I↓ su interfacce e loro metodi con le implementazioni; I↑ su tipi e metodi concreti con le interfacce implementate, anche dell'SDK come `fmt.Stringer`; calcolati da gopls in un solo passaggio per file)*
+- [x] Cronologia di navigazione avanti/indietro con scorciatoie e persistenza per sessione. *(Ctrl+Alt+← / Ctrl+Alt+→; gli spostamenti vicini nello stesso file si fondono; salvata con la vista della sessione)*
+- [x] Bookmark di riga per sessione, persistenti e navigabili da elenco. *(F11 aggiunge o toglie, Shift+F11 apre l'elenco con anteprima della riga; seguono il testo mentre si scrive)*
+- [x] Vista struttura del file sincronizzata con il caret (l'elemento corrente resta evidenziato durante lo scroll).
+- [x] Breadcrumb simbolico cliccabile che permette di saltare agli elementi fratelli.
 
 ## 5.3 Strumenti Go integrati
 

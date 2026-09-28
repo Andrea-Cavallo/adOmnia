@@ -27,6 +27,15 @@ func (s *Service) SaveSessionView(sessionID string, view SessionView) error {
 		return err
 	}
 	view.OpenPaths = limitPaths(view.OpenPaths, maxRestoredTabs)
+	if len(view.Bookmarks) > maxBookmarks {
+		view.Bookmarks = view.Bookmarks[:maxBookmarks]
+	}
+	if len(view.Navigation) > maxNavigationEntries {
+		view.Navigation = view.Navigation[len(view.Navigation)-maxNavigationEntries:]
+	}
+	if view.NavigationIndex < 0 || view.NavigationIndex >= len(view.Navigation) {
+		view.NavigationIndex = max(len(view.Navigation)-1, 0)
+	}
 	s.viewMu.Lock()
 	view.Breakpoints = s.views[session.ID].Breakpoints
 	s.views[session.ID] = view
@@ -34,7 +43,11 @@ func (s *Service) SaveSessionView(sessionID string, view SessionView) error {
 	return s.saveState()
 }
 
-const maxRestoredTabs = 50
+const (
+	maxRestoredTabs      = 50
+	maxBookmarks         = 200
+	maxNavigationEntries = 50
+)
 
 func limitPaths(paths []string, limit int) []string {
 	seen := make(map[string]struct{}, len(paths))

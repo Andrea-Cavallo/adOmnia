@@ -14,7 +14,7 @@ import { GoStudioWorkspace } from './GoStudioWorkspace'
 import { GoStudioMenuBar, type GoStudioCommandState } from './GoStudioMenuBar'
 import { GoStudioShortcutsDialog } from './GoStudioShortcutsDialog'
 import { commandAvailability, commandChecked, commandForKey, type GoStudioCommandContext, type GoStudioCommandId } from './goStudioCommands'
-import { hasGoStudioEditor, isGoStudioEditorCommand, runGoStudioEditorCommand } from './goStudioEditorRegistry'
+import { activeGoStudioEditor, hasGoStudioEditor, isGoStudioEditorCommand, runGoStudioEditorCommand } from './goStudioEditorRegistry'
 import { GoStudioStatusBar } from './GoStudioStatusBar'
 import { GoStudioSymbolSearch } from './GoStudioSymbolSearch'
 import { GoStudioChangePreviewDialog, GoStudioRenameDialog } from './GoStudioRefactorDialogs'
@@ -35,6 +35,9 @@ import { debugRequestForTarget, testRequestForTarget } from './goStudioQuickActi
 import { runDebugCommand, selectDebugState } from './goStudioDebugCommands'
 import { GoStudioRunTargetMenu, type GoStudioRunTargetAction } from './GoStudioRunTargetMenu'
 import { useGoIDEDebugStore } from '@/stores/goideDebug'
+import { bookmarksFor, historyFor, useGoIDENavigationStore } from '@/stores/goideNavigation'
+import { runNavigationCommand } from './goStudioNavigationEditor'
+import { GoStudioBookmarksDialog } from './GoStudioBookmarksDialog'
 import type { GoIDEDebugRequest } from '@/lib/goide-debug-api'
 import { confirm } from '@/lib/confirmDialog'
 import { useShallow } from 'zustand/react/shallow'
@@ -120,6 +123,11 @@ export function GoStudioPanel() {
   const [pendingSecrets, setPendingSecrets] = useState<string[] | null>(null)
   const [runTargetMenu, setRunTargetMenu] = useState<{ target: GoStudioRunTarget; x: number; y: number } | null>(null)
   const debugState = useGoIDEDebugStore(selectDebugState(store.activeSessionId))
+  const [bookmarksOpen, setBookmarksOpen] = useState(false)
+  const navigation = useGoIDENavigationStore(useShallow((state) => {
+    const history = historyFor(state, store.activeSessionId ?? '')
+    return { canGoBack: history.index > 0, canGoForward: history.index < history.entries.length - 1, bookmarkCount: bookmarksFor(state, store.activeSessionId ?? '').length }
+  }))
 
   useEffect(() => { void store.initialize() }, [store.initialize])
 
@@ -276,6 +284,7 @@ export function GoStudioPanel() {
     semanticTokensSupported: !!lspStatus?.features?.semanticTokens,
     inlayHintsSupported: !!lspStatus?.features?.inlayHints,
     debugState,
+    ...navigation,
   }
   const commandState: GoStudioCommandState = {
     availability: (id) => commandAvailability(id, commandContext),
@@ -326,6 +335,7 @@ export function GoStudioPanel() {
     if (isGoStudioEditorCommand(id)) { runGoStudioEditorCommand(id); return }
     if (runLanguageCommand(id, activeSession?.id ?? null)) return
     if (runDebugCommand(id, activeSession?.id ?? null, configuredDebugRequest)) return
+    if (runNavigationCommand(id, activeSession?.id ?? null, activeGoStudioEditor(), () => setBookmarksOpen(true))) return
     switch (id) {
       case 'file.openProject': return void store.openProject()
       case 'file.newProject': return setCreateOpen(true)
@@ -413,6 +423,7 @@ export function GoStudioPanel() {
       <ToolchainDialog open={toolchainOpen} onClose={() => setToolchainOpen(false)} />
       <GoStudioDependencies open={dependenciesOpen} session={activeSession} onClose={() => setDependenciesOpen(false)} />
       <GoStudioSearchEverywhere open={searchEverywhereOpen} sessionId={activeSession.id} availability={(id) => commandAvailability(id, commandContext)} onCommand={runCommand} onClose={() => setSearchEverywhereOpen(false)} />
+      <GoStudioBookmarksDialog open={bookmarksOpen} sessionId={activeSession.id} onClose={() => setBookmarksOpen(false)} />
       <GoStudioSymbolSearch open={symbolSearchOpen} sessionId={activeSession.id} onClose={() => setSymbolSearchOpen(false)} />
       <GoStudioRenameDialog />
       <GoStudioChangePreviewDialog />

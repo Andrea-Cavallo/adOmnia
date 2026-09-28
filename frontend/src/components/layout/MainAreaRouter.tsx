@@ -159,8 +159,11 @@ export function MainAreaRouter() {
   const quietWorkspaceShell = workspaceShellPhase === 'quiet'
 
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    const tag = (event.target as HTMLElement).tagName
+    const target = event.target as HTMLElement
+    const tag = target.tagName
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+    // Un pannello che ha già gestito il tasto (es. Back di Go Studio) o un editor di codice hanno la precedenza.
+    if (event.defaultPrevented || target.isContentEditable || target.closest?.('.monaco-editor')) return
     if (event.altKey && event.key === 'ArrowLeft') {
       event.preventDefault()
       goBack()

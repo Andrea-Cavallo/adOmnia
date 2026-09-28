@@ -1,12 +1,12 @@
-import { useEffect, useRef, type MutableRefObject } from 'react'
+import { useEffect, useMemo, useRef, type MutableRefObject } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { monaco } from '@/lib/monacoSetup'
 import { evaluateGoIDEDebug, type GoIDEBreakpointState } from '@/lib/goide-debug-api'
 import type { GoIDEEditorDocument } from '@/stores/goide'
 import { activeDebugView, executionPoint, hasLiveDebugger, useGoIDEDebugStore, type GoIDEExecutionPoint } from '@/stores/goideDebug'
 import { documentForModel } from './goStudioLanguageFeatures'
+import { useTrackedLineMarkers } from './goStudioLineMarkers'
 
-const BREAKPOINT_TRACK_DEBOUNCE_MS = 400
 const HOVER_VALUE_MAX_CHARS = 2000
 const EMPTY_BREAKPOINTS: GoIDEBreakpointState[] = []
 /** Identificatori e selettori Go (p.X.Y): quello che GoLand valuta al passaggio del mouse. */
@@ -115,41 +115,24 @@ export function useGoStudioDebugDecorations(editorRef: MutableRefObject<monaco.e
     return { pointLine: point?.relativePath === relativePath ? point.line : 0, pointTop: !!point?.top }
   }))
   const holdsBreakpoints = canHoldBreakpoints(document)
-  const breakpointsRef = useRef<monaco.editor.IEditorDecorationsCollection | null>(null)
   const executionRef = useRef<monaco.editor.IEditorDecorationsCollection | null>(null)
+  const decorations = useMemo(() => breakpointDecorations(breakpoints, debugging), [breakpoints, debugging])
+
+  useTrackedLineMarkers(editorRef, {
+    documentId: id, mountCount, decorations, tracked: holdsBreakpoints,
+    onMoved: (lines) => void useGoIDEDebugStore.getState().setBreakpointLines(sessionId, relativePath, lines),
+  })
 
   useEffect(() => {
     const editor = editorRef.current
-    if (!editor) return
-    breakpointsRef.current ??= editor.createDecorationsCollection()
-    executionRef.current ??= editor.createDecorationsCollection()
+    if (editor) executionRef.current ??= editor.createDecorationsCollection()
   }, [editorRef, mountCount])
 
   useEffect(() => { void useGoIDEDebugStore.getState().loadBreakpoints(sessionId) }, [sessionId])
 
   useEffect(() => {
-    breakpointsRef.current?.set(breakpointDecorations(breakpoints, debugging))
-  }, [breakpoints, debugging, id, mountCount])
-
-  useEffect(() => {
     executionRef.current?.set(executionDecorations(pointLine ? { relativePath, line: pointLine, top: pointTop } : null))
   }, [id, mountCount, pointLine, pointTop, relativePath])
-
-  useEffect(() => {
-    const editor = editorRef.current
-    if (!editor || !holdsBreakpoints) return
-    let timer = 0
-    const subscription = editor.onDidChangeModelContent(() => {
-      window.clearTimeout(timer)
-      timer = window.setTimeout(() => {
-        const collection = breakpointsRef.current
-        if (!collection) return
-        const lines = collection.getRanges().map((range) => range.startLineNumber)
-        void useGoIDEDebugStore.getState().setBreakpointLines(sessionId, relativePath, lines)
-      }, BREAKPOINT_TRACK_DEBOUNCE_MS)
-    })
-    return () => { window.clearTimeout(timer); subscription.dispose() }
-  }, [editorRef, holdsBreakpoints, id, mountCount, relativePath, sessionId])
 }
 
 let hoverRegistered = false

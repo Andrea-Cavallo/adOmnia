@@ -56,7 +56,7 @@ export interface GoIDEImplementRequest {
 /** Popup ancorato al cursore: Quick Definition e Show Usages non fanno lasciare il file corrente. */
 export type GoIDECaretPopup =
   | { kind: 'definition'; anchor: { x: number; y: number }; result: GoIDEQuickDefinition }
-  | { kind: 'usages'; anchor: { x: number; y: number }; sessionId: string; title: string; locations: GoIDEEditorLocation[] }
+  | { kind: 'usages'; anchor: { x: number; y: number }; sessionId: string; title: string; locations: GoIDEEditorLocation[]; groupLabel?: string }
 
 export interface GoIDELintState {
   running: boolean
