@@ -55,10 +55,45 @@ Una fase è completa soltanto quando:
 - [ ] Fase 4 — Test runner, debugger, coverage e finestre separate
 - [ ] Collaudo finale e documentazione di rilascio
 
-### Prossimo passo
+### Cosa resta da fare (aggiornato con la release v0.9.36)
 
-1. Collaudo manuale su Windows con `wails3 task dev` dei gate di Fase 1 e Fase 2 (i flussi sono già verificati end-to-end nel browser con il backend reale).
-2. Fase 3: sessioni multiple isolate, ripristino con recovery dei buffer dirty, configurazioni Run persistenti e terminale PTY reale (ConPTY su Windows).
+Stato in una riga: le Fasi 0, 1 e 2 sono implementate e verificate end-to-end con il backend reale; nessun gate è chiuso finché non passa il collaudo manuale nella finestra Wails su Windows. Fasi 3 e 4 non sono iniziate.
+
+**1. Collaudo manuale su Windows (sblocca i gate di Fase 1 e 2)**
+- [ ] `wails3 task dev` su un progetto Go reale (non una fixture): apri, autorizza, modifica, salva, Build, Run con stdin, Stop.
+- [ ] Eseguire `go test ./internal/goide -run TestWindowsStopTerminatesChildTree` su Windows: Stop deve chiudere anche il figlio di `go run`.
+- [ ] Controllare in Task Manager che dopo Stop, chiusura sessione e chiusura app non restino `go`, programma, `gopls` o linter.
+- [ ] Temi dark e light, finestra ridimensionata e piccola, stati loading/empty/error/running/stopped ben distinguibili.
+- [ ] Provare a video il signature help (parametri mentre si scrive una chiamata), l'unica funzione di Fase 2 non ancora osservata.
+- [ ] Toolchain assente: installazione Go dall'IDE; gopls e linter assenti: installazione dal menu Go.
+- [ ] Confronto con i due mock approvati e verifica della barra di qualità (fluido, veloce, moderno, stabile) su un progetto di dimensioni reali; registrare l'esito nelle Evidenze e spuntare i gate.
+
+**2. Residui piccoli già noti**
+- [ ] Split editor con un proprio gruppo di tab (oggi mostra un file alla volta scelto da un menu).
+- [ ] Morph `aO → gO` all'ingresso in Go Studio (400 ms, con `prefers-reduced-motion`), se lo si vuole adottare.
+- [ ] Toolbar: branch Git e selettore della configurazione Run/Debug come nel mock, solo quando saranno funzioni reali.
+
+**3. Fase 3: più progetti, ripristino e terminale** (non iniziata)
+- Già coperto in parte: sessioni multiple isolate lato backend (gopls, processi, diagnostica per sessione), progetti recenti, ripristino delle sessioni senza avviare codice non autorizzato.
+- [ ] Passare fra progetti senza perdere tab, dirty state, layout, console e diagnostica di ciascuno.
+- [ ] Stesso file aperto in due sessioni: rilevare e mostrare i conflitti, mai sovrascrivere in silenzio.
+- [ ] Recovery store locale dei buffer non salvati, con recupero esplicito dopo un crash o una chiusura forzata.
+- [ ] Persistenza versionata di tab, file attivo, layout e configurazioni, con migrazione dello schema.
+- [ ] Configurazioni Run persistenti e multiple (package, file, binario, test), con validazione, duplica/rinomina/ordina/elimina e segreti tramite vault.
+- [ ] Terminale PTY reale con xterm.js locale: ConPTY su Windows, adattatori Unix separati, più terminali per sessione, resize, limiti di scrollback, cleanup del process tree.
+- [ ] Watcher dei file con debounce, backpressure sugli eventi e misure su un progetto grande.
+
+**4. Fase 4: test runner, debugger, coverage, finestre** (non iniziata)
+- Già coperto in parte: ▶ nel gutter per eseguire un singolo `Test`/`Benchmark`/`Fuzz`/`Example` con output nella Run console.
+- [ ] Test runner strutturato da `go test -json`: albero package → test → sottotest, durata, failure cliccabili, rerun all/singolo/solo falliti.
+- [ ] Debugger Delve via DAP: pulsante Debug accanto al ▶ nel gutter, breakpoint, step, goroutine, stack, variabili, watch, evaluate, installazione esplicita di `dlv`.
+- [ ] Coverage su richiesta con percentuali e overlay in editor, invalidato quando il sorgente cambia.
+- [ ] Finestre separate: solo dopo prova reale su Windows, altrimenti restano disabilitate e documentate.
+
+**5. Collaudo finale e documentazione**
+- [ ] Flussi completi da installazione pulita, due progetti in parallelo, rete assente e moduli privati irraggiungibili senza blocchi della UI.
+- [ ] Navigazione completa da tastiera, contrasto, zoom, coesione con rail, command palette e Settings.
+- [ ] Aggiornare `README.md`, `docs/adomnia-feature-catalog.en.md`, `docs/ISSUES.md`, `docs/ARCHITECTURE.md` e `CLAUDE.md` con Go Studio reale, shortcut, sicurezza e dipendenze opzionali (Go, gopls, linter, Delve).
 
 ### Punto di ripresa (audit 2026-09-28)
 
@@ -402,7 +437,7 @@ Obiettivo: comprendere davvero il codice tramite gopls, includendo i buffer non 
 ### Evidenze della fase
 
 - Data: 2026-09-28
-- Commit: `f568303` (backend gopls), `63bbaea` (editor collegato a gopls), commit finale di chiusura Fase 2 (lint, editor avanzato) su `master`.
+- Commit: `f568303` (backend gopls), `63bbaea` (editor collegato a gopls), `6ff8099` (lint, editor avanzato); rilascio `v0.9.36`.
 - Eccezione di processo: la Fase 2 è iniziata prima del gate manuale della Fase 1 su richiesta esplicita dell'utente; entrambi i gate restano da collaudare su Windows.
 - Versioni: Go 1.24.7/1.26.5, gopls v0.23.0, golangci-lint v2.14.0, staticcheck 2026.2.1.
 - Progetto Go usato: fixture multi-package `internal/goide/testdata/multipkg` (interfaccia, struct, metodo, test) e `testdata/lintissues` con problemi noti.

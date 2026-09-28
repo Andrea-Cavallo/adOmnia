@@ -4,6 +4,15 @@ adOmnia releases are driven by Git tags and GitHub Actions.
 
 ## Unreleased
 
+## v0.9.36 release notes: Go Studio becomes a real Go IDE
+
+See [the full v0.9.36 notes](releases/v0.9.36.md): Go Studio now opens, edits,
+understands, lints, runs and tests real Go projects. It adds gopls completion,
+navigation, previewed rename and code actions; golangci-lint or staticcheck
+findings; gutter ▶ actions for `func main` and tests; split editor, pinned
+tabs and a symbolic breadcrumb; and a full GoLand-style menu bar. Debugger,
+terminal and test runner tree come in later phases.
+
 ## v0.9.35 release notes: Go Studio foundation
 
 See [the full v0.9.35 notes](releases/v0.9.35.md): adOmnia gains the

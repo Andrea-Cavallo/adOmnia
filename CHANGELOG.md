@@ -6,6 +6,27 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.9.36] - 2026-09-28
+
+### Added
+- **Go Studio editing:** real project tree, Monaco tabs with atomic saves, external-change handling, Quick Open, pinned tabs, reopen closed tab, split editor and a symbolic breadcrumb. `.go` files show a Go gopher icon.
+- **gopls intelligence:** per-project language server using the selected Go SDK, unsaved-buffer diagnostics, completion with auto-imports, hover, signature help, definition, implementation, usages, workspace symbols, previewed multi-file rename, code actions, reformat and optimize imports (also on save), a Structure pane and read-only navigation into Go SDK sources.
+- **Linting:** golangci-lint or staticcheck, respecting project configuration, with cancellable runs, optional lint on save and findings in Problems, the gutter and the status bar.
+- **Run and test:** Build/Run/Stop/Restart with stdin and clickable output, plus gutter ▶ actions for `func main` and individual tests and benchmarks. Tool windows for Run, Problems, Usages and Find in Files.
+- **Toolchain and tools:** official Go SDK install and per-project selection; confirmed installs for gopls, golangci-lint and staticcheck; custom tool paths; dependency management through previewed `go get` and `go mod tidy`.
+- **IDE menu bar:** File, Edit, View, Navigate, Code, Go, Run and Help with GoLand-style shortcuts and a Keyboard Shortcuts reference.
+
+### Fixed
+- A read-only SDK file could overwrite another file's unsaved buffer when switching tabs.
+- Process Stop no longer races with natural exit, and gopls reports its final state as soon as Stop returns.
+- Cancelled requests no longer produce unhandled promise rejections.
+- Ctrl/Cmd+W inside Go Studio no longer closes a hidden HTTP tab.
+
+### Verified
+- 595 frontend tests across 130 files, TypeScript and the production build pass. `go vet` and `go test -race ./internal/goide/...` pass against real gopls, golangci-lint and staticcheck, and the package cross-builds for Windows and macOS.
+
+Full release notes: [v0.9.36](docs/releases/v0.9.36.md).
+
 ## [0.9.35] - 2026-09-28
 
 ### Added

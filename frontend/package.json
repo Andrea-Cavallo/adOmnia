@@ -1,7 +1,7 @@
 {
   "name": "adomnia-frontend",
   "private": true,
-  "version": "0.9.35",
+  "version": "0.9.36",
   "type": "module",
   "engines": {
     "node": ">=22.13.0"
