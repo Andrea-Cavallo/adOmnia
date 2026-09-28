@@ -48,11 +48,31 @@ Una fase è completa soltanto quando:
 ## Stato generale
 
 - [x] Fase 0 — Analisi, decisioni architetturali e scheletro integrato
-- [ ] Fase 1 — Base funzionante end-to-end
+- [ ] Fase 1 — Base funzionante end-to-end *(in corso: implementazione quasi completa, gate da collaudare su Windows)*
 - [ ] Fase 2 — Intelligenza del codice con gopls/LSP
 - [ ] Fase 3 — Più progetti, ripristino e terminale integrato
 - [ ] Fase 4 — Test runner, debugger, coverage e finestre separate
 - [ ] Collaudo finale e documentazione di rilascio
+
+### Punto di ripresa (audit 2026-09-28)
+
+Audit del codice dopo il commit `9269990` (`feat(goide): expand Go Studio with editor, run panel, dependencies and toolchains`), che ha implementato gran parte della Fase 1 senza aggiornare questo documento. Le checkbox della Fase 1 ora riflettono il codice reale.
+
+Già presente e collegato end-to-end: apertura/creazione progetto, sessioni ripristinate, recenti, autorizzazione strumenti, albero lazy, editor Monaco a tab con salvataggio atomico, conflitti esterni (Reload/Keep/Compare), Quick Open, rilevamento e installazione toolchain Go ufficiale con checksum, più versioni per sessione, dipendenze `go.mod` con `go get` confermato, `go mod tidy` con anteprima, Build/Run/Stop/Restart, stdin, console ANSI limitata, Problems, prompt di chiusura app/sessione/tab.
+
+Difetti trovati e corretti nell'audit:
+
+- [x] `toolchain_install_test.go` non compilava (`NewService(nil)`): `go vet`/`go test` del pacchetto fallivano.
+- [x] Data race reale in `ProcessManager.Stop` (lettura di `ProcessState` concorrente a `Wait`): sostituita da un flag atomico `exited`; `go test -race` ora passa.
+
+Gap aperti della Fase 1 da chiudere prima del gate:
+
+- [ ] Mostrare nel prodotto module path, moduli annidati, `go.work` e cartelle senza modulo (oggi solo un contatore nel footer).
+- [ ] Rendere configurabile la visualizzazione delle directory ignorate (il backend lo supporta, la UI no).
+- [ ] Riaprire un progetto recente anche quando una sessione è già aperta (oggi solo dallo stato vuoto).
+- [ ] Run console: mostrare durata ed exit code; link `file:line` relativi (`./main.go:5`) risolti rispetto alla working directory dell'esecuzione, senza tab duplicate.
+- [ ] `Ctrl/Cmd+W` dentro Go Studio chiude una tab HTTP invisibile: deve chiudere il documento attivo; scorciatoie da documentare nel prodotto.
+- [ ] Verifiche manuali non eseguibili nel container Linux (GTK4/WebKitGTK assenti): `wails3 task dev` su Windows, test `process_tree_windows_test.go`, temi dark/light, barra di qualità su progetto reale.
 
 ---
 
@@ -114,7 +134,7 @@ L'architettura deve essere confermata nella Fase 0 e mantenere isolati sessioni,
 - [x] Creare uno store dedicato alle sessioni IDE, senza mescolare lo stato con tab HTTP o altre aree dell'app.
 - [x] Creare `frontend/src/lib/goide-api.ts` come wrapper tipizzato dei binding generati.
 - [x] Integrare il Go Studio nel rail/router, nella command palette e nell'i18n senza ridisegnare il menu principale.
-- [ ] Riutilizzare `monacoSetup.ts`, design token, icone e pattern di resize/tab esistenti.
+- [x] Riutilizzare `monacoSetup.ts`, design token, icone e pattern di resize/tab esistenti.
 - [x] Prevedere layout persistente: Project a sinistra, editor al centro, struttura richiudibile a destra, tool window in basso, toolbar e status bar.
 - [x] Mantenere UI densa, keyboard-first, dark-first e coerente con `docs/SOUL.md`; niente grandi card decorative o dashboard generiche.
 
@@ -122,7 +142,7 @@ L'architettura deve essere confermata nella Fase 0 e mantenere isolati sessioni,
 
 - [x] Distinguere lo stato **progetto aperto** dallo stato **progetto autorizzato a eseguire strumenti**.
 - [x] Aprire un progetto senza eseguire automaticamente codice, script, test, hook o comandi definiti dal repository.
-- [ ] Richiedere un gesto esplicito prima di build, run, test, debug, `go mod tidy`, download o installazioni.
+- [x] Richiedere un gesto esplicito prima di build, run, test, debug, `go mod tidy`, download o installazioni.
 - [x] Non registrare valori di variabili sensibili e non scrivere credenziali nel repository.
 - [x] Validare e confinare ogni percorso filesystem alla radice del progetto quando l'operazione lo richiede; gestire symlink e traversal consapevolmente.
 
@@ -187,80 +207,80 @@ Obiettivo: aprire un progetto Go reale, modificarlo, salvarlo, compilarlo, esegu
 
 ## 1.1 Progetti e workspace
 
-- [ ] Aprire una cartella locale tramite dialog nativo e registrarne il percorso senza copiarla o modificarla.
-- [ ] Validare esistenza, tipo e accessibilità della cartella con errori comprensibili.
+- [x] Aprire una cartella locale tramite dialog nativo e registrarne il percorso senza copiarla o modificarla.
+- [x] Validare esistenza, tipo e accessibilità della cartella con errori comprensibili.
 - [ ] Riconoscere `go.mod` e `go.work` alla radice del progetto e mostrarne il modulo dichiarato.
 - [ ] Riconoscere moduli annidati (oltre alla radice) e distinguere esplicitamente le cartelle Go senza modulo.
 - [ ] Mostrare chiaramente root del progetto, moduli trovati e workspace Go rilevato.
-- [ ] Creare un nuovo progetto scegliendo nome, cartella e module path; eseguire `go mod init` solo dopo conferma esplicita.
-- [ ] Ripristinare tra riavvii le sessioni aperte, rimuovendo automaticamente le cartelle non più disponibili senza perdere le altre sessioni.
+- [x] Creare un nuovo progetto scegliendo nome, cartella e module path; eseguire `go mod init` solo dopo conferma esplicita.
+- [x] Ripristinare tra riavvii le sessioni aperte, rimuovendo automaticamente le cartelle non più disponibili senza perdere le altre sessioni.
 - [ ] Aggiungere un elenco "Recent Projects" che sopravviva alla chiusura della sessione e permetta di riaprire un progetto già chiuso con un clic.
-- [ ] Introdurre lo stato di autorizzazione agli strumenti separato dall'apertura del progetto.
+- [x] Introdurre lo stato di autorizzazione agli strumenti separato dall'apertura del progetto.
 
 ## 1.2 Albero file e documenti
 
-- [ ] Caricare l'albero cartelle in modo progressivo/lazy invece di leggere ricorsivamente tutto all'apertura.
+- [x] Caricare l'albero cartelle in modo progressivo/lazy invece di leggere ricorsivamente tutto all'apertura.
 - [ ] Ignorare o ridurre in modo configurabile directory pesanti come `.git`, vendor e output di build.
-- [ ] Aprire file testuali in tab editor con URI stabile e associazione alla sessione.
-- [ ] Supportare almeno Go, JSON, YAML, Markdown, `.env`, `go.mod` e `go.work` con linguaggio Monaco appropriato.
-- [ ] Fornire syntax highlighting Go, numeri di riga, indentazione, bracket matching e folding.
-- [ ] Mostrare breadcrumb del percorso e indicatore di file modificato.
-- [ ] Implementare salvataggio esplicito con `Ctrl/Cmd+S`, scrittura atomica e gestione degli errori.
-- [ ] Non perdere il buffer se il salvataggio fallisce.
-- [ ] Chiedere conferma Save/Discard/Cancel alla chiusura di un tab, sessione o app con modifiche non salvate.
-- [ ] Rilevare modifiche esterne del file e offrire Reload/Keep/Compare senza sovrascrivere automaticamente il buffer.
-- [ ] Implementare ricerca/sostituzione nel file tramite Monaco.
-- [ ] Implementare Quick Open dei file del progetto con ricerca cancellabile e limite risultati.
-- [ ] Rinviare esplicitamente, senza controlli finti: split editor, simboli, ricerca progetto semantica e refactor.
+- [x] Aprire file testuali in tab editor con URI stabile e associazione alla sessione.
+- [x] Supportare almeno Go, JSON, YAML, Markdown, `.env`, `go.mod` e `go.work` con linguaggio Monaco appropriato.
+- [x] Fornire syntax highlighting Go, numeri di riga, indentazione, bracket matching e folding.
+- [x] Mostrare breadcrumb del percorso e indicatore di file modificato.
+- [x] Implementare salvataggio esplicito con `Ctrl/Cmd+S`, scrittura atomica e gestione degli errori.
+- [x] Non perdere il buffer se il salvataggio fallisce.
+- [x] Chiedere conferma Save/Discard/Cancel alla chiusura di un tab, sessione o app con modifiche non salvate.
+- [x] Rilevare modifiche esterne del file e offrire Reload/Keep/Compare senza sovrascrivere automaticamente il buffer.
+- [x] Implementare ricerca/sostituzione nel file tramite Monaco.
+- [x] Implementare Quick Open dei file del progetto con ricerca cancellabile e limite risultati.
+- [x] Rinviare esplicitamente, senza controlli finti: split editor, simboli, ricerca progetto semantica e refactor.
 
 ## 1.3 Toolchain Go
 
-- [ ] Rilevare il binario `go` senza bloccare l'interfaccia.
-- [ ] Mostrare percorso, `go version`, `GOROOT`, `GOPATH`, `GOPROXY` e `GOPRIVATE`, oscurando eventuali dati sensibili.
-- [ ] Permettere un percorso Go personalizzato e variabili per progetto/sessione con validazione.
-- [ ] Mostrare istruzioni operative se Go manca o la configurazione non è valida.
-- [ ] Non scaricare o installare toolchain automaticamente all'apertura o in background.
-- [ ] **Offrire un'installazione esplicita del compilatore/toolchain Go** (elenco versioni ufficiali da go.dev, download, verifica checksum, estrazione, avanzamento e log) attivata solo da un'azione utente diretta — stessa coerenza con cui 2.1 e 4.2 già prevedono l'installazione guidata di gopls e Delve. Senza questo passo l'IDE resta bloccato su "istruzioni operative" testuali mentre gopls/Delve avrebbero un installer reale: incoerenza da correggere prima della Fase 1.
-- [ ] Permettere di gestire più versioni Go installate in parallelo e selezionare quella attiva per progetto/sessione.
-- [ ] Gestire assenza rete, proxy/moduli privati e dipendenze mancanti come errori visibili e non bloccanti.
-- [ ] Esporre `go mod tidy` solo come azione esplicita con anteprima del comando e feedback completo.
-- [ ] **Gestione dipendenze in UI**: elencare i requirement di `go.mod`, aggiungere/rimuovere/aggiornare un pacchetto (`go get`) come azioni esplicite con anteprima del comando, e riflettere lo stato di `go.sum` senza modificarlo mai silenziosamente.
+- [x] Rilevare il binario `go` senza bloccare l'interfaccia.
+- [x] Mostrare percorso, `go version`, `GOROOT`, `GOPATH`, `GOPROXY` e `GOPRIVATE`, oscurando eventuali dati sensibili.
+- [x] Permettere un percorso Go personalizzato e variabili per progetto/sessione con validazione.
+- [x] Mostrare istruzioni operative se Go manca o la configurazione non è valida.
+- [x] Non scaricare o installare toolchain automaticamente all'apertura o in background.
+- [x] **Offrire un'installazione esplicita del compilatore/toolchain Go** (elenco versioni ufficiali da go.dev, download, verifica checksum, estrazione, avanzamento e log) attivata solo da un'azione utente diretta — stessa coerenza con cui 2.1 e 4.2 già prevedono l'installazione guidata di gopls e Delve. Senza questo passo l'IDE resta bloccato su "istruzioni operative" testuali mentre gopls/Delve avrebbero un installer reale: incoerenza da correggere prima della Fase 1.
+- [x] Permettere di gestire più versioni Go installate in parallelo e selezionare quella attiva per progetto/sessione.
+- [x] Gestire assenza rete, proxy/moduli privati e dipendenze mancanti come errori visibili e non bloccanti.
+- [x] Esporre `go mod tidy` solo come azione esplicita con anteprima del comando e feedback completo.
+- [x] **Gestione dipendenze in UI**: elencare i requirement di `go.mod`, aggiungere/rimuovere/aggiornare un pacchetto (`go get`) come azioni esplicite con anteprima del comando, e riflettere lo stato di `go.sum` senza modificarlo mai silenziosamente.
 
 ## 1.4 Build, Run, console e Stop
 
-- [ ] Definire una configurazione minima per package `main`: target, working directory, argomenti programma, flag Go, build tag e ambiente.
-- [ ] Separare visivamente e nel modello i flag della toolchain dagli argomenti del programma.
-- [ ] Eseguire `go build` e `go run` tramite argomenti strutturati, senza shell concatenata.
-- [ ] Associare ogni esecuzione a `sessionId` e `runId` univoci.
-- [ ] Trasmettere stdout/stderr incrementalmente, preservando l'ordine utile e senza congelare la UI.
+- [x] Definire una configurazione minima per package `main`: target, working directory, argomenti programma, flag Go, build tag e ambiente.
+- [x] Separare visivamente e nel modello i flag della toolchain dagli argomenti del programma.
+- [x] Eseguire `go build` e `go run` tramite argomenti strutturati, senza shell concatenata.
+- [x] Associare ogni esecuzione a `sessionId` e `runId` univoci.
+- [x] Trasmettere stdout/stderr incrementalmente, preservando l'ordine utile e senza congelare la UI.
 - [ ] Mostrare comando, working directory, stato, PID quando disponibile, durata ed exit code.
-- [ ] Renderizzare ANSI in modo sicuro e limitare il buffer della console.
+- [x] Renderizzare ANSI in modo sicuro e limitare il buffer della console.
 - [ ] Aggiungere ricerca, copia e link cliccabili `file:line` che aprono l'editor nel punto corretto.
-- [ ] Fornire stdin alla Run console per programmi interattivi.
-- [ ] Supportare più esecuzioni contemporanee con tab/identità chiaramente separate.
-- [ ] Implementare Stop idempotente e Restart.
+- [x] Fornire stdin alla Run console per programmi interattivi.
+- [x] Supportare più esecuzioni contemporanee con tab/identità chiaramente separate.
+- [x] Implementare Stop idempotente e Restart.
 - [ ] Terminare l'intero albero di processi, incluso il binario figlio avviato da `go run`, con adattatore Windows verificato.
-- [ ] Eseguire cleanup alla chiusura e chiedere conferma se una sessione ha processi attivi.
-- [ ] Registrare metadati diagnostici senza includere segreti o interi environment.
+- [x] Eseguire cleanup alla chiusura e chiedere conferma se una sessione ha processi attivi.
+- [x] Registrare metadati diagnostici senza includere segreti o interi environment.
 
 ## 1.5 Interfaccia minima professionale
 
-- [ ] Toolbar con progetto attivo, configurazione, Build, Run e Stop; Debug non presente finché non reale.
-- [ ] Project tree ridimensionabile a sinistra ed editor a tab al centro.
-- [ ] Tool window inferiore ridimensionabile con Run e Problems reali.
-- [ ] Status bar con toolchain, file, posizione cursore e stato di esecuzione.
+- [x] Toolbar con progetto attivo, configurazione, Build, Run e Stop; Debug non presente finché non reale.
+- [x] Project tree ridimensionabile a sinistra ed editor a tab al centro.
+- [x] Tool window inferiore ridimensionabile con Run e Problems reali.
+- [x] Status bar con toolchain, file, posizione cursore e stato di esecuzione.
 - [ ] Stati loading, empty, error, running e stopped immediatamente distinguibili.
 - [ ] Scorciatoie documentate e senza conflitti con quelle globali di adOmnia.
 - [ ] Layout corretto con temi dark/light, densità e ridimensionamento finestra.
 
 ## 1.6 Test mirati
 
-- [ ] Test backend per validazione/confino percorsi e lettura/scrittura atomica dei documenti.
-- [ ] Test backend per lifecycle Run: start, output, stdin, exit naturale, Stop ripetuto e cleanup.
+- [x] Test backend per validazione/confino percorsi e lettura/scrittura atomica dei documenti.
+- [x] Test backend per lifecycle Run: start, output, stdin, exit naturale, Stop ripetuto e cleanup.
 - [ ] Test Windows che verifica l'arresto dell'intero albero di processi.
-- [ ] Test di isolamento: output con `runId` errato non entra nella console di un'altra esecuzione.
-- [ ] Test frontend per dirty state, salvataggio fallito e routing degli eventi per sessione/run.
-- [ ] Progetto fixture minimo con input stdin, stdout, stderr e processo figlio per la verifica end-to-end.
+- [x] Test di isolamento: output con `runId` errato non entra nella console di un'altra esecuzione.
+- [x] Test frontend per dirty state, salvataggio fallito e routing degli eventi per sessione/run.
+- [x] Progetto fixture minimo con input stdin, stdout, stderr e processo figlio per la verifica end-to-end.
 
 ## Gate di uscita Fase 1
 

@@ -128,7 +128,7 @@ func TestInstalledToolchainsAreIsolatedAndRemovable(t *testing.T) {
 
 func TestSelectInstalledToolchainPinsItsOwnGOROOT(t *testing.T) {
 	root := t.TempDir()
-	service := NewService(nil)
+	service := NewService(&memoryStore{}, nil)
 	if err := service.ConfigureToolchainStorage(root); err != nil {
 		t.Fatal(err)
 	}

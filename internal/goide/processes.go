@@ -41,6 +41,7 @@ type managedProcess struct {
 	stdin     io.WriteCloser
 	execution Execution
 	stopping  atomic.Bool
+	exited    atomic.Bool
 	truncated atomic.Bool
 	done      chan struct{}
 }
@@ -150,10 +151,10 @@ func (m *ProcessManager) Stop(runID RunID) error {
 		return nil
 	}
 	_ = process.stdin.Close()
-	if process.command.ProcessState != nil && process.command.ProcessState.Exited() {
+	if process.exited.Load() {
 		return nil
 	}
-	if err := terminateProcessTree(process.command); err != nil && process.command.ProcessState == nil {
+	if err := terminateProcessTree(process.command); err != nil && !process.exited.Load() {
 		return err
 	}
 	return nil
@@ -237,6 +238,7 @@ func (m *ProcessManager) wait(process *managedProcess, stdout, stderr io.ReadClo
 	go func() { defer readers.Done(); m.readOutput(process, "stdout", stdout) }()
 	go func() { defer readers.Done(); m.readOutput(process, "stderr", stderr) }()
 	err := process.command.Wait()
+	process.exited.Store(true)
 	readers.Wait()
 	_ = process.stdin.Close()
 	finished := time.Now().UTC()
