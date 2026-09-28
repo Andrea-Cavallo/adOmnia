@@ -99,11 +99,12 @@ interface VariableRowProps {
   reference: number
   depth: number
   error?: boolean
+  muted?: boolean
   onRemove?: () => void
 }
 
 /** Riga dell'albero variabili: i figli si caricano da Delve solo alla prima espansione. */
-const VariableRow = memo(function VariableRow({ debugId, name, value, type, reference, depth, error, onRemove }: VariableRowProps) {
+const VariableRow = memo(function VariableRow({ debugId, name, value, type, reference, depth, error, muted, onRemove }: VariableRowProps) {
   const [expanded, setExpanded] = useState(false)
   const children = useGoIDEDebugStore((state) => (reference > 0 ? state.debuggers[debugId]?.children[reference] : undefined))
   const expandable = reference > 0
@@ -123,7 +124,7 @@ const VariableRow = memo(function VariableRow({ debugId, name, value, type, refe
         <span className="grid w-3 shrink-0 place-items-center text-text-4">{expandable ? (expanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />) : null}</span>
         <span className="shrink-0 text-accent">{name}</span>
         <span className="shrink-0 text-text-4">=</span>
-        <span className={`min-w-0 flex-1 truncate ${error ? 'text-danger' : 'text-text-1'}`}>{value}</span>
+        <span className={`min-w-0 flex-1 truncate ${muted ? 'italic text-text-4' : error ? 'text-danger' : 'text-text-1'}`}>{value}</span>
         {type && <span className="hidden shrink-0 text-text-4 sm:inline">{type}</span>}
         {onRemove && <button type="button" aria-label={`Remove watch ${name}`} title="Remove watch" onClick={(event) => { event.stopPropagation(); onRemove() }} className="grid h-4 w-4 shrink-0 place-items-center rounded text-text-4 opacity-0 hover:text-danger group-hover:opacity-100 focus:opacity-100"><X size={10} /></button>}
       </div>
@@ -152,7 +153,7 @@ function VariablesPane({ view, sessionId }: { view: GoIDEDebugView; sessionId: s
       <div role="tree" aria-label="Variables" className="min-h-0 flex-1 overflow-auto py-0.5">
         {watches.map((expression) => {
           const watch = view.watchValues[expression] ?? pending
-          return <VariableRow key={`watch-${expression}`} debugId={view.info.id} name={expression} value={watch.value} type={watch.type} reference={paused ? watch.reference : 0} depth={0} error={watch.error} onRemove={() => removeWatch(sessionId, expression)} />
+          return <VariableRow key={`watch-${expression}`} debugId={view.info.id} name={expression} value={watch.value} type={watch.type} reference={paused ? watch.reference : 0} depth={0} error={watch.error} muted={watch.outOfScope} onRemove={() => removeWatch(sessionId, expression)} />
         })}
         {!paused && watches.length === 0 && <p className="px-2 py-1 text-[10px] text-text-4">Variables appear when the program is paused.</p>}
         {paused && view.loading && view.scopes.length === 0 && <p className="px-2 py-1 text-[10px] text-text-4">Reading variables…</p>}
@@ -216,7 +217,7 @@ function ConsolePane({ view }: { view: GoIDEDebugView }) {
       <form onSubmit={(event) => { event.preventDefault(); submit() }} className="flex h-7 shrink-0 items-center border-t border-border-1 bg-surface-1 px-2">
         <span className="mr-1.5 font-mono text-[10px] text-accent">›</span>
         <input value={expression} onChange={(event) => setExpression(event.target.value)} onKeyDown={browseHistory} disabled={!paused}
-          placeholder={paused ? 'Evaluate expression in the selected frame' : 'Pause the program to evaluate'} aria-label="Evaluate expression"
+          placeholder={paused ? 'Evaluate in the selected frame, e.g. len(items) or f(x)' : 'Pause the program to evaluate'} aria-label="Evaluate expression"
           className="min-w-0 flex-1 bg-transparent font-mono text-[10px] text-text-1 outline-none disabled:opacity-50" />
       </form>
     </div>

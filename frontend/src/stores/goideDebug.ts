@@ -14,6 +14,8 @@ const MAX_CONSOLE_LINES = 2000
 const MAX_DEBUGGERS_PER_SESSION = 5
 /** Suggerimento del terminale di Delve: in un IDE non serve. */
 const DELVE_NOISE = /^Type 'dlv help' for list of commands\.?\s*$/
+/** Messaggio del backend per una variabile non visibile nel frame selezionato. */
+const OUT_OF_SCOPE = /is not visible in the selected frame$/
 const DELVE_MODULE = 'github.com/go-delve/delve/cmd/dlv@latest'
 
 export interface GoIDEDebugConsoleLine {
@@ -27,6 +29,8 @@ export interface GoIDEWatchValue {
   type?: string
   reference: number
   error?: boolean
+  /** La variabile esiste ma non nel frame selezionato: non è un errore, si mostra attenuata. */
+  outOfScope?: boolean
 }
 
 /** Stato di una sessione di debug: dati di pausa validi solo finché info.state è 'stopped'. */
@@ -173,7 +177,8 @@ export const useGoIDEDebugStore = create<GoIDEDebugState>((set, get) => {
         const result = await evaluateGoIDEDebug(debugId, expression, frameId, 'watch')
         values[expression] = { value: result.result, type: result.type, reference: result.variablesReference }
       } catch (error) {
-        values[expression] = { value: errorMessage(error), reference: 0, error: true }
+        const message = errorMessage(error)
+        values[expression] = { value: message, reference: 0, error: true, outOfScope: OUT_OF_SCOPE.test(message) }
       }
     }
     if (isCurrentPause(debugId, token)) updateView(debugId, () => ({ watchValues: values }))

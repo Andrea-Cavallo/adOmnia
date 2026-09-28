@@ -111,6 +111,16 @@ func TestDebuggerBreakpointStepVariablesAndEvaluate(t *testing.T) {
 	if _, err := ide.DebugEvaluate(string(started.ID), "missingName", frames[0].ID, "watch"); err == nil || !strings.Contains(err.Error(), "missingName") {
 		t.Fatalf("errore di evaluate non chiaro: %v", err)
 	}
+	if _, err := ide.DebugEvaluate(string(started.ID), "missingName", frames[0].ID, "watch"); err == nil || strings.Contains(err.Error(), "Unable to evaluate") {
+		t.Fatalf("il prefisso tecnico di Delve deve sparire: %v", err)
+	}
+	// In console le chiamate di funzione funzionano senza scrivere "call"; nelle watch no.
+	if called, err := ide.DebugEvaluate(string(started.ID), "sum(nil) + 1", frames[0].ID, "repl"); err != nil || called.Result != "1" {
+		t.Fatalf("chiamata di funzione in console non riuscita: %v %+v", err, called)
+	}
+	if _, err := ide.DebugEvaluate(string(started.ID), "sum(nil)", frames[0].ID, "watch"); err == nil || !strings.Contains(err.Error(), "Debug console") {
+		t.Fatalf("una watch non deve eseguire funzioni: %v", err)
+	}
 
 	mark := len(recorder.all())
 	if err := ide.DebugStep(string(started.ID), "next", stopped.ThreadID); err != nil {

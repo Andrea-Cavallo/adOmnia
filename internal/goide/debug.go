@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"sort"
 	"strings"
@@ -556,7 +557,7 @@ func debugBinaryName() string {
 // explainLaunchError rende azionabile l'errore più comune: Delve più recente dell'SDK Go del progetto.
 func explainLaunchError(err error) error {
 	if strings.Contains(err.Error(), "too old for this version of Delve") {
-		return fmt.Errorf("l'SDK Go del progetto è troppo vecchio per questo Delve: seleziona un SDK più recente (Go → Go SDKs & Toolchains…) oppure indica un dlv compatibile (Go → Tool Paths…). Dettaglio: %w", err)
+		return fmt.Errorf("the project Go SDK is older than this Delve supports: select a newer SDK (Go → Go SDKs & Toolchains…) or point to a compatible dlv (Go → Tool Paths…). Details: %w", err)
 	}
 	return fmt.Errorf("avvio del programma in debug fallito: %w", err)
 }
@@ -716,7 +717,8 @@ func (m *DebugManager) Variables(id DebugSessionID, reference int) ([]DebugVaria
 
 // Evaluate valuta un'espressione nel frame (watch o console); gli errori di Delve arrivano leggibili.
 func (m *DebugManager) Evaluate(id DebugSessionID, expression string, frameID int, context string) (EvaluateResult, error) {
-	if strings.TrimSpace(expression) == "" {
+	expression = strings.TrimSpace(expression)
+	if expression == "" {
 		return EvaluateResult{}, fmt.Errorf("espressione vuota")
 	}
 	if context != "watch" && context != "repl" && context != "hover" {
@@ -728,5 +730,34 @@ func (m *DebugManager) Evaluate(id DebugSessionID, expression string, frameID in
 	}
 	var response EvaluateResult
 	err := m.call(id, "evaluate", arguments, &response)
-	return response, err
+	// In console le chiamate di funzione funzionano come in GoLand: Delve vuole il prefisso "call".
+	// Watch e hover non le eseguono mai, perché eseguirebbero codice del programma di nascosto.
+	if err != nil && context == "repl" && strings.Contains(err.Error(), evaluateNeedsCall) {
+		arguments["expression"] = "call " + expression
+		response = EvaluateResult{}
+		err = m.call(id, "evaluate", arguments, &response)
+	}
+	if err != nil {
+		return EvaluateResult{}, explainEvaluateError(err, context)
+	}
+	return response, nil
+}
+
+const (
+	evaluateErrorPrefix = "Unable to evaluate expression: "
+	evaluateNeedsCall   = "function calls not allowed without using 'call'"
+)
+
+var missingSymbol = regexp.MustCompile(`could not find symbol (?:value for )?(\S+)`)
+
+// explainEvaluateError traduce gli errori di Delve in messaggi brevi e azionabili.
+func explainEvaluateError(err error, context string) error {
+	message := strings.TrimPrefix(err.Error(), evaluateErrorPrefix)
+	if match := missingSymbol.FindStringSubmatch(message); match != nil {
+		return fmt.Errorf("%s is not visible in the selected frame", match[1])
+	}
+	if strings.Contains(message, evaluateNeedsCall) && context != "repl" {
+		return fmt.Errorf("function calls run only from the Debug console")
+	}
+	return fmt.Errorf("%s", message)
 }
