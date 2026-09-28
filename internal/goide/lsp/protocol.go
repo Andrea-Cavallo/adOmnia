@@ -62,26 +62,40 @@ type WorkspaceEdit struct {
 	DocumentChanges []json.RawMessage     `json:"documentChanges,omitempty"`
 }
 
-// Normalize unisce `changes` e `documentChanges` in una mappa URI → edit; le operazioni su file (create/rename/delete) sono rifiutate.
-func (w WorkspaceEdit) Normalize() (map[string][]TextEdit, bool) {
+// Normalize unisce `changes` e `documentChanges` in una mappa URI → edit e restituisce i file da creare.
+// Sono accettate solo creazioni di file nuovi (es. "Extract declarations to new file"):
+// rename e delete di file sono rifiutati, come le creazioni che sovrascriverebbero.
+func (w WorkspaceEdit) Normalize() (map[string][]TextEdit, []string, bool) {
 	result := make(map[string][]TextEdit, len(w.Changes))
 	for uri, edits := range w.Changes {
 		result[uri] = append(result[uri], edits...)
 	}
+	var created []string
 	for _, raw := range w.DocumentChanges {
-		var probe struct {
-			Kind string `json:"kind"`
+		var operation struct {
+			Kind    string `json:"kind"`
+			URI     string `json:"uri"`
+			Options struct {
+				Overwrite bool `json:"overwrite"`
+			} `json:"options"`
 		}
-		if json.Unmarshal(raw, &probe) == nil && probe.Kind != "" {
-			return nil, false
+		if json.Unmarshal(raw, &operation) == nil && operation.Kind != "" {
+			if operation.Kind != "create" || operation.URI == "" || operation.Options.Overwrite {
+				return nil, nil, false
+			}
+			created = append(created, operation.URI)
+			if _, ok := result[operation.URI]; !ok {
+				result[operation.URI] = nil
+			}
+			continue
 		}
 		var edit TextDocumentEdit
 		if err := json.Unmarshal(raw, &edit); err != nil {
-			return nil, false
+			return nil, nil, false
 		}
 		result[edit.TextDocument.URI] = append(result[edit.TextDocument.URI], edit.Edits...)
 	}
-	return result, true
+	return result, created, true
 }
 
 type Diagnostic struct {

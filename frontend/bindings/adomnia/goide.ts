@@ -100,6 +100,13 @@ export function ConfirmAppClose(): $CancellablePromise<void> {
 }
 
 /**
+ * CreateFiles crea file nuovi nel progetto, tutti o nessuno.
+ */
+export function CreateFiles(sessionID: string, files: goide$0.NewFile[]): $CancellablePromise<void> {
+    return $Call.ByID(3570834985, sessionID, files);
+}
+
+/**
  * CreateProject crea un modulo Go soltanto dopo la conferma esplicita inclusa nella richiesta.
  */
 export function CreateProject(request: goide$0.CreateProjectRequest): $CancellablePromise<goide$0.Session> {

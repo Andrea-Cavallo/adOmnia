@@ -166,6 +166,10 @@ type FileChange struct {
 	DocumentID   DocumentID       `json:"documentId,omitempty"`
 	Edits        []EditorTextEdit `json:"edits"`
 	NewContent   string           `json:"newContent"`
+	// OriginalContent è il testo su cui gopls ha calcolato gli edit: serve all'anteprima per mostrare le righe rimosse.
+	OriginalContent string `json:"originalContent,omitempty"`
+	// Created indica un file nuovo: va creato su disco, non esiste un buffer da modificare.
+	Created bool `json:"created,omitempty"`
 }
 
 type WorkspaceChange struct {

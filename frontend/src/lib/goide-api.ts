@@ -117,6 +117,11 @@ export async function openGoIDEDocument(sessionId: string, relativePath: string)
   return GoIDEBindings.OpenDocument(sessionId, relativePath)
 }
 
+/** Crea file nuovi nel progetto, tutti o nessuno; un file esistente non viene mai sovrascritto. */
+export async function createGoIDEFiles(sessionId: string, files: Array<{ relativePath: string; content: string }>): Promise<void> {
+  await GoIDEBindings.CreateFiles(sessionId, files)
+}
+
 export async function saveGoIDEDocument(sessionId: string, documentId: string, content: string, diskToken: string, force = false): Promise<GoIDEOpenDocument> {
   return GoIDEBindings.SaveDocument(sessionId, documentId, content, diskToken, force)
 }

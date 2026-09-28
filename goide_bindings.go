@@ -309,6 +309,11 @@ func (g *GoIDE) ListBreakpoints(sessionID string) ([]goide.FileBreakpoints, erro
 	return g.service.ListBreakpoints(sessionID)
 }
 
+// CreateFiles crea file nuovi nel progetto, tutti o nessuno.
+func (g *GoIDE) CreateFiles(sessionID string, files []goide.NewFile) error {
+	return g.service.CreateFiles(sessionID, files)
+}
+
 // StartRun avvia una build, run o tidy con argomenti strutturati.
 func (g *GoIDE) StartRun(request goide.RunRequest) (goide.Execution, error) {
 	return g.service.StartRun(request)

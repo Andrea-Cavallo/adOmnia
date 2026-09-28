@@ -109,20 +109,21 @@ export function GoStudioChangePreviewDialog() {
           <div role="listbox" aria-label="Changed files" className="w-64 shrink-0 overflow-auto border-r border-border-1 py-1">
             {change.files.map((item, index) => (
               <button key={item.uri} type="button" role="option" aria-selected={index === selected} onClick={() => setSelected(index)} className={`flex h-7 w-full items-center gap-1.5 px-2 text-left text-[11px] ${index === selected ? 'bg-accent/15 text-text-1' : 'text-text-2 hover:bg-surface-3'}`}>
-                <FileCode2 size={11} className="shrink-0 text-accent" /><span className="min-w-0 flex-1 truncate">{item.relativePath}</span><span className="text-[9px] text-text-4">{item.edits.length}</span>
+                <FileCode2 size={11} className="shrink-0 text-accent" /><span className="min-w-0 flex-1 truncate">{item.relativePath}</span>{item.created && <span className="rounded bg-success/15 px-1 text-[9px] text-success">new</span>}<span className="text-[9px] text-text-4">{item.edits.length}</span>
               </button>
             ))}
           </div>
           <div className="min-w-0 flex-1 overflow-auto bg-surface-0 p-2 font-mono text-[10px] leading-5">
-            {file && changedLines(file).map(({ line, text, hunkStart }) => (
-              <div key={line} className={`flex gap-3 border-l-2 border-success/60 px-1 ${hunkStart ? 'mt-2' : ''}`}>
+            {file && changedLines(file).map(({ line, text, hunkStart, kind }, index) => (
+              <div key={`${kind}-${line}-${index}`} className={`flex gap-3 border-l-2 px-1 ${kind === 'removed' ? 'border-danger/60 bg-danger/5' : 'border-success/60 bg-success/5'} ${hunkStart ? 'mt-2' : ''}`}>
                 <span className="w-10 shrink-0 select-none text-right text-text-4">{line}</span>
-                <span className="min-w-0 flex-1 whitespace-pre-wrap break-all text-text-1">{text || ' '}</span>
+                <span className={`w-2 shrink-0 select-none ${kind === 'removed' ? 'text-danger' : 'text-success'}`}>{kind === 'removed' ? '−' : '+'}</span>
+                <span className={`min-w-0 flex-1 whitespace-pre-wrap break-all ${kind === 'removed' ? 'text-text-3 line-through decoration-danger/40' : 'text-text-1'}`}>{text || ' '}</span>
               </div>
             ))}
           </div>
         </div>
-        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border-1 bg-surface-0 px-4 py-3"><span className="mr-auto text-[10px] text-text-4">Files are updated in the editor as unsaved changes; review, then Save All.</span><button type="button" onClick={close} className="h-7 rounded px-3 text-xs text-text-3 hover:bg-surface-2">Cancel</button><button ref={applyRef} type="button" disabled={applying} onClick={() => void apply(change)} className="flex h-7 items-center gap-1.5 rounded bg-accent px-3 text-xs font-semibold text-white disabled:opacity-40">{applying && <Loader2 size={11} className="animate-spin" />} Apply changes</button></div>
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border-1 bg-surface-0 px-4 py-3"><span className="mr-auto text-[10px] text-text-4">{change.files.some((item) => item.created) ? 'New files are created on disk; the others are updated in the editor as unsaved changes.' : 'Files are updated in the editor as unsaved changes; review, then Save All.'}</span><button type="button" onClick={close} className="h-7 rounded px-3 text-xs text-text-3 hover:bg-surface-2">Cancel</button><button ref={applyRef} type="button" disabled={applying} onClick={() => void apply(change)} className="flex h-7 items-center gap-1.5 rounded bg-accent px-3 text-xs font-semibold text-white disabled:opacity-40">{applying && <Loader2 size={11} className="animate-spin" />} Apply changes</button></div>
       </div>
     </div>
   )

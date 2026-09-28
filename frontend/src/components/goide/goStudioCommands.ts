@@ -6,6 +6,7 @@ export type GoStudioCommandId =
   | 'view.quickOpen' | 'view.toggleStructure' | 'view.toggleBottom' | 'view.toggleIgnored' | 'view.problems'
   | 'nav.declaration' | 'nav.typeDeclaration' | 'nav.implementation' | 'nav.usages' | 'nav.fileStructure' | 'nav.symbol' | 'nav.findInFiles'
   | 'nav.quickDefinition' | 'nav.showUsages' | 'nav.searchEverywhere' | 'code.quickDocumentation' | 'code.typeInfo' | 'code.semanticHighlighting' | 'code.inlayHints' | 'code.implementInterface'
+  | 'code.refactorThis' | 'code.extractVariable' | 'code.extractConstant' | 'code.extractFunction' | 'code.inline' | 'code.moveToNewFile'
   | 'code.completion' | 'code.parameterInfo' | 'code.quickFix' | 'code.rename' | 'code.reformat' | 'code.organizeImports'
   | 'code.formatOnSave' | 'code.importsOnSave' | 'code.gofumpt' | 'code.staticcheck' | 'code.lint' | 'code.lintOnSave'
   | 'go.toolchains' | 'go.detect' | 'go.dependencies' | 'go.tidy' | 'go.trust'
@@ -96,6 +97,12 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'code.quickFix', menu: 'code', label: 'Show Context Actions', binding: { key: 'Enter', alt: true }, editorOwned: true, separatorBefore: true },
   { id: 'code.implementInterface', menu: 'code', label: 'Implement Interface…', binding: { key: 'i', mod: true }, editorOwned: true },
   { id: 'code.rename', menu: 'code', label: 'Rename…', binding: { key: 'F6', shift: true }, editorOwned: true },
+  { id: 'code.refactorThis', menu: 'code', label: 'Refactor This…', binding: { key: 't', mod: true, alt: true, shift: true }, editorOwned: true, separatorBefore: true },
+  { id: 'code.extractVariable', menu: 'code', label: 'Extract Variable', binding: { key: 'v', mod: true, alt: true }, editorOwned: true },
+  { id: 'code.extractConstant', menu: 'code', label: 'Extract Constant', binding: { key: 'c', mod: true, alt: true }, editorOwned: true },
+  { id: 'code.extractFunction', menu: 'code', label: 'Extract Function/Method', binding: { key: 'm', mod: true, alt: true }, editorOwned: true },
+  { id: 'code.inline', menu: 'code', label: 'Inline', binding: { key: 'n', mod: true, alt: true }, editorOwned: true },
+  { id: 'code.moveToNewFile', menu: 'code', label: 'Move to New File', binding: { key: 'F6' }, editorOwned: true },
   { id: 'code.reformat', menu: 'code', label: 'Reformat Code', binding: { key: 'l', mod: true, alt: true }, editorOwned: true, separatorBefore: true },
   { id: 'code.organizeImports', menu: 'code', label: 'Optimize Imports', binding: { key: 'o', mod: true, alt: true }, editorOwned: true },
   { id: 'code.lint', menu: 'code', label: 'Run Linter', binding: { key: 'l', mod: true, alt: true, shift: true }, separatorBefore: true },

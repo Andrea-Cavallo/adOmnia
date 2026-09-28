@@ -5,6 +5,7 @@ import { navigateToLocation, prepareDocument } from './goStudioLanguageFeatures'
 import { applyGoStudioWorkspaceChange } from './goStudioWorkspaceEdits'
 import { showQuickDefinition, showTypeInfo, showUsagesPopup } from './goStudioSemanticFeatures'
 import { requestImplementInterface } from './goStudioImplementInterface'
+import { runGoStudioRefactoring, type GoStudioRefactoring } from './goStudioRefactorings'
 
 export const GO_STUDIO_ACTIONS = {
   findUsages: 'goStudio.findUsages',
@@ -20,6 +21,12 @@ export const GO_STUDIO_ACTIONS = {
   showUsages: 'goStudio.showUsages',
   typeInfo: 'goStudio.typeInfo',
   implementInterface: 'goStudio.implementInterface',
+  refactorThis: 'goStudio.refactorThis',
+  extractVariable: 'goStudio.extractVariable',
+  extractConstant: 'goStudio.extractConstant',
+  extractFunction: 'goStudio.extractFunction',
+  inline: 'goStudio.inline',
+  moveToNewFile: 'goStudio.moveToNewFile',
 } as const
 
 const { KeyMod, KeyCode } = monaco
@@ -90,5 +97,15 @@ export function installGoStudioEditorActions(editor: monaco.editor.IStandaloneCo
   semantic(GO_STUDIO_ACTIONS.showUsages, 'Show Usages', [KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.F7], showUsagesPopup)
   editor.addAction({ id: GO_STUDIO_ACTIONS.typeInfo, label: 'Type Info', keybindings: [KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyP], run: (target) => { void showTypeInfo(target) } })
   editor.addAction({ id: GO_STUDIO_ACTIONS.implementInterface, label: 'Implement Interface…', keybindings: [KeyMod.CtrlCmd | KeyCode.KeyI], contextMenuGroupId: '1_modification', run: (target) => { void requestImplementInterface(target) } })
+  // Refactoring: solo ciò che gopls offre per la selezione; le scorciatoie sono quelle di GoLand.
+  editor.addAction({ id: GO_STUDIO_ACTIONS.refactorThis, label: 'Refactor This…', keybindings: [KeyMod.CtrlCmd | KeyMod.Alt | KeyMod.Shift | KeyCode.KeyT], contextMenuGroupId: '1_modification', run: (target) => { target.trigger('go-studio', 'editor.action.refactor', null) } })
+  const refactoring = (id: string, label: string, keybinding: number, kind: GoStudioRefactoring) => {
+    editor.addAction({ id, label, keybindings: [keybinding], run: (target) => { void runGoStudioRefactoring(target, kind) } })
+  }
+  refactoring(GO_STUDIO_ACTIONS.extractVariable, 'Extract Variable', KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.KeyV, 'extractVariable')
+  refactoring(GO_STUDIO_ACTIONS.extractConstant, 'Extract Constant', KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.KeyC, 'extractConstant')
+  refactoring(GO_STUDIO_ACTIONS.extractFunction, 'Extract Function/Method', KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.KeyM, 'extractFunction')
+  refactoring(GO_STUDIO_ACTIONS.inline, 'Inline', KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.KeyN, 'inline')
+  refactoring(GO_STUDIO_ACTIONS.moveToNewFile, 'Move to New File', KeyCode.F6, 'moveToNewFile')
   editor.addAction({ id: GO_STUDIO_ACTIONS.fileStructure, label: 'File Structure', keybindings: [KeyMod.CtrlCmd | KeyCode.F12], run: (target) => { target.trigger('go-studio', 'editor.action.quickOutline', null) } })
 }

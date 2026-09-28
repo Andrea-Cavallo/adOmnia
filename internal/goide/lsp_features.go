@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"slices"
 	"sort"
 	"strings"
 	"unicode/utf16"
@@ -472,9 +474,13 @@ func (m *LSPManager) executeCommand(ctx context.Context, state *lspSession, proc
 	state.mu.Unlock()
 	merged := lsp.WorkspaceEdit{Changes: map[string][]lsp.TextEdit{}}
 	for _, edit := range collected {
-		changes, ok := edit.Normalize()
+		changes, created, ok := edit.Normalize()
 		if !ok {
-			return WorkspaceChange{}, fmt.Errorf("l'azione richiede operazioni sui file non supportate")
+			return WorkspaceChange{}, fmt.Errorf("l'azione richiede operazioni sui file non supportate (rinomina o eliminazione di file)")
+		}
+		for _, uri := range created {
+			operation, _ := json.Marshal(map[string]string{"kind": "create", "uri": uri})
+			merged.DocumentChanges = append(merged.DocumentChanges, operation)
 		}
 		for uri, edits := range changes {
 			merged.Changes[uri] = append(merged.Changes[uri], edits...)
@@ -498,9 +504,9 @@ func (m *LSPManager) overlappingDiagnostics(state *lspSession, uri string, reque
 
 // workspaceChange applica in memoria gli edit a buffer sincronizzati o file su disco, confinati al progetto.
 func (m *LSPManager) workspaceChange(state *lspSession, label string, edit lsp.WorkspaceEdit) (WorkspaceChange, error) {
-	changes, ok := edit.Normalize()
+	changes, created, ok := edit.Normalize()
 	if !ok {
-		return WorkspaceChange{}, fmt.Errorf("la modifica richiede operazioni sui file non supportate")
+		return WorkspaceChange{}, fmt.Errorf("la modifica richiede operazioni sui file non supportate (rinomina o eliminazione di file)")
 	}
 	result := WorkspaceChange{Label: label, Files: make([]FileChange, 0, len(changes))}
 	for uri, edits := range changes {
@@ -509,7 +515,14 @@ func (m *LSPManager) workspaceChange(state *lspSession, label string, edit lsp.W
 		if relative == "" {
 			return WorkspaceChange{}, fmt.Errorf("modifica esterna al progetto rifiutata: %s", path)
 		}
-		text := m.documentText(state, uri, path)
+		isNew := slices.Contains(created, uri)
+		if _, err := os.Lstat(path); isNew && err == nil {
+			return WorkspaceChange{}, fmt.Errorf("%s esiste già: la modifica non lo sovrascrive", relative)
+		}
+		text := ""
+		if !isNew {
+			text = m.documentText(state, uri, path)
+		}
 		updated, err := lsp.ApplyEdits(text, edits)
 		if err != nil {
 			return WorkspaceChange{}, fmt.Errorf("%s: %w", relative, err)
@@ -517,7 +530,7 @@ func (m *LSPManager) workspaceChange(state *lspSession, label string, edit lsp.W
 		state.mu.Lock()
 		documentID := state.byURI[uri]
 		state.mu.Unlock()
-		result.Files = append(result.Files, FileChange{URI: uri, Path: path, RelativePath: relative, DocumentID: documentID, Edits: editorEdits(edits), NewContent: updated})
+		result.Files = append(result.Files, FileChange{URI: uri, Path: path, RelativePath: relative, DocumentID: documentID, Edits: editorEdits(edits), NewContent: updated, OriginalContent: text, Created: isNew})
 	}
 	sort.Slice(result.Files, func(left, right int) bool { return result.Files[left].RelativePath < result.Files[right].RelativePath })
 	return result, nil

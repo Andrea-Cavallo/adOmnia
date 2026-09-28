@@ -217,10 +217,12 @@ function registerProviders(): void {
   })
 
   monaco.languages.registerCodeActionProvider(LANGUAGE, {
-    async provideCodeActions(model, range, _context, token) {
+    async provideCodeActions(model, range, context, token) {
       const prepared = await prepareDocument(model)
       if (!prepared) return { actions: [], dispose: () => undefined }
-      const actions = await cancellable(requestCodeActions(prepared.sessionId, prepared.documentId, toEditorRange(range)), token)
+      // Refactor This e le scorciatoie chiedono solo la famiglia richiesta: meno lavoro per gopls.
+      const only = context.only ? [context.only] : []
+      const actions = await cancellable(requestCodeActions(prepared.sessionId, prepared.documentId, toEditorRange(range), only), token)
       return {
         actions: (actions ?? []).map((action) => ({
           title: action.title,

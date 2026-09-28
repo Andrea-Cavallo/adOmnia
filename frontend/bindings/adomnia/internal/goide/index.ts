@@ -55,6 +55,7 @@ export {
     LanguageServerStatus,
     LintResult,
     LinterInfo,
+    NewFile,
     OpenDocument,
     Project,
     QuickDefinitionResult,

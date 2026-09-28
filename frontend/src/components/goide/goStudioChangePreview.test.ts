@@ -18,7 +18,7 @@ describe('changedLines', () => {
       { range: at(1, 6, 1, 8), text: 'hi' },
       { range: at(4, 6, 4, 8), text: 'hi' },
     ]))
-    expect(result).toEqual([{ line: 1, text: 'a := hi', hunkStart: false }, { line: 4, text: 'b := hi', hunkStart: true }])
+    expect(result).toEqual([{ line: 1, text: 'a := hi', hunkStart: false, kind: 'added' }, { line: 4, text: 'b := hi', hunkStart: true, kind: 'added' }])
   })
 
   it('accounts for lines removed by earlier edits', () => {
@@ -28,5 +28,18 @@ describe('changedLines', () => {
       { range: at(4, 1, 4, 5), text: 'four' },
     ]))
     expect(result.map((row) => row.line)).toEqual([1, 2])
+  })
+
+  it('shows removed lines next to their replacement when the original is known', () => {
+    const file = { ...change('package main\n\n\nfunc main() {}\n', [{ range: at(3, 1, 6, 1), text: '' }]), originalContent: 'package main\n\nfunc report() string {\n\treturn ""\n}\n\nfunc main() {}\n' }
+    const result = changedLines(file)
+    expect(result.filter((row) => row.kind === 'removed').map((row) => row.text)).toEqual(['func report() string {', '\treturn ""', '}'])
+    expect(result.filter((row) => row.kind === 'added')).toEqual([])
+  })
+
+  it('shows a created file entirely as added', () => {
+    const result = changedLines({ ...change('package main\n\nfunc a() {}', []), created: true })
+    expect(result.every((row) => row.kind === 'added')).toBe(true)
+    expect(result).toHaveLength(3)
   })
 })

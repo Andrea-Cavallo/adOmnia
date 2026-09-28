@@ -1277,6 +1277,16 @@ export class FileChange {
     "edits": EditorTextEdit[];
     "newContent": string;
 
+    /**
+     * OriginalContent è il testo su cui gopls ha calcolato gli edit: serve all'anteprima per mostrare le righe rimosse.
+     */
+    "originalContent"?: string;
+
+    /**
+     * Created indica un file nuovo: va creato su disco, non esiste un buffer da modificare.
+     */
+    "created"?: boolean;
+
     /** Creates a new FileChange instance. */
     constructor($$source: Partial<FileChange> = {}) {
         if (!("uri" in $$source)) {
@@ -1909,6 +1919,34 @@ export class LinterInfo {
     static createFrom($$source: any = {}): LinterInfo {
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         return new LinterInfo($$parsedSource as Partial<LinterInfo>);
+    }
+}
+
+/**
+ * NewFile è un file da creare nel progetto con il suo contenuto iniziale.
+ */
+export class NewFile {
+    "relativePath": string;
+    "content": string;
+
+    /** Creates a new NewFile instance. */
+    constructor($$source: Partial<NewFile> = {}) {
+        if (!("relativePath" in $$source)) {
+            this["relativePath"] = "";
+        }
+        if (!("content" in $$source)) {
+            this["content"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new NewFile instance from a string or object.
+     */
+    static createFrom($$source: any = {}): NewFile {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new NewFile($$parsedSource as Partial<NewFile>);
     }
 }
 

@@ -23,6 +23,12 @@ const MONACO_ACTIONS = {
   'code.rename': 'goStudio.rename',
   'code.reformat': 'goStudio.reformat',
   'code.organizeImports': 'goStudio.organizeImports',
+  'code.refactorThis': 'goStudio.refactorThis',
+  'code.extractVariable': 'goStudio.extractVariable',
+  'code.extractConstant': 'goStudio.extractConstant',
+  'code.extractFunction': 'goStudio.extractFunction',
+  'code.inline': 'goStudio.inline',
+  'code.moveToNewFile': 'goStudio.moveToNewFile',
 } as const
 
 export type GoStudioEditorCommand = keyof typeof MONACO_ACTIONS

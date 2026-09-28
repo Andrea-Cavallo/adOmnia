@@ -181,3 +181,12 @@ func (s *Service) ConfigureRecoveryStore(store Store) error {
 	s.recovery = NewRecoveryManager(store)
 	return s.recovery.Load()
 }
+
+// CreateFiles crea nel progetto file nuovi (New File, Move to New File): tutti o nessuno, mai sovrascrivendo.
+func (s *Service) CreateFiles(sessionID string, files []NewFile) error {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return err
+	}
+	return s.documents.CreateFiles(session.Project, files)
+}
