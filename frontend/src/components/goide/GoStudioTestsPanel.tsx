@@ -1,11 +1,12 @@
 import { memo, useEffect, useMemo, useState } from 'react'
-import { CheckCircle2, ChevronDown, ChevronRight, CircleDashed, Clock3, Filter, Gauge, Loader2, MinusCircle, Play, RotateCcw, ShieldCheck, Square, XCircle } from 'lucide-react'
+import { CheckCircle2, ChevronDown, ChevronRight, CircleDashed, Clock3, Filter, Gauge, Loader2, MinusCircle, Play, RotateCcw, ShieldCheck, Square, XCircle, Bug } from 'lucide-react'
 import type { GoIDESession } from '@/lib/goide-api'
 import { getGoIDETestOutput, type GoIDECoverageReport, type GoIDETestResult, type GoIDETestRun } from '@/lib/goide-tests-api'
 import { requestWorkspaceSymbols } from '@/lib/goide-lsp-api'
 import { useGoIDEStore } from '@/stores/goide'
 import { selectedTestRun, useGoIDETestsStore } from '@/stores/goideTests'
-import { buildTestTree, formatDuration, isFailed, onlyFailed, type GoStudioTestNode } from './goStudioTestTree'
+import { buildTestTree, debugRequestForNode, formatDuration, isFailed, onlyFailed, type GoStudioTestNode } from './goStudioTestTree'
+import { useGoIDEDebugStore } from '@/stores/goideDebug'
 import { navigateToLocation } from './goStudioLanguageFeatures'
 
 interface GoStudioTestsPanelProps {
@@ -82,6 +83,11 @@ function TestRow({ node, depth, selected, run, sessionId, entry = false }: { nod
         {run.status !== 'running' && (
           <button type="button" title={result.name ? `Rerun ${result.name}` : `Rerun ${result.package}`} onClick={(event) => { event.stopPropagation(); void rerunNode(sessionId, result) }} className="grid h-5 w-5 shrink-0 place-items-center rounded text-success opacity-0 hover:bg-success/10 group-hover:opacity-100">
             <Play size={10} fill="currentColor" aria-hidden="true" />
+          </button>
+        )}
+        {run.status !== 'running' && result.name && (
+          <button type="button" title={`Debug ${result.name}`} onClick={(event) => { event.stopPropagation(); const request = debugRequestForNode(run, result); if (request) void useGoIDEDebugStore.getState().start(request) }} className="grid h-5 w-5 shrink-0 place-items-center rounded text-warning opacity-0 hover:bg-warning/10 group-hover:opacity-100">
+            <Bug size={10} aria-hidden="true" />
           </button>
         )}
       </div>

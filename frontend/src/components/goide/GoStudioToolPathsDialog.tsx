@@ -3,6 +3,8 @@ import { Loader2, X } from 'lucide-react'
 import { configureGopls, configureLinter } from '@/lib/goide-lsp-api'
 import { useModalFocusTrap } from '@/lib/accessibility'
 import { useGoIDELspStore } from '@/stores/goideLsp'
+import { configureGoIDEDelve } from '@/lib/goide-debug-api'
+import { useGoIDEDebugStore } from '@/stores/goideDebug'
 
 interface GoStudioToolPathsDialogProps {
   open: boolean
@@ -10,12 +12,14 @@ interface GoStudioToolPathsDialogProps {
   onClose: () => void
 }
 
-/** Binari personalizzati per gopls e linter della sessione; vuoto ripristina la ricerca automatica. */
+/** Binari personalizzati per gopls, linter e Delve della sessione; vuoto ripristina la ricerca automatica. */
 export function GoStudioToolPathsDialog({ open, sessionId, onClose }: GoStudioToolPathsDialogProps) {
   const gopls = useGoIDELspStore((state) => state.gopls[sessionId] ?? null)
   const linter = useGoIDELspStore((state) => state.linter[sessionId] ?? null)
   const [goplsBinary, setGoplsBinary] = useState('')
   const [linterBinary, setLinterBinary] = useState('')
+  const delve = useGoIDEDebugStore((state) => state.delve[sessionId] ?? null)
+  const [delveBinary, setDelveBinary] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
@@ -25,6 +29,8 @@ export function GoStudioToolPathsDialog({ open, sessionId, onClose }: GoStudioTo
     if (!open) return
     setGoplsBinary(gopls?.source === 'custom' ? gopls.binary ?? '' : '')
     setLinterBinary(linter?.source === 'custom' ? linter.binary ?? '' : '')
+    setDelveBinary(delve?.source === 'custom' ? delve.binary ?? '' : '')
+    void useGoIDEDebugStore.getState().detectDelve(sessionId)
     setError(null)
   }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -36,6 +42,8 @@ export function GoStudioToolPathsDialog({ open, sessionId, onClose }: GoStudioTo
     try {
       await configureGopls(sessionId, goplsBinary)
       await configureLinter(sessionId, linterBinary)
+      await configureGoIDEDelve(sessionId, delveBinary)
+      void useGoIDEDebugStore.getState().detectDelve(sessionId)
       const lsp = useGoIDELspStore.getState()
       const [goplsInfo] = await Promise.all([lsp.detectGopls(sessionId), lsp.detectLinter(sessionId)])
       if (goplsInfo?.available && lsp.status[sessionId]?.state === 'ready') await lsp.restart(sessionId)
@@ -63,6 +71,10 @@ export function GoStudioToolPathsDialog({ open, sessionId, onClose }: GoStudioTo
           <label className="block text-[10px] font-medium text-text-3">Linter binary (golangci-lint or staticcheck)
             <input value={linterBinary} onChange={(event) => setLinterBinary(event.target.value)} placeholder="Automatic: golangci-lint, then staticcheck" className="mt-1 h-8 w-full rounded border border-border-1 bg-surface-0 px-2 font-mono text-[11px] text-text-1 outline-none focus:border-accent" />
             <span className="mt-1 block truncate font-mono text-[9px] text-text-4">{detected(linter)}{linter?.configPath ? ` · config ${linter.configPath}` : ''}</span>
+          </label>
+          <label className="block text-[10px] font-medium text-text-3">Delve (dlv) binary
+            <input value={delveBinary} onChange={(event) => setDelveBinary(event.target.value)} placeholder="Automatic: adOmnia tools, GOPATH/bin, PATH" className="mt-1 h-8 w-full rounded border border-border-1 bg-surface-0 px-2 font-mono text-[11px] text-text-1 outline-none focus:border-accent" />
+            <span className="mt-1 block truncate font-mono text-[9px] text-text-4">{detected(delve)}</span>
           </label>
           <p className="text-[9px] leading-4 text-text-4">Paths apply to this project session only. Project linter configuration files are used when present and never created by adOmnia.</p>
         </div>

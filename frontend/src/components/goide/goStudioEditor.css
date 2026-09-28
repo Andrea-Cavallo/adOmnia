@@ -52,3 +52,64 @@
 .go-studio-cov-covered { background: var(--color-success, #22c55e); opacity: 0.75; }
 .go-studio-cov-uncovered { background: var(--color-danger, #ef4444); opacity: 0.75; }
 .go-studio-cov-partial { background: var(--color-warning, #f59e0b); opacity: 0.8; }
+
+/* Breakpoint: pallino sul numero di riga, come in GoLand. Il numero resta leggibile al passaggio. */
+.monaco-editor .line-numbers.go-studio-bp,
+.monaco-editor .line-numbers.go-studio-exec {
+  position: relative;
+  cursor: pointer;
+}
+.monaco-editor .line-numbers.go-studio-bp {
+  color: transparent !important;
+}
+.monaco-editor .line-numbers.go-studio-bp::after {
+  content: '';
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  width: 11px;
+  height: 11px;
+  margin-top: -5.5px;
+  border-radius: 50%;
+  background: var(--color-danger, #ef4444);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-danger, #ef4444) 40%, transparent);
+}
+.monaco-editor .line-numbers.go-studio-bp-pending::after {
+  background: transparent;
+  border: 2px solid var(--color-danger, #ef4444);
+  box-sizing: border-box;
+}
+.monaco-editor .line-numbers:not(.go-studio-bp):hover::after {
+  content: '';
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  width: 11px;
+  height: 11px;
+  margin-top: -5.5px;
+  border-radius: 50%;
+  background: var(--color-danger, #ef4444);
+  opacity: 0.25;
+}
+
+/* Riga di esecuzione del debugger: freccia sul numero di riga e sfondo della riga. */
+.monaco-editor .go-studio-exec-line {
+  background: color-mix(in srgb, var(--color-warning, #f59e0b) 22%, transparent);
+}
+.monaco-editor .go-studio-exec-line.go-studio-exec-frame {
+  background: color-mix(in srgb, var(--color-warning, #f59e0b) 10%, transparent);
+}
+.monaco-editor .line-numbers.go-studio-exec {
+  color: transparent !important;
+}
+.monaco-editor .line-numbers.go-studio-exec::before {
+  content: '';
+  position: absolute;
+  right: 3px;
+  top: 50%;
+  margin-top: -6px;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-left: 10px solid var(--color-warning, #f59e0b);
+  z-index: 1;
+}

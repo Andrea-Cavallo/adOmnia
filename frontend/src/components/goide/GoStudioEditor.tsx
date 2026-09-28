@@ -6,7 +6,7 @@ import { GoStudioBreadcrumb } from './GoStudioBreadcrumb'
 import { GoStudioCodeEditor, beforeGoStudioMount, useGoStudioEditorTheme } from './GoStudioCodeEditor'
 import { GoStudioEditorTabs } from './GoStudioEditorTabs'
 import { GoStudioSplitPane } from './GoStudioSplitPane'
-import type { GoStudioRunTarget } from './goStudioRunTargets'
+import type { GoStudioRunTargetHandler } from './goStudioRunTargets'
 import { useGoStudioDocumentSymbols } from './goStudioSymbols'
 import { copiesInOtherSessions } from './goStudioSharedCopies'
 import { useGoIDETestsStore, visibleCoverage } from '@/stores/goideTests'
@@ -17,7 +17,7 @@ interface GoStudioEditorProps {
   active: GoIDEEditorDocument | null
   onCursor: (line: number, column: number) => void
   onRequestClose: (documents: GoIDEEditorDocument[]) => void
-  onRunTarget: (target: GoStudioRunTarget) => void
+  onRunTarget: GoStudioRunTargetHandler
 }
 
 export function GoStudioEditor({ documents, active, onCursor, onRequestClose, onRunTarget }: GoStudioEditorProps) {

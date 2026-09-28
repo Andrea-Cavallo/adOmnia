@@ -1,3 +1,4 @@
+import type { GoIDEDebugRequest } from '@/lib/goide-debug-api'
 import type { GoIDETestResult, GoIDETestRun, GoIDETestRunRequest } from '@/lib/goide-tests-api'
 
 export interface GoStudioTestNode {
@@ -64,6 +65,19 @@ export function requestForNode(run: GoIDETestRun, result: GoIDETestResult): GoID
   const name = result.name ?? ''
   const benchmark = name.startsWith('Benchmark')
   return { ...run.request, packages: [pattern], run: name && !benchmark ? runPatternFor(name) : '', bench: benchmark ? runPatternFor(name) : '', coverage: false }
+}
+
+/** Argomenti per fare debug di un benchmark: nessun test, una sola iterazione del benchmark. */
+export function benchmarkDebugArguments(pattern: string): string[] {
+  return ['-test.bench', pattern, '-test.benchtime', '1x']
+}
+
+/** Debug di un singolo test (o benchmark) del run, con gli stessi tag e variabili; null per i package. */
+export function debugRequestForNode(run: GoIDETestRun, result: GoIDETestResult): GoIDEDebugRequest | null {
+  if (!result.name) return null
+  const request = requestForNode(run, result)
+  const base = { sessionId: request.sessionId, mode: 'test', workingDirectory: request.workingDirectory, target: request.packages[0], buildTags: request.buildTags, environment: request.environment }
+  return request.bench ? { ...base, testName: '^$', programArguments: benchmarkDebugArguments(request.bench) } : { ...base, testName: request.run }
 }
 
 /**

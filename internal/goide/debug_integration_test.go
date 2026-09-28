@@ -78,6 +78,13 @@ func TestDebuggerBreakpointStepVariablesAndEvaluate(t *testing.T) {
 		t.Fatal(err)
 	}
 	stopped := waitDebugState(t, recorder, started.ID, DebugStopped, 0)
+	if started.Title != "main" {
+		t.Fatalf("titolo della sessione poco leggibile: %q", started.Title)
+	}
+	// Il binario di debug va compilato fuori dal progetto, per non sporcare albero e VCS.
+	if matches, _ := filepath.Glob(filepath.Join(session.Project.RealPath, "__debug_bin*")); len(matches) > 0 {
+		t.Fatalf("binario di debug creato nel progetto: %v", matches)
+	}
 	if stopped.StopReason != "breakpoint" || stopped.ThreadID == 0 {
 		t.Fatalf("fermata inattesa: %+v", stopped)
 	}
@@ -163,7 +170,13 @@ func TestDebuggerStopLeavesNoOrphans(t *testing.T) {
 	}
 	waitDebugState(t, recorder, started.ID, DebugRunning, 0)
 	time.Sleep(500 * time.Millisecond)
-	if !processExists("__debug_bin") {
+	// La cartella di build è univoca per sessione: il pattern non può coincidere con altri processi.
+	running, err := ide.debug.get(started.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	binary := filepath.Join(running.buildDir, debugBinaryName())
+	if !processExists(binary) {
 		t.Skip("impossibile osservare il processo debuggato in questo ambiente")
 	}
 	if err := ide.StopDebug(string(started.ID)); err != nil {
@@ -171,9 +184,15 @@ func TestDebuggerStopLeavesNoOrphans(t *testing.T) {
 	}
 	waitDebugState(t, recorder, started.ID, DebugTerminated, 0)
 	deadline := time.Now().Add(5 * time.Second)
-	for processExists("__debug_bin") {
+	for processExists(binary) {
 		if time.Now().After(deadline) {
 			t.Fatal("il programma debuggato è rimasto in esecuzione dopo Stop")
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	for _, statErr := os.Stat(running.buildDir); statErr == nil; _, statErr = os.Stat(running.buildDir) {
+		if time.Now().After(deadline) {
+			t.Fatal("la cartella temporanea del binario di debug non è stata rimossa")
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
@@ -204,4 +223,19 @@ func debugOutput(recorder *eventRecorder, id DebugSessionID) string {
 func processExists(fragment string) bool {
 	output, err := exec.Command("pgrep", "-f", fragment).Output()
 	return err == nil && len(strings.TrimSpace(string(output))) > 0
+}
+
+func TestDebugTitleIsReadable(t *testing.T) {
+	cases := map[string]DebugRequest{
+		"main":             {Mode: "debug", Target: "."},
+		"cmd/api":          {Mode: "debug", Target: "./cmd/api"},
+		"TestAdd/negative": {Mode: "test", TestName: "^TestAdd$/^negative$"},
+		"BenchmarkSum":     {Mode: "test", TestName: "^$", ProgramArguments: []string{"-test.bench", "^BenchmarkSum$"}},
+		"tests ./calc":     {Mode: "test", Target: "./calc"},
+	}
+	for want, request := range cases {
+		if got := debugTitle(request); got != want {
+			t.Errorf("debugTitle(%+v) = %q, atteso %q", request, got, want)
+		}
+	}
 }

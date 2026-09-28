@@ -6,7 +6,7 @@ import { GoStudioProjectTree } from './GoStudioProjectTree'
 import { GoStudioRunPanel } from './GoStudioRunPanel'
 import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
 import type { GoIDESession } from '@/lib/goide-api'
-import type { GoStudioRunTarget } from './goStudioRunTargets'
+import type { GoStudioRunTargetHandler } from './goStudioRunTargets'
 
 interface GoStudioWorkspaceProps {
   session: GoIDESession
@@ -20,7 +20,7 @@ interface GoStudioWorkspaceProps {
   onBottomResize: (event: React.MouseEvent<HTMLDivElement>) => void
   onCursor: (line: number, column: number) => void
   onRequestCloseDocument: (documents: GoIDEEditorDocument[]) => void
-  onRunTarget: (target: GoStudioRunTarget) => void
+  onRunTarget: GoStudioRunTargetHandler
 }
 
 export function GoStudioWorkspace({ session, projectWidth, structureWidth, bottomHeight, structureOpen, bottomOpen, onProjectResize, onStructureResize, onBottomResize, onCursor, onRequestCloseDocument, onRunTarget }: GoStudioWorkspaceProps) {

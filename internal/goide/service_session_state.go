@@ -28,6 +28,7 @@ func (s *Service) SaveSessionView(sessionID string, view SessionView) error {
 	}
 	view.OpenPaths = limitPaths(view.OpenPaths, maxRestoredTabs)
 	s.viewMu.Lock()
+	view.Breakpoints = s.views[session.ID].Breakpoints
 	s.views[session.ID] = view
 	s.viewMu.Unlock()
 	return s.saveState()

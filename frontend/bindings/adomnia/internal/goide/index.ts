@@ -3,6 +3,7 @@
 
 export {
     AuthorizationState,
+    BreakpointState,
     Capabilities,
     CodeActionEntry,
     CompletionEntry,
@@ -12,6 +13,13 @@ export {
     CoveragePackage,
     CoverageReport,
     CreateProjectRequest,
+    DebugFrame,
+    DebugRequest,
+    DebugScope,
+    DebugSessionInfo,
+    DebugThread,
+    DebugVariable,
+    DelveInfo,
     DependencyActionRequest,
     DependencyState,
     DiagnosticFix,
@@ -24,7 +32,9 @@ export {
     EditorRange,
     EditorTextEdit,
     EnvironmentEntry,
+    EvaluateResult,
     Execution,
+    FileBreakpoints,
     FileChange,
     FileEntry,
     FormatResult,
@@ -83,6 +93,7 @@ export {
 } from "./models.js";
 
 export type {
+    DebugSessionID,
     DocumentID,
     RunID,
     SessionID,

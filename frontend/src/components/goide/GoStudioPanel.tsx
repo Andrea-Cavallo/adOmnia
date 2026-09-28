@@ -31,7 +31,11 @@ import { createDoubleShiftDetector } from './goStudioSearchEverywhere'
 import { runGoStudioQuickCommand, runModuleDependencyAction } from './goStudioQuickActions'
 import { flushBufferRecovery } from './goStudioRecovery'
 import { useGoIDETestsStore } from '@/stores/goideTests'
-import { testRequestForTarget } from './goStudioQuickActions'
+import { debugRequestForTarget, testRequestForTarget } from './goStudioQuickActions'
+import { runDebugCommand, selectDebugState } from './goStudioDebugCommands'
+import { GoStudioRunTargetMenu, type GoStudioRunTargetAction } from './GoStudioRunTargetMenu'
+import { useGoIDEDebugStore } from '@/stores/goideDebug'
+import type { GoIDEDebugRequest } from '@/lib/goide-debug-api'
 import { confirm } from '@/lib/confirmDialog'
 import { useShallow } from 'zustand/react/shallow'
 import { activeGoIDEDocument, dirtyGoIDEDocuments, useGoIDEStore, type GoIDEEditorDocument, type GoIDEState } from '@/stores/goide'
@@ -114,6 +118,8 @@ export function GoStudioPanel() {
   const activeConfigId = store.activeSessionId ? store.activeConfigBySession[store.activeSessionId] ?? null : null
   const activeConfig = runConfigurations.find((config) => config.id === activeConfigId) ?? null
   const [pendingSecrets, setPendingSecrets] = useState<string[] | null>(null)
+  const [runTargetMenu, setRunTargetMenu] = useState<{ target: GoStudioRunTarget; x: number; y: number } | null>(null)
+  const debugState = useGoIDEDebugStore(selectDebugState(store.activeSessionId))
 
   useEffect(() => { void store.initialize() }, [store.initialize])
 
@@ -130,10 +136,12 @@ export function GoStudioPanel() {
 
   // Le scorciatoie restano attive solo mentre il pannello è montato e hanno la precedenza su quelle globali.
   const runCommandRef = useRef<(id: GoStudioCommandId) => void>(() => undefined)
+  const availabilityRef = useRef<(id: GoStudioCommandId) => true | string>(() => true)
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const command = commandForKey(event)
       if (!command) return
+      if (command.passThroughWhenUnavailable && availabilityRef.current(command.id) !== true) return
       event.preventDefault()
       runCommandRef.current(command.id)
     }
@@ -267,21 +275,33 @@ export function GoStudioPanel() {
     inlayHints: lsp.preferences.inlayHints,
     semanticTokensSupported: !!lspStatus?.features?.semanticTokens,
     inlayHintsSupported: !!lspStatus?.features?.inlayHints,
+    debugState,
   }
   const commandState: GoStudioCommandState = {
     availability: (id) => commandAvailability(id, commandContext),
     checked: (id) => commandChecked(id, commandContext),
   }
 
-  const runTarget = (target: GoStudioRunTarget) => {
+  availabilityRef.current = (id) => commandAvailability(id, commandContext)
+
+  const runTarget = (target: GoStudioRunTarget, action: GoStudioRunTargetAction = 'run') => {
     const availability = commandAvailability('run.run', commandContext)
     if (availability !== true) return useGoIDEStore.setState({ error: availability })
-    if (target.kind !== 'main' && activeSession) {
-      void useGoIDETestsStore.getState().start(testRequestForTarget(activeSession, target))
+    if (!activeSession) return
+    if (action === 'debug') return void useGoIDEDebugStore.getState().start(debugRequestForTarget(activeSession, target))
+    if (target.kind !== 'main') {
+      void useGoIDETestsStore.getState().start(testRequestForTarget(activeSession, target, action === 'coverage'))
       return
     }
     const command = runCommandFor(target)
     void store.startRun(command.kind, { ...runRequest(runDraft), target: command.target })
+  }
+
+  // Debug (Shift+F9) usa la configurazione Run attiva: stesso package, argomenti, tag e variabili.
+  const configuredDebugRequest = (): GoIDEDebugRequest | null => {
+    if (!activeSession) return null
+    const request = configuredRequest()
+    return { sessionId: activeSession.id, mode: 'debug', target: request.target, workingDirectory: request.workingDirectory, programArguments: request.programArguments, buildTags: request.buildTags, environment: request.environment }
   }
 
   const openLanguageServerMenu = () => {
@@ -300,11 +320,12 @@ export function GoStudioPanel() {
   const runCommand = (id: GoStudioCommandId) => {
     const availability = commandAvailability(id, commandContext)
     if (availability !== true) {
-      if (id.startsWith('run.') || id.startsWith('nav.') || id.startsWith('code.')) useGoIDELspStore.setState({ message: availability })
+      if (/^(run|nav|code|debug)\./.test(id)) useGoIDELspStore.setState({ message: availability })
       return
     }
     if (isGoStudioEditorCommand(id)) { runGoStudioEditorCommand(id); return }
     if (runLanguageCommand(id, activeSession?.id ?? null)) return
+    if (runDebugCommand(id, activeSession?.id ?? null, configuredDebugRequest)) return
     switch (id) {
       case 'file.openProject': return void store.openProject()
       case 'file.newProject': return setCreateOpen(true)
@@ -371,7 +392,8 @@ export function GoStudioPanel() {
       {lsp.message && <NoticeBanner message={lsp.message} onClose={lsp.clearMessage} />}
       <div className="flex h-7 shrink-0 items-center justify-end gap-1 border-b border-border-1 bg-surface-0 px-2"><span className="mr-auto truncate font-mono text-[9px] text-text-4">{summary.activePath ?? activeSession.project.rootPath}</span><button type="button" onClick={() => store.updateLayout({ structureOpen: !store.layout.structureOpen })} title={store.layout.structureOpen ? 'Hide project overview · Alt+7' : 'Show project overview · Alt+7'} className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-2 hover:text-text-1">{store.layout.structureOpen ? <PanelRightClose size={13} /> : <PanelRightOpen size={13} />}</button><button type="button" onClick={() => store.updateLayout({ bottomOpen: !store.layout.bottomOpen })} title={store.layout.bottomOpen ? 'Hide run panel · Alt+4' : 'Show run panel · Alt+4'} className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-2 hover:text-text-1">{store.layout.bottomOpen ? <PanelBottomClose size={13} /> : <PanelBottomOpen size={13} />}</button></div>
       <GoStudioRecoveryBanner sessionId={activeSession.id} />
-      <GoStudioWorkspace session={activeSession} {...store.layout} onProjectResize={beginResize('projectWidth', store.layout.projectWidth)} onStructureResize={beginResize('structureWidth', store.layout.structureWidth, -1)} onBottomResize={beginResize('bottomHeight', store.layout.bottomHeight, -1)} onCursor={setCursor} onRequestCloseDocument={closeFlow.requestCloseDocuments} onRunTarget={runTarget} />
+      <GoStudioWorkspace session={activeSession} {...store.layout} onProjectResize={beginResize('projectWidth', store.layout.projectWidth)} onStructureResize={beginResize('structureWidth', store.layout.structureWidth, -1)} onBottomResize={beginResize('bottomHeight', store.layout.bottomHeight, -1)} onCursor={setCursor} onRequestCloseDocument={closeFlow.requestCloseDocuments} onRunTarget={(target, anchor) => setRunTargetMenu({ target, ...anchor })} />
+      {runTargetMenu && <GoStudioRunTargetMenu {...runTargetMenu} onAction={runTarget} onClose={() => setRunTargetMenu(null)} />}
       <GoStudioStatusBar session={activeSession} toolchain={toolchain} documentInfo={summary.activeId ? { language: summary.activeLanguage ?? '', readOnly: summary.activeReadOnly } : null} execution={activeExecution} onLanguageServer={openLanguageServerMenu} onLinter={() => runCommand(commandAvailability('code.lint', commandContext) === true ? 'code.lint' : 'go.toolPaths')} />
       <GoStudioQuickOpen />
       <GoStudioCaretPopup />

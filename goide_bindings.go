@@ -239,6 +239,76 @@ func (g *GoIDE) ListTestRuns(sessionID string) ([]goide.TestRunSnapshot, error) 
 	return g.service.ListTestRuns(sessionID)
 }
 
+// DetectDelve individua dlv e ne legge la versione.
+func (g *GoIDE) DetectDelve(sessionID string) (goide.DelveInfo, error) {
+	return g.service.DetectDelve(sessionID)
+}
+
+// ConfigureDelve imposta un binario dlv personalizzato; vuoto ripristina la ricerca automatica.
+func (g *GoIDE) ConfigureDelve(sessionID, binary string) error {
+	return g.service.ConfigureDelve(sessionID, binary)
+}
+
+// InstallDelve installa dlv nella cartella strumenti di adOmnia dopo conferma esplicita.
+func (g *GoIDE) InstallDelve(sessionID string, confirmed bool) (goide.Execution, error) {
+	return g.service.InstallDelve(sessionID, confirmed)
+}
+
+// StartDebug avvia una sessione Delve per un programma o un singolo test.
+func (g *GoIDE) StartDebug(request goide.DebugRequest) (goide.DebugSessionInfo, error) {
+	return g.service.StartDebug(request)
+}
+
+// StopDebug termina la sessione di debug e il processo debuggato.
+func (g *GoIDE) StopDebug(debugID string) error {
+	return g.service.StopDebug(debugID)
+}
+
+// DebugStep esegue continue, pause, next, stepIn o stepOut.
+func (g *GoIDE) DebugStep(debugID, action string, threadID int) error {
+	return g.service.DebugStep(debugID, action, threadID)
+}
+
+// DebugThreads elenca le goroutine della sessione di debug.
+func (g *GoIDE) DebugThreads(debugID string) ([]goide.DebugThread, error) {
+	return g.service.DebugThreads(debugID)
+}
+
+// DebugStackTrace restituisce i frame di una goroutine.
+func (g *GoIDE) DebugStackTrace(debugID string, threadID int) ([]goide.DebugFrame, error) {
+	return g.service.DebugStackTrace(debugID, threadID)
+}
+
+// DebugScopes restituisce gli scope di un frame.
+func (g *GoIDE) DebugScopes(debugID string, frameID int) ([]goide.DebugScope, error) {
+	return g.service.DebugScopes(debugID, frameID)
+}
+
+// DebugVariables espande un riferimento a variabili.
+func (g *GoIDE) DebugVariables(debugID string, reference int) ([]goide.DebugVariable, error) {
+	return g.service.DebugVariables(debugID, reference)
+}
+
+// DebugEvaluate valuta un'espressione nel frame indicato.
+func (g *GoIDE) DebugEvaluate(debugID, expression string, frameID int, context string) (goide.EvaluateResult, error) {
+	return g.service.DebugEvaluate(debugID, expression, frameID, context)
+}
+
+// ListDebugSessions elenca le sessioni di debug del progetto.
+func (g *GoIDE) ListDebugSessions(sessionID string) ([]goide.DebugSessionInfo, error) {
+	return g.service.ListDebugSessions(sessionID)
+}
+
+// SetBreakpoints sostituisce i breakpoint di un file e li applica alle sessioni attive.
+func (g *GoIDE) SetBreakpoints(sessionID, relativePath string, lines []int) ([]goide.BreakpointState, error) {
+	return g.service.SetBreakpoints(sessionID, relativePath, lines)
+}
+
+// ListBreakpoints restituisce i breakpoint salvati della sessione.
+func (g *GoIDE) ListBreakpoints(sessionID string) ([]goide.FileBreakpoints, error) {
+	return g.service.ListBreakpoints(sessionID)
+}
+
 // StartRun avvia una build, run o tidy con argomenti strutturati.
 func (g *GoIDE) StartRun(request goide.RunRequest) (goide.Execution, error) {
 	return g.service.StartRun(request)

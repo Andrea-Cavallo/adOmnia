@@ -13,7 +13,8 @@ import { useGoIDELspStore } from '@/stores/goideLsp'
 import { useGoIDETestsStore, visibleCoverage } from '@/stores/goideTests'
 import { coverageForDocument, coverageLineStates } from './goStudioCoverage'
 import { startGoStudioLspSync } from './goStudioLspSync'
-import { findRunTargets, runCommandFor, type GoStudioRunTarget } from './goStudioRunTargets'
+import { findRunTargets, runCommandFor, type GoStudioRunTarget, type GoStudioRunTargetHandler } from './goStudioRunTargets'
+import { installBreakpointGutter, registerGoStudioDebugHover, useGoStudioDebugDecorations } from './goStudioDebugEditor'
 import './goStudioEditor.css'
 
 configureMonacoLoader()
@@ -21,6 +22,7 @@ registerGoStudioLanguageFeatures()
 registerGoStudioCodeLens()
 registerGoStudioSemanticFeatures()
 startGoStudioLspSync()
+registerGoStudioDebugHover()
 
 const RUN_TARGET_DEBOUNCE_MS = 250
 
@@ -35,7 +37,7 @@ interface GoStudioCodeEditorProps {
   /** Solo l'editor principale gestisce le richieste di navigazione (reveal). */
   handlesReveal: boolean
   onCursor: (line: number, column: number) => void
-  onRunTarget: (target: GoStudioRunTarget) => void
+  onRunTarget: GoStudioRunTargetHandler
 }
 
 /**
@@ -75,8 +77,9 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
     editor.onMouseDown((event) => {
       if (event.target.type !== monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN) return
       const target = runTargetsRef.current.find((item) => item.line === event.target.position?.lineNumber)
-      if (target) callbacks.current.onRunTarget(target)
+      if (target) callbacks.current.onRunTarget(target, { x: event.event.browserEvent.clientX, y: event.event.browserEvent.clientY })
     })
+    installBreakpointGutter(editor)
     editor.onDidChangeCursorPosition((event) => callbacks.current.onCursor(event.position.lineNumber, event.position.column))
     editor.onDidFocusEditorText(() => void checkActiveDocument())
     // Il documento si ricava dal modello che è cambiato, mai dal componente: durante il cambio file
@@ -99,6 +102,8 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
     clearRevealLocation()
   }, [clearRevealLocation, document.document.id, handlesReveal, revealLocation])
 
+  useGoStudioDebugDecorations(editorRef, document, mountCount)
+
   // Overlay di coverage: solo se il file è identico a quello misurato, altrimenti sparisce (e l'editor avvisa).
   const coverage = useGoIDETestsStore((state) => visibleCoverage(state, document.document.sessionId))
   useEffect(() => {
@@ -120,7 +125,7 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
         range: { startLineNumber: target.line, startColumn: 1, endLineNumber: target.line, endColumn: 1 },
         options: {
           glyphMarginClassName: `go-studio-run-glyph${target.kind === 'main' ? '' : ' go-studio-test-glyph'}`,
-          glyphMarginHoverMessage: { value: `▶ ${runCommandFor(target).label}` },
+          glyphMarginHoverMessage: { value: `▶ ${runCommandFor(target).label} · Run, Debug or Coverage` },
         },
       })))
     }, RUN_TARGET_DEBOUNCE_MS)

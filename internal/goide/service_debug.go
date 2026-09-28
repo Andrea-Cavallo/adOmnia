@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -158,6 +159,7 @@ func (s *Service) StartDebug(request DebugRequest) (DebugSessionInfo, error) {
 	}
 	environment = mergeEnvironment(environment, overrides)
 	request.SessionID = session.ID
+	s.seedBreakpoints(session)
 	return s.debug.Start(debugLaunch{
 		session: session, request: request, binary: delve.Binary, moduleDir: moduleDir,
 		program: filepath.Clean(filepath.Join(moduleDir, filepath.FromSlash(target))), environment: environment,
@@ -207,7 +209,8 @@ func (s *Service) ListDebugSessions(sessionID string) ([]DebugSessionInfo, error
 	return s.debug.Active(SessionID(sessionID)), nil
 }
 
-// SetBreakpoints imposta i breakpoint di riga di un file del progetto, anche senza debug in corso.
+// SetBreakpoints imposta i breakpoint di riga di un file del progetto, anche senza debug in corso,
+// e li salva nello stato della sessione così sopravvivono al riavvio.
 func (s *Service) SetBreakpoints(sessionID, relativePath string, lines []int) ([]BreakpointState, error) {
 	session, err := s.session(sessionID)
 	if err != nil {
@@ -217,5 +220,67 @@ func (s *Service) SetBreakpoints(sessionID, relativePath string, lines []int) ([
 	if err != nil {
 		return nil, err
 	}
-	return s.debug.SetBreakpoints(session.ID, session.Project.RealPath, path, lines), nil
+	s.seedBreakpoints(session)
+	states := s.debug.SetBreakpoints(session.ID, session.Project.RealPath, path, lines)
+	if err := s.persistBreakpoints(session.ID, filepath.ToSlash(relativeWithin(session.Project.RealPath, path)), uniqueSortedLines(lines)); err != nil {
+		return states, err
+	}
+	return states, nil
+}
+
+// ListBreakpoints restituisce i breakpoint salvati della sessione, per file.
+func (s *Service) ListBreakpoints(sessionID string) ([]FileBreakpoints, error) {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return nil, err
+	}
+	s.viewMu.RLock()
+	saved := s.views[session.ID].Breakpoints
+	result := make([]FileBreakpoints, 0, len(saved))
+	for relativePath, lines := range saved {
+		states := make([]BreakpointState, 0, len(lines))
+		for _, line := range lines {
+			states = append(states, BreakpointState{Line: line})
+		}
+		result = append(result, FileBreakpoints{SessionID: session.ID, RelativePath: relativePath, Breakpoints: states})
+	}
+	s.viewMu.RUnlock()
+	sort.Slice(result, func(left, right int) bool { return result[left].RelativePath < result[right].RelativePath })
+	return result, nil
+}
+
+const maxBreakpointFiles = 500
+
+func (s *Service) persistBreakpoints(sessionID SessionID, relativePath string, lines []int) error {
+	s.viewMu.Lock()
+	view := s.views[sessionID]
+	breakpoints := make(map[string][]int, len(view.Breakpoints)+1)
+	for path, existing := range view.Breakpoints {
+		breakpoints[path] = existing
+	}
+	_, known := breakpoints[relativePath]
+	switch {
+	case len(lines) == 0:
+		delete(breakpoints, relativePath)
+	case known || len(breakpoints) < maxBreakpointFiles:
+		breakpoints[relativePath] = lines
+	}
+	view.Breakpoints = breakpoints
+	s.views[sessionID] = view
+	s.viewMu.Unlock()
+	return s.saveState()
+}
+
+// seedBreakpoints porta nel debugger i breakpoint salvati, risolti su percorsi assoluti del progetto.
+func (s *Service) seedBreakpoints(session Session) {
+	s.viewMu.RLock()
+	saved := s.views[session.ID].Breakpoints
+	byPath := make(map[string][]int, len(saved))
+	for relativePath, lines := range saved {
+		if path, err := s.documents.ResolveProjectPath(session.Project, relativePath); err == nil {
+			byPath[path] = lines
+		}
+	}
+	s.viewMu.RUnlock()
+	s.debug.SeedBreakpoints(session.ID, byPath)
 }

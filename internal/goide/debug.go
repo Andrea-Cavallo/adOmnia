@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -119,14 +121,16 @@ type EvaluateResult struct {
 }
 
 type debugger struct {
-	mu      sync.Mutex
-	exited  chan struct{}
-	info    DebugSessionInfo
-	root    string
-	command *exec.Cmd
-	conn    net.Conn
-	client  *dap.Client
-	closed  bool
+	mu     sync.Mutex
+	exited chan struct{}
+	info   DebugSessionInfo
+	root   string
+	// buildDir ospita il binario compilato da Delve, fuori dal progetto; si elimina all'uscita di dlv.
+	buildDir string
+	command  *exec.Cmd
+	conn     net.Conn
+	client   *dap.Client
+	closed   bool
 }
 
 // DebugManager possiede i processi dlv e i breakpoint dei progetti; ogni evento porta l'id della sessione di debug.
@@ -179,12 +183,12 @@ type debugLaunch struct {
 
 // Start avvia dlv dap e restituisce subito la sessione in stato starting; il resto procede in background.
 func (m *DebugManager) Start(launch debugLaunch) (DebugSessionInfo, error) {
-	title := launch.request.Target
-	if launch.request.Mode == "test" && launch.request.TestName != "" {
-		title = launch.request.TestName
+	buildDir, err := os.MkdirTemp("", "adomnia-debug-")
+	if err != nil {
+		return DebugSessionInfo{}, fmt.Errorf("cartella temporanea per il debug non disponibile: %w", err)
 	}
-	session := &debugger{exited: make(chan struct{}), root: launch.session.Project.RealPath, info: DebugSessionInfo{
-		ID: DebugSessionID(newID("debug")), SessionID: launch.session.ID, State: DebugStarting, Title: title, StartedAt: time.Now().UTC(),
+	session := &debugger{exited: make(chan struct{}), root: launch.session.Project.RealPath, buildDir: buildDir, info: DebugSessionInfo{
+		ID: DebugSessionID(newID("debug")), SessionID: launch.session.ID, State: DebugStarting, Title: debugTitle(launch.request), StartedAt: time.Now().UTC(),
 	}}
 	command := exec.Command(launch.binary, "dap", "--listen=127.0.0.1:0")
 	command.Dir = launch.moduleDir
@@ -192,10 +196,12 @@ func (m *DebugManager) Start(launch debugLaunch) (DebugSessionInfo, error) {
 	configureProcess(command, false)
 	stdout, err := command.StdoutPipe()
 	if err != nil {
+		_ = os.RemoveAll(buildDir)
 		return DebugSessionInfo{}, err
 	}
 	command.Stderr = command.Stdout
 	if err := command.Start(); err != nil {
+		_ = os.RemoveAll(buildDir)
 		return DebugSessionInfo{}, fmt.Errorf("avvio di Delve fallito: %w", err)
 	}
 	session.command = command
@@ -212,6 +218,7 @@ func (m *DebugManager) run(session *debugger, launch debugLaunch, stdout io.Read
 	go m.readProcessOutput(session, stdout, address)
 	go func() {
 		_ = session.command.Wait()
+		_ = os.RemoveAll(session.buildDir)
 		close(session.exited)
 		m.terminate(session, "")
 	}()
@@ -248,7 +255,10 @@ func (m *DebugManager) handshake(session *debugger, launch debugLaunch, client *
 	}, nil); err != nil {
 		return fmt.Errorf("initialize DAP fallito: %w", err)
 	}
-	arguments := map[string]any{"request": "launch", "mode": launch.request.Mode, "program": launch.program, "cwd": launch.moduleDir, "stopOnEntry": false}
+	arguments := map[string]any{
+		"request": "launch", "mode": launch.request.Mode, "program": launch.program, "cwd": launch.moduleDir, "stopOnEntry": false,
+		"output": filepath.Join(session.buildDir, debugBinaryName()),
+	}
 	args := append([]string(nil), launch.request.ProgramArguments...)
 	if launch.request.Mode == "test" && launch.request.TestName != "" {
 		args = append([]string{"-test.run", launch.request.TestName}, args...)
@@ -262,7 +272,7 @@ func (m *DebugManager) handshake(session *debugger, launch debugLaunch, client *
 	launchCtx, cancelLaunch := context.WithTimeout(context.Background(), debugLaunchTimeout)
 	defer cancelLaunch()
 	if err := client.Call(launchCtx, "launch", arguments, nil); err != nil {
-		return fmt.Errorf("avvio del programma in debug fallito: %w", err)
+		return explainLaunchError(err)
 	}
 	select {
 	case <-initialized:
@@ -471,6 +481,22 @@ func (m *DebugManager) breakpointsFor(sessionID SessionID) map[string][]int {
 	return copyOf
 }
 
+// SeedBreakpoints carica i breakpoint salvati se la sessione non ne ha ancora in memoria.
+func (m *DebugManager) SeedBreakpoints(sessionID SessionID, byPath map[string][]int) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.breakpoints[sessionID] != nil {
+		return
+	}
+	seeded := make(map[string][]int, len(byPath))
+	for path, lines := range byPath {
+		if unique := uniqueSortedLines(lines); len(unique) > 0 {
+			seeded[path] = unique
+		}
+	}
+	m.breakpoints[sessionID] = seeded
+}
+
 // SetBreakpoints sostituisce i breakpoint di un file; con un debug attivo li invia subito a Delve e ne pubblica la verifica.
 func (m *DebugManager) SetBreakpoints(sessionID SessionID, root, path string, lines []int) []BreakpointState {
 	unique := uniqueSortedLines(lines)
@@ -495,6 +521,44 @@ func (m *DebugManager) SetBreakpoints(sessionID SessionID, root, path string, li
 	}
 	m.publish("debug.breakpoints", sessionID, relativeWithin(root, path), FileBreakpoints{SessionID: sessionID, RelativePath: filepath.ToSlash(relativeWithin(root, path)), Breakpoints: states})
 	return states
+}
+
+// debugTitle dà un nome leggibile alla sessione: il test senza ancore regex, o il package del programma.
+func debugTitle(request DebugRequest) string {
+	if request.Mode == "test" {
+		name := request.TestName
+		if name == "^$" {
+			for index, argument := range request.ProgramArguments {
+				if argument == "-test.bench" && index+1 < len(request.ProgramArguments) {
+					name = request.ProgramArguments[index+1]
+				}
+			}
+		}
+		if name = strings.NewReplacer("^", "", "$", "").Replace(name); name != "" {
+			return name
+		}
+		return "tests " + request.Target
+	}
+	target := strings.TrimPrefix(strings.TrimSpace(request.Target), "./")
+	if target == "" || target == "." {
+		return "main"
+	}
+	return target
+}
+
+func debugBinaryName() string {
+	if runtime.GOOS == "windows" {
+		return "__debug_bin.exe"
+	}
+	return "__debug_bin"
+}
+
+// explainLaunchError rende azionabile l'errore più comune: Delve più recente dell'SDK Go del progetto.
+func explainLaunchError(err error) error {
+	if strings.Contains(err.Error(), "too old for this version of Delve") {
+		return fmt.Errorf("l'SDK Go del progetto è troppo vecchio per questo Delve: seleziona un SDK più recente (Go → Go SDKs & Toolchains…) oppure indica un dlv compatibile (Go → Tool Paths…). Dettaglio: %w", err)
+	}
+	return fmt.Errorf("avvio del programma in debug fallito: %w", err)
 }
 
 func uniqueSortedLines(lines []int) []int {
