@@ -24,6 +24,7 @@ import {
   type GoIDELinterKind,
   type GoIDELintResult,
   type GoIDESymbolNode,
+  type GoIDEQuickDefinition,
 } from '@/lib/goide-lsp-api'
 import { useGoIDEStore } from './goide'
 
@@ -35,7 +36,16 @@ export interface GoIDEEditorPreferences {
   formatOnSave: boolean
   organizeImportsOnSave: boolean
   lintOnSave: boolean
+  /** Colori di gopls sopra la sintassi (parametri, variabili, tipi…). */
+  semanticHighlighting: boolean
+  /** Nomi dei parametri per literal e nil, type parameter dedotti. */
+  inlayHints: boolean
 }
+
+/** Popup ancorato al cursore: Quick Definition e Show Usages non fanno lasciare il file corrente. */
+export type GoIDECaretPopup =
+  | { kind: 'definition'; anchor: { x: number; y: number }; result: GoIDEQuickDefinition }
+  | { kind: 'usages'; anchor: { x: number; y: number }; sessionId: string; title: string; locations: GoIDEEditorLocation[] }
 
 export interface GoIDELintState {
   running: boolean
@@ -65,6 +75,7 @@ interface GoIDELspState {
   search: Record<string, GoIDESearchResult | null>
   message: string | null
   pendingChange: GoIDEWorkspaceChange | null
+  caretPopup: GoIDECaretPopup | null
   renameRequest: { sessionId: string; documentId: string; line: number; column: number } | null
   findRequest: { token: number; query: string } | null
   requestFind: (query: string) => void
@@ -85,6 +96,7 @@ interface GoIDELspState {
   setSearchResult: (sessionId: string, result: GoIDESearchResult | null) => void
   handleEvent: (event: GoIDEEvent) => void
   clearMessage: () => void
+  showCaretPopup: (popup: GoIDECaretPopup | null) => void
 }
 
 interface PersistedSettings {
@@ -93,7 +105,7 @@ interface PersistedSettings {
 }
 
 const DEFAULT_SETTINGS: GoIDELanguageServerSettings = { gofumpt: false, staticcheck: false, placeholders: true, semanticLinks: false }
-const DEFAULT_PREFERENCES: GoIDEEditorPreferences = { formatOnSave: true, organizeImportsOnSave: true, lintOnSave: false }
+const DEFAULT_PREFERENCES: GoIDEEditorPreferences = { formatOnSave: true, organizeImportsOnSave: true, lintOnSave: false, semanticHighlighting: true, inlayHints: true }
 const EMPTY_LINT: GoIDELintState = { running: false, result: null, error: null, reports: {} }
 const runningLints = new Map<string, CancellablePromise<GoIDELintResult>>()
 
@@ -139,6 +151,7 @@ export const useGoIDELspStore = create<GoIDELspState>((set, get) => ({
   search: {},
   message: null,
   pendingChange: null,
+  caretPopup: null,
   renameRequest: null,
   findRequest: null,
 
@@ -327,6 +340,7 @@ export const useGoIDELspStore = create<GoIDELspState>((set, get) => ({
   },
 
   clearMessage: () => set({ message: null }),
+  showCaretPopup: (popup) => set({ caretPopup: popup }),
 }))
 
 /** Unisce diagnostica gopls e risultati del linter per file, mantenendo la sorgente di ogni voce. */

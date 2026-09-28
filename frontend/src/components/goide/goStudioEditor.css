@@ -26,3 +26,20 @@
   .go-studio-run-glyph::before { transition: none; }
   .go-studio-run-glyph:hover::before { transform: none; }
 }
+
+/* Chiamata ricorsiva (call hierarchy di gopls): icona nel gutter come in GoLand. */
+.go-studio-recursive-glyph {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+}
+.go-studio-recursive-glyph::before {
+  content: '⟳';
+  font-size: 12px;
+  line-height: 1;
+  color: var(--color-warning, #f59e0b);
+}
+.go-studio-recursive-call {
+  text-decoration: underline dotted var(--color-warning, #f59e0b);
+  text-underline-offset: 3px;
+}

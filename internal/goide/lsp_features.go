@@ -160,7 +160,11 @@ func (m *LSPManager) Locations(ctx context.Context, sessionID SessionID, documen
 		locations = locations[:maxLocationResults]
 	}
 	state, _ := m.get(sessionID)
-	return m.editorLocations(state, locations), nil
+	result := m.editorLocations(state, locations)
+	if kind == "references" {
+		classifyUsages(result, func(location EditorLocation) string { return m.documentText(state, location.URI, location.Path) })
+	}
+	return result, nil
 }
 
 func decodeLocations(raw json.RawMessage) []lsp.Location {

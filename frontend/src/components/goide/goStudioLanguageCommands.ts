@@ -48,6 +48,8 @@ export function runLanguageCommand(id: GoStudioCommandId, sessionId: string | nu
     case 'code.gofumpt': void lsp.updateSettings(sessionId, { gofumpt: !lsp.settings.gofumpt }); return true
     case 'code.staticcheck': void lsp.updateSettings(sessionId, { staticcheck: !lsp.settings.staticcheck }); return true
     case 'code.lintOnSave': lsp.updatePreferences({ lintOnSave: !lsp.preferences.lintOnSave }); return true
+    case 'code.semanticHighlighting': lsp.updatePreferences({ semanticHighlighting: !lsp.preferences.semanticHighlighting }); return true
+    case 'code.inlayHints': lsp.updatePreferences({ inlayHints: !lsp.preferences.inlayHints }); return true
   }
   if (!sessionId) return false
   switch (id) {

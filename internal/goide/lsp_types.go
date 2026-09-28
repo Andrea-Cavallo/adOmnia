@@ -20,6 +20,18 @@ type LanguageServerStatus struct {
 	PID       int                 `json:"pid,omitempty"`
 	Restarts  int                 `json:"restarts"`
 	Error     string              `json:"error,omitempty"`
+	// Features elenca ciò che il gopls in esecuzione supporta davvero: l'editor nasconde il resto.
+	Features *LanguageServerFeatures `json:"features,omitempty"`
+}
+
+// LanguageServerFeatures descrive le funzioni opzionali annunciate da gopls all'avvio.
+type LanguageServerFeatures struct {
+	SemanticTokens    bool     `json:"semanticTokens"`
+	TokenTypes        []string `json:"tokenTypes"`
+	TokenModifiers    []string `json:"tokenModifiers"`
+	InlayHints        bool     `json:"inlayHints"`
+	DocumentHighlight bool     `json:"documentHighlight"`
+	CallHierarchy     bool     `json:"callHierarchy"`
 }
 
 type GoplsInfo struct {
@@ -57,6 +69,8 @@ type EditorLocation struct {
 	External     bool        `json:"external"`
 	Range        EditorRange `json:"range"`
 	Preview      string      `json:"preview,omitempty"`
+	// Usage vale declaration, read, write o import per i risultati di Find Usages.
+	Usage string `json:"usage,omitempty"`
 }
 
 type EditorDiagnostic struct {
@@ -185,4 +199,44 @@ type DocumentSymbolsResult struct {
 type FormatResult struct {
 	Version int              `json:"version"`
 	Edits   []EditorTextEdit `json:"edits"`
+}
+
+type SemanticTokensResult struct {
+	Version int      `json:"version"`
+	Data    []uint32 `json:"data"`
+}
+
+type InlayHintEntry struct {
+	Line         int    `json:"line"`
+	Column       int    `json:"column"`
+	Label        string `json:"label"`
+	Kind         int    `json:"kind"`
+	PaddingLeft  bool   `json:"paddingLeft"`
+	PaddingRight bool   `json:"paddingRight"`
+}
+
+type InlayHintsResult struct {
+	Version int              `json:"version"`
+	Hints   []InlayHintEntry `json:"hints"`
+}
+
+type HighlightEntry struct {
+	Range EditorRange `json:"range"`
+	// Kind è text, read o write.
+	Kind string `json:"kind"`
+}
+
+type HighlightsResult struct {
+	Version    int              `json:"version"`
+	Highlights []HighlightEntry `json:"highlights"`
+}
+
+type RecursiveCall struct {
+	Function string      `json:"function"`
+	Range    EditorRange `json:"range"`
+}
+
+type RecursiveCallsResult struct {
+	Version int             `json:"version"`
+	Calls   []RecursiveCall `json:"calls"`
 }

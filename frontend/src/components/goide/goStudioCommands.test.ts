@@ -51,7 +51,15 @@ describe('Go Studio command availability', () => {
     hasEditor: true, activeDocumentDirty: true, sessionDirty: true, structureOpen: true, bottomOpen: false, showIgnored: false,
     lspState: 'ready', goplsAvailable: true, formatOnSave: true, importsOnSave: false, gofumpt: false, staticcheck: false,
     lintOnSave: false, linterAvailable: true, linting: false,
+    semanticHighlighting: true, inlayHints: false, semanticTokensSupported: true, inlayHintsSupported: false,
   }
+
+  it('disables editor features the running gopls does not provide', () => {
+    expect(commandAvailability('code.semanticHighlighting', ready)).toBe(true)
+    expect(commandAvailability('code.inlayHints', ready)).toMatch(/does not provide/)
+    expect(commandChecked('code.semanticHighlighting', ready)).toBe(true)
+    expect(commandChecked('code.inlayHints', ready)).toBe(false)
+  })
 
   it('explains why run commands are blocked without trust or SDK', () => {
     expect(commandAvailability('run.run', { ...ready, authorized: false })).toMatch(/Trust/)

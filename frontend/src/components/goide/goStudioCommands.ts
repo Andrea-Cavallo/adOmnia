@@ -5,6 +5,7 @@ export type GoStudioCommandId =
   | 'view.splitRight' | 'view.splitDown' | 'view.unsplit' | 'view.terminal'
   | 'view.quickOpen' | 'view.toggleStructure' | 'view.toggleBottom' | 'view.toggleIgnored' | 'view.problems'
   | 'nav.declaration' | 'nav.typeDeclaration' | 'nav.implementation' | 'nav.usages' | 'nav.fileStructure' | 'nav.symbol' | 'nav.findInFiles'
+  | 'nav.quickDefinition' | 'nav.showUsages' | 'code.quickDocumentation' | 'code.typeInfo' | 'code.semanticHighlighting' | 'code.inlayHints'
   | 'code.completion' | 'code.parameterInfo' | 'code.quickFix' | 'code.rename' | 'code.reformat' | 'code.organizeImports'
   | 'code.formatOnSave' | 'code.importsOnSave' | 'code.gofumpt' | 'code.staticcheck' | 'code.lint' | 'code.lintOnSave'
   | 'go.toolchains' | 'go.detect' | 'go.dependencies' | 'go.tidy' | 'go.trust'
@@ -75,11 +76,15 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'nav.typeDeclaration', menu: 'navigate', label: 'Type Declaration' },
   { id: 'nav.implementation', menu: 'navigate', label: 'Implementation(s)', binding: { key: 'b', mod: true, alt: true }, editorOwned: true },
   { id: 'nav.usages', menu: 'navigate', label: 'Find Usages', binding: { key: 'F7', alt: true }, editorOwned: true },
+  { id: 'nav.showUsages', menu: 'navigate', label: 'Show Usages', binding: { key: 'F7', mod: true, alt: true }, editorOwned: true },
+  { id: 'nav.quickDefinition', menu: 'navigate', label: 'Quick Definition', binding: { key: 'i', mod: true, shift: true }, editorOwned: true },
   { id: 'nav.fileStructure', menu: 'navigate', label: 'File Structure', binding: { key: 'F12', mod: true }, editorOwned: true, separatorBefore: true },
   { id: 'nav.symbol', menu: 'navigate', label: 'Symbol in Workspace…', binding: { key: 't', mod: true } },
   { id: 'nav.findInFiles', menu: 'navigate', label: 'Find in Files…', binding: { key: 'f', mod: true, shift: true }, separatorBefore: true },
   { id: 'code.completion', menu: 'code', label: 'Code Completion', binding: { key: 'Space', mod: true }, editorOwned: true },
   { id: 'code.parameterInfo', menu: 'code', label: 'Parameter Info', binding: { key: 'Space', mod: true, shift: true }, editorOwned: true },
+  { id: 'code.quickDocumentation', menu: 'code', label: 'Quick Documentation', binding: { key: 'q', mod: true }, editorOwned: true },
+  { id: 'code.typeInfo', menu: 'code', label: 'Type Info', binding: { key: 'p', mod: true, shift: true }, editorOwned: true },
   { id: 'code.quickFix', menu: 'code', label: 'Show Context Actions', binding: { key: 'Enter', alt: true }, editorOwned: true, separatorBefore: true },
   { id: 'code.rename', menu: 'code', label: 'Rename…', binding: { key: 'F6', shift: true }, editorOwned: true },
   { id: 'code.reformat', menu: 'code', label: 'Reformat Code', binding: { key: 'l', mod: true, alt: true }, editorOwned: true, separatorBefore: true },
@@ -88,6 +93,8 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'code.formatOnSave', menu: 'code', label: 'Reformat on Save', separatorBefore: true },
   { id: 'code.importsOnSave', menu: 'code', label: 'Optimize Imports on Save' },
   { id: 'code.lintOnSave', menu: 'code', label: 'Run Linter on Save' },
+  { id: 'code.semanticHighlighting', menu: 'code', label: 'Semantic Highlighting' },
+  { id: 'code.inlayHints', menu: 'code', label: 'Parameter & Type Hints' },
   { id: 'code.gofumpt', menu: 'code', label: 'Use gofumpt Style' },
   { id: 'code.staticcheck', menu: 'code', label: 'Staticcheck Analyses' },
   { id: 'go.toolchains', menu: 'go', label: 'Go SDKs & Toolchains…' },
@@ -182,6 +189,10 @@ export interface GoStudioCommandContext {
   structureOpen: boolean
   bottomOpen: boolean
   showIgnored: boolean
+  semanticHighlighting: boolean
+  inlayHints: boolean
+  semanticTokensSupported: boolean
+  inlayHintsSupported: boolean
 }
 
 const NO_PROJECT = 'Open a Go project first'
@@ -209,6 +220,7 @@ export function commandAvailability(id: GoStudioCommandId, context: GoStudioComm
     if (!context.authorized) return NOT_TRUSTED
     return context.linterAvailable ? true : 'Install golangci-lint or staticcheck (Go menu)'
   }
+  if (id === 'code.semanticHighlighting' || id === 'code.inlayHints') return context.lspState === 'ready' && !context[id === 'code.inlayHints' ? 'inlayHintsSupported' : 'semanticTokensSupported'] ? 'The running gopls does not provide this feature' : true
   if (id.startsWith('code.') && ['code.formatOnSave', 'code.importsOnSave', 'code.gofumpt', 'code.staticcheck', 'code.lintOnSave'].indexOf(id) < 0) return semanticAvailability(context)
   switch (id) {
     case 'file.save': return context.activeDocumentDirty ? true : 'No unsaved changes in this file'
@@ -266,6 +278,8 @@ export function commandChecked(id: GoStudioCommandId, context: GoStudioCommandCo
     case 'code.gofumpt': return context.gofumpt
     case 'code.staticcheck': return context.staticcheck
     case 'code.lintOnSave': return context.lintOnSave
+    case 'code.semanticHighlighting': return context.semanticHighlighting
+    case 'code.inlayHints': return context.inlayHints
     default: return false
   }
 }

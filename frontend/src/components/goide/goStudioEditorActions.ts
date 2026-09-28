@@ -3,6 +3,7 @@ import { requestLocations, requestOrganizeImports, type GoIDELocationKind } from
 import { useGoIDELspStore } from '@/stores/goideLsp'
 import { navigateToLocation, prepareDocument } from './goStudioLanguageFeatures'
 import { applyGoStudioWorkspaceChange } from './goStudioWorkspaceEdits'
+import { showQuickDefinition, showTypeInfo, showUsagesPopup } from './goStudioSemanticFeatures'
 
 export const GO_STUDIO_ACTIONS = {
   findUsages: 'goStudio.findUsages',
@@ -13,6 +14,10 @@ export const GO_STUDIO_ACTIONS = {
   reformat: 'goStudio.reformat',
   quickFix: 'goStudio.quickFix',
   fileStructure: 'goStudio.fileStructure',
+  quickDocumentation: 'goStudio.quickDocumentation',
+  quickDefinition: 'goStudio.quickDefinition',
+  showUsages: 'goStudio.showUsages',
+  typeInfo: 'goStudio.typeInfo',
 } as const
 
 const { KeyMod, KeyCode } = monaco
@@ -78,5 +83,9 @@ export function installGoStudioEditorActions(editor: monaco.editor.IStandaloneCo
   editor.addAction({ id: GO_STUDIO_ACTIONS.organizeImports, label: 'Optimize Imports', keybindings: [KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.KeyO], contextMenuGroupId: '1_modification', run: (target) => { void organizeImports(target) } })
   editor.addAction({ id: GO_STUDIO_ACTIONS.reformat, label: 'Reformat Code', keybindings: [KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.KeyL], contextMenuGroupId: '1_modification', run: (target) => { void target.getAction('editor.action.formatDocument')?.run() } })
   editor.addAction({ id: GO_STUDIO_ACTIONS.quickFix, label: 'Show Context Actions', keybindings: [KeyMod.Alt | KeyCode.Enter], run: (target) => { void target.getAction('editor.action.quickFix')?.run() } })
+  editor.addAction({ id: GO_STUDIO_ACTIONS.quickDocumentation, label: 'Quick Documentation', keybindings: [KeyMod.CtrlCmd | KeyCode.KeyQ], run: (target) => { target.trigger('go-studio', 'editor.action.showHover', { focus: true }) } })
+  semantic(GO_STUDIO_ACTIONS.quickDefinition, 'Quick Definition', [KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyI], showQuickDefinition)
+  semantic(GO_STUDIO_ACTIONS.showUsages, 'Show Usages', [KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.F7], showUsagesPopup)
+  editor.addAction({ id: GO_STUDIO_ACTIONS.typeInfo, label: 'Type Info', keybindings: [KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyP], run: (target) => { void showTypeInfo(target) } })
   editor.addAction({ id: GO_STUDIO_ACTIONS.fileStructure, label: 'File Structure', keybindings: [KeyMod.CtrlCmd | KeyCode.F12], run: (target) => { void target.getAction('editor.action.quickOutline')?.run() } })
 }

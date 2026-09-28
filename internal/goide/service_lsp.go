@@ -169,3 +169,28 @@ func (s *Service) OrganizeImports(ctx context.Context, sessionID, documentID str
 	}
 	return s.lsp.ResolveCodeAction(ctx, SessionID(sessionID), actions[0].ID)
 }
+
+// SemanticTokens restituisce i token semantici del buffer, da decodificare con la legenda in LanguageServerStatus.Features.
+func (s *Service) SemanticTokens(ctx context.Context, sessionID, documentID string) (SemanticTokensResult, error) {
+	return s.lsp.SemanticTokens(ctx, SessionID(sessionID), DocumentID(documentID))
+}
+
+// InlayHints restituisce i suggerimenti in linea per l'intervallo visibile dell'editor.
+func (s *Service) InlayHints(ctx context.Context, sessionID, documentID string, visible EditorRange) (InlayHintsResult, error) {
+	return s.lsp.InlayHints(ctx, SessionID(sessionID), DocumentID(documentID), visible)
+}
+
+// DocumentHighlights evidenzia le occorrenze del simbolo al cursore e i punti di uscita di una funzione.
+func (s *Service) DocumentHighlights(ctx context.Context, sessionID, documentID string, line, column int) (HighlightsResult, error) {
+	return s.lsp.DocumentHighlights(ctx, SessionID(sessionID), DocumentID(documentID), line, column)
+}
+
+// RecursiveCalls restituisce le chiamate ricorsive dirette del file, da marcare nel gutter.
+func (s *Service) RecursiveCalls(ctx context.Context, sessionID, documentID string) (RecursiveCallsResult, error) {
+	return s.lsp.RecursiveCalls(ctx, SessionID(sessionID), DocumentID(documentID))
+}
+
+// QuickDefinition restituisce il sorgente della dichiarazione del simbolo al cursore, per il popup Quick Definition.
+func (s *Service) QuickDefinition(ctx context.Context, sessionID, documentID string, line, column int) (QuickDefinitionResult, error) {
+	return s.lsp.QuickDefinition(ctx, SessionID(sessionID), DocumentID(documentID), line, column)
+}

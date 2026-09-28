@@ -24,6 +24,7 @@ import { runLanguageCommand } from './goStudioLanguageCommands'
 import { runSaveActions } from './goStudioSaveActions'
 import { runCommandFor, type GoStudioRunTarget } from './goStudioRunTargets'
 import { useGoStudioCloseFlow } from './useGoStudioCloseFlow'
+import { GoStudioCaretPopup } from './GoStudioCaretPopup'
 import { runGoStudioQuickCommand, runModuleDependencyAction } from './goStudioQuickActions'
 import { flushBufferRecovery } from './goStudioRecovery'
 import { confirm } from '@/lib/confirmDialog'
@@ -197,6 +198,10 @@ export function GoStudioPanel() {
     structureOpen: store.layout.structureOpen,
     bottomOpen: store.layout.bottomOpen,
     showIgnored: !!activeSession && (store.showIgnoredBySession[activeSession.id] ?? false),
+    semanticHighlighting: lsp.preferences.semanticHighlighting,
+    inlayHints: lsp.preferences.inlayHints,
+    semanticTokensSupported: !!lspStatus?.features?.semanticTokens,
+    inlayHintsSupported: !!lspStatus?.features?.inlayHints,
   }
   const commandState: GoStudioCommandState = {
     availability: (id) => commandAvailability(id, commandContext),
@@ -295,6 +300,7 @@ export function GoStudioPanel() {
       <GoStudioWorkspace session={activeSession} {...store.layout} onProjectResize={beginResize('projectWidth', store.layout.projectWidth)} onStructureResize={beginResize('structureWidth', store.layout.structureWidth, -1)} onBottomResize={beginResize('bottomHeight', store.layout.bottomHeight, -1)} onCursor={(line, column) => setCursor({ line, column })} onRequestCloseDocument={closeFlow.requestCloseDocuments} onRunTarget={runTarget} />
       <GoStudioStatusBar session={activeSession} toolchain={toolchain} document={activeDocument} cursor={cursor} execution={activeExecution} onLanguageServer={openLanguageServerMenu} onLinter={() => runCommand(commandAvailability('code.lint', commandContext) === true ? 'code.lint' : 'go.toolPaths')} />
       <GoStudioQuickOpen />
+      <GoStudioCaretPopup />
       {sharedDialogs}
       {store.activeSessionId && <GoStudioRunConfigurations open={configureOpen} sessionId={store.activeSessionId} onClose={() => setConfigureOpen(false)} />}
       <GoStudioSecretsPrompt

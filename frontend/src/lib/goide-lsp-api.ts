@@ -25,9 +25,19 @@ import type {
   Execution,
   LintResult,
   LinterInfo,
+  SemanticTokensResult,
+  InlayHintsResult,
+  HighlightsResult,
+  RecursiveCallsResult,
+  LanguageServerFeatures,
+  QuickDefinitionResult,
 } from '../../bindings/adomnia/internal/goide/models'
 
 export type GoIDELanguageServerStatus = LanguageServerStatus
+export type GoIDELanguageServerFeatures = LanguageServerFeatures
+export type GoIDEInlayHintsResult = InlayHintsResult
+export type GoIDEHighlightsResult = HighlightsResult
+export type GoIDEQuickDefinition = QuickDefinitionResult
 export type GoIDELanguageServerSettings = LanguageServerSettings
 export type GoIDEGoplsInfo = GoplsInfo
 export type GoIDEEditorRange = EditorRange
@@ -180,4 +190,24 @@ export function requestOrganizeImports(sessionId: string, documentId: string): C
 
 export function requestProjectSearch(query: SearchQuery): CancellablePromise<SearchResult> {
   return GoIDEBindings.SearchProject(query)
+}
+
+export function requestSemanticTokens(sessionId: string, documentId: string): CancellablePromise<SemanticTokensResult> {
+  return GoIDEBindings.SemanticTokens(sessionId, documentId)
+}
+
+export function requestInlayHints(sessionId: string, documentId: string, visible: EditorRange): CancellablePromise<InlayHintsResult> {
+  return GoIDEBindings.InlayHints(sessionId, documentId, visible)
+}
+
+export function requestDocumentHighlights(sessionId: string, documentId: string, line: number, column: number): CancellablePromise<HighlightsResult> {
+  return GoIDEBindings.DocumentHighlights(sessionId, documentId, line, column)
+}
+
+export function requestRecursiveCalls(sessionId: string, documentId: string): CancellablePromise<RecursiveCallsResult> {
+  return GoIDEBindings.RecursiveCalls(sessionId, documentId)
+}
+
+export function requestQuickDefinition(sessionId: string, documentId: string, line: number, column: number): CancellablePromise<QuickDefinitionResult> {
+  return GoIDEBindings.QuickDefinition(sessionId, documentId, line, column)
 }

@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import Editor, { type BeforeMount, type OnMount } from '@monaco-editor/react'
-import { applyAdomniaMonacoTheme, configureMonacoLoader, monaco } from '@/lib/monacoSetup'
+import { GO_STUDIO_THEMES, applyGoStudioMonacoThemes, configureMonacoLoader, monaco } from '@/lib/monacoSetup'
 import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
 import { useSettingsStore } from '@/stores/settings'
 import { registerGoStudioEditor } from './goStudioEditorRegistry'
 import { installGoStudioEditorActions } from './goStudioEditorActions'
 import { documentForModel, registerGoStudioLanguageFeatures } from './goStudioLanguageFeatures'
 import { registerGoStudioCodeLens } from './goStudioCodeLens'
+import { installRecursiveCallMarkers, registerGoStudioSemanticFeatures } from './goStudioSemanticFeatures'
+import { useGoIDELspStore } from '@/stores/goideLsp'
 import { startGoStudioLspSync } from './goStudioLspSync'
 import { findRunTargets, runCommandFor, type GoStudioRunTarget } from './goStudioRunTargets'
 import './goStudioEditor.css'
@@ -14,14 +16,15 @@ import './goStudioEditor.css'
 configureMonacoLoader()
 registerGoStudioLanguageFeatures()
 registerGoStudioCodeLens()
+registerGoStudioSemanticFeatures()
 startGoStudioLspSync()
 
 const RUN_TARGET_DEBOUNCE_MS = 250
 
-export const beforeGoStudioMount: BeforeMount = (instance) => applyAdomniaMonacoTheme(instance)
+export const beforeGoStudioMount: BeforeMount = (instance) => applyGoStudioMonacoThemes(instance)
 
 export function useGoStudioEditorTheme(): string {
-  return useSettingsStore((state) => state.settings.appearance.theme === 'light' ? 'adomnia-light' : 'adomnia-dark')
+  return useSettingsStore((state) => state.settings.appearance.theme === 'light' ? GO_STUDIO_THEMES.light : GO_STUDIO_THEMES.dark)
 }
 
 interface GoStudioCodeEditorProps {
@@ -48,6 +51,8 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
   const checkActiveDocument = useGoIDEStore((state) => state.checkActiveDocument)
   const revealLocation = useGoIDEStore((state) => state.revealLocation)
   const clearRevealLocation = useGoIDEStore((state) => state.clearRevealLocation)
+  const semanticHighlighting = useGoIDELspStore((state) => state.preferences.semanticHighlighting)
+  const inlayHints = useGoIDELspStore((state) => state.preferences.inlayHints)
 
   const onMount: OnMount = (editor) => {
     editorRef.current = editor
@@ -59,6 +64,7 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
       if (position) callbacks.current.onCursor(position.lineNumber, position.column)
     })
     installGoStudioEditorActions(editor)
+    installRecursiveCallMarkers(editor)
     decorationsRef.current = editor.createDecorationsCollection()
     setMountCount((value) => value + 1)
     editor.onMouseDown((event) => {
@@ -127,6 +133,9 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
         readOnly: !!document.document.readOnly,
         glyphMargin: true,
         codeLens: !document.document.readOnly,
+        'semanticHighlighting.enabled': semanticHighlighting,
+        inlayHints: { enabled: inlayHints ? 'on' : 'off', fontSize: 10, padding: true },
+        occurrencesHighlight: 'singleFile',
         codeLensFontSize: 10,
         tabSize: document.document.language === 'go' ? 4 : 2,
         insertSpaces: document.document.language !== 'go',

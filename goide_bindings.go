@@ -305,6 +305,36 @@ func (g *GoIDE) Completion(ctx context.Context, sessionID, documentID string, li
 	return settleCancelled(ctx, value, err)
 }
 
+// SemanticTokens restituisce i token semantici del buffer, da decodificare con la legenda di gopls.
+func (g *GoIDE) SemanticTokens(ctx context.Context, sessionID, documentID string) (goide.SemanticTokensResult, error) {
+	value, err := g.service.SemanticTokens(ctx, sessionID, documentID)
+	return settleCancelled(ctx, value, err)
+}
+
+// InlayHints restituisce i suggerimenti in linea per l'intervallo visibile.
+func (g *GoIDE) InlayHints(ctx context.Context, sessionID, documentID string, visible goide.EditorRange) (goide.InlayHintsResult, error) {
+	value, err := g.service.InlayHints(ctx, sessionID, documentID, visible)
+	return settleCancelled(ctx, value, err)
+}
+
+// DocumentHighlights evidenzia occorrenze e punti di uscita al cursore.
+func (g *GoIDE) DocumentHighlights(ctx context.Context, sessionID, documentID string, line, column int) (goide.HighlightsResult, error) {
+	value, err := g.service.DocumentHighlights(ctx, sessionID, documentID, line, column)
+	return settleCancelled(ctx, value, err)
+}
+
+// RecursiveCalls restituisce le chiamate ricorsive dirette del file.
+func (g *GoIDE) RecursiveCalls(ctx context.Context, sessionID, documentID string) (goide.RecursiveCallsResult, error) {
+	value, err := g.service.RecursiveCalls(ctx, sessionID, documentID)
+	return settleCancelled(ctx, value, err)
+}
+
+// QuickDefinition restituisce il sorgente della dichiarazione al cursore per il popup Quick Definition.
+func (g *GoIDE) QuickDefinition(ctx context.Context, sessionID, documentID string, line, column int) (goide.QuickDefinitionResult, error) {
+	value, err := g.service.QuickDefinition(ctx, sessionID, documentID, line, column)
+	return settleCancelled(ctx, value, err)
+}
+
 // Hover restituisce la documentazione del simbolo sotto il cursore.
 func (g *GoIDE) Hover(ctx context.Context, sessionID, documentID string, line, column int) (goide.HoverResult, error) {
 	value, err := g.service.Hover(ctx, sessionID, documentID, line, column)

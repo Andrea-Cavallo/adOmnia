@@ -209,10 +209,15 @@ func (m *LSPManager) launch(state *lspSession) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), initializeTimeout)
 	defer cancel()
-	if err := process.conn.Call(ctx, "initialize", initializeParams(state), nil); err != nil {
+	var initialized initializeResult
+	if err := process.conn.Call(ctx, "initialize", initializeParams(state), &initialized); err != nil {
 		m.abandon(state, process)
 		return fmt.Errorf("inizializzazione gopls fallita: %w", err)
 	}
+	features := initialized.Capabilities.features()
+	state.mu.Lock()
+	state.status.Features = &features
+	state.mu.Unlock()
 	if err := process.conn.Notify("initialized", map[string]any{}); err != nil {
 		m.abandon(state, process)
 		return err
@@ -455,6 +460,15 @@ func initializeParams(state *lspSession) map[string]any {
 					"dataSupport":    true, "isPreferredSupport": true, "disabledSupport": true,
 				},
 				"publishDiagnostics": map[string]any{"relatedInformation": false, "versionSupport": true},
+				"documentHighlight":  map[string]any{},
+				"callHierarchy":      map[string]any{},
+				"inlayHint":          map[string]any{},
+				"semanticTokens": map[string]any{
+					"requests":       map[string]any{"full": true, "range": false},
+					"tokenTypes":     semanticTokenTypes,
+					"tokenModifiers": semanticTokenModifiers,
+					"formats":        []string{"relative"},
+				},
 			},
 		},
 	}
@@ -469,6 +483,13 @@ func goplsSettings(settings LanguageServerSettings) map[string]any {
 		"completeUnimported": true,
 		"hoverKind":          "FullDocumentation",
 		"linksInHover":       settings.SemanticLinks,
+		"semanticTokens":     true,
+		// Stringhe e numeri li colora già Monaco: gopls invia solo i token che aggiungono informazione.
+		"semanticTokenTypes": map[string]bool{"string": false, "number": false},
+		"hints": map[string]bool{
+			"parameterNames":         true,
+			"functionTypeParameters": true,
+		},
 	}
 }
 
