@@ -1,4 +1,4 @@
-import { AlertTriangle, Boxes, FileCode2, FolderTree, Info, Layers } from 'lucide-react'
+import { AlertTriangle, Boxes, FileCode2, FolderTree, Layers } from 'lucide-react'
 import type { GoIDESession } from '@/lib/goide-api'
 import { useGoIDEStore } from '@/stores/goide'
 
@@ -31,9 +31,7 @@ export function GoStudioProjectOverview({ session }: GoStudioProjectOverviewProp
   const relative = (path: string) => relativeTo(roots.find((root) => relativeTo(root, path) !== path) ?? project.rootPath, path)
 
   return (
-    <aside aria-label="Project overview" className="flex h-full min-w-0 flex-col bg-surface-1">
-      <div className="flex h-8 shrink-0 items-center gap-1.5 border-b border-border-1 px-2 text-[10px] font-semibold uppercase tracking-wider text-text-3"><FolderTree size={11} /> Project Overview</div>
-      <div className="min-h-0 flex-1 overflow-auto pb-2 text-[10px]">
+      <div aria-label="Project overview" className="min-h-0 flex-1 overflow-auto pb-2 text-[10px]">
         <SectionTitle icon={<Layers size={10} />} label="Go workspace" />
         {project.goWorkPath ? (
           <button type="button" onClick={() => void openDocument('go.work')} className="flex w-full items-center gap-1.5 px-2 py-1 text-left text-text-2 hover:bg-surface-3 hover:text-text-1"><FileCode2 size={11} className="text-accent" /> go.work</button>
@@ -60,8 +58,6 @@ export function GoStudioProjectOverview({ session }: GoStudioProjectOverviewProp
         <SectionTitle icon={<FolderTree size={10} />} label="Root" />
         <p className="break-all px-2 font-mono text-[9px] leading-4 text-text-3">{project.rootPath}</p>
 
-        <div className="mx-2 mt-4 flex items-start gap-1.5 border-t border-border-1 pt-2 leading-4 text-text-4"><Info size={11} className="mt-0.5 shrink-0" /> File symbols arrive with the gopls integration.</div>
       </div>
-    </aside>
   )
 }

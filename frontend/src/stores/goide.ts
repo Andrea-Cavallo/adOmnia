@@ -38,6 +38,7 @@ import {
   type GoIDEToolchainInfo,
   type GoIDEToolchainInstallation,
 } from '@/lib/goide-api'
+import { openExternalDocument } from '@/lib/goide-lsp-api'
 
 const LAYOUT_KEY = 'adomnia.goide.layout.v1'
 const MAX_CONSOLE_BYTES = 4 * 1024 * 1024
@@ -122,6 +123,8 @@ interface GoIDEState {
   toggleShowIgnored: () => Promise<void>
   openDocument: (relativePath: string) => Promise<string | null>
   openLocation: (relativePath: string, line: number, column?: number) => Promise<void>
+  openExternalLocation: (path: string, line: number, column?: number) => Promise<void>
+  ensureDocumentLoaded: (relativePath: string) => Promise<GoIDEEditorDocument | null>
   selectDocument: (documentId: string) => void
   updateDocument: (documentId: string, buffer: string) => void
   saveDocument: (documentId?: string, force?: boolean) => Promise<boolean>
@@ -133,7 +136,7 @@ interface GoIDEState {
   searchQuickOpen: (query: string) => Promise<void>
   detectToolchain: () => Promise<void>
   configureToolchain: (goBinary: string, environment: Record<string, string>) => Promise<boolean>
-  startRun: (kind: 'build' | 'run' | 'tidy', partial?: Partial<GoIDERunRequest>) => Promise<void>
+  startRun: (kind: 'build' | 'run' | 'test' | 'tidy', partial?: Partial<GoIDERunRequest>) => Promise<void>
   stopRun: (runId?: string) => Promise<void>
   restartRun: (runId?: string) => Promise<void>
   sendRunInput: (runId: string, text: string) => Promise<void>
@@ -380,6 +383,42 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
   openLocation: async (path, line, column = 1) => {
     const documentId = await get().openDocument(path)
     if (documentId) set({ revealLocation: { documentId, line: Math.max(1, line), column: Math.max(1, column) } })
+  },
+
+  openExternalLocation: async (path, line, column = 1) => {
+    const sessionId = get().activeSessionId
+    if (!sessionId) return
+    set({ error: null })
+    try {
+      const existing = findSessionDocument(get().documents, sessionId, path)
+      const documentId = existing?.document.id ?? await (async () => {
+        const opened = await openExternalDocument(sessionId, path)
+        if (!get().documents.some((item) => item.document.id === opened.document.id)) {
+          set((state) => ({ documents: [...state.documents, toEditorDocument(opened)] }))
+        }
+        return opened.document.id
+      })()
+      set((state) => ({
+        activeDocumentBySession: { ...state.activeDocumentBySession, [sessionId]: documentId },
+        revealLocation: { documentId, line: Math.max(1, line), column: Math.max(1, column) },
+      }))
+    } catch (error) {
+      set({ error: errorMessage(error) })
+    }
+  },
+
+  // Carica un documento senza renderlo attivo: serve ad applicare modifiche su più file.
+  ensureDocumentLoaded: async (relativePath) => {
+    const sessionId = get().activeSessionId
+    if (!sessionId) return null
+    const existing = findSessionDocument(get().documents, sessionId, relativePath)
+    if (existing) return existing
+    const opened = await openGoIDEDocument(sessionId, relativePath)
+    const loaded = get().documents.find((item) => item.document.id === opened.document.id)
+    if (loaded) return loaded
+    const document = toEditorDocument(opened)
+    set((state) => ({ documents: [...state.documents, document] }))
+    return document
   },
 
   selectDocument: (documentId) => {

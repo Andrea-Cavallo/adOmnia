@@ -1,0 +1,82 @@
+import { monaco } from '@/lib/monacoSetup'
+import { requestLocations, requestOrganizeImports, type GoIDELocationKind } from '@/lib/goide-lsp-api'
+import { useGoIDELspStore } from '@/stores/goideLsp'
+import { navigateToLocation, prepareDocument } from './goStudioLanguageFeatures'
+import { applyGoStudioWorkspaceChange } from './goStudioWorkspaceEdits'
+
+export const GO_STUDIO_ACTIONS = {
+  findUsages: 'goStudio.findUsages',
+  gotoImplementation: 'goStudio.gotoImplementation',
+  gotoDeclaration: 'goStudio.gotoDeclaration',
+  rename: 'goStudio.rename',
+  organizeImports: 'goStudio.organizeImports',
+  reformat: 'goStudio.reformat',
+  quickFix: 'goStudio.quickFix',
+  fileStructure: 'goStudio.fileStructure',
+} as const
+
+const { KeyMod, KeyCode } = monaco
+
+function report(message: string): void {
+  useGoIDELspStore.setState({ message })
+}
+
+function wordAt(editor: monaco.editor.ICodeEditor): string {
+  const model = editor.getModel()
+  const position = editor.getPosition()
+  if (!model || !position) return 'symbol'
+  return model.getWordAtPosition(position)?.word ?? 'symbol'
+}
+
+async function showLocations(editor: monaco.editor.ICodeEditor, kind: GoIDELocationKind, title: string): Promise<void> {
+  const model = editor.getModel()
+  const position = editor.getPosition()
+  if (!model || !position) return
+  const prepared = await prepareDocument(model)
+  if (!prepared) return report('gopls is not ready for this file yet.')
+  try {
+    const locations = await requestLocations(prepared.sessionId, prepared.documentId, kind, position.lineNumber, position.column)
+    if (locations.length === 0) return report(`${title}: nothing found.`)
+    if (kind === 'implementation' && locations.length === 1) return navigateToLocation(locations[0])
+    useGoIDELspStore.getState().showReferences(prepared.sessionId, { title, locations })
+  } catch (error) {
+    report(error instanceof Error ? error.message : String(error))
+  }
+}
+
+async function organizeImports(editor: monaco.editor.ICodeEditor): Promise<void> {
+  const model = editor.getModel()
+  if (!model) return
+  const prepared = await prepareDocument(model)
+  if (!prepared) return report('gopls is not ready for this file yet.')
+  try {
+    await applyGoStudioWorkspaceChange(await requestOrganizeImports(prepared.sessionId, prepared.documentId))
+  } catch (error) {
+    report(error instanceof Error ? error.message : String(error))
+  }
+}
+
+function requestRename(editor: monaco.editor.ICodeEditor): void {
+  const model = editor.getModel()
+  const position = editor.getPosition()
+  if (!model || !position) return
+  void prepareDocument(model).then((prepared) => {
+    if (!prepared) return report('gopls is not ready for this file yet.')
+    useGoIDELspStore.setState({ renameRequest: { sessionId: prepared.sessionId, documentId: prepared.documentId, line: position.lineNumber, column: position.column } })
+  })
+}
+
+/** Registra sull'editor le azioni semantiche Go Studio; le keybinding aggiunte hanno precedenza su quelle native. */
+export function installGoStudioEditorActions(editor: monaco.editor.IStandaloneCodeEditor): void {
+  const semantic = (id: string, label: string, keybindings: number[], run: (target: monaco.editor.ICodeEditor) => void | Promise<void>) => {
+    editor.addAction({ id, label, keybindings, contextMenuGroupId: 'navigation', run: (target) => { void run(target) } })
+  }
+  semantic(GO_STUDIO_ACTIONS.gotoDeclaration, 'Go to Declaration', [KeyMod.CtrlCmd | KeyCode.KeyB], (target) => target.getAction('editor.action.revealDefinition')?.run())
+  semantic(GO_STUDIO_ACTIONS.gotoImplementation, 'Go to Implementation', [KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.KeyB], (target) => showLocations(target, 'implementation', `Implementations of ${wordAt(target)}`))
+  semantic(GO_STUDIO_ACTIONS.findUsages, 'Find Usages', [KeyMod.Alt | KeyCode.F7, KeyMod.Shift | KeyCode.F12], (target) => showLocations(target, 'references', `Usages of ${wordAt(target)}`))
+  semantic(GO_STUDIO_ACTIONS.rename, 'Rename Symbol…', [KeyCode.F2, KeyMod.Shift | KeyCode.F6], requestRename)
+  editor.addAction({ id: GO_STUDIO_ACTIONS.organizeImports, label: 'Optimize Imports', keybindings: [KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.KeyO], contextMenuGroupId: '1_modification', run: (target) => { void organizeImports(target) } })
+  editor.addAction({ id: GO_STUDIO_ACTIONS.reformat, label: 'Reformat Code', keybindings: [KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.KeyL], contextMenuGroupId: '1_modification', run: (target) => { void target.getAction('editor.action.formatDocument')?.run() } })
+  editor.addAction({ id: GO_STUDIO_ACTIONS.quickFix, label: 'Show Context Actions', keybindings: [KeyMod.Alt | KeyCode.Enter], run: (target) => { void target.getAction('editor.action.quickFix')?.run() } })
+  editor.addAction({ id: GO_STUDIO_ACTIONS.fileStructure, label: 'File Structure', keybindings: [KeyMod.CtrlCmd | KeyCode.F12], run: (target) => { void target.getAction('editor.action.quickOutline')?.run() } })
+}

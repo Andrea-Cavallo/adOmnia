@@ -1,21 +1,32 @@
 import { useEffect, useRef, useState } from 'react'
 import Editor, { DiffEditor, type BeforeMount, type OnMount } from '@monaco-editor/react'
-import { AlertTriangle, GitCompare, RotateCcw, Save, X } from 'lucide-react'
+import { AlertTriangle, GitCompare, Lock, RotateCcw, Save, X } from 'lucide-react'
 import { applyAdomniaMonacoTheme, configureMonacoLoader, monaco } from '@/lib/monacoSetup'
 import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
 import { useSettingsStore } from '@/stores/settings'
 import { registerGoStudioEditor } from './goStudioEditorRegistry'
+import { installGoStudioEditorActions } from './goStudioEditorActions'
+import { documentForModel, registerGoStudioLanguageFeatures } from './goStudioLanguageFeatures'
+import { startGoStudioLspSync } from './goStudioLspSync'
+import { findRunTargets, runCommandFor, type GoStudioRunTarget } from './goStudioRunTargets'
+import { GoGopherIcon, isGoSource } from './GoGopherIcon'
+import './goStudioEditor.css'
 
 configureMonacoLoader()
+registerGoStudioLanguageFeatures()
+startGoStudioLspSync()
+
+const RUN_TARGET_DEBOUNCE_MS = 250
 
 interface GoStudioEditorProps {
   documents: GoIDEEditorDocument[]
   active: GoIDEEditorDocument | null
   onCursor: (line: number, column: number) => void
   onRequestClose: (document: GoIDEEditorDocument) => void
+  onRunTarget: (target: GoStudioRunTarget) => void
 }
 
-export function GoStudioEditor({ documents, active, onCursor, onRequestClose }: GoStudioEditorProps) {
+export function GoStudioEditor({ documents, active, onCursor, onRequestClose, onRunTarget }: GoStudioEditorProps) {
   const [compare, setCompare] = useState(false)
   const editorTheme = useSettingsStore((state) => state.settings.appearance.theme === 'light' ? 'adomnia-light' : 'adomnia-dark')
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
@@ -28,13 +39,36 @@ export function GoStudioEditor({ documents, active, onCursor, onRequestClose }: 
   const clearRevealLocation = useGoIDEStore((state) => state.clearRevealLocation)
 
   const beforeMount: BeforeMount = (instance) => applyAdomniaMonacoTheme(instance)
+  const runTargetsRef = useRef<GoStudioRunTarget[]>([])
+  const decorationsRef = useRef<monaco.editor.IEditorDecorationsCollection | null>(null)
+  const [mountCount, setMountCount] = useState(0)
+  const onRunTargetRef = useRef(onRunTarget)
+  onRunTargetRef.current = onRunTarget
+
   const onMount: OnMount = (editor) => {
     editorRef.current = editor
     const unregister = registerGoStudioEditor(editor)
     editor.onDidDispose(unregister)
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => void saveDocument())
+    installGoStudioEditorActions(editor)
+    decorationsRef.current = editor.createDecorationsCollection()
+    setMountCount((value) => value + 1)
+    editor.onMouseDown((event) => {
+      if (event.target.type !== monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN) return
+      const line = event.target.position?.lineNumber
+      const target = runTargetsRef.current.find((item) => item.line === line)
+      if (target) onRunTargetRef.current(target)
+    })
     editor.onDidChangeCursorPosition((event) => onCursor(event.position.lineNumber, event.position.column))
     editor.onDidFocusEditorText(() => void checkActiveDocument())
+    // Il documento si ricava dal modello che è cambiato, mai dal componente: durante il cambio file
+    // @monaco-editor/react può notificare con la closure del file precedente e sporcarne il buffer.
+    editor.onDidChangeModelContent(() => {
+      const model = editor.getModel()
+      const document = model ? documentForModel(model) : null
+      if (!model || !document || document.document.readOnly) return
+      const value = model.getValue()
+      if (value !== document.buffer) updateDocument(document.document.id, value)
+    })
   }
 
   useEffect(() => {
@@ -47,6 +81,22 @@ export function GoStudioEditor({ documents, active, onCursor, onRequestClose }: 
   }, [active, clearRevealLocation, revealLocation])
 
   useEffect(() => { setCompare(false) }, [active?.document.id])
+
+  // ▶ nel gutter accanto a func main e ai test: ricalcolato con debounce mentre si scrive.
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const targets = active && !active.document.readOnly ? findRunTargets(active.document.relativePath, active.buffer) : []
+      runTargetsRef.current = targets
+      decorationsRef.current?.set(targets.map((target) => ({
+        range: { startLineNumber: target.line, startColumn: 1, endLineNumber: target.line, endColumn: 1 },
+        options: {
+          glyphMarginClassName: `go-studio-run-glyph${target.kind === 'main' ? '' : ' go-studio-test-glyph'}`,
+          glyphMarginHoverMessage: { value: `▶ ${runCommandFor(target).label}` },
+        },
+      })))
+    }, RUN_TARGET_DEBOUNCE_MS)
+    return () => window.clearTimeout(timer)
+  }, [active?.buffer, active?.document.id, active?.document.readOnly, active?.document.relativePath, mountCount])
 
   if (!active) {
     return (
@@ -70,6 +120,7 @@ export function GoStudioEditor({ documents, active, onCursor, onRequestClose }: 
             className={`group flex h-8 min-w-0 max-w-56 items-center gap-1.5 border-r border-border-1 px-2 text-[10px] ${item.document.id === active.document.id ? 'border-t border-t-accent bg-surface-0 text-text-1' : 'text-text-3 hover:bg-surface-2'}`}
             title={item.document.relativePath}
           >
+            {isGoSource(item.document.name) && <GoGopherIcon size={12} />}
             <span className="truncate">{item.document.name}</span>
             {item.dirty && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-warning" title="Unsaved changes" />}
             <span role="button" tabIndex={-1} onClick={(event) => { event.stopPropagation(); onRequestClose(item) }} className="grid h-4 w-4 shrink-0 place-items-center rounded opacity-0 hover:bg-surface-3 group-hover:opacity-100"><X size={10} /></span>
@@ -77,8 +128,9 @@ export function GoStudioEditor({ documents, active, onCursor, onRequestClose }: 
         ))}
       </div>
       <div className="flex h-7 shrink-0 items-center gap-1 border-b border-border-1 px-2 text-[10px] text-text-4">
-        {active.document.relativePath.split('/').map((segment, index) => <span key={`${segment}-${index}`}>{index > 0 && <span className="px-1 text-border-2">›</span>}{segment}</span>)}
-        <button type="button" disabled={!active.dirty || active.saving} onClick={() => void saveDocument(active.document.id)} className="ml-auto flex h-5 items-center gap-1 rounded px-1.5 text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-30"><Save size={10} /> Save</button>
+        {active.document.readOnly && <span className="mr-1 flex items-center gap-1 rounded bg-surface-2 px-1.5 py-0.5 text-[9px] font-medium text-text-3" title="SDK and module cache sources open read-only"><Lock size={9} /> Read-only · Go SDK</span>}
+        {active.document.relativePath.split('/').filter(Boolean).map((segment, index) => <span key={`${segment}-${index}`}>{index > 0 && <span className="px-1 text-border-2">›</span>}{segment}</span>)}
+        <button type="button" disabled={!active.dirty || active.saving || active.document.readOnly} onClick={() => void saveDocument(active.document.id)} className="ml-auto flex h-5 items-center gap-1 rounded px-1.5 text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-30"><Save size={10} /> Save</button>
       </div>
       {active.externalState && (
         <div className="flex shrink-0 items-center gap-2 border-b border-warning/30 bg-warning/10 px-2 py-1.5 text-[10px] text-warning">
@@ -107,7 +159,6 @@ export function GoStudioEditor({ documents, active, onCursor, onRequestClose }: 
             theme={editorTheme}
             beforeMount={beforeMount}
             onMount={onMount}
-            onChange={(value) => updateDocument(active.document.id, value ?? '')}
             options={{
               automaticLayout: true,
               fontSize: 12,
@@ -120,6 +171,8 @@ export function GoStudioEditor({ documents, active, onCursor, onRequestClose }: 
               matchBrackets: 'always',
               scrollBeyondLastLine: false,
               renderLineHighlight: 'line',
+              readOnly: !!active.document.readOnly,
+              glyphMargin: true,
               tabSize: active.document.language === 'go' ? 4 : 2,
               insertSpaces: active.document.language !== 'go',
               padding: { top: 6, bottom: 6 },

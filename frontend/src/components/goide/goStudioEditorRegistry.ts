@@ -7,6 +7,17 @@ const MONACO_ACTIONS = {
   'edit.replace': 'editor.action.startFindReplaceAction',
   'edit.gotoLine': 'editor.action.gotoLine',
   'edit.toggleComment': 'editor.action.commentLine',
+  'nav.declaration': 'editor.action.revealDefinition',
+  'nav.typeDeclaration': 'editor.action.goToTypeDefinition',
+  'nav.implementation': 'goStudio.gotoImplementation',
+  'nav.usages': 'goStudio.findUsages',
+  'nav.fileStructure': 'goStudio.fileStructure',
+  'code.completion': 'editor.action.triggerSuggest',
+  'code.parameterInfo': 'editor.action.triggerParameterHints',
+  'code.quickFix': 'goStudio.quickFix',
+  'code.rename': 'goStudio.rename',
+  'code.reformat': 'goStudio.reformat',
+  'code.organizeImports': 'goStudio.organizeImports',
 } as const
 
 export type GoStudioEditorCommand = keyof typeof MONACO_ACTIONS
@@ -19,6 +30,10 @@ export function registerGoStudioEditor(editor: monaco.editor.IStandaloneCodeEdit
   return () => { if (activeEditor === editor) activeEditor = null }
 }
 
+export function activeGoStudioEditor(): monaco.editor.IStandaloneCodeEditor | null {
+  return activeEditor
+}
+
 export function hasGoStudioEditor(): boolean {
   return activeEditor !== null
 }
@@ -27,7 +42,10 @@ export function hasGoStudioEditor(): boolean {
 export function runGoStudioEditorCommand(command: GoStudioEditorCommand): boolean {
   if (!activeEditor) return false
   activeEditor.focus()
-  activeEditor.trigger('go-studio-menu', MONACO_ACTIONS[command], null)
+  const id = MONACO_ACTIONS[command]
+  const action = activeEditor.getAction(id)
+  if (action) void action.run()
+  else activeEditor.trigger('go-studio-menu', id, null)
   return true
 }
 

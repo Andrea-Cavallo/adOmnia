@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { GO_STUDIO_COMMANDS, commandAvailability, commandChecked, commandForKey, formatBinding } from './goStudioCommands'
+import { GO_STUDIO_COMMANDS, commandAvailability, commandChecked, commandForKey, formatBinding, type GoStudioCommandContext } from './goStudioCommands'
 
 const key = (partial: Partial<Parameters<typeof commandForKey>[0]>) => ({
   key: '', ctrlKey: false, metaKey: false, shiftKey: false, altKey: false, ...partial,
@@ -46,9 +46,10 @@ describe('Go Studio commands', () => {
 })
 
 describe('Go Studio command availability', () => {
-  const ready = {
+  const ready: GoStudioCommandContext = {
     hasSession: true, authorized: true, toolchainReady: true, running: false, restartable: true,
     hasEditor: true, activeDocumentDirty: true, sessionDirty: true, structureOpen: true, bottomOpen: false, showIgnored: false,
+    lspState: 'ready', goplsAvailable: true, formatOnSave: true, importsOnSave: false, gofumpt: false, staticcheck: false,
   }
 
   it('explains why run commands are blocked without trust or SDK', () => {
@@ -73,5 +74,14 @@ describe('Go Studio command availability', () => {
     expect(commandChecked('view.toggleStructure', ready)).toBe(true)
     expect(commandChecked('view.toggleBottom', ready)).toBe(false)
     expect(commandChecked('go.trust', ready)).toBe(true)
+  })
+
+  it('gates semantic commands on a ready gopls and explains how to start it', () => {
+    expect(commandAvailability('nav.usages', ready)).toBe(true)
+    expect(commandAvailability('code.rename', { ...ready, lspState: 'starting' })).toMatch(/gopls/)
+    expect(commandAvailability('nav.findInFiles', { ...ready, lspState: 'stopped' })).toBe(true)
+    expect(commandAvailability('go.lspStart', { ...ready, lspState: 'stopped', goplsAvailable: false })).toMatch(/Install gopls/)
+    expect(commandAvailability('go.lspStart', { ...ready, lspState: 'stopped' })).toBe(true)
+    expect(commandChecked('code.formatOnSave', ready)).toBe(true)
   })
 })

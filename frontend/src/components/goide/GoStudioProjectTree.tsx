@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight, Eye, EyeOff, File, FileCode2, Folder, FolderOpen, Loader2 } from 'lucide-react'
 import { useGoIDEStore } from '@/stores/goide'
+import { GoGopherIcon, isGoSource } from './GoGopherIcon'
 import type { GoIDEFileEntry, GoIDESession } from '@/lib/goide-api'
 
 interface GoStudioProjectTreeProps {
@@ -10,6 +11,7 @@ interface GoStudioProjectTreeProps {
 const emptyEntries: GoIDEFileEntry[] = []
 
 function FileIcon({ entry }: { entry: GoIDEFileEntry }) {
+  if (isGoSource(entry.name)) return <GoGopherIcon size={13} />
   if (entry.language === 'go') return <FileCode2 size={12} className="text-accent" />
   return <File size={12} className="text-text-4" />
 }

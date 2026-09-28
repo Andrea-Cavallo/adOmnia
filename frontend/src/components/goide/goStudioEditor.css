@@ -1,0 +1,28 @@
+/* Gutter ▶ di Go Studio: eseguire main o un test deve essere a un clic dal codice. */
+.go-studio-run-glyph {
+  cursor: pointer;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+}
+.go-studio-run-glyph::before {
+  content: '';
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 8px solid var(--color-success, #22c55e);
+  opacity: 0.85;
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+.go-studio-run-glyph:hover::before {
+  opacity: 1;
+  transform: scale(1.2);
+}
+.go-studio-test-glyph::before {
+  border-left-color: var(--color-accent, #8b5cf6);
+}
+@media (prefers-reduced-motion: reduce) {
+  .go-studio-run-glyph::before { transition: none; }
+  .go-studio-run-glyph:hover::before { transform: none; }
+}

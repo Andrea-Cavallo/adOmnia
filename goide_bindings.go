@@ -278,67 +278,80 @@ func (g *GoIDE) OpenExternalDocument(sessionID, path string) (goide.OpenDocument
 
 // Completion restituisce i suggerimenti gopls; la richiesta si annulla con la promise frontend.
 func (g *GoIDE) Completion(ctx context.Context, sessionID, documentID string, line, column int) (goide.CompletionResult, error) {
-	return g.service.Completion(ctx, sessionID, documentID, line, column)
+	value, err := g.service.Completion(ctx, sessionID, documentID, line, column)
+	return settleCancelled(ctx, value, err)
 }
 
 // Hover restituisce la documentazione del simbolo sotto il cursore.
 func (g *GoIDE) Hover(ctx context.Context, sessionID, documentID string, line, column int) (goide.HoverResult, error) {
-	return g.service.Hover(ctx, sessionID, documentID, line, column)
+	value, err := g.service.Hover(ctx, sessionID, documentID, line, column)
+	return settleCancelled(ctx, value, err)
 }
 
 // SignatureHelp restituisce la firma della chiamata in corso.
 func (g *GoIDE) SignatureHelp(ctx context.Context, sessionID, documentID string, line, column int) (goide.SignatureResult, error) {
-	return g.service.SignatureHelp(ctx, sessionID, documentID, line, column)
+	value, err := g.service.SignatureHelp(ctx, sessionID, documentID, line, column)
+	return settleCancelled(ctx, value, err)
 }
 
 // Locations esegue definition, typeDefinition, implementation o references.
 func (g *GoIDE) Locations(ctx context.Context, sessionID, documentID, kind string, line, column int) ([]goide.EditorLocation, error) {
-	return g.service.Locations(ctx, sessionID, documentID, kind, line, column)
+	value, err := g.service.Locations(ctx, sessionID, documentID, kind, line, column)
+	return settleCancelled(ctx, value, err)
 }
 
 // DocumentSymbols restituisce la struttura del file.
 func (g *GoIDE) DocumentSymbols(ctx context.Context, sessionID, documentID string) (goide.DocumentSymbolsResult, error) {
-	return g.service.DocumentSymbols(ctx, sessionID, documentID)
+	value, err := g.service.DocumentSymbols(ctx, sessionID, documentID)
+	return settleCancelled(ctx, value, err)
 }
 
 // WorkspaceSymbols cerca simboli nel workspace.
 func (g *GoIDE) WorkspaceSymbols(ctx context.Context, sessionID, query string) ([]goide.WorkspaceSymbol, error) {
-	return g.service.WorkspaceSymbols(ctx, sessionID, query)
+	value, err := g.service.WorkspaceSymbols(ctx, sessionID, query)
+	return settleCancelled(ctx, value, err)
 }
 
 // PrepareRename verifica il simbolo da rinominare.
 func (g *GoIDE) PrepareRename(ctx context.Context, sessionID, documentID string, line, column int) (goide.RenameTarget, error) {
-	return g.service.PrepareRename(ctx, sessionID, documentID, line, column)
+	value, err := g.service.PrepareRename(ctx, sessionID, documentID, line, column)
+	return settleCancelled(ctx, value, err)
 }
 
 // Rename calcola l'anteprima del rename semantico.
 func (g *GoIDE) Rename(ctx context.Context, sessionID, documentID string, line, column int, newName string) (goide.WorkspaceChange, error) {
-	return g.service.Rename(ctx, sessionID, documentID, line, column, newName)
+	value, err := g.service.Rename(ctx, sessionID, documentID, line, column, newName)
+	return settleCancelled(ctx, value, err)
 }
 
 // FormatDocument restituisce gli edit di formattazione del buffer.
 func (g *GoIDE) FormatDocument(ctx context.Context, sessionID, documentID string) (goide.FormatResult, error) {
-	return g.service.FormatDocument(ctx, sessionID, documentID)
+	value, err := g.service.FormatDocument(ctx, sessionID, documentID)
+	return settleCancelled(ctx, value, err)
 }
 
 // CodeActions elenca le azioni disponibili per la selezione.
 func (g *GoIDE) CodeActions(ctx context.Context, sessionID, documentID string, selection goide.EditorRange, only []string) ([]goide.CodeActionEntry, error) {
-	return g.service.CodeActions(ctx, sessionID, documentID, selection, only)
+	value, err := g.service.CodeActions(ctx, sessionID, documentID, selection, only)
+	return settleCancelled(ctx, value, err)
 }
 
 // ResolveCodeAction calcola l'anteprima delle modifiche dell'azione.
 func (g *GoIDE) ResolveCodeAction(ctx context.Context, sessionID, actionID string) (goide.WorkspaceChange, error) {
-	return g.service.ResolveCodeAction(ctx, sessionID, actionID)
+	value, err := g.service.ResolveCodeAction(ctx, sessionID, actionID)
+	return settleCancelled(ctx, value, err)
 }
 
 // OrganizeImports calcola la pulizia degli import del file.
 func (g *GoIDE) OrganizeImports(ctx context.Context, sessionID, documentID string) (goide.WorkspaceChange, error) {
-	return g.service.OrganizeImports(ctx, sessionID, documentID)
+	value, err := g.service.OrganizeImports(ctx, sessionID, documentID)
+	return settleCancelled(ctx, value, err)
 }
 
 // SearchProject cerca testo nel progetto; si annulla con la promise frontend.
 func (g *GoIDE) SearchProject(ctx context.Context, query goide.SearchQuery) (goide.SearchResult, error) {
-	return g.service.SearchProject(ctx, query)
+	value, err := g.service.SearchProject(ctx, query)
+	return settleCancelled(ctx, value, err)
 }
 
 // SetDirtyDocumentCount sincronizza il solo conteggio dei buffer dirty per la chiusura sicura.
@@ -389,6 +402,16 @@ func (g *GoIDE) SelectProjectParent() (string, error) {
 		return "", err
 	}
 	return strings.TrimSpace(path), nil
+}
+
+// settleCancelled trasforma in successo vuoto una chiamata annullata dal frontend: il runtime Wails
+// scarta il risultato, mentre un errore arrivato dopo la cancellazione diventerebbe una rejection non gestita.
+func settleCancelled[T any](ctx context.Context, value T, err error) (T, error) {
+	if err != nil && ctx.Err() != nil {
+		var zero T
+		return zero, nil
+	}
+	return value, err
 }
 
 // ServiceShutdown rilascia processi e risorse posseduti dal servizio.

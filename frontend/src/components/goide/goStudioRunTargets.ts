@@ -1,0 +1,66 @@
+export type GoStudioRunTargetKind = 'main' | 'test' | 'benchmark' | 'fuzz' | 'example'
+
+export interface GoStudioRunTarget {
+  line: number
+  kind: GoStudioRunTargetKind
+  name: string
+  /** Package relativo alla radice del progetto, es. "./cmd/api" o ".". */
+  packagePath: string
+}
+
+export interface GoStudioRunCommand {
+  kind: 'run' | 'test'
+  target: string
+  programArguments: string[]
+  label: string
+}
+
+const PACKAGE_MAIN = /^\s*package\s+main\b/m
+const FUNC_MAIN = /^func\s+main\s*\(\s*\)/
+const TEST_FUNC = /^func\s+((Test|Benchmark|Fuzz|Example)[A-Za-z0-9_]*)\s*\(/
+
+function packagePathFor(relativePath: string): string {
+  const slash = relativePath.lastIndexOf('/')
+  return slash < 0 ? '.' : `./${relativePath.slice(0, slash)}`
+}
+
+function kindFor(prefix: string): GoStudioRunTargetKind {
+  if (prefix === 'Benchmark') return 'benchmark'
+  if (prefix === 'Fuzz') return 'fuzz'
+  if (prefix === 'Example') return 'example'
+  return 'test'
+}
+
+/** Trova le righe eseguibili dal gutter: func main nei package main e le funzioni di test nei file _test.go. */
+export function findRunTargets(relativePath: string, text: string): GoStudioRunTarget[] {
+  if (!relativePath.endsWith('.go')) return []
+  const packagePath = packagePathFor(relativePath)
+  const isTestFile = relativePath.endsWith('_test.go')
+  const isMainPackage = !isTestFile && PACKAGE_MAIN.test(text)
+  if (!isTestFile && !isMainPackage) return []
+  const targets: GoStudioRunTarget[] = []
+  text.split(/\r?\n/).forEach((line, index) => {
+    if (isMainPackage && FUNC_MAIN.test(line)) {
+      targets.push({ line: index + 1, kind: 'main', name: 'main', packagePath })
+      return
+    }
+    const match = isTestFile ? TEST_FUNC.exec(line) : null
+    if (match) targets.push({ line: index + 1, kind: kindFor(match[2]), name: match[1], packagePath })
+  })
+  return targets
+}
+
+/** Traduce un target del gutter nel comando go strutturato da eseguire. */
+export function runCommandFor(target: GoStudioRunTarget): GoStudioRunCommand {
+  const exact = `^${target.name}$`
+  switch (target.kind) {
+    case 'main':
+      return { kind: 'run', target: target.packagePath, programArguments: [], label: `go run ${target.packagePath}` }
+    case 'benchmark':
+      return { kind: 'test', target: target.packagePath, programArguments: ['-run', '^$', '-bench', exact, '-benchmem', '-v'], label: `Run ${target.name}` }
+    case 'fuzz':
+      return { kind: 'test', target: target.packagePath, programArguments: ['-run', exact, '-v', '-count=1'], label: `Run ${target.name} (seed corpus)` }
+    default:
+      return { kind: 'test', target: target.packagePath, programArguments: ['-run', exact, '-v', '-count=1'], label: `Run ${target.name}` }
+  }
+}
