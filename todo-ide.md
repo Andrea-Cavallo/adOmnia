@@ -53,6 +53,7 @@ Una fase è completa soltanto quando:
 - [ ] Fase 2 — Intelligenza del codice con gopls/LSP *(implementata e verificata end-to-end; gate in attesa della prova manuale su Windows)*
 - [ ] Fase 3 — Più progetti, ripristino e terminale integrato
 - [ ] Fase 4 — Test runner, debugger, coverage e finestre separate
+- [ ] Fase 5 — Parità GoLand: assistenza al codice, VCS nell'editor e integrazione con i moduli adOmnia
 - [ ] Collaudo finale e documentazione di rilascio
 
 ### Cosa resta da fare (aggiornato con la release v0.9.36)
@@ -190,10 +191,18 @@ L'architettura deve essere confermata nella Fase 0 e mantenere isolati sessioni,
 - [x] Non registrare valori di variabili sensibili e non scrivere credenziali nel repository.
 - [x] Validare e confinare ogni percorso filesystem alla radice del progetto quando l'operazione lo richiede; gestire symlink e traversal consapevolmente.
 
-### Fuori ambito dichiarato rispetto al riferimento IntelliJ Ultimate/GoLand
+### Ambito rivisto rispetto al riferimento IntelliJ Ultimate/GoLand
 
-- [ ] Integrazione VCS nell'editor (gutter diff/blame, cronologia locale, commit/log) è esplicitamente fuori ambito per questo piano: il modulo "Git Sync" esistente di adOmnia (`internal/git`) versiona workspace API e non va collegato a Go Studio senza una decisione dedicata separata.
-- [ ] Refactoring oltre al rename semantico (extract function/variable, inline, move) resta fuori ambito; l'unico refactoring previsto è quello coperto da 2.3.
+Decisione esplicita dell'utente (2026-09-28): l'elenco funzionalità di GoLand è **dentro** l'ambito e diventa la Fase 5. Le due voci precedentemente dichiarate fuori ambito sono riaperte.
+
+- [ ] **VCS nell'editor rientra in ambito** (gutter diff/blame, cronologia locale, commit/log, branch in toolbar) ed è coperto da 5.5. Resta però una decisione architetturale aperta: `internal/git` oggi versiona workspace API, non repository di codice; 5.5 deve scegliere fra estenderlo e creare un dominio VCS separato, senza rompere Git Sync.
+- [ ] **Refactoring oltre al rename rientra in ambito** (extract function/variable, inline, move) ed è coperto da 5.1, nei limiti di ciò che gopls espone realmente via code action: quello che gopls non fornisce non va simulato con manipolazione testuale.
+
+### Fuori ambito confermato
+
+- [ ] Supporto first-class a JavaScript/TypeScript/HTML/CSS/Dart in stile WebStorm: Go Studio resta un IDE Go. Il resto dello stack web è già coperto dagli altri pannelli di adOmnia.
+- [ ] Marketplace di plugin in stile IntelliJ: adOmnia ha già `internal/plugins`; 5.6 si limita a esporre Go Studio a quel runtime, non a costruire un ecosistema separato.
+- [ ] Emulazione Vim e keymap alternative complete.
 
 ---
 
@@ -382,10 +391,11 @@ Obiettivo: comprendere davvero il codice tramite gopls, includendo i buffer non 
 
 - [x] Pubblicare diagnostica per file/sessione nel gutter, Problems e status bar.
 - [x] Implementare completion Monaco da gopls.
+- [ ] Aggiungere gli import mancanti automaticamente quando si accetta un suggerimento, senza toccare il file su altre righe.
 - [x] Implementare hover.
 - [x] Implementare signature help.
 - [x] Implementare Go to Definition/Type Definition/Implementation dove supportato.
-- [x] Implementare Find References con navigazione risultati.
+- [x] Implementare Find References con navigazione risultati e raggruppamento per tipo di uso (lettura, scrittura, dichiarazione, import) quando ricavabile dai dati LSP.
 - [x] Implementare document symbols e struttura file richiudibile a destra.
 - [x] Implementare workspace symbols e Quick Open simboli.
 - [x] Implementare semantic rename con anteprima delle modifiche.
@@ -414,7 +424,24 @@ Obiettivo: comprendere davvero il codice tramite gopls, includendo i buffer non 
 - [x] Integrare code action, rename, references e Problems con navigazione da tastiera.
 - [x] Persistenza del layout editor e dei pannelli senza persistere accidentalmente contenuti sensibili.
 
-## 2.6 Test mirati
+## 2.6 Editor semantico avanzato (parità GoLand, lato LSP)
+
+Tutte queste voci sono richieste LSP aggiuntive sulla stessa sessione gopls di 2.1/2.2: vanno implementate qui perché condividono plumbing, cancellazione e isolamento per sessione. Nessuna va simulata con regex o euristiche testuali.
+
+- [ ] **Semantic highlighting**: applicare i semantic tokens di gopls sopra la colorazione sintattica di Monaco, con colori distinti per parametri e variabili locali; attivabile/disattivabile da impostazione.
+- [ ] **Parameter hints / inlay hints**: mostrare i nomi dei parametri per literal e `nil` passati come argomento, e gli altri inlay hint esposti da gopls; attivabili/disattivabili senza modificare il file.
+- [ ] **Quick Documentation**: popup documentazione sul simbolo al caret, e stessa documentazione nel popup laterale durante la completion.
+- [ ] **Quick Definition**: popup con il corpo della definizione senza lasciare il file corrente.
+- [ ] **Show usages**: popup degli utilizzi sul simbolo al caret, oltre alla vista Find References completa.
+- [ ] **Type Parameter**: azione che mostra il tipo dell'espressione al caret.
+- [ ] **Exit points highlighting**: con il caret su `func`/`return`/`panic`, evidenziare tutti i punti di uscita della funzione (document highlight + analisi AST del solo range della funzione).
+- [ ] **Rilevamento chiamate ricorsive**: marcatore nel gutter sulle chiamate ricorsive, ricavato da call hierarchy di gopls.
+- [ ] **Code generation**: implementare i metodi di un'interfaccia tramite code action gopls, con selezione dell'interfaccia e anteprima delle modifiche.
+- [ ] **Search Everywhere**: ricerca unica su file, simboli di progetto, azioni dell'IDE e pannelli adOmnia raggiungibili, con risultati raggruppati per categoria.
+- [ ] **Inspections e quick-fix da tastiera**: un unico gesto (riferimento: `Alt+Enter`) che apre le code action disponibili sulla riga corrente, unendo diagnostica gopls e linter di 2.4.
+- [ ] Ogni funzione di questa sezione deve degradare in modo esplicito quando gopls non la supporta: nessun controllo visibile che non produca un risultato reale.
+
+## 2.7 Test mirati
 
 - [x] Test per versioni documento, buffer unsaved e scarto di risposte LSP obsolete.
 - [x] Test per conversione posizioni UTF-16 con caratteri multibyte.
@@ -422,6 +449,8 @@ Obiettivo: comprendere davvero il codice tramite gopls, includendo i buffer non 
 - [x] Test di isolamento diagnostica tra due sessioni.
 - [x] Test per rilevamento/assenza linter, esecuzione cancellabile e isolamento dei risultati tra sessioni.
 - [x] Prova reale di completion, hover, definition, references, rename, import e formatting su progetto multi-package.
+- [ ] Test per semantic tokens e inlay hints: mapping dei range su documento modificato e nessuna applicazione di token obsoleti dopo un edit.
+- [ ] Prova reale di Quick Documentation, Quick Definition, exit points, chiamate ricorsive e generazione metodi di interfaccia.
 
 ## Gate di uscita Fase 2
 
@@ -430,6 +459,8 @@ Obiettivo: comprendere davvero il codice tramite gopls, includendo i buffer non 
 - [x] Eseguire rename e formatting senza corrompere file o dirty state.
 - [x] Riavviare gopls dopo un crash controllato senza riavviare adOmnia.
 - [x] Ottenere diagnostica di lint reale (golangci-lint/staticcheck) su un progetto con problemi noti, distinguibile da quella di gopls.
+- [ ] Semantic highlighting e inlay hints restano coerenti durante la digitazione, senza flicker né token disallineati.
+- [ ] Un unico gesto da tastiera apre le quick-fix disponibili e le applica correttamente su un buffer non salvato.
 - [x] Nessun dato LSP o di lint di un progetto compare in un'altra sessione.
 - [ ] Suite e verifiche previste dalla definizione di fase funzionante passano. *(Automatiche verdi; manca la prova manuale `wails3 task dev` su Windows.)*
 - [ ] **FASE 2 FUNZIONANTE E APPROVATA — è consentito iniziare la Fase 3.**
@@ -541,6 +572,8 @@ Obiettivo: offrire test e debug reali, quindi valutare l'isolamento in finestre 
 - [ ] Rieseguire tutti i test, un singolo test o soltanto i falliti.
 - [ ] Tenere risultati e output isolati per sessione/esecuzione.
 - [ ] Mostrare stato flaky/skip/timeout quando ricavabile dai dati reali.
+- [ ] Eseguire benchmark (`go test -bench`) e vet/check dalla stessa interfaccia, con risultati leggibili e non solo output grezzo.
+- [ ] Avviare il debug di un singolo test dalla stessa interfaccia, riusando la sessione Delve di 4.2.
 
 ## 4.2 Debugger Delve via DAP
 
@@ -604,6 +637,98 @@ Obiettivo: offrire test e debug reali, quindi valutare l'isolamento in finestre 
 
 ---
 
+# Fase 5 — Parità GoLand: assistenza al codice, VCS nell'editor e integrazione con i moduli adOmnia
+
+Obiettivo: chiudere la distanza percepita con GoLand sulle funzioni che un utente si aspetta di trovare in un IDE Go professionale, riusando i moduli che adOmnia possiede già invece di ricostruirli dentro Go Studio.
+
+Prerequisito: gopls è realmente operativo (Fase 2) e il terminale è reale (Fase 3). Le voci puramente LSP di questo elenco vivono in 2.6, non qui.
+
+## 5.1 Refactoring oltre il rename
+
+- [ ] Esporre extract function, extract variable, inline e move **solo** attraverso le code action realmente fornite da gopls per il range selezionato.
+- [ ] Mostrare l'anteprima delle modifiche prima di applicarle, con elenco dei file toccati.
+- [ ] Applicare i `workspace/applyEdit` multi-file in modo transazionale: o tutti i file o nessuno, con rollback su errore.
+- [ ] Mantenere il dirty state corretto dopo un refactoring che tocca file non aperti.
+- [ ] Non simulare con manipolazione testuale i refactoring che gopls non offre: se non esiste la code action, il comando non compare.
+
+## 5.2 Navigazione completa
+
+- [ ] Go to super method e go to implementation dai gutter marker, non solo da menu.
+- [ ] Marcatori nel gutter per implementazioni, override e interfacce implementate.
+- [ ] Cronologia di navigazione avanti/indietro con scorciatoie e persistenza per sessione.
+- [ ] Bookmark di riga per sessione, persistenti e navigabili da elenco.
+- [ ] Vista struttura del file sincronizzata con il caret (l'elemento corrente resta evidenziato durante lo scroll).
+- [ ] Breadcrumb simbolico cliccabile che permette di saltare agli elementi fratelli.
+
+## 5.3 Strumenti Go integrati
+
+- [ ] Menu **Go Tools** che esegue i comandi della toolchain sul progetto senza passare da terminale: `go vet`, `go generate`, `go fix`, `go mod why`, `go mod graph`, `go doc`.
+- [ ] Ogni comando mostra l'anteprima degli argomenti esatti prima dell'esecuzione e riusa la Run console di 1.4 per output, stop e cleanup.
+- [ ] Nessun comando viene eseguito senza autorizzazione strumenti attiva sulla sessione.
+- [ ] Syntax highlighting per i file assembly Plan9 (`.s`) tramite grammatica Monaco dedicata; nessuna funzione semantica dichiarata su questi file.
+- [ ] Supporto editor per `go.sum`, `.golangci.yml` e file di generazione, coerente con il resto dei linguaggi già gestiti in 1.2.
+
+## 5.4 Editor e produttività
+
+- [ ] Multi-caret, selezione a colonna e duplicazione riga allineate alle aspettative di un editor moderno (Monaco copre gran parte: verificare e documentare i gap).
+- [ ] Vista locale delle modifiche del buffer corrente ripristinabile anche dopo il salvataggio (local history per sessione, con limite di ritenzione e nessun contenuto sensibile persistito oltre il limite).
+- [ ] Confronto affiancato fra buffer corrente e versione su disco già presente in 1.2: estenderlo al confronto con una revisione VCS quando 5.5 è disponibile.
+- [ ] TODO/FIXME raccolti in una vista dedicata con navigazione al file/riga.
+
+## 5.5 VCS nell'editor
+
+Decisione architetturale da prendere **prima** di scrivere codice: se estendere `internal/git` o creare un dominio VCS separato per i repository di codice. Git Sync (workspace API) non deve regredire in nessuno dei due casi.
+
+- [ ] Rilevare se la root del progetto è un repository Git e mostrarne branch corrente e stato nella toolbar (voce già prevista dal mock approvato).
+- [ ] Gutter diff per riga aggiunta/modificata/rimossa rispetto a HEAD, con popup per vedere e revertire il singolo hunk.
+- [ ] Blame per riga a richiesta, con autore, data e commit.
+- [ ] Cronologia del file e del progetto, con diff navigabile fra revisioni.
+- [ ] Stage, commit e branch switch come azioni esplicite, con conferma e senza operazioni distruttive implicite.
+- [ ] Nessuna operazione di rete (fetch/pull/push) senza gesto utente diretto; nessuna credenziale scritta nella persistenza di Go Studio.
+- [ ] Dichiarare esplicitamente cosa resta non supportato (merge conflict resolution, rebase interattivo, altri VCS) invece di mostrare controlli inerti.
+
+## 5.6 Integrazione con i moduli adOmnia esistenti
+
+Questa sezione non costruisce nuovi strumenti: collega Go Studio a ciò che adOmnia ha già, evitando duplicazione e mantenendo la coesione grafica richiesta da `docs/SOUL.md`.
+
+- [ ] **Docker**: aprire il Docker Lab esistente (`internal/docker`) sul contesto del progetto Go corrente, senza reimplementare gestione immagini e container dentro Go Studio.
+- [ ] **Database**: aprire gli strumenti database esistenti (`internal/database`, Mongo Explorer) dal contesto di Go Studio, con la stessa identità visiva.
+- [ ] **Plugin**: esporre al runtime plugin (`internal/plugins`) gli eventi e i comandi di Go Studio realmente stabili, documentando il contratto e la sua versione.
+- [ ] **HTTP/API**: da un handler Go individuato nel codice, aprire una richiesta precompilata nel workspace API di adOmnia — integrazione che nessun IDE concorrente offre e che rafforza i pilastri del prodotto.
+- [ ] Ogni integrazione deve funzionare in entrambe le direzioni o essere dichiarata a senso unico; nessun pulsante che apre un pannello vuoto.
+
+## 5.7 Test mirati
+
+- [ ] Test per l'applicazione transazionale di un refactoring multi-file, incluso il rollback su errore a metà.
+- [ ] Test per il calcolo del diff di gutter su file con CRLF, file binari e file non tracciati.
+- [ ] Test per la costruzione degli argomenti dei comandi Go Tools (nessuna shell concatenata, nessun path fuori dalla root).
+- [ ] Test di isolamento: stato VCS, Go Tools e local history restano separati fra due sessioni.
+- [ ] Prova reale su un repository Git con modifiche non committate: gutter, blame, cronologia e revert di un hunk.
+
+## Gate di uscita Fase 5
+
+- [ ] Un extract function reale su codice multi-package produce codice compilabile e anteprima corretta.
+- [ ] La navigazione a super method/implementation funziona dai gutter marker su un'interfaccia con più implementazioni.
+- [ ] I comandi Go Tools producono output reale nella Run console e si fermano senza processi orfani.
+- [ ] Il gutter diff, il blame e la cronologia riflettono lo stato reale del repository e Git Sync non ha subito regressioni.
+- [ ] Le integrazioni con Docker Lab, Database, Plugin e workspace API aprono il contesto corretto e non pannelli vuoti.
+- [ ] Nessuna funzione di parità è simulata: ciò che gopls o Git non forniscono è assente o dichiarato.
+- [ ] Suite e verifiche previste dalla definizione di fase funzionante passano.
+- [ ] **FASE 5 FUNZIONANTE E APPROVATA — è consentito il collaudo finale.**
+
+### Evidenze della fase
+
+- Data:
+- Commit:
+- Versioni Go/gopls/Git:
+- Progetto e repository usati:
+- Comandi e risultati:
+- Prova manuale:
+- Integrazioni verificate:
+- Limiti rimasti:
+
+---
+
 # Collaudo finale e documentazione
 
 ## Flussi completi
@@ -613,7 +738,11 @@ Obiettivo: offrire test e debug reali, quindi valutare l'isolamento in finestre 
 - [ ] Lavorare su due progetti contemporaneamente senza contaminazione di stato o output.
 - [ ] Gestire file modificato esternamente e conflitto dello stesso file tra sessioni.
 - [ ] Usare completion, diagnostica, definition, references, rename, import e formatting su buffer dirty.
-- [ ] Usare terminale, test runner, debugger e coverage su progetto reale.
+- [ ] Usare terminale, test runner, benchmark, debugger e coverage su progetto reale.
+- [ ] Usare semantic highlighting, inlay hints, quick documentation, exit points e generazione metodi di interfaccia su codice reale.
+- [ ] Eseguire un extract function e verificare che il progetto compili ancora.
+- [ ] Usare gutter diff, blame e cronologia su un repository Git reale senza regressioni su Git Sync.
+- [ ] Aprire Docker Lab, strumenti database e una richiesta API dal contesto di Go Studio.
 - [ ] Simulare toolchain/gopls/Delve mancanti e verificare messaggi operativi.
 - [ ] Verificare assenza rete e modulo privato/non raggiungibile senza blocco UI.
 - [ ] Chiudere app con dirty file e processi attivi verificando prompt e cleanup.
@@ -641,7 +770,7 @@ Obiettivo: offrire test e debug reali, quindi valutare l'isolamento in finestre 
 
 ## Gate finale
 
-- [ ] Tutti i gate delle Fasi 0–4 risultano spuntati con evidenze.
+- [ ] Tutti i gate delle Fasi 0–5 risultano spuntati con evidenze.
 - [ ] Tutti i criteri di accettazione della specifica sono stati provati end-to-end.
 - [ ] Le suite frontend e Go passano su working tree pulita rispetto alle modifiche della funzionalità.
 - [ ] Il test manuale `wails3 task dev` è completato sulle piattaforme dichiarate.
