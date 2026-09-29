@@ -67,7 +67,7 @@ function App() {
   const activeRail     = useAppStore((s) => s.activeRail)
   const sidebarCollapsed = useSettingsStore((s) => s.settings.appearance.sidebarCollapsed)
   const showSidebar    = activeRail === 'collections' && !sidebarCollapsed
-  const goStudioMaximized = useAppStore((s) => s.goStudioMaximized) && activeRail === 'goide'
+  const goStudioMaximized = useAppStore((s) => s.goStudioMaximized || s.goStudioZen) && activeRail === 'goide'
   const workspaceHydrated = useWorkspaceHydration()
   const workspaceShellPhase = useWorkspaceHydrationShell(workspaceHydrated)
   const addDevLog = useDevLogsStore((s) => s.addEntry)

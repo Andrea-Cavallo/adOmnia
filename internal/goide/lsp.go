@@ -486,9 +486,14 @@ func goplsSettings(settings LanguageServerSettings) map[string]any {
 		"semanticTokens":     true,
 		// Stringhe e numeri li colora già Monaco: gopls invia solo i token che aggiungono informazione.
 		"semanticTokenTypes": map[string]bool{"string": false, "number": false},
+		// Tutte le categorie utili: il frontend mostra quelle di tipo solo con la preferenza Type Hints.
 		"hints": map[string]bool{
 			"parameterNames":         true,
 			"functionTypeParameters": true,
+			"assignVariableTypes":    true,
+			"rangeVariableTypes":     true,
+			"compositeLiteralTypes":  true,
+			"constantValues":         true,
 		},
 	}
 }

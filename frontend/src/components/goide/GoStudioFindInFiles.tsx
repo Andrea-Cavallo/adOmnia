@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { CaseSensitive, Loader2, Regex, Search, WholeWord } from 'lucide-react'
+import { CaseSensitive, Loader2, Regex, Replace, Search, WholeWord } from 'lucide-react'
+import { previewReplaceInFiles } from './goStudioReplaceInFiles'
 import type { CancellablePromise } from '@wailsio/runtime'
 import { requestProjectSearch, type GoIDESearchMatch, type GoIDESearchResult } from '@/lib/goide-lsp-api'
 import { useGoIDEStore } from '@/stores/goide'
@@ -59,6 +60,9 @@ export function GoStudioFindInFiles({ sessionId }: GoStudioFindInFilesProps) {
   const [options, setOptions] = useState<SearchOptions>({ caseSensitive: false, wholeWord: false, regex: false })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [replacement, setReplacement] = useState('')
+  const [replacing, setReplacing] = useState(false)
+  const [replaceNote, setReplaceNote] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const running = useRef<CancellablePromise<GoIDESearchResult> | null>(null)
   const groups = useMemo(() => groupMatches(result?.matches ?? []), [result])
@@ -87,6 +91,21 @@ export function GoStudioFindInFiles({ sessionId }: GoStudioFindInFilesProps) {
       .finally(() => { if (running.current === request) setLoading(false) })
   }
 
+  // Sostituisce solo nei file dell'ultima ricerca e passa sempre dall'anteprima delle modifiche.
+  const replaceAll = async () => {
+    if (!result || groups.length === 0 || !query.trim()) return
+    setReplacing(true)
+    setReplaceNote(null)
+    try {
+      const outcome = await previewReplaceInFiles(groups.map(([file]) => file), query, replacement, options)
+      setReplaceNote(outcome.files === 0 ? 'Nothing to replace: the files changed since the search.' : `Review ${outcome.occurrences} replacement${outcome.occurrences === 1 ? '' : 's'} in ${outcome.files} file${outcome.files === 1 ? '' : 's'} in the preview.`)
+    } catch (reason) {
+      setReplaceNote(reason instanceof Error ? reason.message : String(reason))
+    } finally {
+      setReplacing(false)
+    }
+  }
+
   const toggle = (key: keyof SearchOptions, label: string, Icon: typeof Regex) => (
     <button type="button" aria-pressed={options[key]} title={label} onClick={() => setOptions((value) => ({ ...value, [key]: !value[key] }))} className={`grid h-6 w-6 place-items-center rounded ${options[key] ? 'bg-accent/20 text-accent' : 'text-text-4 hover:bg-surface-3 hover:text-text-1'}`}><Icon size={12} /></button>
   )
@@ -105,6 +124,16 @@ export function GoStudioFindInFiles({ sessionId }: GoStudioFindInFilesProps) {
         <input value={exclude} onChange={(event) => setExclude(event.target.value)} placeholder="Exclude: testdata/**" aria-label="Exclude patterns" className="h-6 w-32 rounded border border-border-1 bg-surface-0 px-1.5 font-mono text-[10px] text-text-2 outline-none focus:border-accent" />
         {loading ? <button type="button" onClick={() => { void running.current?.cancel(); setLoading(false) }} className="flex h-6 items-center gap-1 rounded px-2 text-[10px] text-text-3 hover:bg-surface-3"><Loader2 size={11} className="animate-spin" /> Cancel</button> : <button type="submit" disabled={!query.trim()} className="h-6 rounded bg-accent/15 px-2 text-[10px] font-medium text-accent disabled:opacity-40">Search</button>}
       </form>
+      <div className="flex shrink-0 items-center gap-1 border-b border-border-1 px-2 py-1">
+        <label className="flex h-6 min-w-48 flex-1 items-center gap-1 rounded border border-border-1 bg-surface-0 px-1.5 focus-within:border-accent">
+          <Replace size={11} className="text-text-4" />
+          <input value={replacement} onChange={(event) => setReplacement(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void replaceAll() }} placeholder={options.regex ? 'Replace with ($1, $2… for groups)' : 'Replace with'} aria-label="Replace text" className="min-w-0 flex-1 bg-transparent text-[11px] text-text-1 outline-none" />
+        </label>
+        <button type="button" onClick={() => void replaceAll()} disabled={replacing || !result || groups.length === 0} title={result?.truncated ? 'Results are truncated: only the files listed are changed' : 'Preview every change, then apply all or nothing'} className="flex h-6 items-center gap-1 rounded bg-accent/15 px-2 text-[10px] font-medium text-accent disabled:opacity-40">
+          {replacing && <Loader2 size={11} className="animate-spin" />} Replace All… (preview)
+        </button>
+        {replaceNote && <span className="truncate text-[10px] text-text-4">{replaceNote}</span>}
+      </div>
       <div className="min-h-0 flex-1 overflow-auto py-1 text-[11px]">
         {error && <p className="p-3 text-[10px] text-danger">{error}</p>}
         {!error && result && <div className="px-2 pb-1 text-[10px] text-text-4">{result.matches.length} match{result.matches.length === 1 ? '' : 'es'} in {groups.length} file{groups.length === 1 ? '' : 's'} · {result.filesScanned} files scanned{result.truncated ? ' · results truncated' : ''}</div>}

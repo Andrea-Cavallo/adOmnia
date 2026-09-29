@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, memo } from 'react'
 import { ChevronDown, ChevronRight, Copy, Eye, EyeOff, FileCode2, Folder, FolderOpen, KeyRound, Loader2, Minus, Send } from 'lucide-react'
 import { useGoIDEStore } from '@/stores/goide'
+import { useGoIDELspStore } from '@/stores/goideLsp'
 import { BrandIcon, GoStudioFileIcon } from './GoStudioFileIcon'
 import { resolveGoStudioFolderBrand } from './goStudioFileIcons'
 import type { GoIDEFileEntry, GoIDESession } from '@/lib/goide-api'
@@ -44,7 +45,8 @@ const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, act
     <>
       <button
         type="button"
-        onClick={entry.directory ? () => setOpen((value) => !value) : () => void openDocument(entry.relativePath)}
+        onClick={entry.directory ? () => setOpen((value) => !value) : () => void openDocument(entry.relativePath, { preview: useGoIDELspStore.getState().preferences.previewTab })}
+        onDoubleClick={entry.directory ? undefined : () => void openDocument(entry.relativePath)}
         onContextMenu={entry.directory ? undefined : (event) => { event.preventDefault(); onContext(entry, event.clientX, event.clientY) }}
         aria-current={selected ? 'true' : undefined}
         className={`flex h-[26px] w-full items-center gap-1.5 overflow-hidden rounded-[7px] pr-2 text-left text-[12.5px] ${selected ? 'go-studio-tree-row-selected' : `hover:bg-surface-3 hover:text-text-1 ${entry.ignored ? 'text-text-4' : 'text-text-2'}`}`}

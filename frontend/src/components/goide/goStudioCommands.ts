@@ -1,15 +1,16 @@
 export type GoStudioCommandId =
   | 'file.openProject' | 'file.newProject' | 'file.save' | 'file.saveAll' | 'file.closeEditor' | 'file.closeProject'
   | 'window.openInNewWindow' | 'window.moveBack'
-  | 'file.closeOthers' | 'file.closeAll' | 'file.pinTab' | 'file.reopenClosed'
+  | 'file.closeOthers' | 'file.closeAll' | 'file.pinTab' | 'file.reopenClosed' | 'file.autoSave' | 'file.trimWhitespace'
   | 'edit.undo' | 'edit.redo' | 'edit.find' | 'edit.replace' | 'edit.gotoLine' | 'edit.toggleComment'
   | 'edit.duplicateLine' | 'edit.deleteLine' | 'edit.nextOccurrence' | 'edit.allOccurrences' | 'edit.moveLineUp' | 'edit.moveLineDown' | 'edit.columnSelection'
   | 'file.localHistory' | 'view.todo'
   | 'view.splitRight' | 'view.splitDown' | 'view.unsplit' | 'view.terminal'
+  | 'view.zoomIn' | 'view.zoomOut' | 'view.zoomReset' | 'view.zenMode' | 'view.stickyScroll' | 'view.minimap' | 'view.fontLigatures' | 'view.previewTab'
   | 'view.quickOpen' | 'view.maximize' | 'view.maximizeEditor' | 'view.toggleProject' | 'view.toggleStructure' | 'view.toggleBottom' | 'view.toggleIgnored' | 'view.problems'
   | 'nav.declaration' | 'nav.typeDeclaration' | 'nav.implementation' | 'nav.usages' | 'nav.fileStructure' | 'nav.symbol' | 'nav.findInFiles'
   | 'nav.superMethod' | 'nav.back' | 'nav.forward' | 'nav.toggleBookmark' | 'nav.bookmarks'
-  | 'nav.quickDefinition' | 'nav.showUsages' | 'nav.searchEverywhere' | 'code.quickDocumentation' | 'code.typeInfo' | 'code.semanticHighlighting' | 'code.inlayHints' | 'code.implementInterface'
+  | 'nav.quickDefinition' | 'nav.showUsages' | 'nav.searchEverywhere' | 'code.quickDocumentation' | 'code.typeInfo' | 'code.semanticHighlighting' | 'code.inlayHints' | 'code.typeHints' | 'code.implementInterface'
   | 'code.refactorThis' | 'code.extractVariable' | 'code.extractConstant' | 'code.extractFunction' | 'code.inline' | 'code.moveToNewFile'
   | 'code.completion' | 'code.parameterInfo' | 'code.quickFix' | 'code.rename' | 'code.reformat' | 'code.organizeImports'
   | 'code.formatOnSave' | 'code.importsOnSave' | 'code.gofumpt' | 'code.staticcheck' | 'code.lint' | 'code.lintOnSave'
@@ -68,6 +69,8 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'file.newProject', menu: 'file', label: 'New Go Project…' },
   { id: 'file.save', menu: 'file', label: 'Save', binding: { key: 's', mod: true }, separatorBefore: true },
   { id: 'file.saveAll', menu: 'file', label: 'Save All', binding: { key: 's', mod: true, shift: true } },
+  { id: 'file.autoSave', menu: 'file', label: 'Save Files on Focus Change' },
+  { id: 'file.trimWhitespace', menu: 'file', label: 'Trim Trailing Whitespace on Save' },
   { id: 'file.closeEditor', menu: 'file', label: 'Close Editor', binding: { key: 'w', mod: true }, separatorBefore: true },
   { id: 'file.closeOthers', menu: 'file', label: 'Close Other Tabs' },
   { id: 'file.closeAll', menu: 'file', label: 'Close All Tabs' },
@@ -91,6 +94,14 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'edit.allOccurrences', menu: 'edit', label: 'Select All Occurrences', binding: { key: 'j', mod: true, alt: true, shift: true }, editorOwned: true },
   { id: 'edit.columnSelection', menu: 'edit', label: 'Column Selection Mode', binding: { key: 'Insert', alt: true, shift: true }, editorOwned: true },
   { id: 'view.quickOpen', menu: 'view', label: 'Go to File…', binding: { key: 'p', mod: true } },
+  { id: 'view.zoomIn', menu: 'view', label: 'Zoom In', binding: { key: '=', mod: true }, separatorBefore: true },
+  { id: 'view.zoomOut', menu: 'view', label: 'Zoom Out', binding: { key: '-', mod: true } },
+  { id: 'view.zoomReset', menu: 'view', label: 'Reset Zoom', binding: { key: '0', mod: true } },
+  { id: 'view.stickyScroll', menu: 'view', label: 'Sticky Scopes', separatorBefore: true },
+  { id: 'view.minimap', menu: 'view', label: 'Minimap' },
+  { id: 'view.fontLigatures', menu: 'view', label: 'Font Ligatures' },
+  { id: 'view.previewTab', menu: 'view', label: 'Preview Tab (single click in Project)' },
+  { id: 'view.zenMode', menu: 'view', label: 'Zen Mode', binding: { key: 'z', alt: true, shift: true }, separatorBefore: true },
   { id: 'view.maximizeEditor', menu: 'view', label: 'Maximize Editor (Hide All Tool Windows)', binding: { key: 'F12', mod: true, shift: true }, separatorBefore: true },
   { id: 'view.maximize', menu: 'view', label: 'Maximize Go Studio', binding: { key: 'F11', mod: true, shift: true } },
   { id: 'view.toggleProject', menu: 'view', label: 'Project Pane', binding: { key: '1', alt: true }, separatorBefore: true },
@@ -140,7 +151,8 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'code.importsOnSave', menu: 'code', label: 'Optimize Imports on Save' },
   { id: 'code.lintOnSave', menu: 'code', label: 'Run Linter on Save' },
   { id: 'code.semanticHighlighting', menu: 'code', label: 'Semantic Highlighting' },
-  { id: 'code.inlayHints', menu: 'code', label: 'Parameter & Type Hints' },
+  { id: 'code.inlayHints', menu: 'code', label: 'Inlay Hints' },
+  { id: 'code.typeHints', menu: 'code', label: 'Type Hints (:=, range, literals, constants)' },
   { id: 'code.gofumpt', menu: 'code', label: 'Use gofumpt Style' },
   { id: 'code.staticcheck', menu: 'code', label: 'Staticcheck Analyses' },
   { id: 'go.toolchains', menu: 'go', label: 'Go SDKs & Toolchains…' },
@@ -225,8 +237,16 @@ interface KeyLike {
   altKey: boolean
 }
 
+/** Zoom: "=" e "+" (anche con Shift o dal tastierino) e "-" funzionano con layout US e italiano. */
+const ZOOM_KEYS: Record<string, { keys: string[]; codes: string[] }> = {
+  '=': { keys: ['=', '+'], codes: ['Equal', 'NumpadAdd'] },
+  '-': { keys: ['-', '_'], codes: ['Minus', 'NumpadSubtract'] },
+}
+
 function keyMatches(binding: GoStudioKeyBinding, event: KeyLike): boolean {
   const mod = event.ctrlKey || event.metaKey
+  const zoom = ZOOM_KEYS[binding.key]
+  if (zoom) return !!binding.mod === mod && !event.altKey && (zoom.keys.includes(event.key) || zoom.codes.includes(event.code ?? ''))
   if (!!binding.mod !== mod || !!binding.shift !== event.shiftKey || !!binding.alt !== event.altKey) return false
   if (binding.key.length > 1) return event.key === binding.key
   if (/^[0-9]$/.test(binding.key) && event.code === `Digit${binding.key}`) return true
@@ -276,6 +296,9 @@ export interface GoStudioCommandContext {
   canGoBack: boolean
   canGoForward: boolean
   bookmarkCount: number
+  /** Preferenze dell'editor mostrate con spunta nei menu. */
+  editorPrefs?: { previewTab?: boolean; stickyScroll: boolean; minimap: boolean; fontLigatures: boolean; typeHints: boolean; autoSave: boolean; trimTrailingWhitespace: boolean }
+  zen?: boolean
   /** Finestra Go Studio separata: mostra un solo progetto e non ha rail né pannelli adOmnia. */
   detached?: boolean
   /** Il progetto attivo è modificabile in un'altra finestra: i suoi buffer vivono là. */
@@ -319,6 +342,7 @@ export function commandAvailability(id: GoStudioCommandId, context: GoStudioComm
   const windowed = windowAvailability(id, context)
   if (windowed !== null) return windowed
   if (id === 'view.maximize') return context.detached ? 'Already a separate window' : true
+  if (id === 'view.zenMode') return context.detached ? 'Available in the main window' : true
   if (id === 'file.openProject' || id === 'file.newProject' || id === 'help.shortcuts') return true
   if (!context.hasSession) return NO_PROJECT
   if (id.startsWith('edit.')) return context.hasEditor ? true : 'Open a file first'
@@ -333,6 +357,7 @@ export function commandAvailability(id: GoStudioCommandId, context: GoStudioComm
     if (!context.authorized) return NOT_TRUSTED
     return context.linterAvailable ? true : 'Install golangci-lint or staticcheck (Go menu)'
   }
+  if (id === 'code.typeHints') return context.inlayHints ? true : 'Turn on Inlay Hints first'
   if (id === 'code.semanticHighlighting' || id === 'code.inlayHints') return context.lspState === 'ready' && !context[id === 'code.inlayHints' ? 'inlayHintsSupported' : 'semanticTokensSupported'] ? 'The running gopls does not provide this feature' : true
   if (id.startsWith('code.') && ['code.formatOnSave', 'code.importsOnSave', 'code.gofumpt', 'code.staticcheck', 'code.lintOnSave'].indexOf(id) < 0) return semanticAvailability(context)
   switch (id) {
@@ -408,6 +433,14 @@ export function commandAvailability(id: GoStudioCommandId, context: GoStudioComm
 export function commandChecked(id: GoStudioCommandId, context: GoStudioCommandContext): boolean {
   switch (id) {
     case 'view.maximize': return context.maximized
+    case 'view.zenMode': return !!context.zen
+    case 'view.stickyScroll': return !!context.editorPrefs?.stickyScroll
+    case 'view.minimap': return !!context.editorPrefs?.minimap
+    case 'view.previewTab': return !!context.editorPrefs?.previewTab
+    case 'view.fontLigatures': return !!context.editorPrefs?.fontLigatures
+    case 'code.typeHints': return !!context.editorPrefs?.typeHints && context.inlayHints
+    case 'file.autoSave': return !!context.editorPrefs?.autoSave
+    case 'file.trimWhitespace': return !!context.editorPrefs?.trimTrailingWhitespace
     case 'view.maximizeEditor': return !context.projectOpen && !context.structureOpen && !context.bottomOpen
     case 'view.toggleProject': return context.projectOpen
     case 'view.toggleStructure': return context.structureOpen

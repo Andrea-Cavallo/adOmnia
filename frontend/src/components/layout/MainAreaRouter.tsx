@@ -152,7 +152,7 @@ function panelFor(activeRail: RailItem): PanelDef {
 
 export function MainAreaRouter() {
   const activeRail = useAppStore((s) => s.activeRail)
-  const maximized = useAppStore((s) => s.goStudioMaximized) && activeRail === 'goide'
+  const maximized = useAppStore((s) => s.goStudioMaximized || s.goStudioZen) && activeRail === 'goide'
   const goBack = useAppStore((s) => s.goBack)
   const workspaceHydrated = useWorkspaceHydration()
   const workspaceShellPhase = useWorkspaceHydrationShell(workspaceHydrated)

@@ -21,6 +21,15 @@ The project menu in the toolbar lists the open projects and, below them, the rec
 
 Several projects can stay open at the same time, isolated from each other, grouped into Go Studio workspaces that are separate from adOmnia's API workspaces. A project can also move into its own window (*File → Open Project in New Window*).
 
+## Editor
+
+- **View:** Sticky Scopes (on by default), Minimap, Font Ligatures, Preview Tab, Zoom (Ctrl+= / Ctrl+- / Ctrl+0, including the `+` key of Italian layouts and the numeric keypad) and Zen Mode (Alt+Shift+Z: only the code; leaving it restores the panes as they were).
+- **Preview Tab** (off by default): a single click in Project opens the file in an italic tab that the next click replaces. Editing it or double-clicking the file keeps it open.
+- **Code → Type Hints:** the inferred types of `:=` and `range`, composite literal types and constant values, on top of parameter hints.
+- **File → Save Files on Focus Change:** saves modified files when adOmnia goes to the background or you switch file, never while you type.
+- **File → Trim Trailing Whitespace on Save** and **`.editorconfig`:** the project-root `.editorconfig` sets indentation, trailing whitespace and the final newline for non-Go files; Go, assembly and Makefiles keep tabs. Only the changed characters are edited, so the cursor stays and Ctrl+Z undoes it.
+- **Replace in Files:** *Replace All… (preview)* in Find in Files opens every change in the change preview, applied all or nothing and undoable. With regular expressions, `$1`, `$2`… insert the captured groups.
+
 ## Security and project authorization
 
 - **Opening is not trusting.** An opened project reads and saves files only. Every action that starts a process requires *Trust*: gopls, linters, build, run, tests, debugging, the terminal, Go Tools, dependency changes and tool installation. Revoking trust stops the project's processes and gopls.
@@ -166,6 +175,8 @@ Go Studio follows the GoLand keymap. The table below is generated from the comma
 | Action | Windows / Linux | macOS |
 | --- | --- | --- |
 | Go to File | Ctrl+P | ⌘P |
+| Zoom In / Out / Reset | Ctrl+= / Ctrl+- / Ctrl+0 | ⌘= / ⌘- / ⌘0 |
+| Zen Mode | Alt+Shift+Z | ⌥⇧Z |
 | Maximize Editor (Hide All Tool Windows) | Ctrl+Shift+F12 | ⌘⇧F12 |
 | Maximize Go Studio | Ctrl+Shift+F11 | ⌘⇧F11 |
 | Project Pane | Alt+1 | ⌥1 |

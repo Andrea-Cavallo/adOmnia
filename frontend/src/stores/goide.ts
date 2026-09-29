@@ -189,7 +189,10 @@ export interface GoIDEState {
   closeActiveSession: (discardDocuments?: boolean) => Promise<boolean>
   loadDirectory: (relativePath?: string) => Promise<void>
   toggleShowIgnored: () => Promise<void>
-  openDocument: (relativePath: string) => Promise<string | null>
+  /** preview: tab di anteprima, sostituita dalla prossima anteprima finché non la si modifica o la si rende permanente. */
+  openDocument: (relativePath: string, options?: { preview?: boolean }) => Promise<string | null>
+  /** Tab di anteprima (una per sessione), mostrata in corsivo. */
+  previewDocumentBySession: Record<string, string | null>
   openLocation: (relativePath: string, line: number, column?: number) => Promise<void>
   openExternalLocation: (path: string, line: number, column?: number) => Promise<void>
   ensureDocumentLoaded: (relativePath: string) => Promise<GoIDEEditorDocument | null>
@@ -330,6 +333,7 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
   documents: [],
   activeDocumentBySession: {},
   pinnedDocuments: {},
+  previewDocumentBySession: {},
   closedDocuments: {},
   splitBySession: {},
   toolchains: {},
@@ -683,13 +687,26 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
     await get().loadDirectory('')
   },
 
-  openDocument: async (path) => {
+  openDocument: async (path, options = {}) => {
     const sessionId = get().activeSessionId
     if (!sessionId) return null
-    const activate = (documentId: string) => set((state) => ({ activeDocumentBySession: { ...state.activeDocumentBySession, [sessionId]: documentId } }))
+    const previousPreview = get().previewDocumentBySession[sessionId] ?? null
+    const setPreview = (documentId: string | null) => set((state) => ({ previewDocumentBySession: { ...state.previewDocumentBySession, [sessionId]: documentId } }))
+    const activate = (documentId: string, created: boolean) => {
+      set((state) => ({ activeDocumentBySession: { ...state.activeDocumentBySession, [sessionId]: documentId } }))
+      if (!options.preview) {
+        // Aperto in modo permanente (doppio clic, navigazione, ricerca): l'anteprima diventa una tab normale.
+        if (previousPreview === documentId) setPreview(null)
+        return
+      }
+      if (!created) return
+      setPreview(documentId)
+      const old = previousPreview ? get().documents.find((item) => item.document.id === previousPreview) : undefined
+      if (old && !old.dirty && !get().pinnedDocuments[old.document.id]) void get().closeDocument(old.document.id)
+    }
     const existing = findSessionDocument(get().documents, sessionId, path)
     if (existing) {
-      activate(existing.document.id)
+      activate(existing.document.id, false)
       return existing.document.id
     }
     set({ loading: true, error: null })
@@ -698,11 +715,11 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
       // Percorsi diversi (relativo, "./", assoluto) possono indicare lo stesso file: l'id stabile lo deduplica.
       if (get().documents.some((item) => item.document.id === opened.document.id)) {
         set({ loading: false })
-        activate(opened.document.id)
+        activate(opened.document.id, false)
         return opened.document.id
       }
       set((state) => ({ documents: [...state.documents, toEditorDocument(opened)], loading: false }))
-      activate(opened.document.id)
+      activate(opened.document.id, true)
       void get().checkPathConflicts(sessionId, opened.document.relativePath)
       void get().persistSessionView(sessionId)
       return opened.document.id
@@ -766,11 +783,17 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
       if (dirty) scheduleBufferRecovery(current.document.sessionId, current.document.relativePath, buffer, current.diskToken)
       else cancelBufferRecovery(current.document.sessionId, current.document.relativePath)
     }
-    set((state) => ({
-      documents: state.documents.map((item) => item.document.id === documentId
-        ? { ...item, buffer, dirty: buffer !== item.savedContent, saveError: null }
-        : item),
-    }))
+    set((state) => {
+      const sessionId = current?.document.sessionId
+      // Modificare l'anteprima la rende una tab permanente.
+      const promote = sessionId && state.previewDocumentBySession[sessionId] === documentId && current && buffer !== current.savedContent
+      return {
+        documents: state.documents.map((item) => item.document.id === documentId
+          ? { ...item, buffer, dirty: buffer !== item.savedContent, saveError: null }
+          : item),
+        ...(promote ? { previewDocumentBySession: { ...state.previewDocumentBySession, [sessionId]: null } } : {}),
+      }
+    })
   },
 
   saveDocument: async (providedId, force = false) => {
@@ -881,7 +904,11 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
     void get().persistSessionView(current.document.sessionId)
   },
 
-  togglePinned: (documentId) => set((state) => ({ pinnedDocuments: { ...state.pinnedDocuments, [documentId]: !state.pinnedDocuments[documentId] } })),
+  togglePinned: (documentId) => set((state) => {
+    // Una tab pinnata non è mai un'anteprima.
+    const previews = Object.fromEntries(Object.entries(state.previewDocumentBySession).map(([session, id]) => [session, id === documentId ? null : id]))
+    return { pinnedDocuments: { ...state.pinnedDocuments, [documentId]: !state.pinnedDocuments[documentId] }, previewDocumentBySession: previews }
+  }),
 
   reopenClosedDocument: async () => {
     const sessionId = get().activeSessionId

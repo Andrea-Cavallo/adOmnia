@@ -6,6 +6,9 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Added
+- **Go Studio editor core:** Sticky Scopes, optional Minimap, Font Ligatures, Zoom (Ctrl+= / Ctrl+- / Ctrl+0), Zen Mode (Alt+Shift+Z), Preview Tab, Type Hints, Save Files on Focus Change, Trim Trailing Whitespace on Save, project-root `.editorconfig` support and Replace in Files through the change preview.
+
 ## [0.9.41] - 2026-09-29
 
 ### Added

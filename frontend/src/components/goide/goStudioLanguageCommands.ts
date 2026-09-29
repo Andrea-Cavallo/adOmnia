@@ -1,5 +1,5 @@
 import { confirm } from '@/lib/confirmDialog'
-import { useGoIDELspStore } from '@/stores/goideLsp'
+import { useGoIDELspStore, EDITOR_FONT_SIZE } from '@/stores/goideLsp'
 import type { GoStudioCommandId } from './goStudioCommands'
 import { activeGoStudioEditor } from './goStudioEditorRegistry'
 
@@ -52,6 +52,16 @@ export function runLanguageCommand(id: GoStudioCommandId, sessionId: string | nu
     case 'code.lintOnSave': lsp.updatePreferences({ lintOnSave: !lsp.preferences.lintOnSave }); return true
     case 'code.semanticHighlighting': lsp.updatePreferences({ semanticHighlighting: !lsp.preferences.semanticHighlighting }); return true
     case 'code.inlayHints': lsp.updatePreferences({ inlayHints: !lsp.preferences.inlayHints }); return true
+    case 'code.typeHints': lsp.updatePreferences({ typeHints: !lsp.preferences.typeHints }); return true
+    case 'view.stickyScroll': lsp.updatePreferences({ stickyScroll: !lsp.preferences.stickyScroll }); return true
+    case 'view.minimap': lsp.updatePreferences({ minimap: !lsp.preferences.minimap }); return true
+    case 'view.previewTab': lsp.updatePreferences({ previewTab: !lsp.preferences.previewTab }); return true
+    case 'view.fontLigatures': lsp.updatePreferences({ fontLigatures: !lsp.preferences.fontLigatures }); return true
+    case 'file.autoSave': lsp.updatePreferences({ autoSave: !lsp.preferences.autoSave }); return true
+    case 'file.trimWhitespace': lsp.updatePreferences({ trimTrailingWhitespace: !lsp.preferences.trimTrailingWhitespace }); return true
+    case 'view.zoomIn': lsp.updatePreferences({ fontSize: Math.min(EDITOR_FONT_SIZE.max, lsp.preferences.fontSize + 1) }); return true
+    case 'view.zoomOut': lsp.updatePreferences({ fontSize: Math.max(EDITOR_FONT_SIZE.min, lsp.preferences.fontSize - 1) }); return true
+    case 'view.zoomReset': lsp.updatePreferences({ fontSize: EDITOR_FONT_SIZE.default }); return true
   }
   if (!sessionId) return false
   switch (id) {

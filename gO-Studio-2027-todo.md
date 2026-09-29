@@ -92,48 +92,48 @@
 
 ## Editing
 
-- [ ] Syntax highlighting Go.
-- [ ] Semantic highlighting tramite `gopls`.
-- [ ] Bracket matching.
-- [ ] Auto indentation.
-- [ ] Code folding.
-- [ ] Multiple cursors.
-- [ ] Multi-selection.
-- [ ] Column selection.
-- [ ] Find/replace.
-- [ ] Regex search.
-- [ ] Search in files.
-- [ ] Case-sensitive search.
-- [ ] Whole-word search.
-- [ ] Replace preview.
-- [ ] Breadcrumbs.
-- [ ] Sticky scopes.
-- [ ] Minimap opzionale.
-- [ ] Code lens.
-- [ ] Inlay hints.
-- [ ] Parameter hints.
-- [ ] Type hints.
-- [ ] Inline diagnostics.
-- [ ] Error squiggles.
-- [ ] Warning squiggles.
-- [ ] Quick fixes.
-- [ ] Light bulb actions.
-- [ ] Autosave.
-- [ ] Format on save.
-- [ ] Organize imports on save.
-- [ ] Trim trailing whitespace.
-- [ ] EditorConfig support.
-- [ ] Font ligatures.
-- [ ] Zoom.
-- [ ] Zen mode.
-- [ ] Split editor verticale.
-- [ ] Split editor orizzontale.
-- [ ] Tab pinning.
-- [ ] Tab preview.
-- [ ] Recently closed tabs.
-- [ ] Restore session.
-- [ ] Diff editor.
-- [ ] Merge editor.
+- [x] Syntax highlighting Go. — *Monaco + tokenizer Go; tutti gli altri linguaggi del bundle (v0.9.39).*
+- [x] Semantic highlighting tramite `gopls`.
+- [x] Bracket matching. — *con colorazione delle coppie.*
+- [x] Auto indentation.
+- [x] Code folding.
+- [x] Multiple cursors. — *Alt+J / Ctrl+Alt+Shift+J.*
+- [x] Multi-selection.
+- [x] Column selection. — *Alt+Shift+Insert.*
+- [x] Find/replace.
+- [x] Regex search.
+- [x] Search in files. — *Find in Files (Ctrl+Shift+F).*
+- [x] Case-sensitive search.
+- [x] Whole-word search.
+- [x] Replace preview. — *Replace All in Find in Files apre l’anteprima delle modifiche: tutto o niente, annullabile; `$1` con regex.*
+- [x] Breadcrumbs.
+- [x] Sticky scopes. — *View → Sticky Scopes (default attivo).*
+- [x] Minimap opzionale. — *View → Minimap.*
+- [x] Code lens.
+- [x] Inlay hints.
+- [x] Parameter hints. — *signature help e nomi dei parametri inline.*
+- [x] Type hints. — *Code → Type Hints: `:=`, range, composite literal, costanti.*
+- [x] Inline diagnostics.
+- [x] Error squiggles.
+- [x] Warning squiggles.
+- [x] Quick fixes. — *Alt+Enter, anche Fix with AI.*
+- [x] Light bulb actions.
+- [x] Autosave. — *File → Save Files on Focus Change (finestra in secondo piano o cambio file).*
+- [x] Format on save.
+- [x] Organize imports on save.
+- [x] Trim trailing whitespace. — *preferenza o `.editorconfig`; modifiche minime, il cursore resta.*
+- [x] EditorConfig support. — *`.editorconfig` alla radice: indentazione, spazi in coda, newline finale; Go e Makefile restano a tab.*
+- [x] Font ligatures. — *View → Font Ligatures.*
+- [x] Zoom. — *Ctrl+= / Ctrl+- / Ctrl+0, anche con layout italiano e tastierino.*
+- [x] Zen mode. — *Alt+Shift+Z: solo il codice, all’uscita i pannelli tornano com’erano.*
+- [x] Split editor verticale.
+- [x] Split editor orizzontale.
+- [x] Tab pinning.
+- [x] Tab preview. — *View → Preview Tab: clic singolo nel Project apre una tab in corsivo, sostituita finché non la modifichi o fai doppio clic.*
+- [x] Recently closed tabs. — *Ctrl+Shift+T.*
+- [x] Restore session. — *tab, layout e buffer non salvati ripristinati al riavvio.*
+- [x] Diff editor. — *Git history e local history.*
+- [ ] Merge editor. — *→ §22: risoluzione dei conflitti Git a tre vie in gO Studio.*
 
 ## Navigazione codice
 

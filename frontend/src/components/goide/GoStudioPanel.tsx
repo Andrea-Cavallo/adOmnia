@@ -118,6 +118,15 @@ export function GoStudioPanel() {
   const [configureOpen, setConfigureOpen] = useState(false)
   const goStudioMaximized = useAppStore((state) => state.goStudioMaximized)
   const toggleGoStudioMaximized = useAppStore((state) => state.toggleGoStudioMaximized)
+  const zen = useAppStore((state) => state.goStudioZen)
+  const setZen = useAppStore((state) => state.setGoStudioZen)
+  // Zen Mode: nasconde la chrome di Go Studio e chiude i pannelli; all'uscita li ripristina com'erano.
+  const toggleZen = () => {
+    const { projectOpen, structureOpen, bottomOpen } = store.layout
+    const anyOpen = projectOpen || structureOpen || bottomOpen
+    if (zen ? !anyOpen : anyOpen) store.toggleEditorMaximized()
+    setZen(!zen)
+  }
   const [configDraft, setConfigDraft] = useState<GoIDERunConfiguration | null>(null)
   const openConfigurations = (draft: GoIDERunConfiguration | null = null) => { setConfigDraft(draft); setConfigureOpen(true) }
   const [toolchainOpen, setToolchainOpen] = useState(false)
@@ -246,6 +255,27 @@ export function GoStudioPanel() {
     const dirty = dirtyGoIDEDocuments(useGoIDEStore.getState(), activeSession.id)
     for (const document of dirty) if (!await saveDocumentWithActions(document.document.id)) return
   }
+  // Save Files on Focus Change: come negli IDE JetBrains, salva quando la finestra va in secondo piano
+  // e quando si cambia file. Nessun salvataggio mentre si scrive.
+  const autoSave = lsp.preferences.autoSave
+  const autoSaveRef = useRef(saveAllWithActions)
+  autoSaveRef.current = saveAllWithActions
+  const activeDocumentId = useGoIDEStore((state) => (activeSession ? state.activeDocumentBySession[activeSession.id] ?? null : null))
+  useEffect(() => {
+    if (!autoSave) return
+    const onBlur = () => void autoSaveRef.current()
+    window.addEventListener('blur', onBlur)
+    return () => window.removeEventListener('blur', onBlur)
+  }, [autoSave])
+  const previousActiveRef = useRef<string | null>(null)
+  useEffect(() => {
+    const previous = previousActiveRef.current
+    previousActiveRef.current = activeDocumentId
+    if (!autoSave || !previous || previous === activeDocumentId) return
+    const document = useGoIDEStore.getState().documents.find((item) => item.document.id === previous)
+    if (document?.dirty) void saveDocumentWithActions(previous)
+  }, [activeDocumentId, autoSave]) // eslint-disable-line react-hooks/exhaustive-deps
+
 
   // Doppio Shift apre Search Everywhere solo quando c'è un progetto aperto.
   useEffect(() => {
@@ -323,6 +353,11 @@ export function GoStudioPanel() {
     bottomOpen: store.layout.bottomOpen,
     showIgnored: !!activeSession && (store.showIgnoredBySession[activeSession.id] ?? false),
     maximized: goStudioMaximized,
+    zen,
+    editorPrefs: {
+      previewTab: lsp.preferences.previewTab, stickyScroll: lsp.preferences.stickyScroll, minimap: lsp.preferences.minimap, fontLigatures: lsp.preferences.fontLigatures,
+      typeHints: lsp.preferences.typeHints, autoSave: lsp.preferences.autoSave, trimTrailingWhitespace: lsp.preferences.trimTrailingWhitespace,
+    },
     projectOpen: store.layout.projectOpen,
     semanticHighlighting: lsp.preferences.semanticHighlighting,
     inlayHints: lsp.preferences.inlayHints,
@@ -415,6 +450,7 @@ export function GoStudioPanel() {
       case 'view.quickOpen': return store.setQuickOpen(true)
       case 'view.maximize': return toggleGoStudioMaximized()
       case 'view.maximizeEditor': return store.toggleEditorMaximized()
+      case 'view.zenMode': return toggleZen()
       case 'view.toggleProject': return store.updateLayout({ projectOpen: !store.layout.projectOpen })
       case 'view.toggleStructure': return store.updateLayout({ structureOpen: !store.layout.structureOpen })
       case 'view.toggleBottom': return store.updateLayout({ bottomOpen: !store.layout.bottomOpen })
@@ -480,14 +516,14 @@ export function GoStudioPanel() {
 
   return (
     <div className="go-studio-root flex min-h-0 flex-1 flex-col text-text-1">
-      <GoStudioToolbar mainMenu={mainMenu} trailing={<GoStudioWorkspaceSwitcher />} onSearchEverywhere={() => runCommand('nav.searchEverywhere')} onDebug={() => runCommand('debug.debug')} extra={<GoStudioBranchWidget sessionId={activeSession.id} onCommit={() => setVcsDialog('commit')} />} maximized={goStudioMaximized} onToggleMaximize={toggleGoStudioMaximized} recentProjects={recentNotOpen} onOpenRecent={(path) => void store.openProject(path)} runConfigurations={runConfigurations} activeConfigId={activeConfigId} onSelectConfiguration={(id) => store.selectRunConfiguration(id)} sessions={workspaceSessions} activeSession={activeSession} activeExecution={activeExecution} toolchain={toolchain} loading={store.loading} onSelect={(id) => void store.selectSession(id)} onOpenProject={() => void store.openProject()} onCreateProject={() => setCreateOpen(true)} onSetAuthorization={(allowed) => void authorize(allowed)} onDetectToolchain={() => void store.detectToolchain()} onToolchainSettings={() => setToolchainOpen(true)} onDependencies={() => setDependenciesOpen(true)} onConfigure={() => setConfigureOpen(true)} onBuild={() => startConfigured('build')} onRun={() => startConfigured('run')} onTidy={() => void tidy()} onStop={() => void store.stopRun()} onClose={() => void closeFlow.requestCloseSession()} />
+      {!zen && <GoStudioToolbar mainMenu={mainMenu} trailing={<GoStudioWorkspaceSwitcher />} onSearchEverywhere={() => runCommand('nav.searchEverywhere')} onDebug={() => runCommand('debug.debug')} extra={<GoStudioBranchWidget sessionId={activeSession.id} onCommit={() => setVcsDialog('commit')} />} maximized={goStudioMaximized} onToggleMaximize={toggleGoStudioMaximized} recentProjects={recentNotOpen} onOpenRecent={(path) => void store.openProject(path)} runConfigurations={runConfigurations} activeConfigId={activeConfigId} onSelectConfiguration={(id) => store.selectRunConfiguration(id)} sessions={workspaceSessions} activeSession={activeSession} activeExecution={activeExecution} toolchain={toolchain} loading={store.loading} onSelect={(id) => void store.selectSession(id)} onOpenProject={() => void store.openProject()} onCreateProject={() => setCreateOpen(true)} onSetAuthorization={(allowed) => void authorize(allowed)} onDetectToolchain={() => void store.detectToolchain()} onToolchainSettings={() => setToolchainOpen(true)} onDependencies={() => setDependenciesOpen(true)} onConfigure={() => setConfigureOpen(true)} onBuild={() => startConfigured('build')} onRun={() => startConfigured('run')} onTidy={() => void tidy()} onStop={() => void store.stopRun()} onClose={() => void closeFlow.requestCloseSession()} />}
       {store.error && <ErrorBanner message={store.error} onClose={store.clearError} />}
       {windowError}
       {lsp.message && <NoticeBanner message={lsp.message} onClose={lsp.clearMessage} />}
       <GoStudioRecoveryBanner sessionId={activeSession.id} />
-      <GoStudioWorkspace session={activeSession} {...store.layout} onProjectResize={beginResize('projectWidth', store.layout.projectWidth)} onStructureResize={beginResize('structureWidth', store.layout.structureWidth, -1)} onBottomResize={beginResize('bottomHeight', store.layout.bottomHeight, -1)} onCursor={setCursor} onRequestCloseDocument={closeFlow.requestCloseDocuments} onRunTarget={(target, anchor) => setRunTargetMenu({ target, ...anchor })} onCommit={() => setVcsDialog('commit')} onBookmarks={() => setBookmarksOpen(true)} onDependencies={() => setDependenciesOpen(true)} />
+      <GoStudioWorkspace session={activeSession} {...store.layout} zen={zen} onProjectResize={beginResize('projectWidth', store.layout.projectWidth)} onStructureResize={beginResize('structureWidth', store.layout.structureWidth, -1)} onBottomResize={beginResize('bottomHeight', store.layout.bottomHeight, -1)} onCursor={setCursor} onRequestCloseDocument={closeFlow.requestCloseDocuments} onRunTarget={(target, anchor) => setRunTargetMenu({ target, ...anchor })} onCommit={() => setVcsDialog('commit')} onBookmarks={() => setBookmarksOpen(true)} onDependencies={() => setDependenciesOpen(true)} />
       {runTargetMenu && <GoStudioRunTargetMenu {...runTargetMenu} onAction={runTarget} onClose={() => setRunTargetMenu(null)} />}
-      <GoStudioStatusBar session={activeSession} toolchain={toolchain} documentInfo={summary.activeId ? { language: summary.activeLanguage ?? '', readOnly: summary.activeReadOnly } : null} execution={activeExecution} onLanguageServer={openLanguageServerMenu} onLinter={() => runCommand(commandAvailability('code.lint', commandContext) === true ? 'code.lint' : 'go.toolPaths')} onSetAuthorization={(allowed) => void authorize(allowed)} />
+      {zen ? <ZenExit onExit={toggleZen} /> : <GoStudioStatusBar session={activeSession} toolchain={toolchain} documentInfo={summary.activeId ? { language: summary.activeLanguage ?? '', readOnly: summary.activeReadOnly } : null} execution={activeExecution} onLanguageServer={openLanguageServerMenu} onLinter={() => runCommand(commandAvailability('code.lint', commandContext) === true ? 'code.lint' : 'go.toolPaths')} onSetAuthorization={(allowed) => void authorize(allowed)} />}
       <GoStudioQuickOpen />
       <GoStudioCaretPopup />
       <GoStudioImplementInterfaceDialog />
@@ -539,4 +575,15 @@ function NoticeBanner({ message, onClose }: { message: string; onClose: () => vo
 
 function ErrorBanner({ message, onClose }: { message: string; onClose: () => void }) {
   return <div role="alert" className="flex shrink-0 items-center gap-2 border-b border-danger/30 bg-danger/10 px-3 py-2 text-[11px] text-danger"><AlertTriangle size={13} /><span className="flex-1 whitespace-pre-wrap">{message}</span><button type="button" onClick={onClose} title="Dismiss error" className="grid h-5 w-5 place-items-center rounded hover:bg-danger/10"><X size={12} /></button></div>
+}
+
+/** In Zen Mode l'unica chrome: una pillola discreta in basso che compare al passaggio del mouse. */
+function ZenExit({ onExit }: { onExit: () => void }) {
+  return (
+    <div className="group pointer-events-none fixed inset-x-0 bottom-0 z-40 flex h-10 items-end justify-center pb-2">
+      <button type="button" onClick={onExit} className="pointer-events-auto rounded-full border border-border-2 bg-surface-1/95 px-3 py-1 text-[11px] text-text-3 opacity-0 shadow-lg transition-opacity duration-150 hover:text-text-1 focus-visible:opacity-100 group-hover:opacity-100">
+        Exit Zen Mode · Alt+Shift+Z
+      </button>
+    </div>
+  )
 }

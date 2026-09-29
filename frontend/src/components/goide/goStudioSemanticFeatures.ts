@@ -80,6 +80,7 @@ function registerInlayHints(): void {
       if (!isCurrent(prepared.documentId, result.version)) throw cancelled()
       const hints = result.hints
         .filter((hint) => hint.kind !== INLAY_PARAMETER || (hint.line <= model.getLineCount() && isLiteralArgument(model.getLineContent(hint.line), hint.column)))
+        .filter((hint) => hint.kind === INLAY_PARAMETER || showTypeHint(hint.label))
         .map((hint) => ({
           position: { lineNumber: hint.line, column: hint.column },
           label: hint.label,
@@ -111,6 +112,15 @@ function registerDocumentHighlights(): void {
 }
 
 /** Registra una sola volta semantic tokens, inlay hints ed evidenziazione delle occorrenze/punti di uscita. */
+/**
+ * I type parameter dedotti (`[int]`) restano sempre visibili con gli inlay hint; gli altri
+ * suggerimenti di tipo (` int` dopo :=/range, tipi dei composite literal, `= 3` delle costanti)
+ * solo con la preferenza Type Hints. gopls li invia tutti come InlayHintKind.Type.
+ */
+export function showTypeHint(label: string): boolean {
+  return label.trimStart().startsWith('[') || useGoIDELspStore.getState().preferences.typeHints
+}
+
 export function registerGoStudioSemanticFeatures(): void {
   if (registered) return
   registered = true
@@ -119,6 +129,7 @@ export function registerGoStudioSemanticFeatures(): void {
   registerDocumentHighlights()
   useGoIDELspStore.subscribe((state, previous) => {
     const preferencesChanged = state.preferences.semanticHighlighting !== previous.preferences.semanticHighlighting || state.preferences.inlayHints !== previous.preferences.inlayHints
+      || state.preferences.typeHints !== previous.preferences.typeHints
     if (state.status !== previous.status || preferencesChanged) {
       semanticChanged.fire()
       inlayChanged.fire()

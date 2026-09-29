@@ -40,7 +40,23 @@ export interface GoIDEEditorPreferences {
   semanticHighlighting: boolean
   /** Nomi dei parametri per literal e nil, type parameter dedotti. */
   inlayHints: boolean
+  /** Tipi dedotti di := e range, tipi dei composite literal, valori delle costanti (richiede inlayHints). */
+  typeHints: boolean
+  /** Intestazioni di funzioni e blocchi fissate in alto mentre si scorre. */
+  stickyScroll: boolean
+  minimap: boolean
+  fontLigatures: boolean
+  /** Dimensione del font dell'editor (Zoom In/Out/Reset). */
+  fontSize: number
+  /** Salva i file modificati quando l'editor perde il focus o la finestra passa in secondo piano. */
+  autoSave: boolean
+  /** Rimuove gli spazi in coda alle righe al salvataggio (i file Go li sistema già gofmt). */
+  trimTrailingWhitespace: boolean
+  /** Un clic nel Project apre una tab di anteprima; doppio clic o una modifica la rendono permanente. */
+  previewTab: boolean
 }
+
+export const EDITOR_FONT_SIZE = { min: 9, max: 28, default: 12 } as const
 
 /** Tipo su cui generare i metodi di un'interfaccia scelta dall'utente. */
 export interface GoIDEImplementRequest {
@@ -119,7 +135,11 @@ interface PersistedSettings {
 }
 
 const DEFAULT_SETTINGS: GoIDELanguageServerSettings = { gofumpt: false, staticcheck: false, placeholders: true, semanticLinks: false }
-const DEFAULT_PREFERENCES: GoIDEEditorPreferences = { formatOnSave: true, organizeImportsOnSave: true, lintOnSave: false, semanticHighlighting: true, inlayHints: true }
+const DEFAULT_PREFERENCES: GoIDEEditorPreferences = {
+  formatOnSave: true, organizeImportsOnSave: true, lintOnSave: false, semanticHighlighting: true, inlayHints: true,
+  typeHints: false, stickyScroll: true, minimap: false, fontLigatures: false, fontSize: EDITOR_FONT_SIZE.default,
+  autoSave: false, trimTrailingWhitespace: false, previewTab: false,
+}
 const EMPTY_LINT: GoIDELintState = { running: false, result: null, error: null, reports: {} }
 const runningLints = new Map<string, CancellablePromise<GoIDELintResult>>()
 

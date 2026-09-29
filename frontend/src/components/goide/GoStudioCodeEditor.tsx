@@ -15,6 +15,7 @@ import { coverageForDocument, coverageLineStates } from './goStudioCoverage'
 import { startGoStudioLspSync } from './goStudioLspSync'
 import { findRunTargets, runCommandFor, type GoStudioRunTarget, type GoStudioRunTargetHandler } from './goStudioRunTargets'
 import { isToolTarget, toolTargetLabel } from './goStudioToolTargets'
+import { indentationFor, useEditorConfig } from './goStudioEditorConfig'
 import { recordCaretPosition, useGoStudioBookmarks } from './goStudioNavigationEditor'
 import { openImplementationMarker, useGoStudioImplementationMarkers } from './goStudioImplementationMarkers'
 import { openVcsHunk, useGoStudioVcsGutter } from './goStudioVcsEditor'
@@ -65,6 +66,11 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
   const clearRevealLocation = useGoIDEStore((state) => state.clearRevealLocation)
   const semanticHighlighting = useGoIDELspStore((state) => state.preferences.semanticHighlighting)
   const inlayHints = useGoIDELspStore((state) => state.preferences.inlayHints)
+  const stickyScroll = useGoIDELspStore((state) => state.preferences.stickyScroll)
+  const minimap = useGoIDELspStore((state) => state.preferences.minimap)
+  const fontLigatures = useGoIDELspStore((state) => state.preferences.fontLigatures)
+  const fontSize = useGoIDELspStore((state) => state.preferences.fontSize)
+  const editorConfig = useEditorConfig(document.document.sessionId, document.document.relativePath)
 
   const onMount: OnMount = (editor) => {
     editorRef.current = editor
@@ -166,10 +172,12 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
       onMount={onMount}
       options={{
         automaticLayout: true,
-        fontSize: 12,
+        fontSize,
+        lineHeight: Math.round(fontSize * 1.65),
+        fontLigatures,
+        stickyScroll: { enabled: stickyScroll, maxLineCount: 4 },
         fontFamily: 'var(--skin-font-mono, var(--font-mono))',
-        lineHeight: 20,
-        minimap: { enabled: false },
+        minimap: { enabled: minimap, renderCharacters: false, scale: 1 },
         lineNumbers: 'on',
         folding: true,
         bracketPairColorization: { enabled: true },
@@ -184,9 +192,9 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
         inlayHints: { enabled: inlayHints ? 'on' : 'off', fontSize: 10, padding: true },
         occurrencesHighlight: 'singleFile',
         codeLensFontSize: 10,
-        tabSize: document.document.language === 'go' || document.document.language === 'goasm' ? 4 : 2,
         // Go, assembly e Makefile vogliono tab veri: una ricetta indentata a spazi rompe make.
-        insertSpaces: !['go', 'goasm', 'makefile'].includes(document.document.language),
+        // Per gli altri file vale .editorconfig, se il progetto lo dichiara.
+        ...indentationFor(document.document.language, editorConfig),
         padding: { top: 6, bottom: 6 },
       }}
     />

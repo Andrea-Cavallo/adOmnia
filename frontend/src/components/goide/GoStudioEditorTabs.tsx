@@ -44,6 +44,7 @@ export function documentsToClose(action: TabAction, ordered: GoIDEEditorDocument
 
 export function GoStudioEditorTabs({ documents, activeId, onRequestClose }: GoStudioEditorTabsProps) {
   const pinned = useGoIDEStore((state) => state.pinnedDocuments)
+  const previewId = useGoIDEStore((state) => (ordered[0] ? state.previewDocumentBySession[ordered[0].document.sessionId] ?? null : null))
   const hasClosed = useGoIDEStore((state) => (state.activeSessionId ? (state.closedDocuments[state.activeSessionId]?.length ?? 0) > 0 : false))
   const selectDocument = useGoIDEStore((state) => state.selectDocument)
   const [menu, setMenu] = useState<{ x: number; y: number; document: GoIDEEditorDocument } | null>(null)
@@ -98,7 +99,7 @@ export function GoStudioEditorTabs({ documents, activeId, onRequestClose }: GoSt
           >
             <GoStudioFileIcon name={item.document.name} relativePath={item.document.relativePath} size={13} />
             {item.document.readOnly && <Lock size={11} className="shrink-0 text-text-4" />}
-            <span className="truncate">{item.document.name}</span>
+            <span className={`truncate ${item.document.id === previewId ? 'italic' : ''}`} title={item.document.id === previewId ? 'Preview tab: edit it or double-click the file to keep it open' : undefined}>{item.document.name}</span>
             {qualifiers[item.document.id] && <span className="shrink-0 text-[11px] text-text-4">{qualifiers[item.document.id]}</span>}
             {item.dirty && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-warning" title="Unsaved changes" />}
             {isPinned
