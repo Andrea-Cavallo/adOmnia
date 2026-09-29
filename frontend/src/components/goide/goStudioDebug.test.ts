@@ -19,7 +19,7 @@ const session = { id: 's1', project: { realPath: '/work/app', modules: [{ path: 
 function view(state: string, frames: GoIDEDebugView['frames'], frameId: number | null): GoIDEDebugView {
   return {
     info: { id: 'd1', sessionId: 's1', state, title: 'main', startedAt: '' },
-    threads: [], frames, threadId: 1, frameId, scopes: [], children: {}, watchValues: {}, console: [], loading: false, goroutines: null, goroutinesLoading: false, request: null,
+    threads: [], frames, threadId: 1, frameId, scopes: [], children: {}, watchValues: {}, console: [], loading: false, goroutines: null, goroutinesLoading: false, timeline: [], request: null,
   }
 }
 

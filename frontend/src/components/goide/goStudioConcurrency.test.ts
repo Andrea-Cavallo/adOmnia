@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { GoIDEGoroutine } from '@/lib/goide-debug-api'
-import { LEAK_THRESHOLD, diagnoseConcurrency, groupGoroutines, parseRaceReports, raceDiagnostics, splitFunctionName, waitResources } from './goStudioConcurrency'
+import { EXCESSIVE_GOROUTINES, LEAK_THRESHOLD, diagnoseConcurrency, goroutineRelations, groupByStack, groupGoroutines, mergeRaceSources, parseRaceReports, raceDiagnostics, splitFunctionName, waitResources } from './goStudioConcurrency'
 import { frameVariables, inlineValueText } from './goStudioDebugInlineValues'
 
 function goroutine(id: number, state: string, origin: string, extra: Partial<GoIDEGoroutine> = {}): GoIDEGoroutine {
@@ -80,6 +80,53 @@ Found 1 data race(s)`
     expect(reports[0].goroutines[0].createdAt[0].line).toBe(20)
     expect(parseRaceReports(output + '\n' + output)).toHaveLength(1)
     expect(raceDiagnostics(reports)[0]).toMatchObject({ kind: 'race', severity: 'error', line: 14 })
+  })
+})
+
+describe('Go Studio concurrency view, P1 additions', () => {
+  const frame = (name: string, line = 0) => ({ id: 0, name, line, column: 0 })
+
+  it('groups goroutines with an identical stack', () => {
+    const stack = [frame('runtime.chanrecv1'), frame('main.worker', 12)]
+    const groups = groupByStack([
+      goroutine(1, 'chan receive', 'main.worker', { frames: stack }),
+      goroutine(2, 'chan receive', 'main.worker', { frames: stack }),
+      goroutine(3, 'running', 'main.main', { frames: [frame('main.main', 5)] }),
+    ])
+    expect(groups.map((group) => group.goroutines.length)).toEqual([2, 1])
+  })
+
+  it('tags relations with context, network, database and RWMutex', () => {
+    expect(goroutineRelations(goroutine(1, 'select', 'main.loop', { blockedOn: 'ctx.Done()' }))).toEqual(expect.arrayContaining(['channel', 'context']))
+    expect(goroutineRelations(goroutine(2, 'io wait', 'main.serve', { frames: [frame('net/http.(*conn).serve')] }))).toContain('network')
+    expect(goroutineRelations(goroutine(3, 'running', 'main.query', { frames: [frame('database/sql.(*DB).QueryContext')] }))).toContain('database')
+    expect(goroutineRelations(goroutine(4, 'mutex', 'main.read', { frames: [frame('sync.(*RWMutex).RLock')] }))).toContain('rwmutex')
+  })
+
+  it('flags channels without consumer or producer, and marks evidence', () => {
+    const sender = goroutine(1, 'chan send', 'main.produce', { blockedOn: 'jobs' })
+    const diagnostics = diagnoseConcurrency([sender, goroutine(2, 'running', 'main.main')])
+    expect(diagnostics[0]).toMatchObject({ title: 'Channel without consumer', evidence: 'observed' })
+    const withReceiver = diagnoseConcurrency([sender, goroutine(3, 'chan receive', 'main.consume', { blockedOn: 's.jobs', location: { id: 0, name: 'main.consume', relativePath: 'c.go', line: 3, column: 1 } })])
+    expect(withReceiver.some((item) => item.title === 'Channel without consumer')).toBe(false)
+  })
+
+  it('warns about a WaitGroup nobody can release and about too many goroutines', () => {
+    expect(diagnoseConcurrency([goroutine(1, 'waitgroup', 'main.main', { blockedOn: 'wg' }), goroutine(2, 'chan receive', 'main.worker', { blockedOn: 'jobs' })]).some((item) => item.kind === 'waitgroup')).toBe(true)
+    const many = Array.from({ length: EXCESSIVE_GOROUTINES }, (_, index) => goroutine(index + 1, 'running', `main.f${index}`))
+    expect(diagnoseConcurrency(many).some((item) => item.kind === 'count')).toBe(true)
+  })
+
+  it('compares races across runs and counts duplicates', () => {
+    const race = (line: number) => `WARNING: DATA RACE\nWrite at 0x01 by goroutine 7:\n  main.inc()\n      /a/main.go:${line} +0x1\n\nPrevious read at 0x01 by goroutine 6:\n  main.get()\n      /a/main.go:9 +0x1\n==================\n`
+    const merged = mergeRaceSources([
+      { id: 'r2', label: 'latest', text: race(10) + race(10) },
+      { id: 'r1', label: 'older', text: race(10) + race(20) },
+    ])
+    const recurring = merged.find((report) => report.accesses[0].frames[0].line === 10)
+    expect(recurring).toMatchObject({ occurrences: 3, sources: ['latest', 'older'] })
+    expect(merged.find((report) => report.accesses[0].frames[0].line === 20)?.sources).toEqual(['older'])
+    expect(raceDiagnostics(merged)[0].evidence).toBe('confirmed')
   })
 })
 

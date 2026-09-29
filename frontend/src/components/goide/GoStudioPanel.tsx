@@ -485,6 +485,7 @@ export function GoStudioPanel() {
       case 'run.install': return void runGoStudioQuickCommand('install', 'package')
       case 'run.testCoverage': return void runGoStudioQuickCommand('test', 'package', undefined, { coverage: true })
       case 'run.testRace': return void runGoStudioQuickCommand('test', 'package', undefined, { race: true })
+      case 'run.runRace': return void store.startRun('run', withRaceDetector(configuredRequest()))
       case 'run.rerunFailedTests': return activeSession ? void useGoIDETestsStore.getState().rerunFailed(activeSession.id) : undefined
       case 'go.updateAll': return void runModuleDependencyAction('updateall')
       case 'go.updatePatch': return void runModuleDependencyAction('updatepatch')
@@ -571,6 +572,12 @@ export function GoStudioPanel() {
       <UnsavedChangesDialog open={!!closeFlow.pending} documents={closeFlow.pending?.documents ?? []} onSave={() => closeFlow.settle(true)} onDiscard={() => closeFlow.settle(false)} onCancel={closeFlow.cancel} />
     </div>
   )
+}
+
+/** Run with Race Detector: la configurazione attiva più -race, una volta sola. I segreti non vengono richiesti. */
+function withRaceDetector<T extends { goArguments?: string[] }>(request: T): T {
+  const goArguments = request.goArguments ?? []
+  return goArguments.includes('-race') ? request : { ...request, goArguments: [...goArguments, '-race'] }
 }
 
 const LINT_ON_SAVE_DEBOUNCE_MS = 800

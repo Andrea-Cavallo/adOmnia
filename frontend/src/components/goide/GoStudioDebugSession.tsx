@@ -6,7 +6,11 @@ import { useGoIDEDebugStore, type GoIDEDebugView } from '@/stores/goideDebug'
 import { GoStudioGoroutineTree } from './GoStudioGoroutineTree'
 import { GoStudioDebugConsole, GoStudioDebugVariables } from './GoStudioDebugVariables'
 import { PaneHeader, StateBadge, shortLocation } from './GoStudioDebugUi'
-import { splitFunctionName } from './goStudioConcurrency'
+import { goroutineRelations, splitFunctionName, type GoroutineRelation } from './goStudioConcurrency'
+
+const RELATION_LABEL: Record<GoroutineRelation, string> = {
+  channel: 'channel', mutex: 'mutex', rwmutex: 'RWMutex', waitgroup: 'WaitGroup', context: 'context', network: 'network', database: 'database', timer: 'timer',
+}
 
 interface GoStudioDebugSessionProps {
   view: GoIDEDebugView
@@ -52,6 +56,11 @@ function GoroutineDetail({ goroutine, threadId }: { goroutine: GoIDEGoroutine | 
         {goroutine.current && <span className="text-[10.5px] text-accent">current</span>}
         <span className="ml-auto"><StateBadge state={goroutine.state} /></span>
       </div>
+      {goroutineRelations(goroutine).length > 0 && (
+        <div className="mt-1.5 flex flex-wrap gap-1" aria-label="Related to">
+          {goroutineRelations(goroutine).map((relation) => <span key={relation} className="rounded-full bg-surface-3/70 px-1.5 text-[10.5px] text-text-2">{RELATION_LABEL[relation]}</span>)}
+        </div>
+      )}
       <dl className="mt-2 grid grid-cols-[84px_1fr] gap-x-2 gap-y-1 text-[11.5px]">
         {goroutine.blockedOn && <><dt className="text-text-4">Blocked on</dt><dd className="truncate font-mono text-warning">{goroutine.blockedOn}</dd></>}
         {origin && (

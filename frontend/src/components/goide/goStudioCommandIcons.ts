@@ -184,6 +184,7 @@ export const GO_STUDIO_COMMAND_ICONS: Partial<Record<GoStudioCommandId, GoStudio
   'run.vetPackage': icon(ShieldCheck),
   'run.testCoverage': icon(FlaskRound, TEST),
   'run.testRace': icon(Zap, 'text-warning'),
+  'run.runRace': icon(Zap, 'text-warning'),
   'run.rerunFailedTests': icon(Repeat, STOP),
   'run.buildAll': icon(PackageOpen),
   'run.testAll': icon(FlaskConical, TEST),

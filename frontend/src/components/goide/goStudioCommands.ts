@@ -21,7 +21,7 @@ export type GoStudioCommandId =
   | 'go.toolVet' | 'go.toolGenerate' | 'go.toolFix' | 'go.toolModWhy' | 'go.toolModGraph' | 'go.toolDoc'
   | 'go.installGolangci' | 'go.installStaticcheck' | 'go.toolPaths'
   | 'run.run' | 'run.build' | 'run.stop' | 'run.restart' | 'run.configure'
-  | 'run.rerunFailedTests' | 'run.testCoverage' | 'run.testRace' | 'view.tests'
+  | 'run.rerunFailedTests' | 'run.testCoverage' | 'run.testRace' | 'run.runRace' | 'view.tests'
   | 'run.buildPackage' | 'run.testPackage' | 'run.vetPackage' | 'run.buildAll' | 'run.testAll' | 'run.vetAll' | 'run.generateAll' | 'run.install'
   | 'debug.debug' | 'debug.toggleBreakpoint' | 'debug.resume' | 'debug.pause' | 'debug.stepOver' | 'debug.stepInto' | 'debug.stepOut'
   | 'debug.stop' | 'view.debug' | 'go.installDelve' | 'debug.attach' | 'debug.remote'
@@ -201,6 +201,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'run.vetPackage', menu: 'run', label: 'Vet Current Package' },
   { id: 'run.testCoverage', menu: 'run', label: 'Test Current Package with Coverage' },
   { id: 'run.testRace', menu: 'run', label: 'Test Current Package with Race Detector' },
+  { id: 'run.runRace', menu: 'run', label: 'Run with Race Detector' },
   { id: 'run.rerunFailedTests', menu: 'run', label: 'Rerun Failed Tests', binding: { key: 'F10', mod: true, shift: true, alt: true } },
   { id: 'run.buildAll', menu: 'run', label: 'Build All (go build ./...)', binding: { key: 'F9', mod: true, shift: true }, separatorBefore: true },
   { id: 'run.testAll', menu: 'run', label: 'Test All (go test ./...)', binding: { key: 'F10', mod: true, alt: true } },
@@ -404,6 +405,7 @@ export function commandAvailability(id: GoStudioCommandId, context: GoStudioComm
     case 'run.install':
     case 'run.testCoverage':
     case 'run.testRace':
+    case 'run.runRace':
     case 'run.rerunFailedTests':
     case 'go.modVerify':
     case 'go.toolVet':

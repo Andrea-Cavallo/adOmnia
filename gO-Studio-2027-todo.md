@@ -33,8 +33,8 @@
 - [x] Deve trattare Go come linguaggio di prima classe, non come semplice editor syntax-highlighted. — *gopls, Delve, test runner strutturato, coverage, Go SDK per progetto.*
 - [x] Deve sfruttare `gopls` invece di duplicarne le funzionalità. — *completion, navigazione, rename, code action, semantic token, inlay hint e diagnostica vengono da gopls.*
 - [x] Deve usare Delve/DAP per il debugging reale. — *`internal/goide/dap`: launch, attach e remote.*
-- [ ] Deve usare i tool ufficiali Go quando possibile: `go test`, `go vet`, `go list`, `go tool`, `pprof`, `trace`, `govulncheck`, race detector. — *integrati `go test`, `go vet`, `go generate`, `go fix`, `go mod why/graph`, `go doc`; mancano race UX → §9, `pprof`/`trace` → §13, `govulncheck` → §20.*
-- [ ] Deve rendere visuali dati che oggi finiscono quasi sempre nel terminale. — *test tree e coverage sì; concurrency, profiler, benchmark → §8, §12, §13.*
+- [ ] Deve usare i tool ufficiali Go quando possibile: `go test`, `go vet`, `go list`, `go tool`, `pprof`, `trace`, `govulncheck`, race detector. — *integrati `go test`, `go vet`, `go generate`, `go fix`, `go mod why/graph`, `go doc`; race detector integrato (v0.9.41, §9); mancano `pprof`/`trace` → §13, `govulncheck` → §20.*
+- [ ] Deve rendere visuali dati che oggi finiscono quasi sempre nel terminale. — *test tree, coverage, goroutine e race sì (§8, §9); profiler e benchmark → §12, §13.*
 - [ ] Deve collegare automaticamente codice ↔ API ↔ DB ↔ broker ↔ runtime. — *Developer Context collega codice ↔ API/DB/broker (v0.9.39); runtime → §14.*
 - [ ] Deve avere una UX coerente con il resto di adOmnia. — *token condivisi, menu e dialog moderni (v0.9.40); resta la verifica visiva manuale.*
 - [x] Deve poter essere usato senza account.
@@ -66,7 +66,7 @@
 
 > Ogni voce ha la sua sezione operativa più sotto (§8–§21): si spunta lì, poi qui.
 
-- [ ] Concurrency view.
+- [ ] Concurrency view. — *§8 31/37 e §9 10/12 (v0.9.41 + P1): restano lock ordering, context non cancellato, timer, worker pool, badge STATIC, salvataggio race, test di regressione.*
 - [ ] Profiler integrato.
 - [ ] Benchmark explorer.
 - [ ] Fuzzing UX.
@@ -384,44 +384,44 @@
 
 ## Base
 
-- [ ] Delve integrato.
-- [ ] DAP.
-- [ ] Breakpoint.
+- [x] Delve integrato. — *`internal/goide/dap`, install Delve dal menu Go*
+- [x] DAP.
+- [x] Breakpoint. — *clic sul numero di riga, verificati da Delve*
 - [ ] Conditional breakpoint.
 - [ ] Hit count breakpoint.
 - [ ] Logpoint.
 - [ ] Function breakpoint.
 - [ ] Exception/panic breakpoint.
-- [ ] Step over.
-- [ ] Step into.
-- [ ] Step out.
-- [ ] Continue.
-- [ ] Pause.
-- [ ] Restart.
+- [x] Step over. — *F8, anche F6/F10*
+- [x] Step into. — *F7*
+- [x] Step out. — *Shift+F8*
+- [x] Continue. — *F9, anche F5*
+- [x] Pause.
+- [x] Restart. — *Rerun*
 - [ ] Run to cursor.
 - [ ] Set next statement dove supportato.
-- [ ] Evaluate expression.
-- [ ] Watches.
-- [ ] Locals.
-- [ ] Globals.
+- [x] Evaluate expression. — *console REPL e hover*
+- [x] Watches. — *persistenti per progetto*
+- [x] Locals.
+- [x] Globals. — *Delve `showGlobalVariables`*
 - [ ] Registers opzionali.
-- [ ] Call stack.
-- [ ] Threads/goroutines.
+- [x] Call stack. — *frame di libreria piegati*
+- [x] Threads/goroutines. — *vista Goroutines*
 - [ ] Memory view.
 - [ ] Disassembly view.
-- [ ] Debug console.
+- [x] Debug console.
 
 ## Go-specific
 
-- [ ] Goroutine selector.
-- [ ] Goroutine grouping.
-- [ ] Goroutine state.
-- [ ] Goroutine creation stack.
-- [ ] Goroutine filtering.
-- [ ] Show blocked goroutines.
-- [ ] Show sleeping goroutines.
-- [ ] Show goroutines waiting on channel.
-- [ ] Show goroutines waiting on mutex.
+- [x] Goroutine selector.
+- [x] Goroutine grouping. — *per package, funzione di avvio o stack identico*
+- [x] Goroutine state. — *dedotto dallo stack*
+- [ ] Goroutine creation stack. — *si mostra la funzione di avvio (Started in), non ancora lo stack dell'istruzione go*
+- [x] Goroutine filtering. — *All/Blocked/Running e ricerca*
+- [x] Show blocked goroutines.
+- [x] Show sleeping goroutines.
+- [x] Show goroutines waiting on channel. — *con l'espressione attesa*
+- [x] Show goroutines waiting on mutex.
 - [ ] Panic inspector.
 - [ ] Deferred call inspector.
 - [ ] Interface dynamic type viewer.
@@ -438,65 +438,65 @@
 
 ## Visualizzazione
 
-- [ ] Vista grafica goroutine.
-- [ ] Stato: RUNNING.
-- [ ] Stato: WAITING.
-- [ ] Stato: BLOCKED.
-- [ ] Stato: SLEEPING.
-- [ ] Stato: SYSCALL.
-- [ ] Raggruppamento per stack.
-- [ ] Raggruppamento per funzione di origine.
-- [ ] Raggruppamento per package.
-- [ ] Timeline goroutine.
-- [ ] Relazione goroutine → channel.
-- [ ] Relazione goroutine → mutex.
-- [ ] Relazione goroutine → waitgroup.
-- [ ] Relazione goroutine → context.
-- [ ] Relazione goroutine → network call.
-- [ ] Relazione goroutine → DB query.
+- [x] Vista grafica goroutine. — *flusso funzione di avvio → goroutine → risorse attese*
+- [x] Stato: RUNNING.
+- [x] Stato: WAITING.
+- [x] Stato: BLOCKED. — *chan receive/send, select, mutex, WaitGroup, cond*
+- [x] Stato: SLEEPING.
+- [x] Stato: SYSCALL. — *anche I/O wait*
+- [x] Raggruppamento per stack.
+- [x] Raggruppamento per funzione di origine.
+- [x] Raggruppamento per package.
+- [x] Timeline goroutine. — *goroutine per stato a ogni pausa*
+- [x] Relazione goroutine → channel.
+- [x] Relazione goroutine → mutex. — *e RWMutex*
+- [x] Relazione goroutine → waitgroup.
+- [x] Relazione goroutine → context. — *attesa su ctx.Done()*
+- [x] Relazione goroutine → network call. — *I/O wait, net/http, gRPC, Kafka*
+- [x] Relazione goroutine → DB query. — *database/sql, pgx, MySQL, SQLite, Mongo, Redis nello stack*
 
 ## Diagnostica
 
-- [ ] Possibile goroutine leak.
-- [ ] Channel senza consumer.
-- [ ] Channel senza producer.
-- [ ] Send potenzialmente bloccante.
-- [ ] Receive potenzialmente bloccante.
-- [ ] Mutex contention.
-- [ ] RWMutex contention.
+- [x] Possibile goroutine leak. — *10+ goroutine della stessa funzione ferme sulla stessa riga*
+- [x] Channel senza consumer. — *nell'istantanea: nessuno riceve dallo stesso canale*
+- [x] Channel senza producer.
+- [x] Send potenzialmente bloccante.
+- [x] Receive potenzialmente bloccante.
+- [x] Mutex contention.
+- [x] RWMutex contention.
 - [ ] Lock ordering sospetto.
-- [ ] Possibile deadlock.
-- [ ] WaitGroup misuse.
+- [x] Possibile deadlock. — *tutte le goroutine aspettano un'altra goroutine*
+- [ ] WaitGroup misuse. — *segnalato solo "WaitGroup never reaches zero" (nessuna goroutine attiva per Done)*
 - [ ] Context non cancellato.
 - [ ] Timer/ticker non stoppato.
 - [ ] Worker pool saturation.
-- [ ] Excessive goroutine count.
+- [x] Excessive goroutine count. — *1000+*
 
 ## Runtime confirmation
 
-- [ ] Distinguere issue statiche da issue osservate runtime.
-- [ ] Badge `STATIC`.
-- [ ] Badge `OBSERVED`.
-- [ ] Badge `CONFIRMED`.
-- [ ] Collegamento diretto allo stack.
-- [ ] Collegamento diretto alla riga di codice.
-- [ ] Snapshot esportabile.
+- [x] Distinguere issue statiche da issue osservate runtime.
+- [ ] Badge `STATIC`. — *il badge esiste; nessuna analisi statica di concorrenza ancora*
+- [x] Badge `OBSERVED`. — *diagnosi dall'istantanea in pausa*
+- [x] Badge `CONFIRMED`. — *race riportati dal runtime*
+- [x] Collegamento diretto allo stack.
+- [x] Collegamento diretto alla riga di codice.
+- [x] Snapshot esportabile. — *copia JSON di goroutine, diagnosi e race*
 
 ---
 
 # 9. Race Detector UX
 
-- [ ] Run with race.
-- [ ] Parsing output race detector.
-- [ ] Evidenziare entrambi gli accessi concorrenti.
-- [ ] Mostrare stack A.
-- [ ] Mostrare stack B.
-- [ ] Collegare alle righe sorgenti.
-- [ ] Mostrare goroutine coinvolte.
-- [ ] Mostrare ordine temporale quando disponibile.
-- [ ] Raggruppare race duplicate.
-- [ ] Salvare sessione race.
-- [ ] Confrontare run diverse.
+- [x] Run with race. — *Run with Race Detector e Test Current Package with Race Detector*
+- [x] Parsing output race detector. — *test, run e console di debug*
+- [x] Evidenziare entrambi gli accessi concorrenti.
+- [x] Mostrare stack A.
+- [x] Mostrare stack B.
+- [x] Collegare alle righe sorgenti.
+- [x] Mostrare goroutine coinvolte. — *con lo stack di creazione*
+- [x] Mostrare ordine temporale quando disponibile. — *EARLIER / LATER*
+- [x] Raggruppare race duplicate. — *conteggio delle ripetizioni*
+- [ ] Salvare sessione race. — *oggi solo copia JSON dello snapshot; nessuna persistenza tra riavvii*
+- [x] Confrontare run diverse. — *nuovo nell'ultima run, ricorrente, non più presente*
 - [ ] Generare test di regressione assistito.
 
 ---

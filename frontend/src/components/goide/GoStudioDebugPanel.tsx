@@ -95,7 +95,7 @@ function DebugEmptyState({ session, races, onShowRaces }: { session: GoIDESessio
 export const GoStudioDebugPanel = memo(function GoStudioDebugPanel({ session }: GoStudioDebugPanelProps) {
   const view = useGoIDEDebugStore((state) => activeDebugView(state, session.id))
   const loadBreakpoints = useGoIDEDebugStore((state) => state.loadBreakpoints)
-  const races = useRaceReports(session.id)
+  const races = useRaceReports(session.id).reports
   const [tab, setTab] = useState<DebugTab>('session')
   useEffect(() => { void loadBreakpoints(session.id) }, [loadBreakpoints, session.id])
   const alerts = raceDiagnostics(races).length + diagnoseConcurrency(view?.goroutines?.goroutines ?? []).filter((item) => item.severity !== 'info').length

@@ -1,12 +1,13 @@
 import { useMemo } from 'react'
-import { ArrowLeftRight, ArrowRight, Droplets, Lock, OctagonAlert, RefreshCw, Rocket, Zap, type LucideIcon } from 'lucide-react'
+import { ArrowLeftRight, ArrowRight, Copy, Droplets, Layers, Lock, OctagonAlert, RefreshCw, Rocket, Users, Zap, type LucideIcon } from 'lucide-react'
+import { Clipboard as WailsClipboard } from '@wailsio/runtime'
 import type { GoIDEGoroutine } from '@/lib/goide-debug-api'
 import { useGoIDEStore } from '@/stores/goide'
 import { useGoIDEDebugStore, type GoIDEDebugView } from '@/stores/goideDebug'
 import { useGoIDETestsStore } from '@/stores/goideTests'
 import {
-  diagnoseConcurrency, groupGoroutines, isBlocked, parseRaceReports, raceDiagnostics, waitResources,
-  type ConcurrencyDiagnostic, type DiagnosticKind, type RaceFrame, type RaceReport,
+  diagnoseConcurrency, groupGoroutines, isBlocked, mergeRaceSources, raceDiagnostics, waitResources,
+  type ConcurrencyDiagnostic, type DiagnosticEvidence, type DiagnosticKind, type RaceFrame, type RaceReport, type RaceSource,
 } from './goStudioConcurrency'
 import { GOROUTINE_STATES, PaneHeader, StateDot, shortLocation, stateMeta } from './GoStudioDebugUi'
 
@@ -19,6 +20,14 @@ const DIAGNOSTIC_ICON: Record<DiagnosticKind, LucideIcon> = {
   mutex: Lock,
   leak: Droplets,
   race: Zap,
+  waitgroup: Users,
+  count: Layers,
+}
+
+const EVIDENCE: Record<DiagnosticEvidence, { label: string; title: string; className: string }> = {
+  static: { label: 'STATIC', title: 'Found by reading the code', className: 'bg-surface-3 text-text-3' },
+  observed: { label: 'OBSERVED', title: 'Seen in the runtime snapshot of this pause', className: 'bg-info/15 text-info' },
+  confirmed: { label: 'CONFIRMED', title: 'Reported by the Go runtime (race detector)', className: 'bg-danger/15 text-danger' },
 }
 
 const SEVERITY_CLASS = {
@@ -27,22 +36,25 @@ const SEVERITY_CLASS = {
   info: 'border-border-2 bg-surface-2/60 text-text-3',
 }
 
-/** Report del race detector dai test, dalle esecuzioni e dalle console di debug del progetto. */
-export function useRaceReports(sessionId: string): RaceReport[] {
+/** Report del race detector dai test, dalle esecuzioni e dalle console di debug, confrontati tra run. */
+export function useRaceReports(sessionId: string): { reports: RaceReport[]; latest: string | null } {
   const testRuns = useGoIDETestsStore((state) => state.runs[sessionId])
   const executions = useGoIDEStore((state) => state.executions)
   const consoleByRun = useGoIDEStore((state) => state.consoleByRun)
   const debuggers = useGoIDEDebugStore((state) => state.debuggers)
   return useMemo(() => {
-    const texts: string[] = []
-    for (const run of (testRuns ?? []).slice(0, MAX_RUNS_SCANNED)) texts.push(...(run.raceReports ?? []))
-    for (const execution of executions.filter((item) => item.sessionId === sessionId).slice(-MAX_RUNS_SCANNED)) {
-      texts.push((consoleByRun[execution.id] ?? []).map((chunk) => chunk.text).join(''))
+    const sources: Array<RaceSource & { at: number }> = []
+    for (const run of (testRuns ?? []).slice(0, MAX_RUNS_SCANNED)) {
+      if (run.raceReports?.length) sources.push({ id: run.runId, label: `test ${run.runId.slice(-6)}`, text: run.raceReports.join('\n'), at: Date.parse(String(run.startedAt)) || 0 })
     }
+    executions.filter((item) => item.sessionId === sessionId).slice(-MAX_RUNS_SCANNED).forEach((execution, index) => {
+      sources.push({ id: execution.id, label: `${execution.kind} ${execution.id.slice(-6)}`, text: (consoleByRun[execution.id] ?? []).map((chunk) => chunk.text).join(''), at: index })
+    })
     for (const view of Object.values(debuggers)) {
-      if (view.info.sessionId === sessionId) texts.push(view.console.map((line) => line.text).join('\n'))
+      if (view.info.sessionId === sessionId) sources.push({ id: view.info.id, label: `debug ${view.info.title}`, text: view.console.map((line) => line.text).join('\n'), at: Date.parse(String(view.info.startedAt)) || 0 })
     }
-    return parseRaceReports(texts.join('\n'))
+    const withRaces = sources.filter((source) => source.text.includes('WARNING: DATA RACE')).sort((left, right) => right.at - left.at)
+    return { reports: mergeRaceSources(withRaces), latest: withRaces[0]?.label ?? null }
   }, [consoleByRun, debuggers, executions, sessionId, testRuns])
 }
 
@@ -58,7 +70,7 @@ interface GoStudioConcurrencyViewProps {
 /** Vista Concurrency: diagnosi, flusso funzione → goroutine → risorse attese, e race navigabili. */
 export function GoStudioConcurrencyView({ view, sessionId }: GoStudioConcurrencyViewProps) {
   const goroutines = useMemo(() => view?.goroutines?.goroutines ?? [], [view?.goroutines])
-  const races = useRaceReports(sessionId)
+  const { reports: races, latest } = useRaceReports(sessionId)
   const diagnostics = useMemo(() => [...raceDiagnostics(races), ...diagnoseConcurrency(goroutines)], [goroutines, races])
   const selectGoroutine = (id: number) => { if (view) void useGoIDEDebugStore.getState().selectThread(view.info.id, id) }
   const paused = view?.info.state === 'stopped'
@@ -66,6 +78,7 @@ export function GoStudioConcurrencyView({ view, sessionId }: GoStudioConcurrency
     <div className="grid min-h-0 flex-1 grid-cols-[minmax(260px,0.8fr)_minmax(360px,1.6fr)] divide-x divide-border-1">
       <section aria-label="Concurrency diagnostics" className="flex min-h-0 flex-col">
         <PaneHeader title="Diagnostics" count={diagnostics.length}>
+          {(goroutines.length > 0 || races.length > 0) && <button type="button" onClick={() => void WailsClipboard.SetText(JSON.stringify({ takenAt: new Date().toISOString(), session: view?.info.title, goroutines, diagnostics, races: races.map(({ raw, ...rest }) => ({ ...rest, raw })) }, null, 2))} title="Copy this snapshot as JSON (goroutines, diagnostics, races)" aria-label="Copy snapshot" className="go-studio-icon-button h-6 w-6"><Copy size={13} /></button>}
           {view && paused && <button type="button" onClick={() => void useGoIDEDebugStore.getState().refreshGoroutines(view.info.id)} title="Take a new goroutine snapshot" aria-label="Refresh goroutines" className="go-studio-icon-button h-6 w-6"><RefreshCw size={13} className={view.goroutinesLoading ? 'animate-spin' : ''} /></button>}
         </PaneHeader>
         <StateSummary goroutines={goroutines} />
@@ -81,7 +94,8 @@ export function GoStudioConcurrencyView({ view, sessionId }: GoStudioConcurrency
       <section aria-label="Goroutine flow" className="flex min-h-0 flex-col">
         <PaneHeader title="Goroutine flow" />
         <div className="min-h-0 flex-1 space-y-3 overflow-auto px-3 pb-3">
-          {races.map((report) => <RaceCard key={report.id} report={report} />)}
+          {view && view.timeline.length > 1 && <GoroutineTimeline view={view} />}
+          {races.map((report) => <RaceCard key={report.id} report={report} latest={latest} />)}
           <GoroutineFlow goroutines={goroutines} selectedId={view?.threadId ?? null} onSelect={selectGoroutine} />
           {goroutines.length === 0 && races.length === 0 && <p className="py-2 text-[11.5px] text-text-4">The flow appears when the debugger is paused: which function started each goroutine and what it is waiting on.</p>}
         </div>
@@ -107,7 +121,10 @@ function DiagnosticCard({ diagnostic, onSelect }: { diagnostic: ConcurrencyDiagn
   const Icon = DIAGNOSTIC_ICON[diagnostic.kind]
   return (
     <div className={`rounded-lg border p-2.5 ${SEVERITY_CLASS[diagnostic.severity]}`}>
-      <div className="flex items-center gap-2 text-[12px] font-semibold"><Icon size={14} />{diagnostic.title}</div>
+      <div className="flex items-center gap-2 text-[12px] font-semibold">
+        <Icon size={14} />{diagnostic.title}
+        <span title={EVIDENCE[diagnostic.evidence].title} className={`ml-auto rounded px-1.5 py-px font-mono text-[9.5px] font-semibold tracking-wide ${EVIDENCE[diagnostic.evidence].className}`}>{EVIDENCE[diagnostic.evidence].label}</span>
+      </div>
       <p className="mt-1 text-[11.5px] leading-5 text-text-2">{diagnostic.detail}</p>
       <div className="mt-1.5 flex flex-wrap items-center gap-1">
         {diagnostic.relativePath && <button type="button" onClick={() => openPath(diagnostic.relativePath, diagnostic.line)} className="rounded-md bg-surface-0/60 px-1.5 py-0.5 font-mono text-[11px] text-text-2 hover:text-accent">{shortLocation(diagnostic.relativePath, diagnostic.line)}</button>}
@@ -165,14 +182,27 @@ function GoroutineFlow({ goroutines, selectedId, onSelect }: { goroutines: GoIDE
   )
 }
 
-function RaceCard({ report }: { report: RaceReport }) {
+function raceHistory(report: RaceReport, latest: string | null): string {
+  if (latest && !report.sources.includes(latest)) return 'not in the latest run'
+  if (report.sources.length === 1) return 'new in the latest run'
+  return `recurring in ${report.sources.length} runs`
+}
+
+function RaceCard({ report, latest }: { report: RaceReport; latest: string | null }) {
   return (
     <div className="rounded-lg border border-danger/40 bg-danger/5 p-2.5">
-      <div className="flex items-center gap-2 text-[12px] font-semibold text-danger"><Zap size={14} />Data race</div>
+      <div className="flex items-center gap-2 text-[12px] font-semibold text-danger">
+        <Zap size={14} />Data race
+        <span className="font-normal text-text-3">· {raceHistory(report, latest)}{report.occurrences > 1 ? ` · reported ${report.occurrences}×` : ''}</span>
+        <span title={report.sources.join('\n')} className="ml-auto truncate font-mono text-[10.5px] font-normal text-text-4">{report.sources.join(' · ')}</span>
+      </div>
       <div className="mt-2 grid gap-2 md:grid-cols-2">
         {report.accesses.map((access, index) => (
           <div key={`${access.kind}-${index}`} className="min-w-0 rounded-md bg-surface-0/60 p-2">
-            <div className="text-[11.5px] font-medium text-text-1">{access.kind} by goroutine {access.goroutine} <span className="font-mono text-text-4">{access.address}</span></div>
+            <div className="flex items-center gap-2 text-[11.5px] font-medium text-text-1">
+              <span className={`rounded px-1.5 py-px text-[10px] font-semibold ${access.kind.startsWith('Previous') ? 'bg-surface-3 text-text-3' : 'bg-danger/15 text-danger'}`}>{access.kind.startsWith('Previous') ? 'EARLIER' : 'LATER'}</span>
+              {access.kind} by goroutine {access.goroutine} <span className="font-mono text-text-4">{access.address}</span>
+            </div>
             <RaceFrames frames={access.frames} />
             {report.goroutines.filter((goroutine) => goroutine.id === access.goroutine).map((goroutine) => (
               <div key={goroutine.id} className="mt-1 border-t border-border-1 pt-1">
@@ -196,6 +226,30 @@ function RaceFrames({ frames }: { frames: RaceFrame[] }) {
           <span className="shrink-0 text-text-4">{shortLocation(frame.path, frame.line)}</span>
         </button>
       ))}
+    </div>
+  )
+}
+
+/** Goroutine per stato a ogni pausa: una crescita continua tra una pausa e l'altra fa pensare a un leak. */
+function GoroutineTimeline({ view }: { view: GoIDEDebugView }) {
+  const max = Math.max(...view.timeline.map((sample) => sample.total), 1)
+  const states = Object.keys(GOROUTINE_STATES)
+  return (
+    <div className="rounded-lg border border-border-1 bg-surface-0/40 p-2.5">
+      <div className="flex items-center gap-2 text-[11.5px] font-semibold text-text-2">
+        Timeline
+        <span className="font-normal text-text-4">{view.timeline.length} pauses · {view.timeline[0].total} → {view.timeline[view.timeline.length - 1].total} goroutines</span>
+      </div>
+      <div className="mt-2 flex h-16 items-end gap-1" role="img" aria-label="Goroutines per state at each pause">
+        {view.timeline.map((sample, index) => (
+          <div key={`${sample.pause}-${index}`} title={`Pause ${index + 1}: ${sample.total} goroutines\n${Object.entries(sample.counts).map(([state, count]) => `${stateMeta(state).label}: ${count}`).join('\n')}`}
+            className="flex min-w-[6px] max-w-6 flex-1 flex-col-reverse overflow-hidden rounded-sm" style={{ height: `${Math.max(8, (sample.total / max) * 100)}%` }}>
+            {states.filter((state) => sample.counts[state]).map((state) => (
+              <span key={state} className={stateMeta(state).dot} style={{ height: `${(sample.counts[state] / sample.total) * 100}%` }} />
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

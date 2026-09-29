@@ -73,12 +73,72 @@ export function groupGoroutines(goroutines: GoIDEGoroutine[]): GoroutinePackage[
     .sort((left, right) => rank(left) - rank(right) || left.pkg.localeCompare(right.pkg))
 }
 
-export type DiagnosticKind = 'deadlock' | 'channel' | 'mutex' | 'leak' | 'race'
+export type DiagnosticKind = 'deadlock' | 'channel' | 'mutex' | 'leak' | 'race' | 'waitgroup' | 'count'
+
+/**
+ * Origine dell'evidenza, come nella checklist 2027: STATIC dall'analisi del codice, OBSERVED da
+ * un'istantanea del runtime in pausa, CONFIRMED quando il runtime stesso lo segnala (race detector).
+ */
+export type DiagnosticEvidence = 'static' | 'observed' | 'confirmed'
+
+/** Oltre questa soglia il numero di goroutine è di per sé un segnale da guardare. */
+export const EXCESSIVE_GOROUTINES = 1000
+
+export type GoroutineRelation = 'channel' | 'mutex' | 'rwmutex' | 'waitgroup' | 'context' | 'network' | 'database' | 'timer'
+
+const DATABASE_FRAME = /^(database\/sql|github\.com\/(jackc\/pgx|go-sql-driver|lib\/pq|mattn\/go-sqlite3)|gorm\.io|go\.mongodb\.org|github\.com\/redis)/
+const NETWORK_FRAME = /^(net\/http|net\.|crypto\/tls|google\.golang\.org\/grpc|github\.com\/(segmentio\/kafka-go|IBM\/sarama|confluentinc))/
+
+/** Con cosa sta interagendo la goroutine: canali, lock, context, rete, database, timer. */
+export function goroutineRelations(goroutine: GoIDEGoroutine): GoroutineRelation[] {
+  const relations = new Set<GoroutineRelation>()
+  const frames = goroutine.frames ?? []
+  if (CHANNEL_STATES.has(goroutine.state)) relations.add('channel')
+  if (goroutine.state === 'mutex') relations.add(frames.some((frame) => frame.name.includes('RWMutex')) ? 'rwmutex' : 'mutex')
+  if (goroutine.state === 'waitgroup') relations.add('waitgroup')
+  if (goroutine.state === 'sleep' || frames.some((frame) => frame.name.startsWith('time.'))) relations.add('timer')
+  if (/\.Done\(\)$/.test(goroutine.blockedOn ?? '') || /ctx|context/i.test(goroutine.blockedOn ?? '')) relations.add('context')
+  if (goroutine.state === 'io wait' || frames.some((frame) => NETWORK_FRAME.test(frame.name))) relations.add('network')
+  if (frames.some((frame) => DATABASE_FRAME.test(frame.name))) relations.add('database')
+  return [...relations]
+}
+
+/** Firma dello stack: goroutine con la stessa firma stanno facendo esattamente la stessa cosa. */
+export function stackSignature(goroutine: GoIDEGoroutine): string {
+  return (goroutine.frames ?? []).map((frame) => `${frame.name}:${frame.line}`).join('|') || `#${goroutine.id}`
+}
+
+export interface StackGroup {
+  key: string
+  top: string
+  location?: { relativePath?: string; line?: number }
+  state: string
+  goroutines: GoIDEGoroutine[]
+}
+
+/** Raggruppamento per stack identico, come "goroutine -s" di Delve: 200 worker uguali diventano una riga. */
+export function groupByStack(goroutines: GoIDEGoroutine[]): StackGroup[] {
+  const groups = new Map<string, StackGroup>()
+  for (const goroutine of goroutines) {
+    const key = stackSignature(goroutine)
+    const group = groups.get(key) ?? {
+      key,
+      top: splitFunctionName(goroutine.location?.name ?? goroutine.frames?.[0]?.name ?? 'unknown').name,
+      location: goroutine.location ? { relativePath: goroutine.location.relativePath, line: goroutine.location.line } : undefined,
+      state: goroutine.state,
+      goroutines: [],
+    }
+    group.goroutines.push(goroutine)
+    groups.set(key, group)
+  }
+  return [...groups.values()].sort((left, right) => right.goroutines.length - left.goroutines.length)
+}
 
 export interface ConcurrencyDiagnostic {
   id: string
   kind: DiagnosticKind
   severity: 'error' | 'warning' | 'info'
+  evidence: DiagnosticEvidence
   title: string
   detail: string
   goroutineIds: number[]
@@ -113,6 +173,19 @@ export function waitResources(goroutines: GoIDEGoroutine[]): WaitResource[] {
   return [...resources.values()].sort((left, right) => right.goroutines.length - left.goroutines.length)
 }
 
+/**
+ * Canale su cui qualcuno aspetta di inviare ma nessuno riceve (o viceversa) in questa istantanea.
+ * Solo con un nome di canale leggibile: senza, due righe diverse potrebbero essere lo stesso canale.
+ */
+function channelPartner(resource: WaitResource, goroutines: GoIDEGoroutine[]): string | null {
+  if (!resource.target || (resource.state !== 'chan send' && resource.state !== 'chan receive')) return null
+  const wanted = resource.state === 'chan send' ? ['chan receive', 'select'] : ['chan send', 'select']
+  const name = resource.target.split('.').pop()
+  const partner = goroutines.some((goroutine) => wanted.includes(goroutine.state) && goroutine.blockedOn?.split('.').pop() === name)
+  if (partner) return null
+  return resource.state === 'chan send' ? 'Channel without consumer' : 'Channel without producer'
+}
+
 function describeTarget(resource: WaitResource): string {
   const where = resource.relativePath ? ` at ${resource.relativePath.split('/').pop()}:${resource.line}` : ''
   if (CHANNEL_STATES.has(resource.state)) return `${resource.state === 'chan send' ? 'send to' : 'receive from'} ${resource.target || 'a channel'}${where}`
@@ -130,7 +203,7 @@ export function diagnoseConcurrency(goroutines: GoIDEGoroutine[]): ConcurrencyDi
   const blocked = goroutines.filter((goroutine) => isBlocked(goroutine.state))
   if (goroutines.length > 0 && blocked.length === goroutines.length) {
     diagnostics.push({
-      id: 'deadlock', kind: 'deadlock', severity: 'error',
+      id: 'deadlock', kind: 'deadlock', severity: 'error', evidence: 'observed',
       title: 'Possible deadlock',
       detail: `All ${plural(goroutines.length, 'goroutine')} are waiting on channels, mutexes or WaitGroups: nothing can wake them up.`,
       goroutineIds: blocked.map((goroutine) => goroutine.id),
@@ -138,17 +211,24 @@ export function diagnoseConcurrency(goroutines: GoIDEGoroutine[]): ConcurrencyDi
   }
   for (const resource of waitResources(goroutines)) {
     const ids = resource.goroutines.map((goroutine) => goroutine.id)
-    const base = { goroutineIds: ids, relativePath: resource.relativePath, line: resource.line }
+    const base = { goroutineIds: ids, relativePath: resource.relativePath, line: resource.line, evidence: 'observed' as const }
     const sameOrigin = new Set(resource.goroutines.map((goroutine) => goroutine.origin?.name)).size === 1
     if (sameOrigin && ids.length >= LEAK_THRESHOLD) {
       diagnostics.push({ ...base, id: `leak:${resource.key}`, kind: 'leak', severity: 'warning', title: 'Possible goroutine leak', detail: `${plural(ids.length, 'goroutine')} started by the same function are all stuck on ${describeTarget(resource)}.` })
     } else if (resource.state === 'mutex' && ids.length >= 2) {
-      diagnostics.push({ ...base, id: `mutex:${resource.key}`, kind: 'mutex', severity: 'warning', title: 'Mutex contention', detail: `${plural(ids.length, 'goroutine')} waiting to lock ${describeTarget(resource)}.` })
+      const rw = resource.goroutines.some((goroutine) => goroutineRelations(goroutine).includes('rwmutex'))
+      diagnostics.push({ ...base, id: `mutex:${resource.key}`, kind: 'mutex', severity: 'warning', title: rw ? 'RWMutex contention' : 'Mutex contention', detail: `${plural(ids.length, 'goroutine')} waiting to lock ${describeTarget(resource)}.` })
     } else if (CHANNEL_STATES.has(resource.state)) {
-      diagnostics.push({ ...base, id: `channel:${resource.key}`, kind: 'channel', severity: ids.length >= 2 ? 'warning' : 'info', title: 'Channel blocked', detail: `${plural(ids.length, 'goroutine')} blocked to ${describeTarget(resource)}.` })
+      const partner = channelPartner(resource, goroutines)
+      diagnostics.push({ ...base, id: `channel:${resource.key}`, kind: 'channel', severity: ids.length >= 2 || partner ? 'warning' : 'info', title: partner ?? 'Channel blocked', detail: `${plural(ids.length, 'goroutine')} blocked to ${describeTarget(resource)}.${partner ? ` No goroutine is ${resource.state === 'chan send' ? 'receiving from' : 'sending to'} it right now.` : ''}` })
+    } else if (resource.state === 'waitgroup' && !goroutines.some((goroutine) => !isBlocked(goroutine.state))) {
+      diagnostics.push({ ...base, id: `waitgroup:${resource.key}`, kind: 'waitgroup', severity: 'warning', title: 'WaitGroup never reaches zero', detail: `${plural(ids.length, 'goroutine')} wait on ${describeTarget(resource)}, but no goroutine is running to call Done. Check Add/Done pairs.` })
     } else if (resource.state === 'mutex') {
       diagnostics.push({ ...base, id: `mutex:${resource.key}`, kind: 'mutex', severity: 'info', title: 'Waiting for a mutex', detail: `Goroutine #${ids[0]} waiting to lock ${describeTarget(resource)}.` })
     }
+  }
+  if (goroutines.length >= EXCESSIVE_GOROUTINES) {
+    diagnostics.push({ id: 'count', kind: 'count', severity: 'warning', evidence: 'observed', title: 'Excessive goroutine count', detail: `${goroutines.length} goroutines at this pause. Look for goroutines started per request or per message that never exit.`, goroutineIds: [] })
   }
   const order = { error: 0, warning: 1, info: 2 }
   return diagnostics.sort((left, right) => order[left.severity] - order[right.severity])
@@ -179,6 +259,10 @@ export interface RaceReport {
   accesses: RaceAccess[]
   goroutines: RaceGoroutine[]
   raw: string
+  /** Quante volte lo stesso race è stato stampato (anche in run diverse). */
+  occurrences: number
+  /** Fonti in cui compare (run, test o debug), dalla più recente. */
+  sources: string[]
 }
 
 const RACE_START = 'WARNING: DATA RACE'
@@ -208,7 +292,7 @@ export function parseRaceReports(text: string): RaceReport[] {
     const end = text.indexOf(RACE_END, cursor + RACE_START.length)
     const raw = text.slice(cursor, end < 0 ? undefined : end + RACE_END.length)
     const lines = raw.split(/\r?\n/)
-    const report: RaceReport = { id: '', accesses: [], goroutines: [], raw }
+    const report: RaceReport = { id: '', accesses: [], goroutines: [], raw, occurrences: 1, sources: [] }
     for (let index = 1; index < lines.length; index++) {
       const line = lines[index].trim()
       const access = ACCESS_LINE.exec(line)
@@ -227,11 +311,39 @@ export function parseRaceReports(text: string): RaceReport[] {
     }
     const first = report.accesses[0]?.frames[0]
     report.id = `${first?.path ?? ''}:${first?.line ?? 0}|${report.accesses[1]?.frames[0]?.line ?? 0}|${report.accesses[0]?.address ?? reports.length}`
-    if (report.accesses.length > 0 && !reports.some((existing) => existing.id === report.id)) reports.push(report)
+    const existing = reports.find((item) => item.id === report.id)
+    if (existing) existing.occurrences++
+    else if (report.accesses.length > 0) reports.push(report)
     if (end < 0) break
     cursor = text.indexOf(RACE_START, end)
   }
   return reports
+}
+
+export interface RaceSource {
+  id: string
+  label: string
+  text: string
+}
+
+/**
+ * Race di più run a confronto: ogni race ricorda in quali fonti compare, così si vede se è
+ * nuovo nell'ultima run, ricorrente o già sparito. Le fonti vanno dalla più recente.
+ */
+export function mergeRaceSources(sources: RaceSource[]): RaceReport[] {
+  const merged = new Map<string, RaceReport>()
+  for (const source of sources) {
+    for (const report of parseRaceReports(source.text)) {
+      const current = merged.get(report.id)
+      if (current) {
+        current.occurrences += report.occurrences
+        if (!current.sources.includes(source.label)) current.sources.push(source.label)
+      } else {
+        merged.set(report.id, { ...report, sources: [source.label] })
+      }
+    }
+  }
+  return [...merged.values()]
 }
 
 /** Un race è sempre un errore: una voce per report, sulla prima riga coinvolta. */
@@ -240,7 +352,7 @@ export function raceDiagnostics(reports: RaceReport[]): ConcurrencyDiagnostic[] 
     const [current, previous] = report.accesses
     const where = current?.frames[0]
     return {
-      id: `race:${report.id}`, kind: 'race', severity: 'error',
+      id: `race:${report.id}`, kind: 'race', severity: 'error', evidence: 'confirmed',
       title: 'Data race detected',
       detail: `${current?.kind ?? 'Access'} by goroutine ${current?.goroutine ?? '?'} in ${current?.frames[0]?.func ?? '?'} conflicts with ${previous ? `${previous.kind.toLowerCase()} by goroutine ${previous.goroutine} in ${previous.frames[0]?.func ?? '?'}` : 'another access'}.`,
       goroutineIds: report.accesses.map((access) => access.goroutine),

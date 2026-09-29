@@ -49,8 +49,26 @@ export interface GoIDEDebugView {
   /** Istantanea di tutte le goroutine alla pausa corrente (vista Concurrency). */
   goroutines: GoIDEGoroutineOverview | null
   goroutinesLoading: boolean
+  /** Conteggio per stato a ogni pausa della sessione: la timeline della vista Concurrency. */
+  timeline: GoIDEGoroutineSample[]
   /** Richiesta originale, per Rerun. */
   request: GoIDEDebugRequest | null
+}
+
+export interface GoIDEGoroutineSample {
+  pause: number
+  at: number
+  total: number
+  counts: Record<string, number>
+}
+
+/** Pause ricordate nella timeline: bastano per vedere una crescita, senza accumulare memoria. */
+const MAX_TIMELINE_SAMPLES = 60
+
+export function goroutineSample(overview: GoIDEGoroutineOverview, pause: number, at: number): GoIDEGoroutineSample {
+  const counts: Record<string, number> = {}
+  for (const goroutine of overview.goroutines ?? []) counts[goroutine.state] = (counts[goroutine.state] ?? 0) + 1
+  return { pause, at, total: overview.goroutines?.length ?? 0, counts }
 }
 
 export interface GoIDEExecutionPoint {
@@ -101,7 +119,7 @@ function ensureSubscribed(handle: (event: GoIDEEvent) => void): void {
 }
 
 function emptyView(info: GoIDEDebugSession, request: GoIDEDebugRequest | null = null): GoIDEDebugView {
-  return { info, threads: [], frames: [], threadId: null, frameId: null, scopes: [], children: {}, watchValues: {}, console: [], loading: false, goroutines: null, goroutinesLoading: false, request }
+  return { info, threads: [], frames: [], threadId: null, frameId: null, scopes: [], children: {}, watchValues: {}, console: [], loading: false, goroutines: null, goroutinesLoading: false, timeline: [], request }
 }
 
 function appendLines(lines: GoIDEDebugConsoleLine[], category: GoIDEDebugConsoleLine['category'], text: string): GoIDEDebugConsoleLine[] {
@@ -205,7 +223,14 @@ export const useGoIDEDebugStore = create<GoIDEDebugState>((set, get) => {
     updateView(debugId, () => ({ goroutinesLoading: true }))
     try {
       const overview = await getGoIDEDebugGoroutines(debugId)
-      if (isCurrentPause(debugId, token)) updateView(debugId, () => ({ goroutines: overview, goroutinesLoading: false }))
+      if (!isCurrentPause(debugId, token)) return
+      updateView(debugId, (view) => {
+        const last = view.timeline[view.timeline.length - 1]
+        const sample = goroutineSample(overview, token, Date.now())
+        // Un Refresh nella stessa pausa aggiorna l'ultimo punto invece di aggiungerne uno.
+        const timeline = last?.pause === token ? [...view.timeline.slice(0, -1), sample] : [...view.timeline, sample].slice(-MAX_TIMELINE_SAMPLES)
+        return { goroutines: overview, goroutinesLoading: false, timeline }
+      })
     } catch (error) {
       if (isCurrentPause(debugId, token)) updateView(debugId, (view) => ({ goroutinesLoading: false, console: appendLines(view.console, 'error', `Goroutines: ${errorMessage(error)}`) }))
     }
