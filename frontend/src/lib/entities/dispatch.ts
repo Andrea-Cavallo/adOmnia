@@ -1,31 +1,36 @@
 import { useEffect, useRef } from 'react'
 import { useAppStore } from '@/stores/app'
 import type { RailItem } from '@/stores/app'
+import { showEntityNotice } from './notice'
 import type { EntityRef } from './types'
 
 export const ENTITY_HANDOFF_EVENT = 'adomnia:entity-handoff'
 
+const HANDOFF_TIMEOUT_MS = 5000
+
 /**
  * Switch to a panel and deliver an event once it is mounted: the event is
- * re-dispatched every frame (max ~2s) until a listener sets detail.handled.
+ * re-dispatched every frame until a listener sets detail.handled, for at most
+ * 5 s of wall time (frame caps expire early on high refresh-rate displays).
  */
-export function dispatchToPanel(rail: RailItem, eventName: string, detail: Record<string, unknown> = {}): void {
+export function dispatchToPanel(rail: RailItem, eventName: string, detail: Record<string, unknown> = {}, onTimeout?: () => void): void {
   useAppStore.getState().setActiveRail(rail)
-  let attempts = 0
+  const deadline = performance.now() + HANDOFF_TIMEOUT_MS
   const dispatchWhenMounted = () => {
     if (useAppStore.getState().activeRail !== rail) return
     const eventDetail = { ...detail, handled: false }
     document.dispatchEvent(new CustomEvent(eventName, { detail: eventDetail }))
-    if (!eventDetail.handled && attempts < 120) {
-      attempts += 1
-      window.requestAnimationFrame(dispatchWhenMounted)
-    }
+    if (eventDetail.handled) return
+    if (performance.now() < deadline) window.requestAnimationFrame(dispatchWhenMounted)
+    else onTimeout?.()
   }
   window.requestAnimationFrame(dispatchWhenMounted)
 }
 
 export function handoffToPanel(rail: RailItem, ref: EntityRef, intent: string, payload: Record<string, unknown> = {}): void {
-  dispatchToPanel(rail, ENTITY_HANDOFF_EVENT, { rail, ref, intent, payload })
+  dispatchToPanel(rail, ENTITY_HANDOFF_EVENT, { rail, ref, intent, payload }, () => {
+    showEntityNotice(`The ${rail} panel did not accept ${ref.label} in time. Try again once it has loaded.`)
+  })
 }
 
 /**
