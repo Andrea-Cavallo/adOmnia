@@ -38,6 +38,28 @@ function Sprite({ mood, loading, size, resting, greeting = false }: { mood: Comp
   )
 }
 
+/** Distanza dall'angolo in basso a destra entro cui il launcher di a0 compare. */
+const LAUNCHER_REVEAL_PX = 160
+
+/** true quando il puntatore è vicino all'angolo in basso a destra: il launcher resta nascosto e non intralcia. */
+function usePointerNearCorner(enabled: boolean): boolean {
+  const [near, setNear] = useState(false)
+  useEffect(() => {
+    if (!enabled) return
+    let current = false
+    const update = (next: boolean) => { if (next !== current) { current = next; setNear(next) } }
+    const onMove = (event: MouseEvent) => update(window.innerWidth - event.clientX < LAUNCHER_REVEAL_PX && window.innerHeight - event.clientY < LAUNCHER_REVEAL_PX)
+    const onLeave = () => update(false)
+    window.addEventListener('mousemove', onMove, { passive: true })
+    document.documentElement.addEventListener('mouseleave', onLeave)
+    return () => {
+      window.removeEventListener('mousemove', onMove)
+      document.documentElement.removeEventListener('mouseleave', onLeave)
+    }
+  }, [enabled])
+  return enabled && near
+}
+
 export function AICompanion({ initiallyOpen = false }: { initiallyOpen?: boolean }) {
   const ai = useSettingsStore((state) => state.settings.ai)
   const collections = useCollectionsStore((state) => state.collections)
@@ -48,6 +70,7 @@ export function AICompanion({ initiallyOpen = false }: { initiallyOpen?: boolean
   const openTab = useTabsStore((state) => state.openTab)
   const setActiveRail = useAppStore((state) => state.setActiveRail)
   const [open, setOpen] = useState(initiallyOpen)
+  const launcherRevealed = usePointerNearCorner(!open)
   const [expanded, setExpanded] = useState(false)
   const [greeting, setGreeting] = useState(initiallyOpen)
   const [modelMenuOpen, setModelMenuOpen] = useState(false)
@@ -260,7 +283,7 @@ export function AICompanion({ initiallyOpen = false }: { initiallyOpen?: boolean
           </form>
         </section>
       )}
-      {!open && <button type="button" onClick={() => { setGreeting(true); setOpen(true) }} aria-label="Open a0 AI assistant" title="Ask a0" className="a0-companion-launcher grid h-12 w-12 place-items-center rounded-full border border-border-1 bg-surface-1/95 shadow-lg transition-colors hover:border-accent/45 focus-visible:border-accent focus-visible:outline-none"><Sprite mood={mood} loading={loading} size={48} resting={!loading} /></button>}
+      {!open && <button type="button" onClick={() => { setGreeting(true); setOpen(true) }} aria-label="Open a0 AI assistant" title="Ask a0" data-revealed={launcherRevealed || loading ? 'true' : undefined} className="a0-companion-launcher grid h-12 w-12 place-items-center rounded-full border border-border-1 bg-surface-1/95 shadow-lg hover:border-accent/45 focus-visible:border-accent focus-visible:outline-none"><Sprite mood={mood} loading={loading} size={48} resting={!loading} /></button>}
     </div>
   )
 }
