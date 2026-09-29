@@ -32,11 +32,21 @@ describe('Go Studio commands', () => {
   it('has no duplicate intercepted bindings', () => {
     const seen = new Set<string>()
     for (const command of GO_STUDIO_COMMANDS) {
-      if (!command.binding || command.editorOwned) continue
-      const label = formatBinding(command.binding, false)
-      expect(seen.has(label), label).toBe(false)
-      seen.add(label)
+      if (command.editorOwned) continue
+      for (const binding of [command.binding, ...(command.altBindings ?? [])]) {
+        if (!binding) continue
+        const label = formatBinding(binding, false)
+        expect(seen.has(label), label).toBe(false)
+        seen.add(label)
+      }
     }
+  })
+
+  it('steps over with F8, F6 (Eclipse) and F10 (VS Code) and resumes with F9 or F5', () => {
+    for (const stepKey of ['F8', 'F6', 'F10']) expect(commandForKey(key({ key: stepKey }))?.id).toBe('debug.stepOver')
+    expect(commandForKey(key({ key: 'F9' }))?.id).toBe('debug.resume')
+    expect(commandForKey(key({ key: 'F5' }))?.id).toBe('debug.resume')
+    expect(commandForKey(key({ key: 'F7' }))?.id).toBe('debug.stepInto')
   })
 
   it('formats bindings per platform', () => {

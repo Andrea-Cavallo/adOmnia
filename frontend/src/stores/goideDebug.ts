@@ -2,10 +2,10 @@ import { create } from 'zustand'
 import { confirm } from '@/lib/confirmDialog'
 import { subscribeGoIDEEvents, type GoIDEEvent } from '@/lib/goide-api'
 import {
-  detectGoIDEDelve, evaluateGoIDEDebug, getGoIDEDebugScopes, getGoIDEDebugStack, getGoIDEDebugVariables, installGoIDEDelve,
+  detectGoIDEDelve, evaluateGoIDEDebug, getGoIDEDebugGoroutines, getGoIDEDebugScopes, getGoIDEDebugStack, getGoIDEDebugVariables, installGoIDEDelve,
   listGoIDEBreakpoints, listGoIDEDebugThreads, setGoIDEBreakpoints, startGoIDEDebug, stepGoIDEDebug, stopGoIDEDebug,
   type GoIDEBreakpointState, type GoIDEDebugFrame, type GoIDEDebugOutput, type GoIDEDebugRequest, type GoIDEDebugScope,
-  type GoIDEDebugSession, type GoIDEDebugStepAction, type GoIDEDelveInfo, type GoIDEDebugThread, type GoIDEDebugVariable, type GoIDEFileBreakpoints,
+  type GoIDEDebugSession, type GoIDEDebugStepAction, type GoIDEGoroutineOverview, type GoIDEDelveInfo, type GoIDEDebugThread, type GoIDEDebugVariable, type GoIDEFileBreakpoints,
 } from '@/lib/goide-debug-api'
 import { useGoIDEStore } from './goide'
 import { useGoIDELspStore } from './goideLsp'
@@ -46,6 +46,9 @@ export interface GoIDEDebugView {
   watchValues: Record<string, GoIDEWatchValue>
   console: GoIDEDebugConsoleLine[]
   loading: boolean
+  /** Istantanea di tutte le goroutine alla pausa corrente (vista Concurrency). */
+  goroutines: GoIDEGoroutineOverview | null
+  goroutinesLoading: boolean
   /** Richiesta originale, per Rerun. */
   request: GoIDEDebugRequest | null
 }
@@ -71,6 +74,7 @@ interface GoIDEDebugState {
   selectDebugger: (sessionId: string, debugId: string) => void
   selectThread: (debugId: string, threadId: number) => Promise<void>
   selectFrame: (debugId: string, frameId: number) => Promise<void>
+  refreshGoroutines: (debugId: string) => Promise<void>
   loadChildren: (debugId: string, reference: number) => Promise<void>
   evaluate: (debugId: string, expression: string) => Promise<void>
   addWatch: (sessionId: string, expression: string) => void
@@ -97,7 +101,7 @@ function ensureSubscribed(handle: (event: GoIDEEvent) => void): void {
 }
 
 function emptyView(info: GoIDEDebugSession, request: GoIDEDebugRequest | null = null): GoIDEDebugView {
-  return { info, threads: [], frames: [], threadId: null, frameId: null, scopes: [], children: {}, watchValues: {}, console: [], loading: false, request }
+  return { info, threads: [], frames: [], threadId: null, frameId: null, scopes: [], children: {}, watchValues: {}, console: [], loading: false, goroutines: null, goroutinesLoading: false, request }
 }
 
 function appendLines(lines: GoIDEDebugConsoleLine[], category: GoIDEDebugConsoleLine['category'], text: string): GoIDEDebugConsoleLine[] {
@@ -196,6 +200,17 @@ export const useGoIDEDebugStore = create<GoIDEDebugState>((set, get) => {
     await evaluateWatches(debugId, frame.id, token)
   }
 
+  // Dopo variabili e frame, così la riga in pausa e i valori arrivano per primi.
+  const loadGoroutines = async (debugId: string, token: number) => {
+    updateView(debugId, () => ({ goroutinesLoading: true }))
+    try {
+      const overview = await getGoIDEDebugGoroutines(debugId)
+      if (isCurrentPause(debugId, token)) updateView(debugId, () => ({ goroutines: overview, goroutinesLoading: false }))
+    } catch (error) {
+      if (isCurrentPause(debugId, token)) updateView(debugId, (view) => ({ goroutinesLoading: false, console: appendLines(view.console, 'error', `Goroutines: ${errorMessage(error)}`) }))
+    }
+  }
+
   const loadPause = async (debugId: string, preferredThread: number) => {
     const token = pauseTokens[debugId] ?? 0
     try {
@@ -207,6 +222,7 @@ export const useGoIDEDebugStore = create<GoIDEDebugState>((set, get) => {
       const frame = preferredFrame(frames)
       if (frame) await loadFrame(debugId, frame, token, true)
       else updateView(debugId, () => ({ loading: false }))
+      await loadGoroutines(debugId, token)
     } catch (error) {
       if (isCurrentPause(debugId, token)) updateView(debugId, (view) => ({ loading: false, console: appendLines(view.console, 'error', errorMessage(error)) }))
     }
@@ -225,7 +241,7 @@ export const useGoIDEDebugStore = create<GoIDEDebugState>((set, get) => {
       // In esecuzione i dati di pausa non valgono più: si svuotano per non mostrare valori vecchi.
       const view: GoIDEDebugView = paused
         ? { ...base, info, console, loading: true }
-        : { ...base, info, console, frames: [], scopes: [], children: {}, watchValues: {}, frameId: null, loading: false }
+        : { ...base, info, console, frames: [], scopes: [], children: {}, watchValues: {}, frameId: null, loading: false, goroutines: null, goroutinesLoading: false }
       return { debuggers: { ...state.debuggers, [info.id]: view } }
     })
     if (info.state === 'stopped') void loadPause(info.id, info.threadId ?? 0)
@@ -311,6 +327,11 @@ export const useGoIDEDebugStore = create<GoIDEDebugState>((set, get) => {
       } catch (error) {
         updateView(debugId, (view) => ({ console: appendLines(view.console, 'error', errorMessage(error)) }))
       }
+    },
+
+    refreshGoroutines: async (debugId) => {
+      const token = pauseTokens[debugId] ?? 0
+      if (isCurrentPause(debugId, token)) await loadGoroutines(debugId, token)
     },
 
     selectFrame: async (debugId, frameId) => {

@@ -438,6 +438,7 @@ export function GoStudioPanel() {
       case 'run.generateAll': return void runGoStudioQuickCommand('generate', 'module')
       case 'run.install': return void runGoStudioQuickCommand('install', 'package')
       case 'run.testCoverage': return void runGoStudioQuickCommand('test', 'package', undefined, { coverage: true })
+      case 'run.testRace': return void runGoStudioQuickCommand('test', 'package', undefined, { race: true })
       case 'run.rerunFailedTests': return activeSession ? void useGoIDETestsStore.getState().rerunFailed(activeSession.id) : undefined
       case 'go.updateAll': return void runModuleDependencyAction('updateall')
       case 'go.updatePatch': return void runModuleDependencyAction('updatepatch')

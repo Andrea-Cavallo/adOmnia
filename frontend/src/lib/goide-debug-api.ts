@@ -1,7 +1,7 @@
 import * as GoIDEBindings from '../../bindings/adomnia/goide'
 import type {
   BreakpointState, DebugFrame, DebugRequest, DebugScope, DebugSessionInfo, DebugThread, DebugVariable,
-  DelveInfo, EvaluateResult, Execution, FileBreakpoints, ProcessInfo,
+  DelveInfo, EvaluateResult, Execution, FileBreakpoints, GoroutineOverview, GoroutineSummary, ProcessInfo,
 } from '../../bindings/adomnia/internal/goide/models'
 
 export type GoIDEDebugRequest = DebugRequest
@@ -20,6 +20,8 @@ export type GoIDEEvaluateResult = EvaluateResult
 export type GoIDEBreakpointState = BreakpointState
 export type GoIDEFileBreakpoints = FileBreakpoints
 export type GoIDEDelveInfo = DelveInfo
+export type GoIDEGoroutineOverview = GoroutineOverview
+export type GoIDEGoroutine = GoroutineSummary
 export type GoIDEDebugStepAction = 'continue' | 'pause' | 'next' | 'stepIn' | 'stepOut'
 
 export function detectGoIDEDelve(sessionId: string): Promise<DelveInfo> {
@@ -52,6 +54,11 @@ export function listGoIDEDebugThreads(debugId: string): Promise<DebugThread[]> {
 
 export function getGoIDEDebugStack(debugId: string, threadId: number): Promise<DebugFrame[]> {
   return GoIDEBindings.DebugStackTrace(debugId, threadId)
+}
+
+/** Tutte le goroutine della pausa corrente con stato, causa del blocco e origine (vista Concurrency). */
+export function getGoIDEDebugGoroutines(debugId: string): Promise<GoroutineOverview> {
+  return GoIDEBindings.DebugGoroutines(debugId)
 }
 
 export function getGoIDEDebugScopes(debugId: string, frameId: number): Promise<DebugScope[]> {

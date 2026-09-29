@@ -463,6 +463,11 @@ func (g *GoIDE) DebugStackTrace(debugID string, threadID int) ([]goide.DebugFram
 	return g.service.DebugStackTrace(debugID, threadID)
 }
 
+// DebugGoroutines restituisce le goroutine della pausa corrente per la vista Concurrency.
+func (g *GoIDE) DebugGoroutines(debugID string) (goide.GoroutineOverview, error) {
+	return g.service.DebugGoroutines(debugID)
+}
+
 // DebugScopes restituisce gli scope di un frame.
 func (g *GoIDE) DebugScopes(debugID string, frameID int) ([]goide.DebugScope, error) {
 	return g.service.DebugScopes(debugID, frameID)

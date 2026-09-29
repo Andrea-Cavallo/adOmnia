@@ -561,6 +561,8 @@ func launchArguments(session *debugger, launch debugLaunch) (string, map[string]
 	arguments := map[string]any{
 		"request": "launch", "mode": launch.request.Mode, "program": launch.program, "cwd": launch.moduleDir, "stopOnEntry": false,
 		"output": filepath.Join(session.buildDir, debugBinaryName()),
+		// Come GoLand: variabili di package nel pannello Variables e solo le goroutine dell'utente.
+		"showGlobalVariables": true, "hideSystemGoroutines": true,
 	}
 	args := append([]string(nil), launch.request.ProgramArguments...)
 	if launch.request.Mode == "test" && launch.request.TestName != "" {
@@ -717,6 +719,10 @@ func (m *DebugManager) Threads(id DebugSessionID) ([]DebugThread, error) {
 
 // StackTrace restituisce i frame della goroutine, con i percorsi relativi al progetto quando possibile.
 func (m *DebugManager) StackTrace(id DebugSessionID, threadID int) ([]DebugFrame, error) {
+	return m.stackTrace(id, threadID, maxDebugFrames)
+}
+
+func (m *DebugManager) stackTrace(id DebugSessionID, threadID, levels int) ([]DebugFrame, error) {
 	session, err := m.get(id)
 	if err != nil {
 		return nil, err
@@ -732,7 +738,7 @@ func (m *DebugManager) StackTrace(id DebugSessionID, threadID int) ([]DebugFrame
 			} `json:"source"`
 		} `json:"stackFrames"`
 	}
-	if err := m.call(id, "stackTrace", map[string]any{"threadId": threadID, "startFrame": 0, "levels": maxDebugFrames}, &response); err != nil {
+	if err := m.call(id, "stackTrace", map[string]any{"threadId": threadID, "startFrame": 0, "levels": levels}, &response); err != nil {
 		return nil, err
 	}
 	frames := make([]DebugFrame, 0, len(response.StackFrames))

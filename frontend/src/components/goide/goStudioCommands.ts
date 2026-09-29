@@ -19,7 +19,7 @@ export type GoStudioCommandId =
   | 'go.toolVet' | 'go.toolGenerate' | 'go.toolFix' | 'go.toolModWhy' | 'go.toolModGraph' | 'go.toolDoc'
   | 'go.installGolangci' | 'go.installStaticcheck' | 'go.toolPaths'
   | 'run.run' | 'run.build' | 'run.stop' | 'run.restart' | 'run.configure'
-  | 'run.rerunFailedTests' | 'run.testCoverage' | 'view.tests'
+  | 'run.rerunFailedTests' | 'run.testCoverage' | 'run.testRace' | 'view.tests'
   | 'run.buildPackage' | 'run.testPackage' | 'run.vetPackage' | 'run.buildAll' | 'run.testAll' | 'run.vetAll' | 'run.generateAll' | 'run.install'
   | 'debug.debug' | 'debug.toggleBreakpoint' | 'debug.resume' | 'debug.pause' | 'debug.stepOver' | 'debug.stepInto' | 'debug.stepOut'
   | 'debug.stop' | 'view.debug' | 'go.installDelve' | 'debug.attach' | 'debug.remote'
@@ -41,6 +41,8 @@ export interface GoStudioCommand {
   menu: GoStudioMenuId
   label: string
   binding?: GoStudioKeyBinding
+  /** Tasti alternativi (es. F6 di Eclipse e F10 di VS Code per Step Over): funzionano ma i menu mostrano solo `binding`. */
+  altBindings?: GoStudioKeyBinding[]
   /** Il binding è gestito da Monaco o da un listener dedicato (doppio Shift): mostrato nei menu, non intercettato globalmente. */
   editorOwned?: boolean
   /** Se il comando non è disponibile il tasto torna a Monaco (es. F8 = problema successivo fuori dal debug). */
@@ -174,6 +176,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'run.testPackage', menu: 'run', label: 'Test Current Package', binding: { key: 'F10', mod: true, shift: true } },
   { id: 'run.vetPackage', menu: 'run', label: 'Vet Current Package' },
   { id: 'run.testCoverage', menu: 'run', label: 'Test Current Package with Coverage' },
+  { id: 'run.testRace', menu: 'run', label: 'Test Current Package with Race Detector' },
   { id: 'run.rerunFailedTests', menu: 'run', label: 'Rerun Failed Tests', binding: { key: 'F10', mod: true, shift: true, alt: true } },
   { id: 'run.buildAll', menu: 'run', label: 'Build All (go build ./...)', binding: { key: 'F9', mod: true, shift: true }, separatorBefore: true },
   { id: 'run.testAll', menu: 'run', label: 'Test All (go test ./...)', binding: { key: 'F10', mod: true, alt: true } },
@@ -183,9 +186,9 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'run.stop', menu: 'run', label: 'Stop', binding: { key: 'F5', shift: true }, separatorBefore: true },
   { id: 'run.restart', menu: 'run', label: 'Restart', binding: { key: 'F5', mod: true, shift: true } },
   { id: 'debug.toggleBreakpoint', menu: 'run', label: 'Toggle Line Breakpoint', binding: { key: 'F8', mod: true }, separatorBefore: true },
-  { id: 'debug.resume', menu: 'run', label: 'Resume Program', binding: { key: 'F9' }, passThroughWhenUnavailable: true },
+  { id: 'debug.resume', menu: 'run', label: 'Resume Program', binding: { key: 'F9' }, altBindings: [{ key: 'F5' }], passThroughWhenUnavailable: true },
   { id: 'debug.pause', menu: 'run', label: 'Pause Program', passThroughWhenUnavailable: true },
-  { id: 'debug.stepOver', menu: 'run', label: 'Step Over', binding: { key: 'F8' }, passThroughWhenUnavailable: true },
+  { id: 'debug.stepOver', menu: 'run', label: 'Step Over', binding: { key: 'F8' }, altBindings: [{ key: 'F6' }, { key: 'F10' }], passThroughWhenUnavailable: true },
   { id: 'debug.stepInto', menu: 'run', label: 'Step Into', binding: { key: 'F7' }, passThroughWhenUnavailable: true },
   { id: 'debug.stepOut', menu: 'run', label: 'Step Out', binding: { key: 'F8', shift: true }, passThroughWhenUnavailable: true },
   { id: 'debug.stop', menu: 'run', label: 'Stop Debugging', binding: { key: 'F2', mod: true }, passThroughWhenUnavailable: true },
@@ -232,7 +235,7 @@ function keyMatches(binding: GoStudioKeyBinding, event: KeyLike): boolean {
 
 /** Trova il comando Go Studio intercettabile per un evento tastiera, ignorando quelli gestiti da Monaco. */
 export function commandForKey(event: KeyLike): GoStudioCommand | null {
-  return GO_STUDIO_COMMANDS.find((command) => !command.editorOwned && command.binding && keyMatches(command.binding, event)) ?? null
+  return GO_STUDIO_COMMANDS.find((command) => !command.editorOwned && [command.binding, ...(command.altBindings ?? [])].some((binding) => !!binding && keyMatches(binding, event))) ?? null
 }
 
 export interface GoStudioCommandContext {
@@ -362,6 +365,7 @@ export function commandAvailability(id: GoStudioCommandId, context: GoStudioComm
     case 'run.generateAll':
     case 'run.install':
     case 'run.testCoverage':
+    case 'run.testRace':
     case 'run.rerunFailedTests':
     case 'go.modVerify':
     case 'go.toolVet':

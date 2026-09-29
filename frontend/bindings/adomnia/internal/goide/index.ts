@@ -46,6 +46,8 @@ export {
     GoToolPreview,
     GoToolRequest,
     GoplsInfo,
+    GoroutineOverview,
+    GoroutineSummary,
     HighlightEntry,
     HighlightsResult,
     HistoryRevision,

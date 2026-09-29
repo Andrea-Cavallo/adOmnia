@@ -1,14 +1,19 @@
 import { useEffect, useMemo, useRef, type MutableRefObject } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { monaco } from '@/lib/monacoSetup'
-import { evaluateGoIDEDebug, type GoIDEBreakpointState } from '@/lib/goide-debug-api'
+import { evaluateGoIDEDebug, type GoIDEBreakpointState, type GoIDEDebugScope, type GoIDEDebugVariable } from '@/lib/goide-debug-api'
 import type { GoIDEEditorDocument } from '@/stores/goide'
 import { activeDebugView, executionPoint, hasLiveDebugger, useGoIDEDebugStore, type GoIDEExecutionPoint } from '@/stores/goideDebug'
 import { documentForModel } from './goStudioLanguageFeatures'
 import { useTrackedLineMarkers } from './goStudioLineMarkers'
+import { frameVariables, inlineValueText } from './goStudioDebugInlineValues'
 
 const HOVER_VALUE_MAX_CHARS = 2000
 const EMPTY_BREAKPOINTS: GoIDEBreakpointState[] = []
+const NO_SCOPES: GoIDEDebugScope[] = []
+const NO_CHILDREN: Record<number, GoIDEDebugVariable[]> = {}
+/** Spazio tra il codice e il valore mostrato a fine riga. */
+const INLINE_VALUE_GAP = '    '
 /** Identificatori e selettori Go (p.X.Y): quello che GoLand valuta al passaggio del mouse. */
 const IDENTIFIER = /[A-Za-z_][A-Za-z0-9_]*/
 const SELECTOR_BEFORE = /(?:[A-Za-z_][A-Za-z0-9_]*\.)+$/
@@ -114,8 +119,16 @@ export function useGoStudioDebugDecorations(editorRef: MutableRefObject<monaco.e
     const point = executionPoint(state, sessionId)
     return { pointLine: point?.relativePath === relativePath ? point.line : 0, pointTop: !!point?.top }
   }))
+  // Valori delle variabili a fine riga, come GoLand: solo nel file della riga in pausa.
+  const inline = useGoIDEDebugStore(useShallow((state) => {
+    const view = activeDebugView(state, sessionId)
+    const point = executionPoint(state, sessionId)
+    if (!view || point?.relativePath !== relativePath) return { scopes: NO_SCOPES, children: NO_CHILDREN }
+    return { scopes: view.scopes, children: view.children }
+  }))
   const holdsBreakpoints = canHoldBreakpoints(document)
   const executionRef = useRef<monaco.editor.IEditorDecorationsCollection | null>(null)
+  const inlineValuesRef = useRef<monaco.editor.IEditorDecorationsCollection | null>(null)
   const decorations = useMemo(() => breakpointDecorations(breakpoints, debugging), [breakpoints, debugging])
 
   useTrackedLineMarkers(editorRef, {
@@ -125,7 +138,9 @@ export function useGoStudioDebugDecorations(editorRef: MutableRefObject<monaco.e
 
   useEffect(() => {
     const editor = editorRef.current
-    if (editor) executionRef.current ??= editor.createDecorationsCollection()
+    if (!editor) return
+    executionRef.current ??= editor.createDecorationsCollection()
+    inlineValuesRef.current ??= editor.createDecorationsCollection()
   }, [editorRef, mountCount])
 
   useEffect(() => { void useGoIDEDebugStore.getState().loadBreakpoints(sessionId) }, [sessionId])
@@ -133,6 +148,19 @@ export function useGoStudioDebugDecorations(editorRef: MutableRefObject<monaco.e
   useEffect(() => {
     executionRef.current?.set(executionDecorations(pointLine ? { relativePath, line: pointLine, top: pointTop } : null))
   }, [id, mountCount, pointLine, pointTop, relativePath])
+
+  useEffect(() => {
+    const model = editorRef.current?.getModel()
+    if (!model || !pointLine) return void inlineValuesRef.current?.clear()
+    const values = inlineValueText(model.getLinesContent(), pointLine, frameVariables(inline.scopes, inline.children))
+    inlineValuesRef.current?.set([...values].map(([line, content]) => {
+      const column = model.getLineMaxColumn(line)
+      return {
+        range: { startLineNumber: line, startColumn: column, endLineNumber: line, endColumn: column },
+        options: { after: { content: `${INLINE_VALUE_GAP}${content}`, inlineClassName: 'go-studio-inline-value' }, showIfCollapsed: true },
+      }
+    }))
+  }, [editorRef, id, inline.children, inline.scopes, mountCount, pointLine])
 }
 
 let hoverRegistered = false

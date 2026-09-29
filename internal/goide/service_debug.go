@@ -205,6 +205,11 @@ func (s *Service) DebugStackTrace(debugID string, threadID int) ([]DebugFrame, e
 	return s.debug.StackTrace(DebugSessionID(debugID), threadID)
 }
 
+// DebugGoroutines restituisce tutte le goroutine della pausa corrente con stato, causa del blocco e origine.
+func (s *Service) DebugGoroutines(debugID string) (GoroutineOverview, error) {
+	return s.debug.Goroutines(DebugSessionID(debugID))
+}
+
 // DebugScopes restituisce gli scope di un frame.
 func (s *Service) DebugScopes(debugID string, frameID int) ([]DebugScope, error) {
 	return s.debug.Scopes(DebugSessionID(debugID), frameID)

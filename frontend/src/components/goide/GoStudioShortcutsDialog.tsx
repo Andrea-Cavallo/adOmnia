@@ -26,7 +26,7 @@ export function GoStudioShortcutsDialog({ open, onClose }: GoStudioShortcutsDial
                 {commands.map((command) => (
                   <div key={command.id} className="flex h-6 items-center border-b border-border-1/60 text-[11px] text-text-2">
                     <span>{command.label}</span>
-                    <kbd className="ml-auto rounded border border-border-1 bg-surface-0 px-1.5 font-mono text-[10px] text-text-3">{formatBinding(command.binding)}</kbd>
+                    <kbd className="ml-auto rounded border border-border-1 bg-surface-0 px-1.5 font-mono text-[10px] text-text-3">{[command.binding, ...(command.altBindings ?? [])].map((binding) => formatBinding(binding)).join('  ·  ')}</kbd>
                   </div>
                 ))}
               </section>

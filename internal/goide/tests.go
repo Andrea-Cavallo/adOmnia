@@ -28,8 +28,10 @@ type TestRunRequest struct {
 	// Run è l'espressione regolare di -run; vuota esegue tutti i test.
 	Run string `json:"run,omitempty"`
 	// Bench abilita i benchmark con l'espressione indicata (i test vengono esclusi con -run ^$ se Run è vuoto).
-	Bench       string            `json:"bench,omitempty"`
-	Coverage    bool              `json:"coverage,omitempty"`
+	Bench    string `json:"bench,omitempty"`
+	Coverage bool   `json:"coverage,omitempty"`
+	// Race attiva il race detector (-race): i report finiscono in TestRunSnapshot.RaceReports.
+	Race        bool              `json:"race,omitempty"`
 	BuildTags   []string          `json:"buildTags,omitempty"`
 	Environment map[string]string `json:"environment,omitempty"`
 }
@@ -46,6 +48,8 @@ type TestRunSnapshot struct {
 	Overflow  bool            `json:"overflow,omitempty"`
 	StartedAt time.Time       `json:"startedAt"`
 	Coverage  *CoverageReport `json:"coverage,omitempty"`
+	// RaceReports sono i blocchi "WARNING: DATA RACE" completi, nell'ordine in cui go test li ha scritti.
+	RaceReports []string `json:"raceReports,omitempty"`
 }
 
 type testRun struct {
@@ -59,6 +63,7 @@ type testRun struct {
 	coverageFile  string
 	finished      bool
 	lastPublished time.Time
+	races         raceCollector
 }
 
 // TestManager tiene gli alberi delle esecuzioni di test per sessione, con uno storico limitato.
@@ -88,6 +93,9 @@ func testArguments(request TestRunRequest, coverageFile string) ([]string, error
 	arguments := []string{"test", "-json", "-count=1"}
 	if len(request.BuildTags) > 0 {
 		arguments = append(arguments, "-tags", strings.Join(request.BuildTags, ","))
+	}
+	if request.Race {
+		arguments = append(arguments, "-race")
 	}
 	switch {
 	case request.Run != "":
@@ -143,6 +151,7 @@ func (run *testRun) consume(data []byte) {
 			break
 		}
 		run.tree.apply(run.pending[:newline])
+		run.races.consumeJSON(run.pending[:newline])
 		run.pending = run.pending[newline+1:]
 		run.dirty = true
 	}
@@ -179,6 +188,7 @@ func (run *testRun) snapshotLocked(withOutput bool) TestRunSnapshot {
 	snapshot.Results = results
 	snapshot.Summary = summary
 	snapshot.Overflow = run.tree.overflowed
+	snapshot.RaceReports = run.races.reports()
 	return snapshot
 }
 

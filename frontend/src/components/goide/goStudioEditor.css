@@ -189,3 +189,10 @@
   border-bottom: 4px solid transparent;
   border-left: 6px solid var(--color-text-4, #94a3b8);
 }
+
+/* Valori delle variabili a fine riga durante il debug, come GoLand: discreti, mai sopra il codice. */
+.monaco-editor .go-studio-inline-value {
+  color: var(--color-accent-light, #a855f7);
+  font-style: italic;
+  opacity: 0.85;
+}

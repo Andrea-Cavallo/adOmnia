@@ -33,12 +33,20 @@ html.light .go-studio-root,
  * intestazioni delle tool window in title case. Solo token del tema, così skin e tema chiaro seguono.
  */
 
+/*
+ * Colori base nel layer components: Tailwind 4 usa layer CSS nativi e le regole fuori layer
+ * batterebbero sempre le utility, così text-success o text-warning sui pulsanti non avrebbero effetto.
+ */
+@layer components {
+  .go-studio-icon-button { color: var(--color-text-3); }
+  .go-studio-widget { color: var(--color-text-2); }
+  .go-studio-stripe-button { color: var(--color-text-3); }
+}
 .go-studio-icon-button {
   display: inline-grid;
   place-items: center;
   flex-shrink: 0;
   border-radius: 6px;
-  color: var(--color-text-3);
   transition: background-color 120ms ease, color 120ms ease;
 }
 .go-studio-icon-button:hover:not(:disabled),
@@ -67,7 +75,6 @@ html.light .go-studio-root,
   padding: 0 9px;
   border-radius: 9px;
   font-size: 12.5px;
-  color: var(--color-text-2);
   transition: background-color 120ms ease, color 120ms ease;
 }
 .go-studio-widget:hover:not(:disabled),
@@ -109,7 +116,6 @@ html.light .go-studio-root,
   width: 32px;
   height: 32px;
   border-radius: 9px;
-  color: var(--color-text-3);
   transition: background-color 120ms ease, color 120ms ease;
 }
 .go-studio-stripe-button:hover {
