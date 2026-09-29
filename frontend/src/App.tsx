@@ -39,6 +39,7 @@ const Sidebar = React.lazy(() => loadSidebarModule().then((module) => ({ default
 if (initialRailFromMemento() === 'collections') void loadSidebarModule().catch(() => undefined)
 import { EntityNotice } from '@/components/layout/EntityNotice'
 import { startDevContextSync } from '@/stores/devcontext'
+import { registerDefaultOpeners } from '@/lib/entities/openers'
 const CommandPalette = React.lazy(() => import('@/components/layout/CommandPalette').then((module) => ({ default: module.CommandPalette })))
 // Go Studio (store, API, LSP) resta fuori dal bundle iniziale: la guardia di chiusura serve
 // solo con buffer modificati o processi attivi, impossibili prima del primo frame stabile.
@@ -80,6 +81,7 @@ function App() {
   const isDragging = useRef(false)
 
   useEffect(() => startDevContextSync(), [])
+  useEffect(() => registerDefaultOpeners(), [])
   useEffect(() => {
     markStartup('startup:react-mounted')
   }, [])
