@@ -37,13 +37,14 @@ export function GoStudioWorkspace({ session, projectWidth, structureWidth, botto
   return (
     <div className="flex min-h-0 flex-1">
       <GoStudioLeftStripe sessionId={session.id} onCommit={onCommit} onBookmarks={onBookmarks} />
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      {/* Stile Islands: ogni pannello è un'isola; i separatori ridimensionabili sono lo spazio tra le isole. */}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col pb-1.5">
         <div className="flex min-h-0 flex-1">
-          {projectOpen && <><div style={{ width: projectWidth }} className="shrink-0"><GoStudioProjectTree session={session} activePath={active?.document.external ? null : active?.document.relativePath ?? null} /></div><ResizeHandle label="Resize project pane" onMouseDown={onProjectResize} /></>}
-          <GoStudioEditor documents={documents} active={active} onCursor={onCursor} onRequestClose={onRequestCloseDocument} onRunTarget={onRunTarget} />
-          {structureOpen && <><ResizeHandle label="Resize structure pane" onMouseDown={onStructureResize} /><div style={{ width: structureWidth }} className="shrink-0"><GoStudioSidePane session={session} document={active} /></div></>}
+          {projectOpen && <><div style={{ width: projectWidth }} className="go-studio-island shrink-0"><GoStudioProjectTree session={session} activePath={active?.document.external ? null : active?.document.relativePath ?? null} /></div><ResizeHandle label="Resize project pane" withLine={false} className="go-studio-gap" onMouseDown={onProjectResize} /></>}
+          <div className="go-studio-island flex-1"><GoStudioEditor documents={documents} active={active} onCursor={onCursor} onRequestClose={onRequestCloseDocument} onRunTarget={onRunTarget} /></div>
+          {structureOpen && <><ResizeHandle label="Resize structure pane" withLine={false} className="go-studio-gap" onMouseDown={onStructureResize} /><div style={{ width: structureWidth }} className="go-studio-island shrink-0"><GoStudioSidePane session={session} document={active} /></div></>}
         </div>
-        {bottomOpen && <><ResizeHandle label="Resize tool window" orientation="horizontal" onMouseDown={onBottomResize} /><div style={{ height: bottomHeight }} className="shrink-0"><GoStudioRunPanel session={session} /></div></>}
+        {bottomOpen && <><ResizeHandle label="Resize tool window" orientation="horizontal" withLine={false} className="go-studio-gap" onMouseDown={onBottomResize} /><div style={{ height: bottomHeight }} className="go-studio-island shrink-0"><GoStudioRunPanel session={session} /></div></>}
       </div>
       <GoStudioRightStripe onDependencies={onDependencies} />
     </div>

@@ -2,15 +2,15 @@ import type { ITheme } from '@xterm/xterm'
 
 /**
  * Temi xterm allineati ai token di `styles/globals.css` e al tema Monaco, così
- * il terminale non sembra un widget incollato dentro Go Studio.
+ * il terminale non sembra un widget incollato dentro Go Studio. Lo sfondo è quello delle isole.
  */
 const darkTheme: ITheme = {
-  background: '#05070D',
+  background: '#0B0D14',
   foreground: '#F8FAFC',
   cursor: '#8B3DFF',
-  cursorAccent: '#05070D',
+  cursorAccent: '#0B0D14',
   selectionBackground: 'rgba(139, 61, 255, 0.30)',
-  black: '#0B0D14',
+  black: '#2E3447',
   red: '#F87171',
   green: '#4ADE80',
   yellow: '#FBBF24',
@@ -29,10 +29,10 @@ const darkTheme: ITheme = {
 }
 
 const lightTheme: ITheme = {
-  background: '#F7F8FB',
+  background: '#FFFFFF',
   foreground: '#151821',
   cursor: '#7C2FF5',
-  cursorAccent: '#F7F8FB',
+  cursorAccent: '#FFFFFF',
   selectionBackground: 'rgba(124, 47, 245, 0.22)',
   black: '#1F2333',
   red: '#B91C1C',

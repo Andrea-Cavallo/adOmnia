@@ -432,16 +432,16 @@ export function GoStudioPanel() {
   runCommandRef.current = runCommand
 
   const mainMenu = <GoStudioMenuBar state={commandState} recentProjects={store.recentProjects} openProjectPaths={workspaceSessions.map((session) => session.project.realPath)} onCommand={runCommand} onOpenRecent={(path) => void store.openProject(path)} />
-  const menuBar = <div role="toolbar" aria-label="Go Studio toolbar" className="flex h-11 shrink-0 items-center gap-1 border-b border-border-1 bg-surface-1 px-2">{mainMenu}<span className="flex-1" /><GoStudioWorkspaceSwitcher /></div>
+  const menuBar = <div role="toolbar" aria-label="Go Studio toolbar" className="flex h-12 shrink-0 items-center gap-1 px-2">{mainMenu}<span className="flex-1" /><GoStudioWorkspaceSwitcher /></div>
   const sharedDialogs = <><CreateProjectDialog open={createOpen} onClose={() => setCreateOpen(false)} /><GoStudioShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} /></>
 
   const windowError = windows.error && <ErrorBanner message={windows.error} onClose={windows.clearError} />
   if (!activeSession && pinnedSessionId && store.initialized) {
-    return <div className="flex min-h-0 flex-1 flex-col bg-surface-0">{menuBar}{windowError}<GoStudioElsewhere mode="closed" projectName="" onClose={() => void closeGoIDESessionWindow(windows.context.windowId)} /></div>
+    return <div className="go-studio-root flex min-h-0 flex-1 flex-col">{menuBar}{windowError}<GoStudioElsewhere mode="closed" projectName="" onClose={() => void closeGoIDESessionWindow(windows.context.windowId)} /></div>
   }
   if (activeSession && (windows.owners[activeSession.id] ?? 'main') !== windows.context.windowId) {
     return (
-      <div className="flex min-h-0 flex-1 flex-col bg-surface-0 text-text-1">
+      <div className="go-studio-root flex min-h-0 flex-1 flex-col text-text-1">
         <GoStudioToolbar mainMenu={mainMenu} trailing={<GoStudioWorkspaceSwitcher />} onSearchEverywhere={() => runCommand('nav.searchEverywhere')} onDebug={() => runCommand('debug.debug')} runConfigurations={runConfigurations} activeConfigId={activeConfigId} onSelectConfiguration={(id) => store.selectRunConfiguration(id)} sessions={workspaceSessions} activeSession={activeSession} activeExecution={activeExecution} toolchain={toolchain} loading={store.loading} onSelect={(id) => void store.selectSession(id)} onOpenProject={() => void store.openProject()} onCreateProject={() => setCreateOpen(true)} onSetAuthorization={(allowed) => void authorize(allowed)} onDetectToolchain={() => void store.detectToolchain()} onToolchainSettings={() => setToolchainOpen(true)} onDependencies={() => setDependenciesOpen(true)} onConfigure={() => setConfigureOpen(true)} onBuild={() => startConfigured('build')} onRun={() => startConfigured('run')} onTidy={() => void tidy()} onStop={() => void store.stopRun()} onClose={() => void useGoIDEWindowsStore.getState().bringBack(activeSession.id)} />
         {windowError}
         <GoStudioElsewhere mode="elsewhere" projectName={activeSession.project.name} onFocus={() => void useGoIDEWindowsStore.getState().focusOwner(activeSession.id)} onBringBack={() => void useGoIDEWindowsStore.getState().bringBack(activeSession.id)} />
@@ -451,11 +451,11 @@ export function GoStudioPanel() {
   }
 
   if (!activeSession) {
-    return <div className="flex min-h-0 flex-1 flex-col bg-surface-0">{menuBar}{store.error && <ErrorBanner message={store.error} onClose={store.clearError} />}<GoStudioEmptyState loading={store.loading} recentProjects={store.recentProjects} onOpenProject={() => void store.openProject()} onCreateProject={() => setCreateOpen(true)} onOpenRecent={(path) => void store.openProject(path)} onRemoveRecent={(path) => void store.removeRecentProject(path)} />{sharedDialogs}</div>
+    return <div className="go-studio-root flex min-h-0 flex-1 flex-col">{menuBar}{store.error && <ErrorBanner message={store.error} onClose={store.clearError} />}<GoStudioEmptyState loading={store.loading} recentProjects={store.recentProjects} onOpenProject={() => void store.openProject()} onCreateProject={() => setCreateOpen(true)} onOpenRecent={(path) => void store.openProject(path)} onRemoveRecent={(path) => void store.removeRecentProject(path)} />{sharedDialogs}</div>
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-surface-0 text-text-1">
+    <div className="go-studio-root flex min-h-0 flex-1 flex-col text-text-1">
       <GoStudioToolbar mainMenu={mainMenu} trailing={<GoStudioWorkspaceSwitcher />} onSearchEverywhere={() => runCommand('nav.searchEverywhere')} onDebug={() => runCommand('debug.debug')} extra={<GoStudioBranchWidget sessionId={activeSession.id} onCommit={() => setVcsDialog('commit')} />} runConfigurations={runConfigurations} activeConfigId={activeConfigId} onSelectConfiguration={(id) => store.selectRunConfiguration(id)} sessions={workspaceSessions} activeSession={activeSession} activeExecution={activeExecution} toolchain={toolchain} loading={store.loading} onSelect={(id) => void store.selectSession(id)} onOpenProject={() => void store.openProject()} onCreateProject={() => setCreateOpen(true)} onSetAuthorization={(allowed) => void authorize(allowed)} onDetectToolchain={() => void store.detectToolchain()} onToolchainSettings={() => setToolchainOpen(true)} onDependencies={() => setDependenciesOpen(true)} onConfigure={() => setConfigureOpen(true)} onBuild={() => startConfigured('build')} onRun={() => startConfigured('run')} onTidy={() => void tidy()} onStop={() => void store.stopRun()} onClose={() => void closeFlow.requestCloseSession()} />
       {store.error && <ErrorBanner message={store.error} onClose={store.clearError} />}
       {windowError}

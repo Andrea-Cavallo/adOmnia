@@ -20,7 +20,7 @@ const TABS: ReadonlyArray<{ id: SidePaneTab; label: string; icon: typeof Braces 
 export function GoStudioSidePane({ session, document }: GoStudioSidePaneProps) {
   const [tab, setTab] = useState<SidePaneTab>('structure')
   return (
-    <aside aria-label="Structure and project overview" className="flex h-full min-w-0 flex-col bg-surface-1">
+    <aside aria-label="Structure and project overview" className="flex h-full min-w-0 flex-col">
       <div role="tablist" className="go-studio-tool-header gap-1 pl-2">
         {TABS.map(({ id, label, icon: Icon }) => (
           <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className={`relative flex h-9 items-center gap-1.5 px-2 text-[12px] ${tab === id ? 'font-semibold text-text-1' : 'text-text-3 hover:text-text-1'}`}>

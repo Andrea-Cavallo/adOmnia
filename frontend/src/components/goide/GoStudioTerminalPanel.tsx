@@ -101,7 +101,7 @@ export function GoStudioTerminalPanel({ session, visible }: GoStudioTerminalPane
 
   if (!authorized) {
     return (
-      <section aria-label="Go Studio terminals" className="flex h-full min-h-0 flex-col items-start gap-2 bg-surface-1 p-4">
+      <section aria-label="Go Studio terminals" className="flex h-full min-h-0 flex-col items-start gap-2 p-4">
         <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-3">
           <TerminalSquare size={11} /> Terminal
         </div>
@@ -113,7 +113,7 @@ export function GoStudioTerminalPanel({ session, visible }: GoStudioTerminalPane
   }
 
   return (
-    <section aria-label="Go Studio terminals" className="flex h-full min-h-0 flex-col bg-surface-1">
+    <section aria-label="Go Studio terminals" className="flex h-full min-h-0 flex-col">
       <div className="flex h-8 shrink-0 items-center gap-0.5 overflow-x-auto border-b border-border-1 px-1">
         {terminals.map((terminal) => (
           <div
@@ -153,7 +153,7 @@ export function GoStudioTerminalPanel({ session, visible }: GoStudioTerminalPane
         </p>
       )}
 
-      <div className="relative min-h-0 flex-1 bg-surface-0">
+      <div className="relative min-h-0 flex-1">
         {terminals.length === 0 && (
           <p className="p-3 text-[10px] text-text-4">No terminal open. Use + to start a shell in the project directory.</p>
         )}

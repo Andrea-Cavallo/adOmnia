@@ -36,7 +36,7 @@ function DebugToolbar({ view, sessionId }: { view: GoIDEDebugView; sessionId: st
   const run = (action: GoIDEDebugStepAction) => void step(view.info.id, action)
   const state = STATE_LABEL[view.info.state] ?? STATE_LABEL.running
   return (
-    <div className="flex h-8 shrink-0 items-center gap-0.5 border-b border-border-1 bg-surface-1 px-2">
+    <div className="flex h-8 shrink-0 items-center gap-0.5 border-b border-border-1 px-2">
       <ToolButton title="Rerun" disabled={!view.request} onClick={() => void restart(view.info.id)}><RotateCcw size={12} /></ToolButton>
       {paused || !live
         ? <ToolButton title="Resume Program · F9" disabled={!paused} onClick={() => run('continue')}><Play size={12} /></ToolButton>
@@ -208,13 +208,13 @@ function ConsolePane({ view }: { view: GoIDEDebugView }) {
   return (
     <div className="flex min-h-0 flex-col">
       <div className="flex h-7 shrink-0 items-center border-b border-border-1 px-2 text-[9px] font-semibold uppercase tracking-wider text-text-4">Console</div>
-      <div ref={scroller} className="min-h-0 flex-1 overflow-auto bg-surface-0 px-2 py-1 font-mono text-[10px] leading-4">
+      <div ref={scroller} className="min-h-0 flex-1 overflow-auto px-2 py-1 font-mono text-[10px] leading-4">
         {view.console.length === 0 && <p className="font-sans text-text-4">Program output and evaluation results appear here.</p>}
         {view.console.map((line) => (
           <div key={line.id} className={`whitespace-pre-wrap break-all ${LINE_CLASS[line.category]}`}>{line.category === 'input' ? `› ${line.text}` : line.text}</div>
         ))}
       </div>
-      <form onSubmit={(event) => { event.preventDefault(); submit() }} className="flex h-7 shrink-0 items-center border-t border-border-1 bg-surface-1 px-2">
+      <form onSubmit={(event) => { event.preventDefault(); submit() }} className="flex h-7 shrink-0 items-center border-t border-border-1 px-2">
         <span className="mr-1.5 font-mono text-[10px] text-accent">›</span>
         <input value={expression} onChange={(event) => setExpression(event.target.value)} onKeyDown={browseHistory} disabled={!paused}
           placeholder={paused ? 'Evaluate in the selected frame, e.g. len(items) or f(x)' : 'Pause the program to evaluate'} aria-label="Evaluate expression"
@@ -228,7 +228,7 @@ function DebugEmptyState({ session }: { session: GoIDESession }) {
   const breakpointCount = useGoIDEDebugStore((state) => Object.values(state.breakpoints[session.id] ?? {}).reduce((total, lines) => total + lines.length, 0))
   const error = useGoIDEDebugStore((state) => state.error)
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-2 bg-surface-0 px-6 text-center">
+    <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
       <Bug size={20} className="text-text-4" />
       <p className="text-[11px] text-text-2">Click a line number to add a breakpoint, then press ▶ next to func main or a test and choose Debug, or press Shift+F9.</p>
       <p className="text-[10px] text-text-4">{breakpointCount === 1 ? '1 breakpoint' : `${breakpointCount} breakpoints`} in this project · F8 step over · F7 step into · F9 resume</p>
@@ -244,7 +244,7 @@ export const GoStudioDebugPanel = memo(function GoStudioDebugPanel({ session }: 
   useEffect(() => { void loadBreakpoints(session.id) }, [loadBreakpoints, session.id])
   if (!view) return <DebugEmptyState session={session} />
   return (
-    <div className="flex h-full min-h-0 flex-col bg-surface-0">
+    <div className="flex h-full min-h-0 flex-col">
       <DebugToolbar view={view} sessionId={session.id} />
       <div className="grid min-h-0 flex-1 grid-cols-[minmax(160px,0.9fr)_minmax(200px,1.2fr)_minmax(180px,1fr)]">
         <FramesPane view={view} />

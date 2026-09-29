@@ -25,7 +25,7 @@ export function GoStudioBreadcrumb({ document, cursor, onSave }: GoStudioBreadcr
   }
 
   return (
-    <nav aria-label="Breadcrumb" className="flex h-7 shrink-0 items-center gap-1 overflow-hidden border-b border-border-1 bg-surface-0 px-3 text-[11.5px] text-text-4">
+    <nav aria-label="Breadcrumb" className="flex h-7 shrink-0 items-center gap-1 overflow-hidden px-4 text-[12px] text-text-4">
       {document.document.readOnly && <span className="mr-1 flex shrink-0 items-center gap-1 rounded bg-surface-2 px-1.5 py-0.5 text-[9px] font-medium text-text-3" title="SDK and module cache sources open read-only"><Lock size={9} /> Read-only · Go SDK</span>}
       {segments.map((segment, index) => <span key={`${segment}-${index}`} className="shrink-0">{index > 0 && <span className="px-1 text-border-2">›</span>}{segment}</span>)}
       {chain.map((node) => (

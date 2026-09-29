@@ -59,7 +59,7 @@ export function GoStudioStatusBar({ session, toolchain, documentInfo, execution,
   const running = execution?.status === 'running'
 
   return (
-    <div className="flex h-[26px] shrink-0 items-center gap-1 border-t border-border-1 bg-surface-1 px-2 text-[11px] text-text-3">
+    <div className="flex h-7 shrink-0 items-center gap-1 px-2 text-[11.5px] text-text-3">
       <span className={`flex min-w-0 items-center gap-1.5 px-1.5 ${running ? 'text-success' : ''}`} title={execution?.command}>
         <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${running ? 'animate-pulse bg-success' : execution?.status === 'failed' ? 'bg-danger' : 'bg-text-4'}`} aria-hidden="true" />
         <span className="truncate">{execution ? `${execution.kind} · ${execution.status}` : 'Idle'}</span>

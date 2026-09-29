@@ -85,7 +85,7 @@ export function GoStudioLeftStripe({ sessionId, onCommit, onBookmarks }: GoStudi
   }
 
   return (
-    <nav aria-label="Go Studio tool windows" className="go-studio-stripe border-r border-border-1">
+    <nav aria-label="Go Studio tool windows" className="go-studio-stripe">
       <StripeButton label="Project" icon={Folder} pressed={projectOpen} onClick={() => updateLayout({ projectOpen: !projectOpen })} />
       <StripeButton label="Commit · Ctrl+K" icon={GitCommitHorizontal} pressed={false} onClick={onCommit} />
       <StripeButton label="Bookmarks · Shift+F11" icon={Bookmark} pressed={false} onClick={onBookmarks} />
@@ -106,7 +106,7 @@ export function GoStudioRightStripe({ onDependencies }: GoStudioRightStripeProps
   const structureOpen = useGoIDEStore((state) => state.layout.structureOpen)
   const updateLayout = useGoIDEStore((state) => state.updateLayout)
   return (
-    <nav aria-label="Go Studio side tool windows" className="go-studio-stripe border-l border-border-1">
+    <nav aria-label="Go Studio side tool windows" className="go-studio-stripe">
       <StripeButton label="Structure · Alt+7" icon={Braces} pressed={structureOpen} onClick={() => updateLayout({ structureOpen: !structureOpen })} />
       <StripeButton label="Module Dependencies" icon={PackageSearch} pressed={false} onClick={onDependencies} />
     </nav>

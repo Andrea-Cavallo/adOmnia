@@ -46,7 +46,7 @@ export function GoStudioEditor({ documents, active, onCursor, onRequestClose, on
 
   if (!active) {
     return (
-      <section aria-label="Editor" className="flex min-h-0 flex-1 items-center justify-center bg-surface-0">
+      <section aria-label="Editor" className="flex min-h-0 flex-1 items-center justify-center">
         <div className="text-center text-[11px] text-text-4">
           <p className="font-medium text-text-3">Open a file from Project</p>
           <p className="mt-1">Go to File: Ctrl/Cmd+P · Symbol: Ctrl/Cmd+T · Find in Files: Ctrl/Cmd+Shift+F</p>
@@ -56,7 +56,7 @@ export function GoStudioEditor({ documents, active, onCursor, onRequestClose, on
   }
 
   const main = (
-    <section aria-label="Editor" className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface-0">
+    <section aria-label="Editor" className="flex min-h-0 min-w-0 flex-1 flex-col">
       <GoStudioEditorTabs documents={documents} activeId={active.document.id} onRequestClose={onRequestClose} />
       <GoStudioBreadcrumb document={active} cursor={cursor} onSave={() => void saveDocument(active.document.id)} />
       {active.externalState && (
@@ -74,7 +74,7 @@ export function GoStudioEditor({ documents, active, onCursor, onRequestClose, on
         </div>
       )}
       {coverageMatch.state === 'stale' && (
-        <div role="status" className="flex shrink-0 items-center gap-2 border-b border-border-1 bg-surface-1 px-2 py-1 text-[10px] text-text-3">
+        <div role="status" className="flex shrink-0 items-center gap-2 border-b border-border-1 px-2 py-1 text-[10px] text-text-3">
           <ShieldCheck size={12} className="text-text-4" aria-hidden="true" /> Coverage is outdated for this file: it changed after the test run. Run the tests with coverage again to see it.
         </div>
       )}

@@ -26,8 +26,8 @@ export function GoStudioSplitPane({ documents, document, onRunTarget, onCursor }
   const addable = documents.filter((item) => !tabs.some((tab) => tab.document.id === item.document.id))
 
   return (
-    <section aria-label="Split editor" className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface-0">
-      <div role="tablist" aria-label="Split editor tabs" className="flex h-8 shrink-0 items-stretch border-b border-border-1 bg-surface-1 text-[10px]">
+    <section aria-label="Split editor" className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <div role="tablist" aria-label="Split editor tabs" className="flex h-8 shrink-0 items-stretch border-b border-border-1 text-[10px]">
         <div className="flex min-w-0 flex-1 items-stretch overflow-x-auto">
           {tabs.map((tab) => {
             const selected = tab.document.id === document.document.id
@@ -35,7 +35,7 @@ export function GoStudioSplitPane({ documents, document, onRunTarget, onCursor }
               <div key={tab.document.id} role="tab" aria-selected={selected} tabIndex={0} onClick={() => setSplitDocument(tab.document.id)}
                 onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setSplitDocument(tab.document.id) } }}
                 title={tab.document.relativePath}
-                className={`group flex max-w-48 shrink-0 cursor-pointer items-center gap-1.5 border-r border-border-1 px-2 ${selected ? 'border-b border-b-accent bg-surface-0 text-text-1' : 'text-text-3 hover:text-text-1'}`}>
+                className={`group flex max-w-48 shrink-0 cursor-pointer items-center gap-1.5 border-r border-border-1 px-2 ${selected ? 'border-b border-b-accent bg-[var(--gs-raised)] text-text-1' : 'text-text-3 hover:text-text-1'}`}>
                 <GoStudioFileIcon name={tab.document.name} relativePath={tab.document.relativePath} size={11} />
                 <span className="truncate">{tab.document.name}</span>
                 {tab.dirty && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" aria-label="unsaved" />}

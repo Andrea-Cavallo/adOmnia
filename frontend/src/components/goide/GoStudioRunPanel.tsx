@@ -165,8 +165,8 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session }: GoSt
   const hide = () => useGoIDEStore.getState().updateLayout({ bottomOpen: false })
 
   return (
-    <section aria-label="Go Studio tool window" className="flex h-full min-h-0 flex-col bg-surface-1">
-      <div className="go-studio-tool-header border-b border-border-1">
+    <section aria-label="Go Studio tool window" className="flex h-full min-h-0 flex-col">
+      <div className="go-studio-tool-header">
         <span className="go-studio-tool-title pr-2">{TOOL_WINDOW_TITLES[view]}</span>
         {view === 'problems' && <span className={`rounded-full px-1.5 text-[10.5px] font-semibold ${counts.errors || buildProblems.length ? 'bg-danger/15 text-danger' : counts.warnings ? 'bg-warning/15 text-warning' : 'bg-surface-3 text-text-3'}`}>{problemCount}</span>}
         {view === 'tests' && failedTests > 0 && <span className="rounded-full bg-danger/15 px-1.5 text-[10.5px] font-semibold text-danger">{failedTests} failed</span>}
@@ -176,7 +176,7 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session }: GoSt
             aria-label="Active run"
             value={active.id}
             onChange={(event) => useGoIDEStore.setState((state) => ({ activeRunBySession: { ...state.activeRunBySession, [sessionId]: event.target.value } }))}
-            className="h-7 max-w-60 rounded-md border border-border-1 bg-surface-2 px-2 font-mono text-[11px] text-text-1 outline-none focus:border-accent"
+            className="h-7 max-w-60 rounded-lg border-0 bg-[var(--gs-raised)] px-2.5 font-mono text-[11.5px] text-text-1 outline-none focus:ring-1 focus:ring-accent"
           >
             {executions.map((execution) => <option key={execution.id} value={execution.id}>{execution.kind} · {execution.id.slice(-6)} · {execution.status}</option>)}
           </select>
@@ -187,7 +187,7 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session }: GoSt
         </>}
         <div className="ml-auto flex shrink-0 items-center gap-1">
           {view === 'run' && (
-            <label className="mr-1 flex h-7 w-48 items-center gap-1.5 rounded-md border border-border-1 bg-surface-0 px-2 text-text-4 focus-within:border-accent">
+            <label className="mr-1 flex h-7 w-52 items-center gap-2 rounded-lg bg-[var(--gs-ground)] px-2.5 text-text-4 focus-within:ring-1 focus-within:ring-accent">
               <Search size={12} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find in output" aria-label="Filter console output" className="min-w-0 flex-1 bg-transparent text-[11.5px] text-text-2 outline-none" />
             </label>
           )}
@@ -195,14 +195,14 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session }: GoSt
         </div>
       </div>
       {view === 'run' && <div className="flex min-h-0 flex-1">
-        <div className="flex w-10 shrink-0 flex-col items-center gap-0.5 border-r border-border-1 pt-1.5" role="toolbar" aria-label="Run actions" aria-orientation="vertical">
+        <div className="flex w-11 shrink-0 flex-col items-center gap-0.5 pt-0.5" role="toolbar" aria-label="Run actions" aria-orientation="vertical">
           <button type="button" onClick={() => active && void restartRun(active.id)} disabled={!active || active.kind === 'dependency' || active.kind === 'install'} aria-label="Rerun" title="Rerun" className="go-studio-icon-button h-7 w-7 text-success"><RefreshCw size={14} /></button>
           <button type="button" onClick={() => active && void stopRun(active.id)} disabled={active?.status !== 'running'} aria-label="Stop" title="Stop process tree" className="go-studio-icon-button h-7 w-7 text-danger"><Square size={11} fill="currentColor" /></button>
           <span className="my-1 h-px w-4 bg-border-1" aria-hidden="true" />
           <button type="button" disabled={!chunks.length} onClick={() => void WailsClipboard.SetText(chunks.map((chunk) => chunk.text).join(''))} aria-label="Copy console" title="Copy console" className="go-studio-icon-button h-7 w-7"><Copy size={13} /></button>
         </div>
         <div className="flex min-w-0 flex-1 flex-col">
-        <div className="min-h-0 flex-1 overflow-auto bg-surface-0 px-3.5 py-2 font-mono text-[12px] leading-5">
+        <div className="min-h-0 flex-1 overflow-auto px-3.5 pb-2 pt-1 font-mono text-[12.5px] leading-[21px]">
           {!active && <p className="font-sans text-text-4">Build or run the project, or press ▶ next to func main or a test, to open a real console.</p>}
           {active && visibleLines.length === 0 && <p className="text-text-4">Waiting for output…</p>}
           {visibleLines.map((line, index) => (
@@ -214,16 +214,16 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session }: GoSt
           ))}
         </div>
         {active?.status === 'running' && active.kind === 'run' && (
-          <form onSubmit={(event) => { event.preventDefault(); void submitInput() }} className="flex h-8 shrink-0 items-center border-t border-border-1 bg-surface-1 px-3">
+          <form onSubmit={(event) => { event.preventDefault(); void submitInput() }} className="flex h-9 shrink-0 items-center border-t border-border-1 px-3">
             <span className="mr-2 font-mono text-[11px] text-accent">stdin ›</span>
             <input value={input} onChange={(event) => setInput(event.target.value)} aria-label="Program input" className="min-w-0 flex-1 bg-transparent font-mono text-[11.5px] text-text-1 outline-none" placeholder="Type input and press Enter" />
           </form>
         )}
         </div>
       </div>}
-      {view === 'problems' && <div className="min-h-0 flex-1 overflow-auto bg-surface-0"><GoStudioProblems sessionId={sessionId} buildProblems={buildProblems} onOpenBuildProblem={(problem) => void openLocation(problem.path, problem.line, problem.column)} /></div>}
-      {view === 'references' && <div className="min-h-0 flex-1 overflow-auto bg-surface-0"><GoStudioReferences sessionId={sessionId} /></div>}
-      {view === 'find' && <div className="min-h-0 flex-1 bg-surface-0"><GoStudioFindInFiles sessionId={sessionId} /></div>}
+      {view === 'problems' && <div className="min-h-0 flex-1 overflow-auto"><GoStudioProblems sessionId={sessionId} buildProblems={buildProblems} onOpenBuildProblem={(problem) => void openLocation(problem.path, problem.line, problem.column)} /></div>}
+      {view === 'references' && <div className="min-h-0 flex-1 overflow-auto"><GoStudioReferences sessionId={sessionId} /></div>}
+      {view === 'find' && <div className="min-h-0 flex-1"><GoStudioFindInFiles sessionId={sessionId} /></div>}
       {view === 'tests' && <div className="min-h-0 flex-1"><GoStudioTestsPanel session={session} /></div>}
       {view === 'debug' && <div className="min-h-0 flex-1"><GoStudioDebugPanel session={session} /></div>}
       {view === 'todo' && <div className="min-h-0 flex-1"><GoStudioTodoPanel sessionId={sessionId} /></div>}

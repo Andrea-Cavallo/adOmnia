@@ -78,7 +78,7 @@ export function GoStudioEditorTabs({ documents, activeId, onRequestClose }: GoSt
   }
 
   return (
-    <div role="tablist" aria-label="Open files" className="flex h-9 shrink-0 overflow-x-auto border-b border-border-1 bg-surface-1">
+    <div role="tablist" aria-label="Open files" className="flex h-11 shrink-0 items-center gap-1 overflow-x-auto px-2">
       {ordered.map((item) => {
         const active = item.document.id === activeId
         const isPinned = !!pinned[item.document.id]
@@ -91,10 +91,9 @@ export function GoStudioEditorTabs({ documents, activeId, onRequestClose }: GoSt
             onClick={() => selectDocument(item.document.id)}
             onAuxClick={(event) => { if (event.button === 1 && !isPinned) onRequestClose([item]) }}
             onContextMenu={(event) => { event.preventDefault(); setMenu({ x: event.clientX, y: event.clientY, document: item }) }}
-            className={`group relative flex h-9 min-w-0 max-w-60 shrink-0 items-center gap-2 border-r border-border-1 pl-3 pr-2 text-[12px] transition-colors ${active ? 'bg-surface-0 text-text-1' : 'text-text-3 hover:bg-surface-2 hover:text-text-2'}`}
+            className="go-studio-tab group"
             title={item.document.relativePath}
           >
-            {active && <span className="absolute inset-x-0 bottom-0 h-0.5 bg-accent" aria-hidden="true" />}
             <GoStudioFileIcon name={item.document.name} relativePath={item.document.relativePath} size={13} />
             {item.document.readOnly && <Lock size={11} className="shrink-0 text-text-4" />}
             <span className="truncate">{item.document.name}</span>

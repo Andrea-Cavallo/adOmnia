@@ -42,7 +42,7 @@ const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, act
         type="button"
         onClick={entry.directory ? () => setOpen((value) => !value) : () => void openDocument(entry.relativePath)}
         aria-current={selected ? 'true' : undefined}
-        className={`flex h-6 w-full items-center gap-1.5 overflow-hidden rounded-[5px] pr-2 text-left text-[12.5px] ${selected ? 'go-studio-tree-row-selected' : `hover:bg-surface-3 hover:text-text-1 ${entry.ignored ? 'text-text-4' : 'text-text-2'}`}`}
+        className={`flex h-[26px] w-full items-center gap-1.5 overflow-hidden rounded-[7px] pr-2 text-left text-[12.5px] ${selected ? 'go-studio-tree-row-selected' : `hover:bg-surface-3 hover:text-text-1 ${entry.ignored ? 'text-text-4' : 'text-text-2'}`}`}
         style={{ paddingLeft: ROW_BASE_PX + (depth - 1) * ROW_INDENT_PX }}
         title={entry.ignored ? `${entry.relativePath} (ignored by default)` : entry.relativePath}
       >
@@ -72,7 +72,7 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
   useEffect(() => { void loadDirectory('') }, [loadDirectory, rootKey])
 
   return (
-    <aside aria-label="Project files" className="flex h-full min-w-0 flex-col bg-surface-1">
+    <aside aria-label="Project files" className="flex h-full min-w-0 flex-col">
       <div className="go-studio-tool-header">
         <span className="go-studio-tool-title">Project</span>
         <button
@@ -85,7 +85,7 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
           {showIgnored ? <Eye size={14} /> : <EyeOff size={14} />}
         </button>
       </div>
-      <div className="min-h-0 flex-1 overflow-auto px-1.5 pb-1">
+      <div className="min-h-0 flex-1 overflow-auto px-2 pb-1">
         <div className="flex h-6 items-center gap-1.5 px-2 text-[12.5px]" title={session.project.rootPath}>
           <FolderOpen size={15} className="shrink-0 text-accent" />
           <span className="shrink-0 font-semibold text-text-1">{session.project.name}</span>
@@ -94,7 +94,7 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
         {entries.map((entry) => <DirectoryNode key={entry.relativePath} sessionId={session.id} entry={entry} depth={2} activePath={activePath} />)}
         {entries.length === 0 && <p className="px-4 py-3 text-[11px] text-text-4">This folder is empty.</p>}
       </div>
-      <div className="shrink-0 border-t border-border-1 px-3 py-1.5 text-[10.5px] leading-4 text-text-4">
+      <div className="shrink-0 px-4 py-2 text-[10.5px] leading-4 text-text-4">
         {session.project.modules.length} module{session.project.modules.length === 1 ? '' : 's'} · {session.project.goWorkPath ? 'go.work' : session.project.goModPath ? 'go.mod' : 'folder mode'}
       </div>
     </aside>

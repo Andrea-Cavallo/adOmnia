@@ -93,11 +93,29 @@ const GO_SEMANTIC_RULES_LIGHT: monaco.editor.ITokenThemeRule[] = [
 
 export const GO_STUDIO_THEMES = { dark: 'adomnia-go-dark', light: 'adomnia-go-light' } as const
 
-/** Temi di Go Studio: stessi colori di adOmnia più le regole per i semantic tokens. */
+/** Sfondo dell'editor uguale alle isole di Go Studio (--gs-island in goStudioChrome.css). */
+const GO_STUDIO_DARK_COLORS: monaco.editor.IColors = {
+  ...DARK_COLORS,
+  'editor.background': '#0B0D14',
+  'editorGutter.background': '#0B0D14',
+  'editor.lineHighlightBackground': '#131722',
+  'editor.lineHighlightBorder': '#00000000',
+  'editorWidget.background': '#131722',
+}
+
+const GO_STUDIO_LIGHT_COLORS: monaco.editor.IColors = {
+  ...LIGHT_COLORS,
+  'editor.background': '#FFFFFF',
+  'editorGutter.background': '#FFFFFF',
+  'editor.lineHighlightBackground': '#F1F5F9',
+  'editor.lineHighlightBorder': '#00000000',
+}
+
+/** Temi di Go Studio: colori di adOmnia sullo sfondo delle isole, più le regole per i semantic tokens. */
 export function applyGoStudioMonacoThemes(m: typeof monaco): void {
   applyAdomniaMonacoTheme(m)
-  m.editor.defineTheme(GO_STUDIO_THEMES.dark, { base: 'vs-dark', inherit: true, rules: GO_SEMANTIC_RULES_DARK, colors: DARK_COLORS })
-  m.editor.defineTheme(GO_STUDIO_THEMES.light, { base: 'vs', inherit: true, rules: GO_SEMANTIC_RULES_LIGHT, colors: LIGHT_COLORS })
+  m.editor.defineTheme(GO_STUDIO_THEMES.dark, { base: 'vs-dark', inherit: true, rules: GO_SEMANTIC_RULES_DARK, colors: GO_STUDIO_DARK_COLORS })
+  m.editor.defineTheme(GO_STUDIO_THEMES.light, { base: 'vs', inherit: true, rules: GO_SEMANTIC_RULES_LIGHT, colors: GO_STUDIO_LIGHT_COLORS })
 }
 
 export { monaco }

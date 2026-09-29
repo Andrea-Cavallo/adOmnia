@@ -61,8 +61,8 @@ export const GoStudioTodoPanel = memo(function GoStudioTodoPanel({ sessionId }: 
   const counts = useMemo(() => Object.fromEntries(KEYWORDS.map((keyword) => [keyword, (items ?? []).filter((item) => item.keyword === keyword).length])), [items])
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-surface-0">
-      <div role="toolbar" aria-label="TODO toolbar" className="flex h-8 shrink-0 items-center gap-1 border-b border-border-1 bg-surface-1 px-2">
+    <div className="flex h-full min-h-0 flex-col">
+      <div role="toolbar" aria-label="TODO toolbar" className="flex h-8 shrink-0 items-center gap-1 border-b border-border-1 px-2">
         <button type="button" onClick={() => scan()} title="Rescan project" aria-label="Rescan project" className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-3">{loading ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />}</button>
         {(['all', ...KEYWORDS] as const).map((keyword) => (
           <button key={keyword} type="button" aria-pressed={filter === keyword} onClick={() => setFilter(keyword)}

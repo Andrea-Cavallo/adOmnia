@@ -153,7 +153,7 @@ function TestDetail({ run, result }: { run: GoIDETestRun; result: GoIDETestResul
         )}
         <span className="ml-auto shrink-0 text-[10px] text-text-4">{result.elapsedMillis > 0 ? formatDuration(result.elapsedMillis) : ''}</span>
       </div>
-      <div className="min-h-0 flex-1 overflow-auto bg-surface-0 px-3 py-2 font-mono text-[10px] leading-4 text-text-2">
+      <div className="min-h-0 flex-1 overflow-auto px-3 py-2 font-mono text-[10px] leading-4 text-text-2">
         {output === null ? <Loader2 size={12} className="animate-spin text-text-4" /> : output ? output.split('\n').map((line, index) => <OutputLine key={index} line={line} baseDirectory={baseDirectory} />) : <span className="text-text-4">No output.</span>}
         {result.truncated && <div className="mt-1 text-text-4">Output truncated at 64 KB.</div>}
       </div>
@@ -180,7 +180,7 @@ export const GoStudioTestsPanel = memo(function GoStudioTestsPanel({ session }: 
 
   if (!run) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-2 bg-surface-0 text-[11px] text-text-4">
+      <div className="flex h-full flex-col items-center justify-center gap-2 text-[11px] text-text-4">
         <p>Run tests from the ▶ next to a test, the “▶ Test” lens on a package, or Run → Test All.</p>
         <button type="button" onClick={() => void start({ sessionId, workingDirectory: '', packages: ['./...'] })} className="flex items-center gap-1.5 rounded bg-accent px-3 py-1 text-[11px] font-semibold text-white"><Play size={11} fill="currentColor" aria-hidden="true" /> Run all tests</button>
       </div>
@@ -189,8 +189,8 @@ export const GoStudioTestsPanel = memo(function GoStudioTestsPanel({ session }: 
   const running = run.status === 'running'
   const summary = run.summary
   return (
-    <div className="flex h-full min-h-0 flex-col bg-surface-0">
-      <div role="toolbar" aria-label="Tests toolbar" className="flex h-8 shrink-0 items-center gap-1 border-b border-border-1 bg-surface-1 px-2 text-[10px]">
+    <div className="flex h-full min-h-0 flex-col">
+      <div role="toolbar" aria-label="Tests toolbar" className="flex h-8 shrink-0 items-center gap-1 border-b border-border-1 px-2 text-[10px]">
         <button type="button" disabled={running} onClick={() => void rerunAll(sessionId)} title="Rerun" className="grid h-6 w-6 place-items-center rounded text-success hover:bg-success/10 disabled:opacity-30"><Play size={11} fill="currentColor" aria-hidden="true" /></button>
         <button type="button" disabled={running || summary.failed === 0} onClick={() => void rerunFailed(sessionId)} title="Rerun failed tests" className="flex h-6 items-center gap-1 rounded px-1.5 text-danger hover:bg-danger/10 disabled:opacity-30"><RotateCcw size={11} aria-hidden="true" /> Failed</button>
         <button type="button" disabled={!running} onClick={() => void stopRun(run.runId)} title="Stop tests" className="grid h-6 w-6 place-items-center rounded text-danger hover:bg-danger/10 disabled:opacity-30"><Square size={10} fill="currentColor" aria-hidden="true" /></button>
