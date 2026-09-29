@@ -1,5 +1,5 @@
 import { memo, type CSSProperties } from 'react'
-import { Archive, BookOpen, File, FileCode2, FileImage, FileText, Key, Lock, Scale } from 'lucide-react'
+import { Archive, BookOpen, Database, File, FileCode2, FileImage, FileText, Key, Lock, Scale, SquareTerminal, Workflow } from 'lucide-react'
 import { BRAND_ICONS, type BrandIconSlug } from '@/lib/brandIcons.generated'
 import { GoGopherIcon } from './GoGopherIcon'
 import { brandColors, resolveGoStudioFileIcon } from './goStudioFileIcons'
@@ -7,7 +7,7 @@ import jenkinsEmblem from './assets/jenkins.png'
 
 const GENERIC_ICONS = {
   text: FileText, pdf: FileText, image: FileImage, archive: Archive, lock: Lock,
-  license: Scale, readme: BookOpen, code: FileCode2, key: Key, file: File,
+  license: Scale, readme: BookOpen, code: FileCode2, key: Key, sql: Database, terminal: SquareTerminal, schema: Workflow, file: File,
 } as const
 
 /** Logo di un marchio (Simple Icons, 24×24) con il colore adatto al tema attivo. */

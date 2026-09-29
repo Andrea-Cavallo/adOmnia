@@ -8,7 +8,7 @@ export type GoStudioFileIconKind =
   | { kind: 'brand'; slug: BrandIconSlug }
   /** Jenkinsfile: l'emblema Jenkins (Simple Icons non è incluso nel set generato). */
   | { kind: 'jenkins' }
-  | { kind: 'generic'; icon: 'text' | 'pdf' | 'image' | 'archive' | 'lock' | 'license' | 'readme' | 'code' | 'key' | 'file' }
+  | { kind: 'generic'; icon: 'text' | 'pdf' | 'image' | 'archive' | 'lock' | 'license' | 'readme' | 'code' | 'key' | 'sql' | 'terminal' | 'schema' | 'file' }
 
 const EXACT_NAMES: Record<string, BrandIconSlug> = {
   dockerfile: 'docker', '.dockerignore': 'docker', 'compose.yaml': 'docker', 'compose.yml': 'docker',
@@ -35,7 +35,16 @@ const GENERIC_EXTENSIONS: Record<string, Extract<GoStudioFileIconKind, { kind: '
   txt: 'text', log: 'text', csv: 'text', pdf: 'pdf',
   png: 'image', jpg: 'image', jpeg: 'image', gif: 'image', svg: 'image', webp: 'image', ico: 'image',
   zip: 'archive', gz: 'archive', tgz: 'archive', tar: 'archive', '7z': 'archive',
-  lock: 'lock', pem: 'key', key: 'key', p12: 'key', pfx: 'key', jks: 'key', s: 'code', proto: 'code', sql: 'code', mod: 'code', tmpl: 'code', gotmpl: 'code',
+  lock: 'lock', pem: 'key', key: 'key', p12: 'key', pfx: 'key', jks: 'key', s: 'code', proto: 'schema', sql: 'sql', ps1: 'terminal', psm1: 'terminal', bat: 'terminal', cmd: 'terminal', mod: 'code', tmpl: 'code', gotmpl: 'code',
+}
+
+const KUBERNETES_KINDS = /^(deployment|service|ingress|configmap|secret|statefulset|daemonset|cronjob|job|pod|namespace|serviceaccount|role|rolebinding|clusterrole|clusterrolebinding|hpa|pvc|networkpolicy|kustomization)s?([.-][\w.-]+)?\.ya?ml$/
+const KUBERNETES_DIRS = /(^|\/)(k8s|kubernetes|manifests|kustomize|deploy\/k8s)\//
+
+/** Manifest Kubernetes riconosciuti da nome o cartella (il contenuto non si legge solo per un'icona). */
+function isKubernetesManifest(lower: string, path: string): boolean {
+  if (!/\.ya?ml$/.test(lower)) return false
+  return KUBERNETES_KINDS.test(lower) || KUBERNETES_DIRS.test(path)
 }
 
 /**
@@ -53,6 +62,7 @@ export function resolveGoStudioFileIcon(name: string, relativePath = ''): GoStud
   if (lower === 'jenkinsfile' || lower.startsWith('jenkinsfile.') || lower.endsWith('.jenkinsfile')) return { kind: 'jenkins' }
   if (path.startsWith('.github/workflows/') && /\.ya?ml$/.test(lower)) return { kind: 'brand', slug: 'githubactions' }
   if (/^(docker-)?compose(\.[\w-]+)?\.ya?ml$/.test(lower) || lower.endsWith('.dockerfile') || lower.startsWith('dockerfile.')) return { kind: 'brand', slug: 'docker' }
+  if (isKubernetesManifest(lower, path)) return { kind: 'brand', slug: 'kubernetes' }
   if (/^(openapi|swagger)(\.[\w-]+)?\.(ya?ml|json)$/.test(lower)) return { kind: 'brand', slug: 'openapiinitiative' }
   if (lower === '.env' || lower.startsWith('.env.') || lower.endsWith('.env')) return { kind: 'brand', slug: 'dotenv' }
   const exact = EXACT_NAMES[lower]

@@ -14,6 +14,16 @@ describe('Go Studio file icons', () => {
     expect(resolveGoStudioFileIcon('go.sum')).toEqual({ kind: 'goModule', generated: true })
   })
 
+  it('recognises Kubernetes manifests, SQL, proto and scripts', () => {
+    for (const [name, path] of [['deployment.yaml', 'deploy/deployment.yaml'], ['service-api.yml', 'service-api.yml'], ['app.yaml', 'k8s/app.yaml'], ['kustomization.yaml', 'overlays/prod/kustomization.yaml']]) {
+      expect(resolveGoStudioFileIcon(name, path)).toEqual({ kind: 'brand', slug: 'kubernetes' })
+    }
+    expect(resolveGoStudioFileIcon('pipeline.yaml', 'pipeline.yaml')).toEqual({ kind: 'brand', slug: 'yaml' })
+    expect(resolveGoStudioFileIcon('schema.sql')).toEqual({ kind: 'generic', icon: 'sql' })
+    expect(resolveGoStudioFileIcon('api.proto')).toEqual({ kind: 'generic', icon: 'schema' })
+    expect(resolveGoStudioFileIcon('build.ps1')).toEqual({ kind: 'generic', icon: 'terminal' })
+  })
+
   it('uses the Jenkins emblem for Jenkinsfiles and a key for keys and keystores', () => {
     for (const name of ['Jenkinsfile', 'jenkinsfile', 'Jenkinsfile.release', 'deploy.jenkinsfile']) expect(resolveGoStudioFileIcon(name)).toEqual({ kind: 'jenkins' })
     for (const name of ['server.pem', 'tls.key', 'client.p12', 'store.pfx', 'truststore.jks']) expect(resolveGoStudioFileIcon(name)).toEqual({ kind: 'generic', icon: 'key' })
@@ -36,7 +46,7 @@ describe('Go Studio file icons', () => {
     expect(resolveGoStudioFileIcon('config.yaml')).toEqual({ kind: 'brand', slug: 'yaml' })
     expect(resolveGoStudioFileIcon('INSTALLATION.pdf')).toEqual({ kind: 'generic', icon: 'pdf' })
     expect(resolveGoStudioFileIcon('LICENSE')).toEqual({ kind: 'generic', icon: 'license' })
-    expect(resolveGoStudioFileIcon('schema.proto')).toEqual({ kind: 'generic', icon: 'code' })
+    expect(resolveGoStudioFileIcon('schema.proto')).toEqual({ kind: 'generic', icon: 'schema' })
     expect(resolveGoStudioFileIcon('generic')).toEqual({ kind: 'generic', icon: 'file' })
     expect(resolveGoStudioFolderBrand('.github')).toBe('github')
     expect(resolveGoStudioFolderBrand('internal')).toBeNull()

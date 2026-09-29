@@ -6,9 +6,44 @@ import { BrandIcon, GoStudioFileIcon } from './GoStudioFileIcon'
 import { resolveGoStudioFolderBrand } from './goStudioFileIcons'
 import type { GoIDEFileEntry, GoIDESession } from '@/lib/goide-api'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
+import { buildTreeMarks, type GoStudioTreeMark } from './goStudioTreeMarks'
+import { useGoIDEVCSStore } from '@/stores/goideVcs'
+import { useGoIDETestsStore } from '@/stores/goideTests'
 import { isApiCollectionCandidate, isPemCandidate, openPemInPowerTools, sendFileToApiWorkspace } from './goStudioFileHandoffs'
 
 type TreeContextHandler = (entry: GoIDEFileEntry, x: number, y: number) => void
+type TreeMarks = Map<string, GoStudioTreeMark>
+
+const EMPTY_MARKS: TreeMarks = new Map()
+
+/** Colori JetBrains: modificato blu, aggiunto verde, non tracciato ambra, conflitto rosso. */
+const VCS_CLASS: Record<NonNullable<GoStudioTreeMark['vcs']>, string> = {
+  modified: 'text-info', added: 'text-success', untracked: 'text-warning', deleted: 'text-text-4 line-through', conflicted: 'text-danger',
+}
+
+function markTitle(mark: GoStudioTreeMark | undefined): string {
+  if (!mark) return ''
+  const parts: string[] = []
+  if (mark.vcs) parts.push(`Git: ${mark.vcs}`)
+  if (mark.problem) parts.push(`${mark.problems} ${mark.problem}${mark.problems === 1 ? '' : 's'}`)
+  if (mark.testFailed) parts.push('failed tests')
+  return parts.length ? ` · ${parts.join(' · ')}` : ''
+}
+
+/** Stato Git, problemi di gopls e test falliti del progetto, per file e cartelle. */
+function useTreeMarks(sessionId: string): TreeMarks {
+  const status = useGoIDEVCSStore((state) => state.status[sessionId] ?? null)
+  const diagnostics = useGoIDELspStore((state) => state.diagnostics[sessionId])
+  const runs = useGoIDETestsStore((state) => state.runs[sessionId])
+  return useMemo(() => {
+    const lastRun = runs?.[runs.length - 1]
+    const failedTestFiles = (lastRun?.results ?? []).filter((result) => result.status === 'fail' && result.failure?.relativePath).map((result) => result.failure!.relativePath!)
+    const changes = status?.available ? status.changes : []
+    const reports = diagnostics ? Object.values(diagnostics) : []
+    if (changes.length === 0 && reports.length === 0 && failedTestFiles.length === 0) return EMPTY_MARKS
+    return buildTreeMarks({ changes, diagnostics: reports, failedTestFiles })
+  }, [diagnostics, runs, status])
+}
 
 interface GoStudioProjectTreeProps {
   session: GoIDESession
@@ -28,7 +63,8 @@ function FolderIcon({ name, open }: { name: string; open: boolean }) {
 }
 
 /** Memoizzato: aprire o aggiornare una cartella non ridisegna le sorelle (progetti con centinaia di cartelle). */
-const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, activePath, onContext }: { sessionId: string; entry: GoIDEFileEntry; depth: number; activePath: string | null; onContext: TreeContextHandler }) {
+const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, activePath, onContext, marks }: { sessionId: string; entry: GoIDEFileEntry; depth: number; activePath: string | null; onContext: TreeContextHandler; marks: TreeMarks }) {
+  const mark = marks.get(entry.relativePath)
   const selected = !entry.directory && entry.relativePath === activePath
   const [open, setOpen] = useState(false)
   const entries = useGoIDEStore((state) => state.directoryEntries[sessionId]?.[entry.relativePath])
@@ -51,7 +87,7 @@ const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, act
         aria-current={selected ? 'true' : undefined}
         className={`flex h-[26px] w-full items-center gap-1.5 overflow-hidden rounded-[7px] pr-2 text-left text-[12.5px] ${selected ? 'go-studio-tree-row-selected' : `hover:bg-surface-3 hover:text-text-1 ${entry.ignored ? 'text-text-4' : 'text-text-2'}`}`}
         style={{ paddingLeft: ROW_BASE_PX + (depth - 1) * ROW_INDENT_PX }}
-        title={entry.ignored ? `${entry.relativePath} (ignored by default)` : entry.relativePath}
+        title={`${entry.relativePath}${entry.ignored ? ' (ignored by default)' : ''}${markTitle(mark)}`}
       >
         {entry.directory
           ? loading ? <Loader2 size={12} className="shrink-0 animate-spin text-text-4" /> : open ? <ChevronDown size={12} className="shrink-0 text-text-3" /> : <ChevronRight size={12} className="shrink-0 text-text-4" />
@@ -59,10 +95,11 @@ const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, act
         {entry.directory
           ? <FolderIcon name={entry.name} open={open} />
           : <GoStudioFileIcon name={entry.name} relativePath={entry.relativePath} />}
-        <span className="truncate">{entry.name}</span>
+        <span className={`truncate ${mark?.vcs && !selected ? VCS_CLASS[mark.vcs] : ''} ${mark?.problem ? `underline decoration-wavy underline-offset-[3px] ${mark.problem === 'error' ? 'decoration-danger' : 'decoration-warning'}` : ''}`}>{entry.name}</span>
+        {mark?.testFailed && <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-danger" aria-label="failed tests" />}
       </button>
       {entry.directory && open && entries?.map((child) => (
-        <DirectoryNode key={child.relativePath} sessionId={sessionId} entry={child} depth={depth + 1} activePath={activePath} onContext={onContext} />
+        <DirectoryNode key={child.relativePath} sessionId={sessionId} entry={child} depth={depth + 1} activePath={activePath} onContext={onContext} marks={marks} />
       ))}
     </>
   )
@@ -80,6 +117,7 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
 
   const openDocument = useGoIDEStore((state) => state.openDocument)
   const updateLayout = useGoIDEStore((state) => state.updateLayout)
+  const marks = useTreeMarks(session.id)
   const [menu, setMenu] = useState<{ entry: GoIDEFileEntry; x: number; y: number } | null>(null)
   const onContext = useCallback<TreeContextHandler>((entry, x, y) => setMenu({ entry, x, y }), [])
   const menuItems = (entry: GoIDEFileEntry): ContextMenuItem[] => [
@@ -119,7 +157,7 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
           <span className="shrink-0 font-semibold text-text-1">{session.project.name}</span>
           <span className="truncate text-[11px] text-text-4">{session.project.rootPath}</span>
         </div>
-        {entries.map((entry) => <DirectoryNode key={entry.relativePath} sessionId={session.id} entry={entry} depth={2} activePath={activePath} onContext={onContext} />)}
+        {entries.map((entry) => <DirectoryNode key={entry.relativePath} sessionId={session.id} entry={entry} depth={2} activePath={activePath} onContext={onContext} marks={marks} />)}
         {entries.length === 0 && <p className="px-4 py-3 text-[11px] text-text-4">This folder is empty.</p>}
       </div>
       <div className="shrink-0 px-4 py-2 text-[10.5px] leading-4 text-text-4">

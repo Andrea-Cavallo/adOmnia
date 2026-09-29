@@ -249,29 +249,29 @@
 
 ## File explorer
 
-- [ ] Git decorations.
-- [ ] Diagnostics decorations.
-- [ ] Test status decorations.
-- [ ] File icon pack completo.
-- [ ] Go file.
-- [ ] Mod file.
-- [ ] Sum file.
-- [ ] Work file.
-- [ ] Proto.
-- [ ] YAML.
-- [ ] JSON.
-- [ ] XML.
-- [ ] SQL.
-- [ ] Dockerfile.
-- [ ] Makefile.
-- [ ] Markdown.
-- [ ] Env.
-- [ ] Shell.
-- [ ] PowerShell.
-- [ ] JavaScript/TypeScript.
-- [ ] Terraform.
-- [ ] Helm.
-- [ ] Kubernetes manifests.
+- [x] Git decorations. — *nome colorato come in JetBrains (modificato, aggiunto, non tracciato, conflitto), anche sulle cartelle.*
+- [x] Diagnostics decorations. — *sottolineatura rossa/ambra su file e cartelle che contengono errori o avvisi.*
+- [x] Test status decorations. — *pallino rosso sui file (e cartelle) con test falliti nell’ultima esecuzione.*
+- [x] File icon pack completo. — *marchi reali dove esistono, icone generiche dedicate altrove.*
+- [x] Go file.
+- [x] Mod file.
+- [x] Sum file.
+- [x] Work file.
+- [x] Proto. — *icona schema dedicata.*
+- [x] YAML.
+- [x] JSON.
+- [x] XML.
+- [x] SQL. — *icona database.*
+- [x] Dockerfile.
+- [x] Makefile.
+- [x] Markdown.
+- [x] Env.
+- [x] Shell.
+- [x] PowerShell. — *icona terminale (Simple Icons non ha il marchio).*
+- [x] JavaScript/TypeScript.
+- [x] Terraform.
+- [x] Helm.
+- [x] Kubernetes manifests. — *riconosciuti da nome (deployment, service, kustomization…) e cartella (k8s/, manifests/…).*
 
 ---
 
