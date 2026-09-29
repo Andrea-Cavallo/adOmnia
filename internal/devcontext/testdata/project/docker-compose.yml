@@ -1,0 +1,7 @@
+services:
+  db:
+    image: postgres:16
+    ports: ["5432:5432"]
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_DB: ${POSTGRES_DB}
