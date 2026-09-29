@@ -233,11 +233,6 @@ func debugOutput(recorder *eventRecorder, id DebugSessionID) string {
 	return text.String()
 }
 
-func processExists(fragment string) bool {
-	output, err := exec.Command("pgrep", "-f", fragment).Output()
-	return err == nil && len(strings.TrimSpace(string(output))) > 0
-}
-
 func TestDebugTitleIsReadable(t *testing.T) {
 	cases := map[string]DebugRequest{
 		"main":             {Mode: "debug", Target: "."},

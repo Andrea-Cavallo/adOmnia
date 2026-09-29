@@ -225,8 +225,10 @@ func (m *DebugManager) Start(launch debugLaunch) (DebugSessionInfo, error) {
 	m.sessions[session.info.ID] = session
 	m.mu.Unlock()
 	m.publishState(session)
+	// Copia presa prima di avviare la goroutine che aggiorna lo stato: leggerla dopo sarebbe un data race.
+	info := session.info
 	go m.run(session, launch, stdout)
-	return session.info, nil
+	return info, nil
 }
 
 // startRemote si collega a un server Delve già in ascolto: nessun processo locale da avviare o chiudere.
@@ -239,8 +241,9 @@ func (m *DebugManager) startRemote(launch debugLaunch) DebugSessionInfo {
 	m.sessions[session.info.ID] = session
 	m.mu.Unlock()
 	m.publishState(session)
+	info := session.info
 	go m.connect(session, launch, launch.request.Address)
-	return session.info
+	return info
 }
 
 func (m *DebugManager) run(session *debugger, launch debugLaunch, stdout io.Reader) {
