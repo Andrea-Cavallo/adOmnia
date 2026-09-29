@@ -217,19 +217,19 @@ sniff) → `contract {type: oas}` plus one `route` per `paths` operation
 
 ## Tasks
 
-- [ ] P0: `lib/entities` types, router, parked request + Vitest
-- [ ] P0: palette deep links dispatched through the router
-- [ ] P1: `internal/devcontext` model, merge, walk limits
-- [ ] P1: detectors `gomod`, `compose`, `dotenv` (+ masking)
-- [ ] P1: detector `contracts` (OAS routes, proto, wsdl)
-- [ ] P1: detector `goroutes`
-- [ ] P1: detector `goliterals` (getenv, SQL tables, topics)
-- [ ] P1: lifecycle (cache, invalidate on save, stale check, coalescing, event)
-- [ ] P1: binding + `main.go` registration + generated TS bindings
-- [ ] Frontend: `devcontext-api.ts`, `stores/devcontext.ts`
-- [ ] Frontend: openers v1 for all kinds in the table
-- [ ] Frontend: palette Project + Symbols groups, `Tab` actions, `Ctrl+K`/`Ctrl+P`
-- [ ] Docs: feature catalog, ISSUES.md, AGENTS.md (router usage for new panels)
+- [x] P0: `lib/entities` types, router, parked request + Vitest
+- [x] P0: palette deep links dispatched through the router
+- [x] P1: `internal/devcontext` model, merge, walk limits
+- [x] P1: detectors `gomod`, `compose`, `dotenv` (+ masking)
+- [x] P1: detector `contracts` (OAS routes, proto, wsdl)
+- [x] P1: detector `goroutes`
+- [x] P1: detector `goliterals` (getenv, SQL tables, topics)
+- [x] P1: lifecycle (cache, invalidate on save, stale check, coalescing, event)
+- [x] P1: binding + `main.go` registration + generated TS bindings
+- [x] Frontend: `devcontext-api.ts`, `stores/devcontext.ts`
+- [x] Frontend: openers v1 for all kinds in the table
+- [x] Frontend: palette Project + Symbols groups, `Tab` actions, `Ctrl+K`/`Ctrl+P`
+- [x] Docs: feature catalog, ISSUES.md, AGENTS.md (router usage for new panels)
 - [ ] Manual smoke on a real project
 
 ## Out of scope

@@ -52,7 +52,7 @@
 **Interfaces:**
 - Produces: `Entity`, `Source`, `Snapshot`, `ConfidenceCertain`, `ConfidenceInferred`, `entity(kind, key, label, confidence string, attrs map[string]string, src Source) Entity`, `merge(groups ...[]Entity) []Entity`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```go
 package devcontext
@@ -96,12 +96,12 @@ func TestMergeEmptyIsNonNil(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/devcontext/ -run TestMerge -v`
 Expected: FAIL — `undefined: entity` / package has no non-test Go files.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```go
 // Package devcontext builds the project context of a gO session: the
@@ -192,12 +192,12 @@ func merge(groups ...[]Entity) []Entity {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `go test ./internal/devcontext/ -run TestMerge -v`
 Expected: PASS (2 tests).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/devcontext/types.go internal/devcontext/types_test.go
@@ -223,7 +223,7 @@ git commit -m "feat(devcontext): entity model and source-preserving merge"
   - `documentNode(n *yaml.Node) *yaml.Node`, `mappingValue(n *yaml.Node, key string) *yaml.Node`
   - `isDotenv(base string) bool`, `isCompose(base string) bool`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```go
 package devcontext
@@ -393,12 +393,12 @@ func TestFileNameMatchers(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `go test ./internal/devcontext/ -run 'TestDetectGoMod|TestDetectDotenv|TestDetectCompose|TestImageType|TestFileNameMatchers' -v`
 Expected: FAIL — `undefined: detectGoMod` (and the other detectors).
 
-- [ ] **Step 3: Write `gomod.go`**
+- [x] **Step 3: Write `gomod.go`**
 
 ```go
 package devcontext
@@ -423,7 +423,7 @@ func detectGoMod(rel string, data []byte) ([]Entity, error) {
 }
 ```
 
-- [ ] **Step 4: Write `dotenv.go`**
+- [x] **Step 4: Write `dotenv.go`**
 
 ```go
 package devcontext
@@ -540,7 +540,7 @@ func datasource(typ, host, port, user, database, confidence string, src Source) 
 }
 ```
 
-- [ ] **Step 5: Write `compose.go`**
+- [x] **Step 5: Write `compose.go`**
 
 ```go
 package devcontext
@@ -759,12 +759,12 @@ func mappingValue(n *yaml.Node, key string) *yaml.Node {
 }
 ```
 
-- [ ] **Step 6: Run tests to verify they pass**
+- [x] **Step 6: Run tests to verify they pass**
 
 Run: `go test ./internal/devcontext/ -v`
 Expected: PASS (all Task 1 + Task 2 tests).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add internal/devcontext/
@@ -783,7 +783,7 @@ git commit -m "feat(devcontext): go.mod, .env and docker compose detectors with 
 - Consumes: `entity`, `documentNode`, `mappingValue` (Tasks 1–2).
 - Produces: `detectContractFile(rel string, data []byte) ([]Entity, error)`, `detectOpenAPI(rel string, data []byte) ([]Entity, error)`, `routeEntity(method, rawPath, confidence string, attrs map[string]string, src Source) Entity` (ID `route:<METHOD> <normalized path>`, attrs `method`, `path`), `normalizePath(p string) string`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```go
 package devcontext
@@ -866,12 +866,12 @@ func TestDetectContractFile(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/devcontext/ -run 'TestNormalizePath|TestDetectOpenAPI|TestDetectContractFile' -v`
 Expected: FAIL — `undefined: normalizePath`.
 
-- [ ] **Step 3: Write `routes_path.go`**
+- [x] **Step 3: Write `routes_path.go`**
 
 ```go
 package devcontext
@@ -917,7 +917,7 @@ func routeEntity(method, rawPath, confidence string, attrs map[string]string, sr
 }
 ```
 
-- [ ] **Step 4: Write `contracts.go`**
+- [x] **Step 4: Write `contracts.go`**
 
 ```go
 package devcontext
@@ -985,12 +985,12 @@ func detectOpenAPI(rel string, data []byte) ([]Entity, error) {
 }
 ```
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 Run: `go test ./internal/devcontext/ -v`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add internal/devcontext/
@@ -1009,7 +1009,7 @@ git commit -m "feat(devcontext): OpenAPI, proto and WSDL contract detection"
 - Consumes: `routeEntity` (Task 3).
 - Produces: `detectRoutes(rel string, fset *token.FileSet, file *ast.File) []Entity`; route attrs `handler`, `handlerFile`, `handlerLine`, optional `partialPrefix="true"`; `stringLit(e ast.Expr) (string, bool)`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```go
 package devcontext
@@ -1095,12 +1095,12 @@ func keys(m map[string]Entity) []string {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/devcontext/ -run TestDetectRoutes -v`
 Expected: FAIL — `undefined: detectRoutes`.
 
-- [ ] **Step 3: Write `goroutes.go`**
+- [x] **Step 3: Write `goroutes.go`**
 
 ```go
 package devcontext
@@ -1309,12 +1309,12 @@ func stringLit(e ast.Expr) (string, bool) {
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `go test ./internal/devcontext/ -run TestDetectRoutes -v`
 Expected: PASS (2 tests). If `route:GET /accounts` is missing, check that `normalizePath` trims the trailing `/` produced by `/accounts` + `/`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/devcontext/
@@ -1333,7 +1333,7 @@ git commit -m "feat(devcontext): detect net/http, gin, echo, chi and gorilla rou
 - Consumes: `detectRoutes`, `stringLit`, `entity` (Tasks 1, 4).
 - Produces: `detectLiterals(rel string, fset *token.FileSet, file *ast.File) []Entity` (kinds `envvar`, `table`, `topic` with attr `broker`), `detectMain(rel string, fset *token.FileSet, file *ast.File) []Entity` (kind `service`, ID `service:go:<dir>`), `detectGoFile(rel string, data []byte) ([]Entity, error)`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```go
 package devcontext
@@ -1441,12 +1441,12 @@ func TestDetectGoFileMainAndBrokenSource(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/devcontext/ -run 'TestDetectEnvAndSQL|TestDetectTopics|TestTopicsNeed|TestDetectGoFile' -v`
 Expected: FAIL — `undefined: detectLiterals`.
 
-- [ ] **Step 3: Write `goliterals.go`**
+- [x] **Step 3: Write `goliterals.go`**
 
 ```go
 package devcontext
@@ -1670,7 +1670,7 @@ func (w *literalWalker) composite(lit *ast.CompositeLit) {
 }
 ```
 
-- [ ] **Step 4: Write `gofile.go`**
+- [x] **Step 4: Write `gofile.go`**
 
 ```go
 package devcontext
@@ -1718,12 +1718,12 @@ func detectMain(rel string, fset *token.FileSet, file *ast.File) []Entity {
 }
 ```
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 Run: `go test ./internal/devcontext/ -v`
 Expected: PASS (all tests so far).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add internal/devcontext/
@@ -1747,7 +1747,7 @@ git commit -m "feat(devcontext): detect env vars, SQL tables, broker topics and 
   - `NewManager(resolveRoot RootResolver, onChange ChangeFunc) *Manager`
   - `(*Manager).Get(sessionID) (Snapshot, error)`, `Rescan(sessionID) (Snapshot, error)`, `Invalidate(sessionID, rel string)`, `CheckStale(sessionID) (bool, error)`, `Drop(sessionID string)`, `ReadFile(sessionID, rel string) (string, error)`
 
-- [ ] **Step 1: Create the fixture project**
+- [x] **Step 1: Create the fixture project**
 
 `internal/devcontext/testdata/project/go.mod`:
 ```
@@ -1822,7 +1822,7 @@ package lib
 func r(m Mux) { m.HandleFunc("GET /vendored", h) }
 ```
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 ```go
 package devcontext
@@ -2002,12 +2002,12 @@ func TestManagerDropAndUnknownInvalidate(t *testing.T) {
 }
 ```
 
-- [ ] **Step 3: Run test to verify it fails**
+- [x] **Step 3: Run test to verify it fails**
 
 Run: `go test ./internal/devcontext/ -run TestManager -v`
 Expected: FAIL — `undefined: NewManager`.
 
-- [ ] **Step 4: Write `detect.go`**
+- [x] **Step 4: Write `detect.go`**
 
 ```go
 package devcontext
@@ -2085,7 +2085,7 @@ func detectFile(rel string, data []byte, env map[string]string) ([]Entity, []str
 }
 ```
 
-- [ ] **Step 5: Write `manager.go`**
+- [x] **Step 5: Write `manager.go`**
 
 ```go
 package devcontext
@@ -2441,12 +2441,12 @@ func rootEnv(root string) map[string]string {
 }
 ```
 
-- [ ] **Step 6: Run tests to verify they pass**
+- [x] **Step 6: Run tests to verify they pass**
 
 Run: `go test ./internal/devcontext/ -v`
 Expected: PASS (all). If `TestManagerCheckStaleFindsNewAndDeletedFiles` flakes on coarse filesystem timestamps, the `Chtimes` into the future already guarantees a differing mtime for the new file; deleted files are detected regardless of time.
 
-- [ ] **Step 7: Vet and commit**
+- [x] **Step 7: Vet and commit**
 
 Run: `go vet ./internal/devcontext/`
 Expected: no output.
@@ -2471,7 +2471,7 @@ git commit -m "feat(devcontext): per-session scan manager with incremental resca
 - Consumes: `devcontext.NewManager`, `Manager` methods (Task 6); `goide.EventEnvelope`, `goide.Document.RelativePath`, `goide.Session.Project.{RootPath,RealPath}`.
 - Produces: Wails service `DevContext` with `GetContext(sessionID) (devcontext.Snapshot, error)`, `RescanContext(sessionID) (devcontext.Snapshot, error)`, `CheckStale(sessionID) (bool, error)`, `ReadContextFile(sessionID, relPath string) (string, error)`; event `devcontext:changed {sessionId, version}`; `(*GoIDE).onServiceEvent(fn func(goide.EventEnvelope))`, `(*GoIDE).sessionRoot(sessionID string) (string, error)`. TS: `GetContext`, `RescanContext`, `CheckStale`, `ReadContextFile` in `frontend/bindings/adomnia/devcontext.ts`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```go
 package main
@@ -2515,12 +2515,12 @@ func TestDevContextReactsToGoIDEEvents(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test . -run TestDevContextReactsToGoIDEEvents -v`
 Expected: FAIL — `undefined: newDevContext`.
 
-- [ ] **Step 3: Write `devcontext_bindings.go`**
+- [x] **Step 3: Write `devcontext_bindings.go`**
 
 ```go
 package main
@@ -2588,7 +2588,7 @@ func (d *DevContext) ReadContextFile(sessionID, relPath string) (string, error) 
 }
 ```
 
-- [ ] **Step 4: Hook gO events and expose session roots in `goide_bindings.go`**
+- [x] **Step 4: Hook gO events and expose session roots in `goide_bindings.go`**
 
 Add a field to the `GoIDE` struct:
 
@@ -2641,7 +2641,7 @@ func (g *GoIDE) sessionRoot(sessionID string) (string, error) {
 
 Before relying on `event.Payload.(goide.Document)`, confirm in `internal/goide/service.go:297` that `document.saved` passes `document.Document` (a `goide.Document` value) — it does at the time of writing.
 
-- [ ] **Step 5: Register the service in `main.go`**
+- [x] **Step 5: Register the service in `main.go`**
 
 After `goIDE := NewGoIDE()` add:
 
@@ -2661,7 +2661,7 @@ After `goIDE.attachDesktop(desktopApp)` add:
 	devContext.attachDesktop(desktopApp)
 ```
 
-- [ ] **Step 6: Write the TS binding `frontend/bindings/adomnia/devcontext.ts`**
+- [x] **Step 6: Write the TS binding `frontend/bindings/adomnia/devcontext.ts`**
 
 ```ts
 // Hand-written until `wails3 generate bindings` runs in this environment.
@@ -2691,12 +2691,12 @@ export function ReadContextFile(sessionID: string, relPath: string): $Cancellabl
 
 In `frontend/bindings/adomnia/index.ts` add `import * as DevContext from "./devcontext.js";` after the `CollectionFS` import and `DevContext,` in the `export { … }` list after `CollectionFS,`.
 
-- [ ] **Step 7: Run tests and build**
+- [x] **Step 7: Run tests and build**
 
 Run: `go test . -run TestDevContextReactsToGoIDEEvents -v && go build ./... && go vet . ./internal/devcontext/`
 Expected: PASS, build OK, no vet output.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add devcontext_bindings.go devcontext_bindings_test.go goide_bindings.go main.go frontend/bindings/adomnia/devcontext.ts frontend/bindings/adomnia/index.ts
@@ -2722,7 +2722,7 @@ git commit -m "feat(devcontext): Wails DevContext service wired to gO save and c
   - `useEntityNotice` (zustand: `{ notice: EntityNoticeState | null }`), `showEntityNotice(message: string, action?: { label: string; run: () => void }): void`, `clearEntityNotice(): void`
   - `dispatchToPanel(rail: RailItem, eventName: string, detail?: Record<string, unknown>): void`, `handoffToPanel(rail: RailItem, ref: EntityRef, intent: string, payload?: Record<string, unknown>): void`, `useEntityHandoff(rail: RailItem, handler: (ref: EntityRef, intent: string, payload: Record<string, unknown>) => boolean | void): void`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -2776,12 +2776,12 @@ describe('entity router', () => {
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd frontend && npx vitest run src/lib/entities/router.test.ts`
 Expected: FAIL — cannot resolve `./router`.
 
-- [ ] **Step 3: Write `types.ts`**
+- [x] **Step 3: Write `types.ts`**
 
 ```ts
 export type EntityKind = 'module' | 'route' | 'service' | 'datasource' | 'envvar' | 'contract' | 'table' | 'topic' | 'symbol'
@@ -2806,7 +2806,7 @@ export interface Opener {
 }
 ```
 
-- [ ] **Step 4: Write `notice.ts`**
+- [x] **Step 4: Write `notice.ts`**
 
 ```ts
 import { create } from 'zustand'
@@ -2841,7 +2841,7 @@ export function clearEntityNotice(): void {
 }
 ```
 
-- [ ] **Step 5: Write `router.ts`**
+- [x] **Step 5: Write `router.ts`**
 
 ```ts
 import { showEntityNotice } from './notice'
@@ -2881,12 +2881,12 @@ export function clearOpeners(): void {
 }
 ```
 
-- [ ] **Step 6: Run router tests to verify they pass**
+- [x] **Step 6: Run router tests to verify they pass**
 
 Run: `cd frontend && npx vitest run src/lib/entities/router.test.ts`
 Expected: PASS (5 tests).
 
-- [ ] **Step 7: Write `dispatch.ts`** (moved from `CommandPalette.runInPanel`, plus the typed handoff)
+- [x] **Step 7: Write `dispatch.ts`** (moved from `CommandPalette.runInPanel`, plus the typed handoff)
 
 ```ts
 import { useEffect, useRef } from 'react'
@@ -2941,7 +2941,7 @@ export function useEntityHandoff(
 }
 ```
 
-- [ ] **Step 8: Use `dispatchToPanel` in `CommandPalette.tsx`**
+- [x] **Step 8: Use `dispatchToPanel` in `CommandPalette.tsx`**
 
 Delete the local `runInPanel` function (the `const runInPanel = (rail, eventName, extra) => { … }` block inside `useMemo`) and add at the top:
 
@@ -2951,7 +2951,7 @@ import { dispatchToPanel } from '@/lib/entities/dispatch'
 
 Replace the three call sites `runInPanel(` with `dispatchToPanel(` (Start Mock, Start Proxy, deep links). The behaviour is identical: `dispatchToPanel` calls `setActiveRail` itself.
 
-- [ ] **Step 9: Write `EntityNotice.tsx` and render it**
+- [x] **Step 9: Write `EntityNotice.tsx` and render it**
 
 ```tsx
 import { X } from 'lucide-react'
@@ -2983,7 +2983,7 @@ export function EntityNotice() {
 
 In `frontend/src/App.tsx`, import `{ EntityNotice }` from `@/components/layout/EntityNotice` and render `<EntityNotice />` right after the `{commandPaletteOpen && …<CommandPalette …/>…}` line (App.tsx:199).
 
-- [ ] **Step 10: Typecheck, test, commit**
+- [x] **Step 10: Typecheck, test, commit**
 
 Run: `cd frontend && npx tsc --noEmit -p . && npx vitest run src/lib/entities`
 Expected: no type errors; PASS.
@@ -3010,7 +3010,7 @@ git commit -m "feat(entities): typed entity router, panel handoff and notice bar
   - `useDevContextStore`: `{ snapshots: Record<string, DevSnapshot>; errors: Record<string, string>; ensure(id): Promise<void>; load(id): Promise<void>; rescan(id): Promise<void>; checkStale(id): Promise<void> }`
   - `startDevContextSync(): () => void`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 import { describe, expect, it } from 'vitest'
@@ -3036,12 +3036,12 @@ describe('entityRefFrom', () => {
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd frontend && npx vitest run src/lib/entities/entityRef.test.ts`
 Expected: FAIL — cannot resolve `../devcontext-api`.
 
-- [ ] **Step 3: Write `lib/devcontext-api.ts`**
+- [x] **Step 3: Write `lib/devcontext-api.ts`**
 
 ```ts
 import * as DevContextBindings from '../../bindings/adomnia/devcontext'
@@ -3087,7 +3087,7 @@ export function entityRefFrom(entity: DevEntity, sessionId: string): EntityRef {
 }
 ```
 
-- [ ] **Step 4: Write `stores/devcontext.ts`**
+- [x] **Step 4: Write `stores/devcontext.ts`**
 
 ```ts
 import { create } from 'zustand'
@@ -3152,7 +3152,7 @@ export function startDevContextSync(): () => void {
 
 Note: `Events.On` returns an unsubscribe function in `@wailsio/runtime` (same usage as `lib/goide-api.ts:206`).
 
-- [ ] **Step 5: Start the sync in `App.tsx`**
+- [x] **Step 5: Start the sync in `App.tsx`**
 
 Add imports `import { startDevContextSync } from '@/stores/devcontext'` and add a new effect next to the existing ones (App.tsx ~line 78):
 
@@ -3160,7 +3160,7 @@ Add imports `import { startDevContextSync } from '@/stores/devcontext'` and add 
   useEffect(() => startDevContextSync(), [])
 ```
 
-- [ ] **Step 6: Typecheck, test, commit**
+- [x] **Step 6: Typecheck, test, commit**
 
 Run: `cd frontend && npx tsc --noEmit -p . && npx vitest run src/lib/entities`
 Expected: PASS.
@@ -3183,7 +3183,7 @@ git commit -m "feat(devcontext): frontend API, per-session store and live sync"
 - Consumes: router (Task 8), `readDevContextFile` (Task 9), `handoffToPanel`, `useGoIDEStore.openLocation(relativePath, line, column?)`, `useTabsStore.newTab/updateRequest/activeTabId`, `useEnvironmentsStore.{environments, activeEnvId, updateVariables}`, `createMockEndpointFromRequest`, `appendMockEndpoints`, `blankRequest`.
 - Produces: `httpMethodForRoute(method: string): HttpMethod`, `requestUrlForRoute(path: string): string`, `mockPathForRoute(path: string): string`, `withBaseUrl(variables: EnvVariable[], url: string): EnvVariable[]`, `registerDefaultOpeners(): () => void`. Handoff intents for Task 11: `database/connect`, `database/query`, `broker/connect`, `broker/open`, `apidocs/open`, `grpc/open`, `soap/open` (payload `{ text, name }` for the last three).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 import { describe, expect, it } from 'vitest'
@@ -3213,12 +3213,12 @@ describe('route → request helpers', () => {
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd frontend && npx vitest run src/lib/entities/routeRequest.test.ts`
 Expected: FAIL — cannot resolve `./routeRequest`.
 
-- [ ] **Step 3: Write `routeRequest.ts`**
+- [x] **Step 3: Write `routeRequest.ts`**
 
 ```ts
 import type { EnvVariable, HttpMethod } from '@/lib/types'
@@ -3248,12 +3248,12 @@ export function withBaseUrl(variables: EnvVariable[], url: string): EnvVariable[
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd frontend && npx vitest run src/lib/entities/routeRequest.test.ts`
 Expected: PASS (4 tests).
 
-- [ ] **Step 5: Write `openers.ts`**
+- [x] **Step 5: Write `openers.ts`**
 
 ```ts
 import { blankRequest } from '@/lib/types'
@@ -3356,7 +3356,7 @@ export function registerDefaultOpeners(): () => void {
 
 Before relying on `updateRequest(tabId, request)` and `newTab(method)` setting `activeTabId`, confirm `stores/tabs.ts:491` (`newTab` sets `activeTabId: tab.id`) and `stores/tabs.ts:567` — both hold at the time of writing.
 
-- [ ] **Step 6: Register in `App.tsx`**
+- [x] **Step 6: Register in `App.tsx`**
 
 Import `{ registerDefaultOpeners }` from `@/lib/entities/openers` and add next to the sync effect:
 
@@ -3364,7 +3364,7 @@ Import `{ registerDefaultOpeners }` from `@/lib/entities/openers` and add next t
   useEffect(() => registerDefaultOpeners(), [])
 ```
 
-- [ ] **Step 7: Typecheck, test, commit**
+- [x] **Step 7: Typecheck, test, commit**
 
 Run: `cd frontend && npx tsc --noEmit -p . && npx vitest run src/lib/entities`
 Expected: PASS.
@@ -3388,7 +3388,7 @@ git commit -m "feat(entities): v1 openers for routes, services, env vars, contra
 - Consumes: `useEntityHandoff` (Task 8), intents from Task 10, `showEntityNotice`.
 - Produces: `upsertConnectionFromRef(connections: DbConnection[], ref: EntityRef): { connections: DbConnection[]; id: string; created: boolean }`.
 
-- [ ] **Step 1: Write the failing test** (append to `dbShared.test.ts`)
+- [x] **Step 1: Write the failing test** (append to `dbShared.test.ts`)
 
 ```ts
 import { upsertConnectionFromRef, blankConnection } from './dbShared'
@@ -3419,12 +3419,12 @@ describe('upsertConnectionFromRef', () => {
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd frontend && npx vitest run src/components/database/dbShared.test.ts`
 Expected: FAIL — `upsertConnectionFromRef` is not exported.
 
-- [ ] **Step 3: Add `upsertConnectionFromRef` to `dbShared.tsx`**
+- [x] **Step 3: Add `upsertConnectionFromRef` to `dbShared.tsx`**
 
 ```ts
 import type { EntityRef } from '@/lib/entities/types'
@@ -3444,12 +3444,12 @@ export function upsertConnectionFromRef(connections: DbConnection[], ref: Entity
 
 `localhost` is normalised to `127.0.0.1` (matches `blankConnection`, avoids IPv6 resolution on Windows).
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd frontend && npx vitest run src/components/database/dbShared.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Wire `DatabasePanel.tsx`**
+- [x] **Step 5: Wire `DatabasePanel.tsx`**
 
 Imports: `useEntityHandoff` from `@/lib/entities/dispatch`, `showEntityNotice` from `@/lib/entities/notice`, `upsertConnectionFromRef` from `./dbShared`.
 
@@ -3480,7 +3480,7 @@ Inside `DatabasePanel`, after `addConnection`:
 
 (`active` is the existing derived active connection used by `updateActive`; if its name differs in the file, use that variable.)
 
-- [ ] **Step 6: Wire Broker Studio and Kafka**
+- [x] **Step 6: Wire Broker Studio and Kafka**
 
 In `BrokerStudioPanel.tsx` (inside `BrokerStudioPanel`, after `selectConnection`):
 
@@ -3512,7 +3512,7 @@ In `KafkaPanel.tsx` (inside `KafkaPanel`, after the `cfg` state):
 
 Imports in both files: `useEntityHandoff` from `@/lib/entities/dispatch`; `showEntityNotice` from `@/lib/entities/notice` (BrokerStudio only).
 
-- [ ] **Step 7: Wire gRPC, SOAP, API Docs**
+- [x] **Step 7: Wire gRPC, SOAP, API Docs**
 
 `GrpcPanel.tsx` (inside `GrpcPanel`, after `handleProtoFile`):
 
@@ -3543,7 +3543,7 @@ Imports in both files: `useEntityHandoff` from `@/lib/entities/dispatch`; `showE
 
 Each file imports `useEntityHandoff` from `@/lib/entities/dispatch`.
 
-- [ ] **Step 8: Typecheck, test, commit**
+- [x] **Step 8: Typecheck, test, commit**
 
 Run: `cd frontend && npx tsc --noEmit -p . && npx vitest run src/components/database src/lib/entities`
 Expected: PASS.
@@ -3566,7 +3566,7 @@ git commit -m "feat(entities): Database, Broker, gRPC, SOAP and API Docs accept 
 - Consumes: `DevSnapshot`, `entityRefFrom` (Task 9), `actionsFor`, `openEntity` (Task 8), `requestWorkspaceSymbols(sessionId, query)` and `GoIDEWorkspaceSymbol` (`lib/goide-lsp-api.ts`), `fuzzyScore`.
 - Produces: `interface EntityPaletteItem { id: string; title: string; subtitle: string; keywords: string; ref: EntityRef }`, `entityPaletteItems(snapshot: DevSnapshot): EntityPaletteItem[]`, `symbolPaletteItems(symbols: GoIDEWorkspaceSymbol[], sessionId: string): EntityPaletteItem[]`, `KIND_LABELS: Record<EntityKind, string>`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 import { describe, expect, it } from 'vitest'
@@ -3605,12 +3605,12 @@ describe('palette items', () => {
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd frontend && npx vitest run src/lib/entities/paletteItems.test.ts`
 Expected: FAIL — cannot resolve `./paletteItems`.
 
-- [ ] **Step 3: Write `paletteItems.ts`**
+- [x] **Step 3: Write `paletteItems.ts`**
 
 ```ts
 import { entityRefFrom, type DevSnapshot } from '../devcontext-api'
@@ -3662,12 +3662,12 @@ export function symbolPaletteItems(symbols: GoIDEWorkspaceSymbol[], sessionId: s
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd frontend && npx vitest run src/lib/entities/paletteItems.test.ts`
 Expected: PASS (3 tests).
 
-- [ ] **Step 5: Integrate into `CommandPalette.tsx`**
+- [x] **Step 5: Integrate into `CommandPalette.tsx`**
 
 Imports:
 
@@ -3775,7 +3775,7 @@ Footer: add `<span><kbd className="text-text-3">Tab</kbd> {tr('actions')}</span>
 
 The component will be ~310 lines; that is acceptable (extraction of the entity mapping already lives in `paletteItems.ts`). If it exceeds 330, move `KIND_ICONS` + `toCommand` into `components/layout/paletteEntityCommands.ts`.
 
-- [ ] **Step 6: Typecheck, full test run, build, commit**
+- [x] **Step 6: Typecheck, full test run, build, commit**
 
 Run: `cd frontend && npx tsc --noEmit -p . && npm test && npm run build`
 Expected: all Vitest suites PASS, build succeeds.
@@ -3792,7 +3792,7 @@ git commit -m "feat(palette): Project and Symbols groups with Tab entity actions
 **Files:**
 - Modify: `docs/adomnia-feature-catalog.en.md` (new section under G. Platform: "G4. Developer Context & Entity Router"), `docs/ISSUES.md` (status line), `AGENTS.md` (how a panel registers an opener / handoff)
 
-- [ ] **Step 1: Feature catalog entry** — add after the `### G3.` section:
+- [x] **Step 1: Feature catalog entry** — add after the `### G3.` section:
 
 ```markdown
 ### G4. Developer Context & Entity Router
@@ -3806,7 +3806,7 @@ git commit -m "feat(palette): Project and Symbols groups with Tab entity actions
 | G4.5 | **Entity actions** | Route → Send in API Client / Go to handler / Add to Mock; service → use as baseUrl (confirm); datasource → Database or Broker Studio (no password copied); contract → API Docs / gRPC / SOAP; table → query; topic → Broker Studio; any item → open source in gO. |
 ```
 
-- [ ] **Step 2: `AGENTS.md`** — add a short "Entity router" subsection:
+- [x] **Step 2: `AGENTS.md`** — add a short "Entity router" subsection:
 
 ```markdown
 ### Entity router (cross-panel navigation)
@@ -3817,9 +3817,9 @@ New cross-panel actions go through `frontend/src/lib/entities/`, not new `Custom
 Project entities come from `internal/devcontext` (Go) via `stores/devcontext.ts`.
 ```
 
-- [ ] **Step 3: `docs/ISSUES.md`** — add under the active work queue: `- [x] Developer Context P0+P1 (entity router, project context, palette Project/Symbols) — feat/goide-phase3, 2026-09-28. Next: P2 gO code lenses + env resolver.`
+- [x] **Step 3: `docs/ISSUES.md`** — add under the active work queue: `- [x] Developer Context P0+P1 (entity router, project context, palette Project/Symbols) — feat/goide-phase3, 2026-09-28. Next: P2 gO code lenses + env resolver.`
 
-- [ ] **Step 4: Full verification**
+- [x] **Step 4: Full verification**
 
 Run: `go test ./... && go vet ./... && cd frontend && npx tsc --noEmit -p . && npm test && npm run build`
 Expected: all green. Record the counts in the commit message body if anything was skipped.
@@ -3836,7 +3836,7 @@ Expected: all green. Record the counts in the commit message body if anything wa
   - In gO, `Ctrl+P` still opens gO Quick Open; `Ctrl+K` opens the global palette.
   - Light and dark theme: notice bar and palette rows use tokens and stay readable.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add docs/adomnia-feature-catalog.en.md docs/ISSUES.md AGENTS.md
