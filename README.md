@@ -2,11 +2,19 @@
 
 ![adOmnia banner](assets/images/banner.png)
 
-**A local-first alternative to cloud API platforms — now with gO Studio, a full Go IDE.**
+## Everything a developer needs. One local workspace.
 
-Build, debug and ship APIs, then write the Go services behind them in the same app. adOmnia brings REST, SOAP, gRPC, Kafka, mocks, proxy, browser debugging, logs, databases, Git and a complete Go IDE into one desktop application for Windows, macOS and Linux. No account, no telemetry: your workspace stays on your machine, and optional AI connects to a provider you choose.
+**adOmnia is an all-in-one, local-first desktop workspace for building, running and debugging software.**
 
-**Your APIs. Your code. Your secrets. Your machine.**
+Design and test APIs, write and debug the services behind them, inspect traffic, trace browser behavior, query databases, manage Git and troubleshoot distributed systems — without switching between a dozen tools.
+
+adOmnia brings together REST, GraphQL, SOAP, gRPC, WebSocket, Kafka and other brokers, mocks, an intercepting proxy, browser debugging, log analysis, database explorers, Git and developer utilities. **gO Studio**, the integrated Go IDE, completes the picture with gopls, Delve debugging, tests, coverage and a real terminal.
+
+From the first request to the code that serves it, the whole loop happens in one place.
+
+**One app. One workflow. Your entire development toolbox.**
+
+Available for Windows, macOS and Linux. No account required, no telemetry. Your projects and credentials stay on your machine; optional AI connects only to the provider you choose.
 
 [![Release](https://img.shields.io/github/v/release/Andrea-Cavallo/adOmnia?color=8A2BE2)](https://github.com/Andrea-Cavallo/adOmnia/releases/latest)
 [![Build](https://img.shields.io/github/actions/workflow/status/Andrea-Cavallo/adOmnia/build.yml?branch=master&label=build)](https://github.com/Andrea-Cavallo/adOmnia/actions/workflows/build.yml)
@@ -16,6 +24,10 @@ Build, debug and ship APIs, then write the Go services behind them in the same a
 [Download](#download) · [Capabilities](#capabilities) · [Workflows](#workflows) · [AI](#ai-and-a0) · [CLI](#command-line-and-ci) · [Development](#development) · [Documentation](#documentation)
 
 ![adOmnia API workspace with request editing and response inspection](assets/images/adOmniaInterface1.png)
+
+![gO Studio, the Go IDE inside adOmnia: project tree, editor with gutter run actions and the Run console after go run](assets/images/go-ide.png)
+
+*gO Studio: open a real Go project, run it with the ▶ next to `func main`, and read its output in the Run console. Makefile targets, Dockerfiles and docker compose services run from the same gutter.*
 
 ## Download
 
@@ -50,7 +62,7 @@ Requests at workspace root appear outside your named collections and persist wit
 
 | Workspace | Highlights |
 | --- | --- |
-| **gO Studio (Go IDE)** — new | Open and trust real Go projects; gopls completion, navigation, refactoring and diagnostics; golangci-lint/staticcheck; build, run, tests with coverage, the Delve debugger and a real terminal; Git in the editor; Fix with AI; links to Docker Lab, Database/Broker Studio and the API Client. |
+| **gO Studio (Go IDE)** | Open and trust real Go projects; gopls completion, navigation, refactoring and diagnostics; golangci-lint/staticcheck; build, run, tests with coverage, the Delve debugger and a real terminal; Makefile targets, Dockerfile build & run and docker compose from the gutter; Git in the editor; Fix with AI; links to Docker Lab, Database/Broker Studio and the API Client. |
 | **API requests and design** | REST, GraphQL, environments, authentication, scripts, assertions, response history, code generation, Postman/cURL/OpenAPI import, visual OpenAPI editing and governance checks. |
 | **Testing and flows** | Collection runner, CSV datasets, visual tests, recorded and AI-assisted flows, response-to-request variables, failure branches, contract checks and flow stress testing with latency, throughput and APDEX gates. |
 | **Protocols and brokers** | SOAP/WSDL, gRPC, WebSocket, SSE, Kafka, RabbitMQ, MQTT, Redis Pub/Sub and NATS, with saved connections and message inspection. |
