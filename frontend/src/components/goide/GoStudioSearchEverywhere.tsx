@@ -12,7 +12,7 @@ import { GO_STUDIO_COMMANDS, formatBinding, type GoStudioCommand, type GoStudioC
 import { GoGopherIcon, isGoSource } from './GoGopherIcon'
 import { GoStudioSymbolIcon } from './GoStudioSymbolIcon'
 import { navigateToLocation } from './goStudioLanguageFeatures'
-import { matchScore, rankCandidates } from './goStudioSearchEverywhere'
+import { matchScore, rankCandidates } from './goStudioSearchRanking'
 
 const SEARCH_DEBOUNCE_MS = 120
 const FILE_LIMIT = 8

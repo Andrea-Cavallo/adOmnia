@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createDoubleShiftDetector, matchScore, rankCandidates } from './goStudioSearchEverywhere'
+import { createDoubleShiftDetector, matchScore, rankCandidates } from './goStudioSearchRanking'
 
 describe('matchScore', () => {
   it('prefers prefix, then word start, then substring, then subsequence', () => {
