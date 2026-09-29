@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ComponentType } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronRight } from 'lucide-react'
+import { Check, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export interface ContextMenuItem {
@@ -12,7 +12,16 @@ export interface ContextMenuItem {
   disabledReason?: string
   submenu?: ContextMenuItem[]
   separatorBefore?: boolean
+  /** Icona a sinistra dell'etichetta (lucide o compatibile). */
+  icon?: ComponentType<{ size?: number; className?: string }>
+  /** Colore semantico dell'icona, es. `text-success` per Run. */
+  iconClassName?: string
+  /** Opzione attiva: mostra un segno di spunta a destra. */
+  checked?: boolean
 }
+
+/** `studio`: menu arrotondato con icone e scorciatoie a tasto, usato da Go Studio. */
+export type ContextMenuAppearance = 'default' | 'studio'
 
 interface ContextMenuProps {
   x: number
@@ -20,6 +29,7 @@ interface ContextMenuProps {
   items: ContextMenuItem[]
   onSelect: (id: string) => void
   onClose: () => void
+  appearance?: ContextMenuAppearance
 }
 
 const MENU_WIDTH = 232
@@ -67,7 +77,7 @@ export function isContextMenuBackdrop(target: EventTarget | null, currentTarget:
  * Keyboard: ↑/↓ move, → open submenu, ← close submenu, Enter activate,
  * Escape close, and disabled items are skipped.
  */
-export function ContextMenu({ x, y, items, onSelect, onClose }: ContextMenuProps) {
+export function ContextMenu({ x, y, items, onSelect, onClose, appearance = 'default' }: ContextMenuProps) {
   // Close when focus leaves the app or the viewport changes. Backdrop clicks
   // are handled by the portal overlay because it covers the full viewport.
   useEffect(() => {
@@ -97,6 +107,7 @@ export function ContextMenu({ x, y, items, onSelect, onClose }: ContextMenuProps
         y={y}
         depth={0}
         autoFocus
+        appearance={appearance}
         onSelect={onSelect}
         onClose={onClose}
       />
@@ -111,11 +122,14 @@ interface MenuLevelProps {
   y: number
   depth: number
   autoFocus?: boolean
+  appearance: ContextMenuAppearance
   onSelect: (id: string) => void
   onClose: () => void
 }
 
-function MenuLevel({ items, x, y, depth, autoFocus, onSelect, onClose }: MenuLevelProps) {
+function MenuLevel({ items, x, y, depth, autoFocus, appearance, onSelect, onClose }: MenuLevelProps) {
+  const studio = appearance === 'studio'
+  const hasIcons = items.some((item) => item.icon)
   const ref = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
   const [active, setActive] = useState<number>(-1)
@@ -205,11 +219,13 @@ function MenuLevel({ items, x, y, depth, autoFocus, onSelect, onClose }: MenuLev
         tabIndex={-1}
         onKeyDown={onKeyDown}
         style={{ left: pos?.left ?? x, top: pos?.top ?? y, minWidth: MENU_WIDTH, maxWidth: MENU_MAX_WIDTH, visibility: pos ? 'visible' : 'hidden' }}
-        className="fixed max-h-[78vh] overflow-y-auto rounded-md border border-border-1 bg-surface-1 py-1 shadow-2xl outline-none"
+        className={studio
+          ? 'fixed max-h-[80vh] overflow-y-auto rounded-xl border border-border-2 bg-surface-1 p-1 shadow-[0_18px_48px_-12px_rgb(0_0_0/0.65)] outline-none'
+          : 'fixed max-h-[78vh] overflow-y-auto rounded-md border border-border-1 bg-surface-1 py-1 shadow-2xl outline-none'}
       >
         {items.map((it, index) => (
           <div key={it.id} data-mi>
-            {it.separatorBefore && <div className="my-1 h-px bg-border-1/70" />}
+            {it.separatorBefore && <div className={studio ? 'mx-2 my-1 h-px bg-border-1' : 'my-1 h-px bg-border-1/70'} />}
             <button
               role="menuitem"
               type="button"
@@ -217,9 +233,10 @@ function MenuLevel({ items, x, y, depth, autoFocus, onSelect, onClose }: MenuLev
               disabled={it.disabled}
               aria-haspopup={it.submenu?.length ? 'menu' : undefined}
               aria-expanded={it.submenu?.length ? openIndex === index : undefined}
+              aria-checked={it.checked === undefined ? undefined : it.checked}
               onMouseEnter={() => { setActive(index); if (it.submenu) setOpenIndex(index); else setOpenIndex(-1) }}
               onClick={() => activate(index)}
-              className={cn(
+              className={studio ? studioItemClass(it, active === index || openIndex === index) : cn(
                 'flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors',
                 it.disabled
                   ? 'cursor-not-allowed text-text-4/60'
@@ -229,9 +246,13 @@ function MenuLevel({ items, x, y, depth, autoFocus, onSelect, onClose }: MenuLev
                 active === index && !it.disabled && (it.danger ? 'bg-error/10' : 'bg-surface-2 text-text-1'),
               )}
             >
+              {hasIcons && <MenuIcon item={it} studio={studio} />}
               <span className="min-w-0 flex-1 truncate">{it.label}</span>
-              {it.shortcut && <span className="shrink-0 font-mono text-[10px] text-text-4">{it.shortcut}</span>}
-              {it.submenu && it.submenu.length > 0 && <ChevronRight size={12} className="shrink-0 opacity-60" />}
+              {it.checked && <Check size={studio ? 14 : 12} className="shrink-0 text-accent" aria-hidden="true" />}
+              {it.shortcut && (studio
+                ? <kbd className={cn('shrink-0 rounded-[5px] border border-border-2 bg-surface-0/60 px-1.5 py-px font-mono text-[10.5px] leading-4 text-text-3', it.disabled && 'opacity-40')}>{it.shortcut}</kbd>
+                : <span className="shrink-0 font-mono text-[10px] text-text-4">{it.shortcut}</span>)}
+              {it.submenu && it.submenu.length > 0 && <ChevronRight size={studio ? 14 : 12} className="shrink-0 opacity-60" />}
             </button>
           </div>
         ))}
@@ -243,10 +264,30 @@ function MenuLevel({ items, x, y, depth, autoFocus, onSelect, onClose }: MenuLev
           x={openRect().x}
           y={openRect().y}
           depth={depth + 1}
+          appearance={appearance}
           onSelect={onSelect}
           onClose={() => setOpenIndex(-1)}
         />
       )}
     </>
   )
+}
+
+function studioItemClass(item: ContextMenuItem, highlighted: boolean): string {
+  if (item.disabled) return 'flex h-8 w-full cursor-not-allowed items-center gap-2.5 rounded-lg px-2.5 text-left text-[12.5px] text-text-4/70'
+  return cn(
+    'flex h-8 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-[12.5px] transition-colors',
+    item.danger ? 'text-error' : 'text-text-2',
+    highlighted && (item.danger
+      ? 'bg-error/10'
+      : 'bg-accent/15 text-text-1 shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--color-accent)_45%,transparent)]'),
+  )
+}
+
+/** Colonna icone: resta vuota per le voci senza icona, così le etichette restano allineate. */
+function MenuIcon({ item, studio }: { item: ContextMenuItem; studio: boolean }) {
+  const Icon = item.icon
+  if (!Icon) return <span className={studio ? 'w-4 shrink-0' : 'w-3.5 shrink-0'} aria-hidden="true" />
+  const tone = item.disabled ? 'opacity-50' : item.iconClassName ?? 'text-text-3'
+  return <span className={cn('grid shrink-0 place-items-center', studio ? 'w-4' : 'w-3.5', tone)} aria-hidden="true"><Icon size={studio ? 15 : 13} /></span>
 }

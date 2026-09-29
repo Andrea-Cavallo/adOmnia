@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Lock, Pin, X } from 'lucide-react'
+import { ArrowRightToLine, Columns2, Lock, Pin, RotateCcw, Rows2, SquareDashed, Trash2, X } from 'lucide-react'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
 import { GoStudioFileIcon } from './GoStudioFileIcon'
@@ -53,14 +53,14 @@ export function GoStudioEditorTabs({ documents, activeId, onRequestClose }: GoSt
   const items = (target: GoIDEEditorDocument): ContextMenuItem[] => {
     const index = ordered.findIndex((item) => item.document.id === target.document.id)
     return [
-      { id: 'pin', label: pinned[target.document.id] ? 'Unpin Tab' : 'Pin Tab' },
-      { id: 'close', label: 'Close', shortcut: 'Ctrl+W', separatorBefore: true },
-      { id: 'closeOthers', label: 'Close Other Tabs', disabled: ordered.length < 2 },
-      { id: 'closeRight', label: 'Close Tabs to the Right', disabled: index === ordered.length - 1 },
-      { id: 'closeAll', label: 'Close All Tabs' },
-      { id: 'reopen', label: 'Reopen Closed Tab', shortcut: 'Ctrl+Shift+T', disabled: !hasClosed, disabledReason: 'No recently closed tabs', separatorBefore: true },
-      { id: 'splitRight', label: 'Split Right', separatorBefore: true },
-      { id: 'splitDown', label: 'Split Down' },
+      { id: 'pin', label: pinned[target.document.id] ? 'Unpin Tab' : 'Pin Tab', icon: Pin },
+      { id: 'close', label: 'Close', shortcut: 'Ctrl+W', icon: X, separatorBefore: true },
+      { id: 'closeOthers', label: 'Close Other Tabs', icon: SquareDashed, disabled: ordered.length < 2 },
+      { id: 'closeRight', label: 'Close Tabs to the Right', icon: ArrowRightToLine, disabled: index === ordered.length - 1 },
+      { id: 'closeAll', label: 'Close All Tabs', icon: Trash2 },
+      { id: 'reopen', label: 'Reopen Closed Tab', icon: RotateCcw, shortcut: 'Ctrl+Shift+T', disabled: !hasClosed, disabledReason: 'No recently closed tabs', separatorBefore: true },
+      { id: 'splitRight', label: 'Split Right', icon: Columns2, separatorBefore: true },
+      { id: 'splitDown', label: 'Split Down', icon: Rows2 },
     ]
   }
 
@@ -105,7 +105,7 @@ export function GoStudioEditorTabs({ documents, activeId, onRequestClose }: GoSt
           </button>
         )
       })}
-      {menu && <ContextMenu x={menu.x} y={menu.y} items={items(menu.document)} onSelect={(id) => run(id as TabAction, menu.document)} onClose={() => setMenu(null)} />}
+      {menu && <ContextMenu appearance="studio" x={menu.x} y={menu.y} items={items(menu.document)} onSelect={(id) => run(id as TabAction, menu.document)} onClose={() => setMenu(null)} />}
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, memo } from 'react'
-import { ChevronDown, ChevronRight, Eye, EyeOff, Folder, FolderOpen, Loader2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, Copy, Eye, EyeOff, FileCode2, Folder, FolderOpen, Loader2, Send } from 'lucide-react'
 import { useGoIDEStore } from '@/stores/goide'
 import { BrandIcon, GoStudioFileIcon } from './GoStudioFileIcon'
 import { resolveGoStudioFolderBrand } from './goStudioFileIcons'
@@ -80,9 +80,9 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
   const [menu, setMenu] = useState<{ entry: GoIDEFileEntry; x: number; y: number } | null>(null)
   const onContext = useCallback<TreeContextHandler>((entry, x, y) => setMenu({ entry, x, y }), [])
   const menuItems = (entry: GoIDEFileEntry): ContextMenuItem[] => [
-    { id: 'open', label: 'Open' },
-    ...(isApiCollectionCandidate(entry.relativePath) ? [{ id: 'sendToApi', label: 'Send to API Workspace', separatorBefore: true }] : []),
-    { id: 'copyPath', label: 'Copy Relative Path', separatorBefore: true },
+    { id: 'open', label: 'Open', icon: FileCode2 },
+    ...(isApiCollectionCandidate(entry.relativePath) ? [{ id: 'sendToApi', label: 'Send to API Workspace', icon: Send, separatorBefore: true }] : []),
+    { id: 'copyPath', label: 'Copy Relative Path', icon: Copy, separatorBefore: true },
   ]
   const selectMenuItem = (id: string) => {
     const entry = menu?.entry
@@ -119,7 +119,7 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
       <div className="shrink-0 px-4 py-2 text-[10.5px] leading-4 text-text-4">
         {session.project.modules.length} module{session.project.modules.length === 1 ? '' : 's'} · {session.project.goWorkPath ? 'go.work' : session.project.goModPath ? 'go.mod' : 'folder mode'}
       </div>
-      {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu.entry)} onSelect={selectMenuItem} onClose={() => setMenu(null)} />}
+      {menu && <ContextMenu appearance="studio" x={menu.x} y={menu.y} items={menuItems(menu.entry)} onSelect={selectMenuItem} onClose={() => setMenu(null)} />}
     </aside>
   )
 })

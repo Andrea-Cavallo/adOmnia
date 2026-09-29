@@ -1,3 +1,4 @@
+import { Bug, Container, FlaskRound, Hammer, Play, Save, Square } from 'lucide-react'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import type { GoStudioRunTarget } from './goStudioRunTargets'
 
@@ -14,33 +15,33 @@ interface GoStudioRunTargetMenuProps {
 function itemsFor(target: GoStudioRunTarget): ContextMenuItem[] {
   if (target.kind === 'make') {
     return [
-      { id: 'run', label: `Run 'make ${target.name}'` },
-      { id: 'save', label: 'Save as Run Configuration…' },
+      { id: 'run', label: `Run 'make ${target.name}'`, icon: Play, iconClassName: 'text-success' },
+      { id: 'save', label: 'Save as Run Configuration…', icon: Save, separatorBefore: true },
     ]
   }
   if (target.kind === 'compose') {
     return target.name
-      ? [{ id: 'run', label: `Compose Up '${target.name}'` }, { id: 'save', label: 'Save as Run Configuration…' }]
+      ? [{ id: 'run', label: `Compose Up '${target.name}'`, icon: Play, iconClassName: 'text-success' }, { id: 'save', label: 'Save as Run Configuration…', icon: Save, separatorBefore: true }]
       : [
-          { id: 'run', label: 'Compose Up (all services)' },
-          { id: 'down', label: 'Compose Down' },
-          { id: 'save', label: 'Save as Run Configuration…' },
+          { id: 'run', label: 'Compose Up (all services)', icon: Play, iconClassName: 'text-success' },
+          { id: 'down', label: 'Compose Down', icon: Square, iconClassName: 'text-danger' },
+          { id: 'save', label: 'Save as Run Configuration…', icon: Save, separatorBefore: true },
         ]
   }
   if (target.kind === 'docker') {
     const stage = target.name ? ` '${target.name}'` : ''
     return [
-      { id: 'build', label: `Build image${stage}` },
-      { id: 'buildRun', label: `Build & Run container${stage}` },
-      { id: 'save', label: 'Save as Run Configuration…' },
+      { id: 'build', label: `Build image${stage}`, icon: Hammer },
+      { id: 'buildRun', label: `Build & Run container${stage}`, icon: Container, iconClassName: 'text-success' },
+      { id: 'save', label: 'Save as Run Configuration…', icon: Save, separatorBefore: true },
     ]
   }
   const name = target.kind === 'main' ? 'main' : target.name
   const items: ContextMenuItem[] = [
-    { id: 'run', label: `Run '${name}'` },
-    { id: 'debug', label: `Debug '${name}'`, shortcut: target.kind === 'main' ? 'Shift+F9' : undefined },
+    { id: 'run', label: `Run '${name}'`, icon: Play, iconClassName: 'text-success' },
+    { id: 'debug', label: `Debug '${name}'`, icon: Bug, iconClassName: 'text-info', shortcut: target.kind === 'main' ? 'Shift+F9' : undefined },
   ]
-  if (target.kind === 'test' || target.kind === 'fuzz' || target.kind === 'example') items.push({ id: 'coverage', label: `Run '${name}' with Coverage` })
+  if (target.kind === 'test' || target.kind === 'fuzz' || target.kind === 'example') items.push({ id: 'coverage', label: `Run '${name}' with Coverage`, icon: FlaskRound, iconClassName: 'text-accent' })
   return items
 }
 
@@ -48,6 +49,7 @@ function itemsFor(target: GoStudioRunTarget): ContextMenuItem[] {
 export function GoStudioRunTargetMenu({ target, x, y, onAction, onClose }: GoStudioRunTargetMenuProps) {
   return (
     <ContextMenu
+      appearance="studio"
       x={x}
       y={y}
       items={itemsFor(target)}

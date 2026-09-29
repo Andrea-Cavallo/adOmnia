@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Layers } from 'lucide-react'
+import { Layers, Pencil, Plus, Trash2 } from 'lucide-react'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import { confirm } from '@/lib/confirmDialog'
 import { useModalFocusTrap } from '@/lib/accessibility'
@@ -71,13 +71,15 @@ function WorkspaceSwitcher() {
   const items: ContextMenuItem[] = [
     ...workspaces.map((workspace) => ({
       id: `${SWITCH_PREFIX}${workspace.id}`,
-      label: `${workspace.id === activeId ? '● ' : ''}${workspace.name} · ${projectCount(sessionsInWorkspace(sessions, workspace.id).length)}`,
+      label: `${workspace.name} · ${projectCount(sessionsInWorkspace(sessions, workspace.id).length)}`,
+      icon: Layers,
+      checked: workspace.id === activeId || undefined,
       disabled: workspace.id === activeId,
     })),
-    { id: NEW_ITEM, label: 'New Workspace…', separatorBefore: true },
-    { id: RENAME_ITEM, label: `Rename “${active.name}”…` },
+    { id: NEW_ITEM, label: 'New Workspace…', icon: Plus, separatorBefore: true },
+    { id: RENAME_ITEM, label: `Rename “${active.name}”…`, icon: Pencil },
     {
-      id: DELETE_ITEM, label: `Delete “${active.name}”`, danger: true,
+      id: DELETE_ITEM, label: `Delete “${active.name}”`, danger: true, icon: Trash2,
       disabled: activeId === DEFAULT_STUDIO_WORKSPACE_ID || activeCount > 0,
       disabledReason: activeId === DEFAULT_STUDIO_WORKSPACE_ID ? 'The default workspace always exists' : 'Close its projects first',
     },
@@ -105,7 +107,7 @@ function WorkspaceSwitcher() {
         <span className="truncate">{active.name}</span>
         <span className="shrink-0 text-text-4">{activeCount}</span>
       </button>
-      {menu && <ContextMenu x={menu.x} y={menu.y} items={items} onSelect={select} onClose={() => setMenu(null)} />}
+      {menu && <ContextMenu appearance="studio" x={menu.x} y={menu.y} items={items} onSelect={select} onClose={() => setMenu(null)} />}
       {dialog && <WorkspaceNameDialog dialog={dialog} onClose={() => setDialog(null)} />}
     </>
   )

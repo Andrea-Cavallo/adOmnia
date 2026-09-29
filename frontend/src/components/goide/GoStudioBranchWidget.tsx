@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ChevronDown, GitBranch } from 'lucide-react'
+import { ChevronDown, GitBranch, GitCommitHorizontal, GitPullRequestArrow } from 'lucide-react'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import { confirm } from '@/lib/confirmDialog'
 import { useAppStore } from '@/stores/app'
@@ -28,9 +28,9 @@ export function GoStudioBranchWidget({ sessionId, onCommit }: GoStudioBranchWidg
 
   const changes = status.changes.length
   const items: ContextMenuItem[] = [
-    { id: COMMIT_ITEM, label: changes ? `Commit… (${changes} changed)` : 'Commit…', shortcut: 'Ctrl+K', disabled: changes === 0, disabledReason: 'No local changes' },
-    ...status.branches.map((branch, index) => ({ id: `branch:${branch}`, label: branch === status.branch ? `● ${branch}` : branch, disabled: branch === status.branch, separatorBefore: index === 0 })),
-    { id: GIT_STUDIO_ITEM, label: 'Push, pull, conflicts, rebase, stash → Git Studio', separatorBefore: true },
+    { id: COMMIT_ITEM, label: changes ? `Commit… (${changes} changed)` : 'Commit…', shortcut: 'Ctrl+K', disabled: changes === 0, disabledReason: 'No local changes', icon: GitCommitHorizontal },
+    ...status.branches.map((branch, index) => ({ id: `branch:${branch}`, label: branch, icon: GitBranch, checked: branch === status.branch || undefined, disabled: branch === status.branch, separatorBefore: index === 0 })),
+    { id: GIT_STUDIO_ITEM, label: 'Push, pull, conflicts, rebase, stash → Git Studio', icon: GitPullRequestArrow, separatorBefore: true },
   ]
 
   const checkout = async (branch: string) => {
@@ -64,7 +64,7 @@ export function GoStudioBranchWidget({ sessionId, onCommit }: GoStudioBranchWidg
         {changes > 0 && <span className="shrink-0 rounded-full bg-surface-3 px-1.5 text-[10px] text-text-2" title={`${changes} local change(s)`}>{changes}</span>}
         <ChevronDown size={12} className="shrink-0 text-text-4" />
       </button>
-      {menu && <ContextMenu x={menu.x} y={menu.y} items={items} onSelect={select} onClose={() => setMenu(null)} />}
+      {menu && <ContextMenu appearance="studio" x={menu.x} y={menu.y} items={items} onSelect={select} onClose={() => setMenu(null)} />}
     </>
   )
 }

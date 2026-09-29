@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { FolderGit2, FolderOpen, FolderPlus, FolderX, History, PackageCheck, PackageSearch, RefreshCw, Settings2, Terminal } from 'lucide-react'
 import { Bug, ChevronDown, Hammer, LockKeyhole, Maximize2, Minimize2, MoreVertical, Play, Search, Square, X } from 'lucide-react'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import type { GoIDEExecution, GoIDERunConfiguration, GoIDESession, GoIDEToolchainInfo, GoIDERecentProject } from '@/lib/goide-api'
@@ -87,6 +88,7 @@ export function GoStudioToolbar(props: GoStudioToolbarProps) {
   const recentItems = (): ContextMenuItem[] => (props.recentProjects ?? []).slice(0, MAX_RECENT_IN_MENU).map((project, index) => ({
     id: `${RECENT_PREFIX}${project.rootPath}`,
     label: `${project.name} · ${project.rootPath}`,
+    icon: History,
     disabled: !project.available,
     disabledReason: 'Folder no longer available',
     separatorBefore: index === 0,
@@ -94,22 +96,22 @@ export function GoStudioToolbar(props: GoStudioToolbarProps) {
 
   const menuItems = (kind: ToolbarMenu): ContextMenuItem[] => {
     if (kind === 'project') return [
-      ...sessions.map((session) => ({ id: `${SESSION_PREFIX}${session.id}`, label: `${session.id === activeSession.id ? '● ' : ''}${session.project.name}`, disabled: session.id === activeSession.id })),
+      ...sessions.map((session) => ({ id: `${SESSION_PREFIX}${session.id}`, label: session.project.name, icon: FolderGit2, checked: session.id === activeSession.id || undefined, disabled: session.id === activeSession.id })),
       ...recentItems(),
-      { id: 'open', label: 'Open Project…', shortcut: 'Ctrl+O', separatorBefore: true },
-      { id: 'new', label: 'New Go Project…' },
-      { id: 'close', label: `Close “${activeSession.project.name}”`, separatorBefore: true },
+      { id: 'open', label: 'Open Project…', shortcut: 'Ctrl+O', icon: FolderOpen, separatorBefore: true },
+      { id: 'new', label: 'New Go Project…', icon: FolderPlus },
+      { id: 'close', label: `Close “${activeSession.project.name}”`, icon: FolderX, separatorBefore: true },
     ]
     if (kind === 'config') return [
-      ...runConfigurations.map((config) => ({ id: `${CONFIG_PREFIX}${config.id}`, label: `${config.id === activeConfigId ? '● ' : ''}${config.name}` })),
-      { id: `${CONFIG_PREFIX}`, label: 'Project root · go run . (no configuration)', separatorBefore: runConfigurations.length > 0 },
-      { id: 'configure', label: 'Edit Configurations…', separatorBefore: true },
+      ...runConfigurations.map((config) => ({ id: `${CONFIG_PREFIX}${config.id}`, label: config.name, icon: Play, iconClassName: 'text-success', checked: config.id === activeConfigId || undefined })),
+      { id: `${CONFIG_PREFIX}`, label: 'Project root · go run . (no configuration)', icon: Terminal, checked: !activeConfigId || undefined, separatorBefore: runConfigurations.length > 0 },
+      { id: 'configure', label: 'Edit Configurations…', icon: Settings2, separatorBefore: true },
     ]
     return [
-      { id: 'detect', label: `Detect Go Toolchain · ${goVersion(toolchain)}`, disabled: !authorized, disabledReason: 'Trust the project first' },
-      { id: 'toolchain', label: 'Go Binary and Environment…', disabled: !authorized, disabledReason: 'Trust the project first' },
-      { id: 'dependencies', label: 'Module Dependencies…' },
-      { id: 'tidy', label: 'go mod tidy…', disabled: !toolsReady || running, disabledReason: running ? 'A process is running' : 'Go tools are not ready' },
+      { id: 'detect', label: `Detect Go Toolchain · ${goVersion(toolchain)}`, icon: RefreshCw, disabled: !authorized, disabledReason: 'Trust the project first' },
+      { id: 'toolchain', label: 'Go Binary and Environment…', icon: Settings2, disabled: !authorized, disabledReason: 'Trust the project first' },
+      { id: 'dependencies', label: 'Module Dependencies…', icon: PackageSearch },
+      { id: 'tidy', label: 'go mod tidy…', icon: PackageCheck, disabled: !toolsReady || running, disabledReason: running ? 'A process is running' : 'Go tools are not ready' },
     ]
   }
 
@@ -173,7 +175,7 @@ export function GoStudioToolbar(props: GoStudioToolbarProps) {
         </button>
       )}
       <button type="button" onClick={props.onClose} disabled={loading} aria-label="Close project" title="Close project session" className="go-studio-icon-button h-8 w-8"><X size={14} /></button>
-      {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu.kind)} onSelect={select} onClose={() => setMenu(null)} />}
+      {menu && <ContextMenu appearance="studio" x={menu.x} y={menu.y} items={menuItems(menu.kind)} onSelect={select} onClose={() => setMenu(null)} />}
     </div>
   )
 }

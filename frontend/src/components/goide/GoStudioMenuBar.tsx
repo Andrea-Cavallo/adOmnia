@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Menu } from 'lucide-react'
+import { History, Menu } from 'lucide-react'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import type { GoIDERecentProject } from '@/lib/goide-api'
 import { GO_STUDIO_COMMANDS, GO_STUDIO_MENUS, formatBinding, type GoStudioCommandId, type GoStudioMenuId } from './goStudioCommands'
+import { GO_STUDIO_COMMAND_ICONS, GO_STUDIO_MENU_ICONS } from './goStudioCommandIcons'
 
 const RECENT_PREFIX = 'recent:'
 const MAX_RECENT_ITEMS = 10
@@ -34,6 +35,7 @@ function recentSubmenu(recentProjects: GoIDERecentProject[], openProjectPaths: s
   return {
     id: 'file.recent',
     label: 'Open Recent',
+    icon: History,
     disabled: items.length === 0,
     disabledReason: 'No recent projects yet',
     submenu: items,
@@ -45,7 +47,10 @@ function menuItems(menu: GoStudioMenuId, state: GoStudioCommandState): ContextMe
     const availability = state.availability(command.id)
     return {
       id: command.id,
-      label: state.checked(command.id) ? `✓  ${command.label}` : command.label,
+      label: command.label,
+      icon: GO_STUDIO_COMMAND_ICONS[command.id]?.icon,
+      iconClassName: GO_STUDIO_COMMAND_ICONS[command.id]?.tone,
+      checked: state.checked(command.id) || undefined,
       shortcut: formatBinding(command.binding),
       disabled: availability !== true,
       disabledReason: availability === true ? undefined : availability,
@@ -60,9 +65,10 @@ const MENU_PREFIX = 'menu:'
 function mainMenuItems(state: GoStudioCommandState, recentProjects: GoIDERecentProject[], openProjectPaths: string[]): ContextMenuItem[] {
   return GO_STUDIO_MENUS.map((menu) => {
     const base = menuItems(menu.id, state)
-    if (menu.id !== 'file') return { id: `${MENU_PREFIX}${menu.id}`, label: menu.label, submenu: base }
+    const header = { id: `${MENU_PREFIX}${menu.id}`, label: menu.label, icon: GO_STUDIO_MENU_ICONS[menu.id].icon, iconClassName: GO_STUDIO_MENU_ICONS[menu.id].tone }
+    if (menu.id !== 'file') return { ...header, submenu: base }
     const insertAt = base.findIndex((item) => item.id === 'file.save')
-    return { id: `${MENU_PREFIX}${menu.id}`, label: menu.label, submenu: [...base.slice(0, insertAt), recentSubmenu(recentProjects, openProjectPaths), ...base.slice(insertAt)] }
+    return { ...header, submenu: [...base.slice(0, insertAt), recentSubmenu(recentProjects, openProjectPaths), ...base.slice(insertAt)] }
   })
 }
 
@@ -97,7 +103,7 @@ export function GoStudioMenuBar({ state, recentProjects, openProjectPaths, onCom
       >
         <Menu size={16} />
       </button>
-      {open && <ContextMenu x={open.x} y={open.y} items={mainMenuItems(state, recentProjects, openProjectPaths)} onSelect={select} onClose={() => setOpen(null)} />}
+      {open && <ContextMenu appearance="studio" x={open.x} y={open.y} items={mainMenuItems(state, recentProjects, openProjectPaths)} onSelect={select} onClose={() => setOpen(null)} />}
     </>
   )
 }

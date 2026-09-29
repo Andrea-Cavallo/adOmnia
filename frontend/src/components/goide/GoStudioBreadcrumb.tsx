@@ -38,6 +38,7 @@ export function GoStudioBreadcrumb({ document, cursor, onSave }: GoStudioBreadcr
       ))}
       {menu && (
         <ContextMenu
+          appearance="studio"
           x={menu.x}
           y={menu.y}
           items={menu.siblings.map((sibling) => ({ id: symbolKey(sibling), label: `${symbolKey(sibling) === menu.current ? '● ' : ''}${sibling.name}${sibling.detail ? `  ${sibling.detail}` : ''}` }))}
