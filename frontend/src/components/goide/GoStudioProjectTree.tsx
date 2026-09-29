@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, memo } from 'react'
-import { ChevronDown, ChevronRight, Copy, Eye, EyeOff, FileCode2, Folder, FolderOpen, KeyRound, Loader2, Send } from 'lucide-react'
+import { ChevronDown, ChevronRight, Copy, Eye, EyeOff, FileCode2, Folder, FolderOpen, KeyRound, Loader2, Minus, Send } from 'lucide-react'
 import { useGoIDEStore } from '@/stores/goide'
 import { BrandIcon, GoStudioFileIcon } from './GoStudioFileIcon'
 import { resolveGoStudioFolderBrand } from './goStudioFileIcons'
@@ -77,6 +77,7 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
   useEffect(() => { void loadDirectory('') }, [loadDirectory, rootKey])
 
   const openDocument = useGoIDEStore((state) => state.openDocument)
+  const updateLayout = useGoIDEStore((state) => state.updateLayout)
   const [menu, setMenu] = useState<{ entry: GoIDEFileEntry; x: number; y: number } | null>(null)
   const onContext = useCallback<TreeContextHandler>((entry, x, y) => setMenu({ entry, x, y }), [])
   const menuItems = (entry: GoIDEFileEntry): ContextMenuItem[] => [
@@ -108,6 +109,7 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
         >
           {showIgnored ? <Eye size={14} /> : <EyeOff size={14} />}
         </button>
+        <button type="button" onClick={() => updateLayout({ projectOpen: false })} aria-label="Hide Project pane" title="Hide · Alt+1" className="go-studio-icon-button h-6 w-6"><Minus size={14} /></button>
       </div>
       <div className="min-h-0 flex-1 overflow-auto px-2 pb-1">
         <div className="flex h-6 items-center gap-1.5 px-2 text-[12.5px]" title={session.project.rootPath}>

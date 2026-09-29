@@ -89,6 +89,8 @@ export function GoStudioEditorTabs({ documents, activeId, onRequestClose }: GoSt
             role="tab"
             aria-selected={active}
             onClick={() => selectDocument(item.document.id)}
+            // Come negli IDE JetBrains: doppio clic sulla tab massimizza l'editor, un altro lo ripristina.
+            onDoubleClick={() => useGoIDEStore.getState().toggleEditorMaximized()}
             onAuxClick={(event) => { if (event.button === 1 && !isPinned) onRequestClose([item]) }}
             onContextMenu={(event) => { event.preventDefault(); setMenu({ x: event.clientX, y: event.clientY, document: item }) }}
             className="go-studio-tab group"

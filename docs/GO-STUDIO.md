@@ -13,7 +13,9 @@ Everything stays on your machine. Nothing in a project runs until you trust it.
 5. **Run, test, debug.** Use Build, Run with stdin, the gutter ▶ next to `func main` and tests, the structured test runner with coverage, the Delve debugger (launch, attach or remote) and a real terminal. Makefile targets and Dockerfiles run for real too (see below).
 6. **Commit and integrate.** The toolbar shows the Git branch and changes, and the gutter shows diffs against HEAD. Commit from Go Studio; Git Studio follows the open project's repository for push, pull and merges. *Tools → Project Services* opens Docker Lab, Database Studio or Broker Studio for the services detected in `go.mod`. HTTP handlers get an *Open in API Client* CodeLens.
 
-*View → Maximize Go Studio* (Ctrl+Shift+F12, or the ⤢ button at the right of the toolbar) hides adOmnia's rail, the Go Studio header and adOmnia's status bar, so the IDE fills the window. Press it again to restore them; leaving Go Studio restores them too.
+*View → Maximize Editor* (Ctrl+Shift+F12, or a double-click on an editor tab) closes Project, Structure and the bottom tool window so the code takes all the space; press it again to bring them back exactly as they were. Every pane also closes on its own with its — button or its shortcut (Project Alt+1, Structure Alt+7, bottom tool window Alt+4).
+
+*View → Maximize Go Studio* (Ctrl+Shift+F11, or the ⤢ button at the right of the toolbar) hides adOmnia's rail, the Go Studio header and adOmnia's status bar, so the IDE fills the window. Press it again to restore them; leaving Go Studio restores them too.
 
 The project menu in the toolbar lists the open projects and, below them, the recent projects that are not open, so you can reopen one with a click (*File → Open Recent* shows the same list).
 
@@ -128,7 +130,9 @@ Go Studio follows the GoLand keymap. The table below is generated from the comma
 | Action | Windows / Linux | macOS |
 | --- | --- | --- |
 | Go to File | Ctrl+P | ⌘P |
-| Maximize Go Studio | Ctrl+Shift+F12 | ⌘⇧F12 |
+| Maximize Editor (Hide All Tool Windows) | Ctrl+Shift+F12 | ⌘⇧F12 |
+| Maximize Go Studio | Ctrl+Shift+F11 | ⌘⇧F11 |
+| Project Pane | Alt+1 | ⌥1 |
 | Project Overview Pane | Alt+7 | ⌥7 |
 | Run / Problems Pane | Alt+4 | ⌥4 |
 | Problems | Alt+6 | ⌥6 |

@@ -6,7 +6,7 @@ export type GoStudioCommandId =
   | 'edit.duplicateLine' | 'edit.deleteLine' | 'edit.nextOccurrence' | 'edit.allOccurrences' | 'edit.moveLineUp' | 'edit.moveLineDown' | 'edit.columnSelection'
   | 'file.localHistory' | 'view.todo'
   | 'view.splitRight' | 'view.splitDown' | 'view.unsplit' | 'view.terminal'
-  | 'view.quickOpen' | 'view.maximize' | 'view.toggleStructure' | 'view.toggleBottom' | 'view.toggleIgnored' | 'view.problems'
+  | 'view.quickOpen' | 'view.maximize' | 'view.maximizeEditor' | 'view.toggleProject' | 'view.toggleStructure' | 'view.toggleBottom' | 'view.toggleIgnored' | 'view.problems'
   | 'nav.declaration' | 'nav.typeDeclaration' | 'nav.implementation' | 'nav.usages' | 'nav.fileStructure' | 'nav.symbol' | 'nav.findInFiles'
   | 'nav.superMethod' | 'nav.back' | 'nav.forward' | 'nav.toggleBookmark' | 'nav.bookmarks'
   | 'nav.quickDefinition' | 'nav.showUsages' | 'nav.searchEverywhere' | 'code.quickDocumentation' | 'code.typeInfo' | 'code.semanticHighlighting' | 'code.inlayHints' | 'code.implementInterface'
@@ -89,8 +89,10 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'edit.allOccurrences', menu: 'edit', label: 'Select All Occurrences', binding: { key: 'j', mod: true, alt: true, shift: true }, editorOwned: true },
   { id: 'edit.columnSelection', menu: 'edit', label: 'Column Selection Mode', binding: { key: 'Insert', alt: true, shift: true }, editorOwned: true },
   { id: 'view.quickOpen', menu: 'view', label: 'Go to File…', binding: { key: 'p', mod: true } },
-  { id: 'view.maximize', menu: 'view', label: 'Maximize Go Studio', binding: { key: 'F12', mod: true, shift: true }, separatorBefore: true },
-  { id: 'view.toggleStructure', menu: 'view', label: 'Project Overview Pane', binding: { key: '7', alt: true }, separatorBefore: true },
+  { id: 'view.maximizeEditor', menu: 'view', label: 'Maximize Editor (Hide All Tool Windows)', binding: { key: 'F12', mod: true, shift: true }, separatorBefore: true },
+  { id: 'view.maximize', menu: 'view', label: 'Maximize Go Studio', binding: { key: 'F11', mod: true, shift: true } },
+  { id: 'view.toggleProject', menu: 'view', label: 'Project Pane', binding: { key: '1', alt: true }, separatorBefore: true },
+  { id: 'view.toggleStructure', menu: 'view', label: 'Project Overview Pane', binding: { key: '7', alt: true } },
   { id: 'view.toggleBottom', menu: 'view', label: 'Run / Problems Pane', binding: { key: '4', alt: true } },
   { id: 'view.problems', menu: 'view', label: 'Problems', binding: { key: '6', alt: true } },
   { id: 'view.terminal', menu: 'view', label: 'Terminal', binding: { key: 'F12', alt: true } },
@@ -258,6 +260,7 @@ export interface GoStudioCommandContext {
   bottomOpen: boolean
   showIgnored: boolean
   maximized: boolean
+  projectOpen: boolean
   semanticHighlighting: boolean
   inlayHints: boolean
   semanticTokensSupported: boolean
@@ -401,6 +404,8 @@ export function commandAvailability(id: GoStudioCommandId, context: GoStudioComm
 export function commandChecked(id: GoStudioCommandId, context: GoStudioCommandContext): boolean {
   switch (id) {
     case 'view.maximize': return context.maximized
+    case 'view.maximizeEditor': return !context.projectOpen && !context.structureOpen && !context.bottomOpen
+    case 'view.toggleProject': return context.projectOpen
     case 'view.toggleStructure': return context.structureOpen
     case 'view.toggleBottom': return context.bottomOpen
     case 'view.toggleIgnored': return context.showIgnored

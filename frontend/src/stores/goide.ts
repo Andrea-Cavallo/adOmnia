@@ -234,6 +234,8 @@ export interface GoIDEState {
   handleEvent: (event: GoIDEEvent) => void
   clearRevealLocation: () => void
   updateLayout: (patch: Partial<GoIDELayout>) => void
+  /** Hide All Tool Windows: chiude Project, Structure e il pannello in basso; di nuovo li ripristina com'erano. */
+  toggleEditorMaximized: () => void
   clearError: () => void
 }
 
@@ -1056,8 +1058,23 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
     return { layout }
   }),
 
+  toggleEditorMaximized: () => {
+    const { layout, updateLayout } = get()
+    const open = { projectOpen: layout.projectOpen, structureOpen: layout.structureOpen, bottomOpen: layout.bottomOpen }
+    if (open.projectOpen || open.structureOpen || open.bottomOpen) {
+      toolWindowsBeforeMaximize = open
+      return updateLayout({ projectOpen: false, structureOpen: false, bottomOpen: false })
+    }
+    // Nessun pannello aperto: torna alla disposizione precedente, o a quella di default.
+    updateLayout(toolWindowsBeforeMaximize ?? { projectOpen: true, structureOpen: true, bottomOpen: true })
+    toolWindowsBeforeMaximize = null
+  },
+
   clearError: () => set({ error: null }),
 }))
+
+// ponytail: in memoria, non persistito; dopo un riavvio "ripristina" riapre tutti i pannelli.
+let toolWindowsBeforeMaximize: Pick<GoIDELayout, 'projectOpen' | 'structureOpen' | 'bottomOpen'> | null = null
 
 /**
  * Ricontrolla i documenti su disco: un buffer pulito si ricarica in silenzio, uno modificato riceve

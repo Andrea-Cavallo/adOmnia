@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react'
 import {
+  Fullscreen, PanelLeft,
   AlignLeft, ArrowDownToLine, ArrowLeft, ArrowRight, ArrowUpDown, Binary, Bookmark, BookmarkPlus, BookOpen, Braces, Bug,
   CircleCheck, CircleDot, CircleHelp, CirclePause, CirclePlay, CircleStop, Code2, Columns2, Compass, Copy, Download,
   Eye, EyeOff, FileCode2, FilePlus2, FileSearch, FileText, FlaskConical, FlaskRound, FolderOpen, FolderPlus, FolderX,
@@ -72,6 +73,8 @@ export const GO_STUDIO_COMMAND_ICONS: Partial<Record<GoStudioCommandId, GoStudio
 
   'view.quickOpen': icon(FileSearch),
   'view.maximize': icon(Maximize2),
+  'view.maximizeEditor': icon(Fullscreen),
+  'view.toggleProject': icon(PanelLeft),
   'view.toggleStructure': icon(PanelRight),
   'view.toggleBottom': icon(PanelBottom),
   'view.problems': icon(CircleDot),

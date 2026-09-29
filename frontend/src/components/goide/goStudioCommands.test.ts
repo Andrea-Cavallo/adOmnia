@@ -47,7 +47,7 @@ describe('Go Studio commands', () => {
 
 describe('Go Studio command availability', () => {
   const ready: GoStudioCommandContext = {
-    hasSession: true, maximized: false, documentCount: 2, hasClosedDocuments: false, split: false, authorized: true, toolchainReady: true, running: false, restartable: true,
+    hasSession: true, maximized: false, projectOpen: true, documentCount: 2, hasClosedDocuments: false, split: false, authorized: true, toolchainReady: true, running: false, restartable: true,
     hasEditor: true, activeDocumentDirty: true, sessionDirty: true, structureOpen: true, bottomOpen: false, showIgnored: false,
     lspState: 'ready', goplsAvailable: true, formatOnSave: true, importsOnSave: false, gofumpt: false, staticcheck: false,
     lintOnSave: false, linterAvailable: true, linting: false,

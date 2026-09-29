@@ -170,7 +170,7 @@ export function GoStudioToolbar(props: GoStudioToolbarProps) {
       <button type="button" aria-label="More Go actions" aria-haspopup="menu" aria-expanded={menu?.kind === 'more'} onClick={(event) => openMenu('more', event.currentTarget)} title="Toolchain, dependencies, go mod tidy" className={`go-studio-icon-button h-8 w-8 ${menu?.kind === 'more' ? 'is-active' : ''}`}><MoreVertical size={15} /></button>
       {trailing && <><span className="mx-1 h-5 w-px bg-border-1" aria-hidden="true" />{trailing}</>}
       {props.onToggleMaximize && (
-        <button type="button" onClick={props.onToggleMaximize} aria-label={props.maximized ? 'Restore adOmnia layout' : 'Maximize Go Studio'} aria-pressed={!!props.maximized} title={`${props.maximized ? 'Restore adOmnia rail and header' : 'Maximize Go Studio: hide adOmnia rail and header'} · Ctrl/Cmd+Shift+F12`} className={`go-studio-icon-button h-8 w-8 ${props.maximized ? 'is-active' : ''}`}>
+        <button type="button" onClick={props.onToggleMaximize} aria-label={props.maximized ? 'Restore adOmnia layout' : 'Maximize Go Studio'} aria-pressed={!!props.maximized} title={`${props.maximized ? 'Restore adOmnia rail and header' : 'Maximize Go Studio: hide adOmnia rail and header'} · Ctrl/Cmd+Shift+F11`} className={`go-studio-icon-button h-8 w-8 ${props.maximized ? 'is-active' : ''}`}>
           {props.maximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
         </button>
       )}

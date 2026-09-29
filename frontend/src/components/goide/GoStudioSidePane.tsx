@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Braces, FolderTree } from 'lucide-react'
+import { Braces, FolderTree, Minus } from 'lucide-react'
 import type { GoIDESession } from '@/lib/goide-api'
-import type { GoIDEEditorDocument } from '@/stores/goide'
+import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
 import { GoStudioProjectOverview } from './GoStudioProjectOverview'
 import { GoStudioStructure } from './GoStudioStructure'
 
@@ -28,6 +28,7 @@ export function GoStudioSidePane({ session, document }: GoStudioSidePaneProps) {
             {tab === id && <span className="absolute inset-x-1.5 bottom-0 h-0.5 rounded-full bg-accent" aria-hidden="true" />}
           </button>
         ))}
+        <button type="button" onClick={() => useGoIDEStore.getState().updateLayout({ structureOpen: false })} aria-label="Hide Structure pane" title="Hide · Alt+7" className="go-studio-icon-button ml-auto mr-1 h-6 w-6"><Minus size={14} /></button>
       </div>
       {tab === 'structure' ? <GoStudioStructure sessionId={session.id} document={document} /> : <GoStudioProjectOverview session={session} />}
     </aside>

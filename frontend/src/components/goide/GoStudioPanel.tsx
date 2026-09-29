@@ -69,7 +69,7 @@ import { useGoIDELspStore } from '@/stores/goideLsp'
 const PANEL_STATE_KEYS = [
   'activeSessionId', 'activeWorkspaceId', 'layout', 'sessions', 'error', 'recentProjects', 'loading', 'initialized', 'toolchains', 'splitBySession', 'showIgnoredBySession',
   'runConfigsBySession', 'executions', 'closedDocuments', 'activeRunBySession', 'activeConfigBySession',
-  'updateLayout', 'openProject', 'startRun', 'startConfiguredRun', 'setSplit', 'detectToolchain', 'stopRun', 'initialize', 'clearError',
+  'updateLayout', 'toggleEditorMaximized', 'openProject', 'startRun', 'startConfiguredRun', 'setSplit', 'detectToolchain', 'stopRun', 'initialize', 'clearError',
   'toggleShowIgnored', 'togglePinned', 'setToolAuthorization', 'setQuickOpen', 'selectSession', 'selectRunConfiguration', 'restartRun',
   'reopenClosedDocument', 'removeRecentProject',
 ] as const satisfies ReadonlyArray<keyof GoIDEState>
@@ -323,6 +323,7 @@ export function GoStudioPanel() {
     bottomOpen: store.layout.bottomOpen,
     showIgnored: !!activeSession && (store.showIgnoredBySession[activeSession.id] ?? false),
     maximized: goStudioMaximized,
+    projectOpen: store.layout.projectOpen,
     semanticHighlighting: lsp.preferences.semanticHighlighting,
     inlayHints: lsp.preferences.inlayHints,
     semanticTokensSupported: !!lspStatus?.features?.semanticTokens,
@@ -413,6 +414,8 @@ export function GoStudioPanel() {
       case 'view.unsplit': return store.setSplit(null)
       case 'view.quickOpen': return store.setQuickOpen(true)
       case 'view.maximize': return toggleGoStudioMaximized()
+      case 'view.maximizeEditor': return store.toggleEditorMaximized()
+      case 'view.toggleProject': return store.updateLayout({ projectOpen: !store.layout.projectOpen })
       case 'view.toggleStructure': return store.updateLayout({ structureOpen: !store.layout.structureOpen })
       case 'view.toggleBottom': return store.updateLayout({ bottomOpen: !store.layout.bottomOpen })
       case 'view.toggleIgnored': return void store.toggleShowIgnored()
