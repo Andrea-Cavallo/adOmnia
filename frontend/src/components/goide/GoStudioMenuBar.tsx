@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import type { GoIDERecentProject } from '@/lib/goide-api'
 import { GO_STUDIO_COMMANDS, GO_STUDIO_MENUS, formatBinding, type GoStudioCommandId, type GoStudioMenuId } from './goStudioCommands'
+import { GoStudioWorkspaceSwitcher } from './GoStudioWorkspaceSwitcher'
 
 const RECENT_PREFIX = 'recent:'
 const MAX_RECENT_ITEMS = 10
@@ -126,6 +127,7 @@ export function GoStudioMenuBar({ state, recentProjects, openProjectPaths, onCom
           {menu.label}
         </button>
       ))}
+      <GoStudioWorkspaceSwitcher />
       {open && <ContextMenu x={open.x} y={open.y} items={items(open.menu)} onSelect={select} onClose={() => setOpen(null)} />}
     </nav>
   )

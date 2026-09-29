@@ -696,6 +696,18 @@ Questa sezione non costruisce nuovi strumenti: collega Go Studio a ciò che adOm
 - [x] Export/import delle impostazioni Go Studio, solo se compatibile con il formato workspace e documentato. *(sezione `goStudio` in adomnia-settings.json di Settings → Export/Import: solo preferenze globali booleane validate, mai stato dei progetti)*
 - [x] Ogni integrazione deve funzionare in entrambe le direzioni o essere dichiarata a senso unico; nessun pulsante che apre un pannello vuoto. *(tutte a senso unico, dichiarato nel dialog: i moduli adOmnia non scrivono nel progetto. Ogni destinazione si apre già compilata; senza servizi rilevati il pulsante diventa "Browse Docker Lab")*
 
+## 5.6b Workspace Go Studio separati da quelli di adOmnia
+
+Richiesta dell'utente (2026-09-29): i workspace dell'IDE devono essere separati dai workspace API di adOmnia, per lavorare su progetti o "istanze" diversi. Decisione: adOmnia resta a istanza singola (lock bbolt), quindi le istanze diventano **workspace Go Studio** dentro la stessa app.
+
+- [x] Workspace Go Studio con nome, indipendenti dai workspace API di adOmnia: cambiarli non tocca collezioni né ambienti, e viceversa. *(selettore nella menu bar di Go Studio, visibile anche a workspace vuoto; il predefinito si chiama "Main" per non confondersi con "Default Workspace" di adOmnia)*
+- [x] Ogni workspace ha i propri progetti aperti; lo stesso progetto può stare in più workspace, ciascuno con la propria sessione. Riaprirlo nello stesso workspace riusa la sessione.
+- [x] Cambio workspace immediato: i progetti degli altri workspace restano aperti con i loro processi; tornando si ritrova l'ultimo progetto attivo.
+- [x] Nuovo, rinomina ed elimina: nomi unici senza distinzione di maiuscole, massimo 20 workspace e 40 caratteri; il predefinito non si elimina, un workspace con progetti aperti nemmeno ("Close its projects first").
+- [x] Persistenza nello schema 4 dello stato Go Studio; gli schemi precedenti migrano nel workspace predefinito senza perdere sessioni.
+- [x] Test: `studio_workspaces_test.go` (stesso progetto in due workspace, migrazione e persistenza, regole di eliminazione), `goideWorkspaces.test.ts`, e2e ide17 6/6 con zero errori di pagina.
+- [ ] Verifica manuale su Windows: creazione, cambio e riavvio dell'app con due workspace e lo stesso progetto aperto in entrambi.
+
 ## 5.8 Finestre separate / più istanze (rinviate dalla Fase 4)
 
 - [ ] Prototipare una finestra Wails secondaria Go Studio riusando il pattern esistente senza duplicare ownership backend.

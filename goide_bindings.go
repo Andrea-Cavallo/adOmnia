@@ -815,3 +815,28 @@ func (g *GoIDE) ServiceShutdown() error {
 	g.service.Shutdown()
 	return nil
 }
+
+// ListStudioWorkspaces elenca i workspace Go Studio, separati dai workspace API di adOmnia.
+func (g *GoIDE) ListStudioWorkspaces() (goide.StudioWorkspaces, error) {
+	return g.service.ListStudioWorkspaces()
+}
+
+// CreateStudioWorkspace crea un workspace Go Studio vuoto e lo rende attivo.
+func (g *GoIDE) CreateStudioWorkspace(name string) (goide.StudioWorkspaces, error) {
+	return g.service.CreateStudioWorkspace(name)
+}
+
+// RenameStudioWorkspace rinomina un workspace Go Studio.
+func (g *GoIDE) RenameStudioWorkspace(id, name string) (goide.StudioWorkspaces, error) {
+	return g.service.RenameStudioWorkspace(id, name)
+}
+
+// DeleteStudioWorkspace elimina un workspace Go Studio senza progetti aperti.
+func (g *GoIDE) DeleteStudioWorkspace(id string) (goide.StudioWorkspaces, error) {
+	return g.service.DeleteStudioWorkspace(id)
+}
+
+// SetActiveStudioWorkspace cambia il workspace Go Studio mostrato.
+func (g *GoIDE) SetActiveStudioWorkspace(id string) (goide.StudioWorkspaces, error) {
+	return g.service.SetActiveStudioWorkspace(id)
+}

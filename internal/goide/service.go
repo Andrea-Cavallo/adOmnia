@@ -18,56 +18,59 @@ const maxRecentProjects = 20
 var modulePathPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._~/-]*$`)
 
 type Service struct {
-	workspace     *WorkspaceManager
-	documents     *DocumentManager
-	toolchain     *ToolchainManager
-	installer     *ToolchainInstaller
-	processes     *ProcessManager
-	lsp           *LSPManager
-	terminal      *TerminalManager
-	debug         *DebugManager
-	tests         *TestManager
-	runConfigs    *RunConfigManager
-	recovery      *RecoveryManager
-	history       *LocalHistory
-	persistence   *Persistence
-	viewMu        sync.RWMutex
-	views         map[SessionID]SessionView
-	restoreOnce   sync.Once
-	restoreErr    error
-	recentMu      sync.RWMutex
-	recent        []RecentProject
-	runMu         sync.RWMutex
-	runRequests   map[RunID]RunRequest
-	eventMu       sync.RWMutex
-	eventSink     func(EventEnvelope)
-	sequence      atomic.Uint64
-	toolsRoot     string
-	goplsMu       sync.RWMutex
-	goplsBinaries map[SessionID]string
-	delveBinaries map[SessionID]string
-	lint          lintRegistry
-	watcher       *WatchManager
+	workspace *WorkspaceManager
+	// studioWorkspaces raggruppa le sessioni in workspace Go Studio, separati da quelli di adOmnia.
+	studioWorkspaces *studioWorkspaceRegistry
+	documents        *DocumentManager
+	toolchain        *ToolchainManager
+	installer        *ToolchainInstaller
+	processes        *ProcessManager
+	lsp              *LSPManager
+	terminal         *TerminalManager
+	debug            *DebugManager
+	tests            *TestManager
+	runConfigs       *RunConfigManager
+	recovery         *RecoveryManager
+	history          *LocalHistory
+	persistence      *Persistence
+	viewMu           sync.RWMutex
+	views            map[SessionID]SessionView
+	restoreOnce      sync.Once
+	restoreErr       error
+	recentMu         sync.RWMutex
+	recent           []RecentProject
+	runMu            sync.RWMutex
+	runRequests      map[RunID]RunRequest
+	eventMu          sync.RWMutex
+	eventSink        func(EventEnvelope)
+	sequence         atomic.Uint64
+	toolsRoot        string
+	goplsMu          sync.RWMutex
+	goplsBinaries    map[SessionID]string
+	delveBinaries    map[SessionID]string
+	lint             lintRegistry
+	watcher          *WatchManager
 }
 
 func NewService(store Store, eventSink func(EventEnvelope)) *Service {
 	service := &Service{
-		workspace:     NewWorkspaceManager(),
-		documents:     NewDocumentManager(),
-		toolchain:     NewToolchainManager(),
-		processes:     NewProcessManager(),
-		lsp:           NewLSPManager(),
-		terminal:      NewTerminalManager(),
-		debug:         NewDebugManager(),
-		tests:         NewTestManager(),
-		runConfigs:    NewRunConfigManager(),
-		persistence:   NewPersistence(store),
-		views:         make(map[SessionID]SessionView),
-		runRequests:   make(map[RunID]RunRequest),
-		eventSink:     eventSink,
-		goplsBinaries: make(map[SessionID]string),
-		delveBinaries: make(map[SessionID]string),
-		lint:          lintRegistry{custom: make(map[SessionID]string)},
+		workspace:        NewWorkspaceManager(),
+		studioWorkspaces: newStudioWorkspaceRegistry(),
+		documents:        NewDocumentManager(),
+		toolchain:        NewToolchainManager(),
+		processes:        NewProcessManager(),
+		lsp:              NewLSPManager(),
+		terminal:         NewTerminalManager(),
+		debug:            NewDebugManager(),
+		tests:            NewTestManager(),
+		runConfigs:       NewRunConfigManager(),
+		persistence:      NewPersistence(store),
+		views:            make(map[SessionID]SessionView),
+		runRequests:      make(map[RunID]RunRequest),
+		eventSink:        eventSink,
+		goplsBinaries:    make(map[SessionID]string),
+		delveBinaries:    make(map[SessionID]string),
+		lint:             lintRegistry{custom: make(map[SessionID]string)},
 	}
 	service.recovery = NewRecoveryManager(nil)
 	service.history = NewLocalHistory(nil)
@@ -118,7 +121,7 @@ func (s *Service) OpenProject(path string) (Session, error) {
 	if err := s.restore(); err != nil {
 		return Session{}, err
 	}
-	session, err := s.workspace.OpenProject(path)
+	session, err := s.workspace.OpenProject(path, s.studioWorkspaces.activeID())
 	if err != nil {
 		return Session{}, err
 	}
@@ -741,8 +744,10 @@ func (s *Service) restore() error {
 			s.restoreErr = err
 			return
 		}
-		s.workspace.ReplaceSessions(state.Sessions)
-		for _, session := range state.Sessions {
+		s.studioWorkspaces.replace(state.Workspaces, state.ActiveWorkspace)
+		sessions := s.studioWorkspaces.assignSessions(state.Sessions)
+		s.workspace.ReplaceSessions(sessions)
+		for _, session := range s.workspace.ListSessions() {
 			s.watchSession(session)
 		}
 		s.recentMu.Lock()
@@ -772,11 +777,14 @@ func (s *Service) saveState() error {
 		views[sessionID] = view
 	}
 	s.viewMu.RUnlock()
+	workspaces, activeWorkspace := s.studioWorkspaces.snapshot()
 	return s.persistence.SaveState(persistedState{
-		Sessions:   s.workspace.ListSessions(),
-		Recent:     recent,
-		RunConfigs: s.runConfigs.Snapshot(),
-		SessionUI:  views,
+		Sessions:        s.workspace.ListSessions(),
+		Recent:          recent,
+		RunConfigs:      s.runConfigs.Snapshot(),
+		SessionUI:       views,
+		Workspaces:      workspaces,
+		ActiveWorkspace: activeWorkspace,
 	})
 }
 

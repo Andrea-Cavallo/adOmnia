@@ -73,9 +73,9 @@ export function GoStudioProjectServicesDialog({ sessionId, projectName, open, on
           ))}
         </div>
         <div className="flex items-center gap-2 border-t border-border-1 bg-surface-0 px-4 py-2">
-          <span className="mr-auto text-[10px] text-text-4">Nothing starts on its own · adOmnia modules do not write back to the project</span>
-          <button type="button" onClick={onClose} className="h-7 rounded px-3 text-xs text-text-3 hover:bg-surface-2">Close</button>
-          <button type="button" disabled={services === null && !error} onClick={() => go(() => openInDockerLab(services ?? [], projectName))} className="h-7 rounded bg-accent px-3 text-xs font-semibold text-white disabled:opacity-40">
+          <span className="mr-auto min-w-0 text-[10px] text-text-4">Nothing starts on its own · adOmnia modules do not write back to the project</span>
+          <button type="button" onClick={onClose} className="h-7 shrink-0 whitespace-nowrap rounded px-3 text-xs text-text-3 hover:bg-surface-2">Close</button>
+          <button type="button" disabled={services === null && !error} onClick={() => go(() => openInDockerLab(services ?? [], projectName))} className="h-7 shrink-0 whitespace-nowrap rounded bg-accent px-3 text-xs font-semibold text-white disabled:opacity-40">
             {services?.length ? 'Open in Docker Lab' : 'Browse Docker Lab'}
           </button>
         </div>

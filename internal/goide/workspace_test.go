@@ -12,7 +12,7 @@ func TestOpenProjectDoesNotAuthorizeTooling(t *testing.T) {
 		t.Fatal(err)
 	}
 	manager := NewWorkspaceManager()
-	session, err := manager.OpenProject(root)
+	session, err := manager.OpenProject(root, DefaultStudioWorkspaceID)
 	if err != nil {
 		t.Fatal(err)
 	}

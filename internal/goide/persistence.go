@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-const PersistenceSchemaVersion = 3
+const PersistenceSchemaVersion = 4
 
 type Store interface {
 	Load() ([]byte, error)
@@ -18,6 +18,9 @@ type persistedState struct {
 	Recent     []RecentProject           `json:"recent,omitempty"`
 	RunConfigs []RunConfiguration        `json:"runConfigs,omitempty"`
 	SessionUI  map[SessionID]SessionView `json:"sessionUi,omitempty"`
+	// Workspaces e ActiveWorkspace arrivano con lo schema 4; gli schemi precedenti migrano nel workspace predefinito.
+	Workspaces      []StudioWorkspace `json:"workspaces,omitempty"`
+	ActiveWorkspace string            `json:"activeWorkspace,omitempty"`
 }
 
 type Persistence struct {

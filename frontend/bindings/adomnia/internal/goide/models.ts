@@ -2925,6 +2925,11 @@ export class SemanticTokensResult {
 export class Session {
     "id": SessionID;
     "project": Project;
+
+    /**
+     * WorkspaceID è il workspace Go Studio che contiene la sessione, indipendente dai workspace API di adOmnia.
+     */
+    "workspaceId"?: string;
     "openedAt": string;
     "updatedAt": string;
 
@@ -3119,6 +3124,71 @@ export class SignatureResult {
             $$parsedSource["signatures"] = $$createField1_0($$parsedSource["signatures"]);
         }
         return new SignatureResult($$parsedSource as Partial<SignatureResult>);
+    }
+}
+
+/**
+ * StudioWorkspace è un insieme con nome di progetti aperti in Go Studio.
+ * È separato dai workspace API di adOmnia: cambiarlo non tocca collezioni né ambienti.
+ */
+export class StudioWorkspace {
+    "id": string;
+    "name": string;
+    "createdAt": string;
+
+    /** Creates a new StudioWorkspace instance. */
+    constructor($$source: Partial<StudioWorkspace> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("createdAt" in $$source)) {
+            this["createdAt"] = "0001-01-01T00:00:00.000Z";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new StudioWorkspace instance from a string or object.
+     */
+    static createFrom($$source: any = {}): StudioWorkspace {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new StudioWorkspace($$parsedSource as Partial<StudioWorkspace>);
+    }
+}
+
+/**
+ * StudioWorkspaces descrive i workspace Go Studio e quello attivo.
+ */
+export class StudioWorkspaces {
+    "workspaces": StudioWorkspace[];
+    "activeId": string;
+
+    /** Creates a new StudioWorkspaces instance. */
+    constructor($$source: Partial<StudioWorkspaces> = {}) {
+        if (!("workspaces" in $$source)) {
+            this["workspaces"] = [];
+        }
+        if (!("activeId" in $$source)) {
+            this["activeId"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new StudioWorkspaces instance from a string or object.
+     */
+    static createFrom($$source: any = {}): StudioWorkspaces {
+        const $$createField0_0 = $$createType58;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("workspaces" in $$parsedSource) {
+            $$parsedSource["workspaces"] = $$createField0_0($$parsedSource["workspaces"]);
+        }
+        return new StudioWorkspaces($$parsedSource as Partial<StudioWorkspaces>);
     }
 }
 
@@ -3337,7 +3407,7 @@ export class TestResult {
      * Creates a new TestResult instance from a string or object.
      */
     static createFrom($$source: any = {}): TestResult {
-        const $$createField8_0 = $$createType58;
+        const $$createField8_0 = $$createType60;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("failure" in $$parsedSource) {
             $$parsedSource["failure"] = $$createField8_0($$parsedSource["failure"]);
@@ -3460,10 +3530,10 @@ export class TestRunSnapshot {
      * Creates a new TestRunSnapshot instance from a string or object.
      */
     static createFrom($$source: any = {}): TestRunSnapshot {
-        const $$createField2_0 = $$createType59;
-        const $$createField5_0 = $$createType60;
-        const $$createField6_0 = $$createType62;
-        const $$createField9_0 = $$createType64;
+        const $$createField2_0 = $$createType61;
+        const $$createField5_0 = $$createType62;
+        const $$createField6_0 = $$createType64;
+        const $$createField9_0 = $$createType66;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("request" in $$parsedSource) {
             $$parsedSource["request"] = $$createField2_0($$parsedSource["request"]);
@@ -3832,7 +3902,7 @@ export class VCSStatus {
      */
     static createFrom($$source: any = {}): VCSStatus {
         const $$createField7_0 = $$createType12;
-        const $$createField8_0 = $$createType66;
+        const $$createField8_0 = $$createType68;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("branches" in $$parsedSource) {
             $$parsedSource["branches"] = $$createField7_0($$parsedSource["branches"]);
@@ -3897,7 +3967,7 @@ export class WorkspaceChange {
      * Creates a new WorkspaceChange instance from a string or object.
      */
     static createFrom($$source: any = {}): WorkspaceChange {
-        const $$createField1_0 = $$createType68;
+        const $$createField1_0 = $$createType70;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("files" in $$parsedSource) {
             $$parsedSource["files"] = $$createField1_0($$parsedSource["files"]);
@@ -3998,15 +4068,17 @@ const $$createType53 = SignatureParameter.createFrom;
 const $$createType54 = $Create.Array($$createType53);
 const $$createType55 = SignatureEntry.createFrom;
 const $$createType56 = $Create.Array($$createType55);
-const $$createType57 = TestLocation.createFrom;
-const $$createType58 = $Create.Nullable($$createType57);
-const $$createType59 = TestRunRequest.createFrom;
-const $$createType60 = TestSummary.createFrom;
-const $$createType61 = TestResult.createFrom;
-const $$createType62 = $Create.Array($$createType61);
-const $$createType63 = CoverageReport.createFrom;
-const $$createType64 = $Create.Nullable($$createType63);
-const $$createType65 = VCSFileChange.createFrom;
-const $$createType66 = $Create.Array($$createType65);
-const $$createType67 = FileChange.createFrom;
+const $$createType57 = StudioWorkspace.createFrom;
+const $$createType58 = $Create.Array($$createType57);
+const $$createType59 = TestLocation.createFrom;
+const $$createType60 = $Create.Nullable($$createType59);
+const $$createType61 = TestRunRequest.createFrom;
+const $$createType62 = TestSummary.createFrom;
+const $$createType63 = TestResult.createFrom;
+const $$createType64 = $Create.Array($$createType63);
+const $$createType65 = CoverageReport.createFrom;
+const $$createType66 = $Create.Nullable($$createType65);
+const $$createType67 = VCSFileChange.createFrom;
 const $$createType68 = $Create.Array($$createType67);
+const $$createType69 = FileChange.createFrom;
+const $$createType70 = $Create.Array($$createType69);

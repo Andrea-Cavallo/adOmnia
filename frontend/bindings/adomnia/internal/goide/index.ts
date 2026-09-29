@@ -85,6 +85,8 @@ export {
     SignatureEntry,
     SignatureParameter,
     SignatureResult,
+    StudioWorkspace,
+    StudioWorkspaces,
     SymbolNode,
     TerminalRequest,
     TerminalSession,

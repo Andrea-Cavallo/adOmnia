@@ -53,6 +53,7 @@ import {
   type GoIDEToolchainInstallation,
 } from '@/lib/goide-api'
 import { openExternalDocument } from '@/lib/goide-lsp-api'
+import { DEFAULT_STUDIO_WORKSPACE_ID, listGoIDEStudioWorkspaces, type GoIDEStudioWorkspace } from '@/lib/goide-workspaces-api'
 import { confirm } from '@/lib/confirmDialog'
 import { cancelBufferRecovery, scheduleBufferRecovery } from '@/components/goide/goStudioRecovery'
 import { directoriesToRefresh, documentsToCheck, wasDeleted, type GoIDEFilesChanged } from '@/components/goide/goStudioDiskChanges'
@@ -137,10 +138,19 @@ function loadLayout(): GoIDELayout {
   }
 }
 
+/** Sessioni del workspace Go Studio indicato; quelle senza workspace appartengono al predefinito. */
+export function sessionsInWorkspace(sessions: readonly GoIDESession[], workspaceId: string): GoIDESession[] {
+  return sessions.filter((session) => (session.workspaceId || DEFAULT_STUDIO_WORKSPACE_ID) === workspaceId)
+}
+
 export interface GoIDEState {
+  /** Tutte le sessioni aperte, di ogni workspace Go Studio: l'interfaccia mostra solo quelle del workspace attivo. */
   sessions: GoIDESession[]
   recentProjects: GoIDERecentProject[]
   activeSessionId: string | null
+  /** Workspace Go Studio, indipendenti dai workspace API di adOmnia. */
+  studioWorkspaces: GoIDEStudioWorkspace[]
+  activeWorkspaceId: string
   capabilities: GoIDECapabilities | null
   loading: boolean
   initialized: boolean
@@ -290,6 +300,8 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
   sessions: [],
   recentProjects: [],
   activeSessionId: null,
+  studioWorkspaces: [],
+  activeWorkspaceId: DEFAULT_STUDIO_WORKSPACE_ID,
   capabilities: null,
   loading: false,
   initialized: false,
@@ -322,14 +334,15 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
     try {
       // Le cartelle sparite vanno rimosse prima di mostrare le sessioni, senza
       // perdere le altre e senza toccare i progetti recenti.
-      const [capabilities, sessions, recentProjects] = await Promise.all([
-        getGoIDECapabilities(), pruneMissingGoIDESessions(), listRecentGoIDEProjects(),
+      const [capabilities, sessions, recentProjects, workspaces] = await Promise.all([
+        getGoIDECapabilities(), pruneMissingGoIDESessions(), listRecentGoIDEProjects(), listGoIDEStudioWorkspaces(),
       ])
       if (!eventUnsubscribe) eventUnsubscribe = subscribeGoIDEEvents((event) => get().handleEvent(event))
-      const activeSessionId = sessions.some((session) => session.id === get().activeSessionId)
+      const visible = sessionsInWorkspace(sessions, workspaces.activeId)
+      const activeSessionId = visible.some((session) => session.id === get().activeSessionId)
         ? get().activeSessionId
-        : sessions[0]?.id ?? null
-      set({ capabilities, sessions, recentProjects, activeSessionId, initialized: true, loading: false })
+        : visible[0]?.id ?? null
+      set({ capabilities, sessions, recentProjects, activeSessionId, studioWorkspaces: workspaces.workspaces, activeWorkspaceId: workspaces.activeId, initialized: true, loading: false })
       if (activeSessionId) await get().selectSession(activeSessionId)
     } catch (error) {
       set({ loading: false, initialized: true, error: errorMessage(error) })
@@ -612,7 +625,7 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
         return {
           sessions,
           documents: state.documents.filter((item) => item.document.sessionId !== sessionId),
-          activeSessionId: sessions[0]?.id ?? null,
+          activeSessionId: sessionsInWorkspace(sessions, state.activeWorkspaceId)[0]?.id ?? null,
         }
       })
       return true

@@ -31,8 +31,9 @@ func NewWorkspaceManager() *WorkspaceManager {
 	return &WorkspaceManager{sessions: make(map[SessionID]Session)}
 }
 
-// OpenProject registra una cartella locale senza eseguire comandi o modificarne il contenuto.
-func (m *WorkspaceManager) OpenProject(path string) (Session, error) {
+// OpenProject registra una cartella locale nel workspace Go Studio indicato, senza eseguire comandi.
+// Lo stesso progetto può essere aperto in workspace diversi: ciascuno ha la propria sessione.
+func (m *WorkspaceManager) OpenProject(path, workspaceID string) (Session, error) {
 	root, realRoot, err := resolveProjectRoot(path)
 	if err != nil {
 		return Session{}, err
@@ -43,15 +44,16 @@ func (m *WorkspaceManager) OpenProject(path string) (Session, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for _, existing := range m.sessions {
-		if samePath(existing.Project.RealPath, realRoot) {
+		if existing.WorkspaceID == workspaceID && samePath(existing.Project.RealPath, realRoot) {
 			return existing, nil
 		}
 	}
 	session := Session{
-		ID:        SessionID(newID("session")),
-		Project:   project,
-		OpenedAt:  now,
-		UpdatedAt: now,
+		ID:          SessionID(newID("session")),
+		Project:     project,
+		WorkspaceID: workspaceID,
+		OpenedAt:    now,
+		UpdatedAt:   now,
 	}
 	m.sessions[session.ID] = session
 	return session, nil
