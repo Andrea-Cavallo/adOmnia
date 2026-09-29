@@ -19,7 +19,7 @@ const initialModules = initialChunks.flatMap((chunk) => Object.entries(chunk.mod
   id: id.replaceAll('\\', '/'),
   bytes: value.renderedLength,
 })))
-const deferredAppModule = /\/(?:components\/(?:collections\/CollectionTree|layout\/(?:Sidebar|CommandPalette)|assistant\/AICompanion|environment\/EnvModal|hosts\/HostModal)|lib\/(?:aiEngine|collectionTransfer|interopHub|openapiImport))\.[jt]sx?$/
+const deferredAppModule = /\/(?:components\/(?:goide\/[^/]+|collections\/CollectionTree|layout\/(?:Sidebar|CommandPalette)|assistant\/AICompanion|environment\/EnvModal|hosts\/HostModal)|stores\/goide\w*|lib\/(?:goide-[\w-]+|aiEngine|collectionTransfer|interopHub|openapiImport))\.[jt]sx?$/
 const deferredVendor = /\/node_modules\/(?:yaml|monaco-editor|monaco-yaml|mermaid|pdf-lib|pdfjs-dist)\//
 const report = {
   initialJavaScriptBytes: initialChunks.reduce((sum, chunk) => sum + Buffer.byteLength(chunk.code), 0),

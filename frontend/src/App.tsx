@@ -27,7 +27,6 @@ import { RecordStartupPerformance } from '@/wailsjs/go/main/App'
 import { saveWorkspaceStartupHint } from '@/lib/startupHints'
 import { findSpatialFocusIndex, focusableElements, ownsArrowKey } from '@/lib/accessibility'
 import { initialRailFromMemento } from '@/lib/uiSessionMemento'
-import { GoStudioCloseGuard } from '@/components/goide/GoStudioCloseGuard'
 
 const SIDEBAR_WIDTH_KEY = 'adomnia.sidebarWidth'
 let sidebarModulePromise: Promise<typeof import('@/components/layout/Sidebar')> | undefined
@@ -39,6 +38,9 @@ const Sidebar = React.lazy(() => loadSidebarModule().then((module) => ({ default
 // waiting for React. A fresh Hub never requests this optional chunk.
 if (initialRailFromMemento() === 'collections') void loadSidebarModule().catch(() => undefined)
 const CommandPalette = React.lazy(() => import('@/components/layout/CommandPalette').then((module) => ({ default: module.CommandPalette })))
+// Go Studio (store, API, LSP) resta fuori dal bundle iniziale: la guardia di chiusura serve
+// solo con buffer modificati o processi attivi, impossibili prima del primo frame stabile.
+const GoStudioCloseGuard = React.lazy(() => import('@/components/goide/GoStudioCloseGuard').then((module) => ({ default: module.GoStudioCloseGuard })))
 const DevLogOverlay = React.lazy(() => import('@/components/ui/DevLogOverlay').then((module) => ({ default: module.DevLogOverlay })))
 const SIDEBAR_WIDTH_MIN = 180
 const SIDEBAR_WIDTH_MAX = 0.40
@@ -198,7 +200,7 @@ function App() {
         </div>
         {commandPaletteOpen && <Suspense fallback={null}><CommandPalette open onClose={() => setCommandPaletteOpen(false)} /></Suspense>}
         <ConfirmDialogHost />
-        <GoStudioCloseGuard />
+        {firstStableFrame && <Suspense fallback={null}><GoStudioCloseGuard /></Suspense>}
         {import.meta.env.DEV && devLogVisible && <Suspense fallback={null}><DevLogOverlay visible onClose={toggleDevTools} /></Suspense>}
       </ThemeProvider>
     </ErrorBoundary>
