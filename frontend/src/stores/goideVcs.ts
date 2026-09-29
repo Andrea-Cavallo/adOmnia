@@ -4,7 +4,7 @@ import {
   checkoutGoIDEBranch, commitGoIDEFiles, getGoIDEBlame, getGoIDEFileAtRevision, getGoIDEVCSStatus,
   type GoIDEVCSBlameLine, type GoIDEVCSStatus,
 } from '@/lib/goide-vcs-api'
-import type { GoStudioLineHunk } from '@/components/goide/goStudioLineDiff'
+import { isBinaryText, type GoStudioLineHunk } from '@/components/goide/goStudioLineDiff'
 
 const STATUS_REFRESH_DEBOUNCE_MS = 700
 
@@ -16,7 +16,7 @@ export interface GoIDEHunkPopup {
 
 interface GoIDEVCSState {
   status: Record<string, GoIDEVCSStatus | null>
-  /** Contenuto HEAD per sessione e file: undefined non ancora letto, null se il file non è versionato. */
+  /** Contenuto HEAD per sessione e file: undefined non ancora letto, null se il file non è versionato o è binario. */
   head: Record<string, string | null>
   /** Annotazioni blame attive, per documento. */
   blame: Record<string, GoIDEVCSBlameLine[]>
@@ -85,7 +85,8 @@ export const useGoIDEVCSStore = create<GoIDEVCSState>((set, get) => {
       const tracked = !status.changes.some((change) => change.relativePath === relativePath && change.untracked)
       try {
         const content = tracked ? await getGoIDEFileAtRevision(sessionId, relativePath, 'HEAD') : null
-        set((state) => ({ head: { ...state.head, [key]: content } }))
+        // Una revisione binaria non ha righe confrontabili: nessun marcatore, come per i file non versionati.
+        set((state) => ({ head: { ...state.head, [key]: content !== null && isBinaryText(content) ? null : content } }))
       } catch {
         set((state) => ({ head: { ...state.head, [key]: null } }))
       }

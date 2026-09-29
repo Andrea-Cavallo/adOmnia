@@ -12,6 +12,11 @@ export interface GoStudioLineHunk {
 /** Oltre questa dimensione della parte centrale diversa si evita la LCS quadratica: un solo blocco. */
 const MAX_LCS_CELLS = 4_000_000
 
+/** Stessa euristica di Git: un byte NUL nei primi 8000 caratteri indica un contenuto binario, senza diff per riga. */
+export function isBinaryText(text: string): boolean {
+  return text.slice(0, 8000).includes('\u0000')
+}
+
 function splitLines(text: string): string[] {
   const lines = text.replace(/\r\n/g, '\n').split('\n')
   if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop()
