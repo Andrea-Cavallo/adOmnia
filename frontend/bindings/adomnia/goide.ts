@@ -609,6 +609,15 @@ export function PreviewGoTool(request: goide$0.GoToolRequest): $CancellablePromi
 }
 
 /**
+ * ProjectServices elenca i servizi esterni (database, broker, osservabilità) usati dal progetto.
+ */
+export function ProjectServices(sessionID: string): $CancellablePromise<goide$0.ProjectService[]> {
+    return $Call.ByID(297239615, sessionID).then(($result: any) => {
+        return $$createType65($result);
+    });
+}
+
+/**
  * PruneMissingSessions rimuove le sessioni la cui cartella non esiste più.
  */
 export function PruneMissingSessions(): $CancellablePromise<goide$0.Session[]> {
@@ -622,7 +631,7 @@ export function PruneMissingSessions(): $CancellablePromise<goide$0.Session[]> {
  */
 export function QuickDefinition(sessionID: string, documentID: string, line: number, column: number): $CancellablePromise<goide$0.QuickDefinitionResult> {
     return $Call.ByID(3849385104, sessionID, documentID, line, column).then(($result: any) => {
-        return $$createType64($result);
+        return $$createType66($result);
     });
 }
 
@@ -631,7 +640,7 @@ export function QuickDefinition(sessionID: string, documentID: string, line: num
  */
 export function QuickOpen(sessionID: string, query: string, limit: number): $CancellablePromise<goide$0.QuickOpenResult[]> {
     return $Call.ByID(2164854073, sessionID, query, limit).then(($result: any) => {
-        return $$createType66($result);
+        return $$createType68($result);
     });
 }
 
@@ -640,7 +649,7 @@ export function QuickOpen(sessionID: string, query: string, limit: number): $Can
  */
 export function RecursiveCalls(sessionID: string, documentID: string): $CancellablePromise<goide$0.RecursiveCallsResult> {
     return $Call.ByID(2923315195, sessionID, documentID).then(($result: any) => {
-        return $$createType67($result);
+        return $$createType69($result);
     });
 }
 
@@ -731,7 +740,7 @@ export function RestartRun(runID: string): $CancellablePromise<goide$0.Execution
  */
 export function RunLint(sessionID: string): $CancellablePromise<goide$0.LintResult> {
     return $Call.ByID(1402341846, sessionID).then(($result: any) => {
-        return $$createType68($result);
+        return $$createType70($result);
     });
 }
 
@@ -765,7 +774,7 @@ export function SaveSessionView(sessionID: string, view: goide$0.SessionView): $
  */
 export function SearchProject(query: goide$0.SearchQuery): $CancellablePromise<goide$0.SearchResult> {
     return $Call.ByID(1135993643, query).then(($result: any) => {
-        return $$createType69($result);
+        return $$createType71($result);
     });
 }
 
@@ -802,7 +811,7 @@ export function SelectProjectParent(): $CancellablePromise<string> {
  */
 export function SemanticTokens(sessionID: string, documentID: string): $CancellablePromise<goide$0.SemanticTokensResult> {
     return $Call.ByID(330697916, sessionID, documentID).then(($result: any) => {
-        return $$createType70($result);
+        return $$createType72($result);
     });
 }
 
@@ -811,7 +820,7 @@ export function SemanticTokens(sessionID: string, documentID: string): $Cancella
  */
 export function SetBreakpoints(sessionID: string, relativePath: string, lines: number[]): $CancellablePromise<goide$0.BreakpointState[]> {
     return $Call.ByID(914916034, sessionID, relativePath, lines).then(($result: any) => {
-        return $$createType72($result);
+        return $$createType74($result);
     });
 }
 
@@ -836,7 +845,7 @@ export function SetToolAuthorization(id: string, allowed: boolean): $Cancellable
  */
 export function SignatureHelp(sessionID: string, documentID: string, line: number, column: number): $CancellablePromise<goide$0.SignatureResult> {
     return $Call.ByID(4264674347, sessionID, documentID, line, column).then(($result: any) => {
-        return $$createType73($result);
+        return $$createType75($result);
     });
 }
 
@@ -936,7 +945,7 @@ export function UpdateDocumentBuffer(sessionID: string, documentID: string, vers
  */
 export function VCSBlame(sessionID: string, relativePath: string): $CancellablePromise<goide$0.VCSBlameLine[]> {
     return $Call.ByID(3401291297, sessionID, relativePath).then(($result: any) => {
-        return $$createType75($result);
+        return $$createType77($result);
     });
 }
 
@@ -952,7 +961,7 @@ export function VCSCheckout(sessionID: string, branch: string): $CancellableProm
  */
 export function VCSCommitFiles(sessionID: string, message: string, relativePaths: string[]): $CancellablePromise<git$0.CommitResult> {
     return $Call.ByID(2017164414, sessionID, message, relativePaths).then(($result: any) => {
-        return $$createType76($result);
+        return $$createType78($result);
     });
 }
 
@@ -968,7 +977,7 @@ export function VCSFileAtRevision(sessionID: string, relativePath: string, revis
  */
 export function VCSFileHistory(sessionID: string, relativePath: string): $CancellablePromise<goide$0.VCSCommit[]> {
     return $Call.ByID(4154237980, sessionID, relativePath).then(($result: any) => {
-        return $$createType78($result);
+        return $$createType80($result);
     });
 }
 
@@ -977,7 +986,7 @@ export function VCSFileHistory(sessionID: string, relativePath: string): $Cancel
  */
 export function VCSStatus(sessionID: string): $CancellablePromise<goide$0.VCSStatus> {
     return $Call.ByID(2262380148, sessionID).then(($result: any) => {
-        return $$createType79($result);
+        return $$createType81($result);
     });
 }
 
@@ -986,7 +995,7 @@ export function VCSStatus(sessionID: string): $CancellablePromise<goide$0.VCSSta
  */
 export function WatcherStatus(sessionID: string): $CancellablePromise<goide$0.WatcherStatus> {
     return $Call.ByID(999645628, sessionID).then(($result: any) => {
-        return $$createType80($result);
+        return $$createType82($result);
     });
 }
 
@@ -995,7 +1004,7 @@ export function WatcherStatus(sessionID: string): $CancellablePromise<goide$0.Wa
  */
 export function WorkspaceSymbols(sessionID: string, query: string): $CancellablePromise<goide$0.WorkspaceSymbol[]> {
     return $Call.ByID(3951183568, sessionID, query).then(($result: any) => {
-        return $$createType82($result);
+        return $$createType84($result);
     });
 }
 
@@ -1078,22 +1087,24 @@ const $$createType60 = goide$0.OpenDocument.createFrom;
 const $$createType61 = goide$0.WorkspaceChange.createFrom;
 const $$createType62 = goide$0.RenameTarget.createFrom;
 const $$createType63 = goide$0.GoToolPreview.createFrom;
-const $$createType64 = goide$0.QuickDefinitionResult.createFrom;
-const $$createType65 = goide$0.QuickOpenResult.createFrom;
-const $$createType66 = $Create.Array($$createType65);
-const $$createType67 = goide$0.RecursiveCallsResult.createFrom;
-const $$createType68 = goide$0.LintResult.createFrom;
-const $$createType69 = goide$0.SearchResult.createFrom;
-const $$createType70 = goide$0.SemanticTokensResult.createFrom;
-const $$createType71 = goide$0.BreakpointState.createFrom;
-const $$createType72 = $Create.Array($$createType71);
-const $$createType73 = goide$0.SignatureResult.createFrom;
-const $$createType74 = goide$0.VCSBlameLine.createFrom;
-const $$createType75 = $Create.Array($$createType74);
-const $$createType76 = git$0.CommitResult.createFrom;
-const $$createType77 = goide$0.VCSCommit.createFrom;
-const $$createType78 = $Create.Array($$createType77);
-const $$createType79 = goide$0.VCSStatus.createFrom;
-const $$createType80 = goide$0.WatcherStatus.createFrom;
-const $$createType81 = goide$0.WorkspaceSymbol.createFrom;
-const $$createType82 = $Create.Array($$createType81);
+const $$createType64 = goide$0.ProjectService.createFrom;
+const $$createType65 = $Create.Array($$createType64);
+const $$createType66 = goide$0.QuickDefinitionResult.createFrom;
+const $$createType67 = goide$0.QuickOpenResult.createFrom;
+const $$createType68 = $Create.Array($$createType67);
+const $$createType69 = goide$0.RecursiveCallsResult.createFrom;
+const $$createType70 = goide$0.LintResult.createFrom;
+const $$createType71 = goide$0.SearchResult.createFrom;
+const $$createType72 = goide$0.SemanticTokensResult.createFrom;
+const $$createType73 = goide$0.BreakpointState.createFrom;
+const $$createType74 = $Create.Array($$createType73);
+const $$createType75 = goide$0.SignatureResult.createFrom;
+const $$createType76 = goide$0.VCSBlameLine.createFrom;
+const $$createType77 = $Create.Array($$createType76);
+const $$createType78 = git$0.CommitResult.createFrom;
+const $$createType79 = goide$0.VCSCommit.createFrom;
+const $$createType80 = $Create.Array($$createType79);
+const $$createType81 = goide$0.VCSStatus.createFrom;
+const $$createType82 = goide$0.WatcherStatus.createFrom;
+const $$createType83 = goide$0.WorkspaceSymbol.createFrom;
+const $$createType84 = $Create.Array($$createType83);

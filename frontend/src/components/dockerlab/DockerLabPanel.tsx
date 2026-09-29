@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { useAppStore } from '@/stores/app'
 import { cn } from '@/lib/utils'
+import { BROKER_PENDING_KEY, DATABASE_PENDING_CONNECTION_KEY, handOff, takeDockerLabHandoff, type DockerLabHandoff } from '@/lib/moduleHandoff'
 import {
   type ContainerStatus,
   type LabInfo,
@@ -109,6 +110,10 @@ export function DockerLabPanel() {
 
   const [copied, setCopied] = useState(false)
   const [launchError, setLaunchError] = useState('')
+  const [suggestion] = useState<DockerLabHandoff | null>(() => takeDockerLabHandoff())
+  const orderedPresets = suggestion
+    ? [...PRESETS.filter((preset) => suggestion.presetIds.includes(preset.id)), ...PRESETS.filter((preset) => !suggestion.presetIds.includes(preset.id))]
+    : PRESETS
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const logsEndRef = useRef<HTMLDivElement>(null)
@@ -215,7 +220,7 @@ export function DockerLabPanel() {
       : hasMySQL
         ? { name: `${selected.name} MySQL`, driver: 'mysql', host: '127.0.0.1', port: 3306, database: 'adomnia', user: 'adomnia', password: 'adomnia', sslMode: 'disable' }
         : { name: `${selected.name} MongoDB`, driver: 'mongodb', host: '127.0.0.1', port: 27017, database: 'admin', user: 'admin', password: 'admin', sslMode: 'disable' }
-    sessionStorage.setItem('adomnia.database.pendingConnection', JSON.stringify(pending))
+    handOff(DATABASE_PENDING_CONNECTION_KEY, pending)
     useAppStore.getState().setActiveRail('database')
   }
 
@@ -230,7 +235,7 @@ export function DockerLabPanel() {
       : hasRabbit
         ? { protocol: 'rabbitmq', rabbitmq: { url: 'amqp://guest:guest@localhost:5672/' } }
         : { protocol: 'redis', redis: { addr: 'localhost:6379' } }
-    sessionStorage.setItem('adomnia.broker.pending', JSON.stringify(pending))
+    handOff(BROKER_PENDING_KEY, pending)
     useAppStore.getState().setActiveRail('broker')
   }
 
@@ -266,11 +271,18 @@ export function DockerLabPanel() {
           </div>
         )}
 
+        {suggestion && suggestion.presetIds.length > 0 && (
+          <div className="px-4 py-2 border-b border-border-1 bg-accent/5 text-[10px] text-text-3">
+            Suggested for <span className="font-medium text-text-1">{suggestion.source}</span>: the project uses these services (from go.mod). Launching stays your choice.
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 gap-3 content-start">
-          {PRESETS.map((preset) => (
+          {orderedPresets.map((preset) => (
             <div
               key={preset.id}
-              className="flex flex-col p-3 rounded-lg border border-border-1 hover:border-accent/40 hover:bg-surface-1 transition-colors group"
+              data-suggested={suggestion?.presetIds.includes(preset.id) || undefined}
+              className={`flex flex-col p-3 rounded-lg border hover:border-accent/40 hover:bg-surface-1 transition-colors group ${suggestion?.presetIds.includes(preset.id) ? 'border-accent/60 bg-accent/5' : 'border-border-1'}`}
             >
               <button
                 onClick={() => selectPreset(preset)}
@@ -279,7 +291,8 @@ export function DockerLabPanel() {
                 <div className="flex items-center gap-2 mb-1.5">
                   <span className="text-lg">{preset.icon}</span>
                   <span className="text-xs font-medium text-text-1 group-hover:text-accent">{preset.name}</span>
-                  <span className="ml-auto px-1.5 py-0.5 text-[9px] rounded bg-surface-3 text-text-4">{preset.tag}</span>
+                  {suggestion?.presetIds.includes(preset.id) && <span className="ml-auto px-1.5 py-0.5 text-[9px] rounded bg-accent/15 text-accent">Used by project</span>}
+                  <span className={`${suggestion?.presetIds.includes(preset.id) ? '' : 'ml-auto '}px-1.5 py-0.5 text-[9px] rounded bg-surface-3 text-text-4`}>{preset.tag}</span>
                 </div>
                 <p className="text-[10px] text-text-4 leading-relaxed mb-2">{preset.description}</p>
                 <div className="flex flex-wrap gap-1">

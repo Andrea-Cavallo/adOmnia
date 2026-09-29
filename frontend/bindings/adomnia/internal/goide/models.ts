@@ -2300,6 +2300,46 @@ export class Project {
 }
 
 /**
+ * ProjectService è un servizio esterno usato dal progetto, riconosciuto dalle dipendenze dirette in go.mod.
+ */
+export class ProjectService {
+    "id": string;
+    "name": string;
+    "kind": string;
+    "modules": string[];
+
+    /** Creates a new ProjectService instance. */
+    constructor($$source: Partial<ProjectService> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("kind" in $$source)) {
+            this["kind"] = "";
+        }
+        if (!("modules" in $$source)) {
+            this["modules"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ProjectService instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ProjectService {
+        const $$createField3_0 = $$createType12;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("modules" in $$parsedSource) {
+            $$parsedSource["modules"] = $$createField3_0($$parsedSource["modules"]);
+        }
+        return new ProjectService($$parsedSource as Partial<ProjectService>);
+    }
+}
+
+/**
  * QuickDefinitionResult è il sorgente della dichiarazione da mostrare in popup, senza lasciare il file corrente.
  */
 export class QuickDefinitionResult {

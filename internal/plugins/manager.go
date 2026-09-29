@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -41,6 +42,16 @@ var AvailableHookEvents = []string{
 	"onEnvChange",
 	"onTabOpen",
 	"onTabClose",
+}
+
+// RegisterHookEvents adds events published by other modules (e.g. Go Studio) to the hookable list.
+// It must run at startup, before plugins are loaded; duplicates are ignored.
+func RegisterHookEvents(events ...string) {
+	for _, event := range events {
+		if !slices.Contains(AvailableHookEvents, event) {
+			AvailableHookEvents = append(AvailableHookEvents, event)
+		}
+	}
 }
 
 // PluginManifest describes a plugin's metadata and capabilities.

@@ -65,6 +65,7 @@ export {
     OpenDocument,
     ProcessInfo,
     Project,
+    ProjectService,
     QuickDefinitionResult,
     QuickOpenResult,
     RecentProject,

@@ -381,3 +381,35 @@ export function diagnosticCounts(reports: Record<string, GoIDEDiagnosticsReport>
   }
   return { errors, warnings }
 }
+
+/** Sezione Go Studio di adomnia-settings.json: solo preferenze globali, mai stato dei progetti. */
+export interface GoStudioSettingsExport {
+  settings: GoIDELanguageServerSettings
+  preferences: GoIDEEditorPreferences
+}
+
+export function exportGoStudioSettings(): GoStudioSettingsExport {
+  const { settings, preferences } = useGoIDELspStore.getState()
+  return { settings: { ...settings }, preferences: { ...preferences } }
+}
+
+/** Tiene solo le chiavi note e booleane: un file importato non può introdurre valori arbitrari. */
+function knownBooleans<T extends object>(defaults: T, value: unknown): Partial<T> {
+  if (!value || typeof value !== 'object') return {}
+  const source = value as Record<string, unknown>
+  return Object.fromEntries(Object.keys(defaults).filter((key) => typeof source[key] === 'boolean').map((key) => [key, source[key]])) as Partial<T>
+}
+
+/** Applica la sezione Go Studio importata; restituisce false se il file non ne contiene una valida. */
+export function importGoStudioSettings(value: unknown, activeSessionId: string | null): boolean {
+  if (!value || typeof value !== 'object') return false
+  const section = value as Partial<Record<keyof GoStudioSettingsExport, unknown>>
+  const preferences = knownBooleans(DEFAULT_PREFERENCES, section.preferences)
+  const settings = knownBooleans(DEFAULT_SETTINGS, section.settings)
+  delete settings.semanticLinks
+  if (Object.keys(preferences).length === 0 && Object.keys(settings).length === 0) return false
+  const store = useGoIDELspStore.getState()
+  store.updatePreferences(preferences)
+  void store.updateSettings(activeSessionId, settings)
+  return true
+}

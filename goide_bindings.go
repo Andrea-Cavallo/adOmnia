@@ -3,6 +3,7 @@ package main
 import (
 	"adomnia/internal/git"
 	"adomnia/internal/goide"
+	"adomnia/internal/plugins"
 	"adomnia/internal/storage"
 	"context"
 	"fmt"
@@ -86,12 +87,32 @@ func NewGoIDE() *GoIDE {
 		if binding != nil && binding.desktop != nil {
 			binding.desktop.Event.Emit("goide:event", event)
 		}
+		forwardGoIDEPluginEvent(event)
 	})
 	_ = service.ConfigureToolchainStorage(filepath.Join(dataDir(), "goide", "toolchains"))
 	_ = service.ConfigureRecoveryStore(goIDERecoveryStore{})
 	_ = service.ConfigureHistoryStore(goIDEHistoryStore{})
 	binding = &GoIDE{service: service}
 	return binding
+}
+
+func init() {
+	plugins.RegisterHookEvents(goide.PluginEvents...)
+}
+
+// forwardGoIDEPluginEvent consegna ai plugin, in modo asincrono e in sola lettura, gli eventi del contratto Go Studio.
+func forwardGoIDEPluginEvent(event goide.EventEnvelope) {
+	if globalPluginManager == nil {
+		return
+	}
+	if eventType, payload, ok := goide.PluginEventFor(event); ok {
+		globalPluginManager.FireEvent(PluginEvent{Type: eventType, Payload: payload})
+	}
+}
+
+// ProjectServices elenca i servizi esterni (database, broker, osservabilità) usati dal progetto.
+func (g *GoIDE) ProjectServices(sessionID string) ([]goide.ProjectService, error) {
+	return g.service.ProjectServices(sessionID)
 }
 
 func (g *GoIDE) attachDesktop(desktop *application.App) {

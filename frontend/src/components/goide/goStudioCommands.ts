@@ -23,9 +23,10 @@ export type GoStudioCommandId =
   | 'debug.debug' | 'debug.toggleBreakpoint' | 'debug.resume' | 'debug.pause' | 'debug.stepOver' | 'debug.stepInto' | 'debug.stepOut'
   | 'debug.stop' | 'view.debug' | 'go.installDelve' | 'debug.attach' | 'debug.remote'
   | 'vcs.commit' | 'vcs.history' | 'vcs.annotate' | 'vcs.gitStudio'
+  | 'tools.services' | 'tools.httpRequest' | 'tools.plugins'
   | 'help.shortcuts'
 
-export type GoStudioMenuId = 'file' | 'edit' | 'view' | 'navigate' | 'code' | 'go' | 'run' | 'git' | 'help'
+export type GoStudioMenuId = 'file' | 'edit' | 'view' | 'navigate' | 'code' | 'go' | 'run' | 'tools' | 'git' | 'help'
 
 export interface GoStudioKeyBinding {
   key: string
@@ -54,6 +55,7 @@ export const GO_STUDIO_MENUS: ReadonlyArray<{ id: GoStudioMenuId; label: string 
   { id: 'code', label: 'Code' },
   { id: 'go', label: 'Go' },
   { id: 'run', label: 'Run' },
+  { id: 'tools', label: 'Tools' },
   { id: 'git', label: 'Git' },
   { id: 'help', label: 'Help' },
 ]
@@ -182,6 +184,9 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'debug.stepOut', menu: 'run', label: 'Step Out', binding: { key: 'F8', shift: true }, passThroughWhenUnavailable: true },
   { id: 'debug.stop', menu: 'run', label: 'Stop Debugging', binding: { key: 'F2', mod: true }, passThroughWhenUnavailable: true },
   { id: 'run.configure', menu: 'run', label: 'Edit Run Configuration…', separatorBefore: true },
+  { id: 'tools.services', menu: 'tools', label: 'Project Services: Docker Lab, Database, Broker…' },
+  { id: 'tools.httpRequest', menu: 'tools', label: 'Open HTTP Route in API Client' },
+  { id: 'tools.plugins', menu: 'tools', label: 'Plugins Listening to Go Studio Events', separatorBefore: true },
   { id: 'vcs.commit', menu: 'git', label: 'Commit…', binding: { key: 'k', mod: true } },
   { id: 'vcs.history', menu: 'git', label: 'Show File History…' },
   { id: 'vcs.annotate', menu: 'git', label: 'Annotate with Git Blame' },
@@ -306,6 +311,7 @@ export function commandAvailability(id: GoStudioCommandId, context: GoStudioComm
     case 'file.closeAll': return context.documentCount > 0 ? true : 'No tabs are open'
     case 'file.reopenClosed': return context.hasClosedDocuments ? true : 'No recently closed tabs'
     case 'file.localHistory': return context.hasEditor ? true : 'Open a file first'
+    case 'tools.httpRequest': return context.hasEditor ? true : 'Open a Go file with route registrations first'
     case 'vcs.commit': return !context.vcsAvailable ? 'The project is not in a Git repository' : context.vcsChanges > 0 ? true : 'No local changes to commit'
     case 'vcs.history':
     case 'vcs.annotate': return !context.vcsAvailable ? 'The project is not in a Git repository' : context.hasEditor ? true : 'Open a file first'

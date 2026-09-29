@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { DATABASE_PENDING_CONNECTION_KEY } from '@/lib/moduleHandoff'
 import { Braces, CheckCircle2, Database, LayoutList, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
@@ -101,20 +102,24 @@ export function DatabasePanel() {
           setError('Saved database connections could not be read; a clean local connection was created.')
         }
       }
-      const pendingRaw = sessionStorage.getItem('adomnia.database.pendingConnection')
-        ?? localStorage.getItem('adomnia.database.pendingConnection')
+      const pendingRaw = sessionStorage.getItem(DATABASE_PENDING_CONNECTION_KEY)
+        ?? localStorage.getItem(DATABASE_PENDING_CONNECTION_KEY)
       if (pendingRaw) {
         try {
           const pending = JSON.parse(pendingRaw) as Partial<DbConnection>
           const pendingConn = normalizeConnection({ ...pending, id: crypto.randomUUID() })
-          nextConnections = [pendingConn, ...nextConnections]
+          // Aprire due volte lo stesso contesto riusa la connessione già creata invece di duplicarla.
+          const existing = nextConnections.find((connection) => connection.name === pendingConn.name && connection.driver === pendingConn.driver)
+          nextConnections = existing
+            ? [existing, ...nextConnections.filter((connection) => connection.id !== existing.id)]
+            : [pendingConn, ...nextConnections]
           await safeStoragePut(STORAGE_BUCKET, CONNECTIONS_KEY, serializeDatabaseConnections(nextConnections))
-          setMessage(`Docker Lab connection "${pendingConn.name}" added`)
+          setMessage(existing ? `Connection "${existing.name}" selected` : `Connection "${pendingConn.name}" added`)
         } catch {
-          setError('Could not import Docker Lab database connection')
+          setError('Could not import the database connection')
         } finally {
-          sessionStorage.removeItem('adomnia.database.pendingConnection')
-          localStorage.removeItem('adomnia.database.pendingConnection')
+          sessionStorage.removeItem(DATABASE_PENDING_CONNECTION_KEY)
+          localStorage.removeItem(DATABASE_PENDING_CONNECTION_KEY)
         }
       }
       setConnections(nextConnections)

@@ -41,6 +41,8 @@ import { GoStudioBookmarksDialog } from './GoStudioBookmarksDialog'
 import { GoStudioBranchWidget } from './GoStudioBranchWidget'
 import { GoStudioCommitDialog } from './GoStudioCommitDialog'
 import { GoStudioGitHistoryDialog } from './GoStudioGitHistoryDialog'
+import { GoStudioProjectServicesDialog } from './GoStudioProjectServicesDialog'
+import { runIntegrationCommand } from './goStudioIntegrationCommands'
 import { GoStudioHunkPopup } from './GoStudioHunkPopup'
 import { runVcsCommand, type GoStudioVcsDialog } from './goStudioVcsCommands'
 import { useGoIDEVCSStore } from '@/stores/goideVcs'
@@ -138,6 +140,7 @@ export function GoStudioPanel() {
   const [attachMode, setAttachMode] = useState<GoStudioAttachMode | null>(null)
   const [localHistoryOpen, setLocalHistoryOpen] = useState(false)
   const [vcsDialog, setVcsDialog] = useState<GoStudioVcsDialog>(null)
+  const [servicesOpen, setServicesOpen] = useState(false)
   const vcs = useGoIDEVCSStore(useShallow((state) => {
     const status = state.status[store.activeSessionId ?? '']
     return { vcsAvailable: !!status?.available, vcsChanges: status?.changes.length ?? 0 }
@@ -356,6 +359,7 @@ export function GoStudioPanel() {
     if (runDebugCommand(id, activeSession?.id ?? null, configuredDebugRequest)) return
     if (id === 'file.localHistory') return setLocalHistoryOpen(true)
     if (runVcsCommand(id, activeSession?.id ?? null, currentActiveDocument(), setVcsDialog)) return
+    if (runIntegrationCommand(id, currentActiveDocument(), activeGoStudioEditor(), () => setServicesOpen(true))) return
     if (id === 'debug.attach' || id === 'debug.remote') return setAttachMode(id === 'debug.attach' ? 'attach' : 'remote')
     const toolDialog = goToolDialogFor(id, activeSession)
     if (toolDialog) return setGoTool(toolDialog)
@@ -448,6 +452,7 @@ export function GoStudioPanel() {
       <GoStudioDependencies open={dependenciesOpen} session={activeSession} onClose={() => setDependenciesOpen(false)} />
       <GoStudioSearchEverywhere open={searchEverywhereOpen} sessionId={activeSession.id} availability={(id) => commandAvailability(id, commandContext)} onCommand={runCommand} onClose={() => setSearchEverywhereOpen(false)} />
       <GoStudioCommitDialog sessionId={activeSession.id} open={vcsDialog === 'commit'} onClose={() => setVcsDialog(null)} />
+      <GoStudioProjectServicesDialog sessionId={activeSession.id} projectName={activeSession.project.name} open={servicesOpen} onClose={() => setServicesOpen(false)} />
       <GoStudioGitHistoryDialog document={vcsDialog === 'history' ? currentActiveDocument() : null} open={vcsDialog === 'history'} onClose={() => setVcsDialog(null)} />
       <GoStudioHunkPopup />
       <GoStudioLocalHistoryDialog document={localHistoryOpen ? currentActiveDocument() : null} open={localHistoryOpen} onClose={() => setLocalHistoryOpen(false)} />
