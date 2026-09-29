@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bug, ChevronDown, Hammer, LockKeyhole, MoreVertical, Play, Search, Square, X } from 'lucide-react'
+import { Bug, ChevronDown, Hammer, LockKeyhole, Maximize2, Minimize2, MoreVertical, Play, Search, Square, X } from 'lucide-react'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import type { GoIDEExecution, GoIDERunConfiguration, GoIDESession, GoIDEToolchainInfo } from '@/lib/goide-api'
 import { GoGopherIcon } from './GoGopherIcon'
@@ -34,6 +34,9 @@ interface GoStudioToolbarProps {
   onTidy: () => void
   onStop: () => void
   onClose: () => void
+  /** Solo nella finestra principale: Go Studio a tutta finestra senza rail né intestazione di adOmnia. */
+  maximized?: boolean
+  onToggleMaximize?: () => void
 }
 
 type ToolbarMenu = 'project' | 'config' | 'more'
@@ -149,6 +152,11 @@ export function GoStudioToolbar(props: GoStudioToolbarProps) {
       <button type="button" onClick={props.onBuild} disabled={!toolsReady || loading} aria-label="Build" title="Build · Ctrl/Cmd+Shift+B" className="go-studio-icon-button h-8 w-8"><Hammer size={15} /></button>
       <button type="button" aria-label="More Go actions" aria-haspopup="menu" aria-expanded={menu?.kind === 'more'} onClick={(event) => openMenu('more', event.currentTarget)} title="Toolchain, dependencies, go mod tidy" className={`go-studio-icon-button h-8 w-8 ${menu?.kind === 'more' ? 'is-active' : ''}`}><MoreVertical size={15} /></button>
       {trailing && <><span className="mx-1 h-5 w-px bg-border-1" aria-hidden="true" />{trailing}</>}
+      {props.onToggleMaximize && (
+        <button type="button" onClick={props.onToggleMaximize} aria-label={props.maximized ? 'Restore adOmnia layout' : 'Maximize Go Studio'} aria-pressed={!!props.maximized} title={`${props.maximized ? 'Restore adOmnia rail and header' : 'Maximize Go Studio: hide adOmnia rail and header'} · Ctrl/Cmd+Shift+F12`} className={`go-studio-icon-button h-8 w-8 ${props.maximized ? 'is-active' : ''}`}>
+          {props.maximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+        </button>
+      )}
       <button type="button" onClick={props.onClose} disabled={loading} aria-label="Close project" title="Close project session" className="go-studio-icon-button h-8 w-8"><X size={14} /></button>
       {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu.kind)} onSelect={select} onClose={() => setMenu(null)} />}
     </div>

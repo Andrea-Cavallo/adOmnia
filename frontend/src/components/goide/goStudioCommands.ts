@@ -6,7 +6,7 @@ export type GoStudioCommandId =
   | 'edit.duplicateLine' | 'edit.deleteLine' | 'edit.nextOccurrence' | 'edit.allOccurrences' | 'edit.moveLineUp' | 'edit.moveLineDown' | 'edit.columnSelection'
   | 'file.localHistory' | 'view.todo'
   | 'view.splitRight' | 'view.splitDown' | 'view.unsplit' | 'view.terminal'
-  | 'view.quickOpen' | 'view.toggleStructure' | 'view.toggleBottom' | 'view.toggleIgnored' | 'view.problems'
+  | 'view.quickOpen' | 'view.maximize' | 'view.toggleStructure' | 'view.toggleBottom' | 'view.toggleIgnored' | 'view.problems'
   | 'nav.declaration' | 'nav.typeDeclaration' | 'nav.implementation' | 'nav.usages' | 'nav.fileStructure' | 'nav.symbol' | 'nav.findInFiles'
   | 'nav.superMethod' | 'nav.back' | 'nav.forward' | 'nav.toggleBookmark' | 'nav.bookmarks'
   | 'nav.quickDefinition' | 'nav.showUsages' | 'nav.searchEverywhere' | 'code.quickDocumentation' | 'code.typeInfo' | 'code.semanticHighlighting' | 'code.inlayHints' | 'code.implementInterface'
@@ -89,6 +89,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'edit.allOccurrences', menu: 'edit', label: 'Select All Occurrences', binding: { key: 'j', mod: true, alt: true, shift: true }, editorOwned: true },
   { id: 'edit.columnSelection', menu: 'edit', label: 'Column Selection Mode', binding: { key: 'Insert', alt: true, shift: true }, editorOwned: true },
   { id: 'view.quickOpen', menu: 'view', label: 'Go to File…', binding: { key: 'p', mod: true } },
+  { id: 'view.maximize', menu: 'view', label: 'Maximize Go Studio', binding: { key: 'F12', mod: true, shift: true }, separatorBefore: true },
   { id: 'view.toggleStructure', menu: 'view', label: 'Project Overview Pane', binding: { key: '7', alt: true }, separatorBefore: true },
   { id: 'view.toggleBottom', menu: 'view', label: 'Run / Problems Pane', binding: { key: '4', alt: true } },
   { id: 'view.problems', menu: 'view', label: 'Problems', binding: { key: '6', alt: true } },
@@ -256,6 +257,7 @@ export interface GoStudioCommandContext {
   structureOpen: boolean
   bottomOpen: boolean
   showIgnored: boolean
+  maximized: boolean
   semanticHighlighting: boolean
   inlayHints: boolean
   semanticTokensSupported: boolean
@@ -310,6 +312,7 @@ function windowAvailability(id: GoStudioCommandId, context: GoStudioCommandConte
 export function commandAvailability(id: GoStudioCommandId, context: GoStudioCommandContext): true | string {
   const windowed = windowAvailability(id, context)
   if (windowed !== null) return windowed
+  if (id === 'view.maximize') return context.detached ? 'Already a separate window' : true
   if (id === 'file.openProject' || id === 'file.newProject' || id === 'help.shortcuts') return true
   if (!context.hasSession) return NO_PROJECT
   if (id.startsWith('edit.')) return context.hasEditor ? true : 'Open a file first'
@@ -397,6 +400,7 @@ export function commandAvailability(id: GoStudioCommandId, context: GoStudioComm
 /** Indica lo stato attivo dei comandi toggle mostrati con spunta nei menu. */
 export function commandChecked(id: GoStudioCommandId, context: GoStudioCommandContext): boolean {
   switch (id) {
+    case 'view.maximize': return context.maximized
     case 'view.toggleStructure': return context.structureOpen
     case 'view.toggleBottom': return context.bottomOpen
     case 'view.toggleIgnored': return context.showIgnored

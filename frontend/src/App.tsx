@@ -67,6 +67,7 @@ function App() {
   const activeRail     = useAppStore((s) => s.activeRail)
   const sidebarCollapsed = useSettingsStore((s) => s.settings.appearance.sidebarCollapsed)
   const showSidebar    = activeRail === 'collections' && !sidebarCollapsed
+  const goStudioMaximized = useAppStore((s) => s.goStudioMaximized) && activeRail === 'goide'
   const workspaceHydrated = useWorkspaceHydration()
   const workspaceShellPhase = useWorkspaceHydrationShell(workspaceHydrated)
   const addDevLog = useDevLogsStore((s) => s.addEntry)
@@ -184,7 +185,7 @@ function App() {
           {activeWindowChrome !== 'system' && <Titlebar />}
           <StorageQuotaBanner />
           <div className="flex flex-1 min-h-0">
-            <Rail />
+            {!goStudioMaximized && <Rail />}
             {/* Resizable sidebar wrapper — hidden on welcome hub */}
             {showSidebar && (
               <>
@@ -202,7 +203,7 @@ function App() {
             )}
             <ErrorBoundary><MainAreaRouter /></ErrorBoundary>
           </div>
-          <StatusBar />
+          {!goStudioMaximized && <StatusBar />}
           {dragOver && <DropOverlay preview={dropPreview} />}
           {dropFeedback && <DropToast feedback={dropFeedback} />}
           <PluginNotificationToast />

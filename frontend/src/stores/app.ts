@@ -32,6 +32,9 @@ interface AppState {
   sseRunning: boolean
   browserRunning: boolean
   pendingFileImport: RoutedToolFile | null
+  /** Go Studio a tutta finestra: nasconde rail, intestazione e status bar di adOmnia (solo mentre Go Studio è attivo). */
+  goStudioMaximized: boolean
+  toggleGoStudioMaximized: () => void
   setActiveRail: (rail: RailItem) => void
   queueFileImport: (file: RoutedToolFile) => void
   consumeFileImport: (kind: RoutedToolFile['kind']) => RoutedToolFile | null
@@ -67,6 +70,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   sseRunning: false,
   browserRunning: false,
   pendingFileImport: null,
+  goStudioMaximized: false,
+  toggleGoStudioMaximized: () => set((s) => ({ goStudioMaximized: !s.goStudioMaximized })),
   setActiveRail: (rail) => {
     rememberActiveRail(rail)
     set((s) => ({

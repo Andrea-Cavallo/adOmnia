@@ -9,6 +9,7 @@ import { GoStudioQuickOpen } from './GoStudioQuickOpen'
 import { GoStudioRecoveryBanner } from './GoStudioRecoveryBanner'
 import { GoStudioRunConfigurations } from './GoStudioRunConfigurations'
 import { GoStudioSecretsPrompt } from './GoStudioSecretsPrompt'
+import { useAppStore } from '@/stores/app'
 import { GoStudioToolbar } from './GoStudioToolbar'
 import { GoStudioElsewhere } from './GoStudioElsewhere'
 import { useGoIDEWindowsStore } from '@/stores/goideWindows'
@@ -115,6 +116,8 @@ export function GoStudioPanel() {
   const setCursor = useGoStudioCursorStore((state) => state.setCursor)
   const [createOpen, setCreateOpen] = useState(false)
   const [configureOpen, setConfigureOpen] = useState(false)
+  const goStudioMaximized = useAppStore((state) => state.goStudioMaximized)
+  const toggleGoStudioMaximized = useAppStore((state) => state.toggleGoStudioMaximized)
   const [configDraft, setConfigDraft] = useState<GoIDERunConfiguration | null>(null)
   const openConfigurations = (draft: GoIDERunConfiguration | null = null) => { setConfigDraft(draft); setConfigureOpen(true) }
   const [toolchainOpen, setToolchainOpen] = useState(false)
@@ -319,6 +322,7 @@ export function GoStudioPanel() {
     structureOpen: store.layout.structureOpen,
     bottomOpen: store.layout.bottomOpen,
     showIgnored: !!activeSession && (store.showIgnoredBySession[activeSession.id] ?? false),
+    maximized: goStudioMaximized,
     semanticHighlighting: lsp.preferences.semanticHighlighting,
     inlayHints: lsp.preferences.inlayHints,
     semanticTokensSupported: !!lspStatus?.features?.semanticTokens,
@@ -408,6 +412,7 @@ export function GoStudioPanel() {
       case 'view.splitDown': return store.setSplit('down')
       case 'view.unsplit': return store.setSplit(null)
       case 'view.quickOpen': return store.setQuickOpen(true)
+      case 'view.maximize': return toggleGoStudioMaximized()
       case 'view.toggleStructure': return store.updateLayout({ structureOpen: !store.layout.structureOpen })
       case 'view.toggleBottom': return store.updateLayout({ bottomOpen: !store.layout.bottomOpen })
       case 'view.toggleIgnored': return void store.toggleShowIgnored()
@@ -469,7 +474,7 @@ export function GoStudioPanel() {
 
   return (
     <div className="go-studio-root flex min-h-0 flex-1 flex-col text-text-1">
-      <GoStudioToolbar mainMenu={mainMenu} trailing={<GoStudioWorkspaceSwitcher />} onSearchEverywhere={() => runCommand('nav.searchEverywhere')} onDebug={() => runCommand('debug.debug')} extra={<GoStudioBranchWidget sessionId={activeSession.id} onCommit={() => setVcsDialog('commit')} />} runConfigurations={runConfigurations} activeConfigId={activeConfigId} onSelectConfiguration={(id) => store.selectRunConfiguration(id)} sessions={workspaceSessions} activeSession={activeSession} activeExecution={activeExecution} toolchain={toolchain} loading={store.loading} onSelect={(id) => void store.selectSession(id)} onOpenProject={() => void store.openProject()} onCreateProject={() => setCreateOpen(true)} onSetAuthorization={(allowed) => void authorize(allowed)} onDetectToolchain={() => void store.detectToolchain()} onToolchainSettings={() => setToolchainOpen(true)} onDependencies={() => setDependenciesOpen(true)} onConfigure={() => setConfigureOpen(true)} onBuild={() => startConfigured('build')} onRun={() => startConfigured('run')} onTidy={() => void tidy()} onStop={() => void store.stopRun()} onClose={() => void closeFlow.requestCloseSession()} />
+      <GoStudioToolbar mainMenu={mainMenu} trailing={<GoStudioWorkspaceSwitcher />} onSearchEverywhere={() => runCommand('nav.searchEverywhere')} onDebug={() => runCommand('debug.debug')} extra={<GoStudioBranchWidget sessionId={activeSession.id} onCommit={() => setVcsDialog('commit')} />} maximized={goStudioMaximized} onToggleMaximize={toggleGoStudioMaximized} runConfigurations={runConfigurations} activeConfigId={activeConfigId} onSelectConfiguration={(id) => store.selectRunConfiguration(id)} sessions={workspaceSessions} activeSession={activeSession} activeExecution={activeExecution} toolchain={toolchain} loading={store.loading} onSelect={(id) => void store.selectSession(id)} onOpenProject={() => void store.openProject()} onCreateProject={() => setCreateOpen(true)} onSetAuthorization={(allowed) => void authorize(allowed)} onDetectToolchain={() => void store.detectToolchain()} onToolchainSettings={() => setToolchainOpen(true)} onDependencies={() => setDependenciesOpen(true)} onConfigure={() => setConfigureOpen(true)} onBuild={() => startConfigured('build')} onRun={() => startConfigured('run')} onTidy={() => void tidy()} onStop={() => void store.stopRun()} onClose={() => void closeFlow.requestCloseSession()} />
       {store.error && <ErrorBanner message={store.error} onClose={store.clearError} />}
       {windowError}
       {lsp.message && <NoticeBanner message={lsp.message} onClose={lsp.clearMessage} />}

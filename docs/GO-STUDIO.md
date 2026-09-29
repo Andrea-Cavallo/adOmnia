@@ -13,6 +13,8 @@ Everything stays on your machine. Nothing in a project runs until you trust it.
 5. **Run, test, debug.** Use Build, Run with stdin, the gutter ▶ next to `func main` and tests, the structured test runner with coverage, the Delve debugger (launch, attach or remote) and a real terminal. Makefile targets and Dockerfiles run for real too (see below).
 6. **Commit and integrate.** The toolbar shows the Git branch and changes, and the gutter shows diffs against HEAD. Commit from Go Studio; Git Studio follows the open project's repository for push, pull and merges. *Tools → Project Services* opens Docker Lab, Database Studio or Broker Studio for the services detected in `go.mod`. HTTP handlers get an *Open in API Client* CodeLens.
 
+*View → Maximize Go Studio* (Ctrl+Shift+F12, or the ⤢ button at the right of the toolbar) hides adOmnia's rail, the Go Studio header and adOmnia's status bar, so the IDE fills the window. Press it again to restore them; leaving Go Studio restores them too.
+
 Several projects can stay open at the same time, isolated from each other, grouped into Go Studio workspaces that are separate from adOmnia's API workspaces. A project can also move into its own window (*File → Open Project in New Window*).
 
 ## Security and project authorization
@@ -119,6 +121,7 @@ Go Studio follows the GoLand keymap. The table below is generated from the comma
 | Action | Windows / Linux | macOS |
 | --- | --- | --- |
 | Go to File | Ctrl+P | ⌘P |
+| Maximize Go Studio | Ctrl+Shift+F12 | ⌘⇧F12 |
 | Project Overview Pane | Alt+7 | ⌥7 |
 | Run / Problems Pane | Alt+4 | ⌥4 |
 | Problems | Alt+6 | ⌥6 |

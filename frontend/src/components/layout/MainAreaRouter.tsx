@@ -152,6 +152,7 @@ function panelFor(activeRail: RailItem): PanelDef {
 
 export function MainAreaRouter() {
   const activeRail = useAppStore((s) => s.activeRail)
+  const maximized = useAppStore((s) => s.goStudioMaximized) && activeRail === 'goide'
   const goBack = useAppStore((s) => s.goBack)
   const workspaceHydrated = useWorkspaceHydration()
   const workspaceShellPhase = useWorkspaceHydrationShell(workspaceHydrated)
@@ -184,7 +185,7 @@ export function MainAreaRouter() {
     <main className={`flex-1 flex flex-col min-w-0 relative bg-surface-0${overflow ? ' overflow-hidden' : ''}`}>
       {workspaceHydrating
         ? <WorkspacePanelHeaderSkeleton quiet={quietWorkspaceShell} />
-        : titleKey && <PanelHeader titleKey={titleKey} />}
+        : titleKey && !maximized && <PanelHeader titleKey={titleKey} />}
       <div key={activeRail} className="flex-1 flex flex-col min-w-0 overflow-hidden panel-enter">
         <Suspense fallback={fallback}>
           {workspaceHydrating ? <WorkspaceMainSkeleton quiet={quietWorkspaceShell} /> : component}
