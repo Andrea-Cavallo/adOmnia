@@ -48,7 +48,7 @@ export function CreateProjectDialog({ open, onClose }: CreateProjectDialogProps)
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-[2px]" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center ad-modal-backdrop" onClick={onClose}>
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Create Go project" tabIndex={-1} className="w-[460px] overflow-hidden rounded-xl border border-border-2 bg-surface-1 shadow-2xl" onClick={(event) => event.stopPropagation()}>
         <div className="flex h-10 items-center border-b border-border-1 px-4"><h2 className="text-xs font-semibold text-text-1">Create Go project</h2><button type="button" onClick={onClose} className="ml-auto grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-3"><X size={12} /></button></div>
         <div className="space-y-3 p-4">
@@ -78,7 +78,7 @@ export function UnsavedChangesDialog({ open, documents, onSave, onDiscard, onCan
   useModalFocusTrap(open, onCancel, dialogRef)
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-[2px]" onClick={onCancel}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center ad-modal-backdrop" onClick={onCancel}>
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Unsaved changes" tabIndex={-1} className="w-[420px] overflow-hidden rounded-xl border border-border-2 bg-surface-1 shadow-2xl" onClick={(event) => event.stopPropagation()}>
         <div className="p-5"><div className="mb-3 grid h-9 w-9 place-items-center rounded-full bg-warning/10 text-warning"><Save size={16} /></div><h2 className="text-[13px] font-semibold text-text-1">Save changes before closing?</h2><p className="mt-1 text-[11px] leading-4 text-text-3">Your editor buffers are still available. Choose Save, Discard, or return to the editor.</p><div className="mt-3 max-h-28 overflow-auto rounded border border-border-1 bg-surface-0 p-2 font-mono text-[10px] text-text-3">{documents.map((document) => <div key={document.document.id} className="truncate">{document.document.relativePath}</div>)}</div></div>
         <div className="flex items-center justify-end gap-2 border-t border-border-1 bg-surface-0 px-4 py-3"><button type="button" onClick={onCancel} className="h-7 rounded px-3 text-xs text-text-3 hover:bg-surface-2">Cancel</button><button type="button" onClick={() => void onDiscard()} className="h-7 rounded px-3 text-xs text-warning hover:bg-warning/10">Discard</button><button type="button" disabled={saving} onClick={() => { setSaving(true); void onSave().finally(() => setSaving(false)) }} className="flex h-7 items-center gap-1.5 rounded bg-accent px-3 text-xs font-semibold text-white disabled:opacity-40">{saving && <Loader2 size={11} className="animate-spin" />} Save</button></div>

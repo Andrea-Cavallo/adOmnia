@@ -102,7 +102,7 @@ export function GoStudioChangePreviewDialog() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-[2px]" onClick={close}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center ad-modal-backdrop" onClick={close}>
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Preview changes" tabIndex={-1} className="flex h-[min(560px,80vh)] w-[min(860px,90vw)] flex-col overflow-hidden rounded-xl border border-border-2 bg-surface-1 shadow-2xl" onClick={(event) => event.stopPropagation()}>
         <div className="flex h-10 shrink-0 items-center gap-2 border-b border-border-1 px-4"><h2 className="text-xs font-semibold text-text-1">{change.label || 'Refactoring preview'}</h2><span className="text-[10px] text-text-4">{totalEdits} change{totalEdits === 1 ? '' : 's'} in {change.files.length} file{change.files.length === 1 ? '' : 's'}</span><button type="button" onClick={close} title="Close" className="ml-auto grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-3"><X size={12} /></button></div>
         <div className="flex min-h-0 flex-1">

@@ -6,7 +6,9 @@ export type GoStudioFileIconKind =
   /** go.mod / go.work con il logo Go; go.sum (generato) attenuato. */
   | { kind: 'goModule'; generated: boolean }
   | { kind: 'brand'; slug: BrandIconSlug }
-  | { kind: 'generic'; icon: 'text' | 'pdf' | 'image' | 'archive' | 'lock' | 'license' | 'readme' | 'code' | 'file' }
+  /** Jenkinsfile: l'emblema Jenkins (Simple Icons non è incluso nel set generato). */
+  | { kind: 'jenkins' }
+  | { kind: 'generic'; icon: 'text' | 'pdf' | 'image' | 'archive' | 'lock' | 'license' | 'readme' | 'code' | 'key' | 'file' }
 
 const EXACT_NAMES: Record<string, BrandIconSlug> = {
   dockerfile: 'docker', '.dockerignore': 'docker', 'compose.yaml': 'docker', 'compose.yml': 'docker',
@@ -33,7 +35,7 @@ const GENERIC_EXTENSIONS: Record<string, Extract<GoStudioFileIconKind, { kind: '
   txt: 'text', log: 'text', csv: 'text', pdf: 'pdf',
   png: 'image', jpg: 'image', jpeg: 'image', gif: 'image', svg: 'image', webp: 'image', ico: 'image',
   zip: 'archive', gz: 'archive', tgz: 'archive', tar: 'archive', '7z': 'archive',
-  lock: 'lock', s: 'code', proto: 'code', sql: 'code', mod: 'code', tmpl: 'code', gotmpl: 'code',
+  lock: 'lock', pem: 'key', key: 'key', p12: 'key', pfx: 'key', jks: 'key', s: 'code', proto: 'code', sql: 'code', mod: 'code', tmpl: 'code', gotmpl: 'code',
 }
 
 /**
@@ -48,6 +50,7 @@ export function resolveGoStudioFileIcon(name: string, relativePath = ''): GoStud
   if (lower.endsWith('.go')) return { kind: 'gopher', test: lower.endsWith('_test.go') }
   if (lower === 'go.mod' || lower === 'go.work') return { kind: 'goModule', generated: false }
   if (lower === 'go.sum' || lower === 'go.work.sum') return { kind: 'goModule', generated: true }
+  if (lower === 'jenkinsfile' || lower.startsWith('jenkinsfile.') || lower.endsWith('.jenkinsfile')) return { kind: 'jenkins' }
   if (path.startsWith('.github/workflows/') && /\.ya?ml$/.test(lower)) return { kind: 'brand', slug: 'githubactions' }
   if (/^(docker-)?compose(\.[\w-]+)?\.ya?ml$/.test(lower) || lower.endsWith('.dockerfile') || lower.startsWith('dockerfile.')) return { kind: 'brand', slug: 'docker' }
   if (/^(openapi|swagger)(\.[\w-]+)?\.(ya?ml|json)$/.test(lower)) return { kind: 'brand', slug: 'openapiinitiative' }

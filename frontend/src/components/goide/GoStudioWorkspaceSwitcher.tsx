@@ -37,7 +37,7 @@ function WorkspaceNameDialog({ dialog, onClose }: { dialog: NameDialog; onClose:
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 pt-[18vh] backdrop-blur-[2px]" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[18vh] ad-modal-backdrop" onClick={onClose}>
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={dialog.mode === 'create' ? 'New Go Studio workspace' : 'Rename Go Studio workspace'} tabIndex={-1} className="w-[min(420px,92vw)] rounded-xl border border-border-2 bg-surface-1 p-4 shadow-2xl" onClick={(event) => event.stopPropagation()}>
         <h2 className="text-xs font-semibold text-text-1">{dialog.mode === 'create' ? 'New Go Studio Workspace' : 'Rename Workspace'}</h2>
         <p className="mt-1 text-[10px] leading-relaxed text-text-4">A Go Studio workspace groups open projects. It is separate from adOmnia API workspaces, and the same project can be open in several of them.</p>

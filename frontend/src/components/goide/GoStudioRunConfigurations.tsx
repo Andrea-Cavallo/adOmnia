@@ -134,7 +134,7 @@ export function GoStudioRunConfigurations({ open, sessionId, initialDraft, onClo
   )
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-[2px]" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center ad-modal-backdrop" onClick={onClose}>
       <div
         ref={dialogRef}
         role="dialog"

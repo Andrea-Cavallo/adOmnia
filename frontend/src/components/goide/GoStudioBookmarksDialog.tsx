@@ -48,7 +48,7 @@ export function GoStudioBookmarksDialog({ open, sessionId, onClose }: GoStudioBo
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 pt-[12vh] backdrop-blur-[2px]" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh] ad-modal-backdrop" onClick={onClose}>
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Bookmarks" tabIndex={-1} className="w-[min(620px,90vw)] overflow-hidden rounded-xl border border-border-2 bg-surface-1 shadow-2xl" onClick={(event) => event.stopPropagation()}>
         <div className="flex h-9 items-center gap-2 border-b border-border-1 px-3"><Bookmark size={12} className="text-accent" /><h2 className="text-xs font-semibold text-text-1">Bookmarks</h2><span className="text-[10px] text-text-4">Enter opens · Delete removes · F11 toggles in the editor</span><button type="button" onClick={onClose} title="Close" className="ml-auto grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-3"><X size={12} /></button></div>
         <div ref={listRef} role="listbox" aria-label="Bookmarks list" tabIndex={0} aria-activedescendant={bookmarks[selected] ? `bookmark-${selected}` : undefined} onKeyDown={onKeyDown} className="max-h-[50vh] overflow-auto py-1 outline-none">

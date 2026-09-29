@@ -59,7 +59,7 @@ export function GoStudioCloseGuard({ windowId = MAIN_GO_STUDIO_WINDOW }: GoStudi
   }
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 backdrop-blur-[2px]" onClick={() => setRequest(null)}>
+    <div className="fixed inset-0 z-[90] flex items-center justify-center ad-modal-backdrop" onClick={() => setRequest(null)}>
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={detached ? 'Confirm window close' : 'Confirm application close'} tabIndex={-1} className="w-[440px] overflow-hidden rounded-xl border border-border-2 bg-surface-1 shadow-2xl" onClick={(event) => event.stopPropagation()}>
         <div className="p-5">
           <div className="mb-3 grid h-9 w-9 place-items-center rounded-full bg-warning/10 text-warning">{dirtyDocuments.length > 0 ? <Save size={16} /> : <Square size={15} />}</div>

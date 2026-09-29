@@ -67,7 +67,7 @@ export function GoStudioToolPathsDialog({ open, sessionId, onClose }: GoStudioTo
     info?.available ? `${info.binary} · ${info.version} (${info.source})` : info?.error ?? 'Not detected yet'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-[2px]" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center ad-modal-backdrop" onClick={onClose}>
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Tool paths" tabIndex={-1} className="w-[560px] overflow-hidden rounded-xl border border-border-2 bg-surface-1 shadow-2xl" onClick={(event) => event.stopPropagation()}>
         <div className="flex h-10 items-center border-b border-border-1 px-4"><h2 className="text-xs font-semibold text-text-1">Tool paths</h2><button type="button" onClick={onClose} title="Close" className="ml-auto grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-3"><X size={12} /></button></div>
         <div className="space-y-4 p-4">

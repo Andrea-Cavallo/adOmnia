@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState, memo } from 'react'
-import { ChevronDown, ChevronRight, Copy, Eye, EyeOff, FileCode2, Folder, FolderOpen, Loader2, Send } from 'lucide-react'
+import { ChevronDown, ChevronRight, Copy, Eye, EyeOff, FileCode2, Folder, FolderOpen, KeyRound, Loader2, Send } from 'lucide-react'
 import { useGoIDEStore } from '@/stores/goide'
 import { BrandIcon, GoStudioFileIcon } from './GoStudioFileIcon'
 import { resolveGoStudioFolderBrand } from './goStudioFileIcons'
 import type { GoIDEFileEntry, GoIDESession } from '@/lib/goide-api'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
-import { isApiCollectionCandidate, sendFileToApiWorkspace } from './goStudioSendToApiWorkspace'
+import { isApiCollectionCandidate, isPemCandidate, openPemInPowerTools, sendFileToApiWorkspace } from './goStudioFileHandoffs'
 
 type TreeContextHandler = (entry: GoIDEFileEntry, x: number, y: number) => void
 
@@ -82,6 +82,7 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
   const menuItems = (entry: GoIDEFileEntry): ContextMenuItem[] => [
     { id: 'open', label: 'Open', icon: FileCode2 },
     ...(isApiCollectionCandidate(entry.relativePath) ? [{ id: 'sendToApi', label: 'Send to API Workspace', icon: Send, separatorBefore: true }] : []),
+    ...(isPemCandidate(entry.relativePath) ? [{ id: 'pemTools', label: 'Open in Power Tools: Inspect / Encrypt Key', icon: KeyRound, separatorBefore: true }] : []),
     { id: 'copyPath', label: 'Copy Relative Path', icon: Copy, separatorBefore: true },
   ]
   const selectMenuItem = (id: string) => {
@@ -90,6 +91,7 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
     if (!entry) return
     if (id === 'open') void openDocument(entry.relativePath)
     if (id === 'sendToApi') void sendFileToApiWorkspace(session.id, entry.relativePath)
+    if (id === 'pemTools') void openPemInPowerTools(session.id, entry.relativePath)
     if (id === 'copyPath') void navigator.clipboard?.writeText(entry.relativePath)
   }
 

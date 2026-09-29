@@ -26,7 +26,7 @@ export function GoStudioLanguageServerLog({ open, sessionId, onClose }: GoStudio
 
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-[2px]" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center ad-modal-backdrop" onClick={onClose}>
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Language server log" tabIndex={-1} className="flex h-[min(520px,80vh)] w-[min(820px,90vw)] flex-col overflow-hidden rounded-xl border border-border-2 bg-surface-1 shadow-2xl" onClick={(event) => event.stopPropagation()}>
         <div className="flex h-10 shrink-0 items-center gap-2 border-b border-border-1 px-4">
           <h2 className="text-xs font-semibold text-text-1">gopls log</h2>

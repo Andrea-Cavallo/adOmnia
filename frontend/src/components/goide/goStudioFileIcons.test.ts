@@ -14,6 +14,11 @@ describe('Go Studio file icons', () => {
     expect(resolveGoStudioFileIcon('go.sum')).toEqual({ kind: 'goModule', generated: true })
   })
 
+  it('uses the Jenkins emblem for Jenkinsfiles and a key for keys and keystores', () => {
+    for (const name of ['Jenkinsfile', 'jenkinsfile', 'Jenkinsfile.release', 'deploy.jenkinsfile']) expect(resolveGoStudioFileIcon(name)).toEqual({ kind: 'jenkins' })
+    for (const name of ['server.pem', 'tls.key', 'client.p12', 'store.pfx', 'truststore.jks']) expect(resolveGoStudioFileIcon(name)).toEqual({ kind: 'generic', icon: 'key' })
+  })
+
   it('maps special names and paths to real brands', () => {
     const brand = (name: string, path?: string) => resolveGoStudioFileIcon(name, path)
     expect(brand('Dockerfile')).toEqual({ kind: 'brand', slug: 'docker' })

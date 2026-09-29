@@ -1,12 +1,13 @@
 import { memo, type CSSProperties } from 'react'
-import { Archive, BookOpen, File, FileCode2, FileImage, FileText, Lock, Scale } from 'lucide-react'
+import { Archive, BookOpen, File, FileCode2, FileImage, FileText, Key, Lock, Scale } from 'lucide-react'
 import { BRAND_ICONS, type BrandIconSlug } from '@/lib/brandIcons.generated'
 import { GoGopherIcon } from './GoGopherIcon'
 import { brandColors, resolveGoStudioFileIcon } from './goStudioFileIcons'
+import jenkinsEmblem from './assets/jenkins.png'
 
 const GENERIC_ICONS = {
   text: FileText, pdf: FileText, image: FileImage, archive: Archive, lock: Lock,
-  license: Scale, readme: BookOpen, code: FileCode2, file: File,
+  license: Scale, readme: BookOpen, code: FileCode2, key: Key, file: File,
 } as const
 
 /** Logo di un marchio (Simple Icons, 24×24) con il colore adatto al tema attivo. */
@@ -36,9 +37,10 @@ export const GoStudioFileIcon = memo(function GoStudioFileIcon({ name, relativeP
       )
     case 'goModule': return <BrandIcon slug="go" size={size} dimmed={resolved.generated} />
     case 'brand': return <BrandIcon slug={resolved.slug} size={size} />
+    case 'jenkins': return <img src={jenkinsEmblem} width={size + 1} height={size + 1} alt="Jenkins" draggable={false} className="shrink-0 object-contain" />
     case 'generic': {
       const Icon = GENERIC_ICONS[resolved.icon]
-      const tone = resolved.icon === 'pdf' ? 'text-danger' : resolved.icon === 'readme' ? 'text-accent' : 'text-text-4'
+      const tone = resolved.icon === 'pdf' ? 'text-danger' : resolved.icon === 'readme' ? 'text-accent' : resolved.icon === 'key' ? 'text-text-2' : 'text-text-4'
       return <Icon size={size} className={`shrink-0 ${tone}`} aria-hidden="true" />
     }
   }

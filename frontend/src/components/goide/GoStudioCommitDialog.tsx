@@ -70,7 +70,7 @@ export function GoStudioCommitDialog({ sessionId, open, onClose }: GoStudioCommi
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 pt-[10vh] backdrop-blur-[2px]" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh] ad-modal-backdrop" onClick={onClose}>
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Commit changes" tabIndex={-1} className="w-[min(640px,92vw)] overflow-hidden rounded-xl border border-border-2 bg-surface-1 shadow-2xl" onClick={(event) => event.stopPropagation()}>
         <div className="flex h-10 items-center gap-2 border-b border-border-1 px-4">
           <GitCommitHorizontal size={13} className="text-accent" />

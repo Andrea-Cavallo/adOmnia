@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
+import { PemKeyEncryptor } from './PemKeyEncryptor'
 import { downloadText, readFileSmart } from '@/lib/fileUtils'
 import { FolderDiffTool } from '@/components/utils/FolderDiffTool'
 import { FileDropZone } from '@/components/utils/FileDropZone'
@@ -1513,6 +1514,18 @@ export function UtilsPanel({ initialTool = 'base64' }: { initialTool?: string })
     setClassOutput(classInspect(hex, classViewMode))
   }
 
+  // PEM aperti da Go Studio (tasto destro → Open in Power Tools): tool PEM già caricato e ispezionato.
+  useEffect(() => {
+    const routed = useAppStore.getState().consumeFileImport('pem')
+    if (routed?.kind !== 'pem') return
+    setActiveTool('pem')
+    setPemFileName(routed.name)
+    setPemInput(routed.text)
+    setJksSplit(null)
+    setPemOutput('Inspecting…')
+    void inspectPem(routed.text).then(setPemOutput)
+  }, [pendingFileImport]) // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     const routed = useAppStore.getState().consumeFileImport('class')
     if (routed?.kind !== 'class') return
@@ -2137,6 +2150,7 @@ export function UtilsPanel({ initialTool = 'base64' }: { initialTool?: string })
               </div>
             )}
             {pemOutput && <pre className="px-3 py-2 bg-surface-1 border border-border-1 rounded text-xs text-text-1 font-mono whitespace-pre-wrap">{pemOutput}</pre>}
+            {pemInput.includes('PRIVATE KEY') && <PemKeyEncryptor port={port} pem={pemInput} fileName={pemFileName} />}
           </div>
         )
 

@@ -5,6 +5,7 @@ export type RoutedToolFile =
   | { kind: 'latex'; name: string; text: string }
   | { kind: 'proto'; name: string; text: string }
   | { kind: 'sql'; name: string; text: string }
+  | { kind: 'pem'; name: string; text: string }
   | { kind: 'class'; name: string; bytes: Uint8Array }
   | { kind: 'pdf'; name: string; bytes: Uint8Array }
 

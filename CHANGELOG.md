@@ -10,9 +10,12 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - **docker compose in Go Studio:** ▶ on `services:` (Up all, Down) and on each service (Up), with Stop running `docker compose stop` and a *Docker Compose* run configuration type.
 - **Send to API Workspace:** right-click a Postman, Insomnia, Bruno, OpenAPI or Swagger file in the Go Studio project tree to import it into the API Workspace.
 - **Recent projects in the Go Studio project menu:** projects that are not open can be reopened from the toolbar.
+- **Encrypt private keys in Power Tools:** the PEM / JKS tool encrypts and decrypts private keys as standard PKCS#8 (PBKDF2-SHA256 600k + AES-256-CBC, verified with OpenSSL). Go Studio opens `.pem`/`.key`/`.crt`/`.cer` there from the project tree.
+- **File icons:** the Jenkins emblem for Jenkinsfiles, and a key for `.pem`, `.key`, `.p12`, `.pfx` and `.jks`.
 - **Maximize Go Studio:** a toolbar button and Ctrl/Cmd+Shift+F12 hide adOmnia's rail, panel header and status bar.
 
 ### Changed
+- Confirmation dialogs are redesigned: commands and paths sit in a structured, wrapped, monospaced section, and the dialog has a clear icon (command, question or deletion), a soft blurred backdrop, a spring entry and safe default focus. Go Studio dialogs share the same backdrop and animation.
 - The a0 launcher in the bottom-right corner stays hidden and click-through until the pointer comes near the corner (or it gets keyboard focus).
 - gopls runs with `GOTELEMETRY=off` and `GOMEMLIMIT=1GiB` unless you set them yourself.
 

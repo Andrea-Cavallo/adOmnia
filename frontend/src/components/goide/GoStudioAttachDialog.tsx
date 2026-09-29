@@ -86,7 +86,7 @@ export function GoStudioAttachDialog({ sessionId, mode, onClose }: GoStudioAttac
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 pt-[12vh] backdrop-blur-[2px]" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh] ad-modal-backdrop" onClick={onClose}>
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={mode === 'attach' ? 'Attach to Process' : 'Connect to Remote Delve'} tabIndex={-1} className="w-[min(640px,92vw)] overflow-hidden rounded-xl border border-border-2 bg-surface-1 shadow-2xl" onClick={(event) => event.stopPropagation()}>
         <div className="flex h-10 items-center gap-2 border-b border-border-1 px-4">
           <h2 className="text-xs font-semibold text-text-1">{mode === 'attach' ? 'Attach to Process' : 'Connect to Remote Delve'}</h2>

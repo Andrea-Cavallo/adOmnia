@@ -45,7 +45,7 @@ export function GoStudioGitHistoryDialog({ document, open, onClose }: GoStudioGi
   if (!open || !document) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-[2px]" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center ad-modal-backdrop" onClick={onClose}>
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Git history" tabIndex={-1} className="flex h-[min(620px,85vh)] w-[min(1000px,94vw)] flex-col overflow-hidden rounded-xl border border-border-2 bg-surface-1 shadow-2xl" onClick={(event) => event.stopPropagation()}>
         <div className="flex h-10 shrink-0 items-center gap-2 border-b border-border-1 px-4">
           <GitCommitHorizontal size={13} className="text-accent" />
