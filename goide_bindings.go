@@ -82,6 +82,8 @@ type GoIDE struct {
 	allowAppClose      atomic.Bool
 	// windows possiede le finestre Go Studio separate (una per progetto).
 	windows *goidewindow.Manager
+	// serviceListeners ricevono gli eventi gO lato backend (es. DevContext).
+	serviceListeners []func(goide.EventEnvelope)
 }
 
 func NewGoIDE() *GoIDE {
@@ -91,6 +93,11 @@ func NewGoIDE() *GoIDE {
 			binding.desktop.Event.Emit("goide:event", event)
 		}
 		forwardGoIDEPluginEvent(event)
+		if binding != nil {
+			for _, listener := range binding.serviceListeners {
+				listener(event)
+			}
+		}
 	})
 	_ = service.ConfigureToolchainStorage(filepath.Join(dataDir(), "goide", "toolchains"))
 	_ = service.ConfigureRecoveryStore(goIDERecoveryStore{})
@@ -137,6 +144,29 @@ func (g *GoIDE) attachMainWindow(window *application.WebviewWindow) {
 			g.windows.CloseAll()
 		}
 	})
+}
+
+// onServiceEvent lets other backend services react to gO events (saves,
+// closed sessions). Register listeners before the app starts.
+func (g *GoIDE) onServiceEvent(listener func(goide.EventEnvelope)) {
+	g.serviceListeners = append(g.serviceListeners, listener)
+}
+
+// sessionRoot resolves the project folder of an open gO session.
+func (g *GoIDE) sessionRoot(sessionID string) (string, error) {
+	sessions, err := g.service.ListSessions()
+	if err != nil {
+		return "", err
+	}
+	for _, session := range sessions {
+		if string(session.ID) == sessionID {
+			if session.Project.RealPath != "" {
+				return session.Project.RealPath, nil
+			}
+			return session.Project.RootPath, nil
+		}
+	}
+	return "", fmt.Errorf("gO session %s is not open", sessionID)
 }
 
 // cancelMainClose annulla la chiusura quando restano buffer non salvati o
