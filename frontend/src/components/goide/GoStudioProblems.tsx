@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { AlertCircle, AlertTriangle, Info } from 'lucide-react'
 import type { GoIDEDiagnostic, GoIDEDiagnosticsReport } from '@/lib/goide-lsp-api'
-import { GoGopherIcon } from './GoGopherIcon'
+import { GoStudioFileIcon } from './GoStudioFileIcon'
 import { mergedReports, useGoIDELspStore } from '@/stores/goideLsp'
 import { navigateToLocation } from './goStudioLanguageFeatures'
 
@@ -47,7 +47,7 @@ export function GoStudioProblems({ sessionId, buildProblems, onOpenBuildProblem 
     <div role="tree" aria-label="Problems" className="py-1 text-[11px]">
       {sorted.map((report) => (
         <div key={report.uri} role="treeitem" aria-expanded="true">
-          <div className="flex h-6 items-center gap-1.5 px-2 font-medium text-text-2"><GoGopherIcon size={12} />{report.relativePath || report.path}<span className="text-[9px] text-text-4">{report.diagnostics.length}</span></div>
+          <div className="flex h-6 items-center gap-1.5 px-2 font-medium text-text-2"><GoStudioFileIcon name={(report.relativePath || report.path).split(/[\\/]/).pop() ?? (report.relativePath || report.path)} relativePath={report.relativePath} size={12} />{report.relativePath || report.path}<span className="text-[9px] text-text-4">{report.diagnostics.length}</span></div>
           {[...report.diagnostics].sort((left, right) => left.severity - right.severity || left.range.startLine - right.range.startLine).map((diagnostic, index) => (
             <button key={index} type="button" onClick={() => open(report, diagnostic)} className="flex min-h-6 w-full items-start gap-1.5 py-0.5 pl-6 pr-2 text-left text-text-2 hover:bg-surface-3 focus:bg-surface-3 focus:outline-none">
               <SeverityIcon severity={diagnostic.severity} />

@@ -128,3 +128,8 @@
   .go-studio-widget,
   .go-studio-stripe-button { transition: none; }
 }
+
+/* Loghi dei marchi (Simple Icons): colore ufficiale se leggibile sul tema attivo, altrimenti il
+   colore del testo. I valori per tema li calcola brandColors() dal contrasto WCAG. */
+.go-studio-brand-icon { fill: var(--brand-on-light); }
+html.dark .go-studio-brand-icon { fill: var(--brand-on-dark); }

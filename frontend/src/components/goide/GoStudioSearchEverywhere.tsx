@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { ArrowRight, FileCode2, Loader2, Search, Terminal, X } from 'lucide-react'
+import { ArrowRight, Loader2, Search, Terminal, X } from 'lucide-react'
 import { quickOpenGoIDEFiles, type GoIDEQuickOpenResult } from '@/lib/goide-api'
 import { requestWorkspaceSymbols, type GoIDEWorkspaceSymbol } from '@/lib/goide-lsp-api'
 import { COMMAND_PALETTE_PANEL_FEATURES, isFeatureVisible, type FeatureDef } from '@/lib/featureRegistry'
@@ -9,7 +9,7 @@ import { useGoIDEStore } from '@/stores/goide'
 import { useGoIDELspStore } from '@/stores/goideLsp'
 import { useSettingsStore } from '@/stores/settings'
 import { GO_STUDIO_COMMANDS, formatBinding, type GoStudioCommand, type GoStudioCommandId } from './goStudioCommands'
-import { GoGopherIcon, isGoSource } from './GoGopherIcon'
+import { GoStudioFileIcon } from './GoStudioFileIcon'
 import { GoStudioSymbolIcon } from './GoStudioSymbolIcon'
 import { navigateToLocation } from './goStudioLanguageFeatures'
 import { matchScore, rankCandidates } from './goStudioSearchRanking'
@@ -42,7 +42,7 @@ interface ResultRow {
 function fileRow(file: GoIDEQuickOpenResult, open: (path: string) => void): ResultRow {
   return {
     key: `file:${file.relativePath}`, section: 'Files', title: file.name, detail: file.relativePath,
-    icon: isGoSource(file.name) ? <GoGopherIcon size={13} /> : <FileCode2 size={12} className="text-text-4" aria-hidden="true" />,
+    icon: <GoStudioFileIcon name={file.name} relativePath={file.relativePath} size={12} />,
     run: () => open(file.relativePath),
   }
 }

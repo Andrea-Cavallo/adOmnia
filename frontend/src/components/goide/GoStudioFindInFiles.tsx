@@ -3,7 +3,7 @@ import { CaseSensitive, Loader2, Regex, Search, WholeWord } from 'lucide-react'
 import type { CancellablePromise } from '@wailsio/runtime'
 import { requestProjectSearch, type GoIDESearchMatch, type GoIDESearchResult } from '@/lib/goide-lsp-api'
 import { useGoIDEStore } from '@/stores/goide'
-import { GoGopherIcon } from './GoGopherIcon'
+import { GoStudioFileIcon } from './GoStudioFileIcon'
 import { useGoIDELspStore } from '@/stores/goideLsp'
 
 interface GoStudioFindInFilesProps {
@@ -111,7 +111,7 @@ export function GoStudioFindInFiles({ sessionId }: GoStudioFindInFilesProps) {
         {!error && !result && <p className="p-3 text-[10px] text-text-4">Searches every text file in the project. .git, vendor, node_modules and build output are skipped.</p>}
         {visibleGroups.map(([file, matches]) => (
           <div key={file}>
-            <div className="flex h-6 items-center gap-1.5 px-2 font-medium text-text-2"><GoGopherIcon size={12} /><span className="truncate">{file}</span><span className="text-[9px] text-text-4">{matches.length}</span></div>
+            <div className="flex h-6 items-center gap-1.5 px-2 font-medium text-text-2"><GoStudioFileIcon name={file.split(/[\\/]/).pop() ?? file} relativePath={file} size={12} /><span className="truncate">{file}</span><span className="text-[9px] text-text-4">{matches.length}</span></div>
             {matches.map((match) => (
               <button key={`${match.line}:${match.column}`} type="button" onClick={() => void openLocation(file, match.line, match.column)} className="flex h-6 w-full items-center gap-2 pl-6 pr-2 text-left hover:bg-surface-3 focus:bg-surface-3 focus:outline-none">
                 <span className="w-12 shrink-0 text-right font-mono text-[9px] text-text-4">{match.line}</span>

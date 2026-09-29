@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Lock, Pin, X } from 'lucide-react'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
-import { GoGopherIcon, isGoSource } from './GoGopherIcon'
+import { GoStudioFileIcon } from './GoStudioFileIcon'
 
 interface GoStudioEditorTabsProps {
   documents: GoIDEEditorDocument[]
@@ -95,7 +95,7 @@ export function GoStudioEditorTabs({ documents, activeId, onRequestClose }: GoSt
             title={item.document.relativePath}
           >
             {active && <span className="absolute inset-x-0 bottom-0 h-0.5 bg-accent" aria-hidden="true" />}
-            {isGoSource(item.document.name) && <GoGopherIcon size={14} />}
+            <GoStudioFileIcon name={item.document.name} relativePath={item.document.relativePath} size={13} />
             {item.document.readOnly && <Lock size={11} className="shrink-0 text-text-4" />}
             <span className="truncate">{item.document.name}</span>
             {qualifiers[item.document.id] && <span className="shrink-0 text-[11px] text-text-4">{qualifiers[item.document.id]}</span>}

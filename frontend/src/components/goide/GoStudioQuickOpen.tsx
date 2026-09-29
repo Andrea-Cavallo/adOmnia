@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
-import { FileCode2, Loader2, Search, X } from 'lucide-react'
+import { Loader2, Search, X } from 'lucide-react'
 import { useGoIDEStore } from '@/stores/goide'
-import { GoGopherIcon, isGoSource } from './GoGopherIcon'
+import { GoStudioFileIcon } from './GoStudioFileIcon'
 
 export function GoStudioQuickOpen() {
   const quickOpen = useGoIDEStore((state) => state.quickOpen)
@@ -48,7 +48,7 @@ export function GoStudioQuickOpen() {
               onClick={() => { void openDocument(result.relativePath); setQuickOpen(false) }}
               className="flex h-8 w-full items-center gap-2 px-3 text-left hover:bg-surface-3"
             >
-              {isGoSource(result.name) ? <GoGopherIcon size={13} /> : <FileCode2 size={12} className={result.language === 'go' ? 'text-accent' : 'text-text-4'} />}
+              <GoStudioFileIcon name={result.name} relativePath={result.relativePath} size={12} />
               <span className="text-[11px] font-medium text-text-1">{result.name}</span>
               <span className="min-w-0 flex-1 truncate text-[10px] text-text-4">{result.relativePath}</span>
             </button>

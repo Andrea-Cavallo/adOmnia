@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, memo } from 'react'
-import { ChevronDown, ChevronRight, Eye, EyeOff, File, FileCode2, Folder, FolderOpen, Loader2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, Eye, EyeOff, Folder, FolderOpen, Loader2 } from 'lucide-react'
 import { useGoIDEStore } from '@/stores/goide'
-import { GoGopherIcon, isGoSource } from './GoGopherIcon'
+import { BrandIcon, GoStudioFileIcon } from './GoStudioFileIcon'
+import { resolveGoStudioFolderBrand } from './goStudioFileIcons'
 import type { GoIDEFileEntry, GoIDESession } from '@/lib/goide-api'
 
 interface GoStudioProjectTreeProps {
@@ -15,10 +16,10 @@ const ROW_BASE_PX = 8
 
 const emptyEntries: GoIDEFileEntry[] = []
 
-function FileIcon({ entry }: { entry: GoIDEFileEntry }) {
-  if (isGoSource(entry.name)) return <GoGopherIcon size={15} />
-  if (entry.language === 'go') return <FileCode2 size={14} className="text-info" />
-  return <File size={14} className="text-text-4" />
+function FolderIcon({ name, open }: { name: string; open: boolean }) {
+  const brand = resolveGoStudioFolderBrand(name)
+  if (brand) return <BrandIcon slug={brand} size={14} />
+  return open ? <FolderOpen size={15} className="shrink-0 text-text-3" /> : <Folder size={15} className="shrink-0 text-text-3" />
 }
 
 /** Memoizzato: aprire o aggiornare una cartella non ridisegna le sorelle (progetti con centinaia di cartelle). */
@@ -49,8 +50,8 @@ const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, act
           ? loading ? <Loader2 size={12} className="shrink-0 animate-spin text-text-4" /> : open ? <ChevronDown size={12} className="shrink-0 text-text-3" /> : <ChevronRight size={12} className="shrink-0 text-text-4" />
           : <span className="w-3 shrink-0" />}
         {entry.directory
-          ? open ? <FolderOpen size={15} className="shrink-0 text-text-3" /> : <Folder size={15} className="shrink-0 text-text-3" />
-          : <FileIcon entry={entry} />}
+          ? <FolderIcon name={entry.name} open={open} />
+          : <GoStudioFileIcon name={entry.name} relativePath={entry.relativePath} />}
         <span className="truncate">{entry.name}</span>
       </button>
       {entry.directory && open && entries?.map((child) => (

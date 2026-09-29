@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
-import { GoGopherIcon, isGoSource } from './GoGopherIcon'
+import { GoStudioFileIcon } from './GoStudioFileIcon'
 import { GoStudioCodeEditor } from './GoStudioCodeEditor'
 import type { GoStudioRunTargetHandler } from './goStudioRunTargets'
 
@@ -36,7 +36,7 @@ export function GoStudioSplitPane({ documents, document, onRunTarget, onCursor }
                 onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setSplitDocument(tab.document.id) } }}
                 title={tab.document.relativePath}
                 className={`group flex max-w-48 shrink-0 cursor-pointer items-center gap-1.5 border-r border-border-1 px-2 ${selected ? 'border-b border-b-accent bg-surface-0 text-text-1' : 'text-text-3 hover:text-text-1'}`}>
-                {isGoSource(tab.document.name) && <GoGopherIcon size={11} />}
+                <GoStudioFileIcon name={tab.document.name} relativePath={tab.document.relativePath} size={11} />
                 <span className="truncate">{tab.document.name}</span>
                 {tab.dirty && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" aria-label="unsaved" />}
                 <button type="button" aria-label={`Close ${tab.document.name} in split`} title="Close in split" onClick={(event) => { event.stopPropagation(); closeSplitTab(tab.document.id) }}
