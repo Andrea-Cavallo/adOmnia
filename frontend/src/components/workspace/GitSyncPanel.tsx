@@ -30,7 +30,7 @@ import * as GitSync from '@/wailsjs/go/main/GitSync'
 import { cn } from '@/lib/utils'
 import { ResizeHandle } from '@/components/ui/ResizeHandle'
 import { safeSelectFolder } from '@/lib/fileUtils'
-import { addRepo, loadLastRepo, loadPinnedBranches, loadRepos, removeRepo, saveLastRepo, toggleBranchPin, toggleRepoPin, type SavedRepo } from '@/lib/gitRepos'
+import { GIT_FOCUS_REPO_EVENT, addRepo, loadLastRepo, loadPinnedBranches, loadRepos, removeRepo, saveLastRepo, toggleBranchPin, toggleRepoPin, type SavedRepo } from '@/lib/gitRepos'
 import { exportCollectionToFolder, exportRequestToFolder, hasCollectionFSBinding, importCollectionFromFolder, inspectCollectionFolder } from '@/lib/collectionfs-api'
 import { useCollectionsStore } from '@/stores/collections'
 import { useEnvironmentsStore } from '@/stores/environments'
@@ -526,6 +526,18 @@ export function GitSyncPanel() {
     saveLastRepo(trimmed)
     void refreshStatus(trimmed)
   }, [repoPath, refreshStatus])
+
+  // Go Studio porta qui il repository del progetto aperto (anche se il progetto ne è una sottocartella).
+  useEffect(() => {
+    const onFocus = (event: Event) => {
+      const path = (event as CustomEvent<string>).detail
+      if (!path) return
+      setRepos(loadRepos())
+      selectRepo(path)
+    }
+    window.addEventListener(GIT_FOCUS_REPO_EVENT, onFocus)
+    return () => window.removeEventListener(GIT_FOCUS_REPO_EVENT, onFocus)
+  }, [selectRepo])
 
   const browseFolder = useCallback(async () => {
     try {

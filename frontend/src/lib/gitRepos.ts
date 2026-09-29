@@ -110,3 +110,29 @@ export function saveLastRepo(path: string): void {
     // Best-effort persistence.
   }
 }
+
+/** Evento con cui altri moduli (es. Go Studio) chiedono a Git Studio di mostrare un repository. */
+export const GIT_FOCUS_REPO_EVENT = 'adomnia:git-focus-repo'
+
+function sameRepoPath(left: string, right: string): boolean {
+  const clean = (path: string) => path.trim().replace(/[\/]+$/, '')
+  const a = clean(left)
+  const b = clean(right)
+  // Percorsi Windows (lettera di unità): il filesystem non distingue maiuscole e minuscole.
+  return /^[A-Za-z]:/.test(a) ? a.toLowerCase() === b.toLowerCase() : a === b
+}
+
+/**
+ * Porta Git Studio sul repository indicato: lo aggiunge ai salvati senza duplicarlo, lo rende
+ * l'ultimo usato e avvisa il pannello se è già aperto. L'utente può poi sceglierne un altro a mano.
+ */
+export function focusRepo(path: string): string {
+  const trimmed = path.trim()
+  if (!trimmed) return ''
+  const repos = loadRepos()
+  const target = repos.find((repo) => sameRepoPath(repo.path, trimmed))?.path ?? trimmed
+  addRepo(repos, target)
+  saveLastRepo(target)
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent<string>(GIT_FOCUS_REPO_EVENT, { detail: target }))
+  return target
+}

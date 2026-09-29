@@ -5,6 +5,7 @@ import {
   type GoIDEVCSBlameLine, type GoIDEVCSStatus,
 } from '@/lib/goide-vcs-api'
 import { isBinaryText, type GoStudioLineHunk } from '@/components/goide/goStudioLineDiff'
+import { focusRepo } from '@/lib/gitRepos'
 
 const STATUS_REFRESH_DEBOUNCE_MS = 700
 
@@ -32,6 +33,22 @@ interface GoIDEVCSState {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
+}
+
+let followed: { sessionId: string; repoRoot: string } | null = null
+
+/**
+ * Git Studio segue il progetto attivo di Go Studio: all'apertura o al cambio di progetto punta al
+ * suo repository (la radice reale, anche se il progetto è una sottocartella). Finché il progetto
+ * resta lo stesso non interviene più, così una scelta fatta a mano in Git Studio viene rispettata.
+ * force (comando "Open Git Studio") riallinea comunque.
+ */
+export function syncGitStudioToSession(sessionId: string, force = false): void {
+  const status = useGoIDEVCSStore.getState().status[sessionId]
+  if (!status?.available || !status.repoRoot) return
+  if (!force && followed?.sessionId === sessionId && followed.repoRoot === status.repoRoot) return
+  followed = { sessionId, repoRoot: status.repoRoot }
+  focusRepo(status.repoRoot)
 }
 
 export function headKey(sessionId: string, relativePath: string): string {

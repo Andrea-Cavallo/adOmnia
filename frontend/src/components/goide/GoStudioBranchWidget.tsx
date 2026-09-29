@@ -4,7 +4,7 @@ import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import { confirm } from '@/lib/confirmDialog'
 import { useAppStore } from '@/stores/app'
 import { dirtyGoIDEDocuments, useGoIDEStore } from '@/stores/goide'
-import { useGoIDEVCSStore } from '@/stores/goideVcs'
+import { syncGitStudioToSession, useGoIDEVCSStore } from '@/stores/goideVcs'
 
 const GIT_STUDIO_ITEM = 'open-git-studio'
 const COMMIT_ITEM = 'commit'
@@ -21,7 +21,9 @@ interface GoStudioBranchWidgetProps {
 export function GoStudioBranchWidget({ sessionId, onCommit }: GoStudioBranchWidgetProps) {
   const status = useGoIDEVCSStore((state) => state.status[sessionId] ?? null)
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
-  useEffect(() => { void useGoIDEVCSStore.getState().refreshStatus(sessionId) }, [sessionId])
+  useEffect(() => {
+    void useGoIDEVCSStore.getState().refreshStatus(sessionId).then(() => syncGitStudioToSession(sessionId))
+  }, [sessionId])
   if (!status?.available) return null
 
   const changes = status.changes.length
