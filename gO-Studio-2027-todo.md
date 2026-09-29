@@ -32,19 +32,23 @@
 
 ## P0 — IDE realmente utilizzabile
 
-- [ ] Editor professionale.
-- [ ] `gopls`.
-- [ ] Workspace.
-- [ ] Run configurations.
-- [ ] Debugger Delve.
-- [ ] Test explorer.
-- [ ] Terminale.
-- [ ] Git.
-- [ ] Go modules.
-- [ ] Settings.
-- [ ] Toolchain manager.
+> Stato 2026-09-29: tutte le funzioni P0 sono implementate e coperte da test automatici; la verifica manuale nell'app (M1–M31) resta aperta in `todo-ide.md`.
+
+- [x] Editor professionale. — *Monaco, split, tab pinnate, breadcrumb, local history, recupero buffer.*
+- [x] `gopls`.
+- [x] Workspace. — *sessioni isolate, workspace Go Studio, finestre separate.*
+- [x] Run configurations. — *Go, Make, Docker e Compose; segreti mai persistiti.*
+- [x] Debugger Delve.
+- [x] Test explorer. — *test runner strutturato con coverage.*
+- [x] Terminale. — *PTY/ConPTY reale.*
+- [x] Git. — *gutter diff, commit, branch; Git Studio per push/pull/merge.*
+- [x] Go modules. — *dipendenze, go get/tidy con conferma, mod why/graph.*
+- [x] Settings. — *preferenze editor/gopls, Tool Paths, SDK per progetto.*
+- [x] Toolchain manager. — *SDK ufficiali con SHA-256, gopls/linter/Delve installabili, make e Docker rilevati.*
 
 ## P1 — IDE Go superiore alla media
+
+> Ogni voce ha la sua sezione operativa più sotto (§8–§21): si spunta lì, poi qui.
 
 - [ ] Concurrency view.
 - [ ] Profiler integrato.
