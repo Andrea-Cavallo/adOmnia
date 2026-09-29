@@ -10,9 +10,12 @@ import (
 const secretMask = "••••••"
 
 var (
-	secretKey  = regexp.MustCompile(`(?i)(PASSWORD|PASSWD|SECRET|TOKEN|KEY)`)
-	brokerList = regexp.MustCompile(`^[\w.-]+:\d+(,[\w.-]+:\d+)*$`)
-	dsnTypes   = map[string]string{
+	secretKey = regexp.MustCompile(`(?i)(PASSWORD|PASSWD|PASS|PWD|SECRET|TOKEN|KEY|CRED|AUTH|PRIVATE|DSN)`)
+	// secretValue fails closed on credentials url.Parse cannot read: user:pw@ with
+	// or without a scheme (incl. bad escapes) and key=value DSNs with a password.
+	secretValue = regexp.MustCompile(`(?i)(://[^@/\s]*:[^@\s]*@|^[^:@/\s]+:[^@\s]+@|\b(password|pwd)\s*=)`)
+	brokerList  = regexp.MustCompile(`^[\w.-]+:\d+(,[\w.-]+:\d+)*$`)
+	dsnTypes    = map[string]string{
 		"postgres": "postgres", "postgresql": "postgres", "mysql": "mysql",
 		"mongodb": "mongodb", "mongodb+srv": "mongodb", "redis": "redis", "rediss": "redis",
 		"amqp": "rabbitmq", "amqps": "rabbitmq", "nats": "nats", "kafka": "kafka",
@@ -40,8 +43,10 @@ func parseDotenv(data []byte) []dotenvEntry {
 			continue
 		}
 		value = strings.TrimSpace(value)
-		if n := len(value); n >= 2 && (value[0] == '"' || value[0] == '\'') && value[n-1] == value[0] {
-			value = value[1 : n-1]
+		if len(value) >= 2 && (value[0] == '"' || value[0] == '\'') {
+			if end := strings.IndexByte(value[1:], value[0]); end >= 0 {
+				value = value[1 : end+1] // after the closing quote only a comment may follow
+			}
 		} else if idx := strings.Index(value, " #"); idx >= 0 {
 			value = strings.TrimSpace(value[:idx])
 		}
@@ -72,6 +77,9 @@ func displayValue(key, value string) string {
 		if _, has := u.User.Password(); has {
 			return u.Redacted()
 		}
+	}
+	if secretValue.MatchString(value) {
+		return secretMask
 	}
 	return value
 }

@@ -21,8 +21,8 @@ func TestDetectEnvAndSQL(t *testing.T) {
 import "os"
 const listQuery = "SELECT id FROM payments p JOIN accounts a ON a.id = p.account_id"
 type Config struct {
-	DSN  string ` + "`env:\"DATABASE_URL,required\"`" + `
-	Skip string ` + "`env:\"-\"`" + `
+	DSN  string `+"`env:\"DATABASE_URL,required\"`"+`
+	Skip string `+"`env:\"-\"`"+`
 }
 func run(ctx context.Context, db *sql.DB, name string) {
 	_ = os.Getenv("PAYMENT_API_URL")

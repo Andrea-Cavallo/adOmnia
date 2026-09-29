@@ -163,3 +163,29 @@ func TestFileNameMatchers(t *testing.T) {
 		t.Error("matcher mismatch")
 	}
 }
+
+func TestDetectDotenvNeverLeaksPasswords(t *testing.T) {
+	data := []byte(`QUOTED_URL="postgres://user:pw1@db:5432/app" # local
+DB_PASS=pw2
+MYSQL_PWD=pw3
+MYSQL_ADDR=root:pw4@tcp(127.0.0.1:3306)/app
+PG_CONN=host=db password=pw5 dbname=app
+ENC_URL=postgres://user:p%zzpw6@db:5432/app
+`)
+	got, err := detectDotenv(".env", data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range got {
+		for k, v := range e.Attrs {
+			for _, pw := range []string{"pw1", "pw2", "pw3", "pw4", "pw5", "pw6"} {
+				if strings.Contains(v, pw) {
+					t.Errorf("%s attr %s leaks %s: %q", e.ID, k, pw, v)
+				}
+			}
+		}
+	}
+	if _, ok := byID(got)["datasource:postgres@db:5432/app"]; !ok {
+		t.Errorf("quoted DSN with trailing comment must still become a datasource: %+v", byID(got))
+	}
+}

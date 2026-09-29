@@ -4,13 +4,13 @@ import "testing"
 
 func TestNormalizePath(t *testing.T) {
 	cases := map[string]string{
-		"/users/:id":           "/users/{id}",
-		"/users/{id}":          "/users/{id}",
-		"/users/{id:[0-9]+}/":  "/users/{id}",
-		"/files/{path...}":     "/files/{path...}",
-		"/":                    "/",
-		"":                     "/",
-		"/static/*filepath":    "/static/*filepath",
+		"/users/:id":          "/users/{id}",
+		"/users/{id}":         "/users/{id}",
+		"/users/{id:[0-9]+}/": "/users/{id}",
+		"/files/{path...}":    "/files/{path...}",
+		"/":                   "/",
+		"":                    "/",
+		"/static/*filepath":   "/static/*filepath",
 	}
 	for in, want := range cases {
 		if got := normalizePath(in); got != want {
