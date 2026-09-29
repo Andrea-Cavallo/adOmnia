@@ -86,6 +86,10 @@ Write-Host "OK  Go: $goVer" -ForegroundColor Green
 
 # ---- Locate Wails ------------------------------------------------------------
 $wailsBin = $null
+# The CLI must match github.com/wailsapp/wails/v3 in go.mod: generated bindings
+# and the @wailsio/runtime IPC layer are version-locked to it.
+$wailsModuleVersion = (Select-String -Path (Join-Path $ProjectRoot "go.mod") -Pattern "github.com/wailsapp/wails/v3\s+(\S+)" | Select-Object -First 1).Matches.Groups[1].Value
+if (-not $wailsModuleVersion) { $wailsModuleVersion = "latest" }
 
 if (-not $GoOnly) {
     # 1. PATH
@@ -114,17 +118,28 @@ if (-not $GoOnly) {
     }
 
     if ($wailsBin) {
-        # In Wails 3 beta, `version` writes to the native error stream. With
-        # ErrorActionPreference=Stop that turns a successful probe into a
-        # terminating PowerShell error, so do not execute it during discovery.
+        # In Wails 3 beta, `version` writes to the native error stream: with
+        # ErrorActionPreference=Stop that would be a terminating error, so the
+        # probe below runs with Continue.
         $wailsBinDir = Split-Path -Parent $wailsBin
         if (($env:Path -split ';') -notcontains $wailsBinDir) {
             $env:Path = "$wailsBinDir;$env:Path"
         }
         Write-Host "OK  Wails 3: $wailsBin" -ForegroundColor Green
+        $previousPreference = $ErrorActionPreference
+        $ErrorActionPreference = "Continue"
+        # PowerShell 5.1 wraps stderr lines in ErrorRecords: keep only the version token.
+        $wailsCliVersion = ""
+        $versionText = (& $wailsBin version 2>&1 | ForEach-Object { "$_" }) -join " "
+        if ($versionText -match "(v\d+\.\d+\.\d+[\w.\-]*)") { $wailsCliVersion = $Matches[1] }
+        $ErrorActionPreference = $previousPreference
+        if ($wailsCliVersion -and $wailsCliVersion -ne $wailsModuleVersion) {
+            Write-Host "WARN Wails CLI $wailsCliVersion does not match go.mod $wailsModuleVersion (bindings and runtime must match)." -ForegroundColor Yellow
+            Write-Host "     Update: go install github.com/wailsapp/wails/v3/cmd/wails3@$wailsModuleVersion" -ForegroundColor Yellow
+        }
     } else {
         Write-Host "WARN Wails not found -- falling back to go build (no PE metadata)" -ForegroundColor Yellow
-        Write-Host "     Install: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.5" -ForegroundColor Yellow
+        Write-Host "     Install: go install github.com/wailsapp/wails/v3/cmd/wails3@$wailsModuleVersion" -ForegroundColor Yellow
     }
 }
 
@@ -176,12 +191,20 @@ if ($wailsBin -and (-not $GoOnly)) {
     $env:VERSION = $Version
     $env:BUILD_DATE = $buildDate
     $env:GIT_COMMIT = $gitCommit
+    # wails3/task log progress on stderr. Under Windows PowerShell 5.1 with
+    # ErrorActionPreference=Stop, redirected stderr (CI, Tee-Object, *>&1)
+    # turns the first log line into a terminating error; the exit code below
+    # is the real success signal.
+    $previousPreference = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
     & $wailsBin task build
+    $wailsExitCode = $LASTEXITCODE
+    $ErrorActionPreference = $previousPreference
     $env:VERSION = $previousVersion
     $env:BUILD_DATE = $previousBuildDate
     $env:GIT_COMMIT = $previousGitCommit
 
-    if ($LASTEXITCODE -ne 0) {
+    if ($wailsExitCode -ne 0) {
         Write-Host "ERR Wails build failed." -ForegroundColor Red
         exit 1
     }
