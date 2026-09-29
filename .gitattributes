@@ -1,0 +1,4 @@
+# Go sources and test fixtures stay LF on every OS (gofmt and the Go Studio LSP tests expect it).
+*.go text eol=lf
+go.mod text eol=lf
+go.sum text eol=lf
