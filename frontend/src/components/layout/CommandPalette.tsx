@@ -12,6 +12,13 @@ import { useEnvironmentsStore } from '@/stores/environments'
 import { useTabsStore } from '@/stores/tabs'
 import { useSettingsStore } from '@/stores/settings'
 import { useNavigationTranslation, useUiTranslation } from '@/lib/uiI18n'
+import { Braces, Database, FileCode, Package, Radio, Route, Table, Variable } from 'lucide-react'
+import type { EntityKind, EntityRef } from '@/lib/entities/types'
+import { actionsFor, openEntity } from '@/lib/entities/router'
+import { entityPaletteItems, symbolPaletteItems, type EntityPaletteItem } from '@/lib/entities/paletteItems'
+import { requestWorkspaceSymbols, type GoIDEWorkspaceSymbol } from '@/lib/goide-lsp-api'
+import { useDevContextStore } from '@/stores/devcontext'
+import { useGoIDEStore } from '@/stores/goide'
 
 interface CommandPaletteProps {
   open: boolean
@@ -25,7 +32,13 @@ interface PaletteCommand {
   group: string
   keywords: string
   icon: ElementType
+  ref?: EntityRef
   run: () => void
+}
+
+const KIND_ICONS: Record<EntityKind, ElementType> = {
+  module: Package, route: Route, service: Server, datasource: Database, envvar: Variable,
+  contract: FileCode, table: Table, topic: Radio, symbol: Braces,
 }
 
 function collectionRequests(collection: Collection): RequestItem[] {
@@ -56,6 +69,26 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const newTab = useTabsStore((s) => s.newTab)
   const setActiveRail = useAppStore((s) => s.setActiveRail)
   const featureFlags = useSettingsStore((s) => s.settings.features)
+  const goSessionId = useGoIDEStore((s) => s.activeSessionId)
+  const snapshot = useDevContextStore((s) => (goSessionId ? s.snapshots[goSessionId] : undefined))
+  const [symbols, setSymbols] = useState<GoIDEWorkspaceSymbol[]>([])
+  const [actionRef, setActionRef] = useState<EntityRef | null>(null)
+
+  useEffect(() => {
+    if (open && goSessionId) void useDevContextStore.getState().ensure(goSessionId)
+    if (open) setActionRef(null)
+  }, [open, goSessionId])
+
+  useEffect(() => {
+    if (!open || !goSessionId || query.trim().length < 2) { setSymbols([]); return }
+    let request: ReturnType<typeof requestWorkspaceSymbols> | undefined
+    const timer = window.setTimeout(() => {
+      request = requestWorkspaceSymbols(goSessionId, query.trim())
+      request.then(setSymbols, () => setSymbols([])) // language server off → no symbols, no error
+    }, 150)
+    return () => { window.clearTimeout(timer); request?.cancel() }
+  }, [goSessionId, open, query])
+  const contextError = useDevContextStore((s) => (goSessionId ? s.errors[goSessionId] : undefined))
 
   useEffect(() => {
     if (!open) return
@@ -125,15 +158,29 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       group: tr('Environments'), keywords: `environment variables switch ambiente variabili cambia ${environment.name}`, icon: ArrowRight,
       run: () => setActiveEnv(environment.id),
     }))
-    return [...actions, ...deepLinks, ...panels, ...recentRequests, ...collectionEntries, ...environmentEntries]
-  }, [activeEnvId, activeWorkspaceId, collections, environments, featureFlags, nav, newTab, openTab, setActiveEnv, setActiveRail, tabs, tr])
+    const toCommand = (group: string) => (item: EntityPaletteItem): PaletteCommand => ({
+      id: item.id, title: item.title, subtitle: item.subtitle, group, keywords: item.keywords,
+      icon: KIND_ICONS[item.ref.kind], ref: item.ref, run: () => void openEntity(item.ref),
+    })
+    const projectEntries = snapshot ? entityPaletteItems(snapshot).map(toCommand(tr('Project'))) : []
+    const symbolEntries = goSessionId ? symbolPaletteItems(symbols, goSessionId).map(toCommand(tr('Symbols'))) : []
+    return [...actions, ...deepLinks, ...panels, ...recentRequests, ...collectionEntries, ...environmentEntries, ...projectEntries, ...symbolEntries]
+  }, [activeEnvId, activeWorkspaceId, collections, environments, featureFlags, goSessionId, nav, newTab, openTab, setActiveEnv, setActiveRail, snapshot, symbols, tabs, tr])
 
-  const results = useMemo(() => commands
-    .map((command) => ({ command, score: fuzzyScore(query, `${command.title} ${command.subtitle ?? ''} ${command.keywords}`) }))
-    .filter((entry): entry is { command: PaletteCommand; score: number } => entry.score !== null)
-    .sort((a, b) => query.trim() ? b.score - a.score : 0)
-    .slice(0, 18)
-    .map((entry) => entry.command), [commands, query])
+  const results = useMemo(() => {
+    if (actionRef) {
+      return actionsFor(actionRef).map<PaletteCommand>((opener) => ({
+        id: `intent:${opener.intent}`, title: opener.title, subtitle: actionRef.label, group: tr('Actions'),
+        keywords: opener.intent, icon: ArrowRight, run: () => void openEntity(actionRef, opener.intent),
+      }))
+    }
+    return commands
+      .map((command) => ({ command, score: fuzzyScore(query, `${command.title} ${command.subtitle ?? ''} ${command.keywords}`) }))
+      .filter((entry): entry is { command: PaletteCommand; score: number } => entry.score !== null)
+      .sort((a, b) => query.trim() ? b.score - a.score : 0)
+      .slice(0, 18)
+      .map((entry) => entry.command)
+  }, [actionRef, commands, query, tr])
 
   useEffect(() => setSelectedIndex(0), [query])
 
@@ -147,13 +194,19 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Escape') {
       event.preventDefault()
-      onClose()
+      if (actionRef) setActionRef(null)
+      else onClose()
     } else if (event.key === 'ArrowDown') {
       event.preventDefault()
       setSelectedIndex((index) => Math.min(index + 1, Math.max(results.length - 1, 0)))
     } else if (event.key === 'ArrowUp') {
       event.preventDefault()
       setSelectedIndex((index) => Math.max(index - 1, 0))
+    } else if (event.key === 'Tab') {
+      event.preventDefault()
+      const ref = results[selectedIndex]?.ref
+      if (actionRef || event.shiftKey) setActionRef(null)
+      else if (ref) { setActionRef(ref); setSelectedIndex(0) }
     } else if (event.key === 'Enter') {
       event.preventDefault()
       execute(results[selectedIndex])
@@ -178,7 +231,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={tr('Search panels, requests, environments and actions...')}
+            placeholder={tr('Search panels, requests, routes, tables, topics, symbols...')}
             className="h-full flex-1 border-0 bg-transparent text-sm text-text-1 shadow-none outline-none placeholder:text-text-4 focus:shadow-none"
           />
           <kbd className="rounded border border-border-2 bg-surface-1 px-2 py-1 text-[10px] text-text-3">ESC</kbd>
@@ -217,10 +270,17 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
               </button>
             )
           })}
+          {!actionRef && goSessionId && (snapshot?.warnings?.length || contextError) ? (
+            <div className="px-3 pb-1 pt-2 text-[10px] text-text-4">
+              {tr('Project context')}: {contextError ?? snapshot!.warnings[0]}
+              {!contextError && snapshot!.warnings.length > 1 ? ` (+${snapshot!.warnings.length - 1})` : ''}
+            </div>
+          ) : null}
         </div>
         <footer className="flex items-center gap-4 border-t border-border-1 bg-surface-2/50 px-4 py-2 text-[10px] text-text-4">
           <span><kbd className="text-text-3">Up/Down</kbd> {tr('select')}</span>
           <span><kbd className="text-text-3">Enter</kbd> {tr('open')}</span>
+          <span><kbd className="text-text-3">Tab</kbd> {tr('actions')}</span>
           <span className="ml-auto">Ctrl/Cmd + K or P</span>
         </footer>
       </section>

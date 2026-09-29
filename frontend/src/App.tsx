@@ -38,8 +38,6 @@ const Sidebar = React.lazy(() => loadSidebarModule().then((module) => ({ default
 // waiting for React. A fresh Hub never requests this optional chunk.
 if (initialRailFromMemento() === 'collections') void loadSidebarModule().catch(() => undefined)
 import { EntityNotice } from '@/components/layout/EntityNotice'
-import { startDevContextSync } from '@/stores/devcontext'
-import { registerDefaultOpeners } from '@/lib/entities/openers'
 const CommandPalette = React.lazy(() => import('@/components/layout/CommandPalette').then((module) => ({ default: module.CommandPalette })))
 // Go Studio (store, API, LSP) resta fuori dal bundle iniziale: la guardia di chiusura serve
 // solo con buffer modificati o processi attivi, impossibili prima del primo frame stabile.
@@ -80,8 +78,15 @@ function App() {
   const dragRef = useRef<{ startX: number; startWidth: number } | null>(null)
   const isDragging = useRef(false)
 
-  useEffect(() => startDevContextSync(), [])
-  useEffect(() => registerDefaultOpeners(), [])
+  useEffect(() => {
+    // Dynamic import keeps the gO store out of the startup bundle (check:startup budget).
+    let disposers: Array<() => void> = []
+    let disposed = false
+    void Promise.all([import('@/stores/devcontext'), import('@/lib/entities/openers')]).then(([devcontext, openers]) => {
+      if (!disposed) disposers = [devcontext.startDevContextSync(), openers.registerDefaultOpeners()]
+    })
+    return () => { disposed = true; disposers.forEach((dispose) => dispose()) }
+  }, [])
   useEffect(() => {
     markStartup('startup:react-mounted')
   }, [])
