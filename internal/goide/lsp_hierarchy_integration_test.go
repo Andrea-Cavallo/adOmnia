@@ -60,6 +60,17 @@ func TestHierarchiesWithRealGopls(t *testing.T) {
 		t.Fatalf("subtypes of Greeter = %v, %v", hierarchyNames(subtypes), err)
 	}
 
+	// Generate Test (Code → Generate…): gopls "Add test" scrive un test table-driven in greet_test.go.
+	caret := EditorRange{StartLine: helloLine, StartColumn: 6, EndLine: helloLine, EndColumn: 6}
+	actions, err := service.CodeActions(ctx, sessionID, documentID, caret, []string{"source.addTest"})
+	if err != nil || len(actions) == 0 {
+		t.Fatalf("gopls offers no source.addTest on Hello: %v %+v", err, actions)
+	}
+	change, err := service.ResolveCodeAction(ctx, sessionID, actions[0].ID)
+	if err != nil || len(change.Files) != 1 || !strings.HasSuffix(change.Files[0].RelativePath, "greet_test.go") || !strings.Contains(change.Files[0].NewContent, "func TestHello(") {
+		t.Fatalf("add test change: %v %+v", err, change)
+	}
+
 	if _, err := service.ExpandHierarchy(ctx, sessionID, "sideways", roots[0].Token); err == nil {
 		t.Fatal("unknown direction accepted")
 	}

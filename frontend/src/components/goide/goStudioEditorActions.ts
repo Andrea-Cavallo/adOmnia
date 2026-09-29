@@ -3,7 +3,8 @@ import { requestLocations, requestOrganizeImports, type GoIDELocationKind } from
 import { useGoIDELspStore } from '@/stores/goideLsp'
 import { navigateToLocation, prepareDocument } from './goStudioLanguageFeatures'
 import { applyGoStudioWorkspaceChange } from './goStudioWorkspaceEdits'
-import { showHierarchy, showQuickDefinition, showTypeInfo, showUsagesPopup } from './goStudioSemanticFeatures'
+import { caretAnchor, showHierarchy, showQuickDefinition, showTypeInfo, showUsagesPopup } from './goStudioSemanticFeatures'
+import { goToTest } from './goStudioCodeGen'
 import { requestImplementInterface } from './goStudioImplementInterface'
 import { runGoStudioRefactoring, type GoStudioRefactoring } from './goStudioRefactorings'
 import { goToSuperMethod } from './goStudioImplementationMarkers'
@@ -20,6 +21,8 @@ export const GO_STUDIO_ACTIONS = {
   quickDocumentation: 'goStudio.quickDocumentation',
   quickDefinition: 'goStudio.quickDefinition',
   callHierarchy: 'goStudio.callHierarchy',
+  gotoTest: 'goStudio.gotoTest',
+  generate: 'goStudio.generate',
   typeHierarchy: 'goStudio.typeHierarchy',
   showUsages: 'goStudio.showUsages',
   typeInfo: 'goStudio.typeInfo',
@@ -102,6 +105,11 @@ export function installGoStudioEditorActions(editor: monaco.editor.IStandaloneCo
   editor.addAction({ id: GO_STUDIO_ACTIONS.typeInfo, label: 'Type Info', keybindings: [KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyP], run: (target) => { void showTypeInfo(target) } })
   editor.addAction({ id: GO_STUDIO_ACTIONS.implementInterface, label: 'Implement Interface…', keybindings: [KeyMod.CtrlCmd | KeyCode.KeyI], contextMenuGroupId: '1_modification', run: (target) => { void requestImplementInterface(target) } })
   semantic(GO_STUDIO_ACTIONS.superMethod, 'Go to Super Method', [KeyMod.CtrlCmd | KeyCode.KeyU], goToSuperMethod)
+  semantic(GO_STUDIO_ACTIONS.gotoTest, 'Go to Test', [KeyMod.Alt | KeyMod.Shift | KeyCode.KeyT], goToTest)
+  semantic(GO_STUDIO_ACTIONS.generate, 'Generate…', [KeyMod.Alt | KeyCode.Insert], (target) => {
+    const anchor = caretAnchor(target)
+    if (anchor) useGoIDELspStore.setState({ generateMenu: anchor })
+  })
   semantic(GO_STUDIO_ACTIONS.callHierarchy, 'Call Hierarchy', [KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.KeyH], (target) => showHierarchy(target, 'call'))
   semantic(GO_STUDIO_ACTIONS.typeHierarchy, 'Type Hierarchy', [], (target) => showHierarchy(target, 'type'))
   // Keymap di GoLand per le azioni di editing di Monaco: stesse azioni native, tasti che lo sviluppatore già conosce.

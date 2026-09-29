@@ -137,47 +137,47 @@
 
 ## Navigazione codice
 
-- [ ] Go to definition.
-- [ ] Go to declaration.
-- [ ] Go to type definition.
-- [ ] Go to implementation.
-- [ ] Go to references.
-- [ ] Go to symbol.
-- [ ] Go to file.
-- [ ] Go to line.
-- [ ] Go to test.
-- [ ] Back/forward navigation.
-- [ ] Call hierarchy.
-- [ ] Type hierarchy.
-- [ ] Implementations tree.
-- [ ] File structure.
-- [ ] Workspace symbols.
-- [ ] Recent locations.
-- [ ] Jump to last edit.
-- [ ] Navigate errors.
+- [x] Go to definition. — *Ctrl+B / Ctrl+clic.*
+- [x] Go to declaration.
+- [x] Go to type definition.
+- [x] Go to implementation. — *Ctrl+Alt+B.*
+- [x] Go to references. — *Find Usages (Alt+F7) e Show Usages.*
+- [x] Go to symbol.
+- [x] Go to file. — *Ctrl+P.*
+- [x] Go to line. — *Ctrl+G.*
+- [x] Go to test. — *Alt+Shift+T: file ↔ `_test.go` e funzione ↔ test; se manca, lo genera gopls.*
+- [x] Back/forward navigation.
+- [x] Call hierarchy. — *Ctrl+Alt+H: chiamanti/chiamati espandibili, ricorsione marcata (test con gopls reale).*
+- [x] Type hierarchy. — *Navigate → Type Hierarchy: supertipi/sottotipi (test con gopls reale).*
+- [x] Implementations tree. — *Type Hierarchy → Subtypes mostra l’albero degli implementatori.*
+- [x] File structure. — *Ctrl+F12.*
+- [x] Workspace symbols.
+- [x] Recent locations. — *Ctrl+Shift+E.*
+- [x] Jump to last edit. — *Ctrl+Shift+Backspace.*
+- [x] Navigate errors. — *F8 / Shift+F8.*
 
 ## Refactoring
 
-- [ ] Rename symbol.
-- [ ] Extract variable.
-- [ ] Extract constant.
-- [ ] Extract method/function.
-- [ ] Extract interface.
-- [ ] Inline variable.
-- [ ] Inline function quando sicuro.
-- [ ] Move symbol.
-- [ ] Change signature.
-- [ ] Implement interface.
-- [ ] Generate method stubs.
-- [ ] Generate constructor.
-- [ ] Generate getter/setter solo quando richiesto.
-- [ ] Generate tests.
-- [ ] Generate table-driven tests.
-- [ ] Generate benchmark.
-- [ ] Generate fuzz test.
-- [ ] Safe preview di ogni refactoring.
-- [ ] Multi-file refactoring preview.
-- [ ] Undo refactoring.
+- [x] Rename symbol. — *Shift+F6 con anteprima.*
+- [x] Extract variable.
+- [x] Extract constant.
+- [x] Extract method/function.
+- [x] Extract interface. — *Code → Generate… → Extract Interface (metodi esportati della struct).*
+- [x] Inline variable.
+- [x] Inline function quando sicuro. — *gopls `refactor.inline.call`.*
+- [ ] Move symbol. — *oggi Move to New File (gopls); spostare un simbolo in un altro package non è ancora supportato da gopls.*
+- [ ] Change signature. — *parziale: le riscritture di gopls (rimuovi parametro inutilizzato, sposta parametro) sono in Refactor This; manca un dialog completo.*
+- [x] Implement interface. — *Ctrl+I.*
+- [x] Generate method stubs. — *Implement Interface e la quick fix di gopls per i metodi mancanti.*
+- [x] Generate constructor. — *Code → Generate… (Alt+Insert).*
+- [x] Generate getter/setter solo quando richiesto. — *solo su richiesta e solo per i campi non esportati.*
+- [x] Generate tests. — *gopls “Add test” (test verificato con gopls reale).*
+- [x] Generate table-driven tests. — *il test di gopls è table-driven.*
+- [x] Generate benchmark. — *nel `_test.go`, compilato ed eseguito nei test.*
+- [x] Generate fuzz test. — *seed tipizzati per `f.Add`, compilato ed eseguito nei test.*
+- [x] Safe preview di ogni refactoring.
+- [x] Multi-file refactoring preview.
+- [x] Undo refactoring. — *Ctrl+Z; le modifiche multi-file passano dall’anteprima.*
 
 ---
 

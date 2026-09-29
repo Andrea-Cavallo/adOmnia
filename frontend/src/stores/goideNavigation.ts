@@ -58,7 +58,10 @@ export function toggleBookmarkIn(bookmarks: GoIDEBookmark[], bookmark: GoIDEBook
 interface GoIDENavigationState {
   history: Record<string, GoIDENavigationHistory>
   bookmarks: Record<string, GoIDEBookmark[]>
+  /** Ultima posizione modificata per sessione (Jump to Last Edit). */
+  lastEdit: Record<string, GoIDENavigationEntry>
   record: (sessionId: string, entry: GoIDENavigationEntry) => void
+  recordEdit: (sessionId: string, entry: GoIDENavigationEntry) => void
   go: (sessionId: string, direction: -1 | 1) => Promise<void>
   toggleBookmark: (sessionId: string, bookmark: GoIDEBookmark) => void
   removeBookmark: (sessionId: string, bookmark: GoIDEBookmark) => void
@@ -77,6 +80,13 @@ function schedulePersist(sessionId: string): void {
 export const useGoIDENavigationStore = create<GoIDENavigationState>((set, get) => ({
   history: {},
   bookmarks: {},
+  lastEdit: {},
+
+  recordEdit: (sessionId, entry) => {
+    const current = get().lastEdit[sessionId]
+    if (current && current.relativePath === entry.relativePath && current.line === entry.line) return
+    set((state) => ({ lastEdit: { ...state.lastEdit, [sessionId]: entry } }))
+  },
 
   record: (sessionId, entry) => {
     if (navigating) return
@@ -121,6 +131,22 @@ export const useGoIDENavigationStore = create<GoIDENavigationState>((set, get) =
     schedulePersist(sessionId)
   },
 }))
+
+const MAX_RECENT_LOCATIONS = 30
+
+/** Recent Locations: posizioni visitate dalla più recente, una per file e riga. */
+export function recentLocations(history: GoIDENavigationHistory): GoIDEBookmark[] {
+  const seen = new Set<string>()
+  const recent: GoIDEBookmark[] = []
+  for (let index = history.entries.length - 1; index >= 0 && recent.length < MAX_RECENT_LOCATIONS; index--) {
+    const { relativePath, line } = history.entries[index]
+    const key = `${relativePath}:${line}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    recent.push({ relativePath, line })
+  }
+  return recent
+}
 
 export function bookmarksFor(state: Pick<GoIDENavigationState, 'bookmarks'>, sessionId: string): GoIDEBookmark[] {
   return state.bookmarks[sessionId] ?? EMPTY_BOOKMARKS

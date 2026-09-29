@@ -5,7 +5,7 @@ import { useGoIDELspStore } from '@/stores/goideLsp'
 import { prepareDocument, toEditorRange } from './goStudioLanguageFeatures'
 import { applyGoStudioWorkspaceChange } from './goStudioWorkspaceEdits'
 
-export type GoStudioRefactoring = 'extractVariable' | 'extractConstant' | 'extractFunction' | 'inline' | 'moveToNewFile'
+export type GoStudioRefactoring = 'extractVariable' | 'extractConstant' | 'extractFunction' | 'inline' | 'moveToNewFile' | 'generateTest'
 
 interface RefactoringSpec {
   label: string
@@ -21,6 +21,7 @@ export const GO_STUDIO_REFACTORINGS: Record<GoStudioRefactoring, RefactoringSpec
   extractConstant: { label: 'Extract Constant', only: 'refactor.extract', kinds: ['refactor.extract.constant', 'refactor.extract.constant-all'], hint: 'select a constant expression' },
   extractFunction: { label: 'Extract Function/Method', only: 'refactor.extract', kinds: ['refactor.extract.function', 'refactor.extract.method'], hint: 'select one or more complete statements' },
   inline: { label: 'Inline', only: 'refactor.inline', kinds: ['refactor.inline.call', 'refactor.inline.variable', 'refactor.inline'], hint: 'place the caret on a call or a local variable' },
+  generateTest: { label: 'Generate Test', only: 'source.addTest', kinds: ['source.addTest'], hint: 'place the caret on an exported or unexported function or method (gopls writes a table-driven test)' },
   moveToNewFile: { label: 'Move to New File', only: 'refactor.extract', kinds: ['refactor.extract.toNewFile'], hint: 'select one or more top-level declarations' },
 }
 

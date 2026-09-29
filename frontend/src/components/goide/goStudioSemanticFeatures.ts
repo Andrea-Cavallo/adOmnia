@@ -183,7 +183,7 @@ function report(message: string): void {
   useGoIDELspStore.setState({ message })
 }
 
-function caretAnchor(editor: monaco.editor.ICodeEditor): { x: number; y: number } | null {
+export function caretAnchor(editor: monaco.editor.ICodeEditor): { x: number; y: number } | null {
   const position = editor.getPosition()
   const node = editor.getDomNode()
   const visible = position ? editor.getScrolledVisiblePosition(position) : null

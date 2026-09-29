@@ -10,6 +10,7 @@ import { GoStudioRecoveryBanner } from './GoStudioRecoveryBanner'
 import { GoStudioRunConfigurations } from './GoStudioRunConfigurations'
 import { GoStudioSecretsPrompt } from './GoStudioSecretsPrompt'
 import { GoStudioHierarchyDialog } from './GoStudioHierarchyDialog'
+import { GoStudioGenerateMenu } from './GoStudioGenerateMenu'
 import { useAppStore } from '@/stores/app'
 import { GoStudioToolbar } from './GoStudioToolbar'
 import { GoStudioElsewhere } from './GoStudioElsewhere'
@@ -164,6 +165,7 @@ export function GoStudioPanel() {
   const [runTargetMenu, setRunTargetMenu] = useState<{ target: GoStudioRunTarget; x: number; y: number } | null>(null)
   const debugState = useGoIDEDebugStore(selectDebugState(store.activeSessionId))
   const [bookmarksOpen, setBookmarksOpen] = useState(false)
+  const [locationsMode, setLocationsMode] = useState<'bookmarks' | 'recent'>('bookmarks')
   const [goTool, setGoTool] = useState<GoStudioGoToolDialogState | null>(null)
   const [attachMode, setAttachMode] = useState<GoStudioAttachMode | null>(null)
   const [localHistoryOpen, setLocalHistoryOpen] = useState(false)
@@ -431,7 +433,7 @@ export function GoStudioPanel() {
     if (id === 'debug.attach' || id === 'debug.remote') return setAttachMode(id === 'debug.attach' ? 'attach' : 'remote')
     const toolDialog = goToolDialogFor(id, activeSession)
     if (toolDialog) return setGoTool(toolDialog)
-    if (runNavigationCommand(id, activeSession?.id ?? null, activeGoStudioEditor(), () => setBookmarksOpen(true))) return
+    if (runNavigationCommand(id, activeSession?.id ?? null, activeGoStudioEditor(), (mode) => { setLocationsMode(mode); setBookmarksOpen(true) })) return
     switch (id) {
       case 'file.openProject': return void store.openProject()
       case 'file.newProject': return setCreateOpen(true)
@@ -528,6 +530,7 @@ export function GoStudioPanel() {
       <GoStudioQuickOpen />
       <GoStudioCaretPopup />
       <GoStudioHierarchyDialog />
+      <GoStudioGenerateMenu />
       <GoStudioImplementInterfaceDialog />
       {sharedDialogs}
       {store.activeSessionId && <GoStudioRunConfigurations open={configureOpen} sessionId={store.activeSessionId} initialDraft={configDraft} onClose={() => { setConfigureOpen(false); setConfigDraft(null) }} />}
@@ -551,7 +554,7 @@ export function GoStudioPanel() {
       <GoStudioLocalHistoryDialog document={localHistoryOpen ? currentActiveDocument() : null} open={localHistoryOpen} onClose={() => setLocalHistoryOpen(false)} />
       <GoStudioAttachDialog sessionId={activeSession.id} mode={attachMode} onClose={() => setAttachMode(null)} />
       <GoStudioGoToolDialog sessionId={activeSession.id} state={goTool} onClose={() => setGoTool(null)} />
-      <GoStudioBookmarksDialog open={bookmarksOpen} sessionId={activeSession.id} onClose={() => setBookmarksOpen(false)} />
+      <GoStudioBookmarksDialog open={bookmarksOpen} sessionId={activeSession.id} mode={locationsMode} onClose={() => { setBookmarksOpen(false); setLocationsMode('bookmarks') }} />
       <GoStudioSymbolSearch open={symbolSearchOpen} sessionId={activeSession.id} onClose={() => setSymbolSearchOpen(false)} />
       <GoStudioRenameDialog />
       <GoStudioChangePreviewDialog />

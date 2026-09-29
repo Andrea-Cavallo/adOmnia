@@ -165,6 +165,83 @@ export class CodeActionEntry {
     }
 }
 
+/**
+ * CodeGenRequest descrive cosa generare e dove.
+ */
+export class CodeGenRequest {
+    /**
+     * Kind: constructor, getters, setters, interface, benchmark, fuzz.
+     */
+    "kind": string;
+    "text": string;
+
+    /**
+     * Line (1-based) seleziona la struct o la funzione che contiene il cursore.
+     */
+    "line": number;
+
+    /**
+     * TestText è il contenuto attuale del file _test.go ("" se non esiste).
+     */
+    "testText": string;
+
+    /** Creates a new CodeGenRequest instance. */
+    constructor($$source: Partial<CodeGenRequest> = {}) {
+        if (!("kind" in $$source)) {
+            this["kind"] = "";
+        }
+        if (!("text" in $$source)) {
+            this["text"] = "";
+        }
+        if (!("line" in $$source)) {
+            this["line"] = 0;
+        }
+        if (!("testText" in $$source)) {
+            this["testText"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new CodeGenRequest instance from a string or object.
+     */
+    static createFrom($$source: any = {}): CodeGenRequest {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new CodeGenRequest($$parsedSource as Partial<CodeGenRequest>);
+    }
+}
+
+/**
+ * CodeGenResult contiene il file sorgente o il file di test aggiornati (vuoto se invariato).
+ */
+export class CodeGenResult {
+    "text"?: string;
+    "testText"?: string;
+
+    /**
+     * Symbol è il nome generato, da mostrare e su cui posizionare il cursore.
+     */
+    "symbol": string;
+
+    /** Creates a new CodeGenResult instance. */
+    constructor($$source: Partial<CodeGenResult> = {}) {
+        if (!("symbol" in $$source)) {
+            this["symbol"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new CodeGenResult instance from a string or object.
+     */
+    static createFrom($$source: any = {}): CodeGenResult {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new CodeGenResult($$parsedSource as Partial<CodeGenResult>);
+    }
+}
+
 export class CompletionEntry {
     "label": string;
     "kind": number;

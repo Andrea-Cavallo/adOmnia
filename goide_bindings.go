@@ -673,6 +673,11 @@ func (g *GoIDE) DocumentHighlights(ctx context.Context, sessionID, documentID st
 	return settleCancelled(ctx, value, err)
 }
 
+// GenerateGoCode genera costruttore, getter/setter, interfaccia, benchmark o fuzz test sul testo indicato.
+func (g *GoIDE) GenerateGoCode(request goide.CodeGenRequest) (goide.CodeGenResult, error) {
+	return goide.GenerateGoCode(request)
+}
+
 // PrepareHierarchy apre Call Hierarchy o Type Hierarchy sul simbolo al cursore.
 func (g *GoIDE) PrepareHierarchy(ctx context.Context, sessionID, documentID, kind string, line, column int) ([]goide.HierarchyItem, error) {
 	return g.service.PrepareHierarchy(ctx, sessionID, documentID, kind, line, column)

@@ -7,6 +7,8 @@ export {
     BreakpointState,
     Capabilities,
     CodeActionEntry,
+    CodeGenRequest,
+    CodeGenResult,
     CompletionEntry,
     CompletionResult,
     CoverageBlock,

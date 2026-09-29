@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 vi.mock('@/lib/goide-api', () => ({ subscribeGoIDEEvents: vi.fn(() => () => undefined) }))
 vi.mock('@/lib/goide-lsp-api', () => ({}))
 
-import { recordNavigation, stepNavigation, toggleBookmarkIn } from '@/stores/goideNavigation'
+import { recentLocations, recordNavigation, stepNavigation, toggleBookmarkIn } from '@/stores/goideNavigation'
 
 const at = (relativePath: string, line: number, column = 1) => ({ relativePath, line, column })
 
@@ -35,5 +35,13 @@ describe('Go Studio navigation history', () => {
     bookmarks = toggleBookmarkIn(bookmarks, { relativePath: 'main.go', line: 3 })
     expect(bookmarks.map((item) => `${item.relativePath}:${item.line}`)).toEqual(['a.go:5', 'main.go:3', 'main.go:20'])
     expect(toggleBookmarkIn(bookmarks, { relativePath: 'main.go', line: 3 })).toHaveLength(2)
+  })
+})
+
+describe('Recent Locations', () => {
+  it('lists visited places newest first, once per file and line', () => {
+    const history = { entries: [at('a.go', 1), at('b.go', 40), at('a.go', 1, 9), at('c.go', 7)], index: 3 }
+    expect(recentLocations(history)).toEqual([{ relativePath: 'c.go', line: 7 }, { relativePath: 'a.go', line: 1 }, { relativePath: 'b.go', line: 40 }])
+    expect(recentLocations({ entries: [], index: -1 })).toEqual([])
   })
 })

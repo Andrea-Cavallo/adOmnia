@@ -1,3 +1,4 @@
+import { useGoIDEStore } from '@/stores/goide'
 import { useMemo, type MutableRefObject } from 'react'
 import { monaco } from '@/lib/monacoSetup'
 import type { GoIDEEditorDocument } from '@/stores/goide'
@@ -51,13 +52,19 @@ export function useGoStudioBookmarks(editorRef: MutableRefObject<monaco.editor.I
 }
 
 /** Esegue i comandi di cronologia e segnalibri; false se il comando non appartiene a quest'area. */
-export function runNavigationCommand(id: string, sessionId: string | null, editor: monaco.editor.ICodeEditor | null, openBookmarks: () => void): boolean {
+export function runNavigationCommand(id: string, sessionId: string | null, editor: monaco.editor.ICodeEditor | null, openList: (mode: 'bookmarks' | 'recent') => void): boolean {
   if (!sessionId) return false
   switch (id) {
     case 'nav.back': void useGoIDENavigationStore.getState().go(sessionId, -1); return true
     case 'nav.forward': void useGoIDENavigationStore.getState().go(sessionId, 1); return true
     case 'nav.toggleBookmark': toggleBookmarkAtCursor(editor); return true
-    case 'nav.bookmarks': openBookmarks(); return true
+    case 'nav.bookmarks': openList('bookmarks'); return true
+    case 'nav.recentLocations': openList('recent'); return true
+    case 'nav.lastEdit': {
+      const last = useGoIDENavigationStore.getState().lastEdit[sessionId]
+      if (last) void useGoIDEStore.getState().openLocation(last.relativePath, last.line, last.column)
+      return true
+    }
     default: return false
   }
 }

@@ -114,6 +114,8 @@ interface GoIDELspState {
   caretPopup: GoIDECaretPopup | null
   /** Call Hierarchy / Type Hierarchy aperta (una alla volta). */
   hierarchy: GoIDEHierarchyView | null
+  /** Menu Code → Generate… aperto accanto al cursore. */
+  generateMenu: { x: number; y: number } | null
   implementRequest: GoIDEImplementRequest | null
   renameRequest: { sessionId: string; documentId: string; line: number; column: number } | null
   findRequest: { token: number; query: string } | null
@@ -197,6 +199,7 @@ export const useGoIDELspStore = create<GoIDELspState>((set, get) => ({
   pendingChangeOnCancel: null,
   caretPopup: null,
   hierarchy: null,
+  generateMenu: null,
   implementRequest: null,
   renameRequest: null,
   findRequest: null,

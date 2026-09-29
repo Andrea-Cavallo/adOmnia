@@ -28,6 +28,8 @@ Several projects can stay open at the same time, isolated from each other, group
 - **Code → Type Hints:** the inferred types of `:=` and `range`, composite literal types and constant values, on top of parameter hints.
 - **File → Save Files on Focus Change:** saves modified files when adOmnia goes to the background or you switch file, never while you type.
 - **File → Trim Trailing Whitespace on Save** and **`.editorconfig`:** the project-root `.editorconfig` sets indentation, trailing whitespace and the final newline for non-Go files; Go, assembly and Makefiles keep tabs. Only the changed characters are edited, so the cursor stays and Ctrl+Z undoes it.
+- **Navigate:** Test (Alt+Shift+T) jumps between a file and its `_test.go` and between a function and its test, and offers to generate a missing test. Call Hierarchy (Ctrl+Alt+H) shows callers and callees, and Type Hierarchy shows supertypes and subtypes, as lazy trees with recursion marked. Recent Locations (Ctrl+Shift+E), Last Edit Location (Ctrl+Shift+Backspace) and Next/Previous Problem (F8 / Shift+F8) are also there.
+- **Code → Generate… (Alt+Insert):** Constructor, Getters and Setters (only for unexported fields), Extract Interface (exported methods), Test (gopls writes a table-driven test), Benchmark and Fuzz Test (added to the `_test.go` file, created when missing; missing imports are added on save). The generated code is inserted after the struct or function, and the rest of the file is untouched. Ctrl+Z undoes it.
 - **Replace in Files:** *Replace All… (preview)* in Find in Files opens every change in the change preview, applied all or nothing and undoable. With regular expressions, `$1`, `$2`… insert the captured groups.
 
 ## Security and project authorization

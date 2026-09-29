@@ -23,6 +23,8 @@ const MONACO_ACTIONS = {
   'nav.quickDefinition': 'goStudio.quickDefinition',
   'nav.showUsages': 'goStudio.showUsages',
   'nav.callHierarchy': 'goStudio.callHierarchy',
+  'nav.gotoTest': 'goStudio.gotoTest',
+  'code.generate': 'goStudio.generate',
   'nav.typeHierarchy': 'goStudio.typeHierarchy',
   'nav.nextProblem': 'editor.action.marker.nextInFiles',
   'nav.previousProblem': 'editor.action.marker.prevInFiles',

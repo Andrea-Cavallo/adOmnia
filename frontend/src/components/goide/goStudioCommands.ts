@@ -9,7 +9,7 @@ export type GoStudioCommandId =
   | 'view.zoomIn' | 'view.zoomOut' | 'view.zoomReset' | 'view.zenMode' | 'view.stickyScroll' | 'view.minimap' | 'view.fontLigatures' | 'view.previewTab'
   | 'view.quickOpen' | 'view.maximize' | 'view.maximizeEditor' | 'view.toggleProject' | 'view.toggleStructure' | 'view.toggleBottom' | 'view.toggleIgnored' | 'view.problems'
   | 'nav.declaration' | 'nav.typeDeclaration' | 'nav.implementation' | 'nav.usages' | 'nav.fileStructure' | 'nav.symbol' | 'nav.findInFiles'
-  | 'nav.callHierarchy' | 'nav.typeHierarchy' | 'nav.nextProblem' | 'nav.previousProblem'
+  | 'nav.recentLocations' | 'nav.lastEdit' | 'nav.gotoTest' | 'code.generate' | 'nav.callHierarchy' | 'nav.typeHierarchy' | 'nav.nextProblem' | 'nav.previousProblem'
   | 'nav.superMethod' | 'nav.back' | 'nav.forward' | 'nav.toggleBookmark' | 'nav.bookmarks'
   | 'nav.quickDefinition' | 'nav.showUsages' | 'nav.searchEverywhere' | 'code.quickDocumentation' | 'code.typeInfo' | 'code.semanticHighlighting' | 'code.inlayHints' | 'code.typeHints' | 'code.implementInterface'
   | 'code.refactorThis' | 'code.extractVariable' | 'code.extractConstant' | 'code.extractFunction' | 'code.inline' | 'code.moveToNewFile'
@@ -123,6 +123,9 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'nav.implementation', menu: 'navigate', label: 'Implementation(s)', binding: { key: 'b', mod: true, alt: true }, editorOwned: true },
   { id: 'nav.superMethod', menu: 'navigate', label: 'Super Method', binding: { key: 'u', mod: true }, editorOwned: true },
   { id: 'nav.usages', menu: 'navigate', label: 'Find Usages', binding: { key: 'F7', alt: true }, editorOwned: true },
+  { id: 'nav.recentLocations', menu: 'navigate', label: 'Recent Locations…', binding: { key: 'e', mod: true, shift: true } },
+  { id: 'nav.lastEdit', menu: 'navigate', label: 'Last Edit Location', binding: { key: 'Backspace', mod: true, shift: true } },
+  { id: 'nav.gotoTest', menu: 'navigate', label: 'Test', binding: { key: 't', alt: true, shift: true }, editorOwned: true },
   { id: 'nav.callHierarchy', menu: 'navigate', label: 'Call Hierarchy', binding: { key: 'h', mod: true, alt: true }, editorOwned: true },
   { id: 'nav.typeHierarchy', menu: 'navigate', label: 'Type Hierarchy' },
   { id: 'nav.nextProblem', menu: 'navigate', label: 'Next Problem', binding: { key: 'F8' }, editorOwned: true, separatorBefore: true },
@@ -142,6 +145,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'code.typeInfo', menu: 'code', label: 'Type Info', binding: { key: 'p', mod: true, shift: true }, editorOwned: true },
   { id: 'code.quickFix', menu: 'code', label: 'Show Context Actions', binding: { key: 'Enter', alt: true }, editorOwned: true, separatorBefore: true },
   { id: 'code.implementInterface', menu: 'code', label: 'Implement Interface…', binding: { key: 'i', mod: true }, editorOwned: true },
+  { id: 'code.generate', menu: 'code', label: 'Generate…', binding: { key: 'Insert', alt: true }, editorOwned: true, separatorBefore: true },
   { id: 'code.rename', menu: 'code', label: 'Rename…', binding: { key: 'F6', shift: true }, editorOwned: true },
   { id: 'code.refactorThis', menu: 'code', label: 'Refactor This…', binding: { key: 't', mod: true, alt: true, shift: true }, editorOwned: true, separatorBefore: true },
   { id: 'code.extractVariable', menu: 'code', label: 'Extract Variable', binding: { key: 'v', mod: true, alt: true }, editorOwned: true },

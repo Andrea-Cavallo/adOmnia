@@ -1,3 +1,4 @@
+import { useGoIDENavigationStore } from '@/stores/goideNavigation'
 import { useEffect, useRef, useState } from 'react'
 import Editor, { type BeforeMount, type OnMount } from '@monaco-editor/react'
 import { GO_STUDIO_THEMES, applyGoStudioMonacoThemes, configureMonacoLoader, monaco } from '@/lib/monacoSetup'
@@ -109,10 +110,14 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
     editor.onDidFocusEditorText(() => void checkActiveDocument())
     // Il documento si ricava dal modello che è cambiato, mai dal componente: durante il cambio file
     // @monaco-editor/react può notificare con la closure del file precedente e sporcarne il buffer.
-    editor.onDidChangeModelContent(() => {
+    editor.onDidChangeModelContent((event) => {
       const model = editor.getModel()
       const changed = model ? documentForModel(model) : null
       if (!model || !changed || changed.document.readOnly) return
+      const edited = event.changes[0]?.range
+      if (edited && !changed.document.external && !event.isFlush) {
+        useGoIDENavigationStore.getState().recordEdit(changed.document.sessionId, { relativePath: changed.document.relativePath, line: edited.startLineNumber, column: edited.startColumn })
+      }
       const value = model.getValue()
       if (value !== changed.buffer) updateDocument(changed.document.id, value)
     })

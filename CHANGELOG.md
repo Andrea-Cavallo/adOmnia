@@ -6,7 +6,11 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Fixed
+- Go sources and test fixtures stay LF on Windows (`.gitattributes`), which fixes a Go Studio refactoring test that failed on Windows whenever gopls was installed.
+
 ### Added
+- **Go Studio navigation and generation:** Call Hierarchy (Ctrl+Alt+H) and Type Hierarchy, Go to Test (Alt+Shift+T) with test generation, Recent Locations (Ctrl+Shift+E), Last Edit Location (Ctrl+Shift+Backspace), Next/Previous Problem (F8), and Code → Generate… (Alt+Insert): constructor, getters, setters, extract interface, table-driven test, benchmark and fuzz test.
 - **Go Studio editor core:** Sticky Scopes, optional Minimap, Font Ligatures, Zoom (Ctrl+= / Ctrl+- / Ctrl+0), Zen Mode (Alt+Shift+Z), Preview Tab, Type Hints, Save Files on Focus Change, Trim Trailing Whitespace on Save, project-root `.editorconfig` support and Replace in Files through the change preview.
 
 ## [0.9.41] - 2026-09-29
