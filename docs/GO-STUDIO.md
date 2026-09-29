@@ -115,6 +115,15 @@ pause and explains it.
   configuration) and the debug console become cards with both conflicting
   accesses and the goroutine creation stacks; every frame opens the
   source.
+- **Filters and grouping.** Filter goroutines by All, Blocked or Running or
+  by text, and group them by starting function or by identical stack.
+  Relation chips show channels, locks, WaitGroups, contexts, network,
+  database and timers.
+- **Evidence.** Diagnostics are OBSERVED (paused snapshot) or CONFIRMED
+  (race detector). A timeline shows goroutines per state at each pause, and
+  *Copy snapshot* exports goroutines, diagnostics and races as JSON.
+- **Run with Race Detector** runs the active configuration with `-race`.
+  Races are compared across runs: new, recurring or gone.
 - Goroutine states are inferred from the stack because DAP does not expose
   Go's wait reason. The analysis covers the first 1000 goroutines of a
   pause.

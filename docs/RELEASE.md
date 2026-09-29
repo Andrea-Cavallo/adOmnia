@@ -4,6 +4,15 @@ adOmnia releases are driven by Git tags and GitHub Actions.
 
 ## Unreleased
 
+## v0.9.42 release notes: Concurrency View, race comparison and an IDE-grade editor
+
+See [the full v0.9.42 notes](releases/v0.9.42.md): the Concurrency View
+completes the goroutine debugger (filters, stack grouping, relations, new
+diagnostics, evidence badges, timeline, snapshot export), races are compared
+across runs, and Go Studio gains editor core features, hierarchies, code
+generation, vulnerability diagnostics, project tree decorations, go.work
+management and Clone Repository.
+
 ## v0.9.41 release notes: a concurrency-first debugger
 
 See [the full v0.9.41 notes](releases/v0.9.41.md): the Debug tool window is
