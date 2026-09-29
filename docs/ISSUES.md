@@ -29,6 +29,14 @@ the current codebase on 2026-06-13 and found already resolved (see below)._
 
 ## New This Cycle
 
+### Developer Context P0+P1 — implemented (branch `feat/devcontext`, 2026-09-29)
+
+- [x] Entity router (`frontend/src/lib/entities/`), panel handoff, notice bar
+- [x] Project context backend (`internal/devcontext`): go.mod, compose, .env (masked), OAS/proto/WSDL, Go routes, getenv/SQL/topics
+- [x] Palette groups Project + Symbols, Tab actions
+- [ ] Manual smoke in `wails3 task dev` on a real Go project (see plan Task 13 Step 5)
+- Next: P2 gO code lenses + env resolver.
+
 ### Log Inspector — shipped (v0.9.0, promoted to a rail destination in v0.9.1)
 
 Local-first log investigation studio: paste / drop / open OpenShift and application

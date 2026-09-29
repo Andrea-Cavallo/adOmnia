@@ -904,6 +904,16 @@ Existing `{{variable}}` references are also linked when their current environmen
 | G3.9 | **Dark + Light Mode** | Theme toggle through CSS class on `<html>`. |
 | G3.10 | **Custom Scrollbar** | Thin scrollbar consistent with the developer-tool aesthetic. |
 
+### G4. Developer Context & Entity Router
+
+| # | Feature | Description |
+|---|-------------|-------------|
+| G4.1 | **Project Context** | Opening a folder in gO scans it locally: go.mod modules, `package main` services, docker compose services and datasources (Postgres/MySQL/Mongo/Redis/Kafka/RabbitMQ/NATS), `.env` variables, OpenAPI/proto/WSDL contracts, Go routes (net/http 1.22, gin, echo, chi, gorilla), `os.Getenv`/`env` tags, SQL tables and Kafka/AMQP/NATS topics in string literals. Every item shows its file:line; code-derived items are marked *inferred*. |
+| G4.2 | **Live updates** | Saving in gO rescans that file; returning to the window rescans files changed elsewhere. |
+| G4.3 | **Secrets stay local** | Secret-looking `.env` values are masked, URL passwords redacted, compose passwords never read. |
+| G4.4 | **Palette: Project & Symbols** | Ctrl+K finds routes, tables, topics, services, env vars, contracts and gopls symbols of the active gO project. Enter runs the default action, Tab lists all actions. |
+| G4.5 | **Entity actions** | Route → Send in API Client / Go to handler / Add to Mock; service → use as baseUrl (confirm); datasource → Database or Broker Studio (no password copied); contract → API Docs / gRPC / SOAP; table → query; topic → Broker Studio; any item → open source in gO. |
+
 ---
 
 ## H. API DESIGN

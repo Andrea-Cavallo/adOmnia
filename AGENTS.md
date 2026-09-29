@@ -30,6 +30,13 @@ This file used to duplicate that content and drifted out of sync. It is now a po
 7. **Every feature should hit at least 2 of the 4 pillars** — see "Four Pillar Decision Framework" in `CLAUDE.md`.
 8. **Backend logic goes in `internal/<domain>/`** — the Go root is a Wails binding layer only.
 
+### Entity router (cross-panel navigation)
+
+New cross-panel actions go through `frontend/src/lib/entities/`, not new `CustomEvent`s:
+- register what your panel opens with `registerOpener(kind, { intent, title, run })` in `lib/entities/openers.ts`;
+- if the panel must be mounted to act, call `handoffToPanel(rail, ref, intent, payload)` from the opener and receive it in the panel with `useEntityHandoff(rail, handler)` — return `false` while the panel is not ready (e.g. still hydrating) and it is retried.
+Project entities come from `internal/devcontext` (Go) via `stores/devcontext.ts`.
+
 ---
 
 ## Verification
