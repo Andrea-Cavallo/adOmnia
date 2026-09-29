@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, memo } from 'react'
-import { AlertCircle, Copy, ListTree, RefreshCw, Search, SearchCode, Square, SquareTerminal, TerminalSquare, FlaskConical, Bug, ListTodo } from 'lucide-react'
+import { Copy, Minus, RefreshCw, Search, Square } from 'lucide-react'
 import { Clipboard as WailsClipboard } from '@wailsio/runtime'
 import { useGoIDEStore, type GoIDEConsoleChunk } from '@/stores/goide'
 import { selectedTestRun, useGoIDETestsStore } from '@/stores/goideTests'
@@ -94,6 +94,24 @@ function executionDetails(execution: GoIDEExecution): string {
   return parts.join(' · ')
 }
 
+const TOOL_WINDOW_TITLES: Record<GoIDEToolWindow, string> = {
+  run: 'Run',
+  problems: 'Problems',
+  references: 'Usages',
+  find: 'Find in Files',
+  tests: 'Tests',
+  debug: 'Debug',
+  todo: 'TODO',
+  terminal: 'Terminal',
+}
+
+const STATUS_DOT: Record<string, string> = {
+  running: 'bg-success animate-pulse',
+  exited: 'bg-success',
+  failed: 'bg-danger',
+  stopped: 'bg-warning',
+}
+
 function statusClass(status: string): string {
   if (status === 'running') return 'text-success'
   if (status === 'failed') return 'text-danger'
@@ -144,47 +162,51 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session }: GoSt
     setInput('')
   }
 
-  const tab = (id: GoIDEToolWindow, label: string, Icon: typeof TerminalSquare, badge?: React.ReactNode) => (
-    <button type="button" role="tab" aria-selected={view === id} onClick={() => showToolWindow(id)} className={`flex h-8 items-center gap-1.5 border-r border-border-1 px-3 text-[10px] font-semibold uppercase tracking-wider ${view === id ? 'border-b border-b-accent text-text-1' : 'text-text-3 hover:text-text-1'}`}><Icon size={11} /> {label}{badge}</button>
-  )
+  const hide = () => useGoIDEStore.getState().updateLayout({ bottomOpen: false })
 
   return (
     <section aria-label="Go Studio tool window" className="flex h-full min-h-0 flex-col bg-surface-1">
-      <div role="tablist" className="flex h-8 shrink-0 items-center border-b border-border-1">
-        {tab('run', 'Run', TerminalSquare)}
-        {tab('problems', 'Problems', AlertCircle, <span className={counts.errors || buildProblems.length ? 'text-danger' : counts.warnings ? 'text-warning' : 'text-text-4'}>{problemCount}</span>)}
-        {tab('references', 'Usages', ListTree)}
-        {tab('find', 'Find', SearchCode)}
-        {tab('tests', 'Tests', FlaskConical, failedTests > 0 ? <span className="text-danger">{failedTests}</span> : undefined)}
-        {tab('debug', 'Debug', Bug, debugState === 'stopped' ? <span className="h-1.5 w-1.5 rounded-full bg-warning" title="Paused" /> : debugState !== 'none' ? <span className="h-1.5 w-1.5 rounded-full bg-success" title="Debugging" /> : undefined)}
-        {tab('todo', 'TODO', ListTodo)}
-        {tab('terminal', 'Terminal', SquareTerminal)}
+      <div className="go-studio-tool-header border-b border-border-1">
+        <span className="go-studio-tool-title pr-2">{TOOL_WINDOW_TITLES[view]}</span>
+        {view === 'problems' && <span className={`rounded-full px-1.5 text-[10.5px] font-semibold ${counts.errors || buildProblems.length ? 'bg-danger/15 text-danger' : counts.warnings ? 'bg-warning/15 text-warning' : 'bg-surface-3 text-text-3'}`}>{problemCount}</span>}
+        {view === 'tests' && failedTests > 0 && <span className="rounded-full bg-danger/15 px-1.5 text-[10.5px] font-semibold text-danger">{failedTests} failed</span>}
+        {view === 'debug' && debugState !== 'none' && <span className={`flex items-center gap-1.5 text-[11px] ${debugState === 'stopped' ? 'text-warning' : 'text-success'}`}><span className={`h-1.5 w-1.5 rounded-full ${debugState === 'stopped' ? 'bg-warning' : 'bg-success'}`} />{debugState === 'stopped' ? 'Paused' : 'Debugging'}</span>}
         {view === 'run' && active && <>
           <select
             aria-label="Active run"
             value={active.id}
             onChange={(event) => useGoIDEStore.setState((state) => ({ activeRunBySession: { ...state.activeRunBySession, [sessionId]: event.target.value } }))}
-            className="ml-2 h-6 max-w-52 rounded border border-border-1 bg-surface-2 px-1.5 text-[10px] text-text-2"
+            className="h-7 max-w-60 rounded-md border border-border-1 bg-surface-2 px-2 font-mono text-[11px] text-text-1 outline-none focus:border-accent"
           >
             {executions.map((execution) => <option key={execution.id} value={execution.id}>{execution.kind} · {execution.id.slice(-6)} · {execution.status}</option>)}
           </select>
-          <span className={`ml-2 truncate text-[9px] ${statusClass(active.status)}`} title={`${active.command}\n${active.workingDirectory}`}>{executionDetails(active)}</span>
-          {active.kind !== 'dependency' && active.kind !== 'install' && <button type="button" onClick={() => void restartRun(active.id)} title="Restart" className="ml-1 grid h-6 w-6 shrink-0 place-items-center rounded text-text-3 hover:bg-surface-3 hover:text-text-1"><RefreshCw size={11} /></button>}
-          <button type="button" onClick={() => void stopRun(active.id)} disabled={active.status !== 'running'} title="Stop process tree" className="grid h-6 w-6 shrink-0 place-items-center rounded text-danger hover:bg-danger/10 disabled:opacity-30"><Square size={10} fill="currentColor" /></button>
+          <span className={`ml-2 flex min-w-0 items-center gap-1.5 truncate font-mono text-[11px] ${statusClass(active.status)}`} title={`${active.command}\n${active.workingDirectory}`}>
+            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${STATUS_DOT[active.status] ?? 'bg-text-4'}`} aria-hidden="true" />
+            <span className="truncate">{executionDetails(active)}</span>
+          </span>
         </>}
-        {view === 'run' && <>
-          <label className="ml-auto mr-1 flex h-6 shrink-0 items-center gap-1 rounded border border-border-1 bg-surface-0 px-1.5 text-text-4 focus-within:border-accent">
-            <Search size={10} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find output" aria-label="Filter console output" className="w-28 bg-transparent text-[10px] text-text-2 outline-none" />
-          </label>
-          <button type="button" disabled={!chunks.length} onClick={() => void WailsClipboard.SetText(chunks.map((chunk) => chunk.text).join(''))} title="Copy console" className="mr-1 grid h-6 w-6 shrink-0 place-items-center rounded text-text-3 hover:bg-surface-3 disabled:opacity-30"><Copy size={11} /></button>
-        </>}
+        <div className="ml-auto flex shrink-0 items-center gap-1">
+          {view === 'run' && (
+            <label className="mr-1 flex h-7 w-48 items-center gap-1.5 rounded-md border border-border-1 bg-surface-0 px-2 text-text-4 focus-within:border-accent">
+              <Search size={12} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find in output" aria-label="Filter console output" className="min-w-0 flex-1 bg-transparent text-[11.5px] text-text-2 outline-none" />
+            </label>
+          )}
+          <button type="button" onClick={hide} aria-label="Hide tool window" title="Hide · Alt+4" className="go-studio-icon-button h-7 w-7"><Minus size={14} /></button>
+        </div>
       </div>
-      {view === 'run' && <>
-        <div className="min-h-0 flex-1 overflow-auto bg-surface-0 px-3 py-2 font-mono text-[10px] leading-4">
-          {!active && <p className="text-text-4">Build or run the project, or press ▶ next to func main or a test, to open a real console.</p>}
+      {view === 'run' && <div className="flex min-h-0 flex-1">
+        <div className="flex w-10 shrink-0 flex-col items-center gap-0.5 border-r border-border-1 pt-1.5" role="toolbar" aria-label="Run actions" aria-orientation="vertical">
+          <button type="button" onClick={() => active && void restartRun(active.id)} disabled={!active || active.kind === 'dependency' || active.kind === 'install'} aria-label="Rerun" title="Rerun" className="go-studio-icon-button h-7 w-7 text-success"><RefreshCw size={14} /></button>
+          <button type="button" onClick={() => active && void stopRun(active.id)} disabled={active?.status !== 'running'} aria-label="Stop" title="Stop process tree" className="go-studio-icon-button h-7 w-7 text-danger"><Square size={11} fill="currentColor" /></button>
+          <span className="my-1 h-px w-4 bg-border-1" aria-hidden="true" />
+          <button type="button" disabled={!chunks.length} onClick={() => void WailsClipboard.SetText(chunks.map((chunk) => chunk.text).join(''))} aria-label="Copy console" title="Copy console" className="go-studio-icon-button h-7 w-7"><Copy size={13} /></button>
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="min-h-0 flex-1 overflow-auto bg-surface-0 px-3.5 py-2 font-mono text-[12px] leading-5">
+          {!active && <p className="font-sans text-text-4">Build or run the project, or press ▶ next to func main or a test, to open a real console.</p>}
           {active && visibleLines.length === 0 && <p className="text-text-4">Waiting for output…</p>}
           {visibleLines.map((line, index) => (
-            <div key={`${line.sequence}-${index}`} className={`min-h-4 whitespace-pre-wrap break-all ${line.stream === 'stderr' ? 'text-danger' : line.stream === 'system' ? 'text-text-4' : 'text-text-2'}`}>
+            <div key={`${line.sequence}-${index}`} className={`min-h-5 whitespace-pre-wrap break-all ${line.stream === 'stderr' ? 'text-danger' : line.stream === 'system' ? 'text-text-4' : 'text-text-2'}`}>
               {line.path && line.line ? (
                 <button type="button" onClick={() => void openLocation(resolveConsolePath(line.path!, active?.workingDirectory ?? ''), line.line!, line.column)} className="text-left underline decoration-accent/40 underline-offset-2 hover:text-accent">{renderAnsi(line.raw)}</button>
               ) : renderAnsi(line.raw)}
@@ -192,12 +214,13 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session }: GoSt
           ))}
         </div>
         {active?.status === 'running' && active.kind === 'run' && (
-          <form onSubmit={(event) => { event.preventDefault(); void submitInput() }} className="flex h-8 shrink-0 items-center border-t border-border-1 bg-surface-1 px-2">
-            <span className="mr-2 font-mono text-[10px] text-accent">stdin ›</span>
-            <input value={input} onChange={(event) => setInput(event.target.value)} aria-label="Program input" className="min-w-0 flex-1 bg-transparent font-mono text-[10px] text-text-1 outline-none" placeholder="Type input and press Enter" />
+          <form onSubmit={(event) => { event.preventDefault(); void submitInput() }} className="flex h-8 shrink-0 items-center border-t border-border-1 bg-surface-1 px-3">
+            <span className="mr-2 font-mono text-[11px] text-accent">stdin ›</span>
+            <input value={input} onChange={(event) => setInput(event.target.value)} aria-label="Program input" className="min-w-0 flex-1 bg-transparent font-mono text-[11.5px] text-text-1 outline-none" placeholder="Type input and press Enter" />
           </form>
         )}
-      </>}
+        </div>
+      </div>}
       {view === 'problems' && <div className="min-h-0 flex-1 overflow-auto bg-surface-0"><GoStudioProblems sessionId={sessionId} buildProblems={buildProblems} onOpenBuildProblem={(problem) => void openLocation(problem.path, problem.line, problem.column)} /></div>}
       {view === 'references' && <div className="min-h-0 flex-1 overflow-auto bg-surface-0"><GoStudioReferences sessionId={sessionId} /></div>}
       {view === 'find' && <div className="min-h-0 flex-1 bg-surface-0"><GoStudioFindInFiles sessionId={sessionId} /></div>}

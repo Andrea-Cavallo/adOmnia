@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { AlertCircle, AlertTriangle, EyeOff, Loader2, ScanSearch, Sparkles } from 'lucide-react'
+import { AlertCircle, AlertTriangle, EyeOff, Loader2, LockKeyhole, ScanSearch, ShieldCheck } from 'lucide-react'
 import { getGoIDEWatcherStatus, type GoIDEExecution, type GoIDESession, type GoIDEToolchainInfo, type GoIDEWatcherStatus } from '@/lib/goide-api'
 import { useShallow } from 'zustand/react/shallow'
 import { useGoStudioCursorStore } from './goStudioCursor'
@@ -13,7 +13,10 @@ interface GoStudioStatusBarProps {
   execution: GoIDEExecution | null
   onLanguageServer: () => void
   onLinter: () => void
+  onSetAuthorization: (allowed: boolean) => void
 }
+
+const ITEM = 'flex h-5 items-center gap-1.5 rounded px-1.5 transition-colors hover:bg-surface-3 hover:text-text-1'
 
 /** Il watcher parte in background dopo l'apertura: lo stato si rilegge poco dopo e poi di rado. */
 const WATCHER_STATUS_DELAYS_MS = [1500, 10_000, 60_000]
@@ -39,7 +42,7 @@ function languageServerLabel(state: string, version?: string): string {
   }
 }
 
-export function GoStudioStatusBar({ session, toolchain, documentInfo, execution, onLanguageServer, onLinter }: GoStudioStatusBarProps) {
+export function GoStudioStatusBar({ session, toolchain, documentInfo, execution, onLanguageServer, onLinter, onSetAuthorization }: GoStudioStatusBarProps) {
   const cursor = useGoStudioCursorStore(useShallow((state) => ({ line: state.line, column: state.column })))
   const status = useGoIDELspStore((state) => state.status[session.id])
   const progress = useGoIDELspStore((state) => state.progress[session.id] ?? null)
@@ -52,29 +55,39 @@ export function GoStudioStatusBar({ session, toolchain, documentInfo, execution,
   const lspState = status?.state ?? 'stopped'
   const lspTone = lspState === 'ready' ? 'text-success' : lspState === 'crashed' ? 'text-danger' : lspState === 'starting' ? 'text-accent' : 'text-text-4'
 
+  const authorized = session.project.authorization === 'tooling-permitted'
+  const running = execution?.status === 'running'
+
   return (
-    <div className="flex h-6 shrink-0 items-center gap-3 border-t border-border-1 bg-surface-1 px-3 text-[9px] text-text-4">
-      <span title={toolchain?.goBinary}>{toolchain?.available ? (toolchain.version ?? 'Go ready').replace(/^go version\s+/, '') : 'Go not detected'}</span>
-      <button type="button" onClick={onLanguageServer} title={status?.error || 'Language server: click for start, restart or log'} className={`flex items-center gap-1 rounded px-1 hover:bg-surface-3 ${lspTone}`}>
-        {lspState === 'starting' || progress ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
-        {progress ? `${progress.title ?? 'gopls'}${progress.message ? `: ${progress.message}` : ''}${progress.percentage !== undefined ? ` ${progress.percentage}%` : ''}` : languageServerLabel(lspState, status?.version)}
-      </button>
-      <button type="button" onClick={onLinter} title={lint?.error || linter?.error || (linter?.available ? `Run ${linter.kind}${linter.configPath ? ` with ${linter.configPath}` : ''} · Ctrl/Cmd+Alt+Shift+L` : 'Install a linter from the Go menu')} className={`flex items-center gap-1 rounded px-1 hover:bg-surface-3 ${lint?.error ? 'text-danger' : linter?.available ? '' : 'text-text-4/70'}`}>
-        {lint?.running ? <Loader2 size={9} className="animate-spin" /> : <ScanSearch size={9} />}
-        {lint?.running ? `${linter?.kind ?? 'lint'}…` : linter?.available ? `${linter.kind}${lint?.result ? ` · ${lint.result.issueCount}` : ''}` : 'no linter'}
-      </button>
-      <button type="button" onClick={() => showToolWindow('problems')} title="Problems · Alt+6" className="flex items-center gap-2 rounded px-1 hover:bg-surface-3">
-        <span className={`flex items-center gap-0.5 ${counts.errors ? 'text-danger' : ''}`}><AlertCircle size={9} />{counts.errors}</span>
-        <span className={`flex items-center gap-0.5 ${counts.warnings ? 'text-warning' : ''}`}><AlertTriangle size={9} />{counts.warnings}</span>
-      </button>
-      <span>{documentInfo?.language || (session.project.goWorkPath ? 'go.work' : session.project.goModPath ? 'go.mod' : 'Go folder')}{documentInfo?.readOnly ? ' · read-only' : ''}</span>
-      {documentInfo && <span>Ln {cursor.line}, Col {cursor.column}</span>}
+    <div className="flex h-[26px] shrink-0 items-center gap-1 border-t border-border-1 bg-surface-1 px-2 text-[11px] text-text-3">
+      <span className={`flex min-w-0 items-center gap-1.5 px-1.5 ${running ? 'text-success' : ''}`} title={execution?.command}>
+        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${running ? 'animate-pulse bg-success' : execution?.status === 'failed' ? 'bg-danger' : 'bg-text-4'}`} aria-hidden="true" />
+        <span className="truncate">{execution ? `${execution.kind} · ${execution.status}` : 'Idle'}</span>
+      </span>
       {watcher?.limited && (
-        <span role="status" title={`This project has more than ${watcher.limit} folders: only the first ${watcher.directories} are watched, so changes made outside Go Studio in the others are not detected automatically. Reopen files to see their disk version.`} className="flex items-center gap-1 text-warning">
-          <EyeOff size={9} /> Partially watched
+        <span role="status" title={`This project has more than ${watcher.limit} folders: only the first ${watcher.directories} are watched, so changes made outside Go Studio in the others are not detected automatically. Reopen files to see their disk version.`} className="flex items-center gap-1 px-1.5 text-warning">
+          <EyeOff size={12} /> Partially watched
         </span>
       )}
-      <span className="ml-auto">{execution ? `${execution.kind}: ${execution.status}` : 'idle'}</span>
+      <span className="flex-1" />
+      <button type="button" onClick={onLanguageServer} title={status?.error || 'Language server: click for start, restart or log'} className={`${ITEM} ${lspTone}`}>
+        {lspState === 'starting' || progress ? <Loader2 size={12} className="animate-spin" /> : <span className={`h-1.5 w-1.5 rounded-full ${lspState === 'ready' ? 'bg-success' : lspState === 'crashed' ? 'bg-danger' : 'bg-text-4'}`} aria-hidden="true" />}
+        <span className="max-w-72 truncate">{progress ? `${progress.title ?? 'gopls'}${progress.message ? `: ${progress.message}` : ''}${progress.percentage !== undefined ? ` ${progress.percentage}%` : ''}` : languageServerLabel(lspState, status?.version)}</span>
+      </button>
+      <button type="button" onClick={onLinter} title={lint?.error || linter?.error || (linter?.available ? `Run ${linter.kind}${linter.configPath ? ` with ${linter.configPath}` : ''} · Ctrl/Cmd+Alt+Shift+L` : 'Install a linter from the Go menu')} className={`${ITEM} ${lint?.error ? 'text-danger' : linter?.available ? '' : 'text-text-4'}`}>
+        {lint?.running ? <Loader2 size={12} className="animate-spin" /> : <ScanSearch size={12} />}
+        {lint?.running ? `${linter?.kind ?? 'lint'}…` : linter?.available ? `${linter.kind}${lint?.result ? ` · ${lint.result.issueCount}` : ''}` : 'No linter'}
+      </button>
+      <button type="button" onClick={() => showToolWindow('problems')} title="Problems · Alt+6" className={`${ITEM} gap-2`}>
+        <span className={`flex items-center gap-1 ${counts.errors ? 'text-danger' : ''}`}><AlertCircle size={12} />{counts.errors}</span>
+        <span className={`flex items-center gap-1 ${counts.warnings ? 'text-warning' : ''}`}><AlertTriangle size={12} />{counts.warnings}</span>
+      </button>
+      {documentInfo && <span className="px-1.5 font-mono tabular-nums" title="Line:Column">{cursor.line}:{cursor.column}</span>}
+      <span className="px-1.5">{documentInfo?.language || (session.project.goWorkPath ? 'go.work' : session.project.goModPath ? 'go.mod' : 'Go folder')}{documentInfo?.readOnly ? ' · read-only' : ''}</span>
+      <span className="px-1.5" title={toolchain?.goBinary}>{toolchain?.available ? (toolchain.version ?? 'Go ready').replace(/^go version\s+/, '') : 'Go not detected'}</span>
+      <button type="button" onClick={() => onSetAuthorization(!authorized)} aria-pressed={authorized} title={authorized ? 'Local Go tools are permitted. Click to revoke.' : 'Permit local Go tools; nothing starts automatically'} className={`${ITEM} ${authorized ? 'text-success' : 'text-warning'}`}>
+        {authorized ? <ShieldCheck size={12} /> : <LockKeyhole size={12} />}{authorized ? 'Trusted' : 'Restricted'}
+      </button>
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { GitBranch } from 'lucide-react'
+import { ChevronDown, GitBranch } from 'lucide-react'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import { confirm } from '@/lib/confirmDialog'
 import { useAppStore } from '@/stores/app'
@@ -52,12 +52,15 @@ export function GoStudioBranchWidget({ sessionId, onCommit }: GoStudioBranchWidg
 
   return (
     <>
-      <button type="button" aria-haspopup="menu" title={`Branch ${status.branch}${status.ahead || status.behind ? ` · ↑${status.ahead} ↓${status.behind}` : ''} · ${changes} local change(s)`}
-        onClick={(event) => { const rect = event.currentTarget.getBoundingClientRect(); setMenu({ x: rect.left, y: rect.bottom + 2 }) }}
-        className="flex h-7 max-w-44 items-center gap-1.5 rounded px-2 text-[10px] text-text-2 hover:bg-surface-3 hover:text-text-1">
-        <GitBranch size={12} className="shrink-0 text-accent" />
-        <span className="truncate font-mono">{status.branch || 'detached'}</span>
-        {changes > 0 && <span className="shrink-0 rounded bg-accent/15 px-1 text-[9px] text-accent">{changes}</span>}
+      <button type="button" aria-haspopup="menu" aria-expanded={!!menu} title={`Branch ${status.branch}${status.ahead || status.behind ? ` · ↑${status.ahead} ↓${status.behind}` : ''} · ${changes} local change(s)`}
+        onClick={(event) => { const rect = event.currentTarget.getBoundingClientRect(); setMenu({ x: rect.left, y: rect.bottom + 4 }) }}
+        className={`go-studio-widget max-w-52 ${menu ? 'is-active' : ''}`}>
+        <GitBranch size={14} className="shrink-0 text-text-3" />
+        <span className="truncate">{status.branch || 'detached'}</span>
+        {status.behind > 0 && <span className="shrink-0 rounded-full bg-accent/20 px-1.5 text-[10px] font-semibold text-accent">↓{status.behind}</span>}
+        {status.ahead > 0 && <span className="shrink-0 rounded-full bg-success/15 px-1.5 text-[10px] font-semibold text-success">↑{status.ahead}</span>}
+        {changes > 0 && <span className="shrink-0 rounded-full bg-surface-3 px-1.5 text-[10px] text-text-2" title={`${changes} local change(s)`}>{changes}</span>}
+        <ChevronDown size={12} className="shrink-0 text-text-4" />
       </button>
       {menu && <ContextMenu x={menu.x} y={menu.y} items={items} onSelect={select} onClose={() => setMenu(null)} />}
     </>

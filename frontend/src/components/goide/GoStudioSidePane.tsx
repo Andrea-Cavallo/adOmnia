@@ -21,10 +21,11 @@ export function GoStudioSidePane({ session, document }: GoStudioSidePaneProps) {
   const [tab, setTab] = useState<SidePaneTab>('structure')
   return (
     <aside aria-label="Structure and project overview" className="flex h-full min-w-0 flex-col bg-surface-1">
-      <div role="tablist" className="flex h-8 shrink-0 items-center border-b border-border-1">
+      <div role="tablist" className="go-studio-tool-header gap-1 pl-2">
         {TABS.map(({ id, label, icon: Icon }) => (
-          <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className={`flex h-8 items-center gap-1.5 px-2.5 text-[10px] font-semibold uppercase tracking-wider ${tab === id ? 'border-b border-b-accent text-text-1' : 'text-text-3 hover:text-text-1'}`}>
-            <Icon size={11} /> {label}
+          <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className={`relative flex h-9 items-center gap-1.5 px-2 text-[12px] ${tab === id ? 'font-semibold text-text-1' : 'text-text-3 hover:text-text-1'}`}>
+            <Icon size={13} /> {label}
+            {tab === id && <span className="absolute inset-x-1.5 bottom-0 h-0.5 rounded-full bg-accent" aria-hidden="true" />}
           </button>
         ))}
       </div>

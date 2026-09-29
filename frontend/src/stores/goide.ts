@@ -95,6 +95,7 @@ export interface GoIDELayout {
   projectWidth: number
   structureWidth: number
   bottomHeight: number
+  projectOpen: boolean
   structureOpen: boolean
   bottomOpen: boolean
 }
@@ -118,6 +119,7 @@ const DEFAULT_LAYOUT: GoIDELayout = {
   projectWidth: 244,
   structureWidth: 220,
   bottomHeight: 190,
+  projectOpen: true,
   structureOpen: true,
   bottomOpen: true,
 }
@@ -131,6 +133,7 @@ function loadLayout(): GoIDELayout {
       projectWidth: Math.min(420, Math.max(180, parsed.projectWidth ?? DEFAULT_LAYOUT.projectWidth)),
       structureWidth: Math.min(360, Math.max(180, parsed.structureWidth ?? DEFAULT_LAYOUT.structureWidth)),
       bottomHeight: Math.min(480, Math.max(112, parsed.bottomHeight ?? DEFAULT_LAYOUT.bottomHeight)),
+      projectOpen: parsed.projectOpen ?? true,
       structureOpen: parsed.structureOpen ?? true,
       bottomOpen: parsed.bottomOpen ?? true,
     }

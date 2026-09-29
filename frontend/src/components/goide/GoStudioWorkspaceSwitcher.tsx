@@ -100,8 +100,8 @@ function WorkspaceSwitcher() {
     <>
       <button type="button" aria-haspopup="menu" title={`Go Studio workspace: ${active.name} (${projectCount(activeCount)}) · separate from adOmnia API workspaces`}
         onClick={(event) => { const rect = event.currentTarget.getBoundingClientRect(); setMenu({ x: rect.left, y: rect.bottom + 2 }) }}
-        className="ml-auto flex h-6 max-w-48 items-center gap-1.5 rounded px-2 text-[10px] text-text-2 hover:bg-surface-3 hover:text-text-1">
-        <Layers size={11} className="shrink-0 text-accent" />
+        className={`go-studio-widget max-w-48 ${menu ? 'is-active' : ''}`}>
+        <Layers size={13} className="shrink-0 text-text-3" />
         <span className="truncate">{active.name}</span>
         <span className="shrink-0 text-text-4">{activeCount}</span>
       </button>

@@ -78,7 +78,7 @@ export function GoStudioEditorTabs({ documents, activeId, onRequestClose }: GoSt
   }
 
   return (
-    <div role="tablist" aria-label="Open files" className="flex h-8 shrink-0 overflow-x-auto border-b border-border-1 bg-surface-1">
+    <div role="tablist" aria-label="Open files" className="flex h-9 shrink-0 overflow-x-auto border-b border-border-1 bg-surface-1">
       {ordered.map((item) => {
         const active = item.document.id === activeId
         const isPinned = !!pinned[item.document.id]
@@ -91,17 +91,18 @@ export function GoStudioEditorTabs({ documents, activeId, onRequestClose }: GoSt
             onClick={() => selectDocument(item.document.id)}
             onAuxClick={(event) => { if (event.button === 1 && !isPinned) onRequestClose([item]) }}
             onContextMenu={(event) => { event.preventDefault(); setMenu({ x: event.clientX, y: event.clientY, document: item }) }}
-            className={`group flex h-8 min-w-0 max-w-56 shrink-0 items-center gap-1.5 border-r border-border-1 px-2 text-[10px] ${active ? 'border-t border-t-accent bg-surface-0 text-text-1' : 'text-text-3 hover:bg-surface-2'}`}
+            className={`group relative flex h-9 min-w-0 max-w-60 shrink-0 items-center gap-2 border-r border-border-1 pl-3 pr-2 text-[12px] transition-colors ${active ? 'bg-surface-0 text-text-1' : 'text-text-3 hover:bg-surface-2 hover:text-text-2'}`}
             title={item.document.relativePath}
           >
-            {isGoSource(item.document.name) && <GoGopherIcon size={12} />}
-            {item.document.readOnly && <Lock size={9} className="shrink-0 text-text-4" />}
+            {active && <span className="absolute inset-x-0 bottom-0 h-0.5 bg-accent" aria-hidden="true" />}
+            {isGoSource(item.document.name) && <GoGopherIcon size={14} />}
+            {item.document.readOnly && <Lock size={11} className="shrink-0 text-text-4" />}
             <span className="truncate">{item.document.name}</span>
-            {qualifiers[item.document.id] && <span className="shrink-0 text-[9px] text-text-4">{qualifiers[item.document.id]}</span>}
+            {qualifiers[item.document.id] && <span className="shrink-0 text-[11px] text-text-4">{qualifiers[item.document.id]}</span>}
             {item.dirty && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-warning" title="Unsaved changes" />}
             {isPinned
-              ? <Pin size={9} className="shrink-0 rotate-45 text-accent" aria-label="Pinned" />
-              : <span role="button" tabIndex={-1} aria-label={`Close ${item.document.name}`} onClick={(event) => { event.stopPropagation(); onRequestClose([item]) }} className={`grid h-4 w-4 shrink-0 place-items-center rounded hover:bg-surface-3 ${active ? 'opacity-70' : 'opacity-0 group-hover:opacity-100'}`}><X size={10} /></span>}
+              ? <Pin size={11} className="shrink-0 rotate-45 text-accent" aria-label="Pinned" />
+              : <span role="button" tabIndex={-1} aria-label={`Close ${item.document.name}`} onClick={(event) => { event.stopPropagation(); onRequestClose([item]) }} className={`grid h-[18px] w-[18px] shrink-0 place-items-center rounded hover:bg-surface-3 hover:text-text-1 ${active ? 'opacity-80' : 'opacity-0 group-hover:opacity-100'}`}><X size={12} /></span>}
           </button>
         )
       })}

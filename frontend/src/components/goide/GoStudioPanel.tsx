@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
-import { AlertTriangle, PanelBottomClose, PanelBottomOpen, PanelRightClose, PanelRightOpen, X } from 'lucide-react'
+import { AlertTriangle, X } from 'lucide-react'
 import { GoStudioEmptyState } from './GoStudioEmptyState'
 import { CreateProjectDialog, UnsavedChangesDialog } from './GoStudioDialogs'
 import { DEFAULT_RUN_DRAFT, runRequest } from './goStudioRunDraft'
@@ -15,6 +15,8 @@ import { useGoIDEWindowsStore } from '@/stores/goideWindows'
 import { closeGoIDESessionWindow } from '@/lib/goide-window-api'
 import { GoStudioWorkspace } from './GoStudioWorkspace'
 import { GoStudioMenuBar, type GoStudioCommandState } from './GoStudioMenuBar'
+import { GoStudioWorkspaceSwitcher } from './GoStudioWorkspaceSwitcher'
+import './goStudioChrome.css'
 import { GoStudioShortcutsDialog } from './GoStudioShortcutsDialog'
 import { commandAvailability, commandChecked, commandForKey, type GoStudioCommandContext, type GoStudioCommandId } from './goStudioCommands'
 import { activeGoStudioEditor, hasGoStudioEditor, isGoStudioEditorCommand, runGoStudioEditorCommand } from './goStudioEditorRegistry'
@@ -429,7 +431,8 @@ export function GoStudioPanel() {
   }
   runCommandRef.current = runCommand
 
-  const menuBar = <GoStudioMenuBar state={commandState} recentProjects={store.recentProjects} openProjectPaths={workspaceSessions.map((session) => session.project.realPath)} onCommand={runCommand} onOpenRecent={(path) => void store.openProject(path)} />
+  const mainMenu = <GoStudioMenuBar state={commandState} recentProjects={store.recentProjects} openProjectPaths={workspaceSessions.map((session) => session.project.realPath)} onCommand={runCommand} onOpenRecent={(path) => void store.openProject(path)} />
+  const menuBar = <div role="toolbar" aria-label="Go Studio toolbar" className="flex h-11 shrink-0 items-center gap-1 border-b border-border-1 bg-surface-1 px-2">{mainMenu}<span className="flex-1" /><GoStudioWorkspaceSwitcher /></div>
   const sharedDialogs = <><CreateProjectDialog open={createOpen} onClose={() => setCreateOpen(false)} /><GoStudioShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} /></>
 
   const windowError = windows.error && <ErrorBanner message={windows.error} onClose={windows.clearError} />
@@ -439,8 +442,7 @@ export function GoStudioPanel() {
   if (activeSession && (windows.owners[activeSession.id] ?? 'main') !== windows.context.windowId) {
     return (
       <div className="flex min-h-0 flex-1 flex-col bg-surface-0 text-text-1">
-        {menuBar}
-        <GoStudioToolbar runConfigurations={runConfigurations} activeConfigId={activeConfigId} onSelectConfiguration={(id) => store.selectRunConfiguration(id)} sessions={workspaceSessions} activeSession={activeSession} activeExecution={activeExecution} toolchain={toolchain} loading={store.loading} onSelect={(id) => void store.selectSession(id)} onOpenProject={() => void store.openProject()} onCreateProject={() => setCreateOpen(true)} onSetAuthorization={(allowed) => void authorize(allowed)} onDetectToolchain={() => void store.detectToolchain()} onToolchainSettings={() => setToolchainOpen(true)} onDependencies={() => setDependenciesOpen(true)} onConfigure={() => setConfigureOpen(true)} onBuild={() => startConfigured('build')} onRun={() => startConfigured('run')} onTidy={() => void tidy()} onStop={() => void store.stopRun()} onClose={() => void useGoIDEWindowsStore.getState().bringBack(activeSession.id)} />
+        <GoStudioToolbar mainMenu={mainMenu} trailing={<GoStudioWorkspaceSwitcher />} onSearchEverywhere={() => runCommand('nav.searchEverywhere')} onDebug={() => runCommand('debug.debug')} runConfigurations={runConfigurations} activeConfigId={activeConfigId} onSelectConfiguration={(id) => store.selectRunConfiguration(id)} sessions={workspaceSessions} activeSession={activeSession} activeExecution={activeExecution} toolchain={toolchain} loading={store.loading} onSelect={(id) => void store.selectSession(id)} onOpenProject={() => void store.openProject()} onCreateProject={() => setCreateOpen(true)} onSetAuthorization={(allowed) => void authorize(allowed)} onDetectToolchain={() => void store.detectToolchain()} onToolchainSettings={() => setToolchainOpen(true)} onDependencies={() => setDependenciesOpen(true)} onConfigure={() => setConfigureOpen(true)} onBuild={() => startConfigured('build')} onRun={() => startConfigured('run')} onTidy={() => void tidy()} onStop={() => void store.stopRun()} onClose={() => void useGoIDEWindowsStore.getState().bringBack(activeSession.id)} />
         {windowError}
         <GoStudioElsewhere mode="elsewhere" projectName={activeSession.project.name} onFocus={() => void useGoIDEWindowsStore.getState().focusOwner(activeSession.id)} onBringBack={() => void useGoIDEWindowsStore.getState().bringBack(activeSession.id)} />
         {sharedDialogs}
@@ -454,16 +456,14 @@ export function GoStudioPanel() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-surface-0 text-text-1">
-      {menuBar}
-      <GoStudioToolbar extra={<GoStudioBranchWidget sessionId={activeSession.id} onCommit={() => setVcsDialog('commit')} />} runConfigurations={runConfigurations} activeConfigId={activeConfigId} onSelectConfiguration={(id) => store.selectRunConfiguration(id)} sessions={workspaceSessions} activeSession={activeSession} activeExecution={activeExecution} toolchain={toolchain} loading={store.loading} onSelect={(id) => void store.selectSession(id)} onOpenProject={() => void store.openProject()} onCreateProject={() => setCreateOpen(true)} onSetAuthorization={(allowed) => void authorize(allowed)} onDetectToolchain={() => void store.detectToolchain()} onToolchainSettings={() => setToolchainOpen(true)} onDependencies={() => setDependenciesOpen(true)} onConfigure={() => setConfigureOpen(true)} onBuild={() => startConfigured('build')} onRun={() => startConfigured('run')} onTidy={() => void tidy()} onStop={() => void store.stopRun()} onClose={() => void closeFlow.requestCloseSession()} />
+      <GoStudioToolbar mainMenu={mainMenu} trailing={<GoStudioWorkspaceSwitcher />} onSearchEverywhere={() => runCommand('nav.searchEverywhere')} onDebug={() => runCommand('debug.debug')} extra={<GoStudioBranchWidget sessionId={activeSession.id} onCommit={() => setVcsDialog('commit')} />} runConfigurations={runConfigurations} activeConfigId={activeConfigId} onSelectConfiguration={(id) => store.selectRunConfiguration(id)} sessions={workspaceSessions} activeSession={activeSession} activeExecution={activeExecution} toolchain={toolchain} loading={store.loading} onSelect={(id) => void store.selectSession(id)} onOpenProject={() => void store.openProject()} onCreateProject={() => setCreateOpen(true)} onSetAuthorization={(allowed) => void authorize(allowed)} onDetectToolchain={() => void store.detectToolchain()} onToolchainSettings={() => setToolchainOpen(true)} onDependencies={() => setDependenciesOpen(true)} onConfigure={() => setConfigureOpen(true)} onBuild={() => startConfigured('build')} onRun={() => startConfigured('run')} onTidy={() => void tidy()} onStop={() => void store.stopRun()} onClose={() => void closeFlow.requestCloseSession()} />
       {store.error && <ErrorBanner message={store.error} onClose={store.clearError} />}
       {windowError}
       {lsp.message && <NoticeBanner message={lsp.message} onClose={lsp.clearMessage} />}
-      <div className="flex h-7 shrink-0 items-center justify-end gap-1 border-b border-border-1 bg-surface-0 px-2"><span className="mr-auto truncate font-mono text-[9px] text-text-4">{summary.activePath ?? activeSession.project.rootPath}</span><button type="button" onClick={() => store.updateLayout({ structureOpen: !store.layout.structureOpen })} title={store.layout.structureOpen ? 'Hide project overview · Alt+7' : 'Show project overview · Alt+7'} className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-2 hover:text-text-1">{store.layout.structureOpen ? <PanelRightClose size={13} /> : <PanelRightOpen size={13} />}</button><button type="button" onClick={() => store.updateLayout({ bottomOpen: !store.layout.bottomOpen })} title={store.layout.bottomOpen ? 'Hide run panel · Alt+4' : 'Show run panel · Alt+4'} className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-2 hover:text-text-1">{store.layout.bottomOpen ? <PanelBottomClose size={13} /> : <PanelBottomOpen size={13} />}</button></div>
       <GoStudioRecoveryBanner sessionId={activeSession.id} />
-      <GoStudioWorkspace session={activeSession} {...store.layout} onProjectResize={beginResize('projectWidth', store.layout.projectWidth)} onStructureResize={beginResize('structureWidth', store.layout.structureWidth, -1)} onBottomResize={beginResize('bottomHeight', store.layout.bottomHeight, -1)} onCursor={setCursor} onRequestCloseDocument={closeFlow.requestCloseDocuments} onRunTarget={(target, anchor) => setRunTargetMenu({ target, ...anchor })} />
+      <GoStudioWorkspace session={activeSession} {...store.layout} onProjectResize={beginResize('projectWidth', store.layout.projectWidth)} onStructureResize={beginResize('structureWidth', store.layout.structureWidth, -1)} onBottomResize={beginResize('bottomHeight', store.layout.bottomHeight, -1)} onCursor={setCursor} onRequestCloseDocument={closeFlow.requestCloseDocuments} onRunTarget={(target, anchor) => setRunTargetMenu({ target, ...anchor })} onCommit={() => setVcsDialog('commit')} onBookmarks={() => setBookmarksOpen(true)} onDependencies={() => setDependenciesOpen(true)} />
       {runTargetMenu && <GoStudioRunTargetMenu {...runTargetMenu} onAction={runTarget} onClose={() => setRunTargetMenu(null)} />}
-      <GoStudioStatusBar session={activeSession} toolchain={toolchain} documentInfo={summary.activeId ? { language: summary.activeLanguage ?? '', readOnly: summary.activeReadOnly } : null} execution={activeExecution} onLanguageServer={openLanguageServerMenu} onLinter={() => runCommand(commandAvailability('code.lint', commandContext) === true ? 'code.lint' : 'go.toolPaths')} />
+      <GoStudioStatusBar session={activeSession} toolchain={toolchain} documentInfo={summary.activeId ? { language: summary.activeLanguage ?? '', readOnly: summary.activeReadOnly } : null} execution={activeExecution} onLanguageServer={openLanguageServerMenu} onLinter={() => runCommand(commandAvailability('code.lint', commandContext) === true ? 'code.lint' : 'go.toolPaths')} onSetAuthorization={(allowed) => void authorize(allowed)} />
       <GoStudioQuickOpen />
       <GoStudioCaretPopup />
       <GoStudioImplementInterfaceDialog />
