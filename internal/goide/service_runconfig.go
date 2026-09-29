@@ -122,15 +122,20 @@ func (s *Service) buildRunRequest(session Session, config RunConfiguration, secr
 	}
 	environment := make(map[string]string, len(config.Environment))
 	for _, entry := range config.Environment {
-		if !entry.Secret {
-			environment[entry.Key] = entry.Value
-			continue
-		}
-		value, provided := secrets[entry.Key]
-		if !provided || value == "" {
-			return RunRequest{}, fmt.Errorf("la variabile %q è segreta: fornisci il valore per avviare", entry.Key)
+		value, err := resolveEntryValue(entry, secrets)
+		if err != nil {
+			return RunRequest{}, err
 		}
 		environment[entry.Key] = value
+	}
+	docker := config.Docker
+	docker.BuildArgs = make([]EnvironmentEntry, 0, len(config.Docker.BuildArgs))
+	for _, entry := range config.Docker.BuildArgs {
+		value, err := resolveEntryValue(entry, secrets)
+		if err != nil {
+			return RunRequest{}, err
+		}
+		docker.BuildArgs = append(docker.BuildArgs, EnvironmentEntry{Key: entry.Key, Value: value, Secret: entry.Secret})
 	}
 
 	request := RunRequest{
@@ -140,6 +145,8 @@ func (s *Service) buildRunRequest(session Session, config RunConfiguration, secr
 		ProgramArguments: append([]string(nil), config.ProgramArguments...),
 		BuildTags:        append([]string(nil), config.BuildTags...),
 		Environment:      environment,
+		Docker:           docker,
+		Secrets:          config.RequiredSecrets(),
 	}
 	switch config.Kind {
 	case RunKindBuild:
@@ -158,6 +165,9 @@ func (s *Service) buildRunRequest(session Session, config RunConfiguration, secr
 	case RunKindBinary:
 		request.Kind = "binary"
 		request.Target = config.BinaryPath
+	case RunKindMake, RunKindDockerBuild, RunKindDockerRun:
+		request.Kind = string(config.Kind)
+		request.Target = config.Target
 	default:
 		return RunRequest{}, fmt.Errorf("tipo di configurazione %q non supportato", config.Kind)
 	}
@@ -172,6 +182,12 @@ func (s *Service) validateConfigurationPaths(session Session, config RunConfigur
 		return err
 	}
 	switch config.Kind {
+	case RunKindMake, RunKindDockerBuild, RunKindDockerRun:
+		normalized, err := normalizeToolConfiguration(config)
+		if err != nil {
+			return err
+		}
+		return validateToolPaths(session.Project.RealPath, workingDirectory, normalized.Kind, normalized.Target, normalized.Docker)
 	case RunKindPackage, RunKindBuild, RunKindTest:
 		if config.Target != "" {
 			return validateRunTarget(session.Project.RealPath, workingDirectory, config.Target)
@@ -186,4 +202,16 @@ func (s *Service) validateConfigurationPaths(session Session, config RunConfigur
 		return validateRunTarget(session.Project.RealPath, workingDirectory, config.BinaryPath)
 	}
 	return validateGoArguments(session.Project.RealPath, workingDirectory, config.GoArguments)
+}
+
+// resolveEntryValue restituisce il valore di una voce, prendendo i segreti da quelli forniti all'avvio.
+func resolveEntryValue(entry EnvironmentEntry, secrets map[string]string) (string, error) {
+	if !entry.Secret {
+		return entry.Value, nil
+	}
+	value, provided := secrets[entry.Key]
+	if !provided || value == "" {
+		return "", fmt.Errorf("%q è segreta: fornisci il valore per avviare", entry.Key)
+	}
+	return value, nil
 }

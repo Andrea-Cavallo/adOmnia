@@ -124,3 +124,18 @@ func TestWorkspaceDistinguishesGoFoldersWithoutModule(t *testing.T) {
 		t.Fatalf("cartelle Go senza modulo inattese: %#v", project.LooseGoDirs)
 	}
 }
+
+func TestLanguageForPathCoversProjectFiles(t *testing.T) {
+	cases := map[string]string{
+		"main.go": "go", "go.mod": "go", "go.sum": "gosum",
+		"web/static/index.html": "html", "static/css/styles.css": "css", "static/js/script.js": "javascript",
+		"Dockerfile": "dockerfile", "build/Dockerfile.dev": "dockerfile", "api.dockerfile": "dockerfile",
+		"Makefile": "makefile", "rules.mk": "makefile", "pipeline.yaml": "yaml",
+		".env": "ini", ".env.local": "ini", "query.sql": "sql", "README.md": "markdown", "LICENSE": "plaintext",
+	}
+	for path, want := range cases {
+		if got := languageForPath(path); got != want {
+			t.Errorf("languageForPath(%q) = %q, want %q", path, got, want)
+		}
+	}
+}

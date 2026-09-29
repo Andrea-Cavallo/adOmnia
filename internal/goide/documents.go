@@ -397,30 +397,45 @@ func fileURI(path string) string {
 	return (&url.URL{Scheme: "file", Path: normalized}).String()
 }
 
+// languageByExtension mappa le estensioni sugli id dei linguaggi Monaco già
+// inclusi nel bundle: solo colorazione, nessun language server oltre a gopls.
+var languageByExtension = map[string]string{
+	".go": "go", ".s": "goasm",
+	".json": "json", ".jsonc": "json", ".yaml": "yaml", ".yml": "yaml",
+	".md": "markdown", ".markdown": "markdown",
+	".html": "html", ".htm": "html", ".tmpl": "html", ".gohtml": "html",
+	".css": "css", ".scss": "scss", ".less": "less",
+	".js": "javascript", ".mjs": "javascript", ".cjs": "javascript", ".jsx": "javascript",
+	".ts": "typescript", ".tsx": "typescript", ".mts": "typescript",
+	".xml": "xml", ".xsd": "xml", ".wsdl": "xml", ".svg": "xml",
+	".sql": "sql", ".proto": "protobuf", ".graphql": "graphql", ".gql": "graphql",
+	".sh": "shell", ".bash": "shell", ".zsh": "shell",
+	".ps1": "powershell", ".psm1": "powershell", ".bat": "bat", ".cmd": "bat",
+	".ini": "ini", ".toml": "ini", ".cfg": "ini", ".conf": "ini", ".properties": "ini",
+	".py": "python", ".rs": "rust", ".java": "java", ".kt": "kotlin",
+	".c": "cpp", ".h": "cpp", ".cpp": "cpp", ".hpp": "cpp",
+	".tf": "hcl", ".hcl": "hcl", ".lua": "lua", ".rb": "ruby", ".php": "php",
+	".dockerfile": "dockerfile", ".mk": "makefile",
+}
+
 func languageForPath(path string) string {
 	base := strings.ToLower(filepath.Base(path))
-	switch base {
-	case "go.mod", "go.work":
+	switch {
+	case base == "go.mod" || base == "go.work":
 		return "go"
-	case "go.sum", "go.work.sum":
+	case base == "go.sum" || base == "go.work.sum":
 		return "gosum"
-	case ".env":
-		return "dotenv"
+	case base == ".env" || strings.HasPrefix(base, ".env."):
+		return "ini"
+	case base == "dockerfile" || strings.HasPrefix(base, "dockerfile.") || strings.HasSuffix(base, ".dockerfile") || base == "containerfile":
+		return "dockerfile"
+	case base == "makefile" || base == "gnumakefile" || strings.HasSuffix(base, ".mk"):
+		return "makefile"
 	}
-	switch strings.ToLower(filepath.Ext(base)) {
-	case ".go":
-		return "go"
-	case ".s":
-		return "goasm"
-	case ".json", ".jsonc":
-		return "json"
-	case ".yaml", ".yml":
-		return "yaml"
-	case ".md", ".markdown":
-		return "markdown"
-	default:
-		return "plaintext"
+	if language, ok := languageByExtension[filepath.Ext(base)]; ok {
+		return language
 	}
+	return "plaintext"
 }
 
 func isIgnoredDirectory(name string) bool {

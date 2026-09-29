@@ -10,7 +10,7 @@ Everything stays on your machine. Nothing in a project runs until you trust it.
 2. **Trust it.** A newly opened project is *opened* only: you can browse and edit files, but no tool runs. *Trust* (in the toolbar, or *Go → Trust Project Tools*) allows local Go tools for that project.
 3. **Pick a Go SDK.** Go Studio detects Go on `PATH`, or installs an official release from *Go → Go SDKs & Toolchains…*. Each project can use a different SDK.
 4. **Write code.** gopls provides completion, diagnostics on unsaved buffers, hover, signature help, navigation (Ctrl+click or Ctrl+B for the declaration), usages, rename with preview, code actions and refactoring. golangci-lint or staticcheck add lint findings.
-5. **Run, test, debug.** Use Build, Run with stdin, the gutter ▶ next to `func main` and tests, the structured test runner with coverage, the Delve debugger (launch, attach or remote) and a real terminal.
+5. **Run, test, debug.** Use Build, Run with stdin, the gutter ▶ next to `func main` and tests, the structured test runner with coverage, the Delve debugger (launch, attach or remote) and a real terminal. Makefile targets and Dockerfiles run for real too (see below).
 6. **Commit and integrate.** The toolbar shows the Git branch and changes, and the gutter shows diffs against HEAD. Commit from Go Studio; Git Studio follows the open project's repository for push, pull and merges. *Tools → Project Services* opens Docker Lab, Database Studio or Broker Studio for the services detected in `go.mod`. HTTP handlers get an *Open in API Client* CodeLens.
 
 Several projects can stay open at the same time, isolated from each other, grouped into Go Studio workspaces that are separate from adOmnia's API workspaces. A project can also move into its own window (*File → Open Project in New Window*).
@@ -23,6 +23,7 @@ Several projects can stay open at the same time, isolated from each other, group
 - **Secrets are not persisted.** Run configurations store the names of secret environment variables but never their values, which you enter when you start the run. Local history never records `.env` files, keys or certificates.
 - **Network access only on request.** Go Studio contacts the network only when you install an SDK or tool, or when your own commands do (for example `go get`). SDK downloads come from the official Go catalog and are verified with SHA-256.
 - **Fix with AI sends code only when you click.** It sends the file with the problem and, for `undefined: pkg.Name` errors, the non-test files of that local package, to the AI provider configured in *Settings → AI*. A local provider such as Ollama keeps everything on the machine. The answer may change only the files that were sent and always opens in a preview before anything is applied.
+- **Makefiles and Dockerfiles are project code.** They run only in a trusted project. Arguments go to `make` and `docker` as a list, never through a shell. Make accepts targets and `VAR=value`, not flags (use `MAKEFLAGS`). Docker stages, tags and ports are validated. The Dockerfile, the build context and every volume must stay inside the project, so the Docker socket or arbitrary host folders cannot be mounted. Secret build args and secret container variables reach `docker` only through the process environment (`--build-arg NAME`, `-e NAME`), so their values never appear in the command line, the Run console or the saved state.
 - **One window edits a project.** When a project moves to a separate window, the main window cannot edit or close it until it moves back. Closing a window with unsaved files asks first.
 
 ## Optional external tools
@@ -36,6 +37,8 @@ Go Studio works without any of these installed. Each feature says clearly what i
 | **golangci-lint** or **staticcheck** | Lint findings, lint on save | *Go → Install golangci-lint…* or *Install staticcheck…* runs `go install` for `golangci-lint/v2` or `staticcheck` at `@latest`. The project's own `.golangci.yml` is respected. |
 | **Delve** | Debugger (launch, attach, remote) | *Go → Install Delve (debugger)…* runs `go install github.com/go-delve/delve/cmd/dlv@latest`. |
 | **Git** | VCS in the editor | Uses the Git already installed for Git Studio. |
+| **make** | Makefile targets | Found as `make`, `gmake` or `mingw32-make` on `PATH`, or in the GnuWin32 folder, or set in *Go → Tool Paths*. On Windows: `winget install ezwinports.make`, `choco install make` or `scoop install make`. |
+| **Docker** | Dockerfile build and run | Docker Desktop or Docker Engine with `docker` on `PATH`. Go Studio checks that the daemon answers before starting and says so when it does not. |
 
 Managed tools are installed into `<data>/goide/tools/bin`. A tool on `PATH`, or a path set in *Go → Tool Paths (gopls, linter, dlv)…*, is used instead when present.
 
@@ -43,13 +46,27 @@ Managed tools are installed into `<data>/goide/tools/bin`. A tool on `PATH`, or 
 
 `<data>` is `%APPDATA%\adomnia` on Windows and `~/.config/adomnia` on macOS and Linux.
 
+## Makefiles and Dockerfiles
+
+Go Studio runs Makefiles and Dockerfiles with the real `make` and `docker`, and streams their output to the Run console like `go run`. Any file type opened in the editor is highlighted: HTML, CSS, JavaScript/TypeScript, SQL, XML/WSDL, Protobuf, shell, PowerShell, Dockerfile, Makefile, `.env`, TOML/INI and more.
+
+- **▶ in the gutter.** In a Makefile, every target gets *Run 'make target'*. Variables, special targets (`.PHONY`) and pattern rules (`%.o`) do not. In a Dockerfile, every named stage (`FROM … AS builder`) and the final `FROM` get *Build image* and *Build & Run container*. Both menus offer *Save as Run Configuration…*.
+- **Working directory.** Commands start in the folder that contains the file, so `make -f Makefile` and a Docker build context of `.` behave as they do in a terminal opened there.
+- **Build & Run.** `docker build` runs first. Only when it succeeds does `docker run --rm -i --name adomnia-…` start the container, with the ports the Dockerfile declares with `EXPOSE`. *Stop* runs `docker stop` on that container, because killing the client alone would leave it running. The same happens when trust is revoked, the project closes or adOmnia quits. *Rerun* runs the build and the container again.
+- **Run configurations.** Three types join the existing ones:
+  - *Make target*: the Makefile, targets and `VAR=value`, plus environment.
+  - *Docker build*: Dockerfile, context, tag (default `<project>:dev`), stage, `--no-cache` and build args.
+  - *Docker build & run*: the same, plus published ports, volumes, container command and container environment.
+
+  *Save as Run Configuration…* from a Dockerfile lists its `ARG`s as build args. Names that look sensitive (`password`, `token`, `secret`, `key`…) are marked secret: only the name is saved, and the value is asked once when you start. When an environment variable and a build arg share a name, one value serves both.
+
 ## Persistence and migrations
 
 Go Studio stores metadata only. Source files stay where they are, and file contents are kept only in the recovery and local-history stores described below. All stores live in adOmnia's local bbolt database, in the `goide` bucket.
 
 | Key | Contents | Schema |
 | --- | --- | --- |
-| `state` | Open sessions (project path, authorization, Go Studio workspace), recent projects, run configurations without secret values, per-session layout (open tabs, active file, panes, navigation history, bookmarks, breakpoints), Go Studio workspaces | `version` 4 |
+| `state` | Open sessions (project path, authorization, Go Studio workspace), recent projects, run configurations (Go, Make and Docker) without secret values, per-session layout (open tabs, active file, panes, navigation history, bookmarks, breakpoints), Go Studio workspaces | `version` 4 |
 | `recovery` | Unsaved buffers, kept so that a crash or restart does not lose them. Up to 200 buffers of 4 MB each. | `version` 1 |
 | `localHistory` | Previous versions of saved files: at most 20 per file, 2 MB per version, 32 MB in total, kept 14 days. `.env`, keys and certificates are never recorded. | `version` 1 |
 

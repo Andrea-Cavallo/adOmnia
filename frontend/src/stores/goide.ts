@@ -63,7 +63,7 @@ const LAYOUT_KEY = 'adomnia.goide.layout.v1'
 const MAX_CLOSED_HISTORY = 20
 
 /** Comandi go lanciabili direttamente da menu, CodeLens e gutter. */
-export type GoIDEQuickRunKind = 'build' | 'run' | 'test' | 'tidy' | 'vet' | 'generate' | 'install'
+export type GoIDEQuickRunKind = 'build' | 'run' | 'test' | 'tidy' | 'vet' | 'generate' | 'install' | 'make' | 'docker-build' | 'docker-run'
 
 export type GoIDESplitOrientation = 'right' | 'down'
 
@@ -974,6 +974,8 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
         programArguments: partial.programArguments ?? [],
         buildTags: partial.buildTags ?? [],
         environment: partial.environment ?? {},
+        docker: partial.docker ?? {},
+        secrets: partial.secrets ?? [],
       })
       set((state) => ({
         executions: replaceExecution(state.executions, execution),
@@ -1038,7 +1040,8 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
       // Ogni esecuzione (anche Go Tools e dipendenze) mostra il comando in testa e l'esito in fondo.
       set((state) => ({
         executions: replaceExecution(state.executions, execution),
-        activeRunBySession: { ...state.activeRunBySession, [execution.sessionId]: execution.id },
+        // Solo l'avvio sposta il focus: la fine di una docker build arriva dopo l'avvio del suo container.
+        activeRunBySession: event.type === 'run.started' || !state.activeRunBySession[execution.sessionId] ? { ...state.activeRunBySession, [execution.sessionId]: execution.id } : state.activeRunBySession,
         consoleByRun: event.type === 'run.started' ? withConsoleHeader(state.consoleByRun, execution) : withConsoleFooter(state.consoleByRun, execution, event.sequence),
       }))
       if (event.type === 'run.finished' && MODULE_CHANGING_KINDS.has(execution.kind)) void get().refreshModuleFiles(execution.sessionId)

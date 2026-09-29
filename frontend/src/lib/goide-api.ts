@@ -344,3 +344,12 @@ export async function pruneMissingGoIDESessions(): Promise<GoIDESession[]> {
 export async function findGoIDESessionsForPath(sessionId: string, relativePath: string): Promise<GoIDESession[]> {
   return GoIDEBindings.FindSessionsForPath(sessionId, relativePath)
 }
+
+/** make usato per i Makefile della sessione (binario personalizzato, PATH o GnuWin32). */
+export async function detectGoIDEMake(sessionId: string) {
+  return GoIDEBindings.DetectMake(sessionId)
+}
+
+export async function configureGoIDEMake(sessionId: string, binary: string): Promise<void> {
+  return GoIDEBindings.ConfigureMake(sessionId, binary)
+}

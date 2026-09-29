@@ -5,7 +5,7 @@ describe('findRunTargets', () => {
   it('puts a play action on func main only in package main', () => {
     const main = 'package main\n\nimport "fmt"\n\nfunc main() {\n\tfmt.Println("hi")\n}\n'
     expect(findRunTargets('cmd/api/main.go', main)).toEqual([{ line: 5, kind: 'main', name: 'main', packagePath: './cmd/api' }])
-    expect(findRunTargets('main.go', main)[0].packagePath).toBe('.')
+    expect(findRunTargets('main.go', main)[0]).toMatchObject({ packagePath: '.' })
     expect(findRunTargets('lib/x.go', 'package lib\nfunc main() {}\n')).toEqual([])
   })
 

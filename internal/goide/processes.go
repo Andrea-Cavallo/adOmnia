@@ -42,6 +42,9 @@ type CommandSpec struct {
 	QuietStdout bool
 	// OnExit viene chiamata una volta a processo terminato, prima dell'evento run.finished.
 	OnExit func(Execution)
+	// OnStop viene chiamata da Stop prima di terminare l'albero del processo:
+	// serve quando uccidere il client non basta (es. docker stop del container).
+	OnStop func()
 }
 
 type processEvent struct {
@@ -61,6 +64,7 @@ type managedProcess struct {
 	tap       func(string, []byte)
 	quiet     bool
 	onExit    func(Execution)
+	onStop    func()
 }
 
 type ProcessManager struct {
@@ -113,7 +117,7 @@ func (m *ProcessManager) Start(spec CommandSpec) (Execution, error) {
 		ID: RunID(newID("run")), SessionID: spec.SessionID, Kind: spec.Kind, Status: "running",
 		Command: spec.DisplayCommand, WorkingDirectory: spec.WorkingDirectory, StartedAt: time.Now().UTC(),
 	}
-	managed := &managedProcess{done: make(chan struct{}), tap: spec.OutputTap, quiet: spec.QuietStdout, onExit: spec.OnExit}
+	managed := &managedProcess{done: make(chan struct{}), tap: spec.OutputTap, quiet: spec.QuietStdout, onExit: spec.OnExit, onStop: spec.OnStop}
 	command := exec.Command(spec.Executable, spec.Arguments...)
 	command.Dir = spec.WorkingDirectory
 	command.Env = spec.Environment
@@ -146,6 +150,12 @@ func (m *ProcessManager) Start(spec CommandSpec) (Execution, error) {
 	return execution, nil
 }
 
+// Notice aggiunge all'output di un'esecuzione una riga informativa di adOmnia.
+func (m *ProcessManager) Notice(execution Execution, text string) {
+	output := ProcessOutput{RunID: execution.ID, Stream: "stderr", Text: "\n[adOmnia] " + text + "\n"}
+	m.publish(processEvent{eventType: "run.output", execution: execution, payload: output}, true)
+}
+
 // WriteStdin invia testo alla singola esecuzione indicata senza passare da una shell.
 func (m *ProcessManager) WriteStdin(runID RunID, text string) error {
 	if len(text) > maxStdinBytes {
@@ -168,6 +178,12 @@ func (m *ProcessManager) Stop(runID RunID) error {
 		return nil
 	}
 	_ = process.stdin.Close()
+	if process.exited.Load() {
+		return nil
+	}
+	if process.onStop != nil {
+		process.onStop()
+	}
 	if process.exited.Load() {
 		return nil
 	}

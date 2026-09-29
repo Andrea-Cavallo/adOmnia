@@ -4,6 +4,7 @@ import { configureGopls, configureLinter } from '@/lib/goide-lsp-api'
 import { useModalFocusTrap } from '@/lib/accessibility'
 import { useGoIDELspStore } from '@/stores/goideLsp'
 import { configureGoIDEDelve } from '@/lib/goide-debug-api'
+import { configureGoIDEMake, detectGoIDEMake } from '@/lib/goide-api'
 import { useGoIDEDebugStore } from '@/stores/goideDebug'
 
 interface GoStudioToolPathsDialogProps {
@@ -20,6 +21,8 @@ export function GoStudioToolPathsDialog({ open, sessionId, onClose }: GoStudioTo
   const [linterBinary, setLinterBinary] = useState('')
   const delve = useGoIDEDebugStore((state) => state.delve[sessionId] ?? null)
   const [delveBinary, setDelveBinary] = useState('')
+  const [makeBinary, setMakeBinary] = useState('')
+  const [makeInfo, setMakeInfo] = useState<Awaited<ReturnType<typeof detectGoIDEMake>> | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
@@ -31,6 +34,10 @@ export function GoStudioToolPathsDialog({ open, sessionId, onClose }: GoStudioTo
     setLinterBinary(linter?.source === 'custom' ? linter.binary ?? '' : '')
     setDelveBinary(delve?.source === 'custom' ? delve.binary ?? '' : '')
     void useGoIDEDebugStore.getState().detectDelve(sessionId)
+    void detectGoIDEMake(sessionId).then((info) => {
+      setMakeInfo(info)
+      setMakeBinary(info.source === 'custom' ? info.binary ?? '' : '')
+    }).catch(() => setMakeInfo(null))
     setError(null)
   }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -43,6 +50,7 @@ export function GoStudioToolPathsDialog({ open, sessionId, onClose }: GoStudioTo
       await configureGopls(sessionId, goplsBinary)
       await configureLinter(sessionId, linterBinary)
       await configureGoIDEDelve(sessionId, delveBinary)
+      await configureGoIDEMake(sessionId, makeBinary)
       void useGoIDEDebugStore.getState().detectDelve(sessionId)
       const lsp = useGoIDELspStore.getState()
       const [goplsInfo] = await Promise.all([lsp.detectGopls(sessionId), lsp.detectLinter(sessionId)])
@@ -75,6 +83,10 @@ export function GoStudioToolPathsDialog({ open, sessionId, onClose }: GoStudioTo
           <label className="block text-[10px] font-medium text-text-3">Delve (dlv) binary
             <input value={delveBinary} onChange={(event) => setDelveBinary(event.target.value)} placeholder="Automatic: adOmnia tools, GOPATH/bin, PATH" className="mt-1 h-8 w-full rounded border border-border-1 bg-surface-0 px-2 font-mono text-[11px] text-text-1 outline-none focus:border-accent" />
             <span className="mt-1 block truncate font-mono text-[9px] text-text-4">{detected(delve)}</span>
+          </label>
+          <label className="block text-[10px] font-medium text-text-3">make binary (Makefile targets)
+            <input value={makeBinary} onChange={(event) => setMakeBinary(event.target.value)} placeholder="Automatic: make, gmake, mingw32-make on PATH, GnuWin32" className="mt-1 h-8 w-full rounded border border-border-1 bg-surface-0 px-2 font-mono text-[11px] text-text-1 outline-none focus:border-accent" />
+            <span className="mt-1 block truncate font-mono text-[9px] text-text-4" title={makeInfo?.error}>{makeInfo?.available ? `${makeInfo.binary} (${makeInfo.source})` : makeInfo?.error ?? 'Not detected yet'}</span>
           </label>
           <p className="text-[9px] leading-4 text-text-4">Paths apply to this project session only. Project linter configuration files are used when present and never created by adOmnia.</p>
         </div>

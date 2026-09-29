@@ -14,6 +14,7 @@ import { useGoIDETestsStore, visibleCoverage } from '@/stores/goideTests'
 import { coverageForDocument, coverageLineStates } from './goStudioCoverage'
 import { startGoStudioLspSync } from './goStudioLspSync'
 import { findRunTargets, runCommandFor, type GoStudioRunTarget, type GoStudioRunTargetHandler } from './goStudioRunTargets'
+import { isToolTarget, toolTargetLabel } from './goStudioToolTargets'
 import { recordCaretPosition, useGoStudioBookmarks } from './goStudioNavigationEditor'
 import { openImplementationMarker, useGoStudioImplementationMarkers } from './goStudioImplementationMarkers'
 import { openVcsHunk, useGoStudioVcsGutter } from './goStudioVcsEditor'
@@ -145,8 +146,10 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
       decorationsRef.current?.set(targets.map((target) => ({
         range: { startLineNumber: target.line, startColumn: 1, endLineNumber: target.line, endColumn: 1 },
         options: {
-          glyphMarginClassName: `go-studio-run-glyph${target.kind === 'main' ? '' : ' go-studio-test-glyph'}`,
-          glyphMarginHoverMessage: { value: `▶ ${runCommandFor(target).label} · Run, Debug or Coverage` },
+          glyphMarginClassName: `go-studio-run-glyph${target.kind === 'main' || isToolTarget(target) ? '' : ' go-studio-test-glyph'}`,
+          glyphMarginHoverMessage: { value: isToolTarget(target)
+            ? `▶ ${toolTargetLabel(target)} · ${target.kind === 'docker' ? 'Build, Build & Run' : 'Run'} or save as configuration`
+            : `▶ ${runCommandFor(target).label} · Run, Debug or Coverage` },
         },
       })))
     }, RUN_TARGET_DEBOUNCE_MS)
@@ -182,7 +185,8 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
         occurrencesHighlight: 'singleFile',
         codeLensFontSize: 10,
         tabSize: document.document.language === 'go' || document.document.language === 'goasm' ? 4 : 2,
-        insertSpaces: document.document.language !== 'go' && document.document.language !== 'goasm',
+        // Go, assembly e Makefile vogliono tab veri: una ricetta indentata a spazi rompe make.
+        insertSpaces: !['go', 'goasm', 'makefile'].includes(document.document.language),
         padding: { top: 6, bottom: 6 },
       }}
     />

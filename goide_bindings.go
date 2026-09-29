@@ -423,6 +423,16 @@ func (g *GoIDE) ConfigureDelve(sessionID, binary string) error {
 	return g.service.ConfigureDelve(sessionID, binary)
 }
 
+// DetectMake indica quale make userebbe la sessione per i Makefile del progetto.
+func (g *GoIDE) DetectMake(sessionID string) (goide.MakeInfo, error) {
+	return g.service.DetectMake(sessionID)
+}
+
+// ConfigureMake imposta un binario make personalizzato; vuoto ripristina la ricerca automatica.
+func (g *GoIDE) ConfigureMake(sessionID, binary string) error {
+	return g.service.ConfigureMake(sessionID, binary)
+}
+
 // InstallDelve installa dlv nella cartella strumenti di adOmnia dopo conferma esplicita.
 func (g *GoIDE) InstallDelve(sessionID string, confirmed bool) (goide.Execution, error) {
 	return g.service.InstallDelve(sessionID, confirmed)

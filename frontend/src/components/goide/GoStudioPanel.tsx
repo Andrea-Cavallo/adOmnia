@@ -27,7 +27,9 @@ import { GoStudioLanguageServerLog } from './GoStudioLanguageServerLog'
 import { GoStudioToolPathsDialog } from './GoStudioToolPathsDialog'
 import { runLanguageCommand } from './goStudioLanguageCommands'
 import { runSaveActions } from './goStudioSaveActions'
-import { runCommandFor, type GoStudioRunTarget } from './goStudioRunTargets'
+import { runCommandFor, type GoStudioGoRunTarget, type GoStudioRunTarget } from './goStudioRunTargets'
+import { isToolTarget, toolConfigurationDraft, toolRunRequest } from './goStudioToolTargets'
+import type { GoIDERunConfiguration } from '@/lib/goide-api'
 import { useGoStudioCloseFlow } from './useGoStudioCloseFlow'
 import { GoStudioCaretPopup } from './GoStudioCaretPopup'
 import { GoStudioImplementInterfaceDialog } from './GoStudioImplementInterfaceDialog'
@@ -113,6 +115,8 @@ export function GoStudioPanel() {
   const setCursor = useGoStudioCursorStore((state) => state.setCursor)
   const [createOpen, setCreateOpen] = useState(false)
   const [configureOpen, setConfigureOpen] = useState(false)
+  const [configDraft, setConfigDraft] = useState<GoIDERunConfiguration | null>(null)
+  const openConfigurations = (draft: GoIDERunConfiguration | null = null) => { setConfigDraft(draft); setConfigureOpen(true) }
   const [toolchainOpen, setToolchainOpen] = useState(false)
   const [dependenciesOpen, setDependenciesOpen] = useState(false)
   const [runDraft] = useState(DEFAULT_RUN_DRAFT)
@@ -210,7 +214,8 @@ export function GoStudioPanel() {
   }, [activeConfig, runDraft])
 
   const startConfigured = useCallback((kind: 'build' | 'run') => {
-    const secretKeys = (activeConfig?.environment ?? []).filter((entry) => entry.secret).map((entry) => entry.key)
+    // Variabili d'ambiente e build arg segreti: stesso nome, stesso valore richiesto una sola volta.
+    const secretKeys = [...new Set([...(activeConfig?.environment ?? []), ...(activeConfig?.docker?.buildArgs ?? [])].filter((entry) => entry.secret).map((entry) => entry.key))]
     if (kind === 'run' && activeConfig && secretKeys.length > 0) {
       setPendingSecrets(secretKeys)
       return
@@ -330,12 +335,20 @@ export function GoStudioPanel() {
   availabilityRef.current = (id) => commandAvailability(id, commandContext)
 
   const runTarget = (target: GoStudioRunTarget, action: GoStudioRunTargetAction = 'run') => {
+    if (isToolTarget(target)) {
+      if (!activeSession) return
+      if (action === 'save') return openConfigurations(toolConfigurationDraft(target, activeSession.id))
+      if (!commandContext.authorized) return useGoIDEStore.setState({ error: 'Trust this project to run its Makefile or Dockerfile' })
+      const { kind, partial } = toolRunRequest(target, action === 'buildRun' ? 'buildRun' : action === 'build' ? 'build' : 'run')
+      return void store.startRun(kind, partial)
+    }
+    const goTarget: GoStudioGoRunTarget = target
     const availability = commandAvailability('run.run', commandContext)
     if (availability !== true) return useGoIDEStore.setState({ error: availability })
     if (!activeSession) return
-    if (action === 'debug') return void useGoIDEDebugStore.getState().start(debugRequestForTarget(activeSession, target))
+    if (action === 'debug') return void useGoIDEDebugStore.getState().start(debugRequestForTarget(activeSession, goTarget))
     if (target.kind !== 'main') {
-      void useGoIDETestsStore.getState().start(testRequestForTarget(activeSession, target, action === 'coverage'))
+      void useGoIDETestsStore.getState().start(testRequestForTarget(activeSession, goTarget, action === 'coverage'))
       return
     }
     const command = runCommandFor(target)
@@ -468,7 +481,7 @@ export function GoStudioPanel() {
       <GoStudioCaretPopup />
       <GoStudioImplementInterfaceDialog />
       {sharedDialogs}
-      {store.activeSessionId && <GoStudioRunConfigurations open={configureOpen} sessionId={store.activeSessionId} onClose={() => setConfigureOpen(false)} />}
+      {store.activeSessionId && <GoStudioRunConfigurations open={configureOpen} sessionId={store.activeSessionId} initialDraft={configDraft} onClose={() => { setConfigureOpen(false); setConfigDraft(null) }} />}
       <GoStudioSecretsPrompt
         open={!!pendingSecrets && !!activeConfig}
         configurationName={activeConfig?.name ?? ''}

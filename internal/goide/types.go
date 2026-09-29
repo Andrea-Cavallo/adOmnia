@@ -104,7 +104,29 @@ const (
 	RunKindBuild   RunConfigurationKind = "build"
 	RunKindBinary  RunConfigurationKind = "binary"
 	RunKindTest    RunConfigurationKind = "test"
+	// Make e Docker eseguono file del progetto (Makefile, Dockerfile) con i
+	// rispettivi strumenti: Target è il percorso del file, relativo alla working directory.
+	RunKindMake        RunConfigurationKind = "make"
+	RunKindDockerBuild RunConfigurationKind = "docker-build"
+	RunKindDockerRun   RunConfigurationKind = "docker-run"
 )
+
+// DockerOptions completa le configurazioni docker-build e docker-run. I build
+// arg segreti, come le variabili d'ambiente segrete, non persistono il valore.
+type DockerOptions struct {
+	// Context è la cartella di build, relativa alla working directory ("." se vuoto).
+	Context string `json:"context,omitempty"`
+	// Tag dell'immagine; vuoto significa <nome progetto>:dev.
+	Tag string `json:"tag,omitempty"`
+	// Stage è lo stage multi-stage da costruire (--target).
+	Stage     string             `json:"stage,omitempty"`
+	BuildArgs []EnvironmentEntry `json:"buildArgs,omitempty"`
+	NoCache   bool               `json:"noCache,omitempty"`
+	// Ports nel formato di docker run -p: "8080", "8080:80", "127.0.0.1:8080:80/tcp".
+	Ports []string `json:"ports,omitempty"`
+	// Volumes nel formato "percorso/relativo:/percorso/container[:ro]", confinati al progetto.
+	Volumes []string `json:"volumes,omitempty"`
+}
 
 // EnvironmentEntry rappresenta una variabile d'ambiente di una configurazione Run.
 // Le voci marcate Secret non persistono il valore: viene richiesto all'avvio e
@@ -128,6 +150,7 @@ type RunConfiguration struct {
 	ProgramArguments []string             `json:"programArguments"`
 	BuildTags        []string             `json:"buildTags"`
 	Environment      []EnvironmentEntry   `json:"environment"`
+	Docker           DockerOptions        `json:"docker"`
 	Order            int                  `json:"order"`
 	CreatedAt        time.Time            `json:"createdAt"`
 	UpdatedAt        time.Time            `json:"updatedAt"`
@@ -136,8 +159,10 @@ type RunConfiguration struct {
 // RequiredSecrets elenca le chiavi il cui valore deve essere fornito a runtime.
 func (c RunConfiguration) RequiredSecrets() []string {
 	keys := make([]string, 0, len(c.Environment))
-	for _, entry := range c.Environment {
-		if entry.Secret {
+	seen := make(map[string]bool)
+	for _, entry := range append(append([]EnvironmentEntry(nil), c.Environment...), c.Docker.BuildArgs...) {
+		if entry.Secret && !seen[entry.Key] {
+			seen[entry.Key] = true
 			keys = append(keys, entry.Key)
 		}
 	}
@@ -218,6 +243,11 @@ type RunRequest struct {
 	ProgramArguments []string          `json:"programArguments"`
 	BuildTags        []string          `json:"buildTags"`
 	Environment      map[string]string `json:"environment"`
+	// Docker vale per i tipi docker-build e docker-run; i build arg arrivano già risolti.
+	Docker DockerOptions `json:"docker"`
+	// Secrets sono i nomi di Environment e Docker.BuildArgs il cui valore non deve
+	// comparire nella riga di comando: passano solo dall'ambiente del processo.
+	Secrets []string `json:"secrets,omitempty"`
 }
 
 type ProcessOutput struct {

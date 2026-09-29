@@ -1,7 +1,7 @@
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import type { GoStudioRunTarget } from './goStudioRunTargets'
 
-export type GoStudioRunTargetAction = 'run' | 'debug' | 'coverage'
+export type GoStudioRunTargetAction = 'run' | 'debug' | 'coverage' | 'build' | 'buildRun' | 'save'
 
 interface GoStudioRunTargetMenuProps {
   target: GoStudioRunTarget
@@ -12,6 +12,20 @@ interface GoStudioRunTargetMenuProps {
 }
 
 function itemsFor(target: GoStudioRunTarget): ContextMenuItem[] {
+  if (target.kind === 'make') {
+    return [
+      { id: 'run', label: `Run 'make ${target.name}'` },
+      { id: 'save', label: 'Save as Run Configuration…' },
+    ]
+  }
+  if (target.kind === 'docker') {
+    const stage = target.name ? ` '${target.name}'` : ''
+    return [
+      { id: 'build', label: `Build image${stage}` },
+      { id: 'buildRun', label: `Build & Run container${stage}` },
+      { id: 'save', label: 'Save as Run Configuration…' },
+    ]
+  }
   const name = target.kind === 'main' ? 'main' : target.name
   const items: ContextMenuItem[] = [
     { id: 'run', label: `Run '${name}'` },
@@ -21,7 +35,7 @@ function itemsFor(target: GoStudioRunTarget): ContextMenuItem[] {
   return items
 }
 
-/** Menu del ▶ nel gutter: Run, Debug e, per i test, Run with Coverage. */
+/** Menu del ▶ nel gutter: Run, Debug e Coverage per Go; Run/Build/Build & Run per make e Docker. */
 export function GoStudioRunTargetMenu({ target, x, y, onAction, onClose }: GoStudioRunTargetMenuProps) {
   return (
     <ContextMenu

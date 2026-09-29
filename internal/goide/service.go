@@ -52,6 +52,7 @@ type Service struct {
 	goplsMu          sync.RWMutex
 	goplsBinaries    map[SessionID]string
 	delveBinaries    map[SessionID]string
+	makeBinaries     map[SessionID]string
 	lint             lintRegistry
 	watcher          *WatchManager
 	// windows registra le sessioni spostate in finestre separate.
@@ -76,6 +77,7 @@ func NewService(store Store, eventSink func(EventEnvelope)) *Service {
 		eventSink:        eventSink,
 		goplsBinaries:    make(map[SessionID]string),
 		delveBinaries:    make(map[SessionID]string),
+		makeBinaries:     make(map[SessionID]string),
 		lint:             lintRegistry{custom: make(map[SessionID]string)},
 		windows:          newWindowRegistry(),
 	}
@@ -532,6 +534,7 @@ func (s *Service) StartDependencyAction(request DependencyActionRequest) (Execut
 // supportedRunKinds elenca i comandi rapidi eseguibili da StartRun.
 var supportedRunKinds = map[string]bool{
 	"build": true, "run": true, "test": true, "vet": true, "generate": true, "install": true, "tidy": true, "binary": true,
+	"make": true, "docker-build": true, "docker-run": true,
 }
 
 // runCommandSpec traduce il tipo richiesto nell'eseguibile e negli argomenti strutturati, mai in una riga di shell.
@@ -603,6 +606,9 @@ func (s *Service) StartRun(request RunRequest) (Execution, error) {
 	if err != nil {
 		return Execution{}, err
 	}
+	if isToolRunKind(kind) {
+		return s.startToolRun(session, kind, workingDirectory, request)
+	}
 	target := strings.TrimSpace(request.Target)
 	if target == "" {
 		target = "."
@@ -633,11 +639,16 @@ func (s *Service) StartRun(request RunRequest) (Execution, error) {
 	}
 	request.SessionID = session.ID
 	request.WorkingDirectory = workingDirectory
+	s.rememberRunRequest(execution.ID, request)
+	return execution, nil
+}
+
+// rememberRunRequest conserva la richiesta strutturata per Rerun.
+func (s *Service) rememberRunRequest(runID RunID, request RunRequest) {
 	s.runMu.Lock()
-	s.runRequests[execution.ID] = request
+	s.runRequests[runID] = request
 	s.pruneRunRequestsLocked()
 	s.runMu.Unlock()
-	return execution, nil
 }
 
 func validateRunTarget(root, workingDirectory, target string) error {

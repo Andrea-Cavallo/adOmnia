@@ -246,8 +246,17 @@ func normalizeConfiguration(config RunConfiguration) (RunConfiguration, error) {
 		}
 		config.Target = ""
 		config.Files = nil
+	case RunKindMake, RunKindDockerBuild, RunKindDockerRun:
+		normalized, err := normalizeToolConfiguration(config)
+		if err != nil {
+			return RunConfiguration{}, err
+		}
+		config = normalized
 	default:
 		return RunConfiguration{}, fmt.Errorf("tipo di configurazione %q non supportato", config.Kind)
+	}
+	if config.Kind != RunKindMake && config.Kind != RunKindDockerBuild && config.Kind != RunKindDockerRun {
+		config.Docker = DockerOptions{}
 	}
 	config.WorkingDirectory = strings.TrimSpace(config.WorkingDirectory)
 	config.GoArguments = trimArguments(config.GoArguments)
@@ -284,6 +293,11 @@ func redactConfiguration(config RunConfiguration) RunConfiguration {
 			clone.Environment[index].Value = ""
 		}
 	}
+	for index, entry := range clone.Docker.BuildArgs {
+		if entry.Secret {
+			clone.Docker.BuildArgs[index].Value = ""
+		}
+	}
 	return clone
 }
 
@@ -294,6 +308,9 @@ func cloneConfiguration(config RunConfiguration) RunConfiguration {
 	clone.ProgramArguments = append([]string(nil), config.ProgramArguments...)
 	clone.BuildTags = append([]string(nil), config.BuildTags...)
 	clone.Environment = append([]EnvironmentEntry(nil), config.Environment...)
+	clone.Docker.BuildArgs = append([]EnvironmentEntry(nil), config.Docker.BuildArgs...)
+	clone.Docker.Ports = append([]string(nil), config.Docker.Ports...)
+	clone.Docker.Volumes = append([]string(nil), config.Docker.Volumes...)
 	return clone
 }
 

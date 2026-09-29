@@ -41,6 +41,23 @@ const GO_ASM: monaco.languages.IMonarchLanguage = {
   },
 }
 
+/** Makefile: Monaco non lo include. Target, variabili, direttive, ricette e commenti; solo colorazione. */
+const MAKEFILE: monaco.languages.IMonarchLanguage = {
+  tokenizer: {
+    root: [
+      [/#.*$/, 'comment'],
+      [/^\s*(-?include|sinclude|ifeq|ifneq|ifdef|ifndef|else|endif|define|endef|export|unexport|override|vpath)(?=\s|$)/, 'keyword'],
+      [/^\.[A-Z_]+(?=\s*:)/, 'keyword'],
+      // Target e variabili partono da colonna 0: le righe di ricetta (tab) non li imitano.
+      [/^[^\s:=#][^:=#]*(?=:(?!=))/, 'entity.name.function'],
+      [/^[A-Za-z_][\w.]*(?=\s*[?:+!]?=)/, 'variable'],
+      [/\$[({][^)}]*[)}]|\$[@<^?*%+|]|\$\$\w*/, 'variable.predefined'],
+      [/"[^"]*"|'[^']*'/, 'string'],
+      [/[:?+!]?=|::?/, 'operator'],
+    ],
+  },
+}
+
 /** Registra una sola volta i linguaggi di supporto di Go Studio. */
 export function registerGoStudioExtraLanguages(): void {
   if (registered) return
@@ -50,6 +67,9 @@ export function registerGoStudioExtraLanguages(): void {
   monaco.languages.register({ id: 'goasm', extensions: ['.s'] })
   monaco.languages.setMonarchTokensProvider('goasm', GO_ASM)
   monaco.languages.setLanguageConfiguration('goasm', { comments: { lineComment: '//', blockComment: ['/*', '*/'] } })
+  monaco.languages.register({ id: 'makefile', filenames: ['Makefile', 'makefile', 'GNUmakefile'], extensions: ['.mk'] })
+  monaco.languages.setMonarchTokensProvider('makefile', MAKEFILE)
+  monaco.languages.setLanguageConfiguration('makefile', { comments: { lineComment: '#' } })
 }
 
 const GENERATED_HEADER = /^\/\/ Code generated .* DO NOT EDIT\.$/m

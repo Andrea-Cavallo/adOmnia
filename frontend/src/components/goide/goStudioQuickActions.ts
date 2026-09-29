@@ -5,7 +5,7 @@ import { activeGoIDEDocument, useGoIDEStore, type GoIDEEditorDocument, type GoID
 import type { GoIDETestRunRequest } from '@/lib/goide-tests-api'
 import type { GoIDEDebugRequest } from '@/lib/goide-debug-api'
 import { benchmarkDebugArguments, runPatternFor } from './goStudioTestTree'
-import type { GoStudioRunTarget } from './goStudioRunTargets'
+import type { GoStudioGoRunTarget } from './goStudioRunTargets'
 import { goModActionNeedsConfirmation, goModCommandLine, type GoModDependencyAction } from './goStudioGoMod'
 
 /** Ampiezza di un comando rapido: il package del file corrente o tutto il modulo (./...). */
@@ -152,12 +152,12 @@ export async function runModuleDependencyAction(action: Extract<GoModDependencyA
 }
 
 /** Modulo e package di un target del gutter: i comandi go partono dal modulo che lo contiene. */
-function targetScope(session: Pick<GoIDESession, 'project'>, target: GoStudioRunTarget): GoStudioModuleScope {
+function targetScope(session: Pick<GoIDESession, 'project'>, target: GoStudioGoRunTarget): GoStudioModuleScope {
   return moduleScopeFor(session, `${target.packagePath.replace(/^\.\/?/, '')}/_.go`)
 }
 
 /** Richiesta per il ▶ nel gutter di un test o benchmark: solo quella funzione, nel suo modulo. */
-export function testRequestForTarget(session: Pick<GoIDESession, 'id' | 'project'>, target: GoStudioRunTarget, coverage = false): GoIDETestRunRequest {
+export function testRequestForTarget(session: Pick<GoIDESession, 'id' | 'project'>, target: GoStudioGoRunTarget, coverage = false): GoIDETestRunRequest {
   const scope = targetScope(session, target)
   const pattern = runPatternFor(target.name)
   const benchmark = target.kind === 'benchmark'
@@ -165,7 +165,7 @@ export function testRequestForTarget(session: Pick<GoIDESession, 'id' | 'project
 }
 
 /** Richiesta di debug per il ▶ del gutter: func main, un test o un benchmark (eseguito una volta). */
-export function debugRequestForTarget(session: Pick<GoIDESession, 'id' | 'project'>, target: GoStudioRunTarget): GoIDEDebugRequest {
+export function debugRequestForTarget(session: Pick<GoIDESession, 'id' | 'project'>, target: GoStudioGoRunTarget): GoIDEDebugRequest {
   const scope = targetScope(session, target)
   const base = { sessionId: session.id, workingDirectory: scope.moduleDirectory, target: scope.packageTarget }
   if (target.kind === 'main') return { ...base, mode: 'debug' }

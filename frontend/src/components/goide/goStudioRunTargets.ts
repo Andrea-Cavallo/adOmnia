@@ -1,8 +1,12 @@
 import type { GoIDEQuickRunKind } from '@/stores/goide'
+import { findToolTargets, type GoStudioToolTarget } from './goStudioToolTargets'
 
 export type GoStudioRunTargetKind = 'main' | 'test' | 'benchmark' | 'fuzz' | 'example'
 
-export interface GoStudioRunTarget {
+/** Un ▶ del gutter: funzione Go, target make o stage Docker. */
+export type GoStudioRunTarget = GoStudioGoRunTarget | GoStudioToolTarget
+
+export interface GoStudioGoRunTarget {
   line: number
   kind: GoStudioRunTargetKind
   name: string
@@ -38,12 +42,12 @@ function kindFor(prefix: string): GoStudioRunTargetKind {
 
 /** Trova le righe eseguibili dal gutter: func main nei package main e le funzioni di test nei file _test.go. */
 export function findRunTargets(relativePath: string, text: string): GoStudioRunTarget[] {
-  if (!relativePath.endsWith('.go')) return []
+  if (!relativePath.endsWith('.go')) return findToolTargets(relativePath, text)
   const packagePath = packagePathFor(relativePath)
   const isTestFile = relativePath.endsWith('_test.go')
   const isMainPackage = !isTestFile && PACKAGE_MAIN.test(text)
   if (!isTestFile && !isMainPackage) return []
-  const targets: GoStudioRunTarget[] = []
+  const targets: GoStudioGoRunTarget[] = []
   text.split(/\r?\n/).forEach((line, index) => {
     if (isMainPackage && FUNC_MAIN.test(line)) {
       targets.push({ line: index + 1, kind: 'main', name: 'main', packagePath })
@@ -56,7 +60,7 @@ export function findRunTargets(relativePath: string, text: string): GoStudioRunT
 }
 
 /** Traduce un target del gutter nel comando go strutturato da eseguire. */
-export function runCommandFor(target: GoStudioRunTarget): GoStudioRunCommand {
+export function runCommandFor(target: GoStudioGoRunTarget): GoStudioRunCommand {
   const exact = `^${target.name}$`
   switch (target.kind) {
     case 'main':
