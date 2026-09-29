@@ -71,6 +71,42 @@ Go Studio runs Makefiles and Dockerfiles with the real `make` and `docker`, and 
 
   *Save as Run Configuration…* from a Dockerfile lists its `ARG`s as build args. Names that look sensitive (`password`, `token`, `secret`, `key`…) are marked secret: only the name is saved, and the value is asked once when you start. When an environment variable and a build arg share a name, one value serves both.
 
+## Concurrency-first debugger
+
+The Debug tool window (Alt+5) is built around goroutines. Delve still does
+the debugging through DAP; Go Studio reads every goroutine stack once per
+pause and explains it.
+
+- **Session view.**
+  - Goroutines are grouped by package and by the function the `go`
+    statement started. Each goroutine shows its state (running, chan
+    receive/send, select, mutex, WaitGroup, cond, sleep, I/O wait, syscall)
+    and what it is blocked on, read from the source line (for example
+    `s.orderChannel`).
+  - Selecting a goroutine shows its detail card (state, blocked on,
+    started in, location and the source line) and its call stack. Runtime
+    and library frames are folded.
+  - Variables show package globals too, colour values by type, copy a value
+    with one click and load expensive scopes on request.
+  - While paused, variable values also appear at the end of the lines of
+    the current function, as in GoLand.
+- **Concurrency view.**
+  - A state summary and diagnostics: possible deadlock (every goroutine
+    waits on another one), blocked channels, mutex contention, possible
+    goroutine leaks (10 or more goroutines from the same function stuck at
+    the same line) and data races.
+  - A flow lays out, for every starting function, its goroutines and the
+    channels, mutexes and WaitGroups they wait on. A resource shared by
+    several functions is highlighted.
+- **Race detector.** *Run → Test Current Package with Race Detector* runs
+  `go test -race`. Reports from tests, runs (a `-race` flag in a run
+  configuration) and the debug console become cards with both conflicting
+  accesses and the goroutine creation stacks; every frame opens the
+  source.
+- Goroutine states are inferred from the stack because DAP does not expose
+  Go's wait reason. The analysis covers the first 1000 goroutines of a
+  pause.
+
 ## Persistence and migrations
 
 Go Studio stores metadata only. Source files stay where they are, and file contents are kept only in the recovery and local-history stores described below. All stores live in adOmnia's local bbolt database, in the `goide` bucket.
@@ -196,8 +232,8 @@ Go Studio follows the GoLand keymap. The table below is generated from the comma
 | Stop | Shift+F5 | ⇧F5 |
 | Restart | Ctrl+Shift+F5 | ⌘⇧F5 |
 | Toggle Line Breakpoint | Ctrl+F8 | ⌘F8 |
-| Resume Program | F9 | F9 |
-| Step Over | F8 | F8 |
+| Resume Program | F9 (also F5 while paused) | F9 (also F5) |
+| Step Over | F8 (also F6, F10 while paused) | F8 (also F6, F10) |
 | Step Into | F7 | F7 |
 | Step Out | Shift+F8 | ⇧F8 |
 | Stop Debugging | Ctrl+F2 | ⌘F2 |

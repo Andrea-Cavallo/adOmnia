@@ -4,6 +4,14 @@ adOmnia releases are driven by Git tags and GitHub Actions.
 
 ## Unreleased
 
+## v0.9.41 release notes: a concurrency-first debugger
+
+See [the full v0.9.41 notes](releases/v0.9.41.md): the Debug tool window is
+rebuilt around goroutines, with states, blocked-on expressions, a
+Concurrency view that flags deadlocks, blocked channels, mutex contention,
+leaks and data races, navigable race detector reports, inline values while
+paused and F6/F10/F5 debug keys.
+
 ## v0.9.40 release notes: a maximised editor, compose, key encryption and a new look
 
 See [the full v0.9.40 notes](releases/v0.9.40.md): Maximize Editor and

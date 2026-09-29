@@ -6,8 +6,29 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.9.41] - 2026-09-29
+
+### Added
+- **Concurrency-first debugger in Go Studio:** the Debug tool window groups goroutines by package and starting function, shows each goroutine's state (running, chan receive/send, select, mutex, WaitGroup, sleep, I/O…), what it is blocked on and the source line, with a detail card and a folded call stack.
+- **Concurrency view:** a state summary, diagnostics for possible deadlocks, blocked channels, mutex contention, possible goroutine leaks and data races, and a flow of starting function → goroutines → awaited channels and mutexes.
+- **Race detector:** *Run → Test Current Package with Race Detector* runs `go test -race`. Race reports from tests, runs and the debug console become navigable cards with both accesses and the creation stacks.
+- **Inline values while debugging:** variable values appear at the end of the lines of the paused function.
+- **More debug keys:** F6 and F10 also step over, F5 also resumes (only while paused).
+
+### Changed
+- The Debug tool window is redesigned: larger text, grouped toolbar, Session / Concurrency switch, typed value colours, copy value, lazily loaded scopes and package globals (Delve `showGlobalVariables`, system goroutines hidden).
+
 ### Fixed
+- The `danger` colour was missing from the Tailwind theme, so error and stop colours in Go Studio had no effect.
+- Coloured icon buttons in Go Studio (Run, Debug, Stop, Restricted) lost their colour because unlayered CSS overrode Tailwind 4 utilities.
 - gopls telemetry is really off: `GOTELEMETRY=off` is read-only for Go's telemetry library and still started the `** telemetry **` process. gopls now starts with `GO_TELEMETRY_CHILD=2`, which starts no telemetry process (verified with gopls v0.23.0 on Windows) and leaves the global `go telemetry` mode untouched.
+
+### Verified
+- Go Studio Go tests pass, including goroutine state inference and race report collection.
+- 768 frontend tests across 170 files, TypeScript, the production build and the startup budget pass.
+- The debugger UI was checked against a simulated paused session; a real Delve session with blocked goroutines still needs a manual check.
+
+Full release notes: [v0.9.41](docs/releases/v0.9.41.md).
 
 ## [0.9.40] - 2026-09-29
 
