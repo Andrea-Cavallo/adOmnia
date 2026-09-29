@@ -4,6 +4,12 @@ adOmnia releases are driven by Git tags and GitHub Actions.
 
 ## Unreleased
 
+## v0.9.38 release notes: Go Studio Fix with AI and real file icons
+
+See [the full v0.9.38 notes](releases/v0.9.38.md): errors and warnings can
+be fixed with the AI provider configured in adOmnia, always through a
+reviewed preview, and every file list shows real technology icons.
+
 ## v0.9.37 release notes: Go Studio terminal, tests, debugger and GoLand parity
 
 See [the full v0.9.37 notes](releases/v0.9.37.md): Go Studio adds a real
