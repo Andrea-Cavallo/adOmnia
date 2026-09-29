@@ -4,6 +4,75 @@ Checklist esecutiva per costruire un ambiente di sviluppo Go realmente utilizzab
 
 Documento derivato dalla specifica allegata. Questo file è la fonte di verità operativa per l'implementazione: deve essere aggiornato nello stesso cambiamento che completa o modifica una voce.
 
+# ▶ PROVE MANUALI DA FARE (elenco unico)
+
+Tutte le verifiche manuali ancora aperte sono qui, in un solo posto. Nel resto del documento le voci manuali rimandano a questo elenco (es. *→ M3*) invece di essere ripetute. Quando una prova passa: spuntala qui, registra l'esito nelle **Evidenze** della fase indicata e spunta il gate corrispondente.
+
+**Setup**: Windows, `wails3 task dev`, un progetto Go reale (più package, test, `go.mod` con dipendenze, repository Git con modifiche non committate), Task Manager aperto.
+
+**Già verificato in automatico su Windows (2026-09-29, Go 1.26.5, Delve 1.27.2)**, quindi non va rifatto a mano: `TestWindowsStopTerminatesChildTree` (Stop chiude anche il figlio di `go run`); `TestTerminal*` su ConPTY (shell interattiva, uscita naturale, chiusura idempotente, limite per sessione, chiusura dell'albero di processi); `TestDebugger*` (breakpoint, step, variabili, evaluate, singolo test, attach, Delve remoto), senza `dlv` né `__debug_bin` residui dopo i test. Restano manuali solo le parti che richiedono la finestra reale o il Task Manager.
+
+### A. Collaudo Fasi 1–4 (sblocca i gate 1, 2, 3 e 4)
+
+- [ ] **M1 — Flusso base**: apri il progetto, autorizza, modifica, salva, Build, Run con stdin, Stop e Restart. *(Fase 1)*
+- [ ] **M2 — Nessun processo orfano**: dopo Stop, chiusura sessione e chiusura app, in Task Manager non restano `go`, il programma, `gopls`, il linter o la shell del terminale. *(Fasi 1–3)*
+- [ ] **M3 — Terminale ConPTY nella finestra reale**: input, resize trascinando il pannello, uscita naturale (`exit`), chiusura del tab con un processo figlio attivo (es. `go run .` nella shell) e Task Manager pulito; output lungo con accenti ed emoji mostrato intatto. *(Fase 3; il test automatico dell'output multibyte è solo POSIX)*
+- [ ] **M4 — Aspetto**: temi dark e light, finestra piccola e ridimensionata, stati loading/empty/error/running/stopped ben distinguibili. *(Fase 1, 1.5)*
+- [ ] **M5 — Signature help** visibile mentre si scrive una chiamata. *(Fase 2)*
+- [ ] **M6 — Strumenti mancanti**: senza Go, installazione dall'IDE; senza gopls, linter o Delve, installazione dal menu Go; messaggi operativi chiari. *(Fasi 1–2, collaudo finale)*
+- [ ] **M7 — Debugger dalla UI**: breakpoint, step, watch, Stop e chiusura progetto; in Task Manager nessun `dlv` o `__debug_bin` residuo. *(Fase 4; `TestDebuggerStopLeavesNoOrphans` su Windows viene saltato perché non riesce a osservare il processo debuggato)*
+- [ ] **M8 — Mock e barra di qualità**: confronto con i due mock approvati e verifica fluido/veloce/moderno/stabile su un progetto di dimensioni reali; registrare differenze intenzionali. *(tutte le fasi)*
+
+### B. Collaudo Fase 5 (sblocca il gate 5)
+
+- [ ] **M9 — Extract function** reale su codice multi-package: anteprima corretta e progetto che compila ancora.
+- [ ] **M10 — Gutter I↓/I↑** su un'interfaccia con più implementazioni: una destinazione si apre subito, più destinazioni aprono il popup.
+- [ ] **M11 — Go Tools**: `go vet`/`go generate`/`go mod why` producono output reale nella Run console e Stop non lascia orfani.
+- [ ] **M12 — VCS**: gutter diff, revert di un hunk, blame e cronologia riflettono il repository reale; Git Sync senza regressioni.
+- [ ] **M13 — Integrazioni adOmnia**: Project Services apre Docker Lab, Database Studio e Broker Studio già compilati; il CodeLens di una route apre la richiesta precompilata nell'API Client; gli eventi `onGoStudio*` compaiono in Plugin DevTools.
+- [ ] **M14 — Workspace Go Studio**: creazione, cambio e riavvio dell'app con due workspace e lo stesso progetto aperto in entrambi.
+
+### C. Collaudo finale (flussi completi e qualità prodotto)
+
+- [ ] **M15** — Da installazione pulita: apri, autorizza, modifica, salva, builda, esegui, invia stdin e ferma.
+- [ ] **M16** — Crea un progetto nuovo, riaprilo dai recenti e ripristina la sessione.
+- [ ] **M17** — Due progetti contemporaneamente senza contaminazione di stato o output.
+- [ ] **M18** — File modificato esternamente e conflitto dello stesso file tra sessioni.
+- [ ] **M19** — Completion, diagnostica, definition, references, rename, import e formatting su buffer dirty.
+- [ ] **M20** — Terminale, test runner, benchmark, debugger e coverage su progetto reale.
+- [ ] **M21** — Semantic highlighting, inlay hints, quick documentation, exit points e generazione metodi di interfaccia su codice reale.
+- [ ] **M22** — Assenza di rete e modulo privato/non raggiungibile senza blocco della UI.
+- [ ] **M23** — Chiusura app con file dirty e processi attivi: compare il prompt (anche subito dopo l'avvio, ora che la guardia è caricata in modo lazy) e il cleanup è completo.
+- [ ] **M24** — Navigazione completa da tastiera e focus visibile.
+- [ ] **M25** — Contrasto, zoom, temi, densità e layout ridimensionato.
+- [ ] **M26** — Coesione con rail, command palette, tab e Settings esistenti.
+- [ ] **M27** — Prestazioni su progetto grande, output intenso e molte diagnostiche.
+- [ ] **M28** — Log, console e persistenza non contengono segreti.
+- [ ] **M29** — Nessuna azione eseguita implicitamente all'apertura o al ripristino.
+- [ ] **M30** — Tutte le funzioni visibili sono reali e i limiti sono espliciti.
+
+---
+
+# ▶ COSA MANCA OLTRE ALLE PROVE MANUALI (analisi 2026-09-29)
+
+Stato: le Fasi 0–5 (fino a 5.6b) sono implementate e committate su `master`. A parte le prove manuali qui sopra, restano quattro blocchi di lavoro vero.
+
+**1. Finestre separate / multiwindow (5.8) — non iniziato.** È l'unica funzione di ambito ancora non implementata: finestra Wails secondaria senza duplicare l'ownership del backend, coordinamento o avviso quando lo stesso progetto è aperto in più finestre, dichiarazione nel prodotto solo dopo prova reale. Oggi è rinviata in modo esplicito, non simulata.
+
+**2. Test mancanti della Fase 5 (5.7)**
+- Refactoring multi-file: il backend verifica già "tutti i file o nessuno" per i file nuovi (`TestCreateFilesIsAllOrNothingAndConfined`), ma manca un test del lato frontend che applica gli edit e fa rollback se un buffer è cambiato a metà.
+- Gutter diff: CRLF coperto (`goStudioLineDiff.test.ts`); mancano i casi file binario e file non tracciato.
+- Isolamento fra due sessioni di stato VCS, Go Tools e local history: `TestTwoProjectsStayIsolatedWhileRunningTogether` copre run, terminali e LSP, non questi tre.
+- `TestDebuggerStopLeavesNoOrphans` salta su Windows: renderlo capace di osservare il processo con `tasklist`, così M7 diventa in gran parte automatico.
+
+**3. Documentazione e catalogo — nessun documento di prodotto cita Go Studio.** `README.md`, `docs/adomnia-feature-catalog.en.md`, `docs/ISSUES.md`, `docs/ARCHITECTURE.md` e `CLAUDE.md` hanno zero riferimenti a Go Studio o `internal/goide`; solo `docs/RELEASE.md` lo menziona. Da fare: flusso utente, catalogo delle capacità verificate, limiti residui, moduli e lifecycle, schema di persistenza (v4 con migrazioni), dipendenze opzionali (Go, gopls, Delve, linter) e installazione, shortcut e modello di autorizzazione del progetto, note di rilascio. Dettaglio in *Documentazione e catalogo*.
+
+**4. Evidenze e gate.** Le sezioni *Evidenze della fase* delle Fasi 1–5 e le evidenze finali vanno compilate (data, commit, versioni, progetto usato) man mano che passano le prove M1–M30; solo allora si spuntano i gate.
+
+Limiti dichiarati che **non** sono lavoro mancante: nessun comando esposto ai plugin (solo eventi in lettura, contratto v1); i prefissi delle route si risolvono solo nello stesso file; breakpoint remoti solo con percorsi sorgente identici; merge, rebase e push restano a Git Studio.
+
+---
+
 ## Barra di qualità del prodotto (non negoziabile)
 
 Go Studio non è un prototipo interno né un esercizio tecnico: deve risultare un **IDE Go professionale, realmente utilizzabile ogni giorno per lavoro vero**, con un livello di rifinitura comparabile a JetBrains GoLand/IntelliJ Ultimate (lo stesso riferimento usato in `Riferimenti grafici approvati` e in `Fuori ambito dichiarato`). Questo criterio si applica a **ogni fase**, non solo al collaudo finale, ed estende alla lettera la PRODUCT-FIRST PHILOSOPHY di `CLAUDE.md` (UX, fluidità, reattività, coesione grafica sopra tutto il resto). Una fase che passa tutti i test ma "sembra un prototipo" non è considerata completa.
@@ -13,7 +82,7 @@ Go Studio non è un prototipo interno né un esercizio tecnico: deve risultare u
 - [ ] **Moderno**: densità, tipografia, stati hover/focus/active e motion coerenti con `docs/SOUL.md` e con i mock approvati; nessun pannello con l'aspetto di una demo, di un wireframe o di un tool abbozzato.
 - [ ] **Stabile alla percezione**: nessuno stato a metà, nessun flicker, nessun salto di layout quando arrivano dati asincroni (diagnostica, output, eventi LSP/Run/debug).
 - [ ] **Completo come IDE Go**: Go Studio è un vero ambiente di sviluppo Go dentro adOmnia, non un editor con un pulsante Run. Legge l'SDK Go configurato (GOROOT, stdlib, moduli in cache), offre una menu bar seria con tutte le azioni reali, e copre l'intero ciclo scrivi → capisci → esegui → testa → debugga.
-- [ ] Verificare questi quattro criteri a ogni gate di fase, su un progetto Go reale (non un progetto giocattolo vuoto), e registrarne l'esito nelle Evidenze della fase.
+- [ ] *(Questi criteri si verificano con la prova **M8** e, per il collaudo finale, M24–M27.)* Verificare questi quattro criteri a ogni gate di fase, su un progetto Go reale (non un progetto giocattolo vuoto), e registrarne l'esito nelle Evidenze della fase.
 
 ---
 
@@ -53,26 +122,12 @@ Una fase è completa soltanto quando:
 - [ ] Fase 2 — Intelligenza del codice con gopls/LSP *(implementata e verificata end-to-end; gate in attesa della prova manuale su Windows)*
 - [ ] Fase 3 — Più progetti, ripristino e terminale integrato *(implementata e verificata end-to-end; gate in attesa delle prove manuali su Windows: ConPTY e finestra Wails)*
 - [ ] Fase 4 — Test runner, debugger, coverage e finestre separate *(implementata e verificata; multiwindow rinviato; gate aperto solo per il collaudo Windows)*
-- [ ] Fase 5 — Parità GoLand: assistenza al codice, VCS nell'editor e integrazione con i moduli adOmnia *(sviluppo futuro)*
+- [ ] Fase 5 — Parità GoLand: assistenza al codice, VCS nell'editor e integrazione con i moduli adOmnia *(5.1–5.6b implementate; mancano multiwindow 5.8, tre test di 5.7 e le prove M9–M14)*
 - [ ] Collaudo finale e documentazione di rilascio *(dopo la Fase 5)*
 
-### Cosa resta da fare (aggiornato al 2026-09-28, dopo il merge della Fase 4)
+### Cosa resta da fare
 
-Stato in una riga: le Fasi 0-4 sono implementate e verificate end-to-end con il backend Go reale (test automatici e 50 passi e2e nel browser, di cui 17 per test runner, coverage e debugger); i gate di Fase 1-4 restano aperti solo per il collaudo manuale su Windows. Le finestre separate sono rinviate in modo esplicito. Nelle Fasi 0-4 restano aperte solo le verifiche manuali. Prossimo sviluppo: Fase 5 (parità GoLand).
-
-**1. Collaudo manuale (le uniche voci aperte delle Fasi 0-4; sblocca i gate di Fase 1, 2, 3 e 4)**
-- [ ] `wails3 task dev` su un progetto Go reale (non una fixture): apri, autorizza, modifica, salva, Build, Run con stdin, Stop.
-- [ ] Eseguire `go test ./internal/goide -run TestWindowsStopTerminatesChildTree` su Windows: Stop deve chiudere anche il figlio di `go run`.
-- [ ] Controllare in Task Manager che dopo Stop, chiusura sessione e chiusura app non restino `go`, programma, `gopls`, linter o shell del terminale.
-- [ ] Terminale ConPTY: input, resize, uscita naturale, chiusura del process tree (`go test ./internal/goide -run TestTerminal` su Windows).
-- [ ] Temi dark e light, finestra ridimensionata e piccola, stati loading/empty/error/running/stopped ben distinguibili.
-- [ ] Provare a video il signature help (parametri mentre si scrive una chiamata).
-- [ ] Toolchain assente: installazione Go dall'IDE; gopls, linter e Delve assenti: installazione dal menu Go.
-- [ ] Debugger su Windows: breakpoint, step, Stop e chiusura progetto senza `dlv` o `__debug_bin` residui in Task Manager (`go test ./internal/goide -run TestDebugger` su Windows).
-- [ ] Confronto con i due mock approvati e verifica della barra di qualità (fluido, veloce, moderno, stabile) su un progetto di dimensioni reali; registrare l'esito nelle Evidenze e spuntare i gate.
-
-**2. Sviluppo ancora da fare (non sono verifiche)**
-- Fase 5 e collaudo finale: vedi le rispettive sezioni. I residui delle Fasi 1-4 non bloccanti per i gate (split con gruppo di tab, morph `aO → gO`, branch in toolbar, export/import impostazioni, avviso watcher oltre 4.000 cartelle, debug attach/remoto, finestre separate) sono stati spostati nelle sezioni 5.3, 5.4, 5.5, 5.6 e 5.8.
+Spostato in cima al documento: **▶ PROVE MANUALI DA FARE** e **▶ COSA MANCA OLTRE ALLE PROVE MANUALI**.
 
 ### Punto di ripresa (audit 2026-09-28)
 
@@ -95,7 +150,7 @@ Gap aperti della Fase 1 da chiudere prima del gate:
 - [x] **Menu bar IDE reale** (File, Edit, View, Go, Run, Help) con registro comandi unico condiviso da menu, scorciatoie e dialog di aiuto; voci non disponibili disabilitate con motivo nel tooltip; Edit esegue le azioni Monaco reali; passaggio fra menu al passaggio del mouse come in GoLand.
 - [x] **Principio di comodità per lo sviluppatore** (richiesta utente): se un file contiene `func main`, il ▶ è nel gutter accanto; lo stesso per `Test`/`Benchmark`/`Fuzz`/`Example`. Dalla Fase 4 il ▶ apre il menu Run / Debug / Run with Coverage, con debugger reale.
 - [x] Icona gopher per i file `.go` (albero, tab, Quick Open, risultati), SVG locale ispirato al gopher di Renée French (CC BY).
-- [ ] Verifiche manuali non eseguibili nel container Linux (GTK4/WebKitGTK assenti): `wails3 task dev` su Windows, test `process_tree_windows_test.go`, temi dark/light, barra di qualità su progetto reale.
+- [x] Test `process_tree_windows_test.go` eseguito su Windows il 2026-09-29: passa. Le altre verifiche manuali → M1, M4, M8.
 
 ---
 
@@ -131,7 +186,7 @@ Questi due mock forniti dall'utente sono riferimenti visivi da consultare durant
 - [x] Mantenere la composizione del primo mock: project tree a sinistra, tab e breadcrumb sopra l'editor, strumenti contestuali a destra, tool window in basso e status bar compatta.
 - [x] Conservare toolbar superiore densa con progetto/sessione, branch, configurazione Run/Debug e azioni principali, mostrando solo controlli realmente funzionanti nella fase corrente. *(branch reale dalla 5.5: compare solo se il progetto è in un repository Git)*
 - [x] Usare l'accento viola per selezione, focus e stato attivo; mantenere superfici dark, separatori sottili, tipografia compatta e alta densità informativa coerenti con `docs/SOUL.md`.
-- [ ] Durante i collaudi UI confrontare il risultato con entrambi i mock e registrare nelle evidenze eventuali differenze intenzionali.
+- Confronto con entrambi i mock durante i collaudi UI → **M8**.
 
 ---
 
@@ -290,7 +345,7 @@ Obiettivo: aprire un progetto Go reale, modificarlo, salvarlo, compilarlo, esegu
 - [x] Fornire stdin alla Run console per programmi interattivi.
 - [x] Supportare più esecuzioni contemporanee con tab/identità chiaramente separate.
 - [x] Implementare Stop idempotente e Restart.
-- [ ] Terminare l'intero albero di processi, incluso il binario figlio avviato da `go run`, con adattatore Windows verificato.
+- [x] Terminare l'intero albero di processi, incluso il binario figlio avviato da `go run`, con adattatore Windows verificato. *(`TestWindowsStopTerminatesChildTree` passa su Windows, 2026-09-29; controllo in Task Manager → M2)*
 - [x] Eseguire cleanup alla chiusura e chiedere conferma se una sessione ha processi attivi.
 - [x] Registrare metadati diagnostici senza includere segreti o interi environment.
 
@@ -301,15 +356,15 @@ Obiettivo: aprire un progetto Go reale, modificarlo, salvarlo, compilarlo, esegu
 - [x] Project tree ridimensionabile a sinistra ed editor a tab al centro.
 - [x] Tool window inferiore ridimensionabile con Run e Problems reali.
 - [x] Status bar con toolchain, file, posizione cursore e stato di esecuzione.
-- [ ] Stati loading, empty, error, running e stopped immediatamente distinguibili.
+- Stati loading, empty, error, running e stopped immediatamente distinguibili → **M4**.
 - [x] Scorciatoie documentate e senza conflitti con quelle globali di adOmnia.
-- [ ] Layout corretto con temi dark/light, densità e ridimensionamento finestra.
+- Layout corretto con temi dark/light, densità e ridimensionamento finestra → **M4**.
 
 ## 1.6 Test mirati
 
 - [x] Test backend per validazione/confino percorsi e lettura/scrittura atomica dei documenti.
 - [x] Test backend per lifecycle Run: start, output, stdin, exit naturale, Stop ripetuto e cleanup.
-- [ ] Test Windows che verifica l'arresto dell'intero albero di processi.
+- [x] Test Windows che verifica l'arresto dell'intero albero di processi. *(passa su Windows, 2026-09-29)*
 - [x] Test di isolamento: output con `runId` errato non entra nella console di un'altra esecuzione.
 - [x] Test frontend per dirty state, salvataggio fallito e routing degli eventi per sessione/run.
 - [x] Progetto fixture minimo con input stdin, stdout, stderr e processo figlio per la verifica end-to-end.
@@ -326,7 +381,7 @@ Obiettivo: aprire un progetto Go reale, modificarlo, salvarlo, compilarlo, esegu
 - [x] Se la toolchain Go è assente, scaricarla e installarla dall'IDE stesso con un'azione esplicita, senza uscire dall'app o passare da un terminale esterno.
 - [x] Chiudere un file dirty senza perdere dati accidentalmente.
 - [x] Tutti i controlli visibili nel pannello eseguono funzioni reali.
-- [ ] Suite e verifiche previste dalla definizione di fase funzionante passano. *(automatiche ok; manca il collaudo manuale Windows)*
+- [ ] Suite e verifiche previste dalla definizione di fase funzionante passano. *(automatiche ok; manca il collaudo manuale → sezione A in cima)*
 - [ ] **FASE 1 FUNZIONANTE E APPROVATA — è consentito iniziare la Fase 2.**
 
 ### Evidenze della fase
@@ -441,7 +496,7 @@ Tutte queste voci sono richieste LSP aggiuntive sulla stessa sessione gopls di 2
 - [x] Semantic highlighting e inlay hints restano coerenti durante la digitazione, senza flicker né token disallineati.
 - [x] Un unico gesto da tastiera apre le quick-fix disponibili e le applica correttamente su un buffer non salvato. *(Alt+Enter prima non apriva nulla: corretto)*
 - [x] Nessun dato LSP o di lint di un progetto compare in un'altra sessione.
-- [ ] Suite e verifiche previste dalla definizione di fase funzionante passano. *(Automatiche verdi; manca la prova manuale `wails3 task dev` su Windows.)*
+- [ ] Suite e verifiche previste dalla definizione di fase funzionante passano. *(automatiche verdi; manca il collaudo manuale → M1, M5, M8)*
 - [ ] **FASE 2 FUNZIONANTE E APPROVATA — è consentito iniziare la Fase 3.**
 
 ### Evidenze della fase
@@ -526,16 +581,16 @@ Obiettivo: lavorare su più progetti in sessioni isolate, ripristinabili, con co
 - [x] Test di isolamento completo tra due progetti con output, diagnostica, config e terminali simultanei (`TestTwoProjectsStayIsolatedWhileRunningTogether`, più `TestLanguageServerSessionsStayIsolated` per gopls).
 - [x] Test di ripristino sessione e recovery di buffer dirty.
 - [x] Test di migrazione della persistenza da una versione precedente.
-- [ ] Test PTY: input, resize, exit naturale, kill e cleanup process tree su Windows. *(passano su Linux, incluso cleanup del process tree; Windows da eseguire)*
+- [x] Test PTY: input, resize, exit naturale, kill e cleanup process tree su Windows. *(`TestTerminal*` passano su Windows/ConPTY il 2026-09-29; l'output multibyte è verificato solo su POSIX, a mano → M3)*
 - [x] Test di conflitto per lo stesso file aperto in due sessioni (`TestSameFileInNestedProjectsNeverOverwritesSilently`, test frontend e e2e).
 
 ## Gate di uscita Fase 3
 
 - [x] Due progetti restano completamente isolati durante edit, LSP, Run e terminale.
 - [x] Riavviare adOmnia ripristina sessioni e layout senza avviare codice implicitamente.
-- [ ] Un terminale interattivo reale funziona, si ridimensiona e si chiude senza processi orfani. *(verificato su Linux; manca Windows/ConPTY)*
+- [ ] Un terminale interattivo reale funziona, si ridimensiona e si chiude senza processi orfani. *(test automatici verdi su Linux e Windows/ConPTY; manca la prova nella finestra reale → M3)*
 - [x] Le modifiche esterne e i conflitti tra sessioni sono gestiti senza perdita silenziosa.
-- [ ] Suite e verifiche previste dalla definizione di fase funzionante passano. *(automatiche ok; manca il collaudo manuale Windows)*
+- [ ] Suite e verifiche previste dalla definizione di fase funzionante passano. *(automatiche ok; manca il collaudo manuale → sezione A in cima)*
 - [ ] **FASE 3 FUNZIONANTE E APPROVATA — è consentito iniziare la Fase 4.**
 
 ### Evidenze della fase
@@ -611,10 +666,10 @@ Decisione (2026-09-28): **rinviato**. La prova reale su Windows non è eseguibil
 - [x] Un test fallito è mostrato strutturalmente e apre il file/riga corretti.
 - [x] Rerun failed esegue davvero solo il perimetro previsto.
 - [x] Una sessione debug reale raggiunge un breakpoint e supporta step, stack, variabili e watch.
-- [ ] Stop/chiusura non lascia Delve o debuggee orfani. *(verificato su Linux; manca Windows)*
+- [ ] Stop/chiusura non lascia Delve o debuggee orfani. *(verificato su Linux; su Windows i test del debugger passano ma quello sugli orfani salta → M7)*
 - [x] Coverage reale è navigabile e non resta applicata a sorgenti non più corrispondenti.
 - [x] Multiwindow è verificato e abilitato, oppure esplicitamente rinviato senza dichiarazioni ingannevoli. *(rinviato, vedi 4.4)*
-- [ ] Suite e verifiche previste dalla definizione di fase funzionante passano. *(automatiche ok; manca il collaudo manuale Windows)*
+- [ ] Suite e verifiche previste dalla definizione di fase funzionante passano. *(automatiche ok; manca il collaudo manuale → sezione A in cima)*
 - [ ] **FASE 4 FUNZIONANTE E APPROVATA — è consentito il collaudo finale.**
 
 ### Evidenze della fase
@@ -706,7 +761,7 @@ Richiesta dell'utente (2026-09-29): i workspace dell'IDE devono essere separati 
 - [x] Nuovo, rinomina ed elimina: nomi unici senza distinzione di maiuscole, massimo 20 workspace e 40 caratteri; il predefinito non si elimina, un workspace con progetti aperti nemmeno ("Close its projects first").
 - [x] Persistenza nello schema 4 dello stato Go Studio; gli schemi precedenti migrano nel workspace predefinito senza perdere sessioni.
 - [x] Test: `studio_workspaces_test.go` (stesso progetto in due workspace, migrazione e persistenza, regole di eliminazione), `goideWorkspaces.test.ts`, e2e ide17 6/6 con zero errori di pagina.
-- [ ] Verifica manuale su Windows: creazione, cambio e riavvio dell'app con due workspace e lo stesso progetto aperto in entrambi.
+- Verifica manuale su Windows con due workspace e riavvio → **M14**.
 
 ## 5.8 Finestre separate / più istanze (rinviate dalla Fase 4)
 
@@ -718,19 +773,19 @@ Richiesta dell'utente (2026-09-29): i workspace dell'IDE devono essere separati 
 
 ## 5.7 Test mirati
 
-- [ ] Test per l'applicazione transazionale di un refactoring multi-file, incluso il rollback su errore a metà.
-- [ ] Test per il calcolo del diff di gutter su file con CRLF, file binari e file non tracciati.
+- [ ] Test per l'applicazione transazionale di un refactoring multi-file, incluso il rollback su errore a metà. *(backend coperto da `TestCreateFilesIsAllOrNothingAndConfined`; manca il lato frontend)*
+- [ ] Test per il calcolo del diff di gutter su file con CRLF, file binari e file non tracciati. *(CRLF coperto in `goStudioLineDiff.test.ts`; mancano binari e non tracciati)*
 - [x] Test per la costruzione degli argomenti dei comandi Go Tools (nessuna shell concatenata, nessun path fuori dalla root). *(`gotools_test.go`)*
 - [ ] Test di isolamento: stato VCS, Go Tools e local history restano separati fra due sessioni.
 - [x] Prova reale su un repository Git con modifiche non committate: gutter, blame, cronologia e revert di un hunk. *(e2e ide16 su repository reale, 8/8, zero errori di pagina)*
 
 ## Gate di uscita Fase 5
 
-- [ ] Un extract function reale su codice multi-package produce codice compilabile e anteprima corretta.
-- [ ] La navigazione a super method/implementation funziona dai gutter marker su un'interfaccia con più implementazioni.
-- [ ] I comandi Go Tools producono output reale nella Run console e si fermano senza processi orfani.
-- [ ] Il gutter diff, il blame e la cronologia riflettono lo stato reale del repository e Git Sync non ha subito regressioni.
-- [ ] Le integrazioni con Docker Lab, Database, Plugin e workspace API aprono il contesto corretto e non pannelli vuoti.
+- [ ] Un extract function reale su codice multi-package produce codice compilabile e anteprima corretta. *(→ M9)*
+- [ ] La navigazione a super method/implementation funziona dai gutter marker su un'interfaccia con più implementazioni. *(→ M10)*
+- [ ] I comandi Go Tools producono output reale nella Run console e si fermano senza processi orfani. *(→ M11)*
+- [ ] Il gutter diff, il blame e la cronologia riflettono lo stato reale del repository e Git Sync non ha subito regressioni. *(→ M12)*
+- [ ] Le integrazioni con Docker Lab, Database, Plugin e workspace API aprono il contesto corretto e non pannelli vuoti. *(→ M13)*
 - [ ] Nessuna funzione di parità è simulata: ciò che gopls o Git non forniscono è assente o dichiarato.
 - [ ] Suite e verifiche previste dalla definizione di fase funzionante passano.
 - [ ] **FASE 5 FUNZIONANTE E APPROVATA — è consentito il collaudo finale.**
@@ -750,31 +805,9 @@ Richiesta dell'utente (2026-09-29): i workspace dell'IDE devono essere separati 
 
 # Collaudo finale e documentazione
 
-## Flussi completi
+## Flussi completi e qualità prodotto
 
-- [ ] Da installazione pulita: aprire un progetto, autorizzarlo, modificare, salvare, buildare, eseguire, inviare stdin e fermare.
-- [ ] Creare un progetto nuovo, riaprirlo dai recenti e ripristinare la sessione.
-- [ ] Lavorare su due progetti contemporaneamente senza contaminazione di stato o output.
-- [ ] Gestire file modificato esternamente e conflitto dello stesso file tra sessioni.
-- [ ] Usare completion, diagnostica, definition, references, rename, import e formatting su buffer dirty.
-- [ ] Usare terminale, test runner, benchmark, debugger e coverage su progetto reale.
-- [ ] Usare semantic highlighting, inlay hints, quick documentation, exit points e generazione metodi di interfaccia su codice reale.
-- [ ] Eseguire un extract function e verificare che il progetto compili ancora.
-- [ ] Usare gutter diff, blame e cronologia su un repository Git reale senza regressioni su Git Sync.
-- [ ] Aprire Docker Lab, strumenti database e una richiesta API dal contesto di Go Studio.
-- [ ] Simulare toolchain/gopls/Delve mancanti e verificare messaggi operativi.
-- [ ] Verificare assenza rete e modulo privato/non raggiungibile senza blocco UI.
-- [ ] Chiudere app con dirty file e processi attivi verificando prompt e cleanup.
-
-## Qualità prodotto
-
-- [ ] Verificare navigazione completa da tastiera e focus visibile.
-- [ ] Verificare contrasto, zoom, temi, densità e layout ridimensionato.
-- [ ] Verificare coesione con rail, command palette, tab e Settings esistenti.
-- [ ] Verificare prestazioni su progetto grande, output intenso e molte diagnostiche.
-- [ ] Verificare che log, console e persistenza non contengano segreti.
-- [ ] Verificare che nessuna azione venga eseguita implicitamente all'apertura/ripristino.
-- [ ] Verificare che tutte le funzioni visibili siano reali e che i limiti siano espliciti.
+Spostati nell'elenco unico in cima: **PROVE MANUALI → sezione C (M15–M30)**. Chiudere un'app con file dirty e processi attivi → M23; toolchain, gopls o Delve mancanti → M6; extract function → M9; VCS → M12; integrazioni → M13.
 
 ## Documentazione e catalogo
 
