@@ -2,9 +2,11 @@
 
 ![adOmnia banner](assets/images/banner.png)
 
-**A desktop workspace for designing, testing, debugging and documenting APIs.**
+**A local-first alternative to cloud API platforms — now with gO Studio, a full Go IDE.**
 
-adOmnia brings API requests, browser debugging, mocks, logs, databases and Git into one application for Windows, macOS and Linux. Your workspace is stored locally, with no adOmnia account or telemetry. Optional AI connects to a provider you choose.
+Build, debug and ship APIs, then write the Go services behind them in the same app. adOmnia brings REST, SOAP, gRPC, Kafka, mocks, proxy, browser debugging, logs, databases, Git and a complete Go IDE into one desktop application for Windows, macOS and Linux. No account, no telemetry: your workspace stays on your machine, and optional AI connects to a provider you choose.
+
+**Your APIs. Your code. Your secrets. Your machine.**
 
 [![Release](https://img.shields.io/github/v/release/Andrea-Cavallo/adOmnia?color=8A2BE2)](https://github.com/Andrea-Cavallo/adOmnia/releases/latest)
 [![Build](https://img.shields.io/github/actions/workflow/status/Andrea-Cavallo/adOmnia/build.yml?branch=master&label=build)](https://github.com/Andrea-Cavallo/adOmnia/actions/workflows/build.yml)
@@ -38,6 +40,7 @@ Requests at workspace root appear outside your named collections and persist wit
 
 ## Why adOmnia
 
+- **API client and Go IDE in one ecosystem.** Call an endpoint, open the Go handler behind it in gO Studio, run or debug it locally with Delve, and send the next request without switching tools.
 - **Local workspace ownership.** Collections, history and settings live on your machine. Export workspaces as files or collections as folders that can be reviewed and versioned with Git.
 - **API and browser investigation together.** Inspect browser network activity, console output, JavaScript, DOM and storage alongside API requests and responses.
 - **Support for enterprise systems.** Work with SOAP/WSDL, WS-Security, gRPC streaming, mTLS, certificate keystores and API authentication flows.
@@ -47,13 +50,13 @@ Requests at workspace root appear outside your named collections and persist wit
 
 | Workspace | Highlights |
 | --- | --- |
+| **gO Studio (Go IDE)** — new | Open and trust real Go projects; gopls completion, navigation, refactoring and diagnostics; golangci-lint/staticcheck; build, run, tests with coverage, the Delve debugger and a real terminal; Git in the editor; Fix with AI; links to Docker Lab, Database/Broker Studio and the API Client. |
 | **API requests and design** | REST, GraphQL, environments, authentication, scripts, assertions, response history, code generation, Postman/cURL/OpenAPI import, visual OpenAPI editing and governance checks. |
 | **Testing and flows** | Collection runner, CSV datasets, visual tests, recorded and AI-assisted flows, response-to-request variables, failure branches, contract checks and flow stress testing with latency, throughput and APDEX gates. |
 | **Protocols and brokers** | SOAP/WSDL, gRPC, WebSocket, SSE, Kafka, RabbitMQ, MQTT, Redis Pub/Sub and NATS, with saved connections and message inspection. |
 | **Mocks and infrastructure** | Schema-driven mock responses, conditional expectations, record/replay, endpoint traffic inspection, HTTPS interception, breakpoints, mapping, throttling, HTTP/gRPC load tests and Docker Lab. |
 | **Debugging and analysis** | Browser DevTools, Application Log Inspector, HAR inspection, network diagnostics, payload tools, stack-to-source navigation and redacted evidence exports. |
 | **Data and documents** | SQLite, PostgreSQL, MySQL and MongoDB exploration; local storage inspection; Markdown, Mermaid, LaTeX and PDF editing, annotation, forms and digital signatures. |
-| **Go Studio (Go IDE)** | Open and trust real Go projects; gopls completion, navigation, refactoring and diagnostics; golangci-lint/staticcheck; build, run, tests with coverage, the Delve debugger and a real terminal; Git in the editor; Fix with AI; links to Docker Lab, Database/Broker Studio and the API Client. |
 | **Git and portable collections** | Clone/init, staging, commits, history graph, branches, merges, push/pull, diffs, conflict resolution and deterministic collection-folder export/import. |
 | **AI and MCP** | Configurable cloud/local AI, the a0 assistant, opt-in request creation, model discovery, a local agent gateway, an MCP client/debugger and an MCP server generator. |
 | **Security and customization** | Encrypted Vault references, private Environments, certificate tools, local JavaScript plugins, templates and built-in/custom appearances. |
