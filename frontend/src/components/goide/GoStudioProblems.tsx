@@ -1,9 +1,12 @@
 import { useMemo } from 'react'
-import { AlertCircle, AlertTriangle, Info } from 'lucide-react'
+import { AlertCircle, AlertTriangle, Info, Sparkles } from 'lucide-react'
 import type { GoIDEDiagnostic, GoIDEDiagnosticsReport } from '@/lib/goide-lsp-api'
 import { GoStudioFileIcon } from './GoStudioFileIcon'
 import { mergedReports, useGoIDELspStore } from '@/stores/goideLsp'
 import { navigateToLocation } from './goStudioLanguageFeatures'
+import { fixGoStudioProblemWithAI } from './goStudioAIFixRunner'
+import { isAICompanionAvailable } from '@/lib/aiAvailability'
+import { useSettingsStore } from '@/stores/settings'
 
 export interface GoStudioBuildProblem {
   path: string
@@ -35,6 +38,12 @@ export function GoStudioProblems({ sessionId, buildProblems, onOpenBuildProblem 
   const reports = useGoIDELspStore((state) => state.diagnostics[sessionId] ?? EMPTY_REPORTS)
   const lintReports = useGoIDELspStore((state) => state.lint[sessionId]?.reports ?? EMPTY_REPORTS)
   const sorted = useMemo(() => sortReports(Object.values(mergedReports(reports, lintReports))), [lintReports, reports])
+  const aiAvailable = useSettingsStore((state) => isAICompanionAvailable(state.settings.ai))
+  const fixWithAI = (report: GoIDEDiagnosticsReport, diagnostic: GoIDEDiagnostic) => {
+    const problem = (item: GoIDEDiagnostic) => ({ message: item.message, line: item.range.startLine, source: item.source || undefined })
+    const others = report.diagnostics.filter((item) => item !== diagnostic && item.severity <= 2).map(problem)
+    void fixGoStudioProblemWithAI(report.relativePath ?? '', problem(diagnostic), others)
+  }
 
   const open = (report: GoIDEDiagnosticsReport, diagnostic: GoIDEDiagnostic) => navigateToLocation({
     uri: report.uri, path: report.path, relativePath: report.relativePath, external: !report.relativePath, range: diagnostic.range,
@@ -49,11 +58,18 @@ export function GoStudioProblems({ sessionId, buildProblems, onOpenBuildProblem 
         <div key={report.uri} role="treeitem" aria-expanded="true">
           <div className="flex h-6 items-center gap-1.5 px-2 font-medium text-text-2"><GoStudioFileIcon name={(report.relativePath || report.path).split(/[\\/]/).pop() ?? (report.relativePath || report.path)} relativePath={report.relativePath} size={12} />{report.relativePath || report.path}<span className="text-[9px] text-text-4">{report.diagnostics.length}</span></div>
           {[...report.diagnostics].sort((left, right) => left.severity - right.severity || left.range.startLine - right.range.startLine).map((diagnostic, index) => (
-            <button key={index} type="button" onClick={() => open(report, diagnostic)} className="flex min-h-6 w-full items-start gap-1.5 py-0.5 pl-6 pr-2 text-left text-text-2 hover:bg-surface-3 focus:bg-surface-3 focus:outline-none">
-              <SeverityIcon severity={diagnostic.severity} />
-              <span className="min-w-0 flex-1 whitespace-pre-wrap break-words">{diagnostic.message}</span>
-              <span className="shrink-0 font-mono text-[9px] text-text-4">{diagnostic.source ? `${diagnostic.source} · ` : ''}{diagnostic.range.startLine}:{diagnostic.range.startColumn}</span>
-            </button>
+            <div key={index} className="group flex min-h-6 w-full items-start hover:bg-surface-3 focus-within:bg-surface-3">
+              <button type="button" onClick={() => open(report, diagnostic)} className="flex min-w-0 flex-1 items-start gap-1.5 py-0.5 pl-6 pr-2 text-left text-text-2 focus:outline-none">
+                <SeverityIcon severity={diagnostic.severity} />
+                <span className="min-w-0 flex-1 whitespace-pre-wrap break-words">{diagnostic.message}</span>
+                <span className="shrink-0 font-mono text-[9px] text-text-4">{diagnostic.source ? `${diagnostic.source} · ` : ''}{diagnostic.range.startLine}:{diagnostic.range.startColumn}</span>
+              </button>
+              {aiAvailable && report.relativePath && diagnostic.severity <= 2 && (
+                <button type="button" onClick={() => fixWithAI(report, diagnostic)} title="Fix with AI: proposes a change you review before applying" aria-label={`Fix with AI: ${diagnostic.message}`} className="mr-1 mt-0.5 flex h-5 shrink-0 items-center gap-1 rounded px-1.5 text-[10px] font-medium text-accent opacity-0 hover:bg-accent/10 focus:opacity-100 focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent group-hover:opacity-100">
+                  <Sparkles size={11} aria-hidden="true" /> Fix with AI
+                </button>
+              )}
+            </div>
           ))}
         </div>
       ))}

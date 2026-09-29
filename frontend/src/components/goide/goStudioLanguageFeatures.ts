@@ -21,11 +21,13 @@ import { currentGoStudioDocumentVersion, flushGoStudioDocument } from './goStudi
 import { applyGoStudioWorkspaceChange } from './goStudioWorkspaceEdits'
 import { lintActionsFor } from './goStudioLintActions'
 import { editorModelUri, fileUri } from './goStudioModelUri'
+import { fixGoStudioProblemWithAI, goStudioAIFixAvailable } from './goStudioAIFixRunner'
 
 const LANGUAGE = 'go'
 const MARKER_OWNER = 'gopls'
 const LINT_MARKER_OWNER = 'lint'
 export const APPLY_CODE_ACTION_COMMAND = 'goStudio.applyCodeAction'
+const AI_FIX_COMMAND = 'goStudio.fixWithAI'
 
 const COMPLETION_KINDS = [
   'Text', 'Text', 'Method', 'Function', 'Constructor', 'Field', 'Variable', 'Class', 'Interface', 'Module', 'Property',
@@ -255,6 +257,31 @@ function registerProviders(): void {
       }
     },
   }, { providedCodeActionKinds: ['quickfix'] })
+
+  // "Fix with AI" su errori e warning: usa il provider AI configurato in adOmnia e passa sempre
+  // dall'anteprima delle modifiche. Compare solo se l'AI è attiva e verificata nelle Settings.
+  monaco.languages.registerCodeActionProvider(LANGUAGE, {
+    provideCodeActions(model, _range, context) {
+      const document = documentForModel(model)
+      const problems = context.markers.filter((marker) => marker.severity >= monaco.MarkerSeverity.Warning)
+      if (!document || document.document.external || problems.length === 0 || !goStudioAIFixAvailable()) return { actions: [], dispose: () => undefined }
+      const all = monaco.editor.getModelMarkers({ resource: model.uri }).filter((marker) => marker.severity >= monaco.MarkerSeverity.Warning)
+      return {
+        actions: problems.map((marker) => ({
+          title: `Fix with AI: ${marker.message.length > 60 ? `${marker.message.slice(0, 57)}…` : marker.message}`,
+          kind: 'quickfix',
+          diagnostics: [marker],
+          command: { id: AI_FIX_COMMAND, title: 'Fix with AI', arguments: [document.document.relativePath, marker, all.filter((other) => other !== marker)] },
+        })),
+        dispose: () => undefined,
+      }
+    },
+  }, { providedCodeActionKinds: ['quickfix'] })
+
+  monaco.editor.registerCommand(AI_FIX_COMMAND, (_accessor, relativePath: string, marker: monaco.editor.IMarkerData, others: monaco.editor.IMarkerData[] = []) => {
+    const problem = (item: monaco.editor.IMarkerData) => ({ message: item.message, line: item.startLineNumber, source: typeof item.source === 'string' ? item.source : undefined })
+    void fixGoStudioProblemWithAI(relativePath, problem(marker), others.map(problem))
+  })
 
   monaco.editor.registerCommand(APPLY_CODE_ACTION_COMMAND, (_accessor, sessionId: string, actionId: string) => {
     void requestResolveCodeAction(sessionId, actionId)
