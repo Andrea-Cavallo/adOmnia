@@ -68,6 +68,7 @@ func (s *Service) languageServerOptions(sessionID string, settings LanguageServe
 	if err != nil {
 		return Session{}, LanguageServerOptions{}, err
 	}
+	environment = withDefaultEnvironment(environment, goplsEnvironmentDefaults)
 	return session, LanguageServerOptions{Binary: gopls.Binary, Version: gopls.Version, Environment: environment, Settings: settings}, nil
 }
 
@@ -194,3 +195,8 @@ func (s *Service) RecursiveCalls(ctx context.Context, sessionID, documentID stri
 func (s *Service) QuickDefinition(ctx context.Context, sessionID, documentID string, line, column int) (QuickDefinitionResult, error) {
 	return s.lsp.QuickDefinition(ctx, SessionID(sessionID), DocumentID(documentID), line, column)
 }
+
+// goplsEnvironmentDefaults valgono solo se l'utente non ha già impostato le variabili.
+// GOTELEMETRY=off: niente processo telemetria accanto a gopls (local-first).
+// GOMEMLIMIT: il GC di gopls diventa più aggressivo vicino a 1 GiB e taglia i picchi, al costo di un po' di CPU.
+var goplsEnvironmentDefaults = map[string]string{"GOTELEMETRY": "off", "GOMEMLIMIT": "1GiB"}
