@@ -47,6 +47,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/bedrockruntime v1.63.1
 	github.com/aymanbagabas/go-pty v0.2.3
 	github.com/fsnotify/fsnotify v1.9.0
+	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78
 )
 
 require (
@@ -107,7 +108,6 @@ require (
 	github.com/u-root/u-root v0.16.0 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect
-	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
 	go.uber.org/atomic v1.12.0 // indirect
 	golang.org/x/crypto v0.57.0 // indirect
 	golang.org/x/net v0.59.0 // indirect
