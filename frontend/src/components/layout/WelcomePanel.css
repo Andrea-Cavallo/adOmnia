@@ -1,90 +1,32 @@
-[data-hub-mascot-stage] {
-  position: relative;
-  width: min(100%, 272px);
-  isolation: isolate;
-  pointer-events: none;
-}
-
 [data-hub-mascot-trigger] {
-  --mascot-scale: 1;
-  width: min(100%, 272px);
+  display: block;
   padding: 0;
   border: 0;
-  border-radius: 28%;
-  color: inherit;
+  border-radius: 18px;
   background: transparent;
   cursor: pointer;
   outline: none;
+  transition: transform 260ms cubic-bezier(.22, .61, .36, 1);
 }
-
+[data-hub-mascot-trigger]:hover { transform: translateY(-2px); }
+[data-hub-mascot-trigger]:active { transform: scale(.985); }
 [data-hub-mascot-trigger]:focus-visible {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 68%, transparent);
 }
-
-[data-hub-mascot-trigger]:hover { --mascot-scale: 1.02; }
-
-[data-hub-mascot-trigger]:active { --mascot-scale: .985; }
-
-[data-hub-mascot-rig] {
-  position: relative;
-  aspect-ratio: 1;
-  transform: translate3d(var(--mascot-x), var(--mascot-y), 0) rotate(var(--mascot-tilt)) scale(var(--mascot-scale));
-  transform-origin: 50% 85%;
-  transition: transform 460ms cubic-bezier(.22, .61, .36, 1);
-  will-change: transform;
-}
-
-[data-hub-mascot-sprite] {
-  position: absolute;
-  inset: 0;
+/* The scene is cut from the key art, so its edges fade into the Hub glow. */
+[data-hub-mascot-scene] {
   display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  opacity: 0;
-  transform: translateY(2px) scale(.985);
-  transition:
-    opacity 240ms ease,
-    transform 460ms cubic-bezier(.22, .61, .36, 1),
-    filter 320ms ease;
-  filter: drop-shadow(0 18px 22px rgba(0, 0, 0, .32));
-  will-change: opacity, transform;
+  width: clamp(280px, 25vw, 410px);
+  height: auto;
+  -webkit-mask-image:
+    linear-gradient(to right, transparent, #000 16%, #000 90%, transparent),
+    linear-gradient(to bottom, transparent, #000 14%, #000 84%, transparent);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent, #000 16%, #000 90%, transparent),
+    linear-gradient(to bottom, transparent, #000 14%, #000 84%, transparent);
+  mask-composite: intersect;
 }
-
-[data-hub-mascot-sprite][data-visible='true'] {
-  opacity: 1;
-  transform: translateY(0) scale(1);
-  filter:
-    drop-shadow(0 18px 22px rgba(0, 0, 0, .32))
-    drop-shadow(0 0 8px color-mix(in srgb, var(--color-accent) 16%, transparent));
-}
-
-[data-hub-mascot-halo] {
-  position: absolute;
-  inset: auto 12% 0;
-  height: 45px;
-  background: radial-gradient(ellipse, var(--color-accent-glow), transparent 70%);
-}
-
-[data-hub-mascot-cue] {
-  position: absolute;
-  display: grid;
-  place-items: center;
-  width: 42px;
-  height: 42px;
-  border: 1px solid color-mix(in srgb, var(--color-accent) 45%, transparent);
-  border-radius: 12px;
-  color: var(--color-accent-light);
-  background: var(--color-surface-1);
-  opacity: 0;
-  transform: translateY(6px) scale(.94);
-  transition: opacity 200ms ease, transform 300ms cubic-bezier(.22, .61, .36, 1);
-}
-[data-hub-mascot-cue='01'] { left: 8%; top: 8%; }
-[data-hub-mascot-cue='02'] { right: 0; top: 8%; }
-[data-hub-mascot-cue='03'] { left: 8%; bottom: -12%; }
-[data-hub-mascot-cue='04'] { right: 0; bottom: -12%; }
-[data-hub-mascot-cue][data-visible='true'] { opacity: 1; transform: none; }
 
 /* Four separate, one-shot reactions; nothing loops while a user works. */
 [data-hub-card] { isolation: isolate; }
@@ -118,10 +60,26 @@
 [data-hub-card-kind='04'][data-hub-card-active='true'] [data-hub-card-icon] { transform: rotate(35deg) scale(1.06); }
 
 @media (prefers-reduced-motion: reduce) {
-  [data-hub-mascot-rig], [data-hub-mascot-sprite],
-  [data-hub-mascot-cue], [data-hub-card-icon], [data-hub-card]::after {
+  [data-hub-mascot-trigger], [data-hub-card-icon], [data-hub-card]::after {
     transition: none;
     will-change: auto;
   }
-  [data-hub-mascot-rig], [data-hub-mascot-sprite], [data-hub-card-icon] { transform: none !important; }
+  [data-hub-mascot-trigger], [data-hub-card-icon] { transform: none !important; }
+}
+
+/* Hero atmosphere: a violet bloom behind the aO → gO pair and the Go Studio card. */
+[data-hub-glow] {
+  background:
+    radial-gradient(ellipse 45% 35% at 78% 8%, color-mix(in srgb, var(--color-accent) 18%, transparent), transparent 70%),
+    radial-gradient(ellipse 60% 30% at 40% 45%, color-mix(in srgb, var(--color-accent) 9%, transparent), transparent 75%);
+}
+
+[data-hub-go-hero] {
+  border: 2px solid transparent;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 12%, var(--color-surface-0)), var(--color-surface-0) 55%) padding-box,
+    linear-gradient(100deg, var(--color-accent), var(--color-accent-light) 55%, var(--color-info)) border-box;
+  box-shadow:
+    0 0 28px -6px color-mix(in srgb, var(--color-accent) 70%, transparent),
+    inset 0 0 40px -20px color-mix(in srgb, var(--color-accent) 60%, transparent);
 }

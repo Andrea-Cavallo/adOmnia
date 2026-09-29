@@ -19,10 +19,10 @@ describe('Terminal Green skin and hub', () => {
   })
 
   it('keeps the hub logo but removes its decorative card and Bug Hunt replay action', () => {
-    expect(welcomeSource).toContain('<FidgetLogo src={appIcon} size={112} />')
-    expect(welcomeSource).toContain('<HubMascot target={mascotTarget} />')
+    expect(welcomeSource).toContain("import goMark from './assets/go-mark.png'")
+    expect(welcomeSource).toContain('<HubMascot />')
     expect(welcomeSource).toContain("data-hub-card-active={active ? 'true' : undefined}")
-    expect(welcomeSource).toContain('onFocusCapture={() => onFocus(card.index)}')
+    expect(welcomeSource).toContain('onFocusCapture={() => onFocus(card.pose)}')
     expect(welcomeSource).not.toContain('data-hub-polaroid')
     expect(welcomeSource).not.toContain("tr('your local toolbox' as UiMessage)")
     expect(welcomeSource).not.toContain("tr('Replay Bug Hunt')")
@@ -30,13 +30,10 @@ describe('Terminal Green skin and hub', () => {
     expect(welcomeSource).not.toContain('You found the secret.')
   })
 
-  it('renders the Hub mascot from a dedicated full-body asset', () => {
-    expect(mascotSource).toContain("import hubMascot from './assets/a0-hub-mascot.png'")
-    expect(mascotSource).toContain("import hubMascot04 from './assets/a0-hub-mascot-04.png'")
-    expect(mascotSource).toContain('data-hub-mascot-sprite')
-    expect(mascotSource).toContain("data-visible={(lookAt ?? 'rest') === pose.id ? 'true' : undefined}")
+  it('renders the Hub mascot from the a0 laptop scene', () => {
+    expect(mascotSource).toContain("import hubScene from './assets/a0-hub-laptop.png'")
+    expect(mascotSource).toContain('data-hub-mascot-scene')
     expect(mascotSource).not.toContain('a0-companion-sprites.png')
-    expect(mascotSource).not.toContain('data-hub-mascot-arm')
   })
 
   it('opens the verified AI companion from the Hub mascot', () => {
