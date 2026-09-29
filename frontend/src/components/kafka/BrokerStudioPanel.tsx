@@ -10,6 +10,8 @@ import { cn } from '@/lib/utils'
 import { KafkaPanel } from './KafkaPanel'
 import { ConnectionProfiles } from './ConnectionProfiles'
 import { listAllBrokerConnectionProfiles, resolveBrokerPayload, type BrokerConnectionProfile } from '@/lib/brokerConnections'
+import { useEntityHandoff } from '@/lib/entities/dispatch'
+import { showEntityNotice } from '@/lib/entities/notice'
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
@@ -816,6 +818,20 @@ export function BrokerStudioPanel() {
     setPanelKey((key) => key + 1)
     setShowProtocolPicker(false)
   }
+
+  useEntityHandoff('broker', (ref) => {
+    const kind = ref.kind === 'topic' ? ref.attrs.broker : ref.attrs.type
+    const target: Protocol = kind === 'amqp' || kind === 'rabbitmq' ? 'rabbitmq' : kind === 'nats' ? 'nats' : kind === 'redis' ? 'redis' : 'kafka'
+    if (protocol !== target) {
+      selectConnection(target)
+      return false // retried next frame, once the protocol panel is mounted
+    }
+    if (target === 'kafka') return false // KafkaPanel handles it
+    showEntityNotice(ref.kind === 'topic'
+      ? `${target.toUpperCase()} subject/queue: ${ref.label}`
+      : `${target.toUpperCase()} at ${ref.attrs.host}:${ref.attrs.port} — enter it in the connection form.`)
+    return true
+  })
 
   const connect = () => {
     setConnectionState('connecting')

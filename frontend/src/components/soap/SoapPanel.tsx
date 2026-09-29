@@ -25,6 +25,7 @@ import {
 import { useCollectionsStore } from '@/stores/collections'
 import { blankRequest, uid } from '@/lib/types'
 import { useAppStore } from '@/stores/app'
+import { useEntityHandoff } from '@/lib/entities/dispatch'
 
 export function SoapPanel() {
   const pendingFileImport = useAppStore((state) => state.pendingFileImport)
@@ -73,6 +74,11 @@ export function SoapPanel() {
       setWsdlError(e instanceof Error ? e.message : 'Parse error')
     }
   }, [])
+
+  useEntityHandoff('soap', (_ref, _intent, payload) => {
+    acceptWsdlText(String(payload.text ?? ''))
+    return true
+  })
 
   useEffect(() => {
     const routed = useAppStore.getState().consumeFileImport('wsdl')

@@ -22,6 +22,7 @@ import { openApiToCollection } from '@/lib/openapiImport'
 import { useAppStore } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
 import { OpenSwaggerEditorWindow } from '@/wailsjs/go/main/App'
+import { useEntityHandoff } from '@/lib/entities/dispatch'
 
 const DRAFT_KEY = 'adomnia.apidocs.draft'
 
@@ -96,6 +97,11 @@ export function ApiDocsPanel({ standalone = false }: { standalone?: boolean }) {
     setError(null)
     setMenu(null)
   }
+
+  useEntityHandoff('apidocs', (ref, _intent, payload) => {
+    applyContent(String(payload.text ?? ''), (ref.attrs.path ?? '').endsWith('.json') ? 'json' : 'yaml')
+    return true
+  })
 
   const notify = (kind: 'ok' | 'err', text: string) => {
     setStatus({ kind, text })

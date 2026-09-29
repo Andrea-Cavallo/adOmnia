@@ -19,6 +19,7 @@ import {
   createObjectQuery, defaultConnectionName, extractCount, extractNames, introspectionQuery,
   isDangerous, isDangerousMongo, nextQueryName, normalizeConnection, substituteVars, validateConnection,
   type DbConnection, type DbDriver, type DbResult, type HistoryItem, type QueryTab, type SchemaItem,
+  upsertConnectionFromRef,
 } from './dbShared'
 import {
   clearDatabaseConnectionSecrets,
@@ -27,6 +28,8 @@ import {
   resolveDatabaseConnection,
   serializeDatabaseConnections,
 } from './dbSecrets'
+import { useEntityHandoff } from '@/lib/entities/dispatch'
+import { showEntityNotice } from '@/lib/entities/notice'
 
 interface QueryWorkspaceState {
   tabs: QueryTab[]
@@ -207,6 +210,27 @@ export function DatabasePanel() {
     void persistConnections([...connections, conn])
     setActiveId(conn.id)
   }
+
+  useEntityHandoff('database', (ref, intent) => {
+    if (!hydrated) return false // never persist before saved connections are loaded
+    if (intent === 'connect') {
+      const next = upsertConnectionFromRef(connections, ref)
+      if (next.created) void persistConnections(next.connections)
+      setActiveId(next.id)
+      showEntityNotice(next.created
+        ? `Connection "${ref.label}" added. Enter the password or load it from the Vault, then connect.`
+        : `Switched to the existing connection for ${ref.label}.`)
+      return true
+    }
+    if (intent === 'query') {
+      const tab = blankTab(ref.label, `SELECT * FROM ${ref.label} LIMIT 100`)
+      setTabs((current) => [...current, tab])
+      setActiveTabId(tab.id)
+      if (!active || active.driver === 'sqlite') showEntityNotice(`Pick the connection that owns table ${ref.label}, then run the query.`)
+      return true
+    }
+    return true
+  })
 
   const deleteConnection = (id: string) => {
     if (connections.length <= 1) return

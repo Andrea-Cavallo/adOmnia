@@ -34,6 +34,7 @@ import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { cn } from '@/lib/utils'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 import { useAppStore } from '@/stores/app'
+import { useEntityHandoff } from '@/lib/entities/dispatch'
 
 const CONNECTIONS_KEY = 'adomnia.grpc.connections'
 const HISTORY_KEY = 'adomnia.grpc.history'
@@ -1625,6 +1626,11 @@ export function GrpcPanel() {
       if (protoInputRef.current) protoInputRef.current.value = ''
     }
   }
+
+  useEntityHandoff('grpc', (_ref, _intent, payload) => {
+    void handleProtoFile(new File([String(payload.text ?? '')], String(payload.name ?? 'contract.proto')))
+    return true
+  })
 
   const handleProtoFiles = async (fileList: FileList | null | undefined) => {
     const files = Array.from(fileList ?? [])

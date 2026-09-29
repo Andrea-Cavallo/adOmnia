@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
+import type { EntityRef } from '@/lib/entities/types'
 
 // ── types ──────────────────────────────────────────────────────────────────
 export type DbDriver = 'sqlite' | 'postgres' | 'mysql' | 'db2' | 'mongodb'
@@ -332,4 +333,16 @@ export function highlightedJson(query: string): ReactNode {
     if (/^-?\d/.test(token)) return <span key={index} style={{ color: '#FFCB6B' }}>{token}</span>
     return <span key={index} style={{ color: '#C8D3E6' }}>{token}</span>
   })
+}
+
+/** Reuse a connection to the same server/database, or append a new one (no password). */
+export function upsertConnectionFromRef(connections: DbConnection[], ref: EntityRef): { connections: DbConnection[]; id: string; created: boolean } {
+  const driver = ref.attrs.type as DbDriver
+  const host = ref.attrs.host === 'localhost' ? '127.0.0.1' : (ref.attrs.host ?? '127.0.0.1')
+  const port = Number(ref.attrs.port) || 0
+  const database = ref.attrs.database ?? ''
+  const match = connections.find((c) => c.driver === driver && c.port === port && c.database === database && (c.host === host || c.host === ref.attrs.host))
+  if (match) return { connections, id: match.id, created: false }
+  const conn: DbConnection = { ...blankConnection(), name: ref.label, driver, host, port, database, user: ref.attrs.user ?? '', password: '' }
+  return { connections: [...connections, conn], id: conn.id, created: true }
 }
