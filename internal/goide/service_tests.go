@@ -1,6 +1,7 @@
 package goide
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -39,7 +40,7 @@ func (s *Service) StartTests(request TestRunRequest) (TestRunSnapshot, error) {
 	}
 	binary, err := s.toolchain.GoBinary(session.ID)
 	if err != nil {
-		return TestRunSnapshot{}, fmt.Errorf("Go non disponibile: rileva o configura la toolchain prima di eseguire i test")
+		return TestRunSnapshot{}, errors.New("go non disponibile: rileva o configura la toolchain prima di eseguire i test")
 	}
 	environment, err := s.toolchain.Environment(session.ID, request.Environment)
 	if err != nil {

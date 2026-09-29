@@ -2,7 +2,10 @@ package goide
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -49,22 +52,46 @@ func NewRecoveryManager(store Store) *RecoveryManager {
 	return &RecoveryManager{store: store, buffers: make(map[string]recoveredEntry)}
 }
 
+// caseInsensitivePaths vale per i filesystem predefiniti di Windows e macOS.
+// Su Linux Foo.go e foo.go sono file distinti e non devono condividere il
+// buffer di recupero, altrimenti l'uno sovrascriverebbe l'altro.
+var caseInsensitivePaths = runtime.GOOS == "windows" || runtime.GOOS == "darwin"
+
 func recoveryKey(sessionID SessionID, relativePath string) string {
-	return string(sessionID) + "\x00" + strings.ToLower(relativePath)
+	path := filepath.ToSlash(filepath.Clean(relativePath))
+	if caseInsensitivePaths {
+		path = strings.ToLower(path)
+	}
+	return string(sessionID) + "\x00" + path
 }
 
-// Load legge lo store di recupero una sola volta per processo.
+// Configure collega lo store persistente e ne carica il contenuto.
+func (m *RecoveryManager) Configure(store Store) error {
+	if store == nil {
+		return errors.New("store di recupero non valido")
+	}
+	m.mu.Lock()
+	m.store = store
+	m.loaded = false
+	m.mu.Unlock()
+	return m.Load()
+}
+
+// Load legge lo store di recupero una sola volta; un errore di lettura resta
+// ritentabile alla chiamata successiva.
 func (m *RecoveryManager) Load() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.loaded || m.store == nil {
-		m.loaded = true
 		return nil
 	}
-	m.loaded = true
 	data, err := m.store.Load()
-	if err != nil || len(data) == 0 {
-		return err
+	if err != nil {
+		return fmt.Errorf("lettura buffer di recupero fallita: %w", err)
+	}
+	m.loaded = true
+	if len(data) == 0 {
+		return nil
 	}
 	var state recoveryState
 	if err := json.Unmarshal(data, &state); err != nil {

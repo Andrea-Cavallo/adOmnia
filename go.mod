@@ -46,6 +46,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/bedrock v1.73.1
 	github.com/aws/aws-sdk-go-v2/service/bedrockruntime v1.63.1
 	github.com/aymanbagabas/go-pty v0.2.3
+	github.com/fsnotify/fsnotify v1.9.0
 )
 
 require (
@@ -73,7 +74,6 @@ require (
 	github.com/digitorus/timestamp v0.0.0-20250524132541-c45532741eea // indirect
 	github.com/dlclark/regexp2/v2 v2.8.0 // indirect
 	github.com/eapache/go-resiliency v1.7.0 // indirect
-	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.4+incompatible // indirect
 	github.com/godbus/dbus/v5 v5.2.2 // indirect

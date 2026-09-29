@@ -278,3 +278,29 @@ func TestBreakpointsPersistAcrossRestartAndViewSaves(t *testing.T) {
 		t.Fatalf("i breakpoint rimossi devono sparire: %+v", saved)
 	}
 }
+
+func TestFindSessionsForPathDetectsNestedProjectConflict(t *testing.T) {
+	root := t.TempDir()
+	nested := filepath.Join(root, "services", "api")
+	writeFixtureFile(t, root, "go.mod", "module example.com/root\n\ngo 1.26\n")
+	writeFixtureFile(t, root, "services/api/go.mod", "module example.com/api\n\ngo 1.26\n")
+	writeFixtureFile(t, root, "services/api/main.go", "package main\n")
+
+	service := NewService(&memoryStore{}, nil)
+	rootSession, err := service.OpenProject(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nestedSession, err := service.OpenProject(nested)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	matches, err := service.FindSessionsForPath(string(rootSession.ID), "services/api/main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(matches) != 1 || matches[0].ID != nestedSession.ID {
+		t.Fatalf("conflitto tra progetto padre e modulo annidato non rilevato: %+v", matches)
+	}
+}

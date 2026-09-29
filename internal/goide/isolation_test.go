@@ -18,7 +18,7 @@ func TestTwoProjectsStayIsolatedWhileRunningTogether(t *testing.T) {
 	}
 	recorder := &eventRecorder{}
 	ide := NewService(&memoryStore{}, recorder.record)
-	t.Cleanup(ide.Shutdown)
+	defer ide.Shutdown()
 	sessions := map[string]Session{}
 	for _, name := range []string{"alpha", "beta"} {
 		root := filepath.Join(t.TempDir(), name)
@@ -62,7 +62,7 @@ func TestTwoProjectsStayIsolatedWhileRunningTogether(t *testing.T) {
 		terminals[name] = terminal
 	}
 	for name, terminal := range terminals {
-		if err := ide.WriteTerminal(string(terminal.ID), fmt.Sprintf("echo shell-$((40+2))-%s\n", name)); err != nil {
+		if err := ide.WriteTerminal(string(terminal.ID), shellEcho("shell-42-"+name)); err != nil {
 			t.Fatal(err)
 		}
 	}

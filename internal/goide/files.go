@@ -19,7 +19,9 @@ type NewFile struct {
 // resolveNewFilePath valida un percorso relativo per un file che non esiste ancora, confinato al progetto.
 func resolveNewFilePath(project Project, relativePath string) (string, error) {
 	clean := filepath.Clean(filepath.FromSlash(strings.TrimSpace(relativePath)))
-	if clean == "." || clean == "" || filepath.IsAbs(clean) || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
+	// Su Windows "\etc\passwd" ha una radice ma non è IsAbs: va rifiutato come gli assoluti.
+	rooted := filepath.IsAbs(clean) || filepath.VolumeName(clean) != "" || strings.HasPrefix(clean, string(filepath.Separator))
+	if clean == "." || clean == "" || rooted || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
 		return "", fmt.Errorf("percorso del nuovo file non valido: %q", relativePath)
 	}
 	if strings.ContainsRune(clean, 0) {

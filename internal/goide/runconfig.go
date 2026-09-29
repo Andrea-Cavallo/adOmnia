@@ -125,6 +125,11 @@ func (m *RunConfigManager) Reorder(sessionID SessionID, ids []string) ([]RunConf
 		existing[index] = config
 	}
 	sort.SliceStable(existing, func(i, j int) bool { return existing[i].Order < existing[j].Order })
+	// ids può contenere voci estranee o duplicate: l'ordine viene ricompattato
+	// a 0..n-1 così che il prossimo Save non produca posizioni in conflitto.
+	for index := range existing {
+		existing[index].Order = index
+	}
 	m.configs[sessionID] = existing
 	return cloneConfigurations(existing), nil
 }

@@ -37,12 +37,19 @@ func (p *Persistence) LoadState() (persistedState, error) {
 		return persistedState{Version: PersistenceSchemaVersion}, nil
 	}
 	data, err := p.store.Load()
-	if err != nil || len(data) == 0 {
-		return persistedState{Version: PersistenceSchemaVersion}, err
+	if err != nil {
+		return persistedState{}, fmt.Errorf("lettura stato Go Studio fallita: %w", err)
+	}
+	empty := persistedState{Version: PersistenceSchemaVersion, SessionUI: make(map[SessionID]SessionView)}
+	if len(data) == 0 {
+		return empty, nil
 	}
 	var state persistedState
 	if err := json.Unmarshal(data, &state); err != nil {
-		return persistedState{}, fmt.Errorf("stato Go Studio non valido: %w", err)
+		// Lo stato contiene solo metadati (sessioni, recenti, layout): uno
+		// store illeggibile non deve rendere Go Studio inutilizzabile per
+		// sempre. Si riparte vuoti e il primo salvataggio lo ricostruisce.
+		return empty, nil
 	}
 	if state.Version > PersistenceSchemaVersion {
 		return persistedState{}, fmt.Errorf("schema Go Studio %d non supportato", state.Version)

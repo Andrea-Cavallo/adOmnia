@@ -129,7 +129,7 @@ func TestLanguageServerEndToEndWithRealGopls(t *testing.T) {
 	root := copyFixture(t, "multipkg")
 	recorder := &eventRecorder{}
 	service := NewService(&memoryStore{}, recorder.record)
-	t.Cleanup(service.Shutdown)
+	defer service.Shutdown()
 	session := startLanguageServerForTest(t, service, recorder, root, gopls)
 	sessionID := string(session.ID)
 	ctx := context.Background()
@@ -252,7 +252,7 @@ func TestLanguageServerSessionsStayIsolated(t *testing.T) {
 	gopls := findGoplsForTest(t)
 	recorder := &eventRecorder{}
 	service := NewService(&memoryStore{}, recorder.record)
-	t.Cleanup(service.Shutdown)
+	defer service.Shutdown()
 	first := startLanguageServerForTest(t, service, recorder, copyFixture(t, "multipkg"), gopls)
 	second := startLanguageServerForTest(t, service, recorder, copyFixture(t, "multipkg"), gopls)
 

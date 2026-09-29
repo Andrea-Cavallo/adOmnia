@@ -1,11 +1,12 @@
 package goide
 
 import (
-	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"os/exec"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -16,8 +17,15 @@ const (
 	MaxConsoleBufferBytes  = 4 * 1024 * 1024
 	MaxPendingOutputEvents = 256
 	MaxConcurrentRuns      = 8
-	maxOutputChunkBytes    = 32 * 1024
+	maxStdinBytes          = 64 * 1024
 	maxExecutionHistory    = 100
+	// processWaitDelay limita quanto Wait attende la chiusura di stdout/stderr
+	// dopo l'uscita del processo: un nipote rimasto vivo che eredita le pipe non
+	// deve lasciare l'esecuzione appesa in "running" per sempre.
+	processWaitDelay = 2 * time.Second
+	// shutdownGracePeriod è il tempo totale concesso a tutte le esecuzioni per
+	// uscire alla chiusura dell'applicazione.
+	shutdownGracePeriod = 3 * time.Second
 )
 
 type CommandSpec struct {
@@ -56,6 +64,9 @@ type managedProcess struct {
 }
 
 type ProcessManager struct {
+	// startMu serializza gli avvii: controllo del limite, spawn e registrazione
+	// avvengono come un'unica operazione, così il limite non è mai superato.
+	startMu   sync.Mutex
 	mu        sync.RWMutex
 	processes map[RunID]*managedProcess
 	history   map[RunID]Execution
@@ -87,44 +98,48 @@ func (m *ProcessManager) SetEventSink(sink func(string, Execution, any)) {
 // Start avvia un eseguibile con argomenti strutturati e ne assume l'intero lifecycle.
 func (m *ProcessManager) Start(spec CommandSpec) (Execution, error) {
 	if strings.TrimSpace(spec.Executable) == "" {
-		return Execution{}, fmt.Errorf("eseguibile mancante")
+		return Execution{}, errors.New("eseguibile mancante")
 	}
+	m.startMu.Lock()
+	defer m.startMu.Unlock()
 	m.mu.RLock()
 	activeCount := len(m.processes)
 	m.mu.RUnlock()
 	if activeCount >= MaxConcurrentRuns {
 		return Execution{}, fmt.Errorf("troppe esecuzioni attive: limite %d", MaxConcurrentRuns)
 	}
+
+	execution := Execution{
+		ID: RunID(newID("run")), SessionID: spec.SessionID, Kind: spec.Kind, Status: "running",
+		Command: spec.DisplayCommand, WorkingDirectory: spec.WorkingDirectory, StartedAt: time.Now().UTC(),
+	}
+	managed := &managedProcess{done: make(chan struct{}), tap: spec.OutputTap, quiet: spec.QuietStdout, onExit: spec.OnExit}
 	command := exec.Command(spec.Executable, spec.Arguments...)
 	command.Dir = spec.WorkingDirectory
 	command.Env = spec.Environment
+	command.WaitDelay = processWaitDelay
+	// Writer invece di StdoutPipe: così Wait attende che l'output sia stato
+	// letto per intero e nessuna riga finale va persa all'uscita del processo.
+	stdout := &outputWriter{manager: m, process: managed, execution: execution, stream: "stdout"}
+	stderr := &outputWriter{manager: m, process: managed, execution: execution, stream: "stderr"}
+	command.Stdout = stdout
+	command.Stderr = stderr
 	configureProcess(command, false)
-	stdout, err := command.StdoutPipe()
-	if err != nil {
-		return Execution{}, fmt.Errorf("impossibile collegare stdout: %w", err)
-	}
-	stderr, err := command.StderrPipe()
-	if err != nil {
-		return Execution{}, fmt.Errorf("impossibile collegare stderr: %w", err)
-	}
 	stdin, err := command.StdinPipe()
 	if err != nil {
 		return Execution{}, fmt.Errorf("impossibile collegare stdin: %w", err)
 	}
-	runID := RunID(newID("run"))
-	execution := Execution{
-		ID: runID, SessionID: spec.SessionID, Kind: spec.Kind, Status: "running",
-		Command: spec.DisplayCommand, WorkingDirectory: spec.WorkingDirectory, StartedAt: time.Now().UTC(),
-	}
 	if err := command.Start(); err != nil {
-		stdin.Close()
 		return Execution{}, fmt.Errorf("avvio processo fallito: %w", err)
 	}
 	execution.PID = command.Process.Pid
-	managed := &managedProcess{command: command, stdin: stdin, execution: execution, done: make(chan struct{}), tap: spec.OutputTap, quiet: spec.QuietStdout, onExit: spec.OnExit}
+	managed.command = command
+	managed.stdin = stdin
+	managed.execution = execution
+
 	m.mu.Lock()
-	m.processes[runID] = managed
-	m.history[runID] = execution
+	m.processes[execution.ID] = managed
+	m.history[execution.ID] = execution
 	m.mu.Unlock()
 	m.publish(processEvent{eventType: "run.started", execution: execution, payload: execution}, true)
 	go m.wait(managed, stdout, stderr)
@@ -133,14 +148,12 @@ func (m *ProcessManager) Start(spec CommandSpec) (Execution, error) {
 
 // WriteStdin invia testo alla singola esecuzione indicata senza passare da una shell.
 func (m *ProcessManager) WriteStdin(runID RunID, text string) error {
-	if len(text) > 64*1024 {
-		return fmt.Errorf("input troppo grande: limite 65536 byte")
+	if len(text) > maxStdinBytes {
+		return fmt.Errorf("input troppo grande: limite %d byte", maxStdinBytes)
 	}
-	m.mu.RLock()
-	process := m.processes[runID]
-	m.mu.RUnlock()
+	process := m.active(runID)
 	if process == nil {
-		return fmt.Errorf("esecuzione non attiva")
+		return errors.New("esecuzione non attiva")
 	}
 	if _, err := io.WriteString(process.stdin, text); err != nil {
 		return fmt.Errorf("invio input fallito: %w", err)
@@ -150,13 +163,8 @@ func (m *ProcessManager) WriteStdin(runID RunID, text string) error {
 
 // Stop interrompe l'intero albero del processo ed è sicuro se richiamato più volte.
 func (m *ProcessManager) Stop(runID RunID) error {
-	m.mu.RLock()
-	process := m.processes[runID]
-	m.mu.RUnlock()
-	if process == nil {
-		return nil
-	}
-	if !process.stopping.CompareAndSwap(false, true) {
+	process := m.active(runID)
+	if process == nil || !process.stopping.CompareAndSwap(false, true) {
 		return nil
 	}
 	_ = process.stdin.Close()
@@ -169,7 +177,25 @@ func (m *ProcessManager) Stop(runID RunID) error {
 	return nil
 }
 
-// List restituisce snapshot delle esecuzioni note, filtrate facoltativamente per sessione.
+// WaitStopped attende che l'esecuzione indicata sia terminata, entro timeout.
+// Restituisce true anche se l'esecuzione non è (più) attiva.
+func (m *ProcessManager) WaitStopped(runID RunID, timeout time.Duration) bool {
+	process := m.active(runID)
+	if process == nil {
+		return true
+	}
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+	select {
+	case <-process.done:
+		return true
+	case <-timer.C:
+		return false
+	}
+}
+
+// List restituisce snapshot delle esecuzioni note, dalla più vecchia, filtrate
+// facoltativamente per sessione.
 func (m *ProcessManager) List(sessionID SessionID) []Execution {
 	m.mu.RLock()
 	result := make([]Execution, 0, len(m.history))
@@ -179,6 +205,7 @@ func (m *ProcessManager) List(sessionID SessionID) []Execution {
 		}
 	}
 	m.mu.RUnlock()
+	slices.SortFunc(result, func(a, b Execution) int { return a.StartedAt.Compare(b.StartedAt) })
 	return result
 }
 
@@ -203,53 +230,57 @@ func (m *ProcessManager) HasActive() bool {
 
 // StopSession arresta tutti i processi posseduti da una sessione.
 func (m *ProcessManager) StopSession(sessionID SessionID) {
-	m.mu.RLock()
-	ids := make([]RunID, 0)
-	for id, process := range m.processes {
-		if process.execution.SessionID == sessionID {
-			ids = append(ids, id)
-		}
-	}
-	m.mu.RUnlock()
-	for _, id := range ids {
-		_ = m.Stop(id)
+	for _, process := range m.activeProcesses(sessionID) {
+		_ = m.Stop(process.execution.ID)
 	}
 }
 
-// Shutdown interrompe tutte le esecuzioni di cui il manager mantiene l'ownership.
+// Shutdown interrompe tutte le esecuzioni di cui il manager mantiene l'ownership
+// e attende la loro uscita entro un'unica scadenza complessiva.
 func (m *ProcessManager) Shutdown() {
-	m.mu.RLock()
-	ids := make([]RunID, 0, len(m.processes))
-	for id := range m.processes {
-		ids = append(ids, id)
+	processes := m.activeProcesses("")
+	for _, process := range processes {
+		_ = m.Stop(process.execution.ID)
 	}
-	m.mu.RUnlock()
-	for _, id := range ids {
-		_ = m.Stop(id)
-	}
-	for _, id := range ids {
-		m.mu.RLock()
-		process := m.processes[id]
-		m.mu.RUnlock()
-		if process != nil {
-			select {
-			case <-process.done:
-			case <-time.After(3 * time.Second):
-			}
+	deadline := time.NewTimer(shutdownGracePeriod)
+	defer deadline.Stop()
+waiting:
+	for _, process := range processes {
+		select {
+		case <-process.done:
+		case <-deadline.C:
+			break waiting
 		}
 	}
 	m.stopOnce.Do(func() { close(m.stop) })
 }
 
-func (m *ProcessManager) wait(process *managedProcess, stdout, stderr io.ReadCloser) {
-	var readers sync.WaitGroup
-	readers.Add(2)
-	go func() { defer readers.Done(); m.readOutput(process, "stdout", stdout) }()
-	go func() { defer readers.Done(); m.readOutput(process, "stderr", stderr) }()
+func (m *ProcessManager) active(runID RunID) *managedProcess {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.processes[runID]
+}
+
+// activeProcesses elenca i processi attivi; sessionID vuoto significa tutti.
+func (m *ProcessManager) activeProcesses(sessionID SessionID) []*managedProcess {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	processes := make([]*managedProcess, 0, len(m.processes))
+	for _, process := range m.processes {
+		if sessionID == "" || process.execution.SessionID == sessionID {
+			processes = append(processes, process)
+		}
+	}
+	return processes
+}
+
+func (m *ProcessManager) wait(process *managedProcess, stdout, stderr *outputWriter) {
 	err := process.command.Wait()
 	process.exited.Store(true)
-	readers.Wait()
-	_ = process.stdin.Close()
+	// Wait è rientrato: le goroutine di copia sono terminate e i writer non
+	// ricevono più byte, quindi si può svuotare il residuo UTF-8 senza lock.
+	stdout.flush()
+	stderr.flush()
 	finished := time.Now().UTC()
 	execution := process.execution
 	execution.FinishedAt = &finished
@@ -259,17 +290,19 @@ func (m *ProcessManager) wait(process *managedProcess, stdout, stderr io.ReadClo
 		exitCode = process.command.ProcessState.ExitCode()
 	}
 	execution.ExitCode = &exitCode
+	var exitError *exec.ExitError
 	switch {
 	case process.stopping.Load():
 		execution.Status = "stopped"
-	case err == nil:
+	// ErrWaitDelay: il processo è uscito con successo ma un discendente teneva
+	// ancora aperte le pipe, che sono state chiuse d'ufficio.
+	case err == nil, errors.Is(err, exec.ErrWaitDelay):
 		execution.Status = "exited"
+	case errors.As(err, &exitError):
+		execution.Status = "failed"
 	default:
 		execution.Status = "failed"
-		var exitError *exec.ExitError
-		if !errors.As(err, &exitError) {
-			execution.Error = err.Error()
-		}
+		execution.Error = err.Error()
 	}
 	m.mu.Lock()
 	delete(m.processes, execution.ID)
@@ -284,25 +317,55 @@ func (m *ProcessManager) wait(process *managedProcess, stdout, stderr io.ReadClo
 	m.publish(processEvent{eventType: "run.finished", execution: execution, payload: execution}, true)
 }
 
-func (m *ProcessManager) readOutput(process *managedProcess, stream string, reader io.Reader) {
-	buffered := bufio.NewReaderSize(reader, maxOutputChunkBytes)
-	buffer := make([]byte, maxOutputChunkBytes)
-	for {
-		read, err := buffered.Read(buffer)
-		if read > 0 && process.tap != nil {
-			process.tap(stream, buffer[:read])
-		}
-		if read > 0 && !(process.quiet && stream == "stdout") {
-			output := ProcessOutput{RunID: process.execution.ID, Stream: stream, Text: string(buffer[:read])}
-			if !m.publish(processEvent{eventType: "run.output", execution: process.execution, payload: output}, false) && process.truncated.CompareAndSwap(false, true) {
-				output.Text = "\n[adOmnia] Output ridotto: la coda eventi ha raggiunto il limite.\n"
-				output.Truncated = true
-				m.publish(processEvent{eventType: "run.output", execution: process.execution, payload: output}, true)
-			}
-		}
-		if err != nil {
-			return
-		}
+// outputWriter pubblica come eventi i byte di un flusso del processo. Non
+// spezza mai una sequenza UTF-8 tra due eventi: i byte di un carattere
+// incompleto restano in carry fino alla scrittura successiva. exec.Cmd usa una
+// goroutine per flusso, quindi ogni writer non è mai chiamato in concorrenza.
+type outputWriter struct {
+	manager   *ProcessManager
+	process   *managedProcess
+	execution Execution
+	stream    string
+	carry     []byte
+}
+
+func (w *outputWriter) Write(p []byte) (int, error) {
+	if w.process.tap != nil {
+		w.process.tap(w.stream, p)
+	}
+	if w.process.quiet && w.stream == "stdout" {
+		return len(p), nil
+	}
+	data := p
+	if len(w.carry) > 0 {
+		data = append(w.carry, p...)
+		w.carry = nil
+	}
+	cut := completeUTF8Prefix(data)
+	if cut < len(data) {
+		w.carry = bytes.Clone(data[cut:])
+	}
+	w.publish(data[:cut])
+	return len(p), nil
+}
+
+func (w *outputWriter) flush() {
+	w.publish(w.carry)
+	w.carry = nil
+}
+
+func (w *outputWriter) publish(data []byte) {
+	if len(data) == 0 {
+		return
+	}
+	output := ProcessOutput{RunID: w.execution.ID, Stream: w.stream, Text: string(data)}
+	if w.manager.publish(processEvent{eventType: "run.output", execution: w.execution, payload: output}, false) {
+		return
+	}
+	if w.process.truncated.CompareAndSwap(false, true) {
+		output.Text = "\n[adOmnia] Output ridotto: la coda eventi ha raggiunto il limite.\n"
+		output.Truncated = true
+		w.manager.publish(processEvent{eventType: "run.output", execution: w.execution, payload: output}, true)
 	}
 }
 
@@ -328,10 +391,12 @@ func (m *ProcessManager) pruneHistoryLocked() {
 
 func (m *ProcessManager) publish(event processEvent, important bool) bool {
 	if important {
+		timer := time.NewTimer(2 * time.Second)
+		defer timer.Stop()
 		select {
 		case m.events <- event:
 			return true
-		case <-time.After(2 * time.Second):
+		case <-timer.C:
 			return false
 		case <-m.stop:
 			return false

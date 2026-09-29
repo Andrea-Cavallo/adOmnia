@@ -21,8 +21,10 @@ const (
 	// terminalFlushInterval coalesce l'output ad alta frequenza in un solo
 	// evento per intervallo, così un comando molto prolisso non inonda la UI.
 	terminalFlushInterval = 25 * time.Millisecond
-	defaultTerminalCols   = 80
-	defaultTerminalRows   = 24
+	// terminalDrainTimeout limita l'attesa dell'ultimo output dopo l'uscita.
+	terminalDrainTimeout = 2 * time.Second
+	defaultTerminalCols  = 80
+	defaultTerminalRows  = 24
 )
 
 // TerminalSession descrive un terminale interattivo dal punto di vista dell'interfaccia.
@@ -65,6 +67,7 @@ type managedTerminal struct {
 	closing   atomic.Bool
 	exited    atomic.Bool
 	done      chan struct{}
+	pumped    chan struct{}
 	writeMu   sync.Mutex
 	sessionMu sync.RWMutex
 	closeOnce sync.Once
@@ -79,6 +82,7 @@ func (t *managedTerminal) closePTY() {
 
 // TerminalManager possiede i terminali PTY, isolati per sessione IDE.
 type TerminalManager struct {
+	openMu    sync.Mutex
 	mu        sync.RWMutex
 	terminals map[TerminalID]*managedTerminal
 	counter   atomic.Uint64
@@ -112,6 +116,10 @@ func (m *TerminalManager) Open(request TerminalRequest, environment []string) (T
 	if request.SessionID == "" {
 		return TerminalSession{}, fmt.Errorf("terminale senza sessione di appartenenza")
 	}
+	// Controllo del limite, avvio della shell e registrazione sono un'unica
+	// operazione: due aperture concorrenti non possono superare il limite.
+	m.openMu.Lock()
+	defer m.openMu.Unlock()
 	if count := m.countForSession(request.SessionID); count >= MaxTerminalsPerSession {
 		return TerminalSession{}, fmt.Errorf("massimo %d terminali per sessione", MaxTerminalsPerSession)
 	}
@@ -161,6 +169,7 @@ func (m *TerminalManager) Open(request TerminalRequest, environment []string) (T
 		pty:     terminal,
 		command: command,
 		done:    make(chan struct{}),
+		pumped:  make(chan struct{}),
 		session: TerminalSession{
 			ID: id, SessionID: request.SessionID, Name: name,
 			Shell: shell, WorkingDirectory: request.WorkingDirectory,
@@ -286,6 +295,7 @@ func (m *TerminalManager) Shutdown() {
 // Non scarta mai byte: se la UI rallenta, il lettore si ferma e il PTY applica
 // la sua naturale backpressure alla shell, come in un terminale vero.
 func (m *TerminalManager) pump(managed *managedTerminal) {
+	defer close(managed.pumped)
 	ticker := time.NewTicker(terminalFlushInterval)
 	defer ticker.Stop()
 	chunks := make(chan []byte, 16)
@@ -374,6 +384,11 @@ func (m *TerminalManager) wait(managed *managedTerminal) {
 	managed.sessionMu.Unlock()
 
 	managed.closePTY()
+	// L'ultimo output deve arrivare alla UI prima dell'evento di uscita.
+	select {
+	case <-managed.pumped:
+	case <-time.After(terminalDrainTimeout):
+	}
 	m.emit("terminal.exited", snapshot, nil)
 }
 

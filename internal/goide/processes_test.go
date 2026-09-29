@@ -39,6 +39,18 @@ func TestGoIDEHelperProcess(t *testing.T) {
 	case "exit":
 		fmt.Fprintln(os.Stdout, "DONE")
 		os.Exit(0)
+	case "tail":
+		for index := range 50 {
+			fmt.Fprintf(os.Stdout, "line %d\n", index)
+		}
+		fmt.Fprint(os.Stdout, "END")
+		os.Exit(0)
+	case "split-rune":
+		// "è" = 0xC3 0xA8 scritto in due write distinte.
+		_, _ = os.Stdout.Write([]byte{0xC3})
+		time.Sleep(100 * time.Millisecond)
+		_, _ = os.Stdout.Write([]byte{0xA8, '\n'})
+		os.Exit(0)
 	case "tree":
 		child := exec.Command(os.Args[0], "-test.run=TestGoIDEHelperProcess", "--", "child")
 		child.Env = append(os.Environ(), "ADOMNIA_GOIDE_HELPER=1")

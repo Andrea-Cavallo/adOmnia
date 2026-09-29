@@ -2,6 +2,7 @@ package goide
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os/exec"
 	"path/filepath"
@@ -62,7 +63,7 @@ type VCSBlameLine struct {
 func repositoryRoot(projectRoot string) (string, error) {
 	binary, err := exec.LookPath("git")
 	if err != nil {
-		return "", fmt.Errorf("Git non è installato o non è nel PATH")
+		return "", errors.New("git non è installato o non è nel PATH")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), vcsQueryTimeout)
 	defer cancel()

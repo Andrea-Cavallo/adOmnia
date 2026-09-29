@@ -2,11 +2,14 @@ package goide
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -35,8 +38,9 @@ type Service struct {
 	persistence      *Persistence
 	viewMu           sync.RWMutex
 	views            map[SessionID]SessionView
-	restoreOnce      sync.Once
-	restoreErr       error
+	restoreMu        sync.Mutex
+	restored         atomic.Bool
+	saveMu           sync.Mutex
 	recentMu         sync.RWMutex
 	recent           []RecentProject
 	runMu            sync.RWMutex
@@ -150,7 +154,7 @@ func (s *Service) CreateProject(request CreateProjectRequest) (Session, error) {
 	binary, err := exec.LookPath("go")
 	if err != nil {
 		_ = os.Remove(target)
-		return Session{}, fmt.Errorf("Go non trovato: installalo o configura il PATH prima di creare un modulo")
+		return Session{}, errors.New("go non trovato: installalo o configura il PATH prima di creare un modulo")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
@@ -178,18 +182,26 @@ func (s *Service) ListRecentProjects() ([]RecentProject, error) {
 	if err := s.restore(); err != nil {
 		return nil, err
 	}
-	s.recentMu.Lock()
-	items := append([]RecentProject(nil), s.recent...)
-	changed := false
+	s.recentMu.RLock()
+	items := slices.Clone(s.recent)
+	s.recentMu.RUnlock()
+	// os.Stat fuori dal lock: su un disco di rete irraggiungibile può durare
+	// secondi e non deve bloccare le altre operazioni sui recenti. Il chiamante
+	// riceve una copia, mai lo slice interno.
+	available := make(map[string]bool, len(items))
 	for index := range items {
 		info, err := os.Stat(items[index].RealPath)
-		available := err == nil && info.IsDir()
-		if items[index].Available != available {
-			items[index].Available = available
+		items[index].Available = err == nil && info.IsDir()
+		available[items[index].RealPath] = items[index].Available
+	}
+	changed := false
+	s.recentMu.Lock()
+	for index := range s.recent {
+		if value, known := available[s.recent[index].RealPath]; known && s.recent[index].Available != value {
+			s.recent[index].Available = value
 			changed = true
 		}
 	}
-	s.recent = items
 	s.recentMu.Unlock()
 	if changed {
 		_ = s.saveState()
@@ -203,7 +215,7 @@ func (s *Service) RemoveRecentProject(path string) error {
 		return err
 	}
 	s.recentMu.Lock()
-	filtered := s.recent[:0]
+	filtered := make([]RecentProject, 0, len(s.recent))
 	for _, project := range s.recent {
 		if !samePath(project.RealPath, path) && !samePath(project.RootPath, path) {
 			filtered = append(filtered, project)
@@ -496,7 +508,7 @@ func (s *Service) StartDependencyAction(request DependencyActionRequest) (Execut
 	}
 	binary, err := s.toolchain.GoBinary(session.ID)
 	if err != nil {
-		return Execution{}, fmt.Errorf("Go non disponibile: rileva o configura la toolchain prima di modificare le dipendenze")
+		return Execution{}, errors.New("go non disponibile: rileva o configura la toolchain prima di modificare le dipendenze")
 	}
 	environment, err := s.toolchain.Environment(session.ID, nil)
 	if err != nil {
@@ -528,7 +540,7 @@ func (s *Service) runCommandSpec(sessionID SessionID, kind, workingDirectory, ta
 	}
 	binary, err := s.toolchain.GoBinary(sessionID)
 	if err != nil {
-		return CommandSpec{}, fmt.Errorf("Go non disponibile: rileva o configura la toolchain prima di eseguire")
+		return CommandSpec{}, errors.New("go non disponibile: rileva o configura la toolchain prima di eseguire")
 	}
 	if kind == "tidy" {
 		arguments := []string{"mod", "tidy"}
@@ -614,12 +626,17 @@ func (s *Service) StartRun(request RunRequest) (Execution, error) {
 	request.WorkingDirectory = workingDirectory
 	s.runMu.Lock()
 	s.runRequests[execution.ID] = request
+	s.pruneRunRequestsLocked()
 	s.runMu.Unlock()
 	return execution, nil
 }
 
 func validateRunTarget(root, workingDirectory, target string) error {
-	converted := filepath.FromSlash(strings.TrimSpace(target))
+	trimmed := strings.TrimSpace(target)
+	if trimmed == "" || strings.HasPrefix(trimmed, "-") || strings.ContainsRune(trimmed, '\x00') {
+		return fmt.Errorf("target Go non valido")
+	}
+	converted := filepath.FromSlash(trimmed)
 	if filepath.IsAbs(converted) || filepath.VolumeName(converted) != "" {
 		return fmt.Errorf("il target deve restare relativo al progetto")
 	}
@@ -687,12 +704,8 @@ func (s *Service) RestartRun(runID string) (Execution, error) {
 	if err := s.processes.Stop(id); err != nil {
 		return Execution{}, err
 	}
-	deadline := time.Now().Add(3 * time.Second)
-	for time.Now().Before(deadline) {
-		if !containsRun(s.processes.List(request.SessionID), id, "running") {
-			break
-		}
-		time.Sleep(25 * time.Millisecond)
+	if !s.processes.WaitStopped(id, 3*time.Second) {
+		return Execution{}, errors.New("l'esecuzione precedente non si è arrestata in tempo: riprova")
 	}
 	return s.StartRun(request)
 }
@@ -737,45 +750,57 @@ func (s *Service) session(id string) (Session, error) {
 	return s.workspace.GetSession(SessionID(id))
 }
 
+// restore carica lo stato persistito alla prima chiamata. A differenza di
+// sync.Once un errore non è definitivo (es. store non ancora pronto): la
+// chiamata successiva riprova invece di lasciare Go Studio inutilizzabile.
 func (s *Service) restore() error {
-	s.restoreOnce.Do(func() {
-		state, err := s.persistence.LoadState()
-		if err != nil {
-			s.restoreErr = err
-			return
-		}
-		s.studioWorkspaces.replace(state.Workspaces, state.ActiveWorkspace)
-		sessions := s.studioWorkspaces.assignSessions(state.Sessions)
-		s.workspace.ReplaceSessions(sessions)
-		for _, session := range s.workspace.ListSessions() {
-			s.watchSession(session)
-		}
-		s.recentMu.Lock()
-		s.recent = append([]RecentProject(nil), state.Recent...)
-		s.recentMu.Unlock()
-		s.runConfigs.Replace(state.RunConfigs)
-		s.viewMu.Lock()
-		s.views = make(map[SessionID]SessionView, len(state.SessionUI))
-		for sessionID, view := range state.SessionUI {
-			s.views[sessionID] = view
-		}
-		s.viewMu.Unlock()
-		if err := s.recovery.Load(); err != nil {
-			s.restoreErr = err
-		}
-	})
-	return s.restoreErr
+	if s.restored.Load() {
+		return nil
+	}
+	s.restoreMu.Lock()
+	defer s.restoreMu.Unlock()
+	if s.restored.Load() {
+		return nil
+	}
+	state, err := s.persistence.LoadState()
+	if err != nil {
+		return err
+	}
+	if err := s.recovery.Load(); err != nil {
+		return err
+	}
+	s.studioWorkspaces.replace(state.Workspaces, state.ActiveWorkspace)
+	sessions := s.studioWorkspaces.assignSessions(state.Sessions)
+	s.workspace.ReplaceSessions(sessions)
+	for _, session := range s.workspace.ListSessions() {
+		s.watchSession(session)
+	}
+	s.recentMu.Lock()
+	s.recent = slices.Clone(state.Recent)
+	s.recentMu.Unlock()
+	s.runConfigs.Replace(state.RunConfigs)
+	views := maps.Clone(state.SessionUI)
+	if views == nil {
+		views = make(map[SessionID]SessionView)
+	}
+	s.viewMu.Lock()
+	s.views = views
+	s.viewMu.Unlock()
+	s.restored.Store(true)
+	return nil
 }
 
+// saveState persiste uno snapshot coerente. saveMu copre snapshot e scrittura
+// insieme: senza, due salvataggi concorrenti potrebbero scrivere per ultimo lo
+// snapshot più vecchio.
 func (s *Service) saveState() error {
+	s.saveMu.Lock()
+	defer s.saveMu.Unlock()
 	s.recentMu.RLock()
-	recent := append([]RecentProject(nil), s.recent...)
+	recent := slices.Clone(s.recent)
 	s.recentMu.RUnlock()
 	s.viewMu.RLock()
-	views := make(map[SessionID]SessionView, len(s.views))
-	for sessionID, view := range s.views {
-		views[sessionID] = view
-	}
+	views := maps.Clone(s.views)
 	s.viewMu.RUnlock()
 	workspaces, activeWorkspace := s.studioWorkspaces.snapshot()
 	return s.persistence.SaveState(persistedState{
@@ -830,13 +855,21 @@ func displayCommand(executable string, arguments []string) string {
 	return strings.Join(parts, " ")
 }
 
-func containsRun(executions []Execution, runID RunID, status string) bool {
-	for _, execution := range executions {
-		if execution.ID == runID && execution.Status == status {
-			return true
+// pruneRunRequestsLocked scarta le richieste delle esecuzioni già uscite dallo
+// storico del ProcessManager, così la mappa non cresce senza limite.
+func (s *Service) pruneRunRequestsLocked() {
+	if len(s.runRequests) <= maxExecutionHistory {
+		return
+	}
+	known := make(map[RunID]struct{}, maxExecutionHistory)
+	for _, execution := range s.processes.List("") {
+		known[execution.ID] = struct{}{}
+	}
+	for runID := range s.runRequests {
+		if _, ok := known[runID]; !ok {
+			delete(s.runRequests, runID)
 		}
 	}
-	return false
 }
 
 // watchSession avvia in background l'osservazione della cartella del progetto: niente viene eseguito.

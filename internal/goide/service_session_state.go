@@ -188,11 +188,7 @@ func (s *Service) FindSessionsForPath(sessionID, relativePath string) ([]Session
 
 // ConfigureRecoveryStore collega lo store persistente dei buffer di recupero.
 func (s *Service) ConfigureRecoveryStore(store Store) error {
-	if store == nil {
-		return fmt.Errorf("store di recupero non valido")
-	}
-	s.recovery = NewRecoveryManager(store)
-	return s.recovery.Load()
+	return s.recovery.Configure(store)
 }
 
 // CreateFiles crea nel progetto file nuovi (New File, Move to New File): tutti o nessuno, mai sovrascrivendo.

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -298,7 +299,7 @@ func (m *DebugManager) handshake(session *debugger, launch debugLaunch, client *
 	select {
 	case <-initialized:
 	case <-time.After(debugRequestTimeout):
-		return fmt.Errorf("Delve non ha completato l'inizializzazione")
+		return errors.New("delve non ha completato l'inizializzazione")
 	}
 	_, projectID := session.identity()
 	for path, lines := range m.breakpointsFor(projectID) {

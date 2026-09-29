@@ -1,6 +1,7 @@
 package goide
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -105,7 +106,7 @@ func (s *Service) StartGoTool(request GoToolRequest) (Execution, error) {
 	}
 	binary, err := s.toolchain.GoBinary(session.ID)
 	if err != nil {
-		return Execution{}, fmt.Errorf("Go non disponibile: rileva o configura la toolchain prima di eseguire")
+		return Execution{}, errors.New("go non disponibile: rileva o configura la toolchain prima di eseguire")
 	}
 	environment, err := s.toolchain.Environment(session.ID, nil)
 	if err != nil {
