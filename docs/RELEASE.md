@@ -4,6 +4,15 @@ adOmnia releases are driven by Git tags and GitHub Actions.
 
 ## Unreleased
 
+## v0.9.40 release notes: a maximised editor, compose, key encryption and a new look
+
+See [the full v0.9.40 notes](releases/v0.9.40.md): Maximize Editor and
+fully closable panes, docker compose from the gutter, Send to API
+Workspace, `.pem` keys opened and encrypted in Power Tools (standard
+PKCS#8, verified with OpenSSL), and recent projects in the toolbar. Menus
+and confirmation dialogs are redesigned, Jenkinsfiles and keys get their
+own icons, the a0 launcher stays out of the way, and gopls runs lighter.
+
 ## v0.9.39 release notes: Go Studio runs Makefiles and Dockerfiles
 
 See [the full v0.9.39 notes](releases/v0.9.39.md): the gutter ▶ runs

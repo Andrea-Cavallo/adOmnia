@@ -6,18 +6,30 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.9.40] - 2026-09-29
+
 ### Added
+- **Maximize Editor in Go Studio:** Ctrl/Cmd+Shift+F12 or a double-click on an editor tab hides Project, Structure and the bottom tool window, and restores them as they were. Project and Structure get a hide button, and Project a shortcut (Alt+1).
+- **Modern Go Studio menus:** icons on every command, check marks for toggles, rounded studio panels and keycap shortcuts.
 - **docker compose in Go Studio:** ▶ on `services:` (Up all, Down) and on each service (Up), with Stop running `docker compose stop` and a *Docker Compose* run configuration type.
 - **Send to API Workspace:** right-click a Postman, Insomnia, Bruno, OpenAPI or Swagger file in the Go Studio project tree to import it into the API Workspace.
 - **Recent projects in the Go Studio project menu:** projects that are not open can be reopened from the toolbar.
 - **Encrypt private keys in Power Tools:** the PEM / JKS tool encrypts and decrypts private keys as standard PKCS#8 (PBKDF2-SHA256 600k + AES-256-CBC, verified with OpenSSL). Go Studio opens `.pem`/`.key`/`.crt`/`.cer` there from the project tree.
 - **File icons:** the Jenkins emblem for Jenkinsfiles, and a key for `.pem`, `.key`, `.p12`, `.pfx` and `.jks`.
-- **Maximize Go Studio:** a toolbar button and Ctrl/Cmd+Shift+F12 hide adOmnia's rail, panel header and status bar.
+- **Maximize Go Studio:** a toolbar button and Ctrl/Cmd+Shift+F11 hide adOmnia's rail, panel header and status bar.
 
 ### Changed
 - Confirmation dialogs are redesigned: commands and paths sit in a structured, wrapped, monospaced section, and the dialog has a clear icon (command, question or deletion), a soft blurred backdrop, a spring entry and safe default focus. Go Studio dialogs share the same backdrop and animation.
 - The a0 launcher in the bottom-right corner stays hidden and click-through until the pointer comes near the corner (or it gets keyboard focus).
 - gopls runs with `GOTELEMETRY=off` and `GOMEMLIMIT=1GiB` unless you set them yourself.
+- The README presents adOmnia as one local workspace for APIs and the code behind them, with a gO Studio screenshot.
+
+### Verified
+- Go Studio, nettools and Developer Context Go tests pass, including key encryption opened with the real OpenSSL.
+- 760 frontend tests across 169 files, TypeScript, the production build and the startup budget pass.
+- Docker compose, Dockerfile Build & Run and Stop still need a manual check with Docker Desktop running.
+
+Full release notes: [v0.9.40](docs/releases/v0.9.40.md).
 
 ## [0.9.39] - 2026-09-29
 
