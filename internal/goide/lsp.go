@@ -462,6 +462,7 @@ func initializeParams(state *lspSession) map[string]any {
 				"publishDiagnostics": map[string]any{"relatedInformation": false, "versionSupport": true},
 				"documentHighlight":  map[string]any{},
 				"callHierarchy":      map[string]any{},
+				"typeHierarchy":      map[string]any{},
 				"inlayHint":          map[string]any{},
 				"semanticTokens": map[string]any{
 					"requests":       map[string]any{"full": true, "range": false},

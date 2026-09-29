@@ -9,6 +9,7 @@ export type GoStudioCommandId =
   | 'view.zoomIn' | 'view.zoomOut' | 'view.zoomReset' | 'view.zenMode' | 'view.stickyScroll' | 'view.minimap' | 'view.fontLigatures' | 'view.previewTab'
   | 'view.quickOpen' | 'view.maximize' | 'view.maximizeEditor' | 'view.toggleProject' | 'view.toggleStructure' | 'view.toggleBottom' | 'view.toggleIgnored' | 'view.problems'
   | 'nav.declaration' | 'nav.typeDeclaration' | 'nav.implementation' | 'nav.usages' | 'nav.fileStructure' | 'nav.symbol' | 'nav.findInFiles'
+  | 'nav.callHierarchy' | 'nav.typeHierarchy' | 'nav.nextProblem' | 'nav.previousProblem'
   | 'nav.superMethod' | 'nav.back' | 'nav.forward' | 'nav.toggleBookmark' | 'nav.bookmarks'
   | 'nav.quickDefinition' | 'nav.showUsages' | 'nav.searchEverywhere' | 'code.quickDocumentation' | 'code.typeInfo' | 'code.semanticHighlighting' | 'code.inlayHints' | 'code.typeHints' | 'code.implementInterface'
   | 'code.refactorThis' | 'code.extractVariable' | 'code.extractConstant' | 'code.extractFunction' | 'code.inline' | 'code.moveToNewFile'
@@ -122,6 +123,10 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'nav.implementation', menu: 'navigate', label: 'Implementation(s)', binding: { key: 'b', mod: true, alt: true }, editorOwned: true },
   { id: 'nav.superMethod', menu: 'navigate', label: 'Super Method', binding: { key: 'u', mod: true }, editorOwned: true },
   { id: 'nav.usages', menu: 'navigate', label: 'Find Usages', binding: { key: 'F7', alt: true }, editorOwned: true },
+  { id: 'nav.callHierarchy', menu: 'navigate', label: 'Call Hierarchy', binding: { key: 'h', mod: true, alt: true }, editorOwned: true },
+  { id: 'nav.typeHierarchy', menu: 'navigate', label: 'Type Hierarchy' },
+  { id: 'nav.nextProblem', menu: 'navigate', label: 'Next Problem', binding: { key: 'F8' }, editorOwned: true, separatorBefore: true },
+  { id: 'nav.previousProblem', menu: 'navigate', label: 'Previous Problem', binding: { key: 'F8', shift: true }, editorOwned: true },
   { id: 'nav.showUsages', menu: 'navigate', label: 'Show Usages', binding: { key: 'F7', mod: true, alt: true }, editorOwned: true },
   { id: 'nav.quickDefinition', menu: 'navigate', label: 'Quick Definition', binding: { key: 'i', mod: true, shift: true }, editorOwned: true },
   { id: 'nav.fileStructure', menu: 'navigate', label: 'File Structure', binding: { key: 'F12', mod: true }, editorOwned: true, separatorBefore: true },

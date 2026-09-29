@@ -6,6 +6,7 @@ import {
   requestInlayHints,
   requestLocations,
   requestQuickDefinition,
+  requestPrepareHierarchy,
   requestRecursiveCalls,
   requestSemanticTokens,
   type GoIDELanguageServerFeatures,
@@ -248,5 +249,19 @@ export async function showTypeInfo(editor: monaco.editor.ICodeEditor): Promise<v
     else report(info)
   } catch (error) {
     report(error instanceof Error ? error.message : String(error))
+  }
+}
+
+/** Call Hierarchy / Type Hierarchy sul simbolo al cursore. */
+export async function showHierarchy(editor: monaco.editor.ICodeEditor, kind: 'call' | 'type'): Promise<void> {
+  const context = await caretContext(editor)
+  if (!context) return
+  const label = kind === 'call' ? 'Call Hierarchy' : 'Type Hierarchy'
+  try {
+    const roots = await requestPrepareHierarchy(context.prepared.sessionId, context.prepared.documentId, kind, context.position.lineNumber, context.position.column)
+    if (roots.length === 0) return report(`${label}: put the caret on a ${kind === 'call' ? 'function or method' : 'type or interface'}.`)
+    useGoIDELspStore.setState({ hierarchy: { sessionId: context.prepared.sessionId, kind, root: roots[0] } })
+  } catch (error) {
+    report(`${label}: ${error instanceof Error ? error.message : String(error)}`)
   }
 }

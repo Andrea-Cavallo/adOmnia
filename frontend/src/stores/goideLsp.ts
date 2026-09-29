@@ -25,12 +25,19 @@ import {
   type GoIDELintResult,
   type GoIDESymbolNode,
   type GoIDEQuickDefinition,
+  type GoIDEHierarchyItem,
 } from '@/lib/goide-lsp-api'
 import { useGoIDEStore } from './goide'
 
 const SETTINGS_KEY = 'adomnia.goide.lsp.v1'
 
 export type GoIDEToolWindow = 'run' | 'problems' | 'references' | 'find' | 'terminal' | 'tests' | 'debug' | 'todo'
+
+export interface GoIDEHierarchyView {
+  sessionId: string
+  kind: 'call' | 'type'
+  root: GoIDEHierarchyItem
+}
 
 export interface GoIDEEditorPreferences {
   formatOnSave: boolean
@@ -105,6 +112,8 @@ interface GoIDELspState {
   /** Eseguita se l'anteprima viene chiusa senza applicare (es. per annullare un'inserzione preparatoria). */
   pendingChangeOnCancel: (() => void) | null
   caretPopup: GoIDECaretPopup | null
+  /** Call Hierarchy / Type Hierarchy aperta (una alla volta). */
+  hierarchy: GoIDEHierarchyView | null
   implementRequest: GoIDEImplementRequest | null
   renameRequest: { sessionId: string; documentId: string; line: number; column: number } | null
   findRequest: { token: number; query: string } | null
@@ -187,6 +196,7 @@ export const useGoIDELspStore = create<GoIDELspState>((set, get) => ({
   pendingChange: null,
   pendingChangeOnCancel: null,
   caretPopup: null,
+  hierarchy: null,
   implementRequest: null,
   renameRequest: null,
   findRequest: null,

@@ -9,7 +9,7 @@ import {
   PackageOpen, PackagePlus, PackageSearch, Paintbrush, PanelBottom, PanelRight, PanelTop, Pencil, Pin, Play, Plug,
   Radar, Redo2, RefreshCw, Send, Repeat, Replace, RotateCcw, Rows2, Save, SaveAll, ScanSearch, Search, SearchCode, Server,
   Settings2, ShieldCheck, Sparkles, Square, SquareDashed, SquareTerminal, StepForward, Terminal, TextCursorInput, Trash2,
-  Type, Undo2, Unplug, Wand2, WandSparkles, Workflow, Wrench, X, Zap, type LucideIcon,
+  Type, Undo2, Unplug, Wand2, WandSparkles, Workflow, Wrench, X, Zap, type LucideIcon, ArrowUpToLine, Boxes, Eraser, Focus, Ligature, Map, ZoomIn, ZoomOut
 } from 'lucide-react'
 import { GoGopherIcon } from './GoGopherIcon'
 import type { GoStudioCommandId, GoStudioMenuId } from './goStudioCommands'
@@ -73,6 +73,21 @@ export const GO_STUDIO_COMMAND_ICONS: Partial<Record<GoStudioCommandId, GoStudio
 
   'view.quickOpen': icon(FileSearch),
   'view.maximize': icon(Maximize2),
+  'nav.callHierarchy': icon(Network),
+  'nav.typeHierarchy': icon(Boxes),
+  'nav.nextProblem': icon(ArrowDownToLine),
+  'nav.previousProblem': icon(ArrowUpToLine),
+  'view.zoomIn': icon(ZoomIn),
+  'view.zoomOut': icon(ZoomOut),
+  'view.zoomReset': icon(Search),
+  'view.zenMode': icon(Focus),
+  'view.stickyScroll': icon(Pin),
+  'view.minimap': icon(Map),
+  'view.fontLigatures': icon(Ligature),
+  'view.previewTab': icon(Eye),
+  'code.typeHints': icon(Type),
+  'file.autoSave': icon(Save),
+  'file.trimWhitespace': icon(Eraser),
   'view.maximizeEditor': icon(Fullscreen),
   'view.toggleProject': icon(PanelLeft),
   'view.toggleStructure': icon(PanelRight),

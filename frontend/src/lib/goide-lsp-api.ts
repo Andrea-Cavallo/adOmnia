@@ -31,8 +31,7 @@ import type {
   HighlightsResult,
   RecursiveCallsResult,
   LanguageServerFeatures,
-  QuickDefinitionResult,
-} from '../../bindings/adomnia/internal/goide/models'
+  QuickDefinitionResult, HierarchyItem } from '../../bindings/adomnia/internal/goide/models'
 
 export type GoIDELanguageServerStatus = LanguageServerStatus
 export type GoIDELanguageServerFeatures = LanguageServerFeatures
@@ -221,4 +220,16 @@ export function requestRecursiveCalls(sessionId: string, documentId: string): Ca
 
 export function requestQuickDefinition(sessionId: string, documentId: string, line: number, column: number): CancellablePromise<QuickDefinitionResult> {
   return GoIDEBindings.QuickDefinition(sessionId, documentId, line, column)
+}
+
+export type GoIDEHierarchyItem = HierarchyItem
+
+/** Call Hierarchy ("call") o Type Hierarchy ("type") sul simbolo alla posizione indicata. */
+export function requestPrepareHierarchy(sessionId: string, documentId: string, kind: 'call' | 'type', line: number, column: number): CancellablePromise<HierarchyItem[]> {
+  return GoIDEBindings.PrepareHierarchy(sessionId, documentId, kind, line, column)
+}
+
+/** Figli di un nodo: incoming/outgoing per le chiamate, supertypes/subtypes per i tipi. */
+export function requestExpandHierarchy(sessionId: string, direction: string, token: string): CancellablePromise<HierarchyItem[]> {
+  return GoIDEBindings.ExpandHierarchy(sessionId, direction, token)
 }

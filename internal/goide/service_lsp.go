@@ -191,6 +191,16 @@ func (s *Service) RecursiveCalls(ctx context.Context, sessionID, documentID stri
 	return s.lsp.RecursiveCalls(ctx, SessionID(sessionID), DocumentID(documentID))
 }
 
+// PrepareHierarchy apre Call Hierarchy (kind "call") o Type Hierarchy (kind "type") sul simbolo al cursore.
+func (s *Service) PrepareHierarchy(ctx context.Context, sessionID, documentID, kind string, line, column int) ([]HierarchyItem, error) {
+	return s.lsp.PrepareHierarchy(ctx, SessionID(sessionID), DocumentID(documentID), kind, line, column)
+}
+
+// ExpandHierarchy carica chiamanti/chiamati o supertipi/sottotipi di un nodo.
+func (s *Service) ExpandHierarchy(ctx context.Context, sessionID, direction, token string) ([]HierarchyItem, error) {
+	return s.lsp.ExpandHierarchy(ctx, SessionID(sessionID), direction, token)
+}
+
 // QuickDefinition restituisce il sorgente della dichiarazione del simbolo al cursore, per il popup Quick Definition.
 func (s *Service) QuickDefinition(ctx context.Context, sessionID, documentID string, line, column int) (QuickDefinitionResult, error) {
 	return s.lsp.QuickDefinition(ctx, SessionID(sessionID), DocumentID(documentID), line, column)

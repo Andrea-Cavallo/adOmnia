@@ -48,6 +48,7 @@ export {
     GoplsInfo,
     GoroutineOverview,
     GoroutineSummary,
+    HierarchyItem,
     HighlightEntry,
     HighlightsResult,
     HistoryRevision,

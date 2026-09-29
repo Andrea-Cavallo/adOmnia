@@ -673,6 +673,16 @@ func (g *GoIDE) DocumentHighlights(ctx context.Context, sessionID, documentID st
 	return settleCancelled(ctx, value, err)
 }
 
+// PrepareHierarchy apre Call Hierarchy o Type Hierarchy sul simbolo al cursore.
+func (g *GoIDE) PrepareHierarchy(ctx context.Context, sessionID, documentID, kind string, line, column int) ([]goide.HierarchyItem, error) {
+	return g.service.PrepareHierarchy(ctx, sessionID, documentID, kind, line, column)
+}
+
+// ExpandHierarchy carica i figli di un nodo della gerarchia.
+func (g *GoIDE) ExpandHierarchy(ctx context.Context, sessionID, direction, token string) ([]goide.HierarchyItem, error) {
+	return g.service.ExpandHierarchy(ctx, sessionID, direction, token)
+}
+
 // RecursiveCalls restituisce le chiamate ricorsive dirette del file.
 func (g *GoIDE) RecursiveCalls(ctx context.Context, sessionID, documentID string) (goide.RecursiveCallsResult, error) {
 	value, err := g.service.RecursiveCalls(ctx, sessionID, documentID)

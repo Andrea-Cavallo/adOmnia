@@ -9,6 +9,7 @@ import { GoStudioQuickOpen } from './GoStudioQuickOpen'
 import { GoStudioRecoveryBanner } from './GoStudioRecoveryBanner'
 import { GoStudioRunConfigurations } from './GoStudioRunConfigurations'
 import { GoStudioSecretsPrompt } from './GoStudioSecretsPrompt'
+import { GoStudioHierarchyDialog } from './GoStudioHierarchyDialog'
 import { useAppStore } from '@/stores/app'
 import { GoStudioToolbar } from './GoStudioToolbar'
 import { GoStudioElsewhere } from './GoStudioElsewhere'
@@ -526,6 +527,7 @@ export function GoStudioPanel() {
       {zen ? <ZenExit onExit={toggleZen} /> : <GoStudioStatusBar session={activeSession} toolchain={toolchain} documentInfo={summary.activeId ? { language: summary.activeLanguage ?? '', readOnly: summary.activeReadOnly } : null} execution={activeExecution} onLanguageServer={openLanguageServerMenu} onLinter={() => runCommand(commandAvailability('code.lint', commandContext) === true ? 'code.lint' : 'go.toolPaths')} onSetAuthorization={(allowed) => void authorize(allowed)} />}
       <GoStudioQuickOpen />
       <GoStudioCaretPopup />
+      <GoStudioHierarchyDialog />
       <GoStudioImplementInterfaceDialog />
       {sharedDialogs}
       {store.activeSessionId && <GoStudioRunConfigurations open={configureOpen} sessionId={store.activeSessionId} initialDraft={configDraft} onClose={() => { setConfigureOpen(false); setConfigDraft(null) }} />}
