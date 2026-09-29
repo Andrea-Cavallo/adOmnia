@@ -4,6 +4,7 @@
 export {
     AuthorizationState,
     Bookmark,
+    Breakpoint,
     BreakpointState,
     Capabilities,
     CodeActionEntry,
@@ -42,6 +43,10 @@ export {
     FileChange,
     FileEntry,
     FormatResult,
+    FunctionBreakpoint,
+    FunctionBreakpointSettings,
+    FunctionBreakpointState,
+    FunctionBreakpointsView,
     GoDependency,
     GoModule,
     GoReplacement,

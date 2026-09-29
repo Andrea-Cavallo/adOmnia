@@ -25,6 +25,7 @@ export type GoStudioCommandId =
   | 'run.buildPackage' | 'run.testPackage' | 'run.vetPackage' | 'run.buildAll' | 'run.testAll' | 'run.vetAll' | 'run.generateAll' | 'run.install'
   | 'debug.debug' | 'debug.toggleBreakpoint' | 'debug.resume' | 'debug.pause' | 'debug.stepOver' | 'debug.stepInto' | 'debug.stepOut'
   | 'debug.stop' | 'view.debug' | 'go.installDelve' | 'debug.attach' | 'debug.remote'
+  | 'debug.viewBreakpoints' | 'debug.runToCursor' | 'debug.muteBreakpoints'
   | 'vcs.commit' | 'vcs.history' | 'vcs.annotate' | 'vcs.gitStudio'
   | 'tools.services' | 'tools.httpRequest' | 'tools.plugins'
   | 'help.shortcuts'
@@ -211,11 +212,14 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'run.stop', menu: 'run', label: 'Stop', binding: { key: 'F5', shift: true }, separatorBefore: true },
   { id: 'run.restart', menu: 'run', label: 'Restart', binding: { key: 'F5', mod: true, shift: true } },
   { id: 'debug.toggleBreakpoint', menu: 'run', label: 'Toggle Line Breakpoint', binding: { key: 'F8', mod: true }, separatorBefore: true },
+  { id: 'debug.viewBreakpoints', menu: 'run', label: 'View Breakpoints…', binding: { key: 'F8', mod: true, shift: true } },
+  { id: 'debug.muteBreakpoints', menu: 'run', label: 'Mute / Unmute Breakpoints' },
   { id: 'debug.resume', menu: 'run', label: 'Resume Program', binding: { key: 'F9' }, altBindings: [{ key: 'F5' }], passThroughWhenUnavailable: true },
   { id: 'debug.pause', menu: 'run', label: 'Pause Program', passThroughWhenUnavailable: true },
   { id: 'debug.stepOver', menu: 'run', label: 'Step Over', binding: { key: 'F8' }, altBindings: [{ key: 'F6' }, { key: 'F10' }], passThroughWhenUnavailable: true },
   { id: 'debug.stepInto', menu: 'run', label: 'Step Into', binding: { key: 'F7' }, passThroughWhenUnavailable: true },
   { id: 'debug.stepOut', menu: 'run', label: 'Step Out', binding: { key: 'F8', shift: true }, passThroughWhenUnavailable: true },
+  { id: 'debug.runToCursor', menu: 'run', label: 'Run to Cursor', binding: { key: 'F9', alt: true }, passThroughWhenUnavailable: true },
   { id: 'debug.stop', menu: 'run', label: 'Stop Debugging', binding: { key: 'F2', mod: true }, passThroughWhenUnavailable: true },
   { id: 'run.configure', menu: 'run', label: 'Edit Run Configuration…', separatorBefore: true },
   { id: 'tools.services', menu: 'tools', label: 'Project Services: Docker Lab, Database, Broker…' },
@@ -423,6 +427,9 @@ export function commandAvailability(id: GoStudioCommandId, context: GoStudioComm
     case 'go.installDelve': return runAvailability(context)
     case 'debug.remote': return context.authorized ? true : NOT_TRUSTED
     case 'debug.toggleBreakpoint': return context.hasEditor ? true : 'Open a Go file first'
+    case 'debug.viewBreakpoints':
+    case 'debug.muteBreakpoints': return true
+    case 'debug.runToCursor': return context.debugState !== 'stopped' ? 'The debugger is not paused' : context.hasEditor ? true : 'Open a Go file first'
     case 'debug.resume':
     case 'debug.stepOver':
     case 'debug.stepInto':

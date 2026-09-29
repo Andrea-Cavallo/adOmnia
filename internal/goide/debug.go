@@ -84,20 +84,6 @@ type DebugOutput struct {
 	Text     string         `json:"text"`
 }
 
-// BreakpointState è un breakpoint di riga con la verifica di Delve (la riga può essere spostata).
-type BreakpointState struct {
-	Line     int    `json:"line"`
-	Verified bool   `json:"verified"`
-	Message  string `json:"message,omitempty"`
-}
-
-// FileBreakpoints è il payload di debug.breakpoints.
-type FileBreakpoints struct {
-	SessionID    SessionID         `json:"sessionId"`
-	RelativePath string            `json:"relativePath"`
-	Breakpoints  []BreakpointState `json:"breakpoints"`
-}
-
 type DebugThread struct {
 	ID   int    `json:"id"`
 	Name string `json:"name"`
@@ -144,18 +130,21 @@ type debugger struct {
 	conn    net.Conn
 	client  *dap.Client
 	closed  bool
+	// runTo è il breakpoint temporaneo di Run to Cursor: si rimuove alla prima fermata.
+	runTo *runToCursor
 }
 
 // DebugManager possiede i processi dlv e i breakpoint dei progetti; ogni evento porta l'id della sessione di debug.
 type DebugManager struct {
 	mu          sync.Mutex
 	sessions    map[DebugSessionID]*debugger
-	breakpoints map[SessionID]map[string][]int
+	breakpoints map[SessionID]map[string][]Breakpoint
+	functions   map[SessionID]FunctionBreakpointSettings
 	emit        func(eventType string, sessionID SessionID, resourceID string, payload any)
 }
 
 func NewDebugManager() *DebugManager {
-	return &DebugManager{sessions: make(map[DebugSessionID]*debugger), breakpoints: make(map[SessionID]map[string][]int)}
+	return &DebugManager{sessions: make(map[DebugSessionID]*debugger), breakpoints: make(map[SessionID]map[string][]Breakpoint), functions: make(map[SessionID]FunctionBreakpointSettings)}
 }
 
 // SetEmitter collega gli eventi del debugger al servizio.
@@ -305,9 +294,10 @@ func (m *DebugManager) handshake(session *debugger, launch debugLaunch, client *
 		return errors.New("delve non ha completato l'inizializzazione")
 	}
 	_, projectID := session.identity()
-	for path, lines := range m.breakpointsFor(projectID) {
-		m.sendBreakpoints(session, path, lines)
+	for path, breakpoints := range m.breakpointsFor(projectID) {
+		m.sendBreakpoints(session, path, breakpoints)
 	}
+	m.publishFunctionBreakpoints(session, m.sendFunctionBreakpoints(session, m.functionsFor(projectID)))
 	if err := client.Call(ctx, "configurationDone", map[string]any{}, nil); err != nil {
 		return fmt.Errorf("configurationDone fallito: %w", err)
 	}
@@ -356,8 +346,14 @@ func (m *DebugManager) readEvents(session *debugger, client *dap.Client, initial
 			_ = json.Unmarshal(event.Body, &body)
 			session.mu.Lock()
 			session.info.State, session.info.StopReason, session.info.ThreadID = DebugStopped, body.Reason, body.ThreadID
+			finished := session.runTo
+			session.runTo = nil
 			session.mu.Unlock()
 			m.publishState(session)
+			if finished != nil {
+				// Fuori dal ciclo degli eventi: la risposta di setBreakpoints passa da qui.
+				go m.resendFile(session, finished.path)
+			}
 		case "continued":
 			session.mu.Lock()
 			session.info.State, session.info.StopReason = DebugRunning, ""
@@ -463,6 +459,7 @@ func (m *DebugManager) StopSession(sessionID SessionID) {
 	}
 	m.mu.Lock()
 	delete(m.breakpoints, sessionID)
+	delete(m.functions, sessionID)
 	m.mu.Unlock()
 }
 
@@ -496,58 +493,6 @@ func (m *DebugManager) Shutdown() {
 	for _, session := range m.list("") {
 		m.terminate(session, "")
 	}
-}
-
-func (m *DebugManager) breakpointsFor(sessionID SessionID) map[string][]int {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	copyOf := map[string][]int{}
-	for path, lines := range m.breakpoints[sessionID] {
-		copyOf[path] = append([]int(nil), lines...)
-	}
-	return copyOf
-}
-
-// SeedBreakpoints carica i breakpoint salvati se la sessione non ne ha ancora in memoria.
-func (m *DebugManager) SeedBreakpoints(sessionID SessionID, byPath map[string][]int) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	if m.breakpoints[sessionID] != nil {
-		return
-	}
-	seeded := make(map[string][]int, len(byPath))
-	for path, lines := range byPath {
-		if unique := uniqueSortedLines(lines); len(unique) > 0 {
-			seeded[path] = unique
-		}
-	}
-	m.breakpoints[sessionID] = seeded
-}
-
-// SetBreakpoints sostituisce i breakpoint di un file; con un debug attivo li invia subito a Delve e ne pubblica la verifica.
-func (m *DebugManager) SetBreakpoints(sessionID SessionID, root, path string, lines []int) []BreakpointState {
-	unique := uniqueSortedLines(lines)
-	m.mu.Lock()
-	if m.breakpoints[sessionID] == nil {
-		m.breakpoints[sessionID] = map[string][]int{}
-	}
-	if len(unique) == 0 {
-		delete(m.breakpoints[sessionID], path)
-	} else {
-		m.breakpoints[sessionID][path] = unique
-	}
-	m.mu.Unlock()
-	states := make([]BreakpointState, 0, len(unique))
-	for _, line := range unique {
-		states = append(states, BreakpointState{Line: line})
-	}
-	for _, session := range m.list(sessionID) {
-		if verified := m.sendBreakpoints(session, path, unique); verified != nil {
-			states = verified
-		}
-	}
-	m.publish("debug.breakpoints", sessionID, relativeWithin(root, path), FileBreakpoints{SessionID: sessionID, RelativePath: filepath.ToSlash(relativeWithin(root, path)), Breakpoints: states})
-	return states
 }
 
 // launchArguments costruisce la richiesta DAP: launch per programmi e test, attach per processi locali e server remoti.
@@ -619,53 +564,6 @@ func explainLaunchError(err error) error {
 		return fmt.Errorf("the project Go SDK is older than this Delve supports: select a newer SDK (Go → Go SDKs & Toolchains…) or point to a compatible dlv (Go → Tool Paths…). Details: %w", err)
 	}
 	return fmt.Errorf("avvio del programma in debug fallito: %w", err)
-}
-
-func uniqueSortedLines(lines []int) []int {
-	seen := map[int]bool{}
-	unique := make([]int, 0, len(lines))
-	for _, line := range lines {
-		if line > 0 && !seen[line] {
-			seen[line] = true
-			unique = append(unique, line)
-		}
-	}
-	sort.Ints(unique)
-	return unique
-}
-
-func (m *DebugManager) sendBreakpoints(session *debugger, path string, lines []int) []BreakpointState {
-	session.mu.Lock()
-	client := session.client
-	session.mu.Unlock()
-	if client == nil {
-		return nil
-	}
-	requested := make([]map[string]int, 0, len(lines))
-	for _, line := range lines {
-		requested = append(requested, map[string]int{"line": line})
-	}
-	var response struct {
-		Breakpoints []struct {
-			Verified bool   `json:"verified"`
-			Line     int    `json:"line"`
-			Message  string `json:"message"`
-		} `json:"breakpoints"`
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), debugRequestTimeout)
-	defer cancel()
-	if err := client.Call(ctx, "setBreakpoints", map[string]any{"source": map[string]string{"path": path}, "breakpoints": requested}, &response); err != nil {
-		return nil
-	}
-	states := make([]BreakpointState, 0, len(response.Breakpoints))
-	for index, breakpoint := range response.Breakpoints {
-		line := breakpoint.Line
-		if line == 0 && index < len(lines) {
-			line = lines[index]
-		}
-		states = append(states, BreakpointState{Line: line, Verified: breakpoint.Verified, Message: breakpoint.Message})
-	}
-	return states
 }
 
 // call esegue una richiesta DAP su una sessione ancora aperta.

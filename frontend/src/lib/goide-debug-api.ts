@@ -1,7 +1,8 @@
 import * as GoIDEBindings from '../../bindings/adomnia/goide'
 import type {
-  BreakpointState, DebugFrame, DebugRequest, DebugScope, DebugSessionInfo, DebugThread, DebugVariable,
-  DelveInfo, EvaluateResult, Execution, FileBreakpoints, GoroutineOverview, GoroutineSummary, ProcessInfo,
+  Breakpoint, BreakpointState, DebugFrame, DebugRequest, DebugScope, DebugSessionInfo, DebugThread, DebugVariable,
+  DelveInfo, EvaluateResult, Execution, FileBreakpoints, FunctionBreakpoint, FunctionBreakpointSettings, FunctionBreakpointsView,
+  GoroutineOverview, GoroutineSummary, ProcessInfo,
 } from '../../bindings/adomnia/internal/goide/models'
 
 export type GoIDEDebugRequest = DebugRequest
@@ -17,7 +18,11 @@ export type GoIDEDebugFrame = DebugFrame
 export type GoIDEDebugScope = DebugScope
 export type GoIDEDebugVariable = DebugVariable
 export type GoIDEEvaluateResult = EvaluateResult
+export type GoIDEBreakpoint = Breakpoint
 export type GoIDEBreakpointState = BreakpointState
+export type GoIDEFunctionBreakpoint = FunctionBreakpoint
+export type GoIDEFunctionBreakpointSettings = FunctionBreakpointSettings
+export type GoIDEFunctionBreakpoints = FunctionBreakpointsView
 export type GoIDEFileBreakpoints = FileBreakpoints
 export type GoIDEDelveInfo = DelveInfo
 export type GoIDEGoroutineOverview = GoroutineOverview
@@ -77,8 +82,22 @@ export function listGoIDEDebugSessions(sessionId: string): Promise<DebugSessionI
   return GoIDEBindings.ListDebugSessions(sessionId)
 }
 
-export function setGoIDEBreakpoints(sessionId: string, relativePath: string, lines: number[]): Promise<BreakpointState[]> {
-  return GoIDEBindings.SetBreakpoints(sessionId, relativePath, lines)
+export function setGoIDEBreakpoints(sessionId: string, relativePath: string, breakpoints: Breakpoint[]): Promise<BreakpointState[]> {
+  return GoIDEBindings.SetBreakpoints(sessionId, relativePath, breakpoints)
+}
+
+export function listGoIDEFunctionBreakpoints(sessionId: string): Promise<FunctionBreakpointsView> {
+  return GoIDEBindings.ListFunctionBreakpoints(sessionId)
+}
+
+/** Breakpoint di funzione e "Stop on every panic" del progetto. */
+export function setGoIDEFunctionBreakpoints(sessionId: string, settings: FunctionBreakpointSettings): Promise<FunctionBreakpointsView> {
+  return GoIDEBindings.SetFunctionBreakpoints(sessionId, settings)
+}
+
+/** Run to Cursor: riprende il programma in pausa fino alla riga indicata. */
+export function runGoIDEDebugToCursor(debugId: string, relativePath: string, line: number, threadId: number): Promise<void> {
+  return GoIDEBindings.DebugRunToCursor(debugId, relativePath, line, threadId)
 }
 
 export function listGoIDEBreakpoints(sessionId: string): Promise<FileBreakpoints[]> {

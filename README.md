@@ -62,7 +62,7 @@ Requests at workspace root appear outside your named collections and persist wit
 
 | Workspace | Highlights |
 | --- | --- |
-| **gO Studio (Go IDE)** | Open and trust real Go projects; gopls completion, navigation, refactoring and diagnostics; golangci-lint/staticcheck; build, run, tests with coverage, the Delve debugger and a real terminal; Makefile targets, Dockerfile build & run and docker compose from the gutter; Git in the editor; Fix with AI; links to Docker Lab, Database/Broker Studio and the API Client. |
+| **gO Studio (Go IDE)** | Open and trust real Go projects; gopls completion, navigation, refactoring and diagnostics; golangci-lint/staticcheck; build, run, tests with coverage, the Delve debugger with conditional, hit-count and function breakpoints, logpoints, stop on panic and Run to Cursor, and a real terminal; Makefile targets, Dockerfile build & run and docker compose from the gutter; Git in the editor; Fix with AI; links to Docker Lab, Database/Broker Studio and the API Client. |
 | **API requests and design** | REST, GraphQL, environments, authentication, scripts, assertions, response history, code generation, Postman/cURL/OpenAPI import, visual OpenAPI editing and governance checks. |
 | **Testing and flows** | Collection runner, CSV datasets, visual tests, recorded and AI-assisted flows, response-to-request variables, failure branches, contract checks and flow stress testing with latency, throughput and APDEX gates. |
 | **Protocols and brokers** | SOAP/WSDL, gRPC, WebSocket, SSE, Kafka, RabbitMQ, MQTT, Redis Pub/Sub and NATS, with saved connections and message inspection. |

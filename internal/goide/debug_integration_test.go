@@ -73,7 +73,7 @@ func TestDebuggerBreakpointStepVariablesAndEvaluate(t *testing.T) {
 	if err != nil || !info.Available || info.Version == "" {
 		t.Fatalf("dlv non rilevato: %v %+v", err, info)
 	}
-	if _, err := ide.SetBreakpoints(sessionID, "main.go", []int{16}); err != nil {
+	if _, err := ide.SetBreakpoints(sessionID, "main.go", lineBreakpoints(16)); err != nil {
 		t.Fatal(err)
 	}
 	started, err := ide.StartDebug(DebugRequest{SessionID: session.ID, Mode: "debug", Target: "."})
@@ -153,7 +153,7 @@ func TestDebuggerBreakpointStepVariablesAndEvaluate(t *testing.T) {
 
 func TestDebuggerSingleTest(t *testing.T) {
 	ide, recorder, session := startDebugProject(t)
-	if _, err := ide.SetBreakpoints(string(session.ID), "main_test.go", []int{7}); err != nil {
+	if _, err := ide.SetBreakpoints(string(session.ID), "main_test.go", lineBreakpoints(7)); err != nil {
 		t.Fatal(err)
 	}
 	started, err := ide.StartDebug(DebugRequest{SessionID: session.ID, Mode: "test", Target: ".", TestName: "^TestSum$"})
@@ -275,7 +275,7 @@ func TestTestsAndDebugStayIsolatedAcrossSessions(t *testing.T) {
 	first := openDebugSession(t, ide, delve)
 	second := openDebugSession(t, ide, delve)
 
-	if _, err := ide.SetBreakpoints(string(first.ID), "main.go", []int{16}); err != nil {
+	if _, err := ide.SetBreakpoints(string(first.ID), "main.go", lineBreakpoints(16)); err != nil {
 		t.Fatal(err)
 	}
 	paused, err := ide.StartDebug(DebugRequest{SessionID: first.ID, Mode: "debug", Target: "."})

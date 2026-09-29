@@ -79,6 +79,26 @@
   border: 2px solid var(--color-danger, #ef4444);
   box-sizing: border-box;
 }
+/* Condizione o hit count: "?" nel pallino. Logpoint: rombo. Disattivato: grigio. Come GoLand/VS Code. */
+.monaco-editor .line-numbers.go-studio-bp-cond::after {
+  content: '?';
+  color: #fff;
+  font: 700 8px/11px var(--font-sans, sans-serif);
+  text-align: center;
+}
+.monaco-editor .line-numbers.go-studio-bp-log::after {
+  border-radius: 2px;
+  transform: rotate(45deg) scale(0.82);
+}
+.monaco-editor .line-numbers.go-studio-bp-pending.go-studio-bp-cond::after {
+  color: var(--color-danger, #ef4444);
+  line-height: 7px;
+}
+.monaco-editor .line-numbers.go-studio-bp-disabled::after {
+  background: var(--color-text-4, #4b5563);
+  box-shadow: none;
+  opacity: 0.8;
+}
 .monaco-editor .line-numbers:not(.go-studio-bp):hover::after {
   content: '';
   position: absolute;

@@ -56,6 +56,8 @@ import { GoStudioGitHistoryDialog } from './GoStudioGitHistoryDialog'
 import { GoStudioProjectServicesDialog } from './GoStudioProjectServicesDialog'
 import { runIntegrationCommand } from './goStudioIntegrationCommands'
 import { GoStudioHunkPopup } from './GoStudioHunkPopup'
+import { GoStudioBreakpointPopover } from './GoStudioBreakpointPopover'
+import { GoStudioBreakpointsDialog } from './GoStudioBreakpointsDialog'
 import { runVcsCommand, type GoStudioVcsDialog } from './goStudioVcsCommands'
 import { useGoIDEVCSStore } from '@/stores/goideVcs'
 import { GoStudioLocalHistoryDialog } from './GoStudioLocalHistoryDialog'
@@ -560,6 +562,8 @@ export function GoStudioPanel() {
       <GoStudioProjectServicesDialog sessionId={activeSession.id} projectName={activeSession.project.name} open={servicesOpen} onClose={() => setServicesOpen(false)} />
       <GoStudioGitHistoryDialog document={vcsDialog === 'history' ? currentActiveDocument() : null} open={vcsDialog === 'history'} onClose={() => setVcsDialog(null)} />
       <GoStudioHunkPopup />
+      <GoStudioBreakpointPopover />
+      <GoStudioBreakpointsDialog sessionId={activeSession.id} />
       <GoStudioLocalHistoryDialog document={localHistoryOpen ? currentActiveDocument() : null} open={localHistoryOpen} onClose={() => setLocalHistoryOpen(false)} />
       <GoStudioAttachDialog sessionId={activeSession.id} mode={attachMode} onClose={() => setAttachMode(null)} />
       <GoStudioGoToolDialog sessionId={activeSession.id} state={goTool} onClose={() => setGoTool(null)} />

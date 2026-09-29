@@ -83,6 +83,24 @@ Go Studio runs Makefiles and Dockerfiles with the real `make` and `docker`, and 
 
   *Save as Run Configuration…* from a Dockerfile lists its `ARG`s as build args. Names that look sensitive (`password`, `token`, `secret`, `key`…) are marked secret: only the name is saved, and the value is asked once when you start. When an environment variable and a build arg share a name, one value serves both.
 
+## Breakpoints
+
+A click on a line number toggles a breakpoint; a **right-click** opens its editor:
+
+- **Condition:** stops only when a Go expression is true (`len(items) > 10`). Delve evaluates it.
+- **Hit count:** `3` stops only on the third hit, `>= 5` from the fifth on, `% 10` every tenth.
+- **Log message (logpoint):** prints the message without stopping; `{expression}` is evaluated when the line runs and the text appears in the Debug console.
+- **Enabled:** a disabled breakpoint stays in place, grey, and is not sent to Delve.
+
+In the gutter a plain breakpoint is a red dot, one with a condition or hit count shows a `?`, a logpoint is a diamond, a disabled one is grey, and a hollow dot means Delve has not verified it yet (the tooltip says why). Options follow the line while you edit and are saved with the project; breakpoints saved by older versions (line numbers only) are read as plain breakpoints.
+
+**View Breakpoints (Ctrl+Shift+F8)** lists every breakpoint of the project: enable or disable each one (or all of them: *Run → Mute / Unmute Breakpoints*), edit its options, remove it, or double-click to open the line. The same dialog holds:
+
+- **Function breakpoints:** stop on entry to a function, e.g. `main.handler` or `(*Server).Serve`, with optional condition and hit count. Delve reports whether it found the function.
+- **Stop on every panic:** also stops on panics that are recovered later, by breaking in `runtime.gopanic`; the stack shows where the panic started. Unrecovered panics always stop the debugger.
+
+**Run to Cursor (Alt+F9)** resumes a paused program until the line with the caret, through a temporary breakpoint removed at the next stop, whatever the reason. On a line without code it says so and the program stays paused. *Set next statement* is not available: Delve does not support jumping over code through DAP.
+
 ## Concurrency-first debugger
 
 The Debug tool window (Alt+5) is built around goroutines. Delve still does
@@ -255,6 +273,8 @@ Go Studio follows the GoLand keymap. The table below is generated from the comma
 | Stop | Shift+F5 | ⇧F5 |
 | Restart | Ctrl+Shift+F5 | ⌘⇧F5 |
 | Toggle Line Breakpoint | Ctrl+F8 | ⌘F8 |
+| View Breakpoints | Ctrl+Shift+F8 | ⌘⇧F8 |
+| Run to Cursor | Alt+F9 | ⌥F9 |
 | Resume Program | F9 (also F5 while paused) | F9 (also F5) |
 | Step Over | F8 (also F6, F10 while paused) | F8 (also F6, F10) |
 | Step Into | F7 | F7 |
@@ -267,7 +287,7 @@ Go Studio follows the GoLand keymap. The table below is generated from the comma
 | --- | --- | --- |
 | Commit | Ctrl+K | ⌘K |
 
-Other mouse gestures: Ctrl+click (Cmd+click on macOS) goes to the declaration, Alt+click adds a cursor, Shift+Alt+drag selects a column, and a click on a line number toggles a breakpoint.
+Other mouse gestures: Ctrl+click (Cmd+click on macOS) goes to the declaration, Alt+click adds a cursor, Shift+Alt+drag selects a column, a click on a line number toggles a breakpoint, and a right-click on a line number edits it (condition, hit count, logpoint).
 
 ## Platform verification
 
@@ -285,5 +305,6 @@ Other mouse gestures: Ctrl+click (Cmd+click on macOS) goes to the declaration, A
 - Plugins receive read-only Go Studio events (contract v1) and no commands.
 - HTTP route prefixes are resolved only within the same file for the *Open in API Client* CodeLens.
 - Remote debugging needs the same source paths on both sides for breakpoints to bind.
+- Set next statement is not available (Delve has no DAP `goto`); Run to Cursor covers moving forward.
 - Refactorings are the code actions gopls offers; nothing is simulated with text replacement.
 - Ctrl+click on an undefined symbol has no target; use *Fix with AI* or the gopls quick fixes.

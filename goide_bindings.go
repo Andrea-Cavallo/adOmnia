@@ -488,9 +488,24 @@ func (g *GoIDE) ListDebugSessions(sessionID string) ([]goide.DebugSessionInfo, e
 	return g.service.ListDebugSessions(sessionID)
 }
 
-// SetBreakpoints sostituisce i breakpoint di un file e li applica alle sessioni attive.
-func (g *GoIDE) SetBreakpoints(sessionID, relativePath string, lines []int) ([]goide.BreakpointState, error) {
-	return g.service.SetBreakpoints(sessionID, relativePath, lines)
+// SetBreakpoints sostituisce i breakpoint di un file (con condizione, hit count o logpoint) e li applica alle sessioni attive.
+func (g *GoIDE) SetBreakpoints(sessionID, relativePath string, breakpoints []goide.Breakpoint) ([]goide.BreakpointState, error) {
+	return g.service.SetBreakpoints(sessionID, relativePath, breakpoints)
+}
+
+// ListFunctionBreakpoints restituisce i breakpoint di funzione e il panic breakpoint del progetto.
+func (g *GoIDE) ListFunctionBreakpoints(sessionID string) (goide.FunctionBreakpointsView, error) {
+	return g.service.ListFunctionBreakpoints(sessionID)
+}
+
+// SetFunctionBreakpoints sostituisce i breakpoint di funzione e il panic breakpoint del progetto.
+func (g *GoIDE) SetFunctionBreakpoints(sessionID string, settings goide.FunctionBreakpointSettings) (goide.FunctionBreakpointsView, error) {
+	return g.service.SetFunctionBreakpoints(sessionID, settings)
+}
+
+// DebugRunToCursor riprende il programma in pausa fino alla riga indicata.
+func (g *GoIDE) DebugRunToCursor(debugID, relativePath string, line, threadID int) error {
+	return g.service.DebugRunToCursor(debugID, relativePath, line, threadID)
 }
 
 // ListBreakpoints restituisce i breakpoint salvati della sessione.

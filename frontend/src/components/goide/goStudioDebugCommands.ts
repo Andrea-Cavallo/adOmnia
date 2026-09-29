@@ -4,7 +4,8 @@ import { activeDebugView, useGoIDEDebugStore } from '@/stores/goideDebug'
 import { useGoIDELspStore } from '@/stores/goideLsp'
 import type { GoStudioCommandContext, GoStudioCommandId } from './goStudioCommands'
 import { activeGoStudioEditor } from './goStudioEditorRegistry'
-import { toggleBreakpointAtCursor } from './goStudioDebugEditor'
+import { runToCursorAt, toggleBreakpointAtCursor } from './goStudioDebugEditor'
+import { useGoStudioBreakpointUi } from './goStudioBreakpoints'
 
 type DebugState = GoStudioCommandContext['debugState']
 
@@ -41,9 +42,16 @@ async function confirmInstallDelve(sessionId: string): Promise<void> {
 export function runDebugCommand(id: GoStudioCommandId, sessionId: string | null, configuredRequest: () => GoIDEDebugRequest | null): boolean {
   if (id === 'view.debug') { useGoIDELspStore.getState().showToolWindow('debug'); return true }
   if (id === 'debug.toggleBreakpoint') { toggleBreakpointAtCursor(activeGoStudioEditor()); return true }
+  if (id === 'debug.viewBreakpoints') { useGoStudioBreakpointUi.getState().setDialogOpen(true); return true }
+  if (id === 'debug.runToCursor') { runToCursorAt(activeGoStudioEditor()); return true }
   if (!sessionId) return false
   const debug = useGoIDEDebugStore.getState()
   if (id === 'go.installDelve') { void confirmInstallDelve(sessionId); return true }
+  if (id === 'debug.muteBreakpoints') {
+    const files = Object.values(debug.breakpoints[sessionId] ?? {})
+    void debug.setAllBreakpointsDisabled(sessionId, files.some((states) => states.some((state) => !state.disabled)))
+    return true
+  }
   if (id === 'debug.debug') {
     const request = configuredRequest()
     if (request) void debug.start(request)

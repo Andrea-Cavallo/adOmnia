@@ -3,8 +3,9 @@ import { confirm } from '@/lib/confirmDialog'
 import { subscribeGoIDEEvents, type GoIDEEvent } from '@/lib/goide-api'
 import {
   detectGoIDEDelve, evaluateGoIDEDebug, getGoIDEDebugGoroutines, getGoIDEDebugScopes, getGoIDEDebugStack, getGoIDEDebugVariables, installGoIDEDelve,
-  listGoIDEBreakpoints, listGoIDEDebugThreads, setGoIDEBreakpoints, startGoIDEDebug, stepGoIDEDebug, stopGoIDEDebug,
-  type GoIDEBreakpointState, type GoIDEDebugFrame, type GoIDEDebugOutput, type GoIDEDebugRequest, type GoIDEDebugScope,
+  listGoIDEBreakpoints, listGoIDEDebugThreads, listGoIDEFunctionBreakpoints, runGoIDEDebugToCursor, setGoIDEBreakpoints,
+  setGoIDEFunctionBreakpoints, startGoIDEDebug, stepGoIDEDebug, stopGoIDEDebug,
+  type GoIDEBreakpoint, type GoIDEBreakpointState, type GoIDEFunctionBreakpoints, type GoIDEFunctionBreakpointSettings, type GoIDEDebugFrame, type GoIDEDebugOutput, type GoIDEDebugRequest, type GoIDEDebugScope,
   type GoIDEDebugSession, type GoIDEDebugStepAction, type GoIDEGoroutineOverview, type GoIDEDelveInfo, type GoIDEDebugThread, type GoIDEDebugVariable, type GoIDEFileBreakpoints,
 } from '@/lib/goide-debug-api'
 import { useGoIDEStore } from './goide'
@@ -82,6 +83,8 @@ interface GoIDEDebugState {
   debuggers: Record<string, GoIDEDebugView>
   activeBySession: Record<string, string | null>
   breakpoints: Record<string, Record<string, GoIDEBreakpointState[]>>
+  /** Breakpoint di funzione e "Stop on every panic", per sessione. */
+  functionBreakpoints: Record<string, GoIDEFunctionBreakpoints>
   watches: Record<string, string[]>
   delve: Record<string, GoIDEDelveInfo>
   error: string | null
@@ -100,6 +103,15 @@ interface GoIDEDebugState {
   loadBreakpoints: (sessionId: string) => Promise<void>
   toggleBreakpoint: (sessionId: string, relativePath: string, line: number) => Promise<void>
   setBreakpointLines: (sessionId: string, relativePath: string, lines: number[]) => Promise<void>
+  /** Cambia condizione, hit count, logpoint o attivazione di un breakpoint; null lo rimuove. */
+  updateBreakpoint: (sessionId: string, relativePath: string, line: number, patch: Partial<GoIDEBreakpoint> | null) => Promise<void>
+  /** Aggiunge un breakpoint con opzioni o sostituisce quello della riga. */
+  putBreakpoint: (sessionId: string, relativePath: string, breakpoint: GoIDEBreakpoint) => Promise<void>
+  /** Attiva o disattiva tutti i breakpoint di riga del progetto (Mute Breakpoints). */
+  setAllBreakpointsDisabled: (sessionId: string, disabled: boolean) => Promise<void>
+  loadFunctionBreakpoints: (sessionId: string) => Promise<void>
+  setFunctionBreakpoints: (sessionId: string, settings: GoIDEFunctionBreakpointSettings) => Promise<boolean>
+  runToCursor: (debugId: string, relativePath: string, line: number) => Promise<void>
   installDelve: (sessionId: string) => Promise<boolean>
   detectDelve: (sessionId: string) => Promise<GoIDEDelveInfo | null>
   handleEvent: (event: GoIDEEvent) => void
@@ -166,8 +178,23 @@ function pruneFinished(debuggers: Record<string, GoIDEDebugView>, sessionId: str
   return Object.fromEntries(Object.entries(debuggers).filter(([id]) => !dropped.has(id)))
 }
 
-function linesOf(states: GoIDEBreakpointState[] | undefined): number[] {
+function linesOf(states: Array<{ line: number }> | undefined): number[] {
   return (states ?? []).map((item) => item.line)
+}
+
+/** Solo la parte salvata di un breakpoint: la verifica di Delve non torna al backend. */
+export function breakpointSpec(state: GoIDEBreakpointState): GoIDEBreakpoint {
+  const spec: GoIDEBreakpoint = { line: state.line }
+  if (state.condition) spec.condition = state.condition
+  if (state.hitCondition) spec.hitCondition = state.hitCondition
+  if (state.logMessage) spec.logMessage = state.logMessage
+  if (state.disabled) spec.disabled = true
+  return spec
+}
+
+/** Breakpoint con condizione, hit count o messaggio: si disegna con un glifo diverso. */
+export function hasBreakpointOptions(state: Pick<GoIDEBreakpoint, 'condition' | 'hitCondition' | 'logMessage'>): boolean {
+  return !!(state.condition || state.hitCondition || state.logMessage)
 }
 
 function sameLines(left: number[], right: number[]): boolean {
@@ -272,19 +299,29 @@ export const useGoIDEDebugStore = create<GoIDEDebugState>((set, get) => {
     if (info.state === 'stopped') void loadPause(info.id, info.threadId ?? 0)
   }
 
-  const sendBreakpoints = async (sessionId: string, relativePath: string, lines: number[]) => {
+  const showFileBreakpoints = (sessionId: string, relativePath: string, states: GoIDEBreakpointState[]) =>
+    set((state) => ({ breakpoints: { ...state.breakpoints, [sessionId]: { ...state.breakpoints[sessionId], [relativePath]: states } } }))
+
+  // Aggiornamento ottimistico: il pallino compare subito, Delve lo verifica dopo; su errore torna lo stato di prima.
+  const sendBreakpoints = async (sessionId: string, relativePath: string, breakpoints: GoIDEBreakpoint[]) => {
+    const previous = get().breakpoints[sessionId]?.[relativePath] ?? []
+    showFileBreakpoints(sessionId, relativePath, breakpoints.map((item) => ({ ...item, verified: false })))
     try {
-      const states = await setGoIDEBreakpoints(sessionId, relativePath, lines)
-      set((state) => ({ breakpoints: { ...state.breakpoints, [sessionId]: { ...state.breakpoints[sessionId], [relativePath]: states } } }))
+      showFileBreakpoints(sessionId, relativePath, await setGoIDEBreakpoints(sessionId, relativePath, breakpoints))
     } catch (error) {
+      showFileBreakpoints(sessionId, relativePath, previous)
       set({ error: errorMessage(error) })
+      useGoIDEStore.setState({ error: errorMessage(error) })
     }
   }
+
+  const specsOf = (sessionId: string, relativePath: string) => (get().breakpoints[sessionId]?.[relativePath] ?? []).map(breakpointSpec)
 
   return {
     debuggers: {},
     activeBySession: {},
     breakpoints: {},
+    functionBreakpoints: {},
     watches: {},
     delve: {},
     error: null,
@@ -423,17 +460,72 @@ export const useGoIDEDebugStore = create<GoIDEDebugState>((set, get) => {
     },
 
     toggleBreakpoint: async (sessionId, relativePath, line) => {
-      const current = linesOf(get().breakpoints[sessionId]?.[relativePath])
-      const lines = current.includes(line) ? current.filter((item) => item !== line) : [...current, line].sort((left, right) => left - right)
-      // Aggiornamento ottimistico: il pallino compare subito, Delve lo verifica dopo.
-      set((state) => ({ breakpoints: { ...state.breakpoints, [sessionId]: { ...state.breakpoints[sessionId], [relativePath]: lines.map((item) => ({ line: item, verified: false })) } } }))
-      await sendBreakpoints(sessionId, relativePath, lines)
+      const current = specsOf(sessionId, relativePath)
+      const next = current.some((item) => item.line === line)
+        ? current.filter((item) => item.line !== line)
+        : [...current, { line }].sort((left, right) => left.line - right.line)
+      await sendBreakpoints(sessionId, relativePath, next)
     },
 
+    // Le righe arrivano nello stesso ordine dei breakpoint: le opzioni seguono la riga spostata.
     setBreakpointLines: async (sessionId, relativePath, lines) => {
-      const sorted = [...new Set(lines)].sort((left, right) => left - right)
-      if (sameLines(sorted, linesOf(get().breakpoints[sessionId]?.[relativePath]))) return
-      await sendBreakpoints(sessionId, relativePath, sorted)
+      const current = specsOf(sessionId, relativePath)
+      if (sameLines(lines, linesOf(current))) return
+      const byLine = new Map<number, GoIDEBreakpoint>()
+      lines.forEach((line, index) => { if (current[index]) byLine.set(line, { ...current[index], line }) })
+      await sendBreakpoints(sessionId, relativePath, [...byLine.values()].sort((left, right) => left.line - right.line))
+    },
+
+    updateBreakpoint: async (sessionId, relativePath, line, patch) => {
+      const current = specsOf(sessionId, relativePath)
+      const next = patch === null
+        ? current.filter((item) => item.line !== line)
+        : current.map((item) => (item.line === line ? { ...item, ...patch, line } : item))
+      await sendBreakpoints(sessionId, relativePath, next)
+    },
+
+    putBreakpoint: async (sessionId, relativePath, breakpoint) => {
+      const next = [...specsOf(sessionId, relativePath).filter((item) => item.line !== breakpoint.line), breakpoint]
+      await sendBreakpoints(sessionId, relativePath, next.sort((left, right) => left.line - right.line))
+    },
+
+    setAllBreakpointsDisabled: async (sessionId, disabled) => {
+      const files = get().breakpoints[sessionId] ?? {}
+      await Promise.all(Object.entries(files).map(([relativePath, states]) =>
+        sendBreakpoints(sessionId, relativePath, states.map((state) => ({ ...breakpointSpec(state), disabled: disabled || undefined })))))
+    },
+
+    loadFunctionBreakpoints: async (sessionId) => {
+      ensureSubscribed((event) => get().handleEvent(event))
+      if (get().functionBreakpoints[sessionId]) return
+      try {
+        const view = await listGoIDEFunctionBreakpoints(sessionId)
+        set((state) => ({ functionBreakpoints: { [sessionId]: view, ...state.functionBreakpoints } }))
+      } catch (error) {
+        set({ error: errorMessage(error) })
+      }
+    },
+
+    setFunctionBreakpoints: async (sessionId, settings) => {
+      try {
+        const view = await setGoIDEFunctionBreakpoints(sessionId, settings)
+        set((state) => ({ functionBreakpoints: { ...state.functionBreakpoints, [sessionId]: view } }))
+        return true
+      } catch (error) {
+        useGoIDEStore.setState({ error: errorMessage(error) })
+        return false
+      }
+    },
+
+    runToCursor: async (debugId, relativePath, line) => {
+      const view = get().debuggers[debugId]
+      if (!view || view.info.state !== 'stopped') return
+      try {
+        await runGoIDEDebugToCursor(debugId, relativePath, line, view.threadId ?? view.info.threadId ?? 0)
+      } catch (error) {
+        updateView(debugId, (current) => ({ console: appendLines(current.console, 'error', `Run to Cursor: ${errorMessage(error)}`) }))
+        useGoIDEStore.setState({ error: errorMessage(error) })
+      }
     },
 
     detectDelve: async (sessionId) => {
@@ -472,6 +564,11 @@ export const useGoIDEDebugStore = create<GoIDEDebugState>((set, get) => {
         const output = event.payload as GoIDEDebugOutput
         if (!output?.debugId || DELVE_NOISE.test(output.text)) return
         if (get().debuggers[output.debugId]) updateView(output.debugId, (view) => ({ console: appendLines(view.console, consoleCategory(output), output.text.replace(/\n$/, '')) }))
+        return
+      }
+      if (event.type === 'debug.functionBreakpoints') {
+        const view = event.payload as GoIDEFunctionBreakpoints
+        if (view?.sessionId) set((state) => ({ functionBreakpoints: { ...state.functionBreakpoints, [view.sessionId]: view } }))
         return
       }
       if (event.type === 'debug.breakpoints') {

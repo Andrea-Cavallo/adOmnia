@@ -3,7 +3,8 @@ import { useShallow } from 'zustand/react/shallow'
 import { monaco } from '@/lib/monacoSetup'
 import { evaluateGoIDEDebug, type GoIDEBreakpointState, type GoIDEDebugScope, type GoIDEDebugVariable } from '@/lib/goide-debug-api'
 import type { GoIDEEditorDocument } from '@/stores/goide'
-import { activeDebugView, executionPoint, hasLiveDebugger, useGoIDEDebugStore, type GoIDEExecutionPoint } from '@/stores/goideDebug'
+import { activeDebugView, executionPoint, hasBreakpointOptions, hasLiveDebugger, useGoIDEDebugStore, type GoIDEExecutionPoint } from '@/stores/goideDebug'
+import { breakpointSummary, useGoStudioBreakpointUi } from './goStudioBreakpoints'
 import { documentForModel } from './goStudioLanguageFeatures'
 import { useTrackedLineMarkers } from './goStudioLineMarkers'
 import { frameVariables, inlineValueText } from './goStudioDebugInlineValues'
@@ -23,18 +24,32 @@ export function canHoldBreakpoints(document: GoIDEEditorDocument | null): docume
   return !!document && !document.document.external && document.document.relativePath.endsWith('.go')
 }
 
+/** Classi del glifo: pallino, "?" per condizione e hit count, rombo per i logpoint, grigio se disattivato. */
+export function breakpointClass(state: GoIDEBreakpointState, debugging: boolean): string {
+  const classes = ['go-studio-bp']
+  if (state.disabled) classes.push('go-studio-bp-disabled')
+  else if (debugging && !state.verified) classes.push('go-studio-bp-pending')
+  if (state.logMessage) classes.push('go-studio-bp-log')
+  else if (hasBreakpointOptions(state)) classes.push('go-studio-bp-cond')
+  return classes.join(' ')
+}
+
 /** Pallino rosso sul numero di riga; vuoto finché Delve non verifica il breakpoint durante un debug. */
 export function breakpointDecorations(states: GoIDEBreakpointState[], debugging: boolean): monaco.editor.IModelDeltaDecoration[] {
   return states.map((state) => {
-    const pending = debugging && !state.verified
-    const hover = pending ? state.message || 'Breakpoint not verified by Delve yet' : 'Breakpoint · click to remove'
+    const pending = debugging && !state.verified && !state.disabled
+    const kind = state.logMessage ? 'Logpoint' : 'Breakpoint'
+    const summary = breakpointSummary(state)
+    const hover = pending
+      ? state.message || `${kind} not verified by Delve yet`
+      : `${kind}${summary ? ` · ${summary}` : ''} · click to remove, right-click to edit`
     return {
       range: { startLineNumber: state.line, startColumn: 1, endLineNumber: state.line, endColumn: 1 },
       options: {
-        lineNumberClassName: pending ? 'go-studio-bp go-studio-bp-pending' : 'go-studio-bp',
+        lineNumberClassName: breakpointClass(state, debugging),
         lineNumberHoverMessage: { value: hover },
         stickiness: monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges,
-        overviewRuler: { color: 'rgba(239, 68, 68, 0.8)', position: monaco.editor.OverviewRulerLane.Left },
+        overviewRuler: state.disabled ? undefined : { color: 'rgba(239, 68, 68, 0.8)', position: monaco.editor.OverviewRulerLane.Left },
       },
     }
   })
@@ -82,8 +97,22 @@ export function toggleBreakpointAtCursor(editor: monaco.editor.ICodeEditor | nul
   return true
 }
 
+/** Alt+F9: riprende il programma in pausa fino alla riga del cursore. */
+export function runToCursorAt(editor: monaco.editor.ICodeEditor | null): boolean {
+  const model = editor?.getModel()
+  const position = editor?.getPosition()
+  const document = model ? documentForModel(model) : null
+  if (!position || !canHoldBreakpoints(document)) return false
+  const debug = useGoIDEDebugStore.getState()
+  const view = activeDebugView(debug, document.document.sessionId)
+  if (!view) return false
+  void debug.runToCursor(view.info.id, document.document.relativePath, position.lineNumber)
+  return true
+}
+
 /**
- * Clic sui numeri di riga = breakpoint, come in GoLand. Monaco selezionerebbe la riga:
+ * Clic sui numeri di riga = breakpoint, come in GoLand; tasto destro = popover con condizione,
+ * hit count e logpoint (Monaco non apre il suo menu sul gutter). Monaco selezionerebbe la riga:
  * la selezione precedente si ripristina al rilascio del mouse.
  */
 export function installBreakpointGutter(editor: monaco.editor.IStandaloneCodeEditor): void {
@@ -103,6 +132,15 @@ export function installBreakpointGutter(editor: monaco.editor.IStandaloneCodeEdi
     if (!canHoldBreakpoints(document)) return
     toggleAt(document, click.line)
     if (click.selection) editor.setSelection(click.selection)
+  })
+  editor.onContextMenu((event) => {
+    if (event.target.type !== monaco.editor.MouseTargetType.GUTTER_LINE_NUMBERS) return
+    const line = event.target.position?.lineNumber
+    const model = editor.getModel()
+    const document = model ? documentForModel(model) : null
+    if (!line || !canHoldBreakpoints(document)) return
+    event.event.preventDefault()
+    useGoStudioBreakpointUi.getState().openPopover({ sessionId: document.document.sessionId, relativePath: document.document.relativePath, line, x: event.event.posx, y: event.event.posy })
   })
 }
 

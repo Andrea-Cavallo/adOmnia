@@ -83,6 +83,9 @@ describe('Go Studio command availability', () => {
     expect(stepOver?.passThroughWhenUnavailable).toBe(true)
     expect(commandForKey({ key: 'F8', ctrlKey: true, metaKey: false, shiftKey: false, altKey: false })?.id).toBe('debug.toggleBreakpoint')
     expect(commandForKey({ key: 'F9', ctrlKey: false, metaKey: false, shiftKey: true, altKey: false })?.id).toBe('debug.debug')
+    expect(commandForKey({ key: 'F9', ctrlKey: false, metaKey: false, shiftKey: false, altKey: true })?.id).toBe('debug.runToCursor')
+    expect(commandForKey({ key: 'F8', ctrlKey: true, metaKey: false, shiftKey: true, altKey: false })?.id).toBe('debug.viewBreakpoints')
+    expect(commandAvailability('debug.runToCursor', { ...ready, debugState: 'running' })).toMatch(/not paused/)
   })
 
   it('explains why run commands are blocked without trust or SDK', () => {

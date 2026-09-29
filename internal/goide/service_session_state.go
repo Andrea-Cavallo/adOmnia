@@ -37,7 +37,8 @@ func (s *Service) SaveSessionView(sessionID string, view SessionView) error {
 		view.NavigationIndex = max(len(view.Navigation)-1, 0)
 	}
 	s.viewMu.Lock()
-	view.Breakpoints = s.views[session.ID].Breakpoints
+	saved := s.views[session.ID]
+	view.Breakpoints, view.FunctionBreakpoints, view.StopOnPanic = saved.Breakpoints, saved.FunctionBreakpoints, saved.StopOnPanic
 	s.views[session.ID] = view
 	s.viewMu.Unlock()
 	return s.saveState()

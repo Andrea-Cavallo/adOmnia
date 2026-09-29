@@ -190,7 +190,10 @@ type SessionView struct {
 	Navigation      []NavigationEntry `json:"navigation,omitempty"`
 	NavigationIndex int               `json:"navigationIndex,omitempty"`
 	// Breakpoints è gestito solo dal backend (SetBreakpoints): SaveSessionView lo conserva.
-	Breakpoints map[string][]int `json:"breakpoints,omitempty"`
+	Breakpoints map[string][]Breakpoint `json:"breakpoints,omitempty"`
+	// FunctionBreakpoints e StopOnPanic sono gestiti dal backend (SetFunctionBreakpoints).
+	FunctionBreakpoints []FunctionBreakpoint `json:"functionBreakpoints,omitempty"`
+	StopOnPanic         bool                 `json:"stopOnPanic,omitempty"`
 }
 
 // Bookmark è un segnalibro di riga del progetto.

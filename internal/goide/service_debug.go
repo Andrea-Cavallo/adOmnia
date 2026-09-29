@@ -233,9 +233,9 @@ func (s *Service) ListDebugSessions(sessionID string) ([]DebugSessionInfo, error
 	return s.debug.Active(SessionID(sessionID)), nil
 }
 
-// SetBreakpoints imposta i breakpoint di riga di un file del progetto, anche senza debug in corso,
-// e li salva nello stato della sessione così sopravvivono al riavvio.
-func (s *Service) SetBreakpoints(sessionID, relativePath string, lines []int) ([]BreakpointState, error) {
+// SetBreakpoints imposta i breakpoint di riga di un file del progetto (con condizione, hit count o logpoint),
+// anche senza debug in corso, e li salva nello stato della sessione così sopravvivono al riavvio.
+func (s *Service) SetBreakpoints(sessionID, relativePath string, breakpoints []Breakpoint) ([]BreakpointState, error) {
 	session, err := s.session(sessionID)
 	if err != nil {
 		return nil, err
@@ -244,9 +244,13 @@ func (s *Service) SetBreakpoints(sessionID, relativePath string, lines []int) ([
 	if err != nil {
 		return nil, err
 	}
+	normalized, err := normalizeBreakpoints(breakpoints)
+	if err != nil {
+		return nil, err
+	}
 	s.seedBreakpoints(session)
-	states := s.debug.SetBreakpoints(session.ID, session.Project.RealPath, path, lines)
-	if err := s.persistBreakpoints(session.ID, filepath.ToSlash(relativeWithin(session.Project.RealPath, path)), uniqueSortedLines(lines)); err != nil {
+	states := s.debug.SetBreakpoints(session.ID, session.Project.RealPath, path, normalized)
+	if err := s.persistBreakpoints(session.ID, filepath.ToSlash(relativeWithin(session.Project.RealPath, path)), normalized); err != nil {
 		return states, err
 	}
 	return states, nil
@@ -261,33 +265,78 @@ func (s *Service) ListBreakpoints(sessionID string) ([]FileBreakpoints, error) {
 	s.viewMu.RLock()
 	saved := s.views[session.ID].Breakpoints
 	result := make([]FileBreakpoints, 0, len(saved))
-	for relativePath, lines := range saved {
-		states := make([]BreakpointState, 0, len(lines))
-		for _, line := range lines {
-			states = append(states, BreakpointState{Line: line})
-		}
-		result = append(result, FileBreakpoints{SessionID: session.ID, RelativePath: relativePath, Breakpoints: states})
+	for relativePath, breakpoints := range saved {
+		result = append(result, FileBreakpoints{SessionID: session.ID, RelativePath: relativePath, Breakpoints: unverifiedStates(breakpoints)})
 	}
 	s.viewMu.RUnlock()
 	sort.Slice(result, func(left, right int) bool { return result[left].RelativePath < result[right].RelativePath })
 	return result, nil
 }
 
+// ListFunctionBreakpoints restituisce i breakpoint di funzione e il panic breakpoint salvati per il progetto.
+func (s *Service) ListFunctionBreakpoints(sessionID string) (FunctionBreakpointsView, error) {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return FunctionBreakpointsView{}, err
+	}
+	s.viewMu.RLock()
+	view := s.views[session.ID]
+	s.viewMu.RUnlock()
+	return unverifiedFunctionView(session.ID, FunctionBreakpointSettings{Functions: view.FunctionBreakpoints, StopOnPanic: view.StopOnPanic}), nil
+}
+
+// SetFunctionBreakpoints sostituisce i breakpoint di funzione e il panic breakpoint, li invia ai debug attivi e li salva.
+func (s *Service) SetFunctionBreakpoints(sessionID string, settings FunctionBreakpointSettings) (FunctionBreakpointsView, error) {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return FunctionBreakpointsView{}, err
+	}
+	normalized, err := normalizeFunctionBreakpoints(settings)
+	if err != nil {
+		return FunctionBreakpointsView{}, err
+	}
+	s.seedBreakpoints(session)
+	view := s.debug.SetFunctionBreakpoints(session.ID, normalized)
+	s.viewMu.Lock()
+	saved := s.views[session.ID]
+	saved.FunctionBreakpoints, saved.StopOnPanic = normalized.Functions, normalized.StopOnPanic
+	s.views[session.ID] = saved
+	s.viewMu.Unlock()
+	return view, s.saveState()
+}
+
+// DebugRunToCursor riprende il programma in pausa fino alla riga indicata di un file del progetto.
+func (s *Service) DebugRunToCursor(debugID, relativePath string, line, threadID int) error {
+	sessionID, err := s.debug.SessionOf(DebugSessionID(debugID))
+	if err != nil {
+		return err
+	}
+	session, err := s.session(string(sessionID))
+	if err != nil {
+		return err
+	}
+	path, err := s.documents.ResolveProjectPath(session.Project, relativePath)
+	if err != nil {
+		return err
+	}
+	return s.debug.RunToCursor(DebugSessionID(debugID), path, line, threadID)
+}
+
 const maxBreakpointFiles = 500
 
-func (s *Service) persistBreakpoints(sessionID SessionID, relativePath string, lines []int) error {
+func (s *Service) persistBreakpoints(sessionID SessionID, relativePath string, list []Breakpoint) error {
 	s.viewMu.Lock()
 	view := s.views[sessionID]
-	breakpoints := make(map[string][]int, len(view.Breakpoints)+1)
+	breakpoints := make(map[string][]Breakpoint, len(view.Breakpoints)+1)
 	for path, existing := range view.Breakpoints {
 		breakpoints[path] = existing
 	}
 	_, known := breakpoints[relativePath]
 	switch {
-	case len(lines) == 0:
+	case len(list) == 0:
 		delete(breakpoints, relativePath)
 	case known || len(breakpoints) < maxBreakpointFiles:
-		breakpoints[relativePath] = lines
+		breakpoints[relativePath] = list
 	}
 	view.Breakpoints = breakpoints
 	s.views[sessionID] = view
@@ -298,15 +347,16 @@ func (s *Service) persistBreakpoints(sessionID SessionID, relativePath string, l
 // seedBreakpoints porta nel debugger i breakpoint salvati, risolti su percorsi assoluti del progetto.
 func (s *Service) seedBreakpoints(session Session) {
 	s.viewMu.RLock()
-	saved := s.views[session.ID].Breakpoints
-	byPath := make(map[string][]int, len(saved))
-	for relativePath, lines := range saved {
+	view := s.views[session.ID]
+	byPath := make(map[string][]Breakpoint, len(view.Breakpoints))
+	for relativePath, breakpoints := range view.Breakpoints {
 		if path, err := s.documents.ResolveProjectPath(session.Project, relativePath); err == nil {
-			byPath[path] = lines
+			byPath[path] = breakpoints
 		}
 	}
+	functions := FunctionBreakpointSettings{Functions: view.FunctionBreakpoints, StopOnPanic: view.StopOnPanic}
 	s.viewMu.RUnlock()
-	s.debug.SeedBreakpoints(session.ID, byPath)
+	s.debug.SeedBreakpoints(session.ID, byPath, functions)
 }
 
 // validateRemoteAddress accetta solo host:porta, senza schema né percorso.

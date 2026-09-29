@@ -16,6 +16,7 @@
 | §2 Editor Core | **77/80.** Aperte: Merge editor (→ §22), Move symbol e Change signature (limiti di gopls). |
 | §3 gopls Integration | **27/28.** Aperta: misura su repository grandi (→ §4 monorepo). |
 | §4 Workspace e Project Model | **37/48.** Fatti: Clone, go.work visuale, decorazioni Git/problemi/test nel Project, icon pack. **Prossimo passo: i template di progetto** (CLI, REST, gRPC, worker, Kafka, libreria, template personalizzati). Aperti anche: grafo dei moduli (→ §19), Project graph (→ §15), misura su monorepo. |
+| §7 Debugger Delve | **30/44.** Fatti: breakpoint condizionali, hit count, logpoint, function breakpoint, stop on panic, Run to Cursor, dialog View Breakpoints. Aperti: set next statement (Delve non lo supporta), registri, memory e disassembly view, creation stack delle goroutine, viewer Go-specific (panic, defer, slice, map, channel, context, error chain). **Prossimo passo §7:** i viewer Go-specific. |
 | §5–§30 | Da verificare voce per voce: molte funzioni esistono già (Run configuration, Delve, Concurrency view e race detector, test runner, terminale, Git, integrazioni Docker/DB/Broker/API) ma non sono ancora spuntate. Lavoro: audit + lacune reali. |
 | §31–§43 | Sottosistemi nuovi e grandi (Distributed Request Debugger, Runtime-Aware AI, Semantic Graph, Service Map, Reproduction, Logs/Trace Studio): ognuno va progettato prima di essere implementato. |
 | §44–§61 | Checklist di qualità, Definition of Done, KPI, roadmap, posizionamento e idee: si spuntano man mano che le funzioni arrivano, non si implementano da sole. |
@@ -387,19 +388,19 @@
 - [x] Delve integrato. — *`internal/goide/dap`, install Delve dal menu Go*
 - [x] DAP.
 - [x] Breakpoint. — *clic sul numero di riga, verificati da Delve*
-- [ ] Conditional breakpoint.
-- [ ] Hit count breakpoint.
-- [ ] Logpoint.
-- [ ] Function breakpoint.
-- [ ] Exception/panic breakpoint.
+- [x] Conditional breakpoint. — *tasto destro sul numero di riga; Delve valuta la condizione; test con Delve reale*
+- [x] Hit count breakpoint. — *`3`, `>= 5`, `% 10`, validato come Delve*
+- [x] Logpoint. — *`{espressione}` nel messaggio, output nella Debug console, nessuna fermata (test)*
+- [x] Function breakpoint. — *View Breakpoints (Ctrl+Shift+F8), con condizione e hit count, verificati da Delve*
+- [x] Exception/panic breakpoint. — *"Stop on every panic" (anche recuperati) via `runtime.gopanic`; i panic non recuperati fermano sempre*
 - [x] Step over. — *F8, anche F6/F10*
 - [x] Step into. — *F7*
 - [x] Step out. — *Shift+F8*
 - [x] Continue. — *F9, anche F5*
 - [x] Pause.
 - [x] Restart. — *Rerun*
-- [ ] Run to cursor.
-- [ ] Set next statement dove supportato.
+- [x] Run to cursor. — *Alt+F9, breakpoint temporaneo tolto alla fermata successiva; errore chiaro su riga senza codice*
+- [ ] Set next statement dove supportato. — *non supportato da Delve via DAP (niente `goto`): resta aperto finché Delve non lo offre*
 - [x] Evaluate expression. — *console REPL e hover*
 - [x] Watches. — *persistenti per progetto*
 - [x] Locals.

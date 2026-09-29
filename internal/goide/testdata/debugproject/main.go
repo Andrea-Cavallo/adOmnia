@@ -25,4 +25,13 @@ func main() {
 	origin := point{X: 3, Y: 4}
 	total := sum([]int{1, 2, 3})
 	fmt.Println("total", total, origin.X)
+	if os.Getenv("DBG_PANIC") != "" {
+		fmt.Println("recovered", recovered())
+	}
+}
+
+// recovered va in panic e si riprende: Delve si ferma solo con "Stop on every panic".
+func recovered() (message any) {
+	defer func() { message = recover() }()
+	panic("boom")
 }

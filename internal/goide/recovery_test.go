@@ -254,7 +254,7 @@ func TestBreakpointsPersistAcrossRestartAndViewSaves(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.SetBreakpoints(string(session.ID), "main.go", []int{4, 4, 3}); err != nil {
+	if _, err := service.SetBreakpoints(string(session.ID), "main.go", lineBreakpoints(4, 4, 3)); err != nil {
 		t.Fatal(err)
 	}
 	// Il frontend salva il layout senza breakpoint: non deve cancellarli.
