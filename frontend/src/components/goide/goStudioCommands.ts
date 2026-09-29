@@ -14,7 +14,7 @@ export type GoStudioCommandId =
   | 'nav.quickDefinition' | 'nav.showUsages' | 'nav.searchEverywhere' | 'code.quickDocumentation' | 'code.typeInfo' | 'code.semanticHighlighting' | 'code.inlayHints' | 'code.typeHints' | 'code.implementInterface'
   | 'code.refactorThis' | 'code.extractVariable' | 'code.extractConstant' | 'code.extractFunction' | 'code.inline' | 'code.moveToNewFile'
   | 'code.completion' | 'code.parameterInfo' | 'code.quickFix' | 'code.rename' | 'code.reformat' | 'code.organizeImports'
-  | 'code.formatOnSave' | 'code.importsOnSave' | 'code.gofumpt' | 'code.staticcheck' | 'code.lint' | 'code.lintOnSave'
+  | 'code.formatOnSave' | 'code.importsOnSave' | 'code.gofumpt' | 'code.staticcheck' | 'code.vulncheck' | 'code.lint' | 'code.lintOnSave'
   | 'go.toolchains' | 'go.detect' | 'go.dependencies' | 'go.tidy' | 'go.trust'
   | 'go.updateAll' | 'go.updatePatch' | 'go.modDownload' | 'go.modVerify'
   | 'go.lspStart' | 'go.lspRestart' | 'go.lspStop' | 'go.lspInstall' | 'go.lspLog'
@@ -164,6 +164,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'code.typeHints', menu: 'code', label: 'Type Hints (:=, range, literals, constants)' },
   { id: 'code.gofumpt', menu: 'code', label: 'Use gofumpt Style' },
   { id: 'code.staticcheck', menu: 'code', label: 'Staticcheck Analyses' },
+  { id: 'code.vulncheck', menu: 'code', label: 'Vulnerability Diagnostics (vuln.go.dev)' },
   { id: 'go.toolchains', menu: 'go', label: 'Go SDKs & Toolchains…' },
   { id: 'go.detect', menu: 'go', label: 'Detect Go SDK' },
   { id: 'go.dependencies', menu: 'go', label: 'Module Dependencies…', separatorBefore: true },
@@ -278,6 +279,7 @@ export interface GoStudioCommandContext {
   importsOnSave: boolean
   gofumpt: boolean
   staticcheck: boolean
+  vulncheck?: boolean
   lintOnSave: boolean
   linterAvailable: boolean
   linting: boolean
@@ -368,7 +370,7 @@ export function commandAvailability(id: GoStudioCommandId, context: GoStudioComm
   }
   if (id === 'code.typeHints') return context.inlayHints ? true : 'Turn on Inlay Hints first'
   if (id === 'code.semanticHighlighting' || id === 'code.inlayHints') return context.lspState === 'ready' && !context[id === 'code.inlayHints' ? 'inlayHintsSupported' : 'semanticTokensSupported'] ? 'The running gopls does not provide this feature' : true
-  if (id.startsWith('code.') && ['code.formatOnSave', 'code.importsOnSave', 'code.gofumpt', 'code.staticcheck', 'code.lintOnSave'].indexOf(id) < 0) return semanticAvailability(context)
+  if (id.startsWith('code.') && ['code.formatOnSave', 'code.importsOnSave', 'code.gofumpt', 'code.staticcheck', 'code.vulncheck', 'code.lintOnSave'].indexOf(id) < 0) return semanticAvailability(context)
   switch (id) {
     case 'file.save': return context.activeDocumentDirty ? true : 'No unsaved changes in this file'
     case 'file.saveAll': return context.sessionDirty ? true : 'No unsaved changes'
@@ -460,6 +462,7 @@ export function commandChecked(id: GoStudioCommandId, context: GoStudioCommandCo
     case 'code.importsOnSave': return context.importsOnSave
     case 'code.gofumpt': return context.gofumpt
     case 'code.staticcheck': return context.staticcheck
+    case 'code.vulncheck': return !!context.vulncheck
     case 'code.lintOnSave': return context.lintOnSave
     case 'code.semanticHighlighting': return context.semanticHighlighting
     case 'code.inlayHints': return context.inlayHints

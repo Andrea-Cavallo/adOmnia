@@ -145,7 +145,7 @@ interface PersistedSettings {
   preferences: GoIDEEditorPreferences
 }
 
-const DEFAULT_SETTINGS: GoIDELanguageServerSettings = { gofumpt: false, staticcheck: false, placeholders: true, semanticLinks: false }
+const DEFAULT_SETTINGS: GoIDELanguageServerSettings = { gofumpt: false, staticcheck: false, placeholders: true, semanticLinks: false, vulncheck: false }
 const DEFAULT_PREFERENCES: GoIDEEditorPreferences = {
   formatOnSave: true, organizeImportsOnSave: true, lintOnSave: false, semanticHighlighting: true, inlayHints: true,
   typeHints: false, stickyScroll: true, minimap: false, fontLigatures: false, fontSize: EDITOR_FONT_SIZE.default,

@@ -183,34 +183,34 @@
 
 # 3. gopls Integration
 
-- [ ] Avvio automatico di `gopls`.
-- [ ] Auto-detection versione.
-- [ ] Download/install controllato.
-- [ ] Selezione versione `gopls`.
-- [ ] Health indicator.
-- [ ] Restart language server.
-- [ ] Log dedicato.
-- [ ] Diagnostics panel.
-- [ ] Semantic tokens.
-- [ ] Completion.
-- [ ] Signature help.
-- [ ] Hover docs.
-- [ ] References.
-- [ ] Implementations.
-- [ ] Call hierarchy.
-- [ ] Type hierarchy.
-- [ ] Rename.
-- [ ] Code actions.
-- [ ] Workspace symbols.
-- [ ] Inlay hints.
-- [ ] Vulnerability diagnostics dove disponibili.
-- [ ] Supporto multi-module.
-- [ ] Supporto `go.work`.
-- [ ] Gestione repository grandi.
-- [ ] Indexing incrementale.
-- [ ] Cache persistente.
-- [ ] Stato indexing visibile ma poco invasivo.
-- [ ] Nessun blocco UI durante indexing.
+- [x] Avvio automatico di `gopls`. — *parte da solo nei progetti autorizzati, salvo stop esplicito.*
+- [x] Auto-detection versione. — *Tool Paths / status bar mostrano binario e versione.*
+- [x] Download/install controllato. — *Go → Install gopls… con conferma, nella cartella strumenti di adOmnia.*
+- [x] Selezione versione `gopls`. — *Tool Paths accetta qualunque binario gopls.*
+- [x] Health indicator. — *status bar: pronto, in avvio, fermo, crash.*
+- [x] Restart language server.
+- [x] Log dedicato. — *Go → Language Server Log.*
+- [x] Diagnostics panel. — *Problems (Alt+6).*
+- [x] Semantic tokens.
+- [x] Completion.
+- [x] Signature help.
+- [x] Hover docs.
+- [x] References.
+- [x] Implementations.
+- [x] Call hierarchy.
+- [x] Type hierarchy.
+- [x] Rename.
+- [x] Code actions.
+- [x] Workspace symbols.
+- [x] Inlay hints.
+- [x] Vulnerability diagnostics dove disponibili. — *Code → Vulnerability Diagnostics: opt-in con conferma (scarica il DB da vuln.go.dev), `vulncheck: Imports`; impostazioni verificate con gopls reale.*
+- [x] Supporto multi-module.
+- [x] Supporto `go.work`.
+- [ ] Gestione repository grandi. — *gopls esclude `node_modules`; manca una misura su monorepo grandi → §4.*
+- [x] Indexing incrementale. — *di gopls; il buffer non salvato è sincronizzato a ogni modifica.*
+- [x] Cache persistente. — *cache su disco di gopls.*
+- [x] Stato indexing visibile ma poco invasivo. — *progresso di gopls nella status bar.*
+- [x] Nessun blocco UI durante indexing. — *tutte le richieste sono asincrone e cancellabili.*
 
 ---
 

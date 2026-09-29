@@ -49,6 +49,7 @@ export function runLanguageCommand(id: GoStudioCommandId, sessionId: string | nu
     case 'code.importsOnSave': lsp.updatePreferences({ organizeImportsOnSave: !lsp.preferences.organizeImportsOnSave }); return true
     case 'code.gofumpt': void lsp.updateSettings(sessionId, { gofumpt: !lsp.settings.gofumpt }); return true
     case 'code.staticcheck': void lsp.updateSettings(sessionId, { staticcheck: !lsp.settings.staticcheck }); return true
+    case 'code.vulncheck': void toggleVulncheck(sessionId); return true
     case 'code.lintOnSave': lsp.updatePreferences({ lintOnSave: !lsp.preferences.lintOnSave }); return true
     case 'code.semanticHighlighting': lsp.updatePreferences({ semanticHighlighting: !lsp.preferences.semanticHighlighting }); return true
     case 'code.inlayHints': lsp.updatePreferences({ inlayHints: !lsp.preferences.inlayHints }); return true
@@ -74,4 +75,18 @@ export function runLanguageCommand(id: GoStudioCommandId, sessionId: string | nu
     case 'code.lint': lsp.showToolWindow('problems'); void lsp.runLint(sessionId); return true
     default: return false
   }
+}
+
+/** Local-first: attivarla scarica il database delle vulnerabilità, quindi chiede conferma. */
+async function toggleVulncheck(sessionId: string | null): Promise<void> {
+  const lsp = useGoIDELspStore.getState()
+  if (!lsp.settings.vulncheck) {
+    const approved = await confirm({
+      title: 'Turn on vulnerability diagnostics?',
+      message: 'gopls will download the Go vulnerability database from vuln.go.dev and mark the go.mod requirements whose code you import that have known vulnerabilities. Your source code is not sent.',
+      confirmLabel: 'Turn on',
+    })
+    if (!approved) return
+  }
+  await lsp.updateSettings(sessionId, { vulncheck: !lsp.settings.vulncheck })
 }

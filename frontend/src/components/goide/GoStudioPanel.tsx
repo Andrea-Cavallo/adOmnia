@@ -339,6 +339,7 @@ export function GoStudioPanel() {
     formatOnSave: lsp.preferences.formatOnSave,
     importsOnSave: lsp.preferences.organizeImportsOnSave,
     gofumpt: lsp.settings.gofumpt,
+    vulncheck: lsp.settings.vulncheck,
     staticcheck: lsp.settings.staticcheck,
     lintOnSave: lsp.preferences.lintOnSave,
     linterAvailable: !!activeSession && !!lsp.linterInfo?.available,

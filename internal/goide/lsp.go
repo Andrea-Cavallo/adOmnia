@@ -480,6 +480,7 @@ func goplsSettings(settings LanguageServerSettings) map[string]any {
 	return map[string]any{
 		"gofumpt":            settings.Gofumpt,
 		"staticcheck":        settings.Staticcheck,
+		"vulncheck":          map[bool]string{true: "Imports", false: "Off"}[settings.Vulncheck],
 		"usePlaceholders":    settings.Placeholders,
 		"completeUnimported": true,
 		"hoverKind":          "FullDocumentation",

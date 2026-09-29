@@ -9,7 +9,7 @@ import {
   PackageOpen, PackagePlus, PackageSearch, Paintbrush, PanelBottom, PanelRight, PanelTop, Pencil, Pin, Play, Plug,
   Radar, Redo2, RefreshCw, Send, Repeat, Replace, RotateCcw, Rows2, Save, SaveAll, ScanSearch, Search, SearchCode, Server,
   Settings2, ShieldCheck, Sparkles, Square, SquareDashed, SquareTerminal, StepForward, Terminal, TextCursorInput, Trash2,
-  Type, Undo2, Unplug, Wand2, WandSparkles, Workflow, Wrench, X, Zap, type LucideIcon, ArrowUpToLine, Boxes, Eraser, Focus, Ligature, Map, ZoomIn, ZoomOut, PenLine
+  Type, Undo2, Unplug, Wand2, WandSparkles, Workflow, Wrench, X, Zap, type LucideIcon, ArrowUpToLine, Boxes, Eraser, Focus, Ligature, Map, ZoomIn, ZoomOut, PenLine, ShieldAlert
 } from 'lucide-react'
 import { GoGopherIcon } from './GoGopherIcon'
 import type { GoStudioCommandId, GoStudioMenuId } from './goStudioCommands'
@@ -145,6 +145,7 @@ export const GO_STUDIO_COMMAND_ICONS: Partial<Record<GoStudioCommandId, GoStudio
   'code.inlayHints': icon(Type),
   'code.gofumpt': icon(WandSparkles),
   'code.staticcheck': icon(ShieldCheck),
+  'code.vulncheck': icon(ShieldAlert),
 
   'go.toolchains': icon(Settings2),
   'go.detect': icon(RefreshCw),

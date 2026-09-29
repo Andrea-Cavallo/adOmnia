@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 )
 
 func hierarchyNames(items []HierarchyItem) []string {
@@ -88,4 +89,42 @@ func lineOf(t *testing.T, content, prefix string) int {
 	}
 	t.Fatalf("%q not found", prefix)
 	return 0
+}
+
+func TestGoplsSettingsKeepVulncheckOptIn(t *testing.T) {
+	if got := goplsSettings(LanguageServerSettings{})["vulncheck"]; got != "Off" {
+		t.Fatalf("vulncheck by default = %v, want Off (local-first)", got)
+	}
+	if got := goplsSettings(LanguageServerSettings{Vulncheck: true})["vulncheck"]; got != "Imports" {
+		t.Fatalf("vulncheck when enabled = %v, want Imports", got)
+	}
+}
+
+// gopls reale: le impostazioni di Go Studio (vulncheck incluso) non producono avvisi di opzioni sconosciute.
+func TestGoplsAcceptsGoStudioSettings(t *testing.T) {
+	gopls := findGoplsForTest(t)
+	recorder := &eventRecorder{}
+	service := NewService(&memoryStore{}, recorder.record)
+	defer service.Shutdown()
+	session := startLanguageServerForTest(t, service, recorder, copyFixture(t, "multipkg"), gopls)
+	if _, err := service.RestartLanguageServer(string(session.ID), LanguageServerSettings{Placeholders: true, Staticcheck: true, Vulncheck: true}); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(20 * time.Second)
+	for time.Now().Before(deadline) {
+		if status, _ := service.LanguageServerStatus(string(session.ID)); status.State == LanguageServerReady {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	lines, err := service.LanguageServerLog(string(session.ID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, line := range lines {
+		lower := strings.ToLower(line)
+		if strings.Contains(lower, "unknown setting") || strings.Contains(lower, "invalid") && strings.Contains(lower, "setting") || strings.Contains(lower, "vulncheck") && strings.Contains(lower, "error") {
+			t.Fatalf("gopls rejected a Go Studio setting: %s", line)
+		}
+	}
 }

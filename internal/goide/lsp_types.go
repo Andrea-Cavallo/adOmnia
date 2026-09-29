@@ -48,6 +48,9 @@ type LanguageServerSettings struct {
 	Staticcheck   bool `json:"staticcheck"`
 	Placeholders  bool `json:"placeholders"`
 	SemanticLinks bool `json:"semanticLinks"`
+	// Vulncheck attiva la diagnostica delle vulnerabilità note sulle dipendenze (govulncheck
+	// dentro gopls). Scarica il database da vuln.go.dev: per questo è opt-in.
+	Vulncheck bool `json:"vulncheck"`
 }
 
 type EditorRange struct {

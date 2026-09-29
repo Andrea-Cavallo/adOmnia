@@ -2266,6 +2266,12 @@ export class LanguageServerSettings {
     "placeholders": boolean;
     "semanticLinks": boolean;
 
+    /**
+     * Vulncheck attiva la diagnostica delle vulnerabilità note sulle dipendenze (govulncheck
+     * dentro gopls). Scarica il database da vuln.go.dev: per questo è opt-in.
+     */
+    "vulncheck": boolean;
+
     /** Creates a new LanguageServerSettings instance. */
     constructor($$source: Partial<LanguageServerSettings> = {}) {
         if (!("gofumpt" in $$source)) {
@@ -2279,6 +2285,9 @@ export class LanguageServerSettings {
         }
         if (!("semanticLinks" in $$source)) {
             this["semanticLinks"] = false;
+        }
+        if (!("vulncheck" in $$source)) {
+            this["vulncheck"] = false;
         }
 
         Object.assign(this, $$source);
