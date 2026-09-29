@@ -38,7 +38,7 @@ The *primary goal* is a **professional, coherent, modern, and truly usable FINAL
 
 Agents must understand the *real, current state* of the project:
 
-- **Current runtime is Wails 3 + Go backend + React 18/TypeScript frontend.**
+- **Current runtime is Wails 3 + Go backend + React 19/TypeScript frontend.**
 - Some older notes may still mention Wails 2, Tauri/Rust, or legacy paths; verify against the current files before acting.
 - **Backend is significantly more advanced** than the frontend
 - **Frontend is still incomplete and nascent**
@@ -60,6 +60,7 @@ Use these files as the fastest way to understand adOmnia before changing behavio
 | `docs/SOUL.md` | Product soul, UX philosophy, visual/product expectations, and long-term direction. Read this for any UX, theme, workflow, or product-quality decision. |
 | `docs/adomnia-feature-catalog.en.md` | Complete feature inventory. Read this when you need to quickly understand all project capabilities or avoid duplicating an existing tool. |
 | `docs/ISSUES.md` | Current open issues, bugs, active work queue, and completion status across product areas. |
+| `docs/GO-STUDIO.md` | Go Studio (the integrated Go IDE): trust model, optional tools, persistence schema, shortcuts, limits. Its work queue and manual checks are in `todo-ide.md`. |
 | `README.md` | Public product positioning and quick-start overview. |
 | `AGENTS.md` | Practical operating guide for AI agents in this repo. |
 
@@ -76,7 +77,7 @@ Use these files as the fastest way to understand adOmnia before changing behavio
 3. **Browser Debugging Integrated** — debug web pages inside the API tool (no competitor does this).
 4. **Enterprise & Legacy First-Class** — SOAP, WSDL, WS-Security, mTLS, JKS, eIDAS, Berlin Group.
 
-**Tech stack:** React 18 + TypeScript + Vite frontend, Wails 3 desktop shell, Go backend.  
+**Tech stack:** React 19 + TypeScript + Vite frontend, Wails 3 desktop shell, Go backend.  
 **Distribution:** Single portable executable. No installation, no external dependencies at runtime.  
 **Philosophy:** Local-first, privacy-first, user-extensible.
 
@@ -171,7 +172,7 @@ adomnia/
 
 ## Architecture
 
-### Frontend (React 18 + TypeScript)
+### Frontend (React 19 + TypeScript)
 
 | Component | Purpose |
 |-----------|---------|
@@ -214,6 +215,7 @@ The `@wailsio/runtime` npm version is **version-locked** to `github.com/wailsapp
 | Docker Lab | `internal/docker`, `frontend/src/lib/dockerlab-api.ts` |
 | Customization | `internal/themes`, `internal/plugins`, `internal/templates` |
 | Git Sync | `internal/git`, `git_bindings.go`, `git_bindings_ops.go` |
+| Go Studio (Go IDE) | `internal/goide` (+ `lsp`, `dap`), `internal/goidewindow`, `goide_bindings.go`, `frontend/src/components/goide/`, `frontend/src/stores/goide*.ts` |
 
 **IPC:** Frontend calls backend through Wails generated bindings.  
 **CORS:** Desktop backend has system/network access; do not add unsafe browser-side workarounds.  
@@ -385,6 +387,15 @@ if (request.auth.type === 'aws4') {
 2. Keep logic local unless reusable elsewhere
 3. Follow existing switch/state patterns
 
+### Add a Go Studio feature
+
+1. Put the logic in `internal/goide`, owned by the manager for that resource (processes, LSP, debug, terminal…), and keep the `Service` method thin. Any feature that starts a process must check `session.Project.Authorization == AuthorizationPermitted`.
+2. Expose it in `goide_bindings.go` and regenerate the bindings with the `wails3` version pinned in `go.mod`.
+3. Add a command to `frontend/src/components/goide/goStudioCommands.ts` (menu, label, binding, and an availability reason when disabled), then handle it in `GoStudioPanel.tsx`. Menus, shortcuts and the help dialog all read that registry.
+4. Route backend events by `sessionId`/`resourceId` in the matching `stores/goide*.ts` store; never let state cross sessions.
+5. Keep Go Studio lazy: never import its modules from `App.tsx` or other startup code (`npm run check:startup` enforces this).
+6. Update `docs/GO-STUDIO.md` and `todo-ide.md` when behaviour, storage or shortcuts change.
+
 ### Add a protocol (SOAP, gRPC, etc.)
 
 1. Add backend Go support in the closest protocol file or create `<protocol>.go`
@@ -506,6 +517,7 @@ Four files live at the root — everything else is under `docs/`:
 | `docs/SOUL.md` | Product philosophy, UX principles, long-term vision |
 | `docs/adomnia-feature-catalog.en.md` | Fast complete catalog of product features and modules |
 | `docs/ISSUES.md` | Open bugs, missing features, and completion status — the active work queue |
+| `docs/GO-STUDIO.md` | Go Studio guide: usage, trust model, optional tools, persistence and shortcuts |
 | `docs/BUILD.md` | Build instructions for all platforms |
 | `docs/INSTALL.md` | End-user installation guide |
 | `docs/RELEASE.md` | Release notes and history |

@@ -29,6 +29,26 @@ the current codebase on 2026-06-13 and found already resolved (see below)._
 
 ## New This Cycle
 
+### Go Studio (Go IDE) — shipped through v0.9.38, manual verification open
+
+Implemented and covered by automated tests on Windows and Linux: projects and trust, isolated sessions and restore, gopls intelligence and refactoring, linters, Fix with AI, build/run/tests/coverage, the Delve debugger, the PTY terminal, Go Tools, Git in the editor linked to Git Studio, adOmnia integrations, Go Studio workspaces and separate project windows. Details: [GO-STUDIO.md](GO-STUDIO.md). The work queue lives in `todo-ide.md`.
+
+Open:
+
+- [ ] **P1 — Manual checks in the running app** (M1–M31 in `todo-ide.md`): real-project flows on Windows, Task Manager clean-up, ConPTY in the window, debugger from the UI, themes, and the quality bar compared with the approved mocks.
+- [ ] **P2 — Separate windows not declared yet**: implemented and tested automatically; to be declared in the release notes after the real-window check (M31).
+- [ ] **P3 — macOS runtime not verified**: the package cross-builds, but nothing has run on macOS.
+
+Residual limits (by design, stated in the product):
+
+- Push, pull, merge, conflicts, rebase and stash stay in Git Studio; other version control systems are not supported.
+- Plugins get read-only events (contract v1) and no commands.
+- The API Client CodeLens resolves route prefixes only within the same file.
+- Remote debugging needs identical source paths for breakpoints.
+- Refactorings are limited to the code actions gopls offers.
+- Fix with AI needs an AI provider enabled and verified in Settings, and sends the affected code only when the user clicks.
+
+
 ### Developer Context P0+P1 — implemented (branch `feat/devcontext`, 2026-09-29)
 
 - [x] Entity router (`frontend/src/lib/entities/`), panel handoff, notice bar

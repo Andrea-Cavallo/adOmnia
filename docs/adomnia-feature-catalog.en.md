@@ -1,6 +1,6 @@
 # adOmnia — Feature Catalog
 
-**adOmnia** is a local-first desktop API Development Toolbox built with Go (Wails) + React 18 (TypeScript).  
+**adOmnia** is a local-first desktop API Development Toolbox built with Go (Wails 3) + React 19 (TypeScript), with an integrated Go IDE (Go Studio).  
 All features are offline-first: no account, no telemetry, and no data sent outside the machine.
 
 ---
@@ -28,6 +28,7 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | G | [Platform](#g-platform) | Settings, Infrastructure, UI Framework | ~76 |
 | H | [API Design](#h-api-design) | OpenAPI Import/Export, Schema Components, Visual OpenAPI Editor | ~10 |
 | I | [MCP (Model Context Protocol)](#i-mcp-model-context-protocol) | MCP Client/Debugger, Sessions & Transport, Server Generator | ~12 |
+| J | [Go Studio (Go IDE)](#j-go-studio-go-ide) | Projects & Windows, Editor & gopls, Lint & AI, Run/Test/Debug, Toolchain, Git & Integration | ~34 |
 
 ---
 
@@ -980,6 +981,76 @@ AI-integration module: connect to, debug, and generate MCP servers — exposing 
 
 ---
 
+## J. GO STUDIO (GO IDE)
+
+A Go IDE inside adOmnia. Projects open without running anything; local tools run only after the project is trusted. Full guide: [docs/GO-STUDIO.md](GO-STUDIO.md).
+
+### J1. Projects, Sessions & Windows
+
+| # | Feature | Description |
+|---|-------------|-------------|
+| J1.1 | **Open / Create Project** | Opens a module, a `go.work` workspace or a folder inside a repository; *New Go Project* runs `go mod init` after confirmation. |
+| J1.2 | **Project Trust** | An opened project only reads and saves files. *Trust Project Tools* allows gopls, linters, build, run, tests, debugging, terminal and installs; revoking trust stops the project's processes. |
+| J1.3 | **Isolated Sessions** | Several projects stay open together; output, diagnostics, run configurations, terminals, Git state and local history never mix. |
+| J1.4 | **Session Restore & Recovery** | Tabs, layout, bookmarks, navigation history and breakpoints are restored; unsaved buffers are recovered only on request. |
+| J1.5 | **Go Studio Workspaces** | Named groups of projects, separate from adOmnia API workspaces; the same project can live in several. |
+| J1.6 | **Separate Project Windows** | *Open Project in New Window* gives a project its own native window; only one window edits a project at a time. Covered by automated tests; manual check pending. |
+| J1.7 | **External Change Handling** | A file watcher reloads clean buffers and offers Reload / Keep / Compare for modified ones; the same file open in two projects is detected. |
+
+### J2. Editor & Code Intelligence (gopls)
+
+| # | Feature | Description |
+|---|-------------|-------------|
+| J2.1 | **Monaco Editor** | Tabs with pinning, reopen closed tab, split editor with its own tabs, atomic saves, GoLand keymap, multi-caret and column selection. |
+| J2.2 | **Completion & Diagnostics** | gopls completion with auto-imports and diagnostics computed on unsaved buffers. |
+| J2.3 | **Navigation** | Ctrl+click / Ctrl+B declaration, implementations, super method, usages, symbol search, Search Everywhere, back/forward history, bookmarks, structure view and symbolic breadcrumb. |
+| J2.4 | **Implementation Markers** | Gutter markers for implementations and implemented interfaces, including SDK interfaces. |
+| J2.5 | **Refactoring** | Rename with multi-file preview and gopls code actions (extract variable/constant/function, inline, move to new file), applied all-or-nothing. |
+| J2.6 | **Semantic Editing** | Semantic highlighting, inlay hints, quick documentation, parameter info, Implement Interface. |
+| J2.7 | **Formatting** | Reformat code and optimize imports, optionally on save; gofumpt optional. |
+| J2.8 | **File Icons** | Gopher for Go sources (test marker), Go logo for module files, Simple Icons brands for Docker, Git, GitHub Actions, `.env` and common formats; readable on both themes. |
+
+### J3. Lint & AI
+
+| # | Feature | Description |
+|---|-------------|-------------|
+| J3.1 | **Linters** | golangci-lint or staticcheck with the project's configuration, lint on save, quick fixes and line suppression. |
+| J3.2 | **Fix with AI** | Quick fix and Problems action that sends the file (and the local package of an `undefined: pkg.Name` error) to the configured AI provider; the answer can touch only those files and always opens in a preview. |
+| J3.3 | **Problems Window** | gopls, linter and build problems grouped by file with navigation. |
+
+### J4. Run, Test & Debug
+
+| # | Feature | Description |
+|---|-------------|-------------|
+| J4.1 | **Build / Run / Stop** | Structured `go build`/`go run` with stdin, clickable output, restart, and stop of the whole process tree. |
+| J4.2 | **Run Configurations** | Saved per project; secret environment values are prompted and never persisted. |
+| J4.3 | **Gutter Run Actions** | ▶ next to `func main`, tests, benchmarks, fuzz tests and examples with Run / Debug / Run with Coverage. |
+| J4.4 | **Test Runner** | Tree of results from `go test -json`, failure navigation, Rerun Failed. |
+| J4.5 | **Coverage** | Coverage in the editor, cleared when the source no longer matches. |
+| J4.6 | **Delve Debugger** | Breakpoints, stepping, stack, variables, watches and evaluate; launch, attach to a process or connect to a remote `dlv --headless`. Stop leaves no `dlv` or debuggee behind. |
+| J4.7 | **Terminal** | Real PTY (ConPTY on Windows) per project, closing its whole process tree. |
+| J4.8 | **Go Tools** | `go vet`, `go generate`, `go fix`, `go mod why`, `go mod graph`, `go doc` with an exact command preview. |
+
+### J5. Toolchain & Dependencies
+
+| # | Feature | Description |
+|---|-------------|-------------|
+| J5.1 | **Go SDK Management** | Detects Go or installs official releases (SHA-256 verified); a different SDK per project without changing `PATH`. |
+| J5.2 | **Tool Installation** | Confirmed installs of gopls, golangci-lint, staticcheck and Delve into the adOmnia tools folder; custom tool paths. |
+| J5.3 | **Dependencies** | Previewed `go get`, `go mod tidy`, update, download and verify. |
+
+### J6. Git & adOmnia Integration
+
+| # | Feature | Description |
+|---|-------------|-------------|
+| J6.1 | **VCS in the Editor** | Branch and changes in the toolbar, gutter diff with hunk revert, blame, file history, commit and branch switch. |
+| J6.2 | **Git Studio Follows the Project** | Opening a project points Git Studio at its repository root, even for a subfolder; a manual choice is kept until the project changes. |
+| J6.3 | **Project Services** | Opens Docker Lab, Database Studio and Broker Studio preconfigured for services detected in `go.mod`. |
+| J6.4 | **Open in API Client** | CodeLens on HTTP route handlers (net/http, gorilla/mux, gin, echo, fiber, chi) opens a prefilled request. |
+| J6.5 | **Plugin Events** | Read-only Go Studio events for plugins (contract v1). |
+
+---
+
 ## SUMMARY
 
 | Category | Sections | Features |
@@ -993,4 +1064,5 @@ AI-integration module: connect to, debug, and generate MCP servers — exposing 
 | **G — Platform** | Settings, Infrastructure, UI Framework | 76 |
 | **H — API Design** | OpenAPI Import/Export, Schema Components, Visual OpenAPI Editor | 10 |
 | **I — MCP (Model Context Protocol)** | Client/Debugger, Sessions & Transport, Server Generator | 12 |
-| **Total** | 38 sections | **~535** |
+| **J — Go Studio (Go IDE)** | Projects & Windows, Editor & gopls, Lint & AI, Run/Test/Debug, Toolchain, Git & Integration | 34 |
+| **Total** | 44 sections | **~569** |

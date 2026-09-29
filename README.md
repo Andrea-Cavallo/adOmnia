@@ -53,6 +53,7 @@ Requests at workspace root appear outside your named collections and persist wit
 | **Mocks and infrastructure** | Schema-driven mock responses, conditional expectations, record/replay, endpoint traffic inspection, HTTPS interception, breakpoints, mapping, throttling, HTTP/gRPC load tests and Docker Lab. |
 | **Debugging and analysis** | Browser DevTools, Application Log Inspector, HAR inspection, network diagnostics, payload tools, stack-to-source navigation and redacted evidence exports. |
 | **Data and documents** | SQLite, PostgreSQL, MySQL and MongoDB exploration; local storage inspection; Markdown, Mermaid, LaTeX and PDF editing, annotation, forms and digital signatures. |
+| **Go Studio (Go IDE)** | Open and trust real Go projects; gopls completion, navigation, refactoring and diagnostics; golangci-lint/staticcheck; build, run, tests with coverage, the Delve debugger and a real terminal; Git in the editor; Fix with AI; links to Docker Lab, Database/Broker Studio and the API Client. |
 | **Git and portable collections** | Clone/init, staging, commits, history graph, branches, merges, push/pull, diffs, conflict resolution and deterministic collection-folder export/import. |
 | **AI and MCP** | Configurable cloud/local AI, the a0 assistant, opt-in request creation, model discovery, a local agent gateway, an MCP client/debugger and an MCP server generator. |
 | **Security and customization** | Encrypted Vault references, private Environments, certificate tools, local JavaScript plugins, templates and built-in/custom appearances. |
@@ -105,6 +106,14 @@ my-collection/
 ```
 
 Collection and folder settings can supply shared authentication, headers, variables and scripts. The built-in Git client handles staging, commits, branch operations, remotes and conflict resolution.
+
+### Develop Go projects in Go Studio
+
+Open a Go module, workspace or repository folder and choose **Trust** to allow local Go tools for that project; until then nothing runs. Go Studio uses the project's Go SDK (detected or installed from the official catalog) for gopls, linting, build, run, tests, coverage and Delve debugging. Several projects stay isolated side by side, and one can move into its own window.
+
+Errors offer **Fix with AI**, which sends the affected code to the AI provider you configured and shows the proposed change as a preview before anything is applied. Git Studio follows the open project's repository, and *Project Services* opens Docker Lab, Database Studio or Broker Studio for the services found in `go.mod`.
+
+See the [Go Studio guide](docs/GO-STUDIO.md) for trust rules, optional tools, storage and shortcuts.
 
 ## AI and a0
 
@@ -248,6 +257,7 @@ Linux checks and builds use the GTK 3 compatibility tag; see [the build guide](d
 | [Installation](docs/INSTALL.md) | Desktop downloads and platform setup. |
 | [Build from source](docs/BUILD.md) | Toolchain, native dependencies and packaging. |
 | [Feature catalog](docs/adomnia-feature-catalog.en.md) | Detailed module inventory. |
+| [Go Studio](docs/GO-STUDIO.md) | Go IDE usage, project trust, optional tools, persistence and shortcuts. |
 | [FAQ](docs/FAQ.md) | Common product and setup questions. |
 | [Troubleshooting](docs/TROUBLESHOOTING.md) | Diagnostics and recovery steps. |
 | [Architecture](docs/ARCHITECTURE.md) | Application structure and technical context. |

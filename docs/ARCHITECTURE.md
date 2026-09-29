@@ -18,10 +18,10 @@ local files, bbolt, network clients, subprocesses
 
 Location: `frontend/`
 
-- React 18 and TypeScript.
+- React 19 and TypeScript.
 - Vite build pipeline.
 - Zustand stores for shared UI state.
-- Wails bindings under `frontend/wailsjs/`.
+- Wails 3 generated bindings under `frontend/bindings/` (`frontend/src/wailsjs/` is only a compatibility shim).
 - Dense desktop UI with local design tokens and utility classes.
 
 Key areas:
@@ -38,7 +38,7 @@ quiet hydration shell to preserve layout stability.
 
 ## Backend
 
-Location: repository root Go files.
+Location: the repository root is a thin Wails binding layer (`main.go`, `app.go`, `*_bindings.go`); feature logic lives in `internal/<domain>/`.
 
 The Go backend owns local system integrations:
 
@@ -76,6 +76,36 @@ persisted JSON as structured values and reports per-block byte sizes; version 1
 remains available as a string-based fallback for existing builds and corrupted
 or unsupported v2 responses.
 
+## Go Studio
+
+Go Studio is the integrated Go IDE. User-facing behaviour, trust rules and storage details are in [GO-STUDIO.md](GO-STUDIO.md).
+
+**Backend.** `internal/goide` holds a single `Service`, registered through `goide_bindings.go` and shared by every window. It is composed of managers, each owning one kind of resource:
+
+| Manager | Owns |
+| --- | --- |
+| `WorkspaceManager`, `studioWorkspaceRegistry` | Sessions (one per open project), trust state, Go Studio workspaces |
+| `DocumentManager`, `WatchManager`, `LocalHistory`, `RecoveryManager` | Documents confined to the project root, atomic saves, file watching, local history, unsaved-buffer recovery |
+| `ToolchainManager`, `ToolchainInstaller` | Go SDK detection, official installs, per-session environment |
+| `LSPManager` (`internal/goide/lsp`) | One gopls process per trusted session, JSON-RPC, document sync, features and diagnostics |
+| `ProcessManager` | Build, run, tests, Go Tools and dependency commands; output events, stdin, process-tree stop |
+| `TerminalManager` | PTY shells (ConPTY on Windows) per session |
+| `DebugManager` (`internal/goide/dap`) | Delve over DAP: launch, attach, remote |
+| `TestManager`, `RunConfigManager` | Structured test runs and coverage; saved run configurations |
+| `windowRegistry` | Which window may edit each session |
+
+`internal/goidewindow` creates the native separate windows (same pattern as `internal/swaggerwindow`), and `internal/git` provides the Git operations reused by the editor VCS features.
+
+**Lifecycle.** Opening a project creates a session in the *opened* state; nothing is started. Trusting it allows gopls, linters, processes, terminals and debugging for that session. Every process is owned by a manager and tied to its session: closing the session, revoking trust or quitting the app stops the whole process tree, and `Service.Shutdown` releases everything in order. `restore()` loads the persisted state lazily on the first call and retries after transient errors.
+
+**Events.** The backend reports progress through `goide:event` envelopes (`sessionId`, `resourceId`, sequence, payload) broadcast to every window: `run.*`, `terminal.*`, `lsp.*`, `debug.*`, `files.changed`, `session.*`. Each frontend store routes them by session and resource. Close confirmation uses `goide:close-requested` for the main window and `goide:window-close-requested` for separate windows.
+
+**Frontend.** Zustand stores under `frontend/src/stores/goide*.ts` hold UI state per session (documents, runs, LSP, VCS, tests, debug, workspaces, windows). Components live in `frontend/src/components/goide/`, and Monaco language features are registered once in `goStudioLanguageFeatures.ts`. The whole of Go Studio is lazy-loaded, and the startup budget check keeps it out of the initial bundle.
+
+**Windows.** The backend stays single. A separate window hosts its own frontend, with its own unsaved buffers, so each session has exactly one editing window. The registry refuses a second one, `CloseSession` refuses a session owned elsewhere, and the window that gives up a project stops persisting its view.
+
+**Storage.** Go Studio uses the bbolt `goide` bucket: `state` (schema 4, migrated in memory from older versions), `recovery` and `localHistory`. Managed SDKs and tools live under the adOmnia data folder.
+
 ## Security Model
 
 - No telemetry.
@@ -83,6 +113,7 @@ or unsupported v2 responses.
 - Network calls happen only from explicit user workflows.
 - Vault entries are encrypted locally.
 - Proxy, mock, Docker, browser, and script features are powerful local tools and should be treated carefully.
+- Go Studio runs project code and tools only after the project is explicitly trusted, and confines file access to the project root.
 
 ## Distribution
 
