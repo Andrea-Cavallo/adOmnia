@@ -5,8 +5,8 @@ import type { Collection, RequestItem, TreeNode } from '@/lib/types'
 import { COMMAND_PALETTE_PANELS, COMMAND_PALETTE_DEEP_LINKS, fuzzyScore } from '@/lib/commandPalette'
 import { isFeatureVisible } from '@/lib/featureRegistry'
 import { cn } from '@/lib/utils'
+import { dispatchToPanel } from '@/lib/entities/dispatch'
 import { useAppStore } from '@/stores/app'
-import type { RailItem } from '@/stores/app'
 import { useCollectionsStore } from '@/stores/collections'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { useTabsStore } from '@/stores/tabs'
@@ -65,20 +65,6 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   }, [open])
 
   const commands = useMemo<PaletteCommand[]>(() => {
-    const runInPanel = (rail: RailItem, eventName: string, extra: Record<string, unknown> = {}) => {
-      setActiveRail(rail)
-      let attempts = 0
-      const dispatchWhenMounted = () => {
-        if (useAppStore.getState().activeRail !== rail) return
-        const detail = { ...extra, handled: false }
-        document.dispatchEvent(new CustomEvent(eventName, { detail }))
-        if (!detail.handled && attempts < 120) {
-          attempts += 1
-          window.requestAnimationFrame(dispatchWhenMounted)
-        }
-      }
-      window.requestAnimationFrame(dispatchWhenMounted)
-    }
     const actions: PaletteCommand[] = [
       {
         id: 'action:new-request', title: tr('New Request'), subtitle: tr('Open a blank HTTP request'),
@@ -88,12 +74,12 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       {
         id: 'action:start-mock', title: tr('Start Mock Server'), subtitle: tr('Run the configured local mock'),
         group: tr('Actions'), keywords: 'run serve simulate endpoint mock avvia esegui', icon: Server,
-        run: () => runInPanel('mock', 'adomnia:start-mock'),
+        run: () => dispatchToPanel('mock', 'adomnia:start-mock'),
       },
       {
         id: 'action:start-proxy', title: tr('Start Proxy Interceptor'), subtitle: tr('Capture local HTTP traffic'),
         group: tr('Actions'), keywords: 'run capture intercept traffic proxy avvia acquisisci', icon: Play,
-        run: () => runInPanel('proxy', 'adomnia:start-proxy'),
+        run: () => dispatchToPanel('proxy', 'adomnia:start-proxy'),
       },
       {
         id: 'action:settings', title: tr('Open Settings'), subtitle: tr('Configure adOmnia'),
@@ -111,7 +97,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     const deepLinks = COMMAND_PALETTE_DEEP_LINKS.map<PaletteCommand>((link) => ({
       id: `deep:${link.rail}:${JSON.stringify(link.detail)}`, title: nav(link.title), subtitle: nav(link.group),
       group: tr('Panels'), keywords: `${link.keywords} ${link.group} ${nav(link.title)} ${nav(link.group)}`, icon: ArrowRight,
-      run: () => runInPanel(link.rail, link.event, link.detail),
+      run: () => dispatchToPanel(link.rail, link.event, link.detail),
     }))
     const recentRequests = tabs.filter((tab) => (tab.workspaceId ?? activeWorkspaceId) === activeWorkspaceId).reverse().map<PaletteCommand>((tab) => ({
       id: `recent:${tab.id}`, title: tab.request.name || tab.request.url || tr('Untitled Request'),

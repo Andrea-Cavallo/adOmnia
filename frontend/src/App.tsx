@@ -37,6 +37,7 @@ const Sidebar = React.lazy(() => loadSidebarModule().then((module) => ({ default
 // Restored API workspaces fetch their sidebar alongside bootstrap, rather than
 // waiting for React. A fresh Hub never requests this optional chunk.
 if (initialRailFromMemento() === 'collections') void loadSidebarModule().catch(() => undefined)
+import { EntityNotice } from '@/components/layout/EntityNotice'
 const CommandPalette = React.lazy(() => import('@/components/layout/CommandPalette').then((module) => ({ default: module.CommandPalette })))
 // Go Studio (store, API, LSP) resta fuori dal bundle iniziale: la guardia di chiusura serve
 // solo con buffer modificati o processi attivi, impossibili prima del primo frame stabile.
@@ -199,6 +200,7 @@ function App() {
           <AICompanionHost ready={firstStableFrame} />
         </div>
         {commandPaletteOpen && <Suspense fallback={null}><CommandPalette open onClose={() => setCommandPaletteOpen(false)} /></Suspense>}
+        <EntityNotice />
         <ConfirmDialogHost />
         {firstStableFrame && <Suspense fallback={null}><GoStudioCloseGuard /></Suspense>}
         {import.meta.env.DEV && devLogVisible && <Suspense fallback={null}><DevLogOverlay visible onClose={toggleDevTools} /></Suspense>}
