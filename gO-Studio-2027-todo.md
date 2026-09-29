@@ -6,6 +6,22 @@
 >
 > **Principio chiave:** **From code to runtime, everything is connected.**
 
+## Stato di avanzamento (aggiornato 2026-09-29)
+
+**Regola di lavoro:** una sezione alla volta, in ordine; ogni voce si spunta solo se verificata nel codice (con la prova accanto, in corsivo). Le voci non fatte restano aperte con il motivo o la sezione che le implementerà. Push a ogni sezione chiusa.
+
+| Sezioni | Stato |
+| --- | --- |
+| §0 Obiettivi, §1 Priorità | Verificate nel codice: 20 voci spuntate, le altre mappate sulle sezioni operative. |
+| §2 Editor Core | **77/80.** Aperte: Merge editor (→ §22), Move symbol e Change signature (limiti di gopls). |
+| §3 gopls Integration | **27/28.** Aperta: misura su repository grandi (→ §4 monorepo). |
+| §4 Workspace e Project Model | **37/48.** Fatti: Clone, go.work visuale, decorazioni Git/problemi/test nel Project, icon pack. **Prossimo passo: i template di progetto** (CLI, REST, gRPC, worker, Kafka, libreria, template personalizzati). Aperti anche: grafo dei moduli (→ §19), Project graph (→ §15), misura su monorepo. |
+| §5–§30 | Da verificare voce per voce: molte funzioni esistono già (Run configuration, Delve, Concurrency view e race detector, test runner, terminale, Git, integrazioni Docker/DB/Broker/API) ma non sono ancora spuntate. Lavoro: audit + lacune reali. |
+| §31–§43 | Sottosistemi nuovi e grandi (Distributed Request Debugger, Runtime-Aware AI, Semantic Graph, Service Map, Reproduction, Logs/Trace Studio): ognuno va progettato prima di essere implementato. |
+| §44–§61 | Checklist di qualità, Definition of Done, KPI, roadmap, posizionamento e idee: si spuntano man mano che le funzioni arrivano, non si implementano da sole. |
+
+**Da verificare a mano nell'app** (non coperto dai test automatici): Docker Build & Run, `docker compose up`/Stop con Docker Desktop acceso; un giro completo in `wails3 task dev` delle funzioni di §2–§4.
+
 ---
 
 # 0. Obiettivi di prodotto
@@ -225,14 +241,14 @@
 - [x] Import existing Go project.
 - [x] Clone Git repository. — *File → Clone Repository…: solo https/ssh/git (URL con opzioni rifiutati), il progetto si apre senza trust.*
 - [x] New Go project wizard. — *New Go Project (go mod init con conferma); i template sono sotto.*
-- [ ] New CLI project.
-- [ ] New REST service.
-- [ ] New gRPC service.
-- [ ] New worker.
-- [ ] New Kafka consumer/producer.
-- [ ] New library.
-- [ ] Project templates.
-- [ ] Custom templates.
+- [ ] New CLI project. — *prossimo passo.*
+- [ ] New REST service. — *prossimo passo.*
+- [ ] New gRPC service. — *prossimo passo.*
+- [ ] New worker. — *prossimo passo.*
+- [ ] New Kafka consumer/producer. — *prossimo passo.*
+- [ ] New library. — *prossimo passo.*
+- [ ] Project templates. — *prossimo passo.*
+- [ ] Custom templates. — *prossimo passo: template dell’utente in una cartella locale, con segnaposto per il module path.*
 
 ## Multi-module
 
