@@ -4,6 +4,13 @@ adOmnia releases are driven by Git tags and GitHub Actions.
 
 ## Unreleased
 
+## v0.9.37 release notes: Go Studio terminal, tests, debugger and GoLand parity
+
+See [the full v0.9.37 notes](releases/v0.9.37.md): Go Studio adds a real
+terminal, a structured test runner with coverage, the Delve debugger,
+gopls refactoring and navigation, Git in the editor linked to Git Studio,
+Project Services, separate project windows and a JetBrains-style chrome.
+
 ## v0.9.36 release notes: Go Studio becomes a real Go IDE
 
 See [the full v0.9.36 notes](releases/v0.9.36.md): Go Studio now opens, edits,

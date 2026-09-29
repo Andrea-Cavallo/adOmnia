@@ -6,6 +6,27 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.9.37] - 2026-09-29
+
+### Added
+- **Go Studio sessions and terminal:** isolated multi-project sessions, restore of tabs, layout and unsaved buffers, persisted run configurations without secrets, a real PTY terminal (ConPTY on Windows) and a file watcher with cross-project conflict detection.
+- **Tests and debugging:** structured test runner with Rerun Failed, editor coverage, and a Delve (DAP) debugger with breakpoints, stepping, variables, watches, attach and remote `dlv --headless`.
+- **GoLand parity:** gopls refactorings with multi-file preview, implementation markers, navigation history, bookmarks, Search Everywhere, Go Tools menu, local history, TODO window, split tabs and GoLand keymap.
+- **Git and adOmnia integration:** Git in the editor (branch, gutter diff with hunk revert, blame, history, commit, branch switch); Git Studio follows the Go Studio project's repository; Project Services for Docker Lab, Database and Broker Studio; "Open in API Client" CodeLens; read-only plugin events.
+- **Workspaces and windows:** Go Studio workspaces separate from API workspaces; a project can move to its own window with single-window ownership and guarded close.
+- **UI:** JetBrains-style Go Studio chrome.
+
+### Fixed
+- Process output lost at exit or split inside UTF-8 characters; concurrent runs exceeding the limit; unordered saves; a corrupt state file blocking Go Studio; case collisions in Linux recovery buffers.
+- A data race when starting the debugger.
+- Initial JavaScript over the 650 kB startup budget.
+- `build.ps1` aborting when its output is redirected under Windows PowerShell 5.1.
+
+### Verified
+- 711 frontend tests across 159 files, TypeScript, the production build and the startup budget pass. `go vet`, staticcheck and `go test -race` pass for `internal/goide` and `internal/goidewindow` on Windows with Delve.
+
+Full release notes: [v0.9.37](docs/releases/v0.9.37.md).
+
 ## [0.9.36] - 2026-09-28
 
 ### Added
