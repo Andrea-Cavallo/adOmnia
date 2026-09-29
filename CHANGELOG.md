@@ -6,6 +6,9 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Fixed
+- gopls telemetry is really off: `GOTELEMETRY=off` is read-only for Go's telemetry library and still started the `** telemetry **` process. gopls now starts with `GO_TELEMETRY_CHILD=2`, which starts no telemetry process (verified with gopls v0.23.0 on Windows) and leaves the global `go telemetry` mode untouched.
+
 ## [0.9.40] - 2026-09-29
 
 ### Added

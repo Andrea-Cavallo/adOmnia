@@ -10,21 +10,21 @@
 
 # 0. Obiettivi di prodotto
 
-- [ ] gO Studio deve poter sostituire un IDE Go tradizionale per il lavoro quotidiano.
-- [ ] Deve essere valido anche senza AI.
-- [ ] Deve essere local-first.
-- [ ] Deve funzionare bene su repository piccoli, monorepo e workspace multi-module.
-- [ ] Deve trattare Go come linguaggio di prima classe, non come semplice editor syntax-highlighted.
-- [ ] Deve sfruttare `gopls` invece di duplicarne le funzionalità.
-- [ ] Deve usare Delve/DAP per il debugging reale.
-- [ ] Deve usare i tool ufficiali Go quando possibile: `go test`, `go vet`, `go list`, `go tool`, `pprof`, `trace`, `govulncheck`, race detector.
-- [ ] Deve rendere visuali dati che oggi finiscono quasi sempre nel terminale.
-- [ ] Deve collegare automaticamente codice ↔ API ↔ DB ↔ broker ↔ runtime.
-- [ ] Deve avere una UX coerente con il resto di adOmnia.
-- [ ] Deve poter essere usato senza account.
-- [ ] Telemetria disabilitata di default.
-- [ ] Nessun lock-in cloud.
-- [ ] AI opzionale e provider-agnostic.
+- [ ] gO Studio deve poter sostituire un IDE Go tradizionale per il lavoro quotidiano. — *funzioni P0 presenti; resta la verifica manuale M1–M31 in `todo-ide.md`.*
+- [x] Deve essere valido anche senza AI. — *l'unica funzione AI (Fix with AI) compare solo con un provider configurato e verificato.*
+- [x] Deve essere local-first. — *progetti, stato (bbolt `goide`), SDK e tool restano sulla macchina; rete solo su azione esplicita.*
+- [ ] Deve funzionare bene su repository piccoli, monorepo e workspace multi-module. — *supporto `go.work`, multi-modulo e folder mode c'è; prestazioni su monorepo grandi non misurate → §4.*
+- [x] Deve trattare Go come linguaggio di prima classe, non come semplice editor syntax-highlighted. — *gopls, Delve, test runner strutturato, coverage, Go SDK per progetto.*
+- [x] Deve sfruttare `gopls` invece di duplicarne le funzionalità. — *completion, navigazione, rename, code action, semantic token, inlay hint e diagnostica vengono da gopls.*
+- [x] Deve usare Delve/DAP per il debugging reale. — *`internal/goide/dap`: launch, attach e remote.*
+- [ ] Deve usare i tool ufficiali Go quando possibile: `go test`, `go vet`, `go list`, `go tool`, `pprof`, `trace`, `govulncheck`, race detector. — *integrati `go test`, `go vet`, `go generate`, `go fix`, `go mod why/graph`, `go doc`; mancano race UX → §9, `pprof`/`trace` → §13, `govulncheck` → §20.*
+- [ ] Deve rendere visuali dati che oggi finiscono quasi sempre nel terminale. — *test tree e coverage sì; concurrency, profiler, benchmark → §8, §12, §13.*
+- [ ] Deve collegare automaticamente codice ↔ API ↔ DB ↔ broker ↔ runtime. — *Developer Context collega codice ↔ API/DB/broker (v0.9.39); runtime → §14.*
+- [ ] Deve avere una UX coerente con il resto di adOmnia. — *token condivisi, menu e dialog moderni (v0.9.40); resta la verifica visiva manuale.*
+- [x] Deve poter essere usato senza account.
+- [x] Telemetria disabilitata di default. — *adOmnia non ha telemetria; gopls parte con `GO_TELEMETRY_CHILD=2` (nessun processo telemetry, verificato), la modalità globale `go telemetry` resta dell'utente.*
+- [x] Nessun lock-in cloud.
+- [x] AI opzionale e provider-agnostic. — *Settings → AI: OpenAI, Anthropic, Gemini, DeepSeek, Hugging Face, compatibili OpenAI e Ollama locale.*
 
 ---
 

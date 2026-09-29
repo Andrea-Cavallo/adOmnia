@@ -46,7 +46,7 @@ Go Studio works without any of these installed. Each feature says clearly what i
 | **make** | Makefile targets | Found as `make`, `gmake` or `mingw32-make` on `PATH`, or in the GnuWin32 folder, or set in *Go → Tool Paths*. On Windows: `winget install ezwinports.make`, `choco install make` or `scoop install make`. |
 | **Docker** | Dockerfile build and run | Docker Desktop or Docker Engine with `docker` on `PATH`. Go Studio checks that the daemon answers before starting and says so when it does not. |
 
-gopls starts with `GOTELEMETRY=off` (no telemetry process next to it) and `GOMEMLIMIT=1GiB`, which makes its garbage collector trim memory peaks near that limit. Values you set yourself in the environment win. The first hover or Ctrl+hover after opening a project waits for gopls to load the module and its dependencies; the status bar shows its progress. On Windows, excluding `%LOCALAPPDATA%\go-build` and `go env GOMODCACHE` from Defender speeds this up.
+gopls starts with `GO_TELEMETRY_CHILD=2`, so Go's telemetry library starts no `** telemetry **` process and collects nothing for it; your global `go telemetry` mode is left untouched. It also starts with `GOMEMLIMIT=1GiB`, which makes its garbage collector trim memory peaks near that limit. Values you set yourself in the environment win. The first hover or Ctrl+hover after opening a project waits for gopls to load the module and its dependencies; the status bar shows its progress. On Windows, excluding `%LOCALAPPDATA%\go-build` and `go env GOMODCACHE` from Defender speeds this up.
 
 Managed tools are installed into `<data>/goide/tools/bin`. A tool on `PATH`, or a path set in *Go → Tool Paths (gopls, linter, dlv)…*, is used instead when present.
 

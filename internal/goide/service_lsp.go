@@ -197,6 +197,11 @@ func (s *Service) QuickDefinition(ctx context.Context, sessionID, documentID str
 }
 
 // goplsEnvironmentDefaults valgono solo se l'utente non ha già impostato le variabili.
-// GOTELEMETRY=off: niente processo telemetria accanto a gopls (local-first).
+//
+// GO_TELEMETRY_CHILD=2: golang.org/x/telemetry (start.go) tratta il processo come
+// discendente del proprio figlio e non avvia né il processo "** telemetry **" né la
+// raccolta; la modalità globale scelta con `go telemetry` resta intatta.
+// GOTELEMETRY invece è di sola lettura e non spegne nulla: verificato su Windows con
+// gopls v0.23.0 (con GOTELEMETRY=off il figlio parte, con GO_TELEMETRY_CHILD=2 no).
 // GOMEMLIMIT: il GC di gopls diventa più aggressivo vicino a 1 GiB e taglia i picchi, al costo di un po' di CPU.
-var goplsEnvironmentDefaults = map[string]string{"GOTELEMETRY": "off", "GOMEMLIMIT": "1GiB"}
+var goplsEnvironmentDefaults = map[string]string{"GO_TELEMETRY_CHILD": "2", "GOMEMLIMIT": "1GiB"}
