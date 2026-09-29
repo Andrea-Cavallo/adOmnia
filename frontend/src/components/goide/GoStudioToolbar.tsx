@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { Bug, ChevronDown, Hammer, LockKeyhole, Maximize2, Minimize2, MoreVertical, Play, Search, Square, X } from 'lucide-react'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
-import type { GoIDEExecution, GoIDERunConfiguration, GoIDESession, GoIDEToolchainInfo } from '@/lib/goide-api'
+import type { GoIDEExecution, GoIDERunConfiguration, GoIDESession, GoIDEToolchainInfo, GoIDERecentProject } from '@/lib/goide-api'
 import { GoGopherIcon } from './GoGopherIcon'
 
 interface GoStudioToolbarProps {
   sessions: GoIDESession[]
+  /** Progetti recenti non aperti: il menu del progetto permette di riaprirli. */
+  recentProjects?: GoIDERecentProject[]
+  onOpenRecent?: (path: string) => void
   activeSession: GoIDESession
   /** Menu principale ☰ (vedi GoStudioMenuBar). */
   mainMenu: React.ReactNode
@@ -48,6 +51,8 @@ interface OpenMenu {
 }
 
 const SESSION_PREFIX = 'session:'
+const RECENT_PREFIX = 'recent:'
+const MAX_RECENT_IN_MENU = 8
 const CONFIG_PREFIX = 'config:'
 const MAX_INITIALS = 2
 
@@ -79,9 +84,18 @@ export function GoStudioToolbar(props: GoStudioToolbarProps) {
     setMenu({ kind, x: rect.left, y: rect.bottom + 4 })
   }
 
+  const recentItems = (): ContextMenuItem[] => (props.recentProjects ?? []).slice(0, MAX_RECENT_IN_MENU).map((project, index) => ({
+    id: `${RECENT_PREFIX}${project.rootPath}`,
+    label: `${project.name} · ${project.rootPath}`,
+    disabled: !project.available,
+    disabledReason: 'Folder no longer available',
+    separatorBefore: index === 0,
+  }))
+
   const menuItems = (kind: ToolbarMenu): ContextMenuItem[] => {
     if (kind === 'project') return [
       ...sessions.map((session) => ({ id: `${SESSION_PREFIX}${session.id}`, label: `${session.id === activeSession.id ? '● ' : ''}${session.project.name}`, disabled: session.id === activeSession.id })),
+      ...recentItems(),
       { id: 'open', label: 'Open Project…', shortcut: 'Ctrl+O', separatorBefore: true },
       { id: 'new', label: 'New Go Project…' },
       { id: 'close', label: `Close “${activeSession.project.name}”`, separatorBefore: true },
@@ -102,6 +116,7 @@ export function GoStudioToolbar(props: GoStudioToolbarProps) {
   const select = (id: string) => {
     setMenu(null)
     if (id.startsWith(SESSION_PREFIX)) return props.onSelect(id.slice(SESSION_PREFIX.length))
+    if (id.startsWith(RECENT_PREFIX)) return props.onOpenRecent?.(id.slice(RECENT_PREFIX.length))
     if (id.startsWith(CONFIG_PREFIX)) return props.onSelectConfiguration(id.slice(CONFIG_PREFIX.length) || null)
     switch (id) {
       case 'open': return props.onOpenProject()

@@ -1,9 +1,13 @@
-import { useEffect, useMemo, useState, memo } from 'react'
+import { useCallback, useEffect, useMemo, useState, memo } from 'react'
 import { ChevronDown, ChevronRight, Eye, EyeOff, Folder, FolderOpen, Loader2 } from 'lucide-react'
 import { useGoIDEStore } from '@/stores/goide'
 import { BrandIcon, GoStudioFileIcon } from './GoStudioFileIcon'
 import { resolveGoStudioFolderBrand } from './goStudioFileIcons'
 import type { GoIDEFileEntry, GoIDESession } from '@/lib/goide-api'
+import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
+import { isApiCollectionCandidate, sendFileToApiWorkspace } from './goStudioSendToApiWorkspace'
+
+type TreeContextHandler = (entry: GoIDEFileEntry, x: number, y: number) => void
 
 interface GoStudioProjectTreeProps {
   session: GoIDESession
@@ -23,7 +27,7 @@ function FolderIcon({ name, open }: { name: string; open: boolean }) {
 }
 
 /** Memoizzato: aprire o aggiornare una cartella non ridisegna le sorelle (progetti con centinaia di cartelle). */
-const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, activePath }: { sessionId: string; entry: GoIDEFileEntry; depth: number; activePath: string | null }) {
+const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, activePath, onContext }: { sessionId: string; entry: GoIDEFileEntry; depth: number; activePath: string | null; onContext: TreeContextHandler }) {
   const selected = !entry.directory && entry.relativePath === activePath
   const [open, setOpen] = useState(false)
   const entries = useGoIDEStore((state) => state.directoryEntries[sessionId]?.[entry.relativePath])
@@ -41,6 +45,7 @@ const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, act
       <button
         type="button"
         onClick={entry.directory ? () => setOpen((value) => !value) : () => void openDocument(entry.relativePath)}
+        onContextMenu={entry.directory ? undefined : (event) => { event.preventDefault(); onContext(entry, event.clientX, event.clientY) }}
         aria-current={selected ? 'true' : undefined}
         className={`flex h-[26px] w-full items-center gap-1.5 overflow-hidden rounded-[7px] pr-2 text-left text-[12.5px] ${selected ? 'go-studio-tree-row-selected' : `hover:bg-surface-3 hover:text-text-1 ${entry.ignored ? 'text-text-4' : 'text-text-2'}`}`}
         style={{ paddingLeft: ROW_BASE_PX + (depth - 1) * ROW_INDENT_PX }}
@@ -55,7 +60,7 @@ const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, act
         <span className="truncate">{entry.name}</span>
       </button>
       {entry.directory && open && entries?.map((child) => (
-        <DirectoryNode key={child.relativePath} sessionId={sessionId} entry={child} depth={depth + 1} activePath={activePath} />
+        <DirectoryNode key={child.relativePath} sessionId={sessionId} entry={child} depth={depth + 1} activePath={activePath} onContext={onContext} />
       ))}
     </>
   )
@@ -70,6 +75,23 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
   const rootKey = useMemo(() => `${session.id}:${session.project.realPath}`, [session.id, session.project.realPath])
 
   useEffect(() => { void loadDirectory('') }, [loadDirectory, rootKey])
+
+  const openDocument = useGoIDEStore((state) => state.openDocument)
+  const [menu, setMenu] = useState<{ entry: GoIDEFileEntry; x: number; y: number } | null>(null)
+  const onContext = useCallback<TreeContextHandler>((entry, x, y) => setMenu({ entry, x, y }), [])
+  const menuItems = (entry: GoIDEFileEntry): ContextMenuItem[] => [
+    { id: 'open', label: 'Open' },
+    ...(isApiCollectionCandidate(entry.relativePath) ? [{ id: 'sendToApi', label: 'Send to API Workspace', separatorBefore: true }] : []),
+    { id: 'copyPath', label: 'Copy Relative Path', separatorBefore: true },
+  ]
+  const selectMenuItem = (id: string) => {
+    const entry = menu?.entry
+    setMenu(null)
+    if (!entry) return
+    if (id === 'open') void openDocument(entry.relativePath)
+    if (id === 'sendToApi') void sendFileToApiWorkspace(session.id, entry.relativePath)
+    if (id === 'copyPath') void navigator.clipboard?.writeText(entry.relativePath)
+  }
 
   return (
     <aside aria-label="Project files" className="flex h-full min-w-0 flex-col">
@@ -91,12 +113,13 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
           <span className="shrink-0 font-semibold text-text-1">{session.project.name}</span>
           <span className="truncate text-[11px] text-text-4">{session.project.rootPath}</span>
         </div>
-        {entries.map((entry) => <DirectoryNode key={entry.relativePath} sessionId={session.id} entry={entry} depth={2} activePath={activePath} />)}
+        {entries.map((entry) => <DirectoryNode key={entry.relativePath} sessionId={session.id} entry={entry} depth={2} activePath={activePath} onContext={onContext} />)}
         {entries.length === 0 && <p className="px-4 py-3 text-[11px] text-text-4">This folder is empty.</p>}
       </div>
       <div className="shrink-0 px-4 py-2 text-[10.5px] leading-4 text-text-4">
         {session.project.modules.length} module{session.project.modules.length === 1 ? '' : 's'} · {session.project.goWorkPath ? 'go.work' : session.project.goModPath ? 'go.mod' : 'folder mode'}
       </div>
+      {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu.entry)} onSelect={selectMenuItem} onClose={() => setMenu(null)} />}
     </aside>
   )
 })

@@ -167,3 +167,23 @@ func TestDockerBuildEndToEnd(t *testing.T) {
 		t.Fatalf("docker build terminato con stato %q", finished.Status)
 	}
 }
+
+func TestComposeArguments(t *testing.T) {
+	for _, valid := range [][]string{nil, {"up"}, {"up", "api", "db"}, {"down"}} {
+		if _, err := normalizeComposeArguments(valid); err != nil {
+			t.Fatalf("%v: %v", valid, err)
+		}
+	}
+	if got, _ := normalizeComposeArguments(nil); !slices.Equal(got, []string{"up"}) {
+		t.Fatalf("default compose = %v, want up", got)
+	}
+	for _, invalid := range [][]string{{"run", "api"}, {"up", "--build"}, {"up", "-d"}, {"down", "api"}, {"exec", "api", "sh"}} {
+		if _, err := normalizeComposeArguments(invalid); err == nil {
+			t.Fatalf("argomenti compose non validi accettati: %v", invalid)
+		}
+	}
+	config, err := normalizeConfiguration(RunConfiguration{Name: "stack", Kind: RunKindDockerCompose})
+	if err != nil || config.Target != "docker-compose.yml" || !slices.Equal(config.ProgramArguments, []string{"up"}) {
+		t.Fatalf("configurazione compose: %#v %v", config, err)
+	}
+}

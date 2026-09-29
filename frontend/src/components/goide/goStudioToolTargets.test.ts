@@ -40,3 +40,22 @@ describe('goStudioToolTargets', () => {
     expect(targets.map((target) => target.line)).toEqual([3])
   })
 })
+
+describe('compose targets', () => {
+  it('recognises compose file names', () => {
+    for (const name of ['docker-compose.yml', 'docker-compose.yaml', 'compose.yaml', 'docker-compose.dev.yml', 'resources/docker_compose/docker-compose-local.yml']) {
+      expect(toolFileKind(name)).toBe('compose')
+    }
+    expect(toolFileKind('pipeline.yaml')).toBeNull()
+  })
+
+  it('puts ▶ on services: and on each service, not on nested keys', () => {
+    const text = [
+      'version: "3.9"', 'services:', '  api:', '    image: app', '    ports:', '      - "8080:8080"', '  # comment', '  db:', '    image: postgres',
+      'volumes:', '  data:',
+    ].join('\n')
+    const targets = findToolTargets('deploy/docker-compose.yml', text)
+    expect(targets.map((target) => [target.line, target.name])).toEqual([[2, ''], [3, 'api'], [8, 'db']])
+    expect(targets[0]).toMatchObject({ kind: 'compose', directory: 'deploy', file: 'docker-compose.yml' })
+  })
+})

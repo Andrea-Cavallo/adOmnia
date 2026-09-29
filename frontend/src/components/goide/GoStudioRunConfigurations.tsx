@@ -26,10 +26,11 @@ const KINDS: Array<{ value: GoIDERunConfiguration['kind']; label: string; hint: 
   { value: GoIDERunConfigurationKind.RunKindBinary, label: 'Compiled binary', hint: 'runs a binary built inside the project', available: true },
   { value: GoIDERunConfigurationKind.RunKindMake, label: 'Make target', hint: 'make -f <Makefile> <targets>; options such as -j4 go in MAKEFLAGS', available: true },
   { value: GoIDERunConfigurationKind.RunKindDockerBuild, label: 'Docker build', hint: 'docker build of a Dockerfile, with stage, tag and build args', available: true },
+  { value: GoIDERunConfigurationKind.RunKindDockerCompose, label: 'Docker Compose', hint: 'docker compose -f <file> up [services] or down; Stop runs docker compose stop', available: true },
   { value: GoIDERunConfigurationKind.RunKindDockerRun, label: 'Docker build & run', hint: 'docker build, then docker run --rm of the image; Stop really stops the container', available: true },
 ]
 
-const TOOL_KINDS = new Set<string>([GoIDERunConfigurationKind.RunKindMake, GoIDERunConfigurationKind.RunKindDockerBuild, GoIDERunConfigurationKind.RunKindDockerRun])
+const TOOL_KINDS = new Set<string>([GoIDERunConfigurationKind.RunKindMake, GoIDERunConfigurationKind.RunKindDockerBuild, GoIDERunConfigurationKind.RunKindDockerRun, GoIDERunConfigurationKind.RunKindDockerCompose])
 const isDockerKind = (kind: string) => kind === GoIDERunConfigurationKind.RunKindDockerBuild || kind === GoIDERunConfigurationKind.RunKindDockerRun
 
 function emptyConfiguration(sessionId: string): GoIDERunConfiguration {
@@ -197,7 +198,7 @@ export function GoStudioRunConfigurations({ open, sessionId, initialDraft, onClo
                   value={draft.kind}
                   onChange={(event) => {
                     const kind = event.target.value as GoIDERunConfiguration['kind']
-                    const fileDefault = kind === GoIDERunConfigurationKind.RunKindMake ? 'Makefile' : isDockerKind(kind) ? 'Dockerfile' : '.'
+                    const fileDefault = kind === GoIDERunConfigurationKind.RunKindMake ? 'Makefile' : kind === GoIDERunConfigurationKind.RunKindDockerCompose ? 'docker-compose.yml' : isDockerKind(kind) ? 'Dockerfile' : '.'
                     patch({ kind, target: TOOL_KINDS.has(kind) !== isTool || !draft.target ? fileDefault : draft.target })
                   }}
                   className="mt-1 h-8 w-full rounded border border-border-1 bg-surface-0 px-2 text-[11px] text-text-1 outline-none focus:border-accent"
@@ -222,6 +223,8 @@ export function GoStudioRunConfigurations({ open, sessionId, initialDraft, onClo
                 </label>
               ) : draft.kind === GoIDERunConfigurationKind.RunKindBinary ? (
                 textField('Binary path', draft.binaryPath ?? '', (next) => patch({ binaryPath: next }), 'bin/app')
+              ) : draft.kind === GoIDERunConfigurationKind.RunKindDockerCompose ? (
+                textField('Compose file', draft.target, (next) => patch({ target: next }), 'docker-compose.yml')
               ) : draft.kind === GoIDERunConfigurationKind.RunKindMake ? (
                 textField('Makefile', draft.target, (next) => patch({ target: next }), 'Makefile')
               ) : isDockerKind(draft.kind) ? (
@@ -232,7 +235,9 @@ export function GoStudioRunConfigurations({ open, sessionId, initialDraft, onClo
 
               {textField('Working directory', draft.workingDirectory, (next) => patch({ workingDirectory: next }), 'Project root')}
               {!isTool && textField('Go tool flags', (draft.goArguments ?? []).join(' '), (next) => patch({ goArguments: splitList(next, /\s+/) }), '-race -v')}
-              {draft.kind === GoIDERunConfigurationKind.RunKindMake
+              {draft.kind === GoIDERunConfigurationKind.RunKindDockerCompose
+                ? textField('Command and services', (draft.programArguments ?? []).join(' '), (next) => patch({ programArguments: splitList(next, /\s+/) }), 'up api db  ·  down')
+                : draft.kind === GoIDERunConfigurationKind.RunKindMake
                 ? textField('Targets and variables', (draft.programArguments ?? []).join(' '), (next) => patch({ programArguments: splitList(next, /\s+/) }), 'build test VERSION=1.2.3')
                 : draft.kind !== GoIDERunConfigurationKind.RunKindDockerBuild && textField(draft.kind === GoIDERunConfigurationKind.RunKindDockerRun ? 'Container command' : 'Program arguments', (draft.programArguments ?? []).join(' '), (next) => patch({ programArguments: splitList(next, /\s+/) }), draft.kind === GoIDERunConfigurationKind.RunKindDockerRun ? 'Image default' : '--port 8080')}
               {!isTool && textField('Build tags', (draft.buildTags ?? []).join(','), (next) => patch({ buildTags: splitList(next, /,/) }), 'integration,sqlite')}

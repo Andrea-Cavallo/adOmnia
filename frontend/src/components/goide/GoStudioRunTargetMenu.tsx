@@ -1,7 +1,7 @@
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import type { GoStudioRunTarget } from './goStudioRunTargets'
 
-export type GoStudioRunTargetAction = 'run' | 'debug' | 'coverage' | 'build' | 'buildRun' | 'save'
+export type GoStudioRunTargetAction = 'run' | 'debug' | 'coverage' | 'build' | 'buildRun' | 'down' | 'save'
 
 interface GoStudioRunTargetMenuProps {
   target: GoStudioRunTarget
@@ -17,6 +17,15 @@ function itemsFor(target: GoStudioRunTarget): ContextMenuItem[] {
       { id: 'run', label: `Run 'make ${target.name}'` },
       { id: 'save', label: 'Save as Run Configuration…' },
     ]
+  }
+  if (target.kind === 'compose') {
+    return target.name
+      ? [{ id: 'run', label: `Compose Up '${target.name}'` }, { id: 'save', label: 'Save as Run Configuration…' }]
+      : [
+          { id: 'run', label: 'Compose Up (all services)' },
+          { id: 'down', label: 'Compose Down' },
+          { id: 'save', label: 'Save as Run Configuration…' },
+        ]
   }
   if (target.kind === 'docker') {
     const stage = target.name ? ` '${target.name}'` : ''

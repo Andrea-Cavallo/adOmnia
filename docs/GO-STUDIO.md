@@ -15,6 +15,8 @@ Everything stays on your machine. Nothing in a project runs until you trust it.
 
 *View → Maximize Go Studio* (Ctrl+Shift+F12, or the ⤢ button at the right of the toolbar) hides adOmnia's rail, the Go Studio header and adOmnia's status bar, so the IDE fills the window. Press it again to restore them; leaving Go Studio restores them too.
 
+The project menu in the toolbar lists the open projects and, below them, the recent projects that are not open, so you can reopen one with a click (*File → Open Recent* shows the same list).
+
 Several projects can stay open at the same time, isolated from each other, grouped into Go Studio workspaces that are separate from adOmnia's API workspaces. A project can also move into its own window (*File → Open Project in New Window*).
 
 ## Security and project authorization
@@ -42,6 +44,8 @@ Go Studio works without any of these installed. Each feature says clearly what i
 | **make** | Makefile targets | Found as `make`, `gmake` or `mingw32-make` on `PATH`, or in the GnuWin32 folder, or set in *Go → Tool Paths*. On Windows: `winget install ezwinports.make`, `choco install make` or `scoop install make`. |
 | **Docker** | Dockerfile build and run | Docker Desktop or Docker Engine with `docker` on `PATH`. Go Studio checks that the daemon answers before starting and says so when it does not. |
 
+gopls starts with `GOTELEMETRY=off` (no telemetry process next to it) and `GOMEMLIMIT=1GiB`, which makes its garbage collector trim memory peaks near that limit. Values you set yourself in the environment win. The first hover or Ctrl+hover after opening a project waits for gopls to load the module and its dependencies; the status bar shows its progress. On Windows, excluding `%LOCALAPPDATA%\go-build` and `go env GOMODCACHE` from Defender speeds this up.
+
 Managed tools are installed into `<data>/goide/tools/bin`. A tool on `PATH`, or a path set in *Go → Tool Paths (gopls, linter, dlv)…*, is used instead when present.
 
 **Supported versions.** The Go SDK runs the project, so any release the project's `go.mod` accepts works. gopls, the linters and Delve are built with the project SDK and follow their upstream support policy, which usually covers the two most recent Go releases. If the SDK is too old for the installed Delve, Go Studio says so and suggests selecting a newer SDK or a compatible `dlv`. Development and verification use Go 1.26.5, gopls v0.23.0 and Delve 1.27.2.
@@ -53,6 +57,8 @@ Managed tools are installed into `<data>/goide/tools/bin`. A tool on `PATH`, or 
 Go Studio runs Makefiles and Dockerfiles with the real `make` and `docker`, and streams their output to the Run console like `go run`. Any file type opened in the editor is highlighted: HTML, CSS, JavaScript/TypeScript, SQL, XML/WSDL, Protobuf, shell, PowerShell, Dockerfile, Makefile, `.env`, TOML/INI and more.
 
 - **▶ in the gutter.** In a Makefile, every target gets *Run 'make target'*. Variables, special targets (`.PHONY`) and pattern rules (`%.o`) do not. In a Dockerfile, every named stage (`FROM … AS builder`) and the final `FROM` get *Build image* and *Build & Run container*. Both menus offer *Save as Run Configuration…*.
+- **docker compose.** In `docker-compose*.yml` and `compose*.yaml`, `services:` gets *Compose Up (all services)* and *Compose Down*, and every service gets *Compose Up 'service'*. `docker compose up` stays attached, so the logs stream to the Run console. *Stop* runs `docker compose stop` on the same services, because killing the client would leave the containers running. The run configuration type *Docker Compose* accepts only `up [services]` or `down`.
+- **Postman and other collections.** Right-click a `.json` or `.yaml` file in the project tree and choose *Send to API Workspace*. Postman, Insomnia, Bruno JSON, OpenAPI and Swagger 2 files are imported into adOmnia's API Workspace, including unsaved changes in the editor. You stay in Go Studio, and a notice offers *Open API Workspace*.
 - **Working directory.** Commands start in the folder that contains the file, so `make -f Makefile` and a Docker build context of `.` behave as they do in a terminal opened there.
 - **Build & Run.** `docker build` runs first. Only when it succeeds does `docker run --rm -i --name adomnia-…` start the container, with the ports the Dockerfile declares with `EXPOSE`. *Stop* runs `docker stop` on that container, because killing the client alone would leave it running. The same happens when trust is revoked, the project closes or adOmnia quits. *Rerun* runs the build and the container again.
 - **Run configurations.** Three types join the existing ones:

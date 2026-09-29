@@ -148,7 +148,7 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
         options: {
           glyphMarginClassName: `go-studio-run-glyph${target.kind === 'main' || isToolTarget(target) ? '' : ' go-studio-test-glyph'}`,
           glyphMarginHoverMessage: { value: isToolTarget(target)
-            ? `▶ ${toolTargetLabel(target)} · ${target.kind === 'docker' ? 'Build, Build & Run' : 'Run'} or save as configuration`
+            ? `▶ ${toolTargetLabel(target)} · ${target.kind === 'docker' ? 'Build, Build & Run' : target.kind === 'compose' && !target.name ? 'Up, Down' : 'Run'} or save as configuration`
             : `▶ ${runCommandFor(target).label} · Run, Debug or Coverage` },
         },
       })))

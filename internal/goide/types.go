@@ -109,6 +109,8 @@ const (
 	RunKindMake        RunConfigurationKind = "make"
 	RunKindDockerBuild RunConfigurationKind = "docker-build"
 	RunKindDockerRun   RunConfigurationKind = "docker-run"
+	// RunKindDockerCompose: ProgramArguments è "up" o "down" seguito dai servizi (nessuno = tutti).
+	RunKindDockerCompose RunConfigurationKind = "docker-compose"
 )
 
 // DockerOptions completa le configurazioni docker-build e docker-run. I build

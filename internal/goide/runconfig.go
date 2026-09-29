@@ -246,7 +246,7 @@ func normalizeConfiguration(config RunConfiguration) (RunConfiguration, error) {
 		}
 		config.Target = ""
 		config.Files = nil
-	case RunKindMake, RunKindDockerBuild, RunKindDockerRun:
+	case RunKindMake, RunKindDockerBuild, RunKindDockerRun, RunKindDockerCompose:
 		normalized, err := normalizeToolConfiguration(config)
 		if err != nil {
 			return RunConfiguration{}, err
@@ -255,7 +255,7 @@ func normalizeConfiguration(config RunConfiguration) (RunConfiguration, error) {
 	default:
 		return RunConfiguration{}, fmt.Errorf("tipo di configurazione %q non supportato", config.Kind)
 	}
-	if config.Kind != RunKindMake && config.Kind != RunKindDockerBuild && config.Kind != RunKindDockerRun {
+	if config.Kind != RunKindDockerBuild && config.Kind != RunKindDockerRun {
 		config.Docker = DockerOptions{}
 	}
 	config.WorkingDirectory = strings.TrimSpace(config.WorkingDirectory)

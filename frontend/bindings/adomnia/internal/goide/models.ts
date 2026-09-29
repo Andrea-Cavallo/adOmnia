@@ -2792,6 +2792,11 @@ export enum RunConfigurationKind {
     RunKindMake = "make",
     RunKindDockerBuild = "docker-build",
     RunKindDockerRun = "docker-run",
+
+    /**
+     * RunKindDockerCompose: ProgramArguments è "up" o "down" seguito dai servizi (nessuno = tutti).
+     */
+    RunKindDockerCompose = "docker-compose",
 };
 
 export type RunID = string;

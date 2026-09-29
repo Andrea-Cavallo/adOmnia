@@ -534,7 +534,7 @@ func (s *Service) StartDependencyAction(request DependencyActionRequest) (Execut
 // supportedRunKinds elenca i comandi rapidi eseguibili da StartRun.
 var supportedRunKinds = map[string]bool{
 	"build": true, "run": true, "test": true, "vet": true, "generate": true, "install": true, "tidy": true, "binary": true,
-	"make": true, "docker-build": true, "docker-run": true,
+	"make": true, "docker-build": true, "docker-run": true, "docker-compose": true,
 }
 
 // runCommandSpec traduce il tipo richiesto nell'eseguibile e negli argomenti strutturati, mai in una riga di shell.

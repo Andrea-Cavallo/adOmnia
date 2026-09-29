@@ -6,6 +6,16 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Added
+- **docker compose in Go Studio:** ▶ on `services:` (Up all, Down) and on each service (Up), with Stop running `docker compose stop` and a *Docker Compose* run configuration type.
+- **Send to API Workspace:** right-click a Postman, Insomnia, Bruno, OpenAPI or Swagger file in the Go Studio project tree to import it into the API Workspace.
+- **Recent projects in the Go Studio project menu:** projects that are not open can be reopened from the toolbar.
+- **Maximize Go Studio:** a toolbar button and Ctrl/Cmd+Shift+F12 hide adOmnia's rail, panel header and status bar.
+
+### Changed
+- The a0 launcher in the bottom-right corner stays hidden and click-through until the pointer comes near the corner (or it gets keyboard focus).
+- gopls runs with `GOTELEMETRY=off` and `GOMEMLIMIT=1GiB` unless you set them yourself.
+
 ## [0.9.39] - 2026-09-29
 
 ### Added

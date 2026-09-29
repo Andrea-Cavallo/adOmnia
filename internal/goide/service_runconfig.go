@@ -165,7 +165,7 @@ func (s *Service) buildRunRequest(session Session, config RunConfiguration, secr
 	case RunKindBinary:
 		request.Kind = "binary"
 		request.Target = config.BinaryPath
-	case RunKindMake, RunKindDockerBuild, RunKindDockerRun:
+	case RunKindMake, RunKindDockerBuild, RunKindDockerRun, RunKindDockerCompose:
 		request.Kind = string(config.Kind)
 		request.Target = config.Target
 	default:
@@ -182,7 +182,7 @@ func (s *Service) validateConfigurationPaths(session Session, config RunConfigur
 		return err
 	}
 	switch config.Kind {
-	case RunKindMake, RunKindDockerBuild, RunKindDockerRun:
+	case RunKindMake, RunKindDockerBuild, RunKindDockerRun, RunKindDockerCompose:
 		normalized, err := normalizeToolConfiguration(config)
 		if err != nil {
 			return err

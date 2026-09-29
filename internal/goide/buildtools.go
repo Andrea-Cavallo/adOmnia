@@ -31,13 +31,22 @@ const (
 )
 
 func isToolRunKind(kind string) bool {
-	return kind == string(RunKindMake) || kind == string(RunKindDockerBuild) || kind == string(RunKindDockerRun)
+	return kind == string(RunKindMake) || kind == string(RunKindDockerBuild) || kind == string(RunKindDockerRun) || kind == string(RunKindDockerCompose)
 }
 
 // normalizeToolConfiguration valida i campi specifici di make e docker.
 func normalizeToolConfiguration(config RunConfiguration) (RunConfiguration, error) {
 	config.Target = strings.TrimSpace(config.Target)
 	config.Files, config.BinaryPath, config.GoArguments, config.BuildTags = nil, "", nil, nil
+	if config.Kind == RunKindDockerCompose {
+		if config.Target == "" {
+			config.Target = "docker-compose.yml"
+		}
+		config.Docker = DockerOptions{}
+		arguments, err := normalizeComposeArguments(config.ProgramArguments)
+		config.ProgramArguments = arguments
+		return config, err
+	}
 	if config.Kind == RunKindMake {
 		if config.Target == "" {
 			config.Target = "Makefile"
@@ -62,6 +71,28 @@ func normalizeMakeArguments(values []string) ([]string, error) {
 	for _, argument := range arguments {
 		if !makeArgumentPattern.MatchString(argument) {
 			return nil, fmt.Errorf("argomento make non valido: %q (usa target o VAR=valore; i flag vanno in MAKEFLAGS)", argument)
+		}
+	}
+	return arguments, nil
+}
+
+var composeServicePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$`)
+
+// normalizeComposeArguments: "up" o "down" (default up) seguito da nomi di servizio, nient'altro.
+func normalizeComposeArguments(values []string) ([]string, error) {
+	arguments := trimArguments(values)
+	if len(arguments) == 0 {
+		arguments = []string{"up"}
+	}
+	if arguments[0] != "up" && arguments[0] != "down" {
+		return nil, fmt.Errorf("comando compose non supportato: %q (up o down)", arguments[0])
+	}
+	if arguments[0] == "down" && len(arguments) > 1 {
+		return nil, errors.New("compose down vale per l'intero file, senza servizi")
+	}
+	for _, service := range arguments[1:] {
+		if !composeServicePattern.MatchString(service) {
+			return nil, fmt.Errorf("nome di servizio compose non valido: %q", service)
 		}
 	}
 	return arguments, nil
@@ -174,6 +205,9 @@ func (s *Service) toolCommandSpec(session Session, kind, workingDirectory, targe
 	if info, err := os.Stat(file); err != nil || info.IsDir() {
 		return CommandSpec{}, fmt.Errorf("file %q non trovato nel progetto", target)
 	}
+	if kind == string(RunKindDockerCompose) {
+		return composeCommandSpec(file, target, request.ProgramArguments)
+	}
 	if kind == string(RunKindMake) {
 		binary, err := s.resolveMake(session.ID)
 		if err != nil {
@@ -212,6 +246,35 @@ func dockerBuildArguments(dockerfile, tag, contextDirectory string, options Dock
 		arguments = append(arguments, "--build-arg", keyValueArgument(entry, secret))
 	}
 	return append(arguments, contextDirectory)
+}
+
+// composeCommandSpec: `docker compose -f file up [servizi]` resta agganciato e mostra i log;
+// Stop esegue `docker compose stop`, perché uccidere il client lascerebbe i container accesi.
+func composeCommandSpec(file, target string, values []string) (CommandSpec, error) {
+	docker, err := resolveDocker()
+	if err != nil {
+		return CommandSpec{}, err
+	}
+	arguments, err := normalizeComposeArguments(values)
+	if err != nil {
+		return CommandSpec{}, err
+	}
+	full := append([]string{"compose", "-f", file}, arguments...)
+	spec := CommandSpec{Executable: docker, Arguments: full, DisplayCommand: displayCommand("docker", append([]string{"compose", "-f", target}, arguments...))}
+	if arguments[0] == "up" {
+		services := arguments[1:]
+		spec.OnStop = func() { stopCompose(docker, file, services) }
+	}
+	return spec, nil
+}
+
+func stopCompose(docker, file string, services []string) {
+	ctx, cancel := context.WithTimeout(context.Background(), dockerStopTimeout)
+	defer cancel()
+	command := exec.CommandContext(ctx, docker, append([]string{"compose", "-f", file, "stop", "-t", "3"}, services...)...)
+	command.Dir = filepath.Dir(file)
+	configureProcess(command, false)
+	_ = command.Run()
 }
 
 // dockerRunSpec prepara il container di docker-run: --rm, stdin interattivo,
@@ -409,6 +472,10 @@ func (s *Service) startToolRun(session Session, kind, workingDirectory string, r
 		target = map[bool]string{true: "Makefile", false: "Dockerfile"}[kind == string(RunKindMake)]
 	}
 	request.Target = target
+	if kind == string(RunKindDockerCompose) && target == "Dockerfile" {
+		target = "docker-compose.yml"
+		request.Target = target
+	}
 	if kind != string(RunKindMake) {
 		options, err := normalizeDockerOptions(request.Docker)
 		if err != nil {
@@ -446,7 +513,7 @@ func (s *Service) startToolRun(session Session, kind, workingDirectory string, r
 // toolEnvironment: make riceve tutte le variabili (make le vede come variabili);
 // il client docker riceve solo i valori segreti, che docker legge con -e KEY / --build-arg KEY.
 func toolEnvironment(kind string, request RunRequest) map[string]string {
-	if kind == string(RunKindMake) {
+	if kind == string(RunKindMake) || kind == string(RunKindDockerCompose) {
 		return request.Environment
 	}
 	overrides := make(map[string]string)
