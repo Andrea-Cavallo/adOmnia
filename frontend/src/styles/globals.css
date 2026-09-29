@@ -607,3 +607,29 @@
     }
   }
 }
+
+/*
+ * Popup moderni e fluidi: velo sfumato con blur e superficie che entra con una
+ * molla corta. Fuori dai layer di proposito, così vince sulle utility senza !important.
+ * Il velo resta scuro anche nel tema chiaro: separa il popup dal contenuto.
+ */
+.ad-modal-backdrop {
+  background: rgb(4 6 12 / 0.52);
+  backdrop-filter: blur(6px) saturate(115%);
+  animation: adModalBackdropIn 180ms ease-out both;
+}
+.ad-modal-backdrop > [role='dialog'] {
+  box-shadow:
+    0 28px 70px -18px rgb(0 0 0 / 0.6),
+    0 0 0 1px color-mix(in srgb, var(--color-text-1) 7%, transparent);
+  animation: adModalSurfaceIn 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes adModalBackdropIn {
+  from { opacity: 0; backdrop-filter: blur(0); }
+}
+@keyframes adModalSurfaceIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ad-modal-backdrop, .ad-modal-backdrop > [role='dialog'] { animation: none; }
+}

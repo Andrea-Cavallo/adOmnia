@@ -1,8 +1,17 @@
 import { create } from 'zustand'
 
+/** Riga strutturata sotto il messaggio: comandi e percorsi restano leggibili e copiabili. */
+export interface ConfirmDetail {
+  label: string
+  value: string
+  /** Comandi e percorsi: carattere monospaziato. */
+  mono?: boolean
+}
+
 export interface ConfirmOptions {
   title: string
   message: string
+  details?: ConfirmDetail[]
   confirmLabel?: string
   cancelLabel?: string
   variant?: 'danger' | 'default'
@@ -26,6 +35,7 @@ export const useConfirmStore = create<ConfirmState>((set, get) => ({
   open: false,
   title: '',
   message: '',
+  details: [],
   confirmLabel: 'Confirm',
   cancelLabel: 'Cancel',
   variant: 'default',
@@ -39,6 +49,7 @@ export const useConfirmStore = create<ConfirmState>((set, get) => ({
         open: true,
         title: opts.title,
         message: opts.message,
+        details: opts.details ?? [],
         confirmLabel: opts.confirmLabel ?? 'Confirm',
         cancelLabel: opts.cancelLabel ?? 'Cancel',
         variant: opts.variant ?? 'default',

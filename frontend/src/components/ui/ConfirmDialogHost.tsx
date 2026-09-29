@@ -6,12 +6,13 @@ import { ConfirmDialog } from './confirm-dialog'
  * Mount once near the app root; call `confirm(...)` from anywhere.
  */
 export function ConfirmDialogHost() {
-  const { open, title, message, confirmLabel, cancelLabel, variant, settle } = useConfirmStore()
+  const { open, title, message, details, confirmLabel, cancelLabel, variant, settle } = useConfirmStore()
   return (
     <ConfirmDialog
       open={open}
       title={title}
       message={message}
+      details={details}
       confirmLabel={confirmLabel}
       cancelLabel={cancelLabel}
       variant={variant}
