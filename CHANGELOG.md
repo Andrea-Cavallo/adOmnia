@@ -6,6 +6,31 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.9.39] - 2026-09-29
+
+### Added
+- **Makefiles and Dockerfiles run in Go Studio:** the gutter ▶ offers *Run 'make target'* on every Makefile target, and *Build image* / *Build & Run container* on every Dockerfile stage. Output goes to the Run console with Stop and Rerun.
+  - Build & Run starts `docker run --rm -i` only after a successful build, publishing the `EXPOSE` ports.
+  - Stop runs `docker stop` on the container.
+  - New Run Configuration types: *Make target*, *Docker build* and *Docker build & run*.
+  - *Save as Run Configuration…* prefills Dockerfile `ARG`s and marks sensitive ones secret. Secret build args and container variables pass only through the environment (`--build-arg NAME`, `-e NAME`).
+  - make is found on `PATH` (`make`, `gmake`, `mingw32-make`), in GnuWin32, or at a path set in Tool Paths.
+- **Islands look for Go Studio:** Project, Editor, Structure and the bottom tool window become rounded islands on a darker ground, with pill tabs, gap resize handles and theme-token dark and light variants.
+- **Developer Context and entity router:** a local scan of the Go Studio project. It covers modules, services, compose datasources, masked `.env`, OpenAPI/proto/WSDL, Go routes, env reads, SQL tables and topics. Results feed Ctrl+K *Project* and *Symbols* groups, with actions into the API Client, Mock, Database, Broker, API Docs, gRPC and SOAP studios.
+- **New Hub:** an aO → gO ecosystem hero, Go Studio as the featured workspace with a static preview, and the a0 laptop scene.
+
+### Fixed
+- Go Studio showed HTML, CSS, JavaScript, Dockerfile, SQL, XML, shell and other non-Go files as plain text. They are now highlighted with Monaco's bundled languages, plus a Makefile tokenizer. Makefiles keep real tabs.
+- Developer Context never leaks `.env` passwords (quoted values with comments, PASS/PWD keys, DSN forms), shares the first scan between concurrent requests, and serves only detected contracts.
+- Entity handoffs to a panel that is still loading end with a notice instead of being dropped silently.
+
+### Verified
+- Go Studio tests pass, including a Makefile end-to-end test with the real `make`.
+- 755 frontend tests across 168 files, TypeScript, the production build and the startup budget (592,314 bytes) pass.
+- The Docker end-to-end test skips without a running daemon; Build & Run and Stop need a manual check with Docker Desktop running.
+
+Full release notes: [v0.9.39](docs/releases/v0.9.39.md).
+
 ## [0.9.38] - 2026-09-29
 
 ### Added

@@ -4,6 +4,16 @@ adOmnia releases are driven by Git tags and GitHub Actions.
 
 ## Unreleased
 
+## v0.9.39 release notes: Go Studio runs Makefiles and Dockerfiles
+
+See [the full v0.9.39 notes](releases/v0.9.39.md): the gutter ▶ runs
+Makefile targets and builds or runs Dockerfiles with the real `make` and
+`docker`. Stop really stops the container, and secret build args never
+reach the command line. Every file type is now highlighted. Developer
+Context turns the project's routes, services, datasources, contracts,
+tables and topics into palette actions, and the Hub introduces the aO → gO
+ecosystem.
+
 ## v0.9.38 release notes: Go Studio Fix with AI and real file icons
 
 See [the full v0.9.38 notes](releases/v0.9.38.md): errors and warnings can
