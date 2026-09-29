@@ -131,6 +131,22 @@ func (m *WorkspaceManager) SetToolAuthorization(id SessionID, allowed bool) (Ses
 	return session, nil
 }
 
+// RefreshProject rilegge moduli e go.work del progetto (es. dopo go work init/use).
+func (m *WorkspaceManager) RefreshProject(id SessionID) (Session, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	session, ok := m.sessions[id]
+	if !ok {
+		return Session{}, fmt.Errorf("sessione Go Studio non trovata")
+	}
+	fresh := inspectProject(session.Project.RootPath, session.Project.RealPath)
+	session.Project.Modules, session.Project.LooseGoDirs = fresh.Modules, fresh.LooseGoDirs
+	session.Project.GoModPath, session.Project.GoWorkPath = fresh.GoModPath, fresh.GoWorkPath
+	session.UpdatedAt = time.Now().UTC()
+	m.sessions[id] = session
+	return session, nil
+}
+
 // CloseSession rimuove la sessione in memoria senza toccare la cartella del progetto.
 func (m *WorkspaceManager) CloseSession(id SessionID) bool {
 	m.mu.Lock()

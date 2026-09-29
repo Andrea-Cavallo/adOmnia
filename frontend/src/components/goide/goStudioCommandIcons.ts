@@ -73,6 +73,8 @@ export const GO_STUDIO_COMMAND_ICONS: Partial<Record<GoStudioCommandId, GoStudio
 
   'view.quickOpen': icon(FileSearch),
   'view.maximize': icon(Maximize2),
+  'file.clone': icon(GitBranch),
+  'go.goWork': icon(Boxes),
   'nav.recentLocations': icon(History),
   'nav.lastEdit': icon(PenLine),
   'nav.gotoTest': icon(FlaskConical),

@@ -10,6 +10,8 @@ import { GoStudioRecoveryBanner } from './GoStudioRecoveryBanner'
 import { GoStudioRunConfigurations } from './GoStudioRunConfigurations'
 import { GoStudioSecretsPrompt } from './GoStudioSecretsPrompt'
 import { GoStudioHierarchyDialog } from './GoStudioHierarchyDialog'
+import { GoStudioGoWorkDialog } from './GoStudioGoWorkDialog'
+import { GoStudioCloneDialog } from './GoStudioCloneDialog'
 import { GoStudioGenerateMenu } from './GoStudioGenerateMenu'
 import { useAppStore } from '@/stores/app'
 import { GoStudioToolbar } from './GoStudioToolbar'
@@ -118,6 +120,8 @@ export function GoStudioPanel() {
   const setCursor = useGoStudioCursorStore((state) => state.setCursor)
   const [createOpen, setCreateOpen] = useState(false)
   const [configureOpen, setConfigureOpen] = useState(false)
+  const [cloneOpen, setCloneOpen] = useState(false)
+  const [goWorkOpen, setGoWorkOpen] = useState(false)
   const goStudioMaximized = useAppStore((state) => state.goStudioMaximized)
   const toggleGoStudioMaximized = useAppStore((state) => state.toggleGoStudioMaximized)
   const zen = useAppStore((state) => state.goStudioZen)
@@ -438,6 +442,8 @@ export function GoStudioPanel() {
     switch (id) {
       case 'file.openProject': return void store.openProject()
       case 'file.newProject': return setCreateOpen(true)
+      case 'file.clone': return setCloneOpen(true)
+      case 'go.goWork': return setGoWorkOpen(true)
       case 'file.save': return void saveDocumentWithActions()
       case 'file.saveAll': return void saveAllWithActions()
       case 'file.closeEditor': return withActiveDocument((active) => closeFlow.requestCloseDocuments([active]))
@@ -497,7 +503,7 @@ export function GoStudioPanel() {
   const recentNotOpen = store.recentProjects.filter((project) => !openRealPaths.has(project.realPath))
   const mainMenu = <GoStudioMenuBar state={commandState} recentProjects={store.recentProjects} openProjectPaths={workspaceSessions.map((session) => session.project.realPath)} onCommand={runCommand} onOpenRecent={(path) => void store.openProject(path)} />
   const menuBar = <div role="toolbar" aria-label="Go Studio toolbar" className="flex h-12 shrink-0 items-center gap-1 px-2">{mainMenu}<span className="flex-1" /><GoStudioWorkspaceSwitcher /></div>
-  const sharedDialogs = <><CreateProjectDialog open={createOpen} onClose={() => setCreateOpen(false)} /><GoStudioShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} /></>
+  const sharedDialogs = <><CreateProjectDialog open={createOpen} onClose={() => setCreateOpen(false)} /><GoStudioCloneDialog open={cloneOpen} onClose={() => setCloneOpen(false)} /><GoStudioShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} /></>
 
   const windowError = windows.error && <ErrorBanner message={windows.error} onClose={windows.clearError} />
   if (!activeSession && pinnedSessionId && store.initialized) {
@@ -515,7 +521,7 @@ export function GoStudioPanel() {
   }
 
   if (!activeSession) {
-    return <div className="go-studio-root flex min-h-0 flex-1 flex-col">{menuBar}{store.error && <ErrorBanner message={store.error} onClose={store.clearError} />}<GoStudioEmptyState loading={store.loading} recentProjects={store.recentProjects} onOpenProject={() => void store.openProject()} onCreateProject={() => setCreateOpen(true)} onOpenRecent={(path) => void store.openProject(path)} onRemoveRecent={(path) => void store.removeRecentProject(path)} />{sharedDialogs}</div>
+    return <div className="go-studio-root flex min-h-0 flex-1 flex-col">{menuBar}{store.error && <ErrorBanner message={store.error} onClose={store.clearError} />}<GoStudioEmptyState loading={store.loading} recentProjects={store.recentProjects} onOpenProject={() => void store.openProject()} onCreateProject={() => setCreateOpen(true)} onClone={() => setCloneOpen(true)} onOpenRecent={(path) => void store.openProject(path)} onRemoveRecent={(path) => void store.removeRecentProject(path)} />{sharedDialogs}</div>
   }
 
   return (
@@ -531,6 +537,7 @@ export function GoStudioPanel() {
       <GoStudioQuickOpen />
       <GoStudioCaretPopup />
       <GoStudioHierarchyDialog />
+      <GoStudioGoWorkDialog open={goWorkOpen} sessionId={activeSession.id} onClose={() => setGoWorkOpen(false)} />
       <GoStudioGenerateMenu />
       <GoStudioImplementInterfaceDialog />
       {sharedDialogs}

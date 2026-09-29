@@ -1043,6 +1043,11 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
   hasActiveRuns: async (sessionId) => hasActiveGoIDERuns(sessionId),
 
   handleEvent: (event) => {
+    // Moduli o go.work cambiati (es. Go Workspace): la sessione arriva già aggiornata dal backend.
+    if (event.type === 'session.updated' && event.payload && typeof event.payload === 'object' && 'project' in event.payload) {
+      set((state) => ({ sessions: replaceSession(state.sessions, event.payload as GoIDESession) }))
+      return
+    }
     if (event.type === 'toolchain.install.progress') {
       const installation = event.payload as GoIDEToolchainInstallation | undefined
       if (!installation?.id || installation.sessionId !== event.sessionId) return

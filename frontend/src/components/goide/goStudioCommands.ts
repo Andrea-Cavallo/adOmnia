@@ -1,5 +1,5 @@
 export type GoStudioCommandId =
-  | 'file.openProject' | 'file.newProject' | 'file.save' | 'file.saveAll' | 'file.closeEditor' | 'file.closeProject'
+  | 'file.openProject' | 'file.newProject' | 'file.clone' | 'go.goWork' | 'file.save' | 'file.saveAll' | 'file.closeEditor' | 'file.closeProject'
   | 'window.openInNewWindow' | 'window.moveBack'
   | 'file.closeOthers' | 'file.closeAll' | 'file.pinTab' | 'file.reopenClosed' | 'file.autoSave' | 'file.trimWhitespace'
   | 'edit.undo' | 'edit.redo' | 'edit.find' | 'edit.replace' | 'edit.gotoLine' | 'edit.toggleComment'
@@ -68,6 +68,7 @@ export const GO_STUDIO_MENUS: ReadonlyArray<{ id: GoStudioMenuId; label: string 
 export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'file.openProject', menu: 'file', label: 'Open Project…', binding: { key: 'o', mod: true } },
   { id: 'file.newProject', menu: 'file', label: 'New Go Project…' },
+  { id: 'file.clone', menu: 'file', label: 'Clone Repository…' },
   { id: 'file.save', menu: 'file', label: 'Save', binding: { key: 's', mod: true }, separatorBefore: true },
   { id: 'file.saveAll', menu: 'file', label: 'Save All', binding: { key: 's', mod: true, shift: true } },
   { id: 'file.autoSave', menu: 'file', label: 'Save Files on Focus Change' },
@@ -168,6 +169,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'go.toolchains', menu: 'go', label: 'Go SDKs & Toolchains…' },
   { id: 'go.detect', menu: 'go', label: 'Detect Go SDK' },
   { id: 'go.dependencies', menu: 'go', label: 'Module Dependencies…', separatorBefore: true },
+  { id: 'go.goWork', menu: 'go', label: 'Go Workspace (go.work)…' },
   { id: 'go.tidy', menu: 'go', label: 'go mod tidy…' },
   { id: 'go.updateAll', menu: 'go', label: 'Update All Dependencies…' },
   { id: 'go.updatePatch', menu: 'go', label: 'Update Patch Versions…' },
@@ -354,7 +356,7 @@ export function commandAvailability(id: GoStudioCommandId, context: GoStudioComm
   if (windowed !== null) return windowed
   if (id === 'view.maximize') return context.detached ? 'Already a separate window' : true
   if (id === 'view.zenMode') return context.detached ? 'Available in the main window' : true
-  if (id === 'file.openProject' || id === 'file.newProject' || id === 'help.shortcuts') return true
+  if (id === 'file.openProject' || id === 'file.newProject' || id === 'file.clone' || id === 'help.shortcuts') return true
   if (!context.hasSession) return NO_PROJECT
   if (id.startsWith('edit.')) return context.hasEditor ? true : 'Open a file first'
   switch (id) {

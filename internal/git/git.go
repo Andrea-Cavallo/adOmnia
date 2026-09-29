@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -149,16 +150,36 @@ func Init(cfg Config) error {
 	return nil
 }
 
+// cloneURLPattern accetta solo https, http, ssh, git e la forma scp git@host:path.
+// Un URL che inizia con "-" verrebbe letto da git come opzione (es. --upload-pack=…),
+// e i transport "ext::" o "file::" eseguono comandi o leggono il disco: sono rifiutati.
+var cloneURLPattern = regexp.MustCompile(`^(?:(?:https?|ssh|git)://[^\s]+|[A-Za-z0-9._-]+@[A-Za-z0-9.-]+:[^\s]+)$`)
+
+// ValidateCloneURL spiega perché un URL non è clonabile, o restituisce nil.
+func ValidateCloneURL(remoteURL string) error {
+	remoteURL = strings.TrimSpace(remoteURL)
+	if remoteURL == "" {
+		return fmt.Errorf("remote URL is empty")
+	}
+	if !cloneURLPattern.MatchString(remoteURL) {
+		return fmt.Errorf("unsupported repository URL %q: use https://, ssh://, git:// or git@host:path", remoteURL)
+	}
+	return nil
+}
+
 func Clone(remoteURL, destination string) error {
 	remoteURL = strings.TrimSpace(remoteURL)
 	destination = strings.TrimSpace(destination)
-	if remoteURL == "" {
-		return fmt.Errorf("remote URL is empty")
+	if err := ValidateCloneURL(remoteURL); err != nil {
+		return err
 	}
 	if destination == "" {
 		return fmt.Errorf("destination path is empty")
 	}
-	cmd := exec.Command("git", "clone", remoteURL, destination)
+	// "--" chiude le opzioni: URL e cartella restano sempre argomenti posizionali.
+	cmd := exec.Command("git", "clone", "--", remoteURL, destination)
+	// Senza terminale nessuno può rispondere a un prompt di credenziali: meglio un errore subito.
+	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0")
 	configureHiddenCommand(cmd)
 	var errBuf bytes.Buffer
 	cmd.Stderr = &errBuf

@@ -673,6 +673,28 @@ func (g *GoIDE) DocumentHighlights(ctx context.Context, sessionID, documentID st
 	return settleCancelled(ctx, value, err)
 }
 
+// GoWorkState legge go.work e i moduli rilevati del progetto.
+func (g *GoIDE) GoWorkState(sessionID string) (goide.GoWorkState, error) {
+	return g.service.GoWorkState(sessionID)
+}
+
+// UpdateGoWork porta go.work all'insieme di moduli indicato con i comandi go work ufficiali.
+func (g *GoIDE) UpdateGoWork(sessionID string, directories []string) (goide.GoWorkState, error) {
+	return g.service.UpdateGoWork(sessionID, directories)
+}
+
+// CloneRepository clona un repository Git in parent/<nome> e restituisce la cartella, da aprire come progetto.
+func (g *GoIDE) CloneRepository(remoteURL, parent string) (string, error) {
+	destination, err := goide.CloneDestination(parent, remoteURL)
+	if err != nil {
+		return "", err
+	}
+	if err := git.Clone(remoteURL, destination); err != nil {
+		return "", err
+	}
+	return destination, nil
+}
+
 // GenerateGoCode genera costruttore, getter/setter, interfaccia, benchmark o fuzz test sul testo indicato.
 func (g *GoIDE) GenerateGoCode(request goide.CodeGenRequest) (goide.CodeGenResult, error) {
 	return goide.GenerateGoCode(request)

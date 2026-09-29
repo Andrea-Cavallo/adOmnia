@@ -218,13 +218,13 @@
 
 ## Workspace
 
-- [ ] Open folder.
-- [ ] Open repository.
-- [ ] Open recent.
-- [ ] Open multiple roots.
-- [ ] Import existing Go project.
-- [ ] Clone Git repository.
-- [ ] New Go project wizard.
+- [x] Open folder. — *File → Open Project (modulo, go.work o cartella).*
+- [x] Open repository. — *una cartella con Git mostra branch e modifiche.*
+- [x] Open recent. — *File → Open Recent e menu progetto nella toolbar.*
+- [x] Open multiple roots. — *più progetti aperti insieme nei workspace Go Studio.*
+- [x] Import existing Go project.
+- [x] Clone Git repository. — *File → Clone Repository…: solo https/ssh/git (URL con opzioni rifiutati), il progetto si apre senza trust.*
+- [x] New Go project wizard. — *New Go Project (go mod init con conferma); i template sono sotto.*
 - [ ] New CLI project.
 - [ ] New REST service.
 - [ ] New gRPC service.
@@ -236,16 +236,16 @@
 
 ## Multi-module
 
-- [ ] Rilevamento automatico di tutti i `go.mod`.
-- [ ] Rilevamento `go.work`.
-- [ ] Creazione visuale `go.work`.
-- [ ] Aggiunta/rimozione module dal workspace.
-- [ ] Vista module dependency.
-- [ ] Supporto monorepo.
-- [ ] Supporto repository con `/cmd/*`.
-- [ ] Supporto repository con `/internal`.
-- [ ] Supporto repository con più microservizi.
-- [ ] Project graph.
+- [x] Rilevamento automatico di tutti i `go.mod`.
+- [x] Rilevamento `go.work`.
+- [x] Creazione visuale `go.work`. — *Go → Go Workspace (go.work)…: moduli con checkbox, `go work init` (test con go reale).*
+- [x] Aggiunta/rimozione module dal workspace. — *`go work use` / `go work edit -dropuse`, solo moduli rilevati nel progetto.*
+- [ ] Vista module dependency. — *le dipendenze di un modulo ci sono (Module Dependencies); il grafo tra moduli → §19.*
+- [ ] Supporto monorepo. — *funziona (multi-modulo, go.work); manca una misura delle prestazioni su monorepo grandi.*
+- [x] Supporto repository con `/cmd/*`. — *▶ su ogni `func main` e Run configuration per package.*
+- [x] Supporto repository con `/internal`.
+- [x] Supporto repository con più microservizi. — *più moduli e go.work nello stesso progetto.*
+- [ ] Project graph. — *→ §15 Architecture Explorer.*
 
 ## File explorer
 

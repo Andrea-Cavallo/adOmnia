@@ -47,6 +47,8 @@ export {
     GoReplacement,
     GoToolPreview,
     GoToolRequest,
+    GoWorkModule,
+    GoWorkState,
     GoplsInfo,
     GoroutineOverview,
     GoroutineSummary,
