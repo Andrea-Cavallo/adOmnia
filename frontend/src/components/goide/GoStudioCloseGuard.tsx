@@ -1,29 +1,50 @@
 import { useEffect, useRef, useState } from 'react'
 import { Loader2, Save, Square } from 'lucide-react'
-import { confirmGoIDEAppClose, setGoIDEDirtyDocumentCount, subscribeGoIDEAppCloseRequests, type GoIDEAppCloseRequest } from '@/lib/goide-api'
+import { confirmGoIDEAppClose, setGoIDEDirtyDocumentCount, subscribeGoIDEAppCloseRequests } from '@/lib/goide-api'
+import {
+  MAIN_GO_STUDIO_WINDOW, confirmGoIDESessionWindowClose, setGoIDEWindowDirtyDocumentCount, subscribeGoIDEWindowCloseRequests,
+} from '@/lib/goide-window-api'
 import { useModalFocusTrap } from '@/lib/accessibility'
 import { useGoIDEStore } from '@/stores/goide'
 
-export function GoStudioCloseGuard() {
+interface CloseRequest {
+  dirtyDocumentCount: number
+  activeRuns: boolean
+}
+
+interface GoStudioCloseGuardProps {
+  /** Finestra da proteggere: la principale chiude l'app, una separata chiude solo sé stessa. */
+  windowId?: string
+}
+
+export function GoStudioCloseGuard({ windowId = MAIN_GO_STUDIO_WINDOW }: GoStudioCloseGuardProps) {
+  const detached = windowId !== MAIN_GO_STUDIO_WINDOW
   const documents = useGoIDEStore((state) => state.documents)
   const saveDocument = useGoIDEStore((state) => state.saveDocument)
   const dirtyDocuments = documents.filter((document) => document.dirty)
-  const [request, setRequest] = useState<GoIDEAppCloseRequest | null>(null)
+  const [request, setRequest] = useState<CloseRequest | null>(null)
   const [saving, setSaving] = useState(false)
   const dialogRef = useRef<HTMLDivElement>(null)
   useModalFocusTrap(!!request, () => setRequest(null), dialogRef)
 
   useEffect(() => {
-    void setGoIDEDirtyDocumentCount(dirtyDocuments.length).catch(() => undefined)
-  }, [dirtyDocuments.length])
+    const sync = detached ? setGoIDEWindowDirtyDocumentCount(windowId, dirtyDocuments.length) : setGoIDEDirtyDocumentCount(dirtyDocuments.length)
+    void sync.catch(() => undefined)
+  }, [detached, dirtyDocuments.length, windowId])
 
-  useEffect(() => subscribeGoIDEAppCloseRequests(setRequest), [])
+  useEffect(() => {
+    if (!detached) return subscribeGoIDEAppCloseRequests((next) => setRequest({ dirtyDocumentCount: next.dirtyDocumentCount, activeRuns: next.activeRuns }))
+    // L'evento arriva a tutte le finestre: risponde solo quella che si sta chiudendo.
+    return subscribeGoIDEWindowCloseRequests((next) => {
+      if (next.windowId === windowId) setRequest({ dirtyDocumentCount: next.dirtyDocumentCount, activeRuns: false })
+    })
+  }, [detached, windowId])
 
   if (!request) return null
 
   const close = async () => {
     setRequest(null)
-    await confirmGoIDEAppClose()
+    await (detached ? confirmGoIDESessionWindowClose(windowId) : confirmGoIDEAppClose())
   }
   const saveAndClose = async () => {
     setSaving(true)
@@ -39,13 +60,14 @@ export function GoStudioCloseGuard() {
 
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 backdrop-blur-[2px]" onClick={() => setRequest(null)}>
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Confirm application close" tabIndex={-1} className="w-[440px] overflow-hidden rounded-xl border border-border-2 bg-surface-1 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={detached ? 'Confirm window close' : 'Confirm application close'} tabIndex={-1} className="w-[440px] overflow-hidden rounded-xl border border-border-2 bg-surface-1 shadow-2xl" onClick={(event) => event.stopPropagation()}>
         <div className="p-5">
           <div className="mb-3 grid h-9 w-9 place-items-center rounded-full bg-warning/10 text-warning">{dirtyDocuments.length > 0 ? <Save size={16} /> : <Square size={15} />}</div>
-          <h2 className="text-[13px] font-semibold text-text-1">Close adOmnia?</h2>
+          <h2 className="text-[13px] font-semibold text-text-1">{detached ? 'Close this window?' : 'Close adOmnia?'}</h2>
           <p className="mt-1 text-[11px] leading-4 text-text-3">
             {dirtyDocuments.length > 0 && `${dirtyDocuments.length} editor buffer${dirtyDocuments.length === 1 ? ' has' : 's have'} unsaved changes. `}
             {request.activeRuns && 'Active Go processes will be stopped, including their child processes.'}
+            {detached && 'The project moves back to the main window.'}
           </p>
           {dirtyDocuments.length > 0 && <div className="mt-3 max-h-28 overflow-auto rounded border border-border-1 bg-surface-0 p-2 font-mono text-[10px] text-text-3">{dirtyDocuments.map((document) => <div key={document.document.id} className="truncate">{document.document.relativePath}</div>)}</div>}
         </div>

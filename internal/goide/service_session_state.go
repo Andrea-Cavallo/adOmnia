@@ -144,6 +144,7 @@ func (s *Service) PruneMissingSessions() ([]Session, error) {
 		s.tests.CloseSession(session.ID)
 		_ = s.recovery.ForgetSession(session.ID)
 		s.workspace.CloseSession(session.ID)
+		s.windows.forget(session.ID)
 		s.viewMu.Lock()
 		delete(s.views, session.ID)
 		s.viewMu.Unlock()

@@ -82,6 +82,7 @@ export {
     SemanticTokensResult,
     Session,
     SessionView,
+    SessionWindow,
     SignatureEntry,
     SignatureParameter,
     SignatureResult,

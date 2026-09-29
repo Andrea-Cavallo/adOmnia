@@ -3,6 +3,7 @@ package main
 import (
 	"adomnia/internal/git"
 	"adomnia/internal/goide"
+	"adomnia/internal/goidewindow"
 	"adomnia/internal/plugins"
 	"adomnia/internal/storage"
 	"context"
@@ -79,6 +80,8 @@ type GoIDE struct {
 	mainWindow         *application.WebviewWindow
 	dirtyDocumentCount atomic.Int64
 	allowAppClose      atomic.Bool
+	// windows possiede le finestre Go Studio separate (una per progetto).
+	windows *goidewindow.Manager
 }
 
 func NewGoIDE() *GoIDE {
@@ -117,27 +120,127 @@ func (g *GoIDE) ProjectServices(sessionID string) ([]goide.ProjectService, error
 
 func (g *GoIDE) attachDesktop(desktop *application.App) {
 	g.desktop = desktop
+	g.windows = goidewindow.New(desktop, func(windowID string) {
+		g.service.ReleaseWindow(windowID)
+	})
 }
 
 func (g *GoIDE) attachMainWindow(window *application.WebviewWindow) {
 	g.mainWindow = window
 	window.RegisterHook(events.Common.WindowClosing, func(event *application.WindowEvent) {
-		if g.allowAppClose.Swap(false) {
+		if !g.allowAppClose.Swap(false) && g.cancelMainClose(event) {
 			return
 		}
-		dirtyCount := g.dirtyDocumentCount.Load()
-		activeRuns := g.service.HasAnyActiveRuns()
-		if dirtyCount == 0 && !activeRuns {
-			return
-		}
-		event.Cancel()
-		if g.desktop != nil {
-			g.desktop.Event.Emit("goide:close-requested", map[string]any{
-				"dirtyDocumentCount": dirtyCount,
-				"activeRuns":         activeRuns,
-			})
+		// La finestra principale si chiude davvero: le finestre Go Studio, già
+		// verificate senza buffer non salvati, si chiudono con lei.
+		if g.windows != nil {
+			g.windows.CloseAll()
 		}
 	})
+}
+
+// cancelMainClose annulla la chiusura quando restano buffer non salvati o
+// processi attivi. I buffer di una finestra separata vivono solo in quella
+// finestra: la si porta in primo piano perché sia lei a chiedere conferma.
+func (g *GoIDE) cancelMainClose(event *application.WindowEvent) bool {
+	if g.desktop == nil {
+		return false
+	}
+	if g.windows != nil {
+		if windowID, dirty, ok := g.windows.FirstDirty(); ok {
+			event.Cancel()
+			_ = g.windows.Focus(windowID)
+			g.desktop.Event.Emit(goidewindow.CloseRequestedEvent, map[string]any{"windowId": windowID, "dirtyDocumentCount": dirty})
+			return true
+		}
+	}
+	dirtyCount := g.dirtyDocumentCount.Load()
+	activeRuns := g.service.HasAnyActiveRuns()
+	if dirtyCount == 0 && !activeRuns {
+		return false
+	}
+	event.Cancel()
+	g.desktop.Event.Emit("goide:close-requested", map[string]any{
+		"dirtyDocumentCount": dirtyCount,
+		"activeRuns":         activeRuns,
+	})
+	return true
+}
+
+// OpenSessionWindow sposta il progetto in una finestra Go Studio separata, o
+// mette a fuoco quella già aperta. Il frontend chiamante deve aver salvato i
+// buffer del progetto: restano nella finestra che li possiede.
+func (g *GoIDE) OpenSessionWindow(sessionID string) (string, error) {
+	if g.windows == nil {
+		return "", fmt.Errorf("runtime desktop non inizializzato")
+	}
+	sessions, err := g.service.ListSessions()
+	if err != nil {
+		return "", err
+	}
+	name := ""
+	for _, session := range sessions {
+		if string(session.ID) == sessionID {
+			name = session.Project.Name
+		}
+	}
+	if name == "" {
+		return "", fmt.Errorf("sessione %q non trovata", sessionID)
+	}
+	windowID, err := goidewindow.WindowIDFor(sessionID)
+	if err != nil {
+		return "", err
+	}
+	if _, err := g.service.ClaimSessionWindow(sessionID, windowID, true); err != nil {
+		return "", err
+	}
+	if _, err := g.windows.Open(sessionID, name); err != nil {
+		g.service.ReleaseWindow(windowID)
+		return "", err
+	}
+	return windowID, nil
+}
+
+// ClaimSessionWindow verifica o assegna la proprietà del progetto a una finestra.
+func (g *GoIDE) ClaimSessionWindow(sessionID, windowID string, force bool) (goide.SessionWindow, error) {
+	return g.service.ClaimSessionWindow(sessionID, windowID, force)
+}
+
+// ListSessionWindows elenca i progetti aperti in finestre separate.
+func (g *GoIDE) ListSessionWindows() []goide.SessionWindow {
+	return g.service.ListSessionWindows()
+}
+
+// FocusSessionWindow porta in primo piano la finestra separata indicata.
+func (g *GoIDE) FocusSessionWindow(windowID string) error {
+	if g.windows == nil {
+		return fmt.Errorf("runtime desktop non inizializzato")
+	}
+	return g.windows.Focus(windowID)
+}
+
+// CloseSessionWindow chiude la finestra separata, con conferma se ha buffer
+// non salvati; il progetto torna alla finestra principale.
+func (g *GoIDE) CloseSessionWindow(windowID string) error {
+	if g.windows == nil {
+		return fmt.Errorf("runtime desktop non inizializzato")
+	}
+	return g.windows.RequestClose(windowID)
+}
+
+// ConfirmSessionWindowClose chiude la finestra dopo che ha salvato o scartato i buffer.
+func (g *GoIDE) ConfirmSessionWindowClose(windowID string) error {
+	if g.windows == nil {
+		return fmt.Errorf("runtime desktop non inizializzato")
+	}
+	return g.windows.ConfirmClose(windowID)
+}
+
+// SetWindowDirtyDocumentCount sincronizza i buffer non salvati di una finestra separata.
+func (g *GoIDE) SetWindowDirtyDocumentCount(windowID string, count int) {
+	if g.windows != nil {
+		g.windows.SetDirtyCount(windowID, count)
+	}
 }
 
 // GetCapabilities restituisce soltanto le capacità Go Studio realmente disponibili.

@@ -1,5 +1,6 @@
 export type GoStudioCommandId =
   | 'file.openProject' | 'file.newProject' | 'file.save' | 'file.saveAll' | 'file.closeEditor' | 'file.closeProject'
+  | 'window.openInNewWindow' | 'window.moveBack'
   | 'file.closeOthers' | 'file.closeAll' | 'file.pinTab' | 'file.reopenClosed'
   | 'edit.undo' | 'edit.redo' | 'edit.find' | 'edit.replace' | 'edit.gotoLine' | 'edit.toggleComment'
   | 'edit.duplicateLine' | 'edit.deleteLine' | 'edit.nextOccurrence' | 'edit.allOccurrences' | 'edit.moveLineUp' | 'edit.moveLineDown' | 'edit.columnSelection'
@@ -72,6 +73,8 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'file.reopenClosed', menu: 'file', label: 'Reopen Closed Tab', binding: { key: 't', mod: true, shift: true } },
   { id: 'file.localHistory', menu: 'file', label: 'Local History…', separatorBefore: true },
   { id: 'file.closeProject', menu: 'file', label: 'Close Project' },
+  { id: 'window.openInNewWindow', menu: 'file', label: 'Open Project in New Window', separatorBefore: true },
+  { id: 'window.moveBack', menu: 'file', label: 'Move Project Back to Main Window' },
   { id: 'edit.undo', menu: 'edit', label: 'Undo', binding: { key: 'z', mod: true }, editorOwned: true },
   { id: 'edit.redo', menu: 'edit', label: 'Redo', binding: { key: 'z', mod: true, shift: true }, editorOwned: true },
   { id: 'edit.find', menu: 'edit', label: 'Find', binding: { key: 'f', mod: true }, editorOwned: true, separatorBefore: true },
@@ -265,6 +268,10 @@ export interface GoStudioCommandContext {
   canGoBack: boolean
   canGoForward: boolean
   bookmarkCount: number
+  /** Finestra Go Studio separata: mostra un solo progetto e non ha rail né pannelli adOmnia. */
+  detached?: boolean
+  /** Il progetto attivo è modificabile in un'altra finestra: i suoi buffer vivono là. */
+  ownedElsewhere?: boolean
 }
 
 const NO_PROJECT = 'Open a Go project first'
@@ -283,7 +290,26 @@ function runAvailability(context: GoStudioCommandContext): true | string {
 }
 
 /** Calcola se un comando è eseguibile nello stato corrente e, se no, perché. */
+const MAIN_WINDOW_ONLY = new Set<GoStudioCommandId>(['file.openProject', 'file.newProject', 'tools.services', 'tools.httpRequest', 'tools.plugins', 'vcs.gitStudio'])
+
+function windowAvailability(id: GoStudioCommandId, context: GoStudioCommandContext): true | string | null {
+  if (context.detached && MAIN_WINDOW_ONLY.has(id)) return 'Available in the main adOmnia window'
+  switch (id) {
+    case 'window.openInNewWindow':
+      if (context.detached) return 'This window already shows a single project'
+      if (!context.hasSession) return NO_PROJECT
+      return context.sessionDirty ? 'Save or discard the open files first: unsaved changes stay in this window' : true
+    case 'window.moveBack': return context.detached ? true : 'The project is already in the main window'
+    case 'file.closeProject':
+      if (context.detached) return 'Move the project back to the main window to close it'
+      return context.ownedElsewhere ? 'The project is open in a separate window: move it back first' : null
+  }
+  return null
+}
+
 export function commandAvailability(id: GoStudioCommandId, context: GoStudioCommandContext): true | string {
+  const windowed = windowAvailability(id, context)
+  if (windowed !== null) return windowed
   if (id === 'file.openProject' || id === 'file.newProject' || id === 'help.shortcuts') return true
   if (!context.hasSession) return NO_PROJECT
   if (id.startsWith('edit.')) return context.hasEditor ? true : 'Open a file first'

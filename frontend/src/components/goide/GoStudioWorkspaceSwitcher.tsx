@@ -4,6 +4,7 @@ import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import { confirm } from '@/lib/confirmDialog'
 import { useModalFocusTrap } from '@/lib/accessibility'
 import { DEFAULT_STUDIO_WORKSPACE_ID } from '@/lib/goide-workspaces-api'
+import { goStudioWindowContext } from '@/lib/goide-window-api'
 import { sessionsInWorkspace, useGoIDEStore } from '@/stores/goide'
 import { createGoStudioWorkspace, deleteGoStudioWorkspace, renameGoStudioWorkspace, switchGoStudioWorkspace } from '@/stores/goideWorkspaces'
 
@@ -52,6 +53,12 @@ function WorkspaceNameDialog({ dialog, onClose }: { dialog: NameDialog; onClose:
 
 /** Selettore del workspace Go Studio nella menu bar: sempre visibile, anche quando il workspace è vuoto. */
 export function GoStudioWorkspaceSwitcher() {
+  // Una finestra separata mostra un solo progetto: i workspace si gestiscono dalla finestra principale.
+  if (goStudioWindowContext().pinnedSessionId) return null
+  return <WorkspaceSwitcher />
+}
+
+function WorkspaceSwitcher() {
   const workspaces = useGoIDEStore((state) => state.studioWorkspaces)
   const activeId = useGoIDEStore((state) => state.activeWorkspaceId)
   const sessions = useGoIDEStore((state) => state.sessions)

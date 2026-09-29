@@ -3038,6 +3038,39 @@ export class SessionView {
     }
 }
 
+/**
+ * SessionWindow indica quale finestra possiede una sessione.
+ */
+export class SessionWindow {
+    "sessionId": SessionID;
+    "windowId": string;
+
+    /**
+     * PreviousWindowID è valorizzato negli eventi di passaggio di proprietà.
+     */
+    "previousWindowId"?: string;
+
+    /** Creates a new SessionWindow instance. */
+    constructor($$source: Partial<SessionWindow> = {}) {
+        if (!("sessionId" in $$source)) {
+            this["sessionId"] = "";
+        }
+        if (!("windowId" in $$source)) {
+            this["windowId"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SessionWindow instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SessionWindow {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new SessionWindow($$parsedSource as Partial<SessionWindow>);
+    }
+}
+
 export class SignatureEntry {
     "label": string;
     "documentation"?: string;

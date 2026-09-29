@@ -7,6 +7,11 @@ const DetachedRequestWindow = React.lazy(() =>
     default: module.DetachedRequestWindow,
   })),
 )
+const DetachedGoStudioWindow = React.lazy(() =>
+  import('./components/goide/DetachedGoStudioWindow').then((module) => ({
+    default: module.DetachedGoStudioWindow,
+  })),
+)
 const DetachedSwaggerEditorWindow = React.lazy(() =>
   import('./components/apidocs/DetachedSwaggerEditorWindow').then((module) => ({
     default: module.DetachedSwaggerEditorWindow,
@@ -112,7 +117,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         ? <DetachedRequestWindow />
         : new URLSearchParams(window.location.search).get('window') === 'swagger-editor'
           ? <DetachedSwaggerEditorWindow />
-          : <App />}
+          : new URLSearchParams(window.location.search).get('window') === 'go-studio'
+            ? <DetachedGoStudioWindow />
+            : <App />}
     </Suspense>
   </React.StrictMode>,
 )

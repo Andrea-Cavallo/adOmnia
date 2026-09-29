@@ -54,6 +54,8 @@ type Service struct {
 	delveBinaries    map[SessionID]string
 	lint             lintRegistry
 	watcher          *WatchManager
+	// windows registra le sessioni spostate in finestre separate.
+	windows *windowRegistry
 }
 
 func NewService(store Store, eventSink func(EventEnvelope)) *Service {
@@ -75,6 +77,7 @@ func NewService(store Store, eventSink func(EventEnvelope)) *Service {
 		goplsBinaries:    make(map[SessionID]string),
 		delveBinaries:    make(map[SessionID]string),
 		lint:             lintRegistry{custom: make(map[SessionID]string)},
+		windows:          newWindowRegistry(),
 	}
 	service.recovery = NewRecoveryManager(nil)
 	service.history = NewLocalHistory(nil)
@@ -255,6 +258,11 @@ func (s *Service) CloseSession(id string) error {
 	if s.processes.HasActiveSession(sessionID) {
 		return fmt.Errorf("la sessione contiene processi attivi: arrestali prima di chiuderla")
 	}
+	// I buffer non salvati di una finestra separata vivono solo lì: il progetto si chiude
+	// dopo averlo riportato nella finestra principale, che passa dalla conferma.
+	if owner := s.windows.owner(sessionID); owner != MainWindowID {
+		return fmt.Errorf("%w: riportalo nella finestra principale prima di chiuderlo", ErrSessionInOtherWindow)
+	}
 	if !s.workspace.CloseSession(sessionID) {
 		return nil
 	}
@@ -273,6 +281,7 @@ func (s *Service) CloseSession(id string) error {
 	s.runConfigs.CloseSession(sessionID)
 	s.tests.CloseSession(sessionID)
 	_ = s.history.ForgetSession(sessionID)
+	s.windows.forget(sessionID)
 	if err := s.recovery.ForgetSession(sessionID); err != nil {
 		return err
 	}

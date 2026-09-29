@@ -10,7 +10,7 @@ Tutte le verifiche manuali ancora aperte sono qui, in un solo posto. Nel resto d
 
 **Setup**: Windows, `wails3 task dev`, un progetto Go reale (più package, test, `go.mod` con dipendenze, repository Git con modifiche non committate), Task Manager aperto.
 
-**Già verificato in automatico su Windows (2026-09-29, Go 1.26.5, Delve 1.27.2)**, quindi non va rifatto a mano: `TestWindowsStopTerminatesChildTree` (Stop chiude anche il figlio di `go run`); `TestTerminal*` su ConPTY (shell interattiva, uscita naturale, chiusura idempotente, limite per sessione, chiusura dell'albero di processi); `TestDebugger*` (breakpoint, step, variabili, evaluate, singolo test, attach, Delve remoto), senza `dlv` né `__debug_bin` residui dopo i test. Restano manuali solo le parti che richiedono la finestra reale o il Task Manager.
+**Già verificato in automatico su Windows (2026-09-29, Go 1.26.5, Delve 1.27.2)**, quindi non va rifatto a mano: `TestWindowsStopTerminatesChildTree` (Stop chiude anche il figlio di `go run`); `TestTerminal*` su ConPTY (shell interattiva, uscita naturale, chiusura idempotente, limite per sessione, chiusura dell'albero di processi); `TestDebugger*` (breakpoint, step, variabili, evaluate, singolo test, attach, Delve remoto e, dal 2026-09-29, anche `TestDebuggerStopLeavesNoOrphans`, che su Windows ora osserva davvero il processo debuggato), senza `dlv` né `__debug_bin` residui dopo i test; l'intera suite passa con `-race` e Delve presente. Restano manuali solo le parti che richiedono la finestra reale o il Task Manager.
 
 ### A. Collaudo Fasi 1–4 (sblocca i gate 1, 2, 3 e 4)
 
@@ -20,7 +20,7 @@ Tutte le verifiche manuali ancora aperte sono qui, in un solo posto. Nel resto d
 - [ ] **M4 — Aspetto**: temi dark e light, finestra piccola e ridimensionata, stati loading/empty/error/running/stopped ben distinguibili. *(Fase 1, 1.5)*
 - [ ] **M5 — Signature help** visibile mentre si scrive una chiamata. *(Fase 2)*
 - [ ] **M6 — Strumenti mancanti**: senza Go, installazione dall'IDE; senza gopls, linter o Delve, installazione dal menu Go; messaggi operativi chiari. *(Fasi 1–2, collaudo finale)*
-- [ ] **M7 — Debugger dalla UI**: breakpoint, step, watch, Stop e chiusura progetto; in Task Manager nessun `dlv` o `__debug_bin` residuo. *(Fase 4; `TestDebuggerStopLeavesNoOrphans` su Windows viene saltato perché non riesce a osservare il processo debuggato)*
+- [ ] **M7 — Debugger dalla UI**: breakpoint, step, watch, Stop e chiusura progetto dalla finestra reale. *(Fase 4; l'assenza di `dlv`/`__debug_bin` orfani dopo Stop è ora verificata in automatico su Windows)*
 - [ ] **M8 — Mock e barra di qualità**: confronto con i due mock approvati e verifica fluido/veloce/moderno/stabile su un progetto di dimensioni reali; registrare differenze intenzionali. *(tutte le fasi)*
 
 ### B. Collaudo Fase 5 (sblocca il gate 5)
@@ -31,6 +31,7 @@ Tutte le verifiche manuali ancora aperte sono qui, in un solo posto. Nel resto d
 - [ ] **M12 — VCS**: gutter diff, revert di un hunk, blame e cronologia riflettono il repository reale; Git Sync senza regressioni.
 - [ ] **M13 — Integrazioni adOmnia**: Project Services apre Docker Lab, Database Studio e Broker Studio già compilati; il CodeLens di una route apre la richiesta precompilata nell'API Client; gli eventi `onGoStudio*` compaiono in Plugin DevTools.
 - [ ] **M14 — Workspace Go Studio**: creazione, cambio e riavvio dell'app con due workspace e lo stesso progetto aperto in entrambi.
+- [ ] **M31 — Finestre separate (5.8)**: File → Open Project in New Window su un progetto senza modifiche; la finestra nuova ripristina i tab e mostra solo quel progetto; la principale mostra "is open in a separate window" con Show Window / Move Back Here; shortcut, Run, terminale e debugger funzionano nella finestra separata; chiudere la finestra con un file modificato chiede conferma e il progetto torna alla principale; chiudere adOmnia con una finestra separata modificata porta in primo piano quella finestra; Task Manager pulito dopo la chiusura. Superata la prova, dichiarare il supporto nelle note di rilascio.
 
 ### C. Collaudo finale (flussi completi e qualità prodotto)
 
@@ -55,15 +56,11 @@ Tutte le verifiche manuali ancora aperte sono qui, in un solo posto. Nel resto d
 
 # ▶ COSA MANCA OLTRE ALLE PROVE MANUALI (analisi 2026-09-29)
 
-Stato: le Fasi 0–5 (fino a 5.6b) sono implementate e committate su `master`. A parte le prove manuali qui sopra, restano quattro blocchi di lavoro vero.
+Stato: le Fasi 0–5 sono implementate e committate su `master`, comprese le finestre separate (5.8). A parte le prove manuali qui sopra, resta soprattutto la documentazione (blocco 3).
 
-**1. Finestre separate / multiwindow (5.8) — non iniziato.** È l'unica funzione di ambito ancora non implementata: finestra Wails secondaria senza duplicare l'ownership del backend, coordinamento o avviso quando lo stesso progetto è aperto in più finestre, dichiarazione nel prodotto solo dopo prova reale. Oggi è rinviata in modo esplicito, non simulata.
+**1. Finestre separate (5.8) — implementate il 2026-09-29, manca la prova reale (M31).** Ogni progetto può essere spostato in una propria finestra nativa (File → Open Project in New Window); il backend resta unico e registra quale finestra possiede ogni progetto, così due finestre non modificano mai gli stessi buffer (una seconda finestra è rifiutata, `CloseSession` rifiuta un progetto aperto altrove). La chiusura della finestra chiede conferma sui buffer non salvati e restituisce il progetto alla principale; la chiusura di adOmnia porta in primo piano la finestra con modifiche. Resta da dichiararlo nel prodotto dopo M31.
 
-**2. Test mancanti della Fase 5 (5.7)**
-- Refactoring multi-file: il backend verifica già "tutti i file o nessuno" per i file nuovi (`TestCreateFilesIsAllOrNothingAndConfined`), ma manca un test del lato frontend che applica gli edit e fa rollback se un buffer è cambiato a metà.
-- Gutter diff: CRLF coperto (`goStudioLineDiff.test.ts`); mancano i casi file binario e file non tracciato.
-- Isolamento fra due sessioni di stato VCS, Go Tools e local history: `TestTwoProjectsStayIsolatedWhileRunningTogether` copre run, terminali e LSP, non questi tre.
-- `TestDebuggerStopLeavesNoOrphans` salta su Windows: renderlo capace di osservare il processo con `tasklist`, così M7 diventa in gran parte automatico.
+**2. Test mancanti della Fase 5 (5.7) — completati il 2026-09-29.** Rollback del refactoring multi-file lato frontend (`goStudioWorkspaceEdits.transaction.test.ts`), gutter su file binari e non tracciati (`goideVcs.test.ts`, con la correzione che tratta come non versionata una revisione HEAD binaria), isolamento di Git, Go Tools e local history fra sessioni (`TestVCSGoToolsAndLocalHistoryStayIsolatedBetweenSessions`), `TestDebuggerStopLeavesNoOrphans` eseguibile su Windows. Eseguendo la suite del debugger con `-race` è emerso ed è stato corretto un data race reale in `DebugManager.Start`.
 
 **3. Documentazione e catalogo — nessun documento di prodotto cita Go Studio.** `README.md`, `docs/adomnia-feature-catalog.en.md`, `docs/ISSUES.md`, `docs/ARCHITECTURE.md` e `CLAUDE.md` hanno zero riferimenti a Go Studio o `internal/goide`; solo `docs/RELEASE.md` lo menziona. Da fare: flusso utente, catalogo delle capacità verificate, limiti residui, moduli e lifecycle, schema di persistenza (v4 con migrazioni), dipendenze opzionali (Go, gopls, Delve, linter) e installazione, shortcut e modello di autorizzazione del progetto, note di rilascio. Dettaglio in *Documentazione e catalogo*.
 
@@ -122,7 +119,7 @@ Una fase è completa soltanto quando:
 - [ ] Fase 2 — Intelligenza del codice con gopls/LSP *(implementata e verificata end-to-end; gate in attesa della prova manuale su Windows)*
 - [ ] Fase 3 — Più progetti, ripristino e terminale integrato *(implementata e verificata end-to-end; gate in attesa delle prove manuali su Windows: ConPTY e finestra Wails)*
 - [ ] Fase 4 — Test runner, debugger, coverage e finestre separate *(implementata e verificata; multiwindow rinviato; gate aperto solo per il collaudo Windows)*
-- [ ] Fase 5 — Parità GoLand: assistenza al codice, VCS nell'editor e integrazione con i moduli adOmnia *(5.1–5.6b implementate; mancano multiwindow 5.8, tre test di 5.7 e le prove M9–M14)*
+- [ ] Fase 5 — Parità GoLand: assistenza al codice, VCS nell'editor e integrazione con i moduli adOmnia *(5.1–5.8 implementate e testate; mancano le prove manuali M9–M14 e M31)*
 - [ ] Collaudo finale e documentazione di rilascio *(dopo la Fase 5)*
 
 ### Cosa resta da fare
@@ -765,18 +762,18 @@ Richiesta dell'utente (2026-09-29): i workspace dell'IDE devono essere separati 
 
 ## 5.8 Finestre separate / più istanze (rinviate dalla Fase 4)
 
-- [ ] Prototipare una finestra Wails secondaria Go Studio riusando il pattern esistente senza duplicare ownership backend.
-- [ ] Verificare focus, shortcut, eventi, chiusura, dirty state e cleanup tra finestra principale e secondaria.
-- [ ] Verificare comportamento se lo stesso progetto è aperto in più finestre o istanze.
-- [ ] Introdurre locking/coordinamento o avviso di conflitto prima di abilitare la funzione.
-- [ ] Dichiarare nel prodotto il supporto multiwindow solo dopo prova reale su Windows e piattaforme dichiarate.
+- [x] Prototipare una finestra Wails secondaria Go Studio riusando il pattern esistente senza duplicare ownership backend. *(`internal/goidewindow` sul modello di `swaggerwindow`: una finestra per progetto, `?window=go-studio`; il `Service` goide resta unico e condiviso)*
+- [ ] Verificare focus, shortcut, eventi, chiusura, dirty state e cleanup tra finestra principale e secondaria. *(logica coperta da `windows_test.go`, `goidewindow/manager_test.go`, `goideWindows.test.ts` e dai test dei comandi; manca la prova nella finestra nativa → **M31**)*
+- [x] Verificare comportamento se lo stesso progetto è aperto in più finestre o istanze. *(un solo proprietario per progetto: la seconda finestra è rifiutata con `ErrSessionInOtherWindow`, la principale mostra "is open in a separate window"; le istanze multiple di adOmnia restano impossibili per il lock bbolt a istanza singola)*
+- [x] Introdurre locking/coordinamento o avviso di conflitto prima di abilitare la funzione. *(registro di proprietà nel backend; lo spostamento richiede buffer salvati; la vista si salva prima di cedere il progetto e la finestra che lo cede smette di salvarla; `CloseSession` rifiuta un progetto aperto altrove)*
+- [ ] Dichiarare nel prodotto il supporto multiwindow solo dopo prova reale su Windows e piattaforme dichiarate. *(dopo **M31**)*
 
 ## 5.7 Test mirati
 
-- [ ] Test per l'applicazione transazionale di un refactoring multi-file, incluso il rollback su errore a metà. *(backend coperto da `TestCreateFilesIsAllOrNothingAndConfined`; manca il lato frontend)*
-- [ ] Test per il calcolo del diff di gutter su file con CRLF, file binari e file non tracciati. *(CRLF coperto in `goStudioLineDiff.test.ts`; mancano binari e non tracciati)*
+- [x] Test per l'applicazione transazionale di un refactoring multi-file, incluso il rollback su errore a metà. *(backend: `TestCreateFilesIsAllOrNothingAndConfined`; frontend: `goStudioWorkspaceEdits.transaction.test.ts`, buffer cambiato a metà, file non apribile, creazione fallita)*
+- [x] Test per il calcolo del diff di gutter su file con CRLF, file binari e file non tracciati. *(`goStudioLineDiff.test.ts` e `goideVcs.test.ts`; una revisione HEAD binaria ora non produce marcatori)*
 - [x] Test per la costruzione degli argomenti dei comandi Go Tools (nessuna shell concatenata, nessun path fuori dalla root). *(`gotools_test.go`)*
-- [ ] Test di isolamento: stato VCS, Go Tools e local history restano separati fra due sessioni.
+- [x] Test di isolamento: stato VCS, Go Tools e local history restano separati fra due sessioni. *(`TestVCSGoToolsAndLocalHistoryStayIsolatedBetweenSessions`)*
 - [x] Prova reale su un repository Git con modifiche non committate: gutter, blame, cronologia e revert di un hunk. *(e2e ide16 su repository reale, 8/8, zero errori di pagina)*
 
 ## Gate di uscita Fase 5

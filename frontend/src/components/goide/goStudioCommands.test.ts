@@ -81,6 +81,26 @@ describe('Go Studio command availability', () => {
     expect(commandAvailability('run.run', ready)).toBe(true)
   })
 
+  it('moves a project to its own window only when this window has no unsaved buffers for it', () => {
+    expect(commandAvailability('window.openInNewWindow', ready)).toMatch(/unsaved changes stay in this window/)
+    expect(commandAvailability('window.openInNewWindow', { ...ready, sessionDirty: false })).toBe(true)
+    expect(commandAvailability('window.openInNewWindow', { ...ready, hasSession: false, sessionDirty: false })).toMatch(/project/)
+    expect(commandAvailability('window.moveBack', ready)).toMatch(/already in the main window/)
+  })
+
+  it('limits a separate window to its own project and sends adOmnia panels to the main window', () => {
+    const detached = { ...ready, detached: true }
+    expect(commandAvailability('window.moveBack', detached)).toBe(true)
+    expect(commandAvailability('window.openInNewWindow', detached)).toMatch(/single project/)
+    for (const id of ['file.openProject', 'file.newProject', 'tools.services', 'tools.httpRequest', 'tools.plugins', 'vcs.gitStudio'] as const) {
+      expect(commandAvailability(id, detached)).toMatch(/main adOmnia window/)
+    }
+    expect(commandAvailability('file.closeProject', detached)).toMatch(/Move the project back/)
+    expect(commandAvailability('file.closeProject', ready)).toBe(true)
+    expect(commandAvailability('file.closeProject', { ...ready, ownedElsewhere: true })).toMatch(/separate window/)
+    expect(commandAvailability('run.run', detached)).toBe(true)
+  })
+
   it('keeps project-independent commands always available', () => {
     const empty = { ...ready, hasSession: false }
     expect(commandAvailability('file.openProject', empty)).toBe(true)

@@ -10,6 +10,9 @@ import { GoStudioRecoveryBanner } from './GoStudioRecoveryBanner'
 import { GoStudioRunConfigurations } from './GoStudioRunConfigurations'
 import { GoStudioSecretsPrompt } from './GoStudioSecretsPrompt'
 import { GoStudioToolbar } from './GoStudioToolbar'
+import { GoStudioElsewhere } from './GoStudioElsewhere'
+import { useGoIDEWindowsStore } from '@/stores/goideWindows'
+import { closeGoIDESessionWindow } from '@/lib/goide-window-api'
 import { GoStudioWorkspace } from './GoStudioWorkspace'
 import { GoStudioMenuBar, type GoStudioCommandState } from './GoStudioMenuBar'
 import { GoStudioShortcutsDialog } from './GoStudioShortcutsDialog'
@@ -59,7 +62,7 @@ import { useGoIDELspStore } from '@/stores/goideLsp'
 
 
 const PANEL_STATE_KEYS = [
-  'activeSessionId', 'activeWorkspaceId', 'layout', 'sessions', 'error', 'recentProjects', 'loading', 'toolchains', 'splitBySession', 'showIgnoredBySession',
+  'activeSessionId', 'activeWorkspaceId', 'layout', 'sessions', 'error', 'recentProjects', 'loading', 'initialized', 'toolchains', 'splitBySession', 'showIgnoredBySession',
   'runConfigsBySession', 'executions', 'closedDocuments', 'activeRunBySession', 'activeConfigBySession',
   'updateLayout', 'openProject', 'startRun', 'startConfiguredRun', 'setSplit', 'detectToolchain', 'stopRun', 'initialize', 'clearError',
   'toggleShowIgnored', 'togglePinned', 'setToolAuthorization', 'setQuickOpen', 'selectSession', 'selectRunConfiguration', 'restartRun',
@@ -123,7 +126,12 @@ export function GoStudioPanel() {
       statusInfo: state.status[sessionId], goplsInfo: state.gopls[sessionId], linterInfo: state.linter[sessionId], linting: !!state.lint[sessionId]?.running,
     }
   }))
-  const workspaceSessions = useMemo(() => sessionsInWorkspace(store.sessions, store.activeWorkspaceId), [store.activeWorkspaceId, store.sessions])
+  const windows = useGoIDEWindowsStore(useShallow((state) => ({ context: state.context, owners: state.owners, error: state.error, clearError: state.clearError })))
+  const pinnedSessionId = windows.context.pinnedSessionId
+  // Una finestra separata mostra soltanto il proprio progetto, di qualunque workspace sia.
+  const workspaceSessions = useMemo(() => pinnedSessionId
+    ? store.sessions.filter((session) => session.id === pinnedSessionId)
+    : sessionsInWorkspace(store.sessions, store.activeWorkspaceId), [pinnedSessionId, store.activeWorkspaceId, store.sessions])
   const activeSession = useMemo(() => store.sessions.find((session) => session.id === store.activeSessionId) ?? null, [store.activeSessionId, store.sessions])
   const closeFlow = useGoStudioCloseFlow(activeSession)
   const sessionExecutions = store.executions.filter((execution) => execution.sessionId === store.activeSessionId)
@@ -152,6 +160,7 @@ export function GoStudioPanel() {
   }))
 
   useEffect(() => { void store.initialize() }, [store.initialize])
+  useEffect(() => { void useGoIDEWindowsStore.getState().load() }, [])
 
   // Progetti già autorizzati: rileva l'SDK e avvia gopls senza clic extra; quelli non autorizzati restano inerti.
   const activeSessionId = activeSession?.id ?? null
@@ -298,6 +307,8 @@ export function GoStudioPanel() {
     hasEditor: !!summary.activeId && hasGoStudioEditor(),
     activeDocumentDirty: summary.activeDirty,
     sessionDirty: !!activeSession && summary.sessionDirty,
+    detached: !!pinnedSessionId,
+    ownedElsewhere: !!activeSession && (windows.owners[activeSession.id] ?? 'main') !== windows.context.windowId,
     structureOpen: store.layout.structureOpen,
     bottomOpen: store.layout.bottomOpen,
     showIgnored: !!activeSession && (store.showIgnoredBySession[activeSession.id] ?? false),
@@ -376,6 +387,8 @@ export function GoStudioPanel() {
       case 'file.pinTab': return withActiveDocument((active) => store.togglePinned(active.document.id))
       case 'file.reopenClosed': return void store.reopenClosedDocument()
       case 'file.closeProject': return void closeFlow.requestCloseSession()
+      case 'window.openInNewWindow': return activeSession ? void useGoIDEWindowsStore.getState().moveToNewWindow(activeSession.id) : undefined
+      case 'window.moveBack': return void closeGoIDESessionWindow(windows.context.windowId)
       case 'view.splitRight': return store.setSplit('right')
       case 'view.splitDown': return store.setSplit('down')
       case 'view.unsplit': return store.setSplit(null)
@@ -419,6 +432,22 @@ export function GoStudioPanel() {
   const menuBar = <GoStudioMenuBar state={commandState} recentProjects={store.recentProjects} openProjectPaths={workspaceSessions.map((session) => session.project.realPath)} onCommand={runCommand} onOpenRecent={(path) => void store.openProject(path)} />
   const sharedDialogs = <><CreateProjectDialog open={createOpen} onClose={() => setCreateOpen(false)} /><GoStudioShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} /></>
 
+  const windowError = windows.error && <ErrorBanner message={windows.error} onClose={windows.clearError} />
+  if (!activeSession && pinnedSessionId && store.initialized) {
+    return <div className="flex min-h-0 flex-1 flex-col bg-surface-0">{menuBar}{windowError}<GoStudioElsewhere mode="closed" projectName="" onClose={() => void closeGoIDESessionWindow(windows.context.windowId)} /></div>
+  }
+  if (activeSession && (windows.owners[activeSession.id] ?? 'main') !== windows.context.windowId) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col bg-surface-0 text-text-1">
+        {menuBar}
+        <GoStudioToolbar runConfigurations={runConfigurations} activeConfigId={activeConfigId} onSelectConfiguration={(id) => store.selectRunConfiguration(id)} sessions={workspaceSessions} activeSession={activeSession} activeExecution={activeExecution} toolchain={toolchain} loading={store.loading} onSelect={(id) => void store.selectSession(id)} onOpenProject={() => void store.openProject()} onCreateProject={() => setCreateOpen(true)} onSetAuthorization={(allowed) => void authorize(allowed)} onDetectToolchain={() => void store.detectToolchain()} onToolchainSettings={() => setToolchainOpen(true)} onDependencies={() => setDependenciesOpen(true)} onConfigure={() => setConfigureOpen(true)} onBuild={() => startConfigured('build')} onRun={() => startConfigured('run')} onTidy={() => void tidy()} onStop={() => void store.stopRun()} onClose={() => void useGoIDEWindowsStore.getState().bringBack(activeSession.id)} />
+        {windowError}
+        <GoStudioElsewhere mode="elsewhere" projectName={activeSession.project.name} onFocus={() => void useGoIDEWindowsStore.getState().focusOwner(activeSession.id)} onBringBack={() => void useGoIDEWindowsStore.getState().bringBack(activeSession.id)} />
+        {sharedDialogs}
+      </div>
+    )
+  }
+
   if (!activeSession) {
     return <div className="flex min-h-0 flex-1 flex-col bg-surface-0">{menuBar}{store.error && <ErrorBanner message={store.error} onClose={store.clearError} />}<GoStudioEmptyState loading={store.loading} recentProjects={store.recentProjects} onOpenProject={() => void store.openProject()} onCreateProject={() => setCreateOpen(true)} onOpenRecent={(path) => void store.openProject(path)} onRemoveRecent={(path) => void store.removeRecentProject(path)} />{sharedDialogs}</div>
   }
@@ -428,6 +457,7 @@ export function GoStudioPanel() {
       {menuBar}
       <GoStudioToolbar extra={<GoStudioBranchWidget sessionId={activeSession.id} onCommit={() => setVcsDialog('commit')} />} runConfigurations={runConfigurations} activeConfigId={activeConfigId} onSelectConfiguration={(id) => store.selectRunConfiguration(id)} sessions={workspaceSessions} activeSession={activeSession} activeExecution={activeExecution} toolchain={toolchain} loading={store.loading} onSelect={(id) => void store.selectSession(id)} onOpenProject={() => void store.openProject()} onCreateProject={() => setCreateOpen(true)} onSetAuthorization={(allowed) => void authorize(allowed)} onDetectToolchain={() => void store.detectToolchain()} onToolchainSettings={() => setToolchainOpen(true)} onDependencies={() => setDependenciesOpen(true)} onConfigure={() => setConfigureOpen(true)} onBuild={() => startConfigured('build')} onRun={() => startConfigured('run')} onTidy={() => void tidy()} onStop={() => void store.stopRun()} onClose={() => void closeFlow.requestCloseSession()} />
       {store.error && <ErrorBanner message={store.error} onClose={store.clearError} />}
+      {windowError}
       {lsp.message && <NoticeBanner message={lsp.message} onClose={lsp.clearMessage} />}
       <div className="flex h-7 shrink-0 items-center justify-end gap-1 border-b border-border-1 bg-surface-0 px-2"><span className="mr-auto truncate font-mono text-[9px] text-text-4">{summary.activePath ?? activeSession.project.rootPath}</span><button type="button" onClick={() => store.updateLayout({ structureOpen: !store.layout.structureOpen })} title={store.layout.structureOpen ? 'Hide project overview · Alt+7' : 'Show project overview · Alt+7'} className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-2 hover:text-text-1">{store.layout.structureOpen ? <PanelRightClose size={13} /> : <PanelRightOpen size={13} />}</button><button type="button" onClick={() => store.updateLayout({ bottomOpen: !store.layout.bottomOpen })} title={store.layout.bottomOpen ? 'Hide run panel · Alt+4' : 'Show run panel · Alt+4'} className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-2 hover:text-text-1">{store.layout.bottomOpen ? <PanelBottomClose size={13} /> : <PanelBottomOpen size={13} />}</button></div>
       <GoStudioRecoveryBanner sessionId={activeSession.id} />

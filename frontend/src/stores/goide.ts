@@ -54,6 +54,7 @@ import {
 } from '@/lib/goide-api'
 import { openExternalDocument } from '@/lib/goide-lsp-api'
 import { DEFAULT_STUDIO_WORKSPACE_ID, listGoIDEStudioWorkspaces, type GoIDEStudioWorkspace } from '@/lib/goide-workspaces-api'
+import { goStudioWindowContext } from '@/lib/goide-window-api'
 import { confirm } from '@/lib/confirmDialog'
 import { cancelBufferRecovery, scheduleBufferRecovery } from '@/components/goide/goStudioRecovery'
 import { directoriesToRefresh, documentsToCheck, wasDeleted, type GoIDEFilesChanged } from '@/components/goide/goStudioDiskChanges'
@@ -282,6 +283,17 @@ function isExecution(value: unknown): value is GoIDEExecution {
 let eventUnsubscribe: (() => void) | null = null
 
 /**
+ * Indica se questa finestra possiede la sessione. Con più finestre solo la proprietaria salva la
+ * vista: una finestra che ha ceduto il progetto non deve cancellare i tab che l'altra ripristina.
+ * Registrata dallo store delle finestre, così questo store non ne dipende.
+ */
+let ownsSession: (sessionId: string) => boolean = () => true
+
+export function registerSessionOwnershipGuard(guard: (sessionId: string) => boolean): void {
+  ownsSession = guard
+}
+
+/**
  * Estensioni della vista salvata: altri store (es. navigazione e bookmark) aggiungono i propri campi
  * senza che questo store li importi, così non nascono dipendenze circolari.
  */
@@ -339,9 +351,13 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
       ])
       if (!eventUnsubscribe) eventUnsubscribe = subscribeGoIDEEvents((event) => get().handleEvent(event))
       const visible = sessionsInWorkspace(sessions, workspaces.activeId)
-      const activeSessionId = visible.some((session) => session.id === get().activeSessionId)
-        ? get().activeSessionId
-        : visible[0]?.id ?? null
+      // Una finestra separata apre sempre il proprio progetto, anche se appartiene a un altro workspace.
+      const pinned = goStudioWindowContext().pinnedSessionId
+      const activeSessionId = pinned
+        ? sessions.some((session) => session.id === pinned) ? pinned : null
+        : visible.some((session) => session.id === get().activeSessionId)
+          ? get().activeSessionId
+          : visible[0]?.id ?? null
       set({ capabilities, sessions, recentProjects, activeSessionId, studioWorkspaces: workspaces.workspaces, activeWorkspaceId: workspaces.activeId, initialized: true, loading: false })
       if (activeSessionId) await get().selectSession(activeSessionId)
     } catch (error) {
@@ -550,6 +566,7 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
   },
 
   persistSessionView: async (sessionId) => {
+    if (!ownsSession(sessionId)) return
     const state = get()
     const documents = state.documents.filter((item) => item.document.sessionId === sessionId)
     const activeId = state.activeDocumentBySession[sessionId] ?? null
