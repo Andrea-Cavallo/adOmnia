@@ -44,11 +44,11 @@ export function documentsToClose(action: TabAction, ordered: GoIDEEditorDocument
 
 export function GoStudioEditorTabs({ documents, activeId, onRequestClose }: GoStudioEditorTabsProps) {
   const pinned = useGoIDEStore((state) => state.pinnedDocuments)
-  const previewId = useGoIDEStore((state) => (ordered[0] ? state.previewDocumentBySession[ordered[0].document.sessionId] ?? null : null))
   const hasClosed = useGoIDEStore((state) => (state.activeSessionId ? (state.closedDocuments[state.activeSessionId]?.length ?? 0) > 0 : false))
   const selectDocument = useGoIDEStore((state) => state.selectDocument)
   const [menu, setMenu] = useState<{ x: number; y: number; document: GoIDEEditorDocument } | null>(null)
   const ordered = useMemo(() => orderTabs(documents, pinned), [documents, pinned])
+  const previewId = useGoIDEStore((state) => (ordered[0] ? state.previewDocumentBySession[ordered[0].document.sessionId] ?? null : null))
   const qualifiers = useMemo(() => tabQualifiers(documents), [documents])
 
   const items = (target: GoIDEEditorDocument): ContextMenuItem[] => {
