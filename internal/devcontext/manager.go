@@ -78,20 +78,33 @@ func (m *Manager) Get(sessionID string) (Snapshot, error) {
 	st.mu.Lock()
 	ready := st.files != nil
 	st.mu.Unlock()
-	if !ready {
-		return m.Rescan(sessionID)
+	if ready {
+		return st.snapshot(sessionID), nil
 	}
-	return st.snapshot(sessionID), nil
+	st.scan.Lock()
+	defer st.scan.Unlock()
+	st.mu.Lock()
+	ready = st.files != nil // a concurrent first Get may have finished the scan
+	st.mu.Unlock()
+	if ready {
+		return st.snapshot(sessionID), nil
+	}
+	return m.rescanLocked(sessionID, st)
 }
 
 func (m *Manager) Rescan(sessionID string) (Snapshot, error) {
+	st := m.state(sessionID)
+	st.scan.Lock()
+	defer st.scan.Unlock()
+	return m.rescanLocked(sessionID, st)
+}
+
+// rescanLocked runs a full scan; the caller holds st.scan.
+func (m *Manager) rescanLocked(sessionID string, st *sessionState) (Snapshot, error) {
 	root, err := m.resolveRoot(sessionID)
 	if err != nil {
 		return Snapshot{}, err
 	}
-	st := m.state(sessionID)
-	st.scan.Lock()
-	defer st.scan.Unlock()
 	ctx, cancel := context.WithTimeout(context.Background(), m.timeout)
 	defer cancel()
 	env := rootEnv(root)
@@ -189,10 +202,16 @@ func (m *Manager) ReadFile(sessionID, rel string) (string, error) {
 	if clean == ".." || strings.HasPrefix(clean, "../") {
 		return "", fmt.Errorf("path outside the project: %s", rel)
 	}
-	if !readable(clean) {
+	if !readable(clean) || !m.isContract(sessionID, clean) {
 		return "", fmt.Errorf("%s is not a contract file", rel)
 	}
 	full := filepath.Join(root, filepath.FromSlash(clean))
+	if real, err := filepath.EvalSymlinks(full); err == nil {
+		realRoot, rootErr := filepath.EvalSymlinks(root)
+		if rootErr != nil || !strings.HasPrefix(real, realRoot+string(filepath.Separator)) {
+			return "", fmt.Errorf("path outside the project: %s", rel)
+		}
+	}
 	info, err := os.Stat(full)
 	if err != nil {
 		return "", err
@@ -202,6 +221,26 @@ func (m *Manager) ReadFile(sessionID, rel string) (string, error) {
 	}
 	data, err := os.ReadFile(full)
 	return string(data), err
+}
+
+// isContract reports whether rel produced a contract entity in the session
+// snapshot, so ReadFile never serves compose files or other YAML with secrets.
+func (m *Manager) isContract(sessionID, rel string) bool {
+	if _, err := m.Get(sessionID); err != nil {
+		return false
+	}
+	st := m.existing(sessionID)
+	if st == nil {
+		return false
+	}
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	for _, e := range st.files[rel].Entities {
+		if e.Kind == "contract" {
+			return true
+		}
+	}
+	return false
 }
 
 func (m *Manager) refresh(sessionID string, st *sessionState, root string, rels []string) {

@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -171,5 +172,32 @@ func TestManagerDropAndUnknownInvalidate(t *testing.T) {
 	snap, _ := m.Get("s1")
 	if snap.Version != 1 {
 		t.Fatalf("drop must forget the session so the next Get rescans from scratch, got version %d", snap.Version)
+	}
+}
+
+func TestManagerConcurrentFirstGetScansOnce(t *testing.T) {
+	root := copyFixture(t)
+	var mu sync.Mutex
+	scans := 0
+	m := NewManager(func(string) (string, error) { return root, nil }, func(string, int64) { mu.Lock(); scans++; mu.Unlock() })
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() { defer wg.Done(); _, _ = m.Get("s1") }()
+	}
+	wg.Wait()
+	if scans != 1 {
+		t.Fatalf("8 concurrent first Get calls must share one scan, got %d", scans)
+	}
+}
+
+func TestManagerReadFileOnlyServesContracts(t *testing.T) {
+	root := copyFixture(t)
+	m, _ := newTestManager(root)
+	if _, err := m.ReadFile("s1", "docker-compose.yml"); err == nil {
+		t.Fatal("compose files hold credentials and are not contracts: ReadFile must refuse them")
+	}
+	if _, err := m.ReadFile("s1", "proto/payments.proto"); err != nil {
+		t.Fatalf("detected contracts must stay readable: %v", err)
 	}
 }
