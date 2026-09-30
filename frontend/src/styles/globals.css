@@ -633,3 +633,13 @@
 @media (prefers-reduced-motion: reduce) {
   .ad-modal-backdrop, .ad-modal-backdrop > [role='dialog'] { animation: none; }
 }
+
+/* Header del pannello come barra della finestra ("Titlebar app"): si trascina dagli spazi vuoti, i controlli restano cliccabili. */
+.app-titlebar { user-select: none; }
+.app-titlebar button,
+.app-titlebar input,
+.app-titlebar select,
+.app-titlebar a,
+.app-titlebar [role="group"],
+.app-titlebar [role="menu"],
+.app-titlebar [data-window-controls] { --wails-draggable: no-drag; }

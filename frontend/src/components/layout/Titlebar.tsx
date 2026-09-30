@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import { useSettingsStore } from '@/stores/settings'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { useUiTranslation } from '@/lib/uiI18n'
+import { useAppStore } from '@/stores/app'
 
 /** Riduci / ingrandisci / chiudi della finestra frameless: usati dalla barra di adOmnia e dalla toolbar di gO Studio. */
 export function WindowControls({ height = 'h-8' }: { height?: string }) {
@@ -44,16 +45,41 @@ export function WindowControls({ height = 'h-8' }: { height?: string }) {
 export const DRAG = { '--wails-draggable': 'drag' } as React.CSSProperties
 export const NO_DRAG = { '--wails-draggable': 'no-drag' } as React.CSSProperties
 
-export function Titlebar() {
-  return (
-    <header data-app-titlebar className="flex h-8 items-stretch justify-between border-b border-border-1 bg-surface-1 select-none" style={DRAG}>
-      <div className="flex items-center gap-2 pl-2.5">
-        <img src="/logo.png" alt="adOmnia" data-brand-mark className="h-[18px] w-[18px] object-contain" />
-        <span className="text-[11px] text-text-3">adOmnia paratus.</span>
-      </div>
-      <WindowControls />
-    </header>
-  )
+async function toggleMaximise(): Promise<void> {
+  const { WindowToggleMaximise } = await import('../../wailsjs/runtime/runtime')
+  WindowToggleMaximise()
+}
+
+interface WindowTitlebar {
+  /** Vero con la finestra frameless ("Titlebar app"): la barra dell'app fa da barra della finestra. */
+  active: boolean
+  props: { className?: string; style?: React.CSSProperties; onDoubleClick?: (event: React.MouseEvent) => void }
+}
+
+/**
+ * Niente barra del titolo separata: con la finestra frameless l'header del pannello diventa
+ * la barra della finestra (si trascina dagli spazi vuoti, doppio clic ingrandisce), come JetBrains e VS Code.
+ */
+export function useWindowTitlebar(): WindowTitlebar {
+  const active = useAppStore((state) => state.appWindowChrome)
+  if (!active) return { active, props: {} }
+  return {
+    active,
+    props: {
+      className: 'app-titlebar',
+      style: DRAG,
+      onDoubleClick: (event) => {
+        if (!(event.target as HTMLElement).closest('button, input, select, a, [data-window-controls]')) void toggleMaximise()
+      },
+    },
+  }
+}
+
+/** Riduci / ingrandisci / chiudi in coda a una barra che fa da barra della finestra. */
+export function TitlebarWindowControls({ height = 'h-10' }: { height?: string }) {
+  const { active } = useWindowTitlebar()
+  if (!active) return null
+  return <><span className="ml-1 h-5 w-px shrink-0 bg-border-1" aria-hidden="true" /><WindowControls height={height} /></>
 }
 
 function MinusIcon() {

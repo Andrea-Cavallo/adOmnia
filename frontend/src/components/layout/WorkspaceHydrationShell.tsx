@@ -1,3 +1,4 @@
+import { TitlebarWindowControls, useWindowTitlebar } from '@/components/layout/Titlebar'
 import { useUiTranslation } from '@/lib/uiI18n'
 
 function Skeleton({ className }: { className: string }) {
@@ -35,11 +36,14 @@ export function WorkspaceSidebarSkeleton({ quiet = false }: { quiet?: boolean })
 }
 
 export function WorkspacePanelHeaderSkeleton({ quiet = false }: { quiet?: boolean }) {
+  // Mentre il workspace si carica l'header è già la barra della finestra: nessun salto quando arriva quello vero.
+  const titlebar = useWindowTitlebar()
   return (
-    <div className={`flex h-10 flex-shrink-0 items-center gap-3 border-b border-border-1 bg-surface-1 px-3${quiet ? ' workspace-shell-quiet' : ''}`}>
+    <div {...titlebar.props} className={`flex h-10 flex-shrink-0 items-center gap-3 border-b border-border-1 bg-surface-1 pl-3 ${titlebar.active ? 'app-titlebar' : 'pr-3'}${quiet ? ' workspace-shell-quiet' : ''}`}>
       <Skeleton className="h-5 w-5 opacity-55" />
       <Skeleton className="h-2.5 w-36" />
       <Skeleton className="ml-auto h-5 w-5 opacity-55" />
+      <TitlebarWindowControls />
     </div>
   )
 }

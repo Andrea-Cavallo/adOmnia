@@ -1,6 +1,7 @@
 import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowLeft, Columns2, X } from 'lucide-react'
 import { ResizeHandle } from '@/components/ui/ResizeHandle'
+import { DRAG, TitlebarWindowControls, useWindowTitlebar } from '@/components/layout/Titlebar'
 import { useAppStore, type RailItem } from '@/stores/app'
 import { useCollectionsStore } from '@/stores/collections'
 import { useWorkspaceHydration, useWorkspaceHydrationShell } from '@/hooks/useWorkspaceHydration'
@@ -84,6 +85,7 @@ function PanelHeader({ titleKey }: { titleKey?: string }) {
   const workspaces = useCollectionsStore((s) => s.workspaces)
   const activeWorkspaceId = useCollectionsStore((s) => s.activeWorkspaceId)
   const t = useT()
+  const titlebar = useWindowTitlebar()
   const label = activeRail === 'collections'
     ? (workspaces.find((w) => w.id === activeWorkspaceId)?.name ?? tr('Workspace'))
     : titleKey && titleKey in t.rail
@@ -91,7 +93,7 @@ function PanelHeader({ titleKey }: { titleKey?: string }) {
       : nav(titleKey || '')
 
   return (
-    <div className="h-10 flex items-center gap-2 px-3 border-b border-border-1 bg-surface-1 flex-shrink-0">
+    <div {...titlebar.props} className={`h-10 flex items-center gap-2 pl-3 border-b border-border-1 bg-surface-1 flex-shrink-0 ${titlebar.active ? 'app-titlebar' : 'pr-3'}`}>
       <button onClick={goBack} disabled={!hasHistory} title={tr('Back (Alt + ←)')} className="h-6 w-6 flex items-center justify-center rounded text-text-3 hover:text-text-1 hover:bg-surface-3 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
         <ArrowLeft size={13} />
       </button>
@@ -103,6 +105,7 @@ function PanelHeader({ titleKey }: { titleKey?: string }) {
       >
         <X size={12} />
       </button>
+      <TitlebarWindowControls />
     </div>
   )
 }
@@ -219,7 +222,7 @@ export function MainAreaRouter() {
     <main className={`flex-1 flex flex-col min-w-0 relative bg-surface-0${overflow ? ' overflow-hidden' : ''}`}>
       {workspaceHydrating
         ? <WorkspacePanelHeaderSkeleton quiet={quietWorkspaceShell} />
-        : split ? <SplitHeader /> : titleKey && !maximized && <PanelHeader titleKey={titleKey} />}
+        : split ? <SplitHeader /> : titleKey && !maximized ? <PanelHeader titleKey={titleKey} /> : !maximized && <FloatingWindowControls />}
       {workspaceHydrating ? (
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden panel-enter">
           <WorkspaceMainSkeleton quiet={quietWorkspaceShell} />
@@ -266,14 +269,28 @@ function keptRails(kept: RailItem[], active: RailItem): RailItem[] {
 
 function SplitHeader() {
   const setSplitView = useAppStore((s) => s.setSplitView)
+  const titlebar = useWindowTitlebar()
   return (
-    <div className="h-10 flex items-center gap-2 px-3 border-b border-border-1 bg-surface-1 flex-shrink-0">
+    <div {...titlebar.props} className={`h-10 flex items-center gap-2 pl-3 border-b border-border-1 bg-surface-1 flex-shrink-0 ${titlebar.active ? 'app-titlebar' : 'pr-3'}`}>
       <Columns2 size={13} className="text-accent" aria-hidden="true" />
       <span className="flex-1 px-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-text-2">Split Debug View · Go Studio ↔ API request</span>
       <button onClick={() => setSplitView(false)} title="Close split view" aria-label="Close split view"
         className="h-6 w-6 flex items-center justify-center rounded text-text-3 hover:text-text-1 hover:bg-surface-3 transition-colors">
         <X size={12} />
       </button>
+      <TitlebarWindowControls />
+    </div>
+  )
+}
+
+/** Pannelli senza header (Welcome): controlli della finestra e una maniglia di trascinamento in alto a destra. */
+function FloatingWindowControls() {
+  const titlebar = useWindowTitlebar()
+  if (!titlebar.active) return null
+  return (
+    <div {...titlebar.props} className="app-titlebar absolute right-0 top-0 z-30 flex h-8 items-stretch rounded-bl-md border-b border-l border-border-1 bg-surface-1/90 backdrop-blur" style={DRAG}>
+      <span className="w-16" title="Drag to move the window" />
+      <TitlebarWindowControls height="h-8" />
     </div>
   )
 }

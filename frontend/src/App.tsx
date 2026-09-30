@@ -1,5 +1,4 @@
 import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react'
-import { Titlebar } from '@/components/layout/Titlebar'
 import { Rail } from '@/components/layout/Rail'
 import { MainAreaRouter } from '@/components/layout/MainAreaRouter'
 import { StatusBar } from '@/components/layout/StatusBar'
@@ -190,8 +189,7 @@ function App() {
           data-file-drop-target
           {...handlers}
         >
-          {/* Con gO Studio massimizzato la sua toolbar diventa la barra della finestra, come in JetBrains. */}
-          {activeWindowChrome !== null && activeWindowChrome !== 'system' && !goStudioMaximized && <Titlebar />}
+          {/* Nessuna barra del titolo separata: con "Titlebar app" l'header del pannello (o la toolbar di gO Studio massimizzato) fa da barra della finestra. */}
           <StorageQuotaBanner />
           <div className="flex flex-1 min-h-0">
             {!goStudioMaximized && <Rail />}
