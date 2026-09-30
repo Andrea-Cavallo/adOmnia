@@ -25,12 +25,8 @@ interface GoStudioEditorProps {
 
 export function GoStudioEditor({ documents, active, onCursor, onRequestClose, onRunTarget }: GoStudioEditorProps) {
   const [compare, setCompare] = useState(false)
-<<<<<<< HEAD
-=======
-  const [cursor, setCursor] = useState({ line: 1, column: 1 })
   // Vista Markdown per documento, come in JetBrains: default Editor + Preview.
   const [markdownModes, setMarkdownModes] = useState<Record<string, GoStudioMarkdownMode>>({})
->>>>>>> 20795a4 (feat: refresh hub, rail, and Go Studio workflows)
   const theme = useGoStudioEditorTheme()
   const saveDocument = useGoIDEStore((state) => state.saveDocument)
   const resolveExternalChange = useGoIDEStore((state) => state.resolveExternalChange)
@@ -105,7 +101,7 @@ export function GoStudioEditor({ documents, active, onCursor, onRequestClose, on
             document={active}
             mode={markdownModes[active.document.id] ?? 'split'}
             onModeChange={(mode) => setMarkdownModes((modes) => ({ ...modes, [active.document.id]: mode }))}
-            editor={<GoStudioCodeEditor document={active} handlesReveal onCursor={trackCursor} onRunTarget={onRunTarget} />}
+            editor={<GoStudioCodeEditor document={active} handlesReveal onCursor={onCursor} onRunTarget={onRunTarget} />}
           />
         ) : (
           <>
