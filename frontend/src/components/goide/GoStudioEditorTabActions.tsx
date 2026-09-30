@@ -1,13 +1,13 @@
 import { Maximize2, Minimize2, Save } from 'lucide-react'
 import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
 
-interface GoStudioEditorActionsProps {
+interface GoStudioEditorTabActionsProps {
   document: GoIDEEditorDocument
   onSave: () => void
 }
 
 /** Azioni dell'editor a destra delle tab, come in IntelliJ: nessuna riga in più sopra il codice. */
-export function GoStudioEditorActions({ document, onSave }: GoStudioEditorActionsProps) {
+export function GoStudioEditorTabActions({ document, onSave }: GoStudioEditorTabActionsProps) {
   const toggleEditorMaximized = useGoIDEStore((state) => state.toggleEditorMaximized)
   const editorMaximized = useGoIDEStore((state) => !state.layout.projectOpen && !state.layout.structureOpen && !state.layout.bottomOpen)
   const canSave = document.dirty && !document.saving && !document.document.readOnly

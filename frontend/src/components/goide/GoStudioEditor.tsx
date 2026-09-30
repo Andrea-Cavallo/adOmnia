@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { DiffEditor } from '@monaco-editor/react'
 import { AlertTriangle, GitCompare, RotateCcw, ShieldCheck } from 'lucide-react'
 import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
-import { GoStudioEditorActions } from './GoStudioEditorActions'
+import { GoStudioEditorTabActions } from './GoStudioEditorTabActions'
 import { GoStudioInspectionWidget } from './GoStudioInspectionWidget'
 import { GoStudioCodeEditor, beforeGoStudioMount, useGoStudioEditorTheme } from './GoStudioCodeEditor'
 import { GoStudioEditorTabs } from './GoStudioEditorTabs'
@@ -56,7 +56,7 @@ export function GoStudioEditor({ documents, active, onCursor, onRequestClose, on
 
   const main = (
     <section aria-label="Editor" className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <GoStudioEditorTabs documents={documents} activeId={active.document.id} onRequestClose={onRequestClose} actions={<GoStudioEditorActions document={active} onSave={() => void saveDocument(active.document.id)} />} />
+      <GoStudioEditorTabs documents={documents} activeId={active.document.id} onRequestClose={onRequestClose} actions={<GoStudioEditorTabActions document={active} onSave={() => void saveDocument(active.document.id)} />} />
       {active.externalState && (
         <div className="flex shrink-0 items-center gap-2 border-b border-warning/30 bg-warning/10 px-2 py-1.5 text-[10px] text-warning">
           <AlertTriangle size={12} /> This file changed on disk. Your buffer was preserved.
