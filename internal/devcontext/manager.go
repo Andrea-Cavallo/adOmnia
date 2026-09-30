@@ -310,7 +310,9 @@ func (st *sessionState) snapshot(sessionID string) Snapshot {
 		groups = append(groups, st.files[rel].Entities)
 		warnings = append(warnings, st.files[rel].Warnings...)
 	}
-	return Snapshot{SessionID: sessionID, Root: st.root, Version: st.version, Entities: merge(groups...), Warnings: warnings, ScannedAt: st.scanned}
+	entities := merge(groups...)
+	linkWebSockets(entities)
+	return Snapshot{SessionID: sessionID, Root: st.root, Version: st.version, Entities: entities, Warnings: warnings, ScannedAt: st.scanned}
 }
 
 func walkInteresting(ctx context.Context, root string, visit func(rel string, mod time.Time)) error {
