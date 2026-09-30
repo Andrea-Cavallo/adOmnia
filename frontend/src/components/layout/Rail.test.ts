@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest'
 
 const stylesheet = readFileSync(resolve(process.cwd(), 'src/components/layout/Rail.css'), 'utf8')
 const source = readFileSync(resolve(process.cwd(), 'src/components/layout/Rail.tsx'), 'utf8')
-const brickStyles = readFileSync(resolve(process.cwd(), 'src/styles/skin-brick.css'), 'utf8')
 
 describe('compact application rail', () => {
   it('stays narrow and keeps flyouts above the workspace sidebar', () => {
@@ -18,11 +17,5 @@ describe('compact application rail', () => {
     expect(stylesheet).toMatch(/\.adomnia-rail__category-main\s*\{[^}]*width:\s*40px;[^}]*border:\s*0;[^}]*background:\s*transparent;/s)
     expect(stylesheet).toMatch(/\.adomnia-rail__category\[data-active='true'\]::before[\s\S]*?height:\s*22px;/)
     expect(stylesheet).not.toContain('width: 54px')
-  })
-
-  it('does not restyle flyout menu buttons as brick rail keys', () => {
-    expect(brickStyles).not.toContain("[data-skin='brick'] [data-app-rail] button {")
-    expect(brickStyles).toContain("[data-skin='brick'] [data-app-rail] > .adomnia-rail__category > .adomnia-rail__category-main")
-    expect(brickStyles).toMatch(/\[data-skin='brick'\] \[data-app-rail\][\s\S]*?width:\s*48px !important;/)
   })
 })

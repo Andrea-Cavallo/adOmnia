@@ -100,6 +100,9 @@ Collection and folder settings can define shared authentication, headers, variab
 
 ## gO Studio
 
+The current Go Studio workspace below shows the Project view, editor actions and
+Run console that live alongside the API tools in the same local desktop app.
+
 ![gO Studio: project tree, editor with gutter run actions and the Run console](assets/images/go-ide.png)
 
 gO Studio is the Go IDE built into adOmnia.

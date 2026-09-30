@@ -202,6 +202,10 @@ export interface GoIDEState {
   saveDocument: (documentId?: string, force?: boolean) => Promise<boolean>
   saveAllDocuments: (sessionId: string) => Promise<boolean>
   checkActiveDocument: () => Promise<void>
+  /** Rilegge deliberatamente un file dal disco; conferma prima di scartare un buffer non salvato. */
+  reloadDocumentFromDisk: (relativePath: string) => Promise<void>
+  /** Aggiorna l'albero già aperto e i buffer del ramo scelto senza perdere modifiche non salvate. */
+  refreshProject: (relativePath?: string) => Promise<void>
   resolveExternalChange: (documentId: string, action: 'reload' | 'keep') => void
   closeDocument: (documentId: string) => Promise<void>
   togglePinned: (documentId: string) => void
@@ -858,6 +862,56 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
     } catch (error) {
       set({ error: errorMessage(error) })
     }
+  },
+
+  reloadDocumentFromDisk: async (relativePath) => {
+    const sessionId = get().activeSessionId
+    if (!sessionId) return
+    const current = findSessionDocument(get().documents, sessionId, relativePath)
+    // Il file non è ancora in un tab: OpenDocument è già una lettura dal disco.
+    if (!current) {
+      await get().openDocument(relativePath)
+      return
+    }
+    if (current.dirty) {
+      const approved = await confirm({
+        title: 'Reload from disk?',
+        message: `${current.document.relativePath} has unsaved editor changes. Reloading replaces them with the version currently on disk.`,
+        details: [{ label: 'File', value: current.document.relativePath, mono: true }],
+        confirmLabel: 'Reload and discard my changes',
+        variant: 'danger',
+      })
+      if (!approved) return
+    }
+    try {
+      // Un token volutamente nuovo impone una lettura completa: CheckDocument restituisce anche il contenuto.
+      const externalState = await checkGoIDEDocument(sessionId, current.document.id, `force-reload:${Date.now()}`)
+      if (!externalState.changed || externalState.content === undefined) {
+        set({ error: `Could not reload ${current.document.relativePath} from disk.` })
+        return
+      }
+      set((state) => ({ documents: state.documents.map((item) => item.document.id === current.document.id ? { ...item, externalState } : item) }))
+      get().resolveExternalChange(current.document.id, 'reload')
+    } catch (error) {
+      set({ error: errorMessage(error) })
+    }
+  },
+
+  refreshProject: async (relativePath = '') => {
+    const sessionId = get().activeSessionId
+    if (!sessionId) return
+    const prefix = relativePath ? `${relativePath}/` : ''
+    const documents = get().documents.filter((item) =>
+      item.document.sessionId === sessionId && !item.document.external &&
+      (!relativePath || item.document.relativePath === relativePath || item.document.relativePath.startsWith(prefix)),
+    )
+    // I tab puliti adottano il disco; quelli modificati ricevono Reload / Keep / Compare.
+    await refreshFromDisk(sessionId, documents.map((item) => item.document.id))
+    const cachedDirectories = Object.keys(get().directoryEntries[sessionId] ?? {})
+    const directories = new Set([relativePath, ...cachedDirectories.filter((directory) =>
+      !relativePath || directory === relativePath || directory.startsWith(prefix),
+    )])
+    await Promise.all([...directories].map((directory) => get().loadDirectory(directory)))
   },
 
   refreshModuleFiles: async (sessionId) => {

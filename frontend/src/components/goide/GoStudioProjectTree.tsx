@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react'
-import { ChevronDown, ChevronRight, Eye, EyeOff, Folder, FolderOpen, Loader2, Minus } from 'lucide-react'
+import { ChevronDown, ChevronRight, Eye, EyeOff, Folder, FolderOpen, Loader2, Minus, RefreshCw } from 'lucide-react'
 import { useGoIDEStore } from '@/stores/goide'
 import { useGoIDELspStore } from '@/stores/goideLsp'
 import { BrandIcon, GoStudioFileIcon } from './GoStudioFileIcon'
@@ -132,7 +132,10 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
   useEffect(() => { void loadDirectory('') }, [loadDirectory, rootKey])
 
   const openDocument = useGoIDEStore((state) => state.openDocument)
+  const reloadDocumentFromDisk = useGoIDEStore((state) => state.reloadDocumentFromDisk)
+  const refreshProject = useGoIDEStore((state) => state.refreshProject)
   const updateLayout = useGoIDEStore((state) => state.updateLayout)
+  const refreshing = useGoIDEStore((state) => Object.entries(state.directoryLoading).some(([key, loading]) => loading && key.startsWith(`${session.id}:`)))
   const marks = useTreeMarks(session.id)
   const [menu, setMenu] = useState<{ entry: GoIDEFileEntry | null; x: number; y: number } | null>(null)
   const [pathRequest, setPathRequest] = useState<GoStudioPathRequest | null>(null)
@@ -158,14 +161,26 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
       case 'copyRelativePath': void copyReference(session, path, directory, 'relative'); break
       case 'copyFileName': void copyReference(session, path, directory, 'name'); break
       case 'copyImportPath': void copyReference(session, path, directory, 'import'); break
+      case 'findUsages': openThen('nav.usages'); break
+      case 'inspectCode': openThen('code.lint'); break
       case 'rename': case 'duplicate': if (entry) setPathRequest({ action: id, target: path }); break
+      case 'refactorThis': openThen('code.refactorThis'); break
+      case 'moveToNewFile': openThen('code.moveToNewFile'); break
+      case 'toggleBookmark': openThen('nav.toggleBookmark'); break
+      case 'showBookmarks': onCommand('nav.bookmarks'); break
+      case 'reformat': openThen('code.reformat'); break
+      case 'optimizeImports': openThen('code.organizeImports'); break
       case 'delete': if (entry) void deletePathWithConfirm(session.id, path, entry.directory); break
+      case 'reloadFromDisk': if (entry) void reloadDocumentFromDisk(path); break
+      case 'refreshProject': void refreshProject(directory ? path : ''); break
       case 'findInFolder': findInFolder(folder); break
       case 'testPackage': void runPackageCommand(session, path, directory, 'test'); break
       case 'testPackageCoverage': void runPackageCommand(session, path, directory, 'test', true); break
       case 'buildPackage': void runPackageCommand(session, path, directory, 'build'); break
       case 'vetPackage': void runPackageCommand(session, path, directory, 'vet'); break
       case 'generatePackage': void runPackageCommand(session, path, directory, 'generate'); break
+      case 'runCurrent': onCommand('run.run'); break
+      case 'debugCurrent': onCommand('debug.debug'); break
       case 'reveal': revealPath(session.id, path); break
       case 'terminal': openTerminalIn(folder); break
       case 'localHistory': openThen('file.localHistory'); break
@@ -191,12 +206,15 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
     <aside aria-label="Project files" className="flex h-full min-w-0 flex-col">
       <div className="go-studio-tool-header">
         <span className="go-studio-tool-title">Project</span>
+        <button type="button" onClick={() => void refreshProject()} disabled={refreshing} aria-label="Refresh project from disk" title="Refresh Project · re-read disk" className="go-studio-icon-button ml-auto h-6 w-6 disabled:opacity-50">
+          <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
+        </button>
         <button
           type="button"
           onClick={() => void toggleShowIgnored()}
           aria-pressed={showIgnored}
           title={showIgnored ? 'Hide ignored folders (.git, vendor, node_modules, build output)' : 'Show ignored folders (.git, vendor, node_modules, build output)'}
-          className={`go-studio-icon-button ml-auto h-6 w-6 ${showIgnored ? 'is-active text-accent' : ''}`}
+          className={`go-studio-icon-button h-6 w-6 ${showIgnored ? 'is-active text-accent' : ''}`}
         >
           {showIgnored ? <Eye size={14} /> : <EyeOff size={14} />}
         </button>

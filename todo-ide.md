@@ -38,6 +38,7 @@ Quando una prova passa: spuntala qui, registra l'esito nelle **Evidenze** in fon
 - [ ] **M13 — Integrazioni adOmnia**: Project Services apre Docker Lab, Database Studio e Broker Studio già compilati; il CodeLens di una route apre la richiesta precompilata nell'API Client; gli eventi `onGoStudio*` compaiono in Plugin DevTools.
 - [ ] **M14 — Workspace Go Studio**: creazione, cambio e riavvio dell'app con due workspace e lo stesso progetto aperto in entrambi.
 - [ ] **M31 — Finestre separate (5.8)**: File → Open Project in New Window su un progetto senza modifiche; la finestra nuova ripristina i tab e mostra solo quel progetto; la principale mostra "is open in a separate window" con Show Window / Move Back Here; shortcut, Run, terminale e debugger funzionano nella finestra separata; chiudere la finestra con un file modificato chiede conferma e il progetto torna alla principale; chiudere adOmnia con una finestra separata modificata porta in primo piano quella finestra; Task Manager pulito dopo la chiusura. Superata la prova, dichiarare il supporto nelle note di rilascio.
+- [ ] **M32 — Menu contestuale Project**: su un file `.go`, il click destro espone e aziona Find Usages, Inspect Code, Refactor This, bookmark, Reformat, Optimize Imports, Run, Debug e Reload from Disk; su cartelle e file non-Go restano solo le azioni applicabili, senza voci finte. Refresh Folder / Project deve rileggere l'albero e lasciare i buffer sporchi in Reload / Keep / Compare.
 
 ### C. Collaudo finale (flussi completi e qualità prodotto)
 

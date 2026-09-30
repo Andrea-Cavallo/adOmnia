@@ -4,6 +4,8 @@ const mocks = vi.hoisted(() => ({
   saveDocument: vi.fn(),
   checkDocument: vi.fn(),
   closeDocument: vi.fn(),
+  listDirectory: vi.fn(),
+  confirm: vi.fn(),
 }))
 
 vi.mock('@/lib/goide-api', () => ({
@@ -16,7 +18,7 @@ vi.mock('@/lib/goide-api', () => ({
   detectGoIDEToolchain: vi.fn(),
   getGoIDECapabilities: vi.fn(),
   hasActiveGoIDERuns: vi.fn(),
-  listGoIDEDirectory: vi.fn(),
+  listGoIDEDirectory: mocks.listDirectory,
   listGoIDERuns: vi.fn(),
   listGoIDESessions: vi.fn(),
   listRecentGoIDEProjects: vi.fn(),
@@ -34,6 +36,8 @@ vi.mock('@/lib/goide-api', () => ({
   forgetGoIDEBuffer: vi.fn(() => Promise.resolve()),
   rememberGoIDEBuffer: vi.fn(() => Promise.resolve()),
 }))
+
+vi.mock('@/lib/confirmDialog', () => ({ confirm: mocks.confirm }))
 
 import { useGoIDEStore, type GoIDEEditorDocument } from './goide'
 
@@ -63,6 +67,8 @@ const document: GoIDEEditorDocument = {
 beforeEach(() => {
   vi.clearAllMocks()
   mocks.checkDocument.mockResolvedValue({ documentId: 'document-one', changed: false, diskToken: 'token-one', modifiedAt: '2026-09-28T00:00:00Z' })
+  mocks.listDirectory.mockResolvedValue([])
+  mocks.confirm.mockResolvedValue(true)
   useGoIDEStore.setState({
     activeSessionId: 'session-one',
     documents: [{ ...document, document: { ...document.document } }],
@@ -85,6 +91,31 @@ describe('Go Studio editor state', () => {
     expect(current.buffer).toContain('func main')
     expect(current.dirty).toBe(true)
     expect(current.saveError).toContain('disk full')
+  })
+
+  it('forces a disk reload and asks before discarding unsaved text', async () => {
+    useGoIDEStore.getState().updateDocument('document-one', 'package main\n// mine\n')
+    mocks.checkDocument.mockResolvedValue({ documentId: 'document-one', changed: true, content: 'package main\n// disk\n', diskToken: 'token-two', modifiedAt: '' })
+
+    await useGoIDEStore.getState().reloadDocumentFromDisk('main.go')
+
+    expect(mocks.confirm).toHaveBeenCalledWith(expect.objectContaining({ confirmLabel: 'Reload and discard my changes', variant: 'danger' }))
+    expect(mocks.checkDocument).toHaveBeenCalledWith('session-one', 'document-one', expect.stringMatching(/^force-reload:/))
+    expect(useGoIDEStore.getState().documents[0]).toMatchObject({ buffer: 'package main\n// disk\n', dirty: false, diskToken: 'token-two', externalState: null })
+  })
+
+  it('refreshes the loaded project branch while preserving dirty buffers for resolution', async () => {
+    const dirty = { ...document, document: { ...document.document, id: 'document-two', relativePath: 'internal/service.go' }, buffer: 'package main\n// mine\n', dirty: true }
+    useGoIDEStore.setState({ documents: [{ ...document }, dirty], directoryEntries: { 'session-one': { '': [], internal: [], other: [] } } })
+    mocks.checkDocument.mockImplementation(async (_session: string, documentId: string) => ({ documentId, changed: true, content: 'package main\n// disk\n', diskToken: 'token-two', modifiedAt: '' }))
+
+    await useGoIDEStore.getState().refreshProject('internal')
+
+    expect(mocks.listDirectory).toHaveBeenCalledWith('session-one', 'internal', false)
+    expect(mocks.listDirectory).not.toHaveBeenCalledWith('session-one', 'other', false)
+    const current = useGoIDEStore.getState().documents.find((item) => item.document.id === 'document-two')
+    expect(current).toMatchObject({ buffer: 'package main\n// mine\n', dirty: true })
+    expect(current?.externalState?.content).toBe('package main\n// disk\n')
   })
 
   it('routes process output only to the matching session and run', () => {

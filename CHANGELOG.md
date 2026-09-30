@@ -6,6 +6,42 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.9.48] - 2026-09-30
+
+### Added
+- **Go Studio Project refresh:** *Reload from Disk* always reads the selected
+  file again and asks before discarding unsaved text. *Refresh Folder* and
+  *Refresh Project* reload the cached tree branch while preserving dirty tabs
+  for Reload / Keep / Compare.
+- **IDE-grade Project context actions:** Go files now expose Find Usages,
+  Inspect Code, Refactor This, Move to New File, Bookmarks, Reformat, Optimize
+  Imports, Run and Debug from the project tree; folders and non-Go files retain
+  only actions that apply to them.
+
+### Changed
+- **gO rail entry:** the Go Studio launcher uses a compact, transparent cyan
+  gO mark and retains the focused left-side active indicator instead of adding
+  an intrusive tile around the icon.
+- **README:** the Go Studio section now introduces the current IDE screenshot,
+  showing the project view, editor actions and Run console in the local desktop
+  workspace.
+
+### Removed
+- **Brick Workshop skin:** the LEGO-inspired theme, Hub artwork, settings
+  entries, translations, built-in theme metadata and obsolete release mentions
+  have been removed completely. Existing users fall back to the normal theme
+  choices without a workspace migration.
+
+### Verified
+- 17 focused frontend tests covering the compact rail, the Project context menu
+  and Go Studio disk refresh pass.
+- TypeScript, the production frontend build, `go test ./...` and the Windows
+  Wails `build.ps1 -Version 0.9.48` pipeline pass.
+- Browser smoke check: the compact gO rail entry is visible in the Hub and
+  opens Go Studio directly.
+
+Full release notes: [v0.9.48](docs/releases/v0.9.48.md).
+
 ## [0.9.42] - 2026-09-29
 
 ### Fixed

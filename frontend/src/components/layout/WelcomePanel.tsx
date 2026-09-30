@@ -22,7 +22,7 @@ import './WelcomePanel.css'
 
 /**
  * The hub: headline + key art on top, five studio cards below. The same markup
- * serves every theme; WelcomePanel.css swaps the artwork (dark / light / sketch / brick)
+ * serves every theme; WelcomePanel.css swaps the artwork (dark / light / sketch)
  * from the <html> class and data-skin, and dresses each variant.
  */
 

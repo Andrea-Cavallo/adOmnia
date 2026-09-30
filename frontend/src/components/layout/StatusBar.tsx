@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Box, FolderKanban, Leaf, Moon, Sun, Pencil } from 'lucide-react'
+import { FolderKanban, Leaf, Moon, Sun, Pencil } from 'lucide-react'
 import { useCollectionsStore } from '@/stores/collections'
 import { useTabsStore } from '@/stores/tabs'
 import { useAppStore } from '@/stores/app'
@@ -41,26 +41,18 @@ export function StatusBar() {
   const currentMode = activeTheme ? inferThemeMode(activeTheme) : 'dark'
 
   const SKETCH_THEME_ID = 'builtin-sketch'
-  const BRICK_THEME_ID = 'builtin-brick-workshop'
   const TERMINAL_GREEN_THEME_ID = 'builtin-terminal-green'
-  type QuickMode = 'dark' | 'light' | 'sketch' | 'brick' | 'terminal-green'
+  type QuickMode = 'dark' | 'light' | 'sketch' | 'terminal-green'
   const currentQuickMode: QuickMode = activeThemeId === SKETCH_THEME_ID
     ? 'sketch'
-    : activeThemeId === BRICK_THEME_ID
-      ? 'brick'
-      : activeThemeId === TERMINAL_GREEN_THEME_ID
-        ? 'terminal-green'
+    : activeThemeId === TERMINAL_GREEN_THEME_ID
+      ? 'terminal-green'
       : currentMode
 
   const applyQuickMode = useCallback((mode: QuickMode) => {
     if (mode === 'sketch') {
       const sketch = themes.find((t) => t.id === SKETCH_THEME_ID)
       if (sketch) applyTheme(sketch)
-      return
-    }
-    if (mode === 'brick') {
-      const brick = themes.find((t) => t.id === BRICK_THEME_ID)
-      if (brick) applyTheme(brick)
       return
     }
     if (mode === 'terminal-green') {
@@ -81,7 +73,7 @@ export function StatusBar() {
   const toggleTheme = useCallback(() => {
     // The shortcut cycles every quick appearance, so the keyboard reaches
     // each explicit button too.
-    const order: QuickMode[] = ['dark', 'light', 'sketch', 'brick', 'terminal-green']
+    const order: QuickMode[] = ['dark', 'light', 'sketch', 'terminal-green']
     applyQuickMode(order[(order.indexOf(currentQuickMode) + 1) % order.length])
   }, [currentQuickMode, applyQuickMode])
 
@@ -169,7 +161,6 @@ export function StatusBar() {
             { mode: 'dark' as const, Icon: Moon, label: tr('Dark theme') },
             { mode: 'light' as const, Icon: Sun, label: tr('Light theme') },
             { mode: 'sketch' as const, Icon: Pencil, label: tr('Sketch theme') },
-            { mode: 'brick' as const, Icon: Box, label: tr('Brick theme') },
             { mode: 'terminal-green' as const, Icon: Leaf, label: tr('Terminal Green theme') },
           ]).map(({ mode, Icon, label }) => (
             <button

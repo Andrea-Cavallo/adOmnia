@@ -10,13 +10,14 @@ import { useNavigationTranslation, useUiTranslation } from '@/lib/uiI18n'
 import { nextRovingFocusIndex } from '@/lib/accessibility'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 import { normalizeRailItem } from '@/lib/navigation'
+import goRailIcon from './assets/go-rail.png'
 import './Rail.css'
 import {
   Send, LayoutList, Shield, Server, Radio, Bug, Container, Network,
   Wrench, FileText, FileCode, Database, Braces, ChevronRight, FolderOpen,
   Lock, Puzzle, Settings, GitBranch, X,
   Zap, BarChart2, Activity, HardDrive, History, Layers,
-  BookOpen, MoreVertical, SquareTerminal,
+  BookOpen, MoreVertical,
 } from 'lucide-react'
 
 interface SubItem {
@@ -43,15 +44,7 @@ function Soap95Icon({ size = 12 }: { size?: number }) {
 }
 
 function GoStudioIcon({ size = 20 }: { size?: number }) {
-  return (
-    <span
-      aria-hidden="true"
-      style={{ width: size, height: size, fontSize: Math.max(10, Math.round(size * 0.65)) }}
-      className="adomnia-rail__go-mark inline-grid place-items-center font-mono font-semibold tracking-[-0.12em]"
-    >
-      <span><span className="adomnia-rail__go-letter">{'g'}</span>{'O'}</span>
-    </span>
-  )
+  return <img src={goRailIcon} alt="" aria-hidden="true" style={{ width: size, height: size }} className="adomnia-rail__go-mark" />
 }
 
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
@@ -99,7 +92,7 @@ const FEATURE_ICONS: Partial<Record<RailItem, React.ElementType>> = {
   themes: Settings,
   templates: FileText,
   plugins: Puzzle,
-  goide: SquareTerminal,
+  goide: GoStudioIcon,
 }
 
 const CATEGORIES: CategoryDef[] = RAIL_CATEGORIES

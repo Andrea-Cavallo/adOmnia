@@ -4,6 +4,14 @@ adOmnia releases are driven by Git tags and GitHub Actions.
 
 ## Unreleased
 
+## v0.9.48 release notes: a cleaner gO rail and Project refresh controls
+
+See [the full v0.9.48 notes](releases/v0.9.48.md): Go Studio's Project view
+gets context-sensitive IntelliJ-style code actions, explicit Reload from Disk
+and Refresh Folder / Project controls that protect dirty buffers. The compact
+left rail now uses the transparent cyan gO mark, the README shows the current
+Go Studio workspace, and the Brick Workshop skin has been removed completely.
+
 ## v0.9.42 release notes: Concurrency View, race comparison and an IDE-grade editor
 
 See [the full v0.9.42 notes](releases/v0.9.42.md): the Concurrency View
@@ -101,7 +109,7 @@ a responsive master-detail AI Engine settings experience.
 See [the full v0.9.31 notes](releases/v0.9.31.md): a full-body reactive a0
 mascot in the Hub, verified-AI chat entry, Bug Hunt launched only by an explicit
 request to a0, the new Terminal Green appearance, consolidated customization
-settings, a connection-first Broker Studio, and a deeper Brick Workshop skin.
+settings and a connection-first Broker Studio.
 
 ## v0.9.21 release notes: Developer Desk route and visual refresh
 

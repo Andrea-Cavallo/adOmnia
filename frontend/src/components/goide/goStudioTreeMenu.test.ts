@@ -39,7 +39,7 @@ describe('treeKeyAction', () => {
 describe('buildTreeMenu', () => {
   it('offers the full IDE menu on a Go file', () => {
     const menu = ids(buildTreeMenu(file('internal/api/server.go'), context))
-    for (const id of ['open', 'splitRight', 'cut', 'copy', 'paste', 'copyAbsolutePath', 'copyRelativePath', 'copyFileName', 'copyImportPath', 'rename', 'delete', 'testPackage', 'terminal', 'reveal', 'localHistory', 'gitHistory']) {
+    for (const id of ['open', 'splitRight', 'cut', 'copy', 'paste', 'copyAbsolutePath', 'copyRelativePath', 'copyFileName', 'copyImportPath', 'findUsages', 'inspectCode', 'rename', 'refactorThis', 'moveToNewFile', 'toggleBookmark', 'showBookmarks', 'reformat', 'optimizeImports', 'delete', 'reloadFromDisk', 'testPackage', 'runCurrent', 'debugCurrent', 'terminal', 'reveal', 'localHistory', 'gitHistory']) {
       expect(menu).toContain(id)
     }
     expect(menu).not.toContain('findInFolder')
@@ -50,11 +50,17 @@ describe('buildTreeMenu', () => {
     expect(menu).toContain('findInFolder')
     expect(menu).not.toContain('open')
     expect(menu).not.toContain('localHistory')
+    expect(menu).toContain('runCurrent')
+    expect(menu).toContain('debugCurrent')
+    expect(menu).toContain('refreshProject')
   })
 
   it('hides Go and Git entries where they do not apply', () => {
     const menu = ids(buildTreeMenu(file('README.md'), { ...context, vcsAvailable: false }))
     expect(menu).not.toContain('testPackage')
+    expect(menu).not.toContain('findUsages')
+    expect(menu).not.toContain('inspectCode')
+    expect(menu).not.toContain('refactorThis')
     expect(menu).not.toContain('copyImportPath')
     expect(menu).not.toContain('gitHistory')
   })

@@ -1,6 +1,6 @@
 import {
-  ClipboardPaste, Columns2, Copy, CopyPlus, FileCode2, FilePlus, FlaskConical, FolderOpen, FolderPlus, FolderSearch, GitBranch,
-  Hammer, History, KeyRound, Pencil, Play, Rows2, ScanSearch, Scissors, Search, Send, SquareTerminal, Trash2, Wand2,
+  Bookmark, Bug, ClipboardPaste, Columns2, Copy, CopyPlus, FileCode2, FilePlus, FlaskConical, FolderOpen, FolderPlus, FolderSearch, GitBranch,
+  Hammer, History, KeyRound, Pencil, Play, RefreshCw, Rows2, ScanSearch, Scissors, Search, Send, SquareTerminal, Trash2, Wand2,
 } from 'lucide-react'
 import type { ContextMenuItem } from '@/components/ui/ContextMenu'
 import type { GoIDEFileEntry } from '@/lib/goide-api'
@@ -53,7 +53,37 @@ function goItems(entry: GoIDEFileEntry | null): ContextMenuItem[] {
       { id: 'vetPackage', label: 'Vet Package', icon: ScanSearch },
       { id: 'generatePackage', label: 'Go Generate', icon: Wand2 },
     ],
-  }]
+  },
+  { id: 'runCurrent', label: 'Run Current Configuration', icon: Play, iconClassName: 'text-success', separatorBefore: true },
+  { id: 'debugCurrent', label: 'Debug Current Configuration', icon: Bug, iconClassName: 'text-danger' }]
+}
+
+/** Azioni semantiche già offerte dall'editor, rese raggiungibili anche dal Project view. */
+function ideItems(entry: GoIDEFileEntry | null): ContextMenuItem[] {
+  if (!entry || entry.directory || !entry.name.endsWith('.go')) return []
+  return [
+    { id: 'findUsages', label: 'Find Usages', icon: Search, shortcut: 'Alt+F7', separatorBefore: true },
+    { id: 'analyze', label: 'Analyze', icon: ScanSearch, submenu: [
+      { id: 'inspectCode', label: 'Inspect Code…', icon: ScanSearch },
+    ] },
+  ]
+}
+
+/** Gruppo code nello stesso punto del menu di IntelliJ: dopo Rename, prima di Delete. */
+function codeItems(entry: GoIDEFileEntry | null): ContextMenuItem[] {
+  if (!entry || entry.directory || !entry.name.endsWith('.go')) return []
+  return [
+    { id: 'refactor', label: 'Refactor', icon: Wand2, submenu: [
+      { id: 'refactorThis', label: 'Refactor This…', icon: Wand2 },
+      { id: 'moveToNewFile', label: 'Move to New File', icon: FilePlus },
+    ] },
+    { id: 'bookmarks', label: 'Bookmarks', icon: Bookmark, submenu: [
+      { id: 'toggleBookmark', label: 'Toggle Bookmark', icon: Bookmark, shortcut: 'F11' },
+      { id: 'showBookmarks', label: 'Show Bookmarks…', icon: Bookmark, shortcut: 'Shift+F11' },
+    ] },
+    { id: 'reformat', label: 'Reformat Code', icon: Wand2, shortcut: 'Ctrl+Alt+L', separatorBefore: true },
+    { id: 'optimizeImports', label: 'Optimize Imports', icon: Wand2, shortcut: 'Ctrl+Alt+O' },
+  ]
 }
 
 function historyItems(entry: GoIDEFileEntry | null, context: TreeMenuContext): ContextMenuItem[] {
@@ -81,6 +111,7 @@ function handoffItems(entry: GoIDEFileEntry | null): ContextMenuItem[] {
 /** Menu contestuale del Project view, nell'ordine di GoLand. entry null = radice del progetto. */
 export function buildTreeMenu(entry: GoIDEFileEntry | null, context: TreeMenuContext): ContextMenuItem[] {
   const isFile = !!entry && !entry.directory
+  const code = codeItems(entry)
   return [
     ...(isFile ? [
       { id: 'open', label: 'Open', icon: FileCode2 },
@@ -91,11 +122,16 @@ export function buildTreeMenu(entry: GoIDEFileEntry | null, context: TreeMenuCon
     ] : []),
     { id: 'new', label: 'New', icon: FilePlus, separatorBefore: isFile, submenu: NEW_ITEMS },
     ...clipboardItems(entry, context),
+    ...ideItems(entry),
     ...(entry ? [
       { id: 'rename', label: 'Rename…', icon: Pencil, shortcut: 'Shift+F6', separatorBefore: true },
       { id: 'duplicate', label: 'Duplicate…', icon: CopyPlus },
-      { id: 'delete', label: 'Delete…', icon: Trash2, shortcut: 'Delete', danger: true },
+      ...code,
+      { id: 'delete', label: 'Delete…', icon: Trash2, shortcut: 'Delete', danger: true, separatorBefore: code.length > 0 },
     ] : []),
+    ...(isFile
+      ? [{ id: 'reloadFromDisk', label: 'Reload from Disk', icon: RefreshCw, separatorBefore: true }]
+      : [{ id: 'refreshProject', label: entry ? 'Refresh Folder' : 'Refresh Project', icon: RefreshCw, separatorBefore: true }]),
     ...(isFile ? [] : [{ id: 'findInFolder', label: 'Find in Folder…', icon: Search, separatorBefore: true }]),
     ...goItems(entry),
     { id: 'openInGroup', label: 'Open In', icon: FolderOpen, separatorBefore: true, submenu: [
