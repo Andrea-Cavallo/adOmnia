@@ -12,6 +12,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -169,14 +170,22 @@ func normalizeWindowChrome(value string) string {
 	}
 }
 
+// defaultWindowChrome: barra integrata nell'app, tranne su Linux dove WebKitGTK/Wayland resta sulla cornice di sistema.
+func defaultWindowChrome(goos string) string {
+	if goos == "linux" {
+		return windowChromeSystem
+	}
+	return windowChromeApp
+}
+
 func readStartupWindowChrome() string {
 	path := filepath.Join(dataDir(), "adomnia", "adomnia.db")
 	if _, err := os.Stat(path); err != nil {
-		return windowChromeSystem
+		return defaultWindowChrome(runtime.GOOS)
 	}
 	db, err := bolt.Open(path, 0600, &bolt.Options{ReadOnly: true, Timeout: 250 * time.Millisecond})
 	if err != nil {
-		return windowChromeSystem
+		return defaultWindowChrome(runtime.GOOS)
 	}
 	defer db.Close()
 	var settingsJSON []byte
@@ -187,25 +196,32 @@ func readStartupWindowChrome() string {
 		}
 		return nil
 	})
+	return startupWindowChromeFromSettings(settingsJSON, runtime.GOOS)
+}
+
+// startupWindowChromeFromSettings rispecchia le migrazioni del frontend (settings.ts) per decidere la cornice
+// prima che il frontend riscriva le impostazioni: così il cambio vale già a questo avvio.
+func startupWindowChromeFromSettings(settingsJSON []byte, goos string) string {
+	fallback := defaultWindowChrome(goos)
 	var parsed struct {
 		Version    int `json:"version"`
 		Appearance struct {
 			WindowChrome string `json:"windowChrome"`
 		} `json:"appearance"`
 	}
-	if json.Unmarshal(settingsJSON, &parsed) != nil {
-		return windowChromeSystem
+	if json.Unmarshal(settingsJSON, &parsed) != nil || parsed.Appearance.WindowChrome == "" {
+		return fallback
 	}
-	if parsed.Appearance.WindowChrome == "" {
-		return windowChromeSystem
+	chrome := parsed.Appearance.WindowChrome
+	// v3: il vecchio default 'app' era diventato 'system'.
+	if parsed.Version < 3 && chrome == windowChromeApp {
+		chrome = windowChromeSystem
 	}
-	// v3 migration: the system titlebar is now the default. Pre-v3 settings that
-	// still carry the legacy 'app' default are treated as 'system' on first
-	// launch so the change applies before the frontend rewrites the settings.
-	if parsed.Version < 3 && parsed.Appearance.WindowChrome == windowChromeApp {
-		return windowChromeSystem
+	// v12: la barra integrata torna predefinita fuori da Linux, una volta sola.
+	if parsed.Version < 12 && chrome == windowChromeSystem && goos != "linux" {
+		chrome = windowChromeApp
 	}
-	return normalizeWindowChrome(parsed.Appearance.WindowChrome)
+	return normalizeWindowChrome(chrome)
 }
 
 func isAppChrome(mode string) bool {
