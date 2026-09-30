@@ -74,6 +74,7 @@ export function GoStudioFindInFiles({ sessionId }: GoStudioFindInFilesProps) {
   useEffect(() => {
     if (!findRequest) return
     if (findRequest.query) setQuery(findRequest.query)
+    if (findRequest.include !== undefined) setInclude(findRequest.include)
     window.setTimeout(() => { inputRef.current?.focus(); inputRef.current?.select() }, 0)
   }, [findRequest])
 

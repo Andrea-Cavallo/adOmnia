@@ -1,22 +1,26 @@
-import { useCallback, useEffect, useMemo, useState, memo } from 'react'
-import { ChevronDown, ChevronRight, Copy, CopyPlus, Eye, EyeOff, FileCode2, FilePlus, Folder, FolderOpen, FolderPlus, FolderSearch, KeyRound, Loader2, Minus, Pencil, Send, Trash2 } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react'
+import { ChevronDown, ChevronRight, Eye, EyeOff, Folder, FolderOpen, Loader2, Minus } from 'lucide-react'
 import { useGoIDEStore } from '@/stores/goide'
 import { useGoIDELspStore } from '@/stores/goideLsp'
 import { BrandIcon, GoStudioFileIcon } from './GoStudioFileIcon'
 import { resolveGoStudioFolderBrand } from './goStudioFileIcons'
 import type { GoIDEFileEntry, GoIDESession } from '@/lib/goide-api'
-import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
+import { ContextMenu } from '@/components/ui/ContextMenu'
 import { buildTreeMarks, type GoStudioTreeMark } from './goStudioTreeMarks'
 import { useGoIDEVCSStore } from '@/stores/goideVcs'
 import { useGoIDETestsStore } from '@/stores/goideTests'
-import { isApiCollectionCandidate, isPemCandidate, openPemInPowerTools, sendFileToApiWorkspace } from './goStudioFileHandoffs'
-import { absolutePath, deletePathWithConfirm, parentOf, revealPath } from './goStudioFileActions'
+import { openPemInPowerTools, sendFileToApiWorkspace } from './goStudioFileHandoffs'
+import { deletePathWithConfirm, parentOf, revealPath } from './goStudioFileActions'
+import { buildTreeMenu, treeKeyAction } from './goStudioTreeMenu'
+import { copyReference, findInFolder, openInSplit, openTerminalIn, pasteInto, runPackageCommand, useGoStudioTreeClipboard } from './goStudioTreeActions'
+import type { GoStudioCommandId } from './goStudioCommands'
 import { GoStudioPathDialog, type GoStudioPathRequest } from './GoStudioPathDialog'
 
 /** entry null = radice del progetto. */
 type TreeContextHandler = (entry: GoIDEFileEntry | null, x: number, y: number) => void
-/** Scorciatoie sulla riga a fuoco: F2/Shift+F6 rinomina, Canc elimina. */
-type TreeKeyHandler = (entry: GoIDEFileEntry, key: 'rename' | 'delete') => void
+/** Scorciatoie sulla riga a fuoco: stesse azioni del menu contestuale, identificate dal loro id. */
+type TreeKeyHandler = (entry: GoIDEFileEntry, action: string) => void
+
 type TreeMarks = Map<string, GoStudioTreeMark>
 
 const EMPTY_MARKS: TreeMarks = new Map()
@@ -54,6 +58,8 @@ interface GoStudioProjectTreeProps {
   session: GoIDESession
   /** Percorso relativo del file attivo nell'editor, evidenziato nell'albero. */
   activePath: string | null
+  /** Comandi del pannello (Local History, Git History, Blame) sul file appena aperto. Deve essere stabile. */
+  onCommand: (id: GoStudioCommandId) => void
 }
 
 const ROW_INDENT_PX = 16
@@ -76,6 +82,7 @@ const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, act
   const loading = useGoIDEStore((state) => state.directoryLoading[`${sessionId}:${entry.relativePath}`] ?? false)
   const loadDirectory = useGoIDEStore((state) => state.loadDirectory)
   const openDocument = useGoIDEStore((state) => state.openDocument)
+  const isCut = useGoStudioTreeClipboard((state) => state.clipboard?.mode === 'cut' && state.clipboard.sessionId === sessionId && state.clipboard.relativePath === entry.relativePath)
 
   // Ricarica i figli anche quando la cache viene svuotata (es. toggle delle cartelle ignorate).
   useEffect(() => {
@@ -90,11 +97,11 @@ const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, act
         onDoubleClick={entry.directory ? undefined : () => void openDocument(entry.relativePath)}
         onContextMenu={(event) => { event.preventDefault(); event.stopPropagation(); onContext(entry, event.clientX, event.clientY) }}
         onKeyDown={(event) => {
-          if (event.key === 'F2' || (event.key === 'F6' && event.shiftKey)) { event.preventDefault(); onKey(entry, 'rename') }
-          if (event.key === 'Delete') { event.preventDefault(); onKey(entry, 'delete') }
+          const action = treeKeyAction(event)
+          if (action) { event.preventDefault(); event.stopPropagation(); onKey(entry, action) }
         }}
         aria-current={selected ? 'true' : undefined}
-        className={`flex h-[26px] w-full items-center gap-1.5 overflow-hidden rounded-[7px] pr-2 text-left text-[12.5px] ${selected ? 'go-studio-tree-row-selected' : `hover:bg-surface-3 hover:text-text-1 ${entry.ignored ? 'text-text-4' : 'text-text-2'}`}`}
+        className={`flex h-[26px] w-full items-center gap-1.5 overflow-hidden rounded-[7px] pr-2 text-left text-[12.5px] ${isCut ? 'opacity-50' : ''} ${selected ? 'go-studio-tree-row-selected' : `hover:bg-surface-3 hover:text-text-1 ${entry.ignored ? 'text-text-4' : 'text-text-2'}`}`}
         style={{ paddingLeft: ROW_BASE_PX + (depth - 1) * ROW_INDENT_PX }}
         title={`${entry.relativePath}${entry.ignored ? ' (ignored by default)' : ''}${markTitle(mark)}`}
       >
@@ -115,7 +122,7 @@ const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, act
 })
 
 /** Memoizzato: il pannello genitore si ridisegna a ogni tasto, questo solo quando cambia la sessione. */
-export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, activePath }: GoStudioProjectTreeProps) {
+export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, activePath, onCommand }: GoStudioProjectTreeProps) {
   const entries = useGoIDEStore((state) => state.directoryEntries[session.id]?.[''] ?? emptyEntries)
   const loadDirectory = useGoIDEStore((state) => state.loadDirectory)
   const showIgnored = useGoIDEStore((state) => state.showIgnoredBySession[session.id] ?? false)
@@ -130,52 +137,55 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
   const [menu, setMenu] = useState<{ entry: GoIDEFileEntry | null; x: number; y: number } | null>(null)
   const [pathRequest, setPathRequest] = useState<GoStudioPathRequest | null>(null)
   const onContext = useCallback<TreeContextHandler>((entry, x, y) => setMenu({ entry, x, y }), [])
-  const onKey = useCallback<TreeKeyHandler>((entry, key) => {
-    if (key === 'rename') setPathRequest({ action: 'rename', target: entry.relativePath })
-    else void deletePathWithConfirm(session.id, entry.relativePath, entry.directory)
-  }, [session.id])
-  const menuItems = (entry: GoIDEFileEntry | null): ContextMenuItem[] => {
-    const newItems: ContextMenuItem[] = [
-      { id: 'newGoFile', label: 'Go File…', icon: FileCode2 },
-      { id: 'newFile', label: 'File…', icon: FilePlus },
-      { id: 'newFolder', label: 'Folder…', icon: FolderPlus },
-    ]
-    const copyItems: ContextMenuItem[] = [
-      { id: 'copyPath', label: 'Copy Path', icon: Copy, separatorBefore: true },
-      ...(entry ? [{ id: 'copyRelativePath', label: 'Copy Relative Path', icon: Copy }] : []),
-      { id: 'reveal', label: 'Reveal in File Explorer', icon: FolderSearch },
-    ]
-    if (!entry) return [{ id: 'new', label: 'New', icon: FilePlus, submenu: newItems }, ...copyItems]
-    return [
-      ...(entry.directory ? [] : [{ id: 'open', label: 'Open', icon: FileCode2 }]),
-      { id: 'new', label: 'New', icon: FilePlus, submenu: newItems },
-      { id: 'rename', label: 'Rename…', icon: Pencil, shortcut: 'Shift+F6', separatorBefore: true },
-      { id: 'duplicate', label: 'Duplicate…', icon: CopyPlus },
-      { id: 'delete', label: 'Delete…', icon: Trash2, shortcut: 'Delete', danger: true },
-      ...copyItems,
-      ...(!entry.directory && isApiCollectionCandidate(entry.relativePath) ? [{ id: 'sendToApi', label: 'Send to API Workspace', icon: Send, separatorBefore: true }] : []),
-      ...(!entry.directory && isPemCandidate(entry.relativePath) ? [{ id: 'pemTools', label: 'Open in Power Tools: Inspect / Encrypt Key', icon: KeyRound, separatorBefore: true }] : []),
-    ]
-  }
-  const selectMenuItem = (id: string) => {
-    if (!menu) return
-    const { entry } = menu
-    setMenu(null)
+  const canPaste = useGoStudioTreeClipboard((state) => state.clipboard?.sessionId === session.id)
+  const vcsAvailable = useGoIDEVCSStore((state) => !!state.status[session.id]?.available)
+
+  /** Esegue un'azione del menu o di una scorciatoia; entry null = radice del progetto. */
+  const runTreeAction = (id: string, entry: GoIDEFileEntry | null) => {
     const path = entry?.relativePath ?? ''
-    // Le voci New lavorano nella cartella selezionata, o in quella del file.
+    const directory = !entry || entry.directory
+    // Le voci New, Paste e Find lavorano nella cartella selezionata, o in quella del file.
     const folder = entry ? (entry.directory ? path : parentOf(path)) : ''
+    const openThen = (command: GoStudioCommandId) => void openDocument(path).then(() => onCommand(command))
     switch (id) {
       case 'open': void openDocument(path); break
+      case 'splitRight': void openInSplit(session.id, path, 'right'); break
+      case 'splitDown': void openInSplit(session.id, path, 'down'); break
       case 'newGoFile': case 'newFile': case 'newFolder': setPathRequest({ action: id, target: folder }); break
-      case 'rename': case 'duplicate': setPathRequest({ action: id, target: path }); break
+      case 'cut': case 'copy': if (entry) useGoStudioTreeClipboard.getState().setClipboard({ sessionId: session.id, relativePath: path, mode: id }); break
+      case 'paste': void pasteInto(session.id, folder); break
+      case 'copyAbsolutePath': void copyReference(session, path, directory, 'absolute'); break
+      case 'copyRelativePath': void copyReference(session, path, directory, 'relative'); break
+      case 'copyFileName': void copyReference(session, path, directory, 'name'); break
+      case 'copyImportPath': void copyReference(session, path, directory, 'import'); break
+      case 'rename': case 'duplicate': if (entry) setPathRequest({ action: id, target: path }); break
       case 'delete': if (entry) void deletePathWithConfirm(session.id, path, entry.directory); break
-      case 'copyPath': void navigator.clipboard?.writeText(absolutePath(session.project.rootPath, path)); break
-      case 'copyRelativePath': void navigator.clipboard?.writeText(path); break
+      case 'findInFolder': findInFolder(folder); break
+      case 'testPackage': void runPackageCommand(session, path, directory, 'test'); break
+      case 'testPackageCoverage': void runPackageCommand(session, path, directory, 'test', true); break
+      case 'buildPackage': void runPackageCommand(session, path, directory, 'build'); break
+      case 'vetPackage': void runPackageCommand(session, path, directory, 'vet'); break
+      case 'generatePackage': void runPackageCommand(session, path, directory, 'generate'); break
       case 'reveal': revealPath(session.id, path); break
+      case 'terminal': openTerminalIn(folder); break
+      case 'localHistory': openThen('file.localHistory'); break
+      case 'gitHistory': openThen('vcs.history'); break
+      case 'gitAnnotate': openThen('vcs.annotate'); break
       case 'sendToApi': void sendFileToApiWorkspace(session.id, path); break
       case 'pemTools': void openPemInPowerTools(session.id, path); break
     }
   }
+  const runTreeActionRef = useRef(runTreeAction)
+  runTreeActionRef.current = runTreeAction
+  // Stabile: le righe memoizzate non si ridisegnano quando cambia lo stato del pannello.
+  const onKey = useCallback<TreeKeyHandler>((entry, action) => runTreeActionRef.current(action, entry), [])
+  const selectMenuItem = (id: string) => {
+    if (!menu) return
+    const { entry } = menu
+    setMenu(null)
+    runTreeAction(id, entry)
+  }
+  const menuContext = { canPaste, vcsAvailable, hasGoModule: (session.project.modules ?? []).length > 0 }
 
   return (
     <aside aria-label="Project files" className="flex h-full min-w-0 flex-col">
@@ -212,7 +222,7 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
       <div className="shrink-0 px-4 py-2 text-[10.5px] leading-4 text-text-4">
         {session.project.modules.length} module{session.project.modules.length === 1 ? '' : 's'} · {session.project.goWorkPath ? 'go.work' : session.project.goModPath ? 'go.mod' : 'folder mode'}
       </div>
-      {menu && <ContextMenu appearance="studio" x={menu.x} y={menu.y} items={menuItems(menu.entry)} onSelect={selectMenuItem} onClose={() => setMenu(null)} />}
+      {menu && <ContextMenu appearance="studio" x={menu.x} y={menu.y} items={buildTreeMenu(menu.entry, menuContext)} onSelect={selectMenuItem} onClose={() => setMenu(null)} />}
       <GoStudioPathDialog sessionId={session.id} request={pathRequest} onClose={() => setPathRequest(null)} />
     </aside>
   )

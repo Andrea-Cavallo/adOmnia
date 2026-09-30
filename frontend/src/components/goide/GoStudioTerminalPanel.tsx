@@ -3,6 +3,7 @@ import { ChevronDown, Plus, TerminalSquare, X } from 'lucide-react'
 import { ContextMenu } from '@/components/ui/ContextMenu'
 import { GoStudioTerminalView, closeTerminal } from './GoStudioTerminalView'
 import { startGoStudioTerminalBus } from './goStudioTerminalBus'
+import { useGoIDELspStore } from '@/stores/goideLsp'
 import {
   listGoIDETerminalProfiles,
   listGoIDETerminals,
@@ -78,7 +79,7 @@ export function GoStudioTerminalPanel({ session, visible }: GoStudioTerminalPane
     }
   }, [session.id])
 
-  const open = useCallback(async (profile?: string) => {
+  const open = useCallback(async (profile?: string, workingDirectory = '') => {
     setBusy(true)
     setError(null)
     try {
@@ -86,7 +87,7 @@ export function GoStudioTerminalPanel({ session, visible }: GoStudioTerminalPane
         sessionId: session.id,
         profile: profile ?? defaultProfile,
         name: '',
-        workingDirectory: '',
+        workingDirectory,
         columns: 80,
         rows: 24,
       })
@@ -98,6 +99,15 @@ export function GoStudioTerminalPanel({ session, visible }: GoStudioTerminalPane
       setBusy(false)
     }
   }, [defaultProfile, session.id])
+
+  // Open In → Terminal dall'albero: la richiesta si consuma una volta sola e sostituisce l'apertura automatica alla radice.
+  const terminalRequest = useGoIDELspStore((state) => state.terminalRequest)
+  useEffect(() => {
+    if (!terminalRequest || !loaded || !profilesLoaded) return
+    useGoIDELspStore.setState({ terminalRequest: null })
+    autoOpened.current = true
+    void open(undefined, terminalRequest.workingDirectory)
+  }, [loaded, open, profilesLoaded, terminalRequest])
 
   useEffect(() => {
     if (!visible || !loaded || !profilesLoaded || !authorized || busy || terminals.length > 0 || autoOpened.current) return

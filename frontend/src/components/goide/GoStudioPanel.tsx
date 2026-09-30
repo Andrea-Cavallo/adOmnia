@@ -214,6 +214,8 @@ export function GoStudioPanel() {
 
   // Le scorciatoie restano attive solo mentre il pannello è montato e hanno la precedenza su quelle globali.
   const runCommandRef = useRef<(id: GoStudioCommandId) => void>(() => undefined)
+  // Stabile per i figli memoizzati (albero del progetto): chiama sempre la versione corrente di runCommand.
+  const runCommandStable = useCallback((id: GoStudioCommandId) => runCommandRef.current(id), [])
   const availabilityRef = useRef<(id: GoStudioCommandId) => true | string>(() => true)
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -553,7 +555,7 @@ export function GoStudioPanel() {
       {windowError}
       {lsp.message && <NoticeBanner message={lsp.message} onClose={lsp.clearMessage} />}
       <GoStudioRecoveryBanner sessionId={activeSession.id} />
-      <GoStudioWorkspace session={activeSession} {...store.layout} zen={zen} onProjectResize={beginResize('projectWidth', store.layout.projectWidth)} onStructureResize={beginResize('structureWidth', store.layout.structureWidth, -1)} onBottomResize={beginResize('bottomHeight', store.layout.bottomHeight, -1)} onCursor={setCursor} onRequestCloseDocument={closeFlow.requestCloseDocuments} onRunTarget={(target, anchor) => setRunTargetMenu({ target, ...anchor })} onCommit={() => setVcsDialog('commit')} onBookmarks={() => setBookmarksOpen(true)} onDependencies={() => setDependenciesOpen(true)} />
+      <GoStudioWorkspace session={activeSession} {...store.layout} zen={zen} onProjectResize={beginResize('projectWidth', store.layout.projectWidth)} onStructureResize={beginResize('structureWidth', store.layout.structureWidth, -1)} onBottomResize={beginResize('bottomHeight', store.layout.bottomHeight, -1)} onCursor={setCursor} onRequestCloseDocument={closeFlow.requestCloseDocuments} onRunTarget={(target, anchor) => setRunTargetMenu({ target, ...anchor })} onCommit={() => setVcsDialog('commit')} onBookmarks={() => setBookmarksOpen(true)} onDependencies={() => setDependenciesOpen(true)} onCommand={runCommandStable} />
       {runTargetMenu && <GoStudioRunTargetMenu {...runTargetMenu} onAction={runTarget} onClose={() => setRunTargetMenu(null)} />}
       {zen ? <ZenExit onExit={toggleZen} /> : <GoStudioStatusBar session={activeSession} toolchain={toolchain} documentInfo={summary.activeId ? { id: summary.activeId, relativePath: summary.activePath ?? '', language: summary.activeLanguage ?? '', readOnly: summary.activeReadOnly, lineEnding: summary.activeLineEnding ?? 'LF' } : null} execution={activeExecution} onLanguageServer={openLanguageServerMenu} onLinter={() => runCommand(commandAvailability('code.lint', commandContext) === true ? 'code.lint' : 'go.toolPaths')} onSetAuthorization={(allowed) => void authorize(allowed)} onManageToolchains={() => setToolchainOpen(true)} />}
       <GoStudioQuickOpen />
