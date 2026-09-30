@@ -80,7 +80,7 @@ import { useGoIDELspStore } from '@/stores/goideLsp'
 const PANEL_STATE_KEYS = [
   'activeSessionId', 'activeWorkspaceId', 'layout', 'sessions', 'error', 'recentProjects', 'loading', 'initialized', 'toolchains', 'splitBySession', 'showIgnoredBySession',
   'runConfigsBySession', 'executions', 'closedDocuments', 'activeRunBySession', 'activeConfigBySession',
-  'updateLayout', 'toggleEditorMaximized', 'openProject', 'startRun', 'startConfiguredRun', 'setSplit', 'detectToolchain', 'stopRun', 'initialize', 'clearError',
+  'updateLayout', 'toggleEditorMaximized', 'openProject', 'startRun', 'startConfiguredRun', 'startConfiguredBuild', 'setSplit', 'detectToolchain', 'stopRun', 'initialize', 'clearError',
   'toggleShowIgnored', 'togglePinned', 'setToolAuthorization', 'setQuickOpen', 'selectSession', 'selectRunConfiguration', 'restartRun',
   'reopenClosedDocument', 'removeRecentProject',
 ] as const satisfies ReadonlyArray<keyof GoIDEState>
@@ -251,8 +251,13 @@ export function GoStudioPanel() {
       void store.startConfiguredRun(activeConfig.id, {})
       return
     }
+    // La build di una configurazione salvata passa dal backend: GOOS/GOARCH, env file, race e tag inclusi.
+    if (kind === 'build' && activeConfig && (activeConfig.kind === 'package' || activeConfig.kind === 'build')) {
+      void store.startConfiguredBuild(activeConfig.id)
+      return
+    }
     void store.startRun(kind, configuredRequest())
-  }, [activeConfig, configuredRequest, store.startConfiguredRun, store.startRun])
+  }, [activeConfig, configuredRequest, store.startConfiguredRun, store.startConfiguredBuild, store.startRun])
 
   const saveDocumentWithActions = async (documentId?: string) => {
     const sessionId = store.activeSessionId
@@ -415,7 +420,9 @@ export function GoStudioPanel() {
   const configuredDebugRequest = (): GoIDEDebugRequest | null => {
     if (!activeSession) return null
     const request = configuredRequest()
-    return { sessionId: activeSession.id, mode: 'debug', target: request.target, workingDirectory: request.workingDirectory, programArguments: request.programArguments, buildTags: request.buildTags, environment: request.environment }
+    const debugConfig = activeConfig && (activeConfig.kind === 'package' || activeConfig.kind === 'build') ? activeConfig : null
+    const environment = debugConfig?.port ? { ...request.environment, PORT: String(debugConfig.port) } : request.environment
+    return { sessionId: activeSession.id, mode: 'debug', target: request.target, workingDirectory: request.workingDirectory, programArguments: request.programArguments, buildTags: request.buildTags, environment, envFile: debugConfig?.envFile ?? '', buildFlags: debugConfig?.debugFlags ?? [] }
   }
 
   const openLanguageServerMenu = () => {

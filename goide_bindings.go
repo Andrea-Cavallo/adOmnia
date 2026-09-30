@@ -358,6 +358,11 @@ func (g *GoIDE) ConfigureToolchain(sessionID string, config goide.ToolchainConfi
 	return g.service.ConfigureToolchain(sessionID, config)
 }
 
+// StartConfiguredBuild compila una configurazione con tutti i suoi parametri.
+func (g *GoIDE) StartConfiguredBuild(sessionID, configID string) (goide.Execution, error) {
+	return g.service.StartConfiguredBuild(sessionID, configID)
+}
+
 // ToolchainSettings restituisce la toolchain del progetto e quella globale.
 func (g *GoIDE) ToolchainSettings(sessionID string) (goide.ToolchainSettings, error) {
 	return g.service.ToolchainSettings(sessionID)

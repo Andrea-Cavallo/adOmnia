@@ -6,6 +6,7 @@ import { useGoIDEStore, type GoIDEState } from '@/stores/goide'
 import { GoIDERunConfigurationKind } from '@/lib/goide-api'
 import type { GoIDERunConfiguration } from '@/lib/goide-api'
 import { GoStudioEntryList } from './GoStudioEntryList'
+import { GoStudioRunParameters } from './GoStudioRunParameters'
 
 /** Riferimento stabile: un array nuovo nel selettore Zustand fa ridisegnare all'infinito. */
 const EMPTY_CONFIGS: GoIDEState['runConfigsBySession'][string] = []
@@ -234,7 +235,7 @@ export function GoStudioRunConfigurations({ open, sessionId, initialDraft, onClo
               )}
 
               {textField('Working directory', draft.workingDirectory, (next) => patch({ workingDirectory: next }), 'Project root')}
-              {!isTool && textField('Go tool flags', (draft.goArguments ?? []).join(' '), (next) => patch({ goArguments: splitList(next, /\s+/) }), '-race -v')}
+              {!isTool && textField('Go tool flags', (draft.goArguments ?? []).join(' '), (next) => patch({ goArguments: splitList(next, /\s+/) }), '-v -trimpath')}
               {draft.kind === GoIDERunConfigurationKind.RunKindDockerCompose
                 ? textField('Command and services', (draft.programArguments ?? []).join(' '), (next) => patch({ programArguments: splitList(next, /\s+/) }), 'up api db  ·  down')
                 : draft.kind === GoIDERunConfigurationKind.RunKindMake
@@ -272,6 +273,8 @@ export function GoStudioRunConfigurations({ open, sessionId, initialDraft, onClo
                 onChange={(environment) => patch({ environment })}
               />
             )}
+
+            <GoStudioRunParameters draft={draft} configs={configs} patch={patch} />
 
             <p className="mt-3 text-[9px] leading-4 text-text-4">
               {kindInfo.hint}. {isTool ? 'Arguments are passed as a list, never through a shell.' : 'Tool flags and program arguments stay separate and reach Go without shell concatenation.'}

@@ -312,6 +312,10 @@ export async function startGoIDEConfiguredRun(sessionId: string, configId: strin
   return GoIDEBindings.StartConfiguredRun(sessionId, configId, secrets)
 }
 
+export async function startGoIDEConfiguredBuild(sessionId: string, configId: string): Promise<GoIDEExecution> {
+  return GoIDEBindings.StartConfiguredBuild(sessionId, configId)
+}
+
 // --- Terminale PTY ----------------------------------------------------------
 
 export type GoIDETerminalProfile = TerminalProfile

@@ -112,6 +112,50 @@ func (s *Service) StartConfiguredRun(sessionID, configID string, secrets map[str
 	if err != nil {
 		return Execution{}, err
 	}
+	pre, err := s.taskSteps(session, config.PreRun, phasePre, secrets)
+	if err != nil {
+		return Execution{}, err
+	}
+	post, err := s.taskSteps(session, config.PostRun, phasePost, secrets)
+	if err != nil {
+		return Execution{}, err
+	}
+	steps := append(append(pre, chainStep{name: config.Name, phase: phaseMain, request: request}), post...)
+	first, err := s.StartRun(steps[0].request)
+	if err != nil {
+		return Execution{}, err
+	}
+	if len(steps) > 1 {
+		go s.runChain(first, steps)
+	}
+	return first, nil
+}
+
+// StartConfiguredBuild compila il package di una configurazione package o build con tutti i suoi
+// parametri (GOOS/GOARCH, tag, env file, race). Le variabili segrete non servono alla build e vengono omesse.
+func (s *Service) StartConfiguredBuild(sessionID, configID string) (Execution, error) {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return Execution{}, err
+	}
+	config, err := s.runConfigs.Get(session.ID, configID)
+	if err != nil {
+		return Execution{}, err
+	}
+	if config.Kind != RunKindPackage && config.Kind != RunKindBuild {
+		return Execution{}, fmt.Errorf("la build è disponibile per configurazioni package o build")
+	}
+	public := config.Environment[:0:0]
+	for _, entry := range config.Environment {
+		if !entry.Secret {
+			public = append(public, entry)
+		}
+	}
+	config.Environment, config.Kind, config.Port = public, RunKindBuild, 0
+	request, err := s.buildRunRequest(session, config, nil)
+	if err != nil {
+		return Execution{}, err
+	}
 	return s.StartRun(request)
 }
 
@@ -170,6 +214,13 @@ func (s *Service) buildRunRequest(session Session, config RunConfiguration, secr
 		request.Target = config.Target
 	default:
 		return RunRequest{}, fmt.Errorf("tipo di configurazione %q non supportato", config.Kind)
+	}
+	workingDirectory, err := s.documents.resolveDirectory(session.Project, config.WorkingDirectory)
+	if err != nil {
+		return RunRequest{}, err
+	}
+	if err := applyRunParameters(session.Project.RealPath, workingDirectory, config, &request); err != nil {
+		return RunRequest{}, err
 	}
 	return request, nil
 }

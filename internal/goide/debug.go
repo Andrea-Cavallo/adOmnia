@@ -63,6 +63,9 @@ type DebugRequest struct {
 	ProgramArguments []string          `json:"programArguments,omitempty"`
 	BuildTags        []string          `json:"buildTags,omitempty"`
 	Environment      map[string]string `json:"environment,omitempty"`
+	// EnvFile e BuildFlags arrivano dalla configurazione Run attiva.
+	EnvFile    string   `json:"envFile,omitempty"`
+	BuildFlags []string `json:"buildFlags,omitempty"`
 }
 
 // DebugSessionInfo è lo stato pubblicato con l'evento debug.state.
@@ -516,8 +519,12 @@ func launchArguments(session *debugger, launch debugLaunch) (string, map[string]
 	if len(args) > 0 {
 		arguments["args"] = args
 	}
+	buildFlags := append([]string(nil), launch.request.BuildFlags...)
 	if len(launch.request.BuildTags) > 0 {
-		arguments["buildFlags"] = "-tags=" + strings.Join(launch.request.BuildTags, ",")
+		buildFlags = append(buildFlags, "-tags="+strings.Join(launch.request.BuildTags, ","))
+	}
+	if len(buildFlags) > 0 {
+		arguments["buildFlags"] = strings.Join(buildFlags, " ")
 	}
 	return "launch", arguments
 }

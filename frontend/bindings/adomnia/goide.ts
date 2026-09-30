@@ -1104,6 +1104,15 @@ export function SignatureHelp(sessionID: string, documentID: string, line: numbe
 }
 
 /**
+ * StartConfiguredBuild compila una configurazione con tutti i suoi parametri.
+ */
+export function StartConfiguredBuild(sessionID: string, configID: string): $CancellablePromise<goide$0.Execution> {
+    return $Call.ByID(1484067834, sessionID, configID).then(($result: any) => {
+        return $$createType41($result);
+    });
+}
+
+/**
  * StartConfiguredRun avvia una configurazione salvata con i soli segreti forniti a runtime.
  */
 export function StartConfiguredRun(sessionID: string, configID: string, secrets: { [_ in string]?: string }): $CancellablePromise<goide$0.Execution> {

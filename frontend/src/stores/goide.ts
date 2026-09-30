@@ -36,6 +36,7 @@ import {
   reorderGoIDERunConfigurations,
   deleteGoIDERunConfiguration,
   startGoIDEConfiguredRun,
+  startGoIDEConfiguredBuild,
   type GoIDECapabilities,
   type GoIDEDocumentDiskState,
   type GoIDEEvent,
@@ -229,6 +230,7 @@ export interface GoIDEState {
   deleteRunConfiguration: (configId: string) => Promise<void>
   selectRunConfiguration: (configId: string | null) => void
   startConfiguredRun: (configId: string, secrets: Record<string, string>) => Promise<void>
+  startConfiguredBuild: (configId: string) => Promise<void>
   restoreSessionView: (sessionId: string) => Promise<void>
   checkPathConflicts: (sessionId: string, relativePath: string) => Promise<void>
   persistSessionView: (sessionId: string) => Promise<void>
@@ -541,6 +543,21 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
     const sessionId = get().activeSessionId
     if (!sessionId) return
     set((state) => ({ activeConfigBySession: { ...state.activeConfigBySession, [sessionId]: configId } }))
+  },
+
+  startConfiguredBuild: async (configId) => {
+    const sessionId = get().activeSessionId
+    if (!sessionId) return
+    set({ error: null })
+    try {
+      const execution = await startGoIDEConfiguredBuild(sessionId, configId)
+      set((state) => ({
+        executions: replaceExecution(state.executions, execution),
+        activeRunBySession: { ...state.activeRunBySession, [sessionId]: execution.id },
+      }))
+    } catch (error) {
+      set({ error: errorMessage(error) })
+    }
   },
 
   startConfiguredRun: async (configId, secrets) => {

@@ -173,6 +173,17 @@ func (s *Service) StartDebug(request DebugRequest) (DebugSessionInfo, error) {
 		return DebugSessionInfo{}, err
 	}
 	overrides := make([]string, 0, len(request.Environment))
+	if request.EnvFile != "" {
+		fromFile, err := loadEnvFile(session.Project.RealPath, moduleDir, request.EnvFile)
+		if err != nil {
+			return DebugSessionInfo{}, err
+		}
+		for name, value := range fromFile {
+			if _, explicit := request.Environment[name]; !explicit {
+				overrides = append(overrides, name+"="+value)
+			}
+		}
+	}
 	for name, value := range request.Environment {
 		overrides = append(overrides, name+"="+value)
 	}

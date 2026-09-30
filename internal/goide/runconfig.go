@@ -262,6 +262,10 @@ func normalizeConfiguration(config RunConfiguration) (RunConfiguration, error) {
 	config.GoArguments = trimArguments(config.GoArguments)
 	config.ProgramArguments = trimArguments(config.ProgramArguments)
 	config.BuildTags = trimArguments(config.BuildTags)
+	config, err := normalizeRunParameters(config)
+	if err != nil {
+		return RunConfiguration{}, err
+	}
 
 	seen := make(map[string]struct{}, len(config.Environment))
 	environment := make([]EnvironmentEntry, 0, len(config.Environment))

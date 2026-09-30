@@ -348,22 +348,22 @@
 
 ## Parametri configurabili
 
-- [ ] Package.
-- [ ] Working directory.
-- [ ] Environment variables.
-- [ ] Env file.
-- [ ] Program arguments.
-- [ ] Build arguments.
-- [ ] Build tags.
-- [ ] GOOS.
-- [ ] GOARCH.
-- [ ] Race detector.
-- [ ] Coverage.
-- [ ] Profiling.
-- [ ] Debug flags.
-- [ ] Port.
-- [ ] Pre-run tasks.
-- [ ] Post-run tasks.
+- [x] Package.
+- [x] Working directory.
+- [x] Environment variables.
+- [x] Env file.
+- [x] Program arguments.
+- [x] Build arguments.
+- [x] Build tags.
+- [x] GOOS.
+- [x] GOARCH.
+- [x] Race detector.
+- [x] Coverage.
+- [x] Profiling.
+- [x] Debug flags.
+- [x] Port.
+- [x] Pre-run tasks.
+- [x] Post-run tasks.
 
 ## UX
 

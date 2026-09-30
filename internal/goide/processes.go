@@ -225,6 +225,14 @@ func (m *ProcessManager) List(sessionID SessionID) []Execution {
 	return result
 }
 
+// Execution restituisce lo snapshot più recente dell'esecuzione indicata.
+func (m *ProcessManager) Execution(runID RunID) (Execution, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	execution, ok := m.history[runID]
+	return execution, ok
+}
+
 // HasActiveSession indica se la sessione possiede processi ancora attivi.
 func (m *ProcessManager) HasActiveSession(sessionID SessionID) bool {
 	m.mu.RLock()

@@ -687,6 +687,12 @@ export class DebugRequest {
     "buildTags"?: string[];
     "environment"?: { [_ in string]?: string };
 
+    /**
+     * EnvFile e BuildFlags arrivano dalla configurazione Run attiva.
+     */
+    "envFile"?: string;
+    "buildFlags"?: string[];
+
     /** Creates a new DebugRequest instance. */
     constructor($$source: Partial<DebugRequest> = {}) {
         if (!("sessionId" in $$source)) {
@@ -712,6 +718,7 @@ export class DebugRequest {
         const $$createField7_0 = $$createType13;
         const $$createField8_0 = $$createType13;
         const $$createField9_0 = $$createType14;
+        const $$createField11_0 = $$createType13;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("programArguments" in $$parsedSource) {
             $$parsedSource["programArguments"] = $$createField7_0($$parsedSource["programArguments"]);
@@ -721,6 +728,9 @@ export class DebugRequest {
         }
         if ("environment" in $$parsedSource) {
             $$parsedSource["environment"] = $$createField9_0($$parsedSource["environment"]);
+        }
+        if ("buildFlags" in $$parsedSource) {
+            $$parsedSource["buildFlags"] = $$createField11_0($$parsedSource["buildFlags"]);
         }
         return new DebugRequest($$parsedSource as Partial<DebugRequest>);
     }
@@ -3283,6 +3293,40 @@ export class RunConfiguration {
     "buildTags": string[];
     "environment": EnvironmentEntry[];
     "docker": DockerOptions;
+
+    /**
+     * EnvFile è un file .env relativo alla working directory; le variabili esplicite vincono.
+     */
+    "envFile"?: string;
+    "goos"?: string;
+    "goarch"?: string;
+    "race"?: boolean;
+
+    /**
+     * Coverage aggiunge -cover; per run e build i dati finiscono in .gocoverdata.
+     */
+    "coverage"?: boolean;
+
+    /**
+     * Profile vale solo per i test: cpu, mem, block, mutex o trace.
+     */
+    "profile"?: string;
+
+    /**
+     * DebugFlags sono build flag aggiuntivi per Delve, es. -gcflags=all=-N -l.
+     */
+    "debugFlags"?: string[];
+
+    /**
+     * Port imposta PORT e viene verificata libera prima dell'avvio.
+     */
+    "port"?: number;
+
+    /**
+     * PreRun e PostRun sono ID di altre configurazioni della sessione, eseguite in ordine.
+     */
+    "preRun"?: string[];
+    "postRun"?: string[];
     "order": number;
     "createdAt": string;
     "updatedAt": string;
@@ -3345,6 +3389,9 @@ export class RunConfiguration {
         const $$createField10_0 = $$createType13;
         const $$createField11_0 = $$createType22;
         const $$createField12_0 = $$createType58;
+        const $$createField19_0 = $$createType13;
+        const $$createField21_0 = $$createType13;
+        const $$createField22_0 = $$createType13;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("files" in $$parsedSource) {
             $$parsedSource["files"] = $$createField5_0($$parsedSource["files"]);
@@ -3363,6 +3410,15 @@ export class RunConfiguration {
         }
         if ("docker" in $$parsedSource) {
             $$parsedSource["docker"] = $$createField12_0($$parsedSource["docker"]);
+        }
+        if ("debugFlags" in $$parsedSource) {
+            $$parsedSource["debugFlags"] = $$createField19_0($$parsedSource["debugFlags"]);
+        }
+        if ("preRun" in $$parsedSource) {
+            $$parsedSource["preRun"] = $$createField21_0($$parsedSource["preRun"]);
+        }
+        if ("postRun" in $$parsedSource) {
+            $$parsedSource["postRun"] = $$createField22_0($$parsedSource["postRun"]);
         }
         return new RunConfiguration($$parsedSource as Partial<RunConfiguration>);
     }
