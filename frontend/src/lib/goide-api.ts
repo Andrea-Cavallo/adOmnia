@@ -340,6 +340,10 @@ export async function closeGoIDETerminal(terminalId: string): Promise<void> {
   await GoIDEBindings.CloseTerminal(terminalId)
 }
 
+export async function renameGoIDETerminal(terminalId: string, name: string): Promise<GoIDETerminalSession> {
+  return GoIDEBindings.RenameTerminal(terminalId, name)
+}
+
 export async function listGoIDETerminals(sessionId: string): Promise<GoIDETerminalSession[]> {
   return GoIDEBindings.ListTerminals(sessionId)
 }

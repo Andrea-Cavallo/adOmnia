@@ -1015,6 +1015,11 @@ func (g *GoIDE) ResizeTerminal(terminalID string, columns, rows int) error {
 	return g.service.ResizeTerminal(terminalID, columns, rows)
 }
 
+// RenameTerminal cambia il nome mostrato nel tab del terminale.
+func (g *GoIDE) RenameTerminal(terminalID, name string) (goide.TerminalSession, error) {
+	return g.service.RenameTerminal(terminalID, name)
+}
+
 // CloseTerminal termina shell e albero di processi del terminale.
 func (g *GoIDE) CloseTerminal(terminalID string) error {
 	return g.service.CloseTerminal(terminalID)

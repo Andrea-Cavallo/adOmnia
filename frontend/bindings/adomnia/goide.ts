@@ -915,6 +915,15 @@ export function RenameStudioWorkspace(id: string, name: string): $CancellablePro
 }
 
 /**
+ * RenameTerminal cambia il nome mostrato nel tab del terminale.
+ */
+export function RenameTerminal(terminalID: string, name: string): $CancellablePromise<goide$0.TerminalSession> {
+    return $Call.ByID(3169343836, terminalID, name).then(($result: any) => {
+        return $$createType67($result);
+    });
+}
+
+/**
  * ReorderRunConfigurations applica l'ordine scelto dall'utente.
  */
 export function ReorderRunConfigurations(sessionID: string, configIDs: string[]): $CancellablePromise<goide$0.RunConfiguration[]> {

@@ -209,6 +209,22 @@ func (m *TerminalManager) Write(id TerminalID, data string) error {
 	return nil
 }
 
+// Rename cambia il nome mostrato nel tab; il nome resta anche passando da un progetto all'altro.
+func (m *TerminalManager) Rename(id TerminalID, name string) (TerminalSession, error) {
+	managed, err := m.lookup(id)
+	if err != nil {
+		return TerminalSession{}, err
+	}
+	name = strings.TrimSpace(name)
+	if name == "" || len([]rune(name)) > 64 {
+		return TerminalSession{}, fmt.Errorf("il nome del terminale deve avere da 1 a 64 caratteri")
+	}
+	managed.sessionMu.Lock()
+	managed.session.Name = name
+	managed.sessionMu.Unlock()
+	return managed.snapshot(), nil
+}
+
 // Resize adatta il PTY alle dimensioni correnti del pannello xterm.
 func (m *TerminalManager) Resize(id TerminalID, columns, rows int) error {
 	managed, err := m.lookup(id)

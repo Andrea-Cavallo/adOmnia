@@ -100,6 +100,11 @@ func (s *Service) ResizeTerminal(terminalID string, columns, rows int) error {
 	return s.terminal.Resize(TerminalID(terminalID), columns, rows)
 }
 
+// RenameTerminal cambia il nome mostrato nel tab del terminale.
+func (s *Service) RenameTerminal(terminalID, name string) (TerminalSession, error) {
+	return s.terminal.Rename(TerminalID(terminalID), name)
+}
+
 // CloseTerminal termina shell e albero di processi del terminale indicato.
 func (s *Service) CloseTerminal(terminalID string) error {
 	return s.terminal.Close(TerminalID(terminalID))

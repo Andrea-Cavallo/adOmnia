@@ -891,23 +891,23 @@
 
 # 23. Terminale
 
-- [ ] Integrated terminal.
-- [ ] Multiple terminals.
-- [ ] Rename terminal.
-- [ ] Split terminal.
-- [ ] Shell detection.
-- [ ] PowerShell.
-- [ ] CMD.
-- [ ] Bash.
-- [ ] Zsh.
-- [ ] WSL.
-- [ ] Environment per project.
-- [ ] Clickable file paths.
-- [ ] Clickable stack traces.
-- [ ] Detect Go commands.
-- [ ] Command history.
-- [ ] Copy clean output.
-- [ ] Search terminal.
+- [x] Integrated terminal. — *PTY/ConPTY reale in `internal/goide/terminal.go`, xterm in `GoStudioTerminalView.tsx`.*
+- [x] Multiple terminals. — *tab indipendenti per sessione (`GoStudioTerminalPanel.tsx`), isolati fra progetti.*
+- [x] Rename terminal. — *doppio click sul tab; `RenameTerminal` nel backend, il nome sopravvive al cambio di progetto (`TestTerminalRenameIsKeptInList`).*
+- [x] Split terminal. — *pulsante Split: due terminali affiancati, il tab del lato destro scambia i lati; ricerca/copia agiscono sul lato a fuoco.*
+- [x] Shell detection. — *`terminal_profiles_windows.go` / `_unix.go`, menu ▾ accanto al +; la shell scelta diventa quella predefinita.*
+- [x] PowerShell. — *`pwsh` e Windows PowerShell rilevati.*
+- [x] CMD. — *`%COMSPEC%`.*
+- [x] Bash. — *Git Bash su Windows, `bash` su Linux/macOS.*
+- [x] Zsh. — *rilevata su Linux/macOS (anche `$SHELL`), insieme a fish e sh.*
+- [x] WSL. — *una voce per distro da `wsl -l -q` (esclude `docker-desktop*`).*
+- [x] Environment per project. — *la shell riceve l'ambiente della toolchain del progetto (SDK Go per primo nel PATH e variabili di Go Toolchain), `terminalEnvironment`.*
+- [x] Clickable file paths. — *Ctrl+click su `file.go:riga[:col]` apre il file nel progetto o in GOROOT/module cache (`goStudioTerminalLinks.ts`, test).*
+- [x] Clickable stack traces. — *i frame `/percorso/file.go:12 +0x1d` dei panic e dei test sono link, anche con percorsi Windows.*
+- [x] Detect Go commands. — *`go test …` digitato nel terminale propone "Run in Test Explorer" con package, `-run`, `-bench`, `-race`, `-cover`, `-tags`; pipe e flag sconosciuti non vengono tradotti.*
+- [x] Command history. — *cronologia per progetto (50 voci, locale) dal pulsante History; il comando si inserisce senza Invio; i comandi con token/password non vengono salvati.*
+- [x] Copy clean output. — *Copy output: testo del buffer senza ANSI, con le righe spezzate dal wrap ricomposte.*
+- [x] Search terminal. — *Ctrl+F o pulsante Find: `@xterm/addon-search`, Invio/Shift+Invio per successivo/precedente.*
 
 ---
 

@@ -297,3 +297,24 @@ func TestTerminalStreamsLargeMultibyteOutputIntact(t *testing.T) {
 		t.Fatalf("output perso: %d ripetizioni su %d", count, repeat)
 	}
 }
+
+func TestTerminalRenameIsKeptInList(t *testing.T) {
+	manager := NewTerminalManager()
+	manager.SetEventSink(func(string, TerminalSession, any) {})
+	t.Cleanup(manager.Shutdown)
+
+	opened, err := manager.Open(TerminalRequest{SessionID: "session-a", WorkingDirectory: t.TempDir()}, os.Environ())
+	if err != nil {
+		t.Skipf("PTY non disponibile in questo ambiente: %v", err)
+	}
+	if _, err := manager.Rename(opened.ID, "   "); err == nil {
+		t.Fatal("un nome vuoto va rifiutato")
+	}
+	renamed, err := manager.Rename(opened.ID, "  server  ")
+	if err != nil || renamed.Name != "server" {
+		t.Fatalf("rename: %+v %v", renamed, err)
+	}
+	if list := manager.List("session-a"); len(list) != 1 || list[0].Name != "server" {
+		t.Fatalf("il nome deve sopravvivere alla rilettura della lista: %+v", list)
+	}
+}
