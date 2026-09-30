@@ -1,0 +1,19 @@
+package api
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+)
+
+func TestHello(t *testing.T) {
+	recorder := httptest.NewRecorder()
+	NewRouter().ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/hello/gopher", nil))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status %d", recorder.Code)
+	}
+	if !strings.Contains(recorder.Body.String(), "Hello, gopher!") {
+		t.Fatalf("unexpected body %s", recorder.Body.String())
+	}
+}

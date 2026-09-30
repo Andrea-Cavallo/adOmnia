@@ -283,9 +283,14 @@ func (g *GoIDE) OpenProject(path string) (goide.Session, error) {
 	return g.service.OpenProject(path)
 }
 
-// CreateProject crea un modulo Go soltanto dopo la conferma esplicita inclusa nella richiesta.
-func (g *GoIDE) CreateProject(request goide.CreateProjectRequest) (goide.Session, error) {
+// CreateProject crea un modulo Go (opzionalmente da template) soltanto dopo la conferma esplicita inclusa nella richiesta.
+func (g *GoIDE) CreateProject(request goide.CreateProjectRequest) (goide.CreateProjectResult, error) {
 	return g.service.CreateProject(request)
+}
+
+// ListProjectTemplates restituisce i template di progetto integrati e quelli dell'utente.
+func (g *GoIDE) ListProjectTemplates() (goide.ProjectTemplateList, error) {
+	return g.service.ListProjectTemplates()
 }
 
 // ListSessions restituisce le sessioni Go Studio correnti e ripristinate.

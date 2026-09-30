@@ -1,0 +1,26 @@
+// Command __NAME__ is a command-line tool.
+package main
+
+import (
+	"flag"
+	"fmt"
+	"io"
+	"os"
+)
+
+func main() {
+	name := flag.String("name", "world", "who to greet")
+	flag.Parse()
+	if err := run(os.Stdout, *name); err != nil {
+		fmt.Fprintln(os.Stderr, "error:", err)
+		os.Exit(1)
+	}
+}
+
+func run(out io.Writer, name string) error {
+	if name == "" {
+		return fmt.Errorf("name must not be empty")
+	}
+	_, err := fmt.Fprintf(out, "Hello, %s!\n", name)
+	return err
+}

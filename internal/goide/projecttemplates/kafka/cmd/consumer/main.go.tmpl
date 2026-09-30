@@ -1,0 +1,55 @@
+// Command consumer reads messages from a Kafka topic with a consumer group.
+package main
+
+import (
+	"context"
+	"errors"
+	"log/slog"
+	"os"
+	"os/signal"
+	"strings"
+	"syscall"
+
+	"github.com/IBM/sarama"
+)
+
+type handler struct{}
+
+func (handler) Setup(sarama.ConsumerGroupSession) error   { return nil }
+func (handler) Cleanup(sarama.ConsumerGroupSession) error { return nil }
+
+func (handler) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
+	for message := range claim.Messages() {
+		slog.Info("received", "topic", message.Topic, "partition", message.Partition, "offset", message.Offset, "value", string(message.Value))
+		session.MarkMessage(message, "")
+	}
+	return nil
+}
+
+func main() {
+	brokers := os.Getenv("KAFKA_BROKERS")
+	if brokers == "" {
+		brokers = "localhost:9092"
+	}
+	topic := os.Getenv("KAFKA_TOPIC")
+	if topic == "" {
+		topic = "__NAME__"
+	}
+	cfg := sarama.NewConfig()
+	cfg.Consumer.Offsets.Initial = sarama.OffsetOldest
+	group, err := sarama.NewConsumerGroup(strings.Split(brokers, ","), "__NAME__-consumer", cfg)
+	if err != nil {
+		slog.Error("consumer group failed", "err", err)
+		os.Exit(1)
+	}
+	defer group.Close()
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	for ctx.Err() == nil {
+		if err := group.Consume(ctx, []string{topic}, handler{}); err != nil && !errors.Is(err, sarama.ErrClosedConsumerGroup) {
+			slog.Error("consume failed", "err", err)
+			return
+		}
+	}
+}

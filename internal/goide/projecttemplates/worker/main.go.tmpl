@@ -1,0 +1,45 @@
+// Command __NAME__ is a background worker.
+package main
+
+import (
+	"context"
+	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+)
+
+func main() {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	interval := 5 * time.Second
+	if value, err := time.ParseDuration(os.Getenv("INTERVAL")); err == nil && value > 0 {
+		interval = value
+	}
+	slog.Info("worker started", "interval", interval)
+	run(ctx, interval, process)
+	slog.Info("worker stopped")
+}
+
+// run calls job every interval until ctx is cancelled.
+func run(ctx context.Context, interval time.Duration, job func(context.Context) error) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if err := job(ctx); err != nil {
+				slog.Error("job failed", "err", err)
+			}
+		}
+	}
+}
+
+func process(ctx context.Context) error {
+	slog.Info("tick")
+	return nil
+}

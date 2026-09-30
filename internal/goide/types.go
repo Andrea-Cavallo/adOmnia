@@ -266,7 +266,9 @@ type CreateProjectRequest struct {
 	ParentPath string `json:"parentPath"`
 	Name       string `json:"name"`
 	ModulePath string `json:"modulePath"`
-	Confirmed  bool   `json:"confirmed"`
+	// Template è l'ID di un ProjectTemplate; vuoto equivale al modulo vuoto.
+	Template  string `json:"template,omitempty"`
+	Confirmed bool   `json:"confirmed"`
 }
 
 type EventEnvelope struct {

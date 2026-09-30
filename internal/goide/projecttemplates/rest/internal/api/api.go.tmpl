@@ -1,0 +1,25 @@
+// Package api contains the HTTP handlers of __NAME__.
+package api
+
+import (
+	"encoding/json"
+	"net/http"
+)
+
+// NewRouter returns the HTTP routes of the service.
+func NewRouter() http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	})
+	mux.HandleFunc("GET /hello/{name}", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]string{"message": "Hello, " + r.PathValue("name") + "!"})
+	})
+	return mux
+}
+
+func writeJSON(w http.ResponseWriter, status int, body any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(body)
+}

@@ -7,6 +7,8 @@ import type {
   GoToolPreview,
   Capabilities,
   CreateProjectRequest,
+  CreateProjectResult,
+  ProjectTemplateList,
   DocumentDiskState,
   Execution,
   DependencyActionRequest,
@@ -101,8 +103,14 @@ export async function chooseGoIDEProjectParent(): Promise<string> {
   return GoIDEBindings.SelectProjectParent()
 }
 
-export async function createGoIDEProject(request: CreateProjectRequest): Promise<GoIDESession> {
+export type GoIDEProjectTemplateList = ProjectTemplateList
+
+export async function createGoIDEProject(request: CreateProjectRequest): Promise<CreateProjectResult> {
   return GoIDEBindings.CreateProject(request)
+}
+
+export async function listGoIDEProjectTemplates(): Promise<ProjectTemplateList> {
+  return GoIDEBindings.ListProjectTemplates()
 }
 
 export async function setGoIDEToolAuthorization(sessionId: string, allowed: boolean): Promise<GoIDESession> {

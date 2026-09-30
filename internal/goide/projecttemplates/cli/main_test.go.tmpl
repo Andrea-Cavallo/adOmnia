@@ -1,0 +1,19 @@
+package main
+
+import (
+	"bytes"
+	"testing"
+)
+
+func TestRun(t *testing.T) {
+	var out bytes.Buffer
+	if err := run(&out, "gopher"); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := out.String(), "Hello, gopher!\n"; got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+	if err := run(&out, ""); err == nil {
+		t.Fatal("expected an error for an empty name")
+	}
+}

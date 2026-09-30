@@ -1,0 +1,17 @@
+package __PACKAGE__
+
+import (
+	"fmt"
+	"testing"
+)
+
+func TestGreet(t *testing.T) {
+	if got := Greet("gopher"); got != "Hello, gopher!" {
+		t.Fatalf("got %q", got)
+	}
+}
+
+func ExampleGreet() {
+	fmt.Println(Greet("gopher"))
+	// Output: Hello, gopher!
+}

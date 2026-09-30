@@ -1,0 +1,38 @@
+// Command producer sends a message to a Kafka topic.
+package main
+
+import (
+	"log/slog"
+	"os"
+	"strings"
+	"time"
+
+	"github.com/IBM/sarama"
+)
+
+func main() {
+	brokers := os.Getenv("KAFKA_BROKERS")
+	if brokers == "" {
+		brokers = "localhost:9092"
+	}
+	topic := os.Getenv("KAFKA_TOPIC")
+	if topic == "" {
+		topic = "__NAME__"
+	}
+	cfg := sarama.NewConfig()
+	cfg.Producer.Return.Successes = true
+	producer, err := sarama.NewSyncProducer(strings.Split(brokers, ","), cfg)
+	if err != nil {
+		slog.Error("producer failed", "err", err)
+		os.Exit(1)
+	}
+	defer producer.Close()
+
+	message := &sarama.ProducerMessage{Topic: topic, Value: sarama.StringEncoder("hello at " + time.Now().Format(time.RFC3339))}
+	partition, offset, err := producer.SendMessage(message)
+	if err != nil {
+		slog.Error("send failed", "err", err)
+		os.Exit(1)
+	}
+	slog.Info("sent", "topic", topic, "partition", partition, "offset", offset)
+}

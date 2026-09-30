@@ -143,35 +143,42 @@ func (s *Service) OpenProject(path string) (Session, error) {
 	return session, nil
 }
 
-// CreateProject crea una cartella e inizializza il modulo soltanto dopo conferma esplicita.
-func (s *Service) CreateProject(request CreateProjectRequest) (Session, error) {
+// CreateProject crea una cartella, inizializza il modulo e applica il template scelto
+// soltanto dopo conferma esplicita. Se un passo fallisce la cartella appena creata viene rimossa.
+func (s *Service) CreateProject(request CreateProjectRequest) (CreateProjectResult, error) {
 	if !request.Confirmed {
-		return Session{}, fmt.Errorf("conferma esplicita richiesta prima di eseguire go mod init")
+		return CreateProjectResult{}, fmt.Errorf("conferma esplicita richiesta prima di eseguire go mod init")
 	}
 	modulePath := strings.TrimSpace(request.ModulePath)
 	if !modulePathPattern.MatchString(modulePath) || strings.Contains(modulePath, "//") {
-		return Session{}, fmt.Errorf("module path non valido")
+		return CreateProjectResult{}, fmt.Errorf("module path non valido")
+	}
+	if _, _, err := resolveProjectTemplate(request.Template); err != nil {
+		return CreateProjectResult{}, err
 	}
 	target, err := s.workspace.CreateProjectDirectory(request.ParentPath, request.Name)
 	if err != nil {
-		return Session{}, err
+		return CreateProjectResult{}, err
 	}
 	binary, err := exec.LookPath("go")
 	if err != nil {
 		_ = os.Remove(target)
-		return Session{}, errors.New("go non trovato: installalo o configura il PATH prima di creare un modulo")
+		return CreateProjectResult{}, errors.New("go non trovato: installalo o configura il PATH prima di creare un modulo")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
-	command := exec.CommandContext(ctx, binary, "mod", "init", modulePath)
-	command.Dir = target
-	configureProcess(command, false)
-	output, runErr := command.CombinedOutput()
-	if runErr != nil {
-		_ = os.Remove(target)
-		return Session{}, fmt.Errorf("go mod init fallito: %s", strings.TrimSpace(string(output)))
+	if err := runGoCommand(binary, target, 20*time.Second, "mod", "init", modulePath); err != nil {
+		_ = os.RemoveAll(target)
+		return CreateProjectResult{}, fmt.Errorf("go mod init fallito: %w", err)
 	}
-	return s.OpenProject(target)
+	warning, err := applyProjectTemplate(binary, target, modulePath, strings.TrimSpace(request.Name), request.Template)
+	if err != nil {
+		_ = os.RemoveAll(target)
+		return CreateProjectResult{}, err
+	}
+	session, err := s.OpenProject(target)
+	if err != nil {
+		return CreateProjectResult{}, err
+	}
+	return CreateProjectResult{Session: session, Warning: warning}, nil
 }
 
 // ListSessions restituisce le sessioni ripristinate e attualmente aperte.

@@ -1,0 +1,28 @@
+package main
+
+import (
+	"context"
+	"sync/atomic"
+	"testing"
+	"time"
+)
+
+func TestRunStopsOnCancel(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	var calls atomic.Int32
+	done := make(chan struct{})
+	go func() {
+		run(ctx, time.Millisecond, func(context.Context) error {
+			if calls.Add(1) == 3 {
+				cancel()
+			}
+			return nil
+		})
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("worker did not stop after cancel")
+	}
+}

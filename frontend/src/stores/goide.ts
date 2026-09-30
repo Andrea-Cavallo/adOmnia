@@ -182,7 +182,7 @@ export interface GoIDEState {
   pathConflicts: Record<string, string[]>
   initialize: () => Promise<void>
   openProject: (path?: string) => Promise<void>
-  createProject: (parentPath: string, name: string, modulePath: string) => Promise<boolean>
+  createProject: (parentPath: string, name: string, modulePath: string, template?: string) => Promise<boolean>
   removeRecentProject: (path: string) => Promise<void>
   selectSession: (sessionId: string) => Promise<void>
   setToolAuthorization: (allowed: boolean) => Promise<void>
@@ -388,13 +388,14 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
     }
   },
 
-  createProject: async (parentPath, name, modulePath) => {
+  createProject: async (parentPath, name, modulePath, template) => {
     set({ loading: true, error: null })
     try {
-      const session = await createGoIDEProject({ parentPath, name, modulePath, confirmed: true })
+      const { session, warning } = await createGoIDEProject({ parentPath, name, modulePath, template, confirmed: true })
       const recentProjects = await listRecentGoIDEProjects()
       set((state) => ({ sessions: replaceSession(state.sessions, session), recentProjects, activeSessionId: session.id, loading: false }))
       await get().selectSession(session.id)
+      if (warning) set({ error: warning })
       return true
     } catch (error) {
       set({ loading: false, error: errorMessage(error) })

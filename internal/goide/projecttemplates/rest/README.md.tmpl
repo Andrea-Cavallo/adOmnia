@@ -1,0 +1,10 @@
+# __NAME__
+
+REST service (`__MODULE__`) built on `net/http` only.
+
+```sh
+go run ./cmd/server          # listens on :8080 (override with ADDR)
+curl localhost:8080/health
+curl localhost:8080/hello/gopher
+go test ./...
+```

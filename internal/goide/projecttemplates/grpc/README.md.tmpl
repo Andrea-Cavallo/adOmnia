@@ -1,0 +1,18 @@
+# __NAME__
+
+gRPC service (`__MODULE__`) with health checking and server reflection.
+
+```sh
+go run ./cmd/server          # listens on :50051 (override with ADDR)
+grpcurl -plaintext localhost:50051 list
+```
+
+Generate code from `proto/` (needs `protoc`, `protoc-gen-go`, `protoc-gen-go-grpc`):
+
+```sh
+protoc --go_out=. --go_opt=module=__MODULE__ \
+       --go-grpc_out=. --go-grpc_opt=module=__MODULE__ \
+       proto/greeter/v1/greeter.proto
+```
+
+then register the generated service in `cmd/server/main.go`.
