@@ -30,7 +30,7 @@ describe('Terminal Green skin and hub', () => {
   })
 
   it('renders the Hub mascot from the per-skin a0 key art', () => {
-    expect(mascotSource).toContain("import heroDark from './assets/hub/hero-dark.webp'")
+    expect(mascotSource).toContain("import heroDark from './assets/hub/hero-dark-stickers.webp'")
     expect(mascotSource).toContain('data-hub-mascot-scene')
     expect(mascotSource).not.toContain('a0-companion-sprites.png')
   })
