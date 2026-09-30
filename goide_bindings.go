@@ -523,6 +523,31 @@ func (g *GoIDE) CreateFiles(sessionID string, files []goide.NewFile) error {
 	return g.service.CreateFiles(sessionID, files)
 }
 
+// CreateDirectory crea una cartella nel progetto.
+func (g *GoIDE) CreateDirectory(sessionID, relativePath string) error {
+	return g.service.CreateDirectory(sessionID, relativePath)
+}
+
+// MovePath rinomina o sposta un file o una cartella del progetto, senza sovrascrivere.
+func (g *GoIDE) MovePath(sessionID, from, to string) error {
+	return g.service.MovePath(sessionID, from, to)
+}
+
+// DuplicatePath copia un file o una cartella del progetto in un nuovo percorso.
+func (g *GoIDE) DuplicatePath(sessionID, from, to string) error {
+	return g.service.DuplicatePath(sessionID, from, to)
+}
+
+// RevealPath mostra un elemento del progetto nel file manager del sistema.
+func (g *GoIDE) RevealPath(sessionID, relativePath string) error {
+	return g.service.RevealPath(sessionID, relativePath)
+}
+
+// DeletePath elimina un file o una cartella del progetto dopo la conferma nella UI.
+func (g *GoIDE) DeletePath(sessionID, relativePath string) error {
+	return g.service.DeletePath(sessionID, relativePath)
+}
+
 // ImplementationMarkers restituisce i marcatori del gutter per implementazioni e interfacce implementate.
 func (g *GoIDE) ImplementationMarkers(ctx context.Context, sessionID, documentID string) ([]goide.ImplementationMarker, error) {
 	markers, err := g.service.ImplementationMarkers(ctx, sessionID, documentID)

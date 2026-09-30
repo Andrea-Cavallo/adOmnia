@@ -361,3 +361,25 @@ export async function detectGoIDEMake(sessionId: string) {
 export async function configureGoIDEMake(sessionId: string, binary: string): Promise<void> {
   return GoIDEBindings.ConfigureMake(sessionId, binary)
 }
+
+// --- Operazioni sui file del Project tree ---------------------------------------
+
+export async function createGoIDEDirectory(sessionId: string, relativePath: string): Promise<void> {
+  return GoIDEBindings.CreateDirectory(sessionId, relativePath)
+}
+
+export async function moveGoIDEPath(sessionId: string, from: string, to: string): Promise<void> {
+  return GoIDEBindings.MovePath(sessionId, from, to)
+}
+
+export async function duplicateGoIDEPath(sessionId: string, from: string, to: string): Promise<void> {
+  return GoIDEBindings.DuplicatePath(sessionId, from, to)
+}
+
+export async function deleteGoIDEPath(sessionId: string, relativePath: string): Promise<void> {
+  return GoIDEBindings.DeletePath(sessionId, relativePath)
+}
+
+export async function revealGoIDEPath(sessionId: string, relativePath: string): Promise<void> {
+  return GoIDEBindings.RevealPath(sessionId, relativePath)
+}

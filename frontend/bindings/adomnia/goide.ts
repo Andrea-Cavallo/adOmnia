@@ -141,6 +141,13 @@ export function ConfirmSessionWindowClose(windowID: string): $CancellablePromise
 }
 
 /**
+ * CreateDirectory crea una cartella nel progetto.
+ */
+export function CreateDirectory(sessionID: string, relativePath: string): $CancellablePromise<void> {
+    return $Call.ByID(1554719629, sessionID, relativePath);
+}
+
+/**
  * CreateFiles crea file nuovi nel progetto, tutti o nessuno.
  */
 export function CreateFiles(sessionID: string, files: goide$0.NewFile[]): $CancellablePromise<void> {
@@ -234,6 +241,13 @@ export function DebugVariables(debugID: string, reference: number): $Cancellable
 }
 
 /**
+ * DeletePath elimina un file o una cartella del progetto dopo la conferma nella UI.
+ */
+export function DeletePath(sessionID: string, relativePath: string): $CancellablePromise<void> {
+    return $Call.ByID(3684770734, sessionID, relativePath);
+}
+
+/**
  * DeleteRunConfiguration elimina una configurazione salvata.
  */
 export function DeleteRunConfiguration(sessionID: string, configID: string): $CancellablePromise<void> {
@@ -310,6 +324,13 @@ export function DocumentSymbols(sessionID: string, documentID: string): $Cancell
     return $Call.ByID(2127272604, sessionID, documentID).then(($result: any) => {
         return $$createType23($result);
     });
+}
+
+/**
+ * DuplicatePath copia un file o una cartella del progetto in un nuovo percorso.
+ */
+export function DuplicatePath(sessionID: string, $from: string, to: string): $CancellablePromise<void> {
+    return $Call.ByID(1717599684, sessionID, $from, to);
 }
 
 /**
@@ -697,6 +718,13 @@ export function Locations(sessionID: string, documentID: string, kind: string, l
 }
 
 /**
+ * MovePath rinomina o sposta un file o una cartella del progetto, senza sovrascrivere.
+ */
+export function MovePath(sessionID: string, $from: string, to: string): $CancellablePromise<void> {
+    return $Call.ByID(1453875656, sessionID, $from, to);
+}
+
+/**
  * OpenDocument apre un documento testuale confinato al progetto.
  */
 export function OpenDocument(sessionID: string, relativePath: string): $CancellablePromise<goide$0.OpenDocument> {
@@ -911,6 +939,13 @@ export function RestartRun(runID: string): $CancellablePromise<goide$0.Execution
     return $Call.ByID(41995706, runID).then(($result: any) => {
         return $$createType41($result);
     });
+}
+
+/**
+ * RevealPath mostra un elemento del progetto nel file manager del sistema.
+ */
+export function RevealPath(sessionID: string, relativePath: string): $CancellablePromise<void> {
+    return $Call.ByID(354632432, sessionID, relativePath);
 }
 
 /**

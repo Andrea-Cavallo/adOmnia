@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, memo } from 'react'
-import { ChevronDown, ChevronRight, Copy, Eye, EyeOff, FileCode2, Folder, FolderOpen, KeyRound, Loader2, Minus, Send } from 'lucide-react'
+import { ChevronDown, ChevronRight, Copy, CopyPlus, Eye, EyeOff, FileCode2, FilePlus, Folder, FolderOpen, FolderPlus, FolderSearch, KeyRound, Loader2, Minus, Pencil, Send, Trash2 } from 'lucide-react'
 import { useGoIDEStore } from '@/stores/goide'
 import { useGoIDELspStore } from '@/stores/goideLsp'
 import { BrandIcon, GoStudioFileIcon } from './GoStudioFileIcon'
@@ -10,8 +10,13 @@ import { buildTreeMarks, type GoStudioTreeMark } from './goStudioTreeMarks'
 import { useGoIDEVCSStore } from '@/stores/goideVcs'
 import { useGoIDETestsStore } from '@/stores/goideTests'
 import { isApiCollectionCandidate, isPemCandidate, openPemInPowerTools, sendFileToApiWorkspace } from './goStudioFileHandoffs'
+import { absolutePath, deletePathWithConfirm, parentOf, revealPath } from './goStudioFileActions'
+import { GoStudioPathDialog, type GoStudioPathRequest } from './GoStudioPathDialog'
 
-type TreeContextHandler = (entry: GoIDEFileEntry, x: number, y: number) => void
+/** entry null = radice del progetto. */
+type TreeContextHandler = (entry: GoIDEFileEntry | null, x: number, y: number) => void
+/** Scorciatoie sulla riga a fuoco: F2/Shift+F6 rinomina, Canc elimina. */
+type TreeKeyHandler = (entry: GoIDEFileEntry, key: 'rename' | 'delete') => void
 type TreeMarks = Map<string, GoStudioTreeMark>
 
 const EMPTY_MARKS: TreeMarks = new Map()
@@ -63,7 +68,7 @@ function FolderIcon({ name, open }: { name: string; open: boolean }) {
 }
 
 /** Memoizzato: aprire o aggiornare una cartella non ridisegna le sorelle (progetti con centinaia di cartelle). */
-const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, activePath, onContext, marks }: { sessionId: string; entry: GoIDEFileEntry; depth: number; activePath: string | null; onContext: TreeContextHandler; marks: TreeMarks }) {
+const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, activePath, onContext, onKey, marks }: { sessionId: string; entry: GoIDEFileEntry; depth: number; activePath: string | null; onContext: TreeContextHandler; onKey: TreeKeyHandler; marks: TreeMarks }) {
   const mark = marks.get(entry.relativePath)
   const selected = !entry.directory && entry.relativePath === activePath
   const [open, setOpen] = useState(false)
@@ -83,7 +88,11 @@ const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, act
         type="button"
         onClick={entry.directory ? () => setOpen((value) => !value) : () => void openDocument(entry.relativePath, { preview: useGoIDELspStore.getState().preferences.previewTab })}
         onDoubleClick={entry.directory ? undefined : () => void openDocument(entry.relativePath)}
-        onContextMenu={entry.directory ? undefined : (event) => { event.preventDefault(); onContext(entry, event.clientX, event.clientY) }}
+        onContextMenu={(event) => { event.preventDefault(); event.stopPropagation(); onContext(entry, event.clientX, event.clientY) }}
+        onKeyDown={(event) => {
+          if (event.key === 'F2' || (event.key === 'F6' && event.shiftKey)) { event.preventDefault(); onKey(entry, 'rename') }
+          if (event.key === 'Delete') { event.preventDefault(); onKey(entry, 'delete') }
+        }}
         aria-current={selected ? 'true' : undefined}
         className={`flex h-[26px] w-full items-center gap-1.5 overflow-hidden rounded-[7px] pr-2 text-left text-[12.5px] ${selected ? 'go-studio-tree-row-selected' : `hover:bg-surface-3 hover:text-text-1 ${entry.ignored ? 'text-text-4' : 'text-text-2'}`}`}
         style={{ paddingLeft: ROW_BASE_PX + (depth - 1) * ROW_INDENT_PX }}
@@ -99,7 +108,7 @@ const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, act
         {mark?.testFailed && <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-danger" aria-label="failed tests" />}
       </button>
       {entry.directory && open && entries?.map((child) => (
-        <DirectoryNode key={child.relativePath} sessionId={sessionId} entry={child} depth={depth + 1} activePath={activePath} onContext={onContext} marks={marks} />
+        <DirectoryNode key={child.relativePath} sessionId={sessionId} entry={child} depth={depth + 1} activePath={activePath} onContext={onContext} onKey={onKey} marks={marks} />
       ))}
     </>
   )
@@ -118,22 +127,54 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
   const openDocument = useGoIDEStore((state) => state.openDocument)
   const updateLayout = useGoIDEStore((state) => state.updateLayout)
   const marks = useTreeMarks(session.id)
-  const [menu, setMenu] = useState<{ entry: GoIDEFileEntry; x: number; y: number } | null>(null)
+  const [menu, setMenu] = useState<{ entry: GoIDEFileEntry | null; x: number; y: number } | null>(null)
+  const [pathRequest, setPathRequest] = useState<GoStudioPathRequest | null>(null)
   const onContext = useCallback<TreeContextHandler>((entry, x, y) => setMenu({ entry, x, y }), [])
-  const menuItems = (entry: GoIDEFileEntry): ContextMenuItem[] => [
-    { id: 'open', label: 'Open', icon: FileCode2 },
-    ...(isApiCollectionCandidate(entry.relativePath) ? [{ id: 'sendToApi', label: 'Send to API Workspace', icon: Send, separatorBefore: true }] : []),
-    ...(isPemCandidate(entry.relativePath) ? [{ id: 'pemTools', label: 'Open in Power Tools: Inspect / Encrypt Key', icon: KeyRound, separatorBefore: true }] : []),
-    { id: 'copyPath', label: 'Copy Relative Path', icon: Copy, separatorBefore: true },
-  ]
+  const onKey = useCallback<TreeKeyHandler>((entry, key) => {
+    if (key === 'rename') setPathRequest({ action: 'rename', target: entry.relativePath })
+    else void deletePathWithConfirm(session.id, entry.relativePath, entry.directory)
+  }, [session.id])
+  const menuItems = (entry: GoIDEFileEntry | null): ContextMenuItem[] => {
+    const newItems: ContextMenuItem[] = [
+      { id: 'newGoFile', label: 'Go File…', icon: FileCode2 },
+      { id: 'newFile', label: 'File…', icon: FilePlus },
+      { id: 'newFolder', label: 'Folder…', icon: FolderPlus },
+    ]
+    const copyItems: ContextMenuItem[] = [
+      { id: 'copyPath', label: 'Copy Path', icon: Copy, separatorBefore: true },
+      ...(entry ? [{ id: 'copyRelativePath', label: 'Copy Relative Path', icon: Copy }] : []),
+      { id: 'reveal', label: 'Reveal in File Explorer', icon: FolderSearch },
+    ]
+    if (!entry) return [{ id: 'new', label: 'New', icon: FilePlus, submenu: newItems }, ...copyItems]
+    return [
+      ...(entry.directory ? [] : [{ id: 'open', label: 'Open', icon: FileCode2 }]),
+      { id: 'new', label: 'New', icon: FilePlus, submenu: newItems },
+      { id: 'rename', label: 'Rename…', icon: Pencil, shortcut: 'Shift+F6', separatorBefore: true },
+      { id: 'duplicate', label: 'Duplicate…', icon: CopyPlus },
+      { id: 'delete', label: 'Delete…', icon: Trash2, shortcut: 'Delete', danger: true },
+      ...copyItems,
+      ...(!entry.directory && isApiCollectionCandidate(entry.relativePath) ? [{ id: 'sendToApi', label: 'Send to API Workspace', icon: Send, separatorBefore: true }] : []),
+      ...(!entry.directory && isPemCandidate(entry.relativePath) ? [{ id: 'pemTools', label: 'Open in Power Tools: Inspect / Encrypt Key', icon: KeyRound, separatorBefore: true }] : []),
+    ]
+  }
   const selectMenuItem = (id: string) => {
-    const entry = menu?.entry
+    if (!menu) return
+    const { entry } = menu
     setMenu(null)
-    if (!entry) return
-    if (id === 'open') void openDocument(entry.relativePath)
-    if (id === 'sendToApi') void sendFileToApiWorkspace(session.id, entry.relativePath)
-    if (id === 'pemTools') void openPemInPowerTools(session.id, entry.relativePath)
-    if (id === 'copyPath') void navigator.clipboard?.writeText(entry.relativePath)
+    const path = entry?.relativePath ?? ''
+    // Le voci New lavorano nella cartella selezionata, o in quella del file.
+    const folder = entry ? (entry.directory ? path : parentOf(path)) : ''
+    switch (id) {
+      case 'open': void openDocument(path); break
+      case 'newGoFile': case 'newFile': case 'newFolder': setPathRequest({ action: id, target: folder }); break
+      case 'rename': case 'duplicate': setPathRequest({ action: id, target: path }); break
+      case 'delete': if (entry) void deletePathWithConfirm(session.id, path, entry.directory); break
+      case 'copyPath': void navigator.clipboard?.writeText(absolutePath(session.project.rootPath, path)); break
+      case 'copyRelativePath': void navigator.clipboard?.writeText(path); break
+      case 'reveal': revealPath(session.id, path); break
+      case 'sendToApi': void sendFileToApiWorkspace(session.id, path); break
+      case 'pemTools': void openPemInPowerTools(session.id, path); break
+    }
   }
 
   return (
@@ -152,18 +193,19 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
         <button type="button" onClick={() => updateLayout({ projectOpen: false })} aria-label="Hide Project pane" title="Hide · Alt+1" className="go-studio-icon-button h-6 w-6"><Minus size={14} /></button>
       </div>
       <div className="min-h-0 flex-1 overflow-auto px-2 pb-1">
-        <div className="flex h-6 items-center gap-1.5 px-2 text-[12.5px]" title={session.project.rootPath}>
+        <div className="flex h-6 items-center gap-1.5 px-2 text-[12.5px]" title={session.project.rootPath} onContextMenu={(event) => { event.preventDefault(); onContext(null, event.clientX, event.clientY) }}>
           <FolderOpen size={15} className="shrink-0 text-accent" />
           <span className="shrink-0 font-semibold text-text-1">{session.project.name}</span>
           <span className="truncate text-[11px] text-text-4">{session.project.rootPath}</span>
         </div>
-        {entries.map((entry) => <DirectoryNode key={entry.relativePath} sessionId={session.id} entry={entry} depth={2} activePath={activePath} onContext={onContext} marks={marks} />)}
+        {entries.map((entry) => <DirectoryNode key={entry.relativePath} sessionId={session.id} entry={entry} depth={2} activePath={activePath} onContext={onContext} onKey={onKey} marks={marks} />)}
         {entries.length === 0 && <p className="px-4 py-3 text-[11px] text-text-4">This folder is empty.</p>}
       </div>
       <div className="shrink-0 px-4 py-2 text-[10.5px] leading-4 text-text-4">
         {session.project.modules.length} module{session.project.modules.length === 1 ? '' : 's'} · {session.project.goWorkPath ? 'go.work' : session.project.goModPath ? 'go.mod' : 'folder mode'}
       </div>
       {menu && <ContextMenu appearance="studio" x={menu.x} y={menu.y} items={menuItems(menu.entry)} onSelect={selectMenuItem} onClose={() => setMenu(null)} />}
+      <GoStudioPathDialog sessionId={session.id} request={pathRequest} onClose={() => setPathRequest(null)} />
     </aside>
   )
 })

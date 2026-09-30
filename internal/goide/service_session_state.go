@@ -202,6 +202,53 @@ func (s *Service) CreateFiles(sessionID string, files []NewFile) error {
 	return s.documents.CreateFiles(session.Project, files)
 }
 
+// CreateDirectory crea una cartella nel progetto.
+func (s *Service) CreateDirectory(sessionID, relativePath string) error {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return err
+	}
+	return s.documents.CreateDirectory(session.Project, relativePath)
+}
+
+// MovePath rinomina o sposta un file o una cartella del progetto.
+func (s *Service) MovePath(sessionID, from, to string) error {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return err
+	}
+	return s.documents.MovePath(session.Project, from, to)
+}
+
+// DuplicatePath copia un file o una cartella del progetto.
+func (s *Service) DuplicatePath(sessionID, from, to string) error {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return err
+	}
+	return s.documents.DuplicatePath(session.Project, from, to)
+}
+
+// DeletePath elimina un file o una cartella; il testo dei file resta nella local history.
+func (s *Service) DeletePath(sessionID, relativePath string) error {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return err
+	}
+	return s.documents.DeletePath(session.Project, relativePath, func(rel, content string) {
+		_ = s.history.Record(session.ID, rel, content, "Before delete")
+	})
+}
+
+// RevealPath mostra un elemento del progetto nel file manager ("" = radice).
+func (s *Service) RevealPath(sessionID, relativePath string) error {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return err
+	}
+	return s.documents.RevealPath(session.Project, relativePath)
+}
+
 // ConfigureHistoryStore collega lo store persistente della local history.
 func (s *Service) ConfigureHistoryStore(store Store) error {
 	if store == nil {
