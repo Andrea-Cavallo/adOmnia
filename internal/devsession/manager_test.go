@@ -257,7 +257,7 @@ func TestNonServiceRunsAreIgnored(t *testing.T) {
 func TestDebugOutputKeepsProgramLinesOnly(t *testing.T) {
 	manager, _ := testManager(Hooks{})
 	manager.DebugState("go-1", "d", "running", "", "", 0, "")
-	manager.DebugOutput("d", "stdout", "Building C:\p\n")
+	manager.DebugOutput("d", "stdout", "Building /tmp/p\n")
 	manager.DebugOutput("d", "console", "Type 'dlv help' for list of commands.\n2026/09/30 listening on 127.0.0.1:45661\n")
 	manager.DebugOutput("d", "telemetry", "ignored\n")
 	logs := manager.Logs("debug:d", "", 0)
