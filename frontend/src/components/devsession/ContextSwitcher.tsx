@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Bug, Code2, Database, MessageSquare, ScrollText, Send } from 'lucide-react'
 import type { LiveSession, RequestRun } from '@/lib/devsession-api'
 import { handoffToPanel } from '@/lib/entities/dispatch'
-import { openEntity } from '@/lib/entities/router'
+import { openMessage } from './LiveRequestViews'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/app'
 import { useDevSessionStore } from '@/stores/devSession'
@@ -38,7 +38,7 @@ export function flowItems(session: LiveSession | null, run: RequestRun | null, o
     if (message) {
       items.push({
         id: 'kafka', icon: <MessageSquare size={14} />, title: message.topic, detail: `partition ${message.partition} · offset ${message.offset}`,
-        open: () => void openEntity({ kind: 'topic', id: `topic:${message.topic}`, label: message.topic, attrs: { broker: 'kafka', partition: String(message.partition), offset: String(message.offset) } }),
+        open: () => openMessage(message, run),
       })
     }
   }

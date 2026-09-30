@@ -101,7 +101,7 @@ function LiveView({ tab, run, session }: { tab: Exclude<LiveTab, 'response'>; ru
     )
   }
   if (tab === 'db') return <LiveQueryList queries={queries} run={run} />
-  if (tab === 'kafka') return <LiveMessageList messages={messages} />
+  if (tab === 'kafka') return <LiveMessageList messages={messages} run={run} />
   if (tab === 'timeline') return <RequestTimeline run={run} session={session} logs={logs} queries={queries} messages={messages} />
   return <HitList run={run} session={session} />
 }

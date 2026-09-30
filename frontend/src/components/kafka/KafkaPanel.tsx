@@ -258,14 +258,16 @@ export function KafkaPanel({
     saslPassword: '',
   })
 
-  useEntityHandoff('broker', (ref) => {
+  useEntityHandoff('broker', (ref, _intent, payload) => {
     const kind = ref.kind === 'topic' ? ref.attrs.broker : ref.attrs.type
     if (kind && kind !== 'kafka') return false // another protocol: Broker Studio switches first
     if (ref.kind === 'datasource') setCfg((c) => ({ ...c, brokers: `${ref.attrs.host}:${ref.attrs.port}` }))
     if (ref.kind === 'topic') {
       setCfg((c) => ({ ...c, topic: ref.label }))
       setTab('messages')
-      if (ref.attrs.offset) showEntityNotice(`${ref.label} · partition ${ref.attrs.partition} · offset ${ref.attrs.offset}`)
+      // A message produced by a live request keeps the way back to that request.
+      const back = payload.back as { label: string; run: () => void } | undefined
+      if (ref.attrs.offset) showEntityNotice(`${ref.label} · partition ${ref.attrs.partition} · offset ${ref.attrs.offset}`, back)
     }
     return true
   })

@@ -1,8 +1,11 @@
 import { useMemo, useState } from 'react'
 import { Database, MessageSquare, ScrollText, Search } from 'lucide-react'
 import type { LiveLogEntry, LiveMessage, LiveQuery, LiveSession, RequestRun } from '@/lib/devsession-api'
-import { openEntity } from '@/lib/entities/router'
 import { handoffToPanel } from '@/lib/entities/dispatch'
+import { showEntityNotice } from '@/lib/entities/notice'
+import { appendMockEndpoints, createMockEndpointFromRequest } from '@/lib/mockEndpointStore'
+import { useAppStore } from '@/stores/app'
+import { useTabsStore } from '@/stores/tabs'
 import { cn } from '@/lib/utils'
 import { codePathFor } from '@/stores/devSessionModel'
 import { openFrameInGoStudio, openLocationInGoStudio, openRequestTab } from '@/lib/devsession/navigation'
@@ -112,7 +115,7 @@ function openQuery(query: LiveQuery, run?: RequestRun | null) {
 }
 
 /** Broker messages the request produced; each opens its topic in Broker Studio. */
-export function LiveMessageList({ messages }: { messages: LiveMessage[] }) {
+export function LiveMessageList({ messages, run }: { messages: LiveMessage[]; run?: RequestRun | null }) {
   if (messages.length === 0) {
     return <EmptyNote icon={<MessageSquare size={16} />} text="No message seen for this request. Watch the service's topics from the debug bar (service tools) to see what it produces." />
   }
@@ -131,12 +134,18 @@ export function LiveMessageList({ messages }: { messages: LiveMessage[] }) {
             </div>
             {message.preview && <code className="mt-1 block max-h-24 overflow-auto whitespace-pre-wrap break-all text-[11px] text-text-2">{message.preview}</code>}
           </div>
-          <button type="button" onClick={() => void openEntity({ kind: 'topic', id: `topic:${message.topic}`, label: message.topic, attrs: { broker: 'kafka', partition: String(message.partition), offset: String(message.offset) } })}
+          <button type="button" onClick={() => openMessage(message, run)}
             className="shrink-0 rounded border border-border-2 px-2 py-0.5 text-[11px] text-text-2 hover:border-accent hover:text-accent">Open in Kafka</button>
         </li>
       ))}
     </ul>
   )
+}
+
+export function openMessage(message: LiveMessage, run?: RequestRun | null) {
+  handoffToPanel('broker', { kind: 'topic', id: `topic:${message.topic}`, label: message.topic, attrs: { broker: 'kafka', partition: String(message.partition), offset: String(message.offset) } }, 'open', {
+    back: run?.tabId ? { label: 'Open request', run: () => openRequestTab(run.tabId) } : undefined,
+  })
 }
 
 function EmptyNote({ icon, text }: { icon: React.ReactNode; text: string }) {
@@ -190,6 +199,20 @@ export function RequestTimeline({ run, session, logs, queries, messages }: { run
   )
 }
 
+/** Mock from runtime: the response the service really returned becomes a Mock Server endpoint. */
+async function mockRunResponse(run: RequestRun) {
+  const tab = useTabsStore.getState().tabs.find((item) => item.id === run.tabId)
+  if (!tab) return showEntityNotice('The request tab was closed.')
+  const endpoint = createMockEndpointFromRequest({ ...tab.request, url: run.url }, tab.response)
+  if (!endpoint) return showEntityNotice(`${run.method} cannot be mocked.`)
+  try {
+    await appendMockEndpoints([endpoint])
+    showEntityNotice(`Mock endpoint ${endpoint.method} ${endpoint.path} added with the captured ${run.status} response.`, { label: 'Open Mock Server', run: () => useAppStore.getState().setActiveRail('mock') })
+  } catch (error) {
+    showEntityNotice(`Could not add the mock endpoint: ${error instanceof Error ? error.message : String(error)}`)
+  }
+}
+
 /** REQUEST COMPLETED: one glance at what a request touched. */
 export function RequestSummary({ run, onTab }: { run: RequestRun; onTab: (tab: 'logs' | 'debug' | 'timeline' | 'db' | 'kafka') => void }) {
   const path = codePathFor(run)
@@ -203,7 +226,8 @@ export function RequestSummary({ run, onTab }: { run: RequestRun; onTab: (tab: '
       <button type="button" onClick={() => onTab('kafka')} className="hover:text-text-1"><MessageSquare size={11} className="mr-1 inline" />{run.messages} {run.messages === 1 ? 'event' : 'events'}</button>
       <button type="button" onClick={() => onTab('logs')} className="hover:text-text-1"><ScrollText size={11} className="mr-1 inline" />{run.logs} log {run.logs === 1 ? 'line' : 'lines'}</button>
       <button type="button" onClick={() => onTab('debug')} className="hover:text-text-1">{run.hits.length} {run.hits.length === 1 ? 'breakpoint' : 'breakpoints'} hit</button>
-      {run.tabId && <button type="button" onClick={() => openRequestTab(run.tabId)} className="ml-auto hover:text-text-1">Open request</button>}
+      {run.tabId && run.state === 'completed' && <button type="button" onClick={() => void mockRunResponse(run)} className="ml-auto hover:text-text-1" title="Add this real response to the Mock Server">Mock this response</button>}
+      {run.tabId && <button type="button" onClick={() => openRequestTab(run.tabId)} className={cn('hover:text-text-1', run.state !== 'completed' && 'ml-auto')}>Open request</button>}
     </div>
   )
 }
