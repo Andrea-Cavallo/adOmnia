@@ -266,3 +266,11 @@ func resolveEntryValue(entry EnvironmentEntry, secrets map[string]string) (strin
 	}
 	return value, nil
 }
+
+// RunRequestFor restituisce la richiesta strutturata di un'esecuzione, se ancora nota.
+func (s *Service) RunRequestFor(runID string) (RunRequest, bool) {
+	s.runMu.RLock()
+	defer s.runMu.RUnlock()
+	request, ok := s.runRequests[RunID(runID)]
+	return request, ok
+}

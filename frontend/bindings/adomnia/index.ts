@@ -6,6 +6,7 @@ import * as App from "./app.js";
 import * as BrowserDebug from "./browserdebug.js";
 import * as CollectionFS from "./collectionfs.js";
 import * as DevContext from "./devcontext.js";
+import * as DevSession from "./devsession.js";
 import * as DockerLab from "./dockerlab.js";
 import * as GitSync from "./gitsync.js";
 import * as GoIDE from "./goide.js";
@@ -22,6 +23,7 @@ export {
     BrowserDebug,
     CollectionFS,
     DevContext,
+    DevSession,
     DockerLab,
     GitSync,
     GoIDE,
@@ -36,6 +38,7 @@ export {
 
 export {
     LogFileEntry,
+    SessionTools,
     StorageEntry,
     UpdateInfo
 } from "./models.js";

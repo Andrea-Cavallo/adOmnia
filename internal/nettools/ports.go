@@ -214,3 +214,10 @@ func parseLsof(out string) []PortEntry {
 	}
 	return entries
 }
+
+// ListListeningPorts exposes the listening-socket snapshot to other backend
+// packages (dev sessions use it to find the port a launched service binds).
+func ListListeningPorts(ctx context.Context) ([]PortEntry, error) {
+	_, entries, err := listListeningPorts(ctx)
+	return entries, err
+}
