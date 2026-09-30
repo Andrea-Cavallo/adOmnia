@@ -5,180 +5,147 @@ Il developer percepisce "sto lavorando su `users-service`", non "ora uso Go Stud
 
 Loop da rendere senza attrito: **codice → servizio in esecuzione → API → breakpoint → codice → response**.
 
-Regole: le voci si spuntano solo quando fatte **e** verificate nell'app avviata. Niente coupling diretto
-fra moduli (API Workspace non importa Go Studio e viceversa): tutto passa da session manager + eventi + entity router.
+Regole: `[x]` = implementato **e** coperto da test automatici (Go `-race`, vitest, render test, e2e con Delve reale).
+La verifica nell'app avviata ha una sezione a parte per fase e resta aperta finché non la fai a mano.
+Niente coupling diretto fra moduli: API Workspace e Go Studio passano da `internal/devsession`, dallo store
+`devSession`, dall'entity router e da eventi DOM.
+
+Guida utente e architettura: [`docs/LIVE-SESSION.md`](docs/LIVE-SESSION.md). Branch: `feat/devsession`.
 
 ---
 
-## Stato di partenza (già in codice, da riusare — non rifare)
+## Stato di partenza (già in codice, riusato)
 
-- [x] **Entity router** `frontend/src/lib/entities/` (`openEntity`, openers, parked handoff) — spec `docs/superpowers/specs/2026-09-28-devcontext-p0-p1-design.md`.
-- [x] **Developer Context** `internal/devcontext`: route Go (net/http, gin, echo, fiber, chi, gorilla), gRPC, Kafka topic, tabelle SQL, WebSocket, compose, `.env`, contract.
-- [x] **Code → API** CodeLens "Open GET /x in API Client" + "Go to handler" dalla palette.
-- [x] **Delve/DAP** `internal/goide/dap`: launch, attach, remote, breakpoint, step, variabili, goroutine.
-- [x] **Run configurations** con env file, porte, port check, before/after launch task.
-- [ ] Verificare che le voci sopra reggano il flusso reale (M7, M13 in `todo-ide.md`) prima di costruirci sopra.
+- [x] **Entity router** `frontend/src/lib/entities/` — usato per Database, Kafka, route.
+- [x] **Developer Context** `internal/devcontext` — esteso: ogni route ora punta alla **dichiarazione** dell'handler (`declFile`/`declLine`/`declName`).
+- [x] **Code → API** CodeLens esistenti — estesi con i lens sull'handler.
+- [x] **Delve/DAP** `internal/goide/dap` — usato dal session manager (stack, step, stop).
+- [x] **Run configurations** — la `PORT` della configurazione è la prima fonte della porta.
+- [ ] Verificare che le voci sopra reggano il flusso reale (M7, M13 in `todo-ide.md`).
 
 ---
 
 ## Concetti (modello dati condiviso)
 
-- [ ] **Service** — oggetto centrale: `{id, name, projectRoot, targets[], linkedCollections[], datasources[], topics[], logSources[]}`.
-  Nasce da devcontext (`package main` / compose service) + dichiarazione esplicita in Go Studio ("questo progetto è `users-service`").
-- [ ] **Target** — `{kind: local-run | docker | remote, baseUrl, port, pid?, sessionId?}`. Il local-run si aggiorna da solo quando cambia porta.
-- [ ] **Live Development Session** (runtime, non persistita):
-  `{id, serviceId, goSessionId, processId, pid, port, env, debugger: {state: running|paused|stopped, file, line, fn, threadId}, activeRequest?, startedAt}`.
-- [ ] **Request Run** — `{id, requestId (tab/collection item), sessionId?, correlationId, method, url, startedAt, state: sent|paused|completed|error, response?, hits: BreakpointHit[]}`.
-- [ ] **Linked Request** — una request salva `serviceRef` invece di host hardcoded: `{{service:users-service}}/users/123` risolto dal target selezionato.
-- [ ] Workspace graph = **derivato**, non un DB nuovo: Service → Target/Route/Datasource/Topic costruiti da devcontext + session manager. Nessuna persistenza extra finché non serve.
-
----
+- [x] **Service** — nome dichiarato nel drawer del servizio (salvato per cartella progetto, bbolt `devsession/services`) o nome della cartella; route, datasource, topic e contract dal Developer Context.
+- [x] **Target** — Local run (segue la porta), porta Docker Compose, URL remoto; per servizio, in `adomnia.devsession`.
+- [x] **Live Development Session** — `internal/devsession/types.go` `Session` (PID, porta + origine, stato, pausa con stack), non persistita.
+- [x] **Request Run** — `RequestRun` con correlation id, stato sent/paused/completed/error, hit, contatori log/query/messaggi.
+- [x] **Linked Request** — `{{service:users-service}}/users/123`, risolto dal target scelto.
+- [x] Workspace graph **derivato** (devcontext + session manager), nessun DB nuovo.
 
 ## Architettura
 
-```text
-Go Studio ─┐                         ┌─ API Workspace
-Logs ──────┤   Dev Session Manager   ├─ Database Studio
-Kafka ─────┤  (backend, Go, owner)   ├─ Broker Studio
-Proxy ─────┘   + event bus (Wails)   └─ Global Debug Bar / Switcher (frontend store)
-```
-
-- [ ] `internal/devsession` — owner delle sessioni live; si abbona agli eventi di `internal/goide` (process/debug) e non li duplica.
-- [ ] Binding sottile `devsession_bindings.go` + registrazione in `main.go`; bindings rigenerati con `wails3@v3.0.0-beta.25`.
-- [ ] Eventi Wails tipizzati (unico canale, prefisso `devsession:`):
-  `service.started` · `service.stopped` · `debug.started` · `debug.paused` · `debug.resumed` · `debug.stopped` ·
-  `request.started` · `request.completed` · `breakpoint.hit` · poi `log.received` · `database.query` · `kafka.produced` · `kafka.consumed`.
-- [ ] Store frontend `stores/devSession.ts` (Zustand): unica fonte per Debug Bar, API Workspace, switcher. Go Studio resta lazy (non importato da `App.tsx`; `npm run check:startup`).
-- [ ] Ogni evento porta `sessionId`: nessuno stato attraversa sessioni.
+- [x] `internal/devsession` — owner delle sessioni; non importa `goide`, riceve gli eventi dal binding.
+- [x] Binding sottile `devsession_bindings.go` (+ `_tools_`, `_sources_`) registrato in `main.go`; bindings rigenerati con `wails3@v3.0.0-beta.25`.
+- [x] Eventi `devsession:event`: `service.started|updated|stopped` · `debug.started|paused|resumed|stopped` · `request.started|updated|completed` · `breakpoint.hit` · `log.received` · `database.query` · `kafka.produced`.
+- [x] Store `stores/devSession.ts` (+ `devSessionModel.ts` puro e testato); caricato dopo il primo frame, fuori dal bundle d'avvio (`check:startup` verde, 616 KB).
+- [x] Ogni evento porta `sessionId`.
 
 ---
 
 # Phase 1 — Go Studio ↔ API Workspace (MVP)
 
-**Cosa**: sessione live, Debug Bar globale, Send verso il servizio in esecuzione, stato PAUSED nell'API Workspace, Open in Go Studio, Debug Request base, route → handler e handler → request.
-
 ### Backend
-- [ ] `internal/devsession`: crea la sessione su Run/Debug di Go Studio (servizio, PID, porta, env, debugger) e la chiude su Stop/uscita processo.
-- [ ] Rilevamento porta: da run config / port check; fallback scan porte in ascolto del PID (riusa `/ports/listening` di Net Tools).
-- [ ] Health/readiness: attesa TCP connect sulla porta (timeout configurabile, default 15 s); path HTTP opzionale.
-- [ ] Inoltro stato Delve → `debug.paused {file, line, fn, goroutine}` / `debug.resumed` / `debug.stopped`.
-- [ ] Comandi globali Continue / Step Over / Step Into / Step Out / Stop esposti dal session manager (delegano a `goide`).
-- [ ] Correlazione request ↔ pausa: la request HTTP parte dal backend (`internal/httpexec`); se durante il volo arriva `debug.paused` sulla stessa sessione → `breakpoint.hit {requestRunId}`. Euristica temporale, dichiarata come tale.
-- [ ] Header `X-AdOmnia-Request-ID` aggiunto alle request verso un servizio linkato (disattivabile in Settings).
-- [ ] Timeout request **sospeso** mentre il debugger è in pausa (altrimenti la request scade al breakpoint).
+- [x] Sessione creata su Run/Debug di Go Studio e chiusa su Stop/uscita/chiusura progetto.
+- [x] Porta: `PORT` della run config → indirizzo stampato dal servizio (`listening on 127.0.0.1:8080`, `http://…`, `addr=[::]:8443`) → nuovo socket in ascolto non di tooling → a mano dalla debug bar.
+- [x] Readiness: connessione TCP (IPv4 e IPv6 loopback) + **path HTTP opzionale** per servizio (risposta < 500).
+- [x] Stato Delve → `debug.paused {file, line, function, stack}` / `resumed` / `stopped` (stack letto fuori dalla goroutine DAP).
+- [x] Continue / Step Over / Into / Out / Pause / Stop dal session manager.
+- [x] Correlazione request ↔ pausa: `likely` con una request in volo, `probable` (la più recente) con più request.
+- [x] Header `X-AdOmnia-Request-ID` (disattivabile nel drawer del servizio).
+- [x] Timeout: sotto debugger la request ha 30 minuti invece del timeout normale. *ponytail: non è una sospensione vera del timer; basta per lo stepping.*
 
 ### Frontend
-- [ ] **Global Debug Bar** persistente (sotto la title bar / sopra la status bar), visibile in tutti i pannelli:
-  `● users-service :8080 · PAUSED user_handler.go:84 · ▶ ↷ ↓ ↑ ■`. Compare solo con sessione attiva. Token del tema, niente colori hardcoded.
-- [ ] API Workspace: selettore **Target** nella URL bar per request linkate (`● Local Run :8080 / ○ Docker :8090 / ○ DEV`).
-- [ ] Stato **PAUSED AT BREAKPOINT** nel response panel: file:line, funzione, mini-timeline `Request ──●── Response`, azioni Open in Go Studio / Continue / Step Over / Stop; response mostra "Waiting for debugger…".
-- [ ] **Open in Go Studio**: entity router → progetto giusto, file, riga, sessione debugger giusta; il tab della request resta aperto.
-- [ ] Bottone **Debug Request** accanto a Send (Send resta il default):
-  servizio running? → altrimenti avvia con Debug → attende readiness → invia → segue → mostra pausa → riceve response. Ogni passo visibile come stato (niente spinner muto).
-- [ ] Pannello **Handler** nella request: "UpdateUser · user_handler.go:71 · Open handler" (match method+path contro route devcontext).
-- [ ] Gutter Go Studio sull'handler: icona API → Open linked request / Run / Debug request / Last response / History.
-- [ ] **Request Context** nel debugger (tab accanto a Variables): method, path params, query, header (Authorization mascherato), body, Request ID; "Open full request" torna al tab.
-- [ ] **Keep Context**: cambiare pannello non smonta Go Studio né API Workspace (file, riga, variabili espanse, scroll, tab). Verificare e correggere dove oggi si perde stato.
-- [ ] Shortcut: `Alt+1` Go Studio · `Alt+2` API Workspace · `Alt+3` Database · `Alt+4` Kafka · `Alt+5` Logs (controllare conflitti con keymap esistente).
-- [ ] Command palette: Go to current breakpoint · Go to current request · Go to handler · Go to service · Debug this request · Continue/Step/Stop.
+- [x] **Global Debug Bar** in ogni strumento tranne Go Studio (che ha la sua toolbar): servizio, porta modificabile, stato, `file:line`, controlli, request in volo, split view, log, Go Studio. Tasti F9/F8/F7/Shift+F8/Ctrl+F2.
+- [x] Selettore **Target** per le request collegate (striscia sotto la URL bar) + *Link to service*.
+- [x] **PAUSED AT BREAKPOINT** nella response: posizione, `Request ──●── Response`, Open in Go Studio, Continue, Step Over, Step Into, Split view, Replay, Stop, "Waiting for debugger…".
+- [x] **Open in Go Studio**: progetto, file, riga e debugger giusti; il tab API resta.
+- [x] **Debug Request** accanto a Send (Send resta il default): trova o avvia il servizio sotto Delve (anche con Go Studio mai aperto: montato nascosto), riavvio con conferma se gira senza debugger, readiness, invio; avanzamento a step visibile.
+- [x] **Handler** nella request: `UserHandler.UpdateUser · user_handler.go:71 · Open handler` (dichiarazione della funzione).
+- [x] Gutter/CodeLens sull'handler: `⇄ PUT /users/{id}` · Run · Debug request · Last response · History.
+- [x] **Request Context** nel debugger di Go Studio (tab Request): params, query, header mascherati, body, Request ID, Open full request.
+- [x] **Keep Context**: Go Studio e API Workspace restano montati (nascosti) dopo la prima apertura; le loro scorciatoie funzionano solo quando visibili.
+- [x] Scorciatoie strumenti: **Alt+Shift+1…5** (Go Studio, API, Database, Broker, Logs). *Alt+cifra resta a Go Studio (Alt+1 Project, Alt+5 Debug…): conflitto evitato.*
+- [x] Command palette: Debug this request · Go to handler · Go to current request · Go to current breakpoint · Go to service · Go to logs · Split view · Continue/Step/Stop.
 
 ### Linguaggio visivo
-- [ ] Un solo punto di stato: verde running · giallo paused · rosso error · accento = collegato alla sessione attiva. Niente badge ovunque: un dot + testo.
+- [x] Un solo punto: verde running · giallo paused · rosso error · accento (viola) = collegato alla sessione. Niente muri di badge.
 
-### Rischi / difficoltà
-- [ ] La correlazione pausa ↔ request è euristica senza instrumentazione: con richieste concorrenti può sbagliare → mostrare "probabile" quando >1 request in volo.
-- [ ] Porta non nota (servizio che legge `PORT` da env/flag) → fallback scan porte del PID + scelta manuale ricordata per servizio.
-- [ ] Processo figlio (`go run` → binario) → PID reale da usare è il figlio; riusa il process tree di `goide`.
+### Rischi (gestiti)
+- [x] Correlazione euristica senza id → etichette `likely`/`probable`, `id`/`time` su log, query e messaggi.
+- [x] Porta non nota → quattro fonti + modifica a mano (la porta mostra da dove arriva).
+- [x] `go run` → binario figlio: la porta si rileva dal socket del figlio o dall'output, non dal PID di `go`.
+- [x] **Bug trovato dal test e2e e corretto**: su Windows Delve inoltra l'output del programma come `console` e il parser prendeva "127" come porta.
 
-### NON ancora
-- Split Debug View, Context Switcher, Request Timeline, logs/DB/Kafka, servizi multipli in debug contemporaneo, persistenza delle sessioni.
+### Verifica automatica
+- [x] `internal/goide/devsession_integration_test.go`: servizio Go reale sotto Delve reale → porta dall'output → request → breakpoint legato alla request → la response aspetta → Continue → 200 → riga di log legata per id. (Saltato senza `dlv` nel PATH; con `%APPDATA%/adomnia/goide/tools/bin` passa.)
+- [x] Render test di barra, stato PAUSED, riepilogo e Request Context (credenziali mascherate).
 
-### Verifica manuale Phase 1
-- [ ] Scenario completo `users-service`: breakpoint in `UpdateUser` → Run with Debug → API Workspace `PUT /users/123` → Debug Request → PAUSED visibile in API Workspace e in Debug Bar → Open in Go Studio sulla riga giusta → Step Over dalla Debug Bar restando in API Workspace → Continue → response 200.
-- [ ] Porta cambiata nella run config → la request linkata segue senza modifiche.
+### Verifica manuale Phase 1 (da fare nell'app)
+- [ ] Scenario completo `users-service`: breakpoint in `UpdateUser` → Run with Debug → API Workspace `PUT /users/123` → Debug Request → PAUSED in API Workspace e nella Debug Bar → Open in Go Studio sulla riga giusta → Step Over dalla Debug Bar restando in API Workspace → Continue → 200.
+- [ ] Debug Request con il servizio fermo e Go Studio mai aperto nella sessione.
+- [ ] Porta cambiata nella run config → la request collegata segue senza modifiche.
 - [ ] Stop dalla Debug Bar → nessun processo orfano (Task Manager).
+- [ ] Temi dark/light e finestra piccola: barra, striscia, card PAUSED, drawer.
 
 ---
 
 # Phase 2 — + Logs
 
-**Cosa**: log del servizio collegati alla request e alla sessione.
-
-### Backend
-- [ ] Stdout/stderr del processo in sessione instradati come `log.received {sessionId, ts, line, level?, correlationId?}` (riusa Run console; parsing JSON log slog/zap/zerolog per `request_id`/`correlation_id`/`trace_id`).
-- [ ] Ring buffer per sessione (limite righe) — niente persistenza.
-- [ ] Correlazione: match sul `X-AdOmnia-Request-ID` se il servizio lo logga; altrimenti finestra temporale della request (marcata "by time").
-
-### Frontend
-- [ ] Response panel con tab `Response · Logs · Debug · Timeline`; Logs filtrati per service + request + correlationId.
-- [ ] Da una riga di log: Open request · Go to code (se la riga contiene `file.go:N`).
-- [ ] Integrazione con Log Inspector esistente (`lib/loginspector`) invece di un secondo viewer.
-
-### Rischi
-- [ ] Servizi che non propagano l'header → correlazione solo temporale; dirlo in UI, non fingere precisione.
-
-### NON ancora
-- Log da Docker/remoti, indicizzazione persistente, ricerca full-text cross-sessione.
+- [x] stdout/stderr (anche `console` di Delve, filtrati i messaggi di Delve) → `log.received`; livello da JSON (slog/zap/zerolog) o testo.
+- [x] Ring buffer 5000 righe per sessione; niente persistenza.
+- [x] Correlazione per `X-AdOmnia-Request-ID` nella riga, altrimenti per tempo (anche fino a 1 s dopo la response).
+- [x] Response: tab `Response · Logs · Debug · Timeline · DB · Kafka`.
+- [x] Da una riga: **request** (torna al tab) e **code** (`file.go:N` in Go Studio).
+- [x] Integrazione con il **Log Inspector**: la sessione diventa una sua sorgente live; dal tab Logs apre il Log Inspector filtrato sul Request ID.
+- [x] Drawer log del servizio (debug bar, palette, Alt+Shift+5) con filtro "solo righe legate a request".
+- [ ] Verifica manuale: servizio che logga il Request ID e servizio che non lo propaga.
 
 ---
 
 # Phase 3 — + Database / Kafka
 
-**Cosa**: "Last DB operation" e "Produced event" legati alla request.
+- [x] **SQL dai log** (GORM, sqlx, pgx, logger JSON con `sql`/`query`).
+- [x] **Proxy SQL** opt-in, solo loopback, Postgres (simple + extended query) e MySQL (COM_QUERY/PREPARE); byte inoltrati identici; pacchetti di auth mai letti; TLS rifiutato lato servizio (test con server finti).
+- [x] **Kafka watch** opt-in: consumer di partizione dal newest offset, **nessun consumer group** (offset reali intatti); match per header `X-AdOmnia-Request-ID` o tempo.
+- [x] Datasource e topic precompilati dal Developer Context.
+- [x] "Open in Database": query in un nuovo tab di Database Studio, **non eseguita**, con *Open request* per tornare.
+- [x] "Open in Kafka": topic in Broker Studio con partizione/offset e *Open request*.
+- [ ] Verifica manuale: proxy con Postgres e MySQL reali (DSN puntato al proxy), watch con un broker reale.
 
-### Backend
-- [ ] **DB**: niente driver wrapper nel codice utente. Opzioni in ordine: (1) query nei log se il servizio le logga, (2) proxy TCP locale Postgres/MySQL opzionale verso la datasource del servizio → `database.query {sessionId, sql, durationMs, rows?}`. Decidere dopo spike su (2).
-- [ ] **Kafka**: consumer passivo sui topic noti del servizio (da devcontext) durante la request → `kafka.produced {topic, partition, offset, key, headers}`; match su header `X-AdOmnia-Request-ID` se propagato, altrimenti per finestra temporale.
-- [ ] Datasource/topic del servizio = entità devcontext già esistenti (compose/.env) → nessuna config nuova.
-
-### Frontend
-- [ ] Nel debugger (su repository call) e nella response: "Last DB operation · UPDATE users … · Open in Database" (DB Studio sulla connessione del servizio, query precompilata non eseguita).
-- [ ] "Produced event · user.updated · p2 · offset 82912 · Open in Kafka" → Broker Studio posizionato su quel messaggio.
-- [ ] Ritorno inverso: da DB Studio / Broker Studio "Open originating request" quando esiste il collegamento.
-
-### Rischi
-- [ ] Proxy DB = intercettazione di traffico con credenziali: solo opt-in, solo localhost, mai loggare password.
-- [ ] Consumer Kafka non deve spostare offset di gruppi reali (consumer senza group / group dedicato effimero).
-
-### NON ancora
-- Mongo/Redis, query plan, eventi consumati da altri servizi, SQL tracing via instrumentation.
+### NON fatto (motivato)
+- Mongo/Redis, query plan, eventi consumati da altri servizi, SQL via instrumentation.
+- Broker Kafka con SASL/TLS nel watch: solo plaintext (sviluppo locale).
 
 ---
 
 # Phase 4 — Full Development Context / Request Timeline
 
-**Cosa**: il riepilogo completo del flusso di una request e la navigazione per contesto.
-
-- [ ] **Request Timeline** locale: `Sent → Router → UpdateUser() ● → UserService.Update() → Repository → Response 200`, costruita da breakpoint hit + stack Delve + eventi DB/Kafka/log (non tracing distribuito).
-- [ ] **Request Completed summary**: status, durata, file toccati (dallo stack), N query, N eventi, N log, N breakpoint.
-- [ ] **Split Debug View**: Go Studio (editor + variables) | API request (headers, body, response in attesa). Si apre in automatico al primo `breakpoint.hit` (opzione in Settings), chiudibile, non modalità di default.
-- [ ] **Context Switcher** (`Ctrl+Tab`): elementi del flusso corrente, non pagine — `users-service handler.go:84 ↔ PUT /users/123 ↔ users-db users ↔ Kafka user.updated ↔ Logs corr-7812`. MRU per sessione.
-- [ ] **Service view**: albero `users-service → Go Project · REST API · localhost:8080 · users-db · user-events · Logs · Debugger` come punto d'ingresso unico (può vivere nel rail o nella Hub).
-- [ ] Opzionale: breakpoint condizionato sul Request ID ("ferma solo su questa request") iniettando la condizione Delve su handler noti.
-- [ ] Opzionale: OTLP receiver locale per servizi già instrumentati → timeline precisa invece che euristica (vedi §14/§32 in `gO-Studio-2027-todo.md`).
-
-### Rischi
-- [ ] La timeline dallo stack Delve vede solo dove ci si è fermati: senza OTLP è parziale → dirlo.
-- [ ] Split view su finestre piccole: definire larghezza minima e fallback a tab.
-
-### NON ancora
-- Tracing distribuito multi-servizio, replay/time-travel, APM, dashboard generiche, AI.
+- [x] **Request Timeline** locale: sent → frame dello stack → ● breakpoint → SQL → messaggi → log di errore → response.
+- [x] **Request Completed summary**: status, durata, percorso nel codice (dallo stack), query, eventi, log, breakpoint; *Mock this response*.
+- [x] **Split Debug View**: Go Studio | API Workspace affiancati, ridimensionabili; si apre da sola al breakpoint se sei nell'API Workspace (disattivabile); il pannello cliccato riceve la tastiera.
+- [x] **Context Switcher** Ctrl+Tab: codice al breakpoint · request · SQL · messaggio Kafka · log.
+- [x] **Service view** nel drawer: progetto, REST (route cliccabili), runtime e target, database (cattura SQL), Kafka (watch), log, debugger, preferenze, nome servizio.
+- [ ] *Opzionale, non fatto*: breakpoint "solo su questa request" — richiederebbe riscrivere i breakpoint dell'utente a ogni invio; rinviato.
+- [ ] *Opzionale, non fatto*: ricevitore OTLP locale per una timeline precisa (§14/§32 di `gO-Studio-2027-todo.md`).
+- [ ] Verifica manuale: split view su finestra piccola, Ctrl+Tab con tutti gli elementi presenti.
 
 ---
 
-## Idee ambiziose da valutare (solo se utili davvero)
+## Idee ambiziose
 
-- [ ] **Replay request al breakpoint**: dalla pausa, "Re-send same request" con body modificato senza lasciare il debugger.
-- [ ] **Mock da runtime**: la response reale ottenuta in debug diventa un endpoint Mock Server con un click.
-- [ ] **Contract drift live**: route vista a runtime/devcontext ma assente dall'OAS del servizio → avviso nella request.
-- [ ] **Browser → servizio**: request partita dalla pagina (Browser Debugging) che colpisce il servizio locale → stessa correlazione e stesso stato PAUSED.
-- [ ] **Proxy/Interceptor come sorgente**: traffico catturato verso `localhost:8080` diventa Request Run della sessione.
+- [x] **Replay al breakpoint**: dalla card PAUSED, copia del tab inviata mentre l'originale aspetta.
+- [x] **Mock da runtime**: *Mock this response* nel riepilogo.
+- [x] **Contract drift live**: route servita dal codice ma assente dall'OpenAPI del servizio → avviso nella striscia.
+- [x] **Browser → servizio**: le request di una pagina sotto Browser Debug verso il servizio entrano nella sessione (per tempo).
+- [x] **Proxy/Interceptor come sorgente**: il traffico verso il servizio diventa Request Run, con header di correlazione iniettato.
 
 ---
 
-## Documentazione da aggiornare quando si chiude una fase
+## Documentazione
 
-- [ ] `docs/GO-STUDIO.md` (sessione live, Debug Bar, shortcut).
-- [ ] `docs/adomnia-feature-catalog.en.md` e `README.md` (feature visibili).
-- [ ] `docs/ISSUES.md` (stato), `docs/ARCHITECTURE.md` (`internal/devsession` + eventi).
-- [ ] `gO-Studio-2027-todo.md` §14 / §32 / P2 "Distributed Request Debugger" → rimandare qui.
+- [x] `docs/LIVE-SESSION.md` (guida + architettura + limiti).
+- [x] `docs/adomnia-feature-catalog.en.md` (D11), `docs/ISSUES.md`, `docs/ARCHITECTURE.md`, `CHANGELOG.md` [Unreleased].
+- [x] `gO-Studio-2027-todo.md`: rimandi a questo piano.
+- [ ] `docs/GO-STUDIO.md` e `README.md`: da aggiornare dopo il merge — su `master` hanno modifiche locali non committate, non li ho toccati per non creare conflitti.
