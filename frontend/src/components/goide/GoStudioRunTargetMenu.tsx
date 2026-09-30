@@ -1,8 +1,8 @@
-import { Bug, Container, FlaskRound, Hammer, Play, Save, Square } from 'lucide-react'
+import { Bug, Container, FlaskConical, FlaskRound, Hammer, Play, Save, Square } from 'lucide-react'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import type { GoStudioRunTarget } from './goStudioRunTargets'
 
-export type GoStudioRunTargetAction = 'run' | 'debug' | 'coverage' | 'build' | 'buildRun' | 'down' | 'save'
+export type GoStudioRunTargetAction = 'run' | 'debug' | 'coverage' | 'fuzz' | 'build' | 'buildRun' | 'down' | 'save'
 
 interface GoStudioRunTargetMenuProps {
   target: GoStudioRunTarget
@@ -36,12 +36,19 @@ function itemsFor(target: GoStudioRunTarget): ContextMenuItem[] {
       { id: 'save', label: 'Save as Run Configuration…', icon: Save, separatorBefore: true },
     ]
   }
+  if (target.kind === 'fuzz') {
+    return [
+      { id: 'run', label: `Run seed corpus '${target.name}'`, icon: Play, iconClassName: 'text-success' },
+      { id: 'fuzz', label: `Fuzz '${target.name}' for 30 seconds`, icon: FlaskConical, iconClassName: 'text-accent' },
+      { id: 'debug', label: `Debug seed corpus '${target.name}'`, icon: Bug, iconClassName: 'text-info', separatorBefore: true },
+    ]
+  }
   const name = target.kind === 'main' ? 'main' : target.name
   const items: ContextMenuItem[] = [
     { id: 'run', label: `Run '${name}'`, icon: Play, iconClassName: 'text-success' },
     { id: 'debug', label: `Debug '${name}'`, icon: Bug, iconClassName: 'text-info', shortcut: target.kind === 'main' ? 'Shift+F9' : undefined },
   ]
-  if (target.kind === 'test' || target.kind === 'fuzz' || target.kind === 'example') items.push({ id: 'coverage', label: `Run '${name}' with Coverage`, icon: FlaskRound, iconClassName: 'text-accent' })
+  if (target.kind === 'test' || target.kind === 'example') items.push({ id: 'coverage', label: `Run '${name}' with Coverage`, icon: FlaskRound, iconClassName: 'text-accent' })
   return items
 }
 

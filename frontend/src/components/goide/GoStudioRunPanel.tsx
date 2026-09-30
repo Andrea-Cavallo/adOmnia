@@ -120,6 +120,9 @@ function statusClass(status: string): string {
 }
 
 /** Memoizzato: il pannello genitore si ridisegna a ogni tasto, questo solo quando cambia la sessione. */
+/** Righe disegnate nella Run console; le precedenti restano nel buffer. */
+const MAX_RENDERED_LINES = 5000
+
 export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session }: GoStudioRunPanelProps) {
   const sessionId = session.id
   const view = useGoIDELspStore((state) => state.toolWindow)
@@ -154,7 +157,10 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session }: GoSt
   const debugState = useGoIDEDebugStore(selectDebugState(sessionId))
   const failedTests = useGoIDETestsStore((state) => selectedTestRun(state, sessionId)?.summary.failed ?? 0)
   const problemCount = counts.errors + counts.warnings + buildProblems.length
-  const visibleLines = lines.filter((line) => !search || line.text.toLowerCase().includes(search.toLowerCase()))
+  const matchingLines = lines.filter((line) => !search || line.text.toLowerCase().includes(search.toLowerCase()))
+  // Output intenso: si disegna solo la coda; Copy e la ricerca lavorano comunque su tutto il buffer (4 MB).
+  const hiddenLines = Math.max(0, matchingLines.length - MAX_RENDERED_LINES)
+  const visibleLines = hiddenLines ? matchingLines.slice(hiddenLines) : matchingLines
 
   const submitInput = async () => {
     if (!active || !input) return
@@ -205,8 +211,9 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session }: GoSt
         <div className="min-h-0 flex-1 overflow-auto px-3.5 pb-2 pt-1 font-mono text-[12.5px] leading-[21px]">
           {!active && <p className="font-sans text-text-4">Build or run the project, or press ▶ next to func main or a test, to open a real console.</p>}
           {active && visibleLines.length === 0 && <p className="text-text-4">Waiting for output…</p>}
+          {hiddenLines > 0 && <p className="font-sans text-[11px] text-text-4">{hiddenLines.toLocaleString()} earlier lines not shown · use search or Copy console for the full output.</p>}
           {visibleLines.map((line, index) => (
-            <div key={`${line.sequence}-${index}`} className={`min-h-5 whitespace-pre-wrap break-all ${line.stream === 'stderr' ? 'text-danger' : line.stream === 'system' ? 'text-text-4' : 'text-text-2'}`}>
+            <div key={`${line.sequence}-${index}`} className={`go-studio-console-line min-h-5 whitespace-pre-wrap break-all ${line.stream === 'stderr' ? 'text-danger' : line.stream === 'system' ? 'text-text-4' : 'text-text-2'}`}>
               {line.path && line.line ? (
                 <button type="button" onClick={() => void openLocation(resolveConsolePath(line.path!, active?.workingDirectory ?? ''), line.line!, line.column)} className="text-left underline decoration-accent/40 underline-offset-2 hover:text-accent">{renderAnsi(line.raw)}</button>
               ) : renderAnsi(line.raw)}

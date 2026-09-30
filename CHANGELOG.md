@@ -6,11 +6,21 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.9.49] - 2026-09-30
+
 ### Added
+- **Go Studio terminal:** rename (double-click), split view, Ctrl+click on `file.go:line` and stack-trace frames, Ctrl+F search, copy clean output, clear, per-project command history (secrets never stored, no auto-run) and *Run in Test Explorer* for a typed `go test …`.
+- **Low-Resource Mode** and **Low-Resource Mode on Battery** in Go Studio's View menu, with a status-bar badge.
+- **Runtime Inspector** in the debugger (slices, maps, channels, interfaces, context, error chain), STATIC lifecycle hints from *Inspect source*, persisted race sources with a regression-test starter.
+- **Benchmark Studio:** single or package benchmarks with `-benchmem`, metrics, local history, comparison with the previous run and CSV export; Test Explorer search and filters.
 - **Live Development Session:** a Go service started from Go Studio (Run or Debug) is shared by every tool. A debug bar in every tool shows the service, port, paused location and Continue / Step / Stop (F9, F8, F7, Shift+F8, Ctrl+F2). **Debug Request** starts or reuses the service under Delve, waits for its port or health path, sends the request and shows PAUSED AT BREAKPOINT with Open in Go Studio; the response waits for the debugger. See [docs/LIVE-SESSION.md](docs/LIVE-SESSION.md).
 - **Request ↔ code:** `{{service:name}}` linked requests with Local / Docker / remote targets; the handler that serves a request (with contract drift against the service's OpenAPI); handler CodeLens in Go Studio (open, run, debug request, last response, history); a Request tab in the Go Studio debugger.
 - **What a request caused:** Logs, Debug, Timeline, DB and Kafka views of each request, tied by `X-AdOmnia-Request-ID` or by time; SQL from the service's logs or an opt-in loopback capture proxy (Postgres, MySQL); a Kafka watch without consumer group; service logs as a Log Inspector live source; *Mock this response*.
 - **Navigation without losing context:** Go Studio and the API Workspace stay mounted across tool switches; Split Debug View; Ctrl+Tab context switcher; Alt+Shift+1…5 tool keys; palette commands. Interceptor and Browser Debug requests to a live service join its session.
+
+### Changed
+- **No separate title bar:** with the integrated window chrome the panel header is the window bar (drag, double-click to maximize, window controls at the right); the app titlebar is the default on Windows and macOS from the first launch.
+- gopls diagnostics are coalesced (one update per file every 150 ms, max 1000 per file); the Run console draws the last 5000 lines; large Project folders load in pages of 500.
 
 ## [0.9.48] - 2026-09-30
 

@@ -1,12 +1,14 @@
-import { useState } from 'react'
-import { Eye, EyeOff, MapPin, Rocket } from 'lucide-react'
-import type { GoIDEDebugFrame, GoIDEGoroutine } from '@/lib/goide-debug-api'
+import { useEffect, useState } from 'react'
+import { Eye, EyeOff, MapPin, OctagonAlert, Rocket } from 'lucide-react'
+import { getGoIDEDebugScopes, getGoIDEDebugVariables, type GoIDEDebugFrame, type GoIDEDebugVariable, type GoIDEGoroutine } from '@/lib/goide-debug-api'
 import { useGoIDEStore } from '@/stores/goide'
 import { useGoIDEDebugStore, type GoIDEDebugView } from '@/stores/goideDebug'
 import { GoStudioGoroutineTree } from './GoStudioGoroutineTree'
 import { GoStudioDebugConsole, GoStudioDebugVariables } from './GoStudioDebugVariables'
 import { PaneHeader, StateBadge, shortLocation } from './GoStudioDebugUi'
 import { goroutineRelations, splitFunctionName, type GoroutineRelation } from './goStudioConcurrency'
+import { panicSnapshot, panicValueFromVariables } from './goStudioPanicInspector'
+import { sourceDeferredCallsBefore, type GoStudioSourceDeferredCall } from './goStudioDeferredCalls'
 
 const RELATION_LABEL: Record<GoroutineRelation, string> = {
   channel: 'channel', mutex: 'mutex', rwmutex: 'RWMutex', waitgroup: 'WaitGroup', context: 'context', network: 'network', database: 'database', timer: 'timer',
@@ -38,10 +40,88 @@ export function GoStudioDebugSession({ view, sessionId }: GoStudioDebugSessionPr
       </section>
       <section aria-label="Goroutine and call stack" className="flex min-h-0 flex-col">
         {paused && <GoroutineDetail goroutine={selected} threadId={view.threadId} />}
+        {paused && <PanicInspector view={view} />}
+        {paused && <DeferredCallInspector frame={view.frames.find((frame) => frame.id === view.frameId) ?? null} />}
         <FramesPane view={view} />
       </section>
       <GoStudioDebugVariables view={view} sessionId={sessionId} />
       <GoStudioDebugConsole view={view} />
+    </div>
+  )
+}
+
+function DeferredCallInspector({ frame }: { frame: GoIDEDebugFrame | null }) {
+  const [state, setState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
+  const [calls, setCalls] = useState<GoStudioSourceDeferredCall[]>([])
+  const inspect = async () => {
+    if (!frame?.relativePath || state === 'loading') return
+    setState('loading')
+    try {
+      const document = await useGoIDEStore.getState().ensureDocumentLoaded(frame.relativePath)
+      if (!document) throw new Error('source is unavailable')
+      setCalls(sourceDeferredCallsBefore(document.buffer, frame.line))
+      setState('ready')
+    } catch {
+      setCalls([])
+      setState('error')
+    }
+  }
+  useEffect(() => { setState('idle'); setCalls([]) }, [frame?.id])
+  if (!frame?.relativePath) return null
+  return (
+    <div className="mx-2 mt-2 shrink-0 rounded-lg border border-border-1 bg-surface-0/40 p-2.5 text-[11px]">
+      <div className="flex items-center gap-2"><b className="text-text-2">Deferred calls</b><button type="button" onClick={() => void inspect()} disabled={state === 'loading'} className="ml-auto rounded px-1.5 py-0.5 text-[10.5px] text-accent hover:bg-accent/10 disabled:opacity-50">{state === 'loading' ? 'Reading…' : 'Inspect source'}</button></div>
+      {state === 'ready' && (calls.length > 0 ? <ol className="mt-1 space-y-0.5 font-mono text-[10.5px]">{calls.map((call) => <li key={call.line}><span className="mr-1 text-text-4">{call.line}</span>{call.expression}</li>)}</ol> : <p className="mt-1 text-text-4">No earlier <code>defer</code> in this source function.</p>)}
+      {state === 'error' && <p className="mt-1 text-danger">Source is unavailable for this frame.</p>}
+      {(state === 'idle' || state === 'ready') && <p className="mt-1 text-[10.5px] leading-4 text-text-4">Source candidates only: branches may mean a defer was not registered; Delve does not expose the pending runtime order.</p>}
+    </div>
+  )
+}
+
+function PanicInspector({ view }: { view: GoIDEDebugView }) {
+  const panic = panicSnapshot(view.info.stopReason, view.frames)
+  if (!panic) return null
+  return <PanicInspectorDetail debugId={view.info.id} panic={panic} />
+}
+
+function PanicInspectorDetail({ debugId, panic }: { debugId: string; panic: NonNullable<ReturnType<typeof panicSnapshot>> }) {
+  const [panicValue, setPanicValue] = useState<GoIDEDebugVariable | null>(null)
+  const [valueStatus, setValueStatus] = useState<'loading' | 'unavailable'>('loading')
+  useEffect(() => {
+    let cancelled = false
+    if (!panic.runtimeFrame) {
+      setPanicValue(null)
+      setValueStatus('unavailable')
+      return () => { cancelled = true }
+    }
+    setPanicValue(null)
+    setValueStatus('loading')
+    void (async () => {
+      try {
+        const scopes = await getGoIDEDebugScopes(debugId, panic.runtimeFrame!.id)
+        for (const scope of scopes) {
+          if (scope.variablesReference <= 0) continue
+          const value = panicValueFromVariables(await getGoIDEDebugVariables(debugId, scope.variablesReference))
+          if (value) {
+            if (!cancelled) setPanicValue(value)
+            return
+          }
+        }
+      } catch {
+        // Il frame runtime non è sempre esposto dal DAP: il frame origine resta comunque utile.
+      }
+      if (!cancelled) setValueStatus('unavailable')
+    })()
+    return () => { cancelled = true }
+  }, [debugId, panic.runtimeFrame])
+  return (
+    <div role="alert" className="mx-2 mt-2 shrink-0 rounded-lg border border-danger/40 bg-danger/10 p-2.5 text-[11.5px]">
+      <div className="flex items-center gap-1.5 font-semibold text-danger"><OctagonAlert size={13} /> Panic stop</div>
+      <p className="mt-1 text-text-2">Delve stopped on <span className="font-mono">{panic.reason}</span>{panic.runtimeFrame ? ` in ${splitFunctionName(panic.runtimeFrame.name).name}` : ''}.</p>
+      {panic.originFrame && <button type="button" onClick={() => openFrame(panic.originFrame)} className="mt-1.5 flex max-w-full items-center gap-1 rounded font-mono text-text-2 hover:text-accent"><MapPin size={11} className="shrink-0" />Open origin: {splitFunctionName(panic.originFrame.name).name} · {shortLocation(panic.originFrame.relativePath || panic.originFrame.path, panic.originFrame.line)}</button>}
+      {panicValue && <p className="mt-1.5 break-all font-mono text-[10.5px] text-text-2">Panic value: <span className="text-text-1">{panicValue.value}</span>{panicValue.type && <span className="text-text-4"> ({panicValue.type})</span>}</p>}
+      {!panicValue && <p className="mt-1.5 text-[10.5px] leading-4 text-text-4">{valueStatus === 'loading' ? 'Reading panic value from the runtime frame…' : 'The DAP adapter did not expose a panic value for this stop.'}</p>}
+      <p className="mt-1 text-[10.5px] leading-4 text-text-4">Recovered/deferred state requires additional Delve data and is not inferred here.</p>
     </div>
   )
 }

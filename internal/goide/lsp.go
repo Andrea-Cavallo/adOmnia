@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -23,6 +24,9 @@ const (
 	shutdownTimeout         = 2 * time.Second
 	defaultRequestTimeout   = 15 * time.Second
 	maxCodeActionCacheItems = 64
+	// diagnosticsThrottle raggruppa le raffiche di publishDiagnostics di gopls in un solo aggiornamento per file.
+	diagnosticsThrottle   = 150 * time.Millisecond
+	maxDiagnosticsPerFile = 1000
 )
 
 // LanguageServerOptions descrive come avviare gopls per una sessione.
@@ -70,6 +74,11 @@ type lspSession struct {
 	codeActions map[string]lsp.CodeAction
 	applyEdits  []lsp.WorkspaceEdit
 	diagnostics map[string][]lsp.Diagnostic
+	// Diagnostica in attesa di essere inviata alla UI: gopls ne pubblica a raffiche durante
+	// il type-check, si invia solo l'ultima per file dopo diagnosticsThrottle.
+	pendingDiagnostics map[string]DiagnosticsReport
+	diagnosticsTimer   *time.Timer
+	closed             bool
 }
 
 type LSPManager struct {
@@ -354,6 +363,15 @@ func (m *LSPManager) Restart(session Session, options LanguageServerOptions) (La
 func (m *LSPManager) CloseSession(sessionID SessionID) {
 	m.Stop(sessionID)
 	m.mu.Lock()
+	if state, ok := m.sessions[sessionID]; ok {
+		state.mu.Lock()
+		state.closed = true
+		if state.diagnosticsTimer != nil {
+			state.diagnosticsTimer.Stop()
+		}
+		state.pendingDiagnostics, state.diagnosticsTimer = nil, nil
+		state.mu.Unlock()
+	}
 	delete(m.sessions, sessionID)
 	m.mu.Unlock()
 }
@@ -587,23 +605,53 @@ func (m *LSPManager) publishProgress(state *lspSession, params json.RawMessage) 
 
 func (m *LSPManager) publishDiagnostics(state *lspSession, report lsp.PublishDiagnosticsParams) {
 	path := pathFromURI(report.URI)
-	state.mu.Lock()
-	documentID := state.byURI[report.URI]
-	root := state.root
-	if len(report.Diagnostics) == 0 {
-		delete(state.diagnostics, report.URI)
-	} else {
-		state.diagnostics[report.URI] = report.Diagnostics
+	// Un file generato enorme può produrre migliaia di voci: la UI ne riceve al massimo maxDiagnosticsPerFile, errori prima.
+	shown := report.Diagnostics
+	if len(shown) > maxDiagnosticsPerFile {
+		shown = append([]lsp.Diagnostic(nil), shown...)
+		sort.SliceStable(shown, func(i, j int) bool { return max(1, shown[i].Severity) < max(1, shown[j].Severity) })
+		shown = shown[:maxDiagnosticsPerFile]
 	}
-	state.mu.Unlock()
-	diagnostics := make([]EditorDiagnostic, 0, len(report.Diagnostics))
-	for _, diagnostic := range report.Diagnostics {
+	diagnostics := make([]EditorDiagnostic, 0, len(shown))
+	for _, diagnostic := range shown {
 		diagnostics = append(diagnostics, EditorDiagnostic{
 			Range: editorRange(diagnostic.Range), Severity: max(1, diagnostic.Severity), Message: diagnostic.Message,
 			Source: diagnostic.Source, Code: strings.Trim(string(diagnostic.Code), `"`),
 		})
 	}
-	m.publish("lsp.diagnostics", state.id, report.URI, DiagnosticsReport{
-		URI: report.URI, Path: path, RelativePath: relativeWithin(root, path), DocumentID: documentID, Diagnostics: diagnostics,
-	})
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	if len(report.Diagnostics) == 0 {
+		delete(state.diagnostics, report.URI)
+	} else {
+		state.diagnostics[report.URI] = report.Diagnostics
+	}
+	if state.closed {
+		return
+	}
+	if state.pendingDiagnostics == nil {
+		state.pendingDiagnostics = make(map[string]DiagnosticsReport)
+	}
+	state.pendingDiagnostics[report.URI] = DiagnosticsReport{
+		URI: report.URI, Path: path, RelativePath: relativeWithin(state.root, path), DocumentID: state.byURI[report.URI],
+		Diagnostics: diagnostics,
+	}
+	if state.diagnosticsTimer == nil {
+		state.diagnosticsTimer = time.AfterFunc(diagnosticsThrottle, func() { m.flushDiagnostics(state) })
+	}
+}
+
+// flushDiagnostics invia alla UI l'ultima diagnostica di ogni file cambiato nella finestra di throttling.
+func (m *LSPManager) flushDiagnostics(state *lspSession) {
+	state.mu.Lock()
+	pending := state.pendingDiagnostics
+	state.pendingDiagnostics, state.diagnosticsTimer = nil, nil
+	closed := state.closed
+	state.mu.Unlock()
+	if closed {
+		return
+	}
+	for uri, report := range pending {
+		m.publish("lsp.diagnostics", state.id, uri, report)
+	}
 }

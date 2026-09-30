@@ -1,5 +1,6 @@
+import { isLowResource, watchBattery } from './goStudioResourceMode'
 import { useEffect, useState } from 'react'
-import { AlertCircle, AlertTriangle, EyeOff, Loader2, LockKeyhole, ScanSearch, ShieldCheck } from 'lucide-react'
+import { AlertCircle, AlertTriangle, BatteryLow, EyeOff, Gauge, Loader2, LockKeyhole, ScanSearch, ShieldCheck } from 'lucide-react'
 import { getGoIDEWatcherStatus, type GoIDEExecution, type GoIDESession, type GoIDEToolchainInfo, type GoIDEWatcherStatus } from '@/lib/goide-api'
 import { useShallow } from 'zustand/react/shallow'
 import { useGoStudioCursorStore } from './goStudioCursor'
@@ -59,6 +60,14 @@ export function GoStudioStatusBar({ session, toolchain, documentInfo, execution,
   const lspState = status?.state ?? 'stopped'
   const lspTone = lspState === 'ready' ? 'text-success' : lspState === 'crashed' ? 'text-danger' : lspState === 'starting' ? 'text-accent' : 'text-text-4'
 
+  const resourceMode = useGoIDELspStore((state) => state.preferences.resourceMode)
+  const onBattery = useGoIDELspStore((state) => state.onBattery)
+  const lowResource = isLowResource(resourceMode, onBattery)
+  // La batteria si segue solo in modalità auto: nelle altre modalità non serve.
+  useEffect(() => {
+    if (resourceMode !== 'auto') return
+    return watchBattery((value) => useGoIDELspStore.setState({ onBattery: value }))
+  }, [resourceMode])
   const authorized = session.project.authorization === 'tooling-permitted'
   const running = execution?.status === 'running'
 
@@ -77,6 +86,16 @@ export function GoStudioStatusBar({ session, toolchain, documentInfo, execution,
           <span role="status" title={`This project has more than ${watcher.limit} folders: only the first ${watcher.directories} are watched, so changes made outside Go Studio in the others are not detected automatically. Reopen files to see their disk version.`} className="flex shrink-0 items-center gap-1 whitespace-nowrap px-1.5 text-warning">
             <EyeOff size={12} /> Partially watched
           </span>
+        )}
+        {lowResource && (
+          <button
+            type="button"
+            onClick={() => useGoIDELspStore.getState().updatePreferences({ resourceMode: 'normal' })}
+            title={`Low-resource mode${resourceMode === 'auto' ? ' (on battery)' : ''}: semantic colors, inlay hints, sticky scroll, minimap and lint on save are paused. Click to turn it off.`}
+            className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded px-1.5 text-warning hover:bg-surface-3"
+          >
+            {resourceMode === 'auto' ? <BatteryLow size={12} /> : <Gauge size={12} />} Low-resource
+          </button>
         )}
       </div>
       <button type="button" onClick={onLanguageServer} title={status?.error || 'Language server: click for start, restart or log'} className={`${ITEM} ${lspTone}`}>

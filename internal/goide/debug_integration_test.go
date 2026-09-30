@@ -175,6 +175,107 @@ func TestDebuggerSingleTest(t *testing.T) {
 	waitDebugState(t, recorder, started.ID, DebugTerminated, 0)
 }
 
+func TestDebuggerResolvesWrappedErrorChainOnExplicitEvaluate(t *testing.T) {
+	ide, recorder, session := startDebugProject(t)
+	content, err := os.ReadFile(filepath.Join(session.Project.RealPath, "main.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	breakpoint := lineOf(t, string(content), "\tfmt.Println(outer)")
+	if _, err := ide.SetBreakpoints(string(session.ID), "main.go", lineBreakpoints(breakpoint)); err != nil {
+		t.Fatal(err)
+	}
+	started, err := ide.StartDebug(DebugRequest{SessionID: session.ID, Mode: "debug", Target: "."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	stopped := waitDebugState(t, recorder, started.ID, DebugStopped, 0)
+	frames, err := ide.DebugStackTrace(string(started.ID), stopped.ThreadID)
+	if err != nil || len(frames) == 0 {
+		t.Fatalf("stack non disponibile: %v %+v", err, frames)
+	}
+	frameID := frames[0].ID
+	first, err := ide.DebugEvaluate(string(started.ID), "(outer).(interface{ Unwrap() error }).Unwrap()", frameID, "repl")
+	if err != nil || !strings.Contains(first.Result, "inner") {
+		t.Fatalf("primo Unwrap inatteso: %v %+v", err, first)
+	}
+	second, err := ide.DebugEvaluate(string(started.ID), "((outer).(interface{ Unwrap() error }).Unwrap()).(interface{ Unwrap() error }).Unwrap()", frameID, "repl")
+	if err != nil || !strings.Contains(second.Result, "root cause") {
+		t.Fatalf("secondo Unwrap inatteso: %v %+v", err, second)
+	}
+	if err := ide.StopDebug(string(started.ID)); err != nil {
+		t.Fatal(err)
+	}
+	waitDebugState(t, recorder, started.ID, DebugTerminated, 0)
+}
+
+func TestDebuggerEvaluatesCollectionMetadataWithoutFunctionCalls(t *testing.T) {
+	ide, recorder, session := startDebugProject(t)
+	content, err := os.ReadFile(filepath.Join(session.Project.RealPath, "main.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	breakpoint := lineOf(t, string(content), "\tfmt.Println(items, labels, jobs)")
+	if _, err := ide.SetBreakpoints(string(session.ID), "main.go", lineBreakpoints(breakpoint)); err != nil {
+		t.Fatal(err)
+	}
+	started, err := ide.StartDebug(DebugRequest{SessionID: session.ID, Mode: "debug", Target: "."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	stopped := waitDebugState(t, recorder, started.ID, DebugStopped, 0)
+	frames, err := ide.DebugStackTrace(string(started.ID), stopped.ThreadID)
+	if err != nil || len(frames) == 0 {
+		t.Fatalf("stack non disponibile: %v %+v", err, frames)
+	}
+	for expression, want := range map[string]string{
+		"len(items)":  "2",
+		"cap(items)":  "5",
+		"len(labels)": "2",
+		"len(jobs)":   "1",
+		"cap(jobs)":   "3",
+	} {
+		result, err := ide.DebugEvaluate(string(started.ID), expression, frames[0].ID, "watch")
+		if err != nil || result.Result != want {
+			t.Fatalf("%s = %+v, %v; atteso %s", expression, result, err, want)
+		}
+	}
+	if err := ide.StopDebug(string(started.ID)); err != nil {
+		t.Fatal(err)
+	}
+	waitDebugState(t, recorder, started.ID, DebugTerminated, 0)
+}
+
+func TestDebuggerReportsInterfaceRuntimeValue(t *testing.T) {
+	ide, recorder, session := startDebugProject(t)
+	content, err := os.ReadFile(filepath.Join(session.Project.RealPath, "main.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	breakpoint := lineOf(t, string(content), "\tfmt.Println(payload)")
+	if _, err := ide.SetBreakpoints(string(session.ID), "main.go", lineBreakpoints(breakpoint)); err != nil {
+		t.Fatal(err)
+	}
+	started, err := ide.StartDebug(DebugRequest{SessionID: session.ID, Mode: "debug", Target: "."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	stopped := waitDebugState(t, recorder, started.ID, DebugStopped, 0)
+	frames, err := ide.DebugStackTrace(string(started.ID), stopped.ThreadID)
+	if err != nil || len(frames) == 0 {
+		t.Fatalf("stack non disponibile: %v %+v", err, frames)
+	}
+	payload, err := ide.DebugEvaluate(string(started.ID), "payload", frames[0].ID, "watch")
+	if err != nil || payload.Type == "" || payload.Result == "" {
+		t.Fatalf("interface non esposta da Delve: %v %+v", err, payload)
+	}
+	t.Logf("Delve interface: type=%q value=%q", payload.Type, payload.Result)
+	if err := ide.StopDebug(string(started.ID)); err != nil {
+		t.Fatal(err)
+	}
+	waitDebugState(t, recorder, started.ID, DebugTerminated, 0)
+}
+
 func TestDebuggerStopLeavesNoOrphans(t *testing.T) {
 	ide, recorder, session := startDebugProject(t)
 	started, err := ide.StartDebug(DebugRequest{SessionID: session.ID, Mode: "debug", Target: ".", Environment: map[string]string{"DBG_HANG": "1"}})

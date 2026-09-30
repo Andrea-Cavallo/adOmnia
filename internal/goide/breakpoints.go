@@ -166,14 +166,6 @@ func validateBreakpointText(condition, hitCondition, logMessage string) error {
 	return nil
 }
 
-func breakpointLines(breakpoints []Breakpoint) []int {
-	lines := make([]int, 0, len(breakpoints))
-	for _, breakpoint := range breakpoints {
-		lines = append(lines, breakpoint.Line)
-	}
-	return lines
-}
-
 func unverifiedStates(breakpoints []Breakpoint) []BreakpointState {
 	states := make([]BreakpointState, 0, len(breakpoints))
 	for _, breakpoint := range breakpoints {

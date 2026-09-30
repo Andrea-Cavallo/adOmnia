@@ -6,7 +6,7 @@ export type GoStudioCommandId =
   | 'edit.duplicateLine' | 'edit.deleteLine' | 'edit.nextOccurrence' | 'edit.allOccurrences' | 'edit.moveLineUp' | 'edit.moveLineDown' | 'edit.columnSelection'
   | 'file.localHistory' | 'view.todo'
   | 'view.splitRight' | 'view.splitDown' | 'view.unsplit' | 'view.terminal'
-  | 'view.zoomIn' | 'view.zoomOut' | 'view.zoomReset' | 'view.zenMode' | 'view.stickyScroll' | 'view.minimap' | 'view.fontLigatures' | 'view.previewTab'
+  | 'view.zoomIn' | 'view.zoomOut' | 'view.zoomReset' | 'view.zenMode' | 'view.stickyScroll' | 'view.minimap' | 'view.fontLigatures' | 'view.previewTab' | 'view.lowResourceMode' | 'view.lowResourceOnBattery'
   | 'view.quickOpen' | 'view.maximize' | 'view.maximizeEditor' | 'view.toggleProject' | 'view.toggleStructure' | 'view.toggleBottom' | 'view.toggleIgnored' | 'view.problems'
   | 'nav.declaration' | 'nav.typeDeclaration' | 'nav.implementation' | 'nav.usages' | 'nav.fileStructure' | 'nav.symbol' | 'nav.findInFiles'
   | 'nav.recentLocations' | 'nav.lastEdit' | 'nav.gotoTest' | 'code.generate' | 'nav.callHierarchy' | 'nav.typeHierarchy' | 'nav.nextProblem' | 'nav.previousProblem'
@@ -21,7 +21,7 @@ export type GoStudioCommandId =
   | 'go.toolVet' | 'go.toolGenerate' | 'go.toolFix' | 'go.toolModWhy' | 'go.toolModGraph' | 'go.toolDoc'
   | 'go.installGolangci' | 'go.installStaticcheck' | 'go.toolPaths'
   | 'run.run' | 'run.build' | 'run.stop' | 'run.restart' | 'run.configure'
-  | 'run.rerunFailedTests' | 'run.testCoverage' | 'run.testRace' | 'run.runRace' | 'view.tests'
+  | 'run.rerunFailedTests' | 'run.testCoverage' | 'run.testRace' | 'run.runRace' | 'run.benchPackage' | 'view.tests'
   | 'run.buildPackage' | 'run.testPackage' | 'run.vetPackage' | 'run.buildAll' | 'run.testAll' | 'run.vetAll' | 'run.generateAll' | 'run.install'
   | 'debug.debug' | 'debug.toggleBreakpoint' | 'debug.resume' | 'debug.pause' | 'debug.stepOver' | 'debug.stepInto' | 'debug.stepOut'
   | 'debug.stop' | 'view.debug' | 'go.installDelve' | 'debug.attach' | 'debug.remote'
@@ -104,6 +104,8 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'view.minimap', menu: 'view', label: 'Minimap' },
   { id: 'view.fontLigatures', menu: 'view', label: 'Font Ligatures' },
   { id: 'view.previewTab', menu: 'view', label: 'Preview Tab (single click in Project)' },
+  { id: 'view.lowResourceMode', menu: 'view', label: 'Low-Resource Mode' },
+  { id: 'view.lowResourceOnBattery', menu: 'view', label: 'Low-Resource Mode on Battery' },
   { id: 'view.zenMode', menu: 'view', label: 'Zen Mode', binding: { key: 'z', alt: true, shift: true }, separatorBefore: true },
   { id: 'view.maximizeEditor', menu: 'view', label: 'Maximize Editor (Hide All Tool Windows)', binding: { key: 'F12', mod: true, shift: true }, separatorBefore: true },
   { id: 'view.maximize', menu: 'view', label: 'Maximize Go Studio', binding: { key: 'F11', mod: true, shift: true } },
@@ -199,6 +201,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'run.build', menu: 'run', label: 'Build', binding: { key: 'b', mod: true, shift: true } },
   { id: 'run.buildPackage', menu: 'run', label: 'Build Current Package', binding: { key: 'F9', mod: true }, separatorBefore: true },
   { id: 'run.testPackage', menu: 'run', label: 'Test Current Package', binding: { key: 'F10', mod: true, shift: true } },
+  { id: 'run.benchPackage', menu: 'run', label: 'Run Current Package Benchmarks' },
   { id: 'run.vetPackage', menu: 'run', label: 'Vet Current Package' },
   { id: 'run.testCoverage', menu: 'run', label: 'Test Current Package with Coverage' },
   { id: 'run.testRace', menu: 'run', label: 'Test Current Package with Race Detector' },
@@ -315,7 +318,7 @@ export interface GoStudioCommandContext {
   canGoForward: boolean
   bookmarkCount: number
   /** Preferenze dell'editor mostrate con spunta nei menu. */
-  editorPrefs?: { previewTab?: boolean; stickyScroll: boolean; minimap: boolean; fontLigatures: boolean; typeHints: boolean; autoSave: boolean; trimTrailingWhitespace: boolean }
+  editorPrefs?: { resourceMode?: 'normal' | 'low' | 'auto'; previewTab?: boolean; stickyScroll: boolean; minimap: boolean; fontLigatures: boolean; typeHints: boolean; autoSave: boolean; trimTrailingWhitespace: boolean }
   zen?: boolean
   /** Finestra Go Studio separata: mostra un solo progetto e non ha rail né pannelli adOmnia. */
   detached?: boolean
@@ -401,6 +404,7 @@ export function commandAvailability(id: GoStudioCommandId, context: GoStudioComm
     case 'run.build':
     case 'run.buildPackage':
     case 'run.testPackage':
+    case 'run.benchPackage':
     case 'run.vetPackage':
     case 'run.buildAll':
     case 'run.testAll':
@@ -459,6 +463,8 @@ export function commandChecked(id: GoStudioCommandId, context: GoStudioCommandCo
     case 'view.stickyScroll': return !!context.editorPrefs?.stickyScroll
     case 'view.minimap': return !!context.editorPrefs?.minimap
     case 'view.previewTab': return !!context.editorPrefs?.previewTab
+    case 'view.lowResourceMode': return context.editorPrefs?.resourceMode === 'low'
+    case 'view.lowResourceOnBattery': return context.editorPrefs?.resourceMode === 'auto'
     case 'view.fontLigatures': return !!context.editorPrefs?.fontLigatures
     case 'code.typeHints': return !!context.editorPrefs?.typeHints && context.inlayHints
     case 'file.autoSave': return !!context.editorPrefs?.autoSave

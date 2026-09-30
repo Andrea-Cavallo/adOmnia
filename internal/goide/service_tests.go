@@ -108,6 +108,11 @@ func (s *Service) finishTests(session Session, run *testRun, execution Execution
 		status = "finished"
 	}
 	run.snapshot.Status = status
+	finishedAt := time.Now().UTC()
+	if execution.FinishedAt != nil {
+		finishedAt = execution.FinishedAt.UTC()
+	}
+	run.snapshot.FinishedAt = &finishedAt
 	coverageFile := run.coverageFile
 	run.mu.Unlock()
 	if coverageFile != "" {

@@ -38,16 +38,19 @@ type TestRunRequest struct {
 
 // TestRunSnapshot è lo stato di un'esecuzione di test; Results non include l'output dei singoli nodi.
 type TestRunSnapshot struct {
-	RunID     RunID           `json:"runId"`
-	SessionID SessionID       `json:"sessionId"`
-	Request   TestRunRequest  `json:"request"`
-	Command   string          `json:"command"`
-	Status    string          `json:"status"`
-	Summary   TestSummary     `json:"summary"`
-	Results   []TestResult    `json:"results"`
-	Overflow  bool            `json:"overflow,omitempty"`
-	StartedAt time.Time       `json:"startedAt"`
-	Coverage  *CoverageReport `json:"coverage,omitempty"`
+	RunID     RunID          `json:"runId"`
+	SessionID SessionID      `json:"sessionId"`
+	Request   TestRunRequest `json:"request"`
+	Command   string         `json:"command"`
+	Status    string         `json:"status"`
+	Summary   TestSummary    `json:"summary"`
+	Results   []TestResult   `json:"results"`
+	Overflow  bool           `json:"overflow,omitempty"`
+	StartedAt time.Time      `json:"startedAt"`
+	// FinishedAt è presente solo quando il processo di test è terminato; permette
+	// di distinguere la durata reale della run dalla metrica ns/op del benchmark.
+	FinishedAt *time.Time      `json:"finishedAt,omitempty"`
+	Coverage   *CoverageReport `json:"coverage,omitempty"`
 	// RaceReports sono i blocchi "WARNING: DATA RACE" completi, nell'ordine in cui go test li ha scritti.
 	RaceReports []string `json:"raceReports,omitempty"`
 }

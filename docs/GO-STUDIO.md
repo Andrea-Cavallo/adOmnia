@@ -293,6 +293,12 @@ Go Studio follows the GoLand keymap. The table below is generated from the comma
 
 Other mouse gestures: Ctrl+click (Cmd+click on macOS) goes to the declaration, Alt+click adds a cursor, Shift+Alt+drag selects a column, a click on a line number toggles a breakpoint, and a right-click on a line number edits it (condition, hit count, logpoint).
 
+## Performance and low-resource mode
+
+- **Low-Resource Mode** (View menu) pauses semantic highlighting, inlay and type hints, sticky scroll, the minimap and lint on save. Your preferences are kept; a **Low-resource** badge in the status bar turns it off. **Low-Resource Mode on Battery** does the same only while a laptop runs on battery (Battery Status API, available in WebView2 on Windows; elsewhere it stays normal).
+- gopls diagnostics are coalesced: at most one update per file every 150 ms, and at most 1000 diagnostics per file reach the UI (errors first).
+- The Run console draws the last 5000 lines; search and Copy console still use the full 4 MB buffer. Project folders with more than 500 entries show them in pages (**Show more**).
+
 ## Platform verification
 
 | Platform | Status |

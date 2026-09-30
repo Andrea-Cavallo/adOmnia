@@ -32,6 +32,9 @@ interface GoStudioWorkspaceProps {
   zen?: boolean
 }
 
+/** A tall tool window never swallows the editor in a small window: at least 140 px of code stay visible. */
+const BOTTOM_PANEL_MAX_HEIGHT = 'calc(100% - 140px)'
+
 export function GoStudioWorkspace({ session, projectWidth, structureWidth, bottomHeight, projectOpen, structureOpen, bottomOpen, onProjectResize, onStructureResize, onBottomResize, onCursor, onRequestCloseDocument, onRunTarget, onCommit, onBookmarks, onDependencies, onCommand, zen = false }: GoStudioWorkspaceProps) {
   const allDocuments = useGoIDEStore((state) => state.documents)
   const documents = useMemo(() => allDocuments.filter((item) => item.document.sessionId === session.id), [allDocuments, session.id])
@@ -48,7 +51,7 @@ export function GoStudioWorkspace({ session, projectWidth, structureWidth, botto
           <div className="go-studio-island flex-1"><GoStudioEditor documents={documents} active={active} onCursor={onCursor} onRequestClose={onRequestCloseDocument} onRunTarget={onRunTarget} /></div>
           {structureOpen && <><ResizeHandle label="Resize structure pane" withLine={false} className="go-studio-gap" onMouseDown={onStructureResize} /><div style={{ width: structureWidth }} className="go-studio-island shrink-0"><GoStudioSidePane session={session} document={active} /></div></>}
         </div>
-        {bottomOpen && <><ResizeHandle label="Resize tool window" orientation="horizontal" withLine={false} className="go-studio-gap" onMouseDown={onBottomResize} /><div style={{ height: bottomHeight }} className="go-studio-island shrink-0"><GoStudioRunPanel session={session} /></div></>}
+        {bottomOpen && <><ResizeHandle label="Resize tool window" orientation="horizontal" withLine={false} className="go-studio-gap" onMouseDown={onBottomResize} /><div style={{ height: bottomHeight, maxHeight: BOTTOM_PANEL_MAX_HEIGHT }} className="go-studio-island shrink-0"><GoStudioRunPanel session={session} /></div></>}
       </div>
       {!zen && <GoStudioRightStripe onDependencies={onDependencies} />}
     </div>

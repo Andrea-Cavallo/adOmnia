@@ -16,12 +16,12 @@
 | §2 Editor Core | **77/80.** Aperte: Merge editor (→ §22), Move symbol e Change signature (limiti di gopls). |
 | §3 gopls Integration | **27/28.** Aperta: misura su repository grandi (→ §4 monorepo). |
 | §4 Workspace e Project Model | **45/48.** Fatti: Clone, go.work visuale, decorazioni Git/problemi/test nel Project, icon pack, template di progetto integrati e personalizzati. Aperti: grafo dei moduli (→ §19), Project graph (→ §15), misura su monorepo. |
-| §7 Debugger Delve | **30/44.** Fatti: breakpoint condizionali, hit count, logpoint, function breakpoint, stop on panic, Run to Cursor, dialog View Breakpoints. Aperti: set next statement (Delve non lo supporta), registri, memory e disassembly view, creation stack delle goroutine, viewer Go-specific (panic, defer, slice, map, channel, context, error chain). **Prossimo passo §7:** i viewer Go-specific. |
-| §5–§30 | Da verificare voce per voce: molte funzioni esistono già (Run configuration, Delve, Concurrency view e race detector, test runner, terminale, Git, integrazioni Docker/DB/Broker/API) ma non sono ancora spuntate. Lavoro: audit + lacune reali. |
+| §7 Debugger Delve | **38/44.** Fatti: breakpoint condizionali, hit count, logpoint, function breakpoint, stop on panic, Run to Cursor, dialog View Breakpoints, panic/error chain e viewer slice/map/interface/channel/context. Aperti: set next statement (Delve non lo supporta), registri, memory e disassembly view, creation stack delle goroutine, inspector runtime per defer. **Prossimo passo §7:** i viewer Go-specific rimanenti. |
+| §5–§30 | Audit in corso voce per voce. Verificati: Run configuration, Delve, Concurrency/Race, Test Explorer, terminale, Git e integrazioni Docker/DB/Broker/API. §8 aggiunge un controllo STATIC esplicito sul sorgente del frame per lifecycle di context/timer, ordine opposto dei lock e `WaitGroup.Add` dentro una goroutine; §10 ha ora ricerca e filtro test lenti; §11 avvia fuzzing esplicito e limitato; §12 ha esecuzione del package con `benchmem`, lettura delle metriche e confronto con il run precedente nella stessa sessione. Restano confronti Git/CI, flakiness, corpus e persistenza. |
 | §31–§43 | Sottosistemi nuovi e grandi (Distributed Request Debugger, Runtime-Aware AI, Semantic Graph, Service Map, Reproduction, Logs/Trace Studio): ognuno va progettato prima di essere implementato. |
 | §44–§61 | Checklist di qualità, Definition of Done, KPI, roadmap, posizionamento e idee: si spuntano man mano che le funzioni arrivano, non si implementano da sole. |
 
-**Da verificare a mano nell'app** (non coperto dai test automatici): Docker Build & Run, `docker compose up`/Stop con Docker Desktop acceso; un giro completo in `wails3 task dev` delle funzioni di §2–§4.
+**Da verificare a mano nell'app** (non coperto dai test automatici): Docker Build & Run, `docker compose up`/Stop con Docker Desktop acceso; un giro completo in `wails3 task dev` delle funzioni di §2–§4 e §7. In questo ambiente `dlv` non è installato, quindi le integrazioni Delve aggiunte restano correttamente coperte nel codice ma i test runtime risultano `SKIP`.
 
 ---
 
@@ -67,7 +67,7 @@
 
 > Ogni voce ha la sua sezione operativa più sotto (§8–§21): si spunta lì, poi qui.
 
-- [ ] Concurrency view. — *§8 31/37 e §9 10/12 (v0.9.41 + P1): restano lock ordering, context non cancellato, timer, worker pool, badge STATIC, salvataggio race, test di regressione.*
+- [ ] Concurrency view. — *§8 35/37 e §9 12/12 (v0.9.41 + P1): resta worker pool saturation.*
 - [ ] Profiler integrato.
 - [ ] Benchmark explorer.
 - [ ] Fuzzing UX.
@@ -423,15 +423,15 @@
 - [x] Show sleeping goroutines.
 - [x] Show goroutines waiting on channel. — *con l'espressione attesa*
 - [x] Show goroutines waiting on mutex.
-- [ ] Panic inspector.
-- [ ] Deferred call inspector.
-- [ ] Interface dynamic type viewer.
-- [ ] Slice internals viewer.
-- [ ] Map viewer.
-- [ ] Channel state viewer.
-- [ ] Context values viewer.
-- [ ] Error chain viewer.
-- [ ] Wrapped errors viewer.
+- [x] Panic inspector. — *la sessione Debug riconosce `runtime.gopanic`/exception, apre il frame d'origine e legge in sola lettura il valore `e` quando il DAP lo espone; recovery/defer restano voci separate.*
+- [ ] Deferred call inspector. — *la sessione Debug ora elenca i `defer` precedenti dal sorgente del frame selezionato, dichiarandoli candidati; Delve non espone ancora elenco/ordine runtime delle defer effettivamente pendenti.*
+- [x] Interface dynamic type viewer. — *l'Inspector Runtime mostra il tipo statico e il concreto se Delve lo stampa come `interface{}(T)`, `pkg.T {...}` o `string(...)`; interface opache restano dichiarate come non risolte e la prova runtime locale richiede `dlv`.*
+- [x] Slice internals viewer. — *l'Inspector Runtime legge `len`/`cap` con builtin Go side-effect-free e l'albero Delve espande gli indici.*
+- [x] Map viewer. — *l'Inspector Runtime legge `len` con builtin Go side-effect-free e l'albero Delve espande key/value.*
+- [x] Channel state viewer. — *l'Inspector Runtime legge coda (`len`) e capacità (`cap`) con builtin senza side effect e Concurrency collega send/receive; la chiusura non è dichiarata se il DAP non la espone.*
+- [x] Context values viewer. — *l'Inspector Runtime carica e mostra solo i campi DAP `key`/`val`, deadline, done, err/cause e parent context; ciò che l'adapter non espone resta dichiarato assente.*
+- [x] Error chain viewer. — *l'Inspector Runtime mostra ogni livello di `Unwrap() error` fino a 12, con valore e tipo; l'azione è esplicita perché può eseguire il metodo nel processo fermo.*
+- [x] Wrapped errors viewer. — *la stessa catena visualizza messaggio e tipo di ciascun wrapper senza eseguire nulla finché l'utente non preme `Resolve wrapped errors`.*
 
 ---
 
@@ -465,18 +465,18 @@
 - [x] Receive potenzialmente bloccante.
 - [x] Mutex contention.
 - [x] RWMutex contention.
-- [ ] Lock ordering sospetto.
+- [x] Lock ordering sospetto. — *Inspect source confronta le coppie di lock mantenuti nel file e avvisa soltanto per ordini opposti (`a → b` e `b → a`); resta un indizio STATIC, non un deadlock confermato.*
 - [x] Possibile deadlock. — *tutte le goroutine aspettano un'altra goroutine*
-- [ ] WaitGroup misuse. — *segnalato solo "WaitGroup never reaches zero" (nessuna goroutine attiva per Done)*
-- [ ] Context non cancellato.
-- [ ] Timer/ticker non stoppato.
+- [x] WaitGroup misuse. — *runtime segnala un WaitGroup che non può più raggiungere zero; Inspect source avvisa anche per `wg.Add()` dentro una nuova goroutine, che può concorrere con `Wait()`.*
+- [x] Context non cancellato. — *Inspect source sul frame Debug cerca `context.WithCancel/WithTimeout/WithDeadline` il cui cancel locale non viene invocato nella stessa funzione; è un indizio STATIC, non una prova di ownership.*
+- [x] Timer/ticker non stoppato. — *Inspect source cerca `time.NewTimer/NewTicker/AfterFunc` senza un successivo `.Stop()` nella stessa funzione; è un indizio STATIC, non una prova di lifecycle.*
 - [ ] Worker pool saturation.
 - [x] Excessive goroutine count. — *1000+*
 
 ## Runtime confirmation
 
 - [x] Distinguere issue statiche da issue osservate runtime.
-- [ ] Badge `STATIC`. — *il badge esiste; nessuna analisi statica di concorrenza ancora*
+- [x] Badge `STATIC`. — *Inspect source produce indizi locali di lifecycle per context e timer/ticker; ramificazioni e ownership esterna restano da verificare.*
 - [x] Badge `OBSERVED`. — *diagnosi dall'istantanea in pausa*
 - [x] Badge `CONFIRMED`. — *race riportati dal runtime*
 - [x] Collegamento diretto allo stack.
@@ -496,9 +496,9 @@
 - [x] Mostrare goroutine coinvolte. — *con lo stack di creazione*
 - [x] Mostrare ordine temporale quando disponibile. — *EARLIER / LATER*
 - [x] Raggruppare race duplicate. — *conteggio delle ripetizioni*
-- [ ] Salvare sessione race. — *oggi solo copia JSON dello snapshot; nessuna persistenza tra riavvii*
+- [x] Salvare sessione race. — *le ultime 20 fonti con race restano locali al progetto dopo il riavvio; Diagnostics permette di cancellarle esplicitamente.*
 - [x] Confrontare run diverse. — *nuovo nell'ultima run, ricorrente, non più presente*
-- [ ] Generare test di regressione assistito.
+- [x] Generare test di regressione assistito. — *ogni race offre “Copy regression test starter”: uno scheletro `*_test.go` locale con entrambe le righe coinvolte e comando `go test -race`; setup e riproduzione restano intenzionalmente a cura del progetto.*
 
 ---
 
@@ -506,34 +506,34 @@
 
 ## Base
 
-- [ ] Tree package → test.
-- [ ] Subtests.
-- [ ] Table-driven tests.
-- [ ] Stato pass.
-- [ ] Stato fail.
-- [ ] Stato skipped.
-- [ ] Durata.
-- [ ] Output.
-- [ ] Stack trace.
-- [ ] Rerun failed.
-- [ ] Rerun package.
-- [ ] Debug test.
-- [ ] Run selected tests.
-- [ ] Search tests.
-- [ ] Filter failed.
-- [ ] Filter slow.
+- [x] Tree package → test. — *risultati strutturati da `go test -json`.*
+- [x] Subtests. — *albero package → test → sottotest.*
+- [x] Table-driven tests. — *i case name dei subtest restano nodi separati.*
+- [x] Stato pass.
+- [x] Stato fail.
+- [x] Stato skipped.
+- [x] Durata. — *per ciascun risultato con tempo disponibile.*
+- [x] Output. — *caricato per il solo nodo selezionato, con limite di 64 KB.*
+- [x] Stack trace. — *l'output mantiene file:riga cliccabili.*
+- [x] Rerun failed.
+- [x] Rerun package. — *▶ sul nodo package.*
+- [x] Debug test. — *icona Debug sul singolo test o sottotest.*
+- [x] Run selected tests. — *▶ sul nodo selezionato o nel gutter.*
+- [x] Search tests. — *filtro per nome e package, con antenati preservati.*
+- [x] Filter failed.
+- [x] Filter slow. — *pulsante Clock: risultati da 1 s in su.*
 - [ ] Filter flaky.
 
 ## Coverage
 
-- [ ] Coverage package.
-- [ ] Coverage file.
+- [x] Coverage package.
+- [x] Coverage file.
 - [ ] Coverage function.
-- [ ] Inline coverage.
+- [x] Inline coverage. — *gutter Monaco per righe coperte, non coperte e parziali; si disattiva quando il file cambia.*
 - [ ] Branch-like insights dove deducibili.
 - [ ] Coverage diff rispetto a branch base.
 - [ ] Coverage per PR.
-- [ ] Highlight codice non coperto.
+- [x] Highlight codice non coperto. — *nel gutter, solo per il contenuto corrispondente al run.*
 
 ## Flaky Test Detector
 
@@ -551,9 +551,9 @@
 
 # 11. Fuzzing Studio
 
-- [ ] Discover fuzz targets.
-- [ ] Run fuzz.
-- [ ] Stop fuzz.
+- [x] Discover fuzz targets. — *i target `func FuzzX` nei `_test.go` ricevono ▶ nel gutter.*
+- [x] Run fuzz. — *il menu ▶ offre “Fuzz … for 30 seconds”, con `go test -run ^$ -fuzz`.*
+- [x] Stop fuzz. — *Stop nella Run window arresta l'albero di processo del tool Go.*
 - [ ] Corpus viewer.
 - [ ] Crash input viewer.
 - [ ] Minimized failing input.
@@ -561,7 +561,7 @@
 - [ ] Promote failing case a unit test.
 - [ ] Corpus management.
 - [ ] Fuzz session history.
-- [ ] CPU/time limits.
+- [x] CPU/time limits. — *il run dal menu è bounded a 30 s; non esiste un fuzzing infinito implicito.*
 - [ ] Parallelism controls.
 - [ ] Crash deduplication.
 
@@ -571,29 +571,29 @@
 
 ## Benchmark explorer
 
-- [ ] Discover benchmark.
-- [ ] Run selected benchmark.
-- [ ] Run package benchmarks.
-- [ ] `benchmem`.
-- [ ] Iterations.
-- [ ] Duration.
-- [ ] ns/op.
-- [ ] B/op.
-- [ ] allocs/op.
-- [ ] Custom benchmark metrics.
-- [ ] Historical benchmark runs.
+- [x] Discover benchmark. — *i target `func BenchmarkX` nei `_test.go` ricevono ▶ nel gutter.*
+- [x] Run selected benchmark. — *▶ nel gutter e nel Test Explorer eseguono solo quel benchmark.*
+- [x] Run package benchmarks. — *Run → Run Current Package Benchmarks e il pulsante Gauge nel Test Explorer lanciano `go test -run ^$ -bench .` sul modulo corretto.*
+- [x] `benchmem`. — *aggiunto automaticamente a ogni run di benchmark.*
+- [x] Iterations. — *mostrate nel dettaglio della misura.*
+- [x] Duration. — *durata wall-clock reale dal timestamp di fine del runner, separata da `ns/op`.*
+- [x] ns/op. — *letto dal risultato strutturato e mostrato come metrica.*
+- [x] B/op. — *letto dal risultato strutturato e mostrato come metrica.*
+- [x] allocs/op. — *letto dal risultato strutturato e mostrato come metrica.*
+- [x] Custom benchmark metrics. — *le coppie value/unit prodotte da `b.ReportMetric` restano visibili, senza whitelist.*
+- [x] Historical benchmark runs. — *metriche delle ultime 120 misure restano locali al progetto dopo il riavvio; il confronto le usa quando non esiste un run precedente in memoria e la toolbar permette di cancellarle.*
 
 ## Comparazioni
 
-- [ ] Compare current vs previous.
+- [x] Compare current vs previous. — *per lo stesso benchmark: variazione percentuale, con miglioramento/regressione per metriche per-operazione e throughput.*
 - [ ] Compare branch vs main.
 - [ ] Compare commit vs commit.
 - [ ] Compare before/after refactor.
-- [ ] Percentuale regressione.
-- [ ] Percentuale miglioramento.
+- [x] Percentuale regressione. — *nel confronto con il run precedente della sessione.*
+- [x] Percentuale miglioramento. — *nel confronto con il run precedente della sessione.*
 - [ ] Significance indicator quando calcolabile.
 - [ ] Regression threshold configurabile.
-- [ ] CI-friendly export.
+- [x] CI-friendly export. — *copia CSV delle metriche benchmark persistite, una riga per metrica e senza output o sorgenti.*
 
 ---
 
@@ -1635,22 +1635,22 @@
 
 # 49. Performance e Scalabilità dell'IDE
 
-- [ ] Startup veloce.
-- [ ] Lazy loading.
-- [ ] Incremental indexing.
-- [ ] Partial workspace loading.
-- [ ] Virtualized large trees.
-- [ ] Large log handling.
-- [ ] Large JSON handling.
-- [ ] Large generated Go files.
-- [ ] Monorepo support.
-- [ ] Bounded memory caches.
-- [ ] Background workers controllati.
-- [ ] Cancelable operations.
-- [ ] No UI freeze.
-- [ ] Diagnostics throttling.
-- [ ] Battery-aware mode laptop.
-- [ ] Low-resource mode.
+- [x] Startup veloce. — *Go Studio e i pannelli pesanti sono lazy; `npm run check:startup` blocca import di gO nel bundle di avvio.*
+- [x] Lazy loading. — *`React.lazy` per ogni pannello in `MainAreaRouter`; Monaco, xterm e Go Studio caricati solo all'apertura.*
+- [x] Incremental indexing. — *gopls indicizza in modo incrementale; il watcher (debounce 150 ms) invia `workspace/didChangeWatchedFiles` solo per i file cambiati.*
+- [x] Partial workspace loading. — *il Project carica una cartella alla volta (`ListDirectory` all'espansione); il watcher limita le cartelle osservate e lo segnala ("Partially watched").*
+- [x] Virtualized large trees. — *righe con `content-visibility: auto` (fuori vista non impaginate né dipinte) e cartelle enormi a pagine da 500 con "Show more".*
+- [x] Large log handling. — *Run console: buffer 4 MB, disegnate solo le ultime 5000 righe (ricerca e Copy sull'intero buffer); terminale 5000 righe di scrollback; console debug 2000 righe.*
+- [x] Large JSON handling. — *JSON aperti in Monaco (worker, ottimizzazioni per file grandi) fino a 16 MB (`MaxDocumentBytes`), oltre un errore chiaro.*
+- [x] Large generated Go files. — *banner "Generated file"; massimo 1000 diagnostiche per file inviate alla UI, errori prima (`TestDiagnosticsAreThrottledAndCapped`).*
+- [x] Monorepo support. — *go.work visuale, più moduli per progetto, Project a caricamento parziale; la misura su un monorepo reale resta aperta in §4.*
+- [x] Bounded memory caches. — *limiti espliciti su cronologia, risultati di ricerca/LSP, local history, output, run di test, race report (costanti `max*` in `internal/goide`).*
+- [x] Background workers controllati. — *processi solo con Trust, un albero per esecuzione fermato con Stop, gopls con al massimo 3 riavvii dopo crash, installazioni annullabili.*
+- [x] Cancelable operations. — *chiamate LSP con contesto annullabile (`settleCancelled`), ricerca in file, lint, installazione toolchain e processi (Stop) annullabili.*
+- [x] No UI freeze. — *output del terminale fuori dallo stato React, console e albero limitati, diagnostiche raggruppate, parsing Monaco nei worker.*
+- [x] Diagnostics throttling. — *le raffiche di `publishDiagnostics` di gopls diventano un aggiornamento per file ogni 150 ms (vince l'ultimo).*
+- [x] Battery-aware mode laptop. — *View → Low-Resource Mode on Battery: con la Battery Status API (WebView2) la modalità si attiva solo scollegati; dove l'API manca resta normale.*
+- [x] Low-resource mode. — *View → Low-Resource Mode: sospende semantic highlighting, inlay/type hints, sticky scroll, minimap e lint on save senza toccare le preferenze; badge "Low-resource" nella status bar per tornare normale.*
 
 ---
 

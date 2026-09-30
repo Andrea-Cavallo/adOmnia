@@ -98,6 +98,16 @@ export async function runGoStudioQuickCommand(kind: GoIDEQuickRunKind, scope: Go
   await state.startRun(kind, { target: request.target, workingDirectory: request.workingDirectory })
 }
 
+/** Esegue tutti i benchmark del package o del modulo nel runner strutturato, con `-benchmem`. */
+export async function runGoStudioBenchmarks(scope: GoStudioQuickScope, document?: GoIDEEditorDocument | null): Promise<void> {
+  const state = useGoIDEStore.getState()
+  const session = trustedSession(document?.document.sessionId ?? state.activeSessionId)
+  if (!session) return
+  const source = document === undefined ? activeGoIDEDocument(state) : document
+  const request = quickRunFor('test', scope, moduleScopeFor(session, editableRelativePath(source)))
+  await useGoIDETestsStore.getState().start({ sessionId: session.id, workingDirectory: request.workingDirectory, packages: [request.target], run: '', bench: '.', coverage: false })
+}
+
 async function confirmDependencyAction(action: GoModDependencyAction, modulePath: string, directory: string): Promise<boolean> {
   if (!goModActionNeedsConfirmation(action)) return true
   return confirm({
@@ -162,6 +172,12 @@ export function testRequestForTarget(session: Pick<GoIDESession, 'id' | 'project
   const pattern = runPatternFor(target.name)
   const benchmark = target.kind === 'benchmark'
   return { sessionId: session.id, workingDirectory: scope.moduleDirectory, packages: [scope.packageTarget], run: benchmark ? '' : pattern, bench: benchmark ? pattern : '', coverage }
+}
+
+/** Fuzzing esplicito e limitato: il tempo è visibile nel menu e l'utente può sempre fermare il processo. */
+export function fuzzRunRequestForTarget(session: Pick<GoIDESession, 'project'>, target: GoStudioGoRunTarget, fuzzTime = '30s') {
+  const scope = targetScope(session, target)
+  return { workingDirectory: scope.moduleDirectory, target: scope.packageTarget, programArguments: ['-run', '^$', '-fuzz', runPatternFor(target.name), `-fuzztime=${fuzzTime}`] }
 }
 
 /** Richiesta di debug per il ▶ del gutter: func main, un test o un benchmark (eseguito una volta). */

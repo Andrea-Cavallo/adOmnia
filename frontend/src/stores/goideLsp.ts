@@ -1,3 +1,4 @@
+import type { GoStudioResourceMode } from '@/components/goide/goStudioResourceMode'
 import { create } from 'zustand'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 import type { CancellablePromise } from '@wailsio/runtime'
@@ -61,6 +62,8 @@ export interface GoIDEEditorPreferences {
   trimTrailingWhitespace: boolean
   /** Un clic nel Project apre una tab di anteprima; doppio clic o una modifica la rendono permanente. */
   previewTab: boolean
+  /** Modalità a basso consumo: normal, low (sempre) o auto (solo a batteria). */
+  resourceMode: GoStudioResourceMode
 }
 
 export const EDITOR_FONT_SIZE = { min: 9, max: 28, default: 12 } as const
@@ -96,6 +99,8 @@ export interface GoIDEReferencesView {
 interface GoIDELspState {
   settings: GoIDELanguageServerSettings
   preferences: GoIDEEditorPreferences
+  /** Il portatile va a batteria (Battery Status API); pesa solo con resourceMode 'auto'. */
+  onBattery: boolean
   status: Record<string, GoIDELanguageServerStatus>
   progress: Record<string, GoIDELanguageServerProgress | null>
   gopls: Record<string, GoIDEGoplsInfo | null>
@@ -153,7 +158,7 @@ const DEFAULT_SETTINGS: GoIDELanguageServerSettings = { gofumpt: false, staticch
 const DEFAULT_PREFERENCES: GoIDEEditorPreferences = {
   formatOnSave: true, organizeImportsOnSave: true, lintOnSave: false, semanticHighlighting: true, inlayHints: true,
   typeHints: false, stickyScroll: true, minimap: false, fontLigatures: false, fontSize: EDITOR_FONT_SIZE.default,
-  autoSave: false, trimTrailingWhitespace: false, previewTab: false,
+  autoSave: false, trimTrailingWhitespace: false, previewTab: false, resourceMode: 'normal',
 }
 const EMPTY_LINT: GoIDELintState = { running: false, result: null, error: null, reports: {} }
 const runningLints = new Map<string, CancellablePromise<GoIDELintResult>>()
@@ -187,6 +192,7 @@ let unsubscribe: (() => void) | null = null
 export const useGoIDELspStore = create<GoIDELspState>((set, get) => ({
   settings: persisted.settings,
   preferences: persisted.preferences,
+  onBattery: false,
   status: {},
   progress: {},
   gopls: {},

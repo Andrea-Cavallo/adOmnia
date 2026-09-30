@@ -37,7 +37,6 @@ var (
 	proxyRegexMu sync.RWMutex
 	proxyLog     []proxyMatchLog
 	proxyLogMu   sync.Mutex
-	proxyLogMax  = 200
 )
 
 type proxyMatchLog struct {

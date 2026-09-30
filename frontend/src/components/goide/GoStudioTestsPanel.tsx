@@ -1,13 +1,17 @@
 import { memo, useEffect, useMemo, useState } from 'react'
-import { CheckCircle2, ChevronDown, ChevronRight, CircleDashed, Clock3, Filter, Gauge, Loader2, MinusCircle, Play, RotateCcw, ShieldCheck, Square, XCircle, Bug } from 'lucide-react'
+import { Bug, CheckCircle2, ChevronDown, ChevronRight, CircleDashed, Clock3, Copy, Filter, Gauge, Loader2, MinusCircle, Play, RotateCcw, Search, ShieldCheck, Square, Trash2, XCircle } from 'lucide-react'
+import { Clipboard as WailsClipboard } from '@wailsio/runtime'
 import type { GoIDESession } from '@/lib/goide-api'
 import { getGoIDETestOutput, type GoIDECoverageReport, type GoIDETestResult, type GoIDETestRun } from '@/lib/goide-tests-api'
 import { requestWorkspaceSymbols } from '@/lib/goide-lsp-api'
 import { useGoIDEStore } from '@/stores/goide'
 import { selectedTestRun, useGoIDETestsStore } from '@/stores/goideTests'
-import { buildTestTree, debugRequestForNode, formatDuration, isFailed, onlyFailed, type GoStudioTestNode } from './goStudioTestTree'
+import { buildTestTree, debugRequestForNode, filterTestTree, formatDuration, isFailed, isSlow, onlyFailed, type GoStudioTestNode } from './goStudioTestTree'
 import { useGoIDEDebugStore } from '@/stores/goideDebug'
 import { navigateToLocation } from './goStudioLanguageFeatures'
+import { runGoStudioBenchmarks } from './goStudioQuickActions'
+import { benchmarkMeasurementFor, benchmarkRunDurationMillis, compareBenchmarkMetrics, formatBenchmarkValue, previousBenchmarkRun } from './goStudioBenchmarks'
+import { benchmarkHistoryCsv, clearBenchmarkHistory, loadBenchmarkHistory, previousSavedBenchmark, saveBenchmarkHistory, type GoStudioBenchmarkHistoryEntry } from './goStudioBenchmarkHistory'
 
 interface GoStudioTestsPanelProps {
   session: GoIDESession
@@ -133,7 +137,43 @@ function CoverageSummary({ report }: { report: GoIDECoverageReport }) {
   )
 }
 
-function TestDetail({ run, result }: { run: GoIDETestRun; result: GoIDETestResult }) {
+function BenchmarkDetail({ run, result, runs, history }: { run: GoIDETestRun; result: GoIDETestResult; runs: GoIDETestRun[]; history: GoStudioBenchmarkHistoryEntry[] }) {
+  const measurement = benchmarkMeasurementFor(result)
+  if (!measurement) return null
+  const previousRun = previousBenchmarkRun(runs, run, result)
+  const previousResult = previousRun?.results.find((item) => item.package === result.package && item.name === result.name) ?? null
+  const savedPrevious = previousRun ? null : previousSavedBenchmark(history, run.startedAt, result.package, result.name ?? '')
+  const previous = previousResult ? benchmarkMeasurementFor(previousResult) : savedPrevious?.measurement ?? null
+  const comparisons = compareBenchmarkMetrics(measurement, previous)
+  const duration = benchmarkRunDurationMillis(run)
+  return (
+    <div className="min-h-0 flex-1 overflow-auto p-3 text-[11px]">
+      <div className="mb-3 flex items-center gap-2 text-text-2">
+        <Gauge size={14} className="text-accent" aria-hidden="true" />
+        <span className="font-semibold">Benchmark result</span>
+        <span className="text-text-4">· {formatBenchmarkValue(measurement.iterations)} iterations</span>
+        {duration !== null && <span className="text-text-4">· {formatDuration(duration)} run</span>}
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+        {comparisons.map(({ current, previous: before, changePercent, direction }) => (
+          <div key={current.unit} className="rounded-lg border border-border-1 bg-surface-2/60 px-2.5 py-2">
+            <div className="text-[10px] text-text-4">{current.unit}</div>
+            <div className="mt-0.5 font-mono text-[13px] font-semibold text-text-1">{formatBenchmarkValue(current.value)}</div>
+            {before && changePercent !== null ? (
+              <div className={`mt-1 text-[10px] ${direction === 'better' ? 'text-success' : direction === 'worse' ? 'text-danger' : 'text-text-4'}`}>
+                {changePercent > 0 ? '+' : ''}{changePercent.toFixed(1)}% vs previous
+              </div>
+            ) : <div className="mt-1 text-[10px] text-text-4">{previousRun ? 'Metric added in this run' : 'No earlier matching run'}</div>}
+          </div>
+        ))}
+      </div>
+      {(previousRun || savedPrevious) && <p className="mt-3 text-[10px] text-text-4">Compared with the matching benchmark from {new Date((previousRun?.startedAt ?? savedPrevious!.startedAt)).toLocaleString()}{savedPrevious ? ' (saved local history)' : ''}.</p>}
+      <div className="mt-3 border-t border-border-1 pt-2 font-mono text-[10px] leading-4 text-text-3">{result.benchmark}</div>
+    </div>
+  )
+}
+
+function TestDetail({ run, result, runs, history }: { run: GoIDETestRun; result: GoIDETestResult; runs: GoIDETestRun[]; history: GoStudioBenchmarkHistoryEntry[] }) {
   const [output, setOutput] = useState<string | null>(null)
   const openLocation = useGoIDEStore((state) => state.openLocation)
   useEffect(() => {
@@ -154,7 +194,9 @@ function TestDetail({ run, result }: { run: GoIDETestRun; result: GoIDETestResul
         <span className="ml-auto shrink-0 text-[10px] text-text-4">{result.elapsedMillis > 0 ? formatDuration(result.elapsedMillis) : ''}</span>
       </div>
       <div className="min-h-0 flex-1 overflow-auto px-3 py-2 font-mono text-[10px] leading-4 text-text-2">
-        {output === null ? <Loader2 size={12} className="animate-spin text-text-4" /> : output ? output.split('\n').map((line, index) => <OutputLine key={index} line={line} baseDirectory={baseDirectory} />) : <span className="text-text-4">No output.</span>}
+        {benchmarkMeasurementFor(result)
+          ? <BenchmarkDetail run={run} result={result} runs={runs} history={history} />
+          : output === null ? <Loader2 size={12} className="animate-spin text-text-4" /> : output ? output.split('\n').map((line, index) => <OutputLine key={index} line={line} baseDirectory={baseDirectory} />) : <span className="text-text-4">No output.</span>}
         {result.truncated && <div className="mt-1 text-text-4">Output truncated at 64 KB.</div>}
       </div>
     </div>
@@ -169,13 +211,25 @@ export const GoStudioTestsPanel = memo(function GoStudioTestsPanel({ session }: 
   const selectedId = useGoIDETestsStore((state) => state.selectedNode[sessionId] ?? null)
   const showOnlyFailed = useGoIDETestsStore((state) => state.onlyFailed)
   const coverageVisible = useGoIDETestsStore((state) => state.coverageVisible)
+  const [search, setSearch] = useState('')
+  const [showOnlySlow, setShowOnlySlow] = useState(false)
+  const [benchmarkHistory, setBenchmarkHistory] = useState<GoStudioBenchmarkHistoryEntry[]>([])
   const { rerunAll, rerunFailed, selectRun, toggleOnlyFailed, toggleCoverage, loadRuns, start } = useGoIDETestsStore.getState()
   const stopRun = useGoIDEStore((state) => state.stopRun)
   useEffect(() => { void loadRuns(sessionId) }, [loadRuns, sessionId])
+  useEffect(() => { setBenchmarkHistory(loadBenchmarkHistory(session.project.rootPath)) }, [session.project.rootPath])
+  useEffect(() => {
+    if (runs?.length) setBenchmarkHistory(saveBenchmarkHistory(session.project.rootPath, runs))
+  }, [runs, session.project.rootPath])
   const tree = useMemo(() => {
     const nodes = buildTestTree(run?.results ?? [])
-    return showOnlyFailed ? onlyFailed(nodes) : nodes
-  }, [run?.results, showOnlyFailed])
+    const failed = showOnlyFailed ? onlyFailed(nodes) : nodes
+    const query = search.trim().toLocaleLowerCase()
+    return filterTestTree(failed, (result) => {
+      if (showOnlySlow && !isSlow(result)) return false
+      return !query || `${result.name ?? ''} ${result.package}`.toLocaleLowerCase().includes(query)
+    })
+  }, [run?.results, search, showOnlyFailed, showOnlySlow])
   const selected = run?.results.find((result) => result.id === selectedId) ?? null
 
   if (!run) {
@@ -193,8 +247,12 @@ export const GoStudioTestsPanel = memo(function GoStudioTestsPanel({ session }: 
       <div role="toolbar" aria-label="Tests toolbar" className="flex h-8 shrink-0 items-center gap-1 border-b border-border-1 px-2 text-[10px]">
         <button type="button" disabled={running} onClick={() => void rerunAll(sessionId)} title="Rerun" className="grid h-6 w-6 place-items-center rounded text-success hover:bg-success/10 disabled:opacity-30"><Play size={11} fill="currentColor" aria-hidden="true" /></button>
         <button type="button" disabled={running || summary.failed === 0} onClick={() => void rerunFailed(sessionId)} title="Rerun failed tests" className="flex h-6 items-center gap-1 rounded px-1.5 text-danger hover:bg-danger/10 disabled:opacity-30"><RotateCcw size={11} aria-hidden="true" /> Failed</button>
+        <button type="button" disabled={running} onClick={() => void runGoStudioBenchmarks('package')} title="Run all benchmarks in the current package with benchmem" className="grid h-6 w-6 place-items-center rounded text-accent hover:bg-accent/10 disabled:opacity-30"><Gauge size={12} aria-hidden="true" /></button>
+        {benchmarkHistory.length > 0 && <button type="button" onClick={() => void WailsClipboard.SetText(benchmarkHistoryCsv(benchmarkHistory))} title="Copy saved benchmark metrics as CSV" className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-3 hover:text-text-1"><Copy size={11} aria-hidden="true" /></button>}
+        {benchmarkHistory.length > 0 && <button type="button" onClick={() => { clearBenchmarkHistory(session.project.rootPath); setBenchmarkHistory([]) }} title={`Clear ${benchmarkHistory.length} saved local benchmark measurement${benchmarkHistory.length === 1 ? '' : 's'}`} className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-3 hover:text-danger"><Trash2 size={11} aria-hidden="true" /></button>}
         <button type="button" disabled={!running} onClick={() => void stopRun(run.runId)} title="Stop tests" className="grid h-6 w-6 place-items-center rounded text-danger hover:bg-danger/10 disabled:opacity-30"><Square size={10} fill="currentColor" aria-hidden="true" /></button>
         <button type="button" aria-pressed={showOnlyFailed} onClick={toggleOnlyFailed} title="Show only failed" className={`grid h-6 w-6 place-items-center rounded ${showOnlyFailed ? 'bg-accent/15 text-accent' : 'text-text-3 hover:bg-surface-3'}`}><Filter size={11} aria-hidden="true" /></button>
+        <button type="button" aria-pressed={showOnlySlow} onClick={() => setShowOnlySlow((value) => !value)} title="Show only tests slower than one second" className={`grid h-6 w-6 place-items-center rounded ${showOnlySlow ? 'bg-warning/15 text-warning' : 'text-text-3 hover:bg-surface-3'}`}><Clock3 size={11} aria-hidden="true" /></button>
         {run.coverage && (
           <button type="button" aria-pressed={coverageVisible} onClick={toggleCoverage} title={coverageVisible ? 'Hide coverage in the editor' : 'Show coverage in the editor'} className={`flex h-6 items-center gap-1 rounded px-1.5 ${coverageVisible ? 'bg-success/15 text-success' : 'text-text-3 hover:bg-surface-3'}`}><ShieldCheck size={11} aria-hidden="true" /> {run.coverage.percent.toFixed(1)}%</button>
         )}
@@ -206,17 +264,21 @@ export const GoStudioTestsPanel = memo(function GoStudioTestsPanel({ session }: 
           {running && <span>… {summary.running}</span>}
           <span className="text-text-4">{run.status === 'stopped' ? 'stopped' : ''}</span>
         </span>
-        <select aria-label="Test run" value={run.runId} onChange={(event) => selectRun(sessionId, event.target.value)} className="ml-auto h-6 max-w-72 rounded border border-border-1 bg-surface-2 px-1.5 text-[10px] text-text-2">
+        <label className="ml-auto flex h-6 w-40 items-center gap-1 rounded border border-border-1 bg-surface-2 px-1.5 text-text-4 focus-within:border-accent">
+          <Search size={10} aria-hidden="true" />
+          <input value={search} onChange={(event) => setSearch(event.target.value)} aria-label="Search tests" placeholder="Search tests" className="min-w-0 flex-1 bg-transparent text-[10px] text-text-2 outline-none" />
+        </label>
+        <select aria-label="Test run" value={run.runId} onChange={(event) => selectRun(sessionId, event.target.value)} className="h-6 max-w-72 rounded border border-border-1 bg-surface-2 px-1.5 text-[10px] text-text-2">
           {(runs ?? []).map((item) => <option key={item.runId} value={item.runId}>{new Date(item.startedAt).toLocaleTimeString()} · {item.request.run || item.request.bench || (item.request.packages ?? []).join(' ')} · {item.summary.failed ? `${item.summary.failed} failed` : item.status}</option>)}
         </select>
       </div>
       <div className="flex min-h-0 flex-1">
         <div role="tree" aria-label="Test results" className="min-h-0 w-[46%] shrink-0 overflow-auto border-r border-border-1 py-1">
           {tree.map((node, index) => <TestRow key={node.result.id} node={node} depth={0} selected={selectedId} run={run} sessionId={sessionId} entry={index === 0} />)}
-          {tree.length === 0 && <p className="p-3 text-[11px] text-text-4">{running ? 'Building and starting tests…' : showOnlyFailed ? 'No failed tests.' : 'No tests found.'}</p>}
+          {tree.length === 0 && <p className="p-3 text-[11px] text-text-4">{running ? 'Building and starting tests…' : showOnlyFailed ? 'No failed tests.' : showOnlySlow ? 'No tests slower than one second.' : search ? 'No matching tests.' : 'No tests found.'}</p>}
           {run.overflow && <p className="p-2 text-[10px] text-warning">Too many tests: only the first 5,000 are shown.</p>}
         </div>
-        {selected ? <TestDetail run={run} result={selected} /> : run.coverage ? <div className="min-h-0 flex-1 overflow-auto"><CoverageSummary report={run.coverage} /></div> : <p className="p-3 text-[11px] text-text-4">Select a test to see its output. Double-click opens the failure or the test function.</p>}
+        {selected ? <TestDetail run={run} result={selected} runs={runs ?? []} history={benchmarkHistory} /> : run.coverage ? <div className="min-h-0 flex-1 overflow-auto"><CoverageSummary report={run.coverage} /></div> : <p className="p-3 text-[11px] text-text-4">Select a test to see its output. Double-click opens the failure or the test function.</p>}
       </div>
     </div>
   )

@@ -1,3 +1,4 @@
+import { heavyFeatureEnabled } from './goStudioResourceMode'
 import { useGoIDENavigationStore } from '@/stores/goideNavigation'
 import { useEffect, useRef, useState } from 'react'
 import Editor, { type BeforeMount, type OnMount } from '@monaco-editor/react'
@@ -67,10 +68,10 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
   const checkActiveDocument = useGoIDEStore((state) => state.checkActiveDocument)
   const revealLocation = useGoIDEStore((state) => state.revealLocation)
   const clearRevealLocation = useGoIDEStore((state) => state.clearRevealLocation)
-  const semanticHighlighting = useGoIDELspStore((state) => state.preferences.semanticHighlighting)
-  const inlayHints = useGoIDELspStore((state) => state.preferences.inlayHints)
-  const stickyScroll = useGoIDELspStore((state) => state.preferences.stickyScroll)
-  const minimap = useGoIDELspStore((state) => state.preferences.minimap)
+  const semanticHighlighting = useGoIDELspStore((state) => heavyFeatureEnabled(state, 'semanticHighlighting'))
+  const inlayHints = useGoIDELspStore((state) => heavyFeatureEnabled(state, 'inlayHints'))
+  const stickyScroll = useGoIDELspStore((state) => heavyFeatureEnabled(state, 'stickyScroll'))
+  const minimap = useGoIDELspStore((state) => heavyFeatureEnabled(state, 'minimap'))
   const fontLigatures = useGoIDELspStore((state) => state.preferences.fontLigatures)
   const fontSize = useGoIDELspStore((state) => state.preferences.fontSize)
   const editorConfig = useEditorConfig(document.document.sessionId, document.document.relativePath)

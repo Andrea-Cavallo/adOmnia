@@ -89,6 +89,9 @@ func TestTestRunnerWithRealGoTest(t *testing.T) {
 	if result := findResult(benchmarked.Results, "example.com/tp/calc", "BenchmarkAdd"); result == nil || result.Status != TestBenchmarked || !strings.Contains(result.Benchmark, "ns/op") {
 		t.Fatalf("benchmark non letto: %+v", result)
 	}
+	if benchmarked.FinishedAt == nil || benchmarked.FinishedAt.Before(benchmarked.StartedAt) {
+		t.Fatalf("durata benchmark non disponibile: started=%s finished=%v", benchmarked.StartedAt, benchmarked.FinishedAt)
+	}
 	if runs, _ := ide.ListTestRuns(string(session.ID)); len(runs) != 3 {
 		t.Fatalf("storico delle esecuzioni inatteso: %d", len(runs))
 	}

@@ -74,10 +74,23 @@ function FolderIcon({ name, open }: { name: string; open: boolean }) {
 }
 
 /** Memoizzato: aprire o aggiornare una cartella non ridisegna le sorelle (progetti con centinaia di cartelle). */
+// ponytail: righe native (content-visibility) + cartelle enormi a pagine; lista piatta virtualizzata solo se un progetto reale lo richiede.
+const TREE_PAGE = 500
+
+/** "Show more" per cartelle con migliaia di voci: l'albero resta reattivo anche in un monorepo o su file generati. */
+function ShowMoreRow({ hidden, depth, onShow }: { hidden: number; depth: number; onShow: () => void }) {
+  return (
+    <button type="button" onClick={onShow} className="flex h-[26px] w-full items-center rounded-[7px] pr-2 text-left text-[11.5px] text-accent hover:bg-surface-3" style={{ paddingLeft: ROW_BASE_PX + (depth - 1) * ROW_INDENT_PX + 18 }}>
+      Show {Math.min(hidden, TREE_PAGE)} more of {hidden} hidden items…
+    </button>
+  )
+}
+
 const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, activePath, onContext, onKey, marks }: { sessionId: string; entry: GoIDEFileEntry; depth: number; activePath: string | null; onContext: TreeContextHandler; onKey: TreeKeyHandler; marks: TreeMarks }) {
   const mark = marks.get(entry.relativePath)
   const selected = !entry.directory && entry.relativePath === activePath
   const [open, setOpen] = useState(false)
+  const [limit, setLimit] = useState(TREE_PAGE)
   const entries = useGoIDEStore((state) => state.directoryEntries[sessionId]?.[entry.relativePath])
   const loading = useGoIDEStore((state) => state.directoryLoading[`${sessionId}:${entry.relativePath}`] ?? false)
   const loadDirectory = useGoIDEStore((state) => state.loadDirectory)
@@ -101,7 +114,7 @@ const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, act
           if (action) { event.preventDefault(); event.stopPropagation(); onKey(entry, action) }
         }}
         aria-current={selected ? 'true' : undefined}
-        className={`flex h-[26px] w-full items-center gap-1.5 overflow-hidden rounded-[7px] pr-2 text-left text-[12.5px] ${isCut ? 'opacity-50' : ''} ${selected ? 'go-studio-tree-row-selected' : `hover:bg-surface-3 hover:text-text-1 ${entry.ignored ? 'text-text-4' : 'text-text-2'}`}`}
+        className={`go-studio-tree-row flex h-[26px] w-full items-center gap-1.5 overflow-hidden rounded-[7px] pr-2 text-left text-[12.5px] ${isCut ? 'opacity-50' : ''} ${selected ? 'go-studio-tree-row-selected' : `hover:bg-surface-3 hover:text-text-1 ${entry.ignored ? 'text-text-4' : 'text-text-2'}`}`}
         style={{ paddingLeft: ROW_BASE_PX + (depth - 1) * ROW_INDENT_PX }}
         title={`${entry.relativePath}${entry.ignored ? ' (ignored by default)' : ''}${markTitle(mark)}`}
       >
@@ -114,9 +127,10 @@ const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, act
         <span className={`truncate ${mark?.vcs && !selected ? VCS_CLASS[mark.vcs] : ''} ${mark?.problem ? `underline decoration-wavy underline-offset-[3px] ${mark.problem === 'error' ? 'decoration-danger' : 'decoration-warning'}` : ''}`}>{entry.name}</span>
         {mark?.testFailed && <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-danger" aria-label="failed tests" />}
       </button>
-      {entry.directory && open && entries?.map((child) => (
+      {entry.directory && open && entries?.slice(0, limit).map((child) => (
         <DirectoryNode key={child.relativePath} sessionId={sessionId} entry={child} depth={depth + 1} activePath={activePath} onContext={onContext} onKey={onKey} marks={marks} />
       ))}
+      {entry.directory && open && entries && entries.length > limit && <ShowMoreRow hidden={entries.length - limit} depth={depth + 1} onShow={() => setLimit((value) => value + TREE_PAGE)} />}
     </>
   )
 })
@@ -128,6 +142,7 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
   const showIgnored = useGoIDEStore((state) => state.showIgnoredBySession[session.id] ?? false)
   const toggleShowIgnored = useGoIDEStore((state) => state.toggleShowIgnored)
   const rootKey = useMemo(() => `${session.id}:${session.project.realPath}`, [session.id, session.project.realPath])
+  const [rootLimit, setRootLimit] = useState(TREE_PAGE)
 
   useEffect(() => { void loadDirectory('') }, [loadDirectory, rootKey])
 
@@ -234,7 +249,8 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
           <span className="shrink-0 font-semibold text-text-1">{session.project.name}</span>
           <span className="truncate text-[11px] text-text-4">{session.project.rootPath}</span>
         </div>
-        {entries.map((entry) => <DirectoryNode key={entry.relativePath} sessionId={session.id} entry={entry} depth={2} activePath={activePath} onContext={onContext} onKey={onKey} marks={marks} />)}
+        {entries.slice(0, rootLimit).map((entry) => <DirectoryNode key={entry.relativePath} sessionId={session.id} entry={entry} depth={2} activePath={activePath} onContext={onContext} onKey={onKey} marks={marks} />)}
+        {entries.length > rootLimit && <ShowMoreRow hidden={entries.length - rootLimit} depth={2} onShow={() => setRootLimit((value) => value + TREE_PAGE)} />}
         {entries.length === 0 && <p className="px-4 py-3 text-[11px] text-text-4">This folder is empty.</p>}
       </div>
       <div className="shrink-0 px-4 py-2 text-[10.5px] leading-4 text-text-4">

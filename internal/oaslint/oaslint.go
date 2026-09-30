@@ -61,7 +61,6 @@ var defaultRules = []ruleDefinition{
 
 var (
 	httpMethods       = []string{"get", "put", "post", "delete", "options", "head", "patch", "trace"}
-	httpMethodSet     = map[string]bool{"get": true, "put": true, "post": true, "delete": true, "options": true, "head": true, "patch": true, "trace": true}
 	staticPathSegment = regexp.MustCompile(`^[a-z0-9._-]+$`)
 )
 

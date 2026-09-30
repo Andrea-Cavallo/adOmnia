@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { ArrowLeftRight, ArrowRight, Copy, Droplets, Layers, Lock, OctagonAlert, RefreshCw, Rocket, Users, Zap, type LucideIcon } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { ArrowLeftRight, ArrowRight, Copy, Droplets, Layers, Lock, OctagonAlert, RefreshCw, Rocket, Search, Trash2, Users, Zap, type LucideIcon } from 'lucide-react'
 import { Clipboard as WailsClipboard } from '@wailsio/runtime'
 import type { GoIDEGoroutine } from '@/lib/goide-debug-api'
 import { useGoIDEStore } from '@/stores/goide'
@@ -9,6 +9,9 @@ import {
   diagnoseConcurrency, groupGoroutines, isBlocked, mergeRaceSources, raceDiagnostics, waitResources,
   type ConcurrencyDiagnostic, type DiagnosticEvidence, type DiagnosticKind, type RaceFrame, type RaceReport, type RaceSource,
 } from './goStudioConcurrency'
+import { clearRaceHistory, loadRaceHistory, saveRaceHistory, type RaceHistorySource } from './goStudioRaceHistory'
+import { staticConcurrencyDiagnostics } from './goStudioLifecycleInspector'
+import { raceRegressionTestStarter } from './goStudioRaceRegression'
 import { GOROUTINE_STATES, PaneHeader, StateDot, shortLocation, stateMeta } from './GoStudioDebugUi'
 
 const MAX_RUNS_SCANNED = 5
@@ -37,12 +40,14 @@ const SEVERITY_CLASS = {
 }
 
 /** Report del race detector dai test, dalle esecuzioni e dalle console di debug, confrontati tra run. */
-export function useRaceReports(sessionId: string): { reports: RaceReport[]; latest: string | null } {
+export function useRaceReports(sessionId: string): { reports: RaceReport[]; latest: string | null; savedCount: number; clearSaved: () => void } {
   const testRuns = useGoIDETestsStore((state) => state.runs[sessionId])
   const executions = useGoIDEStore((state) => state.executions)
   const consoleByRun = useGoIDEStore((state) => state.consoleByRun)
   const debuggers = useGoIDEDebugStore((state) => state.debuggers)
-  return useMemo(() => {
+  const projectRoot = useGoIDEStore((state) => state.sessions.find((session) => session.id === sessionId)?.project.rootPath ?? '')
+  const [savedSources, setSavedSources] = useState<RaceHistorySource[]>([])
+  const liveSources = useMemo(() => {
     const sources: Array<RaceSource & { at: number }> = []
     for (const run of (testRuns ?? []).slice(0, MAX_RUNS_SCANNED)) {
       if (run.raceReports?.length) sources.push({ id: run.runId, label: `test ${run.runId.slice(-6)}`, text: run.raceReports.join('\n'), at: Date.parse(String(run.startedAt)) || 0 })
@@ -53,9 +58,25 @@ export function useRaceReports(sessionId: string): { reports: RaceReport[]; late
     for (const view of Object.values(debuggers)) {
       if (view.info.sessionId === sessionId) sources.push({ id: view.info.id, label: `debug ${view.info.title}`, text: view.console.map((line) => line.text).join('\n'), at: Date.parse(String(view.info.startedAt)) || 0 })
     }
-    const withRaces = sources.filter((source) => source.text.includes('WARNING: DATA RACE')).sort((left, right) => right.at - left.at)
-    return { reports: mergeRaceSources(withRaces), latest: withRaces[0]?.label ?? null }
+    return sources.filter((source) => source.text.includes('WARNING: DATA RACE')).sort((left, right) => right.at - left.at)
   }, [consoleByRun, debuggers, executions, sessionId, testRuns])
+  useEffect(() => { setSavedSources(loadRaceHistory(projectRoot)) }, [projectRoot])
+  useEffect(() => {
+    if (liveSources.length > 0) setSavedSources(saveRaceHistory(projectRoot, liveSources))
+  }, [liveSources, projectRoot])
+  return useMemo(() => {
+    const liveIds = new Set(liveSources.map((source) => source.id))
+    const history = savedSources
+      .filter((source) => !liveIds.has(source.id))
+      .map((source) => ({ ...source, id: `saved:${source.id}`, label: `saved ${source.label}` }))
+    const sources = [...liveSources, ...history].sort((left, right) => right.at - left.at)
+    return {
+      reports: mergeRaceSources(sources),
+      latest: sources[0]?.label ?? null,
+      savedCount: savedSources.length,
+      clearSaved: () => { clearRaceHistory(projectRoot); setSavedSources([]) },
+    }
+  }, [liveSources, projectRoot, savedSources])
 }
 
 function openPath(path: string | undefined, line: number | undefined) {
@@ -70,15 +91,37 @@ interface GoStudioConcurrencyViewProps {
 /** Vista Concurrency: diagnosi, flusso funzione → goroutine → risorse attese, e race navigabili. */
 export function GoStudioConcurrencyView({ view, sessionId }: GoStudioConcurrencyViewProps) {
   const goroutines = useMemo(() => view?.goroutines?.goroutines ?? [], [view?.goroutines])
-  const { reports: races, latest } = useRaceReports(sessionId)
-  const diagnostics = useMemo(() => [...raceDiagnostics(races), ...diagnoseConcurrency(goroutines)], [goroutines, races])
+  const { reports: races, latest, savedCount, clearSaved } = useRaceReports(sessionId)
   const selectGoroutine = (id: number) => { if (view) void useGoIDEDebugStore.getState().selectThread(view.info.id, id) }
   const paused = view?.info.state === 'stopped'
+  const sourceFrame = view?.frames.find((frame) => frame.id === view.frameId && frame.relativePath) ?? view?.frames.find((frame) => frame.relativePath)
+  const [staticDiagnostics, setStaticDiagnostics] = useState<ConcurrencyDiagnostic[]>([])
+  const [sourceInspection, setSourceInspection] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
+  useEffect(() => {
+    setStaticDiagnostics([])
+    setSourceInspection('idle')
+  }, [view?.info.id, sourceFrame?.relativePath])
+  const inspectStaticLifecycle = async () => {
+    if (!sourceFrame?.relativePath || sourceInspection === 'loading') return
+    setSourceInspection('loading')
+    try {
+      const document = await useGoIDEStore.getState().ensureDocumentLoaded(sourceFrame.relativePath)
+      if (!document) throw new Error('source is unavailable')
+      setStaticDiagnostics(staticConcurrencyDiagnostics(document.buffer, document.document.relativePath))
+      setSourceInspection('done')
+    } catch {
+      setStaticDiagnostics([])
+      setSourceInspection('error')
+    }
+  }
+  const diagnostics = useMemo(() => [...raceDiagnostics(races), ...staticDiagnostics, ...diagnoseConcurrency(goroutines)], [goroutines, races, staticDiagnostics])
   return (
     <div className="grid min-h-0 flex-1 grid-cols-[minmax(260px,0.8fr)_minmax(360px,1.6fr)] divide-x divide-border-1">
       <section aria-label="Concurrency diagnostics" className="flex min-h-0 flex-col">
         <PaneHeader title="Diagnostics" count={diagnostics.length}>
           {(goroutines.length > 0 || races.length > 0) && <button type="button" onClick={() => void WailsClipboard.SetText(JSON.stringify({ takenAt: new Date().toISOString(), session: view?.info.title, goroutines, diagnostics, races: races.map(({ raw, ...rest }) => ({ ...rest, raw })) }, null, 2))} title="Copy this snapshot as JSON (goroutines, diagnostics, races)" aria-label="Copy snapshot" className="go-studio-icon-button h-6 w-6"><Copy size={13} /></button>}
+          {savedCount > 0 && <button type="button" onClick={clearSaved} title={`Clear ${savedCount} saved local race session${savedCount === 1 ? '' : 's'}`} aria-label="Clear saved race sessions" className="go-studio-icon-button h-6 w-6"><Trash2 size={13} /></button>}
+          {view && paused && sourceFrame?.relativePath && <button type="button" onClick={() => void inspectStaticLifecycle()} disabled={sourceInspection === 'loading'} title="Inspect selected debug source for lifecycle and lock-order risks" aria-label="Inspect source concurrency" className="go-studio-icon-button h-6 w-6 disabled:opacity-50"><Search size={13} className={sourceInspection === 'loading' ? 'animate-pulse' : ''} /></button>}
           {view && paused && <button type="button" onClick={() => void useGoIDEDebugStore.getState().refreshGoroutines(view.info.id)} title="Take a new goroutine snapshot" aria-label="Refresh goroutines" className="go-studio-icon-button h-6 w-6"><RefreshCw size={13} className={view.goroutinesLoading ? 'animate-spin' : ''} /></button>}
         </PaneHeader>
         <StateSummary goroutines={goroutines} />
@@ -88,6 +131,8 @@ export function GoStudioConcurrencyView({ view, sessionId }: GoStudioConcurrency
               {paused ? 'No deadlocks, blocked channels, mutex contention or leaks in this snapshot.' : 'Pause a debug session to analyse goroutines.'} Run tests with the race detector (Run › Test Current Package with Race Detector) to find data races.
             </p>
           )}
+          {sourceInspection === 'done' && staticDiagnostics.length === 0 && <p className="px-1 py-1 text-[11px] leading-4 text-text-4">Static source check: no missing local cleanup or opposite lock order found in this file.</p>}
+          {sourceInspection === 'error' && <p className="px-1 py-1 text-[11px] leading-4 text-danger">Static source check could not load this frame’s file.</p>}
           {diagnostics.map((diagnostic) => <DiagnosticCard key={diagnostic.id} diagnostic={diagnostic} onSelect={selectGoroutine} />)}
         </div>
       </section>
@@ -195,6 +240,9 @@ function RaceCard({ report, latest }: { report: RaceReport; latest: string | nul
         <Zap size={14} />Data race
         <span className="font-normal text-text-3">· {raceHistory(report, latest)}{report.occurrences > 1 ? ` · reported ${report.occurrences}×` : ''}</span>
         <span title={report.sources.join('\n')} className="ml-auto truncate font-mono text-[10.5px] font-normal text-text-4">{report.sources.join(' · ')}</span>
+      </div>
+      <div className="mt-1 flex justify-end">
+        <button type="button" onClick={() => void WailsClipboard.SetText(raceRegressionTestStarter(report))} className="rounded px-1.5 py-0.5 text-[10.5px] text-text-3 hover:bg-surface-2 hover:text-text-1" title="Copy an editable Go regression-test starter with both race locations">Copy regression test starter</button>
       </div>
       <div className="mt-2 grid gap-2 md:grid-cols-2">
         {report.accesses.map((access, index) => (

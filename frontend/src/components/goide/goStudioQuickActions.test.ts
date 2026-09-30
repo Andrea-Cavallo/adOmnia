@@ -5,7 +5,7 @@ vi.mock('@/lib/confirmDialog', () => ({ confirm: vi.fn() }))
 vi.mock('@/stores/goide', () => ({ useGoIDEStore: { getState: vi.fn(), setState: vi.fn() }, activeGoIDEDocument: vi.fn() }))
 vi.mock('@/stores/goideTests', () => ({ useGoIDETestsStore: { getState: vi.fn() } }))
 
-import { moduleScopeFor, quickRunFor, testRequestForTarget } from './goStudioQuickActions'
+import { fuzzRunRequestForTarget, moduleScopeFor, quickRunFor, testRequestForTarget } from './goStudioQuickActions'
 
 const session = (modules: string[]) => ({
   project: { realPath: '/work/repo', modules: modules.map((path) => ({ path, modulePath: '' })) },
@@ -44,5 +44,12 @@ describe('testRequestForTarget', () => {
     const repo = { ...session(['/work/repo', '/work/repo/tools/gen']), id: 's1' }
     expect(testRequestForTarget(repo, { line: 3, kind: 'test', name: 'TestParse', packagePath: './tools/gen/parser' })).toMatchObject({ workingDirectory: 'tools/gen', packages: ['./parser'], run: '^TestParse$', bench: '' })
     expect(testRequestForTarget(repo, { line: 9, kind: 'benchmark', name: 'BenchmarkX', packagePath: '.' }, true)).toMatchObject({ workingDirectory: '', packages: ['.'], run: '', bench: '^BenchmarkX$', coverage: true })
+  })
+
+  it('starts a fuzz target with an explicit bounded duration', () => {
+    const repo = { ...session(['/work/repo', '/work/repo/tools/gen']), id: 's1' }
+    expect(fuzzRunRequestForTarget(repo, { line: 9, kind: 'fuzz', name: 'FuzzParse', packagePath: './tools/gen/parser' })).toEqual({
+      workingDirectory: 'tools/gen', target: './parser', programArguments: ['-run', '^$', '-fuzz', '^FuzzParse$', '-fuzztime=30s'],
+    })
   })
 })

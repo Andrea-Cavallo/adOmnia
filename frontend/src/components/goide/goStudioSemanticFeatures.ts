@@ -1,3 +1,4 @@
+import { heavyFeatureEnabled } from './goStudioResourceMode'
 import type { CancellablePromise } from '@wailsio/runtime'
 import { monaco } from '@/lib/monacoSetup'
 import {
@@ -57,7 +58,7 @@ function registerSemanticTokens(): void {
     onDidChange: semanticChanged.event,
     getLegend: () => ({ tokenTypes: [...CLIENT_TOKEN_TYPES], tokenModifiers: [...CLIENT_TOKEN_MODIFIERS] }),
     async provideDocumentSemanticTokens(model, _lastResultId, token) {
-      if (!useGoIDELspStore.getState().preferences.semanticHighlighting) return null
+      if (!heavyFeatureEnabled(useGoIDELspStore.getState(), 'semanticHighlighting')) return null
       const prepared = await prepareDocument(model)
       const features = prepared ? featuresFor(prepared.sessionId) : null
       if (!prepared || !features?.semanticTokens) return null
@@ -74,7 +75,7 @@ function registerInlayHints(): void {
     onDidChangeInlayHints: inlayChanged.event,
     async provideInlayHints(model, range, token) {
       const empty = { hints: [], dispose: () => undefined }
-      if (!useGoIDELspStore.getState().preferences.inlayHints) return empty
+      if (!heavyFeatureEnabled(useGoIDELspStore.getState(), 'inlayHints')) return empty
       const prepared = await prepareDocument(model)
       if (!prepared || !featuresFor(prepared.sessionId)?.inlayHints) return empty
       const result = await settle(requestInlayHints(prepared.sessionId, prepared.documentId, toEditorRange(range)), token).catch(() => { throw cancelled() })
@@ -119,7 +120,7 @@ function registerDocumentHighlights(): void {
  * solo con la preferenza Type Hints. gopls li invia tutti come InlayHintKind.Type.
  */
 export function showTypeHint(label: string): boolean {
-  return label.trimStart().startsWith('[') || useGoIDELspStore.getState().preferences.typeHints
+  return label.trimStart().startsWith('[') || heavyFeatureEnabled(useGoIDELspStore.getState(), 'typeHints')
 }
 
 export function registerGoStudioSemanticFeatures(): void {
@@ -131,6 +132,7 @@ export function registerGoStudioSemanticFeatures(): void {
   useGoIDELspStore.subscribe((state, previous) => {
     const preferencesChanged = state.preferences.semanticHighlighting !== previous.preferences.semanticHighlighting || state.preferences.inlayHints !== previous.preferences.inlayHints
       || state.preferences.typeHints !== previous.preferences.typeHints
+      || state.preferences.resourceMode !== previous.preferences.resourceMode || state.onBattery !== previous.onBattery
     if (state.status !== previous.status || preferencesChanged) {
       semanticChanged.fire()
       inlayChanged.fire()

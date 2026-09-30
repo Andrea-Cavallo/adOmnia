@@ -4371,6 +4371,12 @@ export class TestRunSnapshot {
     "results": TestResult[];
     "overflow"?: boolean;
     "startedAt": string;
+
+    /**
+     * FinishedAt è presente solo quando il processo di test è terminato; permette
+     * di distinguere la durata reale della run dalla metrica ns/op del benchmark.
+     */
+    "finishedAt"?: string | null;
     "coverage"?: CoverageReport | null;
 
     /**
@@ -4415,8 +4421,8 @@ export class TestRunSnapshot {
         const $$createField2_0 = $$createType78;
         const $$createField5_0 = $$createType79;
         const $$createField6_0 = $$createType81;
-        const $$createField9_0 = $$createType83;
-        const $$createField10_0 = $$createType13;
+        const $$createField10_0 = $$createType83;
+        const $$createField11_0 = $$createType13;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("request" in $$parsedSource) {
             $$parsedSource["request"] = $$createField2_0($$parsedSource["request"]);
@@ -4428,10 +4434,10 @@ export class TestRunSnapshot {
             $$parsedSource["results"] = $$createField6_0($$parsedSource["results"]);
         }
         if ("coverage" in $$parsedSource) {
-            $$parsedSource["coverage"] = $$createField9_0($$parsedSource["coverage"]);
+            $$parsedSource["coverage"] = $$createField10_0($$parsedSource["coverage"]);
         }
         if ("raceReports" in $$parsedSource) {
-            $$parsedSource["raceReports"] = $$createField10_0($$parsedSource["raceReports"]);
+            $$parsedSource["raceReports"] = $$createField11_0($$parsedSource["raceReports"]);
         }
         return new TestRunSnapshot($$parsedSource as Partial<TestRunSnapshot>);
     }

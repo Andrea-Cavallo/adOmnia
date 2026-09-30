@@ -37,6 +37,18 @@ export function onlyFailed(nodes: GoStudioTestNode[]): GoStudioTestNode[] {
     .filter((node) => isFailed(node.result) || node.children.length > 0)
 }
 
+/** Mantiene gli antenati del risultato: cercare un sottotest non fa perdere il package che lo contiene. */
+export function filterTestTree(nodes: GoStudioTestNode[], matches: (result: GoIDETestResult) => boolean): GoStudioTestNode[] {
+  return nodes
+    .map((node) => ({ ...node, children: filterTestTree(node.children, matches) }))
+    .filter((node) => matches(node.result) || node.children.length > 0)
+}
+
+/** Un secondo è una soglia iniziale leggibile; non è una diagnosi di flakiness. */
+export function isSlow(result: GoIDETestResult, thresholdMillis = 1000): boolean {
+  return result.elapsedMillis >= thresholdMillis
+}
+
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }

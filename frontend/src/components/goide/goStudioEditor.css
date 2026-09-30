@@ -199,3 +199,7 @@
 .go-studio-titlebar a,
 .go-studio-titlebar [role="group"],
 .go-studio-titlebar [role="menu"] { --wails-draggable: no-drag; }
+
+/* Albero grande: le righe fuori vista non vengono impaginate né dipinte. */
+.go-studio-tree-row { content-visibility: auto; contain-intrinsic-size: auto 26px; }
+.go-studio-console-line { content-visibility: auto; contain-intrinsic-size: auto 21px; }

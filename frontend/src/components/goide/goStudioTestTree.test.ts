@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { GoIDETestResult, GoIDETestRun } from '@/lib/goide-tests-api'
-import { buildTestTree, onlyFailed, packagePattern, requestForNode, rerunFailedRequest, runPatternFor } from './goStudioTestTree'
+import { buildTestTree, filterTestTree, isSlow, onlyFailed, packagePattern, requestForNode, rerunFailedRequest, runPatternFor } from './goStudioTestTree'
 
 const node = (pkg: string, name: string, status: string, extra: Partial<GoIDETestResult> = {}): GoIDETestResult => ({
   id: name ? `${pkg}\u0000${name}` : pkg,
@@ -42,6 +42,21 @@ describe('test tree', () => {
     expect(packagePattern('svc/api', 'svc')).toBe('./api')
     expect(packagePattern('svc', 'svc')).toBe('.')
     expect(packagePattern('calc', '')).toBe('./calc')
+  })
+})
+
+describe('test tree filters', () => {
+  it('keeps package context for matching test names and detects slow tests', () => {
+    const tree = buildTestTree([
+      node('example.com/p', '', 'pass'),
+      node('example.com/p', 'TestFast', 'pass', { elapsedMillis: 20 }),
+      node('example.com/p', 'TestSlow', 'pass', { elapsedMillis: 1200 }),
+    ])
+    const filtered = filterTestTree(tree, (result) => (result.name ?? '').toLowerCase().includes('slow'))
+    expect(filtered).toHaveLength(1)
+    expect(filtered[0].children.map((item) => item.result.name)).toEqual(['TestSlow'])
+    expect(isSlow(tree[0].children[0].result)).toBe(false)
+    expect(isSlow(tree[0].children[1].result)).toBe(true)
   })
 })
 

@@ -1,3 +1,4 @@
+import { heavyFeatureEnabled } from './goStudioResourceMode'
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import { AlertTriangle, X } from 'lucide-react'
 import { GoStudioEmptyState } from './GoStudioEmptyState'
@@ -45,10 +46,10 @@ import { GoStudioCaretPopup } from './GoStudioCaretPopup'
 import { GoStudioImplementInterfaceDialog } from './GoStudioImplementInterfaceDialog'
 import { GoStudioSearchEverywhere } from './GoStudioSearchEverywhere'
 import { createDoubleShiftDetector } from './goStudioSearchRanking'
-import { runGoStudioQuickCommand, runModuleDependencyAction } from './goStudioQuickActions'
+import { runGoStudioBenchmarks, runGoStudioQuickCommand, runModuleDependencyAction } from './goStudioQuickActions'
 import { flushBufferRecovery } from './goStudioRecovery'
 import { useGoIDETestsStore } from '@/stores/goideTests'
-import { debugRequestForTarget, testRequestForTarget } from './goStudioQuickActions'
+import { debugRequestForTarget, fuzzRunRequestForTarget, testRequestForTarget } from './goStudioQuickActions'
 import { runDebugCommand, selectDebugState } from './goStudioDebugCommands'
 import { GoStudioRunTargetMenu, type GoStudioRunTargetAction } from './GoStudioRunTargetMenu'
 import { useGoIDEDebugStore } from '@/stores/goideDebug'
@@ -303,7 +304,7 @@ export function GoStudioPanel() {
     await runSaveActions(id)
     const saved = await useGoIDEStore.getState().saveDocument(id)
     const lspState = useGoIDELspStore.getState()
-    if (saved && sessionId && lspState.preferences.lintOnSave && lspState.linter[sessionId]?.available) scheduleLintOnSave(sessionId)
+    if (saved && sessionId && heavyFeatureEnabled(lspState, 'lintOnSave') && lspState.linter[sessionId]?.available) scheduleLintOnSave(sessionId)
     return saved
   }
 
@@ -429,7 +430,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
     maximized: goStudioMaximized,
     zen,
     editorPrefs: {
-      previewTab: lsp.preferences.previewTab, stickyScroll: lsp.preferences.stickyScroll, minimap: lsp.preferences.minimap, fontLigatures: lsp.preferences.fontLigatures,
+      resourceMode: lsp.preferences.resourceMode, previewTab: lsp.preferences.previewTab, stickyScroll: lsp.preferences.stickyScroll, minimap: lsp.preferences.minimap, fontLigatures: lsp.preferences.fontLigatures,
       typeHints: lsp.preferences.typeHints, autoSave: lsp.preferences.autoSave, trimTrailingWhitespace: lsp.preferences.trimTrailingWhitespace,
     },
     projectOpen: store.layout.projectOpen,
@@ -461,6 +462,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
     if (availability !== true) return useGoIDEStore.setState({ error: availability })
     if (!activeSession) return
     if (action === 'debug') return void useGoIDEDebugStore.getState().start(debugRequestForTarget(activeSession, goTarget))
+    if (target.kind === 'fuzz' && action === 'fuzz') return void store.startRun('test', fuzzRunRequestForTarget(activeSession, goTarget))
     if (target.kind !== 'main') {
       void useGoIDETestsStore.getState().start(testRequestForTarget(activeSession, goTarget, action === 'coverage'))
       return
@@ -545,6 +547,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       case 'run.configure': return setConfigureOpen(true)
       case 'run.buildPackage': return void runGoStudioQuickCommand('build', 'package')
       case 'run.testPackage': return void runGoStudioQuickCommand('test', 'package')
+      case 'run.benchPackage': return void runGoStudioBenchmarks('package')
       case 'run.vetPackage': return void runGoStudioQuickCommand('vet', 'package')
       case 'run.buildAll': return void runGoStudioQuickCommand('build', 'module')
       case 'run.testAll': return void runGoStudioQuickCommand('test', 'module')

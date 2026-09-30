@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react'
 import {
-  Fullscreen, PanelLeft,
+  Fullscreen, PanelLeft, Gauge, BatteryLow,
   AlignLeft, ArrowDownToLine, ArrowLeft, ArrowRight, ArrowUpDown, Binary, Bookmark, BookmarkPlus, BookOpen, Braces, Bug,
   CircleCheck, CircleDot, CircleHelp, CirclePause, CirclePlay, CircleStop, Code2, Columns2, Compass, Copy, Download,
   Eye, EyeOff, FileCode2, FilePlus2, FileSearch, FileText, FlaskConical, FlaskRound, FolderOpen, FolderPlus, FolderX,
@@ -91,6 +91,8 @@ export const GO_STUDIO_COMMAND_ICONS: Partial<Record<GoStudioCommandId, GoStudio
   'view.minimap': icon(Map),
   'view.fontLigatures': icon(Ligature),
   'view.previewTab': icon(Eye),
+  'view.lowResourceMode': icon(Gauge),
+  'view.lowResourceOnBattery': icon(BatteryLow),
   'code.typeHints': icon(Type),
   'file.autoSave': icon(Save),
   'file.trimWhitespace': icon(Eraser),
@@ -181,6 +183,7 @@ export const GO_STUDIO_COMMAND_ICONS: Partial<Record<GoStudioCommandId, GoStudio
   'run.build': icon(Hammer),
   'run.buildPackage': icon(PackageOpen),
   'run.testPackage': icon(FlaskConical, TEST),
+  'run.benchPackage': icon(Gauge, TEST),
   'run.vetPackage': icon(ShieldCheck),
   'run.testCoverage': icon(FlaskRound, TEST),
   'run.testRace': icon(Zap, 'text-warning'),
