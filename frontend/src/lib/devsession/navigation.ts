@@ -63,3 +63,9 @@ export async function openSplitDebugView(tabId: string, session: LiveSession | n
   app.setSplitView(true)
   if (session) await openFrameInGoStudio(session, null, { switchRail: false })
 }
+
+/** Goes to where a request came from: its API tab, the Interceptor or Browser Debug. */
+export function openRunSource(run: { tabId?: string; name?: string }): void {
+  if (run.tabId) return openRequestTab(run.tabId)
+  useAppStore.getState().setActiveRail(run.name === 'Browser Debug' ? 'browser' : 'proxy')
+}

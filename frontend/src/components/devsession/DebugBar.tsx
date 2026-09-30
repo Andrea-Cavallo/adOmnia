@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/app'
 import { useDevSessionStore } from '@/stores/devSession'
 import { liveSessions, primarySession } from '@/stores/devSessionModel'
-import { openFrameInGoStudio, openRequestTab } from '@/lib/devsession/navigation'
+import { openFrameInGoStudio, openRunSource } from '@/lib/devsession/navigation'
 import { basename, LiveDot, stateLabel } from './liveUi'
 import { PortEditor } from './PortEditor'
 
@@ -88,12 +88,12 @@ export function DebugBar() {
       <BarButton label={debug ? 'Stop debugging' : 'Stop service'} shortcut={debug ? 'Ctrl+F2' : undefined} tone="text-error" onClick={() => void state.stop(session.id)}><Square size={10} fill="currentColor" /></BarButton>
       <span className="ml-auto flex min-w-0 items-center gap-2">
         {run && (
-          <button type="button" onClick={() => openRequestTab(run.tabId)} title="Open the request"
+          <button type="button" onClick={() => openRunSource(run)} title={run.tabId ? 'Open the request' : `Sent from ${run.name}`}
             className="flex min-w-0 items-center gap-1.5 truncate text-text-3 hover:text-text-1">
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" aria-hidden="true" />
             <span className="font-semibold text-text-2">{run.method}</span>
             <span className="truncate">{pathOf(run.url)}</span>
-            <span className="text-text-4">{run.state === 'paused' ? 'at breakpoint' : 'in flight'}</span>
+            <span className="text-text-4">{run.state === 'paused' ? 'at breakpoint' : 'in flight'}{run.tabId ? '' : ` · ${run.name}`}</span>
           </button>
         )}
         {run?.tabId && paused && (

@@ -54,6 +54,7 @@ func NewDevSession(goIDE *GoIDE) *DevSession {
 	})
 	d.watchers = newBrokerWatchers(d.manager)
 	d.proxies = newSQLProxies(d.manager)
+	attachTrafficSources(d.manager)
 	goIDE.onServiceEvent(d.handleGoIDEEvent)
 	return d
 }

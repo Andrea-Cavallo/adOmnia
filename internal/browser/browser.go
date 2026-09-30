@@ -435,6 +435,10 @@ func (b *BrowserDebug) handleEvent(msg cdpMessage) {
 		b.handleResponseReceived(msg.Params)
 	case "Network.loadingFinished":
 		b.handleLoadingFinished(msg.Params)
+	case "Network.loadingFailed":
+		requestID, _ := msg.Params["requestId"].(string)
+		errorText, _ := msg.Params["errorText"].(string)
+		b.notifyNetwork(NetworkObservation{Kind: "failed", RequestID: requestID, Error: errorText})
 	case "Runtime.consoleAPICalled":
 		b.HandleConsoleEvent(msg.Params)
 	case "Debugger.paused", "Debugger.resumed", "Debugger.scriptParsed":
@@ -464,6 +468,7 @@ func (b *BrowserDebug) handleRequestWillBeSent(params map[string]interface{}) {
 		Completed:      false,
 	}
 
+	b.notifyNetwork(NetworkObservation{Kind: "started", RequestID: requestID, Method: method, URL: url})
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
@@ -487,6 +492,7 @@ func (b *BrowserDebug) handleResponseReceived(params map[string]interface{}) {
 	mimeType, _ := response["mimeType"].(string)
 	headers := extractHeaders(response["headers"])
 
+	b.notifyNetwork(NetworkObservation{Kind: "responded", RequestID: requestID, Status: status})
 	b.mu.Lock()
 	defer b.mu.Unlock()
 

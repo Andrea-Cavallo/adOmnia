@@ -630,15 +630,23 @@ func interceptHandler(w http.ResponseWriter, r *http.Request) {
 	outReq = outReq.WithContext(httptrace.WithClientTrace(r.Context(), trace))
 	reqStart = time.Now()
 
+	addHeaders, observed := observeStart(r.Method, targetURL)
+	for k, v := range addHeaders {
+		if outReq.Header.Get(k) == "" {
+			outReq.Header.Set(k, v)
+		}
+	}
 	client := &http.Client{Timeout: 30 * time.Second, Transport: upstreamTransport()}
 	resp, err := client.Do(outReq)
 	respEnd := time.Now()
 	if err != nil {
+		observed(0, err.Error())
 		recordEntry(targetURL, r.Method, reqHeaders, string(reqBodyBytes), 0, nil, "", time.Since(start), err.Error(), matched)
 		http.Error(w, "upstream error", http.StatusBadGateway)
 		return
 	}
 	defer resp.Body.Close()
+	observed(resp.StatusCode, "")
 
 	respBodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 1024*1024))
 	bodyReadEnd := time.Now()

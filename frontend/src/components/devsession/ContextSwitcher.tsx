@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/app'
 import { useDevSessionStore } from '@/stores/devSession'
 import { primarySession } from '@/stores/devSessionModel'
-import { openFrameInGoStudio, openRequestTab } from '@/lib/devsession/navigation'
+import { openFrameInGoStudio, openRequestTab, openRunSource } from '@/lib/devsession/navigation'
 import { basename } from './liveUi'
 
 interface FlowItem { id: string; icon: ReactNode; title: string; detail: string; open: () => void }
@@ -26,7 +26,7 @@ export function flowItems(session: LiveSession | null, run: RequestRun | null, o
     })
   }
   if (run) {
-    items.push({ id: 'request', icon: <Send size={14} className="text-accent" />, title: `${run.method} ${pathOf(run.url)}`, detail: run.state === 'paused' ? 'paused at breakpoint' : run.status ? `${run.status} · ${run.durationMs} ms` : 'in flight', open: () => openRequestTab(run.tabId) })
+    items.push({ id: 'request', icon: <Send size={14} className="text-accent" />, title: `${run.method} ${pathOf(run.url)}`, detail: run.state === 'paused' ? 'paused at breakpoint' : run.status ? `${run.status} · ${run.durationMs} ms` : 'in flight', open: () => openRunSource(run) })
     const query = state.queries.filter((q) => q.requestRunId === run.id).slice(-1)[0]
     if (query) {
       items.push({
