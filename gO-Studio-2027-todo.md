@@ -36,7 +36,7 @@
 - [x] Deve usare Delve/DAP per il debugging reale. — *`internal/goide/dap`: launch, attach e remote.*
 - [ ] Deve usare i tool ufficiali Go quando possibile: `go test`, `go vet`, `go list`, `go tool`, `pprof`, `trace`, `govulncheck`, race detector. — *integrati `go test`, `go vet`, `go generate`, `go fix`, `go mod why/graph`, `go doc`; race detector integrato (v0.9.41, §9); mancano `pprof`/`trace` → §13, `govulncheck` → §20.*
 - [ ] Deve rendere visuali dati che oggi finiscono quasi sempre nel terminale. — *test tree, coverage, goroutine e race sì (§8, §9); profiler e benchmark → §12, §13.*
-- [ ] Deve collegare automaticamente codice ↔ API ↔ DB ↔ broker ↔ runtime. — *Developer Context collega codice ↔ API/DB/broker (v0.9.39); runtime → §14.*
+- [ ] Deve collegare automaticamente codice ↔ API ↔ DB ↔ broker ↔ runtime. — *Developer Context collega codice ↔ API/DB/broker (v0.9.39); runtime collegato dalla Live Development Session (sessione live, Debug Request, log/SQL/Kafka per request: `docs/LIVE-SESSION.md`); resta la verifica manuale.*
 - [ ] Deve avere una UX coerente con il resto di adOmnia. — *token condivisi, menu e dialog moderni (v0.9.40); resta la verifica visiva manuale.*
 - [x] Deve poter essere usato senza account.
 - [x] Telemetria disabilitata di default. — *adOmnia non ha telemetria; gopls parte con `GO_TELEMETRY_CHILD=2` (nessun processo telemetry, verificato), la modalità globale `go telemetry` resta dell'utente.*
@@ -85,7 +85,7 @@
 - [x] Code → Kafka. — *topic letterali (sarama, franz-go, kafka-go, AMQP, NATS) con CodeLens "Open in Broker Studio".*
 - [x] Code → DB. — *tabelle nelle query SQL letterali con CodeLens "Query in Database".*
 - [x] Code → WebSocket. — *Upgrade (gorilla) / Accept (nhooyr, coder) collegati alla route del loro handler e Dial con URL `ws://`; CodeLens "Open in WebSocket client".*
-- [ ] Distributed Request Debugger. — *sottosistema nuovo (§32): va progettato prima.*
+- [ ] Distributed Request Debugger. — *sottosistema nuovo (§32). Il caso a servizio singolo è coperto dalla Live Development Session (Debug Request, breakpoint legati alla request, timeline locale): [`docs/LIVE-SESSION.md`](docs/LIVE-SESSION.md), piano in `adomniatodolist.md`. Resta il multi-servizio.*
 - [ ] Service Map runtime-aware. — *§31: va progettato prima.*
 - [ ] Reproduction Studio. — *§33: va progettato prima.*
 - [ ] Cross-service debugging. — *dipende dal Distributed Request Debugger (§32).*

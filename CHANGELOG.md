@@ -6,6 +6,12 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Added
+- **Live Development Session:** a Go service started from Go Studio (Run or Debug) is shared by every tool. A debug bar in every tool shows the service, port, paused location and Continue / Step / Stop (F9, F8, F7, Shift+F8, Ctrl+F2). **Debug Request** starts or reuses the service under Delve, waits for its port or health path, sends the request and shows PAUSED AT BREAKPOINT with Open in Go Studio; the response waits for the debugger. See [docs/LIVE-SESSION.md](docs/LIVE-SESSION.md).
+- **Request ↔ code:** `{{service:name}}` linked requests with Local / Docker / remote targets; the handler that serves a request (with contract drift against the service's OpenAPI); handler CodeLens in Go Studio (open, run, debug request, last response, history); a Request tab in the Go Studio debugger.
+- **What a request caused:** Logs, Debug, Timeline, DB and Kafka views of each request, tied by `X-AdOmnia-Request-ID` or by time; SQL from the service's logs or an opt-in loopback capture proxy (Postgres, MySQL); a Kafka watch without consumer group; service logs as a Log Inspector live source; *Mock this response*.
+- **Navigation without losing context:** Go Studio and the API Workspace stay mounted across tool switches; Split Debug View; Ctrl+Tab context switcher; Alt+Shift+1…5 tool keys; palette commands. Interceptor and Browser Debug requests to a live service join its session.
+
 ## [0.9.42] - 2026-09-29
 
 ### Fixed

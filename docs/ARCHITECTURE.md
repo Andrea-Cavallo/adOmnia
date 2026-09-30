@@ -106,6 +106,10 @@ Go Studio is the integrated Go IDE. User-facing behaviour, trust rules and stora
 
 **Storage.** Go Studio uses the bbolt `goide` bucket: `state` (schema 4, migrated in memory from older versions), `recovery` and `localHistory`. Managed SDKs and tools live under the adOmnia data folder.
 
+## Live Development Session
+
+`internal/devsession` is the single owner of live sessions: Go services started from Go Studio, the requests sent to them (API Workspace, Interceptor, Browser Debug) and what those requests caused (breakpoint hits, log lines, SQL, Kafka messages). It does not import Go Studio: `devsession_bindings.go` translates `goide` events (`run.*`, `debug.state`, `debug.output`, `session.closed`) and hands debugger operations to the manager as functions. Changes reach the frontend as `devsession:event` envelopes, applied by `stores/devSession.ts`; the debug bar and its overlays load after the first frame. The API Workspace talks to Go Studio only through that store, the entity router and DOM events (`adomnia:go-debug-start`, `adomnia:debug-active-request`). Details: [LIVE-SESSION.md](LIVE-SESSION.md).
+
 ## Security Model
 
 - No telemetry.
