@@ -4,13 +4,14 @@ import { getGoIDEWatcherStatus, type GoIDEExecution, type GoIDESession, type GoI
 import { useShallow } from 'zustand/react/shallow'
 import { useGoStudioCursorStore } from './goStudioCursor'
 import { GoStudioToolchainSwitcher } from './GoStudioToolchainSwitcher'
+import { GoStudioBreadcrumb } from './GoStudioBreadcrumb'
 import { diagnosticCounts, mergedReports, useGoIDELspStore } from '@/stores/goideLsp'
 
 interface GoStudioStatusBarProps {
   session: GoIDESession
   toolchain: GoIDEToolchainInfo | null
-  /** Linguaggio e sola lettura del file attivo; null senza file aperti. */
-  documentInfo: { language: string; readOnly: boolean } | null
+  /** File attivo: percorso per il breadcrumb, linguaggio, sola lettura e separatore di riga; null senza file aperti. */
+  documentInfo: { id: string; relativePath: string; language: string; readOnly: boolean; lineEnding: 'LF' | 'CRLF' } | null
   execution: GoIDEExecution | null
   onLanguageServer: () => void
   onLinter: () => void
@@ -18,7 +19,8 @@ interface GoStudioStatusBarProps {
   onManageToolchains: () => void
 }
 
-const ITEM = 'flex h-5 items-center gap-1.5 rounded px-1.5 transition-colors hover:bg-surface-3 hover:text-text-1'
+const ITEM = 'flex h-5 shrink-0 items-center gap-1.5 whitespace-nowrap rounded px-1.5 transition-colors hover:bg-surface-3 hover:text-text-1'
+const LABEL = 'shrink-0 whitespace-nowrap px-1.5'
 
 /** Il watcher parte in background dopo l'apertura: lo stato si rilegge poco dopo e poi di rado. */
 const WATCHER_STATUS_DELAYS_MS = [1500, 10_000, 60_000]
@@ -61,20 +63,25 @@ export function GoStudioStatusBar({ session, toolchain, documentInfo, execution,
   const running = execution?.status === 'running'
 
   return (
-    <div className="flex h-7 shrink-0 items-center gap-1 px-2 text-[11.5px] text-text-3">
-      <span className={`flex min-w-0 items-center gap-1.5 px-1.5 ${running ? 'text-success' : ''}`} title={execution?.command}>
-        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${running ? 'animate-pulse bg-success' : execution?.status === 'failed' ? 'bg-danger' : 'bg-text-4'}`} aria-hidden="true" />
-        <span className="truncate">{execution ? `${execution.kind} · ${execution.status}` : 'Idle'}</span>
-      </span>
-      {watcher?.limited && (
-        <span role="status" title={`This project has more than ${watcher.limit} folders: only the first ${watcher.directories} are watched, so changes made outside Go Studio in the others are not detected automatically. Reopen files to see their disk version.`} className="flex items-center gap-1 px-1.5 text-warning">
-          <EyeOff size={12} /> Partially watched
-        </span>
-      )}
-      <span className="flex-1" />
+    <div className="flex h-7 min-w-0 shrink-0 items-center gap-1 overflow-hidden px-2 text-[11.5px] text-text-3">
+      {/* Sinistra: dove sei nel codice. Si accorcia per primo, così i widget a destra non escono mai dal bordo. */}
+      <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
+        {documentInfo && <GoStudioBreadcrumb documentId={documentInfo.id} relativePath={documentInfo.relativePath} readOnly={documentInfo.readOnly} cursor={cursor} />}
+        {execution && (
+          <span className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap px-1.5 ${running ? 'text-success' : ''}`} title={execution.command}>
+            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${running ? 'animate-pulse bg-success' : execution.status === 'failed' ? 'bg-danger' : 'bg-text-4'}`} aria-hidden="true" />
+            {execution.kind} · {execution.status}
+          </span>
+        )}
+        {watcher?.limited && (
+          <span role="status" title={`This project has more than ${watcher.limit} folders: only the first ${watcher.directories} are watched, so changes made outside Go Studio in the others are not detected automatically. Reopen files to see their disk version.`} className="flex shrink-0 items-center gap-1 whitespace-nowrap px-1.5 text-warning">
+            <EyeOff size={12} /> Partially watched
+          </span>
+        )}
+      </div>
       <button type="button" onClick={onLanguageServer} title={status?.error || 'Language server: click for start, restart or log'} className={`${ITEM} ${lspTone}`}>
         {lspState === 'starting' || progress ? <Loader2 size={12} className="animate-spin" /> : <span className={`h-1.5 w-1.5 rounded-full ${lspState === 'ready' ? 'bg-success' : lspState === 'crashed' ? 'bg-danger' : 'bg-text-4'}`} aria-hidden="true" />}
-        <span className="max-w-72 truncate">{progress ? `${progress.title ?? 'gopls'}${progress.message ? `: ${progress.message}` : ''}${progress.percentage !== undefined ? ` ${progress.percentage}%` : ''}` : languageServerLabel(lspState, status?.version)}</span>
+        <span className="max-w-56 truncate">{progress ? `${progress.title ?? 'gopls'}${progress.message ? `: ${progress.message}` : ''}${progress.percentage !== undefined ? ` ${progress.percentage}%` : ''}` : languageServerLabel(lspState, status?.version)}</span>
       </button>
       <button type="button" onClick={onLinter} title={lint?.error || linter?.error || (linter?.available ? `Run ${linter.kind}${linter.configPath ? ` with ${linter.configPath}` : ''} · Ctrl/Cmd+Alt+Shift+L` : 'Install a linter from the Go menu')} className={`${ITEM} ${lint?.error ? 'text-danger' : linter?.available ? '' : 'text-text-4'}`}>
         {lint?.running ? <Loader2 size={12} className="animate-spin" /> : <ScanSearch size={12} />}
@@ -84,8 +91,9 @@ export function GoStudioStatusBar({ session, toolchain, documentInfo, execution,
         <span className={`flex items-center gap-1 ${counts.errors ? 'text-danger' : ''}`}><AlertCircle size={12} />{counts.errors}</span>
         <span className={`flex items-center gap-1 ${counts.warnings ? 'text-warning' : ''}`}><AlertTriangle size={12} />{counts.warnings}</span>
       </button>
-      {documentInfo && <span className="px-1.5 font-mono tabular-nums" title="Line:Column">{cursor.line}:{cursor.column}</span>}
-      <span className="px-1.5">{documentInfo?.language || (session.project.goWorkPath ? 'go.work' : session.project.goModPath ? 'go.mod' : 'Go folder')}{documentInfo?.readOnly ? ' · read-only' : ''}</span>
+      {documentInfo && <span className={`${LABEL} tabular-nums`} title="Line:Column">{cursor.line}:{cursor.column}</span>}
+      {documentInfo && <span className={LABEL} title={documentInfo.lineEnding === 'CRLF' ? 'Line separator: Windows (\\r\\n)' : 'Line separator: Unix (\\n)'}>{documentInfo.lineEnding}</span>}
+      <span className={LABEL}>{documentInfo?.language || (session.project.goWorkPath ? 'go.work' : session.project.goModPath ? 'go.mod' : 'Go folder')}{documentInfo?.readOnly ? ' · read-only' : ''}</span>
       <GoStudioToolchainSwitcher sessionId={session.id} toolchain={toolchain} className={ITEM} onManage={onManageToolchains} />
       <button type="button" onClick={() => onSetAuthorization(!authorized)} aria-pressed={authorized} title={authorized ? 'Local Go tools are permitted. Click to revoke.' : 'Permit local Go tools; nothing starts automatically'} className={`${ITEM} ${authorized ? 'text-success' : 'text-warning'}`}>
         {authorized ? <ShieldCheck size={12} /> : <LockKeyhole size={12} />}{authorized ? 'Trusted' : 'Restricted'}

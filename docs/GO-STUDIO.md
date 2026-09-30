@@ -15,6 +15,8 @@ Everything stays on your machine. Nothing in a project runs until you trust it.
 
 *View → Maximize Editor* (Ctrl+Shift+F12, or a double-click on an editor tab) closes Project, Structure and the bottom tool window so the code takes all the space; press it again to bring them back exactly as they were. Every pane also closes on its own with its — button or its shortcut (Project Alt+1, Structure Alt+7, bottom tool window Alt+4).
 
+The status bar starts with the breadcrumb (file path › enclosing symbol; click a symbol to jump to its siblings) and shows line:column, the line separator (LF/CRLF), the language and the Go SDK. Save and Maximize editor sit at the right of the tab row. The top-right corner of the editor shows the problems of the open file: a green check when it is clean, otherwise error and warning counts with arrows for the previous and next problem (Shift+F8 / F8).
+
 *View → Maximize Go Studio* (Ctrl+Shift+F11, or the ⤢ button at the right of the toolbar) hides adOmnia's rail, the Go Studio header and adOmnia's status bar, so the IDE fills the window. Press it again to restore them; leaving Go Studio restores them too.
 
 The project menu in the toolbar lists the open projects and, below them, the recent projects that are not open, so you can reopen one with a click (*File → Open Recent* shows the same list).

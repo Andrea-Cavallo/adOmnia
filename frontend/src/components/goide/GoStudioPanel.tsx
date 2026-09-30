@@ -93,6 +93,11 @@ function selectPanelState(state: GoIDEState): PanelState {
 }
 
 /** Riassunto primitivo dei documenti: cambia solo quando cambia il file attivo o lo stato dirty, non a ogni tasto. */
+/** Separatore di riga mostrato in status bar, come in IntelliJ. */
+function lineEndingOf(buffer: string): 'LF' | 'CRLF' {
+  return buffer.includes('\r\n') ? 'CRLF' : 'LF'
+}
+
 function selectDocumentSummary(state: GoIDEState) {
   const active = activeGoIDEDocument(state)
   let documentCount = 0
@@ -107,6 +112,7 @@ function selectDocumentSummary(state: GoIDEState) {
     activePath: active?.document.relativePath ?? null,
     activeLanguage: active?.document.language ?? null,
     activeReadOnly: !!active?.document.readOnly,
+    activeLineEnding: active ? lineEndingOf(active.buffer) : null,
     activeDirty: !!active?.dirty,
     documentCount,
     sessionDirty,
@@ -549,7 +555,7 @@ export function GoStudioPanel() {
       <GoStudioRecoveryBanner sessionId={activeSession.id} />
       <GoStudioWorkspace session={activeSession} {...store.layout} zen={zen} onProjectResize={beginResize('projectWidth', store.layout.projectWidth)} onStructureResize={beginResize('structureWidth', store.layout.structureWidth, -1)} onBottomResize={beginResize('bottomHeight', store.layout.bottomHeight, -1)} onCursor={setCursor} onRequestCloseDocument={closeFlow.requestCloseDocuments} onRunTarget={(target, anchor) => setRunTargetMenu({ target, ...anchor })} onCommit={() => setVcsDialog('commit')} onBookmarks={() => setBookmarksOpen(true)} onDependencies={() => setDependenciesOpen(true)} />
       {runTargetMenu && <GoStudioRunTargetMenu {...runTargetMenu} onAction={runTarget} onClose={() => setRunTargetMenu(null)} />}
-      {zen ? <ZenExit onExit={toggleZen} /> : <GoStudioStatusBar session={activeSession} toolchain={toolchain} documentInfo={summary.activeId ? { language: summary.activeLanguage ?? '', readOnly: summary.activeReadOnly } : null} execution={activeExecution} onLanguageServer={openLanguageServerMenu} onLinter={() => runCommand(commandAvailability('code.lint', commandContext) === true ? 'code.lint' : 'go.toolPaths')} onSetAuthorization={(allowed) => void authorize(allowed)} onManageToolchains={() => setToolchainOpen(true)} />}
+      {zen ? <ZenExit onExit={toggleZen} /> : <GoStudioStatusBar session={activeSession} toolchain={toolchain} documentInfo={summary.activeId ? { id: summary.activeId, relativePath: summary.activePath ?? '', language: summary.activeLanguage ?? '', readOnly: summary.activeReadOnly, lineEnding: summary.activeLineEnding ?? 'LF' } : null} execution={activeExecution} onLanguageServer={openLanguageServerMenu} onLinter={() => runCommand(commandAvailability('code.lint', commandContext) === true ? 'code.lint' : 'go.toolPaths')} onSetAuthorization={(allowed) => void authorize(allowed)} onManageToolchains={() => setToolchainOpen(true)} />}
       <GoStudioQuickOpen />
       <GoStudioCaretPopup />
       <GoStudioHierarchyDialog />

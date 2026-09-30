@@ -196,6 +196,24 @@ html.light .go-studio-root,
 }
 .go-studio-tab[aria-selected='true']::after { background: var(--color-accent); }
 
+/* Widget ispezioni in alto a destra dell'editor, sopra il codice ma lontano dalla scrollbar. */
+.go-studio-inspection {
+  position: absolute;
+  top: 6px;
+  right: 22px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 1px 2px;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--gs-island) 88%, transparent);
+  box-shadow: 0 0 0 1px var(--color-border-1);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-3);
+}
+
 /* Separatori ridimensionabili tra le isole: sono lo spazio stesso tra i pannelli. */
 .go-studio-gap { background: transparent !important; }
 

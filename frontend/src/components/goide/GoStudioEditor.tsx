@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { DiffEditor } from '@monaco-editor/react'
 import { AlertTriangle, GitCompare, RotateCcw, ShieldCheck } from 'lucide-react'
 import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
-import { GoStudioBreadcrumb } from './GoStudioBreadcrumb'
+import { GoStudioEditorActions } from './GoStudioEditorActions'
+import { GoStudioInspectionWidget } from './GoStudioInspectionWidget'
 import { GoStudioCodeEditor, beforeGoStudioMount, useGoStudioEditorTheme } from './GoStudioCodeEditor'
 import { GoStudioEditorTabs } from './GoStudioEditorTabs'
 import { GoStudioSplitPane } from './GoStudioSplitPane'
@@ -23,7 +24,6 @@ interface GoStudioEditorProps {
 
 export function GoStudioEditor({ documents, active, onCursor, onRequestClose, onRunTarget }: GoStudioEditorProps) {
   const [compare, setCompare] = useState(false)
-  const [cursor, setCursor] = useState({ line: 1, column: 1 })
   const theme = useGoStudioEditorTheme()
   const saveDocument = useGoIDEStore((state) => state.saveDocument)
   const resolveExternalChange = useGoIDEStore((state) => state.resolveExternalChange)
@@ -39,10 +39,6 @@ export function GoStudioEditor({ documents, active, onCursor, onRequestClose, on
 
   useEffect(() => { setCompare(false) }, [active?.document.id])
 
-  const trackCursor = (line: number, column: number) => {
-    setCursor({ line, column })
-    onCursor(line, column)
-  }
 
   if (!active) {
     return (
@@ -57,8 +53,7 @@ export function GoStudioEditor({ documents, active, onCursor, onRequestClose, on
 
   const main = (
     <section aria-label="Editor" className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <GoStudioEditorTabs documents={documents} activeId={active.document.id} onRequestClose={onRequestClose} />
-      <GoStudioBreadcrumb document={active} cursor={cursor} onSave={() => void saveDocument(active.document.id)} />
+      <GoStudioEditorTabs documents={documents} activeId={active.document.id} onRequestClose={onRequestClose} actions={<GoStudioEditorActions document={active} onSave={() => void saveDocument(active.document.id)} />} />
       {active.externalState && (
         <div className="flex shrink-0 items-center gap-2 border-b border-warning/30 bg-warning/10 px-2 py-1.5 text-[10px] text-warning">
           <AlertTriangle size={12} /> This file changed on disk. Your buffer was preserved.
@@ -84,7 +79,7 @@ export function GoStudioEditor({ documents, active, onCursor, onRequestClose, on
         </div>
       )}
       {active.saveError && <div className="shrink-0 border-b border-danger/30 bg-danger/10 px-2 py-1 text-[10px] text-danger">{active.saveError}</div>}
-      <div className="min-h-0 flex-1">
+      <div className="relative min-h-0 flex-1">
         {compare && active.externalState ? (
           <DiffEditor
             original={active.externalState.content ?? ''}
@@ -99,7 +94,10 @@ export function GoStudioEditor({ documents, active, onCursor, onRequestClose, on
             options={{ automaticLayout: true, renderSideBySide: true, readOnly: true, minimap: { enabled: false }, fontSize: 12 }}
           />
         ) : (
-          <GoStudioCodeEditor document={active} handlesReveal onCursor={trackCursor} onRunTarget={onRunTarget} />
+          <>
+            <GoStudioCodeEditor document={active} handlesReveal onCursor={onCursor} onRunTarget={onRunTarget} />
+            <GoStudioInspectionWidget document={active} />
+          </>
         )}
       </div>
     </section>
