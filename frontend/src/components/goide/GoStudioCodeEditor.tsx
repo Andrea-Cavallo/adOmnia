@@ -8,6 +8,7 @@ import { registerGoStudioEditor } from './goStudioEditorRegistry'
 import { installGoStudioEditorActions } from './goStudioEditorActions'
 import { documentForModel, registerGoStudioLanguageFeatures } from './goStudioLanguageFeatures'
 import { registerGoStudioCodeLens } from './goStudioCodeLens'
+import { registerGoStudioCodeVision } from './goStudioCodeVision'
 import { editorModelUri } from './goStudioModelUri'
 import { installRecursiveCallMarkers, registerGoStudioSemanticFeatures } from './goStudioSemanticFeatures'
 import { useGoIDELspStore } from '@/stores/goideLsp'
@@ -27,6 +28,7 @@ import './goStudioEditor.css'
 configureMonacoLoader()
 registerGoStudioLanguageFeatures()
 registerGoStudioCodeLens()
+registerGoStudioCodeVision()
 registerGoStudioSemanticFeatures()
 startGoStudioLspSync()
 registerGoStudioDebugHover()
@@ -185,18 +187,25 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
         minimap: { enabled: minimap, renderCharacters: false, scale: 1 },
         lineNumbers: 'on',
         folding: true,
-        bracketPairColorization: { enabled: true },
+        // Parentesi monocromatiche come in IntelliJ: il colore resta alla sintassi, si evidenzia solo la coppia sotto il cursore.
+        bracketPairColorization: { enabled: false },
+        guides: { bracketPairs: false, indentation: true, highlightActiveIndentation: true },
         matchBrackets: 'always',
         scrollBeyondLastLine: false,
         renderLineHighlight: 'line',
         readOnly: !!document.document.readOnly,
         glyphMargin: true,
         lineDecorationsWidth: 16,
+        // Scrollbar sottile con tacche discrete: le macchie colorate distraggono dal codice.
+        scrollbar: { verticalScrollbarSize: 10, horizontalScrollbarSize: 10, useShadows: false },
+        overviewRulerBorder: false,
+        hideCursorInOverviewRuler: true,
         codeLens: !document.document.readOnly,
         'semanticHighlighting.enabled': semanticHighlighting,
         inlayHints: { enabled: inlayHints ? 'on' : 'off', fontSize: 10, padding: true },
         occurrencesHighlight: 'singleFile',
-        codeLensFontSize: 10,
+        codeLensFontSize: 11,
+        codeLensFontFamily: 'var(--font-sans)',
         // Go, assembly e Makefile vogliono tab veri: una ricetta indentata a spazi rompe make.
         // Per gli altri file vale .editorconfig, se il progetto lo dichiara.
         ...indentationFor(document.document.language, editorConfig),

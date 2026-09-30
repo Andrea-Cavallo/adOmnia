@@ -79,7 +79,7 @@ export function GoStudioEditorTabs({ documents, activeId, onRequestClose }: GoSt
   }
 
   return (
-    <div role="tablist" aria-label="Open files" className="flex h-11 shrink-0 items-center gap-1 overflow-x-auto px-2">
+    <div role="tablist" aria-label="Open files" className="flex h-10 shrink-0 items-center gap-0.5 overflow-x-auto border-b border-border-1 px-2">
       {ordered.map((item) => {
         const active = item.document.id === activeId
         const isPinned = !!pinned[item.document.id]
