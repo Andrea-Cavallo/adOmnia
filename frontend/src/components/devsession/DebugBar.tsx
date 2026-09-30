@@ -3,7 +3,7 @@ import { ArrowDownToLine, ArrowUpFromLine, Bug, Columns2, Pause, Play, Redo2, Sc
 import type { DebugAction, LiveSession } from '@/lib/devsession-api'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/app'
-import { useDevSessionStore } from '@/stores/devSession'
+import { useDevSessionStore, useLiveCore } from '@/stores/devSession'
 import { liveSessions, primarySession } from '@/stores/devSessionModel'
 import { openFrameInGoStudio, openRunSource } from '@/lib/devsession/navigation'
 import { basename, LiveDot, stateLabel } from './liveUi'
@@ -36,7 +36,8 @@ function debugKey(event: KeyboardEvent): DebugAction | 'stop' | null {
  */
 export function DebugBar() {
   const activeRail = useAppStore((s) => s.activeRail)
-  const state = useDevSessionStore()
+  useLiveCore()
+  const state = useDevSessionStore.getState()
   const session = primarySession(state, state.focusedSessionId)
   const live = liveSessions(state)
   const hidden = !session || activeRail === 'goide'

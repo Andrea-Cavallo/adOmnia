@@ -52,6 +52,12 @@ func (s *trafficSources) observeBrowser(observation browser.NetworkObservation) 
 			return
 		}
 		s.mu.Lock()
+		// CDP reuses the request id across redirects: the previous hop is over.
+		if previous, ok := s.browser[observation.RequestID]; ok {
+			go func() {
+				_, _ = s.manager.End(previous.runID, 0, time.Since(previous.started).Milliseconds(), "redirected")
+			}()
+		}
 		if len(s.browser) >= maxBrowserRuns {
 			s.browser = map[string]browserRun{} // ponytail: a page that never answers; drop the lot
 		}

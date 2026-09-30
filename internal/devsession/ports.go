@@ -49,7 +49,7 @@ func (m *Manager) detectPort(id string) {
 			m.mu.Unlock()
 			return
 		}
-		kind, resourceID := session.Kind, session.ResourceID
+		kind, resourceID, pid := session.Kind, session.ResourceID, session.PID
 		m.mu.Unlock()
 		if kind == "run" && m.hooks.RunPort != nil {
 			if port := m.hooks.RunPort(resourceID); port > 0 {
@@ -57,8 +57,8 @@ func (m *Manager) detectPort(id string) {
 				return
 			}
 		}
-		if baseline != nil {
-			if port := m.newListeningPort(baseline); port > 0 {
+		if m.hooks.ListPorts != nil {
+			if port := m.newListeningPort(baseline, pid); port > 0 {
 				m.setDetectedPort(id, port, "listening")
 				return
 			}
@@ -67,9 +67,21 @@ func (m *Manager) detectPort(id string) {
 	}
 }
 
-func (m *Manager) newListeningPort(baseline map[int]bool) int {
+// newListeningPort prefers a socket of the session's own process or of Delve's
+// __debug_bin; only then a socket that appeared after the start (baseline diff),
+// which a fast-starting service may already have opened.
+func (m *Manager) newListeningPort(baseline map[int]bool, pid int) int {
 	ports, err := m.hooks.ListPorts()
 	if err != nil {
+		return 0
+	}
+	for _, port := range ports {
+		owned := (pid > 0 && port.PID == pid) || strings.HasPrefix(strings.ToLower(port.Process), "__debug_bin")
+		if owned && port.Port > 0 && !m.portTaken(port.Port) && (pid > 0 || !baseline[port.Port]) {
+			return port.Port
+		}
+	}
+	if baseline == nil {
 		return 0
 	}
 	own := os.Getpid()

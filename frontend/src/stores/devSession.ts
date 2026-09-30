@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { useShallow } from 'zustand/react/shallow'
 import { Events } from '@wailsio/runtime'
 import {
   getLiveSnapshot, setLivePort, stepLiveSession, stopLiveSession,
@@ -122,4 +123,12 @@ export function startDevSessionSync(): () => void {
   })
   void useDevSessionStore.getState().load()
   return off
+}
+
+/**
+ * Re-render on session, run and preference changes only, not on every log
+ * line: read the full state with getState() after calling it.
+ */
+export function useLiveCore(): void {
+  useDevSessionStore(useShallow((state) => [state.sessions, state.order, state.runs, state.runOrder, state.focusedSessionId, state.prefs, state.error, state.queries, state.messages]))
 }

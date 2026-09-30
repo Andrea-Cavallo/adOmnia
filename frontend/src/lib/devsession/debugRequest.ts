@@ -4,7 +4,7 @@ import type { RequestItem } from '@/lib/types'
 import { confirm } from '@/lib/confirmDialog'
 import { useAppStore } from '@/stores/app'
 import { useDevSessionStore } from '@/stores/devSession'
-import { baseUrlFor, linkedService, liveSessions, sessionForRequest } from '@/stores/devSessionModel'
+import { baseUrlFor, linkedService, liveSessions, sessionForRequest, timeOf } from '@/stores/devSessionModel'
 import { liveVars } from './liveRequest'
 
 const START_TIMEOUT_MS = 120_000
@@ -56,7 +56,7 @@ function waitForDebugSession(goSessionId: string, since: string): Promise<LiveSe
   return new Promise((resolve, reject) => {
     const pick = () => {
       const state = useDevSessionStore.getState()
-      const sessions = state.order.map((id) => state.sessions[id]).filter((s) => s && s.goSessionId === goSessionId && s.kind === 'debug' && s.startedAt >= since)
+      const sessions = state.order.map((id) => state.sessions[id]).filter((s) => s && s.goSessionId === goSessionId && s.kind === 'debug' && timeOf(s.startedAt) >= timeOf(since))
       const failed = sessions.find((s) => s.state === 'error')
       if (failed) return { error: failed.error || 'the debugger stopped' }
       const live = sessions.find((s) => !s.endedAt && s.state !== 'starting')

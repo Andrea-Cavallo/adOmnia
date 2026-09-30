@@ -18,7 +18,7 @@ import { actionsFor, openEntity } from '@/lib/entities/router'
 import { entityPaletteItems, symbolPaletteItems, type EntityPaletteItem } from '@/lib/entities/paletteItems'
 import { requestWorkspaceSymbols, type GoIDEWorkspaceSymbol } from '@/lib/goide-lsp-api'
 import { useDevContextStore } from '@/stores/devcontext'
-import { useDevSessionStore } from '@/stores/devSession'
+import { useDevSessionStore, useLiveCore } from '@/stores/devSession'
 import { devSessionCommands } from '@/lib/devsession/paletteCommands'
 import { useGoIDEStore } from '@/stores/goide'
 
@@ -99,7 +99,8 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     window.requestAnimationFrame(() => inputRef.current?.focus())
   }, [open])
 
-  const devSession = useDevSessionStore()
+  useLiveCore()
+  const devSession = useDevSessionStore.getState()
   const commands = useMemo<PaletteCommand[]>(() => {
     const actions: PaletteCommand[] = [
       {

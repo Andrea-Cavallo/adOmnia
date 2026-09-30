@@ -7,7 +7,7 @@ import { appendMockEndpoints, createMockEndpointFromRequest } from '@/lib/mockEn
 import { useAppStore } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
 import { cn } from '@/lib/utils'
-import { codePathFor } from '@/stores/devSessionModel'
+import { codePathFor, timeOf } from '@/stores/devSessionModel'
 import { openFrameInGoStudio, openLocationInGoStudio, openRequestTab } from '@/lib/devsession/navigation'
 import { useDevSessionStore } from '@/stores/devSession'
 import { basename } from './liveUi'
@@ -178,7 +178,7 @@ export function RequestTimeline({ run, session, logs, queries, messages }: { run
   const errors = logs.filter((entry) => entry.level === 'error')
   for (const entry of errors.slice(0, 5)) steps.push({ at: entry.at, kind: 'log', label: entry.text.slice(0, 80), detail: 'error log' })
   if (run.completedAt) steps.push({ at: run.completedAt, kind: 'response', label: run.state === 'error' ? run.error || 'Failed' : `Response ${run.status}`, detail: `${run.durationMs ?? 0} ms` })
-  steps.sort((a, b) => (a.kind === 'sent' ? -1 : b.kind === 'sent' ? 1 : a.kind === 'response' ? 1 : b.kind === 'response' ? -1 : a.at.localeCompare(b.at)))
+  steps.sort((a, b) => (a.kind === 'sent' ? -1 : b.kind === 'sent' ? 1 : a.kind === 'response' ? 1 : b.kind === 'response' ? -1 : timeOf(a.at) - timeOf(b.at)))
 
   return (
     <ol className="min-h-0 flex-1 overflow-auto px-4 py-3" aria-label="Request timeline">

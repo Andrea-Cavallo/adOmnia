@@ -29,6 +29,7 @@ type SQLProxy struct {
 	wg       sync.WaitGroup
 	mu       sync.Mutex
 	conns    map[net.Conn]struct{}
+	closed   bool
 }
 
 // StartSQLProxy listens on 127.0.0.1 (port 0 = any free port).
@@ -68,24 +69,37 @@ func (p *SQLProxy) accept() {
 	}
 }
 
-func (p *SQLProxy) track(conn net.Conn, add bool) {
+// track registers a connection; false (and the connection closed) once the proxy is closing.
+func (p *SQLProxy) track(conn net.Conn, add bool) bool {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if add {
-		p.conns[conn] = struct{}{}
-	} else {
+	if !add {
 		delete(p.conns, conn)
+		return true
 	}
+	if p.closed {
+		_ = conn.Close()
+		return false
+	}
+	p.conns[conn] = struct{}{}
+	return true
 }
 
 func (p *SQLProxy) serve(client net.Conn) {
+	if !p.track(client, true) {
+		return
+	}
 	server, err := net.DialTimeout("tcp", p.Target, 5*time.Second)
 	if err != nil {
 		_ = client.Close()
+		p.track(client, false)
 		return
 	}
-	p.track(client, true)
-	p.track(server, true)
+	if !p.track(server, true) {
+		_ = client.Close()
+		p.track(client, false)
+		return
+	}
 	defer func() {
 		_ = client.Close()
 		_ = server.Close()
@@ -116,6 +130,7 @@ func (p *SQLProxy) serve(client net.Conn) {
 func (p *SQLProxy) Close() {
 	_ = p.listener.Close()
 	p.mu.Lock()
+	p.closed = true
 	for conn := range p.conns {
 		_ = conn.Close()
 	}

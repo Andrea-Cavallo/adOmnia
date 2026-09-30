@@ -89,7 +89,9 @@ func (d *DevSession) handleGoIDEEvent(event goide.EventEnvelope) {
 			d.manager.DebugOutput(string(output.DebugID), output.Category, output.Text)
 		}
 	case "session.closed":
-		d.manager.GoSessionClosed(goSession)
+		for _, id := range d.manager.GoSessionClosed(goSession) {
+			d.stopSessionTools(id)
+		}
 	}
 }
 

@@ -348,9 +348,10 @@ function ActiveRequestBar({
   const [savedFlash, setSavedFlash] = useState(false)
   const urlInputRef = useRef<HTMLInputElement>(null)
   const liveUrl = resolvedRequestUrl(request)
+  const panelActive = usePanelActiveRef()
 
   useEffect(() => {
-    const focusUrl = () => urlInputRef.current?.focus()
+    const focusUrl = () => { if (panelActive.current) urlInputRef.current?.focus() }
     document.addEventListener('adomnia:focus-url', focusUrl)
     return () => document.removeEventListener('adomnia:focus-url', focusUrl)
   }, [])
@@ -869,7 +870,8 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
   }
 
   useEffect(() => {
-    const onSave = () => handleSave()
+    // Kept mounted while hidden: Ctrl+S in another tool must not save an API tab.
+    const onSave = () => { if (panelActive.current) handleSave() }
     document.addEventListener('adomnia:save-active-tab', onSave)
     return () => document.removeEventListener('adomnia:save-active-tab', onSave)
   })

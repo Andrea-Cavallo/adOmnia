@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { LiveSession, RequestRun } from '@/lib/devsession-api'
-import { applyLiveEvent, codePathFor, emptyModel, linkedService, loopbackPort, primarySession, runForTab, serviceVars, sessionForRequest } from './devSessionModel'
+import { applyLiveEvent, codePathFor, emptyModel, linkedService, loopbackPort, primarySession, runForTab, serviceVars, sessionForRequest, timeOf } from './devSessionModel'
 
 const session = (patch: Partial<LiveSession>): LiveSession => ({
   id: 'debug:1', goSessionId: 'go-1', service: 'users-service', projectRoot: '/p', kind: 'debug', resourceId: '1',
@@ -77,5 +77,15 @@ describe('devSessionModel', () => {
       }],
     }))
     expect(path).toEqual(['internal/handler/user_handler.go', 'internal/service/user.go', 'internal/repo/user.go'])
+  })
+})
+
+describe('timestamps', () => {
+  it('compares Go local offsets and JS UTC as instants', () => {
+    // 10:00 at +02:00 is 08:00Z: later than 07:59Z even though the string sorts lower.
+    const model = applyLiveEvent(emptyModel(), { type: 'service.started', payload: session({ id: 'a', startedAt: '2026-09-30T10:00:00+02:00' }) })
+    const both = applyLiveEvent(model, { type: 'service.started', payload: session({ id: 'b', startedAt: '2026-09-30T08:30:00Z' }) })
+    expect(primarySession(both)?.id).toBe('b')
+    expect(timeOf('2026-09-30T10:00:00+02:00')).toBeGreaterThan(timeOf('2026-09-30T07:59:00Z'))
   })
 })

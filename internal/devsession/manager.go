@@ -51,6 +51,8 @@ type Manager struct {
 	now      func() time.Time
 	// detect tunes port detection; tests shorten it.
 	detect detectConfig
+	// debugGen counts debugger state changes per session (see DebugState).
+	debugGen map[string]int
 }
 
 func NewManager(hooks Hooks, emit func(Event)) *Manager {
@@ -60,7 +62,7 @@ func NewManager(hooks Hooks, emit func(Event)) *Manager {
 	return &Manager{
 		sessions: make(map[string]*Session), runs: make(map[string]*RequestRun),
 		logs: make(map[string][]LogEntry), partial: make(map[string]string),
-		hooks: hooks, emit: emit, now: time.Now, detect: defaultDetect,
+		hooks: hooks, emit: emit, now: time.Now, detect: defaultDetect, debugGen: make(map[string]int),
 	}
 }
 
@@ -183,6 +185,11 @@ func (m *Manager) endSession(id, errText string) {
 	}
 	m.flushPartialLocked(id)
 	events := []Event{}
+	// Requests still in flight will never get their response from this process.
+	for _, run := range m.inFlightLocked(id) {
+		run.State, run.Error, run.CompletedAt = RunError, "the service stopped", &ended
+		events = append(events, Event{Type: "request.completed", SessionID: id, Payload: cloneRun(run)})
+	}
 	if session.Kind == "debug" {
 		events = append(events, Event{Type: "debug.stopped", SessionID: id, Payload: cloneSession(session)})
 	}
@@ -207,8 +214,8 @@ func (m *Manager) RenameService(goSessionID, service string) {
 	m.publish(events)
 }
 
-// GoSessionClosed ends every session of a closed gO project.
-func (m *Manager) GoSessionClosed(goSessionID string) {
+// GoSessionClosed ends every session of a closed gO project and returns their ids.
+func (m *Manager) GoSessionClosed(goSessionID string) []string {
 	m.mu.Lock()
 	var ids []string
 	for _, id := range m.order {
@@ -220,6 +227,7 @@ func (m *Manager) GoSessionClosed(goSessionID string) {
 	for _, id := range ids {
 		m.endSession(id, "")
 	}
+	return ids
 }
 
 // RunStarted registers a long-running gO execution (go run, compiled binary).
@@ -238,6 +246,12 @@ func (m *Manager) RunFinished(runID, errText string) {
 // DebugState follows the Delve lifecycle: starting, running, stopped (paused), terminated.
 func (m *Manager) DebugState(goSessionID, debugID, state, title, reason string, threadID int, errText string) {
 	id := sessionKey("debug", debugID)
+	// Every state change invalidates a pause still resolving its stack: a
+	// resume or a newer stop must never be overwritten by an older pause.
+	m.mu.Lock()
+	m.debugGen[id]++
+	gen := m.debugGen[id]
+	m.mu.Unlock()
 	switch state {
 	case "starting", "running":
 		m.mu.Lock()
@@ -259,9 +273,12 @@ func (m *Manager) DebugState(goSessionID, debugID, state, title, reason string, 
 		}
 		// The stack comes from a DAP call: never on the event goroutine, which
 		// is the one that must read the DAP response.
-		go m.pause(id, debugID, threadID, reason)
+		go m.pause(id, debugID, threadID, reason, gen)
 	case "terminated":
 		m.endSession(id, errText)
+		m.mu.Lock()
+		delete(m.debugGen, id)
+		m.mu.Unlock()
 	}
 }
 
@@ -298,7 +315,7 @@ func (m *Manager) resume(id string) {
 }
 
 // pause resolves the stopped location and ties it to the requests in flight.
-func (m *Manager) pause(id, debugID string, threadID int, reason string) {
+func (m *Manager) pause(id, debugID string, threadID int, reason string, gen int) {
 	var stack []Frame
 	if m.hooks.Stack != nil {
 		frames, err := m.hooks.Stack(debugID, threadID)
@@ -312,7 +329,7 @@ func (m *Manager) pause(id, debugID string, threadID int, reason string) {
 	}
 	m.mu.Lock()
 	session, ok := m.sessions[id]
-	if !ok || session.EndedAt != nil {
+	if !ok || session.EndedAt != nil || m.debugGen[id] != gen {
 		m.mu.Unlock()
 		return
 	}
@@ -428,14 +445,14 @@ func (m *Manager) SetPort(id string, port int) error {
 	return nil
 }
 
-// sortedLive returns live sessions, newest first.
-func (m *Manager) sortedLive() []*Session {
+// sortedLive returns copies: callers read them without the lock.
+func (m *Manager) sortedLive() []Session {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	var live []*Session
+	var live []Session
 	for _, id := range m.order {
 		if session := m.sessions[id]; session.EndedAt == nil {
-			live = append(live, session)
+			live = append(live, cloneSession(session))
 		}
 	}
 	sort.SliceStable(live, func(i, j int) bool { return live[i].StartedAt.After(live[j].StartedAt) })

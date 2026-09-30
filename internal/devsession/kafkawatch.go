@@ -20,7 +20,6 @@ const maxWatchedTopics = 20
 type KafkaWatch struct {
 	Brokers []string `json:"brokers"`
 	Topics  []string `json:"topics"`
-	stop    chan struct{}
 	wg      sync.WaitGroup
 	closeFn func()
 }
@@ -43,7 +42,7 @@ func StartKafkaWatch(brokers, topics []string, onMessage func(Message)) (*KafkaW
 	if err != nil {
 		return nil, fmt.Errorf("cannot reach Kafka at %s: %w", strings.Join(brokers, ","), err)
 	}
-	watch := &KafkaWatch{Brokers: brokers, Topics: topics, stop: make(chan struct{})}
+	watch := &KafkaWatch{Brokers: brokers, Topics: topics}
 	var partitionConsumers []sarama.PartitionConsumer
 	for _, topic := range topics {
 		partitions, err := consumer.Partitions(topic)
@@ -65,7 +64,6 @@ func StartKafkaWatch(brokers, topics []string, onMessage func(Message)) (*KafkaW
 		return nil, fmt.Errorf("none of the topics exist on %s yet", strings.Join(brokers, ","))
 	}
 	watch.closeFn = func() {
-		close(watch.stop)
 		for _, pc := range partitionConsumers {
 			pc.AsyncClose()
 		}
@@ -77,16 +75,9 @@ func StartKafkaWatch(brokers, topics []string, onMessage func(Message)) (*KafkaW
 
 func (w *KafkaWatch) read(pc sarama.PartitionConsumer, onMessage func(Message)) {
 	defer w.wg.Done()
-	for {
-		select {
-		case <-w.stop:
-			return
-		case msg, ok := <-pc.Messages():
-			if !ok {
-				return
-			}
-			onMessage(messageFromSarama(msg))
-		}
+	// sarama needs Messages() drained until AsyncClose closes it.
+	for msg := range pc.Messages() {
+		onMessage(messageFromSarama(msg))
 	}
 }
 

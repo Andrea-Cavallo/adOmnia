@@ -18,6 +18,9 @@ export const MAX_UI_LOGS = 2000
 const MAX_UI_ITEMS = 300
 const MAX_UI_RUNS = 200
 
+/** Instants from Go carry a local offset (+02:00), from JS a Z: compare them as numbers, never as strings. */
+export const timeOf = (iso: string | null | undefined) => (iso ? Date.parse(iso) || 0 : 0)
+
 export const emptyModel = (): LiveModel => ({ sessions: {}, order: [], runs: {}, runOrder: [], runByTab: {}, logs: {}, queries: [], messages: [] })
 
 export function modelFromSnapshot(snapshot: LiveSnapshot): LiveModel {
@@ -43,7 +46,7 @@ function withRun(model: LiveModel, run: RequestRun): LiveModel {
 /** A late update of an old run never replaces the tab's newer run. */
 function latestForTab(model: LiveModel, run: RequestRun): string {
   const current = run.tabId ? model.runs[model.runByTab[run.tabId] ?? ''] : undefined
-  return current && current.id !== run.id && current.startedAt > run.startedAt ? current.id : run.id
+  return current && current.id !== run.id && timeOf(current.startedAt) > timeOf(run.startedAt) ? current.id : run.id
 }
 
 export function applyLiveEvent(model: LiveModel, event: LiveEvent): LiveModel {
@@ -97,7 +100,7 @@ export function primarySession(model: LiveModel, preferredId?: string | null): L
     const preferred = live.find((s) => s.id === preferredId)
     if (preferred) return preferred
   }
-  const newest = (list: LiveSession[]) => list.reduce<LiveSession | null>((best, s) => (!best || s.startedAt > best.startedAt ? s : best), null)
+  const newest = (list: LiveSession[]) => list.reduce<LiveSession | null>((best, s) => (!best || timeOf(s.startedAt) > timeOf(best.startedAt) ? s : best), null)
   return newest(live.filter((s) => s.state === 'paused')) ?? newest(live.filter((s) => s.kind === 'debug')) ?? newest(live)
 }
 
@@ -145,10 +148,10 @@ export function sessionForRequest(model: LiveModel, rawUrl: string, resolvedUrl:
   const service = linkedService(rawUrl)
   const port = loopbackPort(resolvedUrl)
   const byPort = port ? live.filter((s) => s.port === port) : []
-  if (byPort.length) return byPort.reduce((a, b) => (b.startedAt > a.startedAt ? b : a))
+  if (byPort.length) return byPort.reduce((a, b) => (timeOf(b.startedAt) > timeOf(a.startedAt) ? b : a))
   if (service) {
     const byService = live.filter((s) => s.service === service)
-    if (byService.length) return byService.reduce((a, b) => (b.startedAt > a.startedAt ? b : a))
+    if (byService.length) return byService.reduce((a, b) => (timeOf(b.startedAt) > timeOf(a.startedAt) ? b : a))
   }
   return null
 }

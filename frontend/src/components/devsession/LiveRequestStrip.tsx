@@ -6,7 +6,7 @@ import type { RequestItem } from '@/lib/types'
 import { liveVars } from '@/lib/devsession/liveRequest'
 import { openLocationInGoStudio } from '@/lib/devsession/navigation'
 import { useRouteForRequest } from '@/lib/devsession/useRouteForRequest'
-import { useDevSessionStore } from '@/stores/devSession'
+import { useDevSessionStore, useLiveCore } from '@/stores/devSession'
 import { linkedService, liveSessions, sessionForRequest, type ServiceTarget } from '@/stores/devSessionModel'
 import { basename, LiveDot, LinkedDot } from './liveUi'
 
@@ -21,7 +21,8 @@ export function linkUrlToService(url: string, service: string): string {
  * DEV…) and which Go handler serves it. Hidden when neither is known.
  */
 export function LiveRequestStrip({ tabId: _tabId, request, vars, onChange }: { tabId: string; request: RequestItem; vars: Record<string, string>; onChange: (request: RequestItem) => void }) {
-  const state = useDevSessionStore()
+  useLiveCore()
+  const state = useDevSessionStore.getState()
   const allVars = liveVars(vars)
   const resolved = substVars(request.url, allVars)
   const service = linkedService(request.url)

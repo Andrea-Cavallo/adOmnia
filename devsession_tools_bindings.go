@@ -28,8 +28,12 @@ func (b *brokerWatchers) start(sessionID string, brokers, topics []string) (*dev
 		return nil, err
 	}
 	b.mu.Lock()
+	old := b.watches[sessionID]
 	b.watches[sessionID] = watch
 	b.mu.Unlock()
+	if old != nil {
+		go old.Close() // a concurrent start won the race
+	}
 	return watch, nil
 }
 
@@ -69,8 +73,12 @@ func (s *sqlProxies) start(sessionID, kind, target string, port int) (*devsessio
 		return nil, err
 	}
 	s.mu.Lock()
+	old := s.proxies[sessionID]
 	s.proxies[sessionID] = proxy
 	s.mu.Unlock()
+	if old != nil {
+		go old.Close()
+	}
 	return proxy, nil
 }
 
@@ -104,6 +112,10 @@ func (d *DevSession) WatchKafka(sessionID string, brokers, topics []string) (Ses
 	if _, err := d.watchers.start(sessionID, brokers, topics); err != nil {
 		return SessionTools{}, err
 	}
+	if !d.isLive(sessionID) { // the service stopped while the watch was starting
+		d.watchers.stop(sessionID)
+		return SessionTools{}, fmt.Errorf("the service is not running")
+	}
 	return d.Tools(sessionID), nil
 }
 
@@ -121,6 +133,10 @@ func (d *DevSession) StartSQLCapture(sessionID, kind, target string, port int) (
 	}
 	if _, err := d.proxies.start(sessionID, kind, target, port); err != nil {
 		return SessionTools{}, err
+	}
+	if !d.isLive(sessionID) {
+		d.proxies.stop(sessionID)
+		return SessionTools{}, fmt.Errorf("the service is not running")
 	}
 	return d.Tools(sessionID), nil
 }
