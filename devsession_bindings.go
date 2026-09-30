@@ -84,8 +84,8 @@ func (d *DevSession) handleGoIDEEvent(event goide.EventEnvelope) {
 			}
 		}
 	case "debug.output":
-		if output, ok := event.Payload.(goide.DebugOutput); ok && (output.Category == "stdout" || output.Category == "stderr") {
-			d.manager.Output("debug", string(output.DebugID), output.Category, output.Text)
+		if output, ok := event.Payload.(goide.DebugOutput); ok {
+			d.manager.DebugOutput(string(output.DebugID), output.Category, output.Text)
 		}
 	case "session.closed":
 		d.manager.GoSessionClosed(goSession)

@@ -204,12 +204,16 @@ func TestPortDetection(t *testing.T) {
 
 func TestPortFromOutput(t *testing.T) {
 	cases := map[string]int{
-		"listening on :8080":                          8080,
-		"server started at http://localhost:3000/api": 3000,
-		"⇨ http server started on [::]:1323":          1323,
-		`{"msg":"listening","addr":"0.0.0.0:9090"}`:   9090,
-		"loaded 42 users":                             0,
-		"retrying in 5 seconds":                       0,
+		"listening on :8080":                                8080,
+		"server started at http://localhost:3000/api":       3000,
+		"⇨ http server started on [::]:1323":                1323,
+		`{"msg":"listening","addr":"0.0.0.0:9090"}`:         9090,
+		"loaded 42 users":                                   0,
+		"2026/09/30 11:45:02 listening on 127.0.0.1:52345":  52345,
+		"2026/09/30 11:45:02 server started":                0,
+		"starting server port=7070":                         7070,
+		"time=11:45:02 level=INFO msg=ready addr=[::]:8443": 8443,
+		"retrying in 5 seconds":                             0,
 	}
 	for line, want := range cases {
 		if got := portFromOutput(line); got != want {
@@ -247,5 +251,20 @@ func TestNonServiceRunsAreIgnored(t *testing.T) {
 	manager.RunStarted("go-1", "b", "build", "go build", 1)
 	if n := len(manager.Snapshot().Sessions); n != 0 {
 		t.Fatalf("tests and builds are not services, got %d sessions", n)
+	}
+}
+
+func TestDebugOutputKeepsProgramLinesOnly(t *testing.T) {
+	manager, _ := testManager(Hooks{})
+	manager.DebugState("go-1", "d", "running", "", "", 0, "")
+	manager.DebugOutput("d", "stdout", "Building C:\p\n")
+	manager.DebugOutput("d", "console", "Type 'dlv help' for list of commands.\n2026/09/30 listening on 127.0.0.1:45661\n")
+	manager.DebugOutput("d", "telemetry", "ignored\n")
+	logs := manager.Logs("debug:d", "", 0)
+	if len(logs) != 1 || logs[0].Text != "2026/09/30 listening on 127.0.0.1:45661" {
+		t.Fatalf("unexpected lines: %+v", logs)
+	}
+	if got := manager.Snapshot().Sessions[0].Port; got != 45661 {
+		t.Fatalf("port from console output = %d", got)
 	}
 }

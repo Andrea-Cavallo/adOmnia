@@ -114,19 +114,42 @@ func (m *Manager) setDetectedPort(id string, port int, source string) {
 }
 
 var (
-	outputURLPort    = regexp.MustCompile(`(?i)\bhttps?://(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::\]|\[::1\])?:(\d{2,5})\b`)
-	outputListenPort = regexp.MustCompile(`(?i)\b(?:listen(?:ing)?|serv(?:ing|er)|started|running|bound|port)\b[^\r\n]{0,40}?(?:\s|:|=|\()(?:(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::\])?:)?(\d{2,5})\b`)
+	outputURLPort = regexp.MustCompile(`(?i)\bhttps?://(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::\]|\[::1\])?:(\d{2,5})\b`)
+	listenWord    = regexp.MustCompile(`(?i)\b(?:listen(?:ing)?|serv(?:ing|er)|started|running|bound|ready|addr|http)\b`)
+	// host:port where the host is a name, an IP, [::] or nothing (":8080"); a
+	// timestamp such as 11:45:02 never matches because its "host" is digits
+	// glued to the colon.
+	outputHostPort = regexp.MustCompile(`(?:^|[\s"'=(\[,])(?:localhost|\d{1,3}(?:\.\d{1,3}){3}|\[[0-9a-fA-F:]*\]|\*|[a-zA-Z][\w.-]*)?:(\d{2,5})\b`)
+	outputPortWord = regexp.MustCompile(`(?i)\bport\b\D{0,3}(\d{2,5})\b`)
 )
 
+func validPort(text string) int {
+	port, err := strconv.Atoi(text)
+	if err != nil || port < 80 || port > 65535 {
+		return 0
+	}
+	return port
+}
+
 // portFromOutput extracts the port a Go server usually prints on start:
-// "listening on :8080", "http://localhost:8080", "Listening and serving HTTP on :8080".
+// "listening on :8080", "listening on 127.0.0.1:8080",
+// "http://localhost:8080", "Listening and serving HTTP on :8080", "port=8080".
 func portFromOutput(line string) int {
-	for _, pattern := range []*regexp.Regexp{outputURLPort, outputListenPort} {
-		if match := pattern.FindStringSubmatch(line); match != nil {
-			if port, err := strconv.Atoi(match[1]); err == nil && port >= 80 && port <= 65535 {
-				return port
-			}
+	if match := outputURLPort.FindStringSubmatch(line); match != nil {
+		if port := validPort(match[1]); port > 0 {
+			return port
 		}
+	}
+	if !listenWord.MatchString(line) && !outputPortWord.MatchString(line) {
+		return 0
+	}
+	for _, match := range outputHostPort.FindAllStringSubmatch(line, -1) {
+		if port := validPort(match[1]); port > 0 {
+			return port
+		}
+	}
+	if match := outputPortWord.FindStringSubmatch(line); match != nil {
+		return validPort(match[1])
 	}
 	return 0
 }

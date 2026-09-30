@@ -263,3 +263,26 @@ func (m *Manager) RecordMessage(message Message) {
 	m.mu.Unlock()
 	m.publish(events)
 }
+
+// delveNoise are Delve's own console messages, not the service's output.
+var delveNoise = regexp.MustCompile(`^(?:Type 'dlv help'|Building |Detaching|Process \d+ has exited|dlv dap|DAP server listening|API server listening)`)
+
+// DebugOutput ingests the output of a debugged program. Delve forwards the
+// program's stdout/stderr as "console" on some platforms, mixed with its own
+// messages, which are dropped.
+func (m *Manager) DebugOutput(debugID, category, text string) {
+	if category != "stdout" && category != "stderr" && category != "console" {
+		return
+	}
+	stream := category
+	if stream == "console" {
+		stream = "stdout"
+	}
+	var kept []string
+	for _, line := range strings.SplitAfter(text, "\n") {
+		if !delveNoise.MatchString(strings.TrimSpace(line)) {
+			kept = append(kept, line)
+		}
+	}
+	m.Output("debug", debugID, stream, strings.Join(kept, ""))
+}
