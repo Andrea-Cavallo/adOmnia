@@ -47,6 +47,13 @@ export function hunkAnchorLine(hunk: GoStudioLineHunk): number {
   return hunk.newEnd < hunk.newStart ? Math.max(hunk.newStart - 1, 1) : hunk.newStart
 }
 
+/** Tacche nella scrollbar: tinte smorzate come in IntelliJ, segnalano senza competere con il codice. */
+const OVERVIEW_RULER_COLORS: Record<GoStudioLineHunk['kind'], string> = {
+  added: 'rgba(84, 145, 89, 0.55)',
+  modified: 'rgba(67, 105, 141, 0.65)',
+  deleted: 'rgba(148, 163, 184, 0.45)',
+}
+
 function vcsDecorations(hunks: GoStudioLineHunk[]): monaco.editor.IModelDeltaDecoration[] {
   return hunks.map((hunk) => {
     const deleted = hunk.newEnd < hunk.newStart
@@ -57,7 +64,7 @@ function vcsDecorations(hunks: GoStudioLineHunk[]): monaco.editor.IModelDeltaDec
         isWholeLine: true,
         linesDecorationsClassName: `go-studio-vcs go-studio-vcs-${hunk.kind}`,
         linesDecorationsTooltip: hunk.kind === 'added' ? 'Added since HEAD · click to revert' : hunk.kind === 'modified' ? 'Changed since HEAD · click to see or revert' : 'Lines deleted since HEAD · click to restore',
-        overviewRuler: { color: hunk.kind === 'added' ? 'rgba(34, 197, 94, 0.7)' : hunk.kind === 'modified' ? 'rgba(59, 130, 246, 0.7)' : 'rgba(148, 163, 184, 0.7)', position: monaco.editor.OverviewRulerLane.Left },
+        overviewRuler: { color: OVERVIEW_RULER_COLORS[hunk.kind], position: monaco.editor.OverviewRulerLane.Left },
       },
     }
   })
