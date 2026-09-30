@@ -3,6 +3,7 @@ package goide
 import (
 	"fmt"
 	"sync"
+	"unicode/utf16"
 )
 
 // TerminalProfile è una shell rilevata sulla macchina (PowerShell, Git Bash, una distro WSL, zsh…).
@@ -49,4 +50,16 @@ func resolveTerminalProfile(id string) (TerminalProfile, error) {
 		}
 	}
 	return TerminalProfile{}, fmt.Errorf("profilo terminale %q non disponibile", id)
+}
+
+// decodeWSLOutput converte l'output UTF-16LE di `wsl -l` in stringa; fuori da Windows serve solo ai test.
+func decodeWSLOutput(output []byte) string {
+	if len(output) < 2 || len(output)%2 != 0 || output[1] != 0 && !(output[0] == 0xff && output[1] == 0xfe) {
+		return string(output) // WSL_UTF8=1 o versioni che scrivono già UTF-8
+	}
+	units := make([]uint16, 0, len(output)/2)
+	for i := 0; i+1 < len(output); i += 2 {
+		units = append(units, uint16(output[i])|uint16(output[i+1])<<8)
+	}
+	return string(utf16.Decode(units))
 }
