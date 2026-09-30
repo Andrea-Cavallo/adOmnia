@@ -211,6 +211,8 @@ export const GO_STUDIO_COMMAND_ICONS: Partial<Record<GoStudioCommandId, GoStudio
   'tools.services': icon(Server),
   'tools.httpRequest': icon(Send),
   'tools.plugins': icon(Plug),
+  'tools.copilot': icon(Sparkles),
+  'tools.copilotCompletions': icon(Sparkles),
 
   'vcs.commit': icon(GitCommitHorizontal),
   'vcs.history': icon(History),

@@ -309,6 +309,24 @@ Other mouse gestures: Ctrl+click (Cmd+click on macOS) goes to the declaration, A
 
 **Separate windows** (*File → Open Project in New Window*) are covered by automated tests only. They will be declared supported in the release notes once the manual check in a real window (M31) passes.
 
+## GitHub Copilot
+
+Go Studio integrates GitHub Copilot through the official **GitHub Copilot Language Server** (`@github/copilot-language-server`). It is not the VS Code extension: the UI is adOmnia's, the language server is the engine. gopls stays the semantic engine (types, diagnostics, completion, navigation, refactoring); Copilot adds the generative layer on top.
+
+**Turn it on.** *Tools → GitHub Copilot…* or the Copilot item in the status bar. Copilot is off until you enable it, and nothing is downloaded on its own: *Install* downloads the native language server for your platform from the npm registry and refuses it unless its SHA-512 matches the integrity npm publishes. A custom binary path is also accepted.
+
+**Accounts: GitHub.com, Enterprise Cloud and Enterprise Server.** Nothing assumes `github.com`. Each account is a profile with a name and a host: `github.com`, `company.ghe.com` (Enterprise Cloud with data residency) or your own host (Enterprise Server). For enterprise hosts the language server is configured with `github-enterprise.uri` before sign-in. Sign-in uses GitHub's device flow on that host: adOmnia shows the code, copies it to the clipboard and opens the host's page. A project can be bound to an account (*Account for this project*), so company code never uses the personal account by mistake; switching to a project bound to another account restarts the language server on that account. The status bar always shows user **and host**.
+
+**Ghost text.** Suggestions appear as you type in any editable file: **Tab** accepts, **Esc** dismisses, **Ctrl+→** accepts word by word, **Alt+]** / **Alt+[** browse alternatives. Every keystroke cancels the previous request (`$/cancelRequest`), and a suggestion computed on an older buffer is discarded. *Tools → Toggle Copilot Inline Completions* turns them off without disabling Copilot.
+
+**Network.** A company proxy (with TLS verification on by default) and a company CA bundle (PEM, added to the system trust store through `NODE_EXTRA_CA_CERTS`) can be set in the dialog. TLS verification is never disabled.
+
+**Privacy and data.** Your workspace stays local. When Copilot is on, the open file and nearby code are sent to the GitHub host of the selected account. `.env`, `.env.*`, keys and certificates (`*.pem`, `*.key`, `*.p12`, `*.jks`…), SSH/AWS/GnuPG folders, `secrets/**` and every pattern in the project's `.adomnia/aiignore` (one glob per line, `dir/**` for folders) are never sent. adOmnia has no telemetry and asks the language server to turn its telemetry off. The GitHub token is kept by the language server in its own credential store; adOmnia's `copilot.json` holds only profiles, hosts, bindings and network settings.
+
+**Resilience.** If the language server crashes it restarts after 1, 2, 5 and 10 seconds; after that Copilot pauses with *Restart* and *Show logs*. gopls, the debugger, Git, the terminal and the rest of Go Studio keep working whether Copilot is on, off or failing.
+
+Chat, Edit and Agent modes with adOmnia tools (Go, debugger, API Workspace, databases, Kafka, Git) are the next phases; see `todo-ide.md`.
+
 ## Known limits
 
 - Push, pull, merge, conflict resolution, rebase and stash live in Git Studio, not in the editor. Other version control systems are not supported.

@@ -9,6 +9,7 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 ## [0.9.49] - 2026-09-30
 
 ### Added
+- **GitHub Copilot in Go Studio:** official Copilot Language Server (SHA-512 verified install), GitHub.com / Enterprise Cloud / Enterprise Server accounts, ghost text, proxy and company CA, secrets and `.adomnia/aiignore` never sent. Off until enabled.
 - **Go Studio terminal:** rename (double-click), split view, Ctrl+click on `file.go:line` and stack-trace frames, Ctrl+F search, copy clean output, clear, per-project command history (secrets never stored, no auto-run) and *Run in Test Explorer* for a typed `go test …`.
 - **Low-Resource Mode** and **Low-Resource Mode on Battery** in Go Studio's View menu, with a status-bar badge.
 - **Runtime Inspector** in the debugger (slices, maps, channels, interfaces, context, error chain), STATIC lifecycle hints from *Inspect source*, persisted race sources with a regression-test starter.

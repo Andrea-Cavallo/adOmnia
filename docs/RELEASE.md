@@ -8,7 +8,8 @@ adOmnia releases are driven by Git tags and GitHub Actions.
 
 See [the full v0.9.49 notes](releases/v0.9.49.md): a Go service started from
 Go Studio is shared by every tool (Debug Request, request ↔ code, what a
-request caused), the Go Studio terminal gains rename, split, clickable paths
+request caused), GitHub Copilot arrives in Go Studio (enterprise-aware ghost
+text), the Go Studio terminal gains rename, split, clickable paths
 and stack traces, search, clean copy, history and `go test` detection, the
 panel header replaces the separate title bar (app titlebar by default), and
 Go Studio adds Low-Resource Mode, diagnostics throttling and large-output

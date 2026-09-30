@@ -6,6 +6,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { useGoStudioCursorStore } from './goStudioCursor'
 import { GoStudioToolchainSwitcher } from './GoStudioToolchainSwitcher'
 import { GoStudioBreadcrumb } from './GoStudioBreadcrumb'
+import { GoStudioCopilotStatus } from './GoStudioCopilotStatus'
 import { diagnosticCounts, mergedReports, useGoIDELspStore } from '@/stores/goideLsp'
 
 interface GoStudioStatusBarProps {
@@ -114,6 +115,7 @@ export function GoStudioStatusBar({ session, toolchain, documentInfo, execution,
       {documentInfo && <span className={LABEL} title={documentInfo.lineEnding === 'CRLF' ? 'Line separator: Windows (\\r\\n)' : 'Line separator: Unix (\\n)'}>{documentInfo.lineEnding}</span>}
       <span className={LABEL}>{documentInfo?.language || (session.project.goWorkPath ? 'go.work' : session.project.goModPath ? 'go.mod' : 'Go folder')}{documentInfo?.readOnly ? ' · read-only' : ''}</span>
       <GoStudioToolchainSwitcher sessionId={session.id} toolchain={toolchain} className={ITEM} onManage={onManageToolchains} />
+      <GoStudioCopilotStatus className={ITEM} />
       <button type="button" onClick={() => onSetAuthorization(!authorized)} aria-pressed={authorized} title={authorized ? 'Local Go tools are permitted. Click to revoke.' : 'Permit local Go tools; nothing starts automatically'} className={`${ITEM} ${authorized ? 'text-success' : 'text-warning'}`}>
         {authorized ? <ShieldCheck size={12} /> : <LockKeyhole size={12} />}{authorized ? 'Trusted' : 'Restricted'}
       </button>

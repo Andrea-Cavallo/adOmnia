@@ -1,5 +1,6 @@
 import { updateDocumentBuffer } from '@/lib/goide-lsp-api'
 import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
+import { copilotCompletionsActive, useCopilotStore } from '@/stores/copilot'
 
 const SYNC_DEBOUNCE_MS = 120
 
@@ -16,8 +17,10 @@ const entries = new Map<string, SyncEntry>()
 let started = false
 
 function isSynced(document: GoIDEEditorDocument): boolean {
+  if (document.document.readOnly || document.document.external) return false
   const name = document.document.name.toLowerCase()
-  return !document.document.readOnly && (name.endsWith('.go') || name === 'go.mod' || name === 'go.work')
+  // gopls vuole solo i file Go; con Copilot attivo il backend inoltra ogni file editabile anche a Copilot.
+  return name.endsWith('.go') || name === 'go.mod' || name === 'go.work' || copilotCompletionsActive(useCopilotStore.getState())
 }
 
 function send(documentId: string): Promise<void> {
@@ -75,6 +78,10 @@ export function startGoStudioLspSync(): void {
   reconcile(useGoIDEStore.getState().documents)
   useGoIDEStore.subscribe((state, previous) => {
     if (state.documents !== previous.documents) reconcile(state.documents)
+  })
+  // Copilot acceso dopo l'apertura dei file: i documenti non Go entrano nella sincronizzazione.
+  useCopilotStore.subscribe((state, previous) => {
+    if (copilotCompletionsActive(state) !== copilotCompletionsActive(previous)) reconcile(useGoIDEStore.getState().documents)
   })
 }
 

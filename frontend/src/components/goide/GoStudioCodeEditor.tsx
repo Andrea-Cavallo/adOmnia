@@ -10,6 +10,7 @@ import { installGoStudioEditorActions } from './goStudioEditorActions'
 import { documentForModel, registerGoStudioLanguageFeatures } from './goStudioLanguageFeatures'
 import { registerGoStudioCodeLens } from './goStudioCodeLens'
 import { registerGoStudioCodeVision } from './goStudioCodeVision'
+import { registerGoStudioCopilotCompletions } from './goStudioCopilotCompletions'
 import { editorModelUri } from './goStudioModelUri'
 import { installRecursiveCallMarkers, registerGoStudioSemanticFeatures } from './goStudioSemanticFeatures'
 import { useGoIDELspStore } from '@/stores/goideLsp'
@@ -30,6 +31,7 @@ configureMonacoLoader()
 registerGoStudioLanguageFeatures()
 registerGoStudioCodeLens()
 registerGoStudioCodeVision()
+registerGoStudioCopilotCompletions()
 registerGoStudioSemanticFeatures()
 startGoStudioLspSync()
 registerGoStudioDebugHover()
@@ -205,6 +207,8 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
         'semanticHighlighting.enabled': semanticHighlighting,
         inlayHints: { enabled: inlayHints ? 'on' : 'off', fontSize: 10, padding: true },
         occurrencesHighlight: 'singleFile',
+        // Ghost text di Copilot: Tab accetta, Esc rifiuta, Alt+] / Alt+[ scorrono le alternative.
+        inlineSuggest: { enabled: true, showToolbar: 'onHover', mode: 'subword' },
         codeLensFontSize: 11,
         codeLensFontFamily: 'var(--font-sans)',
         // Go, assembly e Makefile vogliono tab veri: una ricetta indentata a spazi rompe make.
