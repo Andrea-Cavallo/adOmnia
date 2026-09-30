@@ -9,12 +9,21 @@ import { openRouteInApiClient } from './goStudioIntegrations'
 import { useDevContextStore } from '@/stores/devcontext'
 import { entityRefFrom, type DevEntity } from '@/lib/devcontext-api'
 import { actionsFor, openEntity } from '@/lib/entities/router'
+import { runHandlerAction, type HandlerAction } from '@/lib/devsession/codeToApi'
 
 const LANGUAGE = 'go'
 const GO_MOD_COMMAND = 'goStudio.goModAction'
 const PACKAGE_COMMAND = 'goStudio.packageCommand'
 const HTTP_ROUTE_COMMAND = 'goStudio.openHttpRoute'
 const ENTITY_COMMAND = 'goStudio.openEntity'
+const HANDLER_COMMAND = 'goStudio.handlerRequest'
+const HANDLER_ACTIONS: Array<{ action: HandlerAction; title: (route: DevEntity) => string; tooltip: string }> = [
+  { action: 'open', title: (route) => `⇄ ${route.label}`, tooltip: 'Open the linked request in the API workspace' },
+  { action: 'send', title: () => 'Run', tooltip: 'Send the linked request to the running service' },
+  { action: 'debug', title: () => 'Debug request', tooltip: 'Run the service under Delve, send the request and stop at breakpoints' },
+  { action: 'last', title: () => 'Last response', tooltip: 'Show the last response of this route' },
+  { action: 'history', title: () => 'History', tooltip: 'Open the request history' },
+]
 /** Code → DB / Kafka / gRPC / WebSocket: le route HTTP hanno già il loro lens, letto dal buffer. */
 const LENS_KINDS = new Set(['table', 'topic', 'grpc', 'websocket'])
 const lensEntities = new Map<string, DevEntity>()
@@ -46,7 +55,7 @@ function lensesFor(document: GoIDEEditorDocument, text: string): monaco.language
     range: lensRange(route.line),
     command: { id: HTTP_ROUTE_COMMAND, title: `Open ${route.method} ${route.path} in API Client`, tooltip: 'Creates a prefilled request in the adOmnia API client', arguments: [id, route.line] },
   }))
-  return [...packages, ...routes, ...entityLenses(document)]
+  return [...packages, ...routes, ...entityLenses(document), ...handlerLenses(document)]
 }
 
 /** Entità del Developer Context trovate in questo file (scansione su disco: le righe seguono l'ultimo salvataggio). */
@@ -70,6 +79,24 @@ function entityLenses(document: GoIDEEditorDocument): monaco.languages.CodeLens[
         range: lensRange(source.line),
         command: { id: ENTITY_COMMAND, title: `${action.title}: ${entity.label}`, tooltip: `Opens ${entity.label} in adOmnia`, arguments: [sessionId, entity.id, source.line] },
       })
+    }
+  }
+  return lenses
+}
+
+/** Code → API: sulla dichiarazione di un handler, le azioni sulla request che lo esercita. */
+function handlerLenses(document: GoIDEEditorDocument): monaco.languages.CodeLens[] {
+  const { sessionId, relativePath } = document.document
+  const snapshot = useDevContextStore.getState().snapshots[sessionId]
+  if (!snapshot) return []
+  const lenses: monaco.languages.CodeLens[] = []
+  for (const route of snapshot.entities ?? []) {
+    if (route.kind !== 'route' || route.attrs.declFile !== relativePath) continue
+    const line = Number(route.attrs.declLine)
+    if (!line) continue
+    lensEntities.set(route.id, route)
+    for (const item of HANDLER_ACTIONS) {
+      lenses.push({ range: lensRange(line), command: { id: HANDLER_COMMAND, title: item.title(route), tooltip: item.tooltip, arguments: [sessionId, route.id, item.action] } })
     }
   }
   return lenses
@@ -109,6 +136,10 @@ export function registerGoStudioCodeLens(): void {
     if (!entity) return
     const ref = entityRefFrom(entity, sessionId)
     void openEntity({ ...ref, source: ref.source && { ...ref.source, line } })
+  })
+  monaco.editor.registerCommand(HANDLER_COMMAND, (_accessor, sessionId: string, routeId: string, action: HandlerAction) => {
+    const route = lensEntities.get(routeId)
+    if (route) void runHandlerAction(sessionId, route, action)
   })
   // I lens si aggiornano quando arriva o cambia lo snapshot del Developer Context.
   const changed = new monaco.Emitter<monaco.languages.CodeLensProvider>()

@@ -35,6 +35,14 @@ import { useWorkspaceHydration, useWorkspaceHydrationShell } from '@/hooks/useWo
 import { WorkspaceMainSkeleton, WorkspacePanelHeaderSkeleton } from '@/components/layout/WorkspaceHydrationShell'
 import { useFlowRecorderStore } from '@/stores/flowRecorder'
 import { createRecordedFlowDefinition, saveFlowDefinitions } from '@/lib/flowStorage'
+import { usePanelActiveRef } from '@/components/layout/PanelActivity'
+import { finishLiveSend, liveVars, prepareLiveSend } from '@/lib/devsession/liveRequest'
+import { prepareDebugRequest } from '@/lib/devsession/debugRequest'
+import { showEntityNotice } from '@/lib/entities/notice'
+import { useDevSessionStore } from '@/stores/devSession'
+import { LiveResponseFrame } from '@/components/devsession/LiveResponseFrame'
+import { LiveRequestStrip } from '@/components/devsession/LiveRequestStrip'
+import { DebugRequestButton } from '@/components/devsession/DebugRequestButton'
 
 // ─── Lazy-loaded panels (loaded on first navigation) ──────────────────────────
 
@@ -309,6 +317,7 @@ function ActiveRequestBar({
   hasActiveEnv,
   onChange,
   onSend,
+  onDebug,
   onCancel,
   onSave,
   onDelete,
@@ -325,6 +334,7 @@ function ActiveRequestBar({
   hasActiveEnv: boolean
   onChange: (request: RequestItem) => void
   onSend: () => void
+  onDebug: () => void
   onCancel: () => void
   onSave: () => void
   onDelete: () => void
@@ -446,6 +456,8 @@ function ActiveRequestBar({
             {tr('Cancel')}
           </button>
         ) : (
+          <>
+          <DebugRequestButton url={request.url} onDebug={onDebug} />
           <button
             type="button"
             onClick={onSend}
@@ -455,6 +467,7 @@ function ActiveRequestBar({
             <Send className="api-send-action__icon" size={15} strokeWidth={2.35} aria-hidden="true" />
             {tr('Send')}
           </button>
+          </>
         )}
 
       </div>
@@ -494,6 +507,7 @@ function ToolTabPane({ tool }: { tool: ToolTabId }) {
 }
 
 export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWorkspaceProps) {
+  const panelActive = usePanelActiveRef()
   const tr = useUiTranslation()
   const allTabs = useTabsStore((s) => s.tabs)
   const selectedTabId = useTabsStore((s) => s.activeTabId)
@@ -707,9 +721,11 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
     }
   }, [activeTab?.id])
 
-  const handleSend = async () => {
+  // Send and Debug Request share one pipeline: requests to a live Go service
+  // are registered with its session (correlation id, breakpoint tracking).
+  const sendActive = async (override?: RequestItem, liveSessionId?: string) => {
     if (!activeTab || activeTab.loading) return
-    const issues = validateRequestParams(activeTab.request)
+    const issues = validateRequestParams(override ?? activeTab.request)
     if (issues.length > 0) {
       setParamIssues(issues)
       return
@@ -718,9 +734,10 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
     const controller = new AbortController()
     sendAbortRef.current = controller
     setLoading(activeTab.id, true)
-    const vars = getResolvedVars()
+    const live = await prepareLiveSend(activeTab.id, override ?? activeTab.request, getResolvedVars(), liveSessionId)
     const activeEnvironment = environments.find((env) => env.id === activeEnvId) ?? null
-    const result = await executeRequest(activeTab.request, vars, { signal: controller.signal, recordingEnvironment: activeEnvironment })
+    const result = await executeRequest(live.request, live.vars, { signal: controller.signal, recordingEnvironment: activeEnvironment })
+    void finishLiveSend(live, result.response)
     if (activeEnvId && Object.keys(result.mutations).length > 0) {
       const env = environments.find((e) => e.id === activeEnvId)
       if (env) updateVariables(activeEnvId, applyEnvironmentMutations(env.variables, result.mutations))
@@ -728,6 +745,24 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
     const response = result.response
     setResponse(activeTab.id, response)
     sendAbortRef.current = null
+  }
+
+  const handleSend = () => sendActive()
+
+  /** Debug Request: start or reuse the service under Delve, wait until it listens, then send and follow. */
+  const handleDebugRequest = async () => {
+    if (!activeTab || activeTab.loading) return
+    const tabId = activeTab.id
+    const devSession = useDevSessionStore.getState()
+    try {
+      const prepared = await prepareDebugRequest(tabId, activeTab.request, getResolvedVars())
+      devSession.setProgress(tabId, null)
+      if (prepared.retargeted) showEntityNotice(`Debug Request sent to ${prepared.session.service} on localhost:${prepared.session.port} instead of the request's own host.`)
+      await sendActive(prepared.request, prepared.session.id)
+    } catch (error) {
+      const current = useDevSessionStore.getState().progress[tabId]
+      devSession.setProgress(tabId, { step: current?.step ?? 'service', message: current?.message ?? '', error: error instanceof Error ? error.message : String(error) })
+    }
   }
 
   const requestStopRecording = () => {
@@ -772,12 +807,24 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
 
   useEffect(() => {
     const onSendActiveRequest = (event: Event) => {
+      if (!panelActive.current) return
       const command = event as CustomEvent<{ handled: boolean }>
       command.detail.handled = true
       void handleSend()
     }
     document.addEventListener('adomnia:send-active-request', onSendActiveRequest)
     return () => document.removeEventListener('adomnia:send-active-request', onSendActiveRequest)
+  })
+
+  useEffect(() => {
+    const onDebugActiveRequest = (event: Event) => {
+      if (!panelActive.current) return
+      const command = event as CustomEvent<{ handled: boolean }>
+      command.detail.handled = true
+      void handleDebugRequest()
+    }
+    document.addEventListener('adomnia:debug-active-request', onDebugActiveRequest)
+    return () => document.removeEventListener('adomnia:debug-active-request', onDebugActiveRequest)
   })
 
   const saveTab = useCallback((tabId: string) => {
@@ -939,10 +986,11 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
           request={activeTab.request}
           isDirty={activeTab.dirty}
           loading={activeTab.loading}
-          vars={getResolvedVars()}
+          vars={liveVars(getResolvedVars())}
           hasActiveEnv={activeEnvId !== null}
           onChange={(request) => updateRequest(activeTab.id, request)}
           onSend={handleSend}
+          onDebug={() => void handleDebugRequest()}
           onCancel={handleCancel}
           onSave={handleSave}
           onDelete={confirmDeleteActiveRequest}
@@ -952,6 +1000,9 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
           recordingCount={recordedCalls.length}
           onToggleRecording={requestStopRecording}
         />
+      )}
+      {activeTab && !activeTab.tool && showRequestPane && (
+        <LiveRequestStrip tabId={activeTab.id} request={activeTab.request} vars={getResolvedVars()} onChange={(request) => updateRequest(activeTab.id, request)} />
       )}
       {showRequestPane && <ApiToolsBar
           activeRequest={activeTab && !activeTab.tool ? activeTab.request : null}
@@ -984,6 +1035,7 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
 		  </div>
 		) : standalonePane === 'response' ? (
 		  <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
+			<LiveResponseFrame tabId={activeTab.id} loading={!!activeTab.loading}>
 			<ResponsePanel
 			  key={activeTab.id}
 			  tabId={activeTab.id}
@@ -994,6 +1046,7 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
 			  oaMethod={oaMethod}
 			  assertions={activeTab.request.assertions}
 			/>
+			</LiveResponseFrame>
 		  </div>
 		) : (
         /* ── Horizontal split: Composer (left, fixed width) | drag | Response (right, flex-1) ── */
@@ -1044,6 +1097,7 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
 
               {/* ── Response pane — right side, fills remaining space ── */}
               <div className="flex-1 flex min-h-0 min-w-0 flex-col overflow-hidden">
+                <LiveResponseFrame tabId={activeTab.id} loading={!!activeTab.loading}>
                 <ResponsePanel
                   key={activeTab.id}
                   tabId={activeTab.id}
@@ -1061,6 +1115,7 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
                     />
                   }
                 />
+                </LiveResponseFrame>
               </div>
             </>
           )}

@@ -29,6 +29,7 @@ import { cn } from '@/lib/utils'
 import { resolveBrokerPayload } from '@/lib/brokerConnections'
 import { ConnectionProfiles } from './ConnectionProfiles'
 import { useEntityHandoff } from '@/lib/entities/dispatch'
+import { showEntityNotice } from '@/lib/entities/notice'
 
 type Tab = 'overview' | 'topics' | 'groups' | 'messages' | 'produce' | 'load'
 type ProduceMode = 'single' | 'bulk'
@@ -261,7 +262,11 @@ export function KafkaPanel({
     const kind = ref.kind === 'topic' ? ref.attrs.broker : ref.attrs.type
     if (kind && kind !== 'kafka') return false // another protocol: Broker Studio switches first
     if (ref.kind === 'datasource') setCfg((c) => ({ ...c, brokers: `${ref.attrs.host}:${ref.attrs.port}` }))
-    if (ref.kind === 'topic') { setCfg((c) => ({ ...c, topic: ref.label })); setTab('messages') }
+    if (ref.kind === 'topic') {
+      setCfg((c) => ({ ...c, topic: ref.label }))
+      setTab('messages')
+      if (ref.attrs.offset) showEntityNotice(`${ref.label} · partition ${ref.attrs.partition} · offset ${ref.attrs.offset}`)
+    }
     return true
   })
   const [key, setKey] = useState('order-created')

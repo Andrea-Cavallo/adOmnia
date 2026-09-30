@@ -228,8 +228,8 @@ func (d *DevSession) SetServiceName(goSessionID, name string) error {
 	return nil
 }
 
-// ServiceName returns the service name of a gO project.
-func (d *DevSession) ServiceName(goSessionID string) string {
+// ProjectServiceName returns the service name of a gO project.
+func (d *DevSession) ProjectServiceName(goSessionID string) string {
 	service, _ := d.project(goSessionID)
 	return service
 }

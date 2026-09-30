@@ -310,7 +310,7 @@ func (st *sessionState) snapshot(sessionID string) Snapshot {
 		groups = append(groups, st.files[rel].Entities)
 		warnings = append(warnings, st.files[rel].Warnings...)
 	}
-	entities := merge(groups...)
+	entities := linkHandlers(merge(groups...))
 	linkWebSockets(entities)
 	return Snapshot{SessionID: sessionID, Root: st.root, Version: st.version, Entities: entities, Warnings: warnings, ScannedAt: st.scanned}
 }

@@ -18,6 +18,8 @@ import { actionsFor, openEntity } from '@/lib/entities/router'
 import { entityPaletteItems, symbolPaletteItems, type EntityPaletteItem } from '@/lib/entities/paletteItems'
 import { requestWorkspaceSymbols, type GoIDEWorkspaceSymbol } from '@/lib/goide-lsp-api'
 import { useDevContextStore } from '@/stores/devcontext'
+import { useDevSessionStore } from '@/stores/devSession'
+import { devSessionCommands } from '@/lib/devsession/paletteCommands'
 import { useGoIDEStore } from '@/stores/goide'
 
 interface CommandPaletteProps {
@@ -97,6 +99,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     window.requestAnimationFrame(() => inputRef.current?.focus())
   }, [open])
 
+  const devSession = useDevSessionStore()
   const commands = useMemo<PaletteCommand[]>(() => {
     const actions: PaletteCommand[] = [
       {
@@ -164,8 +167,9 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     })
     const projectEntries = snapshot ? entityPaletteItems(snapshot).map(toCommand(tr('Project'))) : []
     const symbolEntries = goSessionId ? symbolPaletteItems(symbols, goSessionId).map(toCommand(tr('Symbols'))) : []
-    return [...actions, ...deepLinks, ...panels, ...recentRequests, ...collectionEntries, ...environmentEntries, ...projectEntries, ...symbolEntries]
-  }, [activeEnvId, activeWorkspaceId, collections, environments, featureFlags, goSessionId, nav, newTab, openTab, setActiveEnv, setActiveRail, snapshot, symbols, tabs, tr])
+    const liveEntries = devSessionCommands(devSession).map<PaletteCommand>((command) => ({ ...command, group: 'Live session', icon: ArrowRight }))
+    return [...liveEntries, ...actions, ...deepLinks, ...panels, ...recentRequests, ...collectionEntries, ...environmentEntries, ...projectEntries, ...symbolEntries]
+  }, [devSession, activeEnvId, activeWorkspaceId, collections, environments, featureFlags, goSessionId, nav, newTab, openTab, setActiveEnv, setActiveRail, snapshot, symbols, tabs, tr])
 
   const results = useMemo(() => {
     if (actionRef) {

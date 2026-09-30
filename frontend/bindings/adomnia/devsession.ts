@@ -73,6 +73,13 @@ export function Messages(runID: string): $CancellablePromise<devsession$0.Messag
 }
 
 /**
+ * ProjectServiceName returns the service name of a gO project.
+ */
+export function ProjectServiceName(goSessionID: string): $CancellablePromise<string> {
+    return $Call.ByID(3802648780, goSessionID);
+}
+
+/**
  * Queries returns the SQL statements tied to a request run ("" for all).
  */
 export function Queries(runID: string): $CancellablePromise<devsession$0.Query[]> {
