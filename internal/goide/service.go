@@ -390,7 +390,38 @@ func (s *Service) ConfigureToolchain(sessionID string, config ToolchainConfigura
 	if _, err := s.session(sessionID); err != nil {
 		return err
 	}
-	return s.toolchain.Configure(SessionID(sessionID), config)
+	if err := s.toolchain.Configure(SessionID(sessionID), config); err != nil {
+		return err
+	}
+	return s.saveState()
+}
+
+// ToolchainSettings restituisce la configurazione del progetto e quella globale per l'editor della toolchain.
+func (s *Service) ToolchainSettings(sessionID string) (ToolchainSettings, error) {
+	if _, err := s.session(sessionID); err != nil {
+		return ToolchainSettings{}, err
+	}
+	return s.toolchain.Settings(SessionID(sessionID)), nil
+}
+
+// ConfigureGlobalToolchain imposta la toolchain predefinita dei progetti senza configurazione propria.
+func (s *Service) ConfigureGlobalToolchain(config ToolchainConfiguration) error {
+	if err := s.restore(); err != nil {
+		return err
+	}
+	if err := s.toolchain.ConfigureGlobal(config); err != nil {
+		return err
+	}
+	return s.saveState()
+}
+
+// UseGlobalToolchain elimina la configurazione del progetto: la sessione torna alla toolchain globale.
+func (s *Service) UseGlobalToolchain(sessionID string) error {
+	if _, err := s.session(sessionID); err != nil {
+		return err
+	}
+	s.toolchain.ResetSession(SessionID(sessionID))
+	return s.saveState()
 }
 
 // ListToolchainReleases legge su richiesta le versioni ufficiali compatibili con la piattaforma.
@@ -478,7 +509,10 @@ func (s *Service) configureInstalledToolchain(sessionID SessionID, binary string
 	}
 	config.Environment["GOROOT"] = filepath.Dir(filepath.Dir(binary))
 	config.Environment["GOTOOLCHAIN"] = "local"
-	return s.toolchain.Configure(sessionID, config)
+	if err := s.toolchain.Configure(sessionID, config); err != nil {
+		return err
+	}
+	return s.saveState()
 }
 
 // RemoveInstalledToolchain elimina una versione non in uso dopo conferma esplicita.
@@ -806,6 +840,11 @@ func (s *Service) restore() error {
 	s.recent = slices.Clone(state.Recent)
 	s.recentMu.Unlock()
 	s.runConfigs.Replace(state.RunConfigs)
+	globalToolchain := ToolchainConfiguration{}
+	if state.GlobalToolchain != nil {
+		globalToolchain = *state.GlobalToolchain
+	}
+	s.toolchain.Replace(state.Toolchains, globalToolchain)
 	views := maps.Clone(state.SessionUI)
 	if views == nil {
 		views = make(map[SessionID]SessionView)
@@ -830,7 +869,10 @@ func (s *Service) saveState() error {
 	views := maps.Clone(s.views)
 	s.viewMu.RUnlock()
 	workspaces, activeWorkspace := s.studioWorkspaces.snapshot()
+	toolchains, globalToolchain := s.toolchain.Snapshot()
 	return s.persistence.SaveState(persistedState{
+		Toolchains:      toolchains,
+		GlobalToolchain: &globalToolchain,
 		Sessions:        s.workspace.ListSessions(),
 		Recent:          recent,
 		RunConfigs:      s.runConfigs.Snapshot(),

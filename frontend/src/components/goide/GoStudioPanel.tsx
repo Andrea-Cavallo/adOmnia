@@ -542,7 +542,7 @@ export function GoStudioPanel() {
       <GoStudioRecoveryBanner sessionId={activeSession.id} />
       <GoStudioWorkspace session={activeSession} {...store.layout} zen={zen} onProjectResize={beginResize('projectWidth', store.layout.projectWidth)} onStructureResize={beginResize('structureWidth', store.layout.structureWidth, -1)} onBottomResize={beginResize('bottomHeight', store.layout.bottomHeight, -1)} onCursor={setCursor} onRequestCloseDocument={closeFlow.requestCloseDocuments} onRunTarget={(target, anchor) => setRunTargetMenu({ target, ...anchor })} onCommit={() => setVcsDialog('commit')} onBookmarks={() => setBookmarksOpen(true)} onDependencies={() => setDependenciesOpen(true)} />
       {runTargetMenu && <GoStudioRunTargetMenu {...runTargetMenu} onAction={runTarget} onClose={() => setRunTargetMenu(null)} />}
-      {zen ? <ZenExit onExit={toggleZen} /> : <GoStudioStatusBar session={activeSession} toolchain={toolchain} documentInfo={summary.activeId ? { language: summary.activeLanguage ?? '', readOnly: summary.activeReadOnly } : null} execution={activeExecution} onLanguageServer={openLanguageServerMenu} onLinter={() => runCommand(commandAvailability('code.lint', commandContext) === true ? 'code.lint' : 'go.toolPaths')} onSetAuthorization={(allowed) => void authorize(allowed)} />}
+      {zen ? <ZenExit onExit={toggleZen} /> : <GoStudioStatusBar session={activeSession} toolchain={toolchain} documentInfo={summary.activeId ? { language: summary.activeLanguage ?? '', readOnly: summary.activeReadOnly } : null} execution={activeExecution} onLanguageServer={openLanguageServerMenu} onLinter={() => runCommand(commandAvailability('code.lint', commandContext) === true ? 'code.lint' : 'go.toolPaths')} onSetAuthorization={(allowed) => void authorize(allowed)} onManageToolchains={() => setToolchainOpen(true)} />}
       <GoStudioQuickOpen />
       <GoStudioCaretPopup />
       <GoStudioHierarchyDialog />
@@ -561,7 +561,7 @@ export function GoStudioPanel() {
           if (activeConfig) void store.startConfiguredRun(activeConfig.id, secrets)
         }}
       />
-      <ToolchainDialog open={toolchainOpen} onClose={() => setToolchainOpen(false)} />
+      <ToolchainDialog open={toolchainOpen} onClose={() => setToolchainOpen(false)} onRunCommand={runCommand} />
       <GoStudioDependencies open={dependenciesOpen} session={activeSession} onClose={() => setDependenciesOpen(false)} />
       <GoStudioSearchEverywhere open={searchEverywhereOpen} sessionId={activeSession.id} availability={(id) => commandAvailability(id, commandContext)} onCommand={runCommand} onClose={() => setSearchEverywhereOpen(false)} />
       <GoStudioCommitDialog sessionId={activeSession.id} open={vcsDialog === 'commit'} onClose={() => setVcsDialog(null)} />

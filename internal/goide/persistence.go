@@ -21,6 +21,9 @@ type persistedState struct {
 	// Workspaces e ActiveWorkspace arrivano con lo schema 4; gli schemi precedenti migrano nel workspace predefinito.
 	Workspaces      []StudioWorkspace `json:"workspaces,omitempty"`
 	ActiveWorkspace string            `json:"activeWorkspace,omitempty"`
+	// Toolchains e GlobalToolchain sono campi opzionali: gli stati precedenti restano validi senza migrazione.
+	Toolchains      map[SessionID]ToolchainConfiguration `json:"toolchains,omitempty"`
+	GlobalToolchain *ToolchainConfiguration              `json:"globalToolchain,omitempty"`
 }
 
 type Persistence struct {

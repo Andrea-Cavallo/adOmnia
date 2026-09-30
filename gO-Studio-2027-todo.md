@@ -294,27 +294,27 @@
 
 # 5. Go Toolchain Manager
 
-- [ ] Rilevamento Go installato.
-- [ ] Visualizzazione `GOROOT`.
-- [ ] Visualizzazione `GOPATH`.
-- [ ] Gestione `GOPROXY`.
-- [ ] Gestione `GOPRIVATE`.
-- [ ] Gestione `GONOSUMDB`.
-- [ ] Gestione `GONOPROXY`.
-- [ ] Gestione CGO.
-- [ ] Build tags.
-- [ ] GOOS.
-- [ ] GOARCH.
-- [ ] Toolchain per progetto.
-- [ ] Toolchain globale.
-- [ ] Supporto più versioni Go.
-- [ ] Switch rapido toolchain.
-- [ ] Compatibilità `toolchain` directive.
-- [ ] Controllo versione minima richiesta.
-- [ ] Segnalazione mismatch.
-- [ ] Installazione tool utili.
-- [ ] Aggiornamento tool.
-- [ ] Tool health check.
+- [x] Rilevamento Go installato.
+- [x] Visualizzazione `GOROOT`.
+- [x] Visualizzazione `GOPATH`.
+- [x] Gestione `GOPROXY`.
+- [x] Gestione `GOPRIVATE`.
+- [x] Gestione `GONOSUMDB`.
+- [x] Gestione `GONOPROXY`.
+- [x] Gestione CGO.
+- [x] Build tags.
+- [x] GOOS.
+- [x] GOARCH.
+- [x] Toolchain per progetto.
+- [x] Toolchain globale.
+- [x] Supporto più versioni Go.
+- [x] Switch rapido toolchain.
+- [x] Compatibilità `toolchain` directive.
+- [x] Controllo versione minima richiesta.
+- [x] Segnalazione mismatch.
+- [x] Installazione tool utili.
+- [x] Aggiornamento tool.
+- [x] Tool health check.
 
 ## Tool support
 

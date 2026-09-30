@@ -3,6 +3,7 @@ import { AlertCircle, AlertTriangle, EyeOff, Loader2, LockKeyhole, ScanSearch, S
 import { getGoIDEWatcherStatus, type GoIDEExecution, type GoIDESession, type GoIDEToolchainInfo, type GoIDEWatcherStatus } from '@/lib/goide-api'
 import { useShallow } from 'zustand/react/shallow'
 import { useGoStudioCursorStore } from './goStudioCursor'
+import { GoStudioToolchainSwitcher } from './GoStudioToolchainSwitcher'
 import { diagnosticCounts, mergedReports, useGoIDELspStore } from '@/stores/goideLsp'
 
 interface GoStudioStatusBarProps {
@@ -14,6 +15,7 @@ interface GoStudioStatusBarProps {
   onLanguageServer: () => void
   onLinter: () => void
   onSetAuthorization: (allowed: boolean) => void
+  onManageToolchains: () => void
 }
 
 const ITEM = 'flex h-5 items-center gap-1.5 rounded px-1.5 transition-colors hover:bg-surface-3 hover:text-text-1'
@@ -42,7 +44,7 @@ function languageServerLabel(state: string, version?: string): string {
   }
 }
 
-export function GoStudioStatusBar({ session, toolchain, documentInfo, execution, onLanguageServer, onLinter, onSetAuthorization }: GoStudioStatusBarProps) {
+export function GoStudioStatusBar({ session, toolchain, documentInfo, execution, onLanguageServer, onLinter, onSetAuthorization, onManageToolchains }: GoStudioStatusBarProps) {
   const cursor = useGoStudioCursorStore(useShallow((state) => ({ line: state.line, column: state.column })))
   const status = useGoIDELspStore((state) => state.status[session.id])
   const progress = useGoIDELspStore((state) => state.progress[session.id] ?? null)
@@ -84,7 +86,7 @@ export function GoStudioStatusBar({ session, toolchain, documentInfo, execution,
       </button>
       {documentInfo && <span className="px-1.5 font-mono tabular-nums" title="Line:Column">{cursor.line}:{cursor.column}</span>}
       <span className="px-1.5">{documentInfo?.language || (session.project.goWorkPath ? 'go.work' : session.project.goModPath ? 'go.mod' : 'Go folder')}{documentInfo?.readOnly ? ' · read-only' : ''}</span>
-      <span className="px-1.5" title={toolchain?.goBinary}>{toolchain?.available ? (toolchain.version ?? 'Go ready').replace(/^go version\s+/, '') : 'Go not detected'}</span>
+      <GoStudioToolchainSwitcher sessionId={session.id} toolchain={toolchain} className={ITEM} onManage={onManageToolchains} />
       <button type="button" onClick={() => onSetAuthorization(!authorized)} aria-pressed={authorized} title={authorized ? 'Local Go tools are permitted. Click to revoke.' : 'Permit local Go tools; nothing starts automatically'} className={`${ITEM} ${authorized ? 'text-success' : 'text-warning'}`}>
         {authorized ? <ShieldCheck size={12} /> : <LockKeyhole size={12} />}{authorized ? 'Trusted' : 'Restricted'}
       </button>

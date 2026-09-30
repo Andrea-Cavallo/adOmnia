@@ -4452,6 +4452,25 @@ export class ToolchainInfo {
     "goproxy"?: string;
     "goprivate"?: string;
     "gomodcache"?: string;
+    "gonosumdb"?: string;
+    "gonoproxy"?: string;
+    "cgoEnabled"?: string;
+    "goos"?: string;
+    "goarch"?: string;
+    "goflags"?: string;
+    "gotoolchain"?: string;
+
+    /**
+     * GoDirective e ToolchainDirective vengono dal go.mod alla radice del progetto.
+     */
+    "goDirective"?: string;
+    "toolchainDirective"?: string;
+
+    /**
+     * Scope vale "project" se la sessione ha una configurazione propria, altrimenti "global".
+     */
+    "scope"?: string;
+    "warning"?: string;
     "error"?: string;
 
     /** Creates a new ToolchainInfo instance. */
@@ -4565,6 +4584,39 @@ export class ToolchainRelease {
     static createFrom($$source: any = {}): ToolchainRelease {
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         return new ToolchainRelease($$parsedSource as Partial<ToolchainRelease>);
+    }
+}
+
+/**
+ * ToolchainSettings espone la configurazione del progetto (se presente) e quella globale.
+ */
+export class ToolchainSettings {
+    "project"?: ToolchainConfiguration | null;
+    "global": ToolchainConfiguration;
+
+    /** Creates a new ToolchainSettings instance. */
+    constructor($$source: Partial<ToolchainSettings> = {}) {
+        if (!("global" in $$source)) {
+            this["global"] = (new ToolchainConfiguration());
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ToolchainSettings instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ToolchainSettings {
+        const $$createField0_0 = $$createType85;
+        const $$createField1_0 = $$createType84;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("project" in $$parsedSource) {
+            $$parsedSource["project"] = $$createField0_0($$parsedSource["project"]);
+        }
+        if ("global" in $$parsedSource) {
+            $$parsedSource["global"] = $$createField1_0($$parsedSource["global"]);
+        }
+        return new ToolchainSettings($$parsedSource as Partial<ToolchainSettings>);
     }
 }
 
@@ -4732,7 +4784,7 @@ export class VCSStatus {
      */
     static createFrom($$source: any = {}): VCSStatus {
         const $$createField7_0 = $$createType13;
-        const $$createField8_0 = $$createType85;
+        const $$createField8_0 = $$createType87;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("branches" in $$parsedSource) {
             $$parsedSource["branches"] = $$createField7_0($$parsedSource["branches"]);
@@ -4797,7 +4849,7 @@ export class WorkspaceChange {
      * Creates a new WorkspaceChange instance from a string or object.
      */
     static createFrom($$source: any = {}): WorkspaceChange {
-        const $$createField1_0 = $$createType87;
+        const $$createField1_0 = $$createType89;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("files" in $$parsedSource) {
             $$parsedSource["files"] = $$createField1_0($$parsedSource["files"]);
@@ -4925,7 +4977,9 @@ const $$createType80 = TestResult.createFrom;
 const $$createType81 = $Create.Array($$createType80);
 const $$createType82 = CoverageReport.createFrom;
 const $$createType83 = $Create.Nullable($$createType82);
-const $$createType84 = VCSFileChange.createFrom;
-const $$createType85 = $Create.Array($$createType84);
-const $$createType86 = FileChange.createFrom;
+const $$createType84 = ToolchainConfiguration.createFrom;
+const $$createType85 = $Create.Nullable($$createType84);
+const $$createType86 = VCSFileChange.createFrom;
 const $$createType87 = $Create.Array($$createType86);
+const $$createType88 = FileChange.createFrom;
+const $$createType89 = $Create.Array($$createType88);

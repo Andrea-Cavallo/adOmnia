@@ -21,6 +21,7 @@ import type {
   Session,
   ToolchainConfiguration,
   ToolchainInfo,
+  ToolchainSettings,
   ToolchainInstallation,
   ToolchainRelease,
   InstalledToolchain,
@@ -42,6 +43,7 @@ export type GoIDEDocumentDiskState = DocumentDiskState
 export type GoIDEQuickOpenResult = QuickOpenResult
 export type GoIDEToolchainInfo = ToolchainInfo
 export type GoIDEToolchainConfiguration = ToolchainConfiguration
+export type GoIDEToolchainSettings = ToolchainSettings
 export type GoIDERunRequest = RunRequest
 export type GoIDEExecution = Execution
 export type GoIDEDependencyActionRequest = DependencyActionRequest
@@ -157,6 +159,18 @@ export async function detectGoIDEToolchain(sessionId: string): Promise<GoIDETool
 
 export async function configureGoIDEToolchain(sessionId: string, config: ToolchainConfiguration): Promise<void> {
   await GoIDEBindings.ConfigureToolchain(sessionId, config)
+}
+
+export async function getGoIDEToolchainSettings(sessionId: string): Promise<GoIDEToolchainSettings> {
+  return GoIDEBindings.ToolchainSettings(sessionId)
+}
+
+export async function configureGoIDEGlobalToolchain(config: ToolchainConfiguration): Promise<void> {
+  await GoIDEBindings.ConfigureGlobalToolchain(config)
+}
+
+export async function resetGoIDEToolchainToGlobal(sessionId: string): Promise<void> {
+  await GoIDEBindings.UseGlobalToolchain(sessionId)
 }
 
 export async function listGoIDEToolchainReleases(sessionId: string): Promise<ToolchainRelease[]> {

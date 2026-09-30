@@ -118,6 +118,7 @@ export {
     ToolchainInfo,
     ToolchainInstallation,
     ToolchainRelease,
+    ToolchainSettings,
     VCSBlameLine,
     VCSCommit,
     VCSFileChange,

@@ -358,6 +358,21 @@ func (g *GoIDE) ConfigureToolchain(sessionID string, config goide.ToolchainConfi
 	return g.service.ConfigureToolchain(sessionID, config)
 }
 
+// ToolchainSettings restituisce la toolchain del progetto e quella globale.
+func (g *GoIDE) ToolchainSettings(sessionID string) (goide.ToolchainSettings, error) {
+	return g.service.ToolchainSettings(sessionID)
+}
+
+// ConfigureGlobalToolchain imposta la toolchain predefinita dei progetti.
+func (g *GoIDE) ConfigureGlobalToolchain(config goide.ToolchainConfiguration) error {
+	return g.service.ConfigureGlobalToolchain(config)
+}
+
+// UseGlobalToolchain riporta il progetto alla toolchain globale.
+func (g *GoIDE) UseGlobalToolchain(sessionID string) error {
+	return g.service.UseGlobalToolchain(sessionID)
+}
+
 // ListToolchainReleases restituisce il catalogo ufficiale compatibile su richiesta esplicita.
 func (g *GoIDE) ListToolchainReleases(sessionID string) ([]goide.ToolchainRelease, error) {
 	return g.service.ListToolchainReleases(sessionID)
