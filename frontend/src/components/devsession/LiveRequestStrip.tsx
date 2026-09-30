@@ -1,5 +1,6 @@
-import { useEffect } from 'react'
-import { Code2, Link2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Code2, FileWarning, Link2 } from 'lucide-react'
+import { documented, projectContract } from '@/lib/devsession/contractDrift'
 import { substVars } from '@/lib/substVars'
 import type { RequestItem } from '@/lib/types'
 import { liveVars } from '@/lib/devsession/liveRequest'
@@ -36,6 +37,7 @@ export function LiveRequestStrip({ tabId: _tabId, request, vars, onChange }: { t
     document.addEventListener('adomnia:go-to-handler', onGoToHandler)
     return () => document.removeEventListener('adomnia:go-to-handler', onGoToHandler)
   }, [route])
+  const drift = useContractDrift(route)
   if (!service && !session && !route) return null
   const target: ServiceTarget = service ? state.prefs.targets[service] ?? { kind: 'local' } : { kind: 'local' }
   const localSession = service ? liveSessions(state).find((s) => s.service === service) : null
@@ -76,8 +78,31 @@ export function LiveRequestStrip({ tabId: _tabId, request, vars, onChange }: { t
             className="flex shrink-0 items-center gap-1 rounded border border-border-2 px-1.5 py-px text-text-2 hover:border-accent hover:text-accent">
             <Code2 size={11} />Open handler
           </button>
+          {drift && (
+            <span title={`${route.route.label} is served by the code but missing from ${drift}`} className="flex shrink-0 items-center gap-1 text-warning">
+              <FileWarning size={11} />not in {basename(drift)}
+            </span>
+          )}
         </span>
       )}
     </div>
   )
+}
+
+/** Contract drift: the route runs in the code but the service's OpenAPI does not document it. */
+function useContractDrift(route: ReturnType<typeof useRouteForRequest>): string | null {
+  const [missingFrom, setMissingFrom] = useState<string | null>(null)
+  useEffect(() => {
+    setMissingFrom(null)
+    if (!route) return
+    let cancelled = false
+    void import('@/stores/devcontext').then(async ({ useDevContextStore }) => {
+      const snapshot = useDevContextStore.getState().snapshots[route.goSessionId]
+      const contract = snapshot ? await projectContract(snapshot) : null
+      if (cancelled || !contract || contract.operations.size === 0) return
+      if (!documented(contract.operations, route.route.attrs.method ?? 'ANY', route.route.attrs.path ?? '')) setMissingFrom(contract.file)
+    })
+    return () => { cancelled = true }
+  }, [route])
+  return missingFrom
 }
