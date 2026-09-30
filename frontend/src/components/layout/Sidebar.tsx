@@ -130,7 +130,7 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="h-full min-h-0 w-full flex-shrink-0 bg-surface-0 border-r border-border-1 flex flex-col">
+    <aside data-workspace-sidebar className="h-full min-h-0 w-full flex-shrink-0 bg-surface-0 border-r border-border-1 flex flex-col">
       <div data-sidebar-context className="flex h-10 flex-shrink-0 items-center gap-1 border-b border-border-1 bg-surface-1/55 px-2 py-1.5">
         <WorkspaceContextButton
           workspaces={workspaces}

@@ -1,85 +1,537 @@
+/* ── Hub ─────────────────────────────────────────────────────────────────────
+   Three art-directed variants of one layout:
+     light  (default)            white studio, soft lavender glass cards
+     dark   (html.dark)          night desk, violet neon cards
+     sketch (data-skin=sketch)   pencil drawing on plain paper
+   The artwork is baked per variant; CSS shows the matching <img data-hub-art>. */
+
+[data-hub-art] { display: none; }
+[data-hub-art='light'] { display: block; }
+html.dark [data-hub-art='light'] { display: none; }
+html.dark [data-hub-art='dark'] { display: block; }
+html[data-skin='sketch'] [data-hub-art]:not([data-hub-art='sketch']) { display: none; }
+html[data-skin='sketch'] [data-hub-art='sketch'] { display: block; }
+
+/* ── Page ── */
+[data-hub-page] {
+  --hub-bg: color-mix(in srgb, var(--color-accent) 3%, #fbfaff);
+  --hub-ink: #0b0b14;
+  --hub-card-bg: #ffffff;
+  --hub-card-border: color-mix(in srgb, var(--color-accent) 10%, #ececf3);
+  --hub-card-shadow: 0 14px 34px -22px color-mix(in srgb, var(--color-accent) 45%, transparent);
+  --hub-icon-blend: multiply;
+  background:
+    radial-gradient(ellipse 50% 45% at 75% 10%, color-mix(in srgb, var(--color-accent) 7%, transparent), transparent 70%),
+    var(--hub-bg);
+  color: var(--hub-ink);
+  /* The key art is set in a heavy geometric sans; the app's UI font (often
+     monospaced) would break the poster. Sketch keeps its hand below. */
+  font-family: 'Plus Jakarta Sans', 'Manrope', 'Poppins', 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
+}
+html.dark [data-hub-page] {
+  --hub-bg: #0a0918;
+  --hub-ink: #ffffff;
+  --hub-card-bg: color-mix(in srgb, #141433 70%, transparent);
+  --hub-card-border: color-mix(in srgb, var(--color-accent) 38%, transparent);
+  --hub-card-shadow: none;
+  --hub-icon-blend: screen;
+  background:
+    radial-gradient(ellipse 45% 55% at 72% 0%, color-mix(in srgb, var(--color-accent) 26%, transparent), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 20% 100%, color-mix(in srgb, var(--color-accent) 10%, transparent), transparent 70%),
+    var(--hub-bg);
+}
+/* Plain paper: the drawing carries the texture, so no ruling behind it. */
+html[data-skin='sketch'] [data-hub-page] {
+  --hub-bg: #faf9f6;
+  --hub-ink: #16151c;
+  --hub-card-bg: #fdfcfa;
+  --hub-card-border: color-mix(in oklab, #16151c 30%, transparent);
+  --hub-card-shadow: none;
+  --hub-icon-blend: multiply;
+  background: var(--hub-bg);
+  font-family: var(--skin-font-ui, var(--font-sans));
+}
+
+/* ── Headline ── */
+[data-hub-headline] {
+  font-size: clamp(40px, 4.4vw, 76px);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  color: var(--hub-ink);
+}
+/* One beat per line: "Call it. / Code it. / Ship it." */
+[data-hub-headline-lead] { display: inline-block; max-width: 4.6em; }
+[data-hub-headline-go] {
+  position: relative;
+  display: inline-block;
+  padding-bottom: 0.06em;
+  background: linear-gradient(90deg, #a21cff 0%, #8b3dff 45%, #3b82f6 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+html[data-skin='sketch'] [data-hub-headline] { letter-spacing: -0.02em; font-size: clamp(36px, 4vw, 68px); }
+/* The hand-drawn swash under "Ship it." */
+html[data-skin='sketch'] [data-hub-headline-go]::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 6%;
+  bottom: -0.16em;
+  height: 0.22em;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 20' preserveAspectRatio='none'%3E%3Cpath d='M2 14 C 90 4, 220 2, 398 9' fill='none' stroke='%239b4fff' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+}
+
+[data-hub-lede] {
+  font-size: clamp(15px, 1.35vw, 22px);
+  line-height: 1.4;
+  letter-spacing: 0.005em;
+}
+
+/* ── Search: the hub's one action (the cards below already open each studio) ── */
+[data-hub-page] [data-hub-search] {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  max-width: 620px;
+  margin-top: 26px;
+  padding: 14px 20px;
+  border: 1.5px solid var(--hub-card-border);
+  border-radius: 999px;
+  background: var(--hub-card-bg);
+  box-shadow: var(--hub-card-shadow);
+  font-size: 16px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+[data-hub-page] [data-hub-search]:hover { border-color: color-mix(in srgb, var(--color-accent-light) 70%, transparent); }
+[data-hub-page] [data-hub-search]:focus-visible { outline: 2px solid var(--color-accent-light); outline-offset: 3px; }
+[data-hub-search] kbd {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border: 1.2px solid var(--hub-card-border);
+  border-radius: 8px;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--color-text-2);
+}
+html[data-skin='sketch'] [data-hub-page] [data-hub-search] {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  max-width: 620px;
+  margin-top: 26px;
+  padding: 12px 18px;
+  border: 1.5px solid color-mix(in oklab, #16151c 45%, transparent);
+  border-radius: 999px;
+  background: #fdfcfa;
+  font-size: 16px;
+  text-align: left;
+  cursor: pointer;
+}
+html[data-skin='sketch'] [data-hub-search] kbd {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border: 1.2px solid color-mix(in oklab, #16151c 45%, transparent);
+  border-radius: 8px;
+  font-size: 12px;
+  font-family: inherit;
+}
+
+/* ── Key art ──
+   Bleeds left under the headline and fades out on every edge, so the scene
+   dissolves into the page colour instead of sitting in a box. */
+[data-hub-art-slot] { margin-left: -12%; }
 [data-hub-mascot-trigger] {
   display: block;
+  width: 100%;
   padding: 0;
   border: 0;
-  border-radius: 18px;
   background: transparent;
   cursor: pointer;
   outline: none;
   transition: transform 260ms cubic-bezier(.22, .61, .36, 1);
 }
+html[data-skin='sketch'] [data-hub-page] [data-hub-mascot-trigger] { border: 0; background: transparent; box-shadow: none; }
 [data-hub-mascot-trigger]:hover { transform: translateY(-2px); }
-[data-hub-mascot-trigger]:active { transform: scale(.985); }
-[data-hub-mascot-trigger]:focus-visible {
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 68%, transparent);
-}
-/* The scene is cut from the key art, so its edges fade into the Hub glow. */
+[data-hub-mascot-trigger]:focus-visible { outline: 2px solid var(--color-accent-light); outline-offset: 4px; border-radius: 18px; }
 [data-hub-mascot-scene] {
-  display: block;
-  width: clamp(280px, 25vw, 410px);
+  width: auto;
+  max-width: 100%;
   height: auto;
-  -webkit-mask-image:
-    linear-gradient(to right, transparent, #000 16%, #000 90%, transparent),
-    linear-gradient(to bottom, transparent, #000 14%, #000 84%, transparent);
+  max-height: min(560px, 56vh);
+  margin-left: auto;
+  object-fit: contain;
+  --hub-fade-x: linear-gradient(to right, transparent 0, #000 22%, #000 95%, transparent 100%);
+  --hub-fade-y: linear-gradient(to bottom, transparent 0, #000 9%, #000 80%, transparent 100%);
+  -webkit-mask-image: var(--hub-fade-x), var(--hub-fade-y);
   -webkit-mask-composite: source-in;
-  mask-image:
-    linear-gradient(to right, transparent, #000 16%, #000 90%, transparent),
-    linear-gradient(to bottom, transparent, #000 14%, #000 84%, transparent);
+  mask-image: var(--hub-fade-x), var(--hub-fade-y);
   mask-composite: intersect;
 }
 
-/* Four separate, one-shot reactions; nothing loops while a user works. */
-[data-hub-card] { isolation: isolate; }
-[data-hub-card]::after {
-  content: '';
-  position: absolute;
-  inset: 0;
+/* ── Cards ── */
+[data-hub-card] {
+  position: relative;
+  border: 1.5px solid var(--hub-card-border);
+  border-radius: 18px;
+  background: var(--hub-card-bg);
+  box-shadow: var(--hub-card-shadow);
+  transition: transform 220ms cubic-bezier(.22, .61, .36, 1), border-color 200ms ease, box-shadow 220ms ease;
+}
+html.dark [data-hub-card] { backdrop-filter: blur(6px); }
+html[data-skin='sketch'] [data-hub-card] { border-radius: 14px 5px 12px 6px / 6px 12px 5px 14px; }
+
+[data-hub-card-featured='true'] {
+  border-color: color-mix(in srgb, var(--color-accent-light) 70%, transparent);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--color-accent) 9%, #fff), #fff 70%);
+  box-shadow: 0 16px 36px -20px color-mix(in srgb, var(--color-accent) 70%, transparent);
+}
+html.dark [data-hub-card-featured='true'] {
+  border-color: #a855f7;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--color-accent) 30%, #141433), color-mix(in srgb, #141433 80%, transparent) 75%);
+  box-shadow: 0 0 22px -2px color-mix(in srgb, var(--color-accent) 80%, transparent), inset 0 0 26px -12px #c084fc;
+}
+html[data-skin='sketch'] [data-hub-card-featured='true'] {
+  border-color: #b061ff;
+  background: #fdfcfa;
+  box-shadow: 3px 3px 0 -1px color-mix(in oklab, #b061ff 40%, transparent);
+}
+
+[data-hub-card-active='true'] {
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--color-accent-light) 80%, transparent);
+}
+html.dark [data-hub-card-active='true'] {
+  box-shadow: 0 0 24px -4px color-mix(in srgb, var(--color-accent) 75%, transparent);
+}
+
+[data-hub-card-button] {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 18px 26px 22px;
+  border: 0;
   border-radius: inherit;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+html[data-skin='sketch'] [data-hub-page] [data-hub-card-button] {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+[data-hub-card-button]:focus-visible { outline: 2px solid var(--color-accent-light); outline-offset: 3px; }
+
+[data-hub-card-icon] {
+  display: block;
+  width: 100%;
+  max-width: 230px;
+  margin-left: -6px;
+  transition: transform 320ms cubic-bezier(.22, .61, .36, 1);
+}
+[data-hub-card-icon] img {
+  width: auto;
+  max-width: 100%;
+  height: clamp(96px, 13vh, 150px);
+  object-fit: contain;
+  mix-blend-mode: var(--hub-icon-blend);
+  /* The crops carry a patch of their original card; feather it away. */
+  -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 62%, transparent 100%);
+  mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 62%, transparent 100%);
+}
+[data-hub-card-generated-icon] {
+  position: relative;
+  display: grid;
+  width: clamp(96px, 13vh, 150px);
+  height: clamp(96px, 13vh, 150px);
+  margin-left: 12px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 26%, transparent);
+  border-radius: 32% 24% 30% 22%;
+  color: var(--color-accent);
+  background:
+    radial-gradient(circle at 68% 28%, color-mix(in srgb, #38bdf8 32%, transparent), transparent 36%),
+    linear-gradient(145deg, color-mix(in srgb, var(--color-accent) 20%, #fff), color-mix(in srgb, #fff 92%, transparent));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 70%, transparent),
+    0 12px 28px -18px color-mix(in srgb, var(--color-accent) 80%, transparent);
+  transform: rotate(-4deg);
+}
+[data-hub-card-generated-icon]::before,
+[data-hub-card-generated-icon]::after {
+  position: absolute;
+  content: '';
   pointer-events: none;
-  z-index: -1;
-  opacity: 0;
-  transition: opacity 260ms ease;
 }
-[data-hub-card-active='true']::after { opacity: 1; }
-[data-hub-card-kind='01']::after {
-  background: radial-gradient(ellipse at 0% 0%, color-mix(in srgb, var(--color-accent) 14%, transparent), transparent 65%);
+[data-hub-card-generated-icon]::before {
+  inset: 13%;
+  border: 1px solid color-mix(in srgb, var(--color-accent-light) 32%, transparent);
+  border-radius: 28%;
+  transform: rotate(9deg);
 }
-[data-hub-card-kind='02']::after {
-  background: linear-gradient(120deg, transparent 25%, color-mix(in srgb, var(--color-accent) 9%, transparent) 55%, transparent 80%);
+[data-hub-card-generated-icon]::after {
+  right: -12%;
+  bottom: -18%;
+  width: 72%;
+  height: 72%;
+  border-radius: 999px;
+  background: color-mix(in srgb, #38bdf8 14%, transparent);
+  filter: blur(14px);
 }
-[data-hub-card-kind='03']::after {
-  background: linear-gradient(90deg, color-mix(in srgb, var(--color-accent) 12%, transparent), transparent 42%);
+[data-hub-card-generated-icon] svg {
+  position: relative;
+  z-index: 1;
+  width: 58%;
+  height: 58%;
+  filter: drop-shadow(0 5px 9px color-mix(in srgb, var(--color-accent) 32%, transparent));
 }
-[data-hub-card-kind='04']::after {
-  background: radial-gradient(circle at 85% 80%, color-mix(in srgb, var(--color-accent) 13%, transparent), transparent 55%);
+html.dark [data-hub-card-generated-icon] {
+  border-color: color-mix(in srgb, var(--color-accent-light) 48%, transparent);
+  color: #f5f3ff;
+  background:
+    radial-gradient(circle at 68% 28%, color-mix(in srgb, #38bdf8 24%, transparent), transparent 38%),
+    linear-gradient(145deg, color-mix(in srgb, var(--color-accent) 34%, #151332), #0c1024 72%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 13%, transparent),
+    -8px 9px 24px -12px color-mix(in srgb, var(--color-accent) 86%, transparent),
+    8px 9px 24px -15px color-mix(in srgb, #38bdf8 86%, transparent);
 }
-[data-hub-card-icon] { transition: transform 320ms cubic-bezier(.22,.61,.36,1); }
-[data-hub-card-kind='01'][data-hub-card-active='true'] [data-hub-card-icon] { transform: rotate(12deg); }
-[data-hub-card-kind='02'][data-hub-card-active='true'] [data-hub-card-icon] { transform: perspective(200px) rotateY(-18deg); }
-[data-hub-card-kind='03'][data-hub-card-active='true'] [data-hub-card-icon] { transform: translateX(3px) rotate(-8deg); }
-[data-hub-card-kind='04'][data-hub-card-active='true'] [data-hub-card-icon] { transform: rotate(35deg) scale(1.06); }
+html[data-skin='sketch'] [data-hub-card-generated-icon] {
+  border: 2px solid #272331;
+  border-radius: 24% 31% 22% 28% / 31% 23% 29% 21%;
+  color: #6d28d9;
+  background: #fdfcfa;
+  box-shadow: 3px 4px 0 color-mix(in oklab, #2563eb 24%, transparent);
+}
+html[data-skin='sketch'] [data-hub-card-generated-icon]::before {
+  border-color: color-mix(in oklab, #2563eb 42%, transparent);
+}
+[data-hub-card-active='true'] [data-hub-card-icon] { transform: translateY(-3px) scale(1.03); }
+
+[data-hub-card-title] {
+  margin-top: 6px;
+  font-size: clamp(17px, 1.45vw, 24px);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--hub-ink);
+}
+[data-hub-card-desc] {
+  margin-top: 8px;
+  font-size: clamp(13px, 1.1vw, 17px);
+  line-height: 1.4;
+  color: var(--color-text-2);
+}
+html.dark [data-hub-card-desc] { color: color-mix(in srgb, #fff 78%, transparent); }
+
+[data-hub-card-arrow] {
+  display: grid;
+  place-items: center;
+  width: 50px;
+  height: 50px;
+  margin-top: auto;
+  padding-top: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-accent) 10%, #fff);
+  color: var(--color-accent-dark);
+  transition: transform 200ms ease, background-color 200ms ease;
+}
+[data-hub-card-desc] { margin-bottom: 18px; }
+[data-hub-card-featured='true'] [data-hub-card-arrow] { background: color-mix(in srgb, var(--color-accent) 16%, #fff); }
+html.dark [data-hub-card-arrow] { width: auto; height: auto; background: transparent; color: #fff; place-items: start; }
+html[data-skin='sketch'] [data-hub-card-arrow] {
+  background: transparent;
+  border: 1.5px solid color-mix(in oklab, #16151c 70%, transparent);
+  color: #16151c;
+}
+html[data-skin='sketch'] [data-hub-card-featured='true'] [data-hub-card-arrow] {
+  background: color-mix(in oklab, #b061ff 35%, #fff);
+  border-color: #6d28d9;
+}
+[data-hub-card-active='true'] [data-hub-card-arrow] { transform: translateX(4px); }
 
 @media (prefers-reduced-motion: reduce) {
-  [data-hub-mascot-trigger], [data-hub-card-icon], [data-hub-card]::after {
+  [data-hub-mascot-trigger], [data-hub-card], [data-hub-card-icon], [data-hub-card-arrow] {
     transition: none;
-    will-change: auto;
   }
-  [data-hub-mascot-trigger], [data-hub-card-icon] { transform: none !important; }
+  [data-hub-mascot-trigger], [data-hub-card], [data-hub-card-icon], [data-hub-card-arrow] { transform: none !important; }
 }
 
-/* Hero atmosphere: a violet bloom behind the aO → gO pair and the Go Studio card. */
-[data-hub-glow] {
-  background:
-    radial-gradient(ellipse 45% 35% at 78% 8%, color-mix(in srgb, var(--color-accent) 18%, transparent), transparent 70%),
-    radial-gradient(ellipse 60% 30% at 40% 45%, color-mix(in srgb, var(--color-accent) 9%, transparent), transparent 75%);
+/* ── Brick Workshop ──────────────────────────────────────────────────────────
+   The Hub becomes a construction table rather than inheriting the dark neon
+   treatment. Live text and controls remain HTML; only the a0 scene is baked. */
+html[data-skin='brick'] [data-hub-art] { display: none; }
+html[data-skin='brick'] [data-hub-art='brick'] { display: block; }
+html[data-skin='brick'] [data-hub-card-icon] [data-hub-art='light'] { display: block; }
+
+html[data-skin='brick'] [data-hub-page] {
+  --hub-bg: #0757b8;
+  --hub-ink: #ffffff;
+  --hub-card-border: #03215a;
+  --hub-card-shadow: 0 5px 0 #011536, 0 12px 24px rgba(0, 18, 58, 0.35);
+  --hub-icon-blend: normal;
+  background-color: var(--hub-bg);
+  background-image:
+    radial-gradient(circle at 13px 12px, rgba(121, 199, 255, 0.72) 0 4px, #053a86 4.8px 7px, transparent 7.8px),
+    linear-gradient(180deg, rgba(89, 176, 255, 0.34), transparent 22%),
+    linear-gradient(90deg, #075fc4, #06469c 52%, #075fc4);
+  background-size: 30px 30px, 100% 100%, 100% 100%;
+  font-family: 'Arial Rounded MT Bold', 'Trebuchet MS', system-ui, sans-serif;
 }
 
-[data-hub-go-hero] {
-  border: 2px solid transparent;
+html[data-skin='brick'] [data-hub-page] > div {
+  max-width: 1720px;
+  padding-bottom: 34px;
+}
+
+html[data-skin='brick'] [data-hub-hero] {
+  min-height: 350px;
+  overflow: hidden;
+  border: 2px solid #011536;
+  border-radius: 14px;
   background:
-    linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 12%, var(--color-surface-0)), var(--color-surface-0) 55%) padding-box,
-    linear-gradient(100deg, var(--color-accent), var(--color-accent-light) 55%, var(--color-info)) border-box;
-  box-shadow:
-    0 0 28px -6px color-mix(in srgb, var(--color-accent) 70%, transparent),
-    inset 0 0 40px -20px color-mix(in srgb, var(--color-accent) 60%, transparent);
+    linear-gradient(90deg, rgba(2, 25, 72, 0.94) 0%, rgba(3, 42, 102, 0.66) 36%, transparent 68%),
+    linear-gradient(180deg, rgba(87, 176, 255, 0.32), rgba(0, 26, 75, 0.2));
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.28), inset 0 -5px 0 rgba(0,18,58,.52), 0 6px 0 #011536;
+}
+
+html[data-skin='brick'] [data-hub-hero] > div:first-child { padding-left: clamp(24px, 4vw, 62px); }
+html[data-skin='brick'] [data-hub-headline] {
+  color: #fffaf0;
+  font-size: clamp(38px, 4.1vw, 70px);
+  text-shadow: 0 3px 0 #011536, 0 6px 12px rgba(0, 8, 32, 0.42);
+}
+html[data-skin='brick'] [data-hub-headline-go] {
+  background: linear-gradient(90deg, #ffd51a 0 58%, #58c9ff 82%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 2px 0 #011536);
+}
+html[data-skin='brick'] [data-hub-lede] {
+  color: #fff;
+  font-weight: 700;
+  text-shadow: 0 2px 0 rgba(1, 21, 54, 0.9);
+}
+html[data-skin='brick'] [data-hub-page] [data-hub-search] {
+  max-width: 520px;
+  border: 2px solid #011536;
+  border-radius: 9px;
+  color: #011536;
+  background:
+    radial-gradient(circle at 13px 8px, rgba(255,255,255,.58) 0 3px, rgba(170,108,0,.48) 3.6px 5.5px, transparent 6px) 0 0 / 26px 26px,
+    linear-gradient(180deg, #ffe977, #ffd319 56%, #e9aa00);
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.78), inset 0 -4px 0 rgba(173,106,0,.58), 0 4px 0 #011536;
+}
+html[data-skin='brick'] [data-hub-search] span,
+html[data-skin='brick'] [data-hub-search] svg { color: #011536; }
+html[data-skin='brick'] [data-hub-search] kbd { border-color: #8f6200; color: #011536; background: rgba(255,255,255,.38); }
+
+html[data-skin='brick'] [data-hub-art-slot] { margin-left: -8%; }
+html[data-skin='brick'] [data-hub-mascot-scene] {
+  max-height: min(520px, 54vh);
+  --hub-fade-x: linear-gradient(to right, transparent 0, #000 14%, #000 96%, transparent 100%);
+  --hub-fade-y: linear-gradient(to bottom, transparent 0, #000 7%, #000 90%, transparent 100%);
+  filter: saturate(1.08) contrast(1.03);
+}
+
+html[data-skin='brick'] [data-hub-card-grid] { gap: 18px; margin-top: 22px; }
+html[data-skin='brick'] [data-hub-card] {
+  --brick-card: #fff7e7;
+  --brick-card-ink: #071334;
+  --brick-card-stud: rgba(255,255,255,.78);
+  min-height: 270px;
+  overflow: hidden;
+  border: 2px solid var(--hub-card-border);
+  border-radius: 14px;
+  color: var(--brick-card-ink);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--brick-card) 88%, white) 0 18%, var(--brick-card) 18% 100%);
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.78), inset 0 -5px 0 rgba(0,20,56,.18), var(--hub-card-shadow);
+}
+html[data-skin='brick'] [data-hub-card]::before {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 48px;
+  content: '';
+  pointer-events: none;
+  background-image: radial-gradient(circle at 15px 13px, var(--brick-card-stud) 0 6px, rgba(0,22,62,.28) 6.7px 9px, transparent 9.6px);
+  background-size: 32px 32px;
+  filter: drop-shadow(0 2px 0 rgba(0, 18, 54, 0.2));
+}
+html[data-skin='brick'] [data-hub-card]:nth-child(3n + 1) {
+  --brick-card: #ffd319;
+  --brick-card-stud: #ffe979;
+}
+html[data-skin='brick'] [data-hub-card]:nth-child(3n) {
+  --brick-card: #0756bd;
+  --brick-card-ink: #ffffff;
+  --brick-card-stud: #2a82e6;
+}
+html[data-skin='brick'] [data-hub-card-button] { padding: 38px 26px 23px; color: var(--brick-card-ink); }
+html[data-skin='brick'] [data-hub-card-featured='true'] { border-color: #011536; background: linear-gradient(180deg, #ffe979 0 18%, #ffd319 18% 100%); }
+html[data-skin='brick'] [data-hub-card-active='true'] {
+  transform: translateY(-4px);
+  border-color: #58c9ff;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.8), inset 0 -5px 0 rgba(0,20,56,.2), 0 6px 0 #011536, 0 0 0 3px #ffd319;
+}
+html[data-skin='brick'] [data-hub-card-icon] {
+  width: fit-content;
+  min-width: 118px;
+  margin-left: 0;
+  padding: 8px;
+  border: 2px solid #011536;
+  border-radius: 8px;
+  background: linear-gradient(145deg, #0872dc, #043b8d);
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.4), inset 0 -3px 0 rgba(0,17,54,.5), 0 4px 0 rgba(1,21,54,.78);
+}
+html[data-skin='brick'] [data-hub-card-icon] img {
+  height: clamp(82px, 11vh, 118px);
+  mix-blend-mode: normal;
+  -webkit-mask-image: none;
+  mask-image: none;
+  filter: saturate(1.22) contrast(1.08);
+}
+html[data-skin='brick'] [data-hub-card-generated-icon] {
+  width: clamp(82px, 11vh, 118px);
+  height: clamp(82px, 11vh, 118px);
+  margin: 0;
+  border: 0;
+  border-radius: 5px;
+  color: #ffd319;
+  background: #06439a;
+  box-shadow: none;
+  transform: none;
+}
+html[data-skin='brick'] [data-hub-card-generated-icon]::before {
+  inset: 6px;
+  border: 2px solid #2a82e6;
+  border-radius: 5px;
+  background: radial-gradient(circle at 9px 9px, #65b7ff 0 3px, #03215a 3.5px 5px, transparent 5.5px) 0 0 / 22px 22px;
+}
+html[data-skin='brick'] [data-hub-card-generated-icon]::after { display: none; }
+html[data-skin='brick'] [data-hub-card-title] { color: var(--brick-card-ink); font-weight: 900; text-shadow: 0 1px 0 rgba(255,255,255,.4); }
+html[data-skin='brick'] [data-hub-card-desc] { color: color-mix(in srgb, var(--brick-card-ink) 82%, transparent); }
+html[data-skin='brick'] [data-hub-card-arrow] {
+  width: 46px;
+  height: 36px;
+  place-items: center;
+  border: 2px solid #011536;
+  border-radius: 6px;
+  color: #011536;
+  background: linear-gradient(180deg, #ffe979, #ffd319 60%, #e9aa00);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.72), 0 3px 0 rgba(1,21,54,.72);
+}
+
+@media (max-width: 1280px) {
+  html[data-skin='brick'] [data-hub-hero] { min-height: 300px; }
+  html[data-skin='brick'] [data-hub-card] { min-height: 245px; }
 }

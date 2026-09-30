@@ -848,7 +848,7 @@ export function CollectionTree({
 
   return (
     <TreeInteraction.Provider value={interaction}>
-    <div className="relative flex min-h-0 flex-1 flex-col">
+    <div data-collection-tree className="relative flex min-h-0 flex-1 flex-col">
       <div data-collections-toolbar className="flex h-9 flex-shrink-0 items-center gap-1 border-b border-border-1 bg-surface-1/35 px-2">
         <span className="flex-1 text-[10px] font-semibold uppercase tracking-wider text-text-3">{tr('Collections')}</span>
         <input ref={fileInputRef} type="file" accept=".json,.yaml,.yml,.bru" className="hidden" onChange={(event) => void handleImport(event.target.files?.[0])} />

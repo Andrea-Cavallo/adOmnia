@@ -13,7 +13,7 @@ const THEME_ICONS: Record<string, string> = {
 }
 
 export function getAppIconForTheme(themeId?: string) {
-  return (themeId && THEME_ICONS[themeId]) ?? APP_ICON
+  return (themeId && THEME_ICONS[themeId]) || APP_ICON
 }
 
 export function useAppIcon() {

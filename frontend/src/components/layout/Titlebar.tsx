@@ -32,7 +32,7 @@ export function WindowControls({ height = 'h-8' }: { height?: string }) {
 
   const button = `grid ${height} w-11 place-items-center text-text-3 transition-colors`
   return (
-    <div className={`flex ${height} shrink-0 items-stretch`} style={NO_DRAG}>
+    <div data-window-controls className={`flex ${height} shrink-0 items-stretch`} style={NO_DRAG}>
       <button type="button" onClick={onMinimise} aria-label={tr('Minimize window')} className={`${button} hover:bg-surface-3 hover:text-text-1`} style={NO_DRAG}><MinusIcon /></button>
       <button type="button" onClick={onMaximise} aria-label={tr('Maximize or restore window')} className={`${button} hover:bg-surface-3 hover:text-text-1`} style={NO_DRAG}><MaxIcon /></button>
       <button type="button" onClick={onClose} aria-label={tr('Close window')} className={`${button} hover:bg-red-500/80 hover:text-white`} style={NO_DRAG}><CloseIcon /></button>
@@ -46,7 +46,7 @@ export const NO_DRAG = { '--wails-draggable': 'no-drag' } as React.CSSProperties
 
 export function Titlebar() {
   return (
-    <header className="flex h-8 items-stretch justify-between border-b border-border-1 bg-surface-1 select-none" style={DRAG}>
+    <header data-app-titlebar className="flex h-8 items-stretch justify-between border-b border-border-1 bg-surface-1 select-none" style={DRAG}>
       <div className="flex items-center gap-2 pl-2.5">
         <img src="/logo.png" alt="adOmnia" data-brand-mark className="h-[18px] w-[18px] object-contain" />
         <span className="text-[11px] text-text-3">adOmnia paratus.</span>

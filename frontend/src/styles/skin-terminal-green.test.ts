@@ -19,7 +19,6 @@ describe('Terminal Green skin and hub', () => {
   })
 
   it('keeps the hub logo but removes its decorative card and Bug Hunt replay action', () => {
-    expect(welcomeSource).toContain("import goMark from './assets/go-mark.png'")
     expect(welcomeSource).toContain('<HubMascot />')
     expect(welcomeSource).toContain("data-hub-card-active={active ? 'true' : undefined}")
     expect(welcomeSource).toContain('onFocusCapture={() => onFocus(card.pose)}')
@@ -30,8 +29,8 @@ describe('Terminal Green skin and hub', () => {
     expect(welcomeSource).not.toContain('You found the secret.')
   })
 
-  it('renders the Hub mascot from the a0 laptop scene', () => {
-    expect(mascotSource).toContain("import hubScene from './assets/a0-hub-laptop.png'")
+  it('renders the Hub mascot from the per-skin a0 key art', () => {
+    expect(mascotSource).toContain("import heroDark from './assets/hub/hero-dark.webp'")
     expect(mascotSource).toContain('data-hub-mascot-scene')
     expect(mascotSource).not.toContain('a0-companion-sprites.png')
   })

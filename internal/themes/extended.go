@@ -633,7 +633,7 @@ func (tm *ThemeManager) GetExtendedBuiltinThemes() []Theme {
 			ID:          "builtin-brick-workshop",
 			Name:        "Brick Workshop",
 			Author:      "adOmnia",
-			Version:     "1.1.0",
+			Version:     "1.2.0",
 			Description: "High-contrast blue building-brick workbench with studded structural plates, bright controls and deep code bays",
 			Colors: map[string]string{
 				// The structural blue palette keeps the shell calm enough for a

@@ -3,9 +3,13 @@ import { isAICompanionAvailable } from '@/lib/aiAvailability'
 import { useUiTranslation } from '@/lib/uiI18n'
 import { useAppStore } from '@/stores/app'
 import { useSettingsStore } from '@/stores/settings'
-import hubScene from './assets/a0-hub-laptop.png'
+import heroDark from './assets/hub/hero-dark-stickers.webp'
+import heroLight from './assets/hub/hero-light-stickers.webp'
+import heroSketch from './assets/hub/hero-sketch-stickers.webp'
+import heroBrick from './assets/hub/hero-brick.webp'
 
-/** a0 at the laptop, top right of the Hub. Clicking it opens the assistant. */
+/** a0 at the laptop, the Hub's key art. One scene per skin (dark / light / sketch / brick),
+ *  picked by CSS from the <html> class and data-skin. Clicking it opens the assistant. */
 export function HubMascot() {
   const tr = useUiTranslation()
   const ai = useSettingsStore((state) => state.settings.ai)
@@ -40,7 +44,10 @@ export function HubMascot() {
         title={connected ? tr('Open a0 assistant') : tr('Connect AI to use a0')}
         onClick={openAssistant}
       >
-        <img src={hubScene} alt="" draggable={false} data-hub-mascot-scene />
+        <img src={heroDark} alt="" draggable={false} data-hub-mascot-scene data-hub-art="dark" />
+        <img src={heroLight} alt="" draggable={false} data-hub-mascot-scene data-hub-art="light" />
+        <img src={heroSketch} alt="" draggable={false} data-hub-mascot-scene data-hub-art="sketch" />
+        <img src={heroBrick} alt="" draggable={false} data-hub-mascot-scene data-hub-art="brick" />
       </button>
 
       {showConnectNotice && (

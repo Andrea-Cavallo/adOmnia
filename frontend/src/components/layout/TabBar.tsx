@@ -206,12 +206,13 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
 
   return (
     <Tabs.Root value={activeTabId ?? undefined} onValueChange={onSelect} activationMode="automatic">
-    <div className="flex h-10 items-center gap-1 border-b border-border-1 bg-surface-0 px-2">
+    <div data-request-tabs className="flex h-10 items-center gap-1 border-b border-border-1 bg-surface-0 px-2">
       <Tabs.List asChild aria-label={tr('Request tabs')}>
       <div ref={scrollRef}
         onDragOver={event => { if (event.dataTransfer.types.includes(REQUEST_DRAG_TYPE)) { event.preventDefault(); event.dataTransfer.dropEffect = 'move' } }}
         onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDropTarget(null) }}
         onDrop={event => { if (event.dataTransfer.types.includes(REQUEST_DRAG_TYPE)) { event.preventDefault(); openDroppedRequests(event.dataTransfer.getData(REQUEST_DRAG_TYPE)); clearDrag() } }}
+        data-request-tab-list
         className="flex h-8 min-w-0 flex-1 items-center gap-1 overflow-hidden rounded-[14px] border border-border-1 bg-surface-1 p-1 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--color-text-1)_4%,transparent)]">
       {visibleTabs.map((tab) => {
         const isActive = activeTabId === tab.id

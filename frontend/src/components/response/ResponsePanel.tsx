@@ -42,7 +42,7 @@ function ResponseHeaderBar({ state, headerActions, children }: {
 }) {
   const tr = useUiTranslation()
   return (
-    <div className="flex h-9 shrink-0 items-center gap-2.5 overflow-hidden border-b border-border-1 bg-surface-1 px-3">
+    <div data-response-header className="flex h-9 shrink-0 items-center gap-2.5 overflow-hidden border-b border-border-1 bg-surface-1 px-3">
       <span className="min-w-0 truncate text-xs font-medium text-text-2">{tr('Response')}</span>
       {state && (
         <span className="inline-flex shrink-0 items-center gap-1.5 text-[10px] font-medium text-text-3">

@@ -179,6 +179,7 @@ function App() {
         <div
           ref={appRootRef}
           className="h-screen w-screen flex flex-col overflow-hidden bg-surface-0 relative"
+          data-app-shell
           // Wails 3 only forwards native OS file drops that land on an element
           // marked as a drop target. This root covers the whole window, which
           // matches the previous v2 whole-window behaviour.

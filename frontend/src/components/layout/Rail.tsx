@@ -10,12 +10,13 @@ import { useNavigationTranslation, useUiTranslation } from '@/lib/uiI18n'
 import { nextRovingFocusIndex } from '@/lib/accessibility'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 import { normalizeRailItem } from '@/lib/navigation'
+import './Rail.css'
 import {
   Send, LayoutList, Shield, Server, Radio, Bug, Container, Network,
   Wrench, FileText, FileCode, Database, Braces, ChevronRight, FolderOpen,
   Lock, Puzzle, Settings, GitBranch, X,
   Zap, BarChart2, Activity, HardDrive, History, Layers,
-  BookOpen, SquareTerminal,
+  BookOpen, MoreVertical, SquareTerminal,
 } from 'lucide-react'
 
 interface SubItem {
@@ -46,9 +47,9 @@ function GoStudioIcon({ size = 20 }: { size?: number }) {
     <span
       aria-hidden="true"
       style={{ width: size, height: size, fontSize: Math.max(10, Math.round(size * 0.65)) }}
-      className="inline-grid place-items-center font-mono font-semibold tracking-[-0.12em]"
+      className="adomnia-rail__go-mark inline-grid place-items-center font-mono font-semibold tracking-[-0.12em]"
     >
-      <span><span className="text-accent">{'g'}</span>{'O'}</span>
+      <span><span className="adomnia-rail__go-letter">{'g'}</span>{'O'}</span>
     </span>
   )
 }
@@ -154,7 +155,7 @@ function Flyout({ cat, activeRail, onSelect, onClose, onFocusTrigger }: FlyoutPr
   }
 
   return (
-    <div id={`rail-menu-${cat.key}`} role="menu" aria-label={nav(cat.label)} onKeyDown={handleKeyDown} className="absolute left-full top-0 ml-2 w-52 bg-surface-1 border border-border-1 rounded-xl shadow-2xl z-50 py-2 overflow-hidden">
+    <div id={`rail-menu-${cat.key}`} role="menu" aria-label={nav(cat.label)} onKeyDown={handleKeyDown} className="adomnia-rail__flyout absolute left-full top-0 ml-2 w-52 bg-surface-1 border border-border-1 rounded-xl shadow-2xl py-2 overflow-hidden">
       <div className="flex items-center justify-between px-3 pt-1 pb-2 border-b border-border-1/60">
         <span className="text-[10px] font-bold text-accent tracking-wide uppercase">{nav(cat.label)}</span>
         <button aria-label={tr('Close')} title={tr('Close')} onClick={onClose} className="rounded p-1 text-text-3 hover:text-text-1"><X size={12} /></button>
@@ -231,6 +232,7 @@ function CategoryButton({ cat, activeRail, anyRunning, isOpen, quickItem, onTogg
   const Icon = CATEGORY_ICONS[cat.key] ?? Wrench
   const allItems = cat.groups.flatMap((g) => g.items)
   const anyActive = allItems.some((item) => item.id === activeRail)
+  const featured = cat.key === 'development'
   const triggerRef = useRef<HTMLButtonElement>(null)
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const cancelHover = () => { if (hoverTimer.current) clearTimeout(hoverTimer.current); hoverTimer.current = null }
@@ -246,7 +248,10 @@ function CategoryButton({ cat, activeRail, anyRunning, isOpen, quickItem, onTogg
   }
 
   return (
-    <div className="relative flex h-12 w-12 items-center justify-center"
+    <div
+      className="adomnia-rail__category relative flex items-center justify-center"
+      data-active={anyActive || isOpen ? 'true' : 'false'}
+      data-featured={featured ? 'true' : undefined}
       onMouseEnter={() => { if (!cat.directItem && !isOpen) { cancelHover(); hoverTimer.current = setTimeout(onOpen, 220) } }}
       onMouseLeave={cancelHover}>
       <button
@@ -261,21 +266,19 @@ function CategoryButton({ cat, activeRail, anyRunning, isOpen, quickItem, onTogg
           onOpen()
           requestAnimationFrame(() => document.querySelector<HTMLButtonElement>(`#rail-menu-${cat.key} [role="menuitem"]`)?.focus())
         }}
+        aria-label={nav(getFeatureLabel(cat.directItem ?? quickItem ?? allItems[0]?.id))}
         className={cn(
-          'relative flex h-11 w-11 flex-col items-center justify-center gap-[2px] rounded-xl',
-          'transition-colors duration-150',
+          'adomnia-rail__category-main relative flex items-center justify-start transition-all duration-150',
           isOpen || anyActive
-            ? 'text-accent'
+            ? 'text-text-1'
             : 'text-text-3 hover:text-text-1',
           anyRunning && !isOpen && !anyActive && 'text-success',
         )}
       >
-        {(isOpen || anyActive) && (
-          <span className="absolute -left-[7px] top-1 bottom-1 w-[4px] rounded-r bg-accent" />
-        )}
-        <Icon size={20} strokeWidth={1.75} />
+        <Icon size={featured ? 27 : 20} strokeWidth={1.7} />
+        {cat.directItem && !featured && <ChevronRight aria-hidden="true" className="adomnia-rail__chevron" size={12} strokeWidth={2} />}
         {anyRunning && (
-          <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-success rounded-full border-2 border-surface-0 animate-pulse" />
+          <span className="adomnia-rail__running absolute w-2.5 h-2.5 bg-success rounded-full border-2 border-surface-0 animate-pulse" />
         )}
       </button>
 
@@ -285,8 +288,8 @@ function CategoryButton({ cat, activeRail, anyRunning, isOpen, quickItem, onTogg
         title={nav(cat.label)}
         aria-haspopup="menu" aria-expanded={isOpen} aria-controls={`rail-menu-${cat.key}`}
         onClick={onToggle}
-        className="absolute right-0 bottom-0.5 grid h-4 w-4 place-items-center rounded text-text-3 hover:bg-surface-3 hover:text-text-1"
-      ><ChevronRight size={10} /></button>}
+        className="adomnia-rail__category-menu absolute grid place-items-center rounded text-text-3 hover:text-text-1"
+      ><ChevronRight size={12} strokeWidth={2} /></button>}
 
       {isOpen && !cat.directItem && (
         <Flyout
@@ -305,15 +308,14 @@ function CategoryButton({ cat, activeRail, anyRunning, isOpen, quickItem, onTogg
 
 export function Rail() {
   const tr = useUiTranslation()
+  const nav = useNavigationTranslation()
   const activeRail = useAppStore((s) => s.activeRail)
-  const devToolsVisible = useAppStore((s) => s.devToolsVisible)
   const mockRunning = useAppStore((s) => s.mockRunning)
   const proxyRunning = useAppStore((s) => s.proxyRunning)
   const websocketRunning = useAppStore((s) => s.websocketRunning)
   const sseRunning = useAppStore((s) => s.sseRunning)
   const browserRunning = useAppStore((s) => s.browserRunning)
   const setActiveRail = useAppStore((s) => s.setActiveRail)
-  const toggleDevTools = useAppStore((s) => s.toggleDevTools)
   const appIcon = useAppIcon()
 
   const features = useSettingsStore((s) => s.settings.features)
@@ -392,21 +394,21 @@ export function Rail() {
       data-app-rail
       aria-label={tr('Primary navigation')}
       onKeyDown={handleRailKeyDown}
-      className="m-2 mr-0 flex w-14 flex-shrink-0 self-stretch flex-col items-center gap-0.5 overflow-visible rounded-2xl border border-border-2 bg-surface-0/95 py-2.5 shadow-xl shadow-black/20"
+      className="adomnia-rail flex flex-shrink-0 self-stretch flex-col items-center overflow-visible"
     >
       {/* Logo → Home */}
       <button
         data-rail-control
         onClick={() => { setActiveRail('welcome'); setOpenKey(null) }}
         className={cn(
-          'mb-2 flex h-10 w-10 items-center justify-center rounded-xl border border-transparent transition-all',
+          'adomnia-rail__home flex items-center justify-center transition-all',
           activeRail === 'welcome'
-            ? 'text-accent'
+            ? 'adomnia-rail__home--active text-accent'
             : 'hover:text-text-1',
         )}
         title={tr('Home')}
       >
-        <img src={appIcon} alt="adOmnia" data-brand-mark className="h-8 w-8 object-contain" />
+        <img src={appIcon} alt="adOmnia" data-brand-mark className="adomnia-rail__brand object-contain" />
       </button>
 
       {visibleCategories.map((cat) => (
@@ -424,47 +426,34 @@ export function Rail() {
           />
       ))}
 
-      {/* Dev Log Toggle — dev-only; kept with the tools so Settings remains last. */}
-      {import.meta.env.DEV && (
-        <button
-          data-rail-control
-          onClick={toggleDevTools}
-          title={tr('Toggle Dev Logs')}
-          className={cn(
-            'group/btn relative flex h-11 w-11 items-center justify-center rounded-xl border transition-all',
-            devToolsVisible
-              ? 'border-transparent text-accent'
-              : 'border-transparent text-text-3 hover:text-text-1',
-          )}
-        >
-          <span className={cn(
-            'absolute left-full z-50 ml-3 whitespace-nowrap rounded border border-border-2 bg-surface-2 px-2 py-1 text-[10px] text-text-1 shadow-lg',
-            'pointer-events-none opacity-0 transition-opacity group-hover/btn:opacity-100',
-          )}>
-            {tr('Dev Logs')}
-          </span>
-          <SquareTerminal size={19} strokeWidth={1.75} />
-        </button>
-      )}
+      <div className="adomnia-rail__divider" aria-hidden="true" />
+
+      {/* The reference's ellipsis is a real action: it opens global navigation. */}
+      <button
+        data-rail-control
+        onClick={() => document.dispatchEvent(new CustomEvent('adomnia:open-palette'))}
+        className="adomnia-rail__utility group/btn relative flex items-center justify-center text-text-3 transition-all hover:text-text-1"
+        title={nav('Search all tools')}
+        aria-label={nav('Search all tools')}
+      >
+        <MoreVertical size={19} strokeWidth={2.2} />
+      </button>
 
       <div className="flex-1" />
-      <div className="mb-2 h-px w-9 bg-border-2/70" aria-hidden="true" />
 
       {/* Settings */}
       <button
         data-rail-control
         onClick={() => { setActiveRail('settings'); setOpenKey(null) }}
         className={cn(
-          'group/btn relative mb-0.5 flex h-11 w-11 items-center justify-center rounded-xl border transition-all',
+          'adomnia-rail__settings group/btn relative flex items-center justify-center transition-all',
           activeRail === 'settings'
-            ? 'border-transparent text-accent'
-            : 'border-transparent text-text-3 hover:text-text-1',
+            ? 'adomnia-rail__settings--active text-text-1'
+            : 'text-text-3 hover:text-text-1',
         )}
       >
-        {activeRail === 'settings' && (
-          <span className="absolute -left-[7px] top-1 bottom-1 w-[4px] rounded-r bg-accent" />
-        )}
-        <Settings size={21} strokeWidth={1.75} />
+        <Settings size={21} strokeWidth={1.7} />
+        <ChevronRight aria-hidden="true" className="adomnia-rail__chevron" size={12} strokeWidth={2} />
         <span className={cn(
           'absolute left-full ml-3 px-2 py-1 bg-surface-2 border border-border-2 rounded text-[10px] text-text-1 whitespace-nowrap z-50',
           'opacity-0 group-hover/btn:opacity-100 transition-opacity pointer-events-none shadow-lg',

@@ -43,6 +43,7 @@ type Service struct {
 	saveMu           sync.Mutex
 	recentMu         sync.RWMutex
 	recent           []RecentProject
+	trusted          []string // protetto da recentMu
 	runMu            sync.RWMutex
 	runRequests      map[RunID]RunRequest
 	eventMu          sync.RWMutex
@@ -135,6 +136,11 @@ func (s *Service) OpenProject(path string) (Session, error) {
 		return Session{}, err
 	}
 	s.rememberProject(session.Project, session.UpdatedAt)
+	if session.Project.Authorization != AuthorizationPermitted && s.isTrusted(session.Project.RealPath) {
+		if session, err = s.workspace.SetToolAuthorization(session.ID, true); err != nil {
+			return Session{}, err
+		}
+	}
 	if err := s.saveState(); err != nil {
 		return Session{}, err
 	}
@@ -251,6 +257,7 @@ func (s *Service) SetToolAuthorization(id string, allowed bool) (Session, error)
 		s.processes.StopSession(session.ID)
 		s.lsp.Stop(session.ID)
 	}
+	s.setTrusted(session.Project.RealPath, allowed)
 	if err := s.saveState(); err != nil {
 		return Session{}, err
 	}
@@ -838,6 +845,7 @@ func (s *Service) restore() error {
 	}
 	s.recentMu.Lock()
 	s.recent = slices.Clone(state.Recent)
+	s.trusted = slices.Clone(state.TrustedPaths)
 	s.recentMu.Unlock()
 	s.runConfigs.Replace(state.RunConfigs)
 	globalToolchain := ToolchainConfiguration{}
@@ -864,6 +872,7 @@ func (s *Service) saveState() error {
 	defer s.saveMu.Unlock()
 	s.recentMu.RLock()
 	recent := slices.Clone(s.recent)
+	trusted := slices.Clone(s.trusted)
 	s.recentMu.RUnlock()
 	s.viewMu.RLock()
 	views := maps.Clone(s.views)
@@ -879,7 +888,24 @@ func (s *Service) saveState() error {
 		SessionUI:       views,
 		Workspaces:      workspaces,
 		ActiveWorkspace: activeWorkspace,
+		TrustedPaths:    trusted,
 	})
+}
+
+func (s *Service) isTrusted(realPath string) bool {
+	s.recentMu.RLock()
+	defer s.recentMu.RUnlock()
+	return slices.ContainsFunc(s.trusted, func(path string) bool { return samePath(path, realPath) })
+}
+
+// setTrusted ricorda (o dimentica) il consenso per la cartella, così vale anche alle riaperture.
+func (s *Service) setTrusted(realPath string, allowed bool) {
+	s.recentMu.Lock()
+	defer s.recentMu.Unlock()
+	s.trusted = slices.DeleteFunc(slices.Clone(s.trusted), func(path string) bool { return samePath(path, realPath) })
+	if allowed {
+		s.trusted = append(s.trusted, realPath)
+	}
 }
 
 func (s *Service) rememberProject(project Project, openedAt time.Time) {

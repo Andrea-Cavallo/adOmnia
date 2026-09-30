@@ -703,7 +703,7 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
 
   return (
     <>
-      <div className="flex-1 min-h-0 flex flex-col border-b border-border-1">
+      <div data-request-composer className="flex-1 min-h-0 flex flex-col border-b border-border-1">
         {!hideRequestBar && (
           <>
             {/* Request name */}

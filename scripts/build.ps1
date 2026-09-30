@@ -44,6 +44,7 @@ $SourceIcon = Join-Path $ProjectRoot "assets\images\icon.png"
 if ($Output -eq "") {
     $Output = Join-Path $ProjectRoot "adomnia.exe"
 }
+$FinalOutput = $Output
 
 $OutputParent = Split-Path -Parent $Output
 if ($OutputParent -and -not (Test-Path $OutputParent)) {
@@ -210,20 +211,33 @@ if ($wailsBin -and (-not $GoOnly)) {
     }
 
     if (Test-Path $WailsOutExe) {
-        try {
-            Copy-Item $WailsOutExe $Output -Force
-        } catch {
-            Start-Sleep -Milliseconds 750
+        if ([System.IO.Path]::GetFullPath($WailsOutExe) -ieq [System.IO.Path]::GetFullPath($Output)) {
+            $FinalOutput = $WailsOutExe
+            Write-Host "OK  Wails output: $WailsOutExe" -ForegroundColor Green
+        } else {
             try {
                 Copy-Item $WailsOutExe $Output -Force
+                $FinalOutput = $Output
             } catch {
-                Write-Host "ERR Built Wails binary, but could not overwrite: $Output" -ForegroundColor Red
-                Write-Host "    Windows is still holding that file open. Close any running adomnia.exe or choose a different -Output path." -ForegroundColor Yellow
-                Write-Host "    Fresh Wails output is available at: $WailsOutExe" -ForegroundColor Yellow
-                exit 1
+                Start-Sleep -Milliseconds 750
+                try {
+                    Copy-Item $WailsOutExe $Output -Force
+                    $FinalOutput = $Output
+                } catch {
+                    # A running Windows executable cannot be replaced. The Wails
+                    # pipeline did complete, and its canonical output is fresh,
+                    # so do not misreport the build as failed or terminate the
+                    # user's running app. The next launch can use bin\adomnia.exe.
+                    $FinalOutput = $WailsOutExe
+                    Write-Host "WARN Built successfully, but could not overwrite the running executable: $Output" -ForegroundColor Yellow
+                    Write-Host "     Fresh executable: $WailsOutExe" -ForegroundColor Yellow
+                    Write-Host "     Close the running app before replacing the legacy root copy." -ForegroundColor Yellow
+                }
+            }
+            if ($FinalOutput -eq $Output) {
+                Write-Host "OK  Copied: $WailsOutExe -> $Output" -ForegroundColor Green
             }
         }
-        Write-Host "OK  Copied: $WailsOutExe -> $Output" -ForegroundColor Green
     } else {
         Write-Host "ERR Expected output not found at: $WailsOutExe" -ForegroundColor Red
         exit 1
@@ -283,32 +297,32 @@ if ($Compress) {
     } else {
         Write-Host ""
         Write-Host "--- Compressing with UPX --best --lzma..." -ForegroundColor Cyan
-        $sizeBefore = [math]::Round((Get-Item $Output).Length / 1MB, 2)
-        upx --best --lzma $Output
+        $sizeBefore = [math]::Round((Get-Item $FinalOutput).Length / 1MB, 2)
+        upx --best --lzma $FinalOutput
         if ($LASTEXITCODE -ne 0) {
             Write-Host "ERR UPX compression failed." -ForegroundColor Red
             exit 1
         }
-        $sizeAfter = [math]::Round((Get-Item $Output).Length / 1MB, 2)
+        $sizeAfter = [math]::Round((Get-Item $FinalOutput).Length / 1MB, 2)
         $saved = [math]::Round((1 - $sizeAfter / $sizeBefore) * 100, 1)
         Write-Host "OK  Compressed: $sizeBefore MB -> $sizeAfter MB  (-$saved%)" -ForegroundColor Green
     }
 }
 
 # ---- Summary -----------------------------------------------------------------
-if (-not (Test-Path $Output)) {
-    Write-Host "ERR Build failed -- $Output not found." -ForegroundColor Red
+if (-not (Test-Path $FinalOutput)) {
+    Write-Host "ERR Build failed -- $FinalOutput not found." -ForegroundColor Red
     exit 1
 }
 
-$sizeMB = [math]::Round((Get-Item $Output).Length / 1MB, 2)
+$sizeMB = [math]::Round((Get-Item $FinalOutput).Length / 1MB, 2)
 
 Write-Host ""
 Write-Host "===========================================" -ForegroundColor Green
 Write-Host "  Build Complete!" -ForegroundColor Green
 Write-Host "===========================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "  $Output  ($sizeMB MB)" -ForegroundColor Cyan
+Write-Host "  $FinalOutput  ($sizeMB MB)" -ForegroundColor Cyan
 
 if ($wailsBin -and (-not $GoOnly)) {
     Write-Host ""

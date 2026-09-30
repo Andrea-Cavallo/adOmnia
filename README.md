@@ -2,110 +2,86 @@
 
 ![adOmnia banner](assets/images/banner.png)
 
-## Everything a developer needs. One local workspace.
+adOmnia is a local-first desktop application for API development and debugging, with an integrated Go IDE.
 
-**adOmnia is an all-in-one, local-first desktop workspace for building, running and debugging software.**
+It combines an API client (REST, GraphQL, SOAP, gRPC, WebSocket, SSE), message broker clients, a mock server, an intercepting proxy, browser debugging, log analysis, database explorers and a Git client in a single workspace. **gO Studio**, the built-in Go IDE, adds editing with gopls, Delve debugging, tests, coverage and an integrated terminal.
 
-Design and test APIs, write and debug the services behind them, inspect traffic, trace browser behavior, query databases, manage Git and troubleshoot distributed systems — without switching between a dozen tools.
-
-adOmnia brings together REST, GraphQL, SOAP, gRPC, WebSocket, Kafka and other brokers, mocks, an intercepting proxy, browser debugging, log analysis, database explorers, Git and developer utilities. **gO Studio**, the integrated Go IDE, completes the picture with gopls, Delve debugging, tests, coverage and a real terminal.
-
-From the first request to the code that serves it, the whole loop happens in one place.
-
-**One app. One workflow. Your entire development toolbox.**
-
-Available for Windows, macOS and Linux. No account required, no telemetry. Your projects and credentials stay on your machine; optional AI connects only to the provider you choose.
+adOmnia runs on Windows, macOS and Linux. It requires no account and collects no telemetry. Workspace data is stored locally; AI features are optional and connect only to the provider you configure.
 
 [![Release](https://img.shields.io/github/v/release/Andrea-Cavallo/adOmnia?color=8A2BE2)](https://github.com/Andrea-Cavallo/adOmnia/releases/latest)
 [![Build](https://img.shields.io/github/actions/workflow/status/Andrea-Cavallo/adOmnia/build.yml?branch=master&label=build)](https://github.com/Andrea-Cavallo/adOmnia/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE.md)
 [![Website](https://img.shields.io/badge/website-adomnia--dev.com-8A2BE2)](https://www.adomnia-dev.com)
 
-[Download](#download) · [Capabilities](#capabilities) · [Workflows](#workflows) · [AI](#ai-and-a0) · [CLI](#command-line-and-ci) · [Development](#development) · [Documentation](#documentation)
+[Download](#download) · [Features](#features) · [Workflows](#workflows) · [gO Studio](#go-studio) · [AI](#ai) · [CLI](#command-line-and-ci) · [Building from source](#building-from-source) · [Documentation](#documentation)
 
 ![adOmnia API workspace with request editing and response inspection](assets/images/adOmniaInterface1.png)
 
-![gO Studio, the Go IDE inside adOmnia: project tree, editor with gutter run actions and the Run console after go run](assets/images/go-ide.png)
-
-*gO Studio: open a real Go project, run it with the ▶ next to `func main`, and read its output in the Run console. Makefile targets, Dockerfiles and docker compose services run from the same gutter.*
-
 ## Download
 
-Download the latest desktop build from **[GitHub Releases](https://github.com/Andrea-Cavallo/adOmnia/releases/latest)**. Go and Node.js are only needed when building from source.
+Download the latest build from **[GitHub Releases](https://github.com/Andrea-Cavallo/adOmnia/releases/latest)**.
 
-| Platform | Release artifact | Getting started |
+| Platform | Artifact | Requirements |
 | --- | --- | --- |
-| Windows x64 | `adomnia-<version>-windows-amd64.exe` | Run the executable. The system must have WebView2 available. |
-| macOS, Intel and Apple Silicon | `adomnia-<version>-macos-universal.dmg` | Open the disk image and copy the app to Applications. |
-| Linux x64 | `adomnia-<version>-linux-amd64-gtk3-webkitgtk-4.1.tar.gz` | Extract and run with GTK 3 and WebKitGTK 4.1 installed. |
+| Windows x64 | `adomnia-<version>-windows-amd64.exe` | WebView2 runtime |
+| macOS (Intel and Apple Silicon) | `adomnia-<version>-macos-universal.dmg` | — |
+| Linux x64 | `adomnia-<version>-linux-amd64-gtk3-webkitgtk-4.1.tar.gz` | GTK 3, WebKitGTK 4.1 |
 
-Releases include `SHA256SUMS.txt` for download verification. Platform instructions are available in the [installation guide](docs/INSTALL.md); packaging and native dependencies are documented in the [build guide](docs/BUILD.md).
+Each release includes `SHA256SUMS.txt`. See the [installation guide](docs/INSTALL.md) for platform-specific steps.
 
-### Your first request
+### Sending a first request
 
-1. Open **API Workspace** and create a **New Request** at workspace root or inside a collection.
-2. Select the method, enter the URL and configure headers, authentication or a body as needed.
-3. Send the request and inspect its status, timing, headers, response body and assertions.
-4. Add an Environment for reusable `{{variables}}`, or import an existing collection, cURL command or OpenAPI document.
+1. Open **API Workspace** and create a **New Request**, either at workspace root or inside a collection.
+2. Choose the method, enter the URL and set headers, authentication and body as needed.
+3. Send the request and review status, timing, headers, body and assertion results.
+4. Optionally create an Environment for `{{variables}}`, or import a Postman collection, cURL command or OpenAPI document.
 
-Requests at workspace root appear outside your named collections and persist with the active workspace.
+## Features
 
-## Why adOmnia
-
-- **API client and Go IDE in one ecosystem.** Call an endpoint, open the Go handler behind it in gO Studio, run or debug it locally with Delve, and send the next request without switching tools.
-- **Local workspace ownership.** Collections, history and settings live on your machine. Export workspaces as files or collections as folders that can be reviewed and versioned with Git.
-- **API and browser investigation together.** Inspect browser network activity, console output, JavaScript, DOM and storage alongside API requests and responses.
-- **Support for enterprise systems.** Work with SOAP/WSDL, WS-Security, gRPC streaming, mTLS, certificate keystores and API authentication flows.
-- **A customizable desktop workspace.** Choose themes and skins, share templates and extend workflows with local JavaScript plugins.
-
-## Capabilities
-
-| Workspace | Highlights |
+| Area | Summary |
 | --- | --- |
-| **gO Studio (Go IDE)** | Open and trust real Go projects; gopls completion, navigation, refactoring and diagnostics; golangci-lint/staticcheck; build, run, tests with coverage, the Delve debugger with conditional, hit-count and function breakpoints, logpoints, stop on panic and Run to Cursor, and a real terminal; Makefile targets, Dockerfile build & run and docker compose from the gutter; Git in the editor; Fix with AI; links to Docker Lab, Database/Broker Studio and the API Client. |
-| **API requests and design** | REST, GraphQL, environments, authentication, scripts, assertions, response history, code generation, Postman/cURL/OpenAPI import, visual OpenAPI editing and governance checks. |
-| **Testing and flows** | Collection runner, CSV datasets, visual tests, recorded and AI-assisted flows, response-to-request variables, failure branches, contract checks and flow stress testing with latency, throughput and APDEX gates. |
-| **Protocols and brokers** | SOAP/WSDL, gRPC, WebSocket, SSE, Kafka, RabbitMQ, MQTT, Redis Pub/Sub and NATS, with saved connections and message inspection. |
-| **Mocks and infrastructure** | Schema-driven mock responses, conditional expectations, record/replay, endpoint traffic inspection, HTTPS interception, breakpoints, mapping, throttling, HTTP/gRPC load tests and Docker Lab. |
-| **Debugging and analysis** | Browser DevTools, Application Log Inspector, HAR inspection, network diagnostics, payload tools, stack-to-source navigation and redacted evidence exports. |
-| **Data and documents** | SQLite, PostgreSQL, MySQL and MongoDB exploration; local storage inspection; Markdown, Mermaid, LaTeX and PDF editing, annotation, forms and digital signatures. |
-| **Git and portable collections** | Clone/init, staging, commits, history graph, branches, merges, push/pull, diffs, conflict resolution and deterministic collection-folder export/import. |
-| **AI and MCP** | Configurable cloud/local AI, the a0 assistant, opt-in request creation, model discovery, a local agent gateway, an MCP client/debugger and an MCP server generator. |
-| **Security and customization** | Encrypted Vault references, private Environments, certificate tools, local JavaScript plugins, templates and built-in/custom appearances. |
+| **API client** | REST and GraphQL requests, environments and variables, authentication (OAuth 2.0, AWS Signature v4, Digest and others), pre/post scripts, assertions, response history, code generation, Postman/cURL/OpenAPI import, OpenAPI editor with governance rules. |
+| **Testing and flows** | Collection runner with CSV datasets, recorded or AI-assisted flows, variables extracted from responses, failure branches, contract checks, and flow load tests with latency, throughput and APDEX thresholds. |
+| **Protocols and brokers** | SOAP/WSDL with WS-Security, gRPC (including streaming), WebSocket, SSE, Kafka, RabbitMQ, MQTT, Redis Pub/Sub and NATS. |
+| **Mocking and traffic** | Schema-based mock responses, conditional expectations, record/replay, HTTPS interception, breakpoints, map local/remote, throttling, HTTP/gRPC load testing and a local Docker lab. |
+| **Debugging** | Browser debugging via the Chrome DevTools Protocol, application log inspector, HAR viewer, network diagnostics, payload utilities and redacted evidence export. |
+| **Data and documents** | SQLite, PostgreSQL, MySQL and MongoDB explorers; Markdown, Mermaid and LaTeX editing; PDF annotation, forms and digital signatures. |
+| **Git** | Clone and init, staging, commits, history graph, branches, merge, push/pull, diff, conflict resolution, and collection export to a reviewable folder layout. |
+| **Go development** | gO Studio: see [below](#go-studio). |
+| **AI and MCP** | Optional cloud or local models, the a0 assistant, a local agent gateway, an MCP client/debugger and an MCP server generator. |
+| **Security and customization** | Encrypted vault, private environments, mTLS with PEM and JKS keystores, certificate tools, JavaScript plugins, templates and themes. |
 
-See the [feature catalog](docs/adomnia-feature-catalog.en.md) for module details and the [active work queue](docs/ISSUES.md) for current implementation status.
+The [feature catalog](docs/adomnia-feature-catalog.en.md) lists every module in detail. Current status and open work are tracked in [docs/ISSUES.md](docs/ISSUES.md).
 
 ## Workflows
 
-### Record requests as a Flow
+### Recording a flow
 
-Press **Record**, send requests through the Composer, then stop recording. adOmnia turns the sequence into an editable Flow. Connect response values to later requests, add assertions and recovery branches, generate a Mermaid view and replay the scenario.
+Press **Record**, send requests from the Composer, then stop recording. The sequence becomes an editable flow: map response values into later requests, add assertions and recovery branches, generate a Mermaid diagram and replay it.
 
 ![Recording API requests and converting the sequence into a Flow](assets/images/example-rec.gif)
 
-### Mock the request you are working on
+### Mocking the current request
 
-Choose **Mock this tab** from an open request to configure its endpoint in the Mock Server. Existing mock definitions remain saved; the selected endpoint stays in focus until you choose **Show all endpoints**. A running server receives the focused configuration without changing its port.
+**Mock this tab** configures the open request as an endpoint in the Mock Server. Existing mock definitions are kept; the view stays focused on the selected endpoint until **Show all endpoints** is chosen. If the server is already running, it picks up the change without a restart or port change.
 
-The Traffic view identifies the selected response or explains why a call failed to match, including missing routes, authentication failures and CORS preflight handling.
+The Traffic view shows which response was served for each call, or why a call did not match (missing route, authentication failure, CORS preflight).
 
-### Investigate application logs
+### Investigating logs
 
-Drop log files, paste application output or attach supported live `kubectl`, `oc` and Docker sources. Application Log Inspector correlates events on a timeline, pairs request/response payloads and groups recurring errors.
-
-Use structured queries such as:
+Load log files, paste output, or attach `kubectl`, `oc` and Docker log streams. The Log Inspector places events on a timeline, pairs request and response payloads and groups recurring errors. It accepts structured queries:
 
 ```text
 duration_ms > 1000 AND (status = 500 OR status = 502)
 ```
 
-Save investigations with their queries, layouts, bookmarks and notes. Export redacted evidence or turn an observed call into an editable request, Flow or mock proposal. Large files use a disk-backed index with paginated results.
+Investigations can be saved with their queries, layout, bookmarks and notes. Individual calls can be exported as redacted evidence or converted into a request, flow or mock. Large files are indexed on disk and paginated.
 
 ![Application Log Inspector with file import and live source options](assets/images/application-logs.png)
 
-### Keep collections in Git
+### Versioning collections with Git
 
-Use **Git Sync → Collection Folder** to export a collection, import a folder-backed collection or check for drift between the app and files on disk. The deterministic layout makes changes easier to review:
+**Git Sync → Collection Folder** exports a collection to a deterministic folder layout, imports it back, and reports differences between the app and the files on disk:
 
 ```text
 my-collection/
@@ -120,27 +96,37 @@ my-collection/
 └── .adomnia-sync.json
 ```
 
-Collection and folder settings can supply shared authentication, headers, variables and scripts. The built-in Git client handles staging, commits, branch operations, remotes and conflict resolution.
+Collection and folder settings can define shared authentication, headers, variables and scripts.
 
-### Develop Go projects in Go Studio
+## gO Studio
 
-Open a Go module, workspace or repository folder and choose **Trust** to allow local Go tools for that project; until then nothing runs. Go Studio uses the project's Go SDK (detected or installed from the official catalog) for gopls, linting, build, run, tests, coverage and Delve debugging. Several projects stay isolated side by side, and one can move into its own window.
+![gO Studio: project tree, editor with gutter run actions and the Run console](assets/images/go-ide.png)
 
-Errors offer **Fix with AI**, which sends the affected code to the AI provider you configured and shows the proposed change as a preview before anything is applied. Git Studio follows the open project's repository, and *Project Services* opens Docker Lab, Database Studio or Broker Studio for the services found in `go.mod`.
+gO Studio is the Go IDE built into adOmnia.
 
-See the [Go Studio guide](docs/GO-STUDIO.md) for trust rules, optional tools, storage and shortcuts.
+- **Editing:** completion, navigation, refactoring and diagnostics via gopls; golangci-lint and staticcheck integration.
+- **Run and test:** build and run from the gutter next to `func main`, run tests with coverage, run Makefile targets, Dockerfiles and docker compose services.
+- **Debugging:** Delve with conditional, hit-count and function breakpoints, logpoints, stop on panic and Run to Cursor.
+- **Toolchain:** uses the project's Go SDK, detected locally or installed from the official distribution; per-project `GOPROXY`, `GOPRIVATE`, `CGO_ENABLED`, `GOOS`/`GOARCH` and build tags.
+- **Integration:** Git in the editor, an integrated terminal, and shortcuts to the Docker Lab, database and broker tools for services declared in `go.mod`.
 
-## AI and a0
+**Trust model.** A newly opened project can be browsed and edited, but no Go tool runs against it until it is explicitly trusted. Multiple projects can be open side by side, each isolated, and any of them can be moved to a separate window.
 
-AI is optional. Configure a provider in **Settings → AI Engine**, select a model and use **Test connection**. The a0 assistant becomes available after the selected provider and model pass the connection check.
+**Fix with AI** sends the relevant code to the configured AI provider and shows the proposed change as a diff for review before it is applied.
 
-Supported providers are **Anthropic, Amazon Bedrock, OpenAI, Google Gemini, DeepSeek, Hugging Face, Ollama and OpenAI-compatible endpoints**. Model discovery and Balanced, Quality, Fast or Local only profiles help with setup while keeping the selected model under your control.
+See the [gO Studio guide](docs/GO-STUDIO.md) for trust rules, optional tools, storage and keyboard shortcuts.
 
-### Credential discovery
+## AI
 
-Automatic discovery checks process variables, adOmnia Environments and standard `.env` files, with an encrypted Vault fallback. Recognized provider variables include:
+AI features are optional and disabled until a provider is configured in **Settings → AI Engine**. The a0 assistant becomes available once the selected provider and model pass **Test connection**.
 
-| Provider | Credential variables |
+Supported providers: Anthropic, Amazon Bedrock, OpenAI, Google Gemini, DeepSeek, Hugging Face, Ollama and OpenAI-compatible endpoints.
+
+### Credentials
+
+API keys are resolved from process environment variables, adOmnia environments or `.env` files, with the encrypted vault as fallback:
+
+| Provider | Variables |
 | --- | --- |
 | Anthropic | `ANTHROPIC_API_KEY` |
 | OpenAI | `OPENAI_API_KEY` |
@@ -149,111 +135,98 @@ Automatic discovery checks process variables, adOmnia Environments and standard 
 | Hugging Face | `HUGGINGFACE_API_KEY`, `HF_TOKEN` |
 | OpenAI-compatible | `OPENAI_COMPATIBLE_API_KEY`, `OPENAI_API_KEY` |
 
-`ADOMNIA_AI_API_KEY` is a generic fallback. Amazon Bedrock uses the AWS SDK credential chain, including environment credentials, shared profiles, IAM Identity Center/SSO and workload identities. On Windows, restart adOmnia after changing user or system environment variables.
+`ADOMNIA_AI_API_KEY` is used as a generic fallback. Amazon Bedrock uses the standard AWS SDK credential chain (environment, shared profiles, IAM Identity Center/SSO, workload identity). On Windows, restart adOmnia after changing environment variables.
 
 ### Agent actions
 
-Enable **Agent actions** to let a0 create supported request definitions at workspace root from explicit chat instructions. For example, “Create a greeting API request outside my collections” creates and opens a request for review. Request definitions belong to the API client; the target API or mock server supplies the response when you send them.
-
-Agent actions are disabled by default. The current creation action supports a name, method, URL, headers and an optional body. a0 replies in English and uses credential placeholders in its suggestions.
+When **Agent actions** is enabled (off by default), a0 can create request definitions at workspace root from explicit instructions in chat. Created requests open for review and are not sent automatically. The action currently supports name, method, URL, headers and an optional body.
 
 ## Data and privacy
 
-adOmnia stores workspace data locally and does not require an adOmnia account, collect telemetry or provide automatic cloud workspace sync. Core editing and inspection tools work offline; network operations connect to the endpoints you choose.
-
-Cloud AI sends prompts and the supplied workspace context to your selected provider. Local AI can use Ollama or a locally hosted compatible endpoint. Model discovery also contacts the configured provider when requested, or when the optional refresh-on-open setting is enabled.
-
-Use the **encrypted Vault** for sensitive values. Ordinary request and environment fields are not encrypted simply because they are stored locally. Environments marked **Private** are excluded from workspace-file and collection-folder exports; exported public environment secrets use empty placeholders.
+- No account, no telemetry, no automatic cloud sync.
+- Editing and inspection work offline; network traffic goes only to endpoints you call.
+- Cloud AI providers receive the prompt and the workspace context you supply. Ollama or another local endpoint keeps inference on your machine.
+- Local storage is not encrypted by default. Store secrets in the **encrypted vault**. Environments marked **Private** are excluded from exports, and exported public environments replace secret values with empty placeholders.
 
 ## Command line and CI
 
-The desktop executable also exposes headless commands. The examples below use `adomnia`; substitute the downloaded executable path when it is not on your `PATH`.
+The desktop executable also provides headless commands. Examples below assume `adomnia` is on your `PATH`.
 
-### Run a collection
+### Running a collection
 
 ```bash
 adomnia run ./my-collection --env prod --folder "Smoke" --reporter junit --out report.xml --bail
 ```
 
-The runner supports environment overrides, assertions, sandboxed scripts and CLI/JSON/JUnit reports. Failed requests or assertions produce a non-zero exit code.
+Supports environment overrides, assertions, sandboxed scripts and CLI, JSON or JUnit reports. Failed requests or assertions return a non-zero exit code.
 
-### Stress-test a Flow
+### Load-testing a flow
 
-Export a **CI plan** from the Flow Stress dock, then run it with an optional dataset:
+Export a **CI plan** from the Flow Stress panel, then run it:
 
 ```bash
 adomnia stress ./checkout.stress.json --dataset users.csv --env-var BASE_URL=https://staging.example.com --reporter junit --out stress.xml
 ```
 
-The plan preserves graph execution, response variables and recovery branches. Exit code `1` indicates a failed request or configured performance gate; `2` indicates an invalid plan.
+Exit code `1` means a request or performance threshold failed; `2` means the plan is invalid.
 
-### Lint OpenAPI
+### Linting OpenAPI
 
 ```bash
 adomnia lint ./openapi.yaml --reporter json --out lint-report.json
 adomnia lint ./my-collection --ruleset adomnia.oaslint.json --fail-on-warn
 ```
 
-The same rules are available in **API Docs → Governance**. Errors fail the command; warnings fail it only with `--fail-on-warn`.
+The same rules are available under **API Docs → Governance**. Errors fail the command; warnings fail it only with `--fail-on-warn`.
 
 <details>
-<summary>Runner environments and credentials</summary>
+<summary>Environments and credentials in headless runs</summary>
 
-- Use `--env` to load `environments/<name>.json`, or `--env-var KEY=VALUE` to override a variable.
-- Variable precedence is collection variables, collection-local `.env`, named Environment, then CLI overrides.
-- Headless runs support non-interactive OAuth grants, AWS Signature v4, a run-scoped cookie jar and multipart file parts.
-- Interactive OAuth authorization-code/PKCE flows belong to the desktop; use a refresh token or non-interactive grant in CI.
-- Supply Vault references through matching `ADOMNIA_VAULT_<VARIABLE_NAME>` process variables. The runner does not decrypt exported Vault ciphertext.
+- `--env <name>` loads `environments/<name>.json`; `--env-var KEY=VALUE` overrides a single variable.
+- Precedence: collection variables, collection `.env`, named environment, CLI overrides.
+- Supported: non-interactive OAuth grants, AWS Signature v4, a per-run cookie jar and multipart file uploads.
+- Interactive OAuth (authorization code/PKCE) requires the desktop app; use a refresh token or a non-interactive grant in CI.
+- Vault references are resolved from `ADOMNIA_VAULT_<VARIABLE_NAME>` environment variables. The runner does not decrypt exported vault data.
 
 </details>
 
-## Interface gallery
+## Screenshots
 
 <details>
-<summary>Explore the light, Sketch, Git and Power Tools workspaces</summary>
-
-### Light appearance
+<summary>Light theme, Sketch theme, Hub, Git and Power Tools</summary>
 
 ![adOmnia API workspace in the light appearance](assets/images/white.png)
 
-### Sketch appearance
-
 ![adOmnia Sketch appearance across workspaces](assets/images/sketch-previews.png)
-
-### Hub
 
 ![The adOmnia Hub in the Sketch appearance](assets/images/adomnia-hub-sketch.png)
 
-### Git Sync
-
 ![adOmnia Git workspace](assets/images/GIT.png)
 
-### Power Tools
-
-![Power Tools Studio with searchable and pinnable utilities](assets/images/powertools.png)
+![Power Tools with searchable and pinnable utilities](assets/images/powertools.png)
 
 </details>
 
-## Development
+## Building from source
 
-adOmnia uses **Go, Wails 3, React and TypeScript**. Source builds require Go `1.26.5`, Node.js `22.13.0+`, npm, the pinned Wails CLI and platform WebView development dependencies.
+adOmnia is built with Go, Wails 3, React and TypeScript. Requirements: Go 1.26.5, Node.js 22.13.0 or later, the Wails 3 CLI and the platform WebView development packages.
 
 ```bash
 git clone https://github.com/Andrea-Cavallo/adOmnia.git
 cd adOmnia
-go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.5
+go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.25
 npm --prefix frontend ci
 wails3 task dev
 ```
 
-Build a native executable or distributable bundle:
+Production build and packaging:
 
 ```bash
 wails3 task build
 wails3 task package
 ```
 
-Run the frontend build before Go checks, because the desktop embeds the generated frontend assets:
+Checks (build the frontend first; the Go binary embeds its assets):
 
 ```bash
 npm --prefix frontend test
@@ -263,31 +236,33 @@ go build ./...
 go test ./...
 ```
 
-Linux checks and builds use the GTK 3 compatibility tag; see [the build guide](docs/BUILD.md) for native packages, platform commands and release metadata.
+On Linux, builds use the GTK 3 build tag. See the [build guide](docs/BUILD.md) for native dependencies, per-platform commands and release metadata.
 
 ## Documentation
 
-| Guide | Contents |
+| Document | Contents |
 | --- | --- |
-| [Installation](docs/INSTALL.md) | Desktop downloads and platform setup. |
-| [Build from source](docs/BUILD.md) | Toolchain, native dependencies and packaging. |
-| [Feature catalog](docs/adomnia-feature-catalog.en.md) | Detailed module inventory. |
-| [Go Studio](docs/GO-STUDIO.md) | Go IDE usage, project trust, optional tools, persistence and shortcuts. |
-| [FAQ](docs/FAQ.md) | Common product and setup questions. |
-| [Troubleshooting](docs/TROUBLESHOOTING.md) | Diagnostics and recovery steps. |
-| [Architecture](docs/ARCHITECTURE.md) | Application structure and technical context. |
-| [Startup performance](docs/PERFORMANCE.md) | Loading strategy, bundle budget and measurement limits. |
-| [Changelog](CHANGELOG.md) | Version-by-version changes. |
-| [Release guide](docs/RELEASE.md) | Release notes and publishing process. |
+| [Installation](docs/INSTALL.md) | Downloads and platform setup |
+| [Build](docs/BUILD.md) | Toolchain, native dependencies, packaging |
+| [Feature catalog](docs/adomnia-feature-catalog.en.md) | Module-by-module reference |
+| [gO Studio](docs/GO-STUDIO.md) | Go IDE usage, trust model, tools, shortcuts |
+| [FAQ](docs/FAQ.md) | Common questions |
+| [Troubleshooting](docs/TROUBLESHOOTING.md) | Diagnostics and recovery |
+| [Architecture](docs/ARCHITECTURE.md) | Application structure |
+| [Startup performance](docs/PERFORMANCE.md) | Loading strategy and bundle budget |
+| [Changelog](CHANGELOG.md) | Changes by version |
+| [Release process](docs/RELEASE.md) | Release notes and publishing |
 
 ## Contributing
 
-Report reproducible bugs or propose improvements through [GitHub Issues](https://github.com/Andrea-Cavallo/adOmnia/issues). Include the app version, operating system and steps to reproduce; redact credentials and private payloads from examples.
+Report bugs and propose changes through [GitHub Issues](https://github.com/Andrea-Cavallo/adOmnia/issues). Include the app version, operating system and steps to reproduce, and remove credentials or private data from examples.
 
-For code contributions, read [AGENTS.md](AGENTS.md) and [CLAUDE.md](CLAUDE.md), follow existing module conventions and include relevant verification with your pull request. Report vulnerabilities privately through the [security policy](.github/SECURITY.md).
+Before submitting code, read [AGENTS.md](AGENTS.md) and [CLAUDE.md](CLAUDE.md), follow the conventions of the module you are changing and describe how you verified the change. Report security vulnerabilities privately as described in the [security policy](.github/SECURITY.md).
 
-## Acknowledgements and license
+## Acknowledgements
 
-Thanks to [albertize](https://github.com/albertize) and [plunix](https://github.com/plunix) for their contributions and support.
+Thanks to [albertize](https://github.com/albertize) and [plunix](https://github.com/plunix) for their contributions.
 
-Released under the [MIT License](LICENSE.md). Copyright © 2026 adOmnia Contributors.
+## License
+
+[MIT](LICENSE.md). Copyright © 2026 adOmnia Contributors.

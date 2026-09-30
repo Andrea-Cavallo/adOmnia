@@ -107,7 +107,8 @@ function PanelHeader({ titleKey }: { titleKey?: string }) {
 
   return (
     <div
-      data-workspace-panel-header={activeRail === 'collections' ? 'true' : undefined}
+      data-workspace-panel-header="true"
+      data-workspace-panel-kind={activeRail}
       role="toolbar"
       tabIndex={0}
       onContextMenu={(event) => {
@@ -916,7 +917,7 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
   }
 
   return (
-    <div className="relative flex-1 flex flex-col min-w-0 overflow-hidden">
+    <div data-request-workspace className="relative flex-1 flex flex-col min-w-0 overflow-hidden">
       {mockFeedback && <DropToast feedback={mockFeedback} />}
       {!standaloneTabId && <TabBar
         tabs={tabs}
