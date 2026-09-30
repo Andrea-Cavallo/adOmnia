@@ -161,36 +161,6 @@
 .go-studio-impl-up::before { content: 'I↑'; color: var(--color-accent, #8b5cf6); }
 .go-studio-impl-glyph:hover::before { filter: brightness(1.3); }
 
-/* Morph "aO → gO" all'ingresso in Go Studio (mock approvato): la "a" lascia il posto alla "g" in 400 ms. */
-.go-studio-mark-letter {
-  position: relative;
-  display: inline-block;
-  width: 1ch;
-  height: 1em;
-  overflow: hidden;
-  vertical-align: -0.12em;
-}
-.go-studio-mark-from,
-.go-studio-mark-to {
-  position: absolute;
-  inset: 0;
-  line-height: 1;
-}
-.go-studio-mark-from { animation: go-studio-mark-out 400ms ease-in forwards; }
-.go-studio-mark-to { animation: go-studio-mark-in 400ms ease-out forwards; }
-@keyframes go-studio-mark-out {
-  from { transform: translateY(0) rotateX(0); opacity: 1; }
-  to { transform: translateY(-70%) rotateX(80deg); opacity: 0; }
-}
-@keyframes go-studio-mark-in {
-  from { transform: translateY(70%) rotateX(-80deg); opacity: 0; }
-  to { transform: translateY(0) rotateX(0); opacity: 1; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .go-studio-mark-from { animation: none; opacity: 0; }
-  .go-studio-mark-to { animation: none; opacity: 1; }
-}
-
 /* Gutter VCS rispetto a HEAD, come GoLand: verde aggiunto, blu modificato, triangolo per le righe cancellate. */
 .monaco-editor .go-studio-vcs {
   cursor: pointer;

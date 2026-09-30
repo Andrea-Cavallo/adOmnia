@@ -73,7 +73,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   sseRunning: false,
   browserRunning: false,
   pendingFileImport: null,
-  goStudioMaximized: false,
+  // gO Studio si apre a tutto schermo come un IDE; il logo aO o il tasto restore riportano la rail.
+  goStudioMaximized: true,
   toggleGoStudioMaximized: () => set((s) => ({ goStudioMaximized: !s.goStudioMaximized })),
   goStudioZen: false,
   setGoStudioZen: (zen) => set({ goStudioZen: zen }),

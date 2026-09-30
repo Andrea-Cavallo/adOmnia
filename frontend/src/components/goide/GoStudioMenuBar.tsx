@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { History, Menu } from 'lucide-react'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
+import { useAppIcon } from '@/lib/brandAssets'
+import { useAppStore } from '@/stores/app'
 import type { GoIDERecentProject } from '@/lib/goide-api'
 import { GO_STUDIO_COMMANDS, GO_STUDIO_MENUS, formatBinding, type GoStudioCommandId, type GoStudioMenuId } from './goStudioCommands'
 import { GO_STUDIO_COMMAND_ICONS, GO_STUDIO_MENU_ICONS } from './goStudioCommandIcons'
@@ -74,6 +76,7 @@ function mainMenuItems(state: GoStudioCommandState, recentProjects: GoIDERecentP
 
 export function GoStudioMenuBar({ state, recentProjects, openProjectPaths, onCommand, onOpenRecent }: GoStudioMenuBarProps) {
   const [open, setOpen] = useState<{ x: number; y: number } | null>(null)
+  const appIcon = useAppIcon()
 
   const select = (id: string) => {
     setOpen(null)
@@ -84,10 +87,10 @@ export function GoStudioMenuBar({ state, recentProjects, openProjectPaths, onCom
 
   return (
     <>
-      {/* Identità del mock approvato: all'ingresso "aO" diventa "gO" in 400 ms; con reduced motion resta statico. */}
-      <span className="go-studio-mark select-none px-1.5 font-mono text-[12px] font-bold text-accent" aria-hidden="true">
-        <span className="go-studio-mark-letter"><span className="go-studio-mark-from">a</span><span className="go-studio-mark-to">g</span></span>O
-      </span>
+      {/* Logo adOmnia: torna all'hub principale (la rail e il menu di adOmnia ricompaiono). */}
+      <button type="button" onClick={() => useAppStore.getState().setActiveRail('welcome')} title="Back to the adOmnia hub" aria-label="Back to the adOmnia hub" className="go-studio-icon-button h-8 w-8">
+        <img src={appIcon} alt="" data-brand-mark className="h-5 w-5 object-contain" />
+      </button>
       <button
         type="button"
         aria-label="Main menu"

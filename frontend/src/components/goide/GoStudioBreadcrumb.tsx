@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Lock, Save } from 'lucide-react'
+import { Lock, Maximize2, Minimize2, Save } from 'lucide-react'
 import type { GoIDESymbolNode } from '@/lib/goide-lsp-api'
 import { ContextMenu } from '@/components/ui/ContextMenu'
 import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
@@ -17,6 +17,8 @@ export function GoStudioBreadcrumb({ document, cursor, onSave }: GoStudioBreadcr
   const symbols = useGoStudioSymbolsFor(document.document.id)
   const chain = symbolPathAt(symbols, cursor.line, cursor.column)
   const reveal = (line: number, column: number) => useGoIDEStore.setState({ revealLocation: { documentId: document.document.id, line, column } })
+  const toggleEditorMaximized = useGoIDEStore((state) => state.toggleEditorMaximized)
+  const editorMaximized = useGoIDEStore((state) => !state.layout.projectOpen && !state.layout.structureOpen && !state.layout.bottomOpen)
   const segments = document.document.relativePath.split('/').filter(Boolean)
   const [menu, setMenu] = useState<{ x: number; y: number; current: string; siblings: GoIDESymbolNode[] } | null>(null)
   const openSiblings = (index: number, target: HTMLElement) => {
@@ -50,7 +52,8 @@ export function GoStudioBreadcrumb({ document, cursor, onSave }: GoStudioBreadcr
           onClose={() => setMenu(null)}
         />
       )}
-      <button type="button" disabled={!document.dirty || document.saving || document.document.readOnly} onClick={onSave} title="Save · Ctrl/Cmd+S" className="ml-auto flex h-6 shrink-0 items-center gap-1 rounded px-1.5 text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-30"><Save size={12} /> Save</button>
+      <button type="button" onClick={toggleEditorMaximized} aria-pressed={editorMaximized} title={editorMaximized ? 'Restore tool windows · Ctrl+Shift+F12' : 'Maximize editor (hide all tool windows) · Ctrl+Shift+F12'} aria-label={editorMaximized ? 'Restore tool windows' : 'Maximize editor'} className="ml-auto grid h-6 w-6 shrink-0 place-items-center rounded text-text-3 hover:bg-surface-2 hover:text-text-1">{editorMaximized ? <Minimize2 size={12} /> : <Maximize2 size={12} />}</button>
+      <button type="button" disabled={!document.dirty || document.saving || document.document.readOnly} onClick={onSave} title="Save · Ctrl/Cmd+S" className="flex h-6 shrink-0 items-center gap-1 rounded px-1.5 text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-30"><Save size={12} /> Save</button>
     </nav>
   )
 }
