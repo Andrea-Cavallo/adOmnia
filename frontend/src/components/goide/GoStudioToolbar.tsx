@@ -4,6 +4,7 @@ import { Bug, ChevronDown, Hammer, LockKeyhole, Maximize2, Minimize2, MoreVertic
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import type { GoIDEExecution, GoIDERunConfiguration, GoIDESession, GoIDEToolchainInfo, GoIDERecentProject } from '@/lib/goide-api'
 import { GoGopherIcon } from './GoGopherIcon'
+import { useGoStudioTitlebar, GoStudioWindowControls } from './GoStudioTitlebar'
 
 interface GoStudioToolbarProps {
   sessions: GoIDESession[]
@@ -132,8 +133,9 @@ export function GoStudioToolbar(props: GoStudioToolbarProps) {
     }
   }
 
+  const titlebar = useGoStudioTitlebar()
   return (
-    <div role="toolbar" aria-label="Go Studio toolbar" className="flex h-12 shrink-0 items-center gap-1 px-2">
+    <div role="toolbar" aria-label="Go Studio toolbar" {...titlebar.props} className={`flex h-12 shrink-0 items-center gap-1 pl-2 ${titlebar.active ? 'go-studio-titlebar' : 'pr-2'}`}>
       {mainMenu}
       <button type="button" aria-haspopup="menu" aria-expanded={menu?.kind === 'project'} disabled={loading} onClick={(event) => openMenu('project', event.currentTarget)} title={activeSession.project.rootPath} className={`go-studio-widget ml-1 max-w-60 ${menu?.kind === 'project' ? 'is-active' : ''}`}>
         <span aria-hidden="true" className="grid h-5 w-5 shrink-0 place-items-center rounded-[5px] bg-accent/20 text-[9.5px] font-bold text-accent">{projectInitials(activeSession.project.name)}</span>
@@ -174,7 +176,9 @@ export function GoStudioToolbar(props: GoStudioToolbarProps) {
           {props.maximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
         </button>
       )}
-      <button type="button" onClick={props.onClose} disabled={loading} aria-label="Close project" title="Close project session" className="go-studio-icon-button h-8 w-8"><X size={14} /></button>
+      {/* Nella barra della finestra la X è quella della finestra: Close Project resta nel menu File. */}
+      {!titlebar.active && <button type="button" onClick={props.onClose} disabled={loading} aria-label="Close project" title="Close project session" className="go-studio-icon-button h-8 w-8"><X size={14} /></button>}
+      <GoStudioWindowControls />
       {menu && <ContextMenu appearance="studio" x={menu.x} y={menu.y} items={menuItems(menu.kind)} onSelect={select} onClose={() => setMenu(null)} />}
     </div>
   )

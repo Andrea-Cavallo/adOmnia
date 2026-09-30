@@ -61,6 +61,9 @@ function loadSidebarWidth(): number {
 function App() {
   const tr = useUiTranslation()
   const { activeWindowChrome, commandPaletteOpen, setCommandPaletteOpen, firstStableFrame } = useAppInit()
+  useEffect(() => {
+    useAppStore.getState().setAppWindowChrome(activeWindowChrome !== null && activeWindowChrome !== 'system')
+  }, [activeWindowChrome])
   const { dragOver, dropPreview, dropFeedback, handlers } = useFileDrop()
   const devLogVisible  = useAppStore((s) => s.devToolsVisible)
   const toggleDevTools = useAppStore((s) => s.toggleDevTools)
@@ -182,7 +185,8 @@ function App() {
           data-file-drop-target
           {...handlers}
         >
-          {activeWindowChrome !== 'system' && <Titlebar />}
+          {/* Con gO Studio massimizzato la sua toolbar diventa la barra della finestra, come in JetBrains. */}
+          {activeWindowChrome !== null && activeWindowChrome !== 'system' && !goStudioMaximized && <Titlebar />}
           <StorageQuotaBanner />
           <div className="flex flex-1 min-h-0">
             {!goStudioMaximized && <Rail />}

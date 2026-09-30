@@ -3,7 +3,8 @@ import { useSettingsStore } from '@/stores/settings'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { useUiTranslation } from '@/lib/uiI18n'
 
-export function Titlebar() {
+/** Riduci / ingrandisci / chiudi della finestra frameless: usati dalla barra di adOmnia e dalla toolbar di gO Studio. */
+export function WindowControls({ height = 'h-8' }: { height?: string }) {
   const tr = useUiTranslation()
   const port = useServerPort()
 
@@ -29,44 +30,28 @@ export function Titlebar() {
     Quit()
   }, [])
 
+  const button = `grid ${height} w-11 place-items-center text-text-3 transition-colors`
   return (
-    <header
-      className="flex h-8 items-stretch justify-between border-b border-border-1 bg-surface-1 select-none"
-      style={{ '--wails-draggable': 'drag' } as React.CSSProperties}
-    >
+    <div className={`flex ${height} shrink-0 items-stretch`} style={NO_DRAG}>
+      <button type="button" onClick={onMinimise} aria-label={tr('Minimize window')} className={`${button} hover:bg-surface-3 hover:text-text-1`} style={NO_DRAG}><MinusIcon /></button>
+      <button type="button" onClick={onMaximise} aria-label={tr('Maximize or restore window')} className={`${button} hover:bg-surface-3 hover:text-text-1`} style={NO_DRAG}><MaxIcon /></button>
+      <button type="button" onClick={onClose} aria-label={tr('Close window')} className={`${button} hover:bg-red-500/80 hover:text-white`} style={NO_DRAG}><CloseIcon /></button>
+    </div>
+  )
+}
+
+/** Area da cui si trascina la finestra frameless (Wails legge questa custom property). */
+export const DRAG = { '--wails-draggable': 'drag' } as React.CSSProperties
+export const NO_DRAG = { '--wails-draggable': 'no-drag' } as React.CSSProperties
+
+export function Titlebar() {
+  return (
+    <header className="flex h-8 items-stretch justify-between border-b border-border-1 bg-surface-1 select-none" style={DRAG}>
       <div className="flex items-center gap-2 pl-2.5">
         <img src="/logo.png" alt="adOmnia" data-brand-mark className="h-[18px] w-[18px] object-contain" />
         <span className="text-[11px] text-text-3">adOmnia paratus.</span>
       </div>
-
-      <div className="flex h-8 items-stretch" style={{ '--wails-draggable': 'no-drag' } as React.CSSProperties}>
-        <div className="flex h-8 items-stretch">
-          <button
-            onClick={onMinimise}
-            aria-label={tr('Minimize window')}
-            className="grid h-8 w-10 place-items-center text-text-3 transition-colors hover:bg-surface-3 hover:text-text-1"
-            style={{ '--wails-draggable': 'no-drag' } as React.CSSProperties}
-          >
-            <MinusIcon />
-          </button>
-          <button
-            onClick={onMaximise}
-            aria-label={tr('Maximize or restore window')}
-            className="grid h-8 w-10 place-items-center text-text-3 transition-colors hover:bg-surface-3 hover:text-text-1"
-            style={{ '--wails-draggable': 'no-drag' } as React.CSSProperties}
-          >
-            <MaxIcon />
-          </button>
-          <button
-            onClick={onClose}
-            aria-label={tr('Close window')}
-            className="grid h-8 w-10 place-items-center text-text-3 transition-colors hover:bg-red-500/80 hover:text-white"
-            style={{ '--wails-draggable': 'no-drag' } as React.CSSProperties}
-          >
-            <CloseIcon />
-          </button>
-        </div>
-      </div>
+      <WindowControls />
     </header>
   )
 }

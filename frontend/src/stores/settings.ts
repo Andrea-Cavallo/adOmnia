@@ -150,6 +150,8 @@ function mergeBlock<T extends Record<string, unknown>>(defaults: T, saved: Parti
   return merged
 }
 
+
+const IS_LINUX = typeof navigator !== 'undefined' && /linux/i.test(navigator.userAgent) && !/android/i.test(navigator.userAgent)
 const RETIRED_AI_MODELS: Partial<Record<AppSettings['ai']['provider'], Record<string, string>>> = {
   openai: {
     'gpt-5.6-sol': 'gpt-6-astra',
@@ -181,7 +183,7 @@ function migrateAIModel(ai: AppSettings['ai']): AppSettings['ai'] {
 }
 
 const defaultSettings: AppSettings = {
-  version: 11,
+  version: 12,
   general: {
     confirmBeforeClosingDirtyTabs: true,
     restoreTabsOnStartup: true,
@@ -194,7 +196,8 @@ const defaultSettings: AppSettings = {
   },
   appearance: {
     theme: 'dark',
-    windowChrome: 'system',
+    // Come JetBrains: toolbar nella barra della finestra; su Linux (Wayland) resta la barra di sistema.
+    windowChrome: IS_LINUX ? 'system' : 'app',
     themeId: 'builtin-dark',
     density: 'comfortable',
     uiFont: DEFAULT_UI_FONT_ID,
@@ -318,6 +321,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       // and deliberate 'system' picks are left untouched.
       const migratedToV3 = (parsed.version ?? 0) < 3 && appearance.windowChrome === 'app'
       if (migratedToV3) appearance.windowChrome = 'system'
+      // v12: barra unita alla toolbar come in JetBrains, una volta sola; chi poi sceglie System lo mantiene.
+      if ((parsed.version ?? 0) < 12 && appearance.windowChrome === 'system' && !IS_LINUX) appearance.windowChrome = 'app'
       const savedAI = mergeBlock(defaultSettings.ai, parsed.ai)
       const migratedAI = (parsed.version ?? 0) < 9 ? migrateAIModel(savedAI) : savedAI
       // Existing Vault-based profiles gain the environment-first flow without

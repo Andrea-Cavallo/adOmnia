@@ -93,13 +93,13 @@ export function GoStudioBreakpointsDialog({ sessionId }: GoStudioBreakpointsDial
           <button type="button" onClick={close} title="Close · Esc" aria-label="Close" className={`${lines.length > 0 ? '' : 'ml-auto '}grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-3`}><X size={12} /></button>
         </div>
         <div className="flex min-h-0 flex-1">
-          <div className="min-w-0 flex-1 overflow-auto border-r border-border-1 py-1">
+          <div role="listbox" aria-label="Breakpoints" className="min-w-0 flex-1 overflow-auto border-r border-border-1 py-1">
             <p className="px-3 pb-1 pt-2 text-[9px] font-semibold uppercase tracking-wider text-text-4">Line breakpoints</p>
             {lines.length === 0 && <p className="px-3 py-1 text-[11px] text-text-4">None. Click a line number in a Go file to add one.</p>}
             {lines.map(({ relativePath, state }) => {
               const id = `${relativePath}:${state.line}`
               return (
-                <div key={id} onClick={() => selectLine(relativePath, state)} onDoubleClick={() => reveal(relativePath, state.line)} className={`${ROW} ${isSelected('line', id) ? 'bg-accent/15 text-text-1' : 'text-text-2 hover:bg-surface-2'}`}>
+                <div key={id} role="option" aria-selected={isSelected('line', id)} tabIndex={0} onClick={() => selectLine(relativePath, state)} onDoubleClick={() => reveal(relativePath, state.line)} onKeyDown={(event) => { if (event.target !== event.currentTarget) return; if (event.key === 'Enter') reveal(relativePath, state.line); if (event.key === ' ') { event.preventDefault(); selectLine(relativePath, state) } }} className={`${ROW} ${isSelected('line', id) ? 'bg-accent/15 text-text-1' : 'text-text-2 hover:bg-surface-2'}`}>
                   <input type="checkbox" aria-label={`Enable ${id}`} checked={!state.disabled} onClick={(event) => event.stopPropagation()} onChange={() => toggleLine(relativePath, state)} className="accent-accent" />
                   <StatusDot verified={state.verified} disabled={state.disabled} message={state.message} />
                   <span className="shrink-0 font-mono">{id}</span>
@@ -110,7 +110,7 @@ export function GoStudioBreakpointsDialog({ sessionId }: GoStudioBreakpointsDial
             })}
             <p className="px-3 pb-1 pt-3 text-[9px] font-semibold uppercase tracking-wider text-text-4">Function breakpoints</p>
             {functionList.map((function_) => (
-              <div key={function_.name} onClick={() => selectFunction(function_)} className={`${ROW} ${isSelected('function', function_.name) ? 'bg-accent/15 text-text-1' : 'text-text-2 hover:bg-surface-2'}`}>
+              <div key={function_.name} role="option" aria-selected={isSelected('function', function_.name)} tabIndex={0} onClick={() => selectFunction(function_)} onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); selectFunction(function_) } }} className={`${ROW} ${isSelected('function', function_.name) ? 'bg-accent/15 text-text-1' : 'text-text-2 hover:bg-surface-2'}`}>
                 <input type="checkbox" aria-label={`Enable ${function_.name}`} checked={!function_.disabled} onClick={(event) => event.stopPropagation()} onChange={() => toggleFunction(function_.name)} className="accent-accent" />
                 <StatusDot verified={function_.verified} disabled={function_.disabled} message={function_.message} />
                 <FunctionSquare size={11} className="shrink-0 text-text-4" />

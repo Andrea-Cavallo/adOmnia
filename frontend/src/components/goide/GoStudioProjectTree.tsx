@@ -193,7 +193,15 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
         <button type="button" onClick={() => updateLayout({ projectOpen: false })} aria-label="Hide Project pane" title="Hide · Alt+1" className="go-studio-icon-button h-6 w-6"><Minus size={14} /></button>
       </div>
       <div className="min-h-0 flex-1 overflow-auto px-2 pb-1">
-        <div className="flex h-6 items-center gap-1.5 px-2 text-[12.5px]" title={session.project.rootPath} onContextMenu={(event) => { event.preventDefault(); onContext(null, event.clientX, event.clientY) }}>
+        <div role="button" tabIndex={0} aria-label={`${session.project.name} project root: press Shift+F10 for actions`} className="flex h-6 items-center gap-1.5 rounded-[7px] px-2 text-[12.5px] focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent" title={session.project.rootPath}
+          onContextMenu={(event) => { event.preventDefault(); onContext(null, event.clientX, event.clientY) }}
+          onKeyDown={(event) => {
+            if (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey)) {
+              event.preventDefault()
+              const rect = event.currentTarget.getBoundingClientRect()
+              onContext(null, rect.left + 16, rect.bottom)
+            }
+          }}>
           <FolderOpen size={15} className="shrink-0 text-accent" />
           <span className="shrink-0 font-semibold text-text-1">{session.project.name}</span>
           <span className="truncate text-[11px] text-text-4">{session.project.rootPath}</span>

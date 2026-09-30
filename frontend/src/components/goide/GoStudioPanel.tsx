@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as R
 import { AlertTriangle, X } from 'lucide-react'
 import { GoStudioEmptyState } from './GoStudioEmptyState'
 import { CreateProjectDialog, UnsavedChangesDialog } from './GoStudioDialogs'
+import { GoStudioWindowControls, useGoStudioTitlebar } from './GoStudioTitlebar'
 import { DEFAULT_RUN_DRAFT, runRequest } from './goStudioRunDraft'
 import { ToolchainDialog } from './GoStudioToolchains'
 import { GoStudioDependencies } from './GoStudioDependencies'
@@ -125,6 +126,7 @@ export function GoStudioPanel() {
   const [cloneOpen, setCloneOpen] = useState(false)
   const [goWorkOpen, setGoWorkOpen] = useState(false)
   const goStudioMaximized = useAppStore((state) => state.goStudioMaximized)
+  const titlebar = useGoStudioTitlebar()
   const toggleGoStudioMaximized = useAppStore((state) => state.toggleGoStudioMaximized)
   const zen = useAppStore((state) => state.goStudioZen)
   const setZen = useAppStore((state) => state.setGoStudioZen)
@@ -505,7 +507,7 @@ export function GoStudioPanel() {
   const openRealPaths = new Set(store.sessions.map((session) => session.project.realPath))
   const recentNotOpen = store.recentProjects.filter((project) => !openRealPaths.has(project.realPath))
   const mainMenu = <GoStudioMenuBar state={commandState} recentProjects={store.recentProjects} openProjectPaths={workspaceSessions.map((session) => session.project.realPath)} onCommand={runCommand} onOpenRecent={(path) => void store.openProject(path)} />
-  const menuBar = <div role="toolbar" aria-label="Go Studio toolbar" className="flex h-12 shrink-0 items-center gap-1 px-2">{mainMenu}<span className="flex-1" /><GoStudioWorkspaceSwitcher /></div>
+  const menuBar = <div role="toolbar" aria-label="Go Studio toolbar" {...titlebar.props} className={`flex h-12 shrink-0 items-center gap-1 pl-2 ${titlebar.active ? 'go-studio-titlebar' : 'pr-2'}`}>{mainMenu}<span className="flex-1" /><GoStudioWorkspaceSwitcher /><GoStudioWindowControls /></div>
   const sharedDialogs = <><CreateProjectDialog open={createOpen} onClose={() => setCreateOpen(false)} /><GoStudioCloneDialog open={cloneOpen} onClose={() => setCloneOpen(false)} /><GoStudioShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} /></>
 
   const windowError = windows.error && <ErrorBanner message={windows.error} onClose={windows.clearError} />

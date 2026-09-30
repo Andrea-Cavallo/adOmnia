@@ -34,6 +34,9 @@ interface AppState {
   pendingFileImport: RoutedToolFile | null
   /** Go Studio a tutta finestra: nasconde rail, intestazione e status bar di adOmnia (solo mentre Go Studio è attivo). */
   goStudioMaximized: boolean
+  /** Finestra principale senza barra di sistema: gO Studio massimizzato usa la sua toolbar come barra del titolo. */
+  appWindowChrome: boolean
+  setAppWindowChrome: (enabled: boolean) => void
   toggleGoStudioMaximized: () => void
   /** Zen Mode: solo il codice. Implica Go Studio a tutta finestra; vale solo mentre Go Studio è attivo. */
   goStudioZen: boolean
@@ -75,6 +78,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   pendingFileImport: null,
   // gO Studio si apre a tutto schermo come un IDE; il logo aO o il tasto restore riportano la rail.
   goStudioMaximized: true,
+  appWindowChrome: false,
+  setAppWindowChrome: (enabled) => set({ appWindowChrome: enabled }),
   toggleGoStudioMaximized: () => set((s) => ({ goStudioMaximized: !s.goStudioMaximized })),
   goStudioZen: false,
   setGoStudioZen: (zen) => set({ goStudioZen: zen }),

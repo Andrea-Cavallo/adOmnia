@@ -186,3 +186,12 @@
   font-style: italic;
   opacity: 0.85;
 }
+
+/* Toolbar come barra della finestra (JetBrains): si trascina dagli spazi vuoti, i controlli restano cliccabili. */
+.go-studio-titlebar { user-select: none; }
+.go-studio-titlebar button,
+.go-studio-titlebar input,
+.go-studio-titlebar select,
+.go-studio-titlebar a,
+.go-studio-titlebar [role="group"],
+.go-studio-titlebar [role="menu"] { --wails-draggable: no-drag; }
