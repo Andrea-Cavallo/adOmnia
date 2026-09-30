@@ -184,15 +184,16 @@ func (d *DevSession) SetPort(sessionID string, port int) error {
 	return d.manager.SetPort(sessionID, port)
 }
 
-// WaitReady waits until the service accepts connections on its port.
-func (d *DevSession) WaitReady(sessionID string, timeoutMs int) error {
+// WaitReady waits until the service accepts connections on its port and,
+// with a health path, answers it below 500.
+func (d *DevSession) WaitReady(sessionID, healthPath string, timeoutMs int) error {
 	timeout := time.Duration(timeoutMs) * time.Millisecond
 	if timeout <= 0 || timeout > maxReadyWait {
 		timeout = 30 * time.Second
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	return d.manager.WaitReady(ctx, sessionID)
+	return d.manager.WaitReadyAt(ctx, sessionID, healthPath)
 }
 
 // Logs returns a session's log lines, optionally only a request's.

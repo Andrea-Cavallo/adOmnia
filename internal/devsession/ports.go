@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"regexp"
 	"strconv"
@@ -156,6 +157,12 @@ func portFromOutput(line string) int {
 
 // WaitReady blocks until the session's port accepts TCP connections.
 func (m *Manager) WaitReady(ctx context.Context, id string) error {
+	return m.WaitReadyAt(ctx, id, "")
+}
+
+// WaitReadyAt waits for the port and, with a health path such as /healthz,
+// for an HTTP answer below 500 on it.
+func (m *Manager) WaitReadyAt(ctx context.Context, id, healthPath string) error {
 	for {
 		m.mu.Lock()
 		session, err := m.sessionLocked(id)
@@ -169,21 +176,50 @@ func (m *Manager) WaitReady(ctx context.Context, id string) error {
 		}
 		port := session.Port
 		m.mu.Unlock()
-		if port > 0 {
-			dialer := net.Dialer{Timeout: 500 * time.Millisecond}
-			conn, err := dialer.DialContext(ctx, "tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)))
-			if err == nil {
-				_ = conn.Close()
-				return nil
-			}
+		if port > 0 && accepts(ctx, port) && healthy(ctx, port, healthPath) {
+			return nil
 		}
 		select {
 		case <-ctx.Done():
 			if port == 0 {
 				return fmt.Errorf("the service did not open a port: set it by hand from the debug bar")
 			}
+			if healthPath != "" {
+				return fmt.Errorf("%s on port %d did not answer yet", healthPath, port)
+			}
 			return fmt.Errorf("nothing is listening on port %d yet", port)
 		case <-time.After(300 * time.Millisecond):
 		}
 	}
+}
+
+// accepts tries IPv4 then IPv6 loopback: a service may bind only one of them.
+func accepts(ctx context.Context, port int) bool {
+	dialer := net.Dialer{Timeout: 500 * time.Millisecond}
+	for _, host := range []string{"127.0.0.1", "::1"} {
+		if conn, err := dialer.DialContext(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port))); err == nil {
+			_ = conn.Close()
+			return true
+		}
+	}
+	return false
+}
+
+func healthy(ctx context.Context, port int, path string) bool {
+	if path == "" {
+		return true
+	}
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://127.0.0.1:"+strconv.Itoa(port)+path, nil)
+	if err != nil {
+		return false
+	}
+	response, err := (&http.Client{Timeout: 2 * time.Second}).Do(request)
+	if err != nil {
+		return false
+	}
+	_ = response.Body.Close()
+	return response.StatusCode < 500
 }

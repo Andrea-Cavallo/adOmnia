@@ -24,14 +24,16 @@ export interface DevSessionPrefs {
   targets: Record<string, ServiceTarget>
   /** Services seen at least once: Debug Request is offered for them even when stopped. */
   knownServices: Record<string, { root: string }>
+  /** Optional readiness path per service (/healthz): Debug Request waits for it. */
+  healthPaths: Record<string, string>
 }
 
-const defaultPrefs: DevSessionPrefs = { correlationHeader: true, autoSplitView: true, targets: {}, knownServices: {} }
+const defaultPrefs: DevSessionPrefs = { correlationHeader: true, autoSplitView: true, targets: {}, knownServices: {}, healthPaths: {} }
 
 function loadPrefs(): DevSessionPrefs {
   try {
     const stored = JSON.parse(localStorage.getItem(PREFS_KEY) ?? 'null') as Partial<DevSessionPrefs> | null
-    return { ...defaultPrefs, ...(stored ?? {}), targets: { ...(stored?.targets ?? {}) }, knownServices: { ...(stored?.knownServices ?? {}) } }
+    return { ...defaultPrefs, ...(stored ?? {}), targets: { ...(stored?.targets ?? {}) }, knownServices: { ...(stored?.knownServices ?? {}) }, healthPaths: { ...(stored?.healthPaths ?? {}) } }
   } catch {
     return defaultPrefs
   }

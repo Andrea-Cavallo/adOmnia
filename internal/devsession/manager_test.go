@@ -3,6 +3,8 @@ package devsession
 import (
 	"context"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"sync"
 	"testing"
 	"time"
@@ -266,5 +268,29 @@ func TestDebugOutputKeepsProgramLinesOnly(t *testing.T) {
 	}
 	if got := manager.Snapshot().Sessions[0].Port; got != 45661 {
 		t.Fatalf("port from console output = %d", got)
+	}
+}
+
+func TestWaitReadyWithHealthPath(t *testing.T) {
+	ready := false
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/healthz" || !ready {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			ready = true // the second probe succeeds
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+	manager, _ := testManager(Hooks{})
+	manager.RunStarted("go-1", "r", "run", "go run .", 1)
+	_ = manager.SetPort("run:r", server.Listener.Addr().(*net.TCPAddr).Port)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	if err := manager.WaitReadyAt(ctx, "run:r", "healthz"); err != nil {
+		t.Fatal(err)
+	}
+	if !ready {
+		t.Fatal("the health path was never probed")
 	}
 }

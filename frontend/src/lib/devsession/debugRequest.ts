@@ -124,7 +124,7 @@ export async function prepareDebugRequest(tabId: string, request: RequestItem, e
   }
 
   progress('ready', session.port ? `Waiting for ${session.service} on :${session.port}…` : `Waiting for ${session.service} to open its port…`)
-  await waitLiveReady(session.id, READY_TIMEOUT_MS)
+  await waitLiveReady(session.id, useDevSessionStore.getState().prefs.healthPaths[session.service] ?? '', READY_TIMEOUT_MS)
   const ready = useDevSessionStore.getState().sessions[session.id] ?? session
   const base = baseUrlFor(ready)
   const matches = sessionForRequest(useDevSessionStore.getState(), request.url, substVars(request.url, vars))?.id === ready.id

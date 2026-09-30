@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { ArrowDownToLine, Bug, Check, Columns2, Loader2, Play, Redo2, Square, X } from 'lucide-react'
+import { ArrowDownToLine, Bug, Check, Columns2, Loader2, Play, Redo2, RotateCcw, Square, X } from 'lucide-react'
+import { useTabsStore } from '@/stores/tabs'
 import type { LiveSession, RequestRun } from '@/lib/devsession-api'
 import { liveLogs, liveMessages, liveQueries } from '@/lib/devsession-api'
 import { cn } from '@/lib/utils'
@@ -148,6 +149,12 @@ function ActionButton({ onClick, children, tone, title }: { onClick: () => void;
   )
 }
 
+/** Replay at a breakpoint: a copy of the tab is sent while the original waits for the debugger. */
+function replay(tabId: string) {
+  useTabsStore.getState().duplicateTab(tabId)
+  requestAnimationFrame(() => document.dispatchEvent(new CustomEvent('adomnia:send-active-request', { detail: { handled: false } })))
+}
+
 /** PAUSED AT BREAKPOINT: the request is stopped inside the service. */
 function PausedCard({ run, session }: { run: RequestRun; session: LiveSession }) {
   const { step, stop, openSplit } = useDevSessionStore.getState()
@@ -177,6 +184,7 @@ function PausedCard({ run, session }: { run: RequestRun; session: LiveSession })
         <ActionButton onClick={() => void step(session.id, 'next')} title="F8"><Redo2 size={13} />Step Over</ActionButton>
         <ActionButton onClick={() => void step(session.id, 'stepIn')} title="F7"><ArrowDownToLine size={13} />Step Into</ActionButton>
         <ActionButton onClick={() => openSplit(run.tabId ?? null)}><Columns2 size={13} />Split view</ActionButton>
+        {run.tabId && <ActionButton title="Send the same request again from a copy of this tab (edit its body first if needed)" onClick={() => replay(run.tabId!)}><RotateCcw size={12} />Replay</ActionButton>}
         <ActionButton tone="danger" onClick={() => void stop(session.id)}><Square size={10} fill="currentColor" />Stop</ActionButton>
       </div>
       <p className="text-[12px] text-text-4">Waiting for debugger… the response arrives when execution resumes.</p>

@@ -154,10 +154,11 @@ export function UnwatchKafka(sessionID: string): $CancellablePromise<$models.Ses
 }
 
 /**
- * WaitReady waits until the service accepts connections on its port.
+ * WaitReady waits until the service accepts connections on its port and,
+ * with a health path, answers it below 500.
  */
-export function WaitReady(sessionID: string, timeoutMs: number): $CancellablePromise<void> {
-    return $Call.ByID(1150921189, sessionID, timeoutMs);
+export function WaitReady(sessionID: string, healthPath: string, timeoutMs: number): $CancellablePromise<void> {
+    return $Call.ByID(1150921189, sessionID, healthPath, timeoutMs);
 }
 
 /**

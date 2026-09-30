@@ -114,7 +114,7 @@ export const endLiveRequest = (runId: string, status: number, durationMs: number
 export const stepLiveSession = (sessionId: string, action: DebugAction) => DevSessionBindings.Step(sessionId, action) as Promise<void>
 export const stopLiveSession = (sessionId: string) => DevSessionBindings.Stop(sessionId) as Promise<void>
 export const setLivePort = (sessionId: string, port: number) => DevSessionBindings.SetPort(sessionId, port) as Promise<void>
-export const waitLiveReady = (sessionId: string, timeoutMs: number) => DevSessionBindings.WaitReady(sessionId, timeoutMs) as Promise<void>
+export const waitLiveReady = (sessionId: string, healthPath: string, timeoutMs: number) => DevSessionBindings.WaitReady(sessionId, healthPath, timeoutMs) as Promise<void>
 export const liveLogs = (sessionId: string, runId: string, limit = 0) => DevSessionBindings.Logs(sessionId, runId, limit) as Promise<LiveLogEntry[]>
 export const liveQueries = (runId: string) => DevSessionBindings.Queries(runId) as Promise<LiveQuery[]>
 export const liveMessages = (runId: string) => DevSessionBindings.Messages(runId) as Promise<LiveMessage[]>

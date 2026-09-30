@@ -123,6 +123,13 @@ export function ServiceView({ session }: { session: LiveSession }) {
             </select>
             <RemoteTarget onSet={(url) => setTarget(session.service, { kind: 'remote', url })} />
           </div>
+          <label className="flex items-center gap-1.5 py-1 pl-4 text-[11px] text-text-3">
+            Ready when
+            <input aria-label="Health path" defaultValue={prefs.healthPaths[session.service] ?? ''} placeholder="the port opens (or /healthz)"
+              onBlur={(event) => setPrefs({ healthPaths: { ...prefs.healthPaths, [session.service]: event.target.value.trim() } })}
+              className="h-6 w-48 rounded border border-border-2 bg-surface-2 px-1.5 font-mono text-[11px] text-text-1 outline-none placeholder:text-text-4 focus:border-accent" />
+            answers
+          </label>
         </Node>
         <Node icon={<Database size={13} />} title="Databases" detail={sqlSources.map((d) => d.label).join(', ') || 'none detected'}
           action={tools.sql
