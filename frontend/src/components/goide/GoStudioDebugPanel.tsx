@@ -1,13 +1,28 @@
 import { memo, useEffect, useState, type ReactNode } from 'react'
-import { ArrowDownToLine, ArrowUpFromLine, Bug, Network, Pause, Play, Redo2, RotateCcw, Square, Workflow } from 'lucide-react'
+import { ArrowDownToLine, ArrowUpFromLine, Bug, Globe, Network, Pause, Play, Redo2, RotateCcw, Square, Workflow } from 'lucide-react'
 import type { GoIDESession } from '@/lib/goide-api'
 import type { GoIDEDebugStepAction } from '@/lib/goide-debug-api'
 import { activeDebugView, useGoIDEDebugStore, type GoIDEDebugView } from '@/stores/goideDebug'
 import { diagnoseConcurrency, raceDiagnostics } from './goStudioConcurrency'
 import { GoStudioConcurrencyView, useRaceReports } from './GoStudioConcurrencyView'
 import { GoStudioDebugSession } from './GoStudioDebugSession'
+import { useDevSessionStore } from '@/stores/devSession'
+import { RequestContextView } from '@/components/devsession/RequestContextView'
+import type { RequestRun } from '@/lib/devsession-api'
 
-type DebugTab = 'session' | 'concurrency'
+type DebugTab = 'session' | 'concurrency' | 'request'
+
+/** The API request this debugger is serving: the newest one sent to it from adOmnia. */
+function useDebuggedRequest(debugId: string | undefined): RequestRun | null {
+  return useDevSessionStore((state) => {
+    if (!debugId) return null
+    for (let i = state.runOrder.length - 1; i >= 0; i--) {
+      const run = state.runs[state.runOrder[i]]
+      if (run?.sessionId === `debug:${debugId}`) return run
+    }
+    return null
+  })
+}
 
 interface GoStudioDebugPanelProps {
   session: GoIDESession
@@ -30,7 +45,7 @@ function ToolButton({ label, shortcut, disabled, onClick, children, tone }: { la
   )
 }
 
-function DebugToolbar({ view, sessionId, tab, onTab, alerts }: { view: GoIDEDebugView; sessionId: string; tab: DebugTab; onTab: (tab: DebugTab) => void; alerts: number }) {
+function DebugToolbar({ view, sessionId, tab, onTab, alerts, request }: { view: GoIDEDebugView; sessionId: string; tab: DebugTab; onTab: (tab: DebugTab) => void; alerts: number; request: RequestRun | null }) {
   const debuggers = useGoIDEDebugStore((state) => state.debuggers)
   const { step, stop, restart, selectDebugger } = useGoIDEDebugStore.getState()
   const paused = view.info.state === 'stopped'
@@ -58,6 +73,12 @@ function DebugToolbar({ view, sessionId, tab, onTab, alerts }: { view: GoIDEDebu
           <Workflow size={13} />Concurrency
           {alerts > 0 && <span className="rounded-full bg-danger/20 px-1.5 text-[10.5px] font-semibold text-danger">{alerts}</span>}
         </button>
+        {request && (
+          <button type="button" role="tab" aria-selected={tab === 'request'} onClick={() => onTab('request')} className={`flex h-8 items-center gap-1.5 rounded-lg px-3 text-[12px] ${tab === 'request' ? 'bg-[var(--gs-raised)] font-semibold text-text-1' : 'text-text-3 hover:text-text-1'}`}>
+            <Globe size={13} />Request
+            {request.state === 'paused' && <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-label="paused on this request" />}
+          </button>
+        )}
       </div>
       {sessionDebuggers.length > 1 && (
         <select aria-label="Debug session" value={view.info.id} onChange={(event) => selectDebugger(sessionId, event.target.value)}
@@ -97,6 +118,7 @@ export const GoStudioDebugPanel = memo(function GoStudioDebugPanel({ session }: 
   const loadBreakpoints = useGoIDEDebugStore((state) => state.loadBreakpoints)
   const races = useRaceReports(session.id).reports
   const [tab, setTab] = useState<DebugTab>('session')
+  const request = useDebuggedRequest(view?.info.id)
   useEffect(() => { void loadBreakpoints(session.id) }, [loadBreakpoints, session.id])
   const alerts = raceDiagnostics(races).length + diagnoseConcurrency(view?.goroutines?.goroutines ?? []).filter((item) => item.severity !== 'info').length
   if (!view && tab === 'concurrency') {
@@ -105,8 +127,10 @@ export const GoStudioDebugPanel = memo(function GoStudioDebugPanel({ session }: 
   if (!view) return <DebugEmptyState session={session} races={races.length} onShowRaces={() => setTab('concurrency')} />
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <DebugToolbar view={view} sessionId={session.id} tab={tab} onTab={setTab} alerts={alerts} />
-      {tab === 'session' ? <GoStudioDebugSession view={view} sessionId={session.id} /> : <GoStudioConcurrencyView view={view} sessionId={session.id} />}
+      <DebugToolbar view={view} sessionId={session.id} tab={tab} onTab={setTab} alerts={alerts} request={request} />
+      {tab === 'request' && request ? <RequestContextView run={request} />
+        : tab === 'concurrency' ? <GoStudioConcurrencyView view={view} sessionId={session.id} />
+          : <GoStudioDebugSession view={view} sessionId={session.id} />}
     </div>
   )
 })

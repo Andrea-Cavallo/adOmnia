@@ -42,6 +42,9 @@ const CommandPalette = React.lazy(() => import('@/components/layout/CommandPalet
 // Go Studio (store, API, LSP) resta fuori dal bundle iniziale: la guardia di chiusura serve
 // solo con buffer modificati o processi attivi, impossibili prima del primo frame stabile.
 const GoStudioCloseGuard = React.lazy(() => import('@/components/goide/GoStudioCloseGuard').then((module) => ({ default: module.GoStudioCloseGuard })))
+// Live Development Session: the debug bar and its overlays load after the first frame, outside the startup bundle.
+const DebugBar = React.lazy(() => import('@/components/devsession/DebugBar').then((module) => ({ default: module.DebugBar })))
+const DevSessionHost = React.lazy(() => import('@/components/devsession/DevSessionHost').then((module) => ({ default: module.DevSessionHost })))
 const DevLogOverlay = React.lazy(() => import('@/components/ui/DevLogOverlay').then((module) => ({ default: module.DevLogOverlay })))
 const SIDEBAR_WIDTH_MIN = 180
 const SIDEBAR_WIDTH_MAX = 0.40
@@ -70,7 +73,8 @@ function App() {
   const activeRail     = useAppStore((s) => s.activeRail)
   const sidebarCollapsed = useSettingsStore((s) => s.settings.appearance.sidebarCollapsed)
   const showSidebar    = activeRail === 'collections' && !sidebarCollapsed
-  const goStudioMaximized = useAppStore((s) => s.goStudioMaximized || s.goStudioZen) && activeRail === 'goide'
+  const splitView = useAppStore((s) => s.splitView)
+  const goStudioMaximized = useAppStore((s) => s.goStudioMaximized || s.goStudioZen) && activeRail === 'goide' && !splitView
   const workspaceHydrated = useWorkspaceHydration()
   const workspaceShellPhase = useWorkspaceHydrationShell(workspaceHydrated)
   const addDevLog = useDevLogsStore((s) => s.addEntry)
@@ -86,8 +90,8 @@ function App() {
     // Dynamic import keeps the gO store out of the startup bundle (check:startup budget).
     let disposers: Array<() => void> = []
     let disposed = false
-    void Promise.all([import('@/stores/devcontext'), import('@/lib/entities/openers')]).then(([devcontext, openers]) => {
-      if (!disposed) disposers = [devcontext.startDevContextSync(), openers.registerDefaultOpeners()]
+    void Promise.all([import('@/stores/devcontext'), import('@/lib/entities/openers'), import('@/stores/devSession')]).then(([devcontext, openers, devSession]) => {
+      if (!disposed) disposers = [devcontext.startDevContextSync(), openers.registerDefaultOpeners(), devSession.startDevSessionSync()]
     })
     return () => { disposed = true; disposers.forEach((dispose) => dispose()) }
   }, [])
@@ -208,6 +212,7 @@ function App() {
             )}
             <ErrorBoundary><MainAreaRouter /></ErrorBoundary>
           </div>
+          {!goStudioMaximized && firstStableFrame && <Suspense fallback={null}><DebugBar /></Suspense>}
           {!goStudioMaximized && <StatusBar />}
           {dragOver && <DropOverlay preview={dropPreview} />}
           {dropFeedback && <DropToast feedback={dropFeedback} />}
@@ -218,6 +223,7 @@ function App() {
         <EntityNotice />
         <ConfirmDialogHost />
         {firstStableFrame && <Suspense fallback={null}><GoStudioCloseGuard /></Suspense>}
+        {firstStableFrame && <Suspense fallback={null}><DevSessionHost /></Suspense>}
         {import.meta.env.DEV && devLogVisible && <Suspense fallback={null}><DevLogOverlay visible onClose={toggleDevTools} /></Suspense>}
       </ThemeProvider>
     </ErrorBoundary>

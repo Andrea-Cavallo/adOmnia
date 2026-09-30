@@ -1,0 +1,87 @@
+import type { ReactNode } from 'react'
+import { ExternalLink } from 'lucide-react'
+import type { RequestRun } from '@/lib/devsession-api'
+import { substVars } from '@/lib/substVars'
+import { useEnvironmentsStore } from '@/stores/environments'
+import { useTabsStore } from '@/stores/tabs'
+import { liveVars } from '@/lib/devsession/liveRequest'
+import { openRequestTab } from '@/lib/devsession/navigation'
+import { pathParams, requestPath } from '@/lib/devsession/routeMatch'
+import { useRouteForRequest } from '@/lib/devsession/useRouteForRequest'
+
+const SECRET_HEADER = /^(authorization|proxy-authorization|cookie|set-cookie|x-api-key|api-key|x-auth-token)$/i
+
+/** `Bearer abc.def` → `Bearer ***`: values of credential headers never show in the debugger. */
+export function maskHeader(key: string, value: string): string {
+  if (!SECRET_HEADER.test(key.trim())) return value
+  const scheme = /^(Bearer|Basic|Digest|Token)\s+/i.exec(value)
+  return scheme ? `${scheme[1]} ***` : '***'
+}
+
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="border-b border-border-1 px-3 py-2">
+      <h4 className="mb-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-text-4">{title}</h4>
+      {children}
+    </section>
+  )
+}
+
+function Pairs({ pairs }: { pairs: Array<[string, string]> }) {
+  if (pairs.length === 0) return <p className="text-[11.5px] text-text-4">None</p>
+  return (
+    <dl className="grid grid-cols-[minmax(80px,auto)_1fr] gap-x-3 gap-y-0.5 font-mono text-[11.5px]">
+      {pairs.map(([key, value], index) => (
+        <div key={`${key}-${index}`} className="contents">
+          <dt className="truncate text-text-3">{key}</dt>
+          <dd className="break-all text-text-1">{value}</dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
+/**
+ * The HTTP request a paused goroutine is serving, next to Variables and Call
+ * Stack: method, path/query params, headers (credentials masked), body and
+ * the ids that tie it to logs and messages.
+ */
+export function RequestContextView({ run }: { run: RequestRun }) {
+  const tab = useTabsStore((state) => state.tabs.find((item) => item.id === run.tabId))
+  const vars = liveVars(useEnvironmentsStore.getState().getResolvedVars())
+  const route = useRouteForRequest(run.method, run.url)
+  const pathname = requestPath(run.url) ?? ''
+  let query: Array<[string, string]> = []
+  try { query = [...new URL(run.url).searchParams.entries()] } catch { /* relative URL: no query */ }
+  const params = route ? Object.entries(pathParams(route.route.attrs.path ?? '', pathname)) : []
+  const headers: Array<[string, string]> = (tab?.request.headers ?? [])
+    .filter((header) => header.enabled && header.key)
+    .map((header) => [substVars(header.key, vars), maskHeader(header.key, substVars(header.value, vars))])
+  const body = tab ? tab.request.bodies[tab.request.activeBodyIdx] : undefined
+  const bodyText = !body || body.type === 'none' ? ''
+    : body.type === 'urlencoded' || body.type === 'formdata'
+      ? body.form.filter((row) => row.enabled && row.key).map((row) => `${row.key}=${substVars(row.value, vars)}`).join('\n')
+      : substVars(body.raw, vars)
+
+  return (
+    <div className="min-h-0 flex-1 overflow-auto text-text-2">
+      <div className="flex items-center gap-2 border-b border-border-1 px-3 py-2">
+        <span className="font-mono text-[12px] font-bold text-text-1">{run.method}</span>
+        <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-text-1" title={run.url}>{pathname || run.url}</span>
+        {run.tabId && (
+          <button type="button" onClick={() => openRequestTab(run.tabId)} className="flex shrink-0 items-center gap-1 rounded border border-border-2 px-2 py-0.5 text-[11px] text-text-2 hover:border-accent hover:text-accent">
+            <ExternalLink size={11} />Open full request
+          </button>
+        )}
+      </div>
+      {route && <Section title="Handler"><p className="font-mono text-[11.5px] text-text-1">{route.name} <span className="text-text-4">· {route.file}:{route.line}</span></p></Section>}
+      <Section title="Path parameters"><Pairs pairs={params} /></Section>
+      <Section title="Query parameters"><Pairs pairs={query} /></Section>
+      <Section title="Headers"><Pairs pairs={headers} /></Section>
+      <Section title="Body">
+        {bodyText ? <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all font-mono text-[11.5px] text-text-1">{bodyText}</pre> : <p className="text-[11.5px] text-text-4">{tab ? 'No body' : 'The request tab was closed.'}</p>}
+      </Section>
+      <Section title="Request ID"><Pairs pairs={[['X-AdOmnia-Request-ID', run.correlationId], ['run', run.id]]} /></Section>
+    </div>
+  )
+}

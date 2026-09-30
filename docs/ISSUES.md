@@ -29,6 +29,12 @@ the current codebase on 2026-06-13 and found already resolved (see below)._
 
 ## New This Cycle
 
+### Live Development Session — implemented, manual verification open
+
+Backend, correlation and the Delve loop are covered end to end by `internal/goide/devsession_integration_test.go` (real Go service under real Delve; skipped without `dlv`). Details: [LIVE-SESSION.md](LIVE-SESSION.md).
+
+- [ ] **P1 — Manual checks in the running app**: debug bar in every tool, Debug Request from a stopped service, Split Debug View, Ctrl+Tab, Alt+Shift+1…5, SQL capture with a real Postgres/MySQL, Kafka watch with a real broker, both themes and a small window.
+
 ### Go Studio (Go IDE) — shipped through v0.9.39, manual verification open
 
 Implemented and covered by automated tests on Windows and Linux: projects and trust, isolated sessions and restore, gopls intelligence and refactoring, linters, Fix with AI, build/run/tests/coverage, the Delve debugger, the PTY terminal, Go Tools, Git in the editor linked to Git Studio, adOmnia integrations, Go Studio workspaces and separate project windows. Details: [GO-STUDIO.md](GO-STUDIO.md). The work queue lives in `todo-ide.md`.

@@ -42,6 +42,12 @@ interface AppState {
   goStudioZen: boolean
   setGoStudioZen: (zen: boolean) => void
   setActiveRail: (rail: RailItem) => void
+  /** Panels kept mounted (hidden) once visited, so switching tools never loses their state. */
+  keptPanels: RailItem[]
+  keepPanel: (rail: RailItem) => void
+  /** Split Debug View: Go Studio and the API workspace side by side. */
+  splitView: boolean
+  setSplitView: (split: boolean) => void
   queueFileImport: (file: RoutedToolFile) => void
   consumeFileImport: (kind: RoutedToolFile['kind']) => RoutedToolFile | null
   goBack: () => void
@@ -90,6 +96,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       railHistory: s.activeRail !== rail ? [...s.railHistory.slice(-19), s.activeRail] : s.railHistory,
     }))
   },
+  keptPanels: [],
+  splitView: false,
+  setSplitView: (split) => set({ splitView: split }),
+  keepPanel: (rail) => set((s) => (s.keptPanels.includes(rail) ? s : { keptPanels: [...s.keptPanels, rail] })),
   queueFileImport: (file) => set({ pendingFileImport: file }),
   consumeFileImport: (kind) => {
     const file = get().pendingFileImport

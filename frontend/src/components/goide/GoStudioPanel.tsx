@@ -75,6 +75,8 @@ import { useShallow } from 'zustand/react/shallow'
 import { activeGoIDEDocument, dirtyGoIDEDocuments, sessionsInWorkspace, useGoIDEStore, type GoIDEEditorDocument, type GoIDEState } from '@/stores/goide'
 import { useGoStudioCursorStore } from './goStudioCursor'
 import { useGoIDELspStore } from '@/stores/goideLsp'
+import { usePanelActiveRef } from '@/components/layout/PanelActivity'
+import type { GoDebugStartDetail } from '@/lib/devsession/debugRequest'
 
 
 const PANEL_STATE_KEYS = [
@@ -128,6 +130,8 @@ function currentActiveDocument() {
 }
 
 export function GoStudioPanel() {
+  // Kept mounted while hidden: its shortcuts must not fire from other tools.
+  const panelActive = usePanelActiveRef()
   const store = useGoIDEStore(useShallow(selectPanelState))
   const summary = useGoIDEStore(useShallow(selectDocumentSummary))
   const setCursor = useGoStudioCursorStore((state) => state.setCursor)
@@ -219,6 +223,7 @@ export function GoStudioPanel() {
   const availabilityRef = useRef<(id: GoStudioCommandId) => true | string>(() => true)
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (!panelActive.current) return
       const command = commandForKey(event)
       if (!command) return
       if (command.passThroughWhenUnavailable && availabilityRef.current(command.id) !== true) return
@@ -227,6 +232,30 @@ export function GoStudioPanel() {
     }
     window.addEventListener('keydown', onKeyDown, true)
     return () => window.removeEventListener('keydown', onKeyDown, true)
+  }, [])
+
+  // Debug Request dall'API Workspace: avvia la configurazione Debug attiva del progetto indicato.
+  useEffect(() => {
+    const onDebugStart = (event: Event) => {
+      const detail = (event as CustomEvent<GoDebugStartDetail>).detail
+      detail.handled = true
+      void (async () => {
+        try {
+          const store = useGoIDEStore.getState()
+          if (!store.sessions.some((session) => session.id === detail.goSessionId)) return detail.done?.('The project is no longer open in Go Studio.')
+          if (store.activeSessionId !== detail.goSessionId) await store.selectSession(detail.goSessionId)
+          await new Promise((resolve) => setTimeout(resolve, 60)) // i comandi leggono la sessione appena selezionata
+          const availability = availabilityRef.current('debug.debug')
+          if (availability !== true) return detail.done?.(availability)
+          runCommandRef.current('debug.debug')
+          detail.done?.()
+        } catch (error) {
+          detail.done?.(error instanceof Error ? error.message : String(error))
+        }
+      })()
+    }
+    document.addEventListener('adomnia:go-debug-start', onDebugStart)
+    return () => document.removeEventListener('adomnia:go-debug-start', onDebugStart)
   }, [])
 
   // Build e Run partono dalla configurazione salvata attiva; senza configurazioni
@@ -308,7 +337,7 @@ export function GoStudioPanel() {
   // Doppio Shift apre Search Everywhere solo quando c'è un progetto aperto.
   useEffect(() => {
     if (!activeSessionId) return
-    const detect = createDoubleShiftDetector(() => setSearchEverywhereOpen(true))
+    const detect = createDoubleShiftDetector(() => { if (panelActive.current) setSearchEverywhereOpen(true) })
     window.addEventListener('keydown', detect, true)
     return () => window.removeEventListener('keydown', detect, true)
   }, [activeSessionId])

@@ -74,6 +74,7 @@ func main() {
 	oasLint := NewOASLint()
 	goIDE := NewGoIDE()
 	devContext := NewDevContext(goIDE)
+	devSession := NewDevSession(goIDE)
 
 	var mainWindow *application.WebviewWindow
 	appOptions := application.Options{
@@ -97,6 +98,7 @@ func main() {
 			application.NewService(oasLint),
 			application.NewService(goIDE),
 			application.NewService(devContext),
+			application.NewService(devSession),
 		},
 		// Only one process may hold the bbolt lock. Additional launches focus
 		// the running main window instead of starting with an empty workspace.
@@ -123,6 +125,7 @@ func main() {
 	app.AttachDesktop(desktopApp)
 	goIDE.attachDesktop(desktopApp)
 	devContext.attachDesktop(desktopApp)
+	devSession.attachDesktop(desktopApp)
 
 	mainWindow = desktopApp.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:      "main",

@@ -1,5 +1,6 @@
-import React, { Suspense, useCallback, useEffect } from 'react'
-import { ArrowLeft, X } from 'lucide-react'
+import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { ArrowLeft, Columns2, X } from 'lucide-react'
+import { ResizeHandle } from '@/components/ui/ResizeHandle'
 import { useAppStore, type RailItem } from '@/stores/app'
 import { useCollectionsStore } from '@/stores/collections'
 import { useWorkspaceHydration, useWorkspaceHydrationShell } from '@/hooks/useWorkspaceHydration'
@@ -9,6 +10,7 @@ import { useT } from '@/lib/i18n'
 import { useNavigationTranslation, useUiTranslation } from '@/lib/uiI18n'
 import { initialRailFromMemento } from '@/lib/uiSessionMemento'
 import { markStartup } from '@/lib/startupPerformance'
+import { PanelActiveContext } from '@/components/layout/PanelActivity'
 
 const WebSocketPanel       = React.lazy(() => import('@/components/websocket/WebSocketPanel').then(m => ({ default: m.WebSocketPanel })))
 const RequestHistoryPanel  = React.lazy(() => import('@/components/history/RequestHistoryPanel').then(m => ({ default: m.RequestHistoryPanel })))
@@ -107,6 +109,9 @@ function PanelHeader({ titleKey }: { titleKey?: string }) {
 
 type PanelDef = { component: React.ReactNode; titleKey?: string; overflow?: boolean }
 
+/** Panels that stay mounted once visited: the developer moves between code and API without losing either. */
+export const KEEP_ALIVE_PANELS: readonly RailItem[] = ['collections', 'goide']
+
 function panelFor(activeRail: RailItem): PanelDef {
   switch (activeRail) {
     case 'collections': return { component: <RequestWorkspace />, titleKey: 'API Workspace' }
@@ -159,6 +164,35 @@ export function MainAreaRouter() {
   const workspaceHydrating = activeRail === 'collections' && workspaceShellPhase !== 'ready'
   const quietWorkspaceShell = workspaceShellPhase === 'quiet'
 
+  const keptPanels = useAppStore((s) => s.keptPanels)
+  const keepPanel = useAppStore((s) => s.keepPanel)
+  const activeKept = KEEP_ALIVE_PANELS.includes(activeRail)
+  useEffect(() => {
+    if (activeKept) keepPanel(activeRail)
+  }, [activeKept, activeRail, keepPanel])
+
+  // Split Debug View: Go Studio and the API workspace visible together. The
+  // pane that last received focus owns the keyboard shortcuts.
+  const splitView = useAppStore((s) => s.splitView)
+  const split = splitView && (activeRail === 'collections' || activeRail === 'goide') && workspaceShellPhase === 'ready'
+  const [focusedPane, setFocusedPane] = useState<RailItem>('collections')
+  const [splitRatio, setSplitRatio] = useState(0.55)
+  const splitRef = useRef<HTMLDivElement>(null)
+  const startSplitResize = useCallback((event: React.MouseEvent) => {
+    event.preventDefault()
+    const box = splitRef.current?.getBoundingClientRect()
+    if (!box) return
+    const move = (e: MouseEvent) => setSplitRatio(Math.min(0.75, Math.max(0.25, (e.clientX - box.left) / box.width)))
+    const up = () => {
+      document.removeEventListener('mousemove', move)
+      document.removeEventListener('mouseup', up)
+      document.body.style.cursor = ''
+    }
+    document.body.style.cursor = 'ew-resize'
+    document.addEventListener('mousemove', move)
+    document.addEventListener('mouseup', up)
+  }, [])
+
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
     const target = event.target as HTMLElement
     const tag = target.tagName
@@ -185,12 +219,61 @@ export function MainAreaRouter() {
     <main className={`flex-1 flex flex-col min-w-0 relative bg-surface-0${overflow ? ' overflow-hidden' : ''}`}>
       {workspaceHydrating
         ? <WorkspacePanelHeaderSkeleton quiet={quietWorkspaceShell} />
-        : titleKey && !maximized && <PanelHeader titleKey={titleKey} />}
-      <div key={activeRail} className="flex-1 flex flex-col min-w-0 overflow-hidden panel-enter">
-        <Suspense fallback={fallback}>
-          {workspaceHydrating ? <WorkspaceMainSkeleton quiet={quietWorkspaceShell} /> : component}
-        </Suspense>
+        : split ? <SplitHeader /> : titleKey && !maximized && <PanelHeader titleKey={titleKey} />}
+      {workspaceHydrating ? (
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden panel-enter">
+          <WorkspaceMainSkeleton quiet={quietWorkspaceShell} />
+        </div>
+      ) : !activeKept && (
+        <div key={activeRail} className="flex-1 flex flex-col min-w-0 overflow-hidden panel-enter">
+          <Suspense fallback={fallback}>{component}</Suspense>
+        </div>
+      )}
+      <div ref={splitRef} className={split ? 'flex flex-1 min-h-0 min-w-0' : 'contents'}>
+        {keptRails(split ? [...keptPanels, 'goide', 'collections'] : keptPanels, activeRail).map((rail) => {
+          const shown = split ? (rail === 'goide' || rail === 'collections') : rail === activeRail && !workspaceHydrating
+          // The API workspace needs hydrated collections before it mounts.
+          if (rail === 'collections' && workspaceShellPhase !== 'ready') return null
+          const active = shown && (!split || focusedPane === rail)
+          const className = !shown ? 'hidden'
+            : split ? `flex flex-col min-w-0 overflow-hidden ${rail === 'goide' ? 'order-0 border-r border-border-1' : 'order-2 flex-1'}`
+              : 'flex-1 flex flex-col min-w-0 overflow-hidden panel-enter'
+          return (
+            <PanelActiveContext.Provider key={rail} value={active}>
+              <div
+                className={className}
+                style={split && rail === 'goide' ? { flexBasis: `${splitRatio * 100}%` } : undefined}
+                inert={!shown}
+                aria-hidden={!shown}
+                onFocusCapture={split ? () => setFocusedPane(rail) : undefined}
+                onMouseDownCapture={split ? () => setFocusedPane(rail) : undefined}
+              >
+                <Suspense fallback={rail === 'collections' ? <WorkspaceMainSkeleton quiet /> : <PanelSkeleton />}>{panelFor(rail).component}</Suspense>
+              </div>
+            </PanelActiveContext.Provider>
+          )
+        })}
+        {split && <div className="order-1 flex"><ResizeHandle label="Drag to resize the split view" onMouseDown={startSplitResize} withLine={false} /></div>}
       </div>
     </main>
+  )
+}
+
+function keptRails(kept: RailItem[], active: RailItem): RailItem[] {
+  const rails = [...new Set(kept)].filter((rail) => KEEP_ALIVE_PANELS.includes(rail))
+  return KEEP_ALIVE_PANELS.includes(active) && !rails.includes(active) ? [...rails, active] : rails
+}
+
+function SplitHeader() {
+  const setSplitView = useAppStore((s) => s.setSplitView)
+  return (
+    <div className="h-10 flex items-center gap-2 px-3 border-b border-border-1 bg-surface-1 flex-shrink-0">
+      <Columns2 size={13} className="text-accent" aria-hidden="true" />
+      <span className="flex-1 px-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-text-2">Split Debug View · Go Studio ↔ API request</span>
+      <button onClick={() => setSplitView(false)} title="Close split view" aria-label="Close split view"
+        className="h-6 w-6 flex items-center justify-center rounded text-text-3 hover:text-text-1 hover:bg-surface-3 transition-colors">
+        <X size={12} />
+      </button>
+    </div>
   )
 }

@@ -5,6 +5,10 @@
 // @ts-ignore: Unused imports
 import { Create as $Create } from "@wailsio/runtime";
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as devsession$0 from "./internal/devsession/models.js";
+
 /**
  * LogFileEntry represents a log file in the logs directory.
  */
@@ -34,6 +38,36 @@ export class LogFileEntry {
     static createFrom($$source: any = {}): LogFileEntry {
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         return new LogFileEntry($$parsedSource as Partial<LogFileEntry>);
+    }
+}
+
+/**
+ * SessionTools reports the capture tools attached to a live session.
+ */
+export class SessionTools {
+    "kafka"?: devsession$0.KafkaWatch | null;
+    "sql"?: devsession$0.SQLProxy | null;
+
+    /** Creates a new SessionTools instance. */
+    constructor($$source: Partial<SessionTools> = {}) {
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SessionTools instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SessionTools {
+        const $$createField0_0 = $$createType1;
+        const $$createField1_0 = $$createType3;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("kafka" in $$parsedSource) {
+            $$parsedSource["kafka"] = $$createField0_0($$parsedSource["kafka"]);
+        }
+        if ("sql" in $$parsedSource) {
+            $$parsedSource["sql"] = $$createField1_0($$parsedSource["sql"]);
+        }
+        return new SessionTools($$parsedSource as Partial<SessionTools>);
     }
 }
 
@@ -117,3 +151,9 @@ export class UpdateInfo {
         return new UpdateInfo($$parsedSource as Partial<UpdateInfo>);
     }
 }
+
+// Private type creation functions
+const $$createType0 = devsession$0.KafkaWatch.createFrom;
+const $$createType1 = $Create.Nullable($$createType0);
+const $$createType2 = devsession$0.SQLProxy.createFrom;
+const $$createType3 = $Create.Nullable($$createType2);

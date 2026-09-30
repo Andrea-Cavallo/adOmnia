@@ -601,6 +601,24 @@ Existing `{{variable}}` references are also linked when their current environmen
 
 ---
 
+### D11. Live Development Session
+
+| # | Feature | Description |
+|---|-------------|-------------|
+| D11.1 | **Live session** | A Go Studio Run or Debug becomes a session shared by every tool: service name, PID, port (run config, printed address, new listening socket or by hand), state, paused location. |
+| D11.2 | **Debug bar** | Bottom bar in every tool except Go Studio: state, paused `file:line`, Continue / Step Over / Into / Out / Stop (F9, F8, F7, Shift+F8, Ctrl+F2), request in flight, split view, service drawer. |
+| D11.3 | **Debug Request** | Next to Send: starts or reuses the service under Delve, waits for its port or health path, sends and follows the request; PAUSED AT BREAKPOINT in the response area; Replay from a copy of the tab. |
+| D11.4 | **Linked requests** | `{{service:name}}` targets a service: Local run (follows the port), Docker Compose port or a remote URL. *Link to service* rewrites `localhost:PORT`. |
+| D11.5 | **API ↔ code** | Handler that serves a request (declaration, not the router line) with Open handler; contract drift warning against the service's OpenAPI; handler CodeLens in Go Studio (open, run, debug request, last response, history). |
+| D11.6 | **Request Context** | Go Studio debugger tab: method, path/query params, headers with credentials masked, body, request id; Open full request. |
+| D11.7 | **Request views** | Logs, Debug, Timeline, DB and Kafka of each request plus a completion summary (status, time, code path, queries, events, logs, breakpoints) and *Mock this response*. |
+| D11.8 | **Correlation** | `X-AdOmnia-Request-ID` on API Workspace and Interceptor requests; logs, SQL and messages tied by id (certain) or by time (labelled). |
+| D11.9 | **SQL and Kafka** | SQL from the service's logs; opt-in loopback capture proxy for Postgres/MySQL; Kafka watch from the newest offset without consumer group. Open in Database / Broker Studio with the way back to the request. |
+| D11.10 | **Service drawer** | Logs (filters, Log Inspector live source) and service view: project, routes, runtime and target, databases, Kafka, logs, debugger, preferences, service name. |
+| D11.11 | **Context navigation** | Go Studio and API Workspace stay mounted; Split Debug View (auto on breakpoint); Ctrl+Tab context switcher; Alt+Shift+1…5 tool keys; palette commands. |
+
+---
+
 ## E. LOCAL DATA
 
 ### E1. Database Studio

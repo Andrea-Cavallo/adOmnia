@@ -211,7 +211,7 @@ export function DatabasePanel() {
     setActiveId(conn.id)
   }
 
-  useEntityHandoff('database', (ref, intent) => {
+  useEntityHandoff('database', (ref, intent, payload) => {
     if (!hydrated) return false // never persist before saved connections are loaded
     if (intent === 'connect') {
       const next = upsertConnectionFromRef(connections, ref)
@@ -220,6 +220,15 @@ export function DatabasePanel() {
       showEntityNotice(next.created
         ? `Connection "${ref.label}" added. Enter the password or load it from the Vault, then connect.`
         : `Switched to the existing connection for ${ref.label}.`)
+      return true
+    }
+    if (intent === 'sql' && typeof payload.sql === 'string') {
+      // A statement seen at runtime: opened, never executed, with the way back to its request.
+      const tab = blankTab(ref.label, payload.sql)
+      setTabs((current) => [...current, tab])
+      setActiveTabId(tab.id)
+      const back = payload.back as { label: string; run: () => void } | undefined
+      showEntityNotice(`Query from ${ref.label}. Pick the service's connection, then run it.`, back)
       return true
     }
     if (intent === 'query') {

@@ -20,6 +20,7 @@ func detectGoFile(rel string, data []byte) ([]Entity, error) {
 	out = append(out, detectRoutes(rel, fset, file)...)
 	out = append(out, detectLiterals(rel, fset, file)...)
 	out = append(out, detectProtocols(rel, fset, file)...)
+	out = append(out, detectHandlerDecls(rel, fset, file)...)
 	return out, nil
 }
 

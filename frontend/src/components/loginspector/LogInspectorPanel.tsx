@@ -1,3 +1,4 @@
+import { attachLiveSessionSource } from '@/lib/devsession/logInspectorSource'
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { downloadText } from '@/lib/fileUtils'
@@ -103,6 +104,8 @@ export function LogInspectorPanel() {
     (sourceId, label, lines) => appendLiveLines(sourceId, label, lines),
     [appendLiveLines],
   ))
+  // A Go service started from Go Studio streams its output here as a live source.
+  useEffect(() => attachLiveSessionSource(appendLiveLines), [appendLiveLines])
 
   const sessionMetadata = useCallback((savedAt = Date.now()): InvestigationMetadata => ({
     version: 1,
