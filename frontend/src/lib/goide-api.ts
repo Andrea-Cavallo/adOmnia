@@ -30,6 +30,7 @@ import type {
   RecoveredBuffer,
   TerminalSession,
   TerminalRequest,
+  TerminalProfile,
 } from '../../bindings/adomnia/internal/goide/models'
 
 export type GoIDECapabilities = Capabilities
@@ -298,6 +299,12 @@ export async function startGoIDEConfiguredRun(sessionId: string, configId: strin
 }
 
 // --- Terminale PTY ----------------------------------------------------------
+
+export type GoIDETerminalProfile = TerminalProfile
+
+export async function listGoIDETerminalProfiles(): Promise<GoIDETerminalProfile[]> {
+  return GoIDEBindings.ListTerminalProfiles()
+}
 
 export async function openGoIDETerminal(request: GoIDETerminalRequest): Promise<GoIDETerminalSession> {
   return GoIDEBindings.OpenTerminal(request)

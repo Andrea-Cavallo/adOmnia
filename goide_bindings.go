@@ -975,6 +975,11 @@ func (g *GoIDE) StartConfiguredRun(sessionID, configID string, secrets map[strin
 	return g.service.StartConfiguredRun(sessionID, configID, secrets)
 }
 
+// ListTerminalProfiles rileva le shell disponibili (PowerShell, cmd, Git Bash, distro WSL, zsh…).
+func (g *GoIDE) ListTerminalProfiles() []goide.TerminalProfile {
+	return goide.ListTerminalProfiles()
+}
+
 // OpenTerminal apre una shell interattiva reale nella working directory del progetto.
 func (g *GoIDE) OpenTerminal(request goide.TerminalRequest) (goide.TerminalSession, error) {
 	return g.service.OpenTerminal(request)

@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Plus, TerminalSquare, X } from 'lucide-react'
+import { ChevronDown, Plus, TerminalSquare, X } from 'lucide-react'
+import { ContextMenu } from '@/components/ui/ContextMenu'
 import { GoStudioTerminalView, closeTerminal } from './GoStudioTerminalView'
 import { startGoStudioTerminalBus } from './goStudioTerminalBus'
 import {
+  listGoIDETerminalProfiles,
   listGoIDETerminals,
   openGoIDETerminal,
+  type GoIDETerminalProfile,
   type GoIDESession,
   type GoIDETerminalSession,
 } from '@/lib/goide-api'
@@ -15,6 +18,16 @@ interface GoStudioTerminalPanelProps {
   session: GoIDESession
   /** Alla prima apertura della scheda si avvia subito una shell, senza passare dal +. */
   visible: boolean
+}
+
+const PROFILE_KEY = 'adomnia.goide.terminalProfile'
+
+function readPreferredProfile(): string {
+  try { return localStorage.getItem(PROFILE_KEY) ?? '' } catch { return '' }
+}
+
+function writePreferredProfile(id: string): void {
+  try { localStorage.setItem(PROFILE_KEY, id) } catch { /* preferenza solo locale */ }
 }
 
 function errorText(reason: unknown): string {
@@ -34,6 +47,16 @@ export function GoStudioTerminalPanel({ session, visible }: GoStudioTerminalPane
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const authorized = session.project.authorization === 'tooling-permitted'
+  const [profiles, setProfiles] = useState<GoIDETerminalProfile[]>([])
+  const [preferredProfile, setPreferredProfile] = useState(readPreferredProfile)
+  const [profilesLoaded, setProfilesLoaded] = useState(false)
+  const [profileMenu, setProfileMenu] = useState<{ x: number; y: number } | null>(null)
+  // Il profilo scelto l'ultima volta, se esiste ancora; altrimenti quello predefinito del backend.
+  const defaultProfile = profiles.some((profile) => profile.id === preferredProfile) ? preferredProfile : ''
+
+  useEffect(() => {
+    listGoIDETerminalProfiles().then(setProfiles).catch((reason) => setError(errorText(reason))).finally(() => setProfilesLoaded(true))
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -55,12 +78,13 @@ export function GoStudioTerminalPanel({ session, visible }: GoStudioTerminalPane
     }
   }, [session.id])
 
-  const open = useCallback(async () => {
+  const open = useCallback(async (profile?: string) => {
     setBusy(true)
     setError(null)
     try {
       const opened = await openGoIDETerminal({
         sessionId: session.id,
+        profile: profile ?? defaultProfile,
         name: '',
         workingDirectory: '',
         columns: 80,
@@ -73,13 +97,13 @@ export function GoStudioTerminalPanel({ session, visible }: GoStudioTerminalPane
     } finally {
       setBusy(false)
     }
-  }, [session.id])
+  }, [defaultProfile, session.id])
 
   useEffect(() => {
-    if (!visible || !loaded || !authorized || busy || terminals.length > 0 || autoOpened.current) return
+    if (!visible || !loaded || !profilesLoaded || !authorized || busy || terminals.length > 0 || autoOpened.current) return
     autoOpened.current = true
     void open()
-  }, [authorized, busy, loaded, open, terminals.length, visible])
+  }, [authorized, busy, loaded, open, profilesLoaded, terminals.length, visible])
 
   const close = useCallback(async (terminalId: string) => {
     try {
@@ -140,11 +164,47 @@ export function GoStudioTerminalPanel({ session, visible }: GoStudioTerminalPane
           type="button"
           onClick={() => void open()}
           disabled={busy}
-          title="New terminal"
+          title={`New terminal (${profiles.find((profile) => profile.id === defaultProfile)?.name ?? profiles[0]?.name ?? 'default shell'})`}
           className="ml-auto grid h-6 w-6 shrink-0 place-items-center rounded text-text-3 hover:bg-surface-3 hover:text-text-1 disabled:opacity-35"
         >
           <Plus size={12} />
         </button>
+        <button
+          type="button"
+          disabled={busy || profiles.length === 0}
+          aria-haspopup="menu"
+          aria-expanded={!!profileMenu}
+          title="Choose a shell: PowerShell, Command Prompt, Git Bash, WSL…"
+          onClick={(event) => {
+            const rect = event.currentTarget.getBoundingClientRect()
+            setProfileMenu(profileMenu ? null : { x: rect.right - 220, y: rect.bottom + 4 })
+          }}
+          className="grid h-6 w-5 shrink-0 place-items-center rounded text-text-3 hover:bg-surface-3 hover:text-text-1 disabled:opacity-35"
+        >
+          <ChevronDown size={12} />
+        </button>
+        {profileMenu && (
+          <ContextMenu
+            appearance="studio"
+            x={profileMenu.x}
+            y={profileMenu.y}
+            items={profiles.map((profile, index) => ({
+              id: profile.id,
+              label: profile.name,
+              icon: TerminalSquare,
+              checked: profile.id === (defaultProfile || profiles[0]?.id),
+              separatorBefore: index > 0 && profile.kind === 'wsl' && profiles[index - 1].kind !== 'wsl',
+            }))}
+            onSelect={(id) => {
+              setProfileMenu(null)
+              // La shell scelta diventa quella del +, come in JetBrains e VS Code.
+              setPreferredProfile(id)
+              writePreferredProfile(id)
+              void open(id)
+            }}
+            onClose={() => setProfileMenu(null)}
+          />
+        )}
       </div>
 
       {error && (

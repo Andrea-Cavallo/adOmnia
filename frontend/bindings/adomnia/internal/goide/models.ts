@@ -4012,11 +4012,57 @@ export class SymbolNode {
 export type TerminalID = string;
 
 /**
+ * TerminalProfile è una shell rilevata sulla macchina (PowerShell, Git Bash, una distro WSL, zsh…).
+ */
+export class TerminalProfile {
+    "id": string;
+    "name": string;
+    "kind": string;
+    "shell": string;
+    "arguments"?: string[];
+
+    /** Creates a new TerminalProfile instance. */
+    constructor($$source: Partial<TerminalProfile> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("kind" in $$source)) {
+            this["kind"] = "";
+        }
+        if (!("shell" in $$source)) {
+            this["shell"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new TerminalProfile instance from a string or object.
+     */
+    static createFrom($$source: any = {}): TerminalProfile {
+        const $$createField4_0 = $$createType13;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("arguments" in $$parsedSource) {
+            $$parsedSource["arguments"] = $$createField4_0($$parsedSource["arguments"]);
+        }
+        return new TerminalProfile($$parsedSource as Partial<TerminalProfile>);
+    }
+}
+
+/**
  * TerminalRequest descrive l'apertura di un nuovo terminale.
  */
 export class TerminalRequest {
     "sessionId": SessionID;
     "name": string;
+
+    /**
+     * Profile è l'ID di un TerminalProfile rilevato ("" = predefinito); il Service lo traduce in Shell.
+     */
+    "profile"?: string;
     "shell"?: string;
     "shellArguments"?: string[];
     "workingDirectory"?: string;
@@ -4040,14 +4086,14 @@ export class TerminalRequest {
      * Creates a new TerminalRequest instance from a string or object.
      */
     static createFrom($$source: any = {}): TerminalRequest {
-        const $$createField3_0 = $$createType13;
-        const $$createField5_0 = $$createType14;
+        const $$createField4_0 = $$createType13;
+        const $$createField6_0 = $$createType14;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("shellArguments" in $$parsedSource) {
-            $$parsedSource["shellArguments"] = $$createField3_0($$parsedSource["shellArguments"]);
+            $$parsedSource["shellArguments"] = $$createField4_0($$parsedSource["shellArguments"]);
         }
         if ("environment" in $$parsedSource) {
-            $$parsedSource["environment"] = $$createField5_0($$parsedSource["environment"]);
+            $$parsedSource["environment"] = $$createField6_0($$parsedSource["environment"]);
         }
         return new TerminalRequest($$parsedSource as Partial<TerminalRequest>);
     }

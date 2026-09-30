@@ -106,6 +106,7 @@ export {
     StudioWorkspace,
     StudioWorkspaces,
     SymbolNode,
+    TerminalProfile,
     TerminalRequest,
     TerminalSession,
     TestLocation,

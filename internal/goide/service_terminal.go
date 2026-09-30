@@ -24,6 +24,15 @@ func (s *Service) OpenTerminal(request TerminalRequest) (TerminalSession, error)
 	if err != nil {
 		return TerminalSession{}, err
 	}
+	// La shell arriva solo da un profilo rilevato: la UI non può chiedere un eseguibile arbitrario.
+	profile, err := resolveTerminalProfile(request.Profile)
+	if err != nil {
+		return TerminalSession{}, err
+	}
+	request.Shell, request.ShellArguments = profile.Shell, profile.Arguments
+	if strings.TrimSpace(request.Name) == "" {
+		request.Name = profile.Name
+	}
 	request.SessionID = session.ID
 	request.WorkingDirectory = workingDirectory
 	return s.terminal.Open(request, environment)
