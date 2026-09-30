@@ -12,7 +12,7 @@ export interface EntityPaletteItem {
 
 export const KIND_LABELS: Record<EntityKind, string> = {
   module: 'Module', route: 'Route', service: 'Service', datasource: 'Datasource', envvar: 'Env var',
-  contract: 'Contract', table: 'Table', topic: 'Topic', symbol: 'Symbol',
+  contract: 'Contract', table: 'Table', topic: 'Topic', grpc: 'gRPC service', websocket: 'WebSocket', symbol: 'Symbol',
 }
 
 export function entityPaletteItems(snapshot: DevSnapshot): EntityPaletteItem[] {

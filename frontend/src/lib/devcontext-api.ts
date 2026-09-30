@@ -1,7 +1,7 @@
 import * as DevContextBindings from '../../bindings/adomnia/devcontext'
 import type { EntityRef } from './entities/types'
 
-export type DevEntityKind = 'module' | 'route' | 'service' | 'datasource' | 'envvar' | 'contract' | 'table' | 'topic'
+export type DevEntityKind = 'module' | 'route' | 'service' | 'datasource' | 'envvar' | 'contract' | 'table' | 'topic' | 'grpc' | 'websocket'
 
 export interface DevSource { detector: string; file: string; line: number }
 

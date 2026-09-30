@@ -13,6 +13,22 @@ import { httpMethodForRoute, mockPathForRoute, requestUrlForRoute, withBaseUrl }
 import type { EntityRef } from './types'
 
 const DB_TYPES = new Set(['postgres', 'mysql', 'mongodb'])
+const DEFAULT_GO_HTTP = 'http://localhost:8080'
+
+/** `:50051` → `localhost:50051`: l'indirizzo di ascolto del server diventa quello da chiamare. */
+export function grpcTargetAddress(listen: string | undefined): string {
+  const address = (listen ?? '').trim()
+  if (!address) return 'localhost:50051'
+  if (address.startsWith(':')) return `localhost${address}`
+  return address.replace(/^(0\.0\.0\.0|\[::\])(?=:)/, 'localhost')
+}
+
+/** URL ws:// per un endpoint WebSocket del codice: client → URL letterale, server → baseUrl dell'ambiente + path. */
+export function websocketUrlFor(ref: EntityRef, baseUrl: string | undefined): string {
+  if (ref.attrs.url) return ref.attrs.url
+  const base = (baseUrl || DEFAULT_GO_HTTP).replace(/^http/, 'ws').replace(/\/+$/, '')
+  return `${base}${ref.attrs.path ?? '/'}`
+}
 const CONTRACT_RAILS: Record<string, RailItem> = { oas: 'apidocs', proto: 'grpc', wsdl: 'soap' }
 
 async function openInGo(file: string, line: number): Promise<void> {
@@ -91,6 +107,15 @@ export function registerDefaultOpeners(): () => void {
     registerOpener('envvar', { intent: 'show', title: 'Show value', isDefault: true, run: showEnvVar }),
     registerOpener('table', { intent: 'query', title: 'Query in Database', isDefault: true, run: (ref) => handoffToPanel('database', ref, 'query') }),
     registerOpener('topic', { intent: 'open', title: 'Open in Broker Studio', isDefault: true, run: (ref) => handoffToPanel('broker', ref, 'open') }),
+    registerOpener('grpc', {
+      intent: 'reflect', title: 'Call in gRPC client', isDefault: true,
+      run: (ref) => handoffToPanel('grpc', ref, 'reflect', { address: grpcTargetAddress(ref.attrs.address) }),
+    }),
+    registerOpener('websocket', {
+      intent: 'connect', title: 'Open in WebSocket client', isDefault: true,
+      available: (ref) => !!ref.attrs.url || !!ref.attrs.path,
+      run: (ref) => handoffToPanel('websocket', ref, 'connect', { url: websocketUrlFor(ref, useEnvironmentsStore.getState().getResolvedVars().baseUrl) }),
+    }),
   ]
   return () => offs.forEach((off) => off())
 }

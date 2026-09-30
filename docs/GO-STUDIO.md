@@ -308,3 +308,12 @@ Other mouse gestures: Ctrl+click (Cmd+click on macOS) goes to the declaration, A
 - Set next statement is not available (Delve has no DAP `goto`); Run to Cursor covers moving forward.
 - Refactorings are the code actions gopls offers; nothing is simulated with text replacement.
 - Ctrl+click on an undefined symbol has no target; use *Fix with AI* or the gopls quick fixes.
+
+## Project tree, terminal and AI fixes
+
+- **Project tree context menu** (files, folders and the project root): New Go File / File / Folder, Rename or move (Shift+F6 or F2; type a path with `/` to move), Duplicate, Delete (Delete key; always confirmed, and the text of deleted files is kept in Local History), Copy Path / Copy Relative Path, Reveal in File Explorer. Operations never overwrite an existing file and stay inside the project; files with unsaved changes must be saved or discarded first.
+- **Terminal profiles**: the arrow next to `+` lists the shells found on the machine — PowerShell 7, Windows PowerShell, Command Prompt, Git Bash and every WSL distribution (e.g. Ubuntu) on Windows; `$SHELL`, bash, zsh and fish on Linux/macOS. The chosen shell becomes the default for `+`. The UI can only start detected profiles, never an arbitrary executable.
+- **Resolve all with AI** (Problems pane, with an AI provider enabled in Settings → AI): one request per file with errors or warnings (up to 10 files), then a single change preview; nothing is written until you apply it. The file contents are sent to the configured provider.
+- **Code → everything**: CodeLens above SQL tables, broker topics, gRPC service registrations and WebSocket endpoints open them in Database Studio, Broker Studio, the gRPC client (with reflection) and the WebSocket client.
+- **Layout**: Go Studio opens maximized; the adOmnia logo in the top-left corner returns to the hub. The button next to Save maximizes the editor alone (Ctrl+Shift+F12).
+

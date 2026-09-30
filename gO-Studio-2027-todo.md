@@ -80,16 +80,16 @@
 
 ## P2 — Differenziazione adOmnia
 
-- [ ] Code → REST.
-- [ ] Code → gRPC.
-- [ ] Code → Kafka.
-- [ ] Code → DB.
-- [ ] Code → WebSocket.
-- [ ] Distributed Request Debugger.
-- [ ] Service Map runtime-aware.
-- [ ] Reproduction Studio.
-- [ ] Cross-service debugging.
-- [ ] Unified local environment.
+- [x] Code → REST. — *CodeLens "Open GET /x in API Client" su ogni route (net/http, gin, echo, fiber, chi, gorilla); dalla Command Palette anche Add to Mock Server e Go to handler.*
+- [x] Code → gRPC. — *`RegisterXServer(s, impl)` rilevato in `internal/devcontext`; CodeLens "Call in gRPC client" apre il client gRPC e lancia la reflection sull'indirizzo di `net.Listen`.*
+- [x] Code → Kafka. — *topic letterali (sarama, franz-go, kafka-go, AMQP, NATS) con CodeLens "Open in Broker Studio".*
+- [x] Code → DB. — *tabelle nelle query SQL letterali con CodeLens "Query in Database".*
+- [x] Code → WebSocket. — *Upgrade (gorilla) / Accept (nhooyr, coder) collegati alla route del loro handler e Dial con URL `ws://`; CodeLens "Open in WebSocket client".*
+- [ ] Distributed Request Debugger. — *sottosistema nuovo (§32): va progettato prima.*
+- [ ] Service Map runtime-aware. — *§31: va progettato prima.*
+- [ ] Reproduction Studio. — *§33: va progettato prima.*
+- [ ] Cross-service debugging. — *dipende dal Distributed Request Debugger (§32).*
+- [ ] Unified local environment. — *oggi Docker Lab + servizi del progetto (Project Services); manca la vista unica: da progettare con la Service Map.*
 
 ## P3 — Funzioni “2027”
 
@@ -965,7 +965,7 @@
 - [ ] Reflection.
 - [ ] Import proto.
 - [ ] Generate Go code.
-- [ ] Detect generated Go service.
+- [x] Detect generated Go service. — *registrazioni `RegisterXServer` (test `TestDetectGRPCRegistrationWithAddress`).*
 - [ ] Link proto method → Go handler.
 - [ ] Call method.
 - [ ] Debug method.
@@ -1060,8 +1060,8 @@
 
 # 28. WebSocket Integration
 
-- [ ] Detect WebSocket server.
-- [ ] Detect WebSocket client.
+- [x] Detect WebSocket server. — *`internal/devcontext/goprotocols.go`, test `TestDetectWebSocketServerLinkedToRouteAndClient`.*
+- [x] Detect WebSocket client.
 - [ ] Connection explorer.
 - [ ] Send message.
 - [ ] Receive messages.

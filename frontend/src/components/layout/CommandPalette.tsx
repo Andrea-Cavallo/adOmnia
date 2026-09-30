@@ -38,7 +38,7 @@ interface PaletteCommand {
 
 const KIND_ICONS: Record<EntityKind, ElementType> = {
   module: Package, route: Route, service: Server, datasource: Database, envvar: Variable,
-  contract: FileCode, table: Table, topic: Radio, symbol: Braces,
+  contract: FileCode, table: Table, topic: Radio, grpc: Server, websocket: Radio, symbol: Braces,
 }
 
 function collectionRequests(collection: Collection): RequestItem[] {

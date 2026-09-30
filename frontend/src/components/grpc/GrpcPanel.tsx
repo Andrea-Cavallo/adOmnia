@@ -1627,7 +1627,21 @@ export function GrpcPanel() {
     }
   }
 
-  useEntityHandoff('grpc', (_ref, _intent, payload) => {
+  // Da gO: un .proto si carica, un servizio registrato nel codice si interroga via reflection all'indirizzo del server.
+  const [pendingReflect, setPendingReflect] = useState(false)
+  useEffect(() => {
+    if (!pendingReflect) return
+    setPendingReflect(false)
+    void handleReflect()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleReflect legge l'indirizzo appena impostato
+  }, [pendingReflect])
+  useEntityHandoff('grpc', (_ref, intent, payload) => {
+    if (intent === 'reflect') {
+      setAddress(String(payload.address ?? 'localhost:50051'))
+      setConnected(false)
+      setPendingReflect(true)
+      return true
+    }
     void handleProtoFile(new File([String(payload.text ?? '')], String(payload.name ?? 'contract.proto')))
     return true
   })

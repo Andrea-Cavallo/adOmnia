@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEntityHandoff } from '@/lib/entities/dispatch'
 import {
   Activity,
   AlignLeft,
@@ -1128,6 +1129,11 @@ export function WebSocketPanel() {
   const getResolvedVars = useEnvironmentsStore((state) => state.getResolvedVars)
 
   const [config, setConfig] = useState<WSConfig>(loadConfig)
+  // Da gO: l'endpoint trovato nel codice diventa l'URL da connettere; la connessione resta all'utente.
+  useEntityHandoff('websocket', (_ref, _intent, payload) => {
+    if (typeof payload.url === 'string' && payload.url) setConfig((current) => ({ ...current, url: payload.url as string }))
+    return true
+  })
   const [status, setStatus] = useState<ConnStatus>('disconnected')
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [messages, setMessages] = useState<WSMessage[]>(loadConversation)
