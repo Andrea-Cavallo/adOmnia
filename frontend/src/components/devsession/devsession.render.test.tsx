@@ -12,7 +12,10 @@ vi.mock(import('zustand'), async (importOriginal) => {
   }
   return { ...actual, create: ((creator?: never) => (creator ? build(creator) : build)) as never }
 })
-vi.mock(import('@wailsio/runtime'), async (importOriginal) => ({ ...(await importOriginal()), Events: { On: () => () => undefined } } as never))
+vi.mock(import('@wailsio/runtime'), async (importOriginal) => {
+  const actual = await importOriginal() as Record<string, unknown>
+  return { ...actual, Events: { On: () => () => undefined } } as never
+})
 vi.mock('../../../bindings/adomnia/devsession', () => new Proxy({}, { get: () => () => Promise.resolve([]) }))
 
 const { useDevSessionStore } = await import('@/stores/devSession')

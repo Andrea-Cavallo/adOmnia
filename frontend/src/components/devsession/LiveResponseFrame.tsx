@@ -6,6 +6,9 @@ import { cn } from '@/lib/utils'
 import { useDevSessionStore, type DebugRequestProgress } from '@/stores/devSession'
 import { runForTab } from '@/stores/devSessionModel'
 import { openFrameInGoStudio } from '@/lib/devsession/navigation'
+import { streamSessionToLogInspector } from '@/lib/devsession/logInspectorSource'
+import { requestLogInspectorQuery } from '@/lib/loginspector/handoff'
+import { useAppStore } from '@/stores/app'
 import { LiveLogList, LiveMessageList, LiveQueryList, RequestSummary, RequestTimeline } from './LiveRequestViews'
 import { basename, LiveDot } from './liveUi'
 
@@ -87,7 +90,16 @@ function LiveView({ tab, run, session }: { tab: Exclude<LiveTab, 'response'>; ru
   const queries = useMemo(() => mergeBy(fetched?.queries ?? [], storeQueries.filter((q) => q.requestRunId === run.id), (q) => q.id), [fetched, storeQueries, run.id])
   const messages = useMemo(() => mergeBy(fetched?.messages ?? [], storeMessages.filter((m) => m.requestRunId === run.id), (m) => m.id), [fetched, storeMessages, run.id])
 
-  if (tab === 'logs') return <LiveLogList entries={logs} empty={`No log line tied to this request yet. Lines that carry ${run.correlationId}, or are logged while it is in flight, appear here.`} />
+  if (tab === 'logs') {
+    return (
+      <LiveLogList entries={logs} goSessionId={session?.goSessionId} empty={`No log line tied to this request yet. Lines that carry ${run.correlationId}, or are logged while it is in flight, appear here.`}
+        toolbar={session && (
+          <button type="button" title={`Stream ${session.service} into the Log Inspector, filtered on this request`}
+            onClick={() => { streamSessionToLogInspector(session.id, session.service); requestLogInspectorQuery(run.correlationId); useAppStore.getState().setActiveRail('loginspector') }}
+            className="shrink-0 rounded border border-border-2 px-2 py-0.5 text-[11px] text-text-2 hover:border-accent hover:text-accent">Log Inspector</button>
+        )} />
+    )
+  }
   if (tab === 'db') return <LiveQueryList queries={queries} run={run} />
   if (tab === 'kafka') return <LiveMessageList messages={messages} />
   if (tab === 'timeline') return <RequestTimeline run={run} session={session} logs={logs} queries={queries} messages={messages} />

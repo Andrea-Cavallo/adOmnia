@@ -5,7 +5,8 @@ import { openEntity } from '@/lib/entities/router'
 import { handoffToPanel } from '@/lib/entities/dispatch'
 import { cn } from '@/lib/utils'
 import { codePathFor } from '@/stores/devSessionModel'
-import { openFrameInGoStudio, openRequestTab } from '@/lib/devsession/navigation'
+import { openFrameInGoStudio, openLocationInGoStudio, openRequestTab } from '@/lib/devsession/navigation'
+import { useDevSessionStore } from '@/stores/devSession'
 import { basename } from './liveUi'
 
 const LEVEL_TONE: Record<string, string> = { error: 'text-error', warn: 'text-warning', info: 'text-text-2', debug: 'text-text-4' }
@@ -24,8 +25,11 @@ function MatchHint({ match }: { match?: string }) {
   )
 }
 
+const GO_LOCATION = /([\w./-]+\.go):(\d+)/
+
 /** Service log lines, filterable; used by the response Logs tab and the service logs drawer. */
-export function LiveLogList({ entries, empty }: { entries: LiveLogEntry[]; empty: string }) {
+export function LiveLogList({ entries, empty, goSessionId, toolbar }: { entries: LiveLogEntry[]; empty: string; goSessionId?: string; toolbar?: React.ReactNode }) {
+  const runs = useDevSessionStore((state) => state.runs)
   const [filter, setFilter] = useState('')
   const [level, setLevel] = useState<'all' | 'warn' | 'error'>('all')
   const shown = useMemo(() => {
@@ -47,6 +51,7 @@ export function LiveLogList({ entries, empty }: { entries: LiveLogEntry[]; empty
           <option value="error">Errors</option>
         </select>
         <span className="text-[10.5px] text-text-4">{shown.length}/{entries.length}</span>
+        {toolbar}
       </div>
       <div className="min-h-0 flex-1 overflow-auto py-1 font-mono text-[11.5px] leading-[18px]" role="log" aria-live="polite">
         {shown.length === 0 && <p className="px-3 py-6 text-center font-sans text-[12px] text-text-4">{entries.length ? 'No line matches the filter.' : empty}</p>}
@@ -54,11 +59,27 @@ export function LiveLogList({ entries, empty }: { entries: LiveLogEntry[]; empty
           <div key={entry.seq} className="flex items-start gap-2 px-2 hover:bg-surface-2/60">
             <span className="shrink-0 text-text-4">{time(entry.at)}</span>
             <MatchHint match={entry.match} />
-            <span className={cn('min-w-0 whitespace-pre-wrap break-all', LEVEL_TONE[entry.level ?? ''] ?? 'text-text-2', entry.stream === 'stderr' && !entry.level && 'text-text-3')}>{entry.text}</span>
+            <span className={cn('min-w-0 flex-1 whitespace-pre-wrap break-all', LEVEL_TONE[entry.level ?? ''] ?? 'text-text-2', entry.stream === 'stderr' && !entry.level && 'text-text-3')}>{entry.text}</span>
+            <LineActions entry={entry} goSessionId={goSessionId} tabId={entry.requestRunId ? runs[entry.requestRunId]?.tabId : undefined} />
           </div>
         ))}
       </div>
     </div>
+  )
+}
+
+/** Go to code (a file.go:N in the line) and back to the request that caused it. */
+function LineActions({ entry, goSessionId, tabId }: { entry: LiveLogEntry; goSessionId?: string; tabId?: string }) {
+  const location = goSessionId ? GO_LOCATION.exec(entry.text) : null
+  if (!location && !tabId) return null
+  return (
+    <span className="flex shrink-0 items-center gap-1 font-sans">
+      {location && goSessionId && (
+        <button type="button" title={`Open ${location[1]}:${location[2]} in Go Studio`} onClick={() => void openLocationInGoStudio(goSessionId, { function: '', relativePath: location[1].replace(/^\.\//, ''), line: Number(location[2]) })}
+          className="rounded px-1 text-[10px] text-text-4 hover:bg-surface-3 hover:text-accent">code</button>
+      )}
+      {tabId && <button type="button" title="Open the request that logged this line" onClick={() => openRequestTab(tabId)} className="rounded px-1 text-[10px] text-text-4 hover:bg-surface-3 hover:text-accent">request</button>}
+    </span>
   )
 }
 
