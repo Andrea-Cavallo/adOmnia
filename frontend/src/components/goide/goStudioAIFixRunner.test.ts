@@ -22,7 +22,7 @@ vi.mock('@/lib/monacoSetup', () => ({ monaco: {} }))
 vi.mock('@/stores/goide', () => ({ useGoIDEStore: { getState: () => goide.state } }))
 vi.mock('@/stores/goideLsp', () => ({ useGoIDELspStore: { setState: lsp.setState } }))
 
-import { fixGoStudioProblemWithAI } from './goStudioAIFixRunner'
+import { fixGoStudioProblemWithAI, resolveAllGoStudioProblemsWithAI } from './goStudioAIFixRunner'
 
 const callerSource = 'package files\n\nimport (\n\t"Example/logger"\n)\n\nvar loggerInstance = logger.GetLoggerInstance()\n'
 const loggerSource = 'package logger\n\nfunc Info(v ...interface{}) {}\n'
@@ -79,5 +79,40 @@ describe('Fix with AI', () => {
     await fixGoStudioProblemWithAI('files/a.go', problem)
     expect(ai.complete).not.toHaveBeenCalled()
     expect(String(lastState().message)).toContain('Settings → AI')
+  })
+})
+
+describe('Resolve all with AI', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    ai.available = true
+    api.list.mockResolvedValue([])
+    goide.state.ensureDocumentLoaded.mockImplementation(async (relativePath: string) => ({ buffer: 'package x\n\nvar a = 1\n', document: { id: relativePath, uri: `file:///p/${relativePath}`, path: `/p/${relativePath}`, relativePath } }))
+  })
+
+  it('asks once per file and shows every proposed change in a single preview', async () => {
+    ai.complete.mockImplementation(async (_system: string, user: string) => {
+      const path = user.includes('=== FILE: a.go ===') ? 'a.go' : 'b.go'
+      return `=== FILE: ${path} ===\npackage x\n\nvar a = 2\n=== END FILE ===`
+    })
+    await resolveAllGoStudioProblemsWithAI([
+      { relativePath: 'a.go', problems: [{ message: 'unused', line: 3 }] },
+      { relativePath: 'b.go', problems: [{ message: 'shadow', line: 3 }, { message: 'other', line: 1 }] },
+    ])
+    expect(ai.complete).toHaveBeenCalledTimes(2)
+    const change = lastState().pendingChange as { label: string; files: Array<{ relativePath: string }> }
+    expect(change.label).toBe('Resolve all with AI · 2 files')
+    expect(change.files.map((file) => file.relativePath)).toEqual(['a.go', 'b.go'])
+  })
+
+  it('keeps going when one file fails and reports it', async () => {
+    ai.complete.mockRejectedValueOnce(new Error('rate limited')).mockResolvedValueOnce('=== FILE: b.go ===\npackage x\n\nvar a = 3\n=== END FILE ===')
+    await resolveAllGoStudioProblemsWithAI([
+      { relativePath: 'a.go', problems: [{ message: 'unused', line: 3 }] },
+      { relativePath: 'b.go', problems: [{ message: 'shadow', line: 3 }] },
+    ])
+    const states = lsp.setState.mock.calls.map((call) => call[0] as Record<string, unknown>)
+    expect(states.some((state) => String(state.message).includes('rate limited'))).toBe(true)
+    expect((lastState().pendingChange as { files: unknown[] }).files).toHaveLength(1)
   })
 })

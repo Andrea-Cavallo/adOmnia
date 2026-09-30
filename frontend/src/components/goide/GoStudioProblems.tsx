@@ -1,10 +1,10 @@
-import { useMemo } from 'react'
-import { AlertCircle, AlertTriangle, Info, Sparkles } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { AlertCircle, AlertTriangle, Info, Loader2, Sparkles } from 'lucide-react'
 import type { GoIDEDiagnostic, GoIDEDiagnosticsReport } from '@/lib/goide-lsp-api'
 import { GoStudioFileIcon } from './GoStudioFileIcon'
 import { mergedReports, useGoIDELspStore } from '@/stores/goideLsp'
 import { navigateToLocation } from './goStudioLanguageFeatures'
-import { fixGoStudioProblemWithAI } from './goStudioAIFixRunner'
+import { MAX_RESOLVE_ALL_FILES, fixGoStudioProblemWithAI, resolveAllGoStudioProblemsWithAI, type AIFixTarget } from './goStudioAIFixRunner'
 import { isAICompanionAvailable } from '@/lib/aiAvailability'
 import { useSettingsStore } from '@/stores/settings'
 
@@ -39,8 +39,18 @@ export function GoStudioProblems({ sessionId, buildProblems, onOpenBuildProblem 
   const lintReports = useGoIDELspStore((state) => state.lint[sessionId]?.reports ?? EMPTY_REPORTS)
   const sorted = useMemo(() => sortReports(Object.values(mergedReports(reports, lintReports))), [lintReports, reports])
   const aiAvailable = useSettingsStore((state) => isAICompanionAvailable(state.settings.ai))
+  const [resolving, setResolving] = useState(false)
+  const problem = (item: GoIDEDiagnostic) => ({ message: item.message, line: item.range.startLine, source: item.source || undefined })
+  // Errori e avvisi dei file del progetto: le informazioni non si inviano all'AI.
+  const fixTargets = useMemo<AIFixTarget[]>(() => sorted.flatMap((report) => {
+    const problems = report.diagnostics.filter((item) => item.severity <= 2).sort((left, right) => left.severity - right.severity).map(problem)
+    return report.relativePath && problems.length > 0 ? [{ relativePath: report.relativePath, problems }] : []
+  }), [sorted])
+  const resolveAll = async () => {
+    setResolving(true)
+    try { await resolveAllGoStudioProblemsWithAI(fixTargets) } finally { setResolving(false) }
+  }
   const fixWithAI = (report: GoIDEDiagnosticsReport, diagnostic: GoIDEDiagnostic) => {
-    const problem = (item: GoIDEDiagnostic) => ({ message: item.message, line: item.range.startLine, source: item.source || undefined })
     const others = report.diagnostics.filter((item) => item !== diagnostic && item.severity <= 2).map(problem)
     void fixGoStudioProblemWithAI(report.relativePath ?? '', problem(diagnostic), others)
   }
@@ -54,6 +64,14 @@ export function GoStudioProblems({ sessionId, buildProblems, onOpenBuildProblem 
   }
   return (
     <div role="tree" aria-label="Problems" className="py-1 text-[11px]">
+      {aiAvailable && fixTargets.length > 0 && (
+        <div className="flex h-7 items-center gap-2 border-b border-border-1 px-2 pb-1">
+          <span className="text-[10px] text-text-4">{fixTargets.reduce((total, target) => total + target.problems.length, 0)} errors and warnings in {fixTargets.length} file{fixTargets.length === 1 ? '' : 's'}</span>
+          <button type="button" disabled={resolving} onClick={() => void resolveAll()} title={`Asks the AI for a fix per file (up to ${MAX_RESOLVE_ALL_FILES} files), then shows every change for you to review and confirm. Nothing is written before you apply it.`} className="ml-auto flex h-6 items-center gap-1.5 rounded border border-accent/40 bg-accent/10 px-2 text-[10px] font-semibold text-accent hover:bg-accent/20 disabled:opacity-50">
+            {resolving ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} aria-hidden="true" />} Resolve all with AI
+          </button>
+        </div>
+      )}
       {sorted.map((report) => (
         <div key={report.uri} role="treeitem" aria-expanded="true">
           <div className="flex h-6 items-center gap-1.5 px-2 font-medium text-text-2"><GoStudioFileIcon name={(report.relativePath || report.path).split(/[\\/]/).pop() ?? (report.relativePath || report.path)} relativePath={report.relativePath} size={12} />{report.relativePath || report.path}<span className="text-[9px] text-text-4">{report.diagnostics.length}</span></div>
