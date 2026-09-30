@@ -58,6 +58,8 @@ type Service struct {
 	watcher          *WatchManager
 	// windows registra le sessioni spostate in finestre separate.
 	windows *windowRegistry
+	// documentObserver riceve apertura, modifiche, salvataggi e chiusure (es. GitHub Copilot).
+	documentObserver observerSlot
 }
 
 func NewService(store Store, eventSink func(EventEnvelope)) *Service {
@@ -331,6 +333,7 @@ func (s *Service) OpenDocument(sessionID, relativePath string) (OpenDocument, er
 		return OpenDocument{}, err
 	}
 	s.lsp.TrackDocument(session, document.Document, document.Content, false)
+	s.observeDocuments(func(observer DocumentObserver) { observer.DocumentOpened(session, document.Document, document.Content) })
 	s.emit("document.opened", session.ID, string(document.Document.ID), document.Document)
 	return document, nil
 }
@@ -348,6 +351,7 @@ func (s *Service) SaveDocument(sessionID, documentID, content, diskToken string,
 	}
 	_ = s.history.Record(session.ID, document.Document.RelativePath, content, "Saved")
 	s.lsp.DocumentSaved(session.ID, DocumentID(documentID))
+	s.observeDocuments(func(observer DocumentObserver) { observer.DocumentSaved(DocumentID(documentID)) })
 	s.emit("document.saved", session.ID, documentID, document.Document)
 	return document, nil
 }
@@ -368,6 +372,7 @@ func (s *Service) CloseDocument(sessionID, documentID string) error {
 	}
 	s.documents.CloseDocument(SessionID(sessionID), DocumentID(documentID))
 	s.lsp.UntrackDocument(SessionID(sessionID), DocumentID(documentID))
+	s.observeDocuments(func(observer DocumentObserver) { observer.DocumentClosed(DocumentID(documentID)) })
 	s.emit("document.closed", SessionID(sessionID), documentID, nil)
 	return nil
 }

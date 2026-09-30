@@ -77,6 +77,7 @@ func (s *Service) UpdateDocumentBuffer(sessionID, documentID string, version int
 	if _, err := s.session(sessionID); err != nil {
 		return err
 	}
+	s.observeDocuments(func(observer DocumentObserver) { observer.DocumentChanged(DocumentID(documentID), version, text) })
 	err := s.lsp.UpdateDocument(SessionID(sessionID), DocumentID(documentID), version, text)
 	if errors.Is(err, ErrStaleDocumentVersion) {
 		return nil

@@ -81,6 +81,35 @@ Ogni gate si spunta quando tutte le prove indicate sono passate e registrate nel
 
 ---
 
+---
+
+# ▶ GITHUB COPILOT — ROADMAP
+
+Architettura: Copilot Language Server ufficiale (completamento, login, enterprise) + in seguito il modo ACP/SDK per chat e agent. UI sempre adOmnia, nessuna estensione VS Code. Regola: nessun componente assume `github.com`; tutto passa da `GitHubProfile`.
+
+**Fatto (MVP parte 1)** — `internal/copilot`, `copilot_bindings.go`, `frontend/src/components/goide/*Copilot*`
+- [x] `GitHubProfile` + resolver host: github.com, `*.ghe.com`, GHES; profili multipli; profilo per progetto
+- [x] Impostazioni `copilot.json` senza token; proxy, strict SSL, CA aziendale (`NODE_EXTRA_CA_CERTS`)
+- [x] Installazione del Language Server nativo dal registry npm con verifica SHA-512, solo su azione dell'utente
+- [x] Ciclo di vita: initialize/initialized, configurazione enterprise, workspace folders, crash recovery 1s/2s/5s/10s, stop senza orfani
+- [x] Login device flow sull'host del profilo, sign out, stato con utente e host
+- [x] Sincronizzazione documenti dallo stesso punto di gopls (open/change/save/close/focus)
+- [x] Ghost text Monaco: debounce, cancellazione, scarto dei risultati obsoleti, Tab/Esc, accettazione parziale, telemetria show/accept
+- [x] Filtro segreti + `.adomnia/aiignore`: i file esclusi non arrivano mai al server
+- [x] Status bar, menu rapido, dialog impostazioni, comandi nel menu Tools
+
+**Prove manuali**
+- [ ] **C1** — Install, enable, sign in su github.com, ghost text in un file Go, Tab/Esc
+- [ ] **C2** — Profilo `company.ghe.com`, sign in enterprise, progetto legato al profilo Work
+- [ ] **C3** — Proxy aziendale + CA bundle; kill del processo `copilot-language-server` e riavvio automatico
+
+**Prossime fasi**
+- [ ] Chat laterale (Ask) con contesto file/selezione/workspace, streaming e Stop
+- [ ] Edit mode con diff (accept/reject hunk, file, tutto)
+- [ ] Agent mode con Tool Registry adOmnia (workspace, go build/test/vet/fmt, git, terminal con CommandPolicy) e Permission Manager
+- [ ] Tool debugger (Delve), API Workspace, database (read-only di default), Kafka, SOAP/gRPC, log
+- [ ] Context bar, context preview, audit locale dell'agent, policy per ambiente (LOCAL…PROD)
+
 ## Regole
 
 - Spuntare una voce solo quando è verificata davvero; se una verifica fallisce, riaprire la prova e il gate relativo.

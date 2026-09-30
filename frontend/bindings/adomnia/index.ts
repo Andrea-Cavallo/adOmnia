@@ -5,6 +5,7 @@ import * as AIEngine from "./aiengine.js";
 import * as App from "./app.js";
 import * as BrowserDebug from "./browserdebug.js";
 import * as CollectionFS from "./collectionfs.js";
+import * as Copilot from "./copilot.js";
 import * as DevContext from "./devcontext.js";
 import * as DockerLab from "./dockerlab.js";
 import * as GitSync from "./gitsync.js";
@@ -21,6 +22,7 @@ export {
     App,
     BrowserDebug,
     CollectionFS,
+    Copilot,
     DevContext,
     DockerLab,
     GitSync,

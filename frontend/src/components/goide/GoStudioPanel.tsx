@@ -27,6 +27,9 @@ import '@fontsource/inter/400.css'
 import '@fontsource/inter/500.css'
 import '@fontsource/inter/600.css'
 import './goStudioChrome.css'
+import { GoStudioCopilotDialog } from './GoStudioCopilotDialog'
+import { useGoStudioCopilot } from './useGoStudioCopilot'
+import { useCopilotStore } from '@/stores/copilot'
 import { GoStudioShortcutsDialog } from './GoStudioShortcutsDialog'
 import { commandAvailability, commandChecked, commandForKey, type GoStudioCommandContext, type GoStudioCommandId } from './goStudioCommands'
 import { activeGoStudioEditor, hasGoStudioEditor, isGoStudioEditorCommand, runGoStudioEditorCommand } from './goStudioEditorRegistry'
@@ -171,6 +174,7 @@ export function GoStudioPanel() {
     ? store.sessions.filter((session) => session.id === pinnedSessionId)
     : sessionsInWorkspace(store.sessions, store.activeWorkspaceId), [pinnedSessionId, store.activeWorkspaceId, store.sessions])
   const activeSession = useMemo(() => store.sessions.find((session) => session.id === store.activeSessionId) ?? null, [store.activeSessionId, store.sessions])
+  useGoStudioCopilot(activeSession?.project.realPath ?? null, summary.activeId)
   const closeFlow = useGoStudioCloseFlow(activeSession)
   const sessionExecutions = store.executions.filter((execution) => execution.sessionId === store.activeSessionId)
   const activeRunId = store.activeSessionId ? store.activeRunBySession[store.activeSessionId] : null
@@ -535,6 +539,8 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       case 'nav.searchEverywhere': return setSearchEverywhereOpen(true)
       case 'go.lspLog': return setLspLogOpen(true)
       case 'go.toolPaths': return setToolPathsOpen(true)
+      case 'tools.copilot': return useCopilotStore.getState().setDialogOpen(true)
+      case 'tools.copilotCompletions': return void useCopilotStore.getState().toggleCompletions()
     }
   }
   runCommandRef.current = runCommand
@@ -602,6 +608,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       <GoStudioBreakpointPopover />
       <GoStudioBreakpointsDialog sessionId={activeSession.id} />
       <GoStudioLocalHistoryDialog document={localHistoryOpen ? currentActiveDocument() : null} open={localHistoryOpen} onClose={() => setLocalHistoryOpen(false)} />
+      <GoStudioCopilotDialog projectRoot={activeSession.project.realPath} projectName={activeSession.project.name} />
       <GoStudioAttachDialog sessionId={activeSession.id} mode={attachMode} onClose={() => setAttachMode(null)} />
       <GoStudioGoToolDialog sessionId={activeSession.id} state={goTool} onClose={() => setGoTool(null)} />
       <GoStudioBookmarksDialog open={bookmarksOpen} sessionId={activeSession.id} mode={locationsMode} onClose={() => { setBookmarksOpen(false); setLocationsMode('bookmarks') }} />
