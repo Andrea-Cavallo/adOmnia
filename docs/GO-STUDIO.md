@@ -357,7 +357,7 @@ Edit and Agent modes with adOmnia tools (Go, debugger, API Workspace, databases,
 
 ## Known limits
 
-- Push, pull, merge, conflict resolution, rebase and stash live in Git Studio, not in the editor. Other version control systems are not supported.
+- Push, pull, merge, rebase and stash live in Git Studio, not in the editor. Conflicts can be resolved in Go Studio too: *Git → Resolve Conflicts…* (or *conflict · resolve…* in the Commit dialog) opens the three-way editor — base, ours and theirs side by side, an editable result, and for each conflict block *Ours*, *Theirs*, *Both* or *Base*; saving writes and stages the file, then Continue, Skip or Abort finish the merge, rebase or cherry-pick. Other version control systems are not supported.
 - Plugins receive read-only Go Studio events (contract v1) and no commands.
 - HTTP route prefixes are resolved only within the same file for the *Open in API Client* CodeLens.
 - Remote debugging needs the same source paths on both sides for breakpoints to bind.

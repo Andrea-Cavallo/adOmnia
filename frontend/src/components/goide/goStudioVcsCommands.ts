@@ -4,13 +4,14 @@ import { useGoIDELspStore } from '@/stores/goideLsp'
 import { syncGitStudioToSession, useGoIDEVCSStore } from '@/stores/goideVcs'
 import type { GoStudioCommandId } from './goStudioCommands'
 
-export type GoStudioVcsDialog = 'commit' | 'history' | null
+export type GoStudioVcsDialog = 'commit' | 'history' | 'conflicts' | null
 
 /** Comandi del menu Git; false se il comando non appartiene a quest'area. */
 export function runVcsCommand(id: GoStudioCommandId, sessionId: string | null, document: GoIDEEditorDocument | null, openDialog: (dialog: GoStudioVcsDialog) => void): boolean {
   switch (id) {
     case 'vcs.commit': openDialog('commit'); return true
     case 'vcs.history': openDialog('history'); return true
+    case 'vcs.resolveConflicts': openDialog('conflicts'); return true
     case 'vcs.gitStudio':
       // Git Studio si apre sul repository del progetto, anche se prima era stato scelto a mano un altro.
       if (sessionId) syncGitStudioToSession(sessionId, true)

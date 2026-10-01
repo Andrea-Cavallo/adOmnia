@@ -10,6 +10,7 @@ interface GoStudioCommitDialogProps {
   sessionId: string
   open: boolean
   onClose: () => void
+  onResolveConflicts?: () => void
 }
 
 const STATUS_LABEL: Record<string, string> = { M: 'modified', A: 'added', D: 'deleted', R: 'renamed', '?': 'untracked', U: 'conflict' }
@@ -20,7 +21,7 @@ function describe(status: string): string {
 }
 
 /** Commit (Ctrl+K): si registrano solo i file spuntati; i file non versionati partono esclusi, come in GoLand. */
-export function GoStudioCommitDialog({ sessionId, open, onClose }: GoStudioCommitDialogProps) {
+export function GoStudioCommitDialog({ sessionId, open, onClose, onResolveConflicts }: GoStudioCommitDialogProps) {
   const status = useGoIDEVCSStore((state) => state.status[sessionId] ?? null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [message, setMessage] = useState('')
@@ -93,7 +94,9 @@ export function GoStudioCommitDialog({ sessionId, open, onClose }: GoStudioCommi
             <input type="checkbox" checked={selected.has(change.relativePath)} disabled={change.conflicted} onChange={() => toggle(change.relativePath)} className="h-[15px] w-[15px] accent-[var(--color-accent)]" />
             <GoStudioFileIcon name={change.relativePath.split('/').pop() ?? change.relativePath} relativePath={change.relativePath} />
             <span className="min-w-0 flex-1 truncate text-[12.5px] text-text-1">{change.relativePath}</span>
-            <span className={`gs-badge h-[18px] text-[10.5px] ${change.untracked ? '' : change.conflicted ? 'text-danger' : 'text-accent'}`}>{change.conflicted ? 'conflict · resolve in Git Studio' : describe(change.status)}</span>
+            {change.conflicted && onResolveConflicts
+              ? <button type="button" onClick={(event) => { event.preventDefault(); onResolveConflicts() }} className="gs-badge h-[18px] text-[10.5px] text-danger underline-offset-2 hover:underline">conflict · resolve…</button>
+              : <span className={`gs-badge h-[18px] text-[10.5px] ${change.untracked ? '' : change.conflicted ? 'text-danger' : 'text-accent'}`}>{change.conflicted ? 'conflict · resolve in Git Studio' : describe(change.status)}</span>}
           </label>
         ))}
       </div>

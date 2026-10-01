@@ -3,6 +3,7 @@ import { AlertTriangle, Check, Eye, Loader2, Save, X } from 'lucide-react'
 import * as GitSync from '@/wailsjs/go/main/GitSync'
 import { abortOperation, continueOperation, getRepoState, skipOperation } from '@/lib/git/gitService'
 import type { OpResult } from '@/lib/git/types'
+import { findConflictBlocks, resolveConflictBlock, type ConflictChoice } from '@/lib/git/conflictBlocks'
 
 interface ConflictResolverDialogProps {
   repoPath: string
@@ -115,6 +116,8 @@ export function ConflictResolverDialog({ repoPath, operation, initialConflicts, 
   useEffect(() => { void refresh() }, [refresh])
 
   const unresolved = conflicts.length
+  const blocks = editor ? findConflictBlocks(editor.result) : []
+  const pick = (index: number, choice: ConflictChoice) => setEditor((current) => current ? { ...current, result: resolveConflictBlock(current.result, index, choice) } : current)
   return (
     <div className="fixed inset-0 z-[160] flex items-center justify-center bg-black/65 backdrop-blur-[2px] p-6" onClick={onClose}>
       <div className="flex max-h-[80vh] w-[560px] flex-col overflow-hidden rounded-xl border border-warning/40 bg-surface-1 shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -184,8 +187,21 @@ export function ConflictResolverDialog({ repoPath, operation, initialConflicts, 
             <div className="flex min-h-[220px] flex-[.75] flex-col border-t border-border-2">
               <div className="flex h-9 shrink-0 items-center justify-between bg-accent/10 px-3">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-accent">Merged result — editable</span>
-                <span className="text-[10px] text-text-4">Saving writes and stages the file</span>
+                <span className={`text-[10px] ${blocks.length > 0 ? 'text-warning' : 'text-text-4'}`}>{blocks.length > 0 ? `${blocks.length} conflict${blocks.length === 1 ? '' : 's'} left · ` : ''}Saving writes and stages the file</span>
               </div>
+              {blocks.length > 0 && (
+                <div className="max-h-28 shrink-0 overflow-y-auto border-b border-border-1 bg-surface-0">
+                  {blocks.map((block, index) => (
+                    <div key={`${block.start}-${index}`} className="flex h-7 items-center gap-1.5 border-b border-border-1 px-3 last:border-b-0">
+                      <span className="w-28 shrink-0 font-mono text-[10px] text-warning">#{index + 1} · line {block.start + 1}</span>
+                      <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-text-4" title={[...block.ours, '───', ...block.theirs].join('\n')}>{block.ours[0] ?? '(empty)'} ⇄ {block.theirs[0] ?? '(empty)'}</span>
+                      {([['ours', `Ours${block.oursLabel ? ` (${block.oursLabel})` : ''}`], ['theirs', `Theirs${block.theirsLabel ? ` (${block.theirsLabel})` : ''}`], ['both', 'Both'], ...(block.base ? [['base', 'Base'] as const] : [])] as const).map(([choice, text]) => (
+                        <button key={choice} onClick={() => pick(index, choice)} className="h-5 shrink-0 rounded border border-border-2 px-1.5 text-[10px] text-text-2 hover:border-accent hover:text-text-1">{text}</button>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
               <textarea value={editor.result} onChange={(e) => setEditor({ ...editor, result: e.target.value })} spellCheck={false} className="min-h-0 flex-1 resize-none border-0 bg-surface-0 p-3 font-mono text-[11px] leading-5 text-text-1 outline-none" />
             </div>
             <div className="flex h-12 shrink-0 items-center justify-end gap-2 border-t border-border-1 px-4">

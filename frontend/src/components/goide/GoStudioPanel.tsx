@@ -10,6 +10,7 @@ import { DEFAULT_RUN_DRAFT, runRequest } from './goStudioRunDraft'
 import { ToolchainDialog } from './GoStudioToolchains'
 import { GoStudioDependencies } from './GoStudioDependencies'
 import { GoStudioDependencyGraph } from './GoStudioDependencyGraph'
+import { ConflictResolverDialog } from '@/components/workspace/git/ConflictResolverDialog'
 import { GoStudioQuickOpen } from './GoStudioQuickOpen'
 import { GoStudioRecoveryBanner } from './GoStudioRecoveryBanner'
 import { GoStudioCrashRecoveryDialog } from './GoStudioCrashRecoveryDialog'
@@ -208,7 +209,7 @@ export function GoStudioPanel() {
   const [servicesOpen, setServicesOpen] = useState(false)
   const vcs = useGoIDEVCSStore(useShallow((state) => {
     const status = state.status[store.activeSessionId ?? '']
-    return { vcsAvailable: !!status?.available, vcsChanges: status?.changes.length ?? 0 }
+    return { vcsAvailable: !!status?.available, vcsChanges: status?.changes.length ?? 0, vcsConflicts: status?.changes.filter((change) => change.conflicted).length ?? 0, vcsRepoRoot: status?.repoRoot ?? '' }
   }))
   const navigation = useGoIDENavigationStore(useShallow((state) => {
     const history = historyFor(state, store.activeSessionId ?? '')
@@ -674,7 +675,16 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       <GoStudioDependencies open={dependenciesOpen} session={activeSession} onClose={() => setDependenciesOpen(false)} />
       <GoStudioDependencyGraph open={dependencyGraphOpen} session={activeSession} onClose={() => setDependencyGraphOpen(false)} />
       <GoStudioSearchEverywhere open={searchEverywhereOpen} sessionId={activeSession.id} availability={(id) => commandAvailability(id, commandContext)} onCommand={runCommand} onClose={() => setSearchEverywhereOpen(false)} />
-      <GoStudioCommitDialog sessionId={activeSession.id} open={vcsDialog === 'commit'} onClose={() => setVcsDialog(null)} />
+      <GoStudioCommitDialog sessionId={activeSession.id} open={vcsDialog === 'commit'} onClose={() => setVcsDialog(null)} onResolveConflicts={() => setVcsDialog('conflicts')} />
+      {vcsDialog === 'conflicts' && vcs.vcsRepoRoot && (
+        <ConflictResolverDialog
+          repoPath={vcs.vcsRepoRoot}
+          operation=""
+          initialConflicts={[]}
+          onResolved={() => { setVcsDialog(null); void useGoIDEVCSStore.getState().refreshStatus(activeSession.id) }}
+          onClose={() => { setVcsDialog(null); void useGoIDEVCSStore.getState().refreshStatus(activeSession.id) }}
+        />
+      )}
       <GoStudioProjectServicesDialog sessionId={activeSession.id} projectName={activeSession.project.name} open={servicesOpen} onClose={() => setServicesOpen(false)} />
       <GoStudioGitHistoryDialog document={vcsDialog === 'history' ? currentActiveDocument() : null} open={vcsDialog === 'history'} onClose={() => setVcsDialog(null)} />
       <GoStudioHunkPopup />

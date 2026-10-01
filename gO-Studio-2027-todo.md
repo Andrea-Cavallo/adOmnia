@@ -21,7 +21,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
-| **P0** | Completare l'IDE Go di tutti i giorni | 53 | 11 |
+| **P0** | Completare l'IDE Go di tutti i giorni | 52 | 11 |
 | **P1** | Codice ↔ runtime: il motivo per usare adOmnia | 192 | 58 |
 | **P2** | Studi Go avanzati | 224 | 39 |
 | **P3** | AI e intelligenza del workspace | 189 | 24 |
@@ -59,7 +59,7 @@ _Le lacune che costringono ancora ad aprire un altro IDE._
 
 ### Editing
 
-- [ ] Merge editor. — *→ §22: risoluzione dei conflitti Git a tre vie in gO Studio.*
+- [x] Merge editor. — *Fatto: Git → Resolve Conflicts… apre l'editor a tre vie condiviso con Git Studio, con risoluzione per singolo blocco (Ours/Theirs/Both/Base, `lib/git/conflictBlocks.ts`).*
 
 ### Refactoring
 

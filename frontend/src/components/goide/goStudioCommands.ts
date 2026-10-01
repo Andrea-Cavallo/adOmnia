@@ -28,7 +28,7 @@ export type GoStudioCommandId =
   | 'debug.debug' | 'debug.toggleBreakpoint' | 'debug.resume' | 'debug.pause' | 'debug.stepOver' | 'debug.stepInto' | 'debug.stepOut'
   | 'debug.stop' | 'view.debug' | 'go.installDelve' | 'debug.attach' | 'debug.remote'
   | 'debug.viewBreakpoints' | 'debug.runToCursor' | 'debug.muteBreakpoints'
-  | 'vcs.commit' | 'vcs.history' | 'vcs.annotate' | 'vcs.gitStudio'
+  | 'vcs.commit' | 'vcs.history' | 'vcs.annotate' | 'vcs.resolveConflicts' | 'vcs.gitStudio'
   | 'tools.services' | 'tools.httpRequest' | 'tools.plugins' | 'tools.copilot' | 'tools.copilotChat' | 'tools.a0Chat' | 'tools.copilotCompletions' | 'tools.dependencyGraph'
   | 'help.shortcuts'
 
@@ -242,6 +242,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'vcs.commit', menu: 'git', label: 'Commit…', binding: { key: 'k', mod: true } },
   { id: 'vcs.history', menu: 'git', label: 'Show File History…' },
   { id: 'vcs.annotate', menu: 'git', label: 'Annotate with Git Blame' },
+  { id: 'vcs.resolveConflicts', menu: 'git', label: 'Resolve Conflicts…' },
   { id: 'vcs.gitStudio', menu: 'git', label: 'Push, Pull, Conflicts and Rebase in Git Studio', separatorBefore: true },
   { id: 'help.shortcuts', menu: 'help', label: 'Keyboard Shortcuts' },
 ]
@@ -345,6 +346,8 @@ export interface GoStudioCommandContext {
   /** Il progetto è in un repository Git. */
   vcsAvailable: boolean
   vcsChanges: number
+  /** File in conflitto (merge, rebase, cherry-pick in corso). */
+  vcsConflicts: number
   canGoBack: boolean
   canGoForward: boolean
   bookmarkCount: number
@@ -425,6 +428,7 @@ export function commandAvailability(id: GoStudioCommandId, context: GoStudioComm
     case 'file.localHistory': return context.hasEditor ? true : 'Open a file first'
     case 'tools.httpRequest': return context.hasEditor ? true : 'Open a Go file with route registrations first'
     case 'vcs.commit': return !context.vcsAvailable ? 'The project is not in a Git repository' : context.vcsChanges > 0 ? true : 'No local changes to commit'
+    case 'vcs.resolveConflicts': return !context.vcsAvailable ? 'The project is not in a Git repository' : context.vcsConflicts > 0 ? true : 'No conflicted files'
     case 'vcs.history':
     case 'vcs.annotate': return !context.vcsAvailable ? 'The project is not in a Git repository' : context.hasEditor ? true : 'Open a file first'
     case 'view.unsplit': return context.split ? true : 'The editor is not split'
