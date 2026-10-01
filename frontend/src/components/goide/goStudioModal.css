@@ -1,0 +1,307 @@
+/*
+ * Design system dei modali di gO Studio: un solo guscio, una sola scala tipografica, una sola
+ * famiglia di pulsanti e campi. Solo token del tema, così skin, tema chiaro e scuro seguono.
+ * Il font è dichiarato qui: alcuni modali (es. conferma di chiusura) vivono fuori da .go-studio-root.
+ */
+/* Nel layer components: le utility Tailwind sugli stessi elementi restano un override valido. */
+@layer components {
+  .gs-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .gs-modal-backdrop.gs-modal-top { align-items: flex-start; padding-top: 12vh; }
+  .gs-modal-backdrop.gs-modal-elevated { z-index: 90; }
+
+  .gs-modal {
+    --gs-font-ui: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --font-ui: var(--gs-font-ui);
+    --gs-modal-radius: 14px;
+    --gs-modal-pad: 20px;
+    position: relative;
+    display: flex;
+    max-height: min(86vh, 900px);
+    max-width: 100%;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: var(--gs-modal-radius);
+    border: 1px solid color-mix(in srgb, var(--color-text-1) 9%, transparent);
+    background: var(--color-surface-1);
+    color: var(--color-text-1);
+    font-family: var(--skin-font-ui, var(--gs-font-ui));
+    font-size: 13px;
+    line-height: 1.45;
+    font-feature-settings: 'cv11', 'ss01';
+    text-align: left;
+  }
+  .gs-modal:focus { outline: none; }
+  .gs-modal-sm { width: 440px; }
+  .gs-modal-md { width: 560px; }
+  .gs-modal-lg { width: 720px; }
+  .gs-modal-xl { width: 960px; }
+  .gs-modal-full { width: 1120px; }
+  .gs-modal-tall { height: min(86vh, 760px); }
+
+  /* Header: icona opzionale, titolo, sottotitolo, chiusura. */
+  .gs-modal-header {
+    display: flex;
+    flex-shrink: 0;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 18px var(--gs-modal-pad) 14px;
+  }
+  .gs-modal-header.gs-modal-header-divided { border-bottom: 1px solid var(--color-border-1); }
+  .gs-modal-icon {
+    display: grid;
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    place-items: center;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--gs-tone, var(--color-accent)) 14%, transparent);
+    color: var(--gs-tone, var(--color-accent));
+  }
+  .gs-tone-accent { --gs-tone: var(--color-accent); }
+  .gs-tone-warning { --gs-tone: var(--color-warning); }
+  .gs-tone-danger { --gs-tone: var(--color-danger, var(--color-error)); }
+  .gs-tone-success { --gs-tone: var(--color-success); }
+  .gs-tone-info { --gs-tone: var(--color-info); }
+  .gs-modal-heading { min-width: 0; flex: 1; padding: 1px 32px 0 0; }
+  .gs-modal-title { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.3; letter-spacing: -0.005em; color: var(--color-text-1); }
+  .gs-modal-subtitle { margin: 3px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--color-text-3); }
+  .gs-modal-close { position: absolute; top: 14px; right: 14px; }
+  .gs-modal-actions { display: flex; flex-shrink: 0; align-items: center; gap: 2px; margin: -2px 34px 0 0; }
+  .gs-modal-actions + .gs-modal-heading, .gs-modal-heading:has(+ .gs-modal-actions) { padding-right: 0; }
+
+  .gs-modal-body {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 16px;
+    overflow-y: auto;
+    padding: 4px var(--gs-modal-pad) var(--gs-modal-pad);
+  }
+  .gs-modal-header-divided + .gs-modal-body { padding-top: 16px; }
+  .gs-modal-body.gs-modal-body-flush { gap: 0; padding: 0; }
+
+  .gs-modal-footer {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 8px;
+    padding: 14px var(--gs-modal-pad);
+    border-top: 1px solid var(--color-border-1);
+    background: color-mix(in srgb, var(--color-surface-0) 55%, var(--color-surface-1));
+  }
+  .gs-modal-footer-start { display: flex; min-width: 0; flex: 1; align-items: center; gap: 8px; font-size: 12px; color: var(--color-text-4); }
+
+  /* Pulsanti: stessa altezza, raggio e peso ovunque. */
+  .gs-btn {
+    display: inline-flex;
+    height: 32px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 14px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    font: 500 13px/1 var(--skin-font-ui, var(--gs-font-ui, inherit));
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease, box-shadow 120ms ease;
+  }
+  .gs-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 35%, transparent); }
+  .gs-btn:disabled { opacity: 0.45; cursor: default; }
+  .gs-btn-sm { height: 28px; padding: 0 10px; font-size: 12px; border-radius: 7px; }
+  .gs-btn-icon { width: 32px; padding: 0; }
+  .gs-btn-sm.gs-btn-icon { width: 28px; }
+  .gs-btn-primary { background: var(--color-accent); color: #fff; }
+  .gs-btn-primary:disabled, .gs-btn-danger:disabled { opacity: 1; background: var(--color-surface-3); color: var(--color-text-4); }
+  .gs-btn-primary:hover:not(:disabled) { background: var(--color-accent-hover, var(--color-accent)); }
+  .gs-btn-secondary { background: var(--color-surface-2); border-color: var(--color-border-2); color: var(--color-text-1); }
+  .gs-btn-secondary:hover:not(:disabled) { background: var(--color-surface-3); }
+  .gs-btn-ghost { background: transparent; color: var(--color-text-2); }
+  .gs-btn-ghost:hover:not(:disabled) { background: var(--color-surface-2); color: var(--color-text-1); }
+  .gs-btn-danger { background: var(--color-danger, var(--color-error)); color: #fff; }
+  .gs-btn-danger:hover:not(:disabled) { filter: brightness(1.08); }
+  .gs-btn-danger-ghost { background: transparent; color: var(--color-danger, var(--color-error)); }
+  .gs-btn-danger-ghost:hover:not(:disabled) { background: color-mix(in srgb, var(--color-danger, var(--color-error)) 12%, transparent); }
+
+  /* Campi: label sopra, controllo da 32px, aiuto sotto. */
+  .gs-field { display: flex; min-width: 0; flex-direction: column; gap: 6px; }
+  .gs-label { font-size: 12px; font-weight: 500; color: var(--color-text-2); }
+  .gs-field-label { display: flex; min-width: 0; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 500; color: var(--color-text-2); }
+  .gs-hint { font-size: 11.5px; line-height: 1.45; color: var(--color-text-4); }
+  .gs-input {
+    width: 100%;
+    height: 32px;
+    min-width: 0;
+    padding: 0 10px;
+    border: 1px solid var(--color-border-2);
+    border-radius: 8px;
+    background: var(--color-surface-0);
+    color: var(--color-text-1);
+    font: 400 13px/1.4 var(--skin-font-ui, var(--gs-font-ui, inherit));
+    outline: none;
+    color-scheme: inherit;
+    transition: border-color 120ms ease, box-shadow 120ms ease;
+  }
+  .gs-input::placeholder { color: var(--color-text-4); }
+  .gs-input:hover:not(:disabled) { border-color: var(--color-border-3, var(--color-border-2)); }
+  .gs-input:focus { border-color: var(--color-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 22%, transparent); }
+  .gs-input:disabled { opacity: 0.55; }
+  textarea.gs-input { height: auto; min-height: 84px; padding: 8px 10px; resize: vertical; }
+  .gs-mono, .gs-input.gs-mono { font-family: var(--skin-font-mono, var(--font-mono)); font-size: 12px; }
+  .gs-modal input[type='checkbox'], .gs-modal input[type='radio'] { width: 15px; height: 15px; flex-shrink: 0; accent-color: var(--color-accent); }
+  .gs-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--color-text-2); cursor: pointer; }
+  .gs-check input { width: 15px; height: 15px; accent-color: var(--color-accent); }
+
+  /* Avvisi in linea. */
+  .gs-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid color-mix(in srgb, var(--gs-tone) 32%, transparent);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--gs-tone) 9%, transparent);
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: var(--color-text-2);
+  }
+  .gs-alert > svg { flex-shrink: 0; margin-top: 2px; color: var(--gs-tone); }
+
+  /* Sezioni, superfici e liste. */
+  .gs-section-title { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-text-4); }
+  .gs-surface { border: 1px solid var(--color-border-1); border-radius: 10px; background: var(--color-surface-0); }
+  .gs-list { overflow: auto; border: 1px solid var(--color-border-1); border-radius: 10px; background: var(--color-surface-0); }
+  .gs-list-row { display: flex; min-height: 40px; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--color-border-1); }
+  .gs-list-row:last-child { border-bottom: 0; }
+  .gs-list-row:hover { background: color-mix(in srgb, var(--color-surface-2) 60%, transparent); }
+  .gs-list-empty { padding: 20px 12px; text-align: center; font-size: 12.5px; color: var(--color-text-4); }
+  .gs-badge { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 6px; background: var(--color-surface-2); font-size: 11px; font-weight: 500; color: var(--color-text-3); white-space: nowrap; }
+  .gs-kbd { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border: 1px solid var(--color-border-2); border-bottom-width: 2px; border-radius: 5px; background: var(--color-surface-2); font: 500 11px/1 var(--skin-font-ui, var(--gs-font-ui)); color: var(--color-text-2); }
+
+  /* Controllo segmentato (scope, direzione): una pillola per opzione. */
+  .gs-segmented { display: inline-flex; flex-shrink: 0; gap: 2px; padding: 2px; border-radius: 9px; background: var(--color-surface-2); }
+  .gs-segment {
+    display: inline-flex;
+    height: 26px;
+    align-items: center;
+    gap: 6px;
+    padding: 0 10px;
+    border-radius: 7px;
+    font: 500 12px/1 var(--skin-font-ui, var(--gs-font-ui, inherit));
+    color: var(--color-text-3);
+    transition: background-color 120ms ease, color 120ms ease;
+  }
+  .gs-segment:hover { color: var(--color-text-1); }
+  .gs-segment[aria-selected='true'], .gs-segment[aria-pressed='true'] {
+    background: var(--color-surface-1);
+    color: var(--color-text-1);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.25), 0 0 0 1px color-mix(in srgb, var(--color-text-1) 6%, transparent);
+  }
+
+  /* Riga azioni a comparsa nelle liste. */
+  .gs-row-actions { display: flex; align-items: center; gap: 2px; opacity: 0; transition: opacity 120ms ease; }
+  .gs-list-row:hover .gs-row-actions, .gs-list-row:focus-within .gs-row-actions { opacity: 1; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .gs-btn, .gs-input, .gs-row-actions { transition: none; }
+  }
+
+  /* Palette (Quick Open, Search Everywhere, simboli): ricerca grande in alto, risultati a righe morbide. */
+  .gs-palette { width: 680px; max-height: min(72vh, 680px); }
+  .gs-palette-lg { width: 760px; }
+  .gs-palette-header {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 10px;
+    height: 52px;
+    padding: 0 14px 0 16px;
+    border-bottom: 1px solid var(--color-border-1);
+  }
+  .gs-palette-header > svg { flex-shrink: 0; color: var(--color-accent); }
+  .gs-palette-prefix { flex-shrink: 0; font-size: 12.5px; color: var(--color-text-3); }
+  .gs-palette-input {
+    min-width: 0;
+    flex: 1;
+    height: 100%;
+    border: 0;
+    background: transparent;
+    color: var(--color-text-1);
+    font: 400 15px/1 var(--skin-font-ui, var(--gs-font-ui));
+    outline: none;
+  }
+  .gs-palette-input::placeholder { color: var(--color-text-4); }
+  .gs-palette-input:focus { border: 0; box-shadow: none; outline: none; }
+  .gs-palette-meta { flex-shrink: 0; font-size: 11.5px; color: var(--color-text-4); font-variant-numeric: tabular-nums; }
+  .gs-palette-tabs { display: flex; flex-shrink: 0; align-items: center; gap: 2px; padding: 6px 10px; border-bottom: 1px solid var(--color-border-1); }
+  .gs-palette-results { min-height: 0; flex: 1; overflow: auto; padding: 6px; }
+  .gs-palette-item {
+    display: flex;
+    width: 100%;
+    min-height: 36px;
+    align-items: center;
+    gap: 10px;
+    padding: 0 10px;
+    border-radius: 8px;
+    color: var(--color-text-2);
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+  }
+  .gs-palette-item[aria-selected='true'] { background: color-mix(in srgb, var(--color-accent) 16%, transparent); color: var(--color-text-1); }
+  .gs-palette-item:hover:not([aria-selected='true']) { background: color-mix(in srgb, var(--color-surface-2) 60%, transparent); }
+  .gs-palette-item-title { flex-shrink: 0; font-weight: 500; color: var(--color-text-1); }
+  .gs-palette-item-detail { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--color-text-4); }
+  .gs-palette-group { padding: 10px 10px 4px; }
+  .gs-palette-empty { padding: 32px 16px; text-align: center; font-size: 13px; color: var(--color-text-4); }
+  .gs-palette-footer {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 14px;
+    padding: 9px 16px;
+    border-top: 1px solid var(--color-border-1);
+    background: color-mix(in srgb, var(--color-surface-0) 55%, var(--color-surface-1));
+    font-size: 11.5px;
+    color: var(--color-text-4);
+  }
+  .gs-palette-footer > span { display: inline-flex; align-items: center; gap: 5px; }
+
+  /* Popover ancorati all'editor (breakpoint, hunk Git, definizione rapida): stessa famiglia visiva dei modali. */
+  .gs-popover {
+    --gs-font-ui: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    position: fixed;
+    z-index: 50;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--color-text-1) 10%, transparent);
+    border-radius: 12px;
+    background: var(--color-surface-1);
+    box-shadow: 0 18px 50px -14px rgb(0 0 0 / 0.55), 0 2px 6px rgb(0 0 0 / 0.2);
+    color: var(--color-text-1);
+    font-family: var(--skin-font-ui, var(--gs-font-ui));
+    font-size: 12.5px;
+    animation: adModalSurfaceIn 160ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .gs-popover-header {
+    display: flex;
+    height: 36px;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px;
+    border-bottom: 1px solid var(--color-border-1);
+    font-size: 12px;
+    color: var(--color-text-2);
+  }
+  @media (prefers-reduced-motion: reduce) { .gs-popover { animation: none; } }
+}

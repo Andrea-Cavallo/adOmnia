@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { DiffEditor } from '@monaco-editor/react'
-import { GitCommitHorizontal, X } from 'lucide-react'
-import { useModalFocusTrap } from '@/lib/accessibility'
+import { AlertCircle, GitCommitHorizontal } from 'lucide-react'
 import { getGoIDEFileAtRevision, getGoIDEFileHistory, type GoIDEVCSCommit } from '@/lib/goide-vcs-api'
 import type { GoIDEEditorDocument } from '@/stores/goide'
 import { beforeGoStudioMount, useGoStudioEditorTheme } from './GoStudioCodeEditor'
+import { GoStudioAlert, GoStudioButton, GoStudioModal } from './GoStudioModal'
 
 interface GoStudioGitHistoryDialogProps {
   document: GoIDEEditorDocument | null
@@ -23,8 +23,6 @@ export function GoStudioGitHistoryDialog({ document, open, onClose }: GoStudioGi
   const [selected, setSelected] = useState<string | null>(null)
   const [content, setContent] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const dialogRef = useRef<HTMLDivElement>(null)
-  useModalFocusTrap(open, onClose, dialogRef)
   const sessionId = document?.document.sessionId ?? ''
   const relativePath = document?.document.relativePath ?? ''
 
@@ -45,37 +43,40 @@ export function GoStudioGitHistoryDialog({ document, open, onClose }: GoStudioGi
   if (!open || !document) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center ad-modal-backdrop" onClick={onClose}>
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Git history" tabIndex={-1} className="flex h-[min(620px,85vh)] w-[min(1000px,94vw)] flex-col overflow-hidden rounded-xl border border-border-2 bg-surface-1 shadow-2xl" onClick={(event) => event.stopPropagation()}>
-        <div className="flex h-10 shrink-0 items-center gap-2 border-b border-border-1 px-4">
-          <GitCommitHorizontal size={13} className="text-accent" />
-          <h2 className="text-xs font-semibold text-text-1">Git History</h2>
-          <span className="truncate font-mono text-[10px] text-text-4">{relativePath}</span>
-          <button type="button" onClick={onClose} title="Close" className="ml-auto grid h-6 w-6 shrink-0 place-items-center rounded text-text-3 hover:bg-surface-3"><X size={12} /></button>
+    <GoStudioModal
+      open={open}
+      onClose={onClose}
+      size="full"
+      tall
+      divided
+      flush
+      icon={GitCommitHorizontal}
+      title="Git history"
+      subtitle={<span className="gs-mono">{relativePath}</span>}
+      footerStart="Left: selected commit · Right: current editor"
+      footer={<GoStudioButton variant="ghost" onClick={onClose}>Close</GoStudioButton>}
+    >
+      <div className="flex min-h-0 flex-1">
+        <div role="listbox" aria-label="Commits" className="w-80 shrink-0 overflow-auto border-r border-border-1 p-1.5">
+          {commits.length === 0 && !error && <p className="gs-list-empty">This file has no commits yet.</p>}
+          {commits.map((commit) => (
+            <button key={commit.fullHash} type="button" role="option" aria-selected={commit.fullHash === selected} onClick={() => setSelected(commit.fullHash)}
+              className={`flex w-full flex-col items-start gap-0.5 rounded-lg px-3 py-2 text-left ${commit.fullHash === selected ? 'bg-accent/15 text-text-1' : 'text-text-2 hover:bg-surface-2/60'}`}>
+              <span className="w-full truncate text-[12.5px] font-medium">{commit.message}</span>
+              <span className="text-[11.5px] text-text-4"><span className="gs-mono text-[11px]">{commit.hash}</span> · {commit.author} · {commit.date}</span>
+            </button>
+          ))}
         </div>
-        <div className="flex min-h-0 flex-1">
-          <div role="listbox" aria-label="Commits" className="w-72 shrink-0 overflow-auto border-r border-border-1 py-1">
-            {commits.length === 0 && !error && <p className="px-3 py-3 text-[11px] text-text-4">This file has no commits yet.</p>}
-            {commits.map((commit) => (
-              <button key={commit.fullHash} type="button" role="option" aria-selected={commit.fullHash === selected} onClick={() => setSelected(commit.fullHash)}
-                className={`flex w-full flex-col items-start px-3 py-1.5 text-left ${commit.fullHash === selected ? 'bg-accent/15 text-text-1' : 'text-text-2 hover:bg-surface-2'}`}>
-                <span className="w-full truncate text-[11px]">{commit.message}</span>
-                <span className="text-[9px] text-text-4"><span className="font-mono">{commit.hash}</span> · {commit.author} · {commit.date}</span>
-              </button>
-            ))}
-          </div>
-          <div className="min-w-0 flex-1">
-            {error && <p role="alert" className="p-3 text-[11px] text-danger">{error}</p>}
-            {content !== null && (
-              <DiffEditor original={content} modified={document.buffer} language={document.document.language} theme={theme} beforeMount={beforeGoStudioMount}
-                originalModelPath={`inmemory://git-history/revision/${relativePath}`} modifiedModelPath={`inmemory://git-history/current/${relativePath}`}
-                keepCurrentOriginalModel keepCurrentModifiedModel
-                options={{ automaticLayout: true, renderSideBySide: true, readOnly: true, minimap: { enabled: false }, fontSize: 12 }} />
-            )}
-          </div>
+        <div className="flex min-w-0 flex-1 flex-col">
+          {error && <div className="p-4"><GoStudioAlert icon={AlertCircle}>{error}</GoStudioAlert></div>}
+          {content !== null && (
+            <DiffEditor original={content} modified={document.buffer} language={document.document.language} theme={theme} beforeMount={beforeGoStudioMount}
+              originalModelPath={`inmemory://git-history/revision/${relativePath}`} modifiedModelPath={`inmemory://git-history/current/${relativePath}`}
+              keepCurrentOriginalModel keepCurrentModifiedModel
+              options={{ automaticLayout: true, renderSideBySide: true, readOnly: true, minimap: { enabled: false }, fontSize: 12.5 }} />
+          )}
         </div>
-        <div className="flex shrink-0 items-center border-t border-border-1 bg-surface-0 px-4 py-2 text-[10px] text-text-4">Left: selected commit · Right: current editor</div>
       </div>
-    </div>
+    </GoStudioModal>
   )
 }

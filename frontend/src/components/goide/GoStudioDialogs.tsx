@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
-import { FolderOpen, Loader2, Save, ShieldAlert, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { AlertCircle, FolderOpen, FolderPlus, Save, ShieldAlert } from 'lucide-react'
 import { chooseGoIDEProjectParent, listGoIDEProjectTemplates, type GoIDEProjectTemplateList } from '@/lib/goide-api'
-import { useModalFocusTrap } from '@/lib/accessibility'
+import { GoStudioAlert, GoStudioButton, GoStudioField, GoStudioModal } from './GoStudioModal'
+import { GoStudioUnsavedFileList } from './GoStudioUnsavedFileList'
 import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
 
 export interface GoStudioRunDraft {
@@ -26,9 +27,7 @@ export function CreateProjectDialog({ open, onClose }: CreateProjectDialogProps)
   const [templates, setTemplates] = useState<GoIDEProjectTemplateList | null>(null)
   const [templatesError, setTemplatesError] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const dialogRef = useRef<HTMLDivElement>(null)
   const createProject = useGoIDEStore((state) => state.createProject)
-  useModalFocusTrap(open, onClose, dialogRef)
 
   useEffect(() => {
     if (!open) return
@@ -55,34 +54,51 @@ export function CreateProjectDialog({ open, onClose }: CreateProjectDialogProps)
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center ad-modal-backdrop" onClick={onClose}>
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Create Go project" tabIndex={-1} className="flex max-h-[90vh] w-[620px] flex-col overflow-hidden rounded-xl border border-border-2 bg-surface-1 shadow-2xl" onClick={(event) => event.stopPropagation()}>
-        <div className="flex h-10 shrink-0 items-center border-b border-border-1 px-4"><h2 className="text-xs font-semibold text-text-1">Create Go project</h2><button type="button" onClick={onClose} aria-label="Close" className="ml-auto grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-3"><X size={12} /></button></div>
-        <div className="min-h-0 space-y-3 overflow-y-auto p-4">
-          <div>
-            <div className="mb-1 text-[10px] font-medium text-text-3">Template</div>
-            {templatesError && <div className="text-[10px] text-danger">{templatesError}</div>}
-            <div role="radiogroup" aria-label="Project template" className="grid grid-cols-2 gap-1.5">
-              {(templates?.templates ?? []).map((template) => (
-                <button key={template.id} type="button" role="radio" aria-checked={template.id === templateId} onClick={() => setTemplateId(template.id)} className={`rounded border px-2.5 py-2 text-left transition-colors ${template.id === templateId ? 'border-accent bg-accent/10' : 'border-border-1 bg-surface-0 hover:border-border-2'}`}>
-                  <span className="flex items-center gap-1.5 text-[11px] font-semibold text-text-1">{template.name}{template.custom && <span className="rounded bg-surface-3 px-1 text-[9px] font-normal text-text-3">custom</span>}</span>
-                  <span className="mt-0.5 block truncate text-[10px] text-text-3" title={template.description}>{template.description}</span>
-                </button>
-              ))}
-            </div>
-            {templates?.customDirectory && <div className="mt-1.5 text-[10px] leading-4 text-text-4">Custom templates: folders in <code className="select-all font-mono text-text-3">{templates.customDirectory}</code> — <code className="font-mono">__MODULE__</code>, <code className="font-mono">__NAME__</code> and <code className="font-mono">__PACKAGE__</code> are replaced in file contents and paths.</div>}
-          </div>
-          <label className="block text-[10px] font-medium text-text-3">Parent folder</label>
-          <div className="flex gap-2"><input readOnly value={parentPath} placeholder="Choose a local folder" className="h-8 min-w-0 flex-1 rounded border border-border-1 bg-surface-0 px-2 text-[11px] text-text-2" /><button type="button" onClick={() => void chooseParent()} className="flex h-8 items-center gap-1.5 rounded border border-border-1 px-2 text-[11px] text-text-2 hover:border-accent"><FolderOpen size={12} /> Choose…</button></div>
-          <div className="grid grid-cols-2 gap-2">
-            <label className="block text-[10px] font-medium text-text-3">Project name<input value={name} onChange={(event) => setName(event.target.value)} placeholder="hello-service" className="mt-1 h-8 w-full rounded border border-border-1 bg-surface-0 px-2 text-[11px] text-text-1 outline-none focus:border-accent" /></label>
-            <label className="block text-[10px] font-medium text-text-3">Module path<input value={modulePath} onChange={(event) => setModulePath(event.target.value)} placeholder={`example.com/${name || 'hello-service'}`} className="mt-1 h-8 w-full rounded border border-border-1 bg-surface-0 px-2 font-mono text-[11px] text-text-1 outline-none focus:border-accent" /></label>
-          </div>
-          <div className="rounded border border-warning/25 bg-warning/5 p-2.5 text-[10px] leading-4 text-text-3"><div className="mb-1 flex items-center gap-1.5 font-semibold text-warning"><ShieldAlert size={12} /> Explicit tool action</div>Creating runs <code className="font-mono text-text-1">go mod init {modulePath || '<module-path>'}</code> inside the new empty folder{selected && selected.id !== 'empty' && ' and writes the template files'}.{selected?.requires?.length ? <> It then runs <code className="font-mono text-text-1">go mod tidy</code> for {selected.requires.join(', ')}, which may download modules if they are not in the local cache.</> : ' It does not download dependencies or run project code.'}</div>
+    <GoStudioModal
+      open={open}
+      onClose={onClose}
+      size="lg"
+      divided
+      icon={FolderPlus}
+      title="Create Go project"
+      subtitle="A new folder with go.mod, ready to build and run."
+      footer={<>
+        <GoStudioButton variant="ghost" onClick={onClose}>Cancel</GoStudioButton>
+        <GoStudioButton variant="primary" loading={submitting} disabled={!parentPath || !name || !modulePath} onClick={() => void submit()}>Create & initialize</GoStudioButton>
+      </>}
+    >
+      <section className="flex flex-col gap-2">
+        <h3 className="gs-section-title">Template</h3>
+        {templatesError && <GoStudioAlert icon={AlertCircle}>{templatesError}</GoStudioAlert>}
+        <div role="radiogroup" aria-label="Project template" className="grid grid-cols-2 gap-2">
+          {(templates?.templates ?? []).map((template) => {
+            const active = template.id === templateId
+            return (
+              <button key={template.id} type="button" role="radio" aria-checked={active} onClick={() => setTemplateId(template.id)}
+                className={`rounded-[10px] border px-3 py-2.5 text-left transition-colors ${active ? 'border-accent bg-accent/10 shadow-[0_0_0_1px_var(--color-accent)]' : 'border-border-1 bg-surface-0 hover:border-border-2 hover:bg-surface-2/40'}`}>
+                <span className="flex items-center gap-2 text-[13px] font-medium text-text-1">{template.name}{template.custom && <span className="gs-badge h-[18px] text-[10.5px]">custom</span>}</span>
+                <span className="mt-0.5 block truncate text-[12px] text-text-3" title={template.description}>{template.description}</span>
+              </button>
+            )
+          })}
         </div>
-        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border-1 bg-surface-0 px-4 py-3"><button type="button" onClick={onClose} className="h-7 rounded px-3 text-xs text-text-3 hover:bg-surface-2">Cancel</button><button type="button" disabled={!parentPath || !name || !modulePath || submitting} onClick={() => void submit()} className="flex h-7 items-center gap-1.5 rounded bg-accent px-3 text-xs font-semibold text-white disabled:opacity-40">{submitting && <Loader2 size={11} className="animate-spin" />} Create & initialize</button></div>
+        {templates?.customDirectory && <p className="gs-hint">Custom templates live in <code className="gs-mono select-all text-text-3">{templates.customDirectory}</code>. <code className="gs-mono">__MODULE__</code>, <code className="gs-mono">__NAME__</code> and <code className="gs-mono">__PACKAGE__</code> are replaced in contents and paths.</p>}
+      </section>
+      <GoStudioField label="Parent folder">
+        <div className="flex gap-2">
+          <input readOnly value={parentPath} placeholder="Choose a local folder" className="gs-input gs-mono flex-1" />
+          <GoStudioButton variant="secondary" icon={FolderOpen} onClick={() => void chooseParent()}>Choose…</GoStudioButton>
+        </div>
+      </GoStudioField>
+      <div className="grid grid-cols-2 gap-3">
+        <GoStudioField label="Project name"><input value={name} onChange={(event) => setName(event.target.value)} placeholder="hello-service" className="gs-input" /></GoStudioField>
+        <GoStudioField label="Module path"><input value={modulePath} onChange={(event) => setModulePath(event.target.value)} placeholder={`example.com/${name || 'hello-service'}`} className="gs-input gs-mono" /></GoStudioField>
       </div>
-    </div>
+      <GoStudioAlert tone="warning" icon={ShieldAlert}>
+        Runs <code className="gs-mono text-text-1">go mod init {modulePath || '<module-path>'}</code> in the new empty folder{selected && selected.id !== 'empty' && ' and writes the template files'}.
+        {selected?.requires?.length ? <> Then <code className="gs-mono text-text-1">go mod tidy</code> for {selected.requires.join(', ')}, which may download modules missing from the local cache.</> : ' No dependencies are downloaded and no project code runs.'}
+      </GoStudioAlert>
+    </GoStudioModal>
   )
 }
 
@@ -96,17 +112,22 @@ interface UnsavedDialogProps {
 
 export function UnsavedChangesDialog({ open, documents, onSave, onDiscard, onCancel }: UnsavedDialogProps) {
   const [saving, setSaving] = useState(false)
-  const dialogRef = useRef<HTMLDivElement>(null)
-  useModalFocusTrap(open, onCancel, dialogRef)
-  if (!open) return null
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center ad-modal-backdrop" onClick={onCancel}>
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Unsaved changes" tabIndex={-1} className="w-[420px] overflow-hidden rounded-xl border border-border-2 bg-surface-1 shadow-2xl" onClick={(event) => event.stopPropagation()}>
-        <div className="p-5"><div className="mb-3 grid h-9 w-9 place-items-center rounded-full bg-warning/10 text-warning"><Save size={16} /></div><h2 className="text-[13px] font-semibold text-text-1">Save changes before closing?</h2><p className="mt-1 text-[11px] leading-4 text-text-3">Your editor buffers are still available. Choose Save, Discard, or return to the editor.</p><div className="mt-3 max-h-28 overflow-auto rounded border border-border-1 bg-surface-0 p-2 font-mono text-[10px] text-text-3">{documents.map((document) => <div key={document.document.id} className="truncate">{document.document.relativePath}</div>)}</div></div>
-        <div className="flex items-center justify-end gap-2 border-t border-border-1 bg-surface-0 px-4 py-3"><button type="button" onClick={onCancel} className="h-7 rounded px-3 text-xs text-text-3 hover:bg-surface-2">Cancel</button><button type="button" onClick={() => void onDiscard()} className="h-7 rounded px-3 text-xs text-warning hover:bg-warning/10">Discard</button><button type="button" disabled={saving} onClick={() => { setSaving(true); void onSave().finally(() => setSaving(false)) }} className="flex h-7 items-center gap-1.5 rounded bg-accent px-3 text-xs font-semibold text-white disabled:opacity-40">{saving && <Loader2 size={11} className="animate-spin" />} Save</button></div>
-      </div>
-    </div>
+    <GoStudioModal
+      open={open}
+      onClose={onCancel}
+      size="sm"
+      icon={Save}
+      tone="warning"
+      title="Save changes before closing?"
+      subtitle={`${documents.length} file${documents.length === 1 ? ' has' : 's have'} unsaved changes.`}
+      footer={<>
+        <GoStudioButton variant="ghost" onClick={onCancel}>Cancel</GoStudioButton>
+        <GoStudioButton variant="danger-ghost" onClick={() => void onDiscard()}>Discard</GoStudioButton>
+        <GoStudioButton variant="primary" data-autofocus loading={saving} onClick={() => { setSaving(true); void onSave().finally(() => setSaving(false)) }}>Save</GoStudioButton>
+      </>}
+    >
+      <GoStudioUnsavedFileList documents={documents} />
+    </GoStudioModal>
   )
 }
-
-

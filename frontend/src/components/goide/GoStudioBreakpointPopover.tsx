@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ListChecks, Trash2, X } from 'lucide-react'
 import { useGoIDEDebugStore } from '@/stores/goideDebug'
 import { GoStudioBreakpointFields, canApply } from './GoStudioBreakpointFields'
+import './goStudioModal.css'
 import { draftFrom, optionsFrom, useGoStudioBreakpointUi, type BreakpointDraft } from './goStudioBreakpoints'
 
 const POPOVER_WIDTH = 340
@@ -42,8 +43,8 @@ export function GoStudioBreakpointPopover() {
   const top = Math.max(8, Math.min(target.y + 8, window.innerHeight - 380))
 
   return (
-    <div ref={ref} role="dialog" aria-label={`Breakpoint at line ${target.line}`} style={{ left, top, width: POPOVER_WIDTH }} className="fixed z-50 overflow-hidden rounded-lg border border-border-2 bg-surface-1 shadow-2xl">
-      <div className="flex h-8 items-center gap-2 border-b border-border-1 px-3 text-[10px]">
+    <div ref={ref} role="dialog" aria-label={`Breakpoint at line ${target.line}`} style={{ left, top, width: POPOVER_WIDTH }} className="gs-popover">
+      <div className="gs-popover-header">
         <span className="font-semibold text-text-1">{existing ? 'Breakpoint' : 'New breakpoint'}</span>
         <span className="truncate font-mono text-text-4">{target.relativePath}:{target.line}</span>
         <button type="button" onClick={close} title="Close · Esc" aria-label="Close" className="ml-auto grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-3"><X size={11} /></button>

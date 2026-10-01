@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronDown, ChevronUp, Copy, Plus, Trash2, X } from 'lucide-react'
-import { useModalFocusTrap } from '@/lib/accessibility'
+import { useEffect, useMemo, useState } from 'react'
+import { ChevronDown, ChevronUp, Copy, Play, Plus, Trash2 } from 'lucide-react'
+import { GoStudioButton, GoStudioModal } from './GoStudioModal'
 import { confirm } from '@/lib/confirmDialog'
 import { useGoIDEStore, type GoIDEState } from '@/stores/goide'
 import { GoIDERunConfigurationKind } from '@/lib/goide-api'
@@ -52,8 +52,6 @@ function splitList(value: string, separator: RegExp): string[] {
  * il valore viene richiesto all'avvio.
  */
 export function GoStudioRunConfigurations({ open, sessionId, initialDraft, onClose }: GoStudioRunConfigurationsProps) {
-  const dialogRef = useRef<HTMLDivElement>(null)
-  useModalFocusTrap(open, onClose, dialogRef)
   const configs = useGoIDEStore((state) => state.runConfigsBySession[sessionId] ?? EMPTY_CONFIGS)
   const loadRunConfigurations = useGoIDEStore((state) => state.loadRunConfigurations)
   const saveRunConfiguration = useGoIDEStore((state) => state.saveRunConfiguration)
@@ -123,77 +121,67 @@ export function GoStudioRunConfigurations({ open, sessionId, initialDraft, onClo
   }
 
   const textField = (label: string, value: string, onChange: (next: string) => void, placeholder: string) => (
-    <label className="block text-[10px] font-medium text-text-3">
+    <label className="gs-field-label">
       {label}
-      <input
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        className="mt-1 h-8 w-full rounded border border-border-1 bg-surface-0 px-2 font-mono text-[11px] text-text-1 outline-none focus:border-accent"
-      />
+      <input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className="gs-input gs-mono" />
     </label>
   )
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center ad-modal-backdrop" onClick={onClose}>
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Run configurations"
-        tabIndex={-1}
-        className="flex h-[560px] w-[780px] flex-col overflow-hidden rounded-xl border border-border-2 bg-surface-1 shadow-2xl"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="flex h-10 shrink-0 items-center border-b border-border-1 px-4">
-          <h2 className="text-xs font-semibold text-text-1">Run configurations</h2>
-          <button type="button" onClick={onClose} className="ml-auto grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-3">
-            <X size={12} />
-          </button>
-        </div>
-
+    <GoStudioModal
+      open={open}
+      onClose={onClose}
+      size="xl"
+      tall
+      divided
+      flush
+      icon={Play}
+      tone="success"
+      title="Run configurations"
+      subtitle="Saved ways to build, run, test and containerize this project."
+      footer={<>
+        <GoStudioButton variant="ghost" onClick={onClose}>Close</GoStudioButton>
+        <GoStudioButton variant="primary" loading={saving} disabled={!draft.name.trim()} onClick={() => void save()}>{selectedId ? 'Save configuration' : 'Create configuration'}</GoStudioButton>
+      </>}
+    >
         <div className="flex min-h-0 flex-1">
-          <aside className="flex w-56 shrink-0 flex-col border-r border-border-1">
-            <div className="min-h-0 flex-1 overflow-auto py-1">
-              {configs.length === 0 && <p className="px-3 py-2 text-[10px] text-text-4">No configuration yet.</p>}
+          <aside className="flex w-60 shrink-0 flex-col border-r border-border-1 bg-surface-0/40">
+            <div className="min-h-0 flex-1 overflow-auto p-1.5">
+              {configs.length === 0 && <p className="gs-list-empty">No configuration yet.</p>}
               {configs.map((config) => (
                 <div
                   key={config.id}
-                  className={`group flex h-8 items-center gap-1 px-2 text-[11px] ${
-                    config.id === selectedId ? 'bg-surface-3 text-text-1' : 'text-text-2 hover:bg-surface-2'
+                  className={`group flex h-9 items-center gap-0.5 rounded-lg px-2.5 text-[12.5px] ${
+                    config.id === selectedId ? 'bg-accent/15 text-text-1' : 'text-text-2 hover:bg-surface-2/60'
                   }`}
                 >
                   <button type="button" onClick={() => setSelectedId(config.id)} className="min-w-0 flex-1 truncate text-left">
                     {config.name}
-                    <span className="ml-1 text-[9px] text-text-4">{config.kind}</span>
+                    <span className="ml-1.5 text-[11px] text-text-4">{config.kind}</span>
                   </button>
-                  <button type="button" onClick={() => void move(config.id, -1)} title="Move up" className="grid h-5 w-5 place-items-center rounded text-text-4 opacity-0 hover:text-text-1 group-hover:opacity-100"><ChevronUp size={11} /></button>
-                  <button type="button" onClick={() => void move(config.id, 1)} title="Move down" className="grid h-5 w-5 place-items-center rounded text-text-4 opacity-0 hover:text-text-1 group-hover:opacity-100"><ChevronDown size={11} /></button>
-                  <button type="button" onClick={() => void duplicateRunConfiguration(config.id)} title="Duplicate" className="grid h-5 w-5 place-items-center rounded text-text-4 opacity-0 hover:text-text-1 group-hover:opacity-100"><Copy size={11} /></button>
-                  <button type="button" onClick={() => void remove(config.id)} title="Delete" className="grid h-5 w-5 place-items-center rounded text-text-4 opacity-0 hover:text-danger group-hover:opacity-100"><Trash2 size={11} /></button>
+                  <button type="button" onClick={() => void move(config.id, -1)} title="Move up" className="gs-btn gs-btn-ghost gs-btn-sm gs-btn-icon h-6 w-6 opacity-0 group-hover:opacity-100"><ChevronUp size={13} /></button>
+                  <button type="button" onClick={() => void move(config.id, 1)} title="Move down" className="gs-btn gs-btn-ghost gs-btn-sm gs-btn-icon h-6 w-6 opacity-0 group-hover:opacity-100"><ChevronDown size={13} /></button>
+                  <button type="button" onClick={() => void duplicateRunConfiguration(config.id)} title="Duplicate" className="gs-btn gs-btn-ghost gs-btn-sm gs-btn-icon h-6 w-6 opacity-0 group-hover:opacity-100"><Copy size={13} /></button>
+                  <button type="button" onClick={() => void remove(config.id)} title="Delete" className="gs-btn gs-btn-danger-ghost gs-btn-sm gs-btn-icon h-6 w-6 opacity-0 group-hover:opacity-100"><Trash2 size={13} /></button>
                 </div>
               ))}
             </div>
             <button
               type="button"
               onClick={() => { setSelectedId(null); setDraft(emptyConfiguration(sessionId)) }}
-              className="flex h-8 shrink-0 items-center gap-1.5 border-t border-border-1 px-3 text-[10px] text-text-3 hover:bg-surface-2 hover:text-text-1"
+              className="flex h-10 shrink-0 items-center gap-2 border-t border-border-1 px-4 text-[12.5px] font-medium text-text-2 hover:bg-surface-2/60 hover:text-text-1"
             >
-              <Plus size={11} /> New configuration
+              <Plus size={14} /> New configuration
             </button>
           </aside>
 
-          <div className="min-w-0 flex-1 overflow-auto p-4">
-            <div className="grid grid-cols-2 gap-3">
-              <label className="block text-[10px] font-medium text-text-3">
+          <div className="min-w-0 flex-1 overflow-auto p-5">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-4">
+              <label className="gs-field-label">
                 Name
-                <input
-                  value={draft.name}
-                  onChange={(event) => patch({ name: event.target.value })}
-                  className="mt-1 h-8 w-full rounded border border-border-1 bg-surface-0 px-2 text-[11px] text-text-1 outline-none focus:border-accent"
-                />
+                <input value={draft.name} onChange={(event) => patch({ name: event.target.value })} className="gs-input" />
               </label>
-              <label className="block text-[10px] font-medium text-text-3">
+              <label className="gs-field-label">
                 Kind
                 <select
                   value={draft.kind}
@@ -202,7 +190,7 @@ export function GoStudioRunConfigurations({ open, sessionId, initialDraft, onClo
                     const fileDefault = kind === GoIDERunConfigurationKind.RunKindMake ? 'Makefile' : kind === GoIDERunConfigurationKind.RunKindDockerCompose ? 'docker-compose.yml' : isDockerKind(kind) ? 'Dockerfile' : '.'
                     patch({ kind, target: TOOL_KINDS.has(kind) !== isTool || !draft.target ? fileDefault : draft.target })
                   }}
-                  className="mt-1 h-8 w-full rounded border border-border-1 bg-surface-0 px-2 text-[11px] text-text-1 outline-none focus:border-accent"
+                  className="gs-input"
                 >
                   {KINDS.map((kind) => (
                     <option key={kind.value} value={kind.value} disabled={!kind.available}>
@@ -213,13 +201,13 @@ export function GoStudioRunConfigurations({ open, sessionId, initialDraft, onClo
               </label>
 
               {draft.kind === GoIDERunConfigurationKind.RunKindFiles ? (
-                <label className="col-span-2 block text-[10px] font-medium text-text-3">
+                <label className="gs-field-label col-span-2">
                   Go files (one per line)
                   <textarea
                     value={(draft.files ?? []).join('\n')}
                     onChange={(event) => patch({ files: splitList(event.target.value, /\r?\n/) })}
                     placeholder={'main.go\nhelper.go'}
-                    className="mt-1 h-16 w-full resize-none rounded border border-border-1 bg-surface-0 p-2 font-mono text-[11px] text-text-1 outline-none focus:border-accent"
+                    className="gs-input gs-mono"
                   />
                 </label>
               ) : draft.kind === GoIDERunConfigurationKind.RunKindBinary ? (
@@ -247,8 +235,8 @@ export function GoStudioRunConfigurations({ open, sessionId, initialDraft, onClo
                   {textField('Build context', docker.context ?? '', (next) => patchDocker({ context: next }), '. (Dockerfile folder)')}
                   {textField('Image tag', docker.tag ?? '', (next) => patchDocker({ tag: next }), '<project>:dev')}
                   {textField('Stage (--target)', docker.stage ?? '', (next) => patchDocker({ stage: next }), 'Last stage')}
-                  <label className="flex items-end gap-2 pb-2 text-[10px] font-medium text-text-3">
-                    <input type="checkbox" checked={!!docker.noCache} onChange={(event) => patchDocker({ noCache: event.target.checked })} className="accent-accent" />
+                  <label className="gs-check self-end pb-2">
+                    <input type="checkbox" checked={!!docker.noCache} onChange={(event) => patchDocker({ noCache: event.target.checked })} className="h-[15px] w-[15px] accent-[var(--color-accent)]" />
                     Build without cache (--no-cache)
                   </label>
                 </>
@@ -276,25 +264,13 @@ export function GoStudioRunConfigurations({ open, sessionId, initialDraft, onClo
 
             <GoStudioRunParameters draft={draft} configs={configs} patch={patch} />
 
-            <p className="mt-3 text-[9px] leading-4 text-text-4">
+            <p className="gs-hint mt-4">
               {kindInfo.hint}. {isTool ? 'Arguments are passed as a list, never through a shell.' : 'Tool flags and program arguments stay separate and reach Go without shell concatenation.'}
               Secret values are never written to disk: only the variable name is stored and the value is requested at launch.
             </p>
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border-1 bg-surface-0 px-4 py-3">
-          <button type="button" onClick={onClose} className="h-7 rounded px-3 text-xs text-text-3 hover:bg-surface-2">Close</button>
-          <button
-            type="button"
-            onClick={() => void save()}
-            disabled={saving || !draft.name.trim()}
-            className="h-7 rounded bg-accent px-3 text-xs font-semibold text-white disabled:opacity-40"
-          >
-            {selectedId ? 'Save configuration' : 'Create configuration'}
-          </button>
-        </div>
-      </div>
-    </div>
+    </GoStudioModal>
   )
 }

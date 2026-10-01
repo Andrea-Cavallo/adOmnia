@@ -5,6 +5,7 @@ import type { GoIDEEditorLocation, GoIDEQuickDefinition } from '@/lib/goide-lsp-
 import { useGoIDELspStore, type GoIDECaretPopup } from '@/stores/goideLsp'
 import { navigateToLocation } from './goStudioLanguageFeatures'
 import { activeGoStudioEditor } from './goStudioEditorRegistry'
+import './goStudioModal.css'
 import { groupUsagesByKind } from './goStudioUsages'
 
 const POPUP_WIDTH = 560
@@ -104,8 +105,8 @@ export function GoStudioCaretPopup() {
   const { left, top } = placement(popup.anchor)
   const pick = (location: GoIDEEditorLocation) => { closePopup(); navigateToLocation(location) }
   return (
-    <div ref={ref} role="dialog" aria-label={titleFor(popup)} style={{ left, top, width: POPUP_WIDTH, maxHeight: POPUP_MAX_HEIGHT }} className="fixed z-50 flex flex-col overflow-hidden rounded-lg border border-border-2 bg-surface-1 shadow-2xl">
-      <div className="flex h-7 shrink-0 items-center gap-2 border-b border-border-1 px-3 text-[10px]">
+    <div ref={ref} role="dialog" aria-label={titleFor(popup)} style={{ left, top, width: POPUP_WIDTH, maxHeight: POPUP_MAX_HEIGHT }} className="gs-popover flex flex-col">
+      <div className="gs-popover-header">
         <span className="font-semibold text-text-1">{titleFor(popup)}</span>
         {popup.kind === 'definition' && <span className="truncate font-mono text-text-4">{locationLabel(popup.result.location)}</span>}
         {popup.kind === 'usages' && <span className="text-text-4">{popup.locations.length} result{popup.locations.length === 1 ? '' : 's'}</span>}

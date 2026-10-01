@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { CheckCircle2, CircleAlert, Loader2, Stethoscope, Wrench } from 'lucide-react'
+import { CheckCircle2, CircleAlert, Stethoscope, Wrench } from 'lucide-react'
+import { GoStudioButton } from './GoStudioModal'
 import { useGoIDELspStore } from '@/stores/goideLsp'
 import { useGoIDEDebugStore } from '@/stores/goideDebug'
 import type { GoStudioCommandId } from './goStudioCommands'
@@ -35,27 +36,27 @@ export function ToolchainToolsSection({ sessionId, goAvailable, onRunCommand }: 
   ]
 
   return (
-    <section className="mt-4 border-t border-border-1 pt-4">
-      <div className="mb-2 flex items-center">
-        <h3 className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-text-3"><Wrench size={11} /> Go tools</h3>
-        <button type="button" disabled={checking} onClick={() => void check()} className="ml-auto flex h-6 items-center gap-1 rounded border border-border-1 px-2 text-[9px] text-text-3 hover:border-accent disabled:opacity-40">{checking ? <Loader2 size={10} className="animate-spin" /> : <Stethoscope size={10} />} Health check</button>
+    <section className="flex flex-col gap-2 border-t border-border-1 pt-4">
+      <div className="flex items-center">
+        <h3 className="gs-section-title flex items-center gap-1.5"><Wrench size={12} /> Go tools</h3>
+        <GoStudioButton small variant="secondary" className="ml-auto" icon={Stethoscope} loading={checking} onClick={() => void check()}>Health check</GoStudioButton>
       </div>
-      <div className="divide-y divide-border-1 rounded border border-border-1 bg-surface-0">
+      <div className="gs-list">
         {rows.map(({ name, purpose, status, install }) => {
           const healthy = status?.available === true
           return (
-            <div key={name} className="flex items-center gap-3 p-2">
-              {healthy ? <CheckCircle2 size={12} className="shrink-0 text-success" /> : <CircleAlert size={12} className="shrink-0 text-warning" />}
+            <div key={name} className="gs-list-row">
+              {healthy ? <CheckCircle2 size={15} className="shrink-0 text-success" /> : <CircleAlert size={15} className="shrink-0 text-warning" />}
               <div className="min-w-0 flex-1">
-                <div className="text-[11px] font-medium text-text-2">{name} <span className="font-normal text-text-4">· {purpose}{healthy && status?.version ? ` · ${status.version}` : ''}{healthy && status?.source ? ` (${status.source})` : ''}</span></div>
-                <div className="truncate font-mono text-[9px] text-text-4" title={healthy ? status?.binary : status?.error}>{healthy ? status?.binary : status?.error ?? 'Not checked yet'}</div>
+                <div className="font-medium text-text-1">{name} <span className="font-normal text-text-4">· {purpose}{healthy && status?.version ? ` · ${status.version}` : ''}{healthy && status?.source ? ` (${status.source})` : ''}</span></div>
+                <div className="gs-mono truncate text-[11px] text-text-4" title={healthy ? status?.binary : status?.error}>{healthy ? status?.binary : status?.error ?? 'Not checked yet'}</div>
               </div>
-              <button type="button" disabled={!goAvailable} title={goAvailable ? `go install ${name}@latest with the project SDK` : 'Needs a Go SDK'} onClick={() => onRunCommand(install)} className="h-6 rounded px-2 text-[10px] text-accent hover:bg-accent/10 disabled:text-text-4">{healthy ? 'Update…' : 'Install…'}</button>
+              <GoStudioButton small variant="secondary" disabled={!goAvailable} title={goAvailable ? `go install ${name}@latest with the project SDK` : 'Needs a Go SDK'} onClick={() => onRunCommand(install)}>{healthy ? 'Update' : 'Install'}</GoStudioButton>
             </div>
           )
         })}
       </div>
-      <p className="mt-1 text-[9px] text-text-4">Install and update run in the Run console; run the health check again when they finish.</p>
+      <p className="gs-hint">Install and update run in the Run console. Run the health check again when they finish.</p>
     </section>
   )
 }

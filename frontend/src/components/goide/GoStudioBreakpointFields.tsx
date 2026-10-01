@@ -11,14 +11,14 @@ interface GoStudioBreakpointFieldsProps {
   autoFocus?: boolean
 }
 
-const INPUT = 'h-7 w-full rounded-md border border-border-2 bg-surface-0 px-2 font-mono text-[11px] text-text-1 outline-none placeholder:text-text-4 focus:border-accent'
+const INPUT = 'gs-input gs-mono'
 
 function Field({ label, hint, error, children }: { label: string; hint?: string; error?: string | null; children: ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-text-3">{label}</span>
+      <span className="gs-label mb-1.5 block">{label}</span>
       {children}
-      {(error || hint) && <span className={`mt-1 block text-[10px] ${error ? 'text-danger' : 'text-text-4'}`}>{error || hint}</span>}
+      {(error || hint) && <span className={`gs-hint mt-1.5 block ${error ? 'text-danger' : ''}`}>{error || hint}</span>}
     </label>
   )
 }
@@ -31,7 +31,7 @@ export function GoStudioBreakpointFields({ draft, onChange, onSubmit, allowLog =
   }
   return (
     <div className="space-y-3">
-      <label className="flex items-center gap-2 text-[11px] text-text-2">
+      <label className="gs-check">
         <input type="checkbox" checked={draft.enabled} onChange={(event) => update({ enabled: event.target.checked })} className="accent-accent" />
         Enabled
       </label>
@@ -43,7 +43,7 @@ export function GoStudioBreakpointFields({ draft, onChange, onSubmit, allowLog =
       </Field>
       {allowLog && (
         <div>
-          <label className="mb-1.5 flex items-center gap-2 text-[11px] text-text-2">
+          <label className="gs-check mb-2">
             <input type="checkbox" checked={draft.log} onChange={(event) => update({ log: event.target.checked })} className="accent-accent" />
             Log a message instead of stopping
           </label>

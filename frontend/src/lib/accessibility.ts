@@ -186,7 +186,9 @@ export function useModalFocusTrap(
     const focusFirst = () => {
       const container = containerRef.current
       if (!container) return
-      const first = container.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)
+      // data-autofocus sceglie l'elemento iniziale (es. l'azione principale di una conferma).
+      const preferred = container.querySelector<HTMLElement>('[data-autofocus]:not(:disabled)')
+      const first = preferred ?? container.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)
       ;(first ?? container).focus()
     }
     const animationFrame = requestAnimationFrame(focusFirst)

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { AtSign, Loader2, X } from 'lucide-react'
+import { AtSign, Loader2 } from 'lucide-react'
 import type { CancellablePromise } from '@wailsio/runtime'
 import { requestWorkspaceSymbols, type GoIDEWorkspaceSymbol } from '@/lib/goide-lsp-api'
 import { GoStudioSymbolIcon } from './GoStudioSymbolIcon'
 import { navigateToLocation } from './goStudioLanguageFeatures'
+import { GoStudioPalette } from './GoStudioModal'
 
 const SEARCH_DEBOUNCE_MS = 140
 
@@ -67,37 +68,37 @@ export function GoStudioSymbolSearch({ open, sessionId, onClose }: GoStudioSymbo
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/55 pt-[12vh] backdrop-blur-[1px]" onClick={onClose}>
-      <div role="dialog" aria-modal="true" aria-label="Go to symbol in workspace" className="w-[min(720px,82vw)] overflow-hidden rounded-lg border border-border-2 bg-surface-1 shadow-2xl" onClick={(event) => event.stopPropagation()}>
-        <div className="flex h-10 items-center gap-2 border-b border-border-1 px-3">
-          <AtSign size={14} className="text-accent" />
-          <input ref={inputRef} value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={onKeyDown} placeholder="Type a symbol: Handler, (*Server).Serve, NewClient…" aria-label="Symbol query" className="min-w-0 flex-1 bg-transparent text-xs text-text-1 outline-none placeholder:text-text-4" />
-          {loading ? <Loader2 size={13} className="animate-spin text-text-4" /> : <span className="text-[9px] text-text-4">{results.length ? `${results.length} symbols` : 'gopls'}</span>}
-          <button type="button" onClick={onClose} title="Close" className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-3"><X size={12} /></button>
-        </div>
-        <div ref={listRef} role="listbox" className="max-h-[52vh] overflow-auto py-1">
-          {results.map((symbol, index) => (
-            <button
-              key={`${symbol.location.uri}:${symbol.location.range.startLine}:${symbol.name}`}
-              data-index={index}
-              role="option"
-              aria-selected={index === selected}
-              type="button"
-              onMouseMove={() => setSelected(index)}
-              onClick={() => choose(symbol)}
-              className={`flex h-8 w-full items-center gap-2 px-3 text-left ${index === selected ? 'bg-accent/15' : 'hover:bg-surface-3'}`}
-            >
-              <GoStudioSymbolIcon kind={symbol.kind} />
-              <span className="text-[11px] font-medium text-text-1">{symbol.name}</span>
-              {symbol.container && <span className="text-[10px] text-text-3">{symbol.container}</span>}
-              <span className="min-w-0 flex-1 truncate text-right font-mono text-[9px] text-text-4">{symbol.location.relativePath || symbol.location.path}:{symbol.location.range.startLine}{symbol.location.external ? ' · SDK' : ''}</span>
-            </button>
-          ))}
-          {error && <p className="px-4 py-6 text-center text-[11px] text-danger">{error}</p>}
-          {!error && !loading && query.trim() && results.length === 0 && <p className="px-4 py-8 text-center text-[11px] text-text-4">No matching symbols.</p>}
-          {!query.trim() && <p className="px-4 py-8 text-center text-[11px] text-text-4">Search types, functions, methods and fields across the project and its dependencies. ↑↓ to move, Enter to open.</p>}
-        </div>
+    <GoStudioPalette
+      open
+      wide
+      onClose={onClose}
+      ariaLabel="Go to symbol in workspace"
+      icon={AtSign}
+      input={<input ref={inputRef} value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={onKeyDown} placeholder="Symbol: Handler, (*Server).Serve, NewClient…" aria-label="Symbol query" className="gs-palette-input" />}
+      meta={loading ? <Loader2 size={14} className="animate-spin" /> : results.length ? `${results.length} symbols` : 'gopls'}
+    >
+      <div ref={listRef} role="listbox" aria-label="Symbols">
+        {results.map((symbol, index) => (
+          <button
+            key={`${symbol.location.uri}:${symbol.location.range.startLine}:${symbol.name}`}
+            data-index={index}
+            role="option"
+            aria-selected={index === selected}
+            type="button"
+            onMouseMove={() => setSelected(index)}
+            onClick={() => choose(symbol)}
+            className="gs-palette-item"
+          >
+            <GoStudioSymbolIcon kind={symbol.kind} size={14} />
+            <span className="gs-palette-item-title">{symbol.name}</span>
+            {symbol.container && <span className="shrink-0 text-[12px] text-text-3">{symbol.container}</span>}
+            <span className="gs-palette-item-detail gs-mono text-right text-[11px]">{symbol.location.relativePath || symbol.location.path}:{symbol.location.range.startLine}{symbol.location.external ? ' · SDK' : ''}</span>
+          </button>
+        ))}
+        {error && <p className="gs-palette-empty text-danger">{error}</p>}
+        {!error && !loading && query.trim() && results.length === 0 && <p className="gs-palette-empty">No matching symbols.</p>}
+        {!query.trim() && <p className="gs-palette-empty">Types, functions, methods and fields across the project and its dependencies.</p>}
       </div>
-    </div>
+    </GoStudioPalette>
   )
 }

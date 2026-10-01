@@ -5,6 +5,7 @@ import { headKey, useGoIDEVCSStore } from '@/stores/goideVcs'
 import { activeGoStudioEditor } from './goStudioEditorRegistry'
 import { hunkOldLines } from './goStudioLineDiff'
 import { editorModelUri } from './goStudioModelUri'
+import './goStudioModal.css'
 import { revertHunk } from './goStudioVcsEditor'
 
 const POPUP_WIDTH = 520
@@ -38,8 +39,8 @@ export function GoStudioHunkPopup() {
   const title = popup.hunk.kind === 'added' ? 'Added lines (not in HEAD)' : popup.hunk.kind === 'modified' ? 'HEAD version of these lines' : 'Lines deleted since HEAD'
 
   return (
-    <div ref={ref} role="dialog" aria-label="Change since HEAD" style={{ left, top: popup.anchor.y + 8, width: POPUP_WIDTH }} className="fixed z-50 overflow-hidden rounded-lg border border-border-2 bg-surface-1 shadow-2xl">
-      <div className="flex h-8 items-center gap-2 border-b border-border-1 px-3 text-[10px]">
+    <div ref={ref} role="dialog" aria-label="Change since HEAD" style={{ left, top: popup.anchor.y + 8, width: POPUP_WIDTH }} className="gs-popover">
+      <div className="gs-popover-header">
         <span className="font-semibold text-text-1">{title}</span>
         <button type="button" onClick={revert} disabled={document.document.readOnly} className="ml-auto flex h-6 items-center gap-1 rounded px-2 text-text-2 hover:bg-surface-3 disabled:opacity-40"><RotateCcw size={11} /> Revert</button>
         <button type="button" onClick={close} title="Close · Esc" aria-label="Close" className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-3"><X size={11} /></button>

@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { Layers, Pencil, Plus, Trash2 } from 'lucide-react'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import { confirm } from '@/lib/confirmDialog'
-import { useModalFocusTrap } from '@/lib/accessibility'
 import { DEFAULT_STUDIO_WORKSPACE_ID } from '@/lib/goide-workspaces-api'
 import { goStudioWindowContext } from '@/lib/goide-window-api'
 import { sessionsInWorkspace, useGoIDEStore } from '@/stores/goide'
 import { createGoStudioWorkspace, deleteGoStudioWorkspace, renameGoStudioWorkspace, switchGoStudioWorkspace } from '@/stores/goideWorkspaces'
+import { GoStudioButton, GoStudioField, GoStudioModal } from './GoStudioModal'
 
 const NEW_ITEM = 'workspace:new'
 const RENAME_ITEM = 'workspace:rename'
@@ -23,9 +23,7 @@ function projectCount(count: number): string {
 function WorkspaceNameDialog({ dialog, onClose }: { dialog: NameDialog; onClose: () => void }) {
   const [name, setName] = useState(dialog.mode === 'rename' ? dialog.name : '')
   const [busy, setBusy] = useState(false)
-  const dialogRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  useModalFocusTrap(true, onClose, dialogRef)
   useEffect(() => { inputRef.current?.select() }, [])
 
   const submit = async () => {
@@ -36,18 +34,27 @@ function WorkspaceNameDialog({ dialog, onClose }: { dialog: NameDialog; onClose:
     else setBusy(false)
   }
 
+  const creating = dialog.mode === 'create'
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[18vh] ad-modal-backdrop" onClick={onClose}>
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={dialog.mode === 'create' ? 'New Go Studio workspace' : 'Rename Go Studio workspace'} tabIndex={-1} className="w-[min(420px,92vw)] rounded-xl border border-border-2 bg-surface-1 p-4 shadow-2xl" onClick={(event) => event.stopPropagation()}>
-        <h2 className="text-xs font-semibold text-text-1">{dialog.mode === 'create' ? 'New Go Studio Workspace' : 'Rename Workspace'}</h2>
-        <p className="mt-1 text-[10px] leading-relaxed text-text-4">A Go Studio workspace groups open projects. It is separate from adOmnia API workspaces, and the same project can be open in several of them.</p>
-        <form className="mt-3 flex gap-2" onSubmit={(event) => { event.preventDefault(); void submit() }}>
-          <input ref={inputRef} autoFocus value={name} maxLength={MAX_NAME_LENGTH} onChange={(event) => setName(event.target.value)} placeholder="Workspace name" aria-label="Workspace name"
-            className="h-7 min-w-0 flex-1 rounded border border-border-1 bg-surface-0 px-2 text-[11px] text-text-1 outline-none focus:border-accent" />
-          <button type="submit" disabled={busy || !name.trim()} className="h-7 rounded bg-accent px-3 text-xs font-semibold text-white disabled:opacity-40">{dialog.mode === 'create' ? 'Create' : 'Rename'}</button>
-        </form>
-      </div>
-    </div>
+    <GoStudioModal
+      open
+      onClose={onClose}
+      top
+      size="sm"
+      icon={Layers}
+      title={creating ? 'New Go Studio workspace' : 'Rename workspace'}
+      subtitle="A workspace groups open projects. It is separate from adOmnia API workspaces, and a project can be open in several."
+      footer={<>
+        <GoStudioButton variant="ghost" onClick={onClose}>Cancel</GoStudioButton>
+        <GoStudioButton variant="primary" type="submit" form="go-studio-workspace-form" loading={busy} disabled={!name.trim()}>{creating ? 'Create' : 'Rename'}</GoStudioButton>
+      </>}
+    >
+      <form id="go-studio-workspace-form" onSubmit={(event) => { event.preventDefault(); void submit() }}>
+        <GoStudioField label="Name">
+          <input ref={inputRef} autoFocus value={name} maxLength={MAX_NAME_LENGTH} onChange={(event) => setName(event.target.value)} placeholder="e.g. Payments" className="gs-input" />
+        </GoStudioField>
+      </form>
+    </GoStudioModal>
   )
 }
 
