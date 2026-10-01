@@ -6,6 +6,10 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Fixed
+- **Debugger error chain:** *Resolve wrapped errors* now reads `fmt.Errorf` wrappers directly (`*fmt.wrapError`), so it also works when the program never calls `Unwrap()` and the linker removed it; other error types still call `Unwrap()`.
+- **Tool versions cached:** gopls, Delve and linter versions are read once per binary (size + date) and remembered across restarts; terminal shells (`wsl -l -q`) are re-detected at most every 5 minutes.
+
 ## [0.9.51] - 2026-10-01
 
 ### Fixed

@@ -4,7 +4,7 @@ import { Clipboard as WailsClipboard } from '@wailsio/runtime'
 import { evaluateGoIDEDebug, type GoIDEDebugVariable } from '@/lib/goide-debug-api'
 import { useGoIDEDebugStore, type GoIDEDebugConsoleLine, type GoIDEDebugView, type GoIDEWatchValue } from '@/stores/goideDebug'
 import { PaneHeader, valueTone } from './GoStudioDebugUi'
-import { goStudioUnwrapExpression, isNilGoStudioDebugValue } from './goStudioErrorChain'
+import { goStudioUnwrapCandidates, isNilGoStudioDebugValue } from './goStudioErrorChain'
 import { goStudioCollectionExpressions } from './goStudioCollectionInspector'
 import { goStudioContextFields } from './goStudioContextInspector'
 import { summarizeGoStudioDebugValue } from './goStudioDebugValueInspector'
@@ -190,13 +190,23 @@ function GoStudioErrorChainInspector({ debugId, frameId, expression, initial }: 
     let current = expression
     try {
       for (let depth = 0; depth < 12; depth += 1) {
-        const unwrapped = await evaluateGoIDEDebug(debugId, goStudioUnwrapExpression(current), frameId, 'repl')
+        let unwrapped: Awaited<ReturnType<typeof evaluateGoIDEDebug>> | null = null
+        let lastError: unknown = null
+        for (const candidate of goStudioUnwrapCandidates(current)) {
+          try {
+            unwrapped = await evaluateGoIDEDebug(debugId, candidate, frameId, 'repl')
+            current = candidate
+            break
+          } catch (error) {
+            lastError = error
+          }
+        }
+        if (!unwrapped) throw lastError
         if (isNilGoStudioDebugValue(unwrapped.result)) {
           setMessage('End of chain.')
           break
         }
         next.push({ name: `Unwrap #${depth + 1}`, value: unwrapped.result, type: unwrapped.type, variablesReference: unwrapped.variablesReference })
-        current = goStudioUnwrapExpression(current)
         if (depth === 11) setMessage('Stopped after 12 wrapped errors.')
       }
     } catch (error) {
@@ -208,7 +218,7 @@ function GoStudioErrorChainInspector({ debugId, frameId, expression, initial }: 
   }
   return (
     <div>
-      <p>Resolve the wrapper chain only on request; this calls <code>Unwrap()</code> in the paused process.</p>
+      <p>Resolve the wrapper chain only on request: <code>fmt.Errorf</code> wrappers are read directly; other error types call <code>Unwrap()</code> in the paused process.</p>
       <button type="button" onClick={() => void resolve()} disabled={loading || frameId === null} className="mt-1 rounded bg-accent/15 px-1.5 py-0.5 text-[10.5px] font-semibold text-accent hover:bg-accent/25 disabled:opacity-50">
         {loading ? <span className="inline-flex items-center gap-1"><LoaderCircle size={10} className="animate-spin" /> Resolving…</span> : 'Resolve wrapped errors'}
       </button>

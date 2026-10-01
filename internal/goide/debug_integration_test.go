@@ -73,7 +73,7 @@ func TestDebuggerBreakpointStepVariablesAndEvaluate(t *testing.T) {
 	if err != nil || !info.Available || info.Version == "" {
 		t.Fatalf("dlv non rilevato: %v %+v", err, info)
 	}
-	if _, err := ide.SetBreakpoints(sessionID, "main.go", lineBreakpoints(16)); err != nil {
+	if _, err := ide.SetBreakpoints(sessionID, "main.go", lineBreakpoints(debugFixtureLine(t, "\t\ttotal += value"))); err != nil {
 		t.Fatal(err)
 	}
 	started, err := ide.StartDebug(DebugRequest{SessionID: session.ID, Mode: "debug", Target: "."})
@@ -96,7 +96,7 @@ func TestDebuggerBreakpointStepVariablesAndEvaluate(t *testing.T) {
 		t.Fatalf("goroutine non disponibili: %v %+v", err, threads)
 	}
 	frames, err := ide.DebugStackTrace(string(started.ID), stopped.ThreadID)
-	if err != nil || len(frames) < 2 || frames[0].RelativePath != "main.go" || frames[0].Line != 16 || frames[0].Name != "main.sum" {
+	if err != nil || len(frames) < 2 || frames[0].RelativePath != "main.go" || frames[0].Line != debugFixtureLine(t, "\t\ttotal += value") || frames[0].Name != "main.sum" {
 		t.Fatalf("stack inatteso: %v %+v", err, frames)
 	}
 	scopes, err := ide.DebugScopes(string(started.ID), frames[0].ID)
@@ -131,7 +131,7 @@ func TestDebuggerBreakpointStepVariablesAndEvaluate(t *testing.T) {
 	}
 	stepped := waitDebugState(t, recorder, started.ID, DebugStopped, mark)
 	frames, _ = ide.DebugStackTrace(string(started.ID), stepped.ThreadID)
-	if frames[0].Line == 16 {
+	if frames[0].Line == debugFixtureLine(t, "\t\ttotal += value") {
 		t.Fatalf("step over non ha fatto avanzare: %+v", frames[0])
 	}
 
@@ -195,11 +195,11 @@ func TestDebuggerResolvesWrappedErrorChainOnExplicitEvaluate(t *testing.T) {
 		t.Fatalf("stack non disponibile: %v %+v", err, frames)
 	}
 	frameID := frames[0].ID
-	first, err := ide.DebugEvaluate(string(started.ID), "(outer).(interface{ Unwrap() error }).Unwrap()", frameID, "repl")
+	first, err := ide.DebugEvaluate(string(started.ID), "(outer).(*fmt.wrapError).err", frameID, "repl")
 	if err != nil || !strings.Contains(first.Result, "inner") {
 		t.Fatalf("primo Unwrap inatteso: %v %+v", err, first)
 	}
-	second, err := ide.DebugEvaluate(string(started.ID), "((outer).(interface{ Unwrap() error }).Unwrap()).(interface{ Unwrap() error }).Unwrap()", frameID, "repl")
+	second, err := ide.DebugEvaluate(string(started.ID), "((outer).(*fmt.wrapError).err).(*fmt.wrapError).err", frameID, "repl")
 	if err != nil || !strings.Contains(second.Result, "root cause") {
 		t.Fatalf("secondo Unwrap inatteso: %v %+v", err, second)
 	}
@@ -376,7 +376,7 @@ func TestTestsAndDebugStayIsolatedAcrossSessions(t *testing.T) {
 	first := openDebugSession(t, ide, delve)
 	second := openDebugSession(t, ide, delve)
 
-	if _, err := ide.SetBreakpoints(string(first.ID), "main.go", lineBreakpoints(16)); err != nil {
+	if _, err := ide.SetBreakpoints(string(first.ID), "main.go", lineBreakpoints(debugFixtureLine(t, "\t\ttotal += value"))); err != nil {
 		t.Fatal(err)
 	}
 	paused, err := ide.StartDebug(DebugRequest{SessionID: first.ID, Mode: "debug", Target: "."})
@@ -550,4 +550,15 @@ func waitDebugStateAny(t *testing.T, recorder *eventRecorder, id DebugSessionID,
 	}
 	t.Fatalf("nessuno stato tra %v", states)
 	return DebugSessionInfo{}
+}
+
+// debugFixtureLine trova una riga del fixture debugproject per contenuto: i numeri fissi
+// si rompevano a ogni riga aggiunta al fixture.
+func debugFixtureLine(t *testing.T, prefix string) int {
+	t.Helper()
+	content, err := os.ReadFile(filepath.Join("testdata", "debugproject", "main.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return lineOf(t, strings.ReplaceAll(string(content), "\r\n", "\n"), prefix)
 }

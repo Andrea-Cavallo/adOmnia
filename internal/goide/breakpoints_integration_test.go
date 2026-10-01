@@ -44,8 +44,8 @@ func TestDebuggerConditionalAndHitCountBreakpoints(t *testing.T) {
 		breakpoint Breakpoint
 		want       string
 	}{
-		{"condition", Breakpoint{Line: 16, Condition: "value == 2"}, "2"},
-		{"hit count", Breakpoint{Line: 16, HitCondition: "3"}, "3"},
+		{"condition", Breakpoint{Line: debugFixtureLine(t, "\t\ttotal += value"), Condition: "value == 2"}, "2"},
+		{"hit count", Breakpoint{Line: debugFixtureLine(t, "\t\ttotal += value"), HitCondition: "3"}, "3"},
 	}
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
@@ -54,7 +54,7 @@ func TestDebuggerConditionalAndHitCountBreakpoints(t *testing.T) {
 				t.Fatal(err)
 			}
 			started, stopped, frames := stopAt(t, ide, recorder, session, nil)
-			if frames[0].Line != 16 {
+			if frames[0].Line != debugFixtureLine(t, "\t\ttotal += value") {
 				t.Fatalf("fermata sulla riga sbagliata: %+v", frames[0])
 			}
 			if got := evaluateIn(t, ide, started.ID, frames[0].ID, "value"); got != test.want {
@@ -70,7 +70,7 @@ func TestDebuggerConditionalAndHitCountBreakpoints(t *testing.T) {
 
 func TestDebuggerLogpointPrintsWithoutStopping(t *testing.T) {
 	ide, recorder, session := startDebugProject(t)
-	states, err := ide.SetBreakpoints(string(session.ID), "main.go", []Breakpoint{{Line: 16, LogMessage: "adding {value}"}})
+	states, err := ide.SetBreakpoints(string(session.ID), "main.go", []Breakpoint{{Line: debugFixtureLine(t, "\t\ttotal += value"), LogMessage: "adding {value}"}})
 	if err != nil || len(states) != 1 || states[0].LogMessage != "adding {value}" {
 		t.Fatalf("logpoint non salvato: %v %+v", err, states)
 	}
@@ -116,16 +116,16 @@ func TestDebuggerFunctionPanicAndRunToCursor(t *testing.T) {
 	}
 
 	// Run to Cursor su una riga senza codice: errore chiaro, il programma resta fermo.
-	if err := ide.DebugRunToCursor(string(started.ID), "main.go", 32, stopped.ThreadID); err == nil || !strings.Contains(err.Error(), "no executable code") {
+	if err := ide.DebugRunToCursor(string(started.ID), "main.go", debugFixtureLine(t, "func main() {")-1, stopped.ThreadID); err == nil || !strings.Contains(err.Error(), "no executable code") {
 		t.Fatalf("Run to Cursor su riga vuota: %v", err)
 	}
 	mark := len(recorder.all())
-	if err := ide.DebugRunToCursor(string(started.ID), "main.go", 27, stopped.ThreadID); err != nil {
+	if err := ide.DebugRunToCursor(string(started.ID), "main.go", debugFixtureLine(t, "\tfmt.Println(\"total\""), stopped.ThreadID); err != nil {
 		t.Fatal(err)
 	}
 	cursor := waitDebugState(t, recorder, started.ID, DebugStopped, mark)
 	frames, _ = ide.DebugStackTrace(string(started.ID), cursor.ThreadID)
-	if frames[0].RelativePath != "main.go" || frames[0].Line != 27 {
+	if frames[0].RelativePath != "main.go" || frames[0].Line != debugFixtureLine(t, "\tfmt.Println(\"total\"") {
 		t.Fatalf("Run to Cursor fermato altrove: %+v", frames[0])
 	}
 
