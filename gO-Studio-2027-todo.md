@@ -21,7 +21,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
-| **P0** | Completare l'IDE Go di tutti i giorni | 65 | 13 |
+| **P0** | Completare l'IDE Go di tutti i giorni | 56 | 13 |
 | **P1** | Codice ↔ runtime: il motivo per usare adOmnia | 192 | 58 |
 | **P2** | Studi Go avanzati | 224 | 39 |
 | **P3** | AI e intelligenza del workspace | 189 | 24 |
@@ -154,15 +154,17 @@ _Le lacune che costringono ancora ad aprire un altro IDE._
 
 ### Dependency graph
 
-- [ ] Dependency tree.
-- [ ] Duplicate transitive dependencies.
-- [ ] Module version chain.
-- [ ] License display.
-- [ ] Vulnerability badge.
-- [ ] Outdated badge.
-- [ ] Unused dependency indicator.
-- [ ] Dependency weight estimate.
-- [ ] Package count impact.
+- [x] Dependency tree.
+- [x] Duplicate transitive dependencies.
+- [x] Module version chain.
+- [x] License display.
+- [x] Vulnerability badge.
+- [x] Outdated badge.
+- [x] Unused dependency indicator.
+- [x] Dependency weight estimate.
+- [x] Package count impact.
+
+_Implementato in `Tools → Dependency Graph…`: albero diretto→transitivo, duplicati con chi richiede ogni versione e catena più corta dalla radice, licenze, peso stimato, pacchetti per modulo e indicatori unused; aggiornamenti (`go list -m -u`) e vulnerabilità (`govulncheck`) su richiesta. Backend `internal/goide/dependencygraph.go`._
 
 # P1 — Codice ↔ runtime: il motivo per usare adOmnia
 

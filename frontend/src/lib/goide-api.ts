@@ -205,6 +205,25 @@ export async function startGoIDEDependencyAction(request: DependencyActionReques
   return GoIDEBindings.StartDependencyAction(request)
 }
 
+export type GoIDEDependencyGraphReport = Awaited<ReturnType<typeof GoIDEBindings.DependencyGraph>>
+export type GoIDEDependencyUpdate = Awaited<ReturnType<typeof GoIDEBindings.DependencyUpdates>>[number]
+export type GoIDEDependencyVulnerability = Awaited<ReturnType<typeof GoIDEBindings.DependencyVulnerabilities>>[number]
+
+/** Grafo delle dipendenze offline: albero, duplicati transitivi, licenze, peso e pacchetti. */
+export async function getGoIDEDependencyGraph(sessionId: string, moduleDirectory: string): Promise<GoIDEDependencyGraphReport> {
+  return GoIDEBindings.DependencyGraph(sessionId, moduleDirectory)
+}
+
+/** Versioni più recenti disponibili (richiede rete). */
+export async function listGoIDEDependencyUpdates(sessionId: string, moduleDirectory: string): Promise<GoIDEDependencyUpdate[]> {
+  return GoIDEBindings.DependencyUpdates(sessionId, moduleDirectory)
+}
+
+/** Esegue govulncheck sul modulo (richiede rete e govulncheck installato). */
+export async function scanGoIDEDependencyVulnerabilities(sessionId: string, moduleDirectory: string): Promise<GoIDEDependencyVulnerability[]> {
+  return GoIDEBindings.DependencyVulnerabilities(sessionId, moduleDirectory)
+}
+
 export type GoIDEGoTool = 'vet' | 'generate' | 'fix' | 'modWhy' | 'modGraph' | 'doc'
 export type GoIDEGoToolRequest = GoToolRequest
 export type GoIDEGoToolPreview = GoToolPreview

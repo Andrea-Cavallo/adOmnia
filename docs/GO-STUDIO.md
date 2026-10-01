@@ -70,6 +70,8 @@ Managed tools are installed into `<data>/goide/tools/bin`. A tool on `PATH`, or 
 
 **More Go tools.** *Go → Toolchains* also lists **govulncheck**, **goimports**, **mockgen** and **stringer**, plus any tool you add (binary name and, optionally, a `module@version` to install it). Each is found in adOmnia's tools folder, `GOBIN`, `GOPATH/bin` or the `PATH`; **Install…** runs `go install` with the project SDK after confirmation, **Run…** runs it with your arguments in a project folder (no shell), with the output in the Run console. Running needs a trusted project.
 
+**Dependency graph.** *Tools → Dependency Graph…* reads `go list -m -json all`, `go mod graph` and `go list -deps` offline: direct → transitive tree, duplicate versions with who requires each and the shortest chain from your module, license (from the module's LICENSE file), estimated weight on disk, package count, and **unused** / **indirect** badges. *Check updates* (`go list -m -u`) and *Scan vulnerabilities* (`govulncheck`) contact the network and run only when clicked. Needs a trusted project.
+
 ## Makefiles and Dockerfiles
 
 Go Studio runs Makefiles and Dockerfiles with the real `make` and `docker`, and streams their output to the Run console like `go run`. Any file type opened in the editor is highlighted: HTML, CSS, JavaScript/TypeScript, SQL, XML/WSDL, Protobuf, shell, PowerShell, Dockerfile, Makefile, `.env`, TOML/INI and more.

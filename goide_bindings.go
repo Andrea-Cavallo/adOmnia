@@ -443,6 +443,21 @@ func (g *GoIDE) StartDependencyAction(request goide.DependencyActionRequest) (go
 	return g.service.StartDependencyAction(request)
 }
 
+// DependencyGraph costruisce il grafo delle dipendenze del modulo senza rete (albero, duplicati, licenze, peso).
+func (g *GoIDE) DependencyGraph(sessionID, moduleDirectory string) (goide.DependencyGraphReport, error) {
+	return g.service.DependencyGraph(sessionID, moduleDirectory)
+}
+
+// DependencyUpdates elenca le versioni più recenti disponibili per i moduli (richiede rete).
+func (g *GoIDE) DependencyUpdates(sessionID, moduleDirectory string) ([]goide.DependencyUpdate, error) {
+	return g.service.DependencyUpdates(sessionID, moduleDirectory)
+}
+
+// DependencyVulnerabilities esegue govulncheck sul modulo (richiede rete e govulncheck installato).
+func (g *GoIDE) DependencyVulnerabilities(sessionID, moduleDirectory string) ([]goide.DependencyVulnerability, error) {
+	return g.service.DependencyVulnerabilities(sessionID, moduleDirectory)
+}
+
 // StartTests avvia go test -json; l'albero dei risultati arriva con gli eventi tests.updated.
 func (g *GoIDE) StartTests(request goide.TestRunRequest) (goide.TestRunSnapshot, error) {
 	return g.service.StartTests(request)

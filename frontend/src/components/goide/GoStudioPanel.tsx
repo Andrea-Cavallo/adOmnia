@@ -9,6 +9,7 @@ import { GoStudioWindowControls, useGoStudioTitlebar } from './GoStudioTitlebar'
 import { DEFAULT_RUN_DRAFT, runRequest } from './goStudioRunDraft'
 import { ToolchainDialog } from './GoStudioToolchains'
 import { GoStudioDependencies } from './GoStudioDependencies'
+import { GoStudioDependencyGraph } from './GoStudioDependencyGraph'
 import { GoStudioQuickOpen } from './GoStudioQuickOpen'
 import { GoStudioRecoveryBanner } from './GoStudioRecoveryBanner'
 import { GoStudioCrashRecoveryDialog } from './GoStudioCrashRecoveryDialog'
@@ -164,6 +165,7 @@ export function GoStudioPanel() {
   const openConfigurations = (draft: GoIDERunConfiguration | null = null) => { setConfigDraft(draft); setConfigureOpen(true) }
   const [toolchainOpen, setToolchainOpen] = useState(false)
   const [dependenciesOpen, setDependenciesOpen] = useState(false)
+  const [dependencyGraphOpen, setDependencyGraphOpen] = useState(false)
   const [runDraft] = useState(DEFAULT_RUN_DRAFT)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -609,6 +611,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
         useGoStudioAssistantStore.getState().open('a0')
         return store.updateLayout({ structureOpen: true, structureWidth: Math.max(340, store.layout.structureWidth) })
       case 'tools.copilotCompletions': return void useCopilotStore.getState().toggleCompletions()
+      case 'tools.dependencyGraph': return setDependencyGraphOpen(true)
     }
   }
   runCommandRef.current = runCommand
@@ -669,6 +672,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       />
       <ToolchainDialog open={toolchainOpen} onClose={() => setToolchainOpen(false)} onRunCommand={runCommand} />
       <GoStudioDependencies open={dependenciesOpen} session={activeSession} onClose={() => setDependenciesOpen(false)} />
+      <GoStudioDependencyGraph open={dependencyGraphOpen} session={activeSession} onClose={() => setDependencyGraphOpen(false)} />
       <GoStudioSearchEverywhere open={searchEverywhereOpen} sessionId={activeSession.id} availability={(id) => commandAvailability(id, commandContext)} onCommand={runCommand} onClose={() => setSearchEverywhereOpen(false)} />
       <GoStudioCommitDialog sessionId={activeSession.id} open={vcsDialog === 'commit'} onClose={() => setVcsDialog(null)} />
       <GoStudioProjectServicesDialog sessionId={activeSession.id} projectName={activeSession.project.name} open={servicesOpen} onClose={() => setServicesOpen(false)} />
