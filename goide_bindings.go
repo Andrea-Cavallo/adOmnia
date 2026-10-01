@@ -17,9 +17,10 @@ import (
 )
 
 const (
-	goIDEStorageKey  = "state"
-	goIDERecoveryKey = "recovery"
-	goIDEHistoryKey  = "localHistory"
+	goIDEStorageKey    = "state"
+	goIDERecoveryKey   = "recovery"
+	goIDESupervisorKey = "supervisor"
+	goIDEHistoryKey    = "localHistory"
 )
 
 // goIDEHistoryStore conserva la local history in una chiave separata, con i propri limiti.
@@ -58,6 +59,23 @@ func (goIDEStore) Save(data []byte) error {
 
 // goIDERecoveryStore conserva i buffer non salvati in una chiave separata, per
 // non far crescere lo stato di sessione con contenuti di lavoro.
+// goIDESupervisorStore conserva le esecuzioni in corso: dopo un crash restano quelle interrotte.
+type goIDESupervisorStore struct{}
+
+func (goIDESupervisorStore) Load() ([]byte, error) {
+	if storage.DB() == nil {
+		return nil, nil
+	}
+	return storage.Get("goide", goIDESupervisorKey)
+}
+
+func (goIDESupervisorStore) Save(data []byte) error {
+	if storage.DB() == nil {
+		return fmt.Errorf("archivio locale non inizializzato")
+	}
+	return storage.Put("goide", goIDESupervisorKey, data)
+}
+
 type goIDERecoveryStore struct{}
 
 func (goIDERecoveryStore) Load() ([]byte, error) {
@@ -84,6 +102,8 @@ type GoIDE struct {
 	windows *goidewindow.Manager
 	// serviceListeners ricevono gli eventi gO lato backend (es. DevContext).
 	serviceListeners []func(goide.EventEnvelope)
+	// runtimeLock segnala ai prossimi avvii se questo si è chiuso in modo anomalo.
+	runtimeLock *goide.RuntimeLock
 }
 
 func NewGoIDE() *GoIDE {
@@ -102,7 +122,12 @@ func NewGoIDE() *GoIDE {
 	_ = service.ConfigureToolchainStorage(filepath.Join(dataDir(), "goide", "toolchains"))
 	_ = service.ConfigureRecoveryStore(goIDERecoveryStore{})
 	_ = service.ConfigureHistoryStore(goIDEHistoryStore{})
+	_ = service.ConfigureSupervisorStore(goIDESupervisorStore{})
 	binding = &GoIDE{service: service}
+	if lock, status, err := goide.AcquireRuntimeLock(filepath.Join(dataDir(), "goide"), nil); err == nil {
+		binding.runtimeLock = lock
+		service.SetCrashStatus(status)
+	}
 	return binding
 }
 
@@ -1073,7 +1098,29 @@ func (g *GoIDE) FindSessionsForPath(sessionID, relativePath string) ([]goide.Ses
 // ServiceShutdown rilascia processi e risorse posseduti dal servizio.
 func (g *GoIDE) ServiceShutdown() error {
 	g.service.Shutdown()
+	// Chiusura pulita: il prossimo avvio non proporrà il ripristino dopo crash.
+	g.runtimeLock.Release()
 	return nil
+}
+
+// CrashRecoveryStatus dice se l'avvio precedente si è chiuso in modo anomalo (heartbeat fermo).
+func (g *GoIDE) CrashRecoveryStatus() goide.CrashStatus {
+	return g.service.CrashRecoveryStatus()
+}
+
+// InterruptedProcesses elenca le esecuzioni interrotte dal crash dell'avvio precedente.
+func (g *GoIDE) InterruptedProcesses() []goide.ProcessDescriptor {
+	return g.service.InterruptedProcesses()
+}
+
+// DismissInterruptedProcess chiude la proposta di rilancio di un'esecuzione interrotta.
+func (g *GoIDE) DismissInterruptedProcess(runID string) {
+	g.service.DismissInterruptedProcess(runID)
+}
+
+// AcknowledgeCrash chiude la proposta di ripristino dopo la scelta dell'utente.
+func (g *GoIDE) AcknowledgeCrash() {
+	g.service.AcknowledgeCrash()
 }
 
 // ListStudioWorkspaces elenca i workspace Go Studio, separati dai workspace API di adOmnia.

@@ -1,4 +1,5 @@
 import { attachEditorMode } from './goStudioEditorModes'
+import { caretFor, rememberCaret } from './goStudioCaretMemory'
 import { heavyFeatureEnabled } from './goStudioResourceMode'
 import { useGoIDENavigationStore } from '@/stores/goideNavigation'
 import { useEffect, useRef, useState } from 'react'
@@ -114,6 +115,11 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
       callbacks.current.onCursor(event.position.lineNumber, event.position.column)
       // Anche i salti programmatici (Go to Declaration, cambio tab) entrano in cronologia: Back li ripercorre.
       recordCaretPosition(editor.getModel(), event.position)
+      const caretModel = editor.getModel()
+      const caretDocument = caretModel ? documentForModel(caretModel) : null
+      if (caretDocument && !caretDocument.document.external) {
+        rememberCaret(caretDocument.document.sessionId, caretDocument.document.relativePath, event.position.lineNumber, event.position.column, (id) => void useGoIDEStore.getState().persistSessionView(id))
+      }
     })
     editor.onDidFocusEditorText(() => void checkActiveDocument())
     // Il documento si ricava dal modello che è cambiato, mai dal componente: durante il cambio file
@@ -139,6 +145,17 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
     editorRef.current.focus()
     clearRevealLocation()
   }, [clearRevealLocation, document.document.id, handlesReveal, revealLocation])
+
+  // Ripristino dopo riavvio o crash: il file riapre dove era il cursore, se nessuno l'ha già spostato.
+  useEffect(() => {
+    const editor = editorRef.current
+    const caret = caretFor(document.document.sessionId, document.document.relativePath)
+    const position = editor?.getPosition()
+    if (!editor || !caret || !position || position.lineNumber !== 1 || position.column !== 1) return
+    const target = { lineNumber: caret.line, column: caret.column }
+    editor.setPosition(target)
+    editor.revealPositionInCenterIfOutsideViewport(target)
+  }, [document.document.id, document.document.relativePath, document.document.sessionId, mountCount])
 
   useGoStudioDebugDecorations(editorRef, document, mountCount)
   useGoStudioBookmarks(editorRef, document, mountCount)

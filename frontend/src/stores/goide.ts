@@ -1,3 +1,5 @@
+import { recordRunHistory } from '@/components/goide/goStudioRunHistory'
+import { caretsFor, restoreCarets } from '@/components/goide/goStudioCaretMemory'
 import { create } from 'zustand'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 import {
@@ -77,6 +79,23 @@ export interface GoIDESplit {
 }
 
 /** Toglie un documento dal gruppo dello split: se era l'ultimo lo split si chiude. */
+/** Split dell'editor nella forma salvata: percorsi al posto degli ID di documento, che cambiano a ogni avvio. */
+function splitViewFor(split: GoIDESplit | null | undefined, documents: GoIDEEditorDocument[]) {
+  const pathOf = (id: string) => documents.find((item) => item.document.id === id && !item.document.external)?.document.relativePath
+  const activePath = split ? pathOf(split.documentId) : undefined
+  if (!split || !activePath) return undefined
+  return { orientation: split.orientation, activePath, paths: split.tabs.flatMap((id) => pathOf(id) ?? []) }
+}
+
+function splitFromView(view: { orientation: string; activePath: string; paths?: string[] } | null | undefined, documents: GoIDEEditorDocument[]): GoIDESplit | null {
+  if (!view || (view.orientation !== 'right' && view.orientation !== 'down')) return null
+  const idOf = (path: string) => documents.find((item) => item.document.relativePath === path)?.document.id
+  const documentId = idOf(view.activePath)
+  if (!documentId) return null
+  const tabs = (view.paths ?? []).flatMap((path) => idOf(path) ?? [])
+  return { orientation: view.orientation, documentId, tabs: tabs.includes(documentId) ? tabs : [documentId, ...tabs] }
+}
+
 export function removeFromSplit(split: GoIDESplit | null | undefined, documentId: string): GoIDESplit | null {
   if (!split) return null
   const tabs = split.tabs.filter((id) => id !== documentId)
@@ -178,6 +197,8 @@ export interface GoIDEState {
   revealLocation: { documentId: string; line: number; column: number } | null
   recoveredBySession: Record<string, GoIDERecoveredBuffer[]>
   runConfigsBySession: Record<string, GoIDERunConfiguration[]>
+  /** Esecuzione → configurazione che l'ha avviata: serve alla cronologia e al riavvio al salvataggio. */
+  configByRun: Record<string, string>
   activeConfigBySession: Record<string, string | null>
   restoredSessions: Record<string, boolean>
   pathConflicts: Record<string, string[]>
@@ -238,7 +259,7 @@ export interface GoIDEState {
   restoreSessionView: (sessionId: string) => Promise<void>
   checkPathConflicts: (sessionId: string, relativePath: string) => Promise<void>
   persistSessionView: (sessionId: string) => Promise<void>
-  recoverBuffer: (sessionId: string, relativePath: string) => Promise<void>
+  recoverBuffer: (sessionId: string, relativePath: string, options?: { confirmConflict?: boolean }) => Promise<void>
   discardRecoveredBuffer: (sessionId: string, relativePath: string) => Promise<void>
   handleEvent: (event: GoIDEEvent) => void
   clearRevealLocation: () => void
@@ -256,6 +277,19 @@ function replaceSession(sessions: GoIDESession[], next: GoIDESession): GoIDESess
   const index = sessions.findIndex((session) => session.id === next.id)
   if (index < 0) return [...sessions, next]
   return sessions.map((session) => session.id === next.id ? next : session)
+}
+
+/** Un'esecuzione di una configurazione salvata entra nella cronologia locale del progetto. */
+function recordConfiguredRun(state: Pick<GoIDEState, 'configByRun' | 'sessions' | 'runConfigsBySession'>, execution: GoIDEExecution): void {
+  const configId = state.configByRun[execution.id]
+  if (!configId) return
+  const session = state.sessions.find((item) => item.id === execution.sessionId)
+  const config = state.runConfigsBySession[execution.sessionId]?.find((item) => item.id === configId)
+  if (!session) return
+  recordRunHistory(session.project.realPath, {
+    configId, configName: config?.name ?? configId, status: execution.status, exitCode: execution.exitCode ?? null,
+    startedAt: execution.startedAt, durationMillis: execution.durationMillis, command: execution.command,
+  })
 }
 
 function replaceExecution(executions: GoIDEExecution[], next: GoIDEExecution): GoIDEExecution[] {
@@ -351,6 +385,7 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
   revealLocation: null,
   recoveredBySession: {},
   runConfigsBySession: {},
+  configByRun: {},
   activeConfigBySession: {},
   restoredSessions: {},
   pathConflicts: {},
@@ -448,10 +483,13 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
         set((state) => ({ activeConfigBySession: { ...state.activeConfigBySession, [sessionId]: view.activeConfigId ?? null } }))
       }
       set((state) => ({ recoveredBySession: { ...state.recoveredBySession, [sessionId]: recovered } }))
+      restoreCarets(sessionId, view.cursors)
       for (const path of view.openPaths ?? []) {
         // Riaprire un tab legge il file senza eseguire nulla; un file sparito si salta in silenzio.
         await get().ensureDocumentLoaded(path).catch(() => null)
       }
+      const split = splitFromView(view.split, get().documents.filter((item) => item.document.sessionId === sessionId))
+      if (split) set((state) => ({ splitBySession: { ...state.splitBySession, [sessionId]: split } }))
       if (view.activePath) {
         const restored = get().documents.find(
           (item) => item.document.sessionId === sessionId && item.document.relativePath === view.activePath,
@@ -573,6 +611,7 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
       set((state) => ({
         executions: replaceExecution(state.executions, execution),
         activeRunBySession: { ...state.activeRunBySession, [sessionId]: execution.id },
+        configByRun: { ...state.configByRun, [execution.id]: configId },
       }))
     } catch (error) {
       set({ error: errorMessage(error) })
@@ -612,6 +651,8 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
         bottomOpen: state.layout.bottomOpen,
         terminalPanelOpen: false,
         showIgnoredEntries: !!state.showIgnoredBySession[sessionId],
+        cursors: caretsFor(sessionId, documents.filter((item) => !item.document.external).map((item) => item.document.relativePath)),
+        split: splitViewFor(state.splitBySession[sessionId], documents),
         ...Object.assign({}, ...sessionViewExtensions.map((extension) => extension.save(sessionId))),
       })
     } catch {
@@ -619,10 +660,11 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
     }
   },
 
-  recoverBuffer: async (sessionId, relativePath) => {
+  recoverBuffer: async (sessionId, relativePath, options = {}) => {
     const recovered = (get().recoveredBySession[sessionId] ?? []).find((item) => item.relativePath === relativePath)
     if (!recovered) return
-    if (recovered.diskChanged) {
+    // Il dialog di ripristino dopo crash ha già mostrato il conflitto: lì "Use Recovered" è la conferma.
+    if (recovered.diskChanged && options.confirmConflict !== false) {
       const approved = await confirm({
         title: 'File changed on disk',
         message: `${relativePath} changed on disk after this buffer was saved.\n\nRestoring puts the recovered text in the editor as unsaved changes. The file on disk is not touched until you save.`,
@@ -1102,7 +1144,12 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
     if (!runId || !sessionId) return
     try {
       const execution = await restartGoIDERun(runId)
-      set((state) => ({ executions: replaceExecution(state.executions, execution), activeRunBySession: { ...state.activeRunBySession, [sessionId]: execution.id } }))
+      set((state) => ({
+        executions: replaceExecution(state.executions, execution),
+        activeRunBySession: { ...state.activeRunBySession, [sessionId]: execution.id },
+        // Il riavvio resta della stessa configurazione.
+        configByRun: state.configByRun[runId] ? { ...state.configByRun, [execution.id]: state.configByRun[runId] } : state.configByRun,
+      }))
     } catch (error) {
       set({ error: errorMessage(error) })
     }
@@ -1151,6 +1198,7 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
         consoleByRun: event.type === 'run.started' ? withConsoleHeader(state.consoleByRun, execution) : withConsoleFooter(state.consoleByRun, execution, event.sequence),
       }))
       if (event.type === 'run.finished' && MODULE_CHANGING_KINDS.has(execution.kind)) void get().refreshModuleFiles(execution.sessionId)
+      if (event.type === 'run.finished') recordConfiguredRun(get(), execution)
     }
   },
 

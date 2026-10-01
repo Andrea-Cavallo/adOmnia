@@ -86,6 +86,10 @@ Go Studio runs Makefiles and Dockerfiles with the real `make` and `docker`, and 
   *Save as Run Configuration…* from a Dockerfile lists its `ARG`s as build args. Names that look sensitive (`password`, `token`, `secret`, `key`…) are marked secret: only the name is saved, and the value is asked once when you start. When an environment variable and a build arg share a name, one value serves both.
 - **Execution options.** Every run configuration also has: an *env file* (`.env` syntax, confined to the project; variables set in the configuration win), a *port* (exported as `PORT` and checked free before the start, so a busy port fails immediately instead of at bind time), and, for Go kinds, `GOOS`/`GOARCH`, the race detector (`-race`, with `CGO_ENABLED=1`) and coverage (`-cover`; for run and build the data goes to `.gocoverdata` through `GOCOVERDIR`). Test configurations add profiling (`cpu`, `mem`, `block`, `mutex` or `trace`, written next to the package). Package and build configurations add *debug build flags* passed to Delve, for example `-gcflags=all=-N`. The toolbar *Build* compiles a saved package/build configuration with all of these; secret variables are left out of builds.
 - **Before launch / after it finishes.** A configuration can run other configurations first (for example *Docker Compose up* or a *make* target) and afterwards (cleanup, reports). They run in order in the Run console. A failing task before launch stops the launch; tasks after it run whatever the exit code, unless you stopped the run; a failing task after it skips the rest. Only one level is followed: the tasks' own before/after lists are ignored.
+- **Command, Go tool and Compound.** *Command* runs any program on the PATH or a script inside the project (`./scripts/seed.sh`), with arguments passed as a list, never through a shell. *Go tool* runs `go <command>` with the project toolchain (`generate`, `vet`, `tool pprof -top cpu.pprof`…). *Compound* starts two to ten other configurations together, in parallel; a compound cannot contain another compound.
+- **Shared or private.** A configuration is private by default (stored on this machine). *Share with the project* also writes it to `.adomnia/run-configurations.json`, readable JSON meant to be committed: teammates who open the repository get the same configurations. Secret values, pins and restart-on-save are never written there; for shared configurations the file wins when it changes.
+- **Pin, history, hot restart.** Pinned configurations come first in the toolbar and in Search Everywhere. The editor shows the last runs of each configuration (time, exit code, duration), kept locally per project. *Restart on save* restarts a running execution when you save a Go file of the project (several saves restart it once).
+- **Run Current Context** (Ctrl+Shift+F10, as in GoLand) runs the test that contains the cursor, the `main` of a main package, or the tests of the current package otherwise.
 
 ## Breakpoints
 
@@ -150,6 +154,15 @@ pause and explains it.
   Go's wait reason. The analysis covers the first 1000 goroutines of a
   pause.
 
+## Crash recovery
+
+- **Unsaved buffers.** Every dirty buffer is snapshotted about 750 ms after the last keystroke, outside the file and on this machine only (bbolt, one atomic transaction per write). The last three versions of each file are kept with their SHA-256: if the newest is corrupt, the previous one is used. The original file is never touched until you save.
+- **Crash detection.** At start adOmnia writes `runtime.lock` (random instance id, PID, start time) and refreshes its heartbeat every 10 s; a clean shutdown removes it. A lock whose heartbeat stopped for more than 30 s means the previous run ended abnormally. The PID alone is never trusted, because the system can reuse it.
+- **Restore after a crash.** Go Studio opens *adOmnia closed unexpectedly* with every recovered file, its time, `+added/−removed` lines and a status: *Safe to restore* (disk unchanged since the snapshot), *Already on disk*, *Conflict* (the file changed after the snapshot) or *File no longer exists*. Each file offers **Use Recovered**, **Keep Disk** and **Open Diff** (Disk Version ↔ Recovered Version); **Restore All**, **Review** and **Discard** act on all of them. Restored text opens as unsaved changes: nothing is written to disk until you save.
+- **Session view.** Open tabs, the active file, the cursor position in each file, the editor split with its own tabs, layout, bookmarks and breakpoints are saved with the session (a couple of seconds after the cursor stops) and restored when the project reopens. Processes are never relaunched on their own; gopls alone restarts automatically after a crash (at most three times).
+- **Interrupted runs.** A process supervisor, independent of the UI, records every run started from a run configuration and clears the list on a clean shutdown. After a crash the recovery dialog lists the runs that were still going: **Relaunch** starts the configuration again through the normal Run flow (trust and secrets are asked again), **Dismiss** forgets it. Each configuration has an *After a crash* policy: ask (default), never (for migrations and scripts with side effects) or relaunch automatically (only if you choose it, and only for a trusted project).
+- **Storage and limits.** Snapshots stay in adOmnia's local store, isolated per project by a stable hash of its path, so they follow the project even when its Go Studio session is recreated. Snapshots older than 14 days are removed. If a snapshot cannot be written (disk full, permission denied, recovery space exhausted) a red bar warns that unsaved changes are not protected.
+
 ## Persistence and migrations
 
 Go Studio stores metadata only. Source files stay where they are, and file contents are kept only in the recovery and local-history stores described below. All stores live in adOmnia's local bbolt database, in the `goide` bucket.
@@ -186,6 +199,7 @@ Go Studio follows the GoLand keymap. The table below is generated from the comma
 | --- | --- | --- |
 | Open Project | Ctrl+O | ⌘O |
 | Save | Ctrl+S | ⌘S |
+| Settings… | Ctrl+Alt+S | ⌘⌥S |
 | Save All | Ctrl+Shift+S | ⌘⇧S |
 | Close Editor | Ctrl+W | ⌘W |
 | Reopen Closed Tab | Ctrl+Shift+T | ⌘⇧T |
@@ -274,7 +288,7 @@ Go Studio follows the GoLand keymap. The table below is generated from the comma
 | Debug | Shift+F9 | ⇧F9 |
 | Build | Ctrl+Shift+B | ⌘⇧B |
 | Build Current Package | Ctrl+F9 | ⌘F9 |
-| Test Current Package | Ctrl+Shift+F10 | ⌘⇧F10 |
+| Run Current Context | Ctrl+Shift+F10 | ⌘⇧F10 |
 | Rerun Failed Tests | Ctrl+Alt+Shift+F10 | ⌘⌥⇧F10 |
 | Build All (go build ./...) | Ctrl+Shift+F9 | ⌘⇧F9 |
 | Test All (go test ./...) | Ctrl+Alt+F10 | ⌘⌥F10 |

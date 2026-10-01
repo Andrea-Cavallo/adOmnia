@@ -1,4 +1,6 @@
 import { heavyFeatureEnabled } from './goStudioResourceMode'
+import { restartRunsOnSave } from './goStudioRunOnSave'
+import { pinnedFirst } from './goStudioRunHistory'
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import { AlertTriangle, X } from 'lucide-react'
 import { GoStudioEmptyState } from './GoStudioEmptyState'
@@ -9,6 +11,8 @@ import { ToolchainDialog } from './GoStudioToolchains'
 import { GoStudioDependencies } from './GoStudioDependencies'
 import { GoStudioQuickOpen } from './GoStudioQuickOpen'
 import { GoStudioRecoveryBanner } from './GoStudioRecoveryBanner'
+import { GoStudioCrashRecoveryDialog } from './GoStudioCrashRecoveryDialog'
+import { GoStudioSettingsDialog } from './GoStudioSettingsDialog'
 import { GoStudioRunConfigurations } from './GoStudioRunConfigurations'
 import { GoStudioSecretsPrompt } from './GoStudioSecretsPrompt'
 import { GoStudioHierarchyDialog } from './GoStudioHierarchyDialog'
@@ -41,7 +45,7 @@ import { GoStudioLanguageServerLog } from './GoStudioLanguageServerLog'
 import { GoStudioToolPathsDialog } from './GoStudioToolPathsDialog'
 import { runLanguageCommand } from './goStudioLanguageCommands'
 import { runSaveActions } from './goStudioSaveActions'
-import { runCommandFor, type GoStudioGoRunTarget, type GoStudioRunTarget } from './goStudioRunTargets'
+import { contextRunTarget, runCommandFor, type GoStudioGoRunTarget, type GoStudioRunTarget } from './goStudioRunTargets'
 import { isToolTarget, toolConfigurationDraft, toolRunRequest } from './goStudioToolTargets'
 import type { GoIDERunConfiguration } from '@/lib/goide-api'
 import { useGoStudioCloseFlow } from './useGoStudioCloseFlow'
@@ -161,6 +165,7 @@ export function GoStudioPanel() {
   const [dependenciesOpen, setDependenciesOpen] = useState(false)
   const [runDraft] = useState(DEFAULT_RUN_DRAFT)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [symbolSearchOpen, setSymbolSearchOpen] = useState(false)
   const [searchEverywhereOpen, setSearchEverywhereOpen] = useState(false)
   const [lspLogOpen, setLspLogOpen] = useState(false)
@@ -185,7 +190,7 @@ export function GoStudioPanel() {
   const activeRunId = store.activeSessionId ? store.activeRunBySession[store.activeSessionId] : null
   const activeExecution = sessionExecutions.find((execution) => execution.id === activeRunId) ?? sessionExecutions[sessionExecutions.length - 1] ?? null
   const toolchain = store.activeSessionId ? store.toolchains[store.activeSessionId] ?? null : null
-  const runConfigurations = store.activeSessionId ? store.runConfigsBySession[store.activeSessionId] ?? [] : []
+  const runConfigurations = pinnedFirst(store.activeSessionId ? store.runConfigsBySession[store.activeSessionId] ?? [] : [])
   const activeConfigId = store.activeSessionId ? store.activeConfigBySession[store.activeSessionId] ?? null : null
   const activeConfig = runConfigurations.find((config) => config.id === activeConfigId) ?? null
   const [pendingSecrets, setPendingSecrets] = useState<string[] | null>(null)
@@ -246,6 +251,13 @@ export function GoStudioPanel() {
     }
     window.addEventListener('keydown', onKeyDown, true)
     return () => window.removeEventListener('keydown', onKeyDown, true)
+  }, [])
+
+  // Comandi chiesti da fuori del pannello (es. il rilancio dopo un crash): passano dallo stesso flusso dei menu.
+  useEffect(() => {
+    const onCommand = (event: Event) => runCommandRef.current((event as CustomEvent<GoStudioCommandId>).detail)
+    document.addEventListener('adomnia:go-studio-command', onCommand)
+    return () => document.removeEventListener('adomnia:go-studio-command', onCommand)
   }, [])
 
   // Debug Request dall'API Workspace: avvia la configurazione Debug attiva del progetto indicato.
@@ -317,6 +329,8 @@ export function GoStudioPanel() {
     await runSaveActions(id)
     const saved = await useGoIDEStore.getState().saveDocument(id)
     const lspState = useGoIDELspStore.getState()
+    const savedPath = useGoIDEStore.getState().documents.find((item) => item.document.id === id)?.document.relativePath ?? ''
+    if (saved && sessionId) restartRunsOnSave(sessionId, savedPath)
     if (saved && sessionId && heavyFeatureEnabled(lspState, 'lintOnSave') && lspState.linter[sessionId]?.available) scheduleLintOnSave(sessionId)
     return saved
   }
@@ -559,6 +573,11 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       case 'run.restart': return void store.restartRun()
       case 'run.configure': return setConfigureOpen(true)
       case 'run.buildPackage': return void runGoStudioQuickCommand('build', 'package')
+      case 'run.context': {
+        const active = useGoIDEStore.getState().documents.find((item) => item.document.id === activeDocumentId)
+        const target = active ? contextRunTarget(active.document.relativePath, active.buffer, useGoStudioCursorStore.getState().line) : null
+        return target ? runTarget(target) : void runGoStudioQuickCommand('test', 'package')
+      }
       case 'run.testPackage': return void runGoStudioQuickCommand('test', 'package')
       case 'run.benchPackage': return void runGoStudioBenchmarks('package')
       case 'run.vetPackage': return void runGoStudioQuickCommand('vet', 'package')
@@ -576,6 +595,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       case 'go.modDownload': return void runModuleDependencyAction('download')
       case 'go.modVerify': return void runModuleDependencyAction('verify')
       case 'help.shortcuts': return setShortcutsOpen(true)
+      case 'file.settings': return setSettingsOpen(true)
       case 'nav.symbol': return setSymbolSearchOpen(true)
       case 'nav.searchEverywhere': return setSearchEverywhereOpen(true)
       case 'go.lspLog': return setLspLogOpen(true)
@@ -590,7 +610,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
   const recentNotOpen = store.recentProjects.filter((project) => !openRealPaths.has(project.realPath))
   const mainMenu = <GoStudioMenuBar state={commandState} recentProjects={store.recentProjects} openProjectPaths={workspaceSessions.map((session) => session.project.realPath)} onCommand={runCommand} onOpenRecent={(path) => void store.openProject(path)} />
   const menuBar = <div role="toolbar" aria-label="Go Studio toolbar" {...titlebar.props} className={`flex h-12 shrink-0 items-center gap-1 pl-2 ${titlebar.active ? 'go-studio-titlebar' : 'pr-2'}`}>{mainMenu}<span className="flex-1" /><GoStudioWorkspaceSwitcher /><GoStudioWindowControls /></div>
-  const sharedDialogs = <><CreateProjectDialog open={createOpen} onClose={() => setCreateOpen(false)} /><GoStudioCloneDialog open={cloneOpen} onClose={() => setCloneOpen(false)} /><GoStudioShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} /></>
+  const sharedDialogs = <><CreateProjectDialog open={createOpen} onClose={() => setCreateOpen(false)} /><GoStudioCloneDialog open={cloneOpen} onClose={() => setCloneOpen(false)} /><GoStudioShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} /><GoStudioSettingsDialog open={settingsOpen} sessionId={store.activeSessionId} onCommand={runCommandStable} onClose={() => setSettingsOpen(false)} /></>
 
   const windowError = windows.error && <ErrorBanner message={windows.error} onClose={windows.clearError} />
   if (!activeSession && pinnedSessionId && store.initialized) {
@@ -621,6 +641,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       <GoStudioWorkspace session={activeSession} {...store.layout} zen={zen} onProjectResize={beginResize('projectWidth', store.layout.projectWidth)} onStructureResize={beginResize('structureWidth', store.layout.structureWidth, -1)} onBottomResize={beginResize('bottomHeight', store.layout.bottomHeight, -1)} onCursor={setCursor} onRequestCloseDocument={closeFlow.requestCloseDocuments} onRunTarget={(target, anchor) => setRunTargetMenu({ target, ...anchor })} onCommit={() => setVcsDialog('commit')} onBookmarks={() => setBookmarksOpen(true)} onDependencies={() => setDependenciesOpen(true)} onCommand={runCommandStable} />
       {runTargetMenu && <GoStudioRunTargetMenu {...runTargetMenu} onAction={runTarget} onClose={() => setRunTargetMenu(null)} />}
       {zen ? <ZenExit onExit={toggleZen} /> : <GoStudioStatusBar session={activeSession} toolchain={toolchain} documentInfo={summary.activeId ? { id: summary.activeId, relativePath: summary.activePath ?? '', language: summary.activeLanguage ?? '', readOnly: summary.activeReadOnly, lineEnding: summary.activeLineEnding ?? 'LF' } : null} execution={activeExecution} onLanguageServer={openLanguageServerMenu} onLinter={() => runCommand(commandAvailability('code.lint', commandContext) === true ? 'code.lint' : 'go.toolPaths')} onSetAuthorization={(allowed) => void authorize(allowed)} onManageToolchains={() => setToolchainOpen(true)} />}
+      <GoStudioCrashRecoveryDialog sessionId={activeSession.id} />
       <GoStudioQuickOpen />
       <GoStudioCaretPopup />
       <GoStudioHierarchyDialog />

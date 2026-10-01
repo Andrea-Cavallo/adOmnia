@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronDown, ChevronUp, Copy, Play, Plus, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronUp, Copy, Pin, Play, Plus, Share2, Trash2 } from 'lucide-react'
 import { GoStudioButton, GoStudioModal } from './GoStudioModal'
 import { confirm } from '@/lib/confirmDialog'
 import { useGoIDEStore, type GoIDEState } from '@/stores/goide'
@@ -7,6 +7,7 @@ import { GoIDERunConfigurationKind } from '@/lib/goide-api'
 import type { GoIDERunConfiguration } from '@/lib/goide-api'
 import { GoStudioEntryList } from './GoStudioEntryList'
 import { GoStudioRunParameters } from './GoStudioRunParameters'
+import { readRunHistory } from './goStudioRunHistory'
 
 /** Riferimento stabile: un array nuovo nel selettore Zustand fa ridisegnare all'infinito. */
 const EMPTY_CONFIGS: GoIDEState['runConfigsBySession'][string] = []
@@ -29,9 +30,13 @@ const KINDS: Array<{ value: GoIDERunConfiguration['kind']; label: string; hint: 
   { value: GoIDERunConfigurationKind.RunKindDockerBuild, label: 'Docker build', hint: 'docker build of a Dockerfile, with stage, tag and build args', available: true },
   { value: GoIDERunConfigurationKind.RunKindDockerCompose, label: 'Docker Compose', hint: 'docker compose -f <file> up [services] or down; Stop runs docker compose stop', available: true },
   { value: GoIDERunConfigurationKind.RunKindDockerRun, label: 'Docker build & run', hint: 'docker build, then docker run --rm of the image; Stop really stops the container', available: true },
+  { value: GoIDERunConfigurationKind.RunKindCommand, label: 'Command', hint: 'any program on the PATH or a script inside the project, run without a shell', available: true },
+  { value: GoIDERunConfigurationKind.RunKindGoTool, label: 'Go tool', hint: 'go <command> with the project toolchain: generate, vet, tool pprof, list…', available: true },
+  { value: GoIDERunConfigurationKind.RunKindCompound, label: 'Compound', hint: 'starts the selected configurations together, in parallel', available: true },
 ]
 
-const TOOL_KINDS = new Set<string>([GoIDERunConfigurationKind.RunKindMake, GoIDERunConfigurationKind.RunKindDockerBuild, GoIDERunConfigurationKind.RunKindDockerRun, GoIDERunConfigurationKind.RunKindDockerCompose])
+const COMMAND_KINDS = new Set<string>([GoIDERunConfigurationKind.RunKindCommand, GoIDERunConfigurationKind.RunKindGoTool])
+const TOOL_KINDS = new Set<string>([GoIDERunConfigurationKind.RunKindCommand, GoIDERunConfigurationKind.RunKindGoTool, GoIDERunConfigurationKind.RunKindMake, GoIDERunConfigurationKind.RunKindDockerBuild, GoIDERunConfigurationKind.RunKindDockerRun, GoIDERunConfigurationKind.RunKindDockerCompose])
 const isDockerKind = (kind: string) => kind === GoIDERunConfigurationKind.RunKindDockerBuild || kind === GoIDERunConfigurationKind.RunKindDockerRun
 
 function emptyConfiguration(sessionId: string): GoIDERunConfiguration {
@@ -91,6 +96,10 @@ export function GoStudioRunConfigurations({ open, sessionId, initialDraft, onClo
   const docker = draft.docker ?? {}
   const patchDocker = (change: Partial<NonNullable<GoIDERunConfiguration['docker']>>) => patch({ docker: { ...docker, ...change } })
   const isTool = TOOL_KINDS.has(draft.kind)
+  const isCompound = draft.kind === GoIDERunConfigurationKind.RunKindCompound
+  const projectPath = useGoIDEStore.getState().sessions.find((item) => item.id === sessionId)?.project.realPath ?? ''
+  const history = selectedId ? readRunHistory(projectPath, selectedId).slice(0, 8) : []
+  const compoundCandidates = configs.filter((config) => config.id !== draft.id && config.kind !== GoIDERunConfigurationKind.RunKindCompound)
 
   const save = async () => {
     setSaving(true)
@@ -156,8 +165,10 @@ export function GoStudioRunConfigurations({ open, sessionId, initialDraft, onClo
                   }`}
                 >
                   <button type="button" onClick={() => setSelectedId(config.id)} className="min-w-0 flex-1 truncate text-left">
+                    {config.pinned && <Pin size={12} className="mr-1.5 inline text-accent" aria-label="Pinned" />}
                     {config.name}
                     <span className="ml-1.5 text-[11px] text-text-4">{config.kind}</span>
+                    {config.shared && <Share2 size={12} className="ml-1.5 inline text-text-4" aria-label="Shared with the project" />}
                   </button>
                   <button type="button" onClick={() => void move(config.id, -1)} title="Move up" className="gs-btn gs-btn-ghost gs-btn-sm gs-btn-icon h-6 w-6 opacity-0 group-hover:opacity-100"><ChevronUp size={13} /></button>
                   <button type="button" onClick={() => void move(config.id, 1)} title="Move down" className="gs-btn gs-btn-ghost gs-btn-sm gs-btn-icon h-6 w-6 opacity-0 group-hover:opacity-100"><ChevronDown size={13} /></button>
@@ -187,7 +198,7 @@ export function GoStudioRunConfigurations({ open, sessionId, initialDraft, onClo
                   value={draft.kind}
                   onChange={(event) => {
                     const kind = event.target.value as GoIDERunConfiguration['kind']
-                    const fileDefault = kind === GoIDERunConfigurationKind.RunKindMake ? 'Makefile' : kind === GoIDERunConfigurationKind.RunKindDockerCompose ? 'docker-compose.yml' : isDockerKind(kind) ? 'Dockerfile' : '.'
+                    const fileDefault = kind === GoIDERunConfigurationKind.RunKindMake ? 'Makefile' : kind === GoIDERunConfigurationKind.RunKindDockerCompose ? 'docker-compose.yml' : isDockerKind(kind) ? 'Dockerfile' : kind === GoIDERunConfigurationKind.RunKindGoTool ? 'generate' : COMMAND_KINDS.has(kind) || kind === GoIDERunConfigurationKind.RunKindCompound ? '' : '.'
                     patch({ kind, target: TOOL_KINDS.has(kind) !== isTool || !draft.target ? fileDefault : draft.target })
                   }}
                   className="gs-input"
@@ -200,7 +211,28 @@ export function GoStudioRunConfigurations({ open, sessionId, initialDraft, onClo
                 </select>
               </label>
 
-              {draft.kind === GoIDERunConfigurationKind.RunKindFiles ? (
+              {isCompound ? (
+                <fieldset className="gs-field-label col-span-2">
+                  <legend className="mb-1.5">Configurations started together</legend>
+                  <div className="gs-surface max-h-40 overflow-auto p-1.5">
+                    {compoundCandidates.map((config) => (
+                      <label key={config.id} className="flex h-8 items-center gap-2.5 rounded-md px-2 text-[12.5px] font-normal text-text-2 hover:bg-surface-2/60">
+                        <input
+                          type="checkbox"
+                          checked={(draft.compound ?? []).includes(config.id)}
+                          onChange={(event) => patch({ compound: event.target.checked ? [...(draft.compound ?? []), config.id] : (draft.compound ?? []).filter((id) => id !== config.id) })}
+                        />
+                        {config.name} <span className="text-[11px] text-text-4">{config.kind}</span>
+                      </label>
+                    ))}
+                    {compoundCandidates.length < 2 && <p className="gs-hint px-2 py-1.5">Create at least two other configurations first.</p>}
+                  </div>
+                </fieldset>
+              ) : draft.kind === GoIDERunConfigurationKind.RunKindCommand ? (
+                textField('Command', draft.target, (next) => patch({ target: next }), 'npm  ·  ./scripts/seed.sh')
+              ) : draft.kind === GoIDERunConfigurationKind.RunKindGoTool ? (
+                textField('Go command', draft.target, (next) => patch({ target: next }), 'generate  ·  tool  ·  list')
+              ) : draft.kind === GoIDERunConfigurationKind.RunKindFiles ? (
                 <label className="gs-field-label col-span-2">
                   Go files (one per line)
                   <textarea
@@ -222,13 +254,15 @@ export function GoStudioRunConfigurations({ open, sessionId, initialDraft, onClo
                 textField('Target package', draft.target, (next) => patch({ target: next }), '.')
               )}
 
-              {textField('Working directory', draft.workingDirectory, (next) => patch({ workingDirectory: next }), 'Project root')}
+              {!isCompound && textField('Working directory', draft.workingDirectory, (next) => patch({ workingDirectory: next }), 'Project root')}
               {!isTool && textField('Go tool flags', (draft.goArguments ?? []).join(' '), (next) => patch({ goArguments: splitList(next, /\s+/) }), '-v -trimpath')}
               {draft.kind === GoIDERunConfigurationKind.RunKindDockerCompose
                 ? textField('Command and services', (draft.programArguments ?? []).join(' '), (next) => patch({ programArguments: splitList(next, /\s+/) }), 'up api db  ·  down')
                 : draft.kind === GoIDERunConfigurationKind.RunKindMake
                 ? textField('Targets and variables', (draft.programArguments ?? []).join(' '), (next) => patch({ programArguments: splitList(next, /\s+/) }), 'build test VERSION=1.2.3')
-                : draft.kind !== GoIDERunConfigurationKind.RunKindDockerBuild && textField(draft.kind === GoIDERunConfigurationKind.RunKindDockerRun ? 'Container command' : 'Program arguments', (draft.programArguments ?? []).join(' '), (next) => patch({ programArguments: splitList(next, /\s+/) }), draft.kind === GoIDERunConfigurationKind.RunKindDockerRun ? 'Image default' : '--port 8080')}
+                : COMMAND_KINDS.has(draft.kind)
+                ? textField('Arguments', (draft.programArguments ?? []).join(' '), (next) => patch({ programArguments: splitList(next, /\s+/) }), draft.kind === GoIDERunConfigurationKind.RunKindGoTool ? './...  ·  pprof -top cpu.pprof' : 'run dev')
+                : draft.kind !== GoIDERunConfigurationKind.RunKindDockerBuild && !isCompound && textField(draft.kind === GoIDERunConfigurationKind.RunKindDockerRun ? 'Container command' : 'Program arguments', (draft.programArguments ?? []).join(' '), (next) => patch({ programArguments: splitList(next, /\s+/) }), draft.kind === GoIDERunConfigurationKind.RunKindDockerRun ? 'Image default' : '--port 8080')}
               {!isTool && textField('Build tags', (draft.buildTags ?? []).join(','), (next) => patch({ buildTags: splitList(next, /,/) }), 'integration,sqlite')}
               {isDockerKind(draft.kind) && (
                 <>
@@ -253,7 +287,32 @@ export function GoStudioRunConfigurations({ open, sessionId, initialDraft, onClo
               <GoStudioEntryList label="Build args" empty="No build arg." entries={docker.buildArgs ?? []} onChange={(buildArgs) => patchDocker({ buildArgs })} />
             )}
 
-            {draft.kind !== GoIDERunConfigurationKind.RunKindDockerBuild && (
+            <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2.5">
+              <label className="gs-check" title="Also stored in .adomnia/run-configurations.json: commit it to share the configuration with the team. Secret values are never written.">
+                <input type="checkbox" checked={!!draft.shared} onChange={(event) => patch({ shared: event.target.checked })} />
+                Share with the project (.adomnia)
+              </label>
+              <label className="gs-check" title="Pinned configurations come first in the Run menu and in Search Everywhere.">
+                <input type="checkbox" checked={!!draft.pinned} onChange={(event) => patch({ pinned: event.target.checked })} />
+                Pin
+              </label>
+              <label className="gs-check" title="What happens to this run if adOmnia closes unexpectedly while it is running.">
+                After a crash
+                <select value={draft.restartPolicy ?? ''} onChange={(event) => patch({ restartPolicy: event.target.value })} className="gs-input h-8 w-auto">
+                  <option value="">Ask before relaunching</option>
+                  <option value="never">Never relaunch (migrations, scripts)</option>
+                  <option value="always">Relaunch automatically</option>
+                </select>
+              </label>
+              {!isCompound && (
+                <label className="gs-check" title="A running execution restarts when you save a Go file of the project.">
+                  <input type="checkbox" checked={!!draft.restartOnSave} onChange={(event) => patch({ restartOnSave: event.target.checked })} />
+                  Restart on save
+                </label>
+              )}
+            </div>
+
+            {draft.kind !== GoIDERunConfigurationKind.RunKindDockerBuild && !isCompound && (
               <GoStudioEntryList
                 label={draft.kind === GoIDERunConfigurationKind.RunKindDockerRun ? 'Container environment' : 'Environment'}
                 empty="No environment override."
@@ -262,7 +321,23 @@ export function GoStudioRunConfigurations({ open, sessionId, initialDraft, onClo
               />
             )}
 
-            <GoStudioRunParameters draft={draft} configs={configs} patch={patch} />
+            {!isCompound && <GoStudioRunParameters draft={draft} configs={configs} patch={patch} />}
+
+            {history.length > 0 && (
+              <section className="mt-5">
+                <h3 className="gs-section-title mb-2">Recent runs</h3>
+                <ul className="gs-list text-[12px]">
+                  {history.map((entry) => (
+                    <li key={`${entry.startedAt}-${entry.command}`} className="gs-list-row min-h-[34px] py-1.5" title={entry.command}>
+                      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${entry.exitCode === 0 ? 'bg-success' : entry.status === 'exited' ? 'bg-danger' : 'bg-text-4'}`} aria-hidden="true" />
+                      <span className="text-text-2">{new Date(entry.startedAt).toLocaleString()}</span>
+                      <span className="text-text-4">{entry.exitCode === null ? entry.status : `exit ${entry.exitCode}`}</span>
+                      <span className="ml-auto tabular-nums text-text-4">{(entry.durationMillis / 1000).toFixed(1)} s</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
 
             <p className="gs-hint mt-4">
               {kindInfo.hint}. {isTool ? 'Arguments are passed as a list, never through a shell.' : 'Tool flags and program arguments stay separate and reach Go without shell concatenation.'}

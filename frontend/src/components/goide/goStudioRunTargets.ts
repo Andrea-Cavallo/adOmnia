@@ -1,5 +1,6 @@
 import type { GoIDEQuickRunKind } from '@/stores/goide'
 import { findToolTargets, type GoStudioToolTarget } from './goStudioToolTargets'
+import { functionAtLine } from './goStudioGoToTest'
 
 export type GoStudioRunTargetKind = 'main' | 'test' | 'benchmark' | 'fuzz' | 'example'
 
@@ -57,6 +58,19 @@ export function findRunTargets(relativePath: string, text: string): GoStudioRunT
     if (match) targets.push({ line: index + 1, kind: kindFor(match[2]), name: match[1], packagePath })
   })
   return targets
+}
+
+/**
+ * Run Current Context (Ctrl+Shift+F10 di GoLand): in un _test.go il test che contiene il cursore,
+ * in un package main la sua func main. null = nessun contesto, si eseguono i test del package.
+ */
+export function contextRunTarget(relativePath: string, text: string, line: number): GoStudioGoRunTarget | null {
+  if (!relativePath.endsWith('.go')) return null
+  const targets = findRunTargets(relativePath, text) as GoStudioGoRunTarget[]
+  const main = targets.find((target) => target.kind === 'main')
+  if (main) return main
+  const current = functionAtLine(text, line)
+  return (current && !current.receiver && targets.find((target) => target.name === current.name)) || null
 }
 
 /** Traduce un target del gutter nel comando go strutturato da eseguire. */

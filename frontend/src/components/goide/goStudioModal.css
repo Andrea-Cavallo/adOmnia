@@ -159,6 +159,33 @@
   textarea.gs-input { height: auto; min-height: 84px; padding: 8px 10px; resize: vertical; }
   .gs-mono, .gs-input.gs-mono { font-family: var(--skin-font-mono, var(--font-mono)); font-size: 12px; }
   .gs-modal input[type='checkbox'], .gs-modal input[type='radio'] { width: 15px; height: 15px; flex-shrink: 0; accent-color: var(--color-accent); }
+  /* Interruttore on/off per le impostazioni. */
+  .gs-modal input[type='checkbox'].gs-switch, .gs-switch {
+    position: relative;
+    width: 32px;
+    height: 18px;
+    flex-shrink: 0;
+    appearance: none;
+    border-radius: 999px;
+    background: var(--color-surface-3);
+    box-shadow: inset 0 0 0 1px var(--color-border-2);
+    cursor: pointer;
+    transition: background-color 140ms ease;
+  }
+  .gs-switch::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 14px;
+    height: 14px;
+    border-radius: 999px;
+    background: var(--color-text-2);
+    transition: transform 140ms ease, background-color 140ms ease;
+  }
+  .gs-switch:checked { background: var(--color-accent); box-shadow: none; }
+  .gs-switch:checked::after { transform: translateX(14px); background: #fff; }
+  .gs-switch:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 35%, transparent); }
   .gs-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--color-text-2); cursor: pointer; }
   .gs-check input { width: 15px; height: 15px; accent-color: var(--color-accent); }
 

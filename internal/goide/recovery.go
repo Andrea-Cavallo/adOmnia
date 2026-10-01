@@ -1,6 +1,8 @@
 package goide
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -23,7 +25,34 @@ const (
 	MaxRecoveredBuffers = 200
 	// MaxRecoveredTotalBytes limita lo store intero, riscritto a ogni aggiornamento.
 	MaxRecoveredTotalBytes = 32 * 1024 * 1024
+	// recoverySnapshotsPerFile: l'ultima più le due precedenti, per tollerare una snapshot corrotta.
+	recoverySnapshotsPerFile = 3
+	// recoveryRetention: una snapshot mai recuperata né scartata sparisce dopo due settimane.
+	recoveryRetention = 14 * 24 * time.Hour
 )
+
+// WorkspaceID è un hash stabile del percorso reale del progetto: il recupero resta del progetto
+// anche se la sessione Go Studio viene chiusa e riaperta con un altro ID.
+func WorkspaceID(realPath string) string {
+	path := filepath.ToSlash(filepath.Clean(realPath))
+	if caseInsensitivePaths {
+		path = strings.ToLower(path)
+	}
+	sum := sha256.Sum256([]byte(path))
+	return hex.EncodeToString(sum[:8])
+}
+
+// recoveredSnapshot è una versione precedente dello stesso buffer.
+type recoveredSnapshot struct {
+	Content      string    `json:"content"`
+	SnapshotHash string    `json:"snapshotHash"`
+	SavedAt      time.Time `json:"savedAt"`
+}
+
+func contentHash(content string) string {
+	sum := sha256.Sum256([]byte(content))
+	return hex.EncodeToString(sum[:])
+}
 
 type recoveredEntry struct {
 	SessionID    SessionID `json:"sessionId"`
@@ -31,6 +60,32 @@ type recoveredEntry struct {
 	Content      string    `json:"content"`
 	DiskToken    string    `json:"diskToken"`
 	SavedAt      time.Time `json:"savedAt"`
+	// SnapshotHash verifica che Content non sia corrotto; Previous tiene le versioni più vecchie.
+	SnapshotHash string              `json:"snapshotHash,omitempty"`
+	Previous     []recoveredSnapshot `json:"previous,omitempty"`
+	WorkspaceID  string              `json:"workspaceId,omitempty"`
+}
+
+// verified restituisce l'ultima snapshot integra: se la più recente è corrotta ripiega sulle precedenti.
+func (e recoveredEntry) verified() (recoveredEntry, bool) {
+	if e.SnapshotHash == "" || contentHash(e.Content) == e.SnapshotHash {
+		return e, true
+	}
+	for index, previous := range e.Previous {
+		if contentHash(previous.Content) == previous.SnapshotHash {
+			e.Content, e.SnapshotHash, e.SavedAt, e.Previous = previous.Content, previous.SnapshotHash, previous.SavedAt, e.Previous[index+1:]
+			return e, true
+		}
+	}
+	return e, false
+}
+
+func (e recoveredEntry) bytes() int {
+	total := len(e.Content)
+	for _, previous := range e.Previous {
+		total += len(previous.Content)
+	}
+	return total
 }
 
 type recoveryState struct {
@@ -42,14 +97,15 @@ type recoveryState struct {
 // riavvio o un crash non li perda. Non riapplica mai niente da solo: espone i
 // buffer trovati e attende un recupero esplicito dell'utente.
 type RecoveryManager struct {
-	mu      sync.Mutex
-	store   Store
-	buffers map[string]recoveredEntry
-	loaded  bool
+	mu         sync.Mutex
+	store      Store
+	buffers    map[string]recoveredEntry
+	loaded     bool
+	workspaces map[SessionID]string
 }
 
 func NewRecoveryManager(store Store) *RecoveryManager {
-	return &RecoveryManager{store: store, buffers: make(map[string]recoveredEntry)}
+	return &RecoveryManager{store: store, buffers: make(map[string]recoveredEntry), workspaces: make(map[SessionID]string)}
 }
 
 // caseInsensitivePaths vale per i filesystem predefiniti di Windows e macOS.
@@ -106,7 +162,11 @@ func (m *RecoveryManager) Load() error {
 		if entry.SessionID == "" || entry.RelativePath == "" {
 			continue
 		}
-		m.buffers[recoveryKey(entry.SessionID, entry.RelativePath)] = entry
+		valid, ok := entry.verified()
+		if !ok || time.Since(valid.SavedAt) > recoveryRetention {
+			continue
+		}
+		m.buffers[recoveryKey(entry.SessionID, entry.RelativePath)] = valid
 	}
 	return nil
 }
@@ -126,14 +186,54 @@ func (m *RecoveryManager) Remember(sessionID SessionID, relativePath, content, d
 	if !exists && len(m.buffers) >= MaxRecoveredBuffers {
 		return fmt.Errorf("troppi buffer in recupero: salva o chiudi qualche file")
 	}
-	if m.totalBytesLocked()-len(previous.Content)+len(content) > MaxRecoveredTotalBytes {
+	history := []recoveredSnapshot(nil)
+	if exists && previous.Content != content {
+		history = append([]recoveredSnapshot{{Content: previous.Content, SnapshotHash: previous.SnapshotHash, SavedAt: previous.SavedAt}}, previous.Previous...)
+		if len(history) > recoverySnapshotsPerFile-1 {
+			history = history[:recoverySnapshotsPerFile-1]
+		}
+	} else if exists {
+		history = previous.Previous
+	}
+	entry := recoveredEntry{
+		SessionID: sessionID, RelativePath: relativePath, Content: content, DiskToken: diskToken,
+		SavedAt: time.Now().UTC(), SnapshotHash: contentHash(content), Previous: history,
+		WorkspaceID: m.workspaces[sessionID],
+	}
+	// Lo spazio serve prima all'ultima versione: le snapshot vecchie si sacrificano per farla entrare.
+	for m.totalBytesLocked()-previous.bytes()+entry.bytes() > MaxRecoveredTotalBytes && len(entry.Previous) > 0 {
+		entry.Previous = entry.Previous[:len(entry.Previous)-1]
+	}
+	if m.totalBytesLocked()-previous.bytes()+entry.bytes() > MaxRecoveredTotalBytes {
 		return fmt.Errorf("spazio di recupero esaurito: salva qualche file per proteggere i nuovi buffer")
 	}
-	m.buffers[key] = recoveredEntry{
-		SessionID: sessionID, RelativePath: relativePath,
-		Content: content, DiskToken: diskToken, SavedAt: time.Now().UTC(),
-	}
+	m.buffers[key] = entry
 	return m.persistLocked()
+}
+
+// BindWorkspace lega la sessione al suo workspace e adotta i buffer lasciati dallo stesso
+// progetto sotto una sessione precedente (chiusa e riaperta, o ricreata dopo un crash).
+func (m *RecoveryManager) BindWorkspace(sessionID SessionID, workspaceID string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.workspaces[sessionID] = workspaceID
+	adopted := false
+	for key, entry := range m.buffers {
+		if entry.WorkspaceID != workspaceID || entry.SessionID == sessionID {
+			continue
+		}
+		target := recoveryKey(sessionID, entry.RelativePath)
+		if _, taken := m.buffers[target]; taken {
+			continue
+		}
+		delete(m.buffers, key)
+		entry.SessionID = sessionID
+		m.buffers[target] = entry
+		adopted = true
+	}
+	if adopted {
+		_ = m.persistLocked()
+	}
 }
 
 // Forget rimuove un buffer dal recupero, tipicamente dopo un salvataggio riuscito.
@@ -182,7 +282,7 @@ func (m *RecoveryManager) List(sessionID SessionID) []recoveredEntry {
 func (m *RecoveryManager) totalBytesLocked() int {
 	total := 0
 	for _, entry := range m.buffers {
-		total += len(entry.Content)
+		total += entry.bytes()
 	}
 	return total
 }

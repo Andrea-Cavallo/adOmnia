@@ -25,6 +25,8 @@ interface GoStudioModalProps {
   top?: boolean
   /** Sopra ogni altro livello dell'app (conferme di chiusura). */
   elevated?: boolean
+  /** Il clic sul velo non chiude: per decisioni da non perdere per sbaglio (Esc resta attivo). */
+  persistent?: boolean
   /** Azioni piccole nell'header, a sinistra della X (aggiorna, copia…). */
   actions?: ReactNode
   footer?: ReactNode
@@ -42,7 +44,7 @@ interface GoStudioModalProps {
  * ovunque venga aperto (anche fuori dalla radice di Go Studio).
  */
 export function GoStudioModal({
-  open, onClose, title, subtitle, icon: Icon, tone = 'accent', size = 'md', tall, divided, flush, top, elevated,
+  open, onClose, title, subtitle, icon: Icon, tone = 'accent', size = 'md', tall, divided, flush, top, elevated, persistent,
   actions, footer, footerStart, ariaLabel, className = '', bodyClassName = '', children,
 }: GoStudioModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
@@ -51,7 +53,7 @@ export function GoStudioModal({
   if (!open) return null
 
   return createPortal(
-    <div className={`gs-modal-backdrop ad-modal-backdrop ${top ? 'gs-modal-top' : ''} ${elevated ? 'gs-modal-elevated' : ''}`} onClick={onClose} data-a11y-click-exempt="dialog-backdrop">
+    <div className={`gs-modal-backdrop ad-modal-backdrop ${top ? 'gs-modal-top' : ''} ${elevated ? 'gs-modal-elevated' : ''}`} onClick={persistent ? undefined : onClose} data-a11y-click-exempt="dialog-backdrop">
       <div
         ref={dialogRef}
         role="dialog"

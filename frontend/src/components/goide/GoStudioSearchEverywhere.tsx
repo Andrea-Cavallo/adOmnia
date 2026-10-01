@@ -14,6 +14,7 @@ import { GoStudioSymbolIcon } from './GoStudioSymbolIcon'
 import { navigateToLocation } from './goStudioLanguageFeatures'
 import { matchScore, rankCandidates } from './goStudioSearchRanking'
 import { testRequestForTarget } from './goStudioQuickActions'
+import { pinnedFirst } from './goStudioRunHistory'
 import { SETTINGS_INDEX, bindingSearchText, readRecentCommands, rememberCommand, testTargetFromSymbol, type GoStudioSettingEntry } from './goStudioSearchExtras'
 import { GoStudioPalette } from './GoStudioModal'
 
@@ -134,7 +135,7 @@ export function GoStudioSearchEverywhere({ open, sessionId, availability, onComm
     const actions = rankCandidates(query, GO_STUDIO_COMMANDS.map((command) => ({ item: command, text: `${command.label} ${command.menu} ${bindingSearchText(commandShortcut(command))}` })), ACTION_LIMIT)
     const panels = rankCandidates(query, COMMAND_PALETTE_PANEL_FEATURES.filter((feature) => isFeatureVisible(feature.id, featureFlags)).map((feature) => ({ item: feature, text: `${feature.railLabel ?? feature.title} ${feature.keywords}` })), trimmed ? PANEL_LIMIT : 0)
     const settings = trimmed ? rankCandidates(query, SETTINGS_INDEX.map((entry) => ({ item: entry, text: `${entry.label} ${entry.keywords}` })), SETTING_LIMIT) : []
-    const configs = rankCandidates(query, (runConfigs ?? []).map((config) => ({ item: config, text: `${config.name} ${config.kind}` })), trimmed ? RUN_CONFIG_LIMIT : 0)
+    const configs = rankCandidates(query, pinnedFirst(runConfigs ?? []).map((config) => ({ item: config, text: `${config.name} ${config.kind}` })), trimmed ? RUN_CONFIG_LIMIT : 0)
     const matchingSymbols = symbols.filter((symbol) => matchScore(query, `${symbol.container}.${symbol.name}`) !== null)
     const tests = session ? matchingSymbols.flatMap((symbol) => {
       const target = testTargetFromSymbol(symbol)

@@ -1,6 +1,6 @@
 import { forgetGoIDEBuffer, rememberGoIDEBuffer } from '@/lib/goide-api'
 
-const REMEMBER_DELAY_MS = 1500
+const REMEMBER_DELAY_MS = 750
 
 interface PendingRecovery {
   timer: ReturnType<typeof setTimeout>
@@ -24,7 +24,11 @@ export function scheduleBufferRecovery(sessionId: string, relativePath: string, 
   if (previous) clearTimeout(previous.timer)
   const write = () => {
     pending.delete(id)
-    void rememberGoIDEBuffer(sessionId, relativePath, content, diskToken).catch(() => undefined)
+    void rememberGoIDEBuffer(sessionId, relativePath, content, diskToken).then(
+      () => document.dispatchEvent(new CustomEvent('adomnia:go-recovery-error', { detail: null })),
+      // Disco pieno, permessi negati, spazio di recupero esaurito: l'utente deve saperlo, il lavoro non è protetto.
+      (error: unknown) => document.dispatchEvent(new CustomEvent('adomnia:go-recovery-error', { detail: `${relativePath}: ${error instanceof Error ? error.message : String(error)}` })),
+    )
   }
   pending.set(id, { timer: setTimeout(write, REMEMBER_DELAY_MS), write })
 }

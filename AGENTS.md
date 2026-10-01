@@ -37,6 +37,13 @@ New cross-panel actions go through `frontend/src/lib/entities/`, not new `Custom
 - if the panel must be mounted to act, call `handoffToPanel(rail, ref, intent, payload)` from the opener and receive it in the panel with `useEntityHandoff(rail, handler)` — return `false` while the panel is not ready (e.g. still hydrating) and it is retried.
 Project entities come from `internal/devcontext` (Go) via `stores/devcontext.ts`.
 
+### Go Studio dialogs
+
+Every Go Studio modal uses `GoStudioModal`, every search palette `GoStudioPalette`, both in `frontend/src/components/goide/GoStudioModal.tsx`. Never hand-build a backdrop, shell, header or footer.
+- Controls come from the same file (`GoStudioButton`, `GoStudioField`, `GoStudioAlert`, `GoStudioCommandPreview`) or from the `gs-*` classes in `goStudioModal.css` (`gs-input`, `gs-mono`, `gs-list`, `gs-list-row`, `gs-badge`, `gs-kbd`, `gs-segmented`, `gs-switch`, `gs-popover`).
+- The classes live in `@layer components`, so Tailwind utilities still override them; the modal sets its own sans font, so it looks the same when mounted outside `.go-studio-root`.
+- `data-autofocus` picks the initial focus (the primary action of a confirmation); `persistent` keeps a backdrop click from closing decisions that must not be lost.
+
 ---
 
 ## Verification

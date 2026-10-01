@@ -111,6 +111,12 @@ const (
 	RunKindDockerRun   RunConfigurationKind = "docker-run"
 	// RunKindDockerCompose: ProgramArguments è "up" o "down" seguito dai servizi (nessuno = tutti).
 	RunKindDockerCompose RunConfigurationKind = "docker-compose"
+	// RunKindCommand esegue un comando qualsiasi (Target) con ProgramArguments, senza shell.
+	RunKindCommand RunConfigurationKind = "command"
+	// RunKindGoTool esegue `go <Target> <ProgramArguments>` con la toolchain del progetto (vet, generate, tool pprof…).
+	RunKindGoTool RunConfigurationKind = "go-tool"
+	// RunKindCompound avvia insieme, in parallelo, le configurazioni elencate in Compound.
+	RunKindCompound RunConfigurationKind = "compound"
 )
 
 // DockerOptions completa le configurazioni docker-build e docker-run. I build
@@ -167,11 +173,21 @@ type RunConfiguration struct {
 	// Port imposta PORT e viene verificata libera prima dell'avvio.
 	Port int `json:"port,omitempty"`
 	// PreRun e PostRun sono ID di altre configurazioni della sessione, eseguite in ordine.
-	PreRun    []string  `json:"preRun,omitempty"`
-	PostRun   []string  `json:"postRun,omitempty"`
-	Order     int       `json:"order"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	PreRun  []string `json:"preRun,omitempty"`
+	PostRun []string `json:"postRun,omitempty"`
+	// Compound: ID delle configurazioni avviate insieme (solo per il tipo compound).
+	Compound []string `json:"compound,omitempty"`
+	// Shared: la configurazione vive anche in .adomnia/run-configurations.json, da versionare con il progetto.
+	Shared bool `json:"shared,omitempty"`
+	// Pinned: in cima ai selettori di configurazione.
+	Pinned bool `json:"pinned,omitempty"`
+	// RestartOnSave: un'esecuzione in corso riparte quando si salva un file Go del progetto.
+	RestartOnSave bool `json:"restartOnSave,omitempty"`
+	// RestartPolicy dopo un crash di adOmnia: "" o prompt (si chiede), never, always.
+	RestartPolicy string    `json:"restartPolicy,omitempty"`
+	Order         int       `json:"order"`
+	CreatedAt     time.Time `json:"createdAt"`
+	UpdatedAt     time.Time `json:"updatedAt"`
 }
 
 // RequiredSecrets elenca le chiavi il cui valore deve essere fornito a runtime.
@@ -210,6 +226,23 @@ type SessionView struct {
 	// FunctionBreakpoints e StopOnPanic sono gestiti dal backend (SetFunctionBreakpoints).
 	FunctionBreakpoints []FunctionBreakpoint `json:"functionBreakpoints,omitempty"`
 	StopOnPanic         bool                 `json:"stopOnPanic,omitempty"`
+	// Cursors: ultima posizione del cursore nei file aperti; Split: lo split dell'editor con i suoi tab.
+	Cursors []CursorPosition `json:"cursors,omitempty"`
+	Split   *SplitView       `json:"split,omitempty"`
+}
+
+// CursorPosition è la posizione del cursore in un file aperto (1-based).
+type CursorPosition struct {
+	Path   string `json:"path"`
+	Line   int    `json:"line"`
+	Column int    `json:"column"`
+}
+
+// SplitView descrive lo split dell'editor: orientamento, file visibile e tab propri.
+type SplitView struct {
+	Orientation string   `json:"orientation"`
+	ActivePath  string   `json:"activePath"`
+	Paths       []string `json:"paths,omitempty"`
 }
 
 // Bookmark è un segnalibro di riga del progetto.
@@ -234,6 +267,12 @@ type RecoveredBuffer struct {
 	SavedAt      time.Time `json:"savedAt"`
 	DiskChanged  bool      `json:"diskChanged"`
 	Missing      bool      `json:"missing"`
+	// Status: safe (il disco è quello da cui si partiva), already-applied (il disco ha già questo testo),
+	// conflict (il disco è cambiato dopo la snapshot) o missing.
+	Status string `json:"status"`
+	// DiskContent è il testo attuale su disco, per il diff Disk Version ↔ Recovered Version.
+	DiskContent  string `json:"diskContent,omitempty"`
+	SnapshotHash string `json:"snapshotHash,omitempty"`
 }
 
 type Execution struct {

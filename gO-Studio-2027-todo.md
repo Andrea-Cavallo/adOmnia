@@ -21,13 +21,13 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
-| **P0** | Completare l'IDE Go di tutti i giorni | 73 | 17 |
+| **P0** | Completare l'IDE Go di tutti i giorni | 70 | 16 |
 | **P1** | Codice ↔ runtime: il motivo per usare adOmnia | 192 | 58 |
 | **P2** | Studi Go avanzati | 224 | 39 |
 | **P3** | AI e intelligenza del workspace | 189 | 24 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 122 | 45 |
 
-Voci chiuse e rimosse: 670 (287 trovate già implementate dall'audit del 2026-10-01).
+Voci chiuse e rimosse: 717 (287 trovate già implementate dall'audit del 2026-10-01).
 
 ---
 
@@ -35,11 +35,25 @@ Voci chiuse e rimosse: 670 (287 trovate già implementate dall'audit del 2026-10
 
 _Le lacune che costringono ancora ad aprire un altro IDE._
 
-## §54 · MVP: cosa NON rimandare
+## §62 · Disaster Recovery & Crash Recovery
 
-Queste funzioni devono esserci abbastanza presto perché senza di loro gO sembrerà un editor e non un IDE:
+> gO Studio non deve perdere il lavoro non salvato se adOmnia, WebView2, un processo Go o il sistema operativo si chiudono in modo anomalo. Git protegge il codice salvato; il Disaster Recovery protegge il lavoro ancora presente solo nell’editor.
 
-- [ ] Settings. — *Parziale: Toggle nel menu View e dialog toolchain/Copilot; non esiste una schermata impostazioni Go Studio unificata.*
+### Session recovery
+
+- [ ] Persistenza delle configurazioni runtime ripristinabili: run config, terminal metadata, debug config, API tab, DB tab, Kafka/Broker tab e altri pannelli collegati. — *Parziale: run configuration, breakpoint e tab API si ripristinano già; mancano i metadati dei terminali (nome, shell, cartella) e le tab DB/Broker legate alla sessione Go.*
+
+### Storage e robustezza
+
+- [ ] Recovery storage per workspace sotto `.adomnia/recovery/<workspace-id>/`. — *Parziale: le snapshot sono isolate per workspace-id (hash del percorso) nello store locale di adOmnia (bbolt in app data), non in una cartella per workspace; scelta voluta per non mettere codice non salvato dentro il repository.*
+- [ ] Gestire disco pieno, permessi negati, snapshot corrotta, file cancellato, workspace spostato e shutdown durante la scrittura. — *Parziale: gestiti snapshot corrotta, file cancellato, shutdown durante la scrittura (transazione bbolt), store illeggibile, e disco pieno/permessi (avviso rosso: il lavoro non è protetto); manca il riaggancio di un workspace spostato in un'altra cartella.*
+
+### Test obbligatori
+
+- [ ] Kill forzato durante editing con più file dirty → tutti i buffer devono essere recuperabili. — *Parziale: coperto a livello di store (ogni snapshot è persistita subito, test con 10 file); manca la prova con kill reale del processo.*
+- [ ] Kill durante scrittura snapshot → snapshot precedente ancora valida.
+- [ ] Crash con almeno 10 file dirty → recovery completo e UI responsiva. — *Parziale: recovery completo verificato con 10 file (TestTenDirtyBuffers…); la reattività della UI va misurata a mano.*
+- [ ] Verifica Windows, macOS e Linux.
 
 ## §2 · Editor Core
 
@@ -73,21 +87,6 @@ Queste funzioni devono esserci abbastanza presto perché senza di loro gO sembre
 - [ ] `mockgen` / alternative configurabili.
 - [ ] `stringer`.
 - [ ] Tool custom definiti dall'utente. — *Parziale: Si possono impostare solo i percorsi di gopls, linter, dlv e make (`GoStudioToolPathsDialog.tsx`). Mancano tool arbitrari definiti dall'utente.*
-
-## §6 · Run Configurations
-
-- [ ] Run command. — *Parziale: Esistono Make, Docker e Compose (`RunKindMake`, `RunKindDocker*`). Manca un tipo "comando arbitrario".*
-- [ ] Run tool. — *Parziale: Go Tools dialog (vet/generate/fix/mod why/graph/doc in `gotools.go`) e target Make/Docker. Non esiste un tipo di Run Configuration "tool".*
-- [ ] Compound run configuration. — *Parziale: Solo PreRun/PostRun, cioè liste di ID di altre configurazioni (`types.go`, `service_runconfig.go`). Manca una configurazione composta che lanci più run in parallelo.*
-
-### UX
-
-- [ ] Condivisione via repository.
-- [ ] Configurazioni private.
-- [ ] Run history. — *Parziale: Il pannello Run elenca le esecuzioni della sessione (`GoStudioRunPanel.tsx`). Le esecuzioni non sono persistenti e non c'è una vista cronologia per configurazione.*
-- [ ] Pin configuration.
-- [ ] Run current context. — *Parziale: Esistono gutter, CodeLens e "Run/Test Current Package" (`goStudioRunTargets.ts`, `goStudioCommands.ts`). Manca una configurazione effimera dal contesto corrente.*
-- [ ] Hot restart quando possibile.
 
 ## §7 · Debugger Go con Delve
 
