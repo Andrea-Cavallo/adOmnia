@@ -3,7 +3,6 @@ import { isAICompanionAvailable } from '@/lib/aiAvailability'
 import { useUiTranslation } from '@/lib/uiI18n'
 import { useAppStore } from '@/stores/app'
 import { useSettingsStore } from '@/stores/settings'
-import { useGoIDEStore } from '@/stores/goide'
 import { useGoStudioAssistantStore } from '@/stores/goStudioAssistant'
 import heroDark from './assets/hub/hero-dark-stickers.webp'
 import heroLight from './assets/hub/hero-light-stickers.webp'
@@ -18,10 +17,11 @@ export function HubMascot() {
   const [showConnectNotice, setShowConnectNotice] = useState(false)
   const connected = isAICompanionAvailable(ai)
 
-  const openAssistant = () => {
+  const openAssistant = async () => {
     if (connected) {
       setShowConnectNotice(false)
       useGoStudioAssistantStore.getState().open('a0')
+      const { useGoIDEStore } = await import('@/stores/goide')
       const layout = useGoIDEStore.getState().layout
       useGoIDEStore.getState().updateLayout({ structureOpen: true, structureWidth: Math.max(340, layout.structureWidth) })
       setActiveRail('goide')
