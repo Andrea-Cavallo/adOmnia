@@ -199,6 +199,7 @@ Go Studio follows the GoLand keymap. The table below is generated from the comma
 | --- | --- | --- |
 | Open Project | Ctrl+O | ⌘O |
 | Save | Ctrl+S | ⌘S |
+| Settings… | Ctrl+Alt+S | ⌘⌥S |
 | Save All | Ctrl+Shift+S | ⌘⇧S |
 | Close Editor | Ctrl+W | ⌘W |
 | Reopen Closed Tab | Ctrl+Shift+T | ⌘⇧T |

@@ -12,6 +12,7 @@ import { GoStudioDependencies } from './GoStudioDependencies'
 import { GoStudioQuickOpen } from './GoStudioQuickOpen'
 import { GoStudioRecoveryBanner } from './GoStudioRecoveryBanner'
 import { GoStudioCrashRecoveryDialog } from './GoStudioCrashRecoveryDialog'
+import { GoStudioSettingsDialog } from './GoStudioSettingsDialog'
 import { GoStudioRunConfigurations } from './GoStudioRunConfigurations'
 import { GoStudioSecretsPrompt } from './GoStudioSecretsPrompt'
 import { GoStudioHierarchyDialog } from './GoStudioHierarchyDialog'
@@ -164,6 +165,7 @@ export function GoStudioPanel() {
   const [dependenciesOpen, setDependenciesOpen] = useState(false)
   const [runDraft] = useState(DEFAULT_RUN_DRAFT)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [symbolSearchOpen, setSymbolSearchOpen] = useState(false)
   const [searchEverywhereOpen, setSearchEverywhereOpen] = useState(false)
   const [lspLogOpen, setLspLogOpen] = useState(false)
@@ -593,6 +595,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       case 'go.modDownload': return void runModuleDependencyAction('download')
       case 'go.modVerify': return void runModuleDependencyAction('verify')
       case 'help.shortcuts': return setShortcutsOpen(true)
+      case 'file.settings': return setSettingsOpen(true)
       case 'nav.symbol': return setSymbolSearchOpen(true)
       case 'nav.searchEverywhere': return setSearchEverywhereOpen(true)
       case 'go.lspLog': return setLspLogOpen(true)
@@ -607,7 +610,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
   const recentNotOpen = store.recentProjects.filter((project) => !openRealPaths.has(project.realPath))
   const mainMenu = <GoStudioMenuBar state={commandState} recentProjects={store.recentProjects} openProjectPaths={workspaceSessions.map((session) => session.project.realPath)} onCommand={runCommand} onOpenRecent={(path) => void store.openProject(path)} />
   const menuBar = <div role="toolbar" aria-label="Go Studio toolbar" {...titlebar.props} className={`flex h-12 shrink-0 items-center gap-1 pl-2 ${titlebar.active ? 'go-studio-titlebar' : 'pr-2'}`}>{mainMenu}<span className="flex-1" /><GoStudioWorkspaceSwitcher /><GoStudioWindowControls /></div>
-  const sharedDialogs = <><CreateProjectDialog open={createOpen} onClose={() => setCreateOpen(false)} /><GoStudioCloneDialog open={cloneOpen} onClose={() => setCloneOpen(false)} /><GoStudioShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} /></>
+  const sharedDialogs = <><CreateProjectDialog open={createOpen} onClose={() => setCreateOpen(false)} /><GoStudioCloneDialog open={cloneOpen} onClose={() => setCloneOpen(false)} /><GoStudioShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} /><GoStudioSettingsDialog open={settingsOpen} sessionId={store.activeSessionId} onCommand={runCommandStable} onClose={() => setSettingsOpen(false)} /></>
 
   const windowError = windows.error && <ErrorBanner message={windows.error} onClose={windows.clearError} />
   if (!activeSession && pinnedSessionId && store.initialized) {

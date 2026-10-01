@@ -21,13 +21,13 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
-| **P0** | Completare l'IDE Go di tutti i giorni | 71 | 17 |
+| **P0** | Completare l'IDE Go di tutti i giorni | 70 | 16 |
 | **P1** | Codice ↔ runtime: il motivo per usare adOmnia | 192 | 58 |
 | **P2** | Studi Go avanzati | 224 | 39 |
 | **P3** | AI e intelligenza del workspace | 189 | 24 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 122 | 45 |
 
-Voci chiuse e rimosse: 716 (287 trovate già implementate dall'audit del 2026-10-01).
+Voci chiuse e rimosse: 717 (287 trovate già implementate dall'audit del 2026-10-01).
 
 ---
 
@@ -54,12 +54,6 @@ _Le lacune che costringono ancora ad aprire un altro IDE._
 - [ ] Kill durante scrittura snapshot → snapshot precedente ancora valida.
 - [ ] Crash con almeno 10 file dirty → recovery completo e UI responsiva. — *Parziale: recovery completo verificato con 10 file (TestTenDirtyBuffers…); la reattività della UI va misurata a mano.*
 - [ ] Verifica Windows, macOS e Linux.
-
-## §54 · MVP: cosa NON rimandare
-
-Queste funzioni devono esserci abbastanza presto perché senza di loro gO sembrerà un editor e non un IDE:
-
-- [ ] Settings. — *Parziale: Toggle nel menu View e dialog toolchain/Copilot; non esiste una schermata impostazioni Go Studio unificata.*
 
 ## §2 · Editor Core
 

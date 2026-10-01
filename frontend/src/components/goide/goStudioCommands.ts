@@ -1,7 +1,7 @@
 import { effectiveAltBindings, effectiveBinding, isRemapped } from './goStudioKeymap'
 
 export type GoStudioCommandId =
-  | 'file.openProject' | 'file.newProject' | 'file.clone' | 'go.goWork' | 'file.save' | 'file.saveAll' | 'file.closeEditor' | 'file.closeProject'
+  | 'file.openProject' | 'file.newProject' | 'file.clone' | 'go.goWork' | 'file.save' | 'file.saveAll' | 'file.closeEditor' | 'file.closeProject' | 'file.settings'
   | 'window.openInNewWindow' | 'window.moveBack'
   | 'file.closeOthers' | 'file.closeAll' | 'file.pinTab' | 'file.reopenClosed' | 'file.autoSave' | 'file.trimWhitespace'
   | 'edit.undo' | 'edit.redo' | 'edit.find' | 'edit.replace' | 'edit.gotoLine' | 'edit.toggleComment'
@@ -83,6 +83,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'file.reopenClosed', menu: 'file', label: 'Reopen Closed Tab', binding: { key: 't', mod: true, shift: true } },
   { id: 'file.localHistory', menu: 'file', label: 'Local History…', separatorBefore: true },
   { id: 'file.closeProject', menu: 'file', label: 'Close Project' },
+  { id: 'file.settings', menu: 'file', label: 'Settings…', binding: { key: 's', mod: true, alt: true }, separatorBefore: true },
   { id: 'window.openInNewWindow', menu: 'file', label: 'Open Project in New Window', separatorBefore: true },
   { id: 'window.moveBack', menu: 'file', label: 'Move Project Back to Main Window' },
   { id: 'edit.undo', menu: 'edit', label: 'Undo', binding: { key: 'z', mod: true }, editorOwned: true },
@@ -430,9 +431,9 @@ export function commandAvailability(id: GoStudioCommandId, context: GoStudioComm
     case 'run.run':
     case 'run.build':
     case 'run.buildPackage':
-    case 'run.testPackage':
     case 'run.context':
     case 'run.benchPackage':
+    case 'run.testPackage':
     case 'run.vetPackage':
     case 'run.buildAll':
     case 'run.testAll':
@@ -495,9 +496,9 @@ export function commandChecked(id: GoStudioCommandId, context: GoStudioCommandCo
     case 'view.lowResourceOnBattery': return context.editorPrefs?.resourceMode === 'auto'
     case 'view.vimMode': return context.editorPrefs?.editorMode === 'vim'
     case 'view.emacsMode': return context.editorPrefs?.editorMode === 'emacs'
-    case 'code.typeHints': return !!context.editorPrefs?.typeHints && context.inlayHints
     case 'view.fontLigatures': return !!context.editorPrefs?.fontLigatures
     case 'file.autoSave': return !!context.editorPrefs?.autoSave
+    case 'code.typeHints': return !!context.editorPrefs?.typeHints && context.inlayHints
     case 'file.trimWhitespace': return !!context.editorPrefs?.trimTrailingWhitespace
     case 'view.maximizeEditor': return !context.projectOpen && !context.structureOpen && !context.bottomOpen
     case 'view.toggleProject': return context.projectOpen

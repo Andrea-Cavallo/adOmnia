@@ -92,6 +92,7 @@ export const GO_STUDIO_COMMAND_ICONS: Partial<Record<GoStudioCommandId, GoStudio
   'view.fontLigatures': icon(Ligature),
   'view.previewTab': icon(Eye),
   'view.lowResourceMode': icon(Gauge),
+  'file.settings': icon(Settings2),
   'view.lowResourceOnBattery': icon(BatteryLow),
   'view.vimMode': icon(Keyboard),
   'view.emacsMode': icon(Keyboard),
