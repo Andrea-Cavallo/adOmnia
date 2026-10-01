@@ -85,6 +85,15 @@ export default defineConfig(async () => {
           import.meta.dirname,
           './node_modules/monaco-editor/esm/vs/language/json/json.worker.js'
         ),
+        // monaco-vim (modalità Vim opzionale di Go Studio) importa due moduli interni senza estensione.
+        'monaco-editor/esm/vs/editor/editor.api': path.resolve(
+          import.meta.dirname,
+          './node_modules/monaco-editor/esm/vs/editor/editor.api.js'
+        ),
+        'monaco-editor/esm/vs/editor/common/commands/shiftCommand': path.resolve(
+          import.meta.dirname,
+          './node_modules/monaco-editor/esm/vs/editor/common/commands/shiftCommand.js'
+        ),
       },
     },
     build: {

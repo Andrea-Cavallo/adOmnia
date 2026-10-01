@@ -1,3 +1,4 @@
+import { attachEditorMode } from './goStudioEditorModes'
 import { heavyFeatureEnabled } from './goStudioResourceMode'
 import { useGoIDENavigationStore } from '@/stores/goideNavigation'
 import { useEffect, useRef, useState } from 'react'
@@ -76,6 +77,8 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
   const minimap = useGoIDELspStore((state) => heavyFeatureEnabled(state, 'minimap'))
   const fontLigatures = useGoIDELspStore((state) => state.preferences.fontLigatures)
   const fontSize = useGoIDELspStore((state) => state.preferences.fontSize)
+  const editorMode = useGoIDELspStore((state) => state.preferences.editorMode)
+  const modeStatusRef = useRef<HTMLDivElement | null>(null)
   const editorConfig = useEditorConfig(document.document.sessionId, document.document.relativePath)
 
   const onMount: OnMount = (editor) => {
@@ -172,7 +175,25 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
     return () => window.clearTimeout(timer)
   }, [document.buffer, document.document.id, document.document.readOnly, document.document.relativePath, mountCount])
 
+  // Vim / Emacs opzionali: si agganciano all'editor montato e si staccano quando si torna al default.
+  useEffect(() => {
+    const editor = editorRef.current
+    if (!editor || editorMode === 'default') return
+    let detach: (() => void) | null = null
+    let cancelled = false
+    void attachEditorMode(editor, editorMode, modeStatusRef.current).then((dispose) => {
+      if (cancelled) dispose()
+      else detach = dispose
+    }).catch((error) => useGoIDELspStore.setState({ message: `Could not start ${editorMode} mode: ${error instanceof Error ? error.message : String(error)}` }))
+    return () => {
+      cancelled = true
+      detach?.()
+    }
+  }, [editorMode, mountCount])
+
   return (
+    <div className="flex h-full min-h-0 flex-col">
+    <div className="min-h-0 flex-1">
     <Editor
       path={editorModelUri(document.document)}
       language={document.document.language}
@@ -217,5 +238,9 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
         padding: { top: 6, bottom: 6 },
       }}
     />
+    </div>
+    {/* Riga di stato di Vim (modo, comando in corso): esiste solo con la modalità Vim attiva. */}
+    <div ref={modeStatusRef} aria-live="polite" className={editorMode === 'vim' ? 'h-5 shrink-0 border-t border-border-1 px-2 font-mono text-[10.5px] leading-5 text-text-3' : 'hidden'} />
+    </div>
   )
 }

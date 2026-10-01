@@ -1,4 +1,5 @@
 import type { GoStudioResourceMode } from '@/components/goide/goStudioResourceMode'
+import type { GoStudioEditorMode } from '@/components/goide/goStudioEditorModes'
 import { create } from 'zustand'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 import type { CancellablePromise } from '@wailsio/runtime'
@@ -64,6 +65,8 @@ export interface GoIDEEditorPreferences {
   previewTab: boolean
   /** Modalità a basso consumo: normal, low (sempre) o auto (solo a batteria). */
   resourceMode: GoStudioResourceMode
+  /** Emulazione della tastiera nell'editor: normale, Vim o Emacs. */
+  editorMode: GoStudioEditorMode
 }
 
 export const EDITOR_FONT_SIZE = { min: 9, max: 28, default: 12 } as const
@@ -158,7 +161,7 @@ const DEFAULT_SETTINGS: GoIDELanguageServerSettings = { gofumpt: false, staticch
 const DEFAULT_PREFERENCES: GoIDEEditorPreferences = {
   formatOnSave: true, organizeImportsOnSave: true, lintOnSave: false, semanticHighlighting: true, inlayHints: true,
   typeHints: false, stickyScroll: true, minimap: false, fontLigatures: false, fontSize: EDITOR_FONT_SIZE.default,
-  autoSave: false, trimTrailingWhitespace: false, previewTab: false, resourceMode: 'normal',
+  autoSave: false, trimTrailingWhitespace: false, previewTab: false, resourceMode: 'normal', editorMode: 'default',
 }
 const EMPTY_LINT: GoIDELintState = { running: false, result: null, error: null, reports: {} }
 const runningLints = new Map<string, CancellablePromise<GoIDELintResult>>()

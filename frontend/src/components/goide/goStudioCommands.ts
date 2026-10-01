@@ -1,3 +1,5 @@
+import { effectiveAltBindings, effectiveBinding, isRemapped } from './goStudioKeymap'
+
 export type GoStudioCommandId =
   | 'file.openProject' | 'file.newProject' | 'file.clone' | 'go.goWork' | 'file.save' | 'file.saveAll' | 'file.closeEditor' | 'file.closeProject'
   | 'window.openInNewWindow' | 'window.moveBack'
@@ -6,7 +8,7 @@ export type GoStudioCommandId =
   | 'edit.duplicateLine' | 'edit.deleteLine' | 'edit.nextOccurrence' | 'edit.allOccurrences' | 'edit.moveLineUp' | 'edit.moveLineDown' | 'edit.columnSelection'
   | 'file.localHistory' | 'view.todo'
   | 'view.splitRight' | 'view.splitDown' | 'view.unsplit' | 'view.terminal'
-  | 'view.zoomIn' | 'view.zoomOut' | 'view.zoomReset' | 'view.zenMode' | 'view.stickyScroll' | 'view.minimap' | 'view.fontLigatures' | 'view.previewTab' | 'view.lowResourceMode' | 'view.lowResourceOnBattery'
+  | 'view.zoomIn' | 'view.zoomOut' | 'view.zoomReset' | 'view.zenMode' | 'view.stickyScroll' | 'view.minimap' | 'view.fontLigatures' | 'view.previewTab' | 'view.lowResourceMode' | 'view.lowResourceOnBattery' | 'view.vimMode' | 'view.emacsMode'
   | 'view.quickOpen' | 'view.maximize' | 'view.maximizeEditor' | 'view.toggleProject' | 'view.toggleStructure' | 'view.toggleBottom' | 'view.toggleIgnored' | 'view.problems'
   | 'nav.declaration' | 'nav.typeDeclaration' | 'nav.implementation' | 'nav.usages' | 'nav.fileStructure' | 'nav.symbol' | 'nav.findInFiles'
   | 'nav.recentLocations' | 'nav.lastEdit' | 'nav.gotoTest' | 'code.generate' | 'nav.callHierarchy' | 'nav.typeHierarchy' | 'nav.nextProblem' | 'nav.previousProblem'
@@ -106,6 +108,8 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'view.previewTab', menu: 'view', label: 'Preview Tab (single click in Project)' },
   { id: 'view.lowResourceMode', menu: 'view', label: 'Low-Resource Mode' },
   { id: 'view.lowResourceOnBattery', menu: 'view', label: 'Low-Resource Mode on Battery' },
+  { id: 'view.vimMode', menu: 'view', label: 'Vim Mode', separatorBefore: true },
+  { id: 'view.emacsMode', menu: 'view', label: 'Emacs Mode' },
   { id: 'view.zenMode', menu: 'view', label: 'Zen Mode', binding: { key: 'z', alt: true, shift: true }, separatorBefore: true },
   { id: 'view.maximizeEditor', menu: 'view', label: 'Maximize Editor (Hide All Tool Windows)', binding: { key: 'F12', mod: true, shift: true }, separatorBefore: true },
   { id: 'view.maximize', menu: 'view', label: 'Maximize Go Studio', binding: { key: 'F11', mod: true, shift: true } },
@@ -275,9 +279,29 @@ function keyMatches(binding: GoStudioKeyBinding, event: KeyLike): boolean {
   return event.key.toLowerCase() === binding.key
 }
 
-/** Trova il comando Go Studio intercettabile per un evento tastiera, ignorando quelli gestiti da Monaco. */
+/**
+ * Comandi Go Studio intercettabili per un evento tastiera, nell'ordine del registro, con la keymap corrente.
+ * I comandi gestiti da Monaco si intercettano solo se l'utente o la keymap ne hanno cambiato il tasto.
+ */
+export function commandsForKey(event: KeyLike): GoStudioCommand[] {
+  return GO_STUDIO_COMMANDS.filter((command) => {
+    if (command.editorOwned && !isRemapped(command)) return false
+    return [effectiveBinding(command), ...effectiveAltBindings(command)].some((binding) => !!binding && keyMatches(binding, event))
+  })
+}
+
 export function commandForKey(event: KeyLike): GoStudioCommand | null {
-  return GO_STUDIO_COMMANDS.find((command) => !command.editorOwned && [command.binding, ...(command.altBindings ?? [])].some((binding) => !!binding && keyMatches(binding, event))) ?? null
+  return commandsForKey(event)[0] ?? null
+}
+
+/** Il tasto predefinito di un comando dell'editor che è stato rimappato: non deve più eseguire l'azione vecchia. */
+export function isStaleEditorKey(event: KeyLike): boolean {
+  return GO_STUDIO_COMMANDS.some((command) => command.editorOwned && !!command.binding && isRemapped(command) && keyMatches(command.binding, event))
+}
+
+/** Scorciatoia mostrata in menu, palette e dialog: quella effettiva della keymap corrente. */
+export function commandShortcut(command: GoStudioCommand): string {
+  return command.id === 'nav.searchEverywhere' ? formatBinding(command.binding) : formatBinding(effectiveBinding(command))
 }
 
 export interface GoStudioCommandContext {
@@ -320,7 +344,7 @@ export interface GoStudioCommandContext {
   canGoForward: boolean
   bookmarkCount: number
   /** Preferenze dell'editor mostrate con spunta nei menu. */
-  editorPrefs?: { resourceMode?: 'normal' | 'low' | 'auto'; previewTab?: boolean; stickyScroll: boolean; minimap: boolean; fontLigatures: boolean; typeHints: boolean; autoSave: boolean; trimTrailingWhitespace: boolean }
+  editorPrefs?: { resourceMode?: 'normal' | 'low' | 'auto'; editorMode?: 'default' | 'vim' | 'emacs'; previewTab?: boolean; stickyScroll: boolean; minimap: boolean; fontLigatures: boolean; typeHints: boolean; autoSave: boolean; trimTrailingWhitespace: boolean }
   zen?: boolean
   /** Finestra Go Studio separata: mostra un solo progetto e non ha rail né pannelli adOmnia. */
   detached?: boolean
@@ -468,6 +492,8 @@ export function commandChecked(id: GoStudioCommandId, context: GoStudioCommandCo
     case 'view.lowResourceMode': return context.editorPrefs?.resourceMode === 'low'
     case 'view.lowResourceOnBattery': return context.editorPrefs?.resourceMode === 'auto'
     case 'view.fontLigatures': return !!context.editorPrefs?.fontLigatures
+    case 'view.vimMode': return context.editorPrefs?.editorMode === 'vim'
+    case 'view.emacsMode': return context.editorPrefs?.editorMode === 'emacs'
     case 'code.typeHints': return !!context.editorPrefs?.typeHints && context.inlayHints
     case 'file.autoSave': return !!context.editorPrefs?.autoSave
     case 'file.trimWhitespace': return !!context.editorPrefs?.trimTrailingWhitespace

@@ -4,7 +4,7 @@ import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import { useAppIcon } from '@/lib/brandAssets'
 import { useAppStore } from '@/stores/app'
 import type { GoIDERecentProject } from '@/lib/goide-api'
-import { GO_STUDIO_COMMANDS, GO_STUDIO_MENUS, formatBinding, type GoStudioCommandId, type GoStudioMenuId } from './goStudioCommands'
+import { GO_STUDIO_COMMANDS, GO_STUDIO_MENUS, commandShortcut, type GoStudioCommandId, type GoStudioMenuId } from './goStudioCommands'
 import { GO_STUDIO_COMMAND_ICONS, GO_STUDIO_MENU_ICONS } from './goStudioCommandIcons'
 
 const RECENT_PREFIX = 'recent:'
@@ -53,7 +53,7 @@ function menuItems(menu: GoStudioMenuId, state: GoStudioCommandState): ContextMe
       icon: GO_STUDIO_COMMAND_ICONS[command.id]?.icon,
       iconClassName: GO_STUDIO_COMMAND_ICONS[command.id]?.tone,
       checked: state.checked(command.id) || undefined,
-      shortcut: formatBinding(command.binding),
+      shortcut: commandShortcut(command),
       disabled: availability !== true,
       disabledReason: availability === true ? undefined : availability,
       separatorBefore: command.separatorBefore,

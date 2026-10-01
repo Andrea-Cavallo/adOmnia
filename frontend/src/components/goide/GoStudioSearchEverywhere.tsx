@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { ArrowRight, Loader2, Search, Terminal, X } from 'lucide-react'
+import { ArrowRight, FlaskConical, History, Loader2, Play, Search, Settings, Terminal, X } from 'lucide-react'
 import { quickOpenGoIDEFiles, type GoIDEQuickOpenResult } from '@/lib/goide-api'
 import { requestWorkspaceSymbols, type GoIDEWorkspaceSymbol } from '@/lib/goide-lsp-api'
 import { COMMAND_PALETTE_PANEL_FEATURES, isFeatureVisible, type FeatureDef } from '@/lib/featureRegistry'
@@ -7,18 +7,23 @@ import { useModalFocusTrap } from '@/lib/accessibility'
 import { useAppStore } from '@/stores/app'
 import { useGoIDEStore } from '@/stores/goide'
 import { useGoIDELspStore } from '@/stores/goideLsp'
+import { useGoIDETestsStore } from '@/stores/goideTests'
 import { useSettingsStore } from '@/stores/settings'
-import { GO_STUDIO_COMMANDS, formatBinding, type GoStudioCommand, type GoStudioCommandId } from './goStudioCommands'
+import { GO_STUDIO_COMMANDS, commandShortcut, type GoStudioCommand, type GoStudioCommandId } from './goStudioCommands'
 import { GoStudioFileIcon } from './GoStudioFileIcon'
 import { GoStudioSymbolIcon } from './GoStudioSymbolIcon'
 import { navigateToLocation } from './goStudioLanguageFeatures'
 import { matchScore, rankCandidates } from './goStudioSearchRanking'
+import { testRequestForTarget } from './goStudioQuickActions'
+import { SETTINGS_INDEX, bindingSearchText, readRecentCommands, rememberCommand, testTargetFromSymbol, type GoStudioSettingEntry } from './goStudioSearchExtras'
 
 const SEARCH_DEBOUNCE_MS = 120
 const FILE_LIMIT = 8
 const SYMBOL_LIMIT = 8
 const ACTION_LIMIT = 8
 const PANEL_LIMIT = 5
+const RUN_CONFIG_LIMIT = 6
+const SETTING_LIMIT = 5
 
 interface GoStudioSearchEverywhereProps {
   open: boolean
@@ -30,7 +35,7 @@ interface GoStudioSearchEverywhereProps {
 
 interface ResultRow {
   key: string
-  section: 'Files' | 'Symbols' | 'Actions' | 'adOmnia panels'
+  section: 'Recent actions' | 'Files' | 'Tests' | 'Symbols' | 'Run configurations' | 'Actions' | 'Settings' | 'adOmnia panels'
   icon: ReactNode
   title: string
   detail: string
@@ -58,9 +63,16 @@ function symbolRow(symbol: GoIDEWorkspaceSymbol): ResultRow {
 function actionRow(command: GoStudioCommand, availability: true | string, run: (id: GoStudioCommandId) => void): ResultRow {
   return {
     key: `action:${command.id}`, section: 'Actions', title: command.label, detail: command.menu[0].toUpperCase() + command.menu.slice(1),
-    hint: formatBinding(command.binding), disabled: availability === true ? undefined : availability,
+    hint: commandShortcut(command), disabled: availability === true ? undefined : availability,
     icon: <Terminal size={12} className="text-text-3" aria-hidden="true" />, run: () => run(command.id),
   }
+}
+
+function openSettingsSection(entry: GoStudioSettingEntry): void {
+  // Come la mascotte dell'Hub: la sezione richiesta sopravvive al montaggio lazy del pannello Settings.
+  try { sessionStorage.setItem('adomnia.settings.requested-section', entry.section) } catch { /* solo navigazione */ }
+  useAppStore.getState().setActiveRail('settings')
+  window.requestAnimationFrame(() => document.dispatchEvent(new CustomEvent('adomnia:open-settings-section', { detail: entry.section })))
 }
 
 function panelRow(feature: FeatureDef, open: (feature: FeatureDef) => void): ResultRow {
@@ -82,12 +94,16 @@ export function GoStudioSearchEverywhere({ open, sessionId, availability, onComm
   const lspReady = useGoIDELspStore((state) => state.status[sessionId]?.state === 'ready')
   const featureFlags = useSettingsStore((state) => state.settings.features)
   const openDocument = useGoIDEStore((state) => state.openDocument)
+  const session = useGoIDEStore((state) => state.sessions.find((item) => item.id === sessionId))
+  const runConfigs = useGoIDEStore((state) => state.runConfigsBySession[sessionId])
+  const [recent, setRecent] = useState<string[]>([])
   useModalFocusTrap(open, onClose, dialogRef)
 
   useEffect(() => {
     if (!open) return
     setQuery('')
     setSelected(0)
+    setRecent(readRecentCommands())
     inputRef.current?.focus()
   }, [open])
 
@@ -114,16 +130,48 @@ export function GoStudioSearchEverywhere({ open, sessionId, availability, onComm
 
   const rows = useMemo<ResultRow[]>(() => {
     const close = (action: () => void) => () => { onClose(); action() }
-    const actions = rankCandidates(query, GO_STUDIO_COMMANDS.map((command) => ({ item: command, text: `${command.label} ${command.menu}` })), ACTION_LIMIT)
-    const panels = rankCandidates(query, COMMAND_PALETTE_PANEL_FEATURES.filter((feature) => isFeatureVisible(feature.id, featureFlags)).map((feature) => ({ item: feature, text: `${feature.railLabel ?? feature.title} ${feature.keywords}` })), query.trim() ? PANEL_LIMIT : 0)
+    const runCommand = (id: GoStudioCommandId) => close(() => { rememberCommand(id); onCommand(id) })
+    const trimmed = query.trim()
+    // La scorciatoia è cercabile: "ctrl shift f" trova Find in Files.
+    const actions = rankCandidates(query, GO_STUDIO_COMMANDS.map((command) => ({ item: command, text: `${command.label} ${command.menu} ${bindingSearchText(commandShortcut(command))}` })), ACTION_LIMIT)
+    const panels = rankCandidates(query, COMMAND_PALETTE_PANEL_FEATURES.filter((feature) => isFeatureVisible(feature.id, featureFlags)).map((feature) => ({ item: feature, text: `${feature.railLabel ?? feature.title} ${feature.keywords}` })), trimmed ? PANEL_LIMIT : 0)
+    const settings = trimmed ? rankCandidates(query, SETTINGS_INDEX.map((entry) => ({ item: entry, text: `${entry.label} ${entry.keywords}` })), SETTING_LIMIT) : []
+    const configs = rankCandidates(query, (runConfigs ?? []).map((config) => ({ item: config, text: `${config.name} ${config.kind}` })), trimmed ? RUN_CONFIG_LIMIT : 0)
+    const matchingSymbols = symbols.filter((symbol) => matchScore(query, `${symbol.container}.${symbol.name}`) !== null)
+    const tests = session ? matchingSymbols.flatMap((symbol) => {
+      const target = testTargetFromSymbol(symbol)
+      return target ? [{ symbol, target }] : []
+    }) : []
+    const recentCommands = trimmed ? [] : recent.flatMap((id) => GO_STUDIO_COMMANDS.filter((command) => command.id === id))
     return [
+      ...recentCommands.map((command) => ({ ...actionRow(command, availability(command.id), onCommand), key: `recent:${command.id}`, section: 'Recent actions' as const, icon: <History size={12} className="text-text-3" aria-hidden="true" />, run: runCommand(command.id) })),
       ...files.map((file) => fileRow(file, (path) => close(() => void openDocument(path))())),
+      ...tests.map(({ symbol, target }) => ({
+        key: `test:${symbol.location.relativePath}:${symbol.name}`, section: 'Tests' as const, title: symbol.name,
+        detail: `Run ${target.kind === 'benchmark' ? 'benchmark' : 'test'} · ${target.packagePath}`,
+        icon: <FlaskConical size={12} className="text-success" aria-hidden="true" />,
+        disabled: session?.project.authorization === 'tooling-permitted' ? undefined : 'Trust the project to run tests',
+        run: close(() => {
+          useGoIDELspStore.getState().showToolWindow('tests')
+          void useGoIDETestsStore.getState().start(testRequestForTarget(session!, target))
+        }),
+      })),
       // Mentre la nuova ricerca gopls è in corso restano visibili solo i simboli coerenti con il testo attuale.
-      ...symbols.filter((symbol) => matchScore(query, `${symbol.container}.${symbol.name}`) !== null).map((symbol) => ({ ...symbolRow(symbol), run: close(symbolRow(symbol).run) })),
-      ...actions.map((command) => ({ ...actionRow(command, availability(command.id), onCommand), run: close(() => onCommand(command.id)) })),
+      ...matchingSymbols.map((symbol) => ({ ...symbolRow(symbol), run: close(symbolRow(symbol).run) })),
+      ...configs.map((config) => ({
+        key: `config:${config.id}`, section: 'Run configurations' as const, title: config.name, detail: `Run · ${config.kind}`,
+        icon: <Play size={12} className="text-success" aria-hidden="true" />,
+        disabled: availability('run.run') === true ? undefined : String(availability('run.run')),
+        run: close(() => { useGoIDEStore.getState().selectRunConfiguration(config.id); onCommand('run.run') }),
+      })),
+      ...actions.map((command) => ({ ...actionRow(command, availability(command.id), onCommand), run: runCommand(command.id) })),
+      ...settings.map((entry) => ({
+        key: `setting:${entry.label}`, section: 'Settings' as const, title: entry.label, detail: `Settings · ${entry.section}`,
+        icon: <Settings size={12} className="text-text-3" aria-hidden="true" />, run: close(() => openSettingsSection(entry)),
+      })),
       ...panels.map((feature) => panelRow(feature, (target) => close(() => useAppStore.getState().setActiveRail(target.id))())),
     ]
-  }, [availability, featureFlags, files, onClose, onCommand, openDocument, query, symbols])
+  }, [availability, featureFlags, files, onClose, onCommand, openDocument, query, recent, runConfigs, session, symbols])
 
   useEffect(() => { setSelected((value) => Math.min(value, Math.max(0, rows.length - 1))) }, [rows.length])
 
@@ -146,7 +194,7 @@ export function GoStudioSearchEverywhere({ open, sessionId, availability, onComm
             value={query}
             onChange={(event) => { setQuery(event.target.value); setSelected(0) }}
             onKeyDown={onKeyDown}
-            placeholder={lspReady ? 'Search files, symbols, actions and adOmnia panels' : 'Search files, actions and adOmnia panels (symbols need gopls)'}
+            placeholder={lspReady ? 'Search files, tests, symbols, run configurations, actions, shortcuts and settings' : 'Search files, run configurations, actions, shortcuts and settings (symbols and tests need gopls)'}
             aria-label="Search Everywhere"
             className="min-w-0 flex-1 bg-transparent text-xs text-text-1 outline-none placeholder:text-text-4"
           />

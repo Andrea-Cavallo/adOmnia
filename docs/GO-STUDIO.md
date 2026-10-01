@@ -176,6 +176,10 @@ Ownership of projects by separate windows is not persisted: after a restart ever
 
 Go Studio follows the GoLand keymap. The table below is generated from the command registry that also drives the menus and the *Help → Keyboard Shortcuts* dialog. Editor-owned keys (for example Ctrl+Z and Ctrl+F) are handled by the editor. Ctrl+W closes the active editor tab, so *Extend Selection* is Shift+Alt+→.
 
+**Keymaps and custom shortcuts.** *Help → Keyboard Shortcuts* switches between the **GoLand** (default) and **VS Code** keymaps, searches actions by name or by key (`ctrl shift f`), and lets you click any shortcut to record a new one, remove it or reset it. Shortcuts shared by two actions are flagged; the first available action wins. Choices are stored on this machine. *View → Vim Mode* / *Emacs Mode* turn on keyboard emulation in the editor (monaco-vim / monaco-emacs, loaded only when enabled). The table below lists the GoLand defaults.
+
+**Search Everywhere** (Shift Shift) also finds tests and benchmarks (Enter runs them in the Test Explorer), run configurations (Enter runs them), adOmnia settings (Enter opens the right Settings section) and actions by shortcut; with an empty query it shows the recently used actions.
+
 ### File
 
 | Action | Windows / Linux | macOS |

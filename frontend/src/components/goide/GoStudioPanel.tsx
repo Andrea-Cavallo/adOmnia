@@ -32,7 +32,7 @@ import { GoStudioCopilotDialog } from './GoStudioCopilotDialog'
 import { useGoStudioCopilot } from './useGoStudioCopilot'
 import { useCopilotStore } from '@/stores/copilot'
 import { GoStudioShortcutsDialog } from './GoStudioShortcutsDialog'
-import { commandAvailability, commandChecked, commandForKey, type GoStudioCommandContext, type GoStudioCommandId } from './goStudioCommands'
+import { commandAvailability, commandChecked, commandsForKey, isStaleEditorKey, type GoStudioCommandContext, type GoStudioCommandId } from './goStudioCommands'
 import { activeGoStudioEditor, hasGoStudioEditor, isGoStudioEditorCommand, runGoStudioEditorCommand } from './goStudioEditorRegistry'
 import { GoStudioStatusBar } from './GoStudioStatusBar'
 import { GoStudioSymbolSearch } from './GoStudioSymbolSearch'
@@ -229,10 +229,19 @@ export function GoStudioPanel() {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (!panelActive.current) return
-      const command = commandForKey(event)
-      if (!command) return
+      // Il dialog Scorciatoie sta registrando un tasto: va a lui, non ai comandi.
+      if ((event.target as HTMLElement | null)?.closest?.('[data-keymap-recorder]')) return
+      // Più comandi possono condividere un tasto (es. F5 di VS Code): vince il primo disponibile.
+      const candidates = commandsForKey(event)
+      const command = candidates.find((item) => availabilityRef.current(item.id) === true) ?? candidates[0]
+      if (!command) {
+        // Tasto predefinito di un'azione dell'editor rimappata altrove: non deve più eseguirla.
+        if (isStaleEditorKey(event)) { event.preventDefault(); event.stopPropagation() }
+        return
+      }
       if (command.passThroughWhenUnavailable && availabilityRef.current(command.id) !== true) return
       event.preventDefault()
+      if (command.editorOwned) event.stopPropagation()
       runCommandRef.current(command.id)
     }
     window.addEventListener('keydown', onKeyDown, true)
@@ -434,7 +443,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
     maximized: goStudioMaximized,
     zen,
     editorPrefs: {
-      resourceMode: lsp.preferences.resourceMode, previewTab: lsp.preferences.previewTab, stickyScroll: lsp.preferences.stickyScroll, minimap: lsp.preferences.minimap, fontLigatures: lsp.preferences.fontLigatures,
+      resourceMode: lsp.preferences.resourceMode, editorMode: lsp.preferences.editorMode, previewTab: lsp.preferences.previewTab, stickyScroll: lsp.preferences.stickyScroll, minimap: lsp.preferences.minimap, fontLigatures: lsp.preferences.fontLigatures,
       typeHints: lsp.preferences.typeHints, autoSave: lsp.preferences.autoSave, trimTrailingWhitespace: lsp.preferences.trimTrailingWhitespace,
     },
     projectOpen: store.layout.projectOpen,

@@ -59,6 +59,8 @@ export function runLanguageCommand(id: GoStudioCommandId, sessionId: string | nu
     case 'view.previewTab': lsp.updatePreferences({ previewTab: !lsp.preferences.previewTab }); return true
     // Le due modalità si escludono: riselezionare quella attiva torna a normal.
     case 'view.lowResourceMode': lsp.updatePreferences({ resourceMode: lsp.preferences.resourceMode === 'low' ? 'normal' : 'low' }); return true
+    case 'view.vimMode': lsp.updatePreferences({ editorMode: lsp.preferences.editorMode === 'vim' ? 'default' : 'vim' }); return true
+    case 'view.emacsMode': lsp.updatePreferences({ editorMode: lsp.preferences.editorMode === 'emacs' ? 'default' : 'emacs' }); return true
     case 'view.lowResourceOnBattery': lsp.updatePreferences({ resourceMode: lsp.preferences.resourceMode === 'auto' ? 'normal' : 'auto' }); return true
     case 'view.fontLigatures': lsp.updatePreferences({ fontLigatures: !lsp.preferences.fontLigatures }); return true
     case 'file.autoSave': lsp.updatePreferences({ autoSave: !lsp.preferences.autoSave }); return true

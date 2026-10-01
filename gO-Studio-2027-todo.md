@@ -21,13 +21,13 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
-| **P0** | Completare l'IDE Go di tutti i giorni | 84 | 18 |
+| **P0** | Completare l'IDE Go di tutti i giorni | 73 | 17 |
 | **P1** | Codice ↔ runtime: il motivo per usare adOmnia | 192 | 58 |
 | **P2** | Studi Go avanzati | 224 | 39 |
 | **P3** | AI e intelligenza del workspace | 189 | 24 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 122 | 45 |
 
-Voci chiuse e rimosse: 659 (287 trovate già implementate dall'audit del 2026-10-01).
+Voci chiuse e rimosse: 670 (287 trovate già implementate dall'audit del 2026-10-01).
 
 ---
 
@@ -174,25 +174,6 @@ Queste funzioni devono esserci abbastanza presto perché senza di loro gO sembre
 - [ ] Unused dependency indicator.
 - [ ] Dependency weight estimate.
 - [ ] Package count impact.
-
-## §45 · Command Palette
-
-- [ ] Ricerca test.
-- [ ] Ricerca run config.
-- [ ] Ricerca setting. — *Parziale: CommandPalette.tsx ha solo l'azione "Open Settings" e i pannelli; non indicizza le singole impostazioni.*
-- [ ] Recent commands.
-
-## §46 · Keyboard Experience
-
-- [ ] Keymap standard.
-- [ ] Keymap VS Code.
-- [ ] Custom keybindings.
-- [ ] Vim mode opzionale.
-- [ ] Emacs-like mode opzionale.
-- [ ] Shortcut conflicts detector.
-- [ ] Search actions by shortcut.
-
----
 
 # P1 — Codice ↔ runtime: il motivo per usare adOmnia
 
