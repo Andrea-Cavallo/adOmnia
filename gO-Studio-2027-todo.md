@@ -21,7 +21,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
-| **P0** | Completare l'IDE Go di tutti i giorni | 55 | 12 |
+| **P0** | Completare l'IDE Go di tutti i giorni | 53 | 11 |
 | **P1** | Codice ↔ runtime: il motivo per usare adOmnia | 192 | 58 |
 | **P2** | Studi Go avanzati | 224 | 39 |
 | **P3** | AI e intelligenza del workspace | 189 | 24 |
@@ -50,8 +50,8 @@ _Le lacune che costringono ancora ad aprire un altro IDE._
 
 ### Test obbligatori
 
-- [ ] Kill forzato durante editing con più file dirty → tutti i buffer devono essere recuperabili. — *Parziale: coperto a livello di store (ogni snapshot è persistita subito, test con 10 file); manca la prova con kill reale del processo.*
-- [ ] Kill durante scrittura snapshot → snapshot precedente ancora valida.
+- [x] Kill forzato durante editing con più file dirty → tutti i buffer devono essere recuperabili. — *Fatto: `TestKillDuringSnapshotWritesKeepsEveryBuffer` uccide davvero (Kill) un processo che riscrive 10 buffer su bbolt e li ritrova tutti integri; resta la finestra di debounce di ~750 ms dell'editor.*
+- [x] Kill durante scrittura snapshot → snapshot precedente ancora valida. — *Fatto: stesso test, kill a 0/37/113 ms durante scritture continue; la transazione bbolt lascia l'ultima snapshot completa con hash valido.*
 - [ ] Crash con almeno 10 file dirty → recovery completo e UI responsiva. — *Parziale: recovery completo verificato con 10 file (TestTenDirtyBuffers…); la reattività della UI va misurata a mano.*
 - [ ] Verifica Windows, macOS e Linux.
 
