@@ -1167,6 +1167,12 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
       set((state) => ({ sessions: replaceSession(state.sessions, event.payload as GoIDESession) }))
       return
     }
+    // go env finisce in background dopo il rilevamento veloce: aggiorna i valori senza toccare loading.
+    if (event.type === 'toolchain.detected' && event.sessionId && event.payload && typeof event.payload === 'object' && 'available' in event.payload) {
+      const info = event.payload as GoIDEToolchainInfo
+      set((state) => ({ toolchains: { ...state.toolchains, [event.sessionId!]: info } }))
+      return
+    }
     if (event.type === 'toolchain.install.progress') {
       const installation = event.payload as GoIDEToolchainInstallation | undefined
       if (!installation?.id || installation.sessionId !== event.sessionId) return

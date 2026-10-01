@@ -6,6 +6,7 @@ import { useCopilotStore, type CopilotChatMessage } from '@/stores/copilot'
 import type { GoIDEEditorDocument } from '@/stores/goide'
 import { activeGoStudioEditor } from './goStudioEditorRegistry'
 import { editorModelUri } from './goStudioModelUri'
+import { copilotChatIdentity } from './goStudioCopilotIdentity'
 
 interface GoStudioCopilotChatProps {
   session: GoIDESession
@@ -43,6 +44,27 @@ function MessageBody({ message }: { message: CopilotChatMessage }) {
         )
       })}
       {message.stopped && <div className="text-[9px] text-warning">Stopped</div>}
+    </div>
+  )
+}
+
+/** Provider, host, account e modello sempre visibili: si sa a chi va il codice prima di inviarlo. */
+function ChatIdentityBar({ root, model }: { root: string; model?: string }) {
+  const status = useCopilotStore((state) => state.status)
+  const settings = useCopilotStore((state) => state.settings)
+  const identity = copilotChatIdentity({ status, settings, root, model })
+  const title = [
+    identity.provider && `Provider: ${identity.provider}${identity.deployment ? ` (${identity.deployment})` : ''}`,
+    identity.host && `Host: ${identity.host}${identity.configuredOnly ? ' (configured, not connected)' : ''}`,
+    identity.account && `Account: ${identity.account}`,
+    identity.model,
+  ].filter(Boolean).join('\n')
+  return (
+    <div aria-label="Copilot provider and model" title={title} className="flex shrink-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 border-b border-border-1 bg-surface-0/40 px-2 py-1 text-[9px] leading-4 text-text-4">
+      {identity.provider && <span className="font-semibold text-text-2">{identity.provider}</span>}
+      {identity.host && <span className="max-w-[12rem] truncate font-mono text-text-3">{identity.host}</span>}
+      {identity.account && <span className="max-w-[8rem] truncate text-text-3">@{identity.account}</span>}
+      <span className="ml-auto min-w-0 max-w-full truncate font-mono">{identity.model}</span>
     </div>
   )
 }
@@ -94,6 +116,7 @@ export function GoStudioCopilotChat({ session, document }: GoStudioCopilotChatPr
         <span className="rounded bg-surface-2 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-text-4">Ask</span>
         <button type="button" onClick={() => void useCopilotStore.getState().newChat(root)} className="go-studio-icon-button h-6 w-6" title="New chat" aria-label="New chat"><Plus size={13} /></button>
       </div>
+      <ChatIdentityBar root={root} model={thread?.model} />
 
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto p-2">
         {!ready ? (

@@ -6,7 +6,13 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Fixed
+- **Go Studio on corporate PCs (VPN/proxy):** SDK detection no longer runs `go version`/`go env` inside the project, where a newer `toolchain` directive made Go try to download it through GOPROXY (21 s measured, then "Go not found" after the 8 s timeout). Go is now available in milliseconds (VERSION file), `go env` completes in the background, results are cached across restarts and timings are logged per phase.
+- **No silent toolchain downloads:** processes get `GOTOOLCHAIN=local` unless the user chose otherwise; tool installs pick a version compatible with the selected SDK.
+
 ### Added
+- **Copilot chat identity:** the chat header shows provider (GitHub Copilot / GitHub Enterprise), host, account and the model actually used, or "Model: managed by GitHub Copilot".
+- **Claude Code settings:** the Anthropic and Bedrock providers read `~/.claude/settings.json` and the workspace `.claude/settings(.local).json` (API key/auth token, base URL gateway, model, custom headers, proxy), cached by file date; AI settings list the detected files and variable names, never values.
 - **Change Signature in Go Studio:** *Code → Change Signature…* (Ctrl+F6) reorders or removes parameters; gopls rewrites the declaration and every call in one previewed change.
 - **Merge editor in Go Studio:** *Git → Resolve Conflicts…* opens the three-way conflict editor without leaving the IDE; each conflict block now has *Ours*, *Theirs*, *Both* and *Base* buttons (also in Git Studio), with a live count of conflicts left.
 - **Crash recovery follows a moved project:** unsaved-buffer snapshots of a project whose folder was moved or renamed are offered again when it is opened at the new location (matched by its `go.mod` module path, only if the old folder is gone).

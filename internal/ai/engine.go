@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -30,6 +32,15 @@ type Config struct {
 	CredentialMode CredentialMode `json:"credentialMode,omitempty"`
 	AWSRegion      string         `json:"awsRegion,omitempty"`
 	AWSProfile     string         `json:"awsProfile,omitempty"`
+	// WorkspaceDir optionally names the project whose .claude/settings*.json
+	// files apply. Empty means the process working directory.
+	WorkspaceDir string `json:"workspaceDir,omitempty"`
+
+	// Backend-only values resolved from the environment or Claude Code
+	// settings. They are never decoded from, or encoded to, the renderer.
+	AuthToken string                                `json:"-"`
+	headers   http.Header                           // ANTHROPIC_CUSTOM_HEADERS
+	proxy     func(*http.Request) (*url.URL, error) // layered HTTP(S)_PROXY/NO_PROXY
 }
 
 type CredentialMode string
@@ -81,12 +92,24 @@ func New(cfg Config) (*Engine, error) {
 // process variables, a provider-specific adOmnia Environment hint supplied by
 // the renderer, then standard dotenv files in the working directory or one of
 // its parents. Values never travel back to the renderer.
+//
+// For Anthropic and Bedrock, Claude Code settings files (see claudecode.go)
+// also supply base URL, model default, custom headers, proxy and — after the
+// process environment and the adOmnia Environment hint — the API key or
+// ANTHROPIC_AUTH_TOKEN.
 func ResolveEnvironmentCredentials(cfg Config) (Config, error) {
+	var claude ClaudeCodeSettings
+	if cfg.Provider == ProviderAnthropic || cfg.Provider == ProviderAmazonBedrock {
+		claude = LoadClaudeCodeSettings(claudeWorkspaceDir(cfg.WorkspaceDir))
+	}
 	// Bedrock authentication is intentionally delegated to the AWS SDK default
 	// credential chain (environment, shared profiles/SSO, web identity and
 	// workload roles). adOmnia never reads or stores the resolved AWS secrets.
 	if cfg.Provider == ProviderAmazonBedrock {
-		return cfg, nil
+		return applyClaudeBedrock(cfg, claude), nil
+	}
+	if cfg.Provider == ProviderAnthropic {
+		cfg = applyClaudeAnthropic(cfg, claude)
 	}
 	mode := cfg.CredentialMode
 	if mode == "" {
@@ -103,12 +126,26 @@ func ResolveEnvironmentCredentials(cfg Config) (Config, error) {
 			return cfg, nil
 		}
 	}
+	if cfg.Provider == ProviderAnthropic {
+		if value := strings.TrimSpace(os.Getenv("ANTHROPIC_AUTH_TOKEN")); value != "" {
+			return withAnthropicAuthToken(cfg, value), nil
+		}
+	}
 	// The renderer supplies at most one exact provider key from the active or
 	// saved adOmnia Environments. It is ephemeral and is never written to AI
 	// settings by the backend.
 	if value := strings.TrimSpace(cfg.APIKey); mode == CredentialModeAuto && value != "" {
 		cfg.APIKey = value
 		return cfg, nil
+	}
+	if cfg.Provider == ProviderAnthropic {
+		if value, _ := claude.fileLookup("ANTHROPIC_API_KEY"); value != "" {
+			cfg.APIKey = value
+			return cfg, nil
+		}
+		if value, _ := claude.fileLookup("ANTHROPIC_AUTH_TOKEN"); value != "" {
+			return withAnthropicAuthToken(cfg, value), nil
+		}
 	}
 	if cwd, err := os.Getwd(); err == nil {
 		if value, _ := resolveDotEnvCredential(cwd, keys); value != "" {
@@ -118,15 +155,67 @@ func ResolveEnvironmentCredentials(cfg Config) (Config, error) {
 	}
 
 	if mode == CredentialModeAuto && cfg.Provider != ProviderOllama {
-		return cfg, fmt.Errorf("AI environment credential is missing: set %s and restart adOmnia", strings.Join(keys, " or "))
+		return cfg, missingCredentialError(cfg.Provider, keys)
 	}
 
 	if requiresAPIKey(cfg.Provider) {
-		return cfg, fmt.Errorf("AI environment credential is missing: set %s and restart adOmnia", strings.Join(keys, " or "))
+		return cfg, missingCredentialError(cfg.Provider, keys)
 	}
 	// Ollama and OpenAI-compatible runtimes can be unauthenticated.
 	cfg.APIKey = ""
 	return cfg, nil
+}
+
+func missingCredentialError(provider Provider, keys []string) error {
+	if provider == ProviderAnthropic {
+		return fmt.Errorf("AI environment credential is missing: set %s (or ANTHROPIC_AUTH_TOKEN, also via Claude Code settings \"env\") and restart adOmnia", strings.Join(keys, " or "))
+	}
+	return fmt.Errorf("AI environment credential is missing: set %s and restart adOmnia", strings.Join(keys, " or "))
+}
+
+func withAnthropicAuthToken(cfg Config, token string) Config {
+	cfg.APIKey = ""
+	cfg.AuthToken = token
+	return cfg
+}
+
+// applyClaudeAnthropic fills non-credential Anthropic settings from Claude
+// Code. Explicit adOmnia values (BaseURL, Model) always win.
+func applyClaudeAnthropic(cfg Config, claude ClaudeCodeSettings) Config {
+	if strings.TrimSpace(cfg.BaseURL) == "" {
+		cfg.BaseURL, _ = claude.Lookup("ANTHROPIC_BASE_URL")
+	}
+	// With CLAUDE_CODE_USE_BEDROCK, ANTHROPIC_MODEL is a Bedrock model ID.
+	if strings.TrimSpace(cfg.Model) == "" && !claude.UsesBedrock() {
+		cfg.Model = claude.Model()
+	}
+	cfg.headers = claude.CustomHeaders()
+	cfg.proxy = claude.ProxyFunc()
+	return cfg
+}
+
+// applyClaudeBedrock fills Bedrock region/profile/model/endpoint from Claude
+// Code files. Region and profile are taken only from files: process values
+// are already honoured by the AWS SDK chain itself.
+func applyClaudeBedrock(cfg Config, claude ClaudeCodeSettings) Config {
+	if strings.TrimSpace(cfg.AWSRegion) == "" {
+		if value, scope := claude.Lookup("AWS_REGION"); scope != ClaudeScopeProcess {
+			cfg.AWSRegion = value
+		}
+	}
+	if strings.TrimSpace(cfg.AWSProfile) == "" {
+		if value, scope := claude.Lookup("AWS_PROFILE"); scope != ClaudeScopeProcess {
+			cfg.AWSProfile = value
+		}
+	}
+	if strings.TrimSpace(cfg.Model) == "" && claude.UsesBedrock() {
+		cfg.Model = claude.Model()
+	}
+	if strings.TrimSpace(cfg.BaseURL) == "" {
+		cfg.BaseURL, _ = claude.Lookup("ANTHROPIC_BEDROCK_BASE_URL")
+	}
+	cfg.proxy = claude.ProxyFunc()
+	return cfg
 }
 
 func environmentKeys(provider Provider) []string {
@@ -160,9 +249,9 @@ func requiresAPIKey(provider Provider) bool {
 func buildProvider(cfg Config) (AIProvider, error) {
 	switch cfg.Provider {
 	case ProviderAnthropic:
-		return newAnthropicProvider(cfg.APIKey, cfg.Model), nil
+		return newAnthropicProvider(cfg), nil
 	case ProviderAmazonBedrock:
-		return newBedrockProvider(cfg.Model, cfg.AWSRegion, cfg.AWSProfile, cfg.BaseURL), nil
+		return newBedrockProvider(cfg.Model, cfg.AWSRegion, cfg.AWSProfile, cfg.BaseURL, cfg.proxy), nil
 	case ProviderOpenAI:
 		base := cfg.BaseURL
 		if base == "" {

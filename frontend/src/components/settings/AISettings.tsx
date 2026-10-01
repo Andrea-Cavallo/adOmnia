@@ -3,6 +3,7 @@ import { CheckCircle, AlertCircle, RefreshCw, Lock, ShieldCheck, Search, Cpu, Ga
 import { useSettingsStore, type AIModelSummary, type AIProvider, type AIUsageProfile } from '@/stores/settings'
 import * as AIEngine from '@/wailsjs/go/main/AIEngine'
 import { TextInput, PasswordInput, Toggle } from './SettingsFields'
+import { ClaudeCodeSettingsNotice } from './ClaudeCodeSettingsNotice'
 import { isVaultRef, encryptToVaultRef } from '@/lib/vaultRefs'
 import { withAIConfig } from '@/lib/aiEngine'
 import { useEnvironmentsStore } from '@/stores/environments'
@@ -413,6 +414,8 @@ export function AISettings() {
             </div>
             <p className="mt-2 text-[9px] text-text-4">Automatic order: process variables → active adOmnia Environment → other saved/imported `.env` environments → standard `.env` files → encrypted Vault fallback.</p>
           </section>}
+
+          {(ai.provider === 'anthropic' || isBedrock) && <ClaudeCodeSettingsNotice provider={ai.provider} />}
 
           <section className="mt-6">
             <div className="flex items-end justify-between gap-4"><div><h4 className="text-base font-semibold text-text-1">Models</h4><p className="mt-1 text-[11px] text-text-4">Select a model from this provider. Results are saved locally.</p></div><button type="button" onClick={() => updateAi({ modelUpdatePolicy: ai.modelUpdatePolicy === 'when-open' ? 'manual' : 'when-open' })} className={`rounded px-2 py-1 text-[9px] ${ai.modelUpdatePolicy === 'when-open' ? 'bg-success/10 text-success' : 'text-text-4 hover:bg-surface-2'}`}>Auto refresh {ai.modelUpdatePolicy === 'when-open' ? 'on' : 'off'}</button></div>

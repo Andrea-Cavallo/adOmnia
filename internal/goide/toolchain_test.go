@@ -14,7 +14,8 @@ func TestToolchainWarning(t *testing.T) {
 		{"satisfied", "go1.26.5", "1.26", "", "auto", ""},
 		{"no go.mod", "go1.26.5", "", "", "auto", ""},
 		{"local too old", "go1.24.1", "1.26.0", "", "local", "GOTOOLCHAIN=local"},
-		{"auto download", "go1.24.1", "1.26.0", "", "auto", "scaricherà go1.26.0"},
+		{"auto default never downloads", "go1.24.1", "1.26.0", "", "auto", "non scarica toolchain da solo"},
+		{"explicit user toolchain downloads", "go1.24.1", "1.26.0", "", "go1.26.0+auto", "scaricherà go1.26.0"},
 		{"toolchain directive wins", "go1.26.0", "1.26.0", "go1.26.5", "local", "richiede go1.26.5"},
 		{"unknown local", "", "1.30", "", "local", ""},
 	}

@@ -49,6 +49,23 @@ type ToolchainInfo struct {
 	Scope   string `json:"scope,omitempty"`
 	Warning string `json:"warning,omitempty"`
 	Error   string `json:"error,omitempty"`
+	// EnvPending: le variabili di go env sono in lettura in background; EnvError non invalida l'SDK.
+	EnvPending bool   `json:"envPending,omitempty"`
+	EnvError   string `json:"envError,omitempty"`
+	// Cached: valori di go env presi dall'ultimo rilevamento salvato (stesso binario, stessa data).
+	Cached  bool              `json:"cached,omitempty"`
+	Timings []ToolchainTiming `json:"timings,omitempty"`
+	// BinaryStamp (dimensione e data del binario) valida la cache senza eseguire go.
+	BinaryStamp string `json:"binaryStamp,omitempty"`
+	// SDKVersion è la versione locale dell'SDK (es. go1.26.3), letta senza avviare go quando possibile.
+	SDKVersion string `json:"sdkVersion,omitempty"`
+}
+
+// ToolchainTiming è la durata di una fase del rilevamento, per capire cosa rallenta.
+type ToolchainTiming struct {
+	Phase  string `json:"phase"`
+	Millis int64  `json:"ms"`
+	Note   string `json:"note,omitempty"`
 }
 
 // ToolchainSettings espone la configurazione del progetto (se presente) e quella globale.
@@ -62,10 +79,14 @@ type ToolchainManager struct {
 	configs  map[SessionID]ToolchainConfiguration
 	global   ToolchainConfiguration
 	detected map[SessionID]ToolchainInfo
+	// generation scarta i risultati di go env arrivati dopo un rilevamento più recente.
+	generation map[SessionID]int
+	// notify riceve i rilevamenti completati in background (go env); il Service li emette e li salva.
+	notify func(SessionID, ToolchainInfo)
 }
 
 func NewToolchainManager() *ToolchainManager {
-	return &ToolchainManager{configs: make(map[SessionID]ToolchainConfiguration), detected: make(map[SessionID]ToolchainInfo)}
+	return &ToolchainManager{configs: make(map[SessionID]ToolchainConfiguration), detected: make(map[SessionID]ToolchainInfo), generation: make(map[SessionID]int)}
 }
 
 // LastDetected restituisce l'ultimo rilevamento riuscito per la sessione.
@@ -194,67 +215,6 @@ func validateToolchainConfiguration(config ToolchainConfiguration) (ToolchainCon
 	return config, nil
 }
 
-// Detect esegue esclusivamente comandi informativi della toolchain con timeout e output limitato.
-func (m *ToolchainManager) Detect(session Session) ToolchainInfo {
-	info := m.detect(session)
-	m.mu.Lock()
-	m.detected[session.ID] = info
-	m.mu.Unlock()
-	return info
-}
-
-var toolchainEnvKeys = []string{"GOROOT", "GOPATH", "GOPROXY", "GOPRIVATE", "GOMODCACHE", "GONOSUMDB", "GONOPROXY", "CGO_ENABLED", "GOOS", "GOARCH", "GOFLAGS", "GOTOOLCHAIN"}
-
-func (m *ToolchainManager) detect(session Session) ToolchainInfo {
-	config := m.Configuration(session.ID)
-	scope := "global"
-	if m.Settings(session.ID).Project != nil {
-		scope = "project"
-	}
-	goDirective, toolchainDirective := readModuleDirectives(session.Project.RealPath)
-	base := ToolchainInfo{Scope: scope, GoDirective: goDirective, ToolchainDirective: toolchainDirective}
-	binary, err := resolveGoBinary(config.GoBinary)
-	if err != nil {
-		base.Error = "Go non trovato. Installa Go oppure configura il percorso del binario nelle impostazioni del progetto."
-		return base
-	}
-	base.GoBinary = binary
-	ctx, cancel := context.WithTimeout(context.Background(), toolchainTimeout)
-	defer cancel()
-	version, err := runToolchainQuery(ctx, binary, session.Project.RealPath, config.Environment, "version")
-	if err != nil {
-		base.Error = err.Error()
-		return base
-	}
-	base.Version = strings.TrimSpace(version)
-	environment, err := runToolchainQuery(ctx, binary, session.Project.RealPath, config.Environment, append([]string{"env"}, toolchainEnvKeys...)...)
-	if err != nil {
-		base.Error = err.Error()
-		return base
-	}
-	lines := strings.Split(strings.ReplaceAll(environment, "\r\n", "\n"), "\n")
-	for len(lines) < len(toolchainEnvKeys) {
-		lines = append(lines, "")
-	}
-	value := func(index int) string { return strings.TrimSpace(lines[index]) }
-	info := base
-	info.Available = true
-	info.GOROOT = value(0)
-	info.GOPATH = value(1)
-	info.GOPROXY = sanitizeToolchainValue(value(2))
-	info.GOPRIVATE = sanitizeToolchainValue(value(3))
-	info.GOMODCACHE = value(4)
-	info.GONOSUMDB = value(5)
-	info.GONOPROXY = value(6)
-	info.CGOEnabled = value(7)
-	info.GOOS = value(8)
-	info.GOARCH = value(9)
-	info.GOFLAGS = value(10)
-	info.GOTOOLCHAIN = value(11)
-	info.Warning = toolchainWarning(localGoVersion(info.Version), goDirective, toolchainDirective, info.GOTOOLCHAIN)
-	return info
-}
-
 // readModuleDirectives legge le direttive go e toolchain del go.mod alla radice; se assenti restano vuote.
 func readModuleDirectives(root string) (string, string) {
 	data, err := os.ReadFile(filepath.Join(root, "go.mod"))
@@ -303,10 +263,10 @@ func toolchainWarning(local, goDirective, toolchainDirective, gotoolchain string
 	if !goversion.IsValid(required) || goversion.Compare(local, required) >= 0 {
 		return ""
 	}
-	if strings.HasPrefix(gotoolchain, "local") {
-		return fmt.Sprintf("go.mod richiede %s ma l'SDK selezionato è %s con GOTOOLCHAIN=local: build e test falliranno. Seleziona o installa %s o successivo.", required, local, required)
+	if gotoolchain == "" || gotoolchain == "auto" || strings.HasPrefix(gotoolchain, "local") {
+		return fmt.Sprintf("go.mod richiede %s ma l'SDK selezionato è %s: gO Studio usa GOTOOLCHAIN=local e non scarica toolchain da solo, quindi build e test falliranno. Seleziona o installa %s o successivo (Go → Toolchains), oppure imposta GOTOOLCHAIN=auto nelle variabili del progetto per lasciarla scaricare a go.", required, local, required)
 	}
-	return fmt.Sprintf("go.mod richiede %s ma l'SDK selezionato è %s: il comando go scaricherà %s in automatico. Selezionalo qui per lavorare offline.", required, local, required)
+	return fmt.Sprintf("go.mod richiede %s ma l'SDK selezionato è %s: con GOTOOLCHAIN=%s il comando go scaricherà %s in automatico. Selezionalo qui per lavorare offline.", required, local, gotoolchain, required)
 }
 
 // Configuration restituisce una copia della configurazione della sessione, o quella globale se non ne ha una.
@@ -350,6 +310,11 @@ func (m *ToolchainManager) Environment(sessionID SessionID, overrides map[string
 	}
 	for key, value := range merged {
 		base[key] = value
+	}
+	// gO Studio non scarica toolchain Go da solo: senza una scelta esplicita (variabile d'ambiente,
+	// configurazione del progetto o go env -w) i processi avviati usano l'SDK selezionato.
+	if _, explicit := base["GOTOOLCHAIN"]; !explicit && !m.userChoseToolchain(sessionID) {
+		base["GOTOOLCHAIN"] = "local"
 	}
 	keys := make([]string, 0, len(base))
 	for key := range base {

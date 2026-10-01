@@ -99,6 +99,14 @@ export function ToolchainDialog({ open, onClose, onRunCommand }: ToolchainDialog
           ))}
         </dl>
       )}
+      {info?.available && (
+        <div className="gs-surface flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-[11px] text-text-4" title="Detection timings: go env runs in the background and never blocks the IDE">
+          {info.cached && <span className="gs-badge text-accent">saved config</span>}
+          {(info.timings ?? []).map((timing) => <span key={timing.phase}>{timing.phase} <strong className="gs-mono text-text-2">{timing.ms} ms</strong>{timing.note ? ` (${timing.note})` : ''}</span>)}
+          {info.envPending && <span className="inline-flex items-center gap-1 text-text-3"><Loader2 size={11} className="animate-spin" />reading go env in background…</span>}
+          {info.envError && <span className="text-warning">{info.envError}</span>}
+        </div>
+      )}
       {operation && (
         <div className={`gs-alert ${installing ? 'gs-tone-accent' : operation.status === 'failed' ? 'gs-tone-danger' : 'gs-tone-success'} flex-col`}>
           <div className="flex w-full items-center gap-2 font-medium text-text-1">

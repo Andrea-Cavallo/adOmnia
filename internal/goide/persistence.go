@@ -24,6 +24,8 @@ type persistedState struct {
 	// Toolchains e GlobalToolchain sono campi opzionali: gli stati precedenti restano validi senza migrazione.
 	Toolchains      map[SessionID]ToolchainConfiguration `json:"toolchains,omitempty"`
 	GlobalToolchain *ToolchainConfiguration              `json:"globalToolchain,omitempty"`
+	// DetectedToolchains è la cache dell'ultimo rilevamento riuscito: al riavvio l'SDK è subito disponibile.
+	DetectedToolchains map[SessionID]ToolchainInfo `json:"detectedToolchains,omitempty"`
 	// TrustedPaths: cartelle (percorso reale) già autorizzate; riaprirle non richiede un nuovo consenso.
 	TrustedPaths []string `json:"trustedPaths,omitempty"`
 }

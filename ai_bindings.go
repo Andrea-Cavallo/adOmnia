@@ -98,6 +98,22 @@ func (a *AIEngine) ListModels(cfgJSON, query string) (string, error) {
 	return string(raw), nil
 }
 
+// ClaudeCodeSettingsStatus reports which Claude Code settings files apply to
+// the Anthropic/Bedrock providers (user level, plus <workspaceDir>/.claude when
+// given; empty means the process working directory). Only file paths and
+// variable NAMES are returned — values never reach the renderer.
+func (a *AIEngine) ClaudeCodeSettingsStatus(workspaceDir string) (string, error) {
+	dir := strings.TrimSpace(workspaceDir)
+	if dir == "" {
+		dir = ai.DefaultClaudeWorkspaceDir()
+	}
+	raw, err := json.Marshal(ai.LoadClaudeCodeSettings(dir).Status())
+	if err != nil {
+		return "", fmt.Errorf("encode Claude Code settings status: %w", err)
+	}
+	return string(raw), nil
+}
+
 type aiGatewayStatus struct {
 	aigateway.Status
 	Token string `json:"token,omitempty"`

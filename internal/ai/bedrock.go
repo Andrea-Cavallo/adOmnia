@@ -3,9 +3,12 @@ package ai
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime/types"
@@ -18,22 +21,28 @@ type bedrockProvider struct {
 	region   string
 	profile  string
 	endpoint string
+	proxy    func(*http.Request) (*url.URL, error)
 }
 
-func newBedrockProvider(model, region, profile, endpoint string) *bedrockProvider {
+func newBedrockProvider(model, region, profile, endpoint string, proxy func(*http.Request) (*url.URL, error)) *bedrockProvider {
 	if strings.TrimSpace(model) == "" {
 		model = defaultBedrockClaudeModel
 	}
 	return &bedrockProvider{
 		model: strings.TrimSpace(model), region: strings.TrimSpace(region),
 		profile: strings.TrimSpace(profile), endpoint: strings.TrimRight(strings.TrimSpace(endpoint), "/"),
+		proxy: proxy,
 	}
 }
 
 func (p *bedrockProvider) Name() string { return "amazon-bedrock" }
 
-func loadBedrockConfig(ctx context.Context, region, profile string) (aws.Config, error) {
-	options := make([]func(*awsconfig.LoadOptions) error, 0, 2)
+func loadBedrockConfig(ctx context.Context, region, profile string, proxy func(*http.Request) (*url.URL, error)) (aws.Config, error) {
+	options := make([]func(*awsconfig.LoadOptions) error, 0, 3)
+	if proxy != nil {
+		client := awshttp.NewBuildableClient().WithTransportOptions(func(t *http.Transport) { t.Proxy = proxy })
+		options = append(options, awsconfig.WithHTTPClient(client))
+	}
 	if strings.TrimSpace(region) != "" {
 		options = append(options, awsconfig.WithRegion(strings.TrimSpace(region)))
 	}
@@ -51,7 +60,7 @@ func loadBedrockConfig(ctx context.Context, region, profile string) (aws.Config,
 }
 
 func (p *bedrockProvider) Complete(ctx context.Context, req CompletionRequest) (CompletionResponse, error) {
-	cfg, err := loadBedrockConfig(ctx, p.region, p.profile)
+	cfg, err := loadBedrockConfig(ctx, p.region, p.profile, p.proxy)
 	if err != nil {
 		return CompletionResponse{}, err
 	}

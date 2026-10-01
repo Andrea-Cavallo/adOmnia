@@ -5,6 +5,16 @@
 // @ts-ignore: Unused imports
 import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Create } from "@wailsio/runtime";
 
+/**
+ * ClaudeCodeSettingsStatus reports which Claude Code settings files apply to
+ * the Anthropic/Bedrock providers (user level, plus <workspaceDir>/.claude when
+ * given; empty means the process working directory). Only file paths and
+ * variable NAMES are returned — values never reach the renderer.
+ */
+export function ClaudeCodeSettingsStatus(workspaceDir: string): $CancellablePromise<string> {
+    return $Call.ByID(2464105312, workspaceDir);
+}
+
 export function Complete(systemPrompt: string, userPrompt: string, maxTokens: number): $CancellablePromise<string> {
     return $Call.ByID(605844763, systemPrompt, userPrompt, maxTokens);
 }

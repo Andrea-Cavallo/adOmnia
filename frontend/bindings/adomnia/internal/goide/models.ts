@@ -5065,6 +5065,28 @@ export class ToolchainInfo {
     "warning"?: string;
     "error"?: string;
 
+    /**
+     * EnvPending: le variabili di go env sono in lettura in background; EnvError non invalida l'SDK.
+     */
+    "envPending"?: boolean;
+    "envError"?: string;
+
+    /**
+     * Cached: valori di go env presi dall'ultimo rilevamento salvato (stesso binario, stessa data).
+     */
+    "cached"?: boolean;
+    "timings"?: ToolchainTiming[];
+
+    /**
+     * BinaryStamp (dimensione e data del binario) valida la cache senza eseguire go.
+     */
+    "binaryStamp"?: string;
+
+    /**
+     * SDKVersion è la versione locale dell'SDK (es. go1.26.3), letta senza avviare go quando possibile.
+     */
+    "sdkVersion"?: string;
+
     /** Creates a new ToolchainInfo instance. */
     constructor($$source: Partial<ToolchainInfo> = {}) {
         if (!("available" in $$source)) {
@@ -5078,7 +5100,11 @@ export class ToolchainInfo {
      * Creates a new ToolchainInfo instance from a string or object.
      */
     static createFrom($$source: any = {}): ToolchainInfo {
+        const $$createField23_0 = $$createType97;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("timings" in $$parsedSource) {
+            $$parsedSource["timings"] = $$createField23_0($$parsedSource["timings"]);
+        }
         return new ToolchainInfo($$parsedSource as Partial<ToolchainInfo>);
     }
 }
@@ -5199,8 +5225,8 @@ export class ToolchainSettings {
      * Creates a new ToolchainSettings instance from a string or object.
      */
     static createFrom($$source: any = {}): ToolchainSettings {
-        const $$createField0_0 = $$createType97;
-        const $$createField1_0 = $$createType96;
+        const $$createField0_0 = $$createType99;
+        const $$createField1_0 = $$createType98;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("project" in $$parsedSource) {
             $$parsedSource["project"] = $$createField0_0($$parsedSource["project"]);
@@ -5209,6 +5235,35 @@ export class ToolchainSettings {
             $$parsedSource["global"] = $$createField1_0($$parsedSource["global"]);
         }
         return new ToolchainSettings($$parsedSource as Partial<ToolchainSettings>);
+    }
+}
+
+/**
+ * ToolchainTiming è la durata di una fase del rilevamento, per capire cosa rallenta.
+ */
+export class ToolchainTiming {
+    "phase": string;
+    "ms": number;
+    "note"?: string;
+
+    /** Creates a new ToolchainTiming instance. */
+    constructor($$source: Partial<ToolchainTiming> = {}) {
+        if (!("phase" in $$source)) {
+            this["phase"] = "";
+        }
+        if (!("ms" in $$source)) {
+            this["ms"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ToolchainTiming instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ToolchainTiming {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ToolchainTiming($$parsedSource as Partial<ToolchainTiming>);
     }
 }
 
@@ -5376,7 +5431,7 @@ export class VCSStatus {
      */
     static createFrom($$source: any = {}): VCSStatus {
         const $$createField7_0 = $$createType13;
-        const $$createField8_0 = $$createType99;
+        const $$createField8_0 = $$createType101;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("branches" in $$parsedSource) {
             $$parsedSource["branches"] = $$createField7_0($$parsedSource["branches"]);
@@ -5441,7 +5496,7 @@ export class WorkspaceChange {
      * Creates a new WorkspaceChange instance from a string or object.
      */
     static createFrom($$source: any = {}): WorkspaceChange {
-        const $$createField1_0 = $$createType101;
+        const $$createField1_0 = $$createType103;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("files" in $$parsedSource) {
             $$parsedSource["files"] = $$createField1_0($$parsedSource["files"]);
@@ -5581,9 +5636,11 @@ const $$createType92 = TestResult.createFrom;
 const $$createType93 = $Create.Array($$createType92);
 const $$createType94 = CoverageReport.createFrom;
 const $$createType95 = $Create.Nullable($$createType94);
-const $$createType96 = ToolchainConfiguration.createFrom;
-const $$createType97 = $Create.Nullable($$createType96);
-const $$createType98 = VCSFileChange.createFrom;
-const $$createType99 = $Create.Array($$createType98);
-const $$createType100 = FileChange.createFrom;
+const $$createType96 = ToolchainTiming.createFrom;
+const $$createType97 = $Create.Array($$createType96);
+const $$createType98 = ToolchainConfiguration.createFrom;
+const $$createType99 = $Create.Nullable($$createType98);
+const $$createType100 = VCSFileChange.createFrom;
 const $$createType101 = $Create.Array($$createType100);
+const $$createType102 = FileChange.createFrom;
+const $$createType103 = $Create.Array($$createType102);

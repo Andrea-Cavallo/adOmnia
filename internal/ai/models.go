@@ -65,10 +65,9 @@ func DiscoverModels(ctx context.Context, cfg Config, query string) ([]ModelInfo,
 		}
 		endpoint = base + "/models"
 	case ProviderAnthropic:
-		if base == "" {
-			base = "https://api.anthropic.com/v1"
-		}
-		endpoint = base + "/models?limit=1000"
+		// Same root, credential style, headers and proxy as completions so a
+		// Claude Code corporate gateway is honoured for discovery too.
+		endpoint = anthropicRoot(base) + "/v1/models?limit=1000"
 	case ProviderGemini:
 		if base == "" {
 			base = "https://generativelanguage.googleapis.com/v1beta"
@@ -78,14 +77,21 @@ func DiscoverModels(ctx context.Context, cfg Config, query string) ([]ModelInfo,
 		return nil, fmt.Errorf("model discovery is not supported for %s", cfg.Provider)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	var req *http.Request
+	var err error
+	if cfg.Provider == ProviderAnthropic {
+		conn := newAnthropicConn(cfg, 12*time.Second)
+		client = conn.client
+		req, err = conn.newRequest(ctx, http.MethodGet, "/v1/models?limit=1000", nil)
+	} else {
+		req, err = http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	}
 	if err != nil {
 		return nil, err
 	}
 	switch cfg.Provider {
 	case ProviderAnthropic:
-		req.Header.Set("x-api-key", cfg.APIKey)
-		req.Header.Set("anthropic-version", "2023-06-01")
+		// Headers already set by anthropicConn.
 	case ProviderGemini:
 		// Keep the key out of URLs and error strings. Gemini accepts API keys
 		// through this standard REST header.
@@ -211,7 +217,7 @@ func DiscoverModels(ctx context.Context, cfg Config, query string) ([]ModelInfo,
 }
 
 func discoverBedrockModels(ctx context.Context, cfg Config, query string) ([]ModelInfo, error) {
-	awsCfg, err := loadBedrockConfig(ctx, cfg.AWSRegion, cfg.AWSProfile)
+	awsCfg, err := loadBedrockConfig(ctx, cfg.AWSRegion, cfg.AWSProfile, cfg.proxy)
 	if err != nil {
 		return nil, err
 	}

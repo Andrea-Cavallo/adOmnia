@@ -159,11 +159,26 @@ func (s *Service) installTool(sessionID, module string, confirmed bool) (Executi
 	if err != nil {
 		return Execution{}, err
 	}
-	arguments := []string{"install", module}
-	return s.processes.Start(CommandSpec{
+	// Mai cambiare o scaricare toolchain Go: si installa la versione più recente compatibile con l'SDK selezionato.
+	environment = withLocalToolchain(environment)
+	ctx := context.Background()
+	localGo, err := sdkGoVersion(ctx, binary, s.toolsRoot, environment)
+	if err != nil {
+		return Execution{}, err
+	}
+	resolved, note, err := resolveCompatibleToolModule(ctx, binary, s.toolsRoot, environment, module, localGo)
+	if err != nil {
+		return Execution{}, err
+	}
+	arguments := []string{"install", resolved}
+	execution, err := s.processes.Start(CommandSpec{
 		SessionID: session.ID, Kind: "install", Executable: binary, Arguments: arguments,
 		WorkingDirectory: s.toolsRoot, Environment: environment, DisplayCommand: displayCommand("go", arguments),
 	})
+	if err == nil && note != "" {
+		s.processes.Notice(execution, note)
+	}
+	return execution, err
 }
 
 // languageServerEnvironment usa lo stesso SDK della sessione e mette il suo `go` per primo nel PATH, così gopls legge quello SDK.

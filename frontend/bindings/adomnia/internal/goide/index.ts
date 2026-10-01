@@ -131,6 +131,7 @@ export {
     ToolchainInstallation,
     ToolchainRelease,
     ToolchainSettings,
+    ToolchainTiming,
     VCSBlameLine,
     VCSCommit,
     VCSFileChange,

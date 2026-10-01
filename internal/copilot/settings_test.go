@@ -52,3 +52,27 @@ func TestSettingsValidation(t *testing.T) {
 		t.Fatal("expected absolute path error")
 	}
 }
+
+// Simula un riavvio: un nuovo store sulla stessa cartella dati ritrova profili GHE e binding.
+func TestEnterpriseProfilesSurviveRestart(t *testing.T) {
+	directory := t.TempDir()
+	settings := DefaultSettings()
+	settings.Profiles = append(settings.Profiles, GitHubProfile{ID: "bank", Name: "Bank", Host: "https://github.company.com/"})
+	settings.ActiveProfileID = "bank"
+	settings.WorkspaceProfiles = map[string]string{"/src/bank": "bank"}
+	if _, err := NewSettingsStore(directory).Save(settings); err != nil {
+		t.Fatal(err)
+	}
+	manager := NewManager(NewSettingsStore(directory), NewInstaller(directory))
+	reloaded := manager.Settings()
+	profile, ok := reloaded.Profile("bank")
+	if !ok || profile.Host != "github.company.com" || profile.Type != ProfileEnterpriseServer {
+		t.Fatalf("GHE profile not restored: %+v", reloaded.Profiles)
+	}
+	if reloaded.ActiveProfileID != "bank" || reloaded.ProfileForWorkspace("/src/bank").ID != "bank" {
+		t.Fatalf("active profile or workspace binding lost: %+v", reloaded)
+	}
+	if got := manager.Status().Profile; got.Host != "github.company.com" {
+		t.Fatalf("status must expose the restored GHE host: %+v", got)
+	}
+}

@@ -32,6 +32,8 @@ export interface CopilotChatThread {
   conversationId: string
   turnId: string
   title: string
+  /** Modello riportato dal backend per l'ultimo turno: assente finché nessuna risposta lo dichiara. */
+  model?: string
   messages: CopilotChatMessage[]
   busyToken: string | null
   error: string | null
@@ -204,7 +206,7 @@ export const useCopilotStore = create<CopilotState>((set, get) => {
         set((state) => {
           const current = state.chatThreads[root]
           if (!current || !current.messages.some((entry) => entry.id === `${token}-assistant`)) return state
-          return { chatThreads: { ...state.chatThreads, [root]: { ...current, conversationId: response.conversationId || current.conversationId, turnId: response.turnId || current.turnId } } }
+          return { chatThreads: { ...state.chatThreads, [root]: { ...current, conversationId: response.conversationId || current.conversationId, turnId: response.turnId || current.turnId, model: response.model || current.model } } }
         })
       } catch (error) {
         const text = messageOf(error)

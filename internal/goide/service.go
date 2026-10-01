@@ -92,6 +92,11 @@ func NewService(store Store, eventSink func(EventEnvelope)) *Service {
 	service.history = NewLocalHistory(nil)
 	service.watcher = NewWatchManager(service.filesChanged)
 	service.lsp.SetEmitter(service.emit)
+	// go env finisce in background: il rilevamento aggiornato va alla UI e nella cache salvata.
+	service.toolchain.SetNotifier(func(sessionID SessionID, info ToolchainInfo) {
+		service.emit("toolchain.detected", sessionID, string(sessionID), info)
+		_ = service.saveState()
+	})
 	service.debug.SetEmitter(service.emit)
 	service.installer = NewToolchainInstaller(func(eventType string, installation ToolchainInstallation) {
 		service.emit(eventType, installation.SessionID, installation.ID, installation)
@@ -401,6 +406,9 @@ func (s *Service) DetectToolchain(sessionID string) (ToolchainInfo, error) {
 	}
 	info := s.toolchain.Detect(session)
 	s.emit("toolchain.detected", session.ID, string(session.ID), info)
+	if info.Available && !info.Cached {
+		_ = s.saveState()
+	}
 	return info, nil
 }
 
@@ -871,6 +879,7 @@ func (s *Service) restore() error {
 		globalToolchain = *state.GlobalToolchain
 	}
 	s.toolchain.Replace(state.Toolchains, globalToolchain)
+	s.toolchain.RestoreDetected(state.DetectedToolchains)
 	views := maps.Clone(state.SessionUI)
 	if views == nil {
 		views = make(map[SessionID]SessionView)
@@ -898,15 +907,16 @@ func (s *Service) saveState() error {
 	workspaces, activeWorkspace := s.studioWorkspaces.snapshot()
 	toolchains, globalToolchain := s.toolchain.Snapshot()
 	return s.persistence.SaveState(persistedState{
-		Toolchains:      toolchains,
-		GlobalToolchain: &globalToolchain,
-		Sessions:        s.workspace.ListSessions(),
-		Recent:          recent,
-		RunConfigs:      s.runConfigs.Snapshot(),
-		SessionUI:       views,
-		Workspaces:      workspaces,
-		ActiveWorkspace: activeWorkspace,
-		TrustedPaths:    trusted,
+		Toolchains:         toolchains,
+		GlobalToolchain:    &globalToolchain,
+		DetectedToolchains: s.toolchain.DetectedSnapshot(),
+		Sessions:           s.workspace.ListSessions(),
+		Recent:             recent,
+		RunConfigs:         s.runConfigs.Snapshot(),
+		SessionUI:          views,
+		Workspaces:         workspaces,
+		ActiveWorkspace:    activeWorkspace,
+		TrustedPaths:       trusted,
 	})
 }
 

@@ -66,7 +66,7 @@ func TestDiscoverModelsOpenAICompatibleFiltersQuery(t *testing.T) {
 
 func TestDiscoverModelsAnthropicUsesModelsAPI(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/models" || r.Header.Get("x-api-key") != "test-key" || r.Header.Get("anthropic-version") == "" {
+		if r.URL.Path != "/v1/models" || r.Header.Get("x-api-key") != "test-key" || r.Header.Get("anthropic-version") == "" {
 			t.Fatalf("unexpected Anthropic discovery request: %s", r.URL.String())
 		}
 		_, _ = w.Write([]byte(`{"data":[{"id":"claude-sonnet-test","display_name":"Claude Sonnet Test"}]}`))
