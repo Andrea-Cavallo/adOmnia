@@ -4,6 +4,14 @@ adOmnia releases are driven by Git tags and GitHub Actions.
 
 ## Unreleased
 
+## v0.9.51 release notes: faster Go Studio, Apple-light IDE and deeper runtime context
+
+See [the full v0.9.51 notes](releases/v0.9.51.md): Go Studio adds one-click
+Light/Dark controls and an Apple-inspired light skin, restores the Hub's light
+a0 illustration, detects local Go toolchains instantly on restricted networks,
+restores project terminals, adds dependency/runtime views, Change Signature,
+conflict resolution and stronger crash recovery.
+
 ## v0.9.49 release notes: Live Development Session, terminal toolbox and no title bar
 
 See [the full v0.9.49 notes](releases/v0.9.49.md): a Go service started from

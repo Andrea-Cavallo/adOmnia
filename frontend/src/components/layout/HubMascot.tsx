@@ -4,6 +4,7 @@ import { useUiTranslation } from '@/lib/uiI18n'
 import { useAppStore } from '@/stores/app'
 import { useSettingsStore } from '@/stores/settings'
 import { useGoStudioAssistantStore } from '@/stores/goStudioAssistant'
+import { useThemesStore } from '@/stores/themes'
 import heroDark from './assets/hub/hero-dark-stickers.webp'
 import heroLight from './assets/hub/hero-light-stickers.webp'
 import heroSketch from './assets/hub/hero-sketch-stickers.webp'
@@ -13,9 +14,16 @@ import heroSketch from './assets/hub/hero-sketch-stickers.webp'
 export function HubMascot() {
   const tr = useUiTranslation()
   const ai = useSettingsStore((state) => state.settings.ai)
+  const themeMode = useSettingsStore((state) => state.settings.appearance.theme)
+  const activeThemeId = useThemesStore((state) => state.activeThemeId)
   const setActiveRail = useAppStore((state) => state.setActiveRail)
   const [showConnectNotice, setShowConnectNotice] = useState(false)
   const connected = isAICompanionAvailable(ai)
+  const mascotArt = activeThemeId === 'builtin-sketch'
+    ? { src: heroSketch, variant: 'sketch' }
+    : themeMode === 'light'
+      ? { src: heroLight, variant: 'light' }
+      : { src: heroDark, variant: 'dark' }
 
   const openAssistant = async () => {
     if (connected) {
@@ -48,9 +56,7 @@ export function HubMascot() {
         title={connected ? tr('Open a0 assistant') : tr('Connect AI to use a0')}
         onClick={openAssistant}
       >
-        <img src={heroDark} alt="" draggable={false} data-hub-mascot-scene data-hub-art="dark" />
-        <img src={heroLight} alt="" draggable={false} data-hub-mascot-scene data-hub-art="light" />
-        <img src={heroSketch} alt="" draggable={false} data-hub-mascot-scene data-hub-art="sketch" />
+        <img src={mascotArt.src} alt="" draggable={false} data-hub-mascot-scene data-hub-mascot-variant={mascotArt.variant} />
       </button>
 
       {showConnectNotice && (

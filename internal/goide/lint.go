@@ -142,7 +142,7 @@ func (s *Service) DetectLinter(sessionID string) (LinterInfo, error) {
 			}
 			continue
 		}
-		version, versionErr := linterVersion(candidate.kind, candidate.binary)
+		version, versionErr := cachedToolVersion(candidate.binary, func(binary string) (string, error) { return linterVersion(candidate.kind, binary) })
 		result := LinterInfo{Kind: candidate.kind, Binary: candidate.binary, Source: candidate.source, ConfigPath: linterConfig(session.Project.RealPath, candidate.kind)}
 		if versionErr != nil {
 			result.Error = versionErr.Error()

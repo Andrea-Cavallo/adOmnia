@@ -1,6 +1,6 @@
 import { isLowResource, watchBattery } from './goStudioResourceMode'
 import { useEffect, useState } from 'react'
-import { AlertCircle, AlertTriangle, BatteryLow, EyeOff, Gauge, Loader2, LockKeyhole, ScanSearch, ShieldCheck } from 'lucide-react'
+import { AlertCircle, AlertTriangle, BatteryLow, EyeOff, Gauge, Loader2, LockKeyhole, Moon, ScanSearch, ShieldCheck, Sun } from 'lucide-react'
 import { getGoIDEWatcherStatus, type GoIDEExecution, type GoIDESession, type GoIDEToolchainInfo, type GoIDEWatcherStatus } from '@/lib/goide-api'
 import { useShallow } from 'zustand/react/shallow'
 import { useGoStudioCursorStore } from './goStudioCursor'
@@ -8,6 +8,9 @@ import { GoStudioToolchainSwitcher } from './GoStudioToolchainSwitcher'
 import { GoStudioBreadcrumb } from './GoStudioBreadcrumb'
 import { GoStudioCopilotStatus } from './GoStudioCopilotStatus'
 import { diagnosticCounts, mergedReports, useGoIDELspStore } from '@/stores/goideLsp'
+import { useThemesStore } from '@/stores/themes'
+import { useThemeContext } from '@/components/themes/ThemeProvider'
+import { inferThemeMode } from '@/lib/themeCatalog'
 
 interface GoStudioStatusBarProps {
   session: GoIDESession
@@ -71,6 +74,17 @@ export function GoStudioStatusBar({ session, toolchain, documentInfo, execution,
   }, [resourceMode])
   const authorized = session.project.authorization === 'tooling-permitted'
   const running = execution?.status === 'running'
+  const themes = useThemesStore((state) => state.themes)
+  const activeThemeId = useThemesStore((state) => state.activeThemeId)
+  const { applyTheme } = useThemeContext()
+  const activeTheme = themes.find((theme) => theme.id === activeThemeId)
+  const themeMode = inferThemeMode(activeTheme)
+  const applyThemeMode = (mode: 'light' | 'dark') => {
+    const preferredId = mode === 'light' ? 'builtin-light' : 'builtin-dark'
+    const next = themes.find((theme) => theme.id === preferredId)
+      ?? themes.find((theme) => inferThemeMode(theme) === mode)
+    if (next) applyTheme(next)
+  }
 
   return (
     <div className="flex h-7 min-w-0 shrink-0 items-center gap-1 overflow-hidden px-2 text-[11.5px] text-text-3">
@@ -116,6 +130,10 @@ export function GoStudioStatusBar({ session, toolchain, documentInfo, execution,
       <span className={LABEL}>{documentInfo?.language || (session.project.goWorkPath ? 'go.work' : session.project.goModPath ? 'go.mod' : 'Go folder')}{documentInfo?.readOnly ? ' · read-only' : ''}</span>
       <GoStudioToolchainSwitcher sessionId={session.id} toolchain={toolchain} className={ITEM} onManage={onManageToolchains} />
       <GoStudioCopilotStatus className={ITEM} />
+      <div className="flex shrink-0 items-center gap-0.5 rounded-md border border-border-1 bg-surface-1 p-0.5" role="group" aria-label="Go Studio appearance">
+        <button type="button" onClick={() => applyThemeMode('light')} aria-label="Light theme" aria-pressed={themeMode === 'light'} title="Light theme" className={`${ITEM} h-5 px-1 ${themeMode === 'light' ? 'bg-surface-3 text-accent' : ''}`}><Sun size={11} /></button>
+        <button type="button" onClick={() => applyThemeMode('dark')} aria-label="Dark theme" aria-pressed={themeMode === 'dark'} title="Dark theme" className={`${ITEM} h-5 px-1 ${themeMode === 'dark' ? 'bg-surface-3 text-accent' : ''}`}><Moon size={11} /></button>
+      </div>
       <button type="button" onClick={() => onSetAuthorization(!authorized)} aria-pressed={authorized} title={authorized ? 'Local Go tools are permitted. Click to revoke.' : 'Permit local Go tools; nothing starts automatically'} className={`${ITEM} ${authorized ? 'text-success' : 'text-warning'}`}>
         {authorized ? <ShieldCheck size={12} /> : <LockKeyhole size={12} />}{authorized ? 'Trusted' : 'Restricted'}
       </button>

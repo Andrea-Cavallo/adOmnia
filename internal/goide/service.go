@@ -880,6 +880,7 @@ func (s *Service) restore() error {
 	}
 	s.toolchain.Replace(state.Toolchains, globalToolchain)
 	s.toolchain.RestoreDetected(state.DetectedToolchains)
+	restoreToolVersions(state.ToolVersions)
 	views := maps.Clone(state.SessionUI)
 	if views == nil {
 		views = make(map[SessionID]SessionView)
@@ -910,6 +911,7 @@ func (s *Service) saveState() error {
 		Toolchains:         toolchains,
 		GlobalToolchain:    &globalToolchain,
 		DetectedToolchains: s.toolchain.DetectedSnapshot(),
+		ToolVersions:       snapshotToolVersions(),
 		Sessions:           s.workspace.ListSessions(),
 		Recent:             recent,
 		RunConfigs:         s.runConfigs.Snapshot(),

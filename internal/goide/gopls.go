@@ -66,7 +66,7 @@ func (s *Service) DetectGopls(sessionID string) (GoplsInfo, error) {
 			}
 			continue
 		}
-		version, versionErr := goplsVersion(candidate.Binary)
+		version, versionErr := cachedToolVersion(candidate.Binary, goplsVersion)
 		candidate.ManagedDir = managedDir
 		if versionErr != nil {
 			candidate.Error = versionErr.Error()

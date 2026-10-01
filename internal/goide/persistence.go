@@ -26,6 +26,8 @@ type persistedState struct {
 	GlobalToolchain *ToolchainConfiguration              `json:"globalToolchain,omitempty"`
 	// DetectedToolchains è la cache dell'ultimo rilevamento riuscito: al riavvio l'SDK è subito disponibile.
 	DetectedToolchains map[SessionID]ToolchainInfo `json:"detectedToolchains,omitempty"`
+	// ToolVersions: versioni di gopls, dlv e linter già lette, valide finché il binario non cambia.
+	ToolVersions map[string]ToolVersionEntry `json:"toolVersions,omitempty"`
 	// TrustedPaths: cartelle (percorso reale) già autorizzate; riaprirle non richiede un nuovo consenso.
 	TrustedPaths []string `json:"trustedPaths,omitempty"`
 }

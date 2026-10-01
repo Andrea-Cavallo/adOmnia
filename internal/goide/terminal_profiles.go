@@ -3,6 +3,7 @@ package goide
 import (
 	"fmt"
 	"sync"
+	"time"
 	"unicode/utf16"
 )
 
@@ -18,13 +19,25 @@ type TerminalProfile struct {
 var (
 	terminalProfilesMu     sync.Mutex
 	terminalProfilesCached []TerminalProfile
+	terminalProfilesAt     time.Time
 )
 
-// ListTerminalProfiles rileva di nuovo le shell disponibili; la prima è quella predefinita.
+// terminalProfilesTTL: le shell installate cambiano di rado, mentre `wsl -l -q` costa centinaia di ms.
+const terminalProfilesTTL = 5 * time.Minute
+
+// ListTerminalProfiles restituisce le shell disponibili (la prima è la predefinita), rilevandole
+// di nuovo solo se l'ultimo rilevamento è più vecchio di terminalProfilesTTL.
 func ListTerminalProfiles() []TerminalProfile {
+	terminalProfilesMu.Lock()
+	if terminalProfilesCached != nil && time.Since(terminalProfilesAt) < terminalProfilesTTL {
+		profiles := append([]TerminalProfile(nil), terminalProfilesCached...)
+		terminalProfilesMu.Unlock()
+		return profiles
+	}
+	terminalProfilesMu.Unlock()
 	profiles := detectTerminalProfiles()
 	terminalProfilesMu.Lock()
-	terminalProfilesCached = profiles
+	terminalProfilesCached, terminalProfilesAt = profiles, time.Now()
 	terminalProfilesMu.Unlock()
 	return append([]TerminalProfile(nil), profiles...)
 }

@@ -18,10 +18,23 @@
 }
 html.light .go-studio-root,
 .light .go-studio-root {
-  --gs-ground: var(--color-surface-2);
+  --gs-ground: #f2f5fa;
   --gs-island: #FFFFFF;
-  --gs-raised: var(--color-surface-1);
-  --gs-island-shadow: 0 0 0 1px rgb(15 23 42 / 0.06), 0 4px 16px -8px rgb(15 23 42 / 0.18);
+  --gs-raised: #f8faff;
+  --gs-island-shadow: 0 0 0 1px rgb(75 94 128 / 0.10), 0 10px 28px -18px rgb(32 52 88 / 0.34);
+  --gs-radius: 14px;
+  background:
+    radial-gradient(circle at 50% -20%, rgb(255 255 255 / 0.95), transparent 44%),
+    var(--gs-ground);
+}
+html.light .go-studio-root .go-studio-island,
+.light .go-studio-root .go-studio-island {
+  border: 1px solid rgb(116 135 168 / 0.12);
+}
+html.light .go-studio-root .go-studio-run-group,
+.light .go-studio-root .go-studio-run-group {
+  border: 1px solid rgb(116 135 168 / 0.12);
+  box-shadow: 0 3px 12px -8px rgb(32 52 88 / 0.3);
 }
 .go-studio-island {
   display: flex;

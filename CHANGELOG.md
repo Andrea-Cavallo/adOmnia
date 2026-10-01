@@ -6,9 +6,14 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.9.51] - 2026-10-01
+
 ### Fixed
 - **Go Studio on corporate PCs (VPN/proxy):** SDK detection no longer runs `go version`/`go env` inside the project, where a newer `toolchain` directive made Go try to download it through GOPROXY (21 s measured, then "Go not found" after the 8 s timeout). Go is now available in milliseconds (VERSION file), `go env` completes in the background, results are cached across restarts and timings are logged per phase.
 - **No silent toolchain downloads:** processes get `GOTOOLCHAIN=local` unless the user chose otherwise; tool installs pick a version compatible with the selected SDK.
+- **Hub artwork in light mode:** the a0 scene now selects the light asset directly instead of relying on competing global CSS selectors, so the illustration remains visible after changing theme.
+- **Recovery test hygiene:** background buffer-recovery notifications are DOM-safe, eliminating headless test-suite unhandled rejections.
+- **Frontend dependency advisories:** DOMPurify and `fast-uri` are updated to patched releases; `npm audit --omit=dev` reports zero vulnerabilities.
 
 ### Added
 - **Copilot chat identity:** the chat header shows provider (GitHub Copilot / GitHub Enterprise), host, account and the model actually used, or "Model: managed by GitHub Copilot".
@@ -19,6 +24,15 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - **Go Studio terminals come back:** reopening a project reopens its terminals with the same name, shell and folder (relative to the project, so a moved project still works); only metadata is saved, never output or processes, and the shells start only on a trusted project when the Terminal tab opens.
 - **Dependency Graph in Go Studio:** *Tools → Dependency Graph…* shows the module dependency tree (direct → transitive), duplicate transitive dependencies with who requires each version, per-module license, estimated weight and package-count impact, plus **unused** and **indirect** indicators. **Check updates** reports the latest available version (`go list -m -u`) and **Scan vulnerabilities** runs `govulncheck` on demand; both need the network, while the graph itself is computed offline.
 - **Runtime Enrichment in Go Studio:** *Tools → Runtime Enrichment…* overlays the Live Development Session telemetry on the static picture — components actually exercised (routes, source files, datasources, broker topics), call frequency, average and max latency, error counts, dynamic edges (request → file / query / topic) and runtime-only integrations. With a module selected it also flags the static dependencies that never appeared at runtime.
+
+### Changed
+- **Fast IDE appearance switch:** Go Studio's bottom status bar now exposes dedicated Light and Dark buttons.
+- **Apple-inspired light skin:** cool-white chrome, brighter editor islands, subtle blue-grey borders, larger radii and softer elevation match the supplied macOS-style IDE reference while preserving adOmnia's accent and readable code colors.
+
+### Verified
+- TypeScript passes; 215 frontend test files / 924 tests pass; the production Vite build passes.
+- `go build ./...`, `go test ./...`, focused Go Studio/theme/runtime tests and the Windows Wails 3 production pipeline pass for version 0.9.51.
+- `npm audit --omit=dev` reports zero vulnerabilities.
 
 ## [0.9.50] - 2026-10-01
 

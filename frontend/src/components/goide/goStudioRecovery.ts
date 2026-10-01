@@ -9,6 +9,13 @@ interface PendingRecovery {
 
 const pending = new Map<string, PendingRecovery>()
 
+function publishRecoveryError(detail: string | null): void {
+  // Unit tests and headless tooling do not expose a DOM. Recovery must still
+  // complete without leaving an unhandled rejection behind.
+  if (typeof document === 'undefined') return
+  document.dispatchEvent(new CustomEvent('adomnia:go-recovery-error', { detail }))
+}
+
 function key(sessionId: string, relativePath: string): string {
   return `${sessionId}\u0000${relativePath}`
 }
@@ -25,9 +32,9 @@ export function scheduleBufferRecovery(sessionId: string, relativePath: string, 
   const write = () => {
     pending.delete(id)
     void rememberGoIDEBuffer(sessionId, relativePath, content, diskToken).then(
-      () => document.dispatchEvent(new CustomEvent('adomnia:go-recovery-error', { detail: null })),
+      () => publishRecoveryError(null),
       // Disco pieno, permessi negati, spazio di recupero esaurito: l'utente deve saperlo, il lavoro non è protetto.
-      (error: unknown) => document.dispatchEvent(new CustomEvent('adomnia:go-recovery-error', { detail: `${relativePath}: ${error instanceof Error ? error.message : String(error)}` })),
+      (error: unknown) => publishRecoveryError(`${relativePath}: ${error instanceof Error ? error.message : String(error)}`),
     )
   }
   pending.set(id, { timer: setTimeout(write, REMEMBER_DELAY_MS), write })

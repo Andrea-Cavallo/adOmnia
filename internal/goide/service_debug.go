@@ -59,7 +59,7 @@ func (s *Service) DetectDelve(sessionID string) (DelveInfo, error) {
 			}
 			continue
 		}
-		version, versionErr := delveVersion(candidate.Binary)
+		version, versionErr := cachedToolVersion(candidate.Binary, delveVersion)
 		if versionErr != nil {
 			candidate.Error = versionErr.Error()
 			return candidate, nil
