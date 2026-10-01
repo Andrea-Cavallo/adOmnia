@@ -21,7 +21,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
-| **P0** | Completare l'IDE Go di tutti i giorni | 56 | 13 |
+| **P0** | Completare l'IDE Go di tutti i giorni | 55 | 12 |
 | **P1** | Codice ↔ runtime: il motivo per usare adOmnia | 192 | 58 |
 | **P2** | Studi Go avanzati | 224 | 39 |
 | **P3** | AI e intelligenza del workspace | 189 | 24 |
@@ -46,7 +46,7 @@ _Le lacune che costringono ancora ad aprire un altro IDE._
 ### Storage e robustezza
 
 - [ ] Recovery storage per workspace sotto `.adomnia/recovery/<workspace-id>/`. — *Parziale: le snapshot sono isolate per workspace-id (hash del percorso) nello store locale di adOmnia (bbolt in app data), non in una cartella per workspace; scelta voluta per non mettere codice non salvato dentro il repository.*
-- [ ] Gestire disco pieno, permessi negati, snapshot corrotta, file cancellato, workspace spostato e shutdown durante la scrittura. — *Parziale: gestiti snapshot corrotta, file cancellato, shutdown durante la scrittura (transazione bbolt), store illeggibile, e disco pieno/permessi (avviso rosso: il lavoro non è protetto); manca il riaggancio di un workspace spostato in un'altra cartella.*
+- [x] Gestire disco pieno, permessi negati, snapshot corrotta, file cancellato, workspace spostato e shutdown durante la scrittura. — *Fatto: workspace spostato riagganciato per module path quando la vecchia cartella non esiste più (`BindProject`, `TestRecoveryFollowsAMovedProject`).*
 
 ### Test obbligatori
 

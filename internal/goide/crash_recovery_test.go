@@ -215,3 +215,30 @@ func TestRecoveryFollowsTheWorkspaceAcrossSessionsAndExpiresOldSnapshots(t *test
 		t.Fatal("una snapshot oltre la retention va eliminata")
 	}
 }
+
+func TestRecoveryFollowsAMovedProject(t *testing.T) {
+	root := t.TempDir()
+	oldPath, newPath := filepath.Join(root, "old"), filepath.Join(root, "new")
+	if err := os.Mkdir(oldPath, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	manager := NewRecoveryManager(&memoryStore{})
+	manager.BindProject("old-session", oldPath, "example.com/app")
+	if err := manager.Remember("old-session", "main.go", "dirty", ""); err != nil {
+		t.Fatal(err)
+	}
+	// Altro progetto con un module path diverso: non deve prendere nulla.
+	manager.BindProject("other", filepath.Join(root, "other"), "example.com/other")
+	// Finché la vecchia cartella esiste, una copia con lo stesso modulo non adotta i buffer.
+	manager.BindProject("copy", newPath, "example.com/app")
+	if len(manager.List("copy")) != 0 || len(manager.List("other")) != 0 {
+		t.Fatal("buffer adottati da un progetto diverso o da una copia")
+	}
+	if err := os.Rename(oldPath, newPath); err != nil {
+		t.Fatal(err)
+	}
+	manager.BindProject("moved", newPath, "example.com/app")
+	if got := manager.List("moved"); len(got) != 1 || got[0].Content != "dirty" || got[0].WorkspacePath != newPath {
+		t.Fatalf("il progetto spostato non ha ritrovato i buffer: %+v", got)
+	}
+}

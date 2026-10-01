@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
+	"os"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -64,6 +66,28 @@ type recoveredEntry struct {
 	SnapshotHash string              `json:"snapshotHash,omitempty"`
 	Previous     []recoveredSnapshot `json:"previous,omitempty"`
 	WorkspaceID  string              `json:"workspaceId,omitempty"`
+	// WorkspacePath e Fingerprint permettono di riagganciare il recupero a un progetto spostato.
+	WorkspacePath string `json:"workspacePath,omitempty"`
+	Fingerprint   string `json:"fingerprint,omitempty"`
+}
+
+// workspaceOrigin è il percorso reale e l'impronta (module path) del progetto di una sessione.
+type workspaceOrigin struct {
+	path        string
+	fingerprint string
+}
+
+// ProjectFingerprint identifica un progetto indipendentemente dalla cartella: i module path ordinati.
+// Senza moduli è vuota e il recupero non segue spostamenti.
+func ProjectFingerprint(project Project) string {
+	paths := make([]string, 0, len(project.Modules))
+	for _, module := range project.Modules {
+		if module.ModulePath != "" {
+			paths = append(paths, module.ModulePath)
+		}
+	}
+	sort.Strings(paths)
+	return strings.Join(paths, "\n")
 }
 
 // verified restituisce l'ultima snapshot integra: se la più recente è corrotta ripiega sulle precedenti.
@@ -102,10 +126,11 @@ type RecoveryManager struct {
 	buffers    map[string]recoveredEntry
 	loaded     bool
 	workspaces map[SessionID]string
+	origins    map[SessionID]workspaceOrigin
 }
 
 func NewRecoveryManager(store Store) *RecoveryManager {
-	return &RecoveryManager{store: store, buffers: make(map[string]recoveredEntry), workspaces: make(map[SessionID]string)}
+	return &RecoveryManager{store: store, buffers: make(map[string]recoveredEntry), workspaces: make(map[SessionID]string), origins: make(map[SessionID]workspaceOrigin)}
 }
 
 // caseInsensitivePaths vale per i filesystem predefiniti di Windows e macOS.
@@ -198,7 +223,7 @@ func (m *RecoveryManager) Remember(sessionID SessionID, relativePath, content, d
 	entry := recoveredEntry{
 		SessionID: sessionID, RelativePath: relativePath, Content: content, DiskToken: diskToken,
 		SavedAt: time.Now().UTC(), SnapshotHash: contentHash(content), Previous: history,
-		WorkspaceID: m.workspaces[sessionID],
+		WorkspaceID: m.workspaces[sessionID], WorkspacePath: m.origins[sessionID].path, Fingerprint: m.origins[sessionID].fingerprint,
 	}
 	// Lo spazio serve prima all'ultima versione: le snapshot vecchie si sacrificano per farla entrare.
 	for m.totalBytesLocked()-previous.bytes()+entry.bytes() > MaxRecoveredTotalBytes && len(entry.Previous) > 0 {
@@ -211,15 +236,28 @@ func (m *RecoveryManager) Remember(sessionID SessionID, relativePath, content, d
 	return m.persistLocked()
 }
 
+// BindProject lega la sessione al progetto in realPath e adotta anche i buffer di un progetto
+// spostato: stessa impronta e vecchia cartella che non esiste più.
+func (m *RecoveryManager) BindProject(sessionID SessionID, realPath, fingerprint string) {
+	m.mu.Lock()
+	m.origins[sessionID] = workspaceOrigin{path: realPath, fingerprint: fingerprint}
+	m.mu.Unlock()
+	m.BindWorkspace(sessionID, WorkspaceID(realPath))
+}
+
 // BindWorkspace lega la sessione al suo workspace e adotta i buffer lasciati dallo stesso
 // progetto sotto una sessione precedente (chiusa e riaperta, o ricreata dopo un crash).
 func (m *RecoveryManager) BindWorkspace(sessionID SessionID, workspaceID string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.workspaces[sessionID] = workspaceID
+	origin := m.origins[sessionID]
 	adopted := false
 	for key, entry := range m.buffers {
-		if entry.WorkspaceID != workspaceID || entry.SessionID == sessionID {
+		if entry.SessionID == sessionID {
+			continue
+		}
+		if entry.WorkspaceID != workspaceID && !movedHere(entry, origin) {
 			continue
 		}
 		target := recoveryKey(sessionID, entry.RelativePath)
@@ -227,13 +265,25 @@ func (m *RecoveryManager) BindWorkspace(sessionID SessionID, workspaceID string)
 			continue
 		}
 		delete(m.buffers, key)
-		entry.SessionID = sessionID
+		entry.SessionID, entry.WorkspaceID = sessionID, workspaceID
+		if origin.path != "" {
+			entry.WorkspacePath, entry.Fingerprint = origin.path, origin.fingerprint
+		}
 		m.buffers[target] = entry
 		adopted = true
 	}
 	if adopted {
 		_ = m.persistLocked()
 	}
+}
+
+// movedHere dice se il buffer viene dallo stesso progetto in una cartella che non esiste più.
+func movedHere(entry recoveredEntry, origin workspaceOrigin) bool {
+	if origin.fingerprint == "" || entry.Fingerprint != origin.fingerprint || entry.WorkspacePath == "" {
+		return false
+	}
+	_, err := os.Stat(entry.WorkspacePath)
+	return errors.Is(err, fs.ErrNotExist)
 }
 
 // Forget rimuove un buffer dal recupero, tipicamente dopo un salvataggio riuscito.
