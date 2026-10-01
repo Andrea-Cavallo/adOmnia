@@ -236,7 +236,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'tools.plugins', menu: 'tools', label: 'Plugins Listening to Go Studio Events', separatorBefore: true },
   { id: 'tools.copilot', menu: 'tools', label: 'GitHub Copilot…', separatorBefore: true },
   { id: 'tools.copilotChat', menu: 'tools', label: 'Open Copilot Chat' },
-  { id: 'tools.a0Chat', menu: 'tools', label: 'Open AI di a0' },
+  { id: 'tools.a0Chat', menu: 'tools', label: 'Open a0' },
   { id: 'tools.copilotCompletions', menu: 'tools', label: 'Toggle Copilot Inline Completions' },
   { id: 'vcs.commit', menu: 'git', label: 'Commit…', binding: { key: 'k', mod: true } },
   { id: 'vcs.history', menu: 'git', label: 'Show File History…' },

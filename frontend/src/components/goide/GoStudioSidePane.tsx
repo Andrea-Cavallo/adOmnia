@@ -20,7 +20,7 @@ const TABS: ReadonlyArray<{ id: SidePaneTab; label: string; icon: typeof Braces 
   { id: 'structure', label: 'Structure', icon: Braces },
   { id: 'project', label: 'Project', icon: FolderTree },
   { id: 'copilot', label: 'Copilot', icon: Sparkles },
-  { id: 'a0', label: 'AI di a0', icon: Bot },
+  { id: 'a0', label: 'a0', icon: Bot },
 ]
 
 export function GoStudioSidePane({ session, document }: GoStudioSidePaneProps) {

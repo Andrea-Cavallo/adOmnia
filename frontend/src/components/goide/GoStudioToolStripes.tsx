@@ -120,7 +120,7 @@ export function GoStudioRightStripe({ onDependencies }: GoStudioRightStripeProps
     <nav aria-label="Go Studio side tool windows" className="go-studio-stripe">
       <StripeButton label="Structure · Alt+7" icon={Braces} pressed={structureOpen && !assistantPane} onClick={() => { useGoStudioAssistantStore.getState().close(); updateLayout({ structureOpen: !!assistantPane || !structureOpen }) }} />
       <StripeButton label="Copilot Chat" icon={Sparkles} pressed={structureOpen && assistantPane === 'copilot'} onClick={() => toggleAssistant('copilot')} />
-      <StripeButton label="AI di a0" icon={Bot} pressed={structureOpen && assistantPane === 'a0'} onClick={() => toggleAssistant('a0')} />
+      <StripeButton label="a0" icon={Bot} pressed={structureOpen && assistantPane === 'a0'} onClick={() => toggleAssistant('a0')} />
       <StripeButton label="Module Dependencies" icon={PackageSearch} pressed={false} onClick={onDependencies} />
     </nav>
   )

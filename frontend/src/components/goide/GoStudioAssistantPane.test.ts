@@ -9,7 +9,7 @@ describe('Go Studio right assistant column', () => {
     const pane = source('src/components/goide/GoStudioSidePane.tsx')
     const stripe = source('src/components/goide/GoStudioToolStripes.tsx')
     expect(pane).toContain("label: 'Copilot'")
-    expect(pane).toContain("label: 'AI di a0'")
+    expect(pane).toContain("label: 'a0'")
     expect(stripe).toContain("toggleAssistant('copilot')")
     expect(stripe).toContain("toggleAssistant('a0')")
   })
