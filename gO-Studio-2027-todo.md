@@ -21,13 +21,13 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
-| **P0** | Completare l'IDE Go di tutti i giorni | 108 | 12 |
+| **P0** | Completare l'IDE Go di tutti i giorni | 77 | 16 |
 | **P1** | Codice ↔ runtime: il motivo per usare adOmnia | 192 | 58 |
 | **P2** | Studi Go avanzati | 224 | 39 |
 | **P3** | AI e intelligenza del workspace | 189 | 24 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 122 | 45 |
 
-Voci chiuse e rimosse: 679 (287 trovate già implementate dall'audit del 2026-10-01).
+Voci chiuse e rimosse: 710 (287 trovate già implementate dall'audit del 2026-10-01).
 
 ---
 
@@ -39,73 +39,30 @@ _Le lacune che costringono ancora ad aprire un altro IDE._
 
 > gO Studio non deve perdere il lavoro non salvato se adOmnia, WebView2, un processo Go o il sistema operativo si chiudono in modo anomalo. Git protegge il codice salvato; il Disaster Recovery protegge il lavoro ancora presente solo nell’editor.
 
-### Recovery dei buffer
-
-- [ ] Snapshot automatico di ogni buffer `dirty`, separato dal file originale.
-- [ ] Debounce delle snapshot, target iniziale ~750 ms dopo l’ultima modifica.
-- [ ] Non modificare mai il file originale senza un’azione esplicita di Save dell’utente.
-- [ ] Scrittura atomica delle snapshot (`.tmp` → flush/sync → rename).
-- [ ] Conservare almeno 3 snapshot recenti per file per tollerare snapshot corrotte.
-- [ ] Memorizzare `originalHash`, `snapshotHash`, timestamp e path originale.
-- [ ] Rilevare modifiche esterne al file e classificare il recovery come `safe`, `already-applied` o `conflict`.
-
 ### Session recovery
 
-- [ ] Persistenza periodica di `session.json` con workspace, tab aperti, file attivo, cursori, split/layout e buffer dirty.
-- [ ] Persistenza delle configurazioni runtime ripristinabili: run config, terminal metadata, debug config, API tab, DB tab, Kafka/Broker tab e altri pannelli collegati.
-- [ ] Distinguere chiaramente stato persistente da stato runtime non serializzabile.
-- [ ] Ripristinare configurazioni e UI, non connessioni/processi live già morti.
-
-### Crash detection
-
-- [ ] Creare `runtime.lock` all’avvio con `sessionId`, PID, start time e heartbeat.
-- [ ] Aggiornare heartbeat periodicamente.
-- [ ] Marcare la chiusura pulita o rimuovere il lock durante lo shutdown normale.
-- [ ] Al successivo startup rilevare una sessione precedente non chiusa correttamente.
-- [ ] Non basarsi sul solo PID, perché può essere riutilizzato dal sistema operativo.
-
-### UX di ripristino
-
-- [ ] All’avvio dopo crash mostrare `Restore All`, `Review`, `Discard`.
-- [ ] `Restore All` riapre i contenuti recuperati come buffer dirty, senza sovrascrivere automaticamente il disco.
-- [ ] `Review` apre diff `Disk Version` ↔ `Recovered Version`.
-- [ ] Evidenziare per ogni file timestamp, righe aggiunte/rimosse e presenza di conflitti.
-- [ ] Consentire `Use Recovered`, `Keep Disk`, `Open Diff` per ogni file in conflitto.
+- [ ] Persistenza delle configurazioni runtime ripristinabili: run config, terminal metadata, debug config, API tab, DB tab, Kafka/Broker tab e altri pannelli collegati. — *Parziale: run configuration, breakpoint e tab API si ripristinano già; mancano i metadati dei terminali (nome, shell, cartella) e le tab DB/Broker legate alla sessione Go.*
 
 ### Process recovery
 
 - [ ] Introdurre un `ProcessSupervisor` indipendente dalla UI.
 - [ ] Persistenza di un `ProcessDescriptor` minimo: tipo, comando, argomenti, working directory e restart policy.
 - [ ] Supportare restart policy `always`, `prompt`, `never`.
-- [ ] Riavvio automatico consentito solo per processi infrastrutturali sicuri, ad esempio `gopls`.
 - [ ] Chiedere conferma prima di rilanciare processi utente, server, debug session o comandi con side effect.
-- [ ] Non rilanciare automaticamente migration, script distruttivi o comandi arbitrari.
 
 ### Storage e robustezza
 
 - [ ] Recovery storage per workspace sotto `.adomnia/recovery/<workspace-id>/`.
 - [ ] Derivare `workspace-id` da un hash stabile del path normalizzato.
-- [ ] Gestire disco pieno, permessi negati, snapshot corrotta, file cancellato, workspace spostato e shutdown durante la scrittura.
+- [ ] Gestire disco pieno, permessi negati, snapshot corrotta, file cancellato, workspace spostato e shutdown durante la scrittura. — *Parziale: gestiti snapshot corrotta (fallback alla precedente), file cancellato (missing), shutdown durante la scrittura (transazione bbolt) e store illeggibile; mancano messaggi dedicati per disco pieno/permessi e il riaggancio di un workspace spostato.*
 - [ ] Cleanup automatico delle recovery session vecchie dopo chiusura pulita o retention configurabile.
-- [ ] Recovery completamente local-first, senza inviare sorgenti o snapshot fuori dalla macchina.
 
 ### Test obbligatori
 
-- [ ] Kill forzato durante editing con più file dirty → tutti i buffer devono essere recuperabili.
+- [ ] Kill forzato durante editing con più file dirty → tutti i buffer devono essere recuperabili. — *Parziale: coperto a livello di store (ogni snapshot è persistita subito, test con 10 file); manca la prova con kill reale del processo.*
 - [ ] Kill durante scrittura snapshot → snapshot precedente ancora valida.
-- [ ] File modificato esternamente dopo la snapshot → mostrare conflitto, mai sovrascrivere automaticamente.
-- [ ] `session.json` corrotto → fallback sicuro senza impedire l’avvio di adOmnia.
-- [ ] PID riutilizzato → nessun falso positivo basato sul solo PID.
-- [ ] Crash con almeno 10 file dirty → recovery completo e UI responsiva.
+- [ ] Crash con almeno 10 file dirty → recovery completo e UI responsiva. — *Parziale: recovery completo verificato con 10 file (TestTenDirtyBuffers…); la reattività della UI va misurata a mano.*
 - [ ] Verifica Windows, macOS e Linux.
-
-### MVP P0
-
-- [ ] V1: snapshot complete dei buffer dirty + debounce.
-- [ ] V1: `session.json` periodico con atomic write.
-- [ ] V1: `runtime.lock` + crash detection.
-- [ ] V1: `Restore All / Review / Discard`.
-- [ ] V1: conflict detection tramite hash, senza overwrite automatico.
 
 ## §54 · MVP: cosa NON rimandare
 

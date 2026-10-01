@@ -224,6 +224,23 @@ type SessionView struct {
 	// FunctionBreakpoints e StopOnPanic sono gestiti dal backend (SetFunctionBreakpoints).
 	FunctionBreakpoints []FunctionBreakpoint `json:"functionBreakpoints,omitempty"`
 	StopOnPanic         bool                 `json:"stopOnPanic,omitempty"`
+	// Cursors: ultima posizione del cursore nei file aperti; Split: lo split dell'editor con i suoi tab.
+	Cursors []CursorPosition `json:"cursors,omitempty"`
+	Split   *SplitView       `json:"split,omitempty"`
+}
+
+// CursorPosition è la posizione del cursore in un file aperto (1-based).
+type CursorPosition struct {
+	Path   string `json:"path"`
+	Line   int    `json:"line"`
+	Column int    `json:"column"`
+}
+
+// SplitView descrive lo split dell'editor: orientamento, file visibile e tab propri.
+type SplitView struct {
+	Orientation string   `json:"orientation"`
+	ActivePath  string   `json:"activePath"`
+	Paths       []string `json:"paths,omitempty"`
 }
 
 // Bookmark è un segnalibro di riga del progetto.
@@ -248,6 +265,12 @@ type RecoveredBuffer struct {
 	SavedAt      time.Time `json:"savedAt"`
 	DiskChanged  bool      `json:"diskChanged"`
 	Missing      bool      `json:"missing"`
+	// Status: safe (il disco è quello da cui si partiva), already-applied (il disco ha già questo testo),
+	// conflict (il disco è cambiato dopo la snapshot) o missing.
+	Status string `json:"status"`
+	// DiskContent è il testo attuale su disco, per il diff Disk Version ↔ Recovered Version.
+	DiskContent  string `json:"diskContent,omitempty"`
+	SnapshotHash string `json:"snapshotHash,omitempty"`
 }
 
 type Execution struct {

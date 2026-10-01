@@ -1,6 +1,6 @@
 import { forgetGoIDEBuffer, rememberGoIDEBuffer } from '@/lib/goide-api'
 
-const REMEMBER_DELAY_MS = 1500
+const REMEMBER_DELAY_MS = 750
 
 interface PendingRecovery {
   timer: ReturnType<typeof setTimeout>

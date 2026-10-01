@@ -549,6 +549,32 @@ export class CoverageReport {
     }
 }
 
+/**
+ * CrashStatus dice se l'avvio precedente di adOmnia si è chiuso in modo anomalo.
+ */
+export class CrashStatus {
+    "previousCrashed": boolean;
+    "lastHeartbeat"?: string;
+    "startedAt"?: string;
+
+    /** Creates a new CrashStatus instance. */
+    constructor($$source: Partial<CrashStatus> = {}) {
+        if (!("previousCrashed" in $$source)) {
+            this["previousCrashed"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new CrashStatus instance from a string or object.
+     */
+    static createFrom($$source: any = {}): CrashStatus {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new CrashStatus($$parsedSource as Partial<CrashStatus>);
+    }
+}
+
 export class CreateProjectRequest {
     "parentPath": string;
     "name": string;
@@ -614,6 +640,38 @@ export class CreateProjectResult {
             $$parsedSource["session"] = $$createField0_0($$parsedSource["session"]);
         }
         return new CreateProjectResult($$parsedSource as Partial<CreateProjectResult>);
+    }
+}
+
+/**
+ * CursorPosition è la posizione del cursore in un file aperto (1-based).
+ */
+export class CursorPosition {
+    "path": string;
+    "line": number;
+    "column": number;
+
+    /** Creates a new CursorPosition instance. */
+    constructor($$source: Partial<CursorPosition> = {}) {
+        if (!("path" in $$source)) {
+            this["path"] = "";
+        }
+        if (!("line" in $$source)) {
+            this["line"] = 0;
+        }
+        if (!("column" in $$source)) {
+            this["column"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new CursorPosition instance from a string or object.
+     */
+    static createFrom($$source: any = {}): CursorPosition {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new CursorPosition($$parsedSource as Partial<CursorPosition>);
     }
 }
 
@@ -3155,6 +3213,18 @@ export class RecoveredBuffer {
     "diskChanged": boolean;
     "missing": boolean;
 
+    /**
+     * Status: safe (il disco è quello da cui si partiva), already-applied (il disco ha già questo testo),
+     * conflict (il disco è cambiato dopo la snapshot) o missing.
+     */
+    "status": string;
+
+    /**
+     * DiskContent è il testo attuale su disco, per il diff Disk Version ↔ Recovered Version.
+     */
+    "diskContent"?: string;
+    "snapshotHash"?: string;
+
     /** Creates a new RecoveredBuffer instance. */
     constructor($$source: Partial<RecoveredBuffer> = {}) {
         if (!("sessionId" in $$source)) {
@@ -3174,6 +3244,9 @@ export class RecoveredBuffer {
         }
         if (!("missing" in $$source)) {
             this["missing"] = false;
+        }
+        if (!("status" in $$source)) {
+            this["status"] = "";
         }
 
         Object.assign(this, $$source);
@@ -3823,6 +3896,12 @@ export class SessionView {
     "functionBreakpoints"?: FunctionBreakpoint[];
     "stopOnPanic"?: boolean;
 
+    /**
+     * Cursors: ultima posizione del cursore nei file aperti; Split: lo split dell'editor con i suoi tab.
+     */
+    "cursors"?: CursorPosition[];
+    "split"?: SplitView | null;
+
     /** Creates a new SessionView instance. */
     constructor($$source: Partial<SessionView> = {}) {
         if (!("structureOpen" in $$source)) {
@@ -3850,6 +3929,8 @@ export class SessionView {
         const $$createField11_0 = $$createType66;
         const $$createField13_0 = $$createType69;
         const $$createField14_0 = $$createType30;
+        const $$createField16_0 = $$createType71;
+        const $$createField17_0 = $$createType73;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("openPaths" in $$parsedSource) {
             $$parsedSource["openPaths"] = $$createField0_0($$parsedSource["openPaths"]);
@@ -3865,6 +3946,12 @@ export class SessionView {
         }
         if ("functionBreakpoints" in $$parsedSource) {
             $$parsedSource["functionBreakpoints"] = $$createField14_0($$parsedSource["functionBreakpoints"]);
+        }
+        if ("cursors" in $$parsedSource) {
+            $$parsedSource["cursors"] = $$createField16_0($$parsedSource["cursors"]);
+        }
+        if ("split" in $$parsedSource) {
+            $$parsedSource["split"] = $$createField17_0($$parsedSource["split"]);
         }
         return new SessionView($$parsedSource as Partial<SessionView>);
     }
@@ -3924,7 +4011,7 @@ export class SignatureEntry {
      * Creates a new SignatureEntry instance from a string or object.
      */
     static createFrom($$source: any = {}): SignatureEntry {
-        const $$createField2_0 = $$createType71;
+        const $$createField2_0 = $$createType75;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("parameters" in $$parsedSource) {
             $$parsedSource["parameters"] = $$createField2_0($$parsedSource["parameters"]);
@@ -3983,12 +4070,45 @@ export class SignatureResult {
      * Creates a new SignatureResult instance from a string or object.
      */
     static createFrom($$source: any = {}): SignatureResult {
-        const $$createField1_0 = $$createType73;
+        const $$createField1_0 = $$createType77;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("signatures" in $$parsedSource) {
             $$parsedSource["signatures"] = $$createField1_0($$parsedSource["signatures"]);
         }
         return new SignatureResult($$parsedSource as Partial<SignatureResult>);
+    }
+}
+
+/**
+ * SplitView descrive lo split dell'editor: orientamento, file visibile e tab propri.
+ */
+export class SplitView {
+    "orientation": string;
+    "activePath": string;
+    "paths"?: string[];
+
+    /** Creates a new SplitView instance. */
+    constructor($$source: Partial<SplitView> = {}) {
+        if (!("orientation" in $$source)) {
+            this["orientation"] = "";
+        }
+        if (!("activePath" in $$source)) {
+            this["activePath"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SplitView instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SplitView {
+        const $$createField2_0 = $$createType13;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("paths" in $$parsedSource) {
+            $$parsedSource["paths"] = $$createField2_0($$parsedSource["paths"]);
+        }
+        return new SplitView($$parsedSource as Partial<SplitView>);
     }
 }
 
@@ -4048,7 +4168,7 @@ export class StudioWorkspaces {
      * Creates a new StudioWorkspaces instance from a string or object.
      */
     static createFrom($$source: any = {}): StudioWorkspaces {
-        const $$createField0_0 = $$createType75;
+        const $$createField0_0 = $$createType79;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("workspaces" in $$parsedSource) {
             $$parsedSource["workspaces"] = $$createField0_0($$parsedSource["workspaces"]);
@@ -4318,7 +4438,7 @@ export class TestResult {
      * Creates a new TestResult instance from a string or object.
      */
     static createFrom($$source: any = {}): TestResult {
-        const $$createField8_0 = $$createType77;
+        const $$createField8_0 = $$createType81;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("failure" in $$parsedSource) {
             $$parsedSource["failure"] = $$createField8_0($$parsedSource["failure"]);
@@ -4457,10 +4577,10 @@ export class TestRunSnapshot {
      * Creates a new TestRunSnapshot instance from a string or object.
      */
     static createFrom($$source: any = {}): TestRunSnapshot {
-        const $$createField2_0 = $$createType78;
-        const $$createField5_0 = $$createType79;
-        const $$createField6_0 = $$createType81;
-        const $$createField10_0 = $$createType83;
+        const $$createField2_0 = $$createType82;
+        const $$createField5_0 = $$createType83;
+        const $$createField6_0 = $$createType85;
+        const $$createField10_0 = $$createType87;
         const $$createField11_0 = $$createType13;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("request" in $$parsedSource) {
@@ -4708,8 +4828,8 @@ export class ToolchainSettings {
      * Creates a new ToolchainSettings instance from a string or object.
      */
     static createFrom($$source: any = {}): ToolchainSettings {
-        const $$createField0_0 = $$createType85;
-        const $$createField1_0 = $$createType84;
+        const $$createField0_0 = $$createType89;
+        const $$createField1_0 = $$createType88;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("project" in $$parsedSource) {
             $$parsedSource["project"] = $$createField0_0($$parsedSource["project"]);
@@ -4885,7 +5005,7 @@ export class VCSStatus {
      */
     static createFrom($$source: any = {}): VCSStatus {
         const $$createField7_0 = $$createType13;
-        const $$createField8_0 = $$createType87;
+        const $$createField8_0 = $$createType91;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("branches" in $$parsedSource) {
             $$parsedSource["branches"] = $$createField7_0($$parsedSource["branches"]);
@@ -4950,7 +5070,7 @@ export class WorkspaceChange {
      * Creates a new WorkspaceChange instance from a string or object.
      */
     static createFrom($$source: any = {}): WorkspaceChange {
-        const $$createField1_0 = $$createType89;
+        const $$createField1_0 = $$createType93;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("files" in $$parsedSource) {
             $$parsedSource["files"] = $$createField1_0($$parsedSource["files"]);
@@ -5064,23 +5184,27 @@ const $$createType66 = $Create.Array($$createType65);
 const $$createType67 = Breakpoint.createFrom;
 const $$createType68 = $Create.Array($$createType67);
 const $$createType69 = $Create.Map($Create.Any, $$createType68);
-const $$createType70 = SignatureParameter.createFrom;
+const $$createType70 = CursorPosition.createFrom;
 const $$createType71 = $Create.Array($$createType70);
-const $$createType72 = SignatureEntry.createFrom;
-const $$createType73 = $Create.Array($$createType72);
-const $$createType74 = StudioWorkspace.createFrom;
+const $$createType72 = SplitView.createFrom;
+const $$createType73 = $Create.Nullable($$createType72);
+const $$createType74 = SignatureParameter.createFrom;
 const $$createType75 = $Create.Array($$createType74);
-const $$createType76 = TestLocation.createFrom;
-const $$createType77 = $Create.Nullable($$createType76);
-const $$createType78 = TestRunRequest.createFrom;
-const $$createType79 = TestSummary.createFrom;
-const $$createType80 = TestResult.createFrom;
-const $$createType81 = $Create.Array($$createType80);
-const $$createType82 = CoverageReport.createFrom;
-const $$createType83 = $Create.Nullable($$createType82);
-const $$createType84 = ToolchainConfiguration.createFrom;
-const $$createType85 = $Create.Nullable($$createType84);
-const $$createType86 = VCSFileChange.createFrom;
-const $$createType87 = $Create.Array($$createType86);
-const $$createType88 = FileChange.createFrom;
-const $$createType89 = $Create.Array($$createType88);
+const $$createType76 = SignatureEntry.createFrom;
+const $$createType77 = $Create.Array($$createType76);
+const $$createType78 = StudioWorkspace.createFrom;
+const $$createType79 = $Create.Array($$createType78);
+const $$createType80 = TestLocation.createFrom;
+const $$createType81 = $Create.Nullable($$createType80);
+const $$createType82 = TestRunRequest.createFrom;
+const $$createType83 = TestSummary.createFrom;
+const $$createType84 = TestResult.createFrom;
+const $$createType85 = $Create.Array($$createType84);
+const $$createType86 = CoverageReport.createFrom;
+const $$createType87 = $Create.Nullable($$createType86);
+const $$createType88 = ToolchainConfiguration.createFrom;
+const $$createType89 = $Create.Nullable($$createType88);
+const $$createType90 = VCSFileChange.createFrom;
+const $$createType91 = $Create.Array($$createType90);
+const $$createType92 = FileChange.createFrom;
+const $$createType93 = $Create.Array($$createType92);

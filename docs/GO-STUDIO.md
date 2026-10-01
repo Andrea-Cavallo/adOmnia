@@ -154,6 +154,13 @@ pause and explains it.
   Go's wait reason. The analysis covers the first 1000 goroutines of a
   pause.
 
+## Crash recovery
+
+- **Unsaved buffers.** Every dirty buffer is snapshotted about 750 ms after the last keystroke, outside the file and on this machine only (bbolt, one atomic transaction per write). The last three versions of each file are kept with their SHA-256: if the newest is corrupt, the previous one is used. The original file is never touched until you save.
+- **Crash detection.** At start adOmnia writes `runtime.lock` (random instance id, PID, start time) and refreshes its heartbeat every 10 s; a clean shutdown removes it. A lock whose heartbeat stopped for more than 30 s means the previous run ended abnormally. The PID alone is never trusted, because the system can reuse it.
+- **Restore after a crash.** Go Studio opens *adOmnia closed unexpectedly* with every recovered file, its time, `+added/−removed` lines and a status: *Safe to restore* (disk unchanged since the snapshot), *Already on disk*, *Conflict* (the file changed after the snapshot) or *File no longer exists*. Each file offers **Use Recovered**, **Keep Disk** and **Open Diff** (Disk Version ↔ Recovered Version); **Restore All**, **Review** and **Discard** act on all of them. Restored text opens as unsaved changes: nothing is written to disk until you save.
+- **Session view.** Open tabs, the active file, the cursor position in each file, the editor split with its own tabs, layout, bookmarks and breakpoints are saved with the session (a couple of seconds after the cursor stops) and restored when the project reopens. Processes are never relaunched on their own; gopls alone restarts automatically after a crash (at most three times).
+
 ## Persistence and migrations
 
 Go Studio stores metadata only. Source files stay where they are, and file contents are kept only in the recovery and local-history stores described below. All stores live in adOmnia's local bbolt database, in the `goide` bucket.

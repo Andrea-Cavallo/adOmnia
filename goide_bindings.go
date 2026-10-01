@@ -84,6 +84,8 @@ type GoIDE struct {
 	windows *goidewindow.Manager
 	// serviceListeners ricevono gli eventi gO lato backend (es. DevContext).
 	serviceListeners []func(goide.EventEnvelope)
+	// runtimeLock segnala ai prossimi avvii se questo si è chiuso in modo anomalo.
+	runtimeLock *goide.RuntimeLock
 }
 
 func NewGoIDE() *GoIDE {
@@ -103,6 +105,10 @@ func NewGoIDE() *GoIDE {
 	_ = service.ConfigureRecoveryStore(goIDERecoveryStore{})
 	_ = service.ConfigureHistoryStore(goIDEHistoryStore{})
 	binding = &GoIDE{service: service}
+	if lock, status, err := goide.AcquireRuntimeLock(filepath.Join(dataDir(), "goide"), nil); err == nil {
+		binding.runtimeLock = lock
+		service.SetCrashStatus(status)
+	}
 	return binding
 }
 
@@ -1073,7 +1079,19 @@ func (g *GoIDE) FindSessionsForPath(sessionID, relativePath string) ([]goide.Ses
 // ServiceShutdown rilascia processi e risorse posseduti dal servizio.
 func (g *GoIDE) ServiceShutdown() error {
 	g.service.Shutdown()
+	// Chiusura pulita: il prossimo avvio non proporrà il ripristino dopo crash.
+	g.runtimeLock.Release()
 	return nil
+}
+
+// CrashRecoveryStatus dice se l'avvio precedente si è chiuso in modo anomalo (heartbeat fermo).
+func (g *GoIDE) CrashRecoveryStatus() goide.CrashStatus {
+	return g.service.CrashRecoveryStatus()
+}
+
+// AcknowledgeCrash chiude la proposta di ripristino dopo la scelta dell'utente.
+func (g *GoIDE) AcknowledgeCrash() {
+	g.service.AcknowledgeCrash()
 }
 
 // ListStudioWorkspaces elenca i workspace Go Studio, separati dai workspace API di adOmnia.

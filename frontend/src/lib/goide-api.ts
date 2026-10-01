@@ -370,6 +370,17 @@ export async function forgetGoIDEBuffer(sessionId: string, relativePath: string)
   await GoIDEBindings.ForgetBuffer(sessionId, relativePath)
 }
 
+export type GoIDECrashStatus = Awaited<ReturnType<typeof GoIDEBindings.CrashRecoveryStatus>>
+
+/** Il precedente avvio di adOmnia si è chiuso in modo anomalo? (heartbeat del runtime lock fermo) */
+export async function getGoIDECrashStatus(): Promise<GoIDECrashStatus> {
+  return GoIDEBindings.CrashRecoveryStatus()
+}
+
+export async function acknowledgeGoIDECrash(): Promise<void> {
+  await GoIDEBindings.AcknowledgeCrash()
+}
+
 export async function listGoIDERecoveredBuffers(sessionId: string): Promise<GoIDERecoveredBuffer[]> {
   return GoIDEBindings.ListRecoveredBuffers(sessionId)
 }

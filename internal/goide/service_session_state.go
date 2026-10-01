@@ -27,6 +27,20 @@ func (s *Service) SaveSessionView(sessionID string, view SessionView) error {
 		return err
 	}
 	view.OpenPaths = limitPaths(view.OpenPaths, maxRestoredTabs)
+	cursors := make([]CursorPosition, 0, len(view.Cursors))
+	for _, cursor := range view.Cursors {
+		if cursor.Path != "" && cursor.Line > 0 && cursor.Column > 0 && len(cursors) < maxRestoredTabs {
+			cursors = append(cursors, cursor)
+		}
+	}
+	view.Cursors = cursors
+	if view.Split != nil {
+		if view.Split.Orientation != "right" && view.Split.Orientation != "down" || view.Split.ActivePath == "" {
+			view.Split = nil
+		} else {
+			view.Split.Paths = limitPaths(view.Split.Paths, maxRestoredTabs)
+		}
+	}
 	if len(view.Bookmarks) > maxBookmarks {
 		view.Bookmarks = view.Bookmarks[:maxBookmarks]
 	}
@@ -104,22 +118,43 @@ func (s *Service) ListRecoveredBuffers(sessionID string) ([]RecoveredBuffer, err
 	for _, entry := range entries {
 		buffer := RecoveredBuffer{
 			SessionID: entry.SessionID, RelativePath: entry.RelativePath,
-			Content: entry.Content, SavedAt: entry.SavedAt,
+			Content: entry.Content, SavedAt: entry.SavedAt, SnapshotHash: entry.SnapshotHash,
 		}
 		path, resolveErr := s.documents.ResolveProjectPath(session.Project, entry.RelativePath)
 		if resolveErr != nil {
-			buffer.Missing = true
+			buffer.Missing, buffer.Status = true, "missing"
 			buffers = append(buffers, buffer)
 			continue
 		}
-		if _, _, token, readErr := readTextFile(path); readErr != nil {
-			buffer.Missing = true
-		} else if entry.DiskToken != "" && entry.DiskToken != token {
-			buffer.DiskChanged = true
-		}
+		disk, _, token, readErr := readTextFile(path)
+		buffer.Missing, buffer.Status, buffer.DiskContent = readErr != nil, classifyRecovery(entry, disk, token, readErr), disk
+		buffer.DiskChanged = buffer.Status == "conflict"
 		buffers = append(buffers, buffer)
 	}
 	return buffers, nil
+}
+
+// classifyRecovery confronta la snapshot con il file su disco, senza toccare nessuno dei due.
+func classifyRecovery(entry recoveredEntry, disk, token string, readErr error) string {
+	switch {
+	case readErr != nil:
+		return "missing"
+	case disk == entry.Content:
+		return "already-applied"
+	case entry.DiskToken == "" || diskContentHash(entry.DiskToken) == diskContentHash(token):
+		// Il contenuto su disco è quello da cui partiva il buffer (anche se l'mtime è cambiato).
+		return "safe"
+	default:
+		return "conflict"
+	}
+}
+
+// diskContentHash estrae la parte di hash del token "mtime-size-hash".
+func diskContentHash(token string) string {
+	if index := strings.LastIndexByte(token, '-'); index >= 0 {
+		return token[index+1:]
+	}
+	return token
 }
 
 // PruneMissingSessions rimuove le sessioni la cui cartella non è più

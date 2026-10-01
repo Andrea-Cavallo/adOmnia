@@ -34,6 +34,8 @@ type Service struct {
 	tests            *TestManager
 	runConfigs       *RunConfigManager
 	recovery         *RecoveryManager
+	crashMu          sync.Mutex
+	crash            CrashStatus
 	history          *LocalHistory
 	persistence      *Persistence
 	viewMu           sync.RWMutex

@@ -1,6 +1,8 @@
 package goide
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -23,7 +25,21 @@ const (
 	MaxRecoveredBuffers = 200
 	// MaxRecoveredTotalBytes limita lo store intero, riscritto a ogni aggiornamento.
 	MaxRecoveredTotalBytes = 32 * 1024 * 1024
+	// recoverySnapshotsPerFile: l'ultima più le due precedenti, per tollerare una snapshot corrotta.
+	recoverySnapshotsPerFile = 3
 )
+
+// recoveredSnapshot è una versione precedente dello stesso buffer.
+type recoveredSnapshot struct {
+	Content      string    `json:"content"`
+	SnapshotHash string    `json:"snapshotHash"`
+	SavedAt      time.Time `json:"savedAt"`
+}
+
+func contentHash(content string) string {
+	sum := sha256.Sum256([]byte(content))
+	return hex.EncodeToString(sum[:])
+}
 
 type recoveredEntry struct {
 	SessionID    SessionID `json:"sessionId"`
@@ -31,6 +47,31 @@ type recoveredEntry struct {
 	Content      string    `json:"content"`
 	DiskToken    string    `json:"diskToken"`
 	SavedAt      time.Time `json:"savedAt"`
+	// SnapshotHash verifica che Content non sia corrotto; Previous tiene le versioni più vecchie.
+	SnapshotHash string              `json:"snapshotHash,omitempty"`
+	Previous     []recoveredSnapshot `json:"previous,omitempty"`
+}
+
+// verified restituisce l'ultima snapshot integra: se la più recente è corrotta ripiega sulle precedenti.
+func (e recoveredEntry) verified() (recoveredEntry, bool) {
+	if e.SnapshotHash == "" || contentHash(e.Content) == e.SnapshotHash {
+		return e, true
+	}
+	for index, previous := range e.Previous {
+		if contentHash(previous.Content) == previous.SnapshotHash {
+			e.Content, e.SnapshotHash, e.SavedAt, e.Previous = previous.Content, previous.SnapshotHash, previous.SavedAt, e.Previous[index+1:]
+			return e, true
+		}
+	}
+	return e, false
+}
+
+func (e recoveredEntry) bytes() int {
+	total := len(e.Content)
+	for _, previous := range e.Previous {
+		total += len(previous.Content)
+	}
+	return total
 }
 
 type recoveryState struct {
@@ -106,7 +147,11 @@ func (m *RecoveryManager) Load() error {
 		if entry.SessionID == "" || entry.RelativePath == "" {
 			continue
 		}
-		m.buffers[recoveryKey(entry.SessionID, entry.RelativePath)] = entry
+		valid, ok := entry.verified()
+		if !ok {
+			continue
+		}
+		m.buffers[recoveryKey(entry.SessionID, entry.RelativePath)] = valid
 	}
 	return nil
 }
@@ -126,13 +171,27 @@ func (m *RecoveryManager) Remember(sessionID SessionID, relativePath, content, d
 	if !exists && len(m.buffers) >= MaxRecoveredBuffers {
 		return fmt.Errorf("troppi buffer in recupero: salva o chiudi qualche file")
 	}
-	if m.totalBytesLocked()-len(previous.Content)+len(content) > MaxRecoveredTotalBytes {
+	history := []recoveredSnapshot(nil)
+	if exists && previous.Content != content {
+		history = append([]recoveredSnapshot{{Content: previous.Content, SnapshotHash: previous.SnapshotHash, SavedAt: previous.SavedAt}}, previous.Previous...)
+		if len(history) > recoverySnapshotsPerFile-1 {
+			history = history[:recoverySnapshotsPerFile-1]
+		}
+	} else if exists {
+		history = previous.Previous
+	}
+	entry := recoveredEntry{
+		SessionID: sessionID, RelativePath: relativePath, Content: content, DiskToken: diskToken,
+		SavedAt: time.Now().UTC(), SnapshotHash: contentHash(content), Previous: history,
+	}
+	// Lo spazio serve prima all'ultima versione: le snapshot vecchie si sacrificano per farla entrare.
+	for m.totalBytesLocked()-previous.bytes()+entry.bytes() > MaxRecoveredTotalBytes && len(entry.Previous) > 0 {
+		entry.Previous = entry.Previous[:len(entry.Previous)-1]
+	}
+	if m.totalBytesLocked()-previous.bytes()+entry.bytes() > MaxRecoveredTotalBytes {
 		return fmt.Errorf("spazio di recupero esaurito: salva qualche file per proteggere i nuovi buffer")
 	}
-	m.buffers[key] = recoveredEntry{
-		SessionID: sessionID, RelativePath: relativePath,
-		Content: content, DiskToken: diskToken, SavedAt: time.Now().UTC(),
-	}
+	m.buffers[key] = entry
 	return m.persistLocked()
 }
 
@@ -182,7 +241,7 @@ func (m *RecoveryManager) List(sessionID SessionID) []recoveredEntry {
 func (m *RecoveryManager) totalBytesLocked() int {
 	total := 0
 	for _, entry := range m.buffers {
-		total += len(entry.Content)
+		total += entry.bytes()
 	}
 	return total
 }

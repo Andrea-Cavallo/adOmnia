@@ -11,6 +11,7 @@ import { ToolchainDialog } from './GoStudioToolchains'
 import { GoStudioDependencies } from './GoStudioDependencies'
 import { GoStudioQuickOpen } from './GoStudioQuickOpen'
 import { GoStudioRecoveryBanner } from './GoStudioRecoveryBanner'
+import { GoStudioCrashRecoveryDialog } from './GoStudioCrashRecoveryDialog'
 import { GoStudioRunConfigurations } from './GoStudioRunConfigurations'
 import { GoStudioSecretsPrompt } from './GoStudioSecretsPrompt'
 import { GoStudioHierarchyDialog } from './GoStudioHierarchyDialog'
@@ -630,6 +631,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       <GoStudioWorkspace session={activeSession} {...store.layout} zen={zen} onProjectResize={beginResize('projectWidth', store.layout.projectWidth)} onStructureResize={beginResize('structureWidth', store.layout.structureWidth, -1)} onBottomResize={beginResize('bottomHeight', store.layout.bottomHeight, -1)} onCursor={setCursor} onRequestCloseDocument={closeFlow.requestCloseDocuments} onRunTarget={(target, anchor) => setRunTargetMenu({ target, ...anchor })} onCommit={() => setVcsDialog('commit')} onBookmarks={() => setBookmarksOpen(true)} onDependencies={() => setDependenciesOpen(true)} onCommand={runCommandStable} />
       {runTargetMenu && <GoStudioRunTargetMenu {...runTargetMenu} onAction={runTarget} onClose={() => setRunTargetMenu(null)} />}
       {zen ? <ZenExit onExit={toggleZen} /> : <GoStudioStatusBar session={activeSession} toolchain={toolchain} documentInfo={summary.activeId ? { id: summary.activeId, relativePath: summary.activePath ?? '', language: summary.activeLanguage ?? '', readOnly: summary.activeReadOnly, lineEnding: summary.activeLineEnding ?? 'LF' } : null} execution={activeExecution} onLanguageServer={openLanguageServerMenu} onLinter={() => runCommand(commandAvailability('code.lint', commandContext) === true ? 'code.lint' : 'go.toolPaths')} onSetAuthorization={(allowed) => void authorize(allowed)} onManageToolchains={() => setToolchainOpen(true)} />}
+      <GoStudioCrashRecoveryDialog sessionId={activeSession.id} />
       <GoStudioQuickOpen />
       <GoStudioCaretPopup />
       <GoStudioHierarchyDialog />
