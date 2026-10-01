@@ -21,19 +21,91 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
-| **P0** | Completare l'IDE Go di tutti i giorni | 73 | 17 |
+| **P0** | Completare l'IDE Go di tutti i giorni | 108 | 12 |
 | **P1** | Codice ↔ runtime: il motivo per usare adOmnia | 192 | 58 |
 | **P2** | Studi Go avanzati | 224 | 39 |
 | **P3** | AI e intelligenza del workspace | 189 | 24 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 122 | 45 |
 
-Voci chiuse e rimosse: 670 (287 trovate già implementate dall'audit del 2026-10-01).
+Voci chiuse e rimosse: 679 (287 trovate già implementate dall'audit del 2026-10-01).
 
 ---
 
 # P0 — Completare l'IDE Go di tutti i giorni
 
 _Le lacune che costringono ancora ad aprire un altro IDE._
+
+## §62 · Disaster Recovery & Crash Recovery
+
+> gO Studio non deve perdere il lavoro non salvato se adOmnia, WebView2, un processo Go o il sistema operativo si chiudono in modo anomalo. Git protegge il codice salvato; il Disaster Recovery protegge il lavoro ancora presente solo nell’editor.
+
+### Recovery dei buffer
+
+- [ ] Snapshot automatico di ogni buffer `dirty`, separato dal file originale.
+- [ ] Debounce delle snapshot, target iniziale ~750 ms dopo l’ultima modifica.
+- [ ] Non modificare mai il file originale senza un’azione esplicita di Save dell’utente.
+- [ ] Scrittura atomica delle snapshot (`.tmp` → flush/sync → rename).
+- [ ] Conservare almeno 3 snapshot recenti per file per tollerare snapshot corrotte.
+- [ ] Memorizzare `originalHash`, `snapshotHash`, timestamp e path originale.
+- [ ] Rilevare modifiche esterne al file e classificare il recovery come `safe`, `already-applied` o `conflict`.
+
+### Session recovery
+
+- [ ] Persistenza periodica di `session.json` con workspace, tab aperti, file attivo, cursori, split/layout e buffer dirty.
+- [ ] Persistenza delle configurazioni runtime ripristinabili: run config, terminal metadata, debug config, API tab, DB tab, Kafka/Broker tab e altri pannelli collegati.
+- [ ] Distinguere chiaramente stato persistente da stato runtime non serializzabile.
+- [ ] Ripristinare configurazioni e UI, non connessioni/processi live già morti.
+
+### Crash detection
+
+- [ ] Creare `runtime.lock` all’avvio con `sessionId`, PID, start time e heartbeat.
+- [ ] Aggiornare heartbeat periodicamente.
+- [ ] Marcare la chiusura pulita o rimuovere il lock durante lo shutdown normale.
+- [ ] Al successivo startup rilevare una sessione precedente non chiusa correttamente.
+- [ ] Non basarsi sul solo PID, perché può essere riutilizzato dal sistema operativo.
+
+### UX di ripristino
+
+- [ ] All’avvio dopo crash mostrare `Restore All`, `Review`, `Discard`.
+- [ ] `Restore All` riapre i contenuti recuperati come buffer dirty, senza sovrascrivere automaticamente il disco.
+- [ ] `Review` apre diff `Disk Version` ↔ `Recovered Version`.
+- [ ] Evidenziare per ogni file timestamp, righe aggiunte/rimosse e presenza di conflitti.
+- [ ] Consentire `Use Recovered`, `Keep Disk`, `Open Diff` per ogni file in conflitto.
+
+### Process recovery
+
+- [ ] Introdurre un `ProcessSupervisor` indipendente dalla UI.
+- [ ] Persistenza di un `ProcessDescriptor` minimo: tipo, comando, argomenti, working directory e restart policy.
+- [ ] Supportare restart policy `always`, `prompt`, `never`.
+- [ ] Riavvio automatico consentito solo per processi infrastrutturali sicuri, ad esempio `gopls`.
+- [ ] Chiedere conferma prima di rilanciare processi utente, server, debug session o comandi con side effect.
+- [ ] Non rilanciare automaticamente migration, script distruttivi o comandi arbitrari.
+
+### Storage e robustezza
+
+- [ ] Recovery storage per workspace sotto `.adomnia/recovery/<workspace-id>/`.
+- [ ] Derivare `workspace-id` da un hash stabile del path normalizzato.
+- [ ] Gestire disco pieno, permessi negati, snapshot corrotta, file cancellato, workspace spostato e shutdown durante la scrittura.
+- [ ] Cleanup automatico delle recovery session vecchie dopo chiusura pulita o retention configurabile.
+- [ ] Recovery completamente local-first, senza inviare sorgenti o snapshot fuori dalla macchina.
+
+### Test obbligatori
+
+- [ ] Kill forzato durante editing con più file dirty → tutti i buffer devono essere recuperabili.
+- [ ] Kill durante scrittura snapshot → snapshot precedente ancora valida.
+- [ ] File modificato esternamente dopo la snapshot → mostrare conflitto, mai sovrascrivere automaticamente.
+- [ ] `session.json` corrotto → fallback sicuro senza impedire l’avvio di adOmnia.
+- [ ] PID riutilizzato → nessun falso positivo basato sul solo PID.
+- [ ] Crash con almeno 10 file dirty → recovery completo e UI responsiva.
+- [ ] Verifica Windows, macOS e Linux.
+
+### MVP P0
+
+- [ ] V1: snapshot complete dei buffer dirty + debounce.
+- [ ] V1: `session.json` periodico con atomic write.
+- [ ] V1: `runtime.lock` + crash detection.
+- [ ] V1: `Restore All / Review / Discard`.
+- [ ] V1: conflict detection tramite hash, senza overwrite automatico.
 
 ## §54 · MVP: cosa NON rimandare
 
@@ -73,21 +145,6 @@ Queste funzioni devono esserci abbastanza presto perché senza di loro gO sembre
 - [ ] `mockgen` / alternative configurabili.
 - [ ] `stringer`.
 - [ ] Tool custom definiti dall'utente. — *Parziale: Si possono impostare solo i percorsi di gopls, linter, dlv e make (`GoStudioToolPathsDialog.tsx`). Mancano tool arbitrari definiti dall'utente.*
-
-## §6 · Run Configurations
-
-- [ ] Run command. — *Parziale: Esistono Make, Docker e Compose (`RunKindMake`, `RunKindDocker*`). Manca un tipo "comando arbitrario".*
-- [ ] Run tool. — *Parziale: Go Tools dialog (vet/generate/fix/mod why/graph/doc in `gotools.go`) e target Make/Docker. Non esiste un tipo di Run Configuration "tool".*
-- [ ] Compound run configuration. — *Parziale: Solo PreRun/PostRun, cioè liste di ID di altre configurazioni (`types.go`, `service_runconfig.go`). Manca una configurazione composta che lanci più run in parallelo.*
-
-### UX
-
-- [ ] Condivisione via repository.
-- [ ] Configurazioni private.
-- [ ] Run history. — *Parziale: Il pannello Run elenca le esecuzioni della sessione (`GoStudioRunPanel.tsx`). Le esecuzioni non sono persistenti e non c'è una vista cronologia per configurazione.*
-- [ ] Pin configuration.
-- [ ] Run current context. — *Parziale: Esistono gutter, CodeLens e "Run/Test Current Package" (`goStudioRunTargets.ts`, `goStudioCommands.ts`). Manca una configurazione effimera dal contesto corrente.*
-- [ ] Hot restart quando possibile.
 
 ## §7 · Debugger Go con Delve
 

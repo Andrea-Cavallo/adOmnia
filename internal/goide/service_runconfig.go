@@ -1,12 +1,18 @@
 package goide
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // ListRunConfigurations elenca le configurazioni salvate della sessione.
 func (s *Service) ListRunConfigurations(sessionID string) ([]RunConfiguration, error) {
 	session, err := s.session(sessionID)
 	if err != nil {
 		return nil, err
+	}
+	if s.importSharedRunConfigurations(session) {
+		_ = s.saveState()
 	}
 	return s.runConfigs.List(session.ID), nil
 }
@@ -28,6 +34,7 @@ func (s *Service) SaveRunConfiguration(sessionID string, config RunConfiguration
 		return RunConfiguration{}, err
 	}
 	s.emit("runconfig.saved", session.ID, saved.ID, saved)
+	s.syncSharedRunConfigurations(session)
 	return saved, nil
 }
 
@@ -45,6 +52,7 @@ func (s *Service) DuplicateRunConfiguration(sessionID, configID string) (RunConf
 		return RunConfiguration{}, err
 	}
 	s.emit("runconfig.saved", session.ID, copied.ID, copied)
+	s.syncSharedRunConfigurations(session)
 	return copied, nil
 }
 
@@ -62,6 +70,7 @@ func (s *Service) RenameRunConfiguration(sessionID, configID, name string) (RunC
 		return RunConfiguration{}, err
 	}
 	s.emit("runconfig.saved", session.ID, renamed.ID, renamed)
+	s.syncSharedRunConfigurations(session)
 	return renamed, nil
 }
 
@@ -94,6 +103,7 @@ func (s *Service) DeleteRunConfiguration(sessionID, configID string) error {
 		return err
 	}
 	s.emit("runconfig.deleted", session.ID, configID, nil)
+	s.syncSharedRunConfigurations(session)
 	return nil
 }
 
@@ -107,6 +117,9 @@ func (s *Service) StartConfiguredRun(sessionID, configID string, secrets map[str
 	config, err := s.runConfigs.Get(session.ID, configID)
 	if err != nil {
 		return Execution{}, err
+	}
+	if config.Kind == RunKindCompound {
+		return s.startCompound(session, config, secrets)
 	}
 	request, err := s.buildRunRequest(session, config, secrets)
 	if err != nil {
@@ -209,9 +222,11 @@ func (s *Service) buildRunRequest(session Session, config RunConfiguration, secr
 	case RunKindBinary:
 		request.Kind = "binary"
 		request.Target = config.BinaryPath
-	case RunKindMake, RunKindDockerBuild, RunKindDockerRun, RunKindDockerCompose:
+	case RunKindMake, RunKindDockerBuild, RunKindDockerRun, RunKindDockerCompose, RunKindCommand, RunKindGoTool:
 		request.Kind = string(config.Kind)
 		request.Target = config.Target
+	case RunKindCompound:
+		return RunRequest{}, fmt.Errorf("una configurazione compound avvia altre configurazioni, non un comando")
 	default:
 		return RunRequest{}, fmt.Errorf("tipo di configurazione %q non supportato", config.Kind)
 	}
@@ -251,6 +266,12 @@ func (s *Service) validateConfigurationPaths(session Session, config RunConfigur
 		}
 	case RunKindBinary:
 		return validateRunTarget(session.Project.RealPath, workingDirectory, config.BinaryPath)
+	case RunKindCommand:
+		if strings.ContainsAny(config.Target, `/\`) {
+			return validateRunTarget(session.Project.RealPath, workingDirectory, config.Target)
+		}
+	case RunKindCompound:
+		return s.validateCompound(session, config)
 	}
 	return validateGoArguments(session.Project.RealPath, workingDirectory, config.GoArguments)
 }

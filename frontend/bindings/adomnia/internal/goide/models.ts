@@ -3327,6 +3327,26 @@ export class RunConfiguration {
      */
     "preRun"?: string[];
     "postRun"?: string[];
+
+    /**
+     * Compound: ID delle configurazioni avviate insieme (solo per il tipo compound).
+     */
+    "compound"?: string[];
+
+    /**
+     * Shared: la configurazione vive anche in .adomnia/run-configurations.json, da versionare con il progetto.
+     */
+    "shared"?: boolean;
+
+    /**
+     * Pinned: in cima ai selettori di configurazione.
+     */
+    "pinned"?: boolean;
+
+    /**
+     * RestartOnSave: un'esecuzione in corso riparte quando si salva un file Go del progetto.
+     */
+    "restartOnSave"?: boolean;
     "order": number;
     "createdAt": string;
     "updatedAt": string;
@@ -3392,6 +3412,7 @@ export class RunConfiguration {
         const $$createField19_0 = $$createType13;
         const $$createField21_0 = $$createType13;
         const $$createField22_0 = $$createType13;
+        const $$createField23_0 = $$createType13;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("files" in $$parsedSource) {
             $$parsedSource["files"] = $$createField5_0($$parsedSource["files"]);
@@ -3419,6 +3440,9 @@ export class RunConfiguration {
         }
         if ("postRun" in $$parsedSource) {
             $$parsedSource["postRun"] = $$createField22_0($$parsedSource["postRun"]);
+        }
+        if ("compound" in $$parsedSource) {
+            $$parsedSource["compound"] = $$createField23_0($$parsedSource["compound"]);
         }
         return new RunConfiguration($$parsedSource as Partial<RunConfiguration>);
     }
@@ -3451,6 +3475,21 @@ export enum RunConfigurationKind {
      * RunKindDockerCompose: ProgramArguments è "up" o "down" seguito dai servizi (nessuno = tutti).
      */
     RunKindDockerCompose = "docker-compose",
+
+    /**
+     * RunKindCommand esegue un comando qualsiasi (Target) con ProgramArguments, senza shell.
+     */
+    RunKindCommand = "command",
+
+    /**
+     * RunKindGoTool esegue `go <Target> <ProgramArguments>` con la toolchain del progetto (vet, generate, tool pprof…).
+     */
+    RunKindGoTool = "go-tool",
+
+    /**
+     * RunKindCompound avvia insieme, in parallelo, le configurazioni elencate in Compound.
+     */
+    RunKindCompound = "compound",
 };
 
 export type RunID = string;

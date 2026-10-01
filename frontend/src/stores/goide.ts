@@ -1,3 +1,4 @@
+import { recordRunHistory } from '@/components/goide/goStudioRunHistory'
 import { create } from 'zustand'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 import {
@@ -178,6 +179,8 @@ export interface GoIDEState {
   revealLocation: { documentId: string; line: number; column: number } | null
   recoveredBySession: Record<string, GoIDERecoveredBuffer[]>
   runConfigsBySession: Record<string, GoIDERunConfiguration[]>
+  /** Esecuzione → configurazione che l'ha avviata: serve alla cronologia e al riavvio al salvataggio. */
+  configByRun: Record<string, string>
   activeConfigBySession: Record<string, string | null>
   restoredSessions: Record<string, boolean>
   pathConflicts: Record<string, string[]>
@@ -256,6 +259,19 @@ function replaceSession(sessions: GoIDESession[], next: GoIDESession): GoIDESess
   const index = sessions.findIndex((session) => session.id === next.id)
   if (index < 0) return [...sessions, next]
   return sessions.map((session) => session.id === next.id ? next : session)
+}
+
+/** Un'esecuzione di una configurazione salvata entra nella cronologia locale del progetto. */
+function recordConfiguredRun(state: Pick<GoIDEState, 'configByRun' | 'sessions' | 'runConfigsBySession'>, execution: GoIDEExecution): void {
+  const configId = state.configByRun[execution.id]
+  if (!configId) return
+  const session = state.sessions.find((item) => item.id === execution.sessionId)
+  const config = state.runConfigsBySession[execution.sessionId]?.find((item) => item.id === configId)
+  if (!session) return
+  recordRunHistory(session.project.realPath, {
+    configId, configName: config?.name ?? configId, status: execution.status, exitCode: execution.exitCode ?? null,
+    startedAt: execution.startedAt, durationMillis: execution.durationMillis, command: execution.command,
+  })
 }
 
 function replaceExecution(executions: GoIDEExecution[], next: GoIDEExecution): GoIDEExecution[] {
@@ -351,6 +367,7 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
   revealLocation: null,
   recoveredBySession: {},
   runConfigsBySession: {},
+  configByRun: {},
   activeConfigBySession: {},
   restoredSessions: {},
   pathConflicts: {},
@@ -573,6 +590,7 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
       set((state) => ({
         executions: replaceExecution(state.executions, execution),
         activeRunBySession: { ...state.activeRunBySession, [sessionId]: execution.id },
+        configByRun: { ...state.configByRun, [execution.id]: configId },
       }))
     } catch (error) {
       set({ error: errorMessage(error) })
@@ -1102,7 +1120,12 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
     if (!runId || !sessionId) return
     try {
       const execution = await restartGoIDERun(runId)
-      set((state) => ({ executions: replaceExecution(state.executions, execution), activeRunBySession: { ...state.activeRunBySession, [sessionId]: execution.id } }))
+      set((state) => ({
+        executions: replaceExecution(state.executions, execution),
+        activeRunBySession: { ...state.activeRunBySession, [sessionId]: execution.id },
+        // Il riavvio resta della stessa configurazione.
+        configByRun: state.configByRun[runId] ? { ...state.configByRun, [execution.id]: state.configByRun[runId] } : state.configByRun,
+      }))
     } catch (error) {
       set({ error: errorMessage(error) })
     }
@@ -1151,6 +1174,7 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
         consoleByRun: event.type === 'run.started' ? withConsoleHeader(state.consoleByRun, execution) : withConsoleFooter(state.consoleByRun, execution, event.sequence),
       }))
       if (event.type === 'run.finished' && MODULE_CHANGING_KINDS.has(execution.kind)) void get().refreshModuleFiles(execution.sessionId)
+      if (event.type === 'run.finished') recordConfiguredRun(get(), execution)
     }
   },
 

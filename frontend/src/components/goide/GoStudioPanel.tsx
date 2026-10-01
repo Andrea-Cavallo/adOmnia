@@ -1,4 +1,6 @@
 import { heavyFeatureEnabled } from './goStudioResourceMode'
+import { restartRunsOnSave } from './goStudioRunOnSave'
+import { pinnedFirst } from './goStudioRunHistory'
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import { AlertTriangle, X } from 'lucide-react'
 import { GoStudioEmptyState } from './GoStudioEmptyState'
@@ -41,7 +43,7 @@ import { GoStudioLanguageServerLog } from './GoStudioLanguageServerLog'
 import { GoStudioToolPathsDialog } from './GoStudioToolPathsDialog'
 import { runLanguageCommand } from './goStudioLanguageCommands'
 import { runSaveActions } from './goStudioSaveActions'
-import { runCommandFor, type GoStudioGoRunTarget, type GoStudioRunTarget } from './goStudioRunTargets'
+import { contextRunTarget, runCommandFor, type GoStudioGoRunTarget, type GoStudioRunTarget } from './goStudioRunTargets'
 import { isToolTarget, toolConfigurationDraft, toolRunRequest } from './goStudioToolTargets'
 import type { GoIDERunConfiguration } from '@/lib/goide-api'
 import { useGoStudioCloseFlow } from './useGoStudioCloseFlow'
@@ -185,7 +187,7 @@ export function GoStudioPanel() {
   const activeRunId = store.activeSessionId ? store.activeRunBySession[store.activeSessionId] : null
   const activeExecution = sessionExecutions.find((execution) => execution.id === activeRunId) ?? sessionExecutions[sessionExecutions.length - 1] ?? null
   const toolchain = store.activeSessionId ? store.toolchains[store.activeSessionId] ?? null : null
-  const runConfigurations = store.activeSessionId ? store.runConfigsBySession[store.activeSessionId] ?? [] : []
+  const runConfigurations = pinnedFirst(store.activeSessionId ? store.runConfigsBySession[store.activeSessionId] ?? [] : [])
   const activeConfigId = store.activeSessionId ? store.activeConfigBySession[store.activeSessionId] ?? null : null
   const activeConfig = runConfigurations.find((config) => config.id === activeConfigId) ?? null
   const [pendingSecrets, setPendingSecrets] = useState<string[] | null>(null)
@@ -317,6 +319,8 @@ export function GoStudioPanel() {
     await runSaveActions(id)
     const saved = await useGoIDEStore.getState().saveDocument(id)
     const lspState = useGoIDELspStore.getState()
+    const savedPath = useGoIDEStore.getState().documents.find((item) => item.document.id === id)?.document.relativePath ?? ''
+    if (saved && sessionId) restartRunsOnSave(sessionId, savedPath)
     if (saved && sessionId && heavyFeatureEnabled(lspState, 'lintOnSave') && lspState.linter[sessionId]?.available) scheduleLintOnSave(sessionId)
     return saved
   }
@@ -559,6 +563,11 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       case 'run.restart': return void store.restartRun()
       case 'run.configure': return setConfigureOpen(true)
       case 'run.buildPackage': return void runGoStudioQuickCommand('build', 'package')
+      case 'run.context': {
+        const active = useGoIDEStore.getState().documents.find((item) => item.document.id === activeDocumentId)
+        const target = active ? contextRunTarget(active.document.relativePath, active.buffer, useGoStudioCursorStore.getState().line) : null
+        return target ? runTarget(target) : void runGoStudioQuickCommand('test', 'package')
+      }
       case 'run.testPackage': return void runGoStudioQuickCommand('test', 'package')
       case 'run.benchPackage': return void runGoStudioBenchmarks('package')
       case 'run.vetPackage': return void runGoStudioQuickCommand('vet', 'package')

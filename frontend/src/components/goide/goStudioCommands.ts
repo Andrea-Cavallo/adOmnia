@@ -24,7 +24,7 @@ export type GoStudioCommandId =
   | 'go.installGolangci' | 'go.installStaticcheck' | 'go.toolPaths'
   | 'run.run' | 'run.build' | 'run.stop' | 'run.restart' | 'run.configure'
   | 'run.rerunFailedTests' | 'run.testCoverage' | 'run.testRace' | 'run.runRace' | 'run.benchPackage' | 'view.tests'
-  | 'run.buildPackage' | 'run.testPackage' | 'run.vetPackage' | 'run.buildAll' | 'run.testAll' | 'run.vetAll' | 'run.generateAll' | 'run.install'
+  | 'run.context' | 'run.buildPackage' | 'run.testPackage' | 'run.vetPackage' | 'run.buildAll' | 'run.testAll' | 'run.vetAll' | 'run.generateAll' | 'run.install'
   | 'debug.debug' | 'debug.toggleBreakpoint' | 'debug.resume' | 'debug.pause' | 'debug.stepOver' | 'debug.stepInto' | 'debug.stepOut'
   | 'debug.stop' | 'view.debug' | 'go.installDelve' | 'debug.attach' | 'debug.remote'
   | 'debug.viewBreakpoints' | 'debug.runToCursor' | 'debug.muteBreakpoints'
@@ -204,7 +204,8 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'debug.remote', menu: 'run', label: 'Connect to Remote Delve…' },
   { id: 'run.build', menu: 'run', label: 'Build', binding: { key: 'b', mod: true, shift: true } },
   { id: 'run.buildPackage', menu: 'run', label: 'Build Current Package', binding: { key: 'F9', mod: true }, separatorBefore: true },
-  { id: 'run.testPackage', menu: 'run', label: 'Test Current Package', binding: { key: 'F10', mod: true, shift: true } },
+  { id: 'run.context', menu: 'run', label: 'Run Current Context (test, main or package)', binding: { key: 'F10', mod: true, shift: true } },
+  { id: 'run.testPackage', menu: 'run', label: 'Test Current Package' },
   { id: 'run.benchPackage', menu: 'run', label: 'Run Current Package Benchmarks' },
   { id: 'run.vetPackage', menu: 'run', label: 'Vet Current Package' },
   { id: 'run.testCoverage', menu: 'run', label: 'Test Current Package with Coverage' },
@@ -430,6 +431,7 @@ export function commandAvailability(id: GoStudioCommandId, context: GoStudioComm
     case 'run.build':
     case 'run.buildPackage':
     case 'run.testPackage':
+    case 'run.context':
     case 'run.benchPackage':
     case 'run.vetPackage':
     case 'run.buildAll':
@@ -491,10 +493,10 @@ export function commandChecked(id: GoStudioCommandId, context: GoStudioCommandCo
     case 'view.previewTab': return !!context.editorPrefs?.previewTab
     case 'view.lowResourceMode': return context.editorPrefs?.resourceMode === 'low'
     case 'view.lowResourceOnBattery': return context.editorPrefs?.resourceMode === 'auto'
-    case 'view.fontLigatures': return !!context.editorPrefs?.fontLigatures
     case 'view.vimMode': return context.editorPrefs?.editorMode === 'vim'
     case 'view.emacsMode': return context.editorPrefs?.editorMode === 'emacs'
     case 'code.typeHints': return !!context.editorPrefs?.typeHints && context.inlayHints
+    case 'view.fontLigatures': return !!context.editorPrefs?.fontLigatures
     case 'file.autoSave': return !!context.editorPrefs?.autoSave
     case 'file.trimWhitespace': return !!context.editorPrefs?.trimTrailingWhitespace
     case 'view.maximizeEditor': return !context.projectOpen && !context.structureOpen && !context.bottomOpen

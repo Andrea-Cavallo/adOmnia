@@ -252,6 +252,12 @@ func normalizeConfiguration(config RunConfiguration) (RunConfiguration, error) {
 			return RunConfiguration{}, err
 		}
 		config = normalized
+	case RunKindCommand, RunKindGoTool, RunKindCompound:
+		normalized, err := normalizeCommandConfiguration(config)
+		if err != nil {
+			return RunConfiguration{}, err
+		}
+		config = normalized
 	default:
 		return RunConfiguration{}, fmt.Errorf("tipo di configurazione %q non supportato", config.Kind)
 	}
@@ -315,6 +321,7 @@ func cloneConfiguration(config RunConfiguration) RunConfiguration {
 	clone.Docker.BuildArgs = append([]EnvironmentEntry(nil), config.Docker.BuildArgs...)
 	clone.Docker.Ports = append([]string(nil), config.Docker.Ports...)
 	clone.Docker.Volumes = append([]string(nil), config.Docker.Volumes...)
+	clone.Compound = append([]string(nil), config.Compound...)
 	return clone
 }
 

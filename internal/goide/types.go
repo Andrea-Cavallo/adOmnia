@@ -111,6 +111,12 @@ const (
 	RunKindDockerRun   RunConfigurationKind = "docker-run"
 	// RunKindDockerCompose: ProgramArguments è "up" o "down" seguito dai servizi (nessuno = tutti).
 	RunKindDockerCompose RunConfigurationKind = "docker-compose"
+	// RunKindCommand esegue un comando qualsiasi (Target) con ProgramArguments, senza shell.
+	RunKindCommand RunConfigurationKind = "command"
+	// RunKindGoTool esegue `go <Target> <ProgramArguments>` con la toolchain del progetto (vet, generate, tool pprof…).
+	RunKindGoTool RunConfigurationKind = "go-tool"
+	// RunKindCompound avvia insieme, in parallelo, le configurazioni elencate in Compound.
+	RunKindCompound RunConfigurationKind = "compound"
 )
 
 // DockerOptions completa le configurazioni docker-build e docker-run. I build
@@ -167,11 +173,19 @@ type RunConfiguration struct {
 	// Port imposta PORT e viene verificata libera prima dell'avvio.
 	Port int `json:"port,omitempty"`
 	// PreRun e PostRun sono ID di altre configurazioni della sessione, eseguite in ordine.
-	PreRun    []string  `json:"preRun,omitempty"`
-	PostRun   []string  `json:"postRun,omitempty"`
-	Order     int       `json:"order"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	PreRun  []string `json:"preRun,omitempty"`
+	PostRun []string `json:"postRun,omitempty"`
+	// Compound: ID delle configurazioni avviate insieme (solo per il tipo compound).
+	Compound []string `json:"compound,omitempty"`
+	// Shared: la configurazione vive anche in .adomnia/run-configurations.json, da versionare con il progetto.
+	Shared bool `json:"shared,omitempty"`
+	// Pinned: in cima ai selettori di configurazione.
+	Pinned bool `json:"pinned,omitempty"`
+	// RestartOnSave: un'esecuzione in corso riparte quando si salva un file Go del progetto.
+	RestartOnSave bool      `json:"restartOnSave,omitempty"`
+	Order         int       `json:"order"`
+	CreatedAt     time.Time `json:"createdAt"`
+	UpdatedAt     time.Time `json:"updatedAt"`
 }
 
 // RequiredSecrets elenca le chiavi il cui valore deve essere fornito a runtime.

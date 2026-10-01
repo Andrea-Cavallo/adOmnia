@@ -588,6 +588,7 @@ func (s *Service) StartDependencyAction(request DependencyActionRequest) (Execut
 var supportedRunKinds = map[string]bool{
 	"build": true, "run": true, "test": true, "vet": true, "generate": true, "install": true, "tidy": true, "binary": true,
 	"make": true, "docker-build": true, "docker-run": true, "docker-compose": true,
+	"command": true, "go-tool": true,
 }
 
 // runCommandSpec traduce il tipo richiesto nell'eseguibile e negli argomenti strutturati, mai in una riga di shell.
@@ -661,6 +662,9 @@ func (s *Service) StartRun(request RunRequest) (Execution, error) {
 	}
 	if isToolRunKind(kind) {
 		return s.startToolRun(session, kind, workingDirectory, request)
+	}
+	if kind == string(RunKindCommand) || kind == string(RunKindGoTool) {
+		return s.startCommandRun(session, kind, workingDirectory, request)
 	}
 	target := strings.TrimSpace(request.Target)
 	if target == "" {

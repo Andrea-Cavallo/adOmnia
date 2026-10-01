@@ -185,6 +185,7 @@ export const GO_STUDIO_COMMAND_ICONS: Partial<Record<GoStudioCommandId, GoStudio
   'run.build': icon(Hammer),
   'run.buildPackage': icon(PackageOpen),
   'run.testPackage': icon(FlaskConical, TEST),
+  'run.context': icon(Play, TEST),
   'run.benchPackage': icon(Gauge, TEST),
   'run.vetPackage': icon(ShieldCheck),
   'run.testCoverage': icon(FlaskRound, TEST),
