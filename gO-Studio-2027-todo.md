@@ -41,7 +41,7 @@ _Le lacune che costringono ancora ad aprire un altro IDE._
 
 ### Session recovery
 
-- [ ] Persistenza delle configurazioni runtime ripristinabili: run config, terminal metadata, debug config, API tab, DB tab, Kafka/Broker tab e altri pannelli collegati. — *Parziale: run configuration, breakpoint e tab API si ripristinano già; mancano i metadati dei terminali (nome, shell, cartella) e le tab DB/Broker legate alla sessione Go.*
+- [ ] Persistenza delle configurazioni runtime ripristinabili: run config, terminal metadata, debug config, API tab, DB tab, Kafka/Broker tab e altri pannelli collegati. — *Parziale: run configuration, breakpoint, tab API e terminali (nome, shell, cartella relativa al progetto, `goStudioTerminalRestore.ts`) si ripristinano; mancano le tab DB/Broker: Database e Broker Studio non persistono ancora le tab aperte.*
 
 ### Storage e robustezza
 

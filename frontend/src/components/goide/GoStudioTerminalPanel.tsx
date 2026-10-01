@@ -4,6 +4,7 @@ import { ContextMenu } from '@/components/ui/ContextMenu'
 import { GoStudioTerminalView, closeTerminal, terminalHandle } from './GoStudioTerminalView'
 import { startGoStudioTerminalBus } from './goStudioTerminalBus'
 import { detectGoCommand, projectRelativePath, pushHistory, terminalLinkTarget, type GoStudioDetectedGoCommand, type GoStudioTerminalLink } from './goStudioTerminalLinks'
+import { readSavedTerminals, snapshotTerminals, writeSavedTerminals } from './goStudioTerminalRestore'
 import { useGoIDELspStore } from '@/stores/goideLsp'
 import { useGoIDEStore } from '@/stores/goide'
 import { useGoIDETestsStore } from '@/stores/goideTests'
@@ -70,6 +71,7 @@ export function GoStudioTerminalPanel({ session, visible }: GoStudioTerminalPane
   const [terminals, setTerminals] = useState<GoIDETerminalSession[]>([])
   const [loaded, setLoaded] = useState(false)
   const autoOpened = useRef(false)
+  const openedProfiles = useRef(new Map<string, string>())
   const [activeId, setActiveId] = useState<string | null>(null)
   // Il secondo terminale mostrato accanto al primo; null quando il pannello non è diviso.
   const [splitId, setSplitId] = useState<string | null>(null)
@@ -124,24 +126,28 @@ export function GoStudioTerminalPanel({ session, visible }: GoStudioTerminalPane
     }
   }, [session.id, session.project.realPath])
 
-  const open = useCallback(async (profile?: string, workingDirectory = '', asSplit = false) => {
+  const open = useCallback(async (profile?: string, workingDirectory = '', asSplit = false, name = '') => {
     setBusy(true)
     setError(null)
     try {
+      const chosenProfile = profile ?? defaultProfile
       const opened = await openGoIDETerminal({
         sessionId: session.id,
-        profile: profile ?? defaultProfile,
-        name: '',
+        profile: chosenProfile,
+        name,
         workingDirectory,
         columns: 80,
         rows: 24,
       })
+      openedProfiles.current.set(opened.id, chosenProfile)
       setTerminals((current) => [...current, opened])
       if (asSplit) setSplitId(opened.id)
       else setActiveId(opened.id)
       setFocusedId(opened.id)
+      return true
     } catch (reason) {
       setError(errorText(reason))
+      return false
     } finally {
       setBusy(false)
     }
@@ -156,11 +162,28 @@ export function GoStudioTerminalPanel({ session, visible }: GoStudioTerminalPane
     void open(undefined, terminalRequest.workingDirectory)
   }, [loaded, open, profilesLoaded, terminalRequest])
 
+  // Alla prima apertura si ripristinano i terminali dell'ultima volta (nome, shell, cartella); altrimenti una shell alla radice.
   useEffect(() => {
     if (!visible || !loaded || !profilesLoaded || !authorized || busy || terminals.length > 0 || autoOpened.current) return
     autoOpened.current = true
-    void open()
-  }, [authorized, busy, loaded, open, profilesLoaded, terminals.length, visible])
+    const saved = readSavedTerminals(session.project.realPath)
+    if (saved.length === 0) return void open()
+    void (async () => {
+      for (const item of saved) {
+        const profile = profiles.some((candidate) => candidate.id === item.profile) ? item.profile : undefined
+        // La cartella può non esistere più: si riapre alla radice del progetto.
+        if (!(await open(profile, item.workingDirectory, false, item.name)) && item.workingDirectory) await open(profile, '', false, item.name)
+      }
+    })()
+  }, [authorized, busy, loaded, open, profiles, profilesLoaded, session.project.realPath, terminals.length, visible])
+
+  // Salva solo dopo il caricamento e il primo ripristino, così una lista vuota iniziale non cancella quella salvata.
+  useEffect(() => {
+    if (!loaded || (!autoOpened.current && terminals.length === 0)) return
+    const projectPath = session.project.realPath
+    const roots = [session.project.rootPath, projectPath]
+    writeSavedTerminals(projectPath, snapshotTerminals(terminals, openedProfiles.current, readSavedTerminals(projectPath), roots))
+  }, [loaded, session.project.realPath, session.project.rootPath, terminals])
 
   const close = useCallback(async (terminalId: string) => {
     try {
