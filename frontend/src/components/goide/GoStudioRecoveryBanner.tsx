@@ -1,4 +1,5 @@
-import { AlertTriangle, FileClock, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { AlertTriangle, FileClock, ShieldAlert, X } from 'lucide-react'
 import { useGoIDEStore, type GoIDEState } from '@/stores/goide'
 
 /** Riferimento stabile: un array nuovo nel selettore Zustand fa ridisegnare all'infinito. */
@@ -26,9 +27,23 @@ export function GoStudioRecoveryBanner({ sessionId }: GoStudioRecoveryBannerProp
   const recovered = useGoIDEStore((state) => state.recoveredBySession[sessionId] ?? EMPTY_RECOVERED)
   const recoverBuffer = useGoIDEStore((state) => state.recoverBuffer)
   const discardRecoveredBuffer = useGoIDEStore((state) => state.discardRecoveredBuffer)
-  if (recovered.length === 0) return null
+  const [snapshotError, setSnapshotError] = useState<string | null>(null)
+  useEffect(() => {
+    const onError = (event: Event) => setSnapshotError((event as CustomEvent<string | null>).detail)
+    document.addEventListener('adomnia:go-recovery-error', onError)
+    return () => document.removeEventListener('adomnia:go-recovery-error', onError)
+  }, [])
+  const errorBar = snapshotError && (
+    <div role="alert" className="flex shrink-0 items-center gap-1.5 border-b border-danger/30 bg-danger/10 px-3 py-1.5 text-[10.5px] text-danger">
+      <ShieldAlert size={12} /> Unsaved changes are not protected against a crash: {snapshotError}. Save your files or free disk space.
+      <button type="button" onClick={() => setSnapshotError(null)} title="Dismiss" className="ml-auto grid h-5 w-5 place-items-center rounded hover:bg-danger/15"><X size={11} /></button>
+    </div>
+  )
+  if (recovered.length === 0) return errorBar || null
 
   return (
+    <>
+    {errorBar}
     <div role="status" className="shrink-0 border-b border-warning/30 bg-warning/10 px-3 py-2">
       <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-warning">
         <FileClock size={12} />
@@ -69,5 +84,6 @@ export function GoStudioRecoveryBanner({ sessionId }: GoStudioRecoveryBannerProp
         ))}
       </ul>
     </div>
+    </>
   )
 }

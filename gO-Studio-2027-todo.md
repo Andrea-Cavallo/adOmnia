@@ -21,13 +21,13 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
-| **P0** | Completare l'IDE Go di tutti i giorni | 77 | 16 |
+| **P0** | Completare l'IDE Go di tutti i giorni | 71 | 17 |
 | **P1** | Codice ↔ runtime: il motivo per usare adOmnia | 192 | 58 |
 | **P2** | Studi Go avanzati | 224 | 39 |
 | **P3** | AI e intelligenza del workspace | 189 | 24 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 122 | 45 |
 
-Voci chiuse e rimosse: 710 (287 trovate già implementate dall'audit del 2026-10-01).
+Voci chiuse e rimosse: 716 (287 trovate già implementate dall'audit del 2026-10-01).
 
 ---
 
@@ -43,19 +43,10 @@ _Le lacune che costringono ancora ad aprire un altro IDE._
 
 - [ ] Persistenza delle configurazioni runtime ripristinabili: run config, terminal metadata, debug config, API tab, DB tab, Kafka/Broker tab e altri pannelli collegati. — *Parziale: run configuration, breakpoint e tab API si ripristinano già; mancano i metadati dei terminali (nome, shell, cartella) e le tab DB/Broker legate alla sessione Go.*
 
-### Process recovery
-
-- [ ] Introdurre un `ProcessSupervisor` indipendente dalla UI.
-- [ ] Persistenza di un `ProcessDescriptor` minimo: tipo, comando, argomenti, working directory e restart policy.
-- [ ] Supportare restart policy `always`, `prompt`, `never`.
-- [ ] Chiedere conferma prima di rilanciare processi utente, server, debug session o comandi con side effect.
-
 ### Storage e robustezza
 
-- [ ] Recovery storage per workspace sotto `.adomnia/recovery/<workspace-id>/`.
-- [ ] Derivare `workspace-id` da un hash stabile del path normalizzato.
-- [ ] Gestire disco pieno, permessi negati, snapshot corrotta, file cancellato, workspace spostato e shutdown durante la scrittura. — *Parziale: gestiti snapshot corrotta (fallback alla precedente), file cancellato (missing), shutdown durante la scrittura (transazione bbolt) e store illeggibile; mancano messaggi dedicati per disco pieno/permessi e il riaggancio di un workspace spostato.*
-- [ ] Cleanup automatico delle recovery session vecchie dopo chiusura pulita o retention configurabile.
+- [ ] Recovery storage per workspace sotto `.adomnia/recovery/<workspace-id>/`. — *Parziale: le snapshot sono isolate per workspace-id (hash del percorso) nello store locale di adOmnia (bbolt in app data), non in una cartella per workspace; scelta voluta per non mettere codice non salvato dentro il repository.*
+- [ ] Gestire disco pieno, permessi negati, snapshot corrotta, file cancellato, workspace spostato e shutdown durante la scrittura. — *Parziale: gestiti snapshot corrotta, file cancellato, shutdown durante la scrittura (transazione bbolt), store illeggibile, e disco pieno/permessi (avviso rosso: il lavoro non è protetto); manca il riaggancio di un workspace spostato in un'altra cartella.*
 
 ### Test obbligatori
 

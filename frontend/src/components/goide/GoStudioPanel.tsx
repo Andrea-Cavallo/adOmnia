@@ -251,6 +251,13 @@ export function GoStudioPanel() {
     return () => window.removeEventListener('keydown', onKeyDown, true)
   }, [])
 
+  // Comandi chiesti da fuori del pannello (es. il rilancio dopo un crash): passano dallo stesso flusso dei menu.
+  useEffect(() => {
+    const onCommand = (event: Event) => runCommandRef.current((event as CustomEvent<GoStudioCommandId>).detail)
+    document.addEventListener('adomnia:go-studio-command', onCommand)
+    return () => document.removeEventListener('adomnia:go-studio-command', onCommand)
+  }, [])
+
   // Debug Request dall'API Workspace: avvia la configurazione Debug attiva del progetto indicato.
   useEffect(() => {
     const onDebugStart = (event: Event) => {

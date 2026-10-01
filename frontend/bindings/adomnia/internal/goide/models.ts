@@ -2896,6 +2896,63 @@ export class OpenDocument {
 }
 
 /**
+ * ProcessDescriptor è il minimo per riconoscere e rilanciare un'esecuzione interrotta da un crash.
+ * Non contiene segreti: il rilancio passa dalla configurazione, che li richiede di nuovo.
+ */
+export class ProcessDescriptor {
+    "runId": RunID;
+    "sessionId": SessionID;
+    "configId": string;
+    "configName": string;
+    "kind": string;
+    "command": string;
+    "workingDirectory": string;
+    "restartPolicy": string;
+    "startedAt": string;
+
+    /** Creates a new ProcessDescriptor instance. */
+    constructor($$source: Partial<ProcessDescriptor> = {}) {
+        if (!("runId" in $$source)) {
+            this["runId"] = "";
+        }
+        if (!("sessionId" in $$source)) {
+            this["sessionId"] = "";
+        }
+        if (!("configId" in $$source)) {
+            this["configId"] = "";
+        }
+        if (!("configName" in $$source)) {
+            this["configName"] = "";
+        }
+        if (!("kind" in $$source)) {
+            this["kind"] = "";
+        }
+        if (!("command" in $$source)) {
+            this["command"] = "";
+        }
+        if (!("workingDirectory" in $$source)) {
+            this["workingDirectory"] = "";
+        }
+        if (!("restartPolicy" in $$source)) {
+            this["restartPolicy"] = "";
+        }
+        if (!("startedAt" in $$source)) {
+            this["startedAt"] = "0001-01-01T00:00:00.000Z";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ProcessDescriptor instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ProcessDescriptor {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ProcessDescriptor($$parsedSource as Partial<ProcessDescriptor>);
+    }
+}
+
+/**
  * ProcessInfo descrive un processo locale a cui il debugger può agganciarsi.
  */
 export class ProcessInfo {
@@ -3420,6 +3477,11 @@ export class RunConfiguration {
      * RestartOnSave: un'esecuzione in corso riparte quando si salva un file Go del progetto.
      */
     "restartOnSave"?: boolean;
+
+    /**
+     * RestartPolicy dopo un crash di adOmnia: "" o prompt (si chiede), never, always.
+     */
+    "restartPolicy"?: string;
     "order": number;
     "createdAt": string;
     "updatedAt": string;

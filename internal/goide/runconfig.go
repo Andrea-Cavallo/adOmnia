@@ -290,6 +290,11 @@ func normalizeConfiguration(config RunConfiguration) (RunConfiguration, error) {
 		environment = append(environment, EnvironmentEntry{Key: key, Value: entry.Value, Secret: entry.Secret})
 	}
 	config.Environment = environment
+	policy, err := normalizeRestartPolicy(config.RestartPolicy)
+	if err != nil {
+		return RunConfiguration{}, err
+	}
+	config.RestartPolicy = policy
 	return config, nil
 }
 

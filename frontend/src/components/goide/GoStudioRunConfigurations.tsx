@@ -309,6 +309,14 @@ export function GoStudioRunConfigurations({ open, sessionId, initialDraft, onClo
                 <input type="checkbox" className="accent-accent" checked={!!draft.pinned} onChange={(event) => patch({ pinned: event.target.checked })} />
                 Pin
               </label>
+              <label className="flex items-center gap-1.5" title="What happens to this run if adOmnia closes unexpectedly while it is running.">
+                After a crash
+                <select value={draft.restartPolicy ?? ''} onChange={(event) => patch({ restartPolicy: event.target.value })} className="h-5 rounded border border-border-1 bg-surface-0 px-1 text-[10px] text-text-1">
+                  <option value="">Ask before relaunching</option>
+                  <option value="never">Never relaunch (migrations, scripts)</option>
+                  <option value="always">Relaunch automatically</option>
+                </select>
+              </label>
               {!isCompound && (
                 <label className="flex items-center gap-1.5" title="A running execution restarts when you save a Go file of the project.">
                   <input type="checkbox" className="accent-accent" checked={!!draft.restartOnSave} onChange={(event) => patch({ restartOnSave: event.target.checked })} />

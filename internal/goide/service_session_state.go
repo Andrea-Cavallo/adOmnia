@@ -93,6 +93,7 @@ func (s *Service) RememberBuffer(sessionID, relativePath, content, diskToken str
 	if _, err := s.documents.ResolveProjectPath(session.Project, relativePath); err != nil {
 		return err
 	}
+	s.recovery.BindWorkspace(session.ID, WorkspaceID(session.Project.RealPath))
 	return s.recovery.Remember(session.ID, relativePath, content, diskToken)
 }
 
@@ -113,6 +114,7 @@ func (s *Service) ListRecoveredBuffers(sessionID string) ([]RecoveredBuffer, err
 	if err != nil {
 		return nil, err
 	}
+	s.recovery.BindWorkspace(session.ID, WorkspaceID(session.Project.RealPath))
 	entries := s.recovery.List(session.ID)
 	buffers := make([]RecoveredBuffer, 0, len(entries))
 	for _, entry := range entries {

@@ -138,6 +138,8 @@ func (s *Service) StartConfiguredRun(sessionID, configID string, secrets map[str
 	if err != nil {
 		return Execution{}, err
 	}
+	// ponytail: con task "before launch" si traccia il primo passo; il rilancio riparte comunque dalla configurazione intera.
+	s.trackConfiguredRun(config, first)
 	if len(steps) > 1 {
 		go s.runChain(first, steps)
 	}

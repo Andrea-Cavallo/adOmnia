@@ -186,3 +186,32 @@ func TestCorruptSessionStateFallsBackWithoutBlockingStartup(t *testing.T) {
 		t.Fatalf("uno stato di sessione corrotto non deve impedire di aprire un progetto: %v", err)
 	}
 }
+
+func TestRecoveryFollowsTheWorkspaceAcrossSessionsAndExpiresOldSnapshots(t *testing.T) {
+	store := &memoryStore{}
+	manager := NewRecoveryManager(store)
+	workspace := WorkspaceID("/home/me/proj")
+	manager.BindWorkspace("old-session", workspace)
+	if err := manager.Remember("old-session", "main.go", "dirty", ""); err != nil {
+		t.Fatal(err)
+	}
+	// Il progetto viene riaperto con una sessione nuova: i buffer la seguono.
+	manager.BindWorkspace("new-session", workspace)
+	if got := manager.List("new-session"); len(got) != 1 || got[0].Content != "dirty" {
+		t.Fatalf("buffer non adottati: %+v", got)
+	}
+	if WorkspaceID("/home/me/proj/") != workspace || WorkspaceID("/home/me/other") == workspace {
+		t.Fatal("workspace id non stabile")
+	}
+
+	var state recoveryState
+	_ = json.Unmarshal(store.data, &state)
+	state.Buffers[0].SavedAt = time.Now().Add(-recoveryRetention - time.Hour)
+	state.Buffers[0].SnapshotHash = ""
+	store.data, _ = json.Marshal(state)
+	reloaded := NewRecoveryManager(store)
+	_ = reloaded.Load()
+	if len(reloaded.List("new-session")) != 0 {
+		t.Fatal("una snapshot oltre la retention va eliminata")
+	}
+}

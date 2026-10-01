@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, FileClock, LifeBuoy } from 'lucide-react'
+import { AlertTriangle, FileClock, LifeBuoy, Play, RotateCcw } from 'lucide-react'
 import { useModalFocusTrap } from '@/lib/accessibility'
-import { acknowledgeGoIDECrash, getGoIDECrashStatus, type GoIDECrashStatus } from '@/lib/goide-api'
+import { acknowledgeGoIDECrash, dismissGoIDEInterruptedProcess, getGoIDECrashStatus, listGoIDEInterruptedProcesses, type GoIDECrashStatus, type GoIDEProcessDescriptor } from '@/lib/goide-api'
 import { useGoIDEStore, type GoIDEState } from '@/stores/goide'
 import { RECOVERY_STATUS_LABEL, recoverySummary, type GoStudioRecoveryStatus } from './goStudioCrashRecovery'
 
@@ -21,15 +21,29 @@ const STATUS_CLASS: Record<GoStudioRecoveryStatus, string> = {
 export function GoStudioCrashRecoveryDialog({ sessionId }: { sessionId: string }) {
   const [crash, setCrash] = useState<GoIDECrashStatus | null>(null)
   const [review, setReview] = useState<Set<string>>(new Set())
+  const [processes, setProcesses] = useState<GoIDEProcessDescriptor[]>([])
+  const [relaunched, setRelaunched] = useState<string[]>([])
+  const trusted = useGoIDEStore((state) => state.sessions.find((item) => item.id === sessionId)?.project.authorization === 'tooling-permitted')
   const dialogRef = useRef<HTMLDivElement>(null)
   const recovered = useGoIDEStore((state) => state.recoveredBySession[sessionId] ?? EMPTY)
   const recoverBuffer = useGoIDEStore((state) => state.recoverBuffer)
   const discardRecoveredBuffer = useGoIDEStore((state) => state.discardRecoveredBuffer)
-  const open = !!crash?.previousCrashed && recovered.length > 0
+  const open = !!crash?.previousCrashed && (recovered.length > 0 || processes.length > 0 || relaunched.length > 0)
 
   useEffect(() => {
     void getGoIDECrashStatus().then(setCrash).catch(() => setCrash(null))
-  }, [])
+    void listGoIDEInterruptedProcesses().then((list) => setProcesses(list.filter((item) => item.sessionId === sessionId))).catch(() => undefined)
+  }, [sessionId])
+
+  // Restart policy "always": l'utente l'ha scelta per quella configurazione, si rilancia da sola (se il progetto è fidato).
+  useEffect(() => {
+    if (!crash?.previousCrashed || !trusted) return
+    const automatic = processes.filter((item) => item.restartPolicy === 'always')
+    if (automatic.length === 0) return
+    for (const item of automatic) relaunch(item)
+    setRelaunched((current) => [...current, ...automatic.map((item) => item.configName)])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [crash, processes, trusted])
 
   const close = () => {
     setCrash(null)
@@ -39,8 +53,20 @@ export function GoStudioCrashRecoveryDialog({ sessionId }: { sessionId: string }
 
   // Crash senza nulla da recuperare: basta chiudere la proposta, il banner non serve.
   useEffect(() => {
-    if (crash?.previousCrashed && recovered.length === 0) void acknowledgeGoIDECrash().catch(() => undefined)
-  }, [crash, recovered.length])
+    if (crash?.previousCrashed && recovered.length === 0 && processes.length === 0 && relaunched.length === 0) void acknowledgeGoIDECrash().catch(() => undefined)
+  }, [crash, processes.length, recovered.length, relaunched.length])
+
+  function dismiss(item: GoIDEProcessDescriptor) {
+    setProcesses((current) => current.filter((other) => other.runId !== item.runId))
+    void dismissGoIDEInterruptedProcess(item.runId).catch(() => undefined)
+  }
+
+  // Il rilancio passa dal Run normale: Trust, segreti e task before launch restano quelli della configurazione.
+  function relaunch(item: GoIDEProcessDescriptor) {
+    useGoIDEStore.getState().selectRunConfiguration(item.configId)
+    document.dispatchEvent(new CustomEvent('adomnia:go-studio-command', { detail: 'run.run' }))
+    dismiss(item)
+  }
 
   const rows = useMemo(() => recovered.map((buffer) => ({
     buffer,
@@ -79,12 +105,31 @@ export function GoStudioCrashRecoveryDialog({ sessionId }: { sessionId: string }
           <div className="min-w-0">
             <h2 id="go-crash-title" className="text-sm font-semibold text-text-1">adOmnia closed unexpectedly</h2>
             <p className="mt-0.5 text-[11px] leading-4 text-text-3">
-              {rows.length} unsaved file{rows.length === 1 ? ' was' : 's were'} recovered{crash?.lastHeartbeat ? ` (last seen ${new Date(crash.lastHeartbeat).toLocaleString()})` : ''}.
+              {rows.length > 0 ? `${rows.length} unsaved file${rows.length === 1 ? ' was' : 's were'} recovered` : 'No unsaved file was lost'}{crash?.lastHeartbeat ? ` (last seen ${new Date(crash.lastHeartbeat).toLocaleString()})` : ''}.
               Restored text opens as unsaved changes: nothing is written to disk until you save.
               {conflicts > 0 && ` ${conflicts} file${conflicts === 1 ? '' : 's'} changed on disk after the snapshot.`}
             </p>
           </div>
         </div>
+        {(processes.length > 0 || relaunched.length > 0) && (
+          <section className="shrink-0 border-b border-border-1 px-5 py-2.5">
+            <h3 className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-text-4">Runs interrupted by the crash</h3>
+            {relaunched.map((name) => (
+              <p key={name} className="flex items-center gap-1.5 text-[11px] text-success"><RotateCcw size={11} /> {name}: relaunched automatically (restart policy: always)</p>
+            ))}
+            {processes.map((item) => (
+              <div key={item.runId} className="flex h-7 items-center gap-2 text-[11px]">
+                <span className="min-w-0 flex-1 truncate text-text-1" title={item.command}>{item.configName} <span className="font-mono text-[10px] text-text-4">{item.command}</span></span>
+                {item.restartPolicy === 'never' ? (
+                  <span className="shrink-0 text-[10px] text-text-4">Not relaunched (restart policy: never)</span>
+                ) : (
+                  <button type="button" disabled={!trusted} title={trusted ? 'Run this configuration again' : 'Trust the project to run it'} onClick={() => relaunch(item)} className="flex shrink-0 items-center gap-1 rounded border border-border-1 px-2 py-0.5 text-[10px] text-text-1 hover:border-accent disabled:opacity-35"><Play size={10} /> Relaunch</button>
+                )}
+                <button type="button" onClick={() => dismiss(item)} className="shrink-0 rounded px-2 py-0.5 text-[10px] text-text-3 hover:bg-surface-2">Dismiss</button>
+              </div>
+            ))}
+          </section>
+        )}
         <ul className="min-h-0 flex-1 divide-y divide-border-1 overflow-auto">
           {rows.map(({ buffer, status, summary }) => (
             <li key={buffer.relativePath} className="px-5 py-2">

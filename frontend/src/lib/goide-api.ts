@@ -377,6 +377,17 @@ export async function getGoIDECrashStatus(): Promise<GoIDECrashStatus> {
   return GoIDEBindings.CrashRecoveryStatus()
 }
 
+export type GoIDEProcessDescriptor = Awaited<ReturnType<typeof GoIDEBindings.InterruptedProcesses>>[number]
+
+/** Esecuzioni delle configurazioni Run ancora in corso quando adOmnia si è chiusa in modo anomalo. */
+export async function listGoIDEInterruptedProcesses(): Promise<GoIDEProcessDescriptor[]> {
+  return (await GoIDEBindings.InterruptedProcesses()) ?? []
+}
+
+export async function dismissGoIDEInterruptedProcess(runId: string): Promise<void> {
+  await GoIDEBindings.DismissInterruptedProcess(runId)
+}
+
 export async function acknowledgeGoIDECrash(): Promise<void> {
   await GoIDEBindings.AcknowledgeCrash()
 }
