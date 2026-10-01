@@ -19,4 +19,5 @@ func report(rect geo.Rect) string {
 
 func main() {
 	fmt.Println(report(geo.Rect{Width: 3, Height: 4}))
+	fmt.Println(geo.Scale(2, 3))
 }

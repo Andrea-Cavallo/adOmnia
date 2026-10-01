@@ -11,6 +11,9 @@ export {
     Pause,
     Query,
     RequestRun,
+    RuntimeComponent,
+    RuntimeEdge,
+    RuntimeEnrichment,
     SQLProxy,
     Session,
     Snapshot

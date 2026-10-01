@@ -127,3 +127,36 @@ export const unwatchLiveKafka = (sessionId: string) => DevSessionBindings.Unwatc
 export const startSqlCapture = (sessionId: string, kind: string, target: string, port: number) =>
   DevSessionBindings.StartSQLCapture(sessionId, kind, target, port) as Promise<SessionTools>
 export const stopSqlCapture = (sessionId: string) => DevSessionBindings.StopSQLCapture(sessionId) as Promise<SessionTools>
+
+export type RuntimeComponentKind = 'route' | 'file' | 'datasource' | 'topic'
+
+export interface RuntimeComponent {
+  key: string
+  kind: RuntimeComponentKind
+  calls: number
+  avgMs?: number
+  maxMs?: number
+  errors?: number
+}
+
+export interface RuntimeEdge {
+  from: string
+  to: string
+  kind: 'hit' | 'query' | 'message'
+  count: number
+}
+
+export interface RuntimeEnrichment {
+  service: string
+  goSessionId: string
+  components: RuntimeComponent[]
+  edges: RuntimeEdge[]
+  usedFunctions: string[]
+  unusedModules: string[]
+  totalRequests: number
+  totalErrors: number
+}
+
+/** Overlays the live session telemetry of a gO project on its static picture. */
+export const getRuntimeEnrichment = (goSessionId: string, moduleDirectory: string) =>
+  DevSessionBindings.RuntimeEnrichment(goSessionId, moduleDirectory) as Promise<RuntimeEnrichment>

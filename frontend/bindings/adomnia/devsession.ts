@@ -89,6 +89,18 @@ export function Queries(runID: string): $CancellablePromise<devsession$0.Query[]
 }
 
 /**
+ * RuntimeEnrichment overlays the live telemetry of a gO project on its static
+ * picture: components actually used, call frequency, latency, errors, dynamic
+ * edges and runtime-only integrations. When a module directory is given, the
+ * static dependency graph marks the modules that never ran.
+ */
+export function RuntimeEnrichment(goSessionID: string, moduleDirectory: string): $CancellablePromise<devsession$0.RuntimeEnrichment> {
+    return $Call.ByID(2819190200, goSessionID, moduleDirectory).then(($result: any) => {
+        return $$createType8($result);
+    });
+}
+
+/**
  * SetPort fixes the port of a live session by hand.
  */
 export function SetPort(sessionID: string, port: number): $CancellablePromise<void> {
@@ -108,7 +120,7 @@ export function SetServiceName(goSessionID: string, name: string): $CancellableP
  */
 export function StartSQLCapture(sessionID: string, kind: string, target: string, port: number): $CancellablePromise<$models.SessionTools> {
     return $Call.ByID(398041767, sessionID, kind, target, port).then(($result: any) => {
-        return $$createType8($result);
+        return $$createType9($result);
     });
 }
 
@@ -131,7 +143,7 @@ export function Stop(sessionID: string): $CancellablePromise<void> {
  */
 export function StopSQLCapture(sessionID: string): $CancellablePromise<$models.SessionTools> {
     return $Call.ByID(1386855709, sessionID).then(($result: any) => {
-        return $$createType8($result);
+        return $$createType9($result);
     });
 }
 
@@ -140,7 +152,7 @@ export function StopSQLCapture(sessionID: string): $CancellablePromise<$models.S
  */
 export function Tools(sessionID: string): $CancellablePromise<$models.SessionTools> {
     return $Call.ByID(1256491582, sessionID).then(($result: any) => {
-        return $$createType8($result);
+        return $$createType9($result);
     });
 }
 
@@ -149,7 +161,7 @@ export function Tools(sessionID: string): $CancellablePromise<$models.SessionToo
  */
 export function UnwatchKafka(sessionID: string): $CancellablePromise<$models.SessionTools> {
     return $Call.ByID(2754274663, sessionID).then(($result: any) => {
-        return $$createType8($result);
+        return $$createType9($result);
     });
 }
 
@@ -166,7 +178,7 @@ export function WaitReady(sessionID: string, healthPath: string, timeoutMs: numb
  */
 export function WatchKafka(sessionID: string, brokers: string[], topics: string[]): $CancellablePromise<$models.SessionTools> {
     return $Call.ByID(2204050460, sessionID, brokers, topics).then(($result: any) => {
-        return $$createType8($result);
+        return $$createType9($result);
     });
 }
 
@@ -179,4 +191,5 @@ const $$createType4 = devsession$0.Message.createFrom;
 const $$createType5 = $Create.Array($$createType4);
 const $$createType6 = devsession$0.Query.createFrom;
 const $$createType7 = $Create.Array($$createType6);
-const $$createType8 = $models.SessionTools.createFrom;
+const $$createType8 = devsession$0.RuntimeEnrichment.createFrom;
+const $$createType9 = $models.SessionTools.createFrom;

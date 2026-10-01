@@ -882,6 +882,12 @@ func (g *GoIDE) CodeActions(ctx context.Context, sessionID, documentID string, s
 }
 
 // ResolveCodeAction calcola l'anteprima delle modifiche dell'azione.
+// ChangeSignature riordina o rimuove parametri e risultati della funzione al cursore (anteprima).
+func (g *GoIDE) ChangeSignature(ctx context.Context, sessionID, documentID string, caret goide.EditorRange, params, results []int) (goide.WorkspaceChange, error) {
+	value, err := g.service.ChangeSignature(ctx, sessionID, documentID, caret, params, results)
+	return settleCancelled(ctx, value, err)
+}
+
 func (g *GoIDE) ResolveCodeAction(ctx context.Context, sessionID, actionID string) (goide.WorkspaceChange, error) {
 	value, err := g.service.ResolveCodeAction(ctx, sessionID, actionID)
 	return settleCancelled(ctx, value, err)

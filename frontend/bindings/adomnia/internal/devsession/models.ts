@@ -430,6 +430,164 @@ export class RequestRun {
 }
 
 /**
+ * RuntimeComponent is a route, source file, datasource or broker topic that the
+ * running service actually exercised, with its call frequency and health.
+ */
+export class RuntimeComponent {
+    "key": string;
+
+    /**
+     * "route" | "file" | "datasource" | "topic"
+     */
+    "kind": string;
+    "calls": number;
+    "avgMs"?: number;
+    "maxMs"?: number;
+    "errors"?: number;
+
+    /** Creates a new RuntimeComponent instance. */
+    constructor($$source: Partial<RuntimeComponent> = {}) {
+        if (!("key" in $$source)) {
+            this["key"] = "";
+        }
+        if (!("kind" in $$source)) {
+            this["kind"] = "";
+        }
+        if (!("calls" in $$source)) {
+            this["calls"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new RuntimeComponent instance from a string or object.
+     */
+    static createFrom($$source: any = {}): RuntimeComponent {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new RuntimeComponent($$parsedSource as Partial<RuntimeComponent>);
+    }
+}
+
+/**
+ * RuntimeEdge is a dynamic, runtime-only connection: a route that hit a source
+ * file, ran a query against a datasource or produced a broker message.
+ */
+export class RuntimeEdge {
+    /**
+     * route key
+     */
+    "from": string;
+
+    /**
+     * component key
+     */
+    "to": string;
+
+    /**
+     * "hit" | "query" | "message"
+     */
+    "kind": string;
+    "count": number;
+
+    /** Creates a new RuntimeEdge instance. */
+    constructor($$source: Partial<RuntimeEdge> = {}) {
+        if (!("from" in $$source)) {
+            this["from"] = "";
+        }
+        if (!("to" in $$source)) {
+            this["to"] = "";
+        }
+        if (!("kind" in $$source)) {
+            this["kind"] = "";
+        }
+        if (!("count" in $$source)) {
+            this["count"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new RuntimeEdge instance from a string or object.
+     */
+    static createFrom($$source: any = {}): RuntimeEdge {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new RuntimeEdge($$parsedSource as Partial<RuntimeEdge>);
+    }
+}
+
+/**
+ * RuntimeEnrichment overlays the live session telemetry on the static picture:
+ * which components ran, how often, how slow, with what errors, and which
+ * static dependencies never appeared at runtime.
+ */
+export class RuntimeEnrichment {
+    "service": string;
+    "goSessionId": string;
+    "components": RuntimeComponent[];
+    "edges": RuntimeEdge[];
+    "usedFunctions": string[];
+    "unusedModules": string[];
+    "totalRequests": number;
+    "totalErrors": number;
+
+    /** Creates a new RuntimeEnrichment instance. */
+    constructor($$source: Partial<RuntimeEnrichment> = {}) {
+        if (!("service" in $$source)) {
+            this["service"] = "";
+        }
+        if (!("goSessionId" in $$source)) {
+            this["goSessionId"] = "";
+        }
+        if (!("components" in $$source)) {
+            this["components"] = [];
+        }
+        if (!("edges" in $$source)) {
+            this["edges"] = [];
+        }
+        if (!("usedFunctions" in $$source)) {
+            this["usedFunctions"] = [];
+        }
+        if (!("unusedModules" in $$source)) {
+            this["unusedModules"] = [];
+        }
+        if (!("totalRequests" in $$source)) {
+            this["totalRequests"] = 0;
+        }
+        if (!("totalErrors" in $$source)) {
+            this["totalErrors"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new RuntimeEnrichment instance from a string or object.
+     */
+    static createFrom($$source: any = {}): RuntimeEnrichment {
+        const $$createField2_0 = $$createType7;
+        const $$createField3_0 = $$createType9;
+        const $$createField4_0 = $$createType2;
+        const $$createField5_0 = $$createType2;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("components" in $$parsedSource) {
+            $$parsedSource["components"] = $$createField2_0($$parsedSource["components"]);
+        }
+        if ("edges" in $$parsedSource) {
+            $$parsedSource["edges"] = $$createField3_0($$parsedSource["edges"]);
+        }
+        if ("usedFunctions" in $$parsedSource) {
+            $$parsedSource["usedFunctions"] = $$createField4_0($$parsedSource["usedFunctions"]);
+        }
+        if ("unusedModules" in $$parsedSource) {
+            $$parsedSource["unusedModules"] = $$createField5_0($$parsedSource["unusedModules"]);
+        }
+        return new RuntimeEnrichment($$parsedSource as Partial<RuntimeEnrichment>);
+    }
+}
+
+/**
  * SQLProxy is an opt-in, loopback-only TCP proxy between a service and its
  * database. It forwards every byte unchanged and reads the statements the
  * client sends (Postgres simple/extended query, MySQL COM_QUERY/PREPARE).
@@ -537,7 +695,7 @@ export class Session {
      * Creates a new Session instance from a string or object.
      */
     static createFrom($$source: any = {}): Session {
-        const $$createField11_0 = $$createType7;
+        const $$createField11_0 = $$createType11;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("pause" in $$parsedSource) {
             $$parsedSource["pause"] = $$createField11_0($$parsedSource["pause"]);
@@ -569,8 +727,8 @@ export class Snapshot {
      * Creates a new Snapshot instance from a string or object.
      */
     static createFrom($$source: any = {}): Snapshot {
-        const $$createField0_0 = $$createType9;
-        const $$createField1_0 = $$createType11;
+        const $$createField0_0 = $$createType13;
+        const $$createField1_0 = $$createType15;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("sessions" in $$parsedSource) {
             $$parsedSource["sessions"] = $$createField0_0($$parsedSource["sessions"]);
@@ -589,9 +747,13 @@ const $$createType2 = $Create.Array($Create.Any);
 const $$createType3 = $Create.Map($Create.Any, $Create.Any);
 const $$createType4 = Hit.createFrom;
 const $$createType5 = $Create.Array($$createType4);
-const $$createType6 = Pause.createFrom;
-const $$createType7 = $Create.Nullable($$createType6);
-const $$createType8 = Session.createFrom;
+const $$createType6 = RuntimeComponent.createFrom;
+const $$createType7 = $Create.Array($$createType6);
+const $$createType8 = RuntimeEdge.createFrom;
 const $$createType9 = $Create.Array($$createType8);
-const $$createType10 = RequestRun.createFrom;
-const $$createType11 = $Create.Array($$createType10);
+const $$createType10 = Pause.createFrom;
+const $$createType11 = $Create.Nullable($$createType10);
+const $$createType12 = Session.createFrom;
+const $$createType13 = $Create.Array($$createType12);
+const $$createType14 = RequestRun.createFrom;
+const $$createType15 = $Create.Array($$createType14);

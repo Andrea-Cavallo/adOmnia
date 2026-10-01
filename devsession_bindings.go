@@ -161,6 +161,26 @@ func loadServiceNames() map[string]string {
 // GetSnapshot returns the live sessions and recent request runs.
 func (d *DevSession) GetSnapshot() devsession.Snapshot { return d.manager.Snapshot() }
 
+// RuntimeEnrichment overlays the live telemetry of a gO project on its static
+// picture: components actually used, call frequency, latency, errors, dynamic
+// edges and runtime-only integrations. When a module directory is given, the
+// static dependency graph marks the modules that never ran.
+func (d *DevSession) RuntimeEnrichment(goSessionID, moduleDirectory string) devsession.RuntimeEnrichment {
+	enrichment := d.manager.RuntimeEnrichment(goSessionID)
+	if strings.TrimSpace(moduleDirectory) != "" {
+		if graph, err := d.goIDE.service.DependencyGraph(goSessionID, moduleDirectory); err == nil {
+			modules := make([]string, 0, len(graph.Nodes))
+			for _, node := range graph.Nodes {
+				if !node.Main {
+					modules = append(modules, node.Path)
+				}
+			}
+			devsession.MarkUnusedModules(&enrichment, modules)
+		}
+	}
+	return enrichment
+}
+
 // BeginRequest registers a request about to be sent; an empty id means the
 // URL does not point at a live session.
 func (d *DevSession) BeginRequest(request devsession.BeginRequest) (devsession.RequestRun, error) {

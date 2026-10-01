@@ -1,5 +1,6 @@
 import type { GoStudioResourceMode } from '@/components/goide/goStudioResourceMode'
 import type { GoStudioEditorMode } from '@/components/goide/goStudioEditorModes'
+import type { GoStudioSignature } from '@/components/goide/goStudioChangeSignature'
 import { create } from 'zustand'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 import type { CancellablePromise } from '@wailsio/runtime'
@@ -125,6 +126,8 @@ interface GoIDELspState {
   /** Menu Code → Generate… aperto accanto al cursore. */
   generateMenu: { x: number; y: number } | null
   implementRequest: GoIDEImplementRequest | null
+  /** Change Signature aperto sulla firma letta dal cursore. */
+  changeSignatureRequest: { sessionId: string; documentId: string; signature: GoStudioSignature } | null
   renameRequest: { sessionId: string; documentId: string; line: number; column: number } | null
   findRequest: { token: number; query: string; include?: string } | null
   /** Apre Find in Files; include limita la ricerca, es. "internal/api/**" per Find in Folder. */
@@ -214,6 +217,7 @@ export const useGoIDELspStore = create<GoIDELspState>((set, get) => ({
   hierarchy: null,
   generateMenu: null,
   implementRequest: null,
+  changeSignatureRequest: null,
   renameRequest: null,
   findRequest: null,
   terminalRequest: null,

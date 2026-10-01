@@ -129,3 +129,43 @@ func hasCreatedFile(change WorkspaceChange) bool {
 	}
 	return false
 }
+
+func TestChangeSignatureWithRealGoplsRewritesCallers(t *testing.T) {
+	gopls := findGoplsForTest(t)
+	root := copyFixture(t, "refactor")
+	recorder := &eventRecorder{}
+	service := NewService(&memoryStore{}, recorder.record)
+	t.Cleanup(service.Shutdown)
+	session := startLanguageServerForTest(t, service, recorder, root, gopls)
+	sessionID := string(session.ID)
+	document, err := service.OpenDocument(sessionID, "geo/geo.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	line, column := positionOf(t, document.Content, "Scale(", 0)
+	caret := EditorRange{StartLine: line, StartColumn: column, EndLine: line, EndColumn: column}
+	// Parametri invertiti, risultato invariato.
+	change, err := service.ChangeSignature(context.Background(), sessionID, string(document.Document.ID), caret, []int{1, 0}, []int{0})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.ChangeSignature(context.Background(), sessionID, string(document.Document.ID), caret, []int{-1}, nil); err == nil {
+		t.Fatal("un indice negativo va rifiutato")
+	}
+	tree := copyTree(t, root)
+	combined := ""
+	for _, file := range change.Files {
+		if err := os.WriteFile(filepath.Join(tree, filepath.FromSlash(file.RelativePath)), []byte(file.NewContent), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		combined += file.NewContent
+	}
+	if !strings.Contains(combined, "func Scale(factor, value int) int") && !strings.Contains(combined, "func Scale(factor int, value int) int") || !strings.Contains(combined, "geo.Scale(3, 2)") {
+		t.Fatalf("firma o chiamante non riscritti (%d file):\n%s", len(change.Files), combined)
+	}
+	build := exec.Command("go", "build", "./...")
+	build.Dir = tree
+	if output, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("il codice dopo Change Signature non compila: %v\n%s\n%s", err, output, combined)
+	}
+}

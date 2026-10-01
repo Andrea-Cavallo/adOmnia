@@ -10,6 +10,7 @@ import { DEFAULT_RUN_DRAFT, runRequest } from './goStudioRunDraft'
 import { ToolchainDialog } from './GoStudioToolchains'
 import { GoStudioDependencies } from './GoStudioDependencies'
 import { GoStudioDependencyGraph } from './GoStudioDependencyGraph'
+import { GoStudioRuntimeEnrichment } from './GoStudioRuntimeEnrichment'
 import { ConflictResolverDialog } from '@/components/workspace/git/ConflictResolverDialog'
 import { GoStudioQuickOpen } from './GoStudioQuickOpen'
 import { GoStudioRecoveryBanner } from './GoStudioRecoveryBanner'
@@ -54,6 +55,7 @@ import type { GoIDERunConfiguration } from '@/lib/goide-api'
 import { useGoStudioCloseFlow } from './useGoStudioCloseFlow'
 import { GoStudioCaretPopup } from './GoStudioCaretPopup'
 import { GoStudioImplementInterfaceDialog } from './GoStudioImplementInterfaceDialog'
+import { GoStudioChangeSignatureDialog } from './GoStudioChangeSignatureDialog'
 import { GoStudioSearchEverywhere } from './GoStudioSearchEverywhere'
 import { createDoubleShiftDetector } from './goStudioSearchRanking'
 import { runGoStudioBenchmarks, runGoStudioQuickCommand, runModuleDependencyAction } from './goStudioQuickActions'
@@ -167,6 +169,7 @@ export function GoStudioPanel() {
   const [toolchainOpen, setToolchainOpen] = useState(false)
   const [dependenciesOpen, setDependenciesOpen] = useState(false)
   const [dependencyGraphOpen, setDependencyGraphOpen] = useState(false)
+  const [runtimeEnrichmentOpen, setRuntimeEnrichmentOpen] = useState(false)
   const [runDraft] = useState(DEFAULT_RUN_DRAFT)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -613,6 +616,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
         return store.updateLayout({ structureOpen: true, structureWidth: Math.max(340, store.layout.structureWidth) })
       case 'tools.copilotCompletions': return void useCopilotStore.getState().toggleCompletions()
       case 'tools.dependencyGraph': return setDependencyGraphOpen(true)
+      case 'tools.runtimeEnrichment': return setRuntimeEnrichmentOpen(true)
     }
   }
   runCommandRef.current = runCommand
@@ -659,6 +663,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       <GoStudioGoWorkDialog open={goWorkOpen} sessionId={activeSession.id} onClose={() => setGoWorkOpen(false)} />
       <GoStudioGenerateMenu />
       <GoStudioImplementInterfaceDialog />
+      <GoStudioChangeSignatureDialog />
       {sharedDialogs}
       {store.activeSessionId && <GoStudioRunConfigurations open={configureOpen} sessionId={store.activeSessionId} initialDraft={configDraft} onClose={() => { setConfigureOpen(false); setConfigDraft(null) }} />}
       <GoStudioSecretsPrompt
@@ -674,6 +679,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       <ToolchainDialog open={toolchainOpen} onClose={() => setToolchainOpen(false)} onRunCommand={runCommand} />
       <GoStudioDependencies open={dependenciesOpen} session={activeSession} onClose={() => setDependenciesOpen(false)} />
       <GoStudioDependencyGraph open={dependencyGraphOpen} session={activeSession} onClose={() => setDependencyGraphOpen(false)} />
+      <GoStudioRuntimeEnrichment open={runtimeEnrichmentOpen} session={activeSession} onClose={() => setRuntimeEnrichmentOpen(false)} />
       <GoStudioSearchEverywhere open={searchEverywhereOpen} sessionId={activeSession.id} availability={(id) => commandAvailability(id, commandContext)} onCommand={runCommand} onClose={() => setSearchEverywhereOpen(false)} />
       <GoStudioCommitDialog sessionId={activeSession.id} open={vcsDialog === 'commit'} onClose={() => setVcsDialog(null)} onResolveConflicts={() => setVcsDialog('conflicts')} />
       {vcsDialog === 'conflicts' && vcs.vcsRepoRoot && (

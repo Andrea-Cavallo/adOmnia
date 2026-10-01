@@ -142,6 +142,7 @@ export const GO_STUDIO_COMMAND_ICONS: Partial<Record<GoStudioCommandId, GoStudio
   'code.extractFunction': icon(FileCode2),
   'code.inline': icon(ArrowUpDown),
   'code.moveToNewFile': icon(FilePlus2),
+  'code.changeSignature': icon(PenLine),
   'code.reformat': icon(AlignLeft),
   'code.organizeImports': icon(ListChecks),
   'code.lint': icon(Radar),

@@ -7,10 +7,12 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 ## [Unreleased]
 
 ### Added
+- **Change Signature in Go Studio:** *Code → Change Signature…* (Ctrl+F6) reorders or removes parameters; gopls rewrites the declaration and every call in one previewed change.
 - **Merge editor in Go Studio:** *Git → Resolve Conflicts…* opens the three-way conflict editor without leaving the IDE; each conflict block now has *Ours*, *Theirs*, *Both* and *Base* buttons (also in Git Studio), with a live count of conflicts left.
 - **Crash recovery follows a moved project:** unsaved-buffer snapshots of a project whose folder was moved or renamed are offered again when it is opened at the new location (matched by its `go.mod` module path, only if the old folder is gone).
 - **Go Studio terminals come back:** reopening a project reopens its terminals with the same name, shell and folder (relative to the project, so a moved project still works); only metadata is saved, never output or processes, and the shells start only on a trusted project when the Terminal tab opens.
 - **Dependency Graph in Go Studio:** *Tools → Dependency Graph…* shows the module dependency tree (direct → transitive), duplicate transitive dependencies with who requires each version, per-module license, estimated weight and package-count impact, plus **unused** and **indirect** indicators. **Check updates** reports the latest available version (`go list -m -u`) and **Scan vulnerabilities** runs `govulncheck` on demand; both need the network, while the graph itself is computed offline.
+- **Runtime Enrichment in Go Studio:** *Tools → Runtime Enrichment…* overlays the Live Development Session telemetry on the static picture — components actually exercised (routes, source files, datasources, broker topics), call frequency, average and max latency, error counts, dynamic edges (request → file / query / topic) and runtime-only integrations. With a module selected it also flags the static dependencies that never appeared at runtime.
 
 ## [0.9.50] - 2026-10-01
 

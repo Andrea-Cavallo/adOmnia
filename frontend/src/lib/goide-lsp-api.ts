@@ -190,6 +190,11 @@ export function requestCodeActions(sessionId: string, documentId: string, select
   return GoIDEBindings.CodeActions(sessionId, documentId, selection, only)
 }
 
+/** Riordina o rimuove parametri e risultati (indici dei campi attuali) di firma e chiamate; restituisce l'anteprima. */
+export function requestChangeSignature(sessionId: string, documentId: string, caret: EditorRange, params: number[], results: number[]): CancellablePromise<WorkspaceChange> {
+  return GoIDEBindings.ChangeSignature(sessionId, documentId, caret, params, results)
+}
+
 export function requestResolveCodeAction(sessionId: string, actionId: string): CancellablePromise<WorkspaceChange> {
   return GoIDEBindings.ResolveCodeAction(sessionId, actionId)
 }

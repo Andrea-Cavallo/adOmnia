@@ -21,7 +21,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
-| **P0** | Completare l'IDE Go di tutti i giorni | 52 | 11 |
+| **P0** | Completare l'IDE Go di tutti i giorni | 51 | 10 |
 | **P1** | Codice ↔ runtime: il motivo per usare adOmnia | 192 | 58 |
 | **P2** | Studi Go avanzati | 224 | 39 |
 | **P3** | AI e intelligenza del workspace | 189 | 24 |
@@ -64,7 +64,7 @@ _Le lacune che costringono ancora ad aprire un altro IDE._
 ### Refactoring
 
 - [ ] Move symbol. — *oggi Move to New File (gopls); spostare un simbolo in un altro package non è ancora supportato da gopls.*
-- [ ] Change signature. — *parziale: le riscritture di gopls (rimuovi parametro inutilizzato, sposta parametro) sono in Refactor This; manca un dialog completo.*
+- [x] Change signature. — *Fatto: Code → Change Signature… (Ctrl+F6) riordina/rimuove parametri con `gopls.change_signature`, firma e chiamate in un'unica anteprima. Aggiungere parametri non è ancora supportato da gopls 0.23.*
 
 ## §3 · gopls Integration
 
@@ -607,13 +607,15 @@ _Profiler, benchmark, fuzzing, sicurezza, architettura e diagnosi del codice._
 
 ### Runtime enrichment
 
-- [ ] Evidenziare componenti realmente usati.
-- [ ] Mostrare call frequency.
-- [ ] Mostrare latency.
-- [ ] Mostrare errors.
-- [ ] Mostrare dependencies non usate.
-- [ ] Mostrare edge dinamici.
-- [ ] Mostrare runtime-only integration.
+- [x] Evidenziare componenti realmente usati.
+- [x] Mostrare call frequency.
+- [x] Mostrare latency.
+- [x] Mostrare errors.
+- [x] Mostrare dependencies non usate.
+- [x] Mostrare edge dinamici.
+- [x] Mostrare runtime-only integration.
+
+_Implementato in `Tools → Runtime Enrichment…`: sovrappone la telemetria della Live Session (richieste, breakpoint, query SQL, messaggi broker) alla vista statica — componenti usati, call frequency, latency media/max, errori, edge dinamici richiesta→file/query/topic, integrazioni solo runtime (datasource, topic) e dipendenze statiche senza evidenza runtime. Backend `internal/devsession/enrichment.go`._
 
 ### UX
 

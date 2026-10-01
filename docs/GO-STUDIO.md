@@ -282,6 +282,7 @@ Go Studio follows the GoLand keymap. The table below is generated from the comma
 | Extract Function/Method | Ctrl+Alt+M | ⌘⌥M |
 | Inline | Ctrl+Alt+N | ⌘⌥N |
 | Move to New File | F6 | F6 |
+| Change Signature (reorder or remove parameters; gopls rewrites every call, preview first) | Ctrl+F6 | ⌘F6 |
 | Reformat Code | Ctrl+Alt+L | ⌘⌥L |
 | Optimize Imports | Ctrl+Alt+O | ⌘⌥O |
 | Run Linter | Ctrl+Alt+Shift+L | ⌘⌥⇧L |

@@ -459,6 +459,47 @@ func (m *LSPManager) ResolveCodeAction(ctx context.Context, sessionID SessionID,
 	return m.executeCommand(ctx, state, process, action.Title, *action.Command)
 }
 
+const maxSignatureItems = 64
+
+func signatureArguments(indexes []int) ([]int, error) {
+	if len(indexes) > maxSignatureItems {
+		return nil, fmt.Errorf("troppi parametri nella nuova firma")
+	}
+	for _, index := range indexes {
+		if index < 0 || index >= maxSignatureItems {
+			return nil, fmt.Errorf("indice di parametro non valido: %d", index)
+		}
+	}
+	return append([]int{}, indexes...), nil
+}
+
+// ChangeSignature riscrive la firma della funzione sotto il cursore e tutte le chiamate con
+// gopls.change_signature. params e results sono gli indici dei campi attuali nel nuovo ordine:
+// un indice assente rimuove il campo. gopls non sa ancora aggiungere parametri nuovi.
+func (m *LSPManager) ChangeSignature(ctx context.Context, sessionID SessionID, documentID DocumentID, caret EditorRange, params, results []int) (WorkspaceChange, error) {
+	newParams, err := signatureArguments(params)
+	if err != nil {
+		return WorkspaceChange{}, err
+	}
+	newResults, err := signatureArguments(results)
+	if err != nil {
+		return WorkspaceChange{}, err
+	}
+	document, process, err := m.snapshot(sessionID, documentID)
+	if err != nil {
+		return WorkspaceChange{}, err
+	}
+	state, _ := m.get(sessionID)
+	location := lsp.Location{URI: document.uri, Range: lsp.Range{Start: lspPosition(caret.StartLine, caret.StartColumn), End: lspPosition(caret.EndLine, caret.EndColumn)}}
+	argument, err := json.Marshal(map[string]any{"Location": location, "NewParams": newParams, "NewResults": newResults, "ResolveEdits": false})
+	if err != nil {
+		return WorkspaceChange{}, err
+	}
+	ctx, cancel := context.WithTimeout(ctx, 2*defaultRequestTimeout)
+	defer cancel()
+	return m.executeCommand(ctx, state, process, "Change Signature", lsp.Command{Command: "gopls.change_signature", Arguments: []json.RawMessage{argument}})
+}
+
 // executeCommand esegue un comando gopls e raccoglie gli workspace/applyEdit emessi durante l'esecuzione.
 func (m *LSPManager) executeCommand(ctx context.Context, state *lspSession, process *serverProcess, label string, command lsp.Command) (WorkspaceChange, error) {
 	state.mu.Lock()

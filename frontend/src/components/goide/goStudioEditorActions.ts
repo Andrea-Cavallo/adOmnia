@@ -8,6 +8,7 @@ import { goToTest } from './goStudioCodeGen'
 import { requestImplementInterface } from './goStudioImplementInterface'
 import { runGoStudioRefactoring, type GoStudioRefactoring } from './goStudioRefactorings'
 import { goToSuperMethod } from './goStudioImplementationMarkers'
+import { openChangeSignature } from './GoStudioChangeSignatureDialog'
 
 export const GO_STUDIO_ACTIONS = {
   findUsages: 'goStudio.findUsages',
@@ -34,6 +35,7 @@ export const GO_STUDIO_ACTIONS = {
   extractFunction: 'goStudio.extractFunction',
   inline: 'goStudio.inline',
   moveToNewFile: 'goStudio.moveToNewFile',
+  changeSignature: 'goStudio.changeSignature',
 } as const
 
 const { KeyMod, KeyCode } = monaco
@@ -133,5 +135,6 @@ export function installGoStudioEditorActions(editor: monaco.editor.IStandaloneCo
   refactoring(GO_STUDIO_ACTIONS.extractFunction, 'Extract Function/Method', KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.KeyM, 'extractFunction')
   refactoring(GO_STUDIO_ACTIONS.inline, 'Inline', KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.KeyN, 'inline')
   refactoring(GO_STUDIO_ACTIONS.moveToNewFile, 'Move to New File', KeyCode.F6, 'moveToNewFile')
+  editor.addAction({ id: GO_STUDIO_ACTIONS.changeSignature, label: 'Change Signature…', keybindings: [KeyMod.CtrlCmd | KeyCode.F6], contextMenuGroupId: '1_modification', run: (target) => { void openChangeSignature(target) } })
   editor.addAction({ id: GO_STUDIO_ACTIONS.fileStructure, label: 'File Structure', keybindings: [KeyMod.CtrlCmd | KeyCode.F12], run: (target) => { target.trigger('go-studio', 'editor.action.quickOutline', null) } })
 }

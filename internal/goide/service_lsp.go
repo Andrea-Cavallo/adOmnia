@@ -155,6 +155,11 @@ func (s *Service) CodeActions(ctx context.Context, sessionID, documentID string,
 	return s.lsp.CodeActions(ctx, SessionID(sessionID), DocumentID(documentID), selection, only)
 }
 
+// ChangeSignature calcola la modifica di firma e chiamate (anteprima, niente viene scritto).
+func (s *Service) ChangeSignature(ctx context.Context, sessionID, documentID string, caret EditorRange, params, results []int) (WorkspaceChange, error) {
+	return s.lsp.ChangeSignature(ctx, SessionID(sessionID), DocumentID(documentID), caret, params, results)
+}
+
 // ResolveCodeAction calcola l'anteprima delle modifiche dell'azione scelta.
 func (s *Service) ResolveCodeAction(ctx context.Context, sessionID, actionID string) (WorkspaceChange, error) {
 	return s.lsp.ResolveCodeAction(ctx, SessionID(sessionID), actionID)
