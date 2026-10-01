@@ -68,6 +68,8 @@ Managed tools are installed into `<data>/goide/tools/bin`. A tool on `PATH`, or 
 
 `<data>` is `%APPDATA%\adomnia` on Windows and `~/.config/adomnia` on macOS and Linux.
 
+**More Go tools.** *Go → Toolchains* also lists **govulncheck**, **goimports**, **mockgen** and **stringer**, plus any tool you add (binary name and, optionally, a `module@version` to install it). Each is found in adOmnia's tools folder, `GOBIN`, `GOPATH/bin` or the `PATH`; **Install…** runs `go install` with the project SDK after confirmation, **Run…** runs it with your arguments in a project folder (no shell), with the output in the Run console. Running needs a trusted project.
+
 ## Makefiles and Dockerfiles
 
 Go Studio runs Makefiles and Dockerfiles with the real `make` and `docker`, and streams their output to the Run console like `go run`. Any file type opened in the editor is highlighted: HTML, CSS, JavaScript/TypeScript, SQL, XML/WSDL, Protobuf, shell, PowerShell, Dockerfile, Makefile, `.env`, TOML/INI and more.
@@ -191,15 +193,17 @@ Go Studio follows the GoLand keymap. The table below is generated from the comma
 
 **Keymaps and custom shortcuts.** *Help → Keyboard Shortcuts* switches between the **GoLand** (default) and **VS Code** keymaps, searches actions by name or by key (`ctrl shift f`), and lets you click any shortcut to record a new one, remove it or reset it. Shortcuts shared by two actions are flagged; the first available action wins. Choices are stored on this machine. *View → Vim Mode* / *Emacs Mode* turn on keyboard emulation in the editor (monaco-vim / monaco-emacs, loaded only when enabled). The table below lists the GoLand defaults.
 
+**Settings** (*File → Settings…*, Ctrl+Alt+S) gathers every Go Studio preference in one searchable dialog: editor, save actions, gopls options, low-resource mode, plus links to keymap, toolchains, tool paths and Copilot.
+
 **Search Everywhere** (Shift Shift) also finds tests and benchmarks (Enter runs them in the Test Explorer), run configurations (Enter runs them), adOmnia settings (Enter opens the right Settings section) and actions by shortcut; with an empty query it shows the recently used actions.
 
 ### File
 
 | Action | Windows / Linux | macOS |
 | --- | --- | --- |
+| Settings… | Ctrl+Alt+S | ⌘⌥S |
 | Open Project | Ctrl+O | ⌘O |
 | Save | Ctrl+S | ⌘S |
-| Settings… | Ctrl+Alt+S | ⌘⌥S |
 | Save All | Ctrl+Shift+S | ⌘⇧S |
 | Close Editor | Ctrl+W | ⌘W |
 | Reopen Closed Tab | Ctrl+Shift+T | ⌘⇧T |
@@ -337,13 +341,17 @@ Go Studio integrates GitHub Copilot through the official **GitHub Copilot Langua
 
 **Ghost text.** Suggestions appear as you type in any editable file: **Tab** accepts, **Esc** dismisses, **Ctrl+→** accepts word by word, **Alt+]** / **Alt+[** browse alternatives. Every keystroke cancels the previous request (`$/cancelRequest`), and a suggestion computed on an older buffer is discarded. *Tools → Toggle Copilot Inline Completions* turns them off without disabling Copilot.
 
+**Ask chat.** *Tools → Open Copilot Chat* (or the sparkle on the right tool stripe) opens a per-project conversation. The message can include the current file, the live Monaco selection and a filtered workspace manifest. Only the active buffer and explicit selection include source text; workspace context is a bounded path manifest. Built-in secret exclusions and `.adomnia/aiignore` apply before context reaches the language server. Replies stream into the pane, **Stop** cancels the active JSON-RPC request, and **New Chat** destroys the server conversation. Chat history is session-only and never written to the project.
+
+**Right assistant tool window.** Copilot and **AI di a0** are separate choices in the same right column as Structure and Project. Each stripe button opens or closes the column. a0 uses the provider verified in *Settings → AI Engine* and keeps its existing API-workspace actions; the former global floating launcher and popup no longer exist.
+
 **Network.** A company proxy (with TLS verification on by default) and a company CA bundle (PEM, added to the system trust store through `NODE_EXTRA_CA_CERTS`) can be set in the dialog. TLS verification is never disabled.
 
 **Privacy and data.** Your workspace stays local. When Copilot is on, the open file and nearby code are sent to the GitHub host of the selected account. `.env`, `.env.*`, keys and certificates (`*.pem`, `*.key`, `*.p12`, `*.jks`…), SSH/AWS/GnuPG folders, `secrets/**` and every pattern in the project's `.adomnia/aiignore` (one glob per line, `dir/**` for folders) are never sent. adOmnia has no telemetry and asks the language server to turn its telemetry off. The GitHub token is kept by the language server in its own credential store; adOmnia's `copilot.json` holds only profiles, hosts, bindings and network settings.
 
 **Resilience.** If the language server crashes it restarts after 1, 2, 5 and 10 seconds; after that Copilot pauses with *Restart* and *Show logs*. gopls, the debugger, Git, the terminal and the rest of Go Studio keep working whether Copilot is on, off or failing.
 
-Chat, Edit and Agent modes with adOmnia tools (Go, debugger, API Workspace, databases, Kafka, Git) are the next phases; see `todo-ide.md`.
+Edit and Agent modes with adOmnia tools (Go, debugger, API Workspace, databases, Kafka, Git) are the next phases; see `todo-ide.md`. Ask chat is implemented and automatically tested, with its real-account manual check still open.
 
 ## Known limits
 

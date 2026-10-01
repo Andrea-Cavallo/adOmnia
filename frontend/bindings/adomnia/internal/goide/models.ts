@@ -1915,6 +1915,41 @@ export class GoReplacement {
 }
 
 /**
+ * GoToolInfo dice dove si trova un tool Go (govulncheck, goimports, mockgen, stringer o uno dell'utente).
+ */
+export class GoToolInfo {
+    "binary": string;
+    "available": boolean;
+    "path"?: string;
+
+    /**
+     * Source: managed (cartella strumenti di adOmnia), gobin, gopath o path.
+     */
+    "source"?: string;
+    "error"?: string;
+
+    /** Creates a new GoToolInfo instance. */
+    constructor($$source: Partial<GoToolInfo> = {}) {
+        if (!("binary" in $$source)) {
+            this["binary"] = "";
+        }
+        if (!("available" in $$source)) {
+            this["available"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new GoToolInfo instance from a string or object.
+     */
+    static createFrom($$source: any = {}): GoToolInfo {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new GoToolInfo($$parsedSource as Partial<GoToolInfo>);
+    }
+}
+
+/**
  * GoToolPreview descrive il comando esatto prima dell'esecuzione.
  */
 export class GoToolPreview {

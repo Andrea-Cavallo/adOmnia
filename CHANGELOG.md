@@ -6,6 +6,20 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.9.50] - 2026-10-01
+
+### Added
+- **Copilot Ask Chat in Go Studio:** a per-project streaming chat backed by the official Copilot Language Server. Each message can carry the current file, the live Monaco selection and a bounded, secret-filtered workspace-manifest context. Replies stream into the pane; **Stop** cancels the active JSON-RPC request and **New Chat** destroys the server conversation. The built-in secret exclusions and `.adomnia/aiignore` are enforced before context reaches the language server, and chat history is session-only.
+- **Extra Go Tools:** *Go → Toolchains* now detects, installs and runs **govulncheck**, **goimports**, **mockgen** and **stringer**, plus any user-defined tool (binary name, optional `module@version`). Tools are found in adOmnia's tools folder, `GOBIN`, `GOPATH/bin` or the `PATH`; **Install…** runs `go install` with the project SDK after confirmation, **Run…** runs the tool with structured arguments in a project folder (no shell) and streams output to the Run console.
+- **AI di a0 tool window:** the provider-configured a0 assistant now lives in the same closable right tool window as Structure and Project — a separate choice from Copilot — instead of the former global floating launcher and popup.
+
+### Changed
+- **Unified Settings dialog** (*File → Settings…*, Ctrl+Alt+S) gathers every Go Studio preference in one searchable dialog, with links to keymap, toolchains, tool paths and Copilot.
+- **Right assistant tool window:** Copilot and AI di a0 are separate stripe choices in the same closable column; each button opens or closes it.
+
+### Fixed
+- **Copilot lifecycle hardening:** workspace notifications are gated on server initialization; Copilot starts only with an active project; one active workspace per account/project; and chat resolves a valid model via `copilot/models` (`{}`) before the first turn, so an empty model cache no longer mislabels or drops chat.
+
 ## [0.9.49] - 2026-09-30
 
 ### Added

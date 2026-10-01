@@ -24,6 +24,8 @@ func (h *handler) HandleNotification(method string, params json.RawMessage) {
 		return
 	}
 	switch method {
+	case "$/progress":
+		h.manager.handleChatProgress(params)
 	case "didChangeStatus":
 		var status serverStatus
 		if json.Unmarshal(params, &status) == nil {
@@ -45,6 +47,14 @@ func (h *handler) HandleNotification(method string, params json.RawMessage) {
 
 func (h *handler) HandleRequest(_ context.Context, method string, params json.RawMessage) (any, error) {
 	switch method {
+	case "conversation/context":
+		var request struct {
+			SkillID string `json:"skillId"`
+		}
+		if json.Unmarshal(params, &request) != nil || request.SkillID != "current-editor" {
+			return nil, nil
+		}
+		return h.manager.currentEditorContext(), nil
 	case "window/showDocument":
 		var request struct {
 			URI      string `json:"uri"`

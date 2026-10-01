@@ -10,6 +10,114 @@ import { Create as $Create } from "@wailsio/runtime";
 import * as json$0 from "../../../encoding/json/models.js";
 
 /**
+ * ChatRequest descrive un turno Ask. Token è generato dal frontend e collega progress/cancel.
+ */
+export class ChatRequest {
+    "token": string;
+    "conversationId"?: string;
+    "turnId"?: string;
+    "message": string;
+    "documentId"?: string;
+    "selection"?: ChatSelection | null;
+    "includeDocument": boolean;
+    "includeWorkspace": boolean;
+
+    /** Creates a new ChatRequest instance. */
+    constructor($$source: Partial<ChatRequest> = {}) {
+        if (!("token" in $$source)) {
+            this["token"] = "";
+        }
+        if (!("message" in $$source)) {
+            this["message"] = "";
+        }
+        if (!("includeDocument" in $$source)) {
+            this["includeDocument"] = false;
+        }
+        if (!("includeWorkspace" in $$source)) {
+            this["includeWorkspace"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ChatRequest instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ChatRequest {
+        const $$createField5_0 = $$createType1;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("selection" in $$parsedSource) {
+            $$parsedSource["selection"] = $$createField5_0($$parsedSource["selection"]);
+        }
+        return new ChatRequest($$parsedSource as Partial<ChatRequest>);
+    }
+}
+
+export class ChatResponse {
+    "conversationId": string;
+    "turnId"?: string;
+    "token": string;
+    "model"?: string;
+
+    /** Creates a new ChatResponse instance. */
+    constructor($$source: Partial<ChatResponse> = {}) {
+        if (!("conversationId" in $$source)) {
+            this["conversationId"] = "";
+        }
+        if (!("token" in $$source)) {
+            this["token"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ChatResponse instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ChatResponse {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ChatResponse($$parsedSource as Partial<ChatResponse>);
+    }
+}
+
+/**
+ * ChatSelection usa posizioni LSP zero-based. Il testo viene ricavato dal buffer sincronizzato,
+ * mai accettato dal renderer: il filtro segreti resta un solo confine nel backend.
+ */
+export class ChatSelection {
+    "startLine": number;
+    "startCharacter": number;
+    "endLine": number;
+    "endCharacter": number;
+
+    /** Creates a new ChatSelection instance. */
+    constructor($$source: Partial<ChatSelection> = {}) {
+        if (!("startLine" in $$source)) {
+            this["startLine"] = 0;
+        }
+        if (!("startCharacter" in $$source)) {
+            this["startCharacter"] = 0;
+        }
+        if (!("endLine" in $$source)) {
+            this["endLine"] = 0;
+        }
+        if (!("endCharacter" in $$source)) {
+            this["endCharacter"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ChatSelection instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ChatSelection {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ChatSelection($$parsedSource as Partial<ChatSelection>);
+    }
+}
+
+/**
  * GitHubProfile è un account GitHub configurato. Non contiene mai token: le credenziali restano
  * nell'archivio del Copilot Language Server, adOmnia salva solo host e nome.
  */
@@ -293,9 +401,9 @@ export class Settings {
      * Creates a new Settings instance from a string or object.
      */
     static createFrom($$source: any = {}): Settings {
-        const $$createField3_0 = $$createType1;
-        const $$createField4_0 = $$createType2;
-        const $$createField5_0 = $$createType3;
+        const $$createField3_0 = $$createType3;
+        const $$createField4_0 = $$createType4;
+        const $$createField5_0 = $$createType5;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("profiles" in $$parsedSource) {
             $$parsedSource["profiles"] = $$createField3_0($$parsedSource["profiles"]);
@@ -403,8 +511,8 @@ export class Status {
      * Creates a new Status instance from a string or object.
      */
     static createFrom($$source: any = {}): Status {
-        const $$createField4_0 = $$createType0;
-        const $$createField5_0 = $$createType4;
+        const $$createField4_0 = $$createType2;
+        const $$createField5_0 = $$createType6;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("profile" in $$parsedSource) {
             $$parsedSource["profile"] = $$createField4_0($$parsedSource["profile"]);
@@ -417,8 +525,10 @@ export class Status {
 }
 
 // Private type creation functions
-const $$createType0 = GitHubProfile.createFrom;
-const $$createType1 = $Create.Array($$createType0);
-const $$createType2 = $Create.Map($Create.Any, $Create.Any);
-const $$createType3 = ProxySettings.createFrom;
-const $$createType4 = ServerBinary.createFrom;
+const $$createType0 = ChatSelection.createFrom;
+const $$createType1 = $Create.Nullable($$createType0);
+const $$createType2 = GitHubProfile.createFrom;
+const $$createType3 = $Create.Array($$createType2);
+const $$createType4 = $Create.Map($Create.Any, $Create.Any);
+const $$createType5 = ProxySettings.createFrom;
+const $$createType6 = ServerBinary.createFrom;

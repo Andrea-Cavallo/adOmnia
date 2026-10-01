@@ -21,13 +21,13 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
-| **P0** | Completare l'IDE Go di tutti i giorni | 70 | 16 |
+| **P0** | Completare l'IDE Go di tutti i giorni | 65 | 13 |
 | **P1** | Codice ↔ runtime: il motivo per usare adOmnia | 192 | 58 |
 | **P2** | Studi Go avanzati | 224 | 39 |
 | **P3** | AI e intelligenza del workspace | 189 | 24 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 122 | 45 |
 
-Voci chiuse e rimosse: 717 (287 trovate già implementate dall'audit del 2026-10-01).
+Voci chiuse e rimosse: 722 (287 trovate già implementate dall'audit del 2026-10-01).
 
 ---
 
@@ -77,16 +77,6 @@ _Le lacune che costringono ancora ad aprire un altro IDE._
 - [ ] Vista module dependency. — *le dipendenze di un modulo ci sono (Module Dependencies); il grafo tra moduli → §19.*
 - [ ] Supporto monorepo. — *funziona (multi-modulo, go.work); manca una misura delle prestazioni su monorepo grandi.*
 - [ ] Project graph. — *→ §15 Architecture Explorer.*
-
-## §5 · Go Toolchain Manager
-
-### Tool support
-
-- [ ] `govulncheck`. — *Parziale: Esiste solo l'opzione `Vulncheck` di gopls (`lsp_types.go`, comando `code.vulncheck`). Manca un tool govulncheck rilevato e installabile.*
-- [ ] `goimports`. — *Parziale: Imports gestiti da gopls (`code.importsOnSave`). Non c'è un binario `goimports` rilevato o installabile.*
-- [ ] `mockgen` / alternative configurabili.
-- [ ] `stringer`.
-- [ ] Tool custom definiti dall'utente. — *Parziale: Si possono impostare solo i percorsi di gopls, linter, dlv e make (`GoStudioToolPathsDialog.tsx`). Mancano tool arbitrari definiti dall'utente.*
 
 ## §7 · Debugger Go con Delve
 

@@ -104,7 +104,7 @@ Architettura: Copilot Language Server ufficiale (completamento, login, enterpris
 - [ ] **C3** — Proxy aziendale + CA bundle; kill del processo `copilot-language-server` e riavvio automatico
 
 **Prossime fasi**
-- [ ] Chat laterale (Ask) con contesto file/selezione/workspace, streaming e Stop
+- [ ] Chat laterale (Ask) con contesto file/selezione/workspace, streaming e Stop — implementazione, test automatici e round-trip reale sul Language Server 1.551.2 completati; resta la prova visuale nella finestra Wails
 - [ ] Edit mode con diff (accept/reject hunk, file, tutto)
 - [ ] Agent mode con Tool Registry adOmnia (workspace, go build/test/vet/fmt, git, terminal con CommandPolicy) e Permission Manager
 - [ ] Tool debugger (Delve), API Workspace, database (read-only di default), Kafka, SOAP/gRPC, log

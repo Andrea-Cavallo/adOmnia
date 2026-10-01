@@ -39,6 +39,8 @@ Backend, correlation and the Delve loop are covered end to end by `internal/goid
 
 Implemented and covered by automated tests on Windows and Linux: projects and trust, isolated sessions and restore, gopls intelligence and refactoring, linters, Fix with AI, build/run/tests/coverage, the Delve debugger, the PTY terminal, Go Tools, Git in the editor linked to Git Studio, adOmnia integrations, Go Studio workspaces and separate project windows. Details: [GO-STUDIO.md](GO-STUDIO.md). The work queue lives in `todo-ide.md`.
 
+Copilot ghost text and the per-project Ask chat are implemented. The chat streams answers, supports Stop/New Chat and filters file, selection and workspace-manifest context through the same secret and `.adomnia/aiignore` boundary. Automated coverage is present; the real-account UI check remains open.
+
 Open:
 
 - [ ] **P1 — Manual checks in the running app** (M1–M31 in `todo-ide.md`): real-project flows on Windows, Task Manager clean-up, ConPTY in the window, debugger from the UI, themes, and the quality bar compared with the approved mocks.

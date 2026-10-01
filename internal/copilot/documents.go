@@ -6,7 +6,6 @@ import (
 	"errors"
 	"net/url"
 	"path/filepath"
-	"sort"
 
 	"adomnia/internal/goide/lsp"
 )
@@ -35,22 +34,18 @@ func (m *Manager) DocumentOpened(opened OpenedDocument) {
 		m.mu.Unlock()
 		return
 	}
-	tracked := &document{uri: opened.URI, root: opened.Root, languageID: opened.LanguageID, version: 1, text: opened.Text}
+	tracked := &document{uri: opened.URI, root: opened.Root, path: filepath.Join(opened.Root, filepath.FromSlash(opened.RelativePath)), relativePath: opened.RelativePath, languageID: opened.LanguageID, version: 1, text: opened.Text}
 	m.documents[opened.URI] = tracked
 	m.byID[opened.ID] = opened.URI
-	_, knownFolder := m.folders[opened.Root]
-	if !knownFolder && opened.Root != "" {
+	if _, knownFolder := m.folders[opened.Root]; !knownFolder && opened.Root != "" {
 		m.folders[opened.Root] = opened.RootName
 	}
 	running := m.current
+	active := opened.Root == m.root
+	ready := running != nil && running.initialized
 	m.mu.Unlock()
-	if running == nil {
+	if !ready || !active {
 		return
-	}
-	if !knownFolder && opened.Root != "" {
-		_ = running.conn.Notify("workspace/didChangeWorkspaceFolders", map[string]any{"event": map[string]any{
-			"added": []map[string]string{{"uri": fileURI(opened.Root), "name": opened.RootName}}, "removed": []any{},
-		}})
 	}
 	_ = running.conn.Notify("textDocument/didOpen", map[string]any{"textDocument": lsp.TextDocumentItem{
 		URI: tracked.uri, LanguageID: tracked.languageID, Version: 1, Text: tracked.text,
@@ -69,8 +64,10 @@ func (m *Manager) DocumentChanged(documentID string, version int, text string) {
 	tracked.text = text
 	running := m.current
 	uri := tracked.uri
+	active := tracked.root == m.root
+	ready := running != nil && running.initialized
 	m.mu.Unlock()
-	if running != nil {
+	if ready && active {
 		_ = running.conn.Notify("textDocument/didChange", map[string]any{
 			"textDocument":   lsp.VersionedTextDocumentIdentifier{URI: uri, Version: version},
 			"contentChanges": []map[string]string{{"text": text}},
@@ -85,6 +82,12 @@ func (m *Manager) DocumentSaved(documentID string) {
 
 // DocumentFocused comunica il file attivo: migliora la pertinenza dei suggerimenti.
 func (m *Manager) DocumentFocused(documentID string) {
+	m.mu.Lock()
+	uri := m.byID[documentID]
+	if tracked := m.documents[uri]; tracked != nil && tracked.root == m.root {
+		m.focusedURI = uri
+	}
+	m.mu.Unlock()
 	m.notifyDocument(documentID, "textDocument/didFocus")
 }
 
@@ -92,13 +95,19 @@ func (m *Manager) DocumentFocused(documentID string) {
 func (m *Manager) DocumentClosed(documentID string) {
 	m.mu.Lock()
 	uri, ok := m.byID[documentID]
+	tracked := m.documents[uri]
 	if ok {
 		delete(m.byID, documentID)
 		delete(m.documents, uri)
+		if m.focusedURI == uri {
+			m.focusedURI = ""
+		}
 	}
 	running := m.current
+	active := tracked != nil && tracked.root == m.root
+	ready := running != nil && running.initialized
 	m.mu.Unlock()
-	if ok && running != nil {
+	if ok && ready && active {
 		_ = running.conn.Notify("textDocument/didClose", map[string]any{"textDocument": lsp.TextDocumentIdentifier{URI: uri}})
 	}
 }
@@ -106,9 +115,12 @@ func (m *Manager) DocumentClosed(documentID string) {
 func (m *Manager) notifyDocument(documentID, method string) {
 	m.mu.Lock()
 	uri, ok := m.byID[documentID]
+	tracked := m.documents[uri]
 	running := m.current
+	ready := running != nil && running.initialized
+	active := tracked != nil && tracked.root == m.root
 	m.mu.Unlock()
-	if ok && running != nil {
+	if ok && ready && active {
 		_ = running.conn.Notify(method, map[string]any{"textDocument": lsp.TextDocumentIdentifier{URI: uri}})
 	}
 }
@@ -125,7 +137,9 @@ func (m *Manager) reopenDocuments(running *process) {
 	m.mu.Lock()
 	documents := make([]document, 0, len(m.documents))
 	for _, tracked := range m.documents {
-		documents = append(documents, *tracked)
+		if tracked.root == m.root {
+			documents = append(documents, *tracked)
+		}
 	}
 	m.mu.Unlock()
 	for _, tracked := range documents {
@@ -136,16 +150,14 @@ func (m *Manager) reopenDocuments(running *process) {
 }
 
 func (m *Manager) workspaceFoldersLocked() []map[string]string {
-	roots := make([]string, 0, len(m.folders))
-	for root := range m.folders {
-		roots = append(roots, root)
+	if m.root == "" {
+		return []map[string]string{}
 	}
-	sort.Strings(roots)
-	folders := make([]map[string]string, 0, len(roots))
-	for _, root := range roots {
-		folders = append(folders, map[string]string{"uri": fileURI(root), "name": m.folders[root]})
+	name := m.folders[m.root]
+	if name == "" {
+		name = filepath.Base(m.root)
 	}
-	return folders
+	return []map[string]string{{"uri": fileURI(m.root), "name": name}}
 }
 
 // InlineCompletionRequest usa posizioni Monaco (1-based, UTF-16), come il resto di gO Studio.
@@ -193,11 +205,12 @@ func (m *Manager) InlineCompletion(ctx context.Context, request InlineCompletion
 	if tracked != nil {
 		uri, version = tracked.uri, tracked.version
 	}
+	active := tracked != nil && tracked.root == m.root
 	m.mu.Unlock()
 	if !enabled || running == nil {
 		return []InlineCompletionItem{}, nil
 	}
-	if tracked == nil {
+	if tracked == nil || !active {
 		return []InlineCompletionItem{}, ErrExcluded
 	}
 	if request.Version > version {

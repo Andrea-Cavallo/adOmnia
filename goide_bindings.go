@@ -1108,6 +1108,21 @@ func (g *GoIDE) CrashRecoveryStatus() goide.CrashStatus {
 	return g.service.CrashRecoveryStatus()
 }
 
+// DetectGoTool cerca un tool Go (govulncheck, goimports, mockgen, stringer o personalizzato).
+func (g *GoIDE) DetectGoTool(sessionID, binary string) (goide.GoToolInfo, error) {
+	return g.service.DetectGoTool(sessionID, binary)
+}
+
+// InstallGoModule esegue go install di un modulo@versione nella cartella strumenti, dopo conferma.
+func (g *GoIDE) InstallGoModule(sessionID, module string, confirmed bool) (goide.Execution, error) {
+	return g.service.InstallGoModule(sessionID, module, confirmed)
+}
+
+// RunGoTool esegue un tool Go rilevato con argomenti strutturati nella cartella indicata.
+func (g *GoIDE) RunGoTool(sessionID, binary string, arguments []string, workingDirectory string) (goide.Execution, error) {
+	return g.service.RunGoTool(sessionID, binary, arguments, workingDirectory)
+}
+
 // InterruptedProcesses elenca le esecuzioni interrotte dal crash dell'avvio precedente.
 func (g *GoIDE) InterruptedProcesses() []goide.ProcessDescriptor {
 	return g.service.InterruptedProcesses()
