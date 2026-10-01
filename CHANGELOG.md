@@ -6,6 +6,9 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Added
+- **Quick model switch in chat:** Copilot Chat lists the models available to the signed-in account and switches by starting a clean conversation; AI di a0 switches from its own header, verifies the selected model first, and keeps the current model if verification fails. Custom a0 model IDs remain supported without opening Settings.
+
 ### Fixed
 - **Debugger error chain:** *Resolve wrapped errors* now reads `fmt.Errorf` wrappers directly (`*fmt.wrapError`), so it also works when the program never calls `Unwrap()` and the linker removed it; other error types still call `Unwrap()`.
 - **Tool versions cached:** gopls, Delve and linter versions are read once per binary (size + date) and remembered across restarts; terminal shells (`wsl -l -q`) are re-detected at most every 5 minutes.

@@ -1035,8 +1035,8 @@ A Go IDE inside adOmnia. Projects open without running anything; local tools run
 | J3.1 | **Linters** | golangci-lint or staticcheck with the project's configuration, lint on save, quick fixes and line suppression. |
 | J3.2 | **Fix with AI** | Quick fix and Problems action that sends the file (and the local package of an `undefined: pkg.Name` error) to the configured AI provider; the answer can touch only those files and always opens in a preview. |
 | J3.3 | **Problems Window** | gopls, linter and build problems grouped by file with navigation. |
-| J3.4 | **Copilot Ask Chat** | Per-project streaming chat backed by the official Copilot language server, with optional current-file, live-selection and filtered workspace-manifest context, Stop and New Chat. Secret patterns and `.adomnia/aiignore` are enforced before context is sent; history remains session-only. |
-| J3.5 | **AI di a0 Tool Window** | The existing provider-configured a0 assistant lives in the same closable right tool window as Structure, Project and Copilot instead of a floating launcher. It keeps its API-workspace actions, local permission boundary and verified-provider requirement. |
+| J3.4 | **Copilot Ask Chat** | Per-project streaming chat backed by the official Copilot language server, with optional current-file, live-selection and filtered workspace-manifest context, Stop and New Chat. Its header lists account-available chat models and starts a clean conversation when the model changes. Secret patterns and `.adomnia/aiignore` are enforced before context is sent; history remains session-only. |
+| J3.5 | **AI di a0 Tool Window** | The existing provider-configured a0 assistant lives in the same closable right tool window as Structure, Project and Copilot instead of a floating launcher. Its header switches cached or custom model IDs after live verification, without opening Settings. It keeps its API-workspace actions, local permission boundary and verified-provider requirement. |
 
 ### J4. Run, Test & Debug
 

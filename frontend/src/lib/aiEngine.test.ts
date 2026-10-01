@@ -64,4 +64,13 @@ describe('withAIConfig', () => {
     expect(config).toMatchObject({ apiKey: 'vault-key', credentialMode: 'vault' })
     expect(resolveSecretMock).toHaveBeenCalledWith('vault:encrypted-key')
   })
+
+  it('tests a chat model override without mutating saved settings', async () => {
+    const operation = vi.fn(async (config: string) => config)
+
+    const config = JSON.parse(await withAIConfig(operation, 'gpt-6-luna')) as { model: string }
+
+    expect(config.model).toBe('gpt-6-luna')
+    expect(settings.ai.model).toBe('gpt-6-sol')
+  })
 })

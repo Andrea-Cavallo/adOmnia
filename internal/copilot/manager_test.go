@@ -83,7 +83,11 @@ func (s *fakeServer) HandleRequest(_ context.Context, method string, params json
 		if string(params) == "null" {
 			return nil, errors.New("copilot/models requires an object parameter")
 		}
-		return []map[string]any{{"id": "auto", "scopes": []string{"chat-panel"}, "isChatDefault": true}}, nil
+		return []map[string]any{
+			{"id": "auto", "name": "Auto", "scopes": []string{"chat-panel"}, "isChatDefault": true},
+			{"id": "fast", "name": "Fast", "scopes": []string{"chat-panel"}},
+			{"id": "completion-only", "name": "Completion", "scopes": []string{"inline"}},
+		}, nil
 	case "conversation/create":
 		var request struct {
 			Token     string            `json:"workDoneToken"`
@@ -92,6 +96,9 @@ func (s *fakeServer) HandleRequest(_ context.Context, method string, params json
 		_ = json.Unmarshal(params, &request)
 		if request.ModelInfo["id"] == "" {
 			return nil, errors.New("A model id is required: provide modelInfo.id or the deprecated model field")
+		}
+		if request.Token == "chat-fast" && request.ModelInfo["id"] != "fast" {
+			return nil, errors.New("selected model was not forwarded")
 		}
 		_ = s.conn.Notify("$/progress", map[string]any{"token": request.Token, "value": map[string]any{"kind": "begin"}})
 		_ = s.conn.Notify("$/progress", map[string]any{"token": request.Token, "value": map[string]any{"kind": "report", "reply": "Use "}})
@@ -165,6 +172,24 @@ func TestChatStreamsAndFiltersWorkspaceContext(t *testing.T) {
 	manifest := buildWorkspaceManifest(root)
 	if !strings.Contains(manifest, "main.go") || strings.Contains(manifest, ".env") || strings.Contains(manifest, "private/customer.go") {
 		t.Fatalf("workspace manifest leaked or omitted files: %s", manifest)
+	}
+}
+
+func TestChatModelsFiltersScopesAndSelectedModelIsSent(t *testing.T) {
+	manager := startFakeManager(t, DefaultProfile(), t.TempDir())
+	models, err := manager.ChatModels()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(models) != 2 || models[0].ID != "auto" || models[1].ID != "fast" || models[0].Name != "Auto" {
+		t.Fatalf("unexpected chat models: %+v", models)
+	}
+	response, err := manager.Chat(context.Background(), ChatRequest{Token: "chat-fast", Model: "fast", Message: "Be quick"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.Model != "fast" {
+		t.Fatalf("selected model not returned: %+v", response)
 	}
 }
 

@@ -2,6 +2,7 @@ import * as CopilotBindings from '../../bindings/adomnia/copilot'
 import { Events } from '@wailsio/runtime'
 import type {
   GitHubProfile,
+  ChatModel,
   ChatRequest,
   ChatResponse,
   ChatSelection,
@@ -24,6 +25,7 @@ export type CopilotInlineRequest = InlineCompletionRequest
 export type CopilotChatRequest = ChatRequest
 export type CopilotChatResponse = ChatResponse
 export type CopilotChatSelection = ChatSelection
+export type CopilotChatModel = ChatModel
 
 export interface CopilotInstallProgress {
   version: string
@@ -58,6 +60,7 @@ export const copilotSignOut = (): Promise<void> => CopilotBindings.SignOut()
 export const setCopilotWorkspace = (root: string): Promise<void> => CopilotBindings.SetActiveWorkspace(root)
 export const focusCopilotDocument = (documentId: string): Promise<void> => CopilotBindings.FocusDocument(documentId)
 export const sendCopilotChat = (request: CopilotChatRequest): CancellablePromise<CopilotChatResponse> => CopilotBindings.Chat(request)
+export const getCopilotChatModels = (): Promise<CopilotChatModel[]> => CopilotBindings.ChatModels()
 export const cancelCopilotChat = (token: string): Promise<boolean> => CopilotBindings.CancelChat(token)
 export const destroyCopilotChat = (conversationId: string): Promise<void> => CopilotBindings.DestroyChat(conversationId)
 

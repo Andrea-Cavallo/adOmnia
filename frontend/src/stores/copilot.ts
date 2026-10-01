@@ -4,6 +4,7 @@ import {
   copilotSignIn,
   copilotSignOut,
   destroyCopilotChat,
+  getCopilotChatModels,
   getCopilotSettings,
   getCopilotStatus,
   installCopilotServer,
@@ -12,6 +13,7 @@ import {
   sendCopilotChat,
   subscribeCopilotEvents,
   type CopilotChatEvent,
+  type CopilotChatModel,
   type CopilotChatSelection,
   type CopilotInstallProgress,
   type CopilotSettings,
@@ -56,6 +58,9 @@ interface CopilotState {
   error: string | null
   dialogOpen: boolean
   chatThreads: Record<string, CopilotChatThread>
+  chatModels: CopilotChatModel[]
+  chatModelsLoaded: boolean
+  chatModelsError: string | null
   ensure: () => Promise<void>
   saveSettings: (settings: CopilotSettings) => Promise<boolean>
   setEnabled: (enabled: boolean) => Promise<boolean>
@@ -66,13 +71,15 @@ interface CopilotState {
   restart: () => Promise<void>
   setDialogOpen: (open: boolean) => void
   sendChat: (root: string, message: string, context: CopilotChatContext) => Promise<void>
+  loadChatModels: () => Promise<void>
+  selectChatModel: (root: string, model: string) => Promise<void>
   stopChat: (root: string) => Promise<void>
   newChat: (root: string) => Promise<void>
   clearSignIn: () => void
 }
 
 const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error))
-const emptyThread = (): CopilotChatThread => ({ conversationId: '', turnId: '', title: '', messages: [], busyToken: null, error: null })
+const emptyThread = (model?: string): CopilotChatThread => ({ conversationId: '', turnId: '', title: '', model, messages: [], busyToken: null, error: null })
 const uuid = () => typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`
 
 let subscribed = false
@@ -123,13 +130,16 @@ export const useCopilotStore = create<CopilotState>((set, get) => {
     error: null,
     dialogOpen: false,
     chatThreads: {},
+    chatModels: [],
+    chatModelsLoaded: false,
+    chatModelsError: null,
 
     ensure: async () => {
       if (!subscribed) {
         subscribed = true
         subscribeCopilotEvents({
           status: (status) => {
-            set({ status })
+            set(status.state === 'ready' ? { status } : { status, chatModels: [], chatModelsLoaded: false, chatModelsError: null })
             if (status.state === 'ready' && get().signIn) set({ signIn: null })
           },
           install: (install) => set({ install }),
@@ -140,6 +150,7 @@ export const useCopilotStore = create<CopilotState>((set, get) => {
       try {
         const [status, settings] = await Promise.all([getCopilotStatus(), getCopilotSettings()])
         set({ status, settings })
+        if (status.state === 'ready') await get().loadChatModels()
       } catch (error) {
         set({ error: messageOf(error) })
       }
@@ -173,6 +184,24 @@ export const useCopilotStore = create<CopilotState>((set, get) => {
     signOut: async () => { await run(copilotSignOut) },
     restart: async () => { await run(restartCopilot) },
     setDialogOpen: (dialogOpen) => set({ dialogOpen, error: null }),
+    loadChatModels: async () => {
+      if (get().chatModelsLoaded || get().status?.state !== 'ready') return
+      try {
+        const chatModels = await getCopilotChatModels()
+        set({ chatModels, chatModelsLoaded: true, chatModelsError: null })
+      } catch (error) {
+        set({ chatModelsLoaded: true, chatModelsError: messageOf(error) })
+      }
+    },
+    selectChatModel: async (root, model) => {
+      const selected = model.trim()
+      if (!selected) return
+      const current = get().chatThreads[root]
+      if (current?.model === selected && !current.conversationId) return
+      if (current?.busyToken) await get().stopChat(root)
+      if (current?.conversationId) await destroyCopilotChat(current.conversationId).catch(() => undefined)
+      set((state) => ({ chatThreads: { ...state.chatThreads, [root]: emptyThread(selected) } }))
+    },
     sendChat: async (root, rawMessage, context) => {
       const message = rawMessage.trim()
       if (!message) return
@@ -195,6 +224,7 @@ export const useCopilotStore = create<CopilotState>((set, get) => {
       try {
         const response = await sendCopilotChat({
           token,
+          model: thread.model,
           conversationId: thread.conversationId,
           turnId: thread.turnId,
           message,
@@ -232,7 +262,7 @@ export const useCopilotStore = create<CopilotState>((set, get) => {
       const current = get().chatThreads[root]
       if (current?.busyToken) await get().stopChat(root)
       if (current?.conversationId) await destroyCopilotChat(current.conversationId).catch(() => undefined)
-      set((state) => ({ chatThreads: { ...state.chatThreads, [root]: emptyThread() } }))
+      set((state) => ({ chatThreads: { ...state.chatThreads, [root]: emptyThread(current?.model) } }))
     },
     clearSignIn: () => set({ signIn: null }),
   }

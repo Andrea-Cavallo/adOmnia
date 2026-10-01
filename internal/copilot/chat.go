@@ -34,6 +34,7 @@ type ChatSelection struct {
 // ChatRequest descrive un turno Ask. Token è generato dal frontend e collega progress/cancel.
 type ChatRequest struct {
 	Token            string         `json:"token"`
+	Model            string         `json:"model,omitempty"`
 	ConversationID   string         `json:"conversationId,omitempty"`
 	TurnID           string         `json:"turnId,omitempty"`
 	Message          string         `json:"message"`
@@ -61,8 +62,10 @@ type ChatEvent struct {
 	Error          string `json:"error,omitempty"`
 }
 
-type chatModel struct {
+// ChatModel è un modello selezionabile restituito dall'account Copilot attivo.
+type ChatModel struct {
 	ID            string   `json:"id"`
+	Name          string   `json:"name,omitempty"`
 	Scopes        []string `json:"scopes"`
 	IsChatDefault bool     `json:"isChatDefault"`
 }
@@ -149,9 +152,12 @@ func (m *Manager) Chat(parent context.Context, request ChatRequest) (ChatRespons
 	if err != nil {
 		return ChatResponse{}, err
 	}
-	model, err := m.defaultChatModel(conn)
-	if err != nil {
-		return ChatResponse{}, err
+	model := strings.TrimSpace(request.Model)
+	if model == "" {
+		model, err = m.defaultChatModel(conn)
+		if err != nil {
+			return ChatResponse{}, err
+		}
 	}
 	params := map[string]any{
 		"workDoneToken":    request.Token,
@@ -232,20 +238,9 @@ func (m *Manager) defaultChatModel(conn *lsp.Conn) (string, error) {
 		return model, nil
 	}
 	m.mu.Unlock()
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	var models []chatModel
-	if err := conn.Call(ctx, "copilot/models", map[string]any{}, &models); err != nil {
-		return "", fmt.Errorf("cannot resolve a Copilot chat model: %w", err)
-	}
-	filtered := make([]chatModel, 0, len(models))
-	for _, model := range models {
-		for _, scope := range model.Scopes {
-			if scope == "chat-panel" {
-				filtered = append(filtered, model)
-				break
-			}
-		}
+	filtered, err := chatModels(conn)
+	if err != nil {
+		return "", err
 	}
 	selected := ""
 	for _, model := range filtered {
@@ -273,6 +268,40 @@ func (m *Manager) defaultChatModel(conn *lsp.Conn) (string, error) {
 	m.chatModelResolved = true
 	m.mu.Unlock()
 	return selected, nil
+}
+
+// ChatModels restituisce solo i modelli abilitati alla chat per l'account attivo.
+func (m *Manager) ChatModels() ([]ChatModel, error) {
+	if m.Status().State != StateReady {
+		return nil, errors.New("GitHub Copilot is not ready; sign in first")
+	}
+	conn, err := m.connection()
+	if err != nil {
+		return nil, err
+	}
+	return chatModels(conn)
+}
+
+func chatModels(conn *lsp.Conn) ([]ChatModel, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	var models []ChatModel
+	if err := conn.Call(ctx, "copilot/models", map[string]any{}, &models); err != nil {
+		return nil, fmt.Errorf("cannot resolve Copilot chat models: %w", err)
+	}
+	filtered := make([]ChatModel, 0, len(models))
+	for _, model := range models {
+		if strings.TrimSpace(model.ID) == "" {
+			continue
+		}
+		for _, scope := range model.Scopes {
+			if scope == "chat-panel" {
+				filtered = append(filtered, model)
+				break
+			}
+		}
+	}
+	return filtered, nil
 }
 
 func (m *Manager) chatContext(request ChatRequest) (string, map[string]any, []map[string]string, error) {

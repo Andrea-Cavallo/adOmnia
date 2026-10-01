@@ -10,10 +10,48 @@ import { Create as $Create } from "@wailsio/runtime";
 import * as json$0 from "../../../encoding/json/models.js";
 
 /**
+ * ChatModel è un modello selezionabile restituito dall'account Copilot attivo.
+ */
+export class ChatModel {
+    "id": string;
+    "name"?: string;
+    "scopes": string[];
+    "isChatDefault": boolean;
+
+    /** Creates a new ChatModel instance. */
+    constructor($$source: Partial<ChatModel> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("scopes" in $$source)) {
+            this["scopes"] = [];
+        }
+        if (!("isChatDefault" in $$source)) {
+            this["isChatDefault"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ChatModel instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ChatModel {
+        const $$createField2_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("scopes" in $$parsedSource) {
+            $$parsedSource["scopes"] = $$createField2_0($$parsedSource["scopes"]);
+        }
+        return new ChatModel($$parsedSource as Partial<ChatModel>);
+    }
+}
+
+/**
  * ChatRequest descrive un turno Ask. Token è generato dal frontend e collega progress/cancel.
  */
 export class ChatRequest {
     "token": string;
+    "model"?: string;
     "conversationId"?: string;
     "turnId"?: string;
     "message": string;
@@ -44,10 +82,10 @@ export class ChatRequest {
      * Creates a new ChatRequest instance from a string or object.
      */
     static createFrom($$source: any = {}): ChatRequest {
-        const $$createField5_0 = $$createType1;
+        const $$createField6_0 = $$createType2;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("selection" in $$parsedSource) {
-            $$parsedSource["selection"] = $$createField5_0($$parsedSource["selection"]);
+            $$parsedSource["selection"] = $$createField6_0($$parsedSource["selection"]);
         }
         return new ChatRequest($$parsedSource as Partial<ChatRequest>);
     }
@@ -401,9 +439,9 @@ export class Settings {
      * Creates a new Settings instance from a string or object.
      */
     static createFrom($$source: any = {}): Settings {
-        const $$createField3_0 = $$createType3;
-        const $$createField4_0 = $$createType4;
-        const $$createField5_0 = $$createType5;
+        const $$createField3_0 = $$createType4;
+        const $$createField4_0 = $$createType5;
+        const $$createField5_0 = $$createType6;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("profiles" in $$parsedSource) {
             $$parsedSource["profiles"] = $$createField3_0($$parsedSource["profiles"]);
@@ -511,8 +549,8 @@ export class Status {
      * Creates a new Status instance from a string or object.
      */
     static createFrom($$source: any = {}): Status {
-        const $$createField4_0 = $$createType2;
-        const $$createField5_0 = $$createType6;
+        const $$createField4_0 = $$createType3;
+        const $$createField5_0 = $$createType7;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("profile" in $$parsedSource) {
             $$parsedSource["profile"] = $$createField4_0($$parsedSource["profile"]);
@@ -525,10 +563,11 @@ export class Status {
 }
 
 // Private type creation functions
-const $$createType0 = ChatSelection.createFrom;
-const $$createType1 = $Create.Nullable($$createType0);
-const $$createType2 = GitHubProfile.createFrom;
-const $$createType3 = $Create.Array($$createType2);
-const $$createType4 = $Create.Map($Create.Any, $Create.Any);
-const $$createType5 = ProxySettings.createFrom;
-const $$createType6 = ServerBinary.createFrom;
+const $$createType0 = $Create.Array($Create.Any);
+const $$createType1 = ChatSelection.createFrom;
+const $$createType2 = $Create.Nullable($$createType1);
+const $$createType3 = GitHubProfile.createFrom;
+const $$createType4 = $Create.Array($$createType3);
+const $$createType5 = $Create.Map($Create.Any, $Create.Any);
+const $$createType6 = ProxySettings.createFrom;
+const $$createType7 = ServerBinary.createFrom;

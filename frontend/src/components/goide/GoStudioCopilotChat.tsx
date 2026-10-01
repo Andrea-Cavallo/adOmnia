@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
-import { Bot, Code2, Copy, FileCode2, FolderTree, Plus, Send, Settings2, Square, TextSelect } from 'lucide-react'
+import { Bot, Check, ChevronDown, Code2, Copy, FileCode2, FolderTree, Plus, Send, Settings2, Square, TextSelect } from 'lucide-react'
 import type { GoIDESession } from '@/lib/goide-api'
 import type { CopilotChatSelection } from '@/lib/copilot-api'
 import { useCopilotStore, type CopilotChatMessage } from '@/stores/copilot'
@@ -77,13 +77,21 @@ export function GoStudioCopilotChat({ session, document }: GoStudioCopilotChatPr
   const root = session.project.realPath
   const status = useCopilotStore((state) => state.status)
   const thread = useCopilotStore((state) => state.chatThreads[root])
+  const chatModels = useCopilotStore((state) => state.chatModels)
+  const chatModelsError = useCopilotStore((state) => state.chatModelsError)
   const [draft, setDraft] = useState('')
+  const [modelMenuOpen, setModelMenuOpen] = useState(false)
   const [includeFile, setIncludeFile] = useState(true)
   const [includeSelection, setIncludeSelection] = useState(true)
   const [includeWorkspace, setIncludeWorkspace] = useState(true)
   const scrollRef = useRef<HTMLDivElement>(null)
   const busy = !!thread?.busyToken
   const ready = status?.state === 'ready'
+  const selectedModel = thread?.model || chatModels.find((model) => model.isChatDefault)?.id || chatModels[0]?.id || ''
+
+  useEffect(() => {
+    if (ready) void useCopilotStore.getState().loadChatModels()
+  }, [ready])
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
@@ -110,10 +118,19 @@ export function GoStudioCopilotChat({ session, document }: GoStudioCopilotChatPr
 
   return (
     <section aria-label="GitHub Copilot Chat" className="flex min-h-0 flex-1 flex-col">
-      <div className="flex h-9 shrink-0 items-center gap-2 border-b border-border-1 px-2">
+      <div className="relative flex h-9 shrink-0 items-center gap-2 border-b border-border-1 px-2">
         <Bot size={14} className="text-accent" />
         <div className="min-w-0 flex-1 truncate text-[11px] font-semibold text-text-1">{thread?.title || 'Copilot Chat'}</div>
-        <span className="rounded bg-surface-2 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-text-4">Ask</span>
+        <button type="button" disabled={!ready || busy} onClick={() => setModelMenuOpen((open) => !open)} aria-expanded={modelMenuOpen} title="Change model (starts a new chat)" className="flex max-w-28 items-center gap-1 rounded bg-surface-2 px-1.5 py-0.5 font-mono text-[8px] text-text-3 hover:text-text-1 disabled:opacity-45">
+          <span className="truncate">{selectedModel || 'Model'}</span><ChevronDown size={9} />
+        </button>
+        {modelMenuOpen && (
+          <div role="menu" className="absolute right-9 top-8 z-20 w-60 overflow-hidden rounded-lg border border-border-2 bg-surface-1 p-1.5 shadow-xl">
+            <p className="px-1.5 pb-1 text-[8px] font-semibold uppercase tracking-wide text-text-4">Copilot model · new chat</p>
+            {chatModels.map((model) => <button key={model.id} type="button" role="menuitemradio" aria-checked={selectedModel === model.id} onClick={() => { setModelMenuOpen(false); void useCopilotStore.getState().selectChatModel(root, model.id) }} className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left ${selectedModel === model.id ? 'bg-accent/12 text-accent' : 'text-text-2 hover:bg-surface-2'}`}><Check size={10} className={selectedModel === model.id ? 'opacity-100' : 'opacity-0'} /><span className="min-w-0 flex-1"><span className="block truncate text-[10px] font-medium">{model.name || model.id}</span>{model.name && model.name !== model.id && <span className="block truncate font-mono text-[8px] text-text-4">{model.id}</span>}</span>{model.isChatDefault && <span className="text-[8px] text-text-4">default</span>}</button>)}
+            {!chatModels.length && <p className="px-2 py-2 text-[9px] leading-4 text-text-4">{chatModelsError || 'Loading models…'}</p>}
+          </div>
+        )}
         <button type="button" onClick={() => void useCopilotStore.getState().newChat(root)} className="go-studio-icon-button h-6 w-6" title="New chat" aria-label="New chat"><Plus size={13} /></button>
       </div>
       <ChatIdentityBar root={root} model={thread?.model} />

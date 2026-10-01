@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Bot, ChevronDown, FileText, Loader2, Send, Settings2, WandSparkles } from 'lucide-react'
+import { Bot, Check, ChevronDown, FileText, Loader2, Send, Settings2, WandSparkles } from 'lucide-react'
 import * as AIEngine from '@/wailsjs/go/main/AIEngine'
-import { ensureAIConfigured } from '@/lib/aiEngine'
+import { ensureAIConfigured, withAIConfig } from '@/lib/aiEngine'
 import { buildCompanionPrompt, COMPANION_WELCOME, inferCompanionRequestAction, inferMockGenerationAction, isAICompanionAvailable, materializeCompanionRequest, parseCompanionReply, type CompanionMood, type GenerateMockAction, type HeaderSuggestion } from '@/lib/aiCompanion'
 import { blankKVRow } from '@/lib/types'
 import { appendMockEndpoints, generatedMockEndpointsToStored } from '@/lib/mockEndpointStore'
@@ -40,6 +40,7 @@ function Sprite({ mood, loading, size, resting, greeting = false }: { mood: Comp
 
 export function AICompanion() {
   const ai = useSettingsStore((state) => state.settings.ai)
+  const updateAi = useSettingsStore((state) => state.updateAi)
   const collections = useCollectionsStore((state) => state.collections)
   const addQuickRequest = useCollectionsStore((state) => state.addQuickRequest)
   const activeTabId = useTabsStore((state) => state.activeTabId)
@@ -48,6 +49,9 @@ export function AICompanion() {
   const openTab = useTabsStore((state) => state.openTab)
   const setActiveRail = useAppStore((state) => state.setActiveRail)
   const [modelMenuOpen, setModelMenuOpen] = useState(false)
+  const [modelDraft, setModelDraft] = useState(ai.model)
+  const [modelSwitching, setModelSwitching] = useState(false)
+  const [modelSwitchError, setModelSwitchError] = useState('')
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME])
@@ -57,12 +61,39 @@ export function AICompanion() {
   const mood = assistantMessages[assistantMessages.length - 1]?.mood ?? 'happy'
   const hasUserMessage = messages.some((message) => message.role === 'user')
   const connected = isAICompanionAvailable(ai)
+  const modelOptions = [
+    { id: ai.model, name: ai.model },
+    ...(ai.modelCatalogs[ai.provider]?.models ?? []),
+  ].filter((model) => model.id.trim()).filter((model, index, all) => all.findIndex((candidate) => candidate.id === model.id) === index)
+
+  useEffect(() => {
+    if (modelMenuOpen) setModelDraft(ai.model)
+  }, [ai.model, modelMenuOpen])
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
   }, [messages, loading])
 
   const quickPrompts = useMemo(() => ['Create an API Flow from this collection.', 'Generate documentation for this collection.'], [])
+
+  const changeModel = async (rawModel: string) => {
+    const model = rawModel.trim()
+    if (!model || model === ai.model || modelSwitching) {
+      if (model === ai.model) setModelMenuOpen(false)
+      return
+    }
+    setModelSwitching(true)
+    setModelSwitchError('')
+    try {
+      await withAIConfig((config) => AIEngine.TestConnection(config), model)
+      updateAi({ model, connectionVerifiedAt: new Date().toISOString(), connectionProvider: ai.provider, connectionModel: model })
+      setModelMenuOpen(false)
+    } catch (error) {
+      setModelSwitchError(error instanceof Error ? error.message : String(error))
+    } finally {
+      setModelSwitching(false)
+    }
+  }
 
   if (!connected) return (
     <section aria-label="AI di a0" className="flex min-h-0 flex-1 flex-col items-center justify-center p-4 text-center">
@@ -195,14 +226,21 @@ export function AICompanion() {
           <header className="relative flex h-11 shrink-0 items-center gap-2 border-b border-border-1 bg-surface-2/80 px-2.5">
             <Sprite mood={mood} loading={loading} size={26} resting={!input.trim() && !loading} />
             <div className="min-w-0 flex-1">
-              <button type="button" onClick={() => setModelMenuOpen((value) => !value)} aria-expanded={modelMenuOpen} className="inline-flex items-center gap-1 text-xs font-semibold text-text-1 hover:text-accent">
+              <button type="button" onClick={() => setModelMenuOpen((value) => !value)} aria-expanded={modelMenuOpen} className="inline-flex max-w-full items-center gap-1 text-xs font-semibold text-text-1 hover:text-accent">
                 a0 <ChevronDown size={11} className={cn('text-text-4 transition-transform', modelMenuOpen && 'rotate-180')} />
               </button>
+              <p className="truncate font-mono text-[8px] text-text-4">{ai.model}</p>
               {modelMenuOpen && (
-                <div role="menu" className="absolute left-2 top-10 z-10 w-52 rounded-md border border-border-1 bg-surface-1 p-2 shadow-xl">
-                  <p className="text-[9px] font-semibold uppercase tracking-wide text-text-4">Connected model</p>
-                  <p className="mt-1 truncate text-[10px] text-text-2">{ai.provider}</p>
-                  <p className="truncate font-mono text-[9px] text-text-3">{ai.model}</p>
+                <div role="menu" className="absolute left-2 top-10 z-20 w-64 rounded-lg border border-border-2 bg-surface-1 p-2 shadow-xl">
+                  <div className="mb-1.5 flex items-center justify-between"><p className="text-[9px] font-semibold uppercase tracking-wide text-text-4">{ai.provider} models</p>{modelSwitching && <Loader2 size={11} className="animate-spin text-accent" />}</div>
+                  <div className="max-h-44 space-y-0.5 overflow-y-auto">
+                    {modelOptions.map((model) => <button key={model.id} type="button" role="menuitemradio" aria-checked={ai.model === model.id} disabled={modelSwitching} onClick={() => void changeModel(model.id)} className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left ${ai.model === model.id ? 'bg-accent/12 text-accent' : 'text-text-2 hover:bg-surface-2'}`}><Check size={10} className={ai.model === model.id ? 'opacity-100' : 'opacity-0'} /><span className="min-w-0 flex-1 truncate text-[10px]">{model.name || model.id}</span></button>)}
+                  </div>
+                  <form onSubmit={(event) => { event.preventDefault(); void changeModel(modelDraft) }} className="mt-2 flex gap-1.5 border-t border-border-1 pt-2">
+                    <input value={modelDraft} onChange={(event) => setModelDraft(event.target.value)} disabled={modelSwitching} aria-label="Custom model ID" placeholder="Exact model ID" className="h-7 min-w-0 flex-1 rounded border border-border-2 bg-surface-2 px-2 font-mono text-[9px] text-text-1 outline-none focus:border-accent" />
+                    <button type="submit" disabled={modelSwitching || !modelDraft.trim() || modelDraft.trim() === ai.model} className="rounded bg-accent px-2 text-[9px] font-semibold text-white disabled:opacity-40">Use</button>
+                  </form>
+                  {modelSwitchError && <p role="alert" className="mt-1.5 max-h-16 overflow-y-auto text-[8px] leading-3 text-danger">{modelSwitchError}</p>}
                 </div>
               )}
             </div>

@@ -86,6 +86,9 @@ func (c *Copilot) Chat(ctx context.Context, request copilot.ChatRequest) (copilo
 	return c.manager.Chat(ctx, request)
 }
 
+// ChatModels elenca i modelli chat disponibili per l'account Copilot attivo.
+func (c *Copilot) ChatModels() ([]copilot.ChatModel, error) { return c.manager.ChatModels() }
+
 func (c *Copilot) CancelChat(token string) bool { return c.manager.CancelChat(token) }
 
 func (c *Copilot) DestroyChat(conversationID string) { c.manager.DestroyChat(conversationID) }
