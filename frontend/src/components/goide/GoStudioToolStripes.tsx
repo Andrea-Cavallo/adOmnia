@@ -1,9 +1,10 @@
-import { Bookmark, Braces, Bug, FlaskConical, Folder, GitCommitHorizontal, ListTodo, ListTree, PackageSearch, AlertCircle, SearchCode, SquareTerminal, TerminalSquare, type LucideIcon } from 'lucide-react'
+import { Bookmark, Bot, Braces, Bug, FlaskConical, Folder, GitCommitHorizontal, ListTodo, ListTree, PackageSearch, AlertCircle, SearchCode, Sparkles, SquareTerminal, TerminalSquare, type LucideIcon } from 'lucide-react'
 import { useGoIDEStore } from '@/stores/goide'
 import { diagnosticCounts, mergedReports, useGoIDELspStore, type GoIDEToolWindow } from '@/stores/goideLsp'
 import { selectedTestRun, useGoIDETestsStore } from '@/stores/goideTests'
 import { useGoIDEDebugStore } from '@/stores/goideDebug'
 import { selectDebugState } from './goStudioDebugCommands'
+import { useGoStudioAssistantStore, type GoStudioAssistantPane } from '@/stores/goStudioAssistant'
 
 type BadgeTone = 'danger' | 'warning' | 'success' | 'accent'
 
@@ -104,10 +105,22 @@ interface GoStudioRightStripeProps {
 /** Barra destra: Structure e dipendenze del modulo. */
 export function GoStudioRightStripe({ onDependencies }: GoStudioRightStripeProps) {
   const structureOpen = useGoIDEStore((state) => state.layout.structureOpen)
+  const structureWidth = useGoIDEStore((state) => state.layout.structureWidth)
   const updateLayout = useGoIDEStore((state) => state.updateLayout)
+  const assistantPane = useGoStudioAssistantStore((state) => state.pane)
+  const toggleAssistant = (pane: Exclude<GoStudioAssistantPane, null>) => {
+    if (structureOpen && assistantPane === pane) {
+      useGoStudioAssistantStore.getState().close()
+      return updateLayout({ structureOpen: false })
+    }
+    useGoStudioAssistantStore.getState().open(pane)
+    updateLayout({ structureOpen: true, structureWidth: Math.max(340, structureWidth) })
+  }
   return (
     <nav aria-label="Go Studio side tool windows" className="go-studio-stripe">
-      <StripeButton label="Structure · Alt+7" icon={Braces} pressed={structureOpen} onClick={() => updateLayout({ structureOpen: !structureOpen })} />
+      <StripeButton label="Structure · Alt+7" icon={Braces} pressed={structureOpen && !assistantPane} onClick={() => { useGoStudioAssistantStore.getState().close(); updateLayout({ structureOpen: !!assistantPane || !structureOpen }) }} />
+      <StripeButton label="Copilot Chat" icon={Sparkles} pressed={structureOpen && assistantPane === 'copilot'} onClick={() => toggleAssistant('copilot')} />
+      <StripeButton label="a0" icon={Bot} pressed={structureOpen && assistantPane === 'a0'} onClick={() => toggleAssistant('a0')} />
       <StripeButton label="Module Dependencies" icon={PackageSearch} pressed={false} onClick={onDependencies} />
     </nav>
   )

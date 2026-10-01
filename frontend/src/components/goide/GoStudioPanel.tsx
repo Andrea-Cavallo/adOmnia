@@ -35,6 +35,7 @@ import './goStudioChrome.css'
 import { GoStudioCopilotDialog } from './GoStudioCopilotDialog'
 import { useGoStudioCopilot } from './useGoStudioCopilot'
 import { useCopilotStore } from '@/stores/copilot'
+import { useGoStudioAssistantStore } from '@/stores/goStudioAssistant'
 import { GoStudioShortcutsDialog } from './GoStudioShortcutsDialog'
 import { commandAvailability, commandChecked, commandsForKey, isStaleEditorKey, type GoStudioCommandContext, type GoStudioCommandId } from './goStudioCommands'
 import { activeGoStudioEditor, hasGoStudioEditor, isGoStudioEditorCommand, runGoStudioEditorCommand } from './goStudioEditorRegistry'
@@ -601,6 +602,12 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       case 'go.lspLog': return setLspLogOpen(true)
       case 'go.toolPaths': return setToolPathsOpen(true)
       case 'tools.copilot': return useCopilotStore.getState().setDialogOpen(true)
+      case 'tools.copilotChat':
+        useGoStudioAssistantStore.getState().open('copilot')
+        return store.updateLayout({ structureOpen: true, structureWidth: Math.max(340, store.layout.structureWidth) })
+      case 'tools.a0Chat':
+        useGoStudioAssistantStore.getState().open('a0')
+        return store.updateLayout({ structureOpen: true, structureWidth: Math.max(340, store.layout.structureWidth) })
       case 'tools.copilotCompletions': return void useCopilotStore.getState().toggleCompletions()
     }
   }
@@ -638,10 +645,10 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       {windowError}
       {lsp.message && <NoticeBanner message={lsp.message} onClose={lsp.clearMessage} />}
       <GoStudioRecoveryBanner sessionId={activeSession.id} />
+      <GoStudioCrashRecoveryDialog sessionId={activeSession.id} />
       <GoStudioWorkspace session={activeSession} {...store.layout} zen={zen} onProjectResize={beginResize('projectWidth', store.layout.projectWidth)} onStructureResize={beginResize('structureWidth', store.layout.structureWidth, -1)} onBottomResize={beginResize('bottomHeight', store.layout.bottomHeight, -1)} onCursor={setCursor} onRequestCloseDocument={closeFlow.requestCloseDocuments} onRunTarget={(target, anchor) => setRunTargetMenu({ target, ...anchor })} onCommit={() => setVcsDialog('commit')} onBookmarks={() => setBookmarksOpen(true)} onDependencies={() => setDependenciesOpen(true)} onCommand={runCommandStable} />
       {runTargetMenu && <GoStudioRunTargetMenu {...runTargetMenu} onAction={runTarget} onClose={() => setRunTargetMenu(null)} />}
       {zen ? <ZenExit onExit={toggleZen} /> : <GoStudioStatusBar session={activeSession} toolchain={toolchain} documentInfo={summary.activeId ? { id: summary.activeId, relativePath: summary.activePath ?? '', language: summary.activeLanguage ?? '', readOnly: summary.activeReadOnly, lineEnding: summary.activeLineEnding ?? 'LF' } : null} execution={activeExecution} onLanguageServer={openLanguageServerMenu} onLinter={() => runCommand(commandAvailability('code.lint', commandContext) === true ? 'code.lint' : 'go.toolPaths')} onSetAuthorization={(allowed) => void authorize(allowed)} onManageToolchains={() => setToolchainOpen(true)} />}
-      <GoStudioCrashRecoveryDialog sessionId={activeSession.id} />
       <GoStudioQuickOpen />
       <GoStudioCaretPopup />
       <GoStudioHierarchyDialog />

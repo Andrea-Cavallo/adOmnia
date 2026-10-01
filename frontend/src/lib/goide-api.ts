@@ -380,6 +380,21 @@ export async function getGoIDECrashStatus(): Promise<GoIDECrashStatus> {
 export type GoIDEProcessDescriptor = Awaited<ReturnType<typeof GoIDEBindings.InterruptedProcesses>>[number]
 
 /** Esecuzioni delle configurazioni Run ancora in corso quando adOmnia si è chiusa in modo anomalo. */
+export type GoIDEGoToolInfo = Awaited<ReturnType<typeof GoIDEBindings.DetectGoTool>>
+
+export async function detectGoIDEGoTool(sessionId: string, binary: string): Promise<GoIDEGoToolInfo> {
+  return GoIDEBindings.DetectGoTool(sessionId, binary)
+}
+
+/** go install modulo@versione nella cartella strumenti di adOmnia: solo dopo conferma dell'utente. */
+export async function installGoIDEGoModule(sessionId: string, module: string): Promise<GoIDEExecution> {
+  return GoIDEBindings.InstallGoModule(sessionId, module, true)
+}
+
+export async function runGoIDEGoTool(sessionId: string, binary: string, args: string[], workingDirectory: string): Promise<GoIDEExecution> {
+  return GoIDEBindings.RunGoTool(sessionId, binary, args, workingDirectory)
+}
+
 export async function listGoIDEInterruptedProcesses(): Promise<GoIDEProcessDescriptor[]> {
   return (await GoIDEBindings.InterruptedProcesses()) ?? []
 }

@@ -81,6 +81,15 @@ func (c *Copilot) InlineCompletion(ctx context.Context, request copilot.InlineCo
 	return c.manager.InlineCompletion(ctx, request)
 }
 
+// Chat invia un turno Copilot Ask. I delta arrivano come evento copilot.chat; Stop annulla il JSON-RPC.
+func (c *Copilot) Chat(ctx context.Context, request copilot.ChatRequest) (copilot.ChatResponse, error) {
+	return c.manager.Chat(ctx, request)
+}
+
+func (c *Copilot) CancelChat(token string) bool { return c.manager.CancelChat(token) }
+
+func (c *Copilot) DestroyChat(conversationID string) { c.manager.DestroyChat(conversationID) }
+
 // DidShowCompletion, DidAcceptCompletion e DidPartiallyAcceptCompletion restituiscono al server
 // l'item così com'era, come richiede il protocollo.
 func (c *Copilot) DidShowCompletion(item json.RawMessage) { c.manager.DidShowCompletion(item) }

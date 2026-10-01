@@ -10,7 +10,6 @@ import { ResizeHandle } from '@/components/ui/ResizeHandle'
 import { DropOverlay } from '@/components/layout/DropOverlay'
 import { DropToast } from '@/components/layout/DropToast'
 import { PluginNotificationToast } from '@/components/plugins/PluginNotificationToast'
-import { AICompanionHost } from '@/components/assistant/AICompanionHost'
 import { WorkspaceSidebarSkeleton } from '@/components/layout/WorkspaceHydrationShell'
 import { useAppStore } from '@/stores/app'
 import { useAppInit } from '@/hooks/useAppInit'
@@ -215,7 +214,6 @@ function App() {
           {dragOver && <DropOverlay preview={dropPreview} />}
           {dropFeedback && <DropToast feedback={dropFeedback} />}
           <PluginNotificationToast />
-          <AICompanionHost ready={firstStableFrame} />
         </div>
         {commandPaletteOpen && <Suspense fallback={null}><CommandPalette open onClose={() => setCommandPaletteOpen(false)} /></Suspense>}
         <EntityNotice />

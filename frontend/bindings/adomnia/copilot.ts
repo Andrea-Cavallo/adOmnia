@@ -17,6 +17,23 @@ import * as copilot$0 from "./internal/copilot/models.js";
 // @ts-ignore: Unused imports
 import * as json$0 from "../encoding/json/models.js";
 
+export function CancelChat(token: string): $CancellablePromise<boolean> {
+    return $Call.ByID(1054825816, token);
+}
+
+/**
+ * Chat invia un turno Copilot Ask. I delta arrivano come evento copilot.chat; Stop annulla il JSON-RPC.
+ */
+export function Chat(request: copilot$0.ChatRequest): $CancellablePromise<copilot$0.ChatResponse> {
+    return $Call.ByID(1447140834, request).then(($result: any) => {
+        return $$createType0($result);
+    });
+}
+
+export function DestroyChat(conversationID: string): $CancellablePromise<void> {
+    return $Call.ByID(1396553544, conversationID);
+}
+
 export function DidAcceptCompletion(item: json$0.RawMessage): $CancellablePromise<void> {
     return $Call.ByID(637252619, item);
 }
@@ -45,7 +62,7 @@ export function FocusDocument(documentID: string): $CancellablePromise<void> {
  */
 export function InlineCompletion(request: copilot$0.InlineCompletionRequest): $CancellablePromise<copilot$0.InlineCompletionItem[]> {
     return $Call.ByID(1415251099, request).then(($result: any) => {
-        return $$createType1($result);
+        return $$createType2($result);
     });
 }
 
@@ -54,7 +71,7 @@ export function InlineCompletion(request: copilot$0.InlineCompletionRequest): $C
  */
 export function Install(): $CancellablePromise<copilot$0.ServerBinary> {
     return $Call.ByID(3803175199).then(($result: any) => {
-        return $$createType2($result);
+        return $$createType3($result);
     });
 }
 
@@ -63,7 +80,7 @@ export function Install(): $CancellablePromise<copilot$0.ServerBinary> {
  */
 export function Log(): $CancellablePromise<string[]> {
     return $Call.ByID(238275478).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType4($result);
     });
 }
 
@@ -79,7 +96,7 @@ export function Restart(): $CancellablePromise<void> {
  */
 export function SaveSettings(settings: copilot$0.Settings): $CancellablePromise<copilot$0.Settings> {
     return $Call.ByID(4206070412, settings).then(($result: any) => {
-        return $$createType4($result);
+        return $$createType5($result);
     });
 }
 
@@ -95,7 +112,7 @@ export function SetActiveWorkspace(root: string): $CancellablePromise<void> {
  */
 export function Settings(): $CancellablePromise<copilot$0.Settings> {
     return $Call.ByID(1923281929).then(($result: any) => {
-        return $$createType4($result);
+        return $$createType5($result);
     });
 }
 
@@ -104,7 +121,7 @@ export function Settings(): $CancellablePromise<copilot$0.Settings> {
  */
 export function SignIn(): $CancellablePromise<copilot$0.SignInPrompt> {
     return $Call.ByID(3352809662).then(($result: any) => {
-        return $$createType5($result);
+        return $$createType6($result);
     });
 }
 
@@ -120,15 +137,16 @@ export function SignOut(): $CancellablePromise<void> {
  */
 export function Status(): $CancellablePromise<copilot$0.Status> {
     return $Call.ByID(2433095758).then(($result: any) => {
-        return $$createType6($result);
+        return $$createType7($result);
     });
 }
 
 // Private type creation functions
-const $$createType0 = copilot$0.InlineCompletionItem.createFrom;
-const $$createType1 = $Create.Array($$createType0);
-const $$createType2 = copilot$0.ServerBinary.createFrom;
-const $$createType3 = $Create.Array($Create.Any);
-const $$createType4 = copilot$0.Settings.createFrom;
-const $$createType5 = copilot$0.SignInPrompt.createFrom;
-const $$createType6 = copilot$0.Status.createFrom;
+const $$createType0 = copilot$0.ChatResponse.createFrom;
+const $$createType1 = copilot$0.InlineCompletionItem.createFrom;
+const $$createType2 = $Create.Array($$createType1);
+const $$createType3 = copilot$0.ServerBinary.createFrom;
+const $$createType4 = $Create.Array($Create.Any);
+const $$createType5 = copilot$0.Settings.createFrom;
+const $$createType6 = copilot$0.SignInPrompt.createFrom;
+const $$createType7 = copilot$0.Status.createFrom;

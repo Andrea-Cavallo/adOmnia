@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronDown, FileText, Loader2, Maximize2, Minimize2, Send, WandSparkles, X } from 'lucide-react'
+import { Bot, ChevronDown, FileText, Loader2, Send, Settings2, WandSparkles } from 'lucide-react'
 import * as AIEngine from '@/wailsjs/go/main/AIEngine'
 import { ensureAIConfigured } from '@/lib/aiEngine'
 import { buildCompanionPrompt, COMPANION_WELCOME, inferCompanionRequestAction, inferMockGenerationAction, isAICompanionAvailable, materializeCompanionRequest, parseCompanionReply, type CompanionMood, type GenerateMockAction, type HeaderSuggestion } from '@/lib/aiCompanion'
@@ -38,29 +38,7 @@ function Sprite({ mood, loading, size, resting, greeting = false }: { mood: Comp
   )
 }
 
-/** Distanza dall'angolo in basso a destra entro cui il launcher di a0 compare. */
-const LAUNCHER_REVEAL_PX = 160
-
-/** true quando il puntatore è vicino all'angolo in basso a destra: il launcher resta nascosto e non intralcia. */
-function usePointerNearCorner(enabled: boolean): boolean {
-  const [near, setNear] = useState(false)
-  useEffect(() => {
-    if (!enabled) return
-    let current = false
-    const update = (next: boolean) => { if (next !== current) { current = next; setNear(next) } }
-    const onMove = (event: MouseEvent) => update(window.innerWidth - event.clientX < LAUNCHER_REVEAL_PX && window.innerHeight - event.clientY < LAUNCHER_REVEAL_PX)
-    const onLeave = () => update(false)
-    window.addEventListener('mousemove', onMove, { passive: true })
-    document.documentElement.addEventListener('mouseleave', onLeave)
-    return () => {
-      window.removeEventListener('mousemove', onMove)
-      document.documentElement.removeEventListener('mouseleave', onLeave)
-    }
-  }, [enabled])
-  return enabled && near
-}
-
-export function AICompanion({ initiallyOpen = false }: { initiallyOpen?: boolean }) {
+export function AICompanion() {
   const ai = useSettingsStore((state) => state.settings.ai)
   const collections = useCollectionsStore((state) => state.collections)
   const addQuickRequest = useCollectionsStore((state) => state.addQuickRequest)
@@ -69,10 +47,6 @@ export function AICompanion({ initiallyOpen = false }: { initiallyOpen?: boolean
   const updateRequest = useTabsStore((state) => state.updateRequest)
   const openTab = useTabsStore((state) => state.openTab)
   const setActiveRail = useAppStore((state) => state.setActiveRail)
-  const [open, setOpen] = useState(initiallyOpen)
-  const launcherRevealed = usePointerNearCorner(!open)
-  const [expanded, setExpanded] = useState(false)
-  const [greeting, setGreeting] = useState(initiallyOpen)
   const [modelMenuOpen, setModelMenuOpen] = useState(false)
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -85,37 +59,19 @@ export function AICompanion({ initiallyOpen = false }: { initiallyOpen?: boolean
   const connected = isAICompanionAvailable(ai)
 
   useEffect(() => {
-    if (open) scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
-  }, [messages, loading, open])
-
-  useEffect(() => {
-    if (!greeting) return
-    const timeout = window.setTimeout(() => setGreeting(false), 440)
-    return () => window.clearTimeout(timeout)
-  }, [greeting])
-
-  useEffect(() => {
-    const openFromHub = () => {
-      if (!connected) return
-      setGreeting(true)
-      setOpen(true)
-    }
-    document.addEventListener('adomnia:open-ai-companion', openFromHub)
-    return () => document.removeEventListener('adomnia:open-ai-companion', openFromHub)
-  }, [connected])
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
+  }, [messages, loading])
 
   const quickPrompts = useMemo(() => ['Create an API Flow from this collection.', 'Generate documentation for this collection.'], [])
 
-  // A configured provider is not necessarily usable. a0 appears only after the
-  // user has explicitly tested this exact provider/model combination.
-  if (!connected) return null
-
-  const close = () => {
-    setOpen(false)
-    setExpanded(false)
-    setGreeting(false)
-    setModelMenuOpen(false)
-  }
+  if (!connected) return (
+    <section aria-label="AI di a0" className="flex min-h-0 flex-1 flex-col items-center justify-center p-4 text-center">
+      <Bot size={24} className="mb-2 text-text-4" />
+      <p className="text-[11px] font-semibold text-text-2">AI di a0 non è collegata.</p>
+      <p className="mt-1 text-[9px] leading-4 text-text-4">Configura provider e modello, poi verifica la connessione.</p>
+      <button type="button" onClick={() => { sessionStorage.setItem('adomnia.settings.requested-section', 'ai'); setActiveRail('settings') }} className="mt-3 inline-flex h-7 items-center gap-1.5 rounded-lg bg-accent px-3 text-[10px] font-semibold text-white"><Settings2 size={11} />Configura AI</button>
+    </section>
+  )
 
   const generateMock = async (action: GenerateMockAction): Promise<number> => {
     await ensureAIConfigured()
@@ -232,15 +188,12 @@ export function AICompanion({ initiallyOpen = false }: { initiallyOpen?: boolean
   const openFlow = (prompt: string) => {
     sessionStorage.setItem('adomnia.ai.flow-instructions', prompt)
     setActiveRail('flows')
-    close()
   }
 
   return (
-    <div className="fixed bottom-5 right-4 z-[90] flex flex-col items-end">
-      {open && (
-        <section aria-label="a0 AI assistant" className={cn('a0-companion-panel flex flex-col overflow-hidden rounded-xl border border-border-1 bg-surface-1 shadow-2xl', expanded ? 'h-[min(560px,calc(100vh-2rem))] w-[min(480px,calc(100vw-1.5rem))]' : 'h-[min(380px,calc(100vh-2rem))] w-[min(320px,calc(100vw-1.5rem))]')}>
+        <section aria-label="AI di a0" className="a0-companion-panel flex min-h-0 flex-1 flex-col overflow-hidden bg-surface-1">
           <header className="relative flex h-11 shrink-0 items-center gap-2 border-b border-border-1 bg-surface-2/80 px-2.5">
-            <Sprite mood={mood} loading={loading} size={26} resting={!input.trim() && !loading} greeting={greeting} />
+            <Sprite mood={mood} loading={loading} size={26} resting={!input.trim() && !loading} />
             <div className="min-w-0 flex-1">
               <button type="button" onClick={() => setModelMenuOpen((value) => !value)} aria-expanded={modelMenuOpen} className="inline-flex items-center gap-1 text-xs font-semibold text-text-1 hover:text-accent">
                 a0 <ChevronDown size={11} className={cn('text-text-4 transition-transform', modelMenuOpen && 'rotate-180')} />
@@ -253,8 +206,6 @@ export function AICompanion({ initiallyOpen = false }: { initiallyOpen?: boolean
                 </div>
               )}
             </div>
-            <button type="button" onClick={() => setExpanded((value) => !value)} title={expanded ? 'Compact a0 assistant' : 'Expand a0 assistant'} className="grid h-7 w-7 place-items-center rounded text-text-3 transition-colors hover:bg-surface-3 hover:text-text-1">{expanded ? <Minimize2 size={13} /> : <Maximize2 size={13} />}</button>
-            <button type="button" onClick={close} title="Close a0 assistant" className="grid h-7 w-7 place-items-center rounded text-text-3 transition-colors hover:bg-surface-3 hover:text-text-1"><X size={14} /></button>
           </header>
 
           <div ref={scrollRef} className="flex-1 space-y-2 overflow-y-auto px-3 py-3">
@@ -270,7 +221,7 @@ export function AICompanion({ initiallyOpen = false }: { initiallyOpen?: boolean
                     </div>
                   )}
                   {message.actions?.includes('open-flow') && <button type="button" onClick={() => { const userMessages = messages.filter((item) => item.role === 'user'); openFlow(userMessages[userMessages.length - 1]?.text ?? '') }} className="mt-2 inline-flex items-center gap-1 rounded border border-accent/35 bg-accent/10 px-2 py-1 text-[10px] font-semibold text-accent hover:bg-accent/15"><WandSparkles size={11} /> Open Flow generator</button>}
-                  {message.actions?.includes('open-docs') && <button type="button" onClick={() => { setActiveRail('apidocs'); close() }} className="mt-2 inline-flex items-center gap-1 rounded border border-accent/35 bg-accent/10 px-2 py-1 text-[10px] font-semibold text-accent hover:bg-accent/15"><FileText size={11} /> Open API Docs</button>}
+                  {message.actions?.includes('open-docs') && <button type="button" onClick={() => setActiveRail('apidocs')} className="mt-2 inline-flex items-center gap-1 rounded border border-accent/35 bg-accent/10 px-2 py-1 text-[10px] font-semibold text-accent hover:bg-accent/15"><FileText size={11} /> Open API Docs</button>}
                 </div>
               </div>
             ))}
@@ -282,8 +233,5 @@ export function AICompanion({ initiallyOpen = false }: { initiallyOpen?: boolean
             <button type="submit" disabled={!input.trim() || loading} title="Send to a0" className="grid h-8 w-8 place-items-center rounded-md bg-accent text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-45"><Send size={14} /></button>
           </form>
         </section>
-      )}
-      {!open && <button type="button" onClick={() => { setGreeting(true); setOpen(true) }} aria-label="Open a0 AI assistant" title="Ask a0" data-revealed={launcherRevealed || loading ? 'true' : undefined} className="a0-companion-launcher grid h-12 w-12 place-items-center rounded-full border border-border-1 bg-surface-1/95 shadow-lg hover:border-accent/45 focus-visible:border-accent focus-visible:outline-none"><Sprite mood={mood} loading={loading} size={48} resting={!loading} /></button>}
-    </div>
   )
 }

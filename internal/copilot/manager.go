@@ -87,42 +87,49 @@ type command struct {
 }
 
 type process struct {
-	cmd    *exec.Cmd
-	stdin  io.WriteCloser
-	conn   *lsp.Conn
-	exited chan struct{}
+	cmd         *exec.Cmd
+	stdin       io.WriteCloser
+	conn        *lsp.Conn
+	exited      chan struct{}
+	initialized bool
 }
 
 type document struct {
-	uri        string
-	root       string
-	languageID string
-	version    int
-	text       string
+	uri          string
+	root         string
+	path         string
+	relativePath string
+	languageID   string
+	version      int
+	text         string
 }
 
 // Manager possiede il processo del Copilot Language Server: avvio, configurazione enterprise,
 // login, sincronizzazione documenti, completamento e riavvio con backoff. gO Studio funziona
 // normalmente anche se Copilot è spento o in errore.
 type Manager struct {
-	mu         sync.Mutex
-	store      *SettingsStore
-	installer  *Installer
-	settings   Settings
-	profile    GitHubProfile
-	status     Status
-	current    *process
-	launching  bool
-	stopping   bool
-	crashes    int
-	documents  map[string]*document
-	byID       map[string]string
-	folders    map[string]string
-	root       string
-	log        []string
-	emit       Emitter
-	openURL    func(string) error
-	checkTimer *time.Timer
+	mu                sync.Mutex
+	store             *SettingsStore
+	installer         *Installer
+	settings          Settings
+	profile           GitHubProfile
+	status            Status
+	current           *process
+	launching         bool
+	stopping          bool
+	crashes           int
+	documents         map[string]*document
+	byID              map[string]string
+	folders           map[string]string
+	root              string
+	focusedURI        string
+	log               []string
+	emit              Emitter
+	openURL           func(string) error
+	checkTimer        *time.Timer
+	chatOperations    map[string]*chatOperation
+	chatModel         string
+	chatModelResolved bool
 }
 
 // NewManager legge le impostazioni; il processo parte solo con Start.
@@ -131,6 +138,7 @@ func NewManager(store *SettingsStore, installer *Installer) *Manager {
 	manager := &Manager{
 		store: store, installer: installer, settings: settings,
 		documents: map[string]*document{}, byID: map[string]string{}, folders: map[string]string{},
+		chatOperations: map[string]*chatOperation{},
 	}
 	manager.profile = settings.ProfileForWorkspace("")
 	manager.status = Status{State: StateDisabled, Profile: manager.profile, InlineCompletion: settings.InlineCompletion}
@@ -203,13 +211,17 @@ func (m *Manager) SaveSettings(next Settings) (Settings, error) {
 // server riparte su quell'account, così il codice aziendale non usa l'account personale.
 func (m *Manager) SetActiveWorkspace(root string) {
 	m.mu.Lock()
+	previousRoot := m.root
 	m.root = root
 	next := m.settings.ProfileForWorkspace(root)
-	changed := next != m.profile
+	changed := next != m.profile || (previousRoot != "" && previousRoot != root)
 	enabled := m.settings.Enabled
+	running := m.current != nil || m.launching
 	m.mu.Unlock()
 	if changed && enabled {
 		m.Stop()
+		go func() { _ = m.Start() }()
+	} else if enabled && root != "" && !running {
 		go func() { _ = m.Start() }()
 	}
 }
@@ -220,6 +232,10 @@ func (m *Manager) Start() error {
 	if !m.settings.Enabled {
 		m.mu.Unlock()
 		m.setStatus(func(status *Status) { status.State = StateDisabled })
+		return nil
+	}
+	if strings.TrimSpace(m.root) == "" {
+		m.mu.Unlock()
 		return nil
 	}
 	if m.current != nil || m.launching {
@@ -283,6 +299,8 @@ func (m *Manager) launch(binary ServerBinary, settings Settings, profile GitHubP
 	go m.collectStderr(running, stderr)
 	m.mu.Lock()
 	m.current = running
+	m.chatModel = ""
+	m.chatModelResolved = false
 	folders := m.workspaceFoldersLocked()
 	m.mu.Unlock()
 	go m.watch(running)
@@ -303,6 +321,11 @@ func (m *Manager) launch(binary ServerBinary, settings Settings, profile GitHubP
 		return err
 	}
 	_ = running.conn.Notify("workspace/didChangeConfiguration", map[string]any{"settings": serverConfiguration(settings, profile)})
+	m.mu.Lock()
+	if m.current == running {
+		running.initialized = true
+	}
+	m.mu.Unlock()
 	m.setStatus(func(status *Status) { status.ServerVersion = result.ServerInfo.Version })
 	m.reopenDocuments(running)
 	m.scheduleCheckStatus()
@@ -325,7 +348,7 @@ func initializeParams(folders []map[string]string) map[string]any {
 		"workspaceFolders": folders,
 		"capabilities": map[string]any{
 			"workspace": map[string]any{"workspaceFolders": true, "configuration": true},
-			"window":    map[string]any{"showDocument": map[string]bool{"support": true}},
+			"window":    map[string]any{"showDocument": map[string]bool{"support": true}, "workDoneProgress": true},
 		},
 		"initializationOptions": map[string]any{
 			"editorInfo":       map[string]string{"name": editorName, "version": pluginVersion},

@@ -28,7 +28,7 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | G | [Platform](#g-platform) | Settings, Infrastructure, UI Framework | ~76 |
 | H | [API Design](#h-api-design) | OpenAPI Import/Export, Schema Components, Visual OpenAPI Editor | ~10 |
 | I | [MCP (Model Context Protocol)](#i-mcp-model-context-protocol) | MCP Client/Debugger, Sessions & Transport, Server Generator | ~12 |
-| J | [Go Studio (Go IDE)](#j-go-studio-go-ide) | Projects & Windows, Editor & gopls, Lint & AI, Run/Test/Debug, Toolchain, Git & Integration | ~34 |
+| J | [Go Studio (Go IDE)](#j-go-studio-go-ide) | Projects & Windows, Editor & gopls, Lint & AI, Run/Test/Debug, Toolchain, Git & Integration | ~37 |
 
 ---
 
@@ -1035,6 +1035,8 @@ A Go IDE inside adOmnia. Projects open without running anything; local tools run
 | J3.1 | **Linters** | golangci-lint or staticcheck with the project's configuration, lint on save, quick fixes and line suppression. |
 | J3.2 | **Fix with AI** | Quick fix and Problems action that sends the file (and the local package of an `undefined: pkg.Name` error) to the configured AI provider; the answer can touch only those files and always opens in a preview. |
 | J3.3 | **Problems Window** | gopls, linter and build problems grouped by file with navigation. |
+| J3.4 | **Copilot Ask Chat** | Per-project streaming chat backed by the official Copilot language server, with optional current-file, live-selection and filtered workspace-manifest context, Stop and New Chat. Secret patterns and `.adomnia/aiignore` are enforced before context is sent; history remains session-only. |
+| J3.5 | **AI di a0 Tool Window** | The existing provider-configured a0 assistant lives in the same closable right tool window as Structure, Project and Copilot instead of a floating launcher. It keeps its API-workspace actions, local permission boundary and verified-provider requirement. |
 
 ### J4. Run, Test & Debug
 
@@ -1056,6 +1058,7 @@ A Go IDE inside adOmnia. Projects open without running anything; local tools run
 | J5.1 | **Go SDK Management** | Detects Go or installs official releases (SHA-256 verified); a different SDK per project without changing `PATH`. |
 | J5.2 | **Tool Installation** | Confirmed installs of gopls, golangci-lint, staticcheck and Delve into the adOmnia tools folder; custom tool paths. |
 | J5.3 | **Dependencies** | Previewed `go get`, `go mod tidy`, update, download and verify. |
+| J5.4 | **Extra Go Tools** | Detects, installs with confirmation and runs govulncheck, goimports, mockgen, stringer and user-defined tools with structured arguments, the project SDK and Run-console output. |
 
 ### J6. Git & adOmnia Integration
 
@@ -1082,5 +1085,5 @@ A Go IDE inside adOmnia. Projects open without running anything; local tools run
 | **G — Platform** | Settings, Infrastructure, UI Framework | 76 |
 | **H — API Design** | OpenAPI Import/Export, Schema Components, Visual OpenAPI Editor | 10 |
 | **I — MCP (Model Context Protocol)** | Client/Debugger, Sessions & Transport, Server Generator | 12 |
-| **J — Go Studio (Go IDE)** | Projects & Windows, Editor & gopls, Lint & AI, Run/Test/Debug, Toolchain, Git & Integration | 34 |
-| **Total** | 44 sections | **~569** |
+| **J — Go Studio (Go IDE)** | Projects & Windows, Editor & gopls, Lint & AI, Run/Test/Debug, Toolchain, Git & Integration | 37 |
+| **Total** | 44 sections | **~572** |

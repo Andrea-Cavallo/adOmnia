@@ -37,9 +37,9 @@ describe('Terminal Green skin and hub', () => {
 
   it('opens the verified AI companion from the Hub mascot', () => {
     expect(mascotSource).toContain('isAICompanionAvailable(ai)')
-    expect(mascotSource).toContain("'adomnia:open-ai-companion'")
+    expect(mascotSource).toContain("open('a0')")
     expect(mascotSource).toContain("tr('Connect AI to use a0')")
-    expect(companionSource).toContain("document.addEventListener('adomnia:open-ai-companion', openFromHub)")
+    expect(companionSource).toContain('aria-label="AI di a0"')
   })
 
   it('does not bundle or launch the extracted game from the app or companion', () => {

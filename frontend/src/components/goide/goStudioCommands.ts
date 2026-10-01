@@ -29,7 +29,7 @@ export type GoStudioCommandId =
   | 'debug.stop' | 'view.debug' | 'go.installDelve' | 'debug.attach' | 'debug.remote'
   | 'debug.viewBreakpoints' | 'debug.runToCursor' | 'debug.muteBreakpoints'
   | 'vcs.commit' | 'vcs.history' | 'vcs.annotate' | 'vcs.gitStudio'
-  | 'tools.services' | 'tools.httpRequest' | 'tools.plugins' | 'tools.copilot' | 'tools.copilotCompletions'
+  | 'tools.services' | 'tools.httpRequest' | 'tools.plugins' | 'tools.copilot' | 'tools.copilotChat' | 'tools.a0Chat' | 'tools.copilotCompletions'
   | 'help.shortcuts'
 
 export type GoStudioMenuId = 'file' | 'edit' | 'view' | 'navigate' | 'code' | 'go' | 'run' | 'tools' | 'git' | 'help'
@@ -235,6 +235,8 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'tools.httpRequest', menu: 'tools', label: 'Open HTTP Route in API Client' },
   { id: 'tools.plugins', menu: 'tools', label: 'Plugins Listening to Go Studio Events', separatorBefore: true },
   { id: 'tools.copilot', menu: 'tools', label: 'GitHub Copilot…', separatorBefore: true },
+  { id: 'tools.copilotChat', menu: 'tools', label: 'Open Copilot Chat' },
+  { id: 'tools.a0Chat', menu: 'tools', label: 'Open a0' },
   { id: 'tools.copilotCompletions', menu: 'tools', label: 'Toggle Copilot Inline Completions' },
   { id: 'vcs.commit', menu: 'git', label: 'Commit…', binding: { key: 'k', mod: true } },
   { id: 'vcs.history', menu: 'git', label: 'Show File History…' },
@@ -432,8 +434,8 @@ export function commandAvailability(id: GoStudioCommandId, context: GoStudioComm
     case 'run.build':
     case 'run.buildPackage':
     case 'run.context':
-    case 'run.benchPackage':
     case 'run.testPackage':
+    case 'run.benchPackage':
     case 'run.vetPackage':
     case 'run.buildAll':
     case 'run.testAll':
@@ -497,8 +499,8 @@ export function commandChecked(id: GoStudioCommandId, context: GoStudioCommandCo
     case 'view.vimMode': return context.editorPrefs?.editorMode === 'vim'
     case 'view.emacsMode': return context.editorPrefs?.editorMode === 'emacs'
     case 'view.fontLigatures': return !!context.editorPrefs?.fontLigatures
-    case 'file.autoSave': return !!context.editorPrefs?.autoSave
     case 'code.typeHints': return !!context.editorPrefs?.typeHints && context.inlayHints
+    case 'file.autoSave': return !!context.editorPrefs?.autoSave
     case 'file.trimWhitespace': return !!context.editorPrefs?.trimTrailingWhitespace
     case 'view.maximizeEditor': return !context.projectOpen && !context.structureOpen && !context.bottomOpen
     case 'view.toggleProject': return context.projectOpen

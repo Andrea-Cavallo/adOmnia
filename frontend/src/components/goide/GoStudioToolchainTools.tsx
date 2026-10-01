@@ -4,6 +4,8 @@ import { GoStudioButton } from './GoStudioModal'
 import { useGoIDELspStore } from '@/stores/goideLsp'
 import { useGoIDEDebugStore } from '@/stores/goideDebug'
 import type { GoStudioCommandId } from './goStudioCommands'
+import { GoStudioExtraTools } from './GoStudioExtraTools'
+import { useGoIDEStore } from '@/stores/goide'
 
 interface ToolStatus { available: boolean; binary?: string; version?: string; source?: string; error?: string }
 
@@ -19,6 +21,7 @@ export function ToolchainToolsSection({ sessionId, goAvailable, onRunCommand }: 
   const linter = useGoIDELspStore((state) => state.linter[sessionId] ?? null)
   const delve = useGoIDEDebugStore((state) => state.delve[sessionId] ?? null)
   const [checking, setChecking] = useState(false)
+  const trusted = useGoIDEStore((state) => state.sessions.find((item) => item.id === sessionId)?.project.authorization === 'tooling-permitted')
 
   const check = async () => {
     setChecking(true)
@@ -57,6 +60,7 @@ export function ToolchainToolsSection({ sessionId, goAvailable, onRunCommand }: 
         })}
       </div>
       <p className="gs-hint">Install and update run in the Run console. Run the health check again when they finish.</p>
+      <GoStudioExtraTools sessionId={sessionId} goAvailable={goAvailable} trusted={trusted} />
     </section>
   )
 }
