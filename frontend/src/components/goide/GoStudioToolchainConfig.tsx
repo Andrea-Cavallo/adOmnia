@@ -3,7 +3,7 @@ import { Globe, FolderGit2} from 'lucide-react'
 import { GoStudioButton, GoStudioField } from './GoStudioModal'
 import { configureGoIDEGlobalToolchain, getGoIDEToolchainSettings, resetGoIDEToolchainToGlobal, type GoIDEToolchainSettings } from '@/lib/goide-api'
 import { useGoIDEStore } from '@/stores/goide'
-import { modulePatternProblem, networkModeOf, suggestedPrivatePattern, toolchainEnvFromForm, toolchainFormFromEnv, withNetworkMode, type GoStudioNetworkMode, type ToolchainField, type ToolchainForm } from './goStudioToolchainEnv'
+import { corporateNetworkOf, modulePatternProblem, networkModeOf, proxyProblem, withCorporateNetwork, type GoStudioCorporateNetwork, suggestedPrivatePattern, toolchainEnvFromForm, toolchainFormFromEnv, withNetworkMode, type GoStudioNetworkMode, type ToolchainField, type ToolchainForm } from './goStudioToolchainEnv'
 
 type Scope = 'project' | 'global'
 
@@ -40,7 +40,9 @@ export function ToolchainConfigSection({ sessionId, onError }: Props) {
   const [busy, setBusy] = useState(false)
   const modules = useGoIDEStore((state) => state.sessions.find((item) => item.id === sessionId)?.project.modules)
   const suggestion = (modules ?? []).map((module) => suggestedPrivatePattern(module.modulePath ?? '')).find((pattern): pattern is string => !!pattern) ?? null
-  const problems = TEXT_FIELDS.map(({ key }) => modulePatternProblem(key, form.fields[key])).filter((problem): problem is string => !!problem)
+  const corporate = corporateNetworkOf(form)
+  const setCorporate = (patch: Partial<GoStudioCorporateNetwork>) => setForm((current) => withCorporateNetwork(current, { ...corporateNetworkOf(current), ...patch }))
+  const problems = [...TEXT_FIELDS.map(({ key }) => modulePatternProblem(key, form.fields[key])), proxyProblem(corporate.proxy)].filter((problem): problem is string => !!problem)
 
   const load = async (nextScope: Scope, current = settings) => {
     const config = nextScope === 'project' ? current?.project ?? current?.global : current?.global
@@ -99,6 +101,17 @@ export function ToolchainConfigSection({ sessionId, onError }: Props) {
             <button key={mode.value} type="button" role="radio" aria-checked={networkModeOf(form) === mode.value} aria-pressed={networkModeOf(form) === mode.value} onClick={(event) => { event.preventDefault(); setForm((current) => withNetworkMode(current, mode.value)) }} className="gs-segment">{mode.label}</button>
           ))}
         </div>
+      </GoStudioField>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-3">
+        <GoStudioField label="Corporate proxy" hint={proxyProblem(corporate.proxy) ? <span className="text-danger">{proxyProblem(corporate.proxy)}</span> : 'HTTPS_PROXY and HTTP_PROXY for go, git and gopls. A password in the URL stays in memory only.'}>
+          <input value={corporate.proxy} onChange={(event) => setCorporate({ proxy: event.target.value })} placeholder="http://proxy.corp:8080" aria-invalid={!!proxyProblem(corporate.proxy)} className={inputClass} />
+        </GoStudioField>
+        <GoStudioField label="No proxy for" hint="NO_PROXY: hosts reached directly, e.g. your Git server.">
+          <input value={corporate.noProxy} onChange={(event) => setCorporate({ noProxy: event.target.value })} placeholder="git.corp.example,localhost" className={inputClass} />
+        </GoStudioField>
+      </div>
+      <GoStudioField label="Corporate CA bundle (PEM)" hint="GIT_SSL_CAINFO for Git and SSL_CERT_FILE for Go on Linux. On Windows and macOS Go trusts the system store: install the CA there.">
+        <input value={corporate.caBundle} onChange={(event) => setCorporate({ caBundle: event.target.value })} placeholder="C:/certs/corporate-ca.pem" className={inputClass} />
       </GoStudioField>
       <GoStudioField label="Go binary"><input value={goBinary} onChange={(event) => setGoBinary(event.target.value)} placeholder="Leave empty to use Go from PATH" className={inputClass} /></GoStudioField>
       <div className="grid grid-cols-2 gap-x-3 gap-y-3">

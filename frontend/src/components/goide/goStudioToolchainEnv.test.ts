@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { modulePatternProblem, networkModeOf, suggestedPrivatePattern, toolchainEnvFromForm, toolchainFormFromEnv, withNetworkMode } from './goStudioToolchainEnv'
+import { corporateNetworkOf, modulePatternProblem, networkModeOf, proxyProblem, suggestedPrivatePattern, toolchainEnvFromForm, toolchainFormFromEnv, withCorporateNetwork, withNetworkMode } from './goStudioToolchainEnv'
 
 describe('toolchain env form', () => {
   it('round-trips structured fields, build tags and extra variables', () => {
@@ -48,5 +48,19 @@ describe('network mode', () => {
     expect(toolchainEnvFromForm(withNetworkMode(airgapped, 'offline')).GOSUMDB).toBeUndefined()
     const online = toolchainEnvFromForm(withNetworkMode(airgapped, 'online'))
     expect(online).toEqual({ GOPRIVATE: 'git.corp/*', GOFLAGS: '-tags=e2e', GOTOOLCHAIN: 'local' })
+  })
+})
+
+describe('corporate network', () => {
+  it('maps proxy, NO_PROXY and CA bundle to the standard variables', () => {
+    const form = withCorporateNetwork(toolchainFormFromEnv({ GOPRIVATE: 'git.corp/*' }), { proxy: ' http://proxy.corp:8080 ', noProxy: 'git.corp,localhost', caBundle: 'C:/certs/corp.pem' })
+    expect(toolchainEnvFromForm(form)).toEqual({ GOPRIVATE: 'git.corp/*', HTTPS_PROXY: 'http://proxy.corp:8080', HTTP_PROXY: 'http://proxy.corp:8080', NO_PROXY: 'git.corp,localhost', SSL_CERT_FILE: 'C:/certs/corp.pem', GIT_SSL_CAINFO: 'C:/certs/corp.pem' })
+    expect(corporateNetworkOf(form)).toEqual({ proxy: 'http://proxy.corp:8080', noProxy: 'git.corp,localhost', caBundle: 'C:/certs/corp.pem' })
+    expect(toolchainEnvFromForm(withCorporateNetwork(form, { proxy: '', noProxy: '', caBundle: '' }))).toEqual({ GOPRIVATE: 'git.corp/*' })
+  })
+  it('validates the proxy URL', () => {
+    expect(proxyProblem('http://proxy.corp:8080')).toBeNull()
+    expect(proxyProblem('proxy.corp:8080')).not.toBeNull()
+    expect(proxyProblem('ftp://proxy')).not.toBeNull()
   })
 })

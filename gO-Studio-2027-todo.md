@@ -65,9 +65,9 @@ _Affidabilità, velocità su repo grandi e PC aziendali, debug/test/Git completi
 
 ## §48 · Enterprise — rete aziendale e toolchain
 
-- [ ] Corporate proxy. — *Parziale: GOPROXY configurabile per toolchain e proxy Copilot; non c'è un proxy globale unico.*
+- [ ] Corporate proxy. — *Parziale: proxy aziendale (HTTPS_PROXY/NO_PROXY) per toolchain Go, Git e gopls nelle impostazioni toolchain, proxy separato per Copilot; manca un proxy unico per tutta adOmnia (AI, client HTTP).*
 - [ ] Private module repositories. — *Parziale: Campi GOPRIVATE/GONOPROXY/GONOSUMDB in GoStudioToolchainConfig.tsx; manca la gestione credenziali dei repo privati.*
-- [ ] Custom CA certificates. — *Parziale: CA bundle PEM solo per Copilot (NODE_EXTRA_CA_CERTS); non per toolchain Go o resto di Go Studio.*
+- [ ] Custom CA certificates. — *Parziale: CA bundle PEM per Copilot e per toolchain Go/Git (GIT_SSL_CAINFO, SSL_CERT_FILE su Linux); su Windows/macOS Go usa lo store di sistema; manca per il client HTTP e l'AI di adOmnia.*
 - [ ] Internal artifact registry.
 - [ ] Corporate Git support.
 

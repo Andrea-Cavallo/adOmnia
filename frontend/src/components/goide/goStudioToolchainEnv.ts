@@ -101,3 +101,43 @@ export function withNetworkMode(form: ToolchainForm, mode: GoStudioNetworkMode):
   }
   return toolchainFormFromEnv(env)
 }
+
+export interface GoStudioCorporateNetwork {
+  /** URL del proxy aziendale per Go e Git (HTTPS_PROXY e HTTP_PROXY). */
+  proxy: string
+  /** Host esclusi dal proxy (NO_PROXY), separati da virgole. */
+  noProxy: string
+  /** Bundle PEM delle CA aziendali (SSL_CERT_FILE per Go su Linux/BSD, GIT_SSL_CAINFO per Git). */
+  caBundle: string
+}
+
+export function corporateNetworkOf(form: ToolchainForm): GoStudioCorporateNetwork {
+  const env = toolchainEnvFromForm(form)
+  return { proxy: env.HTTPS_PROXY ?? env.HTTP_PROXY ?? '', noProxy: env.NO_PROXY ?? '', caBundle: env.SSL_CERT_FILE ?? env.GIT_SSL_CAINFO ?? '' }
+}
+
+/** Scrive proxy, NO_PROXY e CA nelle variabili standard lette da go, git e dai loro sottoprocessi. */
+export function withCorporateNetwork(form: ToolchainForm, network: GoStudioCorporateNetwork): ToolchainForm {
+  const env = toolchainEnvFromForm(form)
+  const set = (names: string[], value: string) => {
+    for (const name of names) {
+      if (value.trim()) env[name] = value.trim()
+      else delete env[name]
+    }
+  }
+  set(['HTTPS_PROXY', 'HTTP_PROXY'], network.proxy)
+  set(['NO_PROXY'], network.noProxy)
+  set(['SSL_CERT_FILE', 'GIT_SSL_CAINFO'], network.caBundle)
+  return toolchainFormFromEnv(env)
+}
+
+/** Il proxy deve essere un URL http(s) o socks5; null se valido o vuoto. */
+export function proxyProblem(value: string): string | null {
+  if (!value.trim()) return null
+  try {
+    const url = new URL(value.trim())
+    return ['http:', 'https:', 'socks5:'].includes(url.protocol) ? null : 'Use an http://, https:// or socks5:// proxy URL.'
+  } catch {
+    return 'Enter a full URL such as http://proxy.corp:8080.'
+  }
+}
