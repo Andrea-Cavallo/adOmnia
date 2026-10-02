@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { GoIDETestResult, GoIDETestRun } from '@/lib/goide-tests-api'
-import { buildTestTree, filterTestTree, isSlow, onlyFailed, packagePattern, requestForNode, rerunFailedRequest, runPatternFor } from './goStudioTestTree'
+import { buildTestTree, filterTestTree, isFlaky, isSlow, onlyFailed, onlyFlaky, packagePattern, repeatRequestForNode, repetitionStats, reproduceRequest, requestForNode, rerunFailedRequest, runPatternFor } from './goStudioTestTree'
 
 const node = (pkg: string, name: string, status: string, extra: Partial<GoIDETestResult> = {}): GoIDETestResult => ({
   id: name ? `${pkg}\u0000${name}` : pkg,
@@ -73,5 +73,27 @@ describe('rerun requests', () => {
 
   it('reruns a single subtest exactly', () => {
     expect(requestForNode(run(results), results[2])).toMatchObject({ packages: ['./api'], run: '^TestAdd$/^negative$', bench: '' })
+  })
+})
+
+describe('flaky detector', () => {
+  const flaky = node('example.com/svc/api', 'TestRace', 'fail', { runs: 4, failures: 1, minMillis: 2, maxMillis: 40, totalMillis: 60 })
+  const broken = node('example.com/svc/api', 'TestBroken', 'fail', { runs: 4, failures: 4 })
+  const pkg = node('example.com/svc/api', '', 'fail', { directory: 'svc/api', shuffleSeed: '42' })
+  it('flags only tests that both passed and failed', () => {
+    expect(isFlaky(flaky)).toBe(true)
+    expect(isFlaky(broken)).toBe(false)
+    expect(isFlaky(node('p', 'TestOnce', 'fail', { runs: 1, failures: 1 }))).toBe(false)
+    expect(onlyFlaky(buildTestTree([pkg, flaky, broken]))[0].children.map((item) => item.label)).toEqual(['TestRace'])
+  })
+  it('summarises the repetitions', () => {
+    expect(repetitionStats(flaky)).toEqual({ runs: 4, failures: 1, failureRate: 0.25, minMillis: 2, avgMillis: 15, maxMillis: 40 })
+    expect(repetitionStats(node('p', 'T', 'pass', { runs: 1 }))).toBeNull()
+  })
+  it('repeats a test shuffled and replays the shuffle seed', () => {
+    const current = run([pkg, flaky])
+    expect(repeatRequestForNode(current, flaky, 50)).toMatchObject({ packages: ['./api'], run: '^TestRace$', repeat: 50, shuffle: 'on' })
+    expect(reproduceRequest(current, pkg)).toMatchObject({ packages: ['./api'], run: '', shuffle: '42' })
+    expect(reproduceRequest(current, node('p', '', 'pass'))).toBeNull()
   })
 })

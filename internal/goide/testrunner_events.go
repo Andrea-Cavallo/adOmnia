@@ -57,6 +57,15 @@ type TestResult struct {
 	BuildFailed   bool          `json:"buildFailed,omitempty"`
 	// Directory è la cartella del package relativa al progetto (solo sui nodi package).
 	Directory string `json:"directory,omitempty"`
+	// Runs e Failures contano gli esiti con -count=N; Min/MaxMillis danno la distribuzione delle durate.
+	Runs      int   `json:"runs,omitempty"`
+	Failures  int   `json:"failures,omitempty"`
+	MinMillis int64 `json:"minMillis,omitempty"`
+	MaxMillis int64 `json:"maxMillis,omitempty"`
+	// TotalMillis somma le durate di tutte le ripetizioni (media = TotalMillis/Runs).
+	TotalMillis int64 `json:"totalMillis,omitempty"`
+	// ShuffleSeed è il seed di -shuffle stampato dal package, per riprodurre l'ordine.
+	ShuffleSeed string `json:"shuffleSeed,omitempty"`
 }
 
 // TestSummary conta i risultati foglia (test senza sottotest e package senza test).
@@ -78,6 +87,7 @@ type testTree struct {
 var (
 	failureLine   = regexp.MustCompile(`^\s+([\w.\-/\\]+\.go):(\d+):`)
 	buildLine     = regexp.MustCompile(`^([\w.\-/\\]+\.go):(\d+):\d+:`)
+	shuffleLine   = regexp.MustCompile(`^-test\.shuffle (-?\d+)$`)
 	benchmarkLine = regexp.MustCompile(`^\s*(?:Benchmark\S*\s+)?(\d+\s+.*\bns/op\b.*)$`)
 )
 
@@ -154,8 +164,12 @@ func (t *testTree) apply(line []byte) {
 	case "output":
 		t.output(node, event.Output)
 	case "pass", "fail", "skip":
+		elapsed := int64(event.Elapsed * 1000)
+		node.ElapsedMillis = elapsed
 		node.Status = event.Action
-		node.ElapsedMillis = int64(event.Elapsed * 1000)
+		if event.Test != "" && event.Action != "skip" {
+			recordRepetition(node, event.Action == "fail", elapsed)
+		}
 		if event.FailedBuild != "" {
 			node.BuildFailed = true
 		}
@@ -167,9 +181,29 @@ func (t *testTree) apply(line []byte) {
 	}
 }
 
+// recordRepetition accumula un esito: con -count=N un fallimento resta visibile anche se l'ultima ripetizione passa.
+func recordRepetition(node *TestResult, failed bool, elapsed int64) {
+	node.Runs++
+	if failed {
+		node.Failures++
+	} else if node.Failures > 0 {
+		node.Status = TestFailed
+	}
+	if node.Runs == 1 || elapsed < node.MinMillis {
+		node.MinMillis = elapsed
+	}
+	node.MaxMillis = max(node.MaxMillis, elapsed)
+	node.TotalMillis += elapsed
+}
+
 func (t *testTree) output(node *TestResult, text string) {
 	appendOutput(node, text)
 	trimmed := strings.TrimRight(text, "\n")
+	if node.Name == "" && node.ShuffleSeed == "" {
+		if match := shuffleLine.FindStringSubmatch(trimmed); match != nil {
+			node.ShuffleSeed = match[1]
+		}
+	}
 	if node.Failure == nil {
 		if match := failureLine.FindStringSubmatch(trimmed); match != nil {
 			node.Failure = &TestLocation{File: match[1], Line: atoiOrZero(match[2])}

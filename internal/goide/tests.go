@@ -16,7 +16,10 @@ const (
 	testUpdateInterval = 250 * time.Millisecond
 	maxTestRunHistory  = 20
 	maxTestPatterns    = 64
+	maxTestRepeat      = 1000
 )
+
+var shuffleSeed = regexp.MustCompile(`^(on|-?\d{1,19})$`)
 
 // TestRunRequest descrive un'esecuzione di `go test -json`: package, filtro -run, benchmark e coverage.
 type TestRunRequest struct {
@@ -34,6 +37,10 @@ type TestRunRequest struct {
 	Race        bool              `json:"race,omitempty"`
 	BuildTags   []string          `json:"buildTags,omitempty"`
 	Environment map[string]string `json:"environment,omitempty"`
+	// Repeat esegue ogni test N volte (-count=N) per misurarne la flakiness; 0 o 1 = una volta.
+	Repeat int `json:"repeat,omitempty"`
+	// Shuffle è "on" per un ordine casuale o un seed numerico per riprodurlo (-shuffle).
+	Shuffle string `json:"shuffle,omitempty"`
 }
 
 // TestRunSnapshot è lo stato di un'esecuzione di test; Results non include l'output dei singoli nodi.
@@ -93,7 +100,16 @@ func testArguments(request TestRunRequest, coverageFile string) ([]string, error
 			return nil, fmt.Errorf("espressione di filtro non valida %q: %w", expression, err)
 		}
 	}
-	arguments := []string{"test", "-json", "-count=1"}
+	if request.Repeat < 0 || request.Repeat > maxTestRepeat {
+		return nil, fmt.Errorf("ripetizioni non valide: da 1 a %d", maxTestRepeat)
+	}
+	if request.Shuffle != "" && !shuffleSeed.MatchString(request.Shuffle) {
+		return nil, fmt.Errorf("shuffle non valido %q: usa \"on\" o un seed numerico", request.Shuffle)
+	}
+	arguments := []string{"test", "-json", fmt.Sprintf("-count=%d", max(1, request.Repeat))}
+	if request.Shuffle != "" {
+		arguments = append(arguments, "-shuffle="+request.Shuffle)
+	}
 	if len(request.BuildTags) > 0 {
 		arguments = append(arguments, "-tags", strings.Join(request.BuildTags, ","))
 	}

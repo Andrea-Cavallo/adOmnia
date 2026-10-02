@@ -4862,6 +4862,24 @@ export class TestResult {
      */
     "directory"?: string;
 
+    /**
+     * Runs e Failures contano gli esiti con -count=N; Min/MaxMillis danno la distribuzione delle durate.
+     */
+    "runs"?: number;
+    "failures"?: number;
+    "minMillis"?: number;
+    "maxMillis"?: number;
+
+    /**
+     * TotalMillis somma le durate di tutte le ripetizioni (media = TotalMillis/Runs).
+     */
+    "totalMillis"?: number;
+
+    /**
+     * ShuffleSeed è il seed di -shuffle stampato dal package, per riprodurre l'ordine.
+     */
+    "shuffleSeed"?: string;
+
     /** Creates a new TestResult instance. */
     constructor($$source: Partial<TestResult> = {}) {
         if (!("id" in $$source)) {
@@ -4926,6 +4944,16 @@ export class TestRunRequest {
     "race"?: boolean;
     "buildTags"?: string[];
     "environment"?: { [_ in string]?: string };
+
+    /**
+     * Repeat esegue ogni test N volte (-count=N) per misurarne la flakiness; 0 o 1 = una volta.
+     */
+    "repeat"?: number;
+
+    /**
+     * Shuffle è "on" per un ordine casuale o un seed numerico per riprodurlo (-shuffle).
+     */
+    "shuffle"?: string;
 
     /** Creates a new TestRunRequest instance. */
     constructor($$source: Partial<TestRunRequest> = {}) {

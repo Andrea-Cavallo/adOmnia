@@ -1,0 +1,30 @@
+{"Action":"start","Package":"example.com/flaky"}
+{"Action":"output","Package":"example.com/flaky","Output":"-test.shuffle 42\n"}
+{"Action":"run","Package":"example.com/flaky","Test":"TestStable"}
+{"Action":"output","Package":"example.com/flaky","Test":"TestStable","Output":"=== RUN   TestStable\n"}
+{"Action":"output","Package":"example.com/flaky","Test":"TestStable","Output":"--- PASS: TestStable (0.00s)\n"}
+{"Action":"pass","Package":"example.com/flaky","Test":"TestStable","Elapsed":0}
+{"Action":"run","Package":"example.com/flaky","Test":"TestFlaky"}
+{"Action":"output","Package":"example.com/flaky","Test":"TestFlaky","Output":"=== RUN   TestFlaky\n"}
+{"Action":"output","Package":"example.com/flaky","Test":"TestFlaky","Output":"--- PASS: TestFlaky (0.00s)\n"}
+{"Action":"pass","Package":"example.com/flaky","Test":"TestFlaky","Elapsed":0}
+{"Action":"run","Package":"example.com/flaky","Test":"TestStable"}
+{"Action":"output","Package":"example.com/flaky","Test":"TestStable","Output":"=== RUN   TestStable\n"}
+{"Action":"output","Package":"example.com/flaky","Test":"TestStable","Output":"--- PASS: TestStable (0.00s)\n"}
+{"Action":"pass","Package":"example.com/flaky","Test":"TestStable","Elapsed":0}
+{"Action":"run","Package":"example.com/flaky","Test":"TestFlaky"}
+{"Action":"output","Package":"example.com/flaky","Test":"TestFlaky","Output":"=== RUN   TestFlaky\n"}
+{"Action":"output","Package":"example.com/flaky","Test":"TestFlaky","Output":"    f_test.go:3: odd\n"}
+{"Action":"output","Package":"example.com/flaky","Test":"TestFlaky","Output":"--- FAIL: TestFlaky (0.00s)\n"}
+{"Action":"fail","Package":"example.com/flaky","Test":"TestFlaky","Elapsed":0}
+{"Action":"run","Package":"example.com/flaky","Test":"TestStable"}
+{"Action":"output","Package":"example.com/flaky","Test":"TestStable","Output":"=== RUN   TestStable\n"}
+{"Action":"output","Package":"example.com/flaky","Test":"TestStable","Output":"--- PASS: TestStable (0.00s)\n"}
+{"Action":"pass","Package":"example.com/flaky","Test":"TestStable","Elapsed":0}
+{"Action":"run","Package":"example.com/flaky","Test":"TestFlaky"}
+{"Action":"output","Package":"example.com/flaky","Test":"TestFlaky","Output":"=== RUN   TestFlaky\n"}
+{"Action":"output","Package":"example.com/flaky","Test":"TestFlaky","Output":"--- PASS: TestFlaky (0.00s)\n"}
+{"Action":"pass","Package":"example.com/flaky","Test":"TestFlaky","Elapsed":0}
+{"Action":"output","Package":"example.com/flaky","Output":"FAIL\n"}
+{"Action":"output","Package":"example.com/flaky","Output":"FAIL\texample.com/flaky\t0.367s\n"}
+{"Action":"fail","Package":"example.com/flaky","Elapsed":0.367}

@@ -100,3 +100,33 @@ func TestTestTreeCapsOutputAndNodes(t *testing.T) {
 		t.Fatalf("output non limitato: %d", len(node.Output))
 	}
 }
+
+func TestTestTreeCountsRepetitionsAndShuffleSeed(t *testing.T) {
+	results, summary := treeFromFile(t, "flaky.jsonl").snapshot()
+	flaky := findResult(results, "example.com/flaky", "TestFlaky")
+	if flaky == nil || flaky.Runs != 3 || flaky.Failures != 1 || flaky.Status != TestFailed {
+		t.Fatalf("ripetizioni flaky non contate o fallimento perso dall'ultima ripetizione verde: %+v", flaky)
+	}
+	stable := findResult(results, "example.com/flaky", "TestStable")
+	if stable == nil || stable.Runs != 3 || stable.Failures != 0 || stable.Status != TestPassed {
+		t.Fatalf("test stabile: %+v", stable)
+	}
+	if pkg := findResult(results, "example.com/flaky", ""); pkg == nil || pkg.ShuffleSeed != "42" {
+		t.Fatalf("seed di -shuffle non letto: %+v", pkg)
+	}
+	if summary.Failed != 1 || summary.Passed != 1 {
+		t.Fatalf("summary: %+v", summary)
+	}
+}
+
+func TestTestArgumentsRepeatAndShuffle(t *testing.T) {
+	arguments, err := testArguments(TestRunRequest{Repeat: 20, Shuffle: "123"}, "")
+	if err != nil || !strings.Contains(strings.Join(arguments, " "), "-count=20 -shuffle=123") {
+		t.Fatalf("argomenti: %v %v", arguments, err)
+	}
+	for _, bad := range []TestRunRequest{{Repeat: 5000}, {Repeat: -1}, {Shuffle: "on; rm"}} {
+		if _, err := testArguments(bad, ""); err == nil {
+			t.Fatalf("richiesta non valida accettata: %+v", bad)
+		}
+	}
+}

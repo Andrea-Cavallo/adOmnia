@@ -160,6 +160,13 @@ pause and explains it.
   Go's wait reason. The analysis covers the first 1000 goroutines of a
   pause.
 
+## Flaky tests
+
+- **Run N times.** In the Tests panel, **↻ ×** with 10/20/50/100 reruns the current run with `-count=N -shuffle=on`; the ↻ on a test row runs that test 20 times. Repetitions are counted from the `go test -json` events, never from text.
+- **Flaky badge and filter.** A test that both passed and failed shows *flaky failed/runs*; a test that always failed stays a plain failure. The *N flaky* toggle shows only flaky tests. One failed repetition keeps the test red even if the last one passed.
+- **Failure rate and durations.** The detail header shows the failure rate and min/avg/max duration across repetitions.
+- **Seed replay.** Selecting a package shows the `-shuffle` seed it printed; clicking it reruns the package in the same order.
+
 ## Crash recovery
 
 - **Unsaved buffers.** Every dirty buffer is snapshotted about 750 ms after the last keystroke, outside the file and on this machine only (bbolt, one atomic transaction per write). The last three versions of each file are kept with their SHA-256: if the newest is corrupt, the previous one is used. The original file is never touched until you save.

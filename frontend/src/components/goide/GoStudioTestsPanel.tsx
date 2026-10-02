@@ -1,12 +1,12 @@
 import { memo, useEffect, useMemo, useState } from 'react'
-import { Bug, CheckCircle2, ChevronDown, ChevronRight, CircleDashed, Clock3, Copy, Filter, Gauge, Loader2, MinusCircle, Play, RotateCcw, Search, ShieldCheck, Square, Trash2, XCircle } from 'lucide-react'
+import { Bug, CheckCircle2, ChevronDown, ChevronRight, CircleDashed, Clock3, Copy, Filter, Gauge, Loader2, MinusCircle, Play, Repeat, RotateCcw, Search, Shuffle, ShieldCheck, Square, Trash2, XCircle } from 'lucide-react'
 import { Clipboard as WailsClipboard } from '@wailsio/runtime'
 import type { GoIDESession } from '@/lib/goide-api'
 import { getGoIDETestOutput, type GoIDECoverageReport, type GoIDETestResult, type GoIDETestRun } from '@/lib/goide-tests-api'
 import { requestWorkspaceSymbols } from '@/lib/goide-lsp-api'
 import { useGoIDEStore } from '@/stores/goide'
 import { selectedTestRun, useGoIDETestsStore } from '@/stores/goideTests'
-import { buildTestTree, debugRequestForNode, filterTestTree, formatDuration, isFailed, isSlow, onlyFailed, type GoStudioTestNode } from './goStudioTestTree'
+import { buildTestTree, debugRequestForNode, filterTestTree, formatDuration, isFailed, isFlaky, isSlow, onlyFailed, onlyFlaky, repeatRequestForNode, repetitionStats, reproduceRequest, type GoStudioTestNode } from './goStudioTestTree'
 import { useGoIDEDebugStore } from '@/stores/goideDebug'
 import { navigateToLocation } from './goStudioLanguageFeatures'
 import { runGoStudioBenchmarks } from './goStudioQuickActions'
@@ -16,6 +16,8 @@ import { benchmarkHistoryCsv, clearBenchmarkHistory, loadBenchmarkHistory, previ
 interface GoStudioTestsPanelProps {
   session: GoIDESession
 }
+
+const REPEAT_OPTIONS = [10, 20, 50, 100]
 
 const OUTPUT_LOCATION = /^(\s+)([\w.\-/]+\.go):(\d+)(:.*)$/
 
@@ -82,11 +84,17 @@ function TestRow({ node, depth, selected, run, sessionId, entry = false }: { nod
         <StatusIcon status={result.status} />
         <span className={`truncate ${result.name ? 'font-mono' : 'font-medium'}`}>{node.label}</span>
         {result.buildFailed && <span className="shrink-0 rounded bg-danger/15 px-1 text-[9px] text-danger">build failed</span>}
+        {isFlaky(result) && <span title={`Failed ${result.failures} of ${result.runs} runs`} className="shrink-0 rounded bg-warning/15 px-1 text-[9px] font-semibold text-warning">flaky {result.failures}/{result.runs}</span>}
         {result.benchmark && <span className="truncate font-mono text-[10px] text-accent">{result.benchmark}</span>}
         <span className="ml-auto shrink-0 text-[9px] text-text-4">{result.status !== 'running' && result.elapsedMillis > 0 ? formatDuration(result.elapsedMillis) : ''}</span>
         {run.status !== 'running' && (
           <button type="button" title={result.name ? `Rerun ${result.name}` : `Rerun ${result.package}`} onClick={(event) => { event.stopPropagation(); void rerunNode(sessionId, result) }} className="grid h-5 w-5 shrink-0 place-items-center rounded text-success opacity-0 hover:bg-success/10 group-hover:opacity-100">
             <Play size={10} fill="currentColor" aria-hidden="true" />
+          </button>
+        )}
+        {run.status !== 'running' && result.name && !result.name.startsWith('Benchmark') && (
+          <button type="button" title={`Run ${result.name} 20 times in random order`} onClick={(event) => { event.stopPropagation(); void useGoIDETestsStore.getState().start(repeatRequestForNode(run, result, 20)) }} className="grid h-5 w-5 shrink-0 place-items-center rounded text-accent opacity-0 hover:bg-accent/10 group-hover:opacity-100">
+            <Repeat size={10} aria-hidden="true" />
           </button>
         )}
         {run.status !== 'running' && result.name && (
@@ -173,6 +181,31 @@ function BenchmarkDetail({ run, result, runs, history }: { run: GoIDETestRun; re
   )
 }
 
+/** Esito delle ripetizioni (-count=N) e seed di -shuffle per riprodurre l'ordine. */
+function RepetitionSummary({ run, result }: { run: GoIDETestRun; result: GoIDETestResult }) {
+  const stats = repetitionStats(result)
+  const reproduce = reproduceRequest(run, result)
+  if (!stats && !reproduce) return null
+  const start = useGoIDETestsStore.getState().start
+  return (
+    <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-border-1 bg-surface-2/50 px-3 py-1.5 text-[10px] text-text-3">
+      {stats && (
+        <>
+          <span className={stats.failures === 0 ? 'text-success' : isFlaky(result) ? 'font-semibold text-warning' : 'text-danger'}>
+            {stats.failures === 0 ? `Stable · ${stats.runs} runs` : `${isFlaky(result) ? 'Flaky' : 'Always failing'} · failed ${stats.failures}/${stats.runs} (${Math.round(stats.failureRate * 100)}%)`}
+          </span>
+          <span title="Duration distribution across runs">min {formatDuration(stats.minMillis)} · avg {formatDuration(stats.avgMillis)} · max {formatDuration(stats.maxMillis)}</span>
+        </>
+      )}
+      {reproduce && (
+        <button type="button" disabled={run.status === 'running'} onClick={() => void start(reproduce)} title="Rerun this package with the same -shuffle seed to reproduce the test order" className="ml-auto flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-accent hover:bg-accent/10 disabled:opacity-30">
+          <Shuffle size={10} aria-hidden="true" /> seed {result.shuffleSeed}
+        </button>
+      )}
+    </div>
+  )
+}
+
 function TestDetail({ run, result, runs, history }: { run: GoIDETestRun; result: GoIDETestResult; runs: GoIDETestRun[]; history: GoStudioBenchmarkHistoryEntry[] }) {
   const [output, setOutput] = useState<string | null>(null)
   const openLocation = useGoIDEStore((state) => state.openLocation)
@@ -193,6 +226,7 @@ function TestDetail({ run, result, runs, history }: { run: GoIDETestRun; result:
         )}
         <span className="ml-auto shrink-0 text-[10px] text-text-4">{result.elapsedMillis > 0 ? formatDuration(result.elapsedMillis) : ''}</span>
       </div>
+      <RepetitionSummary run={run} result={result} />
       <div className="min-h-0 flex-1 overflow-auto px-3 py-2 font-mono text-[10px] leading-4 text-text-2">
         {benchmarkMeasurementFor(result)
           ? <BenchmarkDetail run={run} result={result} runs={runs} history={history} />
@@ -213,6 +247,8 @@ export const GoStudioTestsPanel = memo(function GoStudioTestsPanel({ session }: 
   const coverageVisible = useGoIDETestsStore((state) => state.coverageVisible)
   const [search, setSearch] = useState('')
   const [showOnlySlow, setShowOnlySlow] = useState(false)
+  const [showOnlyFlaky, setShowOnlyFlaky] = useState(false)
+  const [repeat, setRepeat] = useState(20)
   const [benchmarkHistory, setBenchmarkHistory] = useState<GoStudioBenchmarkHistoryEntry[]>([])
   const { rerunAll, rerunFailed, selectRun, toggleOnlyFailed, toggleCoverage, loadRuns, start } = useGoIDETestsStore.getState()
   const stopRun = useGoIDEStore((state) => state.stopRun)
@@ -223,13 +259,13 @@ export const GoStudioTestsPanel = memo(function GoStudioTestsPanel({ session }: 
   }, [runs, session.project.rootPath])
   const tree = useMemo(() => {
     const nodes = buildTestTree(run?.results ?? [])
-    const failed = showOnlyFailed ? onlyFailed(nodes) : nodes
+    const failed = showOnlyFlaky ? onlyFlaky(nodes) : showOnlyFailed ? onlyFailed(nodes) : nodes
     const query = search.trim().toLocaleLowerCase()
     return filterTestTree(failed, (result) => {
       if (showOnlySlow && !isSlow(result)) return false
       return !query || `${result.name ?? ''} ${result.package}`.toLocaleLowerCase().includes(query)
     })
-  }, [run?.results, search, showOnlyFailed, showOnlySlow])
+  }, [run?.results, search, showOnlyFailed, showOnlyFlaky, showOnlySlow])
   const selected = run?.results.find((result) => result.id === selectedId) ?? null
 
   if (!run) {
@@ -242,16 +278,25 @@ export const GoStudioTestsPanel = memo(function GoStudioTestsPanel({ session }: 
   }
   const running = run.status === 'running'
   const summary = run.summary
+  const repeated = (run.request.repeat ?? 0) > 1
+  const flakyCount = repeated ? run.results.filter(isFlaky).length : 0
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div role="toolbar" aria-label="Tests toolbar" className="flex h-8 shrink-0 items-center gap-1 border-b border-border-1 px-2 text-[10px]">
         <button type="button" disabled={running} onClick={() => void rerunAll(sessionId)} title="Rerun" className="grid h-6 w-6 place-items-center rounded text-success hover:bg-success/10 disabled:opacity-30"><Play size={11} fill="currentColor" aria-hidden="true" /></button>
         <button type="button" disabled={running || summary.failed === 0} onClick={() => void rerunFailed(sessionId)} title="Rerun failed tests" className="flex h-6 items-center gap-1 rounded px-1.5 text-danger hover:bg-danger/10 disabled:opacity-30"><RotateCcw size={11} aria-hidden="true" /> Failed</button>
+        <span className="flex h-6 items-center rounded border border-border-1">
+          <button type="button" disabled={running} onClick={() => void start({ ...run.request, repeat, shuffle: 'on', bench: '', coverage: false })} title={`Rerun ${repeat} times in random order to find flaky tests`} className="flex h-full items-center gap-1 rounded-l px-1.5 text-accent hover:bg-accent/10 disabled:opacity-30"><Repeat size={11} aria-hidden="true" /> ×</button>
+          <select aria-label="Repetitions" value={repeat} onChange={(event) => setRepeat(Number(event.target.value))} className="h-full rounded-r bg-surface-2 pr-0.5 text-[10px] text-text-2 outline-none">
+            {REPEAT_OPTIONS.map((value) => <option key={value} value={value}>{value}</option>)}
+          </select>
+        </span>
         <button type="button" disabled={running} onClick={() => void runGoStudioBenchmarks('package')} title="Run all benchmarks in the current package with benchmem" className="grid h-6 w-6 place-items-center rounded text-accent hover:bg-accent/10 disabled:opacity-30"><Gauge size={12} aria-hidden="true" /></button>
         {benchmarkHistory.length > 0 && <button type="button" onClick={() => void WailsClipboard.SetText(benchmarkHistoryCsv(benchmarkHistory))} title="Copy saved benchmark metrics as CSV" className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-3 hover:text-text-1"><Copy size={11} aria-hidden="true" /></button>}
         {benchmarkHistory.length > 0 && <button type="button" onClick={() => { clearBenchmarkHistory(session.project.rootPath); setBenchmarkHistory([]) }} title={`Clear ${benchmarkHistory.length} saved local benchmark measurement${benchmarkHistory.length === 1 ? '' : 's'}`} className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-3 hover:text-danger"><Trash2 size={11} aria-hidden="true" /></button>}
         <button type="button" disabled={!running} onClick={() => void stopRun(run.runId)} title="Stop tests" className="grid h-6 w-6 place-items-center rounded text-danger hover:bg-danger/10 disabled:opacity-30"><Square size={10} fill="currentColor" aria-hidden="true" /></button>
         <button type="button" aria-pressed={showOnlyFailed} onClick={toggleOnlyFailed} title="Show only failed" className={`grid h-6 w-6 place-items-center rounded ${showOnlyFailed ? 'bg-accent/15 text-accent' : 'text-text-3 hover:bg-surface-3'}`}><Filter size={11} aria-hidden="true" /></button>
+        {repeated && <button type="button" aria-pressed={showOnlyFlaky} onClick={() => setShowOnlyFlaky((value) => !value)} title="Show only flaky tests (passed and failed across repetitions)" className={`flex h-6 items-center gap-1 rounded px-1.5 ${showOnlyFlaky ? 'bg-warning/15 text-warning' : flakyCount ? 'text-warning hover:bg-warning/10' : 'text-text-3 hover:bg-surface-3'}`}><Shuffle size={11} aria-hidden="true" /> {flakyCount} flaky</button>}
         <button type="button" aria-pressed={showOnlySlow} onClick={() => setShowOnlySlow((value) => !value)} title="Show only tests slower than one second" className={`grid h-6 w-6 place-items-center rounded ${showOnlySlow ? 'bg-warning/15 text-warning' : 'text-text-3 hover:bg-surface-3'}`}><Clock3 size={11} aria-hidden="true" /></button>
         {run.coverage && (
           <button type="button" aria-pressed={coverageVisible} onClick={toggleCoverage} title={coverageVisible ? 'Hide coverage in the editor' : 'Show coverage in the editor'} className={`flex h-6 items-center gap-1 rounded px-1.5 ${coverageVisible ? 'bg-success/15 text-success' : 'text-text-3 hover:bg-surface-3'}`}><ShieldCheck size={11} aria-hidden="true" /> {run.coverage.percent.toFixed(1)}%</button>
@@ -269,13 +314,13 @@ export const GoStudioTestsPanel = memo(function GoStudioTestsPanel({ session }: 
           <input value={search} onChange={(event) => setSearch(event.target.value)} aria-label="Search tests" placeholder="Search tests" className="min-w-0 flex-1 bg-transparent text-[10px] text-text-2 outline-none" />
         </label>
         <select aria-label="Test run" value={run.runId} onChange={(event) => selectRun(sessionId, event.target.value)} className="h-6 max-w-72 rounded border border-border-1 bg-surface-2 px-1.5 text-[10px] text-text-2">
-          {(runs ?? []).map((item) => <option key={item.runId} value={item.runId}>{new Date(item.startedAt).toLocaleTimeString()} · {item.request.run || item.request.bench || (item.request.packages ?? []).join(' ')} · {item.summary.failed ? `${item.summary.failed} failed` : item.status}</option>)}
+          {(runs ?? []).map((item) => <option key={item.runId} value={item.runId}>{new Date(item.startedAt).toLocaleTimeString()} · {item.request.run || item.request.bench || (item.request.packages ?? []).join(' ')}{(item.request.repeat ?? 0) > 1 ? ` ×${item.request.repeat}` : ''} · {item.summary.failed ? `${item.summary.failed} failed` : item.status}</option>)}
         </select>
       </div>
       <div className="flex min-h-0 flex-1">
         <div role="tree" aria-label="Test results" className="min-h-0 w-[46%] shrink-0 overflow-auto border-r border-border-1 py-1">
           {tree.map((node, index) => <TestRow key={node.result.id} node={node} depth={0} selected={selectedId} run={run} sessionId={sessionId} entry={index === 0} />)}
-          {tree.length === 0 && <p className="p-3 text-[11px] text-text-4">{running ? 'Building and starting tests…' : showOnlyFailed ? 'No failed tests.' : showOnlySlow ? 'No tests slower than one second.' : search ? 'No matching tests.' : 'No tests found.'}</p>}
+          {tree.length === 0 && <p className="p-3 text-[11px] text-text-4">{running ? 'Building and starting tests…' : showOnlyFlaky ? 'No flaky tests in this run.' : showOnlyFailed ? 'No failed tests.' : showOnlySlow ? 'No tests slower than one second.' : search ? 'No matching tests.' : 'No tests found.'}</p>}
           {run.overflow && <p className="p-2 text-[10px] text-warning">Too many tests: only the first 5,000 are shown.</p>}
         </div>
         {selected ? <TestDetail run={run} result={selected} runs={runs ?? []} history={benchmarkHistory} /> : run.coverage ? <div className="min-h-0 flex-1 overflow-auto"><CoverageSummary report={run.coverage} /></div> : <p className="p-3 text-[11px] text-text-4">Select a test to see its output. Double-click opens the failure or the test function.</p>}

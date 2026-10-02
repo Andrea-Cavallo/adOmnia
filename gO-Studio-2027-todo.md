@@ -22,7 +22,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
-| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 55 | 12 |
+| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 49 | 13 |
 | **P1** | Workflow Go migliore di GoLand | 122 | 24 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 219 | 54 |
 | **P3** | Remote ed estensibilità | 29 | 3 |
@@ -92,10 +92,6 @@ _Affidabilità, velocità su repo grandi e PC aziendali, debug/test/Git completi
 
 ## §10 · Test Explorer
 
-### Base
-
-- [ ] Filter flaky.
-
 ### Coverage
 
 - [ ] Coverage function.
@@ -105,15 +101,10 @@ _Affidabilità, velocità su repo grandi e PC aziendali, debug/test/Git completi
 
 ### Flaky Test Detector
 
-- [ ] Run N times.
-- [ ] Failure rate.
-- [ ] Duration distribution.
-- [ ] Seed tracking.
 - [ ] Concurrency correlation.
 - [ ] Flaky history.
-- [ ] Badge flaky.
 - [ ] Possibile causa.
-- [ ] Generazione scenario riproducibile.
+- [ ] Generazione scenario riproducibile. — *Parziale: il seed di `-shuffle` si riesegue dal pannello Tests (stesso ordine, stesse ripetizioni); manca uno scenario esportabile (comando/test minimo).*
 
 ## §22 · Git Integration
 

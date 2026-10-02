@@ -120,3 +120,43 @@ export function formatDuration(milliseconds: number): string {
   if (milliseconds < 1000) return `${milliseconds} ms`
   return `${(milliseconds / 1000).toFixed(milliseconds < 10_000 ? 2 : 1)} s`
 }
+
+/** Flaky: con -count=N ha sia passato sia fallito. Un test sempre rosso è rotto, non flaky. */
+export function isFlaky(result: GoIDETestResult): boolean {
+  const runs = result.runs ?? 0
+  const failures = result.failures ?? 0
+  return runs > 1 && failures > 0 && failures < runs
+}
+
+/** Solo i rami con un test flaky, mantenendo il package. */
+export function onlyFlaky(nodes: GoStudioTestNode[]): GoStudioTestNode[] {
+  return filterTestTree(nodes, isFlaky)
+}
+
+export interface GoStudioRepetitionStats {
+  runs: number
+  failures: number
+  failureRate: number
+  minMillis: number
+  avgMillis: number
+  maxMillis: number
+}
+
+/** Statistiche delle ripetizioni; null se il test è girato una volta sola. */
+export function repetitionStats(result: GoIDETestResult): GoStudioRepetitionStats | null {
+  const runs = result.runs ?? 0
+  if (runs < 2) return null
+  const failures = result.failures ?? 0
+  return { runs, failures, failureRate: failures / runs, minMillis: result.minMillis ?? 0, avgMillis: Math.round((result.totalMillis ?? 0) / runs), maxMillis: result.maxMillis ?? 0 }
+}
+
+/** Riesegue il nodo N volte in ordine casuale: rivela flakiness e dipendenze dall'ordine. */
+export function repeatRequestForNode(run: GoIDETestRun, result: GoIDETestResult, repeat: number): GoIDETestRunRequest {
+  return { ...requestForNode(run, result), repeat, shuffle: 'on' }
+}
+
+/** Riproduce l'ordine esatto di una run con -shuffle usando il seed stampato dal package. */
+export function reproduceRequest(run: GoIDETestRun, packageResult: GoIDETestResult): GoIDETestRunRequest | null {
+  if (!packageResult.shuffleSeed) return null
+  return { ...requestForNode(run, packageResult), repeat: run.request.repeat, shuffle: packageResult.shuffleSeed }
+}
