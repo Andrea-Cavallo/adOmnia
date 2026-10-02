@@ -6,6 +6,7 @@ import {
   createObjectQuery,
   nextQueryName,
   normalizeConnection,
+  parseQueryWorkspace,
   validateConnection,
   type QueryTab,
 } from './dbShared'
@@ -35,6 +36,18 @@ describe('Database Studio model helpers', () => {
     expect(createObjectQuery('sqlite', 'audit_events')).toContain('CREATE TABLE "audit_events"')
     expect(JSON.parse(createObjectQuery('mongodb', 'audit_events'))).toEqual({ operation: 'createCollection', collection: 'audit_events' })
     expect(() => createObjectQuery('sqlite', 'bad name')).toThrow(/letters, numbers and underscores/)
+  })
+
+  it('restores query tabs and rejects corrupt workspace data', () => {
+    const workspace = parseQueryWorkspace(JSON.stringify({
+      tabs: [{ id: 'one', name: 'Query 1', query: 'SELECT 1' }, { id: 'two', name: 'Query 2', query: 'SELECT 2' }],
+      activeTabId: 'two',
+      limit: 9000,
+      timeoutMs: 20,
+    }))
+    expect(workspace).toMatchObject({ activeTabId: 'two', limit: 5000, timeoutMs: 1000 })
+    expect(workspace?.tabs).toHaveLength(2)
+    expect(parseQueryWorkspace('{broken')).toBeNull()
   })
 })
 

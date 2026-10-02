@@ -21,13 +21,13 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
-| **P0** | Completare l'IDE Go di tutti i giorni | 51 | 10 |
+| **P0** | Completare l'IDE Go di tutti i giorni | 50 | 9 |
 | **P1** | Codice ↔ runtime: il motivo per usare adOmnia | 192 | 58 |
 | **P2** | Studi Go avanzati | 224 | 39 |
 | **P3** | AI e intelligenza del workspace | 189 | 24 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 122 | 45 |
 
-Voci chiuse e rimosse: 722 (287 trovate già implementate dall'audit del 2026-10-01).
+Voci chiuse e rimosse: 723 (287 trovate già implementate dall'audit del 2026-10-01).
 
 ---
 
@@ -38,10 +38,6 @@ _Le lacune che costringono ancora ad aprire un altro IDE._
 ## §62 · Disaster Recovery & Crash Recovery
 
 > gO Studio non deve perdere il lavoro non salvato se adOmnia, WebView2, un processo Go o il sistema operativo si chiudono in modo anomalo. Git protegge il codice salvato; il Disaster Recovery protegge il lavoro ancora presente solo nell’editor.
-
-### Session recovery
-
-- [ ] Persistenza delle configurazioni runtime ripristinabili: run config, terminal metadata, debug config, API tab, DB tab, Kafka/Broker tab e altri pannelli collegati. — *Parziale: run configuration, breakpoint, tab API e terminali (nome, shell, cartella relativa al progetto, `goStudioTerminalRestore.ts`) si ripristinano; mancano le tab DB/Broker: Database e Broker Studio non persistono ancora le tab aperte.*
 
 ### Storage e robustezza
 

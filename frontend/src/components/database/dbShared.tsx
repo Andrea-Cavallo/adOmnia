@@ -45,6 +45,13 @@ export interface QueryTab {
   query: string
 }
 
+export interface QueryWorkspaceState {
+  tabs: QueryTab[]
+  activeTabId: string
+  limit?: number
+  timeoutMs?: number
+}
+
 export interface HistoryItem {
   query: string
   ts: number
@@ -142,6 +149,23 @@ export function nextQueryName(tabs: QueryTab[]): string {
     return match ? Math.max(current, Number(match[1])) : current
   }, 0)
   return `Query ${max + 1}`
+}
+
+export function parseQueryWorkspace(raw: string): QueryWorkspaceState | null {
+  try {
+    const parsed = JSON.parse(raw) as Partial<QueryWorkspaceState>
+    if (!Array.isArray(parsed.tabs)) return null
+    const tabs = parsed.tabs.filter((tab) => tab && typeof tab.id === 'string' && typeof tab.name === 'string' && typeof tab.query === 'string')
+    if (!tabs.length) return null
+    return {
+      tabs,
+      activeTabId: tabs.some((tab) => tab.id === parsed.activeTabId) ? parsed.activeTabId! : tabs[0].id,
+      ...(Number.isFinite(parsed.limit) ? { limit: Math.max(1, Math.min(5000, Number(parsed.limit))) } : {}),
+      ...(Number.isFinite(parsed.timeoutMs) ? { timeoutMs: Math.max(1000, Number(parsed.timeoutMs)) } : {}),
+    }
+  } catch {
+    return null
+  }
 }
 
 export function isValidDbObjectName(name: string): boolean {

@@ -287,6 +287,7 @@ Existing `{{variable}}` references are also linked when their current environmen
 | B5.0.7 | **Message Counter** | Badge with the number of messages in the log; clear button. |
 | B5.0.8 | **Backend Status** | Connection indicator for the local sidecar with port. |
 | B5.0.9 | **Protected Credentials** | Replaces plaintext broker passwords, tokens and credential-bearing URLs with encrypted Vault references, then resolves them only in memory for the broker action. |
+| B5.0.10 | **Workspace Restore** | Restores the active protocol, selected saved profile and Kafka resource tab after restart without reconnecting automatically. |
 
 #### B5.1 Kafka
 
@@ -649,6 +650,7 @@ Existing `{{variable}}` references are also linked when their current environmen
 | E1.17 | **Query Favorite** | Toggle preferito su ogni query; sidebar dedicata. |
 | E1.18 | **Vault Integration** | Replaces plaintext passwords and credential-bearing DSNs with encrypted Vault references; unprotected credentials are session-only and references are resolved only when the connection is used. |
 | E1.19 | **Row Counter** | Shows returned rows and affected rows. |
+| E1.20 | **Query Workspace Restore** | Restores open query tabs, active query, row limit and timeout from local storage after restart. |
 
 ---
 

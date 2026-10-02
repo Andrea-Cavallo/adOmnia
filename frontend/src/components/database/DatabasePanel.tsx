@@ -17,8 +17,8 @@ import {
   SQL_DEFAULT_QUERY, STORAGE_BUCKET, WORKSPACE_KEY,
   blankConnection, blankTab, browseQuery, countQuery, csvEscape, download,
   createObjectQuery, defaultConnectionName, extractCount, extractNames, introspectionQuery,
-  isDangerous, isDangerousMongo, nextQueryName, normalizeConnection, substituteVars, validateConnection,
-  type DbConnection, type DbDriver, type DbResult, type HistoryItem, type QueryTab, type SchemaItem,
+  isDangerous, isDangerousMongo, nextQueryName, normalizeConnection, parseQueryWorkspace, substituteVars, validateConnection,
+  type DbConnection, type DbDriver, type DbResult, type HistoryItem, type QueryTab, type QueryWorkspaceState, type SchemaItem,
   upsertConnectionFromRef,
 } from './dbShared'
 import {
@@ -30,13 +30,6 @@ import {
 } from './dbSecrets'
 import { useEntityHandoff } from '@/lib/entities/dispatch'
 import { showEntityNotice } from '@/lib/entities/notice'
-
-interface QueryWorkspaceState {
-  tabs: QueryTab[]
-  activeTabId: string
-  limit: number
-  timeoutMs: number
-}
 
 export function DatabasePanel() {
   const port = useServerPort()
@@ -141,19 +134,14 @@ export function DatabasePanel() {
       const first = nextConnections[0]
       let restored = false
       if (rawWorkspace) {
-        try {
-          const workspace = JSON.parse(rawWorkspace) as Partial<QueryWorkspaceState>
-          if (Array.isArray(workspace.tabs) && workspace.tabs.length) {
-            const restoredTabs = workspace.tabs.filter((tab) => tab && typeof tab.id === 'string' && typeof tab.name === 'string' && typeof tab.query === 'string')
-            if (restoredTabs.length) {
-              setTabs(restoredTabs)
-              setActiveTabId(restoredTabs.some((tab) => tab.id === workspace.activeTabId) ? workspace.activeTabId! : restoredTabs[0].id)
-              if (Number.isFinite(workspace.limit)) setLimit(Math.max(1, Math.min(5000, Number(workspace.limit))))
-              if (Number.isFinite(workspace.timeoutMs)) setTimeoutMs(Math.max(1000, Number(workspace.timeoutMs)))
-              restored = true
-            }
-          }
-        } catch { /* use a clean query workspace */ }
+        const workspace = parseQueryWorkspace(rawWorkspace)
+        if (workspace) {
+          setTabs(workspace.tabs)
+          setActiveTabId(workspace.activeTabId)
+          if (workspace.limit !== undefined) setLimit(workspace.limit)
+          if (workspace.timeoutMs !== undefined) setTimeoutMs(workspace.timeoutMs)
+          restored = true
+        }
       }
       if (!restored && first?.driver === 'mongodb') setTabs([blankTab('Mongo JSON Runner', MONGO_DEFAULT_QUERY)])
       setHydrated(true)

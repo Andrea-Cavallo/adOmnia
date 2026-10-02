@@ -12,6 +12,7 @@ import { ConnectionProfiles } from './ConnectionProfiles'
 import { listAllBrokerConnectionProfiles, resolveBrokerPayload, type BrokerConnectionProfile } from '@/lib/brokerConnections'
 import { useEntityHandoff } from '@/lib/entities/dispatch'
 import { showEntityNotice } from '@/lib/entities/notice'
+import { loadBrokerWorkspace, saveBrokerWorkspace, type BrokerWorkspaceTab } from './brokerWorkspace'
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
@@ -786,11 +787,12 @@ export function BrokerStudioPanel() {
   const [protocol, setProtocol] = useState<Protocol>('kafka')
   const [profiles, setProfiles] = useState<BrokerConnectionProfile[]>([])
   const [activeProfileId, setActiveProfileId] = useState<string | null>(null)
-  const [workspaceTab, setWorkspaceTab] = useState<'overview' | 'topics' | 'groups' | 'messages' | 'produce' | 'load'>('messages')
+  const [workspaceTab, setWorkspaceTab] = useState<BrokerWorkspaceTab>('messages')
   const [panelKey, setPanelKey] = useState(0)
   const [showProtocolPicker, setShowProtocolPicker] = useState(false)
   const [connectionState, setConnectionState] = useState<'idle' | 'connecting' | 'connected' | 'error'>('idle')
   const [connectionDetail, setConnectionDetail] = useState('Not connected yet')
+  const [workspaceHydrated, setWorkspaceHydrated] = useState(false)
 
   const refreshProfiles = useCallback(async () => {
     try {
@@ -800,7 +802,36 @@ export function BrokerStudioPanel() {
     }
   }, [])
 
-  useEffect(() => { void refreshProfiles() }, [refreshProfiles])
+  useEffect(() => {
+    let alive = true
+    const hydrate = async () => {
+      const [savedProfiles, workspace] = await Promise.all([
+        listAllBrokerConnectionProfiles().catch(() => []),
+        loadBrokerWorkspace(),
+      ])
+      if (!alive) return
+      const activeProfile = savedProfiles.find((profile) => profile.id === workspace.activeProfileId && profile.protocol === workspace.protocol)
+      setProfiles(savedProfiles)
+      setProtocol(workspace.protocol)
+      setWorkspaceTab(workspace.kafkaTab)
+      setActiveProfileId(activeProfile?.id ?? null)
+      if (activeProfile) {
+        sessionStorage.setItem('adomnia.broker.pending', JSON.stringify({ protocol: workspace.protocol, [workspace.protocol]: activeProfile.config }))
+        setPanelKey((key) => key + 1)
+      }
+      setWorkspaceHydrated(true)
+    }
+    void hydrate()
+    return () => { alive = false }
+  }, [])
+
+  useEffect(() => {
+    if (!workspaceHydrated) return
+    const timer = window.setTimeout(() => {
+      void saveBrokerWorkspace({ version: 1, protocol, activeProfileId, kafkaTab: workspaceTab })
+    }, 200)
+    return () => window.clearTimeout(timer)
+  }, [activeProfileId, protocol, workspaceHydrated, workspaceTab])
 
   const selectConnection = (nextProtocol: Protocol, profile?: BrokerConnectionProfile) => {
     if (profile) {
@@ -812,7 +843,6 @@ export function BrokerStudioPanel() {
       setActiveProfileId(null)
     }
     setProtocol(nextProtocol)
-    setWorkspaceTab(nextProtocol === 'kafka' ? 'messages' : 'produce')
     setConnectionState('idle')
     setConnectionDetail('Not connected yet')
     setPanelKey((key) => key + 1)
@@ -820,6 +850,7 @@ export function BrokerStudioPanel() {
   }
 
   useEntityHandoff('broker', (ref) => {
+    if (!workspaceHydrated) return false
     const kind = ref.kind === 'topic' ? ref.attrs.broker : ref.attrs.type
     const target: Protocol = kind === 'amqp' || kind === 'rabbitmq' ? 'rabbitmq' : kind === 'nats' ? 'nats' : kind === 'redis' ? 'redis' : 'kafka'
     if (protocol !== target) {

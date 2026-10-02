@@ -8,6 +8,7 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ### Added
 - **Quick model switch in chat:** Copilot Chat lists the models available to the signed-in account and switches by starting a clean conversation; AI di a0 switches from its own header, verifies the selected model first, and keeps the current model if verification fails. Custom a0 model IDs remain supported without opening Settings.
+- **Database/Broker workspace recovery:** Database Studio restores query tabs, active query and limits; Broker Studio now also restores the active protocol, saved profile and Kafka resource tab. Only local metadata and Vault-safe profile references are persisted; brokers are never connected automatically.
 
 ### Fixed
 - **Debugger error chain:** *Resolve wrapped errors* now reads `fmt.Errorf` wrappers directly (`*fmt.wrapError`), so it also works when the program never calls `Unwrap()` and the linker removed it; other error types still call `Unwrap()`.
