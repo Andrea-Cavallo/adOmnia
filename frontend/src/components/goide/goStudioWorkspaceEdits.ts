@@ -5,6 +5,9 @@ import { useGoIDEStore } from '@/stores/goide'
 import { useGoIDELspStore } from '@/stores/goideLsp'
 import { activeGoStudioEditor } from './goStudioEditorRegistry'
 import { editorModelUri } from './goStudioModelUri'
+import { applyTextEdits } from './goStudioChangePreview'
+
+export { applyTextEdits }
 
 function editsFor(edits: GoIDEEditorTextEdit[]): monaco.editor.IIdentifiedSingleEditOperation[] {
   return edits.map((edit) => ({
@@ -16,22 +19,6 @@ function editsFor(edits: GoIDEEditorTextEdit[]): monaco.editor.IIdentifiedSingle
 
 function normalizeLineEndings(text: string): string {
   return text.replace(/\r\n/g, '\n')
-}
-
-/** Applica edit LSP (righe e colonne 1-based, colonne UTF-16) a un testo, dall'ultimo al primo. */
-export function applyTextEdits(text: string, edits: GoIDEEditorTextEdit[]): string {
-  const lineStarts = [0]
-  for (let index = 0; index < text.length; index++) if (text[index] === '\n') lineStarts.push(index + 1)
-  const offset = (line: number, column: number) => {
-    const start = lineStarts[Math.min(Math.max(line, 1), lineStarts.length) - 1]
-    return Math.min(start + Math.max(column, 1) - 1, text.length)
-  }
-  const ordered = [...edits].sort((left, right) => offset(right.range.startLine, right.range.startColumn) - offset(left.range.startLine, left.range.startColumn))
-  let result = text
-  for (const edit of ordered) {
-    result = result.slice(0, offset(edit.range.startLine, edit.range.startColumn)) + edit.text + result.slice(offset(edit.range.endLine, edit.range.endColumn))
-  }
-  return result
 }
 
 /**

@@ -6,13 +6,14 @@
 >
 > **Principio chiave:** **From code to runtime, everything is connected.**
 
-Questo file contiene **solo le voci ancora aperte**, in ordine di priorità. Il 2026-10-01 ogni voce è stata
+Questo file contiene **solo le voci ancora aperte**, in ordine di priorità per un IDE Go di prima fascia. Il 2026-10-01 ogni voce è stata
 verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in git, nel `CHANGELOG.md` e in
 `docs/releases/`). Le prove manuali nell'app avviata sono in [`todo-ide.md`](todo-ide.md).
 
 ## Regole
 
-- Si lavora dall'alto: prima P0, poi P1. Dentro una priorità, le sezioni sono già in ordine di impatto.
+- Si lavora dall'alto: P0 → P4. Dentro una priorità, le sezioni sono in ordine di impatto per l'utente.
+- Criterio d'ordine: **fiducia** (non perdere lavoro, non bloccarsi) → **completezza da IDE** → **eccellenza Go** → **runtime connesso** → **intelligenza**.
 - Una voce si chiude solo se verificata nel codice; chiusa, si **cancella** da qui e finisce nel CHANGELOG.
 - *Parziale:* dice cosa esiste già e cosa manca: si riparte da lì, non da zero.
 - Niente funzioni simulate, dati sempre locali, nessun processo avviato senza un'azione dell'utente.
@@ -21,46 +22,27 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
-| **P0** | Completare l'IDE Go di tutti i giorni | 50 | 9 |
-| **P1** | Codice ↔ runtime: il motivo per usare adOmnia | 192 | 58 |
-| **P2** | Studi Go avanzati | 224 | 39 |
-| **P3** | AI e intelligenza del workspace | 189 | 24 |
-| **Riferimento** | Obiettivi, qualità, roadmap e KPI | 122 | 45 |
-
-Voci chiuse e rimosse: 723 (287 trovate già implementate dall'audit del 2026-10-01).
+| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 55 | 12 |
+| **P1** | Workflow Go migliore di GoLand | 122 | 24 |
+| **P2** | Codice ↔ runtime: la differenza adOmnia | 219 | 54 |
+| **P3** | Remote ed estensibilità | 29 | 3 |
+| **P4** | AI e intelligenza del workspace | 178 | 19 |
+| **Riferimento** | Obiettivi, qualità, roadmap e KPI | 152 | 57 |
 
 ---
 
-# P0 — Completare l'IDE Go di tutti i giorni
+# P0 — Fondamenta: un IDE di cui fidarsi tutto il giorno
 
-_Le lacune che costringono ancora ad aprire un altro IDE._
+_Affidabilità, velocità su repo grandi e PC aziendali, debug/test/Git completi. Finché manca qualcosa qui, l'utente apre un altro IDE._
 
 ## §62 · Disaster Recovery & Crash Recovery
 
 > gO Studio non deve perdere il lavoro non salvato se adOmnia, WebView2, un processo Go o il sistema operativo si chiudono in modo anomalo. Git protegge il codice salvato; il Disaster Recovery protegge il lavoro ancora presente solo nell’editor.
 
-### Storage e robustezza
-
-- [ ] Recovery storage per workspace sotto `.adomnia/recovery/<workspace-id>/`. — *Parziale: le snapshot sono isolate per workspace-id (hash del percorso) nello store locale di adOmnia (bbolt in app data), non in una cartella per workspace; scelta voluta per non mettere codice non salvato dentro il repository.*
-- [x] Gestire disco pieno, permessi negati, snapshot corrotta, file cancellato, workspace spostato e shutdown durante la scrittura. — *Fatto: workspace spostato riagganciato per module path quando la vecchia cartella non esiste più (`BindProject`, `TestRecoveryFollowsAMovedProject`).*
-
 ### Test obbligatori
 
-- [x] Kill forzato durante editing con più file dirty → tutti i buffer devono essere recuperabili. — *Fatto: `TestKillDuringSnapshotWritesKeepsEveryBuffer` uccide davvero (Kill) un processo che riscrive 10 buffer su bbolt e li ritrova tutti integri; resta la finestra di debounce di ~750 ms dell'editor.*
-- [x] Kill durante scrittura snapshot → snapshot precedente ancora valida. — *Fatto: stesso test, kill a 0/37/113 ms durante scritture continue; la transazione bbolt lascia l'ultima snapshot completa con hash valido.*
-- [ ] Crash con almeno 10 file dirty → recovery completo e UI responsiva. — *Parziale: recovery completo verificato con 10 file (TestTenDirtyBuffers…); la reattività della UI va misurata a mano.*
-- [ ] Verifica Windows, macOS e Linux.
-
-## §2 · Editor Core
-
-### Editing
-
-- [x] Merge editor. — *Fatto: Git → Resolve Conflicts… apre l'editor a tre vie condiviso con Git Studio, con risoluzione per singolo blocco (Ours/Theirs/Both/Base, `lib/git/conflictBlocks.ts`).*
-
-### Refactoring
-
-- [ ] Move symbol. — *oggi Move to New File (gopls); spostare un simbolo in un altro package non è ancora supportato da gopls.*
-- [x] Change signature. — *Fatto: Code → Change Signature… (Ctrl+F6) riordina/rimuove parametri con `gopls.change_signature`, firma e chiamate in un'unica anteprima. Aggiungere parametri non è ancora supportato da gopls 0.23.*
+- [ ] Crash con almeno 10 file dirty → recovery completo e UI responsiva. — *Parziale: recovery completo: 10 buffer su due workspace sopravvivono al kill reale (`TestKillDuringSnapshotWritesKeepsEveryBuffer`). UI: snapshot debounced e asincrone via IPC, costo per snapshot limitato al workspace corrente; manca solo la misura a mano nell'app.*
+- [ ] Verifica Windows, macOS e Linux. — *Parziale: test DR in CI su tutti e tre (`build.yml`: Linux in Checks, step "Go Studio disaster recovery" nei job Windows e macOS); verde in locale su Windows, da spuntare al primo run CI verde.*
 
 ## §3 · gopls Integration
 
@@ -73,6 +55,26 @@ _Le lacune che costringono ancora ad aprire un altro IDE._
 - [ ] Vista module dependency. — *le dipendenze di un modulo ci sono (Module Dependencies); il grafo tra moduli → §19.*
 - [ ] Supporto monorepo. — *funziona (multi-modulo, go.work); manca una misura delle prestazioni su monorepo grandi.*
 - [ ] Project graph. — *→ §15 Architecture Explorer.*
+
+## §50 · Privacy / Local-first
+
+- [ ] Per-project AI permissions. — *Parziale: Per-progetto solo .adomnia/aiignore per Copilot (internal/copilot/ignore.go); nessun permesso AI per progetto per gli altri provider.*
+- [ ] Telemetry opt-in.
+- [ ] Clear network activity panel.
+- [ ] Offline mode.
+- [ ] Export privacy settings.
+
+## §48 · Enterprise — rete aziendale e toolchain
+
+- [ ] Corporate proxy. — *Parziale: GOPROXY configurabile per toolchain e proxy Copilot; non c'è un proxy globale unico.*
+- [ ] Private module repositories. — *Parziale: Campi GOPRIVATE/GONOPROXY/GONOSUMDB in GoStudioToolchainConfig.tsx; manca la gestione credenziali dei repo privati.*
+- [ ] GOPRIVATE UX. — *Parziale: Campo GOPRIVATE con placeholder in GoStudioToolchainConfig.tsx; nessuna guida o validazione specifica.*
+- [ ] Custom CA certificates. — *Parziale: CA bundle PEM solo per Copilot (NODE_EXTRA_CA_CERTS); non per toolchain Go o resto di Go Studio.*
+- [ ] Offline mode.
+- [ ] Air-gapped mode.
+- [ ] Internal artifact registry.
+- [ ] Corporate Git support.
+- [ ] Audit-friendly settings export.
 
 ## §7 · Debugger Go con Delve
 
@@ -135,36 +137,192 @@ _Le lacune che costringono ancora ad aprire un altro IDE._
 - [ ] Quality panel.
 - [ ] Technical debt trend.
 
-## §19 · Go Modules & Dependency Studio
+## §2 · Editor Core
 
-### go.mod
+### Refactoring
 
-- [ ] Visual editor. — *Parziale: Esistono il dialog dipendenze e le code lens in go.mod, ma non c'è un editor visuale a form del go.mod.*
-- [ ] `exclude`.
-- [ ] `retract`.
-- [ ] Go version.
-- [ ] Toolchain directive.
-- [ ] Module path. — *Parziale: Il module path è mostrato nel dialog dipendenze ma non è modificabile.*
-- [ ] Downgrade dependency. — *Parziale: Il campo versione di Add permette `go get path@vX` anche più vecchia, ma non c'è un'azione downgrade dedicata né un selettore versioni.*
-- [ ] Preview tidy changes.
+- [ ] Move symbol. — *oggi Move to New File (gopls); spostare un simbolo in un altro package non è ancora supportato da gopls.*
 
-### Dependency graph
+---
 
-- [x] Dependency tree.
-- [x] Duplicate transitive dependencies.
-- [x] Module version chain.
-- [x] License display.
-- [x] Vulnerability badge.
-- [x] Outdated badge.
-- [x] Unused dependency indicator.
-- [x] Dependency weight estimate.
-- [x] Package count impact.
+# P1 — Workflow Go migliore di GoLand
 
-_Implementato in `Tools → Dependency Graph…`: albero diretto→transitivo, duplicati con chi richiede ogni versione e catena più corta dalla radice, licenze, peso stimato, pacchetti per modulo e indicatori unused; aggiornamenti (`go list -m -u`) e vulnerabilità (`govulncheck`) su richiesta. Backend `internal/goide/dependencygraph.go`._
+_Visualizzare ciò che oggi finisce nel terminale: profiler, sicurezza, benchmark, fuzzing, analisi statica Go-specifica._
 
-# P1 — Codice ↔ runtime: il motivo per usare adOmnia
+## §13 · Performance Studio
 
-_Il flusso North Star: dal codice alla chiamata, al debug, a DB, broker, log e trace._
+### Profiler
+
+- [ ] CPU profile. — *Parziale: runconfig_params.go aggiunge -cpuprofile=cpu.pprof alle configurazioni di test (menu in GoStudioRunParameters.tsx); scrive solo il file, niente analisi o vista.*
+- [ ] Heap profile. — *Parziale: -memprofile=mem.pprof per le config di test (runconfig_params.go); solo cattura su file, nessun parsing né vista in app.*
+- [ ] Allocations profile. — *Parziale: mem.pprof da -memprofile contiene anche i campioni alloc_*, ma è solo cattura; manca una vista separata delle allocazioni.*
+- [ ] Goroutine profile.
+- [ ] Mutex profile. — *Parziale: -mutexprofile=mutex.pprof selezionabile nelle config di test (runconfig_params.go); solo file, nessuna visualizzazione.*
+- [ ] Block profile. — *Parziale: -blockprofile=block.pprof selezionabile nelle config di test (runconfig_params.go); solo file, nessuna visualizzazione.*
+- [ ] Thread creation profile dove disponibile.
+- [ ] `pprof` integration. — *Parziale: Solo i flag go test che scrivono *.pprof (runconfig_params.go, solo config di test); nessun parsing, nessun go tool pprof, nessun viewer.*
+
+### Visualizzazioni
+
+- [ ] Top functions.
+- [ ] Call graph.
+- [ ] Flame graph.
+- [ ] Icicle view.
+- [ ] Source line cost.
+- [ ] Package grouping.
+- [ ] Hide runtime internals.
+- [ ] Diff profiles.
+- [ ] Search function.
+- [ ] Navigate to source.
+
+### Go trace
+
+- [ ] Trace capture. — *Parziale: -trace=trace.out selezionabile nelle config di test (runconfig_params.go/GoStudioRunParameters.tsx); scrive solo il file, nessun viewer né go tool trace.*
+- [ ] Goroutine timeline.
+- [ ] Scheduler activity.
+- [ ] GC.
+- [ ] Syscalls.
+- [ ] Network blocking.
+- [ ] Synchronization.
+- [ ] Long-running goroutines.
+- [ ] Runtime events.
+- [ ] Navigate trace event → code.
+
+## §20 · Security Studio
+
+- [ ] `govulncheck`. — *Parziale: Esiste solo il toggle gopls vulncheck (lsp.go); non c'è un'esecuzione govulncheck con pannello risultati.*
+- [ ] Reachable vulnerability path.
+- [ ] Vulnerability severity.
+- [ ] Advisory detail.
+- [ ] Fixed version.
+- [ ] Dependency path.
+- [ ] Call path.
+- [ ] Open vulnerable source call.
+- [ ] Upgrade preview.
+- [ ] Secret scanning. — *Parziale: SecretScannerPanel scansiona collezioni e ambienti dell'API workspace, non i sorgenti del progetto Go.*
+- [ ] Dangerous filesystem permissions.
+- [ ] TLS misconfiguration hints.
+- [ ] Weak crypto hints.
+- [ ] Insecure HTTP usage hints.
+- [ ] SQL injection static hints.
+- [ ] Command injection static hints.
+- [ ] Path traversal hints.
+- [ ] Unsafe deserialization-like patterns dove applicabili.
+- [ ] Security findings suppression con motivazione.
+- [ ] Baseline per non inondare legacy projects.
+
+## §12 · Benchmark Studio
+
+### Comparazioni
+
+- [ ] Compare branch vs main.
+- [ ] Compare commit vs commit.
+- [ ] Compare before/after refactor.
+- [ ] Significance indicator quando calcolabile.
+- [ ] Regression threshold configurabile.
+
+## §11 · Fuzzing Studio
+
+- [ ] Corpus viewer.
+- [ ] Crash input viewer.
+- [ ] Minimized failing input.
+- [ ] Replay failing case.
+- [ ] Promote failing case a unit test.
+- [ ] Corpus management.
+- [ ] Fuzz session history.
+- [ ] Parallelism controls.
+- [ ] Crash deduplication.
+
+## §8 · Concurrency View — Feature distintiva
+
+### Diagnostica
+
+- [ ] Worker pool saturation.
+
+## §18 · Error Handling Intelligence
+
+- [ ] Returned error ignored.
+- [ ] Error shadowing.
+- [ ] Incorrect wrapping.
+- [ ] `%w` awareness.
+- [ ] `errors.Is`.
+- [ ] `errors.As`.
+- [ ] Sentinel error navigation.
+- [ ] Error type hierarchy.
+- [ ] Unhandled errors.
+- [ ] Lost context in returned errors.
+- [ ] Panic usage analysis. — *Parziale: Solo il Panic Inspector runtime in debug (`goStudioPanicInspector.ts`, `GoStudioDebugSession.tsx`). Manca un'analisi statica dei panic.*
+- [ ] Recover usage analysis.
+- [ ] Nil + nil suspicious return patterns.
+- [ ] Error path visualization.
+- [ ] Generate contextual wrapping.
+
+## §17 · Context Propagation Inspector
+
+- [x] Traccia `context.Context`. — *Parziale: l'analisi statica (`goStudioContextAnalysis.ts`) segue parametri, radici e variabili derivate per file; non attraversa i confini tra package.*
+- [x] Evidenzia `context.Background()` dentro call chain.
+- [x] Evidenzia `context.TODO()`.
+- [x] Detect cancellation chain broken.
+- [x] Detect missing timeout.
+- [x] Detect timeout troppo ampio configurabile. — *Soglia configurabile nel pannello (default 30s, persistita in localStorage).*
+- [x] Detect context stored in struct quando sospetto.
+- [x] Detect ignored cancellation.
+- [x] Detect leaked cancel function.
+- [x] Visual context graph. — *Parziale: grafo di propagazione testuale (nodi funzione + archi) nel pannello Context, non un grafo visuale SVG/force-directed.*
+- [x] Trace ID correlation. — *Parziale: correlazione statica (`WithValue` con chiavi trace/request + letterali); nessuna correlazione runtime con trace OTLP.*
+
+## §16 · Interface Explorer
+
+- [ ] Lista interface.
+- [ ] Lista implementazioni. — *Parziale: I marker I↓/I↑ e il popup elencano le implementazioni del singolo simbolo (`goStudioImplementationMarkers.ts`). Manca una lista globale.*
+- [ ] Visual graph. — *Parziale: Esiste solo l'albero Type Hierarchy (`GoStudioHierarchyDialog.tsx`), non un grafo visuale.*
+- [ ] “Who uses this interface?”. — *Parziale: Usages gopls e Code Vision con conteggio usi (`goStudioCodeVision.ts`). Non c'è una vista specifica per le interfacce.*
+- [ ] Missing methods. — *Parziale: Il quick fix gopls "Declare missing methods" è usato in `goStudioImplementInterface.ts`. Non c'è una vista dei metodi mancanti.*
+- [ ] Detect interface too broad.
+- [ ] Detect interface implemented only once.
+- [ ] Consumer-side interface hint non invasivo.
+
+## §15 · Architecture Explorer
+
+### Static architecture
+
+- [ ] Package graph.
+- [ ] Import graph.
+- [ ] Call graph. — *Parziale: Esiste solo la Call Hierarchy ad albero espandibile (`GoStudioHierarchyDialog.tsx`, gopls). Manca un grafo visuale complessivo.*
+- [ ] Interface implementation graph. — *Parziale: Esiste la Type Hierarchy ad albero (`GoStudioHierarchyDialog.tsx`), non un grafo visuale.*
+- [ ] Module graph.
+- [ ] Entry points. — *Parziale: `detectMain` in `internal/devcontext/gofile.go` rileva solo `func main` come entità service, mostrata nel Developer Context. Mancano altri entry point e una vista dedicata.*
+- [ ] gRPC services. — *Parziale: Entità `grpc` da `goprotocols.go` con CodeLens verso il gRPC client. Manca una vista architettura che elenchi i servizi.*
+- [ ] Kafka producers. — *Parziale: Rilevati solo i topic (`goliterals.go`), senza distinguere producer da consumer. Manca una vista architettura.*
+- [ ] Kafka consumers. — *Parziale: Rilevati solo i topic (`goliterals.go`), senza distinguere producer da consumer. Manca una vista architettura.*
+- [ ] DB repositories.
+- [ ] Scheduled jobs.
+- [ ] CLI commands.
+
+### UX
+
+- [ ] Clic nodo → codice. — *Parziale: Nelle gerarchie call/type il clic sul nodo apre il codice (`navigateToLocation`). Non esiste un architecture graph con nodi.*
+- [ ] Clic service → service workspace. — *Parziale: Il dialog Project Services apre Docker Lab, Database Studio o Broker Studio (`goStudioIntegrations.ts`). Manca un service workspace unico.*
+- [ ] Clic trace → distributed debugger.
+
+## §43 · Documentation Intelligence
+
+- [ ] Package docs. — *Parziale: Il tool go doc mostra la documentazione di un package; non c'è una vista dedicata.*
+- [ ] Missing docs hints opzionali.
+- [ ] Generate docs.
+- [ ] Diagram embedding.
+- [ ] Architecture docs generation.
+- [ ] API docs generation.
+- [ ] OpenAPI generation/preview.
+- [ ] Proto docs.
+- [ ] Dependency report. — *Parziale: Dialog Go dependencies e go mod why/graph; nessun report.*
+- [ ] ADR links.
+
+---
+
+# P2 — Codice ↔ runtime: la differenza adOmnia
+
+_Il flusso North Star: dal codice alla chiamata, al debug, a DB, broker, log e trace — senza uscire dal workspace._
 
 ## §61 · North Star Experience
 
@@ -201,47 +359,6 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 ### Debug integration
 
 - [ ] Trace. — *Parziale: Esiste la tab Timeline costruita da stack dei breakpoint, SQL, messaggi e log; nessun ricevitore OTLP né span veri.*
-
-## §32 · Distributed Request Debugger — Killer Feature
-
-> Debuggare una richiesta attraverso più componenti, non solo una funzione.
-
-### Capture
-
-- [ ] Supportare trace ID.
-- [ ] Collegare gRPC.
-- [ ] Collegare goroutines.
-- [ ] Collegare spans.
-- [ ] Collegare retries.
-
-### Timeline
-
-- [ ] Timeline unica. — *Parziale: RequestTimeline unisce invio, frame, breakpoint, SQL, messaggi, log di errore e risposta; solo per il servizio locale, senza confini fra servizi.*
-- [ ] Service boundaries.
-- [ ] Network duration.
-- [ ] Handler duration.
-- [ ] DB duration.
-- [ ] Broker delay.
-- [ ] Retry delay.
-- [ ] Error point. — *Parziale: La timeline mostra log di errore e la risposta fallita in rosso; non c'è un punto d'errore dedicato che lo isoli.*
-- [ ] Parallel branches.
-- [ ] Async branches.
-
-### Source navigation
-
-- [ ] Click span → funzione. — *Parziale: I frame dello stack in timeline aprono il file in Go Studio; non esistono span OTLP, solo frame di breakpoint.*
-- [ ] Click Kafka → producer/consumer. — *Parziale: Il messaggio apre il topic in Broker Studio; non porta al codice producer o consumer.*
-- [ ] Click panic → stack.
-- [ ] Click retry → policy.
-- [ ] Click external call → client code.
-
-### Debug workflow
-
-- [ ] Replay broker message.
-- [ ] Re-run with race detector.
-- [ ] Re-run with profiler.
-- [ ] Save session.
-- [ ] Compare sessions.
 
 ## §27 · Database Integration
 
@@ -383,39 +500,6 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 - [ ] Config diff.
 - [ ] Dev/test/staging profiles.
 
-## §31 · Service Map
-
-### Static
-
-- [ ] Identificare servizi. — *Parziale: devcontext rileva entità service da compose e da go.mod e il ServiceView mostra il singolo servizio; non esiste una mappa dei servizi.*
-- [ ] API edges. — *Parziale: devcontext rileva le route HTTP del servizio e il ServiceView le elenca; mancano archi tra servizi e una vista a grafo.*
-- [ ] gRPC edges. — *Parziale: devcontext rileva le registrazioni gRPC (goprotocols.go); non sono mostrate come archi in una mappa.*
-- [ ] Kafka edges. — *Parziale: Il ServiceView mostra i topic rilevati dal codice e permette il Kafka watch; non c'è un grafo con archi producer/consumer.*
-- [ ] DB edges. — *Parziale: Il ServiceView elenca i datasource rilevati con la cattura SQL; non ci sono archi in una mappa.*
-- [ ] Redis edges.
-- [ ] WebSocket edges. — *Parziale: devcontext rileva server e client WebSocket (goprotocols.go); non sono mostrati come archi.*
-- [ ] External HTTP edges.
-
-### Runtime
-
-- [ ] Request rate.
-- [ ] Error rate.
-- [ ] Latency.
-- [ ] Active connections.
-- [ ] Kafka lag.
-- [ ] DB latency.
-- [ ] Downstream failures.
-- [ ] Retry activity.
-
-### Navigazione
-
-- [ ] Endpoint → handler. — *Parziale: Le route portano handler, file e riga e RequestContextView mostra la sezione Handler; manca il salto al handler da una mappa.*
-- [ ] Kafka edge → topic.
-- [ ] DB edge → datasource.
-- [ ] Trace edge → source.
-- [ ] Error edge → logs.
-- [ ] Open full architecture.
-
 ## §44 · UX Layout proposta
 
 ```text
@@ -451,216 +535,79 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 - [ ] Panel collassabile.
 - [ ] Nessuna UI sovraccarica.
 
-## §1 · Priorità strategiche
+## §31 · Service Map
 
-### P1 — IDE Go superiore alla media
+### Static
 
-> Ogni voce ha la sua sezione operativa più sotto (§8–§21): si spunta lì, poi qui.
+- [ ] Identificare servizi. — *Parziale: devcontext rileva entità service da compose e da go.mod e il ServiceView mostra il singolo servizio; non esiste una mappa dei servizi.*
+- [ ] API edges. — *Parziale: devcontext rileva le route HTTP del servizio e il ServiceView le elenca; mancano archi tra servizi e una vista a grafo.*
+- [ ] gRPC edges. — *Parziale: devcontext rileva le registrazioni gRPC (goprotocols.go); non sono mostrate come archi in una mappa.*
+- [ ] Kafka edges. — *Parziale: Il ServiceView mostra i topic rilevati dal codice e permette il Kafka watch; non c'è un grafo con archi producer/consumer.*
+- [ ] DB edges. — *Parziale: Il ServiceView elenca i datasource rilevati con la cattura SQL; non ci sono archi in una mappa.*
+- [ ] Redis edges.
+- [ ] WebSocket edges. — *Parziale: devcontext rileva server e client WebSocket (goprotocols.go); non sono mostrati come archi.*
+- [ ] External HTTP edges.
 
-- [ ] Concurrency view. — *Parziale: `GoStudioConcurrencyView.tsx` e `GoStudioGoroutineTree.tsx`, sezione 8 a 36/37. Manca la worker pool saturation.*
-- [ ] Profiler integrato. — *Parziale: Solo il profiling dei test (cpu/mem/block/mutex/trace) in `runconfig_params.go`. Manca un viewer pprof.*
-- [ ] Benchmark explorer. — *Parziale: Esecuzione dal gutter, confronto e storico in `goStudioBenchmarks*.ts` e nel pannello Tests. Sezione 12 a 15/20.*
-- [ ] Fuzzing UX. — *Parziale: Solo run con `-fuzztime` dal gutter e generazione del fuzz test. Mancano corpus, crash e minimizzazione.*
-- [ ] Dependency intelligence. — *Parziale: Dialog `GoStudioDependencies.tsx` con go get/tidy, mod why/graph. Mancano grafo tra moduli e analisi di aggiornamenti e licenze.*
-- [ ] Security. — *Parziale: Solo diagnostica `Vulncheck` di gopls. Non c'è uno Security Studio dedicato.*
-- [ ] Interface explorer. — *Parziale: Implementation markers, Implement Interface dialog e gerarchie. Manca un explorer dedicato.*
-- [ ] Context propagation inspector. — *Parziale: Solo `goStudioContextInspector.ts` per le variabili `context.Context` nel debug. Manca l'analisi statica.*
-- [ ] Runtime Lens.
-- [ ] Architecture Explorer.
+### Runtime
 
-### P2 — Differenziazione adOmnia
+- [ ] Request rate.
+- [ ] Error rate.
+- [ ] Latency.
+- [ ] Active connections.
+- [ ] Kafka lag.
+- [ ] DB latency.
+- [ ] Downstream failures.
+- [ ] Retry activity.
 
-- [ ] Distributed Request Debugger. — *Parziale: Il caso a servizio singolo è coperto da `internal/devsession` e dalla Debug Request. Manca il multi-servizio.*
-- [ ] Service Map runtime-aware. — *§31: va progettato prima.*
-- [ ] Reproduction Studio. — *§33: va progettato prima.*
-- [ ] Cross-service debugging. — *dipende dal Distributed Request Debugger (§32).*
-- [ ] Unified local environment. — *Parziale: Project Services e Docker Lab (`GoStudioProjectServicesDialog.tsx`). Manca la vista unica.*
+### Navigazione
 
-### P3 — Funzioni “2027”
+- [ ] Endpoint → handler. — *Parziale: Le route portano handler, file e riga e RequestContextView mostra la sezione Handler; manca il salto al handler da una mappa.*
+- [ ] Kafka edge → topic.
+- [ ] DB edge → datasource.
+- [ ] Trace edge → source.
+- [ ] Error edge → logs.
+- [ ] Open full architecture.
 
-- [ ] Runtime-aware AI.
-- [ ] Automatic bug reproduction.
-- [ ] Performance regression detection.
-- [ ] Architectural drift detection.
-- [ ] Smart refactoring multi-service.
-- [ ] Continuous background code intelligence locale.
-- [ ] Semantic workspace graph.
-- [ ] Replay di richieste/eventi.
-- [ ] Time-travel debugging dove tecnicamente possibile.
+## §32 · Distributed Request Debugger — Killer Feature
 
----
+> Debuggare una richiesta attraverso più componenti, non solo una funzione.
 
-# P2 — Studi Go avanzati
+### Capture
 
-_Profiler, benchmark, fuzzing, sicurezza, architettura e diagnosi del codice._
+- [ ] Supportare trace ID.
+- [ ] Collegare gRPC.
+- [ ] Collegare goroutines.
+- [ ] Collegare spans.
+- [ ] Collegare retries.
 
-## §13 · Performance Studio
+### Timeline
 
-### Profiler
+- [ ] Timeline unica. — *Parziale: RequestTimeline unisce invio, frame, breakpoint, SQL, messaggi, log di errore e risposta; solo per il servizio locale, senza confini fra servizi.*
+- [ ] Service boundaries.
+- [ ] Network duration.
+- [ ] Handler duration.
+- [ ] DB duration.
+- [ ] Broker delay.
+- [ ] Retry delay.
+- [ ] Error point. — *Parziale: La timeline mostra log di errore e la risposta fallita in rosso; non c'è un punto d'errore dedicato che lo isoli.*
+- [ ] Parallel branches.
+- [ ] Async branches.
 
-- [ ] CPU profile. — *Parziale: runconfig_params.go aggiunge -cpuprofile=cpu.pprof alle configurazioni di test (menu in GoStudioRunParameters.tsx); scrive solo il file, niente analisi o vista.*
-- [ ] Heap profile. — *Parziale: -memprofile=mem.pprof per le config di test (runconfig_params.go); solo cattura su file, nessun parsing né vista in app.*
-- [ ] Allocations profile. — *Parziale: mem.pprof da -memprofile contiene anche i campioni alloc_*, ma è solo cattura; manca una vista separata delle allocazioni.*
-- [ ] Goroutine profile.
-- [ ] Mutex profile. — *Parziale: -mutexprofile=mutex.pprof selezionabile nelle config di test (runconfig_params.go); solo file, nessuna visualizzazione.*
-- [ ] Block profile. — *Parziale: -blockprofile=block.pprof selezionabile nelle config di test (runconfig_params.go); solo file, nessuna visualizzazione.*
-- [ ] Thread creation profile dove disponibile.
-- [ ] `pprof` integration. — *Parziale: Solo i flag go test che scrivono *.pprof (runconfig_params.go, solo config di test); nessun parsing, nessun go tool pprof, nessun viewer.*
+### Source navigation
 
-### Visualizzazioni
+- [ ] Click span → funzione. — *Parziale: I frame dello stack in timeline aprono il file in Go Studio; non esistono span OTLP, solo frame di breakpoint.*
+- [ ] Click Kafka → producer/consumer. — *Parziale: Il messaggio apre il topic in Broker Studio; non porta al codice producer o consumer.*
+- [ ] Click panic → stack.
+- [ ] Click retry → policy.
+- [ ] Click external call → client code.
 
-- [ ] Top functions.
-- [ ] Call graph.
-- [ ] Flame graph.
-- [ ] Icicle view.
-- [ ] Source line cost.
-- [ ] Package grouping.
-- [ ] Hide runtime internals.
-- [ ] Diff profiles.
-- [ ] Search function.
-- [ ] Navigate to source.
+### Debug workflow
 
-### Go trace
-
-- [ ] Trace capture. — *Parziale: -trace=trace.out selezionabile nelle config di test (runconfig_params.go/GoStudioRunParameters.tsx); scrive solo il file, nessun viewer né go tool trace.*
-- [ ] Goroutine timeline.
-- [ ] Scheduler activity.
-- [ ] GC.
-- [ ] Syscalls.
-- [ ] Network blocking.
-- [ ] Synchronization.
-- [ ] Long-running goroutines.
-- [ ] Runtime events.
-- [ ] Navigate trace event → code.
-
-## §12 · Benchmark Studio
-
-### Comparazioni
-
-- [ ] Compare branch vs main.
-- [ ] Compare commit vs commit.
-- [ ] Compare before/after refactor.
-- [ ] Significance indicator quando calcolabile.
-- [ ] Regression threshold configurabile.
-
-## §11 · Fuzzing Studio
-
-- [ ] Corpus viewer.
-- [ ] Crash input viewer.
-- [ ] Minimized failing input.
-- [ ] Replay failing case.
-- [ ] Promote failing case a unit test.
-- [ ] Corpus management.
-- [ ] Fuzz session history.
-- [ ] Parallelism controls.
-- [ ] Crash deduplication.
-
-## §8 · Concurrency View — Feature distintiva
-
-### Diagnostica
-
-- [ ] Worker pool saturation.
-
-## §20 · Security Studio
-
-- [ ] `govulncheck`. — *Parziale: Esiste solo il toggle gopls vulncheck (lsp.go); non c'è un'esecuzione govulncheck con pannello risultati.*
-- [ ] Reachable vulnerability path.
-- [ ] Vulnerability severity.
-- [ ] Advisory detail.
-- [ ] Fixed version.
-- [ ] Dependency path.
-- [ ] Call path.
-- [ ] Open vulnerable source call.
-- [ ] Upgrade preview.
-- [ ] Secret scanning. — *Parziale: SecretScannerPanel scansiona collezioni e ambienti dell'API workspace, non i sorgenti del progetto Go.*
-- [ ] Dangerous filesystem permissions.
-- [ ] TLS misconfiguration hints.
-- [ ] Weak crypto hints.
-- [ ] Insecure HTTP usage hints.
-- [ ] SQL injection static hints.
-- [ ] Command injection static hints.
-- [ ] Path traversal hints.
-- [ ] Unsafe deserialization-like patterns dove applicabili.
-- [ ] Security findings suppression con motivazione.
-- [ ] Baseline per non inondare legacy projects.
-
-## §15 · Architecture Explorer
-
-### Static architecture
-
-- [ ] Package graph.
-- [ ] Import graph.
-- [ ] Call graph. — *Parziale: Esiste solo la Call Hierarchy ad albero espandibile (`GoStudioHierarchyDialog.tsx`, gopls). Manca un grafo visuale complessivo.*
-- [ ] Interface implementation graph. — *Parziale: Esiste la Type Hierarchy ad albero (`GoStudioHierarchyDialog.tsx`), non un grafo visuale.*
-- [ ] Module graph.
-- [ ] Entry points. — *Parziale: `detectMain` in `internal/devcontext/gofile.go` rileva solo `func main` come entità service, mostrata nel Developer Context. Mancano altri entry point e una vista dedicata.*
-- [ ] gRPC services. — *Parziale: Entità `grpc` da `goprotocols.go` con CodeLens verso il gRPC client. Manca una vista architettura che elenchi i servizi.*
-- [ ] Kafka producers. — *Parziale: Rilevati solo i topic (`goliterals.go`), senza distinguere producer da consumer. Manca una vista architettura.*
-- [ ] Kafka consumers. — *Parziale: Rilevati solo i topic (`goliterals.go`), senza distinguere producer da consumer. Manca una vista architettura.*
-- [ ] DB repositories.
-- [ ] Scheduled jobs.
-- [ ] CLI commands.
-
-### Runtime enrichment
-
-- [x] Evidenziare componenti realmente usati.
-- [x] Mostrare call frequency.
-- [x] Mostrare latency.
-- [x] Mostrare errors.
-- [x] Mostrare dependencies non usate.
-- [x] Mostrare edge dinamici.
-- [x] Mostrare runtime-only integration.
-
-_Implementato in `Tools → Runtime Enrichment…`: sovrappone la telemetria della Live Session (richieste, breakpoint, query SQL, messaggi broker) alla vista statica — componenti usati, call frequency, latency media/max, errori, edge dinamici richiesta→file/query/topic, integrazioni solo runtime (datasource, topic) e dipendenze statiche senza evidenza runtime. Backend `internal/devsession/enrichment.go`._
-
-### UX
-
-- [ ] Clic nodo → codice. — *Parziale: Nelle gerarchie call/type il clic sul nodo apre il codice (`navigateToLocation`). Non esiste un architecture graph con nodi.*
-- [ ] Clic service → service workspace. — *Parziale: Il dialog Project Services apre Docker Lab, Database Studio o Broker Studio (`goStudioIntegrations.ts`). Manca un service workspace unico.*
-- [ ] Clic trace → distributed debugger.
-
-## §16 · Interface Explorer
-
-- [ ] Lista interface.
-- [ ] Lista implementazioni. — *Parziale: I marker I↓/I↑ e il popup elencano le implementazioni del singolo simbolo (`goStudioImplementationMarkers.ts`). Manca una lista globale.*
-- [ ] Visual graph. — *Parziale: Esiste solo l'albero Type Hierarchy (`GoStudioHierarchyDialog.tsx`), non un grafo visuale.*
-- [ ] “Who uses this interface?”. — *Parziale: Usages gopls e Code Vision con conteggio usi (`goStudioCodeVision.ts`). Non c'è una vista specifica per le interfacce.*
-- [ ] Missing methods. — *Parziale: Il quick fix gopls "Declare missing methods" è usato in `goStudioImplementInterface.ts`. Non c'è una vista dei metodi mancanti.*
-- [ ] Detect interface too broad.
-- [ ] Detect interface implemented only once.
-- [ ] Consumer-side interface hint non invasivo.
-
-## §17 · Context Propagation Inspector
-
-- [ ] Traccia `context.Context`.
-- [ ] Evidenzia `context.Background()` dentro call chain.
-- [ ] Evidenzia `context.TODO()`.
-- [ ] Detect cancellation chain broken.
-- [ ] Detect missing timeout.
-- [ ] Detect timeout troppo ampio configurabile.
-- [ ] Detect context stored in struct quando sospetto.
-- [ ] Detect ignored cancellation.
-- [ ] Detect leaked cancel function.
-- [ ] Visual context graph.
-- [ ] Trace ID correlation.
-
-## §18 · Error Handling Intelligence
-
-- [ ] Returned error ignored.
-- [ ] Error shadowing.
-- [ ] Incorrect wrapping.
-- [ ] `%w` awareness.
-- [ ] `errors.Is`.
-- [ ] `errors.As`.
-- [ ] Sentinel error navigation.
-- [ ] Error type hierarchy.
-- [ ] Unhandled errors.
-- [ ] Lost context in returned errors.
-- [ ] Panic usage analysis. — *Parziale: Solo il Panic Inspector runtime in debug (`goStudioPanicInspector.ts`, `GoStudioDebugSession.tsx`). Manca un'analisi statica dei panic.*
-- [ ] Recover usage analysis.
-- [ ] Nil + nil suspicious return patterns.
-- [ ] Error path visualization.
-- [ ] Generate contextual wrapping.
+- [ ] Replay broker message.
+- [ ] Re-run with race detector.
+- [ ] Re-run with profiler.
+- [ ] Save session.
+- [ ] Compare sessions.
 
 ## §14 · Runtime Lens
 
@@ -723,6 +670,21 @@ _Implementato in `Tools → Runtime Enrichment…`: sovrappone la telemetria del
 - [ ] Strip secrets automatically.
 - [ ] Mark non-deterministic dependencies.
 
+## §48 · Enterprise — protocolli legacy in gO Studio
+
+- [ ] mTLS. — *Parziale: mTLS esiste nel client HTTP/gRPC di adOmnia (internal/httpexec, internal/grpc); non integrato in Go Studio.*
+- [ ] JKS/PKCS12 helper integration dove utile. — *Parziale: Strumenti PEM/JKS in nettools e pdfsign; nessun legame con Go Studio.*
+- [ ] Legacy SOAP services. — *Parziale: Pannello SOAP con envelope e WS-Security in adOmnia; non collegato a Go Studio.*
+- [ ] WSDL. — *Parziale: Import WSDL da file, URL e testo nel pannello SOAP; non integrato in Go Studio.*
+- [ ] XML. — *Parziale: Go Studio apre .xml/.xsd/.wsdl con syntax highlighting; nessun tooling XML.*
+- [ ] WS-Security tooling. — *Parziale: WS-Security UsernameToken nel pannello SOAP; non esposto in Go Studio.*
+
+---
+
+# P3 — Remote ed estensibilità
+
+_Sviluppo su WSL/SSH/container/Kubernetes e API per estendere l'IDE._
+
 ## §30 · Kubernetes / Remote Development
 
 - [ ] Kubernetes contexts.
@@ -744,19 +706,6 @@ _Implementato in `Tools → Runtime Enrichment…`: sovrappone la telemetria del
 - [ ] WSL development.
 - [ ] Container development.
 
-## §43 · Documentation Intelligence
-
-- [ ] Package docs. — *Parziale: Il tool go doc mostra la documentazione di un package; non c'è una vista dedicata.*
-- [ ] Missing docs hints opzionali.
-- [ ] Generate docs.
-- [ ] Diagram embedding.
-- [ ] Architecture docs generation.
-- [ ] API docs generation.
-- [ ] OpenAPI generation/preview.
-- [ ] Proto docs.
-- [ ] Dependency report. — *Parziale: Dialog Go dependencies e go mod why/graph; nessun report.*
-- [ ] ADR links.
-
 ## §47 · Plugin / Extension Architecture
 
 - [ ] Public extension API. — *Parziale: Contratto v1 con eventi Go Studio read-only (internal/goide/integrations.go) e host API del sandbox; nessuna API per comandi o estensioni dell'IDE.*
@@ -771,123 +720,11 @@ _Implementato in `Tools → Runtime Enrichment…`: sovrappone la telemetria del
 - [ ] Signed plugin support.
 - [ ] Plugin developer mode. — *Parziale: PluginDevTools.tsx: host functions, eventi, stato sandbox ed esecuzione manuale; mancano hot reload e log dedicati.*
 
-## §48 · Enterprise / Legacy Go
-
-- [ ] Corporate proxy. — *Parziale: GOPROXY configurabile per toolchain e proxy Copilot; non c'è un proxy globale unico.*
-- [ ] Private module repositories. — *Parziale: Campi GOPRIVATE/GONOPROXY/GONOSUMDB in GoStudioToolchainConfig.tsx; manca la gestione credenziali dei repo privati.*
-- [ ] GOPRIVATE UX. — *Parziale: Campo GOPRIVATE con placeholder in GoStudioToolchainConfig.tsx; nessuna guida o validazione specifica.*
-- [ ] Custom CA certificates. — *Parziale: CA bundle PEM solo per Copilot (NODE_EXTRA_CA_CERTS); non per toolchain Go o resto di Go Studio.*
-- [ ] mTLS. — *Parziale: mTLS esiste nel client HTTP/gRPC di adOmnia (internal/httpexec, internal/grpc); non integrato in Go Studio.*
-- [ ] JKS/PKCS12 helper integration dove utile. — *Parziale: Strumenti PEM/JKS in nettools e pdfsign; nessun legame con Go Studio.*
-- [ ] Offline mode.
-- [ ] Air-gapped mode.
-- [ ] Internal artifact registry.
-- [ ] Legacy SOAP services. — *Parziale: Pannello SOAP con envelope e WS-Security in adOmnia; non collegato a Go Studio.*
-- [ ] WSDL. — *Parziale: Import WSDL da file, URL e testo nel pannello SOAP; non integrato in Go Studio.*
-- [ ] XML. — *Parziale: Go Studio apre .xml/.xsd/.wsdl con syntax highlighting; nessun tooling XML.*
-- [ ] WS-Security tooling. — *Parziale: WS-Security UsernameToken nel pannello SOAP; non esposto in Go Studio.*
-- [ ] Corporate Git support.
-- [ ] Audit-friendly settings export.
-
-## §50 · Privacy / Local-first
-
-- [ ] Per-project AI permissions. — *Parziale: Per-progetto solo .adomnia/aiignore per Copilot (internal/copilot/ignore.go); nessun permesso AI per progetto per gli altri provider.*
-- [ ] Secret redaction. — *Parziale: Copilot esclude .env, chiavi e certificati; redaction in storage (internal/storage/redaction.go); non sul flusso AI Fix.*
-- [ ] Telemetry opt-in.
-- [ ] Clear network activity panel.
-- [ ] Offline mode.
-- [ ] Export privacy settings.
-
 ---
 
-# P3 — AI e intelligenza del workspace
+# P4 — AI e intelligenza del workspace
 
 _Da progettare prima di implementare: grafi semantici, analisi di impatto, AI che usa il runtime._
-
-## §34 · Runtime-Aware AI
-
-### Principio
-
-- [ ] L'AI non deve conoscere solo il file aperto. — *Parziale: Fix with AI invia il file con l'errore più fino a 3 file del package locale citato; non c'è semantic graph né contesto di workspace.*
-- [ ] Deve poter usare il semantic graph del workspace.
-- [ ] Deve conoscere symbol references.
-- [ ] Deve conoscere Git diff.
-- [ ] Deve conoscere test results.
-- [ ] Deve conoscere coverage.
-- [ ] Deve conoscere compiler errors. — *Parziale: Fix with AI passa l'errore e gli altri problemi del file; mancano gli errori di build completi e le altre fonti.*
-- [ ] Deve conoscere profiler.
-- [ ] Deve conoscere runtime traces.
-- [ ] Deve conoscere API.
-- [ ] Deve conoscere DB schema.
-- [ ] Deve conoscere broker metadata.
-- [ ] Deve conoscere logs.
-- [ ] Deve conoscere architecture graph.
-
-### Azioni contestuali
-
-- [ ] Explain code.
-- [ ] Explain error.
-- [ ] Generate tests.
-- [ ] Generate benchmark.
-- [ ] Generate fuzz target.
-- [ ] Find race risks.
-- [ ] Find goroutine leaks.
-- [ ] Find allocation hotspots.
-- [ ] Find missing context propagation.
-- [ ] Improve error handling.
-- [ ] Explain dependency.
-- [ ] Explain architecture.
-- [ ] Generate docs.
-- [ ] Generate migration.
-- [ ] Generate mock.
-- [ ] Generate API call.
-- [ ] Generate SQL query.
-- [ ] Generate Kafka message.
-
-### Safety / control
-
-- [ ] Apply single hunk.
-- [ ] Apply file.
-- [ ] Secret redaction. — *Parziale: Copilot non invia mai .env, chiavi e certificati (internal/copilot/ignore.go); Fix with AI invia il file senza redazione.*
-- [ ] Exclude paths. — *Parziale: Esclusioni in internal/copilot/ignore.go applicate solo a Copilot; non a Fix with AI / AIEngine.*
-- [ ] `.aiignore`-like support. — *Parziale: .adomnia/aiignore è letto solo da Copilot, non dal motore AI.*
-
-## §35 · AI Debugging
-
-- [ ] Panic analysis. — *Parziale: Panic inspector nel debugger rileva il panic e il frame di origine; nessuna analisi AI.*
-- [ ] Test failure analysis.
-- [ ] Race analysis. — *Parziale: Race detector con card dei due accessi e confronto fra run; analisi euristica, non AI.*
-- [ ] Deadlock analysis. — *Parziale: La Concurrency View segnala possibile deadlock e canali bloccati in modo euristico; nessuna spiegazione AI.*
-- [ ] Slow request analysis.
-- [ ] Memory leak suspicion analysis.
-- [ ] Allocation regression analysis.
-- [ ] DB error analysis.
-- [ ] Kafka failure analysis.
-- [ ] gRPC error analysis.
-- [ ] Context deadline analysis. — *Parziale: Il debugger mostra deadline/err/cause di context.Context; non è un'analisi.*
-
-### AI debugging context
-
-- [ ] Stack trace.
-- [ ] Locals.
-- [ ] Goroutines.
-- [ ] Last logs.
-- [ ] Recent request.
-- [ ] Trace.
-- [ ] Git diff.
-- [ ] Relevant tests.
-- [ ] Related functions.
-- [ ] Runtime metrics.
-
-### Actions
-
-- [ ] “Show likely cause”.
-- [ ] “Open relevant code”.
-- [ ] “Generate fix”.
-- [ ] “Generate regression test”.
-- [ ] “Reproduce”.
-- [ ] “Explain why”.
-- [ ] “Compare with previous working commit”.
 
 ## §36 · Semantic Workspace Graph
 
@@ -948,6 +785,83 @@ _Da progettare prima di implementare: grafi semantici, analisi di impatto, AI ch
 - [ ] Suggested integration calls.
 - [ ] Suggested services to run.
 
+## §34 · Runtime-Aware AI
+
+### Principio
+
+- [ ] L'AI non deve conoscere solo il file aperto. — *Parziale: Fix with AI invia il file con l'errore più fino a 3 file del package locale citato; non c'è semantic graph né contesto di workspace.*
+- [ ] Deve poter usare il semantic graph del workspace.
+- [ ] Deve conoscere symbol references.
+- [ ] Deve conoscere Git diff.
+- [ ] Deve conoscere test results.
+- [ ] Deve conoscere coverage.
+- [ ] Deve conoscere compiler errors. — *Parziale: Fix with AI passa l'errore e gli altri problemi del file; mancano gli errori di build completi e le altre fonti.*
+- [ ] Deve conoscere profiler.
+- [ ] Deve conoscere runtime traces.
+- [ ] Deve conoscere API.
+- [ ] Deve conoscere DB schema.
+- [ ] Deve conoscere broker metadata.
+- [ ] Deve conoscere logs.
+- [ ] Deve conoscere architecture graph.
+
+### Azioni contestuali
+
+- [ ] Explain code.
+- [ ] Explain error.
+- [ ] Generate tests.
+- [ ] Generate benchmark.
+- [ ] Generate fuzz target.
+- [ ] Find race risks.
+- [ ] Find goroutine leaks.
+- [ ] Find allocation hotspots.
+- [ ] Find missing context propagation.
+- [ ] Improve error handling.
+- [ ] Explain dependency.
+- [ ] Explain architecture.
+- [ ] Generate docs.
+- [ ] Generate migration.
+- [ ] Generate mock.
+- [ ] Generate API call.
+- [ ] Generate SQL query.
+- [ ] Generate Kafka message.
+
+## §35 · AI Debugging
+
+- [ ] Panic analysis. — *Parziale: Panic inspector nel debugger rileva il panic e il frame di origine; nessuna analisi AI.*
+- [ ] Test failure analysis.
+- [ ] Race analysis. — *Parziale: Race detector con card dei due accessi e confronto fra run; analisi euristica, non AI.*
+- [ ] Deadlock analysis. — *Parziale: La Concurrency View segnala possibile deadlock e canali bloccati in modo euristico; nessuna spiegazione AI.*
+- [ ] Slow request analysis.
+- [ ] Memory leak suspicion analysis.
+- [ ] Allocation regression analysis.
+- [ ] DB error analysis.
+- [ ] Kafka failure analysis.
+- [ ] gRPC error analysis.
+- [ ] Context deadline analysis. — *Parziale: Il debugger mostra deadline/err/cause di context.Context; non è un'analisi.*
+
+### AI debugging context
+
+- [ ] Stack trace.
+- [ ] Locals.
+- [ ] Goroutines.
+- [ ] Last logs.
+- [ ] Recent request.
+- [ ] Trace.
+- [ ] Git diff.
+- [ ] Relevant tests.
+- [ ] Related functions.
+- [ ] Runtime metrics.
+
+### Actions
+
+- [ ] “Show likely cause”.
+- [ ] “Open relevant code”.
+- [ ] “Generate fix”.
+- [ ] “Generate regression test”.
+- [ ] “Reproduce”.
+- [ ] “Explain why”.
+- [ ] “Compare with previous working commit”.
+
 ## §38 · Architectural Drift Detection
 
 > Confrontare l'architettura desiderata con ciò che il codice sta diventando.
@@ -965,21 +879,6 @@ _Da progettare prima di implementare: grafi semantici, analisi di impatto, AI ch
 - [ ] Circular dependencies.
 - [ ] Drift report.
 - [ ] Diff architecture per commit/branch.
-
-## §55 · Funzioni che danno identità a gO
-
-Se si dovessero scegliere **solo 8 funzioni distintive**, sceglierei:
-
-- [ ] **Runtime Lens**.
-- [ ] **Distributed Request Debugger**.
-- [ ] **Architecture Explorer**. — *Parziale: GoStudioProjectOverview.tsx e GoStudioProjectServicesDialog.tsx mostrano servizi e datasource; manca una vista architetturale esplorabile.*
-- [ ] **Reproduction Studio**.
-- [ ] **Semantic Workspace Graph**. — *Parziale: internal/devcontext produce entità e snapshot (route, tabelle, topic) usati dalla palette; manca un grafo di relazioni.*
-- [ ] **Runtime-aware AI**.
-
-Queste sono le funzioni che possono far dire:
-
-> “Questo non è soltanto un altro IDE Go.”
 
 ## §56 · Nuove idee da valutare
 
@@ -1092,6 +991,58 @@ _Non è lavoro diretto: si chiude quando le funzioni sopra arrivano._
 - [ ] Deve collegare automaticamente codice ↔ API ↔ DB ↔ broker ↔ runtime. — *Parziale: Developer Context e Live Session collegano codice, API, DB e broker. Verifica manuale aperta.*
 - [ ] Deve avere una UX coerente con il resto di adOmnia. — *Parziale: Token condivisi, menu e dialog moderni. Resta la verifica visiva manuale.*
 
+## §1 · Priorità strategiche
+
+### P1 — IDE Go superiore alla media
+
+> Ogni voce ha la sua sezione operativa più sotto (§8–§21): si spunta lì, poi qui.
+
+- [ ] Concurrency view. — *Parziale: `GoStudioConcurrencyView.tsx` e `GoStudioGoroutineTree.tsx`, sezione 8 a 36/37. Manca la worker pool saturation.*
+- [ ] Profiler integrato. — *Parziale: Solo il profiling dei test (cpu/mem/block/mutex/trace) in `runconfig_params.go`. Manca un viewer pprof.*
+- [ ] Benchmark explorer. — *Parziale: Esecuzione dal gutter, confronto e storico in `goStudioBenchmarks*.ts` e nel pannello Tests. Sezione 12 a 15/20.*
+- [ ] Fuzzing UX. — *Parziale: Solo run con `-fuzztime` dal gutter e generazione del fuzz test. Mancano corpus, crash e minimizzazione.*
+- [ ] Dependency intelligence. — *Parziale: Dialog `GoStudioDependencies.tsx` con go get/tidy, mod why/graph. Mancano grafo tra moduli e analisi di aggiornamenti e licenze.*
+- [ ] Security. — *Parziale: Solo diagnostica `Vulncheck` di gopls. Non c'è uno Security Studio dedicato.*
+- [ ] Interface explorer. — *Parziale: Implementation markers, Implement Interface dialog e gerarchie. Manca un explorer dedicato.*
+- [x] Context propagation inspector. — *Implementata l'analisi statica (`goStudioContextAnalysis.ts`) con pannello dedicato, marcatori nel gutter e soglia timeout configurabile; il runtime inspector (`goStudioContextInspector.ts`) resta per le variabili in debug. Manca la verifica manuale nell'app.*
+- [ ] Runtime Lens.
+- [ ] Architecture Explorer.
+
+### P2 — Differenziazione adOmnia
+
+- [ ] Distributed Request Debugger. — *Parziale: Il caso a servizio singolo è coperto da `internal/devsession` e dalla Debug Request. Manca il multi-servizio.*
+- [ ] Service Map runtime-aware. — *§31: va progettato prima.*
+- [ ] Reproduction Studio. — *§33: va progettato prima.*
+- [ ] Cross-service debugging. — *dipende dal Distributed Request Debugger (§32).*
+- [ ] Unified local environment. — *Parziale: Project Services e Docker Lab (`GoStudioProjectServicesDialog.tsx`). Manca la vista unica.*
+
+### P3 — Funzioni “2027”
+
+- [ ] Runtime-aware AI.
+- [ ] Automatic bug reproduction.
+- [ ] Performance regression detection.
+- [ ] Architectural drift detection.
+- [ ] Smart refactoring multi-service.
+- [ ] Continuous background code intelligence locale.
+- [ ] Semantic workspace graph.
+- [ ] Replay di richieste/eventi.
+- [ ] Time-travel debugging dove tecnicamente possibile.
+
+## §55 · Funzioni che danno identità a gO
+
+Se si dovessero scegliere **solo 8 funzioni distintive**, sceglierei:
+
+- [ ] **Runtime Lens**.
+- [ ] **Distributed Request Debugger**.
+- [ ] **Architecture Explorer**. — *Parziale: GoStudioProjectOverview.tsx e GoStudioProjectServicesDialog.tsx mostrano servizi e datasource; manca una vista architetturale esplorabile.*
+- [ ] **Reproduction Studio**.
+- [ ] **Semantic Workspace Graph**. — *Parziale: internal/devcontext produce entità e snapshot (route, tabelle, topic) usati dalla palette; manca un grafo di relazioni.*
+- [ ] **Runtime-aware AI**.
+
+Queste sono le funzioni che possono far dire:
+
+> “Questo non è soltanto un altro IDE Go.”
+
 ## §51 · “Do not build badly” checklist
 
 - [ ] Non creare un clone incompleto di GoLand.
@@ -1180,7 +1131,7 @@ Ogni nuova feature di gO dovrebbe essere considerata finita solo se:
 - [ ] Performance Studio.
 - [ ] Go trace.
 - [ ] Interface Explorer. — *Parziale: Implement Interface, implementation markers e type hierarchy; manca una vista dedicata.*
-- [ ] Context Inspector. — *Parziale: Inspector runtime di context.Context in debug; manca la propagazione statica.*
+- [ ] Context Inspector. — *Parziale: Inspector runtime di context.Context in debug e analisi statica della propagazione (`goStudioContextAnalysis.ts`) con pannello e gutter marker; manca la verifica manuale.*
 - [ ] Error intelligence. — *Parziale: Error chain viewer e panic inspector; manca l'analisi statica.*
 - [ ] Security. — *Parziale: Vulnerability Diagnostics opt-in via gopls; nessuna Security Studio o govulncheck dedicato.*
 - [ ] Dependency Studio. — *Parziale: GoStudioDependencies.tsx con azioni go.mod; mancano grafo, impatto e dimensione binario.*

@@ -201,6 +201,11 @@ export async function listGoIDEDependencies(sessionId: string, moduleDirectory: 
   return GoIDEBindings.ListDependencies(sessionId, moduleDirectory)
 }
 
+/** Versioni pubblicate di una dipendenza, dalla più recente (go list -m -versions, passa dal GOPROXY). */
+export async function listGoIDEModuleVersions(sessionId: string, moduleDirectory: string, modulePath: string): Promise<string[]> {
+  return GoIDEBindings.ListModuleVersions(sessionId, moduleDirectory, modulePath)
+}
+
 export async function startGoIDEDependencyAction(request: DependencyActionRequest): Promise<Execution> {
   return GoIDEBindings.StartDependencyAction(request)
 }
@@ -424,6 +429,11 @@ export async function dismissGoIDEInterruptedProcess(runId: string): Promise<voi
 
 export async function acknowledgeGoIDECrash(): Promise<void> {
   await GoIDEBindings.AcknowledgeCrash()
+}
+
+/** Percorsi che non devono mai andare a un provider AI: segreti noti e .adomnia/aiignore del progetto. */
+export async function listGoIDEAIExcludedPaths(sessionId: string, relativePaths: string[]): Promise<string[]> {
+  return relativePaths.length === 0 ? [] : GoIDEBindings.AIExcludedPaths(sessionId, relativePaths)
 }
 
 export async function listGoIDERecoveredBuffers(sessionId: string): Promise<GoIDERecoveredBuffer[]> {

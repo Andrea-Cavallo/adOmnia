@@ -112,6 +112,28 @@ func (e recoveredEntry) bytes() int {
 	return total
 }
 
+// WorkspaceStore persiste il recupero per workspace (recovery/<workspace-id> nello store locale di
+// adOmnia, mai nel repository): ogni scrittura riscrive solo il workspace toccato, non tutto lo store.
+type WorkspaceStore interface {
+	Store
+	LoadWorkspaces() (map[string][]byte, error)
+	// SaveWorkspace con data vuoto rimuove il workspace.
+	SaveWorkspace(workspaceID string, data []byte) error
+}
+
+// RecoveryWorkspacePrefix precede il workspace-id nelle chiavi dello store: recovery/<workspace-id>.
+const RecoveryWorkspacePrefix = "recovery/"
+
+// unboundWorkspace raccoglie i buffer di sessioni non ancora legate a un progetto.
+const unboundWorkspace = "unbound"
+
+func workspaceKey(workspaceID string) string {
+	if workspaceID == "" {
+		return unboundWorkspace
+	}
+	return workspaceID
+}
+
 type recoveryState struct {
 	Version int              `json:"version"`
 	Buffers []recoveredEntry `json:"buffers"`
@@ -166,22 +188,44 @@ func (m *RecoveryManager) Load() error {
 	if m.loaded || m.store == nil {
 		return nil
 	}
-	data, err := m.store.Load()
+	legacy, err := m.store.Load()
 	if err != nil {
 		return fmt.Errorf("lettura buffer di recupero fallita: %w", err)
 	}
+	blobs := [][]byte{legacy}
+	workspaceStore, perWorkspace := m.store.(WorkspaceStore)
+	if perWorkspace {
+		workspaces, err := workspaceStore.LoadWorkspaces()
+		if err != nil {
+			return fmt.Errorf("lettura buffer di recupero fallita: %w", err)
+		}
+		for _, data := range workspaces {
+			blobs = append(blobs, data)
+		}
+	}
 	m.loaded = true
+	for _, data := range blobs {
+		m.loadBlobLocked(data)
+	}
+	// Migrazione dallo store unico: i buffer passano ai workspace, poi la chiave legacy si svuota.
+	if perWorkspace && len(legacy) > 0 {
+		if err := m.persistLocked(m.workspaceIDsLocked()...); err != nil {
+			return err
+		}
+		return m.store.Save(nil)
+	}
+	return nil
+}
+
+// loadBlobLocked importa uno stato serializzato; uno illeggibile viene scartato senza bloccare
+// l'avvio, perché contiene solo copie di lavoro.
+func (m *RecoveryManager) loadBlobLocked(data []byte) {
 	if len(data) == 0 {
-		return nil
+		return
 	}
 	var state recoveryState
-	if err := json.Unmarshal(data, &state); err != nil {
-		// Uno store di recupero illeggibile non deve impedire l'avvio: viene
-		// scartato e ricostruito, perché contiene solo copie di lavoro.
-		return nil
-	}
-	if state.Version > RecoverySchemaVersion {
-		return nil
+	if err := json.Unmarshal(data, &state); err != nil || state.Version > RecoverySchemaVersion {
+		return
 	}
 	for _, entry := range state.Buffers {
 		if entry.SessionID == "" || entry.RelativePath == "" {
@@ -193,7 +237,18 @@ func (m *RecoveryManager) Load() error {
 		}
 		m.buffers[recoveryKey(entry.SessionID, entry.RelativePath)] = valid
 	}
-	return nil
+}
+
+func (m *RecoveryManager) workspaceIDsLocked() []string {
+	seen := map[string]bool{}
+	ids := []string{}
+	for _, entry := range m.buffers {
+		if id := workspaceKey(entry.WorkspaceID); !seen[id] {
+			seen[id] = true
+			ids = append(ids, id)
+		}
+	}
+	return ids
 }
 
 // Remember registra il contenuto corrente di un buffer non salvato.
@@ -233,7 +288,10 @@ func (m *RecoveryManager) Remember(sessionID SessionID, relativePath, content, d
 		return fmt.Errorf("spazio di recupero esaurito: salva qualche file per proteggere i nuovi buffer")
 	}
 	m.buffers[key] = entry
-	return m.persistLocked()
+	if exists && previous.WorkspaceID != entry.WorkspaceID {
+		return m.persistLocked(entry.WorkspaceID, previous.WorkspaceID)
+	}
+	return m.persistLocked(entry.WorkspaceID)
 }
 
 // BindProject lega la sessione al progetto in realPath e adotta anche i buffer di un progetto
@@ -252,7 +310,7 @@ func (m *RecoveryManager) BindWorkspace(sessionID SessionID, workspaceID string)
 	defer m.mu.Unlock()
 	m.workspaces[sessionID] = workspaceID
 	origin := m.origins[sessionID]
-	adopted := false
+	adoptedFrom := []string{}
 	for key, entry := range m.buffers {
 		if entry.SessionID == sessionID {
 			continue
@@ -265,15 +323,16 @@ func (m *RecoveryManager) BindWorkspace(sessionID SessionID, workspaceID string)
 			continue
 		}
 		delete(m.buffers, key)
+		adoptedFrom = append(adoptedFrom, entry.WorkspaceID)
 		entry.SessionID, entry.WorkspaceID = sessionID, workspaceID
 		if origin.path != "" {
 			entry.WorkspacePath, entry.Fingerprint = origin.path, origin.fingerprint
 		}
 		m.buffers[target] = entry
-		adopted = true
 	}
-	if adopted {
-		_ = m.persistLocked()
+	if len(adoptedFrom) > 0 {
+		// Prima il workspace di destinazione: un crash a metà lascia un duplicato, mai un buffer perso.
+		_ = m.persistLocked(append([]string{workspaceID}, adoptedFrom...)...)
 	}
 }
 
@@ -291,28 +350,29 @@ func (m *RecoveryManager) Forget(sessionID SessionID, relativePath string) error
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	key := recoveryKey(sessionID, relativePath)
-	if _, exists := m.buffers[key]; !exists {
+	entry, exists := m.buffers[key]
+	if !exists {
 		return nil
 	}
 	delete(m.buffers, key)
-	return m.persistLocked()
+	return m.persistLocked(entry.WorkspaceID)
 }
 
 // ForgetSession rimuove i buffer della sola sessione indicata.
 func (m *RecoveryManager) ForgetSession(sessionID SessionID) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	removed := false
+	removed := []string{}
 	for key, entry := range m.buffers {
 		if entry.SessionID == sessionID {
 			delete(m.buffers, key)
-			removed = true
+			removed = append(removed, entry.WorkspaceID)
 		}
 	}
-	if !removed {
+	if len(removed) == 0 {
 		return nil
 	}
-	return m.persistLocked()
+	return m.persistLocked(removed...)
 }
 
 // List restituisce i buffer recuperabili della sessione, dal più recente.
@@ -337,18 +397,52 @@ func (m *RecoveryManager) totalBytesLocked() int {
 	return total
 }
 
-func (m *RecoveryManager) persistLocked() error {
+// persistLocked salva i workspace indicati; con uno Store semplice riscrive lo stato intero.
+func (m *RecoveryManager) persistLocked(workspaceIDs ...string) error {
 	if m.store == nil {
 		return nil
 	}
+	workspaceStore, perWorkspace := m.store.(WorkspaceStore)
+	if !perWorkspace {
+		data, err := m.marshalLocked(func(recoveredEntry) bool { return true })
+		if err != nil {
+			return err
+		}
+		return m.store.Save(data)
+	}
+	saved := map[string]bool{}
+	for _, raw := range workspaceIDs {
+		id := workspaceKey(raw)
+		if saved[id] {
+			continue
+		}
+		saved[id] = true
+		data, err := m.marshalLocked(func(entry recoveredEntry) bool { return workspaceKey(entry.WorkspaceID) == id })
+		if err != nil {
+			return err
+		}
+		if err := workspaceStore.SaveWorkspace(id, data); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// marshalLocked serializza i buffer scelti; nil se non ce n'è nessuno (workspace da rimuovere).
+func (m *RecoveryManager) marshalLocked(include func(recoveredEntry) bool) ([]byte, error) {
 	entries := make([]recoveredEntry, 0, len(m.buffers))
 	for _, entry := range m.buffers {
-		entries = append(entries, entry)
+		if include(entry) {
+			entries = append(entries, entry)
+		}
+	}
+	if len(entries) == 0 {
+		return nil, nil
 	}
 	sort.Slice(entries, func(i, j int) bool { return entries[i].SavedAt.Before(entries[j].SavedAt) })
 	data, err := json.Marshal(recoveryState{Version: RecoverySchemaVersion, Buffers: entries})
 	if err != nil {
-		return fmt.Errorf("serializzazione buffer di recupero fallita: %w", err)
+		return nil, fmt.Errorf("serializzazione buffer di recupero fallita: %w", err)
 	}
-	return m.store.Save(data)
+	return data, nil
 }

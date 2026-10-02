@@ -51,6 +51,15 @@ export const LEVEL_STYLE: Record<LogLevel, string> = {
   unknown: 'bg-surface-2 text-text-4',
 }
 
+// Colore del messaggio e bordo della riga: un errore si riconosce anche scorrendo senza leggere la colonna Level.
+const LEVEL_MESSAGE: Record<LogLevel, string> = {
+  fatal: 'text-error', error: 'text-error', warn: 'text-warning', info: 'text-text-1', debug: 'text-text-3', trace: 'text-text-4', unknown: 'text-text-1',
+}
+
+const LEVEL_BORDER: Partial<Record<LogLevel, string>> = {
+  fatal: 'border-error', error: 'border-error/60', warn: 'border-warning/50',
+}
+
 export const LEVEL_SHORT: Record<LogLevel, string> = {
   fatal: 'FTL', error: 'ERR', warn: 'WRN', info: 'INF', debug: 'DBG', trace: 'TRC', unknown: '---',
 }
@@ -236,7 +245,7 @@ function EventRow({ event, height, wrap, columns, columnWidths, highlights, sele
       style={{ height }}
       className={cn(
         'flex cursor-pointer items-start gap-2 border-l-2 px-2 py-[3px] text-[11px] outline-none transition-colors',
-        selected ? 'border-accent bg-accent/12' : 'border-transparent hover:bg-surface-1',
+        selected ? 'border-accent bg-accent/12' : cn(LEVEL_BORDER[event.level] ?? 'border-transparent', 'hover:bg-surface-1'),
         'focus-visible:bg-surface-1 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-accent',
       )}
     >
@@ -263,7 +272,7 @@ function EventRow({ event, height, wrap, columns, columnWidths, highlights, sele
         )
       })}
 
-      <span className={cn('min-w-0 flex-1 font-mono text-text-1', wrap ? 'whitespace-pre-wrap break-words' : 'truncate')}>
+      <span className={cn('min-w-0 flex-1 font-mono text-[11.5px]', LEVEL_MESSAGE[event.level], wrap ? 'whitespace-pre-wrap break-words' : 'truncate')}>
         {segments.map((segment, index) => (
           segment.hit
             ? <mark key={index} className="rounded-[2px] bg-accent/35 text-text-1">{segment.text}</mark>

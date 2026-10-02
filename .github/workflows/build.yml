@@ -76,6 +76,10 @@ jobs:
         working-directory: frontend
         run: npm ci && npm run test -- src/lib/loginspector/finalScenario.test.ts src/lib/loginspector/platformJourneyContract.test.ts
 
+      - name: Go Studio disaster recovery
+        # Kill reale durante le snapshot, 10 buffer sporchi, store per workspace (Linux: go test ./... in Checks).
+        run: go test ./internal/goide/ -run "Recover|Kill|Crash" -count=1
+
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v3/cmd/wails3@${{ env.WAILS_VERSION }}
 
@@ -177,6 +181,10 @@ jobs:
       - name: Verify Log Inspector final scenario
         working-directory: frontend
         run: npm ci && npm run test -- src/lib/loginspector/finalScenario.test.ts src/lib/loginspector/platformJourneyContract.test.ts
+
+      - name: Go Studio disaster recovery
+        # Kill reale durante le snapshot, 10 buffer sporchi, store per workspace (Linux: go test ./... in Checks).
+        run: go test ./internal/goide/ -run "Recover|Kill|Crash" -count=1
 
       - name: Install packaging tools
         run: |

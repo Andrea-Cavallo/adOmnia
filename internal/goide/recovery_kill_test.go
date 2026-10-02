@@ -14,12 +14,31 @@ import (
 
 const killChildEnv = "ADOMNIA_RECOVERY_KILL_CHILD"
 
-// bboltRecoveryStore è lo stesso store dell'app (goide_bindings.go): bucket goide, chiave dedicata.
+// bboltRecoveryStore ricalca lo store dell'app (goide_bindings.go): bucket goide, una chiave per workspace.
 type bboltRecoveryStore struct{}
 
-func (bboltRecoveryStore) Load() ([]byte, error) { return storage.Get("goide", "recovery-kill-test") }
-func (bboltRecoveryStore) Save(data []byte) error {
-	return storage.Put("goide", "recovery-kill-test", data)
+const killTestPrefix = "kill-test/" + RecoveryWorkspacePrefix
+
+func (bboltRecoveryStore) Load() ([]byte, error) { return nil, nil }
+func (bboltRecoveryStore) Save([]byte) error     { return nil }
+func (bboltRecoveryStore) LoadWorkspaces() (map[string][]byte, error) {
+	keys, err := storage.List("goide", killTestPrefix)
+	if err != nil {
+		return nil, err
+	}
+	workspaces := map[string][]byte{}
+	for _, key := range keys {
+		if workspaces[strings.TrimPrefix(key, killTestPrefix)], err = storage.Get("goide", key); err != nil {
+			return nil, err
+		}
+	}
+	return workspaces, nil
+}
+func (bboltRecoveryStore) SaveWorkspace(workspaceID string, data []byte) error {
+	if len(data) == 0 {
+		return storage.Delete("goide", killTestPrefix+workspaceID)
+	}
+	return storage.Put("goide", killTestPrefix+workspaceID, data)
 }
 
 const killDirtyFiles = 10
@@ -34,10 +53,12 @@ func TestRecoveryChildWritesSnapshots(t *testing.T) {
 		t.Fatal(err)
 	}
 	manager := NewRecoveryManager(bboltRecoveryStore{})
+	manager.BindWorkspace("s", "ws-a")
+	manager.BindWorkspace("t", "ws-b")
 	padding := strings.Repeat("x", 64*1024) // snapshot grandi: la scrittura dura abbastanza da essere interrotta
 	for round := 0; ; round++ {
 		for file := 0; file < killDirtyFiles; file++ {
-			if err := manager.Remember("s", fmt.Sprintf("f%d.go", file), fmt.Sprintf("round %d\n%s", round, padding), ""); err != nil {
+			if err := manager.Remember(SessionID([]string{"s", "t"}[file%2]), fmt.Sprintf("f%d.go", file), fmt.Sprintf("round %d\n%s", round, padding), ""); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -98,7 +119,7 @@ func TestKillDuringSnapshotWritesKeepsEveryBuffer(t *testing.T) {
 		}
 		manager := NewRecoveryManager(bboltRecoveryStore{})
 		loadErr := manager.Load()
-		entries := manager.List("s")
+		entries := append(manager.List("s"), manager.List("t")...)
 		storage.Close()
 		if loadErr != nil {
 			t.Fatalf("tentativo %d: %v", attempt, loadErr)

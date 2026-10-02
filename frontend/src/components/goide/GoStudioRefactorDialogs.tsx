@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { AlertCircle, FileCode2, Loader2, PenLine } from 'lucide-react'
 import { requestPrepareRename, requestRename, type GoIDEWorkspaceChange } from '@/lib/goide-lsp-api'
 import { useGoIDELspStore } from '@/stores/goideLsp'
-import { changedLines } from './goStudioChangePreview'
+import { changedLines, selectHunks, selectableHunks } from './goStudioChangePreview'
 import { applyGoStudioWorkspaceChange } from './goStudioWorkspaceEdits'
 import { GoStudioAlert, GoStudioButton, GoStudioModal } from './GoStudioModal'
 import { GoStudioFileIcon } from './GoStudioFileIcon'
@@ -83,6 +83,9 @@ export function GoStudioChangePreviewDialog() {
   const change = useGoIDELspStore((state) => state.pendingChange)
   const [selected, setSelected] = useState(0)
   const [applying, setApplying] = useState(false)
+  // Si tiene traccia di ciò che l'utente scarta: di default si applica tutto.
+  const [skippedFiles, setSkippedFiles] = useState<ReadonlySet<string>>(new Set())
+  const [skippedHunks, setSkippedHunks] = useState<Readonly<Record<string, ReadonlySet<number>>>>({})
   const applyRef = useRef<HTMLButtonElement>(null)
   const close = () => {
     const onCancel = useGoIDELspStore.getState().pendingChangeOnCancel
@@ -91,6 +94,8 @@ export function GoStudioChangePreviewDialog() {
   }
   useEffect(() => {
     setSelected(0)
+    setSkippedFiles(new Set())
+    setSkippedHunks({})
     if (!change) return
     // Dopo il focus trap: Invio conferma subito l'anteprima.
     const timer = window.setTimeout(() => applyRef.current?.focus(), 30)
@@ -99,6 +104,25 @@ export function GoStudioChangePreviewDialog() {
   if (!change) return null
   const file = change.files[selected]
   const totalEdits = change.files.reduce((total, item) => total + item.edits.length, 0)
+  const chosenFiles = change.files.flatMap((item) => {
+    if (skippedFiles.has(item.uri)) return []
+    const skipped = skippedHunks[item.uri]
+    if (!skipped || skipped.size === 0) return [item]
+    const keep = new Set(Array.from({ length: selectableHunks(item) }, (_unused, index) => index).filter((index) => !skipped.has(index)))
+    const partial = selectHunks(item, keep)
+    return partial ? [partial] : []
+  })
+  const partialSelection = chosenFiles.length !== change.files.length || chosenFiles.some((item, index) => item !== change.files[index])
+  const toggleFile = (uri: string) => setSkippedFiles((current) => {
+    const next = new Set(current)
+    if (!next.delete(uri)) next.add(uri)
+    return next
+  })
+  const toggleHunk = (uri: string, hunk: number) => setSkippedHunks((current) => {
+    const next = new Set(current[uri] ?? [])
+    if (!next.delete(hunk)) next.add(hunk)
+    return { ...current, [uri]: next }
+  })
 
   const apply = async (value: GoIDEWorkspaceChange) => {
     setApplying(true)
@@ -121,28 +145,41 @@ export function GoStudioChangePreviewDialog() {
       footerStart={change.files.some((item) => item.created) ? 'New files are created on disk; the others are updated in the editor, unsaved.' : 'Files are updated in the editor as unsaved changes: review, then Save All.'}
       footer={<>
         <GoStudioButton variant="ghost" onClick={close}>Cancel</GoStudioButton>
-        <button ref={applyRef} type="button" disabled={applying} onClick={() => void apply(change)} className="gs-btn gs-btn-primary">{applying && <Loader2 size={14} className="animate-spin" />} Apply changes</button>
+        <button ref={applyRef} type="button" disabled={applying || chosenFiles.length === 0} onClick={() => void apply({ ...change, files: chosenFiles })} className="gs-btn gs-btn-primary">{applying && <Loader2 size={14} className="animate-spin" />} {partialSelection ? `Apply selected (${chosenFiles.length} file${chosenFiles.length === 1 ? '' : 's'})` : 'Apply changes'}</button>
       </>}
     >
       <div className="flex min-h-0 flex-1">
         <div role="listbox" aria-label="Changed files" className="w-72 shrink-0 overflow-auto border-r border-border-1 p-1.5">
           {change.files.map((item, index) => (
-            <button key={item.uri} type="button" role="option" aria-selected={index === selected} onClick={() => setSelected(index)} className={`flex h-9 w-full items-center gap-2 rounded-lg px-2.5 text-left text-[12.5px] ${index === selected ? 'bg-accent/15 text-text-1' : 'text-text-2 hover:bg-surface-2/60'}`}>
+            <div key={item.uri} role="option" aria-selected={index === selected} tabIndex={0} onClick={() => setSelected(index)} onKeyDown={(event) => { if (event.key === ' ' && event.target === event.currentTarget) { event.preventDefault(); toggleFile(item.uri) } }} className={`flex h-9 w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 text-left text-[12.5px] ${index === selected ? 'bg-accent/15 text-text-1' : 'text-text-2 hover:bg-surface-2/60'} ${skippedFiles.has(item.uri) ? 'opacity-50' : ''}`}>
+              <input type="checkbox" checked={!skippedFiles.has(item.uri)} onClick={(event) => event.stopPropagation()} onChange={() => toggleFile(item.uri)} aria-label={`Apply ${item.relativePath}`} title="Apply this file" className="shrink-0 accent-[var(--color-accent)]" />
               <GoStudioFileIcon name={item.relativePath.split('/').pop() ?? item.relativePath} relativePath={item.relativePath} />
               <span className="min-w-0 flex-1 truncate">{item.relativePath}</span>
               {item.created && <span className="gs-badge h-[18px] text-[10.5px] text-success">new</span>}
               <span className="gs-badge h-[18px] text-[10.5px]">{item.edits.length}</span>
-            </button>
+            </div>
           ))}
         </div>
         <div className="gs-mono min-w-0 flex-1 overflow-auto bg-surface-0 p-3 text-[11.5px] leading-5">
-          {file && changedLines(file).map(({ line, text, hunkStart, kind }, index) => (
-            <div key={`${kind}-${line}-${index}`} className={`flex gap-3 rounded-sm border-l-2 px-1.5 ${kind === 'removed' ? 'border-danger/60 bg-danger/5' : 'border-success/60 bg-success/5'} ${hunkStart ? 'mt-2' : ''}`}>
+          {file && changedLines(file).map(({ line, text, hunkStart, kind, hunk }, index, rows) => {
+            const hunkSkipped = skippedFiles.has(file.uri) || (skippedHunks[file.uri]?.has(hunk) ?? false)
+            const firstOfHunk = index === 0 || rows[index - 1].hunk !== hunk
+            return (
+            <div key={`${kind}-${line}-${index}`} className={hunkSkipped ? 'opacity-40' : ''}>
+            {firstOfHunk && selectableHunks(file) > 1 && (
+              <label className={`flex items-center gap-2 px-1.5 pb-0.5 text-[10.5px] text-text-3 ${hunkStart || index > 0 ? 'mt-2' : ''}`}>
+                <input type="checkbox" checked={!hunkSkipped} disabled={skippedFiles.has(file.uri)} onChange={() => toggleHunk(file.uri, hunk)} className="accent-[var(--color-accent)]" />
+                Apply this change
+              </label>
+            )}
+            <div className={`flex gap-3 rounded-sm border-l-2 px-1.5 ${kind === 'removed' ? 'border-danger/60 bg-danger/5' : 'border-success/60 bg-success/5'} ${hunkStart && !(firstOfHunk && selectableHunks(file) > 1) ? 'mt-2' : ''}`}>
               <span className="w-10 shrink-0 select-none text-right text-text-4">{line}</span>
               <span className={`w-2 shrink-0 select-none ${kind === 'removed' ? 'text-danger' : 'text-success'}`}>{kind === 'removed' ? '−' : '+'}</span>
               <span className={`min-w-0 flex-1 whitespace-pre-wrap break-all ${kind === 'removed' ? 'text-text-3 line-through decoration-danger/40' : 'text-text-1'}`}>{text || ' '}</span>
             </div>
-          ))}
+            </div>
+            )
+          })}
         </div>
       </div>
     </GoStudioModal>

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"adomnia/internal/copilot"
 	"adomnia/internal/git"
 	"adomnia/internal/goide"
 	"adomnia/internal/goidewindow"
@@ -89,7 +90,40 @@ func (goIDERecoveryStore) Save(data []byte) error {
 	if storage.DB() == nil {
 		return fmt.Errorf("archivio locale non inizializzato")
 	}
+	if len(data) == 0 {
+		return storage.Delete("goide", goIDERecoveryKey)
+	}
 	return storage.Put("goide", goIDERecoveryKey, data)
+}
+
+// LoadWorkspaces legge le chiavi recovery/<workspace-id>: una per progetto.
+func (goIDERecoveryStore) LoadWorkspaces() (map[string][]byte, error) {
+	if storage.DB() == nil {
+		return nil, nil
+	}
+	keys, err := storage.List("goide", goide.RecoveryWorkspacePrefix)
+	if err != nil {
+		return nil, err
+	}
+	workspaces := make(map[string][]byte, len(keys))
+	for _, key := range keys {
+		data, err := storage.Get("goide", key)
+		if err != nil {
+			return nil, err
+		}
+		workspaces[strings.TrimPrefix(key, goide.RecoveryWorkspacePrefix)] = data
+	}
+	return workspaces, nil
+}
+
+func (goIDERecoveryStore) SaveWorkspace(workspaceID string, data []byte) error {
+	if storage.DB() == nil {
+		return fmt.Errorf("archivio locale non inizializzato")
+	}
+	if len(data) == 0 {
+		return storage.Delete("goide", goide.RecoveryWorkspacePrefix+workspaceID)
+	}
+	return storage.Put("goide", goide.RecoveryWorkspacePrefix+workspaceID, data)
 }
 
 type GoIDE struct {
@@ -192,6 +226,23 @@ func (g *GoIDE) sessionRoot(sessionID string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("gO session %s is not open", sessionID)
+}
+
+// AIExcludedPaths restituisce, tra i percorsi indicati, quelli che non devono mai lasciare la
+// macchina verso un provider AI: segreti noti (.env, chiavi, certificati) e .adomnia/aiignore del progetto.
+func (g *GoIDE) AIExcludedPaths(sessionID string, relativePaths []string) ([]string, error) {
+	root, err := g.sessionRoot(sessionID)
+	if err != nil {
+		return nil, err
+	}
+	filter := copilot.LoadContextFilter(root)
+	excluded := []string{}
+	for _, relativePath := range relativePaths {
+		if filter.Excluded(relativePath) {
+			excluded = append(excluded, relativePath)
+		}
+	}
+	return excluded, nil
 }
 
 // cancelMainClose annulla la chiusura quando restano buffer non salvati o
@@ -436,6 +487,11 @@ func (g *GoIDE) RemoveInstalledToolchain(version string, confirmed bool) error {
 // ListDependencies legge le dipendenze del modulo senza eseguire comandi.
 func (g *GoIDE) ListDependencies(sessionID, moduleDirectory string) (goide.DependencyState, error) {
 	return g.service.ListDependencies(sessionID, moduleDirectory)
+}
+
+// ListModuleVersions elenca le versioni pubblicate di una dipendenza, dalla più recente.
+func (g *GoIDE) ListModuleVersions(sessionID, moduleDirectory, modulePath string) ([]string, error) {
+	return g.service.ListModuleVersions(sessionID, moduleDirectory, modulePath)
 }
 
 // StartDependencyAction applica un go get strutturato dopo conferma esplicita.

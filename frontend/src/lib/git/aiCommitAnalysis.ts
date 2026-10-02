@@ -4,6 +4,7 @@
 
 import * as AIEngine from '@/wailsjs/go/main/AIEngine'
 import { ensureAIConfigured } from '@/lib/aiEngine'
+import { createAIRedactor } from '@/lib/aiRedaction'
 
 export type AiActionId =
   | 'ai.explain'
@@ -70,9 +71,11 @@ export async function runAiCommitAnalysis(action: AiActionId, ctx: AiCommitConte
 
   await ensureAIConfigured()
 
-  const diff = ctx.diff.length > MAX_DIFF_CHARS
-    ? `${ctx.diff.slice(0, MAX_DIFF_CHARS)}\n\n…diff truncated (${ctx.diff.length - MAX_DIFF_CHARS} more characters)…`
-    : ctx.diff
+  // I segreti nel diff restano sulla macchina: l'analisi non ha bisogno dei loro valori.
+  const redacted = createAIRedactor().redact(ctx.diff)
+  const diff = redacted.length > MAX_DIFF_CHARS
+    ? `${redacted.slice(0, MAX_DIFF_CHARS)}\n\n…diff truncated (${redacted.length - MAX_DIFF_CHARS} more characters)…`
+    : redacted
 
   const user = [
     prompt.instruction,

@@ -57,8 +57,8 @@ export function GoStudioTerminalView({ terminalId, active, onExit, onOpenLink, o
       convertEol: false,
       cursorBlink: true,
       fontFamily: terminalFontFamily(),
-      fontSize: 12,
-      lineHeight: 1.2,
+      fontSize: 13,
+      lineHeight: 1.25,
       scrollback: 5000,
       theme: goStudioTerminalTheme(theme),
       allowProposedApi: true,
@@ -154,7 +154,16 @@ export function GoStudioTerminalView({ terminalId, active, onExit, onOpenLink, o
     const observer = new ResizeObserver(attachWhenMeasurable)
     observer.observe(host.current)
 
+    // xterm misura le celle sul canvas all'avvio: se il font mono arriva dopo, si rimisura con il glifo giusto.
+    let disposed = false
+    void document.fonts.load(`13px ${terminalFontFamily()}`).then(() => {
+      if (disposed) return
+      instance.options.fontFamily = terminalFontFamily()
+      sendResize()
+    }).catch(() => undefined)
+
     return () => {
+      disposed = true
       observer.disconnect()
       unsubscribe?.()
       inputHandler.dispose()

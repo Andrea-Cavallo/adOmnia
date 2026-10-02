@@ -1,5 +1,6 @@
 import * as AIEngine from '@/wailsjs/go/main/AIEngine'
 import { ensureAIConfigured } from '@/lib/aiEngine'
+import { createAIRedactor } from '@/lib/aiRedaction'
 
 export interface PullRequestDraft { title: string; body: string }
 
@@ -22,9 +23,11 @@ export function parsePullRequestDraft(raw: string): PullRequestDraft {
 export async function generatePullRequestDraft(input: { branch: string; base: string; diff: string }): Promise<PullRequestDraft> {
   if (!input.diff.trim()) throw new Error('There are no branch changes to describe.')
   await ensureAIConfigured()
-  const diff = input.diff.length > MAX_DIFF_CHARS
-    ? `${input.diff.slice(0, MAX_DIFF_CHARS)}\n\n[diff truncated]`
-    : input.diff
+  // Una bozza di PR è testo da pubblicare: i segreti del diff non vanno né al provider né nella bozza.
+  const redacted = createAIRedactor().redact(input.diff)
+  const diff = redacted.length > MAX_DIFF_CHARS
+    ? `${redacted.slice(0, MAX_DIFF_CHARS)}\n\n[diff truncated]`
+    : redacted
   const system = 'You write precise pull request descriptions from a supplied Git diff. Never invent changes. Return only JSON with string fields "title" and "body". The body must be concise Markdown with Summary and Testing sections.'
   const prompt = `Create a pull request draft for ${input.branch} into ${input.base}.\n\n\u0060\u0060\u0060diff\n${diff}\n\u0060\u0060\u0060`
   return parsePullRequestDraft(await AIEngine.Complete(system, prompt, 1800))

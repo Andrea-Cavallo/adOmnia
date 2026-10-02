@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const ai = vi.hoisted(() => ({ complete: vi.fn(), configure: vi.fn(() => Promise.resolve()), available: true }))
-const api = vi.hoisted(() => ({ list: vi.fn(), open: vi.fn(), close: vi.fn(() => Promise.resolve()) }))
+const api = vi.hoisted(() => ({ list: vi.fn(), open: vi.fn(), close: vi.fn(() => Promise.resolve()), excluded: vi.fn(() => Promise.resolve([] as string[])) }))
 const goide = vi.hoisted(() => ({
   state: {
     activeSessionId: 's1',
@@ -16,7 +16,7 @@ vi.mock('../../../bindings/adomnia/aiengine', () => ({ Complete: ai.complete }))
 vi.mock('@/lib/aiEngine', () => ({ ensureAIConfigured: ai.configure }))
 vi.mock('@/lib/aiAvailability', () => ({ isAICompanionAvailable: () => ai.available }))
 vi.mock('@/stores/settings', () => ({ useSettingsStore: { getState: () => ({ settings: { ai: { provider: 'anthropic' } } }) } }))
-vi.mock('@/lib/goide-api', () => ({ listGoIDEDirectory: api.list, openGoIDEDocument: api.open, closeGoIDEDocument: api.close }))
+vi.mock('@/lib/goide-api', () => ({ listGoIDEDirectory: api.list, openGoIDEDocument: api.open, closeGoIDEDocument: api.close, listGoIDEAIExcludedPaths: api.excluded }))
 vi.mock('@/lib/goide-lsp-api', () => ({}))
 vi.mock('@/lib/monacoSetup', () => ({ monaco: {} }))
 vi.mock('@/stores/goide', () => ({ useGoIDEStore: { getState: () => goide.state } }))
@@ -59,6 +59,40 @@ describe('Fix with AI', () => {
     expect(change.files[0].relativePath).toBe('logger/Logger.go')
     expect(change.files[0].newContent).toContain('func GetLoggerInstance()')
     expect(change.files[0].edits).toHaveLength(1)
+  })
+
+  it('never sends files excluded by .adomnia/aiignore', async () => {
+    api.excluded.mockResolvedValueOnce(['logger/Logger.go'])
+    ai.complete.mockResolvedValue('no change')
+    await fixGoStudioProblemWithAI('files/a.go', problem)
+    expect(ai.complete.mock.calls[0][1]).not.toContain('logger/Logger.go')
+
+    api.excluded.mockResolvedValueOnce(['files/a.go'])
+    ai.complete.mockClear()
+    await fixGoStudioProblemWithAI('files/a.go', problem)
+    expect(ai.complete).not.toHaveBeenCalled()
+    expect(String(lastState().message)).toContain('aiignore')
+  })
+
+  it('redacts secrets before sending and restores them in the proposed change', async () => {
+    const withSecret = 'package logger\n\nconst dbPassword = "hunter22"\n\nfunc Info(v ...interface{}) {}\n'
+    api.open.mockResolvedValue({ content: withSecret, document: { id: 'd2', uri: 'file:///p/logger/Logger.go', path: '/p/logger/Logger.go' } })
+    ai.complete.mockImplementation(async (_system: string, user: string) => {
+      expect(user).not.toContain('hunter22')
+      const placeholder = /ADOMNIA_REDACTED_\d+/.exec(user)![0]
+      return `=== FILE: logger/Logger.go ===
+package logger
+
+const dbPassword = "${placeholder}"
+
+func Info(v ...interface{}) {}
+
+func GetLoggerInstance() {}
+=== END FILE ===`
+    })
+    await fixGoStudioProblemWithAI('files/a.go', problem)
+    const change = lastState().pendingChange as { files: Array<{ newContent: string }> }
+    expect(change.files[0].newContent).toContain('const dbPassword = "hunter22"')
   })
 
   it('never applies anything when the answer has no usable file', async () => {
