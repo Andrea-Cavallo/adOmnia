@@ -22,7 +22,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
-| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 63 | 15 |
+| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 55 | 12 |
 | **P1** | Workflow Go migliore di GoLand | 122 | 24 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 219 | 54 |
 | **P3** | Remote ed estensibilità | 29 | 3 |
@@ -142,19 +142,6 @@ _Affidabilità, velocità su repo grandi e PC aziendali, debug/test/Git completi
 ### Refactoring
 
 - [ ] Move symbol. — *oggi Move to New File (gopls); spostare un simbolo in un altro package non è ancora supportato da gopls.*
-
-## §19 · Go Modules & Dependency Studio
-
-### go.mod
-
-- [ ] Visual editor. — *Parziale: Esistono il dialog dipendenze e le code lens in go.mod, ma non c'è un editor visuale a form del go.mod.*
-- [ ] `exclude`.
-- [ ] `retract`.
-- [ ] Go version.
-- [ ] Toolchain directive.
-- [ ] Module path. — *Parziale: Il module path è mostrato nel dialog dipendenze ma non è modificabile.*
-- [ ] Downgrade dependency. — *Parziale: Il campo versione di Add permette `go get path@vX` anche più vecchia, ma non c'è un'azione downgrade dedicata né un selettore versioni.*
-- [ ] Preview tidy changes.
 
 ---
 

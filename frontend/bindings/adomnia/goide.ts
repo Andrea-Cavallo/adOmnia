@@ -698,6 +698,15 @@ export function ListLocalHistory(sessionID: string, relativePath: string): $Canc
 }
 
 /**
+ * ListModuleVersions elenca le versioni pubblicate di una dipendenza, dalla più recente.
+ */
+export function ListModuleVersions(sessionID: string, moduleDirectory: string, modulePath: string): $CancellablePromise<string[]> {
+    return $Call.ByID(706135679, sessionID, moduleDirectory, modulePath).then(($result: any) => {
+        return $$createType0($result);
+    });
+}
+
+/**
  * ListProcesses elenca i processi locali per Attach to Process.
  */
 export function ListProcesses(): $CancellablePromise<goide$0.ProcessInfo[]> {

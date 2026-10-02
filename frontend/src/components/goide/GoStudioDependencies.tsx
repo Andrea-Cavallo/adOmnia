@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AlertCircle, ArrowUpCircle, Loader2, Package, PackagePlus, RefreshCw, Trash2 } from 'lucide-react'
-import { listGoIDEDependencies, startGoIDEDependencyAction, type GoIDEDependencyState, type GoIDESession } from '@/lib/goide-api'
+import { AlertCircle, ArrowUpCircle, History, Loader2, Package, PackagePlus, RefreshCw, Trash2 } from 'lucide-react'
+import { listGoIDEDependencies, listGoIDEModuleVersions, startGoIDEDependencyAction, type GoIDEDependencyState, type GoIDESession } from '@/lib/goide-api'
 import { confirm } from '@/lib/confirmDialog'
 import { useGoIDEStore } from '@/stores/goide'
 import { GoStudioAlert, GoStudioButton, GoStudioField, GoStudioModal } from './GoStudioModal'
+import { GoStudioGoModSettings, type GoModEdit } from './GoStudioGoModSettings'
 
 interface GoStudioDependenciesProps {
   open: boolean
@@ -18,6 +19,9 @@ export function GoStudioDependencies({ open, session, onClose }: GoStudioDepende
   const [version, setVersion] = useState('latest')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [tab, setTab] = useState<'requirements' | 'gomod'>('requirements')
+  // Versioni pubblicate per dipendenza, caricate solo su richiesta (passano dal GOPROXY).
+  const [versions, setVersions] = useState<Record<string, string[] | 'loading'>>({})
   const executions = useGoIDEStore((store) => store.executions)
   const updateLayout = useGoIDEStore((store) => store.updateLayout)
   const lastDependencyRun = useMemo(() => executions.filter((execution) => execution.sessionId === session.id && execution.kind === 'dependency').sort((left, right) => right.startedAt.localeCompare(left.startedAt))[0] ?? null, [executions, session.id])
@@ -34,6 +38,7 @@ export function GoStudioDependencies({ open, session, onClose }: GoStudioDepende
     const directory = session.project.modules[0]?.path ?? ''
     setModuleDirectory(directory)
     setState(null)
+    setVersions({})
     if (directory) void load(directory)
   }, [open, session.id])
 
@@ -43,15 +48,39 @@ export function GoStudioDependencies({ open, session, onClose }: GoStudioDepende
 
   if (!open) return null
 
-  const execute = async (action: 'add' | 'update' | 'remove', path: string, selectedVersion: string) => {
+  const execute = async (action: 'add' | 'update' | 'downgrade' | 'remove', path: string, selectedVersion: string) => {
     const suffix = action === 'remove' ? '@none' : `@${selectedVersion || 'latest'}`
-    const approved = await confirm({ title: `${action === 'remove' ? 'Remove' : action === 'add' ? 'Add' : 'Update'} dependency?`, message: `Command: go get ${path}${suffix}\nWorking directory: ${moduleDirectory}\n\nThis may contact the configured Go proxy and will update go.mod/go.sum.`, confirmLabel: `Run go get`, variant: action === 'remove' ? 'danger' : 'default' })
+    const verb = { add: 'Add', update: 'Update', downgrade: 'Downgrade', remove: 'Remove' }[action]
+    const note = action === 'downgrade' ? ' Dependencies that need a newer version may be downgraded or removed too.' : ''
+    const approved = await confirm({ title: `${verb} dependency?`, message: `Command: go get ${path}${suffix}\nWorking directory: ${moduleDirectory}\n\nThis may contact the configured Go proxy and will update go.mod/go.sum.${note}`, confirmLabel: `Run go get`, variant: action === 'remove' || action === 'downgrade' ? 'danger' : 'default' })
     if (!approved) return
     try {
-      await startGoIDEDependencyAction({ sessionId: session.id, moduleDirectory, action, modulePath: path, version: selectedVersion, confirmed: true })
+      // Un downgrade è un go get path@versione: il backend non distingue la direzione.
+      await startGoIDEDependencyAction({ sessionId: session.id, moduleDirectory, action: action === 'downgrade' ? 'update' : action, modulePath: path, version: selectedVersion, confirmed: true })
       updateLayout({ bottomOpen: true })
       if (action === 'add') { setModulePath(''); setVersion('latest') }
     } catch (reason) { setError(String(reason)) }
+  }
+
+  const editGoMod = async (edit: GoModEdit) => {
+    const preview = edit.request.action === 'tidydiff'
+    const approved = await confirm({ title: edit.title, message: `Command: ${edit.command}\nWorking directory: ${moduleDirectory}\n\n${preview ? 'Nothing is changed: the diff appears in the Run panel.' : 'go.mod is updated; nothing is downloaded.'}`, confirmLabel: preview ? 'Show diff' : 'Run go mod edit', variant: edit.danger ? 'danger' : 'default' })
+    if (!approved) return
+    try {
+      await startGoIDEDependencyAction({ sessionId: session.id, moduleDirectory, ...edit.request, confirmed: true })
+      updateLayout({ bottomOpen: true })
+    } catch (reason) { setError(String(reason)) }
+  }
+
+  const loadVersions = async (path: string) => {
+    setVersions((current) => ({ ...current, [path]: 'loading' }))
+    try {
+      const list = await listGoIDEModuleVersions(session.id, moduleDirectory, path)
+      setVersions((current) => ({ ...current, [path]: list }))
+    } catch (reason) {
+      setVersions((current) => { const next = { ...current }; delete next[path]; return next })
+      setError(String(reason))
+    }
   }
 
   const running = lastDependencyRun?.status === 'running'
@@ -72,7 +101,7 @@ export function GoStudioDependencies({ open, session, onClose }: GoStudioDepende
       divided
       icon={Package}
       title="Go dependencies"
-      subtitle="Add, update or remove modules with go get. Every change is confirmed first."
+      subtitle="Manage requirements and go.mod directives. Every change is confirmed first."
       footerStart={running ? <><Loader2 size={13} className="animate-spin" /> go get is running…</> : 'Changes update go.mod and go.sum.'}
       footer={<GoStudioButton variant="ghost" onClick={onClose}>Close</GoStudioButton>}
     >
@@ -91,6 +120,12 @@ export function GoStudioDependencies({ open, session, onClose }: GoStudioDepende
           </GoStudioButton>
         </div>
         {summary}
+        <div role="tablist" aria-label="Dependencies view" className="gs-segmented self-start">
+          <button type="button" role="tab" aria-selected={tab === 'requirements'} onClick={() => setTab('requirements')} className="gs-segment">Requirements</button>
+          <button type="button" role="tab" aria-selected={tab === 'gomod'} onClick={() => setTab('gomod')} className="gs-segment">go.mod</button>
+        </div>
+        {tab === 'gomod' && state && <GoStudioGoModSettings state={state} running={running} onEdit={(edit) => void editGoMod(edit)} />}
+        {tab === 'requirements' && <>
         <div className="gs-list min-h-0 flex-1">
           {state?.dependencies.length === 0 && <div className="gs-list-empty">No requirements in this go.mod yet.</div>}
           {!state && loading && <div className="gs-list-empty">Reading go.mod…</div>}
@@ -104,6 +139,7 @@ export function GoStudioDependencies({ open, session, onClose }: GoStudioDepende
                 </div>
               </div>
               <div className="gs-row-actions">
+                <DependencyVersionPicker available={versions[dependency.path]} current={dependency.version} running={running} onLoad={() => void loadVersions(dependency.path)} onPick={(chosen, downgrade) => void execute(downgrade ? 'downgrade' : 'update', dependency.path, chosen)} />
                 <GoStudioButton small variant="ghost" icon={ArrowUpCircle} disabled={running} onClick={() => void execute('update', dependency.path, 'latest')}>Update</GoStudioButton>
                 <GoStudioButton small variant="danger-ghost" className="gs-btn-icon" disabled={running} onClick={() => void execute('remove', dependency.path, '')} aria-label={`Remove ${dependency.path}`} title="Remove"><Trash2 size={13} /></GoStudioButton>
               </div>
@@ -119,7 +155,29 @@ export function GoStudioDependencies({ open, session, onClose }: GoStudioDepende
           </GoStudioField>
           <GoStudioButton variant="primary" icon={PackagePlus} disabled={!modulePath || running} onClick={() => void execute('add', modulePath, version)}>Add</GoStudioButton>
         </div>
+        </>}
       </>}
     </GoStudioModal>
+  )
+}
+
+interface DependencyVersionPickerProps {
+  available: string[] | 'loading' | undefined
+  current: string
+  running: boolean
+  onLoad: () => void
+  onPick: (version: string, downgrade: boolean) => void
+}
+
+/** Versioni pubblicate di una dipendenza (dalla più recente): una più vecchia di quella attuale è un downgrade. */
+function DependencyVersionPicker({ available, current, running, onLoad, onPick }: DependencyVersionPickerProps) {
+  if (available === 'loading') return <Loader2 size={13} className="animate-spin text-text-4" aria-label="Loading versions" />
+  if (!available) return <GoStudioButton small variant="ghost" icon={History} disabled={running} onClick={onLoad} title="List published versions to upgrade or downgrade">Versions</GoStudioButton>
+  const currentIndex = available.indexOf(current)
+  return (
+    <select value="" disabled={running} aria-label="Change version" onChange={(event) => { const chosen = event.target.value; if (chosen) onPick(chosen, currentIndex >= 0 && available.indexOf(chosen) > currentIndex) }} className="gs-input gs-mono h-7 w-36 py-0 text-[11.5px]">
+      <option value="">{available.length} versions…</option>
+      {available.map((item, index) => <option key={item} value={item} disabled={item === current}>{item}{item === current ? ' (current)' : currentIndex >= 0 && index > currentIndex ? ' ↓' : ''}</option>)}
+    </select>
   )
 }

@@ -1,12 +1,14 @@
 package goide
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	"golang.org/x/mod/modfile"
 )
@@ -27,13 +29,30 @@ type GoReplacement struct {
 	Local      bool   `json:"local"`
 }
 
+// GoExclusion è una direttiva exclude: quella versione del modulo non viene mai scelta.
+type GoExclusion struct {
+	Path    string `json:"path"`
+	Version string `json:"version"`
+}
+
+// GoRetraction è una direttiva retract del modulo stesso: Low == High per una singola versione.
+type GoRetraction struct {
+	Low       string `json:"low"`
+	High      string `json:"high"`
+	Rationale string `json:"rationale,omitempty"`
+}
+
 type DependencyState struct {
 	ModuleDirectory string          `json:"moduleDirectory"`
 	ModulePath      string          `json:"modulePath"`
 	GoModPath       string          `json:"goModPath"`
 	GoSumPresent    bool            `json:"goSumPresent"`
+	GoVersion       string          `json:"goVersion,omitempty"`
+	Toolchain       string          `json:"toolchain,omitempty"`
 	Dependencies    []GoDependency  `json:"dependencies"`
 	Replacements    []GoReplacement `json:"replacements"`
+	Excludes        []GoExclusion   `json:"excludes"`
+	Retracts        []GoRetraction  `json:"retracts"`
 }
 
 type DependencyActionRequest struct {
@@ -61,9 +80,21 @@ func readDependencyState(project Project, directory string) (DependencyState, er
 	if err != nil {
 		return DependencyState{}, fmt.Errorf("go.mod non valido: %w", err)
 	}
-	state := DependencyState{ModuleDirectory: moduleDirectory, GoModPath: goModPath, Dependencies: []GoDependency{}, Replacements: []GoReplacement{}}
+	state := DependencyState{ModuleDirectory: moduleDirectory, GoModPath: goModPath, Dependencies: []GoDependency{}, Replacements: []GoReplacement{}, Excludes: []GoExclusion{}, Retracts: []GoRetraction{}}
 	if parsed.Module != nil {
 		state.ModulePath = parsed.Module.Mod.Path
+	}
+	if parsed.Go != nil {
+		state.GoVersion = parsed.Go.Version
+	}
+	if parsed.Toolchain != nil {
+		state.Toolchain = parsed.Toolchain.Name
+	}
+	for _, exclude := range parsed.Exclude {
+		state.Excludes = append(state.Excludes, GoExclusion{Path: exclude.Mod.Path, Version: exclude.Mod.Version})
+	}
+	for _, retract := range parsed.Retract {
+		state.Retracts = append(state.Retracts, GoRetraction{Low: retract.Low, High: retract.High, Rationale: retract.Rationale})
 	}
 	for _, requirement := range parsed.Require {
 		state.Dependencies = append(state.Dependencies, GoDependency{Path: requirement.Mod.Path, Version: requirement.Mod.Version, Indirect: requirement.Indirect})
@@ -87,6 +118,57 @@ var moduleWideActions = map[string][]string{
 	"download":    {"mod", "download"},
 	"verify":      {"mod", "verify"},
 	"tidy":        {"mod", "tidy"},
+	// tidydiff mostra cosa cambierebbe go mod tidy senza toccare go.mod e go.sum (Go 1.23+).
+	"tidydiff": {"mod", "tidy", "-diff"},
+}
+
+var (
+	goDirectivePattern = regexp.MustCompile(`^1\.\d+(\.\d+)?((rc|beta)\d+)?$`)
+	toolchainPattern   = regexp.MustCompile(`^(go1\.\d+(\.\d+)?((rc|beta)\d+)?(-[A-Za-z0-9.+\-]+)?|none)$`)
+	semverPattern      = regexp.MustCompile(`^v\d+\.\d+\.\d+(-[0-9A-Za-z.\-]+)?(\+[0-9A-Za-z.\-]+)?$`)
+)
+
+// goModEditArguments gestisce le direttive di go.mod che non riguardano una dipendenza:
+// go, toolchain, module, retract. ok=false se l'azione non è una di queste.
+func goModEditArguments(action string, request DependencyActionRequest) ([]string, bool, error) {
+	value := strings.TrimSpace(request.Version)
+	switch action {
+	case "goversion":
+		if !goDirectivePattern.MatchString(value) {
+			return nil, true, fmt.Errorf("versione Go non valida: usa 1.23 o 1.23.4")
+		}
+		return []string{"mod", "edit", "-go=" + value}, true, nil
+	case "toolchain":
+		if !toolchainPattern.MatchString(value) {
+			return nil, true, fmt.Errorf("toolchain non valida: usa go1.23.4 oppure none")
+		}
+		return []string{"mod", "edit", "-toolchain=" + value}, true, nil
+	case "module":
+		path := strings.TrimSpace(request.ModulePath)
+		if !modulePathPattern.MatchString(path) || strings.Contains(path, "//") {
+			return nil, true, fmt.Errorf("module path non valido")
+		}
+		return []string{"mod", "edit", "-module=" + path}, true, nil
+	case "retract", "dropretract":
+		if !validRetraction(value) {
+			return nil, true, fmt.Errorf("retract non valido: usa v1.2.3 oppure [v1.0.0,v1.2.0]")
+		}
+		return []string{"mod", "edit", "-" + action + "=" + value}, true, nil
+	}
+	return nil, false, nil
+}
+
+func validRetraction(value string) bool {
+	if semverPattern.MatchString(value) {
+		return true
+	}
+	inner, ok := strings.CutPrefix(value, "[")
+	if !ok {
+		return false
+	}
+	inner, ok = strings.CutSuffix(inner, "]")
+	low, high, found := strings.Cut(inner, ",")
+	return ok && found && semverPattern.MatchString(strings.TrimSpace(low)) && semverPattern.MatchString(strings.TrimSpace(high))
 }
 
 // dependencyArguments traduce un'azione rapida del go.mod in argomenti strutturati del comando go.
@@ -94,6 +176,9 @@ func dependencyArguments(request DependencyActionRequest, moduleDirectory string
 	action := strings.ToLower(strings.TrimSpace(request.Action))
 	if arguments, ok := moduleWideActions[action]; ok {
 		return append([]string(nil), arguments...), nil
+	}
+	if arguments, ok, err := goModEditArguments(action, request); ok {
+		return arguments, err
 	}
 	modulePath := strings.TrimSpace(request.ModulePath)
 	if !modulePathPattern.MatchString(modulePath) || strings.Contains(modulePath, "//") {
@@ -104,6 +189,12 @@ func dependencyArguments(request DependencyActionRequest, moduleDirectory string
 		return []string{"get", modulePath + "@none"}, nil
 	case "dropreplace":
 		return []string{"mod", "edit", "-dropreplace=" + modulePath}, nil
+	case "exclude", "dropexclude":
+		version := strings.TrimSpace(request.Version)
+		if !semverPattern.MatchString(version) {
+			return nil, fmt.Errorf("versione da escludere non valida: usa v1.2.3")
+		}
+		return []string{"mod", "edit", "-" + action + "=" + modulePath + "@" + version}, nil
 	case "replace":
 		local, err := localReplacementPath(moduleDirectory, request.LocalPath)
 		if err != nil {
@@ -149,4 +240,52 @@ func localReplacementPath(moduleDirectory, candidate string) (string, error) {
 		relative = "./" + relative
 	}
 	return relative, nil
+}
+
+// moduleVersionsTimeout: la lista versioni passa dal GOPROXY, su VPN può essere lenta.
+const moduleVersionsTimeout = 30 * time.Second
+
+// ListModuleVersions elenca le versioni pubblicate di una dipendenza (go list -m -versions), dalla più
+// recente: serve a scegliere un aggiornamento o un downgrade. Contatta il GOPROXY configurato.
+func (s *Service) ListModuleVersions(sessionID, moduleDirectory, modulePath string) ([]string, error) {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return nil, err
+	}
+	if session.Project.Authorization != AuthorizationPermitted {
+		return nil, fmt.Errorf("autorizza esplicitamente gli strumenti per questo progetto")
+	}
+	modulePath = strings.TrimSpace(modulePath)
+	if !modulePathPattern.MatchString(modulePath) || strings.Contains(modulePath, "//") {
+		return nil, fmt.Errorf("percorso modulo non valido")
+	}
+	directory, err := s.documents.resolveDirectory(session.Project, moduleDirectory)
+	if err != nil {
+		return nil, err
+	}
+	output, err := s.runModuleCommand(session.ID, directory, moduleVersionsTimeout, "list", "-m", "-versions", "-json", modulePath)
+	if err != nil {
+		return nil, err
+	}
+	return parseModuleVersions(output)
+}
+
+// parseModuleVersions legge l'output JSON di go list -m -versions e restituisce le versioni dalla più recente.
+func parseModuleVersions(output string) ([]string, error) {
+	var listed struct {
+		Versions []string `json:"Versions"`
+		Version  string   `json:"Version"`
+	}
+	if err := json.Unmarshal([]byte(output), &listed); err != nil {
+		return nil, fmt.Errorf("risposta di go list non leggibile: %w", err)
+	}
+	versions := listed.Versions
+	if len(versions) == 0 && listed.Version != "" {
+		versions = []string{listed.Version}
+	}
+	reversed := make([]string, 0, len(versions))
+	for index := len(versions) - 1; index >= 0; index-- {
+		reversed = append(reversed, versions[index])
+	}
+	return reversed, nil
 }

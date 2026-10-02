@@ -201,6 +201,11 @@ export async function listGoIDEDependencies(sessionId: string, moduleDirectory: 
   return GoIDEBindings.ListDependencies(sessionId, moduleDirectory)
 }
 
+/** Versioni pubblicate di una dipendenza, dalla più recente (go list -m -versions, passa dal GOPROXY). */
+export async function listGoIDEModuleVersions(sessionId: string, moduleDirectory: string, modulePath: string): Promise<string[]> {
+  return GoIDEBindings.ListModuleVersions(sessionId, moduleDirectory, modulePath)
+}
+
 export async function startGoIDEDependencyAction(request: DependencyActionRequest): Promise<Execution> {
   return GoIDEBindings.StartDependencyAction(request)
 }

@@ -489,6 +489,11 @@ func (g *GoIDE) ListDependencies(sessionID, moduleDirectory string) (goide.Depen
 	return g.service.ListDependencies(sessionID, moduleDirectory)
 }
 
+// ListModuleVersions elenca le versioni pubblicate di una dipendenza, dalla più recente.
+func (g *GoIDE) ListModuleVersions(sessionID, moduleDirectory, modulePath string) ([]string, error) {
+	return g.service.ListModuleVersions(sessionID, moduleDirectory, modulePath)
+}
+
 // StartDependencyAction applica un go get strutturato dopo conferma esplicita.
 func (g *GoIDE) StartDependencyAction(request goide.DependencyActionRequest) (goide.Execution, error) {
 	return g.service.StartDependencyAction(request)
