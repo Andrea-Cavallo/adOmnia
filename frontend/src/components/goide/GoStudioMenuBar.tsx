@@ -88,8 +88,8 @@ export function GoStudioMenuBar({ state, recentProjects, openProjectPaths, onCom
   return (
     <>
       {/* Logo adOmnia: torna all'hub principale (la rail e il menu di adOmnia ricompaiono). */}
-      <button type="button" onClick={() => useAppStore.getState().setActiveRail('welcome')} title="Back to the adOmnia hub" aria-label="Back to the adOmnia hub" className="go-studio-icon-button h-8 w-8">
-        <img src={appIcon} alt="" data-brand-mark className="h-5 w-5 object-contain" />
+      <button type="button" onClick={() => useAppStore.getState().setActiveRail('welcome')} title="Back to the adOmnia hub" aria-label="Back to the adOmnia hub" className="go-studio-icon-button go-studio-brand-button h-9 w-9">
+        <img src={appIcon} alt="" data-brand-mark className="h-7 w-7 object-contain" />
       </button>
       <button
         type="button"
@@ -104,7 +104,7 @@ export function GoStudioMenuBar({ state, recentProjects, openProjectPaths, onCom
         }}
         className={`go-studio-icon-button h-8 w-8 ${open ? 'is-active' : ''}`}
       >
-        <Menu size={16} />
+        <Menu size={17} strokeWidth={1.8} />
       </button>
       {open && <ContextMenu appearance="studio" x={open.x} y={open.y} items={mainMenuItems(state, recentProjects, openProjectPaths)} onSelect={select} onClose={() => setOpen(null)} />}
     </>

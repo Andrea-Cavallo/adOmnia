@@ -257,3 +257,18 @@ html.dark .go-studio-root {
 .go-studio-folder-back { fill: var(--gs-folder-back); }
 .go-studio-folder-front { fill: var(--gs-folder-front); }
 .go-studio-folder-shine { fill: none; stroke: var(--gs-folder-shine); stroke-width: 0.7; stroke-linecap: round; }
+
+/* Barra di gO Studio: logo pieno e progetto con la stessa cartella dell'albero, su un tassello morbido. */
+.go-studio-brand-button { border-radius: 10px; }
+.go-studio-brand-button img { filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.18)); transition: transform 160ms ease; }
+.go-studio-brand-button:hover img { transform: scale(1.06); }
+.go-studio-project-tile {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--gs-folder-back) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gs-folder-back) 22%, transparent);
+}
