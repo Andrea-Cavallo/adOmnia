@@ -135,6 +135,11 @@ export function useAppInit(): AppInitResult {
     return () => { cancelled = true }
   }, [])
 
+  // Every window (main and detached Go Studio) reads the same flag to draw its own titlebar.
+  useEffect(() => {
+    useAppStore.getState().setAppWindowChrome(activeWindowChrome !== null && activeWindowChrome !== 'system')
+  }, [activeWindowChrome])
+
   useEffect(() => {
     if (activeWindowChrome === null && settingsLoaded) {
       setActiveWindowChrome(appearance.windowChrome ?? 'system')

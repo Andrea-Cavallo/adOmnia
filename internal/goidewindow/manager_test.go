@@ -15,7 +15,7 @@ func TestWindowIDForIsStableAndSafe(t *testing.T) {
 }
 
 func TestManagerWithoutDesktopFailsCleanly(t *testing.T) {
-	manager := New(nil, nil)
+	manager := New(nil, false, nil)
 	if _, err := manager.Open("session-1", "demo"); err == nil {
 		t.Fatal("senza runtime desktop Open deve fallire")
 	}

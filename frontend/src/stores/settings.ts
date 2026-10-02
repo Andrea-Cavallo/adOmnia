@@ -183,7 +183,7 @@ function migrateAIModel(ai: AppSettings['ai']): AppSettings['ai'] {
 }
 
 const defaultSettings: AppSettings = {
-  version: 12,
+  version: 13,
   general: {
     confirmBeforeClosingDirtyTabs: true,
     restoreTabsOnStartup: true,
@@ -322,7 +322,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       const migratedToV3 = (parsed.version ?? 0) < 3 && appearance.windowChrome === 'app'
       if (migratedToV3) appearance.windowChrome = 'system'
       // v12: barra unita alla toolbar come in JetBrains, una volta sola; chi poi sceglie System lo mantiene.
-      if ((parsed.version ?? 0) < 12 && appearance.windowChrome === 'system' && !IS_LINUX) appearance.windowChrome = 'app'
+      // v13: la barra di sistema torna nascosta di default (anche per chi l'aveva scelta dopo la v12).
+      if ((parsed.version ?? 0) < 13 && appearance.windowChrome === 'system' && !IS_LINUX) appearance.windowChrome = 'app'
       const savedAI = mergeBlock(defaultSettings.ai, parsed.ai)
       const migratedAI = (parsed.version ?? 0) < 9 ? migrateAIModel(savedAI) : savedAI
       // Existing Vault-based profiles gain the environment-first flow without

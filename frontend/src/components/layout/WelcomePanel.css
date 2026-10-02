@@ -54,7 +54,8 @@ html[data-skin='sketch'] [data-hub-page] {
 
 /* ── Headline ── */
 [data-hub-headline] {
-  font-size: clamp(40px, 4.4vw, 76px);
+  /* Bounded by height too: the hero and both card rows share one screen. */
+  font-size: clamp(34px, min(4.4vw, 6.6vh), 76px);
   font-weight: 800;
   line-height: 1.02;
   letter-spacing: -0.035em;
@@ -163,7 +164,7 @@ html[data-skin='sketch'] [data-hub-page] [data-hub-mascot-trigger] { border: 0; 
   width: auto;
   max-width: 100%;
   height: auto;
-  max-height: min(560px, 56vh);
+  max-height: min(520px, 40vh);
   margin-left: auto;
   object-fit: contain;
   --hub-fade-x: linear-gradient(to right, transparent 0, #000 22%, #000 95%, transparent 100%);
@@ -216,7 +217,7 @@ html.dark [data-hub-card-active='true'] {
   height: 100%;
   flex-direction: column;
   align-items: flex-start;
-  padding: 18px 26px 22px;
+  padding: clamp(10px, 1.8vh, 18px) 26px clamp(12px, 2.2vh, 22px);
   border: 0;
   border-radius: inherit;
   background: transparent;
@@ -242,7 +243,7 @@ html[data-skin='sketch'] [data-hub-page] [data-hub-card-button] {
 [data-hub-card-icon] img {
   width: auto;
   max-width: 100%;
-  height: clamp(96px, 13vh, 150px);
+  height: clamp(60px, 10vh, 150px);
   object-fit: contain;
   mix-blend-mode: var(--hub-icon-blend);
   /* The crops carry a patch of their original card; feather it away. */
@@ -252,8 +253,8 @@ html[data-skin='sketch'] [data-hub-page] [data-hub-card-button] {
 [data-hub-card-generated-icon] {
   position: relative;
   display: grid;
-  width: clamp(96px, 13vh, 150px);
-  height: clamp(96px, 13vh, 150px);
+  width: clamp(60px, 10vh, 150px);
+  height: clamp(60px, 10vh, 150px);
   margin-left: 12px;
   place-items: center;
   overflow: hidden;
@@ -346,7 +347,7 @@ html.dark [data-hub-card-desc] { color: color-mix(in srgb, #fff 78%, transparent
   color: var(--color-accent-dark);
   transition: transform 200ms ease, background-color 200ms ease;
 }
-[data-hub-card-desc] { margin-bottom: 18px; }
+[data-hub-card-desc] { margin-bottom: clamp(8px, 1.8vh, 18px); }
 [data-hub-card-featured='true'] [data-hub-card-arrow] { background: color-mix(in srgb, var(--color-accent) 16%, #fff); }
 html.dark [data-hub-card-arrow] { width: auto; height: auto; background: transparent; color: #fff; place-items: start; }
 html[data-skin='sketch'] [data-hub-card-arrow] {

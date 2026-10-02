@@ -152,7 +152,7 @@ func (g *GoIDE) ProjectServices(sessionID string) ([]goide.ProjectService, error
 
 func (g *GoIDE) attachDesktop(desktop *application.App) {
 	g.desktop = desktop
-	g.windows = goidewindow.New(desktop, func(windowID string) {
+	g.windows = goidewindow.New(desktop, isAppChrome(startupWindowChrome), func(windowID string) {
 		g.service.ReleaseWindow(windowID)
 	})
 }
