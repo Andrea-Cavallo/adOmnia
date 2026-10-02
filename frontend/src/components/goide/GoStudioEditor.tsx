@@ -82,7 +82,7 @@ export function GoStudioEditor({ documents, active, onCursor, onRequestClose, on
         </div>
       )}
       {active.saveError && <div className="shrink-0 border-b border-danger/30 bg-danger/10 px-2 py-1 text-[10px] text-danger">{active.saveError}</div>}
-      <div className="relative min-h-0 flex-1">
+      <div data-go-studio-editor-host className="relative min-h-0 flex-1">
         {compare && active.externalState ? (
           <DiffEditor
             original={active.externalState.content ?? ''}
