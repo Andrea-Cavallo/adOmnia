@@ -2,20 +2,58 @@
 
 ![adOmnia banner](assets/images/banner.png)
 
-adOmnia is a local-first desktop application for API development and debugging, with an integrated Go IDE.
+**A Go IDE and the whole API toolbox in one local-first desktop app.**
 
-It combines an API client (REST, GraphQL, SOAP, gRPC, WebSocket, SSE), message broker clients, a mock server, an intercepting proxy, browser debugging, log analysis, database explorers and a Git client in a single workspace. **gO Studio**, the built-in Go IDE, adds editing with gopls, Delve debugging, tests, coverage and an integrated terminal.
+Write the service. Run it. Call it. Debug it. Inspect its database, messages and logs, without leaving the workspace.
 
-adOmnia runs on Windows, macOS and Linux. It requires no account and collects no telemetry. Workspace data is stored locally; AI features are optional and connect only to the provider you configure.
+**gO Studio** is a complete Go IDE: gopls, Delve, tests, coverage, Git and an integrated terminal. It runs next to an API client (REST, GraphQL, SOAP, gRPC, WebSocket, SSE), message broker clients, database explorers, a mock server, an intercepting proxy, browser debugging and a log inspector. They are not separate tools glued together: a Go service you start from gO Studio becomes a **live session** that every other tool can see.
+
+adOmnia runs on Windows, macOS and Linux. It needs no account, collects no telemetry and keeps your data on your machine; AI features are optional and connect only to the provider you configure.
 
 [![Release](https://img.shields.io/github/v/release/Andrea-Cavallo/adOmnia?color=8A2BE2)](https://github.com/Andrea-Cavallo/adOmnia/releases/latest)
 [![Build](https://img.shields.io/github/actions/workflow/status/Andrea-Cavallo/adOmnia/build.yml?branch=master&label=build)](https://github.com/Andrea-Cavallo/adOmnia/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE.md)
 [![Website](https://img.shields.io/badge/website-adomnia--dev.com-8A2BE2)](https://www.adomnia-dev.com)
 
-[Download](#download) · [Features](#features) · [Workflows](#workflows) · [gO Studio](#go-studio) · [AI](#ai) · [CLI](#command-line-and-ci) · [Building from source](#building-from-source) · [Documentation](#documentation)
+[gO Studio](#go-studio-the-go-ide) · [All in one](#from-code-to-runtime-in-one-app) · [Download](#download) · [API toolbox](#api-and-runtime-toolbox) · [Workflows](#workflows) · [AI](#ai) · [CLI](#command-line-and-ci) · [Building from source](#building-from-source) · [Documentation](#documentation)
 
-![adOmnia API workspace with request editing and response inspection](assets/images/adOmniaInterface1.png)
+![gO Studio in the light appearance: project tree, editor with inline debug values, Copilot chat and the concurrency-first debugger](assets/images/go-ide-white.png)
+
+## gO Studio: the Go IDE
+
+gO Studio is the Go IDE built into adOmnia. It is designed for day-to-day Go work on real machines, including corporate PCs behind a VPN or proxy.
+
+| Area | What you get |
+| --- | --- |
+| **Editing** | Completion, navigation, hover, rename, Change Signature, extract and other refactorings via gopls; diagnostics, quick fixes, CodeLens, golangci-lint and staticcheck; a three-way merge editor. |
+| **Run and test** | Run from the gutter next to `func main` or a test; test explorer with coverage in the gutter; Makefile targets, Dockerfiles and docker compose services; a Run console that colours log levels (`log`, slog, zap, zerolog, logrus). |
+| **Debugging** | Delve with conditional, hit-count and function breakpoints, logpoints, stop on panic and Run to Cursor. A **concurrency-first** view groups goroutines by origin, shows where each one started and evaluates expressions in the selected frame. |
+| **Go insight** | Dependency graph with transitive versions, licenses, updates and `govulncheck`; a visual `go.mod` editor (Go version, toolchain, `exclude`, `retract`, version downgrade, `tidy` preview); a Context Propagation Inspector for `context.Context`. |
+| **AI** | GitHub Copilot chat and the a0 assistant beside the editor; *Fix with AI* proposes a diff you can apply per file or per change block. Files listed in `.adomnia/aiignore` and secrets in code never leave the machine. |
+| **Workspace** | Git in the editor, an integrated terminal, local history, crash recovery of unsaved buffers, multiple projects side by side, any of them in its own window. |
+| **Toolchain** | Uses the project's Go SDK, detected locally in milliseconds or installed from the official distribution; per-project `GOPROXY`, `GOPRIVATE`, `CGO_ENABLED`, `GOOS`/`GOARCH` and build tags; no silent toolchain downloads. |
+
+**Trust model.** A newly opened project can be browsed and edited, but no Go tool, build or process runs against it until you explicitly trust it.
+
+![gO Studio in the dark appearance](assets/images/go-ide.png)
+
+See the [gO Studio guide](docs/GO-STUDIO.md) for trust rules, optional tools, storage and keyboard shortcuts.
+
+## From code to runtime in one app
+
+Most Go developers switch between an IDE, an API client, a database GUI, a Kafka tool, a log viewer and a terminal. In adOmnia these are views of the same running service.
+
+```text
+code → running service → API request → breakpoint → code → response
+```
+
+Start a service from gO Studio with Run or Debug and it becomes a [Live Development Session](docs/LIVE-SESSION.md):
+
+- **Debug Request** next to *Send* starts the service under Delve if needed, waits for its port, sends the request and follows it. When it stops at a breakpoint, the response area shows where, and the split view puts the code and the request side by side.
+- **Request ↔ handler.** The API Workspace shows the Go handler that serves a request; in gO Studio a CodeLens on the handler opens, runs or debugs its linked request.
+- **Everything one request touched.** Response tabs list the SQL queries, Kafka messages and log lines the request caused, next to status, timing and breakpoints hit. *Mock this response* turns it into a mock.
+- **Runtime enrichment.** gO Studio overlays what actually ran (routes, files, datasources, topics, latency, errors) on the static dependency picture, and flags dependencies that never appeared at runtime.
+- **One keyboard.** Ctrl+Tab cycles the code at the breakpoint, the request, its SQL, its Kafka message and its logs; Alt+Shift+1…5 jump between gO Studio, API Workspace, Database, Broker Studio and the service logs.
 
 ## Download
 
@@ -29,14 +67,15 @@ Download the latest build from **[GitHub Releases](https://github.com/Andrea-Cav
 
 Each release includes `SHA256SUMS.txt`. See the [installation guide](docs/INSTALL.md) for platform-specific steps.
 
-### Sending a first request
+### Getting started
 
-1. Open **API Workspace** and create a **New Request**, either at workspace root or inside a collection.
-2. Choose the method, enter the URL and set headers, authentication and body as needed.
-3. Send the request and review status, timing, headers, body and assertion results.
-4. Optionally create an Environment for `{{variables}}`, or import a Postman collection, cURL command or OpenAPI document.
+1. **Go project:** open **gO Studio**, choose *Open Folder* on a folder with a `go.mod`, then trust it to enable gopls, Run, Debug and tests.
+2. **First request:** open **API Workspace**, create a **New Request**, set method, URL, headers, authentication and body, then send it.
+3. **Connect them:** run the service from gO Studio and use **Debug Request** in the API Workspace to stop at your handler's breakpoint.
 
-## Features
+## API and runtime toolbox
+
+![adOmnia API workspace with request editing and response inspection](assets/images/adOmniaInterface1.png)
 
 | Area | Summary |
 | --- | --- |
@@ -47,7 +86,6 @@ Each release includes `SHA256SUMS.txt`. See the [installation guide](docs/INSTAL
 | **Debugging** | Browser debugging via the Chrome DevTools Protocol, application log inspector, HAR viewer, network diagnostics, payload utilities and redacted evidence export. |
 | **Data and documents** | SQLite, PostgreSQL, MySQL and MongoDB explorers; Markdown, Mermaid and LaTeX editing; PDF annotation, forms and digital signatures. |
 | **Git** | Clone and init, staging, commits, history graph, branches, merge, push/pull, diff, conflict resolution, and collection export to a reviewable folder layout. |
-| **Go development** | gO Studio: see [below](#go-studio). |
 | **AI and MCP** | Optional cloud or local models, the a0 assistant, a local agent gateway, an MCP client/debugger and an MCP server generator. |
 | **Security and customization** | Encrypted vault, private environments, mTLS with PEM and JKS keystores, certificate tools, JavaScript plugins, templates and themes. |
 
@@ -97,27 +135,6 @@ my-collection/
 ```
 
 Collection and folder settings can define shared authentication, headers, variables and scripts.
-
-## gO Studio
-
-The current Go Studio workspace below shows the Project view, editor actions and
-Run console that live alongside the API tools in the same local desktop app.
-
-![gO Studio: project tree, editor with gutter run actions and the Run console](assets/images/go-ide.png)
-
-gO Studio is the Go IDE built into adOmnia.
-
-- **Editing:** completion, navigation, refactoring and diagnostics via gopls; golangci-lint and staticcheck integration.
-- **Run and test:** build and run from the gutter next to `func main`, run tests with coverage, run Makefile targets, Dockerfiles and docker compose services.
-- **Debugging:** Delve with conditional, hit-count and function breakpoints, logpoints, stop on panic and Run to Cursor.
-- **Toolchain:** uses the project's Go SDK, detected locally or installed from the official distribution; per-project `GOPROXY`, `GOPRIVATE`, `CGO_ENABLED`, `GOOS`/`GOARCH` and build tags.
-- **Integration:** Git in the editor, an integrated terminal, and shortcuts to the Docker Lab, database and broker tools for services declared in `go.mod`.
-
-**Trust model.** A newly opened project can be browsed and edited, but no Go tool runs against it until it is explicitly trusted. Multiple projects can be open side by side, each isolated, and any of them can be moved to a separate window.
-
-**Fix with AI** sends the relevant code to the configured AI provider and shows the proposed change as a diff for review before it is applied.
-
-See the [gO Studio guide](docs/GO-STUDIO.md) for trust rules, optional tools, storage and keyboard shortcuts.
 
 ## AI
 
@@ -249,6 +266,7 @@ On Linux, builds use the GTK 3 build tag. See the [build guide](docs/BUILD.md) f
 | [Build](docs/BUILD.md) | Toolchain, native dependencies, packaging |
 | [Feature catalog](docs/adomnia-feature-catalog.en.md) | Module-by-module reference |
 | [gO Studio](docs/GO-STUDIO.md) | Go IDE usage, trust model, tools, shortcuts |
+| [Live Development Session](docs/LIVE-SESSION.md) | Code ↔ running service ↔ API request, debugging across tools |
 | [FAQ](docs/FAQ.md) | Common questions |
 | [Troubleshooting](docs/TROUBLESHOOTING.md) | Diagnostics and recovery |
 | [Architecture](docs/ARCHITECTURE.md) | Application structure |
