@@ -3,6 +3,7 @@ import { FolderGit2, GitBranch, FolderOpen, FolderPlus, FolderX, History, Packag
 import { Bug, ChevronDown, Hammer, Maximize2, Minimize2, MoreVertical, Play, Search, Square, X } from 'lucide-react'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import type { GoIDEExecution, GoIDERunConfiguration, GoIDESession, GoIDEToolchainInfo, GoIDERecentProject } from '@/lib/goide-api'
+import { GoStudioFolderIcon } from './GoStudioFolderIcon'
 import { GoGopherIcon } from './GoGopherIcon'
 import { useGoStudioTitlebar, GoStudioWindowControls } from './GoStudioTitlebar'
 
@@ -56,15 +57,6 @@ const SESSION_PREFIX = 'session:'
 const RECENT_PREFIX = 'recent:'
 const MAX_RECENT_IN_MENU = 8
 const CONFIG_PREFIX = 'config:'
-const MAX_INITIALS = 2
-
-/** Iniziali del progetto per il badge, come il widget progetto di JetBrains: "go-lang" → "GL". */
-export function projectInitials(name: string): string {
-  const words = name.split(/[^A-Za-z0-9]+/).filter(Boolean)
-  if (words.length === 0) return '?'
-  if (words.length === 1) return words[0].slice(0, MAX_INITIALS).toUpperCase()
-  return words.slice(0, MAX_INITIALS).map((word) => word[0]).join('').toUpperCase()
-}
 
 function goVersion(toolchain: GoIDEToolchainInfo | null): string {
   if (!toolchain?.available) return 'Go not detected'
@@ -144,9 +136,10 @@ export function GoStudioToolbar(props: GoStudioToolbarProps) {
   return (
     <div role="toolbar" aria-label="Go Studio toolbar" {...titlebar.props} className={`flex h-12 shrink-0 items-center gap-1 pl-2 ${titlebar.active ? 'go-studio-titlebar' : 'pr-2'}`}>
       {mainMenu}
-      <button type="button" aria-haspopup="menu" aria-expanded={menu?.kind === 'project'} disabled={loading} onClick={(event) => openMenu('project', event.currentTarget)} title={activeSession.project.rootPath} className={`go-studio-widget ml-1 max-w-60 ${menu?.kind === 'project' ? 'is-active' : ''}`}>
-        <span aria-hidden="true" className="grid h-5 w-5 shrink-0 place-items-center rounded-[5px] bg-accent/20 text-[9.5px] font-bold text-accent">{projectInitials(activeSession.project.name)}</span>
-        <span className="truncate text-[13px] font-semibold text-text-1">{activeSession.project.name}</span>
+      <span className="mx-1 h-5 w-px shrink-0 bg-border-1" aria-hidden="true" />
+      <button type="button" aria-haspopup="menu" aria-expanded={menu?.kind === 'project'} disabled={loading} onClick={(event) => openMenu('project', event.currentTarget)} title={activeSession.project.rootPath} className={`go-studio-widget max-w-60 pl-1.5 ${menu?.kind === 'project' ? 'is-active' : ''}`}>
+        <span aria-hidden="true" className="go-studio-project-tile"><GoStudioFolderIcon open size={16} /></span>
+        <span className="truncate text-[13.5px] font-semibold tracking-[-0.01em] text-text-1">{activeSession.project.name}</span>
         <ChevronDown size={12} className="shrink-0 text-text-4" />
       </button>
       {extra}
