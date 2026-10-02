@@ -6,6 +6,9 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Added
+- **Total coverage against the base branch:** the Patch coverage view gets *Compare total with <base>*: Go Studio runs the same packages' tests on the merge-base in a temporary Git worktree (your working tree is untouched, the worktree is removed afterwards) and shows both totals with the delta in points, packages that are new in the branch and a warning when tests fail on the base.
+
 ## [0.9.55] - 2026-10-02
 
 ### Added

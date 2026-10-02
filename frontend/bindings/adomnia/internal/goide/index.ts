@@ -3,6 +3,7 @@
 
 export {
     AuthorizationState,
+    BaseCoverage,
     Bookmark,
     Breakpoint,
     BreakpointState,

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Scale } from 'lucide-react'
+import * as GoIDEBindings from '../../../bindings/adomnia/goide'
+import type { BaseCoverage } from '../../../bindings/adomnia/internal/goide/models'
 import type { GoIDECoverageReport } from '@/lib/goide-tests-api'
 import { getGoIDEPatchLines, type GoIDELineRange } from '@/lib/goide-vcs-api'
 import { useGoIDEStore } from '@/stores/goide'
@@ -39,6 +41,18 @@ export function GoStudioPatchCoverage({ sessionId, report }: { sessionId: string
     return () => { cancelled = true }
   }, [base, sessionId, report])
   const patch = useMemo(() => (lines ? patchCoverage(report, lines) : null), [lines, report])
+  const [baseTotal, setBaseTotal] = useState<{ base: string; result?: BaseCoverage; error?: string; running: boolean } | null>(null)
+  useEffect(() => { setBaseTotal(null) }, [base, report])
+  const compareTotal = async () => {
+    const target = base
+    setBaseTotal({ base: target, running: true })
+    try {
+      const result = await GoIDEBindings.BaseBranchCoverage(sessionId, target, report.packages.map((pkg) => pkg.relativePath), [])
+      setBaseTotal({ base: target, result, running: false })
+    } catch (reason) {
+      setBaseTotal({ base: target, error: reason instanceof Error ? reason.message : String(reason), running: false })
+    }
+  }
   if (!status?.available) return <p className="text-[10px] text-text-4">Patch coverage needs a Git repository.</p>
   return (
     <div>
@@ -52,6 +66,16 @@ export function GoStudioPatchCoverage({ sessionId, report }: { sessionId: string
         {patch && patch.statements > 0 && <span className="font-medium">{coverageBar(patch.percent)} {patch.percent.toFixed(1)}% <span className="font-normal text-text-4">· {patch.covered}/{patch.statements} changed statements</span></span>}
         {!patch && !error && base && <Loader2 size={11} className="animate-spin text-text-4" aria-label="Loading" />}
       </div>
+      {base && report.packages.length > 0 && (
+        <div className="mb-1.5 flex flex-wrap items-center gap-2 text-[10px] text-text-3">
+          <button type="button" onClick={() => void compareTotal()} disabled={baseTotal?.running} className="inline-flex h-6 items-center gap-1 rounded border border-border-1 bg-surface-2 px-2 text-text-2 hover:bg-surface-3 hover:text-text-1 disabled:opacity-60">
+            {baseTotal?.running ? <Loader2 size={11} className="animate-spin" /> : <Scale size={11} />} Compare total with {base}
+          </button>
+          {baseTotal?.running && <span>Running the same tests on {base} in a temporary worktree…</span>}
+          {baseTotal?.result && <BaseTotalSummary current={report.percent} result={baseTotal.result} />}
+          {baseTotal?.error && <span className="text-danger">{baseTotal.error}</span>}
+        </div>
+      )}
       {!base && <p className="text-[10px] text-text-4">No other branch to compare with.</p>}
       {error && <p className="text-[10px] text-danger">{error}</p>}
       {patch && patch.statements === 0 && <p className="text-[10px] text-text-4">No changed Go statements since {base} are in this coverage run.</p>}
@@ -63,5 +87,19 @@ export function GoStudioPatchCoverage({ sessionId, report }: { sessionId: string
         </button>
       ))}
     </div>
+  )
+}
+
+/** Totale corrente contro quello del merge-base: delta colorato, package nuovi e test falliti sul base. */
+function BaseTotalSummary({ current, result }: { current: number; result: BaseCoverage }) {
+  const delta = current - result.percent
+  const tone = Math.abs(delta) < 0.05 ? 'text-text-3' : delta > 0 ? 'text-success' : 'text-danger'
+  return (
+    <span className="flex flex-wrap items-center gap-2">
+      <span>Total {current.toFixed(1)}% vs {result.percent.toFixed(1)}% on {result.base} <span className="font-mono text-text-4">({result.mergeBase})</span></span>
+      <span className={`font-medium ${tone}`}>{delta >= 0 ? '+' : ''}{delta.toFixed(1)} pt</span>
+      {result.missing.length > 0 && <span className="text-text-4" title={result.missing.join(', ')}>{result.missing.length} new package{result.missing.length === 1 ? '' : 's'} not on {result.base}</span>}
+      {result.testsFailed && <span className="text-warning">some tests fail on {result.base}</span>}
+    </span>
   )
 }
