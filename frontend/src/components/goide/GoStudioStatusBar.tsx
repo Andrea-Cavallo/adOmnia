@@ -112,7 +112,7 @@ export function GoStudioStatusBar({ session, toolchain, documentInfo, execution,
           <button
             type="button"
             onClick={() => useGoIDELspStore.getState().updatePreferences({ resourceMode: 'normal' })}
-            title={`Low-resource mode${resourceMode === 'auto' ? ' (on battery)' : ''}: semantic colors, inlay hints, sticky scroll, minimap and lint on save are paused. Click to turn it off.`}
+            title={`Low-resource mode${resourceMode === 'auto' ? ' (on battery)' : ''}: semantic colors, inlay hints, sticky scroll and lint on save are paused. Click to turn it off.`}
             className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded px-1.5 text-warning hover:bg-surface-3"
           >
             {resourceMode === 'auto' ? <BatteryLow size={12} /> : <Gauge size={12} />} Low-resource

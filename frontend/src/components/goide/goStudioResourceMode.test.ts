@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { heavyFeatureEnabled, isLowResource, watchBattery } from './goStudioResourceMode'
 
-const prefs = { semanticHighlighting: true, inlayHints: true, typeHints: false, stickyScroll: true, minimap: false, lintOnSave: true }
+const prefs = { semanticHighlighting: true, inlayHints: true, typeHints: false, stickyScroll: true, lintOnSave: true }
 
 describe('goStudioResourceMode', () => {
   afterEach(() => vi.unstubAllGlobals())

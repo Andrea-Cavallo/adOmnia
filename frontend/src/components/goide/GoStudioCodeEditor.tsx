@@ -76,7 +76,6 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
   const semanticHighlighting = useGoIDELspStore((state) => heavyFeatureEnabled(state, 'semanticHighlighting'))
   const inlayHints = useGoIDELspStore((state) => heavyFeatureEnabled(state, 'inlayHints'))
   const stickyScroll = useGoIDELspStore((state) => heavyFeatureEnabled(state, 'stickyScroll'))
-  const minimap = useGoIDELspStore((state) => heavyFeatureEnabled(state, 'minimap'))
   const fontLigatures = useGoIDELspStore((state) => state.preferences.fontLigatures)
   const fontSize = useGoIDELspStore((state) => state.preferences.fontSize)
   const editorMode = useGoIDELspStore((state) => state.preferences.editorMode)
@@ -93,11 +92,6 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
       if (position) callbacks.current.onCursor(position.lineNumber, position.column)
     })
     installGoStudioEditorActions(editor)
-    // Il widget ispezioni resta a sinistra della minimappa, la cui larghezza cambia con finestra e opzioni.
-    const editorHost = editor.getContainerDomNode().closest<HTMLElement>('[data-go-studio-editor-host]')
-    const syncMinimapWidth = () => editorHost?.style.setProperty('--gs-minimap-width', `${editor.getLayoutInfo().minimap.minimapWidth}px`)
-    syncMinimapWidth()
-    editor.onDidLayoutChange(syncMinimapWidth)
     installRecursiveCallMarkers(editor)
     decorationsRef.current = editor.createDecorationsCollection()
     coverageDecorationsRef.current = editor.createDecorationsCollection()
@@ -233,7 +227,7 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
         stickyScroll: { enabled: stickyScroll, maxLineCount: 4 },
         fontFamily: 'var(--skin-font-mono, var(--font-mono))',
         // Panoramica a tutta altezza (fill), a blocchi leggibili (scala 2), con il riquadro della vista sempre visibile.
-        minimap: { enabled: minimap, renderCharacters: false, scale: 2, showSlider: 'always', size: 'fill', maxColumn: 80 },
+        minimap: { enabled: false },
         lineNumbers: 'on',
         folding: true,
         // Parentesi monocromatiche come in IntelliJ: il colore resta alla sintassi, si evidenzia solo la coppia sotto il cursore.

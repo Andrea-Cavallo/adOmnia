@@ -2,7 +2,7 @@
 export type GoStudioResourceMode = 'normal' | 'low' | 'auto'
 
 /** Funzioni dell'editor che la modalità a basso consumo spegne; le preferenze dell'utente restano salvate com'erano. */
-export const HEAVY_EDITOR_FEATURES = ['semanticHighlighting', 'inlayHints', 'typeHints', 'stickyScroll', 'minimap', 'lintOnSave'] as const
+export const HEAVY_EDITOR_FEATURES = ['semanticHighlighting', 'inlayHints', 'typeHints', 'stickyScroll', 'lintOnSave'] as const
 export type GoStudioHeavyFeature = (typeof HEAVY_EDITOR_FEATURES)[number]
 
 export function isLowResource(mode: GoStudioResourceMode | undefined, onBattery: boolean): boolean {

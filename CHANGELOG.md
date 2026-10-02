@@ -6,6 +6,9 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Removed
+- **Minimap in Go Studio:** the editor minimap, its View menu toggle and its setting are gone; saved preferences drop the old key.
+
 ## [0.9.54] - 2026-10-02
 
 ### Added

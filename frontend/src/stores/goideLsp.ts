@@ -54,7 +54,6 @@ export interface GoIDEEditorPreferences {
   typeHints: boolean
   /** Intestazioni di funzioni e blocchi fissate in alto mentre si scorre. */
   stickyScroll: boolean
-  minimap: boolean
   fontLigatures: boolean
   /** Dimensione del font dell'editor (Zoom In/Out/Reset). */
   fontSize: number
@@ -162,13 +161,13 @@ interface PersistedSettings {
   version?: number
 }
 
-/** v2: minimappa accesa di default, come negli IDE, anche per chi aveva salvato le preferenze prima. */
-const PREFERENCES_VERSION = 2
+/** v3: minimappa rimossa; la chiave salvata dalle versioni precedenti viene scartata. */
+const PREFERENCES_VERSION = 3
 
 const DEFAULT_SETTINGS: GoIDELanguageServerSettings = { gofumpt: false, staticcheck: false, placeholders: true, semanticLinks: false, vulncheck: false }
 const DEFAULT_PREFERENCES: GoIDEEditorPreferences = {
   formatOnSave: true, organizeImportsOnSave: true, lintOnSave: false, semanticHighlighting: true, inlayHints: true,
-  typeHints: false, stickyScroll: true, minimap: true, fontLigatures: false, fontSize: EDITOR_FONT_SIZE.default,
+  typeHints: false, stickyScroll: true, fontLigatures: false, fontSize: EDITOR_FONT_SIZE.default,
   autoSave: false, trimTrailingWhitespace: false, previewTab: false, resourceMode: 'normal', editorMode: 'default',
 }
 const EMPTY_LINT: GoIDELintState = { running: false, result: null, error: null, reports: {} }
@@ -179,9 +178,10 @@ function loadPersisted(): PersistedSettings {
     const raw = localStorage.getItem(SETTINGS_KEY)
     if (!raw) return { settings: DEFAULT_SETTINGS, preferences: DEFAULT_PREFERENCES }
     const parsed = JSON.parse(raw) as Partial<PersistedSettings>
+    const { minimap: _removed, ...preferences } = (parsed.preferences ?? {}) as Partial<GoIDEEditorPreferences> & { minimap?: unknown }
     return {
       settings: { ...DEFAULT_SETTINGS, ...parsed.settings, semanticLinks: false },
-      preferences: { ...DEFAULT_PREFERENCES, ...parsed.preferences, ...((parsed.version ?? 1) < PREFERENCES_VERSION ? { minimap: true } : {}) },
+      preferences: { ...DEFAULT_PREFERENCES, ...preferences },
     }
   } catch {
     return { settings: DEFAULT_SETTINGS, preferences: DEFAULT_PREFERENCES }

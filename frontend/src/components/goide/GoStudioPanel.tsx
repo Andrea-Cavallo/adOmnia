@@ -469,7 +469,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
     maximized: goStudioMaximized,
     zen,
     editorPrefs: {
-      resourceMode: lsp.preferences.resourceMode, editorMode: lsp.preferences.editorMode, previewTab: lsp.preferences.previewTab, stickyScroll: lsp.preferences.stickyScroll, minimap: lsp.preferences.minimap, fontLigatures: lsp.preferences.fontLigatures,
+      resourceMode: lsp.preferences.resourceMode, editorMode: lsp.preferences.editorMode, previewTab: lsp.preferences.previewTab, stickyScroll: lsp.preferences.stickyScroll, fontLigatures: lsp.preferences.fontLigatures,
       typeHints: lsp.preferences.typeHints, autoSave: lsp.preferences.autoSave, trimTrailingWhitespace: lsp.preferences.trimTrailingWhitespace,
     },
     projectOpen: store.layout.projectOpen,

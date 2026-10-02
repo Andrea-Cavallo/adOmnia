@@ -101,11 +101,6 @@ const GO_STUDIO_DARK_COLORS: monaco.editor.IColors = {
   'editor.lineHighlightBackground': '#131722',
   'editor.lineHighlightBorder': '#00000000',
   'editorWidget.background': '#131722',
-  // Minimappa: fondo appena staccato dal codice e riquadro della vista leggero, nel blu della selezione.
-  'minimap.background': '#0E1119',
-  'minimapSlider.background': '#3B82F61F',
-  'minimapSlider.hoverBackground': '#3B82F633',
-  'minimapSlider.activeBackground': '#3B82F64D',
 }
 
 const GO_STUDIO_LIGHT_COLORS: monaco.editor.IColors = {
@@ -114,10 +109,6 @@ const GO_STUDIO_LIGHT_COLORS: monaco.editor.IColors = {
   'editorGutter.background': '#FFFFFF',
   'editor.lineHighlightBackground': '#F1F5F9',
   'editor.lineHighlightBorder': '#00000000',
-  'minimap.background': '#FAFBFD',
-  'minimapSlider.background': '#2563EB14',
-  'minimapSlider.hoverBackground': '#2563EB24',
-  'minimapSlider.activeBackground': '#2563EB38',
 }
 
 /** Temi di Go Studio: colori di adOmnia sullo sfondo delle isole, più le regole per i semantic tokens. */

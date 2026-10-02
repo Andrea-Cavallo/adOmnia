@@ -60,7 +60,6 @@ export function runLanguageCommand(id: GoStudioCommandId, sessionId: string | nu
     case 'code.inlayHints': lsp.updatePreferences({ inlayHints: !lsp.preferences.inlayHints }); return true
     case 'code.typeHints': lsp.updatePreferences({ typeHints: !lsp.preferences.typeHints }); return true
     case 'view.stickyScroll': lsp.updatePreferences({ stickyScroll: !lsp.preferences.stickyScroll }); return true
-    case 'view.minimap': lsp.updatePreferences({ minimap: !lsp.preferences.minimap }); return true
     case 'view.previewTab': lsp.updatePreferences({ previewTab: !lsp.preferences.previewTab }); return true
     // Le due modalità si escludono: riselezionare quella attiva torna a normal.
     case 'view.lowResourceMode': lsp.updatePreferences({ resourceMode: lsp.preferences.resourceMode === 'low' ? 'normal' : 'low' }); return true

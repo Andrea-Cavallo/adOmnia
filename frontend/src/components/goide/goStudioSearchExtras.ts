@@ -44,7 +44,7 @@ export const SETTINGS_INDEX: readonly GoStudioSettingEntry[] = [
   { label: 'Mock server port', section: 'mock', keywords: 'mock server port cors' },
   { label: 'Lock vault on minimize', section: 'vault', keywords: 'vault lock minimize secrets' },
   { label: 'Vault auto-lock', section: 'vault', keywords: 'vault auto lock timeout secrets' },
-  { label: 'Code editor', section: 'editor', keywords: 'editor font tab size word wrap minimap' },
+  { label: 'Code editor', section: 'editor', keywords: 'editor font tab size word wrap' },
   { label: 'Feature surface', section: 'features', keywords: 'features advanced lab experimental rail visibility' },
   { label: 'Workspace import / export', section: 'workspace', keywords: 'workspace import export backup .adomnia' },
   { label: 'Privacy and local data', section: 'privacy', keywords: 'privacy history clear local data storage' },

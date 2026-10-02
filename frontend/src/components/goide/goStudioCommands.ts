@@ -8,7 +8,7 @@ export type GoStudioCommandId =
   | 'edit.duplicateLine' | 'edit.deleteLine' | 'edit.nextOccurrence' | 'edit.allOccurrences' | 'edit.moveLineUp' | 'edit.moveLineDown' | 'edit.columnSelection'
   | 'file.localHistory' | 'view.todo'
   | 'view.splitRight' | 'view.splitDown' | 'view.unsplit' | 'view.terminal'
-  | 'view.zoomIn' | 'view.zoomOut' | 'view.zoomReset' | 'view.zenMode' | 'view.stickyScroll' | 'view.minimap' | 'view.fontLigatures' | 'view.previewTab' | 'view.lowResourceMode' | 'view.lowResourceOnBattery' | 'view.vimMode' | 'view.emacsMode'
+  | 'view.zoomIn' | 'view.zoomOut' | 'view.zoomReset' | 'view.zenMode' | 'view.stickyScroll' | 'view.fontLigatures' | 'view.previewTab' | 'view.lowResourceMode' | 'view.lowResourceOnBattery' | 'view.vimMode' | 'view.emacsMode'
   | 'view.quickOpen' | 'view.maximize' | 'view.maximizeEditor' | 'view.toggleProject' | 'view.toggleStructure' | 'view.toggleBottom' | 'view.toggleIgnored' | 'view.problems' | 'view.contextInspector'
   | 'nav.declaration' | 'nav.typeDeclaration' | 'nav.implementation' | 'nav.usages' | 'nav.fileStructure' | 'nav.symbol' | 'nav.findInFiles'
   | 'nav.recentLocations' | 'nav.lastEdit' | 'nav.gotoTest' | 'code.generate' | 'nav.callHierarchy' | 'nav.typeHierarchy' | 'nav.nextProblem' | 'nav.previousProblem'
@@ -104,7 +104,6 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'view.zoomOut', menu: 'view', label: 'Zoom Out', binding: { key: '-', mod: true } },
   { id: 'view.zoomReset', menu: 'view', label: 'Reset Zoom', binding: { key: '0', mod: true } },
   { id: 'view.stickyScroll', menu: 'view', label: 'Sticky Scopes', separatorBefore: true },
-  { id: 'view.minimap', menu: 'view', label: 'Minimap' },
   { id: 'view.fontLigatures', menu: 'view', label: 'Font Ligatures' },
   { id: 'view.previewTab', menu: 'view', label: 'Preview Tab (single click in Project)' },
   { id: 'view.lowResourceMode', menu: 'view', label: 'Low-Resource Mode' },
@@ -366,7 +365,7 @@ export interface GoStudioCommandContext {
   canGoForward: boolean
   bookmarkCount: number
   /** Preferenze dell'editor mostrate con spunta nei menu. */
-  editorPrefs?: { resourceMode?: 'normal' | 'low' | 'auto'; editorMode?: 'default' | 'vim' | 'emacs'; previewTab?: boolean; stickyScroll: boolean; minimap: boolean; fontLigatures: boolean; typeHints: boolean; autoSave: boolean; trimTrailingWhitespace: boolean }
+  editorPrefs?: { resourceMode?: 'normal' | 'low' | 'auto'; editorMode?: 'default' | 'vim' | 'emacs'; previewTab?: boolean; stickyScroll: boolean; fontLigatures: boolean; typeHints: boolean; autoSave: boolean; trimTrailingWhitespace: boolean }
   zen?: boolean
   /** Finestra Go Studio separata: mostra un solo progetto e non ha rail né pannelli adOmnia. */
   detached?: boolean
@@ -514,7 +513,6 @@ export function commandChecked(id: GoStudioCommandId, context: GoStudioCommandCo
     case 'view.maximize': return context.maximized
     case 'view.zenMode': return !!context.zen
     case 'view.stickyScroll': return !!context.editorPrefs?.stickyScroll
-    case 'view.minimap': return !!context.editorPrefs?.minimap
     case 'view.previewTab': return !!context.editorPrefs?.previewTab
     case 'view.lowResourceMode': return context.editorPrefs?.resourceMode === 'low'
     case 'view.lowResourceOnBattery': return context.editorPrefs?.resourceMode === 'auto'

@@ -25,7 +25,7 @@ Several projects can stay open at the same time, isolated from each other, group
 
 ## Editor
 
-- **View:** Sticky Scopes (on by default), Minimap, Font Ligatures, Preview Tab, Zoom (Ctrl+= / Ctrl+- / Ctrl+0, including the `+` key of Italian layouts and the numeric keypad) and Zen Mode (Alt+Shift+Z: only the code; leaving it restores the panes as they were).
+- **View:** Sticky Scopes (on by default), Font Ligatures, Preview Tab, Zoom (Ctrl+= / Ctrl+- / Ctrl+0, including the `+` key of Italian layouts and the numeric keypad) and Zen Mode (Alt+Shift+Z: only the code; leaving it restores the panes as they were).
 - **Preview Tab** (off by default): a single click in Project opens the file in an italic tab that the next click replaces. Editing it or double-clicking the file keeps it open.
 - **Code → Type Hints:** the inferred types of `:=` and `range`, composite literal types and constant values, on top of parameter hints.
 - **File → Save Files on Focus Change:** saves modified files when adOmnia goes to the background or you switch file, never while you type.
@@ -339,7 +339,7 @@ Other mouse gestures: Ctrl+click (Cmd+click on macOS) goes to the declaration, A
 
 ## Performance and low-resource mode
 
-- **Low-Resource Mode** (View menu) pauses semantic highlighting, inlay and type hints, sticky scroll, the minimap and lint on save. Your preferences are kept; a **Low-resource** badge in the status bar turns it off. **Low-Resource Mode on Battery** does the same only while a laptop runs on battery (Battery Status API, available in WebView2 on Windows; elsewhere it stays normal).
+- **Low-Resource Mode** (View menu) pauses semantic highlighting, inlay and type hints, sticky scroll and lint on save. Your preferences are kept; a **Low-resource** badge in the status bar turns it off. **Low-Resource Mode on Battery** does the same only while a laptop runs on battery (Battery Status API, available in WebView2 on Windows; elsewhere it stays normal).
 - gopls diagnostics are coalesced: at most one update per file every 150 ms, and at most 1000 diagnostics per file reach the UI (errors first).
 - The Run console draws the last 5000 lines; search and Copy console still use the full 4 MB buffer. Project folders with more than 500 entries show them in pages (**Show more**).
 

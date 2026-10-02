@@ -209,11 +209,11 @@ html.light .go-studio-root .go-studio-run-group,
 }
 .go-studio-tab[aria-selected='true']::after { background: var(--color-accent); }
 
-/* Widget ispezioni in alto a destra dell'editor, sopra il codice ma lontano da scrollbar e minimappa. */
+/* Widget ispezioni in alto a destra dell'editor, sopra il codice ma lontano dalla scrollbar. */
 .go-studio-inspection {
   position: absolute;
   top: 6px;
-  right: calc(var(--gs-minimap-width, 0px) + 22px);
+  right: 22px;
   z-index: 5;
   display: flex;
   align-items: center;
