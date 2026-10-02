@@ -28,3 +28,19 @@ export function coverageForDocument(report: GoIDECoverageReport | null | undefin
   if (!file) return { state: 'none' }
   return file.diskToken === diskToken && !dirty ? { state: 'current', file } : { state: 'stale', file }
 }
+
+export interface GoStudioFunctionCoverage {
+  relativePath: string
+  name: string
+  line: number
+  statements: number
+  covered: number
+  percent: number
+}
+
+/** Funzioni con istruzioni, dalla meno coperta; a pari copertura prima quelle con più istruzioni scoperte. */
+export function functionsByCoverage(report: GoIDECoverageReport): GoStudioFunctionCoverage[] {
+  return report.files
+    .flatMap((file) => (file.functions ?? []).filter((fn) => fn.statements > 0).map((fn) => ({ relativePath: file.relativePath, ...fn })))
+    .sort((left, right) => left.percent - right.percent || (right.statements - right.covered) - (left.statements - left.covered) || left.relativePath.localeCompare(right.relativePath) || left.line - right.line)
+}

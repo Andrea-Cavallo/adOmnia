@@ -8,6 +8,7 @@ import { useGoIDEStore } from '@/stores/goide'
 import { selectedTestRun, useGoIDETestsStore } from '@/stores/goideTests'
 import { buildTestTree, debugRequestForNode, filterTestTree, formatDuration, isFailed, isFlaky, isSlow, onlyFailed, onlyFlaky, repeatRequestForNode, repetitionStats, reproduceRequest, type GoStudioTestNode } from './goStudioTestTree'
 import { useGoIDEDebugStore } from '@/stores/goideDebug'
+import { functionsByCoverage } from './goStudioCoverage'
 import { navigateToLocation } from './goStudioLanguageFeatures'
 import { runGoStudioBenchmarks } from './goStudioQuickActions'
 import { benchmarkMeasurementFor, benchmarkRunDurationMillis, compareBenchmarkMetrics, formatBenchmarkValue, previousBenchmarkRun } from './goStudioBenchmarks'
@@ -125,13 +126,29 @@ function OutputLine({ line, baseDirectory }: { line: string; baseDirectory: stri
 
 function CoverageSummary({ report }: { report: GoIDECoverageReport }) {
   const openDocument = useGoIDEStore((state) => state.openDocument)
+  const openLocation = useGoIDEStore((state) => state.openLocation)
+  const [byFunction, setByFunction] = useState(false)
+  const functions = useMemo(() => (byFunction ? functionsByCoverage(report) : []), [byFunction, report])
   const bar = (value: number) => (
     <span className="h-1.5 w-20 shrink-0 overflow-hidden rounded bg-danger/25"><span className="block h-full bg-success" style={{ width: `${value}%` }} /></span>
   )
+  const tab = (active: boolean) => `rounded px-1.5 py-0.5 text-[10px] ${active ? 'bg-accent/15 text-accent' : 'text-text-3 hover:bg-surface-3 hover:text-text-1'}`
   return (
     <div className="p-2 text-[11px]">
-      <div className="mb-2 flex items-center gap-2 text-text-2"><ShieldCheck size={12} className="text-success" aria-hidden="true" /> Coverage {report.percent.toFixed(1)}% <span className="text-text-4">· {report.covered}/{report.statements} statements · mode {report.mode}</span></div>
-      {report.packages.map((pkg) => (
+      <div className="mb-2 flex items-center gap-2 text-text-2">
+        <ShieldCheck size={12} className="text-success" aria-hidden="true" /> Coverage {report.percent.toFixed(1)}% <span className="text-text-4">· {report.covered}/{report.statements} statements · mode {report.mode}</span>
+        <span role="tablist" aria-label="Coverage view" className="ml-auto flex gap-0.5">
+          <button type="button" role="tab" aria-selected={!byFunction} onClick={() => setByFunction(false)} className={tab(!byFunction)}>Files</button>
+          <button type="button" role="tab" aria-selected={byFunction} onClick={() => setByFunction(true)} title="Functions from the least covered" className={tab(byFunction)}>Functions</button>
+        </span>
+      </div>
+      {byFunction && functions.map((fn) => (
+        <button key={`${fn.relativePath}:${fn.line}`} type="button" onClick={() => void openLocation(fn.relativePath, fn.line, 1)} title={`${fn.covered}/${fn.statements} statements`} className="flex h-6 w-full items-center gap-2 text-left text-text-3 hover:bg-surface-3 hover:text-text-1">
+          {bar(fn.percent)}<span className="w-12 shrink-0 text-right text-[10px]">{fn.percent.toFixed(1)}%</span><span className="shrink-0 truncate font-mono text-[10px] text-text-1">{fn.name}</span><span className="truncate font-mono text-[10px] text-text-4">{fn.relativePath}:{fn.line}</span>
+        </button>
+      ))}
+      {byFunction && functions.length === 0 && <p className="text-[10px] text-text-4">No functions with statements.</p>}
+      {!byFunction && report.packages.map((pkg) => (
         <div key={pkg.importPath} className="mb-1">
           <div className="flex h-6 items-center gap-2 font-medium text-text-2">{bar(pkg.percent)}<span className="w-12 shrink-0 text-right text-[10px]">{pkg.percent.toFixed(1)}%</span><span className="truncate">{pkg.relativePath || pkg.importPath}</span></div>
           {report.files.filter((file) => file.relativePath.startsWith(`${pkg.relativePath}/`) && !file.relativePath.slice(pkg.relativePath.length + 1).includes('/')).map((file) => (

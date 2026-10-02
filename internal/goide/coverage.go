@@ -3,6 +3,9 @@ package goide
 import (
 	"bufio"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
 	"path"
 	"path/filepath"
@@ -33,6 +36,17 @@ type CoverageFile struct {
 	Percent      float64         `json:"percent"`
 	DiskToken    string          `json:"diskToken"`
 	Blocks       []CoverageBlock `json:"blocks"`
+	// Functions è la copertura per funzione, come `go tool cover -func`, in ordine di riga.
+	Functions []CoverageFunction `json:"functions"`
+}
+
+// CoverageFunction è la copertura di una funzione o di un metodo ("T.M" o "(*T).M").
+type CoverageFunction struct {
+	Name       string  `json:"name"`
+	Line       int     `json:"line"`
+	Statements int     `json:"statements"`
+	Covered    int     `json:"covered"`
+	Percent    float64 `json:"percent"`
 }
 
 // CoveragePackage aggrega i file di un package.
@@ -172,6 +186,7 @@ func buildCoverageReport(projectRoot, moduleDir, modulePath string, data []byte)
 			})
 		}
 		file.Percent = percent(file.Covered, file.Statements)
+		file.Functions = functionCoverage(text, blocks)
 		report.Files = append(report.Files, file)
 		pkgPath := path.Dir(importPath)
 		pkg := packages[pkgPath]
@@ -194,6 +209,63 @@ func buildCoverageReport(projectRoot, moduleDir, modulePath string, data []byte)
 		return report.Packages[left].ImportPath < report.Packages[right].ImportPath
 	})
 	return report, nil
+}
+
+// functionCoverage assegna ogni blocco alla funzione che lo contiene, con la stessa regola di
+// `go tool cover -func` (posizioni in byte, 1-based). Un file che non si analizza non ha funzioni.
+func functionCoverage(text string, blocks []rawCoverageBlock) []CoverageFunction {
+	fileSet := token.NewFileSet()
+	parsed, err := parser.ParseFile(fileSet, "", text, parser.SkipObjectResolution)
+	if err != nil {
+		return []CoverageFunction{}
+	}
+	before := func(line, column int, position token.Position) bool {
+		return line < position.Line || line == position.Line && column <= position.Column
+	}
+	functions := []CoverageFunction{}
+	for _, declaration := range parsed.Decls {
+		function, ok := declaration.(*ast.FuncDecl)
+		if !ok || function.Body == nil {
+			continue
+		}
+		start, end := fileSet.Position(function.Pos()), fileSet.Position(function.End())
+		result := CoverageFunction{Name: functionName(function), Line: start.Line}
+		for _, block := range blocks {
+			if before(block.startLine, block.startColumn, start) || !before(block.endLine, block.endColumn, end) {
+				continue
+			}
+			result.Statements += block.statements
+			if block.count > 0 {
+				result.Covered += block.statements
+			}
+		}
+		result.Percent = percent(result.Covered, result.Statements)
+		functions = append(functions, result)
+	}
+	return functions
+}
+
+func functionName(function *ast.FuncDecl) string {
+	if function.Recv == nil || len(function.Recv.List) == 0 {
+		return function.Name.Name
+	}
+	receiver := function.Recv.List[0].Type
+	if star, ok := receiver.(*ast.StarExpr); ok {
+		return "(*" + typeName(star.X) + ")." + function.Name.Name
+	}
+	return typeName(receiver) + "." + function.Name.Name
+}
+
+func typeName(expression ast.Expr) string {
+	switch value := expression.(type) {
+	case *ast.Ident:
+		return value.Name
+	case *ast.IndexExpr:
+		return typeName(value.X)
+	case *ast.IndexListExpr:
+		return typeName(value.X)
+	}
+	return "?"
 }
 
 // loadCoverage legge il profilo scritto da go test e lo rimuove: il report resta solo in memoria.

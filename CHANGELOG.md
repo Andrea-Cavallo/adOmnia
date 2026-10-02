@@ -11,6 +11,7 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - **Line history in Go Studio:** *Git → Show History for Selection…* lists only the commits that changed the selected lines (`git log -L`), each diffed against the current editor.
 - **Test Changed Packages:** *Run → Test Changed Packages* runs `go test` only on the packages with modified, staged or new Go files, one run per module.
 - **Lint changed files only:** *Code → Run Linter on Changed Files* runs golangci-lint or staticcheck only on the packages of modified, staged or new Go files and reports only those files; the status bar says "in changed files".
+- **Coverage by function:** the coverage summary in the Tests panel has a *Functions* view (like `go tool cover -func`) listing every function and method from the least covered, each opening its declaration.
 
 ## [0.9.53] - 2026-10-02
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { GoIDECoverageReport } from '@/lib/goide-tests-api'
-import { coverageForDocument, coverageLineStates } from './goStudioCoverage'
+import { coverageForDocument, coverageLineStates, functionsByCoverage } from './goStudioCoverage'
 
 const block = (startLine: number, endLine: number, covered: boolean) => ({ startLine, startColumn: 1, endLine, endColumn: 1, covered })
 const report = {
@@ -21,5 +21,16 @@ describe('coverage overlay', () => {
     expect(coverageForDocument(report, 'a.go', 'other', false).state).toBe('stale')
     expect(coverageForDocument(report, 'b.go', 'tok', false).state).toBe('none')
     expect(coverageForDocument(null, 'a.go', 'tok', false).state).toBe('none')
+  })
+})
+
+describe('function coverage', () => {
+  it('lists functions from the least covered, skipping empty ones', () => {
+    const fn = (name: string, line: number, statements: number, covered: number) => ({ name, line, statements, covered, percent: statements ? (covered * 100) / statements : 0 })
+    const withFunctions = { ...report, files: [
+      { ...report.files[0], relativePath: 'a.go', functions: [fn('Full', 1, 2, 2), fn('Half', 5, 4, 2), fn('Empty', 9, 0, 0)] },
+      { ...report.files[0], relativePath: 'b.go', functions: [fn('Small', 1, 2, 1), fn('None', 4, 3, 0)] },
+    ] } as unknown as GoIDECoverageReport
+    expect(functionsByCoverage(withFunctions).map((item) => `${item.relativePath}:${item.name}`)).toEqual(['b.go:None', 'a.go:Half', 'b.go:Small', 'a.go:Full'])
   })
 })

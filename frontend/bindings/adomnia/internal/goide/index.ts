@@ -14,6 +14,7 @@ export {
     CompletionResult,
     CoverageBlock,
     CoverageFile,
+    CoverageFunction,
     CoveragePackage,
     CoverageReport,
     CrashStatus,
