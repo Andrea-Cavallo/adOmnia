@@ -2,6 +2,7 @@ package goide
 
 import (
 	"errors"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -117,7 +118,8 @@ func TestRecoveryKeyCaseSensitivityFollowsPlatform(t *testing.T) {
 	if same != caseInsensitivePaths {
 		t.Fatalf("Main.go e main.go condividono la chiave=%v, filesystem case-insensitive=%v", same, caseInsensitivePaths)
 	}
-	if recoveryKey("s", `pkg\a.go`) != recoveryKey("s", "pkg/a.go") && caseInsensitivePaths {
+	// Il backslash separa le cartelle solo su Windows; su macOS è un carattere del nome.
+	if runtime.GOOS == "windows" && recoveryKey("s", `pkg\a.go`) != recoveryKey("s", "pkg/a.go") {
 		t.Fatal("separatori diversi devono produrre la stessa chiave su Windows")
 	}
 }
