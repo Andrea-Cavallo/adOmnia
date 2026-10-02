@@ -562,3 +562,55 @@ func debugFixtureLine(t *testing.T, prefix string) int {
 	}
 	return lineOf(t, strings.ReplaceAll(string(content), "\r\n", "\n"), prefix)
 }
+
+func TestDebuggerDisassemblesTheCurrentFrame(t *testing.T) {
+	ide, recorder, session := startDebugProject(t)
+	line := debugFixtureLine(t, "\t\ttotal += value")
+	if _, err := ide.SetBreakpoints(string(session.ID), "main.go", lineBreakpoints(line)); err != nil {
+		t.Fatal(err)
+	}
+	started, err := ide.StartDebug(DebugRequest{SessionID: session.ID, Mode: "debug", Target: "."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = ide.StopDebug(string(started.ID)) })
+	stopped := waitDebugState(t, recorder, started.ID, DebugStopped, 0)
+	frames, err := ide.DebugStackTrace(string(started.ID), stopped.ThreadID)
+	if err != nil || len(frames) == 0 || frames[0].InstructionPointer == "" {
+		t.Fatalf("instruction pointer mancante: %v %+v", err, frames)
+	}
+	instructions, err := ide.DebugDisassemble(string(started.ID), frames[0].InstructionPointer, 8, 8)
+	if err != nil || len(instructions) < 9 {
+		t.Fatalf("disassembly inatteso: %v %+v", err, instructions)
+	}
+	current := 0
+	for _, instruction := range instructions {
+		if instruction.Current {
+			current++
+			if instruction.RelativePath != "main.go" || instruction.Line != line || instruction.Instruction == "" {
+				t.Fatalf("istruzione corrente senza sorgente: %+v", instruction)
+			}
+		}
+	}
+	if current != 1 {
+		t.Fatalf("attesa una sola istruzione corrente, trovate %d: %+v", current, instructions)
+	}
+	if _, err := ide.DebugDisassemble(string(started.ID), "", 1, 1); err == nil {
+		t.Fatal("indirizzo vuoto accettato")
+	}
+	if err := ide.DebugShowRegisters(string(started.ID), true); err != nil {
+		t.Fatal(err)
+	}
+	frames, _ = ide.DebugStackTrace(string(started.ID), stopped.ThreadID)
+	scopes, err := ide.DebugScopes(string(started.ID), frames[0].ID)
+	registers := 0
+	for _, scope := range scopes {
+		if scope.Name == "Registers" {
+			variables, _ := ide.DebugVariables(string(started.ID), scope.VariablesReference)
+			registers = len(variables)
+		}
+	}
+	if err != nil || registers == 0 {
+		t.Fatalf("scope Registers mancante o vuoto: %v %+v", err, scopes)
+	}
+}

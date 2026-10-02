@@ -594,6 +594,16 @@ func (g *GoIDE) DebugScopes(debugID string, frameID int) ([]goide.DebugScope, er
 	return g.service.DebugScopes(debugID, frameID)
 }
 
+// DebugShowRegisters mostra o nasconde lo scope Registers nelle variabili dei frame.
+func (g *GoIDE) DebugShowRegisters(debugID string, show bool) error {
+	return g.service.DebugShowRegisters(debugID, show)
+}
+
+// DebugDisassemble restituisce il codice macchina attorno all'istruzione corrente di un frame.
+func (g *GoIDE) DebugDisassemble(debugID, address string, before, after int) ([]goide.DebugInstruction, error) {
+	return g.service.DebugDisassemble(debugID, address, before, after)
+}
+
 // DebugVariables espande un riferimento a variabili.
 func (g *GoIDE) DebugVariables(debugID string, reference int) ([]goide.DebugVariable, error) {
 	return g.service.DebugVariables(debugID, reference)

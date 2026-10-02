@@ -35,6 +35,7 @@ const (
 	debugLaunchTimeout = 3 * time.Minute
 	maxDebugVariables  = 500
 	maxDebugFrames     = 200
+	maxDisassembly     = 200
 	listeningPrefix    = "DAP server listening at: "
 )
 
@@ -99,6 +100,21 @@ type DebugFrame struct {
 	RelativePath string `json:"relativePath,omitempty"`
 	Line         int    `json:"line"`
 	Column       int    `json:"column"`
+	// InstructionPointer è l'indirizzo dell'istruzione corrente, da usare con DebugDisassemble.
+	InstructionPointer string `json:"instructionPointer,omitempty"`
+}
+
+// DebugInstruction è un'istruzione macchina con la riga Go che l'ha generata, se nota.
+type DebugInstruction struct {
+	Address      string `json:"address"`
+	Bytes        string `json:"bytes,omitempty"`
+	Instruction  string `json:"instruction"`
+	Symbol       string `json:"symbol,omitempty"`
+	Path         string `json:"path,omitempty"`
+	RelativePath string `json:"relativePath,omitempty"`
+	Line         int    `json:"line,omitempty"`
+	// Current marca l'istruzione su cui il frame è fermo.
+	Current bool `json:"current,omitempty"`
 }
 
 type DebugScope struct {
@@ -641,6 +657,7 @@ func (m *DebugManager) stackTrace(id DebugSessionID, threadID, levels int) ([]De
 			Source *struct {
 				Path string `json:"path"`
 			} `json:"source"`
+			InstructionPointerReference string `json:"instructionPointerReference"`
 		} `json:"stackFrames"`
 	}
 	if err := m.call(id, "stackTrace", map[string]any{"threadId": threadID, "startFrame": 0, "levels": levels}, &response); err != nil {
@@ -648,7 +665,7 @@ func (m *DebugManager) stackTrace(id DebugSessionID, threadID, levels int) ([]De
 	}
 	frames := make([]DebugFrame, 0, len(response.StackFrames))
 	for _, frame := range response.StackFrames {
-		converted := DebugFrame{ID: frame.ID, Name: frame.Name, Line: frame.Line, Column: frame.Column}
+		converted := DebugFrame{ID: frame.ID, Name: frame.Name, Line: frame.Line, Column: frame.Column, InstructionPointer: frame.InstructionPointerReference}
 		if frame.Source != nil {
 			converted.Path = frame.Source.Path
 			converted.RelativePath = filepath.ToSlash(relativeWithin(session.root, frame.Source.Path))
@@ -667,6 +684,52 @@ func (m *DebugManager) Scopes(id DebugSessionID, frameID int) ([]DebugScope, err
 		return nil, err
 	}
 	return response.Scopes, nil
+}
+
+// ShowRegisters aggiunge (o toglie) lo scope "Registers" ai frame, tramite la configurazione DAP di Delve.
+func (m *DebugManager) ShowRegisters(id DebugSessionID, show bool) error {
+	return m.call(id, "evaluate", map[string]any{"expression": fmt.Sprintf("dlv config showRegisters %t", show), "context": "repl"}, nil)
+}
+
+// Disassemble restituisce le istruzioni attorno a un indirizzo (DAP disassemble): before istruzioni
+// prima e after dopo quella indicata, che resta marcata come corrente.
+func (m *DebugManager) Disassemble(id DebugSessionID, address string, before, after int) ([]DebugInstruction, error) {
+	session, err := m.get(id)
+	if err != nil {
+		return nil, err
+	}
+	address = strings.TrimSpace(address)
+	if address == "" {
+		return nil, fmt.Errorf("indirizzo dell'istruzione mancante: il frame non ha un instruction pointer")
+	}
+	before, after = min(max(before, 0), maxDisassembly), min(max(after, 0), maxDisassembly)
+	var response struct {
+		Instructions []struct {
+			Address          string `json:"address"`
+			InstructionBytes string `json:"instructionBytes"`
+			Instruction      string `json:"instruction"`
+			Symbol           string `json:"symbol"`
+			Location         *struct {
+				Path string `json:"path"`
+			} `json:"location"`
+			Line int `json:"line"`
+		} `json:"instructions"`
+	}
+	arguments := map[string]any{"memoryReference": address, "instructionOffset": -before, "instructionCount": before + after + 1, "resolveSymbols": true}
+	if err := m.call(id, "disassemble", arguments, &response); err != nil {
+		return nil, err
+	}
+	instructions := make([]DebugInstruction, 0, len(response.Instructions))
+	for _, item := range response.Instructions {
+		// La corrente si riconosce dall'indirizzo: Delve può restituire meno istruzioni prima.
+		converted := DebugInstruction{Address: item.Address, Bytes: item.InstructionBytes, Instruction: item.Instruction, Symbol: item.Symbol, Line: item.Line, Current: strings.EqualFold(item.Address, address)}
+		if item.Location != nil {
+			converted.Path = item.Location.Path
+			converted.RelativePath = filepath.ToSlash(relativeWithin(session.root, item.Location.Path))
+		}
+		instructions = append(instructions, converted)
+	}
+	return instructions, nil
 }
 
 // Variables espande un riferimento (scope o variabile composta), con un limite al numero di figli.

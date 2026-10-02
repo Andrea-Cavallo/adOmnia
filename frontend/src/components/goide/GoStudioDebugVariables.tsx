@@ -1,7 +1,7 @@
 import { Fragment, memo, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
-import { ChevronDown, ChevronRight, Copy, Eye, LoaderCircle, Plus, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, Copy, Cpu, Eye, LoaderCircle, Plus, X } from 'lucide-react'
 import { Clipboard as WailsClipboard } from '@wailsio/runtime'
-import { evaluateGoIDEDebug, type GoIDEDebugVariable } from '@/lib/goide-debug-api'
+import { evaluateGoIDEDebug, showGoIDEDebugRegisters, type GoIDEDebugVariable } from '@/lib/goide-debug-api'
 import { useGoIDEDebugStore, type GoIDEDebugConsoleLine, type GoIDEDebugView, type GoIDEWatchValue } from '@/stores/goideDebug'
 import { PaneHeader, valueTone } from './GoStudioDebugUi'
 import { goStudioUnwrapCandidates, isNilGoStudioDebugValue } from './goStudioErrorChain'
@@ -70,6 +70,35 @@ function childExpression(parent: string, childName: string): string {
 }
 
 /** Variabili del frame scelto, watch persistenti per progetto e scope costosi caricati su richiesta. */
+/** Sessioni di debug con lo scope Registers attivo: Delve tiene l'impostazione per sessione. */
+const registersShown = new Set<string>()
+
+function RegistersToggle({ view }: { view: GoIDEDebugView }) {
+  const debugId = view.info.id
+  const [shown, setShown] = useState(() => registersShown.has(debugId))
+  const [busy, setBusy] = useState(false)
+  useEffect(() => setShown(registersShown.has(debugId)), [debugId])
+  const toggle = async () => {
+    setBusy(true)
+    try {
+      await showGoIDEDebugRegisters(debugId, !shown)
+      if (shown) registersShown.delete(debugId)
+      else registersShown.add(debugId)
+      setShown(!shown)
+      if (view.frameId !== null) await useGoIDEDebugStore.getState().selectFrame(debugId, view.frameId)
+    } catch {
+      // La sessione può essere terminata nel frattempo: il pulsante resta nello stato precedente.
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <button type="button" onClick={() => void toggle()} disabled={busy || view.info.state !== 'stopped'} aria-pressed={shown} title={shown ? 'Hide CPU registers' : 'Show CPU registers of the selected frame'} className={`go-studio-icon-button h-6 w-6 ${shown ? 'text-accent' : ''}`}>
+      <Cpu size={13} aria-hidden="true" />
+    </button>
+  )
+}
+
 export function GoStudioDebugVariables({ view, sessionId }: { view: GoIDEDebugView; sessionId: string }) {
   const watches = useGoIDEDebugStore((state) => state.watches[sessionId] ?? EMPTY_WATCHES)
   const { addWatch, removeWatch, loadChildren } = useGoIDEDebugStore.getState()
@@ -79,7 +108,7 @@ export function GoStudioDebugVariables({ view, sessionId }: { view: GoIDEDebugVi
   const pending: GoIDEWatchValue = { value: paused ? '…' : 'not available while running', reference: 0 }
   return (
     <section aria-label="Variables" className="flex min-h-0 flex-col">
-      <PaneHeader title="Variables" />
+      <PaneHeader title="Variables"><RegistersToggle view={view} /></PaneHeader>
       <form onSubmit={(event) => { event.preventDefault(); addWatch(sessionId, draft); setDraft('') }} className="mx-2 mb-1.5 flex h-7 shrink-0 items-center gap-1.5 rounded-lg bg-surface-0 px-2 focus-within:ring-1 focus-within:ring-accent">
         <Plus size={12} className="shrink-0 text-text-4" />
         <input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Add watch, e.g. len(items)" aria-label="New watch expression"

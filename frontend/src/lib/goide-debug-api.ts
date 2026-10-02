@@ -1,6 +1,6 @@
 import * as GoIDEBindings from '../../bindings/adomnia/goide'
 import type {
-  Breakpoint, BreakpointState, DebugFrame, DebugRequest, DebugScope, DebugSessionInfo, DebugThread, DebugVariable,
+  Breakpoint, BreakpointState, DebugFrame, DebugInstruction, DebugRequest, DebugScope, DebugSessionInfo, DebugThread, DebugVariable,
   DelveInfo, EvaluateResult, Execution, FileBreakpoints, FunctionBreakpoint, FunctionBreakpointSettings, FunctionBreakpointsView,
   GoroutineOverview, GoroutineSummary, ProcessInfo,
 } from '../../bindings/adomnia/internal/goide/models'
@@ -15,6 +15,7 @@ export interface GoIDEDebugOutput {
 }
 export type GoIDEDebugThread = DebugThread
 export type GoIDEDebugFrame = DebugFrame
+export type GoIDEDebugInstruction = DebugInstruction
 export type GoIDEDebugScope = DebugScope
 export type GoIDEDebugVariable = DebugVariable
 export type GoIDEEvaluateResult = EvaluateResult
@@ -109,4 +110,14 @@ export type GoIDEProcessInfo = ProcessInfo
 /** Processi locali per Attach to Process (solo lettura). */
 export function listGoIDEProcesses(): Promise<ProcessInfo[]> {
   return GoIDEBindings.ListProcesses()
+}
+
+/** Codice macchina attorno all'istruzione corrente del frame (DAP disassemble di Delve). */
+export function getGoIDEDebugDisassembly(debugId: string, address: string, before = 12, after = 12): Promise<DebugInstruction[]> {
+  return GoIDEBindings.DebugDisassemble(debugId, address, before, after)
+}
+
+/** Aggiunge o toglie lo scope "Registers" dalle variabili dei frame (dlv config showRegisters). */
+export function showGoIDEDebugRegisters(debugId: string, show: boolean): Promise<void> {
+  return GoIDEBindings.DebugShowRegisters(debugId, show)
 }

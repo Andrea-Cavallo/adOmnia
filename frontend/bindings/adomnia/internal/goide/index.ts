@@ -22,6 +22,7 @@ export {
     CreateProjectResult,
     CursorPosition,
     DebugFrame,
+    DebugInstruction,
     DebugRequest,
     DebugScope,
     DebugSessionInfo,

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Eye, EyeOff, MapPin, OctagonAlert, Rocket } from 'lucide-react'
-import { getGoIDEDebugScopes, getGoIDEDebugVariables, type GoIDEDebugFrame, type GoIDEDebugVariable, type GoIDEGoroutine } from '@/lib/goide-debug-api'
+import { getGoIDEDebugDisassembly, getGoIDEDebugScopes, getGoIDEDebugVariables, type GoIDEDebugFrame, type GoIDEDebugInstruction, type GoIDEDebugVariable, type GoIDEGoroutine } from '@/lib/goide-debug-api'
 import { useGoIDEStore } from '@/stores/goide'
 import { useGoIDEDebugStore, type GoIDEDebugView } from '@/stores/goideDebug'
 import { GoStudioGoroutineTree } from './GoStudioGoroutineTree'
@@ -42,10 +42,60 @@ export function GoStudioDebugSession({ view, sessionId }: GoStudioDebugSessionPr
         {paused && <GoroutineDetail goroutine={selected} threadId={view.threadId} />}
         {paused && <PanicInspector view={view} />}
         {paused && <DeferredCallInspector frame={view.frames.find((frame) => frame.id === view.frameId) ?? null} />}
+        {paused && <DisassemblyInspector debugId={view.info.id} frame={view.frames.find((frame) => frame.id === view.frameId) ?? null} />}
         <FramesPane view={view} />
       </section>
       <GoStudioDebugVariables view={view} sessionId={sessionId} />
       <GoStudioDebugConsole view={view} />
+    </div>
+  )
+}
+
+/** Codice macchina del frame scelto, raggruppato per riga Go; si carica solo su richiesta. */
+function DisassemblyInspector({ debugId, frame }: { debugId: string; frame: GoIDEDebugFrame | null }) {
+  const [state, setState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
+  const [instructions, setInstructions] = useState<GoIDEDebugInstruction[]>([])
+  const [error, setError] = useState('')
+  const address = frame?.instructionPointer ?? ''
+  const load = async () => {
+    if (!address || state === 'loading') return
+    setState('loading')
+    try {
+      setInstructions(await getGoIDEDebugDisassembly(debugId, address))
+      setState('ready')
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+      setState('error')
+    }
+  }
+  useEffect(() => { setState('idle'); setInstructions([]) }, [debugId, frame?.id, address])
+  if (!address) return null
+  return (
+    <div className="mx-2 mt-2 shrink-0 rounded-lg border border-border-1 bg-surface-0/40 p-2.5 text-[11px]">
+      <div className="flex items-center gap-2">
+        <b className="text-text-2">Disassembly</b>
+        <span className="font-mono text-[10.5px] text-text-4">{address}</span>
+        <button type="button" onClick={() => void (state === 'ready' ? setState('idle') : load())} disabled={state === 'loading'} className="ml-auto rounded px-1.5 py-0.5 text-[10.5px] text-accent hover:bg-accent/10 disabled:opacity-50">{state === 'loading' ? 'Reading…' : state === 'ready' ? 'Hide' : 'Disassemble'}</button>
+      </div>
+      {state === 'ready' && (
+        <div role="list" aria-label="Machine instructions" className="mt-1.5 max-h-56 overflow-auto font-mono text-[10.5px] leading-[18px]">
+          {instructions.map((instruction, index) => {
+            const location = instruction.relativePath || instruction.path
+            const newLine = location && instruction.line && (index === 0 || instructions[index - 1].line !== instruction.line || (instructions[index - 1].relativePath || instructions[index - 1].path) !== location)
+            return (
+              <div key={instruction.address} role="listitem">
+                {newLine && <button type="button" onClick={() => void useGoIDEStore.getState().openLocation(location, instruction.line ?? 1, 1)} className="mt-1 block truncate text-left text-[10px] text-text-4 hover:text-accent">{shortLocation(location, instruction.line ?? 0)}</button>}
+                <div aria-current={instruction.current || undefined} className={`flex gap-2 rounded px-1 ${instruction.current ? 'bg-warning/15 text-text-1' : 'text-text-2'}`}>
+                  <span className="w-3 shrink-0 text-warning">{instruction.current ? '▶' : ''}</span>
+                  <span className="shrink-0 text-text-4">{instruction.address}</span>
+                  <span className="truncate">{instruction.instruction}</span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+      {state === 'error' && <p className="mt-1 text-danger">{error}</p>}
     </div>
   )
 }

@@ -226,6 +226,16 @@ func (s *Service) DebugScopes(debugID string, frameID int) ([]DebugScope, error)
 	return s.debug.Scopes(DebugSessionID(debugID), frameID)
 }
 
+// DebugShowRegisters mostra o nasconde lo scope Registers nelle variabili dei frame.
+func (s *Service) DebugShowRegisters(debugID string, show bool) error {
+	return s.debug.ShowRegisters(DebugSessionID(debugID), show)
+}
+
+// DebugDisassemble restituisce il codice macchina attorno all'istruzione corrente di un frame.
+func (s *Service) DebugDisassemble(debugID, address string, before, after int) ([]DebugInstruction, error) {
+	return s.debug.Disassemble(DebugSessionID(debugID), address, before, after)
+}
+
 // DebugVariables espande scope e variabili composte.
 func (s *Service) DebugVariables(debugID string, reference int) ([]DebugVariable, error) {
 	return s.debug.Variables(DebugSessionID(debugID), reference)

@@ -735,6 +735,11 @@ export class DebugFrame {
     "line": number;
     "column": number;
 
+    /**
+     * InstructionPointer è l'indirizzo dell'istruzione corrente, da usare con DebugDisassemble.
+     */
+    "instructionPointer"?: string;
+
     /** Creates a new DebugFrame instance. */
     constructor($$source: Partial<DebugFrame> = {}) {
         if (!("id" in $$source)) {
@@ -759,6 +764,44 @@ export class DebugFrame {
     static createFrom($$source: any = {}): DebugFrame {
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         return new DebugFrame($$parsedSource as Partial<DebugFrame>);
+    }
+}
+
+/**
+ * DebugInstruction è un'istruzione macchina con la riga Go che l'ha generata, se nota.
+ */
+export class DebugInstruction {
+    "address": string;
+    "bytes"?: string;
+    "instruction": string;
+    "symbol"?: string;
+    "path"?: string;
+    "relativePath"?: string;
+    "line"?: number;
+
+    /**
+     * Current marca l'istruzione su cui il frame è fermo.
+     */
+    "current"?: boolean;
+
+    /** Creates a new DebugInstruction instance. */
+    constructor($$source: Partial<DebugInstruction> = {}) {
+        if (!("address" in $$source)) {
+            this["address"] = "";
+        }
+        if (!("instruction" in $$source)) {
+            this["instruction"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new DebugInstruction instance from a string or object.
+     */
+    static createFrom($$source: any = {}): DebugInstruction {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new DebugInstruction($$parsedSource as Partial<DebugInstruction>);
     }
 }
 
