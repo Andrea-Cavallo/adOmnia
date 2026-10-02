@@ -166,6 +166,7 @@ pause and explains it.
 - **Flaky badge and filter.** A test that both passed and failed shows *flaky failed/runs*; a test that always failed stays a plain failure. The *N flaky* toggle shows only flaky tests. One failed repetition keeps the test red even if the last one passed.
 - **Failure rate and durations.** The detail header shows the failure rate and min/avg/max duration across repetitions.
 - **Possible causes.** For a flaky test the detail lists hints read from the output of every repetition: data race, deadlock, timing, port conflict, unreachable service, channel or map misuse, or (with shuffling and no other hint) test-order dependency. *×N with -race* repeats it with the race detector. These are hints, not a diagnosis.
+- **Flaky history.** Tests found flaky in a repeated run are remembered per project in local storage (package, name, runs and failures, never output). Later runs mark them *was flaky*, the flaky filter includes them, and the trash button next to it forgets them.
 - **Seed replay.** Selecting a package shows the `-shuffle` seed it printed; clicking it reruns the package in the same order.
 
 ## Linting

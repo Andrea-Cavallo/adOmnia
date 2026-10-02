@@ -6,9 +6,10 @@ import { getGoIDETestOutput, type GoIDECoverageReport, type GoIDETestResult, typ
 import { requestWorkspaceSymbols } from '@/lib/goide-lsp-api'
 import { useGoIDEStore } from '@/stores/goide'
 import { selectedTestRun, useGoIDETestsStore } from '@/stores/goideTests'
-import { buildTestTree, debugRequestForNode, filterTestTree, flakyCauses, formatDuration, isFailed, isFlaky, raceRepeatRequestForNode, isSlow, onlyFailed, onlyFlaky, repeatRequestForNode, repetitionStats, reproduceRequest, type GoStudioTestNode } from './goStudioTestTree'
+import { buildTestTree, debugRequestForNode, filterTestTree, flakyCauses, formatDuration, isFailed, isFlaky, raceRepeatRequestForNode, isSlow, onlyFailed, repeatRequestForNode, repetitionStats, reproduceRequest, type GoStudioTestNode } from './goStudioTestTree'
 import { useGoIDEDebugStore } from '@/stores/goideDebug'
 import { functionsByCoverage } from './goStudioCoverage'
+import { clearFlakyHistory, flakyRecords, loadFlakyHistory, saveFlakyHistory, type GoStudioFlakyHistoryEntry, type GoStudioFlakyRecord } from './goStudioFlakyHistory'
 import { navigateToLocation } from './goStudioLanguageFeatures'
 import { runGoStudioBenchmarks } from './goStudioQuickActions'
 import { benchmarkMeasurementFor, benchmarkRunDurationMillis, compareBenchmarkMetrics, formatBenchmarkValue, previousBenchmarkRun } from './goStudioBenchmarks'
@@ -50,12 +51,13 @@ async function openTest(sessionId: string, run: GoIDETestRun, result: GoIDETestR
   if (match) navigateToLocation(match.location)
 }
 
-function TestRow({ node, depth, selected, run, sessionId, entry = false }: { node: GoStudioTestNode; depth: number; selected: string | null; run: GoIDETestRun; sessionId: string; entry?: boolean }) {
+function TestRow({ node, depth, selected, run, sessionId, records, entry = false }: { node: GoStudioTestNode; depth: number; selected: string | null; run: GoIDETestRun; sessionId: string; records: Map<string, GoStudioFlakyRecord>; entry?: boolean }) {
   const [open, setOpen] = useState(depth === 0 || node.children.some((child) => isFailed(child.result)))
   const selectNode = useGoIDETestsStore((state) => state.selectNode)
   const rerunNode = useGoIDETestsStore((state) => state.rerunNode)
   const { result } = node
   const active = selected === result.id
+  const record = result.name && !isFlaky(result) ? records.get(`${result.package}\u0000${result.name}`) : undefined
   return (
     <>
       <div
@@ -86,6 +88,7 @@ function TestRow({ node, depth, selected, run, sessionId, entry = false }: { nod
         <span className={`truncate ${result.name ? 'font-mono' : 'font-medium'}`}>{node.label}</span>
         {result.buildFailed && <span className="shrink-0 rounded bg-danger/15 px-1 text-[9px] text-danger">build failed</span>}
         {isFlaky(result) && <span title={`Failed ${result.failures} of ${result.runs} runs`} className="shrink-0 rounded bg-warning/15 px-1 text-[9px] font-semibold text-warning">flaky {result.failures}/{result.runs}</span>}
+        {record && <span title={`Flaky in ${record.occurrences} earlier repeated run${record.occurrences === 1 ? '' : 's'}: failed ${record.failures} of ${record.runs} repetitions, last on ${new Date(record.lastSeen).toLocaleString()}`} className="shrink-0 rounded border border-warning/40 px-1 text-[9px] text-warning">was flaky</span>}
         {result.benchmark && <span className="truncate font-mono text-[10px] text-accent">{result.benchmark}</span>}
         <span className="ml-auto shrink-0 text-[9px] text-text-4">{result.status !== 'running' && result.elapsedMillis > 0 ? formatDuration(result.elapsedMillis) : ''}</span>
         {run.status !== 'running' && (
@@ -104,7 +107,7 @@ function TestRow({ node, depth, selected, run, sessionId, entry = false }: { nod
           </button>
         )}
       </div>
-      {open && node.children.map((child) => <TestRow key={child.result.id} node={child} depth={depth + 1} selected={selected} run={run} sessionId={sessionId} />)}
+      {open && node.children.map((child) => <TestRow key={child.result.id} node={child} depth={depth + 1} selected={selected} run={run} sessionId={sessionId} records={records} />)}
     </>
   )
 }
@@ -279,22 +282,30 @@ export const GoStudioTestsPanel = memo(function GoStudioTestsPanel({ session }: 
   const [showOnlyFlaky, setShowOnlyFlaky] = useState(false)
   const [repeat, setRepeat] = useState(20)
   const [benchmarkHistory, setBenchmarkHistory] = useState<GoStudioBenchmarkHistoryEntry[]>([])
+  const [flakyHistory, setFlakyHistory] = useState<GoStudioFlakyHistoryEntry[]>([])
+  const records = useMemo(() => flakyRecords(flakyHistory), [flakyHistory])
   const { rerunAll, rerunFailed, selectRun, toggleOnlyFailed, toggleCoverage, loadRuns, start } = useGoIDETestsStore.getState()
   const stopRun = useGoIDEStore((state) => state.stopRun)
   useEffect(() => { void loadRuns(sessionId) }, [loadRuns, sessionId])
-  useEffect(() => { setBenchmarkHistory(loadBenchmarkHistory(session.project.rootPath)) }, [session.project.rootPath])
   useEffect(() => {
-    if (runs?.length) setBenchmarkHistory(saveBenchmarkHistory(session.project.rootPath, runs))
+    setBenchmarkHistory(loadBenchmarkHistory(session.project.rootPath))
+    setFlakyHistory(loadFlakyHistory(session.project.rootPath))
+  }, [session.project.rootPath])
+  useEffect(() => {
+    if (!runs?.length) return
+    setBenchmarkHistory(saveBenchmarkHistory(session.project.rootPath, runs))
+    setFlakyHistory(saveFlakyHistory(session.project.rootPath, runs))
   }, [runs, session.project.rootPath])
   const tree = useMemo(() => {
     const nodes = buildTestTree(run?.results ?? [])
-    const failed = showOnlyFlaky ? onlyFlaky(nodes) : showOnlyFailed ? onlyFailed(nodes) : nodes
+    const knownFlaky = (result: GoIDETestResult) => isFlaky(result) || (!!result.name && records.has(`${result.package}\u0000${result.name}`))
+    const failed = showOnlyFlaky ? filterTestTree(nodes, knownFlaky) : showOnlyFailed ? onlyFailed(nodes) : nodes
     const query = search.trim().toLocaleLowerCase()
     return filterTestTree(failed, (result) => {
       if (showOnlySlow && !isSlow(result)) return false
       return !query || `${result.name ?? ''} ${result.package}`.toLocaleLowerCase().includes(query)
     })
-  }, [run?.results, search, showOnlyFailed, showOnlyFlaky, showOnlySlow])
+  }, [records, run?.results, search, showOnlyFailed, showOnlyFlaky, showOnlySlow])
   const selected = run?.results.find((result) => result.id === selectedId) ?? null
 
   if (!run) {
@@ -308,7 +319,7 @@ export const GoStudioTestsPanel = memo(function GoStudioTestsPanel({ session }: 
   const running = run.status === 'running'
   const summary = run.summary
   const repeated = (run.request.repeat ?? 0) > 1
-  const flakyCount = repeated ? run.results.filter(isFlaky).length : 0
+  const flakyCount = run.results.filter((result) => isFlaky(result) || (!!result.name && records.has(`${result.package}\u0000${result.name}`))).length
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div role="toolbar" aria-label="Tests toolbar" className="flex h-8 shrink-0 items-center gap-1 border-b border-border-1 px-2 text-[10px]">
@@ -325,7 +336,8 @@ export const GoStudioTestsPanel = memo(function GoStudioTestsPanel({ session }: 
         {benchmarkHistory.length > 0 && <button type="button" onClick={() => { clearBenchmarkHistory(session.project.rootPath); setBenchmarkHistory([]) }} title={`Clear ${benchmarkHistory.length} saved local benchmark measurement${benchmarkHistory.length === 1 ? '' : 's'}`} className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-3 hover:text-danger"><Trash2 size={11} aria-hidden="true" /></button>}
         <button type="button" disabled={!running} onClick={() => void stopRun(run.runId)} title="Stop tests" className="grid h-6 w-6 place-items-center rounded text-danger hover:bg-danger/10 disabled:opacity-30"><Square size={10} fill="currentColor" aria-hidden="true" /></button>
         <button type="button" aria-pressed={showOnlyFailed} onClick={toggleOnlyFailed} title="Show only failed" className={`grid h-6 w-6 place-items-center rounded ${showOnlyFailed ? 'bg-accent/15 text-accent' : 'text-text-3 hover:bg-surface-3'}`}><Filter size={11} aria-hidden="true" /></button>
-        {repeated && <button type="button" aria-pressed={showOnlyFlaky} onClick={() => setShowOnlyFlaky((value) => !value)} title="Show only flaky tests (passed and failed across repetitions)" className={`flex h-6 items-center gap-1 rounded px-1.5 ${showOnlyFlaky ? 'bg-warning/15 text-warning' : flakyCount ? 'text-warning hover:bg-warning/10' : 'text-text-3 hover:bg-surface-3'}`}><Shuffle size={11} aria-hidden="true" /> {flakyCount} flaky</button>}
+        {(repeated || flakyCount > 0) && <button type="button" aria-pressed={showOnlyFlaky} onClick={() => setShowOnlyFlaky((value) => !value)} title="Show only flaky tests: flaky in this run or in an earlier repeated run" className={`flex h-6 items-center gap-1 rounded px-1.5 ${showOnlyFlaky ? 'bg-warning/15 text-warning' : flakyCount ? 'text-warning hover:bg-warning/10' : 'text-text-3 hover:bg-surface-3'}`}><Shuffle size={11} aria-hidden="true" /> {flakyCount} flaky</button>}
+        {flakyHistory.length > 0 && <button type="button" onClick={() => { clearFlakyHistory(session.project.rootPath); setFlakyHistory([]) }} title={`Forget ${records.size} test${records.size === 1 ? '' : 's'} seen flaky in earlier runs`} className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-3 hover:text-danger"><Trash2 size={11} aria-hidden="true" /></button>}
         <button type="button" aria-pressed={showOnlySlow} onClick={() => setShowOnlySlow((value) => !value)} title="Show only tests slower than one second" className={`grid h-6 w-6 place-items-center rounded ${showOnlySlow ? 'bg-warning/15 text-warning' : 'text-text-3 hover:bg-surface-3'}`}><Clock3 size={11} aria-hidden="true" /></button>
         {run.coverage && (
           <button type="button" aria-pressed={coverageVisible} onClick={toggleCoverage} title={coverageVisible ? 'Hide coverage in the editor' : 'Show coverage in the editor'} className={`flex h-6 items-center gap-1 rounded px-1.5 ${coverageVisible ? 'bg-success/15 text-success' : 'text-text-3 hover:bg-surface-3'}`}><ShieldCheck size={11} aria-hidden="true" /> {run.coverage.percent.toFixed(1)}%</button>
@@ -348,7 +360,7 @@ export const GoStudioTestsPanel = memo(function GoStudioTestsPanel({ session }: 
       </div>
       <div className="flex min-h-0 flex-1">
         <div role="tree" aria-label="Test results" className="min-h-0 w-[46%] shrink-0 overflow-auto border-r border-border-1 py-1">
-          {tree.map((node, index) => <TestRow key={node.result.id} node={node} depth={0} selected={selectedId} run={run} sessionId={sessionId} entry={index === 0} />)}
+          {tree.map((node, index) => <TestRow key={node.result.id} node={node} depth={0} selected={selectedId} run={run} sessionId={sessionId} records={records} entry={index === 0} />)}
           {tree.length === 0 && <p className="p-3 text-[11px] text-text-4">{running ? 'Building and starting tests…' : showOnlyFlaky ? 'No flaky tests in this run.' : showOnlyFailed ? 'No failed tests.' : showOnlySlow ? 'No tests slower than one second.' : search ? 'No matching tests.' : 'No tests found.'}</p>}
           {run.overflow && <p className="p-2 text-[10px] text-warning">Too many tests: only the first 5,000 are shown.</p>}
         </div>
