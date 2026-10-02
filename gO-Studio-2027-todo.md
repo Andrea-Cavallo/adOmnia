@@ -22,7 +22,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
-| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 22 | 12 |
+| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 21 | 11 |
 | **P1** | Workflow Go migliore di GoLand | 122 | 24 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 219 | 54 |
 | **P3** | Remote ed estensibilità | 29 | 3 |
@@ -86,7 +86,6 @@ _Affidabilità, velocità su repo grandi e PC aziendali, debug/test/Git completi
 
 ### Coverage
 
-- [ ] Branch-like insights dove deducibili. — *Parziale: goStudioCoverage.ts marca nel gutter le righe 'partial' (coperte in parte); non esiste un'analisi dei rami né un pannello di insight dedicato.*
 - [ ] Coverage diff rispetto a branch base. — *Parziale: la vista Patch misura la coverage delle righe cambiate dal merge-base con il branch scelto; manca il confronto con la coverage totale misurata sul branch base.*
 
 ### Flaky Test Detector

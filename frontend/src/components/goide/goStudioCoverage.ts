@@ -88,3 +88,18 @@ export function patchCoverage(report: GoIDECoverageReport, changed: Record<strin
   const covered = files.reduce((sum, file) => sum + file.covered, 0)
   return { statements, covered, percent: statements ? (covered * 100) / statements : 0, files }
 }
+
+const BRANCH_LABEL: Record<string, string> = { then: 'if never true', else: 'else never taken', case: 'case never matched', default: 'default never reached' }
+
+export interface GoStudioUntakenBranch {
+  relativePath: string
+  line: number
+  label: string
+}
+
+/** Rami mai eseguiti con la condizione valutata, per file e riga; più il totale dei rami valutati. */
+export function untakenBranches(report: GoIDECoverageReport): { branches: GoStudioUntakenBranch[]; evaluated: number } {
+  const branches = report.files.flatMap((file) => (file.branches ?? []).map((branch) => ({ relativePath: file.relativePath, line: branch.line, label: BRANCH_LABEL[branch.kind] ?? branch.kind })))
+  branches.sort((left, right) => left.relativePath.localeCompare(right.relativePath) || left.line - right.line)
+  return { branches, evaluated: report.files.reduce((sum, file) => sum + (file.branchesEvaluated ?? 0), 0) }
+}

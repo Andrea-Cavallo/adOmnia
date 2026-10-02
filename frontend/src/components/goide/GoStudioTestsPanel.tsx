@@ -8,7 +8,7 @@ import { useGoIDEStore } from '@/stores/goide'
 import { selectedTestRun, useGoIDETestsStore } from '@/stores/goideTests'
 import { buildTestTree, debugRequestForNode, filterTestTree, flakyCauses, formatDuration, isFailed, isFlaky, raceRepeatRequestForNode, reproduceCommandFor, isSlow, onlyFailed, repeatRequestForNode, repetitionStats, reproduceRequest, type GoStudioTestNode } from './goStudioTestTree'
 import { useGoIDEDebugStore } from '@/stores/goideDebug'
-import { functionsByCoverage } from './goStudioCoverage'
+import { functionsByCoverage, untakenBranches } from './goStudioCoverage'
 import { GoStudioPatchCoverage } from './GoStudioPatchCoverage'
 import { clearFlakyHistory, flakyRecords, loadFlakyHistory, saveFlakyHistory, type GoStudioFlakyHistoryEntry, type GoStudioFlakyRecord } from './goStudioFlakyHistory'
 import { navigateToLocation } from './goStudioLanguageFeatures'
@@ -128,7 +128,7 @@ function OutputLine({ line, baseDirectory }: { line: string; baseDirectory: stri
   )
 }
 
-type CoverageView = 'files' | 'functions' | 'patch'
+type CoverageView = 'files' | 'functions' | 'branches' | 'patch'
 
 function CoverageSummary({ report, sessionId }: { report: GoIDECoverageReport; sessionId: string }) {
   const openDocument = useGoIDEStore((state) => state.openDocument)
@@ -136,6 +136,7 @@ function CoverageSummary({ report, sessionId }: { report: GoIDECoverageReport; s
   const [view, setView] = useState<CoverageView>('files')
   const byFunction = view === 'functions'
   const functions = useMemo(() => (byFunction ? functionsByCoverage(report) : []), [byFunction, report])
+  const branches = useMemo(() => (view === 'branches' ? untakenBranches(report) : null), [report, view])
   const bar = (value: number) => (
     <span className="h-1.5 w-20 shrink-0 overflow-hidden rounded bg-danger/25"><span className="block h-full bg-success" style={{ width: `${value}%` }} /></span>
   )
@@ -147,6 +148,7 @@ function CoverageSummary({ report, sessionId }: { report: GoIDECoverageReport; s
         <span role="tablist" aria-label="Coverage view" className="ml-auto flex gap-0.5">
           <button type="button" role="tab" aria-selected={view === 'files'} onClick={() => setView('files')} className={tab(view === 'files')}>Files</button>
           <button type="button" role="tab" aria-selected={byFunction} onClick={() => setView('functions')} title="Functions from the least covered" className={tab(byFunction)}>Functions</button>
+          <button type="button" role="tab" aria-selected={view === 'branches'} onClick={() => setView('branches')} title="Branches whose condition ran but whose body never did" className={tab(view === 'branches')}>Branches</button>
           <button type="button" role="tab" aria-selected={view === 'patch'} onClick={() => setView('patch')} title="Coverage of the lines changed since a base branch, as in a pull request" className={tab(view === 'patch')}>Patch</button>
         </span>
       </div>
@@ -156,6 +158,16 @@ function CoverageSummary({ report, sessionId }: { report: GoIDECoverageReport; s
         </button>
       ))}
       {byFunction && functions.length === 0 && <p className="text-[10px] text-text-4">No functions with statements.</p>}
+      {branches && (
+        <div>
+          <p className="mb-1 text-[10px] text-text-4">{branches.branches.length} of {branches.evaluated} evaluated branches never taken. Go measures statements, so a branch shows here only when its condition ran.</p>
+          {branches.branches.map((branch) => (
+            <button key={`${branch.relativePath}:${branch.line}:${branch.label}`} type="button" onClick={() => void openLocation(branch.relativePath, branch.line, 1)} className="flex h-6 w-full items-center gap-2 text-left text-text-3 hover:bg-surface-3 hover:text-text-1">
+              <span className="w-36 shrink-0 text-[10px] text-warning">{branch.label}</span><span className="truncate font-mono text-[10px]">{branch.relativePath}:{branch.line}</span>
+            </button>
+          ))}
+        </div>
+      )}
       {view === 'patch' && <GoStudioPatchCoverage sessionId={sessionId} report={report} />}
       {view === 'files' && report.packages.map((pkg) => (
         <div key={pkg.importPath} className="mb-1">

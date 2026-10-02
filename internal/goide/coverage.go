@@ -39,6 +39,10 @@ type CoverageFile struct {
 	Blocks       []CoverageBlock `json:"blocks"`
 	// Functions è la copertura per funzione, come `go tool cover -func`, in ordine di riga.
 	Functions []CoverageFunction `json:"functions"`
+	// Branches sono i rami if/else/case mai eseguiti con la condizione valutata; BranchesEvaluated
+	// conta i rami con istruzioni la cui condizione è stata eseguita.
+	Branches          []CoverageBranch `json:"branches"`
+	BranchesEvaluated int              `json:"branchesEvaluated"`
 }
 
 // CoverageFunction è la copertura di una funzione o di un metodo ("T.M" o "(*T).M").
@@ -188,6 +192,7 @@ func buildCoverageReport(projectRoot, moduleDir, modulePath string, data []byte)
 		}
 		file.Percent = percent(file.Covered, file.Statements)
 		file.Functions = functionCoverage(text, blocks)
+		file.Branches, file.BranchesEvaluated = untakenBranches(text, blocks)
 		report.Files = append(report.Files, file)
 		pkgPath := path.Dir(importPath)
 		pkg := packages[pkgPath]

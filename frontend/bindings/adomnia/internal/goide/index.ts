@@ -13,6 +13,7 @@ export {
     CompletionEntry,
     CompletionResult,
     CoverageBlock,
+    CoverageBranch,
     CoverageFile,
     CoverageFunction,
     CoveragePackage,
