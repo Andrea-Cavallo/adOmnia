@@ -11,6 +11,7 @@ import { useGoIDEDebugStore } from '@/stores/goideDebug'
 import type { GoIDEExecution, GoIDESession } from '@/lib/goide-api'
 import { GoStudioTerminalPanel } from './GoStudioTerminalPanel'
 import { resolveConsolePath } from './goStudioConsolePaths'
+import { consoleLogLevel, consoleSegments, type ConsoleLogLevel } from './goStudioLogLevels'
 import { GoStudioProblems, type GoStudioBuildProblem } from './GoStudioProblems'
 import { GoStudioReferences } from './GoStudioReferences'
 import { GoStudioFindInFiles } from './GoStudioFindInFiles'
@@ -76,6 +77,40 @@ function renderAnsi(raw: string) {
   }
   if (index < raw.length) segments.push({ text: raw.slice(index), className })
   return segments.map((segment, segmentIndex) => <span key={segmentIndex} className={segment.className}>{segment.text}</span>)
+}
+
+const LEVEL_TEXT: Record<ConsoleLogLevel, string> = {
+  error: 'text-danger',
+  warn: 'text-warning',
+  info: 'text-text-1',
+  debug: 'text-text-4',
+  success: 'text-success',
+}
+
+const LEVEL_TOKEN: Record<ConsoleLogLevel, string> = {
+  error: 'rounded-[3px] bg-danger/15 px-1 font-semibold text-danger',
+  warn: 'rounded-[3px] bg-warning/15 px-1 font-semibold text-warning',
+  info: 'rounded-[3px] bg-accent/12 px-1 font-semibold text-accent',
+  debug: 'rounded-[3px] bg-surface-3 px-1 font-semibold text-text-3',
+  success: 'font-semibold text-success',
+}
+
+/**
+ * Una riga senza ANSI viene colorata dal suo livello di log (timestamp attenuato, livello in evidenza);
+ * con ANSI vince il colore scelto dal programma. Lo stderr non è rosso di default: il pacchetto log
+ * di Go ci scrive tutto. Restano rossi gli errori di compilazione (riga con file:linea).
+ */
+function consoleLineClass(line: ParsedLine, level: ConsoleLogLevel | null): string {
+  if (level) return LEVEL_TEXT[level]
+  if (line.stream === 'system') return 'text-text-4'
+  return line.stream === 'stderr' && line.path ? 'text-danger' : 'text-text-2'
+}
+
+function renderConsoleLine(line: ParsedLine, level: ConsoleLogLevel | null) {
+  if (line.raw !== line.text || !level) return renderAnsi(line.raw)
+  return consoleSegments(line.text).map((segment, index) => (
+    <span key={index} className={segment.kind === 'timestamp' ? 'text-text-4' : segment.kind === 'level' ? LEVEL_TOKEN[level] : undefined}>{segment.text}</span>
+  ))
 }
 
 function formatDuration(milliseconds: number): string {
@@ -208,17 +243,20 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session }: GoSt
           <button type="button" disabled={!chunks.length} onClick={() => void WailsClipboard.SetText(chunks.map((chunk) => chunk.text).join(''))} aria-label="Copy console" title="Copy console" className="go-studio-icon-button h-7 w-7"><Copy size={13} /></button>
         </div>
         <div className="flex min-w-0 flex-1 flex-col">
-        <div className="min-h-0 flex-1 overflow-auto px-3.5 pb-2 pt-1 font-mono text-[12.5px] leading-[21px]">
+        <div className="min-h-0 flex-1 overflow-auto px-3.5 pb-2 pt-1 text-[12.5px] leading-[21px]" style={{ fontFamily: 'var(--skin-font-mono, var(--font-mono))', fontVariantLigatures: 'none' }}>
           {!active && <p className="font-sans text-text-4">Build or run the project, or press ▶ next to func main or a test, to open a real console.</p>}
           {active && visibleLines.length === 0 && <p className="text-text-4">Waiting for output…</p>}
           {hiddenLines > 0 && <p className="font-sans text-[11px] text-text-4">{hiddenLines.toLocaleString()} earlier lines not shown · use search or Copy console for the full output.</p>}
-          {visibleLines.map((line, index) => (
-            <div key={`${line.sequence}-${index}`} className={`go-studio-console-line min-h-5 whitespace-pre-wrap break-all ${line.stream === 'stderr' ? 'text-danger' : line.stream === 'system' ? 'text-text-4' : 'text-text-2'}`}>
+          {visibleLines.map((line, index) => {
+            const level = line.stream === 'system' ? null : consoleLogLevel(line.text)
+            return (
+            <div key={`${line.sequence}-${index}`} className={`go-studio-console-line min-h-5 whitespace-pre-wrap break-all ${consoleLineClass(line, level)}`}>
               {line.path && line.line ? (
-                <button type="button" onClick={() => void openLocation(resolveConsolePath(line.path!, active?.workingDirectory ?? ''), line.line!, line.column)} className="text-left underline decoration-accent/40 underline-offset-2 hover:text-accent">{renderAnsi(line.raw)}</button>
-              ) : renderAnsi(line.raw)}
+                <button type="button" onClick={() => void openLocation(resolveConsolePath(line.path!, active?.workingDirectory ?? ''), line.line!, line.column)} className="text-left underline decoration-accent/40 underline-offset-2 hover:text-accent">{renderConsoleLine(line, level)}</button>
+              ) : renderConsoleLine(line, level)}
             </div>
-          ))}
+            )
+          })}
         </div>
         {active?.status === 'running' && active.kind === 'run' && (
           <form onSubmit={(event) => { event.preventDefault(); void submitInput() }} className="flex h-9 shrink-0 items-center border-t border-border-1 px-3">
