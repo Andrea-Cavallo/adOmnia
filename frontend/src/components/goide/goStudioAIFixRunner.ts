@@ -1,5 +1,6 @@
 import * as AIEngine from '../../../bindings/adomnia/aiengine'
-import { closeGoIDEDocument, listGoIDEDirectory, openGoIDEDocument } from '@/lib/goide-api'
+import { closeGoIDEDocument, listGoIDEAIExcludedPaths, listGoIDEDirectory, openGoIDEDocument } from '@/lib/goide-api'
+import { createAIRedactor } from '@/lib/aiRedaction'
 import type { GoIDEFileChange, GoIDEWorkspaceChange } from '@/lib/goide-lsp-api'
 import { isAICompanionAvailable } from '@/lib/aiAvailability'
 import { ensureAIConfigured } from '@/lib/aiEngine'
@@ -58,10 +59,17 @@ async function proposeFix(relativePath: string, problem: AIFixProblem, otherProb
   if (document.buffer.length > MAX_AI_FIX_FILE_CHARS) return `${relativePath} is too large to send (limit ${MAX_AI_FIX_FILE_CHARS / 1000}k characters)`
   const target: SourceFile = { relativePath, content: document.buffer, uri: document.document.uri, path: document.document.path, documentId: document.document.id }
   const packageDir = localPackageDirForProblem(problem.message, document.buffer, session.project.modules ?? [])
-  const related = packageDir === null ? [] : await readPackageFiles(sessionId, packageDir, relativePath)
-  const prompt = buildAIFixPrompt(target, problem, otherProblems, related)
+  const candidates = packageDir === null ? [] : await readPackageFiles(sessionId, packageDir, relativePath)
+  // .adomnia/aiignore e i file segreti noti non lasciano mai la macchina, nemmeno come contesto.
+  const excluded = new Set(await listGoIDEAIExcludedPaths(sessionId, [relativePath, ...candidates.map((file) => file.relativePath)]))
+  if (excluded.has(relativePath)) return `${relativePath} is excluded from AI by .adomnia/aiignore`
+  const related = candidates.filter((file) => !excluded.has(file.relativePath))
+  // I segreti nel codice diventano segnaposto e tornano al loro posto nella risposta.
+  const redactor = createAIRedactor()
+  const hidden = (file: SourceFile): AIFixFile => ({ relativePath: file.relativePath, content: redactor.redact(file.content) })
+  const prompt = buildAIFixPrompt(hidden(target), { ...problem, message: redactor.redact(problem.message) }, otherProblems.map((item) => ({ ...item, message: redactor.redact(item.message) })), related.map(hidden))
   await ensureAIConfigured()
-  const response = await AIEngine.Complete(prompt.system, prompt.user, AI_FIX_MAX_TOKENS)
+  const response = redactor.restore(await AIEngine.Complete(prompt.system, prompt.user, AI_FIX_MAX_TOKENS))
   const sources = new Map([target, ...related].map((file) => [file.relativePath, file]))
   const files = parseAIFixResponse(response, [...sources.keys()]).flatMap((proposal) => {
     const source = sources.get(proposal.relativePath)!

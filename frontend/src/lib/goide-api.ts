@@ -426,6 +426,11 @@ export async function acknowledgeGoIDECrash(): Promise<void> {
   await GoIDEBindings.AcknowledgeCrash()
 }
 
+/** Percorsi che non devono mai andare a un provider AI: segreti noti e .adomnia/aiignore del progetto. */
+export async function listGoIDEAIExcludedPaths(sessionId: string, relativePaths: string[]): Promise<string[]> {
+  return relativePaths.length === 0 ? [] : GoIDEBindings.AIExcludedPaths(sessionId, relativePaths)
+}
+
 export async function listGoIDERecoveredBuffers(sessionId: string): Promise<GoIDERecoveredBuffer[]> {
   return GoIDEBindings.ListRecoveredBuffers(sessionId)
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"adomnia/internal/copilot"
 	"adomnia/internal/git"
 	"adomnia/internal/goide"
 	"adomnia/internal/goidewindow"
@@ -225,6 +226,23 @@ func (g *GoIDE) sessionRoot(sessionID string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("gO session %s is not open", sessionID)
+}
+
+// AIExcludedPaths restituisce, tra i percorsi indicati, quelli che non devono mai lasciare la
+// macchina verso un provider AI: segreti noti (.env, chiavi, certificati) e .adomnia/aiignore del progetto.
+func (g *GoIDE) AIExcludedPaths(sessionID string, relativePaths []string) ([]string, error) {
+	root, err := g.sessionRoot(sessionID)
+	if err != nil {
+		return nil, err
+	}
+	filter := copilot.LoadContextFilter(root)
+	excluded := []string{}
+	for _, relativePath := range relativePaths {
+		if filter.Excluded(relativePath) {
+			excluded = append(excluded, relativePath)
+		}
+	}
+	return excluded, nil
 }
 
 // cancelMainClose annulla la chiusura quando restano buffer non salvati o

@@ -22,7 +22,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
-| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 69 | 19 |
+| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 65 | 15 |
 | **P1** | Workflow Go migliore di GoLand | 122 | 24 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 219 | 54 |
 | **P3** | Remote ed estensibilità | 29 | 3 |
@@ -59,7 +59,6 @@ _Affidabilità, velocità su repo grandi e PC aziendali, debug/test/Git completi
 ## §50 · Privacy / Local-first
 
 - [ ] Per-project AI permissions. — *Parziale: Per-progetto solo .adomnia/aiignore per Copilot (internal/copilot/ignore.go); nessun permesso AI per progetto per gli altri provider.*
-- [ ] Secret redaction. — *Parziale: Copilot esclude .env, chiavi e certificati; redaction in storage (internal/storage/redaction.go); non sul flusso AI Fix.*
 - [ ] Telemetry opt-in.
 - [ ] Clear network activity panel.
 - [ ] Offline mode.
@@ -69,9 +68,6 @@ _Affidabilità, velocità su repo grandi e PC aziendali, debug/test/Git completi
 
 - [ ] Apply single hunk.
 - [ ] Apply file.
-- [ ] Secret redaction. — *Parziale: Copilot non invia mai .env, chiavi e certificati (internal/copilot/ignore.go); Fix with AI invia il file senza redazione.*
-- [ ] Exclude paths. — *Parziale: Esclusioni in internal/copilot/ignore.go applicate solo a Copilot; non a Fix with AI / AIEngine.*
-- [ ] `.aiignore`-like support. — *Parziale: .adomnia/aiignore è letto solo da Copilot, non dal motore AI.*
 
 ## §48 · Enterprise — rete aziendale e toolchain
 
